@@ -1,6 +1,8 @@
 (* A unit that does not check: the body of [wrong] is not a number. *)
 module Lib›Bad where
 
+import Prelude›Builtin›Nat
+
 def wrong : ℕ ≔ Type@0 end
 
 end

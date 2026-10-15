@@ -44,17 +44,6 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
   `( eval_exp_order Θ Ξ M p ->
      eval_exp_order Θ Ξ N p ->
      eval_exp_order Θ Ξ (maxl M N) p )
-| eeo_nat :
-  `( eval_exp_order Θ Ξ ℕ p )
-| eeo_zero :
-  `( eval_exp_order Θ Ξ zero p )
-| eeo_succ :
-  `( eval_exp_order Θ Ξ M p ->
-     eval_exp_order Θ Ξ succ M p )
-| eeo_natrec :
-  `( eval_exp_order Θ Ξ M p ->
-     (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> eval_natrec_order Θ Ξ A MZ MS m p) ->
-     eval_exp_order Θ Ξ rec M return A | zero -> MZ | succ -> MS end p )
 | eeo_True :
   `( eval_exp_order Θ Ξ ⊤ p )
 | eeo_true :
@@ -101,19 +90,6 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
      (forall h f ns, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> eval_selc Θ Ξ h (pre ++ x :: nil) f ->
         eval_exps Θ Ξ args p ns -> eval_apps_order Θ Ξ f ns) ->
      eval_exp_order Θ Ξ (a_mem H x) p )
-
-with eval_natrec_order (Θ : gdeps) (Ξ : gstack) : exp -> exp -> exp -> domain -> env -> Prop :=
-| eno_zero :
-  `( eval_exp_order Θ Ξ MZ p ->
-     eval_natrec_order Θ Ξ A MZ MS zeroᵈ p )
-| eno_succ :
-  `( eval_natrec_order Θ Ξ A MZ MS b p ->
-     (forall r, ⟦rec b return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ p ↘ r -> eval_exp_order Θ Ξ MS (p ↦ b ↦ r)) ->
-     eval_natrec_order Θ Ξ A MZ MS succᵈ b p )
-| eno_neut :
-  `( eval_exp_order Θ Ξ MZ p ->
-     eval_exp_order Θ Ξ A (p ↦ ⇑ a m) ->
-     eval_natrec_order Θ Ξ A MZ MS ⇑ a m p )
 
 with eval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> domain -> Prop :=
 | eelo_con :
@@ -346,7 +322,7 @@ with eval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
      eval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm Uy)) ).
 
 #[local]
-Hint Constructors eval_exp_order eval_natrec_order eval_elim_order eval_ihs_order eval_ih_order eval_shty_order eval_ihty_order eval_app_order eval_exps_order eval_apps_order
+Hint Constructors eval_exp_order eval_elim_order eval_ihs_order eval_ih_order eval_shty_order eval_ihty_order eval_app_order eval_exps_order eval_apps_order
   eval_modexp_order eval_appm_order eval_sel_order eval_selm_order eval_selc_order eval_selmc_order
   eval_benv_order : mctt.
 
@@ -356,36 +332,33 @@ Ltac functional_eval_all :=
     | H1 : eval_exp ?T ?X ?M ?p ?m1, H2 : eval_exp ?T ?X ?M ?p ?m2 |- _ =>
         assert_fails (constr_eq m1 m2);
         pose proof (functional_eval_exp _ _ _ _ H1 H2); subst; clear H2
-    | H1 : eval_natrec ?T ?X ?A ?MZ ?MS ?m ?p ?r1, H2 : eval_natrec ?T ?X ?A ?MZ ?MS ?m ?p ?r2 |- _ =>
-        assert_fails (constr_eq r1 r2);
-        pose proof (functional_eval_natrec _ _ _ _ _ _ _ H1 H2); subst; clear H2
     | H1 : eval_app ?T ?X ?m ?n ?r1, H2 : eval_app ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_eval_app _ _ _ _ H1 H2); subst; clear H2
     | H1 : eval_exps ?T ?X ?M ?p ?r1, H2 : eval_exps ?T ?X ?M ?p ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (proj1 (proj2 (proj2 (proj2 (@functional_eval T X)))) _ _ _ H1 _ H2); subst; clear H2
+        pose proof (proj1 (proj2 (proj2 (@functional_eval T X))) _ _ _ H1 _ H2); subst; clear H2
     | H1 : eval_apps ?T ?X ?m ?n ?r1, H2 : eval_apps ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X))))) _ _ _ H1 _ H2); subst; clear H2
+        pose proof (proj1 (proj2 (proj2 (proj2 (@functional_eval T X)))) _ _ _ H1 _ H2); subst; clear H2
     | H1 : eval_modexp ?T ?X ?M ?p ?r1, H2 : eval_modexp ?T ?X ?M ?p ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_eval_modexp _ _ _ _ H1 H2); subst; clear H2
     | H1 : eval_appm ?T ?X ?m ?n ?r1, H2 : eval_appm ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X))))))) _ _ _ H1 _ H2); subst; clear H2
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X)))))) _ _ _ H1 _ H2); subst; clear H2
     | H1 : eval_sel ?T ?X ?m ?n ?r1, H2 : eval_sel ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X)))))))) _ _ _ H1 _ H2); subst; clear H2
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X))))))) _ _ _ H1 _ H2); subst; clear H2
     | H1 : eval_selm ?T ?X ?m ?n ?r1, H2 : eval_selm ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X))))))))) _ _ _ H1 _ H2); subst; clear H2
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X)))))))) _ _ _ H1 _ H2); subst; clear H2
     | H1 : eval_selc ?T ?X ?m ?n ?r1, H2 : eval_selc ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X)))))))))) _ _ _ H1 _ H2); subst; clear H2
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X))))))))) _ _ _ H1 _ H2); subst; clear H2
     | H1 : eval_selmc ?T ?X ?m ?n ?r1, H2 : eval_selmc ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X))))))))))) _ _ _ H1 _ H2); subst; clear H2
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X)))))))))) _ _ _ H1 _ H2); subst; clear H2
     | H1 : eval_benv ?T ?X ?m ?n ?r1, H2 : eval_benv ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_eval_benv _ _ _ _ H1 H2); subst; clear H2
@@ -409,8 +382,6 @@ Ltac functional_eval_all :=
 
 Lemma eval_order_sound : forall Θ Ξ,
     (forall m p a, ⟦ m ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_exp_order Θ Ξ m p) /\
-    (forall A MZ MS m p r, ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ p ↘ r ->
-       eval_natrec_order Θ Ξ A MZ MS m p) /\
     (forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> eval_app_order Θ Ξ m n) /\
     (forall Ms p ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ p ↘ ms -> eval_exps_order Θ Ξ Ms p) /\
     (forall m ns r, $*| m & ns | Θ ⍮ Ξ ↘ r -> eval_apps_order Θ Ξ m ns) /\
@@ -438,16 +409,11 @@ Qed.
 Lemma eval_exp_order_sound : forall Θ Ξ m p a, ⟦ m ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_exp_order Θ Ξ m p.
 Proof. intros Θ Ξ; exact (proj1 (eval_order_sound Θ Ξ)). Qed.
 
-Lemma eval_natrec_order_sound : forall Θ Ξ A MZ MS m p r,
-    ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ p ↘ r ->
-    eval_natrec_order Θ Ξ A MZ MS m p.
+Lemma eval_app_order_sound : forall Θ Ξ m n r, $| m & n | Θ ⍮ Ξ ↘ r -> eval_app_order Θ Ξ m n.
 Proof. intros Θ Ξ; exact (proj1 (proj2 (eval_order_sound Θ Ξ))). Qed.
 
-Lemma eval_app_order_sound : forall Θ Ξ m n r, $| m & n | Θ ⍮ Ξ ↘ r -> eval_app_order Θ Ξ m n.
-Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (eval_order_sound Θ Ξ)))). Qed.
-
 Lemma eval_exps_order_sound : forall Θ Ξ Ms p ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ p ↘ ms -> eval_exps_order Θ Ξ Ms p.
-Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (proj2 (eval_order_sound Θ Ξ))))). Qed.
+Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (eval_order_sound Θ Ξ)))). Qed.
 
 Lemma eval_shty_order_sound : forall Θ Ξ pq ups p t a, eval_shty Θ Ξ pq ups p t a -> eval_shty_order Θ Ξ pq ups p t.
 Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Qed.
@@ -456,7 +422,7 @@ Lemma eval_ihty_order_sound : forall Θ Ξ pm A p t v a, eval_ihty Θ Ξ pm A p 
 Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
 #[export]
-Hint Resolve eval_exp_order_sound eval_natrec_order_sound eval_app_order_sound eval_exps_order_sound
+Hint Resolve eval_exp_order_sound eval_app_order_sound eval_exps_order_sound
   eval_shty_order_sound eval_ihty_order_sound : mctt.
 
 Definition inspect {A} (a : A) : { b | a = b } := exist _ a eq_refl.
@@ -476,7 +442,6 @@ Section EvalImpl.
   Ltac impl_obl_tac1 :=
     match goal with
     | H : eval_exp_order _ _ _ _ |- _ => progressive_invert H
-    | H : eval_natrec_order _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : eval_app_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_exps_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_apps_order _ _ _ _ |- _ => progressive_invert H
@@ -554,7 +519,6 @@ Section EvalImpl.
   Ltac impl_obl_split :=
     match goal with
     | H : eval_exp_order _ _ _ _ |- _ => dependent destruction H
-    | H : eval_natrec_order _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : eval_app_order _ _ _ _ |- _ => dependent destruction H
     | H : eval_modexp_order _ _ _ _ |- _ => dependent destruction H
     | H : eval_appm_order _ _ _ _ |- _ => dependent destruction H
@@ -598,7 +562,6 @@ Section EvalImpl.
     intros;
     lazymatch goal with
     | |- eval_exp_order _ _ _ _ => ev_obl
-    | |- eval_natrec_order _ _ _ _ _ _ _ => ev_obl
     | |- eval_app_order _ _ _ _ => ev_obl
     | |- eval_exps_order _ _ _ _ => ev_obl
     | |- eval_apps_order _ _ _ _ => ev_obl
@@ -633,15 +596,6 @@ Section EvalImpl.
       let (m , Hm) := eval_exp_impl M p _ in
       let (n , Hn) := eval_exp_impl N p _ in
       exist _ (dlvl_max m n) _
-  | ℕ     , p, H => exist _ ℕᵈ _
-  | zero  , p, H => exist _ zeroᵈ _
-  | succ m, p, H =>
-      let (r , Hr) := eval_exp_impl m p _ in
-      exist _ succᵈ r _
-  | rec M return A | zero -> MZ | succ -> MS end, p, H =>
-      let (m , Hm) := eval_exp_impl M p _ in
-      let (r, Hr)  := eval_natrec_impl A MZ MS m p _ in
-      exist _ r _
   | ⊤     , p, H => exist _ ⊤ᵈ _
   | ⋆     , p, H => exist _ ⋆ᵈ _
   | ⊥     , p, H => exist _ ⊥ᵈ _
@@ -656,7 +610,8 @@ Section EvalImpl.
   | λ A M , p, H => exist _ λᵈ p M _
   | a_ind pq, p, H => exist _ (d_ind pq nil) _
   | a_con pq c, p, H => exist _ (d_con pq c nil) _
-  (** A numeral is expanded before it is ever evaluated. *)
+  (** A literal is generated before it is ever evaluated. *)
+  | a_ntok, p, H => False_rect _ _
   | a_nlit _, p, H => False_rect _ _
   | a_elim nm A Bs M, p, H =>
       let (m, Hm) := eval_exp_impl M p _ in
@@ -681,20 +636,6 @@ Section EvalImpl.
         let (ns, Hns) := eval_exps_impl args p _ in
         let (r, Hr) := eval_apps_impl f ns _ in
         exist _ r _ }
-
-  with eval_natrec_impl A MZ MS m p (H : eval_natrec_order Θ Ξ A MZ MS m p) : { d | ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ p ↘ d } by struct H :=
-  | A, MZ, MS, zeroᵈ  , p, H =>
-      let (mz, Hmz) := eval_exp_impl MZ p _ in
-      exist _ mz _
-  | A, MZ, MS, succᵈ m, p, H =>
-      let (mr, Hmr) := eval_natrec_impl A MZ MS m p _ in
-      let (r, Hr) := eval_exp_impl MS (p ↦ m ↦ mr) _ in
-      exist _ r _
-  | A, MZ, MS, ⇑ a m , p, H =>
-      let (mz, Hmz) := eval_exp_impl MZ p _ in
-      let (mA, HmA) := eval_exp_impl A (p ↦ ⇑ a m) _ in
-      exist _ ⇑ mA recᵈ m under p return A | zero -> mz | succ -> MS end _
-  | A, MZ, MS, _, p, H => False_rect _ _
 
   with eval_elim_impl p nm A Bs m (H : eval_elim_order Θ Ξ p nm A Bs m) : { r | ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
   | p, nm, A, Bs, d_con pq c vs, H with inspect (ind_lookup Θ Ξ pq) := {
@@ -1173,52 +1114,6 @@ Next Obligation. ev_obl_auto. Defined.
 Next Obligation. ev_obl_auto. Defined.
 Next Obligation. ev_obl_auto. Defined.
 Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Obligations.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
-Next Obligation. ev_obl_auto. Defined.
 End EvalImpl.
 
 (** The [eval_*_impl] functions are sound by construction.  Completeness
@@ -1243,13 +1138,6 @@ Ltac functional_eval_complete :=
 Lemma eval_exp_impl_complete : forall Θ Ξ M p m,
     ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m ->
     exists H H', eval_exp_impl Θ Ξ M p H = exist _ m H'.
-Proof.
-  intros; functional_eval_complete.
-Qed.
-
-Lemma eval_natrec_impl_complete : forall Θ Ξ A MZ MS m p r,
-    ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ p ↘ r ->
-    exists H H', eval_natrec_impl Θ Ξ A MZ MS m p H = exist _ r H'.
 Proof.
   intros; functional_eval_complete.
 Qed.

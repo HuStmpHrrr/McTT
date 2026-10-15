@@ -5,21 +5,26 @@
 
 module Tutorial where
 
+(* The natural numbers are the inductive type Nat of Prelude›Builtin›Nat,
+   which binds it as the builtin natural numbers: the token ℕ and the
+   numerals denote it. Its constructors zero and succ are members of Nat,
+   and the unit exports them, so they are imported by name. *)
+import Prelude›Builtin›Nat use (zero; succ)
 import Prelude›Arith›Equality use (Eq; refl)
 import Prelude›Function›Iter as Iter
 
 (* 1. Lexical matters.
    This text is a comment; comments do not nest. Identifiers are letters
    only, so names are camelCase. A numeral is unary: 3 is
-   succ (succ (succ zero)).
+   succ (succ (succ zero)), and is printed back as 3.
 
    Symbols have a Unicode and an ASCII spelling, and either may be used
    anywhere; this file uses the Unicode ones, which the checker also prints:
      →  ->      ⇒  =>      ≔  :=      ›  ::
-     λ  fun     ∀  forall (or Π)      ℕ  Nat
+     λ  fun     ∀  forall (or Π)
      ⊤  True    ⊥  False   ⋆  true    ω  omega
    Identifiers are ASCII letters, so the symbols need no spaces around
-   them: [λ(x:ℕ)→x] is [fun (x : Nat) -> x]. *)
+   them: [λ(x:ℕ)→x] is [fun (x : ℕ) -> x]. *)
 
 eval succ (succ (succ zero))
 
@@ -43,14 +48,15 @@ eval (λ (A : Type@0) (x : A) → x) ℕ 4
 
 eval λ (A : Type@0) (x : A) → x
 
-(* 4. Recursion. [rec n return y . T | zero ⇒ z | succ p, r ⇒ s end] is
-   primitive recursion on n: T is the motive, p the predecessor and r the
-   result for p. *)
+(* 4. Recursion. [elim n return y . T | zero ⇒ z | succ p, r ⇒ s end] is
+   primitive recursion on n, the eliminator of Nat: T is the motive, p the
+   predecessor and r the result for p. The branches are named by the
+   constructors. *)
 
-eval rec 3 return y . ℕ | zero ⇒ 0 | succ p, r ⇒ succ (succ r) end
+eval elim 3 return y . ℕ | zero ⇒ 0 | succ p, r ⇒ succ (succ r) end
 
 (* The motive may compute a type: here, the type of n-ary functions on ℕ. *)
-eval rec 2 return y . Type@0
+eval elim 2 return y . Type@0
      | zero ⇒ ℕ
      | succ p, r ⇒ ∀ (x : ℕ) → r
      end
@@ -79,7 +85,7 @@ eval let n : ℕ ≔ 2;
    transparent: it unfolds wherever it is used. *)
 
 def double (n : ℕ) : ℕ ≔
-  rec n return y . ℕ | zero ⇒ 0 | succ p, r ⇒ succ (succ r) end
+  elim n return y . ℕ | zero ⇒ 0 | succ p, r ⇒ succ (succ r) end
 end
 
 eval double 3
@@ -261,13 +267,13 @@ eval let module Doubler (n : ℕ) where
 
 module Adder (m : ℕ) where
   def add (n : ℕ) : ℕ ≔
-    rec n return y . ℕ | zero ⇒ m | succ p, r ⇒ succ r end
+    elim n return y . ℕ | zero ⇒ m | succ p, r ⇒ succ r end
   end
 
   (* Adding n is iterating succ n times. *)
   theorem addIter (n : ℕ) :
       Eq (add n) (Iter.iter 0l ℕ (λ (x : ℕ) → succ x) n m) ≔
-    rec n return y . Eq (add y) (Iter.iter 0l ℕ (λ (x : ℕ) → succ x) y m)
+    elim n return y . Eq (add y) (Iter.iter 0l ℕ (λ (x : ℕ) → succ x) y m)
     | zero ⇒ refl m
     | succ p, ih ⇒ ih
     end

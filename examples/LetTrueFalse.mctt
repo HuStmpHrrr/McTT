@@ -1,6 +1,8 @@
 (* Local definitions at [⊤] and at a function out of [⊥]. *)
 module LetTrueFalse where
 
+import Prelude›Builtin›Nat
+
 (* A local definition of each of [⊤] and [⊥ → ℕ]; the body only
    uses the first, which by η normalizes to [⋆]. *)
 eval let t : ⊤ ≔ ⋆;

@@ -27,9 +27,6 @@ Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   | nf_univ c xs => nf_univ c (la_wk φ xs)
   | nf_level n => nf_level n
   | nf_lvl c xs => nf_lvl c (la_wk φ xs)
-  | nf_nat => nf_nat
-  | nf_zero => nf_zero
-  | nf_succ W => nf_succ (nf_wk φ W)
   | nf_True => nf_True
   | nf_true => nf_true
   | nf_False => nf_False
@@ -41,8 +38,6 @@ Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   end
 with ne_wk (φ : wk) (u : ne) {struct u} : ne :=
   match u with
-  | ne_natrec A MZ MS u =>
-      ne_natrec (nf_wk (wk_q φ) A) (nf_wk φ MZ) (nf_wk (wk_q (wk_q φ)) MS) (ne_wk φ u)
   | ne_exfalso A u => ne_exfalso (nf_wk (wk_q φ) A) (ne_wk φ u)
   | ne_elim nm A Bs u => ne_elim nm (nf_wk (wk_qn nm φ) A) (nbrs_wk φ Bs) (ne_wk φ u)
   | ne_app u W => ne_app (ne_wk φ u) (nf_wk φ W)

@@ -340,33 +340,6 @@ Proof.
   - eauto using per_top_typ_trans.
 Qed.
 
-Lemma per_nat_sym : forall m n,
-    Dom m ≈ n ∈ per_nat ->
-    Dom n ≈ m ∈ per_nat.
-Proof.
-  induction 1; econstructor; mautosolve.
-Qed.
-
-Hint Resolve per_nat_sym : mctt.
-
-Lemma per_nat_trans : forall m n l,
-    Dom m ≈ n ∈ per_nat ->
-    Dom n ≈ l ∈ per_nat ->
-    Dom m ≈ l ∈ per_nat.
-Proof.
-  intros * H. gen l.
-  induction H; inversion_clear 1; econstructor; mautosolve.
-Qed.
-
-Hint Resolve per_nat_trans : mctt.
-
-#[local] Instance per_nat_PER : PER per_nat.
-Proof.
-  split.
-  - eauto using per_nat_sym.
-  - eauto using per_nat_trans.
-Qed.
-
 Lemma per_ne_sym : forall m n,
     Dom m ≈ n ∈ per_ne ->
     Dom n ≈ m ∈ per_ne.
@@ -500,11 +473,6 @@ Hint Resolve per_lvl_trans : mctt.
 Hint Resolve per_lvl_at_sym per_lvl_at_trans per_bot_then_per_lvl_at per_lvl_at_lvl : mctt.
 #[export]
 Hint Resolve per_bot_then_per_lvl : mctt.
-#[export]
-Hint Resolve per_nat_sym : mctt.
-#[export]
-Hint Resolve per_nat_trans : mctt.
-#[export] Existing Instance per_nat_PER.
 #[export]
 Hint Resolve per_ne_sym : mctt.
 #[export]
@@ -712,7 +680,6 @@ Proof.
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
-  - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
   - destruct_conjs.
     split.
     + basic_per_univ_elem_econstructor; eauto.
@@ -911,8 +878,6 @@ Proof.
     end.
     intuition.
   - (** The [Level] case. *)
-    idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
-  - (** The nat case. *)
     idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
   - (** The [⊤] case. *)
     idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
@@ -1390,7 +1355,7 @@ Lemma per_subtyp_to_univ_elem : forall a b i,
 Proof.
   destruct 1.
   (** An inductive type is related to its supertype, hence to itself. *)
-  10: { do 2 eexists; split;
+  9: { do 2 eexists; split;
         [ eapply per_univ_trans; [ eassumption | apply per_univ_sym; eassumption ]
         | eapply per_univ_trans; [ apply per_univ_sym; eassumption | eassumption ] ]. }
   all: do 2 eexists; mauto;
@@ -1516,7 +1481,7 @@ Proof.
   - dependent destruction Hsub.
     handle_per_univ_elem_irrel.
     econstructor; eauto.
-    + etransitivity; eassumption.
+    + etransitivity; [ exact H | eassumption ].
     + intros.
       saturate_refl.
       (on_all_hyp: fun H => directed invert_per_univ_elem H).
@@ -1524,7 +1489,7 @@ Proof.
       handle_per_univ_elem_irrel.
       intuition.
   - (** Inductive types: their equalities compose. *)
-    inversion Hsub as [| | | | | | | | | ? ? ? ? R' HR']; subst.
+    inversion Hsub as [| | | | | | | | ? ? ? ? R' HR']; subst.
     match goal with H : per_univ_elem _ ?R (d_ind _ _) (d_ind _ _) |- _ =>
       assert (HRR : R <~> R') by (eapply per_univ_elem_left_irrel; [ exact H | apply per_univ_sym; exact HR' ]);
       eapply per_subtyp_indty; eapply per_univ_trans; [ exact H | eapply per_univ_elem_resp_iff; [ exact HR' | symmetry; exact HRR ] ]

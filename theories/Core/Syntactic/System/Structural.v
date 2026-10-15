@@ -341,18 +341,6 @@ Qed.
 #[export]
 Hint Resolve wf_wk_id wf_wk_shift wf_wk_q wf_wk_q_def wf_wk_q_mod wf_wk_compose : mctt.
 
-(** [ℕ] is closed, so lifting a weakening over a [ℕ] binder needs no premises.
-    This is the shape the [ℕ]-eliminator rules present. *)
-Corollary wf_wk_q_nat : forall Θ Ξ Γ Δ φ,
-    Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ▹ ℕ ⊢w wk_q φ : Γ ▹ ℕ.
-Proof.
-  intros * Hφ; saturate_wk.
-  apply (wf_wk_q Θ Ξ Γ Δ φ ℕ 0); simpl; mauto 2.
-Qed.
-
-#[export]
-Hint Resolve wf_wk_q_nat : mctt.
 
 (** The same for [⊥], the binder of the [⊥]-eliminator's motive. *)
 Corollary wf_wk_q_False : forall Θ Ξ Γ Δ φ,
@@ -474,22 +462,16 @@ Ltac push_wk :=
     be used.  It is derivable — [wf_wk_q] is a hint — but only from the
     induction hypothesis for the domain, so leaving it to [eauto] costs three
     extra levels of search on top of the rule application, which puts the wider
-    cases ([λ]-E, [ℕ]-E) out of reach at any depth that terminates.  Adding
+    cases ([λ]-E) out of reach at any depth that terminates.  Adding
     each lifted weakening to the context up front costs one [assert] instead.
 
-    [lift_wk_nat] seeds the [ℕ]-eliminator cases, whose first binder is over the
-    closed type [ℕ]: [lift_wk_step] cannot start there, because the domain of
+    [lift_wk_False] seeds the [⊥]-eliminator case, whose binder is over the
+    closed type [⊥]: [lift_wk_step] cannot start there, because the domain of
     that binder has no induction hypothesis of its own.  It is guarded by the
-    presence of a motive [Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A : Typeω@i] so that it fires only in those
-    four cases.  Its second branch does the same for the motive
-    [Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A : Typeω@i] of the [⊥]-eliminator. *)
+    presence of a motive [Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A : Typeω@i]. *)
 
-Ltac lift_wk_nat :=
+Ltac lift_wk_False :=
   match goal with
-  | _ : wf_exp ?Θ ?Ξ (cons (ce_ass a_nat) ?Γ) (a_typ _) _, Hφ : wf_wk ?Θ ?Ξ ?Δ ?Γ ?φ |- _ =>
-      let T := constr:(wf_wk Θ Ξ (cons (ce_ass a_nat) Δ) (cons (ce_ass a_nat) Γ) (wk_q φ)) in
-      assert_fails (assert T by assumption);
-      assert T by (apply wf_wk_q_nat; exact Hφ)
   | _ : wf_exp ?Θ ?Ξ (cons (ce_ass a_False) ?Γ) (a_typ _) _, Hφ : wf_wk ?Θ ?Ξ ?Δ ?Γ ?φ |- _ =>
       let T := constr:(wf_wk Θ Ξ (cons (ce_ass a_False) Δ) (cons (ce_ass a_False) Γ) (wk_q φ)) in
       assert_fails (assert T by assumption);
@@ -524,23 +506,7 @@ Ltac lift_wk_def :=
       assert T by (eapply wf_wk_q_def; [ exact Hφ | | | exact (IHA _ _ Hφ) | exact (IHM _ _ Hφ) ]; mauto 2)
   end.
 
-Ltac lift_wk := repeat first [ lift_wk_nat | lift_wk_step | lift_wk_def ].
-
-(** The successor branch of the [ℕ]-eliminator is typed at the motive under two
-    binders, so its induction hypothesis produces [A[Wk⨟Wk,,succ #1][q (q φ)]ʷ]
-    where the rule wants [A[q φ]ʷ[Wk⨟Wk,,succ #1]].  [push_wk] cannot do this
-    one: [exp_wk_sub_natrec] only applies to a doubly lifted weakening, and in
-    the induction hypothesis the weakening is still universally quantified.  So
-    we instantiate the hypothesis at the lifted weakening [lift_wk] built, and
-    rewrite in the result. *)
-Ltac lift_wk_natrec :=
-  match goal with
-  | IH : forall _ _, wf_wk _ _ _ (cons (ce_ass ?A) (cons (ce_ass a_nat) ?Γ)) _ -> _,
-    Hq : wf_wk _ _ _ (cons (ce_ass ?A) (cons (ce_ass a_nat) ?Γ)) _ |- _ =>
-      let H := fresh "HMS" in
-      pose proof (IH _ _ Hq) as H;
-      rewrite exp_wk_sub_natrec in H
-  end.
+Ltac lift_wk := repeat first [ lift_wk_False | lift_wk_step | lift_wk_def ].
 
 (** ** Facts about Modules for the Transport Lemmas *)
 
@@ -978,8 +944,6 @@ Proof.
   (** For the wider rules the rule application itself is what [eauto] does not
       reach in time, so we take that step by hand. *)
   all: try solve [ econstructor; mauto 3 ].
-  (** What is left are exactly the four rules for the [ℕ]-eliminator. *)
-  all: try solve [ lift_wk_natrec; econstructor; mauto 2 ].
   (** The module rules. *)
   all: try solve [ rewrite ?exp_wk_sub_extend_mod; eapply wf_let_mod; eauto 6 using wf_wk_q_mod, wf_unit_eq_refl_left ].
   all: try solve [ rewrite !exp_wk_sub_extend_mod; eapply wf_exp_eq_let_mod_zeta; eauto using wf_wk_q_mod ].
@@ -1246,8 +1210,7 @@ Hint Resolve wf_subtyp_refl_typ : mctt.
 (** ** Substitution Typing *)
 
 (** A weakening is a substitution.  [Wk] is [ι ↑], so every rule whose type
-    mentions [Wk], such as the successor branch of the [ℕ]-eliminator, typed at
-    [A[Wk⨟Wk,,succ #1]], needs this bridge. *)
+    mentions [Wk] needs this bridge. *)
 Lemma wf_sub_of_wk : forall Θ Ξ Γ Δ φ,
     Θ ⍮ Ξ ⍮ Γ ⊢w φ : Δ ->
     Θ ⍮ Ξ ⍮ Γ ⊢s (ι φ) : Δ.
@@ -1470,18 +1433,6 @@ Qed.
 Hint Resolve wf_sub_extend wf_sub_extend_def wf_sub_extend_mod wf_sub_single wf_sub_single_def
   wf_sub_single_mod wf_sub_wk wf_sub_q wf_sub_q_def wf_sub_q_mod : mctt.
 
-(** [ℕ] is closed, so [ℕ[σ]] is [ℕ] by computation and lifting a substitution
-    over a [ℕ] binder needs no premises.  Compare [wf_wk_q_nat]. *)
-Corollary wf_sub_q_nat : forall Θ Ξ Γ Δ σ,
-    Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
-    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢s q σ : Δ ▹ ℕ.
-Proof.
-  intros * Hσ; saturate_sub.
-  apply (wf_sub_q Θ Ξ Γ Δ σ ℕ 0); simpl; mauto 2.
-Qed.
-
-#[export]
-Hint Resolve wf_sub_q_nat : mctt.
 
 Corollary wf_sub_q_False : forall Θ Ξ Γ Δ σ,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
@@ -1565,12 +1516,8 @@ Ltac push_sub :=
     extra levels on top of the rule application, which the wider rules cannot
     afford.  One [assert] per binder instead. *)
 
-Ltac lift_sub_nat :=
+Ltac lift_sub_False :=
   match goal with
-  | _ : wf_exp ?Θ ?Ξ (cons (ce_ass a_nat) ?Δ) (a_typ _) _, Hσ : wf_sub ?Θ ?Ξ ?Γ ?Δ ?σ |- _ =>
-      let T := constr:(wf_sub Θ Ξ (cons (ce_ass a_nat) Γ) (cons (ce_ass a_nat) Δ) (sb_q σ)) in
-      assert_fails (assert T by assumption);
-      assert T by (apply wf_sub_q_nat; exact Hσ)
   | _ : wf_exp ?Θ ?Ξ (cons (ce_ass a_False) ?Δ) (a_typ _) _, Hσ : wf_sub ?Θ ?Ξ ?Γ ?Δ ?σ |- _ =>
       let T := constr:(wf_sub Θ Ξ (cons (ce_ass a_False) Γ) (cons (ce_ass a_False) Δ) (sb_q σ)) in
       assert_fails (assert T by assumption);
@@ -1603,22 +1550,7 @@ Ltac lift_sub_def :=
       assert T by (eapply wf_sub_q_def; [ exact Hσ | | | exact (IHA _ _ Hσ) | exact (IHM _ _ Hσ) ]; mauto 2)
   end.
 
-Ltac lift_sub := repeat first [ lift_sub_nat | lift_sub_step | lift_sub_def ].
-
-(** The successor branch of the [ℕ]-eliminator again: its induction hypothesis
-    produces [A[Wk⨟Wk,,succ #1][q (q σ)]] where the rule wants
-    [A[q σ][Wk⨟Wk,,succ #1]].  [push_sub] cannot do it, because
-    [exp_sub_sub_natrec] applies only to a doubly lifted substitution and in the
-    hypothesis the substitution is still quantified.  So we instantiate at the
-    lifted substitution [lift_sub] built and rewrite in the result. *)
-Ltac lift_sub_natrec :=
-  match goal with
-  | IH : forall _ _, wf_sub _ _ _ (cons (ce_ass ?A) (cons (ce_ass a_nat) ?Δ)) _ -> _,
-    Hq : wf_sub _ _ _ (cons (ce_ass ?A) (cons (ce_ass a_nat) ?Δ)) _ |- _ =>
-      let H := fresh "HMS" in
-      pose proof (IH _ _ Hq) as H;
-      rewrite exp_sub_sub_natrec in H
-  end.
+Ltac lift_sub := repeat first [ lift_sub_False | lift_sub_step | lift_sub_def ].
 
 (** The root of a well-formed module expression, if a slot, is a module slot. *)
 Lemma modexp_eq_slot_root : forall Θ Ξ Γ H H',
@@ -1920,7 +1852,6 @@ Proof.
   all: try solve [ push_closed; mauto 3 ].
   all: try solve [ mauto 4 ].
   all: try solve [ econstructor; mauto 3 ].
-  all: try solve [ lift_sub_natrec; econstructor; mauto 2 ].
   (** The module rules.  A local module is lifted over by [q σ] at the
       transported unit. *)
   all: try solve [ rewrite ?exp_sub_sub_extend_mod; eapply wf_let_mod; eauto 6 using wf_sub_q_mod, wf_unit_eq_refl_left ].
@@ -2185,61 +2116,6 @@ Qed.
 
 #[export]
 Hint Resolve exp_sub_single exp_eq_sub_single : mctt.
-
-(** ** The Substitutions of the [ℕ]-Eliminator
-
-    [wf_natrec] and its equations name three substitutions: the branches are
-    typed at [Id ,, zero] and [Wk ⨟ Wk ,, succ #1], and the conclusion at
-    [Id ,, M].  Each is well-typed as soon as its source context is, but getting
-    there means recognising [ℕ] underneath an operation, which [eauto] will not
-    do on its own — the same obstacle [wf_wk_q_nat] and [wf_sub_q_nat] address.
-    These lemmas clear it once and for all, and are what the [ℕ] cases of
-    presupposition are stated against. *)
-
-Corollary wf_sub_nat_single : forall Θ Ξ Γ M,
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : ℕ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M : Γ ▹ ℕ.
-Proof.
-  intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Typeω@0) by mauto 3.
-  eapply wf_sub_single; eassumption.
-Qed.
-
-Corollary wf_sub_zero : forall Θ Ξ Γ,
-    ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢s Id,,zero : Γ ▹ ℕ.
-Proof.
-  intros; apply wf_sub_nat_single; mauto 2.
-Qed.
-
-(** [#1] is the [ℕ] of [Γ ▹ ℕ ▹ A]: the lookup derivation produces the type
-    [ℕ[↑]ʷ[↑]ʷ], which is [ℕ] only up to computation. *)
-Corollary ctx_lookup_nat_1 : forall Γ A, Γ ▹ ℕ ▹ A ∋ #1 : ℕ.
-Proof.
-  intros.
-  assert (Γ ▹ ℕ ▹ A ∋ #1 : ℕ[↑]ʷ[↑]ʷ) as H by mauto 2.
-  exact H.
-Qed.
-
-(** The premise is context well-formedness rather than [Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A : Typeω@i]
-    so that this applies at the motive of either side of a congruence. *)
-Corollary wf_sub_natrec_step : forall Θ Ξ Γ A,
-    ⊢ Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ->
-    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢s Wk ⨟ Wk,,succ #1 : Γ ▹ ℕ.
-Proof.
-  intros.
-  assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ ℕ) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢s Wk : Γ) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢s Wk : Γ ▹ ℕ) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢s Wk ⨟ Wk : Γ) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ succ #1 : ℕ)
-    by (econstructor; eapply wf_vlookup; [ assumption | apply ctx_lookup_nat_1 ]).
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Typeω@0) by mauto 3.
-  eapply wf_sub_extend; [ eassumption | eassumption | assumption ].
-Qed.
-
-#[export]
-Hint Resolve wf_sub_nat_single wf_sub_zero wf_sub_natrec_step : mctt.
 
 (** The substitution [Id ,, M] at which the [⊥]-eliminator is typed. *)
 Corollary wf_sub_False_single : forall Θ Ξ Γ M,
@@ -2683,9 +2559,6 @@ Hint Resolve lift_exp_uidx lift_exp_eq_uidx : mctt.
 
 (** The closed small types are types of every universe, small or large: their
     rules give them [Type@0], which [uidx_le_least] lifts anywhere. *)
-Lemma wf_nat_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : ulvl_tm u.
-Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz)); [ apply uidx_le_least | apply wf_nat; assumption ]. Qed.
-
 Lemma wf_level_univ : forall {Θ Ξ Γ n} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n : ulvl_tm u.
 Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz)); [ apply uidx_le_least | apply wf_level; assumption ]. Qed.
 
@@ -2694,9 +2567,6 @@ Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz)); [ apply uidx_le_least | a
 
 Lemma wf_False_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : ulvl_tm u.
 Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz)); [ apply uidx_le_least | apply wf_False; assumption ]. Qed.
-
-Lemma wf_exp_eq_nat_cong_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : ulvl_tm u.
-Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us oz)); [ apply uidx_le_least | apply wf_exp_eq_nat_cong; assumption ]. Qed.
 
 Lemma wf_exp_eq_level_cong_univ : forall {Θ Ξ Γ n} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ≈ Level@n : ulvl_tm u.
 Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us oz)); [ apply uidx_le_least | apply wf_exp_eq_level_cong; assumption ]. Qed.

@@ -143,7 +143,7 @@ end
    [op (inv x) (inv q)]. *)
 theorem powInv : ∀ (x : M) (n : ℕ) → R (pow (inv x) n) (inv (pow x n)) ≔
   λ (x : M) (n : ℕ) →
-    rec n return k . R (pow (inv x) k) (inv (pow x k))
+    elim n return k . R (pow (inv x) k) (inv (pow x k))
     | zero ⇒ rSym (inv e) e invE
     | succ p, ih ⇒
         let ix ≔ inv x;

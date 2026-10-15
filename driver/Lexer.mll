@@ -50,9 +50,6 @@
     | RBRACE _ -> "}"
     | PLUS _ -> "+"
     | STAR _ -> "\xc2\xb7"
-    | ZERO _ -> "zero"
-    | SUCC _ -> "succ"
-    | REC _ -> "rec"
     | RETURN _ -> "return"
     | END _ -> "end"
     | LAMBDA _ -> "\xce\xbb"
@@ -114,9 +111,6 @@
     | RBRACE r
     | PLUS r
     | STAR r
-    | ZERO r
-    | SUCC r
-    | REC r
     | RETURN r
     | END r
     | LAMBDA r
@@ -188,9 +182,10 @@ let utf8 = ['\xc0'-'\xf7'] ['\x80'-'\xbf']*
 (* Each Unicode spelling below is an alternative to an ASCII one and lexes to
    the same token, as its UTF-8 bytes:
      →  ->      ⇒  =>      λ  fun     ∀ Π  forall   ≔  :=    ›  ::
-     ℕ  Nat     ⊤  True    ⊥  False   ⋆  true       ω  omega
+     ⊤  True    ⊥  False   ⋆  true       ω  omega
      ·  *       ω^2  omega^2
-   Identifiers are ASCII, so [λx] is [λ] then [x], and no symbol needs a
+   [ℕ], the type bound as [builtin natural], has no ASCII spelling: [Nat] is
+   an ordinary name.  Identifiers are ASCII, so [λx] is [λ] then [x], and no symbol needs a
    space around it. *)
 
 rule read =
@@ -213,9 +208,6 @@ rule read =
   | '*' { STAR (get_range lexbuf) }
   | "\xc2\xb7" { STAR (wide lexbuf 2) }
   | '}' { RBRACE (get_range lexbuf) }
-  | "zero" { ZERO (get_range lexbuf) }
-  | "succ" { SUCC (get_range lexbuf) }
-  | "rec" { REC (get_range lexbuf) }
   | "return" { RETURN (get_range lexbuf) }
   | "end" { END (get_range lexbuf) }
   | "fun" { LAMBDA (get_range lexbuf) }
@@ -239,7 +231,6 @@ rule read =
      is not a level. *)
   | "\xcf\x89^2" { skip_continuation lexbuf 1; OMEGA2 (get_range lexbuf) }
   | "omega^2" { OMEGA2 (get_range lexbuf) }
-  | "Nat" { NAT (get_range lexbuf) }
   | "\xe2\x84\x95" { NAT (wide lexbuf 3) }
   | "True" { TRUE_TY (get_range lexbuf) }
   | "\xe2\x8a\xa4" { TRUE_TY (wide lexbuf 3) }

@@ -19,7 +19,7 @@ From Mctt.Core.Syntactic.System Require Import MemberWf GlobalModules.
 From Mctt.Core.Completeness Require Import ModexpCases.
 From Mctt.Core.Soundness Require Import LevelCases.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases TermStructureCases MemberCases
-  SubtypingCases UniverseCases FunctionCases LetCases NatCases TrueFalseCases IndCases.
+  SubtypingCases UniverseCases FunctionCases LetCases TrueFalseCases IndCases.
 From Mctt.Core.Completeness Require IndCases.
 Require Mctt.Core.Completeness.ModuleCases.
 Require Import Mctt.Core.Soundness.IndElimCases.

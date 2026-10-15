@@ -13,7 +13,6 @@ From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Soundness Require Import
   ContextCases
   LogicalRelation
-  NatCases
   SubtypingCases
   TermStructureCases
   UniverseCases.
@@ -23,6 +22,43 @@ Import Fixed_Notations.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
+
+(** Kripke-weakening the scrutinee's type collapses its two substitution steps
+    into one with [sb_wk]. *)
+Fact motive_sub_wk : forall A σ M φ,
+    A[σ,,M][φ]ʷ = A[q (sb_wk σ φ)][Id,,M[φ]ʷ].
+Proof.
+  intros; rewrite exp_sub_q_extend; apply exp_wk_sub_extend_head.
+Qed.
+
+(** The lifting of a related substitution under a binder of type [A]. *)
+Lemma cons_glu_sub_pred_q_helper : forall {Γ SbΓ Δ σ ρ} {i : nat} {A a},
+    EG Γ ∈ glu_ctx_env ↘ SbΓ ->
+    Δ ⊢s σ ® ρ ∈ SbΓ ->
+    Γ ⊩ A : Typeω@i ->
+    ⟦ A ⟧ ρ ↘ a ->
+    Δ ▹ A[σ] ⊢s q σ ® ρ ↦ ⇑! a (length Δ) ∈ cons_glu_sub_pred i Γ A SbΓ.
+Proof.
+  intros * ? ? HA ?.
+  assert (Γ ⊢ A : Typeω@i) by mauto 2.
+  invert_glu_rel_exp HA.
+  destruct_glu_rel_exp_with_sub.
+  simplify_evals.
+  match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
+  apply_predicate_equivalence.
+  unfold univ_glu_exp_pred' in *.
+  destruct_conjs.
+  assert (Δ ⊢s σ : Γ) by mauto 2.
+  assert (⊢ Δ ▹ A[σ]) by mauto 3.
+  assert (Δ ▹ A[σ] ⊢k ↑ : Δ) by mauto 3.
+  unfold sb_q; eapply cons_glu_sub_pred_helper_gen; mauto 2.
+  - eapply glu_ctx_env_sub_monotone; eassumption.
+  - cbn [sentry_exp]; rewrite <- exp_wk_sub.
+    eapply var0_glu_elem; eassumption.
+Qed.
+
+#[local]
+Hint Resolve cons_glu_sub_pred_q_helper : mctt.
 
 Lemma glu_rel_exp_True_univ : forall {Γ} {u : uidx},
     ⊩ Γ ->
@@ -133,7 +169,7 @@ Proof.
   assert (⊩ Γ) by (eexists; eassumption).
   assert (Γ ⊩ ⊥ : Typeω@i) by mauto 3.
   assert (⟦ ⊥ ⟧ ρ ↘ ⊥ᵈ) by mauto 3.
-  exact (@cons_glu_sub_pred_q_helper _ Γ SbΓ Δ σ ρ i ⊥ ⊥ᵈ
+  exact (@cons_glu_sub_pred_q_helper Γ SbΓ Δ σ ρ i ⊥ ⊥ᵈ
            ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption)).
 Qed.
 
@@ -219,7 +255,7 @@ Proof.
       match_by_head read_ne ltac:(fun H => directed inversion_clear H).
       simplify_evals.
       handle_functional_glu_univ_elem.
-      rewrite natrec_typ_sub_wk, exp_wk_sub_q.
+      rewrite motive_sub_wk, exp_wk_sub_q.
       eapply wf_exp_eq_exfalso_cong'; fold ne_to_exp nf_to_exp.
       + assert (Δ' ▹ ⊥ ⊢ A[q (sb_wk σ φ)] ® glu_typ_top i m) as [? ? Hrbt]
           by (eapply realize_glu_typ_top; eassumption).

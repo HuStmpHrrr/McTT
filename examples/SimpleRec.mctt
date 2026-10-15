@@ -1,7 +1,9 @@
 (* A function defined by recursion, checked against its type. *)
 module SimpleRec where
 
-eval (λ (x : ℕ) → rec x return y . ℕ
+import Prelude›Builtin›Nat use (zero; succ)
+
+eval (λ (x : ℕ) → elim x return y . ℕ
   | zero ⇒ 1
   | succ n, r ⇒ succ r
   end) : ∀ (x : ℕ) → ℕ

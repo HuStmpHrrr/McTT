@@ -1,0 +1,17 @@
+(* The natural numbers, as an inductive type bound as the builtin natural
+   numbers: once this unit is imported, directly or not, the numerals denote
+   chains of its constructors, [2] is [succ (succ zero)], and the token [ℕ]
+   denotes [Nat].  The unit exports the constructors, so a client imports
+   them with the type: [import Prelude›Builtin›Nat use (Nat; zero; succ)]. *)
+module Prelude›Builtin›Nat where
+
+inductive Nat : Type@0 where
+| zero
+| succ (n : Nat)
+end
+
+builtin natural ≔ Nat
+
+open Nat export (zero; succ)
+
+end

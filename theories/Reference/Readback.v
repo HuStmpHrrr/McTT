@@ -151,14 +151,6 @@ Inductive read_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :=
 | rnf_lvl_neut :
   `( read_ne_order Θ Ξ s m ->
      read_nf_order Θ Ξ s ⇓ (Levelᵈ@n) (⇑ a m) )
-| rnf_zero :
-  `( read_nf_order Θ Ξ s ⇓ ℕᵈ zeroᵈ )
-| rnf_succ :
-  `( read_nf_order Θ Ξ s ⇓ ℕᵈ m ->
-     read_nf_order Θ Ξ s ⇓ ℕᵈ (succᵈ m) )
-| rnf_nat_neut :
-  `( read_ne_order Θ Ξ s m ->
-     read_nf_order Θ Ξ s ⇓ ℕᵈ (⇑ a m) )
 | rnf_true :
   `( read_nf_order Θ Ξ s ⇓ ⊤ᵈ m )
 | rnf_False_neut :
@@ -195,26 +187,6 @@ with read_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
   `( read_ne_order Θ Ξ s m ->
      read_nf_order Θ Ξ s n ->
      read_ne_order Θ Ξ s (m $ᵈ n) )
-| rne_natrec :
-  `( eval_exp_order Θ Ξ B (p ↦ ⇑! ℕᵈ s) ->
-     (forall b,
-         ⟦ B ⟧ Θ ⍮ Ξ ⍮ p ↦ ⇑! ℕᵈ s ↘ b ->
-         read_typ_order Θ Ξ (S s) b) ->
-     eval_exp_order Θ Ξ B (p ↦ zeroᵈ) ->
-     (forall bz,
-         ⟦ B ⟧ Θ ⍮ Ξ ⍮ p ↦ zeroᵈ ↘ bz ->
-         read_nf_order Θ Ξ s ⇓ bz mz) ->
-     eval_exp_order Θ Ξ B (p ↦ succᵈ (⇑! ℕᵈ s)) ->
-     (forall b,
-         ⟦ B ⟧ Θ ⍮ Ξ ⍮ p ↦ ⇑! ℕᵈ s ↘ b ->
-         eval_exp_order Θ Ξ MS (p ↦ ⇑! ℕᵈ s ↦ ⇑! b (S s))) ->
-     (forall b bs ms,
-         ⟦ B ⟧ Θ ⍮ Ξ ⍮ p ↦ ⇑! ℕᵈ s ↘ b ->
-         ⟦ B ⟧ Θ ⍮ Ξ ⍮ p ↦ succᵈ (⇑! ℕᵈ s) ↘ bs ->
-         ⟦ MS ⟧ Θ ⍮ Ξ ⍮ p ↦ ⇑! ℕᵈ s ↦ ⇑! b (S s) ↘ ms ->
-         read_nf_order Θ Ξ (S (S s)) ⇓ bs ms) ->
-     read_ne_order Θ Ξ s m ->
-     read_ne_order Θ Ξ s recᵈ m under p return B | zero -> mz | succ -> MS end )
 | rne_exfalso :
   `( eval_exp_order Θ Ξ B (p ↦ ⇑! ⊥ᵈ s) ->
      (forall b,
@@ -249,8 +221,6 @@ with read_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
      read_typ_order Θ Ξ s 𝕌@l )
 | rtyp_level :
   `( read_typ_order Θ Ξ s (Levelᵈ@n) )
-| rtyp_nat :
-  `( read_typ_order Θ Ξ s ℕᵈ )
 | rtyp_True :
   `( read_typ_order Θ Ξ s ⊤ᵈ )
 | rtyp_False :
@@ -408,13 +378,6 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
 | s, ⇓ (Levelᵈ@n) (⇑ a m), H =>
     let (M, HM) := read_ne_impl s m _ in
     exist _ (lvⁿ oz (la_cons 0 (dsort a) M la_nil)) _
-| s, ⇓ ℕᵈ zeroᵈ, H => exist _ zeroⁿ _
-| s, ⇓ ℕᵈ (succᵈ m) , H =>
-    let (M, HM) := read_nf_impl s ⇓ ℕᵈ m _ in
-    exist _ succⁿ M _
-| s, ⇓ ℕᵈ (⇑ _ m)  , H =>
-    let (M, HM) := read_ne_impl s m _ in
-    exist _ ⇑ⁿ M _
 | s, ⇓ ⊤ᵈ m, H => exist _ ⋆ⁿ _
 | s, ⇓ ⊥ᵈ (⇑ _ m), H =>
     let (M, HM) := read_ne_impl s m _ in
@@ -447,16 +410,6 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
     let (M, HM) := read_ne_impl s m _ in
     let (N, HN) := read_nf_impl s n _ in
     exist _ (M $ⁿ N) _
-| s, recᵈ m under p return B | zero -> mz | succ -> MS end, H =>
-    let (b, Hb) := eval_exp_impl Θ Ξ B (p ↦ ⇑! ℕᵈ s) _ in
-    let (B', HB') := read_typ_impl (S s) b _ in
-    let (bz, Hbz) := eval_exp_impl Θ Ξ B (p ↦ zeroᵈ) _ in
-    let (MZ, HMZ) := read_nf_impl s ⇓ bz mz _ in
-    let (bs, Hbs) := eval_exp_impl Θ Ξ B (p ↦ succᵈ (⇑! ℕᵈ s)) _ in
-    let (ms, Hms) := eval_exp_impl Θ Ξ MS (p ↦ ⇑! ℕᵈ s ↦ ⇑! b (S s)) _ in
-    let (MS', HMS') := read_nf_impl (S (S s)) ⇓ bs ms _ in
-    let (M, HM) := read_ne_impl s m _ in
-    exist _ recⁿ M return B' | zero -> MZ | succ -> MS' end _
 | s, efqᵈ m under p return B, H =>
     let (b, Hb) := eval_exp_impl Θ Ξ B (p ↦ ⇑! ⊥ᵈ s) _ in
     let (B', HB') := read_typ_impl (S s) b _ in
@@ -478,7 +431,6 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
     let (W, HW) := read_nf_impl s ⇓ Levelᵈ l _ in
     exist _ (nf_univ_of (lvl_of_nf W)) _
 | s, Levelᵈ@n, H => exist _ (Levelⁿ@n) _
-| s, ℕᵈ, H => exist _ ℕⁿ _
 | s, ⊤ᵈ, H => exist _ ⊤ⁿ _
 | s, ⊥ᵈ, H => exist _ ⊥ⁿ _
 | s, Πᵈ a p B, H =>
@@ -606,21 +558,6 @@ Ltac rb_obl_auto :=
   | |- _ => abstract (first [ rb_ord | rb_run | eapply read_typ_suniv_of_nf; eassumption | rb_ind ])
   end.
 
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
 Next Obligation. rb_obl_auto. Defined.
 Next Obligation. rb_obl_auto. Defined.
 Next Obligation. rb_obl_auto. Defined.

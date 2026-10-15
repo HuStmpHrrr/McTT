@@ -1,10 +1,12 @@
 (* A nested module, and selecting its members with [Ops.f]. *)
 module ModuleNested where
 
+import Prelude›Builtin›Nat use (zero; succ)
+
 module Ops where
 
 def pred : ∀ (x : ℕ) → ℕ ≔
-  λ (x : ℕ) → rec x return y . ℕ | zero ⇒ 0 | succ p, r ⇒ p end
+  λ (x : ℕ) → elim x return y . ℕ | zero ⇒ 0 | succ p, r ⇒ p end
 end
 
 def twice : ∀ (f : ∀ (x : ℕ) → ℕ) (x : ℕ) → ℕ ≔

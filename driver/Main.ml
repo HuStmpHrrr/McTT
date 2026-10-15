@@ -48,21 +48,24 @@ let read_unit src =
     | _ -> None
   with Lexer.Error _ -> None
 
-let main_of_lexbuf ?(search_root = ".") lexbuf =
+(* A unit is looked up under each search root in turn. *)
+let load_path_in roots fp = List.find_map (fun r -> load_path r fp) roots
+
+let main_of_lexbuf ?(search_root = ".") ?(extra_roots = []) lexbuf =
   match
     Lexer.lexbuf_to_token_buffer lexbuf
-    |> Entrypoint.main (load_path search_root) read_unit parser_log_fuel
+    |> Entrypoint.main (load_path_in (search_root :: extra_roots)) read_unit parser_log_fuel
   with
   | r -> Format.printf "%a@." PrettyPrinter.format_main_result r; get_exit_code r
   | exception Lexer.Error msg -> Format.printf "Error: %s@." msg; lexing_error_code
 
-let main_of_filename ?search_root filename =
+let main_of_filename ?search_root ?extra_roots filename =
   if Sys.file_exists filename && Sys.is_directory filename then begin
     Format.printf "Error: %s is a directory@." filename; unreadable_file_code
   end else
     match read_file filename with
-    | src -> Lexing.from_string src |> main_of_lexbuf ?search_root
+    | src -> Lexing.from_string src |> main_of_lexbuf ?search_root ?extra_roots
     | exception Sys_error msg -> Format.printf "Error: %s@." msg; unreadable_file_code
 
-let main_of_program_string ?search_root program =
-  Lexing.from_string program |> main_of_lexbuf ?search_root
+let main_of_program_string ?search_root ?extra_roots program =
+  Lexing.from_string program |> main_of_lexbuf ?search_root ?extra_roots

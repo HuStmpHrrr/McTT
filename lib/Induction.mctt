@@ -3,6 +3,7 @@
    branch they compute, and the equality test [eqb]. *)
 module Induction where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (Not)
 open Prelude›Logic.Disj 0l use (orElim)
 open Prelude›Logic.Equiv 0l use (iffFwd; iffBwd)

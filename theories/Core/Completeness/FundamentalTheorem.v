@@ -15,7 +15,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Completeness Require Import
-  ContextCases FunctionCases NatCases SubstitutionCases SubtypingCases
+  ContextCases FunctionCases SubstitutionCases SubtypingCases
   UniverseCases VariableCases.
 From Mctt.Core.Completeness Require Export LogicalRelation.
 From Mctt.Core.Completeness Require Import ModuleCases.

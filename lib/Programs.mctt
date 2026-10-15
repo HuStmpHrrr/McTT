@@ -3,6 +3,7 @@
    instances. *)
 module Programs where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Sub use (pred; sub)
 open Prelude›Arith›Sub.Laws use (subSelf; subSuccRight)
 open Prelude›Arith›Sub.PlusSub use (plusSub)

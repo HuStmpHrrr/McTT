@@ -16,11 +16,8 @@
       type in the other.  Their closure properties (identity, extension,
       lifting, composition) are lemmas, in [Core.Syntactic.System.Structural].
 
-    Two rules are stated more generally than in the paper:
+    One rule is stated more generally than in the paper:
 
-    - [wf_exp_eq_natrec_cong] also lets the motive vary.  This is strictly
-      stronger, and is what the algorithmic equality of [Algorithmic]
-      compares.
     - [wf_subtyp_pi] checks the codomains in [Γ ▹ A'] rather than [Γ ▹ A].  The
       two are interderivable given [Γ ⊢ A ≈ A' : Typeω@i] and context
       conversion, and [Γ ▹ A'] is what the soundness proof wants.
@@ -163,21 +160,6 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊢ maxl M N : Level@n )
-| wf_nat :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Type@0 )
-| wf_zero :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ zero : ℕ )
-| wf_succ :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : ℕ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ succ M : ℕ )
-| wf_natrec :
-  `( Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ MZ : A[Id,,zero] ->
-     Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M : ℕ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ rec M return A | zero -> MZ | succ -> MS end : A[Id,,M] )
 | wf_True :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Type@0 )
@@ -400,22 +382,6 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_maxl_succl :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊢ maxl M (succl M) ≈ succl M : Level@n )
-| wf_exp_eq_nat_cong :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Type@0 )
-| wf_exp_eq_zero_cong :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ zero ≈ zero : ℕ )
-| wf_exp_eq_succ_cong :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ℕ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ succ M ≈ succ M' : ℕ )
-| wf_exp_eq_natrec_cong :
-  `( Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A ≈ A' : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ MZ ≈ MZ' : A[Id,,zero] ->
-     Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS ≈ MS' : A[Wk ⨟ Wk,,succ #1] ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ℕ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ rec M return A | zero -> MZ | succ -> MS end ≈ rec M' return A' | zero -> MZ' | succ -> MS' end : A[Id,,M] )
 | wf_exp_eq_True_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Type@0 )
@@ -530,17 +496,6 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M : B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ (λ A M) $ N ≈ M[Id,,N] : B[Id,,N] )
-| wf_exp_eq_nat_beta_zero :
-  `( Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ MZ : A[Id,,zero] ->
-     Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ rec zero return A | zero -> MZ | succ -> MS end ≈ MZ : A[Id,,zero] )
-| wf_exp_eq_nat_beta_succ :
-  `( Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ MZ : A[Id,,zero] ->
-     Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M : ℕ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ rec succ M return A | zero -> MZ | succ -> MS end ≈ MS[Id,,M,,rec M return A | zero -> MZ | succ -> MS end] : A[Id,,succ M] )
 (** [ι]: the eliminator on a constructor is the constructor's branch, at
     the non-uniform parameters, the arguments and the recursive results
     ([elim_ihs]): the eliminator at a recursive argument, and at one of a
@@ -1254,9 +1209,6 @@ Lemma wf_univ_large : forall {Θ Ξ Γ o i},
 Proof. intros; eapply wf_univ_large_tm; [ assumption | apply wf_llit_ord; assumption ]. Qed.
 
 (** The base types are types of every large universe. *)
-Lemma wf_nat_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Typeω@i.
-Proof. intros; eapply wf_exp_subtyp; [ apply wf_nat | apply wf_typ | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
-
 Lemma wf_True_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Typeω@i.
 Proof. intros; eapply wf_exp_subtyp; [ apply wf_True | apply wf_typ | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
 
@@ -1268,9 +1220,6 @@ Proof. intros; eapply wf_exp_subtyp; [ apply wf_level | apply wf_typ | eapply wf
 
 Lemma wf_exp_eq_level_cong_large : forall {Θ Ξ Γ i n}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ≈ Level@n : Typeω@i.
 Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_level_cong | apply wf_typ | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
-
-Lemma wf_exp_eq_nat_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Typeω@i.
-Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_nat_cong | apply wf_typ | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
 
 Lemma wf_exp_eq_True_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Typeω@i.
 Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_True_cong | apply wf_typ | eapply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit_fin; eassumption ]. Qed.
@@ -1536,8 +1485,6 @@ Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type⟨_⟩ : Typeω@?i) => fix_open_level i; e
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type⟨𝕃ᵒ _⟩ : Typeω@?i) => fix_open_level i; apply wf_univ_large : mctt.
 #[export]
-Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ : Typeω@?i) => fix_open_level i; apply wf_nat_large : mctt.
-#[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level@_ : Typeω@?i) => fix_open_level i; apply wf_level_large : mctt.
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level@_ ≈ Level@_ : Typeω@?i) => fix_open_level i; apply wf_exp_eq_level_cong_large : mctt.
@@ -1545,8 +1492,6 @@ Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level@_ ≈ Level@_ : Typeω@?i) => fix_open_le
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ : Typeω@?i) => fix_open_level i; apply wf_True_large : mctt.
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ : Typeω@?i) => fix_open_level i; apply wf_False_large : mctt.
-#[export]
-Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ ≈ ℕ : Typeω@?i) => fix_open_level i; apply wf_exp_eq_nat_cong_large : mctt.
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ ≈ ⊤ : Typeω@?i) => fix_open_level i; apply wf_exp_eq_True_cong_large : mctt.
 #[export]

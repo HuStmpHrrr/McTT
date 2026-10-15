@@ -11,16 +11,6 @@ Import Domain_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma per_nat_then_per_top : forall {n m},
-    Dom n ≈ m ∈ per_nat ->
-    Dom ⇓ ℕᵈ n ≈ ⇓ ℕᵈ m ∈ per_top.
-Proof.
-  induction 1; simpl in *; intros s;
-    try specialize (IHper_nat s);
-    try specialize (H s); solve [destruct_conjs; eexists; repeat econstructor; eauto].
-Qed.
-
-Hint Resolve per_nat_then_per_top : mctt.
 
 (** ** Reading Back at Telescopes *)
 
@@ -511,8 +501,6 @@ Qed.
 
 End Fixed_GCtx.
 
-#[export]
-Hint Resolve per_nat_then_per_top : mctt.
 #[export]
 Hint Resolve per_univ_then_per_top_typ : mctt.
 #[export]

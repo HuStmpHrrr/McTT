@@ -67,7 +67,6 @@ Section Avoid.
   Variables (v b : nat).
 
   Inductive dav : domain -> Prop :=
-  | dav_nat : dav ℕᵈ
   | dav_pi : forall a (ρ : env) B K,
       dav a ->
       (forall x, K <> Some x -> deav (env_entry ρ x)) ->
@@ -77,8 +76,6 @@ Section Avoid.
   | dav_suniv : forall l, dav l -> dav 𝕌@l
   | dav_level : forall n, dav (Levelᵈ@n)
   | dav_lvl : forall c xs, dav_la xs -> dav (lvᵈ c xs)
-  | dav_zero : dav zeroᵈ
-  | dav_succ : forall m, dav m -> dav (succᵈ m)
   | dav_True : dav ⊤ᵈ
   | dav_true : dav ⋆ᵈ
   | dav_False : dav ⊥ᵈ
@@ -116,13 +113,6 @@ Section Avoid.
   with dav_ne : domain_ne -> Prop :=
   | dav_var : forall x, x <> v -> x < b -> dav_ne (#ᵈ x)
   | dav_app : forall m n, dav_ne m -> dav_nf n -> dav_ne (m $ᵈ n)
-  | dav_natrec : forall (ρ : env) A mz MS m K,
-      (forall x, K <> Some x -> deav (env_entry ρ x)) ->
-      ofresh (oshift 1 K) A ->
-      dav mz ->
-      ofresh (oshift 2 K) MS ->
-      dav_ne m ->
-      dav_ne (recᵈ m under ρ return A | zero -> mz | succ -> MS end)
   | dav_exfalso : forall (ρ : env) A m K,
       (forall x, K <> Some x -> deav (env_entry ρ x)) ->
       ofresh (oshift 1 K) A ->
@@ -318,16 +308,6 @@ Section OFresh.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma ofresh_maxl_r : forall M N, ofresh K (maxl M N) -> ofresh K N.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_succ : forall M, ofresh K (succ M) -> ofresh K M.
-  Proof. destruct K; cbn; auto. Qed.
-  Lemma ofresh_natrec_A : forall A MZ MS M, ofresh K (rec M return A | zero -> MZ | succ -> MS end) -> ofresh (oshift 1 K) A.
-  Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_natrec_Z : forall A MZ MS M, ofresh K (rec M return A | zero -> MZ | succ -> MS end) -> ofresh K MZ.
-  Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_natrec_S : forall A MZ MS M, ofresh K (rec M return A | zero -> MZ | succ -> MS end) -> ofresh (oshift 2 K) MS.
-  Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_natrec_M : forall A MZ MS M, ofresh K (rec M return A | zero -> MZ | succ -> MS end) -> ofresh K M.
-  Proof. destruct K; cbn; tauto. Qed.
   Lemma ofresh_exfalso_A : forall A M, ofresh K (efq M return A) -> ofresh (oshift 1 K) A.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma ofresh_exfalso_M : forall A M, ofresh K (efq M return A) -> ofresh K M.
@@ -400,8 +380,8 @@ Section OFresh.
   Proof. destruct K; cbn; tauto. Qed.
 End OFresh.
 
-#[local] Hint Resolve ofresh_univ ofresh_succl ofresh_maxl_l ofresh_maxl_r ofresh_succ
-  ofresh_natrec_A ofresh_natrec_Z ofresh_natrec_S ofresh_natrec_M ofresh_exfalso_A ofresh_exfalso_M
+#[local] Hint Resolve ofresh_univ ofresh_succl ofresh_maxl_l ofresh_maxl_r
+  ofresh_exfalso_A ofresh_exfalso_M
   ofresh_pi_A ofresh_pi_B ofresh_fn_M ofresh_app_l ofresh_app_r ofresh_let_M ofresh_let_B
   ofresh_letmod_U ofresh_mem ofresh_var omfresh_var omfresh_lit omfresh_mem omfresh_app_l omfresh_app_r
   oufresh_body oufresh_alias ogfresh_def_prefix ogfresh_def_body ogfresh_mod_prefix ogfresh_mod_unit : avoid.
@@ -471,9 +451,6 @@ Section Eval.
 
   Lemma eval_av :
     (forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> forall K, env_av v b K ρ -> ofresh K M -> dav v b m) /\
-    (forall A MZ MS m ρ r, ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-       forall K, env_av v b K ρ -> dav v b m -> ofresh (oshift 1 K) A -> ofresh K MZ ->
-            ofresh (oshift 2 K) MS -> dav v b r) /\
     (forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> dav v b m -> dav v b n -> dav v b r) /\
     (forall Ms ρ ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms ->
        forall K, env_av v b K ρ -> Forall (ofresh K) Ms -> forall a, In a ms -> dav v b a) /\
@@ -505,8 +482,6 @@ Section Eval.
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => forall K, env_av v b K ρ -> ofresh K M -> dav v b m)
-             (fun A MZ MS m ρ r _ => forall K, env_av v b K ρ -> dav v b m -> ofresh (oshift 1 K) A ->
-                                     ofresh K MZ -> ofresh (oshift 2 K) MS -> dav v b r)
              (fun m n r _ => dav v b m -> dav v b n -> dav v b r)
              (fun Ms ρ ms _ => forall K, env_av v b K ρ -> Forall (ofresh K) Ms ->
                                 forall a, In a ms -> dav v b a)
@@ -652,12 +627,12 @@ Proof.
 Qed.
 
 Lemma app_av : forall Θ Ξ v b m n r, $| m & n | Θ ⍮ Ξ ↘ r -> dav v b m -> dav v b n -> dav v b r.
-Proof. intros * H; exact (proj1 (proj2 (proj2 (eval_av Θ Ξ v b))) _ _ _ H). Qed.
+Proof. intros * H; exact (proj1 (proj2 (eval_av Θ Ξ v b)) _ _ _ H). Qed.
 
 Lemma shty_av : forall Θ Ξ v b p ups ρ t a K, eval_shty Θ Ξ p ups ρ t a ->
     env_av v b K ρ -> ptfresh K t -> (forall u, In u ups -> dav v b u) -> dav v b a.
 Proof.
-  intros * H; destruct (eval_av Θ Ξ v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
+  intros * H; destruct (eval_av Θ Ξ v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
   exact (Hs _ _ _ _ _ H K).
 Qed.
 
@@ -665,7 +640,7 @@ Lemma ihty_av : forall Θ Ξ v b ρm A ρ t m a Km K, eval_ihty Θ Ξ ρm A ρ t
     env_av v b Km ρm -> ofresh (oshift (S (List.length (ptyp_ps t))) Km) A ->
     env_av v b K ρ -> ptfresh K t -> dav v b m -> dav v b a.
 Proof.
-  intros * H; destruct (eval_av Θ Ξ v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
+  intros * H; destruct (eval_av Θ Ξ v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
   intros; eapply Hy; eassumption.
 Qed.
 
@@ -709,7 +684,6 @@ Section Read.
           | solve [ constructor ]
           | match goal with H : dav v ?b0 ?d |- dav v ?n ?d => eapply (dav_mono' v b0 n d); [ lia | exact H ] end
           | match goal with |- dav v _ (d_neut _ (d_var _)) => constructor; [ dav_tac v | constructor; lia ] end
-          | match goal with |- dav v _ (d_succ _) => constructor; dav_tac v end
           | match goal with
             | e : ⟦ ?B ⟧ _ ⍮ _ ⍮ extend_env (extend_env ?ρ ?c1) ?c2 ↘ ?d,
               Hρ : forall x, ?K <> Some x -> deav v ?b0 (env_entry ?ρ x) |- dav v ?n ?d =>
@@ -833,14 +807,12 @@ Section Read.
     all: repeat match goal with
       | H : dav _ _ (d_neut _ _) |- _ => inversion_clear H
       | H : dav _ _ (d_lvl _ _) |- _ => inversion_clear H
-      | H : dav _ _ (d_succ _) |- _ => inversion_clear H
       | H : dav _ _ (d_suniv _) |- _ => inversion_clear H
       | H : dav _ _ (d_pi _ _ _) |- _ => inversion_clear H
       | H : dav _ _ (d_ind _ _) |- _ => inversion_clear H
       | H : dav _ _ (d_con _ _ _) |- _ => inversion_clear H
       | H : dav_ne _ _ (d_app _ _) |- _ => inversion_clear H
       | H : dav_ne _ _ (d_var _) |- _ => inversion_clear H
-      | H : dav_ne _ _ (d_natrec _ _ _ _ _) |- _ => inversion_clear H
       | H : dav_ne _ _ (d_exfalso _ _ _) |- _ => inversion_clear H
       | H : dav_ne _ _ (d_elim _ _ _ _ _ _ _) |- _ => inversion_clear H
       | H : dav_nf _ _ (_ _ _) |- _ => inversion_clear H

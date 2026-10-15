@@ -7,8 +7,10 @@ module Prelude›Function›Iter
     (A : Type@{u})
     (f : ∀ (a : A) → A) where
 
+import Prelude›Builtin›Nat
+
 def iter (n : ℕ) (a : A) : A ≔
-  rec n return y . A
+  elim n return y . A
   | zero ⇒ a
   | succ p, r ⇒ f r
   end

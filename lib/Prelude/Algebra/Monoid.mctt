@@ -27,12 +27,13 @@ module Prelude›Algebra›Monoid
     (leftId : ∀ (x : M) → R (op e x) x)
     (rightId : ∀ (x : M) → R (op x e) x) where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Plus use (plus)
 import Prelude›Arith›Mult use (mult)
 
 (* [pow x n] is [x] combined with itself [n] times: [op x (op x ... e)]. *)
 def pow (x : M) (n : ℕ) : M ≔
-  rec n return y . M
+  elim n return y . M
   | zero ⇒ e
   | succ p, r ⇒ op x r
   end
@@ -90,7 +91,7 @@ end
 theorem powCong : ∀ (x : M) (y : M) (h : R x y) (n : ℕ) →
     R (pow x n) (pow y n) ≔
   λ (x : M) (y : M) (h : R x y) (n : ℕ) →
-    rec n return k . R (pow x k) (pow y k)
+    elim n return k . R (pow x k) (pow y k)
     | zero ⇒ rRefl e
     | succ p, ih ⇒ opCong x (pow x p) y (pow y p) h ih
     end
@@ -100,7 +101,7 @@ end
 theorem powSuccRight : ∀ (x : M) (n : ℕ) →
     R (pow x (succ n)) (op (pow x n) x) ≔
   λ (x : M) (n : ℕ) →
-    rec n return k . R (pow x (succ k)) (op (pow x k) x)
+    elim n return k . R (pow x (succ k)) (op (pow x k) x)
     | zero ⇒ rTrans (op x e) x (op e x) (rightId x) (rSym (op e x) x (leftId x))
     | succ p, ih ⇒
         rTrans (op x (pow x (succ p))) (op x (op (pow x p) x))
@@ -114,7 +115,7 @@ end
 theorem powPlus : ∀ (x : M) (m : ℕ) (n : ℕ) →
     R (pow x (plus m n)) (op (pow x m) (pow x n)) ≔
   λ (x : M) (m : ℕ) (n : ℕ) →
-    rec m return k . R (pow x (plus k n)) (op (pow x k) (pow x n))
+    elim m return k . R (pow x (plus k n)) (op (pow x k) (pow x n))
     | zero ⇒ rSym (op e (pow x n)) (pow x n) (leftId (pow x n))
     | succ p, ih ⇒
         rTrans (op x (pow x (plus p n))) (op x (op (pow x p) (pow x n)))
@@ -128,7 +129,7 @@ end
 theorem powMult : ∀ (x : M) (m : ℕ) (n : ℕ) →
     R (pow x (mult m n)) (pow (pow x n) m) ≔
   λ (x : M) (m : ℕ) (n : ℕ) →
-    rec m return k . R (pow x (mult k n)) (pow (pow x n) k)
+    elim m return k . R (pow x (mult k n)) (pow (pow x n) k)
     | zero ⇒ rRefl e
     | succ p, ih ⇒
         rTrans (pow x (plus n (mult p n))) (op (pow x n) (pow x (mult p n)))
@@ -142,7 +143,7 @@ end
 theorem powComm : ∀ (x : M) (m : ℕ) (n : ℕ) →
     R (op (pow x m) (pow x n)) (op (pow x n) (pow x m)) ≔
   λ (x : M) (m : ℕ) (n : ℕ) →
-    rec m return k . R (op (pow x k) (pow x n)) (op (pow x n) (pow x k))
+    elim m return k . R (op (pow x k) (pow x n)) (op (pow x n) (pow x k))
     | zero ⇒
         rTrans (op e (pow x n)) (pow x n) (op (pow x n) e)
           (leftId (pow x n))
@@ -201,7 +202,7 @@ end
 theorem powOp : ∀ (x : M) (y : M) (n : ℕ) →
     R (pow (op x y) n) (op (pow x n) (pow y n)) ≔
   λ (x : M) (y : M) (n : ℕ) →
-    rec n return k . R (pow (op x y) k) (op (pow x k) (pow y k))
+    elim n return k . R (pow (op x y) k) (op (pow x k) (pow y k))
     | zero ⇒ rSym (op e e) e (leftId e)
     | succ p, ih ⇒
         rTrans (op (op x y) (pow (op x y) p))

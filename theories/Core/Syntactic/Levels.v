@@ -144,9 +144,6 @@ Fixpoint nf_code (M : nf) (t : ltree) : ltree :=
   | nf_univ (a, b) xs => lt_node 1 (lt_node a (lt_node b (la_code xs lt_nil) lt_nil) lt_nil) t
   | nf_level n => lt_node 2 (lt_node n lt_nil lt_nil) t
   | nf_lvl (a, b) xs => lt_node 3 (lt_node a (lt_node b (la_code xs lt_nil) lt_nil) lt_nil) t
-  | nf_nat => lt_node 4 lt_nil t
-  | nf_zero => lt_node 5 lt_nil t
-  | nf_succ M' => lt_node 6 (nf_code M' lt_nil) t
   | nf_True => lt_node 7 lt_nil t
   | nf_true => lt_node 8 lt_nil t
   | nf_False => lt_node 9 lt_nil t
@@ -163,7 +160,6 @@ with ne_code (m : ne) (t : ltree) : ltree :=
   | ne_var x => lt_node 0 (lt_node x lt_nil lt_nil) t
   | ne_glob p => lt_node 1 (strs_code (q_unit p) (strs_code (q_chain p) lt_nil)) t
   | ne_app m' N => lt_node 2 (ne_code m' (nf_code N lt_nil)) t
-  | ne_natrec A MZ MS m' => lt_node 3 (nf_code A (nf_code MZ (nf_code MS (ne_code m' lt_nil)))) t
   | ne_exfalso A m' => lt_node 4 (nf_code A (ne_code m' lt_nil)) t
   | ne_elim nm A Bs m' =>
       lt_node 5 (lt_node nm (nf_code A (nbrs_code Bs (ne_code m' lt_nil))) lt_nil) t

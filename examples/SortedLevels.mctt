@@ -6,6 +6,8 @@
    universe at [ω], and [Type@nL] the one at [ω + n]. *)
 module SortedLevels where
 
+import Prelude›Builtin›Nat use (succ)
+
 (* The literals at and above ω, and how [succl] and [maxl] compute on them. *)
 eval ω : Level@1
 

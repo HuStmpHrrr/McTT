@@ -13,10 +13,9 @@ Generalizable All Variables.
 (** * The Evaluator the Checker Runs
 
     The evaluator of the relation of [Extraction.FastEval]: the reference one
-    ([Reference.Evaluation]) but for the eliminators, which do not compute
-    a recursive result that the branch does not read: the [ℕ]-eliminator
-    at a successor, and the eliminator of an inductive type at a
-    constructor, one recursive argument at a time. *)
+    ([Reference.Evaluation]) but for the eliminator of an inductive type,
+    which at a constructor does not compute a recursive result that the
+    branch does not read, one recursive argument at a time. *)
 
 (** The termination orders mirror the evaluation relations, one for each, in
     the same global context.  A transparent global recurses into its resolved
@@ -45,17 +44,6 @@ Inductive feval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
   `( feval_exp_order Θ Ξ M p ->
      feval_exp_order Θ Ξ N p ->
      feval_exp_order Θ Ξ (maxl M N) p )
-| feeo_nat :
-  `( feval_exp_order Θ Ξ ℕ p )
-| feeo_zero :
-  `( feval_exp_order Θ Ξ zero p )
-| feeo_succ :
-  `( feval_exp_order Θ Ξ M p ->
-     feval_exp_order Θ Ξ succ M p )
-| feeo_natrec :
-  `( feval_exp_order Θ Ξ M p ->
-     (forall m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> feval_natrec_order Θ Ξ A MZ MS m p) ->
-     feval_exp_order Θ Ξ rec M return A | zero -> MZ | succ -> MS end p )
 | feeo_True :
   `( feval_exp_order Θ Ξ ⊤ p )
 | feeo_true :
@@ -102,24 +90,6 @@ Inductive feval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
      (forall h f ns, ⟦ R ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p ↘ h -> feval_selc Θ Ξ h (pre ++ x :: nil) f ->
         feval_exps Θ Ξ args p ns -> feval_apps_order Θ Ξ f ns) ->
      feval_exp_order Θ Ξ (a_mem H x) p )
-
-with feval_natrec_order (Θ : gdeps) (Ξ : gstack) : exp -> exp -> exp -> domain -> env -> Prop :=
-| feno_zero :
-  `( feval_exp_order Θ Ξ MZ p ->
-     feval_natrec_order Θ Ξ A MZ MS zeroᵈ p )
-| feno_succ :
-  `( exp_freshb 0 MS = false ->
-     feval_natrec_order Θ Ξ A MZ MS b p ->
-     (forall r, ⟦recᶠ b return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ r -> feval_exp_order Θ Ξ MS (p ↦ b ↦ r)) ->
-     feval_natrec_order Θ Ξ A MZ MS succᵈ b p )
-| feno_skip :
-  `( exp_freshb 0 MS = true ->
-     feval_exp_order Θ Ξ MS (p ↦ b ↦ zeroᵈ) ->
-     feval_natrec_order Θ Ξ A MZ MS succᵈ b p )
-| feno_neut :
-  `( feval_exp_order Θ Ξ MZ p ->
-     feval_exp_order Θ Ξ A (p ↦ ⇑ a m) ->
-     feval_natrec_order Θ Ξ A MZ MS ⇑ a m p )
 
 with feval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> domain -> Prop :=
 | feelo_con :
@@ -357,7 +327,7 @@ with feval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
      feval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm Uy)) ).
 
 #[local]
-Hint Constructors feval_exp_order feval_natrec_order feval_elim_order feval_ihs_order feval_ih_order feval_shty_order feval_ihty_order feval_app_order feval_exps_order feval_apps_order
+Hint Constructors feval_exp_order feval_elim_order feval_ihs_order feval_ih_order feval_shty_order feval_ihty_order feval_app_order feval_exps_order feval_apps_order
   feval_modexp_order feval_appm_order feval_sel_order feval_selm_order feval_selc_order feval_selmc_order
   feval_benv_order : mctt.
 
@@ -367,36 +337,33 @@ Ltac functional_feval_all :=
     | H1 : feval_exp ?T ?X ?M ?p ?m1, H2 : feval_exp ?T ?X ?M ?p ?m2 |- _ =>
         assert_fails (constr_eq m1 m2);
         pose proof (functional_feval_exp _ _ _ _ H1 H2); subst; clear H2
-    | H1 : feval_natrec ?T ?X ?A ?MZ ?MS ?m ?p ?r1, H2 : feval_natrec ?T ?X ?A ?MZ ?MS ?m ?p ?r2 |- _ =>
-        assert_fails (constr_eq r1 r2);
-        pose proof (functional_feval_natrec _ _ _ _ _ _ _ H1 H2); subst; clear H2
     | H1 : feval_app ?T ?X ?m ?n ?r1, H2 : feval_app ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_feval_app _ _ _ _ H1 H2); subst; clear H2
     | H1 : feval_exps ?T ?X ?M ?p ?r1, H2 : feval_exps ?T ?X ?M ?p ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (proj1 (proj2 (proj2 (proj2 (@functional_feval T X)))) _ _ _ H1 _ H2); subst; clear H2
+        pose proof (proj1 (proj2 (proj2 (@functional_feval T X))) _ _ _ H1 _ H2); subst; clear H2
     | H1 : feval_apps ?T ?X ?m ?n ?r1, H2 : feval_apps ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X))))) _ _ _ H1 _ H2); subst; clear H2
+        pose proof (proj1 (proj2 (proj2 (proj2 (@functional_feval T X)))) _ _ _ H1 _ H2); subst; clear H2
     | H1 : feval_modexp ?T ?X ?M ?p ?r1, H2 : feval_modexp ?T ?X ?M ?p ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_feval_modexp _ _ _ _ H1 H2); subst; clear H2
     | H1 : feval_appm ?T ?X ?m ?n ?r1, H2 : feval_appm ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X))))))) _ _ _ H1 _ H2); subst; clear H2
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X)))))) _ _ _ H1 _ H2); subst; clear H2
     | H1 : feval_sel ?T ?X ?m ?n ?r1, H2 : feval_sel ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X)))))))) _ _ _ H1 _ H2); subst; clear H2
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X))))))) _ _ _ H1 _ H2); subst; clear H2
     | H1 : feval_selm ?T ?X ?m ?n ?r1, H2 : feval_selm ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X))))))))) _ _ _ H1 _ H2); subst; clear H2
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X)))))))) _ _ _ H1 _ H2); subst; clear H2
     | H1 : feval_selc ?T ?X ?m ?n ?r1, H2 : feval_selc ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X)))))))))) _ _ _ H1 _ H2); subst; clear H2
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X))))))))) _ _ _ H1 _ H2); subst; clear H2
     | H1 : feval_selmc ?T ?X ?m ?n ?r1, H2 : feval_selmc ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X))))))))))) _ _ _ H1 _ H2); subst; clear H2
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X)))))))))) _ _ _ H1 _ H2); subst; clear H2
     | H1 : feval_benv ?T ?X ?m ?n ?r1, H2 : feval_benv ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_feval_benv _ _ _ _ H1 H2); subst; clear H2
@@ -420,8 +387,6 @@ Ltac functional_feval_all :=
 
 Lemma feval_order_sound : forall Θ Ξ,
     (forall m p a, ⟦ m ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ a -> feval_exp_order Θ Ξ m p) /\
-    (forall A MZ MS m p r, ⟦recᶠ m return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ r ->
-       feval_natrec_order Θ Ξ A MZ MS m p) /\
     (forall m n r, $ᶠ| m & n | Θ ⍮ Ξ ↘ r -> feval_app_order Θ Ξ m n) /\
     (forall Ms p ms, ⟦ Ms ⟧*ᶠ Θ ⍮ Ξ ⍮ p ↘ ms -> feval_exps_order Θ Ξ Ms p) /\
     (forall m ns r, $*ᶠ| m & ns | Θ ⍮ Ξ ↘ r -> feval_apps_order Θ Ξ m ns) /\
@@ -449,16 +414,11 @@ Qed.
 Lemma feval_exp_order_sound : forall Θ Ξ m p a, ⟦ m ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ a -> feval_exp_order Θ Ξ m p.
 Proof. intros Θ Ξ; exact (proj1 (feval_order_sound Θ Ξ)). Qed.
 
-Lemma feval_natrec_order_sound : forall Θ Ξ A MZ MS m p r,
-    ⟦recᶠ m return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ r ->
-    feval_natrec_order Θ Ξ A MZ MS m p.
+Lemma feval_app_order_sound : forall Θ Ξ m n r, $ᶠ| m & n | Θ ⍮ Ξ ↘ r -> feval_app_order Θ Ξ m n.
 Proof. intros Θ Ξ; exact (proj1 (proj2 (feval_order_sound Θ Ξ))). Qed.
 
-Lemma feval_app_order_sound : forall Θ Ξ m n r, $ᶠ| m & n | Θ ⍮ Ξ ↘ r -> feval_app_order Θ Ξ m n.
-Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (feval_order_sound Θ Ξ)))). Qed.
-
 Lemma feval_exps_order_sound : forall Θ Ξ Ms p ms, ⟦ Ms ⟧*ᶠ Θ ⍮ Ξ ⍮ p ↘ ms -> feval_exps_order Θ Ξ Ms p.
-Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (proj2 (feval_order_sound Θ Ξ))))). Qed.
+Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (feval_order_sound Θ Ξ)))). Qed.
 
 Lemma feval_shty_order_sound : forall Θ Ξ pq ups p t a, feval_shty Θ Ξ pq ups p t a -> feval_shty_order Θ Ξ pq ups p t.
 Proof. intros Θ Ξ; pose proof (feval_order_sound Θ Ξ); destruct_all; eauto. Qed.
@@ -467,7 +427,7 @@ Lemma feval_ihty_order_sound : forall Θ Ξ pm A p t v a, feval_ihty Θ Ξ pm A 
 Proof. intros Θ Ξ; pose proof (feval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
 #[export]
-Hint Resolve feval_exp_order_sound feval_natrec_order_sound feval_app_order_sound feval_exps_order_sound
+Hint Resolve feval_exp_order_sound feval_app_order_sound feval_exps_order_sound
   feval_shty_order_sound feval_ihty_order_sound : mctt.
 
 Definition inspect {A} (a : A) : { b | a = b } := exist _ a eq_refl.
@@ -506,7 +466,6 @@ Section EvalImpl.
   Ltac impl_obl_tac1 :=
     match goal with
     | H : feval_exp_order _ _ _ _ |- _ => progressive_invert H
-    | H : feval_natrec_order _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : feval_app_order _ _ _ _ |- _ => progressive_invert H
     | H : feval_exps_order _ _ _ _ |- _ => progressive_invert H
     | H : feval_apps_order _ _ _ _ |- _ => progressive_invert H
@@ -595,7 +554,6 @@ Section EvalImpl.
   Ltac impl_obl_split :=
     match goal with
     | H : feval_exp_order _ _ _ _ |- _ => dependent destruction H
-    | H : feval_natrec_order _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : feval_app_order _ _ _ _ |- _ => dependent destruction H
     | H : feval_modexp_order _ _ _ _ |- _ => dependent destruction H
     | H : feval_appm_order _ _ _ _ |- _ => dependent destruction H
@@ -649,15 +607,6 @@ Section EvalImpl.
       let (m , Hm) := feval_exp_impl M p _ in
       let (n , Hn) := feval_exp_impl N p _ in
       exist _ (dlvl_max m n) _
-  | ℕ     , p, H => exist _ ℕᵈ _
-  | zero  , p, H => exist _ zeroᵈ _
-  | succ m, p, H =>
-      let (r , Hr) := feval_exp_impl m p _ in
-      exist _ succᵈ r _
-  | rec M return A | zero -> MZ | succ -> MS end, p, H =>
-      let (m , Hm) := feval_exp_impl M p _ in
-      let (r, Hr)  := feval_natrec_impl A MZ MS m p _ in
-      exist _ r _
   | ⊤     , p, H => exist _ ⊤ᵈ _
   | ⋆     , p, H => exist _ ⋆ᵈ _
   | ⊥     , p, H => exist _ ⊥ᵈ _
@@ -672,7 +621,8 @@ Section EvalImpl.
   | λ A M , p, H => exist _ λᵈ p M _
   | a_ind pq, p, H => exist _ (d_ind pq nil) _
   | a_con pq c, p, H => exist _ (d_con pq c nil) _
-  (** A numeral is expanded before it is ever evaluated. *)
+  (** A literal is generated before it is ever evaluated. *)
+  | a_ntok, p, H => False_rect _ _
   | a_nlit _, p, H => False_rect _ _
   | a_elim nm A Bs M, p, H =>
       let (m, Hm) := feval_exp_impl M p _ in
@@ -697,26 +647,6 @@ Section EvalImpl.
         let (ns, Hns) := feval_exps_impl args p _ in
         let (r, Hr) := feval_apps_impl f ns _ in
         exist _ r _ }
-
-  with feval_natrec_impl A MZ MS m p (H : feval_natrec_order Θ Ξ A MZ MS m p) : { d | ⟦recᶠ m return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ d } by struct H :=
-  | A, MZ, MS, zeroᵈ  , p, H =>
-      let (mz, Hmz) := feval_exp_impl MZ p _ in
-      exist _ mz _
-  | A, MZ, MS, succᵈ m, p, H with inspect (exp_freshb 0 MS) := {
-    (** The step case does not read the recursive result: it is not
-        computed. *)
-    | exist _ true E =>
-        let (r, Hr) := feval_exp_impl MS (p ↦ m ↦ zeroᵈ) _ in
-        exist _ r _
-    | exist _ false E =>
-        let (mr, Hmr) := feval_natrec_impl A MZ MS m p _ in
-        let (r, Hr) := feval_exp_impl MS (p ↦ m ↦ mr) _ in
-        exist _ r _ }
-  | A, MZ, MS, ⇑ a m , p, H =>
-      let (mz, Hmz) := feval_exp_impl MZ p _ in
-      let (mA, HmA) := feval_exp_impl A (p ↦ ⇑ a m) _ in
-      exist _ ⇑ mA recᵈ m under p return A | zero -> mz | succ -> MS end _
-  | A, MZ, MS, _, p, H => False_rect _ _
 
   with feval_elim_impl p nm A Bs m (ck : lk_cache) (H : feval_elim_order Θ Ξ p nm A Bs m) : { r | ⟦elimᶠ m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
   | p, nm, A, Bs, d_con pq c vs, ck, H with cache_lookup ck pq := {
@@ -1196,57 +1126,9 @@ Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
 End EvalImpl.
 
 Extraction Inline feval_exp_impl_functional
-  feval_natrec_impl_functional
   feval_elim_impl_functional
   feval_ihs_impl_functional
   feval_ih_impl_functional
@@ -1285,13 +1167,6 @@ Ltac functional_feval_complete :=
 Lemma feval_exp_impl_complete : forall Θ Ξ M p m,
     ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m ->
     exists H H', feval_exp_impl Θ Ξ M p H = exist _ m H'.
-Proof.
-  intros; functional_feval_complete.
-Qed.
-
-Lemma feval_natrec_impl_complete : forall Θ Ξ A MZ MS m p r,
-    ⟦recᶠ m return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ r ->
-    exists H H', feval_natrec_impl Θ Ξ A MZ MS m p H = exist _ r H'.
 Proof.
   intros; functional_feval_complete.
 Qed.

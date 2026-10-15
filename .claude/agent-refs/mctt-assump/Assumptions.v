@@ -9,7 +9,10 @@ Print Assumptions Mctt.Core.Soundness.soundness_gctx'.
 Print Assumptions Mctt.Core.Semantic.Consequences.consistency.
 Print Assumptions Mctt.Core.Semantic.Consequences.consistency_gctx.
 Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_typ_gctx.
-Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_nat_gctx.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_nat_gctx.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_nat_stuck_gctx.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_nat_no_axioms.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_bound_nat_prog.
 Print Assumptions Mctt.Core.Semantic.Consequences.consistency_large.
 Print Assumptions Mctt.Core.Semantic.Consequences.consistency_large_gctx.
 Print Assumptions Mctt.Core.Semantic.Consequences.consistency_no_axioms.

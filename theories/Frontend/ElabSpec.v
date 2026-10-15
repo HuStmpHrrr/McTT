@@ -194,17 +194,10 @@ Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
 | sel_llit : forall S o, sel S (Cst.llit o) (𝕃ᵒ o)
 | sel_succl : forall S o M, sel S o M -> sel S (Cst.succl o) (succl M)
 | sel_maxl : forall S o1 o2 M N, sel S o1 M -> sel S o2 N -> sel S (Cst.maxl o1 o2) (maxl M N)
+(** The token [ℕ] and a numeral are core literals: what they stand for is
+    generated from the builtin bindings when the command runs. *)
 | sel_nat : forall S, sel S Cst.nat ℕ
-| sel_zero : forall S, sel S Cst.zero zero
-(** A numeral is a core literal: what it stands for is the core's. *)
 | sel_num : forall S n, sel S (Cst.num n) (a_nlit n)
-| sel_succ : forall S o M, sel S o M -> sel S (Cst.succ o) (succ M)
-| sel_natrec : forall S on mx om oz sx sr os N A MZ MS,
-    sel S on N ->
-    sel (en_var mx :: S) om A ->
-    sel S oz MZ ->
-    sel (en_var sr :: en_var sx :: S) os MS ->
-    sel S (Cst.natrec on mx om oz sx sr os) (rec N return A | zero -> MZ | succ -> MS end)
 | sel_true_ty : forall S, sel S Cst.true_ty ⊤
 | sel_true_tm : forall S, sel S Cst.true_tm ⋆
 | sel_false_ty : forall S, sel S Cst.false_ty ⊥

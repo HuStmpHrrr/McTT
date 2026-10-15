@@ -3,6 +3,8 @@ import Cyc›B
 
 module Cyc›A where
 
+import Prelude›Builtin›Nat
+
 def a : ℕ ≔ 0 end
 
 end

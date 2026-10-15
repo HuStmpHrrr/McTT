@@ -4,6 +4,7 @@
    multiplication, of exponentiation and of iteration. *)
 module Algebra where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusZero)
@@ -128,7 +129,7 @@ eval Sums.pow 6 3
    congruence laws of the instance. *)
 theorem maxPowSucc : ∀ (x : ℕ) (n : ℕ) → Eq (Maximum.pow x (succ n)) x ≔
   λ (x : ℕ) (n : ℕ) →
-    rec n return k . Eq (Maximum.pow x (succ k)) x
+    elim n return k . Eq (Maximum.pow x (succ k)) x
     | zero ⇒ maxZero x
     | succ p, ih ⇒
         let power ≔ Maximum.pow x (succ p);

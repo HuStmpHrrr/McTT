@@ -11,91 +11,6 @@ Import Domain_Notations Wk_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma glu_nat_per_nat : forall Γ M a,
-    glu_nat Γ M a ->
-    Dom a ≈ a ∈ per_nat.
-Proof.
-  induction 1; mauto.
-Qed.
-
-#[local]
-Hint Resolve glu_nat_per_nat : mctt.
-
-Lemma glu_nat_escape : forall Γ M a,
-    glu_nat Γ M a ->
-    ⊢ Γ ->
-    Γ ⊢ M : ℕ.
-Proof.
-  induction 1; intros;
-    try match goal with
-    | H : _ |- _ => solve [gen_presup H; mauto]
-    end.
-  assert (Γ ⊢k wk_id : Γ) by mauto 2.
-  match_by_head (per_bot m m) ltac:(fun H => specialize (H (length Γ)) as [M' []]).
-  clear_dups.
-  assert (Γ ⊢ M[wk_id]ʷ ≈ M' : ℕ) as HM by mauto.
-  rewrite exp_wk_id in HM.
-  gen_presups.
-  mauto.
-Qed.
-
-Hint Resolve glu_nat_escape : mctt.
-
-(** [glu_nat] is stable under context refinement [Δ ⊆ Γ], which is what the
-    [ctxsub_*] lemmas need. The other context-transport lemmas below are stated
-    in the same refinement form. *)
-Lemma glu_nat_resp_ctxsub : forall Γ M a Δ,
-    glu_nat Γ M a ->
-    Δ ⊆ Γ ->
-    glu_nat Δ M a.
-Proof.
-  induction 1; intros.
-  - mauto 4.
-  - assert (Δ ⊢ M ≈ succ M' : ℕ) by mauto 3.
-    econstructor; [ eassumption | mauto 2 ].
-  - econstructor; trivial.
-    intros; mauto 4.
-Qed.
-
-Hint Resolve glu_nat_resp_ctxsub : mctt.
-
-Lemma glu_nat_resp_exp_eq : forall Γ M a,
-    glu_nat Γ M a ->
-    forall M',
-    Γ ⊢ M ≈ M' : ℕ ->
-    glu_nat Γ M' a.
-Proof.
-  induction 1; intros; mauto 4.
-  econstructor; trivial.
-  intros.
-  transitivity M[φ]ʷ; mauto.
-Qed.
-
-#[local]
-Hint Resolve glu_nat_resp_exp_eq : mctt.
-
-Add Parametric Morphism Γ : (glu_nat Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ ℕ ==> eq ==> iff as glu_ctx_env_sub_morphism_iff2.
-Proof.
-  split; mauto using glu_nat_resp_exp_eq.
-Qed.
-
-Lemma glu_nat_readback : forall Γ M a,
-    glu_nat Γ M a ->
-    forall Δ φ M',
-      Δ ⊢k φ : Γ ->
-      Rnf ⇓ ℕᵈ a in length Δ ↘ M' ->
-      Δ ⊢ M[φ]ʷ ≈ M' : ℕ.
-Proof.
-  induction 1; intros; progressive_inversion; gen_presups.
-  - rewrite <- (exp_wk_zero φ); mauto 4.
-  - assert (Δ ⊢ M'[φ]ʷ ≈ M0 : ℕ) by mauto 4.
-    assert (Δ ⊢ M[φ]ʷ ≈ (succ M')[φ]ʷ : ℕ) as H' by mauto 4.
-    rewrite exp_wk_succ in H'.
-    etransitivity; [ eassumption | mauto 3 ].
-  - mauto 4.
-Qed.
-
 (** The same lemmas for [glu_lvl], which is the readback clause of a neutral at
     [Level]. *)
 Lemma glu_lvl_escape : forall Γ M a n,
@@ -233,8 +148,7 @@ Proof.
   cbn; split; [ apply wf_exp_eq_llit_cong; assumption | split; [ exact Ho | exact I ] ].
 Qed.
 
-(** The same lemmas for [glu_False], which is the neutral case of
-    [glu_nat] at [⊥]. *)
+(** The same lemmas for [glu_False], whose values are all neutral. *)
 Lemma glu_False_per_ne : forall Γ M a,
     glu_False Γ M a ->
     Dom a ≈ a ∈ per_ne.
@@ -1084,7 +998,7 @@ End Fixed_GCtx.
 
 #[export]
 Hint Resolve glu_lvl_escape glu_lvl_resp_ctxsub : mctt.
-(** Unlike [glu_nat], [glu_lvl] has one constructor, so [split] breaks a goal
+(** [glu_lvl] has one constructor, so [split] breaks a goal
     [glu_lvl Γ M m] into its premises; the readback clause is then
     [glu_lvl_readback], and it is a hint so that the shared scripts reach it. *)
 #[local]
@@ -1093,13 +1007,6 @@ Hint Resolve glu_lvl_resp_exp_eq glu_lvl_readback glu_lvl_ws_readback : mctt.
 Hint Resolve glu_False_escape glu_False_resp_ctxsub : mctt.
 #[local]
 Hint Resolve glu_False_per_ne glu_False_resp_exp_eq : mctt.
-#[export]
-Hint Resolve glu_nat_escape : mctt.
-#[export]
-Hint Resolve glu_nat_resp_ctxsub : mctt.
-#[export] Existing Instance glu_ctx_env_sub_morphism_iff2_Proper.
-#[local]
-Hint Resolve glu_nat_per_nat glu_nat_resp_exp_eq : mctt.
 #[global]
 Ltac simpl_glu_rel :=
   apply_equiv_left;
@@ -1120,7 +1027,6 @@ Ltac simpl_glu_rel :=
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-
 (** The large level a glued type is a type of.  It is given as an explicit
     argument, with the equation [ulvl i = l], so that the lemma applies to a
     goal [Γ ⊢ A : Typeω@l] whose level is known before the index is. *)
@@ -1132,7 +1038,7 @@ Lemma glu_univ_elem_univ_lvl_gen : forall i P El a,
 Proof.
   simpl.
   glu_univ_elem_induction1; intros.
-  9:{ apply_equiv_left; match goal with H : exists Ps, ind_typ_at _ _ _ _ _ _ _ _ _ _ _ _ _ Ps |- _ => destruct H as (Ps & HA & _) end;
+  8:{ apply_equiv_left; match goal with H : exists Ps, ind_typ_at _ _ _ _ _ _ _ _ _ _ _ _ _ Ps |- _ => destruct H as (Ps & HA & _) end;
       gen_presups; assumption. }
   all: simpl_glu_rel; trivial.
 Qed.
@@ -1154,7 +1060,7 @@ Lemma glu_univ_elem_typ_resp_exp_eq : forall i P El a,
 Proof.
   simpl.
   glu_univ_elem_induction1; intros.
-  9:{ apply_equiv_left; eapply (ind_glu_typ_pred_resp_exp_eq p D ups ns NP NEl AP AEl DP DEl); eassumption. }
+  8:{ apply_equiv_left; eapply (ind_glu_typ_pred_resp_exp_eq p D ups ns NP NEl AP AEl DP DEl); eassumption. }
   all: simpl_glu_rel;
     (** A small universe keeps the level term it is indexed by, and composes
         the equation with the one of the two types. *)
@@ -1182,7 +1088,7 @@ Lemma glu_univ_elem_trm_resp_typ_exp_eq : forall i P El a,
 Proof.
   simpl.
   glu_univ_elem_induction1; intros.
-  9:{ apply_equiv_left; eapply (ind_glu_exp_pred_resp_typ_exp_eq p D ups ns NP NEl AP AEl DP DEl elem_rel); eassumption. }
+  8:{ apply_equiv_left; eapply (ind_glu_exp_pred_resp_typ_exp_eq p D ups ns NP NEl AP AEl DP DEl elem_rel); eassumption. }
   all:
     simpl_glu_rel; repeat split; intros;
     (** A small universe keeps the level term it is indexed by, and composes
@@ -1218,7 +1124,7 @@ Lemma glu_univ_elem_typ_resp_ctxsub : forall i P El a,
 Proof.
   simpl.
   glu_univ_elem_induction1; intros.
-  9:{ apply_equiv_left; eapply (ind_glu_typ_pred_resp_ctxsub p D ups ns NP NEl AP AEl DP DEl); eassumption. }
+  8:{ apply_equiv_left; eapply (ind_glu_typ_pred_resp_ctxsub p D ups ns NP NEl AP AEl DP DEl); eassumption. }
   all:
     simpl_glu_rel;
     (** A small universe: its level term and its equation both move to the
@@ -1243,7 +1149,7 @@ Lemma glu_univ_elem_trm_resp_ctxsub : forall i P El a,
 Proof.
   simpl.
   glu_univ_elem_induction1; intros.
-  9:{ apply_equiv_left; eapply (ind_glu_exp_pred_resp_ctxsub p D ups ns NP NEl AP AEl DP DEl elem_rel); eassumption. }
+  8:{ apply_equiv_left; eapply (ind_glu_exp_pred_resp_ctxsub p D ups ns NP NEl AP AEl DP DEl elem_rel); eassumption. }
   all:
     simpl_glu_rel.
   (** An element of a small universe: its type's level term moves to the
@@ -1264,38 +1170,6 @@ Proof.
       econstructor; mauto 3; intros; mauto 4. }
   1:{ econstructor; [ split | | | ]; mauto 3; intros; mauto 4. }
 Qed.
-
-Lemma glu_nat_resp_wk' : forall Γ M a,
-    glu_nat Γ M a ->
-    forall Δ φ,
-      Γ ⊢ M : ℕ ->
-      Δ ⊢k φ : Γ ->
-      glu_nat Δ M[φ]ʷ a.
-Proof.
-  induction 1; intros; gen_presups.
-  - econstructor.
-    rewrite <- (exp_wk_zero φ); mauto 4.
-  - econstructor; [ |mauto].
-    rewrite <- (exp_wk_succ φ); mauto 4.
-  - econstructor; trivial.
-    intros Δ' ψ M' **.
-    rewrite exp_wk_wk.
-    assert (Δ' ⊢k φ ⊙ ψ : Γ) by mauto 3.
-    mauto 4.
-Qed.
-
-Lemma glu_nat_resp_wk : forall Γ M a,
-    glu_nat Γ M a ->
-    forall Δ φ,
-      Δ ⊢k φ : Γ ->
-      glu_nat Δ M[φ]ʷ a.
-Proof.
-  intros * ? * ?.
-  assert (⊢ Γ) by (eapply kripke_cod; eassumption).
-  mauto using glu_nat_resp_wk'.
-Qed.
-
-Hint Resolve glu_nat_resp_wk : mctt.
 
 Lemma glu_lvl_resp_wk : forall Γ M a n,
     glu_lvl n Γ M a ->
@@ -1344,7 +1218,7 @@ Lemma glu_univ_elem_per_univ : forall i P El a,
 Proof.
   simpl.
   glu_univ_elem_induction1; intros.
-  9:{ eexists; eassumption. }
+  8:{ eexists; eassumption. }
   all: eexists;
     try solve [per_univ_elem_econstructor; try reflexivity; trivial].
 
@@ -1367,7 +1241,7 @@ Lemma glu_univ_elem_per_elem : forall i P El a,
 Proof.
   simpl.
   glu_univ_elem_induction1; intros.
-  9:{ simpl_glu_rel. match goal with HR : per_univ_elem _ ?R (d_ind _ _) (d_ind _ _), HE : per_univ_elem _ ?E (d_ind _ _) (d_ind _ _), Hm : ?E ?m ?m |- ?R ?m ?m => assert (EE : E <~> R) by (eapply per_univ_elem_right_irrel; eassumption); apply EE; exact Hm end. }
+  8:{ simpl_glu_rel. match goal with HR : per_univ_elem _ ?R (d_ind _ _) (d_ind _ _), HE : per_univ_elem _ ?E (d_ind _ _) (d_ind _ _), Hm : ?E ?m ?m |- ?R ?m ?m => assert (EE : E <~> R) by (eapply per_univ_elem_right_irrel; eassumption); apply EE; exact Hm end. }
   all:
     match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H);
     simpl_glu_rel;
@@ -1391,7 +1265,7 @@ Lemma glu_univ_elem_trm_typ : forall i P El a,
 Proof.
   simpl.
   glu_univ_elem_induction1; intros.
-  9:{ apply_equiv_left;
+  8:{ apply_equiv_left;
       match goal with H : _ ⊢ _ : _ /\ _ /\ (exists Ps, _ /\ _) |- _ => destruct H as (_ & _ & Ps & HPs & _) end;
       exists Ps; exact HPs. }
   all:
@@ -1424,7 +1298,7 @@ Lemma glu_univ_elem_trm_resp_exp_eq : forall i P El a,
 Proof.
   simpl.
   glu_univ_elem_induction1; intros.
-  9:{ apply_equiv_left; eapply (ind_glu_exp_pred_resp_exp_eq p D ups ns NP NEl AP AEl DP DEl elem_rel); eassumption. }
+  8:{ apply_equiv_left; eapply (ind_glu_exp_pred_resp_exp_eq p D ups ns NP NEl AP AEl DP DEl elem_rel); eassumption. }
   all:
     simpl_glu_rel;
     repeat split; mauto 3.
@@ -1520,7 +1394,7 @@ End Fixed_GCtx.
 #[export] Existing Instance glu_univ_elem_typ_morphism_iff1_Proper.
 #[export] Existing Instance glu_univ_elem_trm_morphism_iff1_Proper.
 #[export]
-Hint Resolve glu_nat_resp_wk glu_lvl_resp_wk glu_False_resp_wk : mctt.
+Hint Resolve glu_lvl_resp_wk glu_False_resp_wk : mctt.
 #[export]
 Hint Resolve glu_univ_elem_per_univ : mctt.
 #[export] Existing Instance glu_univ_elem_trm_morphism_iff3_Proper.
@@ -1531,7 +1405,6 @@ Ltac glu_univ_elem_econstructor :=
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
-
 
 Lemma glu_univ_elem_univ_simple_constructor : forall {i : nat},
     glu_univ_elem (S i) (univ_glu_typ_pred i Typeω@(S i)) (univ_glu_exp_pred i Typeω@(S i)) 𝕌ω@i.
@@ -1579,7 +1452,6 @@ Ltac apply_predicate_equivalence :=
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
-
 
 (** *** Simple Morphism instance for [glu_univ_elem] *)
 Add Parametric Morphism i : (glu_univ_elem i)
@@ -1665,7 +1537,7 @@ Proof.
   simpl.
   intros * Ha Ha'. gen P' El'.
   glu_univ_elem_induction Ha; intros.
-  9:{ basic_invert_glu_univ_elem Ha'.
+  8:{ basic_invert_glu_univ_elem Ha'.
       assert (D0 = D) by congruence; subst D0.
       destruct (app_split_eq _ _ _ _ x ltac:(congruence)) as [-> ->].
       assert (EE : elem_rel0 <~> elem_rel) by (eapply per_univ_elem_right_irrel; eassumption).
@@ -1774,7 +1646,6 @@ Ltac handle_functional_glu_univ_elem :=
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-
 Lemma glu_univ_elem_pi_clean_inversion1 : forall {i a ρ B in_rel P El},
   DF a ≈ a ∈ per_univ_elem i ↘ in_rel ->
   DG Πᵈ a ρ B ∈ glu_univ_elem i ↘ P ↘ El ->
@@ -1881,7 +1752,6 @@ Ltac invert_glu_univ_elem H :=
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-
 Lemma per_lvl_read_left : forall d d' s L, Dom d ≈ d' ∈ per_lvl -> Rnf ⇓ Levelᵈ d' in s ↘ L -> Rnf ⇓ Levelᵈ d in s ↘ L.
 Proof.
   intros * Hd%per_lvl_then_per_top Hr; destruct (Hd s) as (L' & HL & HL').
@@ -1925,7 +1795,7 @@ Proof.
   pose proof Hper.
   gen P El.
   per_univ_elem_induction Hper; intros; subst.
-  9:{ (** An inductive type: the same gluings of its telescopes, at the
+  8:{ (** An inductive type: the same gluings of its telescopes, at the
           related uniform parameters. *)
       assert (Hag : ind_fam_agree D nr (ind_nr D ups) ar (ind_ar D ups) dr (ind_dr ups)).
       { eapply (ind_fam_agree_of_evals i D ups ups'); [ exact H0 | | | ].
@@ -2116,7 +1986,7 @@ Proof.
   enough (forall a0, DF a0 ≈ a ∈ per_univ_elem i ↘ R -> exists P El, DG a ∈ glu_univ_elem i ↘ P ↘ El) by eauto.
   clear Hper; intros a0 Hper.
   per_univ_elem_induction Hper; intros.
-  9:{ (** An inductive type: its telescopes glue at their canonical
+  8:{ (** An inductive type: its telescopes glue at their canonical
           gluings, at the right uniform parameters. *)
       assert (Hpu : per_univ_elem i elem_rel (d_ind p (ups ++ ns)) (d_ind p (ups' ++ ns'))).
       { basic_per_univ_elem_econstructor; try eassumption.
@@ -2330,7 +2200,7 @@ Lemma glu_univ_elem_typ_monotone : forall i a P El,
       Δ ⊢ A[φ]ʷ ® P.
 Proof.
   simpl. glu_univ_elem_induction1; intros.
-  9:{ apply_equiv_left; eapply (ind_glu_typ_pred_wk p D ups ns NP NEl AP AEl DP DEl); eassumption. }
+  8:{ apply_equiv_left; eapply (ind_glu_typ_pred_wk p D ups ns NP NEl AP AEl DP DEl); eassumption. }
   all: saturate_kripke;
     handle_functional_glu_univ_elem;
     simpl in *;
@@ -2361,7 +2231,7 @@ Lemma glu_univ_elem_exp_monotone : forall i a P El,
       Δ ⊢ M[φ]ʷ : A[φ]ʷ ® m ∈ El.
 Proof.
   simpl. glu_univ_elem_induction1; intros.
-  9:{ apply_equiv_left; eapply (ind_glu_exp_pred_wk p D ups ns NP NEl AP AEl DP DEl elem_rel); eassumption. }
+  8:{ apply_equiv_left; eapply (ind_glu_exp_pred_wk p D ups ns NP NEl AP AEl DP DEl elem_rel); eassumption. }
   all: saturate_kripke;
     handle_functional_glu_univ_elem;
     simpl in *;
@@ -2393,7 +2263,7 @@ Proof.
     + do 2 rewrite exp_wk_wk; mauto 4.
 Qed.
 
-(** Transport along a context refinement, as in [glu_nat_resp_ctxsub]: a
+(** Transport along a context refinement, as in [glu_lvl_resp_ctxsub]: a
     Kripke weakening into [Δ] extends to one into [Γ] by [kripke_ctxsub], which
     is all three lemmas need. *)
 
@@ -2530,15 +2400,6 @@ Proof.
   pose proof (functional_read_typ _ _ _ _ HL' Hr) as ->; exact HL.
 Qed.
 
-Lemma glu_nat_resp_per : forall Γ M m, glu_nat Γ M m -> forall m', Dom m ≈ m' ∈ per_nat -> glu_nat Γ M m'.
-Proof.
-  induction 1 as [| ? ? ? ? HM Hg IH | ? ? ? ? Hb Hrb ]; intros m'' Hm; inversion Hm; subst.
-  - constructor; assumption.
-  - econstructor; [ eassumption | eapply IH; eassumption ].
-  - constructor; [ etransitivity; [ symmetry |]; eassumption |].
-    intros * Hk Hr; eapply Hrb; [ eassumption | eapply per_bot_read_left; eassumption ].
-Qed.
-
 Lemma glu_False_resp_per : forall Γ M m, glu_False Γ M m -> forall m', Dom m ≈ m' ∈ per_ne -> glu_False Γ M m'.
 Proof.
   intros * [? ? ? ? Hb Hrb] m'' Hm; inversion Hm; subst.
@@ -2553,7 +2414,7 @@ Lemma glu_univ_elem_trm_resp_per_elem : forall i P El a,
 Proof.
   simpl.
   glu_univ_elem_induction1; intros.
-  9:{ (** An inductive type: [glu_ind] moves along the canonical relation,
+  8:{ (** An inductive type: [glu_ind] moves along the canonical relation,
           given that the telescopes' gluings move along theirs. *)
       match goal with
       | HEl : El <∙> _, HE : El ?Γ0 ?A0 ?M0 ?m0 |- El ?Γ0 ?A0 ?M0 ?m1 =>
@@ -2642,7 +2503,7 @@ Proof.
       split; [ exact HMt | split; [ etransitivity; [ symmetry |]; exact Hmm' | exists Ps0; split; [ exact HPt |] ] ].
       intros Δ φ Ps' Hφ HPs'; pose proof (Hgl Δ φ Ps' Hφ HPs') as Hg.
       exact (glu_ind_resp_per p D ups NEl AEl DP DEl H1 Hcp Hadm HNe HAe HDe _ _ _ _ Hg _ _ (proj1 (Herel _ _) Hmm')). }
-  7:{ handle_per_univ_elem_irrel.
+  6:{ handle_per_univ_elem_irrel.
       apply_predicate_equivalence.
       destruct_by_head pi_glu_exp_pred.
       assert (PER elem_rel) by (eapply per_elem_PER; eassumption).
@@ -2681,8 +2542,6 @@ Proof.
       [ assumption
       | eapply per_lvl_at_trans; [ eapply per_lvl_at_sym; exact Hmm' | exact Hmm' ]
       | eapply glu_lvl_resp_per; [ eassumption | eapply per_lvl_at_lvl; exact Hmm' ] ].
-  (** [ℕ] *)
-  - split; [ assumption | eapply glu_nat_resp_per; [ eassumption | apply H1; eassumption ] ].
   - split; assumption.
   - split; [ assumption | eapply glu_False_resp_per; [ eassumption | apply H1; eassumption ] ].
   - destruct_by_head neut_glu_exp_pred.

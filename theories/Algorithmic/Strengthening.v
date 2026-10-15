@@ -563,7 +563,7 @@ Lemma per_subtyp_read : forall i a b,
     forall s, exists A B, Rtyp a in s ↘ A /\ Rtyp b in s ↘ B /\ ⊢anf A ⊆ B.
 Proof.
   induction 1; intros s.
-  1-5: try destruct (H s) as [L [HL HL']];
+  1-4: try destruct (H s) as [L [HL HL']];
     do 2 eexists; repeat split; [ econstructor; eassumption | econstructor; eassumption
                                     | first [ apply asnf_level; assumption | constructor; cbn; auto ] ].
   - do 2 eexists; repeat split; [ constructor | constructor | apply asnf_univ; assumption ].
@@ -675,13 +675,6 @@ Qed.
 Lemma exp_wk_sub_id_extend : forall M N φ, M[Id,,N][φ]ʷ = M[wk_q φ]ʷ[Id,,N[φ]ʷ].
 Proof.
   intros; rewrite exp_wk_sub_extend_head, exp_sub_wk_q_extend.
-  apply exp_sub_sb_eq; pointwise_solve.
-Qed.
-
-Lemma exp_wk_sub_natrec_succ : forall M φ,
-    M[Wk ⨟ Wk,,succ #1][wk_q (wk_q φ)]ʷ = M[wk_q φ]ʷ[Wk ⨟ Wk,,succ #1].
-Proof.
-  intros; rewrite exp_wk_sub, exp_sub_wk.
   apply exp_sub_sb_eq; pointwise_solve.
 Qed.
 
@@ -1218,22 +1211,6 @@ Proof.
       eapply subtyp_strengthen'; eassumption.
   - intros * Hass HΓf HT HW; cbn [nf_to_exp exp_wk] in HW.
     assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    apply wf_nat_inversion in HW.
-    eapply wf_exp_subtyp; [ apply wf_nat, HΓs | exact HT |].
-    eapply subtyp_strengthen_closed; [ exact Hass | exact HΓf | apply (wf_univ_large (i := 0)), HΓs | exact HT | reflexivity | exact HW ].
-  - intros * Hass HΓf HT HW; cbn [nf_to_exp exp_wk] in HW.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    apply wf_zero_inversion in HW.
-    eapply wf_exp_subtyp; [ apply wf_zero, HΓs | exact HT |].
-    eapply subtyp_strengthen_closed; [ exact Hass | exact HΓf | apply (wf_nat_large (i := 0)), HΓs | exact HT | reflexivity | exact HW ].
-  - intros W IH * Hass HΓf HT HW; cbn [nf_to_exp exp_wk] in HW.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
-    apply wf_succ_inversion in HW as [HW Hs].
-    assert (HWs : (Δ ++ Γ)%list ⊢ W : ℕ) by (eapply (IH _ _ 0); [ exact Hass | exact HΓf | apply wf_nat_large, HΓs | exact HW ]).
-    eapply wf_exp_subtyp; [ apply wf_succ, HWs | exact HT |].
-    eapply subtyp_strengthen_closed; [ exact Hass | exact HΓf | apply (wf_nat_large (i := 0)), HΓs | exact HT | reflexivity | exact Hs ].
-  - intros * Hass HΓf HT HW; cbn [nf_to_exp exp_wk] in HW.
-    assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
     apply wf_True_inversion in HW.
     eapply wf_exp_subtyp; [ apply wf_True, HΓs | exact HT |].
     eapply subtyp_strengthen_closed; [ exact Hass | exact HΓf | apply (wf_univ_large (i := 0)), HΓs | exact HT | reflexivity | exact HW ].
@@ -1361,34 +1338,6 @@ Proof.
     destruct (IH _ _ Hass HΓf HΓs HW) as (T0 & j & HuT & HT0 & Hs).
     eapply wf_exp_subtyp; [ exact HuT | exact HT |].
     eapply subtyp_strengthen'; eassumption.
-  - (** The [ℕ]-eliminator: the motive, the branches and the scrutinee by the
-        induction hypotheses, the scrutinee's type by [subtyp_strengthen']. *)
-    intros A' IHA z IHz s IHs u IHu Δ C Hass HΓf HΓs HW; cbn [ne_to_exp nf_to_exp exp_wk] in HW.
-    destruct (wf_natrec_inversion _ _ _ _ _ _ _ _ HW) as (Hz & Hs & Hu & HsC).
-    assert (HΓf2 : ⊢ (((tele_wk Δ ↑ ++ Γ ▹ A) ▹ ℕ) ▹ (A' : exp)[wk_q (wk_qn (length Δ) ↑)]ʷ)%list) by (gen_presups; assumption).
-    destruct (ctx_decomp HΓf2) as [HΓf1 [j HA]].
-    assert (Hass1 : tele_ass (ce_ass ℕ :: Δ)) by (constructor; [ eexists; reflexivity | exact Hass ]).
-    assert (HΓs1 : ⊢ ((Δ ++ Γ) ▹ ℕ)%list) by (eapply wf_ctx_extend, (wf_nat_large (i := 0)), HΓs).
-    assert (HAs : ((Δ ++ Γ) ▹ ℕ)%list ⊢ A' : Typeω@j)
-      by (eapply (IHA (ce_ass ℕ :: Δ) _ (S j)); [ exact Hass1 | exact HΓf1 | apply wf_typ, HΓs1 | exact HA ]).
-    destruct (IHu _ _ Hass HΓf HΓs Hu) as (T0 & j0 & HuT & HT0 & Hs0).
-    assert (Hus : (Δ ++ Γ)%list ⊢ u : ℕ).
-    { eapply wf_exp_subtyp; [ exact HuT | apply (wf_nat_large (i := 0)), HΓs |].
-      eapply subtyp_strengthen'; [ exact Hass | exact HΓf | exact HT0 | apply (wf_nat_large (i := 0)), HΓs | exact Hs0 ]. }
-    assert (HAz : (Δ ++ Γ)%list ⊢ (A' : exp)[Id,,zero] : Typeω@j)
-      by (eapply (exp_sub_single _ _ _ _ Typeω@j); [ exact HAs | apply wf_zero, HΓs ]).
-    assert (Hzs : (Δ ++ Γ)%list ⊢ z : (A' : exp)[Id,,zero])
-      by (eapply (IHz _ _ j); [ exact Hass | exact HΓf | exact HAz | rewrite exp_wk_sub_id_extend; exact Hz ]).
-    assert (Hass2 : tele_ass (ce_ass A' :: ce_ass ℕ :: Δ)) by (constructor; [ eexists; reflexivity | exact Hass1 ]).
-    assert (HΓs2 : ⊢ ((Δ ++ Γ) ▹ ℕ ▹ A')%list) by (eapply wf_ctx_extend; exact HAs).
-    assert (HAS : ((Δ ++ Γ) ▹ ℕ ▹ A')%list ⊢ (A' : exp)[Wk ⨟ Wk,,succ #1] : Typeω@j) by mauto 3.
-    assert (Hss : ((Δ ++ Γ) ▹ ℕ ▹ A')%list ⊢ s : (A' : exp)[Wk ⨟ Wk,,succ #1])
-      by (eapply (IHs (ce_ass A' :: ce_ass ℕ :: Δ) _ j);
-          [ exact Hass2 | exact HΓf2 | exact HAS | cbn [length wk_qn]; rewrite exp_wk_sub_natrec_succ; exact Hs ]).
-    exists ((A' : exp)[Id,,u]), j; split; [| split ].
-    + eapply wf_natrec; eassumption.
-    + eapply (exp_sub_single _ _ _ _ Typeω@j); [ exact HAs | exact Hus ].
-    + rewrite exp_wk_sub_id_extend; exact HsC.
   - intros A' IHA u IHu Δ C Hass HΓf HΓs HW; cbn [ne_to_exp nf_to_exp exp_wk] in HW.
     destruct (wf_exfalso_inversion _ _ _ _ _ _ HW) as ([j HA] & Hu & HsC).
     assert (HΓf1 : ⊢ ((tele_wk Δ ↑ ++ Γ ▹ A) ▹ ⊥)%list) by (gen_presups; assumption).
@@ -1509,8 +1458,8 @@ Proof.
     destruct (List.rev ch) as [| x pre] eqn:Er.
     + apply (f_equal (@List.rev _)) in Er; rewrite List.rev_involutive in Er; cbn in Er; subst ch.
       unfold qname_term in *; cbn [q_unit q_chain member_ref] in *.
-      apply wf_zero_inversion in HW.
-      exists ℕ, 0; split; [ apply wf_zero, HΓs | split; [ apply wf_nat_large, HΓs | exact HW ] ].
+      apply wf_true_inversion in HW.
+      exists ⊤, 0; split; [ apply wf_true, HΓs | split; [ apply wf_True_large, HΓs | exact HW ] ].
     + apply (f_equal (@List.rev _)) in Er; rewrite List.rev_involutive in Er; cbn in Er; subst ch.
       change (qname_mk fp (List.rev pre ++ x :: nil)) with (qname_app (qname_mk fp (List.rev pre)) (x :: nil)) in *.
       rewrite qname_term_snoc in *.

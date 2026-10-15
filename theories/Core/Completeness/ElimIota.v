@@ -17,7 +17,7 @@ From Mctt.Core.Syntactic Require Import Substitution Members Inductives.
 From Mctt.Core.Syntactic.System Require Import Definitions Scoping IndSyntax GlobalPresup IndTyping MemberLemmas.
 From Mctt.Core.Completeness Require Import
   LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases UnitCases InstanceCases GlobalSem MemberReps
-  VariableCases FunctionCases LevelCases IndSem TeleSem IndCases NatCases SubtypingCases ElimCases.
+  VariableCases FunctionCases LevelCases IndSem TeleSem IndCases SubtypingCases ElimCases.
 From Mctt.Core.Semantic Require Import Realizability IndPER IndElim Evaluation.Modules.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
@@ -185,7 +185,7 @@ Lemma brs_sub_of_wk : forall Bs φ, ElimCases.brs_sub Bs (sb_of_wk φ) = brs_wk 
 Proof. intros; unfold ElimCases.brs_sub, brs_wk; apply List.map_ext; intros b; f_equal; apply exp_sub_qn_of_wk. Qed.
 
 Lemma fe_apps : forall m args r1 r2, $*| m & args | gc_deps ⍮ gc_stack ↘ r1 -> $*| m & args | gc_deps ⍮ gc_stack ↘ r2 -> r1 = r2.
-Proof. intros * H1 H2; exact (proj1 (proj2 (proj2 (proj2 (proj2 (@functional_eval gc_deps gc_stack))))) _ _ _ H1 _ H2). Qed.
+Proof. intros * H1 H2; exact (proj1 (proj2 (proj2 (proj2 (@functional_eval gc_deps gc_stack)))) _ _ _ H1 _ H2). Qed.
 
 Section Iota.
   Variable (Γ : ctx) (p : qname) (D : ind_decl) (Us Ns As : list exp) (c : String.string) (gs : list carg)
@@ -269,7 +269,7 @@ Section Iota.
     assert (HSs : ⊨ cargs_strat gs1 ++ ind_params D)
       by (rewrite (astrat_prefix gs1 gs2), <- Heq; apply (sd_strat _ HDc _ _ _ Hcon); rewrite Heq, cargs_nonrec_app, List.length_app; lia).
     destruct (closed_app_sem _ _ HSa HSs HΓ) as [HSΓ _]; rewrite <- List.app_assoc in HSΓ.
-    pose proof (gsub_wk _ _ _ (cargs_wk_ext D HD Hc p Hl Γ HΓ Us HUl (List.repeat d_zero (ind_nu D)) (List.repeat_length _ _) c gs Hcon gs1 gs2 Heq) HpΓ HSΓ) as G0.
+    pose proof (gsub_wk _ _ _ (cargs_wk_ext D HD Hc p Hl Γ HΓ Us HUl (List.repeat d_true (ind_nu D)) (List.repeat_length _ _) c gs Hcon gs1 gs2 Heq) HpΓ HSΓ) as G0.
     eapply gsub_eq; [ exact (gsub_comp _ _ _ _ _ G0 HΓ Hgv Hgl) |].
     rewrite <- (cargs_sub_firstn gs1 σP As).
     apply cargs_sub_pat; rewrite List.length_firstn; lia.
@@ -1024,8 +1024,7 @@ Section Iota.
     replace (u0 ++ ns' ++ as') with ((u0 ++ ns') ++ as') in EB, Eih by (rewrite <- List.app_assoc; reflexivity).
     rewrite (skipn_app_exact (u0 ++ ns') as' _ Hnp) in EB, Eih.
     rewrite (firstn_app_exact (u0 ++ ns') as' _ Hnp), (skipn_app_exact u0 ns' _ Hu0l) in EB.
-    pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2
-                  (@functional_eval gc_deps gc_stack)))))))))))))) _ _ _ _ _ _ _ Eih _ Ee) as ->.
+    pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval gc_deps gc_stack))))))))))))) _ _ _ _ _ _ _ Eih _ Ee) as ->.
     (** The branch's environments. *)
     destruct (sem_ctx_per_ctx_env (HBc c gs Hcon)) as [RB HRB].
     assert (HPB : PER RB) by (eapply per_env_PER; exact HRB).

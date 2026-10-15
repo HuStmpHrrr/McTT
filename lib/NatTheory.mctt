@@ -3,6 +3,7 @@
    loaded once each. *)
 module NatTheory where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; zeroNeSucc)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Algebra use (plusComm)
@@ -13,7 +14,7 @@ import Prelude›Function›Iter as Iter
 def iterSucc : ∀ (n : ℕ) (m : ℕ) →
     Eq (Iter.iter 0l ℕ (λ (x : ℕ) → succ x) n m) (plus n m) ≔
   λ (n : ℕ) (m : ℕ) →
-    rec n return x . Eq (Iter.iter 0l ℕ (λ (y : ℕ) → succ y) x m) (plus x m)
+    elim n return x . Eq (Iter.iter 0l ℕ (λ (y : ℕ) → succ y) x m) (plus x m)
     | zero ⇒ refl m
     | succ p, ih ⇒ ih
     end

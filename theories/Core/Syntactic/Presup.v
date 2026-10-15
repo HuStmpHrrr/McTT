@@ -7,7 +7,7 @@
     [presup_global].
 
     These statements come after [sub_eq_preserves_exp], because
-    [wf_exp_eq_natrec_cong] lets the motive vary: the equation is at
+    [wf_exp_eq_exfalso_cong] lets the motive vary: the equation is at
     [A[Id ,, M]], while the right-hand side is naturally typed at
     [A'[Id ,, M']], and [sub_eq_preserves_exp] bridges the two.  That lemma is
     about typing derivations only, so it is proved by induction on [wf_exp]
@@ -71,31 +71,9 @@ Proof.
                        edestruct H as [HL HR]; [ eassumption | eassumption | eassumption | first [ exact HL | exact HR ] ]
                    end ].
 
-  (** [rec], right.  The motive varies, so the eliminator has to be built at
+  (** [efq], right.  The motive varies, so the eliminator has to be built at
       [A'[Id ,, M']] and then transported twice: along [Id ,, M' ≈ Id ,, M] by
       [sub_eq_preserves_exp], and along [A' ≈ A] by [sub_preserves_wf]. *)
-  - assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ ℕ) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,zero : Γ ▹ ℕ) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M : Γ ▹ ℕ) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M' : Γ ▹ ℕ) by mauto 2.
-    assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A) by mauto 2.
-    assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A') by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢s Wk ⨟ Wk,,succ #1 : Γ ▹ ℕ) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[Id,,zero] ≈ A'[Id,,zero] : Typeω@i) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ MZ' : A'[Id,,zero]) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ A[Wk ⨟ Wk,,succ #1] ≈ A'[Wk ⨟ Wk,,succ #1] : Typeω@i) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS' : A'[Wk ⨟ Wk,,succ #1]) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A' ⊢s Id : Γ ▹ ℕ ▹ A) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A' ⊢ MS' : A'[Wk ⨟ Wk,,succ #1]) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ rec M' return A' | zero -> MZ' | succ -> MS' end : A'[Id,,M']) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' ≈ M : ℕ) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M' ≈ Id,,M : Γ ▹ ℕ) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M'] ≈ A'[Id,,M] : Typeω@i) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M] ≈ A[Id,,M] : Typeω@i) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[Id,,M] : Typeω@i) by mauto 2.
-    eapply wf_conv; [ eassumption | eassumption | mauto 2 ].
-
-  (** [efq], right.  As for [rec], with no branches to transport. *)
   - assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ ⊥) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M : Γ ▹ ⊥) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M' : Γ ▹ ⊥) by mauto 2.
@@ -161,18 +139,6 @@ Proof.
   (** [let module], left: the body's type is a type, by presupposition. *)
   - assert (exists j, Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Typeω@j) as [j] by mauto 2 using presup_exp_typ.
     eapply wf_let_mod; eauto using wf_unit_eq_refl_left.
-
-  (** [rec]-[succ], right.  The right-hand side is a double substitution, and
-      the type it gets from [wf_exp] is the motive under the step
-      substitution — which is the type of the equation only after
-      [exp_sub_natrec_step]. *)
-  - assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ ℕ) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M : Γ ▹ ℕ) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ rec M return A | zero -> MZ | succ -> MS end : A[Id,,M]) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M,,rec M return A | zero -> MZ | succ -> MS end : Γ ▹ ℕ ▹ A) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ MS[Id,,M,,rec M return A | zero -> MZ | succ -> MS end]
-              : A[Wk ⨟ Wk,,succ #1][Id,,M,,rec M return A | zero -> MZ | succ -> MS end]) as H' by mauto 2.
-    rewrite exp_sub_natrec_step in H'; assumption.
 
   (** [δ], right: the generalized body, which [presup_global] types. *)
   - eapply wf_glob_body; eassumption.

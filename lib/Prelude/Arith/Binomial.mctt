@@ -1,6 +1,7 @@
 (* Binomial coefficients [choose n k], computed by Pascal's recursion. *)
 module Prelude›Arith›Binomial where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Plus use (plus)
 
 (* [choose n k] is the number of [k]-element subsets of an [n]-element set.
@@ -9,11 +10,11 @@ import Prelude›Arith›Plus use (plus)
    [plus (choose n k) (choose n (succ k))].  The recursion on [n] returns the
    whole row as a function, so both equations hold by computation. *)
 def choose (n : ℕ) (k : ℕ) : ℕ ≔
-  (rec n return y . (∀ (j : ℕ) → ℕ)
+  (elim n return y . (∀ (j : ℕ) → ℕ)
    | zero ⇒ λ (j : ℕ) →
-       rec j return z . ℕ | zero ⇒ 1 | succ q, s ⇒ 0 end
+       elim j return z . ℕ | zero ⇒ 1 | succ q, s ⇒ 0 end
    | succ p, r ⇒ λ (j : ℕ) →
-       rec j return z . ℕ | zero ⇒ 1 | succ q, s ⇒ plus (r q) (r (succ q)) end
+       elim j return z . ℕ | zero ⇒ 1 | succ q, s ⇒ plus (r q) (r (succ q)) end
    end) k
 end
 

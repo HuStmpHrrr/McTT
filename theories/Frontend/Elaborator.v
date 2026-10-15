@@ -177,17 +177,7 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
       let* N := elab S o2 in
       eok (maxl M N)
   | Cst.nat => eok ℕ
-  | Cst.zero => eok zero
   | Cst.num n => eok (a_nlit n)
-  | Cst.succ o =>
-      let* M := elab S o in
-      eok (succ M)
-  | Cst.natrec on mx om oz sx sr os =>
-      let* N := elab S on in
-      let* A := elab (en_var mx :: S) om in
-      let* MZ := elab S oz in
-      let* MS := elab (en_var sr :: en_var sx :: S) os in
-      eok (rec N return A | zero -> MZ | succ -> MS end)
   | Cst.true_ty => eok ⊤
   | Cst.true_tm => eok ⋆
   | Cst.false_ty => eok ⊥

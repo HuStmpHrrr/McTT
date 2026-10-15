@@ -10,6 +10,7 @@
    public laws read them at enough fuel ([Laws]). *)
 module Prelude›Arith›Binary where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (absurd)
 import Prelude›Arith›Equality use (Eq; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
@@ -32,7 +33,7 @@ import Prelude›Arith›Induction use (twoStepInd)
    by conversion.  The flag is tested with [pick], whose branches are only
    evaluated once chosen. *)
 def half (n : ℕ) : ℕ ≔
-  (rec n return y . (∀ (b : ℕ) → ℕ)
+  (elim n return y . (∀ (b : ℕ) → ℕ)
    | zero ⇒ λ (b : ℕ) → 0
    | succ p, r ⇒ λ (b : ℕ) →
        pick b (λ (u : ℕ) → r 1) (λ (u : ℕ) → succ (r 0))
@@ -42,7 +43,7 @@ end
 (* The low bit of [n], 0 or 1.  The flag [b] is flipped at each step, so
    [bit (succ (succ n))] is [bit n] by conversion. *)
 def bit (n : ℕ) : ℕ ≔
-  (rec n return y . (∀ (b : ℕ) → ℕ)
+  (elim n return y . (∀ (b : ℕ) → ℕ)
    | zero ⇒ λ (b : ℕ) → b
    | succ p, r ⇒ λ (b : ℕ) → pick b (λ (u : ℕ) → r 1) (λ (u : ℕ) → r 0)
    end) 0
@@ -71,7 +72,7 @@ end
 
 theorem halfDouble : ∀ (n : ℕ) → Eq (half (double n)) n ≔
   λ (n : ℕ) →
-    rec n return x . Eq (half (double x)) x
+    elim n return x . Eq (half (double x)) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -79,7 +80,7 @@ end
 
 theorem bitDouble : ∀ (n : ℕ) → Eq (bit (double n)) 0 ≔
   λ (n : ℕ) →
-    rec n return x . Eq (bit (double x)) 0
+    elim n return x . Eq (bit (double x)) 0
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -87,7 +88,7 @@ end
 
 theorem halfSuccDouble : ∀ (n : ℕ) → Eq (half (succ (double n))) n ≔
   λ (n : ℕ) →
-    rec n return x . Eq (half (succ (double x))) x
+    elim n return x . Eq (half (succ (double x))) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -95,7 +96,7 @@ end
 
 theorem bitSuccDouble : ∀ (n : ℕ) → Eq (bit (succ (double n))) 1 ≔
   λ (n : ℕ) →
-    rec n return x . Eq (bit (succ (double x))) 1
+    elim n return x . Eq (bit (succ (double x))) 1
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -104,7 +105,7 @@ end
 (* [double n] is [n + n]. *)
 theorem doublePlus : ∀ (n : ℕ) → Eq (double n) (plus n n) ≔
   λ (n : ℕ) →
-    rec n return x . Eq (double x) (plus x x)
+    elim n return x . Eq (double x) (plus x x)
     | zero ⇒ ⋆
     | succ p, ih ⇒
         trans (succ (double p)) (succ (plus p p)) (plus p (succ p)) ih
@@ -139,7 +140,7 @@ private module Digits where
 
 (* Digit [i] of [n]: the low bit after [i] halvings. *)
 def digitAt (i : ℕ) : ∀ (n : ℕ) → ℕ ≔
-  rec i return y . (∀ (n : ℕ) → ℕ)
+  elim i return y . (∀ (n : ℕ) → ℕ)
   | zero ⇒ λ (n : ℕ) → bit n
   | succ j, r ⇒ λ (n : ℕ) → r (half n)
   end
@@ -148,7 +149,7 @@ end
 (* The number written by the first [k] digits of [c]: twice the number
    written by the digits after the first, plus the first. *)
 def readFrom (k : ℕ) : ∀ (c : Bits) → ℕ ≔
-  rec k return y . (∀ (c : Bits) → ℕ)
+  elim k return y . (∀ (c : Bits) → ℕ)
   | zero ⇒ λ (c : Bits) → 0
   | succ p, r ⇒ λ (c : Bits) →
       plus (double (r (λ (i : ℕ) → c (succ i)))) (c 0)
@@ -164,7 +165,7 @@ end
    of [x] to the [half n], times [x] when the low bit of [n] is set.  It
    stops when [n] reaches [0]. *)
 def powFrom (f : ℕ) : ∀ (x : ℕ) (n : ℕ) → ℕ ≔
-  rec f return y . (∀ (x : ℕ) (n : ℕ) → ℕ)
+  elim f return y . (∀ (x : ℕ) (n : ℕ) → ℕ)
   | zero ⇒ λ (x : ℕ) (n : ℕ) → 1
   | succ g, r ⇒ λ (x : ℕ) (n : ℕ) →
       pick n (λ (u : ℕ) → 1)
@@ -175,7 +176,7 @@ end
 (* Fuel [succ p] is enough for [n], so fuel [p] is enough for its half. *)
 lemma halfFuel : ∀ (n : ℕ) (p : ℕ) (h : Le n (succ p)) → Le (half n) p ≔
   λ (n : ℕ) (p : ℕ) →
-    rec n return x . (∀ (h : Le x (succ p)) → Le (half x) p)
+    elim n return x . (∀ (h : Le x (succ p)) → Le (half x) p)
     | zero ⇒ λ (h : ⊤) → ⋆
     | succ m, s ⇒ λ (h : Le m p) → leTrans (half (succ m)) m p (halfLe m) h
     end
@@ -183,7 +184,7 @@ end
 
 lemma digitLe : ∀ (i : ℕ) (n : ℕ) → Le (digitAt i n) 1 ≔
   λ (i : ℕ) →
-    rec i return x . (∀ (n : ℕ) → Le (digitAt x n) 1)
+    elim i return x . (∀ (n : ℕ) → Le (digitAt x n) 1)
     | zero ⇒ λ (n : ℕ) → bitLe n
     | succ j, ih ⇒ λ (n : ℕ) → ih (half n)
     end
@@ -194,10 +195,10 @@ end
 lemma readDigits : ∀ (k : ℕ) (n : ℕ) (h : Le n k) →
     Eq (readFrom k (λ (i : ℕ) → digitAt i n)) n ≔
   λ (k : ℕ) →
-    rec k return x . (∀ (n : ℕ) (h : Le n x) →
-                        Eq (readFrom x (λ (i : ℕ) → digitAt i n)) n)
+    elim k return x . (∀ (n : ℕ) (h : Le n x) →
+                         Eq (readFrom x (λ (i : ℕ) → digitAt i n)) n)
     | zero ⇒ λ (n : ℕ) →
-        rec n return m . (∀ (h : Le m 0) → Eq 0 m)
+        elim n return m . (∀ (h : Le m 0) → Eq 0 m)
         | zero ⇒ λ (h : ⊤) → ⋆
         | succ m, s ⇒ λ (h : ⊥) → h
         end
@@ -215,7 +216,7 @@ end
 lemma countLe : ∀ (n : ℕ) (k : ℕ) →
     Le (sumTo (λ (i : ℕ) → digitAt i n) k) k ≔
   λ (n : ℕ) (k : ℕ) →
-    rec k return x . Le (sumTo (λ (i : ℕ) → digitAt i n) x) x
+    elim k return x . Le (sumTo (λ (i : ℕ) → digitAt i n) x) x
     | zero ⇒ ⋆
     | succ p, ih ⇒
         lePlusMono (digitAt p n) 1 (sumTo (λ (i : ℕ) → digitAt i n) p) p
@@ -227,12 +228,12 @@ end
 lemma timesPow : ∀ (b : ℕ) (h : Le b 1) (x : ℕ) (y : ℕ) →
     Eq (times b x y) (mult (pow x b) y) ≔
   λ (b : ℕ) →
-    rec b return k . (∀ (h : Le k 1) (x : ℕ) (y : ℕ) →
-                        Eq (times k x y) (mult (pow x k) y))
+    elim b return k . (∀ (h : Le k 1) (x : ℕ) (y : ℕ) →
+                         Eq (times k x y) (mult (pow x k) y))
     | zero ⇒ λ (h : ⊤) (x : ℕ) (y : ℕ) → sym (mult 1 y) y (oneMult y)
     | succ c, ih ⇒
-        rec c return k . (∀ (h : Le (succ k) 1) (x : ℕ) (y : ℕ) →
-                            Eq (times (succ k) x y) (mult (pow x (succ k)) y))
+        elim c return k . (∀ (h : Le (succ k) 1) (x : ℕ) (y : ℕ) →
+                             Eq (times (succ k) x y) (mult (pow x (succ k)) y))
         | zero ⇒ λ (h : ⊤) (x : ℕ) (y : ℕ) →
             cong (λ (z : ℕ) → mult z y) x (mult x 1)
               (sym (mult x 1) x (multOne x))
@@ -250,15 +251,15 @@ end
 lemma powFromPow : ∀ (x : ℕ) (f : ℕ) (n : ℕ) (h : Le n f) →
     Eq (powFrom f x n) (pow x n) ≔
   λ (x : ℕ) (f : ℕ) →
-    rec f return g . (∀ (n : ℕ) (h : Le n g) → Eq (powFrom g x n) (pow x n))
+    elim f return g . (∀ (n : ℕ) (h : Le n g) → Eq (powFrom g x n) (pow x n))
     | zero ⇒ λ (n : ℕ) →
-        rec n return m . (∀ (h : Le m 0) → Eq 1 (pow x m))
+        elim n return m . (∀ (h : Le m 0) → Eq 1 (pow x m))
         | zero ⇒ λ (h : ⊤) → ⋆
         | succ m, s ⇒ λ (h : ⊥) → absurd (Eq 1 (pow x (succ m))) h
         end
     | succ g, ih ⇒ λ (n : ℕ) →
-        rec n return m . (∀ (h : Le m (succ g)) →
-                            Eq (powFrom (succ g) x m) (pow x m))
+        elim n return m . (∀ (h : Le m (succ g)) →
+                             Eq (powFrom (succ g) x m) (pow x m))
         | zero ⇒ λ (h : ⊤) → ⋆
         | succ m, s ⇒ λ (h : Le m g) →
             let k ≔ succ m;

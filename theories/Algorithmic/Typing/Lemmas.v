@@ -512,15 +512,6 @@ Proof.
     assert (Γ ⊢ B : Typeω@(max i j)) by mauto 3 using lift_exp_max_left.
     assert (Γ ⊢ A ⊆ B) by mauto 2 using alg_subtyping_sound.
     mauto 3.
-  - assert (Γ ⊢ ℕ : Typeω@0) by mauto 2.
-    assert (⊢ Γ ▹ ℕ) by mauto 2.
-    lift_univ_at (Γ ▹ ℕ) A u.
-    assert (⊢ Γ ▹ ℕ ▹ A) by mauto 3.
-    assert (Γ ⊢ M : ℕ) by mauto 2.
-    assert (Γ ⊢ A[Id,,zero] : Typeω@(unf_large u)) by mauto 3.
-    assert (Γ ▹ ℕ ▹ A ⊢ A[Wk ⨟ Wk,,succ #1] : Typeω@(unf_large u)) by mauto 3.
-    assert (Γ ⊢ A[Id,,M] ≈ B : Typeω@(unf_large u)) as <- by mauto 4 using soundness_ty'.
-    mauto 4.
   - assert (Γ ⊢ ⊥ : Typeω@0) by mauto 2.
     assert (⊢ Γ ▹ ⊥) by mauto 2.
     lift_univ_at (Γ ▹ ⊥) A u.
@@ -746,11 +737,6 @@ Proof.
     assert (Γ ⊢ Type⟨succl M⟩ : Typeω@0)
       by (eapply wf_univ_large_tm; [ assumption | eapply wf_succl; exact HMl ]).
     eapply idempotent_nbe_ty; eassumption.
-  - assert (Γ ⊢ ℕ : Typeω@0) by mauto 3.
-    assert (Γ ⊢ M : ℕ) by mauto 3 using alg_type_check_sound.
-    assert (⊢ Γ ▹ ℕ) by mauto 3.
-    lift_univ_sound (Γ ▹ ℕ) A u.
-    f_equiv; mautosolve 4.
   - assert (Γ ⊢ ⊥ : Typeω@0) by mauto 3.
     assert (Γ ⊢ M : ⊥) by mauto 3 using alg_type_check_sound.
     assert (⊢ Γ ▹ ⊥) by mauto 3.
@@ -950,9 +936,8 @@ Qed.
     is not a subderivation, but whose subject has fewer of them. *)
 Fixpoint exp_lets (M : exp) : nat :=
   match M with
-  | a_succ M | a_succl M | a_univ M => exp_lets M
+  | a_succl M | a_univ M => exp_lets M
   | a_maxl M N => exp_lets M + exp_lets N
-  | a_natrec A MZ MS M => exp_lets A + exp_lets MZ + exp_lets MS + exp_lets M
   | a_exfalso A M => exp_lets A + exp_lets M
   | a_elim _ A Bs M =>
       S (exp_lets A) +
@@ -1030,7 +1015,7 @@ Proof. induction Ψ; intros; cbn; [| rewrite IHΨ ]; lia. Qed.
 Lemma body_ctx_lets : forall Φ, ctx_lets (body_ctx Φ) <= gmod_lets Φ.
 Proof.
   induction Φ as [| Φ IH x [b pv A [M |] | pm U | ? ? ? | ? ? ? ?] | Φ IH c its ]; cbn; rewrite ?ctx_lets_app; [ lia .. |].
-  enough (ctx_lets (List.repeat (ce_ass a_nat) (List.length its)) = 0) by lia.
+  enough (ctx_lets (List.repeat (ce_ass a_True) (List.length its)) = 0) by lia.
   induction (List.length its); cbn; auto.
 Qed.
 
@@ -1421,7 +1406,7 @@ Proof.
   all: try (lazymatch goal with |- _ ⊢a ℓ ≔ _ in _ ⟸ _ => fail | |- _ ⊢a a_elim _ _ _ _ ⟸ _ => fail | _ => clear IHn end).
   all: match goal with |- _ ⊢a _ ⟸ _ =>
          gen_presups;
-         (** A universe, [ℕ], [⊤] and [⊥] infer their own universe. *)
+         (** A universe, [⊤] and [⊥] infer their own universe. *)
          try solve [ eapply alg_type_check_suniv;
                      [ assumption | mauto 3 | constructor | cbn; apply lvl_le_lit; lia ]
                    | eapply alg_type_check_typ_of;
@@ -1459,7 +1444,7 @@ Proof.
       of the derivation, so the body's derivation is moved to [Γ ▸ A' ≔ M] by
       refinement.  That derivation is no subderivation, but its subject has
       fewer unannotated [let]s, which is what the outer induction is for. *)
-  13:{ match goal with Hc : Γ ⊢a M ⟸ A |- _ => inversion Hc as [? A' ? ? HMi HMs]; subst end.
+  10:{ match goal with Hc : Γ ⊢a M ⟸ A |- _ => inversion Hc as [? A' ? ? HMi HMs]; subst end.
       assert (Γ ⊢ M : A') by mauto 3 using alg_type_infer_sound.
       assert (exists k, Γ ⊢ A' : Typeω@k) as [k HA'] by (gen_presups; eauto 2).
       assert (Γ ⊢ A' : Typeω@(max i k)) by mauto 3 using lift_exp_max_right.
@@ -1487,7 +1472,7 @@ Proof.
       assert (Γ ⊢ W ⊆ C[Id,,M]) by (transitivity C'[Id,,M]; mauto 3).
       econstructor; [ eapply ati_let_infer; eauto | mauto 4 using alg_subtyping_complete ]. }
   (** A module [let], through its body. *)
-  14:{ destruct H0 as [HUa _].
+  11:{ destruct H0 as [HUa _].
        inversion H4 as [? C' ? ? HBi HBs]; subst.
        assert (Γ ▹ₘ U ⊢ B : C') by mauto 3 using alg_type_infer_sound.
        assert (exists k, Γ ▹ₘ U ⊢ C' : Typeω@k) as [k HCk] by (gen_presups; eauto 2).
@@ -1500,23 +1485,13 @@ Proof.
        assert (Γ ⊢ W ⊆ C[Id ,,ₘ me_lit U]) by (transitivity C'[Id ,,ₘ me_lit U]; mauto 3).
        econstructor; [ eapply ati_let_mod; eauto | mauto 4 using alg_subtyping_complete ]. }
   (** A member, at the normal form of its canonical type. *)
-  14:{ destruct H2 as [Hm _].
+  11:{ destruct H2 as [Hm _].
        destruct (soundness_ty H4) as [W [HW HWe]].
        econstructor; [ eapply ati_mem; eauto | mauto 4 using alg_subtyping_complete ]. }
   (** A member of an applied module, as its root's member applied. *)
-  14:{ destruct H1 as [Hm _].
+  11:{ destruct H1 as [Hm _].
        inversion H7 as [? A' ? ? Hi Hs]; subst.
        econstructor; [ eapply ati_mem_app; eauto | exact Hs ]. }
-  (** [zero] and [succ]. *)
-  - econstructor; mauto 3.
-    mauto using alg_subtyping_complete.
-  - econstructor; mauto 3.
-    mauto using alg_subtyping_complete.
-  - assert (exists UA u, Γ ▹ ℕ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i))
-        as [UA [u [? []]]] by mauto 3.
-    assert (Γ ⊢ A[Id,,M] : Typeω@i) by mauto 3.
-    assert (Γ ⊢ A[Id,,M] ≈ A[Id,,M] : Typeω@i) as [? [? _]]%completeness_ty by mauto 3.
-    econstructor; mauto using alg_subtyping_complete, soundness_ty'.
   - econstructor; mauto 3.
     mauto using alg_subtyping_complete.
   - assert (exists UA u, Γ ▹ ⊥ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i))

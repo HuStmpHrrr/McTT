@@ -3,6 +3,8 @@ import Lib›Nowhere
 
 module Missing where
 
+import Prelude›Builtin›Nat
+
 eval 0 : ℕ
 
 end

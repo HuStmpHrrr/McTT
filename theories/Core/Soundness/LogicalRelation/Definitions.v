@@ -40,21 +40,6 @@ Notation "Γ ⊢s σ ® ρ ∈ R" := ((R Γ σ ρ : Prop) : (Prop : (Type : Type
 Notation "'DG' a ∈ R ↘ P ↘ El" := (R P El a : ((Prop : Type) : (Type : Type))) (at level 70, a at level 69, R constr, P constr, El constr).
 Notation "'EG' A ∈ R ↘ Sb " := (R Sb A : ((Prop : (Type : Type)) : (Type : Type))) (at level 70, A at level 69, R constr, Sb constr).
 
-Inductive glu_nat : ctx -> exp -> domain -> Prop :=
-| glu_nat_zero :
-  `{ Γ ⊢ M ≈ zero : ℕ ->
-     glu_nat Γ M zeroᵈ }
-| glu_nat_succ :
-  `{ Γ ⊢ M ≈ succ M' : ℕ ->
-     glu_nat Γ M' m' ->
-     glu_nat Γ M succᵈ m' }
-| glu_nat_neut :
-  `{ per_bot m m ->
-     (forall {Δ φ M'}, Δ ⊢k φ : Γ -> Rne m in length Δ ↘ M' -> Δ ⊢ M[φ]ʷ ≈ M' : ℕ) ->
-     glu_nat Γ M ⇑ a m }.
-
-Hint Constructors glu_nat : mctt.
-
 (** The gluing predicates take the ambient universe as a *term* [U].  It is
     the large universe of the tier, [Typeω@(ulvl i)]: [Typeω@i] in the large
     tier, and [Typeω@0] at every small index.  A small universe's index is the
@@ -105,12 +90,6 @@ Definition level_glu_exp_pred (n : nat) (U : typ) : glu_exp_pred :=
   fun Γ A M m => Γ ⊢ A ® level_glu_typ_pred n U /\ Dom m ≈ m ∈ per_lvl_at n /\ glu_lvl n Γ M m.
 #[global] Arguments level_glu_exp_pred n U Γ A M m/.
 
-Definition nat_glu_typ_pred (U : typ) : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ ℕ : U.
-#[global] Arguments nat_glu_typ_pred U Γ A/.
-
-Definition nat_glu_exp_pred (U : typ) : glu_exp_pred := fun Γ A M m => Γ ⊢ A ® nat_glu_typ_pred U /\ glu_nat Γ M m.
-#[global] Arguments nat_glu_exp_pred U Γ A M m/.
-
 Definition True_glu_typ_pred (U : typ) : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ ⊤ : U.
 #[global] Arguments True_glu_typ_pred U Γ A/.
 
@@ -119,8 +98,7 @@ Definition True_glu_typ_pred (U : typ) : glu_typ_pred := fun Γ A => Γ ⊢ A �
 Definition True_glu_exp_pred (U : typ) : glu_exp_pred := fun Γ A M m => Γ ⊢ A ® True_glu_typ_pred U /\ Γ ⊢ M : ⊤.
 #[global] Arguments True_glu_exp_pred U Γ A M m/.
 
-(** [⊥] has no canonical values, so its gluing is that of the neutrals of
-    [glu_nat]. *)
+(** [⊥] has no canonical values, so its gluing is that of its neutrals. *)
 Inductive glu_False : ctx -> exp -> domain -> Prop :=
 | glu_False_neut :
   `{ per_bot m m ->
@@ -467,12 +445,6 @@ Section Gluing.
           el_rel <∙> level_glu_exp_pred n (Typeω@(ulvl i)) ->
           DG Levelᵈ@n ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
-  | glu_univ_elem_core_nat :
-    `{ forall typ_rel el_rel,
-          typ_rel <∙> nat_glu_typ_pred (Typeω@(ulvl i)) ->
-          el_rel <∙> nat_glu_exp_pred (Typeω@(ulvl i)) ->
-          DG ℕᵈ ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
-
   | glu_univ_elem_core_True :
     `{ forall typ_rel el_rel,
           typ_rel <∙> True_glu_typ_pred (Typeω@(ulvl i)) ->
@@ -714,12 +686,6 @@ Section GluingInduction.
           El <∙> level_glu_exp_pred n (Typeω@(ulvl i)) ->
           motive i P El (Levelᵈ@n))
 
-      (case_nat :
-        forall i (P : glu_typ_pred) (El : glu_exp_pred),
-          P <∙> nat_glu_typ_pred (Typeω@(ulvl i)) ->
-          El <∙> nat_glu_exp_pred (Typeω@(ulvl i)) ->
-          motive i P El ℕᵈ)
-
       (case_True :
         forall i (P : glu_typ_pred) (El : glu_exp_pred),
           P <∙> True_glu_typ_pred (Typeω@(ulvl i)) ->
@@ -823,7 +789,6 @@ Section GluingInduction.
     - rewrite glu_univ_below_spec in * by assumption.
       eapply case_suniv; eauto.
     - eapply case_level; eassumption.
-    - eapply case_nat; eassumption.
     - eapply case_True; eassumption.
     - eapply case_False; eassumption.
     - eapply case_pi; eassumption.
@@ -998,8 +963,6 @@ Notation "'glu_sub_pred_equivalence'" := (@predicate_equivalence glu_sub_pred_ar
 Notation "Γ ⊢s σ ® ρ ∈ R" := ((R Γ σ ρ : Prop) : (Prop : (Type : Type))) (at level 70, σ at level 69, ρ at level 69, R constr).
 Notation "'DG' a ∈ R ↘ P ↘ El" := (R P El a : ((Prop : Type) : (Type : Type))) (at level 70, a at level 69, R constr, P constr, El constr).
 Notation "'EG' A ∈ R ↘ Sb " := (R Sb A : ((Prop : (Type : Type)) : (Type : Type))) (at level 70, A at level 69, R constr, Sb constr).
-#[export]
-Hint Constructors glu_nat : mctt.
 
 #[export]
 Hint Constructors glu_False : mctt.
@@ -1033,12 +996,12 @@ Ltac glu_univ_elem_induction_core HH ih :=
                  end
              end;
       revert HH; revert i P El a;
-      refine (glu_univ_elem_ind _ _ _ _ _ _ _ _ _ _);
+      refine (glu_univ_elem_ind _ _ _ _ _ _ _ _ _);
       (** The level case has one binder more than the other closed types: the
           sort of its type of levels. *)
       [ do 5 intro; do 3 glu_induction_hintro | do 5 intro; do 3 glu_induction_hintro
       | do 4 intro; do 2 glu_induction_hintro | do 3 intro; do 2 glu_induction_hintro
-      | do 3 intro; do 2 glu_induction_hintro | do 3 intro; do 2 glu_induction_hintro
+      | do 3 intro; do 2 glu_induction_hintro
       | do 12 intro; glu_induction_hintro; ih; do 6 glu_induction_hintro | do 5 intro; do 3 glu_induction_hintro
       | do 14 intro; do 15 glu_induction_hintro ]; cbv beta
   end.

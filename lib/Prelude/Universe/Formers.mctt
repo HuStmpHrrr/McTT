@@ -10,6 +10,7 @@
    universe at the [n]-th level, computed from the number [n]. *)
 module Prelude›Universe›Formers where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Universe›Levels use (ofNat)
 
 def Lift (u : Level) (v : Level) (A : Type@{u}) : Type@{maxl u v} ≔ A end
@@ -34,7 +35,7 @@ def Endo (u : Level) (A : Type@{u}) : Type@{u} ≔ ∀ (a : A) → A end
 (* [Fun u n A B] is the type of functions of [n] arguments in [A] into [B],
    computed by recursion on [n]. *)
 def Fun (u : Level) (n : ℕ) (A : Type@{u}) (B : Type@{u}) : Type@{u} ≔
-  rec n return y . Type@{u}
+  elim n return y . Type@{u}
   | zero ⇒ B
   | succ p, r ⇒ ∀ (a : A) → r
   end

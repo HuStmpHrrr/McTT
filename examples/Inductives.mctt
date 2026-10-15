@@ -13,6 +13,8 @@
    argument's own value.  [Climb] at the end has one. *)
 module Inductives where
 
+import Prelude›Builtin›Nat use (zero; succ)
+
 (* Lists: one uniform parameter, [A], one recursive argument, at [A]
    unchanged.  [List] is also a module over [A]: its members are the
    constructors [List.nil] and [List.cons], and the recursor [List.rec]. *)
@@ -93,7 +95,7 @@ inductive Tree (A : Type@0) : Type@0 where
 end
 
 def plus (m : ℕ) (n : ℕ) : ℕ :=
-  rec m return z . ℕ
+  elim m return z . ℕ
   | zero ⇒ n
   | succ k, r ⇒ succ r
   end
@@ -175,7 +177,7 @@ end
 
 (* The finite ordinals, and their limit, the first infinite one. *)
 def fin (n : ℕ) : Ord :=
-  rec n return z . Ord
+  elim n return z . Ord
   | zero ⇒ Ord.base
   | succ k, r ⇒ Ord.next r
   end

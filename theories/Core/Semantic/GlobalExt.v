@@ -38,7 +38,6 @@ Section GlobalExt.
 
   Lemma eval_ext :
     (forall M ρ m, ⟦ M ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ m -> ⟦ M ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ m) /\
-    (forall A MZ MS m ρ r, eval_natrec Θ1 Ξ1 A MZ MS m ρ r -> eval_natrec Θ2 Ξ2 A MZ MS m ρ r) /\
     (forall m n r, eval_app Θ1 Ξ1 m n r -> eval_app Θ2 Ξ2 m n r) /\
     (forall Ms ρ ms, eval_exps Θ1 Ξ1 Ms ρ ms -> eval_exps Θ2 Ξ2 Ms ρ ms) /\
     (forall m ns r, eval_apps Θ1 Ξ1 m ns r -> eval_apps Θ2 Ξ2 m ns r) /\
@@ -57,7 +56,6 @@ Section GlobalExt.
   Proof.
     apply (eval_mut_ind Θ1 Ξ1
              (fun M ρ m _ => ⟦ M ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ m)
-             (fun A MZ MS m ρ r _ => eval_natrec Θ2 Ξ2 A MZ MS m ρ r)
              (fun m n r _ => eval_app Θ2 Ξ2 m n r)
              (fun Ms ρ ms _ => eval_exps Θ2 Ξ2 Ms ρ ms)
              (fun m ns r _ => eval_apps Θ2 Ξ2 m ns r)

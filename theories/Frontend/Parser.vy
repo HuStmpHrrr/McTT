@@ -19,7 +19,7 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 
 %token <loc*string> VAR
 %token <loc*nat> INT
-%token <loc> END LAMBDA NAT PI REC RETURN SUCC TYPE ZERO LET IN (* keywords *)
+%token <loc> END LAMBDA NAT PI RETURN TYPE LET IN (* keywords *)
 %token <loc> LEVEL SUCCL MAXL (* universe levels *)
 %token <loc*nat> LLIT (* a level literal, [<n>l] *)
 %token <loc*nat> LLITL (* a level literal, [<n>L] for [ω+n] *)
@@ -218,12 +218,6 @@ let obj :=
   | ~ = fnbinder; ~ = params; "->"; ~ = obj; { fold_params fnbinder params obj }
   | ~ = app_obj; <>
 
-  | REC; escr = obj; RETURN; mx = VAR; "."; em = obj;
-    "|"; ZERO; "=>"; ez = obj;
-    "|"; SUCC; sx = VAR; ","; sr = VAR; "=>"; ms = obj;
-    END; { Cst.natrec escr (snd mx) em ez (snd sx) (snd sr) ms }
-  | SUCC; ~ = obj; { Cst.succ obj }
-
   (* The level operations take atomic arguments, so that [maxl u v] is their
      join and not [maxl (u v)]. *)
   | SUCCL; m = atomic_obj; { Cst.succl m }
@@ -279,9 +273,8 @@ let atomic_obj :=
   | OMEGA; "*"; a = INT; { Cst.llit (snd a, 0) }
   | OMEGA; "*"; a = INT; "+"; b = INT; { Cst.llit (snd a, snd b) }
 
+  (* The type bound as [builtin natural], and a numeral of it. *)
   | NAT; { Cst.nat }
-  | ZERO; { Cst.zero }
-  (* A numeral: the natural numbers bound as [builtin natural], or [ℕ]. *)
   | n = INT; { Cst.num (snd n) }
 
   | TRUE_TY; { Cst.true_ty }
@@ -297,8 +290,6 @@ let atomic_obj :=
   (* Dot access binds tighter than application, so [X::Y.Z.foo] is one name
      and module arguments are parenthesised, as in [(X::Y.Z a b).foo]. *)
   | ~ = atomic_obj; "."; x = VAR; { Cst.proj atomic_obj (snd x) }
-  (* The recursor of an inductive type [X], [X.rec]: [rec] is a keyword. *)
-  | ~ = atomic_obj; "."; REC; { Cst.proj atomic_obj "rec"%string }
 
   | "("; ~ = obj; ")"; <>
 

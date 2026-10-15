@@ -20,8 +20,8 @@ Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 
 (** [nil] is reached by [sb_zero], which evaluates to [nil] in any environment
-    (a list environment reads [zeroᵈ] past its end). *)
-Definition sb_zero : sub := fun _ => se_exp a_zero.
+    (a list environment reads [⋆ᵈ] past its end). *)
+Definition sb_zero : sub := fun _ => se_exp a_true.
 
 Lemma eval_sub_zero_nil : forall {Θ Ξ} ρ, eval_sub Θ Ξ sb_zero ρ nil.
 Proof. intros * x; cbn; rewrite env_entry_ge by (cbn; lia); eexists; split; [ reflexivity | constructor ]. Qed.

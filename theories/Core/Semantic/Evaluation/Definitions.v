@@ -8,7 +8,6 @@ Import Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
 Reserved Notation "'⟦' M '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, M at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
-Reserved Notation "'⟦rec' m 'return' A | 'zero' -> MZ | 'succ' -> MS 'end' '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, A at level 69, MZ at level 69, MS at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'$|' m '&' n '|' Θ '⍮' Ξ '↘' r" (at level 70, m at level 69, n at level 69, Θ at level 69, Ξ at level 69, r at level 69).
 Reserved Notation "'⟦elim' m 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦ihs' vs 'of' gs 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
@@ -35,8 +34,8 @@ Definition fam_cod : exp := a_app (a_var 1) (a_var 0).
 
 (** * Evaluation of Expressions
 
-    The relations are mutually defined: evaluation of terms, its
-    [ℕ]-eliminator case and semantic application; evaluation of module
+    The relations are mutually defined: evaluation of terms, the
+    eliminator's cases and semantic application; evaluation of module
     expressions and the operations on module values (application, selection
     of a submodule or a member, along a chain); and the environment a body
     unit's members see.  All are relative to the global context [Θ ⍮ Ξ],
@@ -80,21 +79,6 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 (** A variable is read off the environment. *)
 | eval_exp_var :
   `( ⟦ #x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ρ x )
-(** [ℕ] is a value. *)
-| eval_exp_nat :
-  `( ⟦ ℕ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ℕᵈ )
-(** So is [zero]. *)
-| eval_exp_zero :
-  `( ⟦ zero ⟧ Θ ⍮ Ξ ⍮ ρ ↘ zeroᵈ )
-(** [succ] of the value of its argument. *)
-| eval_exp_succ :
-  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     ⟦ succ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ succᵈ m )
-(** The eliminator evaluates its scrutinee, then recurses on the value. *)
-| eval_exp_natrec :
-  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ rec M return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** [⊤] is a value. *)
 | eval_exp_True :
   `( ⟦ ⊤ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⊤ᵈ )
@@ -154,22 +138,6 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      $*| f & ns | Θ ⍮ Ξ ↘ r ->
      ⟦ a_mem H x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 where "'⟦' e '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_exp Θ Ξ e ρ r)
-with eval_natrec (Θ : gdeps) (Ξ : gstack) : exp -> exp -> exp -> domain -> env -> domain -> Prop :=
-(** At [zero], the base case. *)
-| eval_natrec_zero :
-  `( ⟦ MZ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ mz ->
-     ⟦rec zeroᵈ return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ mz )
-(** At a successor, the step case on the predecessor and the recursive result. *)
-| eval_natrec_succ :
-  `( ⟦rec b return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ MS ⟧ Θ ⍮ Ξ ⍮ ρ ↦ b ↦ r ↘ ms ->
-     ⟦rec succᵈ b return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ms )
-(** At a neutral, a neutral at the motive's instance. *)
-| eval_natrec_neut :
-  `( ⟦ MZ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ mz ->
-     ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑ b m ↘ a ->
-     ⟦rec ⇑ b m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a recᵈ m under ρ return A | zero -> mz | succ -> MS end )
-where "'⟦rec' m 'return' A | 'zero' -> MZ | 'succ' -> MS 'end' '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_natrec Θ Ξ A MZ MS m ρ r)
 (** The eliminator of an inductive type, on a value.  On a constructor at
     all its parameters and arguments, the branch of the constructor, with its
     non-uniform parameters, its arguments and the recursive results.  On a
@@ -468,7 +436,6 @@ with eval_benv (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 where "'⟦' Φ '⟧ᵇ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (eval_benv Θ Ξ ρ Φ ρ').
 
 Scheme eval_exp_mut_ind := Induction for eval_exp Sort Prop
-with eval_natrec_mut_ind := Induction for eval_natrec Sort Prop
 with eval_app_mut_ind := Induction for eval_app Sort Prop
 with eval_exps_mut_ind := Induction for eval_exps Sort Prop
 with eval_apps_mut_ind := Induction for eval_apps Sort Prop
@@ -486,7 +453,6 @@ with eval_shty_mut_ind := Induction for eval_shty Sort Prop
 with eval_ihty_mut_ind := Induction for eval_ihty Sort Prop.
 Combined Scheme eval_mut_ind from
   eval_exp_mut_ind,
-  eval_natrec_mut_ind,
   eval_app_mut_ind,
   eval_exps_mut_ind,
   eval_apps_mut_ind,
@@ -504,7 +470,7 @@ Combined Scheme eval_mut_ind from
   eval_ihty_mut_ind.
 
 #[export]
-Hint Constructors eval_exp eval_natrec eval_elim eval_ihs eval_ih eval_shty eval_ihty eval_app eval_exps eval_apps eval_modexp eval_appm eval_sel eval_selm
+Hint Constructors eval_exp eval_elim eval_ihs eval_ih eval_shty eval_ihty eval_app eval_exps eval_apps eval_modexp eval_appm eval_sel eval_selm
   eval_selc eval_selmc eval_benv : mctt.
 
 (** [eval_exp_var] with the value as a premise.  The value [ρ x] is a flexible
@@ -520,7 +486,7 @@ Proof. intros * <-; apply eval_exp_var. Qed.
     Evaluation of a substitution is pointwise: at every variable [x], [ρσ x]
     is the entry [σ x] denotes in [ρ]: the entry of a variable, the value of a
     term, or the value of a module expression.  Past its end [ρσ] reads the
-    term [zeroᵈ], so a result exists only when, from some index on, every
+    term [⋆ᵈ], so a result exists only when, from some index on, every
     [σ x] denotes it, for example as a variable past the end of [ρ]. *)
 Definition eval_sentry (Θ : gdeps) (Ξ : gstack) (e : sentry) (ρ : env) (d : dentry) : Prop :=
   match e with

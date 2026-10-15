@@ -53,42 +53,6 @@ Qed.
 #[export]
 Hint Resolve wf_univ_inversion wf_univ_lvl_inversion : mctt.
 
-Lemma wf_nat_inversion : forall Θ Ξ Γ A,
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.
-Proof.
-  intros * H.
-  dependent induction H; mautosolve 4.
-Qed.
-
-#[export]
-Hint Resolve wf_nat_inversion : mctt.
-
-Corollary wf_zero_inversion : forall Θ Ξ Γ A,
-    Θ ⍮ Ξ ⍮ Γ ⊢ zero : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ⊆ A.
-Proof.
-  intros * H.
-  dependent induction H;
-    try specialize (IHwf_exp eq_refl); mautosolve 4.
-Qed.
-
-#[export]
-Hint Resolve wf_zero_inversion : mctt.
-
-Corollary wf_succ_inversion : forall Θ Ξ Γ A M,
-    Θ ⍮ Ξ ⍮ Γ ⊢ succ M : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : ℕ /\ Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ⊆ A.
-Proof.
-  intros * H.
-  dependent induction H;
-    try specialize (IHwf_exp1 _ eq_refl);
-    destruct_conjs; mautosolve.
-Qed.
-
-#[export]
-Hint Resolve wf_succ_inversion : mctt.
-
 (** The level forms.  A level is of type [Level] up to subtyping, and so is
     every argument of [succl] and [maxl]. *)
 Lemma wf_level_inversion : forall Θ Ξ Γ A n,
@@ -153,22 +117,6 @@ Qed.
 
 #[export]
 Hint Resolve wf_maxl_inversion : mctt.
-
-Lemma wf_natrec_inversion : forall Θ Ξ Γ A M A' MZ MS,
-    Θ ⍮ Ξ ⍮ Γ ⊢ rec M return A' | zero -> MZ | succ -> MS end : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ MZ : A'[Id,,zero] /\
-    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A' ⊢ MS : A'[Wk ⨟ Wk,,succ #1] /\
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : ℕ /\
-    Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M] ⊆ A.
-Proof.
-  intros * H.
-  dependent induction H;
-    try (specialize (IHwf_exp1 _ _ _ _ eq_refl));
-    destruct_conjs; gen_core_presups; repeat split; mautosolve.
-Qed.
-
-#[export]
-Hint Resolve wf_natrec_inversion : mctt.
 
 Lemma wf_True_inversion : forall Θ Ξ Γ A,
     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : A ->

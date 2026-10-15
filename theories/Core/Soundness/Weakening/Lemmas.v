@@ -143,7 +143,7 @@ Qed.
 
 Hint Resolve kripke_preserves_exp kripke_preserves_exp_eq kripke_preserves_subtyp : mctt.
 
-(** [Typeω@i] and [ℕ] are closed, so transporting them is the identity, but
+(** [Typeω@i] is closed, so transporting them is the identity, but
     only up to reduction, which the [simple apply] of [eauto] does not
     perform. Compare [wk_preserves_typ] in [System.Lemmas]. *)
 
@@ -164,26 +164,6 @@ Corollary kripke_preserves_typ_eq : forall Γ Δ A A' φ i,
 Proof.
   intros.
   assert (Γ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (a_typ i) φ) by mauto 2.
-  assumption.
-Qed.
-
-Corollary kripke_preserves_nat : forall Γ Δ M φ,
-    Δ ⊢ M : ℕ ->
-    Γ ⊢k φ : Δ ->
-    Γ ⊢ M[φ]ʷ : ℕ.
-Proof.
-  intros.
-  assert (Γ ⊢ exp_wk M φ : exp_wk a_nat φ) by mauto 2.
-  assumption.
-Qed.
-
-Corollary kripke_preserves_nat_eq : forall Γ Δ M M' φ,
-    Δ ⊢ M ≈ M' : ℕ ->
-    Γ ⊢k φ : Δ ->
-    Γ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : ℕ.
-Proof.
-  intros.
-  assert (Γ ⊢ exp_wk M φ ≈ exp_wk M' φ : exp_wk a_nat φ) by mauto 2.
   assumption.
 Qed.
 
@@ -272,14 +252,6 @@ Hint Resolve kripke_preserves_exp_univ kripke_preserves_exp_eq_univ : mctt.
 (** The shapes the gluing predicates state a type in, each in the ambient
     universe of its index: the right-hand sides are closed, so they are their
     own transports — again invisible to [eauto]. *)
-Corollary kripke_preserves_univ_eq_nat : forall Γ Δ A φ u,
-    Δ ⊢ A ≈ ℕ : ulvl_tm u ->
-    Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ ℕ : ulvl_tm u.
-Proof.
-  intros; assert (Γ ⊢ A[φ]ʷ ≈ (ℕ : exp)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
-Qed.
-
 Corollary kripke_preserves_univ_eq_True : forall Γ Δ A φ u,
     Δ ⊢ A ≈ ⊤ : ulvl_tm u ->
     Γ ⊢k φ : Δ ->
@@ -320,13 +292,13 @@ Proof.
   intros; assert (Γ ⊢ A[φ]ʷ ≈ (Level : exp)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
 Qed.
 
-Hint Resolve kripke_preserves_univ_eq_nat kripke_preserves_univ_eq_True
+Hint Resolve kripke_preserves_univ_eq_True
              kripke_preserves_univ_eq_False kripke_preserves_univ_eq_typ
              kripke_preserves_univ_eq_suniv kripke_preserves_univ_eq_level : mctt.
 
-(** The two shapes the gluing predicates state a type in: [A ≈ Typeω@j] for the
-    universe and [A ≈ ℕ] for [ℕ].  Both right-hand sides are closed, so they are
-    their own transports — again invisible to [eauto]. *)
+(** The shapes the gluing predicates state a type in, such as [A ≈ Typeω@j]
+    for the universe.  The right-hand sides are closed, so they are their own
+    transports — again invisible to [eauto]. *)
 
 Corollary kripke_preserves_typ_eq_typ : forall Γ Δ A φ i j,
     Δ ⊢ A ≈ Typeω@j : Typeω@i ->
@@ -357,16 +329,6 @@ Corollary kripke_preserves_exp_eq_suniv : forall Γ Δ A A' φ t,
 Proof.
   intros.
   assert (Γ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (a_univ t) φ) by mauto 2.
-  assumption.
-Qed.
-
-Corollary kripke_preserves_typ_eq_nat : forall Γ Δ A φ i,
-    Δ ⊢ A ≈ ℕ : Typeω@i ->
-    Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ ℕ : Typeω@i.
-Proof.
-  intros.
-  assert (Γ ⊢ exp_wk A φ ≈ exp_wk a_nat φ : exp_wk (a_typ i) φ) by mauto 2.
   assumption.
 Qed.
 
@@ -401,10 +363,9 @@ Proof.
 Qed.
 
 Hint Resolve kripke_preserves_typ kripke_preserves_typ_eq
-             kripke_preserves_nat kripke_preserves_nat_eq
              kripke_preserves_level kripke_preserves_level_eq
              kripke_preserves_True kripke_preserves_False kripke_preserves_False_eq
-             kripke_preserves_typ_eq_typ kripke_preserves_typ_eq_nat
+             kripke_preserves_typ_eq_typ
              kripke_preserves_typ_eq_suniv kripke_preserves_exp_eq_suniv
              kripke_preserves_typ_eq_True kripke_preserves_typ_eq_False
              kripke_preserves_typ_eq_level : mctt.
@@ -536,13 +497,12 @@ Hint Resolve kripke_compose : mctt.
 Hint Resolve kripke_preserves_exp kripke_preserves_exp_eq kripke_preserves_subtyp : mctt.
 #[export]
 Hint Resolve kripke_preserves_typ kripke_preserves_typ_eq
-kripke_preserves_nat kripke_preserves_nat_eq
 kripke_preserves_level kripke_preserves_level_eq
-kripke_preserves_typ_eq_typ kripke_preserves_typ_eq_nat
+kripke_preserves_typ_eq_typ
 kripke_preserves_typ_eq_suniv kripke_preserves_exp_eq_suniv : mctt.
 #[export]
 Hint Resolve kripke_preserves_exp_univ kripke_preserves_exp_eq_univ
-kripke_preserves_univ_eq_nat kripke_preserves_univ_eq_True
+kripke_preserves_univ_eq_True
 kripke_preserves_univ_eq_False kripke_preserves_univ_eq_typ
 kripke_preserves_univ_eq_suniv kripke_preserves_univ_eq_level : mctt.
 #[export]

@@ -1,6 +1,8 @@
 (* Private members, used where they are declared. *)
 module Lib›Priv where
 
+import Prelude›Builtin›Nat use (succ)
+
 private def s : ℕ ≔ 7 end
 
 private def T : Type@0 ≔ ℕ end

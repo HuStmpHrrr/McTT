@@ -1,6 +1,8 @@
 (* A [let] with two annotated bindings, the second using the first. *)
 module LetDecl where
 
+import Prelude›Builtin›Nat use (succ)
+
 eval let n : ℕ ≔ 2;
          m : ℕ ≔ succ n
      in

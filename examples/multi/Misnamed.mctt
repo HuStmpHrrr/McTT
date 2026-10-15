@@ -3,6 +3,8 @@ import Lib›Wrong
 
 module Misnamed where
 
+import Prelude›Builtin›Nat
+
 eval 0 : ℕ
 
 end

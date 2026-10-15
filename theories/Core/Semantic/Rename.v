@@ -42,14 +42,11 @@ Section Rename.
 
   Fixpoint drn (d : domain) : domain :=
     match d with
-    | d_nat => d_nat
     | d_pi a ρ B => d_pi (drn a) (List.map dern ρ) B
     | d_univ i => d_univ i
     | d_suniv l => d_suniv (drn l)
     | d_level n => d_level n
     | d_lvl c xs => d_lvl c (List.map (fun ka => match ka with (k, n, m) => (k, n, drn_ne m) end) xs)
-    | d_zero => d_zero
-    | d_succ m => d_succ (drn m)
     | d_True => d_True
     | d_true => d_true
     | d_False => d_False
@@ -66,7 +63,6 @@ Section Rename.
     match m with
     | d_var x => d_var (f x)
     | d_app m n => d_app (drn_ne m) (drn_nf n)
-    | d_natrec ρ A mz MS m => d_natrec (List.map dern ρ) A (drn mz) MS (drn_ne m)
     | d_exfalso ρ A m => d_exfalso (List.map dern ρ) A (drn_ne m)
     | d_elim ρ nm A Bs p args m => d_elim (List.map dern ρ) nm A Bs p (List.map drn args) (drn_ne m)
     | d_glob p => d_glob p
@@ -103,7 +99,7 @@ Section Rename.
   Lemma env_entry_rn : forall ρ x, env_entry (ern ρ) x = dern (env_entry ρ x).
   Proof.
     intros; rewrite !env_entry_nth; unfold ern.
-    change (de_term d_zero) with (dern (de_term d_zero)) at 1.
+    change (de_term d_true) with (dern (de_term d_true)) at 1.
     apply List.map_nth.
   Qed.
 
@@ -150,8 +146,6 @@ Section Eval.
 
   Lemma eval_rn :
     (forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f m) /\
-    (forall A MZ MS m ρ r, ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-       ⟦rec drn f m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f r) /\
     (forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> $| drn f m & drn f n | Θ ⍮ Ξ ↘ drn f r) /\
     (forall Ms ρ ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ern f ρ ↘ List.map (drn f) ms) /\
     (forall m args r, $*| m & args | Θ ⍮ Ξ ↘ r -> $*| drn f m & List.map (drn f) args | Θ ⍮ Ξ ↘ drn f r) /\
@@ -172,7 +166,6 @@ Section Eval.
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => ⟦ M ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f m)
-             (fun A MZ MS m ρ r _ => ⟦rec drn f m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f r)
              (fun m n r _ => $| drn f m & drn f n | Θ ⍮ Ξ ↘ drn f r)
              (fun Ms ρ ms _ => ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ern f ρ ↘ List.map (drn f) ms)
              (fun m args r _ => $*| drn f m & List.map (drn f) args | Θ ⍮ Ξ ↘ drn f r)
@@ -231,8 +224,6 @@ Section Bound.
   Proof. dbd_inv. Qed.
   Lemma dbd_suniv_inv : forall b l, dbd b 𝕌@l -> dbd b l.
   Proof. dbd_inv. Qed.
-  Lemma dbd_succ_inv : forall b m, dbd b (succᵈ m) -> dbd b m.
-  Proof. dbd_inv. Qed.
   Lemma dbd_lvl_inv : forall b c xs, dbd b (lvᵈ c xs) -> dbd_la b xs.
   Proof. dbd_inv. Qed.
   Lemma dbd_la_inv : forall b k n m xs, dbd_la b ((k, n, m) :: xs) -> dbd_ne b m /\ dbd_la b xs.
@@ -250,17 +241,10 @@ Section Bound.
     intros * Hs Ha v Hv; constructor; [ eapply dav_mono'; [| apply Ha ]; lia | constructor; lia ].
   Qed.
 
-  Lemma dbd_nat : forall b, dbd b ℕᵈ.
-  Proof. intros b v Hv; constructor. Qed.
   Lemma dbd_bot : forall b, dbd b ⊥ᵈ.
-  Proof. intros b v Hv; constructor. Qed.
-  Lemma dbd_zero : forall b, dbd b zeroᵈ.
   Proof. intros b v Hv; constructor. Qed.
   Lemma dbd_level : forall b n, dbd b (Levelᵈ@n).
   Proof. intros b v Hv; constructor. Qed.
-
-  Lemma dbd_succ : forall b m, dbd b m -> dbd b (succᵈ m).
-  Proof. intros * H v Hv; constructor; apply H, Hv. Qed.
 
   Lemma dbd_nf_dom : forall b a m, dbd b a -> dbd b m -> dbd_nf b (⇓ a m).
   Proof. intros * Ha Hm v Hv; constructor; auto. Qed.
@@ -281,21 +265,6 @@ Section Bound.
     intros b' c d Hb Hc Hd v Hv.
     specialize (H v ltac:(lia)); inversion_clear H.
     eapply eval_clo_av; [ eapply env_av_mono; [| eassumption ]; lia | eassumption | apply Hc; lia | exact Hd ].
-  Qed.
-
-  Lemma dbd_natrec_inv : forall b ρ A mz MS m,
-      dbd_ne b (recᵈ m under ρ return A | zero -> mz | succ -> MS end) ->
-      dbd b mz /\ dbd_ne b m /\ dbd_clo b ρ A /\ dbd_clo2 b ρ MS.
-  Proof.
-    intros * H; repeat split;
-      try (intros v Hv; specialize (H v Hv); inversion H; assumption).
-    - intros b' c d Hb Hc Hd v Hv.
-      specialize (H v ltac:(lia)); inversion_clear H.
-      eapply eval_clo_av; [ eapply env_av_mono; [| eassumption ]; lia | eassumption | apply Hc; lia | exact Hd ].
-    - intros b' c1 c2 d Hb Hc1 Hc2 Hd v Hv.
-      specialize (H v ltac:(lia)); inversion_clear H.
-      eapply eval_clo2_av;
-        [ eapply env_av_mono; [| eassumption ]; lia | eassumption | apply Hc1; lia | apply Hc2; lia | exact Hd ].
   Qed.
 
   Lemma dbd_exfalso_inv : forall b ρ A m,
@@ -439,9 +408,8 @@ End Bound.
 Ltac dbd_solve :=
   first [ eassumption
         | apply dbd_nf_dom; dbd_solve
-        | apply dbd_succ; dbd_solve
         | apply dbd_fresh; [ lia | dbd_solve ]
-        | apply dbd_nat | apply dbd_bot | apply dbd_zero | apply dbd_level
+        | apply dbd_bot | apply dbd_level
         | match goal with
           | Hc : dbd_clo _ _ ?b ?ρ ?B, e : ⟦ ?B ⟧ _ ⍮ _ ⍮ ?ρ ↦ ?c ↘ ?d |- dbd ?b' ?d =>
               apply (Hc b' c d); [ lia | dbd_solve | exact e ]
@@ -498,7 +466,7 @@ Section Read.
   Proof. intros * H; exact (proj1 (eval_rn Θ Ξ f) _ _ _ H). Qed.
 
   Lemma app_rn : forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> $| drn f m & drn f n | Θ ⍮ Ξ ↘ drn f r.
-  Proof. intros * H; exact (proj1 (proj2 (proj2 (eval_rn Θ Ξ f))) _ _ _ H). Qed.
+  Proof. intros * H; exact (proj1 (proj2 (eval_rn Θ Ξ f)) _ _ _ H). Qed.
 
   Lemma eval_args_rn : forall B ρ args d,
       ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ args ↘ d -> ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args (ern f ρ) (List.map (drn f) args) ↘ drn f d.
@@ -521,14 +489,14 @@ Section Read.
   Lemma shty_rn : forall p ups ρ t a,
       eval_shty Θ Ξ p ups ρ t a -> eval_shty Θ Ξ p (List.map (drn f) ups) (ern f ρ) t (drn f a).
   Proof.
-    intros * H; destruct (eval_rn Θ Ξ f) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
+    intros * H; destruct (eval_rn Θ Ξ f) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
     exact (Hs _ _ _ _ _ H).
   Qed.
 
   Lemma ihty_rn : forall ρm A ρ t m a,
       eval_ihty Θ Ξ ρm A ρ t m a -> eval_ihty Θ Ξ (ern f ρm) A (ern f ρ) t (drn f m) (drn f a).
   Proof.
-    intros * H; destruct (eval_rn Θ Ξ f) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
+    intros * H; destruct (eval_rn Θ Ξ f) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
     exact (Hy _ _ _ _ _ _ H).
   Qed.
 
@@ -599,12 +567,10 @@ Section Read.
       | H : dbd_nf _ (d_dom _ _) |- _ => apply dbd_nf_inv in H as [? ?]
       | H : dbd _ (d_neut _ _) |- _ => apply dbd_neut_inv in H as [? ?]
       | H : dbd _ (d_suniv _) |- _ => apply dbd_suniv_inv in H
-      | H : dbd _ (d_succ _) |- _ => apply dbd_succ_inv in H
       | H : dbd _ (d_lvl _ _) |- _ => apply dbd_lvl_inv in H
       | H : dbd _ (d_pi _ _ _) |- _ => apply (dbd_pi_inv Θ Ξ) in H as [? ?]
       | H : dbd_la _ ((_, _) :: _) |- _ => apply dbd_la_inv in H as [? ?]
       | H : dbd_ne _ (d_app _ _) |- _ => apply dbd_app_inv in H as [? ?]
-      | H : dbd_ne _ (d_natrec _ _ _ _ _) |- _ => apply (dbd_natrec_inv Θ Ξ) in H as (? & ? & ? & ?)
       | H : dbd_ne _ (d_exfalso _ _ _) |- _ => apply (dbd_exfalso_inv Θ Ξ) in H as [? ?]
       | H : dbd _ (d_ind _ _) |- _ => pose proof (dbd_indty_inv _ _ _ H); clear H
       | H : dbd _ (d_con _ _ _) |- _ => pose proof (dbd_con_inv _ _ _ _ H); clear H

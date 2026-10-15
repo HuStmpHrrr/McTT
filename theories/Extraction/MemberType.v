@@ -73,7 +73,7 @@ Proof. induction Ψ as [| [A | A M | U] Ψ IH]; intros; cbn; rewrite ?IH; lia. Q
 Lemma csize_body_ctx : forall Φ, csize (body_ctx Φ) = gsize Φ.
 Proof.
   induction Φ as [| Φ IH x [b pv A [M |] | pm U | ? ? ? | ? ? ? ?] | Φ IH c its]; cbn; rewrite ?csize_app, ?IH; [ lia .. |].
-  enough (csize (repeat (ce_ass a_nat) (List.length its)) = 0) by lia.
+  enough (csize (repeat (ce_ass a_True) (List.length its)) = 0) by lia.
   induction (List.length its); cbn; auto.
 Qed.
 

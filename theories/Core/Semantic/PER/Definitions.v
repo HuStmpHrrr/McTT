@@ -63,20 +63,6 @@ Definition per_top_typ : relation domain := fun a b => (forall s, exists C, Rtyp
 Hint Transparent per_top_typ : mctt.
 Hint Unfold per_top_typ : mctt.
 
-Inductive per_nat : relation domain :=
-(** [zero] is related to itself. *)
-| per_nat_zero : Dom zeroᵈ ≈ zeroᵈ ∈ per_nat
-(** Successors of related numbers are related. *)
-| per_nat_succ :
-  `{ Dom m ≈ n ∈ per_nat ->
-     Dom succᵈ m ≈ succᵈ n ∈ per_nat }
-(** So are neutrals that read back equally. *)
-| per_nat_neut :
-  `{ Dom m ≈ n ∈ per_bot ->
-     Dom ⇑ a m ≈ ⇑ b n ∈ per_nat }
-.
-Hint Constructors per_nat : mctt.
-
 (** Two level values are related when they read back to the same canonical
     level at every length.  Evaluation of [succl] and [maxl] only flattens, so
     this is where the level equations are quotiented: readback canonicalises,
@@ -176,7 +162,7 @@ Definition per_top_ps (T : list centry) (vs vs' : list domain) : Prop :=
     out): the relation of a domain is the one [dr] gives its type after
     them and the values of the domains before it. *)
 Definition shape_tr (dr : list domain -> exp -> relation domain) (ms ws : list domain) (Bs : list exp) : nat -> list domain -> relation domain :=
-  fun k ys => dr (ms ++ ws ++ ys) (List.nth k Bs a_nat).
+  fun k ys => dr (ms ++ ws ++ ys) (List.nth k Bs a_True).
 
 (** Uniform parameters [ua] admissible beside [ups]: what the type
     evaluates from them is related, as elements, to what it evaluates from
@@ -341,11 +327,6 @@ Section Per_univ_elem_core_def.
     forall n (elem_rel : relation domain),
       (elem_rel <~> per_lvl_at n) ->
       DF Levelᵈ@n ≈ Levelᵈ@n ∈ per_univ_elem_core ↘ elem_rel
-  (** [ℕ], its elements related by [per_nat]. *)
-  | per_univ_elem_core_nat :
-    forall (elem_rel : relation domain),
-      (elem_rel <~> per_nat) ->
-      DF ℕᵈ ≈ ℕᵈ ∈ per_univ_elem_core ↘ elem_rel
   (** [⊤], all of its elements related. *)
   | per_univ_elem_core_True :
     forall (elem_rel : relation domain),
@@ -454,9 +435,6 @@ Section Per_univ_elem_core_def.
       (case_level : forall {n elem_rel},
           (elem_rel <~> per_lvl_at n) ->
           motive elem_rel (Levelᵈ@n) (Levelᵈ@n))
-      (case_nat : forall {elem_rel},
-          (elem_rel <~> per_nat) ->
-          motive elem_rel ℕᵈ ℕᵈ)
       (case_True : forall {elem_rel},
           (elem_rel <~> per_True) ->
           motive elem_rel ⊤ᵈ ⊤ᵈ)
@@ -545,7 +523,6 @@ Section Per_univ_elem_core_def.
   | R, a, b, (per_univ_elem_core_univ _ lt_j_i HE eq)                 => case_U lt_j_i HE eq;
   | R, a, b, (per_univ_elem_core_suniv _ lt_j_i HE eq)                => case_SU lt_j_i HE eq;
   | R, a, b, (per_univ_elem_core_level _ _ HE)                        => case_level HE;
-  | R, a, b, (per_univ_elem_core_nat _ HE)                            => case_nat HE;
   | R, a, b, (per_univ_elem_core_True _ HE)                           => case_True HE;
   | R, a, b, (per_univ_elem_core_False _ HE)                          => case_False HE;
   | R, a, b, (per_univ_elem_core_pi _ out_rel _ equiv_a_a' per HT HE) =>
@@ -743,9 +720,6 @@ Section Per_univ_elem_ind_def.
       (case_L : forall i {n elem_rel},
           (elem_rel <~> per_lvl_at n) ->
           motive i elem_rel (Levelᵈ@n) (Levelᵈ@n))
-      (case_N : forall i {elem_rel},
-          (elem_rel <~> per_nat) ->
-          motive i elem_rel ℕᵈ ℕᵈ)
       (case_True : forall i {elem_rel},
           (elem_rel <~> per_True) ->
           motive i elem_rel ⊤ᵈ ⊤ᵈ)
@@ -835,7 +809,7 @@ Section Per_univ_elem_ind_def.
     induction i as [i IHi] using (well_founded_ind uidx_wf).
     intros R a b H.
     refine (per_univ_elem_core_strong_ind i _ (motive i) _ _
-              (fun _ _ => case_L i) (fun _ => case_N i) (fun _ => case_True i) (fun _ => case_False i)
+              (fun _ _ => case_L i) (fun _ => case_True i) (fun _ => case_False i)
               _ (fun _ _ _ _ _ => case_ne i) _ R a b H).
     - intros j j' elem_rel lt_j_i Heq HE.
       rewrite per_univ_below_spec in HE by assumption.
@@ -862,9 +836,6 @@ Inductive per_subtyp : uidx -> domain -> domain -> Prop :=
 | per_subtyp_level :
   `( m <= n ->
      Sub Levelᵈ@m <: Levelᵈ@n at i )
-(** [ℕ] below itself. *)
-| per_subtyp_nat :
-  `( Sub ℕᵈ <: ℕᵈ at i )
 (** [⊤] below itself. *)
 | per_subtyp_True :
   `( Sub ⊤ᵈ <: ⊤ᵈ at i )
@@ -1161,8 +1132,6 @@ Hint Transparent per_top_typ : mctt.
 #[export]
 Hint Unfold per_top_typ : mctt.
 #[export]
-Hint Constructors per_nat : mctt.
-#[export]
 Hint Transparent per_True : mctt.
 #[export]
 Hint Unfold per_True : mctt.
@@ -1218,10 +1187,10 @@ Ltac per_univ_elem_induction_core HH ih :=
                  end
              end;
       revert HH; revert i R a b;
-      refine (per_univ_elem_ind _ _ _ _ _ _ _ _ _ _);
+      refine (per_univ_elem_ind _ _ _ _ _ _ _ _ _);
       (** The level case has one binder more than the other closed types: the
           sort of its type of levels. *)
-      [ do 8 intro | do 8 intro | do 4 intro | do 3 intro | do 3 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro
+      [ do 8 intro | do 8 intro | do 4 intro | do 3 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro
       | do 29 intro ]; cbv beta
   end.
 

@@ -1,11 +1,13 @@
 (* A [let] whose bindings depend on the earlier ones, a type among them. *)
 module LetMulti where
 
+import Prelude›Builtin›Nat use (zero; succ)
+
 (* Each binding uses the one before it. *)
 eval let A : Type@0 ≔ ℕ;
          n : A ≔ 2;
          double : ∀ (x : A) → A ≔
-           λ (x : A) → rec x return y . A | zero ⇒ n | succ m, r ⇒ succ r end
+           λ (x : A) → elim x return y . A | zero ⇒ n | succ m, r ⇒ succ r end
      in
        double n
      end : ℕ

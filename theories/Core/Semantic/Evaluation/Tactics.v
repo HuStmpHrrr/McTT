@@ -18,7 +18,6 @@ Ltac simplify_evals :=
   (** [eval_sub] is a pointwise [Definition], not an inductive family, so it
       has no cases to split.  Use [eval_sub_index] instead. *)
   repeat (match_by_head eval_exp ltac:(fun H => directed dependent destruction H)
-          || match_by_head eval_app ltac:(fun H => directed dependent destruction H)
-          || match_by_head eval_natrec ltac:(fun H => directed dependent destruction H));
+          || match_by_head eval_app ltac:(fun H => directed dependent destruction H));
   functional_eval_rewrite_clear;
   clear_dups.

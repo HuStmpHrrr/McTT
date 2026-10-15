@@ -3,6 +3,8 @@ import Lib›Num
 
 module Lib›Arith where
 
+import Prelude›Builtin›Nat
+
 def quadruple : ∀ (x : ℕ) → ℕ ≔
   λ (x : ℕ) → Lib›Num.double (Lib›Num.double x)
 end

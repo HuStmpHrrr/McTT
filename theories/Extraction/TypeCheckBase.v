@@ -62,7 +62,7 @@ Section type_check.
       visibly the only ones. *)
   Definition univ_nf_idx_dec (A : nf) : { u : unf | is_univ_nf A u } + { forall u, ~ is_univ_nf A u }.
   Proof.
-    destruct A as [ i | c xs | | ? ? | | | ? | | | | ? ? | ? ? | ? ? | ? ? ? | ? ];
+    destruct A as [ i | c xs | | ? ? | | | | ? ? | ? ? | ? ? | ? ? ? | ? ];
       [ left; exists (unl i); constructor
       | left; exists (uns (c, xs)); constructor
       | right; intros ? H; inversion H .. ].
@@ -230,7 +230,7 @@ Section type_check.
   Lemma tenv_order_of_wf : forall G, ⊢ G -> initial_env_order gc_deps gc_stack G.
   Proof.
     intros G HG.
-    assert (G ⊢ ℕ : Typeω@0) as [W [HW _]]%soundness_ty by mauto 2.
+    assert (G ⊢ ⊤ : Typeω@0) as [W [HW _]]%soundness_ty by mauto 2.
     inversion HW; subst; eauto using initial_env_order_sound.
   Qed.
 
@@ -409,10 +409,6 @@ Section type_check.
   | ti_llit : forall {o}, type_infer_order (𝕃ᵒ o)
   | ti_succl : forall {M}, type_infer_order M -> type_infer_order (succl M)
   | ti_maxl : forall {M N}, type_infer_order M -> type_infer_order N -> type_infer_order (maxl M N)
-  | ti_nat : type_infer_order ℕ
-  | ti_zero : type_infer_order zero
-  | ti_succ : forall {M}, type_check_order M -> type_infer_order succ M
-  | ti_natrec : forall {A MZ MS M}, type_check_order M -> type_infer_order A -> type_check_order MZ -> type_check_order MS -> type_infer_order rec M return A | zero -> MZ | succ -> MS end
   | ti_True : type_infer_order ⊤
   | ti_true : type_infer_order ⋆
   | ti_False : type_infer_order ⊥
@@ -421,6 +417,7 @@ Section type_check.
   | ti_con : forall {p c}, type_infer_order (a_con p c)
   (** A numeral is expanded before it is checked; it has no type. *)
   | ti_nlit : forall {n}, type_infer_order (a_nlit n)
+  | ti_ntok : type_infer_order a_ntok
   | ti_elim : forall {nm A Bs M}, type_infer_order M -> type_infer_order A ->
       (forall b, List.In b Bs -> type_check_order (snd b)) -> type_infer_order (a_elim nm A Bs M)
   | ti_pi : forall {A B}, type_infer_order A -> type_infer_order B -> type_infer_order Π A B
@@ -594,8 +591,12 @@ Section type_check.
       type_infer_order M.
   Proof. intros; apply type_infer_order_all. Qed.
 
-  (** A numeral has no type: expansion replaces it before checking. *)
+  (** A literal has no type: the literals of a command are generated
+      before it is checked. *)
   Lemma alg_nlit_no_infer : forall G n A, ~ G ⊢a a_nlit n ⟹ A.
+  Proof. intros * H; inversion H. Qed.
+
+  Lemma alg_ntok_no_infer : forall G A, ~ G ⊢a a_ntok ⟹ A.
   Proof. intros * H; inversion H. Qed.
 
 End type_check.

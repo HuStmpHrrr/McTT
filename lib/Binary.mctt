@@ -5,6 +5,7 @@
    exponents. *)
 module Binary where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; trans; cong)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusZero)
@@ -42,9 +43,9 @@ eval bitCount 256
 (* Digits given by hand: [1, 0, 1, 1], then zeros, write [1 + 4 + 8]. *)
 def oneZeroOneOne : Bits ≔
   λ (i : ℕ) →
-    rec i return y . ℕ
+    elim i return y . ℕ
     | zero ⇒ 1
-    | succ j, r ⇒ rec j return z . ℕ | zero ⇒ 0 | succ k, s ⇒ 1 end
+    | succ j, r ⇒ elim j return z . ℕ | zero ⇒ 0 | succ k, s ⇒ 1 end
     end
 end
 

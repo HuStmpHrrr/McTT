@@ -24,12 +24,11 @@ Import Syntax_Notations GlobalCtx_Notations.
 
 Fixpoint exp_mvcb (n : nat) (M : exp) {struct M} : bool :=
   match M with
-  | a_typ _ | a_level _ | a_llit _ | a_nat | a_zero | a_True | a_true | a_False => true
-  | a_succ M | a_succl M | a_univ M => exp_mvcb n M
+  | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False => true
+  | a_succl M | a_univ M => exp_mvcb n M
   | a_maxl M N => exp_mvcb n M && exp_mvcb n N
-  | a_natrec A MZ MS M => exp_mvcb (S n) A && exp_mvcb n MZ && exp_mvcb (S (S n)) MS && exp_mvcb n M
   | a_exfalso A M => exp_mvcb (S n) A && exp_mvcb n M
-  | a_ind _ | a_con _ _ | a_nlit _ => true
+  | a_ind _ | a_con _ _ | a_nlit _ | a_ntok => true
   | a_elim nm A Bs M =>
       exp_mvcb (nm + n) A &&
       (fix brs_mvcb (Bs : list (string * nat * exp)) : bool :=
@@ -108,7 +107,6 @@ Proof.
     rewrite ?andb_true_iff.
   all: repeat match goal with IH : forall n : nat, _ <-> _ |- _ => setoid_rewrite IH; clear IH end.
   all: try (split; auto; fail).
-  - tauto.
   - (* an eliminator: its branches *)
     match goal with |- (_ /\ ?l = true) /\ _ <-> _ /\ ?r /\ _ => enough (Hb : l = true <-> r) by (rewrite Hb; tauto) end.
     match goal with HF : List.Forall _ Bs |- _ => clear - HF; induction HF as [| b Bs Hb _ IH] end; cbn; [ split; auto |].
@@ -713,25 +711,6 @@ Proof. intros * He; unfold ind_alias_lookup; rewrite (gds_equiv_lookup _ _ _ He)
 Lemma gds_equiv_ind_target : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> ind_target Θ Ξ p = ind_target Θ' Ξ p.
 Proof.
   intros * He; unfold ind_target, ind_lookup; rewrite (gds_equiv_module _ _ _ _ He), (gds_equiv_ind_alias _ _ _ _ He); reflexivity.
-Qed.
-
-(** The bindings visible are those of the units filed, whatever their
-    order. *)
-Lemma gds_equiv_nat_binds : forall Θ Θ' Ξ, gds_equiv Θ Θ' ->
-    forall r, In r (nat_binds Θ Ξ) <-> In r (nat_binds Θ' Ξ).
-Proof. intros * He; apply nat_binds_in_equiv; intros fp; apply gds_equiv_lookup, He. Qed.
-
-Lemma gds_equiv_nat_binds_nil : forall Θ Θ' Ξ, gds_equiv Θ Θ' -> nat_binds Θ Ξ = nil -> nat_binds Θ' Ξ = nil.
-Proof.
-  intros * He Hn; destruct (nat_binds Θ' Ξ) as [| r l] eqn:E; [ reflexivity | exfalso ].
-  pose proof (proj2 (gds_equiv_nat_binds _ _ Ξ He r)) as Hr; rewrite E, Hn in Hr; exact (Hr (or_introl eq_refl)).
-Qed.
-
-Lemma gds_equiv_nat_binding : forall Θ Θ' Ξ, gds_equiv Θ Θ' -> nat_binding Θ Ξ = nat_binding Θ' Ξ.
-Proof.
-  intros * He; unfold nat_binding.
-  rewrite (nb_classify_ext Θ Θ') by (intros; unfold ind_lookup; rewrite (gds_equiv_module _ _ _ _ He); reflexivity).
-  apply nb_classify_in, gds_equiv_nat_binds, He.
 Qed.
 
 Lemma equiv_cls_arg_in : forall Θ Θ' Ξ R args1 gs1 T g,

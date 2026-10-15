@@ -95,17 +95,10 @@ Inductive obj : Set :=
 | succl : obj -> obj
 (** [maxl M N] *)
 | maxl : obj -> obj -> obj
-(** [Nat] *)
+(** [Nat] or [ℕ]: the type bound by [builtin natural] *)
 | nat : obj
-(** [zero] *)
-| zero : obj
-(** A numeral: the natural number bound by [builtin natural] where a
-    binding is visible, [ℕ] where none is *)
+(** A numeral, of the type bound by [builtin natural] *)
 | num : nat -> obj
-(** [succ M] *)
-| succ : obj -> obj
-(** [rec M return x . A | zero => MZ | succ y, r => MS end] *)
-| natrec : obj -> string -> obj -> obj -> string -> string -> obj -> obj
 (** [True] *)
 | true_ty : obj
 (** [true] *)
@@ -201,10 +194,7 @@ Section cst_mut_ind.
     (case_succl : forall o, Po o -> Po (succl o))
     (case_maxl : forall o1 o2, Po o1 -> Po o2 -> Po (maxl o1 o2))
     (case_nat : Po nat)
-    (case_zero : Po zero)
     (case_num : forall n, Po (num n))
-    (case_succ : forall o, Po o -> Po (succ o))
-    (case_natrec : forall o1 x o2 o3 y z o4, Po o1 -> Po o2 -> Po o3 -> Po o4 -> Po (natrec o1 x o2 o3 y z o4))
     (case_true_ty : Po true_ty)
     (case_true_tm : Po true_tm)
     (case_false_ty : Po false_ty)
@@ -242,10 +232,7 @@ Section cst_mut_ind.
     | succl o => case_succl o (obj_mut o)
     | maxl o1 o2 => case_maxl o1 o2 (obj_mut o1) (obj_mut o2)
     | nat => case_nat
-    | zero => case_zero
     | num n => case_num n
-    | succ o => case_succ o (obj_mut o)
-    | natrec o1 x o2 o3 y z o4 => case_natrec o1 x o2 o3 y z o4 (obj_mut o1) (obj_mut o2) (obj_mut o3) (obj_mut o4)
     | true_ty => case_true_ty
     | true_tm => case_true_tm
     | false_ty => case_false_ty
@@ -483,6 +470,9 @@ Record qname : Set := qname_mk
   { q_unit : path
   ; q_chain : list string }.
 
+Definition qname_eq_dec : forall (x y : qname), {x = y} + {x <> y}.
+Proof. decide equality; apply List.list_eq_dec, String.string_dec. Defined.
+
 (** An abbreviation, not a definition: a rule keyed on [q_abs] then has a record
     literal in its conclusion, so inverting it yields equations that
     [discriminate] and [injection] see through. *)
@@ -624,15 +614,11 @@ Inductive exp : Set :=
 | a_succl : exp -> exp
 (** The join of two levels *)
 | a_maxl : exp -> exp -> exp
-(** Natural numbers *)
-| a_nat : exp
-(** [zero] *)
-| a_zero : exp
-(** [succ M] *)
-| a_succ : exp -> exp
-(** [a_natrec A MZ MS M] eliminates [M] into the motive [A], which binds the
-    scrutinee; [MS] binds the predecessor and the recursive result. *)
-| a_natrec : exp -> exp -> exp -> exp -> exp
+(** The token [ℕ], written for the type bound by [builtin natural]: like
+    a numeral ([a_nlit]), it is not a term of the typing judgment, and
+    expansion ([Imports]) replaces it by the type former of the bound
+    type. *)
+| a_ntok : exp
 (** The unit type, with η *)
 | a_True : exp
 (** Its element *)
@@ -775,10 +761,7 @@ Section syn_mut_ind.
     (case_llit : forall n, Pe (a_llit n))
     (case_succl : forall M, Pe M -> Pe (a_succl M))
     (case_maxl : forall M N, Pe M -> Pe N -> Pe (a_maxl M N))
-    (case_nat : Pe a_nat)
-    (case_zero : Pe a_zero)
-    (case_succ : forall M, Pe M -> Pe (a_succ M))
-    (case_natrec : forall A MZ MS M, Pe A -> Pe MZ -> Pe MS -> Pe M -> Pe (a_natrec A MZ MS M))
+    (case_ntok : Pe a_ntok)
     (case_True : Pe a_True)
     (case_true : Pe a_true)
     (case_False : Pe a_False)
@@ -822,10 +805,7 @@ Section syn_mut_ind.
     | a_llit n => case_llit n
     | a_succl M => case_succl M (exp_mut M)
     | a_maxl M N => case_maxl M N (exp_mut M) (exp_mut N)
-    | a_nat => case_nat
-    | a_zero => case_zero
-    | a_succ M => case_succ M (exp_mut M)
-    | a_natrec A MZ MS M => case_natrec A MZ MS M (exp_mut A) (exp_mut MZ) (exp_mut MS) (exp_mut M)
+    | a_ntok => case_ntok
     | a_True => case_True
     | a_true => case_true
     | a_False => case_False
@@ -935,7 +915,7 @@ Fixpoint me_mems (H : modexp) (pre : list string) : modexp :=
 (** [H.y1. … .yn.x] as a term: submodule selections, then a member. *)
 Fixpoint member_ref (H : modexp) (ch : list string) : exp :=
   match ch with
-  | nil => a_zero
+  | nil => a_true
   | x :: nil => a_mem H x
   | y :: ch' => member_ref (me_mem H y) ch'
   end.
@@ -1018,31 +998,6 @@ Fixpoint gm_names (Φ : gmod) : list string :=
 Definition gm_fresh (x : string) (Φ : gmod) : Prop :=
   ~ List.In x (gm_names Φ).
 
-(** ** Numerals *)
-
-Fixpoint nat_to_exp n : exp :=
-  match n with
-  | 0 => a_zero
-  | S m => a_succ (nat_to_exp m)
-  end.
-Definition num_to_exp n := nat_to_exp (Nat.of_num_uint n).
-
-Fixpoint exp_to_nat e : option nat :=
-  match e with
-  | a_zero => Some 0
-  | a_succ e' =>
-      match exp_to_nat e' with
-      | Some n => Some (S n)
-      | None => None
-      end
-  | _ => None
-  end.
-Definition exp_to_num e :=
-  match exp_to_nat e with
-  | Some n => Some (Nat.to_num_uint n)
-  | None => None
-  end.
-
 (** ** Notations
 
     Every notation of the syntax lives in ordinary [constr], in [mctt_scope]:
@@ -1078,15 +1033,12 @@ Module Exp_Notations.
   Notation "'succl' M" := (a_succl M) (at level 2, M at level 1) : mctt_scope.
   Notation "'maxl' M N" := (a_maxl M N) (at level 2, M at level 1, N at level 1) : mctt_scope.
   Notation "'#' n" := (a_var n) (at level 1, n at level 0, format "'#' n") : mctt_scope.
-  Notation "'ℕ'" := a_nat : mctt_scope.
-  Notation "'zero'" := a_zero : mctt_scope.
-  Notation "'succ' M" := (a_succ M) (at level 2, M at level 1) : mctt_scope.
+  Notation "'ℕ'" := a_ntok : mctt_scope.
   Notation "'λ' A M" := (a_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
   Notation "'Π' A B" := (a_pi A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
   Notation "'ℓ' A ≔ M 'in' B" := (a_let (b_def (Some A) M) B) (at level 2, A at level 1, M at level 60, B at level 60) : mctt_scope.
   Notation "'ℓ' ≔ M 'in' B" := (a_let (b_def None M) B) (at level 2, M at level 60, B at level 60) : mctt_scope.
   Notation "'ℓₘ' U 'in' B" := (a_let (b_mod U) B) (at level 2, U at level 1, B at level 60) : mctt_scope.
-  Notation "'rec' M 'return' A | 'zero' -> MZ | 'succ' -> MS 'end'" := (a_natrec A MZ MS M) (at level 0, M at level 60, A at level 60, MZ at level 60, MS at level 60) : mctt_scope.
   Notation "'⊤'" := a_True : mctt_scope.
   Notation "'⋆'" := a_true : mctt_scope.
   Notation "'⊥'" := a_False : mctt_scope.
@@ -1125,9 +1077,9 @@ Fixpoint body_ctx (Φ : gmod) : ctx :=
   | gm_ext Φ' _ (ge_def _ _ A (Some M)) => cons (ce_def A M) (body_ctx Φ')
   | gm_ext Φ' _ (ge_def _ _ A None) => cons (ce_ass A) (body_ctx Φ')
   | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
-  | gm_ext Φ' _ (ge_ind _ _ _) => cons (ce_ass a_nat) (body_ctx Φ')
-  | gm_ext Φ' _ (ge_ind_alias _ _ _ _) => cons (ce_ass a_nat) (body_ctx Φ')
-  | gm_open Φ' _ its => List.repeat (ce_ass a_nat) (List.length its) ++ body_ctx Φ'
+  | gm_ext Φ' _ (ge_ind _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_ind_alias _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
+  | gm_open Φ' _ its => List.repeat (ce_ass a_True) (List.length its) ++ body_ctx Φ'
   end.
 
 (** ** Telescopes
@@ -1334,12 +1286,6 @@ Inductive nf : Set :=
     offset.  [nf_lvl_of] builds
     the normal form of a canonical level [lvl]. *)
 | nf_lvl : o2 -> lvl_atoms -> nf
-(** [ℕ] *)
-| nf_nat : nf
-(** [zero] *)
-| nf_zero : nf
-(** [succ] of a normal form *)
-| nf_succ : nf -> nf
 (** [⊤] *)
 | nf_True : nf
 (** Its element *)
@@ -1357,8 +1303,6 @@ Inductive nf : Set :=
 (** A neutral *)
 | nf_neut : ne -> nf
 with ne : Set :=
-(** The [ℕ]-eliminator stuck on a neutral *)
-| ne_natrec : nf -> nf -> nf -> ne -> ne
 (** The [⊥]-eliminator, always stuck *)
 | ne_exfalso : nf -> ne -> ne
 (** The eliminator of an inductive type stuck on a neutral *)
@@ -1402,9 +1346,6 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   | nf_univ c xs => a_univ (lvl_exp_of c (la_to_list xs))
   | nf_level n => a_level n
   | nf_lvl c xs => lvl_exp_of c (la_to_list xs)
-  | nf_nat => a_nat
-  | nf_zero => a_zero
-  | nf_succ M => a_succ (nf_to_exp M)
   | nf_True => a_True
   | nf_true => a_true
   | nf_False => a_False
@@ -1416,7 +1357,6 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   end
 with ne_to_exp (M : ne) : exp :=
   match M with
-  | ne_natrec A MZ MS M => a_natrec (nf_to_exp A) (nf_to_exp MZ) (nf_to_exp MS) (ne_to_exp M)
   | ne_exfalso A M => a_exfalso (nf_to_exp A) (ne_to_exp M)
   | ne_elim nm A Bs M => a_elim nm (nf_to_exp A) (nbrs_to_brs Bs) (ne_to_exp M)
   | ne_app M N => a_app (ne_to_exp M) (nf_to_exp N)
@@ -1542,16 +1482,14 @@ Proof. intros [] ? H Hu; cbn in H; try discriminate; inversion Hu. Qed.
 
 Fixpoint nf_clean (W : nf) : Prop :=
   match W with
-  | nf_typ _ | nf_level _ | nf_nat | nf_zero | nf_True | nf_true | nf_False => True
+  | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => True
   | nf_univ _ xs | nf_lvl _ xs => la_clean xs
-  | nf_succ W => nf_clean W
   | nf_pi A B | nf_fn A B => nf_clean A /\ nf_clean B
   | nf_indty _ Ms | nf_con _ _ Ms => nfs_clean Ms
   | nf_neut M => ne_clean M
   end
 with ne_clean (M : ne) : Prop :=
   match M with
-  | ne_natrec A MZ MS M => nf_clean A /\ nf_clean MZ /\ nf_clean MS /\ ne_clean M
   | ne_exfalso A M => nf_clean A /\ ne_clean M
   | ne_elim _ A Bs M => nf_clean A /\ nbrs_clean Bs /\ ne_clean M
   | ne_app M N => ne_clean M /\ nf_clean N
@@ -1594,9 +1532,6 @@ Defined.
 
 (** ** Notations *)
 Module Nf_Notations.
-  Notation "'ℕⁿ'" := nf_nat : mctt_scope.
-  Notation "'zeroⁿ'" := nf_zero : mctt_scope.
-  Notation "'succⁿ' M" := (nf_succ M) (at level 2, M at level 1) : mctt_scope.
   Notation "'⊤ⁿ'" := nf_True : mctt_scope.
   Notation "'⋆ⁿ'" := nf_true : mctt_scope.
   Notation "'⊥ⁿ'" := nf_False : mctt_scope.
@@ -1611,7 +1546,6 @@ Module Nf_Notations.
   Notation "'⇑ⁿ' M" := (nf_neut M) (at level 2, M at level 1, format "'⇑ⁿ'  M") : mctt_scope.
   Notation "'#ⁿ' n" := (ne_var n) (at level 1, n at level 0, format "'#ⁿ' n") : mctt_scope.
   Notation "M '$ⁿ' N" := (ne_app M N) (at level 10, left associativity, format "M  $ⁿ  N") : mctt_scope.
-  Notation "'recⁿ' M 'return' A | 'zero' -> MZ | 'succ' -> MS 'end'" := (ne_natrec A MZ MS M) (at level 0, M at level 60, A at level 60, MZ at level 60, MS at level 60) : mctt_scope.
   Notation "'efqⁿ' M 'return' A" := (ne_exfalso A M) (at level 2, M at level 60, A at level 60) : mctt_scope.
 End Nf_Notations.
 
@@ -1674,14 +1608,7 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_llit n => a_llit n
   | a_succl M => a_succl (exp_wk M φ)
   | a_maxl M N => a_maxl (exp_wk M φ) (exp_wk N φ)
-  | a_nat => a_nat
-  | a_zero => a_zero
-  | a_succ M => a_succ (exp_wk M φ)
-  | a_natrec A MZ MS M =>
-      a_natrec (exp_wk A (wk_q φ))
-               (exp_wk MZ φ)
-               (exp_wk MS (wk_q (wk_q φ)))
-               (exp_wk M φ)
+  | a_ntok => a_ntok
   | a_True => a_True
   | a_true => a_true
   | a_False => a_False
@@ -1766,7 +1693,7 @@ Fixpoint tele_wk (Δ : ctx) (φ : wk) : ctx :=
     are not part of the object syntax: applying one is a meta-level recursion
     on the expression.
 
-    An entry of the wrong sort reads as a closed default, [a_zero] or the
+    An entry of the wrong sort reads as a closed default, [a_true] or the
     module [me_unit nil], which every operation fixes.  The
     defaults are the semantic projections of an entry of the other sort, so
     evaluation commutes with every substitution. *)
@@ -1780,7 +1707,7 @@ Inductive sentry : Set :=
 
 Definition sub : Set := nat -> sentry.
 
-Definition exp_junk : exp := a_zero.
+Definition exp_junk : exp := a_true.
 Definition modexp_junk : modexp := me_unit nil.
 
 Definition sentry_exp (e : sentry) : exp :=
@@ -1855,14 +1782,7 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_llit n => a_llit n
   | a_succl M => a_succl (exp_sub M σ)
   | a_maxl M N => a_maxl (exp_sub M σ) (exp_sub N σ)
-  | a_nat => a_nat
-  | a_zero => a_zero
-  | a_succ M => a_succ (exp_sub M σ)
-  | a_natrec A MZ MS M =>
-      a_natrec (exp_sub A (sb_q σ))
-               (exp_sub MZ σ)
-               (exp_sub MS (sb_q (sb_q σ)))
-               (exp_sub M σ)
+  | a_ntok => a_ntok
   | a_True => a_True
   | a_true => a_true
   | a_False => a_False

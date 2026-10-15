@@ -161,17 +161,6 @@ Qed.
 #[export]
 Hint Resolve wf_sub_eq_q wf_sub_eq_q_def : mctt.
 
-Corollary wf_sub_eq_q_nat : forall Θ Ξ Γ Δ σ σ',
-    Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
-    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢s q σ ≈ q σ' : Δ ▹ ℕ.
-Proof.
-  intros * H; saturate_sub_eq.
-  apply (wf_sub_eq_q Θ Ξ Γ Δ σ σ' ℕ 0); simpl; mauto 2.
-Qed.
-
-#[export]
-Hint Resolve wf_sub_eq_q_nat : mctt.
-
 Corollary wf_sub_eq_q_False : forall Θ Ξ Γ Δ σ σ',
     Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
     Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢s q σ ≈ q σ' : Δ ▹ ⊥.
@@ -300,19 +289,15 @@ Qed.
     This is about typing derivations only, so it is a plain induction on
     [wf_exp]: the subtyping premise of [wf_exp_subtyp] is discharged by
     [sub_preserves_subtyp] rather than by an induction hypothesis.  Because
-    [wf_exp_eq_natrec_cong] lets the motive vary, the presupposition lemma
+    [wf_exp_eq_elim_cong] lets the motive vary, the presupposition lemma
     needs to move a type along an equivalence of substitutions, that is, it
     needs this lemma.  Its counterparts for equality and
     subtyping ([sub_eq_preserves_exp_eq], [sub_eq_preserves_subtyp]) in turn
     need presupposition for the symmetry case, and so come after it, in
     [Core.Syntactic.SubEq]. *)
 
-Ltac lift_sub_eq_nat :=
+Ltac lift_sub_eq_False :=
   match goal with
-  | _ : wf_exp ?Θ ?Ξ (cons (ce_ass a_nat) ?Δ) (a_typ _) _, Hσ : wf_sub_eq ?Θ ?Ξ ?Γ ?Δ ?σ ?σ' |- _ =>
-      let T := constr:(wf_sub_eq Θ Ξ (cons (ce_ass a_nat) Γ) (cons (ce_ass a_nat) Δ) (sb_q σ) (sb_q σ')) in
-      assert_fails (assert T by assumption);
-      assert T by (apply wf_sub_eq_q_nat; exact Hσ)
   | _ : wf_exp ?Θ ?Ξ (cons (ce_ass a_False) ?Δ) (a_typ _) _, Hσ : wf_sub_eq ?Θ ?Ξ ?Γ ?Δ ?σ ?σ' |- _ =>
       let T := constr:(wf_sub_eq Θ Ξ (cons (ce_ass a_False) Γ) (cons (ce_ass a_False) Δ) (sb_q σ) (sb_q σ')) in
       assert_fails (assert T by assumption);
@@ -353,7 +338,7 @@ Ltac lift_sub_eq_def :=
       assert T by (eapply wf_sub_eq_q_def; [ exact Hσ | | | exact (IHA _ _ _ Hσ) | exact (IHM _ _ _ Hσ) ]; mauto 2)
   end.
 
-Ltac lift_sub_eq := repeat first [ lift_sub_eq_nat | lift_sub_eq_step | lift_sub_eq_def ].
+Ltac lift_sub_eq := repeat first [ lift_sub_eq_False | lift_sub_eq_step | lift_sub_eq_def ].
 
 (** [saturate_sub_typ] and [saturate_sub_eq_IH] are the counterparts of
     [push_sub]/[lift_sub] for the equivalence induction: the first transports
@@ -382,13 +367,6 @@ Ltac saturate_sub_eq_IH :=
       assert_fails (assert T by assumption);
       pose proof (IH _ _ _ Hσ)
   end.
-
-(** [exp_sub_sub_natrec] cannot join the [push_sub] set — it rewrites in the
-    opposite direction from [exp_sub_extend_comm] and the two together would
-    loop.  It is applied once, at the end, to the instantiated hypotheses. *)
-
-Ltac reduce_sub_natrec :=
-  (on_all_hyp: (fun H => try setoid_rewrite exp_sub_sub_natrec in H)).
 
 (** The eliminator: the motive and the branches move under the equivalent
     substitutions lifted over their contexts, which the induction
@@ -500,7 +478,7 @@ Proof.
   (** The eliminator. *)
   all: try solve [ eapply sub_eq_elim_case; eassumption ].
   all: destruct_let_ann; saturate_sub_eq; push_sub; lift_sub_eq; saturate_sub_eq;
-    saturate_sub_typ; saturate_sub_eq_IH; reduce_sub_natrec.
+    saturate_sub_typ; saturate_sub_eq_IH.
   (** In the [a_glob] case the recorded type reaches [Γ] only through
       [saturate_sub_typ], i.e. after [push_sub] has run. *)
   all: try solve [ push_closed; mauto 3 ].

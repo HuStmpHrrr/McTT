@@ -1,7 +1,6 @@
 (** * The Fast Evaluation Simulates the Reference One
 
-    [Extraction.FastEval] skips the recursive result of the [ℕ]-eliminator
-    when the successor case does not read it, and that of a recursive
+    [Extraction.FastEval] skips the recursive result of a recursive
     argument of a constructor when the eliminator's branch does not read
     it.  Its values then differ from the reference ones only in entries of
     environments that nothing reads:
@@ -38,7 +37,6 @@ Fixpoint pt_fresh (k : nat) (t : ptyp) : Prop :=
   end.
 
 Inductive dsim : domain -> domain -> Prop :=
-| ds_nat : dsim ℕᵈ ℕᵈ
 | ds_pi : forall a a' (ρ ρ' : env) B,
     dsim a a' ->
     (forall x, ~ exp_fresh (S x) B -> desim (env_entry ρ x) (env_entry ρ' x)) ->
@@ -47,8 +45,6 @@ Inductive dsim : domain -> domain -> Prop :=
 | ds_suniv : forall l l', dsim l l' -> dsim 𝕌@l 𝕌@l'
 | ds_level : forall n, dsim (Levelᵈ@n) (Levelᵈ@n)
 | ds_lvl : forall c xs xs', dsim_la xs xs' -> dsim (lvᵈ c xs) (lvᵈ c xs')
-| ds_zero : dsim zeroᵈ zeroᵈ
-| ds_succ : forall m m', dsim m m' -> dsim (succᵈ m) (succᵈ m')
 | ds_True : dsim ⊤ᵈ ⊤ᵈ
 | ds_true : dsim ⋆ᵈ ⋆ᵈ
 | ds_False : dsim ⊥ᵈ ⊥ᵈ
@@ -79,12 +75,6 @@ Inductive dsim : domain -> domain -> Prop :=
 with dsim_ne : domain_ne -> domain_ne -> Prop :=
 | dsn_var : forall x, dsim_ne (#ᵈ x) (#ᵈ x)
 | dsn_app : forall m m' n n', dsim_ne m m' -> dsim_nf n n' -> dsim_ne (m $ᵈ n) (m' $ᵈ n')
-| dsn_natrec : forall (ρ ρ' : env) A mz mz' MS m m',
-    (forall x, ~ exp_fresh (S x) A -> desim (env_entry ρ x) (env_entry ρ' x)) ->
-    (forall x, ~ exp_fresh (S (S x)) MS -> desim (env_entry ρ x) (env_entry ρ' x)) ->
-    dsim mz mz' -> dsim_ne m m' ->
-    dsim_ne (recᵈ m under ρ return A | zero -> mz | succ -> MS end)
-            (recᵈ m' under ρ' return A | zero -> mz' | succ -> MS end)
 | dsn_exfalso : forall (ρ ρ' : env) A m m',
     (forall x, ~ exp_fresh (S x) A -> desim (env_entry ρ x) (env_entry ρ' x)) ->
     dsim_ne m m' ->
@@ -325,18 +315,6 @@ Proof.
     cbn in Hf; destruct (modexp_spine_fresh _ _ _ _ _ Hs Hf); assumption.
 Qed.
 
-(** The environment of the step case of the eliminator: its last entry, the
-    recursive result, may be anything when the step case does not read it. *)
-Lemma env_agree_natrec_step : forall MS (ρ ρ' : env) b b' r r',
-    env_agree (fun x => ~ exp_fresh (S (S x)) MS) ρ ρ' -> dsim b b' -> (exp_fresh 0 MS \/ dsim r r') ->
-    env_agree (fun x => ~ exp_fresh x MS) (ρ ↦ b ↦ r) (ρ' ↦ b' ↦ r').
-Proof.
-  intros * Hρ Hb Hr [| [| x]] Hx; cbn.
-  - destruct Hr; [ contradiction | constructor; assumption ].
-  - constructor; assumption.
-  - apply Hρ; exact Hx.
-Qed.
-
 #[export]
 Hint Resolve nil_agree : mctt.
 
@@ -352,8 +330,6 @@ Ltac sim_inv :=
   | H : dsim (_ _) _ |- _ => inversion H; subst; clear H
   | H : dsim (_ _ _) _ |- _ => inversion H; subst; clear H
   | H : dsim (_ _ _ _) _ |- _ => inversion H; subst; clear H
-  | H : dsim ℕᵈ _ |- _ => inversion H; subst; clear H
-  | H : dsim zeroᵈ _ |- _ => inversion H; subst; clear H
   | H : dsim ⊤ᵈ _ |- _ => inversion H; subst; clear H
   | H : dsim ⋆ᵈ _ |- _ => inversion H; subst; clear H
   | H : dsim ⊥ᵈ _ |- _ => inversion H; subst; clear H
@@ -457,10 +433,6 @@ Section Eval.
   Theorem feval_sim :
     (forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> forall ρ', env_agree (fun x => ~ exp_fresh x M) ρ ρ' ->
        exists m', ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ m' /\ dsim m m') /\
-    (forall A MZ MS m ρ r, ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-       forall ρ' m', env_agree (fun x => ~ exp_fresh (S x) A) ρ ρ' -> env_agree (fun x => ~ exp_fresh x MZ) ρ ρ' ->
-       env_agree (fun x => ~ exp_fresh (S (S x)) MS) ρ ρ' -> dsim m m' ->
-       exists r', ⟦recᶠ m' return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r') /\
     (forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> forall m' n', dsim m m' -> dsim n n' ->
        exists r', $ᶠ| m' & n' | Θ ⍮ Ξ ↘ r' /\ dsim r r') /\
     (forall Ms ρ ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> forall ρ', env_agree (fun x => ~ Forall (exp_fresh x) Ms) ρ ρ' ->
@@ -502,9 +474,6 @@ Section Eval.
     apply (eval_mut_ind Θ Ξ
       (fun M ρ m _ => forall ρ', env_agree (fun x => ~ exp_fresh x M) ρ ρ' ->
          exists m', ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ m' /\ dsim m m')
-      (fun A MZ MS m ρ r _ => forall ρ' m', env_agree (fun x => ~ exp_fresh (S x) A) ρ ρ' ->
-         env_agree (fun x => ~ exp_fresh x MZ) ρ ρ' -> env_agree (fun x => ~ exp_fresh (S (S x)) MS) ρ ρ' ->
-         dsim m m' -> exists r', ⟦recᶠ m' return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r')
       (fun m n r _ => forall m' n', dsim m m' -> dsim n n' -> exists r', $ᶠ| m' & n' | Θ ⍮ Ξ ↘ r' /\ dsim r r')
       (fun Ms ρ ms _ => forall ρ', env_agree (fun x => ~ Forall (exp_fresh x) Ms) ρ ρ' ->
          exists ms', ⟦ Ms ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ms' /\ dsim_list ms ms')
@@ -671,22 +640,6 @@ Section Eval.
           let y := fresh "y" in let Hy := fresh "Hy" in let Hf := fresh "Hf" in
           intros y Hy; apply Hρ; cbn; intros [_ Hf]; exact (Hy Hf)
       end ].
-    (** The eliminator at a successor: the recursive result is computed or
-        skipped, as the fast rule decides. *)
-    all: try match goal with
-      | IH : forall ρ0, env_agree (fun x => ~ exp_fresh x ?MS) (?ρ ↦ ?b ↦ ?r) ρ0 -> _,
-        HS : env_agree (fun x => ~ exp_fresh (S (S x)) ?MS) ?ρ ?ρ',
-        Hb : dsim ?b ?b', Hr : dsim ?r ?r' |- _ =>
-          let Hf := fresh "Hf" in
-          destruct (exp_freshb 0 MS) eqn:Hf;
-          [ destruct (IH (ρ' ↦ b' ↦ zeroᵈ)
-                       (env_agree_natrec_step _ _ _ _ _ _ _ HS Hb (or_introl (exp_freshb_sound _ _ Hf))))
-              as (? & ? & ?);
-            eexists; split; [ apply feval_natrec_skip; eassumption | eassumption ]
-          | destruct (IH (ρ' ↦ b' ↦ r') (env_agree_natrec_step _ _ _ _ _ _ _ HS Hb (or_intror Hr)))
-              as (? & ? & ?);
-            eexists; split; [ eapply feval_natrec_succ; eassumption | eassumption ] ]
-      end.
     (** A member of a saturated body: the environment of its parameters,
         then of the body up to it, agree where the body may read. *)
     all: try match goal with
@@ -768,7 +721,7 @@ Section Read.
 
   Lemma feval_app_sim : forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> forall m' n', dsim m m' -> dsim n n' ->
       exists r', $ᶠ| m' & n' | Θ ⍮ Ξ ↘ r' /\ dsim r r'.
-  Proof. exact (proj1 (proj2 (proj2 (feval_sim Θ Ξ)))). Qed.
+  Proof. exact (proj1 (proj2 (feval_sim Θ Ξ))). Qed.
 
   (** A closure, at one or two related arguments. *)
   Lemma feval_clo_sim : forall B (ρ ρ' : env) c c' b,
@@ -805,7 +758,7 @@ Section Read.
       dsim_list ups ups' -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' ->
       exists a', feval_shty Θ Ξ p ups' ρ' t a' /\ dsim a a'.
   Proof.
-    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
+    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
     exact (Hs _ _ _ _ _ H).
   Qed.
 
@@ -814,7 +767,7 @@ Section Read.
       env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> dsim m m' ->
       exists a', feval_ihty Θ Ξ ρm' A ρ' t m' a' /\ dsim a a'.
   Proof.
-    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
+    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
     exact (Hy _ _ _ _ _ _ H).
   Qed.
 
@@ -900,14 +853,11 @@ Section Read.
         | H : dsim_ne (_ _) _ |- _ => inversion H; subst; clear H
         | H : dsim_ne (_ _ _) _ |- _ => inversion H; subst; clear H
         | H : dsim_ne (_ _ _ _ _ _) _ |- _ => inversion H; subst; clear H
-        | H : dsim_ne (d_natrec _ _ _ _ _) _ |- _ => inversion H; subst; clear H
         | H : dsim_la (_ :: _) _ |- _ => inversion H; subst; clear H
         | H : dsim_la nil _ |- _ => inversion H; subst; clear H
         | H : dsim (_ _) _ |- _ => inversion H; subst; clear H
         | H : dsim (_ _ _) _ |- _ => inversion H; subst; clear H
         | H : dsim (_ _ _ _) _ |- _ => inversion H; subst; clear H
-        | H : dsim ℕᵈ _ |- _ => inversion H; subst; clear H
-        | H : dsim zeroᵈ _ |- _ => inversion H; subst; clear H
         | H : dsim ⊤ᵈ _ |- _ => inversion H; subst; clear H
         | H : dsim ⊥ᵈ _ |- _ => inversion H; subst; clear H
         | H : dsim_list (_ :: _) _ |- _ => inversion H; subst; clear H

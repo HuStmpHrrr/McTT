@@ -2,6 +2,7 @@
    basic laws and its link to [Prelude›Arith›Parity]. *)
 module Prelude›Arith›Divides where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (absurd)
 open Prelude›Logic.Conj 0l use (And; andIntro; andFst; andSnd)
 open Prelude›Logic.Disj 0l use (orElim)
@@ -36,7 +37,7 @@ end
 
 theorem dividesRefl : ∀ (n : ℕ) → Divides n n ≔
   λ (n : ℕ) →
-    rec n return x . Divides x x
+    elim n return x . Divides x x
     | zero ⇒ ⋆
     | succ d, ih ⇒ modSelf d
     end
@@ -65,8 +66,8 @@ theorem dividesPlus : ∀ (k : ℕ) (a : ℕ) (b : ℕ)
     (ha : Divides k a) (hb : Divides k b) →
     Divides k (plus a b) ≔
   λ (k : ℕ) (a : ℕ) (b : ℕ) →
-    rec k return x . (∀ (ha : Divides x a) (hb : Divides x b) →
-                        Divides x (plus a b))
+    elim k return x . (∀ (ha : Divides x a) (hb : Divides x b) →
+                         Divides x (plus a b))
     | zero ⇒ λ (ha : Eq a 0) (hb : Eq b 0) →
         transport (λ (y : ℕ) → Eq (plus y b) 0) 0 a (sym a 0 ha) hb
     | succ d, ih ⇒ λ (ha : Eq (mod a (succ d)) 0)
@@ -89,7 +90,7 @@ end
 (* Every multiple of [k] is divisible by [k]. *)
 theorem dividesMult : ∀ (k : ℕ) (m : ℕ) → Divides k (mult m k) ≔
   λ (k : ℕ) (m : ℕ) →
-    rec m return x . Divides k (mult x k)
+    elim m return x . Divides k (mult x k)
     | zero ⇒ dividesZero k
     | succ p, ih ⇒ dividesPlus k k (mult p k) (dividesRefl k) ih
     end
@@ -114,7 +115,7 @@ end
 theorem dividesMultLeft : ∀ (k : ℕ) (b : ℕ) (m : ℕ) (h : Divides k b) →
     Divides k (mult m b) ≔
   λ (k : ℕ) (b : ℕ) (m : ℕ) →
-    rec k return x . (∀ (h : Divides x b) → Divides x (mult m b))
+    elim k return x . (∀ (h : Divides x b) → Divides x (mult m b))
     | zero ⇒ λ (h : Eq b 0) →
         transport (λ (y : ℕ) → Eq (mult m y) 0) 0 b (sym b 0 h) (multZero m)
     | succ d, ih ⇒ λ (h : Divides (succ d) b) →
@@ -134,8 +135,8 @@ end
 theorem dividesPlusCancel : ∀ (k : ℕ) (x : ℕ) (y : ℕ)
     (hx : Divides k x) (hxy : Divides k (plus x y)) → Divides k y ≔
   λ (k : ℕ) (x : ℕ) (y : ℕ) →
-    rec k return w . (∀ (hx : Divides w x) (hxy : Divides w (plus x y)) →
-                        Divides w y)
+    elim k return w . (∀ (hx : Divides w x) (hxy : Divides w (plus x y)) →
+                         Divides w y)
     | zero ⇒ λ (hx : Eq x 0) (hxy : Eq (plus x y) 0) → plusEqZeroRight x y hxy
     | succ d, ih ⇒ λ (hx : Divides (succ d) x)
                      (hxy : Eq (mod (plus x y) (succ d)) 0) →
@@ -161,8 +162,8 @@ module Two where
 let modTwoParity : ∀ (n : ℕ) →
     And (∀ (h : Even n) → Eq (mod n 2) 0) (∀ (h : Odd n) → Eq (mod n 2) 1) ≔
   λ (n : ℕ) →
-    rec n return x . And (∀ (h : Even x) → Eq (mod x 2) 0)
-                         (∀ (h : Odd x) → Eq (mod x 2) 1)
+    elim n return x . And (∀ (h : Even x) → Eq (mod x 2) 0)
+                          (∀ (h : Odd x) → Eq (mod x 2) 1)
     | zero ⇒ andIntro (∀ (h : ⊤) → ⊤) (∀ (h : ⊥) → ⊥)
                 (λ (h : ⊤) → ⋆) (λ (h : ⊥) → h)
     | succ p, ih ⇒

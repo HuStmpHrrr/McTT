@@ -18,14 +18,11 @@ Proof. induction Ms; cbn; intuition. Qed.
 (** ** Values Without Global Neutrals *)
 
 Inductive dclean : domain -> Prop :=
-| dclean_nat : dclean ℕᵈ
 | dclean_pi : forall a (ρ : env) B, dclean a -> (forall x, declean (env_entry ρ x)) -> dclean (Πᵈ a ρ B)
 | dclean_univ : forall i, dclean 𝕌ω@i
 | dclean_suniv : forall l, dclean l -> dclean 𝕌@l
 | dclean_level : forall n, dclean (Levelᵈ@n)
 | dclean_lvl : forall c xs, dclean_la xs -> dclean (lvᵈ c xs)
-| dclean_zero : dclean zeroᵈ
-| dclean_succ : forall m, dclean m -> dclean (succᵈ m)
 | dclean_True : dclean ⊤ᵈ
 | dclean_true : dclean ⋆ᵈ
 | dclean_False : dclean ⊥ᵈ
@@ -42,9 +39,6 @@ Inductive dclean : domain -> Prop :=
 with dclean_ne : domain_ne -> Prop :=
 | dclean_var : forall x, dclean_ne (#ᵈ x)
 | dclean_app : forall m n, dclean_ne m -> dclean_nf n -> dclean_ne (m $ᵈ n)
-| dclean_natrec : forall (ρ : env) A mz MS m,
-    (forall x, declean (env_entry ρ x)) -> dclean mz -> dclean_ne m ->
-    dclean_ne (recᵈ m under ρ return A | zero -> mz | succ -> MS end)
 | dclean_exfalso : forall (ρ : env) A m,
     (forall x, declean (env_entry ρ x)) -> dclean_ne m ->
     dclean_ne (efqᵈ m under ρ return A)
@@ -149,8 +143,6 @@ Section Transparent.
 
   Lemma eval_clean :
     (forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> env_clean ρ -> dclean m) /\
-    (forall A MZ MS m ρ r, ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-       dclean m -> env_clean ρ -> dclean r) /\
     (forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> dclean m -> dclean n -> dclean r) /\
     (forall Ms ρ ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> env_clean ρ -> forall a, In a ms -> dclean a) /\
     (forall m args r, $*| m & args | Θ ⍮ Ξ ↘ r -> dclean m -> (forall a, In a args -> dclean a) -> dclean r) /\
@@ -170,7 +162,6 @@ Section Transparent.
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => env_clean ρ -> dclean m)
-             (fun A MZ MS m ρ r _ => dclean m -> env_clean ρ -> dclean r)
              (fun m n r _ => dclean m -> dclean n -> dclean r)
              (fun Ms ρ ms _ => env_clean ρ -> forall a, In a ms -> dclean a)
              (fun m args r _ => dclean m -> (forall a, In a args -> dclean a) -> dclean r)
@@ -313,7 +304,7 @@ Section Transparent.
       fresh_cargs Θ Ξ p ups ρ gs s vs -> env_clean ρ -> (forall a, In a ups -> dclean a) ->
       forall a, In a vs -> dclean a.
   Proof.
-    destruct eval_clean as (He & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
+    destruct eval_clean as (He & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
     induction 1; intros Hρ Hu; [ apply all_in_nil | |].
     - assert (dclean a) by (eapply He; eassumption).
       apply all_in_cons; [ clean_val | apply IHfresh_cargs; [ clean_env | assumption ] ].
@@ -325,7 +316,7 @@ Section Transparent.
       fresh_ihs Θ Ξ ρ A ρa gs vs s ihs -> env_clean ρ -> env_clean ρa -> (forall a, In a vs -> dclean a) ->
       forall a, In a ihs -> dclean a.
   Proof.
-    destruct eval_clean as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hit).
+    destruct eval_clean as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hit).
     induction 1; intros Hρ Hρa Hv; [ apply all_in_nil | apply IHfresh_ihs; [ assumption | clean_env | all_in_with assumption ] |].
     assert (dclean a) by (eapply Hit; [ eassumption | assumption | assumption | apply Hv; left; reflexivity ]).
     apply all_in_cons; [ clean_val | apply IHfresh_ihs; [ assumption | assumption | all_in_with assumption ] ].
@@ -374,7 +365,7 @@ Section Transparent.
     (forall s ρ A p D ups cs Bs Bs', read_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
        env_clean ρ -> (forall a, In a ups -> dclean a) -> nbrs_clean Bs').
   Proof.
-    destruct eval_clean as (He & _ & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
+    destruct eval_clean as (He & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
     apply (read_mut_ind Θ Ξ
              (fun s m W _ => dclean_nf m -> nf_clean W)
              (fun s m M _ => dclean_ne m -> ne_clean M)

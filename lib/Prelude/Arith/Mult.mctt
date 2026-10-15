@@ -2,6 +2,7 @@
    proved from the laws of [Prelude›Arith›Plus]. *)
 module Prelude›Arith›Mult where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (Not; absurd)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
@@ -12,7 +13,7 @@ open Prelude›Arith›Plus.Cancel use (plusEqZero)
 (* Multiplication by recursion on the first factor: [mult (succ p) m] is
    [plus m (mult p m)]. *)
 def mult (n : ℕ) (m : ℕ) : ℕ ≔
-  rec n return y . ℕ
+  elim n return y . ℕ
   | zero ⇒ 0
   | succ p, r ⇒ plus m r
   end
@@ -23,7 +24,7 @@ module Basic where
 
 theorem multZero : ∀ (n : ℕ) → Eq (mult n 0) 0 ≔
   λ (n : ℕ) →
-    rec n return x . Eq (mult x 0) 0
+    elim n return x . Eq (mult x 0) 0
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -32,7 +33,7 @@ end
 theorem multSucc : ∀ (n : ℕ) (m : ℕ) →
     Eq (mult n (succ m)) (plus n (mult n m)) ≔
   λ (n : ℕ) (m : ℕ) →
-    rec n return x . Eq (mult x (succ m)) (plus x (mult x m))
+    elim n return x . Eq (mult x (succ m)) (plus x (mult x m))
     | zero ⇒ ⋆
     | succ p, ih ⇒
         (* After the successors cancel, the goal is
@@ -52,7 +53,7 @@ end
 
 theorem multOne : ∀ (n : ℕ) → Eq (mult n 1) n ≔
   λ (n : ℕ) →
-    rec n return x . Eq (mult x 1) x
+    elim n return x . Eq (mult x 1) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -71,7 +72,7 @@ module Algebra where
 
 theorem multComm : ∀ (a : ℕ) (b : ℕ) → Eq (mult a b) (mult b a) ≔
   λ (a : ℕ) (b : ℕ) →
-    rec a return x . Eq (mult x b) (mult b x)
+    elim a return x . Eq (mult x b) (mult b x)
     | zero ⇒ sym (mult b 0) 0 (multZero b)
     | succ p, ih ⇒
         let step : Eq (plus b (mult p b)) (plus b (mult b p)) ≔
@@ -87,7 +88,7 @@ end
 theorem multDistribRight : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
     Eq (mult (plus a b) c) (plus (mult a c) (mult b c)) ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) →
-    rec a return x . Eq (mult (plus x b) c) (plus (mult x c) (mult b c))
+    elim a return x . Eq (mult (plus x b) c) (plus (mult x c) (mult b c))
     | zero ⇒ refl (mult b c)
     | succ p, ih ⇒
         let step : Eq (plus c (mult (plus p b) c))
@@ -109,7 +110,7 @@ end
 theorem multDistribLeft : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
     Eq (mult a (plus b c)) (plus (mult a b) (mult a c)) ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) →
-    rec a return x . Eq (mult x (plus b c)) (plus (mult x b) (mult x c))
+    elim a return x . Eq (mult x (plus b c)) (plus (mult x b) (mult x c))
     | zero ⇒ ⋆
     | succ p, ih ⇒
         (* [plus (plus b c) (mult p (plus b c))] is rearranged, through
@@ -143,7 +144,7 @@ end
 theorem multAssoc : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
     Eq (mult (mult a b) c) (mult a (mult b c)) ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) →
-    rec a return x . Eq (mult (mult x b) c) (mult x (mult b c))
+    elim a return x . Eq (mult (mult x b) c) (mult x (mult b c))
     | zero ⇒ ⋆
     | succ p, ih ⇒
         let distrib : Eq (mult (plus b (mult p b)) c)
@@ -202,7 +203,7 @@ module Cancel where
 theorem multEqZero : ∀ (a : ℕ) (b : ℕ) (h : Eq (mult a b) 0)
     (ha : Not (Eq a 0)) → Eq b 0 ≔
   λ (a : ℕ) (b : ℕ) →
-    rec a return x . (∀ (h : Eq (mult x b) 0) (ha : Not (Eq x 0)) → Eq b 0)
+    elim a return x . (∀ (h : Eq (mult x b) 0) (ha : Not (Eq x 0)) → Eq b 0)
     | zero ⇒ λ (h : ⊤) (ha : Not ⊤) → absurd (Eq b 0) (ha ⋆)
     | succ p, ih ⇒ λ (h : Eq (plus b (mult p b)) 0) (ha : Not ⊥) →
         plusEqZero b (mult p b) h

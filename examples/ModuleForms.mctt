@@ -2,6 +2,8 @@
    names, opens and local modules with a body. *)
 module ModuleForms where
 
+import Prelude›Builtin›Nat use (zero; succ)
+
 (* A parameterized module, and an alias of one of its instances *)
 module Iter (A : Type@0) where
   def twice (f : ∀ (x : A) → A) (x : A) : A ≔ f (f x) end
@@ -14,7 +16,7 @@ eval NatIter.twice (λ (x : ℕ) → succ x) 0
 (* A dotted declaration: [Num] holds [Ops] *)
 module Num.Ops (k : ℕ) where
   def add (n : ℕ) : ℕ ≔
-    rec n return y . ℕ | zero ⇒ k | succ p, r ⇒ succ r end
+    elim n return y . ℕ | zero ⇒ k | succ p, r ⇒ succ r end
   end
 end
 

@@ -126,9 +126,6 @@ let next st x =
   (match st.toks.(st.vars.(i)).t with
    | P.VAR (_, y) when y = x -> ()
    | P.VAR (_, y) -> raise (Misaligned (Printf.sprintf "name %s, token %s at byte %d" x y st.toks.(st.vars.(i)).s))
-   (* The recursor of an inductive type, [X.rec]: a keyword, a name. *)
-   | P.REC _ when x = "rec" -> ()
-   | P.REC _ -> raise (Misaligned (Printf.sprintf "name %s, token rec at byte %d" x st.toks.(st.vars.(i)).s))
    | _ -> assert false);
   st.cur <- i + 1; i
 
@@ -230,16 +227,9 @@ let unit_path st fq =
 let rec term st env (o : C.obj) : unit =
   match o with
   | C.Coq_typ _ | C.Coq_level _ | C.Coq_llit _
-  | C.Coq_nat | C.Coq_zero | C.Coq_num _ | C.Coq_true_ty | C.Coq_true_tm | C.Coq_false_ty -> ()
+  | C.Coq_nat | C.Coq_num _ | C.Coq_true_ty | C.Coq_true_tm | C.Coq_false_ty -> ()
   | C.Coq_suniv o | C.Coq_succl o -> term st env o
   | C.Coq_maxl (o1, o2) -> term st env o1; term st env o2
-  | C.Coq_succ o -> term st env o
-  | C.Coq_natrec (n, mx, m, z, sx, sr, s) ->
-      term st env n;
-      let a = bind st mx in term st (push mx a env) m;
-      term st env z;
-      let b = bind st sx in let c = bind st sr in
-      term st (push sr c (push sx b env)) s
   | C.Coq_exfalso (m, x, a) -> term st env m; let v = bind st x in term st (push x v env) a
   | C.Coq_pi (x, a, b) | C.Coq_fn (x, a, b) ->
       let v = bind st x in term st env a; term st (push x v env) b
@@ -500,7 +490,6 @@ let walk (file : string list) (src : string) (items : (string list * string list
   let vars = Array.of_list (List.filter_map Fun.id
       (List.mapi (fun i t -> match t.t with
            | P.VAR _ -> Some i
-           | P.REC _ when i > 0 && (match toks.(i - 1).t with P.DOT _ -> true | _ -> false) -> Some i
            | _ -> None) (Array.to_list toks))) in
   let occ = Array.init (Array.length vars) (fun _ -> { link = None; anchor = None; kind = None; bare = false }) in
   let st = { unit = fp; toks; vars; occ; cur = 0; items; decls = ref []; notes = []; evals = [] } in
@@ -540,16 +529,16 @@ type lib = {
    checker: each unit runs as its own program, as [mctt] runs it.  The log
    of a run holds only the evals of the program run, so a unit another one
    imports needs a run of its own. *)
-let check_units root (us : unit_info list) thetas outputs =
+let check_units ?(extra_roots = []) root (us : unit_info list) thetas outputs =
   List.iter (fun u ->
-      let r = Ep.main (Main.load_path root) Main.read_unit Main.parser_log_fuel (buf_of u.u_toks 0) in
+      let r = Ep.main (Main.load_path_in (root :: extra_roots)) Main.read_unit Main.parser_log_fuel (buf_of u.u_toks 0) in
       match r, PrettyPrinter.eval_outputs r with
-      | Ep.AllGood (_, th, gu, _), Some out ->
+      | Ep.AllGood (_, _, th, gu, _), Some out ->
           Hashtbl.replace thetas u.u_path ((u.u_path, gu) :: th);
           Hashtbl.replace outputs u.u_path out
       | _ -> ()) us
 
-let load ?(check = true) root : lib =
+let load ?(check = true) ?(extra_roots = []) root : lib =
   let items = Hashtbl.create 64 in
   let files = List.rev (find_units root "" []) in
   let units, failed =
@@ -563,7 +552,7 @@ let load ?(check = true) root : lib =
   in
   let units = List.rev units and failed = List.rev failed in
   let thetas = Hashtbl.create 64 and outputs = Hashtbl.create 64 in
-  if check then check_units root units thetas outputs;
+  if check then check_units ~extra_roots root units thetas outputs;
   { root; units; failed; thetas; outputs; items }
 
 (* ------------------------------------------------------------------ *)
@@ -605,7 +594,10 @@ let stats lib : stats =
           match Option.bind o.link (resolve lib 0) with
           | Some s ->
               incr linked;
-              if s.s_anchor <> "" && not (Hashtbl.mem anchors (s.s_unit, s.s_anchor)) then
+              (* A link into a unit outside the set documented, as the
+                 library is for the examples, is not checked. *)
+              if s.s_anchor <> "" && List.exists (fun u' -> u'.u_path = s.s_unit) lib.units
+                 && not (Hashtbl.mem anchors (s.s_unit, s.s_anchor)) then
                 dang := (u.u_path, x, s) :: !dang
           | None ->
               if o.anchor <> None then incr binders
@@ -821,7 +813,7 @@ let render_unit lib kinds (u : unit_info) : string =
           gap t.s;
           let txt = esc (String.sub src t.s (t.e - t.s)) in
           (match t.t with
-           | P.VAR _ | P.REC _ when Hashtbl.mem var_ix i ->
+           | P.VAR _ when Hashtbl.mem var_ix i ->
                let o = u.u_occ.(Hashtbl.find var_ix i) in
                let target = Option.bind o.link (resolve lib 0) in
                let cls = match o.kind, target with

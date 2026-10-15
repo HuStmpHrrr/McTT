@@ -5,6 +5,7 @@
    prefixes. *)
 module Prelude›Data›Stream›Properties where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Algebra use (plusComm)
@@ -74,7 +75,7 @@ module Nats where
 (* Element [n] of [nats] is [n]. *)
 theorem nthNats : ∀ (n : ℕ) → Eq (S.nth nats n) n ≔
   λ (n : ℕ) →
-    rec n return x . Eq (S.nth nats x) x
+    elim n return x . Eq (S.nth nats x) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -91,8 +92,8 @@ module Slices where
 theorem nthDrop : ∀ (k : ℕ) (s : S.Stream) (n : ℕ) →
     Eq (S.nth (S.drop k s) n) (S.nth s (plus k n)) ≔
   λ (k : ℕ) (s : S.Stream) (n : ℕ) →
-    (rec k return x . (∀ (u : S.Stream) →
-                         Eq (S.nth (S.drop x u) n) (S.nth u (plus x n)))
+    (elim k return x . (∀ (u : S.Stream) →
+                          Eq (S.nth (S.drop x u) n) (S.nth u (plus x n)))
      | zero ⇒ λ (u : S.Stream) → refl (u n)
      | succ p, ih ⇒ λ (u : S.Stream) → ih (S.tail u)
      end) s
@@ -110,7 +111,7 @@ end
 theorem scanSum : ∀ (s : S.Stream) (n : ℕ) →
     Eq (S.nth (S.scan ℕ plus 0 s) n) (sumTo (S.nth s) n) ≔
   λ (s : S.Stream) (n : ℕ) →
-    rec n return x . Eq (S.nth (S.scan ℕ plus 0 s) x) (sumTo (S.nth s) x)
+    elim n return x . Eq (S.nth (S.scan ℕ plus 0 s) x) (sumTo (S.nth s) x)
     | zero ⇒ ⋆
     | succ p, ih ⇒
         let l ≔ S.nth (S.scan ℕ plus 0 s) p;
@@ -128,8 +129,8 @@ end
 theorem nthInterleaveEven : ∀ (n : ℕ) (s : S.Stream) (t : S.Stream) →
     Eq (S.nth (S.interleave s t) (double n)) (S.nth s n) ≔
   λ (n : ℕ) (s : S.Stream) (t : S.Stream) →
-    (rec n return x . (∀ (u : S.Stream) (v : S.Stream) →
-                         Eq (S.nth (S.interleave u v) (double x)) (S.nth u x))
+    (elim n return x . (∀ (u : S.Stream) (v : S.Stream) →
+                          Eq (S.nth (S.interleave u v) (double x)) (S.nth u x))
      | zero ⇒ λ (u : S.Stream) (v : S.Stream) → refl (u 0)
      | succ p, ih ⇒ λ (u : S.Stream) (v : S.Stream) → ih (S.tail u) (S.tail v)
      end) s t
@@ -148,8 +149,8 @@ end
 theorem sumTake : ∀ (n : ℕ) (s : S.Stream) →
     Eq (sumVec n (S.take n s)) (sumTo (S.nth s) n) ≔
   λ (n : ℕ) (s : S.Stream) →
-    (rec n return x . (∀ (u : S.Stream) →
-                         Eq (sumVec x (S.take x u)) (sumTo (S.nth u) x))
+    (elim n return x . (∀ (u : S.Stream) →
+                          Eq (sumVec x (S.take x u)) (sumTo (S.nth u) x))
      | zero ⇒ λ (u : S.Stream) → ⋆
      | succ p, ih ⇒ λ (u : S.Stream) →
          let vs ≔ sumVec p (S.take p (S.tail u));

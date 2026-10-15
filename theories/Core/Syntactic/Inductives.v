@@ -391,13 +391,11 @@ Definition ind_sort_lvl (S : typ) : exp :=
 
 Fixpoint exp_mvc (n : nat) (M : exp) : Prop :=
   match M with
-  | a_typ _ | a_level _ | a_llit _ | a_nat | a_zero | a_True | a_true | a_False => True
-  | a_succ M | a_succl M | a_univ M => exp_mvc n M
+  | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False => True
+  | a_succl M | a_univ M => exp_mvc n M
   | a_maxl M N => exp_mvc n M /\ exp_mvc n N
-  | a_natrec A MZ MS M =>
-      exp_mvc (S n) A /\ exp_mvc n MZ /\ exp_mvc (S (S n)) MS /\ exp_mvc n M
   | a_exfalso A M => exp_mvc (S n) A /\ exp_mvc n M
-  | a_ind _ | a_con _ _ | a_nlit _ => True
+  | a_ind _ | a_con _ _ | a_nlit _ | a_ntok => True
   | a_elim nm A Bs M => exp_mvc (nm + n) A /\ all_brs (fun k B => exp_mvc (k + n) B) Bs /\ exp_mvc n M
   | a_pi A B | a_fn A B => exp_mvc n A /\ exp_mvc (S n) B
   | a_app M N => exp_mvc n M /\ exp_mvc n N

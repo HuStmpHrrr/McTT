@@ -169,10 +169,10 @@ Proof.
 Qed.
 
 Definition xo_of (Θ : gdeps) (Ξ : gstack) (Hg : ⊢g Θ ⍮ Ξ) : xoracle :=
-  mk_xo (mt_of Θ Ξ Hg) (nat_binding Θ Ξ).
+  mk_xo (mt_of Θ Ξ Hg).
 
 Lemma xo_of_spec : forall Θ Ξ (Hg : ⊢g Θ ⍮ Ξ), xo_spec Θ Ξ (xo_of Θ Ξ Hg).
-Proof. intros; split; [ apply mt_of_spec | reflexivity ]. Qed.
+Proof. intros; apply mt_of_spec. Qed.
 
 (** ** Where a Member is Declared
 

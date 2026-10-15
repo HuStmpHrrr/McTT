@@ -12,11 +12,6 @@ Import Domain_Notations.
         forall m2,
           ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m2 ->
           m1 = m2) /\
-      (forall A MZ MS m ρ r1,
-          ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-          forall r2,
-            ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
-            r1 = r2) /\
       (forall m n r1,
           $| m & n | Θ ⍮ Ξ ↘ r1 ->
           forall r2,
@@ -84,14 +79,6 @@ Import Domain_Notations.
       m1 = m2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ); firstorder.
-  Qed.
-
-  Corollary functional_eval_natrec : forall {Θ Ξ} A MZ MS m ρ r1 r2,
-      ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-      ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
-      r1 = r2.
-  Proof.
-    intros Θ Ξ; pose proof (@functional_eval Θ Ξ); intuition.
   Qed.
 
   Corollary functional_eval_app : forall {Θ Ξ} m n r1 r2,
@@ -166,7 +153,7 @@ Import Domain_Notations.
   Qed.
 
 #[export]
-Hint Resolve functional_eval_exp functional_eval_natrec functional_eval_elim functional_eval_ihs functional_eval_ih functional_eval_shty functional_eval_ihty functional_eval_app functional_eval_modexp functional_eval_sub : mctt.
+Hint Resolve functional_eval_exp functional_eval_elim functional_eval_ihs functional_eval_ih functional_eval_shty functional_eval_ihty functional_eval_app functional_eval_modexp functional_eval_sub : mctt.
 
 
 
@@ -176,8 +163,6 @@ Ltac functional_eval_rewrite_clear1 :=
   | H1 : (⟦ ?M ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?m1), H2 : (⟦ ?M ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?m2) |- _ =>
       clean replace m2 with m1 by first [solve [mauto 2] | tactic_error m2 m1]; clear H2
   | H1 : ($| ?m & ?n | ?T ⍮ ?X ↘ ?r1), H2 : ($| ?m & ?n | ?T ⍮ ?X ↘ ?r2) |- _ =>
-      clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
-  | H1 : (⟦rec ?m return ?A | zero -> ?MZ | succ -> ?MS end ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦rec ?m return ?A | zero -> ?MZ | succ -> ?MS end ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : (⟦elim ?m under ?nm ?A ?Bs ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦elim ?m under ?nm ?A ?Bs ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
@@ -193,24 +178,6 @@ Ltac functional_eval_rewrite_clear1 :=
 (** There is no [eval_sub] case: [functional_eval_sub] gives only pointwise
     equality, so there is nothing to [replace]. *)
 Ltac functional_eval_rewrite_clear := repeat functional_eval_rewrite_clear1.
-
-(** * Inversion
-
-    [simplify_evals] inverts all evaluation hypotheses at once.  The [ℕ]-[β]
-    rule for [succ] needs a single one inverted: its recursive call arrives as
-    an evaluation of the eliminator, and the rule needs the [eval_natrec]
-    inside it.  [eval_exp_natrec_inversion] does just that and leaves the other
-    hypotheses untouched. *)
-Proposition eval_exp_natrec_inversion : forall {Θ Ξ} A MZ MS M ρ r,
-    ⟦ rec M return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-    exists m,
-      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m /\
-      ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r.
-Proof.
-  intros * H.
-  dependent destruction H.
-  eexists; split; eassumption.
-Qed.
 
 (** The universe at an index evaluates to its value, at either tier. *)
 Lemma eval_ulvl_tm : forall Θ Ξ u ρ, ⟦ ulvl_tm u ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ulvl_val u.

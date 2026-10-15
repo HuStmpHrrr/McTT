@@ -18,16 +18,14 @@ Import Domain_Notations.
 
 Fixpoint nf_stuck (G : qname -> Prop) (W : nf) : Prop :=
   match W with
-  | nf_typ _ | nf_level _ | nf_nat | nf_zero | nf_True | nf_true | nf_False => True
+  | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => True
   | nf_univ _ xs | nf_lvl _ xs => la_stuck G xs
-  | nf_succ W => nf_stuck G W
   | nf_pi A B | nf_fn A B => nf_stuck G A /\ nf_stuck G B
   | nf_indty _ Ms | nf_con _ _ Ms => nfs_stuck G Ms
   | nf_neut M => ne_stuck G M
   end
 with ne_stuck (G : qname -> Prop) (M : ne) : Prop :=
   match M with
-  | ne_natrec A MZ MS M => nf_stuck G A /\ nf_stuck G MZ /\ nf_stuck G MS /\ ne_stuck G M
   | ne_exfalso A M => nf_stuck G A /\ ne_stuck G M
   | ne_elim _ A Bs M => nf_stuck G A /\ nbrs_stuck G Bs /\ ne_stuck G M
   | ne_app M N => ne_stuck G M /\ nf_stuck G N
@@ -77,14 +75,11 @@ Section Stuck.
 (** ** Values Whose Global Neutrals Are Stuck *)
 
 Inductive dstuck : domain -> Prop :=
-| dstuck_nat : dstuck ℕᵈ
 | dstuck_pi : forall a (ρ : env) B, dstuck a -> (forall x, destuck (env_entry ρ x)) -> dstuck (Πᵈ a ρ B)
 | dstuck_univ : forall i, dstuck 𝕌ω@i
 | dstuck_suniv : forall l, dstuck l -> dstuck 𝕌@l
 | dstuck_level : forall n, dstuck (Levelᵈ@n)
 | dstuck_lvl : forall c xs, dstuck_la xs -> dstuck (lvᵈ c xs)
-| dstuck_zero : dstuck zeroᵈ
-| dstuck_succ : forall m, dstuck m -> dstuck (succᵈ m)
 | dstuck_True : dstuck ⊤ᵈ
 | dstuck_true : dstuck ⋆ᵈ
 | dstuck_False : dstuck ⊥ᵈ
@@ -102,9 +97,6 @@ with dstuck_ne : domain_ne -> Prop :=
 | dstuck_var : forall x, dstuck_ne (#ᵈ x)
 | dstuck_glob : forall p, gstuck Θ Ξ p -> dstuck_ne (d_glob p)
 | dstuck_app : forall m n, dstuck_ne m -> dstuck_nf n -> dstuck_ne (m $ᵈ n)
-| dstuck_natrec : forall (ρ : env) A mz MS m,
-    (forall x, destuck (env_entry ρ x)) -> dstuck mz -> dstuck_ne m ->
-    dstuck_ne (recᵈ m under ρ return A | zero -> mz | succ -> MS end)
 | dstuck_exfalso : forall (ρ : env) A m,
     (forall x, destuck (env_entry ρ x)) -> dstuck_ne m ->
     dstuck_ne (efqᵈ m under ρ return A)
@@ -206,8 +198,6 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
 
   Lemma eval_stuck :
     (forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> env_stuck ρ -> dstuck m) /\
-    (forall A MZ MS m ρ r, ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-       dstuck m -> env_stuck ρ -> dstuck r) /\
     (forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> dstuck m -> dstuck n -> dstuck r) /\
     (forall Ms ρ ms, eval_exps Θ Ξ Ms ρ ms -> env_stuck ρ -> forall a, In a ms -> dstuck a) /\
     (forall m args r, eval_apps Θ Ξ m args r -> dstuck m -> (forall a, In a args -> dstuck a) -> dstuck r) /\
@@ -227,7 +217,6 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => env_stuck ρ -> dstuck m)
-             (fun A MZ MS m ρ r _ => dstuck m -> env_stuck ρ -> dstuck r)
              (fun m n r _ => dstuck m -> dstuck n -> dstuck r)
              (fun Ms ρ ms _ => env_stuck ρ -> forall a, In a ms -> dstuck a)
              (fun m args r _ => dstuck m -> (forall a, In a args -> dstuck a) -> dstuck r)
@@ -367,7 +356,7 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
       fresh_cargs Θ Ξ p ups ρ gs s vs -> env_stuck ρ -> (forall a, In a ups -> dstuck a) ->
       forall a, In a vs -> dstuck a.
   Proof.
-    destruct eval_stuck as (He & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
+    destruct eval_stuck as (He & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
     induction 1; intros Hρ Hu; [ apply all_in_nil | |].
     - assert (dstuck a) by (eapply He; eassumption).
       apply all_in_cons; [ stuck_val | apply IHfresh_cargs; [ stuck_env | assumption ] ].
@@ -379,7 +368,7 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
       fresh_ihs Θ Ξ ρ A ρa gs vs s ihs -> env_stuck ρ -> env_stuck ρa -> (forall a, In a vs -> dstuck a) ->
       forall a, In a ihs -> dstuck a.
   Proof.
-    destruct eval_stuck as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hit).
+    destruct eval_stuck as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hit).
     induction 1; intros Hρ Hρa Hv; [ apply all_in_nil | apply IHfresh_ihs; [ assumption | stuck_env | all_in_with assumption ] |].
     assert (dstuck a) by (eapply Hit; [ eassumption | assumption | assumption | apply Hv; left; reflexivity ]).
     apply all_in_cons; [ stuck_val | apply IHfresh_ihs; [ assumption | assumption | all_in_with assumption ] ].
@@ -428,7 +417,7 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
     (forall s ρ A p D ups cs Bs Bs', read_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
        env_stuck ρ -> (forall a, In a ups -> dstuck a) -> nbrs_stuck (gstuck Θ Ξ) Bs').
   Proof.
-    destruct eval_stuck as (He & _ & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
+    destruct eval_stuck as (He & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
     apply (read_mut_ind Θ Ξ
              (fun s m W _ => dstuck_nf m -> nf_stuck (gstuck Θ Ξ) W)
              (fun s m M _ => dstuck_ne m -> ne_stuck (gstuck Θ Ξ) M)

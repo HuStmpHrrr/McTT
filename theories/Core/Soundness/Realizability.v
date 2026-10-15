@@ -434,7 +434,7 @@ Theorem realize_glu_univ_elem_gen : forall a i P El,
           Γ ⊢ M : A ® m ∈ glu_elem_top i a).
 Proof.
   simpl. glu_univ_elem_induction1.
-  9:{ (** An inductive type. *)
+  8:{ (** An inductive type. *)
       split; [| split]; intros.
       - eapply ind_realize_typ; eassumption.
       - eapply ind_realize_bot; eassumption.
@@ -546,23 +546,6 @@ Proof.
         [ eapply glu_lvl_readback;
           [ eassumption | eassumption | eapply read_nf_level_sort; eassumption ]
         | mauto 3 ].
-  (* nat *)
-  - econstructor; eauto; intros.
-    progressive_inversion.
-    mauto 3.
-  - handle_functional_glu_univ_elem.
-    match_by_head glu_univ_elem invert_glu_univ_elem.
-    apply_equiv_left.
-    repeat split; eauto.
-    econstructor; trivial.
-    intros.
-    eapply wf_exp_eq_conv'; [ firstorder | mauto 3 ].
-  - econstructor; mauto 3.
-    + bulky_rewrite. mauto 3.
-    + apply_equiv_left. trivial.
-    + intros.
-      saturate_kripke_escape.
-      eapply wf_exp_eq_conv'; [ eapply glu_nat_readback; eassumption | mauto 3 ].
   (* True *)
   - econstructor; eauto; intros.
     progressive_inversion.

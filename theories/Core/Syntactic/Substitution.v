@@ -127,13 +127,7 @@ Hint Rewrite -> gunit_wk_mk gunit_sub_mk length_tele_wk length_tele_sub gm_binde
     stated outside the section above only to fix the argument order. *)
 
 Fact exp_wk_typ : forall φ i, Typeω@i[φ]ʷ = Typeω@i.       Proof. reflexivity. Qed.
-Fact exp_wk_nat : forall φ, ℕ[φ]ʷ = ℕ.                   Proof. reflexivity. Qed.
-Fact exp_wk_zero : forall φ, zero[φ]ʷ = zero.            Proof. reflexivity. Qed.
-Fact exp_wk_succ : forall φ M, (succ M)[φ]ʷ = succ M[φ]ʷ. Proof. reflexivity. Qed.
 Fact exp_sub_typ : forall σ i, Typeω@i[σ] = Typeω@i.      Proof. reflexivity. Qed.
-Fact exp_sub_nat : forall σ, ℕ[σ] = ℕ.                  Proof. reflexivity. Qed.
-Fact exp_sub_zero : forall σ, zero[σ] = zero.           Proof. reflexivity. Qed.
-Fact exp_sub_succ : forall σ M, (succ M)[σ] = succ M[σ]. Proof. reflexivity. Qed.
 Fact exp_wk_level : forall φ n, (Level@n)[φ]ʷ = Level@n.          Proof. reflexivity. Qed.
 Fact exp_wk_llit : forall φ o, (𝕃ᵒ o)[φ]ʷ = 𝕃ᵒ o.         Proof. reflexivity. Qed.
 Fact exp_wk_succl : forall φ M, (succl M)[φ]ʷ = succl M[φ]ʷ. Proof. reflexivity. Qed.
@@ -1368,15 +1362,6 @@ Proof.
   apply exp_wk_sub_comm_ext; intros [| [| y]]; reflexivity.
 Qed.
 
-(** The motive of the successor branch is stable under a doubly lifted
-    weakening. *)
-Corollary exp_wk_sub_natrec : forall M φ,
-    M[Wk ⨟ Wk,,succ #1][wk_q (wk_q φ)]ʷ = M[wk_q φ]ʷ[Wk ⨟ Wk,,succ #1].
-Proof.
-  intros; symmetry.
-  apply exp_wk_sub_comm_ext; intros [| y]; reflexivity.
-Qed.
-
 Corollary exp_sub_sub_extend2 : forall M σ N N',
     M[Id,,N,,N'][σ] = M[q (q σ)][Id,,N[σ],,N'[σ]].
 Proof.
@@ -1385,31 +1370,6 @@ Proof.
   apply exp_sub_sb_eq; intros [| [| y]]; reduce_index; try reflexivity.
   do 2 rewrite sentry_sub_shift_extend.
   symmetry; apply sentry_sub_id.
-Qed.
-
-Corollary exp_sub_sub_natrec : forall M σ,
-    M[Wk ⨟ Wk,,succ #1][q (q σ)] = M[q σ][Wk ⨟ Wk,,succ #1].
-Proof.
-  intros.
-  do 2 rewrite exp_sub_sub.
-  apply exp_sub_sb_eq; intros [| y]; reduce_index; [ reflexivity | ].
-  rewrite sentry_sub_shift_extend, sentry_wk_wk, (sentry_sub_sb_eq _ _ _ sb_shift_shift), sentry_sub_of_wk.
-  reflexivity.
-Qed.
-
-(** The type of the [ℕ]-[β] rule for [succ]: the successor branch's motive,
-    instantiated at [N] and the recursive call, is the motive at [succ N].  Stated
-    along an arbitrary [σ] and not just [Id], because the semantic rule reads
-    this type at two substitutions, [Id ,, M ,, E] out of [Γ] for its two inner
-    values and [σ ,, M[σ] ,, E[σ]] out of the caller's [Γ'] for its two outer
-    ones, and both instances must be the same equation for the two four-value
-    patterns to be identified. *)
-Corollary exp_sub_natrec_step : forall M σ N N',
-    M[Wk ⨟ Wk,,succ #1][σ,,N,,N'] = M[σ,,succ N].
-Proof.
-  intros.
-  rewrite exp_sub_sub.
-  apply exp_sub_sb_eq; intros [| y]; reduce_index; reflexivity.
 Qed.
 
 (** The two-argument analogue of [exp_sub_extend_sub], which is what the
@@ -1424,58 +1384,12 @@ Proof.
   apply sentry_sub_id.
 Qed.
 
-(** [zero[σ]] is [zero], so the zero branch's type is an instance of
-    [exp_sub_extend_sub] with the right-hand side already reduced. *)
-Corollary exp_sub_extend_sub_zero : forall M σ,
-    M[Id,,zero][σ] = M[σ,,zero].
-Proof. intros; apply exp_sub_extend_sub. Qed.
-
 Corollary exp_sub_q_extend2 : forall M σ N N',
     M[q (q σ)][Id,,N,,N'] = M[σ,,N,,N'].
 Proof.
   intros.
   rewrite exp_sub_q_compose_extend.
   apply exp_sub_sb_eq; intros [| y]; reduce_index; [ reflexivity | apply sb_q_extend ].
-Qed.
-
-(** [exp_sub_natrec_step] along an arbitrary substitution: [τ] need not be a
-    literal extension, because [sb_expand] makes every substitution one. *)
-Corollary exp_sub_natrec_step_gen : forall M τ,
-    M[Wk ⨟ Wk,,succ #1][τ] = M[Wk ⨟ Wk ⨟ τ,,succ #0[Wk ⨟ τ]].
-Proof.
-  intros.
-  rewrite exp_sub_sub.
-  apply exp_sub_sb_eq; intros [| y]; reduce_index; reflexivity.
-Qed.
-
-(** ** The Generic Recursor
-
-    An eliminator whose scrutinee is [#0] and whose three other components have
-    been weakened past that binder.  If [E] is the eliminator at [M] in [Γ], this
-    is a term of [Γ ▹ ℕ] which the extension [Id ,, M] sends back to [E], and it
-    exists for one reason: the recursive call of the [ℕ]-[β] rule for [succ]
-    appears in the substitution [Id ,, M ,, E], and the only way to validate an
-    extension semantically ([rel_sub_under_ctx_extend_sub_double]) is by a term of
-    the context being extended.  [E] itself is a term of [Γ], one context too
-    short; its generic form is the term of [Γ ▹ ℕ] that is asked for. *)
-Corollary exp_sub_natrec_generic : forall A MZ MS σ N,
-    rec #0 return A[wk_q ↑]ʷ | zero -> MZ[↑]ʷ | succ -> MS[wk_q (wk_q ↑)]ʷ end[σ,,N]
-    = rec N return A[q σ] | zero -> MZ[σ] | succ -> MS[q (q σ)] end.
-Proof.
-  intros; cbn [exp_sub]; f_equal;
-    try apply exp_sub_shift_extend;
-    try reflexivity;
-    rewrite exp_sub_wk; apply exp_sub_sb_eq;
-    intros [| [| y]]; reduce_index; reflexivity.
-Qed.
-
-(** Its defining property: substituting the generic recursor along [σ ,, M[σ]]
-    is substituting the eliminator at [M] along [σ]. *)
-Corollary exp_sub_natrec_generic_self : forall A MZ MS σ M,
-    rec #0 return A[wk_q ↑]ʷ | zero -> MZ[↑]ʷ | succ -> MS[wk_q (wk_q ↑)]ʷ end[σ,,M[σ]]
-    = rec M return A | zero -> MZ | succ -> MS end[σ].
-Proof.
-  intros; apply exp_sub_natrec_generic.
 Qed.
 
 (** The type of the [η]-rule: a codomain weakened under one more binder and
@@ -1525,8 +1439,8 @@ Hint Rewrite -> wk_id_var wk_shift_var wk_q_zero wk_q_succ
                 sb_wk_var sb_of_wk_var sb_compose_var
                 sb_q_zero sb_q_succ
                 exp_wk_var exp_sub_var
-                exp_wk_typ exp_wk_nat exp_wk_zero
-                exp_sub_typ exp_sub_nat exp_sub_zero
+                exp_wk_typ
+                exp_sub_typ
                 exp_wk_True exp_wk_true exp_wk_False
                 exp_sub_True exp_sub_true exp_sub_False
                 exp_wk_level exp_wk_llit exp_wk_succl exp_wk_maxl

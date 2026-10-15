@@ -9,6 +9,8 @@
    [Type@{ω+n}], with the shorthand [Type@nL]. *)
 module Universes where
 
+import Prelude›Builtin›Nat use (zero; succ)
+
 (* The identity, polymorphic in the level of its type. *)
 def id (u : Level) (A : Type@{u}) (a : A) : A ≔ a end
 
@@ -44,7 +46,7 @@ eval Dom
 (* A function into [Level] may be used in a universe: levels are computed by
    the same evaluator as everything else. *)
 def depth (n : ℕ) : Level ≔
-  rec n return x . Level | zero ⇒ 0l | succ y, r ⇒ succl r end
+  elim n return x . Level | zero ⇒ 0l | succ y, r ⇒ succl r end
 end
 
 eval Type@{depth 3}

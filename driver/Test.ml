@@ -5,6 +5,14 @@ open McttExtracted.Entrypoint
 
 (** Helper definitions *)
 
+(* Every program sees the library, so that a unit can import the natural
+   numbers, [Prelude›Builtin›Nat]. *)
+let lib_root = [ "../lib" ]
+let main_of_program_string ?search_root program =
+  Main.main_of_program_string ?search_root ~extra_roots:lib_root program
+let main_of_filename ?search_root filename =
+  Main.main_of_filename ?search_root ~extra_roots:lib_root filename
+
 let main_of_example s = main_of_filename ("../examples/" ^ s)
 
 (* The programs under [examples/multi] import units of their own, looked up
@@ -20,8 +28,14 @@ let main_of_multi_string program =
 let main_of_lib s = main_of_filename ~search_root:"../lib" ("../lib/" ^ s)
 
 (* Every unit needs its top level module declaration, so the small inline cases
-   get a throwaway one. *)
-let main_of_body body = main_of_program_string ("module Test where " ^ body ^ " end")
+   get a throwaway one, which imports the natural numbers with their
+   constructors. *)
+let nat_import = "import Prelude›Builtin›Nat use (Nat; zero; succ)\n"
+let main_of_body body =
+  main_of_program_string ~search_root:"../lib" (nat_import ^ "module Test where " ^ body ^ " end")
+
+(* The same without the natural numbers. *)
+let main_of_bare_body body = main_of_program_string ("module Test where " ^ body ^ " end")
 
 (** Real tests *)
 (* We never expect parser timeout. 2^500 fuel should be large enough! *)
@@ -60,10 +74,11 @@ let%expect_test "the ASCII spellings parse and print in Unicode" =
   let _ = main_of_body
     "def t : True := true end \
      def f : forall (b : False) -> Nat := fun (b : False) -> exfalso b return y . Nat end \
-     eval rec 2 return y . Nat | zero => 0 | succ n, r => succ r end \
+     eval elim 2 return y . Nat | zero => 0 | succ n, r => succ r end \
      eval t eval f" in
   [%expect {|
-    Evaluate rec 2 return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ x3 end --> 2 : ℕ
+    Evaluate elim 2 return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ x3 end --> 2
+      : ℕ
     Evaluate t --> ⋆ : ⊤
     Evaluate f --> λ (x1 : ⊥) → exfalso x1 return x2 . ℕ : ∀ (x1 : ⊥) → ℕ
     |}]
@@ -74,10 +89,11 @@ let%expect_test "each Unicode spelling parses" =
      def f : ∀ (b : ⊥) → ℕ ≔ λ (b : ⊥) → exfalso b return y . ℕ end \
      def g : Π (x : ℕ) → ℕ ≔ λ (x : ℕ) → x end \
      def u : Type@ω ≔ Type@0 end \
-     eval rec 2 return y . ℕ | zero ⇒ 0 | succ n, r ⇒ succ r end \
+     eval elim 2 return y . ℕ | zero ⇒ 0 | succ n, r ⇒ succ r end \
      eval t eval f eval g" in
   [%expect {|
-    Evaluate rec 2 return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ x3 end --> 2 : ℕ
+    Evaluate elim 2 return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ x3 end --> 2
+      : ℕ
     Evaluate t --> ⋆ : ⊤
     Evaluate f --> λ (x1 : ⊥) → exfalso x1 return x2 . ℕ : ∀ (x1 : ⊥) → ℕ
     Evaluate g --> λ (x1 : ℕ) → x1 : ∀ (x1 : ℕ) → ℕ
@@ -89,7 +105,7 @@ let%expect_test "Unicode symbols need no spaces" =
   [%expect {| Evaluate g --> λ (x1 : ℕ) → x1 : ∀ (x1 : ℕ) → ℕ |}]
 
 let%expect_test "a unit path may be spelled with ›" =
-  let _ = main_of_multi_string "import Lib›Num module Test where eval Lib::Num.double 2 eval Lib›Num.Ops.pred 2 end" in
+  let _ = main_of_multi_string "import Prelude›Builtin›Nat import Lib›Num module Test where eval Lib::Num.double 2 eval Lib›Num.Ops.pred 2 end" in
   [%expect {|
     Evaluate Lib›Num.double 2 --> 4 : ℕ
     Evaluate Lib›Num.Ops.pred 2 --> 1 : ℕ
@@ -97,18 +113,18 @@ let%expect_test "a unit path may be spelled with ›" =
 
 (* [∷] is not a path separator: only [::] and [›] are. *)
 let%expect_test "a unit path spelled with ∷ is rejected" =
-  let _ = main_of_multi_string "import Lib∷Num module Test where eval 0 end" in
-  [%expect {| Error: unexpected character "∷" at line 1, column 11 |}]
+  let _ = main_of_multi_string "import Prelude›Builtin›Nat import Lib∷Num module Test where eval 0 end" in
+  [%expect {| Error: unexpected character "∷" at line 1, column 38 |}]
 
 let%expect_test "a Unicode character that is not a token is rejected" =
   let _ = main_of_body "eval λ (x : ℕ) ↦ x" in
-  [%expect {| Error: unexpected character "↦" at line 1, column 34 |}]
+  [%expect {| Error: unexpected character "↦" at line 2, column 34 |}]
 
 (* Columns count characters: [→] is one column, as it is displayed. *)
 let%expect_test "a syntax error after Unicode is located by characters" =
   let _ = main_of_body "eval λ (x : ℕ) → → x" in
   [%expect {|
-    Error: on "→" (at line 1, column 36 - line 1, column 37): An expression is
+    Error: on "→" (at line 2, column 36 - line 2, column 37): An expression is
       expected after "→".
       This token is invalid for the beginning of an expression.
     |}]
@@ -125,9 +141,9 @@ let%expect_test "an eval does not see a later definition" =
   [%expect {| Error: unbound name later |}]
 
 let%expect_test "definitions are not allowed outside a module" =
-  let _ = main_of_program_string "def x : Nat := 0 end module Test where end" in
+  let _ = main_of_program_string "import Prelude›Builtin›Nat use (Nat) def x : Nat := 0 end module Test where end" in
   [%expect {|
-    Error: on "def" (at line 1, column 1 - line 1, column 4): This token is
+    Error: on "def" (at line 1, column 38 - line 1, column 41): This token is
       invalid for the beginning of a program.
     |}]
 
@@ -142,8 +158,8 @@ let%expect_test "identity function of Nat is of forall (x : Nat) -> Nat" =
 let%expect_test "recursion on a natural number that always returns zero is of \
                  Nat" =
   let _ = main_of_body
-    "eval rec 3 return y . Nat | zero => 0 | succ n, r => 0 end : Nat" in
-  [%expect {| Evaluate rec 3 return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ 0 end --> 0 : ℕ |}]
+    "eval elim 3 return y . Nat | zero => 0 | succ n, r => 0 end : Nat" in
+  [%expect {| Evaluate elim 3 return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ 0 end --> 0 : ℕ |}]
 
 let%expect_test "SimpleNat.mctt works" =
   let _ = main_of_example "SimpleNat.mctt" in
@@ -153,9 +169,9 @@ let%expect_test "SimpleRec.mctt works" =
   let _ = main_of_example "SimpleRec.mctt" in
   [%expect {|
     Evaluate λ (x1 : ℕ)
-               → rec x1 return x2 . ℕ | zero ⇒ 1 | succ x3, x4 ⇒ succ x4 end
+               → elim x1 return x2 . ℕ | zero ⇒ 1 | succ x3, x4 ⇒ succ x4 end
       --> λ (x1 : ℕ)
-            → rec x1 return x2 . ℕ | zero ⇒ 1 | succ x3, x4 ⇒ succ x4 end
+            → elim x1 return x2 . ℕ | zero ⇒ 1 | succ x3, x4 ⇒ succ x4 end
       : ∀ (x1 : ℕ) → ℕ
     |}]
 
@@ -200,7 +216,7 @@ let%expect_test "zero is not of True" =
 let%expect_test "exfalso needs a motive" =
   let _ = main_of_body "eval exfalso f end" in
   [%expect {|
-    Error: on "end" (at line 1, column 34 - line 1, column 37): Either an
+    Error: on "end" (at line 2, column 34 - line 2, column 37): Either an
       expression or "return" keyword is expected.
       This token is invalid for the beginning of an expression.
     |}]
@@ -298,14 +314,14 @@ let%expect_test "Vector.mctt works" =
                       (x25 : x1 A6 (succ x24))
                      → x8 A6 (succ x24) x25
                          (λ (x26 : ℕ)
-                           → rec x26 return x27 . Type@0
+                           → elim x26 return x27 . Type@0
                              | zero ⇒ ℕ
                              | succ x28, A7 ⇒ A6
                              end)
                          0
                          (λ (x29 : ℕ)
                             (x30 : A6)
-                            (x31 : rec x29 return x32 . Type@0
+                            (x31 : elim x29 return x32 . Type@0
                                    | zero ⇒ ℕ
                                    | succ x33, A8 ⇒ A6
                                    end)
@@ -404,7 +420,7 @@ let%expect_test "an unannotated let with an ill-typed body is rejected" =
 let%expect_test "an unannotated local definition needs its body" =
   let _ = main_of_body "eval let x := in x end" in
   [%expect {|
-    Error: on "in" (at line 1, column 33 - line 1, column 35): Expected the body
+    Error: on "in" (at line 2, column 33 - line 2, column 35): Expected the body
       of the local definition.
     |}]
 
@@ -420,7 +436,7 @@ let%expect_test "LetNary.mctt works" =
   [%expect {|
     Evaluate let x1 : ∀ (x2 : ℕ) → Type@0 ≔
                    λ (x3 : ℕ)
-                     → rec x3 return x4 . Type@0
+                     → elim x3 return x4 . Type@0
                        | zero ⇒ ℕ
                        | succ x5, A1 ⇒ ∀ (x6 : ℕ) → A1
                        end;
@@ -430,7 +446,7 @@ let%expect_test "LetNary.mctt works" =
                          (x13 : ℕ)
                          → x1 x11 ≔
                    λ (x14 : ℕ)
-                     (x15 : rec succ x14 return x16 . Type@0
+                     (x15 : elim succ x14 return x16 . Type@0
                             | zero ⇒ ℕ
                             | succ x17, A2 ⇒ ∀ (x18 : ℕ) → A2
                             end)
@@ -443,7 +459,7 @@ let%expect_test "LetNary.mctt works" =
                                → ℕ ≔
                          λ (x25 : ℕ)
                            (x26 : ℕ)
-                           → rec x25 return x27 . ℕ
+                           → elim x25 return x27 . ℕ
                              | zero ⇒ x26
                              | succ x28, x29 ⇒ succ x29
                              end
@@ -452,10 +468,10 @@ let%expect_test "LetNary.mctt works" =
                         (x32 : ℕ)
                         → x22 x30 (x22 x31 x32)
                    end
-             in (rec x20 return x33 . ∀ (x36 : x1 x33) → ℕ
+             in (elim x20 return x33 . ∀ (x34 : x1 x33) → ℕ
                  | zero ⇒ x7
-                 | succ x34, x35 ⇒
-                   λ (x37 : x1 (succ x34)) → x35 (x10 x34 x37 (succ x34))
+                 | succ x35, x36 ⇒
+                   λ (x37 : x1 (succ x35)) → x36 (x10 x35 x37 (succ x35))
                  end)
                   x21
              end --> 6 : ℕ
@@ -542,14 +558,14 @@ let%expect_test "LetVector.mctt works" =
                      (x70 : x1 A10 (succ x69))
                      → x40 A10 (succ x69) x70
                          (λ (x71 : ℕ)
-                           → rec x71 return x72 . Type@0
+                           → elim x71 return x72 . Type@0
                              | zero ⇒ ℕ
                              | succ x73, A11 ⇒ A10
                              end)
                          0
                          (λ (x74 : ℕ)
                             (x75 : A10)
-                            (x76 : rec x74 return x77 . Type@0
+                            (x76 : elim x74 return x77 . Type@0
                                    | zero ⇒ ℕ
                                    | succ x78, A12 ⇒ A10
                                    end)
@@ -567,10 +583,10 @@ let%expect_test "DefAbstract.mctt works" =
   let _ = main_of_example "DefAbstract.mctt" in
   [%expect {|
     Evaluate double four
-      --> rec four return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
+      --> elim four return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
       : ℕ
     Evaluate double four
-      --> rec four return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
+      --> elim four return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
       : ℕ
     |}]
 
@@ -783,7 +799,7 @@ let%expect_test "a large universe is not in itself" =
 let%expect_test "ω^2 is not a level" =
   let _ = main_of_body "eval ω^2 : Level@1" in
   [%expect {|
-    Error: on "ω^2" (at line 1, column 24 - line 1, column 27): ω^2 is not a
+    Error: on "ω^2" (at line 2, column 24 - line 2, column 27): ω^2 is not a
       level: every level is below it. It is written only in a large universe,
       "Type@{ω^2}" or "Type@{ω^2+i}".
     |}]
@@ -791,7 +807,7 @@ let%expect_test "ω^2 is not a level" =
 let%expect_test "an unbraced large universe" =
   let _ = main_of_body "eval Type@omega^2" in
   [%expect {|
-    Error: on "ω^2" (at line 1, column 29 - line 1, column 36): ω^2 is not a
+    Error: on "ω^2" (at line 2, column 29 - line 2, column 36): ω^2 is not a
       level: every level is below it. It is written only in a large universe,
       "Type@{ω^2}" or "Type@{ω^2+i}".
     |}]
@@ -799,14 +815,14 @@ let%expect_test "an unbraced large universe" =
 let%expect_test "a large universe without its offset" =
   let _ = main_of_body "eval Type@{ω^2+}" in
   [%expect {|
-    Error: on "}" (at line 1, column 34 - line 1, column 35): A numeral is
+    Error: on "}" (at line 2, column 34 - line 2, column 35): A numeral is
       expected after "Type@{ω^2+": the large universe "Type@{ω^2+i}".
     |}]
 
 let%expect_test "a large universe not closed" =
   let _ = main_of_body "eval Type@{ω^2 Nat}" in
   [%expect {|
-    Error: on "ℕ" (at line 1, column 34 - line 1, column 37): A closing "}" or
+    Error: on "Nat" (at line 2, column 34 - line 2, column 37): A closing "}" or
       "+i" is expected after "Type@{ω^2": the large universe "Type@{ω^2}" or
       "Type@{ω^2+i}".
     |}]
@@ -815,7 +831,7 @@ let%expect_test "a large universe not closed" =
 let%expect_test "an unbraced omega offset is a syntax error" =
   let _ = main_of_body "eval Type@ω+1" in
   [%expect {|
-    Error: on "+" (at line 1, column 30 - line 1, column 31): Expected ":"
+    Error: on "+" (at line 2, column 30 - line 2, column 31): Expected ":"
       followed by the type to check against, or the next command.
     |}]
 
@@ -899,21 +915,21 @@ let%expect_test "Level is Level@{0}" =
 let%expect_test "the braced type of levels needs a numeral" =
   let _ = main_of_body "eval Level@{u}" in
   [%expect {|
-    Error: on "u" (at line 1, column 31 - line 1, column 32): A numeral is
+    Error: on "u" (at line 2, column 31 - line 2, column 32): A numeral is
       expected after "Level@{": the sort of the type of levels.
     |}]
 
 let%expect_test "the braced type of levels needs its closing brace" =
   let _ = main_of_body "eval Level@{1 Nat}" in
   [%expect {|
-    Error: on "ℕ" (at line 1, column 33 - line 1, column 36): A closing "}" is
+    Error: on "Nat" (at line 2, column 33 - line 2, column 36): A closing "}" is
       expected after the sort of "Level@{n".
     |}]
 
 let%expect_test "Level@ needs a numeral" =
   let _ = main_of_body "eval Level@u" in
   [%expect {|
-    Error: on "u" (at line 1, column 30 - line 1, column 31): A numeral is
+    Error: on "u" (at line 2, column 30 - line 2, column 31): A numeral is
       expected after "Level@": the sort of the type of levels.
     |}]
 
@@ -930,7 +946,7 @@ let%expect_test "a level is not a type" =
 (* A declared type is checked to be a type before the body is checked
    against it, and each failure has its own message. *)
 let%expect_test "the declared type of a definition is a type" =
-  let _ = main_of_program_string "module Repro where def t : Nat Nat := 1 end end" in
+  let _ = main_of_program_string "import Prelude›Builtin›Nat use (Nat) module Repro where def t : Nat Nat := 1 end end" in
   [%expect {| Error: the type of t, ℕ ℕ, is not a type |}];
   let _ = main_of_body "def t : Nat := Type@0 end" in
   [%expect {| Error: the body of t, Type@0, is not of type ℕ |}];
@@ -997,7 +1013,7 @@ let%expect_test "the level of a universe is a level: parameters" =
     Error: 0 is not of type Level@n for any n (the level of Type@{0});
       write 0l for the level 0
     |}];
-  let _ = main_of_program_string "module T (A : Type@{0}) where end" in
+  let _ = main_of_program_string "import Prelude›Builtin›Nat module T (A : Type@{0}) where end" in
   [%expect {|
     Error: 0 is not of type Level@n for any n (the level of Type@{0});
       write 0l for the level 0
@@ -1082,7 +1098,7 @@ let%expect_test "LetMulti.mctt works" =
                  x1 : A1 ≔ 2;
                  x2 : ∀ (x3 : A1) → A1 ≔
                    λ (x4 : A1)
-                     → rec x4 return x5 . A1
+                     → elim x4 return x5 . A1
                        | zero ⇒ x1
                        | succ x6, x7 ⇒ succ x7
                        end
@@ -1215,14 +1231,14 @@ let%expect_test "a directory is not an input file" =
 
 let%expect_test "an unexpected character is reported" =
   let _ = main_of_body "eval 0 $ 1" in
-  [%expect {| Error: unexpected character '$' at line 1, column 26 |}]
+  [%expect {| Error: unexpected character '$' at line 2, column 26 |}]
 
 let%expect_test "an unterminated comment is reported" =
   let _ = main_of_body "eval 0 (* open" in
   [%expect {| Error: unterminated comment |}]
 
 let%expect_test "a multi-line comment counts its lines" =
-  let _ = main_of_program_string "module Test where\n(* one\n   two *)\n\neval 0 $ 1 end" in
+  let _ = main_of_program_string "import Prelude›Builtin›Nat module Test where\n(* one\n   two *)\n\neval 0 $ 1 end" in
   [%expect {| Error: unexpected character '$' at line 5, column 8 |}]
 
 let%expect_test "a parse error after a multi-line comment is on its own line" =
@@ -1760,17 +1776,17 @@ let%expect_test "an import of a local module alias" =
 (** Imports declare definitions *)
 
 let%expect_test "use declares a private definition" =
-  let _ = main_of_multi_string "import Lib::Num use (double) module X where eval double 3 end" in
+  let _ = main_of_multi_string "import Prelude›Builtin›Nat import Lib::Num use (double) module X where eval double 3 end" in
   [%expect {| Evaluate double 3 --> 6 : ℕ |}]
 
 let%expect_test "use as renames the definition" =
-  let _ = main_of_multi_string "import Lib::Num use (double as dbl) module X where eval dbl 3 end" in
+  let _ = main_of_multi_string "import Prelude›Builtin›Nat import Lib::Num use (double as dbl) module X where eval dbl 3 end" in
   [%expect {| Evaluate dbl 3 --> 6 : ℕ |}]
 
 let%expect_test "export declares a public definition" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where module M where import Lib::Num export (double) end \
+      "import Prelude›Builtin›Nat import Lib::Num module X where module M where import Lib::Num export (double) end \
        eval M.double 3 end"
   in
   [%expect {| Evaluate M.double 3 --> 6 : ℕ |}]
@@ -1778,7 +1794,7 @@ let%expect_test "export declares a public definition" =
 let%expect_test "export as renames the public definition" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where module M where import Lib::Num export (double as dbl) end \
+      "import Prelude›Builtin›Nat import Lib::Num module X where module M where import Lib::Num export (double as dbl) end \
        eval M.dbl 3 end"
   in
   [%expect {| Evaluate M.dbl 3 --> 6 : ℕ |}]
@@ -1786,19 +1802,19 @@ let%expect_test "export as renames the public definition" =
 let%expect_test "a used definition is private to its module" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where module M where import Lib::Num use (double) end \
+      "import Prelude›Builtin›Nat import Lib::Num module X where module M where import Lib::Num use (double) end \
        eval M.double 3 end"
   in
   [%expect {| Error: X.M.double is private |}]
 
 let%expect_test "use of a submodule declares a private alias" =
-  let _ = main_of_multi_string "import Lib::Num use (Ops) module X where eval Ops.pred 3 end" in
+  let _ = main_of_multi_string "import Prelude›Builtin›Nat import Lib::Num use (Ops) module X where eval Ops.pred 3 end" in
   [%expect {| Evaluate Ops.pred 3 --> 2 : ℕ |}]
 
 let%expect_test "export of a submodule declares a public alias" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where module M where import Lib::Num export (Ops as P) end \
+      "import Prelude›Builtin›Nat import Lib::Num module X where module M where import Lib::Num export (Ops as P) end \
        eval M.P.pred 3 end"
   in
   [%expect {| Evaluate M.P.pred 3 --> 2 : ℕ |}]
@@ -1806,7 +1822,7 @@ let%expect_test "export of a submodule declares a public alias" =
 let%expect_test "import as declares a private alias" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where module M where import Lib::Num.Ops as O \
+      "import Prelude›Builtin›Nat use (Nat) import Lib::Num module X where module M where import Lib::Num.Ops as O \
        def z : Nat := O.pred 3 end end eval M.z end"
   in
   [%expect {| Evaluate M.z --> 2 : ℕ |}]
@@ -1814,7 +1830,7 @@ let%expect_test "import as declares a private alias" =
 let%expect_test "an alias declared by import as is private" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where module M where import Lib::Num.Ops as O end \
+      "import Prelude›Builtin›Nat import Lib::Num module X where module M where import Lib::Num.Ops as O end \
        eval M.O.pred 3 end"
   in
   [%expect {| Error: X.M.O is private |}]
@@ -1822,7 +1838,7 @@ let%expect_test "an alias declared by import as is private" =
 let%expect_test "an import with arguments and use" =
   let _ =
     main_of_multi_string
-      "import Lib::Priv module X where module M where import Lib::Priv.F 4 use (g) \
+      "import Prelude›Builtin›Nat use (Nat; succ) import Lib::Priv module X where module M where import Lib::Priv.F 4 use (g) \
        def z : Nat := succ g end end eval M.z end"
   in
   [%expect {| Evaluate M.z --> 5 : ℕ |}]
@@ -1830,7 +1846,7 @@ let%expect_test "an import with arguments and use" =
 let%expect_test "an import with arguments and export as" =
   let _ =
     main_of_multi_string
-      "import Lib::Priv module X where module M where import Lib::Priv.F 4 export (g as h) end \
+      "import Prelude›Builtin›Nat import Lib::Priv module X where module M where import Lib::Priv.F 4 export (g as h) end \
        eval M.h end"
   in
   [%expect {| Evaluate M.h --> 4 : ℕ |}]
@@ -1838,7 +1854,7 @@ let%expect_test "an import with arguments and export as" =
 let%expect_test "a member used and exported under two names is rejected" =
   let _ =
     main_of_multi_string
-      "import Lib::Priv module X where import Lib::Priv.F 4 use (g) export (g as h) end"
+      "import Prelude›Builtin›Nat import Lib::Priv module X where import Lib::Priv.F 4 use (g) export (g as h) end"
   in
   [%expect {| Error: g is used and exported |}]
 
@@ -1860,7 +1876,7 @@ let%expect_test "an import declaring a name twice is rejected" =
 
 let%expect_test "a used name must be fresh in its frame" =
   let _ =
-    main_of_multi_string "import Lib::Num use (double) module X where def double : Nat := 0 end end"
+    main_of_multi_string "import Prelude›Builtin›Nat use (Nat) import Lib::Num use (double) module X where def double : Nat := 0 end end"
   in
   [%expect {| Error: double is already declared |}]
 
@@ -1875,7 +1891,7 @@ let%expect_test "a private member is not used through an import" =
 let%expect_test "a local use, use as and export" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where open Lib::Num use (double as dbl) \
+      "import Prelude›Builtin›Nat use (Nat) import Lib::Num module X where eval let module L where open Lib::Num use (double as dbl) \
        export (Ops) def t : Nat := dbl 2 end end in L.Ops.pred L.t end end"
   in
   [%expect {|
@@ -1895,7 +1911,7 @@ let%expect_test "a local use, use as and export" =
 let%expect_test "a local export as" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where open Lib::Num export (double as dbl) \
+      "import Prelude›Builtin›Nat import Lib::Num module X where eval let module L where open Lib::Num export (double as dbl) \
        end in L.dbl 2 end end"
   in
   [%expect {|
@@ -1911,7 +1927,7 @@ let%expect_test "a local export as" =
 let%expect_test "a local submodule use" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where open Lib::Num use (Ops) \
+      "import Prelude›Builtin›Nat use (Nat) import Lib::Num module X where eval let module L where open Lib::Num use (Ops) \
        def t : Nat := Ops.pred 5 end end in L.t end end"
   in
   [%expect {|
@@ -1928,7 +1944,7 @@ let%expect_test "a local submodule use" =
 let%expect_test "a local import as" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where open Lib::Num as W \
+      "import Prelude›Builtin›Nat use (Nat) import Lib::Num module X where eval let module L where open Lib::Num as W \
        def t : Nat := W.double 1 end end in L.t end end"
   in
   [%expect {|
@@ -1945,7 +1961,7 @@ let%expect_test "a local import as" =
 let%expect_test "a local use is private" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where open Lib::Num use (double) end \
+      "import Prelude›Builtin›Nat import Lib::Num module X where eval let module L where open Lib::Num use (double) end \
        in L.double 2 end end"
   in
   [%expect {| Error: double is private in a local module, but it is used outside it |}]
@@ -1953,7 +1969,7 @@ let%expect_test "a local use is private" =
 let%expect_test "a local submodule use is private" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where open Lib::Num use (Ops) end \
+      "import Prelude›Builtin›Nat import Lib::Num module X where eval let module L where open Lib::Num use (Ops) end \
        in L.Ops.pred 2 end end"
   in
   [%expect {| Error: Ops is private in a local module, but it is used outside it |}]
@@ -1961,7 +1977,7 @@ let%expect_test "a local submodule use is private" =
 let%expect_test "a local import as is private" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where open Lib::Num as W end \
+      "import Prelude›Builtin›Nat import Lib::Num module X where eval let module L where open Lib::Num as W end \
        in L.W.double 2 end end"
   in
   [%expect {| Error: W is private in a local module, but it is used outside it |}]
@@ -1969,14 +1985,14 @@ let%expect_test "a local import as is private" =
 let%expect_test "a local use of a missing member is rejected" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where open Lib::Num use (q) end in 0 end end"
+      "import Prelude›Builtin›Nat import Lib::Num module X where eval let module L where open Lib::Num use (q) end in 0 end end"
   in
   [%expect {| Error: Lib›Num.q is not a member |}]
 
 let%expect_test "a local member both used and exported is rejected" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where open Lib::Num use (double) \
+      "import Prelude›Builtin›Nat import Lib::Num module X where eval let module L where open Lib::Num use (double) \
        export (double) end in 0 end end"
   in
   [%expect {| Error: double is used and exported |}]
@@ -1984,7 +2000,7 @@ let%expect_test "a local member both used and exported is rejected" =
 let%expect_test "a local import of a definition is rejected" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where open Lib::Num.double use (x) end \
+      "import Prelude›Builtin›Nat import Lib::Num module X where eval let module L where open Lib::Num.double use (x) end \
        in 0 end end"
   in
   [%expect {| Error: ill-formed open |}]
@@ -2074,7 +2090,7 @@ let%expect_test "a private member is used in its unit and in a nested module" =
     |}]
 
 let%expect_test "a private member of another unit is not used in a def" =
-  let _ = main_of_multi_string "import Lib::Priv as P module X where def x : Nat := P.s end end" in
+  let _ = main_of_multi_string "import Prelude›Builtin›Nat use (Nat) import Lib::Priv as P module X where def x : Nat := P.s end end" in
   [%expect {| Error: Lib›Priv.s is private |}]
 
 let%expect_test "a private member of another unit is not evaluated" =
@@ -2086,7 +2102,7 @@ let%expect_test "a private member of another unit is not named by its path" =
   [%expect {| Error: Lib›Priv.s is private |}]
 
 let%expect_test "a private member of another unit is not used in a module body" =
-  let _ = main_of_multi_string "import Lib::Priv as P module X where module M where def y : Nat := P.s end end end" in
+  let _ = main_of_multi_string "import Prelude›Builtin›Nat use (Nat) import Lib::Priv as P module X where module M where def y : Nat := P.s end end end" in
   [%expect {| Error: Lib›Priv.s is private |}]
 
 let%expect_test "a private member of another unit is not used in module parameters" =
@@ -2172,7 +2188,7 @@ let%expect_test "private module M.N makes only N private, to M" =
   [%expect {| Error: Test.M.N is private |}]
 
 let%expect_test "a module alias of a term is rejected" =
-  let _ = main_of_body "module P := Nat" in
+  let _ = main_of_body "module P := ℕ" in
   [%expect {| Error: not a module |}]
 
 let%expect_test "an alias of a module is not a term" =
@@ -2208,7 +2224,7 @@ let%expect_test "an opaque definition is rejected in a local body" =
 let%expect_test "a local import of a unit that is not imported is rejected" =
   let _ =
     main_of_program_string ~search_root:"../lib"
-      "module LocalImp where eval let module L where open Prelude::Arith::MinMax use (max) \
+      "import Prelude›Builtin›Nat use (Nat) module LocalImp where eval let module L where open Prelude::Arith::MinMax use (max) \
        def m : Nat := max 2 3 end end in L.m end end"
   in
   [%expect {| Error: the unit Prelude›Arith›MinMax is not imported |}]
@@ -2216,7 +2232,7 @@ let%expect_test "a local import of a unit that is not imported is rejected" =
 let%expect_test "a local import of a unit imported at the top level" =
   let _ =
     main_of_program_string ~search_root:"../lib"
-      "import Prelude::Arith::MinMax module LocalImp where eval let module L where \
+      "import Prelude›Builtin›Nat use (Nat) import Prelude::Arith::MinMax module LocalImp where eval let module L where \
        open Prelude::Arith::MinMax use (max) def m : Nat := max 2 3 end end in L.m end end"
   in
   [%expect {|
@@ -2255,7 +2271,7 @@ let%expect_test "a use of a missing member is rejected" =
 let%expect_test "a module expression is expected after :=" =
   let _ = main_of_body "module P := where" in
   [%expect {|
-    Error: on "where" (at line 1, column 31 - line 1, column 36): Expected a
+    Error: on "where" (at line 2, column 31 - line 2, column 36): Expected a
       module expression after "≔".
     |}]
 
@@ -2298,7 +2314,7 @@ let%expect_test "lib/Polynomials.mctt" =
                    end
                    def peak : ∀ (x8 : ℕ) → ℕ ≔
                      λ (x9 : ℕ)
-                       → rec x9 return x10 . ℕ
+                       → elim x9 return x10 . ℕ
                          | zero ⇒ 0
                          | succ x11, x12 ⇒ max (value x11) x12
                          end
@@ -2425,7 +2441,7 @@ let%expect_test "a modifier a keyword implies is rejected" =
 let%expect_test "a command let needs a type" =
   let _ = main_of_body "let x := 1 end" in
   [%expect {|
-    Error: on "≔" (at line 1, column 25 - line 1, column 27): Expected a
+    Error: on "≔" (at line 2, column 25 - line 2, column 27): Expected a
       parameter "(x : A)", or ":" followed by the type of the definition.
     |}]
 
@@ -2550,20 +2566,20 @@ let%expect_test "an open of a unit that is not imported is rejected" =
   [%expect {| Error: the unit Lib›Num is not imported |}]
 
 let%expect_test "an open of a unit loaded by import" =
-  let _ = main_of_multi_string "import Lib::Num module X where open Lib::Num use (double) open Lib::Num.Ops as O eval O.pred (double 2) end" in
+  let _ = main_of_multi_string "import Prelude›Builtin›Nat import Lib::Num module X where open Lib::Num use (double) open Lib::Num.Ops as O eval O.pred (double 2) end" in
   [%expect {| Evaluate O.pred (double 2) --> 3 : ℕ |}]
 
 let%expect_test "an open needs a target" =
   let _ = main_of_body "open use (a)" in
   [%expect {|
-    Error: on "use" (at line 1, column 24 - line 1, column 27): Expected the
+    Error: on "use" (at line 2, column 24 - line 2, column 27): Expected the
       module to open: a module in scope, a unit, or a module of a unit.
     |}]
 
 let%expect_test "import names a unit" =
   let _ = main_of_body "module M where end import M" in
   [%expect {|
-    Error: on "end" (at line 1, column 47 - line 1, column 50): Expected a
+    Error: on "end" (at line 2, column 47 - line 2, column 50): Expected a
       further "›" or "." in the path, the arguments of the module, "as", "use",
       "export", or the next command.
       "import" names a unit, as in "import X›Y"; a module in scope is opened with
@@ -2573,15 +2589,15 @@ let%expect_test "import names a unit" =
 (** Import only loads *)
 
 let%expect_test "an import declares nothing" =
-  let _ = main_of_multi_string "import Lib::Num module X where eval double 1 end" in
+  let _ = main_of_multi_string "import Prelude›Builtin›Nat import Lib::Num module X where eval double 1 end" in
   [%expect {| Error: unbound name double |}];
-  let _ = main_of_multi_string "import Lib::Num module X where eval Lib::Num.double 1 end" in
+  let _ = main_of_multi_string "import Prelude›Builtin›Nat import Lib::Num module X where eval Lib::Num.double 1 end" in
   [%expect {| Evaluate Lib›Num.double 1 --> 2 : ℕ |}]
 
 let%expect_test "a repeated import does nothing" =
   let _ =
     main_of_multi_string
-      "import Lib::Num import Lib::Num module X where import Lib::Num module M where import Lib::Num end \
+      "import Prelude›Builtin›Nat import Lib::Num import Lib::Num module X where import Lib::Num module M where import Lib::Num end \
        eval Lib::Num.double 2 end"
   in
   [%expect {| Evaluate Lib›Num.double 2 --> 4 : ℕ |}]
@@ -2589,7 +2605,7 @@ let%expect_test "a repeated import does nothing" =
 let%expect_test "the long form of import is an import and an open" =
   let _ =
     main_of_multi_string
-      "module X where import Lib::Num as N use (double) export (Ops) eval N.double 3 eval double 3 eval Ops.pred 3 end"
+      "import Prelude›Builtin›Nat module X where import Lib::Num as N use (double) export (Ops) eval N.double 3 eval double 3 eval Ops.pred 3 end"
   in
   [%expect {|
     Evaluate N.double 3 --> 6 : ℕ
@@ -2602,7 +2618,7 @@ let%expect_test "the long form of import is an import and an open" =
 let%expect_test "an import is rejected in a local body" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where import Lib::Num end in 0 end end"
+      "import Prelude›Builtin›Nat import Lib::Num module X where eval let module L where import Lib::Num end in 0 end end"
   in
   [%expect {| Error: import is not allowed in a local module; use open |}]
 
@@ -2611,19 +2627,19 @@ let%expect_test "an import is rejected in a local body" =
 let%expect_test "a leading open in a parameter type" =
   let _ =
     main_of_program_string ~search_root:"../lib"
-      "import Prelude::Arith::Equality open Prelude::Arith::Equality use (Eq) \
+      "import Prelude›Builtin›Nat import Prelude::Arith::Equality open Prelude::Arith::Equality use (Eq) \
        module ScratchP (p : Eq 1 1) where def q : Eq 1 1 := p end eval q end"
   in
   [%expect {| Evaluate q $0 --> ⋆ : ⊤ |}];
   let _ =
     main_of_program_string ~search_root:"../lib"
-      "import Prelude::Arith::Equality as E use (Eq) \
+      "import Prelude›Builtin›Nat import Prelude::Arith::Equality as E use (Eq) \
        module ScratchP (p : Eq 1 1) (q : E.Eq 2 2) where def r : Eq 2 2 := q end eval r end"
   in
   [%expect {| Evaluate r $1 $0 --> ⋆ : ⊤ |}]
 
 let%expect_test "a leading open sees no parameter" =
-  let _ = main_of_multi_string "import Lib::Priv open Lib::Priv.F n as G module X (n : Nat) where end" in
+  let _ = main_of_multi_string "import Prelude›Builtin›Nat use (Nat) import Lib::Priv open Lib::Priv.F n as G module X (n : Nat) where end" in
   [%expect {| Error: unbound name n |}]
 
 let%expect_test "a leading open of a unit that is not imported is rejected" =
@@ -2641,7 +2657,7 @@ let%expect_test "an open in a module names the unit that is not imported" =
   [%expect {| Error: the unit Prelude›Arith›Plus is not imported |}];
   let _ =
     main_of_program_string ~search_root:"../lib"
-      "import Prelude::Arith::Plus module Scratch where open Prelude::Arith::Plus.Basic use (plusZero) \
+      "import Prelude›Builtin›Nat import Prelude::Arith::Plus module Scratch where open Prelude::Arith::Plus.Basic use (plusZero) \
        eval plusZero 0 end"
   in
   [%expect {| Evaluate plusZero 0 --> ⋆ : ⊤ |}]
@@ -2680,7 +2696,7 @@ let%expect_test "an axiom is a member with no body" =
 let%expect_test "an axiom of another unit" =
   let _ =
     main_of_multi_string
-      "import Lib::Axioms module X where def d : Nat := succ Lib::Axioms.c end eval d \
+      "import Prelude›Builtin›Nat use (Nat; succ) import Lib::Axioms module X where def d : Nat := succ Lib::Axioms.c end eval d \
        eval fun (x : Lib::Axioms.Inner.P 0) -> x end"
   in
   [%expect {|
@@ -2707,9 +2723,9 @@ let%expect_test "an axiom is rejected in a local body" =
   [%expect {| Error: axioms are not allowed in a local module |}]
 
 let%expect_test "an axiom is rejected before the module header" =
-  let _ = main_of_program_string "axiom x : Nat module T where end" in
+  let _ = main_of_program_string "import Prelude›Builtin›Nat use (Nat) axiom x : Nat module T where end" in
   [%expect {|
-    Error: on "axiom" (at line 1, column 1 - line 1, column 6): This token is
+    Error: on "axiom" (at line 1, column 38 - line 1, column 43): This token is
       invalid for the beginning of a program.
     |}]
 
@@ -2736,9 +2752,9 @@ let%expect_test "lib/Tutorial.mctt" =
                           → x1 : ∀ (A1 : Type@0)
                                    (x1 : A1)
                                    → A1
-    Evaluate rec 3 return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
+    Evaluate elim 3 return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
       --> 6 : ℕ
-    Evaluate rec 2 return x1 . Type@0
+    Evaluate elim 2 return x1 . Type@0
              | zero ⇒ ℕ
              | succ x2, A1 ⇒ ∀ (x3 : ℕ) → A1
              end --> ∀ (x1 : ℕ)
@@ -2752,14 +2768,14 @@ let%expect_test "lib/Tutorial.mctt" =
              end --> 4 : ℕ
     Evaluate double 3 --> 6 : ℕ
     Evaluate double four
-      --> rec four return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
+      --> elim four return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
       : ℕ
     Evaluate succ helper --> 2 : ℕ
     Evaluate double two --> 4 : ℕ
     Evaluate double (succ k)
       --> succ
             (succ
-              (rec k return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end))
+              (elim k return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end))
       : ℕ
     Evaluate Outer.Inner.next --> 11 : ℕ
     Evaluate Twice.twice ℕ double 1 --> 4 : ℕ
@@ -2833,7 +2849,7 @@ let%expect_test "mctt-doc: every name of examples lines up" =
   [%expect {||}]
 
 let%expect_test "mctt-doc: the units the checker rejects are reported" =
-  List.iter print_endline (Doc.problems (Doc.load "../examples/multi"));
+  List.iter print_endline (Doc.problems (Doc.load ~extra_roots:lib_root "../examples/multi"));
   [%expect {|
     BadDep: not checked
     Cyc›A: not checked
@@ -2938,20 +2954,20 @@ let%expect_test "mctt-doc: links" =
   (* A local binder. *)
   show [ "Tutorial" ] "x" [ 1; 2 ];
   [%expect {|
-    pow line 38: Prelude›Algebra›Monoid#pow
-    pow line 38: Prelude›Arith›Pow#pow
-    Additive line 21: Prelude›Algebra›Instances#Additive
-    pow line 21: Prelude›Algebra›Monoid#pow
-    powPlus line 75: Prelude›Algebra›Monoid#Power.powPlus
-    plus line 205: Prelude›Arith›Plus#plus
-    plus line 206: Prelude›Arith›Plus#plus
-    add line 205: declares #Adding.add
-    add line 206: Prelude›Arith›Plus#plus
-    P line 205: declares #Adding.P
-    P line 206: Tutorial#Adding.P
-    addIter line 281: Tutorial#Adder.addIter
-    x line 42: declares #l11
-    x line 42: Tutorial#l11
+    pow line 39: Prelude›Algebra›Monoid#pow
+    pow line 39: Prelude›Arith›Pow#pow
+    Additive line 22: Prelude›Algebra›Instances#Additive
+    pow line 22: Prelude›Algebra›Monoid#pow
+    powPlus line 76: Prelude›Algebra›Monoid#Power.powPlus
+    plus line 211: Prelude›Arith›Plus#plus
+    plus line 212: Prelude›Arith›Plus#plus
+    add line 211: declares #Adding.add
+    add line 212: Prelude›Arith›Plus#plus
+    P line 211: declares #Adding.P
+    P line 212: Tutorial#Adding.P
+    addIter line 287: Tutorial#Adder.addIter
+    x line 47: declares #l20
+    x line 47: Tutorial#l20
     |}]
 
 (* The universe syntax: examples/Universes.mctt, and the spellings it does
@@ -2964,7 +2980,7 @@ let doc_univ = lazy (
   let us = [ Doc.walk [ "Universes" ] (Doc.read_file "../examples/Universes.mctt") items;
              Doc.walk [ "Spellings" ] spellings items ] in
   let thetas = Hashtbl.create 4 and outputs = Hashtbl.create 4 in
-  Doc.check_units "../examples" us thetas outputs;
+  Doc.check_units ~extra_roots:lib_root "../examples" us thetas outputs;
   { Doc.root = "../examples"; units = us; failed = []; thetas; outputs; items })
 
 let%expect_test "mctt-doc: universes line up, link, and are highlighted" =
@@ -2991,14 +3007,14 @@ let%expect_test "mctt-doc: universes line up, link, and are highlighted" =
   (* The boxes of the evals that print a universe. *)
   List.iter (fun p -> List.iter (fun b -> if doc_find "Type@" b 0 <> None then print_endline b) (doc_boxes p)) pages;
   [%expect {|
-    111 names: 57 linked, 54 binders
-    u line 57: declares #l58
-    u line 57: Universes#l58
-    u line 58: Universes#l58
-    v line 57: declares #l59
-    v line 57: Universes#l59
-    v line 58: Universes#l59
-    depth line 50: Universes#depth
+    118 names: 62 linked, 54 binders
+    u line 59: declares #l65
+    u line 59: Universes#l65
+    u line 60: Universes#l65
+    v line 59: declares #l66
+    v line 59: Universes#l66
+    v line 60: Universes#l66
+    depth line 52: Universes#depth
     Level: ty
     Type: ty
     maxl: kw
@@ -3386,12 +3402,10 @@ let%expect_test "an inductive type imported into a unit with parameters" =
                                 eval fun (n : Lib›Unary.U) -> elim n return x . Lib›Unary.U \
                                   | z => two | s p, r => r end end" in
   [%expect {|
-    Evaluate Lib›Unary.plus (two $0) (two $0) --> 4 : Lib›Unary.U
-    Evaluate λ (x1 : Lib›Unary.U)
-               → elim x1 return x2 . Lib›Unary.U | z ⇒ two $0 | s x3, x4 ⇒ x4 end
-      --> λ (x1 : Lib›Unary.U)
-            → elim x1 return x2 . Lib›Unary.U | z ⇒ 2 | s x3, x4 ⇒ x4 end
-      : ∀ (x1 : Lib›Unary.U) → Lib›Unary.U
+    Evaluate Lib›Unary.plus (two $0) (two $0) --> 4 : ℕ
+    Evaluate λ (x1 : ℕ) → elim x1 return x2 . ℕ | z ⇒ two $0 | s x3, x4 ⇒ x4 end
+      --> λ (x1 : ℕ) → elim x1 return x2 . ℕ | z ⇒ 2 | s x3, x4 ⇒ x4 end
+      : ∀ (x1 : ℕ) → ℕ
     |}]
 
 let%expect_test "a private inductive type is a private module of public constructors" =
@@ -3468,7 +3482,7 @@ let%expect_test "an eliminator is no member of its type" =
   let _ = main_of_body "inductive N : Type@0 where | z end \
                         eval fun (n : N) -> N.elim n return k . Nat | z => 0 end" in
   [%expect {|
-    Error: on "elim" (at line 1, column 76 - line 1, column 80): Expected a
+    Error: on "elim" (at line 2, column 76 - line 2, column 80): Expected a
       member name or "rec" after ".".
     |}]
 
@@ -3544,14 +3558,14 @@ let%expect_test "an inductive type is not allowed in a local module" =
 let%expect_test "an eliminator needs a motive" =
   let _ = main_of_body "eval fun (x : Nat) -> elim x | zero => zero end" in
   [%expect {|
-    Error: on "|" (at line 1, column 48 - line 1, column 49): An eliminator "elim
+    Error: on "|" (at line 2, column 48 - line 2, column 49): An eliminator "elim
       M" is expected to be followed by "return" and its motive.
     |}]
 
 let%expect_test "an inductive type needs its type" =
   let _ = main_of_body "inductive E where end" in
   [%expect {|
-    Error: on "where" (at line 1, column 31 - line 1, column 36): The uniform
+    Error: on "where" (at line 2, column 31 - line 2, column 36): The uniform
       parameters of an inductive type are expected to be followed by ":" and its
       type, or, for an inductive alias, by ":=" and the type it names.
     |}]
@@ -3560,56 +3574,92 @@ let%expect_test "an inductive type needs its type" =
 let%expect_test "the bound natural numbers: numerals and their printing" =
   let _ = main_of_example "Builtin.mctt" in
   [%expect {|
-    Evaluate plus 2 3 --> 5 : Num
-    Evaluate mult 6 7 --> 42 : Num
-    Evaluate S (S Z) --> 2 : Num
-    Evaluate λ (x1 : Num) → plus 2 x1 --> λ (x1 : Num) → Num.S (Num.S x1)
-      : ∀ (x1 : Num) → Num
+    Evaluate plus 2 3 --> 5 : ℕ
+    Evaluate mult 6 7 --> 42 : ℕ
+    Evaluate 2 --> 2 : ℕ
+    Evaluate λ (x1 : ℕ) → plus 2 x1 --> λ (x1 : ℕ) → S (S x1) : ∀ (x1 : ℕ) → ℕ
     |}]
 
 let%expect_test "a numeral is the bound type's where the binding is imported" =
   let _ = main_of_multi_string "module Main where import Lib›Unary use (U; plus) eval plus 2 3 eval 0 : U end" in
   [%expect {|
-    Evaluate plus 2 3 --> 5 : Lib›Unary.U
-    Evaluate 0 --> 0 : U
+    Evaluate plus 2 3 --> 5 : ℕ
+    Evaluate 0 --> 0 : ℕ
     |}]
 
-let%expect_test "a numeral is a natural number where no binding is visible" =
-  let _ = main_of_body "eval 3" in
-  [%expect {| Evaluate 3 --> 3 : ℕ |}]
+let%expect_test "a numeral needs a bound natural-number type" =
+  let _ = main_of_bare_body "eval 3" in
+  [%expect {| Error: unknown numeral 3: no natural-number type is bound |}]
 
-let%expect_test "two bindings that disagree give a numeral no meaning" =
+let%expect_test "the token ℕ needs a bound natural-number type" =
+  let _ = main_of_bare_body "eval λ (n : ℕ) → n" in
+  [%expect {| Error: unknown type ℕ: no natural-number type is bound |}]
+
+let%expect_test "a binding holds for the rest of the run: a second type is rejected" =
   let _ = main_of_multi_string "module Main where import Lib›Unary import Lib›Peano eval 1 end" in
-  [%expect {| Error: the numeral 1 has no meaning here: the visible bindings of the natural numbers disagree |}]
+  [%expect {| Error: the natural numbers are bound already, to U |}]
 
 let%expect_test "the natural numbers are bound once" =
   let _ = main_of_multi_string "module Main where import Lib›Unary \
                                  inductive N : Type@0 where | z | s (n : N) end \
                                  builtin natural := N end" in
-  [%expect {| Error: the natural numbers are bound already |}]
+  [%expect {| Error: the natural numbers are bound already, to U |}]
+
+let%expect_test "binding the same type again is allowed" =
+  let _ = main_of_bare_body "inductive N : Type@0 where | z | s (n : N) end \
+                             builtin natural := N builtin natural := N eval 2" in
+  [%expect {| Evaluate 2 --> 2 : ℕ |}]
 
 let%expect_test "a binding needs the shape of the natural numbers" =
-  let _ = main_of_body "inductive L : Type@0 where | nil | cons (x : Nat) (l : L) end \
-                        builtin natural := L" in
+  let _ = main_of_bare_body "inductive L : Type@0 where | nil | cons (l : L) (m : L) end \
+                             builtin natural := L" in
   [%expect {| Error: L is not shaped as the natural numbers: it must have no parameter, one constructor without arguments and one with a single recursive argument |}]
 
+let%expect_test "a binding needs the type in Type@0" =
+  let _ = main_of_bare_body "inductive N : Type@1 where | z | s (n : N) end builtin natural := N" in
+  [%expect {| Error: the natural numbers must be declared in Type@0, not N |}]
+
+let%expect_test "a binding through an inductive alias without arguments" =
+  let _ = main_of_bare_body "inductive N : Type@0 where | z | s (n : N) end inductive M := N \
+                             builtin natural := M eval 2" in
+  [%expect {| Evaluate 2 --> 2 : ℕ |}]
+
 let%expect_test "a binding with the constructors in the other order" =
-  let _ = main_of_body "inductive N : Type@0 where | s (n : N) | z end \
-                        builtin natural := N eval 2" in
-  [%expect {| Evaluate 2 --> 2 : N |}]
+  let _ = main_of_bare_body "inductive N : Type@0 where | s (n : N) | z end \
+                             builtin natural := N eval 2" in
+  [%expect {| Evaluate 2 --> 2 : ℕ |}]
 
 let%expect_test "a binding is of an inductive type" =
-  let _ = main_of_body "def D : Type@0 := Nat end builtin natural := D" in
+  let _ = main_of_bare_body "def D : Type@1 := Type@0 end builtin natural := D" in
   [%expect {| Error: Test.D is not an inductive type |}]
 
 let%expect_test "natural is the only builtin" =
-  let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end builtin integer := N" in
+  let _ = main_of_bare_body "inductive N : Type@0 where | z | s (n : N) end builtin integer := N" in
   [%expect {| Error: there is no builtin integer |}]
 
-let%expect_test "a binding is made at the top of a unit" =
-  let _ = main_of_body "module M where inductive N : Type@0 where | z | s (n : N) end \
-                        builtin natural := N end" in
-  [%expect {| Error: builtin is allowed only at the top of a unit without parameters |}]
+let%expect_test "a binding may be made in a module, and holds after it" =
+  let _ = main_of_bare_body "module M where inductive N : Type@0 where | z | s (n : N) end \
+                             builtin natural := N end eval 2" in
+  [%expect {| Evaluate 2 --> 2 : ℕ |}]
+
+(* A bound type with constructors named otherwise than [zero] and [succ]:
+   numerals, an eliminator over the constructors' own names, and the
+   printing of both. *)
+let%expect_test "a bound type with its own constructor names" =
+  let _ = main_of_bare_body "inductive Num : Type@0 where | Z | S (n : Num) end builtin natural := Num \
+                             open Num use (Z; S) \
+                             eval elim 3 return x . Num | Z => Z | S k, r => S (S r) end \
+                             eval fun (n : Num) -> S (S n) eval S Z : Num" in
+  [%expect {|
+    Evaluate elim 3 return x1 . ℕ | Z ⇒ 0 | S x2, x3 ⇒ S (S x3) end --> 6 : ℕ
+    Evaluate λ (x1 : ℕ) → S (S x1) --> λ (x1 : ℕ) → S (S x1) : ∀ (x1 : ℕ) → ℕ
+    Evaluate 1 --> 1 : ℕ
+    |}]
+
+let%expect_test "a constructor chain of the bound type in an error prints as a numeral" =
+  let _ = main_of_bare_body "inductive Num : Type@0 where | Z | S (n : Num) end builtin natural := Num \
+                             open Num use (Z; S) eval S Z : Type@0" in
+  [%expect {| Error: 1 is not of type Type@0 |}]
 
 let%expect_test "a binding is not allowed in a local module" =
   let _ = main_of_body "eval let module M where builtin natural := N end in zero end" in
@@ -3618,7 +3668,7 @@ let%expect_test "a binding is not allowed in a local module" =
 let%expect_test "a binding needs its type" =
   let _ = main_of_body "builtin natural N" in
   [%expect {|
-    Error: on "N" (at line 1, column 35 - line 1, column 36): The kind of a
+    Error: on "N" (at line 2, column 35 - line 2, column 36): The kind of a
       builtin is expected to be followed by ":=" and the type bound, as in
       "builtin natural := Nat".
     |}]
@@ -3637,7 +3687,7 @@ let%expect_test "names with digits and underscores" =
     |}]
 
 let%expect_test "a unit name may contain digits" =
-  let _ = main_of_program_string "module T_2 where def a1 : Nat := 3 end eval a1 end" in
+  let _ = main_of_program_string "import Prelude›Builtin›Nat use (Nat) module T_2 where def a1 : Nat := 3 end eval a1 end" in
   [%expect {| Evaluate a1 --> 3 : ℕ |}]
 
 let%expect_test "a numeral and a level literal stay one token" =
@@ -3650,7 +3700,7 @@ let%expect_test "a numeral and a level literal stay one token" =
 
 let%expect_test "a bare underscore is reserved" =
   let _ = main_of_body "def _ : Nat := 0 end" in
-  [%expect {| Error: "_" is reserved, and not a name, at line 1, column 23 |}]
+  [%expect {| Error: "_" is reserved, and not a name, at line 2, column 23 |}]
 
 (* A branch of a printed eliminator writes its induction hypotheses after a
    comma, so that the printed term reads back as itself. *)

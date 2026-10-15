@@ -14,6 +14,7 @@
    [Prelude›Logic.Conj u] and [Prelude›Logic.Disj u]. *)
 module Prelude›Data›Church where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Plus use (plus)
 
 (* Numerals: [n] applies a function [n] times. *)
@@ -41,7 +42,7 @@ end
 
 (* The numeral of a number, by recursion. *)
 def fromNat (u : Level) (n : ℕ) : Numeral u ≔
-  rec n return y . Numeral u
+  elim n return y . Numeral u
   | zero ⇒ czero u
   | succ p, r ⇒ csucc u r
   end
@@ -131,7 +132,7 @@ end
 
 (* The list of [n] copies of [a]. *)
 def replicate (u : Level) (A : Type@{u}) (n : ℕ) (a : A) : List u A ≔
-  rec n return y . List u A
+  elim n return y . List u A
   | zero ⇒ nil u A
   | succ p, r ⇒ cons u A a r
   end

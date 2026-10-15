@@ -3,6 +3,8 @@ import Lib›Bad
 
 module BadDep where
 
+import Prelude›Builtin›Nat
+
 eval 0 : ℕ
 
 end

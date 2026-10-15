@@ -4,6 +4,7 @@
    small, since they compute with remainders and equalities of numbers. *)
 module NumberTheory where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Mult use (mult)
 import Prelude›Arith›Sum use (sumTo)
 import Prelude›Arith›Decide use (pick)
@@ -34,7 +35,7 @@ module Primes where
 (* The least prime above [n], searched among the numbers from [n + 1] to
    [2 n + 2], which contain one by Bertrand's postulate. *)
 let nextPrime (n : ℕ) : ℕ ≔
-  (rec n return y . (∀ (c : ℕ) → ℕ)
+  (elim n return y . (∀ (c : ℕ) → ℕ)
    | zero ⇒ λ (c : ℕ) → pick (isPrime c) (λ (u : ℕ) → succ c) (λ (u : ℕ) → c)
    | succ p, r ⇒ λ (c : ℕ) →
        pick (isPrime c) (λ (u : ℕ) → r (succ c)) (λ (u : ℕ) → c)

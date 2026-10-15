@@ -58,25 +58,6 @@ Section type_check.
         let*o (exist _ LN _) := type_infer_in G _ P N' _ while _ in
         let*o (exist _ k' _) := get_level_sort_nf LN while _ in
         pureo (exist _ Levelⁿ@(Nat.max k k') _)
-    | ℕ =>
-        pureo (exist _ Typeⁿ@0 _)
-    | zero =>
-        pureo (exist _ ℕⁿ _)
-    | succ M' =>
-        let*b->o _ := type_check_in G ℕ _ P M' _ while _ in
-        pureo (exist _ ℕⁿ _)
-    | rec M' return A' | zero -> MZ | succ -> MS end =>
-        let*b->o _ := type_check_in G ℕ _ P M' _ while _ in
-        let HGN : ⊢ G ▹ ℕ := _ in
-        let PN := tenv_ass G P ℕ HGN in
-        let*o (exist _ UA' _) := type_infer_in (G ▹ ℕ) HGN PN A' _ while _ in
-        let*o (exist _ u _) :=  univ_nf_idx_dec UA' while _ in
-        let*b->o _ := type_check_in G A'[Id,,zero] _ P MZ _ while _ in
-        let HAS : exists i, G ▹ ℕ ▹ A' ⊢ A'[Wk ⨟ Wk,,succ #1] : Typeω@i := _ in
-        let*b->o _ := type_check_in (G ▹ ℕ ▹ A') A'[Wk ⨟ Wk,,succ #1] HAS
-                        (tenv_ass (G ▹ ℕ) PN A' (tenv_ctx_of_typ _ _ HAS)) MS _ while _ in
-        let (A'', _) := nbe_ty_env_impl gc_deps gc_stack G P A'[Id,,M'] _ in
-        pureo (exist _ A'' _)
     | ⊤ =>
         pureo (exist _ Typeⁿ@0 _)
     | ⋆ =>
@@ -104,6 +85,7 @@ Section type_check.
     | a_ind r => ind_infer G HG P r
     | a_con r c => con_infer G HG P r c
     | a_nlit n => inright (fun A HA => alg_nlit_no_infer G n A HA)
+    | a_ntok => inright (fun A HA => alg_ntok_no_infer G A HA)
     | a_elim nm A' Bs M' =>
         elim_infer G HG P nm A' Bs M'
           (type_infer_in G HG P M' ltac:(ob_ord_elim))
@@ -252,119 +234,55 @@ Section type_check.
   Obligation 27. (* False *) ob_neg. Qed.
   Obligation 28. (* False *) ob_neg. Qed.
   Obligation 29. (* G ⊢a maxl M' N' ⟹ Levelⁿ@(max k k') /\ (exists (UA : nf) (u : unf), ... *) ob_post_lvl. Qed.
-  Obligation 30. (* G ⊢a ℕ ⟹ Typeⁿ@0 /\ (exists (UA : nf) (u : unf), G ⊢a Ty... *) ob_post_suniv0. Qed.
-  Obligation 31. (* G ⊢a zero ⟹ ℕⁿ /\ (exists (UA : nf) (u : unf), G ⊢a ℕ ⟹ U... *) ob_post. Qed.
-  Obligation 32. (* exists i : nat, G ⊢ ℕ : Typeω@i *) ob_typ_closed. Qed.
-  Obligation 33. (* type_check_order M' *) ob_ord. Defined.
-  Obligation 34. (* False *) ob_neg. Qed.
-  Obligation 35. (* G ⊢a succ M' ⟹ ℕⁿ /\ (exists (UA : nf) (u : unf), G ⊢a ℕ ... *) ob_post. Qed.
-  Obligation 36. (* exists i : nat, G ⊢ ℕ : Typeω@i *) ob_typ_closed. Qed.
-  Obligation 37. (* type_check_order M' *) ob_ord. Defined.
+  Obligation 30. (* G ⊢a ⊤ ⟹ Typeⁿ@0 /\ (exists (UA : nf) (u : unf), G ⊢a Ty... *) ob_post_suniv0. Qed.
+  Obligation 31. (* G ⊢a ⋆ ⟹ ⊤ⁿ /\ (exists (UA : nf) (u : unf), G ⊢a ⊤ ⟹ UA /... *) ob_post. Qed.
+  Obligation 32. (* G ⊢a ⊥ ⟹ Typeⁿ@0 /\ (exists (UA : nf) (u : unf), G ⊢a Ty... *) ob_post_suniv0. Qed.
+  Obligation 33. (* exists i : nat, G ⊢ ⊥ : Typeω@i *) ob_typ_closed. Qed.
+  Obligation 34. (* type_check_order M' *) ob_ord. Defined.
+  Obligation 35. (* False *) ob_neg. Qed.
+  Obligation 36. (* ⊢ G ▹ ⊥ *) ob_ctx_ext. Qed.
+  Obligation 37. (* type_infer_order A' *) ob_ord. Defined.
   Obligation 38. (* False *) ob_neg. Qed.
-  Obligation 39. (* ⊢ G ▹ ℕ *) ob_ctx_ext. Qed.
-  Obligation 40. (* type_infer_order A' *) ob_ord. Defined.
-  Obligation 41. (* False *) ob_neg. Qed.
-  Obligation 42. (* False *) ob_neg. Qed.
-  Obligation 43. (* exists j, G ⊢ A'[Id,,zero] : Typeω@j *)
+  Obligation 39. (* False *) ob_neg. Qed.
+  Obligation 40. (* nbe_ty_order gc_deps gc_stack G A'[Id,,M'] *)
     clear_defs.
-    assert (G ⊢ ℕ : Typeω@0) by mauto 2.
-    assert (⊢ G ▹ ℕ) by mauto 2.
+    enough (exists i, G ⊢ A'[Id,,M'] : Typeω@i) as [? [? []]%wf_exp_eq_refl%completeness_ty]
+        by eauto 3 using nbe_ty_order_sound.
+    assert (G ⊢ ⊥ : Typeω@0) by mauto 2.
+    assert (⊢ G ▹ ⊥) by mauto 2.
     saturate_infer_univ.
-    assert (G ⊢s Id,,zero : G ▹ ℕ) as Hσ by mauto 3.
-    (** [sub_preserves_exp] is applied by hand: unifying its conclusion would
-        require solving [?A[?σ] ≟ Typeω@i], which [eapply] cannot do. *)
-    match goal with HA' : G ▹ ℕ ⊢ A' : Typeω@?k |- _ =>
+    assert (G ⊢ M' : ⊥) by mauto 3 using alg_type_check_sound.
+    assert (G ⊢s Id,,M' : G ▹ ⊥) as Hσ by mauto 3.
+    match goal with HA' : G ▹ ⊥ ⊢ A' : Typeω@?k |- _ =>
       exists k; exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ) end.
   Qed.
-  Obligation 44. (* type_check_order MZ *) ob_ord. Defined.
+  Obligation 41. (* G ⊢a efq M' return A' ⟹ A'', and [A''] is a type *)
+    clear_defs.
+    split; [ mauto 3 |].
+    assert (G ⊢ ⊥ : Typeω@0) by mauto 2.
+    assert (⊢ G ▹ ⊥) by mauto 2.
+    saturate_infer_univ.
+    assert (G ⊢ M' : ⊥) by mauto 3 using alg_type_check_sound.
+    assert (G ⊢s Id,,M' : G ▹ ⊥) as Hσ by mauto 3.
+    match goal with HA' : G ▹ ⊥ ⊢ A' : Typeω@?k |- _ =>
+      assert (G ⊢ A'[Id,,M'] : Typeω@k) by exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ) end.
+    eapply level_of_nbe; eassumption.
+  Qed.
+  Obligation 42. Qed.
+  Obligation 43. (* type_infer_order B *) ob_ord. Defined.
+  Obligation 44. (* False *) ob_neg. Qed.
   Obligation 45. (* False *) ob_neg. Qed.
-  Obligation 46. (* exists j, G ▹ ℕ ▹ A' ⊢ A'[Wk ⨟ Wk,,succ #1] : Typeω@j *)
-    clear_defs.
-    assert (G ⊢ ℕ : Typeω@0) by mauto 2.
-    assert (⊢ G ▹ ℕ) by mauto 2.
-    saturate_infer_univ.
-    assert (⊢ G ▹ ℕ ▹ A') by mauto 2.
-    assert (G ▹ ℕ ▹ A' ⊢s Wk ⨟ Wk,,succ #1 : G ▹ ℕ) as Hσ by mauto 3.
-    match goal with HA' : G ▹ ℕ ⊢ A' : Typeω@?k |- _ =>
-      exists k; exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ) end.
-  Qed.
-  Obligation 47. (* type_check_order MS *) ob_ord. Defined.
+  Obligation 46. (* ⊢ G ▹ B *) ob_ctx. Qed.
+  Obligation 47. (* type_infer_order C *) ob_ord. Defined.
   Obligation 48. (* False *) ob_neg. Qed.
-  Obligation 49. (* nbe_ty_order gc_deps gc_stack G A'[Id,,M'] *)
-    clear_defs.
-    enough (exists i, G ⊢ A'[Id,,M'] : Typeω@i) as [? [? []]%wf_exp_eq_refl%completeness_ty]
-        by eauto 3 using nbe_ty_order_sound.
-    assert (G ⊢ ℕ : Typeω@0) by mauto 2.
-    assert (⊢ G ▹ ℕ) by mauto 2.
-    saturate_infer_univ.
-    assert (G ⊢ M' : ℕ) by mauto 3 using alg_type_check_sound.
-    assert (G ⊢s Id,,M' : G ▹ ℕ) as Hσ by mauto 3.
-    match goal with HA' : G ▹ ℕ ⊢ A' : Typeω@?k |- _ =>
-      exists k; exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ) end.
-  Qed.
-  Obligation 50. (* G ⊢a rec M' … end ⟹ A'', and [A''] is a type *)
-    clear_defs.
-    split; [ mauto 3 |].
-    assert (G ⊢ ℕ : Typeω@0) by mauto 2.
-    assert (⊢ G ▹ ℕ) by mauto 2.
-    saturate_infer_univ.
-    assert (G ⊢ M' : ℕ) by mauto 3 using alg_type_check_sound.
-    assert (G ⊢s Id,,M' : G ▹ ℕ) as Hσ by mauto 3.
-    (** The motive at the scrutinee is a type, so its normal form is one too,
-        and [level_of_nbe] gives both halves at once. *)
-    match goal with HA' : G ▹ ℕ ⊢ A' : Typeω@?k |- _ =>
-      assert (G ⊢ A'[Id,,M'] : Typeω@k) by exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ) end.
-    eapply level_of_nbe; eassumption.
-  Qed.
-  Obligation 51. (* G ⊢a ⊤ ⟹ Typeⁿ@0 /\ (exists (UA : nf) (u : unf), G ⊢a Ty... *) ob_post_suniv0. Qed.
-  Obligation 52. (* G ⊢a ⋆ ⟹ ⊤ⁿ /\ (exists (UA : nf) (u : unf), G ⊢a ⊤ ⟹ UA /... *) ob_post. Qed.
-  Obligation 53. (* G ⊢a ⊥ ⟹ Typeⁿ@0 /\ (exists (UA : nf) (u : unf), G ⊢a Ty... *) ob_post_suniv0. Qed.
-  Obligation 54. (* exists i : nat, G ⊢ ⊥ : Typeω@i *) ob_typ_closed. Qed.
-  Obligation 55. (* type_check_order M' *) ob_ord. Defined.
-  Obligation 56. (* False *) ob_neg. Qed.
-  Obligation 57. (* ⊢ G ▹ ⊥ *) ob_ctx_ext. Qed.
-  Obligation 58. (* type_infer_order A' *) ob_ord. Defined.
-  Obligation 59. (* False *) ob_neg. Qed.
-  Obligation 60. (* False *) ob_neg. Qed.
-  Obligation 61. (* nbe_ty_order gc_deps gc_stack G A'[Id,,M'] *)
-    clear_defs.
-    enough (exists i, G ⊢ A'[Id,,M'] : Typeω@i) as [? [? []]%wf_exp_eq_refl%completeness_ty]
-        by eauto 3 using nbe_ty_order_sound.
-    assert (G ⊢ ⊥ : Typeω@0) by mauto 2.
-    assert (⊢ G ▹ ⊥) by mauto 2.
-    saturate_infer_univ.
-    assert (G ⊢ M' : ⊥) by mauto 3 using alg_type_check_sound.
-    assert (G ⊢s Id,,M' : G ▹ ⊥) as Hσ by mauto 3.
-    match goal with HA' : G ▹ ⊥ ⊢ A' : Typeω@?k |- _ =>
-      exists k; exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ) end.
-  Qed.
-  Obligation 62. (* G ⊢a efq M' return A' ⟹ A'', and [A''] is a type *)
-    clear_defs.
-    split; [ mauto 3 |].
-    assert (G ⊢ ⊥ : Typeω@0) by mauto 2.
-    assert (⊢ G ▹ ⊥) by mauto 2.
-    saturate_infer_univ.
-    assert (G ⊢ M' : ⊥) by mauto 3 using alg_type_check_sound.
-    assert (G ⊢s Id,,M' : G ▹ ⊥) as Hσ by mauto 3.
-    match goal with HA' : G ▹ ⊥ ⊢ A' : Typeω@?k |- _ =>
-      assert (G ⊢ A'[Id,,M'] : Typeω@k) by exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ) end.
-    eapply level_of_nbe; eassumption.
-  Qed.
-  Obligation 63. Qed.
-  Obligation 64. (* type_infer_order B *) ob_ord. Defined.
-  Obligation 65. (* False *) ob_neg. Qed.
-  Obligation 66. (* False *) ob_neg. Qed.
-  Obligation 67. (* ⊢ G ▹ B *) ob_ctx. Qed.
-  Obligation 68. (* type_infer_order C *) ob_ord. Defined.
-  Obligation 69. (* False *) ob_neg. Qed.
-  Obligation 70. (* nbe_ty_order gc_deps gc_stack (G ▹ B) UC *)
+  Obligation 49. (* nbe_ty_order gc_deps gc_stack (G ▹ B) UC *)
     clear_defs.
     destruct_conjs.
     match goal with H : G ▹ B ⊢ (?UC : exp) : Typeω@?i |- nbe_ty_order _ _ _ ?UC =>
       destruct (soundness_ty H) as [W [HW _]] end.
     mauto 3 using nbe_ty_order_sound.
   Qed.
-  Obligation 71. (* False: the codomain's universe, normalised, is no universe *)
+  Obligation 50. (* False: the codomain's universe, normalised, is no universe *)
     clear_defs.
     lazymatch goal with H : _ ⊢a _ ⟹ _ |- False => inversion H; subst; clear H end.
     destruct_conjs.
@@ -372,7 +290,7 @@ Section type_check.
     functional_nbe_rewrite_clear.
     firstorder.
   Qed.
-  Obligation 72. (* nbe_ty_order gc_deps gc_stack G (unf_pi_tm u v) *)
+  Obligation 51. (* nbe_ty_order gc_deps gc_stack G (unf_pi_tm u v) *)
     clear_defs.
     destruct_conjs.
     match goal with
@@ -384,7 +302,7 @@ Section type_check.
     destruct (soundness_ty Hk) as [W [HW _]].
     mauto 3 using nbe_ty_order_sound.
   Qed.
-  Obligation 73. (* G ⊢a Π B C ⟹ W, the normal form of its universe, and that is a type *)
+  Obligation 52. (* G ⊢a Π B C ⟹ W, the normal form of its universe, and that is a type *)
     clear_defs.
     destruct_conjs.
     match goal with
@@ -400,21 +318,21 @@ Section type_check.
     destruct (alg_type_infer_large_typ_complete (user_exp_nf W) HWk) as [? [? [? [? _]]]].
     do 2 eexists; split; eassumption.
   Qed.
-  Obligation 74. Qed.
-  Obligation 75. (* type_infer_order A' *) ob_ord. Defined.
-  Obligation 76. (* False *) ob_neg. Qed.
-  Obligation 77. (* False *) ob_neg. Qed.
-  Obligation 78. (* ⊢ G ▹ A' *) ob_ctx. Qed.
-  Obligation 79. (* type_infer_order M' *) ob_ord. Defined.
-  Obligation 80. (* False *) ob_neg. Qed.
-  Obligation 81. (* nbe_ty_order gc_deps gc_stack G A' *)
+  Obligation 53. Qed.
+  Obligation 54. (* type_infer_order A' *) ob_ord. Defined.
+  Obligation 55. (* False *) ob_neg. Qed.
+  Obligation 56. (* False *) ob_neg. Qed.
+  Obligation 57. (* ⊢ G ▹ A' *) ob_ctx. Qed.
+  Obligation 58. (* type_infer_order M' *) ob_ord. Defined.
+  Obligation 59. (* False *) ob_neg. Qed.
+  Obligation 60. (* nbe_ty_order gc_deps gc_stack G A' *)
     clear_defs.
     saturate_infer_univ.
     match goal with H : G ⊢ A' : Typeω@?k |- _ =>
       assert (G ⊢ A' : Typeω@k) as [? []]%soundness_ty by exact H end.
     mauto 3 using nbe_ty_order_sound.
   Qed.
-  Obligation 82. (* G ⊢a λ A' M' ⟹ Πⁿ A'' B', and [Π A'' B'] is a type *)
+  Obligation 61. (* G ⊢a λ A' M' ⟹ Πⁿ A'' B', and [Π A'' B'] is a type *)
     clear_defs.
     saturate_infer_univ.
     (** The annotation's normal form is a type at the same level, and the
@@ -432,19 +350,19 @@ Section type_check.
     - exists (max (unf_large u) l); apply wf_pi;
         [ mauto 3 using lift_exp_max_left | mauto 3 using lift_exp_max_right ].
   Qed.
-  Obligation 83. Qed.
-  Obligation 84. (* type_infer_order M' *) ob_ord. Defined.
-  Obligation 85. (* False *) ob_neg. Qed.
-  Obligation 86. (* False *) ob_neg. Qed.
-  Obligation 87. (* exists i : nat, G ⊢ A : Typeω@i *)
+  Obligation 62. Qed.
+  Obligation 63. (* type_infer_order M' *) ob_ord. Defined.
+  Obligation 64. (* False *) ob_neg. Qed.
+  Obligation 65. (* False *) ob_neg. Qed.
+  Obligation 66. (* exists i : nat, G ⊢ A : Typeω@i *)
     clear_defs.
     functional_alg_type_infer_rewrite_clear.
     progressive_inversion.
     eexists; saturate_infer_univ; eassumption.
   Qed.
-  Obligation 88. (* type_check_order N' *) ob_ord. Defined.
-  Obligation 89. (* False *) ob_neg. Qed.
-  Obligation 90. (* nbe_ty_order gc_deps gc_stack G s[Id,,N'] *)
+  Obligation 67. (* type_check_order N' *) ob_ord. Defined.
+  Obligation 68. (* False *) ob_neg. Qed.
+  Obligation 69. (* nbe_ty_order gc_deps gc_stack G s[Id,,N'] *)
     clear_defs.
     functional_alg_type_infer_rewrite_clear.
     progressive_inversion.
@@ -455,7 +373,7 @@ Section type_check.
     assert (G ⊢ s[Id,,N'] : Typeω@(unf_large v)) as [? []]%soundness_ty by mauto 3.
     mauto 3 using nbe_ty_order_sound.
   Qed.
-  Obligation 91. (* G ⊢a M' $ N' ⟹ B' /\ (B' is a type) *)
+  Obligation 70. (* G ⊢a M' $ N' ⟹ B' /\ (B' is a type) *)
     clear_defs.
     functional_alg_type_infer_rewrite_clear.
     progressive_inversion.
@@ -465,33 +383,33 @@ Section type_check.
     assert (G ⊢ s[Id,,N'] : Typeω@(unf_large v)) by mauto 3.
     eapply level_of_nbe; eassumption.
   Qed.
-  Obligation 92. Qed.
-  Obligation 93. (* False *) ob_neg. Qed.
-  Obligation 94. (* nbe_ty_order gc_deps gc_stack G A *)
+  Obligation 71. Qed.
+  Obligation 72. (* False *) ob_neg. Qed.
+  Obligation 73. (* nbe_ty_order gc_deps gc_stack G A *)
     clear_defs.
     assert (exists i, G ⊢ A : Typeω@i) as [? [? []]%soundness_ty] by mauto 3.
     mauto 3 using nbe_ty_order_sound.
   Qed.
-  Obligation 95. (* G ⊢a #x ⟹ A', and [A'] is a type *)
+  Obligation 74. (* G ⊢a #x ⟹ A', and [A'] is a type *)
     clear_defs.
     assert (exists i, G ⊢ A : Typeω@i) as [i] by mauto 3.
     split; [ mauto 3 |].
     eapply level_of_nbe; eassumption.
   Qed.
-  Obligation 96. Qed.
-  Obligation 97. (* type_infer_order A' *) ob_ord. Defined.
-  Obligation 98. (* False *) ob_neg. Qed.
-  Obligation 99. (* False *) ob_neg. Qed.
-  Obligation 100. (* exists i, G ⊢ A' : Typeω@i *)
+  Obligation 75. Qed.
+  Obligation 76. (* type_infer_order A' *) ob_ord. Defined.
+  Obligation 77. (* False *) ob_neg. Qed.
+  Obligation 78. (* False *) ob_neg. Qed.
+  Obligation 79. (* exists i, G ⊢ A' : Typeω@i *)
     clear_defs.
     eexists; saturate_infer_univ; eassumption.
   Qed.
-  Obligation 101. (* type_check_order M' *) ob_ord. Defined.
-  Obligation 102. (* False *) ob_neg. Qed.
-  Obligation 103. (* ⊢ G ▸ A' ≔ M' *) ob_ctx. Qed.
-  Obligation 104. (* type_infer_order B' *) ob_ord. Defined.
-  Obligation 105. (* False *) ob_neg. Qed.
-  Obligation 106. (* nbe_ty_order gc_deps gc_stack G C[Id,,M'] *)
+  Obligation 80. (* type_check_order M' *) ob_ord. Defined.
+  Obligation 81. (* False *) ob_neg. Qed.
+  Obligation 82. (* ⊢ G ▸ A' ≔ M' *) ob_ctx. Qed.
+  Obligation 83. (* type_infer_order B' *) ob_ord. Defined.
+  Obligation 84. (* False *) ob_neg. Qed.
+  Obligation 85. (* nbe_ty_order gc_deps gc_stack G C[Id,,M'] *)
     clear_defs.
     destruct_conjs.
     saturate_infer_univ.
@@ -501,7 +419,7 @@ Section type_check.
     assert (exists k, G ⊢ C[Id,,M'] : Typeω@k) as [? [? []]%soundness_ty] by (eexists; mauto 3).
     mauto 3 using nbe_ty_order_sound.
   Qed.
-  Obligation 107. (* G ⊢a ℓ A' ≔ M' in B' ⟹ D /\ (D is a type) *)
+  Obligation 86. (* G ⊢a ℓ A' ≔ M' in B' ⟹ D /\ (D is a type) *)
     clear_defs.
     split; [mauto 3 |].
     destruct_conjs.
@@ -512,18 +430,18 @@ Section type_check.
     assert (exists k, G ⊢ C[Id,,M'] : Typeω@k) as [? ?] by (eexists; mauto 3).
     eapply level_of_nbe; eassumption.
   Qed.
-  Obligation 108. Qed.
-  Obligation 109. (* type_infer_order M' *) ob_ord. Defined.
-  Obligation 110. (* False *) ob_neg. Qed.
-  Obligation 111. (* ⊢ G ▸ A ≔ M' *)
+  Obligation 87. Qed.
+  Obligation 88. (* type_infer_order M' *) ob_ord. Defined.
+  Obligation 89. (* False *) ob_neg. Qed.
+  Obligation 90. (* ⊢ G ▸ A ≔ M' *)
     clear_defs.
     destruct_conjs.
     assert (G ⊢ M' : A) by mauto 3 using alg_type_infer_sound.
     mauto 3.
   Qed.
-  Obligation 112. (* type_infer_order B' *) ob_ord. Defined.
-  Obligation 113. (* False *) ob_neg. Qed.
-  Obligation 114. (* nbe_ty_order gc_deps gc_stack G C[Id,,M'] *)
+  Obligation 91. (* type_infer_order B' *) ob_ord. Defined.
+  Obligation 92. (* False *) ob_neg. Qed.
+  Obligation 93. (* nbe_ty_order gc_deps gc_stack G C[Id,,M'] *)
     clear_defs.
     destruct_conjs.
     assert (G ⊢ M' : A) by mauto 3 using alg_type_infer_sound.
@@ -532,7 +450,7 @@ Section type_check.
     assert (exists k, G ⊢ C[Id,,M'] : Typeω@k) as [? [? []]%soundness_ty] by (eexists; mauto 3).
     mauto 3 using nbe_ty_order_sound.
   Qed.
-  Obligation 115. (* G ⊢a ℓ ≔ M' in B' ⟹ D /\ (D is a type) *)
+  Obligation 94. (* G ⊢a ℓ ≔ M' in B' ⟹ D /\ (D is a type) *)
     clear_defs.
     split; [mauto 3 |].
     destruct_conjs.
@@ -542,12 +460,12 @@ Section type_check.
     assert (exists k, G ⊢ C[Id,,M'] : Typeω@k) as [? ?] by (eexists; mauto 3).
     eapply level_of_nbe; eassumption.
   Qed.
-  Obligation 116. (* unit_order U *) ob_ord. Defined.
-  Obligation 117. (* False *) ob_neg. Qed.
-  Obligation 118. (* ⊢ G ▹ₘ U *) ob_ctx. Qed.
-  Obligation 119. (* type_infer_order B' *) ob_ord. Defined.
-  Obligation 120. (* False *) ob_neg. Qed.
-  Obligation 121. (* nbe_ty_order gc_deps gc_stack G C[Id ,,ₘ me_lit U] *)
+  Obligation 95. (* unit_order U *) ob_ord. Defined.
+  Obligation 96. (* False *) ob_neg. Qed.
+  Obligation 97. (* ⊢ G ▹ₘ U *) ob_ctx. Qed.
+  Obligation 98. (* type_infer_order B' *) ob_ord. Defined.
+  Obligation 99. (* False *) ob_neg. Qed.
+  Obligation 100. (* nbe_ty_order gc_deps gc_stack G C[Id ,,ₘ me_lit U] *)
     clear_defs.
     assert (gc_deps ⍮ gc_stack ⍮ G ⊢ᵘ U ≈ U) by (eapply alg_unit_sound; eassumption).
     assert (⊢ G ▹ₘ U) by (apply wf_ctx_extend_mod; eassumption).
@@ -556,7 +474,7 @@ Section type_check.
         by (eexists; mauto 3).
     mauto 3 using nbe_ty_order_sound.
   Qed.
-  Obligation 122. (* G ⊢a ℓₘ U in B' ⟹ D, and [D] is a type *)
+  Obligation 101. (* G ⊢a ℓₘ U in B' ⟹ D, and [D] is a type *)
     clear_defs.
     split; [ mauto 3 |].
     assert (gc_deps ⍮ gc_stack ⍮ G ⊢ᵘ U ≈ U) by (eapply alg_unit_sound; eassumption).
@@ -565,84 +483,84 @@ Section type_check.
     assert (exists k, G ⊢ C[Id ,,ₘ me_lit U] : Typeω@k) as [? ?] by (eexists; mauto 3).
     eapply level_of_nbe; eassumption.
   Qed.
-  Obligation 123. (* nbe_ty_order gc_deps gc_stack G A *) mo_1. Qed.
-  Obligation 124. (* G ⊢a a_mem M' x ⟹ C /\ (exists (UA : nf) (u : unf), G ⊢a ... *) mo_1. Qed.
-  Obligation 125. (* modexp_order M' *) ob_ord. Defined.
-  Obligation 126. (* False *) ob_mem_neg. Qed.
-  Obligation 127. (* ⊢g gc_deps ⍮ gc_stack *) ob_check. Qed.
-  Obligation 128. (* gc_deps ⍮ gc_stack ⍮ G ⊢ᵐ M' ≈ M' *) mo_18. Qed.
-  Obligation 129. (* False *) ob_mem_neg. Qed.
-  Obligation 130. (* nbe_ty_order gc_deps gc_stack G A *) mo_7. Qed.
-  Obligation 131. (* G ⊢a a_mem M' x ⟹ B /\ (exists (UA : nf) (u : unf), G ⊢a ... *) mo_8. Qed.
-  Obligation 132. (* modexp_order M' *) ob_ord. Defined.
-  Obligation 133. (* False *) ob_mem_neg. Qed.
-  Obligation 134. (* type_infer_order (apps (member_ref R (pre ++ x :: nil) $ ... *) ob_ord_apps. Defined.
-  Obligation 135. (* False *) ob_mem_neg. Qed.
-  Obligation 136. (* G ⊢a a_mem M' x ⟹ A /\ (exists (UA : nf) (u : unf), G ⊢a ... *) mo_9. Qed.
-  Obligation 137. (* G ⊢aˣ ⋅ *) ob_check. Qed.
-  Obligation 138. (* ext_order Ψ *) ob_ord. Defined.
-  Obligation 139. (* False *) mo_10. Qed.
-  Obligation 140. (* ⊢ Ψ ++ G *) ob_ctx. Qed.
-  Obligation 141. (* type_infer_order A *) ob_ord. Defined.
+  Obligation 102. (* nbe_ty_order gc_deps gc_stack G A *) mo_1. Qed.
+  Obligation 103. (* G ⊢a a_mem M' x ⟹ C /\ (exists (UA : nf) (u : unf), G ⊢a ... *) mo_1. Qed.
+  Obligation 104. (* modexp_order M' *) ob_ord. Defined.
+  Obligation 105. (* False *) ob_mem_neg. Qed.
+  Obligation 106. (* ⊢g gc_deps ⍮ gc_stack *) ob_check. Qed.
+  Obligation 107. (* gc_deps ⍮ gc_stack ⍮ G ⊢ᵐ M' ≈ M' *) mo_18. Qed.
+  Obligation 108. (* False *) ob_mem_neg. Qed.
+  Obligation 109. (* nbe_ty_order gc_deps gc_stack G A *) mo_7. Qed.
+  Obligation 110. (* G ⊢a a_mem M' x ⟹ B /\ (exists (UA : nf) (u : unf), G ⊢a ... *) mo_8. Qed.
+  Obligation 111. (* modexp_order M' *) ob_ord. Defined.
+  Obligation 112. (* False *) ob_mem_neg. Qed.
+  Obligation 113. (* type_infer_order (apps (member_ref R (pre ++ x :: nil) $ ... *) ob_ord_apps. Defined.
+  Obligation 114. (* False *) ob_mem_neg. Qed.
+  Obligation 115. (* G ⊢a a_mem M' x ⟹ A /\ (exists (UA : nf) (u : unf), G ⊢a ... *) mo_9. Qed.
+  Obligation 116. (* G ⊢aˣ ⋅ *) ob_check. Qed.
+  Obligation 117. (* ext_order Ψ *) ob_ord. Defined.
+  Obligation 118. (* False *) mo_10. Qed.
+  Obligation 119. (* ⊢ Ψ ++ G *) ob_ctx. Qed.
+  Obligation 120. (* type_infer_order A *) ob_ord. Defined.
+  Obligation 121. (* False *) mo_10. Qed.
+  Obligation 122. (* False *) mo_10. Qed.
+  Obligation 123. (* G ⊢aˣ Ψ ▹ A *) ob_check. Qed.
+  Obligation 124. (* ext_order Ψ *) ob_ord. Defined.
+  Obligation 125. (* False *) mo_10. Qed.
+  Obligation 126. (* ⊢ Ψ ++ G *) ob_ctx. Qed.
+  Obligation 127. (* type_infer_order A *) ob_ord. Defined.
+  Obligation 128. (* False *) mo_10. Qed.
+  Obligation 129. (* False *) mo_10. Qed.
+  Obligation 130. (* exists i0 : nat, Ψ ++ G ⊢ A : Typeω@i0 *) mo_14. Qed.
+  Obligation 131. (* type_check_order M *) ob_ord. Defined.
+  Obligation 132. (* False *) mo_10. Qed.
+  Obligation 133. (* G ⊢aˣ Ψ ▸ A ≔ M *) ob_check. Qed.
+  Obligation 134. (* ext_order Ψ *) ob_ord. Defined.
+  Obligation 135. (* False *) mo_10. Qed.
+  Obligation 136. (* ⊢ Ψ ++ G *) ob_ctx. Qed.
+  Obligation 137. (* unit_order U *) ob_ord. Defined.
+  Obligation 138. (* False *) mo_10. Qed.
+  Obligation 139. (* G ⊢aˣ Ψ ▹ₘ U *) ob_check. Qed.
+  Obligation 140. (* ext_order (body_ctx Φ ++ Δ) *) ob_ord. Defined.
+  Obligation 141. (* False *) mo_10. Qed.
   Obligation 142. (* False *) mo_10. Qed.
   Obligation 143. (* False *) mo_10. Qed.
-  Obligation 144. (* G ⊢aˣ Ψ ▹ A *) ob_check. Qed.
-  Obligation 145. (* ext_order Ψ *) ob_ord. Defined.
-  Obligation 146. (* False *) mo_10. Qed.
-  Obligation 147. (* ⊢ Ψ ++ G *) ob_ctx. Qed.
-  Obligation 148. (* type_infer_order A *) ob_ord. Defined.
-  Obligation 149. (* False *) mo_10. Qed.
-  Obligation 150. (* False *) mo_10. Qed.
-  Obligation 151. (* exists i0 : nat, Ψ ++ G ⊢ A : Typeω@i0 *) mo_14. Qed.
-  Obligation 152. (* type_check_order M *) ob_ord. Defined.
-  Obligation 153. (* False *) mo_10. Qed.
-  Obligation 154. (* G ⊢aˣ Ψ ▸ A ≔ M *) ob_check. Qed.
-  Obligation 155. (* ext_order Ψ *) ob_ord. Defined.
-  Obligation 156. (* False *) mo_10. Qed.
-  Obligation 157. (* ⊢ Ψ ++ G *) ob_ctx. Qed.
-  Obligation 158. (* unit_order U *) ob_ord. Defined.
-  Obligation 159. (* False *) mo_10. Qed.
-  Obligation 160. (* G ⊢aˣ Ψ ▹ₘ U *) ob_check. Qed.
-  Obligation 161. (* ext_order (body_ctx Φ ++ Δ) *) ob_ord. Defined.
-  Obligation 162. (* False *) mo_10. Qed.
-  Obligation 163. (* False *) mo_10. Qed.
-  Obligation 164. (* False *) mo_10. Qed.
+  Obligation 144. (* False *) mo_10. Qed.
+  Obligation 145. (* G ⊢aᵘ gu_body Δ Φ *) ob_check. Qed.
+  Obligation 146. (* ext_order Δ *) ob_ord. Defined.
+  Obligation 147. (* False *) mo_10. Qed.
+  Obligation 148. (* False *) mo_10. Qed.
+  Obligation 149. (* ⊢ Δ ++ G *) ob_ctx. Qed.
+  Obligation 150. (* modexp_order E *) ob_ord. Defined.
+  Obligation 151. (* False *) mo_10. Qed.
+  Obligation 152. (* G ⊢aᵘ gu_mk Δ (md_alias E) *) ob_check. Qed.
+  Obligation 153. (* ⊢g gc_deps ⍮ gc_stack *) ob_check. Qed.
+  Obligation 154. (* False *) mo_10. Qed.
+  Obligation 155. (* G ⊢aᵐ me_unit fp *) mo_2. Qed.
+  Obligation 156. (* G ⊢aᵐ me_var x *) mo_19. Qed.
+  Obligation 157. (* False *) mo_20. Qed.
+  Obligation 158. (* ⊢g gc_deps ⍮ gc_stack *) ob_check. Qed.
+  Obligation 159. (* False *) mo_3. Qed.
+  Obligation 160. (* G ⊢aᵐ me_mem M y *) ob_check. Qed.
+  Obligation 161. (* modexp_order M *) ob_ord. Defined.
+  Obligation 162. (* False *) mo_3. Qed.
+  Obligation 163. (* ⊢g gc_deps ⍮ gc_stack *) ob_check. Qed.
+  Obligation 164. (* gc_deps ⍮ gc_stack ⍮ G ⊢ᵐ M ≈ M *) mo_18. Qed.
   Obligation 165. (* False *) mo_10. Qed.
-  Obligation 166. (* G ⊢aᵘ gu_body Δ Φ *) ob_check. Qed.
-  Obligation 167. (* ext_order Δ *) ob_ord. Defined.
+  Obligation 166. (* G ⊢aᵐ me_mem M y *) ob_check. Qed.
+  Obligation 167. (* modexp_order M *) ob_ord. Defined.
   Obligation 168. (* False *) mo_10. Qed.
-  Obligation 169. (* False *) mo_10. Qed.
-  Obligation 170. (* ⊢ Δ ++ G *) ob_ctx. Qed.
-  Obligation 171. (* modexp_order E *) ob_ord. Defined.
-  Obligation 172. (* False *) mo_10. Qed.
-  Obligation 173. (* G ⊢aᵘ gu_mk Δ (md_alias E) *) ob_check. Qed.
-  Obligation 174. (* ⊢g gc_deps ⍮ gc_stack *) ob_check. Qed.
-  Obligation 175. (* False *) mo_10. Qed.
-  Obligation 176. (* G ⊢aᵐ me_unit fp *) mo_2. Qed.
-  Obligation 177. (* G ⊢aᵐ me_var x *) mo_19. Qed.
-  Obligation 178. (* False *) mo_20. Qed.
-  Obligation 179. (* ⊢g gc_deps ⍮ gc_stack *) ob_check. Qed.
-  Obligation 180. (* False *) mo_3. Qed.
-  Obligation 181. (* G ⊢aᵐ me_mem M y *) ob_check. Qed.
-  Obligation 182. (* modexp_order M *) ob_ord. Defined.
-  Obligation 183. (* False *) mo_3. Qed.
-  Obligation 184. (* ⊢g gc_deps ⍮ gc_stack *) ob_check. Qed.
-  Obligation 185. (* gc_deps ⍮ gc_stack ⍮ G ⊢ᵐ M ≈ M *) mo_18. Qed.
-  Obligation 186. (* False *) mo_10. Qed.
-  Obligation 187. (* G ⊢aᵐ me_mem M y *) ob_check. Qed.
-  Obligation 188. (* modexp_order M *) ob_ord. Defined.
-  Obligation 189. (* False *) mo_10. Qed.
-  Obligation 190. (* ⊢g gc_deps ⍮ gc_stack *) ob_check. Qed.
-  Obligation 191. (* gc_deps ⍮ gc_stack ⍮ G ⊢ᵐ M ≈ M *) mo_18. Qed.
-  Obligation 192. (* False *) mo_10. Qed.
-  Obligation 193. (* False *) mo_21. Qed.
-  Obligation 194. (* exists i : nat, G ⊢ B : Typeω@i *) mo_22. Qed.
-  Obligation 195. (* type_check_order N *) ob_ord. Defined.
-  Obligation 196. (* False *) mo_21. Qed.
-  Obligation 197. (* G ⊢aᵐ me_app M N *) ob_check. Qed.
-  Obligation 198. (* unit_order U *) ob_ord. Defined.
-  Obligation 199. (* False *) mo_10. Qed.
-  Obligation 200. (* G ⊢aᵐ me_lit U *) ob_check. Qed.
+  Obligation 169. (* ⊢g gc_deps ⍮ gc_stack *) ob_check. Qed.
+  Obligation 170. (* gc_deps ⍮ gc_stack ⍮ G ⊢ᵐ M ≈ M *) mo_18. Qed.
+  Obligation 171. (* False *) mo_10. Qed.
+  Obligation 172. (* False *) mo_21. Qed.
+  Obligation 173. (* exists i : nat, G ⊢ B : Typeω@i *) mo_22. Qed.
+  Obligation 174. (* type_check_order N *) ob_ord. Defined.
+  Obligation 175. (* False *) mo_21. Qed.
+  Obligation 176. (* G ⊢aᵐ me_app M N *) ob_check. Qed.
+  Obligation 177. (* unit_order U *) ob_ord. Defined.
+  Obligation 178. (* False *) mo_10. Qed.
+  Obligation 179. (* G ⊢aᵐ me_lit U *) ob_check. Qed.
 
   (** The checker from scratch: the initial environment of the context is
       computed once, at the start. *)

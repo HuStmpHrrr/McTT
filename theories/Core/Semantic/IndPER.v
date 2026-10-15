@@ -21,10 +21,10 @@ Section Fixed_GCtx.
   (** The type at a position of a telescope, and of a constructor's
       non-recursive arguments. *)
   Definition nth_ctyp (T : list centry) (k : nat) : typ :=
-    match List.nth_error T k with Some (ce_ass A) => A | _ => a_nat end.
+    match List.nth_error T k with Some (ce_ass A) => A | _ => a_True end.
 
   Definition nth_atyp (D : ind_decl) (c : String.string) (k : nat) : typ :=
-    match ind_con D c with Some gs => List.nth k (cargs_nonrec gs) a_nat | None => a_nat end.
+    match ind_con D c with Some gs => List.nth k (cargs_nonrec gs) a_True | None => a_True end.
 
   Definition ind_nr (D : ind_decl) (ups : list domain) : nat -> list domain -> relation domain :=
     fun k vs => per_head (nth_ctyp (List.rev (ind_nparams D)) k) (nth_ctyp (List.rev (ind_nparams D)) k)

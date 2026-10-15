@@ -404,6 +404,20 @@ Proof.
 Qed.
 
 (** Expansion keeps a definition one, and a module's body as it is. *)
+(** Literals keep a command's body, if it has one: a module's nested
+    commands get theirs when they run. *)
+Lemma cmd_lits_no_axioms : forall nv c c', cmd_lits nv c = lok c' -> cmd_no_axioms c -> cmd_no_axioms c'.
+Proof.
+  intros nv [x b pv A [M |] | x pv Δ cs | | | | | | |] c' E Hc; cbn [cmd_lits] in E;
+    repeat match goal with
+      | H : lbind _ _ = lok _ |- _ =>
+          let E := fresh "E" in let a := fresh "a" in apply lbind_lok_inv in H as (a & E & H)
+      end;
+    try (injection E as <-); try exact I; try exact Hc.
+  - cbn [lopt] in *; apply lbind_lok_inv in E1 as (M' & _ & E1); injection E1 as <-; cbn; discriminate.
+  - cbn in Hc; congruence.
+Qed.
+
 Lemma cmd_xp_no_axioms : forall mt S c c', cmd_xp mt S c = xok c' -> cmd_no_axioms c -> cmd_no_axioms c'.
 Proof.
   intros * Ex Hc; pose proof (cmd_xp_head _ _ _ _ Ex) as Hh.
@@ -471,11 +485,11 @@ Section Run.
   Hypothesis Hload : forall prg u, to_core prg = Some u -> unit_no_axioms u.
 
   Theorem run_no_axioms :
-    (forall ch Θ Ξ c Θ' Ξ', run_cmd load_path read to_core ch Θ Ξ c Θ' Ξ' ->
+    (forall ch B Θ Ξ c B' Θ' Ξ', run_cmd load_path read to_core ch B Θ Ξ c B' Θ' Ξ' ->
        cmd_no_axioms c -> gc_no_axioms Θ Ξ -> gc_no_axioms Θ' Ξ') /\
-    (forall ch Θ Ξ cs Θ' Ξ', run_cmds load_path read to_core ch Θ Ξ cs Θ' Ξ' ->
+    (forall ch B Θ Ξ cs B' Θ' Ξ', run_cmds load_path read to_core ch B Θ Ξ cs B' Θ' Ξ' ->
        cmds_no_axioms cs -> gc_no_axioms Θ Ξ -> gc_no_axioms Θ' Ξ') /\
-    (forall ch u Θ U, run_unit load_path read to_core ch u Θ U ->
+    (forall ch B u B' Θ U, run_unit load_path read to_core ch B u B' Θ U ->
        unit_no_axioms u -> gds_no_axioms Θ /\ gm_no_axioms (gu_mod U)).
   Proof.
     apply run_mut_ind; intros; unfold gc_no_axioms in *.
@@ -500,18 +514,19 @@ Section Run.
        definitions there; the module becomes a member *)
     - destruct_all; split; [ assumption |].
       apply gs_no_axioms_add; [ apply gens_body_no_axioms; exact I | assumption ].
-    (* a builtin binding is a definition *)
-    - destruct_all; split; [ assumption | apply gs_no_axioms_add; cbn; auto; congruence ].
+    (* a builtin binding files nothing *)
+    - assumption.
     (* an inductive alias declares no definition *)
     - destruct_all; split; [ assumption | apply gs_no_axioms_add; cbn; auto ].
     - assumption.
     - assumption.
     - assumption.
-    (* a command runs as expanded, which keeps it free of axioms *)
+    (* a command runs with its literals, as expanded, which keeps it free of
+       axioms *)
     - match goal with
-      | Hx : cmd_xp_ok _ _ _ _, Hc : cmds_no_axioms (_ :: _) |- _ =>
+      | Hl : cmd_lits_ok _ _ _ _ _, Hx : cmd_xp_ok _ _ _ _, Hc : cmds_no_axioms (_ :: _) |- _ =>
           destruct Hx as (mt & _ & Ex); inversion Hc; subst;
-          pose proof (cmd_xp_no_axioms _ _ _ _ Ex ltac:(assumption))
+          pose proof (cmd_xp_no_axioms _ _ _ _ Ex (cmd_lits_no_axioms _ _ _ Hl ltac:(assumption)))
       end; eauto.
     (* a unit: its loads from nothing, then its body in its own frame *)
     - cbn in *; destruct_all.
@@ -522,20 +537,20 @@ Section Run.
       split; eauto with mctt.
   Qed.
 
-  Corollary run_unit_no_axioms : forall ch u Θ U,
-      run_unit load_path read to_core ch u Θ U -> unit_no_axioms u -> gds_no_axioms Θ /\ gm_no_axioms (gu_mod U).
+  Corollary run_unit_no_axioms : forall ch B u B' Θ U,
+      run_unit load_path read to_core ch B u B' Θ U -> unit_no_axioms u -> gds_no_axioms Θ /\ gm_no_axioms (gu_mod U).
   Proof. apply run_no_axioms. Qed.
 
   (** Every state a unit runs through, from nothing, has no axioms. *)
-  Corollary run_cmds_no_axioms : forall ch cs Θ Ξ,
-      run_cmds load_path read to_core ch nil nil cs Θ Ξ -> cmds_no_axioms cs -> gc_no_axioms Θ Ξ.
+  Corollary run_cmds_no_axioms : forall ch B cs B' Θ Ξ,
+      run_cmds load_path read to_core ch B nil nil cs B' Θ Ξ -> cmds_no_axioms cs -> gc_no_axioms Θ Ξ.
   Proof. intros * H Hc; eapply run_no_axioms; [ exact H | exact Hc | split; auto with mctt ]. Qed.
 
   (** What a program files, filed with it. *)
-  Corollary prog_sem_no_axioms : forall prg Θ U,
-      prog_sem load_path read to_core prg Θ U -> gc_no_axioms ((prog_path prg, U) :: Θ) nil.
+  Corollary prog_sem_no_axioms : forall prg B Θ U,
+      prog_sem load_path read to_core prg B Θ U -> gc_no_axioms ((prog_path prg, U) :: Θ) nil.
   Proof.
-    intros * (u & Ht & Hu); destruct (run_unit_no_axioms _ _ _ _ Hu (Hload _ _ Ht)).
+    intros * (u & Ht & Hu); destruct (run_unit_no_axioms _ _ _ _ _ _ Hu (Hload _ _ Ht)).
     split; auto with mctt.
   Qed.
 End Run.

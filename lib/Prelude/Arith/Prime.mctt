@@ -5,6 +5,7 @@
    [Prime n] is the computed proposition [Eq (isPrime n) 1]. *)
 module Prelude›Arith›Prime where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (Not; absurd)
 import Prelude›Arith›Equality use (Eq; refl)
 import Prelude›Arith›Mult use (mult)
@@ -33,7 +34,7 @@ def monus (a : ℕ) (b : ℕ) : ℕ ≔ Generic.iterate 0l ℕ pred b a end
    out. *)
 def trialDivision (n : ℕ) (none : ℕ) (found : ∀ (d : ℕ) → ℕ) (fuel : ℕ) :
     ∀ (d : ℕ) → ℕ ≔
-  rec fuel return y . (∀ (d : ℕ) → ℕ)
+  elim fuel return y . (∀ (d : ℕ) → ℕ)
   | zero ⇒ λ (d : ℕ) → none
   | succ f, r ⇒ λ (d : ℕ) →
       pick (monus (mult d d) n)
@@ -52,8 +53,8 @@ def noSmallDivisor (n : ℕ) : ℕ ≔ trialDivision n 1 (λ (d : ℕ) → 0) n 
 lemma trialDivisionDivides : ∀ (n : ℕ) (fuel : ℕ) (d : ℕ) →
     Divides (trialDivision n n (λ (x : ℕ) → x) fuel d) n ≔
   λ (n : ℕ) (fuel : ℕ) →
-    rec fuel return x . (∀ (d : ℕ) →
-                           Divides (trialDivision n n (λ (y : ℕ) → y) x d) n)
+    elim fuel return x . (∀ (d : ℕ) →
+                            Divides (trialDivision n n (λ (y : ℕ) → y) x d) n)
     | zero ⇒ λ (d : ℕ) → dividesRefl n
     | succ f, ih ⇒ λ (d : ℕ) →
         let next ≔ trialDivision n n (λ (y : ℕ) → y) f (succ d);
@@ -78,9 +79,9 @@ lemma trialDivisionNone : ∀ (n : ℕ) (fuel : ℕ) (d : ℕ)
     (h : Eq (trialDivision n 1 (λ (x : ℕ) → 0) fuel d) 1) →
     Eq (trialDivision n n (λ (x : ℕ) → x) fuel d) n ≔
   λ (n : ℕ) (fuel : ℕ) →
-    rec fuel return x . (∀ (d : ℕ)
-                          (h : Eq (trialDivision n 1 (λ (y : ℕ) → 0) x d) 1) →
-                          Eq (trialDivision n n (λ (y : ℕ) → y) x d) n)
+    elim fuel return x . (∀ (d : ℕ)
+                           (h : Eq (trialDivision n 1 (λ (y : ℕ) → 0) x d) 1) →
+                           Eq (trialDivision n n (λ (y : ℕ) → y) x d) n)
     | zero ⇒ λ (d : ℕ) (h : ⊤) → refl n
     | succ f, ih ⇒ λ (d : ℕ) →
         let flagNext ≔ trialDivision n 1 (λ (y : ℕ) → 0) f (succ d);
@@ -142,10 +143,10 @@ end
 (* Every prime is at least 2: below 2, [isPrime] answers 0. *)
 theorem primeGeTwo : ∀ (n : ℕ) (h : Prime n) → Le 2 n ≔
   λ (n : ℕ) →
-    rec n return x . (∀ (h : Prime x) → Le 2 x)
+    elim n return x . (∀ (h : Prime x) → Le 2 x)
     | zero ⇒ λ (h : ⊥) → h
     | succ p, ih ⇒
-        rec p return y . (∀ (h : Prime (succ y)) → Le 2 (succ y))
+        elim p return y . (∀ (h : Prime (succ y)) → Le 2 (succ y))
         | zero ⇒ λ (h : ⊥) → h
         | succ q, s ⇒ λ (h : Prime (succ (succ q))) → ⋆
         end
@@ -156,11 +157,11 @@ end
 theorem primeSmallestDivisor : ∀ (n : ℕ) (h : Prime n) →
     Eq (smallestDivisor n) n ≔
   λ (n : ℕ) →
-    rec n return x . (∀ (h : Prime x) → Eq (smallestDivisor x) x)
+    elim n return x . (∀ (h : Prime x) → Eq (smallestDivisor x) x)
     | zero ⇒ λ (h : ⊥) → absurd (Eq (smallestDivisor 0) 0) h
     | succ p, ih ⇒
-        rec p return y . (∀ (h : Prime (succ y)) →
-                            Eq (smallestDivisor (succ y)) (succ y))
+        elim p return y . (∀ (h : Prime (succ y)) →
+                             Eq (smallestDivisor (succ y)) (succ y))
         | zero ⇒ λ (h : ⊥) → absurd (Eq (smallestDivisor 1) 1) h
         | succ q, s ⇒ λ (h : Eq (noSmallDivisor (succ (succ q))) 1) →
             trialDivisionNone (succ (succ q)) (succ (succ q)) 2 h

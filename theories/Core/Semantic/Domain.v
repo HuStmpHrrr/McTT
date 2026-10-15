@@ -26,8 +26,6 @@ From Mctt.Core.Syntactic Require Export Levels Syntax.
     parameters. *)
 
 Inductive domain : Set :=
-(** [ℕ] *)
-| d_nat : domain
 (** [d_pi a ρ B]: a [Π] with domain [a], its codomain [B] a closure in [ρ] *)
 | d_pi : domain -> list dentry -> exp -> domain
 (** A large universe *)
@@ -44,10 +42,6 @@ Inductive domain : Set :=
     view ([dlvl_view]) of their arguments, where the neutral is an atom of
     sort [n]. *)
 | d_lvl : o2 -> list (nat * nat * domain_ne) -> domain
-(** [zero] *)
-| d_zero : domain
-(** [succ] *)
-| d_succ : domain -> domain
 (** [⊤] *)
 | d_True : domain
 (** Its element *)
@@ -90,9 +84,6 @@ with domain_ne : Set :=
 | d_var : forall (x : nat), domain_ne
 (** A neutral applied to a normal argument *)
 | d_app : domain_ne -> domain_nf -> domain_ne
-(** The [ℕ]-eliminator on a neutral, with its motive and successor case as
-    closures. *)
-| d_natrec : list dentry -> typ -> domain -> exp -> domain_ne -> domain_ne
 (** The [⊥]-eliminator on a neutral, with its motive as a closure. *)
 | d_exfalso : list dentry -> typ -> domain_ne -> domain_ne
 (** An opaque definition or an axiom. *)
@@ -124,12 +115,12 @@ Derive NoConfusion for domain domain_ne domain_nf dmod dentry.
     and their entries under a selection, which needs these. *)
 Derive NoConfusion for gmod gentry.
 
-(** The entry of the variable [#x], or the term [zeroᵈ] past the end of the
+(** The entry of the variable [#x], or the term [⋆ᵈ] past the end of the
     list.  [env_entry] is [nth], but defined by recursion on the index so that
     [ρ↯ x] is [ρ (S x)] by conversion. *)
 Fixpoint env_entry (ρ : env) (x : nat) : dentry :=
   match x with
-  | 0 => List.hd (de_term d_zero) ρ
+  | 0 => List.hd (de_term d_true) ρ
   | S x' => env_entry (List.tl ρ) x'
   end.
 
@@ -143,7 +134,7 @@ Definition dm_default : dmod := dm_global (q_abs nil nil) nil.
 Definition env_var (ρ : env) (x : nat) : domain :=
   match env_entry ρ x with
   | de_term d => d
-  | de_mod _ => d_zero
+  | de_mod _ => d_true
   end.
 #[warning="-uniform-inheritance"]
 Coercion env_var : list >-> Funclass.
@@ -154,10 +145,10 @@ Definition env_mod (ρ : env) (x : nat) : dmod :=
   | de_term _ => dm_default
   end.
 
-Lemma env_entry_nth : forall ρ x, env_entry ρ x = List.nth x ρ (de_term d_zero).
+Lemma env_entry_nth : forall ρ x, env_entry ρ x = List.nth x ρ (de_term d_true).
 Proof. intros ρ x; revert ρ; induction x; intros [| d ρ]; cbn; auto; rewrite IHx; destruct x; reflexivity. Qed.
 
-Lemma env_var_nth : forall ρ x, env_var ρ x = match List.nth x ρ (de_term d_zero) with de_term d => d | de_mod _ => d_zero end.
+Lemma env_var_nth : forall ρ x, env_var ρ x = match List.nth x ρ (de_term d_true) with de_term d => d | de_mod _ => d_true end.
 Proof. intros; unfold env_var; rewrite env_entry_nth; reflexivity. Qed.
 
 Definition extend_env (ρ : env) (d : domain) : env := de_term d :: ρ.
@@ -194,9 +185,6 @@ Module Domain_Notations.
   Notation "'Levelᵈ'" := (d_level 0) : mctt_scope.
   Notation "'lvᵈ' c xs" := (d_lvl c xs) (at level 1, c at level 0, xs at level 0, format "'lvᵈ' c  xs") : mctt_scope.
   Notation "'#ᵈ' n" := (d_var n) (at level 1, n at level 0, format "'#ᵈ' n") : mctt_scope.
-  Notation "'ℕᵈ'" := d_nat : mctt_scope.
-  Notation "'zeroᵈ'" := d_zero : mctt_scope.
-  Notation "'succᵈ' m" := (d_succ m) (at level 2, m at level 1) : mctt_scope.
   Notation "'⊤ᵈ'" := d_True : mctt_scope.
   Notation "'⋆ᵈ'" := d_true : mctt_scope.
   Notation "'⊥ᵈ'" := d_False : mctt_scope.
@@ -206,7 +194,6 @@ Module Domain_Notations.
   Notation "'⇓' a m" := (d_dom a m) (at level 2, a at level 1, m at level 1) : mctt_scope.
   Notation "'⇑!' a n" := (d_neut a (d_var n)) (at level 2, a at level 1, n at level 0) : mctt_scope.
   Notation "m '$ᵈ' n" := (d_app m n) (at level 10, left associativity, format "m  $ᵈ  n") : mctt_scope.
-  Notation "'recᵈ' m 'under' ρ 'return' P | 'zero' -> mz | 'succ' -> MS 'end'" := (d_natrec ρ P mz MS m) (at level 0, m at level 60, ρ at level 60, P at level 60, mz at level 60, MS at level 60) : mctt_scope.
   Notation "'efqᵈ' m 'under' ρ 'return' P" := (d_exfalso ρ P m) (at level 2, m at level 60, ρ at level 60, P at level 60) : mctt_scope.
 
   Notation "ρ ↦ m" := (extend_env ρ m) (at level 20, left associativity) : mctt_scope.
@@ -340,7 +327,7 @@ Proof. reflexivity. Qed.
 
     Two environments are equal when they agree at every index, entry by entry.  Evaluating a
     substitution determines its result only up to this equality, since a list
-    can end in any number of [zeroᵈ]s.  Evaluation does not respect it, because
+    can end in any number of [⋆ᵈ]s.  Evaluation does not respect it, because
     [λᵈ ρ M] carries its environment; values from pointwise-equal environments
     are related by the PER model instead. *)
 Definition env_eq : relation env := fun ρ ρ' => forall x, env_entry ρ x = env_entry ρ' x.
@@ -476,12 +463,12 @@ Proof.
   rewrite List.seq_nth, env_entry_nth by assumption; reflexivity.
 Qed.
 
-Lemma env_entry_ge : forall ρ x, List.length ρ <= x -> env_entry ρ x = de_term d_zero.
+Lemma env_entry_ge : forall ρ x, List.length ρ <= x -> env_entry ρ x = de_term d_true.
 Proof.
   intros; rewrite env_entry_nth; apply List.nth_overflow; assumption.
 Qed.
 
-Lemma env_var_ge : forall ρ x, List.length ρ <= x -> env_var ρ x = d_zero.
+Lemma env_var_ge : forall ρ x, List.length ρ <= x -> env_var ρ x = d_true.
 Proof.
   intros; unfold env_var; rewrite env_entry_ge; [ reflexivity | assumption ].
 Qed.
@@ -506,7 +493,7 @@ Proof. intros * Hφ x; unfold env_mod; rewrite eval_wk_entry by assumption; refl
 Lemma env_ext : forall ρ ρ', List.length ρ = List.length ρ' ->
     (forall x, x < List.length ρ -> env_entry ρ x = env_entry ρ' x) -> ρ = ρ'.
 Proof.
-  intros * Hl H; apply (List.nth_ext _ _ (de_term d_zero) (de_term d_zero)); [ assumption |].
+  intros * Hl H; apply (List.nth_ext _ _ (de_term d_true) (de_term d_true)); [ assumption |].
   intros; rewrite <- !env_entry_nth; auto.
 Qed.
 

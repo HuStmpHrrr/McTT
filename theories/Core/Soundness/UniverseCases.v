@@ -15,7 +15,7 @@ Ltac closed_typ_readback :=
   intros ? ? ? Hφ Hr;
   assert (⊢ _) by (eapply kripke_dom; exact Hφ);
   inversion Hr; subst; simplify_subs; cbn [nf_to_exp];
-  first [ apply wf_exp_eq_nat_cong_univ | apply wf_exp_eq_True_cong_univ
+  first [ apply wf_exp_eq_True_cong_univ
         | apply wf_exp_eq_False_cong_univ | apply wf_exp_eq_level_cong_univ ];
   assumption.
 

@@ -69,7 +69,7 @@ Qed.
 (** ** Bodies *)
 
 (** A local import's placeholders are closed. *)
-Lemma tele_wk_placeholders : forall n φ, tele_wk (repeat (ce_ass a_nat) n) φ = repeat (ce_ass a_nat) n.
+Lemma tele_wk_placeholders : forall n φ, tele_wk (repeat (ce_ass a_True) n) φ = repeat (ce_ass a_True) n.
 Proof. induction n; intros; cbn; rewrite ?IHn; reflexivity. Qed.
 
 Lemma body_ctx_wk : forall Φ φ, body_ctx (gmod_wk Φ φ) = tele_wk (body_ctx Φ) φ.
@@ -79,7 +79,7 @@ Proof.
 Qed.
 
 (** A local import's placeholders are closed. *)
-Lemma tele_sub_placeholders : forall n σ, tele_sub (repeat (ce_ass a_nat) n) σ = repeat (ce_ass a_nat) n.
+Lemma tele_sub_placeholders : forall n σ, tele_sub (repeat (ce_ass a_True) n) σ = repeat (ce_ass a_True) n.
 Proof. induction n; intros; cbn; rewrite ?IHn; reflexivity. Qed.
 
 Lemma body_ctx_sub : forall Φ σ, body_ctx (gmod_sub Φ σ) = tele_sub (body_ctx Φ) σ.
@@ -284,7 +284,7 @@ Proof.
     eapply gunit_scoped_wk; eauto; cbn; lia.
 Qed.
 
-Lemma ctx_scoped_placeholders : forall k n, ctx_scoped n (repeat (ce_ass a_nat) k).
+Lemma ctx_scoped_placeholders : forall k n, ctx_scoped n (repeat (ce_ass a_True) k).
 Proof. induction k; intros; cbn; auto. Qed.
 
 Lemma gmod_scoped_body_ctx : forall Φ n, gmod_scoped n Φ -> ctx_scoped n (body_ctx Φ).

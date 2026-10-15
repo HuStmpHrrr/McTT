@@ -5,6 +5,8 @@ import Lib›Num.Ops use (pred)
 
 module Main where
 
+import Prelude›Builtin›Nat
+
 eval quadruple 2 : ℕ
 
 eval N.double 3

@@ -3,6 +3,8 @@ import Cyc›A
 
 module Cycle where
 
+import Prelude›Builtin›Nat
+
 eval Cyc›A.a : ℕ
 
 end

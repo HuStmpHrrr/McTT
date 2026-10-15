@@ -1,17 +1,13 @@
 (** * The Evaluation the Extracted Checker Runs
 
     A copy of the evaluation relations ([Core.Semantic.Evaluation]) and of
-    readback ([Core.Semantic.Readback]) with two rules changed:
+    readback ([Core.Semantic.Readback]) with one rule changed: the
+    eliminator of an inductive type at a constructor computes the recursive
+    result of a recursive argument only when the branch reads it, that is,
+    when its variable is not fresh in the branch ([exp_freshb]); an unused
+    entry is [𝕌ω@0] ([feval_ihs_skip]).
 
-    - the [ℕ]-eliminator at a successor does not compute the recursive
-      result when the successor case does not read it, that is, when [#0]
-      is fresh in [MS] ([exp_freshb]); the unused entry of the environment
-      is then [zeroᵈ] ([feval_natrec_skip]);
-    - the eliminator of an inductive type at a constructor computes the
-      recursive result of a recursive argument only when the branch reads
-      it; an unused entry is [𝕌ω@0] ([feval_ihs_skip]).
-
-    The decisions are syntactic and build nothing.  Readback is copied
+    The decision is syntactic and builds nothing.  Readback is copied
     because it evaluates closures.
 
     The values of the two evaluations agree except in the entries of
@@ -37,14 +33,12 @@ Import Wk_Notations GlobalCtx_Notations.
     term it evaluates next never reads. *)
 Fixpoint exp_freshb (k : nat) (M : exp) {struct M} : bool :=
   match M with
-  | a_typ _ | a_level _ | a_llit _ | a_nat | a_zero
+  | a_typ _ | a_level _ | a_llit _
   | a_True | a_true | a_False => true
-  | a_univ M | a_succl M | a_succ M => exp_freshb k M
+  | a_univ M | a_succl M => exp_freshb k M
   | a_maxl M N | a_app M N => exp_freshb k M && exp_freshb k N
-  | a_natrec A MZ MS M =>
-      exp_freshb (S k) A && exp_freshb k MZ && exp_freshb (S (S k)) MS && exp_freshb k M
   | a_exfalso A M => exp_freshb (S k) A && exp_freshb k M
-  | a_ind _ | a_con _ _ | a_nlit _ => true
+  | a_ind _ | a_con _ _ | a_nlit _ | a_ntok => true
   | a_elim nm A Bs M =>
       exp_freshb (nm + k) A &&
       (fix brs_freshb (Bs : list (string * nat * exp)) : bool :=
@@ -148,7 +142,6 @@ Proof. exact (proj1 freshb_sound). Qed.
 (** ** The Relations *)
 
 Reserved Notation "'⟦' M '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, M at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
-Reserved Notation "'⟦recᶠ' m 'return' A | 'zero' -> MZ | 'succ' -> MS 'end' '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, A at level 69, MZ at level 69, MS at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'$ᶠ|' m '&' n '|' Θ '⍮' Ξ '↘' r" (at level 70, m at level 69, n at level 69, Θ at level 69, Ξ at level 69, r at level 69).
 Reserved Notation "'⟦elimᶠ' m 'under' nm A Bs '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦ihsᶠ' vs 'of' gs 'under' nm A Bs 'for' B '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs at level 69, nm at level 0, A at level 0, Bs at level 0, B at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
@@ -194,21 +187,6 @@ Inductive feval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 (** A variable is read off the environment. *)
 | feval_exp_var :
   `( ⟦ #x ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ x )
-(** [ℕ] is a value. *)
-| feval_exp_nat :
-  `( ⟦ ℕ ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ℕᵈ )
-(** So is [zero]. *)
-| feval_exp_zero :
-  `( ⟦ zero ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ zeroᵈ )
-(** [succ] of the value of its argument. *)
-| feval_exp_succ :
-  `( ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     ⟦ succ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ succᵈ m )
-(** The eliminator evaluates its scrutinee, then recurses on the value. *)
-| feval_exp_natrec :
-  `( ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     ⟦recᶠ m return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ rec M return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** [⊤] is a value. *)
 | feval_exp_True :
   `( ⟦ ⊤ ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⊤ᵈ )
@@ -268,30 +246,6 @@ Inductive feval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      $*ᶠ| f & ns | Θ ⍮ Ξ ↘ r ->
      ⟦ a_mem H x ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
 where "'⟦' e '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (feval_exp Θ Ξ e ρ r)
-with feval_natrec (Θ : gdeps) (Ξ : gstack) : exp -> exp -> exp -> domain -> env -> domain -> Prop :=
-(** At [zero], the base case. *)
-| feval_natrec_zero :
-  `( ⟦ MZ ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ mz ->
-     ⟦recᶠ zeroᵈ return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ mz )
-(** At a successor, the step case on the predecessor and the recursive
-    result, when the step case reads the recursive result. *)
-| feval_natrec_succ :
-  `( exp_freshb 0 MS = false ->
-     ⟦recᶠ b return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ MS ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ b ↦ r ↘ ms ->
-     ⟦recᶠ succᵈ b return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ms )
-(** When it does not, the recursive result is not computed: its entry of the
-    environment is [zeroᵈ], which nothing reads. *)
-| feval_natrec_skip :
-  `( exp_freshb 0 MS = true ->
-     ⟦ MS ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ b ↦ zeroᵈ ↘ ms ->
-     ⟦recᶠ succᵈ b return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ms )
-(** At a neutral, a neutral at the motive's instance. *)
-| feval_natrec_neut :
-  `( ⟦ MZ ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ mz ->
-     ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ ⇑ b m ↘ a ->
-     ⟦recᶠ ⇑ b m return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a recᵈ m under ρ return A | zero -> mz | succ -> MS end )
-where "'⟦recᶠ' m 'return' A | 'zero' -> MZ | 'succ' -> MS 'end' '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (feval_natrec Θ Ξ A MZ MS m ρ r)
 (** The eliminator of an inductive type, as in [Core.Semantic.Evaluation]. *)
 with feval_elim (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> domain -> domain -> Prop :=
 | feval_elim_con :
@@ -590,7 +544,6 @@ with feval_benv (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 where "'⟦' Φ '⟧ᵇᶠ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (feval_benv Θ Ξ ρ Φ ρ').
 
 Scheme feval_exp_mut_ind := Induction for feval_exp Sort Prop
-with feval_natrec_mut_ind := Induction for feval_natrec Sort Prop
 with feval_app_mut_ind := Induction for feval_app Sort Prop
 with feval_exps_mut_ind := Induction for feval_exps Sort Prop
 with feval_apps_mut_ind := Induction for feval_apps Sort Prop
@@ -608,7 +561,6 @@ with feval_shty_mut_ind := Induction for feval_shty Sort Prop
 with feval_ihty_mut_ind := Induction for feval_ihty Sort Prop.
 Combined Scheme feval_mut_ind from
   feval_exp_mut_ind,
-  feval_natrec_mut_ind,
   feval_app_mut_ind,
   feval_exps_mut_ind,
   feval_apps_mut_ind,
@@ -626,7 +578,7 @@ Combined Scheme feval_mut_ind from
   feval_ihty_mut_ind.
 
 #[export]
-Hint Constructors feval_exp feval_natrec feval_elim feval_ihs feval_ih feval_shty feval_ihty feval_app feval_exps feval_apps feval_modexp feval_appm feval_sel feval_selm
+Hint Constructors feval_exp feval_elim feval_ihs feval_ih feval_shty feval_ihty feval_app feval_exps feval_apps feval_modexp feval_appm feval_sel feval_selm
   feval_selc feval_selmc feval_benv : mctt.
 
 (** [feval_exp_var] with the value as a premise.  The value [ρ x] is a flexible
@@ -646,11 +598,6 @@ Proof. intros * <-; apply feval_exp_var. Qed.
         forall m2,
           ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m2 ->
           m1 = m2) /\
-      (forall A MZ MS m ρ r1,
-          ⟦recᶠ m return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-          forall r2,
-            ⟦recᶠ m return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
-            r1 = r2) /\
       (forall m n r1,
           $ᶠ| m & n | Θ ⍮ Ξ ↘ r1 ->
           forall r2,
@@ -719,14 +666,6 @@ Proof. intros * <-; apply feval_exp_var. Qed.
     intros Θ Ξ; pose proof (@functional_feval Θ Ξ); firstorder.
   Qed.
 
-  Corollary functional_feval_natrec : forall {Θ Ξ} A MZ MS m ρ r1 r2,
-      ⟦recᶠ m return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-      ⟦recᶠ m return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
-      r1 = r2.
-  Proof.
-    intros Θ Ξ; pose proof (@functional_feval Θ Ξ); intuition.
-  Qed.
-
   Corollary functional_feval_app : forall {Θ Ξ} m n r1 r2,
       $ᶠ| m & n | Θ ⍮ Ξ ↘ r1 ->
       $ᶠ| m & n | Θ ⍮ Ξ ↘ r2 ->
@@ -784,7 +723,7 @@ Proof. intros * <-; apply feval_exp_var. Qed.
   Qed.
 
 #[export]
-Hint Resolve functional_feval_exp functional_feval_natrec functional_feval_elim functional_feval_ihs functional_feval_ih
+Hint Resolve functional_feval_exp functional_feval_elim functional_feval_ihs functional_feval_ih
   functional_feval_shty functional_feval_ihty functional_feval_app functional_feval_modexp : mctt.
 
 
@@ -795,8 +734,6 @@ Ltac functional_feval_rewrite_clear1 :=
   | H1 : (⟦ ?M ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?m1), H2 : (⟦ ?M ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?m2) |- _ =>
       clean replace m2 with m1 by first [solve [mauto 2] | tactic_error m2 m1]; clear H2
   | H1 : ($ᶠ| ?m & ?n | ?T ⍮ ?X ↘ ?r1), H2 : ($ᶠ| ?m & ?n | ?T ⍮ ?X ↘ ?r2) |- _ =>
-      clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
-  | H1 : (⟦recᶠ ?m return ?A | zero -> ?MZ | succ -> ?MS end ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦recᶠ ?m return ?A | zero -> ?MZ | succ -> ?MS end ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : (⟦elimᶠ ?m under ?nm ?A ?Bs ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦elimᶠ ?m under ?nm ?A ?Bs ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
@@ -893,14 +830,6 @@ Inductive fread_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :
 | fread_nf_lvl_neut :
   `( Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rnfᶠ ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ oz (la_cons 0 (dsort a) M la_nil) )
-| fread_nf_zero :
-  `( Rnfᶠ ⇓ ℕᵈ zeroᵈ in Θ ⍮ Ξ ⍮ s ↘ zeroⁿ )
-| fread_nf_succ :
-  `( Rnfᶠ ⇓ ℕᵈ m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnfᶠ ⇓ ℕᵈ (succᵈ m) in Θ ⍮ Ξ ⍮ s ↘ succⁿ M )
-| fread_nf_nat_neut :
-  `( Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnfᶠ ⇓ ℕᵈ (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
 (** η for [⊤]: every value of type [⊤] reads back as [⋆]. *)
 | fread_nf_true :
   `( Rnfᶠ ⇓ ⊤ᵈ m in Θ ⍮ Ξ ⍮ s ↘ ⋆ⁿ )
@@ -938,24 +867,6 @@ with fread_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
   `( Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rnfᶠ n in Θ ⍮ Ξ ⍮ s ↘ N ->
      Rneᶠ m $ᵈ n in Θ ⍮ Ξ ⍮ s ↘ M $ⁿ N )
-| fread_ne_natrec :
-  `( (** The normal form of the motive. *)
-     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! ℕᵈ s ↘ b ->
-     Rtypᶠ b in Θ ⍮ Ξ ⍮ S s ↘ B' ->
-
-     (** The normal form of the zero case. *)
-     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ zeroᵈ ↘ bz ->
-     Rnfᶠ ⇓ bz mz in Θ ⍮ Ξ ⍮ s ↘ MZ ->
-
-     (** The normal form of the successor case. *)
-     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ succᵈ (⇑! ℕᵈ s) ↘ bs ->
-     ⟦ MS ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! ℕᵈ s ↦ ⇑! b (S s) ↘ ms ->
-     Rnfᶠ ⇓ bs ms in Θ ⍮ Ξ ⍮ S (S s) ↘ MS' ->
-
-     (** The neutral form of the scrutinee. *)
-     Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
-
-     Rneᶠ recᵈ m under ρ return B | zero -> mz | succ -> MS end in Θ ⍮ Ξ ⍮ s ↘ recⁿ M return B' | zero -> MZ | succ -> MS' end )
 | fread_ne_exfalso :
   `( (** The normal form of the motive. *)
      ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! ⊥ᵈ s ↘ b ->
@@ -990,8 +901,6 @@ with fread_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
      Rtypᶠ 𝕌@l in Θ ⍮ Ξ ⍮ s ↘ nf_univ_of L )
 | fread_typ_level :
   `( Rtypᶠ Levelᵈ@n in Θ ⍮ Ξ ⍮ s ↘ Levelⁿ@n )
-| fread_typ_nat :
-  `( Rtypᶠ ℕᵈ in Θ ⍮ Ξ ⍮ s ↘ ℕⁿ )
 | fread_typ_True :
   `( Rtypᶠ ⊤ᵈ in Θ ⍮ Ξ ⍮ s ↘ ⊤ⁿ )
 | fread_typ_False :

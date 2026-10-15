@@ -4,6 +4,7 @@
    to [⋆]. *)
 module Streams where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Plus use (plus)
 import Prelude›Arith›Mult use (mult)
 import Prelude›Arith›Parity use (double)
@@ -46,7 +47,7 @@ def Pair : Type@0 ≔ ∀ (i : ℕ) → ℕ end
 (* One Fibonacci step [(x, y)] to [(y, x + y)]. *)
 def fibStep (p : Pair) : Pair ≔
   λ (i : ℕ) →
-    rec i return y . ℕ
+    elim i return y . ℕ
     | zero ⇒ p 1
     | succ q, r ⇒ plus (p 0) (p 1)
     end
@@ -54,7 +55,7 @@ end
 
 (* The seeds, as a pair. *)
 def seed : Pair ≔
-  λ (i : ℕ) → rec i return y . ℕ | zero ⇒ a | succ q, r ⇒ b end
+  λ (i : ℕ) → elim i return y . ℕ | zero ⇒ a | succ q, r ⇒ b end
 end
 
 end

@@ -2,6 +2,8 @@
    with [exfalso]. *)
 module TrueFalse where
 
+import Prelude›Builtin›Nat
+
 eval ⋆
 
 (* By eta for ⊤, the body normalizes to ⋆. *)

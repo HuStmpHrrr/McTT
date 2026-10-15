@@ -91,7 +91,6 @@ Inductive is_typ_constr : typ -> Prop :=
     [Level] a closed type may be the universe at that axiom. *)
 | univ_is_typ_constr : forall t, is_typ_constr Type⟨t⟩
 | level_is_typ_constr : forall n, is_typ_constr Level@n
-| nat_is_typ_constr : is_typ_constr ℕ
 | True_is_typ_constr : is_typ_constr ⊤
 | False_is_typ_constr : is_typ_constr ⊥
 | pi_is_typ_constr : forall A B, is_typ_constr Π A B
@@ -108,7 +107,6 @@ Inductive rigid_typ (Γ : ctx) : typ -> Prop :=
 | typ_is_rigid : forall i, rigid_typ Γ Typeω@i
 | univ_is_rigid : forall n, rigid_typ Γ Type⟨𝕃ᵒ n⟩
 | level_is_rigid : forall n, rigid_typ Γ Level@n
-| nat_is_rigid : rigid_typ Γ ℕ
 | True_is_rigid : rigid_typ Γ ⊤
 | False_is_rigid : rigid_typ Γ ⊥
 | pi_is_rigid : forall A B, rigid_typ Γ (Π A B)
@@ -186,8 +184,6 @@ Proof.
     | assert (a = 𝕌@(dlvl_lit n)) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
     | inversion Ha; subst
-    | assert (a = ℕᵈ) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
     | assert (a = ⊤ᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_True ])
     | assert (a = ⊥ᵈ) as ->
@@ -228,8 +224,6 @@ Proof.
     | assert (a = 𝕌@(dlvl_lit n)) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
     | inversion Ha; subst
-    | assert (a = ℕᵈ) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
     | assert (a = ⊤ᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_True ])
     | assert (a = ⊥ᵈ) as ->
@@ -263,8 +257,6 @@ Proof.
     | assert (a = 𝕌@(dlvl_lit n0)) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
     | inversion Ha; subst
-    | assert (a = ℕᵈ) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
     | assert (a = ⊤ᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_True ])
     | assert (a = ⊥ᵈ) as ->
@@ -283,38 +275,6 @@ Qed.
 
 Hint Resolve is_typ_constr_and_exp_eq_univ_implies_eq_univ : mctt.
 
-Theorem is_typ_constr_and_exp_eq_nat_implies_eq_nat : forall Γ A j,
-    rigid_typ Γ A ->
-    Γ ⊢ A ≈ ℕ : Typeω@j ->
-    A = ℕ.
-Proof.
-  intros * Histyp H.
-  assert (Γ ⊢ A : Typeω@j) by mauto 2.
-  pose proof (completeness_fundamental_exp_eq _ _ _ _ H) as Hsem.
-  destruct (rel_typ_under_ctx_at_initial_env Hsem)
-    as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
-  assert (a' = ℕᵈ) as ->
-      by (eapply functional_eval_exp; [ exact Ha' | apply eval_exp_nat ]).
-  destruct Histyp;
-    [ assert (a = 𝕌ω@i) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
-    | assert (a = 𝕌@(dlvl_lit n)) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
-    | inversion Ha; subst
-    | reflexivity
-    | assert (a = ⊤ᵈ) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_True ])
-    | assert (a = ⊥ᵈ) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_False ])
-    | idtac
-    | match goal with Hc : ctx_ass _ _ |- _ =>
-        destruct (eval_var_at_initial_env Hc Hρ Ha ltac:(eassumption)) as [? [? ->]] end
-    | destruct (eval_ind_value _ _ _ _ Ha) as [? ->] ];
-    invert_per_univ_elem HR.
-  match_by_head eval_exp ltac:(fun H => directed dependent destruction H).
-Qed.
-
-Hint Resolve is_typ_constr_and_exp_eq_nat_implies_eq_nat : mctt.
 
 (** ** Universe Terms
 
@@ -348,8 +308,6 @@ Proof.
   inversion Ha'; subst.
   destruct Histyp; try solve [ constructor ];
     [ inversion Ha; subst
-    | assert (a = ℕᵈ) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
     | assert (a = ⊤ᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_True ])
     | assert (a = ⊥ᵈ) as ->
@@ -429,8 +387,6 @@ Hint Resolve is_typ_constr_and_exp_eq_var_implies_eq_var : mctt.
 Hint Resolve is_typ_constr_and_exp_eq_typ_implies_eq_typ : mctt.
 #[export]
 Hint Resolve is_typ_constr_and_exp_eq_univ_implies_eq_univ : mctt.
-#[export]
-Hint Resolve is_typ_constr_and_exp_eq_nat_implies_eq_nat : mctt.
 #[export]
 Hint Resolve pi_ulvl_tm_absurd rigid_typ_eq_ulvl_tm var_neq_ulvl_tm : mctt.
 #[export]

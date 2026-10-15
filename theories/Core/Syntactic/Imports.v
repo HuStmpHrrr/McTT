@@ -59,12 +59,11 @@ Proof.
     apply Hs', Hs in E'; congruence.
 Qed.
 
-(** The oracles of expansion: member types, and what a numeral stands for
-    ([nat_binding], a function of the state). *)
-Record xoracle : Type := mk_xo { xo_mt : mt_oracle; xo_nb : nbind }.
+(** The oracle of expansion: member types. *)
+Record xoracle : Type := mk_xo { xo_mt : mt_oracle }.
 
 Definition xo_spec (Θ : gdeps) (Ξ : gstack) (xo : xoracle) : Prop :=
-  mt_spec Θ Ξ (xo_mt xo) /\ xo_nb xo = nat_binding Θ Ξ.
+  mt_spec Θ Ξ (xo_mt xo).
 
 (** ** Results *)
 
@@ -77,9 +76,7 @@ Inductive xerr : Set :=
 (** A member both used and exported *)
 | xe_both : string -> xerr
 (** A name the import declares twice *)
-| xe_fresh : string -> xerr
-(** A numeral where the visible bindings of the natural numbers disagree *)
-| xe_nat : nat -> xerr.
+| xe_fresh : string -> xerr.
 
 Inductive xres (A : Type) : Type :=
 | xok : A -> xres A
@@ -211,7 +208,7 @@ Qed.
 Abbreviation skel := (list (option gunit)).
 
 Definition skel_ctx (S : skel) : ctx :=
-  map (fun o => match o with Some U => ce_mod U | None => ce_ass a_nat end) S.
+  map (fun o => match o with Some U => ce_mod U | None => ce_ass a_True end) S.
 
 Definition centry_skel (e : centry) : option gunit :=
   match e with
@@ -262,33 +259,19 @@ Section Expansion.
 
   Fixpoint exp_xp (S : skel) (M : exp) {struct M} : xres exp :=
     match M with
-    | a_typ _ | a_level _ | a_llit _ | a_nat | a_zero | a_True | a_true | a_False | a_var _ => xok M
+    | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False | a_var _ => xok M
     | a_univ M => let+ M' := exp_xp S M in xok (a_univ M')
-    | a_succ M => let+ M' := exp_xp S M in xok (a_succ M')
     | a_succl M => let+ M' := exp_xp S M in xok (a_succl M')
     | a_maxl M N =>
         let+ M' := exp_xp S M in
         let+ N' := exp_xp S N in
         xok (a_maxl M' N')
-    | a_natrec A MZ MS M =>
-        let+ A' := exp_xp (None :: S) A in
-        let+ MZ' := exp_xp S MZ in
-        let+ MS' := exp_xp (None :: None :: S) MS in
-        let+ M' := exp_xp S M in
-        xok (a_natrec A' MZ' MS' M')
     | a_exfalso A M =>
         let+ A' := exp_xp (None :: S) A in
         let+ M' := exp_xp S M in
         xok (a_exfalso A' M')
-    | a_ind _ | a_con _ _ => xok M
-    (** A numeral: the chain of the constructors of the natural numbers
-        bound, or the builtin [ℕ]'s where none is bound. *)
-    | a_nlit n =>
-        match xo_nb xo with
-        | nb_none => xok (nat_to_exp n)
-        | nb_one p z s => xok (nat_chain p z s n)
-        | nb_many => xfail (xe_nat n)
-        end
+    (** The literals are generated before expansion ([Builtin]). *)
+    | a_ind _ | a_con _ _ | a_nlit _ | a_ntok => xok M
     | a_elim nm A Bs M =>
         let+ A' := exp_xp (List.repeat None nm ++ S) A in
         let+ Bs' := (fix brs_xp (Bs : list (String.string * nat * exp)) : xres (list (String.string * nat * exp)) :=
@@ -490,7 +473,6 @@ Definition import_gen_ok (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (its
 Section Ext.
   Variables (mt mt' : xoracle).
   Hypothesis Hext : forall Γ H ch, xo_mt mt Γ H ch = xo_mt mt' Γ H ch.
-  Hypothesis Hnext : xo_nb mt = xo_nb mt'.
 
   #[local]
   Ltac xp_step :=
@@ -504,8 +486,7 @@ Section Ext.
                 | |- context [xbind (?f mt' ?S ?x) _] => destruct (f mt' S x)
                 | |- context [xbind (import_gen (xo_mt mt') ?io ?G ?H ?its) _] => destruct (import_gen (xo_mt mt') io G H its)
                 | |- context [match ?o with Some _ => _ | None => _ end] => is_var o; destruct o
-                end
-              | rewrite Hnext ]);
+                end ]);
     try reflexivity.
 
   Lemma xp_ext_all :
@@ -577,14 +558,14 @@ End Ext.
 
 Lemma cmd_xp_ok_functional : forall Θ Ξ c c1 c2, cmd_xp_ok Θ Ξ c c1 -> cmd_xp_ok Θ Ξ c c2 -> c1 = c2.
 Proof.
-  intros * (mt1 & (Hs1 & Hn1) & E1) (mt2 & (Hs2 & Hn2) & E2).
-  rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs1 Hs2) (eq_trans Hn1 (eq_sym Hn2))) in E1; congruence.
+  intros * (mt1 & Hs1 & E1) (mt2 & Hs2 & E2).
+  rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs1 Hs2)) in E1; congruence.
 Qed.
 
 Lemma tele_xp_ok_functional : forall Θ Ξ S Δ Δ1 Δ2, tele_xp_ok Θ Ξ S Δ Δ1 -> tele_xp_ok Θ Ξ S Δ Δ2 -> Δ1 = Δ2.
 Proof.
-  intros * (mt1 & (Hs1 & Hn1) & E1) (mt2 & (Hs2 & Hn2) & E2).
-  rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs1 Hs2) (eq_trans Hn1 (eq_sym Hn2))) in E1; congruence.
+  intros * (mt1 & Hs1 & E1) (mt2 & Hs2 & E2).
+  rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs1 Hs2)) in E1; congruence.
 Qed.
 
 Lemma import_gen_ok_functional : forall Θ Ξ Γ H its gs1 gs2,
@@ -597,14 +578,14 @@ Qed.
 (** Any oracle meeting the specification computes the wrapped results. *)
 Lemma cmd_xp_ok_spec : forall Θ Ξ xo c c', xo_spec Θ Ξ xo -> cmd_xp_ok Θ Ξ c c' -> cmd_xp xo (frame_skel Ξ) c = xok c'.
 Proof.
-  intros * (Hs & Hn) (mt1 & (Hs1 & Hn1) & E1);
-    rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs Hs1) (eq_trans Hn (eq_sym Hn1))); exact E1.
+  intros * Hs (mt1 & Hs1 & E1);
+    rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs Hs1)); exact E1.
 Qed.
 
 Lemma tele_xp_ok_spec : forall Θ Ξ xo S Δ Δ', xo_spec Θ Ξ xo -> tele_xp_ok Θ Ξ S Δ Δ' -> tele_xp xo S Δ = xok Δ'.
 Proof.
-  intros * (Hs & Hn) (mt1 & (Hs1 & Hn1) & E1);
-    rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs Hs1) (eq_trans Hn (eq_sym Hn1))); exact E1.
+  intros * Hs (mt1 & Hs1 & E1);
+    rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs Hs1)); exact E1.
 Qed.
 
 Lemma import_gen_ok_spec : forall Θ Ξ mt Γ H its gs, mt_spec Θ Ξ mt ->

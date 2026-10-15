@@ -268,13 +268,11 @@ Definition qname_refs (p : qname) : list (ptab * string)%type := chain_refs (me_
     [me_mem H y], and the name of an eliminator, as written. *)
 Fixpoint exp_refs (S : list ptab) (M : exp) : list (ptab * string)%type :=
   match M with
-  | a_typ _ | a_level _ | a_llit _ | a_nat | a_zero | a_True | a_true | a_False | a_var _ => nil
-  | a_succ M | a_succl M | a_univ M => exp_refs S M
+  | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False | a_var _ => nil
+  | a_succl M | a_univ M => exp_refs S M
   | a_maxl M N => exp_refs S M ++ exp_refs S N
-  | a_natrec A MZ MS M =>
-      exp_refs (pt_none :: S) A ++ exp_refs S MZ ++ exp_refs (pt_none :: pt_none :: S) MS ++ exp_refs S M
   | a_exfalso A M => exp_refs (pt_none :: S) A ++ exp_refs S M
-  | a_ind _ | a_con _ _ | a_nlit _ => nil
+  | a_ind _ | a_con _ _ | a_nlit _ | a_ntok => nil
   | a_elim nm A Bs M =>
       exp_refs (repeat pt_none nm ++ S) A ++
         (fix brs_refs (Bs : list (string * nat * exp)) : list (ptab * string)%type :=

@@ -3,6 +3,7 @@
    decision function. *)
 module Prelude›Arith›Order where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (Not; absurd)
 open Prelude›Logic.Negation as Neg
 open Prelude›Logic.Disj 0l use (Or; orInl; orInr)
@@ -13,10 +14,10 @@ import Prelude›Arith›Plus use (plus)
    [Le (succ n) (succ m)] is [Le n m]. *)
 def Le : ∀ (n : ℕ) (m : ℕ) → Type@0 ≔
   λ (n : ℕ) →
-    rec n return y . (∀ (m : ℕ) → Type@0)
+    elim n return y . (∀ (m : ℕ) → Type@0)
     | zero ⇒ λ (m : ℕ) → ⊤
     | succ p, r ⇒ λ (m : ℕ) →
-        rec m return z . Type@0 | zero ⇒ ⊥ | succ q, s ⇒ r q end
+        elim m return z . Type@0 | zero ⇒ ⊥ | succ q, s ⇒ r q end
     end
 end
 
@@ -28,7 +29,7 @@ module LeLaws where
 
 def leRefl : ∀ (n : ℕ) → Le n n ≔
   λ (n : ℕ) →
-    rec n return x . Le x x
+    elim n return x . Le x x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -36,15 +37,15 @@ end
 
 def leTrans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Le a b) (hbc : Le b c) → Le a c ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) (c : ℕ) (hab : Le x b) (hbc : Le b c) → Le x c)
+    elim a return x . (∀ (b : ℕ) (c : ℕ) (hab : Le x b) (hbc : Le b c) → Le x c)
     | zero ⇒ λ (b : ℕ) (c : ℕ) (hab : ⊤) (hbc : Le b c) → ⋆
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (c : ℕ) (hab : Le (succ p) z) (hbc : Le z c) →
-                            Le (succ p) c)
+        elim b return z . (∀ (c : ℕ) (hab : Le (succ p) z) (hbc : Le z c) →
+                             Le (succ p) c)
         | zero ⇒ λ (c : ℕ) (hab : ⊥) (hbc : ⊤) → absurd (Le (succ p) c) hab
         | succ q, s ⇒ λ (c : ℕ) →
-            rec c return w . (∀ (hab : Le p q) (hbc : Le (succ q) w) →
-                                Le (succ p) w)
+            elim c return w . (∀ (hab : Le p q) (hbc : Le (succ q) w) →
+                                 Le (succ p) w)
             | zero ⇒ λ (hab : Le p q) (hbc : ⊥) → hbc
             | succ r, t ⇒ λ (hab : Le p q) (hbc : Le q r) → ih q r hab hbc
             end
@@ -54,15 +55,15 @@ end
 
 theorem leAntisym : ∀ (a : ℕ) (b : ℕ) (hab : Le a b) (hba : Le b a) → Eq a b ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) (hab : Le x b) (hba : Le b x) → Eq x b)
+    elim a return x . (∀ (b : ℕ) (hab : Le x b) (hba : Le b x) → Eq x b)
     | zero ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (hab : ⊤) (hba : Le z 0) → Eq 0 z)
+        elim b return z . (∀ (hab : ⊤) (hba : Le z 0) → Eq 0 z)
         | zero ⇒ λ (hab : ⊤) (hba : ⊤) → ⋆
         | succ q, s ⇒ λ (hab : ⊤) (hba : ⊥) → hba
         end
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (hab : Le (succ p) z) (hba : Le z (succ p)) →
-                            Eq (succ p) z)
+        elim b return z . (∀ (hab : Le (succ p) z) (hba : Le z (succ p)) →
+                             Eq (succ p) z)
         | zero ⇒ λ (hab : ⊥) (hba : ⊤) → hab
         | succ q, s ⇒ λ (hab : Le p q) (hba : Le q p) → ih q hab hba
         end
@@ -77,7 +78,7 @@ end
 (* Only zero is below zero. *)
 theorem leZeroInv : ∀ (n : ℕ) (h : Le n 0) → Eq n 0 ≔
   λ (n : ℕ) →
-    rec n return x . (∀ (h : Le x 0) → Eq x 0)
+    elim n return x . (∀ (h : Le x 0) → Eq x 0)
     | zero ⇒ λ (h : ⊤) → h
     | succ p, ih ⇒ λ (h : ⊥) → h
     end
@@ -85,7 +86,7 @@ end
 
 def leSucc : ∀ (n : ℕ) → Le n (succ n) ≔
   λ (n : ℕ) →
-    rec n return x . Le x (succ x)
+    elim n return x . Le x (succ x)
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -98,7 +99,7 @@ end
 
 def lePlusRight : ∀ (a : ℕ) (b : ℕ) → Le a (plus a b) ≔
   λ (a : ℕ) (b : ℕ) →
-    rec a return x . Le x (plus x b)
+    elim a return x . Le x (plus x b)
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -106,7 +107,7 @@ end
 
 theorem lePlusLeft : ∀ (a : ℕ) (b : ℕ) → Le b (plus a b) ≔
   λ (a : ℕ) (b : ℕ) →
-    rec a return x . Le b (plus x b)
+    elim a return x . Le b (plus x b)
     | zero ⇒ leRefl b
     | succ p, ih ⇒ leStep b (plus p b) ih
     end
@@ -116,10 +117,10 @@ end
    [Le p q], so the hypothesis already has the goal's type. *)
 def leTotal : ∀ (a : ℕ) (b : ℕ) → Or (Le a b) (Le b a) ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) → Or (Le x b) (Le b x))
+    elim a return x . (∀ (b : ℕ) → Or (Le x b) (Le b x))
     | zero ⇒ λ (b : ℕ) → orInl (Le 0 b) (Le b 0) ⋆
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return z . Or (Le (succ p) z) (Le z (succ p))
+        elim b return z . Or (Le (succ p) z) (Le z (succ p))
         | zero ⇒ orInr (Le (succ p) 0) (Le 0 (succ p)) ⋆
         | succ q, s ⇒ ih q
         end
@@ -133,7 +134,7 @@ module LtLaws where
 
 theorem ltIrrefl : ∀ (n : ℕ) → Not (Lt n n) ≔
   λ (n : ℕ) →
-    rec n return x . Not (Lt x x)
+    elim n return x . Not (Lt x x)
     | zero ⇒ λ (h : ⊥) → h
     | succ p, ih ⇒ ih
     end
@@ -161,15 +162,15 @@ open Prelude›Logic.Disj u as D
 
 def leCases : ∀ (m : ℕ) (p : ℕ) (h : Le m p) → D.Or (Lt m p) (Eq m p) ≔
   λ (m : ℕ) →
-    rec m return x . (∀ (p : ℕ) (h : Le x p) → D.Or (Lt x p) (Eq x p))
+    elim m return x . (∀ (p : ℕ) (h : Le x p) → D.Or (Lt x p) (Eq x p))
     | zero ⇒ λ (p : ℕ) →
-        rec p return z . (∀ (h : ⊤) → D.Or (Lt 0 z) (Eq 0 z))
+        elim p return z . (∀ (h : ⊤) → D.Or (Lt 0 z) (Eq 0 z))
         | zero ⇒ λ (h : ⊤) → D.orInr (Lt 0 0) (Eq 0 0) ⋆
         | succ q, s ⇒ λ (h : ⊤) → D.orInl (Lt 0 (succ q)) (Eq 0 (succ q)) ⋆
         end
     | succ r, ih ⇒ λ (p : ℕ) →
-        rec p return z . (∀ (h : Le (succ r) z) →
-                            D.Or (Lt (succ r) z) (Eq (succ r) z))
+        elim p return z . (∀ (h : Le (succ r) z) →
+                             D.Or (Lt (succ r) z) (Eq (succ r) z))
         | zero ⇒ λ (h : ⊥) →
             Neg.absurd (succl u) (D.Or (Lt (succ r) 0) (Eq (succ r) 0)) h
         | succ q, s ⇒ λ (h : Le r q) → ih q h
@@ -188,10 +189,10 @@ end
    otherwise. *)
 def leb : ∀ (n : ℕ) (m : ℕ) → ℕ ≔
   λ (n : ℕ) →
-    rec n return y . (∀ (m : ℕ) → ℕ)
+    elim n return y . (∀ (m : ℕ) → ℕ)
     | zero ⇒ λ (m : ℕ) → 1
     | succ p, r ⇒ λ (m : ℕ) →
-        rec m return z . ℕ | zero ⇒ 0 | succ q, s ⇒ r q end
+        elim m return z . ℕ | zero ⇒ 0 | succ q, s ⇒ r q end
     end
 end
 
@@ -201,10 +202,10 @@ module LebLaws where
 (* [leb] answers 1 exactly on [Le]: soundness. *)
 theorem lebSound : ∀ (a : ℕ) (b : ℕ) (h : Eq (leb a b) 1) → Le a b ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) (h : Eq (leb x b) 1) → Le x b)
+    elim a return x . (∀ (b : ℕ) (h : Eq (leb x b) 1) → Le x b)
     | zero ⇒ λ (b : ℕ) (h : ⊤) → ⋆
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (h : Eq (leb (succ p) z) 1) → Le (succ p) z)
+        elim b return z . (∀ (h : Eq (leb (succ p) z) 1) → Le (succ p) z)
         | zero ⇒ λ (h : ⊥) → h
         | succ q, s ⇒ λ (h : Eq (leb p q) 1) → ih q h
         end
@@ -214,10 +215,10 @@ end
 (* [leb] answers 1 exactly on [Le]: completeness. *)
 theorem lebComplete : ∀ (a : ℕ) (b : ℕ) (h : Le a b) → Eq (leb a b) 1 ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) (h : Le x b) → Eq (leb x b) 1)
+    elim a return x . (∀ (b : ℕ) (h : Le x b) → Eq (leb x b) 1)
     | zero ⇒ λ (b : ℕ) (h : ⊤) → ⋆
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (h : Le (succ p) z) → Eq (leb (succ p) z) 1)
+        elim b return z . (∀ (h : Le (succ p) z) → Eq (leb (succ p) z) 1)
         | zero ⇒ λ (h : ⊥) → h
         | succ q, s ⇒ λ (h : Le p q) → ih q h
         end
@@ -227,10 +228,10 @@ end
 (* When [leb a b] answers 0, the order holds strictly the other way. *)
 theorem lebZero : ∀ (a : ℕ) (b : ℕ) (h : Eq (leb a b) 0) → Lt b a ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) (h : Eq (leb x b) 0) → Lt b x)
+    elim a return x . (∀ (b : ℕ) (h : Eq (leb x b) 0) → Lt b x)
     | zero ⇒ λ (b : ℕ) (h : ⊥) → absurd (Lt b 0) h
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (h : Eq (leb (succ p) z) 0) → Lt z (succ p))
+        elim b return z . (∀ (h : Eq (leb (succ p) z) 0) → Lt z (succ p))
         | zero ⇒ λ (h : ⊤) → ⋆
         | succ q, s ⇒ λ (h : Eq (leb p q) 0) → ih q h
         end

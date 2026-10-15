@@ -3,6 +3,8 @@ import Lib›Poly use (id)
 
 module Params where
 
+import Prelude›Builtin›Nat
+
 eval Lib›Poly.id ℕ 3 : ℕ
 
 eval id ℕ 4

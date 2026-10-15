@@ -10,6 +10,8 @@
    submodule at [0l]: [open Prelude›Logic.Conj 0l use (And)]. *)
 module Prelude›Logic where
 
+import Prelude›Builtin›Nat
+
 (* Negation and ex falso quodlibet for the propositions of [Type@{u}]. *)
 module Negation (u : Level) where
 

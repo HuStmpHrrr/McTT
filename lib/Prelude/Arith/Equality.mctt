@@ -2,21 +2,22 @@
    basic laws. *)
 module Prelude›Arith›Equality where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (Not; absurd)
 
 def Eq : ∀ (n : ℕ) (m : ℕ) → Type@0 ≔
   λ (n : ℕ) →
-    rec n return y . (∀ (m : ℕ) → Type@0)
+    elim n return y . (∀ (m : ℕ) → Type@0)
     | zero ⇒ λ (m : ℕ) →
-        rec m return z . Type@0 | zero ⇒ ⊤ | succ q, s ⇒ ⊥ end
+        elim m return z . Type@0 | zero ⇒ ⊤ | succ q, s ⇒ ⊥ end
     | succ p, r ⇒ λ (m : ℕ) →
-        rec m return z . Type@0 | zero ⇒ ⊥ | succ q, s ⇒ r q end
+        elim m return z . Type@0 | zero ⇒ ⊥ | succ q, s ⇒ r q end
     end
 end
 
 theorem refl : ∀ (n : ℕ) → Eq n n ≔
   λ (n : ℕ) →
-    rec n return x . Eq x x
+    elim n return x . Eq x x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -28,14 +29,14 @@ end
 
 theorem sym : ∀ (a : ℕ) (b : ℕ) (h : Eq a b) → Eq b a ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) (h : Eq x b) → Eq b x)
+    elim a return x . (∀ (b : ℕ) (h : Eq x b) → Eq b x)
     | zero ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (h : Eq 0 z) → Eq z 0)
+        elim b return z . (∀ (h : Eq 0 z) → Eq z 0)
         | zero ⇒ λ (h : ⊤) → h
         | succ q, s ⇒ λ (h : Eq 0 (succ q)) → absurd (Eq (succ q) 0) h
         end
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (h : Eq (succ p) z) → Eq z (succ p))
+        elim b return z . (∀ (h : Eq (succ p) z) → Eq z (succ p))
         | zero ⇒ λ (h : Eq (succ p) 0) → h
         | succ q, s ⇒ λ (h : Eq (succ p) (succ q)) → ih q h
         end
@@ -45,22 +46,22 @@ end
 theorem trans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Eq a b) (hbc : Eq b c) →
     Eq a c ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) (c : ℕ) (hab : Eq x b) (hbc : Eq b c) → Eq x c)
+    elim a return x . (∀ (b : ℕ) (c : ℕ) (hab : Eq x b) (hbc : Eq b c) → Eq x c)
     | zero ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (c : ℕ) (hab : Eq 0 z) (hbc : Eq z c) → Eq 0 c)
+        elim b return z . (∀ (c : ℕ) (hab : Eq 0 z) (hbc : Eq z c) → Eq 0 c)
         | zero ⇒ λ (c : ℕ) (hab : ⊤) (hbc : Eq 0 c) → hbc
         | succ q, s ⇒ λ (c : ℕ) (hab : Eq 0 (succ q)) (hbc : Eq (succ q) c) →
             absurd (Eq 0 c) hab
         end
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (c : ℕ) (hab : Eq (succ p) z) (hbc : Eq z c) →
-                            Eq (succ p) c)
+        elim b return z . (∀ (c : ℕ) (hab : Eq (succ p) z) (hbc : Eq z c) →
+                             Eq (succ p) c)
         | zero ⇒ λ (c : ℕ) (hab : Eq (succ p) 0) (hbc : Eq 0 c) →
             absurd (Eq (succ p) c) hab
         | succ q, s ⇒ λ (c : ℕ) →
-            rec c return w . (∀ (hab : Eq (succ p) (succ q))
-                                (hbc : Eq (succ q) w) →
-                                Eq (succ p) w)
+            elim c return w . (∀ (hab : Eq (succ p) (succ q))
+                                 (hbc : Eq (succ q) w) →
+                                 Eq (succ p) w)
             | zero ⇒ λ (hab : Eq p q) (hbc : Eq (succ q) 0) →
                 absurd (Eq (succ p) 0) hbc
             | succ r, t ⇒ λ (hab : Eq p q) (hbc : Eq q r) → ih q r hab hbc
@@ -75,15 +76,15 @@ end
 theorem cong : ∀ (f : ∀ (x : ℕ) → ℕ) (a : ℕ) (b : ℕ) (h : Eq a b) →
     Eq (f a) (f b) ≔
   λ (f : ∀ (x : ℕ) → ℕ) (a : ℕ) →
-    (rec a return x . (∀ (g : ∀ (y : ℕ) → ℕ) (b : ℕ) (h : Eq x b) →
-                         Eq (g x) (g b))
+    (elim a return x . (∀ (g : ∀ (y : ℕ) → ℕ) (b : ℕ) (h : Eq x b) →
+                          Eq (g x) (g b))
      | zero ⇒ λ (g : ∀ (y : ℕ) → ℕ) (b : ℕ) →
-         rec b return z . (∀ (h : Eq 0 z) → Eq (g 0) (g z))
+         elim b return z . (∀ (h : Eq 0 z) → Eq (g 0) (g z))
          | zero ⇒ λ (h : ⊤) → refl (g 0)
          | succ q, s ⇒ λ (h : Eq 0 (succ q)) → absurd (Eq (g 0) (g (succ q))) h
          end
      | succ p, ih ⇒ λ (g : ∀ (y : ℕ) → ℕ) (b : ℕ) →
-         rec b return z . (∀ (h : Eq (succ p) z) → Eq (g (succ p)) (g z))
+         elim b return z . (∀ (h : Eq (succ p) z) → Eq (g (succ p)) (g z))
          | zero ⇒ λ (h : Eq (succ p) 0) → absurd (Eq (g (succ p)) (g 0)) h
          | succ q, s ⇒ λ (h : Eq p q) → ih (λ (y : ℕ) → g (succ y)) q h
          end
@@ -98,15 +99,15 @@ open Prelude›Logic.Negation u use (absurd)
 def transport : ∀ (P : ∀ (n : ℕ) → Type@{u}) (x : ℕ) (y : ℕ)
     (h : Eq x y) (px : P x) → P y ≔
   λ (P : ∀ (n : ℕ) → Type@{u}) (x : ℕ) →
-    (rec x return v . (∀ (Q : ∀ (n : ℕ) → Type@{u}) (y : ℕ)
-                         (h : Eq v y) (pv : Q v) → Q y)
+    (elim x return v . (∀ (Q : ∀ (n : ℕ) → Type@{u}) (y : ℕ)
+                          (h : Eq v y) (pv : Q v) → Q y)
      | zero ⇒ λ (Q : ∀ (n : ℕ) → Type@{u}) (y : ℕ) →
-         rec y return w . (∀ (h : Eq 0 w) (pv : Q 0) → Q w)
+         elim y return w . (∀ (h : Eq 0 w) (pv : Q 0) → Q w)
          | zero ⇒ λ (h : ⊤) (pv : Q 0) → pv
          | succ q, s ⇒ λ (h : Eq 0 (succ q)) (pv : Q 0) → absurd (Q (succ q)) h
          end
      | succ p, ih ⇒ λ (Q : ∀ (n : ℕ) → Type@{u}) (y : ℕ) →
-         rec y return w . (∀ (h : Eq (succ p) w) (pv : Q (succ p)) → Q w)
+         elim y return w . (∀ (h : Eq (succ p) w) (pv : Q (succ p)) → Q w)
          | zero ⇒ λ (h : Eq (succ p) 0) (pv : Q (succ p)) → absurd (Q 0) h
          | succ q, s ⇒ λ (h : Eq p q) (pv : Q (succ p)) →
              ih (λ (n : ℕ) → Q (succ n)) q h pv

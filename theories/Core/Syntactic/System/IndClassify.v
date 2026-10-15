@@ -27,9 +27,6 @@ Import Syntax_Notations Wk_Notations.
 
 (** ** Decidable Equality of Terms *)
 
-Definition qname_eq_dec : forall (x y : qname), {x = y} + {x <> y}.
-Proof. decide equality; apply list_eq_dec, string_dec. Defined.
-
 Fixpoint exp_eq_dec (M N : exp) {struct M} : {M = N} + {M <> N}
 with modexp_eq_dec (M N : modexp) {struct M} : {M = N} + {M <> N}
 with bnd_eq_dec (M N : bnd) {struct M} : {M = N} + {M <> N}

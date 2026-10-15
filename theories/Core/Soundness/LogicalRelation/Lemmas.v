@@ -1283,10 +1283,9 @@ Proof.
         large universe of the index. *)
     gen_presups.
     eapply wf_subtyp_refl_typ; eassumption.
-  (** [Level], [ℕ], [⊤] and [⊥]: both sides are equal to the same closed type
+  (** [Level], [⊤] and [⊥]: both sides are equal to the same closed type
       in the ambient universe, so the goal is reflexivity, at the large level
       the index lives at. *)
-  - simpl in *; gen_presups; bulky_rewrite; eapply (wf_subtyp_refl_typ _ _ _ _ 0); mauto 3.
   - simpl in *; gen_presups; bulky_rewrite; eapply (wf_subtyp_refl_typ _ _ _ _ 0); mauto 3.
   - simpl in *; gen_presups; bulky_rewrite; eapply (wf_subtyp_refl_typ _ _ _ _ 0); mauto 3.
   - simpl in *; gen_presups; bulky_rewrite; eapply (wf_subtyp_refl_typ _ _ _ _ 0); mauto 3.

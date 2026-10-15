@@ -2,6 +2,7 @@
    doubling and the basic laws. *)
 module Prelude›Arith›Parity where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (absurd)
 open Prelude›Logic.Negation as Neg
 open Prelude›Logic.Conj 0l use (And; andIntro; andSwap)
@@ -14,7 +15,7 @@ private module Flag where
 
 (* Exchanges the parity flags 0 (even) and 1 (odd). *)
 def flip (b : ℕ) : ℕ ≔
-  rec b return y . ℕ | zero ⇒ 1 | succ q, s ⇒ 0 end
+  elim b return y . ℕ | zero ⇒ 1 | succ q, s ⇒ 0 end
 end
 
 (* [HasParity n b] says that [n] has parity [b], where 0 is even and 1 is
@@ -22,9 +23,9 @@ end
    [Even (succ n)] is [Odd n] and [Odd (succ n)] is [Even n]. *)
 def HasParity : ∀ (n : ℕ) (b : ℕ) → Type@0 ≔
   λ (n : ℕ) →
-    rec n return y . (∀ (b : ℕ) → Type@0)
+    elim n return y . (∀ (b : ℕ) → Type@0)
     | zero ⇒ λ (b : ℕ) →
-        rec b return z . Type@0 | zero ⇒ ⊤ | succ q, s ⇒ ⊥ end
+        elim b return z . Type@0 | zero ⇒ ⊤ | succ q, s ⇒ ⊥ end
     | succ p, r ⇒ λ (b : ℕ) → r (flip b)
     end
 end
@@ -38,7 +39,7 @@ def Even (n : ℕ) : Type@0 ≔ HasParity n 0 end
 def Odd (n : ℕ) : Type@0 ≔ HasParity n 1 end
 
 def double (n : ℕ) : ℕ ≔
-  rec n return y . ℕ
+  elim n return y . ℕ
   | zero ⇒ 0
   | succ p, r ⇒ succ (succ r)
   end
@@ -49,7 +50,7 @@ module Laws where
 
 theorem evenDouble : ∀ (n : ℕ) → Even (double n) ≔
   λ (n : ℕ) →
-    rec n return x . Even (double x)
+    elim n return x . Even (double x)
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -66,7 +67,7 @@ end
 (* Every number is even or odd: the step swaps the two sides. *)
 def evenOrOdd : ∀ (n : ℕ) → Or (Even n) (Odd n) ≔
   λ (n : ℕ) →
-    rec n return x . Or (Even x) (Odd x)
+    elim n return x . Or (Even x) (Odd x)
     | zero ⇒ orInl (Even 0) (Odd 0) ⋆
     | succ p, ih ⇒ orSwap (Even p) (Odd p) ih
     end
@@ -76,7 +77,7 @@ end
    negation is the one at level [1l]. *)
 theorem notEvenAndOdd : ∀ (n : ℕ) → Neg.Not 1l (And (Even n) (Odd n)) ≔
   λ (n : ℕ) →
-    rec n return x . (∀ (h : And (Even x) (Odd x)) → ⊥)
+    elim n return x . (∀ (h : And (Even x) (Odd x)) → ⊥)
     | zero ⇒ λ (h : And ⊤ ⊥) → h ⊥ (λ (a : ⊤) (b : ⊥) → b)
     | succ p, ih ⇒ λ (h : And (Odd p) (Even p)) →
         ih (andSwap (Odd p) (Even p) h)
@@ -91,8 +92,8 @@ theorem evenPlus : ∀ (a : ℕ) (b : ℕ) (ha : Even a) (hb : Even b) →
   λ (a : ℕ) (b : ℕ) (ha : Even a) (hb : Even b) →
     let both : And (∀ (h : Even a) → Even (plus a b))
                    (∀ (h : Odd a) → Odd (plus a b)) ≔
-          rec a return x . And (∀ (h : Even x) → Even (plus x b))
-                               (∀ (h : Odd x) → Odd (plus x b))
+          elim a return x . And (∀ (h : Even x) → Even (plus x b))
+                                (∀ (h : Odd x) → Odd (plus x b))
           | zero ⇒ andIntro (∀ (h : ⊤) → Even b) (∀ (h : ⊥) → Odd b)
                       (λ (h : ⊤) → hb)
                       (λ (h : ⊥) → absurd (Odd b) h)

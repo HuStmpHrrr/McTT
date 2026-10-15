@@ -15,7 +15,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System Require Import MemberLemmas GlobalModules.
 From Mctt.Core.Completeness Require Import
-  ContextCases FunctionCases LetCases LevelCases NatCases SubstitutionCases SubtypingCases
+  ContextCases FunctionCases LetCases LevelCases SubstitutionCases SubtypingCases
   TrueFalseCases UniverseCases VariableCases LogicalRelation UnitCases InstanceCases
   MemberCases MemberTyping MemberReps MemberSem ModexpCases PathCases GlobalSem IndCases TeleSem ElimCases ElimIota.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
@@ -500,7 +500,7 @@ Qed.
     The δ-rule evaluates the generalized body in the empty environment, and a
     global or parameter is a neutral annotated with its type evaluated there.
     [nil] is reached by [sb_zero], which evaluates to [nil] in any environment (a
-    list environment reads [zeroᵈ] past its end), so instantiating a [⋅] judgment
+    list environment reads [⋆ᵈ] past its end), so instantiating a [⋅] judgment
     at [sb_zero] relates the value at [nil] to the value anywhere. *)
 
 (** δ: a closed term [G] that evaluates anywhere to what [N] evaluates to at

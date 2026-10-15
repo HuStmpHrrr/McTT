@@ -48,21 +48,6 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
   `( Γ ⊢a M ⟹ Levelⁿ@m ->
      Γ ⊢a N ⟹ Levelⁿ@n ->
      Γ ⊢a maxl M N ⟹ Levelⁿ@(Nat.max m n) )
-| ati_nat :
-  `( Γ ⊢a ℕ ⟹ Typeⁿ@0 )
-| ati_zero :
-  `( Γ ⊢a zero ⟹ ℕⁿ )
-| ati_succ :
-  `( Γ ⊢a M ⟸ ℕ ->
-     Γ ⊢a succ M ⟹ ℕⁿ )
-| ati_natrec :
-  `( Γ ▹ ℕ ⊢a A ⟹ UA ->
-     is_univ_nf UA u ->
-     Γ ⊢a MZ ⟸ A[Id,,zero] ->
-     Γ ▹ ℕ ▹ A ⊢a MS ⟸ A[Wk ⨟ Wk,,succ #1] ->
-     Γ ⊢a M ⟸ ℕ ->
-     nbe_ty_f Γ A[Id,,M] B ->
-     Γ ⊢a rec M return A | zero -> MZ | succ -> MS end ⟹ B )
 | ati_True :
   `( Γ ⊢a ⊤ ⟹ Typeⁿ@0 )
 | ati_true :
@@ -307,19 +292,6 @@ Inductive user_exp : exp -> Prop :=
   `( user_exp M ->
      user_exp N ->
      user_exp (a_maxl M N) )
-| user_exp_nat :
-  `( user_exp a_nat )
-| user_exp_zero :
-  `( user_exp a_zero )
-| user_exp_succ :
-  `( user_exp M ->
-     user_exp (a_succ M) )
-| user_exp_natrec :
-  `( user_exp A ->
-     user_exp MZ ->
-     user_exp MS ->
-     user_exp M ->
-     user_exp (a_natrec A MZ MS M) )
 | user_exp_True :
   `( user_exp a_True )
 | user_exp_true :
@@ -336,6 +308,8 @@ Inductive user_exp : exp -> Prop :=
   `( user_exp (a_con p c) )
 | user_exp_nlit :
   `( user_exp (a_nlit n) )
+| user_exp_ntok :
+  `( user_exp a_ntok )
 | user_exp_elim :
   `( user_exp A ->
      (forall b, List.In b Bs -> user_exp (snd b)) ->

@@ -39,9 +39,9 @@ module U (A : Typeω@0) where
     def b : Typeω@0 := B end
     eval a
     eval b
-    eval fun (x : Nat) -> b
+    eval fun (x : ℕ) -> b
   end
-  eval M.b Nat
+  eval M.b ℕ
 end
 >>
 
@@ -96,13 +96,13 @@ Definition church : Cst.prog :=
                 (fn "z" (var "A") (fn "s" (pi "x" (var "A") (var "A"))
                    (app (var "s") (app (var "s") (var "z"))))) :: nil)) ::
          c_eval (letb (d_mod "C" nil (md_alias (app (var "Church") nat)))
-                   (app (app (proj (var "C") "two") Cst.zero) (fn "x" nat (Cst.succ (var "x")))))
+                   (app (app (proj (var "C") "two") (num 0)) (fn "x" nat (var "x"))))
            (Some nat) :: nil)).
 
 Definition Church_t : exp := qname_term (q_abs ("ModuleParam" :: nil) ("Church" :: "t" :: nil)).
 Definition Church_two : exp := qname_term (q_abs ("ModuleParam" :: nil) ("Church" :: "two" :: nil)).
 
-(** Inside [Church], [t] is [Church.t A].  [let module C := Church Nat]
+(** Inside [Church], [t] is [Church.t A].  [let module C := Church ℕ]
     binds a local module slot, so [C.two] selects [two] of [#0]. *)
 Example church_spec :
   elab_spec church
@@ -111,7 +111,7 @@ Example church_spec :
        (cc_def "t" true false Typeω@0 (Some (Π #0 (Π (Π #1 #2) #2))) ::
         cc_def "two" true false (Church_t $ #0) (Some (λ #0 (λ (Π #1 #2) (#0 $ (#0 $ #1))))) :: nil) ::
      cc_eval (ℓₘ (gu_mk ⋅ (Syntax.md_alias (me_app (mpath ("ModuleParam" :: nil) ("Church" :: nil)) ℕ)))
-              in (a_mem (me_var 0) "two" $ zero $ λ ℕ (succ #0))) (Some ℕ) :: nil).
+              in (a_mem (me_var 0) "two" $ (a_nlit 0) $ λ ℕ #0)) (Some ℕ) :: nil).
 Proof. elab_ok. Qed.
 
 (** ** [examples/ImportUse.mctt]: privacy, [open … as], [open … use] *)
@@ -119,8 +119,8 @@ Definition import_use : Cst.prog :=
   (nil, ("ImportUse" :: nil, nil,
          c_mod false "Impl" nil
            (md_where
-             (c_def md_priv "secret" nat (Cst.succ (Cst.succ (Cst.succ Cst.zero))) ::
-              c_def md_pub "exposed" nat (Cst.succ (var "secret")) :: nil)) ::
+             (c_def md_priv "secret" nat ((num 3)) ::
+              c_def md_pub "exposed" nat (var "secret") :: nil)) ::
          c_open nil ("Impl" :: nil) nil (i_as "I") ::
          c_open nil ("Impl" :: nil) nil (i_items (("exposed", "exposed") :: nil) nil) ::
          c_eval (app (proj (var "I") "exposed") (var "exposed")) None :: nil)).
@@ -139,8 +139,8 @@ Example import_use_spec :
   elab_spec import_use
     (nil, ⋅,
      cc_mod "Impl" false ⋅
-       (cc_def "secret" true true ℕ (Some (succ (succ (succ zero)))) ::
-        cc_def "exposed" true false ℕ (Some (succ (Impl_ "secret"))) :: nil) ::
+       (cc_def "secret" true true ℕ (Some ((a_nlit 3))) ::
+        cc_def "exposed" true false ℕ (Some (Impl_ "secret")) :: nil) ::
      cc_open Impl ((None, "I", true) :: nil) ::
      cc_open Impl ((Some "exposed", "exposed", true) :: nil) ::
      cc_eval (a_mem (qname_mod (ImportUse_ ("I" :: nil))) "exposed" $ (qname_term (ImportUse_ ("exposed" :: nil))))
@@ -156,9 +156,9 @@ Definition main_mctt : Cst.prog :=
    import_cmds ("Lib" :: "Num" :: nil) nil nil (Some "N") nil ++
    import_cmds ("Lib" :: "Num" :: nil) ("Ops" :: nil) nil None (i_items (("pred", "pred") :: nil) nil),
    ("Main" :: nil, nil,
-    c_eval (app (var "quadruple") (Cst.succ (Cst.succ Cst.zero))) (Some nat) ::
-    c_eval (app (proj (var "N") "double") (Cst.succ (Cst.succ (Cst.succ Cst.zero)))) None ::
-    c_eval (app (var "pred") (app (proj (var "N") "double") (Cst.succ (Cst.succ (Cst.succ (Cst.succ (Cst.succ Cst.zero)))))))
+    c_eval (app (var "quadruple") ((num 2))) (Some nat) ::
+    c_eval (app (proj (var "N") "double") ((num 3))) None ::
+    c_eval (app (var "pred") (app (proj (var "N") "double") ((num 5))))
       (Some nat) :: nil)).
 
 (** A leading import loads its unit before the unit runs, and is read again
@@ -177,15 +177,15 @@ Example main_spec :
      cc_load ("Lib" :: "Arith" :: nil) :: cc_open Arith ((Some "quadruple", "quadruple", true) :: nil) ::
      cc_load ("Lib" :: "Num" :: nil) :: cc_open Num ((None, "N", true) :: nil) ::
      cc_load ("Lib" :: "Num" :: nil) :: cc_open Ops ((Some "pred", "pred", true) :: nil) ::
-     cc_eval (Main_ "quadruple" $ succ (succ zero)) (Some ℕ) ::
-     cc_eval (a_mem (mpath ("Main" :: nil) ("N" :: nil)) "double" $ succ (succ (succ zero))) None ::
+     cc_eval (Main_ "quadruple" $ (a_nlit 2)) (Some ℕ) ::
+     cc_eval (a_mem (mpath ("Main" :: nil) ("N" :: nil)) "double" $ (a_nlit 3)) None ::
      cc_eval (Main_ "pred" $ (a_mem (mpath ("Main" :: nil) ("N" :: nil)) "double"
-                               $ succ (succ (succ (succ (succ zero)))))) (Some ℕ) :: nil).
+                               $ (a_nlit 5))) (Some ℕ) :: nil).
 Proof. elab_ok. Qed.
 
 (** ** [examples/TrueFalse.mctt]: the unit type and the empty type
 
-    The motive of [exfalso] binds [x], so [Nat] is elaborated under one more
+    The motive of [exfalso] binds [x], so [ℕ] is elaborated under one more
     binder. *)
 Definition true_false : Cst.prog :=
   (nil, ("TrueFalse" :: nil, nil,
@@ -209,39 +209,39 @@ Definition unit_of (cs : list Cst.cmd) : Cst.prog := (nil, ("T" :: nil, nil, cs)
     [I], and the core rejects the selection of a private member. *)
 Example private_sibling :
   elab_spec (unit_of
-    (c_mod false "I" nil (md_where (c_def md_priv "s" nat Cst.zero :: nil)) ::
+    (c_mod false "I" nil (md_where (c_def md_priv "s" nat (num 0) :: nil)) ::
      c_eval (proj (var "I") "s") None :: nil))
     (nil, ⋅,
-     cc_mod "I" false ⋅ (cc_def "s" true true ℕ (Some zero) :: nil) ::
+     cc_mod "I" false ⋅ (cc_def "s" true true ℕ (Some (a_nlit 0)) :: nil) ::
      cc_eval (a_mem (mpath ("T" :: nil) ("I" :: nil)) "s") None :: nil).
 Proof. elab_ok. Qed.
 
 (** A frame nested in a member's own frame names it directly. *)
 Example private_nested : exists u, elab_spec (unit_of
-  (c_def md_priv "s" nat Cst.zero ::
+  (c_def md_priv "s" nat (num 0) ::
    c_mod false "I" nil (md_where (c_eval (var "s") None :: nil)) :: nil)) u.
 Proof. eexists; elab_ok. Qed.
 
 (** Redeclaring in the same frame is an error … *)
 Example redeclare_same : forall u, ~ elab_spec (unit_of
-  (c_def md_pub "x" nat Cst.zero :: c_def md_pub "x" nat Cst.zero :: nil)) u.
+  (c_def md_pub "x" nat (num 0) :: c_def md_pub "x" nat (num 0) :: nil)) u.
 Proof. elab_fails. Qed.
 
 (** … also over an alias … *)
 Example redeclare_alias : forall u, ~ elab_spec (unit_of
   (c_mod false "I" nil (md_where nil) :: c_open nil ("I" :: nil) nil (i_as "x") ::
-   c_def md_pub "x" nat Cst.zero :: nil)) u.
+   c_def md_pub "x" nat (num 0) :: nil)) u.
 Proof. elab_fails. Qed.
 
 (** … but shadowing an enclosing frame's member is allowed. *)
 Example shadow_parent :
   elab_spec (unit_of
-    (c_def md_pub "x" nat Cst.zero ::
+    (c_def md_pub "x" nat (num 0) ::
      c_mod false "I" nil
-       (md_where (c_def md_pub "x" nat (Cst.succ Cst.zero) :: c_eval (var "x") None :: nil)) :: nil))
+       (md_where (c_def md_pub "x" nat ((num 1)) :: c_eval (var "x") None :: nil)) :: nil))
     (nil, ⋅,
-     cc_def "x" true false ℕ (Some zero) ::
-     cc_mod "I" false ⋅ (cc_def "x" true false ℕ (Some (succ zero)) ::
+     cc_def "x" true false ℕ (Some (a_nlit 0)) ::
+     cc_mod "I" false ⋅ (cc_def "x" true false ℕ (Some ((a_nlit 1))) ::
                    cc_eval (qname_term (q_abs ("T" :: nil) ("I" :: "x" :: nil))) None :: nil) :: nil).
 Proof. elab_ok. Qed.
 
@@ -285,7 +285,7 @@ Proof. vm_compute; reflexivity. Qed.
 
     Each keyword is [def] with the modifiers it implies, and takes [def]'s
     parameters ([Cst.def_cmd]); a modifier it implies already is rejected,
-    with the message shown.  [theorem foo (n : Nat) : Nat := n end] is: *)
+    with the message shown.  [theorem foo (n : ℕ) : ℕ := n end] is: *)
 Example kw_theorem :
   elab_spec (unit_of (def_cmd dk_theorem md_pub "foo" (pi "n" nat nat) (fn "n" nat (var "n")) :: nil))
     (nil, ⋅, cc_def "foo" false false (Π ℕ ℕ) (Some (λ ℕ #0)) :: nil).
@@ -294,43 +294,43 @@ Proof. elab_ok. Qed.
 (** [private lemma], [fact], [remark], [let], [abstract given]: *)
 Example kw_others :
   elab_spec (unit_of
-    (def_cmd dk_lemma md_priv "a" nat Cst.zero :: def_cmd dk_fact md_pub "b" nat Cst.zero ::
-     def_cmd dk_remark md_pub "c" nat Cst.zero :: def_cmd dk_let md_pub "d" nat Cst.zero ::
-     def_cmd dk_given md_abs "e" nat Cst.zero :: def_cmd dk_def md_priv_abs "f" nat Cst.zero :: nil))
+    (def_cmd dk_lemma md_priv "a" nat (num 0) :: def_cmd dk_fact md_pub "b" nat (num 0) ::
+     def_cmd dk_remark md_pub "c" nat (num 0) :: def_cmd dk_let md_pub "d" nat (num 0) ::
+     def_cmd dk_given md_abs "e" nat (num 0) :: def_cmd dk_def md_priv_abs "f" nat (num 0) :: nil))
     (nil, ⋅,
-     cc_def "a" false true ℕ (Some zero) :: cc_def "b" false true ℕ (Some zero) :: cc_def "c" false true ℕ (Some zero) ::
-     cc_def "d" true true ℕ (Some zero) :: cc_def "e" false true ℕ (Some zero) :: cc_def "f" false true ℕ (Some zero) :: nil).
+     cc_def "a" false true ℕ (Some (a_nlit 0)) :: cc_def "b" false true ℕ (Some (a_nlit 0)) :: cc_def "c" false true ℕ (Some (a_nlit 0)) ::
+     cc_def "d" true true ℕ (Some (a_nlit 0)) :: cc_def "e" false true ℕ (Some (a_nlit 0)) :: cc_def "f" false true ℕ (Some (a_nlit 0)) :: nil).
 Proof. elab_ok. Qed.
 
 Example kw_theorem_abstract :
-  elaborate_core (unit_of (def_cmd dk_theorem md_abs "a" nat Cst.zero :: nil)) = eerr "theorem is already abstract".
+  elaborate_core (unit_of (def_cmd dk_theorem md_abs "a" nat (num 0) :: nil)) = eerr "theorem is already abstract".
 Proof. vm_compute; reflexivity. Qed.
 Example kw_lemma_abstract :
-  elaborate_core (unit_of (def_cmd dk_lemma md_priv_abs "a" nat Cst.zero :: nil)) = eerr "lemma is already abstract".
+  elaborate_core (unit_of (def_cmd dk_lemma md_priv_abs "a" nat (num 0) :: nil)) = eerr "lemma is already abstract".
 Proof. vm_compute; reflexivity. Qed.
 Example kw_fact_private :
-  elaborate_core (unit_of (def_cmd dk_fact md_priv "a" nat Cst.zero :: nil)) = eerr "fact takes no modifiers".
+  elaborate_core (unit_of (def_cmd dk_fact md_priv "a" nat (num 0) :: nil)) = eerr "fact takes no modifiers".
 Proof. vm_compute; reflexivity. Qed.
 Example kw_remark_abstract :
-  elaborate_core (unit_of (def_cmd dk_remark md_abs "a" nat Cst.zero :: nil)) = eerr "remark takes no modifiers".
+  elaborate_core (unit_of (def_cmd dk_remark md_abs "a" nat (num 0) :: nil)) = eerr "remark takes no modifiers".
 Proof. vm_compute; reflexivity. Qed.
 Example kw_let_private :
-  elaborate_core (unit_of (def_cmd dk_let md_priv "a" nat Cst.zero :: nil)) = eerr "let is already private".
+  elaborate_core (unit_of (def_cmd dk_let md_priv "a" nat (num 0) :: nil)) = eerr "let is already private".
 Proof. vm_compute; reflexivity. Qed.
 Example kw_given_private :
-  elaborate_core (unit_of (def_cmd dk_given md_priv_abs "a" nat Cst.zero :: nil)) = eerr "given is already private".
+  elaborate_core (unit_of (def_cmd dk_given md_priv_abs "a" nat (num 0) :: nil)) = eerr "given is already private".
 Proof. vm_compute; reflexivity. Qed.
 
 (** ** Axioms
 
     [axiom x (ps) : A] takes [def]'s parameters and type and has no body
     ([Cst.axiom_cmd]); it is opaque, and takes no modifiers.
-    [axiom f (n : Nat) : Nat  def g : Nat := f 0 end] is: *)
+    [axiom f (n : ℕ) : ℕ  def g : ℕ := f 0 end] is: *)
 Example axiom_member :
   elab_spec (unit_of (axiom_cmd md_pub "f" (pi "n" nat nat) ::
-                      def_cmd dk_def md_pub "g" nat (app (var "f") Cst.zero) :: nil))
+                      def_cmd dk_def md_pub "g" nat (app (var "f") (num 0)) :: nil))
     (nil, ⋅, cc_def "f" false false (Π ℕ ℕ) None ::
-             cc_def "g" true false ℕ (Some (a_mem (mpath ("T" :: nil) nil) "f" $ zero)) :: nil).
+             cc_def "g" true false ℕ (Some (a_mem (mpath ("T" :: nil) nil) "f" $ (a_nlit 0))) :: nil).
 Proof. elab_ok. Qed.
 
 Example axiom_private :
@@ -343,14 +343,14 @@ Proof. vm_compute; reflexivity. Qed.
 (** A local body has no axioms. *)
 Example axiom_local :
   elaborate_core (unit_of
-    (c_eval (letb (d_mod "L" nil (md_where (axiom_cmd md_pub "a" nat :: nil))) Cst.zero) None :: nil))
+    (c_eval (letb (d_mod "L" nil (md_where (axiom_cmd md_pub "a" nat :: nil))) (num 0)) None :: nil))
   = eerr "axioms are not allowed in a local module".
 Proof. vm_compute; reflexivity. Qed.
 
 (** A rejected keyword is rejected in a local body too. *)
 Example kw_local_rejected :
   elaborate_core (unit_of
-    (c_eval (letb (d_mod "L" nil (md_where (def_cmd dk_fact md_abs "a" nat Cst.zero :: nil))) Cst.zero) None :: nil))
+    (c_eval (letb (d_mod "L" nil (md_where (def_cmd dk_fact md_abs "a" nat (num 0) :: nil))) (num 0)) None :: nil))
   = eerr "fact takes no modifiers".
 Proof. vm_compute; reflexivity. Qed.
 
@@ -358,9 +358,9 @@ Proof. vm_compute; reflexivity. Qed.
     which the core rejects, as it does [abstract def]. *)
 Example kw_local_theorem :
   elab_spec (unit_of
-    (c_eval (letb (d_mod "L" nil (md_where (def_cmd dk_theorem md_pub "a" nat Cst.zero :: nil))) Cst.zero) None :: nil))
+    (c_eval (letb (d_mod "L" nil (md_where (def_cmd dk_theorem md_pub "a" nat (num 0) :: nil))) (num 0)) None :: nil))
     (nil, ⋅,
-     cc_eval (ℓₘ (gu_mk ⋅ (md_body (gm_ext gm_nil "a" (ge_def false false ℕ (Some zero))))) in zero) None :: nil).
+     cc_eval (ℓₘ (gu_mk ⋅ (md_body (gm_ext gm_nil "a" (ge_def false false ℕ (Some (a_nlit 0)))))) in (a_nlit 0)) None :: nil).
 Proof. elab_ok. Qed.
 
 (** ** One Binding per Name per Frame
@@ -372,7 +372,7 @@ Ltac elab_err := vm_compute; reflexivity.
 
 (** [def x … ; open M as x]: an alias may not take a member's name. *)
 Definition alias_after_member : Cst.prog := unit_of
-  (c_mod false "M" nil (md_where nil) :: c_def md_pub "x" nat Cst.zero ::
+  (c_mod false "M" nil (md_where nil) :: c_def md_pub "x" nat (num 0) ::
    c_open nil ("M" :: nil) nil (i_as "x") :: nil).
 Example alias_after_member_err : elaborate_core alias_after_member = eerr "x is already declared".
 Proof. elab_err. Qed.
@@ -382,22 +382,22 @@ Proof. elab_fails. Qed.
 (** [open M as x ; def x …]: a member may not take an alias's name. *)
 Definition member_after_alias : Cst.prog := unit_of
   (c_mod false "M" nil (md_where nil) :: c_open nil ("M" :: nil) nil (i_as "x") ::
-   c_def md_pub "x" nat Cst.zero :: nil).
+   c_def md_pub "x" nat (num 0) :: nil).
 Example member_after_alias_err : elaborate_core member_after_alias = eerr "x is already declared".
 Proof. elab_err. Qed.
 
 (** [def exposed … ; open Impl use (exposed)]: nor may a [use]d name. *)
 Definition use_after_member : Cst.prog := unit_of
-  (c_mod false "Impl" nil (md_where (c_def md_pub "exposed" nat Cst.zero :: nil)) ::
-   c_def md_pub "exposed" nat Cst.zero ::
+  (c_mod false "Impl" nil (md_where (c_def md_pub "exposed" nat (num 0) :: nil)) ::
+   c_def md_pub "exposed" nat (num 0) ::
    c_open nil ("Impl" :: nil) nil (i_items (("exposed", "exposed") :: nil) nil) :: nil).
 Example use_after_member_err : elaborate_core use_after_member = eerr "exposed is already declared".
 Proof. elab_err. Qed.
 
-(** [module M (x : Nat) where def x … end]: a member may not take a
+(** [module M (x : ℕ) where def x … end]: a member may not take a
     parameter's name … *)
 Definition member_param : Cst.prog := unit_of
-  (c_mod false "M" (("x", nat) :: nil) (md_where (c_def md_pub "x" nat Cst.zero :: nil)) :: nil).
+  (c_mod false "M" (("x", nat) :: nil) (md_where (c_def md_pub "x" nat (num 0) :: nil)) :: nil).
 Example member_param_err : elaborate_core member_param = eerr "x is already declared".
 Proof. elab_err. Qed.
 Example member_param_spec : forall u, ~ elab_spec member_param u.
@@ -419,7 +419,7 @@ Proof. elab_err. Qed.
 Example alias_param_spec : forall u, ~ elab_spec alias_param u.
 Proof. elab_fails. Qed.
 
-(** [module M (x : Nat) (x : Nat)]: a telescope may not repeat a name … *)
+(** [module M (x : ℕ) (x : ℕ)]: a telescope may not repeat a name … *)
 Definition dup_params : Cst.prog := unit_of
   (c_mod false "M" (("x", nat) :: ("x", nat) :: nil) (md_where nil) :: nil).
 Example dup_params_err : elaborate_core dup_params = eerr "duplicate parameter x".
@@ -444,11 +444,11 @@ Proof. elab_err. Qed.
     enclosing frame's parameter name. *)
 Example shadow_param :
   elab_spec (nil, ("T" :: nil, ("x", nat) :: nil,
-                   c_def md_pub "y" nat Cst.zero ::
+                   c_def md_pub "y" nat (num 0) ::
                    c_mod false "M" (("y", nat) :: nil)
                      (md_where (c_def md_pub "x" nat (var "y") :: c_eval (var "x") None :: nil)) :: nil))
     (nil, ⋅ ▹ ℕ,
-     cc_def "y" true false ℕ (Some zero) ::
+     cc_def "y" true false ℕ (Some (a_nlit 0)) ::
      cc_mod "M" false (⋅ ▹ ℕ)
        (cc_def "x" true false ℕ (Some #0) ::
         cc_eval (qname_term (q_abs ("T" :: nil) ("M" :: "x" :: nil)) $ #1 $ #0) None :: nil) :: nil).
@@ -462,48 +462,48 @@ Proof. elab_ok. Qed.
 (** A [let] inside the definiens of another [let]:
 
 <<
-fun (a : Nat) -> let x : Nat := let y : Nat := a in succ y end in succ x end
+fun (a : ℕ) -> let x : ℕ := let y : ℕ := a in y end in x end
 >>
 *)
 Example let_nested :
   elab_spec (unit_of
     (c_eval (fn "a" nat
-               (letb (d_def "x" (Some nat) (letb (d_def "y" (Some nat) (var "a")) (Cst.succ (var "y"))))
-                  (Cst.succ (var "x")))) None :: nil))
-    (nil, ⋅, cc_eval (λ ℕ (ℓ ℕ ≔ (ℓ ℕ ≔ #0 in succ #0) in succ #0)) None :: nil).
+               (letb (d_def "x" (Some nat) (letb (d_def "y" (Some nat) (var "a")) (var "y")))
+                  (var "x"))) None :: nil))
+    (nil, ⋅, cc_eval (λ ℕ (ℓ ℕ ≔ (ℓ ℕ ≔ #0 in #0) in #0)) None :: nil).
 Proof. elab_ok. Qed.
 
 (** Each binding sees the earlier ones, in its type and in its definiens:
 
 <<
-let A : Typeω@0 := Nat; z : A := 0; f : forall (n : A) -> A := fun (n : A) -> succ z in f z end
+let A : Typeω@0 := ℕ; z : A := 0; f : forall (n : A) -> A := fun (n : A) -> z in f z end
 >>
 *)
 Example let_multi :
   elab_spec (unit_of
     (c_eval (letb (d_def "A" (Some (typ 0)) nat)
-               (letb (d_def "z" (Some (var "A")) Cst.zero)
-                  (letb (d_def "f" (Some (pi "n" (var "A") (var "A"))) (fn "n" (var "A") (Cst.succ (var "z"))))
+               (letb (d_def "z" (Some (var "A")) (num 0))
+                  (letb (d_def "f" (Some (pi "n" (var "A") (var "A"))) (fn "n" (var "A") (var "z")))
                      (app (var "f") (var "z"))))) None :: nil))
     (nil, ⋅,
-     cc_eval (ℓ Typeω@0 ≔ ℕ in ℓ #0 ≔ zero in ℓ (Π #1 #2) ≔ λ #1 (succ #1) in #0 $ #1) None :: nil).
+     cc_eval (ℓ Typeω@0 ≔ ℕ in ℓ #0 ≔ (a_nlit 0) in ℓ (Π #1 #2) ≔ λ #1 #1 in #0 $ #1) None :: nil).
 Proof. elab_ok. Qed.
 
 (** Without an annotation the elaborator emits none; the core infers the
     type of the definiens.  Annotated and unannotated bindings mix:
 
 <<
-let A : Typeω@0 := Nat; z := 0; f := fun (n : A) -> succ z in f z end
+let A : Typeω@0 := ℕ; z := 0; f := fun (n : A) -> z in f z end
 >>
 *)
 Example let_mixed :
   elab_spec (unit_of
     (c_eval (letb (d_def "A" (Some (typ 0)) nat)
-               (letb (d_def "z" None Cst.zero)
-                  (letb (d_def "f" None (fn "n" (var "A") (Cst.succ (var "z"))))
+               (letb (d_def "z" None (num 0))
+                  (letb (d_def "f" None (fn "n" (var "A") (var "z")))
                      (app (var "f") (var "z"))))) None :: nil))
     (nil, ⋅,
-     cc_eval (ℓ Typeω@0 ≔ ℕ in ℓ ≔ zero in ℓ ≔ λ #1 (succ #1) in #0 $ #1) None :: nil).
+     cc_eval (ℓ Typeω@0 ≔ ℕ in ℓ ≔ (a_nlit 0) in ℓ ≔ λ #1 #1 in #0 $ #1) None :: nil).
 Proof. elab_ok. Qed.
 
 (** A [let] may shadow a member of the frame.  The definiens still sees the
@@ -512,8 +512,8 @@ Proof. elab_ok. Qed.
 
 <<
 module M (A : Typeω@0) where
-  def y : Nat := 0 end
-  eval let y : Nat := succ y in fun (a : A) -> y end
+  def y : ℕ := 0 end
+  eval let y : ℕ := y in fun (a : A) -> y end
 end
 >>
 *)
@@ -523,12 +523,12 @@ Example let_shadow :
   elab_spec (unit_of
     (c_mod false "M" (("A", typ 0) :: nil)
        (md_where
-         (c_def md_pub "y" nat Cst.zero ::
-          c_eval (letb (d_def "y" (Some nat) (Cst.succ (var "y"))) (fn "a" (var "A") (var "y"))) None :: nil)) :: nil))
+         (c_def md_pub "y" nat (num 0) ::
+          c_eval (letb (d_def "y" (Some nat) (var "y")) (fn "a" (var "A") (var "y"))) None :: nil)) :: nil))
     (nil, ⋅,
      cc_mod "M" false (⋅ ▹ Typeω@0)
-       (cc_def "y" true false ℕ (Some zero) ::
-        cc_eval (ℓ ℕ ≔ succ (T_M_y $ #0) in λ #1 #1) None :: nil) :: nil).
+       (cc_def "y" true false ℕ (Some (a_nlit 0)) ::
+        cc_eval (ℓ ℕ ≔ (T_M_y $ #0) in λ #1 #1) None :: nil) :: nil).
 Proof. elab_ok. Qed.
 
 (** ** Module Forms *)
@@ -554,8 +554,8 @@ Proof. elab_ok. Qed.
 <<
 let module L (A : Typeω@0) where
   def x : A -> A := fun (a : A) -> a end
-  module N where def y : Nat := 0 end end
-  def z : Nat := N.y end
+  module N where def y : ℕ := 0 end end
+  def z : ℕ := N.y end
 in L.x end
 >>
 *)
@@ -565,7 +565,7 @@ Example local_body :
        (letb (d_mod "L" (("A", typ 0) :: nil)
                 (md_where
                    (c_def md_pub "x" (pi "a" (var "A") (var "A")) (fn "a" (var "A") (var "a")) ::
-                    c_mod false "N" nil (md_where (c_def md_pub "y" nat Cst.zero :: nil)) ::
+                    c_mod false "N" nil (md_where (c_def md_pub "y" nat (num 0) :: nil)) ::
                     c_def md_pub "z" nat (proj (var "N") "y") :: nil)))
           (proj (var "L") "x")) None :: nil))
     (nil, ⋅,
@@ -575,7 +575,7 @@ Example local_body :
                  (gm_ext
                     (gm_ext
                        (gm_ext gm_nil "x" (ge_def true false (Π #0 #1) (Some (λ #0 #0))))
-                       "N" (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some zero)))))))
+                       "N" (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some (a_nlit 0))))))))
                     "z" (ge_def true false ℕ (Some (a_mem (me_var 0) "y"))))))
         in a_mem (me_var 0) "x") None :: nil).
 Proof. elab_ok. Qed.
@@ -585,11 +585,11 @@ Proof. elab_ok. Qed.
 
 <<
 let module L where
-  module N where def y : Nat := 0 end end
+  module N where def y : ℕ := 0 end end
   open N use (y)
   open N as K
-  def z : Nat := y end
-  def w : Nat := K.y end
+  def z : ℕ := y end
+  def w : ℕ := K.y end
 in L.w end
 >>
 
@@ -600,7 +600,7 @@ Example local_open :
     (c_eval
        (letb (d_mod "L" nil
                 (md_where
-                   (c_mod false "N" nil (md_where (c_def md_pub "y" nat Cst.zero :: nil)) ::
+                   (c_mod false "N" nil (md_where (c_def md_pub "y" nat (num 0) :: nil)) ::
                     c_open nil ("N" :: nil) nil (i_items (("y", "y") :: nil) nil) ::
                     c_open nil ("N" :: nil) nil (i_as "K") ::
                     c_def md_pub "z" nat (var "y") ::
@@ -614,7 +614,7 @@ Example local_open :
                     (gm_ext
                        (gm_open
                           (gm_open
-                             (gm_ext gm_nil "N" (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some zero)))))))
+                             (gm_ext gm_nil "N" (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some (a_nlit 0))))))))
                              (me_var 0) ((Some "y", "y", true) :: nil))
                           (me_var 1) ((None, "K", true) :: nil))
                        "z" (ge_def true false ℕ (Some #1)))
@@ -626,7 +626,7 @@ Proof. elab_ok. Qed.
     imported already, here by a leading import. *)
 Definition local_unit_import (leading : list Cst.cmd) : Cst.prog :=
   (leading, ("T" :: nil, nil,
-    c_eval (letb (d_mod "L" nil (md_where (c_open ("X" :: nil) nil nil (i_items (("f", "f") :: nil) nil) :: nil))) Cst.zero)
+    c_eval (letb (d_mod "L" nil (md_where (c_open ("X" :: nil) nil nil (i_items (("f", "f") :: nil) nil) :: nil))) (num 0))
       None :: nil)).
 
 Example local_unit_loaded :
@@ -634,7 +634,7 @@ Example local_unit_loaded :
     (cc_load ("X" :: nil) :: nil, ⋅,
      cc_load ("X" :: nil) ::
      cc_eval (ℓₘ (gu_mk ⋅ (md_body (gm_open gm_nil (mpath ("X" :: nil) nil) ((Some "f", "f", true) :: nil))))
-              in zero) None :: nil).
+              in (a_nlit 0)) None :: nil).
 Proof. elab_ok. Qed.
 
 Example local_unit_not_loaded :
@@ -644,7 +644,7 @@ Proof. vm_compute; reflexivity. Qed.
 (** A local body has no [import]s: it opens what is loaded already. *)
 Example local_import_rejected :
   elaborate_core (unit_of
-    (c_eval (letb (d_mod "L" nil (md_where (c_import ("X" :: nil) :: nil))) Cst.zero) None :: nil))
+    (c_eval (letb (d_mod "L" nil (md_where (c_import ("X" :: nil) :: nil))) (num 0)) None :: nil))
   = eerr "import is not allowed in a local module; use open".
 Proof. vm_compute; reflexivity. Qed.
 
@@ -653,14 +653,14 @@ Proof. vm_compute; reflexivity. Qed.
 Example local_long_import_rejected :
   elaborate_core (c_import ("X" :: nil) :: nil, ("T" :: nil, nil,
     c_eval (letb (d_mod "L" nil (md_where (import_cmds ("X" :: nil) nil nil None (i_items (("f", "f") :: nil) nil))))
-              Cst.zero) None :: nil))
+              (num 0)) None :: nil))
   = eerr "import is not allowed in a local module; use open".
 Proof. vm_compute; reflexivity. Qed.
 
 (** A local body has no [eval]s. *)
 Example local_eval :
   elaborate_core (unit_of
-    (c_eval (letb (d_mod "L" nil (md_where (c_eval Cst.zero None :: nil))) Cst.zero) None :: nil))
+    (c_eval (letb (d_mod "L" nil (md_where (c_eval (num 0) None :: nil))) (num 0)) None :: nil))
   = eerr "eval is not allowed in a local module".
 Proof. vm_compute; reflexivity. Qed.
 
@@ -669,15 +669,15 @@ Proof. vm_compute; reflexivity. Qed.
     body. *)
 Example local_private :
   elab_spec (unit_of
-    (c_eval (letb (d_mod "L" nil (md_where (c_def md_priv "s" nat Cst.zero ::
+    (c_eval (letb (d_mod "L" nil (md_where (c_def md_priv "s" nat (num 0) ::
                                             c_mod true "N" nil (md_where nil) ::
-                                            c_def md_pub "t" nat (Cst.succ (var "s")) :: nil)))
+                                            c_def md_pub "t" nat (var "s") :: nil)))
                (proj (var "L") "t")) None :: nil))
     (nil, ⋅,
      cc_eval (ℓₘ (gu_mk ⋅ (md_body (gm_ext (gm_ext (gm_ext gm_nil
-                                      "s" (ge_def true true ℕ (Some zero)))
+                                      "s" (ge_def true true ℕ (Some (a_nlit 0))))
                                       "N" (ge_mod true (gu_mk ⋅ (md_body gm_nil))))
-                                      "t" (ge_def true false ℕ (Some (succ #1))))))
+                                      "t" (ge_def true false ℕ (Some #1)))))
               in a_mem (me_var 0) "t") None :: nil).
 Proof. elab_ok. Qed.
 
@@ -687,17 +687,17 @@ Example local_use_dup :
   elab_spec (unit_of
     (c_eval
        (letb (d_mod "L" nil
-                (md_where (c_mod false "N" nil (md_where (c_def md_pub "y" nat Cst.zero :: nil)) ::
+                (md_where (c_mod false "N" nil (md_where (c_def md_pub "y" nat (num 0) :: nil)) ::
                            c_open nil ("N" :: nil) nil (i_items (("y", "y") :: ("y", "y") :: nil) nil) :: nil)))
-          Cst.zero) None :: nil))
+          (num 0)) None :: nil))
     (nil, ⋅,
      cc_eval
        (ℓₘ (gu_mk ⋅
               (md_body
                  (gm_open
-                    (gm_ext gm_nil "N" (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some zero)))))))
+                    (gm_ext gm_nil "N" (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some (a_nlit 0))))))))
                     (me_var 0) ((Some "y", "y", true) :: (Some "y", "y", true) :: nil))))
-        in zero) None :: nil).
+        in (a_nlit 0)) None :: nil).
 Proof. elab_ok. Qed.
 
 (** [module A.B] in a local body is [A], without parameters, holding [B]. *)
@@ -705,13 +705,13 @@ Example local_path :
   elab_spec (unit_of
     (c_eval
        (letb (d_mod "L" nil
-                (md_where (c_mod_dotted false "B" ("A" :: nil) nil (md_where (c_def md_pub "y" nat Cst.zero :: nil)) :: nil)))
+                (md_where (c_mod_dotted false "B" ("A" :: nil) nil (md_where (c_def md_pub "y" nat (num 0) :: nil)) :: nil)))
           (proj (proj (proj (var "L") "A") "B") "y")) None :: nil))
     (nil, ⋅,
      cc_eval
        (ℓₘ (gu_mk ⋅ (md_body (gm_ext gm_nil "A"
                (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "B"
-                  (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some zero)))))))))))))
+                  (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some (a_nlit 0))))))))))))))
         in a_mem (me_mem (me_mem (me_var 0) "A") "B") "y") None :: nil).
 Proof. elab_ok. Qed.
 
@@ -741,7 +741,7 @@ Proof. elab_err. Qed.
 (** A local module's telescope may not repeat a name. *)
 Example local_dup_params :
   elaborate_core (unit_of
-    (c_eval (letb (d_mod "L" (("x", nat) :: ("x", nat) :: nil) (md_where nil)) Cst.zero) None :: nil))
+    (c_eval (letb (d_mod "L" (("x", nat) :: ("x", nat) :: nil) (md_where nil)) (num 0)) None :: nil))
   = eerr "duplicate parameter x".
 Proof. elab_err. Qed.
 
@@ -784,8 +784,8 @@ Proof. elab_ok. Qed.
 (** An item's name must be fresh in the frame before the open, *)
 Example import_item_fresh :
   elaborate_core (unit_of
-    (c_mod false "M" nil (md_where (c_def md_pub "c" nat Cst.zero :: nil)) ::
-     c_def md_pub "d" nat Cst.zero ::
+    (c_mod false "M" nil (md_where (c_def md_pub "c" nat (num 0) :: nil)) ::
+     c_def md_pub "d" nat (num 0) ::
      c_open nil ("M" :: nil) nil (i_items nil (("c", "d") :: nil)) :: nil))
   = eerr "d is already declared".
 Proof. elab_err. Qed.
@@ -794,10 +794,10 @@ Proof. elab_err. Qed.
     member, is the core's to check ([xe_fresh], [xe_both]). *)
 Example import_items_dup :
   elab_spec (unit_of
-    (c_mod false "M" nil (md_where (c_def md_pub "c" nat Cst.zero :: nil)) ::
+    (c_mod false "M" nil (md_where (c_def md_pub "c" nat (num 0) :: nil)) ::
      c_open nil ("M" :: nil) nil (i_items (("c", "c") :: nil) (("c", "c") :: nil)) :: nil))
     (nil, ⋅,
-     cc_mod "M" false ⋅ (cc_def "c" true false ℕ (Some zero) :: nil) ::
+     cc_mod "M" false ⋅ (cc_def "c" true false ℕ (Some (a_nlit 0)) :: nil) ::
      cc_open (T_ ("M" :: nil)) ((Some "c", "c", true) :: (Some "c", "c", false) :: nil) :: nil).
 Proof. elab_ok. Qed.
 
@@ -835,7 +835,7 @@ Proof. elab_err. Qed.
 (** and the unit's members against them. *)
 Example leading_member :
   elaborate_core (import_cmds ("L" :: "X" :: nil) nil nil None (i_items (("f", "f") :: nil) nil),
-                  ("T" :: nil, nil, c_def md_pub "f" nat Cst.zero :: nil))
+                  ("T" :: nil, nil, c_def md_pub "f" nat (num 0) :: nil))
   = eerr "f is already declared".
 Proof. elab_err. Qed.
 
@@ -859,10 +859,10 @@ Definition PE : modexp := mpath ("P" :: "E" :: nil) nil.
 Example leading_scope :
   elab_spec (c_import ("P" :: "E" :: nil) ::
              open_cmds ("P" :: "E" :: nil) nil nil (Some "W") (i_items (("Eq", "Eq") :: nil) nil),
-             ("T" :: nil, ("p", app (app (var "Eq") (Cst.succ Cst.zero)) (Cst.succ Cst.zero)) :: nil,
+             ("T" :: nil, ("p", app (app (var "Eq") ((num 1))) ((num 1))) :: nil,
               c_eval (proj (var "W") "refl") None :: nil))
     (cc_load ("P" :: "E" :: nil) :: nil,
-     ⋅ ▹ (a_mem PE "Eq" $ succ zero $ succ zero),
+     ⋅ ▹ (a_mem PE "Eq" $ (a_nlit 1) $ (a_nlit 1)),
      cc_load ("P" :: "E" :: nil) ::
      cc_open PE ((None, "W", true) :: nil) ::
      cc_open (me_app (T_ ("W" :: nil)) #0) ((Some "Eq", "Eq", true) :: nil) ::
@@ -927,19 +927,19 @@ Proof. elab_ok. Qed.
     of items in the order written; the core checks them together.
 
 <<
-module M where def a : Nat := 0 end def b : Nat := 1 end def c : Nat := 2 end end
+module M where def a : ℕ := 0 end def b : ℕ := 1 end def c : ℕ := 2 end end
 open M export (a) use (b) export (c as d)
 >>
 *)
 Example open_lists :
   elab_spec (unit_of
-    (c_mod false "M" nil (md_where (c_def md_pub "a" nat Cst.zero :: c_def md_pub "b" nat (Cst.succ Cst.zero) ::
-                                    c_def md_pub "c" nat (Cst.succ (Cst.succ Cst.zero)) :: nil)) ::
+    (c_mod false "M" nil (md_where (c_def md_pub "a" nat (num 0) :: c_def md_pub "b" nat ((num 1)) ::
+                                    c_def md_pub "c" nat ((num 2)) :: nil)) ::
      c_open nil ("M" :: nil) nil ((Some "a", "a", false) :: (Some "b", "b", true) :: (Some "c", "d", false) :: nil) ::
      nil))
     (nil, ⋅,
-     cc_mod "M" false ⋅ (cc_def "a" true false ℕ (Some zero) :: cc_def "b" true false ℕ (Some (succ zero)) ::
-                         cc_def "c" true false ℕ (Some (succ (succ zero))) :: nil) ::
+     cc_mod "M" false ⋅ (cc_def "a" true false ℕ (Some (a_nlit 0)) :: cc_def "b" true false ℕ (Some ((a_nlit 1))) ::
+                         cc_def "c" true false ℕ (Some ((a_nlit 2))) :: nil) ::
      cc_open (T_ ("M" :: nil)) ((Some "a", "a", false) :: (Some "b", "b", true) :: (Some "c", "d", false) :: nil) :: nil).
 Proof. elab_ok. Qed.
 
@@ -949,7 +949,7 @@ Proof. elab_ok. Qed.
 <<
 let module L where
   module N (A : Typeω@0) where def y : Typeω@0 := A end end
-  open N Nat use (y as u) export (y)
+  open N ℕ use (y as u) export (y)
 in L.y end
 >>
 *)
@@ -982,7 +982,7 @@ module Main where
       def k (x : A) (y : B) : A := id x end
     end
   end
-  def j : forall (x : Nat) -> Nat := M.id Nat end
+  def j : forall (x : ℕ) -> ℕ := M.id ℕ end
 end
 >>
 *)
@@ -1017,8 +1017,8 @@ module U where
   | nil
   | cons (x : A) (xs : List A)
   end
-  def len : forall (l : List Nat) -> Nat :=
-    fun (l : List Nat) -> elim l return z . Nat | nil => zero | cons x xs, r => succ r end
+  def len : forall (l : List ℕ) -> ℕ :=
+    fun (l : List ℕ) -> elim l return z . ℕ | nil => 0 | cons x xs, r => r end
   end
 end
 >>
@@ -1027,7 +1027,7 @@ end
     parameters, and each argument binds its name: [A] is [#0] in the type
     of [x], and [List A] is [#2 $ #1] in the type of [xs].  Which argument is
     recursive is the core's to decide.  After the declaration [List] is a
-    member of the frame, a module, so [List Nat] is [U.List $ ℕ], which the
+    member of the frame, a module, so [List ℕ] is [U.List $ ℕ], which the
     core reads as the type.  The motive binds the scrutinee, the branch for
     [cons] its two arguments and its hypothesis: [r] is [#0]. *)
 Definition list_decl : Cst.cmd :=
@@ -1040,7 +1040,7 @@ Definition list_len : Cst.prog :=
          c_def md_pub "len" (pi "l" (app (var "List") nat) nat)
            (fn "l" (app (var "List") nat)
               (elim (var "l") ("z" :: nil) nat
-                 (("nil", nil, Cst.zero) :: ("cons", "x" :: "xs" :: "r" :: nil, Cst.succ (var "r")) :: nil))) :: nil)).
+                 (("nil", nil, (num 0)) :: ("cons", "x" :: "xs" :: "r" :: nil, var "r") :: nil))) :: nil)).
 
 Definition U_List : exp := qname_term (q_abs ("U" :: nil) ("List" :: nil)).
 
@@ -1051,7 +1051,7 @@ Example list_len_spec :
        (mk_raw 1 (⋅ ▹ Typeω@0) Typeω@0
           (("nil", nil) :: ("cons", ("x", #0) :: ("xs", #2 $ #1) :: nil) :: nil)) ::
      cc_def "len" true false (Π (U_List $ ℕ) ℕ)
-       (Some (λ (U_List $ ℕ) (a_elim 1 ℕ (("nil", 0, zero) :: ("cons", 3, succ #0) :: nil) #0))) :: nil).
+       (Some (λ (U_List $ ℕ) (a_elim 1 ℕ (("nil", 0, a_nlit 0) :: ("cons", 3, #0) :: nil) #0))) :: nil).
 Proof. elab_ok. Qed.
 
 (** A non-uniform parameter is bound by the type, in front of its sort,
@@ -1059,9 +1059,9 @@ Proof. elab_ok. Qed.
 
 <<
 module U where
-  inductive Climb : forall (n : Nat) -> Typeω@0 where
+  inductive Climb : forall (n : ℕ) -> Typeω@0 where
   | stop
-  | step (r : Climb (succ n))
+  | step (r : Climb n)
   end
 end
 >>
@@ -1069,10 +1069,10 @@ end
 Example climb_spec :
   elab_spec (nil, ("U" :: nil, nil,
                    c_ind false "Climb" nil (pi "n" nat (typ 0))
-                     (("stop", nil) :: ("step", ("r", app (var "Climb") (Cst.succ (var "n"))) :: nil) :: nil) :: nil))
+                     (("stop", nil) :: ("step", ("r", app (var "Climb") (var "n")) :: nil) :: nil) :: nil))
     (nil, ⋅,
      cc_ind "Climb" false
-       (mk_raw 0 (⋅ ▹ ℕ) Typeω@0 (("stop", nil) :: ("step", ("r", #1 $ succ #0) :: nil) :: nil)) :: nil).
+       (mk_raw 0 (⋅ ▹ ℕ) Typeω@0 (("stop", nil) :: ("step", ("r", #1 $ #0) :: nil) :: nil)) :: nil).
 Proof. elab_ok. Qed.
 
 (** The elaborator classifies nothing: [List] without its parameter is
@@ -1088,7 +1088,7 @@ Proof. elab_ok. Qed.
 (** A declaration in a local body is rejected. *)
 Example local_ind :
   forall u, ~ elab_spec (unit_of
-                (c_eval (letb (d_mod "M" nil (md_where (c_ind false "E" nil (typ 0) nil :: nil))) Cst.zero) None :: nil)) u.
+                (c_eval (letb (d_mod "M" nil (md_where (c_ind false "E" nil (typ 0) nil :: nil))) (num 0)) None :: nil)) u.
 Proof. elab_fails. Qed.
 
 (** An inductive alias reads its target as a module, under its
@@ -1099,7 +1099,7 @@ Proof. elab_fails. Qed.
 module T where
 inductive List (A : Typeω@0) : Typeω@0 where | nil end
 inductive L (B : Typeω@0) := List B
-private inductive LN := L Nat
+private inductive LN := L ℕ
 end
 >>
 *)
@@ -1117,7 +1117,7 @@ Proof. elab_ok. Qed.
 (** An inductive alias in a local body is rejected. *)
 Example local_ind_alias :
   forall u, ~ elab_spec (unit_of
-                (c_eval (letb (d_mod "M" nil (md_where (c_ind_alias false "E" nil (var "Nat") :: nil))) Cst.zero) None :: nil)) u.
+                (c_eval (letb (d_mod "M" nil (md_where (c_ind_alias false "E" nil (var "Nat") :: nil))) (num 0)) None :: nil)) u.
 Proof. elab_fails. Qed.
 
 (** A numeral is a core literal; what it stands for, the bound natural
@@ -1149,7 +1149,7 @@ Proof. elab_ok. Qed.
 (** A builtin binding in a local body is rejected. *)
 Example local_builtin :
   elaborate_core (unit_of
-    (c_eval (letb (d_mod "M" nil (md_where (c_builtin "natural" (var "N") :: nil))) Cst.zero) None :: nil))
+    (c_eval (letb (d_mod "M" nil (md_where (c_builtin "natural" (var "N") :: nil))) (num 0)) None :: nil))
   = eerr "builtin is not allowed in a local module".
 Proof. elab_err. Qed.
 

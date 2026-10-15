@@ -2,15 +2,16 @@
    stated with [Prelude›Arith›Equality]. *)
 module Prelude›Arith›MinMax where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
 
 def min (a : ℕ) (b : ℕ) : ℕ ≔
-  (rec a return y . (∀ (x : ℕ) → ℕ)
+  (elim a return y . (∀ (x : ℕ) → ℕ)
    | zero ⇒ λ (x : ℕ) → 0
    | succ p, r ⇒ λ (x : ℕ) →
-       rec x return z . ℕ
+       elim x return z . ℕ
        | zero ⇒ 0
        | succ q, s ⇒ succ (r q)
        end
@@ -18,10 +19,10 @@ def min (a : ℕ) (b : ℕ) : ℕ ≔
 end
 
 def max (a : ℕ) (b : ℕ) : ℕ ≔
-  (rec a return y . (∀ (x : ℕ) → ℕ)
+  (elim a return y . (∀ (x : ℕ) → ℕ)
    | zero ⇒ λ (x : ℕ) → x
    | succ p, r ⇒ λ (x : ℕ) →
-       rec x return z . ℕ
+       elim x return z . ℕ
        | zero ⇒ succ p
        | succ q, s ⇒ succ (r q)
        end
@@ -33,14 +34,14 @@ module Laws where
 
 theorem minComm : ∀ (a : ℕ) (b : ℕ) → Eq (min a b) (min b a) ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) → Eq (min x b) (min b x))
+    elim a return x . (∀ (b : ℕ) → Eq (min x b) (min b x))
     | zero ⇒ λ (b : ℕ) →
-        rec b return y . Eq (min 0 y) (min y 0)
+        elim b return y . Eq (min 0 y) (min y 0)
         | zero ⇒ ⋆
         | succ q, s ⇒ ⋆
         end
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return y . Eq (min (succ p) y) (min y (succ p))
+        elim b return y . Eq (min (succ p) y) (min y (succ p))
         | zero ⇒ ⋆
         | succ q, s ⇒ ih q
         end
@@ -49,14 +50,14 @@ end
 
 theorem maxComm : ∀ (a : ℕ) (b : ℕ) → Eq (max a b) (max b a) ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) → Eq (max x b) (max b x))
+    elim a return x . (∀ (b : ℕ) → Eq (max x b) (max b x))
     | zero ⇒ λ (b : ℕ) →
-        rec b return y . Eq (max 0 y) (max y 0)
+        elim b return y . Eq (max 0 y) (max y 0)
         | zero ⇒ ⋆
         | succ q, s ⇒ refl q
         end
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return y . Eq (max (succ p) y) (max y (succ p))
+        elim b return y . Eq (max (succ p) y) (max y (succ p))
         | zero ⇒ refl p
         | succ q, s ⇒ ih q
         end
@@ -65,7 +66,7 @@ end
 
 theorem minIdem : ∀ (n : ℕ) → Eq (min n n) n ≔
   λ (n : ℕ) →
-    rec n return x . Eq (min x x) x
+    elim n return x . Eq (min x x) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -73,7 +74,7 @@ end
 
 theorem minZero : ∀ (n : ℕ) → Eq (min n 0) 0 ≔
   λ (n : ℕ) →
-    rec n return x . Eq (min x 0) 0
+    elim n return x . Eq (min x 0) 0
     | zero ⇒ ⋆
     | succ p, ih ⇒ ⋆
     end
@@ -81,7 +82,7 @@ end
 
 theorem maxIdem : ∀ (n : ℕ) → Eq (max n n) n ≔
   λ (n : ℕ) →
-    rec n return x . Eq (max x x) x
+    elim n return x . Eq (max x x) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -89,7 +90,7 @@ end
 
 theorem maxZero : ∀ (n : ℕ) → Eq (max n 0) n ≔
   λ (n : ℕ) →
-    rec n return x . Eq (max x 0) x
+    elim n return x . Eq (max x 0) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ refl p
     end
@@ -100,11 +101,11 @@ end
 theorem plusMinMax : ∀ (a : ℕ) (b : ℕ) →
     Eq (plus (min a b) (max a b)) (plus a b) ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) → Eq (plus (min x b) (max x b)) (plus x b))
+    elim a return x . (∀ (b : ℕ) → Eq (plus (min x b) (max x b)) (plus x b))
     | zero ⇒ λ (b : ℕ) → refl b
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return y . Eq (plus (min (succ p) y) (max (succ p) y))
-                            (plus (succ p) y)
+        elim b return y . Eq (plus (min (succ p) y) (max (succ p) y))
+                             (plus (succ p) y)
         | zero ⇒ sym (plus p 0) p (plusZero p)
         | succ q, s ⇒
             let m ≔ min p q;

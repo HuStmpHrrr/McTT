@@ -1,6 +1,8 @@
 (* Axioms in a unit and in a nested module. *)
 module Lib›Axioms where
 
+import Prelude›Builtin›Nat
+
 (* A number about which nothing is known. *)
 axiom c : ℕ
 

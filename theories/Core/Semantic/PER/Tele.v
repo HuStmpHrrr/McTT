@@ -226,7 +226,7 @@ Section Tele.
 
   Lemma functional_eval_exps' : forall Ms ρ ms1 ms2,
       eval_exps gc_deps gc_stack Ms ρ ms1 -> eval_exps gc_deps gc_stack Ms ρ ms2 -> ms1 = ms2.
-  Proof. intros; eapply (proj1 (proj2 (proj2 (proj2 (@functional_eval gc_deps gc_stack))))); eassumption. Qed.
+  Proof. intros; eapply (proj1 (proj2 (proj2 (@functional_eval gc_deps gc_stack)))); eassumption. Qed.
 
   Lemma nparams_nth_ass : forall D k e,
       tele_ass (ind_params D) -> List.nth_error (List.rev (ind_nparams D)) k = Some e -> exists A, e = ce_ass A.

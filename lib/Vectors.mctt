@@ -4,6 +4,7 @@
    Index bounds on closed numbers compute to [⊤], so [⋆] proves them. *)
 module Vectors where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Plus use (plus)
 import Prelude›Arith›Mult use (mult)
 import Prelude›Arith›Order use (Lt)

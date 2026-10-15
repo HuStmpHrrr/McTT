@@ -26,13 +26,11 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
 Fixpoint exp_scoped (n : nat) (M : exp) : Prop :=
   match M with
-  | a_typ _ | a_level _ | a_llit _ | a_nat | a_zero | a_True | a_true | a_False => True
-  | a_succ M | a_succl M | a_univ M => exp_scoped n M
+  | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False => True
+  | a_succl M | a_univ M => exp_scoped n M
   | a_maxl M N => exp_scoped n M /\ exp_scoped n N
-  | a_natrec A MZ MS M =>
-      exp_scoped (S n) A /\ exp_scoped n MZ /\ exp_scoped (S (S n)) MS /\ exp_scoped n M
   | a_exfalso A M => exp_scoped (S n) A /\ exp_scoped n M
-  | a_ind _ | a_con _ _ | a_nlit _ => True
+  | a_ind _ | a_con _ _ | a_nlit _ | a_ntok => True
   | a_elim nm A Bs M => exp_scoped (nm + n) A /\ all_brs (fun k B => exp_scoped (k + n) B) Bs /\ exp_scoped n M
   | a_pi A B | a_fn A B => exp_scoped n A /\ exp_scoped (S n) B
   | a_app M N => exp_scoped n M /\ exp_scoped n N
@@ -784,16 +782,12 @@ Lemma exp_scoped_sub2 : forall A M N n,
     exp_scoped (S (S n)) A -> exp_scoped n M -> exp_scoped n N -> exp_scoped n A[Id,,M,,N].
 Proof. intros; eapply exp_scoped_sub; [ eassumption |]; intros [|[|x]] ?; cbn; auto; lia. Qed.
 
-Lemma exp_scoped_sub_succ : forall A n,
-    exp_scoped (S n) A -> exp_scoped (S (S n)) A[Wk⨟Wk,,succ #1].
-Proof. intros; eapply exp_scoped_sub; [ eassumption |]; intros [|x] ?; cbn; lia. Qed.
-
 Lemma exp_scoped_sub1_mod : forall A H n,
     exp_scoped (S n) A -> modexp_scoped n H -> exp_scoped n A[Id ,,ₘ H].
 Proof. intros; eapply exp_scoped_sub; [ eassumption |]; intros [|x] ?; cbn; auto; lia. Qed.
 
 #[local]
-Hint Resolve exp_scoped_sub1 exp_scoped_sub2 exp_scoped_sub_succ exp_scoped_shift exp_scoped_sub1_mod : mctt.
+Hint Resolve exp_scoped_sub1 exp_scoped_sub2 exp_scoped_shift exp_scoped_sub1_mod : mctt.
 
 Lemma ctx_lookup_mod_length : forall Γ x U, Γ ∋ #x ⇒ₘ U -> x < length Γ.
 Proof. induction 1; cbn; lia. Qed.
@@ -1447,7 +1441,7 @@ Proof.
     unfold ctx_ok in *; cbn in *; destruct_all;
     rewrite ?length_app, ?ctx_scoped_app_iff in *; destruct_all.
   all: repeat match goal with |- _ /\ _ => split end; try assumption;
-    eauto using exp_scoped_sub1, exp_scoped_sub2, exp_scoped_sub_succ, exp_scoped_shift, mod_closed_nil, exp_scoped_sub1_mod, mod_qname_scoped.
+    eauto using exp_scoped_sub1, exp_scoped_sub2, exp_scoped_shift, mod_closed_nil, exp_scoped_sub1_mod, mod_qname_scoped.
   all: try match goal with
     | |- exp_scoped (length ?Γ + 0) _ => rewrite Nat.add_0_r; assumption
     | H : ?Γ ∋ # ?x : ?A |- ?x < _ => apply ctx_lookup_length in H; assumption

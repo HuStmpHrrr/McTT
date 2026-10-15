@@ -2,6 +2,8 @@
    them, with a head function that is total on non-empty vectors. *)
 module Vector where
 
+import Prelude›Builtin›Nat use (zero; succ)
+
 eval (
     (* Main example *)
     (
@@ -24,10 +26,10 @@ eval (
           λ (A : Type@0) (n : ℕ) (vec : Vec A (succ n)) →
             vecRec A (succ n) vec
               (λ (l : ℕ) →
-                 rec l return r . Type@0 | zero ⇒ ℕ | succ l, r ⇒ A end)
+                 elim l return r . Type@0 | zero ⇒ ℕ | succ l, r ⇒ A end)
               0
               (λ (l : ℕ) (a : A)
-                 (r : rec l return r . Type@0 | zero ⇒ ℕ | succ l, r ⇒ A end) →
+                 (r : elim l return r . Type@0 | zero ⇒ ℕ | succ l, r ⇒ A end) →
                  a)
         )
         (* example vector *)

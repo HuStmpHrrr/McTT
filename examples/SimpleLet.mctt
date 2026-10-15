@@ -1,6 +1,8 @@
 (* The smallest [let]. *)
 module SimpleLet where
 
+import Prelude›Builtin›Nat use (zero; succ)
+
 eval let x : ℕ ≔ zero in succ x end : ℕ
 
 end

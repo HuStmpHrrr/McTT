@@ -3,6 +3,8 @@ import Lib›Arith
 
 module Transitive where
 
+import Prelude›Builtin›Nat
+
 eval Lib›Num.double 1 : ℕ
 
 end

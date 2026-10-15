@@ -2,6 +2,8 @@
    them. *)
 module Pair where
 
+import Prelude›Builtin›Nat use (succ)
+
 eval (
     (* Main example *)
     (

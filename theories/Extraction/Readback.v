@@ -161,14 +161,6 @@ Inductive fread_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :
 | frnf_lvl_neut :
   `( fread_ne_order Θ Ξ s m ->
      fread_nf_order Θ Ξ s ⇓ (Levelᵈ@n) (⇑ a m) )
-| frnf_zero :
-  `( fread_nf_order Θ Ξ s ⇓ ℕᵈ zeroᵈ )
-| frnf_succ :
-  `( fread_nf_order Θ Ξ s ⇓ ℕᵈ m ->
-     fread_nf_order Θ Ξ s ⇓ ℕᵈ (succᵈ m) )
-| frnf_nat_neut :
-  `( fread_ne_order Θ Ξ s m ->
-     fread_nf_order Θ Ξ s ⇓ ℕᵈ (⇑ a m) )
 | frnf_true :
   `( fread_nf_order Θ Ξ s ⇓ ⊤ᵈ m )
 | frnf_False_neut :
@@ -205,26 +197,6 @@ with fread_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
   `( fread_ne_order Θ Ξ s m ->
      fread_nf_order Θ Ξ s n ->
      fread_ne_order Θ Ξ s (m $ᵈ n) )
-| frne_natrec :
-  `( feval_exp_order Θ Ξ B (p ↦ ⇑! ℕᵈ s) ->
-     (forall b,
-         ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ ⇑! ℕᵈ s ↘ b ->
-         fread_typ_order Θ Ξ (S s) b) ->
-     feval_exp_order Θ Ξ B (p ↦ zeroᵈ) ->
-     (forall bz,
-         ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ zeroᵈ ↘ bz ->
-         fread_nf_order Θ Ξ s ⇓ bz mz) ->
-     feval_exp_order Θ Ξ B (p ↦ succᵈ (⇑! ℕᵈ s)) ->
-     (forall b,
-         ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ ⇑! ℕᵈ s ↘ b ->
-         feval_exp_order Θ Ξ MS (p ↦ ⇑! ℕᵈ s ↦ ⇑! b (S s))) ->
-     (forall b bs ms,
-         ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ ⇑! ℕᵈ s ↘ b ->
-         ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ succᵈ (⇑! ℕᵈ s) ↘ bs ->
-         ⟦ MS ⟧ᶠ Θ ⍮ Ξ ⍮ p ↦ ⇑! ℕᵈ s ↦ ⇑! b (S s) ↘ ms ->
-         fread_nf_order Θ Ξ (S (S s)) ⇓ bs ms) ->
-     fread_ne_order Θ Ξ s m ->
-     fread_ne_order Θ Ξ s recᵈ m under p return B | zero -> mz | succ -> MS end )
 | frne_exfalso :
   `( feval_exp_order Θ Ξ B (p ↦ ⇑! ⊥ᵈ s) ->
      (forall b,
@@ -259,8 +231,6 @@ with fread_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
      fread_typ_order Θ Ξ s 𝕌@l )
 | frtyp_level :
   `( fread_typ_order Θ Ξ s (Levelᵈ@n) )
-| frtyp_nat :
-  `( fread_typ_order Θ Ξ s ℕᵈ )
 | frtyp_True :
   `( fread_typ_order Θ Ξ s ⊤ᵈ )
 | frtyp_False :
@@ -421,13 +391,6 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
 | s, ⇓ (Levelᵈ@n) (⇑ a m), ck, H =>
     let (M, HM) := fread_ne_impl_c s m ck _ in
     exist _ (lvⁿ oz (la_cons 0 (dsort a) M la_nil)) _
-| s, ⇓ ℕᵈ zeroᵈ, ck, H => exist _ zeroⁿ _
-| s, ⇓ ℕᵈ (succᵈ m) , ck, H =>
-    let (M, HM) := fread_nf_impl_c s ⇓ ℕᵈ m ck _ in
-    exist _ succⁿ M _
-| s, ⇓ ℕᵈ (⇑ _ m)  , ck, H =>
-    let (M, HM) := fread_ne_impl_c s m ck _ in
-    exist _ ⇑ⁿ M _
 | s, ⇓ ⊤ᵈ m, ck, H => exist _ ⋆ⁿ _
 | s, ⇓ ⊥ᵈ (⇑ _ m), ck, H =>
     let (M, HM) := fread_ne_impl_c s m ck _ in
@@ -460,16 +423,6 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
     let (M, HM) := fread_ne_impl_c s m ck _ in
     let (N, HN) := fread_nf_impl_c s n ck _ in
     exist _ (M $ⁿ N) _
-| s, recᵈ m under p return B | zero -> mz | succ -> MS end, ck, H =>
-    let (b, Hb) := feval_exp_impl Θ Ξ B (p ↦ ⇑! ℕᵈ s) _ in
-    let (B', HB') := fread_typ_impl_c (S s) b ck _ in
-    let (bz, Hbz) := feval_exp_impl Θ Ξ B (p ↦ zeroᵈ) _ in
-    let (MZ, HMZ) := fread_nf_impl_c s ⇓ bz mz ck _ in
-    let (bs, Hbs) := feval_exp_impl Θ Ξ B (p ↦ succᵈ (⇑! ℕᵈ s)) _ in
-    let (ms, Hms) := feval_exp_impl Θ Ξ MS (p ↦ ⇑! ℕᵈ s ↦ ⇑! b (S s)) _ in
-    let (MS', HMS') := fread_nf_impl_c (S (S s)) ⇓ bs ms ck _ in
-    let (M, HM) := fread_ne_impl_c s m ck _ in
-    exist _ recⁿ M return B' | zero -> MZ | succ -> MS' end _
 | s, efqᵈ m under p return B, ck, H =>
     let (b, Hb) := feval_exp_impl Θ Ξ B (p ↦ ⇑! ⊥ᵈ s) _ in
     let (B', HB') := fread_typ_impl_c (S s) b ck _ in
@@ -491,7 +444,6 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
     let (W, HW) := fread_nf_impl_c s ⇓ Levelᵈ l ck _ in
     exist _ (nf_univ_of (lvl_of_nf W)) _
 | s, Levelᵈ@n, ck, H => exist _ (Levelⁿ@n) _
-| s, ℕᵈ, ck, H => exist _ ℕⁿ _
 | s, ⊤ᵈ, ck, H => exist _ ⊤ⁿ _
 | s, ⊥ᵈ, ck, H => exist _ ⊥ⁿ _
 | s, Πᵈ a p B, ck, H =>
@@ -625,21 +577,6 @@ Ltac rb_obl_auto :=
   | |- _ => abstract (first [ rb_ord | rb_run | eapply fread_typ_suniv_of_nf; eassumption | rb_ind ])
   end.
 
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
 Next Obligation. rb_obl_auto. Defined.
 Next Obligation. rb_obl_auto. Defined.
 Next Obligation. rb_obl_auto. Defined.

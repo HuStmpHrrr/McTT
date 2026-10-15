@@ -2,7 +2,7 @@
 
     Every rule carries the premises a presupposition-free formulation
     needs: the [Π]-rules check the domain and the codomain, the
-    [ℕ]-eliminator checks the motive, the congruence rules check the left-hand
+    [⊥]-eliminator checks the motive, the congruence rules check the left-hand
     side.  Once presupposition is available all of those are consequences of the
     remaining premises, and this file restates each rule without them.  The
     primed version is registered as a hint and the rule itself is unregistered,
@@ -104,16 +104,6 @@ Hint Resolve wf_exp_eq_conv' : mctt.
 #[export]
 Remove Hints wf_exp_eq_conv : mctt.
 
-(** The closed small types and the small universes are types of every
-    universe, in either tier: these are the small-tier counterparts of the
-    primed rules below, so that a search is never stuck on the tier.  [wf_nat]
-    and friends are removed from the database for the same reason the large
-    forms replace them: their own level is fixed. *)
-Corollary wf_nat_small : forall Θ Ξ Γ o,
-    ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Type⟨𝕃ᵒ o⟩.
-Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_nat; assumption ]. Qed.
-
 Corollary wf_level_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Level : Type⟨𝕃ᵒ o⟩.
@@ -137,11 +127,6 @@ Proof.
   intros * ? Hlt; destruct o as [a b].
   eapply (lift_exp_uidx _ _ _ _ (us (a, S b)) (us o')); [ cbn; ord | apply wf_univ_lit; assumption ].
 Qed.
-
-Corollary wf_exp_eq_nat_cong_small : forall Θ Ξ Γ o,
-    ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Type⟨𝕃ᵒ o⟩.
-Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_exp_eq_nat_cong; assumption ]. Qed.
 
 Corollary wf_exp_eq_level_cong_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -172,8 +157,6 @@ Qed.
     fix an open level to [0], exactly as the large forms are: an unguarded
     [Hint Resolve] would make every search in the database try to solve an
     arithmetic side condition. *)
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ : Type⟨𝕃ᵒ ?n⟩) =>
-  fix_open_level n; (apply wf_nat_small; assumption) : mctt.
 #[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level : Type⟨𝕃ᵒ ?n⟩) =>
   fix_open_level n; (apply wf_level_small; assumption) : mctt.
 #[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level ≈ Level : Type⟨𝕃ᵒ ?n⟩) =>
@@ -182,8 +165,6 @@ Qed.
   fix_open_level n; (apply wf_True_small; assumption) : mctt.
 #[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ : Type⟨𝕃ᵒ ?n⟩) =>
   fix_open_level n; (apply wf_False_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ ≈ ℕ : Type⟨𝕃ᵒ ?n⟩) =>
-  fix_open_level n; (apply wf_exp_eq_nat_cong_small; assumption) : mctt.
 #[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ ≈ ⊤ : Type⟨𝕃ᵒ ?n⟩) =>
   fix_open_level n; (apply wf_exp_eq_True_cong_small; assumption) : mctt.
 #[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ ≈ ⊥ : Type⟨𝕃ᵒ ?n⟩) =>
@@ -193,32 +174,7 @@ Qed.
 #[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type⟨𝕃ᵒ _⟩ ≈ Type⟨𝕃ᵒ _⟩ : Type⟨𝕃ᵒ ?m⟩) =>
   fix_open_level m; (apply wf_exp_eq_univ_cong_small; [ assumption | ord ]) : mctt.
 
-(** [ℕ] is a type at every level, not only at [0]. *)
-Corollary wf_nat' : forall Θ Ξ Γ i,
-    ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Typeω@i.
-Proof.
-  intros; eapply lift_exp_ge; [ | mauto 2 ]; lia.
-Qed.
-
-#[export]
-Hint Resolve wf_nat' : mctt.
-#[export]
-Remove Hints wf_nat : mctt.
-
-Corollary wf_exp_eq_nat_cong' : forall Θ Ξ Γ i,
-    ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Typeω@i.
-Proof.
-  intros; eapply lift_exp_eq_ge; [ | mauto 2 ]; lia.
-Qed.
-
-#[export]
-Hint Resolve wf_exp_eq_nat_cong' : mctt.
-#[export]
-Remove Hints wf_exp_eq_nat_cong : mctt.
-
-(** So are [⊤] and [⊥]. *)
+(** [⊤] and [⊥] are types at every level, not only at [0]. *)
 Corollary wf_True' : forall Θ Ξ Γ i,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Typeω@i.
@@ -267,22 +223,6 @@ Hint Resolve wf_exp_eq_False_cong' : mctt.
 #[export]
 Remove Hints wf_exp_eq_False_cong : mctt.
 
-(** The motive of the [ℕ]-eliminator is a type because the step case is checked
-    in a context that ends with it. *)
-Corollary wf_natrec' : forall Θ Ξ Γ A MZ MS M,
-    Θ ⍮ Ξ ⍮ Γ ⊢ MZ : A[Id,,zero] ->
-    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : ℕ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ rec M return A | zero -> MZ | succ -> MS end : A[Id,,M].
-Proof.
-  impl_opt_constructor.
-Qed.
-
-#[export]
-Hint Resolve wf_natrec' : mctt.
-#[export]
-Remove Hints wf_natrec : mctt.
-
 Corollary wf_fn' : forall Θ Ξ Γ A B M,
     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M : B ->
     Θ ⍮ Ξ ⍮ Γ ⊢ λ A M : Π A B.
@@ -314,22 +254,6 @@ Hint Resolve wf_app' : mctt.
 #[export]
 Remove Hints wf_app : mctt.
 
-Corollary wf_exp_eq_natrec_cong' : forall Θ Ξ Γ A A' i MZ MZ' MS MS' M M',
-    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A ≈ A' : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ MZ ≈ MZ' : A[Id,,zero] ->
-    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS ≈ MS' : A[Wk ⨟ Wk,,succ #1] ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ℕ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ rec M return A | zero -> MZ | succ -> MS end
-         ≈ rec M' return A' | zero -> MZ' | succ -> MS' end : A[Id,,M].
-Proof.
-  impl_opt_constructor.
-Qed.
-
-#[export]
-Hint Resolve wf_exp_eq_natrec_cong' : mctt.
-#[export]
-Remove Hints wf_exp_eq_natrec_cong : mctt.
-
 Corollary wf_exp_eq_exfalso_cong' : forall Θ Ξ Γ A A' i M M',
     Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ⊥ ->
@@ -342,34 +266,6 @@ Qed.
 Hint Resolve wf_exp_eq_exfalso_cong' : mctt.
 #[export]
 Remove Hints wf_exp_eq_exfalso_cong : mctt.
-
-Corollary wf_exp_eq_nat_beta_zero' : forall Θ Ξ Γ A MZ MS,
-    Θ ⍮ Ξ ⍮ Γ ⊢ MZ : A[Id,,zero] ->
-    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ rec zero return A | zero -> MZ | succ -> MS end ≈ MZ : A[Id,,zero].
-Proof.
-  impl_opt_constructor.
-Qed.
-
-#[export]
-Hint Resolve wf_exp_eq_nat_beta_zero' : mctt.
-#[export]
-Remove Hints wf_exp_eq_nat_beta_zero : mctt.
-
-Corollary wf_exp_eq_nat_beta_succ' : forall Θ Ξ Γ A MZ MS M,
-    Θ ⍮ Ξ ⍮ Γ ⊢ MZ : A[Id,,zero] ->
-    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : ℕ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ rec succ M return A | zero -> MZ | succ -> MS end
-         ≈ MS[Id,,M,,rec M return A | zero -> MZ | succ -> MS end] : A[Id,,succ M].
-Proof.
-  impl_opt_constructor.
-Qed.
-
-#[export]
-Hint Resolve wf_exp_eq_nat_beta_succ' : mctt.
-#[export]
-Remove Hints wf_exp_eq_nat_beta_succ : mctt.
 
 Corollary wf_exp_eq_pi_cong' : forall Θ Ξ Γ A A' B B' i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->

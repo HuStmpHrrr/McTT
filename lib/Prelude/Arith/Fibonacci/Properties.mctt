@@ -2,6 +2,7 @@
    positivity, monotonicity, the sum identity and the addition formula. *)
 module Prelude›Arith›Fibonacci›Properties where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; sym; trans; cong; transport)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
@@ -26,9 +27,9 @@ lemma recurrence : ∀ (n : ℕ) (a : ℕ) (b : ℕ) →
     Eq (fibFrom (succ (succ n)) a b)
        (plus (fibFrom (succ n) a b) (fibFrom n a b)) ≔
   λ (n : ℕ) →
-    rec n return x . (∀ (a : ℕ) (b : ℕ) →
-                        Eq (fibFrom (succ (succ x)) a b)
-                           (plus (fibFrom (succ x) a b) (fibFrom x a b)))
+    elim n return x . (∀ (a : ℕ) (b : ℕ) →
+                         Eq (fibFrom (succ (succ x)) a b)
+                            (plus (fibFrom (succ x) a b) (fibFrom x a b)))
     | zero ⇒ λ (a : ℕ) (b : ℕ) → plusComm a b
     | succ p, ih ⇒ λ (a : ℕ) (b : ℕ) → ih b (plus a b)
     end
@@ -39,8 +40,8 @@ end
 lemma positive : ∀ (n : ℕ) (a : ℕ) (b : ℕ) (h : Lt 0 b) →
     Lt 0 (fibFrom (succ n) a b) ≔
   λ (n : ℕ) →
-    rec n return x . (∀ (a : ℕ) (b : ℕ) (h : Lt 0 b) →
-                        Lt 0 (fibFrom (succ x) a b))
+    elim n return x . (∀ (a : ℕ) (b : ℕ) (h : Lt 0 b) →
+                         Lt 0 (fibFrom (succ x) a b))
     | zero ⇒ λ (a : ℕ) (b : ℕ) (h : Lt 0 b) → h
     | succ p, ih ⇒ λ (a : ℕ) (b : ℕ) (h : Lt 0 b) →
         ih b (plus a b) (leTrans 1 b (plus a b) h (lePlusLeft a b))
@@ -77,7 +78,7 @@ end
 (* The Fibonacci numbers do not decrease. *)
 theorem fibMono : ∀ (n : ℕ) → Le (fib n) (fib (succ n)) ≔
   λ (n : ℕ) →
-    rec n return x . Le (fib x) (fib (succ x))
+    elim n return x . Le (fib x) (fib (succ x))
     | zero ⇒ ⋆
     | succ p, ih ⇒
         transport (λ (y : ℕ) → Le (fib (succ p)) y)
@@ -90,7 +91,7 @@ end
 (* Monotonicity over any distance [k]. *)
 theorem fibMonoPlus : ∀ (k : ℕ) (m : ℕ) → Le (fib m) (fib (plus k m)) ≔
   λ (k : ℕ) (m : ℕ) →
-    rec k return x . Le (fib m) (fib (plus x m))
+    elim k return x . Le (fib m) (fib (plus x m))
     | zero ⇒ leRefl (fib m)
     | succ p, ih ⇒
         leTrans (fib m) (fib (plus p m)) (fib (succ (plus p m))) ih
@@ -106,7 +107,7 @@ module Identities where
 (* The Fibonacci numbers below [n] sum to [fib (succ n)] minus one. *)
 theorem fibSum : ∀ (n : ℕ) → Eq (plus (sumTo fib n) 1) (fib (succ n)) ≔
   λ (n : ℕ) →
-    rec n return x . Eq (plus (sumTo fib x) 1) (fib (succ x))
+    elim n return x . Eq (plus (sumTo fib x) 1) (fib (succ x))
     | zero ⇒ ⋆
     | succ p, ih ⇒
         let f ≔ fib p;
@@ -135,10 +136,10 @@ theorem fibPlus : ∀ (m : ℕ) (n : ℕ) →
     Eq (fib (succ (plus m n)))
        (plus (mult (fib (succ m)) (fib (succ n))) (mult (fib m) (fib n))) ≔
   λ (m : ℕ) →
-    rec m return x . (∀ (n : ℕ) →
-                        Eq (fib (succ (plus x n)))
-                           (plus (mult (fib (succ x)) (fib (succ n)))
-                              (mult (fib x) (fib n))))
+    elim m return x . (∀ (n : ℕ) →
+                         Eq (fib (succ (plus x n)))
+                            (plus (mult (fib (succ x)) (fib (succ n)))
+                               (mult (fib x) (fib n))))
     | zero ⇒ λ (n : ℕ) →
         (* The right-hand side computes to [plus (plus (fib (succ n)) 0) 0]. *)
         let g ≔ fib (succ n)

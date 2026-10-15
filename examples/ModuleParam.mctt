@@ -1,6 +1,8 @@
 (* A parameterized module, instantiated by a local alias. *)
 module ModuleParam where
 
+import Prelude›Builtin›Nat use (succ)
+
 module Church (A : Type@0) where
 
 def t : Type@0 ≔ ∀ (z : A) (s : ∀ (x : A) → A) → A end

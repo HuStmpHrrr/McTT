@@ -21,13 +21,114 @@ From Mctt.Core.Syntactic Require Import Substitution Members Inductives.
 From Mctt.Core.Syntactic.System Require Import Definitions Scoping IndSyntax GlobalPresup IndTyping MemberLemmas.
 From Mctt.Core.Completeness Require Import
   LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases UnitCases InstanceCases GlobalSem MemberReps
-  VariableCases FunctionCases LevelCases IndSem TeleSem IndCases NatCases SubtypingCases.
+  VariableCases FunctionCases LevelCases IndSem TeleSem IndCases SubtypingCases.
 From Mctt.Core.Semantic Require Import Realizability IndPER IndElim Evaluation.Modules.
-Import Domain_Notations Fixed_Notations.
+Import Domain_Notations Fixed_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
+
+(** ** The Head Variable as a Term
+
+    [B[wk_q ↑]ʷ[Id ,, #0]] is [B] up to the sort of the entry at index [0]:
+    [Id ,, #0] substitutes the term [#0] where [Id] has the variable [0].  On a
+    context whose head is a term the two denote the same, because the
+    environment relation reads only the head's term value and the tail. *)
+
+Definition sb_head_term (σ : sub) : sub := sb_extend (Wk ⨟ σ) (se_exp (sentry_exp (σ 0))).
+
+Definition env_head_term (ρ : env) : env := de_term (ρ 0) :: ρ↯.
+
+Lemma exp_sub_wk_q_var0 : forall B σ, B[wk_q ↑]ʷ[Id ,, #0][σ] = B[sb_head_term σ].
+Proof.
+  intros; rewrite exp_sub_sub, <- exp_sub_of_wk, exp_sub_sub.
+  apply exp_sub_sb_eq; intros [| x]; reflexivity.
+Qed.
+
+Lemma exp_wk_q_var0 : forall B, B[wk_q ↑]ʷ[Id ,, #0] = B[sb_head_term Id].
+Proof. intros; rewrite <- exp_sub_wk_q_var0, exp_sub_id; reflexivity. Qed.
+
+Lemma sb_wk_head_term : forall σ φ, sb_eq (sb_wk (sb_head_term σ) φ) (sb_head_term (sb_wk σ φ)).
+Proof.
+  intros σ φ [| x]; cbn; [ rewrite sentry_exp_wk; reflexivity | reflexivity ].
+Qed.
+
+Lemma eval_sub_head_term : forall σ ρ ρσ,
+    ⟦ σ ⟧s ρ ↘ ρσ -> ⟦ sb_head_term σ ⟧s ρ ↘ env_head_term ρσ.
+Proof.
+  intros * H [| x]; [| exact (H (S x)) ].
+  exists (ρσ 0); split; [ reflexivity | apply (eval_sub_var σ ρ ρσ 0 H) ].
+Qed.
+
+(** An environment relation of a context with a term at its head reads only the
+    head's value and the tail. *)
+Lemma per_ctx_env_head_term : forall {Γ A Γ' A' R},
+    EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', R ρ ρ' <-> R (env_head_term ρ) (env_head_term ρ').
+Proof.
+  intros * H; inversion H; subst.
+  intros ρ ρ'; apply_relation_equivalence; reflexivity.
+Qed.
+
+Lemma per_ctx_env_head_term_l : forall {Γ A Γ' A' R},
+    EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', R ρ ρ' -> R (env_head_term ρ) ρ'.
+Proof.
+  intros * H ρ ρ' Hρ; apply (per_ctx_env_head_term H); exact (proj1 (per_ctx_env_head_term H ρ ρ') Hρ).
+Qed.
+
+Lemma per_ctx_env_head_term_r : forall {Γ A Γ' A' R},
+    EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', R ρ ρ' -> R ρ (env_head_term ρ').
+Proof.
+  intros * H ρ ρ' Hρ; apply (per_ctx_env_head_term H); exact (proj1 (per_ctx_env_head_term H ρ ρ') Hρ).
+Qed.
+
+Lemma rel_chain_head_term4 : forall {Γ A R a b c d},
+    EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ R ->
+    rel_chain R (a :: b :: c :: d :: nil) ->
+    rel_chain R (env_head_term a :: env_head_term b :: c :: d :: nil).
+Proof.
+  intros * HΓ (Hab & Hbc & Hcd).
+  repeat split; [ | | exact Hcd ].
+  - apply (per_ctx_env_head_term_l HΓ), (per_ctx_env_head_term_r HΓ), Hab.
+  - apply (per_ctx_env_head_term_l HΓ), Hbc.
+Qed.
+
+Lemma rel_sub_under_ctx_head_term : forall {Γ' Γ A σ σ'},
+    Γ' ⊨s σ ≈ σ' : Γ ▹ A ->
+    Γ' ⊨s sb_head_term σ ≈ σ' : Γ ▹ A.
+Proof.
+  intros * [env_rel [HΓ' [env_relo [HΓA Hσ]]]].
+  exists env_rel, HΓ', env_relo, HΓA.
+  intros Γ'' env_rel' HΓ'' φ Hφ ρ ρ' Hρ.
+  destruct (Hσ _ _ HΓ'' _ Hφ _ _ Hρ) as [a b c d Ha Hb Hc Hd Hchain].
+  apply (mk_rel_sub (env_head_term a) (env_head_term b) c d);
+    [ rewrite sb_wk_head_term; apply eval_sub_head_term; exact Ha
+    | apply eval_sub_head_term; exact Hb | exact Hc | exact Hd |].
+  exact (rel_chain_head_term4 HΓA Hchain).
+Qed.
+
+Lemma rel_exp_typ_var0 : forall {Γ A B} {i : nat},
+    Γ ▹ A ⊨ B ≈ B : Typeω@i ->
+    Γ ▹ A ⊨ B[wk_q ↑]ʷ[Id ,, #0] ≈ B : Typeω@i.
+Proof.
+  intros * HB.
+  pose proof (rel_exp_of_typ_inversion HB) as [env_rel [HΓA HBgen]].
+  apply rel_exp_of_typ; exists env_rel, HΓA.
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  destruct (HBgen _ _ HΓ' _ _ (rel_sub_under_ctx_head_term Hσ) _ _ _ _ Hρ
+              (eval_sub_head_term _ _ _ Hev) Hev') as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hc].
+  assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_rel) by (eapply rel_sub_under_ctx_at'; eassumption).
+  assert (Hρσ' : Dom ρσ ≈ ρσ ∈ env_rel) by solve_per.
+  destruct (HBgen _ _ HΓA _ _ (rel_sub_under_ctx_head_term (rel_sub_id (ex_intro _ _ HΓA))) _ _ _ _ Hρσ'
+              (eval_sub_head_term _ _ _ (eval_sub_id ρσ)) (eval_sub_id ρσ)) as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hd].
+  apply (mk_rel_exp c1 d1 c3 c4);
+    [ rewrite exp_sub_wk_q_var0; exact Hc1 | rewrite exp_wk_q_var0; exact Hd1 | exact Hc3 | exact Hc4 |].
+  functional_eval_rewrite_clear.
+  merge_rel_chain Hc Hd c2.
+Qed.
 
 (** ** Substitutions Weakened *)
 
@@ -125,10 +226,10 @@ Proof.
 Qed.
 
 Lemma eval_var_args : forall B xs k, k < List.length xs ->
-    ⟦ a_var k ⟧ env_args B xs ↘ List.nth (List.length xs - 1 - k) xs d_zero.
+    ⟦ a_var k ⟧ env_args B xs ↘ List.nth (List.length xs - 1 - k) xs d_true.
 Proof.
   intros * Hk.
-  replace (List.nth (List.length xs - 1 - k) xs d_zero) with (env_var (env_args B xs) k); [ constructor |].
+  replace (List.nth (List.length xs - 1 - k) xs d_true) with (env_var (env_args B xs) k); [ constructor |].
   rewrite env_var_nth, env_args_rev, List.app_nth1 by (rewrite List.length_rev, List.length_map; lia).
   rewrite List.rev_nth by (rewrite List.length_map; lia).
   rewrite List.length_map, List.map_nth.
@@ -201,7 +302,7 @@ Lemma cargs_nrec_app : forall gs1 gs2, cargs_nrec (gs1 ++ gs2) = cargs_nrec gs1 
 Proof. induction gs1 as [| [] gs1 IH]; intros; cbn; rewrite ?IH; lia. Qed.
 
 Lemma nth_mid : forall (X fa aft ihp : list domain) v,
-    List.nth (List.length X + List.length fa) (X ++ fa ++ v :: aft ++ ihp) d_zero = v.
+    List.nth (List.length X + List.length fa) (X ++ fa ++ v :: aft ++ ihp) d_true = v.
 Proof.
   intros; rewrite List.app_nth2 by lia; replace (List.length X + List.length fa - List.length X) with (List.length fa) by lia.
   rewrite List.app_nth2 by lia; rewrite Nat.sub_diag; reflexivity.
@@ -343,7 +444,7 @@ Proof.
 Qed.
 
 Lemma env_entry_args_nth : forall B xs k, k < List.length xs ->
-    env_entry (env_args B xs) k = de_term (List.nth (List.length xs - 1 - k) xs d_zero).
+    env_entry (env_args B xs) k = de_term (List.nth (List.length xs - 1 - k) xs d_true).
 Proof.
   intros * Hk.
   rewrite env_entry_nth, env_args_rev, List.app_nth1 by (rewrite List.length_rev, List.length_map; lia).

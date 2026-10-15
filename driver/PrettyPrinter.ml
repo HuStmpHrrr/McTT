@@ -60,9 +60,7 @@ let pp_text_u (f : Format.formatter) (s : string) : unit =
 (* Formatting Cst.obj *)
 (************************************************************)
 let rec get_nat_of_obj : Cst.obj -> int option = function
-  | Cst.Coq_zero -> Some 0
   | Cst.Coq_num n -> Some n
-  | Cst.Coq_succ e -> Option.map (( + ) 1) (get_nat_of_obj e)
   | _ -> None
 
 let rec get_fn_params_of_obj : Cst.obj -> (string * Cst.obj) list * Cst.obj =
@@ -157,25 +155,7 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
      pp_print_paren_if (p >= 2) impl f ();
      pp_close_box f ()
   | Cst.Coq_nat -> pp_sym f s_nat
-  | Cst.Coq_zero -> fprintf f "0"
   | Cst.Coq_num n -> fprintf f "%d" n
-  | Cst.Coq_succ e -> begin
-     match get_nat_of_obj e with
-     | Some n -> fprintf f "%d" (1 + n)
-     | None ->
-        let impl f () = fprintf f "succ@ %a" (format_obj_prec 2) e in
-        pp_open_hovbox f 2;
-        pp_print_paren_if (p >= 2) impl f ();
-        pp_close_box f ()
-   end
-  | Cst.Coq_natrec (escr, mx, em, ez, sx, sr, es) ->
-     let impl f () =
-       fprintf f
-         "@[<hv 0>@[<hov 2>rec %a@ return %s . %a@]@ @[<hov 2>| zero @<1>%s@ \
-          %a@]@ @[<hov 2>| succ %s, %s @<1>%s@ %a@]@ end@]"
-         format_obj escr mx format_obj em s_darrow format_obj ez sx sr s_darrow format_obj es
-     in
-     pp_print_paren_if (p >= 1) impl f ()
   | Cst.Coq_elim (escr, xs, em, bs) ->
      let impl f () =
        fprintf f "@[<hv 0>@[<hov 2>elim %a@ return %s .@ %a@]" format_obj escr
@@ -350,19 +330,75 @@ let format_prog (f : Format.formatter) ((is, ((path, params), cs)) : Cst.prog) :
    member chain alone, the way it was written. *)
 let current_unit : string list ref = ref []
 
-(* The natural numbers bound where the terms printed are ([builtin
-   natural]): the type and its two constructors.  A chain of those
-   constructors prints as the numeral it stands for. *)
+(* The builtin bindings the run ended with ([builtin natural]). *)
+let current_bt : McttExtracted.Builtin.builtins ref = ref McttExtracted.Builtin.bt_empty
+
+(* The natural numbers bound where the terms printed are, as the bindings
+   see them in the state of the eval printed: the type and its two
+   constructors.  A chain of those constructors prints as the numeral it
+   stands for, the type as [ℕ], and a constructor by its own name. *)
 let nat_bind : (qname * string * string) option ref = ref None
 
+let set_nat_bind (deps : gdeps) (xi : gstack) : unit =
+  nat_bind :=
+    (match McttExtracted.Builtin.nat_view deps xi !current_bt with
+     | Some ((p, z), s) -> Some (p, z, s)
+     | None -> None)
+
+let is_bound_nat (p : qname) : bool =
+  match !nat_bind with Some (q, _, _) -> p = q | None -> false
+
+(* The state the printed terms live in, where it is known: that of the eval
+   printed. *)
+let current_state : (gdeps * gstack) ref = ref ([], [])
+
+(* A path naming the bound type: the type, or an inductive alias of it
+   without arguments, as an [import … use (Nat)] declares one. *)
+let names_bound_nat (q : qname) : bool =
+  is_bound_nat q ||
+  (let deps, xi = !current_state in
+   match McttExtracted.Members.ind_target deps xi q with
+   | Some ((_, p), []) -> is_bound_nat p
+   | _ -> false)
+
+(* A constructor, written as such, as a member of its type's module from a
+   unit, or as a definition of it there, as an [open] declares one. *)
+let con_of : exp -> (qname * string) option =
+  let rec chain = function
+    | Coq_me_unit fp -> Some (fp, [])
+    | Coq_me_mem (h, y) -> Option.map (fun (fp, ms) -> (fp, ms @ [ y ])) (chain h)
+    | _ -> None
+  in
+  let rec go k = function
+    | Coq_a_con (p, c) -> Some (p, c)
+    | Coq_a_mem (h, c) ->
+       (match chain h with
+        | None -> None
+        | Some (fp, ms) ->
+           let deps, xi = !current_state in
+           (match McttExtracted.Members.gc_resolve deps xi { q_unit = fp; q_chain = ms @ [ c ] } with
+            (* A definition naming a constructor, as an [open] declares one,
+               not one whose body is a value. *)
+            | Some (Coq_ge_def (_, _, _, Some (Coq_a_mem (_, c') as body))) when k > 0 && c' = c -> go (k - 1) body
+            (* The member of an inductive type's module that is its
+               constructor. *)
+            | Some (Coq_ge_def (_, _, _, Some (Coq_a_con (p, c'))))
+              when c' = c && p.q_unit = fp && p.q_chain = ms -> Some (p, c)
+            | Some (Coq_ge_def _) -> None
+            | _ -> Some ({ q_unit = fp; q_chain = ms }, c)))
+    | _ -> None
+  in
+  go 8
+
 let rec nat_of_chain : exp -> int option = function
-  | Coq_a_con (p, c) ->
-     (match !nat_bind with Some (q, z, _) when p = q && c = z -> Some 0 | _ -> None)
-  | Coq_a_app (Coq_a_con (p, c), e) ->
-     (match !nat_bind with
-      | Some (q, _, s) when p = q && c = s -> Option.map (( + ) 1) (nat_of_chain e)
+  | Coq_a_app (f, e) ->
+     (match con_of f, !nat_bind with
+      | Some (p, c), Some (q, _, s) when p = q && c = s -> Option.map (( + ) 1) (nat_of_chain e)
       | _ -> None)
-  | _ -> None
+  | e ->
+     (match con_of e, !nat_bind with
+      | Some (p, c), Some (q, z, _) when p = q && c = z -> Some 0
+      | _ -> None)
 
 (* The declarations of the inductive types the printed terms see, where
    they are known: those of the state of the eval or the error printed. *)
@@ -405,6 +441,20 @@ let mark_ihs_at (d : (exp, centry) ind_decl_g) (c : string) (ys : string list) :
      if k = 0 || n <> McttExtracted.Syntax.ind_nn d + List.length gs + k then ys
      else List.filteri (fun i _ -> i < n - k) ys @ ("," :: List.filteri (fun i _ -> i >= n - k) ys)
 
+(* The number of induction hypotheses a branch of [n] binders for [c] binds,
+   where every declaration the branches can be for agrees on it. *)
+let ihs_count (ds : (exp, centry) ind_decl_g list) (c : string) (n : int) : int =
+  let at d =
+    match McttExtracted.Inductives.ind_con d c with
+    | None -> 0
+    | Some gs ->
+       let k = McttExtracted.Inductives.cargs_nrec gs in
+       if n <> McttExtracted.Syntax.ind_nn d + List.length gs + k then 0 else k
+  in
+  match List.sort_uniq compare (List.map at ds) with
+  | [ k ] -> k
+  | _ -> 0
+
 (* The names marked so where every declaration the branches can be for
    marks them the same way, and as they are otherwise. *)
 let mark_ihs (ds : (exp, centry) ind_decl_g list) (c : string) (ys : string list) : string list =
@@ -435,25 +485,14 @@ let exp_to_obj =
       fun () -> suffix := 0 )
   in
   let rec impl (ctx : string list) : exp -> Cst.obj = function
-    | (Coq_a_con _ | Coq_a_app (Coq_a_con _, _)) as e when nat_of_chain e <> None ->
+    | (Coq_a_con _ | Coq_a_mem _ | Coq_a_app (Coq_a_con _, _) | Coq_a_app (Coq_a_mem _, _)) as e when nat_of_chain e <> None ->
        Cst.Coq_num (Option.get (nat_of_chain e))
     | Coq_a_nlit n -> Cst.Coq_num n
-    | Coq_a_zero -> Cst.Coq_zero
-    | Coq_a_succ e -> Cst.Coq_succ (impl ctx e)
-    | Coq_a_natrec (em, ez, es, escr) ->
-       let mx = new_var () in
-       let sx = new_var () in
-       let sr = match em with Coq_a_typ _ | Coq_a_univ _ -> new_tyvar () | _ -> new_var () in
-       let escr' = impl ctx escr in
-       let em' = impl (mx :: ctx) em in
-       let ez' = impl ctx ez in
-       let es' = impl (sr :: sx :: ctx) es in
-       Cst.Coq_natrec (escr', mx, em', ez', sx, sr, es')
+    | Coq_a_ntok -> Cst.Coq_nat
     | Coq_a_level n -> Cst.Coq_level n
     | Coq_a_llit o -> Cst.Coq_llit o
     | Coq_a_succl e -> Cst.Coq_succl (impl ctx e)
     | Coq_a_maxl (e1, e2) -> Cst.Coq_maxl (impl ctx e1, impl ctx e2)
-    | Coq_a_nat -> Cst.Coq_nat
     | Coq_a_True -> Cst.Coq_true_ty
     | Coq_a_true -> Cst.Coq_true_tm
     | Coq_a_False -> Cst.Coq_false_ty
@@ -492,10 +531,22 @@ let exp_to_obj =
        let params, md = impl_unit ctx u in
        let ebody' = impl (px :: ctx) ebody in
        Cst.Coq_letb (Cst.Coq_d_mod (px, params, md), ebody')
+    (* A member naming the bound type, directly or by an inductive alias
+       without arguments, or one of its constructors, prints as they do. *)
+    | Coq_a_mem (h, x) when (match chain_of h with
+                             | Some (fp, ms) -> names_bound_nat { q_unit = fp; q_chain = ms @ [ x ] }
+                             | None -> false) -> Cst.Coq_nat
+    | Coq_a_mem (h, x) when (match chain_of h with
+                             | Some (fp, ms) -> is_bound_nat { q_unit = fp; q_chain = ms }
+                             | None -> false) -> Cst.Coq_var x
     | Coq_a_mem (h, x) ->
        (match chain_of h with
         | Some (fp, ms) -> path_to_obj fp (ms @ [x])
         | None -> Cst.Coq_proj (impl_mod ctx h, x))
+    (* The type bound as the natural numbers is [ℕ], and its constructors
+       are named by their own names. *)
+    | Coq_a_ind p when is_bound_nat p -> Cst.Coq_nat
+    | Coq_a_con (p, c) when is_bound_nat p -> Cst.Coq_var c
     (* An inductive type is named by its path, which is its module's; a
        constructor is a member of that module. *)
     | Coq_a_ind p -> path_to_obj p.q_unit p.q_chain
@@ -507,14 +558,20 @@ let exp_to_obj =
        let xs = fresh nm in
        let escr' = impl ctx escr in
        let em' = impl (List.rev xs @ ctx) em in
+       let ds = elim_decls (List.map (fun ((c, _), _) -> c) bs) in
+       (* The induction hypotheses are of the motive's sort: named as types
+          when the motive is a type, as other binders of a universe are. *)
+       let is_univ = match em with Coq_a_typ _ | Coq_a_univ _ -> true | _ -> false in
        let bs' =
          List.map
            (fun ((c, n), eb) ->
-             let ys = fresh n in
+             let k = if is_univ then ihs_count ds c n else 0 in
+             let ys = fresh (n - k) in
+             let hs = List.init k (fun _ -> new_tyvar ()) in
+             let ys = ys @ hs in
              ((c, ys), impl (List.rev ys @ ctx) eb))
            bs
        in
-       let ds = elim_decls (List.map (fun ((c, _), _) -> c) bs) in
        Cst.Coq_elim (escr', xs, em', List.map (fun ((c, ys), eb) -> ((c, mark_ihs ds c ys), eb)) bs')
   (* A chain of selections from a unit, as the unit and the chain. *)
   and chain_of : modexp -> (string list * string list) option = function
@@ -636,20 +693,28 @@ let format_nf f nf = format_exp f (nf_to_exp nf)
 
 let format_eval (f : Format.formatter) (r : Command1.eval_entry) : unit =
   set_ind_decls r.ev_deps r.ev_stack;
-  nat_bind :=
-    (match McttExtracted.Builtin.nat_binding r.ev_deps r.ev_stack with
-     | McttExtracted.Builtin.Coq_nb_one (p, z, s) -> Some (p, z, s)
-     | _ -> None);
+  set_nat_bind r.ev_deps r.ev_stack;
+  current_state := (r.ev_deps, r.ev_stack);
   Format.fprintf f "@[<hov 2>Evaluate %a@ --> %a@ : %a@]" format_exp r.ev_exp
     format_nf r.ev_nf format_exp r.ev_typ
 
 let rec format_run_error (f : Format.formatter) (e : Command1.run_error) : unit =
+  match e with
+  (* The natural numbers bound where the error occurred: the innermost
+     state's. *)
+  | Coq_re_nat (deps, xi, nv, e') ->
+     nat_bind := Option.map (fun ((p, z), s) -> (p, z, s)) nv;
+     current_state := (deps, xi);
+     set_ind_decls deps xi;
+     format_run_error f e'
+  | _ ->
   (* The stack of the failing command, where the error has it; the units
      it imports are not at hand. *)
   (match e with
    | Coq_re_def (_, xi, _, _) | Coq_re_def_typ (_, xi, _) | Coq_re_eval_typ (xi, _, _)
    | Coq_re_eval_check (xi, _, _) | Coq_re_eval_infer (xi, _) | Coq_re_level (xi, _, _) ->
-      set_ind_decls [] xi
+      set_ind_decls (fst !current_state) xi;
+      current_state := (fst !current_state, xi)
    | _ -> ());
   format_run_error_in f e
 
@@ -717,25 +782,30 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
           | Some (fp, ch) -> fprintf f "@[<hov 2>Error: %a is not a member@]" pp_u (string_of_qpath fp (ch @ [n]))
           | None -> fprintf f "@[<hov 2>Error:@ %a@ is not a member@]" format_exp (Coq_a_mem (h, n)))
       | Coq_xe_both n -> fprintf f "@[<hov 2>Error: %s is used and exported@]" n
-      | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n
-      | Coq_xe_nat n ->
-         fprintf f "@[<hov 2>Error: the numeral %d has no meaning here: the visible bindings of the natural numbers disagree@]" n)
+      | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n)
+  | Coq_re_lit (McttExtracted.Builtin.Coq_le_num n) ->
+     fprintf f "@[<hov 2>Error: unknown numeral %d: no natural-number type is bound@]" n
+  | Coq_re_lit McttExtracted.Builtin.Coq_le_tok ->
+     fprintf f "@[<hov 2>Error: unknown type %a: no natural-number type is bound@]" pp_sym s_nat
+  | Coq_re_nat (_, _, _, e') -> format_run_error_in f e'
 
 (* What [format_main_result] prints for each entry of a successful run's
    log, one string per eval, in order: each entry starts a line of its own,
    at column 0 and with the default margin, so formatting it alone gives
    the same text. *)
 let eval_outputs : main_result -> string list option = function
-  | AllGood ((_, ((path, _), _)), _, _, log) ->
+  | AllGood ((_, ((path, _), _)), bt, _, _, log) ->
      current_unit := path;
+     current_bt := bt;
      Some (List.map (Format.asprintf "%a" format_eval) log)
   | _ -> None
 
 let format_main_result (f : Format.formatter) : main_result -> unit =
   let open Format in
   function
-  | AllGood ((_, ((path, _), _)), _, _, log) ->
+  | AllGood ((_, ((path, _), _)), bt, _, _, log) ->
      current_unit := path;
+     current_bt := bt;
      pp_open_vbox f 0;
      List.iteri
        (fun i r ->
@@ -745,6 +815,8 @@ let format_main_result (f : Format.formatter) : main_result -> unit =
      pp_close_box f ()
   | RunFailure ((_, ((path, _), _)), e) ->
      current_unit := path;
+     current_state := ([], []);
+     nat_bind := None;
      format_run_error f e
   | ElaborationFailure (_, msg) -> fprintf f "@[<hov 2>Error: %s@]" msg
   (* [ω^2] is accepted only in a large universe, [Type@{ω^2+i}]: anywhere

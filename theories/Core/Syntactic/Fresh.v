@@ -40,14 +40,12 @@ Definition unwk (k : nat) : wk := wk_qn k pred.
     module body by its binders, exactly as the weakenings do. *)
 Fixpoint exp_fresh (k : nat) (M : exp) {struct M} : Prop :=
   match M with
-  | a_typ _ | a_level _ | a_llit _ | a_nat | a_zero
+  | a_typ _ | a_level _ | a_llit _
   | a_True | a_true | a_False => True
-  | a_univ M | a_succl M | a_succ M => exp_fresh k M
+  | a_univ M | a_succl M => exp_fresh k M
   | a_maxl M N | a_app M N => exp_fresh k M /\ exp_fresh k N
-  | a_natrec A MZ MS M =>
-      exp_fresh (S k) A /\ exp_fresh k MZ /\ exp_fresh (S (S k)) MS /\ exp_fresh k M
   | a_exfalso A M => exp_fresh (S k) A /\ exp_fresh k M
-  | a_ind _ | a_con _ _ | a_nlit _ => True
+  | a_ind _ | a_con _ _ | a_nlit _ | a_ntok => True
   | a_elim nm A Bs M =>
       exp_fresh (nm + k) A /\
       (fix brs_fresh (Bs : list (String.string * nat * exp)) : Prop :=
@@ -288,17 +286,14 @@ Proof. induction Ms; intros * HM HF; inversion HF; subst; cbn; [ assumption | ap
 
 Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
   match W with
-  | nf_typ _ | nf_level _ | nf_nat | nf_zero | nf_True | nf_true | nf_False => True
+  | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => True
   | nf_univ _ xs | nf_lvl _ xs => la_fresh k xs
-  | nf_succ W => nf_fresh k W
   | nf_pi A B | nf_fn A B => nf_fresh k A /\ nf_fresh (S k) B
   | nf_indty _ Ms | nf_con _ _ Ms => nfs_fresh k Ms
   | nf_neut u => ne_fresh k u
   end
 with ne_fresh (k : nat) (u : ne) {struct u} : Prop :=
   match u with
-  | ne_natrec A MZ MS u =>
-      nf_fresh (S k) A /\ nf_fresh k MZ /\ nf_fresh (S (S k)) MS /\ ne_fresh k u
   | ne_exfalso A u => nf_fresh (S k) A /\ ne_fresh k u
   | ne_elim nm A Bs u => nf_fresh (nm + k) A /\ nbrs_fresh k Bs /\ ne_fresh k u
   | ne_app u W => ne_fresh k u /\ nf_fresh k W
@@ -327,9 +322,6 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
   | nf_univ c xs => nf_univ c (la_unwk k xs)
   | nf_level n => nf_level n
   | nf_lvl c xs => nf_lvl c (la_unwk k xs)
-  | nf_nat => nf_nat
-  | nf_zero => nf_zero
-  | nf_succ W => nf_succ (nf_unwk k W)
   | nf_True => nf_True
   | nf_true => nf_true
   | nf_False => nf_False
@@ -341,8 +333,6 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
   end
 with ne_unwk (k : nat) (u : ne) {struct u} : ne :=
   match u with
-  | ne_natrec A MZ MS u =>
-      ne_natrec (nf_unwk (S k) A) (nf_unwk k MZ) (nf_unwk (S (S k)) MS) (ne_unwk k u)
   | ne_exfalso A u => ne_exfalso (nf_unwk (S k) A) (ne_unwk k u)
   | ne_elim nm A Bs u => ne_elim nm (nf_unwk (nm + k) A) (nbrs_unwk k Bs) (ne_unwk k u)
   | ne_app u W => ne_app (ne_unwk k u) (nf_unwk k W)
@@ -510,17 +500,14 @@ Qed.
     reflection. *)
 Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
   match W with
-  | nf_typ _ | nf_level _ | nf_nat | nf_zero | nf_True | nf_true | nf_False => true
+  | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => true
   | nf_univ _ xs | nf_lvl _ xs => la_freshb k xs
-  | nf_succ W => nf_freshb k W
   | nf_pi A B | nf_fn A B => nf_freshb k A && nf_freshb (S k) B
   | nf_indty _ Ms | nf_con _ _ Ms => nfs_freshb k Ms
   | nf_neut u => ne_freshb k u
   end
 with ne_freshb (k : nat) (u : ne) {struct u} : bool :=
   match u with
-  | ne_natrec A MZ MS u =>
-      nf_freshb (S k) A && nf_freshb k MZ && nf_freshb (S (S k)) MS && ne_freshb k u
   | ne_exfalso A u => nf_freshb (S k) A && ne_freshb k u
   | ne_elim nm A Bs u => nf_freshb (nm + k) A && nbrs_freshb k Bs && ne_freshb k u
   | ne_app u W => ne_freshb k u && nf_freshb k W

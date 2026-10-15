@@ -9,6 +9,7 @@
    hold for every list. *)
 module Prelude›Data›Church›Properties where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusZero)
@@ -26,7 +27,7 @@ module Numerals where
 theorem toNatFromNat : ∀ (u : Level) (n : ℕ) →
     Eq (C.toNat u (C.fromNat u n)) n ≔
   λ (u : Level) (n : ℕ) →
-    rec n return x . Eq (C.toNat u (C.fromNat u x)) x
+    elim n return x . Eq (C.toNat u (C.fromNat u x)) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -36,7 +37,7 @@ end
 theorem fromNatAdds : ∀ (u : Level) (m : ℕ) (y : ℕ) →
     Eq (C.fromNat u m ℕ S y) (plus m y) ≔
   λ (u : Level) (m : ℕ) (y : ℕ) →
-    rec m return x . Eq (C.fromNat u x ℕ S y) (plus x y)
+    elim m return x . Eq (C.fromNat u x ℕ S y) (plus x y)
     | zero ⇒ refl y
     | succ p, ih ⇒ ih
     end
@@ -49,7 +50,7 @@ theorem fromNatAddsMult : ∀ (u : Level) (c : ℕ) (g : ∀ (k : ℕ) → ℕ)
     Eq (C.fromNat u m ℕ g y) (plus (mult m c) y) ≔
   λ (u : Level) (c : ℕ) (g : ∀ (k : ℕ) → ℕ)
     (hg : ∀ (k : ℕ) → Eq (g k) (plus c k)) (m : ℕ) (y : ℕ) →
-    rec m return x . Eq (C.fromNat u x ℕ g y) (plus (mult x c) y)
+    elim m return x . Eq (C.fromNat u x ℕ g y) (plus (mult x c) y)
     | zero ⇒ refl y
     | succ p, ih ⇒
         let r ≔ C.fromNat u p ℕ g y
@@ -97,10 +98,10 @@ theorem cpowAdds : ∀ (u : Level) (m : ℕ) (k : ℕ) (y : ℕ) →
     Eq (C.cpow u (C.fromNat u m) (C.fromNat (succl u) k) ℕ S y)
        (plus (pow m k) y) ≔
   λ (u : Level) (m : ℕ) (k : ℕ) →
-    rec k return x . (∀ (y : ℕ) →
-                        Eq (C.cpow u (C.fromNat u m) (C.fromNat (succl u) x)
-                              ℕ S y)
-                           (plus (pow m x) y))
+    elim k return x . (∀ (y : ℕ) →
+                         Eq (C.cpow u (C.fromNat u m) (C.fromNat (succl u) x)
+                               ℕ S y)
+                            (plus (pow m x) y))
     | zero ⇒ λ (y : ℕ) → refl (succ y)
     | succ p, ih ⇒ λ (y : ℕ) →
         fromNatAddsMult u (pow m p)
@@ -125,7 +126,7 @@ module Levels where
 theorem toNatLower : ∀ (u : Level) (n : ℕ) →
     Eq (C.toNat u (C.lower u (C.fromNat (succl u) n))) n ≔
   λ (u : Level) (n : ℕ) →
-    rec n return x . Eq (C.toNat u (C.lower u (C.fromNat (succl u) x))) x
+    elim n return x . Eq (C.toNat u (C.lower u (C.fromNat (succl u) x))) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -159,7 +160,7 @@ end
 theorem lengthReplicate : ∀ (u : Level) (A : Type@{u}) (n : ℕ) (a : A) →
     Eq (C.length u A (C.replicate u A n a)) n ≔
   λ (u : Level) (A : Type@{u}) (n : ℕ) (a : A) →
-    rec n return x . Eq (C.length u A (C.replicate u A x a)) x
+    elim n return x . Eq (C.length u A (C.replicate u A x a)) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -171,8 +172,8 @@ theorem lengthAppendReplicate : ∀ (u : Level) (A : Type@{u}) (n : ℕ) (a : A)
     Eq (C.length u A (C.append u A (C.replicate u A n a) l))
        (plus n (C.length u A l)) ≔
   λ (u : Level) (A : Type@{u}) (n : ℕ) (a : A) (l : C.List u A) →
-    rec n return x . Eq (C.length u A (C.append u A (C.replicate u A x a) l))
-                        (plus x (C.length u A l))
+    elim n return x . Eq (C.length u A (C.append u A (C.replicate u A x a) l))
+                         (plus x (C.length u A l))
     | zero ⇒ refl (C.length u A l)
     | succ p, ih ⇒ ih
     end
@@ -181,7 +182,7 @@ end
 theorem sumReplicate : ∀ (u : Level) (n : ℕ) (c : ℕ) →
     Eq (C.sum u (C.replicate u ℕ n c)) (mult n c) ≔
   λ (u : Level) (n : ℕ) (c : ℕ) →
-    rec n return x . Eq (C.sum u (C.replicate u ℕ x c)) (mult x c)
+    elim n return x . Eq (C.sum u (C.replicate u ℕ x c)) (mult x c)
     | zero ⇒ ⋆
     | succ p, ih ⇒
         cong (λ (k : ℕ) → plus c k)

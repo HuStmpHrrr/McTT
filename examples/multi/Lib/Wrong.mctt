@@ -2,6 +2,8 @@
    [Lib›Other]. *)
 module Lib›Other where
 
+import Prelude›Builtin›Nat
+
 def x : ℕ ≔ 0 end
 
 end

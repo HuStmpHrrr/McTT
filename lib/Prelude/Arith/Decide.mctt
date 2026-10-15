@@ -3,6 +3,7 @@
    conditional [pick] on such tests. *)
 module Prelude›Arith›Decide where
 
+import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (Not)
 open Prelude›Logic.Disj 0l use (orInl; orInr)
 open Prelude›Logic.Equiv 0l use (Iff; iffIntro)
@@ -17,14 +18,14 @@ module Deciders where
    computes to [Eq p q], so the hypothesis already has the goal's type. *)
 def decEq : ∀ (n : ℕ) (m : ℕ) → Dec (Eq n m) ≔
   λ (n : ℕ) →
-    rec n return x . (∀ (m : ℕ) → Dec (Eq x m))
+    elim n return x . (∀ (m : ℕ) → Dec (Eq x m))
     | zero ⇒ λ (m : ℕ) →
-        rec m return z . Dec (Eq 0 z)
+        elim m return z . Dec (Eq 0 z)
         | zero ⇒ orInl ⊤ (Not ⊤) ⋆
         | succ q, s ⇒ orInr ⊥ (Not ⊥) (λ (h : ⊥) → h)
         end
     | succ p, ih ⇒ λ (m : ℕ) →
-        rec m return z . Dec (Eq (succ p) z)
+        elim m return z . Dec (Eq (succ p) z)
         | zero ⇒ orInr ⊥ (Not ⊥) (λ (h : ⊥) → h)
         | succ q, s ⇒ ih q
         end
@@ -34,10 +35,10 @@ end
 (* The order is decidable, by the same recursion as [decEq]. *)
 def decLe : ∀ (n : ℕ) (m : ℕ) → Dec (Le n m) ≔
   λ (n : ℕ) →
-    rec n return x . (∀ (m : ℕ) → Dec (Le x m))
+    elim n return x . (∀ (m : ℕ) → Dec (Le x m))
     | zero ⇒ λ (m : ℕ) → orInl ⊤ (Not ⊤) ⋆
     | succ p, ih ⇒ λ (m : ℕ) →
-        rec m return z . Dec (Le (succ p) z)
+        elim m return z . Dec (Le (succ p) z)
         | zero ⇒ orInr ⊥ (Not ⊥) (λ (h : ⊥) → h)
         | succ q, s ⇒ ih q
         end
@@ -53,7 +54,7 @@ end
    [s 0] otherwise.  The branches are functions of a dummy argument, so
    only the chosen one is computed. *)
 def pick (b : ℕ) (z : ∀ (u : ℕ) → ℕ) (s : ∀ (u : ℕ) → ℕ) : ℕ ≔
-  (rec b return y . (∀ (u : ℕ) → ℕ)
+  (elim b return y . (∀ (u : ℕ) → ℕ)
    | zero ⇒ z
    | succ k, t ⇒ s
    end) 0
@@ -63,11 +64,11 @@ end
    otherwise. *)
 def eqb : ∀ (n : ℕ) (m : ℕ) → ℕ ≔
   λ (n : ℕ) →
-    rec n return y . (∀ (m : ℕ) → ℕ)
+    elim n return y . (∀ (m : ℕ) → ℕ)
     | zero ⇒ λ (m : ℕ) →
-        rec m return z . ℕ | zero ⇒ 1 | succ q, s ⇒ 0 end
+        elim m return z . ℕ | zero ⇒ 1 | succ q, s ⇒ 0 end
     | succ p, r ⇒ λ (m : ℕ) →
-        rec m return z . ℕ | zero ⇒ 0 | succ q, s ⇒ r q end
+        elim m return z . ℕ | zero ⇒ 0 | succ q, s ⇒ r q end
     end
 end
 
@@ -77,14 +78,14 @@ module EqbLaws where
 (* [eqb] answers 1 only on equal numbers. *)
 theorem eqbSound : ∀ (n : ℕ) (m : ℕ) (h : Eq (eqb n m) 1) → Eq n m ≔
   λ (n : ℕ) →
-    rec n return x . (∀ (m : ℕ) (h : Eq (eqb x m) 1) → Eq x m)
+    elim n return x . (∀ (m : ℕ) (h : Eq (eqb x m) 1) → Eq x m)
     | zero ⇒ λ (m : ℕ) →
-        rec m return z . (∀ (h : Eq (eqb 0 z) 1) → Eq 0 z)
+        elim m return z . (∀ (h : Eq (eqb 0 z) 1) → Eq 0 z)
         | zero ⇒ λ (h : ⊤) → h
         | succ q, s ⇒ λ (h : ⊥) → h
         end
     | succ p, ih ⇒ λ (m : ℕ) →
-        rec m return z . (∀ (h : Eq (eqb (succ p) z) 1) → Eq (succ p) z)
+        elim m return z . (∀ (h : Eq (eqb (succ p) z) 1) → Eq (succ p) z)
         | zero ⇒ λ (h : ⊥) → h
         | succ q, s ⇒ λ (h : Eq (eqb p q) 1) → ih q h
         end
@@ -94,14 +95,14 @@ end
 (* [eqb] answers 1 on all equal numbers. *)
 theorem eqbComplete : ∀ (n : ℕ) (m : ℕ) (h : Eq n m) → Eq (eqb n m) 1 ≔
   λ (n : ℕ) →
-    rec n return x . (∀ (m : ℕ) (h : Eq x m) → Eq (eqb x m) 1)
+    elim n return x . (∀ (m : ℕ) (h : Eq x m) → Eq (eqb x m) 1)
     | zero ⇒ λ (m : ℕ) →
-        rec m return z . (∀ (h : Eq 0 z) → Eq (eqb 0 z) 1)
+        elim m return z . (∀ (h : Eq 0 z) → Eq (eqb 0 z) 1)
         | zero ⇒ λ (h : ⊤) → h
         | succ q, s ⇒ λ (h : ⊥) → h
         end
     | succ p, ih ⇒ λ (m : ℕ) →
-        rec m return z . (∀ (h : Eq (succ p) z) → Eq (eqb (succ p) z) 1)
+        elim m return z . (∀ (h : Eq (succ p) z) → Eq (eqb (succ p) z) 1)
         | zero ⇒ λ (h : ⊥) → h
         | succ q, s ⇒ λ (h : Eq p q) → ih q h
         end
@@ -116,14 +117,14 @@ end
 (* When [eqb] answers 0, the numbers differ. *)
 theorem eqbZero : ∀ (n : ℕ) (m : ℕ) (h : Eq (eqb n m) 0) → Not (Eq n m) ≔
   λ (n : ℕ) →
-    rec n return x . (∀ (m : ℕ) (h : Eq (eqb x m) 0) → Not (Eq x m))
+    elim n return x . (∀ (m : ℕ) (h : Eq (eqb x m) 0) → Not (Eq x m))
     | zero ⇒ λ (m : ℕ) →
-        rec m return z . (∀ (h : Eq (eqb 0 z) 0) → Not (Eq 0 z))
+        elim m return z . (∀ (h : Eq (eqb 0 z) 0) → Not (Eq 0 z))
         | zero ⇒ λ (h : ⊥) (e : ⊤) → h
         | succ q, s ⇒ λ (h : ⊤) (e : ⊥) → e
         end
     | succ p, ih ⇒ λ (m : ℕ) →
-        rec m return z . (∀ (h : Eq (eqb (succ p) z) 0) → Not (Eq (succ p) z))
+        elim m return z . (∀ (h : Eq (eqb (succ p) z) 0) → Not (Eq (succ p) z))
         | zero ⇒ λ (h : ⊤) (e : ⊥) → e
         | succ q, s ⇒ λ (h : Eq (eqb p q) 0) → ih q h
         end
@@ -132,7 +133,7 @@ end
 
 theorem eqbRefl : ∀ (n : ℕ) → Eq (eqb n n) 1 ≔
   λ (n : ℕ) →
-    rec n return x . Eq (eqb x x) 1
+    elim n return x . Eq (eqb x x) 1
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -144,11 +145,11 @@ def eqbCases : ∀ (a : ℕ) (b : ℕ) (P : ∀ (m : ℕ) → Type@0)
     (hz : ∀ (h : Eq (eqb a b) 0) → P 0) (hs : ∀ (h : Eq a b) → P 1) →
     P (eqb a b) ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) (P : ∀ (m : ℕ) → Type@0)
+    elim a return x . (∀ (b : ℕ) (P : ∀ (m : ℕ) → Type@0)
         (hz : ∀ (h : Eq (eqb x b) 0) → P 0) (hs : ∀ (h : Eq x b) → P 1) →
         P (eqb x b))
     | zero ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (P : ∀ (m : ℕ) → Type@0)
+        elim b return z . (∀ (P : ∀ (m : ℕ) → Type@0)
             (hz : ∀ (h : Eq (eqb 0 z) 0) → P 0) (hs : ∀ (h : Eq 0 z) → P 1) →
             P (eqb 0 z))
         | zero ⇒ λ (P : ∀ (m : ℕ) → Type@0)
@@ -157,7 +158,7 @@ def eqbCases : ∀ (a : ℕ) (b : ℕ) (P : ∀ (m : ℕ) → Type@0)
             (hz : ∀ (h : ⊤) → P 0) (hs : ∀ (h : ⊥) → P 1) → hz ⋆
         end
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (P : ∀ (m : ℕ) → Type@0)
+        elim b return z . (∀ (P : ∀ (m : ℕ) → Type@0)
             (hz : ∀ (h : Eq (eqb (succ p) z) 0) → P 0)
             (hs : ∀ (h : Eq (succ p) z) → P 1) →
             P (eqb (succ p) z))
@@ -174,15 +175,15 @@ end
 theorem leEqbZero : ∀ (a : ℕ) (b : ℕ) (h : Le a b) (e : Eq (eqb a b) 0) →
     Lt a b ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) (h : Le x b) (e : Eq (eqb x b) 0) → Lt x b)
+    elim a return x . (∀ (b : ℕ) (h : Le x b) (e : Eq (eqb x b) 0) → Lt x b)
     | zero ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (h : Le 0 z) (e : Eq (eqb 0 z) 0) → Lt 0 z)
+        elim b return z . (∀ (h : Le 0 z) (e : Eq (eqb 0 z) 0) → Lt 0 z)
         | zero ⇒ λ (h : ⊤) (e : ⊥) → e
         | succ q, s ⇒ λ (h : ⊤) (e : ⊤) → ⋆
         end
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (h : Le (succ p) z) (e : Eq (eqb (succ p) z) 0) →
-                            Lt (succ p) z)
+        elim b return z . (∀ (h : Le (succ p) z) (e : Eq (eqb (succ p) z) 0) →
+                             Lt (succ p) z)
         | zero ⇒ λ (h : ⊥) (e : ⊤) → h
         | succ q, s ⇒ λ (h : Le p q) (e : Eq (eqb p q) 0) → ih q h e
         end

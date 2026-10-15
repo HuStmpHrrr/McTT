@@ -1,6 +1,8 @@
 (* A numeral, checked against [ℕ]. *)
 module SimpleNat where
 
+import Prelude›Builtin›Nat use (succ)
+
 eval succ 3 : ℕ
 
 end
