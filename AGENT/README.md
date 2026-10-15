@@ -30,12 +30,13 @@ invariants you must preserve when editing one, are in
 | [`substitution-port.md`](substitution-port.md) | The port to meta-level substitutions (complete): design, order of the development, deviations from the paper, the four-value pattern, and the accumulated gotchas. **Start here before touching anything under `theories/Core/`.** |
 | [`proof-conventions.md`](proof-conventions.md) | How to pick, extend, and safely edit tactics. |
 | [`modules.md`](modules.md) | Modules, global and local bindings (complete): why they are an elaboration-layer feature only, the definition telescope, what is proved, and the deviations from [`modules-spec.md`](modules-spec.md). **Start here before touching anything under `theories/Frontend/`, or the global context (end of `Core/Syntactic/Syntax.v`, start of `Members.v`).** |
+| [`core-modules-decisions.md`](core-modules-decisions.md) | The decision record for local and global module bindings in the core: every decision, the rejected alternatives and why, and the current design. |
 | [`elab-spec.md`](elab-spec.md) | The declarative specification of the elaborator (`Frontend/ElabSpec.v`) and its proof of soundness and completeness (`Frontend/ElabCorrect.v`). |
 | [`elab-simplify.md`](elab-simplify.md) | The flat-scope elaborator: what moved where, examples, and the core options with their costs. |
 | [`inductives.md`](inductives.md) | Parameterised inductive types (stages A and A′, function-shaped recursive arguments): the surface syntax, the left/right-of-`:` rule, where each layer lives, and the deviations from the design report. |
 | [`universes.md`](universes.md) | The small Π at open levels: the rule, the algorithm's normalised join, semantic strengthening of normal forms, and why NbE invents no variables. |
 | [`notations.md`](notations.md) | The single `constr` grammar: the level table, the superscripts that separate the sorts, and the parsing traps. Read before adding or moving a notation. |
-| [`refinement.md`](refinement.md) | The extracted checker and normalizer and their reference implementations: what was refined, why the specifications are unchanged, the simulation of the fast evaluation. |
+| [`refinement.md`](refinement.md) | The extracted checker and normalizer and their reference implementations: what was refined, why the specifications are unchanged, the simulation of the fast evaluation, the lookup data of a command (`FCtx`), the fast paths, and the timings. |
 | [`workflow.md`](workflow.md) | Build, test, and verification commands; environment gotchas. |
 | [`../doc/tactics.md`](../doc/tactics.md) | Reference for all 224 `Ltac`/`Tactic Notation` definitions, grouped by layer, with `file:line` for each. |
 | [`../doc/alignment.md`](../doc/alignment.md) | Where the mechanization diverges from `paper.pdf` and `main.pdf`, and answers to the papers' open questions. The one place that cites them by number. |
