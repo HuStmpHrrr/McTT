@@ -1,0 +1,69 @@
+(* Laws of [Prelude›Data›W], at every level [u], after Agda's [Data.W],
+   stated with the Leibniz equality of [Prelude›Logic›Leibniz]: the
+   projections of [sup] and surjective pairing, the injectivity of [sup] in
+   its shape ([sup-injective₁]), [map] on the head, the computation of
+   [foldr], and [inhabited⇒empty]: if every shape has a position, there is
+   no tree.
+
+   The functor laws of [map] are not here: two maps agree on a node only
+   when their subtrees agree at every position, and equality of functions
+   from pointwise equality (function extensionality) does not hold for
+   Leibniz equality. *)
+module Prelude›Data›W›Properties (u : Level) (A : Type@{u})
+    (B : ∀ (a : A) → Type@{u}) where
+
+import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
+import Prelude›Data›W use (W)
+open Prelude›Data›W.Ops as WO
+
+inductive T ≔ W u A B
+
+module Op ≔ WO u A B
+
+theorem headSup : ∀ (x : A) (f : ∀ (p : B x) → T) → Id A (Op.head (T.sup x f)) x ≔
+  λ (x : A) (f : ∀ (p : B x) → T) → idRefl A x
+end
+
+(* Surjective pairing: a tree is [sup] of its head and its tail. *)
+theorem supEta : ∀ (w : T) → Id T (T.sup (Op.head w) (Op.tail w)) w ≔
+  λ (w : T) →
+    elim w return z . Id T (T.sup (Op.head z) (Op.tail z)) z
+    | sup x f, h ⇒ idRefl T (T.sup x f)
+    end
+end
+
+(* Agda's [sup-injective₁]. *)
+theorem supInjectiveShape : ∀ (x : A) (y : A) (f : ∀ (p : B x) → T)
+    (g : ∀ (p : B y) → T) (h : Id T (T.sup x f) (T.sup y g)) → Id A x y ≔
+  λ (x : A) (y : A) (f : ∀ (p : B x) → T) (g : ∀ (p : B y) → T)
+    (h : Id T (T.sup x f) (T.sup y g)) →
+    idCong T A Op.head (T.sup x f) (T.sup y g) h
+end
+
+theorem headMap : ∀ (C : Type@{u}) (D : ∀ (c : C) → Type@{u})
+    (m : ∀ (a : A) → C) (n : ∀ (a : A) (d : D (m a)) → B a) (w : T) →
+    Id C (WO.head u C D (Op.map C D m n w)) (m (Op.head w)) ≔
+  λ (C : Type@{u}) (D : ∀ (c : C) → Type@{u}) (m : ∀ (a : A) → C)
+    (n : ∀ (a : A) (d : D (m a)) → B a) (w : T) →
+    elim w return z . Id C (WO.head u C D (Op.map C D m n z)) (m (Op.head z))
+    | sup x f, h ⇒ idRefl C (m x)
+    end
+end
+
+(* [foldr] on a node folds the subtrees, by unfolding. *)
+theorem foldrSup : ∀ (P : Type@{u}) (alg : ∀ (x : A) (r : ∀ (p : B x) → P) → P)
+    (x : A) (f : ∀ (p : B x) → T) →
+    Id P (Op.foldr P alg (T.sup x f)) (alg x (λ (p : B x) → Op.foldr P alg (f p))) ≔
+  λ (P : Type@{u}) (alg : ∀ (x : A) (r : ∀ (p : B x) → P) → P) (x : A)
+    (f : ∀ (p : B x) → T) →
+    idRefl P (alg x (λ (p : B x) → Op.foldr P alg (f p)))
+end
+
+(* Agda's [inhabited⇒empty]: every node has a subtree, so a tree would
+   have an infinite descent, which [foldr] turns into a proof of [⊥]. *)
+theorem inhabitedEmpty : ∀ (b : ∀ (x : A) → B x) (w : T) → ⊥ ≔
+  λ (b : ∀ (x : A) → B x) (w : T) →
+    Op.foldr ⊥ (λ (x : A) (r : ∀ (p : B x) → ⊥) → r (b x)) w
+end
+
+end
