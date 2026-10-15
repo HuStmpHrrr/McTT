@@ -123,7 +123,7 @@ Section FreshImpl.
       let (vs, Hvs) := ffresh_cargs_impl p ups (ρ ↦ ⇑! a s) gs (S s) _ in
       exist _ (⇑! a s :: vs) _
   | p, ups, ρ, ca_rec t :: gs, s, H =>
-      let (a, Ha) := feval_shty_impl Θ Ξ p ups ρ t _ in
+      let (a, Ha) := feval_shty_fast Θ Ξ p ups ρ t _ in
       let (vs, Hvs) := ffresh_cargs_impl p ups ρ gs (S s) _ in
       exist _ (⇑! a s :: vs) _.
   Solve All Obligations with fr_obl.
@@ -140,7 +140,7 @@ Section FreshImpl.
         let (ihs, Hihs) := ffresh_ihs_impl ρ A B ρa gs vs (S s) _ in
         exist _ (⇑! 𝕌ω@0 s :: ihs) _
     | exist _ false E =>
-        let (a, Ha) := feval_ihty_impl Θ Ξ ρ A ρa t v _ in
+        let (a, Ha) := feval_ihty_fast Θ Ξ ρ A ρa t v _ in
         let (ihs, Hihs) := ffresh_ihs_impl ρ A B ρa gs vs (S s) _ in
         exist _ (⇑! a s :: ihs) _ }
   | ρ, A, B, ρa, _, _, s, H => False_rect _ _.
@@ -375,14 +375,6 @@ Ltac impl_obl_tac1 :=
 Ltac impl_obl_tac :=
   repeat impl_obl_tac1; try econstructor; mauto.
 
-(** The type of a recursive argument at the type itself, without
-    indices, is the type former at the uniform parameters. *)
-Lemma feval_shty_self_nil : forall Θ Ξ p ups ρ k,
-    feval_shty Θ Ξ p ups ρ (pt_self k nil) (d_ind p ups).
-Proof.
-  intros; rewrite <- (app_nil_r ups) at 2; econstructor; constructor.
-Qed.
-
 #[local]
 Hint Resolve feval_shty_self_nil : mctt.
 
@@ -587,7 +579,7 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
     let (Vs, HVs) := fread_cargs_impl_c s p ups (ρ ↦ v) gs vs ck _ in
     exist _ (nfs_cons V Vs) _
 | s, p, ups, ρ, ca_rec t :: gs, v :: vs, ck, H =>
-    let (a, Ha) := feval_shty_impl Θ Ξ p ups ρ t _ in
+    let (a, Ha) := feval_shty_fast Θ Ξ p ups ρ t _ in
     let (V, HV) := fread_nf_impl_c s ⇓ a v ck _ in
     let (Vs, HVs) := fread_cargs_impl_c s p ups ρ gs vs ck _ in
     exist _ (nfs_cons V Vs) _

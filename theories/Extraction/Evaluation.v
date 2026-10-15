@@ -499,6 +499,39 @@ Proof.
   destruct (nat_cargs_succ _ _ En) as (Hp & Hu & k & ->); eauto 7 using ind_np_nil.
 Qed.
 
+(** The type of a recursive argument at the type itself, without
+    indices, is the type former at the uniform parameters. *)
+Lemma feval_shty_self_nil : forall Θ Ξ p ups ρ k,
+    feval_shty Θ Ξ p ups ρ (pt_self k nil) (d_ind p ups).
+Proof.
+  intros; rewrite <- (app_nil_r ups) at 2; econstructor; constructor.
+Qed.
+
+(** The type of the recursive result of such an argument: the motive at the
+    argument. *)
+Lemma feval_ihty_self_nil : forall Θ Ξ pm A p k v a,
+    ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ extend_env pm v ↘ a -> feval_ihty Θ Ξ pm A p (pt_self k nil) v a.
+Proof. intros * Ha; econstructor; [ constructor | exact Ha ]. Qed.
+
+#[local] Hint Resolve feval_shty_self_nil feval_ihty_self_nil : core.
+
+(** The environment of a branch: the non-uniform parameters, the
+    arguments and the recursive results ([feval_elim_con]).  Without
+    parameters, the arguments are all the values, which are not copied. *)
+Definition elim_env (p : env) (D : ind_decl) (vs ihs : list domain) : env :=
+  match ind_params D with
+  | nil => env_args (env_args p vs) ihs
+  | _ => env_args p (skipn (ind_nu D) (firstn (ind_np D) vs) ++ skipn (ind_np D) vs ++ ihs)
+  end.
+
+Lemma elim_env_eq : forall p D vs ihs,
+    elim_env p D vs ihs = env_args p (skipn (ind_nu D) (firstn (ind_np D) vs) ++ skipn (ind_np D) vs ++ ihs).
+Proof.
+  intros; unfold elim_env, ind_np.
+  destruct (ind_params D); [| reflexivity ].
+  cbn [List.length firstn skipn]; rewrite skipn_nil, app_nil_l; unfold env_args; rewrite fold_left_app; reflexivity.
+Qed.
+
 Section EvalImpl.
   Variables (Θ : gdeps) (Ξ : gstack).
   Context {F : FCtx Θ Ξ}.
@@ -664,8 +697,12 @@ Section EvalImpl.
   #[local]
   Ltac ev_obl :=
     intros; cbv beta in *;
+    rewrite ?elim_env_eq in *;
     first [ lazymatch goal with Ev : con_view _ _ _ = Some _ |- _ => solve [ ev_conview ] end | idtac ];
     repeat impl_obl_tac1;
+    (** A recursive result's type without indices: the motive at no index. *)
+    try match goal with Hq : forall bs, feval_exps _ _ nil _ bs -> feval_exp_order _ _ ?A _ |- feval_exp_order _ _ ?A _ =>
+          solve [ apply (Hq nil); constructor ] end;
     first [ solve [ impl_obl_finish ]
           | solve [ impl_obl_split; impl_obl_finish ]
           | impl_obl_finish ].
@@ -752,7 +789,7 @@ Section EvalImpl.
         | exist _ (Some gs) Ec with inspect (brs_lookup Bs c) := {
           | exist _ (Some (n, B)) Eb =>
               let (ihs, Hihs) := feval_ihs_impl p nm A Bs B gs (skipn (ind_np D) vs) (Some (exist _ (pq, D) Ed)) _ in
-              let (r, Hr) := feval_exp_impl B (env_args p (skipn (ind_nu D) (firstn (ind_np D) vs) ++ skipn (ind_np D) vs ++ ihs)) _ in
+              let (r, Hr) := feval_exp_impl B (elim_env p D vs ihs) _ in
               exist _ r _
           | exist _ None Eb => False_rect _ _ }
         | exist _ None Ec => False_rect _ _ } }
@@ -969,270 +1006,292 @@ Section EvalImpl.
     inversion, the evaluation itself by its rule, or a branch the order rules
     out ([ev_obl]).  They are transparent: the order premises are the
     arguments of the structural recursion. *)
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
-Next Obligation. ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+
+  (** The type of a recursive argument and of its recursive result, for an
+      argument at the type itself without indices: the type former at the
+      uniform parameters, and the motive at the argument, without
+      evaluating an empty list of indices. *)
+  Definition feval_shty_fast pq ups p t (H : feval_shty_order Θ Ξ pq ups p t) : { a | feval_shty Θ Ξ pq ups p t a } :=
+    match t as t0 return feval_shty_order Θ Ξ pq ups p t0 -> { a | feval_shty Θ Ξ pq ups p t0 a } with
+    | pt_self k nil => fun _ => exist _ (d_ind pq ups) (feval_shty_self_nil _ _ _ _ _ _)
+    | t0 => fun H0 => feval_shty_impl pq ups p t0 H0
+    end H.
+
+  Lemma feval_ihty_nil_order : forall pm A p k v,
+      feval_ihty_order Θ Ξ pm A p (pt_self k nil) v -> feval_exp_order Θ Ξ A (extend_env pm v).
+  Proof. intros * H; inversion H; subst; match goal with Hq : forall bs, _ -> _ |- _ => apply (Hq nil); constructor end. Qed.
+
+  Definition feval_ihty_fast pm A p t v (H : feval_ihty_order Θ Ξ pm A p t v) : { a | feval_ihty Θ Ξ pm A p t v a } :=
+    match t as t0 return feval_ihty_order Θ Ξ pm A p t0 v -> { a | feval_ihty Θ Ξ pm A p t0 v a } with
+    | pt_self k nil => fun H0 =>
+        let (a, Ha) := feval_exp_impl A (extend_env pm v) (feval_ihty_nil_order _ _ _ _ _ H0) in
+        exist _ a (feval_ihty_self_nil _ _ _ _ _ _ _ _ Ha)
+    | t0 => fun H0 => feval_ihty_impl pm A p t0 v H0
+    end H.
 End EvalImpl.
 
 Extraction Inline feval_exp_impl_functional
