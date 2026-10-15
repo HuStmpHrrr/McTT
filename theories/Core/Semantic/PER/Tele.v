@@ -190,9 +190,6 @@ Section Tele.
   Lemma env_args_snoc : forall ρ vs v, env_args ρ (vs ++ v :: nil) = env_args ρ vs ↦ v.
   Proof. intros; unfold env_args; rewrite List.fold_left_app; reflexivity. Qed.
 
-  Lemma env_args_app : forall ρ vs ws, env_args ρ (vs ++ ws) = env_args (env_args ρ vs) ws.
-  Proof. intros; unfold env_args; rewrite List.fold_left_app; reflexivity. Qed.
-
   Lemma cargs_nonrec_app : forall gs gs', cargs_nonrec (gs ++ gs') = cargs_nonrec gs ++ cargs_nonrec gs'.
   Proof. induction gs as [| [] gs IH]; intros; cbn; rewrite ?IH; reflexivity. Qed.
 

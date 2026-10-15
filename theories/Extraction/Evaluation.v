@@ -475,9 +475,6 @@ Proof.
   destruct gs as [| [? | [k [|] | ? ? | ? ?]] [|]]; try discriminate; eauto.
 Qed.
 
-Lemma ind_np_nil : forall D, ind_params D = nil -> ind_np D = 0.
-Proof. intros D H; unfold ind_np; rewrite H; reflexivity. Qed.
-
 Lemma con_view_zero : forall D c vs,
     con_view D c vs = Some None ->
     ind_con D c = Some nil /\ ind_params D = nil /\ ind_np D = 0 /\ ind_nu D = 0 /\ vs = nil.
@@ -529,7 +526,7 @@ Lemma elim_env_eq : forall p D vs ihs,
 Proof.
   intros; unfold elim_env, ind_np.
   destruct (ind_params D); [| reflexivity ].
-  cbn [List.length firstn skipn]; rewrite skipn_nil, app_nil_l; unfold env_args; rewrite fold_left_app; reflexivity.
+  cbn [List.length firstn skipn]; rewrite skipn_nil, app_nil_l, env_args_app; reflexivity.
 Qed.
 
 Section EvalImpl.

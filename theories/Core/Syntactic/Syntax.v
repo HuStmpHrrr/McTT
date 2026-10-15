@@ -958,6 +958,9 @@ Definition gu_params (U : gunit) : list centry := match U with gu_mk Δ _ => Δ 
 Definition ind_np (D : ind_decl) : nat := List.length (ind_params D).
 Definition ind_nn (D : ind_decl) : nat := ind_np D - ind_nu D.
 
+Lemma ind_np_nil : forall D, ind_params D = nil -> ind_np D = 0.
+Proof. intros D H; unfold ind_np; rewrite H; reflexivity. Qed.
+
 (** The uniform parameters, and the non-uniform ones. *)
 Definition ind_uparams (D : ind_decl) : list centry := List.skipn (ind_nn D) (ind_params D).
 Definition ind_nparams (D : ind_decl) : list centry := List.firstn (ind_nn D) (ind_params D).

@@ -162,6 +162,9 @@ Arguments extend_env_mod _ _ /.
 Definition env_args (ρ : env) (args : list domain) : env :=
   List.fold_left extend_env args ρ.
 
+Lemma env_args_app : forall ρ vs ws, env_args ρ (vs ++ ws) = env_args (env_args ρ vs) ws.
+Proof. intros; unfold env_args; rewrite List.fold_left_app; reflexivity. Qed.
+
 Definition drop_env (ρ : env) : env := List.tl ρ.
 Arguments drop_env _ /.
 
