@@ -1,0 +1,65 @@
+(* Optional values: [Option u A] has the constructors [none] and [some x]
+   for [x : A], at every level [u].  The type takes the level and the
+   element type as uniform parameters, so the constructors do too:
+   [some 0l ℕ 3 : Option 0l ℕ].
+
+   The operations on options over a fixed [A] are in the module [Ops u A]:
+   the functor [map], the monad [bind], the default [getOr], [isSome] and
+   the first defined of two options, [orElse].  The laws are in
+   [Prelude›Data›Option›Properties]. *)
+module Prelude›Data›Option where
+
+import Prelude›Data›Bool use (Bool; tt; ff)
+
+inductive Option (u : Level) (A : Type@{u}) : Type@{u} where
+| none
+| some (x : A)
+end
+
+open Option export (none; some)
+
+module Ops (u : Level) (A : Type@{u}) where
+
+(* Applies [f] under [some]. *)
+def map (B : Type@{u}) (f : ∀ (x : A) → B) (o : Option u A) : Option u B ≔
+  elim o return z . Option u B
+  | none ⇒ none u B
+  | some x ⇒ some u B (f x)
+  end
+end
+
+(* Continues with [f] on a defined value; [none] stays [none]. *)
+def bind (B : Type@{u}) (f : ∀ (x : A) → Option u B) (o : Option u A) :
+    Option u B ≔
+  elim o return z . Option u B
+  | none ⇒ none u B
+  | some x ⇒ f x
+  end
+end
+
+(* The value of [o], or the default [d] when there is none. *)
+def getOr (d : A) (o : Option u A) : A ≔
+  elim o return z . A
+  | none ⇒ d
+  | some x ⇒ x
+  end
+end
+
+def isSome (o : Option u A) : Bool ≔
+  elim o return z . Bool
+  | none ⇒ ff
+  | some x ⇒ tt
+  end
+end
+
+(* [o] if it is defined, else [p]. *)
+def orElse (o : Option u A) (p : Option u A) : Option u A ≔
+  elim o return z . Option u A
+  | none ⇒ p
+  | some x ⇒ some u A x
+  end
+end
+
+end
+
+end
