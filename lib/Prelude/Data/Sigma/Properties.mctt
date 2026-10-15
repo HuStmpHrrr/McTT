@@ -1,0 +1,48 @@
+(* Laws of [Prelude›Data›Sigma u A B], stated with the Leibniz equality of
+   [Prelude›Logic›Leibniz]: the projections of a pair, surjective pairing,
+   the equality of pairs whose second component is a function of the
+   first, and the injectivity of [pair] in its first component. *)
+module Prelude›Data›Sigma›Properties (u : Level) (A : Type@{u})
+    (B : ∀ (a : A) → Type@{u}) where
+
+import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
+import Prelude›Data›Sigma u A B use (pair; fst; snd)
+
+(* The type, as an inductive alias by its path: [import … u A B use
+   (Sigma)] declares [Sigma] as a module only. *)
+inductive Sigma ≔ Prelude›Data›Sigma.Sigma u A B
+
+theorem fstPair : ∀ (a : A) (b : B a) → Id A (fst (pair a b)) a ≔
+  λ (a : A) (b : B a) → idRefl A a
+end
+
+(* The second component of [pair a b] is [b], in [B a]. *)
+theorem sndPair : ∀ (a : A) (b : B a) → Id (B a) (snd (pair a b)) b ≔
+  λ (a : A) (b : B a) → idRefl (B a) b
+end
+
+(* Surjective pairing: a pair is the pair of its projections. *)
+theorem sigmaEta : ∀ (p : Sigma) → Id Sigma (pair (fst p) (snd p)) p ≔
+  λ (p : Sigma) →
+    elim p return z . Id Sigma (pair (fst z) (snd z)) z
+    | pair a b ⇒ idRefl Sigma (pair a b)
+    end
+end
+
+(* Pairs whose second component is [f] of the first are equal when their
+   first components are. *)
+theorem pairCong : ∀ (f : ∀ (a : A) → B a) (x : A) (y : A) (h : Id A x y) →
+    Id Sigma (pair x (f x)) (pair y (f y)) ≔
+  λ (f : ∀ (a : A) → B a) (x : A) (y : A) (h : Id A x y)
+    (P : ∀ (s : Sigma) → Type@{u}) →
+    h (λ (a : A) → P (pair a (f a)))
+end
+
+(* Equal pairs have equal first components: [fst] respects equality. *)
+theorem pairInjectiveFst : ∀ (a : A) (b : B a) (c : A) (d : B c)
+    (h : Id Sigma (pair a b) (pair c d)) → Id A a c ≔
+  λ (a : A) (b : B a) (c : A) (d : B c) (h : Id Sigma (pair a b) (pair c d)) →
+    idCong Sigma A fst (pair a b) (pair c d) h
+end
+
+end

@@ -1,0 +1,99 @@
+(* A client of the inductive data types of [Prelude›Data]: lists, booleans,
+   options, pairs, sums and dependent pairs, computed on closed values, and
+   closed instances of their laws. *)
+module Lists where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Data›Bool use (Bool; tt; ff; not; and; or; eqb; if)
+open Prelude›Data›Bool.Cond as Cond
+import Prelude›Data›List use (List; sum)
+open Prelude›Data›List.Ops as Ops
+import Prelude›Data›Option use (Option)
+open Prelude›Data›Option.Ops as Opt
+import Prelude›Data›Prod use (Prod)
+open Prelude›Data›Prod.Ops as P
+import Prelude›Data›Sum use (Sum)
+open Prelude›Data›Sum.Ops as S
+import Prelude›Data›List›Properties.Append 0l ℕ use (lengthAppend)
+import Prelude›Data›List›Properties.Reverse 0l ℕ use (reverseReverse)
+import Prelude›Data›List›Properties.Sums use (sumReverse)
+import Prelude›Data›Bool›Properties.DeMorgan use (notAnd)
+
+(* Lists of numbers: the type, its constructors and its operations. *)
+inductive NatList ≔ List 0l ℕ
+
+module NL ≔ Ops 0l ℕ
+
+def oneTwoThree : NatList ≔
+  NatList.cons 1 (NatList.cons 2 (NatList.cons 3 NatList.nil))
+end
+
+eval NL.length oneTwoThree
+eval NL.append oneTwoThree (NatList.cons 4 NatList.nil)
+eval NL.reverse oneTwoThree
+eval NL.map ℕ (λ (x : ℕ) → plus x x) oneTwoThree
+eval sum oneTwoThree
+eval NL.foldr ℕ plus 0 (NL.reverse oneTwoThree)
+
+(* The recursor counts the even positions: the motive is a function of the
+   parity of the position. *)
+def evens (l : NatList) : ℕ ≔
+  List.rec 0l ℕ 0l (λ (l : NatList) → ∀ (b : Bool) → ℕ)
+    (λ (b : Bool) → 0)
+    (λ (x : ℕ) (xs : NatList) (r : ∀ (b : Bool) → ℕ) (b : Bool) →
+       if ℕ b (succ (r (not b))) (r (not b)))
+    l tt
+end
+
+eval evens oneTwoThree
+
+(* A list at a higher level: a list of types. *)
+eval Ops.length 1l Type@0
+  (List.cons 1l Type@0 ℕ (List.cons 1l Type@0 Bool (List.nil 1l Type@0)))
+
+(* Booleans. *)
+eval and tt (or ff tt)
+eval eqb (not tt) ff
+eval Cond.if 1l Type@0 (eqb tt ff) ℕ Bool
+
+(* Whether every element of a list of booleans is [tt]. *)
+def all (l : List 0l Bool) : Bool ≔ Ops.foldr 0l Bool Bool and tt l end
+
+eval all (List.cons 0l Bool tt (List.cons 0l Bool (not ff) (List.nil 0l Bool)))
+
+(* Options: the first element of a list, if any. *)
+def head (l : NatList) : Option 0l ℕ ≔
+  elim l return z . Option 0l ℕ
+  | nil ⇒ Option.none 0l ℕ
+  | cons x xs, r ⇒ Option.some 0l ℕ x
+  end
+end
+
+eval head oneTwoThree
+eval Opt.getOr 0l ℕ 0 (Opt.map 0l ℕ ℕ succ (head NatList.nil))
+eval Opt.bind 0l ℕ ℕ (λ (x : ℕ) → head (NL.reverse oneTwoThree))
+  (head oneTwoThree)
+
+(* Pairs and sums. *)
+eval P.swap 0l ℕ Bool (Prod.pair 0l ℕ Bool 1 tt)
+eval S.case 0l ℕ Bool ℕ succ (λ (b : Bool) → if ℕ b 1 0)
+  (S.swap 0l Bool ℕ (Sum.inl 0l Bool ℕ ff))
+
+(* Dependent pairs: the second component is a number after [tt] and a
+   boolean after [ff]. *)
+def Payload (b : Bool) : Type@0 ≔ Cond.if 1l Type@0 b ℕ Bool end
+
+import Prelude›Data›Sigma 0l Bool Payload as Tagged
+
+eval Tagged.snd (Tagged.pair tt 3)
+eval Tagged.snd (Tagged.pair ff ff)
+
+(* Closed instances of laws.  A law between numbers computes to [⋆]; a
+   Leibniz equality is a function of the predicate. *)
+eval lengthAppend oneTwoThree oneTwoThree
+eval sumReverse oneTwoThree
+eval reverseReverse oneTwoThree
+eval notAnd tt ff
+
+end
