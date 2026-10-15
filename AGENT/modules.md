@@ -1,8 +1,5 @@
 # Modules, Global and Local Bindings
 
-> **Option B branch:** the core global layer described below (relative paths,
-> `a_param`, `↑ₘ`/`close`, `Discharge`/`Transport`) is replaced on this branch;
-> see [`optionB.md`](optionB.md).
 
 The design as built.  The request it implements is
 [`modules-spec.md`](modules-spec.md); everything below that contradicts it is
@@ -159,7 +156,7 @@ end
 ```
 
 Inside a term, `let x : A := a; y : B := b in … end` binds local definitions,
-each one a core `let` (`ℓ A ≔ a in …`, see [`core-let.md`](core-let.md)), and
+each one a core `let` (`ℓ A ≔ a in …`), and
 `let module M := X.Y.Z x y in … end` binds a local module.  The two kinds of
 binding may be mixed in one `let`, separated by `;`.
 
