@@ -320,6 +320,16 @@ Section type_check.
     let (p, Hp) := P in
     exist _ (p ↦ᵐ dm_local p U nil) (tenv_mod_sim _ U _ Hp).
 
+  (** The initial environment of an extension [Ψ ++ G], from that of [G]:
+      one entry more per entry of [Ψ], rather than all of [G]'s again. *)
+  Fixpoint tenv_ext G (P : tenv G) (Ψ : ctx) {struct Ψ} : ⊢ Ψ ++ G -> tenv (Ψ ++ G) :=
+    match Ψ as Ψ0 return ⊢ Ψ0 ++ G -> tenv (Ψ0 ++ G) with
+    | nil => fun _ => P
+    | ce_ass A :: Ψ' => fun H => tenv_ass (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) A H
+    | ce_def A M :: Ψ' => fun H => tenv_def (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) A M H
+    | ce_mod U :: Ψ' => fun H => tenv_mod (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) U
+    end.
+
   (** A member of a chain from a unit, read off the global context: the type
       of the global, if it is one. *)
   (** The type of a global, of the type former that the module of an

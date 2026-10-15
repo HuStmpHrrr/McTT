@@ -170,7 +170,7 @@ Proof.
     [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ H HMi) as (D' & ? & ? & HD' & ? & ? & _);
        rewrite Hl in HD'; injection HD' as <-; contradiction ].
   pose proof (alg_elim_mctx_wf _ _ _ _ _ HG HMi Hl HRl) as HMs.
-  destruct (infA _ HMs (tenv_of _ HMs)) as [[UA (HAi & _)] | HnA];
+  destruct (infA _ HMs (tenv_ext G P _ HMs)) as [[UA (HAi & _)] | HnA];
     [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ H HMi) as (D' & ? & ? & HD' & ? & ? & ? & _);
        rewrite Hl in HD'; injection HD' as <-; eapply HnA; eassumption ].
   destruct (univ_nf_idx_dec UA) as [[u Hu] | Hnu];
@@ -203,7 +203,7 @@ Proof.
     destruct (ind_con D (fst (fst b))) as [gs |] eqn:Hcon; [| left; intros ? [=] ].
     pose proof (alg_elim_bty_typed _ _ _ _ _ _ _ _ _ _ HG HMi Hl HRl HAi Hu Hcon) as HT.
     destruct (chkB b Hb (elim_bctx p D gs A Us ++ G) (elim_bty p D (fst (fst b)) gs A Us) HT
-                (tenv_of _ (tenv_ctx_of_typ _ _ HT))) as [E | E].
+                (tenv_ext G P _ (tenv_ctx_of_typ _ _ HT))) as [E | E].
     - left; intros ? [= <-]; exact E.
     - right; intros H; exact (E (H gs eq_refl)). }
   destruct (forall_in_dec _ Bs fb) as [HBc | HBc];
