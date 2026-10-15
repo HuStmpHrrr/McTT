@@ -91,11 +91,7 @@ Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_pi.
 Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind.
 Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_gctx.
 Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_nat.
-Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_nat_gctx.
 Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_nat_stuck.
-Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_nat_stuck_gctx.
-Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_nat_no_axioms.
-Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_bound_nat_prog.
 Print Assumptions Mctt.Core.Syntactic.System.IndRec.rc_ind_runs.
 Print Assumptions Mctt.Core.IndCommand.rc_ind_con_types.
 (* Presupposition: local, and of the global context. *)

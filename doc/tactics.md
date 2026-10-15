@@ -519,7 +519,6 @@ opening the existentials:
 | Tactic | Location |
 | --- | --- |
 | `eexists_rel_exp_of_typ` | `Core/Completeness/UniverseCases.v:207` |
-| `eexists_rel_exp_of_nat` | `Core/Completeness/NatCases.v:146` |
 
 Plus:
 
@@ -587,21 +586,19 @@ machinery as the PER layer, with `<∙>` (predicate equivalence) in place of
 | `def_simp` | `Soundness/LogicalRelation/Definitions.v:233` | `simp glu_univ_elem in *; mauto 3`, the obligation tactic for `glu_univ_elem_ind`. |
 | `solve_it` | `Core/Soundness/FundamentalTheorem.v:29` | `pose proof soundness_fundamental; firstorder`. |
 
-### 6.6 Two deliberate redefinitions
+### 6.6 A deliberate redefinition
 
 `invert_glu_rel_exp` is **redefined** (with `::=`, Ltac1's redefinition
-syntax) twice as the development proceeds and stronger clean-inversion lemmas
-become available:
+syntax) once as the development proceeds and a stronger clean-inversion lemma
+becomes available:
 
-- `Core/Soundness/UniverseCases.v:56` prepends `glu_rel_exp_clean_inversion2'`,
+- `Core/Soundness/UniverseCases.v:270` prepends `glu_rel_exp_clean_inversion2'`,
   which only needs `Γ ⊩ Type@i : Type@(S i)` — automatically available —
   rather than an explicit typing premise.
-- `Core/Soundness/NatCases.v:61` prepends `glu_rel_exp_clean_inversion2''`
-  for `ℕ`, on top of the universe version.
 
 So the meaning of `invert_glu_rel_exp` at a given point in the file tree
-depends on which of these files has been loaded. Both redefinitions only ever
-*add* earlier alternatives to the `+` chain, so they strictly strengthen it.
+depends on whether this file has been loaded. The redefinition only
+*adds* an earlier alternative to the `+` chain, so it strictly strengthens it.
 
 ---
 
@@ -663,10 +660,9 @@ pseudo-monadic notations for `sumbool`/`sumor` in
 - **`clean replace` fails on a no-op** by design. Do not "fix" that.
 - **`directed` is load-bearing.** Removing it from a `progressive_invert`
   turns a well-behaved inversion into an unpredictable case split.
-- **`invert_glu_rel_exp` is not one tactic.** See *Two deliberate
-  redefinitions* — its meaning depends
-  on whether `Soundness/UniverseCases.v` and `Soundness/NatCases.v` are in
-  scope.
+- **`invert_glu_rel_exp` is not one tactic.** See *A deliberate
+  redefinition* — its meaning depends
+  on whether `Soundness/UniverseCases.v` is in scope.
 - **`Extraction/TypeCheck.v:115` (`impl_obl_tac_helper`) is dead code** — it
   is defined and never referenced. `impl_obl_tac` at line 121 inlines the same
   `type_infer_order` inversion.
@@ -721,7 +717,6 @@ Alphabetical, with definition sites. Paths are relative to `theories/`.
 | `do_per_ctx_env_irrel_assert`, `…1` | `Core/Semantic/PER/Lemmas.v:996, 966` |
 | `do_per_univ_elem_irrel_assert`, `…1` | `Core/Semantic/PER/Lemmas.v:460, 430` |
 | `eexists_rel_exp`, `…_with` | `Core/Completeness/LogicalRelation/Tactics.v:6, 11` |
-| `eexists_rel_exp_of_nat` | `Core/Completeness/NatCases.v:146` |
 | `eexists_rel_exp_of_typ` | `Core/Completeness/UniverseCases.v:207` |
 | `eexists_rel_sub` | `Core/Completeness/LogicalRelation/Tactics.v:16` |
 | `eexists_rel_wk` | `Core/Completeness/LogicalRelation/Tactics.v:25` |
@@ -756,7 +751,7 @@ Alphabetical, with definition sites. Paths are relative to `theories/`.
 | `inversion_clear_by_head`, `dir_inversion_clear_by_head` | `LibTactics.v:190, 191` |
 | `invert_glu_ctx_env` | `Core/Soundness/LogicalRelation/Lemmas.v:875` |
 | `invert_glu_rel1` | `Core/Soundness/LogicalRelation/CoreTactics.v:17` |
-| `invert_glu_rel_exp` | `Core/Soundness/LogicalRelation/Lemmas.v:1069`; redefined `Core/Soundness/UniverseCases.v:59`, `Core/Soundness/NatCases.v:57` |
+| `invert_glu_rel_exp` | `Core/Soundness/LogicalRelation/Lemmas.v:2155`; redefined `Core/Soundness/UniverseCases.v:270` |
 | `invert_glu_univ_elem` | `Core/Soundness/LogicalRelation/CoreLemmas.v:632` |
 | `invert_per_ctx_env`, `invert_per_univ_elem` | `Core/Semantic/PER/Lemmas.v:1136, 675` |
 | `invert_rel_typ_body` | `Core/Completeness/LogicalRelation/Tactics.v:37` |

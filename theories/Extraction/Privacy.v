@@ -191,4 +191,3 @@ Proof.
   - destruct p as [fp ch]; eapply mdl_entry; [ exact (gc_entry_resolve _ _ _ _ Hr) | reflexivity ].
   - destruct p as [fp ch]; unfold qname_in; cbn in *; rewrite <- (List.app_removelast_last _ Hch); reflexivity.
 Qed.
-

@@ -730,4 +730,3 @@ Proof.
   revert Hc; generalize (@nil (string * exp)) at 1 2 as args1; generalize (@nil carg) at 1 2 as gs1.
   intros gs1 args1 Hc; induction Hc; constructor; [ eapply equiv_cls_arg_in; eassumption | assumption ].
 Qed.
-

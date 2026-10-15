@@ -647,7 +647,7 @@ Section Sort.
       pose proof (proj1 (sd_npar _ HD _ _ HA)) as HAv; rewrite <- (length_npre D k) in HAv at 2 by lia.
       eapply (sort_typ_rel (npre D k) A (npre_sem k) HAv ups ups2 vs vs');
         [ rewrite length_npre; lia | rewrite length_npre; lia | exact Hu | exact Hu2 | | exact Ha ].
-      rewrite rev_npre; apply per_gargs_app_intro; [ rewrite Hlu; exact Hu | exact Hg2 | exact Hgv ]. 
+      rewrite rev_npre; apply per_gargs_app_intro; [ rewrite Hlu; exact Hu | exact Hg2 | exact Hgv ].
     Qed.
 
     Lemma canon_ha : forall ups2, per_gargs (List.rev (ind_uparams D)) nil nil ups ups2 ->
@@ -677,7 +677,7 @@ Section Sort.
       rewrite <- List.app_assoc, <- params_split, List.rev_app_distr, !List.app_assoc.
       apply per_gargs_app_intro; [ rewrite List.length_app; rewrite List.length_rev, params_split, List.length_app, length_nparams, length_ind_uparams by exact Hle; lia
                                  | exact Hpg |].
-      unfold astrat; rewrite List.rev_involutive; exact Hgv. 
+      unfold astrat; rewrite List.rev_involutive; exact Hgv.
     Qed.
 
     Lemma canon_hd : forall ups2, per_gargs (List.rev (ind_uparams D)) nil nil ups ups2 ->
@@ -769,7 +769,7 @@ Section Sort.
       exists bs, bs'; split; [ exact Ebs | split; [ exact Ebs' |] ].
       eapply (gargs_tele_canon _ (ind_nr D ups) (env_args nil ups)); [ | exact Hgb |].
       - intros j A pre HA; unfold ind_nr; rewrite (nth_ctyp_eq _ _ _ HA), env_args_app; reflexivity.
-      - rewrite (eval_exps_length _ _ _ Ebs), List.length_rev, length_nparams; exact (length_rec_ps _ _ _ _ _ Hcon Heq). 
+      - rewrite (eval_exps_length _ _ _ Ebs), List.length_rev, length_nparams; exact (length_rec_ps _ _ _ _ _ Hcon Heq).
     Qed.
 
     (** The conditions of the clause, at the canonical relations. *)

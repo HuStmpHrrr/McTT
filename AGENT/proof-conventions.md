@@ -50,8 +50,8 @@ In order of preference — the cheapest fix is usually the right one.
    A new clean-inversion lemma goes at the front.
 4. **Redefine with `::=` only when you must.** If the stronger alternative only
    exists later in the dependency order, `::=` is the sanctioned escape hatch
-   (precedent: `invert_glu_rel_exp` in `Core/Soundness/UniverseCases.v:56` and
-   `Core/Soundness/NatCases.v:61`). Only ever *prepend* alternatives, never
+   (precedent: `invert_glu_rel_exp` in
+   `Core/Soundness/UniverseCases.v:270`). Only ever *prepend* alternatives, never
    remove one — and note it, because it makes a tactic's meaning depend on
    what has been loaded.
 5. **Supersede properly.** If a new lemma should replace an old hint rather

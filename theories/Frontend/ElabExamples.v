@@ -1168,5 +1168,3 @@ Example local_builtin :
     (c_eval (letb (d_mod "M" nil (md_where (c_builtin "natural" (var "N") :: nil))) (num 0)) None :: nil))
   = eerr "builtin is not allowed in a local module".
 Proof. elab_err. Qed.
-
-

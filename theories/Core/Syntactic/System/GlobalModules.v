@@ -1101,5 +1101,3 @@ Lemma unit_xp_functional : forall Θ Ξ Γ U Ux Ux', unit_xp Θ Ξ Γ U Ux -> un
 Proof.
   intros * H1 H2; destruct H1; inversion H2; subst; [ f_equal; f_equal; eapply body_xp_functional; eassumption | reflexivity ].
 Qed.
-
-

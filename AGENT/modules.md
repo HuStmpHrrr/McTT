@@ -1,6 +1,5 @@
 # Modules, Global and Local Bindings
 
-
 The design as built.  The request it implements is
 [`modules-spec.md`](modules-spec.md); everything below that contradicts it is
 listed under [Deviations](#deviations-from-the-specification).

@@ -172,7 +172,7 @@ Proof.
   set (s := List.length Φ + List.length l2 + 1).
   replace (A[sb_of_list τ (List.firstn k (vars_from (List.length Φ) (List.length Δ)))])
     with (A[sb_qn k ρ][wk_shiftn s]ʷ).
-  - 
+  -
     replace (List.length Φ + (List.length Δ - 1 - k)) with (0 + List.length (Φ ++ tele_sub (List.rev l2) (sb_qn (S k) ρ)))
       by (rewrite List.length_app, length_tele_sub, List.length_rev; lia).
     replace (A[sb_qn k ρ][wk_shiftn s]ʷ)

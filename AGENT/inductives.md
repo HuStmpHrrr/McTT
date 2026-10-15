@@ -1,8 +1,8 @@
 # Inductive types (stage A/A′: parameterised, function-shaped arguments, no indices, no OTT)
 
-Branch `wip/ott`. What exists, where, and where it departs from the design
-report (`.claude/plans/inductives-ott/report.md`, "Families" and "Plan",
-stage A).
+What exists, where, and where it departs from stage A of the design report
+for inductive types (a planning document, not kept in the repository; the
+departures are listed under [Deviations](#deviations-from-the-report)).
 
 ## The language
 
