@@ -1,0 +1,114 @@
+(* A client of the inductive types of [Prelude›Data] ported from Agda's
+   standard library: comparisons, inclusive unions, non-empty lists, binary
+   trees, signs and parities, integers, binary numbers and W-types,
+   computed on closed values, and closed instances of their laws. *)
+module DataTypes where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Data›Bool use (Bool; tt; ff)
+open Prelude›Data›Bool.Cond as Cond
+import Prelude›Data›List use (List)
+import Prelude›Data›Ordering use (Ordering; compare; thenCmp; flip)
+import Prelude›Data›Ordering›Properties.Compare use (compareSpec)
+import Prelude›Data›These use (These)
+open Prelude›Data›These.Ops as Th
+import Prelude›Data›List›NonEmpty use (NonEmpty)
+open Prelude›Data›List›NonEmpty.Ops as NE
+import Prelude›Data›Tree›Binary use (Tree)
+open Prelude›Data›Tree›Binary.Ops as TO
+import Prelude›Data›Tree›Binary›Properties 0l ℕ Bool as TP
+import Prelude›Data›Parity use (Parity; parity; toSign)
+import Prelude›Data›Integer use (Int; pos; negsuc; neg; add; sub; mul; abs)
+import Prelude›Data›Integer›Properties.Mul use (absMul)
+import Prelude›Data›Binary use (Bin; toNat; fromNat)
+import Prelude›Data›Binary as Bn
+import Prelude›Data›Binary›Properties.ToNat use (toNatAdd)
+import Prelude›Data›W use (W)
+open Prelude›Data›W.Ops as WO
+
+(* Comparisons: [Spec] holds of every outcome, so its closed instances
+   compute to [⋆]. *)
+eval compare 3 5
+eval thenCmp (compare 2 2) (flip (compare 1 4))
+eval compareSpec 3 5
+
+(* Inclusive unions: the sum of what is there. *)
+def total (t : These 0l ℕ ℕ) : ℕ ≔
+  Th.fold 0l ℕ ℕ ℕ (λ (a : ℕ) → a) (λ (b : ℕ) → b) plus t
+end
+
+eval total (Th.swap 0l ℕ ℕ (These.these 0l ℕ ℕ 2 3))
+eval total (These.that 0l ℕ ℕ 4)
+
+(* Non-empty lists: the last element always exists. *)
+inductive NatNE ≔ NonEmpty 0l ℕ
+
+module N ≔ NE 0l ℕ
+
+def oneToFour : NatNE ≔
+  NatNE.cons 1 (List.cons 0l ℕ 2 (List.cons 0l ℕ 3 (List.cons 0l ℕ 4
+    (List.nil 0l ℕ))))
+end
+
+eval N.last oneToFour
+eval N.head (N.reverse oneToFour)
+eval N.foldr ℕ plus (λ (x : ℕ) → x) oneToFour
+eval N.length (N.append oneToFour oneToFour)
+
+(* Binary trees with numbers at the nodes and booleans at the leaves. *)
+inductive NT ≔ Tree 0l ℕ Bool
+
+module T ≔ TO 0l ℕ Bool
+
+def sample : NT ≔
+  NT.node (NT.node (NT.leaf tt) 1 (NT.leaf ff)) 2 (NT.leaf tt)
+end
+
+eval T.nodes sample
+eval T.leaves sample
+eval T.toListInfix (T.mirror sample)
+eval TP.Counts.leavesNodes sample
+
+(* Parities and signs. *)
+eval parity 7
+eval toSign (parity 4)
+
+(* Integers. *)
+eval add (neg (pos 3)) (pos 5)
+eval sub (pos 2) (pos 7)
+eval mul (negsuc 1) (negsuc 2)
+eval abs (mul (pos 3) (negsuc 3))
+eval absMul (pos 2) (negsuc 2)
+
+(* Binary numbers: [toNat] of a sum is the sum of the [toNat]s. *)
+eval fromNat 6
+eval toNat (Bn.add (fromNat 13) (fromNat 22))
+eval toNatAdd (fromNat 6) (fromNat 7)
+
+(* W-types: the natural numbers as the W-type of two shapes, [ff] with no
+   subtree and [tt] with one. *)
+def Arity (b : Bool) : Type@0 ≔ Cond.if 1l Type@0 b ⊤ ⊥ end
+
+inductive WNat ≔ W 0l Bool Arity
+
+def wzero : WNat ≔ WNat.sup ff (λ (p : ⊥) → exfalso p return z . WNat) end
+
+def wsucc (w : WNat) : WNat ≔ WNat.sup tt (λ (p : ⊤) → w) end
+
+(* The number a tree stands for, by [foldr]: one more than its subtree at
+   a [tt] node. *)
+def wToNat (w : WNat) : ℕ ≔
+  WO.foldr 0l Bool Arity ℕ
+    (λ (b : Bool) →
+       elim b return z . (∀ (r : ∀ (p : Arity z) → ℕ) → ℕ)
+       | tt ⇒ λ (r : ∀ (p : ⊤) → ℕ) → succ (r ⋆)
+       | ff ⇒ λ (r : ∀ (p : ⊥) → ℕ) → 0
+       end)
+    w
+end
+
+eval wToNat (wsucc (wsucc (wsucc wzero)))
+eval WO.head 0l Bool Arity (wsucc wzero)
+
+end
