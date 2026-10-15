@@ -1,0 +1,108 @@
+(* Non-empty lists, after Agda's [Data.List.NonEmpty] ([List⁺]):
+   [NonEmpty u A] has the one constructor [cons x xs], a head [x : A] and a
+   tail [xs : List u A], at every level [u].  The tail is a list, not a
+   non-empty list, so the type is not recursive.
+
+   The operations over a fixed [A] are in the module [Ops u A]: [head],
+   [tail], [toList], [fromList] (an option), [length], [map], the
+   concatenations [append] (Agda's [_⁺++⁺_]), [appendList] ([_⁺++_]) and
+   [prependList] ([_++⁺_]), [reverse], [last] and [foldr].  The laws are
+   in [Prelude›Data›List›NonEmpty›Properties]. *)
+module Prelude›Data›List›NonEmpty where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Data›List use (List)
+open Prelude›Data›List.Ops as L
+import Prelude›Data›Option use (Option)
+
+inductive NonEmpty (u : Level) (A : Type@{u}) : Type@{u} where
+| cons (x : A) (xs : List u A)
+end
+
+module Ops (u : Level) (A : Type@{u}) where
+
+inductive N ≔ NonEmpty u A
+
+inductive LA ≔ List u A
+
+def head (l : N) : A ≔ elim l return z . A | cons x xs ⇒ x end end
+
+def tail (l : N) : LA ≔ elim l return z . LA | cons x xs ⇒ xs end end
+
+def toList (l : N) : LA ≔
+  elim l return z . LA | cons x xs ⇒ LA.cons x xs end
+end
+
+(* [some] of the non-empty list, or [none] on the empty list. *)
+def fromList (l : LA) : Option u N ≔
+  elim l return z . Option u N
+  | nil ⇒ Option.none u N
+  | cons x xs, r ⇒ Option.some u N (N.cons x xs)
+  end
+end
+
+def length (l : N) : ℕ ≔
+  elim l return z . ℕ | cons x xs ⇒ succ (L.length u A xs) end
+end
+
+def map (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) : NonEmpty u B ≔
+  elim l return z . NonEmpty u B
+  | cons x xs ⇒ NonEmpty.cons u B (f x) (L.map u A B f xs)
+  end
+end
+
+(* A non-empty list followed by a list (Agda's [_⁺++_]). *)
+def appendList (l : N) (m : LA) : N ≔
+  elim l return z . N | cons x xs ⇒ N.cons x (L.append u A xs m) end
+end
+
+(* Two non-empty lists, one after the other (Agda's [_⁺++⁺_]). *)
+def append (l : N) (m : N) : N ≔ appendList l (toList m) end
+
+(* A list followed by a non-empty list (Agda's [_++⁺_]), by recursion on
+   the list. *)
+def prependList (l : LA) (m : N) : N ≔
+  elim l return z . N
+  | nil ⇒ m
+  | cons x xs, r ⇒ N.cons x (toList r)
+  end
+end
+
+(* The reversed tail before the head. *)
+def reverse (l : N) : N ≔
+  elim l return z . N
+  | cons x xs ⇒ prependList (L.reverse u A xs) (N.cons x LA.nil)
+  end
+end
+
+(* The last element of [d] followed by [xs]. *)
+private def lastFrom (xs : LA) : ∀ (d : A) → A ≔
+  elim xs return z . (∀ (d : A) → A)
+  | nil ⇒ λ (d : A) → d
+  | cons y ys, r ⇒ λ (d : A) → r y
+  end
+end
+
+def last (l : N) : A ≔
+  elim l return z . A | cons x xs ⇒ lastFrom xs x end
+end
+
+(* The fold of [d] followed by [xs], [g] on the last element. *)
+private def foldrFrom (B : Type@{u}) (f : ∀ (x : A) (b : B) → B)
+    (g : ∀ (x : A) → B) (xs : LA) : ∀ (d : A) → B ≔
+  elim xs return z . (∀ (d : A) → B)
+  | nil ⇒ λ (d : A) → g d
+  | cons y ys, r ⇒ λ (d : A) → f d (r y)
+  end
+end
+
+(* Right fold with [g] on the last element:
+   [foldr B f g [x1, …, xn]] is [f x1 (… (f x(n-1) (g xn)))]. *)
+def foldr (B : Type@{u}) (f : ∀ (x : A) (b : B) → B) (g : ∀ (x : A) → B)
+    (l : N) : B ≔
+  elim l return z . B | cons x xs ⇒ foldrFrom B f g xs x end
+end
+
+end
+
+end
