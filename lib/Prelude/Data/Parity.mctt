@@ -1,0 +1,47 @@
+(* Parities, after Agda's [Data.Parity]: [even] and [odd] (Agda's [0ℙ]
+   and [1ℙ]), the integers modulo 2, with the opposite parity [inv]
+   (Agda's [_⁻¹]), addition [add] and multiplication [mul], the parity of a
+   number, and the isomorphism [toSign] with the signs of
+   [Prelude›Data›Sign].  [Prelude›Arith›Parity] has the predicates [Even]
+   and [Odd] on numbers instead.  The laws are in
+   [Prelude›Data›Parity›Properties]. *)
+module Prelude›Data›Parity where
+
+import Prelude›Builtin›Nat
+import Prelude›Data›Sign use (Sign; negative; positive)
+
+inductive Parity : Type@0 where
+| even
+| odd
+end
+
+open Parity export (even; odd)
+
+def inv (p : Parity) : Parity ≔
+  elim p return z . Parity | even ⇒ odd | odd ⇒ even end
+end
+
+def add (p : Parity) (q : Parity) : Parity ≔
+  elim p return z . Parity | even ⇒ q | odd ⇒ inv q end
+end
+
+def mul (p : Parity) (q : Parity) : Parity ≔
+  elim p return z . Parity | even ⇒ even | odd ⇒ q end
+end
+
+(* The parity of a number: each successor flips it. *)
+def parity (n : ℕ) : Parity ≔
+  elim n return z . Parity | zero ⇒ even | succ k, r ⇒ inv r end
+end
+
+(* [even] is [positive] and [odd] is [negative]: addition of parities is
+   multiplication of signs. *)
+def toSign (p : Parity) : Sign ≔
+  elim p return z . Sign | even ⇒ positive | odd ⇒ negative end
+end
+
+def fromSign (s : Sign) : Parity ≔
+  elim s return z . Parity | negative ⇒ odd | positive ⇒ even end
+end
+
+end

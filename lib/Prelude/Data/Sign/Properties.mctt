@@ -1,0 +1,126 @@
+(* Laws of [Prelude›Data›Sign], after Agda's [Data.Sign.Properties],
+   stated with the Leibniz equality of [Prelude›Logic›Leibniz] at [Sign]:
+   [opposite] is an injective involution without fixed point, and [mul] is
+   a commutative group with unit [positive] in which every sign is its own
+   inverse.  Each law is proved by cases. *)
+module Prelude›Data›Sign›Properties where
+
+import Prelude›Logic›Leibniz 0l use (Id; idRefl; idSym; idTrans; idCong)
+import Prelude›Logic.Negation 1l use (Not)
+import Prelude›Data›Sign use (Sign; negative; positive; opposite; mul)
+
+(* The proposition that a sign is [positive]. *)
+private def IsPositive (s : Sign) : Type@0 ≔
+  elim s return z . Type@0 | negative ⇒ ⊥ | positive ⇒ ⊤ end
+end
+
+(* [opposite]. *)
+module Opposite where
+
+theorem oppositeInvolutive : ∀ (s : Sign) → Id Sign (opposite (opposite s)) s ≔
+  λ (s : Sign) →
+    elim s return z . Id Sign (opposite (opposite z)) z
+    | negative ⇒ idRefl Sign negative
+    | positive ⇒ idRefl Sign positive
+    end
+end
+
+theorem oppositeInjective : ∀ (s : Sign) (t : Sign)
+    (h : Id Sign (opposite s) (opposite t)) → Id Sign s t ≔
+  λ (s : Sign) (t : Sign) (h : Id Sign (opposite s) (opposite t)) →
+    idTrans Sign s (opposite (opposite t)) t
+      (idTrans Sign s (opposite (opposite s)) (opposite (opposite t))
+         (idSym Sign (opposite (opposite s)) s (oppositeInvolutive s))
+         (idCong Sign Sign opposite (opposite s) (opposite t) h))
+      (oppositeInvolutive t)
+end
+
+(* Agda's [s≢opposite[s]]. *)
+theorem signNeOpposite : ∀ (s : Sign) → Not (Id Sign s (opposite s)) ≔
+  λ (s : Sign) →
+    elim s return z . Not (Id Sign z (opposite z))
+    | negative ⇒ λ (h : Id Sign negative positive) →
+        h (λ (z : Sign) → IsPositive (opposite z)) ⋆
+    | positive ⇒ λ (h : Id Sign positive negative) → h IsPositive ⋆
+    end
+end
+
+end
+
+(* [mul]. *)
+module Mul where
+
+theorem mulIdentityLeft : ∀ (s : Sign) → Id Sign (mul positive s) s ≔
+  λ (s : Sign) → idRefl Sign s
+end
+
+theorem mulIdentityRight : ∀ (s : Sign) → Id Sign (mul s positive) s ≔
+  λ (s : Sign) →
+    elim s return z . Id Sign (mul z positive) z
+    | negative ⇒ idRefl Sign negative
+    | positive ⇒ idRefl Sign positive
+    end
+end
+
+(* Agda's [s*s≡+] and [*-inverse]: every sign is its own inverse. *)
+theorem mulSelf : ∀ (s : Sign) → Id Sign (mul s s) positive ≔
+  λ (s : Sign) →
+    elim s return z . Id Sign (mul z z) positive
+    | negative ⇒ idRefl Sign positive
+    | positive ⇒ idRefl Sign positive
+    end
+end
+
+(* Agda's [s*opposite[s]≡-]. *)
+theorem mulOpposite : ∀ (s : Sign) → Id Sign (mul s (opposite s)) negative ≔
+  λ (s : Sign) →
+    elim s return z . Id Sign (mul z (opposite z)) negative
+    | negative ⇒ idRefl Sign negative
+    | positive ⇒ idRefl Sign negative
+    end
+end
+
+theorem mulComm : ∀ (s : Sign) (t : Sign) → Id Sign (mul s t) (mul t s) ≔
+  λ (s : Sign) (t : Sign) →
+    elim s return x . Id Sign (mul x t) (mul t x)
+    | negative ⇒ elim t return y . Id Sign (opposite y) (mul y negative)
+                 | negative ⇒ idRefl Sign positive
+                 | positive ⇒ idRefl Sign negative
+                 end
+    | positive ⇒ elim t return y . Id Sign y (mul y positive)
+                 | negative ⇒ idRefl Sign negative
+                 | positive ⇒ idRefl Sign positive
+                 end
+    end
+end
+
+theorem mulAssoc : ∀ (s : Sign) (t : Sign) (r : Sign) →
+    Id Sign (mul (mul s t) r) (mul s (mul t r)) ≔
+  λ (s : Sign) (t : Sign) (r : Sign) →
+    elim s return x . Id Sign (mul (mul x t) r) (mul x (mul t r))
+    | negative ⇒ elim t return y . Id Sign (mul (opposite y) r)
+                                    (opposite (mul y r))
+                 | negative ⇒ idSym Sign (opposite (opposite r)) r
+                                (Opposite.oppositeInvolutive r)
+                 | positive ⇒ idRefl Sign (opposite r)
+                 end
+    | positive ⇒ idRefl Sign (mul t r)
+    end
+end
+
+(* Agda's [*-cancelˡ-≡]: multiplying by the same sign on the left is
+   injective. *)
+theorem mulCancelLeft : ∀ (s : Sign) (t : Sign) (r : Sign)
+    (h : Id Sign (mul s t) (mul s r)) → Id Sign t r ≔
+  λ (s : Sign) →
+    elim s return x . (∀ (t : Sign) (r : Sign) (h : Id Sign (mul x t) (mul x r)) →
+                         Id Sign t r)
+    | negative ⇒ λ (t : Sign) (r : Sign) (h : Id Sign (opposite t) (opposite r)) →
+        Opposite.oppositeInjective t r h
+    | positive ⇒ λ (t : Sign) (r : Sign) (h : Id Sign t r) → h
+    end
+end
+
+end
+
+end
