@@ -291,6 +291,13 @@ Example kw_theorem :
     (nil, ⋅, cc_def "foo" false false (Π ℕ ℕ) (Some (λ ℕ #0)) :: nil).
 Proof. elab_ok. Qed.
 
+(** A term variable is no module: [B.Id], under a [λ] binding [B], names the
+    variable, which is innermost, and is rejected as a module. *)
+Example var_not_module :
+  elaborate_core (unit_of (def_cmd dk_def md_pub "f" (pi "B" nat nat) (fn "B" nat (proj (var "B") "Id")) :: nil))
+  = eerr "B is a variable, not a module".
+Proof. vm_compute; reflexivity. Qed.
+
 (** [private lemma], [fact], [remark], [let], [abstract given]: *)
 Example kw_others :
   elab_spec (unit_of
@@ -639,6 +646,16 @@ Proof. elab_ok. Qed.
 
 Example local_unit_not_loaded :
   elaborate_core (local_unit_import nil) = eerr "the unit X is not imported".
+Proof. vm_compute; reflexivity. Qed.
+
+(** A unit of one segment is named like a module in scope; a binding of the
+    same name shadows it. *)
+Example one_segment_unit :
+  elab_mod (en_unit ("X" :: nil) :: nil) (proj (var "X") "f") = eok (me_mem (me_unit ("X" :: nil)) "f").
+Proof. vm_compute; reflexivity. Qed.
+
+Example one_segment_unit_shadowed :
+  elab_mod (en_tvar "X" :: en_unit ("X" :: nil) :: nil) (proj (var "X") "f") = eerr "X is a variable, not a module".
 Proof. vm_compute; reflexivity. Qed.
 
 (** A local body has no [import]s: it opens what is loaded already. *)

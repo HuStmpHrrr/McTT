@@ -1,0 +1,26 @@
+(* The members an inductive declaration generates, its constructors and its
+   recursor, used from another unit and from the declaring one. *)
+import Lib›Unary use (U)
+
+module Generated where
+
+inductive B : Type@0 where
+| t
+| f
+end
+
+def two : U ≔ U.s (U.s U.z) end
+
+def isZero : ∀ (n : U) → B ≔
+  λ (n : U) → U.rec 0l (λ (m : U) → B) B.t (λ (m : U) (r : B) → B.f) n
+end
+
+def not : ∀ (b : B) → B ≔ λ (b : B) → B.rec 0l (λ (c : B) → B) B.f B.t b end
+
+open U use (rec)
+
+eval rec 0l (λ (m : U) → B) B.f (λ (m : U) (r : B) → B.t) two
+
+eval not (isZero two)
+
+end

@@ -111,7 +111,7 @@ Qed.
 
 Lemma den_to_term_iff : forall k n e M, den_to_term k n e = eok M <-> den_term k n e M.
 Proof.
-  intros * ; destruct e as [| | | ? ? []]; cbn; split; intros H; inversion H; subst; constructor || reflexivity.
+  intros * ; destruct e as [| | | | ? ? []]; cbn; split; intros H; inversion H; subst; constructor || reflexivity.
 Qed.
 
 Lemma den_to_mod_iff : forall k n e H, den_to_mod k n e = eok H <-> den_mod k n e H.
@@ -184,17 +184,21 @@ Qed.
 Lemma name_mod_iff : forall S x H,
     match lookup x S with
     | Some (k, e, n) => den_to_mod k n e
-    | None => eerr ("unbound name " ++ x)
+    | None => unit_mod x S
     end = eok H <-> selm S (Cst.var x) H.
 Proof.
   intros; case_eq (lookup x S); [ intros [[k e] n] El | intros El ]; split.
   - intros Hd; econstructor; [ apply lookup_iff; eassumption | apply den_to_mod_iff; assumption ].
   - intros Hs; inversion Hs; subst.
-    match goal with Hb : bound _ _ _ _ _ |- _ => apply lookup_iff in Hb; rewrite Hb in El; inv_eok end.
-    apply den_to_mod_iff; assumption.
-  - discriminate.
+    + match goal with Hb : bound _ _ _ _ _ |- _ => apply lookup_iff in Hb; rewrite Hb in El; inv_eok end.
+      apply den_to_mod_iff; assumption.
+    + exfalso; match goal with Hn : ~ In x (names S) |- _ => apply Hn end.
+      eapply bound_in, lookup_iff, El.
+  - unfold unit_mod; destruct (unit_in_b (x :: nil) S) eqn:Eu; [| discriminate ].
+    intros [= <-]; apply selm_unit1; [ apply lookup_none; exact El | apply unit_in_b_iff; exact Eu ].
   - intros Hs; inversion Hs; subst.
-    match goal with Hb : bound _ _ _ _ _ |- _ => apply lookup_iff in Hb; congruence end.
+    + match goal with Hb : bound _ _ _ _ _ |- _ => apply lookup_iff in Hb; congruence end.
+    + unfold unit_mod; match goal with Hu : In (en_unit _) S |- _ => apply unit_in_b_iff in Hu; rewrite Hu end; reflexivity.
 Qed.
 
 Lemma ihead_iff : forall S fq ip H,
@@ -357,16 +361,13 @@ Proof.
             split; intros S M; cbn [elab elab_mod];
             solve [ iff_case | let Hg := fresh "Hg" in split; [ discriminate | intros Hg; inversion Hg ] ]).
   - (* var *)
-    intros x; split; intros S M; cbn [elab elab_mod];
+    intros x; split; [| intros S M; apply name_mod_iff ].
+    intros S M; cbn [elab];
       (case_eq (lookup x S); [ intros [[k e] n] El | intros El ]; split;
        [ intros H | intros Hs; inversion Hs; subst | discriminate | intros Hs; inversion Hs; subst ]).
     + econstructor; [ apply lookup_iff; eassumption | apply den_to_term_iff; assumption ].
     + match goal with Hb : bound _ _ _ _ _ |- _ => apply lookup_iff in Hb; rewrite Hb in El; inv_eok end.
       apply den_to_term_iff; assumption.
-    + match goal with Hb : bound _ _ _ _ _ |- _ => apply lookup_iff in Hb; congruence end.
-    + econstructor; [ apply lookup_iff; eassumption | apply den_to_mod_iff; assumption ].
-    + match goal with Hb : bound _ _ _ _ _ |- _ => apply lookup_iff in Hb; rewrite Hb in El; inv_eok end.
-      apply den_to_mod_iff; assumption.
     + match goal with Hb : bound _ _ _ _ _ |- _ => apply lookup_iff in Hb; congruence end.
   - (* glob *)
     intros fq; split; intros S M; cbn [elab elab_mod]; split; intros H.

@@ -352,6 +352,49 @@ let is_bound_nat (p : qname) : bool =
    printed. *)
 let current_state : (gdeps * gstack) ref = ref ([], [])
 
+(* The program of a failed run, whose module declarations name the
+   parameters of the frames of [current_state] declared in it. *)
+let current_prog : Cst.prog option ref = ref None
+
+(* The parameters of the module at the member chain [ch] of the commands
+   [cs], as declared. *)
+let rec declared_params (cs : Cst.cmd list) (ch : string list) : (string * Cst.obj) list option =
+  match ch with
+  | [] -> None
+  | x :: ch' ->
+     List.find_map
+       (function
+        | Cst.Coq_c_mod (_, y, ps, md) when y = x ->
+           (match ch', md with
+            | [], _ -> Some ps
+            | _, Cst.Coq_md_where cs' -> declared_params cs' ch'
+            | _, Cst.Coq_md_alias _ -> None)
+        | _ -> None)
+       cs
+
+(* A name the printer generates for a binder. *)
+let generated_name (y : string) : bool =
+  String.length y > 1 && String.contains "xAM" y.[0]
+  && String.for_all (fun c -> c >= '0' && c <= '9') (String.sub y 1 (String.length y - 1))
+
+(* The names of the parameters of the stack of [current_state], one per
+   entry of its [gs_tele], innermost first; [None] where the program does
+   not declare the frame, or a name could be read as a generated one. *)
+let frame_param_names () : string option list =
+  let _, xi = !current_state in
+  List.concat_map
+    (fun ((q : qname), Coq_gu_mk (delta, _)) ->
+      let n = List.length delta in
+      let ps = match !current_prog with
+        | Some (_, ((path, top), cs)) when q.q_unit = path ->
+           if q.q_chain = [] then Some top else declared_params cs q.q_chain
+        | _ -> None in
+      match ps with
+      | Some ps when List.length ps = n && not (List.exists (fun (y, _) -> generated_name y) ps) ->
+         List.rev_map (fun (y, _) -> Some y) ps
+      | _ -> List.init n (fun _ -> None))
+    xi
+
 (* A path naming the bound type: the type, or an inductive alias of it
    without arguments, as an [import … use (Nat)] declares one. *)
 let names_bound_nat (q : qname) : bool =
@@ -596,7 +639,11 @@ let exp_to_obj =
   and var_to_obj (ctx : string list) (x : int) : Cst.obj =
     match List.nth_opt ctx x with
     | Some y -> Cst.Coq_var y
-    | None -> Cst.Coq_var ("$" ^ string_of_int (x - List.length ctx))
+    | None ->
+       let k = x - List.length ctx in
+       (match List.nth_opt (frame_param_names ()) k with
+        | Some (Some y) -> Cst.Coq_var y
+        | _ -> Cst.Coq_var ("$" ^ string_of_int k))
   and impl_mod (ctx : string list) : modexp -> Cst.obj = function
     | Coq_me_unit fp -> path_to_obj fp []
     | Coq_me_var x -> var_to_obj ctx x
@@ -784,6 +831,23 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
       | Coq_xe_both n -> fprintf f "@[<hov 2>Error: %s is used and exported@]" n
       | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n
       | Coq_xe_ind n -> fprintf f "@[<hov 2>Error: an inductive type cannot be opened in a local module: %s@]" n)
+  | Coq_re_branch_arity (c, n, k, a, r) ->
+     let count n one many = Printf.sprintf "%d %s" n (if n = 1 then one else many) in
+     let parts =
+       (if k > 0 then [count k "parameter" "parameters"] else [])
+       @ [count a "argument" "arguments"]
+       @ (if r > 0 then [count r "induction hypothesis" "induction hypotheses"] else []) in
+     fprintf f "@[<hov 2>Error: the branch %s binds %s but needs %d (%s)@]"
+       c (count n "name" "names") (k + a + r) (String.concat ", " parts)
+  | Coq_re_branch_unknown c ->
+     fprintf f "@[<hov 2>Error: %s is not a constructor of the eliminated type@]" c
+  | Coq_re_branch_missing c ->
+     fprintf f "@[<hov 2>Error: the eliminator has no branch for %s@]" c
+  | Coq_re_branch_dup c ->
+     fprintf f "@[<hov 2>Error: the eliminator has two branches for %s@]" c
+  | Coq_re_branch_order cs ->
+     fprintf f "@[<hov 2>Error: the branches must follow the order of the constructors:@ %s@]"
+       (String.concat ", " cs)
   | Coq_re_lit (McttExtracted.Builtin.Coq_le_num n) ->
      fprintf f "@[<hov 2>Error: unknown numeral %d: no natural-number type is bound@]" n
   | Coq_re_lit McttExtracted.Builtin.Coq_le_tok ->
@@ -797,6 +861,7 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
 let eval_outputs : main_result -> string list option = function
   | AllGood ((_, ((path, _), _)), bt, _, _, log) ->
      current_unit := path;
+     current_prog := None;
      current_bt := bt;
      Some (List.map (Format.asprintf "%a" format_eval) log)
   | _ -> None
@@ -806,6 +871,7 @@ let format_main_result (f : Format.formatter) : main_result -> unit =
   function
   | AllGood ((_, ((path, _), _)), bt, _, _, log) ->
      current_unit := path;
+     current_prog := None;
      current_bt := bt;
      pp_open_vbox f 0;
      List.iteri
@@ -814,8 +880,9 @@ let format_main_result (f : Format.formatter) : main_result -> unit =
          format_eval f r)
        log;
      pp_close_box f ()
-  | RunFailure ((_, ((path, _), _)), e) ->
+  | RunFailure (((_, ((path, _), _)) as prg), e) ->
      current_unit := path;
+     current_prog := Some prg;
      current_state := ([], []);
      nat_bind := None;
      format_run_error f e

@@ -59,9 +59,13 @@ y, x, B, id ↦ Main.M.id, A
 (** ** Entries *)
 
 Inductive ent : Set :=
-(** A core binder: a λ, a Π, a recursor, a [let], a parameter, an entry of a
+(** A core binder that may hold a module: a local module, an entry of a
     local body (an open's declarations included). *)
 | en_var : string -> ent
+(** A core binder of a term: a λ, a Π, a binder of a motive or a branch, a
+    [let] definition, a parameter, an argument of a constructor, the type a
+    declaration declares.  It is no module. *)
+| en_tvar : string -> ent
 (** A member of an open frame (an open's declarations included), named by
     its qualified name. *)
 | en_mem : string -> qname -> ent
@@ -74,13 +78,13 @@ Inductive ent : Set :=
 
 Definition ent_name (e : ent) : option string :=
   match e with
-  | en_var x | en_mem x _ | en_open x _ _ => Some x
+  | en_var x | en_tvar x | en_mem x _ | en_open x _ _ => Some x
   | en_unit _ => None
   end.
 
 Definition ent_binders (e : ent) : nat :=
   match e with
-  | en_var _ => 1
+  | en_var _ | en_tvar _ => 1
   | _ => 0
   end.
 
@@ -100,11 +104,11 @@ Definition bound (S : list ent) (x : string) (k : nat) (e : ent) (n : nat) : Pro
 Definition fresh (x : string) (F : list ent) : Prop := ~ In x (names F).
 
 (** The entries of a parameter list, innermost first. *)
-Definition pents (ps : list (string * Cst.obj)) : list ent := rev (map (fun p => en_var (fst p)) ps).
+Definition pents (ps : list (string * Cst.obj)) : list ent := rev (map (fun p => en_tvar (fst p)) ps).
 
 (** The entries of names bound in order, innermost first: the binders of
     an eliminator's motive and branches. *)
-Definition vents (xs : list string) : list ent := rev (map en_var xs).
+Definition vents (xs : list string) : list ent := rev (map en_tvar xs).
 
 (** ** What an Entry Denotes
 
@@ -132,11 +136,13 @@ Definition open_mod (E : modexp) (oc : option string) : modexp :=
     no weakening: its module is closed. *)
 Inductive den_term (k n : nat) : ent -> exp -> Prop :=
 | dt_var : forall x, den_term k n (en_var x) #k
+| dt_tvar : forall x, den_term k n (en_tvar x) #k
 | dt_mem : forall x p, den_term k n (en_mem x p) (apps (qname_term p) (vars_desc k n))
 | dt_open : forall x E c, den_term k n (en_open x E (Some c)) (a_mem E c).
 
-(** As a module expression.  A variable is a module slot; the core rejects
-    it if it is a term variable. *)
+(** As a module expression.  A variable that may hold a module is a module
+    slot, which the core rejects if it holds a term; a term binder is no
+    module. *)
 Inductive den_mod (k n : nat) : ent -> modexp -> Prop :=
 | dm_var : forall x, den_mod k n (en_var x) (me_var k)
 | dm_mem : forall x p, den_mod k n (en_mem x p) (mapps (qname_mod p) (vars_desc k n))
@@ -202,11 +208,11 @@ Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
 | sel_true_tm : forall S, sel S Cst.true_tm ⋆
 | sel_false_ty : forall S, sel S Cst.false_ty ⊥
 | sel_exfalso : forall S om mx oA M A,
-    sel S om M -> sel (en_var mx :: S) oA A -> sel S (Cst.exfalso om mx oA) (efq M return A)
+    sel S om M -> sel (en_tvar mx :: S) oA A -> sel S (Cst.exfalso om mx oA) (efq M return A)
 | sel_pi : forall S x oA oB A B,
-    sel S oA A -> sel (en_var x :: S) oB B -> sel S (Cst.pi x oA oB) (Π A B)
+    sel S oA A -> sel (en_tvar x :: S) oB B -> sel S (Cst.pi x oA oB) (Π A B)
 | sel_fn : forall S x oA oM A M,
-    sel S oA A -> sel (en_var x :: S) oM M -> sel S (Cst.fn x oA oM) (λ A M)
+    sel S oA A -> sel (en_tvar x :: S) oM M -> sel S (Cst.fn x oA oM) (λ A M)
 | sel_app : forall S o1 o2 M N,
     sel S o1 M -> sel S o2 N -> sel S (Cst.app o1 o2) (M $ N)
 | sel_var : forall S x k e n M,
@@ -215,11 +221,11 @@ Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
 | sel_proj : forall S o x H,
     selm S o H -> sel S (Cst.proj o x) (a_mem H x)
 | sel_let : forall S x oA oM ob A M B,
-    sel S oA A -> sel S oM M -> sel (en_var x :: S) ob B ->
+    sel S oA A -> sel S oM M -> sel (en_tvar x :: S) ob B ->
     sel S (Cst.letb (Cst.d_def x (Some oA) oM) ob) (ℓ A ≔ M in B)
 (** Without an annotation, none is emitted: the core infers it. *)
 | sel_let_infer : forall S x oM ob M B,
-    sel S oM M -> sel (en_var x :: S) ob B ->
+    sel S oM M -> sel (en_tvar x :: S) ob B ->
     sel S (Cst.letb (Cst.d_def x None oM) ob) (ℓ ≔ M in B)
 (** [let module x (ps) md in B end]: [x] is the slot of the local module. *)
 | sel_let_mod : forall S x ps md ob U B,
@@ -237,6 +243,10 @@ with selm : list ent -> Cst.obj -> modexp -> Prop :=
     bound S x k e n -> den_mod k n e H -> selm S (Cst.var x) H
 | selm_glob : forall S fq,
     In (en_unit fq) S -> selm S (Cst.glob fq) (me_unit fq)
+(** A name no binding in scope has is the imported unit of that one-segment
+    path. *)
+| selm_unit1 : forall S x,
+    ~ In x (names S) -> In (en_unit (x :: nil)) S -> selm S (Cst.var x) (me_unit (x :: nil))
 | selm_proj : forall S o y H,
     selm S o H -> selm S (Cst.proj o y) (me_mem H y)
 | selm_app : forall S o1 o2 H N,
@@ -253,7 +263,7 @@ with sparams : list ent -> list (string * Cst.obj) -> list (string * typ) -> Pro
 | sp_nil : forall S, sparams S nil nil
 | sp_cons : forall S x oA ps A tys,
     sel S oA A ->
-    sparams (en_var x :: S) ps tys ->
+    sparams (en_tvar x :: S) ps tys ->
     sparams S ((x, oA) :: ps) ((x, A) :: tys)
 
 (** A local module: its parameters, then its definition under them. *)
@@ -309,7 +319,7 @@ Fixpoint split_pis (o : Cst.obj) : (list (string * Cst.obj) * Cst.obj)%type :=
 Inductive srargs : list ent -> list (string * Cst.obj) -> list (string * exp) -> Prop :=
 | sra_nil : forall S, srargs S nil nil
 | sra_cons : forall S y oA args A args',
-    sel S oA A -> srargs (en_var y :: S) args args' ->
+    sel S oA A -> srargs (en_tvar y :: S) args args' ->
     srargs S ((y, oA) :: args) ((y, A) :: args').
 
 Inductive srcons (S : list ent) :
@@ -384,7 +394,7 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
     NoDup (map fst (ups ++ nps)) ->
     sparams (F ++ O) (ups ++ nps) tys ->
     sel (pents ups ++ F ++ O) oS A ->
-    srcons (pents (ups ++ nps) ++ en_var x :: F ++ O) cs cs' ->
+    srcons (pents (ups ++ nps) ++ en_tvar x :: F ++ O) cs cs' ->
     scmd fp ch O F (Cst.c_ind pv x ups oT cs) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
       (cc_ind x pv (mk_raw (List.length ups) (ptele tys) A cs') :: nil)
 (** [inductive x (ps) := E]: [E] is read under the parameters, as an

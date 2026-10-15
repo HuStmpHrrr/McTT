@@ -61,7 +61,7 @@ Fixpoint lookup (x : string) (S : list ent) : option (nat * ent * nat) :=
 
 Definition den_to_term (k n : nat) (e : ent) : eres exp :=
   match e with
-  | en_var _ => eok #k
+  | en_var _ | en_tvar _ => eok #k
   | en_mem _ p => eok (apps (qname_term p) (vars_desc k n))
   | en_unit _ => eerr "a unit is not a term"
   | en_open _ E (Some c) => eok (a_mem E c)
@@ -71,6 +71,7 @@ Definition den_to_term (k n : nat) (e : ent) : eres exp :=
 Definition den_to_mod (k n : nat) (e : ent) : eres modexp :=
   match e with
   | en_var _ => eok (me_var k)
+  | en_tvar x => eerr (x ++ " is a variable, not a module")
   | en_mem _ p => eok (mapps (qname_mod p) (vars_desc k n))
   | en_unit _ => eerr "not a module"
   | en_open _ E oc => eok (open_mod E oc)
@@ -103,6 +104,11 @@ Definition check_params (ps : list (string * Cst.obj)) : eres unit :=
 Definition unit_in_b (fq : path) (S : list ent) : bool :=
   List.existsb (fun e => match e with en_unit fq' => path_beq fq fq' | _ => false end) S.
 
+(** A name no binding in scope has, as a module: the imported unit of
+    that one-segment path. *)
+Definition unit_mod (x : string) (S : list ent) : eres modexp :=
+  if unit_in_b (x :: nil) S then eok (me_unit (x :: nil)) else eerr ("unbound name " ++ x).
+
 (** ** Open Targets
 
     [elab_mod] on [itarget fq ip args], computed without building the
@@ -114,7 +120,7 @@ Definition elab_ihead (S : list ent) (fq ip : list string) : eres modexp :=
   | nil, x :: ip' =>
       let* H := match lookup x S with
                 | Some (k, e, n) => den_to_mod k n e
-                | None => eerr ("unbound name " ++ x)
+                | None => unit_mod x S
                 end in
       eok (fold_left me_mem ip' H)
   | nil, nil => eerr "nothing to open"
@@ -147,7 +153,7 @@ Definition elab_params_with (f : list ent -> Cst.obj -> eres exp) :=
     | nil => eok nil
     | (x, oA) :: ps' =>
         let* A := f S oA in
-        let* tys := go (en_var x :: S) ps' in
+        let* tys := go (en_tvar x :: S) ps' in
         eok ((x, A) :: tys)
     end.
 
@@ -183,15 +189,15 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
   | Cst.false_ty => eok ⊥
   | Cst.exfalso om mx oA =>
       let* M := elab S om in
-      let* A := elab (en_var mx :: S) oA in
+      let* A := elab (en_tvar mx :: S) oA in
       eok (efq M return A)
   | Cst.pi x oA oB =>
       let* A := elab S oA in
-      let* B := elab (en_var x :: S) oB in
+      let* B := elab (en_tvar x :: S) oB in
       eok (Π A B)
   | Cst.fn x oA oM =>
       let* A := elab S oA in
-      let* M := elab (en_var x :: S) oM in
+      let* M := elab (en_tvar x :: S) oM in
       eok (λ A M)
   | Cst.app o1 o2 =>
       let* M := elab S o1 in
@@ -209,11 +215,11 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
   | Cst.letb (Cst.d_def x (Some oA) oM) ob =>
       let* A := elab S oA in
       let* M := elab S oM in
-      let* B := elab (en_var x :: S) ob in
+      let* B := elab (en_tvar x :: S) ob in
       eok (ℓ A ≔ M in B)
   | Cst.letb (Cst.d_def x None oM) ob =>
       let* M := elab S oM in
-      let* B := elab (en_var x :: S) ob in
+      let* B := elab (en_tvar x :: S) ob in
       eok (ℓ ≔ M in B)
   | Cst.letb (Cst.d_mod x ps md) ob =>
       let* _ := check_params ps in
@@ -233,7 +239,7 @@ with elab_mod (S : list ent) (o : Cst.obj) {struct o} : eres modexp :=
   | Cst.var x =>
       match lookup x S with
       | Some (k, e, n) => den_to_mod k n e
-      | None => eerr ("unbound name " ++ x)
+      | None => unit_mod x S
       end
   | Cst.glob fq =>
       let* _ := echeck (unit_in_b fq S) (unit_not_imported_msg fq) in
@@ -290,7 +296,7 @@ Fixpoint elab_rargs (S : list ent) (args : list (string * Cst.obj)) : eres (list
   | nil => eok nil
   | (y, oA) :: args' =>
       let* A := elab S oA in
-      let* args'' := elab_rargs (en_var y :: S) args' in
+      let* args'' := elab_rargs (en_tvar y :: S) args' in
       eok ((y, A) :: args'')
   end.
 
@@ -365,7 +371,7 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) 
       let* _ := check_params (ups ++ nps)%list in
       let* tys := elab_params (F ++ O)%list (ups ++ nps)%list in
       let* A := elab (pents ups ++ F ++ O)%list oS in
-      let* cs' := elab_rcons (pents (ups ++ nps) ++ en_var x :: F ++ O)%list cs in
+      let* cs' := elab_rcons (pents (ups ++ nps) ++ en_tvar x :: F ++ O)%list cs in
       eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_ind x pv (mk_raw (List.length ups) (ptele tys) A cs') :: nil)
   (** The type is a module, as written; the command declares nothing. *)
   | Cst.c_builtin k oX =>

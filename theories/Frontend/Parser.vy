@@ -41,7 +41,7 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %type <Cst.mods> mods
 %type <Cst.dkw> dkw
 %type <(string * list string)%type> path
-%type <list string> fpath upath mpath_opt
+%type <list string> fpath ipath upath mpath_opt
 %type <string * string> item
 %type <list (string * string)> items
 %type <list Cst.obj> iargs
@@ -139,7 +139,7 @@ let dkw :=
 (* [import X::Y] loads a unit.  Anything after the unit's path makes it the
    long form, [import X::Y] then [open X::Y.ip a1 .. ak as W items]. *)
 let import_cmd :=
-  | IMPORT; u = upath; m = mpath_opt; xs = iargs; w = as_opt; ls = ilists;
+  | IMPORT; u = ipath; m = mpath_opt; xs = iargs; w = as_opt; ls = ilists;
       { Cst.import_cmds u m (List.rev xs) w (List.rev ls) }
 
 (* [open E as W items]: a module in scope or of an imported unit, applied to
@@ -196,7 +196,12 @@ let fpath :=
   | x = VAR; { [snd x] }
   | ~ = fpath; "::"; x = VAR; { snd x :: fpath }
 
-(* The unit an [import] names, in order *)
+(* The unit an [import] names, in order: a path of one segment or more *)
+let ipath :=
+  | ~ = fpath; { List.rev fpath }
+
+(* A unit named where a name in scope may stand, in order: two segments or
+   more, a one-segment unit being read as a name ([Elaborator]) *)
 let upath :=
   | ~ = fpath; "::"; x = VAR; { List.rev (snd x :: fpath) }
 

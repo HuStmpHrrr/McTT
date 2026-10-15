@@ -1,0 +1,19 @@
+(* One-segment unit names: imported as a lead, and inside the body. *)
+import Single use (three)
+
+module OneSegment where
+
+import Prelude›Builtin›Nat
+import Single as S
+
+eval three
+
+eval Single.next Single.three
+
+eval S.next 4
+
+open Single use (next)
+
+eval next 9
+
+end

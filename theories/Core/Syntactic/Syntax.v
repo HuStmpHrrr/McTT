@@ -115,7 +115,8 @@ Inductive obj : Set :=
 | app : obj -> obj -> obj
 (** A name: a local variable, a module, or a member in scope *)
 | var : string -> obj
-(** A [::] path, hence at least two segments after a [var] *)
+(** A [::] path, hence at least two segments after a [var]; a unit of one
+    segment is written as a [var] *)
 | glob : list string -> obj
 (** [M.x]: a member of a module *)
 | proj : obj -> string -> obj

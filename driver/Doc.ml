@@ -101,7 +101,7 @@ type mden =
 
 (* A core binder in scope: what a use links to (its binding occurrence, or
    for an open's item the member it names) and, for a local module, what it
-   denotes.  [vs] lists one per [en_var] entry of [sc], in order. *)
+   denotes.  [vs] lists one per binder entry ([en_var], [en_tvar]) of [sc], in order. *)
 type vb = { v_link : link; v_mod : mden }
 
 type env = { sc : E.ent list; vs : vb list }
@@ -177,7 +177,7 @@ let lookup env x : (E.ent * vb option) option =
   | None -> None
   | Some ((k, e), _) ->
       (match e with
-       | E.Coq_en_var _ ->
+       | E.Coq_en_var _ | E.Coq_en_tvar _ ->
            if E.binders env.sc <> List.length env.vs then
              raise (Misaligned "scope out of step with its binders");
            Some (e, Some (List.nth env.vs k))
@@ -187,9 +187,12 @@ let opt_list = function Some c -> [ c ] | None -> []
 
 let qname_mden (p : S.qname) = MGlobal (S.Coq_me_unit p.S.q_unit, p.S.q_chain)
 
-(* A head name, in term or module position. *)
+(* A head name, in term or module position; a name no binding has is the
+   imported unit of that one-segment path, as [Elaborator.unit_mod]. *)
 let head st env i x : mden =
   match lookup env x with
+  | None when El.unit_in_b [ x ] env.sc ->
+      refer st i (Site { s_unit = [ x ]; s_anchor = "" }); MGlobal (S.Coq_me_unit [ x ], [])
   | None -> MNone
   | Some (_, Some v) -> refer st i v.v_link; v.v_mod
   | Some (E.Coq_en_mem (_, p), _) ->
@@ -293,6 +296,7 @@ and target st env fq ip args : mden =
          | Some (_, Some v) -> (v.v_mod, ip')
          | Some (E.Coq_en_mem (_, p), _) -> (qname_mden p, ip')
          | Some (E.Coq_en_open (_, h, oc), _) -> (MGlobal (h, opt_list oc), ip')
+         | None when El.unit_in_b [ x ] env.sc -> (MGlobal (S.Coq_me_unit [ x ], []), ip')
          | _ -> (MNone, ip'))
     | [], x :: ip' -> (head st env (next st x) x, ip')
     | [], [] -> raise (Misaligned "nothing to open")
@@ -403,6 +407,9 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
        (* [Self] lies outside the declaration's own parameters: the entries
           [enva] added to [env] go on top of it. *)
        let self = { v_link = Site { s_unit = st.unit; s_anchor = anchor_of ch x }; v_mod = MNone } in
+       (* The recursor the declaration generates has no name of its own in
+          the source: a use of [x.rec] links to the declaration. *)
+       Hashtbl.replace st.items (fp, ch @ [ x; "rec" ]) self.v_link;
        let base = push x self env in
        let k = List.length enva.sc - List.length env.sc in
        let take n l = List.filteri (fun i _ -> i < n) l in

@@ -13,7 +13,7 @@ This token is invalid for the beginning of a program.
 
 prog: MODULE TRUE
 ##
-## Ends in an error in state: 225.
+## Ends in an error in state: 228.
 ##
 ## prog -> leads MODULE . fpath params_opt WHERE cmds END EOF [ # ]
 ##
@@ -360,26 +360,13 @@ prog: IMPORT TRUE
 ##
 ## Ends in an error in state: 137.
 ##
-## import_cmd -> IMPORT . upath mpath_opt iargs as_opt ilists [ THEOREM REMARK PRIVATE OPEN MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
+## import_cmd -> IMPORT . ipath mpath_opt iargs as_opt ilists [ THEOREM REMARK PRIVATE OPEN MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## IMPORT
 ##
 
-Expected the unit to import, as in "import X›Y".
-
-prog: IMPORT VAR COLONCOLON TRUE
-##
-## Ends in an error in state: 163.
-##
-## fpath -> fpath COLONCOLON . VAR [ COLONCOLON ]
-## upath -> fpath COLONCOLON . VAR [ VAR USE TYPE TRUE_TY TRUE THEOREM REMARK PRIVATE OPEN OMEGA NAT MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DOT DEF BUILTIN AXIOM AS ABSTRACT ]
-##
-## The known suffix of the stack is as follows:
-## fpath COLONCOLON
-##
-
-Expected a name after "›" in the path.
+Expected the unit to import, as in "import X" or "import X›Y".
 
 prog: IMPORT VAR COLONCOLON VAR DOT TRUE
 ##
@@ -453,7 +440,7 @@ prog: MODULE VAR WHERE TRUE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 231, spurious reduction of production mods ->
+## In state 232, spurious reduction of production mods ->
 ##
 
 Expected a command ("module", "def", "theorem", "let", "import", "open", "eval", ...), or keyword "end" to close the module.
@@ -702,9 +689,9 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR COLONCOLON TRUE
 ##
-## Ends in an error in state: 227.
+## Ends in an error in state: 163.
 ##
-## fpath -> fpath COLONCOLON . VAR [ WHERE LPAREN COLONCOLON ]
+## fpath -> fpath COLONCOLON . VAR [ WHERE VAR USE TYPE TRUE_TY TRUE THEOREM REMARK PRIVATE OPEN OMEGA NAT MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DOT DEF COLONCOLON BUILTIN AXIOM AS ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## fpath COLONCOLON
@@ -714,7 +701,7 @@ Expected a name after "›" in the path.
 
 prog: MODULE VAR TRUE
 ##
-## Ends in an error in state: 229.
+## Ends in an error in state: 230.
 ##
 ## prog -> leads MODULE fpath params_opt . WHERE cmds END EOF [ # ]
 ##
@@ -725,14 +712,14 @@ prog: MODULE VAR TRUE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 226, spurious reduction of production params_opt ->
+## In state 229, spurious reduction of production params_opt ->
 ##
 
 Expected a parameter "(x : A)", or keyword "where".
 
 prog: MODULE VAR WHERE END TRUE
 ##
-## Ends in an error in state: 232.
+## Ends in an error in state: 233.
 ##
 ## prog -> leads MODULE fpath params_opt WHERE cmds END . EOF [ # ]
 ##
@@ -770,21 +757,15 @@ prog: IMPORT VAR COLONCOLON VAR WHERE
 ##
 ## Ends in an error in state: 162.
 ##
-## fpath -> fpath . COLONCOLON VAR [ COLONCOLON ]
-## upath -> fpath . COLONCOLON VAR [ VAR USE TYPE TRUE_TY TRUE THEOREM REMARK PRIVATE OPEN OMEGA NAT MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DOT DEF BUILTIN AXIOM AS ABSTRACT ]
+## fpath -> fpath . COLONCOLON VAR [ VAR USE TYPE TRUE_TY TRUE THEOREM REMARK PRIVATE OPEN OMEGA NAT MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DOT DEF COLONCOLON BUILTIN AXIOM AS ABSTRACT ]
+## ipath -> fpath . [ VAR USE TYPE TRUE_TY TRUE THEOREM REMARK PRIVATE OPEN OMEGA NAT MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DOT DEF BUILTIN AXIOM AS ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## fpath
 ##
-## WARNING: This example involves spurious reductions.
-## This implies that, although the LR(1) items shown above provide an
-## accurate view of the past (what has been recognized so far), they
-## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 164, spurious reduction of production fpath -> fpath COLONCOLON VAR
-##
 
 Expected a further "›" or "." in the path, the arguments of the module, "as", "use", "export", or the next command.
-"import" names a unit, as in "import X›Y"; a module in scope is opened with "open".
+"import" names a unit, as in "import X" or "import X›Y"; a module in scope is opened with "open".
 
 prog: IMPORT VAR COLONCOLON VAR DOT VAR WHERE
 ##
@@ -866,10 +847,10 @@ prog: IMPORT VAR COLONCOLON VAR AS VAR TRUE
 ## Ends in an error in state: 146.
 ##
 ## ilists -> ilists . ilist [ USE THEOREM REMARK PRIVATE OPEN MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EXPORT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
-## import_cmd -> IMPORT upath mpath_opt iargs as_opt ilists . [ THEOREM REMARK PRIVATE OPEN MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
+## import_cmd -> IMPORT ipath mpath_opt iargs as_opt ilists . [ THEOREM REMARK PRIVATE OPEN MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
-## IMPORT upath mpath_opt iargs as_opt ilists
+## IMPORT ipath mpath_opt iargs as_opt ilists
 ##
 
 Expected a further "use" or "export" list, or the next command.
@@ -1618,3 +1599,34 @@ prog: MODULE VAR WHERE INDUCTIVE VAR EQ WHERE
 
 An inductive alias "inductive x (ps) :=" is expected to be followed by the inductive type it names and its arguments.
 
+prog: OPEN VAR COLONCOLON VAR WHERE
+##
+## Ends in an error in state: 225.
+##
+## fpath -> fpath . COLONCOLON VAR [ COLONCOLON ]
+## upath -> fpath . COLONCOLON VAR [ VAR USE TYPE TRUE_TY TRUE THEOREM REMARK PRIVATE OPEN OMEGA NAT MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DOT DEF BUILTIN AXIOM AS ABSTRACT ]
+##
+## The known suffix of the stack is as follows:
+## fpath
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 227, spurious reduction of production fpath -> fpath COLONCOLON VAR
+##
+
+Expected a further "›" or "." in the path, the arguments of the module, "as", "use", "export", or the next command.
+
+prog: OPEN VAR COLONCOLON WHERE
+##
+## Ends in an error in state: 226.
+##
+## fpath -> fpath COLONCOLON . VAR [ COLONCOLON ]
+## upath -> fpath COLONCOLON . VAR [ VAR USE TYPE TRUE_TY TRUE THEOREM REMARK PRIVATE OPEN OMEGA NAT MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DOT DEF BUILTIN AXIOM AS ABSTRACT ]
+##
+## The known suffix of the stack is as follows:
+## fpath COLONCOLON
+##
+
+Expected a name after "›" in the path.

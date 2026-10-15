@@ -1,0 +1,10 @@
+(* A unit whose name is a single segment. *)
+module Single where
+
+import Prelude›Builtin›Nat use (succ)
+
+def three : ℕ ≔ 3 end
+
+def next : ∀ (x : ℕ) → ℕ ≔ λ (x : ℕ) → succ x end
+
+end

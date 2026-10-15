@@ -173,6 +173,18 @@ Inductive run_error : Set :=
 (** A literal, a numeral or the token [ℕ], with no natural-number type
     bound ([Builtin]). *)
 | re_lit : lerr -> run_error
+(** A branch of an eliminator that binds [n] names where its constructor
+    needs [k] non-uniform parameters, [a] arguments and [r] recursive
+    results: [re_branch_arity c n k a r]. *)
+| re_branch_arity : string -> nat -> nat -> nat -> nat -> run_error
+(** A branch for no constructor of the eliminated type. *)
+| re_branch_unknown : string -> run_error
+(** A constructor with no branch, or with two. *)
+| re_branch_missing : string -> run_error
+| re_branch_dup : string -> run_error
+(** Branches, one per constructor, not in the order [cs] of the
+    constructors. *)
+| re_branch_order : list string -> run_error
 (** An error, with the state it occurred in, for the printer: the units
     imported, the stack, and the natural numbers bound there, their type
     and constructors as [nat_view] gives them. *)
@@ -236,10 +248,120 @@ Section ModBlame.
     end.
 End ModBlame.
 
+(** Where a term is rejected, an eliminator whose branches do not match the
+    constructors of the type it eliminates.  The type is read off the
+    names of the branches: every inductive type of the global context that
+    has a constructor of each branch's name, and the error is reported when
+    all of them give the same one.  This only chooses the message. *)
+Section BranchBlame.
+  Fixpoint gmod_inds (Φ : gmod) : list ind_decl :=
+    match Φ with
+    | gm_nil => nil
+    | gm_ext Φ _ E =>
+        match E with
+        | ge_ind _ D Φi => D :: gmod_inds Φi
+        | ge_mod _ (gu_mk _ (md_body Φi)) => gmod_inds Φi
+        | _ => nil
+        end ++ gmod_inds Φ
+    | gm_open Φ _ _ => gmod_inds Φ
+    end.
+
+  Definition ctx_inds (Θ : gdeps) (Ξ : gstack) : list ind_decl :=
+    flat_map (fun e => gmod_inds (gu_mod (snd e))) Θ ++ flat_map (fun e => gmod_inds (gu_mod (snd e))) Ξ.
+
+  Definition brs_has (Bs : list (string * nat * exp)) (c : string) : nat :=
+    List.length (List.filter (fun b => String.eqb (fst (fst b)) c) Bs).
+
+  Fixpoint strs_eqb (xs ys : list string) : bool :=
+    match xs, ys with
+    | nil, nil => true
+    | x :: xs, y :: ys => andb (String.eqb x y) (strs_eqb xs ys)
+    | _, _ => false
+    end.
+
+  (** The first mismatch of the branches [Bs] against the constructors of
+      [D]: a branch's binders, then a constructor without a branch or with
+      two, then the order of the branches. *)
+  Definition branch_check (D : ind_decl) (Bs : list (string * nat * exp)) : option run_error :=
+    first_some (first_some
+      ((fix go (Bs0 : list (string * nat * exp)) : option run_error :=
+          match Bs0 with
+          | nil => None
+          | (c, n, _) :: Bs0' =>
+              match ind_con D c with
+              | Some gs =>
+                  if Nat.eqb n (ind_nn D + List.length gs + cargs_nrec gs) then go Bs0'
+                  else Some (re_branch_arity c n (ind_nn D) (List.length gs) (cargs_nrec gs))
+              | None => Some (re_branch_unknown c)
+              end
+          end) Bs)
+      (fun _ => (fix go (cs : list (string * list carg)) : option run_error :=
+          match cs with
+          | nil => None
+          | (c, _) :: cs' =>
+              match brs_has Bs c with
+              | 0 => Some (re_branch_missing c)
+              | 1 => go cs'
+              | _ => Some (re_branch_dup c)
+              end
+          end) (ind_cons D)))
+      (fun _ =>
+         if strs_eqb (List.map (fun b => fst (fst b)) Bs) (List.map fst (ind_cons D)) then None
+         else Some (re_branch_order (List.map fst (ind_cons D)))).
+
+  Definition run_error_eqb (e1 e2 : run_error) : bool :=
+    match e1, e2 with
+    | re_branch_arity c n k a r, re_branch_arity c' n' k' a' r' =>
+        andb (String.eqb c c') (andb (Nat.eqb n n') (andb (Nat.eqb k k') (andb (Nat.eqb a a') (Nat.eqb r r'))))
+    | re_branch_unknown c, re_branch_unknown c' => String.eqb c c'
+    | re_branch_missing c, re_branch_missing c' => String.eqb c c'
+    | re_branch_dup c, re_branch_dup c' => String.eqb c c'
+    | re_branch_order cs, re_branch_order cs' => strs_eqb cs cs'
+    | _, _ => false
+    end.
+
+  Definition elim_blame (Θ : gdeps) (Ξ : gstack) (Bs : list (string * nat * exp)) : option run_error :=
+    match Bs with
+    | nil => None
+    | _ =>
+        let is_con D b := match ind_con D (fst (fst b)) with Some _ => true | None => false end in
+        let cands :=
+          match List.filter (fun D => forallb (is_con D) Bs) (ctx_inds Θ Ξ) with
+          | nil => List.filter (fun D => existsb (is_con D) Bs) (ctx_inds Θ Ξ)
+          | Ds => Ds
+          end in
+        match List.map (fun D => branch_check D Bs) cands with
+        | Some e :: rs => if forallb (fun r => match r with Some e' => run_error_eqb e e' | None => false end) rs then Some e else None
+        | _ => None
+        end
+    end.
+
+  Fixpoint brs_blame (Θ : gdeps) (Ξ : gstack) (M : exp) : option run_error :=
+    match M with
+    | a_succl M | a_univ M => brs_blame Θ Ξ M
+    | a_maxl M N | a_pi M N | a_fn M N | a_app M N => first_some (brs_blame Θ Ξ M) (fun _ => brs_blame Θ Ξ N)
+    | a_exfalso A M => first_some (brs_blame Θ Ξ M) (fun _ => brs_blame Θ Ξ A)
+    | a_elim _ A Bs M =>
+        first_some (brs_blame Θ Ξ M) (fun _ => first_some (brs_blame Θ Ξ A)
+          (fun _ => first_some (elim_blame Θ Ξ Bs)
+          (fun _ => (fix brs (Bs : list (string * nat * exp)) : option run_error :=
+                       match Bs with
+                       | nil => None
+                       | b :: Bs' => first_some (brs_blame Θ Ξ (snd b)) (fun _ => brs Bs')
+                       end) Bs)))
+    | a_let (b_def oA N) B =>
+        first_some (match oA with Some A => brs_blame Θ Ξ A | None => None end)
+          (fun _ => first_some (brs_blame Θ Ξ N) (fun _ => brs_blame Θ Ξ B))
+    | a_let (b_mod _) B => brs_blame Θ Ξ B
+    | _ => None
+    end.
+End BranchBlame.
+
 (** The error for a rejected term: a module where a term stands, if there
-    is one, otherwise the given error. *)
+    is one, then an eliminator whose branches do not match its type,
+    otherwise the given error. *)
 Definition mod_error {Θ Ξ} (Hg : ⊢g Θ ⍮ Ξ) (it : qname -> option ind_alias_view) (Ms : list exp) (e : run_error) : run_error :=
-  match List.fold_right (fun M r => first_some (mod_blame Θ Ξ Hg it M) (fun _ => r)) None Ms with
+  match List.fold_right (fun M r => first_some (first_some (mod_blame Θ Ξ Hg it M) (fun _ => brs_blame Θ Ξ M)) (fun _ => r)) None Ms with
   | Some e' => e'
   | None => e
   end.

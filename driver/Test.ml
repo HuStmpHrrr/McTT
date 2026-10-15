@@ -1157,6 +1157,19 @@ let%expect_test "a unit with parameters" =
     Evaluate id ℕ 4 --> 4 : ℕ
     |}]
 
+let%expect_test "a unit name may be one segment" =
+  let _ = main_of_multi "OneSegment.mctt" in
+  [%expect {|
+    Evaluate three --> 3 : ℕ
+    Evaluate Single.next Single.three --> 4 : ℕ
+    Evaluate S.next 4 --> 5 : ℕ
+    Evaluate next 9 --> 10 : ℕ
+    |}]
+
+let%expect_test "a one-segment unit not imported is not in scope" =
+  let _ = main_of_multi_string "module T where eval Single.three end" in
+  [%expect {| Error: unbound name Single |}]
+
 let%expect_test "an import is not transitive" =
   let _ = main_of_multi "Transitive.mctt" in
   [%expect {| Error: the unit Lib›Num is not imported |}]
@@ -2613,15 +2626,9 @@ let%expect_test "an open needs a target" =
       module to open: a module in scope, a unit, or a module of a unit.
     |}]
 
-let%expect_test "import names a unit" =
+let%expect_test "import names a unit, not a module in scope" =
   let _ = main_of_body "module M where end import M" in
-  [%expect {|
-    Error: on "end" (at line 2, column 47 - line 2, column 50): Expected a
-      further "›" or "." in the path, the arguments of the module, "as", "use",
-      "export", or the next command.
-      "import" names a unit, as in "import X›Y"; a module in scope is opened with
-      "open".
-    |}]
+  [%expect {| Error: M: cannot find unit |}]
 
 (** Import only loads *)
 
@@ -2674,6 +2681,19 @@ let%expect_test "a leading open in a parameter type" =
        module ScratchP (p : Eq 1 1) (q : E.Eq 2 2) where def r : Eq 2 2 := q end eval r end"
   in
   [%expect {| Evaluate r $1 $0 --> ⋆ : ⊤ |}]
+
+let%expect_test "an error names the parameters of the modules around it" =
+  let _ =
+    main_of_program_string
+      "module T (n : Type@0) where module L (m : n) where \
+         def x : n := fun (y : n) -> m end end end"
+  in
+  [%expect {| Error: the body of x, λ (x1 : n) → m, is not of type n |}];
+  let _ =
+    main_of_program_string
+      "module T (x1 : Type@0) where def x : x1 := fun (y : x1) -> y end end"
+  in
+  [%expect {| Error: the body of x, λ (x1 : $0) → x1, is not of type $0 |}]
 
 let%expect_test "a leading open sees no parameter" =
   let _ = main_of_multi_string "import Prelude›Builtin›Nat use (Nat) import Lib::Priv open Lib::Priv.F n as G module X (n : Nat) where end" in
@@ -2887,6 +2907,20 @@ let%expect_test "mctt-doc: the units the checker rejects are reported" =
     Misnamed: not checked
     Missing: not checked
     Transitive: not checked
+    |}]
+
+let%expect_test "mctt-doc: a generated member links to its inductive declaration" =
+  let lib = Doc.load ~extra_roots:lib_root "../examples/multi" in
+  List.iter (fun (x, n) -> Printf.printf "%s %d: %s\n" x n (Doc.link_of lib [ "Generated" ] x n))
+    [ ("rec", 1); ("s", 1); ("z", 1); ("rec", 2); ("t", 2); ("rec", 3); ("rec", 4) ];
+  [%expect {|
+    rec 1: line 15: Lib›Unary#U
+    s 1: line 12: Lib›Unary#U.s
+    z 1: line 12: Lib›Unary#U.z
+    rec 2: line 18: Generated#B
+    t 2: line 15: Generated#B.t
+    rec 3: line 20: Lib›Unary#U
+    rec 4: line 22: Lib›Unary#U
     |}]
 
 (* The output boxes of a page, unescaped, in order. *)
@@ -3352,20 +3386,38 @@ let%expect_test "a function argument in which the type does not occur is not rec
 let%expect_test "a branch with the wrong number of names is rejected" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
                         def f (n : N) : N := elim n return k . N | z => N.z | s m => m end end" in
-  [%expect {|
-    Error: the body of f,
-      λ (x1 : N) → elim x1 return x2 . N | z ⇒ N.z | s x3 ⇒ x3 end,
-      is not of type ∀ (x1 : N) → N
-    |}]
+  [%expect {| Error: the branch s binds 1 name but needs 2 (1 argument, 1 induction hypothesis) |}]
+
+let%expect_test "a branch missing the induction hypothesis names what it needs" =
+  let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
+                        def len (l : List Nat) : Nat := \
+                          elim l return k . Nat | nil => 0 | cons x xs => 0 end end" in
+  [%expect {| Error: the branch cons binds 2 names but needs 3 (2 arguments, 1 induction hypothesis) |}]
+
+let%expect_test "a branch for a name that is not a constructor is rejected" =
+  let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
+                        def f (n : N) : N := elim n return k . N | z => N.z | t m, h => m end end" in
+  [%expect {| Error: t is not a constructor of the eliminated type |}]
+
+let%expect_test "an eliminator missing a branch is rejected" =
+  let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
+                        def f (n : N) : N := elim n return k . N | z => N.z end end" in
+  [%expect {| Error: the eliminator has no branch for s |}]
+
+let%expect_test "an eliminator with two branches for a constructor is rejected" =
+  let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
+                        def f (n : N) : N := elim n return k . N | z => N.z | z => N.z | s m, h => m end end" in
+  [%expect {| Error: the eliminator has two branches for z |}]
+
+let%expect_test "a term variable shadowing a module is not a module" =
+  let _ = main_of_body "module B where def Id : Nat := 0 end end \
+                        def f (B : Nat) : Nat := B.Id end" in
+  [%expect {| Error: B is a variable, not a module |}]
 
 let%expect_test "the branches must follow the constructors' order" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
                         def f (n : N) : N := elim n return k . N | s m, h => m | z => N.z end end" in
-  [%expect {|
-    Error: the body of f,
-      λ (x1 : N) → elim x1 return x2 . N | s x3 x4 ⇒ x3 | z ⇒ N.z end,
-      is not of type ∀ (x1 : N) → N
-    |}]
+  [%expect {| Error: the branches must follow the order of the constructors: z, s |}]
 
 let%expect_test "an inductive type's name is a member of its frame" =
   let _ = main_of_body "def N : Nat := 0 end inductive N : Type@0 where | z end" in
