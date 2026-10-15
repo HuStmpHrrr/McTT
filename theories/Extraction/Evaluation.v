@@ -431,6 +431,74 @@ Proof. intros Θ Ξ; pose proof (feval_order_sound Θ Ξ); destruct_all; eauto. 
 Hint Resolve feval_exp_order_sound feval_app_order_sound feval_exps_order_sound
   feval_shty_order_sound feval_ihty_order_sound : mctt.
 
+(** ** Constructors of the Shape of the Natural Numbers
+
+    A constructor of a type without parameters that takes no argument, as
+    [zero] does, or one recursive argument of the type itself, as [succ]
+    does: [nat_cargs D gs] is [Some false] and [Some true] for these
+    arguments [gs].  The evaluator takes such a constructor apart, and
+    readback reads it ([Extraction.Readback]), without the lists of the
+    general rule.  [con_view D c vs] is the constructor [c] at the values
+    [vs]: [Some None] of the shape of [zero], [Some (Some v)] of the shape
+    of [succ v]. *)
+Definition nat_cargs (D : ind_decl) (gs : list carg) : option bool :=
+  match ind_params D, ind_nu D, gs with
+  | nil, 0, nil => Some false
+  | nil, 0, ca_rec (pt_self _ nil) :: nil => Some true
+  | _, _, _ => None
+  end.
+
+Definition con_view (D : ind_decl) (c : string) (vs : list domain) : option (option domain) :=
+  match ind_con D c with
+  | Some gs =>
+      match nat_cargs D gs, vs with
+      | Some false, nil => Some None
+      | Some true, v :: nil => Some (Some v)
+      | _, _ => None
+      end
+  | None => None
+  end.
+
+Lemma nat_cargs_zero : forall D gs,
+    nat_cargs D gs = Some false -> ind_params D = nil /\ ind_nu D = 0 /\ gs = nil.
+Proof.
+  unfold nat_cargs; intros D gs H.
+  destruct (ind_params D), (ind_nu D) as [|]; try discriminate.
+  destruct gs as [| [? | [? [|] | ? ? | ? ?]] [|]]; try discriminate; auto.
+Qed.
+
+Lemma nat_cargs_succ : forall D gs,
+    nat_cargs D gs = Some true -> ind_params D = nil /\ ind_nu D = 0 /\ exists k, gs = ca_rec (pt_self k nil) :: nil.
+Proof.
+  unfold nat_cargs; intros D gs H.
+  destruct (ind_params D), (ind_nu D) as [|]; try discriminate.
+  destruct gs as [| [? | [k [|] | ? ? | ? ?]] [|]]; try discriminate; eauto.
+Qed.
+
+Lemma ind_np_nil : forall D, ind_params D = nil -> ind_np D = 0.
+Proof. intros D H; unfold ind_np; rewrite H; reflexivity. Qed.
+
+Lemma con_view_zero : forall D c vs,
+    con_view D c vs = Some None ->
+    ind_con D c = Some nil /\ ind_params D = nil /\ ind_np D = 0 /\ ind_nu D = 0 /\ vs = nil.
+Proof.
+  unfold con_view; intros D c vs H.
+  destruct (ind_con D c) as [gs |] eqn:Ec; [| discriminate ].
+  destruct (nat_cargs D gs) as [[|] |] eqn:En, vs as [| ? [|]]; try discriminate.
+  destruct (nat_cargs_zero _ _ En) as (Hp & Hu & ->); auto 6 using ind_np_nil.
+Qed.
+
+Lemma con_view_succ : forall D c vs v,
+    con_view D c vs = Some (Some v) ->
+    exists k, ind_con D c = Some (ca_rec (pt_self k nil) :: nil) /\ ind_params D = nil /\ ind_np D = 0 /\ ind_nu D = 0 /\ vs = v :: nil.
+Proof.
+  unfold con_view; intros D c vs v H.
+  destruct (ind_con D c) as [gs |] eqn:Ec; [| discriminate ].
+  destruct (nat_cargs D gs) as [[|] |] eqn:En, vs as [| ? [|]]; try discriminate.
+  injection H as ->.
+  destruct (nat_cargs_succ _ _ En) as (Hp & Hu & k & ->); eauto 7 using ind_np_nil.
+Qed.
+
 Section EvalImpl.
   Variables (Θ : gdeps) (Ξ : gstack).
   Context {F : FCtx Θ Ξ}.
@@ -565,9 +633,38 @@ Section EvalImpl.
     try econstructor; eauto.
 
 
+  (** The constructors of the shape of the natural numbers ([con_view]):
+      the general rule at no parameter and at the lists the view fixes.  An
+      order of the branch is the premise of the order at the recursive
+      results computed, which the view fixes to none or one. *)
+  #[local]
+  Ltac ev_conview :=
+    match goal with
+    | Ev : con_view _ _ _ = Some None |- _ =>
+        destruct (con_view_zero _ _ _ Ev) as (? & ? & ? & ? & ?); subst
+    | Ev : con_view _ _ _ = Some (Some _) |- _ =>
+        let Hc := fresh "Hc" in
+        destruct (con_view_succ _ _ _ _ Ev) as (? & Hc & ? & ? & ? & ?); subst
+    end;
+    repeat impl_obl_tac1; impl_obl_glob;
+    match goal with Hnp : ind_np ?D = 0, Hnu : ind_nu ?D = 0 |- _ =>
+      rewrite Hnp, Hnu in * |-;
+      cbn [skipn firstn app env_args fold_left extend_env] in * |-;
+      repeat impl_obl_tac1; impl_obl_glob;
+      try match goal with H : feval_ihs_order _ _ _ _ _ _ _ (_ :: _) _ |- _ => dependent destruction H end;
+      cbn [cargs_nrec] in * |-;
+      try solve [ congruence ];
+      repeat impl_obl_tac1;
+      first [ match goal with Hb : forall ihs, _ -> feval_exp_order _ _ ?B _ |- feval_exp_order _ _ ?B _ =>
+                first [ refine (Hb nil _) | refine (Hb (_ :: nil) _) ]; eauto 6 with mctt end
+            | eassumption
+            | eapply feval_elim_con; try eassumption; rewrite ?Hnp, ?Hnu; cbn; eauto 6 with mctt ]
+    end.
+
   #[local]
   Ltac ev_obl :=
     intros; cbv beta in *;
+    first [ lazymatch goal with Ev : con_view _ _ _ = Some _ |- _ => solve [ ev_conview ] end | idtac ];
     repeat impl_obl_tac1;
     first [ solve [ impl_obl_finish ]
           | solve [ impl_obl_split; impl_obl_finish ]
@@ -632,14 +729,33 @@ Section EvalImpl.
 
   with feval_elim_impl p nm A Bs m (ck : lk_cache Θ Ξ) (H : feval_elim_order Θ Ξ p nm A Bs m) : { r | ⟦elimᶠ m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
   | p, nm, A, Bs, d_con pq c vs, ck, H with cache_lookup Θ Ξ ck pq := {
-    | exist _ (Some D) Ed with inspect (ind_con D c) := {
-      | exist _ (Some gs) Ec with inspect (brs_lookup Bs c) := {
+    | exist _ (Some D) Ed with inspect (con_view D c vs) := {
+      (** A constructor of the shape of [zero]: its branch at [p]. *)
+      | exist _ (Some None) Ev with inspect (brs_lookup Bs c) := {
         | exist _ (Some (n, B)) Eb =>
-            let (ihs, Hihs) := feval_ihs_impl p nm A Bs B gs (skipn (ind_np D) vs) (Some (exist _ (pq, D) Ed)) _ in
-            let (r, Hr) := feval_exp_impl B (env_args p (skipn (ind_nu D) (firstn (ind_np D) vs) ++ skipn (ind_np D) vs ++ ihs)) _ in
+            let (r, Hr) := feval_exp_impl B p _ in
             exist _ r _
         | exist _ None Eb => False_rect _ _ }
-      | exist _ None Ec => False_rect _ _ }
+      (** Of the shape of [succ v]: its branch at [v] and the recursive
+          result, if the branch reads it. *)
+      | exist _ (Some (Some v)) Ev with inspect (brs_lookup Bs c) := {
+        | exist _ (Some (n, B)) Eb with inspect (exp_freshb 0 B) := {
+          | exist _ true Ef =>
+              let (r, Hr) := feval_exp_impl B (extend_env (extend_env p v) 𝕌ω@0) _ in
+              exist _ r _
+          | exist _ false Ef =>
+              let (ih, Hih) := feval_elim_impl p nm A Bs v (Some (exist _ (pq, D) Ed)) _ in
+              let (r, Hr) := feval_exp_impl B (extend_env (extend_env p v) ih) _ in
+              exist _ r _ }
+        | exist _ None Eb => False_rect _ _ }
+      | exist _ None Ev with inspect (ind_con D c) := {
+        | exist _ (Some gs) Ec with inspect (brs_lookup Bs c) := {
+          | exist _ (Some (n, B)) Eb =>
+              let (ihs, Hihs) := feval_ihs_impl p nm A Bs B gs (skipn (ind_np D) vs) (Some (exist _ (pq, D) Ed)) _ in
+              let (r, Hr) := feval_exp_impl B (env_args p (skipn (ind_nu D) (firstn (ind_np D) vs) ++ skipn (ind_np D) vs ++ ihs)) _ in
+              exist _ r _
+          | exist _ None Eb => False_rect _ _ }
+        | exist _ None Ec => False_rect _ _ } }
     | exist _ None Ed => False_rect _ _ }
   | p, nm, A, Bs, ⇑ (d_ind pq as') m, ck, H with cache_lookup Θ Ξ ck pq := {
     | exist _ (Some D) Ed =>
@@ -853,6 +969,15 @@ Section EvalImpl.
     inversion, the evaluation itself by its rule, or a branch the order rules
     out ([ev_obl]).  They are transparent: the order premises are the
     arguments of the structural recursion. *)
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.

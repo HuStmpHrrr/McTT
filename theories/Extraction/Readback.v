@@ -375,6 +375,98 @@ Ltac impl_obl_tac1 :=
 Ltac impl_obl_tac :=
   repeat impl_obl_tac1; try econstructor; mauto.
 
+(** The type of a recursive argument at the type itself, without
+    indices, is the type former at the uniform parameters. *)
+Lemma feval_shty_self_nil : forall Θ Ξ p ups ρ k,
+    feval_shty Θ Ξ p ups ρ (pt_self k nil) (d_ind p ups).
+Proof.
+  intros; rewrite <- (app_nil_r ups) at 2; econstructor; constructor.
+Qed.
+
+#[local]
+Hint Resolve feval_shty_self_nil : mctt.
+
+(** The readback of the constructors of the shape of [zero] and [succ]. *)
+Lemma fread_nf_con_zero : forall Θ Ξ s p D c,
+    ind_lookup Θ Ξ p = Some D -> ind_con D c = Some nil -> ind_params D = nil -> ind_nu D = 0 ->
+    Rnfᶠ ⇓ (d_ind p nil) (d_con p c nil) in Θ ⍮ Ξ ⍮ s ↘ nf_con p c nfs_nil.
+Proof.
+  intros * Hl Hc Hp Hu.
+  change nfs_nil with (nfs_app nfs_nil nfs_nil).
+  assert (ind_np D = 0) by (unfold ind_np; rewrite Hp; reflexivity).
+  econstructor; try eassumption; try (rewrite Hp; constructor);
+    rewrite ?H, ?Hu; cbn; try constructor; reflexivity.
+Qed.
+
+Lemma fread_nf_con_succ : forall Θ Ξ s p D c k v V,
+    ind_lookup Θ Ξ p = Some D -> ind_con D c = Some (ca_rec (pt_self k nil) :: nil) -> ind_params D = nil -> ind_nu D = 0 ->
+    Rnfᶠ ⇓ (d_ind p nil) v in Θ ⍮ Ξ ⍮ s ↘ V ->
+    Rnfᶠ ⇓ (d_ind p nil) (d_con p c (v :: nil)) in Θ ⍮ Ξ ⍮ s ↘ nf_con p c (nfs_cons V nfs_nil).
+Proof.
+  intros * Hl Hc Hp Hu HV.
+  change (nfs_cons V nfs_nil) with (nfs_app nfs_nil (nfs_cons V nfs_nil)).
+  assert (ind_np D = 0) by (unfold ind_np; rewrite Hp; reflexivity).
+  econstructor; try eassumption; try (rewrite Hp; constructor); rewrite ?H, ?Hu; cbn; try reflexivity.
+  econstructor; [ apply feval_shty_self_nil | exact HV | constructor ].
+Qed.
+
+#[local]
+Hint Resolve fread_nf_con_zero fread_nf_con_succ : mctt.
+
+(** The readback of the branches of the constructors of the shape of [zero]
+    and [succ], at the environments [fread_brs] gives them. *)
+Lemma fread_brs_nat_zero : forall Θ Ξ s ρ A p D ups c n B cs Bs b t B' Bs',
+    ind_params D = nil ->
+    n = (ind_nn D + 0 + 0)%nat ->
+    cargs_plen (ind_nn D) nil ->
+    ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (nil ++ nil ++ nil) ↘ b ->
+    ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (nil ++ d_con p c (ups ++ nil ++ nil) :: nil) ↘ t ->
+    Rnfᶠ ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
+    fread_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
+    fread_brs Θ Ξ s ρ A p D ups ((c, nil) :: cs) ((c, n, B) :: Bs) (nbrs_cons c n B' Bs').
+Proof.
+  intros * Hp Hn Hl Hb Ht HB HBs.
+  econstructor; try eassumption; [ | constructor | constructor ].
+  rewrite Hp, firstn_nil; constructor.
+Qed.
+
+Lemma fread_brs_nat_skip : forall Θ Ξ s ρ A p D ups c k n B cs Bs b t B' Bs',
+    ind_params D = nil ->
+    n = (ind_nn D + 1 + 1)%nat ->
+    cargs_plen (ind_nn D) (ca_rec (pt_self k nil) :: nil) ->
+    exp_freshb 0 B = true ->
+    ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (nil ++ (⇑! (d_ind p ups) (s + ind_nn D) :: nil) ++ ⇑! 𝕌ω@0 (s + ind_nn D + 1) :: nil) ↘ b ->
+    ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (nil ++ d_con p c (ups ++ nil ++ ⇑! (d_ind p ups) (s + ind_nn D) :: nil) :: nil) ↘ t ->
+    Rnfᶠ ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
+    fread_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
+    fread_brs Θ Ξ s ρ A p D ups ((c, ca_rec (pt_self k nil) :: nil) :: cs) ((c, n, B) :: Bs) (nbrs_cons c n B' Bs').
+Proof.
+  intros * Hp Hn Hl Hf Hb Ht HB HBs.
+  eapply fread_brs_cons with (ns := nil) (vs := _ :: nil) (ihs := _ :: nil); try eassumption.
+  - rewrite Hp, firstn_nil; constructor.
+  - econstructor; [ apply feval_shty_self_nil | constructor ].
+  - eapply ffresh_ihs_skip; [ exact Hf | constructor ].
+Qed.
+
+Lemma fread_brs_nat_rec : forall Θ Ξ s ρ A p D ups c k n B cs Bs a b t B' Bs',
+    ind_params D = nil ->
+    n = (ind_nn D + 1 + 1)%nat ->
+    cargs_plen (ind_nn D) (ca_rec (pt_self k nil) :: nil) ->
+    exp_freshb 0 B = false ->
+    ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (nil ++ ⇑! (d_ind p ups) (s + ind_nn D) :: nil) ↘ a ->
+    ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (nil ++ (⇑! (d_ind p ups) (s + ind_nn D) :: nil) ++ ⇑! a (s + ind_nn D + 1) :: nil) ↘ b ->
+    ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (nil ++ d_con p c (ups ++ nil ++ ⇑! (d_ind p ups) (s + ind_nn D) :: nil) :: nil) ↘ t ->
+    Rnfᶠ ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
+    fread_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
+    fread_brs Θ Ξ s ρ A p D ups ((c, ca_rec (pt_self k nil) :: nil) :: cs) ((c, n, B) :: Bs) (nbrs_cons c n B' Bs').
+Proof.
+  intros * Hp Hn Hl Hf Ha Hb Ht HB HBs.
+  eapply fread_brs_cons with (ns := nil) (vs := _ :: nil) (ihs := _ :: nil); try eassumption.
+  - rewrite Hp, firstn_nil; constructor.
+  - econstructor; [ apply feval_shty_self_nil | constructor ].
+  - eapply ffresh_ihs_rec; [ exact Hf | econstructor; [ constructor | exact Ha ] | constructor ].
+Qed.
+
 Section ReadbackImpl.
 Variables (Θ : gdeps) (Ξ : gstack).
 Context {F : FCtx Θ Ξ}.
@@ -407,12 +499,19 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
     let (M, HM) := fread_ne_impl_c s m ck _ in
     exist _ ⇑ⁿ M _
 | s, ⇓ (d_ind p as') (d_con p' c vs), ck, H with cache_lookup Θ Ξ ck p := {
-  | exist _ (Some D) Ed with inspect (ind_con D c) := {
-    | exist _ (Some gs) Ec =>
-        let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (ind_params D)) as' ck _ in
-        let (Args, HArgs) := fread_cargs_impl_c s p (List.firstn (ind_nu D) as') (env_args nil as') gs (List.skipn (ind_np D) vs) (Some (exist _ (p, D) Ed)) _ in
-        exist _ (nf_con p c (nfs_app Ps Args)) _
-    | exist _ None Ec => False_rect _ _ }
+  | exist _ (Some D) Ed with inspect (con_view D c vs) := {
+    (** Of the shape of [zero] or [succ v] ([con_view]): no parameter, and
+        [v] at the type itself. *)
+    | exist _ (Some None) Ev => exist _ (nf_con p c nfs_nil) _
+    | exist _ (Some (Some v)) Ev =>
+        let (V, HV) := fread_nf_impl_c s ⇓ (d_ind p nil) v (Some (exist _ (p, D) Ed)) _ in
+        exist _ (nf_con p c (nfs_cons V nfs_nil)) _
+    | exist _ None Ev with inspect (ind_con D c) := {
+      | exist _ (Some gs) Ec =>
+          let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (ind_params D)) as' ck _ in
+          let (Args, HArgs) := fread_cargs_impl_c s p (List.firstn (ind_nu D) as') (env_args nil as') gs (List.skipn (ind_np D) vs) (Some (exist _ (p, D) Ed)) _ in
+          exist _ (nf_con p c (nfs_app Ps Args)) _
+      | exist _ None Ec => False_rect _ _ } }
   | exist _ None Ed => False_rect _ _ }
 | s, ⇓ (d_ind p as') (⇑ a m), ck, H =>
     let (M, HM) := fread_ne_impl_c s m ck _ in
@@ -497,7 +596,35 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
   with fread_brs_impl_c s ρ A p D ups cs Bs (ck : lk_cache Θ Ξ) (H : fread_brs_order Θ Ξ s ρ A p D ups cs Bs) :
     { Bs' | fread_brs Θ Ξ s ρ A p D ups cs Bs Bs' } by struct H :=
 | s, ρ, A, p, D, ups, nil, nil, ck, H => exist _ nbrs_nil _
-| s, ρ, A, p, D, ups, (c, gs) :: cs, (c', n, B) :: Bs, ck, H =>
+| s, ρ, A, p, D, ups, (c, gs) :: cs, (c', n, B) :: Bs, ck, H with inspect (nat_cargs D gs) := {
+  (** The branch of a constructor of the shape of [zero] ([nat_cargs]):
+      it binds nothing. *)
+  | exist _ (Some false) Eg =>
+      let (b, Hb) := feval_exp_impl Θ Ξ B (env_args ρ (nil ++ nil ++ nil)) _ in
+      let (t, Ht) := feval_exp_impl Θ Ξ A (env_args ρ (nil ++ d_con p c (ups ++ nil ++ nil) :: nil)) _ in
+      let (B', HB') := fread_nf_impl_c (s + n) ⇓ t b ck _ in
+      let (Bs', HBs') := fread_brs_impl_c s ρ A p D ups cs Bs ck _ in
+      exist _ (nbrs_cons c n B' Bs') _
+  (** Of the shape of [succ]: the argument, a variable of the type itself,
+      and its recursive result, of the type the motive gives the argument
+      unless the branch does not read it. *)
+  | exist _ (Some true) Eg with inspect (exp_freshb 0 B) := {
+    | exist _ true Ef =>
+        let v := ⇑! (d_ind p ups) (s + ind_nn D) in
+        let (b, Hb) := feval_exp_impl Θ Ξ B (env_args ρ (nil ++ (v :: nil) ++ ⇑! 𝕌ω@0 (s + ind_nn D + 1) :: nil)) _ in
+        let (t, Ht) := feval_exp_impl Θ Ξ A (env_args ρ (nil ++ d_con p c (ups ++ nil ++ v :: nil) :: nil)) _ in
+        let (B', HB') := fread_nf_impl_c (s + n) ⇓ t b ck _ in
+        let (Bs', HBs') := fread_brs_impl_c s ρ A p D ups cs Bs ck _ in
+        exist _ (nbrs_cons c n B' Bs') _
+    | exist _ false Ef =>
+        let v := ⇑! (d_ind p ups) (s + ind_nn D) in
+        let (a, Ha) := feval_exp_impl Θ Ξ A (env_args ρ (nil ++ v :: nil)) _ in
+        let (b, Hb) := feval_exp_impl Θ Ξ B (env_args ρ (nil ++ (v :: nil) ++ ⇑! a (s + ind_nn D + 1) :: nil)) _ in
+        let (t, Ht) := feval_exp_impl Θ Ξ A (env_args ρ (nil ++ d_con p c (ups ++ nil ++ v :: nil) :: nil)) _ in
+        let (B', HB') := fread_nf_impl_c (s + n) ⇓ t b ck _ in
+        let (Bs', HBs') := fread_brs_impl_c s ρ A p D ups cs Bs ck _ in
+        exist _ (nbrs_cons c n B' Bs') _ }
+  | exist _ None Eg =>
     let (ns, Hns) := ffresh_tele_impl Θ Ξ (env_args nil ups) (List.rev (List.firstn (ind_nn D) (ind_params D))) s _ in
     let (vs, Hvs) := ffresh_cargs_impl Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D) _ in
     let (ihs, Hihs) := ffresh_ihs_impl Θ Ξ ρ A B (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs) _ in
@@ -505,7 +632,7 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
     let (t, Ht) := feval_exp_impl Θ Ξ A (env_args ρ (ns ++ d_con p c (ups ++ ns ++ vs) :: nil)) _ in
     let (B', HB') := fread_nf_impl_c (s + n) ⇓ t b ck _ in
     let (Bs', HBs') := fread_brs_impl_c s ρ A p D ups cs Bs ck _ in
-    exist _ (nbrs_cons c n B' Bs') _
+    exist _ (nbrs_cons c n B' Bs') _ }
 | s, ρ, A, p, D, ups, _, _, ck, H => False_rect _ _.
 
 (** Each hole is either a readback order of a subterm, read off the order of
@@ -552,9 +679,60 @@ Ltac rb_run := repeat impl_obl_tac1; rb_glob; rb_eqb; econstructor; eassumption.
 #[local]
 Ltac rb_ind := repeat impl_obl_tac1; rb_glob; rb_eqb; first [ congruence | econstructor; try eassumption; eauto 3 ].
 
+(** The constructors of the shape of the natural numbers ([con_view],
+    [nat_cargs]): the general rules at no parameter, and at the lists the
+    view fixes. *)
+#[local]
+Ltac rb_nat :=
+  match goal with
+  | Ev : con_view _ _ _ = Some None |- _ => destruct (con_view_zero _ _ _ Ev) as (? & ? & ? & ? & ?); subst
+  | Ev : con_view _ _ _ = Some (Some _) |- _ => destruct (con_view_succ _ _ _ _ Ev) as (? & ? & ? & ? & ? & ?); subst
+  | Eg : nat_cargs _ _ = Some false |- _ => destruct (nat_cargs_zero _ _ Eg) as (? & ? & ?); subst
+  | Eg : nat_cargs _ _ = Some true |- _ => destruct (nat_cargs_succ _ _ Eg) as (? & ? & ? & ?); subst
+  end;
+  repeat impl_obl_tac1; rb_glob; rb_eqb;
+  first [ solve [ eapply fread_brs_nat_zero; eassumption ]
+        | solve [ eapply fread_brs_nat_skip; eassumption ]
+        | solve [ eapply fread_brs_nat_rec; eassumption ]
+        | idtac ];
+  match goal with Hp : ind_params ?D = nil, Hu : ind_nu ?D = 0 |- _ =>
+    let Hnp := fresh "Hnp" in let Hnn := fresh "Hnn" in
+    assert (Hnp : ind_np D = 0) by (unfold ind_np; rewrite Hp; reflexivity);
+    assert (Hnn : ind_nn D = 0) by (unfold ind_nn; rewrite Hnp, Hu; reflexivity);
+    rewrite ?Hnn, ?Hnp, ?Hu in *; rewrite ?Hp in *;
+    cbn [skipn firstn rev app env_args fold_left extend_env cargs_nrec List.length] in * |-;
+    repeat impl_obl_tac1; rb_glob; rb_eqb;
+    try match goal with Hl : List.length ?l = 0 |- _ => destruct l; [| discriminate ] end;
+    repeat impl_obl_tac1;
+    first [ eassumption
+          | solve [ eauto 8 with mctt ]
+          | match goal with Hb : forall _, _ |- _ =>
+              first [ solve [ eapply (Hb nil nil nil); eauto 8 with mctt ]
+                    | solve [ eapply (Hb nil (_ :: nil) (_ :: nil)); eauto 8 with mctt ]
+                    | solve [ eapply (Hb nil nil); eauto 8 with mctt ]
+                    | solve [ eapply (Hb nil (_ :: nil)); eauto 8 with mctt ]
+                    | solve [ eapply Hb; eauto 8 with mctt ] ] end
+          (** The type of the recursive result: the order of the motive
+              under the order of the recursive results. *)
+          | match goal with Ho : forall ns vs, _ -> _ -> ffresh_ihs_order _ _ _ _ _ _ _ _ _ |- feval_exp_order _ _ _ _ =>
+              let Hi := fresh "Hi" in
+              pose proof (Ho nil (_ :: nil) ltac:(eauto 8 with mctt) ltac:(eauto 8 with mctt)) as Hi;
+              dependent destruction Hi; cbn [cargs_nrec] in * |-; try congruence;
+              match goal with Hf : ?P -> feval_ihty_order _ _ _ _ _ _ _, Ef : ?P |- _ => specialize (Hf Ef) end;
+              match goal with Ht : feval_ihty_order _ _ _ _ _ _ _ |- _ => progressive_invert Ht end;
+              match goal with Hq : forall bs, _ -> feval_exp_order _ _ _ _ |- _ => solve [ eapply (Hq nil); eauto 8 with mctt ] end
+            end
+          | solve [ econstructor; rewrite ?Hnn, ?Hnp, ?Hu, ?Hp; cbn; eauto 8 with mctt ] ]
+  end.
+
 #[local]
 Ltac rb_obl_auto :=
   intros; cbv beta in *;
+  first [ lazymatch goal with
+          | E : con_view _ _ _ = Some _ |- _ => solve [ rb_nat ]
+          | E : nat_cargs _ _ = Some _ |- _ => solve [ rb_nat ]
+          end
+        | idtac ];
   lazymatch goal with
   | |- fread_nf_order _ _ _ _ => first [ rb_ord | rb_run ]
   | |- fread_ne_order _ _ _ _ => first [ rb_ord | rb_run ]
@@ -579,6 +757,25 @@ Ltac rb_obl_auto :=
   | |- _ => abstract (first [ rb_ord | rb_run | eapply fread_typ_suniv_of_nf; eassumption | rb_ind ])
   end.
 
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
+Next Obligation. rb_obl_auto. Defined.
 Next Obligation. rb_obl_auto. Defined.
 Next Obligation. rb_obl_auto. Defined.
 Next Obligation. rb_obl_auto. Defined.
