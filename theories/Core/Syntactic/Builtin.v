@@ -1,10 +1,13 @@
 (** * Builtin Bindings
 
     [builtin natural ≔ X] binds the inductive type [X] as the natural
-    numbers.  The binding is a piece of configuration, [builtins], apart
-    from the filed units and the stack: no typing judgment reads it.  The
-    command semantics threads it through a run ([Core.Syntactic.System.Command]),
-    and it holds for the rest of the run, in every unit.
+    numbers.  The bindings are a record, [builtins], apart from the filed
+    units and the stack: no typing judgment reads it.  Each unit runs from
+    the empty record; it gains the bindings of its own [builtin] commands
+    and the records of the units it imports, merged ([bt_merge]), but never
+    those of the unit importing it.  The command semantics threads the
+    record of the unit being run, and keeps the record each filed unit ended
+    with ([Core.Syntactic.System.Command]).
 
     Where a binding is made, a numeral ([a_nlit]) stands for the chain of
     the bound type's constructors and the token [ℕ] ([a_ntok]) for its type
@@ -237,32 +240,75 @@ Definition cmd_lits_ok (Θ : gdeps) (Ξ : gstack) (B : builtins) (c c' : ccmd) :
 Definition tele_lits_ok (Θ : gdeps) (Ξ : gstack) (B : builtins) (Δ Δ' : ctx) : Prop :=
   tele_lits (nat_view Θ Ξ B) Δ = lok Δ'.
 
-(** ** Binding *)
+(** ** Merging
+
+    Two records merge field by field: a field bound on one side only keeps
+    that binding, and one bound on both sides must be bound to the same
+    type.  A unit merges the record of each unit it imports into its own,
+    and a [builtin] command merges the binding it makes. *)
+Definition bt_merge (B1 B2 : builtins) : option builtins :=
+  match bt_nat B1, bt_nat B2 with
+  | None, o | o, None => Some (mk_builtins o)
+  | Some p1, Some p2 => if qname_eq_dec p1 p2 then Some (mk_builtins (Some p1)) else None
+  end.
+
+Lemma bt_eta : forall B, mk_builtins (bt_nat B) = B.
+Proof. intros []; reflexivity. Qed.
+
+Lemma bt_merge_empty_l : forall B, bt_merge bt_empty B = Some B.
+Proof. intros [o]; reflexivity. Qed.
+
+Lemma bt_merge_empty_r : forall B, bt_merge B bt_empty = Some B.
+Proof. intros [[p |]]; reflexivity. Qed.
+
+Lemma bt_merge_comm : forall B1 B2, bt_merge B1 B2 = bt_merge B2 B1.
+Proof.
+  intros [[p1 |]] [[p2 |]]; unfold bt_merge; cbn; try reflexivity.
+  destruct (qname_eq_dec p1 p2) as [<- | Hne];
+    [ destruct (qname_eq_dec p1 p1); congruence | destruct (qname_eq_dec p2 p1); congruence ].
+Qed.
+
+Lemma bt_merge_idem : forall B, bt_merge B B = Some B.
+Proof. intros [[p |]]; unfold bt_merge; cbn; [ destruct (qname_eq_dec p p); [ reflexivity | contradiction ] | reflexivity ]. Qed.
+
+(** Associativity, where failure is a value of its own. *)
+Lemma bt_merge_assoc : forall B1 B2 B3,
+    match bt_merge B1 B2 with Some B12 => bt_merge B12 B3 | None => None end =
+    match bt_merge B2 B3 with Some B23 => bt_merge B1 B23 | None => None end.
+Proof.
+  intros [[p1 |]] [[p2 |]] [[p3 |]]; unfold bt_merge; cbn;
+    repeat (match goal with |- context [qname_eq_dec ?a ?b] => destruct (qname_eq_dec a b); try subst end; cbn);
+    congruence.
+Qed.
+
+(** What a merge has: the bindings of both sides. *)
+Lemma bt_merge_inv : forall B1 B2 B p,
+    bt_merge B1 B2 = Some B -> bt_nat B = Some p -> bt_nat B1 = Some p \/ bt_nat B2 = Some p.
+Proof.
+  intros [[p1 |]] [[p2 |]] B p H Hp; unfold bt_merge in H; cbn in H;
+    try (destruct (qname_eq_dec p1 p2)); try discriminate; injection H as <-; cbn in Hp; auto.
+Qed.
+
+(** A merge of well-formed records is well formed. *)
+Lemma bt_merge_wf : forall Θ Ξ B1 B2 B,
+    builtins_wf Θ Ξ B1 -> builtins_wf Θ Ξ B2 -> bt_merge B1 B2 = Some B -> builtins_wf Θ Ξ B.
+Proof. intros * H1 H2 Hm p Hp; destruct (bt_merge_inv _ _ _ _ Hm Hp) as [E | E]; [ exact (H1 _ E) | exact (H2 _ E) ]. Qed.
 
 (** The binding a [builtin natural ≔ X] command makes, from the bindings
     before it: [X] names the inductive type [p], with the shape of the
-    natural numbers, in [Type@0]; [p] is bound unless another type is. *)
-Definition bt_bind_nat (B : builtins) (p : qname) : option builtins :=
-  match bt_nat B with
-  | None => Some (mk_builtins (Some p))
-  | Some p0 => if qname_eq_dec p0 p then Some B else None
-  end.
+    natural numbers, in [Type@0]; it merges the binding of [p] alone. *)
+Definition bt_bind_nat (B : builtins) (p : qname) : option builtins := bt_merge B (mk_builtins (Some p)).
 
 Lemma bt_bind_nat_bound : forall B p B', bt_bind_nat B p = Some B' -> bt_nat B' = Some p.
 Proof.
-  intros [[p0 |]] p B' H; unfold bt_bind_nat in H; cbn in H; [| injection H as <-; reflexivity ].
+  intros [[p0 |]] p B' H; unfold bt_bind_nat, bt_merge in H; cbn in H; [| injection H as <-; reflexivity ].
   destruct (qname_eq_dec p0 p) as [-> |]; [ injection H as <-; reflexivity | discriminate ].
 Qed.
 
 (** ** Bindings Only Grow
 
-    A run makes a binding at most once ([bt_bind_nat] rebinds only the same
-    type), so the bindings of any two points of a run agree where both are
-    made ([bt_compat]), and those of an earlier point are below those of a
-    later one ([bt_le]). *)
-
-Definition bt_compat (B1 B2 : builtins) : Prop :=
-  forall p1 p2, bt_nat B1 = Some p1 -> bt_nat B2 = Some p2 -> p1 = p2.
+    A record only gains bindings ([bt_merge_le]): those of an earlier point
+    of a run are below those of a later one ([bt_le]). *)
 
 Definition bt_le (B1 B2 : builtins) : Prop := bt_nat B1 = None \/ B1 = B2.
 
@@ -272,205 +318,19 @@ Proof. right; reflexivity. Qed.
 Lemma bt_le_trans : forall B1 B2 B3, bt_le B1 B2 -> bt_le B2 B3 -> bt_le B1 B3.
 Proof. intros * [H | <-] H2; [ left; exact H | exact H2 ]. Qed.
 
-Lemma bt_le_compat : forall B1 B2 B, bt_le B1 B -> bt_le B2 B -> bt_compat B1 B2.
-Proof. intros * [H1 | <-] [H2 | <-] p1 p2 E1 E2; congruence. Qed.
-
-Lemma bt_compat_refl : forall B, bt_compat B B.
-Proof. intros B p1 p2 E1 E2; congruence. Qed.
-
-Lemma bt_compat_sym : forall B1 B2, bt_compat B1 B2 -> bt_compat B2 B1.
-Proof. intros * H p1 p2 E1 E2; symmetry; exact (H _ _ E2 E1). Qed.
+Lemma bt_merge_le : forall B1 B2 B, bt_merge B1 B2 = Some B -> bt_le B1 B /\ bt_le B2 B.
+Proof.
+  intros [[p1 |]] [[p2 |]] B H; unfold bt_merge in H; cbn in H;
+    try (destruct (qname_eq_dec p1 p2) as [<- |]); try discriminate; injection H as <-;
+    split; solve [ left; reflexivity | right; reflexivity ].
+Qed.
 
 Lemma bt_bind_nat_le : forall B p B', bt_bind_nat B p = Some B' -> bt_le B B'.
-Proof.
-  intros [[p0 |]] p B' H; unfold bt_bind_nat in H; cbn in H; [| left; reflexivity ].
-  destruct (qname_eq_dec p0 p); [ injection H as <-; apply bt_le_refl | discriminate ].
-Qed.
+Proof. intros * H; exact (proj1 (bt_merge_le _ _ _ H)). Qed.
 
-Lemma bt_bind_nat_compat : forall B1 B2 p B1' B2',
-    bt_bind_nat B1 p = Some B1' -> bt_bind_nat B2 p = Some B2' -> bt_compat B1' B2'.
-Proof.
-  intros * H1 H2 p1 p2 E1 E2; rewrite (bt_bind_nat_bound _ _ _ H1) in E1; rewrite (bt_bind_nat_bound _ _ _ H2) in E2; congruence.
-Qed.
-
-(** The views of compatible bindings at a state: one has no binding, or
-    they are the same. *)
-Definition nv_compat (nv1 nv2 : option (qname * string * string)) : Prop :=
-  nv1 = None \/ nv2 = None \/ nv1 = nv2.
-
-Lemma nat_view_compat : forall Θ Ξ B1 B2, bt_compat B1 B2 -> nv_compat (nat_view Θ Ξ B1) (nat_view Θ Ξ B2).
-Proof.
-  intros * H; unfold nat_view, nv_compat.
-  destruct (bt_nat B1) as [p |] eqn:E1; [| left; reflexivity ].
-  destruct (bt_nat B2) as [p2 |] eqn:E2; [| right; left; reflexivity ].
-  rewrite (H _ _ E1 E2); right; right; reflexivity.
-Qed.
-
-(** ** Literals Without a Binding
-
-    The literals of a term generated with no binding succeed only where
-    there is none, and then leave it as it is, whatever the binding. *)
-
+(** A successful step of a literal pass. *)
 Lemma lbind_lok_inv : forall {A B} (m : lres A) (k : A -> lres B) r, lbind m k = lok r -> exists a, m = lok a /\ k a = lok r.
 Proof. intros * H; destruct m; cbn in H; [ eauto | discriminate ]. Qed.
-
-Lemma lits_none_all :
-  (forall M M', exp_lits None M = lok M' -> forall nv, exp_lits nv M = lok M') /\
-  (forall H H', modexp_lits None H = lok H' -> forall nv, modexp_lits nv H = lok H') /\
-  (forall b b', bnd_lits None b = lok b' -> forall nv, bnd_lits nv b = lok b') /\
-  (forall U U', gunit_lits None U = lok U' -> forall nv, gunit_lits nv U = lok U') /\
-  (forall D D', moddef_lits None D = lok D' -> forall nv, moddef_lits nv D = lok D') /\
-  (forall Φ Φ', gmod_lits None Φ = lok Φ' -> forall nv, gmod_lits nv Φ = lok Φ') /\
-  (forall E E', gentry_lits None E = lok E' -> forall nv, gentry_lits nv E = lok E') /\
-  (forall e e', centry_lits None e = lok e' -> forall nv, centry_lits nv e = lok e').
-Proof.
-  apply syn_mut_ind; intros; cbn [exp_lits modexp_lits bnd_lits gunit_lits moddef_lits gmod_lits gentry_lits centry_lits] in *;
-    try discriminate.
-  all: try solve [ injection H as <-; reflexivity ].
-  all: repeat match goal with
-    | H : lbind _ _ = lok _ |- _ =>
-        let E := fresh "E" in let a := fresh "a" in apply lbind_lok_inv in H as (a & E & H)
-    end.
-  all: repeat match goal with
-    | E : ?f None ?x = lok ?y, IH : forall _, ?f None ?x = lok _ -> forall _, ?f _ ?x = lok _ |- _ =>
-        rewrite (IH _ E); cbn [lbind]; clear E
-    end.
-  all: try (match goal with H : lok _ = lok _ |- _ => injection H as <- end; reflexivity).
-  - (* the branches of an eliminator *)
-    enough (HB : forall Bs', (fix brs_lits (Bs0 : list (string * nat * typ)) : lres (list (string * nat * typ)) :=
-        match Bs0 with
-        | nil => lok nil
-        | b :: Bs1 => lbind (exp_lits None (snd b)) (fun B' => lbind (brs_lits Bs1) (fun Bs0' => lok ((fst b, B') :: Bs0')))
-        end) Bs = lok Bs' ->
-      (fix brs_lits (Bs0 : list (string * nat * typ)) : lres (list (string * nat * typ)) :=
-        match Bs0 with
-        | nil => lok nil
-        | b :: Bs1 => lbind (exp_lits nv (snd b)) (fun B' => lbind (brs_lits Bs1) (fun Bs0' => lok ((fst b, B') :: Bs0')))
-        end) Bs = lok Bs')
-      by (rewrite (HB _ E0); cbn [lbind]; exact H2).
-    clear - H0; induction H0 as [| b Bs Hb HF IH]; intros Bs' E; cbn in E |- *; [ exact E |].
-    apply lbind_lok_inv in E as (B' & E1 & E); apply lbind_lok_inv in E as (Bs1 & E2 & E).
-    rewrite (Hb _ E1); cbn [lbind]; rewrite (IH _ E2); exact E.
-  - (* a definition binding: its type, if annotated *)
-    destruct oA as [A |]; cbn [lopt] in E |- *; [| injection E as <-; exact H1 ].
-    apply lbind_lok_inv in E as (A' & E1 & E); rewrite (H A eq_refl _ E1); cbn [lbind]; injection E as <-; exact H1.
-  - (* a unit: its telescope *)
-    enough (HT : forall Δ', (fix tele_lits (Δ0 : ctx) : lres ctx :=
-        match Δ0 with
-        | nil => lok ⋅
-        | e :: Δ1 => lbind (centry_lits None e) (fun e' => lbind (tele_lits Δ1) (fun Δ0' => lok (e' :: Δ0')))
-        end) Δ = lok Δ' ->
-      (fix tele_lits (Δ0 : ctx) : lres ctx :=
-        match Δ0 with
-        | nil => lok ⋅
-        | e :: Δ1 => lbind (centry_lits nv e) (fun e' => lbind (tele_lits Δ1) (fun Δ0' => lok (e' :: Δ0')))
-        end) Δ = lok Δ')
-      by (rewrite (HT _ E); cbn [lbind]; exact H1).
-    clear - H; induction H as [| e Δ He HF IH]; intros Δ' E; cbn in E |- *; [ exact E |].
-    apply lbind_lok_inv in E as (e' & E1 & E); apply lbind_lok_inv in E as (Δ1 & E2 & E).
-    rewrite (He _ E1); cbn [lbind]; rewrite (IH _ E2); exact E.
-  - (* an entry: its body, if any *)
-    destruct B as [M |]; cbn [lopt] in E0 |- *; [| injection E0 as <-; exact H1 ].
-    apply lbind_lok_inv in E0 as (M' & E1 & E0); rewrite (H0 M eq_refl _ E1); cbn [lbind]; injection E0 as <-; exact H1.
-Qed.
-
-Lemma lmap_mono : forall {A B} (f g : A -> lres B),
-    (forall a b, f a = lok b -> g a = lok b) ->
-    forall l l', lmap f l = lok l' -> lmap g l = lok l'.
-Proof.
-  intros A B f g Hf; induction l as [| a l IH]; intros l' E; cbn in E |- *; [ exact E |].
-  apply lbind_lok_inv in E as (b & E1 & E); apply lbind_lok_inv in E as (l1 & E2 & E).
-  rewrite (Hf _ _ E1); cbn [lbind]; rewrite (IH _ E2); exact E.
-Qed.
-
-Lemma lopt_mono : forall {A} (f g : A -> lres A),
-    (forall a b, f a = lok b -> g a = lok b) ->
-    forall o o', lopt f o = lok o' -> lopt g o = lok o'.
-Proof.
-  intros A f g Hf [a |] o' E; cbn in E |- *; [| exact E ].
-  apply lbind_lok_inv in E as (b & E1 & E); rewrite (Hf _ _ E1); exact E.
-Qed.
-
-Lemma tele_lits_none : forall Δ Δ', tele_lits None Δ = lok Δ' -> forall nv, tele_lits nv Δ = lok Δ'.
-Proof.
-  intros Δ Δ' E nv; refine (lmap_mono _ _ _ _ _ E).
-  intros; eapply lits_none_all; eassumption.
-Qed.
-
-Lemma cmd_lits_none : forall c c', cmd_lits None c = lok c' -> forall nv, cmd_lits nv c = lok c'.
-Proof.
-  pose proof lits_none_all as (He & Hm & _).
-  intros c c' Ec nv; destruct c; cbn [cmd_lits] in *; unfold decl_lits in *;
-    repeat match goal with
-      | H : lbind _ _ = lok _ |- _ =>
-          let E := fresh "E" in let a := fresh "a" in apply lbind_lok_inv in H as (a & E & H)
-      end;
-    repeat match goal with
-      | E : exp_lits None ?x = lok _ |- _ => rewrite (He _ _ E); cbn [lbind]; clear E
-      | E : modexp_lits None ?x = lok _ |- _ => rewrite (Hm _ _ E); cbn [lbind]; clear E
-      | E : lopt (exp_lits None) ?x = lok _ |- _ =>
-          rewrite (lopt_mono _ (exp_lits nv) (fun a b H => He a b H nv) _ _ E); cbn [lbind]; clear E
-      | E : tele_lits None ?x = lok _ |- _ => rewrite (tele_lits_none _ _ E); cbn [lbind]; clear E
-      end; try exact Ec.
-  (* the constructors of a declaration *)
-  injection E as <-.
-  lazymatch goal with E2 : lmap ?f ?l = lok ?l' |- context [lmap ?g ?l] =>
-    assert (Hc : lmap g l = lok l') by (refine (lmap_mono f g _ _ _ E2); clear E2;
-      intros cg cg' E; apply lbind_lok_inv in E as (args & E1 & E);
-      match goal with E1 : lmap ?f1 ?l1 = lok ?l1' |- context [lmap ?g1 ?l1] =>
-        rewrite (lmap_mono f1 g1 (fun yT yT' E2 => ltac:(apply lbind_lok_inv in E2 as (T' & E3 & E2);
-                                                          rewrite (He _ _ E3); exact E2)) _ _ E1); exact E end)
-  end.
-  rewrite Hc; exact Ec.
-Qed.
-
-(** So the literals generated at compatible views are the same. *)
-Lemma cmd_lits_agree : forall nv1 nv2 c c1 c2, nv_compat nv1 nv2 ->
-    cmd_lits nv1 c = lok c1 -> cmd_lits nv2 c = lok c2 -> c1 = c2.
-Proof.
-  intros * [-> | [-> | ->]] E1 E2.
-  - rewrite (cmd_lits_none _ _ E1) in E2; congruence.
-  - rewrite (cmd_lits_none _ _ E2) in E1; congruence.
-  - congruence.
-Qed.
-
-Lemma tele_lits_agree : forall nv1 nv2 Δ Δ1 Δ2, nv_compat nv1 nv2 ->
-    tele_lits nv1 Δ = lok Δ1 -> tele_lits nv2 Δ = lok Δ2 -> Δ1 = Δ2.
-Proof.
-  intros * [-> | [-> | ->]] E1 E2.
-  - rewrite (tele_lits_none _ _ E1) in E2; congruence.
-  - rewrite (tele_lits_none _ _ E2) in E1; congruence.
-  - congruence.
-Qed.
-
-(** ** Literals and Bindings at Larger Bindings
-
-    A command whose literals were generated with some bindings has the same
-    literals with larger ones, and a binding made that ends below some
-    bindings is made by them as well. *)
-
-Lemma nat_view_none : forall Θ Ξ B, bt_nat B = None -> nat_view Θ Ξ B = None.
-Proof. intros * H; unfold nat_view; rewrite H; reflexivity. Qed.
-
-Lemma cmd_lits_ok_le : forall Θ Ξ B1 B c c1, bt_le B1 B -> cmd_lits_ok Θ Ξ B1 c c1 -> cmd_lits_ok Θ Ξ B c c1.
-Proof.
-  intros * [Hn | <-] H; [| exact H ]; unfold cmd_lits_ok in *.
-  rewrite (nat_view_none _ _ _ Hn) in H; exact (cmd_lits_none _ _ H _).
-Qed.
-
-Lemma tele_lits_ok_le : forall Θ Ξ B1 B Δ Δ1, bt_le B1 B -> tele_lits_ok Θ Ξ B1 Δ Δ1 -> tele_lits_ok Θ Ξ B Δ Δ1.
-Proof.
-  intros * [Hn | <-] H; [| exact H ]; unfold tele_lits_ok in *.
-  rewrite (nat_view_none _ _ _ Hn) in H; exact (tele_lits_none _ _ H _).
-Qed.
-
-Lemma bt_bind_nat_up : forall B1 p B1' B, bt_bind_nat B1 p = Some B1' -> bt_le B1' B -> bt_bind_nat B p = Some B.
-Proof.
-  intros * Hb [Hn | <-].
-  - rewrite (bt_bind_nat_bound _ _ _ Hb) in Hn; discriminate.
-  - pose proof (bt_bind_nat_bound _ _ _ Hb) as Hp; unfold bt_bind_nat; rewrite Hp.
-    destruct (qname_eq_dec p p) as [_ | Hne]; [ reflexivity | contradiction ].
-Qed.
 
 (** Whether a sort is [nat_sort]. *)
 Definition is_nat_sort (A : exp) : bool :=

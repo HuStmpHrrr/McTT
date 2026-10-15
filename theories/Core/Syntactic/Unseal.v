@@ -485,11 +485,11 @@ Section Run.
   Hypothesis Hload : forall prg u, to_core prg = Some u -> unit_no_axioms u.
 
   Theorem run_no_axioms :
-    (forall ch B Θ Ξ c B' Θ' Ξ', run_cmd load_path read to_core ch B Θ Ξ c B' Θ' Ξ' ->
+    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', run_cmd load_path read to_core ch B Rb Θ Ξ c B' Rb' Θ' Ξ' ->
        cmd_no_axioms c -> gc_no_axioms Θ Ξ -> gc_no_axioms Θ' Ξ') /\
-    (forall ch B Θ Ξ cs B' Θ' Ξ', run_cmds load_path read to_core ch B Θ Ξ cs B' Θ' Ξ' ->
+    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', run_cmds load_path read to_core ch B Rb Θ Ξ cs B' Rb' Θ' Ξ' ->
        cmds_no_axioms cs -> gc_no_axioms Θ Ξ -> gc_no_axioms Θ' Ξ') /\
-    (forall ch B u B' Θ U, run_unit load_path read to_core ch B u B' Θ U ->
+    (forall ch u B Rb Θ U, run_unit load_path read to_core ch u B Rb Θ U ->
        unit_no_axioms u -> gds_no_axioms Θ /\ gm_no_axioms (gu_mod U)).
   Proof.
     apply run_mut_ind; intros; unfold gc_no_axioms in *.
@@ -537,20 +537,20 @@ Section Run.
       split; eauto with mctt.
   Qed.
 
-  Corollary run_unit_no_axioms : forall ch B u B' Θ U,
-      run_unit load_path read to_core ch B u B' Θ U -> unit_no_axioms u -> gds_no_axioms Θ /\ gm_no_axioms (gu_mod U).
+  Corollary run_unit_no_axioms : forall ch u B Rb Θ U,
+      run_unit load_path read to_core ch u B Rb Θ U -> unit_no_axioms u -> gds_no_axioms Θ /\ gm_no_axioms (gu_mod U).
   Proof. apply run_no_axioms. Qed.
 
   (** Every state a unit runs through, from nothing, has no axioms. *)
-  Corollary run_cmds_no_axioms : forall ch B cs B' Θ Ξ,
-      run_cmds load_path read to_core ch B nil nil cs B' Θ Ξ -> cmds_no_axioms cs -> gc_no_axioms Θ Ξ.
+  Corollary run_cmds_no_axioms : forall ch B Rb cs B' Rb' Θ Ξ,
+      run_cmds load_path read to_core ch B Rb nil nil cs B' Rb' Θ Ξ -> cmds_no_axioms cs -> gc_no_axioms Θ Ξ.
   Proof. intros * H Hc; eapply run_no_axioms; [ exact H | exact Hc | split; auto with mctt ]. Qed.
 
   (** What a program files, filed with it. *)
   Corollary prog_sem_no_axioms : forall prg B Θ U,
       prog_sem load_path read to_core prg B Θ U -> gc_no_axioms ((prog_path prg, U) :: Θ) nil.
   Proof.
-    intros * (u & Ht & Hu); destruct (run_unit_no_axioms _ _ _ _ _ _ Hu (Hload _ _ Ht)).
+    intros * (u & Rb & Ht & Hu); destruct (run_unit_no_axioms _ _ _ _ _ _ Hu (Hload _ _ Ht)).
     split; auto with mctt.
   Qed.
 End Run.

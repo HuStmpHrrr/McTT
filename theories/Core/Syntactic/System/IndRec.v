@@ -564,11 +564,11 @@ Qed.
 
 (** So a declaration whose arguments classify, and whose declaration is
     well formed where it is declared, is run. *)
-Corollary rc_ind_runs : forall load_path read to_core ch B Θ Ξ x pv R cs,
+Corollary rc_ind_runs : forall load_path read to_core ch B Rb Θ Ξ x pv R cs,
     ⊢g Θ ⍮ Ξ -> cls_cons_in Θ Ξ R cs -> gs_fresh x Ξ ->
     Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢e ge_ind pv (gs_ind Ξ (rd_filed R cs)) ⋄ ->
     ~ In "rec"%string (List.map fst cs) ->
-    exists Θ' Ξ', run_cmd load_path read to_core ch B Θ Ξ (cc_ind x pv R) B Θ' Ξ'.
+    exists Θ' Ξ', run_cmd load_path read to_core ch B Rb Θ Ξ (cc_ind x pv R) B Rb Θ' Ξ'.
 Proof.
   intros * HΞ Hcls Hfr HE Hrec.
   destruct Ξ as [| [mq [Δ [Φ0 | E0]]] Ξ0]; [ contradiction | |].

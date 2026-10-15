@@ -125,8 +125,10 @@ dune exec mctt -- --search-root lib lib/NatTheory.mctt
 root in turn.
 
 The natural numbers are not built in.  A unit binds an inductive type of
-their shape with `builtin natural ≔ X`, and the binding holds for the rest
-of the run, in every unit loaded after it.  `lib/Prelude/Builtin/Nat.mctt`
+their shape with `builtin natural ≔ X`.  A unit sees the bindings it makes
+and those of the units it imports, directly or not, but never those of a
+unit importing it; two bindings of different types meet as an error ("the
+natural numbers are bound already").  `lib/Prelude/Builtin/Nat.mctt`
 declares `Nat` with `zero` and `succ` and binds it, so a program that uses
 numerals starts with
 ```

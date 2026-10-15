@@ -1,0 +1,7 @@
+(* A unit with a numeral and no binding of the natural numbers: it imports
+   none, so it has none, whatever the unit importing it binds. *)
+module Lib›Bare where
+
+eval 2
+
+end

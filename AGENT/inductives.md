@@ -400,19 +400,30 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
 
 * **The configuration.**  `builtins` (`Core/Syntactic/Builtin.v`) is
   `{ bt_nat : option qname }`, apart from the filed units and the stack;
-  no typing judgment reads it.  `run_cmd`/`run_cmds`/`run_unit`
-  (`Core/Syntactic/System/Command.v`) thread it: `Θ ⍮ Ξ ⍮ B ⊢[ch] c ⇝ Θ'
-  ⍮ Ξ' ⍮ B'`.  A program starts from `bt_empty` (`prog_sem prg B Θ U`, `B`
-  the bindings at its end).  A loaded unit runs with the bindings made so
-  far, and those it makes hold after it: a binding holds for the rest of
-  the run, in every unit, whether or not it imports the binder.
+  no typing judgment reads it.  Records merge field by field (`bt_merge`):
+  a field bound on one side keeps its binding, one bound on both sides must
+  agree, else the merge fails.  `bt_merge` has the empty record as unit and
+  is commutative, associative up to failure (`bt_merge_assoc`, in the
+  option monad), idempotent, and keeps well-formedness (`bt_merge_wf`).
+* **Scope.**  A unit sees the bindings it makes and those of the units it
+  imports, transitively, never those of the unit importing it.
+  `run_cmd`/`run_cmds` (`Core/Syntactic/System/Command.v`) thread the
+  record `B` of the unit being run and a map `Rb : bmap` from each filed
+  unit to the record it ended with: `Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] c ⇝ Θ' ⍮ Ξ' ⍮
+  B' ⍮ Rb'`.  The map is apart from `Θ` and the stack.  `run_unit ch u B Rb
+  Θ U` runs from `bt_empty` and `nil` and returns the unit's record `B` and
+  the map `Rb` of what it filed.  `rc_load` merges the loaded unit's record
+  in and files it in the map (`bm_merge Rb ((fp, BU) :: RbU)`);
+  `rc_load_filed` merges the record the map keeps (`bm_lookup Rb fp`).
+  `prog_sem prg B Θ U` hides the map.
 * **`rc_builtin`.**  `cc_builtin k H` with `k = natural`: `H` names, by
   `ind_target`, an inductive type `p` or an inductive alias of one with no
   parameter and no argument; `p`'s declaration has `nat_shape` (no
   parameter; one constructor without arguments and one with the single
   argument `ca_rec (pt_self 0 nil)`, in either order) and `ind_sort D =
-  nat_sort` (`Type@0`); then `bt_bind_nat B p = Some B'`: bound if nothing
-  is, kept if `p` is, rejected if another type is.  Allowed anywhere a
+  nat_sort` (`Type@0`); then `bt_bind_nat B p = Some B'`, the merge with
+  `{bt_nat := Some p}`: bound if nothing is, kept if `p` is, rejected if
+  another type is.  Allowed anywhere a
   command is, also inside a module; the elaborator still rejects it in a
   local module.
 * **Literals.**  A numeral `a_nlit n` and the token `ℕ`, `a_ntok`, are
@@ -425,34 +436,40 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
   `cmd_lits_agree`: a literal generated without a binding is the same with
   one, which is what `run_functional` needs.
 * **Metatheory.**
-  - `run_functional`: two runs from compatible bindings (`bt_compat`)
-    end in the same units and stack, and compatible bindings (`bt_out`).
-  - `run_wf`: carries `canon B Θ` (every filed unit is what loading its
-    file yields from bindings below `B`) and `bt_le B B'` (bindings only
-    grow).
-  - `run_builtins_wf`, `prog_sem_builtins_wf`: a binding stays read at
+  - `run_functional`: two runs from the same record and map end in the
+    same units, stack, record and map; two runs of a unit agree when their
+    chains have the same head.
+  - `run_wf`: carries `canon Rb Θ` (every filed unit is what loading its
+    file yields, and `Rb` has the record that run ends with, for exactly
+    the filed units) and `bt_le B B'` (a record only gains bindings).
+  - `run_builtins_wf`, `prog_sem_builtins_wf`: the record stays read at
     its state, `builtins_wf Θ Ξ B` (the bound type is found by
-    `ind_lookup`, has `nat_shape`, is in `Type@0`), through added entries,
-    closed module frames (`ind_lookup_close`), filing and merging.  A unit
-    starts from nothing filed, so its statement assumes `builtins_wf nil nil
-    B`, i.e. no binding yet; a binding made before a load holds after it
-    unchanged.
+    `ind_lookup`, has `nat_shape`, is in `Type@0`), and so are the records
+    of the filed units (`bm_wf Θ Rb`), through added entries, closed module
+    frames (`ind_lookup_close`), filing, merging and record merges.
   - `canonical_form_of_bound_nat_prog` (`Core/Semantic/Consequences.v`):
     with `bt_nat B = Some p` at the end of a program, a closed term of
     `a_ind p` normalizes to `nat_chain p z s n`.  Below it,
     `canonical_form_of_ind_nat(_gctx)`, `…_stuck(_gctx)` and
     `…_no_axioms` are about any inductive type of `nat_shape`.
-* **A binding made inside a unit's body, then a load.**  The loaded unit
-  runs with that binding, but cannot read the bound type (it is in the
-  loading unit, not filed yet), so a numeral in it fails, and it cannot bind
-  another type.  `run_builtins_wf` reflects this: its unit case needs no
-  binding at the start.
+* **Examples** (`driver/Test.ml`): `module Main where import
+  Prelude›Builtin›Nat import Lib›Bare end` fails, since `Lib›Bare` uses `2`
+  without importing a binding; `Lib›Num` and `Lib›Arith` both reaching
+  `Prelude›Builtin›Nat` is one binding; `Lib›Unary` and `Lib›Peano` together
+  conflict; a binding made in a body does not reach a unit imported later
+  in it, and meets that unit's own binding there.
 * **Checker.**  `Extraction/Command.v`: `cstate` / `ustate` carry the
-  bindings (`cs_bt`, `us_bt`), `builtin_step` runs `rc_builtin`, the
-  literal pass runs before expansion, and `prog_impl` returns the final
-  bindings.  Errors: `re_lit le` for a literal without a binding, and
-  `re_nat Θ Ξ nv e`, wrapping the error of a command or a unit parameter
-  with the state and the view, so the printer folds numerals in it.
+  record (`cs_bt`, `us_bt`); the map of records is part of `kmap`, which
+  keeps, for each filed unit, its closure (`kfind`) and its record (`kbt`).
+  The judgment's map is related by `rb_ok K ΘR RbR` (canonical, and the
+  records `K` keeps); `post_*` quantify over it.  A loaded unit is checked
+  from `bt_empty`; a load, fresh or shared, merges the unit's record, and
+  reports a conflict as "the natural numbers are bound already, to X".
+  `builtin_step` runs `rc_builtin`, the literal pass runs before
+  expansion, and `prog_impl` returns the final record.  Errors: `re_lit
+  le` for a literal without a binding, and `re_nat Θ Ξ nv e`, wrapping the
+  error of a command or a unit parameter with the state and the view, so
+  the printer folds numerals in it.
 * **Printer** (`driver/PrettyPrinter.ml`): the bound type prints as `ℕ`
   (also through an inductive alias), a chain of its constructors ending in
   the nullary one as a numeral, other constructors by their declared

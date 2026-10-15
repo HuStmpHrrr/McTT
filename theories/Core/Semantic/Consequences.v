@@ -1520,8 +1520,8 @@ Section Programs.
             (to_core : Cst.prog -> option cunit).
   Hypothesis Hload : forall prg u, to_core prg = Some u -> unit_no_axioms u.
 
-Corollary consistency_False_run : forall ch B cs B' Θ Ξ M,
-    Mctt.Core.Syntactic.System.Command.run_cmds load_path read to_core ch B nil nil cs B' Θ Ξ ->
+Corollary consistency_False_run : forall ch B Rb cs B' Rb' Θ Ξ M,
+    Mctt.Core.Syntactic.System.Command.run_cmds load_path read to_core ch B Rb nil nil cs B' Rb' Θ Ξ ->
     cmds_no_axioms cs ->
     ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ⊥).
 Proof. intros * Hr Hc; apply consistency_False_no_axioms; eapply run_cmds_no_axioms; [ exact Hload | exact Hr | exact Hc ]. Qed.

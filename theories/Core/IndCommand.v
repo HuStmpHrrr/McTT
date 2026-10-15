@@ -251,8 +251,8 @@ End ConTypes.
 (** A run of a declaration files constructor types equal to the ones as
     written, with [Self] the type former at the frames' parameters, in the
     global context the run makes: the declaration filed in its module. *)
-Theorem rc_ind_con_types : forall load_path read to_core ch B Θ Ξ x pv R B' Θ' Ξ',
-    run_cmd load_path read to_core ch B Θ Ξ (cc_ind x pv R) B' Θ' Ξ' -> ⊢g Θ ⍮ Ξ ->
+Theorem rc_ind_con_types : forall load_path read to_core ch B Rb Θ Ξ x pv R B' Rb' Θ' Ξ',
+    run_cmd load_path read to_core ch B Rb Θ Ξ (cc_ind x pv R) B' Rb' Θ' Ξ' -> ⊢g Θ ⍮ Ξ ->
     forall c args, In (c, args) (rd_cons R) ->
     exists cs gs, cls_cons_in Θ Ξ R cs /\
       ind_con (gs_ind Ξ (rd_filed R cs)) c = Some gs /\
@@ -262,7 +262,7 @@ Theorem rc_ind_con_types : forall load_path read to_core ch B Θ Ξ x pv R B' Θ
         ≈ user_con_ty (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) (List.length (rd_params R)) args
         : Typeω@i.
 Proof.
-  intros * Hr HΞ c args Hin; inversion Hr as [| | | | | | | ? ? ? ? ? ? ? cs Hcls Hfr HE | | | |]; subst.
+  intros * Hr HΞ c args Hin; inversion Hr as [| | | | | | | ? ? ? ? ? ? ? ? cs Hcls Hfr HE | | | |]; subst.
   destruct (Forall2_in_left _ _ _ _ Hcls Hin) as ([c' gs] & Hin' & Heq & Hc); cbn [fst snd] in Heq, Hc; subst c'.
   set (D := gs_ind Ξ (rd_filed R cs)) in *; set (p := ind_qname Ξ x) in *.
   pose proof (add_ind_wf _ _ _ _ _ _ HΞ HE Hfr) as HΞf.

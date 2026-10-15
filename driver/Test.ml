@@ -2856,6 +2856,7 @@ let%expect_test "mctt-doc: the units the checker rejects are reported" =
     Cyc›B: not checked
     Cycle: not checked
     Lib›Bad: not checked
+    Lib›Bare: not checked
     Misnamed: not checked
     Missing: not checked
     Transitive: not checked
@@ -3595,9 +3596,34 @@ let%expect_test "the token ℕ needs a bound natural-number type" =
   let _ = main_of_bare_body "eval λ (n : ℕ) → n" in
   [%expect {| Error: unknown type ℕ: no natural-number type is bound |}]
 
-let%expect_test "a binding holds for the rest of the run: a second type is rejected" =
+let%expect_test "two imports binding different types conflict" =
   let _ = main_of_multi_string "module Main where import Lib›Unary import Lib›Peano eval 1 end" in
   [%expect {| Error: the natural numbers are bound already, to U |}]
+
+(* A unit sees the bindings it makes and those of what it imports, never
+   those of the unit importing it. *)
+let%expect_test "an imported unit does not see the binding of its importer" =
+  let _ = main_of_multi_string "module Main where import Prelude›Builtin›Nat import Lib›Bare end" in
+  [%expect {| Error: unknown numeral 2: no natural-number type is bound |}]
+
+let%expect_test "a binding reached along two import paths is the same binding" =
+  let _ = main_of_multi_string "module Main where import Lib›Num import Lib›Arith eval Lib›Arith.quadruple 1 end" in
+  [%expect {| Evaluate Lib›Arith.quadruple 1 --> 4 : ℕ |}]
+
+let%expect_test "a binding made in the body does not reach a unit it imports" =
+  let _ = main_of_multi_string "module Main where inductive N : Type@0 where | z | s (n : N) end \
+                                builtin natural := N module M where import Lib›Bare end end" in
+  [%expect {| Error: unknown numeral 2: no natural-number type is bound |}]
+
+let%expect_test "a binding made in the body meets that of a unit it imports later" =
+  let _ = main_of_multi_string "module Main where inductive N : Type@0 where | z | s (n : N) end \
+                                builtin natural := N module M where import Lib›Num end end" in
+  [%expect {| Error: the natural numbers are bound already, to N |}]
+
+let%expect_test "a binding made after an import meets that of the import" =
+  let _ = main_of_multi_string "module Main where import Lib›Num inductive N : Type@0 where | z | s (n : N) end \
+                                builtin natural := N end" in
+  [%expect {| Error: the natural numbers are bound already, to Nat |}]
 
 let%expect_test "the natural numbers are bound once" =
   let _ = main_of_multi_string "module Main where import Lib›Unary \
