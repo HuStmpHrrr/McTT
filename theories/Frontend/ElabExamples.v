@@ -1018,7 +1018,7 @@ module U where
   | cons (x : A) (xs : List A)
   end
   def len : forall (l : List Nat) -> Nat :=
-    fun (l : List Nat) -> List.elim l return z . Nat | nil => zero | cons x xs, r => succ r end
+    fun (l : List Nat) -> elim l return z . Nat | nil => zero | cons x xs, r => succ r end
   end
 end
 >>
@@ -1028,9 +1028,8 @@ end
     of [x], and [List A] is [#2 $ #1] in the type of [xs].  Which argument is
     recursive is the core's to decide.  After the declaration [List] is a
     member of the frame, a module, so [List Nat] is [U.List $ ℕ], which the
-    core reads as the type, and [List.elim] names the module [U.List], which
-    typing resolves to the type.  The motive binds the scrutinee, the
-    branch for [cons] its two arguments and its hypothesis: [r] is [#0]. *)
+    core reads as the type.  The motive binds the scrutinee, the branch for
+    [cons] its two arguments and its hypothesis: [r] is [#0]. *)
 Definition list_decl : Cst.cmd :=
   c_ind false "List" (("A", typ 0) :: nil) (typ 0)
     (("nil", nil) :: ("cons", ("x", var "A") :: ("xs", app (var "List") (var "A")) :: nil) :: nil).
@@ -1040,7 +1039,7 @@ Definition list_len : Cst.prog :=
          list_decl ::
          c_def md_pub "len" (pi "l" (app (var "List") nat) nat)
            (fn "l" (app (var "List") nat)
-              (elim (var "List") (var "l") ("z" :: nil) nat
+              (elim (var "l") ("z" :: nil) nat
                  (("nil", nil, Cst.zero) :: ("cons", "x" :: "xs" :: "r" :: nil, Cst.succ (var "r")) :: nil))) :: nil)).
 
 Definition U_List : exp := qname_term (q_abs ("U" :: nil) ("List" :: nil)).
@@ -1052,8 +1051,7 @@ Example list_len_spec :
        (mk_raw 1 (⋅ ▹ Typeω@0) Typeω@0
           (("nil", nil) :: ("cons", ("x", #0) :: ("xs", #2 $ #1) :: nil) :: nil)) ::
      cc_def "len" true false (Π (U_List $ ℕ) ℕ)
-       (Some (λ (U_List $ ℕ) (a_elim (qname_mod (q_abs ("U" :: nil) ("List" :: nil))) 1 ℕ
-                                (("nil", 0, zero) :: ("cons", 3, succ #0) :: nil) #0))) :: nil).
+       (Some (λ (U_List $ ℕ) (a_elim 1 ℕ (("nil", 0, zero) :: ("cons", 3, succ #0) :: nil) #0))) :: nil).
 Proof. elab_ok. Qed.
 
 (** A non-uniform parameter is bound by the type, in front of its sort,
@@ -1093,9 +1091,38 @@ Example local_ind :
                 (c_eval (letb (d_mod "M" nil (md_where (c_ind false "E" nil (typ 0) nil :: nil))) Cst.zero) None :: nil)) u.
 Proof. elab_fails. Qed.
 
+(** An inductive alias reads its target as a module, under its
+    parameters, as a module alias does; whether the target is an inductive
+    type, and its arguments the type's, is the core's to check:
+
+<<
+module T where
+inductive List (A : Typeω@0) : Typeω@0 where | nil end
+inductive L (B : Typeω@0) := List B
+private inductive LN := L Nat
+end
+>>
+*)
+Example ind_alias_spec :
+  elab_spec (unit_of
+    (c_ind false "List" (("A", typ 0) :: nil) (typ 0) (("nil", nil) :: nil) ::
+     c_ind_alias false "L" (("B", typ 0) :: nil) (app (var "List") (var "B")) ::
+     c_ind_alias true "LN" nil (app (var "L") nat) :: nil))
+    (nil, ⋅,
+     cc_ind "List" false (mk_raw 1 (⋅ ▹ Typeω@0) Typeω@0 (("nil", nil) :: nil)) ::
+     cc_ind_alias "L" false (⋅ ▹ Typeω@0) (me_app (T_ ("List" :: nil)) #0) ::
+     cc_ind_alias "LN" true ⋅ (me_app (T_ ("L" :: nil)) ℕ) :: nil).
+Proof. elab_ok. Qed.
+
+(** An inductive alias in a local body is rejected. *)
+Example local_ind_alias :
+  forall u, ~ elab_spec (unit_of
+                (c_eval (letb (d_mod "M" nil (md_where (c_ind_alias false "E" nil (var "Nat") :: nil))) Cst.zero) None :: nil)) u.
+Proof. elab_fails. Qed.
+
 (** A numeral is a core literal; what it stands for, the bound natural
     numbers or [ℕ], is the core's.  [builtin natural := Nat] names the type
-    as the head of its eliminator does, and declares nothing:
+    by its module, and declares nothing:
 
 <<
 module U where

@@ -103,6 +103,12 @@ let cmd :=
       { [Cst.c_ind false (snd x) (List.rev ps) t (List.rev cs)] }
   | PRIVATE; INDUCTIVE; x = VAR; ps = params_opt; ":"; t = obj; WHERE; cs = ctors; END;
       { [Cst.c_ind true (snd x) (List.rev ps) t (List.rev cs)] }
+  (* [inductive x (ps) := X Ms]: an inductive alias, the inductive type [X]
+     at the arguments [Ms], under the parameters. *)
+  | INDUCTIVE; x = VAR; ps = params_opt; ":="; e = obj;
+      { [Cst.c_ind_alias false (snd x) (List.rev ps) e] }
+  | PRIVATE; INDUCTIVE; x = VAR; ps = params_opt; ":="; e = obj;
+      { [Cst.c_ind_alias true (snd x) (List.rev ps) e] }
   (* [builtin natural := X]: the inductive type [X] is the natural numbers. *)
   | BUILTIN; k = VAR; ":="; x = atomic_obj; { [Cst.c_builtin (snd k) x] }
 
@@ -226,12 +232,12 @@ let obj :=
   | EXFALSO; escr = obj; RETURN; mx = VAR; "."; em = obj;
     { Cst.exfalso escr (snd mx) em }
 
-  (* [X.elim M return ys z . A | c xs, hs => B … end], [X] the inductive
-     type: the motive binds the non-uniform parameters and the scrutinee; a
-     branch, the non-uniform parameters and the constructor's arguments,
-     then after a comma its induction hypotheses. *)
-  | h = atomic_obj; "."; ELIM; escr = obj; RETURN; xs = vars; "."; em = obj; bs = brs; END;
-    { Cst.elim h escr (List.rev xs) em (List.rev bs) }
+  (* [elim M return ys z . A | c xs, hs => B … end]: the inductive type is
+     the scrutinee's; the motive binds the non-uniform parameters and the
+     scrutinee; a branch, the non-uniform parameters and the constructor's
+     arguments, then after a comma its induction hypotheses. *)
+  | ELIM; escr = obj; RETURN; xs = vars; "."; em = obj; bs = brs; END;
+    { Cst.elim escr (List.rev xs) em (List.rev bs) }
 
   (* [let x : A := a; y := b in body end].  The bindings fold into nested
      [letb]s, so each one sees the earlier ones. *)

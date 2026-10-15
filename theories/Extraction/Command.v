@@ -23,14 +23,14 @@
     ([eval_entry], certified by [eval_ok]), and fails with a [run_error]
     carrying the terms involved. *)
 
-From Stdlib Require Import List String Wellfounded Wf_nat.
+From Stdlib Require Import List String Wellfounded Wf_nat Lia.
 From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base Soundness.
 From Mctt.Core.Syntactic Require Import System.
-From Mctt.Core.Syntactic.System Require Import Structural Command IndRec.
+From Mctt.Core.Syntactic.System Require Import Structural Command IndRec MemberWf.
 From Mctt.Extraction Require Import NbE TypeCheck GlobalCheck IndDecl MemberType Privacy.
 Import Syntax_Notations GlobalCtx_Notations.
 
@@ -55,6 +55,40 @@ Definition gs_fresh_dec (x : string) (Ξ : gstack) : {gs_fresh x Ξ} + {~ gs_fre
   | (_, U) :: _ => check_gm_fresh x (gu_mod U)
   | nil => right (fun H => H)
   end.
+
+(** An inductive alias entry: its premises, the telescope as written. *)
+Lemma wf_gentry_ind_alias_inv : forall Θ Ξ mp pv Δ p Ns,
+    Θ ⍮ Ξ ⍮ mp ⊢e ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns ->
+    tele_ass Δ /\ Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ /\
+    exists D, ind_lookup Θ Ξ p = Some D /\ List.length Ns <= ind_nu D /\
+      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ apps (a_ind p) Ns : ind_ty_at D Ns /\
+      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ me_apps (qname_mod p) Ns ≈ me_apps (qname_mod p) Ns.
+Proof.
+  intros * HE; inversion HE; subst.
+  match goal with Heq : (?Δ0 ++ gs_tele Ξ)%list = (Δ ++ gs_tele Ξ)%list |- _ => apply List.app_inv_tail in Heq as -> end.
+  split; [ assumption | split; [ assumption | eexists; repeat split; eassumption ] ].
+Qed.
+
+(** An inductive alias entry, decided premise by premise. *)
+Definition ind_alias_entry_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢g Θ ⍮ Ξ) (mp : qname) (pv : bool) (Δ : ctx) (p : qname) (Ns : list exp) :
+    { Θ ⍮ Ξ ⍮ mp ⊢e ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns } + { ~ Θ ⍮ Ξ ⍮ mp ⊢e ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns }.
+Proof.
+  destruct (tele_ass_dec Δ) as [Htel | Hn]; [| right; intros HE; exact (Hn (proj1 (wf_gentry_ind_alias_inv _ _ _ _ _ _ _ HE))) ].
+  destruct (check_ext Θ Ξ (gs_tele Ξ) (wf_gs_tele _ _ HΞ) Δ) as [HΔ | Hn];
+    [| right; intros HE; exact (Hn (proj1 (proj2 (wf_gentry_ind_alias_inv _ _ _ _ _ _ _ HE)))) ].
+  destruct (ind_lookup Θ Ξ p) as [D |] eqn:Hl;
+    [| right; intros HE; destruct (proj2 (proj2 (wf_gentry_ind_alias_inv _ _ _ _ _ _ _ HE))) as (D & Hl' & _); congruence ].
+  destruct (Compare_dec.le_dec (List.length Ns) (ind_nu D)) as [Hle | Hn];
+    [| right; intros HE; destruct (proj2 (proj2 (wf_gentry_ind_alias_inv _ _ _ _ _ _ _ HE))) as (D' & Hl' & Hle' & _);
+       rewrite Hl in Hl'; injection Hl' as <-; exact (Hn Hle') ].
+  destruct (check_exp Θ Ξ (Δ ++ gs_tele Ξ) (ext_eq_ctx_left _ _ _ _ _ HΔ) (ind_ty_at D Ns) (apps (a_ind p) Ns)) as [HM | Hn];
+    [| right; intros HE; destruct (proj2 (proj2 (wf_gentry_ind_alias_inv _ _ _ _ _ _ _ HE))) as (D' & Hl' & _ & HM' & _);
+       rewrite Hl in Hl'; injection Hl' as <-; exact (Hn HM') ].
+  destruct (check_modexp Θ Ξ (Δ ++ gs_tele Ξ) (ext_eq_ctx_left _ _ _ _ _ HΔ) (me_apps (qname_mod p) Ns)) as [HH | Hn];
+    [| right; intros HE; destruct (proj2 (proj2 (wf_gentry_ind_alias_inv _ _ _ _ _ _ _ HE))) as (D' & _ & _ & _ & HH');
+       exact (Hn HH') ].
+  left; econstructor; eassumption.
+Defined.
 
 (** ** Closures and Paths *)
 
@@ -129,8 +163,7 @@ Inductive run_error : Set :=
 (** A chain from a unit, in term position, that names a module (an alias
     of the module of an inductive type included), not a term. *)
 | re_mod_term : qname -> run_error
-(** The head of an eliminator, a chain from a unit, is no module of an
-    inductive type. *)
+(** A path that names no inductive type where one is wanted. *)
 | re_not_ind : qname -> run_error.
 
 Definition priv_error (e : priv_err) : run_error :=
@@ -148,36 +181,20 @@ Definition blame_error {Θ Ξ Γ} (b : option (level_blame Θ Ξ Γ)) (e : run_e
   end.
 
 (** Where a term is rejected, a chain from a unit in it that names a
-    module but stands where a term does, or heads an eliminator but is no
-    inductive type: found syntactically, the chains' member types asked of
-    the oracle, which does not read the context for them. *)
+    module but stands where a term does: found syntactically, the chains'
+    member types asked of the oracle, which does not read the context for
+    them, and whether they name an inductive type or an inductive alias,
+    which are terms, asked of [it]. *)
 Section ModBlame.
   Variable mt : mt_oracle.
+  Variable it : qname -> option ind_alias_view.
 
   Definition mod_term_blame (H : modexp) (x : string) : option run_error :=
     match mod_qname H with
     | Some mp =>
-        match mt nil (qname_mod (qname_app mp (x :: nil))) nil with
-        | Some (mr_mod _) => Some (re_mod_term (qname_app mp (x :: nil)))
-        | Some (mr_ind q0 _) =>
-            if qname_eq_dec q0 (qname_app mp (x :: nil)) then None else Some (re_mod_term (qname_app mp (x :: nil)))
-        | _ => None
-        end
-    | None => None
-    end.
-
-  Fixpoint elim_head_root (H : modexp) : modexp :=
-    match H with
-    | me_app H' _ => elim_head_root H'
-    | _ => H
-    end.
-
-  Definition not_ind_blame (H : modexp) : option run_error :=
-    match mod_qname (elim_head_root H) with
-    | Some q0 =>
-        match mt nil (elim_head_root H) nil with
-        | Some (mr_ind _ _) => None
-        | _ => Some (re_not_ind q0)
+        match mt nil (qname_mod (qname_app mp (x :: nil))) nil, it (qname_app mp (x :: nil)) with
+        | Some (mr_mod _), None => Some (re_mod_term (qname_app mp (x :: nil)))
+        | _, _ => None
         end
     | None => None
     end.
@@ -193,13 +210,13 @@ Section ModBlame.
         first_some (mod_blame M) (fun _ => first_some (mod_blame A)
           (fun _ => first_some (mod_blame MZ) (fun _ => mod_blame MS)))
     | a_exfalso A M => first_some (mod_blame M) (fun _ => mod_blame A)
-    | a_elim H _ A Bs M =>
-        first_some (not_ind_blame H) (fun _ => first_some (mod_blame M) (fun _ => first_some (mod_blame A)
+    | a_elim _ A Bs M =>
+        first_some (mod_blame M) (fun _ => first_some (mod_blame A)
           (fun _ => (fix brs (Bs : list (string * nat * exp)) : option run_error :=
                        match Bs with
                        | nil => None
                        | b :: Bs' => first_some (mod_blame (snd b)) (fun _ => brs Bs')
-                       end) Bs)))
+                       end) Bs))
     | a_let (b_def oA N) B =>
         first_some (match oA with Some A => mod_blame A | None => None end)
           (fun _ => first_some (mod_blame N) (fun _ => mod_blame B))
@@ -211,8 +228,8 @@ End ModBlame.
 
 (** The error for a rejected term: a module where a term stands, if there
     is one, otherwise the given error. *)
-Definition mod_error (mt : mt_oracle) (Ms : list exp) (e : run_error) : run_error :=
-  match List.fold_right (fun M r => first_some (mod_blame mt M) (fun _ => r)) None Ms with
+Definition mod_error (mt : mt_oracle) (it : qname -> option ind_alias_view) (Ms : list exp) (e : run_error) : run_error :=
+  match List.fold_right (fun M r => first_some (mod_blame mt it M) (fun _ => r)) None Ms with
   | Some e' => e'
   | None => e
   end.
@@ -289,6 +306,18 @@ Qed.
 
 Lemma dom_cons : forall fp U Θ fq, In fq (gds_dom ((fp, U) :: Θ)) <-> fq = fp \/ In fq (gds_dom Θ).
 Proof. intros; cbn; split; intros [H | H]; auto. Qed.
+
+(** An inductive alias entry moves along an equivalence, premise by
+    premise. *)
+Lemma equiv_ind_alias_entry : forall Θ Θ' Ξ mp pv Δ p Ns, gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ ->
+    Θ ⍮ Ξ ⍮ mp ⊢e ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns -> Θ' ⍮ Ξ ⍮ mp ⊢e ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns.
+Proof.
+  intros * He HΞ HE; destruct (wf_gentry_ind_alias_inv _ _ _ _ _ _ _ HE) as (Htel & HΔ & D & Hl & Hle & HM & HH).
+  econstructor;
+    [ exact Htel | exact (equiv_ext _ _ _ _ _ He HΞ HΔ)
+    | unfold ind_lookup in *; rewrite <- (gds_equiv_module _ _ _ _ He); exact Hl | exact Hle
+    | exact (equiv_exp _ _ _ _ _ _ He HΞ HM) | exact (equiv_modexp _ _ _ _ _ He HΞ HH) ].
+Qed.
 
 Section Impl.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
@@ -675,6 +704,25 @@ Section Impl.
     exists ΘR; split; [ exact Hr | split; [ exact (linv_run_same Hli Hr) | split; [ apply ext_refl | apply grows_refl ] ] ].
   Qed.
 
+  (** An inductive alias, with the premises of [rc_ind_alias] at the
+      restriction. *)
+  Lemma indalias_ok {ch Θ K D Ξ x pv Δ E H0 pq Δ' p Ns Ms Ks} :
+    E = me_apps H0 (Ms ++ Ks) -> mod_qname H0 = Some pq ->
+    ind_target (gds_restrict D Θ) Ξ pq = Some (Δ', p, Ns) -> List.length Ms = List.length Δ' ->
+    gds_restrict D Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢e ge_ind_alias pv (Δ ++ gs_tele Ξ) p (List.map (fun N => N[sb_of_list Id Ms]) Ns ++ Ks) ->
+    gs_fresh x Ξ ->
+    post_cmd ch Θ K D Ξ (cc_ind_alias x pv Δ E)
+      (cst Θ K D (gs_add x (ge_ind_alias pv (Δ ++ gs_tele Ξ) p (List.map (fun N => N[sb_of_list Id Ms]) Ns ++ Ks)) Ξ)).
+  Proof.
+    intros HEq Hq Ht Hl HE Hfr ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].
+    pose proof (gds_equiv_sym _ _ (linv_equiv Hli)) as Heq.
+    assert (Hr : run_cmd ch ΘR Ξ (cc_ind_alias x pv Δ E) ΘR
+                   (gs_add x (ge_ind_alias pv (Δ ++ gs_tele Ξ) p (List.map (fun N => N[sb_of_list Id Ms]) Ns ++ Ks)) Ξ)).
+    { eapply rc_ind_alias; [ exact HEq | exact Hq | rewrite <- Ht; symmetry; apply gds_equiv_ind_target, Heq | exact Hl
+                           | exact (equiv_ind_alias_entry _ _ _ _ _ _ _ _ Heq (li_wf _ _ _ _ _ _ Hli) HE) | exact Hfr ]. }
+    exists ΘR; split; [ exact Hr | split; [ exact (linv_run_same Hli Hr) | split; [ apply ext_refl | apply grows_refl ] ] ].
+  Qed.
+
   Lemma load_in_ok {ch Θ K D Ξ fp U} :
     In fp D -> gds_lookup Θ fp = Some U -> post_cmd ch Θ K D Ξ (cc_load fp) (cst Θ K D Ξ).
   Proof.
@@ -888,10 +936,47 @@ Section Impl.
     destruct (Hp _ Hli') as [Hg Hli2]; split; [ constructor; assumption | exact Hli2 ].
   Qed.
 
+  (** The run that files an inductive alias entry as it stands: the
+      alias, written as the canonical path at the entry's arguments. *)
+  Lemma ind_alias_entry_run : forall ch Θ0 Ξ d pv Δ p Ns,
+      Θ0 ⍮ Ξ ⍮ ind_qname Ξ d ⊢e ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns -> gs_fresh d Ξ ->
+      run_cmd ch Θ0 Ξ (cc_ind_alias d pv Δ (me_apps (qname_mod p) Ns)) Θ0 (gs_add d (ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns) Ξ).
+  Proof.
+    intros * HE Hfr; destruct (wf_gentry_ind_alias_inv _ _ _ _ _ _ _ HE) as (_ & _ & D0 & Hl & _).
+    eapply rc_ind_alias with (H0 := qname_mod p) (Ms := nil) (Ks := Ns) (pq := p) (Δ' := nil) (Ns := nil);
+      [ reflexivity | apply qname_mod_qname | unfold ind_target; rewrite Hl; reflexivity | reflexivity | exact HE | exact Hfr ].
+  Qed.
+
+  Lemma gindalias_step {ch Θ K D ΘR Ξ d pv Δ p Ns} :
+    linv ch Θ K D ΘR Ξ -> gs_fresh d Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) d ⊢e ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns ->
+    ΘR ⍮ Ξ ⍮ qname_in (gs_path Ξ) d ⊢e ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns /\
+    linv ch Θ K D ΘR (gs_add d (ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns) Ξ).
+  Proof.
+    intros Hli Hfr HE.
+    pose proof (equiv_ind_alias_entry _ _ _ _ _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) HE) as HE'.
+    split; [ exact HE' |].
+    exact (linv_run_same Hli (ind_alias_entry_run ch _ _ _ _ _ _ _ HE' Hfr)).
+  Qed.
+
+  Lemma gindalias_pre {ch Θ K D Ξ d pv Δ p Ns} :
+    (exists ΘR, linv ch Θ K D ΘR Ξ) -> gs_fresh d Ξ ->
+    gds_restrict D Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) d ⊢e ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns ->
+    exists ΘR, linv ch Θ K D ΘR (gs_add d (ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns) Ξ).
+  Proof. intros [ΘR Hli] Hfr HE; exists ΘR; exact (proj2 (gindalias_step Hli Hfr HE)). Qed.
+
+  Lemma gindalias_ok {ch Θ K D Ξ d pv Δ p Ns gs Ξ'} :
+    gs_fresh d Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) d ⊢e ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns ->
+    post_gens ch Θ K D (gs_add d (ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns) Ξ) gs Ξ' ->
+    post_gens ch Θ K D Ξ (ig_ind_alias d pv Δ p Ns :: gs) Ξ'.
+  Proof.
+    intros Hfr HE Hp ΘR Hli; destruct (gindalias_step Hli Hfr HE) as [HE' Hli'].
+    destruct (Hp _ Hli') as [Hg Hli2]; split; [ econstructor; eassumption | exact Hli2 ].
+  Qed.
+
   (** An import declares what its items generate, which files nothing. *)
   Lemma import_ok {ch Θ K D Ξ E its gs Ξ'} (Hg : ⊢g gds_restrict D Θ ⍮ Ξ) :
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    import_gen (mt_of _ _ Hg) (gs_tele Ξ) E its = xok gs ->
+    import_gen (mt_of _ _ Hg) (ind_target (gds_restrict D Θ) Ξ) (gs_tele Ξ) E its = xok gs ->
     post_gens ch Θ K D Ξ gs Ξ' ->
     post_cmd ch Θ K D Ξ (cc_open E its) (cst Θ K D Ξ').
   Proof.
@@ -900,7 +985,8 @@ Section Impl.
     pose proof (gds_equiv_sym _ _ (linv_equiv Hli)) as Heq.
     exists ΘR; split; [| split; [ exact Hli' | split; [ apply ext_refl | apply grows_refl ] ] ].
     eapply rc_open; [ exact (equiv_modexp _ _ _ _ _ Heq (li_wf _ _ _ _ _ _ Hli) HE) | | exact Hr ].
-    exists (mt_of _ _ Hg); split; [ exact (linv_mt_spec Hli Hg) | exact Hgen ].
+    exists (mt_of _ _ Hg); split; [ exact (linv_mt_spec Hli Hg) |].
+    rewrite <- Hgen; apply import_gen_io_ext; intros pq; symmetry; apply gds_equiv_ind_target, Heq.
   Qed.
 
   (** A declaration files its entry where it is declared: the
@@ -1084,17 +1170,17 @@ Section Impl.
     | right _ => rerr (re_msg ("duplicate name " ++ x))
     | left Hfr with check_typ (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
       | inright _ => rerr (blame_error (find_level_blame _ _ _ (pre_ctx H) A)
-                            (mod_error (mt_of _ _ (pre_gctx H)) (A :: nil) (re_def_typ x Ξ A)))
+                            (mod_error (mt_of _ _ (pre_gctx H)) (ind_target (gds_restrict D Θ) Ξ) (A :: nil) (re_def_typ x Ξ A)))
       | inleft (exist _ i HA) with check_exp_typed (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A (ex_intro _ i HA) M => {
         | left HM => rok (da_ok (def_ok Hfr HM))
-        | right _ => rerr (mod_error (mt_of _ _ (pre_gctx H)) (M :: nil) (re_def x Ξ A M)) } } }
+        | right _ => rerr (mod_error (mt_of _ _ (pre_gctx H)) (ind_target (gds_restrict D Θ) Ξ) (M :: nil) (re_def x Ξ A M)) } } }
   | ch, Θ, K, D, Ξ, cc_def x b pv A None, H with gs_fresh_dec x Ξ => {
     | right _ => rerr (re_msg ("duplicate name " ++ x))
     | left Hfr with check_typ (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
       | inleft (exist _ i HA) => rok (da_ok (axiom_ok Hfr HA))
       | inright _ =>
           rerr (blame_error (find_level_blame _ _ _ (pre_ctx H) A)
-                  (mod_error (mt_of _ _ (pre_gctx H)) (A :: nil) (re_msg ("the type of axiom " ++ x ++ " is not a type")))) } }
+                  (mod_error (mt_of _ _ (pre_gctx H)) (ind_target (gds_restrict D Θ) Ξ) (A :: nil) (re_msg ("the type of axiom " ++ x ++ " is not a type")))) } }
   | ch, Θ, K, D, Ξ, cc_alias x pv Δ E, H with tele_ass_dec Δ => {
     | right _ => rerr (re_msg ("parameters of module " ++ x ++ " that are not assumptions"))
     | left Htel with check_ext (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) Δ => {
@@ -1141,6 +1227,20 @@ Section Impl.
                 end
             end
         end
+    | ig_ind_alias d pv Δ p Ns :: gs' =>
+        match gs_fresh_dec d Ξ with
+        | right _ => rerr (re_msg ("duplicate name " ++ d))
+        | left Hfr =>
+            match ind_alias_entry_dec (gds_restrict D Θ) Ξ (pre_gctx H) (qname_in (gs_path Ξ) d) pv Δ p Ns with
+            | right _ => rerr (re_msg ("ill-formed inductive alias " ++ d))
+            | left HE =>
+                match gens_impl ch Θ K D (gs_add d (ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns) Ξ) gs'
+                        (gindalias_pre H Hfr HE) with
+                | rerr e => rerr e
+                | rok (exist _ Ξ' Hp) => rok (exist _ Ξ' (gindalias_ok Hfr HE Hp))
+                end
+            end
+        end
     end.
 
   Definition cmd_ok {ch Θ K D Ξ c r} (Hp : post_cmd ch Θ K D Ξ c r) : {r0 | post_cmd ch Θ K D Ξ c r0} :=
@@ -1184,6 +1284,43 @@ Section Impl.
                 | left HA =>
                     rok (da_ok (builtin_ok Hk HΞ HU Hn Hq Hl Hs HA Hfr)) } } } } } } } }.
 
+  (** The arguments of an inductive alias's target, at the arguments for
+      its telescope, then the rest. *)
+  Definition alias_args (Δ' : ctx) (Ns L : list exp) : list exp :=
+    List.map (fun N => N[sb_of_list Id (List.firstn (List.length Δ') L)]) Ns ++ List.skipn (List.length Δ') L.
+
+  Lemma me_unapps_split : forall E H0 (L : list exp) (Δ' : ctx),
+      me_unapps E = (H0, L) -> List.length Δ' <= List.length L ->
+      E = me_apps H0 (List.firstn (List.length Δ') L ++ List.skipn (List.length Δ') L) /\
+      List.length (List.firstn (List.length Δ') L) = List.length Δ'.
+  Proof.
+    intros * Eu Hle; pose proof (proj1 (me_unapps_spec E)) as HE; rewrite Eu in HE; cbn [fst snd] in HE.
+    rewrite List.firstn_skipn; split; [ exact HE | rewrite List.length_firstn; lia ].
+  Qed.
+
+  (** An inductive alias, checked premise by premise. *)
+  Equations indalias_step (ch : list path) (Θ : gdeps) (K : kmap) (D : list path) (Ξ : gstack)
+    (x : string) (pv : bool) (Δ : ctx) (E : modexp) (H : exists ΘR, linv ch Θ K D ΘR Ξ) :
+    rres {Ξ' | post_cmd ch Θ K D Ξ (cc_ind_alias x pv Δ E) (cst Θ K D Ξ')} :=
+  | ch, Θ, K, D, Ξ, x, pv, Δ, E, H with inspect (me_unapps E) => {
+    | exist _ (H0, L) Eu with opt_case (mod_qname H0) => {
+      | inright _ => rerr (re_msg ("inductive alias " ++ x ++ " must name an inductive type by its path"))
+      | inleft (exist _ pq Hq) with opt_case (ind_target (gds_restrict D Θ) Ξ pq) => {
+        | inright _ => rerr (re_not_ind pq)
+        | inleft (exist _ (Δ', p, Ns) Ht) with Compare_dec.le_dec (List.length Δ') (List.length L) => {
+          | right _ => rerr (re_msg ("inductive alias " ++ x ++ ": too few arguments for the parameters of the alias it names"))
+          | left Hle with gs_fresh_dec x Ξ => {
+            | right _ => rerr (re_msg ("duplicate name " ++ x))
+            | left Hfr with opt_case (ind_lookup (gds_restrict D Θ) Ξ p) => {
+              | inright _ => rerr (re_not_ind p)
+              | inleft (exist _ Dp Hp) with Compare_dec.le_dec (List.length (alias_args Δ' Ns L)) (ind_nu Dp) => {
+                | right _ => rerr (re_msg ("inductive alias " ++ x ++ ": more arguments than uniform parameters of " ++ ind_short p))
+                | left _ with ind_alias_entry_dec (gds_restrict D Θ) Ξ (pre_gctx H) (ind_qname Ξ x) pv Δ p (alias_args Δ' Ns L) => {
+                  | right _ => rerr (re_msg ("ill-formed inductive alias " ++ x))
+                  | left HE =>
+                      rok (da_ok (indalias_ok (proj1 (me_unapps_split _ _ _ _ Eu Hle)) Hq Ht
+                                    (proj2 (me_unapps_split _ _ _ _ Eu Hle)) HE Hfr)) } } } } } } } }.
+
   (** Every expanded command but a module, which recurses on its body. *)
   Equations simple_step (ch : list path) (L : loader ch) (Θ : gdeps) (K : kmap) (D : list path) (Ξ : gstack)
     (c : ccmd) (H : exists ΘR, linv ch Θ K D ΘR Ξ) : rres ({r | post_cmd ch Θ K D Ξ c r} * elog)%type :=
@@ -1215,7 +1352,7 @@ Section Impl.
                 | rok (exist _ r Hr, _) => rok (exist _ _ (load_ok Hn Hnch Hsrc Hprg Hp Hu Hr), log_nil) } } } } } } }
   | ch, L, Θ, K, D, Ξ, cc_open E its, H with check_modexp (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) E => {
     | right _ => rerr (re_import (xe_target E))
-    | left HE with inspect (import_gen (mt_of _ _ (pre_gctx H)) (gs_tele Ξ) E its) => {
+    | left HE with inspect (import_gen (mt_of _ _ (pre_gctx H)) (ind_target (gds_restrict D Θ) Ξ) (gs_tele Ξ) E its) => {
       | exist _ (xfail e) _ => rerr (re_import e)
       | exist _ (xok gs) Eg with gens_impl ch Θ K D Ξ gs H => {
         | rerr e => rerr e
@@ -1223,16 +1360,19 @@ Section Impl.
   | ch, L, Θ, K, D, Ξ, cc_eval M (Some A), H
       with check_typ (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
     | inright _ => rerr (blame_error (find_level_blame _ _ _ (pre_ctx H) A)
-                          (mod_error (mt_of _ _ (pre_gctx H)) (A :: nil) (re_eval_typ Ξ M A)))
+                          (mod_error (mt_of _ _ (pre_gctx H)) (ind_target (gds_restrict D Θ) Ξ) (A :: nil) (re_eval_typ Ξ M A)))
     | inleft (exist _ i HA)
         with check_exp_typed (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A (ex_intro _ i HA) M => {
       | left HM => rok (exist _ _ (eval_check_ok HM), eval_log _ _ (pre_gctx H) M A HM)
-      | right _ => rerr (mod_error (mt_of _ _ (pre_gctx H)) (M :: nil) (re_eval_check Ξ M A)) } }
+      | right _ => rerr (mod_error (mt_of _ _ (pre_gctx H)) (ind_target (gds_restrict D Θ) Ξ) (M :: nil) (re_eval_check Ξ M A)) } }
   | ch, L, Θ, K, D, Ξ, cc_eval M None, H
       with @type_infer_at (gc_mk (gds_restrict D Θ) Ξ) (gs_tele Ξ) (pre_ctx H) M (user_exp_all M) => {
     | inleft (exist _ A HA) => rok (exist _ _ (eval_infer_ok A HA), eval_log _ _ (pre_gctx H) M A HA)
-    | inright _ => rerr (mod_error (mt_of _ _ (pre_gctx H)) (M :: nil) (re_eval_infer Ξ M)) }
+    | inright _ => rerr (mod_error (mt_of _ _ (pre_gctx H)) (ind_target (gds_restrict D Θ) Ξ) (M :: nil) (re_eval_infer Ξ M)) }
   | ch, L, Θ, K, D, Ξ, cc_builtin k p, H with builtin_step ch Θ K D Ξ k p H => {
+    | rerr e => rerr e
+    | rok (exist _ Ξ' Hp) => rok (cmd_ok Hp, log_nil) }
+  | ch, L, Θ, K, D, Ξ, cc_ind_alias x pv Δ E, H with indalias_step ch Θ K D Ξ x pv Δ E H => {
     | rerr e => rerr e
     | rok (exist _ Ξ' Hp) => rok (cmd_ok Hp, log_nil) }
   | ch, L, Θ, K, D, Ξ, cc_ind x pv R, H with cls_cons_in_dec (gds_restrict D Θ) Ξ (pre_gctx H) R => {
@@ -1295,7 +1435,8 @@ Section Impl.
   | ch, L, Θ, K, D, Ξ, cc_open E its, H => xp_simple ch L Θ K D Ξ (cc_open E its) H
   | ch, L, Θ, K, D, Ξ, cc_eval M oA, H => xp_simple ch L Θ K D Ξ (cc_eval M oA) H
   | ch, L, Θ, K, D, Ξ, cc_ind x pv R, H => xp_simple ch L Θ K D Ξ (cc_ind x pv R) H
-  | ch, L, Θ, K, D, Ξ, cc_builtin k p, H => xp_simple ch L Θ K D Ξ (cc_builtin k p) H.
+  | ch, L, Θ, K, D, Ξ, cc_builtin k p, H => xp_simple ch L Θ K D Ξ (cc_builtin k p) H
+  | ch, L, Θ, K, D, Ξ, cc_ind_alias x pv Δ E, H => xp_simple ch L Θ K D Ξ (cc_ind_alias x pv Δ E) H.
 
   Definition run_cmds_impl (ch : list path) (L : loader ch) := cmds_step ch (run_cmd_impl ch L).
 
@@ -1472,11 +1613,63 @@ Section Impl.
     exfalso; exact (HA' (equiv_exp _ _ _ _ _ _ He (linv_restrict_gctx Hli) HA0)).
   Qed.
 
+  Lemma me_unapps_noapp : forall L H0, me_noapp H0 -> me_unapps (me_apps H0 L) = (H0, L).
+  Proof.
+    induction L as [| N L IH] using List.rev_ind; intros H0 Hn.
+    - destruct H0; cbn in *; try reflexivity; contradiction.
+    - rewrite me_apps_snoc; cbn; rewrite IH by exact Hn; reflexivity.
+  Qed.
+
+  Lemma alias_args_app : forall Δ' Ns Ms Ks, (List.length Ms = List.length Δ')%nat ->
+      alias_args Δ' Ns (Ms ++ Ks)%list = (List.map (fun N => N[sb_of_list Id Ms]) Ns ++ Ks)%list.
+  Proof.
+    intros * Hl; unfold alias_args; rewrite <- Hl, List.firstn_app, List.skipn_app, PeanoNat.Nat.sub_diag, List.firstn_all, List.skipn_all.
+    cbn [List.firstn List.skipn]; rewrite !List.app_nil_r; reflexivity.
+  Qed.
+
+  Lemma indalias_complete : forall ch ΘR Ξ x pv Δ E ΘR' Ξ' Θ K D (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ),
+      linv ch Θ K D ΘR Ξ -> run_cmd ch ΘR Ξ (cc_ind_alias x pv Δ E) ΘR' Ξ' ->
+      exists r, indalias_step ch Θ K D Ξ x pv Δ E H = rok r.
+  Proof.
+    intros * Hli Hr; inversion Hr; subst.
+    pose proof (linv_equiv Hli) as He.
+    match goal with Hq : mod_qname ?H1 = Some _ |- _ => rename H1 into H1' end.
+    simp indalias_step.
+    pose proof (me_unapps_noapp (Ms ++ Ks)%list _ (mod_qname_noapp _ _ ltac:(eassumption))) as Enp.
+    destruct (inspect _) as [[H2 L] Eu].
+    assert (H2 = H1' /\ L = (Ms ++ Ks)%list) as [-> ->] by (rewrite Enp in Eu; injection Eu; auto).
+    simp indalias_step.
+    destruct (opt_case (mod_qname H1')) as [[pq1 Hq1] | Hq1]; [| congruence ].
+    match goal with Hq : mod_qname H1' = Some ?pq |- _ => assert (pq1 = pq) as -> by congruence end.
+    simp indalias_step.
+    match goal with Ht : ind_target ?TR Ξ ?pq = Some _ |- _ =>
+      rewrite (gds_equiv_ind_target _ _ _ _ He) in Ht end.
+    destruct (opt_case (ind_target _ _ _)) as [[[[Δ1 p1] Ns1] Ht1] | Ht1]; [| congruence ].
+    match goal with Ht : ind_target _ _ _ = Some (Δ', p, Ns) |- _ =>
+      assert (Δ1 = Δ' /\ p1 = p /\ Ns1 = Ns) as (-> & -> & ->) by (rewrite Ht in Ht1; injection Ht1; auto) end.
+    simp indalias_step.
+    destruct (Compare_dec.le_dec _ _) as [Hle | Hle]; [| exfalso; rewrite List.length_app in Hle; lia ].
+    simp indalias_step.
+    destruct (gs_fresh_dec x Ξ) as [Hfr' | Hfr']; [| contradiction ]; simp indalias_step.
+    match goal with HE : _ ⍮ _ ⍮ _ ⊢e ge_ind_alias _ _ _ _ |- _ =>
+      pose proof (equiv_ind_alias_entry _ _ _ _ _ _ _ _ He (linv_restrict_gctx Hli) HE) as HE0 end.
+    destruct (wf_gentry_ind_alias_inv _ _ _ _ _ _ _ HE0) as (_ & _ & D0 & Hl0 & Hle0 & _).
+    destruct (opt_case (ind_lookup _ _ _)) as [[D1 Hl1] | Hl1]; [| congruence ].
+    assert (D1 = D0) as -> by congruence.
+    simp indalias_step.
+    destruct (Compare_dec.le_dec _ _) as [Hle' | Hle'];
+      [| exfalso; apply Hle'; rewrite alias_args_app by assumption; exact Hle0 ].
+    simp indalias_step.
+    match goal with |- context [ind_alias_entry_dec ?a ?b ?c ?d ?e ?f ?g ?h] => destruct (ind_alias_entry_dec a b c d e f g h) as [HE' | HE'] end;
+      [| exfalso; apply HE'; rewrite alias_args_app by assumption; exact HE0 ].
+    simp indalias_step; eexists; reflexivity.
+  Qed.
+
   Lemma alias_complete : forall ch ΘR Ξ x pv Δ E ΘR' Ξ' Θ K D (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ),
       linv ch Θ K D ΘR Ξ -> run_cmd ch ΘR Ξ (cc_alias x pv Δ E) ΘR' Ξ' ->
       exists r, defalias_step ch Θ K D Ξ (cc_alias x pv Δ E) H = rok r.
   Proof.
-    intros * Hli Hr; inversion Hr as [| | | ? ? ? ? ? ? ? Htel HΔ HE Hfr | | | | | | |]; subst; simp defalias_step.
+    intros * Hli Hr; inversion Hr as [| | | ? ? ? ? ? ? ? Htel HΔ HE Hfr | | | | | | | |]; subst; simp defalias_step.
     destruct (tele_ass_dec Δ) as [Htel' | Htel']; [| contradiction ]; simp defalias_step.
     match goal with |- context [check_ext ?a ?b ?c ?d ?e] => destruct (check_ext a b c d e) as [HΔ' | HΔ'] end;
       [| exfalso; apply HΔ'; exact (equiv_ext _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HΔ) ].
@@ -1492,8 +1685,8 @@ Section Impl.
       forall ch Θ K D (Hx : exists ΘR0, linv ch Θ K D ΘR0 Ξ), linv ch Θ K D ΘR Ξ ->
       exists r, gens_impl ch Θ K D Ξ gs Hx = rok r.
   Proof.
-    induction 1 as [Ξ | Ξ d pv A M gs Ξ' HM Hfr Hg IH | Ξ d pv E gs Ξ' HE Hfr Hg IH];
-      intros ch Θ K D Hx Hli; cbn [gens_impl]; [ eexists; reflexivity | |].
+    induction 1 as [Ξ | Ξ d pv A M gs Ξ' HM Hfr Hg IH | Ξ d pv E gs Ξ' HE Hfr Hg IH | Ξ d pv Δ p Ns gs Ξ' HE Hfr Hg IH];
+      intros ch Θ K D Hx Hli; cbn [gens_impl]; [ eexists; reflexivity | | |].
     - destruct (gs_fresh_dec d Ξ) as [Hfr' | Hfr']; [| contradiction ].
       match goal with |- context [check_exp ?a ?b ?c ?d ?e ?f] => destruct (check_exp a b c d e f) as [HM' | HM'] end;
         [| exfalso; apply HM'; exact (equiv_exp _ _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HM) ].
@@ -1503,6 +1696,11 @@ Section Impl.
       match goal with |- context [check_modexp ?a ?b ?c ?d ?e] => destruct (check_modexp a b c d e) as [HE' | HE'] end;
         [| exfalso; apply HE'; exact (equiv_modexp _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HE) ].
       destruct (IH ch Θ K D (galias_pre Hx Hfr' HE') (proj2 (galias_step (pv := pv) Hli Hfr' HE'))) as [[Ξ1 Hp] E1].
+      rewrite E1; eexists; reflexivity.
+    - destruct (gs_fresh_dec d Ξ) as [Hfr' | Hfr']; [| contradiction ].
+      match goal with |- context [ind_alias_entry_dec ?a ?b ?c ?d ?e ?f ?g ?h] => destruct (ind_alias_entry_dec a b c d e f g h) as [HE' | HE'] end;
+        [| exfalso; apply HE'; exact (equiv_ind_alias_entry _ _ _ _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HE) ].
+      destruct (IH ch Θ K D (gindalias_pre Hx Hfr' HE') (proj2 (gindalias_step Hli Hfr' HE'))) as [[Ξ1 Hp] E1].
       rewrite E1; eexists; reflexivity.
   Qed.
 
@@ -1553,7 +1751,7 @@ Section Impl.
       intros ch ΘR Ξ x pv Δ cs ΘR' mp U Htel HΔ Hfr Hr IH Hacc Θ K D H Hli c Hx.
       pose proof (xp_eq (pre_gctx H) Hli Hx) as Ex.
       assert (Hc : ccmd_head c = 1) by (rewrite <- (cmd_xp_head _ _ _ _ Ex); reflexivity).
-      destruct c as [| x0 pv0 Δ0 cs0 | | | | | |]; try discriminate.
+      destruct c as [| x0 pv0 Δ0 cs0 | | | | | | |]; try discriminate.
       destruct (cmd_xp_mod_inv _ _ _ _ _ _ _ Ex) as (Δ1 & EΔ & [= <- <- <- <-]).
       simp run_cmd_impl.
       destruct (inspect _) as [[Δ2 | e] EΔ']; [ assert (Δ2 = Δ) as -> by congruence | exfalso; congruence ].
@@ -1612,6 +1810,8 @@ Section Impl.
         [| exfalso; apply HE'; exact (equiv_modexp _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HE) ].
       simp simple_step.
       pose proof (import_gen_ok_spec _ _ _ _ _ _ _ (linv_mt_spec Hli (pre_gctx H)) Hgen) as Eg.
+      rewrite (import_gen_io_ext _ _ (ind_target (gds_restrict D Θ) Ξ)) in Eg
+        by (intros pq; apply gds_equiv_ind_target, (linv_equiv Hli)).
       destruct (inspect _) as [[gs1 | e] Eg']; [ assert (gs1 = gs) as -> by congruence | exfalso; congruence ].
       simp simple_step.
       destruct (gens_complete _ _ _ _ Hgs _ _ _ _ H Hli) as [[Ξ1 Hp1] E1]; rewrite E1; simp simple_step.
@@ -1637,6 +1837,11 @@ Section Impl.
       intros ch ΘR Ξ mp U E p Dd z s HΞ HU Hn Hq Hl Hs HA Hfr Hacc Θ K D H Hli c Hx.
       refine (nonmod_complete H _ Hli Hx _); [ cbn; discriminate |]; simp simple_step.
       destruct (builtin_complete ch ΘR Ξ nat_kind E _ _ Θ K D H Hli ltac:(econstructor; eassumption)) as [[Ξ1 Hp] Er].
+      rewrite Er; simp simple_step; eexists; reflexivity.
+    - (* an inductive alias *)
+      intros ch ΘR Ξ x pv Δ E H0 pq Δ' p Ns Ms Ks HEq Hq Ht Hl HE Hfr Hacc Θ K D H Hli c Hx.
+      refine (nonmod_complete H _ Hli Hx _); [ cbn; discriminate |]; simp simple_step.
+      destruct (indalias_complete ch ΘR Ξ x pv Δ E _ _ Θ K D H Hli ltac:(econstructor; eassumption)) as [[Ξ1 Hp] Er].
       rewrite Er; simp simple_step; eexists; reflexivity.
     - (* an ascribed eval *)
       intros ch ΘR Ξ M A HM Hacc Θ K D H Hli c Hx.

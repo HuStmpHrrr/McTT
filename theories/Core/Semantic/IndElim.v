@@ -602,7 +602,7 @@ Section Fixed_GCtx.
       { intros c n B Hin; split; [ apply brs_lookup_nodup_in; [ apply HndB; exact Hnb | exact Hin ] | exact Hin ]. }
       { exact Hna. }
       { exact Hnb. }
-      exists (ne_elim p nm A' Bs' M); split; econstructor; eassumption.
+      exists (ne_elim nm A' Bs' M); split; econstructor; eassumption.
     Qed.
 
     (** ** Related Elements Eliminate to Related Values *)

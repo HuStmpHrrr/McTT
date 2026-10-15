@@ -1,7 +1,7 @@
 (** * NbE Reads the Global Context Only Through Its Lookups
 
     Evaluation and readback read the global context through [gc_resolve],
-    [gc_module] and [ind_lookup] alone, so two global contexts with the same
+    [gc_module], [ind_lookup] and [ind_alias_lookup] alone, so two global contexts with the same
     lookups normalize alike. *)
 
 From Mctt Require Import LibTactics.
@@ -15,6 +15,7 @@ Section GlobalExt.
   Hypothesis Hres : forall p, gc_resolve Θ1 Ξ1 p = gc_resolve Θ2 Ξ2 p.
   Hypothesis Hmod : forall p, gc_module Θ1 Ξ1 p = gc_module Θ2 Ξ2 p.
   Hypothesis Hind : forall p, ind_lookup Θ1 Ξ1 p = ind_lookup Θ2 Ξ2 p.
+  Hypothesis Hia : forall p, ind_alias_lookup Θ1 Ξ1 p = ind_alias_lookup Θ2 Ξ2 p.
 
   Lemma ind_lookup_ext : forall p, ind_lookup Θ1 Ξ1 p = ind_lookup Θ2 Ξ2 p.
   Proof. exact Hind. Qed.
@@ -29,6 +30,9 @@ Section GlobalExt.
         end;
     try match goal with
         | H : gc_module Θ1 Ξ1 _ = _ |- _ => rewrite Hmod in H
+        end;
+    try match goal with
+        | H : ind_alias_lookup Θ1 Ξ1 _ = _ |- _ => rewrite Hia in H
         end;
     eassumption.
 

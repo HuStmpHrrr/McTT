@@ -482,7 +482,7 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
       let (A', HA') := fread_typ_impl_c (S (s + ind_nn D)) a ck _ in
       let (Bs', HBs') := fread_brs_impl_c s ρ A p D (List.firstn (ind_nu D) as') (ind_cons D) Bs (Some (exist _ (p, D) Ed)) _ in
       let (M, HM) := fread_ne_impl_c s m ck _ in
-      exist _ (ne_elim p nm A' Bs' M) _
+      exist _ (ne_elim nm A' Bs' M) _
   | exist _ None Ed => False_rect _ _ }
 
       with fread_typ_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_typ_order Θ Ξ s d) : { m | Rtypᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=

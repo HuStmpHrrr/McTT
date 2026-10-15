@@ -44,7 +44,7 @@ with ne_wk (φ : wk) (u : ne) {struct u} : ne :=
   | ne_natrec A MZ MS u =>
       ne_natrec (nf_wk (wk_q φ) A) (nf_wk φ MZ) (nf_wk (wk_q (wk_q φ)) MS) (ne_wk φ u)
   | ne_exfalso A u => ne_exfalso (nf_wk (wk_q φ) A) (ne_wk φ u)
-  | ne_elim p nm A Bs u => ne_elim p nm (nf_wk (wk_qn nm φ) A) (nbrs_wk φ Bs) (ne_wk φ u)
+  | ne_elim nm A Bs u => ne_elim nm (nf_wk (wk_qn nm φ) A) (nbrs_wk φ Bs) (ne_wk φ u)
   | ne_app u W => ne_app (ne_wk φ u) (nf_wk φ W)
   | ne_var x => ne_var (φ x)
   | ne_glob p => ne_glob p

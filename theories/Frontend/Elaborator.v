@@ -231,12 +231,11 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
       let* D := elab_mdef (pents ps ++ S) md in
       let* B := elab (en_var x :: S) ob in
       eok (ℓₘ (gu_mk (ptele tys) D) in B)
-  | Cst.elim oh om xs oA bs =>
-      let* H := elab_mod S oh in
+  | Cst.elim om xs oA bs =>
       let* M := elab S om in
       let* A := elab (vents xs ++ S)%list oA in
       let* Bs := elab_brs_with elab S bs in
-      eok (a_elim H (List.length xs) A Bs M)
+      eok (a_elim (List.length xs) A Bs M)
   end
 
 with elab_mod (S : list ent) (o : Cst.obj) {struct o} : eres modexp :=
@@ -287,6 +286,7 @@ with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
            | Cst.c_eval _ _ :: _ => eerr "eval is not allowed in a local module"
            | Cst.c_ind _ _ _ _ _ :: _ => eerr "an inductive type is not allowed in a local module"
            | Cst.c_builtin _ _ :: _ => eerr "builtin is not allowed in a local module"
+           | Cst.c_ind_alias _ _ _ _ :: _ => eerr "an inductive alias is not allowed in a local module"
            end) S gm_nil cs in
       eok (md_body Φ)
   end.
@@ -381,6 +381,14 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) 
   | Cst.c_builtin k oX =>
       let* H := elab_mod (F ++ O) oX in
       eok (F, cc_builtin k H :: nil)
+  (** The target is a module, read under the parameters, as an alias's
+      is. *)
+  | Cst.c_ind_alias pv x ps oE =>
+      let* _ := check_fresh x F in
+      let* _ := check_params ps in
+      let* tys := elab_params (F ++ O) ps in
+      let* E := elab_mod (pents ps ++ F ++ O) oE in
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_ind_alias x pv (ptele tys) E :: nil)
   end.
 
 Definition elab_cmds (fp : path) := elab_cmds_with (elab_cmd fp).

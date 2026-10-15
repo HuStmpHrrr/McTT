@@ -218,23 +218,10 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
     branch, one per constructor in order, under the non-uniform
     parameters, the constructor's arguments and the recursive results.
     The parameters are typed one by one, at the instances of their
-    telescope.  The head [H] is the module of the inductive type at its
-    canonical path [p], applied to [nh] arguments [Ns]: the first [nh]
-    uniform parameters, as the type former applied to them shows
-    ([ind_ty_at]).  So [List.elim] takes them all from the scrutinee and
-    [(List ℕ).elim] checks the one it carries against it.  A head naming
-    the module some other way, through an alias or a module slot, is moved
-    to the canonical one by [wf_elim_head].  The type former at [Ns] is
-    typed on its own as well, which is what lets an equation of
-    substitutions move it.  Evaluation does not read the head. *)
+    telescope. *)
 | wf_elim :
   `( ind_lookup Θ Ξ p = Some D ->
      List.length Ps = ind_np D ->
-     H = me_apps (qname_mod p) Ns ->
-     List.length Ns = nh ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ apps (a_ind p) Ns : ind_ty_at D (List.firstn nh Ps) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ apps (a_ind p) Ns ≈ apps (a_ind p) (List.firstn nh Ps) : ind_ty_at D (List.firstn nh Ps) ->
-     nh <= ind_nu D ->
      (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : apps (a_ind p) Ps ->
@@ -249,17 +236,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs ->
         Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim H nm A Bs M : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
-(** An eliminator whose head resolves to the module of an inductive type,
-    as a module ([member_type]), is the eliminator at the canonical head,
-    with the same arguments. *)
-| wf_elim_head :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H0 ≈ H0 ->
-     member_type Θ Ξ Γ H0 nil (mr_ind p T) ->
-     H = me_apps H0 Ns ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ C : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim (me_apps (qname_mod p) Ns) nm A Bs M : C ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim H nm A Bs M : C )
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim nm A Bs M : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 | wf_pi :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i ->
@@ -343,6 +320,14 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      mod_qname H = Some mp ->
      ind_lookup Θ Ξ (qname_app mp (x :: nil)) = Some D ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : ind_ty D )
+(** An inductive alias, reached by a chain from a unit, is the type former
+    at its arguments, over its telescope. *)
+| wf_mem_glob_ind_alias :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     mod_qname H = Some mp ->
+     ind_alias_lookup Θ Ξ (qname_app mp (x :: nil)) = Some (Δ, p, Ns) ->
+     ind_lookup Θ Ξ p = Some D ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : ctx_pi Δ (ind_ty_at D Ns) )
 | wf_exp_subtyp :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      (** This premise is needed for soundness.  It is asymmetric: only [A'] is
@@ -456,21 +441,11 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      ⊢ Θ ⍮ Ξ ⍮ cargs_ctx p D gs ++ ind_params D ->
      Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p D gs : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_con p c ≈ a_con p c : con_ty p D gs )
-(** The eliminator, its head, its motive, its branches and its scrutinee
-    varying.  Each head is the canonical one, at arguments that are
-    parameters of the left scrutinee's type; the branches are compared
-    position by position, at the left motive. *)
+(** The eliminator, its motive, its branches and its scrutinee varying:
+    the branches are compared position by position, at the left motive. *)
 | wf_exp_eq_elim_cong :
   `( ind_lookup Θ Ξ p = Some D ->
      List.length Ps = ind_np D ->
-     H = me_apps (qname_mod p) Ns ->
-     List.length Ns = nh ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ apps (a_ind p) Ns ≈ apps (a_ind p) (List.firstn nh Ps) : ind_ty_at D (List.firstn nh Ps) ->
-     nh <= ind_nu D ->
-     H' = me_apps (qname_mod p) Ns' ->
-     List.length Ns' = nh' ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ apps (a_ind p) Ns' ≈ apps (a_ind p) (List.firstn nh' Ps) : ind_ty_at D (List.firstn nh' Ps) ->
-     nh' <= ind_nu D ->
      (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : apps (a_ind p) Ps ->
@@ -488,16 +463,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         ind_con D c = Some gs ->
         Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B ≈ B'
           : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim H nm A Bs M ≈ a_elim H' nm A' Bs' M' : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
-(** The eliminator at a head resolving to the module of an inductive type
-    is the eliminator at the canonical head ([wf_elim_head]). *)
-| wf_exp_eq_elim_head :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H0 ≈ H0 ->
-     member_type Θ Ξ Γ H0 nil (mr_ind p T) ->
-     H = me_apps H0 Ns ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ C : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim (me_apps (qname_mod p) Ns) nm A Bs M : C ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim H nm A Bs M ≈ a_elim (me_apps (qname_mod p) Ns) nm A Bs M : C )
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim nm A Bs M ≈ a_elim nm A' Bs' M' : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 | wf_exp_eq_pi_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
@@ -578,17 +544,13 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 (** [ι]: the eliminator on a constructor is the constructor's branch, at
     the non-uniform parameters, the arguments and the recursive results
     ([elim_ihs]): the eliminator at a recursive argument, and at one of a
-    function shape [λ x. X.elim (f x)].  The arguments are typed one by one,
+    function shape [λ x. elim (f x)].  The arguments are typed one by one,
     at the instances of their telescope at the parameters. *)
 | wf_exp_eq_elim_iota :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      ind_lookup Θ Ξ p = Some D ->
      ind_con D c = Some gs ->
      List.length Ps = ind_np D ->
-     H = me_apps (qname_mod p) Ns ->
-     List.length Ns = nh ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ apps (a_ind p) Ns ≈ apps (a_ind p) (List.firstn nh Ps) : ind_ty_at D (List.firstn nh Ps) ->
-     nh <= ind_nu D ->
      (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
      List.length As = List.length gs ->
@@ -606,8 +568,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
      brs_lookup Bs c = Some (n, B) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim H nm A Bs (apps (a_con p c) (Ps ++ As))
-       ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs (sb_of_list Id Ps) gs As)]
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim nm A Bs (apps (a_con p c) (Ps ++ As))
+       ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs nm A Bs (sb_of_list Id Ps) gs As)]
        : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ apps (a_con p c) (Ps ++ As) :: nil)] )
 (** [ζ]: a local definition is substituted into its body. *)
 | wf_exp_eq_let_zeta :
@@ -658,6 +620,13 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      mod_qname H = Some mp ->
      ind_lookup Θ Ξ (qname_app mp (x :: nil)) = Some D ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ a_ind (qname_app mp (x :: nil)) : ind_ty D )
+(** An inductive alias, as a term, is the type former at its arguments. *)
+| wf_exp_eq_mem_glob_ind_alias_unfold :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     mod_qname H = Some mp ->
+     ind_alias_lookup Θ Ξ (qname_app mp (x :: nil)) = Some (Δ, p, Ns) ->
+     ind_lookup Θ Ξ p = Some D ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ ctx_fn Δ (apps (a_ind p) Ns) : ctx_pi Δ (ind_ty_at D Ns) )
 (** *** Uniqueness rule *)
 | wf_exp_eq_fn_eta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
@@ -943,6 +912,18 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      gm_fresh x Φ ->
      Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y
        ⊢e ge_ind pv D (Φ ⊳ x ↦ ge_def b pv' (ctx_pi (ind_uparams D) A) (Some (ctx_fn (ind_uparams D) M))) )
+(** An inductive alias with parameters [Δ] over the frames' parameters,
+    of the inductive type at the canonical path [p] at arguments [Ns] for
+    its first uniform parameters; it is stored over its full telescope, as
+    an alias is. *)
+| wf_gentry_ind_alias :
+  `( tele_ass Δ ->
+     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
+     ind_lookup Θ Ξ p = Some D ->
+     List.length Ns <= ind_nu D ->
+     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ apps (a_ind p) Ns : ind_ty_at D Ns ->
+     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ me_apps (qname_mod p) Ns ≈ me_apps (qname_mod p) Ns ->
+     Θ ⍮ Ξ ⍮ mp ⊢e ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns )
 where "Θ ⍮ Ξ ⍮ mp ⊢e E" := (wf_gentry Θ Ξ mp E) : type_scope
 
 (** The module at path [mp], with own parameters [Δ], a telescope over the

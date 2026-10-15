@@ -30,7 +30,7 @@ Proof.
   fix IH 1; intros [| Φ y E0 | Φ c] ip E H; cbn in H |- *; try discriminate; [| exact (IH _ _ _ H) ].
   destruct ip as [| x ip']; [ discriminate |].
   destruct (String.eqb x y); [| exact (IH _ _ _ H) ].
-  destruct ip' as [| z ip''], E0 as [b pv A B | pm [Δ [Φ' | E']] | pv D Φ']; try discriminate; auto;
+  destruct ip' as [| z ip''], E0 as [b pv A B | pm [Δ [Φ' | E']] | pv D Φ' | pv Δa pa Nsa]; try discriminate; auto;
     exact (IH _ _ _ H).
 Qed.
 
@@ -39,10 +39,11 @@ Lemma gm_entry_alias : forall Φ T x ip U r, gm_submodule T Φ x ip = Some (mr_a
 Proof.
   fix IH 1; intros [| Φ y E0 | Φ c] * H Hr; cbn in H |- *; try discriminate; [| exact (IH _ _ _ _ _ _ H Hr) ].
   destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ H Hr) ].
-  destruct E0 as [b pv A B | pm [Δ [Φ' | E']] | pv D Φ']; try discriminate.
+  destruct E0 as [b pv A B | pm [Δ [Φ' | E']] | pv D Φ' | pv Δa pa Nsa]; try discriminate.
   - destruct ip as [| z ip']; [ discriminate |]; exact (IH _ _ _ _ _ _ H Hr).
   - injection H as _ <-; destruct ip as [| z ip']; [ contradiction | reflexivity ].
   - destruct ip as [| z ip']; [ discriminate |]; exact (IH _ _ _ _ _ _ H Hr).
+  - injection H as _ <-; destruct ip as [| z ip']; [ contradiction | reflexivity ].
 Qed.
 
 Lemma gc_entry_resolve : forall Θ Ξ p E, gc_resolve Θ Ξ p = Some E -> gc_entry Θ Ξ p = Some E.
@@ -96,12 +97,13 @@ Lemma gm_submodule_alias_suffix : forall Φ T x ip U r,
 Proof.
   fix IH 1; intros [| Φ y E0 | Φ c] * H; cbn in H; try discriminate; [| exact (IH _ _ _ _ _ _ H) ].
   destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ H) ].
-  destruct E0 as [b pv A B | pm [Δ [Φ' | E']] | pv D Φ']; try discriminate.
+  destruct E0 as [b pv A B | pm [Δ [Φ' | E']] | pv D Φ' | pv Δa pa Nsa]; try discriminate.
   - destruct ip as [| z ip']; [ discriminate |].
     destruct (IH _ _ _ _ _ _ H) as (pre & ->); exists (z :: pre); reflexivity.
   - injection H as _ <-; exists nil; reflexivity.
   - destruct ip as [| z ip']; [ discriminate |].
     destruct (IH _ _ _ _ _ _ H) as (pre & ->); exists (z :: pre); reflexivity.
+  - injection H as _ <-; exists nil; reflexivity.
 Qed.
 
 Lemma gs_find_tele_suffix : forall Ξ p U ip T,
@@ -239,6 +241,7 @@ with etab (S : list ptab) (E : gentry) : ptab :=
   | ge_def _ _ _ _ => pt_none
   | ge_mod _ U => utab S U
   | ge_ind _ D Φ => pt_body nil (btab (repeat pt_none (ind_nu D) ++ S) Φ)
+  | ge_ind_alias _ _ p _ => pt_glob (qname_mod p)
   end.
 
 (** The table a local binding gives its index. *)
@@ -272,8 +275,8 @@ Fixpoint exp_refs (S : list ptab) (M : exp) : list (ptab * string)%type :=
       exp_refs (pt_none :: S) A ++ exp_refs S MZ ++ exp_refs (pt_none :: pt_none :: S) MS ++ exp_refs S M
   | a_exfalso A M => exp_refs (pt_none :: S) A ++ exp_refs S M
   | a_ind _ | a_con _ _ | a_nlit _ => nil
-  | a_elim H nm A Bs M =>
-      modexp_refs S H ++ exp_refs (repeat pt_none nm ++ S) A ++
+  | a_elim nm A Bs M =>
+      exp_refs (repeat pt_none nm ++ S) A ++
         (fix brs_refs (Bs : list (string * nat * exp)) : list (ptab * string)%type :=
            match Bs with
            | nil => nil
@@ -322,7 +325,7 @@ with gentry_refs (S : list ptab) (E : gentry) : list (ptab * string)%type :=
   match E with
   | ge_def _ _ A B => exp_refs S A ++ match B with Some M => exp_refs S M | None => nil end
   | ge_mod _ U => gunit_refs S U
-  | ge_ind _ _ _ => nil
+  | ge_ind _ _ _ | ge_ind_alias _ _ _ _ => nil
   end
 with centry_refs (S : list ptab) (e : centry) : list (ptab * string)%type :=
   match e with
@@ -365,6 +368,7 @@ Definition cmd_refs (c : ccmd) : list (ptab * string)%type :=
   | cc_eval M oA => exp_refs nil M ++ match oA with Some A => exp_refs nil A | None => nil end
   | cc_ind _ _ D => decl_refs D
   | cc_builtin _ H => modexp_refs nil H
+  | cc_ind_alias _ _ Δ H => tele_refs nil Δ ++ modexp_refs nil H
   end.
 
 (** ** Accessibility *)

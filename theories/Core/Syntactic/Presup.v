@@ -176,6 +176,12 @@ Proof.
 
   (** [δ], right: the generalized body, which [presup_global] types. *)
   - eapply wf_glob_body; eassumption.
+
+  (** An inductive alias unfolded: the term it δ-unfolds to, which
+      [presup_global] types too. *)
+  - match goal with HΓ : ⊢ _ ⍮ _ ⍮ _, Hl : ind_alias_lookup _ _ _ = Some _, Hd : ind_lookup _ _ _ = Some _ |- _ =>
+      destruct (wf_ind_alias _ _ _ _ _ _ _ HΓ Hl) as (D' & Hd' & _ & _ & HM);
+      rewrite Hd in Hd'; injection Hd' as <-; exact HM end.
 Qed.
 
 Theorem presup_exp_eq : forall {Θ Ξ Γ M M' A},

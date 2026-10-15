@@ -176,11 +176,9 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
          format_obj escr mx format_obj em s_darrow format_obj ez sx sr s_darrow format_obj es
      in
      pp_print_paren_if (p >= 1) impl f ()
-  | Cst.Coq_elim (h, escr, xs, em, bs) ->
+  | Cst.Coq_elim (escr, xs, em, bs) ->
      let impl f () =
-       (* The scrutinee as an argument: an application is parenthesised,
-          so that [X.elim (f n)] does not read as [X.elim f] applied. *)
-       fprintf f "@[<hv 0>@[<hov 2>%a.elim %a@ return %s .@ %a@]" (format_obj_prec 2) h (format_obj_prec 2) escr
+       fprintf f "@[<hv 0>@[<hov 2>elim %a@ return %s .@ %a@]" format_obj escr
          (String.concat " " xs) format_obj em;
        List.iter
          (fun ((c, ys), eb) ->
@@ -315,6 +313,10 @@ and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      fprintf f "@;<1 -2>end";
      pp_close_box f ()
   | Cst.Coq_c_builtin (k, x) -> fprintf f "@[<hov 2>builtin %s @<1>%s@ %a@]" k s_eq format_obj x
+  | Cst.Coq_c_ind_alias (priv, x, ps, e) ->
+     fprintf f "@[<hov 2>%sinductive %s" (if priv then "private " else "") x;
+     List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
+     fprintf f " @<1>%s@ %a@]" s_eq format_obj e
   | Cst.Coq_c_eval (e, ot) -> begin
      match ot with
      | None -> fprintf f "@[<hov 2>eval %a@]" format_obj e
@@ -364,32 +366,51 @@ let rec nat_of_chain : exp -> int option = function
 
 (* The declarations of the inductive types the printed terms see, where
    they are known: those of the state of the eval or the error printed. *)
-let ind_decls : (qname -> (exp, centry) ind_decl_g option) ref = ref (fun _ -> None)
+let ind_decls : (exp, centry) ind_decl_g list ref = ref []
 
-(* The module a head of an eliminator names, its arguments dropped. *)
-let rec elim_head_qname : modexp -> qname option = function
-  | Coq_me_app (h, _) -> elim_head_qname h
-  | Coq_me_unit fp -> Some { q_unit = fp; q_chain = [] }
-  | Coq_me_mem (h, y) ->
-     (match h with
-      | Coq_me_app _ -> None
-      | _ -> Option.map (fun q -> { q with q_chain = q.q_chain @ [y] }) (elim_head_qname h))
-  | _ -> None
+(* Every declaration of an inductive type in a body, the bodies of its
+   modules included. *)
+let rec gmod_decls : gmod -> (exp, centry) ind_decl_g list = function
+  | Coq_gm_nil -> []
+  | Coq_gm_open (phi, _, _) -> gmod_decls phi
+  | Coq_gm_ext (phi, _, e) ->
+     let here =
+       match e with
+       | Coq_ge_ind (_, d, phi') -> d :: gmod_decls phi'
+       | Coq_ge_mod (_, Coq_gu_mk (_, Coq_md_body phi')) -> gmod_decls phi'
+       | _ -> []
+     in
+     here @ gmod_decls phi
+
+let unit_decls (Coq_gu_mk (_, md) : gunit) =
+  match md with Coq_md_body phi -> gmod_decls phi | Coq_md_alias _ -> []
+
+let set_ind_decls (deps : gdeps) (xi : gstack) : unit =
+  ind_decls := List.concat_map (fun (_, u) -> unit_decls u) deps @ List.concat_map (fun (_, u) -> unit_decls u) xi
+
+(* The declarations an eliminator's branches can be for: those whose
+   constructors they name, in order. *)
+let elim_decls (cs : string list) : (exp, centry) ind_decl_g list =
+  List.filter (fun d -> List.map fst d.ind_cons = cs) !ind_decls
 
 (* The names a branch of an eliminator binds, its induction hypotheses
-   after a comma, the marker [","], where the declaration is known and the
-   branch binds as many names as it should. *)
-let mark_ihs (h : modexp) (c : string) (ys : string list) : string list =
-  match Option.bind (elim_head_qname h) !ind_decls with
+   after a comma, the marker [","], at a declaration it can be for, where
+   the branch binds as many names as it should there. *)
+let mark_ihs_at (d : (exp, centry) ind_decl_g) (c : string) (ys : string list) : string list =
+  match McttExtracted.Inductives.ind_con d c with
   | None -> ys
-  | Some d ->
-     (match McttExtracted.Inductives.ind_con d c with
-      | None -> ys
-      | Some gs ->
-         let k = McttExtracted.Inductives.cargs_nrec gs in
-         let n = List.length ys in
-         if k = 0 || n <> McttExtracted.Syntax.ind_nn d + List.length gs + k then ys
-         else List.filteri (fun i _ -> i < n - k) ys @ ("," :: List.filteri (fun i _ -> i >= n - k) ys))
+  | Some gs ->
+     let k = McttExtracted.Inductives.cargs_nrec gs in
+     let n = List.length ys in
+     if k = 0 || n <> McttExtracted.Syntax.ind_nn d + List.length gs + k then ys
+     else List.filteri (fun i _ -> i < n - k) ys @ ("," :: List.filteri (fun i _ -> i >= n - k) ys)
+
+(* The names marked so where every declaration the branches can be for
+   marks them the same way, and as they are otherwise. *)
+let mark_ihs (ds : (exp, centry) ind_decl_g list) (c : string) (ys : string list) : string list =
+  match List.sort_uniq compare (List.map (fun d -> mark_ihs_at d c ys) ds) with
+  | [ zs ] -> zs
+  | _ -> ys
 
 let exp_to_obj =
   let new_var, reset_var_suffix =
@@ -481,7 +502,7 @@ let exp_to_obj =
     | Coq_a_con (p, c) -> path_to_obj p.q_unit (p.q_chain @ [c])
     (* An eliminator: fresh names for what its motive and its branches
        bind. *)
-    | Coq_a_elim (h, nm, em, bs, escr) ->
+    | Coq_a_elim (nm, em, bs, escr) ->
        let rec fresh k = if k = 0 then [] else let x = new_var () in x :: fresh (k - 1) in
        let xs = fresh nm in
        let escr' = impl ctx escr in
@@ -493,8 +514,8 @@ let exp_to_obj =
              ((c, ys), impl (List.rev ys @ ctx) eb))
            bs
        in
-       let head = impl_mod ctx h in
-       Cst.Coq_elim (head, escr', xs, em', List.map (fun ((c, ys), eb) -> ((c, mark_ihs h c ys), eb)) bs')
+       let ds = elim_decls (List.map (fun ((c, _), _) -> c) bs) in
+       Cst.Coq_elim (escr', xs, em', List.map (fun ((c, ys), eb) -> ((c, mark_ihs ds c ys), eb)) bs')
   (* A chain of selections from a unit, as the unit and the chain. *)
   and chain_of : modexp -> (string list * string list) option = function
     | Coq_me_unit fp -> Some (fp, [])
@@ -569,6 +590,7 @@ let exp_to_obj =
             Cst.Coq_c_mod (priv, x, params, md)
          (* A declaration is filed in a unit, never in a local body. *)
          | Coq_ge_ind (_, _, _) -> Cst.Coq_c_error "inductive declaration"
+         | Coq_ge_ind_alias (_, _, _, _) -> Cst.Coq_c_error "inductive alias"
        in
        (cs @ [c], x :: ctx')
     | Coq_gm_open (phi, h, its) ->
@@ -613,7 +635,7 @@ let format_nf f nf = format_exp f (nf_to_exp nf)
 (************************************************************)
 
 let format_eval (f : Format.formatter) (r : Command1.eval_entry) : unit =
-  ind_decls := McttExtracted.Members.ind_lookup r.ev_deps r.ev_stack;
+  set_ind_decls r.ev_deps r.ev_stack;
   nat_bind :=
     (match McttExtracted.Builtin.nat_binding r.ev_deps r.ev_stack with
      | McttExtracted.Builtin.Coq_nb_one (p, z, s) -> Some (p, z, s)
@@ -627,7 +649,7 @@ let rec format_run_error (f : Format.formatter) (e : Command1.run_error) : unit 
   (match e with
    | Coq_re_def (_, xi, _, _) | Coq_re_def_typ (_, xi, _) | Coq_re_eval_typ (xi, _, _)
    | Coq_re_eval_check (xi, _, _) | Coq_re_eval_infer (xi, _) | Coq_re_level (xi, _, _) ->
-      ind_decls := McttExtracted.Members.ind_lookup [] xi
+      set_ind_decls [] xi
    | _ -> ());
   format_run_error_in f e
 

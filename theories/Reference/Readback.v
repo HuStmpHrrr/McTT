@@ -469,7 +469,7 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
       let (A', HA') := read_typ_impl (S (s + ind_nn D)) a _ in
       let (Bs', HBs') := read_brs_impl s ρ A p D (List.firstn (ind_nu D) as') (ind_cons D) Bs _ in
       let (M, HM) := read_ne_impl s m _ in
-      exist _ (ne_elim p nm A' Bs' M) _
+      exist _ (ne_elim nm A' Bs' M) _
   | exist _ None Ed => False_rect _ _ }
 
       with read_typ_impl s d (H : read_typ_order Θ Ξ s d) : { m | Rtyp d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=

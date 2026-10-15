@@ -232,14 +232,12 @@ Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
 | sel_let_mod : forall S x ps md ob U B,
     sunit S ps md U -> sel (en_var x :: S) ob B ->
     sel S (Cst.letb (Cst.d_mod x ps md) ob) (ℓₘ U in B)
-(** An eliminator: it is named by the module of its type, as written; its
-    motive binds its names, and so does each branch.  Which type the module
-    is, how many names there must be, and which constructor a branch is for,
-    is the core's to check. *)
-| sel_elim : forall S oh om xs oA bs H M A Bs,
-    selm S oh H ->
+(** An eliminator: its motive binds its names, and so does each branch.
+    How many there must be, and which constructor a branch is for, is the
+    core's to check. *)
+| sel_elim : forall S om xs oA bs M A Bs,
     sel S om M -> sel (vents xs ++ S) oA A -> sbrs S bs Bs ->
-    sel S (Cst.elim oh om xs oA bs) (a_elim H (List.length xs) A Bs M)
+    sel S (Cst.elim om xs oA bs) (a_elim (List.length xs) A Bs M)
 
 with selm : list ent -> Cst.obj -> modexp -> Prop :=
 | selm_var : forall S x k e n H,
@@ -396,6 +394,16 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
     srcons (pents (ups ++ nps) ++ en_var x :: F ++ O) cs cs' ->
     scmd fp ch O F (Cst.c_ind pv x ups oT cs) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
       (cc_ind x pv (mk_raw (List.length ups) (ptele tys) A cs') :: nil)
+(** [inductive x (ps) := E]: [E] is read under the parameters, as an
+    alias's target is; whether it names an inductive type, and its
+    arguments the type's, is the core's to check. *)
+| sc_ind_alias : forall ch O F pv x ps oE tys E,
+    fresh x F ->
+    NoDup (map fst ps) ->
+    sparams (F ++ O) ps tys ->
+    selm (pents ps ++ F ++ O) oE E ->
+    scmd fp ch O F (Cst.c_ind_alias pv x ps oE) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
+      (cc_ind_alias x pv (ptele tys) E :: nil)
 (** [builtin k := X]: [X] is a module, as written; whether it is an
     inductive type of the right shape is the core's to check. *)
 | sc_builtin : forall ch O F k oX H,

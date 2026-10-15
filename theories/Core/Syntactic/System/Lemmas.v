@@ -393,13 +393,8 @@ Ltac reduce_sub_natrec :=
 (** The eliminator: the motive and the branches move under the equivalent
     substitutions lifted over their contexts, which the induction
     hypotheses of the telescope premises give. *)
-Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' H Ns nh p D Ps M nm i A Bs,
+Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D Ps M nm i A Bs,
     ind_lookup Θ Ξ p = Some D -> List.length Ps = ind_np D ->
-    H = me_apps (qname_mod p) Ns -> List.length Ns = nh ->
-    (forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢s τ ≈ τ' : Γ ->
-       Θ ⍮ Ξ ⍮ Δ0 ⊢ (apps (a_ind p) Ns)[τ] ≈ (apps (a_ind p) Ns)[τ'] : (ind_ty_at D (List.firstn nh Ps))[τ]) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ (apps (a_ind p) Ns) ≈ apps (a_ind p) (List.firstn nh Ps) : ind_ty_at D (List.firstn nh Ps) ->
-    nh <= ind_nu D ->
     (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
        Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
     (forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢s τ ≈ τ' : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[τ] ≈ M[τ'] : (apps (a_ind p) Ps)[τ]) ->
@@ -429,11 +424,10 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' H Ns nh p D Ps M nm i A Bs,
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢s τ ≈ τ' : elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ B[τ] ≈ B[τ'] : (elim_bty p D c gs A (List.firstn (ind_nu D) Ps))[τ]) ->
     Θ ⍮ Ξ ⍮ Δ ⊢s σ ≈ σ' : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim H nm A Bs M)[σ] ≈ (a_elim H nm A Bs M)[σ'] : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
+    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim nm A Bs M)[σ] ≈ (a_elim nm A Bs M)[σ'] : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
 Proof.
-  intros * Hl HPl Heq HNl HT0l HT0 Hnh HPs HM Hnm HA HAA HΨ HΨl Hn HΨB HΨBl Hk HBB Hσ.
+  intros * Hl HPl HPs HM Hnm HA HAA HΨ HΨl Hn HΨB HΨBl Hk HBB Hσ.
   pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs.
-  pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hs'.
   assert (HD : decl_closed D) by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hs) | exact Hl ]).
   pose proof (wk_firstn_length D Ps HD HPl) as HUl.
   rewrite (sub_elim_type D Ps A M nm σ HPl Hnm); cbn [exp_sub]; subst nm.
@@ -443,26 +437,9 @@ Proof.
   pose proof (sub_elim_motive_ctx _ _ _ _ _ _ _ _ HD HUl Hs HΨ HΨσ) as Hq.
   pose proof (HΨl (elim_mctx_ass _ _ _ HD) _ _ _ Hσ) as Hlift.
   rewrite length_elim_mctx, elim_mctx_sub in Hlift by assumption.
-  (** The head under [σ'] is the type former at the parameters under [σ],
-      through the head under [σ]. *)
-  assert (HT0σ : Θ ⍮ Ξ ⍮ Δ ⊢ apps (a_ind p) (List.map (fun N => N[σ]) Ns) ≈ apps (a_ind p) (List.firstn nh (List.map (fun P => P[σ]) Ps))
-                   : ind_ty_at D (List.firstn nh (List.map (fun P => P[σ]) Ps))).
-  { rewrite List.firstn_map, <- !sub_apps_ind, <- ind_ty_at_sub by first [ exact HD | rewrite List.length_firstn; lia ].
-    eapply sub_preserves_exp_eq; [ exact HT0 | exact Hs ]. }
-  assert (HTl : Θ ⍮ Ξ ⍮ Δ ⊢ apps (a_ind p) (List.map (fun N => N[σ]) Ns) ≈ apps (a_ind p) (List.map (fun N => N[σ']) Ns)
-                 : ind_ty_at D (List.firstn nh (List.map (fun P => P[σ]) Ps))).
-  { rewrite List.firstn_map, <- !sub_apps_ind, <- ind_ty_at_sub by first [ exact HD | rewrite List.length_firstn; lia ]; exact (HT0l _ _ _ Hσ). }
   eapply wf_exp_eq_elim_cong with (Ps := List.map (fun P => P[σ]) Ps).
   - exact Hl.
   - rewrite List.length_map; exact HPl.
-  - rewrite Heq, me_apps_sub, (mod_qname_sub _ _ _ (qname_mod_qname p)); reflexivity.
-  - rewrite List.length_map; exact HNl.
-  - exact HT0σ.
-  - exact Hnh.
-  - rewrite Heq, me_apps_sub, (mod_qname_sub _ _ _ (qname_mod_qname p)); reflexivity.
-  - rewrite List.length_map; exact HNl.
-  - eapply wf_exp_eq_trans; [ apply wf_exp_eq_sym; exact HTl | exact HT0σ ].
-  - exact Hnh.
   - eapply sub_elim_params; [ exact HD | | exact Hs ].
     intros * HP HT ? ? Hs0; eapply sub_preserves_exp; [ eapply HPs; eassumption | exact Hs0 ].
   - rewrite <- sub_apps_ind; apply HM; exact Hσ.
@@ -486,30 +463,6 @@ Proof.
     rewrite length_elim_bctx, (elim_bctx_sub p D _ gs A _ σ HD (cons_lookup_in _ _ _ Hc) HUl) in HlB.
     replace (ind_nn D + List.length gs + cargs_nrec gs) with (cargs_nrec gs + List.length gs + ind_nn D) by lia.
     exact HlB.
-Qed.
-
-(** An eliminator at a resolved head: both sides are moved to the canonical
-    head and meet there. *)
-Lemma sub_eq_elim_head_case : forall Θ Ξ Γ Δ σ σ' H H0 Ns p T nm A Bs M C i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H0 ≈ H0 -> member_type Θ Ξ Γ H0 nil (mr_ind p T) -> H = me_apps H0 Ns ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ C : Typeω@i ->
-    (forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢s τ ≈ τ' : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ C[τ] ≈ C[τ'] : Typeω@i[τ]) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim (me_apps (qname_mod p) Ns) nm A Bs M : C ->
-    (forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢s τ ≈ τ' : Γ ->
-       Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_elim (me_apps (qname_mod p) Ns) nm A Bs M)[τ]
-         ≈ (a_elim (me_apps (qname_mod p) Ns) nm A Bs M)[τ'] : C[τ]) ->
-    Θ ⍮ Ξ ⍮ Δ ⊢s σ ≈ σ' : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim H nm A Bs M)[σ] ≈ (a_elim H nm A Bs M)[σ'] : C[σ].
-Proof.
-  intros * HH0 Hmt Heq HC HCl HM HMl Hσ.
-  pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs.
-  pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hs'.
-  assert (Hd : Θ ⍮ Ξ ⍮ Γ ⊢ a_elim H nm A Bs M ≈ a_elim (me_apps (qname_mod p) Ns) nm A Bs M : C)
-    by (eapply wf_exp_eq_elim_head; eassumption).
-  eapply wf_exp_eq_meet;
-    [ exact (sub_preserves_exp_eq _ _ _ _ _ _ _ _ Hd Hs) | exact (HMl _ _ _ Hσ)
-    | exact (sub_preserves_exp_eq _ _ _ _ _ _ _ _ Hd Hs')
-    | exact (sub_preserves_typ _ _ _ _ _ _ _ HC Hs) | exact (HCl _ _ _ Hσ) ].
 Qed.
 
 Lemma sub_eq_preserves_mut :
@@ -546,7 +499,6 @@ Proof.
     end ].
   (** The eliminator. *)
   all: try solve [ eapply sub_eq_elim_case; eassumption ].
-  all: try solve [ eapply sub_eq_elim_head_case; eassumption ].
   all: destruct_let_ann; saturate_sub_eq; push_sub; lift_sub_eq; saturate_sub_eq;
     saturate_sub_typ; saturate_sub_eq_IH; reduce_sub_natrec.
   (** In the [a_glob] case the recorded type reaches [Γ] only through
@@ -852,11 +804,7 @@ Proof.
     destruct W; try (simpl in *; congruence);
     autoinjections; cbn in *; destruct_all;
     eauto.
-  all: try solve [ inversion_by_head ctx_lookup ].
-  (** An eliminator at a resolved head: the neutral at the canonical head. *)
-  match goal with Hq : me_apps _ _ = qname_mod _ |- _ => destruct (me_apps_qname _ _ _ Hq) as [-> _] end.
-  match goal with IH : forall W0 : ne, ne_clean W0 -> _ -> a_elim (me_apps (qname_mod ?p) nil) ?n (nf_to_exp ?A) (nbrs_to_brs ?Bs) (ne_to_exp ?M) = _ -> False |- _ =>
-    apply (IH (ne_elim p n A Bs M)); [ cbn; repeat split; assumption | reflexivity | reflexivity ] end.
+  inversion_by_head ctx_lookup.
 Qed.
 
 #[export]

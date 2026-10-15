@@ -350,17 +350,17 @@ Section OFresh.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma ofresh_mem : forall H x, ofresh K (a_mem H x) -> omfresh K H.
   Proof. destruct K; cbn; tauto. Qed.
-  Lemma ofresh_elim_A : forall p nm A Bs M, ofresh K (a_elim p nm A Bs M) -> ofresh (oshift nm K) A.
-  Proof. destruct K; cbn; [ intros p nm A Bs M H; apply (proj1 (exp_fresh_elim _ p nm A Bs M)) in H; tauto | auto ]. Qed.
-  Lemma ofresh_elim_B : forall p nm A Bs M, ofresh K (a_elim p nm A Bs M) ->
+  Lemma ofresh_elim_A : forall nm A Bs M, ofresh K (a_elim nm A Bs M) -> ofresh (oshift nm K) A.
+  Proof. destruct K; cbn; [ intros nm A Bs M H; apply (proj1 (exp_fresh_elim _ nm A Bs M)) in H; tauto | auto ]. Qed.
+  Lemma ofresh_elim_B : forall nm A Bs M, ofresh K (a_elim nm A Bs M) ->
                                           forall c n B, In (c, n, B) Bs -> ofresh (oshift n K) B.
   Proof.
     destruct K; cbn; [| auto ].
-    intros p nm A Bs M H; apply (proj1 (exp_fresh_elim _ p nm A Bs M)) in H as (_ & _ & H & _).
+    intros nm A Bs M H; apply (proj1 (exp_fresh_elim _ nm A Bs M)) in H as (_ & H & _).
     intros * Hin; exact (proj1 (Forall_forall _ _) H _ Hin).
   Qed.
-  Lemma ofresh_elim_M : forall p nm A Bs M, ofresh K (a_elim p nm A Bs M) -> ofresh K M.
-  Proof. destruct K; cbn; [ intros p nm A Bs M H; apply (proj1 (exp_fresh_elim _ p nm A Bs M)) in H; tauto | auto ]. Qed.
+  Lemma ofresh_elim_M : forall nm A Bs M, ofresh K (a_elim nm A Bs M) -> ofresh K M.
+  Proof. destruct K; cbn; [ intros nm A Bs M H; apply (proj1 (exp_fresh_elim _ nm A Bs M)) in H; tauto | auto ]. Qed.
   Lemma ofresh_var : forall x, ofresh K #x -> K <> Some x.
   Proof. destruct K; cbn; congruence. Qed.
 
@@ -409,8 +409,8 @@ End OFresh.
     the hypothesis rather than left to unification. *)
 #[local] Hint Extern 1 (ofresh _ _) =>
   match goal with
-  | H : ofresh ?K (a_elim ?p ?nm ?A ?Bs ?M) |- ofresh (oshift ?nm ?K) ?A => exact (ofresh_elim_A K p nm A Bs M H)
-  | H : ofresh ?K (a_elim ?p ?nm ?A ?Bs ?M) |- ofresh ?K ?M => exact (ofresh_elim_M K p nm A Bs M H)
+  | H : ofresh ?K (a_elim ?nm ?A ?Bs ?M) |- ofresh (oshift ?nm ?K) ?A => exact (ofresh_elim_A K nm A Bs M H)
+  | H : ofresh ?K (a_elim ?nm ?A ?Bs ?M) |- ofresh ?K ?M => exact (ofresh_elim_M K nm A Bs M H)
   end : avoid.
 
 (** ** Evaluation Builds No Variable *)
@@ -543,7 +543,7 @@ Section Eval.
     all: try solve [ lazymatch goal with |- dav _ _ (d_ind _ _) => idtac | |- dav _ _ (d_con _ _ _) => idtac end;
                      constructor; all_in_with assumption ].
     all: try solve [ match goal with
-      | Hf : ofresh ?K (a_elim _ _ _ _ _), IH : _ -> _ -> dav _ _ ?r |- dav _ _ ?r =>
+      | Hf : ofresh ?K (a_elim _ _ _ _), IH : _ -> _ -> dav _ _ ?r |- dav _ _ ?r =>
           apply IH; [ eapply ofresh_elim_B; exact Hf | assumption ]
       end ].
     all: try solve [ match goal with

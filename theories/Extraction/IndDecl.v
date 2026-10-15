@@ -30,8 +30,8 @@ Fixpoint exp_mvcb (n : nat) (M : exp) {struct M} : bool :=
   | a_natrec A MZ MS M => exp_mvcb (S n) A && exp_mvcb n MZ && exp_mvcb (S (S n)) MS && exp_mvcb n M
   | a_exfalso A M => exp_mvcb (S n) A && exp_mvcb n M
   | a_ind _ | a_con _ _ | a_nlit _ => true
-  | a_elim H nm A Bs M =>
-      modexp_mvcb n H && exp_mvcb (nm + n) A &&
+  | a_elim nm A Bs M =>
+      exp_mvcb (nm + n) A &&
       (fix brs_mvcb (Bs : list (string * nat * exp)) : bool :=
          match Bs with
          | nil => true
@@ -83,6 +83,7 @@ with gentry_mvcb (n : nat) (E : gentry) {struct E} : bool :=
   | ge_def _ _ A B => exp_mvcb n A && match B with Some M => exp_mvcb n M | None => true end
   | ge_mod _ U => gunit_mvcb n U
   | ge_ind _ D Φ => gmod_mvcb (ind_nu D + n) Φ
+  | ge_ind_alias _ _ _ _ => true
   end
 with centry_mvcb (n : nat) (e : centry) {struct e} : bool :=
   match e with
@@ -109,7 +110,7 @@ Proof.
   all: try (split; auto; fail).
   - tauto.
   - (* an eliminator: its branches *)
-    match goal with |- ((_ /\ _) /\ ?l = true) /\ _ <-> _ /\ _ /\ ?r /\ _ => enough (Hb : l = true <-> r) by (rewrite Hb; tauto) end.
+    match goal with |- (_ /\ ?l = true) /\ _ <-> _ /\ ?r /\ _ => enough (Hb : l = true <-> r) by (rewrite Hb; tauto) end.
     match goal with HF : List.Forall _ Bs |- _ => clear - HF; induction HF as [| b Bs Hb _ IH] end; cbn; [ split; auto |].
     rewrite andb_true_iff, Hb, IH; reflexivity.
   - apply Nat.ltb_lt.
@@ -252,7 +253,7 @@ Proof.
 Qed.
 
 Lemma gens_body_app : forall gs1 gs2 Φ T, gens_body Φ T (gs1 ++ gs2) = gens_body (gens_body Φ T gs1) T gs2.
-Proof. induction gs1 as [| [d pv A M | d pv E] gs1 IH]; intros; cbn; auto. Qed.
+Proof. induction gs1 as [| [d pv A M | d pv E | d pv Δ p Ns] gs1 IH]; intros; cbn; auto. Qed.
 
 Lemma gens_body_cons_names : forall p D T (l : list (string * list carg)) Φ x,
     In x (gm_names Φ) \/ In x (List.map fst l) ->
@@ -706,6 +707,14 @@ Proof. intros * He; unfold gc_resolve; rewrite (gds_equiv_lookup _ _ _ He); refl
 Lemma gds_equiv_module : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> gc_module Θ Ξ p = gc_module Θ' Ξ p.
 Proof. intros * He; unfold gc_module; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
 
+Lemma gds_equiv_ind_alias : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> ind_alias_lookup Θ Ξ p = ind_alias_lookup Θ' Ξ p.
+Proof. intros * He; unfold ind_alias_lookup; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
+
+Lemma gds_equiv_ind_target : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> ind_target Θ Ξ p = ind_target Θ' Ξ p.
+Proof.
+  intros * He; unfold ind_target, ind_lookup; rewrite (gds_equiv_module _ _ _ _ He), (gds_equiv_ind_alias _ _ _ _ He); reflexivity.
+Qed.
+
 (** The bindings visible are those of the units filed, whatever their
     order. *)
 Lemma gds_equiv_nat_binds : forall Θ Θ' Ξ, gds_equiv Θ Θ' ->
@@ -730,7 +739,9 @@ Lemma equiv_cls_arg_in : forall Θ Θ' Ξ R args1 gs1 T g,
 Proof.
   intros * He HΞ H; destruct H as [g Hg | i W g Hn HT HW Hg]; [ apply cls_in_syn; exact Hg |].
   eapply cls_in_nf; [ exact Hn | exact (equiv_exp _ _ _ _ _ _ He HΞ HT) | | exact Hg ].
-  eapply nbe_ty_ext; [ | | | exact HW ]; intros; [ apply gds_equiv_resolve | apply gds_equiv_module | unfold ind_lookup; rewrite (gds_equiv_module _ _ _ _ He); reflexivity ]; exact He.
+  eapply nbe_ty_ext; [ | | | | exact HW ]; intros;
+    [ apply gds_equiv_resolve | apply gds_equiv_module | unfold ind_lookup; rewrite (gds_equiv_module _ _ _ _ He); reflexivity
+    | apply gds_equiv_ind_alias ]; exact He.
 Qed.
 
 Lemma equiv_cls_cons_in : forall Θ Θ' Ξ R cs,

@@ -79,7 +79,7 @@ Inductive feval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
 | feeo_elim :
   `( feval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> feval_elim_order Θ Ξ p nm A Bs m) ->
-     feval_exp_order Θ Ξ (a_elim pq nm A Bs M) p )
+     feval_exp_order Θ Ξ (a_elim nm A Bs M) p )
 | feeo_fn :
   `( feval_exp_order Θ Ξ (λ A M) p )
 | feeo_app :
@@ -280,6 +280,12 @@ with feval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
      ind_lookup Θ Ξ (qname_app pq (x :: nil)) = Some D ->
      feval_apps_order Θ Ξ (d_ind (qname_app pq (x :: nil)) nil) args ->
      feval_sel_order Θ Ξ (dm_global pq args) x )
+| feslo_global_ind_alias :
+  `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
+     ind_alias_lookup Θ Ξ (qname_app pq (x :: nil)) = Some (Δ, pt, Ns) ->
+     feval_exp_order Θ Ξ (ctx_fn Δ (apps (a_ind pt) Ns)) nil ->
+     (forall f, ⟦ ctx_fn Δ (apps (a_ind pt) Ns) ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ f -> feval_apps_order Θ Ξ f args) ->
+     feval_sel_order Θ Ξ (dm_global pq args) x )
 | feslo_unsat :
   `( List.length args < List.length (gu_params U) ->
      feval_sel_order Θ Ξ (dm_local p U args) x )
@@ -469,88 +475,6 @@ Definition inspect {A} (a : A) : { b | a = b } := exist _ a eq_refl.
 Definition qname_dec : forall (x y : qname), {x = y} + {x <> y}.
 Proof. decide equality; apply list_eq_dec, string_dec. Defined.
 
-(** ** One Lookup for a Global
-
-    The entry a path names ([gc_entry]) tells a global from the module of
-    an inductive type in one pass, which [gc_resolve] and [ind_lookup] would
-    each take. *)
-Lemma gm_entry_resolve_def : forall Φ ip b pv A B,
-    gm_entry Φ ip = Some (ge_def b pv A B) <-> gm_resolve Φ ip = Some (ge_def b pv A B).
-Proof.
-  fix IH 1; intros [| Φ y E | Φ H its] [| x ip] *; cbn; try tauto; try exact (IH _ _ _ _ _ _).
-  destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _) ].
-  destruct ip as [| z ip], E as [b' pv' A' B' | pm [Δ [Φ' | E']] | pv' D Φ']; cbn; try tauto;
-    try (split; intros; discriminate); exact (IH _ _ _ _ _ _).
-Qed.
-
-Lemma gm_entry_ind_resolve : forall Φ ip pv D Φ',
-    gm_entry Φ ip = Some (ge_ind pv D Φ') -> gm_resolve Φ ip = None.
-Proof.
-  fix IH 1; intros [| Φ y E | Φ H its] [| x ip] *; cbn; try discriminate; intros He; try (eapply IH; exact He).
-  destruct (String.eqb x y); [| eapply IH; exact He ].
-  destruct ip as [| z ip], E as [b' pv' A' B' | pm [Δ [Φ1 | E']] | pv' D' Φ1]; cbn in He |- *; try discriminate;
-    try reflexivity; eapply IH; exact He.
-Qed.
-
-Lemma gm_entry_submodule : forall Φ T x ip pv D Φ',
-    gm_entry Φ (x :: ip) = Some (ge_ind pv D Φ') -> gm_submodule T Φ x ip = Some (mr_body (ind_uparams D) (Some D)).
-Proof.
-  fix IH 1; intros [| Φ y E | Φ H its] T x ip *; cbn; try discriminate; intros He; try (eapply IH; exact He).
-  destruct (String.eqb x y); [| eapply IH; exact He ].
-  destruct ip as [| z ip], E as [b' pv' A' B' | pm [Δ [Φ1 | E']] | pv' D' Φ1]; cbn in He |- *; try discriminate;
-    try (injection He as -> -> ->; reflexivity); eapply IH; exact He.
-Qed.
-
-Lemma gm_submodule_entry : forall Φ T x ip T' D,
-    gm_submodule T Φ x ip = Some (mr_body T' (Some D)) -> exists pv Φ', gm_entry Φ (x :: ip) = Some (ge_ind pv D Φ').
-Proof.
-  fix IH 1; intros [| Φ y E | Φ H its] T x ip *; cbn; try discriminate; intros He; try (eapply IH; exact He).
-  destruct (String.eqb x y); [| eapply IH; exact He ].
-  destruct ip as [| z ip], E as [b' pv' A' B' | pm [Δ [Φ1 | E']] | pv' D' Φ1]; cbn in He |- *; try discriminate;
-    try (injection He as _ ->; eauto; fail); eapply IH; exact He.
-Qed.
-
-Lemma gm_entry_nil : forall Φ, gm_entry Φ nil = None.
-Proof. induction Φ; cbn; auto. Qed.
-
-Lemma gc_entry_def : forall Θ Ξ p b pv A B,
-    gc_entry Θ Ξ p = Some (ge_def b pv A B) <-> gc_resolve Θ Ξ p = Some (ge_def b pv A B).
-Proof.
-  intros; unfold gc_entry, gc_resolve.
-  destruct (gs_find Ξ p) as [[U ip] |]; [ apply gm_entry_resolve_def |].
-  destruct (gds_lookup Θ (q_unit p)); [ apply gm_entry_resolve_def | tauto ].
-Qed.
-
-Lemma gc_entry_ind : forall Θ Ξ p pv D Φ,
-    gc_entry Θ Ξ p = Some (ge_ind pv D Φ) -> gc_resolve Θ Ξ p = None /\ ind_lookup Θ Ξ p = Some D.
-Proof.
-  intros * He; unfold gc_entry, gc_resolve, ind_lookup, gc_module in *.
-  rewrite gs_find_tele_find in *.
-  destruct (gs_find_tele Ξ p) as [[[U ip] T] |]; cbn in He |- *.
-  - split; [ eapply gm_entry_ind_resolve; exact He |].
-    destruct ip as [| x ip]; [ rewrite gm_entry_nil in He; discriminate |].
-    erewrite gm_entry_submodule by exact He; reflexivity.
-  - destruct (gds_lookup Θ (q_unit p)) as [U |]; [| discriminate ].
-    split; [ eapply gm_entry_ind_resolve; exact He |].
-    destruct (q_chain p) as [| x ip]; [ rewrite gm_entry_nil in He; discriminate |].
-    unfold gm_module; erewrite gm_entry_submodule by exact He; reflexivity.
-Qed.
-
-Lemma ind_lookup_entry : forall Θ Ξ p D,
-    ind_lookup Θ Ξ p = Some D -> exists pv Φ, gc_entry Θ Ξ p = Some (ge_ind pv D Φ).
-Proof.
-  intros * Hl; unfold gc_entry, ind_lookup, gc_module in *.
-  rewrite gs_find_tele_find.
-  destruct (gs_find_tele Ξ p) as [[[U ip] T] |]; cbn in Hl |- *.
-  - destruct ip as [| x ip]; [ discriminate |].
-    destruct (gm_submodule _ _ _ _) as [[T' [D' |] | U' r] |] eqn:E; try discriminate.
-    injection Hl as ->; eapply gm_submodule_entry; exact E.
-  - destruct (gds_lookup Θ (q_unit p)) as [U |]; [| discriminate ].
-    destruct (q_chain p) as [| x ip]; cbn in Hl; [ discriminate |].
-    destruct (gm_submodule _ _ _ _) as [[T' [D' |] | U' r] |] eqn:E; try discriminate.
-    injection Hl as ->; eapply gm_submodule_entry; exact E.
-Qed.
-
 Section EvalImpl.
   Variables (Θ : gdeps) (Ξ : gstack).
 
@@ -612,6 +536,17 @@ Section EvalImpl.
           apply gc_entry_def in H'; rewrite H in H'; discriminate H'
       | H : gc_entry ?T ?X ?p = _, H' : ind_lookup ?T ?X ?p = Some _ |- _ =>
           let He := fresh "He" in destruct (ind_lookup_entry _ _ _ _ H') as (? & ? & He); rewrite H in He; discriminate He
+      | H : gc_entry _ _ _ = Some (ge_ind_alias _ _ _ _) |- _ =>
+          let H1 := fresh "Hr" in let H2 := fresh "Ha" in destruct (gc_entry_ind_alias _ _ _ _ _ _ _ H) as [H1 H2]; clear H
+      | H : gc_entry ?T ?X ?p = _, H' : ind_alias_lookup ?T ?X ?p = Some _ |- _ =>
+          rewrite ind_alias_lookup_entry, H in H'; cbn in H'; discriminate H'
+      | H1 : ind_alias_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = Some _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : ind_alias_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = None |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H1 : ind_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = Some _ |- _ =>
+          exfalso; destruct (ind_lookup_entry _ _ _ _ H1) as (? & ? & He1);
+          rewrite ind_alias_lookup_entry, He1 in H2; discriminate H2
       | H1 : gc_resolve _ _ ?p = Some _, H2 : gc_resolve _ _ ?p = Some _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : gc_resolve _ _ ?p = Some _, H2 : gc_resolve _ _ ?p = None |- _ =>
@@ -739,7 +674,7 @@ Section EvalImpl.
   | a_con pq c, p, H => exist _ (d_con pq c nil) _
   (** A numeral is expanded before it is ever evaluated. *)
   | a_nlit _, p, H => False_rect _ _
-  | a_elim pq nm A Bs M, p, H =>
+  | a_elim nm A Bs M, p, H =>
       let (m, Hm) := feval_exp_impl M p _ in
       let (r, Hr) := feval_elim_impl p nm A Bs m None _ in
       exist _ r _
@@ -931,6 +866,10 @@ Section EvalImpl.
     | exist _ (Some (ge_ind _ D _)) E =>
         let (r, Hr) := feval_apps_impl (d_ind (qname_app pq (x :: nil)) nil) args _ in
         exist _ r _
+    | exist _ (Some (ge_ind_alias _ Δ pt Ns)) E =>
+        let (f, Hf) := feval_exp_impl (ctx_fn Δ (apps (a_ind pt) Ns)) nil _ in
+        let (r, Hr) := feval_apps_impl f args _ in
+        exist _ r _
     | exist _ None E => False_rect _ _ }
   | dm_local p (gu_mk Δ D) args, x, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
     | exist _ Lt C => exist _ (d_member (dm_local p (gu_mk Δ D) args) (x :: nil)) _
@@ -1002,6 +941,11 @@ Section EvalImpl.
     inversion, the evaluation itself by its rule, or a branch the order rules
     out ([ev_obl]).  They are transparent: the order premises are the
     arguments of the structural recursion. *)
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.

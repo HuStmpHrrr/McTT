@@ -51,6 +51,10 @@ Import Domain_Notations.
       repeat match goal with
         | H1 : Members.gc_resolve Θ Ξ ?p = Some _, H2 : Members.gc_resolve Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : ind_alias_lookup Θ Ξ ?p = Some _, H2 : ind_alias_lookup Θ Ξ ?p = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : ind_lookup Θ Ξ ?p = Some _, H2 : ind_alias_lookup Θ Ξ ?p = Some _ |- _ =>
+            exfalso; destruct (ind_lookup_entry _ _ _ _ H1) as (? & ? & He1); rewrite ind_alias_lookup_entry, He1 in H2; discriminate H2
         | H1 : ind_lookup Θ Ξ ?p = Some _, H2 : ind_lookup Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
         | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = Some _ |- _ =>

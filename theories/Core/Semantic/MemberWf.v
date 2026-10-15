@@ -314,7 +314,7 @@ Qed.
 Lemma mt_unit_body : forall Θ Ξ Γ fp ch T oD,
     gc_module Θ Ξ (q_abs fp ch) = Some (mr_body T oD) ->
     exists R, member_type Θ Ξ Γ (me_unit fp) ch R /\ mres_tl R = Some T.
-Proof. intros * Hm; destruct oD; eexists; split; [ eapply mt_unit_ind; exact Hm | reflexivity | eapply mt_unit_mod; exact Hm | reflexivity ]. Qed.
+Proof. intros * Hm; eexists; split; [ eapply mt_unit_mod; exact Hm | reflexivity ]. Qed.
 
 Lemma mres_tl_gen : forall Δ R T, mres_tl R = Some T -> mres_tl (mres_gen Δ R) = Some (T ++ Δ).
 Proof. intros Δ [] * H; cbn in *; congruence. Qed.
@@ -359,12 +359,6 @@ Proof.
     rewrite <- app_assoc in Hm.
     destruct (path_prefix_module _ _ Hg _ _ _ _ _ Hq Hm) as [(T1 & oD1 & HT1) | (U & r1 & _ & [=])].
     destruct (mt_unit_body _ _ Γ _ _ _ _ HT1) as (R1 & HR1 & HT); eauto.
-  - intros * Hm ch1 ch2 -> Hne2 Hb.
-    destruct (mod_base_unit _ _ _ Hb) as (HΓ & pre & suf & r0 & -> & Hq).
-    pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg.
-    rewrite <- app_assoc in Hm.
-    destruct (path_prefix_module _ _ Hg _ _ _ _ _ Hq Hm) as [(T1 & oD1 & HT1) | (U & r1 & _ & [=])].
-    destruct (mt_unit_body _ _ Γ _ _ _ _ HT1) as (R1 & HR1 & HT); eauto.
   - intros * Hk Hm Hu IH ch1 ch2 -> Hne2 Hb.
     destruct (mod_base_unit _ _ _ Hb) as (HΓ & pre & suf & r0 & -> & Hq).
     pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg.
@@ -392,8 +386,8 @@ Proof.
     destruct (app_arity_pi _ _ _ _ _ _ HH' Hm0 Htl0 Hv0 _ _ HTq ltac:(intros Hk'; destruct (mres_tl_kind _ _ Htlq Hk'))) as (B' & C' & Hp').
     destruct (mres_app_of_pi _ N _ _ Hp') as (R'' & Ha'').
     destruct (mres_app_ty _ _ _ Ha'') as (_ & _ & _ & _ & Hk'').
-    destruct Rq as [A' | T2 | q2 T2]; cbn in Htlq; try discriminate;
-      destruct R'' as [A'' | T'' | q'' T'']; cbn in Hk''; try discriminate;
+    destruct Rq as [A' | T2]; cbn in Htlq; try discriminate;
+      destruct R'' as [A'' | T'']; cbn in Hk''; try discriminate;
       eexists _, T''; (split; [ eapply mt_app; eassumption | reflexivity ]).
   - intros * Hc Hne2 _.
     symmetry in Hc; apply app_eq_nil in Hc as [_ ->]; contradiction.
@@ -562,7 +556,7 @@ Proof.
     split; [ eauto | split; [ intros _; eauto |] ].
     intros _ Q args p0 Hs; cbn in Hs; injection Hs as <- <- <-; cbn [app apps]; exact HMt.
   - (* a body module *)
-    intros Γ fp ch T Hm HH _; cbn [mres_ty mres_kind].
+    intros Γ fp ch T oD Hm HH _; cbn [mres_ty mres_kind].
     split; [| split; discriminate ].
     pose proof (mod_wf_ctx _ _ HH) as HΓ.
     pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg.
@@ -572,19 +566,6 @@ Proof.
     assert (HTt : T ⊢ ⊤ : Typeω@0) by (apply wf_True_large; exact HT).
     destruct (ctx_pi_wf0 _ _ _ _ _ HTt) as [j Hj].
     assert (Hm0 : member_type gc_deps gc_stack nil (me_unit fp) ch (mr_mod T)) by (eapply mt_unit_mod; exact Hm).
-    pose proof (mres_ty_scoped _ _ (proj1 (member_type_scoped _ _) _ _ _ _ Hm0 Hc I I)) as Hs; cbn in Hs.
-    exists j; eapply closed_weaken_exp; [ exact HΓ | exact Hj | exact Hs | exact I ].
-  - (* the module of an inductive type *)
-    intros Γ fp ch T D Hm HH _; cbn [mres_ty mres_kind].
-    split; [| split; discriminate ].
-    pose proof (mod_wf_ctx _ _ HH) as HΓ.
-    pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg.
-    pose proof (wf_gctx_closed _ _ _ HΓ) as Hc.
-    destruct (gc_module_body _ _ _ _ _ Hm) as [Φ HΦ].
-    destruct (gc_body_tele_wf _ _ Hg _ _ _ HΦ) as [HT _].
-    assert (HTt : T ⊢ ⊤ : Typeω@0) by (apply wf_True_large; exact HT).
-    destruct (ctx_pi_wf0 _ _ _ _ _ HTt) as [j Hj].
-    assert (Hm0 : member_type gc_deps gc_stack nil (me_unit fp) ch (mr_ind (q_abs fp ch) T)) by (eapply mt_unit_ind; exact Hm).
     pose proof (mres_ty_scoped _ _ (proj1 (member_type_scoped _ _) _ _ _ _ Hm0 Hc I I)) as Hs; cbn in Hs.
     exists j; eapply closed_weaken_exp; [ exact HΓ | exact Hj | exact Hs | exact I ].
   - (* inside a global alias *)
@@ -607,7 +588,7 @@ Proof.
     (** The member lies in a closed module reached through the alias. *)
     pose proof (Hch e) as Hne.
     pose proof (Hk e) as Hrne.
-    destruct R as [A | T | ? T]; [| discriminate e .. ]; cbn [mres_ty] in *.
+    destruct R as [A | T]; [| discriminate e ]; cbn [mres_ty] in *.
     destruct (exists_last Hne) as (pre & x & ->).
     destruct (gc_module_alias_decomp _ _ Hg _ _ _ Hm) as (qp & y & Hqp & Hy).
     assert (Hb : mod_base Γ (me_unit fp) pre).
@@ -646,7 +627,7 @@ Proof.
     intros e Q args p0 Hs; cbn in Hs; injection Hs as <- <- <-; cbn [app apps].
     destruct (HMΓ e) as (M & HMe & HMt).
     pose proof (Hch e) as Hne.
-    destruct R as [A | T | ? T]; [| discriminate e .. ]; cbn [mres_ty] in *.
+    destruct R as [A | T]; [| discriminate e ]; cbn [mres_ty] in *.
     eapply member_ref_noargs_wf; [ exact I | exact HH | eapply mt_var; [ exact Hx | exact Hu ] | exact Hne | exact HA | exact HMe | exact HMt ].
   - (* a literal *)
     intros Γ U ch R Hu IH HH0 Hch.
@@ -656,7 +637,7 @@ Proof.
     intros e Q args p0 Hs; cbn in Hs; injection Hs as <- <- <-; cbn [app apps].
     destruct (HMu e) as (M & HMe & HMt).
     pose proof (Hch e) as Hne.
-    destruct R as [A | T | ? T]; [| discriminate e .. ]; cbn [mres_ty] in *.
+    destruct R as [A | T]; [| discriminate e ]; cbn [mres_ty] in *.
     eapply member_ref_noargs_wf; [ exact I | exact HH | eapply mt_lit; exact Hu | exact Hne | exact HA | exact HMe | exact HMt ].
   - (* a selection *)
     intros Γ H y ch R Hk Hm IH HH Hch.
@@ -715,7 +696,7 @@ Proof.
     split; [ eapply ctx_pi_wf; rewrite <- app_assoc; eassumption |].
     intros e; destruct (HMu e) as (M1 & HM1e & HM1t).
     pose proof (Hk e) as Hne.
-    destruct R as [A | T | ? T]; [| discriminate e .. ]; cbn [mres_ty] in *.
+    destruct R as [A | T]; [| discriminate e ]; cbn [mres_ty] in *.
     eexists; split; [ exact (member_expansion_mod _ _ _ _ _ _ _ Hne Hp) |].
     cbn [body_ctx app ctx_fn].
     eapply ctx_fn_wf; [ rewrite <- app_assoc; exact HC' | rewrite <- app_assoc; exact HA |].
@@ -743,7 +724,7 @@ Proof.
     intros e; pose proof (Hch e) as Hne.
     eexists; split; [ exact (member_expansion_alias _ _ _ Hne) |].
     eapply ctx_fn_wf; [ exact HC | exact HA |].
-    destruct R as [A | T | ? T]; [| discriminate e .. ]; cbn [mres_ty] in *.
+    destruct R as [A | T]; [| discriminate e ]; cbn [mres_ty] in *.
     eapply member_ref_wf; [ exact HE | exact Hm | exact Hne | exact HA | exact (HR e) | exact (HMu e) ].
 Qed.
 

@@ -47,11 +47,9 @@ Proof.
   intros R N R' φ H.
   destruct (mres_app R N) as [R0 |] eqn:E.
   - rewrite (mres_app_wk _ _ _ φ E) in H; injection H as <-; eauto.
-  - exfalso; destruct R as [A | T | A T]; cbn in E, H.
+  - exfalso; destruct R as [A | T]; cbn in E, H.
     + destruct (pi_view A) as [[B C] |] eqn:Ep; [ discriminate |].
       rewrite (pi_view_wk_none _ _ Ep) in H; discriminate.
-    + unfold tele_inst in E, H; rewrite tele_view_wk in H.
-      destruct (tele_view T) as [[B T1] |]; cbn in E, H; discriminate.
     + unfold tele_inst in E, H; rewrite tele_view_wk in H.
       destruct (tele_view T) as [[B T1] |]; cbn in E, H; discriminate.
 Qed.
@@ -98,15 +96,10 @@ Proof.
     destruct Hm; cbn in Heq; try discriminate; injection Heq as <-.
     destruct (gctx_closed_resolve _ _ _ _ _ _ _ Hc Hr) as [HA _].
     exists (mr_term A); split; [ eapply mt_unit_def; eassumption | cbn; f_equal; symmetry; apply exp_closed_wk; assumption ].
-  - intros Γ fp ch T Hm' Δ Hm φ Heq Hφ.
+  - intros Γ fp ch T oD Hm' Δ Hm φ Heq Hφ.
     destruct Hm; cbn in Heq; try discriminate; injection Heq as <-.
     pose proof (proj1 (gctx_closed_module _ _ _ _ Hc Hm')) as HT; cbn in HT.
     eexists; split; [ eapply mt_unit_mod; eassumption |].
-    cbn; f_equal; symmetry; apply tele_closed_wk; assumption.
-  - intros Γ fp ch T D Hm' Δ Hm φ Heq Hφ.
-    destruct Hm; cbn in Heq; try discriminate; injection Heq as <-.
-    pose proof (proj1 (gctx_closed_module _ _ _ _ Hc Hm')) as HT; cbn in HT.
-    eexists; split; [ eapply mt_unit_ind; eassumption |].
     cbn; f_equal; symmetry; apply tele_closed_wk; assumption.
   - intros Γ fp ch U r R Hkr Hm' Hu _ Δ Hm φ Heq Hφ.
     destruct Hm; cbn in Heq; try discriminate; injection Heq as <-.
@@ -142,7 +135,7 @@ Proof.
     destruct (gm_prefix_upto_wk_inv _ _ _ _ Hx) as (Φx & Hx0 & EΦ).
     destruct Φx as [| Φ0' y E0 | Φ0' c]; cbn in EΦ; try discriminate.
     injection EΦ as -> Ey EE; subst y.
-    destruct E0 as [b0 pv0 A0 B0 | pm0 U0 | pvi0 Di0 Φi0]; cbn in EE; try discriminate.
+    destruct E0 as [b0 pv0 A0 B0 | pm0 U0 | pvi0 Di0 Φi0 | ? ? ? ?]; cbn in EE; try discriminate.
     injection EE as -> <- -> ->.
     eexists; split; [ eapply umt_def; exact Hx0 | cbn; rewrite ctx_pi_body_wk; reflexivity ].
   - intros Γ Δ Φ Φ' y pm Uy ch R Hk Hy _ IH Δ' U φ Heq Hφ.
@@ -151,7 +144,7 @@ Proof.
     destruct (gm_prefix_upto_wk_inv _ _ _ _ Hy) as (Φx & Hy0 & EΦ).
     destruct Φx as [| Φ0' z E0 | Φ0' c]; cbn in EΦ; try discriminate.
     injection EΦ as -> Ez EE; subst z.
-    destruct E0 as [b0 pv0 A0 B0 | pm0 U0 | pvi0 Di0 Φi0]; cbn in EE; try discriminate.
+    destruct E0 as [b0 pv0 A0 B0 | pm0 U0 | pvi0 Di0 Φi0 | ? ? ? ?]; cbn in EE; try discriminate.
     injection EE as -> ->.
     assert (EC : body_ctx (gmod_wk Φ0' (wk_qn (List.length Δ0) φ)) ++ tele_wk Δ0 φ ++ Γ
                  = tele_wk (body_ctx Φ0' ++ Δ0) φ ++ Γ)
@@ -184,7 +177,7 @@ Lemma body_shape_lets : forall Φ, body_shape Φ Φ -> lets_only (body_ctx Φ).
 Proof.
   induction Φ as [| Φ IH y E | Φ IH c]; intros H; cbn in *; [ constructor | | destruct H ].
   destruct H as (H1 & _ & H3).
-  destruct E as [b pv A [M |] | pm U | pvi Di Φi]; cbn in H3; try contradiction; constructor; try discriminate; exact (IH H1).
+  destruct E as [b pv A [M |] | pm U | pvi Di Φi | ? ? ? ?]; cbn in H3; try contradiction; constructor; try discriminate; exact (IH H1).
 Qed.
 
 Lemma body_shape_prefix : forall Φ x Φx, body_shape Φ Φ -> gm_prefix_upto Φ x = Some Φx -> body_shape Φx Φx.
@@ -203,7 +196,7 @@ Proof.
   induction Φ as [| Φ IH y E | Φ IH c]; intros * HC Hs HD Hρ; cbn in HC, Hs |- *.
   - exists ρ, R; split; [ constructor | split; assumption ].
   - destruct Hs as (Hs & _ & HE).
-    destruct E as [b pv A [M |] | pm U | pvi Di Φi]; cbn in HE, HC; try contradiction.
+    destruct E as [b pv A [M |] | pm U | pvi Di Φi | ? ? ? ?]; cbn in HE, HC; try contradiction.
     + destruct (IH _ _ _ (sem_ctx_tail HC) Hs HD Hρ) as (ρ1 & R1 & Hb & HR1 & Hρ1).
       destruct (sem_ctx_def_inv HC) as [[i HA] HM].
       pose proof (per_ctx_env_of_def HR1 HA HM) as HR2.
@@ -604,7 +597,7 @@ Qed.
 Lemma sem_mt_mem : forall Γ H y, sem_mt Γ H -> sem_mt Γ (me_mem H y).
 Proof.
   intros * [H1 H2]; split.
-  - intros * Hm Hch; inversion Hm as [| | | | | | ? ? ? ? ? Hk Hm' | ]; subst.
+  - intros * Hm Hch; inversion Hm as [| | | | | ? ? ? ? ? Hk Hm' | ]; subst.
     destruct (H1 _ _ Hm' ltac:(discriminate)) as [Hr Hv]; split; [ exact Hr |].
     intros P ρ HR Hρ h' Hh'; inversion Hh'; subst.
     match goal with He : eval_modexp _ _ H ρ ?h, Hs : eval_selm _ _ ?h y h' |- _ =>
@@ -612,8 +605,8 @@ Proof.
       exists a; split; [ exact Ha |];
       eapply (mtyped_selmc _ _ _ _ Hma (y :: nil) ch eq_refl Hch); econstructor; [ exact Hs | constructor ] end.
   - intros * Hm0 Hk0 Hm Hch.
-    inversion Hm0 as [| | | | | | ? ? ? ? ? Hk0' Hm0' | ]; subst.
-    inversion Hm as [| | | | | | ? ? ? ? ? Hk Hm' | ]; subst.
+    inversion Hm0 as [| | | | | ? ? ? ? ? Hk0' Hm0' | ]; subst.
+    inversion Hm as [| | | | | ? ? ? ? ? Hk Hm' | ]; subst.
     exact (H2 (y :: ch0) _ ch R Hm0' Hk0 Hm' ltac:(discriminate)).
 Qed.
 
@@ -752,7 +745,7 @@ Proof.
   destruct (mres_tl_ty _ _ Htl0) as [HRty HRk].
   pose proof HS as [S1 S2]; split.
   - intros ch R' Hm Hch.
-    inversion Hm as [| | | | | | | ? ? ? ? R1 ? Hm1 Ha ]; subst.
+    inversion Hm as [| | | | | | ? ? ? ? R1 ? Hm1 Ha ]; subst.
     destruct (mres_app_ty _ _ _ Ha) as (B1 & C1 & Hp & HR' & Hk').
     rewrite Hk' in Hch |- *; rewrite HR'.
     destruct (S2 nil _ ch R1 Hm0 HRk Hm1 Hch) as (m & n & Hr0 & Hr1 & Hmn); rewrite HRty in Hr0.
@@ -788,8 +781,8 @@ Proof.
     exists t; split; [ exact Ht |].
     exact (mtyped_resp _ _ _ _ Hm' _ _ _ (proj1 (per_univ_elem_sym _ _ _ _ HRt))).
   - intros ch0 R0' ch R' Hm0' Hk0' Hm' Hch.
-    inversion Hm0' as [| | | | | | | ? ? ? ? Rx ? Hmx Hax ]; subst.
-    inversion Hm' as [| | | | | | | ? ? ? ? R1 ? Hm1 Ha ]; subst.
+    inversion Hm0' as [| | | | | | ? ? ? ? Rx ? Hmx Hax ]; subst.
+    inversion Hm' as [| | | | | | ? ? ? ? R1 ? Hm1 Ha ]; subst.
     destruct (mres_app_ty _ _ _ Hax) as (Bx & Cx & Hpx & HRx & Hkx).
     destruct (mres_app_ty _ _ _ Ha) as (B1 & C1 & Hp & HR' & Hk').
     rewrite Hkx in Hk0'; rewrite Hk' in Hch; rewrite HRx, HR'.

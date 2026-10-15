@@ -285,7 +285,7 @@ A recursive argument is the type applied to all its own parameters,
 uniform then non-uniform, or a function into it,
 `(f : ∀ (n : ℕ) (m : ℕ) → T)`, whose domains do not mention the type; its
 hypothesis is then a function too, `h : ∀ (n : ℕ) (m : ℕ) → P (f n m)`, and
-the branch receives `λ n m. T.elim (f n m)`.  An argument in which the
+the branch receives `λ n m. elim (f n m) …`.  An argument in which the
 type does not occur is not recursive; no argument may depend on a
 recursive one.  An argument
 that is neither as written is read as its normal form, so definitions,
@@ -306,13 +306,17 @@ The declaration makes `X` a module over its uniform parameters, whose
 members are the constructors: `List.cons A x xs` is `(List A).cons x xs`,
 and `open List use (nil; cons)` declares them here.  Constructor names need
 only be distinct within the type.  As a term, `X`, by its own path, is the
-type; an alias of the module (`module L := List`, or a name `open … use`
-declares) is a module only: `L.cons` is `List.cons`, but `L ℕ` is rejected
-("L is a module, not a term").  `X.elim M return … end` eliminates
-`M : X …`; its head is any module naming the type (`L.elim`), applied or not
-(`(List ℕ).elim`, whose arguments must be the scrutinee's uniform
-parameters).  The module also has the recursor `X.rec`, the eliminator as a
-function into a small universe:
+type; a module alias of it (`module L := List`) is a module only: `L.cons`
+is `List.cons`, but `L ℕ` is rejected ("L is a module, not a term").  An
+inductive alias, `inductive LN := List ℕ` or `inductive L (B : Type@0) :=
+List B`, names the type at some of its uniform parameters, under its own
+parameters: as a term `LN` is `List ℕ`, and `L ℕ` is too; as a module
+`LN.cons` is `(List ℕ).cons`.  It may name an inductive alias in turn, and
+may be `private`.  `open … use (X)` declares an inductive alias where `X`
+is an inductive type or an inductive alias.  `elim M return … end`
+eliminates `M : X …`: the type, and its parameters, are the scrutinee's.
+The module also has the recursor `X.rec`, the eliminator as a function
+into a small universe:
 
 ```
 List.rec : ∀ (A : Type@0) (u : Level) (P : ∀ (l : List A) → Type@{u})
@@ -324,7 +328,7 @@ List.rec : ∀ (A : Type@0) (u : Level) (P : ∀ (l : List A) → Type@{u})
 `examples/Inductives.mctt` has lists, options, trees, dependent pairs, a
 type with a non-uniform parameter, Brouwer ordinals `Ord` (with
 `lim (f : ∀ (n : ℕ) → Ord)`, also written through a definition `Arr`),
-W-types `W A B` (the natural numbers as a W-type, with `W.elim` and
+W-types `W A B` (the natural numbers as a W-type, with `elim` and
 `W.rec`), and `Grid`, a function shape of two arguments.
 
 ## Branches

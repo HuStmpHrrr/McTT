@@ -78,7 +78,7 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
 | eeo_elim :
   `( eval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> eval_elim_order Θ Ξ p nm A Bs m) ->
-     eval_exp_order Θ Ξ (a_elim pq nm A Bs M) p )
+     eval_exp_order Θ Ξ (a_elim nm A Bs M) p )
 | eeo_fn :
   `( eval_exp_order Θ Ξ (λ A M) p )
 | eeo_app :
@@ -268,6 +268,12 @@ with eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
   `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
      ind_lookup Θ Ξ (qname_app pq (x :: nil)) = Some D ->
      eval_apps_order Θ Ξ (d_ind (qname_app pq (x :: nil)) nil) args ->
+     eval_sel_order Θ Ξ (dm_global pq args) x )
+| eslo_global_ind_alias :
+  `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
+     ind_alias_lookup Θ Ξ (qname_app pq (x :: nil)) = Some (Δ, pt, Ns) ->
+     eval_exp_order Θ Ξ (ctx_fn Δ (apps (a_ind pt) Ns)) nil ->
+     (forall f, ⟦ ctx_fn Δ (apps (a_ind pt) Ns) ⟧ Θ ⍮ Ξ ⍮ nil ↘ f -> eval_apps_order Θ Ξ f args) ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
 | eslo_unsat :
   `( List.length args < List.length (gu_params U) ->
@@ -493,6 +499,13 @@ Section EvalImpl.
   #[local]
   Ltac impl_obl_glob :=
     repeat match goal with
+      | H1 : ind_alias_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = Some _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : ind_alias_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = None |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H1 : ind_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = Some _ |- _ =>
+          exfalso; destruct (ind_lookup_entry _ _ _ _ H1) as (? & ? & He1);
+          rewrite ind_alias_lookup_entry, He1 in H2; discriminate H2
       | H1 : gc_resolve _ _ ?p = Some _, H2 : gc_resolve _ _ ?p = Some _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : gc_resolve _ _ ?p = Some _, H2 : gc_resolve _ _ ?p = None |- _ =>
@@ -645,7 +658,7 @@ Section EvalImpl.
   | a_con pq c, p, H => exist _ (d_con pq c nil) _
   (** A numeral is expanded before it is ever evaluated. *)
   | a_nlit _, p, H => False_rect _ _
-  | a_elim pq nm A Bs M, p, H =>
+  | a_elim nm A Bs M, p, H =>
       let (m, Hm) := eval_exp_impl M p _ in
       let (r, Hr) := eval_elim_impl p nm A Bs m _ in
       exist _ r _
@@ -823,11 +836,17 @@ Section EvalImpl.
         exist _ r _
     | exist _ (Some (ge_mod _ _)) E => False_rect _ _
     | exist _ (Some (ge_ind _ _ _)) E => False_rect _ _
+    | exist _ (Some (ge_ind_alias _ _ _ _)) E => False_rect _ _
     | exist _ None E with inspect (ind_lookup Θ Ξ (qname_app pq (x :: nil))) := {
       | exist _ (Some D) Ed =>
           let (r, Hr) := eval_apps_impl (d_ind (qname_app pq (x :: nil)) nil) args _ in
           exist _ r _
-      | exist _ None Ed => False_rect _ _ } }
+      | exist _ None Ed with inspect (ind_alias_lookup Θ Ξ (qname_app pq (x :: nil))) := {
+        | exist _ (Some (Δ, pt, Ns)) Ea =>
+            let (f, Hf) := eval_exp_impl (ctx_fn Δ (apps (a_ind pt) Ns)) nil _ in
+            let (r, Hr) := eval_apps_impl f args _ in
+            exist _ r _
+        | exist _ None Ea => False_rect _ _ } } }
   | dm_local p (gu_mk Δ D) args, x, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
     | exist _ Lt C => exist _ (d_member (dm_local p (gu_mk Δ D) args) (x :: nil)) _
     | exist _ Eq C with D := {
@@ -1193,6 +1212,12 @@ Next Obligation. ev_obl_auto. Defined.
 Next Obligation. ev_obl_auto. Defined.
 Next Obligation. ev_obl_auto. Defined.
 Obligations.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
 Next Obligation. ev_obl_auto. Defined.
 End EvalImpl.
 

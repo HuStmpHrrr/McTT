@@ -535,7 +535,7 @@ Qed.
 Lemma sem_unf_mem : forall Γ H y, sem_unf Γ H -> sem_unf Γ (me_mem H y).
 Proof.
   intros * HS ch A M Hm HM R ρ HR Hρ h' Hh' * Ha HE Hd Hdd.
-  inversion Hm as [| | | | | | ? ? ? ? ? Hk Hm' | ]; subst; inversion Hh'; subst; cbn in HM.
+  inversion Hm as [| | | | | ? ? ? ? ? Hk Hm' | ]; subst; inversion Hh'; subst; cbn in HM.
   match goal with He : eval_modexp _ _ H ρ ?h, Hs : eval_selm _ _ ?h y h' |- _ =>
     exact (HS _ _ _ Hm' HM _ _ HR Hρ _ He _ _ _ _ Ha HE ltac:(econstructor; eassumption) Hdd) end.
 Qed.
@@ -549,9 +549,9 @@ Proof.
   destruct (mres_tl_ty _ _ Htl0) as [HRty HRk].
   pose proof Hok as (HGc & HGap & Hc).
   pose proof HS as [S1 S2].
-  inversion Hm as [| | | | | | | ? ? ? ? R1 ? Hm1 Ha1 ]; subst.
+  inversion Hm as [| | | | | | ? ? ? ? R1 ? Hm1 Ha1 ]; subst.
   destruct (mres_app_ty _ _ _ Ha1) as (B1 & C1 & Hp & HR' & Hk').
-  destruct R1 as [A1 | T1 | A1 T1]; [| discriminate | discriminate ]; cbn [mres_ty] in Hp, HR'; subst A'.
+  destruct R1 as [A1 | T1]; [| discriminate ]; cbn [mres_ty] in Hp, HR'; subst A'.
   cbn in HM; destruct (member_unfold_ch Θm Ξm Γ H ch) as [M0 |] eqn:HM0; cbn in HM; [| discriminate ].
   injection HM as <-.
   assert (Hch : ch <> nil) by (intros ->; inversion Hd).

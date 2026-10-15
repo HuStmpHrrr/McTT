@@ -119,7 +119,7 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 | eval_exp_elim :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ a_elim p nm A Bs M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+     ⟦ a_elim nm A Bs M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A [Π] evaluates its domain and closes over its codomain. *)
 | eval_exp_pi :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
@@ -367,6 +367,14 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
   `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
      ind_lookup Θ Ξ (qname_app p (x :: nil)) = Some D ->
      $*| d_ind (qname_app p (x :: nil)) nil & args | Θ ⍮ Ξ ↘ r ->
+     dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
+(** An inductive alias, as a term: the type former at its arguments, over
+    its telescope. *)
+| eval_sel_global_ind_alias :
+  `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
+     ind_alias_lookup Θ Ξ (qname_app p (x :: nil)) = Some (Δ, pt, Ns) ->
+     ⟦ ctx_fn Δ (apps (a_ind pt) Ns) ⟧ Θ ⍮ Ξ ⍮ nil ↘ f ->
+     $*| f & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
 (** A member of an unsaturated module is a member closure. *)
 | eval_sel_unsat :

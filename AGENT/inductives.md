@@ -13,7 +13,7 @@ inductive List (A : Type@0) : Type@0 where
 end
 
 def length (A : Type@0) (l : List A) : ℕ :=
-  List.elim l return z . ℕ
+  elim l return z . ℕ
   | nil ⇒ 0
   | cons x xs, r ⇒ succ r
   end
@@ -54,7 +54,7 @@ inductive Climb : ∀ (n : ℕ) → Type@0 where
 end
 
 def steps (n : ℕ) (c : Climb n) : ℕ :=
-  Climb.elim c return m z . ℕ
+  elim c return m z . ℕ
   | stop m ⇒ 0
   | step m r, h ⇒ succ h
   end
@@ -83,7 +83,7 @@ member.
   any other is rejected.  No argument may depend on a recursive one.  The
   name occurs only strictly positively by construction of the shapes (no
   separate positivity check).
-* `X.elim M return ys z . A | c xs, hs ⇒ B … end`: the core checks the
+* `elim M return ys z . A | c xs, hs ⇒ B … end`: the core checks the
   counts, the order of the branches and the constructor names; the branch
   labels are the declaration's constructor names, unqualified.
 * Declarations are members of units and of global modules (also under
@@ -112,7 +112,7 @@ inductive Ord : Type@0 where
 end
 
 def approx (o : Ord) (k : ℕ) : ℕ :=
-  Ord.elim o return z . ℕ
+  elim o return z . ℕ
   | base ⇒ 0
   | next p, r ⇒ succ r
   | lim f, h ⇒ h k
@@ -124,8 +124,8 @@ end
   `Π` over the domains, into the type at the parameters.  Its hypothesis
   has type `ptyp_ihty A β σ x t`: `Π (b : B). (ihty of the rest at x b)`,
   ending in the motive at the leaf's parameters and `x b…`
-  (`Inductives.v`).  The hypothesis term is `ptyp_ih`: `λ b. X.elim (x b)`.
-* ι: `X.elim (c … f …) ≈ B[…, f, …, λ b. X.elim (f b), …]` (`wf_iota`).
+  (`Inductives.v`).  The hypothesis term is `ptyp_ih`: `λ b. elim (x b) …`.
+* ι: `elim (c … f …) ≈ B[…, f, …, λ b. elim (f b), …]` (`wf_iota`).
 * Semantics: `eval_ih` (the eliminator at `v`, or the value
   `d_ihfn ρ nm A Bs t v` at a `Π` shape), applied by `eval_app_ihfn`
   (apply `v`, then `eval_ih` of the rest); `eval_shty` / `eval_ihty` give
@@ -222,7 +222,7 @@ step to be proved never to fail at the user's type, beyond
 
 | What | Where |
 | --- | --- |
-| `a_ind p`, `a_con p c`, `a_elim p nm A Bs M`; `ind_decl`, `carg`, `ge_ind pv D` | `Core/Syntactic/Syntax.v` |
+| `a_ind p`, `a_con p c`, `a_elim nm A Bs M`; `ind_decl`, `carg`, `ge_ind pv D Φ`, `ge_ind_alias pv Δ p Ns` | `Core/Syntactic/Syntax.v` |
 | telescopes, `ind_ty`, `con_ty`, `cargs_ctx`, `elim_mctx`, `elim_bctx`, `elim_bty`, `elim_ihs` | `Core/Syntactic/Inductives.v` |
 | `wf_ind`, `wf_con`, `wf_elim`, congruences, `wf_exp_eq_elim_iota`, `wf_gentry_indty` (in the mutual block) | `Core/Syntactic/System/Definitions.v` |
 | declarations are well typed (`decl_typed`), presupposition | `System/GlobalPresup.v`, `System/IndTyping.v`, `Syntactic/IndCong.v`, `Syntactic/IndConv.v` |
@@ -282,11 +282,9 @@ wf_mem_glob_ind : ⊢ Θ ⍮ Ξ ⍮ Γ -> mod_qname H = Some mp ->
 wf_exp_eq_mem_glob_ind_unfold : … -> Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ a_ind (qname_app mp (x :: nil)) : ind_ty D
 ```
 
-As a module, the type resolves (`member_type`) to `mr_ind p T`: `p` its
-canonical path (the entry's), `T` the parameters it still takes; `mr_ind`
-has no term reading, and an applied one is a plain module (`mres_app`).  An
-alias, or a name an open declares (`open A use (N)` makes `N` an alias), is
-a module only:
+As a module, the type resolves (`member_type`) to `mr_mod T`, `T` the
+parameters it still takes (`mt_unit_mod`, at a `mr_body T (Some D)`).  A
+module alias of it (`module M := N`) is a module only:
 
 ```
 inductive N : Type@0 where | z end
@@ -295,35 +293,43 @@ eval M.z : N      (* N.z : N *)
 eval M.z : M      (* Error: Test.M is a module, not a term *)
 ```
 
-The checker names that case (`mod_blame`, `re_mod_term`), and an
-eliminator headed by a module that is no inductive type (`re_not_ind`).
+The checker names that case (`mod_blame`, `re_mod_term`).
 
-## The eliminator's head
+## Inductive aliases
 
-`a_elim H nm A Bs M`: the head is a module expression, as written.
+`[private] inductive L (Δ) := X Ms` (`cc_ind_alias`, `rc_ind_alias`) names
+the inductive type `X`, or the target of the inductive alias `X`, at
+arguments for a prefix of its uniform parameters.  The entry is
+`ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns`: `p` the canonical path, `Ns` (at
+most `ind_nu D` of them) over the alias's telescope; an alias of an alias
+is resolved when it is declared (`ind_target`, `Ns[Ms] ++ Ks`).
 
-* `wf_elim` takes the canonical head at arguments:
-  `H = me_apps (qname_mod p) Ns`, `List.length Ns = nh <= ind_nu D`, the
-  type former at `Ns` typed at `ind_ty_at D (firstn nh Ps)` and equal to it
-  at the first `nh` parameters of the scrutinee's type.  So `List.elim` takes
-  all uniform parameters from the scrutinee, `(List ℕ).elim` checks `ℕ`
-  against the scrutinee's `List ℕ`, and `(List (∀ (n : ℕ) → ℕ)).elim` on a
-  `List ℕ` is rejected.
-* `wf_elim_head` (and `wf_exp_eq_elim_head`): a head `me_apps H0 Ns` with
-  `member_type … H0 nil (mr_ind p T)` is the eliminator at
-  `me_apps (qname_mod p) Ns`; so `M.elim` for `module M := N` is `N.elim`.
-* Evaluation ignores the head; a stuck eliminator `ne_elim p …` keeps the
-  canonical name and reads back as `a_elim (qname_mod p) …`.
-* Algorithmic: `ati_elim` (canonical head; the type former at `Ns` checked,
-  and its normal form equal to the type former's at the scrutinee's
-  parameters) and `ati_elim_head` (`H0 ⊢aᵐ`, `mr_ind p`, `H0 <> qname_mod p`).
-  The checker (`Extraction/IndCheck.v`, `elim_infer`) splits the head
-  (`me_unapps`) and takes the head's check and the type former's check as
-  closures; the termination order `ti_elim` gives their orders.
+* As a term (`wf_mem_glob_ind_alias`), `L` is `λΔ. p Ns`, of type
+  `ctx_pi Δ (ind_ty_at D Ns)`, δ-unfolding to it
+  (`wf_exp_eq_mem_glob_ind_alias_unfold`).
+* As a module (`gc_module`), it is `gu_mk Δ (md_alias (me_apps (qname_mod p)
+  Ns))`: `L.cons` is `(p Ns).cons`, and `L.rec` the type's recursor.
+* `open … use (X)` declares an inductive alias where `X` is an inductive
+  type or an inductive alias (`item_gen`, `ig_ind_alias`).
 
-No pre-typing rewrite is left for inductive types: `ind_head`, the `mem_xp`
-redirect, `elim_xp`, `xe_ind` and the declaration-site oracle in `xoracle`
-are gone.
+```
+inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end
+inductive LN := List Nat
+inductive L (B : Type@0) := List B
+eval L Nat                 (* List ℕ : Type@0 *)
+eval LN.cons 1 LN.nil      (* List.cons ℕ 1 (List.nil ℕ) : LN *)
+```
+
+## The eliminator
+
+`a_elim nm A Bs M` names no type: `wf_elim`, its congruence and ι take the
+inductive type `p` and its parameters `Ps` from the scrutinee's type,
+`M : apps (a_ind p) Ps`.  Evaluation reads `p` off the value (`d_con`,
+`d_ind`); a stuck eliminator `d_elim … p …` keeps it for the readback, and
+the neutral `ne_elim nm A Bs M` does not.  `X.elim` is no member: `elim` is
+a keyword.  The printer marks a branch's induction hypotheses after a
+comma where the branches name the constructors of known declarations that
+agree on them (`elim_decls`, `mark_ihs`).
 
 ## The recursor (item 4b)
 
@@ -334,7 +340,7 @@ The declaration also generates the member `rec` of its module
 rec : Π (u : Level). Π (P : Π Δn. Π (z : X us ns). Type⟨u⟩).
       Π (b_c : Π (elim_bctx … P …). elim_bty … P …) … .
       Π Δn. Π (z : X us ns). P ns z
-rec := λ u P b_c … . λ Δn z. a_elim (qname_mod p) (S nn) P' [(c, n_c, b_c $ its n_c vars)] z
+rec := λ u P b_c … . λ Δn z. a_elim (S nn) P' [(c, n_c, b_c $ its n_c vars)] z
 ```
 
 (`rec_ty`, `rec_fn`, `rec_tele`, `rec_btys`, `rec_motive`, `rec_brs`,
@@ -376,7 +382,7 @@ end
 
 builtin natural ≔ Num
 
-eval Num.elim 2 return x . Num | Z ⇒ 1 | S p, r ⇒ Num.S r end   (* 3 : Num *)
+eval elim 2 return x . Num | Z ⇒ 1 | S p, r ⇒ Num.S r end   (* 3 : Num *)
 ```
 
 * A numeral is a core literal, `a_nlit n` (`Syntax.v`), not a term of the

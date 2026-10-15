@@ -45,8 +45,8 @@ Fixpoint exp_freshb (k : nat) (M : exp) {struct M} : bool :=
       exp_freshb (S k) A && exp_freshb k MZ && exp_freshb (S (S k)) MS && exp_freshb k M
   | a_exfalso A M => exp_freshb (S k) A && exp_freshb k M
   | a_ind _ | a_con _ _ | a_nlit _ => true
-  | a_elim H nm A Bs M =>
-      modexp_freshb k H && exp_freshb (nm + k) A &&
+  | a_elim nm A Bs M =>
+      exp_freshb (nm + k) A &&
       (fix brs_freshb (Bs : list (string * nat * exp)) : bool :=
          match Bs with
          | nil => true
@@ -97,6 +97,7 @@ with gentry_freshb (k : nat) (E : gentry) {struct E} : bool :=
   | ge_def _ _ A B => exp_freshb k A && match B with Some M => exp_freshb k M | None => true end
   | ge_mod _ U => gunit_freshb k U
   | ge_ind _ D Φ => gmod_freshb (ind_nu D + k) Φ
+  | ge_ind_alias _ _ _ _ => true
   end
 with centry_freshb (k : nat) (e : centry) {struct e} : bool :=
   match e with
@@ -129,7 +130,7 @@ Proof.
               | apply Bool.negb_true_iff, Nat.eqb_neq in H; assumption
               | apply Bool.negb_true_iff, Nat.eqb_neq in H0; assumption ].
   - (* an eliminator: its branches, one by one *)
-    apply (proj2 (exp_fresh_elim k H nm A Bs M)); split; [ auto | split; [ auto | split; [| auto ] ] ].
+    apply (proj2 (exp_fresh_elim k nm A Bs M)); split; [ auto | split; [| auto ] ].
     match goal with HF : List.Forall _ Bs, Hb : _ Bs = true |- _ =>
       clear - HF Hb; induction HF as [| b Bs Hb' HF IH]; cbn in *; [ constructor |];
       apply Bool.andb_true_iff in Hb as [Hb1 Hb2]; constructor; [ apply Hb'; exact Hb1 | apply IH; exact Hb2 ] end.
@@ -232,7 +233,7 @@ Inductive feval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 | feval_exp_elim :
   `( ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦elimᶠ m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ a_elim p nm A Bs M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
+     ⟦ a_elim nm A Bs M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A [Π] evaluates its domain and closes over its codomain. *)
 | feval_exp_pi :
   `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
@@ -491,6 +492,12 @@ with feval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      ind_lookup Θ Ξ (qname_app p (x :: nil)) = Some D ->
      $*ᶠ| d_ind (qname_app p (x :: nil)) nil & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
+| feval_sel_global_ind_alias :
+  `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
+     ind_alias_lookup Θ Ξ (qname_app p (x :: nil)) = Some (Δ, pt, Ns) ->
+     ⟦ ctx_fn Δ (apps (a_ind pt) Ns) ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ f ->
+     $*ᶠ| f & args | Θ ⍮ Ξ ↘ r ->
+     dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
 (** A member of an unsaturated module is a member closure. *)
 | feval_sel_unsat :
   `( List.length args < List.length (gu_params U) ->
@@ -677,6 +684,10 @@ Proof. intros * <-; apply feval_exp_var. Qed.
       repeat match goal with
         | H1 : Members.gc_resolve Θ Ξ ?p = Some _, H2 : Members.gc_resolve Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : ind_alias_lookup Θ Ξ ?p = Some _, H2 : ind_alias_lookup Θ Ξ ?p = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : ind_lookup Θ Ξ ?p = Some _, H2 : ind_alias_lookup Θ Ξ ?p = Some _ |- _ =>
+            exfalso; destruct (ind_lookup_entry _ _ _ _ H1) as (? & ? & He1); rewrite ind_alias_lookup_entry, He1 in H2; discriminate H2
         | H1 : ind_lookup Θ Ξ ?p = Some _, H2 : ind_lookup Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
         | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = Some _ |- _ =>
@@ -965,7 +976,7 @@ with fread_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
      Rtypᶠ a in Θ ⍮ Ξ ⍮ S (s + ind_nn D)%nat ↘ A' ->
      fread_brs Θ Ξ s ρ A p D (List.firstn (ind_nu D) as') (ind_cons D) Bs Bs' ->
      Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rneᶠ d_elim ρ nm A Bs p as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim p nm A' Bs' M )
+     Rneᶠ d_elim ρ nm A Bs p as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim nm A' Bs' M )
 where "'Rneᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (fread_ne Θ Ξ s m M) : type_scope
 with fread_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | fread_typ_univ :

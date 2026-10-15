@@ -48,8 +48,8 @@ Fixpoint exp_fresh (k : nat) (M : exp) {struct M} : Prop :=
       exp_fresh (S k) A /\ exp_fresh k MZ /\ exp_fresh (S (S k)) MS /\ exp_fresh k M
   | a_exfalso A M => exp_fresh (S k) A /\ exp_fresh k M
   | a_ind _ | a_con _ _ | a_nlit _ => True
-  | a_elim H nm A Bs M =>
-      modexp_fresh k H /\ exp_fresh (nm + k) A /\
+  | a_elim nm A Bs M =>
+      exp_fresh (nm + k) A /\
       (fix brs_fresh (Bs : list (String.string * nat * exp)) : Prop :=
          match Bs with
          | nil => True
@@ -100,6 +100,7 @@ with gentry_fresh (k : nat) (E : gentry) {struct E} : Prop :=
   | ge_def _ _ A B => exp_fresh k A /\ match B with Some M => exp_fresh k M | None => True end
   | ge_mod _ U => gunit_fresh k U
   | ge_ind _ D Φ => gmod_fresh (ind_nu D + k) Φ
+  | ge_ind_alias _ _ _ _ => True
   end
 with centry_fresh (k : nat) (e : centry) {struct e} : Prop :=
   match e with
@@ -267,9 +268,9 @@ Scheme nf_mind := Induction for nf Sort Prop
 Combined Scheme nf_mut_ind from nf_mind, ne_mind, la_mind, nfs_mind, nbrs_mind.
 
 (** Freshness of an eliminator, its branches as a list. *)
-Lemma exp_fresh_elim : forall k H nm A Bs M,
-    exp_fresh k (a_elim H nm A Bs M) <->
-    modexp_fresh k H /\ exp_fresh (nm + k) A /\ List.Forall (fun b => exp_fresh (snd (fst b) + k) (snd b)) Bs /\ exp_fresh k M.
+Lemma exp_fresh_elim : forall k nm A Bs M,
+    exp_fresh k (a_elim nm A Bs M) <->
+    exp_fresh (nm + k) A /\ List.Forall (fun b => exp_fresh (snd (fst b) + k) (snd b)) Bs /\ exp_fresh k M.
 Proof.
   intros; cbn; enough (forall Bs : list (String.string * nat * exp),
     (fix brs_fresh (Bs : list (String.string * nat * exp)) : Prop :=
@@ -299,7 +300,7 @@ with ne_fresh (k : nat) (u : ne) {struct u} : Prop :=
   | ne_natrec A MZ MS u =>
       nf_fresh (S k) A /\ nf_fresh k MZ /\ nf_fresh (S (S k)) MS /\ ne_fresh k u
   | ne_exfalso A u => nf_fresh (S k) A /\ ne_fresh k u
-  | ne_elim p nm A Bs u => nf_fresh (nm + k) A /\ nbrs_fresh k Bs /\ ne_fresh k u
+  | ne_elim nm A Bs u => nf_fresh (nm + k) A /\ nbrs_fresh k Bs /\ ne_fresh k u
   | ne_app u W => ne_fresh k u /\ nf_fresh k W
   | ne_var x => x <> k
   | ne_glob _ => True
@@ -343,7 +344,7 @@ with ne_unwk (k : nat) (u : ne) {struct u} : ne :=
   | ne_natrec A MZ MS u =>
       ne_natrec (nf_unwk (S k) A) (nf_unwk k MZ) (nf_unwk (S (S k)) MS) (ne_unwk k u)
   | ne_exfalso A u => ne_exfalso (nf_unwk (S k) A) (ne_unwk k u)
-  | ne_elim p nm A Bs u => ne_elim p nm (nf_unwk (nm + k) A) (nbrs_unwk k Bs) (ne_unwk k u)
+  | ne_elim nm A Bs u => ne_elim nm (nf_unwk (nm + k) A) (nbrs_unwk k Bs) (ne_unwk k u)
   | ne_app u W => ne_app (ne_unwk k u) (nf_unwk k W)
   | ne_var x => ne_var (unwk k x)
   | ne_glob p => ne_glob p
@@ -521,7 +522,7 @@ with ne_freshb (k : nat) (u : ne) {struct u} : bool :=
   | ne_natrec A MZ MS u =>
       nf_freshb (S k) A && nf_freshb k MZ && nf_freshb (S (S k)) MS && ne_freshb k u
   | ne_exfalso A u => nf_freshb (S k) A && ne_freshb k u
-  | ne_elim p nm A Bs u => nf_freshb (nm + k) A && nbrs_freshb k Bs && ne_freshb k u
+  | ne_elim nm A Bs u => nf_freshb (nm + k) A && nbrs_freshb k Bs && ne_freshb k u
   | ne_app u W => ne_freshb k u && nf_freshb k W
   | ne_var x => negb (Nat.eqb x k)
   | ne_glob _ => true

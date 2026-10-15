@@ -351,7 +351,7 @@ Section Paths.
       | Hx : gc_module Θm Ξm (qname_app p ?c) = _ |- _ => rewrite (proj1 (Hbr c)) in Hx
       | Hx : gc_resolve Θm Ξm (qname_app p ?c) = _, Hn : ?c <> nil |- _ => rewrite (proj2 (Hbr c) Hn) in Hx
       end.
-    2-3: solve [
+    2: solve [
         destruct (gc_module_body _ _ _ _ _ Hmod) as (Φ0 & Hb0);
         destruct (HB _ _ _ Hb0) as (HT0 & HU0 & _);
         split; [ exists (List.length T0), true; apply (rep_closed_tele _ _ 0 _ HT0 HU0 (valid_exp_True HT0)); reflexivity |];
@@ -428,7 +428,6 @@ Section Paths.
       - destruct ch as [| c ch]; [ rewrite List.app_nil_r, (gc_module_alias_resolve _ _ Hgss _ _ _ Hmod) in *; discriminate |].
         rewrite Hres in *; [ discriminate | discriminate ].
       - rewrite Hal in *; discriminate.
-      - rewrite Hal in *; discriminate.
       - match goal with Hx : gc_module _ _ _ = Some (mr_alias _ _) |- _ => rewrite Hal in Hx; injection Hx; intros; subst end.
         eapply closure_pairs; [ exact Hunit | assumption | exact sem_ctx_nil | exact HUs | exact HUm | eassumption | assumption ]. }
     destruct (gc_module_body _ _ _ _ _ Hmod) as (Φ0 & Hb0).
@@ -442,7 +441,7 @@ Section Paths.
       | Hx : gc_module Θm Ξm (qname_app p ?c) = _ |- _ => rewrite (proj1 (Hbr c)) in Hx
       | Hx : gc_resolve Θm Ξm (qname_app p ?c) = _, Hn : ?c <> nil |- _ => rewrite (proj2 (Hbr c) Hn) in Hx
       end.
-    2-3: solve [
+    2: solve [
         match goal with Hr : gc_module _ _ (qname_app _ (_ ++ _)) = Some (mr_body _ _) |- _ => rename Hr into Hr2 end;
         rewrite <- qname_app_app, (proj1 (Hcr0 _)) in Hr2;
         destruct (gm_module_body_some _ _ _ _ _ _ Hr2) as (Φ' & Hb);
@@ -563,7 +562,6 @@ Section Paths.
     inv_path_mt Hm.
     - destruct ch as [| c ch]; [ rewrite qname_app_nil, (gc_module_alias_resolve _ _ Hgs _ _ _ Hp) in *; discriminate |].
       rewrite Hres in *; [ discriminate | discriminate ].
-    - rewrite Hal in *; discriminate.
     - rewrite Hal in *; discriminate.
     - match goal with Hx : gc_module _ _ _ = Some (mr_alias _ _) |- _ => rewrite Hal in Hx; injection Hx; intros; subst end.
       split; assumption.

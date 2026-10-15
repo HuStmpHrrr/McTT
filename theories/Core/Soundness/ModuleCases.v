@@ -36,6 +36,12 @@ Record glu_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop 
       @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ ->
       @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_mem H x) A
   ; gme_ind : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @glu_core (gc_mk Θ2 Ξ2) D
+  ; gme_ialias : forall H mp x Δ p Ns D Γ,
+      mod_qname H = Some mp ->
+      ind_alias_lookup Θ1 Ξ1 (qname_app mp (x :: nil)) = Some (Δ, p, Ns) ->
+      ind_lookup Θ1 Ξ1 p = Some D ->
+      @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ ->
+      @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_mem H x) (ctx_pi Δ (ind_ty_at D Ns))
   }.
 
 (** ** 2. Kripke gluing *)
@@ -150,7 +156,7 @@ Lemma k_elim : forall Θ Ξ Θ2 Ξ2 Γ p D Ps M nm A (i : nat) Bs,
        Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
     (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> forall Θ0 Ξ0, glu_emb Θ Ξ Θ0 Ξ0 ->
        @glu_rel_exp (gc_mk Θ0 Ξ0) (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) B (elim_bty p D c gs A (List.firstn (ind_nu D) Ps))) ->
-    @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_elim (qname_mod p) nm A Bs M) (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)]).
+    @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_elim nm A Bs M) (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)]).
 Proof.
   intros * He Hl HPl HPt HPg HMt HMg Hnm HAt HAg HMx Hn HBx Hk HBt HBg.
   destruct (presup_exp HMt) as [HΓ _].
@@ -159,39 +165,6 @@ Proof.
                 (Mctt.Core.Completeness.ModuleCases.gctx_sem _ _ (em_wf _ _ _ _ (gme_emb _ _ _ _ He))) p D Hl2) as HDc.
   destruct (emb_preserves_wf _ _ _ _ (gme_emb _ _ _ _ He)) as (_ & Hwe & _ & _ & Hwx & _).
   eapply (@glu_rel_exp_elim (gc_mk Θ2 Ξ2)); try eassumption; eauto.
-Qed.
-
-(** An eliminator at any head: through its equation to the one at the
-    canonical head with no argument, or to the one at the canonical head. *)
-Lemma k_elim_gen : forall Θ Ξ Θ2 Ξ2 Γ H Ns nh p D Ps M nm A (i : nat) Bs,
-    glu_emb Θ Ξ Θ2 Ξ2 -> ind_lookup Θ Ξ p = Some D -> List.length Ps = ind_np D ->
-    H = me_apps (qname_mod p) Ns -> List.length Ns = nh ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ apps (a_ind p) Ns ≈ apps (a_ind p) (List.firstn nh Ps) : ind_ty_at D (List.firstn nh Ps) ->
-    nh <= ind_nu D ->
-    (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
-       Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
-    (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
-       forall Θ0 Ξ0, glu_emb Θ Ξ Θ0 Ξ0 -> @glu_rel_exp (gc_mk Θ0 Ξ0) Γ P T) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : apps (a_ind p) Ps -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ M (apps (a_ind p) Ps) ->
-    nm = S (ind_nn D) ->
-    Θ ⍮ Ξ ⍮ elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ ⊢ A : Typeω@i ->
-    @glu_rel_exp (gc_mk Θ2 Ξ2) (elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ) A (Typeω@i) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D (List.firstn (ind_nu D) Ps) ->
-    brs_names (ind_cons D) Bs ->
-    (forall c gs, ind_con D c = Some gs ->
-       Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ≈ elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) ->
-    (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
-    (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs ->
-       Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
-    (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> forall Θ0 Ξ0, glu_emb Θ Ξ Θ0 Ξ0 ->
-       @glu_rel_exp (gc_mk Θ0 Ξ0) (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) B (elim_bty p D c gs A (List.firstn (ind_nu D) Ps))) ->
-    @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_elim H nm A Bs M) (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)]).
-Proof.
-  intros * He Hl HPl Heq HNl HT0 Hnh HPt HPg HMt HMg Hnm HAt HAg HMx Hn HBx Hk HBt HBg.
-  pose proof (k_elim _ _ _ _ _ _ _ _ _ _ _ _ _ He Hl HPl HPt HPg HMt HMg Hnm HAt HAg HMx Hn HBx Hk HBt HBg) as Hg.
-  destruct (emb_preserves_wf _ _ _ _ (gme_emb _ _ _ _ He)) as (_ & _ & Hwq & _).
-  eapply (@glu_rel_exp_of_eq (gc_mk Θ2 Ξ2)); [ exact Hg |].
-  apply Hwq; eapply wf_elim_canon_eq; eassumption.
 Qed.
 
 (** A term equal to one that glues glues, the equation moved to the target. *)
@@ -241,10 +214,11 @@ Proof.
     | eapply glu_rel_exp_app; eassumption ].
   all: try solve [ eapply glu_rel_exp_vlookup; eassumption ].
   all: try solve [ eapply gme_glob; eassumption ].
-  all: try solve [ eapply k_ind; eassumption | eapply k_con; eassumption | eapply k_elim_gen; eassumption ].
-  (** An eliminator at a resolved head, and the module of an inductive type
-      at a path, as a term: through their equations. *)
-  all: try solve [ eapply k_of_eq; [ eassumption | eapply wf_exp_eq_elim_head; eassumption | eassumption ] ].
+  all: try solve [ eapply k_ind; eassumption | eapply k_con; eassumption | eapply k_elim; eassumption ].
+  (** An inductive alias, as a term. *)
+  all: try solve [ eapply gme_ialias; eassumption ].
+  (** The module of an inductive type at a path, as a term: through its
+      equation. *)
   all: try solve [ eapply k_of_eq; [ eassumption | eapply wf_exp_eq_mem_glob_ind_unfold; eassumption | eapply k_ind; eassumption ] ].
   all: try solve [ eapply glu_rel_ctx_extend; [ eapply presup_ctx_glu_rel_exp |]; eassumption ].
   all: try solve [ eapply glu_rel_ctx_extend_def; [ eapply presup_ctx_glu_rel_exp | |]; eassumption ].
@@ -383,7 +357,7 @@ Definition glu_entry (Θ : gdeps) (Ξ : gstack) (E : gentry) : Prop :=
   | ge_def _ _ A B =>
       (exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ A (Typeω@i)) /\
       (forall M, B = Some M -> @glu_rel_exp (gc_mk Θ Ξ) ⋅ M A)
-  | ge_mod _ _ | ge_ind _ _ _ => True
+  | ge_mod _ _ | ge_ind _ _ _ | ge_ind_alias _ _ _ _ => True
   end.
 
 (** The declaration of an inductive type. *)
@@ -438,11 +412,31 @@ Theorem glu_emb_of : forall Θ1 Ξ1 Θ2 Ξ2,
     Emb Θ1 Ξ1 Θ2 Ξ2 -> GV glu_entry glu_decl Θ1 Ξ1 Θ2 Ξ2 -> glu_emb Θ1 Ξ1 Θ2 Ξ2.
 Proof.
   intros * He HG; pose proof He as [Hg Hs].
-  constructor; [ exact He | | intros p D Hl; exact (proj2 HG _ _ Hl) ].
-  intros * Hpm Hr HΓs.
-  rewrite (mod_qname_inv _ _ Hpm).
-  apply glu_rel_exp_nil_weaken; [ exact HΓs |].
-  exact (glob_glu_of_raw _ _ Hg _ _ _ _ _ _ (gc_sub_resolve _ _ _ _ _ _ Hs Hr) (proj1 HG _ _ Hr)).
+  constructor; [ exact He | | intros p D Hl; exact (proj1 (proj2 HG) _ _ Hl) |].
+  - intros * Hpm Hr HΓs.
+    rewrite (mod_qname_inv _ _ Hpm).
+    apply glu_rel_exp_nil_weaken; [ exact HΓs |].
+    exact (glob_glu_of_raw _ _ Hg _ _ _ _ _ _ (gc_sub_resolve _ _ _ _ _ _ Hs Hr) (proj1 HG _ _ Hr)).
+  - (* an inductive alias: its δ-reduct, glued at [⋅] *)
+    intros * Hpm Hr Hl HΓs.
+    rewrite (mod_qname_inv _ _ Hpm).
+    apply glu_rel_exp_nil_weaken; [ exact HΓs |].
+    destruct (proj2 (proj2 HG) _ _ _ _ Hr) as (D' & HD' & _ & _ & HN).
+    pose proof (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hl) as Hl2.
+    rewrite Hl2 in HD'; injection HD' as <-.
+    pose proof (gc_sub_ind_alias _ _ _ _ _ _ Hs Hr) as Hr2.
+    assert (Hb : ⊢ Θ2 ⍮ Ξ2 ⍮ ⋅) by (constructor; assumption).
+    destruct (wf_ind_alias_closed _ _ _ _ _ _ _ _ Hb Hr2 Hl2) as [HsT HsN].
+    pose proof (qname_mod_qname mp) as Hq.
+    eapply (@glu_delta_nil (gc_mk Θ2 Ξ2)); [ apply HN; reflexivity | | | | |].
+    + intros; eapply exp_closed_sub; eassumption.
+    + intros; eapply exp_closed_sub; eassumption.
+    + intros; cbn; rewrite (mod_qname_sub _ _ _ Hq); reflexivity.
+    + intros Δ' HΔ'; eapply wf_exp_eq_mem_glob_ind_alias_unfold; eassumption.
+    + intros * Hev; eapply eval_mem_of_sel.
+      * apply eval_path_mod, (gc_chain_no_alias _ _ Hg); right; left.
+        eexists; eexists; exact (ind_alias_lookup_module _ _ _ _ _ _ Hr2).
+      * eapply eval_sel_global_ind_alias; [ exact (gc_module_resolve _ _ _ _ (ind_alias_lookup_module _ _ _ _ _ _ Hr2)) | exact Hr2 | exact Hev | constructor ].
 Qed.
 
 Lemma kglu_read : forall Θ1 Ξ1 Θ2 Ξ2 A M,

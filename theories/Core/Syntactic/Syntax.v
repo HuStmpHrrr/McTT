@@ -128,11 +128,11 @@ Inductive obj : Set :=
 | proj : obj -> string -> obj
 (** [let d in M end], one declaration at a time *)
 | letb : decl -> obj -> obj
-(** [X.elim M return xs . A | c ys => B … end]: the eliminator of the
-    inductive type [X], its motive binding the non-uniform parameters and
-    the scrutinee, each branch the non-uniform parameters, the
-    constructor's arguments and the induction hypotheses, in that order *)
-| elim : obj -> obj -> list string -> obj -> list (string * list string * obj) -> obj
+(** [elim M return xs . A | c ys => B … end]: the eliminator of an
+    inductive type, its motive binding the non-uniform parameters and the
+    scrutinee, each branch the non-uniform parameters, the constructor's
+    arguments and the induction hypotheses, in that order *)
+| elim : obj -> list string -> obj -> list (string * list string * obj) -> obj
 
 with decl : Set :=
 (** [x : A := M], or [x := M] without the type.  A local definition is
@@ -182,7 +182,10 @@ with cmd : Set :=
 | c_ind : bool -> string -> list (string * obj) -> obj -> list (string * list (string * obj)) -> cmd
 (** [builtin k := X]: binds the inductive type [X] as the builtin [k];
     [natural] is the one kind. *)
-| c_builtin : string -> obj -> cmd.
+| c_builtin : string -> obj -> cmd
+(** [private inductive x (ps) := X Ms]: an inductive alias, the inductive
+    type [X] at the arguments [Ms], under the parameters [ps]. *)
+| c_ind_alias : bool -> string -> list (string * obj) -> obj -> cmd.
 
 (** The family is nested through [list], so its induction principle is written
     by hand: a parameter list and a command list carry [Forall] of their
@@ -213,8 +216,7 @@ Section cst_mut_ind.
     (case_glob : forall fp, Po (glob fp))
     (case_proj : forall o x, Po o -> Po (proj o x))
     (case_letb : forall d o, Pd d -> Po o -> Po (letb d o))
-    (case_elim : forall oh o1 xs o2 bs, Po oh -> Po o1 -> Po o2 -> List.Forall (fun b => Po (snd b)) bs ->
-                 Po (elim oh o1 xs o2 bs))
+    (case_elim : forall o1 xs o2 bs, Po o1 -> Po o2 -> List.Forall (fun b => Po (snd b)) bs -> Po (elim o1 xs o2 bs))
     (case_d_def : forall x oA o2, match oA with Some A => Po A | None => True end -> Po o2 -> Pd (d_def x oA o2))
     (case_d_mod : forall x ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pd (d_mod x ps md))
     (case_md_where : forall cs, List.Forall Pc cs -> Pm (md_where cs))
@@ -228,7 +230,8 @@ Section cst_mut_ind.
     (case_c_eval : forall o oA, Po o -> match oA with Some A => Po A | None => True end -> Pc (c_eval o oA))
     (case_c_ind : forall pv x ps oT cs, List.Forall (fun p => Po (snd p)) ps -> Po oT ->
         List.Forall (fun c => List.Forall (fun p => Po (snd p)) (snd c)) cs -> Pc (c_ind pv x ps oT cs))
-    (case_c_builtin : forall k o, Po o -> Pc (c_builtin k o)).
+    (case_c_builtin : forall k o, Po o -> Pc (c_builtin k o))
+    (case_c_ind_alias : forall pv x ps o, List.Forall (fun p => Po (snd p)) ps -> Po o -> Pc (c_ind_alias pv x ps o)).
 
   Fixpoint obj_mut (o : obj) : Po o :=
     match o with
@@ -254,8 +257,8 @@ Section cst_mut_ind.
     | glob fp => case_glob fp
     | proj o x => case_proj o x (obj_mut o)
     | letb d o => case_letb d o (decl_mut d) (obj_mut o)
-    | elim oh o1 xs o2 bs =>
-        case_elim oh o1 xs o2 bs (obj_mut oh) (obj_mut o1) (obj_mut o2)
+    | elim o1 xs o2 bs =>
+        case_elim o1 xs o2 bs (obj_mut o1) (obj_mut o2)
           ((fix go (bs : list (string * list string * obj)) : List.Forall (fun b => Po (snd b)) bs :=
               match bs with
               | nil => List.Forall_nil _
@@ -340,6 +343,14 @@ Section cst_mut_ind.
                     (gos cs')
               end) cs)
     | c_builtin k o => case_c_builtin k o (obj_mut o)
+    | c_ind_alias pv x ps o =>
+        case_c_ind_alias pv x ps o
+          ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
+              match ps with
+              | nil => List.Forall_nil _
+              | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
+              end) ps)
+          (obj_mut o)
     end.
 
   Theorem cst_mut_ind : (forall o, Po o) /\ (forall d, Pd d) /\ (forall md, Pm md) /\ (forall c, Pc c).
@@ -641,14 +652,14 @@ Inductive exp : Set :=
     expansion ([Imports]) replaces it by the chain of constructors of the
     inductive type bound as the natural numbers ([builtin natural]). *)
 | a_nlit : nat -> exp
-(** [a_elim H nm A Bs M] eliminates [M] into the motive [A], which binds
-    the non-uniform parameters and the scrutinee ([nm] of them).  [H] is the
-    module of the inductive type, as written: typing resolves it, as a
-    module, to the type of the scrutinee.  Each branch [(c, n, B)] is the case of the
+(** [a_elim nm A Bs M] eliminates [M], of an inductive type, into the
+    motive [A], which binds the non-uniform parameters and the scrutinee
+    ([nm] of them).  The type, and its parameters, are those of the
+    scrutinee's type.  Each branch [(c, n, B)] is the case of the
     constructor [c], in declaration order, and binds [n] variables: the
     non-uniform parameters, the arguments, and one recursive result per
     recursive argument. *)
-| a_elim : modexp -> nat -> exp -> list (string * nat * exp) -> exp -> exp
+| a_elim : nat -> exp -> list (string * nat * exp) -> exp -> exp
 (** Functions: [a_pi A B], [B] binding the argument *)
 | a_pi : exp -> exp -> exp
 (** [a_fn A M], [M] binding the argument *)
@@ -711,6 +722,12 @@ with gentry : Set :=
     and the recursor, under the uniform parameters of [D] ([ind_unit]).
     Its path names the module, and the type former ([a_ind]). *)
 | ge_ind : bool -> ind_decl_g exp centry -> gmod -> gentry
+(** [ge_ind_alias pv Δ p Ns]: an inductive alias, private when [pv]: over
+    its full telescope [Δ] (closed, as an alias's), the inductive type at
+    the canonical path [p] at the first uniform parameters [Ns], terms over
+    [Δ].  As a term it is [λ Δ. a_ind p Ns], as a module the module of [p]
+    at [Ns]. *)
+| ge_ind_alias : bool -> list centry -> qname -> list exp -> gentry
 with centry : Set :=
 (** An assumption of a type *)
 | ce_ass : exp -> centry
@@ -769,7 +786,7 @@ Section syn_mut_ind.
     (case_ind : forall p, Pe (a_ind p))
     (case_con : forall p c, Pe (a_con p c))
     (case_nlit : forall n, Pe (a_nlit n))
-    (case_elim : forall H nm A Bs M, Pm H -> Pe A -> List.Forall (fun b => Pe (snd b)) Bs -> Pe M -> Pe (a_elim H nm A Bs M))
+    (case_elim : forall nm A Bs M, Pe A -> List.Forall (fun b => Pe (snd b)) Bs -> Pe M -> Pe (a_elim nm A Bs M))
     (case_pi : forall A B, Pe A -> Pe B -> Pe (a_pi A B))
     (case_fn : forall A M, Pe A -> Pe M -> Pe (a_fn A M))
     (case_app : forall M N, Pe M -> Pe N -> Pe (a_app M N))
@@ -792,6 +809,7 @@ Section syn_mut_ind.
     (case_ge_def : forall b pv A B, Pe A -> (forall M, B = Some M -> Pe M) -> Pn (ge_def b pv A B))
     (case_ge_mod : forall pv U, Pu U -> Pn (ge_mod pv U))
     (case_ge_ind : forall pv D Φ, Pg Φ -> Pn (ge_ind pv D Φ))
+    (case_ge_ind_alias : forall pv Δ p Ns, Pn (ge_ind_alias pv Δ p Ns))
     (case_ce_ass : forall A, Pe A -> Pc (ce_ass A))
     (case_ce_def : forall A M, Pe A -> Pe M -> Pc (ce_def A M))
     (case_ce_mod : forall U, Pu U -> Pc (ce_mod U)).
@@ -815,8 +833,8 @@ Section syn_mut_ind.
     | a_ind p => case_ind p
     | a_con p c => case_con p c
     | a_nlit n => case_nlit n
-    | a_elim H nm A Bs M =>
-        case_elim H nm A Bs M (modexp_mut H) (exp_mut A)
+    | a_elim nm A Bs M =>
+        case_elim nm A Bs M (exp_mut A)
           ((fix brs_mut (Bs : list (string * nat * exp)) : List.Forall (fun b => Pe (snd b)) Bs :=
               match Bs with
               | nil => List.Forall_nil _
@@ -885,6 +903,7 @@ Section syn_mut_ind.
            end)
     | ge_mod pv U => case_ge_mod pv U (gunit_mut U)
     | ge_ind pv D Φ => case_ge_ind pv D Φ (gmod_mut Φ)
+    | ge_ind_alias pv Δ p Ns => case_ge_ind_alias pv Δ p Ns
     end
   with centry_mut (e : centry) : Pc e :=
     match e with
@@ -923,6 +942,13 @@ Fixpoint member_ref (H : modexp) (ch : list string) : exp :=
 
 (** The module named [X::Y.W.Z], [q_abs ["X"; "Y"] ["W"; "Z"]], and the global
     named so, both as selections from the unit. *)
+(** [H N1 … Nn]: a module applied to arguments. *)
+Fixpoint me_apps (H : modexp) (Ns : list exp) : modexp :=
+  match Ns with
+  | nil => H
+  | N :: Ns' => me_apps (me_app H N) Ns'
+  end.
+
 Definition qname_mod (p : qname) : modexp := me_mems (me_unit (q_unit p)) (q_chain p).
 
 Definition qname_term (p : qname) : exp := member_ref (me_unit (q_unit p)) (q_chain p).
@@ -1100,6 +1126,7 @@ Fixpoint body_ctx (Φ : gmod) : ctx :=
   | gm_ext Φ' _ (ge_def _ _ A None) => cons (ce_ass A) (body_ctx Φ')
   | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
   | gm_ext Φ' _ (ge_ind _ _ _) => cons (ce_ass a_nat) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_ind_alias _ _ _ _) => cons (ce_ass a_nat) (body_ctx Φ')
   | gm_open Φ' _ its => List.repeat (ce_ass a_nat) (List.length its) ++ body_ctx Φ'
   end.
 
@@ -1335,7 +1362,7 @@ with ne : Set :=
 (** The [⊥]-eliminator, always stuck *)
 | ne_exfalso : nf -> ne -> ne
 (** The eliminator of an inductive type stuck on a neutral *)
-| ne_elim : qname -> nat -> nf -> nbrs -> ne -> ne
+| ne_elim : nat -> nf -> nbrs -> ne -> ne
 (** A neutral applied *)
 | ne_app : ne -> nf -> ne
 (** A variable *)
@@ -1391,7 +1418,7 @@ with ne_to_exp (M : ne) : exp :=
   match M with
   | ne_natrec A MZ MS M => a_natrec (nf_to_exp A) (nf_to_exp MZ) (nf_to_exp MS) (ne_to_exp M)
   | ne_exfalso A M => a_exfalso (nf_to_exp A) (ne_to_exp M)
-  | ne_elim p nm A Bs M => a_elim (qname_mod p) nm (nf_to_exp A) (nbrs_to_brs Bs) (ne_to_exp M)
+  | ne_elim nm A Bs M => a_elim nm (nf_to_exp A) (nbrs_to_brs Bs) (ne_to_exp M)
   | ne_app M N => a_app (ne_to_exp M) (nf_to_exp N)
   | ne_var x => a_var x
   | ne_glob p => qname_term p
@@ -1526,7 +1553,7 @@ with ne_clean (M : ne) : Prop :=
   match M with
   | ne_natrec A MZ MS M => nf_clean A /\ nf_clean MZ /\ nf_clean MS /\ ne_clean M
   | ne_exfalso A M => nf_clean A /\ ne_clean M
-  | ne_elim _ _ A Bs M => nf_clean A /\ nbrs_clean Bs /\ ne_clean M
+  | ne_elim _ A Bs M => nf_clean A /\ nbrs_clean Bs /\ ne_clean M
   | ne_app M N => ne_clean M /\ nf_clean N
   | ne_var _ => True
   | ne_glob _ => False
@@ -1662,8 +1689,8 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_ind p => a_ind p
   | a_con p c => a_con p c
   | a_nlit n => a_nlit n
-  | a_elim H nm A Bs M =>
-      a_elim (modexp_wk H φ) nm (exp_wk A (wk_qn nm φ))
+  | a_elim nm A Bs M =>
+      a_elim nm (exp_wk A (wk_qn nm φ))
              (List.map (fun b => (fst b, exp_wk (snd b) (wk_qn (snd (fst b)) φ))) Bs)
              (exp_wk M φ)
   | a_pi A B => a_pi (exp_wk A φ) (exp_wk B (wk_q φ))
@@ -1714,6 +1741,7 @@ with gentry_wk (E : gentry) (φ : wk) : gentry :=
   | ge_def b pv A B => ge_def b pv (exp_wk A φ) (match B with Some M => Some (exp_wk M φ) | None => None end)
   | ge_mod pv U => ge_mod pv (gunit_wk U φ)
   | ge_ind pv D Φ => ge_ind pv D (gmod_wk Φ (wk_qn (ind_nu D) φ))
+  | ge_ind_alias pv Δ p Ns => ge_ind_alias pv Δ p Ns
   end
 with centry_wk (e : centry) (φ : wk) : centry :=
   match e with
@@ -1842,8 +1870,8 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_ind p => a_ind p
   | a_con p c => a_con p c
   | a_nlit n => a_nlit n
-  | a_elim H nm A Bs M =>
-      a_elim (modexp_sub H σ) nm (exp_sub A (sb_qn nm σ))
+  | a_elim nm A Bs M =>
+      a_elim nm (exp_sub A (sb_qn nm σ))
              (List.map (fun b => (fst b, exp_sub (snd b) (sb_qn (snd (fst b)) σ))) Bs)
              (exp_sub M σ)
   | a_pi A B => a_pi (exp_sub A σ) (exp_sub B (sb_q σ))
@@ -1892,6 +1920,7 @@ with gentry_sub (E : gentry) (σ : sub) : gentry :=
   | ge_def b pv A B => ge_def b pv (exp_sub A σ) (match B with Some M => Some (exp_sub M σ) | None => None end)
   | ge_mod pv U => ge_mod pv (gunit_sub U σ)
   | ge_ind pv D Φ => ge_ind pv D (gmod_sub Φ (sb_qn (ind_nu D) σ))
+  | ge_ind_alias pv Δ p Ns => ge_ind_alias pv Δ p Ns
   end
 with centry_sub (e : centry) (σ : sub) : centry :=
   match e with

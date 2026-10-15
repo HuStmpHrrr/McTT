@@ -1,5 +1,5 @@
 (* Inductive types: declared in a unit, built by their constructors and
-   taken apart by their eliminator X.elim, whose branches compute on a
+   taken apart by the eliminator elim, whose branches compute on a
    constructor.
 
    Where a parameter is written decides what it is.  Left of ":", a
@@ -24,14 +24,14 @@ end
 (* The motive binds the scrutinee, not [A]; a branch, the constructor's
    arguments and, after the comma, the induction hypotheses. *)
 def length (A : Type@0) (l : List A) : ℕ :=
-  List.elim l return z . ℕ
+  elim l return z . ℕ
   | nil ⇒ 0
   | cons x xs, r ⇒ succ r
   end
 end
 
 def append (A : Type@0) (l : List A) (m : List A) : List A :=
-  List.elim l return z . List A
+  elim l return z . List A
   | nil ⇒ m
   | cons x xs, r ⇒ List.cons A x r
   end
@@ -77,7 +77,7 @@ inductive Option (A : Type@0) : Type@0 where
 end
 
 def getOr (A : Type@0) (d : A) (o : Option A) : A :=
-  Option.elim o return z . A
+  elim o return z . A
   | none ⇒ d
   | some x ⇒ x
   end
@@ -100,7 +100,7 @@ def plus (m : ℕ) (n : ℕ) : ℕ :=
 end
 
 def size (A : Type@0) (t : Tree A) : ℕ :=
-  Tree.elim t return z . ℕ
+  elim t return z . ℕ
   | leaf ⇒ 0
   | node l x r, hl hr ⇒ succ (plus hl hr)
   end
@@ -116,7 +116,7 @@ inductive Sigma (A : Type@0) (B : ∀ (x : A) → Type@0) : Type@0 where
 end
 
 def fst (A : Type@0) (B : ∀ (x : A) → Type@0) (p : Sigma A B) : A :=
-  Sigma.elim p return z . A
+  elim p return z . A
   | pair a b ⇒ a
   end
 end
@@ -124,7 +124,7 @@ end
 (* The branch's type is [B (fst A B (Sigma.pair A B a b))], which computes to
    [B a]. *)
 def snd (A : Type@0) (B : ∀ (x : A) → Type@0) (p : Sigma A B) : B (fst A B p) :=
-  Sigma.elim p return z . B (fst A B z)
+  elim p return z . B (fst A B z)
   | pair a b ⇒ b
   end
 end
@@ -142,7 +142,7 @@ inductive Climb : ∀ (n : ℕ) → Type@0 where
 end
 
 def steps (n : ℕ) (c : Climb n) : ℕ :=
-  Climb.elim c return m z . ℕ
+  elim c return m z . ℕ
   | stop m ⇒ 0
   | step m r, h ⇒ succ h
   end
@@ -186,7 +186,7 @@ def omg : Ord := Ord.lim (λ (n : ℕ) → fin n) end
 (* The [k]-th approximation of an ordinal: a limit is approximated by the
    [k]-th ordinal it is the limit of.  On [omg] it is [k]. *)
 def approx (o : Ord) (k : ℕ) : ℕ :=
-  Ord.elim o return z . ℕ
+  elim o return z . ℕ
   | base ⇒ 0
   | next p, r ⇒ succ r
   | lim f, h ⇒ h k
@@ -220,7 +220,7 @@ inductive OrdA : Type@0 where
 end
 
 def approxA (o : OrdA) (k : ℕ) : ℕ :=
-  OrdA.elim o return z . ℕ
+  elim o return z . ℕ
   | base ⇒ 0
   | next p, r ⇒ succ r
   | lim f, h ⇒ h k
@@ -242,7 +242,7 @@ inductive Label : Type@0 where
 end
 
 def Arity (l : Label) : Type@0 :=
-  Label.elim l return z . Type@0
+  elim l return z . Type@0
   | zr ⇒ ⊥
   | sc ⇒ ⊤
   end
@@ -258,9 +258,9 @@ def wsucc (n : WNat) : WNat := W.sup Label Arity Label.sc (λ (x : ⊤) → n) e
 
 (* The number a tree stands for: at [sc], one more than at its child. *)
 def toNat (w : WNat) : ℕ :=
-  W.elim w return z . ℕ
+  elim w return z . ℕ
   | sup a f, h ⇒
-      (Label.elim a return y . ∀ (h : ∀ (b : Arity y) → ℕ) → ℕ
+      (elim a return y . ∀ (h : ∀ (b : Arity y) → ℕ) → ℕ
        | zr ⇒ λ (h : ∀ (b : ⊥) → ℕ) → 0
        | sc ⇒ λ (h : ∀ (b : ⊤) → ℕ) → succ (h ⋆)
        end) h
@@ -274,7 +274,7 @@ def wsize (w : WNat) : ℕ :=
   W.rec Label Arity 0l (λ (w : WNat) → ℕ)
     (λ (a : Label) (f : ∀ (b : Arity a) → WNat) (h : ∀ (b : Arity a) → ℕ) →
        succ
-         ((Label.elim a return y . ∀ (h : ∀ (b : Arity y) → ℕ) → ℕ
+         ((elim a return y . ∀ (h : ∀ (b : Arity y) → ℕ) → ℕ
            | zr ⇒ λ (h : ∀ (b : ⊥) → ℕ) → 0
            | sc ⇒ λ (h : ∀ (b : ⊤) → ℕ) → h ⋆
            end) h)) w
@@ -290,7 +290,7 @@ inductive Grid : Type@0 where
 end
 
 def sample (g : Grid) : ℕ :=
-  Grid.elim g return z . ℕ
+  elim g return z . ℕ
   | cell k ⇒ k
   | node f, h ⇒ plus (h 0 1) (h 2 3)
   end

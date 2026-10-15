@@ -43,6 +43,7 @@ Fixpoint ge_unseal (E : gentry) : gentry :=
   | ge_mod pv (gu_mk Δ (md_body Φ)) => ge_mod pv (gu_mk Δ (md_body (gm_unseal Φ)))
   | ge_mod pv U => ge_mod pv U
   | ge_ind pv D Φ => ge_ind pv D (gm_unseal Φ)
+  | ge_ind_alias pv Δ p Ns => ge_ind_alias pv Δ p Ns
   end
 with gm_unseal (Φ : gmod) : gmod :=
   match Φ with
@@ -100,7 +101,7 @@ Proof.
   fix IH 1; intros [| Φ y E | Φ c] ip; cbn; [ reflexivity | | apply IH ].
   destruct ip as [| x ip']; [ reflexivity |].
   destruct (String.eqb x y); [| apply IH ].
-  destruct ip' as [| z ip''], E as [b pv A B | ? [Δ' [Φ' | E']] | ? ? ?]; cbn; try reflexivity;
+  destruct ip' as [| z ip''], E as [b pv A B | ? [Δ' [Φ' | E']] | ? ? ? | ? ? ? ?]; cbn; try reflexivity;
     apply IH.
 Qed.
 
@@ -109,7 +110,7 @@ Lemma gm_submodule_unseal : forall Φ T x ip,
 Proof.
   fix IH 1; intros [| Φ y E | Φ c] T x ip; cbn; [ reflexivity | | apply IH ].
   destruct (String.eqb x y); [| apply IH ].
-  destruct E as [b pv A B | ? [Δ' [Φ' | E']] | ? ? ?]; cbn; try reflexivity;
+  destruct E as [b pv A B | ? [Δ' [Φ' | E']] | ? ? ? | ? ? ? ?]; cbn; try reflexivity;
     destruct ip; [ reflexivity | apply IH | reflexivity | apply IH ].
 Qed.
 
@@ -206,13 +207,32 @@ Lemma member_unfold_ch_unseal : forall Θ Ξ Γ H ch,
 Proof.
   intros; revert ch; induction H as [fp | x | H IH y | H IH N | U]; intros; cbn; auto.
   - rewrite gc_resolve_unseal, gc_module_unseal.
-    destruct (gc_resolve Θ Ξ (q_abs fp ch)) as [[b pv A B | ? [Δ [Φ | E]] | ? ?] |]; reflexivity.
+    destruct (gc_resolve Θ Ξ (q_abs fp ch)) as [[b pv A B | ? [Δ [Φ | E]] | ? ? | ? ? ? ?] |]; reflexivity.
   - rewrite IH; reflexivity.
 Qed.
 
 Lemma member_unfold_unseal : forall Θ Ξ Γ H x,
     member_unfold (gds_unseal Θ) (gs_unseal Ξ) Γ H x = member_unfold Θ Ξ Γ H x.
 Proof. intros; apply member_unfold_ch_unseal. Qed.
+
+(** An inductive alias is unchanged too. *)
+Lemma gm_ind_target_unseal : forall Φ ip, gm_ind_target (gm_unseal Φ) ip = gm_ind_target Φ ip.
+Proof.
+  unfold gm_ind_target; fix IH 1; intros [| Φ y E | Φ c] ip; cbn; [ reflexivity | | apply IH ].
+  destruct ip as [| x ip']; [ reflexivity |].
+  destruct (String.eqb x y); [| apply IH ].
+  destruct ip' as [| z ip''], E as [b pv A B | ? [Δ' [Φ' | E']] | ? ? ? | ? ? ? ?]; cbn; try reflexivity;
+    apply IH.
+Qed.
+
+Lemma ind_alias_lookup_unseal : forall Θ Ξ p,
+    ind_alias_lookup (gds_unseal Θ) (gs_unseal Ξ) p = ind_alias_lookup Θ Ξ p.
+Proof.
+  intros; unfold ind_alias_lookup; rewrite gs_find_unseal.
+  destruct (gs_find Ξ p) as [[U ip] |]; cbn; [ rewrite gu_mod_unseal; apply gm_ind_target_unseal |].
+  rewrite gds_lookup_unseal.
+  destruct (gds_lookup Θ (q_unit p)); cbn; [ rewrite gu_mod_unseal; apply gm_ind_target_unseal | reflexivity ].
+Qed.
 
 (** ** Unsealing Preserves Every Judgment *)
 
@@ -231,6 +251,7 @@ Proof.
   apply wf_mut_ind_all; intros; cbn.
   all: try rewrite <- (gs_tele_unseal Ξ).
   all: try rewrite <- (ind_lookup_unseal Θ Ξ) in *.
+  all: try rewrite <- (ind_alias_lookup_unseal Θ Ξ) in *.
   all: try solve [ econstructor; rewrite ?gs_tele_unseal;
                    eauto using gc_resolve_unseal_def, gc_resolve_unseal_transparent,
                      gm_fresh_unseal,
@@ -264,6 +285,7 @@ Fixpoint ge_no_axioms (E : gentry) : Prop :=
   | ge_mod _ (gu_mk _ (md_body Φ)) => gm_no_axioms Φ
   | ge_mod _ (gu_mk _ (md_alias _)) => True
   | ge_ind _ _ Φ => gm_no_axioms Φ
+  | ge_ind_alias _ _ _ _ => True
   end
 with gm_no_axioms (Φ : gmod) : Prop :=
   match Φ with
@@ -284,7 +306,7 @@ Lemma gm_transparent_no_axioms : forall Φ, gm_transparent Φ -> gm_no_axioms Φ
 Proof.
   fix IH 1; intros [| Φ y E | Φ c] HΦ; cbn in *; [ exact I | | exact (IH _ HΦ) ].
   destruct HΦ as [HΦ HE]; split; [ exact (IH _ HΦ) |].
-  destruct E as [b pv A B | ? [Δ' [Φ' | E']] | ? ? Φ']; cbn in *; [ apply HE | exact (IH _ HE) | exact I | exact (IH _ HE) ].
+  destruct E as [b pv A B | ? [Δ' [Φ' | E']] | ? ? Φ' | ? ? ? ?]; cbn in *; [ apply HE | exact (IH _ HE) | exact I | exact (IH _ HE) | exact I ].
 Qed.
 
 (** A transparent global context has no axioms. *)
@@ -298,8 +320,8 @@ Lemma gm_no_axioms_unseal_transparent : forall Φ, gm_no_axioms Φ -> gm_transpa
 Proof.
   fix IH 1; intros [| Φ y E | Φ c] HΦ; cbn in *; [ exact I | | exact (IH _ HΦ) ].
   destruct HΦ as [HΦ HE]; split; [ exact (IH _ HΦ) |].
-  destruct E as [b pv A [M |] | ? [Δ' [Φ' | E']] | ? ? Φ']; cbn in *;
-    [ split; congruence | contradiction | exact (IH _ HE) | exact I | exact (IH _ HE) ].
+  destruct E as [b pv A [M |] | ? [Δ' [Φ' | E']] | ? ? Φ' | ? ? ? ?]; cbn in *;
+    [ split; congruence | contradiction | exact (IH _ HE) | exact I | exact (IH _ HE) | exact I ].
 Qed.
 
 Lemma gds_unseal_in : forall Θ fp U',
@@ -338,7 +360,7 @@ Proof.
   destruct HΦ as [HΦ HE].
   destruct ip as [| x ip']; [ discriminate |].
   destruct (String.eqb x y); [| eapply IH; eassumption ].
-  destruct ip' as [| z ip''], E as [b' pv' A B | ? [Δ' [Φ' | E']] | ? ? Φ']; try discriminate.
+  destruct ip' as [| z ip''], E as [b' pv' A B | ? [Δ' [Φ' | E']] | ? ? Φ' | ? ? ? ?]; try discriminate.
   - injection H as <- <- <- <-; exact HE.
   - eapply IH; [ exact HE | exact H ].
   - eapply IH; [ exact HE | exact H ].
@@ -385,7 +407,7 @@ Qed.
 Lemma cmd_xp_no_axioms : forall mt S c c', cmd_xp mt S c = xok c' -> cmd_no_axioms c -> cmd_no_axioms c'.
 Proof.
   intros * Ex Hc; pose proof (cmd_xp_head _ _ _ _ Ex) as Hh.
-  destruct c as [x b pv A oM | x pv Δ cs | | | | | |];
+  destruct c as [x b pv A oM | x pv Δ cs | | | | | | |];
     [| | destruct c'; cbn in Hh; try discriminate; exact I ..].
   - destruct (cmd_xp_def_inv _ _ _ _ _ _ _ _ Ex) as (A' & oM' & -> & Hiff); cbn in *; tauto.
   - destruct (cmd_xp_mod_inv _ _ _ _ _ _ _ Ex) as (Δ' & _ & ->); rewrite cmd_no_axioms_mod in *; exact Hc.
@@ -438,7 +460,7 @@ Proof. induction 1; intros HΞ; auto; apply IHgens_run, gs_no_axioms_add; cbn; a
     definitions. *)
 Lemma gens_body_no_axioms : forall gs Φ T, gm_no_axioms Φ -> gm_no_axioms (gens_body Φ T gs).
 Proof.
-  induction gs as [| [d pv A M | d pv E] gs IH]; intros * HΦ; cbn; [ exact HΦ | | auto ].
+  induction gs as [| [d pv A M | d pv E | d pv Δ p Ns] gs IH]; intros * HΦ; cbn; [ exact HΦ | | auto | auto ].
   apply IH; cbn; split; [ exact HΦ | discriminate ].
 Qed.
 
@@ -480,6 +502,8 @@ Section Run.
       apply gs_no_axioms_add; [ apply gens_body_no_axioms; exact I | assumption ].
     (* a builtin binding is a definition *)
     - destruct_all; split; [ assumption | apply gs_no_axioms_add; cbn; auto; congruence ].
+    (* an inductive alias declares no definition *)
+    - destruct_all; split; [ assumption | apply gs_no_axioms_add; cbn; auto ].
     - assumption.
     - assumption.
     - assumption.

@@ -20,7 +20,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Command Imports.
 From Mctt.Core.Syntactic.System Require Import Definitions Lemmas Structural GlobalPresup.
 From Mctt.Core.Syntactic.System Require Export IndClassify.
-From Mctt.Core.Syntactic.System Require Import IndTyping.
+From Mctt.Core.Syntactic.System Require Import IndTyping MemberWf.
 From Mctt.Core.Syntactic.System Require Export Privacy.
 From Mctt.Core.Semantic Require Import NbE.
 Import Syntax_Notations GlobalCtx_Notations.
@@ -81,7 +81,11 @@ Inductive gens_run (Θ : gdeps) : gstack -> list igen -> gstack -> Prop :=
 | gr_alias : forall Ξ d pv E gs Ξ',
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E -> gs_fresh d Ξ ->
     gens_run Θ (gs_add d (ge_mod pv (gu_mk (gs_tele Ξ) (md_alias E))) Ξ) gs Ξ' ->
-    gens_run Θ Ξ (ig_alias d pv E :: gs) Ξ'.
+    gens_run Θ Ξ (ig_alias d pv E :: gs) Ξ'
+| gr_ind_alias : forall Ξ d pv Δ p Ns gs Ξ',
+    Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) d ⊢e ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns -> gs_fresh d Ξ ->
+    gens_run Θ (gs_add d (ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns) Ξ) gs Ξ' ->
+    gens_run Θ Ξ (ig_ind_alias d pv Δ p Ns :: gs) Ξ'.
 
 (** ** Inductive Declarations
 
@@ -147,7 +151,7 @@ Definition rec_fn (p : qname) (D : ind_decl) : exp :=
   let K := List.length (ind_cons D) in
   ctx_fn (rec_tele p D)
     (ctx_fn (elim_mctx p D (rec_uvars D K))
-       (a_elim (qname_mod p) (S (ind_nn D)) (rec_motive D (K + S (ind_nn D))) (rec_brs D K 0 (ind_cons D)) (a_var 0))).
+       (a_elim (S (ind_nn D)) (rec_motive D (K + S (ind_nn D))) (rec_brs D K 0 (ind_cons D)) (a_var 0))).
 
 (** The constructors of the filed declaration [D], over the module's
     parameters: [D]'s uniform ones, then its recursor.  They are public
@@ -168,7 +172,7 @@ Fixpoint gens_body (Φ : gmod) (T : ctx) (gs : list igen) : gmod :=
   match gs with
   | nil => Φ
   | ig_def d pv A M :: gs' => gens_body (Φ ⊳ d ↦ ge_def true pv (ctx_pi T A) (Some (ctx_fn T M))) T gs'
-  | ig_alias _ _ _ :: gs' => gens_body Φ T gs'
+  | ig_alias _ _ _ :: gs' | ig_ind_alias _ _ _ _ _ :: gs' => gens_body Φ T gs'
   end.
 
 (** The body of the module of the inductive type [D] at [p]: its
@@ -359,6 +363,20 @@ Section Semantics.
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ a_ind p : ind_ty D ->
       gs_fresh nat_name Ξ ->
       Θ ⍮ Ξ ⊢[ch] cc_builtin nat_kind H ⇝ Θ ⍮ gs_add nat_name (gs_def true false Ξ (ind_ty D) (a_ind p)) Ξ
+  (** [inductive x Δ := X Ms Ks]: [X] is a path naming an inductive type,
+      its own or through an inductive alias over a telescope [Δ'] at [Ns];
+      [Ms] instantiate [Δ'], [Ks] more uniform parameters.  The alias
+      stores the canonical path and all the arguments, over [Δ], checked
+      as its entry. *)
+  | rc_ind_alias : forall ch Θ Ξ x pv Δ H H0 pq Δ' p Ns Ms Ks,
+      H = me_apps H0 (Ms ++ Ks) ->
+      mod_qname H0 = Some pq ->
+      ind_target Θ Ξ pq = Some (Δ', p, Ns) ->
+      List.length Ms = List.length Δ' ->
+      Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢e ge_ind_alias pv (Δ ++ gs_tele Ξ) p (List.map (fun N => N[sb_of_list Id Ms]) Ns ++ Ks) ->
+      gs_fresh x Ξ ->
+      Θ ⍮ Ξ ⊢[ch] cc_ind_alias x pv Δ H ⇝
+        Θ ⍮ gs_add x (ge_ind_alias pv (Δ ++ gs_tele Ξ) p (List.map (fun N => N[sb_of_list Id Ms]) Ns ++ Ks)) Ξ
   (** An [eval] changes nothing, but must type-check where it stands. *)
   | rc_eval_check : forall ch Θ Ξ M A,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
@@ -456,6 +474,21 @@ Section Determinism.
       | H1 : import_gen_ok ?a ?b ?G ?E ?is ?g1, H2 : import_gen_ok ?a ?b ?G ?E ?is ?g2 |- _ =>
           assert_fails constr_eq g1 g2; pose proof (import_gen_ok_functional _ _ _ _ _ _ _ H1 H2); subst g2
       end.
+    (* an inductive alias: its head splits one way, and its target is one *)
+    all: try solve [
+      match goal with
+      | Hp : mod_qname ?A = Some _, Hp' : mod_qname ?B = Some _, Heq : me_apps ?A (_ ++ _) = me_apps ?B (_ ++ _) |- _ =>
+          destruct (me_apps_inj _ _ _ _ (mod_qname_noapp _ _ Hp) (mod_qname_noapp _ _ Hp') Heq) as [<- HL]
+      end;
+      match goal with
+      | H1 : mod_qname ?H = Some ?p1, H2 : mod_qname ?H = Some ?p2 |- _ =>
+          rewrite H1 in H2; injection H2 as <-
+      end;
+      match goal with
+      | H1 : ind_target _ _ ?p = Some _, H2 : ind_target _ _ ?p = Some _ |- _ =>
+          rewrite H1 in H2; injection H2 as <- <- <-
+      end;
+      destruct (app_split_length _ _ _ _ HL ltac:(congruence)) as [<- <-]; split; reflexivity ].
     (* a builtin binding: its declaration *)
     all: try solve [
       match goal with
@@ -575,9 +608,11 @@ Lemma frame_fresh_grow : forall Θ Θ' Ξ mp,
     frame_fresh Θ Ξ mp -> gds_lookup Θ' (q_unit mp) = None -> frame_fresh Θ' Ξ mp.
 Proof. intros * H Hn; destruct Ξ as [| [mq V] Ξ]; cbn in *; [ split; [ exact Hn | exact (proj2 H) ] | exact H ]. Qed.
 
-Lemma add_ind_wf : forall Θ Ξ x pv D Φ,
-    ⊢g Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) x ⊢e ge_ind pv D Φ -> gs_fresh x Ξ ->
-    ⊢g Θ ⍮ gs_add x (ge_ind pv D Φ) Ξ.
+(** An entry checked at its path in the innermost frame keeps the stack
+    well formed. *)
+Lemma add_entry_wf : forall Θ Ξ x E,
+    ⊢g Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) x ⊢e E -> gs_fresh x Ξ ->
+    ⊢g Θ ⍮ gs_add x E Ξ.
 Proof.
   intros * HΞ HE Hfr.
   destruct Ξ as [| [mp [P Φ1]] Ξ]; [ contradiction |]; cbn in Hfr, HE |- *.
@@ -585,6 +620,11 @@ Proof.
   apply wf_gstack_cons; [ exact Hs0 | | exact Hff ].
   cbn; econstructor; [ eassumption | exact HE | exact Hfr ].
 Qed.
+
+Lemma add_ind_wf : forall Θ Ξ x pv D Φ,
+    ⊢g Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) x ⊢e ge_ind pv D Φ -> gs_fresh x Ξ ->
+    ⊢g Θ ⍮ gs_add x (ge_ind pv D Φ) Ξ.
+Proof. intros; apply add_entry_wf; assumption. Qed.
 
 (** The name of an entry of a frame is fresh in the body before it. *)
 Lemma wf_gstack_ext_fresh : forall Θ mq Δ Φ0 y E Ξ0,
@@ -622,6 +662,10 @@ Section GrowDeps.
         cbn; exact (wf_gstack_ext_fresh _ _ _ _ _ _ _ Hg0). }
       pose proof (deps_grow _ _ _ Hsub (wf_ctx_empty _ _ Hg')) as (_ & He' & _).
       econstructor; [ exact HE' | apply He'; exact HM | assumption ].
+    - (* an inductive alias *)
+      econstructor; [ assumption | apply Hx; assumption
+                    | eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ]
+                    | assumption | apply He; assumption | apply Hm; assumption ].
     - econstructor; [ assumption | apply Hc; assumption ].
     - match goal with HE : Θ ⍮ _ ⍮ qname_in _ _ ⊢e _ |- _ => pose proof (wf_gentry_gctx _ _ _ _ HE) as Hg0 end.
       destruct (wf_gstack_cons_inv _ _ _ _ Hg0) as (_ & _ & Hff).
@@ -749,9 +793,10 @@ Qed.
 
 Lemma gens_run_wf : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> ⊢g Θ ⍮ Ξ -> ⊢g Θ ⍮ Ξ'.
 Proof.
-  induction 1; intros HΞ; [ exact HΞ | apply IHgens_run; apply add_def_wf; assumption |].
-  apply IHgens_run; apply (add_alias_wf _ _ _ _ nil); try assumption; [ constructor |].
-  constructor; exact (presup_modexp_eq_ctx H).
+  induction 1; intros HΞ; [ exact HΞ | apply IHgens_run; apply add_def_wf; assumption | |].
+  - apply IHgens_run; apply (add_alias_wf _ _ _ _ nil); try assumption; [ constructor |].
+    constructor; exact (presup_modexp_eq_ctx H).
+  - apply IHgens_run; apply add_entry_wf; assumption.
 Qed.
 
 Lemma gens_run_shape : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> gs_shape Ξ' = gs_shape Ξ.
@@ -761,7 +806,7 @@ Lemma gens_run_tl : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> tl Ξ' = tl Ξ
 Proof.
   assert (Hadd : forall x E Ξ, tl (gs_add x E Ξ) = tl Ξ /\ List.length (gs_add x E Ξ) = List.length Ξ)
     by (intros ? ? [| [? ?] ?]; split; reflexivity).
-  induction 1; [ auto | |]; destruct IHgens_run; rewrite H2, H3; apply Hadd.
+  induction 1; [ auto | .. ]; destruct IHgens_run as [Ht Hl]; rewrite Ht, Hl; apply Hadd.
 Qed.
 
 Section WellFormed.
@@ -896,6 +941,8 @@ Section WellFormed.
     - (* a builtin binding: the definition [#natural], as [rc_def] files it *)
       intros ch Θ Ξ mp U H p D z s _ _ _ _ _ _ HA Hfr HΞ Hc Hst.
       split; [ apply add_def_wf; assumption | split; [ exact Hc | apply gds_sub_refl ] ].
+    - (* an inductive alias: its entry, checked where it is declared *)
+      intros; split; [ apply add_entry_wf; assumption | split; [ assumption | apply gds_sub_refl ] ].
     - intros; split; [| split ]; auto using gds_sub_refl.
     - intros; split; [| split ]; auto using gds_sub_refl.
     - intros; split; [| split ]; auto using gds_sub_refl.
@@ -1173,6 +1220,7 @@ Section Runs.
     - econstructor; eauto.
     - eapply rc_ind; eassumption.
     - eapply rc_builtin; eassumption.
+    - eapply rc_ind_alias; eassumption.
     - apply rc_eval_check; assumption.
     - eapply rc_eval_infer; eassumption.
     - constructor.

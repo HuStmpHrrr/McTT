@@ -165,9 +165,8 @@ with ne_code (m : ne) (t : ltree) : ltree :=
   | ne_app m' N => lt_node 2 (ne_code m' (nf_code N lt_nil)) t
   | ne_natrec A MZ MS m' => lt_node 3 (nf_code A (nf_code MZ (nf_code MS (ne_code m' lt_nil)))) t
   | ne_exfalso A m' => lt_node 4 (nf_code A (ne_code m' lt_nil)) t
-  | ne_elim p nm A Bs m' =>
-      lt_node 5 (lt_node nm (nf_code A (nbrs_code Bs (ne_code m' lt_nil)))
-                   (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))) t
+  | ne_elim nm A Bs m' =>
+      lt_node 5 (lt_node nm (nf_code A (nbrs_code Bs (ne_code m' lt_nil))) lt_nil) t
   end
 with la_code (xs : lvl_atoms) (t : ltree) : ltree :=
   match xs with

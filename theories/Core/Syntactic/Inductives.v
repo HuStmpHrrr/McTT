@@ -350,21 +350,20 @@ Definition brs_wk (Bs : list (string * nat * exp)) (φ : wk) : list (string * na
 
 (** The recursive result of an argument [M] of shape [t], as an
     elimination: under the shape's domains, moved by [σ], the eliminator at
-    [M] applied to them.  Its head names the type by its own module,
-    [qname_mod p], which is closed. *)
-Fixpoint ptyp_ih (p : qname) (nm : nat) (A : exp) (Bs : list (string * nat * exp)) (σ : sub) (M : exp) (t : ptyp) : exp :=
+    [M] applied to them. *)
+Fixpoint ptyp_ih (nm : nat) (A : exp) (Bs : list (string * nat * exp)) (σ : sub) (M : exp) (t : ptyp) : exp :=
   match t with
-  | pt_pi B t => a_fn B[σ] (ptyp_ih p nm A[wk_qn nm wk_shift]ʷ (brs_wk Bs wk_shift) (sb_q σ) (a_app M[wk_shift]ʷ (a_var 0)) t)
-  | _ => a_elim (qname_mod p) nm A Bs M
+  | pt_pi B t => a_fn B[σ] (ptyp_ih nm A[wk_qn nm wk_shift]ʷ (brs_wk Bs wk_shift) (sb_q σ) (a_app M[wk_shift]ʷ (a_var 0)) t)
+  | _ => a_elim nm A Bs M
   end.
 
 (** The recursive results of the arguments [As] of a constructor, as
     eliminations; [σ] instantiates the parameters and the non-recursive
     arguments before, which the shapes' domains are over. *)
-Fixpoint elim_ihs (p : qname) (nm : nat) (A : exp) (Bs : list (string * nat * exp)) (σ : sub) (gs : list carg) (As : list exp) : list exp :=
+Fixpoint elim_ihs (nm : nat) (A : exp) (Bs : list (string * nat * exp)) (σ : sub) (gs : list carg) (As : list exp) : list exp :=
   match gs, As with
-  | ca_arg _ :: gs', N :: As' => elim_ihs p nm A Bs (σ ,, N) gs' As'
-  | ca_rec t :: gs', M :: As' => ptyp_ih p nm A Bs σ M t :: elim_ihs p nm A Bs σ gs' As'
+  | ca_arg _ :: gs', N :: As' => elim_ihs nm A Bs (σ ,, N) gs' As'
+  | ca_rec t :: gs', M :: As' => ptyp_ih nm A Bs σ M t :: elim_ihs nm A Bs σ gs' As'
   | _, _ => nil
   end.
 
@@ -399,7 +398,7 @@ Fixpoint exp_mvc (n : nat) (M : exp) : Prop :=
       exp_mvc (S n) A /\ exp_mvc n MZ /\ exp_mvc (S (S n)) MS /\ exp_mvc n M
   | a_exfalso A M => exp_mvc (S n) A /\ exp_mvc n M
   | a_ind _ | a_con _ _ | a_nlit _ => True
-  | a_elim H nm A Bs M => modexp_mvc n H /\ exp_mvc (nm + n) A /\ all_brs (fun k B => exp_mvc (k + n) B) Bs /\ exp_mvc n M
+  | a_elim nm A Bs M => exp_mvc (nm + n) A /\ all_brs (fun k B => exp_mvc (k + n) B) Bs /\ exp_mvc n M
   | a_pi A B | a_fn A B => exp_mvc n A /\ exp_mvc (S n) B
   | a_app M N => exp_mvc n M /\ exp_mvc n N
   | a_var _ => True
@@ -445,6 +444,7 @@ with gentry_mvc (n : nat) (E : gentry) : Prop :=
   | ge_def _ _ A B => exp_mvc n A /\ match B with Some M => exp_mvc n M | None => True end
   | ge_mod _ U => gunit_mvc n U
   | ge_ind _ D Φ => gmod_mvc (ind_nu D + n) Φ
+  | ge_ind_alias _ _ _ _ => True
   end
 with centry_mvc (n : nat) (e : centry) : Prop :=
   match e with
@@ -529,10 +529,10 @@ Proof.
   lia.
 Qed.
 
-Lemma length_elim_ihs : forall p nm A Bs σ gs As,
-    List.length As = List.length gs -> List.length (elim_ihs p nm A Bs σ gs As) = cargs_nrec gs.
+Lemma length_elim_ihs : forall nm A Bs σ gs As,
+    List.length As = List.length gs -> List.length (elim_ihs nm A Bs σ gs As) = cargs_nrec gs.
 Proof.
-  intros p nm A Bs σ gs; revert σ.
+  intros nm A Bs σ gs; revert σ.
   induction gs as [| [] gs IH]; intros σ [| N As] Hl; cbn in *; try discriminate; try reflexivity.
   - apply IH; lia.
   - f_equal; apply IH; lia.

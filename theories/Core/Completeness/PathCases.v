@@ -70,7 +70,7 @@ Qed.
 Lemma mt_unit_ctx : forall Γ Γ' fp ch R,
     member_type Θm Ξm Γ (me_unit fp) ch R -> member_type Θm Ξm Γ' (me_unit fp) ch R.
 Proof.
-  intros * H; inversion H; subst; [ eapply mt_unit_def | eapply mt_unit_mod | eapply mt_unit_ind | eapply mt_unit_alias ]; eassumption.
+  intros * H; inversion H; subst; [ eapply mt_unit_def | eapply mt_unit_mod | eapply mt_unit_alias ]; eassumption.
 Qed.
 
 Lemma mt_chain_ctx : forall H Γ Γ' p ch R, mod_qname H = Some p ->

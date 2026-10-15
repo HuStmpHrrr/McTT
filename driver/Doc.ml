@@ -84,7 +84,10 @@ type link =
   | Site of site
   | Member of string list * S.modexp * string list
 
-type occ = { mutable link : link option; mutable anchor : string option; mutable kind : kind option }
+(* [bare]: a name that names nothing by itself, the constructor of an
+   eliminator's branch, which is the scrutinee's type's. *)
+type occ = { mutable link : link option; mutable anchor : string option; mutable kind : kind option;
+             mutable bare : bool }
 
 exception Misaligned of string
 
@@ -252,14 +255,13 @@ let rec term st env (o : C.obj) : unit =
       let env' = fst (params st env ps) in
       let m = mdef st env' md in
       term st (push x { v with v_mod = m } env) b
-  (* An eliminator: its type, the names of its motive, then each branch's
-     constructor, a member of the type, and its names. *)
-  | C.Coq_elim (h, m, xs, a, bs) ->
-      let t = modv st env h in
+  (* An eliminator: the names of its motive, then each branch's
+     constructor, which names no global here, and its names. *)
+  | C.Coq_elim (m, xs, a, bs) ->
       term st env m;
       let binds env ys = List.fold_left (fun env y -> let v = bind st y in push y v env) env ys in
       term st (binds env xs) a;
-      List.iter (fun ((c, ys), b) -> ignore (select st t c); term st (binds env ys) b) bs
+      List.iter (fun ((c, ys), b) -> st.occ.(next st c).bare <- true; term st (binds env ys) b) bs
 
 (* Module position: [Elaborator.elab_mod]. *)
 and modv st env (o : C.obj) : mden =
@@ -382,6 +384,12 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
            Option.iter (Hashtbl.replace st.items (fp, ch @ [ d ])) l) (items st m its)
    | C.Coq_c_eval (e, t) -> st.evals <- (e, t) :: st.evals; term st env e; Option.iter (term st env) t
    | C.Coq_c_error e -> raise (Misaligned ("rejected by the parser: " ^ e))
+   (* An inductive alias: its name, a module, its parameters, then the
+      type it names, as a module alias's target. *)
+   | C.Coq_c_ind_alias (_, x, ps, e) ->
+       ignore (decl x Mod);
+       let env', _ = params st env ps in
+       ignore (modv st env' e)
    (* A builtin binding: its kind, which declares nothing and links where
       the type it binds does, then the type. *)
    | C.Coq_c_builtin (k, x) ->
@@ -494,7 +502,7 @@ let walk (file : string list) (src : string) (items : (string list * string list
            | P.VAR _ -> Some i
            | P.REC _ when i > 0 && (match toks.(i - 1).t with P.DOT _ -> true | _ -> false) -> Some i
            | _ -> None) (Array.to_list toks))) in
-  let occ = Array.init (Array.length vars) (fun _ -> { link = None; anchor = None; kind = None }) in
+  let occ = Array.init (Array.length vars) (fun _ -> { link = None; anchor = None; kind = None; bare = false }) in
   let st = { unit = fp; toks; vars; occ; cur = 0; items; decls = ref []; notes = []; evals = [] } in
   let l = List.fold_left (lead st fp) [] leads in
   List.iter (fun x -> let i = next st x in declare st i "" Unit) fp;
@@ -601,7 +609,7 @@ let stats lib : stats =
                 dang := (u.u_path, x, s) :: !dang
           | None ->
               if o.anchor <> None then incr binders
-              else if checked then unres := (u.u_path, x, line) :: !unres) u.u_occ) lib.units;
+              else if checked && not o.bare then unres := (u.u_path, x, line) :: !unres) u.u_occ) lib.units;
   { names = !names; linked = !linked; binders = !binders; unresolved = List.rev !unres; dangling = List.rev !dang }
 
 (* A unit path as the printer spells it, joined by [›]. *)

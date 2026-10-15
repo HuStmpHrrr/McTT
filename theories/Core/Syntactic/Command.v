@@ -57,7 +57,10 @@ Inductive ccmd : Set :=
 | cc_ind : string -> bool -> raw_decl -> ccmd
 (** [builtin k := X]: the module [X], as written, is bound as the builtin
     [k]; the command resolves it to the inductive type it names. *)
-| cc_builtin : string -> modexp -> ccmd.
+| cc_builtin : string -> modexp -> ccmd
+(** [inductive x := X]: the inductive alias [x] of the inductive type the
+    module [X], as written, names. *)
+| cc_ind_alias : string -> bool -> ctx -> modexp -> ccmd.
 
 (** A unit: its leading imports, its parameters, its body. *)
 Definition cunit : Set := (list ccmd * ctx * list ccmd)%type.

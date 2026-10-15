@@ -80,7 +80,7 @@ Proof. intros * HH; exact (proj1 (modexp_eq_parts _ _ _ _ _ HH)). Qed.
 
 Definition syn_V (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (E : gentry) : Prop :=
   match E with
-  | ge_def _ _ _ _ | ge_ind _ _ _ => True
+  | ge_def _ _ _ _ | ge_ind _ _ _ | ge_ind_alias _ _ _ _ => True
   | ge_mod _ U => Θ2 ⍮ Ξ2 ⍮ ⋅ ⊢ᵘ U ≈ U
   end.
 
@@ -125,7 +125,7 @@ Proof. intros * HD _ He; split; [ exact I | exact (decl_typed_uparams _ _ _ (dec
 
 Lemma syn_good : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> GoodV syn_V syn_F syn_D Θ Ξ.
 Proof.
-  apply global_valid; [ intros; exact I | intros; exact I | exact syn_V_alias | exact syn_F_nil | exact syn_V_ind ].
+  apply global_valid; [ intros; exact I | intros; exact I | exact syn_V_alias | intros; exact I | exact syn_F_nil | exact syn_V_ind ].
 Qed.
 
 Theorem gc_body_tele_wf : forall Θ Ξ, ⊢g Θ ⍮ Ξ ->
@@ -150,7 +150,7 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] H; cbn in H |- *; try contradiction.
   - auto.
   - destruct H as (HΦ & <- & HE); destruct (IH _ HΦ) as (H1 & H2 & H3).
-    destruct E as [b pv A [M |] | pm U | ? ? ?], E' as [b' pv' A' [M' |] | pm' U' | ? ? ?]; cbn in HE |- *; try contradiction;
+    destruct E as [b pv A [M |] | pm U | ? ? ? | ? ? ? ?], E' as [b' pv' A' [M' |] | pm' U' | ? ? ? | ? ? ? ?]; cbn in HE |- *; try contradiction;
       intuition congruence.
 Qed.
 
@@ -198,12 +198,13 @@ Lemma gm_submodule_prefix : forall Φ T x ip1 ip2 r,
 Proof.
   fix IH 1; intros [| Φ y E | Φ c] * H; cbn in H |- *; [ discriminate | | exact (IH _ _ _ _ _ _ H) ].
   destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ H) ].
-  destruct E as [? ? ? ? | ? [Δ [Φ' | E']] | ? D Φ']; [ discriminate | | | ].
+  destruct E as [? ? ? ? | ? [Δ [Φ' | E']] | ? D Φ' | ? Δa pa Nsa]; [ discriminate | | | | ].
   - destruct ip1 as [| z ip1]; [ eauto |].
     exact (IH _ _ _ _ _ _ H).
   - injection H as <-; eauto.
   - destruct ip1 as [| z ip1]; [ eauto |].
     exact (IH _ _ _ _ _ _ H).
+  - injection H as <-; eauto.
 Qed.
 
 Lemma gm_resolve_prefix : forall Φ T x ip1 ip2 E,
@@ -213,7 +214,7 @@ Proof.
   fix IH 1; intros [| Φ y E0 | Φ c] * H Hne; cbn in H |- *; [ discriminate | | exact (IH _ _ _ _ _ _ H Hne) ].
   destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ H Hne) ].
   destruct (ip1 ++ ip2) as [| w ip] eqn:E12; [ destruct ip1, ip2; try discriminate; contradiction |].
-  destruct E0 as [? ? ? ? | ? [Δ [Φ' | E']] | ? D Φ']; try discriminate;
+  destruct E0 as [? ? ? ? | ? [Δ [Φ' | E']] | ? D Φ' | ? Δa pa Nsa]; try discriminate;
     (destruct ip1 as [| z ip1]; [ eauto |];
      cbn in E12; injection E12 as -> E12; rewrite <- E12 in H;
      exact (IH _ _ _ _ _ _ H Hne)).
@@ -325,48 +326,41 @@ Corollary mt_path_inv : forall Θ Ξ Γ p ch R,
     member_type Θ Ξ Γ (qname_mod p) ch R -> member_type Θ Ξ Γ (me_unit (q_unit p)) (q_chain p ++ ch) R.
 Proof. intros *; apply me_mems_member_type_inv. Qed.
 
-(** ** Heads of Eliminators
+(** ** Applied Modules
 
-    A module resolving to the module of an inductive type names it by its
-    canonical path, the path of its entry ([ge_ind]); the path of
-    that module resolves to itself; and no applied module resolves to one. *)
-
-Lemma member_type_ind_canon : forall Θ Ξ,
-    (forall Γ H ch R, member_type Θ Ξ Γ H ch R ->
-       forall pq T, R = mr_ind pq T -> exists T' D, gc_module Θ Ξ pq = Some (mr_body T' (Some D))) /\
-    (forall Γ U ch R, unit_member_type Θ Ξ Γ U ch R ->
-       forall pq T, R = mr_ind pq T -> exists T' D, gc_module Θ Ξ pq = Some (mr_body T' (Some D))).
-Proof.
-  intros Θ Ξ; apply member_type_both_ind; intros; subst; try discriminate; eauto.
-  - match goal with Heq : mr_ind _ _ = mr_ind _ _ |- _ => injection Heq as <- <- end; eauto.
-  - match goal with Ha : mres_app ?R _ = Some (mr_ind _ _) |- _ =>
-      destruct R as [A | T0 | pq0 T0]; cbn in Ha;
-        [ destruct (pi_view A) as [[? ?] |]; discriminate | destruct (tele_inst T0 _); discriminate
-        | destruct (tele_inst T0 _); discriminate ] end.
-  - match goal with Heq : mres_gen _ ?R = mr_ind _ _ |- _ => destruct R; cbn in Heq; try discriminate; injection Heq as <- _ end; eauto.
-  - match goal with Heq : mres_gen _ ?R = mr_ind _ _ |- _ => destruct R; cbn in Heq; try discriminate; injection Heq as <- _ end; eauto.
-Qed.
-
-Lemma member_type_ind_noapp : forall Θ Ξ Γ H N ch pq T, ~ member_type Θ Ξ Γ (me_app H N) ch (mr_ind pq T).
-Proof.
-  intros * Hm; inversion Hm; subst.
-  match goal with Ha : mres_app ?R _ = Some (mr_ind _ _) |- _ =>
-    destruct R as [A | T0 | pq0 T0]; cbn in Ha;
-      [ destruct (pi_view A) as [[? ?] |]; discriminate | destruct (tele_inst T0 _); discriminate
-      | destruct (tele_inst T0 _); discriminate ] end.
-Qed.
-
-Lemma path_ind_self : forall Θ Ξ Γ p T0 D pq T,
-    gc_module Θ Ξ p = Some (mr_body T0 (Some D)) -> member_type Θ Ξ Γ (qname_mod p) nil (mr_ind pq T) -> pq = p.
-Proof.
-  intros * Hp Hm; apply mt_path_inv in Hm; rewrite app_nil_r in Hm; inversion Hm; subst; destruct p as [fp ch]; cbn in *;
-    [ reflexivity | congruence ].
-Qed.
+    A module applied to arguments splits one way into a module that is no
+    application and the arguments. *)
 
 Definition me_noapp (H : modexp) : Prop := match H with me_app _ _ => False | _ => True end.
 
 Lemma me_apps_snoc : forall Ns H N, me_apps H (Ns ++ N :: nil) = me_app (me_apps H Ns) N.
 Proof. induction Ns as [| N' Ns IH]; intros; cbn; [ reflexivity | apply IH ]. Qed.
+
+(** The head of an inductive alias splits one way: its path, then the
+    arguments for the target's telescope, then the rest. *)
+Lemma mod_qname_noapp : forall H p, mod_qname H = Some p -> me_noapp H.
+Proof. intros [] ? Hq; cbn in *; auto; discriminate. Qed.
+
+Lemma app_split_length : forall (Ms Ks Ms' Ks' : list exp),
+    Ms ++ Ks = Ms' ++ Ks' -> List.length Ms = List.length Ms' -> Ms = Ms' /\ Ks = Ks'.
+Proof.
+  induction Ms as [| M Ms IH]; intros * HL Hl; destruct Ms' as [| M' Ms']; cbn in *; try discriminate; [ auto |].
+  injection HL as -> HL; injection Hl as Hl; destruct (IH _ _ _ HL Hl) as [-> ->]; auto.
+Qed.
+
+(** A module split into the module it applies and the arguments. *)
+Fixpoint me_unapps (H : modexp) : (modexp * list exp)%type :=
+  match H with
+  | me_app H' N => let (H0, Ns) := me_unapps H' in (H0, Ns ++ N :: nil)
+  | _ => (H, nil)
+  end.
+
+Lemma me_unapps_spec : forall H, H = me_apps (fst (me_unapps H)) (snd (me_unapps H)) /\ me_noapp (fst (me_unapps H)).
+Proof.
+  induction H as [| | | H IH N |]; cbn; try (split; [ reflexivity | exact I ]).
+  destruct (me_unapps H) as [H0 Ns]; cbn in *; destruct IH as [-> Hn].
+  rewrite me_apps_snoc; split; [ reflexivity | exact Hn ].
+Qed.
 
 Lemma me_apps_inj : forall Ns Ns' H H', me_noapp H -> me_noapp H' -> me_apps H Ns = me_apps H' Ns' -> H = H' /\ Ns = Ns'.
 Proof.
@@ -377,12 +371,6 @@ Proof.
   - subst H'; contradiction.
   - injection Heq as Heq <-; destruct (IH _ _ _ HH HH' Heq) as [-> ->]; split; reflexivity.
 Qed.
-
-Lemma qname_mod_noapp : forall p, me_noapp (qname_mod p).
-Proof. intros [fp ch]; unfold qname_mod; cbn; induction ch as [| y ch IH] using rev_ind; [ exact I | rewrite me_mems_app; exact I ]. Qed.
-
-Lemma member_type_ind_noapp' : forall Θ Ξ Γ H pq T, member_type Θ Ξ Γ H nil (mr_ind pq T) -> me_noapp H.
-Proof. intros * Hm; destruct H; cbn; auto; exact (member_type_ind_noapp _ _ _ _ _ _ _ _ Hm). Qed.
 
 (** A term member of a chain from a unit that resolves to a global has the
     global's type. *)
@@ -408,6 +396,22 @@ Proof.
   change (qname_app mp (x :: nil)) with (q_abs (q_unit mp) (q_chain mp ++ x :: nil)) in Hl.
   destruct (ind_lookup_not_def _ _ _ _ Hl) as [Hr Ha].
   inversion Hm; subst; try congruence.
+Qed.
+
+(** Nor is an inductive alias a term member: as a module, it is an alias,
+    which names a term only past it. *)
+Lemma mt_term_not_ind_alias : forall Θ Ξ Γ H mp x A v,
+    mod_qname H = Some mp -> member_type Θ Ξ Γ H (x :: nil) (mr_term A) ->
+    ind_alias_lookup Θ Ξ (qname_app mp (x :: nil)) = Some v -> False.
+Proof.
+  intros * Hp Hm Hl; destruct v as [[Δ p] Ns].
+  rewrite (mod_qname_inv _ _ Hp) in Hm; apply mt_path_inv in Hm.
+  change (qname_app mp (x :: nil)) with (q_abs (q_unit mp) (q_chain mp ++ x :: nil)) in Hl.
+  pose proof (ind_alias_lookup_module _ _ _ _ _ _ Hl) as Hg.
+  pose proof (gc_module_resolve _ _ _ _ Hg) as Hr.
+  inversion Hm; subst; try congruence.
+  match goal with Hx : gc_module _ _ _ = Some (mr_alias _ _) |- _ => rewrite Hg in Hx; injection Hx as _ <- end.
+  match goal with Hk : mres_kind (mr_term _) = mk_term -> _ |- _ => exact (Hk eq_refl eq_refl) end.
 Qed.
 
 Lemma me_mems_member_type : forall Θ Ξ Γ pre H ch R,

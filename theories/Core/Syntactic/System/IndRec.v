@@ -347,7 +347,7 @@ Section RecTyped.
       context at the module's uniform parameters. *)
   Lemma rec_elim_typed :
       Θ ⍮ Ξ ⍮ elim_mctx p D (rec_uvars D K) ++ EK ++ Lm
-        ⊢ a_elim (qname_mod p) (S nn) (rec_motive D (K + S nn)) (rec_brs D K 0 (ind_cons D)) (a_var 0) : rec_motive D K.
+        ⊢ a_elim (S nn) (rec_motive D (K + S nn)) (rec_brs D K 0 (ind_cons D)) (a_var 0) : rec_motive D K.
   Proof.
     destruct (motive_at _ EK_wf) as [HM2 HA2]; rewrite length_EK in HM2, HA2.
     set (E2 := elim_mctx p D (rec_uvars D K) ++ EK).
@@ -371,10 +371,7 @@ Section RecTyped.
     assert (HA3' : forall i, Θ ⍮ Ξ ⍮ elim_mctx p D (List.firstn nu Ps) ++ elim_mctx p D Us ++ EK ++ Lm
                                ⊢ rec_motive D (S nn + K) : Typeω@i)
       by (unfold Ps; rewrite (firstn_app_len Us' (vars_from 1 nn) nu HUl'); exact HA3).
-    assert (HE2' : ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D Us ++ EK ++ Lm) by (unfold E2 in HE2; rewrite <- List.app_assoc in HE2; exact HE2).
-    destruct (elim_head_canon _ _ _ _ _ HE2' Hl) as (HT0t & HT0e).
-    eapply wf_elim with (i := 0) (nh := 0) (Ns := nil);
-      [ exact Hl | | reflexivity | reflexivity | exact HT0t | exact HT0e | lia | | | reflexivity | apply HA3' | | | | | ].
+    eapply wf_elim with (i := 0); [ exact Hl | | | | reflexivity | apply HA3' | | | | | ].
     - (* the number of parameters *)
       unfold Ps; rewrite List.length_app, HUl', HNl; unfold ind_nn, ind_np in *; lia.
     - (* the parameters, at their types: the uniform ones the module's,

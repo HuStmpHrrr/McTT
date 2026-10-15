@@ -851,6 +851,14 @@ Proof.
     exists (ind_ty D); split; [ apply decl_closed_ind_ty; exact Hc |].
     split; [ eapply wf_subtyp_refl'; mauto 3 |].
     intros Γ' HΓ'; eapply wf_mem_glob_ind; [ exact HΓ' | exact H1 | exact H2 ].
+  - (** An inductive alias: its type is closed. *)
+    match goal with Hl : ind_alias_lookup _ _ _ = Some _, Hd : ind_lookup _ _ _ = Some _, HΓ : wf_ctx _ _ _ |- _ =>
+      destruct (wf_ind_alias _ _ _ _ _ _ _ HΓ Hl) as (D' & HD' & _ & [j Hj] & _);
+      rewrite Hd in HD'; injection HD' as <-;
+      pose proof (proj1 (wf_ind_alias_closed _ _ _ _ _ _ _ _ HΓ Hl Hd)) as Hc end.
+    eexists; split; [ exact Hc |].
+    split; [ eapply wf_subtyp_refl'; apply wf_exp_eq_refl; exact Hj |].
+    intros Γ' HΓ'; eapply wf_mem_glob_ind_alias; [ exact HΓ' | exact H1 | exact H2 | exact H3 ].
   - match goal with IH : _ = _ -> _ = _ -> forall _ _ _, _ -> _ -> _ |- _ =>
       destruct (IH eq_refl eq_refl _ _ _ Hpm eq_refl) as (T & HT & HTs & HT') end.
     exists T; split; [ exact HT | split; [ etransitivity; eassumption | exact HT' ] ].
@@ -1401,13 +1409,10 @@ Proof.
         long ones' equals, at which the motive and the branches are typed
         long ([wf_elim_params_conv]) and so short, by the induction
         hypotheses. *)
-    intros pq nm A' IHA Bs IHB u IHu Δ C Hass HΓf HΓs HW; cbn [ne_to_exp exp_wk] in HW.
+    intros nm A' IHA Bs IHB u IHu Δ C Hass HΓf HΓs HW; cbn [ne_to_exp exp_wk] in HW.
     set (φ := wk_qn (length Δ) ↑) in *.
     set (Lf := (tele_wk Δ ↑ ++ Γ ▹ A)%list) in *.
-    rewrite (mod_qname_wk _ _ _ (qname_mod_qname pq)) in HW.
-    destruct (wf_elim_inversion HW)
-      as (p & D & PsL & i & NsL & nhL & Hl & HPl & HhL & HNlL & HT0tL & HT0eL & HnhL
-          & HPt & HuL & Hnm & HAL & _ & HBn & _ & HBa & HBtL & HsC).
+    destruct (wf_elim_inversion HW) as (p & D & PsL & i & Hl & HPl & HPt & HuL & Hnm & HAL & _ & HBn & _ & HBa & HBtL & HsC).
     subst nm.
     destruct (decl_of_lookup _ _ _ _ _ HΓs Hl) as [HD Hc].
     pose proof (decl_closed_nu D Hc) as Hle.
@@ -1474,25 +1479,16 @@ Proof.
       - rewrite HLb, List.length_app, length_elim_bctx, wk_qn_plus.
         replace (cargs_nrec gs + List.length gs + ind_nn D) with (ind_nn D + List.length gs + cargs_nrec gs) by lia.
         rewrite elim_bty_wk, <- Hn; exact HBL. }
-    (** The eliminator, short, at its canonical head. *)
-    destruct (elim_head_canon _ _ _ _ _ HΓs Hl) as [HT0t HT0e].
-    assert (Hel : (Δ ++ Γ)%list ⊢ a_elim (qname_mod p) (S (ind_nn D)) A' (nbrs_to_brs Bs) u
+    (** The eliminator, short. *)
+    assert (Hel : (Δ ++ Γ)%list ⊢ a_elim (S (ind_nn D)) A' (nbrs_to_brs Bs) u
                     : (A' : exp)[sb_of_list Id (List.skipn (ind_nu D) PsS ++ (u : exp) :: nil)]).
-    { eapply wf_elim with (Ns := nil) (nh := 0);
-        [ exact Hl | exact HSl | reflexivity | reflexivity | exact HT0t | exact HT0e | lia | exact HSt | exact HuS
-        | reflexivity | exact HAS | exact (ctx_ext_refl _ _ _ _ (elim_mctx_ass _ _ _ Hc) HMs) | | | | exact HBS ].
+    { eapply wf_elim; [ exact Hl | exact HSl | exact HSt | exact HuS | reflexivity | exact HAS
+                      | exact (ctx_ext_refl _ _ _ _ (elim_mctx_ass _ _ _ Hc) HMs) | | | | exact HBS ].
       - unfold brs_names in *; rewrite List.map_map in HBn; exact HBn.
       - intros c gs Hcon; eapply ctx_ext_refl; [ apply elim_bctx_ass, Hc | eapply elim_bctx_wf; eassumption ].
       - intros c gs n B Hcon Hin; exact (HBa _ _ _ _ Hcon (Hin_map _ _ _ Hin)). }
     destruct (presup_exp_typ Hel) as [i' Hi'].
-    (** And at its own head, the path it is written with. *)
-    assert (Hel' : (Δ ++ Γ)%list ⊢ a_elim (qname_mod pq) (S (ind_nn D)) A' (nbrs_to_brs Bs) u
-                    : (A' : exp)[sb_of_list Id (List.skipn (ind_nu D) PsS ++ (u : exp) :: nil)]).
-    { destruct (elim_head_rel_path _ _ _ _ _ _ HhL) as [-> [-> | (T & HHq & Hmq)]]; [ exact Hel |].
-      eapply wf_elim_head with (Ns := nil) (H0 := qname_mod pq);
-        [ eapply chain_wf_any_ctx; [ apply qname_mod_qname | exact HHq | exact HΓs ]
-        | eapply mt_chain_ctx; [ apply qname_mod_qname | exact Hmq ] | reflexivity | exact Hi' | exact Hel ]. }
-    eexists _, i'; split; [ exact Hel' | split; [ exact Hi' |] ].
+    eexists _, i'; split; [ exact Hel | split; [ exact Hi' |] ].
     rewrite (wk_elim_type D PsS A' u (S (ind_nn D)) φ HSl eq_refl).
     etransitivity; [| exact HsC ].
     eapply wf_subtyp_refl'; symmetry; exact HtyL.

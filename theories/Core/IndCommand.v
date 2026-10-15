@@ -262,7 +262,7 @@ Theorem rc_ind_con_types : forall load_path read to_core ch Θ Ξ x pv R Θ' Ξ'
         ≈ user_con_ty (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) (List.length (rd_params R)) args
         : Typeω@i.
 Proof.
-  intros * Hr HΞ c args Hin; inversion Hr as [| | | | | | | ? ? ? ? ? ? cs Hcls Hfr HE | | |]; subst.
+  intros * Hr HΞ c args Hin; inversion Hr as [| | | | | | | ? ? ? ? ? ? cs Hcls Hfr HE | | | |]; subst.
   destruct (Forall2_in_left _ _ _ _ Hcls Hin) as ([c' gs] & Hin' & Heq & Hc); cbn [fst snd] in Heq, Hc; subst c'.
   set (D := gs_ind Ξ (rd_filed R cs)) in *; set (p := ind_qname Ξ x) in *.
   pose proof (add_ind_wf _ _ _ _ _ _ HΞ HE Hfr) as HΞf.
