@@ -1,0 +1,96 @@
+(* Binary trees, after Agda's [Data.Tree.Binary]: [Tree u N L] has leaves
+   [leaf x] labelled by [x : L] and nodes [node l m r] labelled by
+   [m : N], with two subtrees, at every level [u].
+
+   The operations over fixed [N] and [L] are in the module [Ops u N L]:
+   [map] on both labels and on one ([mapNodes], [mapLeaves]), the counts
+   [nodes] (Agda's [#nodes]) and [leaves] ([#leaves]), [foldr], the
+   left-to-right lists [toListInfix] of node labels and [toListLeaves] of
+   leaf labels, and the mirror image [mirror].  The laws are in
+   [Prelude›Data›Tree›Binary›Properties]. *)
+module Prelude›Data›Tree›Binary where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Data›List use (List)
+open Prelude›Data›List.Ops as LO
+
+inductive Tree (u : Level) (N : Type@{u}) (L : Type@{u}) : Type@{u} where
+| leaf (x : L)
+| node (l : Tree u N L) (m : N) (r : Tree u N L)
+end
+
+open Tree export (leaf; node)
+
+module Ops (u : Level) (N : Type@{u}) (L : Type@{u}) where
+
+inductive T ≔ Tree u N L
+
+def map (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M)
+    (g : ∀ (x : L) → K) (t : T) : Tree u M K ≔
+  elim t return z . Tree u M K
+  | leaf x ⇒ leaf u M K (g x)
+  | node l m r, hl hr ⇒ node u M K hl (f m) hr
+  end
+end
+
+def mapNodes (M : Type@{u}) (f : ∀ (m : N) → M) (t : T) : Tree u M L ≔
+  map M L f (λ (x : L) → x) t
+end
+
+def mapLeaves (K : Type@{u}) (g : ∀ (x : L) → K) (t : T) : Tree u N K ≔
+  map N K (λ (m : N) → m) g t
+end
+
+(* The number of nodes: [nodes (node l m r)] is
+   [plus (nodes l) (succ (nodes r))], as in Agda. *)
+def nodes (t : T) : ℕ ≔
+  elim t return z . ℕ
+  | leaf x ⇒ 0
+  | node l m r, hl hr ⇒ plus hl (succ hr)
+  end
+end
+
+def leaves (t : T) : ℕ ≔
+  elim t return z . ℕ
+  | leaf x ⇒ 1
+  | node l m r, hl hr ⇒ plus hl hr
+  end
+end
+
+def foldr (A : Type@{u}) (f : ∀ (a : A) (m : N) (b : A) → A)
+    (g : ∀ (x : L) → A) (t : T) : A ≔
+  elim t return z . A
+  | leaf x ⇒ g x
+  | node l m r, hl hr ⇒ f hl m hr
+  end
+end
+
+(* The node labels, left subtree first, then the node, then the right
+   subtree. *)
+def toListInfix (t : T) : List u N ≔
+  elim t return z . List u N
+  | leaf x ⇒ List.nil u N
+  | node l m r, hl hr ⇒ LO.append u N hl (List.cons u N m hr)
+  end
+end
+
+(* The leaf labels, left to right. *)
+def toListLeaves (t : T) : List u L ≔
+  elim t return z . List u L
+  | leaf x ⇒ List.cons u L x (List.nil u L)
+  | node l m r, hl hr ⇒ LO.append u L hl hr
+  end
+end
+
+(* The mirror image: the subtrees of every node exchanged. *)
+def mirror (t : T) : T ≔
+  elim t return z . T
+  | leaf x ⇒ T.leaf x
+  | node l m r, hl hr ⇒ T.node hr m hl
+  end
+end
+
+end
+
+end

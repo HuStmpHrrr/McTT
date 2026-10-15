@@ -1,0 +1,261 @@
+(* Laws of [Prelude›Data›Tree›Binary] over node labels [N] and leaf labels
+   [L], after Agda's [Data.Tree.Binary.Properties]: [map] keeps the counts
+   ([#nodes-map], [#leaves-map]) and is a functor ([map-id],
+   [map-compose], [map-cong]); beyond Agda, a tree has one more leaf than
+   nodes, the lists of labels have the counts as lengths, and [mirror] is
+   an involution that keeps the counts and reverses [toListInfix].
+
+   Equalities of trees and lists are the Leibniz equality of
+   [Prelude›Logic›Leibniz], equalities of counts [Prelude›Arith›Equality]. *)
+module Prelude›Data›Tree›Binary›Properties (u : Level) (N : Type@{u})
+    (L : Type@{u}) where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Logic›Leibniz u use (Id; idRefl; idSym; idTrans; idCong;
+  idCongTwo)
+import Prelude›Arith›Equality use (Eq; refl; sym; trans)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusSucc)
+open Prelude›Arith›Plus.Algebra use (plusComm; plusCongBoth)
+import Prelude›Data›List use (List)
+open Prelude›Data›List.Ops as LO
+import Prelude›Data›List›Properties.Append u N as AppN
+import Prelude›Data›List›Properties.Append u L as AppL
+import Prelude›Data›List›Properties.Reverse u N as RevN
+import Prelude›Data›Tree›Binary use (Tree)
+open Prelude›Data›Tree›Binary.Ops as TO
+
+inductive T ≔ Tree u N L
+
+module Op ≔ TO u N L
+
+(* [map]: the counts and the functor laws. *)
+module Maps where
+
+theorem nodesMap : ∀ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M)
+    (g : ∀ (x : L) → K) (t : T) → Eq (TO.nodes u M K (Op.map M K f g t)) (Op.nodes t) ≔
+  λ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M) (g : ∀ (x : L) → K)
+    (t : T) →
+    elim t return z . Eq (TO.nodes u M K (Op.map M K f g z)) (Op.nodes z)
+    | leaf x ⇒ ⋆
+    | node l m r, hl hr ⇒
+        plusCongBoth (TO.nodes u M K (Op.map M K f g l)) (succ (TO.nodes u M K (Op.map M K f g r)))
+          (Op.nodes l) (succ (Op.nodes r)) hl hr
+    end
+end
+
+theorem leavesMap : ∀ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M)
+    (g : ∀ (x : L) → K) (t : T) →
+    Eq (TO.leaves u M K (Op.map M K f g t)) (Op.leaves t) ≔
+  λ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M) (g : ∀ (x : L) → K)
+    (t : T) →
+    elim t return z . Eq (TO.leaves u M K (Op.map M K f g z)) (Op.leaves z)
+    | leaf x ⇒ ⋆
+    | node l m r, hl hr ⇒
+        plusCongBoth (TO.leaves u M K (Op.map M K f g l)) (TO.leaves u M K (Op.map M K f g r))
+          (Op.leaves l) (Op.leaves r) hl hr
+    end
+end
+
+theorem mapId : ∀ (t : T) →
+    Id T (Op.map N L (λ (m : N) → m) (λ (x : L) → x) t) t ≔
+  λ (t : T) →
+    elim t return z . Id T (Op.map N L (λ (m : N) → m) (λ (x : L) → x) z) z
+    | leaf x ⇒ idRefl T (T.leaf x)
+    | node l m r, hl hr ⇒
+        idCongTwo T T T (λ (a : T) (b : T) → T.node a m b)
+          (Op.map N L (λ (k : N) → k) (λ (x : L) → x) l) l
+          (Op.map N L (λ (k : N) → k) (λ (x : L) → x) r) r hl hr
+    end
+end
+
+(* Agda's [map-compose]. *)
+theorem mapCompose : ∀ (M : Type@{u}) (K : Type@{u}) (P : Type@{u})
+    (Q : Type@{u}) (f : ∀ (m : N) → M) (g : ∀ (x : L) → K)
+    (h : ∀ (m : M) → P) (k : ∀ (x : K) → Q) (t : T) →
+    Id (Tree u P Q) (TO.map u M K P Q h k (Op.map M K f g t))
+      (Op.map P Q (λ (m : N) → h (f m)) (λ (x : L) → k (g x)) t) ≔
+  λ (M : Type@{u}) (K : Type@{u}) (P : Type@{u}) (Q : Type@{u})
+    (f : ∀ (m : N) → M) (g : ∀ (x : L) → K) (h : ∀ (m : M) → P)
+    (k : ∀ (x : K) → Q) (t : T) →
+    elim t return z . Id (Tree u P Q) (TO.map u M K P Q h k (Op.map M K f g z))
+                        (Op.map P Q (λ (m : N) → h (f m)) (λ (x : L) → k (g x)) z)
+    | leaf x ⇒ idRefl (Tree u P Q) (Tree.leaf u P Q (k (g x)))
+    | node l m r, hl hr ⇒
+        idCongTwo (Tree u P Q) (Tree u P Q) (Tree u P Q)
+          (λ (a : Tree u P Q) (b : Tree u P Q) → Tree.node u P Q a (h (f m)) b)
+          (TO.map u M K P Q h k (Op.map M K f g l))
+          (Op.map P Q (λ (n : N) → h (f n)) (λ (x : L) → k (g x)) l)
+          (TO.map u M K P Q h k (Op.map M K f g r))
+          (Op.map P Q (λ (n : N) → h (f n)) (λ (x : L) → k (g x)) r) hl hr
+    end
+end
+
+(* Agda's [map-cong]: pointwise equal functions have equal maps.  In the
+   step, the node label is rewritten by [hf m], then the subtrees by the
+   hypotheses. *)
+theorem mapCong : ∀ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M)
+    (f2 : ∀ (m : N) → M) (g : ∀ (x : L) → K) (g2 : ∀ (x : L) → K)
+    (hf : ∀ (m : N) → Id M (f m) (f2 m)) (hg : ∀ (x : L) → Id K (g x) (g2 x))
+    (t : T) → Id (Tree u M K) (Op.map M K f g t) (Op.map M K f2 g2 t) ≔
+  λ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M) (f2 : ∀ (m : N) → M)
+    (g : ∀ (x : L) → K) (g2 : ∀ (x : L) → K)
+    (hf : ∀ (m : N) → Id M (f m) (f2 m)) (hg : ∀ (x : L) → Id K (g x) (g2 x))
+    (t : T) →
+    elim t return z . Id (Tree u M K) (Op.map M K f g z) (Op.map M K f2 g2 z)
+    | leaf x ⇒ idCong K (Tree u M K) (Tree.leaf u M K) (g x) (g2 x) (hg x)
+    | node l m r, hl hr ⇒
+        idTrans (Tree u M K)
+          (Tree.node u M K (Op.map M K f g l) (f m) (Op.map M K f g r))
+          (Tree.node u M K (Op.map M K f g l) (f2 m) (Op.map M K f g r))
+          (Tree.node u M K (Op.map M K f2 g2 l) (f2 m) (Op.map M K f2 g2 r))
+          (idCong M (Tree u M K)
+             (λ (c : M) → Tree.node u M K (Op.map M K f g l) c (Op.map M K f g r))
+             (f m) (f2 m) (hf m))
+          (idCongTwo (Tree u M K) (Tree u M K) (Tree u M K)
+             (λ (a : Tree u M K) (b : Tree u M K) → Tree.node u M K a (f2 m) b)
+             (Op.map M K f g l) (Op.map M K f2 g2 l)
+             (Op.map M K f g r) (Op.map M K f2 g2 r) hl hr)
+    end
+end
+
+end
+
+(* The counts and the lists of labels. *)
+module Counts where
+
+(* A tree has one more leaf than nodes.  In the step, [plus (succ a)
+   (succ b)] is [succ (plus a (succ b))] by unfolding. *)
+theorem leavesNodes : ∀ (t : T) → Eq (Op.leaves t) (succ (Op.nodes t)) ≔
+  λ (t : T) →
+    elim t return z . Eq (Op.leaves z) (succ (Op.nodes z))
+    | leaf x ⇒ ⋆
+    | node l m r, hl hr ⇒
+        plusCongBoth (Op.leaves l) (Op.leaves r) (succ (Op.nodes l))
+          (succ (Op.nodes r)) hl hr
+    end
+end
+
+theorem lengthInfix : ∀ (t : T) → Eq (LO.length u N (Op.toListInfix t)) (Op.nodes t) ≔
+  λ (t : T) →
+    elim t return z . Eq (LO.length u N (Op.toListInfix z)) (Op.nodes z)
+    | leaf x ⇒ ⋆
+    | node l m r, hl hr ⇒
+        trans (LO.length u N (LO.append u N (Op.toListInfix l)
+                                (List.cons u N m (Op.toListInfix r))))
+          (plus (LO.length u N (Op.toListInfix l))
+             (succ (LO.length u N (Op.toListInfix r))))
+          (plus (Op.nodes l) (succ (Op.nodes r)))
+          (AppN.lengthAppend (Op.toListInfix l) (List.cons u N m (Op.toListInfix r)))
+          (plusCongBoth (LO.length u N (Op.toListInfix l)) (succ (LO.length u N (Op.toListInfix r)))
+             (Op.nodes l) (succ (Op.nodes r)) hl hr)
+    end
+end
+
+theorem lengthLeaves : ∀ (t : T) →
+    Eq (LO.length u L (Op.toListLeaves t)) (Op.leaves t) ≔
+  λ (t : T) →
+    elim t return z . Eq (LO.length u L (Op.toListLeaves z)) (Op.leaves z)
+    | leaf x ⇒ ⋆
+    | node l m r, hl hr ⇒
+        trans (LO.length u L (LO.append u L (Op.toListLeaves l) (Op.toListLeaves r)))
+          (plus (LO.length u L (Op.toListLeaves l)) (LO.length u L (Op.toListLeaves r)))
+          (plus (Op.leaves l) (Op.leaves r))
+          (AppL.lengthAppend (Op.toListLeaves l) (Op.toListLeaves r))
+          (plusCongBoth (LO.length u L (Op.toListLeaves l)) (LO.length u L (Op.toListLeaves r))
+             (Op.leaves l) (Op.leaves r) hl hr)
+    end
+end
+
+end
+
+(* [mirror]. *)
+module Mirror where
+
+theorem mirrorMirror : ∀ (t : T) → Id T (Op.mirror (Op.mirror t)) t ≔
+  λ (t : T) →
+    elim t return z . Id T (Op.mirror (Op.mirror z)) z
+    | leaf x ⇒ idRefl T (T.leaf x)
+    | node l m r, hl hr ⇒
+        idCongTwo T T T (λ (a : T) (b : T) → T.node a m b)
+          (Op.mirror (Op.mirror l)) l (Op.mirror (Op.mirror r)) r hl hr
+    end
+end
+
+theorem leavesMirror : ∀ (t : T) → Eq (Op.leaves (Op.mirror t)) (Op.leaves t) ≔
+  λ (t : T) →
+    elim t return z . Eq (Op.leaves (Op.mirror z)) (Op.leaves z)
+    | leaf x ⇒ ⋆
+    | node l m r, hl hr ⇒
+        trans (plus (Op.leaves (Op.mirror r)) (Op.leaves (Op.mirror l)))
+          (plus (Op.leaves r) (Op.leaves l))
+          (plus (Op.leaves l) (Op.leaves r))
+          (plusCongBoth (Op.leaves (Op.mirror r)) (Op.leaves (Op.mirror l))
+             (Op.leaves r) (Op.leaves l) hr hl)
+          (plusComm (Op.leaves r) (Op.leaves l))
+    end
+end
+
+(* In the step, both sides are [succ] of a sum of the counts of the
+   subtrees, in the two orders. *)
+theorem nodesMirror : ∀ (t : T) → Eq (Op.nodes (Op.mirror t)) (Op.nodes t) ≔
+  λ (t : T) →
+    elim t return z . Eq (Op.nodes (Op.mirror z)) (Op.nodes z)
+    | leaf x ⇒ ⋆
+    | node l m r, hl hr ⇒
+        let a : ℕ ≔ Op.nodes l; b : ℕ ≔ Op.nodes r in
+        trans (plus (Op.nodes (Op.mirror r)) (succ (Op.nodes (Op.mirror l))))
+          (plus b (succ a))
+          (plus a (succ b))
+          (plusCongBoth (Op.nodes (Op.mirror r)) (succ (Op.nodes (Op.mirror l)))
+             b (succ a) hr hl)
+          (trans (plus b (succ a)) (succ (plus b a)) (plus a (succ b))
+             (plusSucc b a)
+             (trans (succ (plus b a)) (succ (plus a b)) (plus a (succ b))
+                (plusComm b a)
+                (sym (plus a (succ b)) (succ (plus a b)) (plusSucc a b))))
+        end
+    end
+end
+
+(* The node labels of the mirror image are reversed.  In the step,
+   [reverse (append li (cons m ri))] is [append (reverse ri) (cons m
+   (reverse li))] by [reverseAppend] and [appendAssoc]. *)
+theorem infixMirror : ∀ (t : T) →
+    Id (List u N) (Op.toListInfix (Op.mirror t)) (LO.reverse u N (Op.toListInfix t)) ≔
+  λ (t : T) →
+    elim t return z . Id (List u N) (Op.toListInfix (Op.mirror z))
+                        (LO.reverse u N (Op.toListInfix z))
+    | leaf x ⇒ idRefl (List u N) (List.nil u N)
+    | node l m r, hl hr ⇒
+        let li : List u N ≔ Op.toListInfix l;
+            ri : List u N ≔ Op.toListInfix r;
+            one : List u N ≔ List.cons u N m (List.nil u N) in
+        idTrans (List u N)
+          (LO.append u N (Op.toListInfix (Op.mirror r))
+             (List.cons u N m (Op.toListInfix (Op.mirror l))))
+          (LO.append u N (LO.reverse u N ri) (List.cons u N m (LO.reverse u N li)))
+          (LO.reverse u N (LO.append u N li (List.cons u N m ri)))
+          (idCongTwo (List u N) (List u N) (List u N)
+             (λ (a : List u N) (b : List u N) → LO.append u N a (List.cons u N m b))
+             (Op.toListInfix (Op.mirror r)) (LO.reverse u N ri)
+             (Op.toListInfix (Op.mirror l)) (LO.reverse u N li) hr hl)
+          (idTrans (List u N)
+             (LO.append u N (LO.reverse u N ri) (LO.append u N one (LO.reverse u N li)))
+             (LO.append u N (LO.append u N (LO.reverse u N ri) one) (LO.reverse u N li))
+             (LO.reverse u N (LO.append u N li (List.cons u N m ri)))
+             (idSym (List u N)
+                (LO.append u N (LO.append u N (LO.reverse u N ri) one) (LO.reverse u N li))
+                (LO.append u N (LO.reverse u N ri) (LO.append u N one (LO.reverse u N li)))
+                (AppN.appendAssoc (LO.reverse u N ri) one (LO.reverse u N li)))
+             (idSym (List u N)
+                (LO.reverse u N (LO.append u N li (List.cons u N m ri)))
+                (LO.append u N (LO.reverse u N (List.cons u N m ri)) (LO.reverse u N li))
+                (RevN.reverseAppend li (List.cons u N m ri))))
+        end
+    end
+end
+
+end
+
+end
