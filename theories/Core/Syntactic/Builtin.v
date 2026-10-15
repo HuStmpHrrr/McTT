@@ -67,6 +67,14 @@ Definition nat_view (Θ : gdeps) (Ξ : gstack) (B : builtins) : option (qname * 
   | None => None
   end.
 
+(** A well-formed binding is read at its state. *)
+Lemma builtins_wf_view : forall Θ Ξ B p,
+    builtins_wf Θ Ξ B -> bt_nat B = Some p -> exists z s, nat_view Θ Ξ B = Some (p, z, s).
+Proof.
+  intros * Hb Hp; destruct (Hb _ Hp) as (D & z & s & Hl & Hs & _).
+  exists z, s; unfold nat_view; rewrite Hp, Hl, Hs; reflexivity.
+Qed.
+
 (** The numeral [n] as the chain of the constructors [z] and [s] of [p]. *)
 Fixpoint nat_chain (p : qname) (z s : string) (n : nat) : exp :=
   match n with

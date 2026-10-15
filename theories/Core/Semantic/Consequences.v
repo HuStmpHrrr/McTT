@@ -1531,26 +1531,25 @@ Corollary consistency_False_prog : forall prg B Θ U M,
     ~ (((prog_path prg, U) :: Θ) ⍮ nil ⍮ ⋅ ⊢ M : ⊥).
 Proof. intros * Hp; apply consistency_False_no_axioms; eapply prog_sem_no_axioms; [ exact Hload | exact Hp ]. Qed.
 
-(** A program's bound natural numbers: a closed term of the type bound as
-    the natural numbers at the end of a program computes, once its
-    definitions unfold, to the chain of constructors a numeral stands for
-    ([nat_chain]). *)
-Corollary canonical_form_of_bound_nat_prog : forall prg B Θ U M p z s,
+(** A program's bound natural numbers: the type a program binds as the
+    natural numbers is read at its end ([prog_sem_builtins_wf]), and a
+    closed term of it computes, once its definitions unfold, to the chain
+    of constructors a numeral stands for ([nat_chain]). *)
+Corollary canonical_form_of_bound_nat_prog : forall prg B Θ U M p,
     Mctt.Core.Syntactic.System.Command.prog_sem load_path read to_core prg B Θ U ->
     let Θ' := ((prog_path prg, U) :: Θ) in
-    nat_view Θ' nil B = Some (p, z, s) ->
+    bt_nat B = Some p ->
     Θ' ⍮ nil ⍮ ⋅ ⊢ M : a_ind p ->
-    exists V n, nbe (gds_unseal Θ') nil ⋅ M (a_ind p) V /\ nf_to_exp V = nat_chain p z s n.
+    exists z s V n, nat_view Θ' nil B = Some (p, z, s) /\
+      nbe (gds_unseal Θ') nil ⋅ M (a_ind p) V /\ nf_to_exp V = nat_chain p z s n.
 Proof.
-  intros * Hp Θ' Hv HM.
+  intros * Hp Θ' Hb HM.
   pose proof (prog_sem_no_axioms _ _ _ Hload _ _ _ _ Hp) as Hna.
-  unfold nat_view in Hv.
-  destruct (bt_nat B) as [p0 |]; [| discriminate ].
-  destruct (ind_lookup Θ' nil p0) as [D |] eqn:Hl; [| discriminate ].
-  destruct (nat_shape D) as [[z0 s0] |] eqn:Hs; [| discriminate ].
-  injection Hv as <- <- <-.
+  pose proof (Mctt.Core.Syntactic.System.Command.prog_sem_builtins_wf _ _ _ _ _ _ _ Hp) as Hw.
+  destruct (Hw _ Hb) as (D & z & s & Hl & Hs & _).
+  exists z, s.
   destruct (canonical_form_of_ind_nat_no_axioms _ _ _ _ _ _ _ Hna Hl Hs HM) as (_ & _ & _ & V & n & HV & _ & Hn & _).
-  eauto.
+  exists V, n; split; [ unfold nat_view, Θ'; rewrite Hb, Hl, Hs; reflexivity | split; assumption ].
 Qed.
 
 End Programs.

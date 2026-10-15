@@ -855,6 +855,74 @@ Proof.
   induction 1; [ auto | .. ]; destruct IHgens_run as [Ht Hl]; rewrite Ht, Hl; apply Hadd.
 Qed.
 
+(** ** Inductive Types Stay Where They Are Declared
+
+    An entry added to the innermost frame, and a closed module frame filed
+    as a member of the frame below it, keep every inductive type that could
+    be read before. *)
+
+Lemma ind_lookup_add : forall Θ Ξ x E p D,
+    ⊢g Θ ⍮ Ξ -> gs_fresh x Ξ -> ind_lookup Θ Ξ p = Some D -> ind_lookup Θ (gs_add x E Ξ) p = Some D.
+Proof.
+  intros * HΞ Hfr Hl.
+  destruct Ξ as [| [mq U] Ξ0]; [ contradiction |].
+  destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & (P & Ψ & -> & _) & _).
+  cbn in Hfr |- *.
+  eapply ind_lookup_gc_sub; [ apply gc_sub_grow; exact Hfr | exact Hl ].
+Qed.
+
+Lemma gens_run_ind_lookup : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> ⊢g Θ ⍮ Ξ ->
+    forall p D, ind_lookup Θ Ξ p = Some D -> ind_lookup Θ Ξ' p = Some D.
+Proof.
+  induction 1; intros HΞ p0 D0 Hl; [ exact Hl | .. ]; apply IHgens_run; try (apply ind_lookup_add; assumption).
+  - apply add_def_wf; assumption.
+  - apply (add_alias_wf _ _ _ _ nil); try assumption; [ constructor |].
+    constructor; exact (presup_modexp_eq_ctx H).
+  - apply add_entry_wf; assumption.
+Qed.
+
+(** A module frame, closed: what was read in it is read in the member it
+    becomes. *)
+Lemma ind_lookup_close : forall Θ Ξ x pv Δ Φ p D,
+    ⊢g Θ ⍮ Ξ -> gs_fresh x Ξ ->
+    ind_lookup Θ ((qname_in (gs_path Ξ) x, gu_body Δ Φ) :: Ξ) p = Some D ->
+    ind_lookup Θ (gs_add x (ge_body pv Δ Φ) Ξ) p = Some D.
+Proof.
+  intros * HΞ Hfr Hl.
+  destruct (ind_lookup_module _ _ _ _ Hl) as [T Hm].
+  apply gc_module_frame in Hm as [(y & ip & -> & Hm) | Hm].
+  - destruct Ξ as [| [mq U] Ξ0]; [ contradiction |].
+    destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & (P & Ψ & -> & _) & _).
+    cbn [gs_path gs_add gu_params gu_mod gs_tele] in Hm |- *.
+    assert (Hp : qname_app (qname_in mq x) (y :: ip) = qname_app mq (x :: y :: ip))
+      by (unfold qname_app, qname_in; cbn; rewrite <- List.app_assoc; reflexivity).
+    rewrite Hp; unfold ind_lookup; rewrite gc_module_frame_here; cbn [gu_params gu_mod].
+    assert (Hm' : ge_submodule (P ++ gs_tele Ξ0) (ge_body pv Δ Φ) y ip = Some (mr_body T (Some D))) by (cbn; exact Hm).
+    rewrite (gm_submodule_ext_here _ Ψ x _ _ _ _ Hm'); reflexivity.
+  - apply ind_lookup_add; [ exact HΞ | exact Hfr | exact (ind_lookup_body _ _ _ _ _ Hm) ].
+Qed.
+
+(** Read under frames of units not filed: as filed. *)
+Lemma ind_lookup_below : forall Θ Ξ p D,
+    (forall mp U, In (mp, U) Ξ -> gds_lookup Θ (q_unit mp) = None) ->
+    ind_lookup Θ nil p = Some D -> ind_lookup Θ Ξ p = Some D.
+Proof.
+  intros * Hfr Hl.
+  unfold ind_lookup, gc_module in *; cbn [gs_find_tele] in Hl.
+  destruct (gs_find_tele Ξ p) as [[[U ip] T] |] eqn:Hf; [| exact Hl ].
+  exfalso.
+  assert (Hg : gs_find Ξ p = Some (U, ip)) by (rewrite gs_find_tele_find, Hf; reflexivity).
+  destruct (gs_find_unit _ _ _ _ Hg) as (mp & Hin & Hu).
+  rewrite <- Hu, (Hfr _ _ Hin) in Hl; discriminate.
+Qed.
+
+(** A binding well formed at one state is at another that reads every
+    inductive type the first does. *)
+Lemma builtins_wf_mono : forall Θ Ξ Θ' Ξ' B,
+    (forall p D, ind_lookup Θ Ξ p = Some D -> ind_lookup Θ' Ξ' p = Some D) ->
+    builtins_wf Θ Ξ B -> builtins_wf Θ' Ξ' B.
+Proof. intros * Hm Hb p Hp; destruct (Hb p Hp) as (D & z & s & Hl & Hs & Ho); exists D, z, s; auto. Qed.
+
 Section WellFormed.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
@@ -1073,6 +1141,102 @@ Section WellFormed.
       ⊢g Θ ⍮ nil /\ Θ ⍮ nil ⍮ q_abs (prog_path prg) nil ⊢u U.
   Proof.
     intros * (u & _ & Hu); destruct (proj2 (proj2 run_wf) _ _ _ _ _ _ Hu) as (? & _ & _ & ?); split; assumption.
+  Qed.
+
+  (** ** Builtin Bindings Stay Well Formed
+
+      A binding is made of an inductive type of the right shape where it is
+      read ([rc_builtin]), and a run keeps reading it: entries are added,
+      module frames are closed into members, units are filed and merged.
+      A unit runs from nothing filed, so it starts well formed only without
+      a binding; one made before it holds, and is read, outside it. *)
+  Theorem run_builtins_wf :
+    (forall ch B Θ Ξ c B' Θ' Ξ', run_cmd ch B Θ Ξ c B' Θ' Ξ' ->
+       ⊢g Θ ⍮ Ξ -> canon B Θ -> stack_in ch Ξ -> builtins_wf Θ Ξ B -> builtins_wf Θ' Ξ' B') /\
+    (forall ch B Θ Ξ cs B' Θ' Ξ', run_cmds ch B Θ Ξ cs B' Θ' Ξ' ->
+       ⊢g Θ ⍮ Ξ -> canon B Θ -> stack_in ch Ξ -> builtins_wf Θ Ξ B -> builtins_wf Θ' Ξ' B') /\
+    (forall ch B u B' Θ U, run_unit ch B u B' Θ U ->
+       builtins_wf nil nil B -> builtins_wf ((hd nil ch, U) :: Θ) nil B').
+  Proof.
+    assert (Hadd : forall Θ Ξ x E B, ⊢g Θ ⍮ Ξ -> gs_fresh x Ξ -> builtins_wf Θ Ξ B -> builtins_wf Θ (gs_add x E Ξ) B)
+      by (intros * HΞ Hfr; apply builtins_wf_mono; intros; apply ind_lookup_add; assumption).
+    apply run_mut_ind.
+    - intros * _ Hfr HΞ _ _; apply Hadd; assumption.
+    - intros * _ Hfr HΞ _ _; apply Hadd; assumption.
+    - (* a module: read in its frame, then in the member it becomes *)
+      intros ch B B' Θ Ξ x pv Δ cs Θ' mp' U Htel HΔ Hfr Hr IH HΞ Hc Hst Hb.
+      destruct Ξ as [| [mp [P Φ]] Ξ0]; [ contradiction |]; cbn [gs_fresh gs_path] in Hfr, Hr, IH |- *.
+      assert (Hff : frame_fresh Θ ((mp, gu_mk P Φ) :: Ξ0) (qname_in mp x))
+        by (cbn; exists x; split; [ reflexivity | exact Hfr ]).
+      assert (Hpush : ⊢g Θ ⍮ gs_push (qname_in mp x) Δ ((mp, gu_mk P Φ) :: Ξ0))
+        by (apply wf_gstack_cons; [ exact HΞ | constructor; [ exact Htel | exact HΔ ] | exact Hff ]).
+      pose proof (stack_in_push _ x Δ _ Hst Hfr) as Hst'.
+      assert (Hb0 : builtins_wf Θ (gs_push (qname_in mp x) Δ ((mp, gu_mk P Φ) :: Ξ0)) B)
+        by (eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_push; exact Hff | eassumption ] | exact Hb ]).
+      destruct (proj1 (proj2 run_wf) _ _ _ _ _ _ _ _ Hr Hpush Hc Hst') as (HΞ' & _).
+      pose proof (IH Hpush Hc Hst' Hb0) as Hb'.
+      pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ Hr) as Hp; cbn in Hp; injection Hp as -> HP.
+      destruct (wf_gstack_cons_inv _ _ _ _ HΞ') as (HΞ0 & (Δ' & Φ' & -> & _) & _).
+      cbn in HP; subst Δ'; cbn [gu_mod].
+      eapply builtins_wf_mono; [| exact Hb' ].
+      intros p0 D0 Hl; apply (ind_lookup_close _ ((mp, gu_mk P Φ) :: Ξ0)); [ exact HΞ0 | exact Hfr | exact Hl ].
+    - intros * _ _ _ Hfr HΞ _ _; apply Hadd; assumption.
+    - intros; assumption.
+    - (* a load: a binding made before holds; one the unit made is read in it *)
+      intros ch B B' Θ Ξ fp src prg u ΘU U Hn Hnin Hl Hrd Hpp Ht Hu IH HΞ Hc Hst Hb.
+      assert (Hrun : run_cmd ch B Θ Ξ (cc_load fp) B' (gds_merge Θ ((fp, U) :: ΘU)) Ξ) by (eapply rc_load; eassumption).
+      destruct (proj1 run_wf _ _ _ _ _ _ _ _ Hrun HΞ Hc Hst) as (HΞ' & _ & Hsub & Hle).
+      destruct (bt_nat B) as [p |] eqn:EB.
+      + destruct Hle as [Hle | <-]; [ congruence |].
+        eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ] | exact Hb ].
+      + assert (HbU : builtins_wf ((fp, U) :: ΘU) nil B') by (apply IH; intros p Hp'; congruence).
+        pose proof (proj2 (proj2 run_chain_fresh) _ _ _ _ _ _ Hu fp ltac:(left; reflexivity)) as HfU.
+        destruct (proj2 (proj2 run_wf) _ _ _ _ _ _ Hu) as (HΘU & HcU & HleU & HU).
+        assert (Hcf : canon B' ((fp, U) :: ΘU)) by (eapply canon_file; eassumption).
+        assert (Hc' : canon B' Θ) by (eapply canon_le; eassumption).
+        assert (Hag : gds_agree Θ ((fp, U) :: ΘU)) by (eapply canon_agree; eassumption).
+        eapply builtins_wf_mono; [| exact HbU ].
+        intros p0 D0 Hl0; apply ind_lookup_below; [ intros mq V Hin; exact (wf_gstack_frames _ _ HΞ' _ _ Hin) |].
+        eapply ind_lookup_gc_sub; [ apply gc_sub_deps, merge_right; exact Hag | exact Hl0 ].
+    - intros * _ _ Hg HΞ _ _; apply builtins_wf_mono; intros; eapply gens_run_ind_lookup; eassumption.
+    - intros * _ Hfr _ HΞ _ _; apply Hadd; assumption.
+    - (* a binding: of a type read here *)
+      intros ch B B' Θ Ξ H pq p D z0 s0 _ _ Hl Hs Ho Hbd _ _ _ _ p1 Hq.
+      rewrite (bt_bind_nat_bound _ _ _ Hbd) in Hq; injection Hq as <-; exists D, z0, s0; auto.
+    - intros * _ _ _ _ _ Hfr HΞ _ _; apply Hadd; assumption.
+    - intros; assumption.
+    - intros; assumption.
+    - intros; assumption.
+    - intros * _ _ _ Hr1 IH1 _ IH2 HΞ Hc Hst Hb.
+      destruct (proj1 run_wf _ _ _ _ _ _ _ _ Hr1 HΞ Hc Hst) as (H1 & Hc1 & _).
+      pose proof (stack_in_shape _ _ _ (proj1 run_params _ _ _ _ _ _ _ _ Hr1) Hst) as Hst1.
+      exact (IH2 H1 Hc1 Hst1 (IH1 HΞ Hc Hst Hb)).
+    - (* a unit: its imports, its frame pushed, then filed *)
+      intros fp ch B B1 B2 imps P0 P1 P cs Θ1 Θ2 mp U Hi IHi _ _ Htel HP _ Hbd IHb Hb.
+      assert (Hnil : ⊢g nil ⍮ nil) by (constructor; constructor).
+      destruct (proj1 (proj2 run_wf) _ _ _ _ _ _ _ _ Hi Hnil (canon_nil _) ltac:(intros ? ? [])) as (H1 & Hc1 & _).
+      assert (Hn1 : gds_lookup Θ1 fp = None)
+        by exact (proj1 (proj2 run_chain_fresh) _ _ _ _ _ _ _ _ Hi fp (or_introl eq_refl) eq_refl).
+      assert (Hff : frame_fresh Θ1 nil (q_abs fp nil)) by (cbn; split; [ exact Hn1 | reflexivity ]).
+      assert (Hpush : ⊢g Θ1 ⍮ gs_push (q_abs fp nil) P nil).
+      { apply wf_gstack_cons; [ exact H1 | constructor | exact Hff ].
+        - exact Htel.
+        - cbn; rewrite app_nil_r; exact HP. }
+      pose proof (IHi Hnil (canon_nil _) ltac:(intros ? ? []) Hb) as Hb1.
+      assert (Hb1' : builtins_wf Θ1 (gs_push (q_abs fp nil) P nil) B1)
+        by (eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_push; exact Hff | eassumption ] | exact Hb1 ]).
+      pose proof (IHb Hpush Hc1 ltac:(intros ? ? [[= <- <-] | []]; left; reflexivity) Hb1') as Hb2.
+      pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ Hbd) as Hp; cbn in Hp; injection Hp as -> _.
+      cbn [hd]; eapply builtins_wf_mono; [| exact Hb2 ].
+      intros p0 D0 Hl0; rewrite ind_lookup_file; exact Hl0.
+  Qed.
+
+  (** At the end of a program, its binding is of a type it reads. *)
+  Corollary prog_sem_builtins_wf : forall prg B Θ U,
+      prog_sem load_path read to_core prg B Θ U -> builtins_wf ((prog_path prg, U) :: Θ) nil B.
+  Proof.
+    intros * (u & _ & Hu); apply (proj2 (proj2 run_builtins_wf) _ _ _ _ _ _ Hu).
+    intros p Hp; discriminate.
   Qed.
 End WellFormed.
 
