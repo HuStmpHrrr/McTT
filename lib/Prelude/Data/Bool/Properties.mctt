@@ -1,7 +1,7 @@
 (* Laws of [Prelude›Data›Bool], stated with the Leibniz equality [Id] of
    [Prelude›Logic›Leibniz] at [Bool]: negation is an involution, [and] and
    [or] are commutative, associative and idempotent monoids that distribute
-   over each other, de Morgan's laws, the conditional, [xor], and the
+   over each other and absorb each other, de Morgan's laws, the conditional, [xor], and the
    correctness of [eqb].
 
    Each law is proved by cases.  Since every connective computes on its
@@ -9,7 +9,7 @@
    one only where it occurs first on the other side (commutativity). *)
 module Prelude›Data›Bool›Properties where
 
-import Prelude›Logic›Leibniz 0l use (Id; idRefl)
+import Prelude›Logic›Leibniz 0l use (Id; idRefl; idSym; idTrans; idCong)
 import Prelude›Logic.Negation 1l use (Not)
 import Prelude›Data›Bool use (Bool; tt; ff; not; and; or; xor; eqb; IsTrue)
 open Prelude›Data›Bool.Cond as Cond
@@ -28,6 +28,17 @@ end
 (* The constructors differ: [IsTrue] holds of [tt] and not of [ff]. *)
 theorem ttNeFf : Not (Id Bool tt ff) ≔
   λ (h : Id Bool tt ff) → h IsTrue ⋆
+end
+
+(* Agda's [not-injective]. *)
+theorem notInjective : ∀ (a : Bool) (b : Bool) (h : Id Bool (not a) (not b)) →
+    Id Bool a b ≔
+  λ (a : Bool) (b : Bool) (h : Id Bool (not a) (not b)) →
+    idTrans Bool a (not (not b)) b
+      (idTrans Bool a (not (not a)) (not (not b))
+         (idSym Bool (not (not a)) a (notNot a))
+         (idCong Bool Bool not (not a) (not b) h))
+      (notNot b)
 end
 
 (* Negation has no fixed point. *)
@@ -163,7 +174,7 @@ end
 
 end
 
-(* De Morgan's laws and the distributive laws. *)
+(* De Morgan's laws, the distributive laws and the absorption laws. *)
 module DeMorgan where
 
 theorem notAnd : ∀ (a : Bool) (b : Bool) →
@@ -199,6 +210,23 @@ theorem orAndDistrib : ∀ (a : Bool) (b : Bool) (c : Bool) →
     elim a return x . Id Bool (or x (and b c)) (and (or x b) (or x c))
     | tt ⇒ idRefl Bool tt
     | ff ⇒ idRefl Bool (and b c)
+    end
+end
+
+(* The absorption laws (Agda's [∧-absorbs-∨] and [∨-absorbs-∧]). *)
+theorem andAbsorbsOr : ∀ (a : Bool) (b : Bool) → Id Bool (and a (or a b)) a ≔
+  λ (a : Bool) (b : Bool) →
+    elim a return x . Id Bool (and x (or x b)) x
+    | tt ⇒ idRefl Bool tt
+    | ff ⇒ idRefl Bool ff
+    end
+end
+
+theorem orAbsorbsAnd : ∀ (a : Bool) (b : Bool) → Id Bool (or a (and a b)) a ≔
+  λ (a : Bool) (b : Bool) →
+    elim a return x . Id Bool (or x (and x b)) x
+    | tt ⇒ idRefl Bool tt
+    | ff ⇒ idRefl Bool ff
     end
 end
 
