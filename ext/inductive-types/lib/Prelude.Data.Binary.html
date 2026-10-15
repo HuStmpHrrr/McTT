@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Prelude›Data›Binary</title><link rel="stylesheet" href="mctt.css"></head><body>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Prelude›Data›Binary</h1>
+<details class="toc"><summary>Contents</summary><ul><li><span class="kw">module</span> <a href="#Bin">Bin</a></li><li><span class="kw">def</span> <a href="#double">double</a></li><li><span class="kw">def</span> <a href="#suc">suc</a></li><li><span class="kw">def</span> <a href="#toNat">toNat</a></li><li><span class="kw">def</span> <a href="#fromNat">fromNat</a></li><li><span class="kw">def</span> <a href="#add">add</a></li></ul></details>
+<div class="doc"><p>Binary natural numbers, after Agda's <code>Data.Nat.Binary</code> (<code>ℕᵇ</code>): <code>Bin</code> has the constructors <code>zero</code>, <code>doubleSucc x</code> for <code>2 (1 + x)</code> (Agda's <code>2[1+ x ]</code>) and <code>succDouble x</code> for <code>1 + 2 x</code> (<code>1+[2 x ]</code>), so every number has exactly one form, of length its number of binary digits. <code>Prelude›Arith›Binary</code> has the binary digits of unary numbers instead.</p>
+<p><code>double</code>, the successor <code>suc</code> and the addition <code>add</code> work on the binary forms; <code>toNat</code> and <code>fromNat</code> convert, through the doubling <code>double</code> of <code>Prelude›Arith›Parity</code> on the unary side.  The constructor <code>zero</code> is not exported, since it would clash with that of <code>ℕ</code>: it is <code>Bin.zero</code>. The laws are in <code>Prelude›Data›Binary›Properties</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Data</span><span class="sym">›</span><span class="unit bind">Binary</span> <span class="kw">where</span>
+
+<span class="kw">import</span> <a class="unit" href="Prelude.Builtin.Nat.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Builtin</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Nat</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="succ" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Parity.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Parity.html">Arith</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Parity.html">Parity</a> <span class="kw">as</span> <span class="mod bind" id="P">P</span>
+
+<span class="kw">inductive</span> <span class="mod bind" id="Bin">Bin</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="kw">where</span>
+<span class="sym">|</span> <span class="def bind" id="Bin.zero">zero</span>
+<span class="sym">|</span> <span class="def bind" id="Bin.doubleSucc">doubleSucc</span> <span class="sym">(</span><span class="var bind" id="l14">x</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a><span class="sym">)</span>
+<span class="sym">|</span> <span class="def bind" id="Bin.succDouble">succDouble</span> <span class="sym">(</span><span class="var bind" id="l17">x</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a><span class="sym">)</span>
+<span class="kw">end</span>
+
+<span class="kw">open</span> <a class="mod" href="#Bin">Bin</a> <span class="kw">export</span> <span class="sym">(</span><a class="def bind" id="doubleSucc" href="#Bin.doubleSucc">doubleSucc</a><span class="sym">;</span> <a class="def bind" id="succDouble" href="#Bin.succDouble">succDouble</a><span class="sym">)</span>
+</pre>
+<div class="doc"><p><code>2 x</code>: <code>2 (2 (1 + x))</code> is <code>2 (1 + (1 + 2 x))</code>, and <code>2 (1 + 2 x)</code> is <code>2 (1 + 2 x)</code>.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="double">double</span> <span class="sym">(</span><span class="var bind" id="l23">x</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l23">x</a> <span class="kw">return</span> <span class="var bind" id="l27">z</span> <span class="sym">.</span> <a class="mod" href="#Bin">Bin</a>
+  <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <a class="mod" href="#Bin">Bin</a><span class="sym">.</span><a class="def" href="#Bin.zero">zero</a>
+  <span class="sym">|</span> <span class="free">doubleSucc</span> <span class="var bind" id="l33">y</span><span class="sym">,</span> <span class="var bind" id="l34">r</span> <span class="sym">⇒</span> <a class="def" href="#Bin.doubleSucc">doubleSucc</a> <span class="sym">(</span><a class="def" href="#Bin.succDouble">succDouble</a> <a class="var" href="#l33">y</a><span class="sym">)</span>
+  <span class="sym">|</span> <span class="free">succDouble</span> <span class="var bind" id="l39">y</span><span class="sym">,</span> <span class="var bind" id="l40">r</span> <span class="sym">⇒</span> <a class="def" href="#Bin.doubleSucc">doubleSucc</a> <a class="var" href="#l40">r</a>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p><code>1 + x</code>: <code>1 + 2 (1 + y)</code> is <code>1 + 2 (1 + y)</code>, and <code>1 + (1 + 2 y)</code> is <code>2 (1 + y)</code>.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="suc">suc</span> <span class="sym">(</span><span class="var bind" id="l44">x</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l44">x</a> <span class="kw">return</span> <span class="var bind" id="l48">z</span> <span class="sym">.</span> <a class="mod" href="#Bin">Bin</a>
+  <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <a class="def" href="#Bin.succDouble">succDouble</a> <a class="mod" href="#Bin">Bin</a><span class="sym">.</span><a class="def" href="#Bin.zero">zero</a>
+  <span class="sym">|</span> <span class="free">doubleSucc</span> <span class="var bind" id="l55">y</span><span class="sym">,</span> <span class="var bind" id="l56">r</span> <span class="sym">⇒</span> <a class="def" href="#Bin.succDouble">succDouble</a> <a class="var" href="#l56">r</a>
+  <span class="sym">|</span> <span class="free">succDouble</span> <span class="var bind" id="l60">y</span><span class="sym">,</span> <span class="var bind" id="l61">r</span> <span class="sym">⇒</span> <a class="def" href="#Bin.doubleSucc">doubleSucc</a> <a class="var" href="#l60">y</a>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">def</span> <span class="def bind" id="toNat">toNat</span> <span class="sym">(</span><span class="var bind" id="l65">x</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a><span class="sym">)</span> <span class="sym">:</span> <span class="ty">ℕ</span> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l65">x</a> <span class="kw">return</span> <span class="var bind" id="l68">z</span> <span class="sym">.</span> <span class="ty">ℕ</span>
+  <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <span class="num">0</span>
+  <span class="sym">|</span> <span class="free">doubleSucc</span> <span class="var bind" id="l71">y</span><span class="sym">,</span> <span class="var bind" id="l72">r</span> <span class="sym">⇒</span> <a class="mod" href="#P">P</a><span class="sym">.</span><a class="def" href="Prelude.Arith.Parity.html#double">double</a> <span class="sym">(</span><a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <a class="var" href="#l72">r</a><span class="sym">)</span>
+  <span class="sym">|</span> <span class="free">succDouble</span> <span class="var bind" id="l78">y</span><span class="sym">,</span> <span class="var bind" id="l79">r</span> <span class="sym">⇒</span> <a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <span class="sym">(</span><a class="mod" href="#P">P</a><span class="sym">.</span><a class="def" href="Prelude.Arith.Parity.html#double">double</a> <a class="var" href="#l79">r</a><span class="sym">)</span>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">def</span> <span class="def bind" id="fromNat">fromNat</span> <span class="sym">(</span><span class="var bind" id="l85">n</span> <span class="sym">:</span> <span class="ty">ℕ</span><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l85">n</a> <span class="kw">return</span> <span class="var bind" id="l88">z</span> <span class="sym">.</span> <a class="mod" href="#Bin">Bin</a>
+  <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <a class="mod" href="#Bin">Bin</a><span class="sym">.</span><a class="def" href="#Bin.zero">zero</a>
+  <span class="sym">|</span> <span class="free">succ</span> <span class="var bind" id="l94">p</span><span class="sym">,</span> <span class="var bind" id="l95">r</span> <span class="sym">⇒</span> <a class="def" href="#suc">suc</a> <a class="var" href="#l95">r</a>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>Addition, by recursion on the first argument and cases on the second; two odd numbers have an even sum, with a carry (<code>suc</code>) when one of the two is <code>doubleSucc</code>: <code>2 (1 + x) + 2 (1 + y)</code> is <code>2 (1 + (1 + (x + y)))</code>, <code>2 (1 + x) + (1 + 2 y)</code> is <code>1 + 2 (1 + (x + y))</code>, <code>(1 + 2 x) + (1 + 2 y)</code> is <code>2 (1 + (x + y))</code>.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="add">add</span> <span class="sym">(</span><span class="var bind" id="l99">x</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a><span class="sym">)</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l101">y</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a><span class="sym">)</span> <span class="sym">→</span> <a class="mod" href="#Bin">Bin</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l99">x</a> <span class="kw">return</span> <span class="var bind" id="l105">z</span> <span class="sym">.</span> <span class="sym">(</span><span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l106">y</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a><span class="sym">)</span> <span class="sym">→</span> <a class="mod" href="#Bin">Bin</a><span class="sym">)</span>
+  <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l110">y</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l110">y</a>
+  <span class="sym">|</span> <span class="free">doubleSucc</span> <span class="var bind" id="l114">a</span><span class="sym">,</span> <span class="var bind" id="l115">r</span> <span class="sym">⇒</span> <span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l116">y</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a><span class="sym">)</span> <span class="sym">→</span>
+      <span class="kw">elim</span> <a class="var" href="#l116">y</a> <span class="kw">return</span> <span class="var bind" id="l119">w</span> <span class="sym">.</span> <a class="mod" href="#Bin">Bin</a>
+      <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <a class="def" href="#Bin.doubleSucc">doubleSucc</a> <a class="var" href="#l114">a</a>
+      <span class="sym">|</span> <span class="free">doubleSucc</span> <span class="var bind" id="l125">b</span><span class="sym">,</span> <span class="var bind" id="l126">s</span> <span class="sym">⇒</span> <a class="def" href="#Bin.doubleSucc">doubleSucc</a> <span class="sym">(</span><a class="def" href="#suc">suc</a> <span class="sym">(</span><a class="var" href="#l115">r</a> <a class="var" href="#l125">b</a><span class="sym">)</span><span class="sym">)</span>
+      <span class="sym">|</span> <span class="free">succDouble</span> <span class="var bind" id="l132">b</span><span class="sym">,</span> <span class="var bind" id="l133">s</span> <span class="sym">⇒</span> <a class="def" href="#Bin.succDouble">succDouble</a> <span class="sym">(</span><a class="def" href="#suc">suc</a> <span class="sym">(</span><a class="var" href="#l115">r</a> <a class="var" href="#l132">b</a><span class="sym">)</span><span class="sym">)</span>
+      <span class="kw">end</span>
+  <span class="sym">|</span> <span class="free">succDouble</span> <span class="var bind" id="l139">a</span><span class="sym">,</span> <span class="var bind" id="l140">r</span> <span class="sym">⇒</span> <span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l141">y</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a><span class="sym">)</span> <span class="sym">→</span>
+      <span class="kw">elim</span> <a class="var" href="#l141">y</a> <span class="kw">return</span> <span class="var bind" id="l144">w</span> <span class="sym">.</span> <a class="mod" href="#Bin">Bin</a>
+      <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <a class="def" href="#Bin.succDouble">succDouble</a> <a class="var" href="#l139">a</a>
+      <span class="sym">|</span> <span class="free">doubleSucc</span> <span class="var bind" id="l150">b</span><span class="sym">,</span> <span class="var bind" id="l151">s</span> <span class="sym">⇒</span> <a class="def" href="#Bin.succDouble">succDouble</a> <span class="sym">(</span><a class="def" href="#suc">suc</a> <span class="sym">(</span><a class="var" href="#l140">r</a> <a class="var" href="#l150">b</a><span class="sym">)</span><span class="sym">)</span>
+      <span class="sym">|</span> <span class="free">succDouble</span> <span class="var bind" id="l157">b</span><span class="sym">,</span> <span class="var bind" id="l158">s</span> <span class="sym">⇒</span> <a class="def" href="#Bin.doubleSucc">doubleSucc</a> <span class="sym">(</span><a class="var" href="#l140">r</a> <a class="var" href="#l157">b</a><span class="sym">)</span>
+      <span class="kw">end</span>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">end</span></pre>
+</body></html>

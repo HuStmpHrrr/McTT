@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Prelude›Data›Sigma</title><link rel="stylesheet" href="mctt.css"></head><body>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Prelude›Data›Sigma</h1>
+<details class="toc"><summary>Contents</summary><ul><li><span class="kw">module</span> <a href="#Sigma">Sigma</a></li><li><span class="kw">def</span> <a href="#fst">fst</a></li><li><span class="kw">def</span> <a href="#snd">snd</a></li></ul></details>
+<div class="doc"><p>Dependent pairs: <code>Sigma u A B</code> has the one constructor <code>pair a b</code>, for <code>a : A</code> and <code>b : B a</code>, at every level <code>u</code>.  The type of the second component depends on the first, so <code>snd p</code> has the type <code>B (fst p)</code>.</p>
+<p>The unit takes the level <code>u</code>, the type <code>A</code> of first components and the family <code>B</code> of second components as parameters: <code>Prelude›Data›Sigma 0l ℕ (λ (n : ℕ) → Vec n)</code> holds the vectors of every length.  Its laws are in <code>Prelude›Data›Sigma›Properties</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Data</span><span class="sym">›</span><span class="unit bind">Sigma</span> <span class="sym">(</span><span class="var bind" id="l3">u</span> <span class="sym">:</span> <span class="ty">Level</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l4">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l3">u</a><span class="sym">}</span><span class="sym">)</span>
+    <span class="sym">(</span><span class="var bind" id="l6">B</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l7">a</span> <span class="sym">:</span> <a class="var" href="#l4">A</a><span class="sym">)</span> <span class="sym">→</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l3">u</a><span class="sym">}</span><span class="sym">)</span> <span class="kw">where</span>
+
+<span class="kw">inductive</span> <span class="mod bind" id="Sigma">Sigma</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l3">u</a><span class="sym">}</span> <span class="kw">where</span>
+<span class="sym">|</span> <span class="def bind" id="Sigma.pair">pair</span> <span class="sym">(</span><span class="var bind" id="l13">a</span> <span class="sym">:</span> <a class="var" href="#l4">A</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l15">b</span> <span class="sym">:</span> <a class="var" href="#l6">B</a> <a class="var" href="#l13">a</a><span class="sym">)</span>
+<span class="kw">end</span>
+
+<span class="kw">open</span> <a class="mod" href="#Sigma">Sigma</a> <span class="kw">export</span> <span class="sym">(</span><a class="def bind" id="pair" href="#Sigma.pair">pair</a><span class="sym">)</span>
+
+<span class="kw">def</span> <span class="def bind" id="fst">fst</span> <span class="sym">(</span><span class="var bind" id="l21">p</span> <span class="sym">:</span> <a class="mod" href="#Sigma">Sigma</a><span class="sym">)</span> <span class="sym">:</span> <a class="var" href="#l4">A</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l21">p</a> <span class="kw">return</span> <span class="var bind" id="l25">z</span> <span class="sym">.</span> <a class="var" href="#l4">A</a> <span class="sym">|</span> <span class="free">pair</span> <span class="var bind" id="l28">a</span> <span class="var bind" id="l29">b</span> <span class="sym">⇒</span> <a class="var" href="#l28">a</a> <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>The second component; the branch's type, <code>B (fst (pair a b))</code>, computes to <code>B a</code>.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="snd">snd</span> <span class="sym">(</span><span class="var bind" id="l32">p</span> <span class="sym">:</span> <a class="mod" href="#Sigma">Sigma</a><span class="sym">)</span> <span class="sym">:</span> <a class="var" href="#l6">B</a> <span class="sym">(</span><a class="def" href="#fst">fst</a> <a class="var" href="#l32">p</a><span class="sym">)</span> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l32">p</a> <span class="kw">return</span> <span class="var bind" id="l38">z</span> <span class="sym">.</span> <a class="var" href="#l6">B</a> <span class="sym">(</span><a class="def" href="#fst">fst</a> <a class="var" href="#l38">z</a><span class="sym">)</span> <span class="sym">|</span> <span class="free">pair</span> <span class="var bind" id="l43">a</span> <span class="var bind" id="l44">b</span> <span class="sym">⇒</span> <a class="var" href="#l44">b</a> <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">end</span></pre>
+</body></html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>McTT library</title><link rel="stylesheet" href="mctt.css"></head><body>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>The McTT library</h1>
+<h2>Prelude</h2><ul class="units"><li><a class="unit" href="Prelude.Algebra.Group.html">Prelude›Algebra›Group</a> <p>Groups over a setoid.</p>
+</li>
+<li><a class="unit" href="Prelude.Algebra.Instances.html">Prelude›Algebra›Instances</a> <p>Instances of <code>Prelude›Algebra›Monoid</code>: numbers under addition, multiplication and maximum, and functions on numbers under composition.</p>
+</li>
+<li><a class="unit" href="Prelude.Algebra.Integers.html">Prelude›Algebra›Integers</a> <p>The integers, as differences of numbers.</p>
+</li>
+<li><a class="unit" href="Prelude.Algebra.Monoid.html">Prelude›Algebra›Monoid</a> <p>Monoids over a setoid.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Ackermann.html">Prelude›Arith›Ackermann</a> <p>The Ackermann function, by higher-order primitive recursion, with its defining equations and closed forms for <code>ack 1</code> and <code>ack 2</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Binary.html">Prelude›Arith›Binary</a> <p>Binary representation of numbers.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Binomial.Properties.html">Prelude›Arith›Binomial›Properties</a> <p>Laws of <code>Prelude›Arith›Binomial</code>: the edges of Pascal's triangle, vanishing above the diagonal, Pascal's rule, symmetry, and the row sum <code>sumTo (choose n) (succ n) = pow 2 n</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Binomial.html">Prelude›Arith›Binomial</a> <p>Binomial coefficients <code>choose n k</code>, computed by Pascal's recursion.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Decide.html">Prelude›Arith›Decide</a> <p>Decidability of equality and order on natural numbers, a boolean-style equality test <code>eqb</code> with its specification and case analysis, and the conditional <code>pick</code> on such tests.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Div.html">Prelude›Arith›Div</a> <p>Euclidean division.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Divides.html">Prelude›Arith›Divides</a> <p>Divisibility, decided by the remainder of <code>Prelude›Arith›Div</code>, with its basic laws and its link to <code>Prelude›Arith›Parity</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Equality.html">Prelude›Arith›Equality</a> <p>Equality of natural numbers, computed by recursion on both sides, with its basic laws.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Factorial.html">Prelude›Arith›Factorial</a> <p>The factorial, with its defining equations, positivity, monotonicity in one step, and the bound <code>pow 2 n &lt;= factorial (succ n)</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Fibonacci.Properties.html">Prelude›Arith›Fibonacci›Properties</a> <p>Laws of <code>Prelude›Arith›Fibonacci</code>: the defining recurrence, positivity, monotonicity, the sum identity and the addition formula.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Fibonacci.html">Prelude›Arith›Fibonacci</a> <p>The Fibonacci numbers, computed in linear time by iterating on a pair of consecutive values.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Gcd.Properties.html">Prelude›Arith›Gcd›Properties</a> <p>Laws of <code>Prelude›Arith›Gcd</code>: the values at <code>0</code>, <code>1</code> and the diagonal, independence from the fuel, divisibility of both arguments, the greatest divisor property, and commutativity.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Gcd.html">Prelude›Arith›Gcd</a> <p>The greatest common divisor, by Euclid's algorithm.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Induction.html">Prelude›Arith›Induction</a> <p>Derived induction principles on natural numbers: case analysis, two-step induction and strong (course-of-values) induction, all from <code>elim</code>, for motives of any level.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Lattice.html">Prelude›Arith›Lattice</a> <p>The natural numbers as a distributive lattice under <code>Prelude›Arith›MinMax.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Arith.MinMax.html">Prelude›Arith›MinMax</a> <p>Minimum and maximum, by recursion on both arguments, with their laws stated with <code>Prelude›Arith›Equality</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Monotone.html">Prelude›Arith›Monotone</a> <p>Monotonicity of addition, multiplication and subtraction with respect to <code>Prelude›Arith›Order.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Mult.html">Prelude›Arith›Mult</a> <p>Multiplication and its laws, stated with <code>Prelude›Arith›Equality</code> and proved from the laws of <code>Prelude›Arith›Plus</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Order.html">Prelude›Arith›Order</a> <p>The order on natural numbers, computed by recursion on both sides like <code>Prelude›Arith›Equality.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Parity.html">Prelude›Arith›Parity</a> <p>Parity of natural numbers: <code>Even</code> and <code>Odd</code> computed by recursion, with doubling and the basic laws.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Plus.html">Prelude›Arith›Plus</a> <p>Addition and its laws, stated with <code>Prelude›Arith›Equality</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Pow.html">Prelude›Arith›Pow</a> <p>Exponentiation by recursion on the exponent, with its laws stated with <code>Prelude›Arith›Equality</code> and proved from those of <code>Prelude›Arith›Mult</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Prime.html">Prelude›Arith›Prime</a> <p>Prime numbers by trial division.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Sub.html">Prelude›Arith›Sub</a> <p>Predecessor and truncated subtraction, with their laws stated with <code>Prelude›Arith›Equality</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Arith.Sum.html">Prelude›Arith›Sum</a> <p>Finite sums <code>sumTo f n</code> of <code>f i</code> for <code>i &lt; n</code>, with linearity laws, sums of constants, and the closed forms of Gauss and of the odd numbers.</p>
+</li>
+<li><a class="unit" href="Prelude.Builtin.Nat.html">Prelude›Builtin›Nat</a> <p>The natural numbers, as an inductive type bound as the builtin natural numbers: once this unit is imported, directly or not, the numerals denote chains of its constructors, <code>2</code> is <code>succ (succ zero)</code>, and the token <code>ℕ</code> denotes <code>Nat</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Binary.Properties.html">Prelude›Data›Binary›Properties</a> <p>Laws of <code>Prelude›Data›Binary</code>, after Agda's <code>Data.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Data.Binary.html">Prelude›Data›Binary</a> <p>Binary natural numbers, after Agda's <code>Data.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Data.Bool.Properties.html">Prelude›Data›Bool›Properties</a> <p>Laws of <code>Prelude›Data›Bool</code>, stated with the Leibniz equality <code>Id</code> of <code>Prelude›Logic›Leibniz</code> at <code>Bool</code>: negation is an injective involution, <code>and</code> and <code>or</code> are commutative, associative and idempotent monoids that distribute over each other and absorb each other, de Morgan's laws, the conditional, <code>xor</code>, and the correctness of <code>eqb</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Bool.html">Prelude›Data›Bool</a> <p>The booleans, an inductive type with the constructors <code>tt</code> and <code>ff</code>, and their connectives.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Church.Properties.html">Prelude›Data›Church›Properties</a> <p>Laws of <code>Prelude›Data›Church</code>, at every level <code>u</code>: the arithmetic of numerals agrees with that of <code>ℕ</code>, moving between levels keeps the number, and the length and sum of lists.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Church.html">Prelude›Data›Church</a> <p>Church encodings at a universe level: numerals, booleans and lists.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Integer.Properties.html">Prelude›Data›Integer›Properties</a> <p>Laws of <code>Prelude›Data›Integer</code>, after Agda's <code>Data.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Data.Integer.html">Prelude›Data›Integer</a> <p>The integers as an inductive type, after Agda's <code>Data.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Data.List.NonEmpty.Properties.html">Prelude›Data›List›NonEmpty›Properties</a> <p>Laws of <code>Prelude›Data›List›NonEmpty</code>, at every level <code>u</code>, after Agda's <code>Data.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Data.List.NonEmpty.html">Prelude›Data›List›NonEmpty</a> <p>Non-empty lists, after Agda's <code>Data.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Data.List.Properties.html">Prelude›Data›List›Properties</a> <p>Laws of <code>Prelude›Data›List</code>, at every level <code>u</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.List.html">Prelude›Data›List</a> <p>Finite lists: <code>List u A</code> has the constructors <code>nil</code> and <code>cons x xs</code>, for <code>x : A</code> and <code>xs : List u A</code>, at every level <code>u</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Option.Properties.html">Prelude›Data›Option›Properties</a> <p>Laws of <code>Prelude›Data›Option</code>, at every level <code>u</code>, stated with the Leibniz equality of <code>Prelude›Logic›Leibniz</code>: <code>map</code> is a functor, <code>bind</code> with <code>some</code> a monad, <code>map</code> is a <code>bind</code>, and the laws of <code>getOr</code>, <code>isSome</code> and <code>orElse</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Option.html">Prelude›Data›Option</a> <p>Optional values: <code>Option u A</code> has the constructors <code>none</code> and <code>some x</code> for <code>x : A</code>, at every level <code>u</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Ordering.Properties.html">Prelude›Data›Ordering›Properties</a> <p>Laws of <code>Prelude›Data›Ordering</code>, stated with the Leibniz equality of <code>Prelude›Logic›Leibniz</code> at <code>Ordering</code>: <code>flip</code> is an involution and reverses <code>compare</code>; <code>compare</code> is correct, <code>Spec m n (compare m n)</code>, and complete for each outcome; <code>thenCmp</code> is a monoid with unit <code>equal</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Ordering.html">Prelude›Data›Ordering</a> <p>The result of a comparison: <code>less</code>, <code>equal</code> or <code>greater</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Parity.Properties.html">Prelude›Data›Parity›Properties</a> <p>Laws of <code>Prelude›Data›Parity</code>, after Agda's <code>Data.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Data.Parity.html">Prelude›Data›Parity</a> <p>Parities, after Agda's <code>Data.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Data.Prod.Properties.html">Prelude›Data›Prod›Properties</a> <p>Laws of <code>Prelude›Data›Prod</code>, at every level <code>u</code>, stated with the Leibniz equality of <code>Prelude›Logic›Leibniz</code>: the projections and surjective pairing, <code>swap</code> is an involution, <code>assoc</code> and <code>unassoc</code> are inverse, <code>map</code> is a functor in both components, and currying is inverse to uncurrying.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Prod.html">Prelude›Data›Prod</a> <p>Pairs: <code>Prod u A B</code> has the one constructor <code>pair a b</code>, for <code>a : A</code> and <code>b : B</code>, at every level <code>u</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Sigma.Properties.html">Prelude›Data›Sigma›Properties</a> <p>Laws of <code>Prelude›Data›Sigma u A B</code>, stated with the Leibniz equality of <code>Prelude›Logic›Leibniz</code>: the projections of a pair, surjective pairing, the equality of pairs whose second component is a function of the first, and the injectivity of <code>pair</code> in its first component.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Sigma.html">Prelude›Data›Sigma</a> <p>Dependent pairs: <code>Sigma u A B</code> has the one constructor <code>pair a b</code>, for <code>a : A</code> and <code>b : B a</code>, at every level <code>u</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Sign.Properties.html">Prelude›Data›Sign›Properties</a> <p>Laws of <code>Prelude›Data›Sign</code>, after Agda's <code>Data.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Data.Sign.html">Prelude›Data›Sign</a> <p>Signs, after Agda's <code>Data.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Data.Stream.Properties.html">Prelude›Data›Stream›Properties</a> <p>Laws of <code>Prelude›Data›Stream</code> on streams of numbers, stated pointwise with <code>Prelude›Arith›Equality</code>, and the stream <code>nats</code>: elements of the operations, the scan by addition as prefix sums of <code>Prelude›Arith›Sum</code>, interleaving at even and odd indices of <code>Prelude›Arith›Parity</code>, and sums of taken prefixes.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Stream.html">Prelude›Data›Stream</a> <p>Infinite streams over <code>A</code>, encoded as functions from indices: <code>Stream</code> is <code>∀ (n : ℕ) → A</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Sum.Properties.html">Prelude›Data›Sum›Properties</a> <p>Laws of <code>Prelude›Data›Sum</code>, at every level <code>u</code>, stated with the Leibniz equality of <code>Prelude›Logic›Leibniz</code>: <code>case</code> with the constructors is the identity, <code>swap</code> is an involution, <code>assoc</code> and <code>unassoc</code> are inverse, <code>map</code> is a functor and <code>case</code> absorbs it, and <code>swap</code> negates <code>isLeft</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Sum.html">Prelude›Data›Sum</a> <p>Disjoint unions: <code>Sum u A B</code> has the constructors <code>inl a</code> for <code>a : A</code> and <code>inr b</code> for <code>b : B</code>, at every level <code>u</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.These.Properties.html">Prelude›Data›These›Properties</a> <p>Laws of <code>Prelude›Data›These</code>, at every level <code>u</code>, stated with the Leibniz equality of <code>Prelude›Logic›Leibniz</code>: the constructors are injective (Agda's <code>this-injective</code>, <code>that-injective</code>, <code>these-injectiveˡ</code>, <code>these-injectiveʳ</code>) and pairwise distinct, <code>swap</code> is an involution, <code>map</code> is a functor, and <code>fold</code> after <code>swap</code> or <code>fromSum</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.These.html">Prelude›Data›These</a> <p>Inclusive unions, after Agda's <code>Data.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Data.Tree.Binary.Properties.html">Prelude›Data›Tree›Binary›Properties</a> <p>Laws of <code>Prelude›Data›Tree›Binary</code> over node labels <code>N</code> and leaf labels <code>L</code>, after Agda's <code>Data.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Data.Tree.Binary.html">Prelude›Data›Tree›Binary</a> <p>Binary trees, after Agda's <code>Data.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Data.Vec.Properties.html">Prelude›Data›Vec›Properties</a> <p>Laws of <code>Prelude›Data›Vec</code>, stated with <code>Prelude›Arith›Equality</code> on number-valued observations: elements read with <code>nth</code>, sums of vectors of numbers, and the answers of the tests <code>allb</code> and <code>anyb</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Vec.html">Prelude›Data›Vec</a> <p>Vectors of length <code>n</code> over <code>A</code>, encoded as functions from bounded indices: <code>Vec n</code> is <code>∀ (i : ℕ) (h : Lt i n) → A</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.W.Properties.html">Prelude›Data›W›Properties</a> <p>Laws of <code>Prelude›Data›W</code>, at every level <code>u</code>, after Agda's <code>Data.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Data.W.html">Prelude›Data›W</a> <p>Well-founded trees, after Agda's <code>Data.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Function.Combinators.html">Prelude›Function›Combinators</a> <p>Generic combinators over a type parameter at any universe level, with their laws at <code>ℕ</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Function.Iter.html">Prelude›Function›Iter</a> <p>Iteration of an arbitrary function: a unit parameterized by the level <code>u</code> of the type, the type <code>A</code> and the function, so each client instantiates it as it needs: <code>Iter.</code></p>
+</li>
+<li><a class="unit" href="Prelude.Logic.Leibniz.html">Prelude›Logic›Leibniz</a> <p>Leibniz equality of the elements of a type <code>A</code> of <code>Type@{u}</code>: <code>Id A x y</code> holds when every predicate of <code>x</code> holds of <code>y</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Logic.html">Prelude›Logic</a> <p>Propositions as types, at every universe level: <code>⊤</code> holds, <code>⊥</code> has no proof; negation, Church-encoded conjunction, disjunction, equivalence and existence over numbers, and decidability.</p>
+</li>
+<li><a class="unit" href="Prelude.Universe.Formers.html">Prelude›Universe›Formers</a> <p>Type formers at universe levels.</p>
+</li>
+<li><a class="unit" href="Prelude.Universe.Levels.html">Prelude›Universe›Levels</a> <p>Universe levels as data.</p>
+</li>
+</ul><h2>Programs</h2><ul class="units"><li><a class="unit" href="Algebra.html">Algebra</a> <p>A client of <code>Prelude›Algebra›Monoid</code> and its instances.</p>
+</li>
+<li><a class="unit" href="Arithmetic.html">Arithmetic</a> <p>A client of the arithmetic in <code>Prelude</code>: closed instances of the laws of addition and multiplication, and a few computations.</p>
+</li>
+<li><a class="unit" href="Binary.html">Binary</a> <p>A client of <code>Prelude›Arith›Binary</code>: halves, low bits and binary digits of numbers, the number they write, the count of ones, and exponentiation by squaring.</p>
+</li>
+<li><a class="unit" href="Combinatorics.html">Combinatorics</a> <p>A client of <code>Prelude›Arith›Binomial</code> and <code>Prelude›Arith›Fibonacci</code>: the first rows of Pascal's triangle and of the Fibonacci numbers, and closed instances of their laws, which normalize to <code>⋆</code>.</p>
+</li>
+<li><a class="unit" href="DataTypes.html">DataTypes</a> <p>A client of the inductive types of <code>Prelude›Data</code> ported from Agda's standard library: comparisons, inclusive unions, non-empty lists, binary trees, signs and parities, integers, binary numbers and W-types, computed on closed values, and closed instances of their laws.</p>
+</li>
+<li><a class="unit" href="Division.html">Division</a> <p>A client of <code>Prelude›Arith›Div</code> and <code>Prelude›Arith›Divides</code>: computed quotients and remainders, and closed instances of their theorems.</p>
+</li>
+<li><a class="unit" href="Groups.html">Groups</a> <p>A client of <code>Prelude›Algebra›Group</code>, read in the group of integers of <code>Prelude›Algebra›Integers</code>.</p>
+</li>
+<li><a class="unit" href="Induction.html">Induction</a> <p>A client of <code>Prelude›Arith›Induction</code> and <code>Prelude›Arith›Decide</code>: halving by strong and by two-step induction, decisions eliminated into <code>ℕ</code> to show which branch they compute, and the equality test <code>eqb</code>.</p>
+</li>
+<li><a class="unit" href="Lattice.html">Lattice</a> <p>A client of <code>Prelude›Arith›Monotone</code> and <code>Prelude›Arith›Lattice</code>: closed instances of the order and lattice laws normalize to <code>⋆</code>, and a few computations with <code>min</code>, <code>max</code> and <code>sub</code>.</p>
+</li>
+<li><a class="unit" href="Lists.html">Lists</a> <p>A client of the inductive data types of <code>Prelude›Data</code>: lists, booleans, options, pairs, sums and dependent pairs, computed on closed values, and closed instances of their laws.</p>
+</li>
+<li><a class="unit" href="NatTheory.html">NatTheory</a> <p>A client of the <code>Prelude</code> library: <code>Prelude›Arith›Equality</code>, <code>Prelude›Arith›Plus</code> and <code>Prelude›Function›Iter</code> are separate units, loaded once each.</p>
+</li>
+<li><a class="unit" href="NumberTheory.html">NumberTheory</a> <p>A client of <code>Prelude›Arith›Gcd</code>, its laws, and <code>Prelude›Arith›Prime</code>: greatest common divisors, the primes below 30, and closed instances of the theorems, which normalize to <code>⋆</code>.</p>
+</li>
+<li><a class="unit" href="OrderParity.html">OrderParity</a> <p>A client of <code>Prelude›Arith›Order</code> and <code>Prelude›Arith›Parity</code>: closed instances of their theorems normalize to <code>⋆</code>, and <code>leb</code> decides the order.</p>
+</li>
+<li><a class="unit" href="Polynomials.html">Polynomials</a> <p>Polynomials with natural coefficients, evaluated at a point.</p>
+</li>
+<li><a class="unit" href="Powers.html">Powers</a> <p>A client of <code>Prelude›Arith›Pow</code>, <code>Prelude›Arith›Sum</code> and <code>Prelude›Arith›Factorial</code>: a few computations, and closed instances of their theorems, which normalize to <code>⋆</code>.</p>
+</li>
+<li><a class="unit" href="Programs.html">Programs</a> <p>A client of the programs in the <code>Prelude</code> library: subtraction, minimum and maximum, generic combinators, and the Ackermann function, run on closed instances.</p>
+</li>
+<li><a class="unit" href="Streams.html">Streams</a> <p>A client of <code>Prelude›Data›Stream</code> and its laws: the natural numbers, the even and odd numbers, the squares and two Fibonacci-like streams are read with <code>nth</code> and summed through <code>take</code>, and closed instances of the laws normalize to <code>⋆</code>.</p>
+</li>
+<li><a class="unit" href="Tutorial.html">Tutorial</a> <p>A tour of the McTT surface language, one feature at a time.</p>
+</li>
+<li><a class="unit" href="Universes.html">Universes</a> <p>A client of the level-polymorphic Prelude: <code>Prelude›Universe›Levels</code>, <code>Prelude›Universe›Formers</code>, <code>Prelude›Data›Church</code> and its laws, and the level parameters of <code>Prelude›Logic</code>, <code>Prelude›Data›Vec</code>, <code>Prelude›Function›Iter</code> and <code>Prelude›Arith›Induction</code>.</p>
+</li>
+<li><a class="unit" href="Vectors.html">Vectors</a> <p>A client of <code>Prelude›Data›Vec</code> and <code>Prelude›Data›Vec›Properties</code>: small vectors of numbers are built, mapped, zipped, appended, split, reversed, folded, read and summed, and closed instances of the laws normalize to <code>⋆</code>.</p>
+</li>
+</ul></body></html>

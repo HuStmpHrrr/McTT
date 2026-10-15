@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Prelude›Data›Ordering</title><link rel="stylesheet" href="mctt.css"></head><body>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Prelude›Data›Ordering</h1>
+<details class="toc"><summary>Contents</summary><ul><li><span class="kw">module</span> <a href="#Ordering">Ordering</a></li><li><span class="kw">def</span> <a href="#flip">flip</a></li><li><span class="kw">def</span> <a href="#compare">compare</a></li><li><span class="kw">def</span> <a href="#thenCmp">thenCmp</a></li></ul></details>
+<div class="doc"><p>The result of a comparison: <code>less</code>, <code>equal</code> or <code>greater</code>.  Agda's standard library has the indexed <code>Ordering m n</code> of <code>Data.Nat.Base</code>, whose constructors carry the evidence; this is the plain type, as in Haskell, with the evidence given by <code>Spec</code> in <code>Prelude›Data›Ordering›Properties</code>.</p>
+<p><code>compare m n</code> compares two numbers, <code>flip</code> exchanges <code>less</code> and <code>greater</code>, and <code>thenCmp o p</code> is the lexicographic combination: <code>o</code>, unless it is <code>equal</code>, then <code>p</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Data</span><span class="sym">›</span><span class="unit bind">Ordering</span> <span class="kw">where</span>
+
+<span class="kw">import</span> <a class="unit" href="Prelude.Builtin.Nat.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Builtin</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Nat</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="succ" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a><span class="sym">)</span>
+
+<span class="kw">inductive</span> <span class="mod bind" id="Ordering">Ordering</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="kw">where</span>
+<span class="sym">|</span> <span class="def bind" id="Ordering.less">less</span>
+<span class="sym">|</span> <span class="def bind" id="Ordering.equal">equal</span>
+<span class="sym">|</span> <span class="def bind" id="Ordering.greater">greater</span>
+<span class="kw">end</span>
+
+<span class="kw">open</span> <a class="mod" href="#Ordering">Ordering</a> <span class="kw">export</span> <span class="sym">(</span><a class="def bind" id="less" href="#Ordering.less">less</a><span class="sym">;</span> <a class="def bind" id="equal" href="#Ordering.equal">equal</a><span class="sym">;</span> <a class="def bind" id="greater" href="#Ordering.greater">greater</a><span class="sym">)</span>
+
+<span class="kw">def</span> <span class="def bind" id="flip">flip</span> <span class="sym">(</span><span class="var bind" id="l16">o</span> <span class="sym">:</span> <a class="mod" href="#Ordering">Ordering</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Ordering">Ordering</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l16">o</a> <span class="kw">return</span> <span class="var bind" id="l20">z</span> <span class="sym">.</span> <a class="mod" href="#Ordering">Ordering</a>
+  <span class="sym">|</span> <span class="free">less</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.greater">greater</a>
+  <span class="sym">|</span> <span class="free">equal</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.equal">equal</a>
+  <span class="sym">|</span> <span class="free">greater</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.less">less</a>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>By recursion on <code>m</code>, then cases on <code>n</code>: two successors compare as their predecessors.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="compare">compare</span> <span class="sym">(</span><span class="var bind" id="l29">m</span> <span class="sym">:</span> <span class="ty">ℕ</span><span class="sym">)</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l30">n</span> <span class="sym">:</span> <span class="ty">ℕ</span><span class="sym">)</span> <span class="sym">→</span> <a class="mod" href="#Ordering">Ordering</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l29">m</a> <span class="kw">return</span> <span class="var bind" id="l33">x</span> <span class="sym">.</span> <span class="sym">(</span><span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l34">n</span> <span class="sym">:</span> <span class="ty">ℕ</span><span class="sym">)</span> <span class="sym">→</span> <a class="mod" href="#Ordering">Ordering</a><span class="sym">)</span>
+  <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l37">n</span> <span class="sym">:</span> <span class="ty">ℕ</span><span class="sym">)</span> <span class="sym">→</span>
+      <span class="kw">elim</span> <a class="var" href="#l37">n</a> <span class="kw">return</span> <span class="var bind" id="l39">y</span> <span class="sym">.</span> <a class="mod" href="#Ordering">Ordering</a> <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.equal">equal</a> <span class="sym">|</span> <span class="free">succ</span> <span class="var bind" id="l44">q</span><span class="sym">,</span> <span class="var bind" id="l45">s</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.less">less</a> <span class="kw">end</span>
+  <span class="sym">|</span> <span class="free">succ</span> <span class="var bind" id="l48">p</span><span class="sym">,</span> <span class="var bind" id="l49">r</span> <span class="sym">⇒</span> <span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l50">n</span> <span class="sym">:</span> <span class="ty">ℕ</span><span class="sym">)</span> <span class="sym">→</span>
+      <span class="kw">elim</span> <a class="var" href="#l50">n</a> <span class="kw">return</span> <span class="var bind" id="l52">y</span> <span class="sym">.</span> <a class="mod" href="#Ordering">Ordering</a> <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.greater">greater</a> <span class="sym">|</span> <span class="free">succ</span> <span class="var bind" id="l57">q</span><span class="sym">,</span> <span class="var bind" id="l58">s</span> <span class="sym">⇒</span> <a class="var" href="#l49">r</a> <a class="var" href="#l57">q</a> <span class="kw">end</span>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">def</span> <span class="def bind" id="thenCmp">thenCmp</span> <span class="sym">(</span><span class="var bind" id="l62">o</span> <span class="sym">:</span> <a class="mod" href="#Ordering">Ordering</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l64">p</span> <span class="sym">:</span> <a class="mod" href="#Ordering">Ordering</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Ordering">Ordering</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l62">o</a> <span class="kw">return</span> <span class="var bind" id="l68">z</span> <span class="sym">.</span> <a class="mod" href="#Ordering">Ordering</a>
+  <span class="sym">|</span> <span class="free">less</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.less">less</a>
+  <span class="sym">|</span> <span class="free">equal</span> <span class="sym">⇒</span> <a class="var" href="#l64">p</a>
+  <span class="sym">|</span> <span class="free">greater</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.greater">greater</a>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">end</span></pre>
+</body></html>

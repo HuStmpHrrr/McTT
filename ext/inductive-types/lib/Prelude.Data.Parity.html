@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Prelude›Data›Parity</title><link rel="stylesheet" href="mctt.css"></head><body>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Prelude›Data›Parity</h1>
+<details class="toc"><summary>Contents</summary><ul><li><span class="kw">module</span> <a href="#Parity">Parity</a></li><li><span class="kw">def</span> <a href="#inv">inv</a></li><li><span class="kw">def</span> <a href="#add">add</a></li><li><span class="kw">def</span> <a href="#mul">mul</a></li><li><span class="kw">def</span> <a href="#parity">parity</a></li><li><span class="kw">def</span> <a href="#toSign">toSign</a></li><li><span class="kw">def</span> <a href="#fromSign">fromSign</a></li></ul></details>
+<div class="doc"><p>Parities, after Agda's <code>Data.Parity</code>: <code>even</code> and <code>odd</code> (Agda's <code>0ℙ</code> and <code>1ℙ</code>), the integers modulo 2, with the opposite parity <code>inv</code> (Agda's <code>_⁻¹</code>), addition <code>add</code> and multiplication <code>mul</code>, the parity of a number, and the isomorphism <code>toSign</code> with the signs of <code>Prelude›Data›Sign</code>.  <code>Prelude›Arith›Parity</code> has the predicates <code>Even</code> and <code>Odd</code> on numbers instead.  The laws are in <code>Prelude›Data›Parity›Properties</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Data</span><span class="sym">›</span><span class="unit bind">Parity</span> <span class="kw">where</span>
+
+<span class="kw">import</span> <a class="unit" href="Prelude.Builtin.Nat.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Builtin</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Nat</a>
+<span class="kw">import</span> <a class="unit" href="Prelude.Data.Sign.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Sign.html">Data</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Sign.html">Sign</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="Sign" href="Prelude.Data.Sign.html#Sign">Sign</a><span class="sym">;</span> <a class="def bind" id="negative" href="Prelude.Data.Sign.html#Sign.negative">negative</a><span class="sym">;</span> <a class="def bind" id="positive" href="Prelude.Data.Sign.html#Sign.positive">positive</a><span class="sym">)</span>
+
+<span class="kw">inductive</span> <span class="mod bind" id="Parity">Parity</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="kw">where</span>
+<span class="sym">|</span> <span class="def bind" id="Parity.even">even</span>
+<span class="sym">|</span> <span class="def bind" id="Parity.odd">odd</span>
+<span class="kw">end</span>
+
+<span class="kw">open</span> <a class="mod" href="#Parity">Parity</a> <span class="kw">export</span> <span class="sym">(</span><a class="def bind" id="even" href="#Parity.even">even</a><span class="sym">;</span> <a class="def bind" id="odd" href="#Parity.odd">odd</a><span class="sym">)</span>
+
+<span class="kw">def</span> <span class="def bind" id="inv">inv</span> <span class="sym">(</span><span class="var bind" id="l19">p</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l19">p</a> <span class="kw">return</span> <span class="var bind" id="l23">z</span> <span class="sym">.</span> <a class="mod" href="#Parity">Parity</a> <span class="sym">|</span> <span class="free">even</span> <span class="sym">⇒</span> <a class="def" href="#Parity.odd">odd</a> <span class="sym">|</span> <span class="free">odd</span> <span class="sym">⇒</span> <a class="def" href="#Parity.even">even</a> <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">def</span> <span class="def bind" id="add">add</span> <span class="sym">(</span><span class="var bind" id="l30">p</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l32">q</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l30">p</a> <span class="kw">return</span> <span class="var bind" id="l36">z</span> <span class="sym">.</span> <a class="mod" href="#Parity">Parity</a> <span class="sym">|</span> <span class="free">even</span> <span class="sym">⇒</span> <a class="var" href="#l32">q</a> <span class="sym">|</span> <span class="free">odd</span> <span class="sym">⇒</span> <a class="def" href="#inv">inv</a> <a class="var" href="#l32">q</a> <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">def</span> <span class="def bind" id="mul">mul</span> <span class="sym">(</span><span class="var bind" id="l44">p</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l46">q</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l44">p</a> <span class="kw">return</span> <span class="var bind" id="l50">z</span> <span class="sym">.</span> <a class="mod" href="#Parity">Parity</a> <span class="sym">|</span> <span class="free">even</span> <span class="sym">⇒</span> <a class="def" href="#Parity.even">even</a> <span class="sym">|</span> <span class="free">odd</span> <span class="sym">⇒</span> <a class="var" href="#l46">q</a> <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>The parity of a number: each successor flips it.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="parity">parity</span> <span class="sym">(</span><span class="var bind" id="l57">n</span> <span class="sym">:</span> <span class="ty">ℕ</span><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l57">n</a> <span class="kw">return</span> <span class="var bind" id="l60">z</span> <span class="sym">.</span> <a class="mod" href="#Parity">Parity</a> <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <a class="def" href="#Parity.even">even</a> <span class="sym">|</span> <span class="free">succ</span> <span class="var bind" id="l65">k</span><span class="sym">,</span> <span class="var bind" id="l66">r</span> <span class="sym">⇒</span> <a class="def" href="#inv">inv</a> <a class="var" href="#l66">r</a> <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p><code>even</code> is <code>positive</code> and <code>odd</code> is <code>negative</code>: addition of parities is multiplication of signs.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="toSign">toSign</span> <span class="sym">(</span><span class="var bind" id="l70">p</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="Prelude.Data.Sign.html#Sign">Sign</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l70">p</a> <span class="kw">return</span> <span class="var bind" id="l74">z</span> <span class="sym">.</span> <a class="mod" href="Prelude.Data.Sign.html#Sign">Sign</a> <span class="sym">|</span> <span class="free">even</span> <span class="sym">⇒</span> <a class="def" href="Prelude.Data.Sign.html#Sign.positive">positive</a> <span class="sym">|</span> <span class="free">odd</span> <span class="sym">⇒</span> <a class="def" href="Prelude.Data.Sign.html#Sign.negative">negative</a> <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">def</span> <span class="def bind" id="fromSign">fromSign</span> <span class="sym">(</span><span class="var bind" id="l81">s</span> <span class="sym">:</span> <a class="mod" href="Prelude.Data.Sign.html#Sign">Sign</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l81">s</a> <span class="kw">return</span> <span class="var bind" id="l85">z</span> <span class="sym">.</span> <a class="mod" href="#Parity">Parity</a> <span class="sym">|</span> <span class="free">negative</span> <span class="sym">⇒</span> <a class="def" href="#Parity.odd">odd</a> <span class="sym">|</span> <span class="free">positive</span> <span class="sym">⇒</span> <a class="def" href="#Parity.even">even</a> <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">end</span></pre>
+</body></html>
