@@ -1,0 +1,74 @@
+(* Finite lists: [List u A] has the constructors [nil] and [cons x xs], for
+   [x : A] and [xs : List u A], at every level [u].  The type takes the
+   level and the element type as uniform parameters, so the constructors
+   do too: [cons 0l ℕ 1 (nil 0l ℕ) : List 0l ℕ].
+
+   The operations on lists over a fixed [A] are in the module [Ops u A]:
+   [length], [append], [map], [foldr] and [reverse], each by recursion on
+   its list argument, so it computes on a list built from constructors.
+   [sum] adds up a list of numbers.  The laws are in
+   [Prelude›Data›List›Properties]. *)
+module Prelude›Data›List where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Arith›Plus use (plus)
+
+inductive List (u : Level) (A : Type@{u}) : Type@{u} where
+| nil
+| cons (x : A) (xs : List u A)
+end
+
+open List export (nil; cons)
+
+module Ops (u : Level) (A : Type@{u}) where
+
+def length (l : List u A) : ℕ ≔
+  elim l return z . ℕ
+  | nil ⇒ 0
+  | cons x xs, r ⇒ succ r
+  end
+end
+
+(* Concatenation, by recursion on the first list: [append nil m] is [m]. *)
+def append (l : List u A) (m : List u A) : List u A ≔
+  elim l return z . List u A
+  | nil ⇒ m
+  | cons x xs, r ⇒ cons u A x r
+  end
+end
+
+def map (B : Type@{u}) (f : ∀ (x : A) → B) (l : List u A) : List u B ≔
+  elim l return z . List u B
+  | nil ⇒ nil u B
+  | cons x xs, r ⇒ cons u B (f x) r
+  end
+end
+
+(* Right fold: [foldr B f z [x1, …, xn]] is [f x1 (… (f xn z))]. *)
+def foldr (B : Type@{u}) (f : ∀ (x : A) (b : B) → B) (z : B)
+    (l : List u A) : B ≔
+  elim l return y . B
+  | nil ⇒ z
+  | cons x xs, r ⇒ f x r
+  end
+end
+
+(* Reversal: the reversed tail, then the head. *)
+def reverse (l : List u A) : List u A ≔
+  elim l return z . List u A
+  | nil ⇒ nil u A
+  | cons x xs, r ⇒ append r (cons u A x (nil u A))
+  end
+end
+
+end
+
+(* The sum of a list of numbers. *)
+def sum (l : List 0l ℕ) : ℕ ≔
+  elim l return z . ℕ
+  | nil ⇒ 0
+  | cons x xs, r ⇒ plus x r
+  end
+end
+
+end
