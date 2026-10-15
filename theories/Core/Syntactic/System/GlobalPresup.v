@@ -398,7 +398,7 @@ Lemma gc_resolve_frame : forall Θ mp U Ξ p E,
     (exists ip, p = qname_app mp ip /\ gm_resolve (gu_mod U) ip = Some E) \/
     gc_resolve Θ Ξ p = Some E.
 Proof.
-  intros * H; unfold gc_resolve in *; cbn in H.
+  intros * H; unfold gc_resolve, gc_resolve_u in *; cbn in H.
   destruct (qname_strip mp p) as [ip |] eqn:Hs.
   - left; exists ip; split; [ apply qname_strip_app_inv; assumption | exact H ].
   - right; exact H.
@@ -406,14 +406,14 @@ Qed.
 
 Lemma gc_resolve_frame_here : forall Θ mp U Ξ ip,
     gc_resolve Θ ((mp, U) :: Ξ) (qname_app mp ip) = gm_resolve (gu_mod U) ip.
-Proof. intros; unfold gc_resolve; cbn; rewrite qname_strip_app; reflexivity. Qed.
+Proof. intros; unfold gc_resolve, gc_resolve_u; cbn; rewrite qname_strip_app; reflexivity. Qed.
 
 Lemma gc_module_frame : forall Θ mp U Ξ p r,
     gc_module Θ ((mp, U) :: Ξ) p = Some r ->
     (exists x ip, p = qname_app mp (x :: ip) /\ gm_submodule (gu_params U ++ gs_tele Ξ) (gu_mod U) x ip = Some r) \/
     gc_module Θ Ξ p = Some r.
 Proof.
-  intros * H; unfold gc_module in *; cbn in H.
+  intros * H; unfold gc_module, gc_module_u in *; cbn in H.
   destruct (qname_strip mp p) as [ip |] eqn:Hs.
   - left; destruct ip as [| x ip]; [ discriminate |].
     exists x, ip; split; [ apply qname_strip_app_inv; assumption | exact H ].
@@ -422,7 +422,7 @@ Qed.
 
 Lemma gc_module_frame_here : forall Θ mp U Ξ x ip,
     gc_module Θ ((mp, U) :: Ξ) (qname_app mp (x :: ip)) = gm_submodule (gu_params U ++ gs_tele Ξ) (gu_mod U) x ip.
-Proof. intros; unfold gc_module; cbn; rewrite qname_strip_app; reflexivity. Qed.
+Proof. intros; unfold gc_module, gc_module_u; cbn; rewrite qname_strip_app; reflexivity. Qed.
 
 Lemma gc_body_frame : forall Θ mp U Ξ p r,
     gc_body Θ ((mp, U) :: Ξ) p = Some r ->
@@ -476,7 +476,7 @@ Lemma ind_alias_lookup_frame : forall Θ mp U Ξ p v,
     (exists ip, p = qname_app mp ip /\ gm_ind_target (gu_mod U) ip = Some v) \/
     ind_alias_lookup Θ Ξ p = Some v.
 Proof.
-  intros * H; unfold ind_alias_lookup in *; cbn in H.
+  intros * H; unfold ind_alias_lookup, ind_alias_lookup_u in *; cbn in H.
   destruct (qname_strip mp p) as [ip |] eqn:Hs.
   - left; exists ip; split; [ apply qname_strip_app_inv; assumption | exact H ].
   - right; exact H.
@@ -484,12 +484,12 @@ Qed.
 
 Lemma ind_alias_lookup_frame_here : forall Θ mp U Ξ ip,
     ind_alias_lookup Θ ((mp, U) :: Ξ) (qname_app mp ip) = gm_ind_target (gu_mod U) ip.
-Proof. intros; unfold ind_alias_lookup; cbn; rewrite qname_strip_app; reflexivity. Qed.
+Proof. intros; unfold ind_alias_lookup, ind_alias_lookup_u; cbn; rewrite qname_strip_app; reflexivity. Qed.
 
 Lemma ind_alias_lookup_file : forall Θ fp U p,
     ind_alias_lookup ((fp, U) :: Θ) nil p = ind_alias_lookup Θ ((q_abs fp nil, U) :: nil) p.
 Proof.
-  intros; unfold ind_alias_lookup; cbn [gs_find gds_lookup]; unfold qname_strip; cbn [q_unit q_chain strip_prefix].
+  intros; unfold ind_alias_lookup, ind_alias_lookup_u; cbn [gs_find gds_lookup]; unfold qname_strip; cbn [q_unit q_chain strip_prefix].
   destruct (path_beq fp (q_unit p)) eqn:Hb.
   - apply path_beq_true in Hb as ->; rewrite path_beq_refl; reflexivity.
   - destruct (path_beq (q_unit p) fp) eqn:Hb'; [| reflexivity ].
@@ -501,7 +501,7 @@ Qed.
 Lemma ind_lookup_file : forall Θ fp U p,
     ind_lookup ((fp, U) :: Θ) nil p = ind_lookup Θ ((q_abs fp nil, U) :: nil) p.
 Proof.
-  intros; unfold ind_lookup, gc_module; cbn [gs_find_tele gds_lookup]; unfold qname_strip; cbn [q_unit q_chain strip_prefix].
+  intros; unfold ind_lookup, ind_lookup_u, gc_module, gc_module_u; cbn [gs_find_tele gds_lookup]; unfold qname_strip; cbn [q_unit q_chain strip_prefix].
   destruct (path_beq fp (q_unit p)) eqn:Hb.
   - apply path_beq_true in Hb as ->; rewrite path_beq_refl.
     destruct (q_chain p) as [| x ip]; cbn; [ reflexivity | rewrite List.app_nil_r; reflexivity ].
@@ -645,21 +645,21 @@ Lemma Emb_entry : forall Θ mq Δ Φ0 Ξ y E Θ2 Ξ2,
     Emb Θ ((mq, gu_body Δ (Φ0 ⊳ y ↦ E)) :: Ξ) Θ2 Ξ2.
 Proof.
   intros * [Hg Hs] (Hin & Hm0 & Hmod & Hb0 & Hbod & Hia); constructor; [ assumption | split; [| split; [| split ] ] ].
-  - intros p E0 Hr; unfold gc_resolve in Hr; cbn in Hr.
+  - intros p E0 Hr; unfold gc_resolve, gc_resolve_u in Hr; cbn in Hr.
     destruct (qname_strip mq p) as [ip |] eqn:Hst.
     + apply qname_strip_app_inv in Hst as ->; cbn [gu_mod] in Hr.
       destruct (gm_resolve_ext_inv _ _ _ _ _ Hr) as [(ip' & -> & HE) | HΦ].
       * rewrite <- qname_app_in; exact (Hin _ _ HE).
       * apply (gc_sub_resolve _ _ _ _ _ _ Hs); rewrite gc_resolve_frame_here; exact HΦ.
-    + apply (gc_sub_resolve _ _ _ _ _ _ Hs); unfold gc_resolve; cbn; rewrite Hst; exact Hr.
-  - intros p r Hr; unfold gc_module in Hr; cbn in Hr.
+    + apply (gc_sub_resolve _ _ _ _ _ _ Hs); unfold gc_resolve, gc_resolve_u; cbn; rewrite Hst; exact Hr.
+  - intros p r Hr; unfold gc_module, gc_module_u in Hr; cbn in Hr.
     destruct (qname_strip mq p) as [ip |] eqn:Hst.
     + apply qname_strip_app_inv in Hst as ->; destruct ip as [| x ip]; [ discriminate |]; cbn [gu_mod gu_params] in Hr.
       destruct (gm_submodule_ext_inv _ _ _ _ _ _ _ Hr) as [(-> & -> & HE) | [(z & ip' & -> & -> & HE) | HΦ]].
       * rewrite <- (qname_app_in mq y nil), qname_app_nil; exact (Hm0 _ HE).
       * rewrite <- qname_app_in; exact (Hmod _ _ _ HE).
       * apply (gc_sub_module _ _ _ _ _ _ Hs); rewrite gc_module_frame_here; exact HΦ.
-    + apply (gc_sub_module _ _ _ _ _ _ Hs); unfold gc_module; cbn; rewrite Hst; exact Hr.
+    + apply (gc_sub_module _ _ _ _ _ _ Hs); unfold gc_module, gc_module_u; cbn; rewrite Hst; exact Hr.
   - intros p T Φ Hr; unfold gc_body in Hr; cbn in Hr.
     destruct (qname_strip mq p) as [ip |] eqn:Hst.
     + apply qname_strip_app_inv in Hst as ->; destruct ip as [| x ip]; [ discriminate |]; cbn [gu_mod gu_params gm_subbody] in Hr.
@@ -671,13 +671,13 @@ Proof.
            destruct E as [| ? [Δ' [Φ' | E']] | ? ? ? | ? ? ? ?]; cbn in *; try discriminate; exact Hr.
       * apply (gc_sub_body _ _ _ _ _ _ _ Hs); rewrite gc_body_frame_here; exact Hr.
     + apply (gc_sub_body _ _ _ _ _ _ _ Hs); unfold gc_body; cbn; rewrite Hst; exact Hr.
-  - intros p v Hr; unfold ind_alias_lookup in Hr; cbn in Hr.
+  - intros p v Hr; unfold ind_alias_lookup, ind_alias_lookup_u in Hr; cbn in Hr.
     destruct (qname_strip mq p) as [ip |] eqn:Hst.
     + apply qname_strip_app_inv in Hst as ->; cbn [gu_mod] in Hr.
       destruct (gm_ind_target_ext_inv _ _ _ _ _ Hr) as [(ip' & -> & HE) | HΦ].
       * rewrite <- qname_app_in; exact (Hia _ _ HE).
       * apply (gc_sub_ind_alias _ _ _ _ _ _ Hs); rewrite ind_alias_lookup_frame_here; exact HΦ.
-    + apply (gc_sub_ind_alias _ _ _ _ _ _ Hs); unfold ind_alias_lookup; cbn; rewrite Hst; exact Hr.
+    + apply (gc_sub_ind_alias _ _ _ _ _ _ Hs); unfold ind_alias_lookup, ind_alias_lookup_u; cbn; rewrite Hst; exact Hr.
 Qed.
 
 (** An inductive type contributes what it did before one more member. *)
@@ -1462,9 +1462,9 @@ Section Induction.
       + intros ip Δa pa Nsa Hx.
         destruct (gm_ind_target_ext_inv _ _ _ _ _ Hx) as [(ip' & -> & HE) | HΦ']; eauto.
     - (* nothing filed *)
-      intros ? ? _; split; [ intros p E Hr; unfold gc_resolve in Hr; cbn in Hr; discriminate
-                           | split; [ intros p D Hr; unfold ind_lookup, gc_module in Hr; cbn in Hr; discriminate
-                                    | intros pq ? ? ? Hr; unfold ind_alias_lookup in Hr; cbn in Hr; discriminate ] ].
+      intros ? ? _; split; [ intros p E Hr; unfold gc_resolve, gc_resolve_u in Hr; cbn in Hr; discriminate
+                           | split; [ intros p D Hr; unfold ind_lookup, ind_lookup_u, gc_module, gc_module_u in Hr; cbn in Hr; discriminate
+                                    | intros pq ? ? ? Hr; unfold ind_alias_lookup, ind_alias_lookup_u in Hr; cbn in Hr; discriminate ] ].
     - (* a filed unit: it resolves as its closed frame did *)
       rename H into Hg, H0 into IHU.
       intros Θ2 Ξ2 He.

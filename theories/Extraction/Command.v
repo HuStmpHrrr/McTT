@@ -325,7 +325,7 @@ Proof.
   intros * He HΞ HE; destruct (wf_gentry_ind_alias_inv _ _ _ _ _ _ _ HE) as (Htel & HΔ & D & Hl & Hle & HM & HH).
   econstructor;
     [ exact Htel | exact (equiv_ext _ _ _ _ _ He HΞ HΔ)
-    | unfold ind_lookup in *; rewrite <- (gds_equiv_module _ _ _ _ He); exact Hl | exact Hle
+    | rewrite ind_lookup_unfold in *; rewrite <- (gds_equiv_module _ _ _ _ He); exact Hl | exact Hle
     | exact (equiv_exp _ _ _ _ _ _ He HΞ HM) | exact (equiv_modexp _ _ _ _ _ He HΞ HH) ].
 Qed.
 
@@ -632,7 +632,7 @@ Section Impl.
   Lemma equiv_nat_view : forall Θ Θ' Ξ B, gds_equiv Θ Θ' -> nat_view Θ Ξ B = nat_view Θ' Ξ B.
   Proof.
     intros * He; unfold nat_view; destruct (bt_nat B) as [p |]; [| reflexivity ].
-    unfold ind_lookup; rewrite (gds_equiv_module _ _ _ _ He); reflexivity.
+    rewrite ind_lookup_unfold, (gds_equiv_module _ _ _ _ He); reflexivity.
   Qed.
 
   Lemma linv_nat_view {ch Θ K D B ΘR Ξ} : linv ch Θ K D ΘR Ξ -> nat_view ΘR Ξ B = nat_view (gds_restrict D Θ) Ξ B.
@@ -705,7 +705,7 @@ Section Impl.
     pose proof (gds_equiv_sym _ _ (linv_equiv Hli)) as He.
     assert (Hr : run_cmd ch B RbR ΘR Ξ (cc_builtin nat_kind E) B' RbR ΘR Ξ).
     { eapply rc_builtin; [ exact Hq | rewrite <- Ht; symmetry; apply gds_equiv_ind_target, He
-                         | unfold ind_lookup in *; rewrite <- (gds_equiv_module _ _ _ _ He); exact Hl
+                         | rewrite ind_lookup_unfold in *; rewrite <- (gds_equiv_module _ _ _ _ He); exact Hl
                          | exact Hs | exact Hsort | exact Hb ]. }
     exists ΘR, RbR; split; [ exact Hr | split; [ exact Hli | split; [ exact Hrb | split; [ apply ext_refl | apply grows_refl ] ] ] ].
   Qed.
@@ -1763,7 +1763,7 @@ Section Impl.
     assert (Δ1 = nil /\ p1 = p /\ Ns1 = nil) as (-> & -> & ->) by (rewrite Ht in Et; injection Et; auto).
     simp builtin_step.
     assert (Hl' : ind_lookup (gds_restrict D Θ) Ξ p = Some Dd)
-      by (unfold ind_lookup in *; rewrite <- (gds_equiv_module _ _ _ _ He); exact Hl).
+      by (rewrite ind_lookup_unfold in *; rewrite <- (gds_equiv_module _ _ _ _ He); exact Hl).
     destruct (opt_case (ind_lookup (gds_restrict D Θ) Ξ p)) as [[Dd' Hl''] | Hn'']; simp builtin_step; [| congruence ].
     assert (Dd' = Dd) as -> by congruence.
     destruct (inspect (nat_shape Dd)) as [[[z' s'] |] Es]; simp builtin_step; [| congruence ].

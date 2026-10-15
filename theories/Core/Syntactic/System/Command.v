@@ -921,7 +921,7 @@ Proof.
     cbn [gs_path gs_add gu_params gu_mod gs_tele] in Hm |- *.
     assert (Hp : qname_app (qname_in mq x) (y :: ip) = qname_app mq (x :: y :: ip))
       by (unfold qname_app, qname_in; cbn; rewrite <- List.app_assoc; reflexivity).
-    rewrite Hp; unfold ind_lookup; rewrite gc_module_frame_here; cbn [gu_params gu_mod].
+    rewrite Hp; rewrite ind_lookup_unfold, gc_module_frame_here; cbn [gu_params gu_mod].
     assert (Hm' : ge_submodule (P ++ gs_tele Ξ0) (ge_body pv Δ Φ) y ip = Some (mr_body T (Some D))) by (cbn; exact Hm).
     rewrite (gm_submodule_ext_here _ Ψ x _ _ _ _ Hm'); reflexivity.
   - apply ind_lookup_add; [ exact HΞ | exact Hfr | exact (ind_lookup_body _ _ _ _ _ Hm) ].
@@ -933,7 +933,7 @@ Lemma ind_lookup_below : forall Θ Ξ p D,
     ind_lookup Θ nil p = Some D -> ind_lookup Θ Ξ p = Some D.
 Proof.
   intros * Hfr Hl.
-  unfold ind_lookup, gc_module in *; cbn [gs_find_tele] in Hl.
+  unfold ind_lookup, ind_lookup_u, gc_module, gc_module_u in *; cbn [gs_find_tele] in Hl.
   destruct (gs_find_tele Ξ p) as [[[U ip] T] |] eqn:Hf; [| exact Hl ].
   exfalso.
   assert (Hg : gs_find Ξ p = Some (U, ip)) by (rewrite gs_find_tele_find, Hf; reflexivity).
@@ -1590,7 +1590,7 @@ Lemma ind_lookup_added : forall Θ Ξ x pv D Φ,
     Ξ <> nil -> ind_lookup Θ (gs_add x (ge_ind pv D Φ) Ξ) (qname_in (gs_path Ξ) x) = Some D.
 Proof.
   intros * Hn; destruct Ξ as [| [mp U] Ξ0]; [ contradiction |].
-  unfold ind_lookup; cbn [gs_add gs_path].
+  rewrite ind_lookup_unfold; cbn [gs_add gs_path].
   change (qname_in mp x) with (qname_app mp (x :: nil)).
   rewrite gc_module_frame_here; cbn; rewrite String.eqb_refl; reflexivity.
 Qed.

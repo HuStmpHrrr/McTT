@@ -143,7 +143,7 @@ Qed.
 Lemma gc_resolve_unseal : forall Θ Ξ p,
     gc_resolve (gds_unseal Θ) (gs_unseal Ξ) p = option_map ge_unseal (gc_resolve Θ Ξ p).
 Proof.
-  intros; unfold gc_resolve; rewrite gs_find_unseal.
+  intros; unfold gc_resolve, gc_resolve_u; rewrite gs_find_unseal.
   destruct (gs_find Ξ p) as [[U ip] |]; cbn; [ rewrite gu_mod_unseal; apply gm_resolve_unseal |].
   rewrite gds_lookup_unseal.
   destruct (gds_lookup Θ (q_unit p)); cbn; [ rewrite gu_mod_unseal; apply gm_resolve_unseal | reflexivity ].
@@ -164,7 +164,7 @@ Proof. intros * H; exact (gc_resolve_unseal_def _ _ _ _ _ _ _ H). Qed.
 Lemma gc_module_unseal : forall Θ Ξ p,
     gc_module (gds_unseal Θ) (gs_unseal Ξ) p = gc_module Θ Ξ p.
 Proof.
-  intros; unfold gc_module; rewrite gs_find_tele_unseal.
+  intros; unfold gc_module, gc_module_u; rewrite gs_find_tele_unseal.
   destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T] |]; cbn; [ reflexivity | |].
   - rewrite gu_params_unseal, gu_mod_unseal; apply gm_submodule_unseal.
   - rewrite gds_lookup_unseal.
@@ -173,7 +173,7 @@ Proof.
 Qed.
 
 Lemma ind_lookup_unseal : forall Θ Ξ p, ind_lookup (gds_unseal Θ) (gs_unseal Ξ) p = ind_lookup Θ Ξ p.
-Proof. intros; unfold ind_lookup; rewrite gc_module_unseal; reflexivity. Qed.
+Proof. intros; rewrite ind_lookup_unfold, gc_module_unseal; reflexivity. Qed.
 
 (** ** Freshness *)
 
@@ -228,7 +228,7 @@ Qed.
 Lemma ind_alias_lookup_unseal : forall Θ Ξ p,
     ind_alias_lookup (gds_unseal Θ) (gs_unseal Ξ) p = ind_alias_lookup Θ Ξ p.
 Proof.
-  intros; unfold ind_alias_lookup; rewrite gs_find_unseal.
+  intros; unfold ind_alias_lookup, ind_alias_lookup_u; rewrite gs_find_unseal.
   destruct (gs_find Ξ p) as [[U ip] |]; cbn; [ rewrite gu_mod_unseal; apply gm_ind_target_unseal |].
   rewrite gds_lookup_unseal.
   destruct (gds_lookup Θ (q_unit p)); cbn; [ rewrite gu_mod_unseal; apply gm_ind_target_unseal | reflexivity ].

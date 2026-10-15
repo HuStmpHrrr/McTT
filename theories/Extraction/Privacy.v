@@ -203,7 +203,7 @@ Corollary def_site_resolve : forall Θ Hg p E,
 Proof.
   intros * Hr; apply def_site_spec.
   assert (Hch : q_chain p <> nil).
-  { intros Hn; unfold gc_resolve in Hr; cbn in Hr; rewrite Hn in Hr.
+  { intros Hn; unfold gc_resolve, gc_resolve_u in Hr; cbn in Hr; rewrite Hn in Hr.
     destruct (gds_lookup Θ (q_unit p)); [ rewrite gm_resolve_nil in Hr |]; discriminate. }
   exists (q_abs (q_unit p) (removelast (q_chain p))), (ge_private E); split.
   - destruct p as [fp ch]; eapply mdl_entry; [ exact (gc_entry_resolve _ _ _ _ Hr) | reflexivity ].

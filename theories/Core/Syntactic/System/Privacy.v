@@ -48,7 +48,7 @@ Qed.
 
 Lemma gc_entry_resolve : forall Θ Ξ p E, gc_resolve Θ Ξ p = Some E -> gc_entry Θ Ξ p = Some E.
 Proof.
-  intros * H; unfold gc_resolve, gc_entry in *.
+  intros * H; unfold gc_resolve, gc_resolve_u, gc_entry, gc_entry_u in *.
   destruct (gs_find Ξ p) as [[U ip] |]; [ apply gm_entry_resolve; exact H |].
   destruct (gds_lookup Θ (q_unit p)); [ apply gm_entry_resolve; exact H | discriminate ].
 Qed.
@@ -56,7 +56,7 @@ Qed.
 Lemma gc_entry_alias : forall Θ Ξ p U r, gc_module Θ Ξ p = Some (mr_alias U r) -> r <> nil ->
     gc_entry Θ Ξ p = None.
 Proof.
-  intros * H Hr; unfold gc_module, gc_entry in *; rewrite gs_find_tele_find.
+  intros * H Hr; unfold gc_module, gc_module_u, gc_entry, gc_entry_u in *; rewrite gs_find_tele_find.
   destruct (gs_find_tele Ξ p) as [[[V [| x ip]] T] |]; cbn; [ discriminate | exact (gm_entry_alias _ _ _ _ _ _ H Hr) |].
   destruct (gds_lookup Θ (q_unit p)); [| discriminate ].
   destruct (q_chain p) as [| x ip]; cbn in H; [ discriminate | exact (gm_entry_alias _ _ _ _ _ _ H Hr) ].
@@ -64,7 +64,7 @@ Qed.
 
 Lemma gc_entry_dsub : forall Θ1 Θ2 Ξ p E, Θ1 ⊑ Θ2 -> gc_entry Θ1 Ξ p = Some E -> gc_entry Θ2 Ξ p = Some E.
 Proof.
-  intros * Hs H; unfold gc_entry in *.
+  intros * Hs H; unfold gc_entry, gc_entry_u in *.
   destruct (gs_find Ξ p) as [[U ip] |]; [ exact H |].
   destruct (gds_lookup Θ1 (q_unit p)) as [V |] eqn:E1; [| discriminate ].
   rewrite (Hs _ _ E1); exact H.
@@ -119,7 +119,7 @@ Qed.
 Lemma gc_module_alias_suffix : forall Θ Ξ p U r,
     gc_module Θ Ξ p = Some (mr_alias U r) -> exists pre, q_chain p = pre ++ r.
 Proof.
-  intros * H; unfold gc_module in H.
+  intros * H; unfold gc_module, gc_module_u in H.
   destruct (gs_find_tele Ξ p) as [[[V [| x ip]] T] |] eqn:Ef; [ discriminate | |].
   - destruct (gs_find_tele_suffix _ _ _ _ _ Ef) as (pre & ->).
     destruct (gm_submodule_alias_suffix _ _ _ _ _ _ H) as (pre' & ->).

@@ -1267,7 +1267,7 @@ Lemma gctx_closed_module : forall Θ Ξ p r,
     gc_module Θ Ξ p = Some r ->
     modres_closed r.
 Proof.
-  intros * [HΘ HΞ] Hr; unfold gc_module in Hr.
+  intros * [HΘ HΞ] Hr; unfold gc_module, gc_module_u in Hr.
   destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T] |] eqn:Hf; [ discriminate | |].
   - destruct (stack_closed_find _ _ _ _ _ HΞ Hf) as (_ & _ & HU); exact (HU _ _ _ Hr).
   - destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:Hl; [| discriminate ].

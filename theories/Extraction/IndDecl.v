@@ -700,17 +700,17 @@ Proof.
 Qed.
 
 Lemma gds_equiv_resolve : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> gc_resolve Θ Ξ p = gc_resolve Θ' Ξ p.
-Proof. intros * He; unfold gc_resolve; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
+Proof. intros * He; unfold gc_resolve, gc_resolve_u; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
 
 Lemma gds_equiv_module : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> gc_module Θ Ξ p = gc_module Θ' Ξ p.
-Proof. intros * He; unfold gc_module; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
+Proof. intros * He; unfold gc_module, gc_module_u; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
 
 Lemma gds_equiv_ind_alias : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> ind_alias_lookup Θ Ξ p = ind_alias_lookup Θ' Ξ p.
-Proof. intros * He; unfold ind_alias_lookup; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
+Proof. intros * He; unfold ind_alias_lookup, ind_alias_lookup_u; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
 
 Lemma gds_equiv_ind_target : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> ind_target Θ Ξ p = ind_target Θ' Ξ p.
 Proof.
-  intros * He; unfold ind_target, ind_lookup; rewrite (gds_equiv_module _ _ _ _ He), (gds_equiv_ind_alias _ _ _ _ He); reflexivity.
+  intros * He; rewrite ind_target_unfold, ind_lookup_unfold, (gds_equiv_module _ _ _ _ He), (gds_equiv_ind_alias _ _ _ _ He); reflexivity.
 Qed.
 
 Lemma equiv_cls_arg_in : forall Θ Θ' Ξ R args1 gs1 T g,
@@ -719,7 +719,7 @@ Proof.
   intros * He HΞ H; destruct H as [g Hg | i W g Hn HT HW Hg]; [ apply cls_in_syn; exact Hg |].
   eapply cls_in_nf; [ exact Hn | exact (equiv_exp _ _ _ _ _ _ He HΞ HT) | | exact Hg ].
   eapply nbe_ty_ext; [ | | | | exact HW ]; intros;
-    [ apply gds_equiv_resolve | apply gds_equiv_module | unfold ind_lookup; rewrite (gds_equiv_module _ _ _ _ He); reflexivity
+    [ apply gds_equiv_resolve | apply gds_equiv_module | rewrite ind_lookup_unfold, (gds_equiv_module _ _ _ _ He); reflexivity
     | apply gds_equiv_ind_alias ]; exact He.
 Qed.
 

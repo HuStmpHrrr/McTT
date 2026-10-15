@@ -1017,7 +1017,7 @@ Qed.
 Lemma gc_module_resolve : forall Θ Ξ p r,
     gc_module Θ Ξ p = Some r -> gc_resolve Θ Ξ p = None.
 Proof.
-  intros * H; unfold gc_module, gc_resolve in *; rewrite gs_find_tele_find.
+  intros * H; unfold gc_module, gc_module_u, gc_resolve, gc_resolve_u in *; rewrite gs_find_tele_find.
   destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T] |]; cbn; [ discriminate | eapply gm_submodule_resolve; exact H |].
   destruct (gds_lookup Θ (q_unit p)); [| discriminate ].
   destruct (q_chain p) as [| x ip]; cbn in *; [ destruct (gu_mod g); reflexivity || apply gm_resolve_nil | eapply gm_submodule_resolve; exact H ].

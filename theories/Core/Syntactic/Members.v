@@ -221,32 +221,42 @@ Proof.
   destruct (qname_strip mp p); [ reflexivity | apply IH ].
 Qed.
 
+(** Each lookup of a global name is defined at a function [uf] finding the
+    filed unit at a path (its [_u] version), and then at [gds_lookup Θ]: an
+    implementation may find the filed units faster, and gets the same results
+    when its function agrees with [gds_lookup Θ] ([gc_resolve_u_ok] and the
+    like). *)
+
 (** A path inside an open frame is read there, and anything else in the filed
     unit it names.  Nothing is re-expressed: entries are closed and paths
     absolute. *)
-Definition gc_resolve (Θ : gdeps) (Ξ : gstack) (p : qname) : option gentry :=
+Definition gc_resolve_u (uf : path -> option gunit) (Ξ : gstack) (p : qname) : option gentry :=
   match gs_find Ξ p with
   | Some (U, ip) => gm_resolve (gu_mod U) ip
   | None =>
-      match gds_lookup Θ (q_unit p) with
+      match uf (q_unit p) with
       | Some U => gm_resolve (gu_mod U) (q_chain p)
       | None => None
       end
   end.
 
+Definition gc_resolve (Θ : gdeps) (Ξ : gstack) (p : qname) : option gentry := gc_resolve_u (gds_lookup Θ) Ξ p.
+
 (** A module path inside an open frame is read there, provided it names a
     closed module: the open frame itself is not a module yet.  The telescope of
     the frame is its own parameters on top of those of the frames outside. *)
-Definition gc_module (Θ : gdeps) (Ξ : gstack) (p : qname) : option modres :=
+Definition gc_module_u (uf : path -> option gunit) (Ξ : gstack) (p : qname) : option modres :=
   match gs_find_tele Ξ p with
   | Some (U, nil, _) => None
   | Some (U, x :: ip, T) => gm_submodule (gu_params U ++ T) (gu_mod U) x ip
   | None =>
-      match gds_lookup Θ (q_unit p) with
+      match uf (q_unit p) with
       | Some U => gm_module (gu_params U) None (gu_mod U) (q_chain p)
       | None => None
       end
   end.
+
+Definition gc_module (Θ : gdeps) (Ξ : gstack) (p : qname) : option modres := gc_module_u (gds_lookup Θ) Ξ p.
 
 (** The body module at [p], with its full telescope. *)
 Definition gc_body (Θ : gdeps) (Ξ : gstack) (p : qname) : option (ctx * gmod) :=
@@ -262,16 +272,22 @@ Definition gc_body (Θ : gdeps) (Ξ : gstack) (p : qname) : option (ctx * gmod) 
 
 (** The declaration of the inductive type whose module is at [p], read off
     the type's entry ([gm_submodule]). *)
-Definition ind_lookup (Θ : gdeps) (Ξ : gstack) (p : qname) : option ind_decl :=
-  match gc_module Θ Ξ p with
+Definition ind_lookup_u (uf : path -> option gunit) (Ξ : gstack) (p : qname) : option ind_decl :=
+  match gc_module_u uf Ξ p with
   | Some (mr_body _ oD) => oD
   | _ => None
   end.
 
+Definition ind_lookup (Θ : gdeps) (Ξ : gstack) (p : qname) : option ind_decl := ind_lookup_u (gds_lookup Θ) Ξ p.
+
+Lemma ind_lookup_unfold : forall Θ Ξ p,
+    ind_lookup Θ Ξ p = match gc_module Θ Ξ p with Some (mr_body _ oD) => oD | _ => None end.
+Proof. reflexivity. Qed.
+
 Lemma ind_lookup_module : forall Θ Ξ p D,
     ind_lookup Θ Ξ p = Some D -> exists T, gc_module Θ Ξ p = Some (mr_body T (Some D)).
 Proof.
-  unfold ind_lookup; intros * H.
+  intros * H; rewrite ind_lookup_unfold in H.
   destruct (gc_module Θ Ξ p) as [[T oD | U r] |]; try discriminate.
   subst; eauto.
 Qed.
@@ -283,7 +299,7 @@ Proof. intros * H; destruct (ind_lookup_module _ _ _ _ H) as [T ->]; discriminat
 
 Lemma ind_lookup_body : forall Θ Ξ p T oD,
     gc_module Θ Ξ p = Some (mr_body T oD) -> ind_lookup Θ Ξ p = oD.
-Proof. intros * H; unfold ind_lookup; rewrite H; reflexivity. Qed.
+Proof. intros * H; rewrite ind_lookup_unfold, H; reflexivity. Qed.
 
 Lemma gs_find_unit : forall Ξ p U ip, gs_find Ξ p = Some (U, ip) ->
     exists mp, List.In (mp, U) Ξ /\ q_unit mp = q_unit p.
@@ -303,7 +319,7 @@ Lemma gc_resolve_inv : forall Θ Ξ p E,
     (exists mp U ip, List.In (mp, U) Ξ /\ gm_resolve (gu_mod U) ip = Some E) \/
     (exists fp U, gds_lookup Θ fp = Some U /\ gm_resolve (gu_mod U) (q_chain p) = Some E).
 Proof.
-  unfold gc_resolve; intros * H.
+  unfold gc_resolve, gc_resolve_u; intros * H.
   destruct (gs_find Ξ p) as [[U ip] |] eqn:Hf.
   - left; destruct (gs_find_unit _ _ _ _ Hf) as (mp & Hin & _).
     exists mp, U, ip; split; assumption.
@@ -334,15 +350,17 @@ Fixpoint gm_entry (Φ : gmod) (ip : list string) : option gentry :=
   | gm_open Φ _ _ => gm_entry Φ ip
   end.
 
-Definition gc_entry (Θ : gdeps) (Ξ : gstack) (p : qname) : option gentry :=
+Definition gc_entry_u (uf : path -> option gunit) (Ξ : gstack) (p : qname) : option gentry :=
   match gs_find Ξ p with
   | Some (U, ip) => gm_entry (gu_mod U) ip
   | None =>
-      match gds_lookup Θ (q_unit p) with
+      match uf (q_unit p) with
       | Some U => gm_entry (gu_mod U) (q_chain p)
       | None => None
       end
   end.
+
+Definition gc_entry (Θ : gdeps) (Ξ : gstack) (p : qname) : option gentry := gc_entry_u (gds_lookup Θ) Ξ p.
 
 (** Whether an entry is private. *)
 Definition ge_private (E : gentry) : bool :=
@@ -390,23 +408,57 @@ Definition gm_ind_target (Φ : gmod) (ip : list string) : option ind_alias_view 
   | None => None
   end.
 
-Definition ind_alias_lookup (Θ : gdeps) (Ξ : gstack) (pq : qname) : option ind_alias_view :=
+Definition ind_alias_lookup_u (uf : path -> option gunit) (Ξ : gstack) (pq : qname) : option ind_alias_view :=
   match gs_find Ξ pq with
   | Some (U, ip) => gm_ind_target (gu_mod U) ip
   | None =>
-      match gds_lookup Θ (q_unit pq) with
+      match uf (q_unit pq) with
       | Some U => gm_ind_target (gu_mod U) (q_chain pq)
       | None => None
       end
   end.
 
+Definition ind_alias_lookup (Θ : gdeps) (Ξ : gstack) (pq : qname) : option ind_alias_view :=
+  ind_alias_lookup_u (gds_lookup Θ) Ξ pq.
+
 (** The inductive type a path names, its own or through an inductive
     alias, as a view: no telescope and no argument for the type itself. *)
-Definition ind_target (Θ : gdeps) (Ξ : gstack) (pq : qname) : option ind_alias_view :=
-  match ind_lookup Θ Ξ pq with
+Definition ind_target_u (uf : path -> option gunit) (Ξ : gstack) (pq : qname) : option ind_alias_view :=
+  match ind_lookup_u uf Ξ pq with
   | Some _ => Some (nil, pq, nil)
-  | None => ind_alias_lookup Θ Ξ pq
+  | None => ind_alias_lookup_u uf Ξ pq
   end.
+
+Definition ind_target (Θ : gdeps) (Ξ : gstack) (pq : qname) : option ind_alias_view := ind_target_u (gds_lookup Θ) Ξ pq.
+
+Lemma ind_target_unfold : forall Θ Ξ pq,
+    ind_target Θ Ξ pq = match ind_lookup Θ Ξ pq with Some _ => Some (nil, pq, nil) | None => ind_alias_lookup Θ Ξ pq end.
+Proof. reflexivity. Qed.
+
+(** The lookups at a function agreeing with [gds_lookup Θ] are those at
+    [Θ]. *)
+Section UnitsOk.
+  Variables (uf : path -> option gunit) (Θ : gdeps).
+  Hypothesis Huf : forall fp, uf fp = gds_lookup Θ fp.
+
+  Lemma gc_resolve_u_ok : forall Ξ p, gc_resolve_u uf Ξ p = gc_resolve Θ Ξ p.
+  Proof. intros; unfold gc_resolve, gc_resolve_u; rewrite Huf; reflexivity. Qed.
+
+  Lemma gc_module_u_ok : forall Ξ p, gc_module_u uf Ξ p = gc_module Θ Ξ p.
+  Proof. intros; unfold gc_module, gc_module_u; rewrite Huf; reflexivity. Qed.
+
+  Lemma ind_lookup_u_ok : forall Ξ p, ind_lookup_u uf Ξ p = ind_lookup Θ Ξ p.
+  Proof. intros; unfold ind_lookup_u; rewrite gc_module_u_ok; reflexivity. Qed.
+
+  Lemma gc_entry_u_ok : forall Ξ p, gc_entry_u uf Ξ p = gc_entry Θ Ξ p.
+  Proof. intros; unfold gc_entry, gc_entry_u; rewrite Huf; reflexivity. Qed.
+
+  Lemma ind_alias_lookup_u_ok : forall Ξ p, ind_alias_lookup_u uf Ξ p = ind_alias_lookup Θ Ξ p.
+  Proof. intros; unfold ind_alias_lookup, ind_alias_lookup_u; rewrite Huf; reflexivity. Qed.
+
+  Lemma ind_target_u_ok : forall Ξ p, ind_target_u uf Ξ p = ind_target Θ Ξ p.
+  Proof. intros; unfold ind_target_u; rewrite ind_lookup_u_ok, ind_alias_lookup_u_ok; reflexivity. Qed.
+End UnitsOk.
 
 Lemma gm_ind_target_ext_fresh : forall Φ x E ip p,
     gm_fresh x Φ -> gm_ind_target Φ ip = Some p -> gm_ind_target (Φ ⊳ x ↦ E) ip = Some p.
@@ -463,7 +515,7 @@ Proof. induction Φ; cbn; auto. Qed.
 Lemma gc_entry_def : forall Θ Ξ p b pv A B,
     gc_entry Θ Ξ p = Some (ge_def b pv A B) <-> gc_resolve Θ Ξ p = Some (ge_def b pv A B).
 Proof.
-  intros; unfold gc_entry, gc_resolve.
+  intros; unfold gc_entry, gc_entry_u, gc_resolve, gc_resolve_u.
   destruct (gs_find Ξ p) as [[U ip] |]; [ apply gm_entry_resolve_def |].
   destruct (gds_lookup Θ (q_unit p)); [ apply gm_entry_resolve_def | tauto ].
 Qed.
@@ -471,7 +523,7 @@ Qed.
 Lemma gc_entry_ind : forall Θ Ξ p pv D Φ,
     gc_entry Θ Ξ p = Some (ge_ind pv D Φ) -> gc_resolve Θ Ξ p = None /\ ind_lookup Θ Ξ p = Some D.
 Proof.
-  intros * He; unfold gc_entry, gc_resolve, ind_lookup, gc_module in *.
+  intros * He; unfold gc_entry, gc_entry_u, gc_resolve, gc_resolve_u, ind_lookup, ind_lookup_u, gc_module, gc_module_u in *.
   rewrite gs_find_tele_find in *.
   destruct (gs_find_tele Ξ p) as [[[U ip] T] |]; cbn in He |- *.
   - split; [ eapply gm_entry_ind_resolve; exact He |].
@@ -486,7 +538,7 @@ Qed.
 Lemma ind_lookup_entry : forall Θ Ξ p D,
     ind_lookup Θ Ξ p = Some D -> exists pv Φ, gc_entry Θ Ξ p = Some (ge_ind pv D Φ).
 Proof.
-  intros * Hl; unfold gc_entry, ind_lookup, gc_module in *.
+  intros * Hl; unfold gc_entry, gc_entry_u, ind_lookup, ind_lookup_u, gc_module, gc_module_u in *.
   rewrite gs_find_tele_find.
   destruct (gs_find_tele Ξ p) as [[[U ip] T] |]; cbn in Hl |- *.
   - destruct ip as [| x ip]; [ discriminate |].
@@ -501,7 +553,7 @@ Qed.
 Lemma ind_alias_lookup_entry : forall Θ Ξ pq,
     ind_alias_lookup Θ Ξ pq = match gc_entry Θ Ξ pq with Some E => ge_ind_target E | None => None end.
 Proof.
-  intros; unfold ind_alias_lookup, gc_entry, gm_ind_target.
+  intros; unfold ind_alias_lookup, ind_alias_lookup_u, gc_entry, gc_entry_u, gm_ind_target.
   destruct (gs_find Ξ pq) as [[U ip] |]; [ reflexivity |].
   destruct (gds_lookup Θ (q_unit pq)); reflexivity.
 Qed.
@@ -530,7 +582,7 @@ Lemma ind_alias_lookup_module : forall Θ Ξ pq Δ p Ns,
     ind_alias_lookup Θ Ξ pq = Some (Δ, p, Ns) ->
     gc_module Θ Ξ pq = Some (mr_alias (gu_mk Δ (md_alias (me_apps (qname_mod p) Ns))) nil).
 Proof.
-  intros * Hl; unfold ind_alias_lookup, gc_module, gm_ind_target in *.
+  intros * Hl; unfold ind_alias_lookup, ind_alias_lookup_u, gc_module, gc_module_u, gm_ind_target in *.
   rewrite gs_find_tele_find in Hl.
   destruct (gs_find_tele Ξ pq) as [[[U ip] T] |]; cbn in Hl |- *.
   - destruct (gm_entry (gu_mod U) ip) as [E |] eqn:He; [| discriminate ].
@@ -549,7 +601,7 @@ Lemma gc_entry_ind_alias : forall Θ Ξ pq pv Δ pt Ns,
     gc_resolve Θ Ξ pq = None /\ ind_alias_lookup Θ Ξ pq = Some (Δ, pt, Ns).
 Proof.
   intros * He; split; [| rewrite ind_alias_lookup_entry, He; reflexivity ].
-  unfold gc_entry, gc_resolve in *.
+  unfold gc_entry, gc_entry_u, gc_resolve, gc_resolve_u in *.
   destruct (gs_find Ξ pq) as [[U ip] |]; [ eapply gm_entry_resolve_none; [ exact He | intros; discriminate ] |].
   destruct (gds_lookup Θ (q_unit pq)); [ eapply gm_entry_resolve_none; [ exact He | intros; discriminate ] | discriminate ].
 Qed.
@@ -629,7 +681,7 @@ Lemma ind_lookup_gc_sub : forall Θ1 Ξ1 Θ2 Ξ2 p D,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> ind_lookup Θ1 Ξ1 p = Some D -> ind_lookup Θ2 Ξ2 p = Some D.
 Proof.
   intros * Hs H; destruct (ind_lookup_module _ _ _ _ H) as [T Hm].
-  unfold ind_lookup; rewrite (gc_sub_module _ _ _ _ _ _ Hs Hm); reflexivity.
+  rewrite ind_lookup_unfold, (gc_sub_module _ _ _ _ _ _ Hs Hm); reflexivity.
 Qed.
 
 (** A body growing keeps its modules and its bodies. *)
@@ -724,15 +776,15 @@ Lemma gc_sub_frame : forall Θ Ξ mp Δ Φ1 Φ2,
     gc_sub Θ ((mp, gu_body Δ Φ1) :: Ξ) Θ ((mp, gu_body Δ Φ2) :: Ξ).
 Proof.
   intros * [HR [HM [HB HI]]]; repeat split.
-  - intros p E0 Hr; unfold gc_resolve in *; cbn in *.
+  - intros p E0 Hr; unfold gc_resolve, gc_resolve_u in *; cbn in *.
     destruct (qname_strip mp p); [ apply HR; exact Hr | exact Hr ].
-  - intros p r Hr; unfold gc_module in *; cbn in *.
+  - intros p r Hr; unfold gc_module, gc_module_u in *; cbn in *.
     destruct (qname_strip mp p) as [[| y ip] |]; [ discriminate | | exact Hr ].
     apply HM; exact Hr.
   - intros p T Φ Hr; unfold gc_body in *; cbn in *.
     destruct (qname_strip mp p) as [[| y ip] |]; [ discriminate | | eexists; split; [ exact Hr | constructor ] ].
     apply HB; exact Hr.
-  - intros pq p Hr; unfold ind_alias_lookup in *; cbn in *.
+  - intros pq p Hr; unfold ind_alias_lookup, ind_alias_lookup_u in *; cbn in *.
     destruct (qname_strip mp pq); [ apply HI; exact Hr | exact Hr ].
 Qed.
 
@@ -751,7 +803,7 @@ Lemma gc_sub_push : forall Θ Ξ mp U,
     gc_sub Θ Ξ Θ ((mp, U) :: Ξ).
 Proof.
   intros * Hf; repeat split.
-  - intros p E Hr; unfold gc_resolve in *; cbn.
+  - intros p E Hr; unfold gc_resolve, gc_resolve_u in *; cbn.
     destruct (qname_strip mp p) as [ip |] eqn:Hs; [| exact Hr ].
     exfalso; unfold qname_strip in Hs.
     destruct (path_beq (q_unit mp) (q_unit p)) eqn:Hb; [| discriminate ].
@@ -763,7 +815,7 @@ Proof.
       pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
       unfold qname_strip in Hr; rewrite Hb, path_beq_refl, Hs' in Hr.
       destruct (gm_resolve_head _ _ _ Hr) as (z & ip' & [= <- <-] & Hin); contradiction.
-  - intros p r Hr; unfold gc_module in *; cbn.
+  - intros p r Hr; unfold gc_module, gc_module_u in *; cbn.
     destruct (qname_strip mp p) as [ip |] eqn:Hs; [| exact Hr ].
     exfalso; unfold qname_strip in Hs.
     destruct (path_beq (q_unit mp) (q_unit p)) eqn:Hb; [| discriminate ].
@@ -787,7 +839,7 @@ Proof.
       pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
       unfold qname_strip in Hr; rewrite Hb, path_beq_refl, Hs' in Hr.
       exact (Hx (gm_subbody_head _ _ _ _ _ Hr)).
-  - intros pq p0 Hr; unfold ind_alias_lookup, gm_ind_target in *; cbn.
+  - intros pq p0 Hr; unfold ind_alias_lookup, ind_alias_lookup_u, gm_ind_target in *; cbn.
     destruct (qname_strip mp pq) as [ip |] eqn:Hs; [| exact Hr ].
     exfalso; unfold qname_strip in Hs.
     destruct (path_beq (q_unit mp) (q_unit pq)) eqn:Hb; [| discriminate ].
@@ -821,12 +873,12 @@ Lemma gc_sub_file : forall Θ fp U,
     gc_sub Θ ((q_abs fp nil, U) :: nil) ((fp, U) :: Θ) nil.
 Proof.
   intros * Hn; repeat split.
-  - intros p E0 Hr; unfold gc_resolve in *; cbn [gs_find] in *.
+  - intros p E0 Hr; unfold gc_resolve, gc_resolve_u in *; cbn [gs_find] in *.
     unfold qname_strip in Hr; cbn [q_unit q_chain strip_prefix] in Hr; cbn [gds_lookup].
     destruct (path_beq fp (q_unit p)) eqn:Hb.
     + apply path_beq_true in Hb; subst; rewrite path_beq_refl; exact Hr.
     + destruct (path_beq (q_unit p) fp) eqn:Hb'; [ apply path_beq_true in Hb'; subst; rewrite path_beq_refl in Hb; discriminate | exact Hr ].
-  - intros p r Hr; unfold gc_module in *; cbn [gs_find_tele] in *.
+  - intros p r Hr; unfold gc_module, gc_module_u in *; cbn [gs_find_tele] in *.
     unfold qname_strip in Hr; cbn [q_unit q_chain strip_prefix] in Hr; cbn [gds_lookup].
     destruct (path_beq fp (q_unit p)) eqn:Hb.
     + apply path_beq_true in Hb; subst; rewrite path_beq_refl.
@@ -840,7 +892,7 @@ Proof.
       destruct (q_chain p) as [| x ip] eqn:Hp; [ discriminate |].
       cbn in *; rewrite List.app_nil_r in Hr; exact Hr.
     + destruct (path_beq (q_unit p) fp) eqn:Hb'; [ apply path_beq_true in Hb'; subst; rewrite path_beq_refl in Hb; discriminate | exact Hr ].
-  - intros pq p0 Hr; unfold ind_alias_lookup in *; cbn [gs_find] in *.
+  - intros pq p0 Hr; unfold ind_alias_lookup, ind_alias_lookup_u in *; cbn [gs_find] in *.
     unfold qname_strip in Hr; cbn [q_unit q_chain strip_prefix] in Hr; cbn [gds_lookup].
     destruct (path_beq fp (q_unit pq)) eqn:Hb.
     + apply path_beq_true in Hb; subst; rewrite path_beq_refl; exact Hr.
@@ -851,7 +903,7 @@ Qed.
 Lemma gc_resolve_file : forall Θ fp U p,
     gc_resolve ((fp, U) :: Θ) nil p = gc_resolve Θ ((q_abs fp nil, U) :: nil) p.
 Proof.
-  intros; unfold gc_resolve; cbn [gs_find gds_lookup]; unfold qname_strip; cbn [q_unit q_chain strip_prefix].
+  intros; unfold gc_resolve, gc_resolve_u; cbn [gs_find gds_lookup]; unfold qname_strip; cbn [q_unit q_chain strip_prefix].
   destruct (path_beq fp (q_unit p)) eqn:Hb.
   - apply path_beq_true in Hb as ->; rewrite path_beq_refl; reflexivity.
   - destruct (path_beq (q_unit p) fp) eqn:Hb'; [| reflexivity ].
@@ -862,11 +914,11 @@ Qed.
 Lemma gc_sub_deps : forall Θ Θ' Ξ, Θ ⊑ Θ' -> gc_sub Θ Ξ Θ' Ξ.
 Proof.
   intros * Hs; repeat split.
-  - intros p E Hr; unfold gc_resolve in *.
+  - intros p E Hr; unfold gc_resolve, gc_resolve_u in *.
     destruct (gs_find Ξ p) as [[U ip] |]; [ exact Hr |].
     destruct (gds_lookup Θ (q_unit p)) as [V |] eqn:E1; [| discriminate ].
     rewrite (Hs _ _ E1); exact Hr.
-  - intros p r Hr; unfold gc_module in *.
+  - intros p r Hr; unfold gc_module, gc_module_u in *.
     destruct (gs_find_tele Ξ p) as [[[U ip] T] |]; [ exact Hr |].
     destruct (gds_lookup Θ (q_unit p)) as [V |] eqn:E1; [| discriminate ].
     rewrite (Hs _ _ E1); exact Hr.
@@ -874,7 +926,7 @@ Proof.
     destruct (gs_find_tele Ξ p) as [[[U ip] T'] |]; [ exact Hr |].
     destruct (gds_lookup Θ (q_unit p)) as [V |] eqn:E1; [| discriminate ].
     rewrite (Hs _ _ E1); exact Hr.
-  - intros pq p0 Hr; unfold ind_alias_lookup in *.
+  - intros pq p0 Hr; unfold ind_alias_lookup, ind_alias_lookup_u in *.
     destruct (gs_find Ξ pq) as [[U ip] |]; [ exact Hr |].
     destruct (gds_lookup Θ (q_unit pq)) as [V |] eqn:E1; [| discriminate ].
     rewrite (Hs _ _ E1); exact Hr.

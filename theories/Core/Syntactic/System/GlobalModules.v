@@ -251,7 +251,7 @@ Qed.
 Lemma gc_module_body : forall Θ Ξ p T oD,
     gc_module Θ Ξ p = Some (mr_body T oD) -> exists Φ, gc_body Θ Ξ p = Some (T, Φ).
 Proof.
-  intros * H; unfold gc_module, gc_body in *.
+  intros * H; unfold gc_module, gc_module_u, gc_body in *.
   destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T0] |]; [ discriminate | exact (gm_module_subbody _ _ _ _ _ _ H) |].
   destruct (gds_lookup Θ (q_unit p)) as [U |]; [| discriminate ].
   destruct (q_chain p) as [| x ip]; cbn in H |- *; [ injection H as <- _; eauto | exact (gm_module_subbody _ _ _ _ _ _ H) ].
@@ -281,13 +281,13 @@ Proof.
                    exists U' T', gs_find_tele Ξ (qname_app p (y :: nil)) = Some (U', nil, T'))
       by (intros y; exact (gs_find_tele_snoc_fwd _ _ _ _ _ _ Ef)).
     split; [| split ].
-    + intros y r Hr; unfold gc_module in Hr.
+    + intros y r Hr; unfold gc_module, gc_module_u in Hr.
       destruct (Fy y) as [E1 | (U' & T' & E1)]; rewrite E1 in Hr; [| discriminate ].
       cbn in Hr; rewrite (proj1 (gm_subbody_snoc _ _ _ _ _ _ H y)) in Hr; exact Hr.
-    + intros y Hne; unfold gc_module, gc_body in *.
+    + intros y Hne; unfold gc_module, gc_module_u, gc_body in *.
       destruct (Fy y) as [E1 | (U' & T' & E1)]; rewrite E1 in *; [| contradiction ].
       cbn; exact (proj2 (gm_subbody_snoc _ _ _ _ _ _ H y)).
-    + intros z E Hr; unfold gc_resolve in Hr; rewrite gs_find_tele_find in Hr.
+    + intros z E Hr; unfold gc_resolve, gc_resolve_u in Hr; rewrite gs_find_tele_find in Hr.
       destruct (Fy z) as [E1 | (U' & T' & E1)]; rewrite E1 in Hr; cbn in Hr.
       * rewrite <- (gm_subbody_resolve _ _ _ _ _ _ H z); exact Hr.
       * rewrite gm_resolve_nil in Hr; discriminate.
@@ -299,13 +299,13 @@ Proof.
       destruct ip' as [| w ip']; [ right; eauto |].
       destruct (gs_find_tele_snoc _ _ _ _ _ _ E1 ltac:(discriminate)) as (ip0 & E2 & _); congruence. }
     split; [| split ].
-    + intros y r Hr; unfold gc_module in Hr.
+    + intros y r Hr; unfold gc_module, gc_module_u in Hr.
       destruct (Fy y) as [E1 | (U' & T' & E1)]; rewrite E1 in Hr; [| discriminate ].
       cbn in Hr; rewrite El in Hr; rewrite (proj1 (Hs y _)) in Hr; exact Hr.
-    + intros y Hne; unfold gc_module, gc_body in *.
+    + intros y Hne; unfold gc_module, gc_module_u, gc_body in *.
       destruct (Fy y) as [E1 | (U' & T' & E1)]; rewrite E1 in *; [| contradiction ].
       cbn; rewrite El; exact (proj1 (proj2 (Hs y None))).
-    + intros z E Hr; unfold gc_resolve in Hr; rewrite gs_find_tele_find in Hr.
+    + intros z E Hr; unfold gc_resolve, gc_resolve_u in Hr; rewrite gs_find_tele_find in Hr.
       destruct (Fy z) as [E1 | (U' & T' & E1)]; rewrite E1 in Hr; cbn in Hr.
       * rewrite El in Hr; rewrite <- (proj2 (proj2 (Hs z None)) z); exact Hr.
       * rewrite gm_resolve_nil in Hr; discriminate.
@@ -417,7 +417,7 @@ Qed.
 
 Lemma gc_body_module : forall Θ Ξ p T Φ, gc_body Θ Ξ p = Some (T, Φ) -> exists oD, gc_module Θ Ξ p = Some (mr_body T oD).
 Proof.
-  intros * H; unfold gc_body, gc_module in *.
+  intros * H; unfold gc_body, gc_module, gc_module_u in *.
   destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T0] |]; [ discriminate | exact (gm_subbody_module _ _ _ _ _ _ H) |].
   destruct (gds_lookup Θ (q_unit p)) as [U |]; [| discriminate ].
   destruct (q_chain p) as [| x ip]; cbn in H |- *; [ injection H as <- <-; eexists; reflexivity | exact (gm_subbody_module _ _ _ _ _ _ H) ].
@@ -432,16 +432,16 @@ Proof.
   intros * Hg * H Hm ch.
   pose proof Hg as Hs.
   pose proof H as H0; unfold gc_body in H0.
-  pose proof Hm as Hm0; unfold gc_module in Hm0.
+  pose proof Hm as Hm0; unfold gc_module, gc_module_u in Hm0.
   destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T0] |] eqn:Ef; [ discriminate | |].
   - pose proof (gs_find_tele_app _ _ Hs _ _ _ _ _ Ef (gm_subbody_head _ _ _ _ _ H0) ch) as Ef'.
-    unfold gc_module, gc_body, gc_resolve; rewrite gs_find_tele_find, Ef'; cbn.
+    unfold gc_module, gc_module_u, gc_body, gc_resolve, gc_resolve_u; rewrite gs_find_tele_find, Ef'; cbn.
     destruct ch as [| y ch]; [ rewrite !app_nil_r; split; [ exact Hm0 | split; [ exact H0 | congruence ] ] |].
     destruct (gm_subbody_app _ _ _ _ _ _ H0 y ch) as (H1 & H2 & H3).
     split; [ exact H1 | split; [ exact H2 | intros _; exact H3 ] ].
   - destruct (gds_lookup Θ (q_unit p)) as [Uf |] eqn:El; [| discriminate ].
     pose proof (gs_find_tele_filed _ _ Hs _ _ El ch) as Ef'.
-    unfold gc_module, gc_body, gc_resolve; rewrite gs_find_tele_find, Ef'; cbn [option_map].
+    unfold gc_module, gc_module_u, gc_body, gc_resolve, gc_resolve_u; rewrite gs_find_tele_find, Ef'; cbn [option_map].
     cbn [qname_app q_unit q_chain]; rewrite El.
     exact (gm_body_app _ _ _ _ _ _ _ H0 Hm0 ch).
 Qed.
@@ -627,15 +627,15 @@ Lemma gc_module_alias_app : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall p U r0,
 Proof.
   intros * Hg * H ch.
   pose proof Hg as Hs.
-  pose proof H as H0; unfold gc_module in H0.
+  pose proof H as H0; unfold gc_module, gc_module_u in H0.
   destruct (gs_find_tele Ξ p) as [[[Uf [| x ip]] Tf] |] eqn:Ef; [ discriminate | |].
   - pose proof (gs_find_tele_app _ _ Hs _ _ _ _ _ Ef (gm_submodule_head _ _ _ _ _ H0) ch) as Ef'.
     destruct (gm_submodule_alias_app _ _ _ _ _ _ H0 ch) as [H1 H2].
-    unfold gc_module, gc_resolve; rewrite gs_find_tele_find, Ef'; cbn.
+    unfold gc_module, gc_module_u, gc_resolve, gc_resolve_u; rewrite gs_find_tele_find, Ef'; cbn.
     split; [ exact H1 | exact H2 ].
   - destruct (gds_lookup Θ (q_unit p)) as [V |] eqn:El; [| discriminate ].
     pose proof (gs_find_tele_filed _ _ Hs _ _ El ch) as Ef'.
-    unfold gc_module, gc_resolve; rewrite gs_find_tele_find, Ef'; cbn [option_map qname_app q_unit q_chain]; rewrite El.
+    unfold gc_module, gc_module_u, gc_resolve, gc_resolve_u; rewrite gs_find_tele_find, Ef'; cbn [option_map qname_app q_unit q_chain]; rewrite El.
     destruct (q_chain p) as [| x ip]; cbn in H0 |- *; [ discriminate |].
     destruct (gm_submodule_alias_app _ _ _ _ _ _ H0 ch) as [H1 H2].
     split; [ exact H1 | exact H2 ].
@@ -647,7 +647,7 @@ Lemma gc_module_alias_decomp : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall p U r0,
 Proof.
   intros * Hg * H.
   pose proof Hg as Hs.
-  pose proof H as H0; unfold gc_module in H0.
+  pose proof H as H0; unfold gc_module, gc_module_u in H0.
   destruct (gs_find_tele Ξ p) as [[[Uf [| x ip]] Tf] |] eqn:Ef; [ discriminate | |].
   - destruct (gs_find_tele_head _ _ Hs _ _ _ _ _ Ef (gm_submodule_head _ _ _ _ _ H0)) as (Fp & -> & HF).
     destruct (gm_submodule_alias_decomp _ _ _ _ _ _ H0) as (pre & y & T' & Φ' & Heq & Hb & Hy).
@@ -655,9 +655,9 @@ Proof.
     rewrite qname_app_app.
     destruct pre as [| v pre]; cbn in Heq, Hb |- *.
     + injection Heq as <- _; injection Hb as <- <-.
-      unfold gc_module; rewrite (HF nil); exact Hy.
+      unfold gc_module, gc_module_u; rewrite (HF nil); exact Hy.
     + injection Heq as <- _.
-      unfold gc_module; rewrite (HF (pre ++ y :: nil)).
+      unfold gc_module, gc_module_u; rewrite (HF (pre ++ y :: nil)).
       rewrite (proj1 (gm_subbody_snoc _ _ _ _ _ _ Hb y)); exact Hy.
   - destruct (gds_lookup Θ (q_unit p)) as [V |] eqn:El; [| discriminate ].
     destruct (q_chain p) as [| x ip] eqn:Em; cbn in H0; [ discriminate |].
@@ -667,7 +667,7 @@ Proof.
     assert (ElF : gds_lookup Θ (q_unit Fp) = Some V) by exact El.
     exists (qname_app Fp pre), y; split; [ rewrite Hp, qname_app_app, <- Heq; reflexivity |].
     rewrite qname_app_app.
-    unfold gc_module; rewrite (gs_find_tele_filed _ _ Hs _ _ ElF); cbn [qname_app q_unit q_chain Fp]; rewrite El; cbn [app].
+    unfold gc_module, gc_module_u; rewrite (gs_find_tele_filed _ _ Hs _ _ ElF); cbn [qname_app q_unit q_chain Fp]; rewrite El; cbn [app].
     destruct pre as [| v pre]; cbn in Heq, Hb |- *.
     + injection Heq as <- _; injection Hb as <- <-; exact Hy.
     + injection Heq as <- _.
@@ -754,7 +754,7 @@ Lemma gc_module_alias_resolve : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall p U r0,
 Proof.
   intros * Hg * H.
   pose proof Hg as Hs.
-  unfold gc_module, gc_resolve in *; rewrite gs_find_tele_find.
+  unfold gc_module, gc_module_u, gc_resolve, gc_resolve_u in *; rewrite gs_find_tele_find.
   destruct (gs_find_tele Ξ p) as [[[Uf [| x ip]] Tf] |] eqn:Ef; cbn; [ discriminate | exact (gm_submodule_alias_resolve _ _ _ _ _ _ H) |].
   destruct (gds_lookup Θ (q_unit p)) as [V |]; [| reflexivity ].
   destruct (q_chain p) as [| x ip]; cbn in H; [ discriminate | exact (gm_submodule_alias_resolve _ _ _ _ _ _ H) ].
@@ -1092,7 +1092,7 @@ Section ModInduction.
   Lemma good_resolve : forall Θ Ξ Θ2 Ξ2 p E, gds_valid Θ2 Ξ2 Θ -> gs_valid Θ2 Ξ2 Ξ ->
       gc_resolve Θ Ξ p = Some E -> exists T, V Θ2 Ξ2 T E.
   Proof.
-    intros * HΘ HΞ H; unfold gc_resolve in H.
+    intros * HΘ HΞ H; unfold gc_resolve, gc_resolve_u in H.
     rewrite gs_find_tele_find in H.
     destruct (gs_find_tele Ξ p) as [[[U ip] T0] |] eqn:Hf; cbn in H.
     - destruct (gs_valid_find _ _ _ _ _ _ _ HΞ Hf) as [_ Hv]; exact (gm_valid_resolve _ _ _ _ _ _ Hv H).
@@ -1103,7 +1103,7 @@ Section ModInduction.
   Lemma good_alias : forall Θ Ξ Θ2 Ξ2 p U r, gds_valid Θ2 Ξ2 Θ -> gs_valid Θ2 Ξ2 Ξ ->
       gc_module Θ Ξ p = Some (mr_alias U r) -> exists T pv, V Θ2 Ξ2 T (ge_mod pv U).
   Proof.
-    intros * HΘ HΞ H; unfold gc_module in H.
+    intros * HΘ HΞ H; unfold gc_module, gc_module_u in H.
     destruct (gs_find_tele Ξ p) as [[[Uf [| x ip]] T0] |] eqn:Hf; [ discriminate | |].
     - destruct (gs_valid_find _ _ _ _ _ _ _ HΞ Hf) as [_ Hv]; exact (gm_valid_alias _ _ _ _ _ _ _ _ Hv H).
     - destruct (gds_lookup Θ (q_unit p)) as [Uf |] eqn:Hl; [| discriminate ].
@@ -1114,7 +1114,7 @@ Section ModInduction.
   Lemma good_ind_alias : forall Θ Ξ Θ2 Ξ2 pq Δ p Ns, gds_valid Θ2 Ξ2 Θ -> gs_valid Θ2 Ξ2 Ξ ->
       ind_alias_lookup Θ Ξ pq = Some (Δ, p, Ns) -> exists T pv, V Θ2 Ξ2 T (ge_ind_alias pv Δ p Ns).
   Proof.
-    intros * HΘ HΞ H; unfold ind_alias_lookup in H.
+    intros * HΘ HΞ H; unfold ind_alias_lookup, ind_alias_lookup_u in H.
     rewrite gs_find_tele_find in H.
     destruct (gs_find_tele Ξ pq) as [[[U ip] T0] |] eqn:Hf; cbn in H.
     - destruct (gs_valid_find _ _ _ _ _ _ _ HΞ Hf) as [_ Hv]; exact (gm_valid_ind_target _ _ _ _ _ _ _ _ Hv H).
@@ -1126,7 +1126,7 @@ Section ModInduction.
       ind_lookup Θ Ξ p = Some D -> VD Θ2 Ξ2 D.
   Proof.
     intros * HΘ HΞ H.
-    destruct (ind_lookup_module _ _ _ _ H) as [T H']; unfold gc_module in H'.
+    destruct (ind_lookup_module _ _ _ _ H) as [T H']; unfold gc_module, gc_module_u in H'.
     destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T0] |] eqn:Hf; [ discriminate | |].
     - destruct (gs_valid_find _ _ _ _ _ _ _ HΞ Hf) as [_ Hv]; exact (gm_valid_ind _ _ _ _ _ _ _ _ Hv H').
     - destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:Hl; [| discriminate ].
@@ -1140,7 +1140,7 @@ End ModInduction.
 Lemma gc_resolve_module_alias_excl : forall Θ Ξ p E U r,
     gc_resolve Θ Ξ p = Some E -> gc_module Θ Ξ p = Some (mr_alias U r) -> False.
 Proof.
-  intros * Hr Hm; unfold gc_resolve, gc_module in *.
+  intros * Hr Hm; unfold gc_resolve, gc_resolve_u, gc_module, gc_module_u in *.
   rewrite gs_find_tele_find in Hr.
   destruct (gs_find_tele Ξ p) as [[[V [| x ip]] T] |]; cbn in Hr; [ discriminate | |].
   - rewrite (gm_submodule_alias_resolve _ _ _ _ _ _ Hm) in Hr; discriminate.
