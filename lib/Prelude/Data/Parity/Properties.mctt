@@ -283,7 +283,8 @@ theorem plusHomoAdd : ∀ (m : ℕ) (n : ℕ) →
     elim m return x . Id Parity (parity (plus x n)) (add (parity x) (parity n))
     | zero ⇒ idRefl Parity (parity n)
     | succ p, ih ⇒
-        idTrans Parity (inv (parity (plus p n))) (inv (add (parity p) (parity n)))
+        idTrans Parity (inv (parity (plus p n)))
+          (inv (add (parity p) (parity n)))
           (add (inv (parity p)) (parity n))
           (idCong Parity Parity inv (parity (plus p n))
              (add (parity p) (parity n)) ih)

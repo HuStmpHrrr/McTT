@@ -41,7 +41,8 @@ end
 theorem compareFlip : ∀ (m : ℕ) (n : ℕ) →
     Id Ordering (compare n m) (flip (compare m n)) ≔
   λ (m : ℕ) →
-    elim m return x . (∀ (n : ℕ) → Id Ordering (compare n x) (flip (compare x n)))
+    elim m return x .
+      (∀ (n : ℕ) → Id Ordering (compare n x) (flip (compare x n)))
     | zero ⇒ λ (n : ℕ) →
         elim n return y . Id Ordering (compare y 0) (flip (compare 0 y))
         | zero ⇒ idRefl Ordering equal
@@ -163,7 +164,8 @@ end
 theorem flipThen : ∀ (o : Ordering) (p : Ordering) →
     Id Ordering (flip (thenCmp o p)) (thenCmp (flip o) (flip p)) ≔
   λ (o : Ordering) (p : Ordering) →
-    elim o return z . Id Ordering (flip (thenCmp z p)) (thenCmp (flip z) (flip p))
+    elim o return z . Id Ordering (flip (thenCmp z p))
+                        (thenCmp (flip z) (flip p))
     | less ⇒ idRefl Ordering greater
     | equal ⇒ idRefl Ordering (flip p)
     | greater ⇒ idRefl Ordering less

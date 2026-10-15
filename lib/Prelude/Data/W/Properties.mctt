@@ -20,7 +20,8 @@ inductive T ≔ W u A B
 
 module Op ≔ WO u A B
 
-theorem headSup : ∀ (x : A) (f : ∀ (p : B x) → T) → Id A (Op.head (T.sup x f)) x ≔
+theorem headSup : ∀ (x : A) (f : ∀ (p : B x) → T) →
+    Id A (Op.head (T.sup x f)) x ≔
   λ (x : A) (f : ∀ (p : B x) → T) → idRefl A x
 end
 
@@ -53,7 +54,8 @@ end
 (* [foldr] on a node folds the subtrees, by unfolding. *)
 theorem foldrSup : ∀ (P : Type@{u}) (alg : ∀ (x : A) (r : ∀ (p : B x) → P) → P)
     (x : A) (f : ∀ (p : B x) → T) →
-    Id P (Op.foldr P alg (T.sup x f)) (alg x (λ (p : B x) → Op.foldr P alg (f p))) ≔
+    Id P (Op.foldr P alg (T.sup x f))
+      (alg x (λ (p : B x) → Op.foldr P alg (f p))) ≔
   λ (P : Type@{u}) (alg : ∀ (x : A) (r : ∀ (p : B x) → P) → P) (x : A)
     (f : ∀ (p : B x) → T) →
     idRefl P (alg x (λ (p : B x) → Op.foldr P alg (f p)))

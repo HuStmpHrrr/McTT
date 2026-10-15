@@ -113,9 +113,11 @@ end
 theorem mulCancelLeft : ∀ (s : Sign) (t : Sign) (r : Sign)
     (h : Id Sign (mul s t) (mul s r)) → Id Sign t r ≔
   λ (s : Sign) →
-    elim s return x . (∀ (t : Sign) (r : Sign) (h : Id Sign (mul x t) (mul x r)) →
+    elim s return x .
+      (∀ (t : Sign) (r : Sign) (h : Id Sign (mul x t) (mul x r)) →
                          Id Sign t r)
-    | negative ⇒ λ (t : Sign) (r : Sign) (h : Id Sign (opposite t) (opposite r)) →
+    | negative ⇒
+        λ (t : Sign) (r : Sign) (h : Id Sign (opposite t) (opposite r)) →
         Opposite.oppositeInjective t r h
     | positive ⇒ λ (t : Sign) (r : Sign) (h : Id Sign t r) → h
     end

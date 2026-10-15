@@ -192,7 +192,8 @@ theorem addDiffNegsuc : ∀ (m : ℕ) (n : ℕ) (q : ℕ) →
     Id Int (add (diff m n) (negsuc q)) (diff m (plus n (succ q))) ≔
   λ (m : ℕ) →
     elim m return x . (∀ (n : ℕ) (q : ℕ) →
-                         Id Int (add (diff x n) (negsuc q)) (diff x (plus n (succ q))))
+                         Id Int (add (diff x n) (negsuc q))
+                           (diff x (plus n (succ q))))
     | zero ⇒ λ (n : ℕ) (q : ℕ) →
         elim n return y . Id Int (add (diff 0 y) (negsuc q))
                             (diff 0 (plus y (succ q)))
@@ -217,7 +218,8 @@ theorem diffAdd : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) →
     Id Int (add (diff a b) (diff c d)) (diff (plus a c) (plus b d)) ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) →
     elim c return x . (∀ (d : ℕ) →
-                         Id Int (add (diff a b) (diff x d)) (diff (plus a x) (plus b d)))
+                         Id Int (add (diff a b) (diff x d))
+                           (diff (plus a x) (plus b d)))
     | zero ⇒ λ (d : ℕ) →
         elim d return y . Id Int (add (diff a b) (diff 0 y))
                             (diff (plus a 0) (plus b y))
@@ -344,7 +346,8 @@ open Add use (addIdentityLeft; addAssoc)
 theorem predSucc : ∀ (i : Int) → Id Int (predInt (succInt i)) i ≔
   λ (i : Int) →
     idTrans Int (add (negsuc 0) (add (pos 1) i)) (add (pos 0) i) i
-      (idSym Int (add (add (negsuc 0) (pos 1)) i) (add (negsuc 0) (add (pos 1) i))
+      (idSym Int (add (add (negsuc 0) (pos 1)) i)
+          (add (negsuc 0) (add (pos 1) i))
          (addAssoc (negsuc 0) (pos 1) i))
       (addIdentityLeft i)
 end
@@ -352,7 +355,8 @@ end
 theorem succPred : ∀ (i : Int) → Id Int (succInt (predInt i)) i ≔
   λ (i : Int) →
     idTrans Int (add (pos 1) (add (negsuc 0) i)) (add (pos 0) i) i
-      (idSym Int (add (add (pos 1) (negsuc 0)) i) (add (pos 1) (add (negsuc 0) i))
+      (idSym Int (add (add (pos 1) (negsuc 0)) i)
+          (add (pos 1) (add (negsuc 0) i))
          (addAssoc (pos 1) (negsuc 0) i))
       (addIdentityLeft i)
 end
@@ -395,7 +399,8 @@ private def signedCong (s : Sign) (t : Sign) (m : ℕ) (n : ℕ)
 end
 
 (* Agda's [abs-*]. *)
-theorem absMul : ∀ (i : Int) (j : Int) → Eq (abs (mul i j)) (mult (abs i) (abs j)) ≔
+theorem absMul : ∀ (i : Int) (j : Int) →
+    Eq (abs (mul i j)) (mult (abs i) (abs j)) ≔
   λ (i : Int) (j : Int) →
     absSigned (S.mul (sign i) (sign j)) (mult (abs i) (abs j))
 end
@@ -490,7 +495,8 @@ theorem mulAssoc : ∀ (i : Int) (j : Int) (k : Int) →
     idTrans Int (mul (mul i j) k)
       (signed (S.mul sij sk) (mult (mult ai aj) ak)) (mul i (mul j k))
       (idTrans Int (mul (mul i j) k)
-         (signed (S.mul (sign (signed sij (mult ai aj))) sk) (mult (mult ai aj) ak))
+         (signed (S.mul (sign (signed sij (mult ai aj))) sk)
+             (mult (mult ai aj) ak))
          (signed (S.mul sij sk) (mult (mult ai aj) ak))
          (signedCong (S.mul (sign (signed sij (mult ai aj))) sk)
             (S.mul (sign (signed sij (mult ai aj))) sk)
@@ -504,14 +510,16 @@ theorem mulAssoc : ∀ (i : Int) (j : Int) (k : Int) →
          (signed (S.mul si sjk) (mult ai (mult aj ak))) (mul i (mul j k))
          (signedCong (S.mul sij sk) (S.mul si sjk) (mult (mult ai aj) ak)
             (mult ai (mult aj ak)) (SM.mulAssoc si sj sk) (multAssoc ai aj ak))
-         (idSym Int (mul i (mul j k)) (signed (S.mul si sjk) (mult ai (mult aj ak)))
+         (idSym Int (mul i (mul j k))
+             (signed (S.mul si sjk) (mult ai (mult aj ak)))
             (idTrans Int (mul i (mul j k))
                (signed (S.mul si (sign (signed sjk (mult aj ak))))
                   (mult ai (mult aj ak)))
                (signed (S.mul si sjk) (mult ai (mult aj ak)))
                (signedCong (S.mul si (sign (signed sjk (mult aj ak))))
                   (S.mul si (sign (signed sjk (mult aj ak))))
-                  (mult ai (abs (signed sjk (mult aj ak)))) (mult ai (mult aj ak))
+                  (mult ai (abs (signed sjk (mult aj ak))))
+                    (mult ai (mult aj ak))
                   (idRefl Sign (S.mul si (sign (signed sjk (mult aj ak)))))
                   (Prelude›Arith›Equality.cong (λ (x : ℕ) → mult ai x)
                      (abs (signed sjk (mult aj ak))) (mult aj ak)

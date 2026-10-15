@@ -154,7 +154,8 @@ end
 theorem foldrCons : ∀ (l : L) →
     Id L (Op.foldr L (λ (x : A) (r : L) → L.cons x r) L.nil l) l ≔
   λ (l : L) →
-    elim l return y . Id L (Op.foldr L (λ (x : A) (r : L) → L.cons x r) L.nil y) y
+    elim l return y . Id L (Op.foldr L (λ (x : A) (r : L) → L.cons x r) L.nil y)
+                        y
     | nil ⇒ idRefl L L.nil
     | cons x xs, ih ⇒
         idCong L L (L.cons x)
@@ -201,7 +202,8 @@ private def one (x : A) : L ≔ L.cons x L.nil end
 (* Reversal turns a concatenation around.  In the step, the hypothesis
    is appended [one x], and [appendAssoc] moves the brackets. *)
 theorem reverseAppend : ∀ (l : L) (m : L) →
-    Id L (Op.reverse (Op.append l m)) (Op.append (Op.reverse m) (Op.reverse l)) ≔
+    Id L (Op.reverse (Op.append l m))
+      (Op.append (Op.reverse m) (Op.reverse l)) ≔
   λ (l : L) (m : L) →
     elim l return z . Id L (Op.reverse (Op.append z m))
                         (Op.append (Op.reverse m) (Op.reverse z))
@@ -238,7 +240,8 @@ end
 
 (* In the step, [length (append (reverse xs) (one x))] is
    [plus (length (reverse xs)) 1], which is [succ (length (reverse xs))]. *)
-theorem lengthReverse : ∀ (l : L) → Eq (Op.length (Op.reverse l)) (Op.length l) ≔
+theorem lengthReverse : ∀ (l : L) →
+    Eq (Op.length (Op.reverse l)) (Op.length l) ≔
   λ (l : L) →
     elim l return z . Eq (Op.length (Op.reverse z)) (Op.length z)
     | nil ⇒ ⋆

@@ -1,8 +1,8 @@
 (* Laws of [Prelude›Data›Bool], stated with the Leibniz equality [Id] of
-   [Prelude›Logic›Leibniz] at [Bool]: negation is an involution, [and] and
-   [or] are commutative, associative and idempotent monoids that distribute
-   over each other and absorb each other, de Morgan's laws, the conditional, [xor], and the
-   correctness of [eqb].
+   [Prelude›Logic›Leibniz] at [Bool]: negation is an injective involution,
+   [and] and [or] are commutative, associative and idempotent monoids that
+   distribute over each other and absorb each other, de Morgan's laws, the
+   conditional, [xor], and the correctness of [eqb].
 
    Each law is proved by cases.  Since every connective computes on its
    first argument, a law needs cases on that argument only, and on a second

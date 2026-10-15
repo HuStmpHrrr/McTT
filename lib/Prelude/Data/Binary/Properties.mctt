@@ -38,7 +38,8 @@ end
 theorem plusSuccSucc : ∀ (a : ℕ) (c : ℕ) →
     Eq (plus a (succ (succ c))) (succ (succ (plus a c))) ≔
   λ (a : ℕ) (c : ℕ) →
-    trans (plus a (succ (succ c))) (succ (plus a (succ c))) (succ (succ (plus a c)))
+    trans (plus a (succ (succ c))) (succ (plus a (succ c)))
+      (succ (succ (plus a c)))
       (plusSucc a (succ c)) (plusSucc a c)
 end
 
@@ -125,7 +126,8 @@ end
 theorem toNatAdd : ∀ (x : Bin) (y : Bin) →
     Eq (toNat (add x y)) (plus (toNat x) (toNat y)) ≔
   λ (x : Bin) →
-    elim x return z . (∀ (y : Bin) → Eq (toNat (add z y)) (plus (toNat z) (toNat y)))
+    elim x return z .
+      (∀ (y : Bin) → Eq (toNat (add z y)) (plus (toNat z) (toNat y)))
     | zero ⇒ λ (y : Bin) → refl (toNat y)
     | doubleSucc a, ih ⇒ λ (y : Bin) →
         elim y return w . Eq (toNat (add (doubleSucc a) w))
@@ -181,7 +183,8 @@ theorem doubleSuc : ∀ (x : Bin) → Id Bin (B.double (suc x)) (doubleSucc x) �
 end
 
 (* [fromNat] takes doubling to [double]. *)
-theorem fromNatDouble : ∀ (n : ℕ) → Id Bin (fromNat (double n)) (B.double (fromNat n)) ≔
+theorem fromNatDouble : ∀ (n : ℕ) →
+    Id Bin (fromNat (double n)) (B.double (fromNat n)) ≔
   λ (n : ℕ) →
     elim n return x . Id Bin (fromNat (double x)) (B.double (fromNat x))
     | zero ⇒ idRefl Bin Bin.zero
@@ -210,7 +213,8 @@ theorem fromNatToNat : ∀ (x : Bin) → Id Bin (fromNat (toNat x)) x ≔
           (fromNatDouble (succ (toNat y)))
           (idTrans Bin (B.double (suc (fromNat (toNat y)))) (B.double (suc y))
              (doubleSucc y)
-             (idCong Bin Bin (λ (w : Bin) → B.double (suc w)) (fromNat (toNat y))
+             (idCong Bin Bin (λ (w : Bin) → B.double (suc w))
+                 (fromNat (toNat y))
                 y ih)
              (doubleSuc y))
     | succDouble y, ih ⇒
@@ -220,7 +224,8 @@ theorem fromNatToNat : ∀ (x : Bin) → Id Bin (fromNat (toNat x)) x ≔
              (B.double (fromNat (toNat y))) (fromNatDouble (toNat y)))
           (idTrans Bin (suc (B.double (fromNat (toNat y)))) (suc (B.double y))
              (succDouble y)
-             (idCong Bin Bin (λ (w : Bin) → suc (B.double w)) (fromNat (toNat y))
+             (idCong Bin Bin (λ (w : Bin) → suc (B.double w))
+                 (fromNat (toNat y))
                 y ih)
              (sucDouble y))
     end
@@ -233,13 +238,15 @@ theorem toNatInjective : ∀ (x : Bin) (y : Bin) (h : Eq (toNat x) (toNat y)) �
     idTrans Bin x (fromNat (toNat y)) y
       (idTrans Bin x (fromNat (toNat x)) (fromNat (toNat y))
          (idSym Bin (fromNat (toNat x)) x (fromNatToNat x))
-         (idCong ℕ Bin fromNat (toNat x) (toNat y) (eqToId (toNat x) (toNat y) h)))
+         (idCong ℕ Bin fromNat (toNat x) (toNat y)
+             (eqToId (toNat x) (toNat y) h)))
       (fromNatToNat y)
 end
 
 (* Agda's [fromℕ-injective]: transport [Eq m (toNat (fromNat m))] along
    the equality of the binary numbers. *)
-theorem fromNatInjective : ∀ (m : ℕ) (n : ℕ) (h : Id Bin (fromNat m) (fromNat n)) →
+theorem fromNatInjective : ∀ (m : ℕ) (n : ℕ)
+    (h : Id Bin (fromNat m) (fromNat n)) →
     Eq m n ≔
   λ (m : ℕ) (n : ℕ) (h : Id Bin (fromNat m) (fromNat n)) →
     trans m (toNat (fromNat n)) n
@@ -290,7 +297,8 @@ theorem addAssoc : ∀ (x : Bin) (y : Bin) (z : Bin) →
             (toNatAdd (add x y) z)
             (cong (λ (n : ℕ) → plus n c) (toNat (add x y)) (plus a b)
                (toNatAdd x y)))
-         (trans (plus (plus a b) c) (plus a (plus b c)) (toNat (add x (add y z)))
+         (trans (plus (plus a b) c) (plus a (plus b c))
+             (toNat (add x (add y z)))
             (plusAssoc a b c)
             (sym (toNat (add x (add y z))) (plus a (plus b c))
                (trans (toNat (add x (add y z))) (plus a (toNat (add y z)))
