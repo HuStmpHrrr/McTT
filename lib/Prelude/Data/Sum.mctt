@@ -1,0 +1,73 @@
+(* Disjoint unions: [Sum u A B] has the constructors [inl a] for [a : A]
+   and [inr b] for [b : B], at every level [u].
+
+   The operations on sums over fixed [A] and [B] are in the module
+   [Ops u A B]: case analysis [case], [swap], the reassociations [assoc]
+   and [unassoc], [map] on both sides, and the test [isLeft].  The laws are
+   in [Prelude›Data›Sum›Properties]. *)
+module Prelude›Data›Sum where
+
+import Prelude›Data›Bool use (Bool; tt; ff)
+
+inductive Sum (u : Level) (A : Type@{u}) (B : Type@{u}) : Type@{u} where
+| inl (a : A)
+| inr (b : B)
+end
+
+open Sum export (inl; inr)
+
+module Ops (u : Level) (A : Type@{u}) (B : Type@{u}) where
+
+(* Case analysis: [f] on the left, [g] on the right. *)
+def case (C : Type@{u}) (f : ∀ (a : A) → C) (g : ∀ (b : B) → C)
+    (s : Sum u A B) : C ≔
+  elim s return z . C | inl a ⇒ f a | inr b ⇒ g b end
+end
+
+def swap (s : Sum u A B) : Sum u B A ≔
+  elim s return z . Sum u B A
+  | inl a ⇒ inr u B A a
+  | inr b ⇒ inl u B A b
+  end
+end
+
+(* From [Sum (Sum A B) C] to [Sum A (Sum B C)]. *)
+def assoc (C : Type@{u}) (s : Sum u (Sum u A B) C) : Sum u A (Sum u B C) ≔
+  elim s return z . Sum u A (Sum u B C)
+  | inl ab ⇒
+      elim ab return y . Sum u A (Sum u B C)
+      | inl a ⇒ inl u A (Sum u B C) a
+      | inr b ⇒ inr u A (Sum u B C) (inl u B C b)
+      end
+  | inr c ⇒ inr u A (Sum u B C) (inr u B C c)
+  end
+end
+
+(* From [Sum A (Sum B C)] to [Sum (Sum A B) C]. *)
+def unassoc (C : Type@{u}) (s : Sum u A (Sum u B C)) : Sum u (Sum u A B) C ≔
+  elim s return z . Sum u (Sum u A B) C
+  | inl a ⇒ inl u (Sum u A B) C (inl u A B a)
+  | inr bc ⇒
+      elim bc return y . Sum u (Sum u A B) C
+      | inl b ⇒ inl u (Sum u A B) C (inr u A B b)
+      | inr c ⇒ inr u (Sum u A B) C c
+      end
+  end
+end
+
+(* Applies [f] on the left and [g] on the right. *)
+def map (C : Type@{u}) (D : Type@{u}) (f : ∀ (a : A) → C)
+    (g : ∀ (b : B) → D) (s : Sum u A B) : Sum u C D ≔
+  elim s return z . Sum u C D
+  | inl a ⇒ inl u C D (f a)
+  | inr b ⇒ inr u C D (g b)
+  end
+end
+
+def isLeft (s : Sum u A B) : Bool ≔
+  elim s return z . Bool | inl a ⇒ tt | inr b ⇒ ff end
+end
+
+end
+
+end

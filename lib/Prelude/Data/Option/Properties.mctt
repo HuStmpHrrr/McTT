@@ -98,7 +98,7 @@ end
 module Access (u : Level) where
 
 import Prelude›Logic›Leibniz u use (Id; idRefl)
-import Prelude›Logic›Leibniz 0l as B
+import Prelude›Logic›Leibniz 0l as BoolId
 
 (* [getOr] commutes with [map]: mapping the default too. *)
 theorem getOrMap : ∀ (A : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → C)
@@ -116,11 +116,11 @@ end
 (* Mapping keeps definedness. *)
 theorem isSomeMap : ∀ (A : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → C)
     (o : Option u A) →
-    B.Id Bool (O.isSome u C (O.map u A C f o)) (O.isSome u A o) ≔
+    BoolId.Id Bool (O.isSome u C (O.map u A C f o)) (O.isSome u A o) ≔
   λ (A : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → C) (o : Option u A) →
-    elim o return z . B.Id Bool (O.isSome u C (O.map u A C f z)) (O.isSome u A z)
-    | none ⇒ B.idRefl Bool (O.isSome u A (none u A))
-    | some x ⇒ B.idRefl Bool (O.isSome u A (some u A x))
+    elim o return z . BoolId.Id Bool (O.isSome u C (O.map u A C f z)) (O.isSome u A z)
+    | none ⇒ BoolId.idRefl Bool (O.isSome u A (none u A))
+    | some x ⇒ BoolId.idRefl Bool (O.isSome u A (some u A x))
     end
 end
 

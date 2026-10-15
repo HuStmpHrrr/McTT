@@ -1,0 +1,55 @@
+(* Dependent pairs: [Sigma u A B] has the one constructor [pair a b], for
+   [a : A] and [b : B a], at every level [u].  The type of the second
+   component depends on the first, so [snd p] has the type [B (fst p)].
+
+   The unit takes the level [u], the type [A] of first components and the
+   family [B] of second components as parameters: [Prelude›Data›Sigma 0l ℕ
+   (λ (n : ℕ) → Vec n)] holds the vectors of every length.  Its laws are in
+   the submodule [Laws]. *)
+module Prelude›Data›Sigma (u : Level) (A : Type@{u})
+    (B : ∀ (a : A) → Type@{u}) where
+
+import Prelude›Logic›Leibniz u use (Id; idRefl)
+
+inductive Sigma : Type@{u} where
+| pair (a : A) (b : B a)
+end
+
+open Sigma export (pair)
+
+def fst (p : Sigma) : A ≔
+  elim p return z . A | pair a b ⇒ a end
+end
+
+(* The second component; the branch's type, [B (fst (pair a b))], computes
+   to [B a]. *)
+def snd (p : Sigma) : B (fst p) ≔
+  elim p return z . B (fst z) | pair a b ⇒ b end
+end
+
+module Laws where
+
+theorem fstPair : ∀ (a : A) (b : B a) → Id A (fst (pair a b)) a ≔
+  λ (a : A) (b : B a) → idRefl A a
+end
+
+(* Surjective pairing: a pair is the pair of its projections. *)
+theorem sigmaEta : ∀ (p : Sigma) → Id Sigma (pair (fst p) (snd p)) p ≔
+  λ (p : Sigma) →
+    elim p return z . Id Sigma (pair (fst z) (snd z)) z
+    | pair a b ⇒ idRefl Sigma (pair a b)
+    end
+end
+
+(* Pairs whose second component is [f] of the first are equal when their
+   first components are. *)
+theorem pairCong : ∀ (f : ∀ (a : A) → B a) (x : A) (y : A) (h : Id A x y) →
+    Id Sigma (pair x (f x)) (pair y (f y)) ≔
+  λ (f : ∀ (a : A) → B a) (x : A) (y : A) (h : Id A x y)
+    (P : ∀ (s : Sigma) → Type@{u}) →
+    h (λ (a : A) → P (pair a (f a)))
+end
+
+end
+
+end

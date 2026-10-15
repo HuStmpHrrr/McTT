@@ -1,0 +1,70 @@
+(* Pairs: [Prod u A B] has the one constructor [pair a b], for [a : A] and
+   [b : B], at every level [u].  The dependent pairs, whose second component
+   has a type depending on the first, are [Prelude›Data›Sigma].
+
+   The operations on pairs over fixed [A] and [B] are in the module
+   [Ops u A B]: the projections, [swap], the reassociations [assoc] and
+   [unassoc], [map] on both components, and currying.  The laws are in
+   [Prelude›Data›Prod›Properties]. *)
+module Prelude›Data›Prod where
+
+inductive Prod (u : Level) (A : Type@{u}) (B : Type@{u}) : Type@{u} where
+| pair (a : A) (b : B)
+end
+
+open Prod export (pair)
+
+module Ops (u : Level) (A : Type@{u}) (B : Type@{u}) where
+
+def fst (p : Prod u A B) : A ≔
+  elim p return z . A | pair a b ⇒ a end
+end
+
+def snd (p : Prod u A B) : B ≔
+  elim p return z . B | pair a b ⇒ b end
+end
+
+def swap (p : Prod u A B) : Prod u B A ≔
+  elim p return z . Prod u B A | pair a b ⇒ pair u B A b a end
+end
+
+(* From [((a, b), c)] to [(a, (b, c))]. *)
+def assoc (C : Type@{u}) (p : Prod u (Prod u A B) C) :
+    Prod u A (Prod u B C) ≔
+  elim p return z . Prod u A (Prod u B C)
+  | pair ab c ⇒
+      elim ab return y . Prod u A (Prod u B C)
+      | pair a b ⇒ pair u A (Prod u B C) a (pair u B C b c)
+      end
+  end
+end
+
+(* From [(a, (b, c))] to [((a, b), c)]. *)
+def unassoc (C : Type@{u}) (p : Prod u A (Prod u B C)) :
+    Prod u (Prod u A B) C ≔
+  elim p return z . Prod u (Prod u A B) C
+  | pair a bc ⇒
+      elim bc return y . Prod u (Prod u A B) C
+      | pair b c ⇒ pair u (Prod u A B) C (pair u A B a b) c
+      end
+  end
+end
+
+(* Applies [f] to the first component and [g] to the second. *)
+def map (C : Type@{u}) (D : Type@{u}) (f : ∀ (a : A) → C)
+    (g : ∀ (b : B) → D) (p : Prod u A B) : Prod u C D ≔
+  elim p return z . Prod u C D | pair a b ⇒ pair u C D (f a) (g b) end
+end
+
+def curry (C : Type@{u}) (f : ∀ (p : Prod u A B) → C) (a : A) (b : B) : C ≔
+  f (pair u A B a b)
+end
+
+def uncurry (C : Type@{u}) (f : ∀ (a : A) (b : B) → C) (p : Prod u A B) :
+    C ≔
+  elim p return z . C | pair a b ⇒ f a b end
+end
+
+end
+
+end
