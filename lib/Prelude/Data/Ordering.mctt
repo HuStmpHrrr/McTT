@@ -1,0 +1,49 @@
+(* The result of a comparison: [less], [equal] or [greater].  Agda's
+   standard library has the indexed [Ordering m n] of [Data.Nat.Base],
+   whose constructors carry the evidence; this is the plain type, as in
+   Haskell, with the evidence given by [Spec] in
+   [Prelude›Data›Ordering›Properties].
+
+   [compare m n] compares two numbers, [flip] exchanges [less] and
+   [greater], and [thenCmp o p] is the lexicographic combination: [o],
+   unless it is [equal], then [p]. *)
+module Prelude›Data›Ordering where
+
+import Prelude›Builtin›Nat use (succ)
+
+inductive Ordering : Type@0 where
+| less
+| equal
+| greater
+end
+
+open Ordering export (less; equal; greater)
+
+def flip (o : Ordering) : Ordering ≔
+  elim o return z . Ordering
+  | less ⇒ greater
+  | equal ⇒ equal
+  | greater ⇒ less
+  end
+end
+
+(* By recursion on [m], then cases on [n]: two successors compare as their
+   predecessors. *)
+def compare (m : ℕ) : ∀ (n : ℕ) → Ordering ≔
+  elim m return x . (∀ (n : ℕ) → Ordering)
+  | zero ⇒ λ (n : ℕ) →
+      elim n return y . Ordering | zero ⇒ equal | succ q, s ⇒ less end
+  | succ p, r ⇒ λ (n : ℕ) →
+      elim n return y . Ordering | zero ⇒ greater | succ q, s ⇒ r q end
+  end
+end
+
+def thenCmp (o : Ordering) (p : Ordering) : Ordering ≔
+  elim o return z . Ordering
+  | less ⇒ less
+  | equal ⇒ p
+  | greater ⇒ greater
+  end
+end
+
+end
