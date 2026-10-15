@@ -91,6 +91,7 @@ Hint Resolve ffresh_tele_order_sound ffresh_cargs_order_sound ffresh_ihs_order_s
 
 Section FreshImpl.
   Variables (Θ : gdeps) (Ξ : gstack).
+  Context {F : FCtx Θ Ξ}.
 
   #[local]
   Ltac fr_obl :=
@@ -376,6 +377,7 @@ Ltac impl_obl_tac :=
 
 Section ReadbackImpl.
 Variables (Θ : gdeps) (Ξ : gstack).
+Context {F : FCtx Θ Ξ}.
 
 #[tactic="idtac",derive(equations=no,eliminator=no)]
 Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s d) : { m | Rnfᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
@@ -455,7 +457,7 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
     let (B, HB) := fread_ne_impl_c s b ck _ in
     exist _ ⇑ⁿ B _
 | s, d_ind p nil, ck, H => exist _ (nf_indty p nfs_nil) _
-| s, d_ind p as', ck, H with inspect (ind_lookup Θ Ξ p) := {
+| s, d_ind p as', ck, H with cache_lookup Θ Ξ ck p := {
   | exist _ (Some D) Ed =>
       let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (ind_params D)) as' ck _ in
       exist _ (nf_indty p Ps) _
@@ -676,15 +678,16 @@ Next Obligation. rb_obl_auto. Defined.
     follows from the soundness of the readback orders and the functionality
     of readback. *)
 
-(** The entries of readback, with no declaration looked up yet. *)
+(** The entries of readback, from the declaration the command looked up
+    ([fc_seed]). *)
 Definition fread_nf_impl s d (H : fread_nf_order Θ Ξ s d) : { m | Rnfᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } :=
-  fread_nf_impl_c s d None H.
+  fread_nf_impl_c s d (@fc_seed Θ Ξ F) H.
 Definition fread_ne_impl s d (H : fread_ne_order Θ Ξ s d) : { m | Rneᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } :=
-  fread_ne_impl_c s d None H.
+  fread_ne_impl_c s d (@fc_seed Θ Ξ F) H.
 Definition fread_typ_impl s d (H : fread_typ_order Θ Ξ s d) : { m | Rtypᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } :=
-  fread_typ_impl_c s d None H.
+  fread_typ_impl_c s d (@fc_seed Θ Ξ F) H.
 Definition fread_la_impl s xs (H : fread_la_order Θ Ξ s xs) : { ys | Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys } :=
-  fread_la_impl_c s xs None H.
+  fread_la_impl_c s xs (@fc_seed Θ Ξ F) H.
 
 #[local]
 Ltac functional_fread_complete :=

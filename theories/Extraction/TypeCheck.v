@@ -15,7 +15,7 @@ From Mctt.Extraction Require Import IndCheck.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Section Fixed_GCtx.
-Context {GC : GCtx}.
+Context {GC : GCtx} {F : FCtx gc_deps gc_stack}.
 
 (** * The Checker
 

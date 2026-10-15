@@ -21,6 +21,7 @@ From Mctt.Reference Require Import Evaluation Readback.
 From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Extraction Require Import FastEval Simulation.
 From Mctt.Extraction Require Evaluation Readback.
+From Mctt.Extraction Require Import Lookup.
 Import Domain_Notations.
 #[local] Open Scope list_scope.
 
@@ -154,19 +155,22 @@ Ltac fnbe_obl :=
     end.
 
 Section InitialEnvImpl.
+  Variables (Θ : gdeps) (Ξ : gstack).
+  Context {F : FCtx Θ Ξ}.
+
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations initial_env_impl Θ Ξ G (H : initial_env_order Θ Ξ G) : fenv Θ Ξ G by struct H :=
-  | Θ, Ξ, nil, H => exist _ nil _
-  | Θ, Ξ, cons (ce_ass A) G, H =>
-      let (p, Hp) := initial_env_impl Θ Ξ G _ in
+  Equations initial_env_impl G (H : initial_env_order Θ Ξ G) : fenv Θ Ξ G by struct H :=
+  | nil, H => exist _ nil _
+  | cons (ce_ass A) G, H =>
+      let (p, Hp) := initial_env_impl G _ in
       let (a, Ha) := Evaluation.feval_exp_impl Θ Ξ A p _ in
       exist _ (p ↦ ⇑! a (List.length G)) _
-  | Θ, Ξ, cons (ce_def A M) G, H =>
-      let (p, Hp) := initial_env_impl Θ Ξ G _ in
+  | cons (ce_def A M) G, H =>
+      let (p, Hp) := initial_env_impl G _ in
       let (m, Hm) := Evaluation.feval_exp_impl Θ Ξ M p _ in
       exist _ (p ↦ m) _
-  | Θ, Ξ, cons (ce_mod U) G, H =>
-      let (p, Hp) := initial_env_impl Θ Ξ G _ in
+  | cons (ce_mod U) G, H =>
+      let (p, Hp) := initial_env_impl G _ in
       exist _ (p ↦ᵐ dm_local p U nil) _.
   Next Obligation. (* nil *) exists nil; split; [ constructor | apply env_agree_nil ]. Qed.
   Next Obligation. (* initial_env_order G *) progressive_invert H; assumption. Defined.
@@ -209,10 +213,13 @@ Section InitialEnvImpl.
 End InitialEnvImpl.
 
 Section NbETyEnvDef.
+  Variables (Θ : gdeps) (Ξ : gstack).
+  Context {F : FCtx Θ Ξ}.
+
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations nbe_ty_env_impl Θ Ξ G (P : fenv Θ Ξ G) A (H : nbe_ty_order Θ Ξ G A) :
+  Equations nbe_ty_env_impl G (P : fenv Θ Ξ G) A (H : nbe_ty_order Θ Ξ G A) :
     { w | nbe_ty Θ Ξ G A w } :=
-  | Θ, Ξ, G, exist _ p Hp, A, H =>
+  | G, exist _ p Hp, A, H =>
       let (a, Ha) := Evaluation.feval_exp_impl Θ Ξ A p _ in
       let (w, Hw) := Readback.fread_typ_impl Θ Ξ (List.length G) a _ in
       exist _ w _.
@@ -244,13 +251,16 @@ Section NbETyEnvDef.
 End NbETyEnvDef.
 
 (** From scratch, at the initial environment of the context. *)
-Definition nbe_ty_impl Θ Ξ G A (H : nbe_ty_order Θ Ξ G A) : { w | nbe_ty Θ Ξ G A w } :=
+Definition nbe_ty_impl Θ Ξ {F : FCtx Θ Ξ} G A (H : nbe_ty_order Θ Ξ G A) : { w | nbe_ty Θ Ξ G A w } :=
   nbe_ty_env_impl Θ Ξ G (initial_env_impl Θ Ξ G (match H with nbe_ty_order_run _ _ _ _ HG _ _ => HG end)) A H.
 
 Section NbEDef.
+  Variables (Θ : gdeps) (Ξ : gstack).
+  Context {F : FCtx Θ Ξ}.
+
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations nbe_impl Θ Ξ G M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } :=
-  | Θ, Ξ, G, M, A, H with initial_env_impl Θ Ξ G _ => {
+  Equations nbe_impl G M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } :=
+  | G, M, A, H with initial_env_impl Θ Ξ G _ => {
     | exist _ p Hp =>
         let (a, Ha) := Evaluation.feval_exp_impl Θ Ξ A p _ in
         let (m, Hm) := Evaluation.feval_exp_impl Θ Ξ M p _ in
@@ -300,9 +310,12 @@ End NbEDef.
 
 (** At an environment computed once for the context, as [nbe_ty_env_impl]. *)
 Section NbEEnvDef.
+  Variables (Θ : gdeps) (Ξ : gstack).
+  Context {F : FCtx Θ Ξ}.
+
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations nbe_env_impl Θ Ξ G (P : fenv Θ Ξ G) M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } :=
-  | Θ, Ξ, G, exist _ p Hp, M, A, H =>
+  Equations nbe_env_impl G (P : fenv Θ Ξ G) M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } :=
+  | G, exist _ p Hp, M, A, H =>
         let (a, Ha) := Evaluation.feval_exp_impl Θ Ξ A p _ in
         let (m, Hm) := Evaluation.feval_exp_impl Θ Ξ M p _ in
         let (w, Hw) := Readback.fread_nf_impl Θ Ξ (List.length G) ⇓ a m _ in

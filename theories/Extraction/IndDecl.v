@@ -6,7 +6,7 @@ From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System Require Import GlobalPresup Command.
 From Mctt.Core Require Import Soundness.
 From Mctt.Core.Semantic Require Import GlobalExt.
-From Mctt.Extraction Require Import PseudoMonadic NbE TypeCheckBase IndCheck GlobalCheck.
+From Mctt.Extraction Require Import Lookup PseudoMonadic NbE TypeCheckBase IndCheck GlobalCheck.
 Import Syntax_Notations GlobalCtx_Notations.
 
 (** * Deciding a Declaration
@@ -289,8 +289,8 @@ Section Decide.
 
   (** A term of a type in a context, which is checked first. *)
   Definition check_exp_at (Γ : ctx) (A M : exp) : {Θ ⍮ Ξ ⍮ Γ ⊢ M : A} + {~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A} :=
-    match check_ctx Θ Ξ HΞ Γ with
-    | left HΓ => check_exp Θ Ξ Γ HΓ A M
+    match check_ctx fctx_none Θ Ξ HΞ Γ with
+    | left HΓ => check_exp fctx_none Θ Ξ Γ HΓ A M
     | right HnΓ => right (fun H => HnΓ (presup_exp_ctx H))
     end.
 
@@ -435,13 +435,13 @@ Section Decide.
     destruct (tele_ass_dec (ind_params D)) as [Hass | Hn]; [| right; intros (H & _); exact (Hn H) ].
     destruct (decl_mvc_dec D) as [Hmv | Hn]; [| right; intros (_ & H & _); exact (Hn H) ].
     destruct (Compare_dec.le_dec (ind_nu D) (ind_np D)) as [Hle | Hn]; [| right; intros (_ & _ & H & _); exact (Hn H) ].
-    destruct (check_ctx Θ Ξ HΞ (ind_params D)) as [HP | Hn]; [| right; intros (_ & _ & _ & H & _); exact (Hn H) ].
+    destruct (check_ctx fctx_none Θ Ξ HΞ (ind_params D)) as [HP | Hn]; [| right; intros (_ & _ & _ & H & _); exact (Hn H) ].
     destruct (ind_sort_univ_dec (ind_sort D)) as [HS | Hn]; [| right; intros (_ & _ & _ & _ & H & _); exact (Hn H) ].
-    destruct (check_ctx Θ Ξ HΞ (ind_uparams D)) as [HU | Hn];
+    destruct (check_ctx fctx_none Θ Ξ HΞ (ind_uparams D)) as [HU | Hn];
       [| right; intros (_ & _ & _ & _ & _ & [i Hi] & _); exact (Hn (presup_exp_ctx Hi)) ].
-    destruct (check_typ Θ Ξ (ind_uparams D) HU (ind_sort D)) as [[i Hi] | Hn];
+    destruct (check_typ fctx_none Θ Ξ (ind_uparams D) HU (ind_sort D)) as [[i Hi] | Hn];
       [| right; intros (_ & _ & _ & _ & _ & [i Hi] & _); exact (Hn i Hi) ].
-    destruct (check_level Θ Ξ (ind_uparams D) HU (ind_sort_lvl (ind_sort D))) as [[n Hl] | Hn];
+    destruct (check_level fctx_none Θ Ξ (ind_uparams D) HU (ind_sort_lvl (ind_sort D))) as [[n Hl] | Hn];
       [| right; intros (_ & _ & _ & _ & _ & _ & [n Hl] & _); exact (Hn n Hl) ].
     destruct (args_dec D) as [HA | Hn]; [| right; intros (_ & _ & _ & _ & _ & _ & _ & H & _); exact (Hn H) ].
     destruct (recs_dec D) as [[HPl HPt] | Hn];
@@ -646,11 +646,11 @@ Definition cls_arg_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢g Θ ⍮ Ξ) (R :
 Proof.
   destruct (cls_arg_dec (rd_nu R) (List.length (rd_params R)) gs1 T) as [[g Hg] | Hn];
     [ left; exists g; apply cls_in_syn; exact Hg |].
-  destruct (check_ctx Θ Ξ HΞ (rarg_ctx Ξ R args1)) as [HΓ | HnΓ].
+  destruct (check_ctx fctx_none Θ Ξ HΞ (rarg_ctx Ξ R args1)) as [HΓ | HnΓ].
   2:{ right; exists (cls_reason (List.length (rd_params R)) gs1 T).
       intros g H; inversion H as [g' Hg' | i W g' _ HT _ _]; subst; [ exact (Hn _ Hg') |].
       exact (HnΓ (presup_exp_ctx HT)). }
-  destruct (check_typ Θ Ξ _ HΓ T) as [[i HT] | HnT].
+  destruct (check_typ fctx_none Θ Ξ _ HΓ T) as [[i HT] | HnT].
   2:{ right; exists (cls_reason (List.length (rd_params R)) gs1 T).
       intros g H; inversion H as [g' Hg' | i W g' _ HT _ _]; subst; [ exact (Hn _ Hg') |].
       exact (HnT _ HT). }

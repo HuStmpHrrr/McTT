@@ -1,7 +1,7 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Algorithmic Require Export Subtyping.
-From Mctt.Extraction Require Import NbE PseudoMonadic.
+From Mctt.Extraction Require Import Lookup NbE PseudoMonadic.
 From Equations Require Import Equations.
 Import Domain_Notations Fixed_Notations.
 
@@ -121,7 +121,7 @@ Ltac subtyping_impl_tac :=
   repeat subtyping_impl_tac1; try econstructor; mauto.
 
 #[tactic="idtac",derive(equations=no,eliminator=no)]
-Equations subtyping_impl {GC : GCtx} G A B (H : subtyping_order G A B) :
+Equations subtyping_impl {GC : GCtx} {F : FCtx gc_deps gc_stack} G A B (H : subtyping_order G A B) :
   { G ⊢a A ⊆ B } + { ~ G ⊢a A ⊆ B } :=
 | G, A, B, H =>
     let (a, Ha) := nbe_ty_impl gc_deps gc_stack G A _ in
@@ -149,7 +149,7 @@ Qed.
 (** [subtyping_impl] at an initial environment of [G] computed beforehand,
     which both normalizations share. *)
 #[tactic="idtac",derive(equations=no,eliminator=no)]
-Equations subtyping_env_impl {GC : GCtx} G (P : fenv gc_deps gc_stack G) A B
+Equations subtyping_env_impl {GC : GCtx} {F : FCtx gc_deps gc_stack} G (P : fenv gc_deps gc_stack G) A B
   (H : subtyping_order G A B) : { G ⊢a A ⊆ B } + { ~ G ⊢a A ⊆ B } :=
 | G, P, A, B, H =>
     let (a, Ha) := nbe_ty_env_impl gc_deps gc_stack G P A _ in
@@ -173,7 +173,7 @@ Qed.
 
 (** The same holds for [subtyping_impl]. *)
 
-Theorem subtyping_impl_complete' : forall {GC : GCtx} G A B,
+Theorem subtyping_impl_complete' : forall {GC : GCtx} {F : FCtx gc_deps gc_stack} G A B,
     G ⊢a A ⊆ B ->
     forall (H : subtyping_order G A B),
       exists H', subtyping_impl G A B H = left H'.
@@ -184,7 +184,7 @@ Qed.
 #[local]
 Hint Resolve subtyping_order_sound subtyping_impl_complete' : mctt.
 
-Theorem subtyping_impl_complete : forall {GC : GCtx} G A B,
+Theorem subtyping_impl_complete : forall {GC : GCtx} {F : FCtx gc_deps gc_stack} G A B,
     G ⊢a A ⊆ B ->
     exists H H', subtyping_impl G A B H = left H'.
 Proof.

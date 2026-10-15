@@ -6,7 +6,7 @@ From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness.Consequences Require Import Types.
 From Mctt.Core.Syntactic Require Import System.
-From Mctt.Extraction Require Import PseudoMonadic TypeCheck.
+From Mctt.Extraction Require Import Lookup PseudoMonadic TypeCheck.
 Import Syntax_Notations GlobalCtx_Notations.
 
 (** * Deciding the Global-Context Judgments
@@ -196,6 +196,10 @@ Ltac invert_nf_typ_eq :=
     end.
 
 Section check_exp.
+  (** The data each check looks names up in, for its global context
+      ([Extraction.Lookup]). *)
+  Variable FF : forall Θ Ξ, FCtx Θ Ξ.
+
 
   (** "Is [A] a type?", decided as in the Π case of [type_check]: infer a type
       for [A], then require it to be a universe. *)
@@ -203,7 +207,7 @@ Section check_exp.
   Equations check_typ Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A :
     { i | Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i } + { forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i } :=
   | Θ, Ξ, Γ, HΓ, A =>
-      let*o (exist _ UA _) := @type_infer (gc_mk Θ Ξ) Γ _ A _ while _ in
+      let*o (exist _ UA _) := @type_infer (gc_mk Θ Ξ) (FF Θ Ξ) Γ _ A _ while _ in
       let*o (exist _ u _) := univ_nf_idx_dec UA while _ in
       pureo (exist _ (unf_large u) _)
   .
@@ -266,7 +270,7 @@ Section check_exp.
   Equations check_level Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) t :
     { n | Θ ⍮ Ξ ⍮ Γ ⊢ t : Level@n } + { forall n, ~ Θ ⍮ Ξ ⍮ Γ ⊢ t : Level@n } :=
   | Θ, Ξ, Γ, HΓ, t =>
-      let*o (exist _ B _) := @type_infer (gc_mk Θ Ξ) Γ _ t _ while _ in
+      let*o (exist _ B _) := @type_infer (gc_mk Θ Ξ) (FF Θ Ξ) Γ _ t _ while _ in
       let*o (exist _ n _) := get_level_sort_nf B while _ in
       pureo (exist _ n _)
   .
@@ -368,7 +372,7 @@ Section check_exp.
   Equations check_exp_typed Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A (HA : exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) M :
     { Θ ⍮ Ξ ⍮ Γ ⊢ M : A } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A } :=
   | Θ, Ξ, Γ, HΓ, A, HA, M =>
-      let*b _ := @type_check (gc_mk Θ Ξ) Γ A HA M _ while _ in
+      let*b _ := @type_check (gc_mk Θ Ξ) (FF Θ Ξ) Γ A HA M _ while _ in
       pureb _
   .
   Obligation 1. (* type_check_order M *)
@@ -391,21 +395,21 @@ Section check_exp.
   (** A unit and a module expression, through their algorithmic checks. *)
   Definition check_unit Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) U :
       { Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U } :=
-    match @unit_check (gc_mk Θ Ξ) Γ HΓ U (unit_order_all U) with
+    match @unit_check (gc_mk Θ Ξ) (FF Θ Ξ) Γ HΓ U (unit_order_all U) with
     | left H => left (alg_unit_sound' _ _ _ _ H HΓ)
     | right H => right (fun H' => H (alg_unit_complete' _ _ _ _ H'))
     end.
 
   Definition check_ext Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) Ψ :
       { Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ } :=
-    match @ext_check (gc_mk Θ Ξ) Γ HΓ Ψ (ext_order_all Ψ) with
+    match @ext_check (gc_mk Θ Ξ) (FF Θ Ξ) Γ HΓ Ψ (ext_order_all Ψ) with
     | left H => left (alg_ext_sound' _ _ _ _ H HΓ)
     | right H => right (fun H' => H (alg_ext_complete' _ _ _ _ H'))
     end.
 
   Definition check_modexp Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) E :
       { Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E } :=
-    match @modexp_check (gc_mk Θ Ξ) Γ HΓ E (modexp_order_all E) with
+    match @modexp_check (gc_mk Θ Ξ) (FF Θ Ξ) Γ HΓ E (modexp_order_all E) with
     | left H => left (alg_modexp_sound' _ _ _ _ H HΓ)
     | right H => right (fun H' => H (alg_modexp_complete' _ _ _ _ H'))
     end.
@@ -420,6 +424,10 @@ End check_exp.
     call of [check_unit]. *)
 
 Section check_ctx.
+  (** The data each check looks names up in, for its global context
+      ([Extraction.Lookup]). *)
+  Variable FF : forall Θ Ξ, FCtx Θ Ξ.
+
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations check_ctx Θ Ξ (HΞ : ⊢g Θ ⍮ Ξ) Γ :
@@ -427,15 +435,15 @@ Section check_ctx.
   | Θ, Ξ, HΞ, ⋅ => pureb _
   | Θ, Ξ, HΞ, Γ ▹ A =>
       let*b HΓ := check_ctx Θ Ξ HΞ Γ while _ in
-      let*o->b (exist _ i _) := check_typ Θ Ξ Γ HΓ A while _ in
+      let*o->b (exist _ i _) := check_typ FF Θ Ξ Γ HΓ A while _ in
       pureb _
   | Θ, Ξ, HΞ, Γ ▸ A ≔ M =>
       let*b HΓ := check_ctx Θ Ξ HΞ Γ while _ in
-      let*b _ := check_exp Θ Ξ Γ HΓ A M while _ in
+      let*b _ := check_exp FF Θ Ξ Γ HΓ A M while _ in
       pureb _
   | Θ, Ξ, HΞ, Γ ▹ₘ U =>
       let*b HΓ := check_ctx Θ Ξ HΞ Γ while _ in
-      let*b _ := check_unit Θ Ξ Γ HΓ U while _ in
+      let*b _ := check_unit FF Θ Ξ Γ HΓ U while _ in
       pureb _
   .
   (** The empty context is well formed by the global context's. *)

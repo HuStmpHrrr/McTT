@@ -6,6 +6,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Members Inductives.
 From Mctt.Core.Semantic Require Import Evaluation.
 From Mctt.Extraction Require Import FastEval.
+From Mctt.Extraction Require Export Lookup.
 Import Domain_Notations.
 
 Generalizable All Variables.
@@ -430,29 +431,10 @@ Proof. intros Θ Ξ; pose proof (feval_order_sound Θ Ξ); destruct_all; eauto. 
 Hint Resolve feval_exp_order_sound feval_app_order_sound feval_exps_order_sound
   feval_shty_order_sound feval_ihty_order_sound : mctt.
 
-Definition inspect {A} (a : A) : { b | a = b } := exist _ a eq_refl.
-
-Definition qname_dec : forall (x y : qname), {x = y} + {x <> y}.
-Proof. decide equality; apply list_eq_dec, string_dec. Defined.
-
 Section EvalImpl.
   Variables (Θ : gdeps) (Ξ : gstack).
+  Context {F : FCtx Θ Ξ}.
 
-  (** A declaration looked up already: the eliminator keeps the one of the
-      constructor it takes apart for the recursive results, whose arguments
-      are of the same type, and compares names instead of looking up
-      again. *)
-  Definition lk_cache : Set := option {x : qname * ind_decl | ind_lookup Θ Ξ (fst x) = Some (snd x)}.
-
-  Definition cache_lookup (ck : lk_cache) (p : qname) : { o | ind_lookup Θ Ξ p = o } :=
-    match ck with
-    | Some (exist _ (pc, D) E) =>
-        match qname_dec pc p with
-        | left Hq => exist _ (Some D) (eq_rect pc (fun r => ind_lookup Θ Ξ r = Some D) E p Hq)
-        | right _ => inspect (ind_lookup Θ Ξ p)
-        end
-    | None => inspect (ind_lookup Θ Ξ p)
-    end.
 
   (** A variable is looked up in the environment, without recursion. *)
   Definition feval_var_impl x p (H : feval_exp_order Θ Ξ #x p) : { d | ⟦ #x ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ d }.
@@ -626,7 +608,7 @@ Section EvalImpl.
   | a_nlit _, p, H => False_rect _ _
   | a_elim nm A Bs M, p, H =>
       let (m, Hm) := feval_exp_impl M p _ in
-      let (r, Hr) := feval_elim_impl p nm A Bs m None _ in
+      let (r, Hr) := feval_elim_impl p nm A Bs m (@fc_seed Θ Ξ F) _ in
       exist _ r _
   | M $ N   , p, H =>
       let (m , Hm) := feval_exp_impl M p _ in
@@ -648,8 +630,8 @@ Section EvalImpl.
         let (r, Hr) := feval_apps_impl f ns _ in
         exist _ r _ }
 
-  with feval_elim_impl p nm A Bs m (ck : lk_cache) (H : feval_elim_order Θ Ξ p nm A Bs m) : { r | ⟦elimᶠ m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
-  | p, nm, A, Bs, d_con pq c vs, ck, H with cache_lookup ck pq := {
+  with feval_elim_impl p nm A Bs m (ck : lk_cache Θ Ξ) (H : feval_elim_order Θ Ξ p nm A Bs m) : { r | ⟦elimᶠ m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
+  | p, nm, A, Bs, d_con pq c vs, ck, H with cache_lookup Θ Ξ ck pq := {
     | exist _ (Some D) Ed with inspect (ind_con D c) := {
       | exist _ (Some gs) Ec with inspect (brs_lookup Bs c) := {
         | exist _ (Some (n, B)) Eb =>
@@ -659,14 +641,14 @@ Section EvalImpl.
         | exist _ None Eb => False_rect _ _ }
       | exist _ None Ec => False_rect _ _ }
     | exist _ None Ed => False_rect _ _ }
-  | p, nm, A, Bs, ⇑ (d_ind pq as') m, ck, H with cache_lookup ck pq := {
+  | p, nm, A, Bs, ⇑ (d_ind pq as') m, ck, H with cache_lookup Θ Ξ ck pq := {
     | exist _ (Some D) Ed =>
         let (a, Ha) := feval_exp_impl A (env_args p (skipn (ind_nu D) as' ++ ⇑ (d_ind pq as') m :: nil)) _ in
         exist _ (⇑ a (d_elim p nm A Bs pq as' m)) _
     | exist _ None Ed => False_rect _ _ }
   | p, nm, A, Bs, _, ck, H => False_rect _ _
 
-  with feval_ihs_impl p nm A Bs B gs vs (ck : lk_cache) (H : feval_ihs_order Θ Ξ p nm A Bs B gs vs) : { ihs | ⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ihs } by struct H :=
+  with feval_ihs_impl p nm A Bs B gs vs (ck : lk_cache Θ Ξ) (H : feval_ihs_order Θ Ξ p nm A Bs B gs vs) : { ihs | ⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ihs } by struct H :=
   | p, nm, A, Bs, B, nil, nil, ck, H => exist _ nil _
   | p, nm, A, Bs, B, ca_arg T :: gs, v :: vs, ck, H =>
       let (ihs, Hihs) := feval_ihs_impl p nm A Bs B gs vs ck _ in
@@ -683,7 +665,7 @@ Section EvalImpl.
         exist _ (ih :: ihs) _ }
   | p, nm, A, Bs, B, _, _, ck, H => False_rect _ _
 
-  with feval_ih_impl p nm A Bs t v (ck : lk_cache) (H : feval_ih_order Θ Ξ p nm A Bs t v) : { r | feval_ih Θ Ξ p nm A Bs t v r } by struct H :=
+  with feval_ih_impl p nm A Bs t v (ck : lk_cache Θ Ξ) (H : feval_ih_order Θ Ξ p nm A Bs t v) : { r | feval_ih Θ Ξ p nm A Bs t v r } by struct H :=
   | p, nm, A, Bs, pt_self k Ps, v, ck, H =>
       let (r, Hr) := feval_elim_impl p nm A Bs v ck _ in
       exist _ r _
@@ -724,7 +706,7 @@ Section EvalImpl.
   | d_con pq c vs, n, H => exist _ (d_con pq c (vs ++ n :: nil)) _
   | d_ihfn p nm A Bs t f, n, H =>
       let (fn, Hfn) := feval_app_impl f n _ in
-      let (r, Hr) := feval_ih_impl p nm A Bs t fn None _ in
+      let (r, Hr) := feval_ih_impl p nm A Bs t fn (@fc_seed Θ Ξ F) _ in
       exist _ r _
   | d_shfam pq ups p t, n, H =>
       let (a, Ha) := feval_shty_impl pq ups (p ↦ n) t _ in
@@ -1164,14 +1146,14 @@ Ltac functional_feval_complete :=
       end
   end.
 
-Lemma feval_exp_impl_complete : forall Θ Ξ M p m,
+Lemma feval_exp_impl_complete : forall Θ Ξ {F : FCtx Θ Ξ} M p m,
     ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m ->
     exists H H', feval_exp_impl Θ Ξ M p H = exist _ m H'.
 Proof.
   intros; functional_feval_complete.
 Qed.
 
-Lemma feval_app_impl_complete : forall Θ Ξ m n r,
+Lemma feval_app_impl_complete : forall Θ Ξ {F : FCtx Θ Ξ} m n r,
     $ᶠ| m & n | Θ ⍮ Ξ ↘ r ->
     exists H H', feval_app_impl Θ Ξ m n H = exist _ r H'.
 Proof.

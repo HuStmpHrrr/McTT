@@ -136,6 +136,7 @@
 ./Entrypoint.v
 ./Extraction/Command.v
 ./Extraction/Evaluation.v
+./Extraction/Lookup.v
 ./Extraction/FastEval.v
 ./Extraction/Simulation.v
 ./Extraction/GlobalCheck.v

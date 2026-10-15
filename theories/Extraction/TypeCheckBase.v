@@ -22,7 +22,7 @@ Import Domain_Notations Wk_Notations Fixed_Notations.
     here, outside any section, rather than locally to one checker. *)
 
 Section Fixed_GCtx.
-Context {GC : GCtx}.
+Context {GC : GCtx} {F : FCtx gc_deps gc_stack}.
 
 Section lookup.
   #[local]

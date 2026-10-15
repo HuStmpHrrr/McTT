@@ -5,7 +5,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing Strengthening.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Consequences.
-From Mctt.Extraction Require Import NbE PseudoMonadic TypeCheckBase.
+From Mctt.Extraction Require Import Lookup NbE PseudoMonadic TypeCheckBase.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 (** * Checking the Forms of Inductive Types
@@ -32,7 +32,7 @@ Proof.
 Defined.
 
 Section Fixed_GCtx.
-Context {GC : GCtx}.
+Context {GC : GCtx} {F : FCtx gc_deps gc_stack}.
 
 (** Whether a normal form is an instance of an inductive type. *)
 #[derive(equations=no,eliminator=no)]
