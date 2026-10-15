@@ -1,0 +1,74 @@
+(* Inclusive unions, after Agda's [Data.These]: [These u A B] has the
+   constructors [this a], [that b] and [these a b], at every level [u]:
+   a value of [A], of [B], or of both.
+
+   The operations over fixed [A] and [B] are in the module [Ops u A B]:
+   the injection [fromSum] of a disjoint union, [map] on both sides and on
+   one ([mapLeft], [mapRight]), the eliminator [fold] and its variant
+   [foldWithDefaults], and [swap].  The laws are in
+   [Prelude›Data›These›Properties]. *)
+module Prelude›Data›These where
+
+import Prelude›Data›Sum use (Sum)
+
+inductive These (u : Level) (A : Type@{u}) (B : Type@{u}) : Type@{u} where
+| this (a : A)
+| that (b : B)
+| these (a : A) (b : B)
+end
+
+open These export (this; that; these)
+
+module Ops (u : Level) (A : Type@{u}) (B : Type@{u}) where
+
+def fromSum (s : Sum u A B) : These u A B ≔
+  elim s return z . These u A B
+  | inl a ⇒ this u A B a
+  | inr b ⇒ that u A B b
+  end
+end
+
+def map (C : Type@{u}) (D : Type@{u}) (f : ∀ (a : A) → C)
+    (g : ∀ (b : B) → D) (t : These u A B) : These u C D ≔
+  elim t return z . These u C D
+  | this a ⇒ this u C D (f a)
+  | that b ⇒ that u C D (g b)
+  | these a b ⇒ these u C D (f a) (g b)
+  end
+end
+
+def mapLeft (C : Type@{u}) (f : ∀ (a : A) → C) (t : These u A B) :
+    These u C B ≔
+  map C B f (λ (b : B) → b) t
+end
+
+def mapRight (D : Type@{u}) (g : ∀ (b : B) → D) (t : These u A B) :
+    These u A D ≔
+  map A D (λ (a : A) → a) g t
+end
+
+(* The eliminator into a fixed type: [l] on [this], [r] on [that], [lr] on
+   [these]. *)
+def fold (C : Type@{u}) (l : ∀ (a : A) → C) (r : ∀ (b : B) → C)
+    (lr : ∀ (a : A) (b : B) → C) (t : These u A B) : C ≔
+  elim t return z . C
+  | this a ⇒ l a
+  | that b ⇒ r b
+  | these a b ⇒ lr a b
+  end
+end
+
+(* [fold] with [lr] alone, completing a missing side with a default. *)
+def foldWithDefaults (C : Type@{u}) (a : A) (b : B)
+    (lr : ∀ (x : A) (y : B) → C) (t : These u A B) : C ≔
+  fold C (λ (x : A) → lr x b) (λ (y : B) → lr a y) lr t
+end
+
+def swap (t : These u A B) : These u B A ≔
+  fold (These u B A) (λ (a : A) → that u B A a) (λ (b : B) → this u B A b)
+    (λ (a : A) (b : B) → these u B A b a) t
+end
+
+end
+
+end

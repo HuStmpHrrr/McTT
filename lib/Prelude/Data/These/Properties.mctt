@@ -1,0 +1,150 @@
+(* Laws of [Prelude›Data›These], at every level [u], stated with the
+   Leibniz equality of [Prelude›Logic›Leibniz]: the constructors are
+   injective (Agda's [this-injective], [that-injective],
+   [these-injectiveˡ], [these-injectiveʳ]) and pairwise distinct, [swap]
+   is an involution, [map] is a functor, and [fold] after [swap] or
+   [fromSum].
+
+   Injectivity is congruence through a projection that is the identity on
+   the constructor at hand; distinctness transports [⋆] along a predicate
+   that is [⊤] on one constructor and [⊥] on the other. *)
+module Prelude›Data›These›Properties where
+
+import Prelude›Data›Sum use (Sum)
+open Prelude›Data›Sum.Ops as S
+import Prelude›Data›These use (These; this; that; these)
+open Prelude›Data›These.Ops as T
+
+module Laws (u : Level) (A : Type@{u}) (B : Type@{u}) where
+
+import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
+import Prelude›Logic.Negation (succl u) use (Not)
+
+inductive TAB ≔ These u A B
+
+(* The left component, or [d] if there is none. *)
+private def leftOr (d : A) (t : TAB) : A ≔
+  elim t return z . A | this a ⇒ a | that b ⇒ d | these a b ⇒ a end
+end
+
+(* The right component, or [d] if there is none. *)
+private def rightOr (d : B) (t : TAB) : B ≔
+  elim t return z . B | this a ⇒ d | that b ⇒ b | these a b ⇒ b end
+end
+
+(* The proposition that [t] is built by [this], [that] or [these]. *)
+private def IsThis (t : TAB) : Type@{u} ≔
+  elim t return z . Type@{u} | this a ⇒ ⊤ | that b ⇒ ⊥ | these a b ⇒ ⊥ end
+end
+
+private def IsThat (t : TAB) : Type@{u} ≔
+  elim t return z . Type@{u} | this a ⇒ ⊥ | that b ⇒ ⊤ | these a b ⇒ ⊥ end
+end
+
+theorem thisInjective : ∀ (x : A) (y : A) (h : Id TAB (TAB.this x) (TAB.this y)) →
+    Id A x y ≔
+  λ (x : A) (y : A) (h : Id TAB (TAB.this x) (TAB.this y)) →
+    idCong TAB A (leftOr x) (TAB.this x) (TAB.this y) h
+end
+
+theorem thatInjective : ∀ (x : B) (y : B) (h : Id TAB (TAB.that x) (TAB.that y)) →
+    Id B x y ≔
+  λ (x : B) (y : B) (h : Id TAB (TAB.that x) (TAB.that y)) →
+    idCong TAB B (rightOr x) (TAB.that x) (TAB.that y) h
+end
+
+theorem theseInjectiveLeft : ∀ (x : A) (y : A) (a : B) (b : B)
+    (h : Id TAB (TAB.these x a) (TAB.these y b)) → Id A x y ≔
+  λ (x : A) (y : A) (a : B) (b : B) (h : Id TAB (TAB.these x a) (TAB.these y b)) →
+    idCong TAB A (leftOr x) (TAB.these x a) (TAB.these y b) h
+end
+
+theorem theseInjectiveRight : ∀ (x : A) (y : A) (a : B) (b : B)
+    (h : Id TAB (TAB.these x a) (TAB.these y b)) → Id B a b ≔
+  λ (x : A) (y : A) (a : B) (b : B) (h : Id TAB (TAB.these x a) (TAB.these y b)) →
+    idCong TAB B (rightOr a) (TAB.these x a) (TAB.these y b) h
+end
+
+theorem thisNeThat : ∀ (a : A) (b : B) → Not (Id TAB (TAB.this a) (TAB.that b)) ≔
+  λ (a : A) (b : B) (h : Id TAB (TAB.this a) (TAB.that b)) → h IsThis ⋆
+end
+
+theorem thisNeThese : ∀ (a : A) (x : A) (b : B) →
+    Not (Id TAB (TAB.this a) (TAB.these x b)) ≔
+  λ (a : A) (x : A) (b : B) (h : Id TAB (TAB.this a) (TAB.these x b)) →
+    h IsThis ⋆
+end
+
+theorem thatNeThese : ∀ (b : B) (x : A) (y : B) →
+    Not (Id TAB (TAB.that b) (TAB.these x y)) ≔
+  λ (b : B) (x : A) (y : B) (h : Id TAB (TAB.that b) (TAB.these x y)) →
+    h IsThat ⋆
+end
+
+theorem swapSwap : ∀ (t : TAB) → Id TAB (T.swap u B A (T.swap u A B t)) t ≔
+  λ (t : TAB) →
+    elim t return z . Id TAB (T.swap u B A (T.swap u A B z)) z
+    | this a ⇒ idRefl TAB (TAB.this a)
+    | that b ⇒ idRefl TAB (TAB.that b)
+    | these a b ⇒ idRefl TAB (TAB.these a b)
+    end
+end
+
+theorem mapId : ∀ (t : TAB) →
+    Id TAB (T.map u A B A B (λ (a : A) → a) (λ (b : B) → b) t) t ≔
+  λ (t : TAB) →
+    elim t return z . Id TAB (T.map u A B A B (λ (a : A) → a) (λ (b : B) → b) z) z
+    | this a ⇒ idRefl TAB (TAB.this a)
+    | that b ⇒ idRefl TAB (TAB.that b)
+    | these a b ⇒ idRefl TAB (TAB.these a b)
+    end
+end
+
+theorem mapComp : ∀ (C : Type@{u}) (D : Type@{u}) (E : Type@{u}) (F : Type@{u})
+    (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
+    (h : ∀ (c : C) → E) (k : ∀ (d : D) → F) (t : TAB) →
+    Id (These u E F) (T.map u C D E F h k (T.map u A B C D f g t))
+      (T.map u A B E F (λ (a : A) → h (f a)) (λ (b : B) → k (g b)) t) ≔
+  λ (C : Type@{u}) (D : Type@{u}) (E : Type@{u}) (F : Type@{u})
+    (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
+    (h : ∀ (c : C) → E) (k : ∀ (d : D) → F) (t : TAB) →
+    elim t return z . Id (These u E F) (T.map u C D E F h k (T.map u A B C D f g z))
+                        (T.map u A B E F (λ (a : A) → h (f a))
+                           (λ (b : B) → k (g b)) z)
+    | this a ⇒ idRefl (These u E F) (this u E F (h (f a)))
+    | that b ⇒ idRefl (These u E F) (that u E F (k (g b)))
+    | these a b ⇒ idRefl (These u E F) (these u E F (h (f a)) (k (g b)))
+    end
+end
+
+(* Folding a swapped value exchanges the cases. *)
+theorem foldSwap : ∀ (C : Type@{u}) (l : ∀ (b : B) → C) (r : ∀ (a : A) → C)
+    (lr : ∀ (b : B) (a : A) → C) (t : TAB) →
+    Id C (T.fold u B A C l r lr (T.swap u A B t))
+      (T.fold u A B C r l (λ (a : A) (b : B) → lr b a) t) ≔
+  λ (C : Type@{u}) (l : ∀ (b : B) → C) (r : ∀ (a : A) → C)
+    (lr : ∀ (b : B) (a : A) → C) (t : TAB) →
+    elim t return z . Id C (T.fold u B A C l r lr (T.swap u A B z))
+                        (T.fold u A B C r l (λ (a : A) (b : B) → lr b a) z)
+    | this a ⇒ idRefl C (r a)
+    | that b ⇒ idRefl C (l b)
+    | these a b ⇒ idRefl C (lr b a)
+    end
+end
+
+(* On a disjoint union, [fold] is [case]. *)
+theorem foldFromSum : ∀ (C : Type@{u}) (l : ∀ (a : A) → C) (r : ∀ (b : B) → C)
+    (lr : ∀ (a : A) (b : B) → C) (s : Sum u A B) →
+    Id C (T.fold u A B C l r lr (T.fromSum u A B s)) (S.case u A B C l r s) ≔
+  λ (C : Type@{u}) (l : ∀ (a : A) → C) (r : ∀ (b : B) → C)
+    (lr : ∀ (a : A) (b : B) → C) (s : Sum u A B) →
+    elim s return z . Id C (T.fold u A B C l r lr (T.fromSum u A B z))
+                        (S.case u A B C l r z)
+    | inl a ⇒ idRefl C (l a)
+    | inr b ⇒ idRefl C (r b)
+    end
+end
+
+end
+
+end
