@@ -732,6 +732,15 @@ Section Read.
     intros [| x] Hx; cbn; [ constructor; exact Hc | apply Hρ, Hx ].
   Qed.
 
+  (** A closure that does not read its argument, at any argument. *)
+  Lemma feval_clo_unread : forall B (ρ ρ' : env) c c' b,
+      env_agree (fun x => ~ exp_fresh (S x) B) ρ ρ' -> exp_fresh 0 B -> ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ c ↘ b ->
+      exists b', ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ (ρ' ↦ c') ↘ b' /\ dsim b b'.
+  Proof.
+    intros * Hρ H0 Hb; eapply feval_exp_sim; [ exact Hb |].
+    intros [| x] Hx; cbn; [ contradiction | apply Hρ, Hx ].
+  Qed.
+
   Lemma feval_clo2_sim : forall B (ρ ρ' : env) c1 c1' c2 c2' b,
       env_agree (fun x => ~ exp_fresh (S (S x)) B) ρ ρ' -> dsim c1 c1' -> dsim c2 c2' ->
       ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ c1 ↦ c2 ↘ b ->
