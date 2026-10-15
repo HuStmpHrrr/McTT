@@ -330,6 +330,9 @@ the neutral `ne_elim nm A Bs M` does not.  `X.elim` is no member: `elim` is
 a keyword.  The printer marks a branch's induction hypotheses after a
 comma where the branches name the constructors of known declarations that
 agree on them (`elim_decls`, `mark_ihs`).
+The doc tool (`driver/Doc.ml`) cannot link a branch's constructor name
+to its declaration, since nothing in the syntax names the type: such names
+are marked `bare` and left unlinked (accepted for now).
 
 ## The recursor (item 4b)
 
