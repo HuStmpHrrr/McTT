@@ -455,9 +455,6 @@ Section UnitsOk.
 
   Lemma ind_alias_lookup_u_ok : forall Ξ p, ind_alias_lookup_u uf Ξ p = ind_alias_lookup Θ Ξ p.
   Proof. intros; unfold ind_alias_lookup, ind_alias_lookup_u; rewrite Huf; reflexivity. Qed.
-
-  Lemma ind_target_u_ok : forall Ξ p, ind_target_u uf Ξ p = ind_target Θ Ξ p.
-  Proof. intros; unfold ind_target_u; rewrite ind_lookup_u_ok, ind_alias_lookup_u_ok; reflexivity. Qed.
 End UnitsOk.
 
 Lemma gm_ind_target_ext_fresh : forall Φ x E ip p,

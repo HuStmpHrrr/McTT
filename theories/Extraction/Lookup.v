@@ -162,12 +162,6 @@ Section Lookups.
     exist _ (gc_module_u (fc_units F) Ξ p) (eq_sym (gc_module_u_ok _ _ (fc_units_ok F) Ξ p)).
   Definition ind_lookup_f p : { o | ind_lookup Θ Ξ p = o } :=
     exist _ (ind_lookup_u (fc_units F) Ξ p) (eq_sym (ind_lookup_u_ok _ _ (fc_units_ok F) Ξ p)).
-  Definition gc_resolve_f p : { o | gc_resolve Θ Ξ p = o } :=
-    exist _ (gc_resolve_u (fc_units F) Ξ p) (eq_sym (gc_resolve_u_ok _ _ (fc_units_ok F) Ξ p)).
-  Definition ind_alias_lookup_f p : { o | ind_alias_lookup Θ Ξ p = o } :=
-    exist _ (ind_alias_lookup_u (fc_units F) Ξ p) (eq_sym (ind_alias_lookup_u_ok _ _ (fc_units_ok F) Ξ p)).
-  Definition ind_target_f p : { o | ind_target Θ Ξ p = o } :=
-    exist _ (ind_target_u (fc_units F) Ξ p) (eq_sym (ind_target_u_ok _ _ (fc_units_ok F) Ξ p)).
 
   Definition cache_lookup (ck : lk_cache Θ Ξ) (p : qname) : { o | ind_lookup Θ Ξ p = o } :=
     match ck with
