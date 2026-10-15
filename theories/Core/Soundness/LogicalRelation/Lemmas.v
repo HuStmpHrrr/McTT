@@ -1603,26 +1603,6 @@ Hint Resolve glu_rel_typ_with_sub_implies_glu_rel_exp_with_sub : mctt.
 
 (** *** Lemmas for [glu_ctx_env] *)
 
-(** Stated for context refinement, since context equality is not a judgment.
-    It goes one way, and [ctxsub_sub] transports the substitution itself. *)
-Lemma glu_ctx_env_sub_resp_ctxsub : forall {Γ Sb},
-    EG Γ ∈ glu_ctx_env ↘ Sb ->
-    forall {Δ Δ' σ ρ},
-      Δ ⊢s σ ® ρ ∈ Sb ->
-      Δ' ⊆ Δ ->
-      Δ' ⊢s σ ® ρ ∈ Sb.
-Proof.
-  induction 1; intros * HSb Hctxsub;
-    apply_predicate_equivalence;
-    simpl in *;
-    mauto 4.
-  all: try destruct_by_head cons_glu_sub_pred.
-  all: try destruct_by_head cons_def_glu_sub_pred.
-  all: try destruct_by_head cons_mod_glu_sub_pred.
-  all: econstructor; mauto 4.
-  all: eapply glu_univ_elem_trm_resp_ctxsub; eassumption.
-Qed.
-
 Lemma glu_ctx_env_sub_resp_sub_eq : forall {Γ Sb},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     forall {Δ σ σ' ρ},
@@ -1948,77 +1928,6 @@ Ltac invert_glu_ctx_env H :=
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-
-Lemma glu_ctx_env_subtyp_sub_if : forall Γ Γ' Sb Sb' Δ σ ρ,
-    Γ ⊆ Γ' ->
-    EG Γ ∈ glu_ctx_env ↘ Sb ->
-    EG Γ' ∈ glu_ctx_env ↘ Sb' ->
-    Δ ⊢s σ ® ρ ∈ Sb ->
-    Δ ⊢s σ ® ρ ∈ Sb'.
-Proof.
-  intros * Hsubtyp Hglu Hglu'.
-  gen ρ σ Δ. gen Sb' Sb.
-  induction Hsubtyp; intros;
-    invert_glu_ctx_env Hglu;
-    invert_glu_ctx_env Hglu';
-    handle_functional_glu_ctx_env;
-    eauto.
-
-  (** [Δ] is the refining context and [A'] its type; [Γ] and [A] are the ones
-      being refined.  The three cases share the head and the tail; only a
-      refined definition has a tie to move. *)
-  (** A module slot keeps its unit: the tie is unchanged. *)
-  4:{ destruct_by_head cons_mod_glu_sub_pred.
-      econstructor; [ eapply ctxsub_sub_cod; [| eassumption ]; mauto 3 | eassumption |].
-      eapply IHHsubtyp; eassumption. }
-  all: rename i0 into j.
-  all: rename i1 into k.
-  all: rename TSb0 into TSb'.
-  all: try destruct_by_head cons_glu_sub_pred.
-  all: try destruct_by_head cons_def_glu_sub_pred.
-  all: assert (glu_rel_typ_with_sub k Δ0 A (Wk ⨟ σ) ρ↯) as [] by intuition.
-  all: rename a0 into a'.
-  all: rename P0 into P'.
-  all: rename El0 into El'.
-  all: assert (exists tail_rel, EF Δ ≈ Δ ∈ per_ctx_env ↘ tail_rel) as [tail_rel Htail]
-         by mauto 3 using glu_ctx_env_per_ctx_env.
-  all: assert (Htl : Dom ρ↯ ≈ ρ↯ ∈ tail_rel) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
-  1: assert (Hctx : Δ ▹ A' ⊆ Γ ▹ A) by mauto 3.
-  2: assert (Hctx : Δ ▸ A' ≔ M' ⊆ Γ ▸ A ≔ M) by mauto 3.
-  3: assert (Hctx : Δ ▸ A' ≔ M' ⊆ Γ ▹ A) by mauto 3.
-  all: econstructor; mauto; intuition.
-  all: assert (Δ ⊨ A' ⊆ A) as HAA' by mauto 3 using completeness_fundamental_subtyp.
-  all: destruct (subtyp_under_ctx_simple HAA') as [env_relΔ [? [l Hsub]]].
-  all: handle_per_ctx_env_irrel.
-  all: (on_all_hyp_rev: destruct_rel_by_assumption tail_rel).
-  all: destruct_conjs.
-  all: functional_eval_rewrite_clear.
-  all: try (eapply glu_univ_elem_per_subtyp_trm_conv;
-            [ eassumption | eassumption | eassumption | rewrite exp_sub_shift; eassumption | eassumption ]).
-  all: try (eapply ctxsub_sub_cod; [| eassumption ]; mauto 3).
-  (** The tie of a refined definition moves along [M' ≈ M] and the element
-      inclusion of [A' ⊆ A]. *)
-  match goal with
-  | Htie0 : def_tie A' M' ρ, HM : Δ ⊢ M' ≈ M : A, Ha : ⟦ A' ⟧ ρ↯ ↘ ?a,
-    Hsa : Sub ?a <: ?a' at ?lv |- _ =>
-      rename Htie0 into Hdt; rename HM into HMeq; rename Ha into HaA'; rename Hsa into Hs
-  end.
-  assert (HMM : Δ ⊨ M' ≈ M : A) by (apply completeness_fundamental_exp_eq; eassumption).
-  pose proof (rel_exp_under_ctx_simple HMM) as [R0 [HR0 [k1 HMMs]]].
-  assert (E0 : tail_rel <~> R0) by (eapply per_ctx_env_right_irrel; eassumption).
-  destruct (HMMs _ _ (proj1 (E0 _ _) Htl)) as [b1 [b2 [RA [Hb1 [Hb2 [HRA [m1 [m [Hm1 [Hm HmRA]]]]]]]]]].
-  destruct Hdt as [m' [Hm' Htie]].
-  functional_eval_rewrite_clear.
-  destruct (per_subtyp_to_univ_elem _ _ _ Hs) as [Ra [Ra' [HRa HRa']]].
-  apply (Htie _ _ _ _ HaA' HaA') in HRa as Htie'.
-  pose proof (per_elem_subtyping _ _ _ Hs _ _ _ _ HRa HRa' Htie') as Htie''.
-  assert (E : Ra' <~> RA) by (eapply per_univ_elem_right_irrel; eassumption).
-  apply E in Htie''.
-  exists m; split; [ eassumption |].
-  eapply per_head_of; [ eassumption | eassumption | exact HRA |].
-  assert (PER RA) by (eapply per_elem_PER; eassumption).
-  solve_per.
-Qed.
 
 (** Postcomposition by a Kripke weakening, [sb_wk], the operation Lemma 6.39
     uses on the semantic side. The head clause follows from

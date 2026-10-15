@@ -500,15 +500,6 @@ Proof.
   - eexists; constructor.
 Qed.
 
-Lemma nextparam_local_lt : forall ρ U args a,
-    nextparam (dm_local ρ U args) a -> List.length args <= List.length (gu_params U).
-Proof.
-  intros * H; inversion H; subst; cbn; [| lia ].
-  match goal with Hn : nth_error _ _ = Some _ |- _ =>
-    assert (Hn' : nth_error (rev (gu_params U)) (List.length args) <> None) by congruence;
-    apply nth_error_Some in Hn'; rewrite length_rev in Hn'; lia end.
-Qed.
-
 Definition mrel (k : mkind) (E : relation domain) (w : dmod) (ch : list String.string) (w' : dmod) : Prop :=
   match k with
   | mk_term => exists v v', eval_selc gc_deps gc_stack w ch v /\ eval_selc gc_deps gc_stack w' ch v' /\ E v v'

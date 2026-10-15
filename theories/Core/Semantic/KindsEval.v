@@ -140,25 +140,6 @@ Section KindsEval.
         apply ukind_id, Hs.
   Qed.
 
-  Lemma items_upto_snoc : forall y its its1 it, items_upto y its = Some (its1, it) ->
-      exists its0, its1 = its0 ++ it :: nil.
-  Proof.
-    induction its as [| it0 its IH]; intros * Hu; cbn in Hu; [ discriminate |].
-    destruct (items_upto y its) as [[its1' it1] |] eqn:E.
-    - injection Hu as <- <-; destruct (IH _ _ eq_refl) as [its0 ->]; exists (it0 :: its0); reflexivity.
-    - destruct (String.eqb y (iitem_name it0)); [| discriminate ].
-      injection Hu as <- <-; exists nil; reflexivity.
-  Qed.
-
-  Lemma gm_item_upto_snoc : forall Φ y Φ0 H its1 it, gm_item_upto Φ y = Some (Φ0, H, its1, it) ->
-      exists its0, its1 = its0 ++ it :: nil.
-  Proof.
-    induction Φ as [| Φ IH x E | Φ IH H0 its]; intros * Hu; cbn in Hu; [ discriminate | |].
-    - destruct (String.eqb y x); [ discriminate | eauto ].
-    - destruct (items_upto y its) as [[its1' it1] |] eqn:E; [| eauto ].
-      injection Hu as <- <- <- <-; eapply items_upto_snoc; exact E.
-  Qed.
-
   Lemma gm_item_prefix_excl : forall Φ x r, gm_item_upto Φ x = Some r -> gm_prefix_upto Φ x = None.
   Proof.
     intros * Hi; destruct (gm_prefix_upto Φ x) eqn:E; [| reflexivity ].

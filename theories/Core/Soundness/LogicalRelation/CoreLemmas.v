@@ -956,16 +956,6 @@ Proof.
   exists Ps; split; [ eapply ind_typ_at_resp_exp_eq; eassumption | exact Hk ].
 Qed.
 
-Lemma ind_glu_exp_pred_resp_ctxsub : forall p D ups ns NP NEl AP AEl DP DEl R k Γ A M m Δ,
-    ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl R Typeω@k Γ A M m -> Δ ⊆ Γ ->
-    ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl R Typeω@k Δ A M m.
-Proof.
-  intros * (HM & Hm & Ps & HPs & Hk) Hs.
-  split; [ eapply ctxsub_exp; [ exact (ctx_sub_escape _ _ _ _ Hs) | exact HM ] | split; [ exact Hm |] ].
-  exists Ps; split; [ eapply ind_typ_at_resp_ctxsub; eassumption |].
-  intros Θ ψ Ps' Hψ HPs'; apply Hk; [ eapply kripke_ctxsub; eassumption | exact HPs' ].
-Qed.
-
 Lemma ind_glu_exp_pred_wk : forall p D ups ns NP NEl AP AEl DP DEl R k Γ A M m Δ φ,
     ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl R Typeω@k Γ A M m -> Δ ⊢k φ : Γ ->
     ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl R Typeω@k Δ A[φ]ʷ M[φ]ʷ m.
@@ -1138,37 +1128,6 @@ Proof.
     econstructor; mauto 3; intros; mauto 4.
 
   - split; [ mauto 3 | intros; mauto 4 ].
-Qed.
-
-Lemma glu_univ_elem_trm_resp_ctxsub : forall i P El a,
-    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
-    forall Γ A M m Δ,
-      Γ ⊢ M : A ® m ∈ El ->
-      Δ ⊆ Γ ->
-      Δ ⊢ M : A ® m ∈ El.
-Proof.
-  simpl.
-  glu_univ_elem_induction1; intros.
-  8:{ apply_equiv_left; eapply (ind_glu_exp_pred_resp_ctxsub p D ups ns NP NEl AP AEl DP DEl elem_rel); eassumption. }
-  all:
-    simpl_glu_rel.
-  (** An element of a small universe: its type's level term moves to the
-      refined context too. *)
-  all: try solve [ repeat apply conj;
-                   [ mauto 3
-                   | do 2 eexists; split; [ eapply glu_lvl_resp_ctxsub; eassumption | mauto 3 ]
-                   | do 2 eexists; split;
-                     [ eassumption | eapply glu_univ_elem_typ_resp_ctxsub; eassumption ]
-                   | intros; mauto 4 ] ].
-  all: try solve [ repeat apply conj; [ mauto 3 | mauto 3 | ];
-                   do 2 eexists; split; [ eassumption | eapply glu_univ_elem_typ_resp_ctxsub; eassumption ] ].
-  all: try solve [ split; mauto 3 ].
-  (** A [Π]: the context refinement extends over the domain.  A neutral: its
-      readback clause is transported along it. *)
-  1:{ assert (Δ ⊢ IT : Typeω@(ulvl i)) by mauto 3.
-      assert (Δ ▹ IT ⊆ Γ ▹ IT) by (eapply ctx_sub_extend; mauto 3 using wf_subtyp_refl_univ).
-      econstructor; mauto 3; intros; mauto 4. }
-  1:{ econstructor; [ split | | | ]; mauto 3; intros; mauto 4. }
 Qed.
 
 Lemma glu_lvl_resp_wk : forall Γ M a n,

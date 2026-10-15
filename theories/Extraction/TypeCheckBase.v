@@ -217,20 +217,6 @@ Section type_check.
     exact (proj1 (proj1 member_wf _ _ _ _ Hm (alg_modexp_sound HM HG) Hch)).
   Qed.
 
-  (** The universe is lifted to the large one of its tier before the
-      substitution: a small universe's level may mention the module. *)
-  Lemma let_mod_typ_of_alg : forall G U C (u : unf), ⊢ G -> G ⊢aᵘ U -> G ▹ₘ U ⊢a C ⟹ univ_nf u ->
-      G ⊢ C[Id ,,ₘ me_lit U] : Typeω@(unf_large u).
-  Proof.
-    intros * HG HU HC.
-    pose proof (alg_unit_sound HU HG) as HU'.
-    assert (⊢ G ▹ₘ U) by (apply wf_ctx_extend_mod; exact HU').
-    assert (HCt : G ▹ₘ U ⊢ C : unf_tm u)
-      by (rewrite <- nf_to_exp_univ_nf; eapply alg_type_infer_sound; eassumption).
-    apply wf_exp_unf_large in HCt.
-    exact (sub_preserves_exp _ _ _ _ _ _ _ HCt (wf_sub_single_mod _ _ _ _ HU')).
-  Qed.
-
   (** ** The Initial Environment the Checker Carries
 
       Every normalization the checker does is at the initial environment of
@@ -860,19 +846,6 @@ Ltac mo_3 :=
                   rewrite (HN _ (mt_mem _ _ _ _ _ _ _ Hk Hm)) in Ht; discriminate Ht
               end ].
 
-Ltac mo_4 :=
-  clear_defs; destruct_conjs;
-  solve [ match goal with Hx : _ ⊢aᵐ _ |- False => inversion Hx; subst end; congruence ].
-
-Ltac mo_5 :=
-  clear_defs; destruct_conjs;
-  solve [ eapply nbe_order_of_typ, let_mod_typ_of_alg; eassumption ].
-
-Ltac mo_6 :=
-  clear_defs; destruct_conjs;
-  solve [ split; [ eapply ati_let_mod; eassumption
-                     | eapply level_of_nbe; [ eapply let_mod_typ_of_alg; eassumption | eassumption ] ] ].
-
 Ltac mo_7 :=
   clear_defs; destruct_conjs;
   solve [ match goal with
@@ -899,33 +872,9 @@ Ltac mo_10 :=
   clear_defs; destruct_conjs;
   solve [ negc ].
 
-Ltac mo_11 :=
-  clear_defs; destruct_conjs;
-  solve [ split; intros * [] ].
-
-Ltac mo_12 :=
-  clear_defs; destruct_conjs;
-  solve [ econstructor; eassumption ].
-
-Ltac mo_13 :=
-  clear_defs; destruct_conjs;
-  solve [ econstructor; eauto ].
-
 Ltac mo_14 :=
   clear_defs; destruct_conjs;
   solve [ typ_sound ].
-
-Ltac mo_15 :=
-  clear_defs; destruct_conjs;
-  solve [ ctx_wf_tac ].
-
-Ltac mo_16 :=
-  clear_defs; destruct_conjs;
-  solve [ intros; match goal with Hls : forall Φ c, _ \/ _ -> _ |- _ => eapply Hls; right; eassumption end ].
-
-Ltac mo_17 :=
-  clear_defs; destruct_conjs;
-  solve [ eapply ctx_wf_gctx; ctxp ].
 
 Ltac mo_18 :=
   clear_defs; destruct_conjs;
@@ -967,10 +916,6 @@ Ltac mo_22 :=
                   rewrite (mres_ty_tl _ _ Ht) in HA;
                   exists i; exact (proj1 (proj2 (tele_view_wf _ _ _ _ _ HA Hv)))
               end ].
-
-Ltac mo_23 :=
-  clear_defs; destruct_conjs;
-  solve [ eapply amod_app; eassumption ].
 
 (** ** The Obligations of the Term Cases *)
 

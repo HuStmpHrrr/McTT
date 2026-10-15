@@ -1033,9 +1033,6 @@ Proof. intros; do 2 eexists; split; [ reflexivity | assumption ]. Qed.
 Lemma wf_gunit_mod : forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢u U -> Θ ⍮ Ξ ⍮ mp ⍮ gu_params U ⊢m gu_mod U.
 Proof. intros * (Δ & Φ & -> & H); exact H. Qed.
 
-Lemma wf_gunit_body : forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢u U -> exists Δ Φ, U = gu_body Δ Φ.
-Proof. intros * (Δ & Φ & -> & _); eauto. Qed.
-
 (** The unit form of the two constructors that file one. *)
 
 Lemma wf_gstack_cons' : forall Θ Ξ mp U,
@@ -1387,12 +1384,6 @@ Proof.
   - replace b' with ((b' - b) + b) by lia; apply wf_exp_eq_maxl_llit_tier; assumption.
 Qed.
 
-Lemma wf_exp_eq_maxl_llit_le : forall {Θ Ξ Γ} n m,
-    ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    n <= m ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ maxl 𝕃@n 𝕃@m ≈ 𝕃@m : Level.
-Proof. intros; apply wf_exp_eq_maxl_llit_ole; [ apply ole_fin; assumption | cbn; lia | assumption ]. Qed.
-
 Lemma wf_subtyp_small_large_lit : forall {Θ Ξ Γ o i},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ o⟩ ⊆ Typeω@i.
@@ -1409,12 +1400,6 @@ Proof.
     [ assumption | apply wf_llit; assumption | apply wf_llit; [ reflexivity | assumption ]
     | apply wf_exp_eq_maxl_llit_ole; [ assumption | reflexivity | assumption ] ].
 Qed.
-
-Lemma wf_subtyp_suniv_le : forall {Θ Ξ Γ n m},
-    ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    n <= m ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Type@n ⊆ Type@m.
-Proof. intros; apply wf_subtyp_suniv_ole; [ assumption | apply ole_fin; assumption ]. Qed.
 
 Lemma wf_subtyp_suniv_succl : forall {Θ Ξ Γ a b},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -1460,10 +1445,6 @@ Hint Resolve wf_univ_lit wf_exp_eq_univ_cong_lit : mctt.
 Lemma wf_ulvl_tm : forall {Θ Ξ Γ} {u : uidx},
     ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ulvl_tm u : Typeω@(ulvl_above u).
 Proof. intros ? ? ? []; [ apply wf_univ_large | apply wf_typ ]. Qed.
-
-Lemma wf_exp_eq_ulvl_tm_cong : forall {Θ Ξ Γ} {u : uidx},
-    ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ulvl_tm u ≈ ulvl_tm u : Typeω@(ulvl_above u).
-Proof. intros ? ? ? []; [ apply wf_exp_eq_univ_cong_large | apply wf_exp_eq_typ_cong ]. Qed.
 
 (** A universe is closed, so no substitution reaches it. *)
 Lemma exp_sub_ulvl_tm : forall u σ, (ulvl_tm u)[σ] = ulvl_tm u.

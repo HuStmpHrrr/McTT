@@ -1321,14 +1321,6 @@ Proof.
   intros; eapply per_univ_elem_cumu_uidx; [ eassumption | cbn; lia ].
 Qed.
 
-(** A small type is a type of every large universe. *)
-Lemma per_univ_elem_small_large : forall j (i : nat) a0 a1 R,
-    DF a0 ≈ a1 ∈ per_univ_elem (us j) ↘ R ->
-    DF a0 ≈ a1 ∈ per_univ_elem i ↘ R.
-Proof.
-  intros; eapply per_univ_elem_cumu_uidx; [ eassumption | exact I ].
-Qed.
-
 Hint Resolve per_univ_elem_cumu_ge : mctt.
 
 Lemma per_univ_elem_cumu_max_left : forall (i j : nat) a0 a1 R,
@@ -1345,26 +1337,6 @@ Lemma per_univ_elem_cumu_max_right : forall (i j : nat) a0 a1 R,
 Proof.
   intros.
   assert (j <= max i j) by lia; mautosolve.
-Qed.
-
-Lemma per_subtyp_to_univ_elem : forall a b i,
-    Sub a <: b at i ->
-    exists R R',
-      DF a ≈ a ∈ per_univ_elem i ↘ R /\
-        DF b ≈ b ∈ per_univ_elem i ↘ R'.
-Proof.
-  destruct 1.
-  (** An inductive type is related to its supertype, hence to itself. *)
-  9: { do 2 eexists; split;
-        [ eapply per_univ_trans; [ eassumption | apply per_univ_sym; eassumption ]
-        | eapply per_univ_trans; [ apply per_univ_sym; eassumption | eassumption ] ]. }
-  all: do 2 eexists; mauto;
-    split; per_univ_elem_econstructor; mauto;
-    try apply Equivalence_Reflexive.
-  (** A small universe below another is a universe at the index of its own
-      realiser, which the order on levels bounds. *)
-  all: try (match goal with H : per_sublvl _ _ |- _ => pose proof (per_sublvl_real _ _ H) end).
-  all: solve_uidx.
 Qed.
 
 
@@ -1407,17 +1379,6 @@ Proof.
     simplify_evals.
     econstructor; eauto.
     intuition.
-Qed.
-
-Lemma per_elem_subtyping_gen : forall a b i a' b' R R' m n,
-    Sub a <: b at i ->
-    DF a ≈ a' ∈ per_univ_elem i ↘ R ->
-    DF b ≈ b' ∈ per_univ_elem i ↘ R' ->
-    R m n ->
-    R' m n.
-Proof.
-  intros.
-  eapply per_elem_subtyping; saturate_refl; try eassumption.
 Qed.
 
 Lemma per_subtyp_refl1 : forall a b i R,
@@ -2737,43 +2698,6 @@ Proof.
     eauto using per_univ_elem_cumu_max_left.
   - saturate_refl.
     eauto using per_univ_elem_cumu_max_left, per_univ_elem_cumu_max_right.
-Qed.
-
-Lemma per_ctx_subtyp_refl1 : forall Γ Δ R,
-    EF Γ ≈ Δ ∈ per_ctx_env ↘ R ->
-    SubE Γ <: Δ.
-Proof.
-  induction 1; mauto.
-
-  - assert (exists R, EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ R) by
-      (eexists; eapply per_ctx_env_cons'; eassumption).
-    destruct_all.
-    econstructor; try solve [saturate_refl; mauto 2].
-    intros.
-    destruct_rel_typ.
-    simplify_evals.
-    eauto using per_subtyp_refl1.
-  - (** A definition: both sides' environments are the related ones. *)
-    assert (HR : EF Γ ▸ A ≔ M ≈ Γ' ▸ A' ≔ M' ∈ per_ctx_env ↘ env_rel) by (econstructor; eassumption).
-    eapply per_ctx_subtyp_def with (env_rel := env_rel) (env_rel' := env_rel);
-      [ assumption
-      | etransitivity; [ exact HR | symmetry; exact HR ]
-      | etransitivity; [ symmetry; exact HR | exact HR ]
-      | auto ].
-  - (** A slot, likewise. *)
-    assert (HR : EF Γ ▹ₘ U ≈ Γ' ▹ₘ U' ∈ per_ctx_env ↘ env_rel) by (econstructor; eassumption).
-    eapply per_ctx_subtyp_mod with (env_rel := env_rel) (env_rel' := env_rel);
-      [ assumption
-      | etransitivity; [ exact HR | symmetry; exact HR ]
-      | etransitivity; [ symmetry; exact HR | exact HR ]
-      | auto ].
-Qed.
-
-Lemma per_ctx_subtyp_refl2 : forall Γ Δ R,
-    EF Γ ≈ Δ ∈ per_ctx_env ↘ R ->
-    SubE Δ <: Γ.
-Proof.
-  intros. symmetry in H. eauto using per_ctx_subtyp_refl1.
 Qed.
 
 Lemma per_ctx_subtyp_trans : forall Γ1 Γ2,

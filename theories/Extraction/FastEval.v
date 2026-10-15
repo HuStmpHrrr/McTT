@@ -607,14 +607,6 @@ Combined Scheme feval_mut_ind from
 Hint Constructors feval_exp feval_elim feval_ihs feval_ih feval_shty feval_ihty feval_app feval_exps feval_apps feval_modexp feval_appm feval_sel feval_selm
   feval_selc feval_selmc feval_benv : mctt.
 
-(** [feval_exp_var] with the value as a premise.  The value [ρ x] is a flexible
-    application, so unifying against it directly can pick the wrong [ρ] and
-    [x]. *)
-Proposition feval_exp_var_eq : forall {Θ Ξ} x (ρ : env) m,
-    ρ x = m ->
-    ⟦ #x ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m.
-Proof. intros * <-; apply feval_exp_var. Qed.
-
 
 (** ** Determinism *)
 

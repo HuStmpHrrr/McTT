@@ -583,9 +583,6 @@ Proof. intros Δ [A | T | T]; cbn; [ reflexivity | apply ctx_pi_app | apply ctx_
 Lemma mres_ty_wk : forall R φ, mres_ty (mres_wk R φ) = (mres_ty R)[φ]ʷ.
 Proof. intros [A | T | T] φ; cbn; [ reflexivity | rewrite ctx_pi_wk; reflexivity | rewrite ctx_pi_wk; reflexivity ]. Qed.
 
-Lemma mres_ty_sub : forall R σ, mres_ty (mres_sub R σ) = (mres_ty R)[σ].
-Proof. intros [A | T | T] σ; cbn; [ reflexivity | rewrite ctx_pi_sub; reflexivity | rewrite ctx_pi_sub; reflexivity ]. Qed.
-
 Lemma mres_gen_wk : forall Δ R φ,
     mres_wk (mres_gen Δ R) φ = mres_gen (tele_wk Δ φ) (mres_wk R (wk_qn (length Δ) φ)).
 Proof. intros Δ [A | T | T] φ; cbn; [ rewrite ctx_pi_wk | rewrite tele_wk_app | rewrite tele_wk_app ]; reflexivity. Qed.
@@ -754,10 +751,6 @@ Corollary member_type_scoped : forall Θ Ξ,
        gctx_closed Θ Ξ -> ctx_scoped 0 Γ -> gunit_scoped (length Γ) U -> mres_scoped (length Γ) R).
 Proof. intros; destruct (member_type_scoped_all Θ Ξ) as (H1 & H2 & _); split; assumption. Qed.
 
-Corollary body_xp_scoped : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx ->
-    gctx_closed Θ Ξ -> ctx_scoped 0 Γ -> gmod_scoped (length Γ) Φ -> gmod_scoped (length Γ) Φx.
-Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (member_type_scoped_all Θ Ξ)))). Qed.
-
 (** ** Member Types under a Weakening *)
 
 (** A weakening sends a module slot to a slot of the same unit. *)
@@ -775,11 +768,6 @@ Qed.
 Lemma wk_mod_compat_ext : forall Ψ φ Γ Δ,
     wk_mod_compat φ Γ Δ -> wk_mod_compat (wk_qn (length Ψ) φ) (tele_wk Ψ φ ++ Γ) (Ψ ++ Δ).
 Proof. induction Ψ; intros; cbn; auto using wk_mod_compat_q. Qed.
-
-Lemma gm_prefix_upto_ext_wk : forall Φ x Φ' E φ,
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x E) ->
-    gm_prefix_upto (gmod_wk Φ φ) x = Some (gm_ext (gmod_wk Φ' φ) x (gentry_wk E (wk_qn (gm_binders Φ') φ))).
-Proof. intros * H; rewrite gm_prefix_upto_wk, H; reflexivity. Qed.
 
 Lemma gm_prefix_upto_mod_wk : forall Φ x Φ' pm U φ,
     gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_mod pm U)) ->
@@ -895,11 +883,6 @@ Proof. intros * Hc * Hm * Hφ; exact (proj1 (member_type_wk _ _ Hc) _ _ _ _ Hm _
 Corollary member_type_wk_term : forall Θ Ξ, gctx_closed Θ Ξ ->
     forall Δ H ch A, member_type Θ Ξ Δ H ch (mr_term A) ->
     forall Γ φ, wk_mod_compat φ Γ Δ -> member_type Θ Ξ Γ (modexp_wk H φ) ch (mr_term A[φ]ʷ).
-Proof. intros * Hc * Hm * Hφ; exact (proj1 (member_type_wk _ _ Hc) _ _ _ _ Hm _ _ Hφ). Qed.
-
-Corollary member_type_wk_mod : forall Θ Ξ, gctx_closed Θ Ξ ->
-    forall Δ H ch T, member_type Θ Ξ Δ H ch (mr_mod T) ->
-    forall Γ φ, wk_mod_compat φ Γ Δ -> member_type Θ Ξ Γ (modexp_wk H φ) ch (mr_mod (tele_wk T φ)).
 Proof. intros * Hc * Hm * Hφ; exact (proj1 (member_type_wk _ _ Hc) _ _ _ _ Hm _ _ Hφ). Qed.
 
 Corollary tele_view_wk_some : forall T B T1 φ, tele_view T = Some (B, T1) ->
@@ -1096,22 +1079,11 @@ Corollary member_type_sub_term : forall Θ Ξ, gctx_closed Θ Ξ ->
     forall Γ σ, sub_mod_compat σ Γ Δ -> member_type Θ Ξ Γ H[σ]ᵐ ch (mr_term A[σ]).
 Proof. intros * Hc * Hm * Hσ; exact (proj1 (member_type_sub _ _ Hc) _ _ _ _ Hm _ _ Hσ). Qed.
 
-Corollary member_type_sub_mod : forall Θ Ξ, gctx_closed Θ Ξ ->
-    forall Δ H ch T, member_type Θ Ξ Δ H ch (mr_mod T) ->
-    forall Γ σ, sub_mod_compat σ Γ Δ -> member_type Θ Ξ Γ H[σ]ᵐ ch (mr_mod (tele_sub T σ)).
-Proof. intros * Hc * Hm * Hσ; exact (proj1 (member_type_sub _ _ Hc) _ _ _ _ Hm _ _ Hσ). Qed.
-
 Corollary tele_view_sub_some : forall T B T1 σ, tele_view T = Some (B, T1) ->
     tele_view (tele_sub T σ) = Some (B[σ], tele_sub T1 (q σ)).
 Proof. intros * Hv; rewrite tele_view_sub, Hv; reflexivity. Qed.
 
 (** ** The Opens of an Expansion under the Operations *)
-
-Lemma gm_dropn_wk : forall n Φ φ, gm_dropn n (gmod_wk Φ φ) = gmod_wk (gm_dropn n Φ) φ.
-Proof. induction n as [| n IH]; intros [| Φ x E | Φ H its] φ; cbn; auto. Qed.
-
-Lemma gm_dropn_sub : forall n Φ σ, gm_dropn n (gmod_sub Φ σ) = gmod_sub (gm_dropn n Φ) σ.
-Proof. induction n as [| n IH]; intros [| Φ x E | Φ H its] σ; cbn; auto. Qed.
 
 Lemma body_opens_wk : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> forall φ,
     body_opens (gmod_wk Φ φ) (gmod_wk Φx φ) =

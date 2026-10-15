@@ -195,15 +195,6 @@ Proof.
   eapply wf_exp_subtyp'; [ exact HA | eapply wf_subtyp_small_large; eassumption ].
 Qed.
 
-Lemma wf_exp_unf_large_ge : forall {Γ A} {u : unf} {i : nat},
-    unf_le u (unl i) ->
-    Γ ⊢ A : unf_tm u ->
-    Γ ⊢ A : Typeω@i.
-Proof.
-  intros * Hle HA; apply wf_exp_unf_large in HA.
-  destruct u; cbn in *; (eapply lift_exp_ge; [| exact HA ]); lia.
-Qed.
-
 (** The normal form of a type is its own normal form. *)
 Lemma nbe_ty_self : forall {Γ i A B},
     Γ ⊢ A : Typeω@i ->
@@ -1026,16 +1017,6 @@ Proof.
 Qed.
 
 Hint Resolve alg_type_check_conv : mctt.
-
-Lemma nbe_ty_pi_inv : forall Γ B C W, nbe_ty_f Γ (Π B C) W ->
-    exists B' C', W = Πⁿ B' C' /\ nbe_ty_f Γ B B'.
-Proof.
-  intros * Hnbe.
-  inversion Hnbe; subst.
-  dir_inversion_by_head eval_exp; subst.
-  dir_inversion_by_head read_typ; subst.
-  do 2 eexists; split; [ reflexivity | econstructor; eassumption ].
-Qed.
 
 (** ** Unannotated Definitions
 

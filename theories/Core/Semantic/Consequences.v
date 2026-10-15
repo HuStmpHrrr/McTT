@@ -31,23 +31,6 @@ Proof.
 Qed.
 Hint Resolve idempotent_nbe_ty : mctt.
 
-Lemma adjust_exp_eq_level : forall {Γ A A' i j},
-    Γ ⊢ A ≈ A' : Typeω@i ->
-    Γ ⊢ A : Typeω@j ->
-    Γ ⊢ A' : Typeω@j ->
-    Γ ⊢ A ≈ A' : Typeω@j.
-Proof.
-  intros * ?%completeness_ty ?%soundness ?%soundness.
-  destruct_conjs.
-  dir_inversion_by_head nbe; dir_inversion_by_head nbe_ty; subst.
-  match_by_head eval_exp ltac:(fun H => progressive_invert H).
-  match_by_head read_nf ltac:(fun H => progressive_invert H).
-  functional_initial_env_rewrite_clear.
-  functional_eval_rewrite_clear.
-  functional_read_rewrite_clear.
-  etransitivity; [| symmetry]; eauto.
-Qed.
-
 Lemma exp_eq_pi_inversion : forall {Γ A B A' B' i},
     Γ ⊢ Π A B ≈ Π A' B' : Typeω@i ->
     Γ ⊢ A ≈ A' : Typeω@i /\ Γ ▹ A ⊢ B ≈ B' : Typeω@i.
@@ -1188,12 +1171,6 @@ Fixpoint ne_head (W : ne) : option qname :=
   | ne_glob p => Some p
   end.
 
-Lemma ne_stuck_head : forall G W p, ne_stuck G W -> ne_head W = Some p -> G p.
-Proof.
-  induction W; intros * HW Hh; cbn in *; destruct_all; try discriminate;
-    [ eauto .. | congruence ].
-Qed.
-
 (** In the empty context, a neutral is headed by a global. *)
 Lemma no_closed_neutral_head : forall {Θ Ξ A} {W : ne},
     ne_head W = None ->
@@ -1223,9 +1200,6 @@ Inductive nat_chain_stuck (G : qname -> Prop) (p : qname) (z s : String.string) 
 | ncs_neut : forall W h, ne_head W = Some h -> ne_stuck G W -> nat_chain_stuck G p z s ⇑ⁿ W.
 #[export]
 Hint Constructors nat_chain_stuck : mctt.
-
-Lemma nat_chain_stuck_of_nf : forall G p z s W, nat_chain_nf p z s W -> nat_chain_stuck G p z s W.
-Proof. induction 1; mauto. Qed.
 
 (** A global that is an opaque definition with a body. *)
 Definition gopaque (Θ : gdeps) (Ξ : gstack) (p : qname) : Prop :=

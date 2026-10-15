@@ -640,23 +640,8 @@ Section Tele.
         exists bs bs', eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) bs /\
           eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups2 ++ ms' ++ ws' ++ ys')) bs' /\ tele_full nr T bs bs'.
 
-    (** An element of a shape's domain beside [ups] reads back alike at the
-        domain beside [ups2]. *)
-    Definition ind_domtop (ups2 : list domain) : Prop :=
-      forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
-        tele_full nr T ms ms' -> ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-        tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-        List.nth_error (ptyp_doms t) k = Some B ->
-        tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
-        exists a a', eval_exp gc_deps gc_stack B (env_args nil (ups ++ ms ++ ws ++ ys)) a /\
-          eval_exp gc_deps gc_stack B (env_args nil (ups2 ++ ms' ++ ws' ++ ys')) a' /\
-          (forall x x', dr (ms ++ ws ++ ys) B x x' -> per_top (d_dom a x) (d_dom a' x')).
-
     Lemma adm_cl : forall u, ind_adm D ups nr ar dr u -> ind_closure u.
     Proof. intros u (_ & _ & H & _); exact H. Qed.
-
-    Lemma adm_dt : forall u, ind_adm D ups nr ar dr u -> ind_domtop u.
-    Proof. intros u (_ & _ & _ & H); exact H. Qed.
 
     Lemma shape_k_le : forall gs gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
         List.length (cargs_nonrec gs1) <= List.length (cargs_nonrec gs).

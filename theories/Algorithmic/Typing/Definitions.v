@@ -97,12 +97,12 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
     normal form of that universe, a side condition rather than the
     conclusion's index: an index computed from the premises makes the
     judgment's inversion non-terminating.  The side conditions on the parts
-    are [is_univ_nf] rather than equations on [univ_nf_idx], for the reason
-    given there.  The codomain's universe is taken normalised ([UB']): the
-    bound trusts the sorts its atoms carry, and those of a normal form are
-    the sorts of the atoms' types.  (An inferred type is already normal,
-    [alg_type_infer_normal], so [UB'] is [UB]; the premise is what lets
-    soundness, which that theorem rests on, see it.) *)
+    are [is_univ_nf] rather than equations on a deciding function, for the
+    reason given there.  The codomain's universe is taken normalised
+    ([UB']): the bound trusts the sorts its atoms carry, and those of a
+    normal form are the sorts of the atoms' types.  (An inferred type is
+    already normal, [alg_type_infer_normal], so [UB'] is [UB]; the premise
+    is what lets soundness, which that theorem rests on, see it.) *)
 | ati_pi :
   `( Γ ⊢a A ⟹ UA ->
      Γ ▹ A ⊢a B ⟹ UB ->
@@ -412,10 +412,6 @@ Lemma nf_to_exp_typ : forall i, nf_to_exp Typeωⁿ@i = Typeω@i.
 Proof. reflexivity. Qed.
 
 Lemma nf_to_exp_univ : forall n, nf_to_exp Typeⁿ@n = Type@n.
-Proof. reflexivity. Qed.
-
-Lemma nf_to_exp_univ_of : forall L,
-    nf_to_exp (nf_univ_of L) = Type⟨nf_to_exp (nf_lvl_of L)⟩.
 Proof. reflexivity. Qed.
 
 (** Normalises the universes a derivation reads back, whichever of the three

@@ -52,53 +52,6 @@ Import Wk_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma rel_typ_of_pi_univ : forall {Γ A A' u B B'},
-    Γ ⊨ A ≈ A' : ulvl_tm u ->
-    Γ ▹ A ⊨ B ≈ B' : ulvl_tm u ->
-    forall Γ' env_rel',
-      EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' ->
-      forall σ σ' ρ ρ' ρσ ρ'σ',
-        Γ' ⊨s σ ≈ σ' : Γ ->
-        Dom ρ ≈ ρ' ∈ env_rel' ->
-        ⟦ σ ⟧s ρ ↘ ρσ ->
-        ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
-        exists in_rel a1 a2 a3 a4,
-          ⟦ A[σ] ⟧ ρ ↘ a1 /\
-          ⟦ A ⟧ ρσ ↘ a2 /\
-          ⟦ A' ⟧ ρ'σ' ↘ a3 /\
-          ⟦ A'[σ'] ⟧ ρ' ↘ a4 /\
-          DF a1 ≈ a4 ∈ per_univ_elem u ↘ in_rel /\
-          DF a2 ≈ a3 ∈ per_univ_elem u ↘ in_rel /\
-          rel_exp (Π A B) σ ρ ρσ (Π A' B') σ' ρ' ρ'σ'
-            (per_univ_elem u (per_pi in_rel B ρσ B' ρ'σ')).
-Proof.
-  intros * HA HB * HΓ' * Hσj Hρ Hev Hev'.
-  pose proof (rel_exp_univ_cumu (uidx_le_ulvl u) (rel_exp_under_ctx_refl_left HA)) as HAself.
-  pose proof (rel_exp_of_univ_inversion HA) as [env_relΓ [HΓ HAgen]].
-  destruct (HAgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
-    as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
-  (** The domain PER, named by weak functionality: the outer pair the caller is
-    owed and the inner pair it needs are links of the same chain, with no
-    refinement step in between. *)
-  functionalize_per_univ_chain Hachain in_rel.
-  exists in_rel, a1, a2, a3, a4.
-  do 4 (split; [ eassumption |]).
-  do 2 (split; [ pairwise |]).
-  apply (mk_rel_exp Πᵈ a1 ρ B[q σ] Πᵈ a2 ρσ B
-                    Πᵈ a3 ρ'σ' B' Πᵈ a4 ρ' B'[q σ']);
-    [ apply eval_exp_pi; exact Ha1 | apply eval_exp_pi; exact Ha2
-    | apply eval_exp_pi; exact Ha3 | apply eval_exp_pi; exact Ha4 |].
-  (** The three codomain obligations are, in order, the three [q]-obligations of
-      [B] at an argument pair drawn from the domain PER. *)
-  eapply per_univ_elem_pi_chain; [ exact Hachain | | |];
-    intros c c' Hc;
-    pose proof (per_env_extend_sub_intro HΓ' Hσj HAself _ _ _ _ _ _ _ _ Hρ Ha1
-                  ltac:(pairwise) Hc) as Hpair;
-    destruct (rel_exp_of_univ_under_ctx_q HΓ' Hσj HAself HB _ _ _ _ _ _ Hpair Hev Hev')
-      as [O1 [O2 O3]];
-    eassumption.
-Qed.
-
 Lemma rel_typ_of_pi : forall {Γ A A'} {i : nat} {B B'},
     Γ ⊨ A ≈ A' : Typeω@i ->
     Γ ▹ A ⊨ B ≈ B' : Typeω@i ->

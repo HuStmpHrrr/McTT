@@ -471,11 +471,6 @@ Proof.
   intros; rewrite env_entry_nth; apply List.nth_overflow; assumption.
 Qed.
 
-Lemma env_var_ge : forall ρ x, List.length ρ <= x -> env_var ρ x = d_true.
-Proof.
-  intros; unfold env_var; rewrite env_entry_ge; [ reflexivity | assumption ].
-Qed.
-
 (** [⟪φ⟫ ρ] is [ρ ∘ φ] at every index, including past the end of the list. *)
 Lemma eval_wk_entry : forall φ ρ, wk_mono φ -> forall x, env_entry (⟪φ⟫ ρ) x = env_entry ρ (φ x).
 Proof.
@@ -528,9 +523,6 @@ Qed.
 
 Lemma eval_wk_q_zero : forall φ ρ, env_var (⟪wk_q φ⟫ ρ) 0 = env_var ρ 0.
 Proof. intros; unfold env_var; rewrite eval_wk_q_zero_entry; reflexivity. Qed.
-
-Lemma eval_wk_q_zero_mod : forall φ ρ, env_mod (⟪wk_q φ⟫ ρ) 0 = env_mod ρ 0.
-Proof. intros; unfold env_mod; rewrite eval_wk_q_zero_entry; reflexivity. Qed.
 
 Lemma eval_wk_q_tail : forall φ ρ `{Hφ : WkMono φ}, (⟪wk_q φ⟫ ρ)↯ = ⟪φ⟫ (ρ↯).
 Proof.

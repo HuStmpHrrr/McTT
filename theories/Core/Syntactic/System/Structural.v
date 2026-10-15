@@ -529,9 +529,6 @@ Hint Resolve ext_eq_ctx_left ext_eq_ctx_right : mctt.
 Lemma ctx_app_wf_tail : forall Θ Ξ Ψ Γ, ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Γ -> ⊢ Θ ⍮ Ξ ⍮ Γ.
 Proof. induction Ψ; intros; cbn in *; eauto using ctx_decomp_tail. Qed.
 
-Lemma ctx_app_wf_suffix : forall Θ Ξ Ψ1 Ψ0 Γ, ⊢ Θ ⍮ Ξ ⍮ (Ψ1 ++ Ψ0) ++ Γ -> ⊢ Θ ⍮ Ξ ⍮ Ψ0 ++ Γ.
-Proof. intros; rewrite <- List.app_assoc in *; eapply ctx_app_wf_tail; eassumption. Qed.
-
 (** The motive's and the branches' contexts are of assumptions. *)
 Lemma ihs_ctx_aux_ass : forall D A Us na gs pat j, tele_ass (ihs_ctx_aux D A Us na pat j gs).
 Proof.
@@ -2287,21 +2284,6 @@ Proof.
   rewrite !exp_sub_id in H'; assumption.
 Qed.
 
-(** A lookup one binder in is a lookup weakened by [↑]; this is the shape the
-    extension case below produces, and [eauto] cannot find it on its own because
-    [#(S x)] has to be recognised as [#x[↑]ʷ] before [wk_preserves_exp]
-    applies. *)
-Corollary wk_preserves_vlookup_shift : forall Θ Ξ Γ A B x i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ #x : B ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #(S x) : B[↑]ʷ.
-Proof.
-  intros.
-  assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
-  change #(S x) with #x[↑]ʷ.
-  mauto 3.
-Qed.
-
 Corollary ctxsub_vlookup_def : forall Θ Ξ Γ Δ x A M,
     Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ ->
     Γ ∋ #x ≔ M : A ->
@@ -2839,15 +2821,6 @@ Qed.
 Lemma wf_gmod_ctx : forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ.
 Proof.
   induction 1; assumption.
-Qed.
-
-Lemma wf_gctx_pop : forall Θ mp U Ξ,
-    ⊢g Θ ⍮ (mp, U) :: Ξ ->
-    ⊢g Θ ⍮ Ξ /\ ⊢ Θ ⍮ Ξ ⍮ gu_params U ++ gs_tele Ξ.
-Proof.
-  intros * Hg; inversion Hg; subst.
-  split; [ assumption |].
-  eapply wf_gmod_ctx; eassumption.
 Qed.
 
 Lemma ctx_wf_gctx : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊢g Θ ⍮ Ξ.

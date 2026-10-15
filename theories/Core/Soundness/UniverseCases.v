@@ -181,14 +181,6 @@ Proof.
     | apply wf_subtyp_uidx; assumption ].
 Qed.
 
-Corollary glu_rel_exp_ulvl : forall {Γ A} {u : uidx},
-    Γ ⊩ A : ulvl_tm u ->
-    Γ ⊩ A : Typeω@(ulvl u).
-Proof.
-  intros * HA.
-  exact (glu_rel_exp_lift_uidx (u := u) (v := ulvl u) (uidx_le_ulvl u) HA).
-Qed.
-
 Lemma glu_rel_exp_of_typ : forall {Γ Sb A} {i : nat},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     (forall Δ σ ρ,

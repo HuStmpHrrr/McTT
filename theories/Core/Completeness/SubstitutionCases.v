@@ -427,17 +427,6 @@ Qed.
     extension term is [N] precomposed with the substitution the first application
     produced, which is why the statement repeats [σ ,, M[σ]]. *)
 
-Corollary rel_sub_under_ctx_extend_sub_double : forall {Γ Δ σ σ' T M M' A N N'},
-    Γ ⊨s σ ≈ σ' : Δ ->
-    Δ ⊨ M ≈ M' : T ->
-    Δ ▹ T ⊨ N ≈ N' : A ->
-    Γ ⊨s σ,,M[σ],,N[σ,,M[σ]] ≈ σ',,M'[σ'],,N'[σ',,M'[σ']] : Δ ▹ T ▹ A.
-Proof.
-  intros * Hσj HM HN.
-  apply rel_sub_under_ctx_extend_sub; [| eassumption ].
-  apply rel_sub_under_ctx_extend_sub; eassumption.
-Qed.
-
 (** ** Lifting is Semantic
 
     The lemma the case files use most.  [sb_wk_q] makes it a four-value pattern:

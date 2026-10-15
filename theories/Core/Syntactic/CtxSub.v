@@ -88,13 +88,6 @@ Qed.
 #[export]
 Hint Resolve ctx_sub_escape : mctt.
 
-Lemma ctx_sub_vlookup : forall Θ Ξ Γ x A,
-    Γ ∋ #x : A ->
-    forall Δ, Θ ⍮ Ξ ⊢ Δ ⊆ Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ #x : A.
-Proof.
-  intros; eapply ctxsub_vlookup; mauto 2.
-Qed.
-
 (** The induction is on [Γ], not on the derivation: [wf_ctx_extend] has no
     context premise, so an induction on [⊢ Γ ▹ A] yields no hypothesis about
     [Γ]. *)

@@ -115,12 +115,6 @@ Corollary rel_exp_small_large : forall {Γ A A' n} {i : nat},
     Γ ⊨ A ≈ A' : Typeω@i.
 Proof. intros * H; exact (rel_exp_univ_cumu (u := us n) (v := ul i) I H). Qed.
 
-Corollary rel_exp_suniv_cumu_ge : forall {Γ A A' n m},
-    ole n m ->
-    Γ ⊨ A ≈ A' : Type⟨𝕃ᵒ n⟩ ->
-    Γ ⊨ A ≈ A' : Type⟨𝕃ᵒ m⟩.
-Proof. intros * Hle H; exact (rel_exp_univ_cumu (u := us n) (v := us m) Hle H). Qed.
-
 Lemma valid_exp_univ : forall {a n Γ},
     ⊨ Γ ->
     Γ ⊨ Type⟨𝕃ᵒ(a, n)⟩ : Type⟨𝕃ᵒ(a, S n)⟩.
@@ -264,24 +258,6 @@ Proof.
   assert (a3' = a3) as -> by (eapply functional_eval_exp; eassumption).
   eapply per_head_resp; [ exact Ha1 | exact Ha2 | exact Ha3 | exact Ha4 |].
   apply rel_chain_4; [ exact Ha12 | symmetry; exact Ha32 | exact Ha34 ].
-Qed.
-
-(** The form callers use: a member of the extended context PER of [Γ ▹ A] whose
-    head pair was read at a different pair of tails than the one the goal names.
-    Every eliminator's premises are in this position, because their head pair
-    comes from a domain PER or from [per_nat] and is stated at the environments
-    the rule's [q] reached. *)
-Corollary per_env_extend_move : forall {Γ A} {i : nat} {env_relΓ},
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ A ≈ A : Typeω@i ->
-    forall ρ1 ρ2 ρ3 ρ4 c c',
-      rel_chain env_relΓ ([ρ1; ρ2; ρ3; ρ4]) ->
-      Dom c ≈ c' ∈ per_head A A ρ1 ρ2 ->
-      Dom ρ3 ↦ c ≈ ρ4 ↦ c' ∈ per_env_extend A A env_relΓ.
-Proof.
-  intros * HΓ HA * Hchain Hc.
-  apply per_env_extend_intro'; [ pairwise |].
-  apply (per_head_of_typ_resp HΓ HA _ _ _ _ Hchain); exact Hc.
 Qed.
 
 Lemma rel_exp_of_typ : forall {Γ A A'} {i : nat},

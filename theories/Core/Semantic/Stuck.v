@@ -51,9 +51,6 @@ with nbrs_stuck (G : qname -> Prop) (Bs : nbrs) : Prop :=
 Lemma la_stuck_all : forall G xs, la_stuck G xs <-> la_all (ne_stuck G) xs.
 Proof. intros G; induction xs as [| k s a r IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
-Lemma la_stuck_canon : forall G c xs, la_stuck G xs -> la_stuck G (snd (lvl_canon (c, xs))).
-Proof. intros * H; apply la_stuck_all, la_all_canon, la_stuck_all; assumption. Qed.
-
 Lemma la_stuck_sort : forall G xs, la_stuck G xs -> la_stuck G (la_sort xs).
 Proof. intros * H; apply la_stuck_all, la_all_sort, la_stuck_all; assumption. Qed.
 

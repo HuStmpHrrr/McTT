@@ -337,17 +337,6 @@ Section type_check.
     end;
     functional_fread_rewrite_clear.
 
-  (** The argument of an application, and the codomain at its value,
-      evaluate. *)
-  #[local]
-  Ltac ob_app_order :=
-    match goal with
-    | HG : ⊢ ?G, HM : ?G ⊢a ?M ⟹ Πⁿ ?A ?B, Hv : typ_val ?G ?P (Πᵈ ?a ?ρ ?b) _, HN : ?G ⊢a ?N ⟸ (nf_to_exp ?A) |- _ =>
-        let Ho1 := fresh "Ho" in let Ho2 := fresh "Ho" in
-        destruct (typ_val_app_order _ _ _ _ _ _ _ _ _ HG HM Hv HN) as [Ho1 Ho2];
-        first [ exact Ho1 | apply Ho2; assumption ]
-    end.
-
   (** The failure of the side condition of [type_check_in]: the inferred
       type is its own normal form, so the judgment would compare the same
       two normal forms. *)

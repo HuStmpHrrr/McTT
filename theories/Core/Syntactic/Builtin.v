@@ -70,14 +70,6 @@ Definition nat_view (Θ : gdeps) (Ξ : gstack) (B : builtins) : option (qname * 
   | None => None
   end.
 
-(** A well-formed binding is read at its state. *)
-Lemma builtins_wf_view : forall Θ Ξ B p,
-    builtins_wf Θ Ξ B -> bt_nat B = Some p -> exists z s, nat_view Θ Ξ B = Some (p, z, s).
-Proof.
-  intros * Hb Hp; destruct (Hb _ Hp) as (D & z & s & Hl & Hs & _).
-  exists z, s; unfold nat_view; rewrite Hp, Hl, Hs; reflexivity.
-Qed.
-
 (** The numeral [n] as the chain of the constructors [z] and [s] of [p]. *)
 Fixpoint nat_chain (p : qname) (z s : string) (n : nat) : exp :=
   match n with
@@ -298,12 +290,6 @@ Proof. intros * H1 H2 Hm p Hp; destruct (bt_merge_inv _ _ _ _ Hm Hp) as [E | E];
     before it: [X] names the inductive type [p], with the shape of the
     natural numbers, in [Type@0]; it merges the binding of [p] alone. *)
 Definition bt_bind_nat (B : builtins) (p : qname) : option builtins := bt_merge B (mk_builtins (Some p)).
-
-Lemma bt_bind_nat_bound : forall B p B', bt_bind_nat B p = Some B' -> bt_nat B' = Some p.
-Proof.
-  intros [[p0 |]] p B' H; unfold bt_bind_nat, bt_merge in H; cbn in H; [| injection H as <-; reflexivity ].
-  destruct (qname_eq_dec p0 p) as [-> |]; [ injection H as <-; reflexivity | discriminate ].
-Qed.
 
 (** ** Bindings Only Grow
 

@@ -25,16 +25,6 @@ Section Fixed_GCtx.
 
 (** ** Types Below a Universe *)
 
-Lemma pi_typ_absurd : forall Γ A B i k, Γ ⊢ Π A B ≈ Typeω@i : Typeω@k -> False.
-Proof.
-  intros * H.
-  destruct (completeness_ty H) as [W [HW1 HW2]].
-  inversion HW1; subst; inversion HW2; subst.
-  dir_inversion_by_head eval_exp; subst.
-  dir_inversion_by_head read_typ; subst.
-  congruence.
-Qed.
-
 (** ** A Binding's Value, Read Back Through the Binding *)
 
 (** Under [Γ ▸ D ≔ N], a term is equal to its instance at [N], weakened: the
@@ -272,16 +262,6 @@ Lemma tele_view_wf : forall Γ T i B T1, Γ ⊢ ctx_pi T ⊤ : Typeω@i -> tele_
     Γ ⊢ ctx_pi T ⊤ ≈ Π B (ctx_pi T1 ⊤) : Typeω@i /\ Γ ⊢ B : Typeω@i /\ Γ ▹ B ⊢ ctx_pi T1 ⊤ : Typeω@i.
 Proof.
   intros * HT Hv; apply pi_view_wf; [ exact HT | rewrite tele_view_pi, Hv; reflexivity ].
-Qed.
-
-Lemma tele_inst_wf : forall Γ T i N T', Γ ⊢ ctx_pi T ⊤ : Typeω@i -> tele_inst T N = Some T' ->
-    (forall B T1, tele_view T = Some (B, T1) -> Γ ⊢ N : B) -> Γ ⊢ ctx_pi T' ⊤ : Typeω@i.
-Proof.
-  intros * HT Hi HN; unfold tele_inst in Hi.
-  destruct (tele_view T) as [[B T1] |] eqn:Hv; [| discriminate ]; injection Hi as <-.
-  destruct (tele_view_wf _ _ _ _ _ HT Hv) as (_ & HB & HC).
-  pose proof (wf_sub_single _ _ _ _ _ _ HB (HN _ _ eq_refl)) as Hσ.
-  pose proof (sub_preserves_typ _ _ _ _ _ _ _ HC Hσ) as H; rewrite ctx_pi_sub in H; exact H.
 Qed.
 
 (** ** Semantic Equality of Types, Read Back *)

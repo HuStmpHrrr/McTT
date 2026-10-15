@@ -32,15 +32,6 @@ Proof.
     rewrite (IHA _ eq_refl); reflexivity.
 Qed.
 
-Lemma pi_view_wk_inv : forall A φ B C, pi_view A[φ]ʷ = Some (B, C) ->
-    exists B0 C0, pi_view A = Some (B0, C0) /\ B = B0[φ]ʷ /\ C = C0[wk_q φ]ʷ.
-Proof.
-  intros * H.
-  destruct (pi_view A) as [[B0 C0] |] eqn:E.
-  - rewrite (pi_view_wk _ _ _ _ E) in H; injection H as <- <-; eauto.
-  - rewrite (pi_view_wk_none _ _ E) in H; discriminate.
-Qed.
-
 Lemma mres_app_wk_inv : forall R N R' φ, mres_app (mres_wk R φ) N[φ]ʷ = Some R' ->
     exists R0, mres_app R N = Some R0 /\ R' = mres_wk R0 φ.
 Proof.

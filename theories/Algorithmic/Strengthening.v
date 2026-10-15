@@ -335,43 +335,6 @@ Proof.
   apply wf_wk_shift; eapply ctx_app_wf_tail; exact HΓf.
 Qed.
 
-(** ** SubStr at [Level@n]
-
-    A short type below [Level@n] in the long context is below it in the short
-    one.  The algorithmic subtyping reads the long normal form off as a
-    [Levelⁿ@m] with [m <= n], which turns the subtyping into an equation with
-    [Level@m], and [exp_eq_strengthen] strengthens that. *)
-Lemma subtyp_level_strengthen : forall Δ Γ A T i n,
-    tele_ass Δ ->
-    ⊢ (tele_wk Δ ↑ ++ Γ ▹ A)%list ->
-    (Δ ++ Γ)%list ⊢ T : Typeω@i ->
-    (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ T[wk_qn (length Δ) ↑]ʷ ⊆ Level@n ->
-    (Δ ++ Γ)%list ⊢ T ⊆ Level@n.
-Proof.
-  intros * Hass HΓf HT Hs.
-  assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; mauto 3).
-  assert ((tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ T[wk_qn (length Δ) ↑]ʷ : Typeω@i)
-    by (eapply (wk_preserves_exp _ _ _ _ Typeω@i); [ exact HT | apply wf_wk_qn; assumption ]).
-  (** [Level@n] normalizes to [Levelⁿ@n] in any well-formed context, so the
-      long subtyping can only be the level rule, and the subject's normal
-      form is a [Levelⁿ@m] below it; that turns the subtyping into an
-      equation. *)
-  destruct (sem_ctx_per_ctx_env (completeness_fundamental_ctx _ HΓf)) as [Rf HRf].
-  destruct (per_ctx_then_per_env_initial_env HRf) as (ρ & ? & Hρ & ? & ?).
-  assert (HLn : nbe_ty_f (tele_wk Δ ↑ ++ Γ ▹ A)%list Level@n Levelⁿ@n) by (econstructor; mauto 3).
-  apply alg_subtyping_complete in Hs.
-  inversion Hs as [? ? ? X Y HX HY Hsub]; subst.
-  assert (Y = Levelⁿ@n) as -> by (eapply functional_nbe_ty; eassumption).
-  inversion Hsub as [? ? Hnot | | | | m ? Hmn |]; subst; [ cbn in Hnot; contradiction |].
-  assert ((tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ T[wk_qn (length Δ) ↑]ʷ ≈ Level@m : Typeω@i) as Heq
-      by (eapply (soundness_ty' (B := Levelⁿ@m)); eassumption).
-  assert ((Δ ++ Γ)%list ⊢ T ≈ Level@m : Typeω@i) as Heq'
-      by (eapply exp_eq_strengthen; [ exact Hass | exact HΓf | exact HT
-                                    | apply wf_level_large; exact HΓs | exact Heq ]).
-  eapply wf_subtyp_trans; [ eapply wf_subtyp_refl'; exact Heq' |].
-  apply wf_subtyp_level; assumption.
-Qed.
-
 
 (** ** ShapePi: a Short Type below a [Π]
 

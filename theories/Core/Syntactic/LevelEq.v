@@ -154,11 +154,6 @@ Proof.
   apply wf_exp_eq_succl_cong; assumption.
 Qed.
 
-Lemma lvl_sub_zero : forall {Γ M},
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n ->
-    lvl_sub Γ (𝕃@0) M.
-Proof. intros; apply wf_exp_eq_maxl_zero; assumption. Qed.
-
 Lemma lvl_sub_self_succl : forall {Γ M},
     Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n ->
     lvl_sub Γ M (succl M).
@@ -271,23 +266,6 @@ Lemma la_wf_keep : forall {Γ} c xs,
 Proof.
   intros Γ c xs; induction xs as [| k s a r IH]; cbn [la_keep]; intros H; [ exact I |].
   destruct H; destruct (fst c <=? s); cbn; auto.
-Qed.
-
-Lemma la_wf_app : forall {Γ} xs ys,
-    la_wf Γ xs ->
-    la_wf Γ ys ->
-    la_wf Γ (la_app xs ys).
-Proof.
-  intros Γ xs ys; induction xs as [| k s a r IH]; cbn; intros Hxs Hys;
-    [ exact Hys | destruct Hxs; split; auto ].
-Qed.
-
-Lemma la_wf_suc : forall {Γ} xs,
-    la_wf Γ xs ->
-    la_wf Γ (la_suc xs).
-Proof.
-  intros Γ xs; induction xs as [| k s a r IH]; cbn; intros Hxs;
-    [ exact I | destruct Hxs; split; auto ].
 Qed.
 
 Lemma la_ws_ins : forall {Γ} k s (a : ne) ys,
@@ -756,39 +734,6 @@ Proof.
   intros Γ M k; revert M; induction k; cbn; intros M H; [ exact H |].
   apply wf_succl_inversion in H as (n0 & HM & Hsub).
   apply IHk; eapply wf_exp_subtyp'; [ exact HM | exact Hsub ].
-Qed.
-
-Lemma lvl_fold_hd_wf : forall {Γ} xs hd,
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_fold hd (la_to_list xs) : Level@n ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ hd : Level@n.
-Proof.
-  intros Γ xs; induction xs as [| k s a r IH]; cbn; intros hd H; [ exact H |].
-  apply IH in H; apply wf_maxl_inversion in H as (n0 & Hhd & _ & Hsub).
-  eapply wf_exp_subtyp'; [ exact Hhd | exact Hsub ].
-Qed.
-
-Lemma lvl_fold_la_wf : forall {Γ} xs hd,
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_fold hd (la_to_list xs) : Level@n ->
-    la_wf Γ xs.
-Proof.
-  intros Γ xs; induction xs as [| k s a r IH]; cbn; intros hd H; [ exact I |].
-  split; [| eapply IH; exact H ].
-  apply lvl_fold_hd_wf in H; apply wf_maxl_inversion in H as (n0 & _ & Ha & Hsub).
-  apply (wf_succl_n_inversion k); eapply wf_exp_subtyp'; [ exact Ha | exact Hsub ].
-Qed.
-
-Lemma lvl_exp_of_la_wf : forall {Γ} c xs,
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_exp_of c (la_to_list xs) : Level@n ->
-    la_wf Γ xs.
-Proof.
-  intros Γ c xs H; destruct xs as [| k s a r]; cbn in *; [ exact I |].
-  destruct c as [[| c1] [| c2]];
-    (split; [| eapply lvl_fold_la_wf; exact H ]);
-    apply lvl_fold_hd_wf in H;
-    try (apply wf_maxl_inversion in H as (n0 & _ & Ha & Hsub);
-         assert (H : Θ ⍮ Ξ ⍮ Γ ⊢ succl_n k a : Level@n)
-           by (eapply wf_exp_subtyp'; [ exact Ha | exact Hsub ]));
-    apply (wf_succl_n_inversion k); exact H.
 Qed.
 
 (** ** The Order on Canonical Levels, Syntactically

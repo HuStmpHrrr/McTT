@@ -125,11 +125,6 @@ Lemma env_agree_cons : forall P Q e e' ρ ρ',
     env_agree P ρ ρ' -> desim e e' -> (forall y, Q (S y) -> P y) -> env_agree Q (e :: ρ) (e' :: ρ').
 Proof. intros * H He HQ [| y] Hy; cbn; [ exact He | apply H, HQ, Hy ]. Qed.
 
-(** An entry nothing reads may be anything. *)
-Lemma env_agree_cons_unread : forall P Q e e' ρ ρ',
-    env_agree P ρ ρ' -> ~ Q 0 -> (forall y, Q (S y) -> P y) -> env_agree Q (e :: ρ) (e' :: ρ').
-Proof. intros * H H0 HQ [| y] Hy; cbn; [ contradiction | apply H, HQ, Hy ]. Qed.
-
 Lemma dsim_list_length : forall args args', dsim_list args args' -> List.length args = List.length args'.
 Proof. induction 1; cbn; congruence. Qed.
 
@@ -452,11 +447,6 @@ Proof.
     intros x; cbn [wk_shiftn]; lia.
   - exists (z - k); split; [ lia |]; intros Hf; apply Hz.
     replace z with (k + (z - k)) by lia; apply modexp_fresh_shiftn; exact Hf.
-Qed.
-
-Lemma above_above : forall n m P z, above n (above m P) z -> above (n + m) P z.
-Proof.
-  intros * [Hz | (y & -> & [Hy | (w & -> & Hw)])]; [ left; lia | left; lia | right; exists w; split; [ lia | exact Hw ] ].
 Qed.
 
 Lemma above_above_inv : forall n m P z, above (n + m) P z -> above n (above m P) z.

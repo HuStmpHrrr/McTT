@@ -1344,11 +1344,6 @@ Proof.
   - intros Hin; exists fp; split; [ exact Hin | apply path_beq_refl ].
 Qed.
 
-Lemma existsb_path_beq_false : forall fp S, existsb (path_beq fp) S = false <-> ~ In fp S.
-Proof.
-  intros; rewrite <- existsb_path_beq; destruct (existsb _ _); split; congruence.
-Qed.
-
 Lemma gds_lookup_restrict : forall S Θ fp,
     gds_lookup (gds_restrict S Θ) fp = if existsb (path_beq fp) S then gds_lookup Θ fp else None.
 Proof.
@@ -1562,16 +1557,6 @@ Section Runs.
   Proof.
     intros * H; destruct (proj1 (proj2 run_tl) _ _ _ _ _ _ _ _ _ _ H) as [_ Hl].
     destruct Ξ'; [ reflexivity | discriminate ].
-  Qed.
-
-  (** The bindings of a run only grow. *)
-  Lemma run_bt_le :
-    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', run_cmd ch B Rb Θ Ξ c B' Rb' Θ' Ξ' -> bt_le B B') /\
-    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', run_cmds ch B Rb Θ Ξ cs B' Rb' Θ' Ξ' -> bt_le B B') /\
-    (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U -> True).
-  Proof.
-    apply run_mut_ind; intros; try exact I; try (eapply proj1, bt_merge_le; eassumption);
-      eauto using bt_le_refl, bt_le_trans, bt_bind_nat_le.
   Qed.
 
 End Runs.

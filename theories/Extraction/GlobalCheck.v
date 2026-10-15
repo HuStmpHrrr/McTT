@@ -186,15 +186,6 @@ Hint Resolve alg_type_infer_large_typ_sound' alg_type_infer_univ_sound' alg_type
 
 (** ** Types and Terms at an Explicit Global Context *)
 
-(** [univ_nf_idx_dec] returns the index of the universe it found as a
-    [is_univ_nf] fact; the obligations that use it need the large level. *)
-#[local]
-Ltac invert_nf_typ_eq :=
-  subst;
-  repeat match goal with
-    | H : Typeωⁿ@?i = Typeωⁿ@?j |- _ => assert (i = j) by congruence; clear H; subst
-    end.
-
 Section check_exp.
   (** The data each check looks names up in, for its global context
       ([Extraction.Lookup]). *)

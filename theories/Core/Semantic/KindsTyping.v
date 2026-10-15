@@ -26,9 +26,6 @@ Definition ig_erase (g : igen) : igen :=
   | _ => g
   end.
 
-Lemma ig_name_erase : forall g, ig_name (ig_erase g) = ig_name g.
-Proof. intros []; reflexivity. Qed.
-
 Lemma gens_append_app : forall gs1 gs2 Φ k,
     gens_append Φ k (gs1 ++ gs2) = gens_append (gens_append Φ k gs1) (k + List.length gs1) gs2.
 Proof.

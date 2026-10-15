@@ -114,8 +114,6 @@ Proof.
   - tauto.
 Qed.
 
-Definition path_str (fp : path) : string := String.concat "::" fp.
-
 (** The chain up to the unit imported again, where the cycle starts. *)
 Equations chain_to (fp : path) (ch : list path) : list path by struct ch :=
 | _, nil => nil
@@ -124,9 +122,6 @@ Equations chain_to (fp : path) (ch : list path) : list path by struct ch :=
 (** The cycle, from the unit imported again back to itself. *)
 Definition cycle_chain (fp : path) (ch : list path) : list path :=
   List.app (rev (chain_to fp ch)) (fp :: nil).
-
-Definition cycle_msg (cyc : list path) : string :=
-  "cyclic import: " ++ String.concat " -> " (map path_str cyc).
 
 (** ** Results
 
@@ -561,9 +556,6 @@ Section Impl.
         rb_in (us_k r) RbU /\ ext Θ K (us_deps r) (us_k r) /\ grows Θ (us_deps r) (us_dom r).
 
   (** ** Consequences of the Invariants *)
-
-  Lemma rb_in_ext : forall Θ K Θ' K' Rb, ext Θ K Θ' K' -> rb_in K Rb -> rb_in K' Rb.
-  Proof. intros * (_ & _ & HB) HR fp BU E; exact (HB _ _ (HR _ _ E)). Qed.
 
   Lemma entry_ok_sub : forall Θ1 Θ2 K fp U, Θ1 ⊑ Θ2 -> entry_ok Θ1 K fp U -> entry_ok Θ2 K fp U.
   Proof.
@@ -1469,16 +1461,6 @@ Section Impl.
 
   Definition cmd_ok {ch Θ K D B Ξ c r} (Hp : post_cmd ch Θ K D B Ξ c r) : {r0 | post_cmd ch Θ K D B Ξ c r0} :=
     exist _ r Hp.
-
-  (** The stack is the frame of a unit without parameters. *)
-  Definition top_frame_dec (Ξ : gstack) :
-      {f : qname * gunit | Ξ = f :: nil /\ gu_params (snd f) = nil} +
-      {forall f, ~ (Ξ = f :: nil /\ gu_params (snd f) = nil)}.
-  Proof.
-    destruct Ξ as [| f [| f' Ξ]]; [ right; intros ? [[=] _] | | right; intros ? [[=] _] ].
-    destruct (gu_params (snd f)) as [| e P] eqn:E; [ left; exists f; split; [ reflexivity | exact E ] |].
-    right; intros f0 [[= <-] E0]; rewrite E in E0; discriminate.
-  Defined.
 
   (** The last name of the path of an inductive type. *)
   Definition ind_short (p : qname) : string := List.last (q_chain p) EmptyString.

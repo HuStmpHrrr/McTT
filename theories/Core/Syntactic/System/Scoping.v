@@ -393,16 +393,6 @@ Lemma exp_scoped_sub_id : forall M n σ,
     exp_scoped n M -> (forall x, x < n -> σ x = se_var x) -> M[σ] = M.
 Proof. exact (proj1 syn_scoped_sub_id). Qed.
 
-(** Two substitutions, or two weakenings, that agree on the free variables
-    of a term act on it alike. *)
-Lemma wk_q_agree : forall φ ψ n,
-    (forall x, x < n -> φ x = ψ x) -> forall x, x < S n -> wk_q φ x = wk_q ψ x.
-Proof. intros * H [|x] ?; cbn; [ reflexivity |]. rewrite H by lia; reflexivity. Qed.
-
-Lemma wk_qn_agree : forall k φ ψ n,
-    (forall x, x < n -> φ x = ψ x) -> forall x, x < k + n -> wk_qn k φ x = wk_qn k ψ x.
-Proof. induction k; intros * H x Hx; cbn; auto; apply wk_q_agree with (n := k + n); [ apply IHk; exact H | lia ]. Qed.
-
 Lemma sb_q_agree : forall σ τ n,
     (forall x, x < n -> σ x = τ x) -> forall x, x < S n -> (q σ) x = (q τ) x.
 Proof.
@@ -750,9 +740,6 @@ Lemma ctx_lookup_length : forall Γ x A, Γ ∋ #x : A -> x < length Γ.
 Proof.
   induction 1; cbn; lia.
 Qed.
-
-Lemma ctx_lookup_app_left : forall Γ Δ x A, Γ ∋ #x : A -> Γ ++ Δ ∋ #x : A.
-Proof. induction 1; cbn; constructor; assumption. Qed.
 
 Lemma ctx_pi_scoped : forall Δ A n,
     ctx_scoped n Δ ->

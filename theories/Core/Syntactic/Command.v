@@ -27,11 +27,6 @@ Record raw_decl : Set := mk_raw
   ; rd_sort : exp
   ; rd_cons : list (string * list (string * exp)) }.
 
-(** The uniform parameters, the outermost [rd_nu R]: the parameters of the
-    module the declaration makes. *)
-Definition rd_uparams (R : raw_decl) : ctx :=
-  List.skipn (List.length (rd_params R) - rd_nu R) (rd_params R).
-
 
 
 Inductive ccmd : Set :=

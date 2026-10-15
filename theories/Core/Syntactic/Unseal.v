@@ -71,9 +71,6 @@ Fixpoint gs_unseal (Ξ : gstack) : gstack :=
   | (mp, U) :: Ξ => (mp, gu_unseal U) :: gs_unseal Ξ
   end.
 
-Lemma ge_unseal_mod : forall pv U, ge_unseal (ge_mod pv U) = ge_mod pv (gu_unseal U).
-Proof. intros pv [Δ [Φ | E]]; reflexivity. Qed.
-
 Lemma gu_params_unseal : forall U, gu_params (gu_unseal U) = gu_params U.
 Proof. intros [Δ [Φ | E]]; reflexivity. Qed.
 
@@ -326,20 +323,6 @@ Definition gs_no_axioms (Ξ : gstack) : Prop :=
   forall mp U, List.In (mp, U) Ξ -> gm_no_axioms (gu_mod U).
 
 Definition gc_no_axioms (Θ : gdeps) (Ξ : gstack) : Prop := gds_no_axioms Θ /\ gs_no_axioms Ξ.
-
-Lemma gm_transparent_no_axioms : forall Φ, gm_transparent Φ -> gm_no_axioms Φ.
-Proof.
-  fix IH 1; intros [| Φ y E | Φ c] HΦ; cbn in *; [ exact I | | exact (IH _ HΦ) ].
-  destruct HΦ as [HΦ HE]; split; [ exact (IH _ HΦ) |].
-  destruct E as [b pv A B | ? [Δ' [Φ' | E']] | ? ? Φ' | ? ? ? ?]; cbn in *; [ apply HE | exact (IH _ HE) | exact I | exact (IH _ HE) | exact I ].
-Qed.
-
-(** A transparent global context has no axioms. *)
-Lemma gc_transparent_no_axioms : forall Θ Ξ, gc_transparent Θ Ξ -> gc_no_axioms Θ Ξ.
-Proof.
-  intros * [HΘ HΞ]; split; intros ? ? Hin;
-    apply gm_transparent_no_axioms; [ exact (HΘ _ _ Hin) | exact (HΞ _ _ Hin) ].
-Qed.
 
 Lemma gm_no_axioms_unseal_transparent : forall Φ, gm_no_axioms Φ -> gm_transparent (gm_unseal Φ).
 Proof.

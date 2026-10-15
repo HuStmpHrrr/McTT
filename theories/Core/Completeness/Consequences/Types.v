@@ -137,32 +137,6 @@ Inductive univ_term : exp -> Prop :=
 | univ_term_suniv : forall t, univ_term Type⟨t⟩.
 Hint Constructors univ_term : mctt.
 
-(** A well-formed type constructor is rigid in a context whose variables are
-    all bound by assumptions, unless it is a universe: a small universe at a
-    level term is not rigid, its level being a term. *)
-Lemma rigid_typ_of_is_typ_constr : forall Γ A i,
-    (forall x B, Γ ∋ #x : B -> ctx_ass Γ x) ->
-    is_typ_constr A ->
-    Γ ⊢ A : Typeω@i ->
-    rigid_typ Γ A \/ univ_term A.
-Proof.
-  intros * HΓ HA HAi.
-  destruct HA; try solve [ left; mauto 2 | right; constructor ].
-  left.
-  destruct (wf_vlookup_inversion HAi) as [B [Hlookup _]].
-  constructor; eapply HΓ; eassumption.
-Qed.
-
-(** The context of [consistency]. *)
-Lemma ctx_ass_of_lookup_typ : forall i x B,
-    ⋅ ▹ Typeω@i ∋ #x : B ->
-    ctx_ass (⋅ ▹ Typeω@i) x.
-Proof.
-  intros * H.
-  dependent destruction H; [ eexists; reflexivity |].
-  inversion H.
-Qed.
-
 Theorem is_typ_constr_and_exp_eq_var_implies_eq_var : forall Γ A x i,
     rigid_typ Γ A ->
     ctx_ass Γ x ->
@@ -286,9 +260,6 @@ Hint Resolve is_typ_constr_and_exp_eq_univ_implies_eq_univ : mctt.
 Lemma univ_term_ulvl_tm : forall u, univ_term (ulvl_tm u).
 Proof. intros []; constructor. Qed.
 Hint Resolve univ_term_ulvl_tm : mctt.
-
-Lemma var_not_univ_term : forall x, ~ univ_term #x.
-Proof. intros x H; inversion H. Qed.
 
 Lemma pi_not_univ_term : forall A B, ~ univ_term (Π A B).
 Proof. intros * H; inversion H. Qed.

@@ -189,9 +189,6 @@ Section Env.
   Lemma env_av_nil : forall K, env_av v b K nil.
   Proof. intros K x _; induction x; cbn; [ repeat constructor | assumption ]. Qed.
 
-  Lemma env_av_none : forall K ρ, env_av v b None ρ -> env_av v b K ρ.
-  Proof. intros * H x _; apply H; discriminate. Qed.
-
   Lemma env_av_cons : forall K e ρ, env_av v b K ρ -> deav v b e -> env_av v b (oshift 1 K) (e :: ρ).
   Proof.
     intros * Hρ He [| x] Hx; cbn; [ exact He |].
@@ -335,21 +332,6 @@ Lemma ogfresh_gens : forall Θ Ξ ρ H its gs K,
 Proof.
   intros * Hg; destruct K as [k |]; cbn; [| auto ]; intros Hk.
   exact (gens_append_fresh gs gm_nil k I (kgens_entries_fresh _ _ _ _ _ _ Hg _ Hk)).
-Qed.
-
-Lemma items_upto_length : forall x its its1 it, items_upto x its = Some (its1, it) -> its1 <> nil.
-Proof.
-  induction its as [| it0 its IH]; intros * H; cbn in H; [ discriminate |].
-  destruct (items_upto x its) as [[] |]; [ injection H as <- <-; discriminate |].
-  destruct (String.eqb x (iitem_name it0)); [ injection H as <- <-; discriminate | discriminate ].
-Qed.
-
-Lemma item_upto_items : forall Φ x Φ0 H its1 it,
-    gm_item_upto Φ x = Some (Φ0, H, its1, it) -> its1 <> nil.
-Proof.
-  induction Φ as [| Φ IH y E | Φ IH H0 its]; intros * Hp; cbn in Hp; [ discriminate | |].
-  - destruct (String.eqb x y); [ discriminate | eauto ].
-  - destruct (items_upto x its) as [[its1' it'] |] eqn:E; [ injection Hp as <- <- <- <-; eapply items_upto_length; eassumption | eauto ].
 Qed.
 
 (** The parts of a fresh compound, each at the position its binders shift
@@ -734,9 +716,6 @@ Qed.
 
 Lemma dav_mono' : forall v b b' d, b <= b' -> dav v b d -> dav v b' d.
 Proof. intros; eapply (proj1 (dav_mono v b)); eassumption. Qed.
-
-Lemma dav_ne_mono' : forall v b b' d, b <= b' -> dav_ne v b d -> dav_ne v b' d.
-Proof. intros; eapply (proj1 (proj2 (dav_mono v b))); eassumption. Qed.
 
 (** ** Readback Introduces Only Variables Above the Ones in Scope *)
 

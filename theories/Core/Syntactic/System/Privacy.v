@@ -261,8 +261,6 @@ Fixpoint chain_refs (H : modexp) (ch : list string) : list (ptab * string)%type 
   | y :: ch' => (pt_glob H, y) :: chain_refs (me_mem H y) ch'
   end.
 
-Definition qname_refs (p : qname) : list (ptab * string)%type := chain_refs (me_unit (q_unit p)) (q_chain p).
-
 (** The member references a term is written with, each with the table of
     the module it selects from: every [a_mem H x], every submodule
     [me_mem H y], and the name of an eliminator, as written. *)

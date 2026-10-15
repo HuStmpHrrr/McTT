@@ -696,11 +696,6 @@ Proof.
   intros; apply eval_sub_extend_mod; [ apply eval_sub_id | assumption ].
 Qed.
 
-Proposition eval_sub_intro : forall {Θ Ξ} σ (ρ ρσ : env),
-    (forall x, eval_sentry Θ Ξ (σ x) ρ (env_entry ρσ x)) ->
-    ⟦ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ.
-Proof. intros * H. exact H. Qed.
-
 Proposition eval_sub_index : forall {Θ Ξ} σ (ρ ρσ : env),
     ⟦ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     forall x, eval_sentry Θ Ξ (σ x) ρ (env_entry ρσ x).

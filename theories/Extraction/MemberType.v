@@ -91,11 +91,6 @@ Proof. intros Φ x [] ; cbn; lia. Qed.
 Lemma csize_repeat_ass : forall n, csize (List.repeat (ce_ass a_True) n) = 0.
 Proof. induction n; cbn; auto. Qed.
 
-Lemma csize_body_ctx : forall Φ, csize (body_ctx Φ) <= gsize Φ.
-Proof.
-  induction Φ as [| Φ IH x [b pv A [M |] | pm U | ? ? ? | ? ? ? ?] | Φ IH c its]; cbn; rewrite ?csize_app, ?csize_repeat_ass; lia.
-Qed.
-
 Lemma csize_body_ctx_ext : forall Φ x E, csize (body_ctx (gm_ext Φ x E)) = esize E + csize (body_ctx Φ).
 Proof. intros Φ x [? ? ? [] | | |]; reflexivity. Qed.
 

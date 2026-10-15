@@ -479,11 +479,6 @@ Proof. decide equality; apply List.list_eq_dec, String.string_dec. Defined.
     [discriminate] and [injection] see through. *)
 Abbreviation q_abs fp ip := {| q_unit := fp; q_chain := ip |}.
 
-(** A unit is named by a nonempty path, and a term by a nonempty member
-    chain: a module is not an [exp] and has no type. *)
-Definition qname_valid (p : qname) : Prop :=
-  q_unit p <> nil /\ q_chain p <> nil.
-
 (** The member [x] of the module [mp]. *)
 Definition qname_in (mp : qname) (x : string) : qname :=
   {| q_unit := q_unit mp ; q_chain := q_chain mp ++ x :: nil |}.
@@ -1065,13 +1060,6 @@ End GlobalCtx_Notations.
     assumption, a definition or a module slot. *)
 Abbreviation ctx := (list centry).
 
-(** The type of an entry; a module slot has none, and reads as [⊤]. *)
-Definition ce_typ (e : centry) : typ :=
-  match e with
-  | ce_ass A | ce_def A _ => A
-  | ce_mod _ => a_True
-  end.
-
 (** A body as the context entries it binds, innermost first.  A local open
     binds one placeholder per item: a pre-form is never typed.  So does an
     inductive type, which only a filed module declares. *)
@@ -1417,12 +1405,6 @@ Qed.
 Lemma nf_univ_of_cong : forall l l', nf_lvl_of l = nf_lvl_of l' -> nf_univ_of l = nf_univ_of l'.
 Proof. intros ? ? H; apply nf_lvl_of_inj in H as ->; reflexivity. Qed.
 
-Lemma nf_univ_of_inj : forall l l', nf_univ_of l = nf_univ_of l' -> l = l'.
-Proof.
-  intros [c xs] [d ys] H; unfold nf_univ_of in H; cbn in H.
-  inversion H; reflexivity.
-Qed.
-
 (** * Universe Normal Forms
 
     The universe a type is inferred at, as the algorithmic layer sees it: a
@@ -1452,9 +1434,9 @@ Lemma nf_to_exp_univ_nf : forall u, nf_to_exp (univ_nf u) = unf_tm u.
 Proof. intros [[] |]; reflexivity. Qed.
 
 (** That a normal form is a universe.  This is the side condition of every
-    algorithmic rule that asks for a type.  It is a relation and not the
-    equation [univ_nf_idx W = Some u] of the deciding function below: the
-    left-hand side of that equation is a [match] stuck on [W], and
+    algorithmic rule that asks for a type.  It is a relation and not an
+    equation [f W = Some u] of a deciding function [f]: the left-hand side
+    of that equation is a [match] stuck on [W], and
     [progressive_inversion] does not terminate on such a hypothesis — it
     inverts it to an equation of the same shape, for ever. *)
 Variant is_univ_nf : nf -> unf -> Prop :=
@@ -1469,18 +1451,6 @@ Proof. intros ? ? H; destruct H; reflexivity. Qed.
 
 Lemma is_univ_nf_functional : forall W u v, is_univ_nf W u -> is_univ_nf W v -> u = v.
 Proof. intros ? ? ? H H'; destruct H; inversion H'; reflexivity. Qed.
-
-(** The universe itself, as the deciding function the checker runs.  It is
-    used in the checker's code, never as an index or a side condition of a
-    rule. *)
-Definition univ_nf_idx (W : nf) : option unf :=
-  match W with nf_typ i => Some (unl i) | nf_univ c xs => Some (uns (c, xs)) | _ => None end.
-
-Lemma univ_nf_idx_is_univ_nf : forall W u, univ_nf_idx W = Some u -> is_univ_nf W u.
-Proof. intros [] ? H; cbn in H; inversion H; constructor. Qed.
-
-Lemma univ_nf_idx_none : forall W u, univ_nf_idx W = None -> ~ is_univ_nf W u.
-Proof. intros [] ? H Hu; cbn in H; try discriminate; inversion Hu. Qed.
 
 (** A normal form with no global at the head of a neutral. *)
 

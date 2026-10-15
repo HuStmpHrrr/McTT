@@ -289,10 +289,6 @@ Proof. intros; rewrite (exp_wk_wk_ext _ _ _ wk_id) by apply wk_after_unwk; apply
 Theorem exp_wk_fresh : forall k M, exp_fresh k M[wk_qn k ↑]ʷ.
 Proof. intros; apply (proj1 syn_wk_fresh), wk_qn_shift_avoids. Qed.
 
-(** The two forms the checker meets: a weakening by one at the front. *)
-Corollary exp_unwk_shift : forall M, M[↑]ʷ[unwk 0]ʷ = M.
-Proof. intros; exact (exp_unwk_wk 0 M). Qed.
-
 Corollary exp_shift_fresh : forall M, exp_fresh 0 M[↑]ʷ.
 Proof. intros; exact (exp_wk_fresh 0 M). Qed.
 
@@ -594,13 +590,6 @@ Proof.
               | firstorder ].
 Qed.
 
-Definition nf_fresh_dec : forall k W, { nf_fresh k W } + { ~ nf_fresh k W }.
-Proof.
-  intros k W; destruct (nf_freshb k W) eqn:E;
-    [ left; apply (proj1 nf_freshb_iff); exact E
-    | right; intros H; apply (proj1 nf_freshb_iff) in H; congruence ].
-Defined.
-
 (** A level below a level fresh at [k] mentions [k] only in atoms that the
     larger one's constant absorbs: an atom of the smaller one that mentions
     [k] is not an atom of the larger, and the assignment that makes it alone
@@ -721,12 +710,6 @@ Proof.
   intros k; induction xs as [| j s a r IH]; cbn [la_fresh_part]; [ exact I |].
   destruct (ne_freshb k a) eqn:E; cbn; [| exact IH ].
   split; [ apply (proj1 (proj2 nf_freshb_iff)); exact E | exact IH ].
-Qed.
-
-Lemma la_fresh_part_In : forall k xs j s a, la_In j s a (la_fresh_part k xs) -> la_In j s a xs.
-Proof.
-  intros k; induction xs as [| j0 t b r IH]; cbn [la_fresh_part]; intros j s a H; [ destruct H |].
-  destruct (ne_freshb k b); cbn in H |- *; [ destruct H as [H | H]; [ left; exact H | right; eauto ] | right; eauto ].
 Qed.
 
 Lemma la_open_bound_fst : forall k xs n,

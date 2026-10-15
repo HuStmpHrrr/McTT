@@ -293,24 +293,6 @@ Proof.
     [ apply eval_exp_False | apply eval_exp_False | apply (per_univ_elem_False 0) | eassumption ].
 Qed.
 
-Lemma per_ne_of_head_False : forall {ρ ρ' m m'},
-    Dom m ≈ m' ∈ per_head ⊥ ⊥ ρ ρ' ->
-    Dom m ≈ m' ∈ per_ne.
-Proof.
-  intros * H.
-  eapply (H 0 per_ne);
-    [ apply eval_exp_False | apply eval_exp_False | apply per_univ_elem_False ].
-Qed.
-
-Corollary per_ctx_env_False : forall {Γ env_relΓ},
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    EF Γ ▹ ⊥ ≈ Γ ▹ ⊥ ∈ per_ctx_env ↘ (per_env_extend ⊥ ⊥ env_relΓ).
-Proof.
-  intros * HΓ.
-  eapply per_ctx_env_of_typ; [ eassumption |].
-  eapply (@rel_exp_of_typ_False _ _ 0); eassumption.
-Qed.
-
 Corollary per_env_extend_False_intro : forall {env_relΓ ρ ρ' m m'},
     Dom ρ ≈ ρ' ∈ env_relΓ ->
     Dom m ≈ m' ∈ per_ne ->

@@ -100,7 +100,6 @@ Definition church : Cst.prog :=
            (Some nat) :: nil)).
 
 Definition Church_t : exp := qname_term (q_abs ("ModuleParam" :: nil) ("Church" :: "t" :: nil)).
-Definition Church_two : exp := qname_term (q_abs ("ModuleParam" :: nil) ("Church" :: "two" :: nil)).
 
 (** Inside [Church], [t] is [Church.t A].  [let module C := Church ℕ]
     binds a local module slot, so [C.two] selects [two] of [#0]. *)

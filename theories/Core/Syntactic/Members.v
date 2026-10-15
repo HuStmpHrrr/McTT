@@ -694,22 +694,9 @@ Proof.
   exfalso; exact (Hf (gm_grows_names _ _ Hg _ (gm_submodule_head _ _ _ _ _ E))).
 Qed.
 
-Lemma gm_grows_subbody : forall Φ Φ', gm_grows Φ Φ' ->
-    forall T x ip, gm_subbody T Φ' x ip = gm_subbody T Φ x ip.
-Proof.
-  induction 1 as [| Φ' y b pv A B Hg IH Hf]; intros; [ reflexivity |].
-  cbn; destruct (String.eqb_spec x y) as [-> |]; [| apply IH ].
-  destruct (gm_subbody T Φ y ip) eqn:E; [| reflexivity ].
-  exfalso; exact (Hf (gm_grows_names _ _ Hg _ (gm_subbody_head _ _ _ _ _ E))).
-Qed.
-
 Lemma gm_grows_module : forall Φ Φ', gm_grows Φ Φ' ->
     forall T oD ch, gm_module T oD Φ' ch = gm_module T oD Φ ch.
 Proof. intros * Hg T oD [| x ip]; cbn; [ reflexivity | apply gm_grows_submodule; exact Hg ]. Qed.
-
-Lemma gm_grows_body : forall Φ Φ', gm_grows Φ Φ' ->
-    forall T x ip, gm_body T Φ' (x :: ip) = gm_body T Φ (x :: ip).
-Proof. intros * Hg T x ip; cbn; apply gm_grows_subbody; exact Hg. Qed.
 
 (** One body growing into another, as [gc_sub] asks of the frame holding
     it. *)
@@ -739,32 +726,6 @@ Proof.
   - exact (gm_submodule_ext_fresh _ _ _ _ _ _ _ Hf H).
   - eexists; split; [ exact (gm_subbody_ext_fresh _ _ _ _ _ _ _ Hf H) | constructor ].
   - exact (gm_ind_target_ext_fresh _ _ _ _ _ Hf H).
-Qed.
-
-Lemma gm_sub_grows : forall Φ Φ', gm_grows Φ Φ' -> gm_sub Φ Φ'.
-Proof.
-  induction 1; [ apply gm_sub_refl |].
-  eapply gm_sub_trans; [ eassumption | apply gm_sub_ext_fresh; assumption ].
-Qed.
-
-(** The module of an inductive type growing. *)
-Lemma gm_sub_ind : forall Φ0 y pv D Φ Φ',
-    gm_grows Φ Φ' -> gm_sub (Φ0 ⊳ y ↦ ge_ind pv D Φ) (Φ0 ⊳ y ↦ ge_ind pv D Φ').
-Proof.
-  intros * Hg; destruct (gm_sub_grows _ _ Hg) as [HR [HM [HB HI]]].
-  repeat split; intros * H; unfold gm_ind_target in *; cbn in H |- *.
-  - destruct ip as [| x ip]; [ discriminate |].
-    destruct (String.eqb x y); [| exact H ].
-    destruct ip; [ discriminate | apply HR; exact H ].
-  - destruct (String.eqb z y); [| exact H ].
-    destruct ip; [ exact H | apply HM; exact H ].
-  - destruct (String.eqb z y); [| eexists; split; [ exact H | constructor ] ].
-    destruct ip.
-    + injection H as <- <-; eexists; split; [ reflexivity | exact Hg ].
-    + apply HB; exact H.
-  - destruct ip as [| x ip]; [ discriminate |].
-    destruct (String.eqb x y); [| exact H ].
-    destruct ip; [ exact H | apply HI; exact H ].
 Qed.
 
 (** A frame whose body grows. *)
@@ -855,13 +816,6 @@ Lemma gc_sub_grow : forall Θ Ξ mp Δ Φ x E,
     gm_fresh x Φ ->
     gc_sub Θ ((mp, gu_body Δ Φ) :: Ξ) Θ ((mp, gu_body Δ (Φ ⊳ x ↦ E)) :: Ξ).
 Proof. intros * Hf; apply gc_sub_frame, gm_sub_ext_fresh; exact Hf. Qed.
-
-(** The module of an inductive type, an entry of the innermost frame,
-    growing. *)
-Lemma gc_sub_ind_grows : forall Θ Ξ mp Δ Φ0 y pv D Φ Φ',
-    gm_grows Φ Φ' ->
-    gc_sub Θ ((mp, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv D Φ)) :: Ξ) Θ ((mp, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv D Φ')) :: Ξ).
-Proof. intros * Hg; apply gc_sub_frame, gm_sub_ind; exact Hg. Qed.
 
 (** Filing a unit: what was read in its open frame is read in the filed
     unit. *)
@@ -992,15 +946,6 @@ Proof.
     destruct (q_chain p) as [| x ip] eqn:Hp; [ discriminate |].
     cbn in *; rewrite List.app_nil_r in Hr; exact Hr.
   - destruct (path_beq (q_unit p) fp) eqn:Hb'; [ apply path_beq_true in Hb'; subst; rewrite path_beq_refl in Hb; discriminate | exact Hr ].
-Qed.
-
-Lemma gc_subx_deps : forall Θ Θ' Ξ, Θ ⊑ Θ' -> gc_subx Θ Ξ Θ' Ξ.
-Proof.
-  intros * Hs; split; [ apply gc_sub_deps; exact Hs |].
-  intros p r Hr; unfold gc_body in *.
-  destruct (gs_find_tele Ξ p) as [[[U ip] T'] |]; [ exact Hr |].
-  destruct (gds_lookup Θ (q_unit p)) as [V |] eqn:E1; [| discriminate ].
-  rewrite (Hs _ _ E1); exact Hr.
 Qed.
 
 (** ** Transparent Global Contexts
@@ -1661,13 +1606,6 @@ Proof.
   destruct (ig_entry g) eqn:E; rewrite IH; cbn; lia.
 Qed.
 
-Lemma gens_append_names : forall gs Φ k, gm_names (gens_append Φ k gs) = List.rev (List.map ig_name gs) ++ gm_names Φ.
-Proof.
-  induction gs as [| g gs IH]; intros; cbn [gens_append List.map List.rev]; [ reflexivity |].
-  destruct (ig_entry g) as [d E] eqn:Eg; rewrite IH; rewrite <- List.app_assoc; cbn.
-  unfold ig_name; rewrite Eg; reflexivity.
-Qed.
-
 Lemma gm_dropn_add : forall a b Φ, gm_dropn (a + b) Φ = gm_dropn b (gm_dropn a Φ).
 Proof.
   induction a as [| a IH]; intros b [| Φ x E | Φ H its]; cbn; auto; destruct b; reflexivity.
@@ -1684,12 +1622,6 @@ Lemma body_xp_binders : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> gm_bi
 Proof.
   induction 1; cbn; auto.
   rewrite gens_append_binders; erewrite items_gen_length by eassumption; lia.
-Qed.
-
-Lemma body_xp_names : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> gm_names Φx = gm_names Φ.
-Proof.
-  induction 1; cbn; f_equal; auto.
-  rewrite gens_append_names; erewrite items_gen_names by eassumption; congruence.
 Qed.
 
 Lemma gens_append_nopens : forall gs Φ k, gm_nopens (gens_append Φ k gs) = gm_nopens Φ.
