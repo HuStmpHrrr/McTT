@@ -1,0 +1,84 @@
+(* Binary natural numbers, after Agda's [Data.Nat.Binary] ([ℕᵇ]): [Bin]
+   has the constructors [zero], [doubleSucc x] for [2 (1 + x)] (Agda's
+   [2[1+ x ]]) and [succDouble x] for [1 + 2 x] ([1+[2 x ]]), so every
+   number has exactly one form, of length its number of binary digits.
+   [Prelude›Arith›Binary] has the binary digits of unary numbers instead.
+
+   [double], the successor [suc] and the addition [add] work on the binary
+   forms; [toNat] and [fromNat] convert, through the doubling [double] of
+   [Prelude›Arith›Parity] on the unary side.  The constructor [zero] is
+   not exported, since it would clash with that of [ℕ]: it is [Bin.zero].
+   The laws are in [Prelude›Data›Binary›Properties]. *)
+module Prelude›Data›Binary where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Arith›Parity as P
+
+inductive Bin : Type@0 where
+| zero
+| doubleSucc (x : Bin)
+| succDouble (x : Bin)
+end
+
+open Bin export (doubleSucc; succDouble)
+
+(* [2 x]: [2 (2 (1 + x))] is [2 (1 + (1 + 2 x))], and [2 (1 + 2 x)] is
+   [2 (1 + 2 x)]. *)
+def double (x : Bin) : Bin ≔
+  elim x return z . Bin
+  | zero ⇒ Bin.zero
+  | doubleSucc y, r ⇒ doubleSucc (succDouble y)
+  | succDouble y, r ⇒ doubleSucc r
+  end
+end
+
+(* [1 + x]: [1 + 2 (1 + y)] is [1 + 2 (1 + y)], and [1 + (1 + 2 y)] is
+   [2 (1 + y)]. *)
+def suc (x : Bin) : Bin ≔
+  elim x return z . Bin
+  | zero ⇒ succDouble Bin.zero
+  | doubleSucc y, r ⇒ succDouble r
+  | succDouble y, r ⇒ doubleSucc y
+  end
+end
+
+def toNat (x : Bin) : ℕ ≔
+  elim x return z . ℕ
+  | zero ⇒ 0
+  | doubleSucc y, r ⇒ P.double (succ r)
+  | succDouble y, r ⇒ succ (P.double r)
+  end
+end
+
+def fromNat (n : ℕ) : Bin ≔
+  elim n return z . Bin
+  | zero ⇒ Bin.zero
+  | succ p, r ⇒ suc r
+  end
+end
+
+(* Addition, by recursion on the first argument and cases on the second;
+   two odd numbers have an even sum, with a carry ([suc]) when one of the
+   two is [doubleSucc]:
+   [2 (1 + x) + 2 (1 + y)] is [2 (1 + (1 + (x + y)))],
+   [2 (1 + x) + (1 + 2 y)] is [1 + 2 (1 + (x + y))],
+   [(1 + 2 x) + (1 + 2 y)] is [2 (1 + (x + y))]. *)
+def add (x : Bin) : ∀ (y : Bin) → Bin ≔
+  elim x return z . (∀ (y : Bin) → Bin)
+  | zero ⇒ λ (y : Bin) → y
+  | doubleSucc a, r ⇒ λ (y : Bin) →
+      elim y return w . Bin
+      | zero ⇒ doubleSucc a
+      | doubleSucc b, s ⇒ doubleSucc (suc (r b))
+      | succDouble b, s ⇒ succDouble (suc (r b))
+      end
+  | succDouble a, r ⇒ λ (y : Bin) →
+      elim y return w . Bin
+      | zero ⇒ succDouble a
+      | doubleSucc b, s ⇒ succDouble (suc (r b))
+      | succDouble b, s ⇒ doubleSucc (r b)
+      end
+  end
+end
+
+end
