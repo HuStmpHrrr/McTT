@@ -1190,6 +1190,142 @@ let%expect_test "a file declaring another unit is reported" =
   let _ = main_of_multi "Misnamed.mctt" in
   [%expect {| Error: Lib›Wrong: the file of the unit declares another unit |}]
 
+let%expect_test "lib/Lists.mctt" =
+  let _ = main_of_lib "Lists.mctt" in
+  [%expect {|
+    Evaluate NL.length oneTwoThree --> 3 : ℕ
+    Evaluate NL.append oneTwoThree (NatList.cons 4 NatList.nil)
+      --> Prelude›Data›List.List.cons 0l ℕ 1
+            (Prelude›Data›List.List.cons 0l ℕ 2
+              (Prelude›Data›List.List.cons 0l ℕ 3
+                (Prelude›Data›List.List.cons 0l ℕ 4
+                  (Prelude›Data›List.List.nil 0l ℕ))))
+      : Prelude›Data›List.List 0l ℕ
+    Evaluate NL.reverse oneTwoThree
+      --> Prelude›Data›List.List.cons 0l ℕ 3
+            (Prelude›Data›List.List.cons 0l ℕ 2
+              (Prelude›Data›List.List.cons 0l ℕ 1
+                (Prelude›Data›List.List.nil 0l ℕ))) : Prelude›Data›List.List 0l ℕ
+    Evaluate NL.map ℕ (λ (x1 : ℕ) → plus x1 x1) oneTwoThree
+      --> Prelude›Data›List.List.cons 0l ℕ 2
+            (Prelude›Data›List.List.cons 0l ℕ 4
+              (Prelude›Data›List.List.cons 0l ℕ 6
+                (Prelude›Data›List.List.nil 0l ℕ))) : Prelude›Data›List.List 0l ℕ
+    Evaluate sum oneTwoThree --> 6 : ℕ
+    Evaluate NL.foldr ℕ plus 0 (NL.reverse oneTwoThree) --> 6 : ℕ
+    Evaluate evens oneTwoThree --> 2 : ℕ
+    Evaluate Ops.length 1l Type@0
+               (List.cons 1l Type@0 ℕ
+                 (List.cons 1l Type@0 Bool (List.nil 1l Type@0))) --> 2 : ℕ
+    Evaluate and tt (or ff tt) --> Prelude›Data›Bool.Bool.tt
+      : Prelude›Data›Bool.Bool
+    Evaluate eqb (not tt) ff --> Prelude›Data›Bool.Bool.tt
+      : Prelude›Data›Bool.Bool
+    Evaluate Cond.if 1l Type@0 (eqb tt ff) ℕ Bool --> Prelude›Data›Bool.Bool
+      : Type@0
+    Evaluate all
+               (List.cons 0l Bool tt
+                 (List.cons 0l Bool (not ff) (List.nil 0l Bool)))
+      --> Prelude›Data›Bool.Bool.tt : Prelude›Data›Bool.Bool
+    Evaluate head oneTwoThree --> Prelude›Data›Option.Option.some 0l ℕ 1
+      : Prelude›Data›Option.Option 0l ℕ
+    Evaluate Opt.getOr 0l ℕ 0 (Opt.map 0l ℕ ℕ succ (head NatList.nil)) --> 0 : ℕ
+    Evaluate Opt.bind 0l ℕ ℕ (λ (x1 : ℕ) → head (NL.reverse oneTwoThree))
+               (head oneTwoThree) --> Prelude›Data›Option.Option.some 0l ℕ 3
+      : Prelude›Data›Option.Option 0l ℕ
+    Evaluate P.swap 0l ℕ Bool (Prod.pair 0l ℕ Bool 1 tt)
+      --> Prelude›Data›Prod.Prod.pair 0l Prelude›Data›Bool.Bool ℕ
+            Prelude›Data›Bool.Bool.tt
+            1 : Prelude›Data›Prod.Prod 0l Prelude›Data›Bool.Bool ℕ
+    Evaluate S.case 0l ℕ Bool ℕ succ (λ (x1 : Bool) → if ℕ x1 1 0)
+               (S.swap 0l Bool ℕ (Sum.inl 0l Bool ℕ ff)) --> 0 : ℕ
+    Evaluate Tagged.snd (Tagged.pair tt 3) --> 3 : ℕ
+    Evaluate Tagged.snd (Tagged.pair ff ff) --> Prelude›Data›Bool.Bool.ff
+      : Prelude›Data›Bool.Bool
+    Evaluate lengthAppend oneTwoThree oneTwoThree --> ⋆ : ⊤
+    Evaluate sumReverse oneTwoThree --> ⋆ : ⊤
+    Evaluate reverseReverse oneTwoThree
+      --> λ (x1 : ∀ (x2 : Prelude›Data›List.List 0l ℕ) → Type@0)
+            (x3 : x1
+                    (Prelude›Data›List.List.cons 0l ℕ 1
+                      (Prelude›Data›List.List.cons 0l ℕ 2
+                        (Prelude›Data›List.List.cons 0l ℕ 3
+                          (Prelude›Data›List.List.nil 0l ℕ)))))
+            → Prelude›Data›List›Properties.Reverse.reverseReverse 0l ℕ
+                (Prelude›Data›List.List.cons 0l ℕ 1
+                  (Prelude›Data›List.List.cons 0l ℕ 2
+                    (Prelude›Data›List.List.cons 0l ℕ 3
+                      (Prelude›Data›List.List.nil 0l ℕ))))
+                (λ (x4 : Prelude›Data›List.List 0l ℕ) → x1 x4)
+                x3
+      : ∀ (x1 : ∀ (x2 : Prelude›Data›List.List 0l ℕ) → Type@0)
+          (x3 : x1
+                  (Prelude›Data›List.List.cons 0l ℕ 1
+                    (Prelude›Data›List.List.cons 0l ℕ 2
+                      (Prelude›Data›List.List.cons 0l ℕ 3
+                        (Prelude›Data›List.List.nil 0l ℕ)))))
+          → x1
+              (Prelude›Data›List.List.cons 0l ℕ 1
+                (Prelude›Data›List.List.cons 0l ℕ 2
+                  (Prelude›Data›List.List.cons 0l ℕ 3
+                    (Prelude›Data›List.List.nil 0l ℕ))))
+    Evaluate notAnd tt ff
+      --> λ (x1 : ∀ (x2 : Prelude›Data›Bool.Bool) → Type@0)
+            (x3 : x1 Prelude›Data›Bool.Bool.tt)
+            → Prelude›Data›Bool›Properties.DeMorgan.notAnd
+                Prelude›Data›Bool.Bool.tt
+                Prelude›Data›Bool.Bool.ff
+                (λ (x4 : Prelude›Data›Bool.Bool) → x1 x4)
+                x3
+      : ∀ (x1 : ∀ (x2 : Prelude›Data›Bool.Bool) → Type@0)
+          (x3 : x1 Prelude›Data›Bool.Bool.tt)
+          → x1 Prelude›Data›Bool.Bool.tt
+    |}]
+
+let%expect_test "lib/DataTypes.mctt" =
+  let _ = main_of_lib "DataTypes.mctt" in
+  [%expect {|
+    Evaluate compare 3 5 --> Prelude›Data›Ordering.Ordering.less
+      : Prelude›Data›Ordering.Ordering
+    Evaluate thenCmp (compare 2 2) (flip (compare 1 4))
+      --> Prelude›Data›Ordering.Ordering.greater : Prelude›Data›Ordering.Ordering
+    Evaluate compareSpec 3 5 --> ⋆ : ⊤
+    Evaluate total (Th.swap 0l ℕ ℕ (These.these 0l ℕ ℕ 2 3)) --> 5 : ℕ
+    Evaluate total (These.that 0l ℕ ℕ 4) --> 4 : ℕ
+    Evaluate N.last oneToFour --> 4 : ℕ
+    Evaluate N.head (N.reverse oneToFour) --> 4 : ℕ
+    Evaluate N.foldr ℕ plus (λ (x1 : ℕ) → x1) oneToFour --> 10 : ℕ
+    Evaluate N.length (N.append oneToFour oneToFour) --> 8 : ℕ
+    Evaluate T.nodes sample --> 2 : ℕ
+    Evaluate T.leaves sample --> 3 : ℕ
+    Evaluate T.toListInfix (T.mirror sample)
+      --> Prelude›Data›List.List.cons 0l ℕ 2
+            (Prelude›Data›List.List.cons 0l ℕ 1
+              (Prelude›Data›List.List.nil 0l ℕ)) : Prelude›Data›List.List 0l ℕ
+    Evaluate TP.Counts.leavesNodes sample --> ⋆ : ⊤
+    Evaluate parity 7 --> Prelude›Data›Parity.Parity.odd
+      : Prelude›Data›Parity.Parity
+    Evaluate toSign (parity 4) --> Prelude›Data›Sign.Sign.positive
+      : Prelude›Data›Sign.Sign
+    Evaluate add (neg (pos 3)) (pos 5) --> Prelude›Data›Integer.Int.pos 2
+      : Prelude›Data›Integer.Int
+    Evaluate sub (pos 2) (pos 7) --> Prelude›Data›Integer.Int.negsuc 4
+      : Prelude›Data›Integer.Int
+    Evaluate mul (negsuc 1) (negsuc 2) --> Prelude›Data›Integer.Int.pos 6
+      : Prelude›Data›Integer.Int
+    Evaluate abs (mul (pos 3) (negsuc 3)) --> 12 : ℕ
+    Evaluate absMul (pos 2) (negsuc 2) --> ⋆ : ⊤
+    Evaluate fromNat 6
+      --> Prelude›Data›Binary.Bin.doubleSucc
+            (Prelude›Data›Binary.Bin.doubleSucc Prelude›Data›Binary.Bin.zero)
+      : Prelude›Data›Binary.Bin
+    Evaluate toNat (Bn.add (fromNat 13) (fromNat 22)) --> 35 : ℕ
+    Evaluate toNatAdd (fromNat 6) (fromNat 7) --> ⋆ : ⊤
+    Evaluate wToNat (wsucc (wsucc (wsucc wzero))) --> 3 : ℕ
+    Evaluate WO.head 0l Bool Arity (wsucc wzero) --> Prelude›Data›Bool.Bool.tt
+      : Prelude›Data›Bool.Bool
+    |}]
+
 let%expect_test "lib/Arithmetic.mctt" =
   let _ = main_of_lib "Arithmetic.mctt" in
   [%expect {|
@@ -2979,7 +3115,7 @@ let%expect_test "mctt-doc: every eval of lib has one output box, with mctt's out
   List.iter (fun b -> if String.starts_with ~prefix:"Evaluate Adding.five " b then print_endline b)
     (doc_boxes (Doc.render_unit lib kinds tut));
   [%expect {|
-    445 evals, 445 boxes, 445 equal to mctt's output
+    493 evals, 493 boxes, 493 equal to mctt's output
     Evaluate Adding.five --> 5 : ℕ
     |}]
 

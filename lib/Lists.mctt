@@ -36,13 +36,14 @@ eval NL.map ℕ (λ (x : ℕ) → plus x x) oneTwoThree
 eval sum oneTwoThree
 eval NL.foldr ℕ plus 0 (NL.reverse oneTwoThree)
 
-(* The elements at even positions, counted by recursion into a function
-   of the parity of the position. *)
+(* The recursor counts the even positions: the motive is a function of the
+   parity of the position. *)
 def evens (l : NatList) : ℕ ≔
-  (elim l return z . (∀ (b : Bool) → ℕ)
-   | nil ⇒ λ (b : Bool) → 0
-   | cons x xs, r ⇒ λ (b : Bool) → if ℕ b (succ (r (not b))) (r (not b))
-   end) tt
+  List.rec 0l ℕ 0l (λ (l : NatList) → ∀ (b : Bool) → ℕ)
+    (λ (b : Bool) → 0)
+    (λ (x : ℕ) (xs : NatList) (r : ∀ (b : Bool) → ℕ) (b : Bool) →
+       if ℕ b (succ (r (not b))) (r (not b)))
+    l tt
 end
 
 eval evens oneTwoThree
