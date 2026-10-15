@@ -2,12 +2,14 @@
 
 Every notation in the development lives in ordinary `constr`, in `mctt_scope`.
 There are no custom entries and hence nothing to quote:
-`Ψ ⍮ Γ ⊢ M[σ] : A -> Ψ ⍮ Γ ⊢ zero : ℕ` is what you write and what Rocq prints.
+`Θ ⍮ Ξ ⍮ Γ ⊢ M[σ] : A -> Θ ⍮ Ξ ⍮ Γ ⊢ ⋆ : ⊤` is what you write and what Rocq prints.
 
 The price of a single grammar is that a spelling denotes one sort only, so the
 sorts that mirror `exp` constructor for constructor carry a superscript:
-`ᵈ` for values (`ℕᵈ`, `λᵈ`, `Πᵈ`, `succᵈ`, `#ᵈ`, `$ᵈ`, `recᵈ`) and `ⁿ` for
-normal and neutral forms (`ℕⁿ`, `λⁿ`, `Πⁿ`, `succⁿ`, `#ⁿ`, `$ⁿ`, `recⁿ`, `⇑ⁿ`).
+`ᵈ` for values (`λᵈ`, `Πᵈ`, `#ᵈ`, `$ᵈ`) and `ⁿ` for
+normal and neutral forms (`λⁿ`, `Πⁿ`, `#ⁿ`, `$ⁿ`, `⇑ⁿ`).
+There is no built-in ℕ: `ℕ` is the literal token `a_ntok`, which no judgment
+mentions.
 This is what makes an un-ported fragment a hard error rather than a misparse:
 `exp`, `sub`, `wk`, `ctx`, `domain`, `nf` and `ne` are distinct types.
 
@@ -17,9 +19,9 @@ This is what makes an un-ported fragment a hard error rather than a misparse:
 
 | level | forms |
 | --- | --- |
-| 0 | closed forms: `ℕ`, `zero`, `Id`, `Wk`, `⋅`, `⋄`, `↑`, `Type⟨t⟩`, `rec … end`, `recⁿ … end`, `recᵈ … end` |
+| 0 | closed forms: `ℕ`, `⊤`, `⋆`, `⊥`, `Id`, `Wk`, `⋅`, `⋄`, `↑`, `Type⟨t⟩` |
 | 1, left | postfix and prefix-with-`constr`-argument: `M[σ]`, `M[φ]ʷ`, `ρ↯`, `Type@n`, `Typeω@n`, `#n`, `𝕌@l`, `𝕌ω@n`, `#ᵈ n`, `#ⁿ n`, `Typeⁿ@n`, `Typeωⁿ@n`, `𝕃@n`, `𝕃ᵒ o` |
-| 2 | constructors with a recursive last argument: `succ`, `λ`, `Π`, `⇑`, `⇓`, `⇑!`, `succl`, `maxl`, `univⁿ`, and the `ᵈ`/`ⁿ` counterparts |
+| 2 | constructors with a recursive last argument: `λ`, `Π`, `⇑`, `⇓`, `⇑!`, `succl`, `maxl`, `univⁿ`, and the `ᵈ`/`ⁿ` counterparts |
 | 10, left | application: `M $ N`, `m $ᵈ n`, `M $ⁿ N` |
 | 20, left | `ρ ↦ m` |
 | 30 | `q σ`, `ι φ` |
@@ -147,8 +149,8 @@ literal).  (`ω` and `·` are among the Unicode spellings listed in
   `rel_chain R ([a1; a2])`.
 - **camlp5 cannot factor two rules that share a leading token but sit at
   different notation levels.** Four spellings exist only to keep such pairs
-  apart: the evaluation judgment is `⟦rec m return A | zero -> MZ | succ -> MS end ⟧ ρ ↘ r`
-  (`rec … end` is an `exp` at level 0, `⟦rec` is one token); `eval_wk` is
+  apart: the eliminator's evaluation judgment is `⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r`
+  (`⟦elim` is one token); `eval_wk` is
   `⟪φ⟫ ρ` (the `⟦ … ⟧` bracket belongs to evaluation); context lookup is
   `Γ ∋ #x : A` (`#` belongs to `a_var`); and `d_var` is `#ᵈ n` (`!` is a
   terminal of Corelib's `exists ! x, p`).

@@ -121,6 +121,22 @@ properties of natural numbers, and `lib/NatTheory.mctt` uses it:
 ```
 dune exec mctt -- --search-root lib lib/NatTheory.mctt
 ```
+`--search-root` may be given more than once; a unit is looked up under each
+root in turn.
+
+The natural numbers are not built in.  A unit binds an inductive type of
+their shape with `builtin natural ≔ X`, and the binding holds for the rest
+of the run, in every unit loaded after it.  `lib/Prelude/Builtin/Nat.mctt`
+declares `Nat` with `zero` and `succ` and binds it, so a program that uses
+numerals starts with
+```
+import Prelude›Builtin›Nat use (Nat; zero; succ)
+```
+and is run with `--search-root lib` (as an extra root if its own units live
+elsewhere).
+The bound type may have other constructor names (`| Z | S (n : Num)`);
+an eliminator over it names them as declared.  The interpreter prints the
+bound type as `ℕ`, and a chain of its constructors as a numeral.
 
 To build Coq proof only, you can go into and only build the `theories` directory:
 ```
@@ -140,21 +156,23 @@ one (and `∀` for `forall`):
 
 | Unicode | ASCII    |   | Unicode | ASCII   |
 |---------|----------|---|---------|---------|
-| `→`     | `->`     |   | `ℕ`     | `Nat`   |
-| `⇒`     | `=>`     |   | `⊤`     | `True`  |
-| `λ`     | `fun`    |   | `⊥`     | `False` |
-| `∀`, `Π`| `forall` |   | `⋆`     | `true`  |
-| `≔`     | `:=`     |   | `ω`     | `omega` |
-| `›`     | `::`     |   | `·`     | `*`     |
-|         |          |   | `ω^2`   | `omega^2` |
+| `→`     | `->`     |   | `⊤`     | `True`  |
+| `⇒`     | `=>`     |   | `⊥`     | `False` |
+| `λ`     | `fun`    |   | `⋆`     | `true`  |
+| `∀`, `Π`| `forall` |   | `ω`     | `omega` |
+| `≔`     | `:=`     |   | `·`     | `*`     |
+| `›`     | `::`     |   | `ω^2`   | `omega^2` |
+
+`ℕ` has no ASCII spelling: it is the type bound as the natural numbers, and
+`Nat`, `zero` and `succ` are ordinary names.
 
 An identifier is ASCII letters, digits and underscores, and does not start
 with a digit: `x`, `x_1`, `Num2`, `_x`.  A bare `_` is reserved.  A word
-that is a keyword (`zero`, `rec`, `Nat`, …) is the keyword, and a longer
-word is an identifier: `zero1` and `Nat2` are names.  A numeral and a level
+that is a keyword (`elim`, `let`, `Level`, …) is the keyword, and a longer
+word is an identifier: `elim1` and `Level2` are names.  A numeral and a level
 literal start with a digit, so `2l` is the level literal and `x2l` a name.
 These symbols need no spaces around them: `λ(x:ℕ)→x` is
-`fun (x : Nat) -> x`.
+`fun (x : ℕ) -> x`.
 
 ```EBNF
 prog = term , ':' , type;
@@ -168,18 +186,15 @@ term = ( '∀' | 'Π' | 'forall' ) , {parameter} , ( '→' | '->' ) , term
      | {atomic term}
      (* let expression *)
      | 'let' , let definition , {';' , let definition} , 'in' , term , 'end'
-     (* successor of a natural number *)
-     | 'succ' , term
      (* successor of a universe level *)
      | 'succl' , atomic term
      (* join of two universe levels *)
      | 'maxl' , atomic term , atomic term
-     (* natural number eliminator *)
-     | 'rec' , term , 'return' , nat motive , zero branch , succ branch , 'end'
      (* eliminator of the empty type *)
-     | 'exfalso' , term , 'return' , nat motive
-     (* eliminator of the inductive type the atomic term names *)
-     | atomic term , '.' , 'elim' , term , 'return' , {id} , nat motive , {elim branch} , 'end';
+     | 'exfalso' , term , 'return' , motive
+     (* eliminator of an inductive type: the motive binds the
+        non-uniform parameters, then the scrutinee *)
+     | 'elim' , term , 'return' , {id} , motive , {elim branch} , 'end';
 
             (* universe at the level nat, short for Type@{<nat>l} *)
 atomic term = 'Type', '@' , nat
@@ -204,15 +219,14 @@ atomic term = 'Type', '@' , nat
             | nat , 'L'
             (* the universe level literals ω, ω+b, ω·a, ω·a+b *)
             | ( 'ω' | 'omega' ) , [ ( '·' | '*' ) , nat ] , [ '+' , nat ]
-            (* natural number type *)
-            | ( 'ℕ' | 'Nat' )
+            (* the type bound as the natural numbers *)
+            | 'ℕ'
             (* the unit type and its element *)
             | ( '⊤' | 'True' ) | ( '⋆' | 'true' )
             (* the empty type *)
             | ( '⊥' | 'False' )
-            (* natural number zero *)
-            | 'zero'
-            (* a shorthand for succ (succ (... (succ zero))) *)
+            (* the chain of the bound type's constructors: with Nat bound,
+               succ (succ (... (succ zero))) *)
             | nat
             (* variable *)
             | id
@@ -228,13 +242,7 @@ let definition = id , ':' , type , ( '≔' | ':=' ) , term
 
 (* This describes the return type of the eliminator
    when id is bound to the scrutinee *)
-nat motive = id , '.' , type;
-
-zero branch = '|', 'zero' , ( '⇒' | '=>' ) , term;
-
-(* the first id is predecessor
-   and the second id is the result of the recursive call *)
-succ branch = '|', 'succ' , id , ',' , id , ( '⇒' | '=>' ) , term;
+motive = id , '.' , type;
 
 (* the names of the non-uniform parameters and the constructor's
    arguments, then those of the induction hypotheses *)

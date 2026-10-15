@@ -89,8 +89,8 @@ member.
 * Declarations are members of units and of global modules (also under
   module parameters, which become outermost uniform parameters); not of
   local bodies (`"an inductive type is not allowed in a local module"`).
-* ℕ is unchanged (`rec`); an inductive type can be bound as the natural
-  numbers, which the numerals then denote (below).
+* There is no built-in ℕ: an inductive type is bound as the natural
+  numbers, which the numerals and `ℕ` then denote (below).
 
 ## Shapes of recursive arguments
 
@@ -352,10 +352,8 @@ eliminator gives the branch at the motive `P`.  It is a member of the
 entry like the constructors (`wf_gentry_ind_ext`), and it always checks:
 `ind_gens_typed` (`System/IndRec.v`) derives the whole entry from the
 declaration's, and `rc_ind_runs` shows that such a declaration command
-runs.  The surface reads `X.rec`
-(`rec` is a keyword: `atomic_obj . REC` in the parser; `Doc.ml` pairs the
-token).  Not done: `open X use (rec)` (the items are names, not the
-keyword).
+runs.  The surface reads `X.rec`; `rec` is an ordinary name, so `open X
+use (rec)` declares it too.
 
 ## Algorithmic layer and checker
 
@@ -377,45 +375,99 @@ keyword).
 
 ## The natural numbers as a builtin (`builtin natural ≔ X`)
 
+There is no built-in ℕ in the core: no type former, constructors,
+eliminator, values or normal forms of their own.  The natural numbers are an
+inductive type that a command binds; `lib/Prelude/Builtin/Nat.mctt` is the
+standard one:
+
 ```
-inductive Num : Type@0 where
-| Z
-| S (n : Num)
+module Prelude›Builtin›Nat where
+inductive Nat : Type@0 where | zero | succ (n : Nat) end
+builtin natural ≔ Nat
+open Nat export (zero; succ)
 end
-
-builtin natural ≔ Num
-
-eval elim 2 return x . Num | Z ⇒ 1 | S p, r ⇒ Num.S r end   (* 3 : Num *)
 ```
 
-* A numeral is a core literal, `a_nlit n` (`Syntax.v`), not a term of the
-  typing judgment: expansion (`exp_xp`, `Imports.v`) replaces it by the
-  chain `nat_chain p z s n` of the bound type's constructors, or by the
-  builtin `ℕ`'s while no binding is visible (until `ℕ` is removed), and
-  fails with `xe_nat` where the visible bindings disagree.  The elaborator
-  maps a numeral to the literal and does nothing else.
-* What a numeral stands for is the oracle field `xo_nb`, specified as
-  `nat_binding Θ Ξ` (`Core/Syntactic/Builtin.v`): the bindings of the filed
-  units (`gds_natbinds`) and of the unit being run, the bottom frame
-  (`gs_natbinds`), classified as none, one with its constructors, or many.
-  It depends on the filed units only up to `gds_equiv`
-  (`gds_equiv_nat_binding`, `Extraction/IndDecl.v`).
-* The command `cc_builtin k H` (`H` the module as written, `mod_qname H = Some p`)
-  runs by `rc_builtin`: `k` is `natural`, the stack is the frame of a
-  unit without parameters, no binding is visible, `p`'s declaration has
-  `nat_shape` (no parameter, a constructor without arguments and one with
-  the single argument `ca_rec (pt_self 0 nil)`, in either order), and the
-  binding is filed as the transparent definition `#natural : ind_ty D ≔
-  a_ind p` of the unit, with the premises of `rc_def`.  So a binding is
-  visible exactly where its unit is imported, directly or not.
-* The printer folds a chain of the bound constructors ending in the
-  nullary one into a numeral; it reads the binding off the eval's state
-  (`nat_binding ev_deps ev_stack`).  The type prints by its name.
-* Errors: "the natural numbers are bound already", "X is not shaped as
-  the natural numbers: …", "builtin is allowed only at the top of a unit
-  without parameters", "there is no builtin k", "builtin is not allowed in
-  a local module" (elaborator), "the numeral n has no meaning here: the
-  visible bindings of the natural numbers disagree".
+A bound type may name its constructors otherwise; an eliminator uses the
+declared names:
+
+```
+inductive Num : Type@0 where | Z | S (n : Num) end
+builtin natural ≔ Num
+open Num use (Z; S)
+eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
+```
+
+* **The configuration.**  `builtins` (`Core/Syntactic/Builtin.v`) is
+  `{ bt_nat : option qname }`, apart from the filed units and the stack;
+  no typing judgment reads it.  `run_cmd`/`run_cmds`/`run_unit`
+  (`Core/Syntactic/System/Command.v`) thread it: `Θ ⍮ Ξ ⍮ B ⊢[ch] c ⇝ Θ'
+  ⍮ Ξ' ⍮ B'`.  A program starts from `bt_empty` (`prog_sem prg B Θ U`, `B`
+  the bindings at its end).  A loaded unit runs with the bindings made so
+  far, and those it makes hold after it: a binding holds for the rest of
+  the run, in every unit, whether or not it imports the binder.
+* **`rc_builtin`.**  `cc_builtin k H` with `k = natural`: `H` names, by
+  `ind_target`, an inductive type `p` or an inductive alias of one with no
+  parameter and no argument; `p`'s declaration has `nat_shape` (no
+  parameter; one constructor without arguments and one with the single
+  argument `ca_rec (pt_self 0 nil)`, in either order) and `ind_sort D =
+  nat_sort` (`Type@0`); then `bt_bind_nat B p = Some B'`: bound if nothing
+  is, kept if `p` is, rejected if another type is.  Allowed anywhere a
+  command is, also inside a module; the elaborator still rejects it in a
+  local module.
+* **Literals.**  A numeral `a_nlit n` and the token `ℕ`, `a_ntok`, are
+  core expressions with no typing, evaluation or readback rule.
+  `rcs_cons` generates them per command from the bindings, before
+  expansion (`cmd_lits_ok Θ Ξ B c c1`, `cmd_lits` over `nat_view Θ Ξ B`):
+  a numeral becomes `nat_chain p z s n`, `ℕ` becomes `a_ind p`.  Unit
+  parameters get theirs in `ru_intro` (`tele_lits_ok`).  Without a
+  binding read at the state, a literal fails with `le_num n` / `le_tok`.
+  `cmd_lits_agree`: a literal generated without a binding is the same with
+  one, which is what `run_functional` needs.
+* **Metatheory.**
+  - `run_functional`: two runs from compatible bindings (`bt_compat`)
+    end in the same units and stack, and compatible bindings (`bt_out`).
+  - `run_wf`: carries `canon B Θ` (every filed unit is what loading its
+    file yields from bindings below `B`) and `bt_le B B'` (bindings only
+    grow).
+  - `run_builtins_wf`, `prog_sem_builtins_wf`: a binding stays read at
+    its state, `builtins_wf Θ Ξ B` (the bound type is found by
+    `ind_lookup`, has `nat_shape`, is in `Type@0`), through added entries,
+    closed module frames (`ind_lookup_close`), filing and merging.  A unit
+    starts from nothing filed, so its statement assumes `builtins_wf nil nil
+    B`, i.e. no binding yet; a binding made before a load holds after it
+    unchanged.
+  - `canonical_form_of_bound_nat_prog` (`Core/Semantic/Consequences.v`):
+    with `bt_nat B = Some p` at the end of a program, a closed term of
+    `a_ind p` normalizes to `nat_chain p z s n`.  Below it,
+    `canonical_form_of_ind_nat(_gctx)`, `…_stuck(_gctx)` and
+    `…_no_axioms` are about any inductive type of `nat_shape`.
+* **A binding made inside a unit's body, then a load.**  The loaded unit
+  runs with that binding, but cannot read the bound type (it is in the
+  loading unit, not filed yet), so a numeral in it fails, and it cannot bind
+  another type.  `run_builtins_wf` reflects this: its unit case needs no
+  binding at the start.
+* **Checker.**  `Extraction/Command.v`: `cstate` / `ustate` carry the
+  bindings (`cs_bt`, `us_bt`), `builtin_step` runs `rc_builtin`, the
+  literal pass runs before expansion, and `prog_impl` returns the final
+  bindings.  Errors: `re_lit le` for a literal without a binding, and
+  `re_nat Θ Ξ nv e`, wrapping the error of a command or a unit parameter
+  with the state and the view, so the printer folds numerals in it.
+* **Printer** (`driver/PrettyPrinter.ml`): the bound type prints as `ℕ`
+  (also through an inductive alias), a chain of its constructors ending in
+  the nullary one as a numeral, other constructors by their declared
+  names, unqualified.  An eliminator's hypotheses are named by the sort
+  convention: `A1` when the motive is a type.
+* **Errors**: "the natural numbers are bound already, to X", "X is not
+  shaped as the natural numbers: …", "the natural numbers must be declared
+  in Type@0, not X", "there is no builtin k", "builtin is not allowed in a
+  local module" (elaborator), "unknown numeral n: no natural-number type is
+  bound", "unknown type ℕ: no natural-number type is bound".
+* **Surface.**  `ℕ` is the only token for the bound type; `Nat`, `zero`,
+  `succ` and `rec` are ordinary identifiers (`X.rec` is the recursor
+  member).  Tests: `main_of_body` imports `Prelude›Builtin›Nat use (Nat;
+  zero; succ)`; `main_of_bare_body` does not.  The driver takes
+  `--search-root` repeatedly; tests add `../lib`.
 
 ## Deviations from the report
 

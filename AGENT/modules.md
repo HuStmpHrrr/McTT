@@ -91,7 +91,7 @@ core never see the difference:
 | `PI`         | `∀`, `Π` | `forall` |
 | `EQ`         | `≔`      | `:=`     |
 | `COLONCOLON` | `›`      | `::`     |
-| `NAT`        | `ℕ`      | `Nat`    |
+| `NAT`        | `ℕ`      | (none)   |
 | `TRUE_TY`    | `⊤`      | `True`   |
 | `FALSE_TY`   | `⊥`      | `False`  |
 | `TRUE`       | `⋆`      | `true`   |
