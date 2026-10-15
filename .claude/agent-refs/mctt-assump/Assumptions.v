@@ -1,6 +1,7 @@
 From Mctt Require Import Entrypoint.
 From Mctt Require Import Core.Completeness Core.Soundness Core.Semantic.Consequences Extraction.Command Frontend.ElabCorrect Algorithmic.Typing.Lemmas Algorithmic.Strengthening Core.Semantic.Avoid Core.NbEWeakening.
 From Mctt Require Import Reference.Refinement Extraction.Simulation Extraction.GlobalCheck.
+From Mctt Require Import Core.Syntactic.Presup Core.Syntactic.System.GlobalPresup Core.Syntactic.System.IndRec Core.IndCommand.
 Print Assumptions Mctt.Core.Completeness.completeness.
 Print Assumptions Mctt.Core.Completeness.completeness_gctx.
 Print Assumptions Mctt.Core.Soundness.soundness.
@@ -85,3 +86,33 @@ Print Assumptions Mctt.Extraction.Simulation.feval_exp_sim.
 Print Assumptions Mctt.Extraction.Simulation.feval_app_sim.
 Print Assumptions Mctt.Extraction.Simulation.feval_clo_sim.
 Print Assumptions Mctt.Extraction.Simulation.feval_clo2_sim.
+(* Inductive types: canonical forms, and the generated eliminators. *)
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_pi.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_gctx.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_nat.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_nat_gctx.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_nat_stuck.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_nat_stuck_gctx.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_nat_no_axioms.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_bound_nat_prog.
+Print Assumptions Mctt.Core.Syntactic.System.IndRec.rc_ind_runs.
+Print Assumptions Mctt.Core.IndCommand.rc_ind_con_types.
+(* Presupposition: local, and of the global context. *)
+Print Assumptions Mctt.Core.Syntactic.System.Lemmas.presup_exp.
+Print Assumptions Mctt.Core.Syntactic.Presup.presup_exp_eq.
+Print Assumptions Mctt.Core.Syntactic.Presup.presup_subtyp.
+Print Assumptions Mctt.Core.Syntactic.Presup.presup_sub_eq.
+Print Assumptions Mctt.Core.Syntactic.System.GlobalPresup.presup_global.
+Print Assumptions Mctt.Core.Syntactic.System.GlobalPresup.presup_exp_typ.
+(* The checker of commands and units, and the elaborator. *)
+Print Assumptions Mctt.Extraction.Command.run_cmd_impl_sound.
+Print Assumptions Mctt.Extraction.Command.run_cmds_impl_sound.
+Print Assumptions Mctt.Extraction.Command.run_unit_impl_sound.
+Print Assumptions Mctt.Extraction.Command.run_cmd_impl_complete.
+Print Assumptions Mctt.Extraction.Command.run_cmds_impl_complete.
+Print Assumptions Mctt.Extraction.Command.run_unit_impl_complete.
+Print Assumptions Mctt.Extraction.Command.prog_impl_complete_wf.
+Print Assumptions Mctt.Frontend.ElabCorrect.elaborate_core_sound.
+Print Assumptions Mctt.Frontend.ElabCorrect.elaborate_core_complete.
+Print Assumptions Mctt.Frontend.ElabCorrect.elab_spec_functional.
