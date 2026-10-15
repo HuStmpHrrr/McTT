@@ -88,7 +88,7 @@ Definition ind_infer G (HG : ⊢ G) (P : tenv G) p :
   { A : nf | G ⊢a a_ind p ⟹ A /\ (exists UA u, G ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ A : Typeω@i) }
   + { forall A, ~ G ⊢a a_ind p ⟹ A }.
 Proof.
-  destruct (ind_lookup gc_deps gc_stack p) as [D |] eqn:Hl.
+  destruct (ind_lookup_f gc_deps gc_stack p) as [[D |] Hl].
   - refine (let (W, HW) := nbe_ty_env_impl gc_deps gc_stack G P (ind_ty D) (ind_ty_order G p D HG Hl) in
             inleft (exist _ W (ind_ty_post G p D W HG Hl HW))).
   - right; intros A H; inversion H; congruence.
@@ -98,7 +98,7 @@ Definition con_infer G (HG : ⊢ G) (P : tenv G) p c :
   { A : nf | G ⊢a a_con p c ⟹ A /\ (exists UA u, G ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ A : Typeω@i) }
   + { forall A, ~ G ⊢a a_con p c ⟹ A }.
 Proof.
-  destruct (ind_lookup gc_deps gc_stack p) as [D |] eqn:Hl; [| right; intros A H; inversion H; congruence ].
+  destruct (ind_lookup_f gc_deps gc_stack p) as [[D |] Hl]; [| right; intros A H; inversion H; congruence ].
   destruct (ind_con D c) as [gs |] eqn:Hcon; [| right; intros A H; inversion H; subst; congruence ].
   refine (let (W, HW) := nbe_ty_env_impl gc_deps gc_stack G P (con_ty p D gs) (con_ty_order G p D c gs HG Hl Hcon) in
           inleft (exist _ W (con_ty_post G p D c gs W HG Hl Hcon HW))).
@@ -160,7 +160,7 @@ Proof.
        match goal with H1 : G ⊢a M ⟹ nf_indty _ _ |- _ =>
          pose proof (functional_alg_type_infer H1 HMi) as Heq end;
        symmetry in Heq; eapply HnI; exact Heq ].
-  destruct (ind_lookup gc_deps gc_stack p) as [D |] eqn:Hl;
+  destruct (ind_lookup_f gc_deps gc_stack p) as [[D |] Hl];
     [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ H HMi) as (D' & ? & ? & HD' & _); congruence ].
   pose (Us := List.firstn (ind_nu D) (nfs_to_exps Rs)).
   destruct (Nat.eq_dec (List.length (nfs_to_exps Rs)) (ind_np D)) as [HRl | HRl];

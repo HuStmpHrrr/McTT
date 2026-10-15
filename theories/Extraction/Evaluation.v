@@ -914,7 +914,7 @@ Section EvalImpl.
       exist _ r _
 
   with feval_sel_impl h x (H : feval_sel_order Θ Ξ h x) : { r | feval_sel Θ Ξ h x r } by struct H :=
-  | dm_global pq args, x, H with inspect (gc_entry Θ Ξ (qname_app pq (x :: nil))) := {
+  | dm_global pq args, x, H with gc_entry_f Θ Ξ (qname_app pq (x :: nil)) := {
     | exist _ (Some (ge_def true pv A (Some M))) E =>
         let (f, Hf) := feval_exp_impl M nil _ in
         let (r, Hr) := feval_apps_impl f args _ in
@@ -953,7 +953,7 @@ Section EvalImpl.
   | dm_member h ch, x, H => exist _ (d_member h (ch ++ x :: nil)) _
 
   with feval_selm_impl h y (H : feval_selm_order Θ Ξ h y) : { r | feval_selm Θ Ξ h y r } by struct H :=
-  | dm_global pq args, y, H with inspect (gc_module Θ Ξ (qname_app pq (y :: nil))) := {
+  | dm_global pq args, y, H with gc_module_f Θ Ξ (qname_app pq (y :: nil)) := {
     | exist _ (Some (mr_alias U ch)) E =>
         let (r, Hr) := feval_selmc_impl (dm_local nil U args) ch _ in
         exist _ r _

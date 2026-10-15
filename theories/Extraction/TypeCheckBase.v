@@ -325,7 +325,7 @@ Section type_check.
   (** The type of a global, of the type former that the module of an
       inductive type is as a term, or of the term an inductive alias
       δ-unfolds to. *)
-  Definition glob_lookup (R : modexp) (pre : list string) (x : string) : option typ :=
+  Definition glob_lookup_spec (R : modexp) (pre : list string) (x : string) : option typ :=
     match R with
     | me_unit fp =>
         match gc_resolve gc_deps gc_stack (q_abs fp (pre ++ x :: nil)) with
@@ -348,6 +348,40 @@ Section type_check.
     | _ => None
     end.
 
+  Definition glob_lookup (R : modexp) (pre : list string) (x : string) : option typ :=
+    match R with
+    | me_unit fp =>
+        match gc_resolve_u (fc_units F) gc_stack (q_abs fp (pre ++ x :: nil)) with
+        | Some (ge_def _ _ A _) => Some A
+        | Some _ => None
+        | None =>
+            match ind_lookup_u (fc_units F) gc_stack (q_abs fp (pre ++ x :: nil)) with
+            | Some D => Some (ind_ty D)
+            | None =>
+                match ind_alias_lookup_u (fc_units F) gc_stack (q_abs fp (pre ++ x :: nil)) with
+                | Some (Δ, p, Ns) =>
+                    match ind_lookup_u (fc_units F) gc_stack p with
+                    | Some D => Some (ctx_pi Δ (ind_ty_at D Ns))
+                    | None => None
+                    end
+                | None => None
+                end
+            end
+        end
+    | _ => None
+    end.
+
+  Lemma glob_lookup_spec_eq : forall R pre x, glob_lookup R pre x = glob_lookup_spec R pre x.
+  Proof.
+    intros [] pre x; try reflexivity; unfold glob_lookup, glob_lookup_spec.
+    rewrite (gc_resolve_u_ok _ _ (fc_units_ok F)), (ind_lookup_u_ok _ _ (fc_units_ok F)),
+      (ind_alias_lookup_u_ok _ _ (fc_units_ok F)).
+    destruct (gc_resolve _ _ _) as [[] |]; try reflexivity.
+    destruct (ind_lookup _ _ _); try reflexivity.
+    destruct (ind_alias_lookup _ _ _) as [[[d0 q0] n0] |]; try reflexivity.
+    rewrite (ind_lookup_u_ok _ _ (fc_units_ok F)); reflexivity.
+  Qed.
+
   Lemma spine_unit_path : forall H fp pre, modexp_spine H = (me_unit fp, nil, pre) -> mod_qname H = Some (q_abs fp pre).
   Proof.
     induction H as [fp0 | x | H IH y | H IH N | U]; intros * Hs; cbn in Hs |- *; try discriminate.
@@ -364,7 +398,7 @@ Section type_check.
          (exists Δ p Ns D, ind_alias_lookup gc_deps gc_stack (qname_app mq (x :: nil)) = Some (Δ, p, Ns) /\
             ind_lookup gc_deps gc_stack p = Some D /\ A = ctx_pi Δ (ind_ty_at D Ns))).
   Proof.
-    intros * Hs Hg; destruct R; cbn in Hg; try discriminate.
+    intros * Hs Hg; rewrite glob_lookup_spec_eq in Hg; destruct R; cbn in Hg; try discriminate.
     exists (q_abs l pre); split; [ exact (spine_unit_path _ _ _ Hs) |].
     destruct (gc_resolve _ _ _) as [[b pv A0 B | pm U | pv D Φ | ? ? ? ?] |] eqn:Er; try discriminate.
     - injection Hg as ->; left; eauto.
@@ -377,7 +411,7 @@ Section type_check.
   Lemma glob_lookup_none : forall H R args pre x mq b pv A B, modexp_spine H = (R, args, pre) -> glob_lookup R pre x = None ->
       mod_qname H = Some mq -> gc_resolve gc_deps gc_stack (qname_app mq (x :: nil)) = Some (ge_def b pv A B) -> False.
   Proof.
-    intros * Hs Hg Hp Hr; rewrite (mod_qname_spine _ _ Hp) in Hs; injection Hs as <- <- <-.
+    intros * Hs Hg Hp Hr; rewrite glob_lookup_spec_eq in Hg; rewrite (mod_qname_spine _ _ Hp) in Hs; injection Hs as <- <- <-.
     cbn in Hg; change (qname_app mq (x :: nil)) with (q_abs (q_unit mq) (q_chain mq ++ x :: nil)) in Hr.
     rewrite Hr in Hg; discriminate.
   Qed.
@@ -386,7 +420,7 @@ Section type_check.
       mod_qname H = Some mq -> ind_alias_lookup gc_deps gc_stack (qname_app mq (x :: nil)) = Some (Δ, p, Ns) ->
       ind_lookup gc_deps gc_stack p = Some D -> False.
   Proof.
-    intros * Hs Hg Hp Ha Hl; rewrite (mod_qname_spine _ _ Hp) in Hs; injection Hs as <- <- <-.
+    intros * Hs Hg Hp Ha Hl; rewrite glob_lookup_spec_eq in Hg; rewrite (mod_qname_spine _ _ Hp) in Hs; injection Hs as <- <- <-.
     cbn in Hg; change (qname_app mq (x :: nil)) with (q_abs (q_unit mq) (q_chain mq ++ x :: nil)) in Ha.
     pose proof (ind_alias_lookup_module _ _ _ _ _ _ Ha) as Hm.
     rewrite (gc_module_resolve _ _ _ _ Hm), (ind_lookup_not_ind_alias_rev _ _ _ _ _ _ Ha), Ha, Hl in Hg; discriminate.
@@ -395,7 +429,7 @@ Section type_check.
   Lemma glob_lookup_none_ind : forall H R args pre x mq D, modexp_spine H = (R, args, pre) -> glob_lookup R pre x = None ->
       mod_qname H = Some mq -> ind_lookup gc_deps gc_stack (qname_app mq (x :: nil)) = Some D -> False.
   Proof.
-    intros * Hs Hg Hp Hl; rewrite (mod_qname_spine _ _ Hp) in Hs; injection Hs as <- <- <-.
+    intros * Hs Hg Hp Hl; rewrite glob_lookup_spec_eq in Hg; rewrite (mod_qname_spine _ _ Hp) in Hs; injection Hs as <- <- <-.
     cbn in Hg; change (qname_app mq (x :: nil)) with (q_abs (q_unit mq) (q_chain mq ++ x :: nil)) in Hl.
     rewrite (proj1 (ind_lookup_not_def _ _ _ _ Hl)), Hl in Hg; discriminate.
   Qed.

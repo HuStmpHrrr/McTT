@@ -330,10 +330,11 @@ Proof.
 Qed.
 
 (** What a command's checks look names up in ([Extraction.Lookup]): the
-    declaration of the type bound as the natural numbers, looked up once
-    per check rather than once per eliminator. *)
+    trie of the filed units, and the declaration of the type bound as the
+    natural numbers, looked up once per check rather than once per
+    eliminator. *)
 Definition fctx_cmd (B : builtins) (Θ : gdeps) (Ξ : gstack) : FCtx Θ Ξ :=
-  mk_fctx (cache_at Θ Ξ (bt_nat B)).
+  fctx_at Θ Ξ (bt_nat B).
 
 Section Impl.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
