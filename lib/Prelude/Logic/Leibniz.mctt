@@ -9,6 +9,10 @@
    of the predicate. *)
 module Prelude›Logic›Leibniz (u : Level) where
 
+import Prelude›Builtin›Nat
+import Prelude›Arith›Equality use (Eq)
+open Prelude›Arith›Equality.Transport u use (transport)
+
 def Id (A : Type@{u}) (x : A) (y : A) : Type@{succl u} ≔
   ∀ (P : ∀ (z : A) → Type@{u}) (p : P x) → P y
 end
@@ -56,6 +60,12 @@ end
 def idSubst (A : Type@{u}) (P : ∀ (z : A) → Type@{u}) (x : A) (y : A)
     (h : Id A x y) (px : P x) : P y ≔
   h P px
+end
+
+(* Numbers equal by [Prelude›Arith›Equality] are Leibniz equal: a proof
+   of [Eq a b] transports along every predicate. *)
+def eqToId (a : ℕ) (b : ℕ) (h : Eq a b) : Id ℕ a b ≔
+  λ (P : ∀ (n : ℕ) → Type@{u}) → transport P a b h
 end
 
 end

@@ -1,0 +1,89 @@
+(* The integers as an inductive type, after Agda's [Data.Integer.Base]:
+   [pos n] is the integer [n] and [negsuc n] is [-(n + 1)] (Agda's [+ n]
+   and [-[1+ n ]]), so every integer has exactly one form.
+   [Prelude›Algebra›Integers] has another encoding, as pairs of numbers.
+
+   [diff m n] is the integer [m - n] of two numbers (Agda's [m ⊖ n]),
+   by recursion on both: [diff (succ m) (succ n)] is [diff m n].  Addition
+   [add] is by cases on the forms, through [diff]; negation [neg],
+   subtraction [sub], successor [succInt] and predecessor [predInt]
+   follow.  Multiplication [mul] is by signs and absolute values, as in
+   Agda: [mul i j] is [signed (S.mul (sign i) (sign j)) (mult (abs i) (abs
+   j))], where [signed s n] (Agda's [s ◃ n]) is the integer of sign [s] and
+   absolute value [n].  The laws are in [Prelude›Data›Integer›Properties]. *)
+module Prelude›Data›Integer where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Arith›Mult use (mult)
+import Prelude›Data›Sign use (Sign; negative; positive)
+import Prelude›Data›Sign as S
+
+inductive Int : Type@0 where
+| pos (n : ℕ)
+| negsuc (n : ℕ)
+end
+
+open Int export (pos; negsuc)
+
+def neg (i : Int) : Int ≔
+  elim i return z . Int
+  | pos n ⇒ elim n return y . Int | zero ⇒ pos 0 | succ k, r ⇒ negsuc k end
+  | negsuc n ⇒ pos (succ n)
+  end
+end
+
+(* The integer [m - n]. *)
+def diff (m : ℕ) : ∀ (n : ℕ) → Int ≔
+  elim m return x . (∀ (n : ℕ) → Int)
+  | zero ⇒ λ (n : ℕ) →
+      elim n return y . Int | zero ⇒ pos 0 | succ q, s ⇒ negsuc q end
+  | succ p, r ⇒ λ (n : ℕ) →
+      elim n return y . Int | zero ⇒ pos (succ p) | succ q, s ⇒ r q end
+  end
+end
+
+def add (i : Int) (j : Int) : Int ≔
+  elim i return z . Int
+  | pos m ⇒
+      elim j return w . Int
+      | pos n ⇒ pos (plus m n)
+      | negsuc n ⇒ diff m (succ n)
+      end
+  | negsuc m ⇒
+      elim j return w . Int
+      | pos n ⇒ diff n (succ m)
+      | negsuc n ⇒ negsuc (succ (plus m n))
+      end
+  end
+end
+
+def sub (i : Int) (j : Int) : Int ≔ add i (neg j) end
+
+def succInt (i : Int) : Int ≔ add (pos 1) i end
+
+def predInt (i : Int) : Int ≔ add (negsuc 0) i end
+
+def abs (i : Int) : ℕ ≔
+  elim i return z . ℕ | pos n ⇒ n | negsuc n ⇒ succ n end
+end
+
+(* The sign; [0] counts as [positive], as in Agda. *)
+def sign (i : Int) : Sign ≔
+  elim i return z . Sign | pos n ⇒ positive | negsuc n ⇒ negative end
+end
+
+(* The integer of sign [s] and absolute value [n]; [0] has both signs. *)
+def signed (s : Sign) (n : ℕ) : Int ≔
+  elim n return y . Int
+  | zero ⇒ pos 0
+  | succ k, r ⇒
+      elim s return z . Int | negative ⇒ negsuc k | positive ⇒ pos (succ k) end
+  end
+end
+
+def mul (i : Int) (j : Int) : Int ≔
+  signed (S.mul (sign i) (sign j)) (mult (abs i) (abs j))
+end
+
+end

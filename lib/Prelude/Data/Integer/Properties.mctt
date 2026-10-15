@@ -1,0 +1,525 @@
+(* Laws of [Prelude›Data›Integer], after Agda's [Data.Integer.Properties],
+   stated with the Leibniz equality of [Prelude›Logic›Leibniz] at [Int]:
+   [neg] is an injective involution; [diff] and [neg]; [add] is a
+   commutative group with unit [pos 0] and inverse [neg]; [succInt] and
+   [predInt] are inverse; and [mul] is commutative and associative, with
+   unit [pos 1] and zero [pos 0], and [abs] takes it to [mult].
+
+   Laws of numbers ([Prelude›Arith›Plus], [Prelude›Arith›Mult]) are moved
+   under [pos], [negsuc], [diff] and [signed] by [eqToId] and congruence.
+
+   Associativity of [add] goes through [diff]: every integer is
+   [diff (posPart i) (negPart i)], and [diffAdd] adds two differences
+   componentwise, so the law reduces to the associativity of [plus] on
+   each component.  Associativity of [mul] goes through [signed]: the sign
+   of [signed s n] is [s] unless [n] is [0], when the product is [pos 0]
+   whatever the sign ([signedSignLeft], [signedSignRight]). *)
+module Prelude›Data›Integer›Properties where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Logic›Leibniz 0l use (Id; idRefl; idSym; idTrans; idCong;
+  idCongTwo; eqToId)
+import Prelude›Arith›Equality use (Eq; refl; sym)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
+open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc)
+import Prelude›Arith›Mult use (mult)
+open Prelude›Arith›Mult.Basic use (multZero; multOne; oneMult)
+open Prelude›Arith›Mult.Algebra use (multComm; multAssoc)
+import Prelude›Data›Sign use (Sign; negative; positive)
+import Prelude›Data›Sign as S
+import Prelude›Data›Sign›Properties.Mul as SM
+import Prelude›Data›Integer use (Int; pos; negsuc; neg; diff; add; succInt;
+  predInt; abs; sign; signed; mul)
+
+(* Negation. *)
+module Neg where
+
+theorem negInvolutive : ∀ (i : Int) → Id Int (neg (neg i)) i ≔
+  λ (i : Int) →
+    elim i return z . Id Int (neg (neg z)) z
+    | pos n ⇒
+        elim n return y . Id Int (neg (neg (pos y))) (pos y)
+        | zero ⇒ idRefl Int (pos 0)
+        | succ k, r ⇒ idRefl Int (pos (succ k))
+        end
+    | negsuc n ⇒ idRefl Int (negsuc n)
+    end
+end
+
+theorem negInjective : ∀ (i : Int) (j : Int) (h : Id Int (neg i) (neg j)) →
+    Id Int i j ≔
+  λ (i : Int) (j : Int) (h : Id Int (neg i) (neg j)) →
+    idTrans Int i (neg (neg j)) j
+      (idTrans Int i (neg (neg i)) (neg (neg j))
+         (idSym Int (neg (neg i)) i (negInvolutive i))
+         (idCong Int Int neg (neg i) (neg j) h))
+      (negInvolutive j)
+end
+
+end
+
+(* Differences of numbers. *)
+module Diff where
+
+(* Agda's [n⊖n≡0]. *)
+theorem diffSelf : ∀ (n : ℕ) → Id Int (diff n n) (pos 0) ≔
+  λ (n : ℕ) →
+    elim n return x . Id Int (diff x x) (pos 0)
+    | zero ⇒ idRefl Int (pos 0)
+    | succ p, ih ⇒ ih
+    end
+end
+
+theorem diffZeroRight : ∀ (n : ℕ) → Id Int (pos n) (diff n 0) ≔
+  λ (n : ℕ) →
+    elim n return x . Id Int (pos x) (diff x 0)
+    | zero ⇒ idRefl Int (pos 0)
+    | succ p, ih ⇒ idRefl Int (pos (succ p))
+    end
+end
+
+(* Agda's [-[n⊖m]≡m⊖n]. *)
+theorem negDiff : ∀ (m : ℕ) (n : ℕ) → Id Int (neg (diff m n)) (diff n m) ≔
+  λ (m : ℕ) →
+    elim m return x . (∀ (n : ℕ) → Id Int (neg (diff x n)) (diff n x))
+    | zero ⇒ λ (n : ℕ) →
+        elim n return y . Id Int (neg (diff 0 y)) (diff y 0)
+        | zero ⇒ idRefl Int (pos 0)
+        | succ q, s ⇒ idRefl Int (pos (succ q))
+        end
+    | succ p, ih ⇒ λ (n : ℕ) →
+        elim n return y . Id Int (neg (diff (succ p) y)) (diff y (succ p))
+        | zero ⇒ idRefl Int (negsuc p)
+        | succ q, s ⇒ ih q
+        end
+    end
+end
+
+(* [diff] respects equality of numbers in both arguments. *)
+theorem diffCong : ∀ (a : ℕ) (c : ℕ) (b : ℕ) (d : ℕ) (hac : Eq a c)
+    (hbd : Eq b d) → Id Int (diff a b) (diff c d) ≔
+  λ (a : ℕ) (c : ℕ) (b : ℕ) (d : ℕ) (hac : Eq a c) (hbd : Eq b d) →
+    idCongTwo ℕ ℕ Int diff a c b d (eqToId a c hac) (eqToId b d hbd)
+end
+
+end
+
+(* Addition. *)
+module Add where
+
+open Diff use (diffSelf; diffZeroRight; diffCong)
+
+theorem addIdentityLeft : ∀ (i : Int) → Id Int (add (pos 0) i) i ≔
+  λ (i : Int) →
+    elim i return z . Id Int (add (pos 0) z) z
+    | pos n ⇒ idRefl Int (pos n)
+    | negsuc n ⇒ idRefl Int (negsuc n)
+    end
+end
+
+theorem addIdentityRight : ∀ (i : Int) → Id Int (add i (pos 0)) i ≔
+  λ (i : Int) →
+    elim i return z . Id Int (add z (pos 0)) z
+    | pos m ⇒ idCong ℕ Int pos (plus m 0) m (eqToId (plus m 0) m (plusZero m))
+    | negsuc m ⇒ idRefl Int (negsuc m)
+    end
+end
+
+theorem addComm : ∀ (i : Int) (j : Int) → Id Int (add i j) (add j i) ≔
+  λ (i : Int) (j : Int) →
+    elim i return z . Id Int (add z j) (add j z)
+    | pos m ⇒
+        elim j return w . Id Int (add (pos m) w) (add w (pos m))
+        | pos n ⇒
+            idCong ℕ Int pos (plus m n) (plus n m)
+              (eqToId (plus m n) (plus n m) (plusComm m n))
+        | negsuc n ⇒ idRefl Int (diff m (succ n))
+        end
+    | negsuc m ⇒
+        elim j return w . Id Int (add (negsuc m) w) (add w (negsuc m))
+        | pos n ⇒ idRefl Int (diff n (succ m))
+        | negsuc n ⇒
+            idCong ℕ Int (λ (k : ℕ) → negsuc (succ k)) (plus m n) (plus n m)
+              (eqToId (plus m n) (plus n m) (plusComm m n))
+        end
+    end
+end
+
+(* Agda's [+-inverseʳ]. *)
+theorem addInverseRight : ∀ (i : Int) → Id Int (add i (neg i)) (pos 0) ≔
+  λ (i : Int) →
+    elim i return z . Id Int (add z (neg z)) (pos 0)
+    | pos n ⇒
+        elim n return y . Id Int (add (pos y) (neg (pos y))) (pos 0)
+        | zero ⇒ idRefl Int (pos 0)
+        | succ k, r ⇒ diffSelf k
+        end
+    | negsuc n ⇒ diffSelf n
+    end
+end
+
+(* Agda's [+-inverseˡ]. *)
+theorem addInverseLeft : ∀ (i : Int) → Id Int (add (neg i) i) (pos 0) ≔
+  λ (i : Int) →
+    idTrans Int (add (neg i) i) (add i (neg i)) (pos 0)
+      (addComm (neg i) i) (addInverseRight i)
+end
+
+(* A difference plus a number: [(m - n) + p] is [(m + p) - n]. *)
+theorem addDiffPos : ∀ (m : ℕ) (n : ℕ) (p : ℕ) →
+    Id Int (add (diff m n) (pos p)) (diff (plus m p) n) ≔
+  λ (m : ℕ) →
+    elim m return x . (∀ (n : ℕ) (p : ℕ) →
+                         Id Int (add (diff x n) (pos p)) (diff (plus x p) n))
+    | zero ⇒ λ (n : ℕ) (p : ℕ) →
+        elim n return y . Id Int (add (diff 0 y) (pos p)) (diff p y)
+        | zero ⇒ diffZeroRight p
+        | succ q, s ⇒ idRefl Int (diff p (succ q))
+        end
+    | succ k, ih ⇒ λ (n : ℕ) (p : ℕ) →
+        elim n return y . Id Int (add (diff (succ k) y) (pos p))
+                            (diff (succ (plus k p)) y)
+        | zero ⇒ idRefl Int (pos (succ (plus k p)))
+        | succ q, s ⇒ ih q p
+        end
+    end
+end
+
+(* A difference plus a negative: [(m - n) - (q + 1)] is
+   [m - (n + (q + 1))]. *)
+theorem addDiffNegsuc : ∀ (m : ℕ) (n : ℕ) (q : ℕ) →
+    Id Int (add (diff m n) (negsuc q)) (diff m (plus n (succ q))) ≔
+  λ (m : ℕ) →
+    elim m return x . (∀ (n : ℕ) (q : ℕ) →
+                         Id Int (add (diff x n) (negsuc q)) (diff x (plus n (succ q))))
+    | zero ⇒ λ (n : ℕ) (q : ℕ) →
+        elim n return y . Id Int (add (diff 0 y) (negsuc q))
+                            (diff 0 (plus y (succ q)))
+        | zero ⇒ idRefl Int (negsuc q)
+        | succ k, s ⇒
+            idCong ℕ Int negsuc (succ (plus k q)) (plus k (succ q))
+              (eqToId (succ (plus k q)) (plus k (succ q))
+                 (sym (plus k (succ q)) (succ (plus k q)) (plusSucc k q)))
+        end
+    | succ p, ih ⇒ λ (n : ℕ) (q : ℕ) →
+        elim n return y . Id Int (add (diff (succ p) y) (negsuc q))
+                            (diff (succ p) (plus y (succ q)))
+        | zero ⇒ idRefl Int (diff p q)
+        | succ k, s ⇒ ih k q
+        end
+    end
+end
+
+(* Differences add componentwise:
+   [(a - b) + (c - d)] is [(a + c) - (b + d)]. *)
+theorem diffAdd : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) →
+    Id Int (add (diff a b) (diff c d)) (diff (plus a c) (plus b d)) ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) →
+    elim c return x . (∀ (d : ℕ) →
+                         Id Int (add (diff a b) (diff x d)) (diff (plus a x) (plus b d)))
+    | zero ⇒ λ (d : ℕ) →
+        elim d return y . Id Int (add (diff a b) (diff 0 y))
+                            (diff (plus a 0) (plus b y))
+        | zero ⇒
+            idTrans Int (add (diff a b) (pos 0)) (diff (plus a 0) b)
+              (diff (plus a 0) (plus b 0))
+              (addDiffPos a b 0)
+              (diffCong (plus a 0) (plus a 0) b (plus b 0) (refl (plus a 0))
+                 (sym (plus b 0) b (plusZero b)))
+        | succ k, s ⇒
+            idTrans Int (add (diff a b) (negsuc k)) (diff a (plus b (succ k)))
+              (diff (plus a 0) (plus b (succ k)))
+              (addDiffNegsuc a b k)
+              (diffCong a (plus a 0) (plus b (succ k)) (plus b (succ k))
+                 (sym (plus a 0) a (plusZero a)) (refl (plus b (succ k))))
+        end
+    | succ p, ih ⇒ λ (d : ℕ) →
+        elim d return y . Id Int (add (diff a b) (diff (succ p) y))
+                            (diff (plus a (succ p)) (plus b y))
+        | zero ⇒
+            idTrans Int (add (diff a b) (pos (succ p)))
+              (diff (plus a (succ p)) b) (diff (plus a (succ p)) (plus b 0))
+              (addDiffPos a b (succ p))
+              (diffCong (plus a (succ p)) (plus a (succ p)) b (plus b 0)
+                 (refl (plus a (succ p))) (sym (plus b 0) b (plusZero b)))
+        | succ k, s ⇒
+            idTrans Int (add (diff a b) (diff p k)) (diff (plus a p) (plus b k))
+              (diff (plus a (succ p)) (plus b (succ k)))
+              (ih k)
+              (idSym Int (diff (plus a (succ p)) (plus b (succ k)))
+                 (diff (succ (plus a p)) (succ (plus b k)))
+                 (diffCong (plus a (succ p)) (succ (plus a p))
+                    (plus b (succ k)) (succ (plus b k))
+                    (plusSucc a p) (plusSucc b k)))
+        end
+    end
+end
+
+(* The positive and negative parts of an integer. *)
+def posPart (i : Int) : ℕ ≔
+  elim i return z . ℕ | pos n ⇒ n | negsuc n ⇒ 0 end
+end
+
+def negPart (i : Int) : ℕ ≔
+  elim i return z . ℕ | pos n ⇒ 0 | negsuc n ⇒ succ n end
+end
+
+(* Every integer is the difference of its parts. *)
+theorem diffParts : ∀ (i : Int) → Id Int (diff (posPart i) (negPart i)) i ≔
+  λ (i : Int) →
+    elim i return z . Id Int (diff (posPart z) (negPart z)) z
+    | pos n ⇒ idSym Int (pos n) (diff n 0) (diffZeroRight n)
+    | negsuc n ⇒ idRefl Int (negsuc n)
+    end
+end
+
+private def parts (i : Int) : Int ≔ diff (posPart i) (negPart i) end
+
+(* [add] respects equality in both arguments. *)
+private def addCong (i : Int) (k : Int) (j : Int) (l : Int)
+    (hik : Id Int i k) (hjl : Id Int j l) : Id Int (add i j) (add k l) ≔
+  idCongTwo Int Int Int add i k j l hik hjl
+end
+
+(* Associativity on differences, by [diffAdd] and [plusAssoc]. *)
+private def assocDiff (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) (e : ℕ) (f : ℕ) :
+    Id Int (add (add (diff a b) (diff c d)) (diff e f))
+      (add (diff a b) (add (diff c d) (diff e f))) ≔
+  idTrans Int (add (add (diff a b) (diff c d)) (diff e f))
+    (diff (plus a (plus c e)) (plus b (plus d f)))
+    (add (diff a b) (add (diff c d) (diff e f)))
+    (idTrans Int (add (add (diff a b) (diff c d)) (diff e f))
+       (diff (plus (plus a c) e) (plus (plus b d) f))
+       (diff (plus a (plus c e)) (plus b (plus d f)))
+       (idTrans Int (add (add (diff a b) (diff c d)) (diff e f))
+          (add (diff (plus a c) (plus b d)) (diff e f))
+          (diff (plus (plus a c) e) (plus (plus b d) f))
+          (addCong (add (diff a b) (diff c d)) (diff (plus a c) (plus b d))
+             (diff e f) (diff e f) (diffAdd a b c d) (idRefl Int (diff e f)))
+          (diffAdd (plus a c) (plus b d) e f))
+       (diffCong (plus (plus a c) e) (plus a (plus c e))
+          (plus (plus b d) f) (plus b (plus d f))
+          (plusAssoc a c e) (plusAssoc b d f)))
+    (idSym Int (add (diff a b) (add (diff c d) (diff e f)))
+       (diff (plus a (plus c e)) (plus b (plus d f)))
+       (idTrans Int (add (diff a b) (add (diff c d) (diff e f)))
+          (add (diff a b) (diff (plus c e) (plus d f)))
+          (diff (plus a (plus c e)) (plus b (plus d f)))
+          (addCong (diff a b) (diff a b) (add (diff c d) (diff e f))
+             (diff (plus c e) (plus d f)) (idRefl Int (diff a b))
+             (diffAdd c d e f))
+          (diffAdd a b (plus c e) (plus d f))))
+end
+
+(* Agda's [+-assoc]: each integer is replaced by the difference of its
+   parts, and back. *)
+theorem addAssoc : ∀ (i : Int) (j : Int) (k : Int) →
+    Id Int (add (add i j) k) (add i (add j k)) ≔
+  λ (i : Int) (j : Int) (k : Int) →
+    let toParts : ∀ (x : Int) → Id Int x (parts x) ≔
+          λ (x : Int) → idSym Int (parts x) x (diffParts x) in
+    idTrans Int (add (add i j) k) (add (add (parts i) (parts j)) (parts k))
+      (add i (add j k))
+      (addCong (add i j) (add (parts i) (parts j)) k (parts k)
+         (addCong i (parts i) j (parts j) (toParts i) (toParts j)) (toParts k))
+      (idTrans Int (add (add (parts i) (parts j)) (parts k))
+         (add (parts i) (add (parts j) (parts k))) (add i (add j k))
+         (assocDiff (posPart i) (negPart i) (posPart j) (negPart j)
+            (posPart k) (negPart k))
+         (addCong (parts i) i (add (parts j) (parts k)) (add j k)
+            (diffParts i)
+            (addCong (parts j) j (parts k) k (diffParts j) (diffParts k))))
+    end
+end
+
+end
+
+(* Successor and predecessor. *)
+module Succ where
+
+open Add use (addIdentityLeft; addAssoc)
+
+(* [add (negsuc 0) (pos 1)] computes to [pos 0]. *)
+theorem predSucc : ∀ (i : Int) → Id Int (predInt (succInt i)) i ≔
+  λ (i : Int) →
+    idTrans Int (add (negsuc 0) (add (pos 1) i)) (add (pos 0) i) i
+      (idSym Int (add (add (negsuc 0) (pos 1)) i) (add (negsuc 0) (add (pos 1) i))
+         (addAssoc (negsuc 0) (pos 1) i))
+      (addIdentityLeft i)
+end
+
+theorem succPred : ∀ (i : Int) → Id Int (succInt (predInt i)) i ≔
+  λ (i : Int) →
+    idTrans Int (add (pos 1) (add (negsuc 0) i)) (add (pos 0) i) i
+      (idSym Int (add (add (pos 1) (negsuc 0)) i) (add (pos 1) (add (negsuc 0) i))
+         (addAssoc (pos 1) (negsuc 0) i))
+      (addIdentityLeft i)
+end
+
+end
+
+(* Multiplication. *)
+module Mul where
+
+theorem absSigned : ∀ (s : Sign) (n : ℕ) → Eq (abs (signed s n)) n ≔
+  λ (s : Sign) (n : ℕ) →
+    elim n return x . Eq (abs (signed s x)) x
+    | zero ⇒ ⋆
+    | succ k, r ⇒
+        elim s return w . Eq (abs (signed w (succ k))) (succ k)
+        | negative ⇒ refl k
+        | positive ⇒ refl k
+        end
+    end
+end
+
+(* Agda's [◃-inverse]: an integer is determined by its sign and its
+   absolute value. *)
+theorem signedAbs : ∀ (i : Int) → Id Int (signed (sign i) (abs i)) i ≔
+  λ (i : Int) →
+    elim i return z . Id Int (signed (sign z) (abs z)) z
+    | pos n ⇒
+        elim n return y . Id Int (signed positive y) (pos y)
+        | zero ⇒ idRefl Int (pos 0)
+        | succ k, r ⇒ idRefl Int (pos (succ k))
+        end
+    | negsuc n ⇒ idRefl Int (negsuc n)
+    end
+end
+
+(* [signed] respects equality in both arguments. *)
+private def signedCong (s : Sign) (t : Sign) (m : ℕ) (n : ℕ)
+    (hst : Id Sign s t) (hmn : Eq m n) : Id Int (signed s m) (signed t n) ≔
+  idCongTwo Sign ℕ Int signed s t m n hst (eqToId m n hmn)
+end
+
+(* Agda's [abs-*]. *)
+theorem absMul : ∀ (i : Int) (j : Int) → Eq (abs (mul i j)) (mult (abs i) (abs j)) ≔
+  λ (i : Int) (j : Int) →
+    absSigned (S.mul (sign i) (sign j)) (mult (abs i) (abs j))
+end
+
+theorem mulComm : ∀ (i : Int) (j : Int) → Id Int (mul i j) (mul j i) ≔
+  λ (i : Int) (j : Int) →
+    signedCong (S.mul (sign i) (sign j)) (S.mul (sign j) (sign i))
+      (mult (abs i) (abs j)) (mult (abs j) (abs i))
+      (SM.mulComm (sign i) (sign j)) (multComm (abs i) (abs j))
+end
+
+theorem mulZeroLeft : ∀ (i : Int) → Id Int (mul (pos 0) i) (pos 0) ≔
+  λ (i : Int) → idRefl Int (pos 0)
+end
+
+theorem mulZeroRight : ∀ (i : Int) → Id Int (mul i (pos 0)) (pos 0) ≔
+  λ (i : Int) →
+    signedCong (S.mul (sign i) positive) (S.mul (sign i) positive)
+      (mult (abs i) 0) 0 (idRefl Sign (S.mul (sign i) positive))
+      (multZero (abs i))
+end
+
+theorem mulIdentityLeft : ∀ (i : Int) → Id Int (mul (pos 1) i) i ≔
+  λ (i : Int) →
+    idTrans Int (signed (sign i) (mult 1 (abs i))) (signed (sign i) (abs i)) i
+      (signedCong (sign i) (sign i) (mult 1 (abs i)) (abs i)
+         (idRefl Sign (sign i)) (oneMult (abs i)))
+      (signedAbs i)
+end
+
+theorem mulIdentityRight : ∀ (i : Int) → Id Int (mul i (pos 1)) i ≔
+  λ (i : Int) →
+    idTrans Int (signed (S.mul (sign i) positive) (mult (abs i) 1))
+      (signed (sign i) (abs i)) i
+      (signedCong (S.mul (sign i) positive) (sign i) (mult (abs i) 1) (abs i)
+         (SM.mulIdentityRight (sign i)) (multOne (abs i)))
+      (signedAbs i)
+end
+
+(* The sign of [signed s n] matters only when [n] is not [0]; when it is,
+   [mult 0 m] is [0] and both sides are [pos 0]. *)
+theorem signedSignLeft : ∀ (s : Sign) (t : Sign) (n : ℕ) (m : ℕ) →
+    Id Int (signed (S.mul (sign (signed s n)) t) (mult n m))
+      (signed (S.mul s t) (mult n m)) ≔
+  λ (s : Sign) (t : Sign) (n : ℕ) (m : ℕ) →
+    elim n return x . Id Int (signed (S.mul (sign (signed s x)) t) (mult x m))
+                        (signed (S.mul s t) (mult x m))
+    | zero ⇒ idRefl Int (pos 0)
+    | succ k, r ⇒
+        elim s return w . Id Int (signed (S.mul (sign (signed w (succ k))) t)
+                                    (mult (succ k) m))
+                            (signed (S.mul w t) (mult (succ k) m))
+        | negative ⇒ idRefl Int (signed (S.mul negative t) (mult (succ k) m))
+        | positive ⇒ idRefl Int (signed (S.mul positive t) (mult (succ k) m))
+        end
+    end
+end
+
+(* The same on the right; when [m] is [0], [mult n 0] is [0] by
+   [multZero]. *)
+theorem signedSignRight : ∀ (s : Sign) (t : Sign) (n : ℕ) (m : ℕ) →
+    Id Int (signed (S.mul s (sign (signed t m))) (mult n m))
+      (signed (S.mul s t) (mult n m)) ≔
+  λ (s : Sign) (t : Sign) (n : ℕ) (m : ℕ) →
+    elim m return x . Id Int (signed (S.mul s (sign (signed t x))) (mult n x))
+                        (signed (S.mul s t) (mult n x))
+    | zero ⇒
+        idTrans Int (signed (S.mul s positive) (mult n 0)) (pos 0)
+          (signed (S.mul s t) (mult n 0))
+          (signedCong (S.mul s positive) (S.mul s positive) (mult n 0) 0
+             (idRefl Sign (S.mul s positive)) (multZero n))
+          (idSym Int (signed (S.mul s t) (mult n 0)) (pos 0)
+             (signedCong (S.mul s t) (S.mul s t) (mult n 0) 0
+                (idRefl Sign (S.mul s t)) (multZero n)))
+    | succ k, r ⇒
+        elim t return w . Id Int (signed (S.mul s (sign (signed w (succ k))))
+                                    (mult n (succ k)))
+                            (signed (S.mul s w) (mult n (succ k)))
+        | negative ⇒ idRefl Int (signed (S.mul s negative) (mult n (succ k)))
+        | positive ⇒ idRefl Int (signed (S.mul s positive) (mult n (succ k)))
+        end
+    end
+end
+
+(* Agda's [*-assoc]. *)
+theorem mulAssoc : ∀ (i : Int) (j : Int) (k : Int) →
+    Id Int (mul (mul i j) k) (mul i (mul j k)) ≔
+  λ (i : Int) (j : Int) (k : Int) →
+    let si : Sign ≔ sign i; sj : Sign ≔ sign j; sk : Sign ≔ sign k;
+        ai : ℕ ≔ abs i; aj : ℕ ≔ abs j; ak : ℕ ≔ abs k;
+        sij : Sign ≔ S.mul si sj; sjk : Sign ≔ S.mul sj sk in
+    idTrans Int (mul (mul i j) k)
+      (signed (S.mul sij sk) (mult (mult ai aj) ak)) (mul i (mul j k))
+      (idTrans Int (mul (mul i j) k)
+         (signed (S.mul (sign (signed sij (mult ai aj))) sk) (mult (mult ai aj) ak))
+         (signed (S.mul sij sk) (mult (mult ai aj) ak))
+         (signedCong (S.mul (sign (signed sij (mult ai aj))) sk)
+            (S.mul (sign (signed sij (mult ai aj))) sk)
+            (mult (abs (signed sij (mult ai aj))) ak) (mult (mult ai aj) ak)
+            (idRefl Sign (S.mul (sign (signed sij (mult ai aj))) sk))
+            (Prelude›Arith›Equality.cong (λ (x : ℕ) → mult x ak)
+               (abs (signed sij (mult ai aj))) (mult ai aj)
+               (absSigned sij (mult ai aj))))
+         (signedSignLeft sij sk (mult ai aj) ak))
+      (idTrans Int (signed (S.mul sij sk) (mult (mult ai aj) ak))
+         (signed (S.mul si sjk) (mult ai (mult aj ak))) (mul i (mul j k))
+         (signedCong (S.mul sij sk) (S.mul si sjk) (mult (mult ai aj) ak)
+            (mult ai (mult aj ak)) (SM.mulAssoc si sj sk) (multAssoc ai aj ak))
+         (idSym Int (mul i (mul j k)) (signed (S.mul si sjk) (mult ai (mult aj ak)))
+            (idTrans Int (mul i (mul j k))
+               (signed (S.mul si (sign (signed sjk (mult aj ak))))
+                  (mult ai (mult aj ak)))
+               (signed (S.mul si sjk) (mult ai (mult aj ak)))
+               (signedCong (S.mul si (sign (signed sjk (mult aj ak))))
+                  (S.mul si (sign (signed sjk (mult aj ak))))
+                  (mult ai (abs (signed sjk (mult aj ak)))) (mult ai (mult aj ak))
+                  (idRefl Sign (S.mul si (sign (signed sjk (mult aj ak)))))
+                  (Prelude›Arith›Equality.cong (λ (x : ℕ) → mult ai x)
+                     (abs (signed sjk (mult aj ak))) (mult aj ak)
+                     (absSigned sjk (mult aj ak))))
+               (signedSignRight si sjk ai (mult aj ak)))))
+    end
+end
+
+end
+
+end
