@@ -12,7 +12,7 @@ From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasse
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
-From Mctt.Core.Completeness Require IndCases IndSem ElimCases TeleSem SubstitutionCases.
+From Mctt.Core.Completeness Require IndCases IndSem UnitCases ElimCases TeleSem SubstitutionCases.
 From Mctt.Core.Completeness Require Import UniverseCases.
 From Mctt.Core.Semantic Require Import Realizability IndCanon.
 From Mctt.Core.Syntactic Require Import Substitution IndCong.
@@ -647,7 +647,7 @@ Proof.
             by exact HK; lia).
     assert (HΞe : Ξ0 = (ptyp_tele t ++ IndCases.astrat gs K ++ ind_nparams D0) ++ ind_uparams D0)
       by (unfold Ξ0; rewrite params_split, <- !List.app_assoc; reflexivity).
-    fold L; rewrite HΞe, HL; apply IndSem.rel_wk_under_ctx_shiftn; rewrite <- HΞe; exact HΞ0.
+    fold L; rewrite HΞe, HL; apply UnitCases.rel_wk_under_ctx_shiftn; rewrite <- HΞe; exact HΞ0.
   - pose proof (IH ltac:(lia)) as Hτ.
     destruct (nth_error_lt_some (ptyp_ps t) m ltac:(lia)) as [P HP].
     assert (HT : exists T, List.nth_error (tele_insts (ind_nparams D0) (sb_of_wk (wk_shiftn L)) (ptyp_ps t)) m = Some T).
@@ -879,7 +879,7 @@ Section Comps.
         pose proof (glu_ctx_env_per_env HSb HR Hσ) as HE.
         assert (Eb : ⟦ Type⟨t⟩[wk_shiftn (List.length Pre)]ʷ ⟧ env_args nil (ups ++ zs) ↘ d_suniv l) by (cbn [exp_wk]; econstructor; exact Hlv).
         assert (Ea : ⟦ Type⟨t⟩ ⟧ ⟪wk_shiftn (List.length Pre)⟫ (env_args nil (ups ++ zs)) ↘ bu)
-          by (rewrite env_args_app, <- Hzs, IndSem.eval_wk_shiftn_args; exact Hbu).
+          by (rewrite env_args_app, <- Hzs, UnitCases.eval_wk_shiftn_args; exact Hbu).
         pose proof (IndSem.univ_idx_wk _ _ _ _ _ _ _ _ _ HCs HSs HR HE Eb Ea ltac:(right; eauto)) as Hi.
         rewrite Hi; reflexivity. }
       rewrite Hidx; split; [ exact Hpa | exact HP ].
@@ -1260,10 +1260,10 @@ Section Comps.
     pose proof (rec_sub_valid D HDc Hc c gs gs1 t gs2 Hcon Heq k (Nat.lt_le_incl _ _ Hk)) as Hτ.
     assert (Hτev : ⟦ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn k (ptyp_ps t)) ⟧s ρ ↘ env_args (env_args nil ups) (List.firstn k bsr)).
     { apply IndSem.eval_sb_of_list; [| apply eval_exps_firstn; exact Hbsr ].
-      replace (env_args nil ups) with (⟪wk_shiftn L⟫ ρ); [ apply eval_sub_of_wk; apply IndSem.wk_mono_shiftn |].
+      replace (env_args nil ups) with (⟪wk_shiftn L⟫ ρ); [ apply eval_sub_of_wk; apply UnitCases.wk_mono_shiftn |].
       unfold ρ, L; rewrite env_args_app.
       replace (ptyp_depth t + K + ind_nn D) with (List.length (ns ++ nv ++ ys)) by (rewrite !List.length_app; lia).
-      apply IndSem.eval_wk_shiftn_args. }
+      apply UnitCases.eval_wk_shiftn_args. }
     destruct (TeleSem.typ_inst_link _ _ _ _ _ _ _ _ _ HAv HR0 Hτ HE Hτev) as (a & b & Ea & Eb & Hab).
     fold K L in Ea; rewrite <- ETk in Ea.
     assert (a = a1) as -> by (eapply functional_eval_exp; eassumption).
@@ -1644,7 +1644,7 @@ Section Former.
           by (rewrite <- env_args_app, List.firstn_skipn; reflexivity).
         replace (List.length (ind_nparams D)) with (List.length (List.skipn (ind_nu D) vs))
           by (rewrite List.length_skipn, length_nparams; unfold ind_nn, ind_np in *; lia).
-        rewrite IndSem.eval_wk_shiftn_args; econstructor; exact Hl'. }
+        rewrite UnitCases.eval_wk_shiftn_args; econstructor; exact Hl'. }
       exact (IndSem.univ_idx_wk _ _ _ _ _ _ _ _ _ HCs HSs HR HE Eb Ea ltac:(right; eauto)).
   Qed.
 

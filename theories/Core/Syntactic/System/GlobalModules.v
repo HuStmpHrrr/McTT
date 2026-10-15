@@ -620,6 +620,28 @@ Proof.
     exact (Hfr Hin).
 Qed.
 
+(** A global alias is an alias unit. *)
+Lemma gm_submodule_alias_unit : forall Φ T x ip U r,
+    gm_submodule T Φ x ip = Some (mr_alias U r) -> exists Δ E, U = gu_mk Δ (md_alias E).
+Proof.
+  fix IH 1; intros [| Φ y E | Φ c its] * Hs; cbn in Hs; [ discriminate | | exact (IH _ _ _ _ _ _ Hs) ].
+  destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ Hs) ].
+  destruct E as [? ? ? ? | ? [Δ [Φ' | E']] | ? D Φ' | ? Δ p Ns]; try discriminate.
+  - destruct ip; [ discriminate | exact (IH _ _ _ _ _ _ Hs) ].
+  - injection Hs as <- _; eauto.
+  - destruct ip; [ discriminate | exact (IH _ _ _ _ _ _ Hs) ].
+  - injection Hs as <- _; eauto.
+Qed.
+
+Lemma gc_module_alias_unit : forall Θ Ξ p U r,
+    gc_module Θ Ξ p = Some (mr_alias U r) -> exists Δ E, U = gu_mk Δ (md_alias E).
+Proof.
+  intros * H; unfold gc_module, gc_module_u in H.
+  destruct (gs_find_tele Ξ p) as [[[V [| x ip]] T] |]; [ discriminate | eapply gm_submodule_alias_unit; exact H |].
+  destruct (gds_lookup Θ (q_unit p)) as [V |]; [| discriminate ].
+  unfold gm_module in H; destruct (q_chain p) as [| x ip]; [ discriminate | eapply gm_submodule_alias_unit; exact H ].
+Qed.
+
 Lemma gc_module_alias_app : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall p U r0,
     gc_module Θ Ξ p = Some (mr_alias U r0) ->
     forall ch, gc_module Θ Ξ (qname_app p ch) = Some (mr_alias U (r0 ++ ch)) /\
@@ -1149,12 +1171,18 @@ Proof.
     rewrite (gm_submodule_alias_resolve _ _ _ _ _ _ Hm) in Hr; discriminate.
 Qed.
 
-Lemma member_type_functional : forall Θ Ξ,
+Lemma member_type_functional_all : forall Θ Ξ,
     (forall Γ H ch R, member_type Θ Ξ Γ H ch R -> forall R', member_type Θ Ξ Γ H ch R' -> R = R') /\
-    (forall Γ U ch R, unit_member_type Θ Ξ Γ U ch R -> forall R', unit_member_type Θ Ξ Γ U ch R' -> R = R').
+    (forall Γ U ch R, unit_member_type Θ Ξ Γ U ch R -> forall R', unit_member_type Θ Ξ Γ U ch R' -> R = R') /\
+    (forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> forall Φx', body_xp Θ Ξ Γ Φ Φx' -> Φx = Φx') /\
+    (forall io Γ H its gs, items_gen Θ Ξ io Γ H its gs -> forall gs', items_gen Θ Ξ io Γ H its gs' -> gs = gs').
 Proof.
   intros Θ Ξ; apply member_type_both_ind.
-  all: intros *; intros; match goal with H' : _ _ _ _ _ _ ?A' |- _ = ?A' => inversion H'; subst end;
+  1-12: intros *; intros; match goal with H' : _ _ _ _ _ _ ?A' |- _ = ?A' => inversion H'; subst end;
+    repeat match goal with
+      | IH : forall Φx', body_xp _ _ ?G ?Φ Φx' -> ?X = Φx', Hb : body_xp _ _ ?G ?Φ ?Y |- _ =>
+          assert_fails constr_eq X Y; pose proof (IH _ Hb); subst Y
+      end;
     try congruence;
     try solve [ exfalso; eapply gc_resolve_module_alias_excl; eassumption ];
     try solve [ match goal with H1 : gc_module _ _ ?p = Some _, H2 : gc_module _ _ ?p = Some _ |- _ =>
@@ -1172,4 +1200,73 @@ Proof.
       rewrite E1 in E2; injection E2; intros; subst end.
     f_equal; eauto.
   - f_equal; eauto.
+  - intros * H'; inversion H'; reflexivity.
+  - intros * Hx IH * H'; inversion H'; subst; f_equal; eauto.
+  - intros * Hx IH Hm _ Htl Hg IHg Hok * H'; inversion H'; subst.
+    match goal with Hb : body_xp _ _ _ _ ?Y |- _ => pose proof (IH _ Hb); subst Y end.
+    match goal with Hg' : items_gen _ _ _ _ _ _ ?Y |- _ => pose proof (IHg _ Hg'); subst Y end.
+    reflexivity.
+  - intros * H'; inversion H'; reflexivity.
+  - intros * Hg IH * H'; inversion H'; subst; f_equal; eauto.
+  - intros * Hm IHm Hg IH * H'; inversion H'; subst;
+      match goal with Hm' : member_type _ _ _ _ _ _ |- _ => pose proof (IHm _ Hm') as E end; try discriminate E.
+    injection E as <-; f_equal; eauto.
+  - intros * Hm IHm Hg IH * H'; inversion H'; subst;
+      match goal with Hm' : member_type _ _ _ _ _ _ |- _ => pose proof (IHm _ Hm') as E end; try discriminate E.
+    injection E as <-; f_equal; eauto.
+  - intros * Hm IHm Hq Hi Hg IH * H'; inversion H'; subst;
+      match goal with Hm' : member_type _ _ _ _ _ _ |- _ => pose proof (IHm _ Hm') as E end; try discriminate E.
+    + match goal with Hq' : mod_qname _ = Some _, Hi' : _ = Some _ |- _ => rewrite Hq in Hq'; injection Hq' as <-; rewrite Hi in Hi'; injection Hi' as <- <- <- end.
+      f_equal; eauto.
+    + match goal with Hn : forall mp, _ -> _ = None |- _ => rewrite (Hn _ Hq) in Hi; discriminate end.
+  - intros * Hm IHm Hn Hg IH * H'; inversion H'; subst;
+      match goal with Hm' : member_type _ _ _ _ _ _ |- _ => pose proof (IHm _ Hm') as E end; try discriminate E.
+    + match goal with Hq' : mod_qname _ = Some _, Hi' : _ = Some _ |- _ => rewrite (Hn _ Hq') in Hi'; discriminate end.
+    + f_equal; eauto.
 Qed.
+
+Corollary member_type_functional : forall Θ Ξ,
+    (forall Γ H ch R, member_type Θ Ξ Γ H ch R -> forall R', member_type Θ Ξ Γ H ch R' -> R = R') /\
+    (forall Γ U ch R, unit_member_type Θ Ξ Γ U ch R -> forall R', unit_member_type Θ Ξ Γ U ch R' -> R = R').
+Proof. intros; destruct (member_type_functional_all Θ Ξ) as (H1 & H2 & _); split; assumption. Qed.
+
+Corollary body_xp_functional : forall Θ Ξ Γ Φ Φx Φx', body_xp Θ Ξ Γ Φ Φx -> body_xp Θ Ξ Γ Φ Φx' -> Φx = Φx'.
+Proof. intros * H1 H2; exact (proj1 (proj2 (proj2 (member_type_functional_all Θ Ξ))) _ _ _ H1 _ H2). Qed.
+
+Corollary items_gen_functional : forall Θ Ξ io Γ H its gs gs',
+    items_gen Θ Ξ io Γ H its gs -> items_gen Θ Ξ io Γ H its gs' -> gs = gs'.
+Proof. intros * H1 H2; exact (proj2 (proj2 (proj2 (member_type_functional_all Θ Ξ))) _ _ _ _ _ H1 _ H2). Qed.
+
+Lemma unit_xp_functional : forall Θ Ξ Γ U Ux Ux', unit_xp Θ Ξ Γ U Ux -> unit_xp Θ Ξ Γ U Ux' -> Ux = Ux'.
+Proof.
+  intros * H1 H2; destruct H1; inversion H2; subst; [ f_equal; f_equal; eapply body_xp_functional; eassumption | reflexivity ].
+Qed.
+
+Lemma unit_unfold_functional : forall Θ Ξ Γ U ch M M',
+    unit_unfold Θ Ξ Γ U ch M -> unit_unfold Θ Ξ Γ U ch M' -> M = M'.
+Proof.
+  intros * H1 H2; destruct H1 as [U Ux ch M Hx Hn HM | Δ Φ x ch Φ0 H its1 it Φx0 Hi Hx0 Hne];
+    inversion H2 as [U2 Ux' ch2 M2 Hx' Hn' HM' | Δ2 Φ2 x2 ch2 Φ0' H2' its1' it' Φx0' Hi' Hx0' Hne']; subst.
+  - pose proof (unit_xp_functional _ _ _ _ _ _ Hx Hx') as <-; congruence.
+  - cbn [unit_noitem] in Hn; congruence.
+  - cbn [unit_noitem] in Hn'; congruence.
+  - rewrite Hi in Hi'; injection Hi' as <- <- <- <-.
+    pose proof (body_xp_functional _ _ _ _ _ _ Hx0 Hx0') as <-; reflexivity.
+Qed.
+
+Lemma member_unfold_ch_functional : forall Θ Ξ Γ H ch M M',
+    member_unfold_ch Θ Ξ Γ H ch M -> member_unfold_ch Θ Ξ Γ H ch M' -> M = M'.
+Proof.
+  intros * H1; revert M'; induction H1; intros M' H2; inversion H2; subst; try congruence.
+  all: try solve [ exfalso; match goal with Hn : forall _ _ _ _, gc_resolve _ _ _ <> _, Hr : gc_resolve _ _ _ = Some _ |- _ =>
+                                eapply Hn; exact Hr end ].
+  all: try solve [ f_equal; auto ].
+  all: repeat match goal with
+         | E1 : ctx_find_mod ?G ?x = _, E2 : ctx_find_mod ?G ?x = _ |- _ => rewrite E1 in E2; injection E2 as <-
+         | E1 : gc_module _ _ ?p = _, E2 : gc_module _ _ ?p = _ |- _ => rewrite E1 in E2; injection E2 as <- <-
+         | U1 : unit_unfold _ _ ?G ?U ?c ?X, U2 : unit_unfold _ _ ?G ?U ?c ?Y |- _ =>
+             assert_fails constr_eq X Y; pose proof (unit_unfold_functional _ _ _ _ _ _ _ U1 U2); subst
+         end; congruence.
+Qed.
+
+

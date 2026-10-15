@@ -1,20 +1,21 @@
 (** * Computing Member Types
 
-    [member_type_impl] decides [member_type] by recursion on a termination
-    order ([mt_order]), which mirrors its recursion: a slot is read in the
-    context after it, so the context gets shorter as the syntax grows, and an
-    alias is read in the empty context, where the order asks for the alias's
-    own order.  Every alias of a well-formed global context has one
-    ([gctx_aliases_ordered]), since an alias can only name modules that are
-    already there, so every well-formed module expression has an order
-    ([mt_order_of_wf]). *)
+    [member_type_impl] decides [member_type], together with the expansion
+    of bodies ([body_xp]) and what an open generates ([items_gen]), by
+    recursion on a termination order ([mt_order]) that mirrors their
+    recursion: a slot is read in the context after it, a body module in the
+    context of the expanded body before it, and an alias in the empty
+    context, where the order asks for the alias's own order.  Every alias of
+    a well-formed global context has one ([gctx_aliases_ordered]), since an
+    alias can only name modules that are already there, so every module
+    expression has an order ([mt_order_total]). *)
 
 From Stdlib Require Import Lia List PeanoNat String.
 From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Members Imports.
+From Mctt.Core.Syntactic Require Import Members.
 From Mctt.Core.Syntactic.System Require Import MemberLemmas GlobalModules MemberWf.
 From Mctt.Core.Completeness Require Import MemberSem.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
@@ -24,7 +25,8 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
     The size of a module expression or a unit counts its nested units, and
     the size of a context counts the units of its slots: the terms of either
-    are never looked at. *)
+    are never looked at.  An open counts for the aliases it may generate,
+    each of its target or of a member of it. *)
 
 Fixpoint msize (H : modexp) : nat :=
   match H with
@@ -51,7 +53,8 @@ with gsize (Φ : gmod) : nat :=
   match Φ with
   | gm_nil => 0
   | gm_ext Φ _ (ge_mod _ U) => gsize Φ + usize U
-  | gm_ext Φ _ _ | gm_open Φ _ _ => gsize Φ
+  | gm_ext Φ _ _ => gsize Φ
+  | gm_open Φ H its => S (gsize Φ + msize H + List.length its * S (S (msize H)))
   end.
 
 Fixpoint csize (Γ : ctx) : nat :=
@@ -59,6 +62,18 @@ Fixpoint csize (Γ : ctx) : nat :=
   | nil => 0
   | ce_mod U :: Γ' => usize U + csize Γ'
   | _ :: Γ' => csize Γ'
+  end.
+
+Definition esize (E : gentry) : nat :=
+  match E with
+  | ge_mod _ U => usize U
+  | _ => 0
+  end.
+
+Definition cesize (e : centry) : nat :=
+  match e with
+  | ce_mod U => usize U
+  | _ => 0
   end.
 
 Lemma usize_mk : forall Δ D, usize (gu_mk Δ D) = S (csize Δ + dsize D).
@@ -70,25 +85,80 @@ Qed.
 Lemma csize_app : forall Ψ Γ, csize (Ψ ++ Γ) = csize Ψ + csize Γ.
 Proof. induction Ψ as [| [A | A M | U] Ψ IH]; intros; cbn; rewrite ?IH; lia. Qed.
 
-Lemma csize_body_ctx : forall Φ, csize (body_ctx Φ) = gsize Φ.
+Lemma gsize_ext : forall Φ x E, gsize (gm_ext Φ x E) = gsize Φ + esize E.
+Proof. intros Φ x [] ; cbn; lia. Qed.
+
+Lemma csize_repeat_ass : forall n, csize (List.repeat (ce_ass a_True) n) = 0.
+Proof. induction n; cbn; auto. Qed.
+
+Lemma csize_body_ctx : forall Φ, csize (body_ctx Φ) <= gsize Φ.
 Proof.
-  induction Φ as [| Φ IH x [b pv A [M |] | pm U | ? ? ? | ? ? ? ?] | Φ IH c its]; cbn; rewrite ?csize_app, ?IH; [ lia .. |].
-  enough (csize (repeat (ce_ass a_True) (List.length its)) = 0) by lia.
-  induction (List.length its); cbn; auto.
+  induction Φ as [| Φ IH x [b pv A [M |] | pm U | ? ? ? | ? ? ? ?] | Φ IH c its]; cbn; rewrite ?csize_app, ?csize_repeat_ass; lia.
 Qed.
 
-Lemma gsize_prefix : forall Φ x Φx, gm_prefix_upto Φ x = Some Φx -> gsize Φx <= gsize Φ.
+Lemma csize_body_ctx_ext : forall Φ x E, csize (body_ctx (gm_ext Φ x E)) = esize E + csize (body_ctx Φ).
+Proof. intros Φ x [? ? ? [] | | |]; reflexivity. Qed.
+
+(** The size of a weakening is the size of what it weakens. *)
+Lemma size_wk :
+  (forall M : exp, True) /\
+  (forall H, forall φ, msize (modexp_wk H φ) = msize H) /\
+  (forall b : bnd, True) /\
+  (forall U, forall φ, usize (gunit_wk U φ) = usize U) /\
+  (forall D, forall φ, dsize (moddef_wk D φ) = dsize D) /\
+  (forall Φ, forall φ, gsize (gmod_wk Φ φ) = gsize Φ) /\
+  (forall E, forall φ, esize (gentry_wk E φ) = esize E) /\
+  (forall e, forall φ, cesize (centry_wk e φ) = cesize e).
 Proof.
-  induction Φ as [| Φ IH y E | Φ IH c]; intros * H; cbn in H; try discriminate.
-  - destruct (String.eqb x y); [ injection H as <-; lia |].
-    specialize (IH _ _ H); destruct E as [? ? ? ? | U | ? ? ? | ? ? ? ?]; cbn; lia.
-  - specialize (IH _ _ H); cbn; lia.
+  syn_mut_ind; intros; try exact I; cbn [modexp_wk moddef_wk gentry_wk centry_wk msize dsize esize cesize]; auto.
+  - match goal with HD : forall φ, dsize (moddef_wk D φ) = dsize D |- _ => rewrite gunit_wk_mk, !usize_mk, HD end.
+    f_equal; f_equal.
+    match goal with HF : List.Forall _ Δ |- _ => induction HF as [| e Δ He HF IHF] end; [ reflexivity |].
+    cbn [tele_wk]; destruct e; cbn [csize centry_wk] in *; auto.
+    specialize (He (wk_qn (List.length Δ) φ)); cbn [cesize] in He; lia.
+  - cbn [gmod_wk]; rewrite !gsize_ext; auto.
+  - cbn [gmod_wk gsize]; match goal with IHg : forall φ, gsize (gmod_wk _ φ) = _, IHm : forall φ, msize (modexp_wk _ φ) = _ |- _ =>
+      rewrite IHg, IHm end; reflexivity.
+Qed.
+
+Lemma msize_wk : forall H φ, msize (modexp_wk H φ) = msize H.
+Proof. exact (proj1 (proj2 size_wk)). Qed.
+
+Lemma usize_wk : forall U φ, usize (gunit_wk U φ) = usize U.
+Proof. exact (proj1 (proj2 (proj2 (proj2 size_wk)))). Qed.
+
+(** What an open generates: at most an alias of its target or of a member
+    of it for each item. *)
+Lemma gens_csize : forall Θ Ξ io Γ H its gs, items_gen Θ Ξ io Γ H its gs ->
+    forall Φ k, csize (body_ctx (gens_append Φ k gs)) <= csize (body_ctx Φ) + List.length its * S (S (msize H)).
+Proof.
+  induction 1; intros Φ k; cbn [gens_append ig_entry List.length]; try lia;
+    match goal with IH : forall Φ k, _ <= _ |- _ => rewrite IH end;
+    rewrite csize_body_ctx_ext; cbn [esize gentry_wk];
+    rewrite ?usize_wk, ?usize_mk; cbn [csize dsize msize]; rewrite ?msize_wk; lia.
+Qed.
+
+Lemma body_xp_csize : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> csize (body_ctx Φx) <= gsize Φ.
+Proof.
+  induction 1.
+  - reflexivity.
+  - rewrite csize_body_ctx_ext, gsize_ext; lia.
+  - cbn [gsize]; match goal with Hg : items_gen _ _ _ _ _ _ _ |- _ => pose proof (gens_csize _ _ _ _ _ _ _ Hg Φx 0) end; lia.
+Qed.
+
+Lemma prefix_csize : forall Φ y Φp, gm_prefix_upto Φ y = Some Φp -> csize (body_ctx Φp) <= csize (body_ctx Φ).
+Proof.
+  induction Φ as [| Φ IH x E | Φ IH c its]; intros * Hp; cbn in Hp; try discriminate.
+  - destruct (String.eqb y x); [ injection Hp as <-; lia |].
+    rewrite csize_body_ctx_ext; specialize (IH _ _ Hp); lia.
+  - destruct (existsb _ _); [ discriminate |]; cbn [body_ctx]; rewrite csize_app, csize_repeat_ass; eauto.
 Qed.
 
 Lemma gm_prefix_upto_name : forall Φ x Φ' y E, gm_prefix_upto Φ x = Some (gm_ext Φ' y E) -> y = x.
 Proof.
-  induction Φ as [| Φ IH z E0 | Φ IH c]; intros * H; cbn in H; try discriminate; eauto.
-  destruct (String.eqb_spec x z) as [-> |]; [ congruence | eauto ].
+  induction Φ as [| Φ IH z E0 | Φ IH c its]; intros * H; cbn in H; try discriminate; eauto.
+  - destruct (String.eqb_spec x z) as [-> |]; [ congruence | eauto ].
+  - destruct (existsb _ _); [ discriminate | eauto ].
 Qed.
 
 (** ** Slots, Read after Themselves *)
@@ -162,8 +232,8 @@ Section Slots.
   Proof.
     induction Γ as [| e Γ IH]; intros [| y] * H Hu; cbn in H; try discriminate.
     - destruct e; try discriminate; injection H as -> ->.
-      exact (proj2 (member_type_strengthen _ _ Hc) _ _ _ _ Hu _ _ _ eq_refl (wk_mod_inv_shift _ _)).
-    - destruct (proj2 (member_type_strengthen _ _ Hc) _ _ _ _ Hu _ _ _ eq_refl (wk_mod_inv_shift _ _))
+      exact (proj1 (proj2 (member_type_strengthen _ _ Hc)) _ _ _ _ Hu _ _ _ eq_refl (wk_mod_inv_shift _ _)).
+    - destruct (proj1 (proj2 (member_type_strengthen _ _ Hc)) _ _ _ _ Hu _ _ _ eq_refl (wk_mod_inv_shift _ _))
         as (R1 & HR1 & ->).
       destruct (IH _ _ _ _ _ H HR1) as (R0 & HR0 & ->); eauto.
   Qed.
@@ -191,12 +261,37 @@ with umt_order (Θ : gdeps) (Ξ : gstack) : ctx -> gunit -> list string -> Prop 
 | umto_body_nil : forall Γ Δ Φ,
     umt_order Θ Ξ Γ (gu_mk Δ (md_body Φ)) nil
 | umto_body_cons : forall Γ Δ Φ y ch,
-    (forall Φ' pm Uy, gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
+    bxo_order Θ Ξ (Δ ++ Γ) Φ ->
+    (forall Φx Φ' pm Uy, body_xp Θ Ξ (Δ ++ Γ) Φ Φx -> gm_prefix_upto Φx y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
        umt_order Θ Ξ (body_ctx Φ' ++ Δ ++ Γ) Uy ch) ->
     umt_order Θ Ξ Γ (gu_mk Δ (md_body Φ)) (y :: ch)
 | umto_alias : forall Γ Δ E ch,
     mt_order Θ Ξ (Δ ++ Γ) E ch ->
-    umt_order Θ Ξ Γ (gu_mk Δ (md_alias E)) ch.
+    umt_order Θ Ξ Γ (gu_mk Δ (md_alias E)) ch
+with bxo_order (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> Prop :=
+| bxo_nil : forall Γ, bxo_order Θ Ξ Γ gm_nil
+| bxo_ext : forall Γ Φ x E,
+    bxo_order Θ Ξ Γ Φ ->
+    bxo_order Θ Ξ Γ (gm_ext Φ x E)
+| bxo_open : forall Γ Φ H its,
+    bxo_order Θ Ξ Γ Φ ->
+    (forall Φx, body_xp Θ Ξ Γ Φ Φx -> mt_order Θ Ξ (body_ctx Φx ++ Γ) H nil) ->
+    (forall Φx, body_xp Θ Ξ Γ Φ Φx -> igo_order Θ Ξ (body_ctx Φx ++ Γ) H its) ->
+    bxo_order Θ Ξ Γ (gm_open Φ H its)
+with igo_order (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list iitem -> Prop :=
+| igo_nil : forall Γ H, igo_order Θ Ξ Γ H nil
+| igo_self : forall Γ H d pv its,
+    igo_order Θ Ξ Γ H its ->
+    igo_order Θ Ξ Γ H ((None, d, pv) :: its)
+| igo_name : forall Γ H n d pv its,
+    mt_order Θ Ξ Γ H (n :: nil) ->
+    igo_order Θ Ξ Γ H its ->
+    igo_order Θ Ξ Γ H ((Some n, d, pv) :: its).
+
+(** The items of an open have an order when its target has one at every
+    chain. *)
+Lemma igo_of : forall Θ Ξ Γ H, (forall ch, mt_order Θ Ξ Γ H ch) -> forall its, igo_order Θ Ξ Γ H its.
+Proof. intros * Ho; induction its as [| [[[n |] d] pv] its IH]; constructor; auto. Qed.
 
 (** ** The Decision Procedure
 
@@ -212,10 +307,10 @@ Definition mt_side (R : mres) (ch : list string) : bool :=
   end.
 
 Lemma mt_side_true : forall R ch, mt_side R ch = true -> mres_kind R = mk_term -> ch <> nil.
-Proof. intros [A | T] [| y ch] H Hk; cbn in *; congruence. Qed.
+Proof. intros [A | T | T] [| y ch] H Hk; cbn in *; congruence. Qed.
 
 Lemma mt_side_false : forall R ch, mt_side R ch = false -> mres_kind R = mk_term /\ ch = nil.
-Proof. intros [A | T] [| y ch] H; cbn in *; auto; discriminate. Qed.
+Proof. intros [A | T | T] [| y ch] H; cbn in *; auto; discriminate. Qed.
 
 Inductive plookup : Set :=
 | pl_def : typ -> plookup
@@ -304,6 +399,23 @@ Lemma body_lookup_none_mod : forall Φ y Φ' pm Uy, body_lookup Φ y = bl_none -
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) -> False.
 Proof. intros * H E; unfold body_lookup in H; rewrite E in H; discriminate. Qed.
 
+(** The conditions of an open on its own items, decided. *)
+Definition items_ok_dec (its : list iitem) : { items_ok its } + { ~ items_ok its }.
+Proof.
+  unfold items_ok.
+  destruct (both_dup its) as [n |]; [ right; intros [H _]; discriminate |].
+  destruct (name_dup (List.map iitem_name its)) as [n |]; [ right; intros [_ H]; discriminate | left; split; reflexivity ].
+Defined.
+
+Definition tele_ass_dec (Δ : ctx) : { tele_ass Δ } + { ~ tele_ass Δ }.
+Proof.
+  induction Δ as [| [A | A M | U] Δ IH].
+  - left; constructor.
+  - destruct IH as [H | H]; [ left; constructor; eauto | right; intros Hc; inversion Hc; contradiction ].
+  - right; intros Hc; inversion Hc as [| ? ? [A0 E]]; discriminate.
+  - right; intros Hc; inversion Hc as [| ? ? [A0 E]]; discriminate.
+Defined.
+
 #[local] Opaque mt_side.
 
 Section MemberTypeImpl.
@@ -336,6 +448,7 @@ Section MemberTypeImpl.
   Ltac pos_tac :=
     first [ eapply mt_unit_def; solve [ eauto ]
           | eapply mt_unit_mod; solve [ eauto ]
+          | eapply mt_unit_ind; solve [ eauto ]
           | eapply mt_unit_alias; cycle 1; [ solve [ eauto ] | solve [ eauto ] | solve [ eauto ] ]
           | eapply mt_lit; solve [ eauto ]
           | match goal with Hf : ctx_find_slot ?G ?x = Some (?U0, ?G') |- member_type _ _ ?G (me_var ?x) _ _ =>
@@ -345,8 +458,17 @@ Section MemberTypeImpl.
           | eapply mt_app; solve [ eauto ]
           | eapply umt_self
           | eapply umt_def; solve [ eauto ]
-          | eapply umt_mod; cycle 1; [ solve [ eauto ] | solve [ eauto ] | solve [ eauto ] ]
-          | eapply umt_alias; solve [ eauto ] ].
+          | eapply umt_mod; cycle 1; [ solve [ eauto ] | solve [ eauto ] | solve [ eauto ] | solve [ eauto ] | solve [ eauto ] ]
+          | eapply umt_alias; solve [ eauto ]
+          | eapply bx_nil
+          | eapply bx_ext; solve [ eauto ]
+          | eapply bx_open; solve [ eauto ]
+          | eapply ign_nil
+          | eapply ign_self; solve [ eauto ]
+          | eapply ign_def; solve [ eauto ]
+          | eapply ign_mod; solve [ eauto ]
+          | eapply ign_ind; solve [ eauto ]
+          | eapply ign_ind_mod; solve [ eauto | intros ? Hq; congruence ] ].
 
   #[local]
   Ltac invert_concrete :=
@@ -357,6 +479,9 @@ Section MemberTypeImpl.
     | Hm : member_type _ _ _ (me_mem _ _) _ _ |- False => inversion Hm; subst; clear Hm
     | Hm : member_type _ _ _ (me_app _ _) _ _ |- False => inversion Hm; subst; clear Hm
     | Hm : unit_member_type _ _ _ (gu_mk _ _) _ _ |- False => inversion Hm; subst; clear Hm
+    | Hm : body_xp _ _ _ (gm_ext _ _ _) _ |- False => inversion Hm; subst; clear Hm
+    | Hm : body_xp _ _ _ (gm_open _ _ _) _ |- False => inversion Hm; subst; clear Hm
+    | Hm : items_gen _ _ _ _ _ (_ :: _) _ |- False => inversion Hm; subst; clear Hm
     end.
 
   #[local]
@@ -368,6 +493,12 @@ Section MemberTypeImpl.
       | H1 : unit_member_type ?T ?X ?G ?U ?c ?A1, H2 : unit_member_type ?T ?X ?G ?U ?c ?A2 |- _ =>
           assert_fails (constr_eq A1 A2);
           pose proof (proj2 (member_type_functional _ _) _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : body_xp ?T ?X ?G ?Φ ?A1, H2 : body_xp ?T ?X ?G ?Φ ?A2 |- _ =>
+          assert_fails (constr_eq A1 A2);
+          pose proof (body_xp_functional _ _ _ _ _ _ H1 H2); subst; clear H2
+      | H1 : items_gen ?T ?X ?io ?G ?H ?its ?A1, H2 : items_gen ?T ?X ?io ?G ?H ?its ?A2 |- _ =>
+          assert_fails (constr_eq A1 A2);
+          pose proof (items_gen_functional _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
       | Hl : ctx_lookup_mod ?x ?U ?G, Hf : ctx_find_slot ?G ?x = Some (?U0, ?G') |- _ =>
           apply ctx_find_mod_complete in Hl; rewrite (ctx_find_slot_mod _ _ _ _ Hf) in Hl; injection Hl as <-
       | Hl : ctx_lookup_mod ?x ?U ?G, Hf : ctx_find_mod ?G ?x = None |- _ =>
@@ -382,6 +513,10 @@ Section MemberTypeImpl.
           rewrite (gc_module_resolve _ _ _ _ H1) in H2; discriminate H2
       | H1 : gm_prefix_upto ?Φ ?y = Some ?a, H2 : gm_prefix_upto ?Φ ?y = Some ?b |- _ =>
           assert_fails (constr_eq a b); rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : mod_qname ?H = Some ?a, H2 : mod_qname ?H = Some ?b |- _ =>
+          assert_fails (constr_eq a b); rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : mod_qname ?H = Some _, H2 : mod_qname ?H = None |- _ =>
+          rewrite H1 in H2; discriminate H2
       | Hf : ctx_find_slot ?G ?x = Some (?U0, ?G'), Hu : unit_member_type _ _ ?G (uwk_n (S ?x) ?U0) _ _ |- _ =>
           destruct (ctx_find_slot_strengthen _ _ Hc _ _ _ _ _ _ Hf Hu) as (? & ? & ?); clear Hu
       end;
@@ -396,7 +531,10 @@ Section MemberTypeImpl.
           | match goal with Eb : body_lookup ?Φ ?y = bl_none, Hp : gm_prefix_upto ?Φ ?y = Some (gm_ext _ ?y (ge_mod _ _)) |- _ =>
               exact (body_lookup_none_mod _ _ _ _ _ Eb Hp) end
           | match goal with Eb : body_lookup ?Φ ?y = _, Hp : gm_prefix_upto ?Φ ?y = Some _ |- _ =>
-              unfold body_lookup in Eb; rewrite Hp in Eb; discriminate Eb end ].
+              unfold body_lookup in Eb; rewrite Hp in Eb; discriminate Eb end
+          | match goal with Hm : mres_tl ?R = Some _, Ht : mres_tl ?R = None |- _ => rewrite Hm in Ht; discriminate Ht end
+          | match goal with Hn : forall mp, mod_qname ?H = Some mp -> ?f _ = None, Hq : mod_qname ?H = Some _, Hi : ?f _ = Some _ |- _ =>
+              rewrite (Hn _ Hq) in Hi; discriminate Hi end ].
 
   #[local]
   Ltac impl_obl_tac :=
@@ -404,12 +542,16 @@ Section MemberTypeImpl.
     repeat match goal with
       | H : mt_order _ _ _ _ _ |- _ => progressive_invert H
       | H : umt_order _ _ _ _ _ |- _ => progressive_invert H
+      | H : bxo_order _ _ _ _ |- _ => progressive_invert H
+      | H : igo_order _ _ _ _ _ |- _ => progressive_invert H
       end;
     lookups;
     repeat match goal with H : ?a = ?a -> _ |- _ => specialize (H eq_refl) end;
     try solve [ eauto ];
     lazymatch goal with
-    | |- False => invert_concrete; neg_close
+    | |- False => repeat invert_concrete; neg_close
+    | |- ~ _ => let Hd := fresh "Hd" in intros Hd; repeat invert_concrete; neg_close
+    | |- forall _, ~ _ => let r := fresh "r" in let Hd := fresh "Hd" in intros r Hd; repeat invert_concrete; neg_close
     | _ => try pos_tac
     end.
 
@@ -420,7 +562,8 @@ Section MemberTypeImpl.
     | exist _ (pl_def A) Er with inspect (mt_side (mr_term A) ch) := {
       | exist _ true Es => inleft (exist _ (mr_term A) _)
       | exist _ false Es => inright _ }
-    | exist _ (pl_body T oD) Er => inleft (exist _ (mr_mod T) _)
+    | exist _ (pl_body T None) Er => inleft (exist _ (mr_mod T) _)
+    | exist _ (pl_body T (Some D)) Er => inleft (exist _ (mr_indm T) _)
     | exist _ (pl_alias U r) Er with unit_member_type_impl nil U r _ := {
       | inleft (exist _ R HR) with inspect (mt_side R r) := {
         | exist _ true Es => inleft (exist _ R _)
@@ -449,37 +592,67 @@ Section MemberTypeImpl.
   with unit_member_type_impl Γ U ch (Ho : umt_order Θ Ξ Γ U ch) :
       { R | unit_member_type Θ Ξ Γ U ch R } + { forall R, ~ unit_member_type Θ Ξ Γ U ch R } by struct Ho :=
   | Γ, gu_mk Δ (md_body Φ), nil, Ho => inleft (exist _ (mr_mod Δ) _)
-  | Γ, gu_mk Δ (md_body Φ), y :: ch, Ho with inspect (body_lookup Φ y) := {
-    | exist _ (bl_def Φ' A) Eb with inspect (mt_side (mr_term A) ch) := {
-      | exist _ true Es => inright _
-      | exist _ false Es => inleft (exist _ (mr_term (ctx_pi (body_ctx Φ' ++ Δ) A)) _) }
-    | exist _ (bl_mod Φ' pm Uy) Eb with unit_member_type_impl (body_ctx Φ' ++ Δ ++ Γ) Uy ch _ := {
-      | inleft (exist _ R HR) with inspect (mt_side R ch) := {
-        | exist _ true Es => inleft (exist _ (mres_gen (body_ctx Φ' ++ Δ) R) _)
-        | exist _ false Es => inright _ }
+  | Γ, gu_mk Δ (md_body Φ), y :: ch, Ho with tele_ass_dec Δ := {
+    | right Hn => inright _
+    | left Ht with body_xp_impl (Δ ++ Γ) Φ _ := {
+      | inright HN => inright _
+      | inleft (exist _ Φx Hx) with inspect (body_lookup Φx y) := {
+        | exist _ (bl_def Φ' A) Eb with inspect (mt_side (mr_term A) ch) := {
+          | exist _ true Es => inright _
+          | exist _ false Es => inleft (exist _ (mr_term (ctx_pi (body_ctx Φ' ++ Δ) A)) _) }
+        | exist _ (bl_mod Φ' pm Uy) Eb with unit_member_type_impl (body_ctx Φ' ++ Δ ++ Γ) Uy ch _ := {
+          | inleft (exist _ R HR) with inspect (mt_side R ch) := {
+            | exist _ true Es => inleft (exist _ (mres_gen (body_ctx Φ' ++ Δ) R) _)
+            | exist _ false Es => inright _ }
+          | inright HN => inright _ }
+        | exist _ bl_none Eb => inright _ } } }
+  | Γ, gu_mk Δ (md_alias E), ch, Ho with tele_ass_dec Δ := {
+    | right Hn => inright _
+    | left Ht with member_type_impl (Δ ++ Γ) E ch _ := {
+      | inleft (exist _ R HR) => inleft (exist _ (mres_gen Δ R) _)
+      | inright HN => inright _ } }
+
+  with body_xp_impl Γ Φ (Ho : bxo_order Θ Ξ Γ Φ) :
+      { Φx | body_xp Θ Ξ Γ Φ Φx } + { forall Φx, ~ body_xp Θ Ξ Γ Φ Φx } by struct Ho :=
+  | Γ, gm_nil, Ho => inleft (exist _ gm_nil _)
+  | Γ, gm_ext Φ x E, Ho with body_xp_impl Γ Φ _ := {
+    | inleft (exist _ Φx Hx) => inleft (exist _ (gm_ext Φx x E) _)
+    | inright HN => inright _ }
+  | Γ, gm_open Φ M its, Ho with body_xp_impl Γ Φ _ := {
+    | inright HN => inright _
+    | inleft (exist _ Φx Hx) with member_type_impl (body_ctx Φx ++ Γ) M nil _ := {
+      | inright HN => inright _
+      | inleft (exist _ R HR) with inspect (mres_tl R) := {
+        | exist _ None Et => inright _
+        | exist _ (Some T) Et with items_gen_impl None (body_ctx Φx ++ Γ) M its _ := {
+          | inright HN => inright _
+          | inleft (exist _ gs Hg) with items_ok_dec its := {
+            | left Hok => inleft (exist _ (gens_append Φx 0 gs) _)
+            | right Hn => inright _ } } } } }
+
+  with items_gen_impl io Γ H its (Ho : igo_order Θ Ξ Γ H its) :
+      { gs | items_gen Θ Ξ io Γ H its gs } + { forall gs, ~ items_gen Θ Ξ io Γ H its gs } by struct Ho :=
+  | io, Γ, H, nil, Ho => inleft (exist _ nil _)
+  | io, Γ, H, (None, d, pv) :: its, Ho with items_gen_impl io Γ H its _ := {
+    | inleft (exist _ gs Hg) => inleft (exist _ (ig_alias d pv H :: gs) _)
+    | inright HN => inright _ }
+  | io, Γ, H, (Some n, d, pv) :: its, Ho with member_type_impl Γ H (n :: nil) _ := {
+    | inright HN => inright _
+    | inleft (exist _ (mr_term A) HR) with items_gen_impl io Γ H its _ := {
+      | inleft (exist _ gs Hg) => inleft (exist _ (ig_def d pv A (a_mem H n) :: gs) _)
       | inright HN => inright _ }
-    | exist _ bl_none Eb => inright _ }
-  | Γ, gu_mk Δ (md_alias E), ch, Ho with member_type_impl (Δ ++ Γ) E ch _ := {
-    | inleft (exist _ R HR) => inleft (exist _ (mres_gen Δ R) _)
-    | inright HN => inright _ }.
-  (** The obligations [Equations] leaves are solved by the same tactic, run
-      on each in turn. *)
-  Next Obligation. impl_obl_tac. Qed.
-  Next Obligation. impl_obl_tac. Qed.
-  Next Obligation. impl_obl_tac. Qed.
-  Next Obligation. impl_obl_tac. Qed.
-  Next Obligation. impl_obl_tac. Qed.
-  Next Obligation. impl_obl_tac. Qed.
-  Next Obligation. impl_obl_tac. Qed.
-  Next Obligation. impl_obl_tac. Qed.
-  Next Obligation. impl_obl_tac. Qed.
-  Next Obligation. impl_obl_tac. Qed.
-  Next Obligation. impl_obl_tac. Qed.
-  Next Obligation. impl_obl_tac. Qed.
-  Next Obligation. impl_obl_tac. Qed.
-  Next Obligation. impl_obl_tac. Qed.
-  Next Obligation. impl_obl_tac. Qed.
-  Next Obligation. impl_obl_tac. Qed.
+    | inleft (exist _ (mr_mod T) HR) with items_gen_impl io Γ H its _ := {
+      | inleft (exist _ gs Hg) => inleft (exist _ (ig_alias d pv (me_mem H n) :: gs) _)
+      | inright HN => inright _ }
+    | inleft (exist _ (mr_indm T) HR) with io := {
+      | None => inright _
+      | Some it with items_gen_impl (Some it) Γ H its _ := {
+        | inright HN => inright _
+        | inleft (exist _ gs Hg) with inspect (mod_qname H) := {
+          | exist _ None Emq => inleft (exist _ (ig_alias d pv (me_mem H n) :: gs) _)
+          | exist _ (Some mp) Emq with inspect (it (qname_app mp (n :: nil))) := {
+            | exist _ None Ei => inleft (exist _ (ig_alias d pv (me_mem H n) :: gs) _)
+            | exist _ (Some (Δ, p, Ns)) Ei => inleft (exist _ (ig_ind_alias d pv Δ p Ns :: gs) _) } } } } }.
 End MemberTypeImpl.
 
 (** ** Every Well-Formed Module Expression Has an Order *)
@@ -543,6 +716,41 @@ Proof.
     unfold qname_app in *; cbn in *; rewrite <- app_assoc in Hq; exact Hq.
 Qed.
 
+(** The opens of the prefix of a body, and of the body past an entry. *)
+Lemma body_opens_ext : forall Φ Φx x E, body_opens (gm_ext Φ x E) (gm_ext Φx x E) = body_opens Φ Φx.
+Proof. reflexivity. Qed.
+
+(** A body has an order once the targets of its opens have one at every
+    chain: the expansion is read through the prefix, which is smaller. *)
+Lemma bxo_of_xp : forall Θ1 Ξ1 Θ2 Ξ2, gc_sub Θ1 Ξ1 Θ2 Ξ2 ->
+    forall Γ Φ Φx, body_xp Θ1 Ξ1 Γ Φ Φx ->
+    (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> forall ch, mt_order Θ2 Ξ2 (Ψ ++ Γ) H ch) ->
+    bxo_order Θ2 Ξ2 Γ Φ.
+Proof.
+  intros * Hs; induction 1 as [Γ | Γ Φ Φx x E Hx IH | Γ Φ Φx H its R T gs Hx IH HR HT Hg Hok]; intros Ho.
+  - constructor.
+  - constructor; apply IH; exact Ho.
+  - rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg) in Ho.
+    pose proof (proj1 (proj2 (proj2 (member_type_gc_sub_all _ _ _ _ Hs))) _ _ _ Hx) as Hx2.
+    constructor.
+    + apply IH; intros k Ψ H0 Hk; exact (Ho (S k) _ _ Hk).
+    + intros Φx' Hx'; rewrite (body_xp_functional _ _ _ _ _ _ Hx' Hx2); exact (Ho 0 _ _ eq_refl nil).
+    + intros Φx' Hx'; rewrite (body_xp_functional _ _ _ _ _ _ Hx' Hx2); apply igo_of; exact (Ho 0 _ _ eq_refl).
+Qed.
+
+(** The opens of a body are no larger than it. *)
+Lemma body_opens_size : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx ->
+    forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> msize H + csize Ψ < gsize Φ.
+Proof.
+  induction 1 as [Γ | Γ Φ Φx x E Hx IH | Γ Φ Φx H its R T gs Hx IH HR HT Hg Hok]; intros k Ψ H0 Hk.
+  - destruct k; discriminate.
+  - rewrite body_opens_ext in Hk; rewrite gsize_ext; specialize (IH _ _ _ Hk); lia.
+  - rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg) in Hk; cbn [gsize].
+    destruct k as [| k]; cbn in Hk.
+    + injection Hk as <- <-; pose proof (body_xp_csize _ _ _ _ _ Hx); lia.
+    + specialize (IH _ _ _ Hk); lia.
+Qed.
+
 Theorem mt_order_exists : forall Θ1 Ξ1 Θ2 Ξ2, ⊢g Θ1 ⍮ Ξ1 -> ⊢g Θ2 ⍮ Ξ2 -> gc_sub Θ1 Ξ1 Θ2 Ξ2 ->
     aliases_ordered Θ1 Ξ1 Θ2 Ξ2 ->
     forall n,
@@ -577,12 +785,20 @@ Proof.
       constructor; apply IHu; [ lia | exact HU ].
   - intros Γ U Hn HU ch.
     destruct U as [Δ [Φ | E]]; rewrite usize_mk in Hn; cbn [dsize] in Hn.
-    + destruct (unit_parts_of_wf _ _ _ _ HU) as (HC & _ & _).
+    + destruct (unit_parts_of_wf _ _ _ _ HU) as (Φx & Hx & HC & _ & _).
+      pose proof (unit_opens_of_wf _ _ _ _ _ _ HU Hx) as Ho.
+      pose proof (proj1 (proj2 (proj2 (member_type_gc_sub_all _ _ _ _ Hs))) _ _ _ Hx) as Hx2.
       destruct ch as [| y ch]; [ constructor |].
-      constructor; intros Φ' pm Uy Hp.
-      pose proof (gsize_prefix _ _ _ Hp) as Hsz; cbn in Hsz.
-      apply IHu; [| exact (body_prefix_mod_wf _ _ _ _ _ _ _ _ _ HC Hp) ].
-      rewrite !csize_app, csize_body_ctx; lia.
+      constructor.
+      * eapply bxo_of_xp; [ exact Hs | exact Hx |].
+        intros k Ψ H0 Hk ch0; apply IHm; [| exact (Ho _ _ _ Hk) ].
+        pose proof (body_opens_size _ _ _ _ _ Hx _ _ _ Hk); rewrite !csize_app; lia.
+      * intros Φx' Φ' pm Uy Hx' Hp.
+        rewrite (body_xp_functional _ _ _ _ _ _ Hx' Hx2) in Hp.
+        pose proof (prefix_csize _ _ _ Hp) as Hsz; rewrite csize_body_ctx_ext in Hsz; cbn [esize] in Hsz.
+        pose proof (body_xp_csize _ _ _ _ _ Hx).
+        apply IHu; [| exact (body_prefix_mod_wf _ _ _ _ _ _ _ _ _ HC Hp) ].
+        rewrite !csize_app; lia.
     + destruct (unit_parts_of_wf _ _ _ _ HU) as (_ & _ & HE).
       constructor; apply IHm; [ rewrite csize_app; lia | exact HE ].
 Qed.
@@ -653,16 +869,26 @@ Qed.
 (** ** Every Module Expression Has an Order
 
     The recursion of [member_type_impl] is on sizes: a slot is read in the
-    context after it, and a body module in the context of the entries before
-    it, both smaller; only a unit needs the global context, whose aliases
-    have an order ([mt_order_unit]).  So no well-formedness of [H] is
-    needed. *)
+    context after it, a body module in the context of the expanded body
+    before it, and the target of an open in the context of the expanded
+    body before the open, all smaller; only a unit needs the global
+    context, whose aliases have an order ([mt_order_unit]).  So no
+    well-formedness of [H] is needed. *)
 Theorem mt_order_total_n : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall n,
     (forall Γ H, msize H + csize Γ <= n -> forall ch, mt_order Θ Ξ Γ H ch) /\
     (forall Γ U, usize U + csize Γ <= n -> forall ch, umt_order Θ Ξ Γ U ch).
 Proof.
   intros * Hg; induction n as [| n [IHm IHu]].
   { split; intros * Hn; [ pose proof (msize_pos H) | pose proof (usize_pos U) ]; lia. }
+  (* a body, entry by entry: the target of an open is read in the context of
+     the expanded body before it *)
+  assert (IHb : forall Γ Φ, gsize Φ + csize Γ <= n -> bxo_order Θ Ξ Γ Φ).
+  { intros Γ Φ; induction Φ as [| Φ IH x E | Φ IH H its]; intros Hn.
+    - constructor.
+    - constructor; apply IH; rewrite gsize_ext in Hn; lia.
+    - cbn [gsize] in Hn; constructor; [ apply IH; lia | |].
+      + intros Φx Hx; pose proof (body_xp_csize _ _ _ _ _ Hx); apply IHm; rewrite csize_app; lia.
+      + intros Φx Hx; pose proof (body_xp_csize _ _ _ _ _ Hx); apply igo_of; intros ch; apply IHm; rewrite csize_app; lia. }
   split.
   - intros Γ H Hn ch; destruct H as [fp | x | H y | H N | U]; cbn [msize] in Hn.
     + apply mt_order_unit, Hg.
@@ -672,27 +898,29 @@ Proof.
     + constructor; apply IHu; lia.
   - intros Γ U Hn ch; destruct U as [Δ [Φ | E]]; rewrite usize_mk in Hn; cbn [dsize] in Hn.
     + destruct ch as [| y ch]; [ constructor |].
-      constructor; intros Φ' pm Uy Hp.
-      pose proof (gsize_prefix _ _ _ Hp) as Hsz; cbn in Hsz.
-      apply IHu; rewrite !csize_app, csize_body_ctx; lia.
+      constructor; [ apply IHb; rewrite csize_app; lia |].
+      intros Φx Φ' pm Uy Hx Hp.
+      pose proof (prefix_csize _ _ _ Hp) as Hsz; rewrite csize_body_ctx_ext in Hsz; cbn [esize] in Hsz.
+      pose proof (body_xp_csize _ _ _ _ _ Hx).
+      apply IHu; rewrite !csize_app; lia.
     + constructor; apply IHm; rewrite csize_app; lia.
 Qed.
 
 Corollary mt_order_total : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall Γ H ch, mt_order Θ Ξ Γ H ch.
 Proof. intros * Hg Γ H; exact (proj1 (mt_order_total_n _ _ Hg _) Γ H (le_n _)). Qed.
 
-(** ** The Oracle of a Well-Formed Global Context *)
+(** ** The Member Types of a Well-Formed Global Context *)
 
-Definition mt_of (Θ : gdeps) (Ξ : gstack) (Hg : ⊢g Θ ⍮ Ξ) : mt_oracle :=
-  fun Γ H ch =>
-    match member_type_impl Θ Ξ (gctx_closed_of_wf _ _ Hg) Γ H ch (mt_order_total _ _ Hg Γ H ch) with
-    | inleft (exist _ R _) => Some R
-    | inright _ => None
-    end.
+Definition member_type_of (Θ : gdeps) (Ξ : gstack) (Hg : ⊢g Θ ⍮ Ξ) (Γ : ctx) (H : modexp) (ch : list string) : option mres :=
+  match member_type_impl Θ Ξ (gctx_closed_of_wf _ _ Hg) Γ H ch (mt_order_total _ _ Hg Γ H ch) with
+  | inleft (exist _ R _) => Some R
+  | inright _ => None
+  end.
 
-Lemma mt_of_spec : forall Θ Ξ (Hg : ⊢g Θ ⍮ Ξ), mt_spec Θ Ξ (mt_of Θ Ξ Hg).
+Lemma member_type_of_spec : forall Θ Ξ (Hg : ⊢g Θ ⍮ Ξ) Γ H ch R,
+    member_type_of Θ Ξ Hg Γ H ch = Some R <-> member_type Θ Ξ Γ H ch R.
 Proof.
-  intros * Γ H ch R; unfold mt_of.
+  intros *; unfold member_type_of.
   destruct (member_type_impl _ _ _ _ _ _ _) as [[R' HR'] | HN]; split; intros HR.
   - injection HR as <-; exact HR'.
   - f_equal; exact (proj1 (member_type_functional _ _) _ _ _ _ HR' _ HR).

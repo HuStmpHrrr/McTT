@@ -180,9 +180,11 @@ Notation "Γ ⊨s σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (at level 70, σ at
     A module expression is valid when its four values are related in the
     module PER, as a term's are in its type's element PER.  A unit [U] is
     represented by the literal [me_lit U], whose value is its closure.  A unit
-    is moreover valid in its parts: a body unit's extension of the context is
-    semantically well formed, and an alias's target is valid under its
-    parameters; this is what the members of its closure are read off. *)
+    is moreover valid in its parts: a body unit's extension of the context,
+    read as the entries its local opens generate ([body_xp]), is
+    semantically well formed and the targets of its opens are valid where
+    they stand, and an alias's target is valid under its parameters; this
+    is what the members of its closure are read off. *)
 
 Inductive rel_mod (H : modexp) (σ : sub) (ρ ρσ : env) (H' : modexp) (σ' : sub) (ρ' ρ'σ' : env) : Prop :=
 | mk_rel_mod : forall hσ h h' h'σ',
@@ -236,10 +238,13 @@ Inductive sem_ctx : ctx -> Prop :=
     sem_unit Γ U ->
     ⊨ Γ ▹ₘ U
 with sem_unit : ctx -> gunit -> Prop :=
-| sem_unit_body : forall Γ Δ Φ,
+| sem_unit_body : forall Γ Δ Φ Φx,
     tele_ass Δ ->
+    body_xp gc_deps gc_stack (Δ ++ Γ) Φ Φx ->
     body_shape Φ Φ ->
-    ⊨ body_ctx Φ ++ Δ ++ Γ ->
+    body_shape Φx Φx ->
+    ⊨ body_ctx Φx ++ Δ ++ Γ ->
+    (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Ψ ++ Δ ++ Γ ⊨ᵐ H ≈ H) ->
     sem_unit Γ (gu_body Δ Φ)
 | sem_unit_alias : forall Γ Δ E,
     tele_ass Δ ->

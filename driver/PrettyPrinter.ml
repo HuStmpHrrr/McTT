@@ -769,7 +769,7 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
      fprintf f "@[<hov 2>Error: the type of the non-uniform parameter %d of %s,@ %a,@ is not in the sort of %s,@ %a@]"
        (k + 1) x (format_exp_in delta) t x (format_exp_in delta) s
   | Coq_re_import e ->
-     let open McttExtracted.Imports in
+     let open McttExtracted.Opens in
      (match e with
       | Coq_xe_target _ -> fprintf f "@[<hov 2>Error: ill-formed open@]"
       | Coq_xe_member (h, n) ->
@@ -782,7 +782,8 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
           | Some (fp, ch) -> fprintf f "@[<hov 2>Error: %a is not a member@]" pp_u (string_of_qpath fp (ch @ [n]))
           | None -> fprintf f "@[<hov 2>Error:@ %a@ is not a member@]" format_exp (Coq_a_mem (h, n)))
       | Coq_xe_both n -> fprintf f "@[<hov 2>Error: %s is used and exported@]" n
-      | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n)
+      | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n
+      | Coq_xe_ind n -> fprintf f "@[<hov 2>Error: an inductive type cannot be opened in a local module: %s@]" n)
   | Coq_re_lit (McttExtracted.Builtin.Coq_le_num n) ->
      fprintf f "@[<hov 2>Error: unknown numeral %d: no natural-number type is bound@]" n
   | Coq_re_lit McttExtracted.Builtin.Coq_le_tok ->

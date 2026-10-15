@@ -272,6 +272,15 @@ Section Transparent.
     (* the module of an inductive type: the type former, applied *)
     all: try solve [ match goal with IH : dclean (d_ind _ nil) -> _ -> dclean ?r |- dclean ?r =>
                        apply IH; [ first [ constructor; intros ? [] | repeat constructor ] | assumption ] end ].
+    (* a local open, and a name it declares: the entry its open makes *)
+    all: try solve [ match goal with
+      | IH2 : env_clean ?ρ1 -> env_clean ?ρ2, IH1 : env_clean ?ρ -> env_clean ?ρ1, Hρ : env_clean ?ρ |- env_clean ?ρ2 =>
+          exact (IH2 (IH1 Hρ)) end ].
+    all: try solve [ match goal with
+      | IH : env_clean _ -> env_clean ?ρ', He : env_entry ?ρ' 0 = _ |- _ =>
+          let Hs := fresh "Hs" in
+          assert (Hs : env_clean ρ') by (apply IH; apply env_clean_args; assumption);
+          specialize (Hs 0); rewrite He in Hs; inversion Hs; assumption end ].
     all: match goal with Hin : In _ nil |- _ => destruct Hin end.
   Qed.
 

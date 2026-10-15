@@ -147,16 +147,18 @@ Qed.
 Lemma body_shape_refl : forall Φ Φ', body_shape Φ Φ' ->
     body_shape Φ Φ /\ body_shape Φ' Φ' /\ gm_names Φ = gm_names Φ'.
 Proof.
-  induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] H; cbn in H |- *; try contradiction.
+  induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] H; cbn in H |- *; try contradiction.
   - auto.
   - destruct H as (HΦ & <- & HE); destruct (IH _ HΦ) as (H1 & H2 & H3).
     destruct E as [b pv A [M |] | pm U | ? ? ? | ? ? ? ?], E' as [b' pv' A' [M' |] | pm' U' | ? ? ? | ? ? ? ?]; cbn in HE |- *; try contradiction;
       intuition congruence.
+  - destruct H as (HΦ & <-); destruct (IH _ HΦ) as (H1 & H2 & H3); intuition congruence.
 Qed.
 
 Definition unit_parts (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (U : gunit) : Prop :=
   match U with
-  | gu_mk Δ (md_body Φ) => ⊢ Θ ⍮ Ξ ⍮ body_ctx Φ ++ Δ ++ Γ /\ tele_ass Δ /\ body_shape Φ Φ
+  | gu_mk Δ (md_body Φ) =>
+      exists Φx, body_xp Θ Ξ (Δ ++ Γ) Φ Φx /\ ⊢ Θ ⍮ Ξ ⍮ body_ctx Φx ++ Δ ++ Γ /\ tele_ass Δ /\ body_shape Φx Φx
   | gu_mk Δ (md_alias E) => ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ /\ tele_ass Δ /\ Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵐ E ≈ E
   end.
 
@@ -164,9 +166,9 @@ Lemma unit_eq_parts : forall Θ Ξ Γ U U',
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> unit_parts Θ Ξ Γ U /\ unit_parts Θ Ξ Γ U'.
 Proof.
   induction 1; cbn; try solve [ intuition eauto ].
-  - match goal with Hs : body_shape _ _ |- _ => destruct (body_shape_refl _ _ Hs) as (Hs1 & Hs2 & _) end.
-    pose proof (ext_eq_ctx_left _ _ _ _ _ H) as Hl; pose proof (ext_eq_ctx_right _ _ _ _ _ H) as Hr.
-    rewrite <- app_assoc in Hl, Hr; intuition.
+  - match goal with Hs : body_shape Φx Φx' |- _ => destruct (body_shape_refl _ _ Hs) as (Hs1 & Hs2 & _) end.
+    match goal with Hx : _ ⍮ _ ⍮ _ ⊢ˣ _ ≈ _ |- _ => pose proof (ext_eq_ctx_left _ _ _ _ _ Hx) as Hl; pose proof (ext_eq_ctx_right _ _ _ _ _ Hx) as Hr end.
+    rewrite <- app_assoc in Hl, Hr; split; eexists; repeat split; eassumption.
   - pose proof (ext_eq_ctx_left _ _ _ _ _ H) as Hl; pose proof (ext_eq_ctx_right _ _ _ _ _ H) as Hr.
     intuition eauto using wf_modexp_eq_refl_left.
 Qed.
@@ -174,15 +176,40 @@ Qed.
 Corollary unit_parts_of_wf : forall Θ Ξ Γ U, Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U -> unit_parts Θ Ξ Γ U.
 Proof. intros * HU; exact (proj1 (unit_eq_parts _ _ _ _ _ HU)). Qed.
 
+(** The target of each open of a well-formed body is a module where it
+    stands. *)
+Definition unit_opens (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (U : gunit) : Prop :=
+  forall Δ Φ Φx, U = gu_body Δ Φ -> body_xp Θ Ξ (Δ ++ Γ) Φ Φx ->
+    forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ ⊢ᵐ H ≈ H.
+
+Lemma unit_eq_opens : forall Θ Ξ Γ U U',
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> unit_opens Θ Ξ Γ U /\ unit_opens Θ Ξ Γ U'.
+Proof.
+  induction 1 as [? ? ? ? ? ? ? ? ? Hx Hx' _ Ho Ho' _ _ _ Hs _ _ | | | ]; try solve [ intuition eauto ].
+  2: split; intros ? ? ? Heq; discriminate Heq.
+  split; intros Δ0 Φ0 Φx0 Heq Hx0 k Ψ H0 Hk; injection Heq as <- <-.
+  - pose proof (body_xp_functional _ _ _ _ _ _ Hx Hx0); subst Φx0.
+    destruct (body_opens_nth _ _ _ _ _ _ _ _ _ _ Hx Hx' Hs Hk) as [[Ψ' H'] Hk'].
+    eapply wf_modexp_eq_refl_left; exact (Ho _ _ _ _ _ Hk Hk').
+  - pose proof (body_xp_functional _ _ _ _ _ _ Hx' Hx0); subst Φx0.
+    destruct (body_opens_nth _ _ _ _ _ _ _ _ _ _ Hx' Hx (body_shape_sym _ _ Hs) Hk) as [[Ψ' H'] Hk'].
+    exact (Ho' _ _ _ _ _ Hk' Hk).
+Qed.
+
+Corollary unit_opens_of_wf : forall Θ Ξ Γ Δ Φ Φx, Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_body Δ Φ ≈ gu_body Δ Φ ->
+    body_xp Θ Ξ (Δ ++ Γ) Φ Φx ->
+    forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ ⊢ᵐ H ≈ H.
+Proof. intros * HU Hx; exact (proj1 (unit_eq_opens _ _ _ _ _ HU) _ _ _ eq_refl Hx). Qed.
+
 (** A filed definition of a well-formed body has a body. *)
 Lemma body_shape_prefix_def : forall Φ x Φ' b pv A B, body_shape Φ Φ ->
     gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A B)) -> exists M, B = Some M.
 Proof.
-  induction Φ as [| Φ IH y E | Φ IH c]; intros * Hs Hx; cbn in Hx; try discriminate.
+  induction Φ as [| Φ IH y E | Φ IH c its]; intros * Hs Hx; cbn in Hx; try discriminate.
   - destruct (String.eqb x y); [ injection Hx; intros; subst; cbn in Hs |].
     + destruct B as [M |]; [ eauto | destruct Hs as (_ & _ & []) ].
     + exact (IH _ _ _ _ _ _ (proj1 Hs) Hx).
-  - destruct Hs.
+  - destruct (existsb _ _); [ discriminate | exact (IH _ _ _ _ _ _ (proj1 Hs) Hx) ].
 Qed.
 
 (** ** Prefixes of Global Paths
@@ -311,9 +338,12 @@ Proof.
   cbn; rewrite Hs; reflexivity.
 Qed.
 
-Lemma me_mems_unfold : forall Θ Ξ Γ pre H ch,
-    member_unfold_ch Θ Ξ Γ (me_mems H pre) ch = member_unfold_ch Θ Ξ Γ H (pre ++ ch).
-Proof. induction pre as [| y pre IH]; intros; cbn [me_mems app]; [ reflexivity | rewrite IH; reflexivity ]. Qed.
+Lemma me_mems_unfold : forall Θ Ξ Γ pre H ch M,
+    member_unfold_ch Θ Ξ Γ (me_mems H pre) ch M <-> member_unfold_ch Θ Ξ Γ H (pre ++ ch) M.
+Proof.
+  induction pre as [| y pre IH]; intros; cbn [me_mems app]; [ reflexivity |].
+  rewrite IH; split; intros Hm; [ inversion Hm; subst; assumption | constructor; assumption ].
+Qed.
 
 Lemma me_mems_member_type_inv : forall Θ Ξ Γ pre H ch R,
     member_type Θ Ξ Γ (me_mems H pre) ch R -> member_type Θ Ξ Γ H (pre ++ ch) R.

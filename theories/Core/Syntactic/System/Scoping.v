@@ -795,18 +795,67 @@ Proof. induction 1; cbn; lia. Qed.
 Lemma length_body_ctx : forall Φ, length (body_ctx Φ) = gm_binders Φ.
 Proof. induction Φ as [| Φ IH x [? ? ? [] | | | ] | Φ IH c]; cbn; rewrite ?length_app, ?repeat_length; auto. Qed.
 
-(** A typed body, with no local import, is scoped when the context it binds
+(** A typed body, with no local open, is scoped when the context it binds
     is. *)
 Lemma gmod_scoped_of_body_ctx : forall Φ Φ' n,
+    gm_nopens Φ = 0 ->
     body_shape Φ Φ' ->
     (ctx_scoped n (body_ctx Φ) -> gmod_scoped n Φ) /\ (ctx_scoped n (body_ctx Φ') -> gmod_scoped n Φ').
 Proof.
-  induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] n Hs; cbn in Hs; try contradiction.
+  induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] n Ho Hs; cbn in Hs, Ho; try contradiction; try discriminate.
   - split; intros; exact I.
-  - destruct Hs as (Hs & -> & HE); destruct (IH _ n Hs) as [IH1 IH2].
+  - destruct Hs as (Hs & -> & HE); destruct (IH _ n Ho Hs) as [IH1 IH2].
     destruct E as [? ? ? [] | | | ], E' as [? ? ? [] | | | ]; cbn in HE; try contradiction;
       split; intros HΦ; cbn in *; destruct_all; repeat split; auto;
       first [ rewrite <- length_body_ctx; assumption | rewrite <- (length_body_ctx Φ'); assumption ].
+Qed.
+
+Lemma gens_append_scoped_prefix : forall gs Φ k n, gmod_scoped n (gens_append Φ k gs) -> gmod_scoped n Φ.
+Proof.
+  induction gs as [| g gs IH]; intros * H; cbn in H; [ assumption |].
+  destruct (ig_entry g); apply IH in H; destruct H; assumption.
+Qed.
+
+(** A body is scoped when its expansion is and the target of each of its
+    opens is, where it stands. *)
+Lemma gmod_scoped_of_xp : forall Θ Ξ Γ Φ Φx n,
+    body_xp Θ Ξ Γ Φ Φx -> gmod_scoped n Φx ->
+    (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> modexp_scoped (length Ψ + n) H) ->
+    gmod_scoped n Φ.
+Proof.
+  induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its R T gs Hx IH _ _ Hg]; intros HΦ Ho; cbn [gmod_scoped] in HΦ |- *; auto.
+  - destruct HΦ as [HΦ HE]; split; [ apply IH; assumption |].
+    rewrite <- (body_xp_binders _ _ _ _ _ Hx); assumption.
+  - rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg) in Ho.
+    split.
+    + apply IH; [ eapply gens_append_scoped_prefix; eassumption |].
+      intros k Ψ H' Hk; exact (Ho (S k) _ _ Hk).
+    + rewrite <- (body_xp_binders _ _ _ _ _ Hx), <- length_body_ctx; exact (Ho 0 _ _ eq_refl).
+Qed.
+
+Lemma body_shape_sym : forall Φ Φ', body_shape Φ Φ' -> body_shape Φ' Φ.
+Proof.
+  induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] Hs; cbn in *; try contradiction; auto;
+    destruct_all; subst; repeat split; auto.
+  destruct E as [? ? ? [] | | | ], E' as [? ? ? [] | | | ]; cbn in *; destruct_all; subst; auto.
+Qed.
+
+Lemma body_shape_nopens : forall Φ Φ', body_shape Φ Φ' -> gm_nopens Φ = gm_nopens Φ'.
+Proof.
+  induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] Hs; cbn in *; try contradiction; auto;
+    destruct_all; auto.
+Qed.
+
+(** The opens of two bodies of the same shape correspond. *)
+Lemma body_opens_nth : forall Θ Ξ Γ Γ' Φ Φ' Φx Φx' k p,
+    body_xp Θ Ξ Γ Φ Φx -> body_xp Θ Ξ Γ' Φ' Φx' -> body_shape Φ Φ' ->
+    nth_error (body_opens Φ Φx) k = Some p -> exists p', nth_error (body_opens Φ' Φx') k = Some p'.
+Proof.
+  intros * Hx Hx' Hs Hk.
+  destruct (nth_error (body_opens Φ' Φx') k) as [p' |] eqn:E; [ eauto |].
+  apply nth_error_None in E; rewrite (body_opens_length _ _ _ _ _ Hx'), <- (body_shape_nopens _ _ Hs),
+    <- (body_opens_length _ _ _ _ _ Hx) in E.
+  assert (k < length (body_opens Φ Φx)) by (apply nth_error_Some; congruence); lia.
 Qed.
 
 (** ** Inductive Types
@@ -1487,11 +1536,22 @@ Proof.
                    match goal with IH : forall c gs gs1 x gs2, _ -> _ -> _ |- _ =>
                      edestruct IH as (_ & ? & _); eassumption end ].
   - (* a body unit, left *)
-    rewrite gunit_scoped_mk; rewrite ctx_scoped_app in *; destruct_all; split; [ assumption |].
-    apply (gmod_scoped_of_body_ctx _ _ _ H4); assumption.
+    rewrite gunit_scoped_mk; rewrite ctx_scoped_app in *; destruct_all; split; [ assumption |]; cbn [moddef_scoped].
+    match goal with Hx : body_xp _ _ _ Φ ?Φx, Hx' : body_xp _ _ _ Φ' ?Φx', Hs : body_shape Φ Φ', Hsx : body_shape ?Φx ?Φx' |- _ =>
+      eapply gmod_scoped_of_xp; [ exact Hx | apply (gmod_scoped_of_body_ctx _ _ _ (body_xp_nopens _ _ _ _ _ Hx) Hsx); assumption |];
+      intros ? ? ? Hk; destruct (body_opens_nth _ _ _ _ _ _ _ _ _ _ Hx Hx' Hs Hk) as [[? ?] Hk']
+    end.
+    match goal with IH : forall k Ψ H Ψ' H', _ |- _ =>
+      edestruct IH as (_ & HH & _); [ exact Hk | exact Hk' |]; rewrite !length_app in HH; exact HH end.
   - (* a body unit, right *)
-    rewrite gunit_scoped_mk; rewrite ctx_scoped_app in *; destruct_all; split; [ assumption |].
-    rewrite <- H3; apply (gmod_scoped_of_body_ctx _ _ _ H4); rewrite H3; assumption.
+    rewrite gunit_scoped_mk; rewrite ctx_scoped_app in *; destruct_all; split; [ assumption |]; cbn [moddef_scoped].
+    match goal with Hx : body_xp _ _ _ Φ ?Φx, Hx' : body_xp _ _ _ Φ' ?Φx', Hs : body_shape Φ Φ', Hsx : body_shape ?Φx ?Φx' |- _ =>
+      eapply gmod_scoped_of_xp; [ exact Hx' | apply (gmod_scoped_of_body_ctx _ _ _ (body_xp_nopens _ _ _ _ _ Hx) Hsx); assumption |];
+      intros ? ? ? Hk'; assert (Hs' : body_shape Φ' Φ) by (apply body_shape_sym; exact Hs);
+      destruct (body_opens_nth _ _ _ _ _ _ _ _ _ _ Hx' Hx Hs' Hk') as [[? ?] Hk]
+    end.
+    match goal with IH : forall k Ψ H Ψ' H', _ |- _ =>
+      edestruct IH as (_ & _ & HH); [ exact Hk | exact Hk' |]; rewrite !length_app in HH; exact HH end.
   - (* a filed alias *)
     rewrite gunit_scoped_mk; cbn; rewrite ctx_scoped_app_iff, length_app, Nat.add_0_r; repeat split; assumption.
   - (* the module of an inductive type, before its members *)

@@ -132,6 +132,7 @@ Proof.
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' pm Uy ρ1 ch k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args x Φ0 H its1 it ρ0 h ch k a Hl Hx Hb HH Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
                  | p T oT args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T oT ch k a Hgp Hm Hty IH
@@ -172,6 +173,16 @@ Proof.
     destruct (per_body_lookup_mod _ _ _ _ _ _ _ _ Hbd Hy) as (Φ1' & pm' & Uy' & ρ1x & ρ1' & Hy' & Hb1 & Hb1' & HU).
     pose proof (functional_eval_benv _ _ _ _ Hb Hb1) as <-.
     eapply mty_sub; [ lia | exact Hy' | exact Hb1' | exact (IH _ HU) ].
+  - destruct (per_dmod_local_inv _ _ _ _ Hw) as (ρ' & [Δ' D'] & args' & -> & Hlt & L1 & L2).
+    cbn [gu_params gu_def] in *.
+    pose proof (per_ltele_full _ _ _ _ _ _ _ _ Hlt ltac:(rewrite length_rev; exact Hl)) as Hd.
+    inversion Hd; subst.
+    match goal with Hb0 : per_body _ _ _ _ |- _ => rename Hb0 into Hbd end.
+    destruct (per_body_lookup_item _ _ _ _ _ _ _ _ _ Hbd Hx)
+      as (Φ0' & H' & ρ0x & ρ0' & hx & h' & Hx' & Hb1 & Hb1' & Hh1 & Hh' & Hhh).
+    pose proof (functional_eval_benv _ _ _ _ Hb Hb1) as <-.
+    pose proof (functional_eval_modexp _ _ _ _ HH Hh1) as <-.
+    eapply mty_item; [ lia | exact Hx' | exact Hb1' | exact Hh' | exact (IH _ Hhh) ].
   - destruct (per_dmod_local_inv _ _ _ _ Hw) as (ρ' & [Δ' D'] & args' & -> & Hlt & L1 & L2).
     cbn [gu_params gu_def] in *.
     pose proof (per_ltele_full _ _ _ _ _ _ _ _ Hlt ltac:(rewrite length_rev; exact Hl)) as Hd.
@@ -225,6 +236,7 @@ Proof.
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' pm Uy ρ1 ch k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args x Φ0 H its1 it ρ0 h ch k a Hl Hx Hb HH Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
                  | p T oT args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T oT ch k a Hgp Hm Hty IH
@@ -247,6 +259,7 @@ Proof.
   - destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ (proj1 (per_univ_elem_sym _ _ _ _ HR)) Ha) as (R2 & Ha2 & _).
     eapply mty_def; eassumption.
   - eapply mty_sub; [ eassumption | eassumption | eassumption | eapply IH; exact HR ].
+  - eapply mty_item; [ eassumption | eassumption | eassumption | eassumption | eapply IH; exact HR ].
   - eapply mty_alias; [ eassumption | eassumption | eapply IH; exact HR ].
   - destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ (proj1 (per_univ_elem_sym _ _ _ _ HR)) Ha) as (R2 & Ha2 & _).
     eapply mty_gdef; eassumption.
@@ -269,6 +282,7 @@ Proof.
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' pm Uy ρ1 chain k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args x Φ0 H its1 it ρ0 h chain k a Hl Hx Hb HH Hm IH
                  | ρ Δ E args h chain k a Hl HE Hm IH
                  | p T oT args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T oT chain k a Hgp Hm Hty IH
@@ -286,7 +300,7 @@ Proof.
     exfalso; apply Hch; reflexivity.
   - injection Heq as -> Heq.
     inversion Hv; subst.
-    match goal with Hs : eval_selm _ _ _ _ _ |- _ => inversion Hs; subst end; cbn in *; try lia.
+    match goal with Hs : eval_selm _ _ _ _ _ |- _ => inversion Hs; subst end; cbn in *; try lia; try prefix_item_excl.
     match goal with Hp : gm_prefix_upto Φ _ = Some (gm_ext _ _ (ge_mod _ ?Uy')) |- _ =>
       rewrite Hy in Hp; injection Hp as <- <- <- end.
     match goal with Hb' : eval_benv _ _ _ Φ' ?ρ1' |- _ => pose proof (functional_eval_benv _ _ _ _ Hb Hb') as <- end.
@@ -300,6 +314,31 @@ Proof.
     match goal with Hr : eval_selmc _ _ (dm_local ρ1 Uy nil) pre v |- _ =>
       destruct (IH _ _ eq_refl Hch _ HU _ Hr) as (v' & Hv' & Hvv) end.
     exists v'; split; [ econstructor; [ eapply eval_selm_body; [ lia | exact Hy' | exact Hb1' ] | exact Hv' ] | exact Hvv ].
+  - (* a name an open declares *)
+    injection Heq as -> Heq.
+    inversion Hv; subst.
+    match goal with Hs : eval_selm _ _ _ _ _ |- _ => inversion Hs; subst end; cbn in *; try lia;
+      try match goal with Hp : gm_prefix_upto _ _ = Some _ |- _ =>
+            rewrite (gm_prefix_item_excl _ _ _ Hp) in Hx; discriminate Hx end.
+    match goal with Hi : gm_item_upto Φ _ = Some _ |- _ => rewrite Hx in Hi; injection Hi as <- <- <- <- end.
+    match goal with Hb' : eval_benv _ _ _ Φ0 ?r |- _ => pose proof (functional_eval_benv _ _ _ _ Hb Hb') as <- end.
+    match goal with HH' : eval_modexp _ _ H ρ0 ?r |- _ => pose proof (functional_eval_modexp _ _ _ _ HH HH') as <- end.
+    destruct (per_dmod_local_inv _ _ _ _ Hw) as (ρ' & [Δ' D'] & args' & -> & Hlt & L1 & L2).
+    cbn [gu_params gu_def] in *.
+    pose proof (per_ltele_full _ _ _ _ _ _ _ _ Hlt ltac:(rewrite length_rev; exact Hl)) as Hd.
+    inversion Hd; subst.
+    match goal with Hb0 : per_body _ _ _ _ |- _ => rename Hb0 into Hbd end.
+    destruct (per_body_lookup_item _ _ _ _ _ _ _ _ _ Hbd Hx)
+      as (Φ0' & H' & ρ0x & ρ0' & hx & h' & Hx' & Hb1 & Hb1' & Hh1 & Hh' & Hhh).
+    pose proof (functional_eval_benv _ _ _ _ Hb Hb1) as <-.
+    pose proof (functional_eval_modexp _ _ _ _ HH Hh1) as <-.
+    match goal with H1 : eval_selmc _ _ h (item_ch it nil) ?r, H2 : eval_selmc _ _ ?r pre v |- _ =>
+      assert (Hv2 : eval_selmc gc_deps gc_stack h (item_ch it nil ++ pre) v)
+        by (apply eval_selmc_app; eexists; split; eassumption) end.
+    destruct (IH (item_ch it nil ++ pre) ch ltac:(rewrite item_ch_app, app_assoc; reflexivity) Hch _ Hhh _ Hv2)
+      as (v' & Hv' & Hvv).
+    apply eval_selmc_app in Hv' as (r' & Hr' & Hv').
+    exists v'; split; [ econstructor; [ eapply eval_selm_item; [ lia | exact Hx' | exact Hb1' | exact Hh' | exact Hr' ] | exact Hv' ] | exact Hvv ].
   - subst.
     destruct (per_dmod_local_inv _ _ _ _ Hw) as (ρ' & [Δ' D'] & args' & -> & Hlt & L1 & L2).
     cbn [gu_params gu_def] in *.
@@ -353,6 +392,7 @@ Proof.
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' pm Uy ρ1 chain k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args x Φ0 H its1 it ρ0 h chain k a Hl Hx Hb HH Hm IH
                  | ρ Δ E args h chain k a Hl HE Hm IH
                  | p T oT args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T oT chain k a Hgp Hm Hty IH
@@ -368,6 +408,10 @@ Proof.
   - injection Heq as -> Heq.
     destruct (IH _ _ Heq Hch) as [v Hv].
     eexists; econstructor; [ eapply eval_selm_body; eassumption | exact Hv ].
+  - injection Heq as -> Heq.
+    destruct (IH (item_ch it nil ++ pre) ch ltac:(rewrite item_ch_app, Heq, app_assoc; reflexivity) Hch) as [v Hv].
+    apply eval_selmc_app in Hv as (r & Hr & Hv).
+    eexists; econstructor; [ eapply eval_selm_item; eassumption | exact Hv ].
   - destruct (IH (z :: pre) ch Heq Hch) as [v Hv].
     exists v; apply (selmc_alias _ _ _ _ _ _ _ Hl (cons_neq_nil _ _) HE); exact Hv.
   - injection Heq as -> Heq; destruct pre; [| discriminate ]; cbn in Heq; subst.
@@ -420,6 +464,7 @@ Proof.
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' pm Uy ρ1 ch k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args x Φ0 H its1 it ρ0 h ch k a Hl Hx Hb HH Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
                  | p T oT args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T oT ch k a Hgp Hm Hty IH
@@ -434,6 +479,7 @@ Proof.
     + inversion Hnd; subst.
       pose proof (nextparam_functional _ _ Hnp _ ltac:(eassumption)) as <-; eauto.
   - subst; exfalso; eapply per_univ_elem_pi_top; exact Ha.
+  - exfalso; eapply nextdom_body_sat; eassumption.
   - exfalso; eapply nextdom_body_sat; eassumption.
   - exfalso; eapply nextdom_body_sat; eassumption.
   - inversion Hnd; subst.
@@ -490,6 +536,7 @@ Proof.
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' pm Uy ρ1 ch k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args x Φ0 H its1 it ρ0 h ch k a Hl Hx Hb HH Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
                  | p T oT args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T oT ch k a Hgp Hm Hty IH

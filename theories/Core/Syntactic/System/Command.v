@@ -5,9 +5,9 @@
     by running that unit's own commands from nothing, and merges the units
     that run filed into [Θ]; the chain of units whose loading is in progress
     is what rules a cycle out.  [cc_open] declares the names its items
-    generate ([Imports]) as definitions and aliases of the frame.  Every
-    command is expanded before it runs, which turns the local opens of the
-    bodies it contains into entries.
+    generate ([items_gen], the relation the local opens of bodies share) as
+    definitions, aliases and inductive aliases of the frame.  A command runs
+    as written, but for its literals ([Builtin]): no expansion comes first.
 
     Resolution is lexical — a unit is named by its full path, and an import
     lists the names it binds — so elaborating a unit needs none of the units
@@ -17,10 +17,10 @@ From Stdlib Require Import List String PeanoNat Bool.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Export Command Imports.
+From Mctt.Core.Syntactic Require Export Command Members Builtin.
 From Mctt.Core.Syntactic.System Require Import Definitions Lemmas Structural GlobalPresup.
 From Mctt.Core.Syntactic.System Require Export IndClassify.
-From Mctt.Core.Syntactic.System Require Import IndTyping MemberWf.
+From Mctt.Core.Syntactic.System Require Import IndTyping MemberWf GlobalModules.
 From Mctt.Core.Syntactic.System Require Export Privacy.
 From Mctt.Core.Semantic Require Import NbE.
 Import Syntax_Notations GlobalCtx_Notations.
@@ -65,9 +65,9 @@ Definition gs_def (b pv : bool) (Ξ : gstack) (A M : exp) : gentry :=
 Definition gs_axiom (b pv : bool) (Ξ : gstack) (A : exp) : gentry :=
   ge_def b pv (ctx_pi (gs_tele Ξ) A) None.
 
-(** ** Imports
+(** ** Opens
 
-    The definitions and aliases an import generates ([Imports]), declared in
+    The definitions and aliases an open generates ([items_gen]), declared in
     the frame in order, with the premises of [rc_def] and [rc_alias]: what
     the import references is checked once, as written ([rcs_cons]), and a
     generated type is not written, so nothing here checks privacy. *)
@@ -376,7 +376,7 @@ Section Semantics.
       definitions and aliases its items generate in this frame. *)
   | rc_open : forall ch B Rb Θ Ξ E its gs Ξ',
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
-      import_gen_ok Θ Ξ (gs_tele Ξ) E its gs ->
+      open_gens Θ Ξ (Some (ind_target Θ Ξ)) (gs_tele Ξ) E its gs ->
       gens_run Θ Ξ gs Ξ' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_open E its ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
   (** A declaration as written: its arguments classified ([cls_cons_in]);
@@ -426,33 +426,30 @@ Section Semantics.
 
   with run_cmds : list path -> builtins -> bmap -> gdeps -> gstack -> list ccmd -> builtins -> bmap -> gdeps -> gstack -> Prop :=
   | rcs_nil : forall ch B Rb Θ Ξ, Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] nil ⇝* Θ ⍮ Ξ ⍮ B ⍮ Rb
-  (** Each command is checked for privacy as written, its literals are
-      generated from the builtin bindings ([Builtin]), then it is expanded
-      ([Imports]) before it runs. *)
-  | rcs_cons : forall ch B Rb Θ Ξ c c1 c' cs B1 Rb1 Θ1 Ξ1 B2 Rb2 Θ2 Ξ2,
+  (** Each command is checked for privacy as written, and its literals are
+      generated from the builtin bindings ([Builtin]) before it runs. *)
+  | rcs_cons : forall ch B Rb Θ Ξ c c1 cs B1 Rb1 Θ1 Ξ1 B2 Rb2 Θ2 Ξ2,
       acc_ok Θ Ξ (cmd_refs c) ->
       cmd_lits_ok Θ Ξ B c c1 ->
-      cmd_xp_ok Θ Ξ c1 c' ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] c' ⇝ Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] c1 ⇝ Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
       Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ⊢[ch] cs ⇝* Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2 ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] c :: cs ⇝* Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2
   where "Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ] cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'" := (run_cmds ch B Rb Θ Ξ cs B' Rb' Θ' Ξ')
 
   (** [run_unit (fp :: ch) u B Rb Θ U]: the unit [fp], at the head of the
       chain, runs from nothing filed and no binding.  Its leading loads run
-      on the empty stack, then its parameters get their literals, are
-      expanded and checked against what they filed, then its body runs in
+      on the empty stack, then its parameters get their literals and are
+      checked against what they filed, then its body runs in
       its own frame, named [fp]; [Θ] is what it filed, [Rb] their records,
       [U] the unit, [B] its own record. *)
   with run_unit : list path -> cunit -> builtins -> bmap -> gdeps -> gunit -> Prop :=
-  | ru_intro : forall fp ch B1 Rb1 B2 Rb2 imps P P1 P' cs Θ1 Θ2 mp U,
+  | ru_intro : forall fp ch B1 Rb1 B2 Rb2 imps P P1 cs Θ1 Θ2 mp U,
       nil ⍮ nil ⍮ bt_empty ⍮ nil ⊢[fp :: ch] imps ⇝* Θ1 ⍮ nil ⍮ B1 ⍮ Rb1 ->
       tele_lits_ok Θ1 nil B1 P P1 ->
-      tele_xp_ok Θ1 nil nil P1 P' ->
-      tele_ass P' ->
-      ⊢ Θ1 ⍮ nil ⍮ P' ->
+      tele_ass P1 ->
+      ⊢ Θ1 ⍮ nil ⍮ P1 ->
       acc_ok Θ1 nil (tele_refs nil P) ->
-      Θ1 ⍮ gs_push (q_abs fp nil) P' nil ⍮ B1 ⍮ Rb1 ⊢[fp :: ch] cs ⇝* Θ2 ⍮ (mp, U) :: nil ⍮ B2 ⍮ Rb2 ->
+      Θ1 ⍮ gs_push (q_abs fp nil) P1 nil ⍮ B1 ⍮ Rb1 ⊢[fp :: ch] cs ⇝* Θ2 ⍮ (mp, U) :: nil ⍮ B2 ⍮ Rb2 ->
       run_unit (fp :: ch) (imps, P, cs) B2 Rb2 Θ2 U.
 
   (** The unit given on the command line: run like an imported one, with
@@ -478,6 +475,10 @@ Qed.
     are functions; the chain only decides whether a run succeeds.  This is what
     makes a path filed by two runs the same unit, so the merge loses
     nothing. *)
+
+Lemma open_gens_functional : forall Θ Ξ io Γ H its gs1 gs2,
+    open_gens Θ Ξ io Γ H its gs1 -> open_gens Θ Ξ io Γ H its gs2 -> gs1 = gs2.
+Proof. intros * (_ & H1 & _) (_ & H2 & _); eapply items_gen_functional; eassumption. Qed.
 
 Lemma gens_run_functional : forall Θ Ξ gs Ξ1, gens_run Θ Ξ gs Ξ1 -> forall Ξ2, gens_run Θ Ξ gs Ξ2 -> Ξ1 = Ξ2.
 Proof. induction 1; intros * H2; inversion H2; subst; auto. Qed.
@@ -517,12 +518,8 @@ Section Determinism.
           assert_fails constr_eq c1 c2; assert (c1 = c2) by (unfold cmd_lits_ok in *; congruence); subst c2
       | H1 : tele_lits_ok ?a ?b ?B ?c ?c1, H2 : tele_lits_ok ?a ?b ?B ?c ?c2 |- _ =>
           assert_fails constr_eq c1 c2; assert (c1 = c2) by (unfold tele_lits_ok in *; congruence); subst c2
-      | H1 : cmd_xp_ok ?a ?b ?c ?c1, H2 : cmd_xp_ok ?a ?b ?c ?c2 |- _ =>
-          assert_fails constr_eq c1 c2; pose proof (cmd_xp_ok_functional _ _ _ _ _ H1 H2); subst c2
-      | H1 : tele_xp_ok ?a ?b ?S ?c ?c1, H2 : tele_xp_ok ?a ?b ?S ?c ?c2 |- _ =>
-          assert_fails constr_eq c1 c2; pose proof (tele_xp_ok_functional _ _ _ _ _ _ H1 H2); subst c2
-      | H1 : import_gen_ok ?a ?b ?G ?E ?is ?g1, H2 : import_gen_ok ?a ?b ?G ?E ?is ?g2 |- _ =>
-          assert_fails constr_eq g1 g2; pose proof (import_gen_ok_functional _ _ _ _ _ _ _ H1 H2); subst g2
+      | H1 : open_gens ?a ?b ?o ?G ?E ?is ?g1, H2 : open_gens ?a ?b ?o ?G ?E ?is ?g2 |- _ =>
+          assert_fails constr_eq g1 g2; pose proof (open_gens_functional _ _ _ _ _ _ _ _ H1 H2); subst g2
       end.
     (* an inductive alias: its head splits one way, and its target is one *)
     all: try solve [
@@ -593,8 +590,6 @@ Section Determinism.
       repeat match goal with
       | H1 : tele_lits_ok ?a ?b ?B ?c ?c1, H2 : tele_lits_ok ?a ?b ?B ?c ?c2 |- _ =>
           assert_fails constr_eq c1 c2; assert (c1 = c2) by (unfold tele_lits_ok in *; congruence); subst c2
-      | H1 : tele_xp_ok ?a ?b ?S ?c ?c1, H2 : tele_xp_ok ?a ?b ?S ?c ?c2 |- _ =>
-          assert_fails constr_eq c1 c2; pose proof (tele_xp_ok_functional _ _ _ _ _ _ H1 H2); subst c2
       end.
       match goal with
       | IH2 : forall _ _ _ _ _, run_cmds _ _ _ ?T (gs_push ?mp ?P nil) ?cs _ _ _ _ -> _,
@@ -1141,14 +1136,14 @@ Section WellFormed.
     - intros * _ HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
     - intros * _ HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
     - intros * HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
-    - intros * _ _ _ Hr1 IH1 Hr2 IH2 HΞ Hc Hst.
+    - intros * _ _ Hr1 IH1 Hr2 IH2 HΞ Hc Hst.
       destruct (IH1 HΞ Hc Hst) as (H1 & Hc1 & Hs1 & Hl1).
       pose proof (stack_in_shape _ _ _ (proj1 run_params _ _ _ _ _ _ _ _ _ _ Hr1) Hst) as Hst1.
       destruct (IH2 H1 Hc1 Hst1) as (H2 & Hc2 & Hs2 & Hl2).
       split; [ exact H2 | split; [ exact Hc2 | split; eauto using gds_sub_trans, bt_le_trans ] ].
     - (* a unit: its imports from nothing, its parameters, then its body in
          the frame named by its path, which nothing it imported filed *)
-      intros fp ch B1 Rb1 B2 Rb2 imps P0 P1 P cs Θ1 Θ2 mp U Hi IHi _ _ Htel HP _ Hb IHb.
+      intros fp ch B1 Rb1 B2 Rb2 imps P0 P cs Θ1 Θ2 mp U Hi IHi _ Htel HP _ Hb IHb.
       destruct (IHi ltac:(constructor; constructor) canon_nil ltac:(intros ? ? [])) as (H1 & Hc1 & _ & _).
       assert (Hn1 : gds_lookup Θ1 fp = None)
         by exact (proj1 (proj2 run_chain_fresh) _ _ _ _ _ _ _ _ _ _ Hi fp (or_introl eq_refl) eq_refl).
@@ -1288,13 +1283,13 @@ Section WellFormed.
     - intros; split; assumption.
     - intros; split; assumption.
     - intros; split; assumption.
-    - intros * _ _ _ Hr1 IH1 _ IH2 HΞ Hc Hst Hb HR.
+    - intros * _ _ Hr1 IH1 _ IH2 HΞ Hc Hst Hb HR.
       destruct (proj1 run_wf _ _ _ _ _ _ _ _ _ _ Hr1 HΞ Hc Hst) as (H1 & Hc1 & _).
       pose proof (stack_in_shape _ _ _ (proj1 run_params _ _ _ _ _ _ _ _ _ _ Hr1) Hst) as Hst1.
       destruct (IH1 HΞ Hc Hst Hb HR) as [Hb1 HR1].
       exact (IH2 H1 Hc1 Hst1 Hb1 HR1).
     - (* a unit: its imports, its frame pushed, then filed *)
-      intros fp ch B1 Rb1 B2 Rb2 imps P0 P1 P cs Θ1 Θ2 mp U Hi IHi _ _ Htel HP _ Hbd IHb.
+      intros fp ch B1 Rb1 B2 Rb2 imps P0 P cs Θ1 Θ2 mp U Hi IHi _ Htel HP _ Hbd IHb.
       assert (Hnil : ⊢g nil ⍮ nil) by (constructor; constructor).
       destruct (proj1 (proj2 run_wf) _ _ _ _ _ _ _ _ _ _ Hi Hnil canon_nil ltac:(intros ? ? [])) as (H1 & Hc1 & _).
       assert (Hn1 : gds_lookup Θ1 fp = None)
@@ -1535,10 +1530,10 @@ Section Runs.
     - intros; apply rc_eval_check; assumption.
     - intros; eapply rc_eval_infer; eassumption.
     - intros; constructor.
-    - intros * Ha Hl Hx Hr1 IH1 Hr2 IH2 ch' Hch.
-      econstructor; [ exact Ha | exact Hl | exact Hx | apply IH1; eapply Hpre; eassumption | auto ].
-    - intros fp ch B1 Rb1 B2 Rb2 imps P P1 P' cs Θ1 Θ2 mp U Hi IHi Hl Hx Htel HP Ha Hb IHb ch' Hch.
-      cbn [hd] in *; econstructor; [ apply IHi; eapply Hpre; eassumption | eassumption | eassumption | assumption | assumption | assumption | auto ].
+    - intros * Ha Hl Hr1 IH1 Hr2 IH2 ch' Hch.
+      econstructor; [ exact Ha | exact Hl | apply IH1; eapply Hpre; eassumption | auto ].
+    - intros fp ch B1 Rb1 B2 Rb2 imps P P1 cs Θ1 Θ2 mp U Hi IHi Hl Htel HP Ha Hb IHb ch' Hch.
+      cbn [hd] in *; econstructor; [ apply IHi; eapply Hpre; eassumption | eassumption | assumption | assumption | assumption | auto ].
   Qed.
 
   Lemma run_tl :

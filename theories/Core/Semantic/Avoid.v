@@ -287,12 +287,70 @@ Proof.
   induction Φ as [| Φ IH y E | Φ IH H its]; intros * Hp Hf; cbn in Hp; [ discriminate | |].
   - destruct (String.eqb x y); [ inversion Hp; subst; exact Hf |].
     cbn in Hf; destruct Hf; eapply IH; eassumption.
-  - cbn in Hf; destruct Hf; eapply IH; eassumption.
+  - destruct (existsb _ _); [ discriminate |].
+    cbn in Hf; destruct Hf; eapply IH; eassumption.
 Qed.
 
 Lemma ofresh_prefix_upto : forall Φ x Φ0 K,
     gm_prefix_upto Φ x = Some Φ0 -> ogfresh K Φ -> ogfresh K Φ0.
 Proof. intros * Hp; destruct K; cbn; [ eapply prefix_upto_fresh; eassumption | auto ]. Qed.
+
+(** The open that declares a name, and the entries it generates. *)
+Lemma item_upto_fresh : forall Φ x Φ0 H its1 it k,
+    gm_item_upto Φ x = Some (Φ0, H, its1, it) -> gmod_fresh k Φ -> gmod_fresh k (gm_open Φ0 H its1).
+Proof.
+  induction Φ as [| Φ IH y E | Φ IH H0 its]; intros * Hp Hf; cbn in Hp; [ discriminate | |].
+  - destruct (String.eqb x y); [ discriminate |]; cbn in Hf; destruct Hf; eapply IH; eassumption.
+  - destruct (items_upto x its) as [[its1' it'] |]; [ injection Hp as <- <- <- <-; exact Hf |].
+    cbn in Hf; destruct Hf; eapply IH; eassumption.
+Qed.
+
+Lemma ofresh_item_upto : forall Φ x Φ0 H its1 it K,
+    gm_item_upto Φ x = Some (Φ0, H, its1, it) -> ogfresh K Φ -> ogfresh K (gm_open Φ0 H its1).
+Proof. intros * Hp; destruct K; cbn; [ eapply item_upto_fresh; eassumption | auto ]. Qed.
+
+Lemma ogfresh_open_prefix : forall K Φ H its, ogfresh K (gm_open Φ H its) -> ogfresh K Φ.
+Proof. intros [] *; cbn; tauto. Qed.
+
+Lemma ogfresh_open_target : forall K Φ H its, ogfresh K (gm_open Φ H its) -> omfresh (oshift (gm_binders Φ) K) H.
+Proof. intros [] *; cbn; [ intros [_ HH]; exact HH | auto ]. Qed.
+
+Lemma gens_append_fresh : forall gs Φ k,
+    gmod_fresh k Φ -> List.Forall (fun g => gentry_fresh k (snd (ig_entry g))) gs ->
+    gmod_fresh k (gens_append Φ (gm_binders Φ) gs).
+Proof.
+  induction gs as [| g gs IH]; intros * HΦ Hg; cbn [gens_append]; [ exact HΦ |].
+  inversion Hg as [| ? ? Hg1 Hgs]; subst.
+  destruct (ig_entry g) as [d E] eqn:Eg; cbn [snd] in Hg1.
+  replace (S (gm_binders Φ)) with (gm_binders (gm_ext Φ d (gentry_wk E (wk_shiftn (gm_binders Φ))))) by reflexivity.
+  apply IH; [ cbn; split; [ exact HΦ | apply gentry_fresh_shiftn; exact Hg1 ] | exact Hgs ].
+Qed.
+
+Lemma kgens_entries_fresh : forall Θ Ξ ρ H its gs, kgens Θ Ξ ρ H its gs ->
+    forall k, modexp_fresh k H -> List.Forall (fun g => gentry_fresh k (snd (ig_entry g))) gs.
+Proof. induction 1; intros k Hk; constructor; cbn; auto. Qed.
+
+Lemma ogfresh_gens : forall Θ Ξ ρ H its gs K,
+    kgens Θ Ξ ρ H its gs -> omfresh K H -> ogfresh K (gens_append gm_nil 0 gs).
+Proof.
+  intros * Hg; destruct K as [k |]; cbn; [| auto ]; intros Hk.
+  exact (gens_append_fresh gs gm_nil k I (kgens_entries_fresh _ _ _ _ _ _ Hg _ Hk)).
+Qed.
+
+Lemma items_upto_length : forall x its its1 it, items_upto x its = Some (its1, it) -> its1 <> nil.
+Proof.
+  induction its as [| it0 its IH]; intros * H; cbn in H; [ discriminate |].
+  destruct (items_upto x its) as [[] |]; [ injection H as <- <-; discriminate |].
+  destruct (String.eqb x (iitem_name it0)); [ injection H as <- <-; discriminate | discriminate ].
+Qed.
+
+Lemma item_upto_items : forall Φ x Φ0 H its1 it,
+    gm_item_upto Φ x = Some (Φ0, H, its1, it) -> its1 <> nil.
+Proof.
+  induction Φ as [| Φ IH y E | Φ IH H0 its]; intros * Hp; cbn in Hp; [ discriminate | |].
+  - destruct (String.eqb x y); [ discriminate | eauto ].
+  - destruct (items_upto x its) as [[its1' it'] |] eqn:E; [ injection Hp as <- <- <- <-; eapply items_upto_length; eassumption | eauto ].
+Qed.
 
 (** The parts of a fresh compound, each at the position its binders shift
     to.  Stated at an optional position, so that one lemma serves both the
@@ -384,7 +442,8 @@ End OFresh.
   ofresh_exfalso_A ofresh_exfalso_M
   ofresh_pi_A ofresh_pi_B ofresh_fn_M ofresh_app_l ofresh_app_r ofresh_let_M ofresh_let_B
   ofresh_letmod_U ofresh_mem ofresh_var omfresh_var omfresh_lit omfresh_mem omfresh_app_l omfresh_app_r
-  oufresh_body oufresh_alias ogfresh_def_prefix ogfresh_def_body ogfresh_mod_prefix ogfresh_mod_unit : avoid.
+  oufresh_body oufresh_alias ogfresh_def_prefix ogfresh_def_body ogfresh_mod_prefix ogfresh_mod_unit
+  ogfresh_open_prefix ogfresh_open_target ogfresh_gens : avoid.
 (** Freshness does not read the name of an eliminator, so it is taken from
     the hypothesis rather than left to unification. *)
 #[local] Hint Extern 1 (ofresh _ _) =>
@@ -573,6 +632,25 @@ Section Eval.
           apply (IH (oshift (List.length (bs ++ v0 :: nil)) Km));
             [ apply env_av_args; [ exact Hm | apply dav_args_snoc; assumption ]
             | rewrite List.length_app, Hlb; cbn [List.length]; replace (List.length Ps + 1) with (S (List.length Ps)) by lia; exact HA ]
+      end ].
+    (** A local open: the entries it generates; a name it declares, the
+        newest entry of the body up to it. *)
+    all: try solve [ match goal with
+      | Hg : kgens _ _ _ _ ?its ?gs, IH : env_av _ _ (oshift (gm_binders (gens_append gm_nil 0 ?gs)) _) ?ρ2
+        |- env_av _ _ _ ?ρ2 =>
+          rewrite gens_append_binders, (kgens_length _ _ _ _ _ _ Hg), oshift_oshift in IH; cbn [gm_binders];
+          rewrite Nat.add_0_r in IH; exact IH
+      end ].
+    all: try solve [ match goal with
+      | Hi : gm_item_upto ?Φ ?x = Some (?Φ0, ?H, ?its1, _), HU : oufresh ?K (gu_body ?Δ ?Φ),
+        IHb : ogfresh _ ?Φ0 -> env_av _ _ _ ?ρ0,
+        IHh : forall K0, env_av _ _ K0 ?ρ0 -> omfresh K0 ?H -> dmav _ _ ?h |- _ =>
+          let Hf := fresh "Hf" in
+          assert (Hf : ogfresh (oshift (List.length Δ) K) (gm_open Φ0 H its1))
+            by (eapply ofresh_item_upto; [ exact Hi | apply oufresh_body; exact HU ]);
+          let Hdm := fresh "Hdm" in
+          pose proof (IHh _ (IHb (ogfresh_open_prefix _ _ _ _ Hf)) (ogfresh_open_target _ _ _ _ Hf)) as Hdm;
+          eauto
       end ].
     (** What is left: the closures the rules build, and the module bodies,
         whose freshness is at the position their parameters and entries

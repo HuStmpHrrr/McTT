@@ -15,7 +15,7 @@ From Mctt.Core.Syntactic.System Require Import MemberLemmas MemberWf GlobalModul
 From Mctt.Core.Completeness Require Import
   LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases TrueFalseCases UnitCases InstanceCases
   MemberCases MemberTyping MemberReps MemberSem ModexpCases PathCases.
-From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
+From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules Kinds KindsTyping.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 
@@ -351,7 +351,7 @@ Section Paths.
       | Hx : gc_module Θm Ξm (qname_app p ?c) = _ |- _ => rewrite (proj1 (Hbr c)) in Hx
       | Hx : gc_resolve Θm Ξm (qname_app p ?c) = _, Hn : ?c <> nil |- _ => rewrite (proj2 (Hbr c) Hn) in Hx
       end.
-    2: solve [
+    2-3: solve [
         destruct (gc_module_body _ _ _ _ _ Hmod) as (Φ0 & Hb0);
         destruct (HB _ _ _ Hb0) as (HT0 & HU0 & _);
         split; [ exists (List.length T0), true; apply (rep_closed_tele _ _ 0 _ HT0 HU0 (valid_exp_True HT0)); reflexivity |];
@@ -389,7 +389,7 @@ Section Paths.
       assert (Hys : gc_module Θs Ξs (qname_app (qname_app p pre) (y :: nil)) = Some (mr_alias U nil))
         by (rewrite qname_app_app, (proj1 (Hcr _)), (proj1 (gm_body_snoc _ _ _ _ _ Hb y _)); exact Hy).
       destruct (HA _ _ _ Hys) as (HUs & HUm & HUv).
-      destruct (closure_typed _ _ _ _ Hunit sem_ctx_nil HUs HUm Hkr) as ((n & b & Hrep & _) & Hval).
+      destruct (closure_typed Hgt (proj2 (proj2 Hgm)) _ _ _ _ Hunit sem_ctx_nil HUs HUm Hkr) as ((n & b & Hrep & _) & Hval).
       split; [ exists n, b; exact Hrep |].
       intros P ρ HR Hρ h Hh; pose proof (path_value_body _ _ _ _ _ Hp Hh) as ->.
       destruct (Hval P ρ HR Hρ) as (a & Ha & Hma).
@@ -428,8 +428,9 @@ Section Paths.
       - destruct ch as [| c ch]; [ rewrite List.app_nil_r, (gc_module_alias_resolve _ _ Hgss _ _ _ Hmod) in *; discriminate |].
         rewrite Hres in *; [ discriminate | discriminate ].
       - rewrite Hal in *; discriminate.
+      - rewrite Hal in *; discriminate.
       - match goal with Hx : gc_module _ _ _ = Some (mr_alias _ _) |- _ => rewrite Hal in Hx; injection Hx; intros; subst end.
-        eapply closure_pairs; [ exact Hunit | assumption | exact sem_ctx_nil | exact HUs | exact HUm | eassumption | assumption ]. }
+        eapply (closure_pairs Hgt (proj2 (proj2 Hgm))); [ exact Hunit | assumption | exact sem_ctx_nil | exact HUs | exact HUm | eassumption | assumption ]. }
     destruct (gc_module_body _ _ _ _ _ Hmod) as (Φ0 & Hb0).
     destruct (HB _ _ _ Hb0) as (HT0 & HU0 & _).
     pose proof (closed_read_body _ _ Hgss _ _ _ Hb0) as Hcr0.
@@ -441,7 +442,7 @@ Section Paths.
       | Hx : gc_module Θm Ξm (qname_app p ?c) = _ |- _ => rewrite (proj1 (Hbr c)) in Hx
       | Hx : gc_resolve Θm Ξm (qname_app p ?c) = _, Hn : ?c <> nil |- _ => rewrite (proj2 (Hbr c) Hn) in Hx
       end.
-    2: solve [
+    2-3: solve [
         match goal with Hr : gc_module _ _ (qname_app _ (_ ++ _)) = Some (mr_body _ _) |- _ => rename Hr into Hr2 end;
         rewrite <- qname_app_app, (proj1 (Hcr0 _)) in Hr2;
         destruct (gm_module_body_some _ _ _ _ _ _ Hr2) as (Φ' & Hb);
@@ -483,7 +484,7 @@ Section Paths.
         by (rewrite qname_app_app, (proj1 (Hcr0 _)), (proj1 (gm_body_snoc _ _ _ _ _ Hb y _)); exact Hy).
       destruct (HA _ _ _ Hys) as (HUs & HUm & _).
       match goal with Hu : unit_member_type _ _ _ U _ _ |- _ => rename Hu into Hu2 end.
-      destruct (closure_typed _ _ _ _ Hu2 sem_ctx_nil HUs HUm ltac:(assumption)) as ((n & b & Hrep & Hle) & _).
+      destruct (closure_typed Hgt (proj2 (proj2 Hgm)) _ _ _ _ Hu2 sem_ctx_nil HUs HUm ltac:(assumption)) as ((n & b & Hrep & Hle) & _).
       exists (List.length T0), n; split; [ exact Htop |]; split; [ exact (rep_forget _ _ _ _ Hrep) |].
       rewrite HUp, !length_app in Hle; lia.
   Qed.
@@ -494,11 +495,12 @@ Section Paths.
     pose proof (path_value_body _ _ _ _ _ Hp Hh) as ->.
     pose proof (closed_read_body _ _ Hgss _ _ _ Hp) as Hcr.
     pose proof (bridge _ _ _ Hp) as Hbr.
-    unfold qname_mod in HM; rewrite me_mems_unfold in HM; cbn [member_unfold_ch] in HM.
+    unfold qname_mod in HM; rewrite me_mems_unfold in HM.
     fold (qname_mod p) in Hh.
     inv_path_mt Hm; name_path_mt p ch.
     - assert (Hne0 : ch <> nil) by (intros ->; inversion Hd).
-      rewrite Hres in HM; injection HM as <-.
+      inversion HM as [? ? ? b' pv' A' B' Hr' | ? ? ? U' r' M' Hn' _ _ | | | |]; subst;
+        [| exfalso; change (q_abs (q_unit p) (q_chain p ++ ch)) with (qname_app p ch) in Hn'; exact (Hn' _ _ _ _ Hres) ].
       rewrite (proj2 (Hbr _) Hne0) in Hres.
       destruct (exists_last Hne0) as (pre & z & ->).
       pose proof Hres as Hres'; rewrite (proj2 (proj2 (Hcr _)) Hne0) in Hres'.
@@ -509,7 +511,14 @@ Section Paths.
       replace (member_ref (me_unit (q_unit p)) (q_chain p ++ pre ++ z :: nil)) with (a_mem (qname_mod (qname_app p pre)) z)
         by (unfold qname_mod; cbn [q_unit q_chain qname_app]; rewrite app_assoc, member_ref_mems; reflexivity).
       eapply eval_mem_of_sel; [ exact (path_value_ex _ _ _ (body_target _ _ _ Hbq) ρ) | exact Hs ].
-    - rewrite (gc_module_alias_resolve _ _ Hgs _ _ _ Hmod), Hmod in HM.
+    - inversion HM as [? ? ? b' pv' A' B' Hr' | ? ? ? U' r' M' _ Hm'' HMe | | | |]; subst;
+        change (q_abs (q_unit p) (q_chain p ++ ch)) with (qname_app p ch) in *;
+        [ rewrite (gc_module_alias_resolve _ _ Hgs _ _ _ Hmod) in Hr'; discriminate |].
+      rewrite Hmod in Hm''; injection Hm'' as <- <-.
+      destruct (gc_module_alias_unit _ _ _ _ _ Hmod) as (Δu & Eu & EU).
+      assert (HUu : unit_unfold Θm Ξm ⋅ U r M) by (rewrite EU in *; econstructor; [ constructor | exact I | exact HMe ]).
+      assert (HUx : unit_xp Θm Ξm ⋅ U U) by (rewrite EU; constructor).
+      assert (HUxg : unit_xp gc_deps gc_stack ⋅ U U) by (rewrite EU; constructor).
       rewrite (proj1 (Hbr _)) in Hmod.
       pose proof (Hkr eq_refl) as Hr.
       pose proof Hmod as Hmod'; rewrite (proj1 (Hcr _)) in Hmod'.
@@ -524,7 +533,7 @@ Section Paths.
       assert (Hys : gc_module Θs Ξs (qname_app (qname_app p pre) (y :: nil)) = Some (mr_alias U nil))
         by (rewrite qname_app_app, (proj1 (Hcr _)), (proj1 (gm_body_snoc _ _ _ _ _ Hb y _)); exact Hy).
       destruct (HA _ _ _ Hys) as (HUs & HUm & HUv).
-      destruct (closure_typed _ _ _ _ Hunit sem_ctx_nil HUs HUm Hkr) as (_ & Hval).
+      destruct (closure_typed Hgt (proj2 (proj2 Hgm)) _ _ _ _ Hunit sem_ctx_nil HUs HUm Hkr) as (_ & Hval).
       destruct (Hval R ρ HR Hρ) as (a' & Ha' & Hma).
       pose proof (functional_eval_exp _ _ _ _ Ha Ha') as <-.
       pose proof (selc_global_alias _ _ _ _ _ _ _ (body_chain _ _ _ _ _ _ Hp Hb) Hr
@@ -534,7 +543,7 @@ Section Paths.
       pose proof (functional_eval_selc _ _ _ _ Hd' Hv2) as <-.
       assert (HPE : PER E) by (eapply per_elem_PER; exact HE).
       assert (Hv : E v v) by (etransitivity; [ exact Hvv | symmetry; exact Hvv ]).
-      destruct (unit_delta _ _ _ _ _ _ _ Hunit eq_refl HM HUa _ _ _ _ _ Ha HE Hv1 Hv) as (m & Hm' & Hmv).
+      destruct (unit_delta _ _ _ _ _ _ _ _ Hunit eq_refl HUu HUa HUx HUxg _ (kmatch_nil _ _ _) _ _ _ _ Ha HE Hv1 Hv) as (m & Hm' & Hmv).
       exists m; split; [ exact Hm' | etransitivity; [ exact Hmv | exact Hvv ] ].
   Qed.
 
@@ -563,6 +572,7 @@ Section Paths.
     - destruct ch as [| c ch]; [ rewrite qname_app_nil, (gc_module_alias_resolve _ _ Hgs _ _ _ Hp) in *; discriminate |].
       rewrite Hres in *; [ discriminate | discriminate ].
     - rewrite Hal in *; discriminate.
+    - rewrite Hal in *; discriminate.
     - match goal with Hx : gc_module _ _ _ = Some (mr_alias _ _) |- _ => rewrite Hal in Hx; injection Hx; intros; subst end.
       split; assumption.
   Qed.
@@ -582,7 +592,7 @@ Section Paths.
     split; [ split |].
     - intros ch R Hm Hk.
       destruct (alias_mt_inv _ _ _ Hp _ _ _ Hm) as (Hu & Hk').
-      destruct (closure_typed _ _ _ _ Hu sem_ctx_nil HUs HUm Hk') as ((n & b & Hrep & _) & Hval).
+      destruct (closure_typed Hgt (proj2 (proj2 Hgm)) _ _ _ _ Hu sem_ctx_nil HUs HUm Hk') as ((n & b & Hrep & _) & Hval).
       split; [ eauto |].
       intros P ρ HR Hρ h Hh; destruct (Hval P ρ HR Hρ) as (a & Ha & Hma).
       exists a; split; [ exact Ha |].
@@ -591,33 +601,38 @@ Section Paths.
       destruct (alias_mt_inv _ _ _ Hp _ _ _ Hm0) as (Hu0 & _).
       destruct (alias_mt_inv _ _ _ Hp _ _ _ Hm) as (Hu & Hk').
       rewrite app_assoc in Hu, Hk'.
-      exact (closure_pairs _ _ _ _ Hu0 Hk0 sem_ctx_nil HUs HUm _ _ Hu Hk').
+      exact (closure_pairs Hgt (proj2 (proj2 Hgm)) _ _ _ _ Hu0 Hk0 sem_ctx_nil HUs HUm _ _ Hu Hk').
     - split.
       + intros ch A M Hm HM R ρ HR Hρ h Hh * Ha HE Hd Hdd.
         destruct (gc_module_alias_app _ _ Hgs _ _ _ Hp ch) as (Hal & Hres).
         assert (Hn : gc_resolve Θm Ξm (qname_app p ch) = None)
           by (destruct ch; [ rewrite qname_app_nil; exact (gc_module_alias_resolve _ _ Hgs _ _ _ Hp)
                            | apply Hres; discriminate ]).
-        unfold qname_mod in HM; rewrite me_mems_unfold in HM; cbn [member_unfold_ch] in HM.
-        change {| q_unit := q_unit p; q_chain := q_chain p ++ ch |} with (qname_app p ch) in HM.
-        rewrite Hn, Hal in HM.
+        unfold qname_mod in HM; rewrite me_mems_unfold in HM.
+        inversion HM as [? ? ? b' pv' A' B' Hr' | ? ? ? U' r' M' _ Hm'' HMe | | | |]; subst;
+          change (q_abs (q_unit p) (q_chain p ++ ch)) with (qname_app p ch) in *; [ congruence |].
+        rewrite Hal in Hm''; injection Hm'' as <- <-.
+        destruct (gc_module_alias_unit _ _ _ _ _ Hp) as (Δu & Eu & EU).
+        assert (HUu : unit_unfold Θm Ξm ⋅ U (r0 ++ ch) M) by (rewrite EU in *; econstructor; [ constructor | exact I | exact HMe ]).
+        assert (HUx : unit_xp Θm Ξm ⋅ U U) by (rewrite EU; constructor).
+        assert (HUxg : unit_xp gc_deps gc_stack ⋅ U U) by (rewrite EU; constructor).
         destruct (alias_mt_inv _ _ _ Hp _ _ _ Hm) as (Hu & Hk').
         destruct ch as [| c ch]; [ inversion Hd |].
         assert (Hne : c :: ch <> nil) by discriminate.
         assert (Hd' : eval_selc gc_deps gc_stack (dm_local nil U nil) (r0 ++ c :: ch) d)
           by (apply eval_selc_app; [ exact Hne | exists h; split; [ exact (Hev _ _ Hh) | exact Hd ] ]).
-        destruct (closure_typed _ _ _ _ Hu sem_ctx_nil HUs HUm Hk') as (_ & Hval).
+        destruct (closure_typed Hgt (proj2 (proj2 Hgm)) _ _ _ _ Hu sem_ctx_nil HUs HUm Hk') as (_ & Hval).
         destruct (Hval R ρ HR Hρ) as (a' & Ha' & Hma).
         pose proof (functional_eval_exp _ _ _ _ Ha Ha') as <-.
         destruct (mtyped_rel (proj1 Hgm) _ _ _ _ Hma _ _ _ (Htie ρ) HE) as (v & v' & Hv1 & Hv2 & Hvv).
         pose proof (functional_eval_selc _ _ _ _ Hd' Hv2) as <-.
         assert (HPE : PER E) by (eapply per_elem_PER; exact HE).
         assert (Hv : E v v) by (etransitivity; [ exact Hvv | symmetry; exact Hvv ]).
-        destruct (unit_delta _ _ _ _ _ _ _ Hu eq_refl HM HUa _ _ _ _ _ Ha HE Hv1 Hv) as (m & Hm' & Hmv).
+        destruct (unit_delta _ _ _ _ _ _ _ _ Hu eq_refl HUu HUa HUx HUxg _ (kmatch_nil _ _ _) _ _ _ _ Ha HE Hv1 Hv) as (m & Hm' & Hmv).
         exists m; split; [ exact Hm' | etransitivity; [ exact Hmv | exact Hvv ] ].
       + intros R T Hm HT; assert (Hk : mres_kind R = mk_mod) by (destruct R; cbn in HT |- *; congruence).
         destruct (alias_mt_inv _ _ _ Hp _ _ _ Hm) as (Hu & Hk').
-        destruct (closure_typed _ _ _ _ Hu sem_ctx_nil HUs HUm Hk') as (_ & Hval).
+        destruct (closure_typed Hgt (proj2 (proj2 Hgm)) _ _ _ _ Hu sem_ctx_nil HUs HUm Hk') as (_ & Hval).
         destruct (Hval _ nil per_ctx_env_nil_true I) as (a & _ & Hma).
         destruct (mtyped_selmc_ex _ _ _ _ Hma r0 nil eq_refl ltac:(rewrite Hk; discriminate)) as (h & Hs).
         destruct (mtyped_selmc_rel (proj1 Hgm) _ _ _ _ Hma r0 nil eq_refl ltac:(rewrite Hk; discriminate) _ (Htie nil) _ Hs)

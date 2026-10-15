@@ -3,11 +3,11 @@
     What a path names in the global context is a lookup ([gc_resolve],
     [gc_module], [gc_body]).  A module has no signature: the type of a member is computed from the
     module, when it is needed, by the relation [member_type], and its
-    δ-reduct by the function [member_unfold].  Both read syntax, context
+    δ-reduct by the relation [member_unfold].  Both read syntax, context
     lookup and global resolution only, so they sit outside the mutual block of
     judgments, which uses them. *)
 
-From Stdlib Require Import List String.
+From Stdlib Require Import Lia List String Bool.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
@@ -1099,12 +1099,46 @@ Proof. intros * H H'; apply ctx_find_mod_spec in H, H'; congruence. Qed.
 
 (** ** Syntactic Helpers *)
 
-(** The body up to and including the entry named [x]. *)
+(** The items of an open up to and including the last one named [x], and
+    that item. *)
+Fixpoint items_upto (x : string) (its : list iitem) : option (list iitem * iitem) :=
+  match its with
+  | nil => None
+  | it :: its' =>
+      match items_upto x its' with
+      | Some (its1, it1) => Some (it :: its1, it1)
+      | None => if String.eqb x (iitem_name it) then Some (it :: nil, it) else None
+      end
+  end.
+
+(** The chain an item of an open reads in its target, before [ch]. *)
+Definition item_ch (it : iitem) (ch : list string) : list string :=
+  match it with
+  | (Some n, _, _) => n :: ch
+  | (None, _, _) => ch
+  end.
+
+(** The body up to and including the entry named [x].  A name a local
+    open declares is no entry, and shadows the entries before it. *)
 Fixpoint gm_prefix_upto (Φ : gmod) (x : string) : option gmod :=
   match Φ with
   | gm_nil => None
   | gm_ext Φ' y _ => if String.eqb x y then Some Φ else gm_prefix_upto Φ' x
-  | gm_open Φ' _ _ => gm_prefix_upto Φ' x
+  | gm_open Φ' _ its => if existsb (String.eqb x) (map iitem_name its) then None else gm_prefix_upto Φ' x
+  end.
+
+(** The local open that declares [x]: the body before it, its target, the
+    items up to and including [x]'s, and [x]'s item.  An entry named [x]
+    after the open shadows it. *)
+Fixpoint gm_item_upto (Φ : gmod) (x : string) : option (gmod * modexp * list iitem * iitem) :=
+  match Φ with
+  | gm_nil => None
+  | gm_ext Φ' y _ => if String.eqb x y then None else gm_item_upto Φ' x
+  | gm_open Φ' H its =>
+      match items_upto x its with
+      | Some (its1, it) => Some (Φ', H, its1, it)
+      | None => gm_item_upto Φ' x
+      end
   end.
 
 (** [M] applied to [args], outermost first ([apps_exp]). *)
@@ -1194,7 +1228,9 @@ Proof. reflexivity. Qed.
 
     [member_type Θ Ξ Γ H ch R] says that the chain [ch] of the module [H] is
     a definition of canonical type [A] ([R = mr_term A]), or a module that
-    still takes the parameters [T] ([R = mr_mod T]).  A module is applied to
+    still takes the parameters [T]: the module of an inductive type, its own
+    or through an inductive alias ([R = mr_indm T]), or any other
+    ([R = mr_mod T]).  A module is applied to
     an argument of the type of its outermost parameter, [tele_view]: it may be
     applied to fewer arguments than it has parameters, but not to more.
 
@@ -1216,19 +1252,22 @@ Inductive mkind : Set :=
 Inductive mres : Set :=
 (** A definition, of this type. *)
 | mr_term : typ -> mres
-(** A module, with the parameters it still takes. *)
-| mr_mod : ctx -> mres.
+(** A module that is no inductive type, with the parameters it still takes. *)
+| mr_mod : ctx -> mres
+(** The module of an inductive type, its own or through an inductive alias,
+    with the parameters it still takes. *)
+| mr_indm : ctx -> mres.
 
 Definition mres_kind (R : mres) : mkind :=
   match R with
   | mr_term _ => mk_term
-  | mr_mod _ => mk_mod
+  | mr_mod _ | mr_indm _ => mk_mod
   end.
 
 (** The parameters a module still takes. *)
 Definition mres_tl (R : mres) : option ctx :=
   match R with
-  | mr_mod T => Some T
+  | mr_mod T | mr_indm T => Some T
   | mr_term _ => None
   end.
 
@@ -1237,7 +1276,7 @@ Definition mres_tl (R : mres) : option ctx :=
 Definition mres_ty (R : mres) : typ :=
   match R with
   | mr_term A => A
-  | mr_mod T => ctx_pi T a_True
+  | mr_mod T | mr_indm T => ctx_pi T a_True
   end.
 
 (** A member type generalized over a telescope it lives under. *)
@@ -1245,6 +1284,7 @@ Definition mres_gen (Δ : ctx) (R : mres) : mres :=
   match R with
   | mr_term A => mr_term (ctx_pi Δ A)
   | mr_mod T => mr_mod (T ++ Δ)
+  | mr_indm T => mr_indm (T ++ Δ)
   end.
 
 (** The type of a member of [H N], from the type [R] of the member of [H]:
@@ -1257,19 +1297,182 @@ Definition mres_app (R : mres) (N : exp) : option mres :=
       | None => None
       end
   | mr_mod T => option_map mr_mod (tele_inst T N)
+  | mr_indm T => option_map mr_indm (tele_inst T N)
   end.
 
 Definition mres_wk (R : mres) (φ : wk) : mres :=
   match R with
   | mr_term A => mr_term A[φ]ʷ
   | mr_mod T => mr_mod (tele_wk T φ)
+  | mr_indm T => mr_indm (tele_wk T φ)
   end.
 
 Definition mres_sub (R : mres) (σ : sub) : mres :=
   match R with
   | mr_term A => mr_term A[σ]
   | mr_mod T => mr_mod (tele_sub T σ)
+  | mr_indm T => mr_indm (tele_sub T σ)
   end.
+
+(** A name an open declares is found by one lookup only. *)
+Lemma items_upto_none : forall x its, existsb (String.eqb x) (map iitem_name its) = false -> items_upto x its = None.
+Proof.
+  induction its as [| it its IH]; intros H; cbn in *; [ reflexivity |].
+  apply Bool.orb_false_iff in H as [H1 H2]; rewrite IH by assumption; rewrite H1; reflexivity.
+Qed.
+
+Lemma items_upto_some : forall x its r, items_upto x its = Some r -> existsb (String.eqb x) (map iitem_name its) = true.
+Proof.
+  induction its as [| it its IH]; intros r H; cbn in *; [ discriminate |].
+  destruct (items_upto x its) eqn:E; [ rewrite (IH _ eq_refl); apply Bool.orb_true_r |].
+  destruct (String.eqb x (iitem_name it)); [ reflexivity | discriminate ].
+Qed.
+
+Lemma gm_prefix_item_excl : forall Φ x Φ1, gm_prefix_upto Φ x = Some Φ1 -> gm_item_upto Φ x = None.
+Proof.
+  induction Φ as [| Φ IH y E | Φ IH H its]; intros * Hp; cbn in *; [ discriminate | |].
+  - destruct (String.eqb x y); [ reflexivity | eauto ].
+  - destruct (existsb _ _) eqn:Ee; [ discriminate |].
+    rewrite (items_upto_none _ _ Ee); eauto.
+Qed.
+
+(** A body's entry named [x] and a name an open of the body declares for
+    [x] exclude each other. *)
+Ltac prefix_item_excl :=
+  match goal with
+  | Hp : gm_prefix_upto ?Φ ?x = Some _, Hi : gm_item_upto ?Φ ?x = Some _ |- _ =>
+      rewrite (gm_prefix_item_excl _ _ _ Hp) in Hi; discriminate Hi
+  end.
+
+(** A path through an alias names no definition, and a path naming a module
+    names no definition. *)
+Lemma gm_submodule_resolve : forall Φ T x ip r,
+    gm_submodule T Φ x ip = Some r -> gm_resolve Φ (x :: ip) = None.
+Proof.
+  fix IH 1; intros [| Φ y E | Φ c] * H; cbn in H |- *; try discriminate; [| eapply IH; exact H ].
+  destruct (String.eqb x y); [| eapply IH; exact H ].
+  destruct E as [b pv A B | ? [Δ [Φ' | E']] | ? D Φ' | ? Δa pa Nsa]; try discriminate.
+  - destruct ip as [| z ip']; [ reflexivity |].
+    eapply IH; exact H.
+  - destruct ip; reflexivity.
+  - destruct ip as [| z ip']; [ reflexivity |].
+    eapply IH; exact H.
+  - destruct ip; reflexivity.
+Qed.
+
+Lemma gc_module_resolve : forall Θ Ξ p r,
+    gc_module Θ Ξ p = Some r -> gc_resolve Θ Ξ p = None.
+Proof.
+  intros * H; unfold gc_module, gc_module_u, gc_resolve, gc_resolve_u in *; rewrite gs_find_tele_find.
+  destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T] |]; cbn; [ discriminate | eapply gm_submodule_resolve; exact H |].
+  destruct (gds_lookup Θ (q_unit p)); [| discriminate ].
+  destruct (q_chain p) as [| x ip]; cbn in *; [ destruct (gu_mod g); reflexivity || apply gm_resolve_nil | eapply gm_submodule_resolve; exact H ].
+Qed.
+
+(** ** What an Open Generates
+
+    [open E use (n)] declares [n] as a private definition equal to [E.n],
+    [open E as y] declares [y] a private alias of [E], and, at the global
+    level, an item naming an inductive type declares an inductive alias of
+    it; a local open of one is rejected.  At the global level the generated
+    entries are filed by the command ([rc_open]);
+    in a local body the open stays, and every reader of the body reads it
+    as its generated entries ([body_xp]).  The two share the generation
+    relation [items_gen], which reads the kind of each member off its member
+    type. *)
+
+(** What an item declares, read in the context of the open. *)
+Inductive igen : Set :=
+(** [ig_def d pv A M]: the definition [d] of type [A] equal to [M] *)
+| ig_def : string -> bool -> typ -> exp -> igen
+(** [ig_alias d pv E]: the alias [d] of [E] *)
+| ig_alias : string -> bool -> modexp -> igen
+(** [ig_ind_alias d pv Δ p Ns]: the inductive alias [d], over [Δ], of the
+    inductive type at the canonical path [p] at [Ns] *)
+| ig_ind_alias : string -> bool -> list centry -> qname -> list exp -> igen.
+
+(** The inductive type a member of a chain from a unit names, by its path
+    ([ind_target] at the global level). *)
+Definition ind_oracle : Type := qname -> option ind_alias_view.
+
+
+(** A generated item as a body entry. *)
+Definition ig_entry (g : igen) : (string * gentry)%type :=
+  match g with
+  | ig_def d pv A M => (d, ge_def true pv A (Some M))
+  | ig_alias d pv E => (d, ge_mod pv (gu_mk nil (md_alias E)))
+  | ig_ind_alias d pv Δ p Ns => (d, ge_ind_alias pv Δ p Ns)
+  end.
+
+Definition ig_name (g : igen) : string := fst (ig_entry g).
+
+(** A generated item under a weakening and a substitution, as its entry
+    is ([ig_entry_wk], [ig_entry_sub]): an inductive alias is closed. *)
+Definition igen_wk (g : igen) (φ : wk) : igen :=
+  match g with
+  | ig_def d pv A M => ig_def d pv A[φ]ʷ M[φ]ʷ
+  | ig_alias d pv E => ig_alias d pv (modexp_wk E φ)
+  | ig_ind_alias _ _ _ _ _ => g
+  end.
+
+Definition igen_sub (g : igen) (σ : sub) : igen :=
+  match g with
+  | ig_def d pv A M => ig_def d pv A[σ] M[σ]
+  | ig_alias d pv E => ig_alias d pv E[σ]ᵐ
+  | ig_ind_alias _ _ _ _ _ => g
+  end.
+
+(** The generated entries appended to [Φ], in order.  All are read in the
+    context of the open, so the [k]-th is weakened by the [k] before it. *)
+Fixpoint gens_append (Φ : gmod) (k : nat) (gs : list igen) : gmod :=
+  match gs with
+  | nil => Φ
+  | g :: gs' =>
+      let '(d, E) := ig_entry g in
+      gens_append (gm_ext Φ d (gentry_wk E (wk_shiftn k))) (S k) gs'
+  end.
+
+(** The first member named both by a private and by a public item. *)
+Definition src_has (n : string) (pv : bool) (its : list iitem) : bool :=
+  existsb (fun it => match it with
+                     | (Some m, _, pv') => String.eqb n m && Bool.eqb pv pv'
+                     | _ => false
+                     end) its.
+
+Definition both_dup (its : list iitem) : option string :=
+  match find (fun it => match it with
+                        | (Some n, _, pv) => src_has n (negb pv) its
+                        | _ => false
+                        end) its with
+  | Some (Some n, _, _) => Some n
+  | _ => None
+  end.
+
+(** The first name a list repeats. *)
+Fixpoint name_dup (xs : list string) : option string :=
+  match xs with
+  | nil => None
+  | x :: xs' => if existsb (String.eqb x) xs' then Some x else name_dup xs'
+  end.
+
+(** The open's own conditions on its items: no member both used and
+    exported, and the declared names distinct. *)
+Definition items_ok (its : list iitem) : Prop :=
+  both_dup its = None /\ name_dup (List.map iitem_name its) = None.
+
+(** A telescope of parameters has assumptions only: a module's arguments are
+    terms.  A unit has members only under such parameters. *)
+Definition tele_ass (Δ : ctx) : Prop := List.Forall (fun e => exists A, e = ce_ass A) Δ.
+
+Lemma tele_ass_wk : forall Δ φ, tele_ass Δ -> tele_ass (tele_wk Δ φ).
+Proof.
+  induction 1 as [| e Δ [A ->] HΔ IH]; cbn; constructor; eauto.
+Qed.
+
+Lemma tele_ass_sub : forall Δ σ, tele_ass Δ -> tele_ass (tele_sub Δ σ).
+Proof.
+  induction 1 as [| e Δ [A ->] HΔ IH]; cbn; constructor; eauto.
+Qed.
 
 Inductive member_type (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list string -> mres -> Prop :=
 (** A definition reached from a unit, of its declared type. *)
@@ -1278,10 +1481,15 @@ Inductive member_type (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list string 
     gc_resolve Θ Ξ (q_abs fp ch) = Some (ge_def b pv A B) ->
     member_type Θ Ξ Γ (me_unit fp) ch (mr_term A)
 (** A body module reached from a unit, taking the parameters it is filed
-    with; the module of an inductive type is one. *)
-| mt_unit_mod : forall Γ fp ch T oD,
-    gc_module Θ Ξ (q_abs fp ch) = Some (mr_body T oD) ->
+    with. *)
+| mt_unit_mod : forall Γ fp ch T,
+    gc_module Θ Ξ (q_abs fp ch) = Some (mr_body T None) ->
     member_type Θ Ξ Γ (me_unit fp) ch (mr_mod T)
+(** The module of an inductive type reached from a unit, taking its
+    uniform parameters. *)
+| mt_unit_ind : forall Γ fp ch T D,
+    gc_module Θ Ξ (q_abs fp ch) = Some (mr_body T (Some D)) ->
+    member_type Θ Ξ Γ (me_unit fp) ch (mr_indm T)
 (** A chain through an alias reached from a unit, read in the alias, past it. *)
 | mt_unit_alias : forall Γ fp ch U r R,
     (mres_kind R = mk_term -> r <> nil) ->
@@ -1314,29 +1522,231 @@ with unit_member_type (Θ : gdeps) (Ξ : gstack) : ctx -> gunit -> list string -
     unit_member_type Θ Ξ Γ (gu_body Δ Φ) nil (mr_mod Δ)
 (** A definition of the body, generalized over the parameters and the body
     before it. *)
-| umt_def : forall Γ Δ Φ Φ' x b pv A B,
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A B)) ->
+| umt_def : forall Γ Δ Φ Φx Φ' x b pv A B,
+    tele_ass Δ ->
+    body_xp Θ Ξ (Δ ++ Γ) Φ Φx ->
+    gm_prefix_upto Φx x = Some (gm_ext Φ' x (ge_def b pv A B)) ->
     unit_member_type Θ Ξ Γ (gu_body Δ Φ) (x :: nil) (mr_term (ctx_pi (body_ctx Φ' ++ Δ) A))
 (** A chain through a module of the body, read in it, generalized over the
     parameters and the body before it. *)
-| umt_mod : forall Γ Δ Φ Φ' y pm Uy ch R,
+| umt_mod : forall Γ Δ Φ Φx Φ' y pm Uy ch R,
     (mres_kind R = mk_term -> ch <> nil) ->
-    gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
+    tele_ass Δ ->
+    body_xp Θ Ξ (Δ ++ Γ) Φ Φx ->
+    gm_prefix_upto Φx y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
     unit_member_type Θ Ξ (body_ctx Φ' ++ Δ ++ Γ) Uy ch R ->
     unit_member_type Θ Ξ Γ (gu_body Δ Φ) (y :: ch) (mres_gen (body_ctx Φ' ++ Δ) R)
 (** A chain of an alias, read in its target, generalized over the alias's
     parameters. *)
 | umt_alias : forall Γ Δ E ch R,
+    tele_ass Δ ->
     member_type Θ Ξ (Δ ++ Γ) E ch R ->
-    unit_member_type Θ Ξ Γ (gu_mk Δ (md_alias E)) ch (mres_gen Δ R).
+    unit_member_type Θ Ξ Γ (gu_mk Δ (md_alias E)) ch (mres_gen Δ R)
+(** [body_xp Θ Ξ Γ Φ Φx]: the body [Φ], read in [Γ], is [Φx] with every
+    local open replaced by the entries it generates ([items_gen]), in the
+    context its own expanded prefix makes.  The entries themselves are not
+    looked into. *)
+with body_xp (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> gmod -> Prop :=
+| bx_nil : forall Γ, body_xp Θ Ξ Γ gm_nil gm_nil
+| bx_ext : forall Γ Φ Φx x E,
+    body_xp Θ Ξ Γ Φ Φx ->
+    body_xp Θ Ξ Γ (gm_ext Φ x E) (gm_ext Φx x E)
+| bx_open : forall Γ Φ Φx H its R T gs,
+    body_xp Θ Ξ Γ Φ Φx ->
+    member_type Θ Ξ (body_ctx Φx ++ Γ) H nil R ->
+    mres_tl R = Some T ->
+    items_gen Θ Ξ None (body_ctx Φx ++ Γ) H its gs ->
+    items_ok its ->
+    body_xp Θ Ξ Γ (gm_open Φ H its) (gens_append Φx 0 gs)
+(** [items_gen Θ Ξ io Γ H its gs]: what the items [its] of an open of [H]
+    declare, all read in [Γ], by the kind of the member each names: a
+    definition gives a definition of its member type, a module an alias;
+    an item naming no member, the alias of [H] itself.  At the global level
+    ([io = Some it]) an inductive type gives an inductive alias, read by its
+    path ([it]), or an alias if the path names none.  A local open
+    ([io = None]) has no case for an inductive type: a local open of one is
+    rejected. *)
+with items_gen (Θ : gdeps) (Ξ : gstack) : option ind_oracle -> ctx -> modexp -> list iitem -> list igen -> Prop :=
+| ign_nil : forall io Γ H, items_gen Θ Ξ io Γ H nil nil
+| ign_self : forall io Γ H d pv its gs,
+    items_gen Θ Ξ io Γ H its gs ->
+    items_gen Θ Ξ io Γ H ((None, d, pv) :: its) (ig_alias d pv H :: gs)
+| ign_def : forall io Γ H n d pv A its gs,
+    member_type Θ Ξ Γ H (n :: nil) (mr_term A) ->
+    items_gen Θ Ξ io Γ H its gs ->
+    items_gen Θ Ξ io Γ H ((Some n, d, pv) :: its) (ig_def d pv A (a_mem H n) :: gs)
+| ign_mod : forall io Γ H n d pv T its gs,
+    member_type Θ Ξ Γ H (n :: nil) (mr_mod T) ->
+    items_gen Θ Ξ io Γ H its gs ->
+    items_gen Θ Ξ io Γ H ((Some n, d, pv) :: its) (ig_alias d pv (me_mem H n) :: gs)
+| ign_ind : forall it Γ H n d pv T mp Δ p Ns its gs,
+    member_type Θ Ξ Γ H (n :: nil) (mr_indm T) ->
+    mod_qname H = Some mp ->
+    it (qname_app mp (n :: nil)) = Some (Δ, p, Ns) ->
+    items_gen Θ Ξ (Some it) Γ H its gs ->
+    items_gen Θ Ξ (Some it) Γ H ((Some n, d, pv) :: its) (ig_ind_alias d pv Δ p Ns :: gs)
+| ign_ind_mod : forall it Γ H n d pv T its gs,
+    member_type Θ Ξ Γ H (n :: nil) (mr_indm T) ->
+    (forall mp, mod_qname H = Some mp -> it (qname_app mp (n :: nil)) = None) ->
+    items_gen Θ Ξ (Some it) Γ H its gs ->
+    items_gen Θ Ξ (Some it) Γ H ((Some n, d, pv) :: its) (ig_alias d pv (me_mem H n) :: gs).
 
 Scheme member_type_mut_ind := Induction for member_type Sort Prop
-with unit_member_type_mut_ind := Induction for unit_member_type Sort Prop.
-Combined Scheme member_type_both_ind from member_type_mut_ind, unit_member_type_mut_ind.
+with unit_member_type_mut_ind := Induction for unit_member_type Sort Prop
+with body_xp_mut_ind := Induction for body_xp Sort Prop
+with items_gen_mut_ind := Induction for items_gen Sort Prop.
+Combined Scheme member_type_both_ind from member_type_mut_ind, unit_member_type_mut_ind, body_xp_mut_ind, items_gen_mut_ind.
 
 #[export]
-Hint Constructors member_type unit_member_type : mctt.
+Hint Constructors member_type unit_member_type body_xp items_gen : mctt.
 
+(** [open_gens Θ Ξ io Γ H its gs]: an open of [H] with items [its], in [Γ]:
+    [H] is a module, and [gs] is what the items declare. *)
+Definition open_gens (Θ : gdeps) (Ξ : gstack) (io : option ind_oracle) (Γ : ctx) (H : modexp) (its : list iitem) (gs : list igen) : Prop :=
+  (exists R T, member_type Θ Ξ Γ H nil R /\ mres_tl R = Some T) /\ items_gen Θ Ξ io Γ H its gs /\ items_ok its.
+
+(** A unit with its body expanded; an alias is its own. *)
+Inductive unit_xp (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : gunit -> gunit -> Prop :=
+| ux_body : forall Δ Φ Φx, body_xp Θ Ξ (Δ ++ Γ) Φ Φx -> unit_xp Θ Ξ Γ (gu_body Δ Φ) (gu_body Δ Φx)
+| ux_alias : forall Δ E, unit_xp Θ Ξ Γ (gu_mk Δ (md_alias E)) (gu_mk Δ (md_alias E)).
+
+#[export]
+Hint Constructors unit_xp : mctt.
+
+(** The targets of the local opens of [Φ], newest first, each with the
+    context its expanded prefix makes, where [Φx] is the expansion of
+    [Φ]. *)
+Fixpoint gm_dropn (n : nat) (Φ : gmod) : gmod :=
+  match n, Φ with
+  | 0, _ => Φ
+  | S n', gm_ext Φ' _ _ => gm_dropn n' Φ'
+  | S _, _ => Φ
+  end.
+
+Fixpoint body_opens (Φ Φx : gmod) : list (ctx * modexp) :=
+  match Φ with
+  | gm_nil => nil
+  | gm_ext Φ0 _ _ => body_opens Φ0 (gm_dropn 1 Φx)
+  | gm_open Φ0 H its =>
+      let Φ0x := gm_dropn (List.length its) Φx in
+      (body_ctx Φ0x, H) :: body_opens Φ0 Φ0x
+  end.
+
+(** The number of local opens of a body. *)
+Fixpoint gm_nopens (Φ : gmod) : nat :=
+  match Φ with
+  | gm_nil => 0
+  | gm_ext Φ0 _ _ => gm_nopens Φ0
+  | gm_open Φ0 _ _ => S (gm_nopens Φ0)
+  end.
+
+(** *** The Shape of an Expansion *)
+
+Lemma items_gen_length : forall Θ Ξ io Γ H its gs, items_gen Θ Ξ io Γ H its gs -> List.length gs = List.length its.
+Proof. induction 1; cbn; auto. Qed.
+
+Lemma items_gen_names : forall Θ Ξ io Γ H its gs, items_gen Θ Ξ io Γ H its gs -> List.map ig_name gs = List.map iitem_name its.
+Proof. induction 1; cbn; f_equal; auto. Qed.
+
+(** The context an open's entries make, over the body before it. *)
+Lemma gens_body_ctx_base : forall gs Φ k,
+    body_ctx (gens_append Φ k gs) = body_ctx (gens_append gm_nil k gs) ++ body_ctx Φ.
+Proof.
+  induction gs as [| g gs IH]; intros; cbn [gens_append]; [ reflexivity |].
+  destruct (ig_entry g) as [d E].
+  rewrite IH, (IH (gm_ext gm_nil d _)), <- List.app_assoc.
+  destruct E as [? ? ? [] | | |]; reflexivity.
+Qed.
+
+Lemma gens_append_binders : forall gs Φ k, gm_binders (gens_append Φ k gs) = List.length gs + gm_binders Φ.
+Proof.
+  induction gs as [| g gs IH]; intros; cbn; [ reflexivity |].
+  destruct (ig_entry g) eqn:E; rewrite IH; cbn; lia.
+Qed.
+
+Lemma gens_append_names : forall gs Φ k, gm_names (gens_append Φ k gs) = List.rev (List.map ig_name gs) ++ gm_names Φ.
+Proof.
+  induction gs as [| g gs IH]; intros; cbn [gens_append List.map List.rev]; [ reflexivity |].
+  destruct (ig_entry g) as [d E] eqn:Eg; rewrite IH; rewrite <- List.app_assoc; cbn.
+  unfold ig_name; rewrite Eg; reflexivity.
+Qed.
+
+Lemma gm_dropn_add : forall a b Φ, gm_dropn (a + b) Φ = gm_dropn b (gm_dropn a Φ).
+Proof.
+  induction a as [| a IH]; intros b [| Φ x E | Φ H its]; cbn; auto; destruct b; reflexivity.
+Qed.
+
+Lemma gm_dropn_gens_append : forall gs Φ k, gm_dropn (List.length gs) (gens_append Φ k gs) = Φ.
+Proof.
+  induction gs as [| g gs IH]; intros; cbn [gens_append List.length]; [ destruct Φ; reflexivity |].
+  destruct (ig_entry g) eqn:E.
+  replace (S (List.length gs)) with (List.length gs + 1) by lia; rewrite gm_dropn_add, IH; reflexivity.
+Qed.
+
+Lemma body_xp_binders : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> gm_binders Φx = gm_binders Φ.
+Proof.
+  induction 1; cbn; auto.
+  rewrite gens_append_binders; erewrite items_gen_length by eassumption; lia.
+Qed.
+
+Lemma body_xp_names : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> gm_names Φx = gm_names Φ.
+Proof.
+  induction 1; cbn; f_equal; auto.
+  rewrite gens_append_names; erewrite items_gen_names by eassumption; congruence.
+Qed.
+
+Lemma gens_append_nopens : forall gs Φ k, gm_nopens (gens_append Φ k gs) = gm_nopens Φ.
+Proof. induction gs as [| g gs IH]; intros; cbn; [ reflexivity |]; destruct (ig_entry g); rewrite IH; reflexivity. Qed.
+
+(** An expansion has no open. *)
+Lemma body_xp_nopens : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> gm_nopens Φx = 0.
+Proof. induction 1; cbn; auto; rewrite gens_append_nopens; assumption. Qed.
+
+Lemma body_opens_length : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> List.length (body_opens Φ Φx) = gm_nopens Φ.
+Proof.
+  induction 1; cbn; auto.
+  erewrite <- items_gen_length by eassumption; rewrite gm_dropn_gens_append; f_equal; assumption.
+Qed.
+
+(** The opens of a body after an entry, or after an open, are those of the
+    body before it, and that open. *)
+Lemma body_opens_ext : forall Φ Φx x E y E', body_opens (gm_ext Φ x E) (gm_ext Φx y E') = body_opens Φ Φx.
+Proof. reflexivity. Qed.
+
+Lemma body_opens_open_len : forall Φ Φx H its gs, List.length gs = List.length its ->
+    body_opens (gm_open Φ H its) (gens_append Φx 0 gs) = (body_ctx Φx, H) :: body_opens Φ Φx.
+Proof. intros * Hl; cbn; rewrite <- Hl, gm_dropn_gens_append; reflexivity. Qed.
+
+Lemma body_opens_open : forall Θ Ξ io Γ Φ Φx H its gs,
+    items_gen Θ Ξ io Γ H its gs ->
+    body_opens (gm_open Φ H its) (gens_append Φx 0 gs) = (body_ctx Φx, H) :: body_opens Φ Φx.
+Proof.
+  intros * Hg; cbn; erewrite <- items_gen_length by eassumption; rewrite gm_dropn_gens_append; reflexivity.
+Qed.
+
+
+(** The expansion of the body before the open that declares [x], read off
+    the body [Φ] and its expansion [Φx]. *)
+Fixpoint gm_item_xp (Φ Φx : gmod) (x : string) : gmod :=
+  match Φ, Φx with
+  | gm_ext Φ' _ _, gm_ext Φx' _ _ => gm_item_xp Φ' Φx' x
+  | gm_open Φ' _ its, _ =>
+      match items_upto x its with
+      | Some _ => gm_dropn (List.length its) Φx
+      | None => gm_item_xp Φ' (gm_dropn (List.length its) Φx) x
+      end
+  | _, _ => gm_nil
+  end.
+
+Lemma body_xp_item : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx ->
+    forall x Φ0 H its1 it, gm_item_upto Φ x = Some (Φ0, H, its1, it) -> body_xp Θ Ξ Γ Φ0 (gm_item_xp Φ Φx x).
+Proof.
+  induction 1 as [Γ | Γ Φ Φx y E Hx IH | Γ Φ Φx H its R T gs Hx IH HR HT Hg Hok]; intros x Φ0 H0 its1 it Hi;
+    cbn [gm_item_upto gm_item_xp] in *; try discriminate.
+  - destruct (String.eqb x y); [ discriminate | eauto ].
+  - rewrite <- (items_gen_length _ _ _ _ _ _ _ Hg), gm_dropn_gens_append.
+    destruct (items_upto x its) as [[its1' it'] |]; [ injection Hi as <- <- <- <-; exact Hx | eauto ].
+Qed.
 
 (** ** Expansions and the δ-Reduct
 
@@ -1362,29 +1772,61 @@ Definition member_expansion (U : gunit) (ch : list string) : option exp :=
       end
   end.
 
-Fixpoint member_unfold_ch (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (ch : list string) : option exp :=
-  match H with
-  | me_unit fp =>
-      match gc_resolve Θ Ξ (q_abs fp ch) with
-      | Some (ge_def _ _ _ _) => Some (member_ref (me_unit fp) ch)
-      | _ =>
-          match gc_module Θ Ξ (q_abs fp ch) with
-          | Some (mr_alias U r) => member_expansion U r
-          | _ => None
-          end
-      end
-  | me_var x =>
-      match ctx_find_mod Γ x with
-      | Some U => member_expansion U ch
-      | None => None
-      end
-  | me_lit U => member_expansion U ch
-  | me_mem H y => member_unfold_ch Θ Ξ Γ H (y :: ch)
-  | me_app H N => option_map (fun M => a_app M N) (member_unfold_ch Θ Ξ Γ H ch)
+(** The chain [ch] of [U] does not start with a name a local open of its
+    body declares. *)
+Definition unit_noitem (U : gunit) (ch : list string) : Prop :=
+  match U, ch with
+  | gu_mk _ (md_body Φ), x :: _ => gm_item_upto Φ x = None
+  | _, _ => True
   end.
 
-Definition member_unfold (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (x : string) : option exp :=
-  member_unfold_ch Θ Ξ Γ H (x :: nil).
+(** The δ-reduct of a chain of a unit read in [Γ]: the expansion of the
+    entry the chain reaches; for a name a local open declares, the target's
+    member it names, under the unit's parameters and the body before the
+    open, as evaluation reads it. *)
+Inductive unit_unfold (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : gunit -> list string -> exp -> Prop :=
+| uu_entry : forall U Ux ch M,
+    unit_xp Θ Ξ Γ U Ux ->
+    unit_noitem U ch ->
+    member_expansion Ux ch = Some M ->
+    unit_unfold Θ Ξ Γ U ch M
+| uu_item : forall Δ Φ x ch Φ0 H its1 it Φx0,
+    gm_item_upto Φ x = Some (Φ0, H, its1, it) ->
+    body_xp Θ Ξ (Δ ++ Γ) Φ0 Φx0 ->
+    item_ch it ch <> nil ->
+    unit_unfold Θ Ξ Γ (gu_body Δ Φ) (x :: ch) (ctx_fn (body_ctx Φx0 ++ Δ) (member_ref H (item_ch it ch))).
+
+#[export]
+Hint Constructors unit_unfold : mctt.
+
+Inductive member_unfold_ch (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list string -> exp -> Prop :=
+| muc_unit_def : forall Γ fp ch b pv A B,
+    gc_resolve Θ Ξ (q_abs fp ch) = Some (ge_def b pv A B) ->
+    member_unfold_ch Θ Ξ Γ (me_unit fp) ch (member_ref (me_unit fp) ch)
+| muc_unit_alias : forall Γ fp ch U r M,
+    (forall b pv A B, gc_resolve Θ Ξ (q_abs fp ch) <> Some (ge_def b pv A B)) ->
+    gc_module Θ Ξ (q_abs fp ch) = Some (mr_alias U r) ->
+    member_expansion U r = Some M ->
+    member_unfold_ch Θ Ξ Γ (me_unit fp) ch M
+| muc_var : forall Γ x U ch M,
+    ctx_find_mod Γ x = Some U ->
+    unit_unfold Θ Ξ Γ U ch M ->
+    member_unfold_ch Θ Ξ Γ (me_var x) ch M
+| muc_lit : forall Γ U ch M,
+    unit_unfold Θ Ξ Γ U ch M ->
+    member_unfold_ch Θ Ξ Γ (me_lit U) ch M
+| muc_mem : forall Γ H y ch M,
+    member_unfold_ch Θ Ξ Γ H (y :: ch) M ->
+    member_unfold_ch Θ Ξ Γ (me_mem H y) ch M
+| muc_app : forall Γ H N ch M,
+    member_unfold_ch Θ Ξ Γ H ch M ->
+    member_unfold_ch Θ Ξ Γ (me_app H N) ch (a_app M N).
+
+#[export]
+Hint Constructors member_unfold_ch : mctt.
+
+Definition member_unfold (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (x : string) (M : exp) : Prop :=
+  member_unfold_ch Θ Ξ Γ H (x :: nil) M.
 
 (** ** The Module that Declares a Member
 

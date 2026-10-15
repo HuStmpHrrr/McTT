@@ -616,8 +616,8 @@ Inductive exp : Set :=
 | a_maxl : exp -> exp -> exp
 (** The token [ℕ], written for the type bound by [builtin natural]: like
     a numeral ([a_nlit]), it is not a term of the typing judgment, and
-    expansion ([Imports]) replaces it by the type former of the bound
-    type. *)
+    literal generation ([Builtin]) replaces it by the type former of the
+    bound type. *)
 | a_ntok : exp
 (** The unit type, with η *)
 | a_True : exp
@@ -635,7 +635,7 @@ Inductive exp : Set :=
     parameters and the arguments. *)
 | a_con : qname -> string -> exp
 (** A numeral as written.  It is not a term of the typing judgment:
-    expansion ([Imports]) replaces it by the chain of constructors of the
+    literal generation ([Builtin]) replaces it by the chain of constructors of the
     inductive type bound as the natural numbers ([builtin natural]). *)
 | a_nlit : nat -> exp
 (** [a_elim nm A Bs M] eliminates [M], of an inductive type, into the
@@ -692,9 +692,9 @@ with gmod : Set :=
 | gm_nil : gmod
 (** A named entry after the body before it *)
 | gm_ext : gmod -> string -> gentry -> gmod
-(** [gm_open Φ H items]: a local open, as the elaborator writes it.  It
-    binds one index per item.  The core expands it into [gm_ext] entries
-    before typing ([Imports]); no typing rule mentions it. *)
+(** [gm_open Φ H items]: a local open.  It binds one index per item, the
+    entries its items generate ([items_gen]); every reader of the body reads
+    it as those entries ([body_xp]). *)
 | gm_open : gmod -> modexp -> list iitem -> gmod
 with gentry : Set :=
 (** [ge_def b pv A B]: [b] says whether the definition is transparent, [pv]

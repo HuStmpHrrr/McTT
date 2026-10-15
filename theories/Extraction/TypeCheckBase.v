@@ -114,13 +114,18 @@ Section type_check.
     - exact (Bool.bool_dec pm pm').
   Defined.
 
+  Definition iitem_eq_dec : forall it it' : iitem, { it = it' } + { it <> it' }.
+  Proof. repeat decide equality; apply string_dec. Defined.
+
   Definition body_shape_dec : forall Φ Φ', { body_shape Φ Φ' } + { ~ body_shape Φ Φ' }.
   Proof.
-    induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c']; cbn;
+    induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its']; cbn;
       try (left; exact I); try (right; intros []; fail).
     - destruct (IH Φ') as [H1 | H1]; [| right; intuition ].
       destruct (string_dec x x') as [H2 | H2]; [| right; intuition ].
       destruct (entry_shape_dec E E') as [H3 | H3]; [ left; auto | right; intuition ].
+    - destruct (IH Φ') as [H1 | H1]; [| right; intuition ].
+      destruct (list_eq_dec iitem_eq_dec its its') as [H2 | H2]; [ left; auto | right; intuition ].
   Defined.
 
   (** ** Deciding Member Types *)
@@ -137,12 +142,12 @@ Section type_check.
       { A | member_type gc_deps gc_stack Γ H ch (mr_term A) } +
       { forall A, ~ member_type gc_deps gc_stack Γ H ch (mr_term A) }.
   Proof.
-    destruct d as [[[A | T] HR] | HN]; [ left; exists A; exact HR | right | right; intros A HA; exact (HN _ HA) ].
-    intros A HA; pose proof (proj1 (member_type_functional _ _) _ _ _ _ HR _ HA); discriminate.
+    destruct d as [[[A | T | T] HR] | HN]; [ left; exists A; exact HR | right | right | right; intros A HA; exact (HN _ HA) ];
+      intros A HA; pose proof (proj1 (member_type_functional _ _) _ _ _ _ HR _ HA); discriminate.
   Defined.
 
   Lemma mres_ty_tl : forall R T, mres_tl R = Some T -> mres_ty R = ctx_pi T a_True.
-  Proof. intros [A | T0] T H; cbn in H; try discriminate; injection H as <-; reflexivity. Qed.
+  Proof. intros [A | T0 | T0] T H; cbn in H; try discriminate; injection H as <-; reflexivity. Qed.
 
   (** A module's arity: the parameters a module still takes. *)
   Definition mres_mod_dec {Γ H ch}
@@ -150,9 +155,10 @@ Section type_check.
       { T | exists R, member_type gc_deps gc_stack Γ H ch R /\ mres_tl R = Some T } +
       { forall R, member_type gc_deps gc_stack Γ H ch R -> mres_tl R = None }.
   Proof.
-    destruct d as [[[A | T] HR] | HN].
+    destruct d as [[[A | T | T] HR] | HN].
     - right; intros R HR'; pose proof (proj1 (member_type_functional _ _) _ _ _ _ HR _ HR') as <-; reflexivity.
     - left; exists T, (mr_mod T); split; [ exact HR | reflexivity ].
+    - left; exists T, (mr_indm T); split; [ exact HR | reflexivity ].
     - right; intros R HR'; destruct (HN _ HR').
   Defined.
 
@@ -169,13 +175,20 @@ Section type_check.
     mres_mod_dec (member_type_impl gc_deps gc_stack (gctx_closed_of_wf _ _ Hg) Γ H nil
                     (mt_order_chain_self _ _ _ _ _ Hg Hp nil)).
 
+  (** What a local open of a module generates. *)
+  Definition items_gen_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ H its (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
+      { gs | items_gen gc_deps gc_stack None Γ H its gs } + { forall gs, ~ items_gen gc_deps gc_stack None Γ H its gs } :=
+    items_gen_impl gc_deps gc_stack (gctx_closed_of_wf _ _ Hg) None Γ H its
+      (igo_of _ _ _ _ (mt_order_of_wf _ _ _ _ Hg HH) its).
+
   (** The outermost parameter of an arity, if any. *)
   Equations tele_view_dec (T : ctx) : { B : typ & { T1 : ctx | tele_view T = Some (B, T1) } } + { tele_view T = None } :=
   tele_view_dec T with inspect (tele_view T) := {
     | exist _ (Some (B, T1)) E => inleft (existT _ B (exist _ T1 E))
     | exist _ None E => inright E }.
 
-  Extraction Inline member_type_dec member_term_dec member_mod_dec member_chain_mod_dec mres_term_dec mres_mod_dec tele_view_dec.
+  Extraction Inline member_type_dec member_term_dec member_mod_dec member_chain_mod_dec mres_term_dec mres_mod_dec tele_view_dec
+    items_gen_dec.
 
   (** ** Facts the Obligations Use *)
 
@@ -488,8 +501,19 @@ Section type_check.
   | eo_def : forall {A M Ψ}, ext_order Ψ -> type_infer_order A -> type_check_order M -> ext_order (Ψ ▸ A ≔ M)
   | eo_mod : forall {U Ψ}, ext_order Ψ -> unit_order U -> ext_order (Ψ ▹ₘ U)
   with unit_order : gunit -> Prop :=
-  | uo_body : forall {Δ Φ}, ext_order (body_ctx Φ ++ Δ) -> unit_order (gu_body Δ Φ)
+  | uo_body : forall {Δ Φ}, ext_order Δ -> body_order Φ -> unit_order (gu_body Δ Φ)
   | uo_alias : forall {Δ E}, ext_order Δ -> modexp_order E -> unit_order (gu_mk Δ (md_alias E))
+  (** A body, entry by entry; an entry no body may hold has nothing to
+      check. *)
+  with body_order : gmod -> Prop :=
+  | bo_nil : body_order gm_nil
+  | bo_def : forall {Φ x b pv A M}, body_order Φ -> type_infer_order A -> type_check_order M ->
+      body_order (gm_ext Φ x (ge_def b pv A (Some M)))
+  | bo_mod : forall {Φ x pm U}, body_order Φ -> unit_order U -> body_order (gm_ext Φ x (ge_mod pm U))
+  | bo_axiom : forall {Φ x b pv A}, body_order Φ -> body_order (gm_ext Φ x (ge_def b pv A None))
+  | bo_ind : forall {Φ x pv D Φi}, body_order Φ -> body_order (gm_ext Φ x (ge_ind pv D Φi))
+  | bo_ind_alias : forall {Φ x pv Δ p Ns}, body_order Φ -> body_order (gm_ext Φ x (ge_ind_alias pv Δ p Ns))
+  | bo_open : forall {Φ H its}, body_order Φ -> modexp_order H -> body_order (gm_open Φ H its)
   with modexp_order : modexp -> Prop :=
   | mo_unit : forall {fp}, modexp_order (me_unit fp)
   | mo_var : forall {x}, modexp_order (me_var x)
@@ -499,7 +523,7 @@ Section type_check.
   .
 
   #[local]
-  Hint Constructors type_check_order type_infer_order app_order ext_order unit_order modexp_order : mctt.
+  Hint Constructors type_check_order type_infer_order app_order ext_order unit_order body_order modexp_order : mctt.
 
   (** Every term has an order.  The order of a member of an applied module
       is built from the orders of its root and of its arguments. *)
@@ -554,10 +578,10 @@ Section type_check.
            end) /\
     (forall U, unit_order U) /\
     (forall D, match D with
-           | md_body Φ => List.Forall centry_order (body_ctx Φ)
+           | md_body Φ => body_order Φ
            | md_alias E => modexp_order E
            end) /\
-    (forall Φ, List.Forall centry_order (body_ctx Φ)) /\
+    (forall Φ, body_order Φ) /\
     (forall E, match E with
            | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
            | ge_mod _ U => unit_order U
@@ -574,10 +598,10 @@ Section type_check.
              end)
       unit_order
       (fun D => match D with
-             | md_body Φ => List.Forall centry_order (body_ctx Φ)
+             | md_body Φ => body_order Φ
              | md_alias E => modexp_order E
              end)
-      (fun Φ => List.Forall centry_order (body_ctx Φ))
+      body_order
       (fun E => match E with
              | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
              | ge_mod _ U => unit_order U
@@ -609,10 +633,10 @@ Section type_check.
       destruct (H2 _ _ _ eq_refl) as [? ?].
       split; [ assumption | apply Forall_app; split; [ assumption | constructor; [ constructor; assumption | constructor ] ] ].
     - split; [ constructor; assumption | intros * [= <- <- <-]; split; [ constructor; assumption | constructor ] ].
-    - destruct D; destruct_conjs; constructor; auto using ext_order_of_forall, ext_order_app.
-    - destruct E as [b pv A [M |] | pm U | pvi Di Φi | ? ? ? ?]; destruct_conjs; constructor; cbn; eauto with mctt.
-    - apply Forall_app; split; [| assumption ].
-      induction (List.length its); cbn; constructor; [ constructor | assumption ].
+    - destruct D; destruct_conjs; constructor; auto using ext_order_of_forall.
+    - destruct E as [b pv A [M |] | pm U | pvi Di Φi | ? ? ? ?]; destruct_conjs;
+        first [ apply bo_def; eauto with mctt | apply bo_mod; assumption
+              | apply bo_axiom; assumption | apply bo_ind; assumption | apply bo_ind_alias; assumption ].
   Qed.
 
   Lemma type_infer_order_all : forall M, type_infer_order M.
@@ -966,6 +990,7 @@ Ltac ob_ord :=
         | H : type_infer_order _ |- _ => progressive_invert H
         | H : ext_order _ |- _ => progressive_invert H
         | H : unit_order _ |- _ => progressive_invert H
+        | H : body_order _ |- _ => progressive_invert H
         | H : modexp_order _ |- _ => progressive_invert H
         end;
       first
@@ -1090,6 +1115,44 @@ Ltac ob_subord :=
 
 (** The positive case of [type_check]. *)
 Ltac ob_check := clear_defs; destruct_conjs; mauto 3.
+
+(** The obligations of a body: a failure inverts the body's judgment,
+    whose prefix has one expansion ([alg_body_functional]); a success is
+    the rule, past a context the soundness of the prefix makes. *)
+Ltac bc_neg :=
+  intros;
+  repeat match goal with
+    | Hb : _ ⊢aᵇ gm_ext _ _ _ ⇝ _ |- _ => inversion Hb; subst; clear Hb
+    | Hb : _ ⊢aᵇ gm_open _ _ _ ⇝ _ |- _ => inversion Hb; subst; clear Hb
+    | Hu : _ ⊢aᵘ gu_mk _ (md_body _) |- _ => inversion Hu; subst; clear Hu
+    end;
+  repeat match goal with
+    | H1 : ?G ⊢aᵇ ?Φ ⇝ ?X, H2 : ?G ⊢aᵇ ?Φ ⇝ ?Y |- _ =>
+        assert_fails constr_eq X Y; pose proof (alg_body_functional H1 H2); subst Y; clear H2
+    end;
+  functional_alg_type_infer_rewrite_clear;
+  first [ contradiction
+        | solve [ firstorder ]
+        | match goal with
+          | HN : forall R, member_type _ _ _ ?M ?c R -> mres_tl R = None, Hm : member_type _ _ _ ?M ?c ?R0,
+            Ht : mres_tl ?R0 = Some _ |- _ => rewrite (HN _ Hm) in Ht; discriminate Ht
+          end
+        | match goal with H : forall u : unf, ?X <> univ_nf u |- _ => exact (H _ eq_refl) end ].
+
+Ltac bc_obl1 :=
+  first [ solve [ bc_neg ]
+        | solve [ split; [ constructor | cbn; assumption ] ]
+        | solve [ split; [ econstructor; eassumption | first [ ctx_wf_tac | eapply alg_body_ctx; [ eassumption | econstructor; eassumption ] ] ] ]
+        | solve [ ob_check ]
+        | assumption
+        | solve [ ctx_wf_tac ]
+        | solve [ eapply ctx_wf_gctx; ctxp ]
+        | solve [ eapply alg_modexp_sound; [ eassumption | ctxp ] ]
+        | solve [ typ_sound ] ].
+
+Ltac bc_obl :=
+  first [ ob_ord | clear_defs; intros; destruct_conjs; bc_obl1 ].
+
 
 (** A small universe: its level infers a type of levels, so the universe
     above is a type, whose normal form is the inferred universe. *)

@@ -3,7 +3,7 @@
     Privacy is not a matter of typing: a public definition may unfold to a
     term naming a private one, and its type may name one, so typing and δ
     read no privacy flag.  It is a check on the terms a command introduces,
-    as expanded ([Imports]): every member reference rooted at a unit is to a
+    as written: every member reference rooted at a unit is to a
     public member, or to a member of a module that is an open frame or an
     ancestor of one, that is, the reference is made inside the module
     declaring the member.  Aliases are followed through the global context to

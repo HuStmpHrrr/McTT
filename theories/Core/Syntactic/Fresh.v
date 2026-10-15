@@ -203,6 +203,56 @@ Proof.
   end.
 Qed.
 
+(** A renaming that sends only [k] to [k'] keeps [#k'] out of what kept
+    [#k] out. *)
+Definition wk_reflects (k k' : nat) (φ : wk) : Prop := forall x, φ x = k' -> x = k.
+
+Lemma wk_reflects_q : forall k k' φ, wk_reflects k k' φ -> wk_reflects (S k) (S k') (wk_q φ).
+Proof. intros k k' φ H [|x] Hx; cbn in Hx; [ discriminate | injection Hx as Hx; rewrite (H _ Hx); reflexivity ]. Qed.
+
+Lemma wk_reflects_qn : forall n k k' φ, wk_reflects k k' φ -> wk_reflects (n + k) (n + k') (wk_qn n φ).
+Proof. induction n; intros; cbn; [ assumption | apply wk_reflects_q; auto ]. Qed.
+
+#[local]
+Hint Resolve wk_reflects_q wk_reflects_qn : core.
+
+Lemma syn_fresh_wk :
+  (forall M k k' φ, exp_fresh k M -> wk_reflects k k' φ -> exp_fresh k' M[φ]ʷ) /\
+  (forall H k k' φ, modexp_fresh k H -> wk_reflects k k' φ -> modexp_fresh k' (modexp_wk H φ)) /\
+  (forall b k k' φ, bnd_fresh k b -> wk_reflects k k' φ -> bnd_fresh k' (bnd_wk b φ)) /\
+  (forall U k k' φ, gunit_fresh k U -> wk_reflects k k' φ -> gunit_fresh k' (gunit_wk U φ)) /\
+  (forall D k k' φ, moddef_fresh k D -> wk_reflects k k' φ -> moddef_fresh k' (moddef_wk D φ)) /\
+  (forall Φ k k' φ, gmod_fresh k Φ -> wk_reflects k k' φ -> gmod_fresh k' (gmod_wk Φ φ)) /\
+  (forall E k k' φ, gentry_fresh k E -> wk_reflects k k' φ -> gentry_fresh k' (gentry_wk E φ)) /\
+  (forall e k k' φ, centry_fresh k e -> wk_reflects k k' φ -> centry_fresh k' (centry_wk e φ)).
+Proof.
+  syn_mut_ind; fresh_case; rewrite ?gm_binders_wk, ?length_tele_wk; eauto;
+    try solve [ match goal with H : wk_reflects _ _ _ |- _ => intros Heq; apply H in Heq; contradiction end
+              | match goal with H : forall A, Some ?X = Some A -> _ |- _ => eapply (H X); eauto end ].
+  - match goal with
+    | HF : List.Forall _ ?Bs, Hf : _ ?Bs, Hw : wk_reflects _ _ _ |- _ =>
+        clear - HF Hf Hw; induction HF as [| [[? ?] ?] ? HB ? IH]; cbn in *; destruct_conjs; [ exact I | split ];
+        [ eapply HB; [ eassumption | apply wk_reflects_qn; assumption ] | apply IH; assumption ]
+    end.
+  - match goal with
+    | HF : List.Forall _ ?Δ, Hf : _ ?Δ, Hw : wk_reflects _ _ _ |- _ =>
+        clear - HF Hf Hw; induction HF as [| ? ? HB ? IH]; cbn in *; destruct_conjs; [ exact I | rewrite length_tele_wk; split ];
+        [ eapply HB; [ eassumption | apply wk_reflects_qn; assumption ] | apply IH; assumption ]
+    end.
+Qed.
+
+Corollary modexp_fresh_shiftn : forall H k n, modexp_fresh k H -> modexp_fresh (n + k) (modexp_wk H (wk_shiftn n)).
+Proof.
+  intros * Hf; eapply (proj1 (proj2 syn_fresh_wk)); [ exact Hf |].
+  intros x Hx; cbn in Hx; lia.
+Qed.
+
+Corollary gentry_fresh_shiftn : forall E k n, gentry_fresh k E -> gentry_fresh (n + k) (gentry_wk E (wk_shiftn n)).
+Proof.
+  intros * Hf; eapply (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_fresh_wk))))))); [ exact Hf |].
+  intros x Hx; cbn in Hx; lia.
+Qed.
+
 (** ** [unwk k] Inverts [q^k ↑]
 
     One way round the composite is the identity away from [k], the other is

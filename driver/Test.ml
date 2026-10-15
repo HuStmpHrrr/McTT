@@ -1061,9 +1061,7 @@ let%expect_test "ModuleForms.mctt works" =
                        succ x1
                      end
                    end
-                   private def m : ℕ ≔
-                     Inner.m
-                   end
+                   open Inner use (m)
                    def doubled : ℕ ≔
                      Num.Ops.add m m
                    end
@@ -1703,9 +1701,7 @@ let%expect_test "a local body with an import" =
                        5
                      end
                    end
-                   private def y : ℕ ≔
-                     N.y
-                   end
+                   open N use (y)
                    def z : ℕ ≔
                      succ y
                    end
@@ -1749,12 +1745,7 @@ let%expect_test "a local body with public definitions and an import" =
                        1
                      end
                    end
-                   private def y : ℕ ≔
-                     N.y
-                   end
-                   private def w : let x1 : ℕ ≔ 5 in ℕ end ≔
-                     N.w
-                   end
+                   open N use (y; w)
                    def z : ℕ ≔
                      y
                    end
@@ -1896,10 +1887,7 @@ let%expect_test "a local use, use as and export" =
   in
   [%expect {|
     Evaluate let module M1 where
-                   private def dbl : ∀ (x1 : ℕ) → ℕ ≔
-                     Lib›Num.double
-                   end
-                   module Ops ≔ Lib›Num.Ops
+                   open Lib›Num use (double as dbl) export (Ops)
                    def t : ℕ ≔
                      dbl 2
                    end
@@ -1916,9 +1904,7 @@ let%expect_test "a local export as" =
   in
   [%expect {|
     Evaluate let module M1 where
-                   def dbl : ∀ (x1 : ℕ) → ℕ ≔
-                     Lib›Num.double
-                   end
+                   open Lib›Num export (double as dbl)
                  end
              in M1.dbl 2
              end --> 4 : ℕ
@@ -1932,13 +1918,72 @@ let%expect_test "a local submodule use" =
   in
   [%expect {|
     Evaluate let module M1 where
-                   private module Ops ≔ Lib›Num.Ops
+                   open Lib›Num use (Ops)
                    def t : ℕ ≔
                      Ops.pred 5
                    end
                  end
              in M1.t
              end --> 4 : ℕ
+    |}]
+
+let%expect_test "a local open of an inductive type is rejected" =
+  let _ =
+    main_of_multi_string
+      "import Prelude›Builtin›Nat module X where eval let module L where open Prelude›Builtin›Nat use (Nat) end \
+       in 0 end end"
+  in
+  [%expect {| Error: an inductive type cannot be opened in a local module: Nat |}]
+
+let%expect_test "a local open of an inductive type through a local slot is rejected" =
+  let _ =
+    main_of_multi_string
+      "import Prelude›Builtin›Nat module X where eval let module W := Prelude›Builtin›Nat in \
+       let module L where open W use (Nat) end in 0 end end end"
+  in
+  [%expect {| Error: an inductive type cannot be opened in a local module: Nat |}]
+
+let%expect_test "a local open of an inductive type through a local alias is rejected" =
+  let _ =
+    main_of_multi_string
+      "import Prelude›Builtin›Nat module X where eval let module L where module W := Prelude›Builtin›Nat \
+       open W use (Nat) end in 0 end end"
+  in
+  [%expect {| Error: an inductive type cannot be opened in a local module: Nat |}]
+
+let%expect_test "a local open of a constructor and of rec is accepted" =
+  let _ =
+    main_of_multi_string
+      "import Prelude›Builtin›Nat use (Nat) module X where eval let module L where open Nat use (succ; rec) \
+       def two : Nat := succ (succ Nat.zero) end end in L.two end end"
+  in
+  [%expect {|
+    Evaluate let module M1 where
+                   open Nat use (succ; rec)
+                   def two : ℕ ≔
+                     succ (succ Nat.zero)
+                   end
+                 end
+             in M1.two
+             end --> 2 : ℕ
+    |}]
+
+let%expect_test "a local module alias of an inductive type is a module" =
+  let _ =
+    main_of_multi_string
+      "import Prelude›Builtin›Nat use (Nat) module X where eval let module L where module N := Nat \
+       open N use (succ) def one : Nat := succ N.zero end end in L.one end end"
+  in
+  [%expect {|
+    Evaluate let module M1 where
+                   module N ≔ Nat
+                   open N use (succ)
+                   def one : ℕ ≔
+                     succ N.zero
+                   end
+                 end
+             in M1.one
+             end --> 1 : ℕ
     |}]
 
 let%expect_test "a local import as" =
@@ -1949,7 +1994,7 @@ let%expect_test "a local import as" =
   in
   [%expect {|
     Evaluate let module M1 where
-                   private module W ≔ Lib›Num
+                   open Lib›Num as W
                    def t : ℕ ≔
                      W.double 1
                    end
@@ -2237,11 +2282,7 @@ let%expect_test "a local import of a unit imported at the top level" =
   in
   [%expect {|
     Evaluate let module M1 where
-                   private def max : ∀ (x1 : ℕ)
-                                       (x2 : ℕ)
-                                       → ℕ ≔
-                     Prelude›Arith›MinMax.max
-                   end
+                   open Prelude›Arith›MinMax use (max)
                    def m : ℕ ≔
                      max 2 3
                    end
@@ -2301,22 +2342,18 @@ let%expect_test "lib/Polynomials.mctt" =
     Evaluate At.horner 2 (cubic 1 2 3 4) 4 --> 49 : ℕ
     Evaluate At.naive 2 (cubic 1 2 3 4) 4 --> 49 : ℕ
     Evaluate let module M1 (x1 : Coeffs) where
-                   private def max : ∀ (x2 : ℕ)
-                                       (x3 : ℕ)
-                                       → ℕ ≔
-                     Prelude›Arith›MinMax.max
+                   open Prelude›Arith›MinMax use (max)
+                   def value : ∀ (x2 : ℕ) → ℕ ≔
+                     λ (x3 : ℕ) → At.horner x3 x1 4
                    end
-                   def value : ∀ (x4 : ℕ) → ℕ ≔
-                     λ (x5 : ℕ) → At.horner x5 x1 4
+                   def total : ∀ (x4 : ℕ) → ℕ ≔
+                     λ (x5 : ℕ) → sumTo value x5
                    end
-                   def total : ∀ (x6 : ℕ) → ℕ ≔
-                     λ (x7 : ℕ) → sumTo value x7
-                   end
-                   def peak : ∀ (x8 : ℕ) → ℕ ≔
-                     λ (x9 : ℕ)
-                       → elim x9 return x10 . ℕ
+                   def peak : ∀ (x6 : ℕ) → ℕ ≔
+                     λ (x7 : ℕ)
+                       → elim x7 return x8 . ℕ
                          | zero ⇒ 0
-                         | succ x11, x12 ⇒ max (value x11) x12
+                         | succ x9, x10 ⇒ max (value x9) x10
                          end
                    end
                  end
@@ -2789,9 +2826,7 @@ let%expect_test "lib/Tutorial.mctt" =
     Evaluate Adding.Algebra.plusComm 1 2 --> ⋆ : ⊤
     Evaluate Counting.seven --> 7 : ℕ
     Evaluate let module M1 (x1 : ℕ) where
-                   private def twice : ∀ (x2 : ℕ) → ℕ ≔
-                     (Twice ℕ double).twice
-                   end
+                   open Twice ℕ double use (twice)
                    private def base : ℕ ≔
                      twice x1
                    end
@@ -2803,15 +2838,7 @@ let%expect_test "lib/Tutorial.mctt" =
              in M2.sum
              end --> 5 : ℕ
     Evaluate let module M1 where
-                   private def add : ∀ (x1 : ℕ) → ℕ ≔
-                     (Adder 5).add
-                   end
-                   def addIter : ∀ (x2 : ℕ)
-                                   → Eq (Adder.add 5 x2)
-                                       (Iter.iter 0l ℕ (λ (x3 : ℕ) → succ x3) x2
-                                         5) ≔
-                     (Adder 5).addIter
-                   end
+                   open Adder 5 use (add) export (addIter)
                    def eight : ℕ ≔
                      add 3
                    end

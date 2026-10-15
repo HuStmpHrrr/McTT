@@ -94,14 +94,14 @@ Ltac to_target Hsub :=
         | _ : unit_member_type T1 T2 G U c R |- _ => fail
         | _ => pose proof (proj2 (member_type_gc_sub _ _ _ _ Hsub) _ _ _ _ Hm)
         end
-    | Hm : member_unfold S1 S2 ?G ?H ?x = ?M |- _ =>
+    | Hm : member_unfold S1 S2 ?G ?H ?x ?M |- _ =>
         lazymatch goal with
-        | _ : member_unfold T1 T2 G H x = M |- _ => fail
+        | _ : member_unfold T1 T2 G H x M |- _ => fail
         | _ => pose proof (member_unfold_emb _ _ _ _ _ _ _ _ Hsub Hm)
         end
-    | Hm : member_unfold_ch S1 S2 ?G ?H ?c = ?M |- _ =>
+    | Hm : member_unfold_ch S1 S2 ?G ?H ?c ?M |- _ =>
         lazymatch goal with
-        | _ : member_unfold_ch T1 T2 G H c = M |- _ => fail
+        | _ : member_unfold_ch T1 T2 G H c M |- _ => fail
         | _ => pose proof (member_unfold_gc_sub _ _ _ _ Hsub _ _ _ _ Hm)
         end
     end
@@ -291,6 +291,48 @@ Proof.
     eapply eval_sel_global_ind; [ exact Hr | exact Hl | constructor ].
 Qed.
 
+(** ** A body unit, at the target: the body read as its expansion, both at
+    the member types and at the target, and its opens' targets valid. *)
+Lemma k_unit_body : forall Θ Ξ Θm Ξm Θ2 Ξ2 Γ Δ Δ' Φ Φ' Φx Φx',
+    sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 ->
+    body_xp Θ Ξ (Δ ++ Γ) Φ Φx -> body_xp Θ Ξ (Δ' ++ Γ) Φ' Φx' ->
+    @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ (body_ctx Φx ++ Δ) (body_ctx Φx' ++ Δ') ->
+    @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm ((body_ctx Φx ++ Δ) ++ Γ) -> @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm ((body_ctx Φx' ++ Δ') ++ Γ) ->
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ -> @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ ->
+    (forall k Ψ H Ψ' H', nth_error (body_opens Φ Φx) k = Some (Ψ, H) ->
+       nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> kmod Θ Ξ (Ψ ++ Δ ++ Γ) H H') ->
+    (forall k Ψ H Ψ' H', nth_error (body_opens Φ Φx) k = Some (Ψ, H) ->
+       nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> kmod Θ Ξ (Ψ' ++ Δ' ++ Γ) H' H') ->
+    tele_ass Δ -> tele_ass Δ' -> List.length Δ = List.length Δ' ->
+    body_shape Φ Φ' -> body_shape Φx Φx' ->
+    @rel_unit_under_ctx (gc_mk Θ2 Ξ2) Γ (gu_body Δ Φ) (gu_body Δ' Φ') /\
+    @unit_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ (gu_body Δ Φ) /\ @unit_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ (gu_body Δ' Φ') /\
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ.
+Proof.
+  intros * He Hx Hx' HR Hc1 Hc2 HΓ HcΓ Ho Ho' HΔ HΔ' Hl Hs Hsx.
+  pose proof (sme_rd _ _ _ _ _ _ He) as Hsub.
+  pose proof (em_res _ _ _ _ (sme_emb _ _ _ _ _ _ He)) as Hsub2.
+  pose proof (em_wf _ _ _ _ (sme_emb _ _ _ _ _ _ He)) as Hwf2.
+  assert (Xm : forall G Φ0 Φx0, body_xp Θ Ξ G Φ0 Φx0 -> body_xp Θm Ξm G Φ0 Φx0)
+    by (intros; apply (member_type_gc_sub_all _ _ _ _ Hsub); assumption).
+  assert (X2 : forall G Φ0 Φx0, body_xp Θ Ξ G Φ0 Φx0 -> body_xp Θ2 Ξ2 G Φ0 Φx0)
+    by (intros; apply (member_type_gc_sub_all _ _ _ _ Hsub2); assumption).
+  rewrite <- !app_assoc in Hc1, Hc2.
+  split.
+  { eapply (@rel_unit_body (gc_mk Θ2 Ξ2)); [ exact Hwf2 | apply X2; exact Hx | apply X2; exact Hx' | exact HR | | | assumption .. ].
+    - intros * Hk Hk'; exact (proj1 (Ho _ _ _ _ _ Hk Hk' _ _ _ _ He)).
+    - intros * Hk Hk'; exact (proj1 (Ho' _ _ _ _ _ Hk Hk' _ _ _ _ He)). }
+  split; [| split; [| split; assumption ] ].
+  - econstructor; [ apply Xm; exact Hx | apply X2; exact Hx | exact Hc1 |].
+    intros k Ψ H Hk.
+    destruct (body_opens_nth _ _ _ _ _ _ _ _ _ _ Hx Hx' Hs Hk) as [[Ψ' H'] Hk'].
+    exact (proj1 (proj2 (Ho _ _ _ _ _ Hk Hk' _ _ _ _ He))).
+  - econstructor; [ apply Xm; exact Hx' | apply X2; exact Hx' | exact Hc2 |].
+    intros k Ψ' H' Hk'.
+    destruct (body_opens_nth _ _ _ _ _ _ _ _ _ _ Hx' Hx (body_shape_sym _ _ Hs) Hk') as [[Ψ H] Hk].
+    exact (proj1 (proj2 (Ho' _ _ _ _ _ Hk Hk' _ _ _ _ He))).
+Qed.
+
 Theorem kripke_fundamental :
   (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> kctx Θ Ξ Γ) /\
   (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> kexp_eq Θ Ξ Γ A M M) /\
@@ -389,9 +431,7 @@ Proof.
   all: try solve [ split; [ eapply rel_ext_def; eassumption | cbn [app]; repeat split; try constructor; assumption ] ].
   all: try solve [ split; [ eapply rel_ext_mod; eassumption | cbn [app]; repeat split; try constructor; assumption ] ].
   (** Units. *)
-  all: try solve [ split; [ eapply rel_unit_body; eassumption |];
-                   split; [ constructor; rewrite <- app_assoc in *; assumption |];
-                   split; [ constructor; rewrite <- app_assoc in *; assumption | split; assumption ] ].
+  all: try solve [ eapply k_unit_body; eassumption ].
   all: try solve [ split; [ eapply rel_unit_alias; eassumption |];
                    split; [ constructor; assumption |]; split; [ constructor; assumption | split; assumption ] ].
   all: try solve [ split; [ apply rel_unit_sym; assumption | repeat split; assumption ] ].
@@ -411,16 +451,16 @@ Proof.
     match goal with Hl : _ ∋ # _ ⇒ₘ _, HΓ : sem_ctx _, Hok : ctx_mt _ _ _ |- _ =>
       pose proof Hgm as (HGc & HGap & Hc);
       split; [ exact (rel_me_var _ _ _ HΓ Hl) |];
-      split; [ exact (sem_mt_var HGc Hc _ _ _ Hl HΓ Hok) |]; split; [ exact (sem_mt_var HGc Hc _ _ _ Hl HΓ Hok) |];
-      split; [ exact (sem_unf_var Hgm _ _ _ Hl HΓ Hok) |]; split; [ exact (sem_unf_var Hgm _ _ _ Hl HΓ Hok) | split; assumption ] end ].
+      split; [ exact (@sem_mt_var (gc_mk _ _) _ _ Hwf2 Hc HGc Hc _ _ _ Hl HΓ Hok) |]; split; [ exact (@sem_mt_var (gc_mk _ _) _ _ Hwf2 Hc HGc Hc _ _ _ Hl HΓ Hok) |];
+      split; [ exact (@sem_unf_var (gc_mk _ _) _ _ Hwf2 Hgm _ _ _ Hl HΓ Hok) |]; split; [ exact (@sem_unf_var (gc_mk _ _) _ _ Hwf2 Hgm _ _ _ Hl HΓ Hok) | split; assumption ] end ].
   all: try solve [
     match goal with HU : rel_unit_under_ctx _ ?U ?U', Hok : unit_mt _ _ _ ?U, Hok' : unit_mt _ _ _ ?U', HΓ : sem_ctx _ |- _ =>
       destruct HU as (HU & HsU & HsU');
       assert (Ht : tele_ass (gu_params U)) by (inversion HsU; subst; cbn; assumption);
       assert (Ht' : tele_ass (gu_params U')) by (inversion HsU'; subst; cbn; assumption);
       split; [ exact HU |];
-      split; [ exact (sem_mt_lit _ _ HΓ HsU Hok) |]; split; [ exact (sem_mt_lit _ _ HΓ HsU' Hok') |];
-      split; [ exact (sem_unf_lit _ _ Ht) |]; split; [ exact (sem_unf_lit _ _ Ht') | split; assumption ] end ].
+      split; [ exact (@sem_mt_lit (gc_mk _ _) _ _ Hwf2 (proj2 (proj2 Hgm)) _ _ HΓ HsU Hok) |]; split; [ exact (@sem_mt_lit (gc_mk _ _) _ _ Hwf2 (proj2 (proj2 Hgm)) _ _ HΓ HsU' Hok') |];
+      split; [ exact (@sem_unf_lit (gc_mk _ _) _ _ Hwf2 _ _ Ht Hok) |]; split; [ exact (@sem_unf_lit (gc_mk _ _) _ _ Hwf2 _ _ Ht' Hok') | split; assumption ] end ].
   all: try solve [
     match goal with HH : rel_modexp_under_ctx _ ?H ?H', HS : sem_mt _ _ _ ?H, HS' : sem_mt _ _ _ ?H',
                     HU : sem_unf _ _ _ ?H, HU' : sem_unf _ _ _ ?H', Hm : member_type _ _ _ ?H (_ :: nil) ?R,
@@ -633,12 +673,11 @@ Section MtDown.
                (proj1 (member_type_gc_sub _ _ _ _ Hs) _ _ _ _ Hm) Hk).
   Qed.
 
-  Fixpoint ctx_mt_down (Γ : ctx) (H : ctx_mt Θb Ξb Γ) {struct H} : ctx_mt Θa Ξa Γ
-  with unit_mt_down (Γ : ctx) (U : gunit) (H : unit_mt Θb Ξb Γ U) {struct H} : unit_mt Θa Ξa Γ U.
-  Proof.
-    - destruct H; constructor; auto.
-    - destruct H; constructor; [ apply ctx_mt_down; assumption | apply sem_mt_down; assumption ].
-  Qed.
+  (** An alias unit; a body unit's expansion is read at its own global
+      context. *)
+  Lemma unit_mt_down_alias : forall Γ Δ E,
+      unit_mt Θb Ξb Γ (gu_mk Δ (md_alias E)) -> unit_mt Θa Ξa Γ (gu_mk Δ (md_alias E)).
+  Proof. intros * H; inversion H; subst; constructor; apply sem_mt_down; assumption. Qed.
 End MtDown.
 
 (** What an entry other than a body module is worth at [Θ2 ⍮ Ξ2]: a
@@ -728,7 +767,8 @@ Proof.
       rewrite (proj2 (proj2 (closed_read_body _ _ Hg _ _ _ Hb (z :: nil))) Hne); exact Hz.
     + intros qp y U Hy.
       destruct (good_alias _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hy) as (T & pvT & HU & HUm & HUv).
-      split; [ exact HU | split; [ exact (unit_mt_down _ _ _ _ Hmt _ _ HUm) | exact HUv ] ].
+      destruct (gc_module_alias_unit _ _ _ _ _ Hy) as (Δu & Eu & ->).
+      split; [ exact HU | split; [ exact (unit_mt_down_alias _ _ _ _ Hmt _ _ _ HUm) | exact HUv ] ].
   - intros p D Hl; exact (good_ind _ _ _ _ _ _ _ _ _ HΘ HΞ Hl).
 Qed.
 
@@ -800,7 +840,7 @@ Proof.
   rewrite <- (app_nil_r (Δ ++ gs_tele Ξ)) in HEv, HS, HC.
   assert (Hx : @rel_ext_under_ctx (gc_mk Θ2 Ξ2) ⋅ (Δ ++ gs_tele Ξ) (Δ ++ gs_tele Ξ))
     by (split; [| split ]; [ exact HC | exact HC | exact (sem_ctx_per_ctx HC) ]).
-  destruct (rel_unit_alias Hx Ht Ht HEv HEv) as (HU & HsU & _).
+  destruct (@rel_unit_alias (gc_mk Θ2 Ξ2) _ _ _ _ _ (emx_wf _ _ _ _ He) Hx Ht Ht HEv HEv) as (HU & HsU & _).
   split; [ exact HsU |]; split; [ constructor; exact HS | exact HU ].
 Qed.
 

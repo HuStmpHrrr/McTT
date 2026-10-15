@@ -5,7 +5,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Members Inductives.
 From Mctt.Core.Semantic Require Import Evaluation.
-From Mctt.Extraction Require Import FastEval.
+From Mctt.Extraction Require Import FastEval Kinds.
 From Mctt.Extraction Require Export Lookup.
 Import Domain_Notations.
 
@@ -266,6 +266,13 @@ with feval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
      feval_benv_order Θ Ξ (env_args p args) Φ' ->
      (forall p', feval_benv Θ Ξ (env_args p args) Φ' p' -> feval_exp_order Θ Ξ M p') ->
      feval_sel_order Θ Ξ (dm_local p (gu_mk Δ (md_body Φ)) args) x )
+| feslo_item :
+  `( List.length args = List.length Δ ->
+     gm_item_upto Φ x = Some (Φ0, E, its1, (Some n, d, pv)) ->
+     feval_benv_order Θ Ξ (env_args p args) Φ0 ->
+     (forall p0, feval_benv Θ Ξ (env_args p args) Φ0 p0 -> feval_modexp_order Θ Ξ E p0) ->
+     (forall p0 h, feval_benv Θ Ξ (env_args p args) Φ0 p0 -> ⟦ E ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p0 ↘ h -> feval_sel_order Θ Ξ h n) ->
+     feval_sel_order Θ Ξ (dm_local p (gu_mk Δ (md_body Φ)) args) x )
 | feslo_alias :
   `( List.length args = List.length Δ ->
      feval_modexp_order Θ Ξ E (env_args p args) ->
@@ -289,6 +296,14 @@ with feval_selm_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
   `( List.length args = List.length Δ ->
      gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
      feval_benv_order Θ Ξ (env_args p args) Φ' ->
+     feval_selm_order Θ Ξ (dm_local p (gu_mk Δ (md_body Φ)) args) y )
+| fesmo_item :
+  `( List.length args = List.length Δ ->
+     gm_item_upto Φ y = Some (Φ0, E, its1, it) ->
+     feval_benv_order Θ Ξ (env_args p args) Φ0 ->
+     (forall p0, feval_benv Θ Ξ (env_args p args) Φ0 p0 -> feval_modexp_order Θ Ξ E p0) ->
+     (forall p0 h, feval_benv Θ Ξ (env_args p args) Φ0 p0 -> ⟦ E ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p0 ↘ h ->
+        feval_selmc_order Θ Ξ h (item_ch it nil)) ->
      feval_selm_order Θ Ξ (dm_local p (gu_mk Δ (md_body Φ)) args) y )
 | fesmo_alias :
   `( List.length args = List.length Δ ->
@@ -325,7 +340,13 @@ with feval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
      feval_benv_order Θ Ξ p (gm_ext Φ y (ge_def b pv A (Some M))) )
 | febo_mod :
   `( feval_benv_order Θ Ξ p Φ ->
-     feval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm Uy)) ).
+     feval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm Uy)) )
+| febo_open :
+  `( feval_benv_order Θ Ξ p Φ ->
+     (forall p1, feval_benv Θ Ξ p Φ p1 -> kgens_order Θ Ξ p1 E its) ->
+     (forall p1 gs, feval_benv Θ Ξ p Φ p1 -> kgens Θ Ξ p1 E its gs ->
+        feval_benv_order Θ Ξ p1 (gens_append gm_nil 0 gs)) ->
+     feval_benv_order Θ Ξ p (gm_open Φ E its) ).
 
 #[local]
 Hint Constructors feval_exp_order feval_elim_order feval_ihs_order feval_ih_order feval_shty_order feval_ihty_order feval_app_order feval_exps_order feval_apps_order
@@ -383,6 +404,9 @@ Ltac functional_feval_all :=
     | H1 : feval_ihty ?T ?X ?ρm ?A ?ρ ?t ?v ?r1, H2 : feval_ihty ?T ?X ?ρm ?A ?ρ ?t ?v ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_feval_ihty _ _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H1 : kgens ?T ?X ?p ?E ?its ?g1, H2 : kgens ?T ?X ?p ?E ?its ?g2 |- _ =>
+        assert_fails (constr_eq g1 g2);
+        pose proof (functional_kgens _ _ _ _ _ H1 H2); subst; clear H2
     | H : d_neut _ _ = d_neut _ _ |- _ => injection H; clear H; intros; subst
     end.
 
@@ -406,7 +430,7 @@ Lemma feval_order_sound : forall Θ Ξ,
 Proof.
   intros Θ Ξ; apply feval_mut_ind; intros;
     try solve [ eapply feslo_global_neut; eauto; intros; functional_feval_all; eauto
-              | econstructor; try eassumption; intros; functional_feval_all; eauto ].
+              | econstructor; try eassumption; intros; functional_feval_all; eauto using kgens_order_sound ].
   - (* a chain of one more selection is not empty *)
     eapply fesco_cons; [| eauto | intros; functional_feval_all; eauto ].
     match goal with H : feval_selc _ _ _ ?c _ |- ?c <> nil => inversion H; discriminate end.
@@ -602,6 +626,12 @@ Section EvalImpl.
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = None |- _ =>
           rewrite H1 in H2; discriminate H2
+      | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = None |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
+          rewrite (gm_prefix_item_excl _ _ _ H1) in H2; discriminate H2
       | H1 : modexp_spine ?H = _, H2 : modexp_spine ?H = _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H : Nat.compare _ _ = Eq |- _ => apply Nat.compare_eq in H
@@ -936,12 +966,19 @@ Section EvalImpl.
   | dm_local p (gu_mk Δ D) args, x, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
     | exist _ Lt C => exist _ (d_member (dm_local p (gu_mk Δ D) args) (x :: nil)) _
     | exist _ Eq C with D := {
-      | md_body Φ with inspect (gm_prefix_upto Φ x) := {
-        | exist _ (Some (gm_ext Φ' _ (ge_def b pv A (Some M)))) P =>
-            let (p', Hp') := feval_benv_impl (env_args p args) Φ' _ in
-            let (r, Hr) := feval_exp_impl M p' _ in
+      | md_body Φ with inspect (gm_item_upto Φ x) := {
+        | exist _ (Some (Φ0, E, its1, (Some n, d, pv))) Ei =>
+            let (p0, Hp0) := feval_benv_impl (env_args p args) Φ0 _ in
+            let (h, Hh) := feval_modexp_impl E p0 _ in
+            let (r, Hr) := feval_sel_impl h n _ in
             exist _ r _
-        | exist _ _ P => False_rect _ _ }
+        | exist _ (Some (Φ0, E, its1, (None, d, pv))) Ei => False_rect _ _
+        | exist _ None Ei with inspect (gm_prefix_upto Φ x) := {
+          | exist _ (Some (gm_ext Φ' _ (ge_def b pv A (Some M)))) P =>
+              let (p', Hp') := feval_benv_impl (env_args p args) Φ' _ in
+              let (r, Hr) := feval_exp_impl M p' _ in
+              exist _ r _
+          | exist _ _ P => False_rect _ _ } }
       | md_alias E =>
           let (h, Hh) := feval_modexp_impl E (env_args p args) _ in
           let (r, Hr) := feval_sel_impl h x _ in
@@ -958,11 +995,17 @@ Section EvalImpl.
   | dm_local p (gu_mk Δ D) args, y, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
     | exist _ Lt C => exist _ (dm_member (dm_local p (gu_mk Δ D) args) (y :: nil)) _
     | exist _ Eq C with D := {
-      | md_body Φ with inspect (gm_prefix_upto Φ y) := {
-        | exist _ (Some (gm_ext Φ' _ (ge_mod _ Uy))) P =>
-            let (p', Hp') := feval_benv_impl (env_args p args) Φ' _ in
-            exist _ (dm_local p' Uy nil) _
-        | exist _ _ P => False_rect _ _ }
+      | md_body Φ with inspect (gm_item_upto Φ y) := {
+        | exist _ (Some (Φ0, E, its1, it)) Ei =>
+            let (p0, Hp0) := feval_benv_impl (env_args p args) Φ0 _ in
+            let (h, Hh) := feval_modexp_impl E p0 _ in
+            let (r, Hr) := feval_selmc_impl h (item_ch it nil) _ in
+            exist _ r _
+        | exist _ None Ei with inspect (gm_prefix_upto Φ y) := {
+          | exist _ (Some (gm_ext Φ' _ (ge_mod _ Uy))) P =>
+              let (p', Hp') := feval_benv_impl (env_args p args) Φ' _ in
+              exist _ (dm_local p' Uy nil) _
+          | exist _ _ P => False_rect _ _ } }
       | md_alias E =>
           let (h, Hh) := feval_modexp_impl E (env_args p args) _ in
           let (r, Hr) := feval_selm_impl h y _ in
@@ -997,12 +1040,28 @@ Section EvalImpl.
   | p, gm_ext Φ y (ge_mod _ Uy), H =>
       let (p1, Hp1) := feval_benv_impl p Φ _ in
       exist _ (p1 ↦ᵐ dm_local p1 Uy nil) _
-  | p, gm_open Φ _ _, H => False_rect _ _.
+  | p, gm_open Φ E its, H =>
+      let (p1, Hp1) := feval_benv_impl p Φ _ in
+      let (gs, Hgs) := kgens_impl Θ Ξ p1 E its _ in
+      let (p2, Hp2) := feval_benv_impl p1 (gens_append gm_nil 0 gs) _ in
+      exist _ p2 _.
 
 (** Each hole is an order premise read off the order of the whole by
     inversion, the evaluation itself by its rule, or a branch the order rules
     out ([ev_obl]).  They are transparent: the order premises are the
     arguments of the structural recursion. *)
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
+Next Obligation. all: ev_obl. Defined.
 Next Obligation. all: ev_obl. Defined.
 Next Obligation. all: ev_obl. Defined.
 Next Obligation. all: ev_obl. Defined.

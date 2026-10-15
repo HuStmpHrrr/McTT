@@ -128,6 +128,7 @@ Proof.
       do 9 eexists; split; [ reflexivity |]; eauto.
     + apply IHper_body; exact Hx.
   - destruct (String.eqb x y) eqn:Ey; [ discriminate |]; apply IHper_body; exact Hx.
+  - destruct (existsb _ _); [ discriminate |]; apply IHper_body; exact Hx.
 Qed.
 
 (** The submodule named [y] of two related bodies. *)
@@ -145,6 +146,23 @@ Proof.
     + apply String.eqb_eq in Ey; subst.
       do 5 eexists; split; [ reflexivity |]; eauto.
     + apply IHper_body; exact Hx.
+  - destruct (existsb _ _); [ discriminate |]; apply IHper_body; exact Hx.
+Qed.
+
+(** The name [x] an open of two related bodies declares. *)
+Lemma per_body_lookup_item : forall ρ Φ ρ' Φ' x Φ0 H its1 it,
+    per_body ρ Φ ρ' Φ' ->
+    gm_item_upto Φ x = Some (Φ0, H, its1, it) ->
+    exists Φ0' H' ρ0 ρ0' h h',
+      (gm_item_upto Φ' x = Some (Φ0', H', its1, it)) /\
+      (eval_benv gc_deps gc_stack ρ Φ0 ρ0) /\ (eval_benv gc_deps gc_stack ρ' Φ0' ρ0') /\
+      (eval_modexp gc_deps gc_stack H ρ0 h) /\ (eval_modexp gc_deps gc_stack H' ρ0' h') /\ per_dmod h h'.
+Proof.
+  intros * Hb; induction Hb; intros Hx; cbn in Hx |- *; try discriminate.
+  - destruct (String.eqb x y); [ discriminate | auto ].
+  - destruct (String.eqb x y); [ discriminate | auto ].
+  - destruct (items_upto x its) as [[its1' it'] |]; [| auto ].
+    injection Hx as <- <- <- <-; do 6 eexists; repeat split; eassumption.
 Qed.
 
 (** ** Saturated Module Values *)
@@ -188,6 +206,14 @@ Inductive mtyped : dmod -> list String.string -> mkind -> domain -> Prop :=
     eval_benv gc_deps gc_stack (env_args ρ args) Φ' ρ1 ->
     mtyped (dm_local ρ1 Uy nil) ch k a ->
     mtyped (dm_local ρ (gu_body Δ Φ) args) (y :: ch) k a
+(** A name a local open of a saturated body declares: the member it names
+    in the open's target, or the target itself. *)
+| mty_item : forall ρ Δ Φ args x Φ0 H its1 it ρ0 h ch k a,
+    List.length args = List.length Δ ->
+    gm_item_upto Φ x = Some (Φ0, H, its1, it) ->
+    eval_benv gc_deps gc_stack (env_args ρ args) Φ0 ρ0 ->
+    eval_modexp gc_deps gc_stack H ρ0 h -> mtyped h (item_ch it ch) k a ->
+    mtyped (dm_local ρ (gu_body Δ Φ) args) (x :: ch) k a
 | mty_alias : forall ρ Δ E args h ch k a,
     List.length args = List.length Δ ->
     eval_modexp gc_deps gc_stack E (env_args ρ args) h -> mtyped h ch k a ->
@@ -310,12 +336,12 @@ Qed.
 Lemma selm_unsat : forall ρ U args y h,
     List.length args < List.length (gu_params U) ->
     dm_local ρ U args ·ₘ y gc_deps ⍮ gc_stack ↘ h -> h = dm_member (dm_local ρ U args) (y :: nil).
-Proof. intros * Hl H; inversion H; subst; cbn in Hl; [ reflexivity | lia | lia ]. Qed.
+Proof. intros * Hl H; inversion H; subst; cbn in Hl; first [ reflexivity | lia ]. Qed.
 
 Lemma sel_unsat : forall ρ U args x v,
     List.length args < List.length (gu_params U) ->
     dm_local ρ U args ·ₜ x gc_deps ⍮ gc_stack ↘ v -> v = d_member (dm_local ρ U args) (x :: nil).
-Proof. intros * Hl H; inversion H; subst; cbn in Hl; [ reflexivity | lia | lia ]. Qed.
+Proof. intros * Hl H; inversion H; subst; cbn in Hl; first [ reflexivity | lia ]. Qed.
 
 Lemma selc_unsat : forall ρ U args ch v,
     List.length args < List.length (gu_params U) ->
@@ -489,6 +515,56 @@ Definition mrel (k : mkind) (E : relation domain) (w : dmod) (ch : list String.s
   | mk_mod => exists v v', eval_selmc gc_deps gc_stack w ch v /\ eval_selmc gc_deps gc_stack w' ch v' /\ per_dmod v v'
   end.
 
+(** Selecting along a chain through a name an open declares. *)
+Lemma item_ch_app : forall it ch, item_ch it ch = item_ch it nil ++ ch.
+Proof. intros [[[] ?] ?] ch; reflexivity. Qed.
+
+Lemma item_selmc : forall ρ Δ Φ args x Φ0 H its1 it ρ0 h ch v,
+    List.length args = List.length Δ -> gm_item_upto Φ x = Some (Φ0, H, its1, it) ->
+    ⟦ Φ0 ⟧ᵇ gc_deps ⍮ gc_stack ⍮ env_args ρ args ↘ ρ0 -> ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ0 ↘ h ->
+    h ·ₘ* (item_ch it ch) gc_deps ⍮ gc_stack ↘ v ->
+    dm_local ρ (gu_body Δ Φ) args ·ₘ* (x :: ch) gc_deps ⍮ gc_stack ↘ v.
+Proof.
+  intros * Hl Hx Hb HH Hv; rewrite item_ch_app in Hv.
+  apply eval_selmc_app in Hv as (r & Hr & Hv).
+  econstructor; [ eapply eval_selm_item; eassumption | exact Hv ].
+Qed.
+
+Lemma item_selc : forall ρ Δ Φ args x Φ0 H its1 it ρ0 h ch v,
+    List.length args = List.length Δ -> gm_item_upto Φ x = Some (Φ0, H, its1, it) ->
+    ⟦ Φ0 ⟧ᵇ gc_deps ⍮ gc_stack ⍮ env_args ρ args ↘ ρ0 -> ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ0 ↘ h ->
+    h ·ₜ* (item_ch it ch) gc_deps ⍮ gc_stack ↘ v ->
+    dm_local ρ (gu_body Δ Φ) args ·ₜ* (x :: ch) gc_deps ⍮ gc_stack ↘ v.
+Proof.
+  intros * Hl Hx Hb HH Hv.
+  destruct ch as [| y ch].
+  - destruct it as [[[n |] d] pv]; cbn [item_ch] in Hv; inversion Hv; subst.
+    + constructor; eapply eval_sel_item; eassumption.
+    + match goal with Hn : eval_selc _ _ _ nil _ |- _ => inversion Hn end.
+  - rewrite item_ch_app in Hv.
+    apply (eval_selc_app _ _ (item_ch it nil) _ (y :: ch) _ ltac:(discriminate)) in Hv as (r & Hr & Hv).
+    econstructor; [ eapply eval_selm_item; eassumption | exact Hv ].
+Qed.
+
+(** Conversely, a chain through a name a local open declares is read in
+    the open's target. *)
+Lemma item_selc_inv : forall ρ Δ Φ args x Φ0 H its1 it ch v,
+    List.length args = List.length Δ -> gm_item_upto Φ x = Some (Φ0, H, its1, it) ->
+    dm_local ρ (gu_body Δ Φ) args ·ₜ* (x :: ch) gc_deps ⍮ gc_stack ↘ v ->
+    exists ρ0 h, ⟦ Φ0 ⟧ᵇ gc_deps ⍮ gc_stack ⍮ env_args ρ args ↘ ρ0 /\ ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ0 ↘ h /\
+      h ·ₜ* (item_ch it ch) gc_deps ⍮ gc_stack ↘ v.
+Proof.
+  intros * Hl Hx Hv.
+  inversion Hv as [? ? ? Hs | ? ? ? ? ? Hs Hr ]; subst;
+    inversion Hs; subst; cbn [gu_params] in *; try lia; try prefix_item_excl.
+  all: match goal with Hi : gm_item_upto _ _ = Some (_, _, _, _) |- _ =>
+         tryif constr_eq Hi Hx then fail else (rewrite Hx in Hi; injection Hi as -> -> -> ->) end.
+  all: do 2 eexists; split; [ eassumption | split; [ eassumption |] ].
+  - cbn [item_ch]; constructor; assumption.
+  - destruct ch as [| c ch]; [ inversion Hr |].
+    rewrite item_ch_app; apply eval_selc_app; [ discriminate |]; eexists; split; eassumption.
+Qed.
+
 (** ** Related Module Values Have Related Members *)
 Lemma mtyped_rel : gchild_ok ->
     forall w ch k a, mtyped w ch k a -> forall w' i E, per_dmod w w' -> per_univ_elem i E a a -> mrel k E w ch w'.
@@ -498,6 +574,7 @@ Proof.
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' pm Uy ρ1 ch k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args x Φ0 H its1 it ρ0 h ch k a Hl Hx Hb HH Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
                  | p T oT args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T oT ch k a Hgp Hm Hty IH
@@ -587,6 +664,24 @@ Proof.
       split; [ econstructor; [ eapply eval_selm_body; [ lia | eassumption | eassumption ] | eassumption ] | exact Hvv ].
     + split; [ econstructor; [ eapply eval_selm_body; eassumption | eassumption ] |].
       split; [ econstructor; [ eapply eval_selm_body; [ lia | eassumption | eassumption ] | eassumption ] | exact Hvv ].
+  - (* a name an open declares: as its target *)
+    inversion Hw; subst.
+    match goal with Hlt0 : per_ltele _ _ _ _ _ _ _ _ |- _ => rename Hlt0 into Hlt end.
+    destruct (per_ltele_lengths _ _ _ _ _ _ _ _ Hlt) as [Hlen1 Hlen2]; rewrite !length_rev in Hlen1.
+    cbn [gu_params gu_def] in *.
+    pose proof (per_ltele_full _ _ _ _ _ _ _ _ Hlt ltac:(rewrite length_rev; exact Hl)) as Hd.
+    destruct U' as [Δ' D']; cbn [gu_params gu_def] in *.
+    inversion Hd; subst.
+    match goal with Hb0 : per_body _ _ _ _ |- _ => rename Hb0 into Hbd end.
+    destruct (per_body_lookup_item _ _ _ _ _ _ _ _ _ Hbd Hx)
+      as (Φ0' & H' & ρ0x & ρ0' & hx & h' & Hx' & Hb1 & Hb1' & Hh1 & Hh' & Hhh).
+    pose proof (functional_eval_benv _ _ _ _ Hb Hb1) as <-.
+    pose proof (functional_eval_modexp _ _ _ _ HH Hh1) as <-.
+    assert (Hl' : List.length args' = List.length Δ') by lia.
+    pose proof (IH _ _ _ Hhh HE') as Hr.
+    destruct k; cbn in Hr |- *; destruct Hr as (v & v' & Hv & Hv' & Hvv); exists v, v'.
+    + split; [ eapply item_selc; eassumption |]; split; [ eapply item_selc; eassumption | exact Hvv ].
+    + split; [ eapply item_selmc; eassumption |]; split; [ eapply item_selmc; eassumption | exact Hvv ].
   - (* a saturated alias *)
     inversion Hw; subst.
     match goal with Hlt0 : per_ltele _ _ _ _ _ _ _ _ |- _ => rename Hlt0 into Hlt end.
@@ -685,6 +780,7 @@ Proof.
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' pm Uy ρ1 chain k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args x Φ0 H its1 it ρ0 h chain k a Hl Hx Hb HH Hm IH
                  | ρ Δ E args h chain k a Hl HE Hm IH
                  | p T oT args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T oT chain k a Hgp Hm Hty IH
@@ -707,11 +803,24 @@ Proof.
     + subst; inversion Hw1; subst; econstructor; eassumption.
     + injection Heq as -> Heq.
       inversion Hw1; subst.
-      match goal with Hs : eval_selm _ _ _ _ _ |- _ => inversion Hs; subst end; cbn in *; try lia.
+      match goal with Hs : eval_selm _ _ _ _ _ |- _ => inversion Hs; subst end; cbn in *; try lia; try prefix_item_excl.
       match goal with Hp : gm_prefix_upto Φ _ = Some (gm_ext _ _ (ge_mod _ ?Uy')) |- _ =>
         rewrite Hy in Hp; injection Hp as <- <- <- end.
       match goal with Hb' : eval_benv _ _ _ Φ' ?ρ1' |- _ => pose proof (functional_eval_benv _ _ _ _ Hb Hb') as <- end.
       eapply IH; [ reflexivity | exact Hch | eassumption ].
+  - (* a name an open declares *)
+    destruct pre as [| z pre]; cbn in Heq.
+    + subst; inversion Hw1; subst; eapply mty_item; eassumption.
+    + injection Heq as -> Heq.
+      inversion Hw1; subst.
+      match goal with Hs : eval_selm _ _ _ _ _ |- _ => inversion Hs; subst end; cbn in *; try lia;
+        try match goal with Hp : gm_prefix_upto _ _ = Some _ |- _ =>
+              rewrite (gm_prefix_item_excl _ _ _ Hp) in Hx; discriminate Hx end.
+      match goal with Hi : gm_item_upto Φ _ = Some _ |- _ => rewrite Hx in Hi; injection Hi as <- <- <- <- end.
+      match goal with Hb' : eval_benv _ _ _ Φ0 ?r |- _ => pose proof (functional_eval_benv _ _ _ _ Hb Hb') as <- end.
+      match goal with HH' : eval_modexp _ _ H ρ0 ?r |- _ => pose proof (functional_eval_modexp _ _ _ _ HH HH') as <- end.
+      eapply (IH (item_ch it nil ++ pre) ch); [ rewrite item_ch_app, app_assoc; reflexivity | exact Hch |].
+      apply eval_selmc_app; eexists; split; eassumption.
   - destruct pre as [| z pre]; cbn in Heq.
     + subst; inversion Hw1; subst; eapply mty_alias; eassumption.
     + subst; apply (selmc_alias _ _ _ _ _ _ _ Hl (cons_neq_nil _ _) HE) in Hw1.
@@ -772,6 +881,7 @@ Proof.
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' pm Uy ρ1 ch k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args x Φ0 H its1 it ρ0 h ch k a Hl Hx Hb HH Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
                  | p T oT args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T oT ch k a Hgp Hm Hty IH
@@ -782,6 +892,11 @@ Proof.
     pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ Hin Ha) as EE.
     eapply Hty; [ apply EE, Hc | exact Hw1 | exact Hb' ].
   - subst; basic_invert_per_univ_elem Ha.
+  - destruct Hun as [(a2 & Hn) | (h0 & ch0 & Hh)]; [| discriminate ].
+    inversion Hn; subst; cbn in *;
+      match goal with Hn' : nth_error _ _ = Some _ |- _ =>
+        assert (Hn'' : nth_error (rev Δ) (List.length args) <> None) by congruence;
+        apply nth_error_Some in Hn''; rewrite length_rev in Hn''; lia end.
   - destruct Hun as [(a2 & Hn) | (h0 & ch0 & Hh)]; [| discriminate ].
     inversion Hn; subst; cbn in *;
       match goal with Hn' : nth_error _ _ = Some _ |- _ =>

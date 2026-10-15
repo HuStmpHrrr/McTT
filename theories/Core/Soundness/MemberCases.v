@@ -72,7 +72,7 @@ Lemma glu_rel_exp_mem : forall {Γ H x A} {i : nat} {M},
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
     member_type gc_deps gc_stack Γ H (x :: nil) (mr_term A) ->
     Γ ⊢ A : Typeω@i ->
-    member_unfold gc_deps gc_stack Γ H x = Some M ->
+    member_unfold gc_deps gc_stack Γ H x M ->
     Γ ⊢ M : A ->
     Γ ⊩ M : A ->
     Γ ⊩ a_mem H x : A.

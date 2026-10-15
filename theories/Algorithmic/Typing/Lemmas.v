@@ -364,17 +364,96 @@ Proof.
   eapply wf_conv'; [ exact Hel | eapply soundness_ty'; eassumption ].
 Qed.
 
+(** What a checked body is: the body, read in an extension [Ψ] of [Γ0], is
+    its expansion, which extends [Ψ], and the targets of its opens are
+    well-formed modules where they stand. *)
+Definition alg_body_sound (Γ : ctx) (Φ Φx : gmod) : Prop :=
+  forall Γ0 Ψ, Γ = Ψ ++ Γ0 -> ⊢ Γ0 -> gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ Ψ ≈ Ψ ->
+    body_xp gc_deps gc_stack Γ Φ Φx /\ gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ body_ctx Φx ++ Ψ ≈ body_ctx Φx ++ Ψ /\
+    (forall k Ψo H, List.nth_error (body_opens Φ Φx) k = Some (Ψo, H) -> gc_deps ⍮ gc_stack ⍮ Ψo ++ Γ ⊢ᵐ H ≈ H).
+
+Lemma abody_nil_sound : forall Γ, alg_body_sound Γ gm_nil gm_nil.
+Proof.
+  intros Γ Γ0 Ψ -> HΓ0 HΨ; split; [ constructor | split; [ exact HΨ |] ].
+  intros [| k] * Hk; discriminate.
+Qed.
+
+Lemma abody_def_sound : forall Γ Φ Φx x b pv A M i,
+    alg_body_sound Γ Φ Φx ->
+    (⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ A : Typeω@i) ->
+    (⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ M : A) ->
+    alg_body_sound Γ (gm_ext Φ x (ge_def b pv A (Some M))) (gm_ext Φx x (ge_def b pv A (Some M))).
+Proof.
+  intros * IH HA HM Γ0 Ψ -> HΓ0 HΨ.
+  destruct (IH _ _ eq_refl HΓ0 HΨ) as (Hbx & HX & Ho).
+  pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
+  specialize (HA HC); specialize (HM HC); rewrite List.app_assoc in HA, HM.
+  split; [ constructor; exact Hbx | split; [| exact Ho ] ].
+  cbn [body_ctx List.app].
+  eapply wf_ext_eq_def; [ exact HX | exact HA | apply wf_exp_eq_refl; exact HA | exact HM | apply wf_exp_eq_refl; exact HM
+                        | exact HA | exact HM ].
+Qed.
+
+Lemma abody_mod_sound : forall Γ Φ Φx x pm U,
+    alg_body_sound Γ Φ Φx ->
+    (⊢ body_ctx Φx ++ Γ -> gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Γ ⊢ᵘ U ≈ U) ->
+    alg_body_sound Γ (gm_ext Φ x (ge_mod pm U)) (gm_ext Φx x (ge_mod pm U)).
+Proof.
+  intros * IH HU Γ0 Ψ -> HΓ0 HΨ.
+  destruct (IH _ _ eq_refl HΓ0 HΨ) as (Hbx & HX & Ho).
+  pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
+  specialize (HU HC); rewrite List.app_assoc in HU.
+  split; [ constructor; exact Hbx | split; [| exact Ho ] ].
+  cbn [body_ctx List.app]; apply wf_ext_eq_mod; [ exact HX | exact HU | exact HU ].
+Qed.
+
+Lemma abody_open_sound : forall Γ Φ Φx H R T its gs,
+    alg_body_sound Γ Φ Φx ->
+    (⊢ body_ctx Φx ++ Γ -> gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Γ ⊢ᵐ H ≈ H) ->
+    member_type gc_deps gc_stack (body_ctx Φx ++ Γ) H nil R ->
+    mres_tl R = Some T ->
+    items_gen gc_deps gc_stack None (body_ctx Φx ++ Γ) H its gs ->
+    items_ok its ->
+    alg_body_sound Γ (gm_open Φ H its) (gens_append Φx 0 gs).
+Proof.
+  intros * IH HH HR HT Hg Hok Γ0 Ψ -> HΓ0 HΨ.
+  destruct (IH _ _ eq_refl HΓ0 HΨ) as (Hbx & HX & Ho).
+  pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
+  specialize (HH HC).
+  split; [ econstructor; eassumption |].
+  split; [ exact (gens_ext_wf _ _ _ _ _ _ Hg HH HX) |].
+  rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg).
+  intros [| k] * Hk; cbn in Hk; [ injection Hk as <- <-; exact HH | exact (Ho _ _ _ Hk) ].
+Qed.
+
+Lemma aunit_body_sound : forall Γ Δ Φ Φx,
+    (⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Δ ≈ Δ) -> tele_ass Δ -> alg_body_sound (Δ ++ Γ) Φ Φx ->
+    body_shape Φ Φ -> body_shape Φx Φx -> List.NoDup (gm_names Φ) ->
+    ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_body Δ Φ ≈ gu_body Δ Φ.
+Proof.
+  intros * HΔ Ht HB Hs Hsx Hn HΓ.
+  destruct (HB _ _ eq_refl HΓ (HΔ HΓ)) as (Hbx & HX & Ho).
+  eapply wf_unit_eq_body; [ exact Hbx | exact Hbx | exact HX | | | exact Ht | exact Ht | reflexivity | exact Hs | exact Hsx | exact Hn ].
+  - intros * Hk Hk'; rewrite Hk in Hk'; injection Hk' as <- <-; exact (Ho _ _ _ Hk).
+  - intros * Hk Hk'; rewrite Hk in Hk'; injection Hk' as <- <-; exact (Ho _ _ _ Hk).
+Qed.
+
 Lemma alg_type_sound :
   (forall {Γ A M}, Γ ⊢a M ⟸ A -> ⊢ Γ -> forall i, Γ ⊢ A : Typeω@i -> Γ ⊢ M : A) /\
     (forall {Γ A M}, Γ ⊢a M ⟹ A -> ⊢ Γ -> Γ ⊢ M : A) /\
     (forall {Γ Ψ}, Γ ⊢aˣ Ψ -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ) /\
     (forall {Γ U}, Γ ⊢aᵘ U -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U) /\
+    (forall {Γ Φ Φx}, Γ ⊢aᵇ Φ ⇝ Φx -> alg_body_sound Γ Φ Φx) /\
     (forall {Γ H}, Γ ⊢aᵐ H -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H).
 Proof.
   (** Every premise that asks for a type is [⟹ univ_nf u], so its soundness
       is a typing at [unf_tm u]. *)
   apply alg_type_mut_ind; intros; simpl_univ_nf;
-    cbn [unf_tm] in *; try mautosolve 4.
+    cbn [unf_tm] in *;
+    (** Bodies, by their own lemmas. *)
+    try solve [ apply abody_nil_sound | eapply abody_mod_sound; eassumption | eapply abody_open_sound; eassumption
+              | eapply aunit_body_sound; eassumption ];
+    try mautosolve 4.
   (** An inductive alias as a term, at the normal form of its closed type. *)
   all: try solve [ match goal with
      | Hp : mod_qname ?H = Some ?mp, Ha : ind_alias_lookup _ _ (qname_app ?mp (?x :: nil)) = Some _,
@@ -574,6 +653,18 @@ Proof.
     assert (exists i, Γ ⊢ A : Typeω@i) as [i] by mauto 3 using wf_glob_typ.
     assert (Γ ⊢ A ≈ C : Typeω@i) as <- by mauto 2 using soundness_ty'.
     mauto 3.
+  (** A definition of a body. *)
+  - match goal with
+    | IH : alg_body_sound _ _ _, Hu : is_univ_nf ?UA ?u |- _ =>
+        rewrite (is_univ_nf_eq _ _ Hu) in *;
+        match goal with
+        | HA : ⊢ _ -> _ ⊢ ?A : _, HM : ⊢ _ -> forall i, _ ⊢ ?A : _ -> _ ⊢ ?M : ?A |- _ =>
+            let HA' := fresh "HA'" in
+            assert (HA' : ⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ A : Typeω@(unf_large u))
+              by (intros HC; apply wf_exp_unf_large; rewrite <- nf_to_exp_univ_nf; exact (HA HC));
+            eapply (abody_def_sound _ _ _ _ _ _ _ _ (unf_large u)); [ exact IH | exact HA' | intros HC; exact (HM HC _ (HA' HC)) ]
+        end
+    end.
 Qed.
 
 Lemma alg_type_check_sound : forall {Γ i A M},
@@ -598,7 +689,25 @@ Lemma alg_unit_sound : forall {Γ U}, Γ ⊢aᵘ U -> ⊢ Γ -> gc_deps ⍮ gc_s
 Proof. intros; eapply (proj1 (proj2 (proj2 (proj2 alg_type_sound)))); eassumption. Qed.
 
 Lemma alg_modexp_sound : forall {Γ H}, Γ ⊢aᵐ H -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H.
-Proof. intros; eapply (proj2 (proj2 (proj2 (proj2 alg_type_sound)))); eassumption. Qed.
+Proof. intros; eapply (proj2 (proj2 (proj2 (proj2 (proj2 alg_type_sound))))); eassumption. Qed.
+
+(** A checked body is read in a well-formed context, past its expansion. *)
+Lemma alg_body_ctx : forall {Γ Φ Φx}, ⊢ Γ -> Γ ⊢aᵇ Φ ⇝ Φx -> ⊢ body_ctx Φx ++ Γ.
+Proof.
+  intros * HΓ HB.
+  destruct (proj1 (proj2 (proj2 (proj2 (proj2 alg_type_sound)))) _ _ _ HB Γ nil eq_refl HΓ
+              ltac:(apply wf_ext_eq_nil; exact HΓ)) as (_ & HX & _).
+  pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite List.app_nil_r in HC; exact HC.
+Qed.
+
+(** A body checks to one expansion. *)
+Lemma alg_body_functional : forall {Γ Φ Φx Φx'}, Γ ⊢aᵇ Φ ⇝ Φx -> Γ ⊢aᵇ Φ ⇝ Φx' -> Φx = Φx'.
+Proof.
+  intros * Hb1; revert Φx'; induction Hb1; intros Φx' Hb2; inversion Hb2; subst;
+    try match goal with IH : forall Φx', _ ⊢aᵇ ?Φ ⇝ Φx' -> _ = Φx', Hb : _ ⊢aᵇ ?Φ ⇝ ?Y |- _ =>
+      pose proof (IH _ Hb); subst Y end; try reflexivity.
+  f_equal; eapply items_gen_functional; eassumption.
+Qed.
 
 (** The parts of a [Π] the algorithm infers: the domain at its universe, the
     codomain at the normal form of its universe, whose level's atoms are of
@@ -1372,6 +1481,76 @@ Proof.
   destruct Hin as [-> | Hin]; cbn; [ lia | specialize (IH Hin); lia ].
 Qed.
 
+(** ** Extensions Entry by Entry
+
+    Completeness for an extension is stated for each of its entries, under
+    the bound on that entry's lets: a body's expansion has entries its local
+    opens generate, whose types are the targets' member types, which the
+    body's own lets do not bound; the algorithm does not check them again. *)
+
+Definition alg_entry (Γ : ctx) (e : centry) : Prop :=
+  match e with
+  | ce_ass A => exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u
+  | ce_def A M => (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ Γ ⊢a M ⟸ A
+  | ce_mod U => Γ ⊢aᵘ U
+  end.
+
+Definition ext_entries (n : nat) (Γ Ψ : ctx) : Prop :=
+  forall Ψ2 e Ψ1, Ψ = Ψ2 ++ e :: Ψ1 -> centry_lets e <= n -> alg_entry (Ψ1 ++ Γ) e.
+
+Lemma ext_entries_nil : forall n Γ, ext_entries n Γ nil.
+Proof. intros n Γ [| ? ?] * H; discriminate. Qed.
+
+Lemma ext_entries_cons : forall n Γ Ψ e, ext_entries n Γ Ψ ->
+    (centry_lets e <= n -> alg_entry (Ψ ++ Γ) e) -> ext_entries n Γ (e :: Ψ).
+Proof.
+  intros * Ht He [| e2 Ψ2] e' Ψ1 Heq Hle; cbn in Heq; injection Heq as -> Heq; [ subst; exact (He Hle) |].
+  exact (Ht _ _ _ Heq Hle).
+Qed.
+
+Lemma ext_entries_app_r : forall n Γ Ψ2 Ψ, ext_entries n Γ (Ψ2 ++ Ψ) -> ext_entries n Γ Ψ.
+Proof. intros * Hx Ψ3 e Ψ1 -> Hle; apply (Hx (Ψ2 ++ Ψ3)); [ rewrite <- List.app_assoc; reflexivity | exact Hle ]. Qed.
+
+Lemma ext_entries_head : forall n Γ Ψ e, ext_entries n Γ (e :: Ψ) -> centry_lets e <= n -> alg_entry (Ψ ++ Γ) e.
+Proof. intros * Hx Hle; exact (Hx nil e Ψ eq_refl Hle). Qed.
+
+Lemma ext_entries_alg : forall n Γ Ψ, ext_entries n Γ Ψ -> ctx_lets Ψ <= n -> Γ ⊢aˣ Ψ.
+Proof.
+  intros n Γ; induction Ψ as [| e Ψ IH]; intros Hx Hl; [ constructor |]; cbn [ctx_lets] in Hl.
+  pose proof (ext_entries_head _ _ _ _ Hx ltac:(lia)) as He.
+  pose proof (IH (ext_entries_app_r _ _ (e :: nil) _ Hx) ltac:(lia)) as Ht.
+  destruct e; cbn [alg_entry] in He; destruct_all; econstructor; eauto.
+Qed.
+
+(** A body checked from its expansion's entries: its own entries are
+    bounded by its lets; those its opens generate are not looked at. *)
+Lemma alg_body_of_entries : forall n Γ0 Δ Φ Φx, body_xp gc_deps gc_stack (Δ ++ Γ0) Φ Φx ->
+    ext_entries n Γ0 (body_ctx Φx ++ Δ) -> gmod_lets Φ <= n -> body_shape Φ Φ ->
+    (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> modexp_lets H <= n -> Ψ ++ Δ ++ Γ0 ⊢aᵐ H) ->
+    Δ ++ Γ0 ⊢aᵇ Φ ⇝ Φx.
+Proof.
+  intros * Hx; remember (Δ ++ Γ0) as G eqn:HG; revert HG.
+  induction Hx as [G | G Φ Φx x E Hx IH | G Φ Φx H its R T gs Hx IH HR HT Hg Hok]; intros -> HE Hl Hs Ho; cbn [gmod_lets] in Hl.
+  - constructor.
+  - cbn [body_shape] in Hs; destruct Hs as (Hs & _ & HsE).
+    assert (HEt : ext_entries n Γ0 (body_ctx Φx ++ Δ)).
+    { destruct E as [? ? ? [] | | | ]; cbn [body_ctx List.app] in HE; exact (ext_entries_app_r _ _ (_ :: nil) _ HE). }
+    specialize (IH eq_refl HEt ltac:(lia) Hs Ho).
+    destruct E as [b pv A [M |] | pm U | ? ? ? | ? ? ? ?]; cbn in HsE; try contradiction.
+    + pose proof (ext_entries_head _ _ _ _ HE) as He; cbn [body_ctx List.app gentry_lets centry_lets alg_entry] in He, Hl.
+      rewrite <- List.app_assoc in He; destruct (He ltac:(lia)) as ((UA & u & HA & Hu) & HM).
+      econstructor; eassumption.
+    + pose proof (ext_entries_head _ _ _ _ HE) as He; cbn [body_ctx List.app gentry_lets centry_lets alg_entry] in He, Hl.
+      rewrite <- List.app_assoc in He; specialize (He ltac:(lia)).
+      econstructor; eassumption.
+  - cbn [body_shape] in Hs; destruct Hs as [Hs _].
+    rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg) in Ho.
+    rewrite gens_body_ctx_base, <- List.app_assoc in HE.
+    specialize (IH eq_refl (ext_entries_app_r _ _ _ _ HE) ltac:(lia) Hs (fun k => Ho (S k))).
+    pose proof (Ho 0 _ _ eq_refl ltac:(lia)) as HH.
+    econstructor; eassumption.
+Qed.
+
 Lemma alg_type_complete_lets : forall n,
   (forall Θ Ξ Γ, wf_ctx Θ Ξ Γ -> True) /\
   (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ = gc_deps -> Ξ = gc_stack -> user_exp M ->
@@ -1379,7 +1558,7 @@ Lemma alg_type_complete_lets : forall n,
   (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> True) /\
   (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> True) /\
   (forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> Θ = gc_deps -> Ξ = gc_stack ->
-     (ctx_lets Ψ <= n -> Γ ⊢aˣ Ψ) /\ (ctx_lets Ψ' <= n -> Γ ⊢aˣ Ψ')) /\
+     ext_entries n Γ Ψ /\ ext_entries n Γ Ψ') /\
   (forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> Θ = gc_deps -> Ξ = gc_stack ->
      (gunit_lets U <= n -> Γ ⊢aᵘ U) /\ (gunit_lets U' <= n -> Γ ⊢aᵘ U')) /\
   (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Θ = gc_deps -> Ξ = gc_stack ->
@@ -1648,35 +1827,61 @@ Proof.
     destruct (soundness_ty Hj) as [W [HW HWe]].
     econstructor; [ eapply ati_mem_glob_ind_alias; eassumption | apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe ].
 
-  (** Extensions. *)
-  - constructor.
-  - constructor.
-  - destruct H0 as [Hl _].
-    pose proof (ext_eq_ctx_left _ _ _ _ _ H) as HΨ.
-    destruct (alg_type_check_typ_implies_alg_type_infer_typ HΨ H2) as [UA [u [Hj [Hu _]]]].
-    econstructor; eauto.
-  - destruct H0 as [_ Hr].
-    pose proof (ext_eq_ctx_right _ _ _ _ _ H) as HΨ'.
-    destruct (alg_type_check_typ_implies_alg_type_infer_typ HΨ' H6) as [UA [u [Hj' [Hu _]]]].
-    econstructor; eauto.
-  - destruct H0 as [Hl _].
-    pose proof (ext_eq_ctx_left _ _ _ _ _ H) as HΨ.
-    destruct (alg_type_check_typ_implies_alg_type_infer_typ HΨ H2) as [UA [u [Hj [Hu _]]]].
-    econstructor; eauto.
-  - destruct H0 as [_ Hr].
-    pose proof (ext_eq_ctx_right _ _ _ _ _ H) as HΨ'.
-    destruct (alg_type_check_typ_implies_alg_type_infer_typ HΨ' H10) as [UA [u [Hj' [Hu _]]]].
-    econstructor; eauto.
-  - destruct H0 as [Hl _]; destruct H2 as [HU _]; econstructor; eauto.
-  - destruct H0 as [_ Hr]; destruct H4 as [HU' _]; econstructor; eauto.
-  (** Units. *)
-  - destruct H0 as [Hl _]; destruct (body_shape_refl _ _ H4) as (Hs1 & Hs2 & Hn).
-    eapply aunit_body; eauto.
-  - destruct H0 as [_ Hr]; destruct (body_shape_refl _ _ H4) as (Hs1 & Hs2 & Hn).
-    eapply aunit_body; eauto.
-    rewrite <- Hn; assumption.
-  - destruct H0 as [Hl _]; destruct H4 as [HE _]; econstructor; eauto.
-  - destruct H0 as [_ Hr]; destruct H6 as [HE' _]; econstructor; eauto.
+  (** Extensions, entry by entry. *)
+  - split; apply ext_entries_nil.
+  - match goal with HX : ext_entries _ _ _ /\ ext_entries _ _ _ |- _ => destruct HX as [HXl HXr] end.
+    split; apply ext_entries_cons; try assumption; intros Hle; cbn [centry_lets alg_entry] in *.
+    + pose proof (ext_eq_ctx_left _ _ _ _ _ H) as HΨ.
+      match goal with IHA : exp_lets A <= n -> _ ⊢a A ⟸ _ |- _ =>
+        destruct (alg_type_check_typ_implies_alg_type_infer_typ HΨ (IHA Hle)) as [UA [u [Hj [Hu _]]]] end; eauto.
+    + pose proof (ext_eq_ctx_right _ _ _ _ _ H) as HΨ'.
+      match goal with IHA : exp_lets A' <= n -> _ ⊢a A' ⟸ _ |- _ =>
+        destruct (alg_type_check_typ_implies_alg_type_infer_typ HΨ' (IHA Hle)) as [UA [u [Hj [Hu _]]]] end; eauto.
+  - match goal with HX : ext_entries _ _ _ /\ ext_entries _ _ _ |- _ => destruct HX as [HXl HXr] end.
+    split; apply ext_entries_cons; try assumption; intros Hle; cbn [centry_lets alg_entry] in *.
+    + pose proof (ext_eq_ctx_left _ _ _ _ _ H) as HΨ.
+      match goal with IHA : exp_lets A <= n -> _ ⊢a A ⟸ _, IHM : exp_lets M <= n -> _ ⊢a M ⟸ _ |- _ =>
+        destruct (alg_type_check_typ_implies_alg_type_infer_typ HΨ (IHA ltac:(lia))) as [UA [u [Hj [Hu _]]]];
+        split; [ eauto | exact (IHM ltac:(lia)) ] end.
+    + pose proof (ext_eq_ctx_right _ _ _ _ _ H) as HΨ'.
+      match goal with IHA : exp_lets A' <= n -> _ ⊢a A' ⟸ _, IHM : exp_lets M' <= n -> _ ⊢a M' ⟸ _ |- _ =>
+        destruct (alg_type_check_typ_implies_alg_type_infer_typ HΨ' (IHA ltac:(lia))) as [UA [u [Hj [Hu _]]]];
+        split; [ eauto | exact (IHM ltac:(lia)) ] end.
+  - match goal with HX : ext_entries _ _ _ /\ ext_entries _ _ _ |- _ => destruct HX as [HXl HXr] end.
+    split; apply ext_entries_cons; try assumption; intros Hle; cbn [centry_lets alg_entry] in *.
+    + match goal with IHU : (gunit_lets U <= n -> _ ⊢aᵘ U) /\ _ |- _ => exact (proj1 IHU Hle) end.
+    + match goal with IHU : (gunit_lets U' <= n -> ?G ⊢aᵘ U') /\ _, _ : _ ⍮ _ ⍮ ?G ⊢ᵘ U' ≈ U' |- _ => exact (proj1 IHU Hle) end.
+  (** Units: a body from the entries of its expansion that are its own, and
+      the targets of its opens. *)
+  - match goal with HX : ext_entries _ _ _ /\ ext_entries _ _ _ |- _ => destruct HX as [HXl _] end.
+    destruct (body_shape_refl _ _ H10) as (Hs1 & Hs2 & Hn).
+    destruct (body_shape_refl _ _ H11) as (Hsx1 & Hsx2 & _).
+    rewrite gunit_lets_mk in *; cbn [moddef_lets] in *.
+    eapply aunit_body; [ apply (ext_entries_alg n); [ exact (ext_entries_app_r _ _ _ _ HXl) | lia ] | assumption | | exact Hs1 | exact Hsx1 | exact H12 ].
+    eapply alg_body_of_entries; [ eassumption | exact HXl | lia | exact Hs1 |].
+    intros k Ψ0 H0' Hk Hle.
+    destruct (body_opens_nth _ _ _ _ _ _ _ _ _ _ H H0 H10 Hk) as [[Ψ1 H1'] Hk'].
+    exact (proj1 (H4 _ _ _ _ _ Hk Hk' eq_refl eq_refl) Hle).
+  - match goal with HX : ext_entries _ _ _ /\ ext_entries _ _ _ |- _ => destruct HX as [_ HXr] end.
+    destruct (body_shape_refl _ _ H10) as (Hs1 & Hs2 & Hn).
+    destruct (body_shape_refl _ _ H11) as (Hsx1 & Hsx2 & _).
+    rewrite gunit_lets_mk in *; cbn [moddef_lets] in *.
+    eapply aunit_body; [ apply (ext_entries_alg n); [ exact (ext_entries_app_r _ _ _ _ HXr) | lia ] | assumption | | exact Hs2 | exact Hsx2 | rewrite <- Hn; exact H12 ].
+    eapply alg_body_of_entries; [ eassumption | exact HXr | lia | exact Hs2 |].
+    intros k Ψ1 H1' Hk' Hle.
+    destruct (body_opens_nth _ _ _ _ _ _ _ _ _ _ H0 H (body_shape_sym _ _ H10) Hk') as [[Ψ0 H0'] Hk].
+    exact (proj1 (H6 _ _ _ _ _ Hk Hk' eq_refl eq_refl) Hle).
+  - match goal with HX : ext_entries _ _ _ /\ ext_entries _ _ _ |- _ => destruct HX as [HXl _] end.
+    rewrite gunit_lets_mk in *; cbn [moddef_lets] in *.
+    econstructor; [ apply (ext_entries_alg n); [ exact HXl | lia ] | assumption | ].
+    match goal with IHE : _ /\ _ |- _ ⊢aᵐ E => first [ exact (proj1 IHE) | exact (proj1 IHE ltac:(lia)) ] end.
+  - match goal with HX : ext_entries _ _ _ /\ ext_entries _ _ _ |- _ => destruct HX as [_ HXr] end.
+    rewrite gunit_lets_mk in *; cbn [moddef_lets] in *.
+    econstructor; [ apply (ext_entries_alg n); [ exact HXr | lia ] | assumption | ].
+    match goal with
+    | IHE : Δ' ++ Γ ⊢aᵐ E' /\ _ |- _ => exact (proj1 IHE)
+    | IHE : (_ -> Δ' ++ Γ ⊢aᵐ E') /\ _ |- _ => exact (proj1 IHE ltac:(lia))
+    end.
   - destruct H0; assumption.
   - destruct H0; assumption.
   - destruct H0 as [H01 _]; assumption.
@@ -1723,8 +1928,10 @@ Lemma alg_type_complete_all :
 Proof.
   repeat split; intros; try exact I.
   - eapply (alg_type_complete_lets (exp_lets M)); eauto.
-  - eapply (proj1 (proj1 (proj2 (proj2 (proj2 (proj2 (alg_type_complete_lets (ctx_lets Ψ + ctx_lets Ψ')))))) _ _ _ _ _ H H0 H1)); lia.
-  - eapply (proj2 (proj1 (proj2 (proj2 (proj2 (proj2 (alg_type_complete_lets (ctx_lets Ψ + ctx_lets Ψ')))))) _ _ _ _ _ H H0 H1)); lia.
+  - eapply (ext_entries_alg (ctx_lets Ψ + ctx_lets Ψ'));
+      [ exact (proj1 (proj1 (proj2 (proj2 (proj2 (proj2 (alg_type_complete_lets (ctx_lets Ψ + ctx_lets Ψ')))))) _ _ _ _ _ H H0 H1)) | lia ].
+  - eapply (ext_entries_alg (ctx_lets Ψ + ctx_lets Ψ'));
+      [ exact (proj2 (proj1 (proj2 (proj2 (proj2 (proj2 (alg_type_complete_lets (ctx_lets Ψ + ctx_lets Ψ')))))) _ _ _ _ _ H H0 H1)) | lia ].
   - eapply (proj1 (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (alg_type_complete_lets (gunit_lets U + gunit_lets U'))))))) _ _ _ _ _ H H0 H1)); lia.
   - eapply (proj2 (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (alg_type_complete_lets (gunit_lets U + gunit_lets U'))))))) _ _ _ _ _ H H0 H1)); lia.
   - eapply (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (alg_type_complete_lets (modexp_lets H + modexp_lets H'))))))) _ _ _ _ _ H0 H1 H2)); lia.

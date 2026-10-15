@@ -289,19 +289,19 @@ Section Members.
       binders.  The [ℓ]-binders evaluate exactly as the body does. *)
 
   Lemma eval_ctx_pi_body : forall Φ ρ ρ1 A a,
-      ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ a -> ⟦ ctx_pi (body_ctx Φ) A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a.
+      gm_nopens Φ = 0 -> ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ a -> ⟦ ctx_pi (body_ctx Φ) A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a.
   Proof.
-    intros * Hb; revert A a; induction Hb; intros A0 a0 HA; cbn; [ assumption | | ].
-    - apply IHHb; econstructor; eassumption.
-    - apply IHHb; econstructor; eassumption.
+    intros * Ho Hb; revert A a Ho; induction Hb; intros A0 a0 Ho HA; cbn in Ho |- *; [ assumption | | | discriminate ].
+    - apply IHHb; [ exact Ho | econstructor; eassumption ].
+    - apply IHHb; [ exact Ho | econstructor; eassumption ].
   Qed.
 
   Lemma eval_ctx_fn_body : forall Φ ρ ρ1 M m,
-      ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m -> ⟦ ctx_fn (body_ctx Φ) M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m.
+      gm_nopens Φ = 0 -> ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m -> ⟦ ctx_fn (body_ctx Φ) M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m.
   Proof.
-    intros * Hb; revert M m; induction Hb; intros M0 m0 HM; cbn; [ assumption | | ].
-    - apply IHHb; econstructor; eassumption.
-    - apply IHHb; econstructor; eassumption.
+    intros * Ho Hb; revert M m Ho; induction Hb; intros M0 m0 Ho HM; cbn in Ho |- *; [ assumption | | | discriminate ].
+    - apply IHHb; [ exact Ho | econstructor; eassumption ].
+    - apply IHHb; [ exact Ho | econstructor; eassumption ].
   Qed.
 End Members.
 

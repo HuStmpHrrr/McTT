@@ -32,6 +32,139 @@ Generalizable All Variables.
     families, so no term is built. *)
 Definition fam_cod : exp := a_app (a_var 1) (a_var 0).
 
+(** * The Kinds of Members of Module Values
+
+    A local open declares, for each item, a definition or an alias, by the
+    kind of the member it names ([items_gen]).  Evaluation must tell them
+    apart without a type: the kind of a member is read off the module value
+    and the syntax of the units it closes over.  A body is read through the
+    entries it makes ([kenv]), as evaluation would but with a placeholder
+    for every definition, so that no term is evaluated: a kind does not
+    depend on the values of terms, nor on a module's arguments, which are
+    terms ([kpad]).  The relations mirror [member_type] with the types left
+    out, and read a closure or a submodule closure as selection on module
+    values does ([eval_selm]). *)
+
+(** [n] placeholders for parameters, terms, over [ρ]. *)
+Definition kpad (n : nat) (ρ : env) : env := List.repeat (de_term d_true) n ++ ρ.
+
+(** The entry a body's entry adds over [ρ], as kinds read it: a module, its
+    closure; any other, a placeholder, as in [body_ctx]. *)
+Definition kbentry (ρ : env) (E : gentry) : dentry :=
+  match E with
+  | ge_mod _ U => de_mod (dm_local ρ U nil)
+  | _ => de_term d_true
+  end.
+
+(** The entries generated items add over [ρ], as kinds read them, the
+    [k]-th under the [k] before it: an alias, the closure of its unit; a
+    definition, a placeholder. *)
+Definition kentry (ρ : env) (k : nat) (g : igen) : dentry :=
+  match g with
+  | ig_alias _ _ E => de_mod (dm_local ρ (gu_mk nil (md_alias (modexp_wk E (wk_shiftn k)))) nil)
+  | _ => de_term d_true
+  end.
+
+Fixpoint kgens_env (ρ : env) (k : nat) (gs : list igen) : env :=
+  match gs with
+  | nil => ρ
+  | g :: gs' => kgens_env (kentry ρ k g :: ρ) (S k) gs'
+  end.
+
+Inductive dkind (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> mkind -> Prop :=
+(** A chain of a global module, read off the global context as
+    [member_type] reads it: a definition is a term, a body module a
+    module, and a chain through an alias is read in the alias past it. *)
+| dk_global_def : forall p args ch b pv A B,
+    gc_resolve Θ Ξ (qname_app p ch) = Some (ge_def b pv A B) ->
+    dkind Θ Ξ (dm_global p args) ch mk_term
+| dk_global_mod : forall p args ch T oD,
+    gc_module Θ Ξ (qname_app p ch) = Some (mr_body T oD) ->
+    dkind Θ Ξ (dm_global p args) ch mk_mod
+| dk_global_alias : forall p args ch U r k,
+    gc_module Θ Ξ (qname_app p ch) = Some (mr_alias U r) ->
+    ukind Θ Ξ nil U r k ->
+    dkind Θ Ξ (dm_global p args) ch k
+(** A closure, by its unit. *)
+| dk_local : forall ρ U args ch k,
+    ukind Θ Ξ ρ U ch k ->
+    dkind Θ Ξ (dm_local ρ U args) ch k
+(** A submodule closure, by the longer chain. *)
+| dk_member : forall h ch0 ch k,
+    dkind Θ Ξ h (ch0 ++ ch) k ->
+    dkind Θ Ξ (dm_member h ch0) ch k
+with ukind (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list string -> mkind -> Prop :=
+| uk_self : forall ρ Δ Φ, ukind Θ Ξ ρ (gu_body Δ Φ) nil mk_mod
+| uk_def : forall ρ Δ Φ Φ' x b pv A B,
+    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A B)) ->
+    ukind Θ Ξ ρ (gu_body Δ Φ) (x :: nil) mk_term
+| uk_mod : forall ρ Δ Φ Φ' y pm Uy ρ1 ch k,
+    gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
+    kenv Θ Ξ (kpad (List.length Δ) ρ) Φ' ρ1 ->
+    ukind Θ Ξ ρ1 Uy ch k ->
+    ukind Θ Ξ ρ (gu_body Δ Φ) (y :: ch) k
+(** A name a local open declares: the member it names, in the open's target. *)
+| uk_item : forall ρ Δ Φ Φ0 H its1 it ρ0 x ch k,
+    gm_item_upto Φ x = Some (Φ0, H, its1, it) ->
+    kenv Θ Ξ (kpad (List.length Δ) ρ) Φ0 ρ0 ->
+    skind Θ Ξ ρ0 H (item_ch it ch) k ->
+    ukind Θ Ξ ρ (gu_body Δ Φ) (x :: ch) k
+| uk_alias : forall ρ Δ E ch k,
+    skind Θ Ξ (kpad (List.length Δ) ρ) E ch k ->
+    ukind Θ Ξ ρ (gu_mk Δ (md_alias E)) ch k
+with skind (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list string -> mkind -> Prop :=
+| sk_unit : forall ρ fp ch k,
+    dkind Θ Ξ (dm_global (q_abs fp nil) nil) ch k ->
+    skind Θ Ξ ρ (me_unit fp) ch k
+| sk_var : forall ρ x ch k,
+    dkind Θ Ξ (env_mod ρ x) ch k ->
+    skind Θ Ξ ρ (me_var x) ch k
+| sk_lit : forall ρ U ch k,
+    ukind Θ Ξ ρ U ch k ->
+    skind Θ Ξ ρ (me_lit U) ch k
+| sk_mem : forall ρ H y ch k,
+    skind Θ Ξ ρ H (y :: ch) k ->
+    skind Θ Ξ ρ (me_mem H y) ch k
+| sk_app : forall ρ H N ch k,
+    skind Θ Ξ ρ H ch k ->
+    skind Θ Ξ ρ (me_app H N) ch k
+(** The environment a body makes, as kinds read it: an entry each body
+    entry adds ([kbentry]), and the entries an open generates. *)
+with kenv (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
+| ke_nil : forall ρ, kenv Θ Ξ ρ gm_nil ρ
+| ke_ext : forall ρ Φ ρ1 y E,
+    kenv Θ Ξ ρ Φ ρ1 ->
+    kenv Θ Ξ ρ (gm_ext Φ y E) (kbentry ρ1 E :: ρ1)
+| ke_open : forall ρ Φ ρ1 H its gs,
+    kenv Θ Ξ ρ Φ ρ1 ->
+    kgens Θ Ξ ρ1 H its gs ->
+    kenv Θ Ξ ρ (gm_open Φ H its) (kgens_env ρ1 0 gs)
+(** What the items of an open of [H] generate, by the kinds of the members
+    they name, in [ρ]; a generated definition carries no type. *)
+with kgens (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list iitem -> list igen -> Prop :=
+| kg_nil : forall ρ H, kgens Θ Ξ ρ H nil nil
+| kg_self : forall ρ H d pv its gs,
+    kgens Θ Ξ ρ H its gs ->
+    kgens Θ Ξ ρ H ((None, d, pv) :: its) (ig_alias d pv H :: gs)
+| kg_def : forall ρ H n d pv its gs,
+    skind Θ Ξ ρ H (n :: nil) mk_term ->
+    kgens Θ Ξ ρ H its gs ->
+    kgens Θ Ξ ρ H ((Some n, d, pv) :: its) (ig_def d pv a_True (a_mem H n) :: gs)
+| kg_mod : forall ρ H n d pv its gs,
+    skind Θ Ξ ρ H (n :: nil) mk_mod ->
+    kgens Θ Ξ ρ H its gs ->
+    kgens Θ Ξ ρ H ((Some n, d, pv) :: its) (ig_alias d pv (me_mem H n) :: gs).
+
+Scheme dkind_mut_ind := Induction for dkind Sort Prop
+with ukind_mut_ind := Induction for ukind Sort Prop
+with skind_mut_ind := Induction for skind Sort Prop
+with kenv_mut_ind := Induction for kenv Sort Prop
+with kgens_mut_ind := Induction for kgens Sort Prop.
+Combined Scheme kind_mut_ind from dkind_mut_ind, ukind_mut_ind, skind_mut_ind, kenv_mut_ind, kgens_mut_ind.
+
+#[export]
+Hint Constructors dkind ukind skind kenv kgens : mctt.
+
 (** * Evaluation of Expressions
 
     The relations are mutually defined: evaluation of terms, the
@@ -355,6 +488,16 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ' ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
      dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₜ x Θ ⍮ Ξ ↘ r )
+(** A definition a local open of a saturated body declares: the member it
+    names in the open's target, read in the environment of the body before
+    the open. *)
+| eval_sel_item :
+  `( List.length args = List.length Δ ->
+     gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
+     ⟦ Φ0 ⟧ᵇ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ0 ->
+     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ0 ↘ h ->
+     h ·ₜ n Θ ⍮ Ξ ↘ r ->
+     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₜ x Θ ⍮ Ξ ↘ r )
 (** A member of a saturated alias is selected from its target. *)
 | eval_sel_alias :
   `( List.length args = List.length Δ ->
@@ -386,6 +529,15 @@ with eval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop :=
      gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
      ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ' ->
      dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₘ y Θ ⍮ Ξ ↘ dm_local ρ' Uy nil )
+(** A module a local open of a saturated body declares: the target, or its
+    member the item names. *)
+| eval_selm_item :
+  `( List.length args = List.length Δ ->
+     gm_item_upto Φ y = Some (Φ0, H, its1, it) ->
+     ⟦ Φ0 ⟧ᵇ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ0 ->
+     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ0 ↘ h ->
+     h ·ₘ* (item_ch it nil) Θ ⍮ Ξ ↘ r ->
+     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₘ y Θ ⍮ Ξ ↘ r )
 (** A submodule of a saturated alias is selected from its target. *)
 | eval_selm_alias :
   `( List.length args = List.length Δ ->
@@ -433,6 +585,13 @@ with eval_benv (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 | eval_benv_mod :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ gm_ext Φ y (ge_mod pm Uy) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ dm_local ρ1 Uy nil )
+(** A local open adds the entries it generates, by the kinds of the members
+    its items name. *)
+| eval_benv_open :
+  `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
+     kgens Θ Ξ ρ1 H its gs ->
+     ⟦ gens_append gm_nil 0 gs ⟧ᵇ Θ ⍮ Ξ ⍮ ρ1 ↘ ρ2 ->
+     ⟦ gm_open Φ H its ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ2 )
 where "'⟦' Φ '⟧ᵇ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (eval_benv Θ Ξ ρ Φ ρ').
 
 Scheme eval_exp_mut_ind := Induction for eval_exp Sort Prop

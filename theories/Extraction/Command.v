@@ -15,9 +15,8 @@
     relates to the judgment's state by weakening in both directions.  Loading
     recurses on the accessibility of the import chain ([load_step]).
 
-    Each command is expanded ([Imports]) with the oracles of the
-    restriction ([xo_of]), which meet the specifications of the judgment's
-    state too ([linv_xo_spec]), so the expansion is the judgment's.
+    Each command gets its literals ([Builtin]) and runs as written: the
+    local opens of its bodies are checked where they stand.
 
     A run also logs each [eval] it checked, with its normal form
     ([eval_entry], certified by [eval_ok]), and fails with a [run_error]
@@ -31,7 +30,7 @@ From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base Soundness.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System Require Import Structural Command IndRec MemberWf.
-From Mctt.Extraction Require Import Lookup NbE TypeCheck GlobalCheck IndDecl MemberType Privacy.
+From Mctt.Extraction Require Import Lookup NbE TypeCheck GlobalCheck IndDecl MemberType Opens Privacy.
 Import Syntax_Notations GlobalCtx_Notations.
 
 Local Open Scope string_scope.
@@ -158,7 +157,7 @@ Inductive run_error : Set :=
 (** A private entry of a local body, by the chain of submodules from the
     local module, reached from outside it. *)
 | re_private_local : list string -> string -> run_error
-(** An import that generates nothing ([Imports]). *)
+(** An open that generates nothing ([Opens]). *)
 | re_import : xerr -> run_error
 (** The argument [y] of the constructor [c] of the type [x] has [x] in an
     argument of another inductive type, its head. *)
@@ -199,14 +198,15 @@ Definition blame_error {Θ Ξ Γ} (b : option (level_blame Θ Ξ Γ)) (e : run_e
     them, and whether they name an inductive type or an inductive alias,
     which are terms, asked of [it]. *)
 Section ModBlame.
-  Variable mt : mt_oracle.
+  Variables (Θ : gdeps) (Ξ : gstack).
+  Hypothesis Hg : ⊢g Θ ⍮ Ξ.
   Variable it : qname -> option ind_alias_view.
 
   Definition mod_term_blame (H : modexp) (x : string) : option run_error :=
     match mod_qname H with
     | Some mp =>
-        match mt nil (qname_mod (qname_app mp (x :: nil))) nil, it (qname_app mp (x :: nil)) with
-        | Some (mr_mod _), None => Some (re_mod_term (qname_app mp (x :: nil)))
+        match member_type_of Θ Ξ Hg nil (qname_mod (qname_app mp (x :: nil))) nil, it (qname_app mp (x :: nil)) with
+        | Some (mr_mod _ | mr_indm _), None => Some (re_mod_term (qname_app mp (x :: nil)))
         | _, _ => None
         end
     | None => None
@@ -238,8 +238,8 @@ End ModBlame.
 
 (** The error for a rejected term: a module where a term stands, if there
     is one, otherwise the given error. *)
-Definition mod_error (mt : mt_oracle) (it : qname -> option ind_alias_view) (Ms : list exp) (e : run_error) : run_error :=
-  match List.fold_right (fun M r => first_some (mod_blame mt it M) (fun _ => r)) None Ms with
+Definition mod_error {Θ Ξ} (Hg : ⊢g Θ ⍮ Ξ) (it : qname -> option ind_alias_view) (Ms : list exp) (e : run_error) : run_error :=
+  match List.fold_right (fun M r => first_some (mod_blame Θ Ξ Hg it M) (fun _ => r)) None Ms with
   | Some e' => e'
   | None => e
   end.
@@ -422,12 +422,12 @@ Section Impl.
         linv ch (cs_deps r) (cs_k r) (cs_dom r) ΘR' (cs_stack r) /\ rb_ok (cs_k r) ΘR' RbR' /\
         ext Θ K (cs_deps r) (cs_k r) /\ grows Θ (cs_deps r) (cs_dom r).
 
-  (** A command with its literals generated ([Builtin]), expanded
-      ([Imports]) and run, as [rcs_cons] does. *)
-  Definition post_xcmd ch Θ K D B Ξ c (r : cstate) : Prop :=
+  (** A command with its literals generated ([Builtin]) and run, as
+      [rcs_cons] does. *)
+  Definition post_lcmd ch Θ K D B Ξ c (r : cstate) : Prop :=
     forall ΘR RbR, linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR ->
-      exists c1 c' ΘR' RbR', cmd_lits_ok ΘR Ξ B c c1 /\ cmd_xp_ok ΘR Ξ c1 c' /\
-        run_cmd ch B RbR ΘR Ξ c' (cs_bt r) RbR' ΘR' (cs_stack r) /\
+      exists c1 ΘR' RbR', cmd_lits_ok ΘR Ξ B c c1 /\
+        run_cmd ch B RbR ΘR Ξ c1 (cs_bt r) RbR' ΘR' (cs_stack r) /\
         linv ch (cs_deps r) (cs_k r) (cs_dom r) ΘR' (cs_stack r) /\ rb_ok (cs_k r) ΘR' RbR' /\
         ext Θ K (cs_deps r) (cs_k r) /\ grows Θ (cs_deps r) (cs_dom r).
 
@@ -602,31 +602,6 @@ Section Impl.
   Lemma rb_ok_nil : forall K, rb_ok K nil nil.
   Proof. intros; split; [ apply canon_nil | intros ? ? H; discriminate H ]. Qed.
 
-  (** ** Expansion at the Executable's State
-
-      The executable expands with the oracle of the restriction it checks
-      against; it meets the specification of the judgment's state too, which
-      has the same member types ([linv_equiv]). *)
-
-  Lemma equiv_mt_spec : forall Θ Θ' Ξ mt, gds_equiv Θ Θ' -> mt_spec Θ' Ξ mt -> mt_spec Θ Ξ mt.
-  Proof.
-    intros * (H1 & H2) Hs; apply (mt_spec_transfer Θ' Ξ); [| exact Hs ].
-    intros; split; intros HR.
-    - exact (proj1 (member_type_gc_sub _ _ _ _ (gc_sub_deps _ _ _ H2)) _ _ _ _ HR).
-    - exact (proj1 (member_type_gc_sub _ _ _ _ (gc_sub_deps _ _ _ H1)) _ _ _ _ HR).
-  Qed.
-
-  Lemma linv_mt_spec {ch Θ K D ΘR Ξ} (Hli : linv ch Θ K D ΘR Ξ) (Hg : ⊢g gds_restrict D Θ ⍮ Ξ) :
-    mt_spec ΘR Ξ (mt_of _ _ Hg).
-  Proof. exact (equiv_mt_spec _ _ _ _ (linv_equiv Hli) (mt_of_spec _ _ Hg)). Qed.
-
-  Lemma equiv_xo_spec : forall Θ Θ' Ξ xo, gds_equiv Θ Θ' -> xo_spec Θ' Ξ xo -> xo_spec Θ Ξ xo.
-  Proof. intros * He Hs; exact (equiv_mt_spec _ _ _ _ He Hs). Qed.
-
-  Lemma linv_xo_spec {ch Θ K D ΘR Ξ} (Hli : linv ch Θ K D ΘR Ξ) (Hg : ⊢g gds_restrict D Θ ⍮ Ξ) :
-    xo_spec ΘR Ξ (xo_of _ _ Hg).
-  Proof. exact (equiv_xo_spec _ _ _ _ (linv_equiv Hli) (xo_of_spec _ _ Hg)). Qed.
-
   (** The literals are generated from the bound type's declaration, which
       the restriction has as the judgment's state does. *)
   Lemma equiv_nat_view : forall Θ Θ' Ξ B, gds_equiv Θ Θ' -> nat_view Θ Ξ B = nat_view Θ' Ξ B.
@@ -638,23 +613,19 @@ Section Impl.
   Lemma linv_nat_view {ch Θ K D B ΘR Ξ} : linv ch Θ K D ΘR Ξ -> nat_view ΘR Ξ B = nat_view (gds_restrict D Θ) Ξ B.
   Proof. intros Hli; exact (equiv_nat_view _ _ _ _ (linv_equiv Hli)). Qed.
 
-  Lemma xp_lift {ch Θ K D B Ξ c c1 c' r} (Hg : ⊢g gds_restrict D Θ ⍮ Ξ) :
+  Lemma lits_lift {ch Θ K D B Ξ c c1 r} :
     cmd_lits (nat_view (gds_restrict D Θ) Ξ B) c = lok c1 ->
-    cmd_xp (xo_of _ _ Hg) (frame_skel Ξ) c1 = xok c' ->
-    post_cmd ch Θ K D B Ξ c' r -> post_xcmd ch Θ K D B Ξ c r.
+    post_cmd ch Θ K D B Ξ c1 r -> post_lcmd ch Θ K D B Ξ c r.
   Proof.
-    intros El E Hp ΘR RbR Hli Hrb; destruct (Hp _ _ Hli Hrb) as (ΘR' & RbR' & Hr & Hrest).
-    exists c1, c', ΘR', RbR'; split; [ unfold cmd_lits_ok; rewrite (linv_nat_view Hli); exact El |].
-    split; [ exists (xo_of _ _ Hg); split; [ exact (linv_xo_spec Hli Hg) | exact E ] | exact (conj Hr Hrest) ].
+    intros El Hp ΘR RbR Hli Hrb; destruct (Hp _ _ Hli Hrb) as (ΘR' & RbR' & Hr & Hrest).
+    exists c1, ΘR', RbR'; split; [ unfold cmd_lits_ok; rewrite (linv_nat_view Hli); exact El |].
+    exact (conj Hr Hrest).
   Qed.
 
   Lemma lits_eq {ch Θ K D B ΘR Ξ c c1} :
     linv ch Θ K D ΘR Ξ -> cmd_lits_ok ΘR Ξ B c c1 -> cmd_lits (nat_view (gds_restrict D Θ) Ξ B) c = lok c1.
   Proof. intros Hli Hl; unfold cmd_lits_ok in Hl; rewrite (linv_nat_view Hli) in Hl; exact Hl. Qed.
 
-  Lemma xp_eq {ch Θ K D ΘR Ξ c c'} (Hg : ⊢g gds_restrict D Θ ⍮ Ξ) :
-    linv ch Θ K D ΘR Ξ -> cmd_xp_ok ΘR Ξ c c' -> cmd_xp (xo_of _ _ Hg) (frame_skel Ξ) c = xok c'.
-  Proof. intros Hli Hx; exact (cmd_xp_ok_spec _ _ _ _ _ (linv_xo_spec Hli Hg) Hx). Qed.
 
   (** ** One Step per Rule
 
@@ -1053,9 +1024,18 @@ Section Impl.
   Qed.
 
   (** An import declares what its items generate, which files nothing. *)
+  (** What an open generates is read off member types, which grow. *)
+  Lemma open_gens_gc_sub : forall Θ1 Ξ1 Θ2 Ξ2 io Γ H its gs, gc_sub Θ1 Ξ1 Θ2 Ξ2 ->
+      open_gens Θ1 Ξ1 io Γ H its gs -> open_gens Θ2 Ξ2 io Γ H its gs.
+  Proof.
+    intros * Hs ((R & T & HR & HT) & Hg & Hok).
+    pose proof (member_type_gc_sub_all _ _ _ _ Hs) as (H1 & _ & _ & H4).
+    split; [ exists R, T; split; [ exact (H1 _ _ _ _ HR) | exact HT ] | split; [ exact (H4 _ _ _ _ _ Hg) | exact Hok ] ].
+  Qed.
+
   Lemma import_ok {ch Θ K D B Ξ E its gs Ξ'} (Hg : ⊢g gds_restrict D Θ ⍮ Ξ) :
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    import_gen (mt_of _ _ Hg) (ind_target (gds_restrict D Θ) Ξ) (gs_tele Ξ) E its = xok gs ->
+    import_gen _ _ Hg (Some (ind_target (gds_restrict D Θ) Ξ)) (gs_tele Ξ) E its = xok gs ->
     post_gens ch Θ K D Ξ gs Ξ' ->
     post_cmd ch Θ K D B Ξ (cc_open E its) (cst Θ K D B Ξ').
   Proof.
@@ -1064,8 +1044,9 @@ Section Impl.
     pose proof (gds_equiv_sym _ _ (linv_equiv Hli)) as Heq.
     exists ΘR, RbR; split; [| split; [ exact Hli' | split; [ exact Hrb | split; [ apply ext_refl | apply grows_refl ] ] ] ].
     eapply rc_open; [ exact (equiv_modexp _ _ _ _ _ Heq (li_wf _ _ _ _ _ _ Hli) HE) | | exact Hr ].
-    exists (mt_of _ _ Hg); split; [ exact (linv_mt_spec Hli Hg) |].
-    rewrite <- Hgen; apply import_gen_io_ext; intros pq; symmetry; apply gds_equiv_ind_target, Heq.
+    rewrite (import_gen_io_ext _ _ Hg _ (ind_target ΘR Ξ)) in Hgen by (intros pq; apply gds_equiv_ind_target, Heq).
+    apply (import_gen_spec _ _ Hg) in Hgen.
+    exact (open_gens_gc_sub _ _ _ _ _ _ _ _ _ (gc_sub_deps _ _ _ (proj1 Heq)) Hgen).
   Qed.
 
   (** A declaration files its entry where it is declared: the
@@ -1139,11 +1120,11 @@ Section Impl.
   Qed.
 
   Lemma cons_pre {ch Θ K D B Ξ c r} :
-    (exists ΘR, linv ch Θ K D ΘR Ξ) -> post_xcmd ch Θ K D B Ξ c r ->
+    (exists ΘR, linv ch Θ K D ΘR Ξ) -> post_lcmd ch Θ K D B Ξ c r ->
     exists ΘR, linv ch (cs_deps r) (cs_k r) (cs_dom r) ΘR (cs_stack r).
   Proof.
     intros [ΘR Hli] Hp; destruct (linv_rb Hli) as [RbR Hrb].
-    destruct (Hp _ _ Hli Hrb) as (c1 & c' & ΘR' & RbR' & _ & _ & _ & Hli' & _); eauto.
+    destruct (Hp _ _ Hli Hrb) as (c1 & ΘR' & RbR' & _ & _ & Hli' & _); eauto.
   Qed.
 
   (** The imports of a later step include those of an earlier one. *)
@@ -1159,12 +1140,12 @@ Section Impl.
 
   Lemma cons_ok {ch Θ K D B Ξ c cs r1 r2} :
     acc_ok (gds_restrict D Θ) Ξ (cmd_refs c) ->
-    post_xcmd ch Θ K D B Ξ c r1 -> post_cmds ch (cs_deps r1) (cs_k r1) (cs_dom r1) (cs_bt r1) (cs_stack r1) cs r2 ->
+    post_lcmd ch Θ K D B Ξ c r1 -> post_cmds ch (cs_deps r1) (cs_k r1) (cs_dom r1) (cs_bt r1) (cs_stack r1) cs r2 ->
     post_cmds ch Θ K D B Ξ (c :: cs) r2.
   Proof.
     intros Hac H1 H2 ΘR RbR Hli Hrb.
     pose proof (equiv_acc _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) Hac) as Hac'.
-    destruct (H1 _ _ Hli Hrb) as (c1 & c' & ΘR1 & RbR1 & Hl & Hxp & Hr1 & Hli1 & Hrb1 & He1 & Hg1).
+    destruct (H1 _ _ Hli Hrb) as (c1 & ΘR1 & RbR1 & Hl & Hr1 & Hli1 & Hrb1 & He1 & Hg1).
     destruct (H2 _ _ Hli1 Hrb1) as (ΘR2 & RbR2 & Hr2 & Hli2 & Hrb2 & He2 & Hg2).
     exists ΘR2, RbR2; split; [ econstructor; eassumption |].
     split; [ exact Hli2 | split; [ exact Hrb2 | split; [ eapply ext_trans; eassumption |] ] ].
@@ -1209,10 +1190,9 @@ Section Impl.
     exists ΘR1; exact (proj2 (linv_push_unit Hli1 Htel HP)).
   Qed.
 
-  Lemma unit_ok {fp ch Θ K imps P0 P1 P cs r1 r2 mp U Ξ2} (Hg : ⊢g gds_restrict (cs_dom r1) (cs_deps r1) ⍮ nil) :
+  Lemma unit_ok {fp ch Θ K imps P0 P cs r1 r2 mp U Ξ2} :
     post_cmds (fp :: ch) Θ K nil bt_empty nil imps r1 ->
-    tele_lits (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1)) P0 = lok P1 ->
-    tele_xp (xo_of _ _ Hg) nil P1 = xok P ->
+    tele_lits (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1)) P0 = lok P ->
     tele_ass P ->
     ⊢ gds_restrict (cs_dom r1) (cs_deps r1) ⍮ nil ⍮ P ->
     acc_ok (gds_restrict (cs_dom r1) (cs_deps r1)) nil (tele_refs nil P0) ->
@@ -1220,7 +1200,7 @@ Section Impl.
     cs_stack r2 = (mp, U) :: Ξ2 ->
     post_unit (fp :: ch) Θ K (imps, P0, cs) (ust (cs_deps r2) (cs_k r2) (cs_dom r2) (cs_bt r2) U).
   Proof.
-    intros Hp1 El EP Htel HP Hac Hp2 HΞ G; cbn [us_deps us_k us_dom us_bt us_unit].
+    intros Hp1 El Htel HP Hac Hp2 HΞ G; cbn [us_deps us_k us_dom us_bt us_unit].
     destruct (unit_imports G Hp1) as (ΘR1 & RbR1 & Hr1 & _ & Hli1 & Hrb1 & He1 & Hg1).
     pose proof (equiv_acc _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli1)) Hac) as Hac'.
     destruct (linv_push_unit Hli1 Htel HP) as [HP' Hli1'].
@@ -1228,8 +1208,7 @@ Section Impl.
     rewrite HΞ in Hr2, Hli2.
     destruct (run_cmds_tail _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hr2) as [F HF]; injection HF as <- ->.
     exists RbR2, ΘR2; split.
-    { eapply ru_intro; [ exact Hr1 | exact (unit_lits G Hp1 El _ Hli1) | | exact Htel | exact HP' | exact Hac' | exact Hr2 ].
-      exists (xo_of _ _ Hg); split; [ exact (linv_xo_spec Hli1 Hg) | exact EP ]. }
+    { eapply ru_intro; [ exact Hr1 | exact (unit_lits G Hp1 El _ Hli1) | exact Htel | exact HP' | exact Hac' | exact Hr2 ]. }
     destruct Hli2 as [G2 Hs2 Hd2 Hc2 _ _].
     split; [ exact G2 | split; [ exact Hs2 | split; [ exact Hd2 | split; [ exact Hc2 | split; [ exact (proj2 Hrb2) |] ] ] ] ].
     split; [ eapply ext_trans; eassumption |].
@@ -1265,7 +1244,7 @@ Section Impl.
       forall Θ K u, ginv (fp :: ch) Θ K -> rres ({r | post_unit (fp :: ch) Θ K u r} * elog)%type.
 
   Definition cmd_fun (ch : list path) : Type :=
-    forall Θ K D B Ξ c (H : exists ΘR, linv ch Θ K D ΘR Ξ), rres ({r | post_xcmd ch Θ K D B Ξ c r} * elog)%type.
+    forall Θ K D B Ξ c (H : exists ΘR, linv ch Θ K D ΘR Ξ), rres ({r | post_lcmd ch Θ K D B Ξ c r} * elog)%type.
 
   Equations cmds_step (ch : list path) (rc : cmd_fun ch) :
     forall Θ K D B Ξ cs (H : exists ΘR, linv ch Θ K D ΘR Ξ), rres ({r | post_cmds ch Θ K D B Ξ cs r} * elog)%type :=
@@ -1293,17 +1272,17 @@ Section Impl.
     | right _ => rerr (re_msg ("duplicate name " ++ x))
     | left Hfr with check_typ (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
       | inright _ => rerr (blame_error (find_level_blame fctx_none _ _ _ (pre_ctx H) A)
-                            (mod_error (mt_of _ _ (pre_gctx H)) (ind_target (gds_restrict D Θ) Ξ) (A :: nil) (re_def_typ x Ξ A)))
+                            (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) (A :: nil) (re_def_typ x Ξ A)))
       | inleft (exist _ i HA) with check_exp_typed (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A (ex_intro _ i HA) M => {
         | left HM => rok (da_ok (def_ok Hfr HM))
-        | right _ => rerr (mod_error (mt_of _ _ (pre_gctx H)) (ind_target (gds_restrict D Θ) Ξ) (M :: nil) (re_def x Ξ A M)) } } }
+        | right _ => rerr (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) (M :: nil) (re_def x Ξ A M)) } } }
   | ch, Θ, K, D, B, Ξ, cc_def x b pv A None, H with gs_fresh_dec x Ξ => {
     | right _ => rerr (re_msg ("duplicate name " ++ x))
     | left Hfr with check_typ (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
       | inleft (exist _ i HA) => rok (da_ok (axiom_ok Hfr HA))
       | inright _ =>
           rerr (blame_error (find_level_blame fctx_none _ _ _ (pre_ctx H) A)
-                  (mod_error (mt_of _ _ (pre_gctx H)) (ind_target (gds_restrict D Θ) Ξ) (A :: nil) (re_msg ("the type of axiom " ++ x ++ " is not a type")))) } }
+                  (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) (A :: nil) (re_msg ("the type of axiom " ++ x ++ " is not a type")))) } }
   | ch, Θ, K, D, B, Ξ, cc_alias x pv Δ E, H with tele_ass_dec Δ => {
     | right _ => rerr (re_msg ("parameters of module " ++ x ++ " that are not assumptions"))
     | left Htel with check_ext (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) Δ => {
@@ -1494,7 +1473,7 @@ Section Impl.
                   | exist _ (Some B') Hm => rok (exist _ _ (load_ok Hn Hnch Hsrc Hprg Hp Hu Hr Hm), log_nil) } } } } } } } }
   | ch, L, Θ, K, D, B, Ξ, cc_open E its, H with check_modexp (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) E => {
     | right _ => rerr (re_import (xe_target E))
-    | left HE with inspect (import_gen (mt_of _ _ (pre_gctx H)) (ind_target (gds_restrict D Θ) Ξ) (gs_tele Ξ) E its) => {
+    | left HE with inspect (import_gen _ _ (pre_gctx H) (Some (ind_target (gds_restrict D Θ) Ξ)) (gs_tele Ξ) E its) => {
       | exist _ (xfail e) _ => rerr (re_import e)
       | exist _ (xok gs) Eg with gens_impl ch Θ K D B Ξ gs H => {
         | rerr e => rerr e
@@ -1502,15 +1481,15 @@ Section Impl.
   | ch, L, Θ, K, D, B, Ξ, cc_eval M (Some A), H
       with check_typ (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
     | inright _ => rerr (blame_error (find_level_blame fctx_none _ _ _ (pre_ctx H) A)
-                          (mod_error (mt_of _ _ (pre_gctx H)) (ind_target (gds_restrict D Θ) Ξ) (A :: nil) (re_eval_typ Ξ M A)))
+                          (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) (A :: nil) (re_eval_typ Ξ M A)))
     | inleft (exist _ i HA)
         with check_exp_typed (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A (ex_intro _ i HA) M => {
       | left HM => rok (exist _ _ (eval_check_ok HM), eval_log _ _ (fctx_cmd B _ _) (pre_gctx H) M A HM)
-      | right _ => rerr (mod_error (mt_of _ _ (pre_gctx H)) (ind_target (gds_restrict D Θ) Ξ) (M :: nil) (re_eval_check Ξ M A)) } }
+      | right _ => rerr (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) (M :: nil) (re_eval_check Ξ M A)) } }
   | ch, L, Θ, K, D, B, Ξ, cc_eval M None, H
       with @type_infer_at (gc_mk (gds_restrict D Θ) Ξ) (fctx_cmd B (gds_restrict D Θ) Ξ) (gs_tele Ξ) (pre_ctx H) M (user_exp_all M) => {
     | inleft (exist _ A HA) => rok (exist _ _ (eval_infer_ok A HA), eval_log _ _ (fctx_cmd B _ _) (pre_gctx H) M A HA)
-    | inright _ => rerr (mod_error (mt_of _ _ (pre_gctx H)) (ind_target (gds_restrict D Θ) Ξ) (M :: nil) (re_eval_infer Ξ M)) }
+    | inright _ => rerr (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) (M :: nil) (re_eval_infer Ξ M)) }
   | ch, L, Θ, K, D, B, Ξ, cc_builtin k p, H with builtin_step ch Θ K D B Ξ k p H => {
     | rerr e => rerr e
     | rok (exist _ B' Hp) => rok (cmd_ok Hp, log_nil) }
@@ -1539,22 +1518,30 @@ Section Impl.
             | left _ => rerr (re_msg ("rec is the recursor of " ++ x ++ ", not a constructor"))
             | right Hrec => rok (exist _ _ (ind_ok Hcls Hfr HE Hrec), log_nil) } } } } }.
 
-  (** A command expanded, then run by [simple_step]. *)
-  (** A command with its literals generated and expanded, then run by
-      [simple_step]. *)
-  Definition xp_simple (ch : list path) (L : loader ch) (Θ : gdeps) (K : kmap) (D : list path) (B : builtins) (Ξ : gstack)
-    (c : ccmd) (H : exists ΘR, linv ch Θ K D ΘR Ξ) : rres ({r | post_xcmd ch Θ K D B Ξ c r} * elog)%type :=
+  (** The error of a rejected command: the first open of it that
+      generates nothing, if any, otherwise the error found. *)
+  Definition open_error {Θ Ξ} (Hg : ⊢g Θ ⍮ Ξ) (c : ccmd) (e : run_error) : run_error :=
+    match cmd_open_error Θ Ξ Hg (frame_skel Ξ) c with
+    | Some e' => re_import e'
+    | None => e
+    end.
+
+  Definition tele_error {Θ Ξ} (Hg : ⊢g Θ ⍮ Ξ) (S : skel) (Δ : ctx) (e : run_error) : run_error :=
+    match tele_open_error Θ Ξ Hg S Δ with
+    | Some e' => re_import e'
+    | None => e
+    end.
+
+  (** A command with its literals generated, then run by [simple_step]. *)
+  Definition lits_simple (ch : list path) (L : loader ch) (Θ : gdeps) (K : kmap) (D : list path) (B : builtins) (Ξ : gstack)
+    (c : ccmd) (H : exists ΘR, linv ch Θ K D ΘR Ξ) : rres ({r | post_lcmd ch Θ K D B Ξ c r} * elog)%type :=
     match inspect (cmd_lits (nat_view (gds_restrict D Θ) Ξ B) c) with
     | exist _ (lfail e) _ => rerr (re_lit e)
     | exist _ (lok c1) El =>
-    match inspect (cmd_xp (xo_of _ _ (pre_gctx H)) (frame_skel Ξ) c1) with
-    | exist _ (xfail e) _ => rerr (re_import e)
-    | exist _ (xok c') E =>
-        match simple_step ch L Θ K D B Ξ c' H with
-        | rok (exist _ r Hp, l) => rok (exist _ r (xp_lift _ El E Hp), l)
-        | rerr e => rerr e
+        match simple_step ch L Θ K D B Ξ c1 H with
+        | rok (exist _ r Hp, l) => rok (exist _ r (lits_lift El Hp), l)
+        | rerr e => rerr (open_error (pre_gctx H) c1 e)
         end
-    end
     end.
 
   Lemma cmd_lits_mod : forall nv x pv Δ0 Δ1 cs, tele_lits nv Δ0 = lok Δ1 -> cmd_lits nv (cc_mod x pv Δ0 cs) = lok (cc_mod x pv Δ1 cs).
@@ -1562,17 +1549,15 @@ Section Impl.
 
   #[derive(eliminator=no)]
   Equations run_cmd_impl (ch : list path) (L : loader ch) (Θ : gdeps) (K : kmap) (D : list path) (B : builtins) (Ξ : gstack)
-    (c : ccmd) (H : exists ΘR, linv ch Θ K D ΘR Ξ) : rres ({r | post_xcmd ch Θ K D B Ξ c r} * elog)%type by struct c :=
+    (c : ccmd) (H : exists ΘR, linv ch Θ K D ΘR Ξ) : rres ({r | post_lcmd ch Θ K D B Ξ c r} * elog)%type by struct c :=
   | ch, L, Θ, K, D, B, Ξ, cc_mod x pv Δ0 cs, H with inspect (tele_lits (nat_view (gds_restrict D Θ) Ξ B) Δ0) => {
     | exist _ (lfail e) _ => rerr (re_lit e)
-    | exist _ (lok Δ1) El with inspect (tele_xp (xo_of _ _ (pre_gctx H)) (frame_skel Ξ) Δ1) => {
-    | exist _ (xfail e) _ => rerr (re_import e)
-    | exist _ (xok Δ) EΔ with tele_ass_dec Δ => {
-    | right _ => rerr (re_msg ("parameters of module " ++ x ++ " that are not assumptions"))
+    | exist _ (lok Δ) El with tele_ass_dec Δ => {
+    | right _ => rerr (tele_error (pre_gctx H) (frame_skel Ξ) Δ (re_msg ("parameters of module " ++ x ++ " that are not assumptions")))
     | left Htel with check_ctx (fctx_cmd B) (gds_restrict D Θ) Ξ (pre_gctx H) (Δ ++ gs_tele Ξ) => {
       | right _ =>
-          rerr (tele_blame_error (find_tele_blame fctx_none _ _ _ (pre_ctx H) Δ)
-                  (re_msg ("ill-formed parameters of module " ++ x)))
+          rerr (tele_error (pre_gctx H) (frame_skel Ξ) Δ (tele_blame_error (find_tele_blame fctx_none _ _ _ (pre_ctx H) Δ)
+                  (re_msg ("ill-formed parameters of module " ++ x))))
       | left HΔ with gs_fresh_dec x Ξ => {
         | right _ => rerr (re_msg ("duplicate name " ++ x))
         | left Hfr with cmds_step ch (run_cmd_impl ch L) Θ K D B (gs_push (qname_in (gs_path Ξ) x) Δ Ξ) cs
@@ -1580,17 +1565,16 @@ Section Impl.
           | rerr e => rerr e
           | rok (exist _ r Hr, l) with list_case (cs_stack r) => {
             | inleft (existT _ (mp, U) (exist _ _ HΞ)) =>
-                rok (exist _ _ (xp_lift _ (cmd_lits_mod _ x pv _ _ cs El) (cmd_xp_mod _ _ x pv _ _ cs EΔ)
-                                  (mod_ok Htel Hfr HΔ Hr HΞ)), l)
-            | inright _ => rerr (re_msg "internal error: a module body lost its frame") } } } } } } }
-  | ch, L, Θ, K, D, B, Ξ, cc_def x b pv A M, H => xp_simple ch L Θ K D B Ξ (cc_def x b pv A M) H
-  | ch, L, Θ, K, D, B, Ξ, cc_alias x pv Δ E, H => xp_simple ch L Θ K D B Ξ (cc_alias x pv Δ E) H
-  | ch, L, Θ, K, D, B, Ξ, cc_load fp, H => xp_simple ch L Θ K D B Ξ (cc_load fp) H
-  | ch, L, Θ, K, D, B, Ξ, cc_open E its, H => xp_simple ch L Θ K D B Ξ (cc_open E its) H
-  | ch, L, Θ, K, D, B, Ξ, cc_eval M oA, H => xp_simple ch L Θ K D B Ξ (cc_eval M oA) H
-  | ch, L, Θ, K, D, B, Ξ, cc_ind x pv R, H => xp_simple ch L Θ K D B Ξ (cc_ind x pv R) H
-  | ch, L, Θ, K, D, B, Ξ, cc_builtin k p, H => xp_simple ch L Θ K D B Ξ (cc_builtin k p) H
-  | ch, L, Θ, K, D, B, Ξ, cc_ind_alias x pv Δ E, H => xp_simple ch L Θ K D B Ξ (cc_ind_alias x pv Δ E) H.
+                rok (exist _ _ (lits_lift (cmd_lits_mod _ x pv _ _ cs El) (mod_ok Htel Hfr HΔ Hr HΞ)), l)
+            | inright _ => rerr (re_msg "internal error: a module body lost its frame") } } } } } }
+  | ch, L, Θ, K, D, B, Ξ, cc_def x b pv A M, H => lits_simple ch L Θ K D B Ξ (cc_def x b pv A M) H
+  | ch, L, Θ, K, D, B, Ξ, cc_alias x pv Δ E, H => lits_simple ch L Θ K D B Ξ (cc_alias x pv Δ E) H
+  | ch, L, Θ, K, D, B, Ξ, cc_load fp, H => lits_simple ch L Θ K D B Ξ (cc_load fp) H
+  | ch, L, Θ, K, D, B, Ξ, cc_open E its, H => lits_simple ch L Θ K D B Ξ (cc_open E its) H
+  | ch, L, Θ, K, D, B, Ξ, cc_eval M oA, H => lits_simple ch L Θ K D B Ξ (cc_eval M oA) H
+  | ch, L, Θ, K, D, B, Ξ, cc_ind x pv R, H => lits_simple ch L Θ K D B Ξ (cc_ind x pv R) H
+  | ch, L, Θ, K, D, B, Ξ, cc_builtin k p, H => lits_simple ch L Θ K D B Ξ (cc_builtin k p) H
+  | ch, L, Θ, K, D, B, Ξ, cc_ind_alias x pv Δ E, H => lits_simple ch L Θ K D B Ξ (cc_ind_alias x pv Δ E) H.
 
   Definition run_cmds_impl (ch : list path) (L : loader ch) := cmds_step ch (run_cmd_impl ch L).
 
@@ -1606,17 +1590,16 @@ Section Impl.
         | rok (exist _ r1 Hr1, l1) =>
             match inspect (tele_lits (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1)) P0) with
             | exist _ (lfail e) _ => rerr (re_nat (gds_restrict (cs_dom r1) (cs_deps r1)) nil (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1)) (re_lit e))
-            | exist _ (lok P1) El =>
-            match inspect (tele_xp (xo_of _ _ (unit_gctx H Hr1)) nil P1) with
-            | exist _ (xfail e) _ => rerr (re_nat (gds_restrict (cs_dom r1) (cs_deps r1)) nil (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1)) (re_import e))
-            | exist _ (xok P) EP =>
+            | exist _ (lok P) El =>
             match tele_ass_dec P with
-            | right _ => rerr (re_nat (gds_restrict (cs_dom r1) (cs_deps r1)) nil (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1)) (re_msg "unit parameters that are not assumptions"))
+            | right _ => rerr (re_nat (gds_restrict (cs_dom r1) (cs_deps r1)) nil (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1))
+                                (tele_error (unit_gctx H Hr1) nil P (re_msg "unit parameters that are not assumptions")))
             | left Htel =>
             match check_ctx (fctx_cmd (cs_bt r1)) (gds_restrict (cs_dom r1) (cs_deps r1)) nil (unit_gctx H Hr1) P with
             | right _ =>
-                rerr (re_nat (gds_restrict (cs_dom r1) (cs_deps r1)) nil (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1)) (tele_blame_error (find_tele_blame fctx_none _ _ _ (wf_ctx_empty _ _ (unit_gctx H Hr1)) P)
-                        (re_msg "ill-formed unit parameters")))
+                rerr (re_nat (gds_restrict (cs_dom r1) (cs_deps r1)) nil (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1))
+                        (tele_error (unit_gctx H Hr1) nil P (tele_blame_error (find_tele_blame fctx_none _ _ _ (wf_ctx_empty _ _ (unit_gctx H Hr1)) P)
+                        (re_msg "ill-formed unit parameters"))))
             | left HP =>
             match refs_check (gds_restrict (cs_dom r1) (cs_deps r1)) nil (unit_gctx H Hr1) (tele_refs nil P0) with
             | inleft (exist _ e _) => rerr (re_nat (gds_restrict (cs_dom r1) (cs_deps r1)) nil (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1)) (priv_error e))
@@ -1627,11 +1610,10 @@ Section Impl.
                 | rok (exist _ r2 Hr2, l2) =>
                     match list_case (cs_stack r2) with
                     | inleft (existT _ (mp, U) (exist _ _ HΞ)) =>
-                        rok (exist _ _ (unit_ok (unit_gctx H Hr1) Hr1 El EP Htel HP Hac Hr2 HΞ), log_app l1 l2)
+                        rok (exist _ _ (unit_ok Hr1 El Htel HP Hac Hr2 HΞ), log_app l1 l2)
                     | inright _ => rerr (re_msg "internal error: a unit body lost its frame")
                     end
                 end
-            end
             end
             end
             end
@@ -1688,11 +1670,11 @@ Section Impl.
   (** A command runs with its literals, as expanded. *)
   Theorem run_cmd_impl_sound : forall ch L Θ K D B Ξ c H r ΘR RbR,
       linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR -> run_cmd_impl ch L Θ K D B Ξ c H = rok r ->
-      exists c1 c' ΘR' RbR', cmd_lits_ok ΘR Ξ B c c1 /\ cmd_xp_ok ΘR Ξ c1 c' /\
-        run_cmd ch B RbR ΘR Ξ c' (cs_bt (proj1_sig (fst r))) RbR' ΘR' (cs_stack (proj1_sig (fst r))) /\
+      exists c1 ΘR' RbR', cmd_lits_ok ΘR Ξ B c c1 /\
+        run_cmd ch B RbR ΘR Ξ c1 (cs_bt (proj1_sig (fst r))) RbR' ΘR' (cs_stack (proj1_sig (fst r))) /\
         linv ch (cs_deps (proj1_sig (fst r))) (cs_k (proj1_sig (fst r))) (cs_dom (proj1_sig (fst r))) ΘR' (cs_stack (proj1_sig (fst r))) /\ logs_ok (proj1_sig (snd r)).
   Proof.
-    intros * Hli Hrb _; destruct r as [[r Hr] [l Hl]]; destruct (Hr _ _ Hli Hrb) as (c1 & c' & ΘR' & RbR' & ? & ? & ? & ? & _); cbn; eauto 9.
+    intros * Hli Hrb _; destruct r as [[r Hr] [l Hl]]; destruct (Hr _ _ Hli Hrb) as (c1 & ΘR' & RbR' & ? & ? & ? & _); cbn; eauto 9.
   Qed.
 
   Theorem run_cmds_impl_sound : forall ch L Θ K D B Ξ cs H r ΘR RbR,
@@ -1864,6 +1846,20 @@ Section Impl.
   Qed.
 
   (** Literals keep the kind of a command, and a module's commands. *)
+  (** The former of a command. *)
+  Definition ccmd_head (c : ccmd) : nat :=
+    match c with
+    | cc_def _ _ _ _ _ => 0
+    | cc_mod _ _ _ _ => 1
+    | cc_alias _ _ _ _ => 2
+    | cc_load _ => 3
+    | cc_open _ _ => 4
+    | cc_eval _ _ => 5
+    | cc_ind _ _ _ => 6
+    | cc_builtin _ _ => 7
+    | cc_ind_alias _ _ _ _ => 8
+    end.
+
   Lemma cmd_lits_head : forall nv c c1, cmd_lits nv c = lok c1 -> ccmd_head c1 = ccmd_head c.
   Proof.
     intros nv [x b pv A M | x pv Δ cs | x pv Δ E | fp | E its | M oA | x pv R | k H | x pv Δ H] c1 El;
@@ -1881,36 +1877,33 @@ Section Impl.
     injection El as <-; eauto.
   Qed.
 
-  Lemma xp_simple_complete {ch L Θ K D B ΘR Ξ c c1 c'} (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ) :
-    linv ch Θ K D ΘR Ξ -> cmd_lits_ok ΘR Ξ B c c1 -> cmd_xp_ok ΘR Ξ c1 c' ->
-    (exists r, simple_step ch L Θ K D B Ξ c' H = rok r) ->
-    exists r, xp_simple ch L Θ K D B Ξ c H = rok r.
+  Lemma lits_simple_complete {ch L Θ K D B ΘR Ξ c c1} (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ) :
+    linv ch Θ K D ΘR Ξ -> cmd_lits_ok ΘR Ξ B c c1 ->
+    (exists r, simple_step ch L Θ K D B Ξ c1 H = rok r) ->
+    exists r, lits_simple ch L Θ K D B Ξ c H = rok r.
   Proof.
-    intros Hli Hl Hx [r Er]; unfold xp_simple.
+    intros Hli Hl [r Er]; unfold lits_simple.
     pose proof (lits_eq Hli Hl) as El.
     destruct (inspect (cmd_lits _ c)) as [[c1' | e] El']; [ assert (c1' = c1) as -> by congruence | exfalso; congruence ].
-    pose proof (xp_eq (pre_gctx H) Hli Hx) as E.
-    destruct (inspect _) as [[c'' | e] E']; [ assert (c'' = c') as -> by congruence | exfalso; congruence ].
     rewrite Er; destruct r as [[r Hp] l]; eexists; reflexivity.
   Qed.
 
   (** Every command but a module runs by [simple_step] once its literals
-      are generated and it is expanded. *)
-  Lemma nonmod_complete {ch L Θ K D B ΘR Ξ c c1 c'} (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ) :
-    ccmd_head c' <> 1 -> linv ch Θ K D ΘR Ξ -> cmd_lits_ok ΘR Ξ B c c1 -> cmd_xp_ok ΘR Ξ c1 c' ->
-    (exists r, simple_step ch L Θ K D B Ξ c' H = rok r) ->
+      are generated. *)
+  Lemma nonmod_complete {ch L Θ K D B ΘR Ξ c c1} (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ) :
+    ccmd_head c1 <> 1 -> linv ch Θ K D ΘR Ξ -> cmd_lits_ok ΘR Ξ B c c1 ->
+    (exists r, simple_step ch L Θ K D B Ξ c1 H = rok r) ->
     exists r, run_cmd_impl ch L Θ K D B Ξ c H = rok r.
   Proof.
-    intros Hh Hli Hl Hx Hs.
-    assert (Hc1 : ccmd_head c1 <> 1) by (destruct Hx as (mt & _ & Ex); rewrite <- (cmd_xp_head _ _ _ _ Ex); exact Hh).
+    intros Hc1 Hli Hl Hs.
     assert (Hc : ccmd_head c <> 1) by (rewrite <- (cmd_lits_head _ _ _ Hl); exact Hc1).
-    destruct c; try (exfalso; apply Hc; reflexivity); simp run_cmd_impl; eapply xp_simple_complete; eassumption.
+    destruct c; try (exfalso; apply Hc; reflexivity); simp run_cmd_impl; eapply lits_simple_complete; eassumption.
   Qed.
 
   Theorem run_impl_complete :
     (forall ch B RbR ΘR Ξ c' B' RbR' ΘR' Ξ', run_cmd ch B RbR ΘR Ξ c' B' RbR' ΘR' Ξ' ->
        forall Hacc Θ K D (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ), linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR ->
-       forall c c1, cmd_lits_ok ΘR Ξ B c c1 -> cmd_xp_ok ΘR Ξ c1 c' ->
+       forall c, cmd_lits_ok ΘR Ξ B c c' ->
          exists r, run_cmd_impl ch (loader_of ch Hacc) Θ K D B Ξ c H = rok r) /\
     (forall ch B RbR ΘR Ξ cs B' RbR' ΘR' Ξ', run_cmds ch B RbR ΘR Ξ cs B' RbR' ΘR' Ξ' ->
        forall Hacc Θ K D (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ), linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR ->
@@ -1920,28 +1913,23 @@ Section Impl.
   Proof.
     apply run_mut_dind.
     - (* a definition *)
-      intros ch B Rb ΘR Ξ x b pv A M HM Hfr Hacc Θ K D H Hli Hrb c c1 Hl Hx.
-      refine (nonmod_complete H _ Hli Hl Hx _); [ cbn; discriminate |]; simp simple_step.
+      intros ch B Rb ΘR Ξ x b pv A M HM Hfr Hacc Θ K D H Hli Hrb c Hl.
+      refine (nonmod_complete H _ Hli Hl _); [ cbn; discriminate |]; simp simple_step.
       destruct (def_complete ch B Rb ΘR Ξ x b pv A (Some M) _ _ _ _ Θ K D H Hli ltac:(constructor; eassumption)) as [[Ξ1 Hp] Er].
       rewrite Er; simp simple_step; eexists; reflexivity.
     - (* an axiom *)
-      intros ch B Rb ΘR Ξ x b pv A i HA Hfr Hacc Θ K D H Hli Hrb c c1 Hl Hx.
-      refine (nonmod_complete H _ Hli Hl Hx _); [ cbn; discriminate |]; simp simple_step.
+      intros ch B Rb ΘR Ξ x b pv A i HA Hfr Hacc Θ K D H Hli Hrb c Hl.
+      refine (nonmod_complete H _ Hli Hl _); [ cbn; discriminate |]; simp simple_step.
       destruct (def_complete ch B Rb ΘR Ξ x b pv A None _ _ _ _ Θ K D H Hli ltac:(econstructor; eassumption)) as [[Ξ1 Hp] Er].
       rewrite Er; simp simple_step; eexists; reflexivity.
     - (* a module *)
-      intros ch B Rb B' Rb' ΘR Ξ x pv Δ cs ΘR' mp U Htel HΔ Hfr Hr IH Hacc Θ K D H Hli Hrb c c1 Hl Hx.
-      pose proof (xp_eq (pre_gctx H) Hli Hx) as Ex.
+      intros ch B Rb B' Rb' ΘR Ξ x pv Δ cs ΘR' mp U Htel HΔ Hfr Hr IH Hacc Θ K D H Hli Hrb c Hl.
       pose proof (lits_eq Hli Hl) as El.
-      assert (Hc1 : ccmd_head c1 = 1) by (rewrite <- (cmd_xp_head _ _ _ _ Ex); reflexivity).
-      assert (Hc : ccmd_head c = 1) by (rewrite <- (cmd_lits_head _ _ _ El); exact Hc1).
+      assert (Hc : ccmd_head c = 1) by (rewrite <- (cmd_lits_head _ _ _ El); reflexivity).
       destruct c as [| x0 pv0 Δ0 cs0 | | | | | | |]; try discriminate.
-      destruct (cmd_lits_mod_inv _ _ _ _ _ _ El) as (Δ1 & EΔ1 & ->).
-      destruct (cmd_xp_mod_inv _ _ _ _ _ _ _ Ex) as (Δ2 & EΔ & [= <- <- <- <-]).
+      destruct (cmd_lits_mod_inv _ _ _ _ _ _ El) as (Δ1 & EΔ1 & [= <- <- <- <-]).
       simp run_cmd_impl.
-      destruct (inspect (tele_lits _ Δ0)) as [[Δ1' | e] EΔ1']; [ assert (Δ1' = Δ1) as -> by congruence | exfalso; congruence ].
-      simp run_cmd_impl.
-      destruct (inspect _) as [[Δ3 | e] EΔ']; [ assert (Δ3 = Δ) as -> by congruence | exfalso; congruence ].
+      destruct (inspect (tele_lits _ Δ0)) as [[Δ1' | e] EΔ1']; [ assert (Δ1' = Δ) as -> by congruence | exfalso; congruence ].
       simp run_cmd_impl.
       destruct (tele_ass_dec Δ) as [Htel' | Htel']; [| contradiction ]; simp run_cmd_impl.
       match goal with |- context [check_ctx ?f ?a ?b ?c ?d] => destruct (check_ctx f a b c d) as [HΔ' | HΔ'] end;
@@ -1954,13 +1942,13 @@ Section Impl.
       destruct (Hp _ _ Hli' Hrb) as (ΘR2 & RbR2 & Hr2 & _); destruct (run_cmds_tail _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hr2) as [F HF].
       destruct (list_case (cs_stack r)) as [[[mp' U'] [Ξ2 HΞ]] | HΞ]; simp run_cmd_impl; [ eexists; reflexivity | congruence ].
     - (* an alias *)
-      intros ch B Rb ΘR Ξ x pv Δ E Htel HΔ HE Hfr Hacc Θ K D H Hli Hrb c c1 Hl Hx.
-      refine (nonmod_complete H _ Hli Hl Hx _); [ cbn; discriminate |]; simp simple_step.
+      intros ch B Rb ΘR Ξ x pv Δ E Htel HΔ HE Hfr Hacc Θ K D H Hli Hrb c Hl.
+      refine (nonmod_complete H _ Hli Hl _); [ cbn; discriminate |]; simp simple_step.
       destruct (alias_complete ch B Rb ΘR Ξ x pv Δ E _ _ _ _ Θ K D H Hli ltac:(constructor; assumption)) as [[Ξ1 Hp] Er].
       rewrite Er; simp simple_step; eexists; reflexivity.
     - (* a load of a unit the judgment has *)
-      intros ch B Rb B' ΘR Ξ fp U BU HU HBU Hm Hacc Θ K D H Hli Hrb c c1 Hl Hx.
-      refine (nonmod_complete H _ Hli Hl Hx _); [ cbn; discriminate |]; simp simple_step.
+      intros ch B Rb B' ΘR Ξ fp U BU HU HBU Hm Hacc Θ K D H Hli Hrb c Hl.
+      refine (nonmod_complete H _ Hli Hl _); [ cbn; discriminate |]; simp simple_step.
       pose proof (li_sub _ _ _ _ _ _ Hli _ _ HU) as HUg.
       assert (Hin : In fp D) by (apply (li_dom _ _ _ _ _ _ Hli), gds_dom_lookup; rewrite HU; discriminate).
       destruct (opt_case (gds_lookup Θ fp)) as [[U' HU'] | HU']; [| congruence ].
@@ -1972,8 +1960,8 @@ Section Impl.
       destruct (in_dec path_eq_dec fp D) as [Hin' | Hin']; [| contradiction ]; simp simple_step.
       eexists; reflexivity.
     - (* a load: shared if some other unit filed it, run otherwise *)
-      intros ch B Rb B' ΘR Ξ fp src prg u BU RbU ΘU U Hn Hnin Hld Hrd Hp Ht Hu IH Hm Hacc Θ K D H Hli Hrb c c1 Hl Hx.
-      refine (nonmod_complete H _ Hli Hl Hx _); [ cbn; discriminate |]; simp simple_step.
+      intros ch B Rb B' ΘR Ξ fp src prg u BU RbU ΘU U Hn Hnin Hld Hrd Hp Ht Hu IH Hm Hacc Θ K D H Hli Hrb c Hl.
+      refine (nonmod_complete H _ Hli Hl _); [ cbn; discriminate |]; simp simple_step.
       assert (HnD : ~ In fp D)
         by (intros Hin; apply (li_dom _ _ _ _ _ _ Hli), gds_dom_lookup in Hin; contradiction).
       destruct (opt_case (gds_lookup Θ fp)) as [[U' HU'] | Hng]; simp simple_step.
@@ -2008,21 +1996,22 @@ Section Impl.
           [| exfalso; pose proof Em as Em'; rewrite HB in Em'; congruence ]; simp simple_step.
         eexists; reflexivity.
     - (* an import: its target, then its generated commands *)
-      intros ch B Rb ΘR Ξ E its gs Ξ' HE Hgen Hgs Hacc Θ K D H Hli Hrb c c1 Hl Hx.
-      refine (nonmod_complete H _ Hli Hl Hx _); [ cbn; discriminate |]; simp simple_step.
+      intros ch B Rb ΘR Ξ E its gs Ξ' HE Hgen Hgs Hacc Θ K D H Hli Hrb c Hl.
+      refine (nonmod_complete H _ Hli Hl _); [ cbn; discriminate |]; simp simple_step.
       match goal with |- context [check_modexp ?f ?a ?b ?c ?d ?e] => destruct (check_modexp f a b c d e) as [HE' | HE'] end;
         [| exfalso; apply HE'; exact (equiv_modexp _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HE) ].
       simp simple_step.
-      pose proof (import_gen_ok_spec _ _ _ _ _ _ _ (linv_mt_spec Hli (pre_gctx H)) Hgen) as Eg.
-      rewrite (import_gen_io_ext _ _ (ind_target (gds_restrict D Θ) Ξ)) in Eg
+      pose proof (open_gens_gc_sub _ _ _ _ _ _ _ _ _ (gc_sub_deps _ _ _ (proj1 (linv_equiv Hli))) Hgen) as Hgen'.
+      apply (import_gen_spec _ _ (pre_gctx H)) in Hgen' as Eg.
+      rewrite (import_gen_io_ext _ _ (pre_gctx H) _ (ind_target (gds_restrict D Θ) Ξ)) in Eg
         by (intros pq; apply gds_equiv_ind_target, (linv_equiv Hli)).
       destruct (inspect _) as [[gs1 | e] Eg']; [ assert (gs1 = gs) as -> by congruence | exfalso; congruence ].
       simp simple_step.
       destruct (gens_complete _ _ _ _ Hgs _ _ _ _ B H Hli) as [[Ξ1 Hp1] E1]; rewrite E1; simp simple_step.
       eexists; reflexivity.
     - (* a declaration: its classification, its entry *)
-      intros ch B Rb ΘR Ξ x pv R cs Hcls Hfr HE Hacc Θ K D H Hli Hrb c c1 Hl Hx.
-      refine (nonmod_complete H _ Hli Hl Hx _); [ cbn; discriminate |]; simp simple_step.
+      intros ch B Rb ΘR Ξ x pv R cs Hcls Hfr HE Hacc Θ K D H Hli Hrb c Hl.
+      refine (nonmod_complete H _ Hli Hl _); [ cbn; discriminate |]; simp simple_step.
       pose proof (equiv_cls_cons_in _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) Hcls) as HclsR.
       destruct (cls_cons_in_dec (gds_restrict D Θ) Ξ (pre_gctx H) R) as [[cs' Hcls'] | [[[c' y] sf] Hn]];
         [| exfalso; exact (Hn _ HclsR) ].
@@ -2038,18 +2027,18 @@ Section Impl.
       destruct (in_dec string_dec "rec"%string _) as [Hr | Hr];
         [ exfalso; exact (wf_gentry_ind_rec_fresh _ _ _ _ _ _ HE Hr) | simp simple_step; eexists; reflexivity ].
     - (* a builtin binding *)
-      intros ch B Rb B' ΘR Ξ E pq p Dd z s Hq Ht Hld Hs Hsort Hb Hacc Θ K D H Hli Hrb c c1 Hl Hx.
-      refine (nonmod_complete H _ Hli Hl Hx _); [ cbn; discriminate |]; simp simple_step.
+      intros ch B Rb B' ΘR Ξ E pq p Dd z s Hq Ht Hld Hs Hsort Hb Hacc Θ K D H Hli Hrb c Hl.
+      refine (nonmod_complete H _ Hli Hl _); [ cbn; discriminate |]; simp simple_step.
       destruct (builtin_complete ch B Rb ΘR Ξ nat_kind E _ _ _ _ Θ K D H Hli ltac:(econstructor; eassumption)) as [[B1 Hp] Er].
       rewrite Er; simp simple_step; eexists; reflexivity.
     - (* an inductive alias *)
-      intros ch B Rb ΘR Ξ x pv Δ E H0 pq Δ' p Ns Ms Ks HEq Hq Ht Hld HE Hfr Hacc Θ K D H Hli Hrb c c1 Hl Hx.
-      refine (nonmod_complete H _ Hli Hl Hx _); [ cbn; discriminate |]; simp simple_step.
+      intros ch B Rb ΘR Ξ x pv Δ E H0 pq Δ' p Ns Ms Ks HEq Hq Ht Hld HE Hfr Hacc Θ K D H Hli Hrb c Hl.
+      refine (nonmod_complete H _ Hli Hl _); [ cbn; discriminate |]; simp simple_step.
       destruct (indalias_complete ch B Rb ΘR Ξ x pv Δ E _ _ _ _ Θ K D H Hli ltac:(econstructor; eassumption)) as [[Ξ1 Hp] Er].
       rewrite Er; simp simple_step; eexists; reflexivity.
     - (* an ascribed eval *)
-      intros ch B Rb ΘR Ξ M A HM Hacc Θ K D H Hli Hrb c c1 Hl Hx.
-      refine (nonmod_complete H _ Hli Hl Hx _); [ cbn; discriminate |]; simp simple_step.
+      intros ch B Rb ΘR Ξ M A HM Hacc Θ K D H Hli Hrb c Hl.
+      refine (nonmod_complete H _ Hli Hl _); [ cbn; discriminate |]; simp simple_step.
       pose proof (equiv_exp _ _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HM) as HM0.
       match goal with |- context [check_typ ?f ?a ?b ?c ?d ?e] => destruct (check_typ f a b c d e) as [[j HA'] | HA'] end;
         simp simple_step; [| exfalso; exact (not_exp_of_not_typ _ _ _ _ _ HA' HM0) ].
@@ -2058,8 +2047,8 @@ Section Impl.
       { eexists; reflexivity. }
       exfalso; exact (HM' HM0).
     - (* an inferred eval: failure of inference contradicts its completeness *)
-      intros ch B Rb ΘR Ξ M A HM Hacc Θ K D H Hli Hrb c c1 Hl Hx.
-      refine (nonmod_complete H _ Hli Hl Hx _); [ cbn; discriminate |]; simp simple_step.
+      intros ch B Rb ΘR Ξ M A HM Hacc Θ K D H Hli Hrb c Hl.
+      refine (nonmod_complete H _ Hli Hl _); [ cbn; discriminate |]; simp simple_step.
       match goal with |- context [@type_infer_at ?g ?f ?G ?a ?b ?c] => destruct (@type_infer_at g f G a b c) as [[A' HA'] | Hno] end;
         simp simple_step.
       { eexists; reflexivity. }
@@ -2069,18 +2058,17 @@ Section Impl.
       exact (Hno B0 HB).
     - intros ch B Rb ΘR Ξ Hacc Θ K D H Hli Hrb; unfold run_cmds_impl; simp cmds_step; eexists; reflexivity.
     - (* a sequence: the head's result is the judgment's, by determinism *)
-      intros ch B Rb ΘR Ξ c c1 c' cs B1 Rb1 ΘR1 Ξ1 B2 Rb2 ΘR2 Ξ2 Hac Hl Hx Hc IHc Hcs IHcs Hacc Θ K D H Hli Hrb; unfold run_cmds_impl; simp cmds_step.
+      intros ch B Rb ΘR Ξ c c1 cs B1 Rb1 ΘR1 Ξ1 B2 Rb2 ΘR2 Ξ2 Hac Hl Hc IHc Hcs IHcs Hacc Θ K D H Hli Hrb; unfold run_cmds_impl; simp cmds_step.
       match goal with |- context [refs_check ?a ?b ?c ?d] => destruct (refs_check a b c d) as [[e Hq] | Hac'] end;
         simp cmds_step; [ exfalso; apply Hq; exact (equiv_acc _ _ _ _ (linv_equiv Hli) Hac) |].
-      destruct (IHc Hacc Θ K D H Hli Hrb c c1 Hl Hx) as [[[r1 Hp1] l1] E1]; rewrite E1; simp cmds_step.
-      destruct (Hp1 _ _ Hli Hrb) as (c1' & c'' & ΘR1' & RbR1' & Hl' & Hx' & Hr1 & Hli1 & Hrb1 & _).
+      destruct (IHc Hacc Θ K D H Hli Hrb c Hl) as [[[r1 Hp1] l1] E1]; rewrite E1; simp cmds_step.
+      destruct (Hp1 _ _ Hli Hrb) as (c1' & ΘR1' & RbR1' & Hl' & Hr1 & Hli1 & Hrb1 & _).
       unfold cmd_lits_ok in Hl, Hl'; rewrite Hl in Hl'; injection Hl' as <-.
-      rewrite (cmd_xp_ok_functional _ _ _ _ _ Hx' Hx) in Hr1.
       destruct (run_cmd_functional load_path read to_core _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hc Hr1) as (<- & HΞ1 & HB1 & HR1); subst Ξ1 B1 Rb1.
       destruct (IHcs Hacc _ _ _ (cons_pre H Hp1) Hli1 Hrb1) as [[[r2 Hp2] l2] E2]; unfold run_cmds_impl in E2; simp cmds_step in E2; rewrite E2.
       simp cmds_step; eexists; reflexivity.
     - (* a unit *)
-      intros fp ch B1 Rb1 B2 Rb2 imps P0 P1 P cs ΘR1 ΘR2 mp U Hi IHi HPl HPx Htel HP Hac Hb IHb Hacc Θ K H.
+      intros fp ch B1 Rb1 B2 Rb2 imps P0 P cs ΘR1 ΘR2 mp U Hi IHi HPl Htel HP Hac Hb IHb Hacc Θ K H.
       rewrite run_unit_impl_unfold; cbn [run_unit_step].
       destruct (IHi Hacc Θ K nil (unit_pre H) (nil_linv H) (rb_ok_nil K)) as [[[r1 Hp1] l1] E1]; rewrite E1; cbv beta iota.
       destruct (Hp1 _ _ (nil_linv H) (rb_ok_nil K)) as (ΘR1' & RbR1' & Hr1 & Hli1 & Hrb1 & _).
@@ -2088,10 +2076,8 @@ Section Impl.
         rewrite <- HΞ in Hli1.
       subst B1 Rb1.
       pose proof HPl as HPl'; unfold tele_lits_ok in HPl'; rewrite (linv_nat_view Hli1) in HPl'.
-      destruct (inspect (tele_lits _ P0)) as [[P1' | e] El]; [ assert (P1' = P1) as -> by congruence | exfalso; congruence ].
+      destruct (inspect (tele_lits _ P0)) as [[P1' | e] El]; [ assert (P1' = P) as -> by congruence | exfalso; congruence ].
       cbv beta iota.
-      pose proof (tele_xp_ok_spec _ _ _ _ _ _ (linv_xo_spec Hli1 (unit_gctx H Hp1)) HPx) as EP.
-      destruct (inspect _) as [[P2 | e] EP']; [ assert (P2 = P) as -> by congruence | exfalso; congruence ].
       destruct (tele_ass_dec P) as [Htel' | Htel']; [| contradiction ]; cbv beta iota.
       match goal with |- context [check_ctx ?f ?a ?b ?c ?d] => destruct (check_ctx f a b c d) as [HP' | HP'] end;
         [| exfalso; apply HP'; exact (equiv_ctx _ _ _ _ (linv_equiv Hli1) (linv_restrict_gctx Hli1) HP) ].
@@ -2104,21 +2090,20 @@ Section Impl.
   Qed.
 
   (** The result is the judgment's, by determinism. *)
-  Corollary run_cmd_impl_complete : forall ch B RbR ΘR Ξ c0 c1 c B' RbR' ΘR' Ξ' Hacc Θ K D
+  Corollary run_cmd_impl_complete : forall ch B RbR ΘR Ξ c0 c B' RbR' ΘR' Ξ' Hacc Θ K D
       (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ),
-      linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR -> cmd_lits_ok ΘR Ξ B c0 c1 -> cmd_xp_ok ΘR Ξ c1 c ->
+      linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR -> cmd_lits_ok ΘR Ξ B c0 c ->
       run_cmd ch B RbR ΘR Ξ c B' RbR' ΘR' Ξ' ->
       exists r, run_cmd_impl ch (loader_of ch Hacc) Θ K D B Ξ c0 H = rok r /\ cs_stack (proj1_sig (fst r)) = Ξ' /\
         cs_bt (proj1_sig (fst r)) = B' /\
         linv ch (cs_deps (proj1_sig (fst r))) (cs_k (proj1_sig (fst r))) (cs_dom (proj1_sig (fst r))) ΘR' Ξ' /\
         rb_ok (cs_k (proj1_sig (fst r))) ΘR' RbR'.
   Proof.
-    intros * Hli Hrb Hl Hx Hr; destruct (proj1 run_impl_complete _ _ _ _ _ _ _ _ _ _ Hr Hacc _ _ _ H Hli Hrb _ _ Hl Hx) as [r E].
+    intros * Hli Hrb Hl Hr; destruct (proj1 run_impl_complete _ _ _ _ _ _ _ _ _ _ Hr Hacc _ _ _ H Hli Hrb _ Hl) as [r E].
     exists r; split; [ exact E |].
-    destruct r as [[r Hp] l]; destruct (Hp _ _ Hli Hrb) as (c1' & c' & ΘR'' & RbR'' & Hl' & Hx' & Hr' & Hli' & Hrb' & _).
+    destruct r as [[r Hp] l]; destruct (Hp _ _ Hli Hrb) as (c1' & ΘR'' & RbR'' & Hl' & Hr' & Hli' & Hrb' & _).
     cbn [proj1_sig fst].
     unfold cmd_lits_ok in Hl, Hl'; rewrite Hl in Hl'; injection Hl' as <-.
-    rewrite (cmd_xp_ok_functional _ _ _ _ _ Hx' Hx) in Hr'.
     destruct (run_cmd_functional load_path read to_core _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hr Hr') as (<- & HΞ & HB & <-).
     rewrite <- HΞ in Hli'; split; [ symmetry; exact HΞ | split; [ symmetry; exact HB | split; assumption ] ].
   Qed.

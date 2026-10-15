@@ -481,3 +481,31 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   (`Hload : forall prg u, to_core prg = Some u -> unit_no_axioms u`).
   `axiom bad : False  def oops : False := bad end` violates it, and is
   accepted (driver test).  The `_no_axioms`/`_gctx` theorems are unchanged.
+
+### 10.11 Local opens read in place (`wip/local-opens`, 2026-10-15)
+Supersedes the expansion part of 10.7.
+- No pre-typing expansion: `rcs_cons` and `ru_intro` lost `cmd_xp_ok` and
+  `tele_xp_ok`; `Core/Syntactic/Imports.v`, `mt_oracle`, `mt_spec`,
+  `xoracle` and `md_oracle` are gone.
+- One generation relation, `items_gen Θ Ξ io Γ H its gs`, shared by
+  `rc_open` (through `open_gens`, `io = Some (ind_target Θ Ξ)`) and by the
+  local rule `bx_open` of `body_xp Θ Ξ Γ Φ Φx` (`io = None`).  `body_xp` is
+  in the `member_type` mutual block; every reader of a body (member types,
+  `wf_unit_eq_body`, δ, evaluation, the semantic models) reads `gm_open` as
+  its generated entries.
+- Member types have a third result kind, `mr_indm T`: the module of an
+  inductive type, reached by `mt_unit_ind` and kept through aliases,
+  applications, slots and literals.  `ign_ind`/`ign_ind_mod` exist only for
+  `io = Some _`, so a local open of an inductive has no derivation; the
+  checker says "an inductive type cannot be opened in a local module: X"
+  (`xe_ind`).  `items_noind`, `no_ind` and the growth fields that kept
+  `ind_alias_lookup` are gone.
+- Evaluation reads an opened name off the open's target (`eval_sel_item`,
+  `eval_selm_item`), and a body through the entries an open generates
+  (`eval_benv_open`), by the kinds of the members (`kgens`); no term is
+  built.  Kinds are computed by `Extraction/Kinds.v`.
+- The checker checks bodies entry by entry (`alg_body`, `body_check`).  The
+  error of a rejected command names the first failing open
+  (`cmd_open_error`, `Extraction/Opens.v`), which only chooses the message.
+- `Evaluate` echoes a term as written: local opens print as `open`, no
+  longer as the definitions they generate.

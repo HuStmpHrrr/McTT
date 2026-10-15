@@ -188,33 +188,6 @@ Qed.
 
 (** ** Members *)
 
-Lemma member_type_unseal : forall Θ Ξ,
-    (forall Γ H ch R, member_type Θ Ξ Γ H ch R ->
-       member_type (gds_unseal Θ) (gs_unseal Ξ) Γ H ch R) /\
-    (forall Γ U ch R, unit_member_type Θ Ξ Γ U ch R ->
-       unit_member_type (gds_unseal Θ) (gs_unseal Ξ) Γ U ch R).
-Proof.
-  intros; apply member_type_both_ind; intros; econstructor;
-    eauto using gc_resolve_unseal_def; rewrite gc_module_unseal; eassumption.
-Qed.
-
-Corollary member_type_unseal' : forall Θ Ξ Γ H ch R,
-    member_type Θ Ξ Γ H ch R -> member_type (gds_unseal Θ) (gs_unseal Ξ) Γ H ch R.
-Proof. intros Θ Ξ; apply (member_type_unseal Θ Ξ). Qed.
-
-Lemma member_unfold_ch_unseal : forall Θ Ξ Γ H ch,
-    member_unfold_ch (gds_unseal Θ) (gs_unseal Ξ) Γ H ch = member_unfold_ch Θ Ξ Γ H ch.
-Proof.
-  intros; revert ch; induction H as [fp | x | H IH y | H IH N | U]; intros; cbn; auto.
-  - rewrite gc_resolve_unseal, gc_module_unseal.
-    destruct (gc_resolve Θ Ξ (q_abs fp ch)) as [[b pv A B | ? [Δ [Φ | E]] | ? ? | ? ? ? ?] |]; reflexivity.
-  - rewrite IH; reflexivity.
-Qed.
-
-Lemma member_unfold_unseal : forall Θ Ξ Γ H x,
-    member_unfold (gds_unseal Θ) (gs_unseal Ξ) Γ H x = member_unfold Θ Ξ Γ H x.
-Proof. intros; apply member_unfold_ch_unseal. Qed.
-
 (** An inductive alias is unchanged too. *)
 Lemma gm_ind_target_unseal : forall Φ ip, gm_ind_target (gm_unseal Φ) ip = gm_ind_target Φ ip.
 Proof.
@@ -233,6 +206,59 @@ Proof.
   rewrite gds_lookup_unseal.
   destruct (gds_lookup Θ (q_unit p)); cbn; [ rewrite gu_mod_unseal; apply gm_ind_target_unseal | reflexivity ].
 Qed.
+
+Lemma member_type_unseal_all : forall Θ Ξ,
+    (forall Γ H ch R, member_type Θ Ξ Γ H ch R ->
+       member_type (gds_unseal Θ) (gs_unseal Ξ) Γ H ch R) /\
+    (forall Γ U ch R, unit_member_type Θ Ξ Γ U ch R ->
+       unit_member_type (gds_unseal Θ) (gs_unseal Ξ) Γ U ch R) /\
+    (forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> body_xp (gds_unseal Θ) (gs_unseal Ξ) Γ Φ Φx) /\
+    (forall io Γ H its gs, items_gen Θ Ξ io Γ H its gs -> items_gen (gds_unseal Θ) (gs_unseal Ξ) io Γ H its gs).
+Proof.
+  intros; apply member_type_both_ind; intros; econstructor;
+    first [ solve [ eauto using gc_resolve_unseal_def ] | rewrite gc_module_unseal; eassumption ].
+Qed.
+
+Lemma member_type_unseal : forall Θ Ξ,
+    (forall Γ H ch R, member_type Θ Ξ Γ H ch R ->
+       member_type (gds_unseal Θ) (gs_unseal Ξ) Γ H ch R) /\
+    (forall Γ U ch R, unit_member_type Θ Ξ Γ U ch R ->
+       unit_member_type (gds_unseal Θ) (gs_unseal Ξ) Γ U ch R).
+Proof. intros; destruct (member_type_unseal_all Θ Ξ) as (H1 & H2 & _); split; assumption. Qed.
+
+Corollary member_type_unseal' : forall Θ Ξ Γ H ch R,
+    member_type Θ Ξ Γ H ch R -> member_type (gds_unseal Θ) (gs_unseal Ξ) Γ H ch R.
+Proof. intros Θ Ξ; apply (member_type_unseal Θ Ξ). Qed.
+
+Corollary body_xp_unseal : forall Θ Ξ Γ Φ Φx,
+    body_xp Θ Ξ Γ Φ Φx -> body_xp (gds_unseal Θ) (gs_unseal Ξ) Γ Φ Φx.
+Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (member_type_unseal_all Θ Ξ)))). Qed.
+
+Lemma unit_unfold_unseal : forall Θ Ξ Γ U ch M,
+    unit_unfold Θ Ξ Γ U ch M -> unit_unfold (gds_unseal Θ) (gs_unseal Ξ) Γ U ch M.
+Proof.
+  intros * []; [ eapply uu_entry; [| eassumption | eassumption ] | eapply uu_item; [ eassumption | apply body_xp_unseal; eassumption | eassumption ] ].
+  match goal with Hu : unit_xp _ _ _ _ _ |- _ => destruct Hu end; constructor; apply body_xp_unseal; assumption.
+Qed.
+
+Lemma member_unfold_ch_unseal : forall Θ Ξ Γ H ch M,
+    member_unfold_ch Θ Ξ Γ H ch M -> member_unfold_ch (gds_unseal Θ) (gs_unseal Ξ) Γ H ch M.
+Proof.
+  intros * Hm; induction Hm as [| Γ fp ch U r M Hn Hmd Hx | | | |].
+  - eapply muc_unit_def; apply gc_resolve_unseal_def; eassumption.
+  - eapply muc_unit_alias; [| rewrite gc_module_unseal; eassumption | eassumption ].
+    intros b0 pv0 A0 B0 Er; rewrite gc_resolve_unseal in Er.
+    destruct (gc_resolve Θ Ξ (q_abs fp ch)) as [E0 |] eqn:EE; [| discriminate ].
+    destruct E0 as [| ? [? []] | |]; cbn in Er; try discriminate; exfalso; eapply Hn; reflexivity.
+  - eapply muc_var; [ eassumption | apply unit_unfold_unseal; eassumption ].
+  - eapply muc_lit; apply unit_unfold_unseal; eassumption.
+  - constructor; assumption.
+  - constructor; assumption.
+Qed.
+
+Lemma member_unfold_unseal : forall Θ Ξ Γ H x M,
+    member_unfold Θ Ξ Γ H x M -> member_unfold (gds_unseal Θ) (gs_unseal Ξ) Γ H x M.
+Proof. intros; apply member_unfold_ch_unseal; assumption. Qed.
 
 (** ** Unsealing Preserves Every Judgment *)
 
@@ -255,8 +281,7 @@ Proof.
   all: try solve [ econstructor; rewrite ?gs_tele_unseal;
                    eauto using gc_resolve_unseal_def, gc_resolve_unseal_transparent,
                      gm_fresh_unseal,
-                     frame_fresh_unseal, member_type_unseal';
-                   rewrite ?member_unfold_unseal; eassumption ].
+                     frame_fresh_unseal, member_type_unseal', member_unfold_unseal, body_xp_unseal ].
 Qed.
 
 Corollary unseal_exp : forall Θ Ξ Γ A M,
@@ -418,15 +443,6 @@ Proof.
   - cbn in Hc; congruence.
 Qed.
 
-Lemma cmd_xp_no_axioms : forall mt S c c', cmd_xp mt S c = xok c' -> cmd_no_axioms c -> cmd_no_axioms c'.
-Proof.
-  intros * Ex Hc; pose proof (cmd_xp_head _ _ _ _ Ex) as Hh.
-  destruct c as [x b pv A oM | x pv Δ cs | | | | | | |];
-    [| | destruct c'; cbn in Hh; try discriminate; exact I ..].
-  - destruct (cmd_xp_def_inv _ _ _ _ _ _ _ _ Ex) as (A' & oM' & -> & Hiff); cbn in *; tauto.
-  - destruct (cmd_xp_mod_inv _ _ _ _ _ _ _ Ex) as (Δ' & _ & ->); rewrite cmd_no_axioms_mod in *; exact Hc.
-Qed.
-
 Lemma in_gds_merge : forall Θ Θ' x,
     List.In x (gds_merge Θ Θ') -> List.In x Θ \/ List.In x Θ'.
 Proof.
@@ -521,12 +537,10 @@ Section Run.
     - assumption.
     - assumption.
     - assumption.
-    (* a command runs with its literals, as expanded, which keeps it free of
-       axioms *)
+    (* a command runs with its literals, which keeps it free of axioms *)
     - match goal with
-      | Hl : cmd_lits_ok _ _ _ _ _, Hx : cmd_xp_ok _ _ _ _, Hc : cmds_no_axioms (_ :: _) |- _ =>
-          destruct Hx as (mt & _ & Ex); inversion Hc; subst;
-          pose proof (cmd_xp_no_axioms _ _ _ _ Ex (cmd_lits_no_axioms _ _ _ Hl ltac:(assumption)))
+      | Hl : cmd_lits_ok _ _ _ _ _, Hc : cmds_no_axioms (_ :: _) |- _ =>
+          inversion Hc; subst; pose proof (cmd_lits_no_axioms _ _ _ Hl ltac:(assumption))
       end; eauto.
     (* a unit: its loads from nothing, then its body in its own frame *)
     - cbn in *; destruct_all.

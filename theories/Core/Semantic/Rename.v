@@ -144,6 +144,37 @@ Section Eval.
   #[local] Hint Rewrite env_var_rn env_mod_rn env_args_rn dlvl_suc_rn dlvl_max_rn
     List.map_app List.length_map List.firstn_map List.skipn_map : rn.
 
+  Lemma kpad_rn : forall n ρ, ern f (kpad n ρ) = kpad n (ern f ρ).
+  Proof. intros; unfold kpad, ern; rewrite List.map_app; f_equal; induction n; cbn; f_equal; assumption. Qed.
+
+  Lemma kbentry_rn : forall ρ E, dern f (kbentry ρ E) = kbentry (ern f ρ) E.
+  Proof. intros ρ []; reflexivity. Qed.
+
+  Lemma kgens_env_rn : forall gs ρ k, ern f (kgens_env ρ k gs) = kgens_env (ern f ρ) k gs.
+  Proof.
+    induction gs as [| g gs IH]; intros; cbn [kgens_env]; [ reflexivity |].
+    rewrite IH; f_equal; destruct g; reflexivity.
+  Qed.
+
+  (** Kinds read no level. *)
+  Lemma kind_rn :
+    (forall h ch k, dkind Θ Ξ h ch k -> dkind Θ Ξ (dmrn f h) ch k) /\
+    (forall ρ U ch k, ukind Θ Ξ ρ U ch k -> ukind Θ Ξ (ern f ρ) U ch k) /\
+    (forall ρ H ch k, skind Θ Ξ ρ H ch k -> skind Θ Ξ (ern f ρ) H ch k) /\
+    (forall ρ Φ ρ', kenv Θ Ξ ρ Φ ρ' -> kenv Θ Ξ (ern f ρ) Φ (ern f ρ')) /\
+    (forall ρ H its gs, kgens Θ Ξ ρ H its gs -> kgens Θ Ξ (ern f ρ) H its gs).
+  Proof.
+    apply kind_mut_ind; intros; cbn [dmrn ern List.map dern drn] in *;
+      repeat change (List.map (dern f) ?ρ) with (ern f ρ) in *;
+      rewrite ?kpad_rn in *; try rewrite <- kpad_rn in *;
+      try solve [ econstructor; eauto ].
+    all: try solve [ rewrite kgens_env_rn; econstructor; eauto ].
+    all: try solve [ rewrite kbentry_rn; econstructor; eauto ].
+    all: try solve [ econstructor; [ eassumption | rewrite <- kpad_rn; eassumption | eassumption ] ].
+    all: try solve [ econstructor; rewrite <- kpad_rn; eassumption ].
+    all: try solve [ econstructor; rewrite env_mod_rn; eassumption ].
+  Qed.
+
   Lemma eval_rn :
     (forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f m) /\
     (forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> $| drn f m & drn f n | Θ ⍮ Ξ ↘ drn f r) /\
@@ -186,6 +217,10 @@ Section Eval.
       repeat change (List.map (dern f) ?ρ) with (ern f ρ) in *;
       autorewrite with rn in *; cbn [List.map] in *;
       try solve [ econstructor; autorewrite with rn; eauto ].
+    all: try solve [ eapply eval_benv_open; [ eauto | apply kind_rn; eassumption | eauto ] ].
+    all: try solve [ first [ eapply eval_sel_item | eapply eval_selm_item ];
+                     [ autorewrite with rn; assumption | eassumption | eauto
+                     | rewrite env_entry_rn; match goal with He : env_entry _ 0 = _ |- _ => rewrite He; reflexivity end ] ].
     - (* a variable *) rewrite <- env_var_rn; apply eval_exp_var.
     - (* a module slot *) rewrite <- env_mod_rn; apply eval_me_var.
   Qed.

@@ -230,35 +230,6 @@ Qed.
 
 (** ** Environments of Arguments *)
 
-Lemma env_args_rev : forall ρ xs, env_args ρ xs = List.rev (List.map de_term xs) ++ ρ.
-Proof.
-  intros ρ xs; revert ρ; induction xs as [| x xs IH]; intros; [ reflexivity |].
-  cbn [env_args List.fold_left List.map List.rev]; change (List.fold_left extend_env xs (ρ ↦ x)) with (env_args (ρ ↦ x) xs).
-  rewrite IH, <- List.app_assoc; reflexivity.
-Qed.
-
-Lemma skipn_env_args : forall ρ xs, List.skipn (List.length xs) (env_args ρ xs) = ρ.
-Proof.
-  intros; rewrite env_args_rev.
-  rewrite List.skipn_app, List.skipn_all2 by (rewrite List.length_rev, List.length_map; lia).
-  rewrite List.length_rev, List.length_map, Nat.sub_diag; reflexivity.
-Qed.
-
-Lemma eval_wk_shiftn : forall n ρ, ⟪wk_shiftn n⟫ ρ = List.skipn n ρ.
-Proof.
-  intros n ρ.
-  assert (Hm : wk_mono (wk_shiftn n)) by (intros x y Hxy; cbn; lia).
-  assert (Hl : wk_len (wk_shiftn n) (List.length ρ) = List.length (List.skipn n ρ)).
-  { apply nat_eq_of_lt_iff; intros x; rewrite wk_len_spec by exact Hm; rewrite List.length_skipn; cbn; lia. }
-  apply env_ext; [ rewrite eval_wk_length; exact Hl |].
-  intros x Hx; rewrite eval_wk_length, Hl in Hx.
-  rewrite eval_wk_var by (rewrite Hl; exact Hx).
-  rewrite !env_entry_nth, List.nth_skipn; cbn; f_equal; lia.
-Qed.
-
-Lemma eval_wk_shiftn_args : forall ρ xs, ⟪wk_shiftn (List.length xs)⟫ (env_args ρ xs) = ρ.
-Proof. intros; rewrite eval_wk_shiftn; apply skipn_env_args. Qed.
-
 Lemma eval_sb_of_list : forall Ms σ ρ ρσ ms,
     ⟦ σ ⟧s ρ ↘ ρσ -> ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> ⟦ sb_of_list σ Ms ⟧s ρ ↘ env_args ρσ ms.
 Proof.
@@ -267,36 +238,7 @@ Proof.
   apply IH; [ apply eval_sub_extend; assumption | assumption ].
 Qed.
 
-(** ** The [n]-fold Shift *)
 
-Lemma wk_mono_shiftn : forall n, wk_mono (wk_shiftn n).
-Proof. intros n x y H; cbn; lia. Qed.
-
-#[export] Instance WkMono_shiftn (n : nat) : WkMono (wk_shiftn n) := wk_mono_shiftn n.
-
-Lemma rel_wk_shiftn : forall Ψ Γ RΨ RΓ,
-    EF Ψ ++ Γ ≈ Ψ ++ Γ ∈ per_ctx_env ↘ RΨ -> EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ ->
-    rel_wk (wk_shiftn (List.length Ψ)) RΨ RΓ.
-Proof.
-  intros * HΨ HΓ; split; [ intros x y Hxy; cbn; lia |].
-  revert RΨ HΨ; induction Ψ as [| e Ψ IH]; intros RΨ HΨ ρ ρ' Hρ; cbn [List.app List.length] in *.
-  - rewrite !eval_wk_shiftn; cbn [List.skipn].
-    assert (E : RΨ <~> RΓ) by (eapply per_ctx_env_right_irrel; eassumption). apply E; exact Hρ.
-  - destruct (rel_wk_shift_tail HΨ) as (R' & HR' & Hsh).
-    pose proof (Hsh _ _ Hρ) as Ht; rewrite !eval_wk_shift in Ht.
-    rewrite !eval_wk_shiftn; cbn [List.skipn].
-    destruct ρ as [| d ρ], ρ' as [| d' ρ']; cbn [drop_env List.tl] in Ht;
-      (pose proof (IH _ HR' _ _ Ht) as H; rewrite !eval_wk_shiftn in H; try exact H);
-      rewrite List.skipn_nil in *; exact H.
-Qed.
-
-Lemma rel_wk_under_ctx_shiftn : forall Ψ Γ, ⊨ Ψ ++ Γ -> Ψ ++ Γ ⊨w (wk_shiftn (List.length Ψ)) : Γ.
-Proof.
-  intros * H.
-  destruct (sem_ctx_per_ctx_env H) as [R HR].
-  destruct (sem_ctx_per_ctx_env (sem_ctx_app_r _ _ H)) as [RΓ HΓ].
-  eapply rel_wk_under_ctx_intro; [ exact HR | exact HΓ | exact (rel_wk_shiftn _ _ _ _ HR HΓ) ].
-Qed.
 
 (** ** Universes *)
 

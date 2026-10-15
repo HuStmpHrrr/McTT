@@ -10,7 +10,6 @@ From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Imports.
 From Mctt.Core.Syntactic.System Require Import Definitions Privacy.
 From Mctt.Extraction Require Import MemberType.
 Import Syntax_Notations.
@@ -147,33 +146,6 @@ Section PrivacyImpl.
   Defined.
 End PrivacyImpl.
 
-(** ** The Oracles of Expansion
-
-    The declaration sites of a well-formed global context, and both oracles
-    expansion reads. *)
-Definition md_of (Θ : gdeps) (Ξ : gstack) (Hg : ⊢g Θ ⍮ Ξ) : md_oracle :=
-  fun H ch =>
-    match decl_impl Θ Ξ nil H ch (mt_order_total _ _ Hg nil H ch) with
-    | inleft (exist _ (qd, _) _) => Some (qname_in qd (List.last ch EmptyString))
-    | inright _ => None
-    end.
-
-Lemma md_of_spec : forall Θ Ξ (Hg : ⊢g Θ ⍮ Ξ), md_spec Θ Ξ (md_of Θ Ξ Hg).
-Proof.
-  intros * H ch p; unfold md_of.
-  destruct (decl_impl Θ Ξ nil H ch _) as [[[qd pv] Hd] | HN]; cbn [fst snd] in *; split.
-  - intros [= <-]; exists qd, pv; split; [ exact Hd | reflexivity ].
-  - intros (qd' & pv' & Hd' & ->); destruct (mdecl_functional _ _ _ _ _ _ Hd _ _ Hd') as [<- _]; reflexivity.
-  - discriminate.
-  - intros (qd' & pv' & Hd' & _); exfalso; exact (HN _ _ Hd').
-Qed.
-
-Definition xo_of (Θ : gdeps) (Ξ : gstack) (Hg : ⊢g Θ ⍮ Ξ) : xoracle :=
-  mk_xo (mt_of Θ Ξ Hg).
-
-Lemma xo_of_spec : forall Θ Ξ (Hg : ⊢g Θ ⍮ Ξ), xo_spec Θ Ξ (xo_of Θ Ξ Hg).
-Proof. intros; apply mt_of_spec. Qed.
-
 (** ** Where a Member is Declared
 
     [def_site Θ Hg H ch] is the qualified name of the member at the chain
@@ -182,12 +154,22 @@ Proof. intros; apply mt_of_spec. Qed.
     a use of a member to it.  The proof [Hg] that [Θ] is well formed only
     bounds the recursion, and extraction erases it. *)
 Definition def_site (Θ : gdeps) (Hg : ⊢g Θ ⍮ nil) (H : modexp) (ch : list string) : option qname :=
-  md_of Θ nil Hg H ch.
+  match decl_impl Θ nil nil H ch (mt_order_total _ _ Hg nil H ch) with
+  | inleft (exist _ (qd, _) _) => Some (qname_in qd (List.last ch EmptyString))
+  | inright _ => None
+  end.
 
 Lemma def_site_spec : forall Θ Hg H ch qx,
     def_site Θ Hg H ch = Some qx <->
     exists qd pv, mdecl Θ nil H ch qd pv /\ qx = qname_in qd (List.last ch EmptyString).
-Proof. intros; apply md_of_spec. Qed.
+Proof.
+  intros *; unfold def_site.
+  destruct (decl_impl Θ nil nil H ch _) as [[[qd pv] Hd] | HN]; cbn [fst snd] in *; split.
+  - intros [= <-]; exists qd, pv; split; [ exact Hd | reflexivity ].
+  - intros (qd' & pv' & Hd' & ->); destruct (mdecl_functional _ _ _ _ _ _ Hd _ _ Hd') as [<- _]; reflexivity.
+  - discriminate.
+  - intros (qd' & pv' & Hd' & _); exfalso; exact (HN _ _ Hd').
+Qed.
 
 (** The name found is that of an entry, through body modules. *)
 Corollary def_site_entry : forall Θ Hg H ch qx, ch <> nil ->

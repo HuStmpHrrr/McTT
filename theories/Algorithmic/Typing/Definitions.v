@@ -9,6 +9,7 @@ Reserved Notation "Γ '⊢a' M ⟸ A" (at level 70, M at level 69, A at level 69
 Reserved Notation "Γ '⊢aˣ' Ψ" (at level 70, Ψ at level 69).
 Reserved Notation "Γ '⊢aᵘ' U" (at level 70, U at level 69).
 Reserved Notation "Γ '⊢aᵐ' H" (at level 70, H at level 69).
+Reserved Notation "Γ '⊢aᵇ' Φ ⇝ Φx" (at level 70, Φ at level 69, Φx at level 69).
 
 Generalizable All Variables.
 
@@ -204,10 +205,14 @@ with alg_ext : ctx -> ctx -> Prop :=
      Γ ⊢aˣ Ψ ▹ₘ U )
 where "Γ '⊢aˣ' Ψ" := (alg_ext Γ Ψ) : type_scope
 with alg_unit : ctx -> gunit -> Prop :=
+(** A body: its parameters, and its entries, each read as it stands in the
+    expansion of the body before it. *)
 | aunit_body :
-  `( Γ ⊢aˣ body_ctx Φ ++ Δ ->
+  `( Γ ⊢aˣ Δ ->
      tele_ass Δ ->
+     Δ ++ Γ ⊢aᵇ Φ ⇝ Φx ->
      body_shape Φ Φ ->
+     body_shape Φx Φx ->
      List.NoDup (gm_names Φ) ->
      Γ ⊢aᵘ gu_body Δ Φ )
 | aunit_alias :
@@ -216,6 +221,32 @@ with alg_unit : ctx -> gunit -> Prop :=
      Δ ++ Γ ⊢aᵐ E ->
      Γ ⊢aᵘ gu_mk Δ (md_alias E) )
 where "Γ '⊢aᵘ' U" := (alg_unit Γ U) : type_scope
+(** [Γ ⊢aᵇ Φ ⇝ Φx]: the entries of [Φ] are well-formed in [Γ], each in the
+    context the expansion of the body before it makes, and [Φx] is the
+    expansion.  The entries a local open generates are not checked again:
+    they are the members of a well-formed module at their types. *)
+with alg_body : ctx -> gmod -> gmod -> Prop :=
+| abody_nil :
+  `( Γ ⊢aᵇ gm_nil ⇝ gm_nil )
+| abody_def :
+  `( Γ ⊢aᵇ Φ ⇝ Φx ->
+     body_ctx Φx ++ Γ ⊢a A ⟹ UA ->
+     is_univ_nf UA u ->
+     body_ctx Φx ++ Γ ⊢a M ⟸ A ->
+     Γ ⊢aᵇ gm_ext Φ x (ge_def b pv A (Some M)) ⇝ gm_ext Φx x (ge_def b pv A (Some M)) )
+| abody_mod :
+  `( Γ ⊢aᵇ Φ ⇝ Φx ->
+     body_ctx Φx ++ Γ ⊢aᵘ U ->
+     Γ ⊢aᵇ gm_ext Φ x (ge_mod pm U) ⇝ gm_ext Φx x (ge_mod pm U) )
+| abody_open :
+  `( Γ ⊢aᵇ Φ ⇝ Φx ->
+     body_ctx Φx ++ Γ ⊢aᵐ H ->
+     member_type gc_deps gc_stack (body_ctx Φx ++ Γ) H nil R ->
+     mres_tl R = Some T ->
+     items_gen gc_deps gc_stack None (body_ctx Φx ++ Γ) H its gs ->
+     items_ok its ->
+     Γ ⊢aᵇ gm_open Φ H its ⇝ gens_append Φx 0 gs )
+where "Γ '⊢aᵇ' Φ ⇝ Φx" := (alg_body Γ Φ Φx) : type_scope
 with alg_modexp : ctx -> modexp -> Prop :=
 | amod_glob :
   `( mod_qname H = Some mp ->
@@ -243,7 +274,7 @@ with alg_modexp : ctx -> modexp -> Prop :=
      Γ ⊢aᵐ me_app H N )
 where "Γ '⊢aᵐ' H" := (alg_modexp Γ H) : type_scope.
 
-Hint Constructors alg_type_check alg_type_infer alg_ext alg_unit alg_modexp : mctt.
+Hint Constructors alg_type_check alg_type_infer alg_ext alg_unit alg_body alg_modexp : mctt.
 
 End Fixed_GCtx.
 
@@ -252,20 +283,23 @@ Notation "Γ '⊢a' M ⟹ A" := (alg_type_infer Γ A M) : type_scope.
 Notation "Γ '⊢aˣ' Ψ" := (alg_ext Γ Ψ) : type_scope.
 Notation "Γ '⊢aᵘ' U" := (alg_unit Γ U) : type_scope.
 Notation "Γ '⊢aᵐ' H" := (alg_modexp Γ H) : type_scope.
+Notation "Γ '⊢aᵇ' Φ ⇝ Φx" := (alg_body Γ Φ Φx) : type_scope.
 
 #[export]
-Hint Constructors alg_type_check alg_type_infer alg_ext alg_unit alg_modexp : mctt.
+Hint Constructors alg_type_check alg_type_infer alg_ext alg_unit alg_body alg_modexp : mctt.
 
 Scheme alg_type_check_mut_ind := Induction for alg_type_check Sort Prop
 with alg_type_infer_mut_ind := Induction for alg_type_infer Sort Prop
 with alg_ext_mut_ind := Induction for alg_ext Sort Prop
 with alg_unit_mut_ind := Induction for alg_unit Sort Prop
+with alg_body_mut_ind := Induction for alg_body Sort Prop
 with alg_modexp_mut_ind := Induction for alg_modexp Sort Prop.
 Combined Scheme alg_type_mut_ind from
   alg_type_check_mut_ind,
   alg_type_infer_mut_ind,
   alg_ext_mut_ind,
   alg_unit_mut_ind,
+  alg_body_mut_ind,
   alg_modexp_mut_ind.
 
 (** ** User Expressions

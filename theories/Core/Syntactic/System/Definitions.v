@@ -77,14 +77,12 @@ where "Γ ∋ '#' x ≔ M : A" := (ctx_lookup_def x A M Γ) : type_scope.
 
 (** ** Shapes of Units
 
-    A telescope of parameters has assumptions only: a module's arguments are
-    terms. *)
-Definition tele_ass (Δ : ctx) : Prop := List.Forall (fun e => exists A, e = ce_ass A) Δ.
+    A telescope of parameters has assumptions only ([tele_ass], with the
+    member types in [Members]). *)
 
 (** Two bodies compared entry by entry: the same names and kinds in the same
-    order, the same privacy, and transparent definitions with a body.  A
-    local import is a pre-form the core expands before typing
-    ([Imports]), so a typed body has none. *)
+    order, the same privacy, and transparent definitions with a body; and
+    local opens at the same places, with the same items. *)
 Definition entry_shape (E E' : gentry) : Prop :=
   match E, E' with
   | ge_def b pv _ (Some _), ge_def b' pv' _ (Some _) => b = true /\ b' = true /\ pv = pv'
@@ -96,6 +94,7 @@ Fixpoint body_shape (Φ Φ' : gmod) : Prop :=
   match Φ, Φ' with
   | gm_nil, gm_nil => True
   | gm_ext Φ x E, gm_ext Φ' x' E' => body_shape Φ Φ' /\ x = x' /\ entry_shape E E'
+  | gm_open Φ _ its, gm_open Φ' _ its' => body_shape Φ Φ' /\ its = its'
   | _, _ => False
   end.
 
@@ -267,7 +266,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
      member_type Θ Ξ Γ H (x :: nil) (mr_term A) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     member_unfold Θ Ξ Γ H x = Some M ->
+     member_unfold Θ Ξ Γ H x M ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : A )
 (** A member of an applied module is the member of its root, applied to the
@@ -545,7 +544,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
      member_type Θ Ξ Γ H (x :: nil) (mr_term A) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     member_unfold Θ Ξ Γ H x = Some M ->
+     member_unfold Θ Ξ Γ H x M ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ M : A )
 (** Arguments commute with selection. *)
@@ -692,14 +691,22 @@ with wf_ext_eq : gdeps -> gstack -> ctx -> ctx -> ctx -> Prop :=
 where "Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'" := (wf_ext_eq Θ Ξ Γ Ψ Ψ') : type_scope
 
 (** Units.  A body unit's parameters and body are compared as one extension of
-    [Γ]. *)
+    [Γ]: the body read as the entries its local opens generate
+    ([body_xp]), with the target of each open a module where it stands. *)
 with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
 | wf_unit_eq_body :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φ ++ Δ ≈ body_ctx Φ' ++ Δ' ->
+  `( body_xp Θ Ξ (Δ ++ Γ) Φ Φx ->
+     body_xp Θ Ξ (Δ' ++ Γ) Φ' Φx' ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δ ≈ body_ctx Φx' ++ Δ' ->
+     (forall k Ψ H Ψ' H', nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> nth_error (body_opens Φ' Φx') k = Some (Ψ', H') ->
+        Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ ⊢ᵐ H ≈ H') ->
+     (forall k Ψ H Ψ' H', nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> nth_error (body_opens Φ' Φx') k = Some (Ψ', H') ->
+        Θ ⍮ Ξ ⍮ Ψ' ++ Δ' ++ Γ ⊢ᵐ H' ≈ H') ->
      tele_ass Δ ->
      tele_ass Δ' ->
      List.length Δ = List.length Δ' ->
      body_shape Φ Φ' ->
+     body_shape Φx Φx' ->
      List.NoDup (gm_names Φ) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_body Δ Φ ≈ gu_body Δ' Φ' )
 | wf_unit_eq_alias :

@@ -36,6 +36,21 @@ Section GlobalExt.
         end;
     eassumption.
 
+  Lemma kind_ext :
+    (forall h ch k, dkind Θ1 Ξ1 h ch k -> dkind Θ2 Ξ2 h ch k) /\
+    (forall ρ U ch k, ukind Θ1 Ξ1 ρ U ch k -> ukind Θ2 Ξ2 ρ U ch k) /\
+    (forall ρ H ch k, skind Θ1 Ξ1 ρ H ch k -> skind Θ2 Ξ2 ρ H ch k) /\
+    (forall ρ Φ ρ', kenv Θ1 Ξ1 ρ Φ ρ' -> kenv Θ2 Ξ2 ρ Φ ρ') /\
+    (forall ρ H its gs, kgens Θ1 Ξ1 ρ H its gs -> kgens Θ2 Ξ2 ρ H its gs).
+  Proof.
+    apply kind_mut_ind; intros;
+      first [ solve [ eapply dk_global_mod; rewrite <- Hmod; eassumption ]
+            | solve [ eapply dk_global_alias; [ rewrite <- Hmod; eassumption | eauto ] ]
+            | solve [ eapply dk_global_def; rewrite <- Hres; eassumption ]
+            | solve [ eapply uk_item; eauto ]
+            | solve [ econstructor; eauto ] ].
+  Qed.
+
   Lemma eval_ext :
     (forall M ρ m, ⟦ M ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ m -> ⟦ M ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ m) /\
     (forall m n r, eval_app Θ1 Ξ1 m n r -> eval_app Θ2 Ξ2 m n r) /\
@@ -71,6 +86,7 @@ Section GlobalExt.
              (fun ρ nm A Bs t v r _ => eval_ih Θ2 Ξ2 ρ nm A Bs t v r)
              (fun p ups ρ t a _ => eval_shty Θ2 Ξ2 p ups ρ t a)
              (fun ρm A ρ t v a _ => eval_ihty Θ2 Ξ2 ρm A ρ t v a)).
+    all: try solve [ intros; eapply eval_benv_open; eauto; apply kind_ext; assumption ].
     all: try solve [ ext_case | intros; econstructor; eauto
                    | intros * H; econstructor; intros ? ?; rewrite <- Hmod; apply H ].
   Qed.

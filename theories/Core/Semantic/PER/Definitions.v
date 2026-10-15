@@ -902,7 +902,8 @@ Hint Unfold rel_elem : mctt.
       related: supplied arguments are related, and missing ones quantified
       over related pairs.  Then their bodies are related entry by entry, with
       the same names in the same order: a definition by its type and value,
-      a module by its closure; or their alias targets by their values.
+      a module by its closure, a local open by the value of its target; or
+      their alias targets by their values.
     - Member closures are related componentwise.
 
     The relation is not indexed by a type: the types it relates members at are
@@ -985,6 +986,15 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
      eval_benv gc_deps gc_stack ρ' Φ' ρ1' ->
      per_dmod (dm_local ρ1 Uy nil) (dm_local ρ1' Uy' nil) ->
      per_body ρ (gm_ext Φ y (ge_mod pm Uy)) ρ' (gm_ext Φ' y (ge_mod pm' Uy')) }
+(** A local open each, of the same items, with related targets. *)
+| per_body_open :
+  `{ per_body ρ Φ ρ' Φ' ->
+     eval_benv gc_deps gc_stack ρ Φ ρ1 ->
+     eval_benv gc_deps gc_stack ρ' Φ' ρ1' ->
+     eval_modexp gc_deps gc_stack H ρ1 h ->
+     eval_modexp gc_deps gc_stack H' ρ1' h' ->
+     per_dmod h h' ->
+     per_body ρ (gm_open Φ H its) ρ' (gm_open Φ' H' its) }
 .
 
 Scheme per_dmod_mut_ind := Induction for per_dmod Sort Prop

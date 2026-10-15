@@ -70,7 +70,7 @@ Qed.
 Lemma mt_unit_ctx : forall Γ Γ' fp ch R,
     member_type Θm Ξm Γ (me_unit fp) ch R -> member_type Θm Ξm Γ' (me_unit fp) ch R.
 Proof.
-  intros * H; inversion H; subst; [ eapply mt_unit_def | eapply mt_unit_mod | eapply mt_unit_alias ]; eassumption.
+  intros * H; inversion H; subst; [ eapply mt_unit_def | eapply mt_unit_mod | eapply mt_unit_ind | eapply mt_unit_alias ]; eassumption.
 Qed.
 
 Lemma mt_chain_ctx : forall H Γ Γ' p ch R, mod_qname H = Some p ->
@@ -86,9 +86,12 @@ Lemma mt_path_ctx : forall Γ Γ' p ch R,
     member_type Θm Ξm Γ (qname_mod p) ch R -> member_type Θm Ξm Γ' (qname_mod p) ch R.
 Proof. intros *; apply mt_chain_ctx with (p := p), qname_mod_qname. Qed.
 
-Lemma unfold_path_ctx : forall Γ Γ' p ch,
-    member_unfold_ch Θm Ξm Γ (qname_mod p) ch = member_unfold_ch Θm Ξm Γ' (qname_mod p) ch.
-Proof. intros; unfold qname_mod; rewrite !me_mems_unfold; reflexivity. Qed.
+Lemma unfold_path_ctx : forall Γ Γ' p ch M,
+    member_unfold_ch Θm Ξm Γ (qname_mod p) ch M -> member_unfold_ch Θm Ξm Γ' (qname_mod p) ch M.
+Proof.
+  intros * HM; unfold qname_mod in *; apply me_mems_unfold in HM; apply me_mems_unfold.
+  inversion HM; subst; [ eapply muc_unit_def | eapply muc_unit_alias ]; eassumption.
+Qed.
 
 Lemma eval_chain_any : forall H p ρ ρ' h, mod_qname H = Some p ->
     ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h -> ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ' ↘ h.
@@ -134,8 +137,7 @@ Lemma sem_unf_path : forall Γ p, gpath_at p -> sem_unf Θm Ξm Γ (qname_mod p)
 Proof.
   intros * (_ & HU & _) ch A M Hm HM R ρ HR Hρ h Hh.
   assert (H0 : per_ctx_env (fun _ _ => True) ⋅ ⋅) by (apply per_ctx_env_nil; reflexivity).
-  rewrite (unfold_path_ctx _ ⋅) in HM.
-  exact (HU _ _ _ (mt_path_ctx _ ⋅ _ _ _ Hm) HM _ _ H0 I _ Hh).
+  exact (HU _ _ _ (mt_path_ctx _ ⋅ _ _ _ Hm) (unfold_path_ctx _ ⋅ _ _ _ HM) _ _ H0 I _ Hh).
 Qed.
 
 Lemma rel_me_path : forall Γ p R0 T, gpath_at p -> ⊨ Γ ->

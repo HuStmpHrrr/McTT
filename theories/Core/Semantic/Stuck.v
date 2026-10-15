@@ -324,6 +324,15 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
     (* the module of an inductive type: the type former, applied *)
     all: try solve [ match goal with IH : dstuck (d_ind _ nil) -> _ -> dstuck ?r |- dstuck ?r =>
                        apply IH; [ first [ constructor; intros ? [] | repeat constructor ] | assumption ] end ].
+    (* a local open, and a name it declares: the entry its open makes *)
+    all: try solve [ match goal with
+      | IH2 : env_stuck ?ρ1 -> env_stuck ?ρ2, IH1 : env_stuck ?ρ -> env_stuck ?ρ1, Hρ : env_stuck ?ρ |- env_stuck ?ρ2 =>
+          exact (IH2 (IH1 Hρ)) end ].
+    all: try solve [ match goal with
+      | IH : env_stuck _ -> env_stuck ?ρ', He : env_entry ?ρ' 0 = _ |- _ =>
+          let Hs := fresh "Hs" in
+          assert (Hs : env_stuck ρ') by (apply IH; apply env_stuck_args; assumption);
+          specialize (Hs 0); rewrite He in Hs; inversion Hs; assumption end ].
     all: match goal with Hin : In _ nil |- _ => destruct Hin end.
   Qed.
 

@@ -316,8 +316,12 @@ Lemma member_type_emb : forall Θ1 Ξ1 Θ2 Ξ2 Γ H ch R,
 Proof. intros * Hs; exact (proj1 (member_type_gc_sub _ _ _ _ Hs) _ _ _ _). Qed.
 
 Lemma member_unfold_emb : forall Θ1 Ξ1 Θ2 Ξ2 Γ H x M,
-    gc_sub Θ1 Ξ1 Θ2 Ξ2 -> member_unfold Θ1 Ξ1 Γ H x = Some M -> member_unfold Θ2 Ξ2 Γ H x = Some M.
+    gc_sub Θ1 Ξ1 Θ2 Ξ2 -> member_unfold Θ1 Ξ1 Γ H x M -> member_unfold Θ2 Ξ2 Γ H x M.
 Proof. intros * Hs; exact (member_unfold_gc_sub _ _ _ _ Hs _ _ _ _). Qed.
+
+Lemma body_xp_emb : forall Θ1 Ξ1 Θ2 Ξ2 Γ Φ Φx,
+    gc_sub Θ1 Ξ1 Θ2 Ξ2 -> body_xp Θ1 Ξ1 Γ Φ Φx -> body_xp Θ2 Ξ2 Γ Φ Φx.
+Proof. intros * Hs; exact (proj1 (proj2 (proj2 (member_type_gc_sub_all _ _ _ _ Hs))) _ _ _). Qed.
 
 (** A judgment moves along an embedding unchanged. *)
 Theorem emb_preserves_wf : forall Θ1 Ξ1 Θ2 Ξ2,
@@ -341,7 +345,7 @@ Proof.
     (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Θ = Θ1 -> Ξ = Ξ1 -> Θ2 ⍮ Ξ2 ⍮ Γ ⊢ᵐ H ≈ H')).
   { apply syntactic_wf_mut_ind; intros; subst;
       repeat match goal with IH : ?x = ?x -> ?x' = ?x' -> _ |- _ => specialize (IH eq_refl eq_refl) end;
-      try solve [ econstructor; eauto using gc_sub_resolve, member_type_emb, member_unfold_emb, ind_lookup_gc_sub, gc_sub_ind_alias ].
+      try solve [ econstructor; eauto using gc_sub_resolve, member_type_emb, member_unfold_emb, body_xp_emb, ind_lookup_gc_sub, gc_sub_ind_alias ].
     all: econstructor; eauto. }
   destruct H as (Hc & He & Hq & Hst & Hx & Hu & Hm).
   repeat split; intros; eauto.

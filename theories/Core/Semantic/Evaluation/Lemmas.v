@@ -6,6 +6,47 @@ From Mctt.Core.Syntactic Require Import Members Inductives.
 From Mctt.Core.Semantic.Evaluation Require Import Definitions.
 Import Domain_Notations.
 
+  (** Kinds are unique: a definition is no module, and a body's entry is
+      found by one lookup. *)
+  Lemma functional_kind : forall {Θ Ξ},
+    (forall h ch k1, dkind Θ Ξ h ch k1 -> forall k2, dkind Θ Ξ h ch k2 -> k1 = k2) /\
+    (forall ρ U ch k1, ukind Θ Ξ ρ U ch k1 -> forall k2, ukind Θ Ξ ρ U ch k2 -> k1 = k2) /\
+    (forall ρ H ch k1, skind Θ Ξ ρ H ch k1 -> forall k2, skind Θ Ξ ρ H ch k2 -> k1 = k2) /\
+    (forall ρ Φ ρ1, kenv Θ Ξ ρ Φ ρ1 -> forall ρ2, kenv Θ Ξ ρ Φ ρ2 -> ρ1 = ρ2) /\
+    (forall ρ H its gs1, kgens Θ Ξ ρ H its gs1 -> forall gs2, kgens Θ Ξ ρ H its gs2 -> gs1 = gs2).
+  Proof.
+    intros Θ Ξ; apply kind_mut_ind; intros;
+      match goal with |- _ = ?r2 => match goal with H : context [r2] |- _ => inversion H; subst; clear H end end;
+      repeat match goal with
+        | H1 : Members.gc_module Θ Ξ ?p = Some _, H2 : Members.gc_module Θ Ξ ?p = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : Members.gc_module Θ Ξ ?p = Some _, H2 : Members.gc_resolve Θ Ξ ?p = Some _ |- _ =>
+            rewrite (gc_module_resolve _ _ _ _ H1) in H2; discriminate H2
+        | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
+            rewrite (gm_prefix_item_excl _ _ _ H1) in H2; discriminate H2
+        | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _ _),
+          H2 : forall U r, Members.gc_module Θ Ξ ?p <> Some (Members.mr_alias U r) |- _ =>
+            exfalso; exact (H2 _ _ H1)
+        | H1 : Members.gc_resolve Θ Ξ ?p = Some (ge_def _ _ _ _),
+          H2 : forall b pv A B, Members.gc_resolve Θ Ξ ?p <> Some (ge_def b pv A B) |- _ =>
+            exfalso; exact (H2 _ _ _ _ H1)
+        | H : dkind Θ Ξ (dm_global _ _) nil _ |- _ => inversion H; subst; clear H
+        | IH : forall r, ?P r -> ?a = r, H : ?P ?b |- _ =>
+            assert_fails (constr_eq a b); specialize (IH _ H); subst
+        end; try congruence.
+  Qed.
+
+  Corollary functional_kgens : forall {Θ Ξ} ρ H its gs1 gs2,
+      kgens Θ Ξ ρ H its gs1 -> kgens Θ Ξ ρ H its gs2 -> gs1 = gs2.
+  Proof. intros Θ Ξ; pose proof (@functional_kind Θ Ξ) as Hf; destruct_all; eauto. Qed.
+
+  Lemma kgens_length : forall Θ Ξ ρ H its gs, kgens Θ Ξ ρ H its gs -> List.length gs = List.length its.
+  Proof. induction 1; cbn; auto. Qed.
+
   Lemma functional_eval : forall {Θ Ξ},
     (forall M ρ m1,
         ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m1 ->
@@ -63,6 +104,12 @@ Import Domain_Notations.
             exfalso; exact (H2 _ _ H1)
         | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
+            rewrite (gm_prefix_item_excl _ _ _ H1) in H2; discriminate H2
+        | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : kgens Θ Ξ ?ρ ?H ?its ?g1, H2 : kgens Θ Ξ ?ρ ?H ?its ?g2 |- _ =>
+            assert_fails (constr_eq g1 g2); pose proof (functional_kgens _ _ _ _ _ H1 H2); subst g2
         | H1 : modexp_spine ?H = _, H2 : modexp_spine ?H = _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | IH : forall r, ?P r -> ?a = r, H : ?P ?b |- _ =>

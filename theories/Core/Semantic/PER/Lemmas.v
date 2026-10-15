@@ -1605,12 +1605,11 @@ Lemma per_dmod_sym_all :
   (forall ρ D ρ' D', per_mdef ρ D ρ' D' -> per_mdef ρ' D' ρ D) /\
   (forall ρ Φ ρ' Φ', per_body ρ Φ ρ' Φ' -> per_body ρ' Φ' ρ Φ).
 Proof.
-  apply per_dmod_mut_ind_all; intros; try solve [ econstructor; eauto ].
-  - destruct (rel_typ_sym r) as [? Hs]; econstructor; eauto.
-  - destruct (rel_typ_sym r) as [? Hs]; econstructor; eauto.
-  - destruct (rel_typ_sym r) as [? Hs]; econstructor; [ eassumption |].
-    intros c c' Hc; apply H, Hs, Hc.
-  - destruct (rel_typ_sym r) as [? Hs]; econstructor; eauto using rel_elem_sym.
+  apply per_dmod_mut_ind_all; intros;
+    try match goal with Hr : rel_typ _ _ _ _ _ _ |- _ => destruct (rel_typ_sym Hr) as [? Hs] end;
+    try solve [ econstructor; eauto using rel_elem_sym ].
+  (* a missing parameter *)
+  all: econstructor; [ eassumption |]; intros c c' Hc; apply H, Hs, Hc.
 Qed.
 
 Corollary per_dmod_sym : forall m m', per_dmod m m' -> per_dmod m' m.
@@ -1668,6 +1667,12 @@ Proof.
   - (* a module *)
     match goal with H1 : eval_benv _ _ ?ρ ?Φ ?r1, H2 : eval_benv _ _ ?ρ ?Φ ?r2 |- _ =>
       assert (r1 = r2) by (eapply functional_eval_benv; eassumption); subst end.
+    econstructor; eauto.
+  - (* a local open: the middle target is one value *)
+    match goal with H1 : eval_benv _ _ ?ρ ?Φ ?r1, H2 : eval_benv _ _ ?ρ ?Φ ?r2 |- _ =>
+      assert (r1 = r2) by (eapply functional_eval_benv; eassumption); subst end.
+    match goal with H1 : eval_modexp _ _ ?E ?ρ ?h1, H2 : eval_modexp _ _ ?E ?ρ ?h2 |- _ =>
+      assert (h1 = h2) by (eapply functional_eval_modexp; eassumption); subst end.
     econstructor; eauto.
 Qed.
 

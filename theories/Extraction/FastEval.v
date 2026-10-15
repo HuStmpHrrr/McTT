@@ -463,6 +463,16 @@ with feval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ' ->
      ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
      dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
+(** A definition a local open of a saturated body declares: the member it
+    names in the open's target, read in the environment of the body before
+    the open. *)
+| feval_sel_item :
+  `( List.length args = List.length Δ ->
+     gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
+     ⟦ Φ0 ⟧ᵇᶠ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ0 ->
+     ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ0 ↘ h ->
+     h ·ₜᶠ n Θ ⍮ Ξ ↘ r ->
+     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
 (** A member of a saturated alias is selected from its target. *)
 | feval_sel_alias :
   `( List.length args = List.length Δ ->
@@ -494,6 +504,15 @@ with feval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop :=
      gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
      ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ' ->
      dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₘᶠ y Θ ⍮ Ξ ↘ dm_local ρ' Uy nil )
+(** A module a local open of a saturated body declares: the target, or its
+    member the item names. *)
+| feval_selm_item :
+  `( List.length args = List.length Δ ->
+     gm_item_upto Φ y = Some (Φ0, H, its1, it) ->
+     ⟦ Φ0 ⟧ᵇᶠ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ0 ->
+     ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ0 ↘ h ->
+     h ·ₘ*ᶠ (item_ch it nil) Θ ⍮ Ξ ↘ r ->
+     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₘᶠ y Θ ⍮ Ξ ↘ r )
 (** A submodule of a saturated alias is selected from its target. *)
 | feval_selm_alias :
   `( List.length args = List.length Δ ->
@@ -541,6 +560,13 @@ with feval_benv (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 | feval_benv_mod :
   `( ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ gm_ext Φ y (ge_mod pm Uy) ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ dm_local ρ1 Uy nil )
+(** A local open adds the entries it generates, by the kinds of the members
+    its items name. *)
+| feval_benv_open :
+  `( ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
+     kgens Θ Ξ ρ1 H its gs ->
+     ⟦ gens_append gm_nil 0 gs ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ1 ↘ ρ2 ->
+     ⟦ gm_open Φ H its ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ2 )
 where "'⟦' Φ '⟧ᵇᶠ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (feval_benv Θ Ξ ρ Φ ρ').
 
 Scheme feval_exp_mut_ind := Induction for feval_exp Sort Prop
@@ -648,6 +674,12 @@ Proof. intros * <-; apply feval_exp_var. Qed.
             exfalso; exact (H2 _ _ H1)
         | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
+            rewrite (gm_prefix_item_excl _ _ _ H1) in H2; discriminate H2
+        | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : kgens Θ Ξ ?ρ ?H ?its ?g1, H2 : kgens Θ Ξ ?ρ ?H ?its ?g2 |- _ =>
+            assert_fails (constr_eq g1 g2); pose proof (functional_kgens _ _ _ _ _ H1 H2); subst g2
         | H1 : modexp_spine ?H = _, H2 : modexp_spine ?H = _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | IH : forall r, ?P r -> ?a = r, H : ?P ?b |- _ =>

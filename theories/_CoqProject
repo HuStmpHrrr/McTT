@@ -55,6 +55,7 @@
 ./Core/Semantic/Fixed.v
 ./Core/Semantic/Levels.v
 ./Core/Semantic/PER.v
+./Core/Semantic/KindsPER.v
 ./Core/Semantic/PER/Chain.v
 ./Core/Semantic/PER/CoreTactics.v
 ./Core/Semantic/PER/Definitions.v
@@ -71,6 +72,9 @@
 ./Core/Semantic/Transparency.v
 ./Core/Semantic/Avoid.v
 ./Core/Semantic/Rename.v
+./Core/Semantic/Kinds.v
+./Core/Semantic/KindsEval.v
+./Core/Semantic/KindsTyping.v
 ./Core/Soundness.v
 ./Core/IndCommand.v
 ./Core/NbEWeakening.v
@@ -101,7 +105,7 @@
 ./Core/Syntactic/Corollaries.v
 ./Core/Syntactic/CtxSub.v
 ./Core/Syntactic/Members.v
-./Core/Syntactic/Imports.v
+./Extraction/Opens.v
 ./Core/Syntactic/Inductives.v
 ./Core/Syntactic/Builtin.v
 ./Core/Syntactic/IndCong.v
@@ -150,6 +154,7 @@
 ./Extraction/TypeCheck.v
 ./Extraction/TypeCheckBase.v
 ./Extraction/IndCheck.v
+./Extraction/Kinds.v
 ./Frontend/ElabCorrect.v
 ./Frontend/ElabExamples.v
 ./Frontend/ElabSpec.v
