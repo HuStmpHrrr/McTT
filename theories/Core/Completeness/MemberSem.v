@@ -389,9 +389,6 @@ Qed.
 
 (** ** Walking the Parameters of a Closure *)
 
-Lemma env_args_snoc : forall ρ args c, env_args ρ (args ++ c :: nil) = env_args ρ args ↦ c.
-Proof. intros; unfold env_args; rewrite fold_left_app; reflexivity. Qed.
-
 Lemma walk_typed : forall Γ ρ U ch k R Y,
     tele_ass (gu_params U) -> EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> R ρ ρ ->
     (forall args RΔ, List.length args = List.length (gu_params U) ->
