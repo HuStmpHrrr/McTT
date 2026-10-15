@@ -1,0 +1,61 @@
+(* Leibniz equality of the elements of a type [A] of [Type@{u}]: [Id A x y]
+   holds when every predicate of [x] holds of [y].  It is the equality of
+   the inductive types of [Prelude›Data], which, unlike [ℕ], have no
+   equality computed by recursion, and is the equality of levels of
+   [Prelude›Universe›Levels], for any type.  It quantifies over the
+   predicates into [Type@{u}], so it lives one level up.
+
+   A closed proof by [idRefl] normalizes to the identity function on proofs
+   of the predicate. *)
+module Prelude›Logic›Leibniz (u : Level) where
+
+def Id (A : Type@{u}) (x : A) (y : A) : Type@{succl u} ≔
+  ∀ (P : ∀ (z : A) → Type@{u}) (p : P x) → P y
+end
+
+def idRefl (A : Type@{u}) (x : A) : Id A x x ≔
+  λ (P : ∀ (z : A) → Type@{u}) (p : P x) → p
+end
+
+(* Symmetry uses [h] at the predicate [λ z → P z → P x], which is in
+   [Type@{u}] like [P]. *)
+theorem idSym : ∀ (A : Type@{u}) (x : A) (y : A) (h : Id A x y) → Id A y x ≔
+  λ (A : Type@{u}) (x : A) (y : A) (h : Id A x y)
+    (P : ∀ (z : A) → Type@{u}) →
+    h (λ (z : A) → ∀ (q : P z) → P x) (λ (q : P x) → q)
+end
+
+theorem idTrans : ∀ (A : Type@{u}) (x : A) (y : A) (z : A)
+    (hxy : Id A x y) (hyz : Id A y z) → Id A x z ≔
+  λ (A : Type@{u}) (x : A) (y : A) (z : A) (hxy : Id A x y) (hyz : Id A y z)
+    (P : ∀ (w : A) → Type@{u}) (p : P x) →
+    hyz P (hxy P p)
+end
+
+(* Every function respects equality. *)
+theorem idCong : ∀ (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) → B)
+    (x : A) (y : A) (h : Id A x y) → Id B (f x) (f y) ≔
+  λ (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) → B) (x : A) (y : A)
+    (h : Id A x y) (P : ∀ (b : B) → Type@{u}) →
+    h (λ (a : A) → P (f a))
+end
+
+(* Every function of two arguments respects equality in both. *)
+theorem idCongTwo : ∀ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
+    (f : ∀ (a : A) (b : B) → C) (x : A) (y : A) (v : B) (w : B)
+    (hxy : Id A x y) (hvw : Id B v w) → Id C (f x v) (f y w) ≔
+  λ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
+    (f : ∀ (a : A) (b : B) → C) (x : A) (y : A) (v : B) (w : B)
+    (hxy : Id A x y) (hvw : Id B v w) (P : ∀ (c : C) → Type@{u})
+    (p : P (f x v)) →
+    hvw (λ (b : B) → P (f y b)) (hxy (λ (a : A) → P (f a v)) p)
+end
+
+(* Equal elements satisfy the same predicates: a proof of equality is
+   itself the transport. *)
+def idSubst (A : Type@{u}) (P : ∀ (z : A) → Type@{u}) (x : A) (y : A)
+    (h : Id A x y) (px : P x) : P y ≔
+  h P px
+end
+
+end

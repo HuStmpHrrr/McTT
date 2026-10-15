@@ -1,0 +1,59 @@
+(* The booleans, an inductive type with the constructors [tt] and [ff], and
+   their connectives.  The names [true] and [True] are taken: they are the
+   tokens of [⋆] and [⊤].
+
+   Each connective is defined by cases on its first argument, so it computes
+   as soon as that argument is a constructor: [and tt b] is [b], [or ff b]
+   is [b].  The laws are in [Prelude›Data›Bool›Properties]. *)
+module Prelude›Data›Bool where
+
+inductive Bool : Type@0 where
+| tt
+| ff
+end
+
+open Bool export (tt; ff)
+
+def not (b : Bool) : Bool ≔
+  elim b return z . Bool | tt ⇒ ff | ff ⇒ tt end
+end
+
+def and (a : Bool) (b : Bool) : Bool ≔
+  elim a return z . Bool | tt ⇒ b | ff ⇒ ff end
+end
+
+def or (a : Bool) (b : Bool) : Bool ≔
+  elim a return z . Bool | tt ⇒ tt | ff ⇒ b end
+end
+
+(* Exclusive or: [xor a b] is [tt] when exactly one of [a] and [b] is. *)
+def xor (a : Bool) (b : Bool) : Bool ≔
+  elim a return z . Bool | tt ⇒ not b | ff ⇒ b end
+end
+
+(* Boolean equality: [eqb a b] is [tt] when [a] and [b] are the same
+   constructor. *)
+def eqb (a : Bool) (b : Bool) : Bool ≔
+  elim a return z . Bool | tt ⇒ b | ff ⇒ not b end
+end
+
+(* The proposition that a boolean is [tt]: [IsTrue tt] is [⊤] and
+   [IsTrue ff] is [⊥]. *)
+def IsTrue (b : Bool) : Type@0 ≔
+  elim b return z . Type@0 | tt ⇒ ⊤ | ff ⇒ ⊥ end
+end
+
+(* The conditional, into a type of any level [u]. *)
+module Cond (u : Level) where
+
+(* [if A b t e] is [t] when [b] is [tt], and [e] when it is [ff]. *)
+def if (A : Type@{u}) (b : Bool) (t : A) (e : A) : A ≔
+  elim b return z . A | tt ⇒ t | ff ⇒ e end
+end
+
+end
+
+(* The conditional into [Type@0]. *)
+open Cond 0l export (if)
+
+end

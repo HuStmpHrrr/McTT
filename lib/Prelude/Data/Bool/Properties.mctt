@@ -1,0 +1,328 @@
+(* Laws of [Prelude›Data›Bool], stated with the Leibniz equality [Id] of
+   [Prelude›Logic›Leibniz] at [Bool]: negation is an involution, [and] and
+   [or] are commutative, associative and idempotent monoids that distribute
+   over each other, de Morgan's laws, the conditional, [xor], and the
+   correctness of [eqb].
+
+   Each law is proved by cases.  Since every connective computes on its
+   first argument, a law needs cases on that argument only, and on a second
+   one only where it occurs first on the other side (commutativity). *)
+module Prelude›Data›Bool›Properties where
+
+import Prelude›Logic›Leibniz 0l use (Id; idRefl)
+import Prelude›Logic.Negation 1l use (Not)
+import Prelude›Data›Bool use (Bool; tt; ff; not; and; or; xor; eqb; IsTrue)
+open Prelude›Data›Bool.Cond as Cond
+
+(* Negation. *)
+module Negation where
+
+theorem notNot : ∀ (b : Bool) → Id Bool (not (not b)) b ≔
+  λ (b : Bool) →
+    elim b return z . Id Bool (not (not z)) z
+    | tt ⇒ idRefl Bool tt
+    | ff ⇒ idRefl Bool ff
+    end
+end
+
+(* The constructors differ: [IsTrue] holds of [tt] and not of [ff]. *)
+theorem ttNeFf : Not (Id Bool tt ff) ≔
+  λ (h : Id Bool tt ff) → h IsTrue ⋆
+end
+
+(* Negation has no fixed point. *)
+theorem notNeSelf : ∀ (b : Bool) → Not (Id Bool (not b) b) ≔
+  λ (b : Bool) →
+    elim b return z . Not (Id Bool (not z) z)
+    | tt ⇒ λ (h : Id Bool ff tt) → h (λ (z : Bool) → IsTrue (not z)) ⋆
+    | ff ⇒ λ (h : Id Bool tt ff) → h IsTrue ⋆
+    end
+end
+
+end
+
+(* Conjunction: [tt] is its unit, [ff] absorbs. *)
+module Conj where
+
+theorem andTrueRight : ∀ (b : Bool) → Id Bool (and b tt) b ≔
+  λ (b : Bool) →
+    elim b return z . Id Bool (and z tt) z
+    | tt ⇒ idRefl Bool tt
+    | ff ⇒ idRefl Bool ff
+    end
+end
+
+theorem andFalseRight : ∀ (b : Bool) → Id Bool (and b ff) ff ≔
+  λ (b : Bool) →
+    elim b return z . Id Bool (and z ff) ff
+    | tt ⇒ idRefl Bool ff
+    | ff ⇒ idRefl Bool ff
+    end
+end
+
+theorem andComm : ∀ (a : Bool) (b : Bool) → Id Bool (and a b) (and b a) ≔
+  λ (a : Bool) (b : Bool) →
+    elim a return x . Id Bool (and x b) (and b x)
+    | tt ⇒ elim b return y . Id Bool y (and y tt)
+           | tt ⇒ idRefl Bool tt
+           | ff ⇒ idRefl Bool ff
+           end
+    | ff ⇒ elim b return y . Id Bool ff (and y ff)
+           | tt ⇒ idRefl Bool ff
+           | ff ⇒ idRefl Bool ff
+           end
+    end
+end
+
+theorem andAssoc : ∀ (a : Bool) (b : Bool) (c : Bool) →
+    Id Bool (and (and a b) c) (and a (and b c)) ≔
+  λ (a : Bool) (b : Bool) (c : Bool) →
+    elim a return x . Id Bool (and (and x b) c) (and x (and b c))
+    | tt ⇒ idRefl Bool (and b c)
+    | ff ⇒ idRefl Bool ff
+    end
+end
+
+theorem andIdem : ∀ (b : Bool) → Id Bool (and b b) b ≔
+  λ (b : Bool) →
+    elim b return z . Id Bool (and z z) z
+    | tt ⇒ idRefl Bool tt
+    | ff ⇒ idRefl Bool ff
+    end
+end
+
+(* A boolean and its negation are never both [tt]. *)
+theorem andNot : ∀ (b : Bool) → Id Bool (and b (not b)) ff ≔
+  λ (b : Bool) →
+    elim b return z . Id Bool (and z (not z)) ff
+    | tt ⇒ idRefl Bool ff
+    | ff ⇒ idRefl Bool ff
+    end
+end
+
+end
+
+(* Disjunction: [ff] is its unit, [tt] absorbs. *)
+module Disj where
+
+theorem orFalseRight : ∀ (b : Bool) → Id Bool (or b ff) b ≔
+  λ (b : Bool) →
+    elim b return z . Id Bool (or z ff) z
+    | tt ⇒ idRefl Bool tt
+    | ff ⇒ idRefl Bool ff
+    end
+end
+
+theorem orTrueRight : ∀ (b : Bool) → Id Bool (or b tt) tt ≔
+  λ (b : Bool) →
+    elim b return z . Id Bool (or z tt) tt
+    | tt ⇒ idRefl Bool tt
+    | ff ⇒ idRefl Bool tt
+    end
+end
+
+theorem orComm : ∀ (a : Bool) (b : Bool) → Id Bool (or a b) (or b a) ≔
+  λ (a : Bool) (b : Bool) →
+    elim a return x . Id Bool (or x b) (or b x)
+    | tt ⇒ elim b return y . Id Bool tt (or y tt)
+           | tt ⇒ idRefl Bool tt
+           | ff ⇒ idRefl Bool tt
+           end
+    | ff ⇒ elim b return y . Id Bool y (or y ff)
+           | tt ⇒ idRefl Bool tt
+           | ff ⇒ idRefl Bool ff
+           end
+    end
+end
+
+theorem orAssoc : ∀ (a : Bool) (b : Bool) (c : Bool) →
+    Id Bool (or (or a b) c) (or a (or b c)) ≔
+  λ (a : Bool) (b : Bool) (c : Bool) →
+    elim a return x . Id Bool (or (or x b) c) (or x (or b c))
+    | tt ⇒ idRefl Bool tt
+    | ff ⇒ idRefl Bool (or b c)
+    end
+end
+
+theorem orIdem : ∀ (b : Bool) → Id Bool (or b b) b ≔
+  λ (b : Bool) →
+    elim b return z . Id Bool (or z z) z
+    | tt ⇒ idRefl Bool tt
+    | ff ⇒ idRefl Bool ff
+    end
+end
+
+(* Excluded middle: a boolean or its negation is [tt]. *)
+theorem orNot : ∀ (b : Bool) → Id Bool (or b (not b)) tt ≔
+  λ (b : Bool) →
+    elim b return z . Id Bool (or z (not z)) tt
+    | tt ⇒ idRefl Bool tt
+    | ff ⇒ idRefl Bool tt
+    end
+end
+
+end
+
+(* De Morgan's laws and the distributive laws. *)
+module DeMorgan where
+
+theorem notAnd : ∀ (a : Bool) (b : Bool) →
+    Id Bool (not (and a b)) (or (not a) (not b)) ≔
+  λ (a : Bool) (b : Bool) →
+    elim a return x . Id Bool (not (and x b)) (or (not x) (not b))
+    | tt ⇒ idRefl Bool (not b)
+    | ff ⇒ idRefl Bool tt
+    end
+end
+
+theorem notOr : ∀ (a : Bool) (b : Bool) →
+    Id Bool (not (or a b)) (and (not a) (not b)) ≔
+  λ (a : Bool) (b : Bool) →
+    elim a return x . Id Bool (not (or x b)) (and (not x) (not b))
+    | tt ⇒ idRefl Bool ff
+    | ff ⇒ idRefl Bool (not b)
+    end
+end
+
+theorem andOrDistrib : ∀ (a : Bool) (b : Bool) (c : Bool) →
+    Id Bool (and a (or b c)) (or (and a b) (and a c)) ≔
+  λ (a : Bool) (b : Bool) (c : Bool) →
+    elim a return x . Id Bool (and x (or b c)) (or (and x b) (and x c))
+    | tt ⇒ idRefl Bool (or b c)
+    | ff ⇒ idRefl Bool ff
+    end
+end
+
+theorem orAndDistrib : ∀ (a : Bool) (b : Bool) (c : Bool) →
+    Id Bool (or a (and b c)) (and (or a b) (or a c)) ≔
+  λ (a : Bool) (b : Bool) (c : Bool) →
+    elim a return x . Id Bool (or x (and b c)) (and (or x b) (or x c))
+    | tt ⇒ idRefl Bool tt
+    | ff ⇒ idRefl Bool (and b c)
+    end
+end
+
+end
+
+(* Exclusive or. *)
+module Xor where
+
+theorem xorFalseRight : ∀ (b : Bool) → Id Bool (xor b ff) b ≔
+  λ (b : Bool) →
+    elim b return z . Id Bool (xor z ff) z
+    | tt ⇒ idRefl Bool tt
+    | ff ⇒ idRefl Bool ff
+    end
+end
+
+theorem xorSelf : ∀ (b : Bool) → Id Bool (xor b b) ff ≔
+  λ (b : Bool) →
+    elim b return z . Id Bool (xor z z) ff
+    | tt ⇒ idRefl Bool ff
+    | ff ⇒ idRefl Bool ff
+    end
+end
+
+theorem xorComm : ∀ (a : Bool) (b : Bool) → Id Bool (xor a b) (xor b a) ≔
+  λ (a : Bool) (b : Bool) →
+    elim a return x . Id Bool (xor x b) (xor b x)
+    | tt ⇒ elim b return y . Id Bool (not y) (xor y tt)
+           | tt ⇒ idRefl Bool ff
+           | ff ⇒ idRefl Bool tt
+           end
+    | ff ⇒ elim b return y . Id Bool y (xor y ff)
+           | tt ⇒ idRefl Bool tt
+           | ff ⇒ idRefl Bool ff
+           end
+    end
+end
+
+(* [xor a b] is [tt] when [a] and [b] differ: it is the negation of
+   [eqb]. *)
+theorem xorNotEqb : ∀ (a : Bool) (b : Bool) →
+    Id Bool (xor a b) (not (eqb a b)) ≔
+  λ (a : Bool) (b : Bool) →
+    elim a return x . Id Bool (xor x b) (not (eqb x b))
+    | tt ⇒ idRefl Bool (not b)
+    | ff ⇒ elim b return y . Id Bool y (not (not y))
+           | tt ⇒ idRefl Bool tt
+           | ff ⇒ idRefl Bool ff
+           end
+    end
+end
+
+end
+
+(* The conditional, at every level [u]. *)
+module Conditional (u : Level) where
+
+import Prelude›Logic›Leibniz u as L
+
+(* A conditional with equal branches is that branch. *)
+theorem ifSame : ∀ (A : Type@{u}) (b : Bool) (t : A) →
+    L.Id A (Cond.if u A b t t) t ≔
+  λ (A : Type@{u}) (b : Bool) (t : A) →
+    elim b return z . L.Id A (Cond.if u A z t t) t
+    | tt ⇒ L.idRefl A t
+    | ff ⇒ L.idRefl A t
+    end
+end
+
+(* Negating the condition swaps the branches. *)
+theorem ifNot : ∀ (A : Type@{u}) (b : Bool) (t : A) (e : A) →
+    L.Id A (Cond.if u A (not b) t e) (Cond.if u A b e t) ≔
+  λ (A : Type@{u}) (b : Bool) (t : A) (e : A) →
+    elim b return z . L.Id A (Cond.if u A (not z) t e) (Cond.if u A z e t)
+    | tt ⇒ L.idRefl A e
+    | ff ⇒ L.idRefl A t
+    end
+end
+
+(* A conditional on a boolean, with the constructors as branches, is that
+   boolean. *)
+theorem ifEta : ∀ (b : Bool) → L.Id Bool (Cond.if u Bool b tt ff) b ≔
+  λ (b : Bool) →
+    elim b return z . L.Id Bool (Cond.if u Bool z tt ff) z
+    | tt ⇒ L.idRefl Bool tt
+    | ff ⇒ L.idRefl Bool ff
+    end
+end
+
+end
+
+(* [eqb] decides equality: it is [tt] exactly on equal booleans. *)
+module Decide where
+
+theorem eqbRefl : ∀ (b : Bool) → IsTrue (eqb b b) ≔
+  λ (b : Bool) →
+    elim b return z . IsTrue (eqb z z) | tt ⇒ ⋆ | ff ⇒ ⋆ end
+end
+
+(* From [IsTrue (eqb a b)] to [Id Bool a b]; the cases where [a] and [b]
+   differ have a hypothesis of type [⊥]. *)
+theorem eqbSound : ∀ (a : Bool) (b : Bool) (h : IsTrue (eqb a b)) →
+    Id Bool a b ≔
+  λ (a : Bool) (b : Bool) →
+    elim a return x . (∀ (h : IsTrue (eqb x b)) → Id Bool x b)
+    | tt ⇒ elim b return y . (∀ (h : IsTrue y) → Id Bool tt y)
+           | tt ⇒ λ (h : ⊤) → idRefl Bool tt
+           | ff ⇒ λ (h : ⊥) → exfalso h return w . Id Bool tt ff
+           end
+    | ff ⇒ elim b return y . (∀ (h : IsTrue (not y)) → Id Bool ff y)
+           | tt ⇒ λ (h : ⊥) → exfalso h return w . Id Bool ff tt
+           | ff ⇒ λ (h : ⊤) → idRefl Bool ff
+           end
+    end
+end
+
+(* From [Id Bool a b] to [IsTrue (eqb a b)], by transport from
+   [eqbRefl a]. *)
+theorem eqbComplete : ∀ (a : Bool) (b : Bool) (h : Id Bool a b) →
+    IsTrue (eqb a b) ≔
+  λ (a : Bool) (b : Bool) (h : Id Bool a b) →
+    h (λ (z : Bool) → IsTrue (eqb a z)) (eqbRefl a)
+end
+
+end
+
+end
