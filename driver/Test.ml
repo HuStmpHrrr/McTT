@@ -3168,6 +3168,35 @@ let%expect_test "mctt-doc: links" =
     x line 47: Tutorial#l20
     |}]
 
+let%expect_test "mctt-doc: ℕ links to the type bound as the natural numbers" =
+  let lib = Lazy.force doc_lib in
+  let kinds = Doc.anchor_kinds lib in
+  (* Every [ℕ] token of lib: each links to [Nat], the type
+     Prelude::Builtin::Nat binds, through the imports of its unit. *)
+  let link = "<a class=\"ty\" href=\"Prelude.Builtin.Nat.html#Nat\">ℕ</a>" in
+  let span = "<span class=\"ty\">ℕ</span>" in
+  let links = ref 0 and spans = ref 0 and others = ref 0 in
+  List.iter (fun u ->
+      let page = Doc.render_unit lib kinds u in
+      links := !links + doc_count link page;
+      spans := !spans + doc_count span page;
+      others := !others + doc_count "ℕ</a>" page - doc_count link page) lib.Doc.units;
+  Printf.printf "%d links to Nat, %d other links, %d without a link\n" !links !others !spans;
+  (* A unit that binds none: the checker rejects it, and [ℕ] has no link. *)
+  let items = Hashtbl.create 4 in
+  let u = Doc.walk [ "NoNat" ] "module NoNat where\ndef f (n : ℕ) : ℕ ≔ n end\nend\n" items in
+  let thetas = Hashtbl.create 4 and outputs = Hashtbl.create 4 and nats = Hashtbl.create 4 in
+  Doc.check_units "../examples" [ u ] thetas outputs nats;
+  let lib' = { Doc.root = "../examples"; units = [ u ]; failed = []; thetas; outputs; nats; items } in
+  List.iter print_endline (Doc.problems lib');
+  let page = Doc.render_unit lib' (Doc.anchor_kinds lib') u in
+  Printf.printf "%d links, %d without a link\n" (doc_count "ℕ</a>" page) (doc_count span page);
+  [%expect {|
+    2777 links to Nat, 0 other links, 0 without a link
+    NoNat: not checked
+    0 links, 2 without a link
+    |}]
+
 (* The universe syntax: examples/Universes.mctt, and the spellings it does
    not use, as a second unit. *)
 let doc_univ = lazy (
@@ -3177,9 +3206,9 @@ let doc_univ = lazy (
                    eval Type@3l\neval Type@{ω}\neval Type@{omega+1}\neval Type@{3L}\neval f 0l\nend\n" in
   let us = [ Doc.walk [ "Universes" ] (Doc.read_file "../examples/Universes.mctt") items;
              Doc.walk [ "Spellings" ] spellings items ] in
-  let thetas = Hashtbl.create 4 and outputs = Hashtbl.create 4 in
-  Doc.check_units ~extra_roots:lib_root "../examples" us thetas outputs;
-  { Doc.root = "../examples"; units = us; failed = []; thetas; outputs; items })
+  let thetas = Hashtbl.create 4 and outputs = Hashtbl.create 4 and nats = Hashtbl.create 4 in
+  Doc.check_units ~extra_roots:lib_root "../examples" us thetas outputs nats;
+  { Doc.root = "../examples"; units = us; failed = []; thetas; outputs; nats; items })
 
 let%expect_test "mctt-doc: universes line up, link, and are highlighted" =
   let lib = Lazy.force doc_univ in

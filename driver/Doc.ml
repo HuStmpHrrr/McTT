@@ -10,7 +10,10 @@
      way and in the same order;
    - a member chain, [M.x] or [A.B.x], through aliases, opens and applied
      modules and across units, is resolved by the core's [def_site]
-     (Extraction/Privacy.v), over the global context the checker built.
+     (Extraction/Privacy.v), over the global context the checker built;
+   - the token [ℕ] is the type bound as the natural numbers in the
+     checker's run of the unit ([check_units]), a member resolved by
+     [def_site] as any other.
 
    The [Cst] has no positions.  The walk visits the names of a [Cst] in
    source order and pairs each with the next VAR token, checking that the
@@ -529,20 +532,30 @@ type lib = {
   failed : (string list * string) list;         (* files that do not line up *)
   thetas : (string list, S.gdeps) Hashtbl.t;    (* each checked unit's global context *)
   outputs : (string list, string list) Hashtbl.t;  (* each checked unit's evals, as [mctt] prints them *)
+  nats : (string list, S.qname) Hashtbl.t;      (* the type each checked unit has bound as [ℕ] *)
   items : (string list * string list, link) Hashtbl.t;
 }
 
-(* The global context of every unit and the output of its evals, from the
-   checker: each unit runs as its own program, as [mctt] runs it.  The log
-   of a run holds only the evals of the program run, so a unit another one
-   imports needs a run of its own. *)
-let check_units ?(extra_roots = []) root (us : unit_info list) thetas outputs =
+(* The global context of every unit, the output of its evals and the type
+   it binds as the natural numbers, from the checker: each unit runs as its
+   own program, as [mctt] runs it.  The log of a run holds only the evals of
+   the program run, so a unit another one imports needs a run of its own.
+
+   The bindings are those the run ends with: its own [builtin] commands and
+   those of the units it imports, merged ([Builtin.bt_merge]).  They are
+   those of every point of the unit at which [ℕ] occurs: a run only gains
+   bindings and never rebinds one, and a unit using [ℕ] where nothing is
+   bound is rejected. *)
+let check_units ?(extra_roots = []) root (us : unit_info list) thetas outputs nats =
   List.iter (fun u ->
       let r = Ep.main (Main.load_path_in (root :: extra_roots)) Main.read_unit Main.parser_log_fuel (buf_of u.u_toks 0) in
       match r, PrettyPrinter.eval_outputs r with
-      | Ep.AllGood (_, _, th, gu, _), Some out ->
+      | Ep.AllGood (_, bt, th, gu, _), Some out ->
           Hashtbl.replace thetas u.u_path ((u.u_path, gu) :: th);
-          Hashtbl.replace outputs u.u_path out
+          Hashtbl.replace outputs u.u_path out;
+          (* [builtins] is a record of one field, [bt_nat], which extraction
+             leaves unboxed: the record is the field. *)
+          Option.iter (Hashtbl.replace nats u.u_path) (bt : S.qname option)
       | _ -> ()) us
 
 let load ?(check = true) ?(extra_roots = []) root : lib =
@@ -558,9 +571,9 @@ let load ?(check = true) ?(extra_roots = []) root : lib =
         | exception Lexer.Error m -> (us, (file, m) :: fs)) ([], []) files
   in
   let units = List.rev units and failed = List.rev failed in
-  let thetas = Hashtbl.create 64 and outputs = Hashtbl.create 64 in
-  if check then check_units ~extra_roots root units thetas outputs;
-  { root; units; failed; thetas; outputs; items }
+  let thetas = Hashtbl.create 64 and outputs = Hashtbl.create 64 and nats = Hashtbl.create 64 in
+  if check then check_units ~extra_roots root units thetas outputs nats;
+  { root; units; failed; thetas; outputs; nats; items }
 
 (* ------------------------------------------------------------------ *)
 (* Resolution *)
@@ -582,6 +595,14 @@ let rec resolve lib depth (l : link) : site option =
               | Some l' when depth < 100 ->
                   (match resolve lib (depth + 1) l' with Some s -> Some s | None -> Some here)
               | _ -> Some here
+
+(* Where [ℕ] links to in the unit [u]: the type bound as the natural
+   numbers, a member of the global context like any other; nothing if the
+   unit binds none. *)
+let nat_site lib (u : string list) : site option =
+  match Hashtbl.find_opt lib.nats u with
+  | Some p -> resolve lib 0 (Member (u, S.Coq_me_unit p.S.q_unit, p.S.q_chain))
+  | None -> None
 
 type stats = { names : int; linked : int; binders : int; unresolved : (string list * string * int) list;
                dangling : (string list * string * site) list }
@@ -630,7 +651,12 @@ let problems ?(resolve = true) (lib : lib) : string list =
            | _ -> None) lib.units
        @ List.map (fun (u, x, l) -> Printf.sprintf "%s: %s, line %d, not resolved" (unit_name u) x l) s.unresolved
        @ List.map (fun (u, x, t) -> Printf.sprintf "%s: %s links to a missing anchor %s#%s" (unit_name u) x
-                      (unit_name t.s_unit) t.s_anchor) s.dangling)
+                      (unit_name t.s_unit) t.s_anchor) s.dangling
+       (* A unit that binds [ℕ] and uses it: the type bound has a site. *)
+       @ List.filter_map (fun u ->
+           if Hashtbl.mem lib.nats u.u_path && nat_site lib u.u_path = None
+              && Array.exists (fun t -> match t.t with P.NAT _ -> true | _ -> false) u.u_toks
+           then Some (Printf.sprintf "%s: \u{2115} not resolved" (unit_name u.u_path)) else None) lib.units)
 
 (* Where the [n]-th occurrence of the name [x] in the unit [fq] links to. *)
 let link_of lib fq x n : string =
@@ -763,6 +789,7 @@ let render_unit lib kinds (u : unit_info) : string =
   let src = u.u_src in
   let b = Buffer.create (4 * String.length src) in
   let var_ix = Hashtbl.create 64 in
+  let nat = nat_site lib u.u_path in
   Array.iteri (fun i t -> Hashtbl.replace var_ix t i) u.u_vars;
   let evs =
     List.map (fun c -> (fst c, `C c)) u.u_comments
@@ -835,6 +862,8 @@ let render_unit lib kinds (u : unit_info) : string =
                (match target with
                 | Some s -> Printf.bprintf b "<a class=\"%s\"%s href=\"%s\">%s</a>" cls id (esc (href u.u_path s)) txt
                 | None -> Printf.bprintf b "<span class=\"%s\"%s>%s</span>" cls id txt)
+           | P.NAT _ when nat <> None ->
+               Printf.bprintf b "<a class=\"ty\" href=\"%s\">%s</a>" (esc (href u.u_path (Option.get nat))) txt
            | tk when is_num tk -> Printf.bprintf b "<span class=\"num\">%s</span>" txt
            | tk when is_type_kw tk -> Printf.bprintf b "<span class=\"ty\">%s</span>" txt
            | tk when is_keyword tk -> Printf.bprintf b "<span class=\"kw\">%s</span>" txt
@@ -873,7 +902,7 @@ pre.verb{font-family:Menlo,Consolas,monospace;font-size:.88em;background:#fafafa
 div.doc{margin:1em 0}div.doc code{font-family:Menlo,Consolas,monospace;font-size:.9em;background:#f1f1ee;padding:0 .2em}
 .kw{color:#8a2be2;font-weight:600}.ty{color:#0b7a75}.num{color:#b35c00}.sym{color:#777}
 .com{color:#6a737d;font-style:italic}
-a.def,a.mod,a.unit,a.var{text-decoration:none}a:hover{text-decoration:underline}
+a.def,a.mod,a.unit,a.var,a.ty{text-decoration:none}a:hover{text-decoration:underline}
 .def{color:#1f4fa3}.mod{color:#a3341f}.unit{color:#a3341f}.var{color:#333}.free{color:#c00}
 .bind.def,.bind.mod{font-weight:700}
 :target{background:#fff3b0}
