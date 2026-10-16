@@ -39,15 +39,15 @@
   <span class="kw">end</span>
 <span class="kw">end</span>
 
-<span class="kw">def</span> <span class="def bind" id="toNat">toNat</span> <span class="sym">(</span><span class="var bind" id="l65">x</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a><span class="sym">)</span> <span class="sym">:</span> <span class="ty">ℕ</span> <span class="sym">≔</span>
-  <span class="kw">elim</span> <a class="var" href="#l65">x</a> <span class="kw">return</span> <span class="var bind" id="l68">z</span> <span class="sym">.</span> <span class="ty">ℕ</span>
+<span class="kw">def</span> <span class="def bind" id="toNat">toNat</span> <span class="sym">(</span><span class="var bind" id="l65">x</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a><span class="sym">)</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l65">x</a> <span class="kw">return</span> <span class="var bind" id="l68">z</span> <span class="sym">.</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a>
   <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <span class="num">0</span>
   <span class="sym">|</span> <span class="free">doubleSucc</span> <span class="var bind" id="l71">y</span><span class="sym">,</span> <span class="var bind" id="l72">r</span> <span class="sym">⇒</span> <a class="mod" href="#P">P</a><span class="sym">.</span><a class="def" href="Prelude.Arith.Parity.html#double">double</a> <span class="sym">(</span><a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <a class="var" href="#l72">r</a><span class="sym">)</span>
   <span class="sym">|</span> <span class="free">succDouble</span> <span class="var bind" id="l78">y</span><span class="sym">,</span> <span class="var bind" id="l79">r</span> <span class="sym">⇒</span> <a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <span class="sym">(</span><a class="mod" href="#P">P</a><span class="sym">.</span><a class="def" href="Prelude.Arith.Parity.html#double">double</a> <a class="var" href="#l79">r</a><span class="sym">)</span>
   <span class="kw">end</span>
 <span class="kw">end</span>
 
-<span class="kw">def</span> <span class="def bind" id="fromNat">fromNat</span> <span class="sym">(</span><span class="var bind" id="l85">n</span> <span class="sym">:</span> <span class="ty">ℕ</span><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a> <span class="sym">≔</span>
+<span class="kw">def</span> <span class="def bind" id="fromNat">fromNat</span> <span class="sym">(</span><span class="var bind" id="l85">n</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Bin">Bin</a> <span class="sym">≔</span>
   <span class="kw">elim</span> <a class="var" href="#l85">n</a> <span class="kw">return</span> <span class="var bind" id="l88">z</span> <span class="sym">.</span> <a class="mod" href="#Bin">Bin</a>
   <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <a class="mod" href="#Bin">Bin</a><span class="sym">.</span><a class="def" href="#Bin.zero">zero</a>
   <span class="sym">|</span> <span class="free">succ</span> <span class="var bind" id="l94">p</span><span class="sym">,</span> <span class="var bind" id="l95">r</span> <span class="sym">⇒</span> <a class="def" href="#suc">suc</a> <a class="var" href="#l95">r</a>

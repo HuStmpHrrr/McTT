@@ -6,7 +6,7 @@ pre.verb{font-family:Menlo,Consolas,monospace;font-size:.88em;background:#fafafa
 div.doc{margin:1em 0}div.doc code{font-family:Menlo,Consolas,monospace;font-size:.9em;background:#f1f1ee;padding:0 .2em}
 .kw{color:#8a2be2;font-weight:600}.ty{color:#0b7a75}.num{color:#b35c00}.sym{color:#777}
 .com{color:#6a737d;font-style:italic}
-a.def,a.mod,a.unit,a.var{text-decoration:none}a:hover{text-decoration:underline}
+a.def,a.mod,a.unit,a.var,a.ty{text-decoration:none}a:hover{text-decoration:underline}
 .def{color:#1f4fa3}.mod{color:#a3341f}.unit{color:#a3341f}.var{color:#333}.free{color:#c00}
 .bind.def,.bind.mod{font-weight:700}
 :target{background:#fff3b0}

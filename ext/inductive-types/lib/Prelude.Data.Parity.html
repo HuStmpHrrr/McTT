@@ -31,7 +31,7 @@
 </pre>
 <div class="doc"><p>The parity of a number: each successor flips it.</p>
 </div>
-<pre class="code"><span class="kw">def</span> <span class="def bind" id="parity">parity</span> <span class="sym">(</span><span class="var bind" id="l57">n</span> <span class="sym">:</span> <span class="ty">ℕ</span><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a> <span class="sym">≔</span>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="parity">parity</span> <span class="sym">(</span><span class="var bind" id="l57">n</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Parity">Parity</a> <span class="sym">≔</span>
   <span class="kw">elim</span> <a class="var" href="#l57">n</a> <span class="kw">return</span> <span class="var bind" id="l60">z</span> <span class="sym">.</span> <a class="mod" href="#Parity">Parity</a> <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <a class="def" href="#Parity.even">even</a> <span class="sym">|</span> <span class="free">succ</span> <span class="var bind" id="l65">k</span><span class="sym">,</span> <span class="var bind" id="l66">r</span> <span class="sym">⇒</span> <a class="def" href="#inv">inv</a> <a class="var" href="#l66">r</a> <span class="kw">end</span>
 <span class="kw">end</span>
 </pre>

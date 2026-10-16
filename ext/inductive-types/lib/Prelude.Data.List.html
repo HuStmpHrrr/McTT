@@ -20,8 +20,8 @@
 
 <span class="kw">module</span> <span class="mod bind" id="Ops">Ops</span> <span class="sym">(</span><span class="var bind" id="l28">u</span> <span class="sym">:</span> <span class="ty">Level</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l29">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l28">u</a><span class="sym">}</span><span class="sym">)</span> <span class="kw">where</span>
 
-<span class="kw">def</span> <span class="def bind" id="Ops.length">length</span> <span class="sym">(</span><span class="var bind" id="l32">l</span> <span class="sym">:</span> <a class="mod" href="#List">List</a> <a class="var" href="#l28">u</a> <a class="var" href="#l29">A</a><span class="sym">)</span> <span class="sym">:</span> <span class="ty">ℕ</span> <span class="sym">≔</span>
-  <span class="kw">elim</span> <a class="var" href="#l32">l</a> <span class="kw">return</span> <span class="var bind" id="l37">z</span> <span class="sym">.</span> <span class="ty">ℕ</span>
+<span class="kw">def</span> <span class="def bind" id="Ops.length">length</span> <span class="sym">(</span><span class="var bind" id="l32">l</span> <span class="sym">:</span> <a class="mod" href="#List">List</a> <a class="var" href="#l28">u</a> <a class="var" href="#l29">A</a><span class="sym">)</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l32">l</a> <span class="kw">return</span> <span class="var bind" id="l37">z</span> <span class="sym">.</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a>
   <span class="sym">|</span> <span class="free">nil</span> <span class="sym">⇒</span> <span class="num">0</span>
   <span class="sym">|</span> <span class="free">cons</span> <span class="var bind" id="l40">x</span> <span class="var bind" id="l41">xs</span><span class="sym">,</span> <span class="var bind" id="l42">r</span> <span class="sym">⇒</span> <a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <a class="var" href="#l42">r</a>
   <span class="kw">end</span>
@@ -66,8 +66,8 @@
 </pre>
 <div class="doc"><p>The sum of a list of numbers.</p>
 </div>
-<pre class="code"><span class="kw">def</span> <span class="def bind" id="sum">sum</span> <span class="sym">(</span><span class="var bind" id="l165">l</span> <span class="sym">:</span> <a class="mod" href="#List">List</a> <span class="num">0l</span> <span class="ty">ℕ</span><span class="sym">)</span> <span class="sym">:</span> <span class="ty">ℕ</span> <span class="sym">≔</span>
-  <span class="kw">elim</span> <a class="var" href="#l165">l</a> <span class="kw">return</span> <span class="var bind" id="l168">z</span> <span class="sym">.</span> <span class="ty">ℕ</span>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="sum">sum</span> <span class="sym">(</span><span class="var bind" id="l165">l</span> <span class="sym">:</span> <a class="mod" href="#List">List</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l165">l</a> <span class="kw">return</span> <span class="var bind" id="l168">z</span> <span class="sym">.</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a>
   <span class="sym">|</span> <span class="free">nil</span> <span class="sym">⇒</span> <span class="num">0</span>
   <span class="sym">|</span> <span class="free">cons</span> <span class="var bind" id="l171">x</span> <span class="var bind" id="l172">xs</span><span class="sym">,</span> <span class="var bind" id="l173">r</span> <span class="sym">⇒</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <a class="var" href="#l171">x</a> <a class="var" href="#l173">r</a>
   <span class="kw">end</span>
