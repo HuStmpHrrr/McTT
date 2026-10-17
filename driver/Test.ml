@@ -3074,7 +3074,6 @@ let%expect_test "mctt-doc: the contents nest a unit's modules, inductives and ex
       def map #Ops.map
       def foldr #Ops.foldr
       def reverse #Ops.reverse
-    def sum #sum
     |}]
 
 let%expect_test "mctt-doc: a contents entry with no anchor, and an anchor declared twice, are reported" =

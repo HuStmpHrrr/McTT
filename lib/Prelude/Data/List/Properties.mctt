@@ -1,35 +1,33 @@
-(* Laws of [Prelude›Data›List], at every level [u].  Equalities of lists,
-   and of other values of [Type@{u}], are the Leibniz equality of
-   [Prelude›Logic›Leibniz]; equalities of numbers ([length], [sum]) are
-   [Prelude›Arith›Equality].
+(* Laws of [Prelude›Data›List] over a fixed element type [A] of
+   [Type@{u}].  Equalities of lists, and of other values of [Type@{u}],
+   are the Leibniz equality of [Prelude›Logic›Leibniz]; equalities of
+   lengths are [Prelude›Arith›Equality].
 
    [append] is a monoid with unit [nil], and [length] takes it to [plus];
    [map] is a functor, keeps the length and distributes over [append];
    [foldr] over [append] folds the second list first; [reverse] turns
-   [append] around, is an involution and keeps the length; [sum] takes
-   [append] to [plus] and is invariant under [reverse].
+   [append] around, is an involution and keeps the length.  The laws of
+   [sum] are in [Prelude›Data›List›Nat›Properties].
 
    Each law is proved by induction on a list, so its step case is a
    congruence: through [cons x] for lists, through [succ] (by conversion)
-   or [plus x] for numbers. *)
-module Prelude›Data›List›Properties where
+   for lengths. *)
+module Prelude›Data›List›Properties (u : Level) (A : Type@{u}) where
 
 import Prelude›Builtin›Nat use (succ)
-import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
+import Prelude›Arith›Equality use (Eq; refl; trans)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusIdentityRight; plusSucc)
-open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc)
-import Prelude›Data›List use (List; sum)
+import Prelude›Data›List use (List)
 open Prelude›Data›List.Ops as Ops
-
-(* Concatenation and length. *)
-module Append (u : Level) (A : Type@{u}) where
-
-import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
+import Prelude›Logic›Leibniz u use (Id; idRefl; idSym; idTrans; idCong)
 
 private inductive L ≔ List u A
 
 private module Op ≔ Ops u A
+
+(* Concatenation and length. *)
+module Append where
 
 (* [nil] is a right unit; it is a left unit by unfolding. *)
 theorem appendNil : ∀ (l : L) → Id L (Op.append l L.nil) l ≔
@@ -67,13 +65,7 @@ end
 end
 
 (* [map]: the functor laws, length and concatenation. *)
-module Maps (u : Level) (A : Type@{u}) where
-
-import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
-
-private inductive L ≔ List u A
-
-private module Op ≔ Ops u A
+module Maps where
 
 theorem mapId : ∀ (l : L) → Id L (Op.map A (λ (x : A) → x) l) l ≔
   λ (l : L) →
@@ -127,13 +119,7 @@ end
 end
 
 (* [foldr]. *)
-module Folds (u : Level) (A : Type@{u}) where
-
-import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
-
-private inductive L ≔ List u A
-
-private module Op ≔ Ops u A
+module Folds where
 
 (* Folding a concatenation folds the second list, then the first from
    that result. *)
@@ -185,16 +171,10 @@ end
 end
 
 (* [reverse]. *)
-module Reverse (u : Level) (A : Type@{u}) where
+module Reverse where
 
-import Prelude›Logic›Leibniz u use (Id; idRefl; idSym; idTrans; idCong)
-
-private inductive L ≔ List u A
-
-private module Op ≔ Ops u A
-
-open Append u A use (appendNil; appendAssoc; lengthAppend)
-open Maps u A use (mapAppend)
+open Append use (appendNil; appendAssoc; lengthAppend)
+open Maps use (mapAppend)
 
 (* The one-element list. *)
 private def one (x : A) : L ≔ L.cons x L.nil end
@@ -279,54 +259,6 @@ theorem mapReverse : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (l : L) →
              (λ (w : List u B) →
                 Ops.append u B w (List.cons u B (f x) (List.nil u B)))
              (Op.map B f (Op.reverse xs)) (Ops.reverse u B (Op.map B f xs)) ih)
-    end
-end
-
-end
-
-(* Sums of lists of numbers. *)
-module Sums where
-
-private inductive NL ≔ List 0l ℕ
-
-private module Op ≔ Ops 0l ℕ
-
-theorem sumAppend : ∀ (l : NL) (m : NL) →
-    Eq (sum (Op.append l m)) (plus (sum l) (sum m)) ≔
-  λ (l : NL) (m : NL) →
-    elim l return z . Eq (sum (Op.append z m)) (plus (sum z) (sum m))
-    | nil ⇒ refl (sum m)
-    | cons x xs, ih ⇒
-        trans (plus x (sum (Op.append xs m)))
-          (plus x (plus (sum xs) (sum m)))
-          (plus (plus x (sum xs)) (sum m))
-          (cong (λ (y : ℕ) → plus x y) (sum (Op.append xs m))
-             (plus (sum xs) (sum m)) ih)
-          (sym (plus (plus x (sum xs)) (sum m))
-             (plus x (plus (sum xs) (sum m)))
-             (plusAssoc x (sum xs) (sum m)))
-    end
-end
-
-(* In the step, [sum (append (reverse xs) [x])] is
-   [plus (sum (reverse xs)) (plus x 0)]: commute, reassociate, and use the
-   hypothesis under [plus x]. *)
-theorem sumReverse : ∀ (l : NL) → Eq (sum (Op.reverse l)) (sum l) ≔
-  λ (l : NL) →
-    elim l return z . Eq (sum (Op.reverse z)) (sum z)
-    | nil ⇒ ⋆
-    | cons x xs, ih ⇒
-        let r : ℕ ≔ sum (Op.reverse xs) in
-        trans (sum (Op.append (Op.reverse xs) (NL.cons x NL.nil)))
-          (plus r (plus x 0))
-          (plus x (sum xs))
-          (sumAppend (Op.reverse xs) (NL.cons x NL.nil))
-          (trans (plus r (plus x 0)) (plus (plus x 0) r) (plus x (sum xs))
-             (plusComm r (plus x 0))
-             (trans (plus (plus x 0) r) (plus x r) (plus x (sum xs))
-                (plusAssoc x 0 r)
-                (cong (λ (y : ℕ) → plus x y) r (sum xs) ih)))
-        end
     end
 end
 

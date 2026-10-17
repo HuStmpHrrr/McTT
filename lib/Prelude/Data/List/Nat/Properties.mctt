@@ -1,0 +1,62 @@
+(* Laws of [Prelude›Data›List›Nat], stated with [Prelude›Arith›Equality]:
+   [sum] takes [append] to [plus] and is invariant under [reverse].  Each is
+   proved by induction on a list, with a step case through [plus x]. *)
+module Prelude›Data›List›Nat›Properties where
+
+import Prelude›Builtin›Nat
+import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc)
+import Prelude›Data›List use (List)
+open Prelude›Data›List.Ops as Ops
+import Prelude›Data›List›Nat use (sum)
+
+private inductive NL ≔ List 0l ℕ
+
+private module Op ≔ Ops 0l ℕ
+
+(* Sums of concatenations and reversals. *)
+module Sums where
+
+theorem sumAppend : ∀ (l : NL) (m : NL) →
+    Eq (sum (Op.append l m)) (plus (sum l) (sum m)) ≔
+  λ (l : NL) (m : NL) →
+    elim l return z . Eq (sum (Op.append z m)) (plus (sum z) (sum m))
+    | nil ⇒ refl (sum m)
+    | cons x xs, ih ⇒
+        trans (plus x (sum (Op.append xs m)))
+          (plus x (plus (sum xs) (sum m)))
+          (plus (plus x (sum xs)) (sum m))
+          (cong (λ (y : ℕ) → plus x y) (sum (Op.append xs m))
+             (plus (sum xs) (sum m)) ih)
+          (sym (plus (plus x (sum xs)) (sum m))
+             (plus x (plus (sum xs) (sum m)))
+             (plusAssoc x (sum xs) (sum m)))
+    end
+end
+
+(* In the step, [sum (append (reverse xs) [x])] is
+   [plus (sum (reverse xs)) (plus x 0)]: commute, reassociate, and use the
+   hypothesis under [plus x]. *)
+theorem sumReverse : ∀ (l : NL) → Eq (sum (Op.reverse l)) (sum l) ≔
+  λ (l : NL) →
+    elim l return z . Eq (sum (Op.reverse z)) (sum z)
+    | nil ⇒ ⋆
+    | cons x xs, ih ⇒
+        let r : ℕ ≔ sum (Op.reverse xs) in
+        trans (sum (Op.append (Op.reverse xs) (NL.cons x NL.nil)))
+          (plus r (plus x 0))
+          (plus x (sum xs))
+          (sumAppend (Op.reverse xs) (NL.cons x NL.nil))
+          (trans (plus r (plus x 0)) (plus (plus x 0) r) (plus x (sum xs))
+             (plusComm r (plus x 0))
+             (trans (plus (plus x 0) r) (plus x r) (plus x (sum xs))
+                (plusAssoc x 0 r)
+                (cong (λ (y : ℕ) → plus x y) r (sum xs) ih)))
+        end
+    end
+end
+
+end
+
+end

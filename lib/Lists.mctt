@@ -7,7 +7,8 @@ import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Plus use (plus)
 import Prelude›Data›Bool use (Bool; tt; ff; not; and; or; eqb; if)
 open Prelude›Data›Bool.Cond as Cond
-import Prelude›Data›List use (List; sum)
+import Prelude›Data›List use (List)
+import Prelude›Data›List›Nat use (sum)
 open Prelude›Data›List.Ops as Ops
 import Prelude›Data›Option use (Option)
 open Prelude›Data›Option.Ops as Opt
@@ -17,7 +18,7 @@ import Prelude›Data›Sum use (Sum)
 open Prelude›Data›Sum.Ops as S
 import Prelude›Data›List›Properties.Append 0l ℕ use (lengthAppend)
 import Prelude›Data›List›Properties.Reverse 0l ℕ use (reverseReverse)
-import Prelude›Data›List›Properties.Sums use (sumReverse)
+import Prelude›Data›List›Nat›Properties.Sums use (sumReverse)
 import Prelude›Data›Bool›Properties.DeMorgan use (notAnd)
 
 (* Lists of numbers: the type, its constructors and its operations. *)

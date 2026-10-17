@@ -6,12 +6,11 @@
    The operations on lists over a fixed [A] are in the module [Ops u A]:
    [length], [append], [map], [foldr] and [reverse], each by recursion on
    its list argument, so it computes on a list built from constructors.
-   [sum] adds up a list of numbers.  The laws are in
-   [Prelude›Data›List›Properties]. *)
+   The laws are in [Prelude›Data›List›Properties], and the lists of
+   numbers, with their [sum], in [Prelude›Data›List›Nat]. *)
 module Prelude›Data›List where
 
 import Prelude›Builtin›Nat use (succ)
-import Prelude›Arith›Plus use (plus)
 
 inductive List (u : Level) (A : Type@{u}) : Type@{u} where
 | nil
@@ -61,14 +60,6 @@ def reverse (l : List u A) : List u A ≔
   end
 end
 
-end
-
-(* The sum of a list of numbers. *)
-def sum (l : List 0l ℕ) : ℕ ≔
-  elim l return z . ℕ
-  | nil ⇒ 0
-  | cons x xs, r ⇒ plus x r
-  end
 end
 
 end
