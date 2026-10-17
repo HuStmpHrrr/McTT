@@ -19,32 +19,18 @@ import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusIdentityRight; plusSucc)
 open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc; plusCongBoth)
 import Prelude›Arith›Parity use (double)
+open Prelude›Arith›Parity.Laws use (doubleDistrib)
 import Prelude›Data›Binary as B use (Bin; suc; toNat; fromNat; add)
 open Bin use (doubleSucc; succDouble)
 
-(* Laws of the unary doubling. *)
-private module Doubling where
-
-theorem doublePlus : ∀ (a : ℕ) (b : ℕ) →
-    Eq (double (plus a b)) (plus (double a) (double b)) ≔
-  λ (a : ℕ) (b : ℕ) →
-    elim a return x . Eq (double (plus x b)) (plus (double x) (double b))
-    | zero ⇒ refl (double b)
-    | succ p, ih ⇒ ih
-    end
-end
-
-theorem plusSuccSucc : ∀ (a : ℕ) (c : ℕ) →
+(* Two successors added on the right come out of the sum. *)
+private theorem plusSuccSucc : ∀ (a : ℕ) (c : ℕ) →
     Eq (plus a (succ (succ c))) (succ (succ (plus a c))) ≔
   λ (a : ℕ) (c : ℕ) →
     trans (plus a (succ (succ c))) (succ (plus a (succ c)))
       (succ (succ (plus a c)))
       (plusSucc a (succ c)) (plusSucc a c)
 end
-
-end
-
-open Doubling use (doublePlus; plusSuccSucc)
 
 (* [toNat] and the operations. *)
 module ToNat where
@@ -87,7 +73,7 @@ end
 private def doubled (s : Bin) (a : ℕ) (b : ℕ) (h : Eq (toNat s) (plus a b)) :
     Eq (double (toNat s)) (plus (double a) (double b)) ≔
   trans (double (toNat s)) (double (plus a b)) (plus (double a) (double b))
-    (cong (λ (n : ℕ) → double n) (toNat s) (plus a b) h) (doublePlus a b)
+    (cong (λ (n : ℕ) → double n) (toNat s) (plus a b) h) (doubleDistrib a b)
 end
 
 (* The carry of [2 (1 + a) + 2 (1 + b)] and of [(1 + 2 a) + (1 + 2 b)]. *)

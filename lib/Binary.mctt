@@ -87,7 +87,7 @@ theorem powFastDouble : ∀ (x : ℕ) (n : ℕ) →
   λ (x : ℕ) (n : ℕ) →
     let module Proof where
       open Prelude›Arith›Binary.Laws use (powFastPow)
-      open Prelude›Arith›Binary.Halving use (doublePlus)
+      open Prelude›Arith›Parity.Laws use (doublePlus)
       def fast : Eq (powFast x (double n)) (pow x (double n)) ≔
         powFastPow x (double n)
       end

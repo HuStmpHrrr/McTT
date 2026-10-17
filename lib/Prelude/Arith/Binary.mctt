@@ -14,7 +14,6 @@ import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (absurd)
 import Prelude›Arith›Equality use (Eq; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusSucc)
 open Prelude›Arith›Plus.Algebra use (plusComm)
 import Prelude›Arith›Mult use (mult)
 open Prelude›Arith›Mult.Basic use (multIdentityRight; multIdentityLeft)
@@ -24,6 +23,7 @@ import Prelude›Arith›Monotone.Mono use (lePlusMono)
 import Prelude›Arith›Pow use (pow)
 open Prelude›Arith›Pow.Exp use (powPlus)
 import Prelude›Arith›Parity use (double)
+open Prelude›Arith›Parity.Laws use (doublePlus)
 import Prelude›Arith›Sum use (sumTo)
 import Prelude›Arith›Decide use (pick)
 import Prelude›Arith›Induction use (twoStepInd)
@@ -99,17 +99,6 @@ theorem bitSuccDouble : ∀ (n : ℕ) → Eq (bit (succ (double n))) 1 ≔
     elim n return x . Eq (bit (succ (double x))) 1
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
-    end
-end
-
-(* [double n] is [n + n]. *)
-theorem doublePlus : ∀ (n : ℕ) → Eq (double n) (plus n n) ≔
-  λ (n : ℕ) →
-    elim n return x . Eq (double x) (plus x x)
-    | zero ⇒ ⋆
-    | succ p, ih ⇒
-        trans (succ (double p)) (succ (plus p p)) (plus p (succ p)) ih
-          (sym (plus p (succ p)) (succ (plus p p)) (plusSucc p p))
     end
 end
 
