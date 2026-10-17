@@ -9,7 +9,7 @@ import Prelude›Arith›Plus use (plus)
 import Prelude›Data›Bool use (Bool; tt; ff)
 open Prelude›Data›Bool.Cond as Cond
 import Prelude›Data›List use (List)
-import Prelude›Data›Ordering use (Ordering; compare; thenCmp; flip)
+import Prelude›Data›Ordering use (compare; thenCmp; flip)
 import Prelude›Data›Ordering›Properties.Compare use (compareSpec)
 import Prelude›Data›These use (These)
 open Prelude›Data›These.Ops as Th
@@ -18,11 +18,11 @@ open Prelude›Data›List›NonEmpty.Ops as NE
 import Prelude›Data›Tree›Binary use (Tree)
 open Prelude›Data›Tree›Binary.Ops as TO
 import Prelude›Data›Tree›Binary›Properties 0l ℕ Bool as TP
-import Prelude›Data›Parity use (Parity; parity; toSign)
+import Prelude›Data›Parity use (parity; toSign)
 import Prelude›Data›Integer use (Int; neg; add; sub; mul; abs)
 open Int use (pos; negsuc)
 import Prelude›Data›Integer›Properties.Mul use (absMul)
-import Prelude›Data›Binary as Bn use (Bin; toNat; fromNat)
+import Prelude›Data›Binary as Bn use (toNat; fromNat)
 import Prelude›Data›Binary›Properties.ToNat use (toNatAdd)
 import Prelude›Data›W use (W)
 open Prelude›Data›W.Ops as WO

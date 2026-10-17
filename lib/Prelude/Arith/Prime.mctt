@@ -9,7 +9,7 @@ import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (Not; absurd)
 import Prelude›Arith›Equality use (Eq; refl)
 import Prelude›Arith›Mult use (mult)
-import Prelude›Arith›Sub use (pred)
+import Prelude›Arith›Sub use (monus)
 import Prelude›Arith›Order use (Le; leb)
 import Prelude›Arith›Decide use (pick; eqb)
 open Prelude›Arith›Decide.EqbLaws use (eqbCases)
@@ -17,16 +17,10 @@ import Prelude›Arith›Div use (mod)
 import Prelude›Arith›Divides use (Divides)
 open Prelude›Arith›Divides.Basic use (dividesRefl)
 import Prelude›Arith›Induction use (caseNat)
-import Prelude›Function›Combinators use (Generic)
 
 (* Trial division and the invariants of its search.  The definitions
    below unfold to it, and clients see only them. *)
 private module TrialDivision where
-
-(* Truncated subtraction [a - b], as [b] predecessors of [a]; it is [0]
-   exactly when [a] is at most [b].  It is kept apart from
-   [Prelude›Arith›Sub.sub], whose evaluation takes exponential time. *)
-def monus (a : ℕ) (b : ℕ) : ℕ ≔ Generic.iterate 0l ℕ pred b a end
 
 (* Trial division of [n] from the candidate [d], for at most [fuel]
    candidates.  It answers [found d] for the first candidate [d] that

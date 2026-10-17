@@ -16,9 +16,8 @@ open Prelude›Arith›Plus.Basic use (plusZero)
 open Prelude›Arith›Plus.Algebra
   use (plusComm; plusAssoc; plusRightComm; plusCongBoth; plusSwapMiddle)
 open Prelude›Arith›Plus.Cancel use (plusCancelRight)
-import Prelude›Arith›Sub use (pred)
+import Prelude›Arith›Sub use (monus)
 import Prelude›Arith›Decide use (pick)
-import Prelude›Function›Combinators use (Generic)
 import Prelude›Algebra›Group as Group
 
 (* A pair of numbers, as a function from the index 0 or 1. *)
@@ -45,10 +44,8 @@ def negate (x : Int) : Int ≔ pair (x 1) (x 0) end
 (* [x - y]. *)
 def minus (x : Int) (y : Int) : Int ≔ add x (negate y) end
 
-(* Truncated subtraction, which reads a difference back. *)
-let monus (a : ℕ) (b : ℕ) : ℕ ≔ Generic.iterate 0l ℕ pred b a end
-
-(* The absolute value of the difference. *)
+(* The absolute value of the difference, read back by truncated
+   subtraction. *)
 def magnitude (x : Int) : ℕ ≔
   plus (monus (x 0) (x 1)) (monus (x 1) (x 0))
 end

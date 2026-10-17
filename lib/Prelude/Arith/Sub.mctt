@@ -5,6 +5,7 @@ module Prelude›Arith›Sub where
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; transport)
 import Prelude›Arith›Plus use (plus)
+import Prelude›Function›Iter as Iter
 open Prelude›Arith›Plus.Algebra use (plusComm)
 
 (* The predecessor; [pred 0] is [0]. *)
@@ -28,6 +29,12 @@ def sub (a : ℕ) (b : ℕ) : ℕ ≔
        end
    end) a
 end
+
+(* Truncated subtraction again, as [b] predecessors of [a]: [monus a b] is
+   [sub a b], but recurses on [b] alone, so [monus a (succ b)] is
+   [pred (monus a b)].  Programs that compare by subtracting use it, since
+   the evaluation of [sub] inside them takes exponential time. *)
+def monus (a : ℕ) (b : ℕ) : ℕ ≔ Iter.iter 0l ℕ pred b a end
 
 (* Predecessor and subtraction at zero, successors and equal arguments. *)
 module Laws where
