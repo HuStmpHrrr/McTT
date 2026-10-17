@@ -1,15 +1,17 @@
 (* The result of a comparison: [less], [equal] or [greater].  Agda's
    standard library has the indexed [Ordering m n] of [Data.Nat.Base],
    whose constructors carry the evidence; this is the plain type, as in
-   Haskell, with the evidence given by [Spec] in
-   [Prelude›Data›Ordering›Properties].
+   Haskell, with the evidence given by [Spec].
 
    [compare m n] compares two numbers, [flip] exchanges [less] and
    [greater], and [thenCmp o p] is the lexicographic combination: [o],
-   unless it is [equal], then [p]. *)
+   unless it is [equal], then [p].  The laws, among them that [compare]
+   meets [Spec], are in [Prelude›Data›Ordering›Properties]. *)
 module Prelude›Data›Ordering where
 
 import Prelude›Builtin›Nat use (succ)
+import Prelude›Arith›Equality use (Eq)
+import Prelude›Arith›Order use (Lt)
 
 inductive Ordering : Type@0 where
 | less
@@ -35,6 +37,17 @@ def compare (m : ℕ) : ∀ (n : ℕ) → Ordering ≔
       elim n return y . Ordering | zero ⇒ equal | succ q, s ⇒ less end
   | succ p, r ⇒ λ (n : ℕ) →
       elim n return y . Ordering | zero ⇒ greater | succ q, s ⇒ r q end
+  end
+end
+
+(* The evidence the constructors of Agda's indexed [Ordering m n] carry,
+   as a proposition about an outcome: [Lt m n] for [less], [Eq m n] for
+   [equal] and [Lt n m] for [greater]. *)
+def Spec (m : ℕ) (n : ℕ) (o : Ordering) : Type@0 ≔
+  elim o return z . Type@0
+  | less ⇒ Lt m n
+  | equal ⇒ Eq m n
+  | greater ⇒ Lt n m
   end
 end
 

@@ -10,9 +10,10 @@ import Prelude›Arith›Mult use (mult)
 import Prelude›Arith›Parity use (double)
 import Prelude›Arith›Sum.Basic use (sumToShift)
 import Prelude›Data›Vec as V
-import Prelude›Data›Vec›Properties use (sumVec)
+import Prelude›Data›Vec›Nat use (sumVec)
 import Prelude›Data›Stream as St
-import Prelude›Data›Stream›Properties use (nats)
+import Prelude›Data›Stream›Nat use (nats)
+import Prelude›Data›Stream›Properties
 open Prelude›Data›Stream›Properties.Elements
   use (headCons; tailCons; nthConst; nthMap; nthZipWith; nthIterate;
        tailIterate)

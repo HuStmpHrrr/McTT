@@ -9,7 +9,8 @@ import Prelude›Arith›Plus use (plus)
 import Prelude›Arith›Mult use (mult)
 import Prelude›Arith›Order use (Lt)
 import Prelude›Data›Vec as V
-import Prelude›Data›Vec›Properties use (sumVec)
+import Prelude›Data›Vec›Nat use (sumVec)
+import Prelude›Data›Vec›Properties
 open Prelude›Data›Vec›Properties.Nth
   use (nthMap; nthReplicate; nthAppendLeft; nthAppendRight; nthTabulate;
        nthZipWith; lastSnoc; nthReverse)

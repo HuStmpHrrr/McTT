@@ -1,5 +1,6 @@
 (* Laws of [Prelude›Data›Stream] on streams of numbers, stated pointwise with
-   [Prelude›Arith›Equality], and the stream [nats]: elements of the operations,
+   [Prelude›Arith›Equality], and of the stream [nats] of
+   [Prelude›Data›Stream›Nat]: elements of the operations,
    the scan by addition as prefix sums of [Prelude›Arith›Sum], interleaving at
    even and odd indices of [Prelude›Arith›Parity], and sums of taken
    prefixes. *)
@@ -15,8 +16,9 @@ import Prelude›Arith›Sum use (sumTo)
 open Prelude›Arith›Sum.Basic use (sumToShift)
 import Prelude›Function›Combinators.IterateLaws use (iterateSucc)
 import Prelude›Data›Vec as V
-import Prelude›Data›Vec›Properties use (sumVec)
+import Prelude›Data›Vec›Nat use (sumVec)
 import Prelude›Data›Stream as St
+import Prelude›Data›Stream›Nat use (nats)
 
 (* Streams of numbers: every law below is about this one instance. *)
 private module S ≔ St 0l ℕ
@@ -65,9 +67,6 @@ theorem tailIterate : ∀ (f : ∀ (x : ℕ) → ℕ) (a : ℕ) (n : ℕ) →
 end
 
 end
-
-(* The natural numbers [0, 1, 2, ...], iterating the successor from [0]. *)
-def nats : S.Stream ≔ S.iterate (λ (x : ℕ) → succ x) 0 end
 
 (* The stream of all numbers. *)
 module Nats where

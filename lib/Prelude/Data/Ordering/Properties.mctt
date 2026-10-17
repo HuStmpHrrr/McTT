@@ -3,9 +3,7 @@
    reverses [compare]; [compare] is correct, [Spec m n (compare m n)], and
    complete for each outcome; [thenCmp] is a monoid with unit [equal].
 
-   [Spec m n o] is the evidence the constructors of Agda's indexed
-   [Ordering m n] carry: [Lt m n] for [less], [Eq m n] for [equal] and
-   [Lt n m] for [greater].  Since [Lt] and [Eq] compute on successors,
+   Since [Lt] and [Eq] compute on successors,
    [Spec (succ p) (succ q) o] is [Spec p q o], and the step case of
    [compareSpec] is its hypothesis. *)
 module Prelude›Data›Ordering›Properties where
@@ -14,16 +12,8 @@ import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic›Leibniz 0l use (Id; idRefl; idTrans; idCong)
 import Prelude›Arith›Equality use (Eq)
 import Prelude›Arith›Order use (Lt)
-import Prelude›Data›Ordering use (Ordering; flip; compare; thenCmp)
+import Prelude›Data›Ordering use (Ordering; Spec; flip; compare; thenCmp)
 open Ordering use (less; equal; greater)
-
-def Spec (m : ℕ) (n : ℕ) (o : Ordering) : Type@0 ≔
-  elim o return z . Type@0
-  | less ⇒ Lt m n
-  | equal ⇒ Eq m n
-  | greater ⇒ Lt n m
-  end
-end
 
 (* [flip]. *)
 module Flip where

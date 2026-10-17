@@ -1,0 +1,14 @@
+(* Vectors of numbers, [Prelude›Data›Vec 0l ℕ]: their sum [sumVec].  Its
+   laws are in [Prelude›Data›Vec›Properties.Sums]. *)
+module Prelude›Data›Vec›Nat where
+
+import Prelude›Builtin›Nat
+import Prelude›Arith›Plus use (plus)
+import Prelude›Data›Vec 0l ℕ as NV
+
+(* The sum of a vector of numbers. *)
+def sumVec (n : ℕ) (v : NV.Vec n) : ℕ ≔
+  NV.foldr ℕ (λ (a : ℕ) (b : ℕ) → plus a b) 0 n v
+end
+
+end

@@ -1,6 +1,6 @@
 (* Laws of [Prelude›Data›Vec], stated with [Prelude›Arith›Equality] on
    number-valued observations: elements read with [nth], sums of vectors of
-   numbers, and the answers of the tests [allb] and [anyb].  Bound proofs are
+   numbers ([sumVec] of [Prelude›Data›Vec›Nat]), and the answers of the tests [allb] and [anyb].  Bound proofs are
    irrelevant to the elements read ([nthIrrel]), which, with [sumExt], lets
    laws relate vectors that agree only up to those proofs. *)
 module Prelude›Data›Vec›Properties where
@@ -23,14 +23,10 @@ open Prelude›Arith›Monotone.SubLaws use (subLe)
 import Prelude›Arith›Sum use (sumTo)
 open Prelude›Arith›Sum.Basic use (sumToShift)
 import Prelude›Data›Vec as V
+import Prelude›Data›Vec›Nat use (sumVec)
 
 (* Vectors of numbers, the instance most laws below are about. *)
 private module NV ≔ V 0l ℕ
-
-(* The sum of a vector of numbers. *)
-def sumVec (n : ℕ) (v : NV.Vec n) : ℕ ≔
-  NV.foldr ℕ (λ (a : ℕ) (b : ℕ) → plus a b) 0 n v
-end
 
 (* The elements of the operations. *)
 module Nth where

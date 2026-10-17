@@ -1,0 +1,11 @@
+(* Streams of numbers, [Prelude›Data›Stream 0l ℕ]: the stream [nats] of all
+   numbers.  Its laws are in [Prelude›Data›Stream›Properties.Nats]. *)
+module Prelude›Data›Stream›Nat where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Data›Stream 0l ℕ as S
+
+(* The natural numbers [0, 1, 2, ...], iterating the successor from [0]. *)
+def nats : S.Stream ≔ S.iterate (λ (x : ℕ) → succ x) 0 end
+
+end
