@@ -21,6 +21,8 @@ import Prelude›Logic.Negation (succl u) use (Not)
 
 private inductive TAB ≔ These u A B
 
+private module Op ≔ T u A B
+
 (* The left component, or [d] if there is none. *)
 private def leftOr (d : A) (t : TAB) : A ≔
   elim t return z . A | this a ⇒ a | that b ⇒ d | these a b ⇒ a end
@@ -98,9 +100,9 @@ end
 (* [swap] is an involution, and [map] a functor on both sides. *)
 module Maps where
 
-theorem swapSwap : ∀ (t : TAB) → Id TAB (T.swap u B A (T.swap u A B t)) t ≔
+theorem swapSwap : ∀ (t : TAB) → Id TAB (T.swap u B A (Op.swap t)) t ≔
   λ (t : TAB) →
-    elim t return z . Id TAB (T.swap u B A (T.swap u A B z)) z
+    elim t return z . Id TAB (T.swap u B A (Op.swap z)) z
     | this a ⇒ idRefl TAB (TAB.this a)
     | that b ⇒ idRefl TAB (TAB.that b)
     | these a b ⇒ idRefl TAB (TAB.these a b)
@@ -108,10 +110,10 @@ theorem swapSwap : ∀ (t : TAB) → Id TAB (T.swap u B A (T.swap u A B t)) t �
 end
 
 theorem mapId : ∀ (t : TAB) →
-    Id TAB (T.map u A B A B (λ (a : A) → a) (λ (b : B) → b) t) t ≔
+    Id TAB (Op.map A B (λ (a : A) → a) (λ (b : B) → b) t) t ≔
   λ (t : TAB) →
     elim t return z . Id TAB
-                        (T.map u A B A B (λ (a : A) → a) (λ (b : B) → b) z) z
+                        (Op.map A B (λ (a : A) → a) (λ (b : B) → b) z) z
     | this a ⇒ idRefl TAB (TAB.this a)
     | that b ⇒ idRefl TAB (TAB.that b)
     | these a b ⇒ idRefl TAB (TAB.these a b)
@@ -121,14 +123,14 @@ end
 theorem mapComp : ∀ (C : Type@{u}) (D : Type@{u}) (E : Type@{u}) (F : Type@{u})
     (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
     (h : ∀ (c : C) → E) (k : ∀ (d : D) → F) (t : TAB) →
-    Id (These u E F) (T.map u C D E F h k (T.map u A B C D f g t))
-      (T.map u A B E F (λ (a : A) → h (f a)) (λ (b : B) → k (g b)) t) ≔
+    Id (These u E F) (T.map u C D E F h k (Op.map C D f g t))
+      (Op.map E F (λ (a : A) → h (f a)) (λ (b : B) → k (g b)) t) ≔
   λ (C : Type@{u}) (D : Type@{u}) (E : Type@{u}) (F : Type@{u})
     (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
     (h : ∀ (c : C) → E) (k : ∀ (d : D) → F) (t : TAB) →
     elim t return z . Id (These u E F)
-                        (T.map u C D E F h k (T.map u A B C D f g z))
-                        (T.map u A B E F (λ (a : A) → h (f a))
+                        (T.map u C D E F h k (Op.map C D f g z))
+                        (Op.map E F (λ (a : A) → h (f a))
                            (λ (b : B) → k (g b)) z)
     | this a ⇒ idRefl (These u E F) (this u E F (h (f a)))
     | that b ⇒ idRefl (These u E F) (that u E F (k (g b)))
@@ -144,12 +146,12 @@ module Folds where
 (* Folding a swapped value exchanges the cases. *)
 theorem foldSwap : ∀ (C : Type@{u}) (l : ∀ (b : B) → C) (r : ∀ (a : A) → C)
     (lr : ∀ (b : B) (a : A) → C) (t : TAB) →
-    Id C (T.fold u B A C l r lr (T.swap u A B t))
-      (T.fold u A B C r l (λ (a : A) (b : B) → lr b a) t) ≔
+    Id C (T.fold u B A C l r lr (Op.swap t))
+      (Op.fold C r l (λ (a : A) (b : B) → lr b a) t) ≔
   λ (C : Type@{u}) (l : ∀ (b : B) → C) (r : ∀ (a : A) → C)
     (lr : ∀ (b : B) (a : A) → C) (t : TAB) →
-    elim t return z . Id C (T.fold u B A C l r lr (T.swap u A B z))
-                        (T.fold u A B C r l (λ (a : A) (b : B) → lr b a) z)
+    elim t return z . Id C (T.fold u B A C l r lr (Op.swap z))
+                        (Op.fold C r l (λ (a : A) (b : B) → lr b a) z)
     | this a ⇒ idRefl C (r a)
     | that b ⇒ idRefl C (l b)
     | these a b ⇒ idRefl C (lr b a)
@@ -159,10 +161,10 @@ end
 (* On a disjoint union, [fold] is [case]. *)
 theorem foldFromSum : ∀ (C : Type@{u}) (l : ∀ (a : A) → C) (r : ∀ (b : B) → C)
     (lr : ∀ (a : A) (b : B) → C) (s : Sum u A B) →
-    Id C (T.fold u A B C l r lr (T.fromSum u A B s)) (S.case u A B C l r s) ≔
+    Id C (Op.fold C l r lr (Op.fromSum s)) (S.case u A B C l r s) ≔
   λ (C : Type@{u}) (l : ∀ (a : A) → C) (r : ∀ (b : B) → C)
     (lr : ∀ (a : A) (b : B) → C) (s : Sum u A B) →
-    elim s return z . Id C (T.fold u A B C l r lr (T.fromSum u A B z))
+    elim s return z . Id C (Op.fold C l r lr (Op.fromSum z))
                         (S.case u A B C l r z)
     | inl a ⇒ idRefl C (l a)
     | inr b ⇒ idRefl C (r b)

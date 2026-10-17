@@ -25,6 +25,8 @@ private inductive LA ≔ List u A
 
 private module Op ≔ NE u A
 
+private module LOp ≔ L u A
+
 (* [toList] and the concatenations. *)
 module ToList where
 
@@ -36,42 +38,42 @@ end
 
 (* Agda's [toList-⁺++]. *)
 theorem toListAppendList : ∀ (l : N) (m : LA) →
-    Id LA (L.append u A (Op.toList l) m) (Op.toList (Op.appendList l m)) ≔
+    Id LA (LOp.append (Op.toList l) m) (Op.toList (Op.appendList l m)) ≔
   λ (l : N) (m : LA) →
-    elim l return z . Id LA (L.append u A (Op.toList z) m)
+    elim l return z . Id LA (LOp.append (Op.toList z) m)
                         (Op.toList (Op.appendList z m))
-    | cons x xs ⇒ idRefl LA (LA.cons x (L.append u A xs m))
+    | cons x xs ⇒ idRefl LA (LA.cons x (LOp.append xs m))
     end
 end
 
 (* Agda's [toList-⁺++⁺]. *)
 theorem toListAppend : ∀ (l : N) (m : N) →
-    Id LA (L.append u A (Op.toList l) (Op.toList m))
+    Id LA (LOp.append (Op.toList l) (Op.toList m))
       (Op.toList (Op.append l m)) ≔
   λ (l : N) (m : N) → toListAppendList l (Op.toList m)
 end
 
 (* [toList] of [prependList l m] is [l] followed by [toList m]. *)
 theorem toListPrependList : ∀ (l : LA) (m : N) →
-    Id LA (Op.toList (Op.prependList l m)) (L.append u A l (Op.toList m)) ≔
+    Id LA (Op.toList (Op.prependList l m)) (LOp.append l (Op.toList m)) ≔
   λ (l : LA) (m : N) →
     elim l return z . Id LA (Op.toList (Op.prependList z m))
-                        (L.append u A z (Op.toList m))
+                        (LOp.append z (Op.toList m))
     | nil ⇒ idRefl LA (Op.toList m)
     | cons x xs, ih ⇒
         idCong LA LA (LA.cons x) (Op.toList (Op.prependList xs m))
-          (L.append u A xs (Op.toList m)) ih
+          (LOp.append xs (Op.toList m)) ih
     end
 end
 
 (* [reverse] is the reversal of lists. *)
 theorem toListReverse : ∀ (l : N) →
-    Id LA (Op.toList (Op.reverse l)) (L.reverse u A (Op.toList l)) ≔
+    Id LA (Op.toList (Op.reverse l)) (LOp.reverse (Op.toList l)) ≔
   λ (l : N) →
     elim l return z . Id LA (Op.toList (Op.reverse z))
-                        (L.reverse u A (Op.toList z))
+                        (LOp.reverse (Op.toList z))
     | cons x xs ⇒
-        toListPrependList (L.reverse u A xs) (N.cons x LA.nil)
+        toListPrependList (LOp.reverse xs) (N.cons x LA.nil)
     end
 end
 
@@ -92,10 +94,10 @@ module Length where
 
 (* [length] is the length of [toList]. *)
 theorem lengthToList : ∀ (l : N) →
-    Eq (Op.length l) (L.length u A (Op.toList l)) ≔
+    Eq (Op.length l) (LOp.length (Op.toList l)) ≔
   λ (l : N) →
-    elim l return z . Eq (Op.length z) (L.length u A (Op.toList z))
-    | cons x xs ⇒ refl (L.length u A xs)
+    elim l return z . Eq (Op.length z) (LOp.length (Op.toList z))
+    | cons x xs ⇒ refl (LOp.length xs)
     end
 end
 
@@ -106,8 +108,8 @@ theorem lengthAppend : ∀ (l : N) (m : N) →
     elim l return z . Eq (Op.length (Op.append z m))
                         (plus (Op.length z) (Op.length m))
     | cons x xs ⇒
-        elim m return w . Eq (L.length u A (L.append u A xs (Op.toList w)))
-                            (plus (L.length u A xs) (Op.length w))
+        elim m return w . Eq (LOp.length (LOp.append xs (Op.toList w)))
+                            (plus (LOp.length xs) (Op.length w))
         | cons y ys ⇒ LP.lengthAppend xs (LA.cons y ys)
         end
     end
@@ -115,18 +117,18 @@ end
 
 (* Agda's [length-++⁺]. *)
 theorem lengthPrependList : ∀ (l : LA) (m : N) →
-    Eq (Op.length (Op.prependList l m)) (plus (L.length u A l) (Op.length m)) ≔
+    Eq (Op.length (Op.prependList l m)) (plus (LOp.length l) (Op.length m)) ≔
   λ (l : LA) (m : N) →
     elim l return z . Eq (Op.length (Op.prependList z m))
-                        (plus (L.length u A z) (Op.length m))
+                        (plus (LOp.length z) (Op.length m))
     | nil ⇒ refl (Op.length m)
     | cons x xs, ih ⇒
-        trans (L.length u A (Op.toList (Op.prependList xs m)))
+        trans (LOp.length (Op.toList (Op.prependList xs m)))
           (Op.length (Op.prependList xs m))
-          (plus (L.length u A xs) (Op.length m))
-          (elim (Op.prependList xs m) return w . Eq (L.length u A (Op.toList w))
+          (plus (LOp.length xs) (Op.length m))
+          (elim (Op.prependList xs m) return w . Eq (LOp.length (Op.toList w))
                                                   (Op.length w)
-           | cons y ys ⇒ refl (L.length u A ys)
+           | cons y ys ⇒ refl (LOp.length ys)
            end)
           ih
     end
@@ -141,7 +143,7 @@ theorem mapId : ∀ (l : N) → Id N (Op.map A (λ (x : A) → x) l) l ≔
   λ (l : N) →
     elim l return z . Id N (Op.map A (λ (x : A) → x) z) z
     | cons x xs ⇒
-        idCong LA N (N.cons x) (L.map u A A (λ (y : A) → y) xs) xs (LM.mapId xs)
+        idCong LA N (N.cons x) (LOp.map A (λ (y : A) → y) xs) xs (LM.mapId xs)
     end
 end
 
@@ -156,8 +158,8 @@ theorem mapComp : ∀ (B : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → B)
                         (Op.map C (λ (x : A) → g (f x)) z)
     | cons x xs ⇒
         idCong (List u C) (NonEmpty u C) (NonEmpty.cons u C (g (f x)))
-          (L.map u B C g (L.map u A B f xs))
-          (L.map u A C (λ (y : A) → g (f y)) xs) (LM.mapComp B C f g xs)
+          (L.map u B C g (LOp.map B f xs))
+          (LOp.map C (λ (y : A) → g (f y)) xs) (LM.mapComp B C f g xs)
     end
 end
 
@@ -169,34 +171,34 @@ theorem mapCong : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (g : ∀ (x : A) �
   λ (B : Type@{u}) (f : ∀ (x : A) → B) (g : ∀ (x : A) → B)
     (h : ∀ (x : A) → Id B (f x) (g x)) (l : N) →
     let tails : ∀ (xs : LA) →
-          Id (List u B) (L.map u A B f xs) (L.map u A B g xs) ≔
+          Id (List u B) (LOp.map B f xs) (LOp.map B g xs) ≔
       λ (xs : LA) →
-        elim xs return z . Id (List u B) (L.map u A B f z) (L.map u A B g z)
+        elim xs return z . Id (List u B) (LOp.map B f z) (LOp.map B g z)
         | nil ⇒ idRefl (List u B) (List.nil u B)
         | cons y ys, ih ⇒
             λ (P : ∀ (w : List u B) → Type@{u})
-              (p : P (List.cons u B (f y) (L.map u A B f ys))) →
+              (p : P (List.cons u B (f y) (LOp.map B f ys))) →
               ih (λ (w : List u B) → P (List.cons u B (g y) w))
-                (h y (λ (b : B) → P (List.cons u B b (L.map u A B f ys))) p)
+                (h y (λ (b : B) → P (List.cons u B b (LOp.map B f ys))) p)
         end
     in
     elim l return z . Id (NonEmpty u B) (Op.map B f z) (Op.map B g z)
     | cons x xs ⇒
         λ (P : ∀ (w : NonEmpty u B) → Type@{u})
-          (p : P (NonEmpty.cons u B (f x) (L.map u A B f xs))) →
+          (p : P (NonEmpty.cons u B (f x) (LOp.map B f xs))) →
           tails xs (λ (w : List u B) → P (NonEmpty.cons u B (g x) w))
-            (h x (λ (b : B) → P (NonEmpty.cons u B b (L.map u A B f xs))) p)
+            (h x (λ (b : B) → P (NonEmpty.cons u B b (LOp.map B f xs))) p)
     end
     end
 end
 
 (* [toList] commutes with [map]. *)
 theorem toListMap : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) →
-    Id (List u B) (NE.toList u B (Op.map B f l)) (L.map u A B f (Op.toList l)) ≔
+    Id (List u B) (NE.toList u B (Op.map B f l)) (LOp.map B f (Op.toList l)) ≔
   λ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) →
     elim l return z . Id (List u B) (NE.toList u B (Op.map B f z))
-                        (L.map u A B f (Op.toList z))
-    | cons x xs ⇒ idRefl (List u B) (List.cons u B (f x) (L.map u A B f xs))
+                        (LOp.map B f (Op.toList z))
+    | cons x xs ⇒ idRefl (List u B) (List.cons u B (f x) (LOp.map B f xs))
     end
 end
 
@@ -220,14 +222,14 @@ theorem mapAppend : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) (m : N) �
         elim m return w .
             Id (NonEmpty u B)
               (NonEmpty.cons u B (f x)
-                  (L.map u A B f (L.append u A xs (Op.toList w))))
+                  (LOp.map B f (LOp.append xs (Op.toList w))))
               (NonEmpty.cons u B (f x)
-                 (L.append u B (L.map u A B f xs)
+                 (L.append u B (LOp.map B f xs)
                      (NE.toList u B (Op.map B f w))))
         | cons y ys ⇒
             idCong (List u B) (NonEmpty u B) (NonEmpty.cons u B (f x))
-              (L.map u A B f (L.append u A xs (LA.cons y ys)))
-              (L.append u B (L.map u A B f xs) (L.map u A B f (LA.cons y ys)))
+              (LOp.map B f (LOp.append xs (LA.cons y ys)))
+              (L.append u B (LOp.map B f xs) (LOp.map B f (LA.cons y ys)))
               (LM.mapAppend B f xs (LA.cons y ys))
         end
     end
