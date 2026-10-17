@@ -1,27 +1,25 @@
-(* Laws of [Prelude›Data›These], at every level [u], stated with the
-   Leibniz equality of [Prelude›Logic›Leibniz]: the constructors are
-   injective (Agda's [this-injective], [that-injective],
-   [these-injectiveˡ], [these-injectiveʳ]) and pairwise distinct, [swap]
-   is an involution, [map] is a functor, and [fold] after [swap] or
-   [fromSum].
+(* Laws of [Prelude›Data›These] over fixed component types [A] and [B] of
+   [Type@{u}], stated with the Leibniz equality of
+   [Prelude›Logic›Leibniz]: the constructors are injective (Agda's
+   [this-injective], [that-injective], [these-injectiveˡ],
+   [these-injectiveʳ]) and pairwise distinct, [swap] is an involution,
+   [map] is a functor, and [fold] after [swap] or [fromSum].
 
    Injectivity is congruence through a projection that is the identity on
    the constructor at hand; distinctness transports [⋆] along a predicate
    that is [⊤] on one constructor and [⊥] on the other. *)
-module Prelude›Data›These›Properties where
+module Prelude›Data›These›Properties (u : Level) (A : Type@{u})
+    (B : Type@{u}) where
 
 import Prelude›Data›Sum use (Sum)
 open Prelude›Data›Sum.Ops as S
 import Prelude›Data›These use (These)
 open These use (this; that; these)
 open Prelude›Data›These.Ops as T
-
-module Laws (u : Level) (A : Type@{u}) (B : Type@{u}) where
-
 import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
 import Prelude›Logic.Negation (succl u) use (Not)
 
-inductive TAB ≔ These u A B
+private inductive TAB ≔ These u A B
 
 (* The left component, or [d] if there is none. *)
 private def leftOr (d : A) (t : TAB) : A ≔
@@ -41,6 +39,9 @@ end
 private def IsThat (t : TAB) : Type@{u} ≔
   elim t return z . Type@{u} | this a ⇒ ⊥ | that b ⇒ ⊤ | these a b ⇒ ⊥ end
 end
+
+(* The constructors are injective. *)
+module Injective where
 
 theorem thisInjective : ∀ (x : A) (y : A)
     (h : Id TAB (TAB.this x) (TAB.this y)) →
@@ -70,6 +71,11 @@ theorem theseInjectiveRight : ∀ (x : A) (y : A) (a : B) (b : B)
     idCong TAB B (rightOr a) (TAB.these x a) (TAB.these y b) h
 end
 
+end
+
+(* The constructors are pairwise distinct. *)
+module Distinct where
+
 theorem thisNeThat : ∀ (a : A) (b : B) →
     Not (Id TAB (TAB.this a) (TAB.that b)) ≔
   λ (a : A) (b : B) (h : Id TAB (TAB.this a) (TAB.that b)) → h IsThis ⋆
@@ -86,6 +92,11 @@ theorem thatNeThese : ∀ (b : B) (x : A) (y : B) →
   λ (b : B) (x : A) (y : B) (h : Id TAB (TAB.that b) (TAB.these x y)) →
     h IsThat ⋆
 end
+
+end
+
+(* [swap] is an involution, and [map] a functor on both sides. *)
+module Maps where
 
 theorem swapSwap : ∀ (t : TAB) → Id TAB (T.swap u B A (T.swap u A B t)) t ≔
   λ (t : TAB) →
@@ -124,6 +135,11 @@ theorem mapComp : ∀ (C : Type@{u}) (D : Type@{u}) (E : Type@{u}) (F : Type@{u}
     | these a b ⇒ idRefl (These u E F) (these u E F (h (f a)) (k (g b)))
     end
 end
+
+end
+
+(* [fold] after [swap] and [fromSum]. *)
+module Folds where
 
 (* Folding a swapped value exchanges the cases. *)
 theorem foldSwap : ∀ (C : Type@{u}) (l : ∀ (b : B) → C) (r : ∀ (a : A) → C)

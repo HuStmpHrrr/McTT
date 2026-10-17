@@ -1,89 +1,90 @@
-(* Laws of [Prelude›Data›Prod], at every level [u], stated with the
-   Leibniz equality of [Prelude›Logic›Leibniz]: the projections and
-   surjective pairing, [swap] is an involution, [assoc] and [unassoc] are
-   inverse, [map] is a functor in both components, and currying is
-   inverse to uncurrying.
+(* Laws of [Prelude›Data›Prod] over fixed component types [A] and [B] of
+   [Type@{u}], stated with the Leibniz equality of [Prelude›Logic›Leibniz]:
+   the projections and surjective pairing, [swap] is an involution,
+   [assoc] and [unassoc] are inverse, [map] is a functor in both
+   components, and currying is inverse to uncurrying.
 
    The projections of a [pair] compute; the laws about an arbitrary pair
    [p] are proved by cases on [p]. *)
-module Prelude›Data›Prod›Properties where
+module Prelude›Data›Prod›Properties (u : Level) (A : Type@{u}) (B : Type@{u})
+    where
 
 import Prelude›Data›Prod use (Prod)
 open Prod use (pair)
 open Prelude›Data›Prod.Ops as P
-
-module Laws (u : Level) where
-
 import Prelude›Logic›Leibniz u use (Id; idRefl)
 
-theorem fstPair : ∀ (A : Type@{u}) (B : Type@{u}) (a : A) (b : B) →
-    Id A (P.fst u A B (pair u A B a b)) a ≔
-  λ (A : Type@{u}) (B : Type@{u}) (a : A) (b : B) → idRefl A a
+private inductive AB ≔ Prod u A B
+
+private module Op ≔ P u A B
+
+(* The projections and surjective pairing. *)
+module Projections where
+
+theorem fstPair : ∀ (a : A) (b : B) → Id A (Op.fst (AB.pair a b)) a ≔
+  λ (a : A) (b : B) → idRefl A a
 end
 
-theorem sndPair : ∀ (A : Type@{u}) (B : Type@{u}) (a : A) (b : B) →
-    Id B (P.snd u A B (pair u A B a b)) b ≔
-  λ (A : Type@{u}) (B : Type@{u}) (a : A) (b : B) → idRefl B b
+theorem sndPair : ∀ (a : A) (b : B) → Id B (Op.snd (AB.pair a b)) b ≔
+  λ (a : A) (b : B) → idRefl B b
 end
 
 (* Surjective pairing: a pair is the pair of its projections. *)
-theorem pairEta : ∀ (A : Type@{u}) (B : Type@{u}) (p : Prod u A B) →
-    Id (Prod u A B) (pair u A B (P.fst u A B p) (P.snd u A B p)) p ≔
-  λ (A : Type@{u}) (B : Type@{u}) (p : Prod u A B) →
-    elim p return z . Id (Prod u A B)
-                        (pair u A B (P.fst u A B z) (P.snd u A B z)) z
-    | pair a b ⇒ idRefl (Prod u A B) (pair u A B a b)
+theorem pairEta : ∀ (p : AB) → Id AB (AB.pair (Op.fst p) (Op.snd p)) p ≔
+  λ (p : AB) →
+    elim p return z . Id AB (AB.pair (Op.fst z) (Op.snd z)) z
+    | pair a b ⇒ idRefl AB (AB.pair a b)
     end
 end
 
-theorem swapSwap : ∀ (A : Type@{u}) (B : Type@{u}) (p : Prod u A B) →
-    Id (Prod u A B) (P.swap u B A (P.swap u A B p)) p ≔
-  λ (A : Type@{u}) (B : Type@{u}) (p : Prod u A B) →
-    elim p return z . Id (Prod u A B) (P.swap u B A (P.swap u A B z)) z
-    | pair a b ⇒ idRefl (Prod u A B) (pair u A B a b)
+end
+
+(* [swap] is an involution that exchanges the projections. *)
+module Swap where
+
+theorem swapSwap : ∀ (p : AB) → Id AB (P.swap u B A (Op.swap p)) p ≔
+  λ (p : AB) →
+    elim p return z . Id AB (P.swap u B A (Op.swap z)) z
+    | pair a b ⇒ idRefl AB (AB.pair a b)
     end
 end
 
-theorem fstSwap : ∀ (A : Type@{u}) (B : Type@{u}) (p : Prod u A B) →
-    Id B (P.fst u B A (P.swap u A B p)) (P.snd u A B p) ≔
-  λ (A : Type@{u}) (B : Type@{u}) (p : Prod u A B) →
-    elim p return z . Id B (P.fst u B A (P.swap u A B z)) (P.snd u A B z)
+theorem fstSwap : ∀ (p : AB) → Id B (P.fst u B A (Op.swap p)) (Op.snd p) ≔
+  λ (p : AB) →
+    elim p return z . Id B (P.fst u B A (Op.swap z)) (Op.snd z)
     | pair a b ⇒ idRefl B b
     end
 end
 
+end
+
+(* The reassociations are inverse. *)
+module Assoc where
+
 (* [unassoc] undoes [assoc]: cases on the pair, then on its first
    component. *)
-theorem unassocAssoc : ∀ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (p : Prod u (Prod u A B) C) →
-    Id (Prod u (Prod u A B) C) (P.unassoc u A B C (P.assoc u A B C p)) p ≔
-  λ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (p : Prod u (Prod u A B) C) →
-    elim p return z . Id (Prod u (Prod u A B) C)
-                        (P.unassoc u A B C (P.assoc u A B C z)) z
+theorem unassocAssoc : ∀ (C : Type@{u}) (p : Prod u AB C) →
+    Id (Prod u AB C) (Op.unassoc C (Op.assoc C p)) p ≔
+  λ (C : Type@{u}) (p : Prod u AB C) →
+    elim p return z . Id (Prod u AB C) (Op.unassoc C (Op.assoc C z)) z
     | pair ab c ⇒
-        elim ab return y . Id (Prod u (Prod u A B) C)
-                             (P.unassoc u A B C
-                                (P.assoc u A B C (pair u (Prod u A B) C y c)))
-                             (pair u (Prod u A B) C y c)
-        | pair a b ⇒
-            idRefl (Prod u (Prod u A B) C)
-              (pair u (Prod u A B) C (pair u A B a b) c)
+        elim ab return y . Id (Prod u AB C)
+                             (Op.unassoc C (Op.assoc C (pair u AB C y c)))
+                             (pair u AB C y c)
+        | pair a b ⇒ idRefl (Prod u AB C) (pair u AB C (AB.pair a b) c)
         end
     end
 end
 
-theorem assocUnassoc : ∀ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (p : Prod u A (Prod u B C)) →
-    Id (Prod u A (Prod u B C)) (P.assoc u A B C (P.unassoc u A B C p)) p ≔
-  λ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (p : Prod u A (Prod u B C)) →
+theorem assocUnassoc : ∀ (C : Type@{u}) (p : Prod u A (Prod u B C)) →
+    Id (Prod u A (Prod u B C)) (Op.assoc C (Op.unassoc C p)) p ≔
+  λ (C : Type@{u}) (p : Prod u A (Prod u B C)) →
     elim p return z . Id (Prod u A (Prod u B C))
-                        (P.assoc u A B C (P.unassoc u A B C z)) z
+                        (Op.assoc C (Op.unassoc C z)) z
     | pair a bc ⇒
         elim bc return y . Id (Prod u A (Prod u B C))
-                             (P.assoc u A B C
-                                (P.unassoc u A B C (pair u A (Prod u B C) a y)))
+                             (Op.assoc C
+                                (Op.unassoc C (pair u A (Prod u B C) a y)))
                              (pair u A (Prod u B C) a y)
         | pair b c ⇒
             idRefl (Prod u A (Prod u B C))
@@ -92,41 +93,45 @@ theorem assocUnassoc : ∀ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
     end
 end
 
-theorem mapId : ∀ (A : Type@{u}) (B : Type@{u}) (p : Prod u A B) →
-    Id (Prod u A B) (P.map u A B A B (λ (a : A) → a) (λ (b : B) → b) p) p ≔
-  λ (A : Type@{u}) (B : Type@{u}) (p : Prod u A B) →
-    elim p return z . Id (Prod u A B)
-                        (P.map u A B A B (λ (a : A) → a) (λ (b : B) → b) z) z
-    | pair a b ⇒ idRefl (Prod u A B) (pair u A B a b)
+end
+
+(* [map] is a functor in both components. *)
+module Maps where
+
+theorem mapId : ∀ (p : AB) →
+    Id AB (Op.map A B (λ (a : A) → a) (λ (b : B) → b) p) p ≔
+  λ (p : AB) →
+    elim p return z . Id AB (Op.map A B (λ (a : A) → a) (λ (b : B) → b) z) z
+    | pair a b ⇒ idRefl AB (AB.pair a b)
     end
 end
 
-theorem mapComp : ∀ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (D : Type@{u}) (E : Type@{u}) (F : Type@{u})
+theorem mapComp : ∀ (C : Type@{u}) (D : Type@{u}) (E : Type@{u})
+    (F : Type@{u}) (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
+    (h : ∀ (c : C) → E) (k : ∀ (d : D) → F) (p : AB) →
+    Id (Prod u E F) (P.map u C D E F h k (Op.map C D f g p))
+      (Op.map E F (λ (a : A) → h (f a)) (λ (b : B) → k (g b)) p) ≔
+  λ (C : Type@{u}) (D : Type@{u}) (E : Type@{u}) (F : Type@{u})
     (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
-    (h : ∀ (c : C) → E) (k : ∀ (d : D) → F) (p : Prod u A B) →
-    Id (Prod u E F) (P.map u C D E F h k (P.map u A B C D f g p))
-      (P.map u A B E F (λ (a : A) → h (f a)) (λ (b : B) → k (g b)) p) ≔
-  λ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (D : Type@{u}) (E : Type@{u}) (F : Type@{u})
-    (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
-    (h : ∀ (c : C) → E) (k : ∀ (d : D) → F) (p : Prod u A B) →
+    (h : ∀ (c : C) → E) (k : ∀ (d : D) → F) (p : AB) →
     elim p return z . Id (Prod u E F)
-                        (P.map u C D E F h k (P.map u A B C D f g z))
-                        (P.map u A B E F (λ (a : A) → h (f a))
+                        (P.map u C D E F h k (Op.map C D f g z))
+                        (Op.map E F (λ (a : A) → h (f a))
                            (λ (b : B) → k (g b)) z)
     | pair a b ⇒ idRefl (Prod u E F) (pair u E F (h (f a)) (k (g b)))
     end
 end
 
+end
+
 (* Uncurrying a curried function gives it back, on every pair. *)
-theorem uncurryCurry : ∀ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (f : ∀ (p : Prod u A B) → C) (p : Prod u A B) →
-    Id C (P.uncurry u A B C (P.curry u A B C f) p) (f p) ≔
-  λ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (f : ∀ (p : Prod u A B) → C) (p : Prod u A B) →
-    elim p return z . Id C (P.uncurry u A B C (P.curry u A B C f) z) (f z)
-    | pair a b ⇒ idRefl C (f (pair u A B a b))
+module Currying where
+
+theorem uncurryCurry : ∀ (C : Type@{u}) (f : ∀ (p : AB) → C) (p : AB) →
+    Id C (Op.uncurry C (Op.curry C f) p) (f p) ≔
+  λ (C : Type@{u}) (f : ∀ (p : AB) → C) (p : AB) →
+    elim p return z . Id C (Op.uncurry C (Op.curry C f) z) (f z)
+    | pair a b ⇒ idRefl C (f (AB.pair a b))
     end
 end
 

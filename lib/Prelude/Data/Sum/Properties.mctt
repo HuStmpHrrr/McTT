@@ -1,76 +1,107 @@
-(* Laws of [Prelude›Data›Sum], at every level [u], stated with the Leibniz
-   equality of [Prelude›Logic›Leibniz]: [case] with the constructors is the
-   identity, [swap] is an involution, [assoc] and [unassoc] are inverse,
-   [map] is a functor and [case] absorbs it, and [swap] negates
-   [isLeft].  Each is proved by cases on the sum. *)
-module Prelude›Data›Sum›Properties where
+(* Laws of [Prelude›Data›Sum] over fixed summands [A] and [B] of
+   [Type@{u}], stated with the Leibniz equality of [Prelude›Logic›Leibniz]:
+   [case] with the constructors is the identity, [swap] is an involution,
+   [assoc] and [unassoc] are inverse, [map] is a functor and [case] absorbs
+   it, and [swap] negates [isLeft].  Each is proved by cases on the sum. *)
+module Prelude›Data›Sum›Properties (u : Level) (A : Type@{u}) (B : Type@{u})
+    where
 
 import Prelude›Data›Bool use (Bool; not)
 import Prelude›Data›Sum use (Sum)
 open Sum use (inl; inr)
 open Prelude›Data›Sum.Ops as S
-
-module Laws (u : Level) where
-
 import Prelude›Logic›Leibniz u use (Id; idRefl)
 import Prelude›Logic›Leibniz 0l as BoolId
 
+private inductive AB ≔ Sum u A B
+
+private module Op ≔ S u A B
+
+(* Case analysis. *)
+module Cases where
+
 (* Case analysis with the constructors rebuilds the sum. *)
-theorem caseEta : ∀ (A : Type@{u}) (B : Type@{u}) (s : Sum u A B) →
-    Id (Sum u A B)
-      (S.case u A B (Sum u A B) (λ (a : A) → inl u A B a)
-         (λ (b : B) → inr u A B b) s)
-      s ≔
-  λ (A : Type@{u}) (B : Type@{u}) (s : Sum u A B) →
-    elim s return z . Id (Sum u A B)
-                        (S.case u A B (Sum u A B) (λ (a : A) → inl u A B a)
-                           (λ (b : B) → inr u A B b) z)
+theorem caseEta : ∀ (s : AB) →
+    Id AB (Op.case AB (λ (a : A) → AB.inl a) (λ (b : B) → AB.inr b) s) s ≔
+  λ (s : AB) →
+    elim s return z . Id AB (Op.case AB (λ (a : A) → AB.inl a)
+                               (λ (b : B) → AB.inr b) z)
                         z
-    | inl a ⇒ idRefl (Sum u A B) (inl u A B a)
-    | inr b ⇒ idRefl (Sum u A B) (inr u A B b)
+    | inl a ⇒ idRefl AB (AB.inl a)
+    | inr b ⇒ idRefl AB (AB.inr b)
     end
 end
 
-theorem swapSwap : ∀ (A : Type@{u}) (B : Type@{u}) (s : Sum u A B) →
-    Id (Sum u A B) (S.swap u B A (S.swap u A B s)) s ≔
-  λ (A : Type@{u}) (B : Type@{u}) (s : Sum u A B) →
-    elim s return z . Id (Sum u A B) (S.swap u B A (S.swap u A B z)) z
-    | inl a ⇒ idRefl (Sum u A B) (inl u A B a)
-    | inr b ⇒ idRefl (Sum u A B) (inr u A B b)
+(* Case analysis after a map is case analysis with the composites. *)
+theorem caseMap : ∀ (C : Type@{u}) (D : Type@{u}) (E : Type@{u})
+    (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
+    (h : ∀ (c : C) → E) (k : ∀ (d : D) → E) (s : AB) →
+    Id E (S.case u C D E h k (Op.map C D f g s))
+      (Op.case E (λ (a : A) → h (f a)) (λ (b : B) → k (g b)) s) ≔
+  λ (C : Type@{u}) (D : Type@{u}) (E : Type@{u})
+    (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
+    (h : ∀ (c : C) → E) (k : ∀ (d : D) → E) (s : AB) →
+    elim s return z . Id E (S.case u C D E h k (Op.map C D f g z))
+                        (Op.case E (λ (a : A) → h (f a))
+                           (λ (b : B) → k (g b)) z)
+    | inl a ⇒ idRefl E (h (f a))
+    | inr b ⇒ idRefl E (k (g b))
     end
 end
 
-theorem unassocAssoc : ∀ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (s : Sum u (Sum u A B) C) →
-    Id (Sum u (Sum u A B) C) (S.unassoc u A B C (S.assoc u A B C s)) s ≔
-  λ (A : Type@{u}) (B : Type@{u}) (C : Type@{u}) (s : Sum u (Sum u A B) C) →
-    elim s return z . Id (Sum u (Sum u A B) C)
-                        (S.unassoc u A B C (S.assoc u A B C z)) z
+end
+
+(* [swap] is an involution that moves a value to the other side. *)
+module Swap where
+
+theorem swapSwap : ∀ (s : AB) → Id AB (S.swap u B A (Op.swap s)) s ≔
+  λ (s : AB) →
+    elim s return z . Id AB (S.swap u B A (Op.swap z)) z
+    | inl a ⇒ idRefl AB (AB.inl a)
+    | inr b ⇒ idRefl AB (AB.inr b)
+    end
+end
+
+(* Swapping moves a value to the other side. *)
+theorem isLeftSwap : ∀ (s : AB) →
+    BoolId.Id Bool (S.isLeft u B A (Op.swap s)) (not (Op.isLeft s)) ≔
+  λ (s : AB) →
+    elim s return z . BoolId.Id Bool (S.isLeft u B A (Op.swap z))
+                        (not (Op.isLeft z))
+    | inl a ⇒ BoolId.idRefl Bool (S.isLeft u B A (inr u B A a))
+    | inr b ⇒ BoolId.idRefl Bool (S.isLeft u B A (inl u B A b))
+    end
+end
+
+end
+
+(* The reassociations are inverse. *)
+module Assoc where
+
+theorem unassocAssoc : ∀ (C : Type@{u}) (s : Sum u AB C) →
+    Id (Sum u AB C) (Op.unassoc C (Op.assoc C s)) s ≔
+  λ (C : Type@{u}) (s : Sum u AB C) →
+    elim s return z . Id (Sum u AB C) (Op.unassoc C (Op.assoc C z)) z
     | inl ab ⇒
-        elim ab return y . Id (Sum u (Sum u A B) C)
-                             (S.unassoc u A B C
-                                (S.assoc u A B C (inl u (Sum u A B) C y)))
-                             (inl u (Sum u A B) C y)
-        | inl a ⇒
-            idRefl (Sum u (Sum u A B) C) (inl u (Sum u A B) C (inl u A B a))
-        | inr b ⇒
-            idRefl (Sum u (Sum u A B) C) (inl u (Sum u A B) C (inr u A B b))
+        elim ab return y . Id (Sum u AB C)
+                             (Op.unassoc C (Op.assoc C (inl u AB C y)))
+                             (inl u AB C y)
+        | inl a ⇒ idRefl (Sum u AB C) (inl u AB C (AB.inl a))
+        | inr b ⇒ idRefl (Sum u AB C) (inl u AB C (AB.inr b))
         end
-    | inr c ⇒ idRefl (Sum u (Sum u A B) C) (inr u (Sum u A B) C c)
+    | inr c ⇒ idRefl (Sum u AB C) (inr u AB C c)
     end
 end
 
-theorem assocUnassoc : ∀ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (s : Sum u A (Sum u B C)) →
-    Id (Sum u A (Sum u B C)) (S.assoc u A B C (S.unassoc u A B C s)) s ≔
-  λ (A : Type@{u}) (B : Type@{u}) (C : Type@{u}) (s : Sum u A (Sum u B C)) →
-    elim s return z . Id (Sum u A (Sum u B C))
-                        (S.assoc u A B C (S.unassoc u A B C z)) z
+theorem assocUnassoc : ∀ (C : Type@{u}) (s : Sum u A (Sum u B C)) →
+    Id (Sum u A (Sum u B C)) (Op.assoc C (Op.unassoc C s)) s ≔
+  λ (C : Type@{u}) (s : Sum u A (Sum u B C)) →
+    elim s return z . Id (Sum u A (Sum u B C)) (Op.assoc C (Op.unassoc C z))
+                        z
     | inl a ⇒ idRefl (Sum u A (Sum u B C)) (inl u A (Sum u B C) a)
     | inr bc ⇒
         elim bc return y . Id (Sum u A (Sum u B C))
-                             (S.assoc u A B C
-                                (S.unassoc u A B C (inr u A (Sum u B C) y)))
+                             (Op.assoc C (Op.unassoc C (inr u A (Sum u B C) y)))
                              (inr u A (Sum u B C) y)
         | inl b ⇒
             idRefl (Sum u A (Sum u B C)) (inr u A (Sum u B C) (inl u B C b))
@@ -80,61 +111,34 @@ theorem assocUnassoc : ∀ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
     end
 end
 
-theorem mapId : ∀ (A : Type@{u}) (B : Type@{u}) (s : Sum u A B) →
-    Id (Sum u A B) (S.map u A B A B (λ (a : A) → a) (λ (b : B) → b) s) s ≔
-  λ (A : Type@{u}) (B : Type@{u}) (s : Sum u A B) →
-    elim s return z . Id (Sum u A B)
-                        (S.map u A B A B (λ (a : A) → a) (λ (b : B) → b) z) z
-    | inl a ⇒ idRefl (Sum u A B) (inl u A B a)
-    | inr b ⇒ idRefl (Sum u A B) (inr u A B b)
+end
+
+(* [map] is a functor on both sides. *)
+module Maps where
+
+theorem mapId : ∀ (s : AB) →
+    Id AB (Op.map A B (λ (a : A) → a) (λ (b : B) → b) s) s ≔
+  λ (s : AB) →
+    elim s return z . Id AB (Op.map A B (λ (a : A) → a) (λ (b : B) → b) z) z
+    | inl a ⇒ idRefl AB (AB.inl a)
+    | inr b ⇒ idRefl AB (AB.inr b)
     end
 end
 
-theorem mapComp : ∀ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (D : Type@{u}) (E : Type@{u}) (F : Type@{u})
+theorem mapComp : ∀ (C : Type@{u}) (D : Type@{u}) (E : Type@{u})
+    (F : Type@{u}) (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
+    (h : ∀ (c : C) → E) (k : ∀ (d : D) → F) (s : AB) →
+    Id (Sum u E F) (S.map u C D E F h k (Op.map C D f g s))
+      (Op.map E F (λ (a : A) → h (f a)) (λ (b : B) → k (g b)) s) ≔
+  λ (C : Type@{u}) (D : Type@{u}) (E : Type@{u}) (F : Type@{u})
     (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
-    (h : ∀ (c : C) → E) (k : ∀ (d : D) → F) (s : Sum u A B) →
-    Id (Sum u E F) (S.map u C D E F h k (S.map u A B C D f g s))
-      (S.map u A B E F (λ (a : A) → h (f a)) (λ (b : B) → k (g b)) s) ≔
-  λ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (D : Type@{u}) (E : Type@{u}) (F : Type@{u})
-    (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
-    (h : ∀ (c : C) → E) (k : ∀ (d : D) → F) (s : Sum u A B) →
+    (h : ∀ (c : C) → E) (k : ∀ (d : D) → F) (s : AB) →
     elim s return z . Id (Sum u E F)
-                        (S.map u C D E F h k (S.map u A B C D f g z))
-                        (S.map u A B E F (λ (a : A) → h (f a))
+                        (S.map u C D E F h k (Op.map C D f g z))
+                        (Op.map E F (λ (a : A) → h (f a))
                            (λ (b : B) → k (g b)) z)
     | inl a ⇒ idRefl (Sum u E F) (inl u E F (h (f a)))
     | inr b ⇒ idRefl (Sum u E F) (inr u E F (k (g b)))
-    end
-end
-
-(* Case analysis after a map is case analysis with the composites. *)
-theorem caseMap : ∀ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (D : Type@{u}) (E : Type@{u})
-    (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
-    (h : ∀ (c : C) → E) (k : ∀ (d : D) → E) (s : Sum u A B) →
-    Id E (S.case u C D E h k (S.map u A B C D f g s))
-      (S.case u A B E (λ (a : A) → h (f a)) (λ (b : B) → k (g b)) s) ≔
-  λ (A : Type@{u}) (B : Type@{u}) (C : Type@{u}) (D : Type@{u})
-    (E : Type@{u}) (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
-    (h : ∀ (c : C) → E) (k : ∀ (d : D) → E) (s : Sum u A B) →
-    elim s return z . Id E (S.case u C D E h k (S.map u A B C D f g z))
-                        (S.case u A B E (λ (a : A) → h (f a))
-                           (λ (b : B) → k (g b)) z)
-    | inl a ⇒ idRefl E (h (f a))
-    | inr b ⇒ idRefl E (k (g b))
-    end
-end
-
-(* Swapping moves a value to the other side. *)
-theorem isLeftSwap : ∀ (A : Type@{u}) (B : Type@{u}) (s : Sum u A B) →
-    BoolId.Id Bool (S.isLeft u B A (S.swap u A B s)) (not (S.isLeft u A B s)) ≔
-  λ (A : Type@{u}) (B : Type@{u}) (s : Sum u A B) →
-    elim s return z . BoolId.Id Bool (S.isLeft u B A (S.swap u A B z))
-                        (not (S.isLeft u A B z))
-    | inl a ⇒ BoolId.idRefl Bool (S.isLeft u B A (inr u B A a))
-    | inr b ⇒ BoolId.idRefl Bool (S.isLeft u B A (inl u B A b))
     end
 end
 

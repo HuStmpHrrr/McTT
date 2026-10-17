@@ -9,6 +9,9 @@ import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
 import Prelude›Data›Sigma u A B use (Sigma; fst; snd)
 open Sigma use (pair)
 
+(* The projections and surjective pairing. *)
+module Projections where
+
 theorem fstPair : ∀ (a : A) (b : B a) → Id A (fst (pair a b)) a ≔
   λ (a : A) (b : B a) → idRefl A a
 end
@@ -26,6 +29,11 @@ theorem sigmaEta : ∀ (p : Sigma) → Id Sigma (pair (fst p) (snd p)) p ≔
     end
 end
 
+end
+
+(* Equality of pairs. *)
+module Equality where
+
 (* Pairs whose second component is [f] of the first are equal when their
    first components are. *)
 theorem pairCong : ∀ (f : ∀ (a : A) → B a) (x : A) (y : A) (h : Id A x y) →
@@ -40,6 +48,8 @@ theorem pairInjectiveFst : ∀ (a : A) (b : B a) (c : A) (d : B c)
     (h : Id Sigma (pair a b) (pair c d)) → Id A a c ≔
   λ (a : A) (b : B a) (c : A) (d : B c) (h : Id Sigma (pair a b) (pair c d)) →
     idCong Sigma A fst (pair a b) (pair c d) h
+end
+
 end
 
 end

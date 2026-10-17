@@ -1,40 +1,42 @@
-(* Laws of [Prelude›Data›Option], at every level [u], stated with the
-   Leibniz equality of [Prelude›Logic›Leibniz]: [map] is a functor, [bind]
-   with [some] a monad, [map] is a [bind], and the laws of [getOr],
-   [isSome] and [orElse].
+(* Laws of [Prelude›Data›Option] over a fixed element type [A] of
+   [Type@{u}], stated with the Leibniz equality of [Prelude›Logic›Leibniz]:
+   [map] is a functor, [bind] with [some] a monad, [map] is a [bind], and
+   the laws of [getOr], [isSome] and [orElse].
 
    A law that holds by unfolding on a constructor ([bind] on [some]) is
    proved by [idRefl]; the others by cases on the option. *)
-module Prelude›Data›Option›Properties where
+module Prelude›Data›Option›Properties (u : Level) (A : Type@{u}) where
 
 import Prelude›Data›Bool use (Bool)
 import Prelude›Data›Option use (Option)
 open Option use (none; some)
 open Prelude›Data›Option.Ops as O
-
-(* The functor laws. *)
-module Functor (u : Level) where
-
 import Prelude›Logic›Leibniz u use (Id; idRefl)
 
-theorem mapId : ∀ (A : Type@{u}) (o : Option u A) →
-    Id (Option u A) (O.map u A A (λ (x : A) → x) o) o ≔
-  λ (A : Type@{u}) (o : Option u A) →
-    elim o return z . Id (Option u A) (O.map u A A (λ (x : A) → x) z) z
-    | none ⇒ idRefl (Option u A) (none u A)
-    | some x ⇒ idRefl (Option u A) (some u A x)
+private inductive OA ≔ Option u A
+
+private module Op ≔ O u A
+
+(* The functor laws. *)
+module Functor where
+
+theorem mapId : ∀ (o : OA) → Id OA (Op.map A (λ (x : A) → x) o) o ≔
+  λ (o : OA) →
+    elim o return z . Id OA (Op.map A (λ (x : A) → x) z) z
+    | none ⇒ idRefl OA OA.none
+    | some x ⇒ idRefl OA (OA.some x)
     end
 end
 
 (* Mapping [f] then [g] is mapping their composite. *)
-theorem mapComp : ∀ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (f : ∀ (x : A) → B) (g : ∀ (y : B) → C) (o : Option u A) →
-    Id (Option u C) (O.map u B C g (O.map u A B f o))
-      (O.map u A C (λ (x : A) → g (f x)) o) ≔
-  λ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (f : ∀ (x : A) → B) (g : ∀ (y : B) → C) (o : Option u A) →
-    elim o return z . Id (Option u C) (O.map u B C g (O.map u A B f z))
-                        (O.map u A C (λ (x : A) → g (f x)) z)
+theorem mapComp : ∀ (B : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → B)
+    (g : ∀ (y : B) → C) (o : OA) →
+    Id (Option u C) (O.map u B C g (Op.map B f o))
+      (Op.map C (λ (x : A) → g (f x)) o) ≔
+  λ (B : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → B) (g : ∀ (y : B) → C)
+    (o : OA) →
+    elim o return z . Id (Option u C) (O.map u B C g (Op.map B f z))
+                        (Op.map C (λ (x : A) → g (f x)) z)
     | none ⇒ idRefl (Option u C) (none u C)
     | some x ⇒ idRefl (Option u C) (some u C (g (f x)))
     end
@@ -43,52 +45,45 @@ end
 end
 
 (* The monad laws, with [some] as the unit. *)
-module Monad (u : Level) where
-
-import Prelude›Logic›Leibniz u use (Id; idRefl)
+module Monad where
 
 (* [some] is a left unit: [bind] on [some a] continues with [a]. *)
-theorem bindSomeLeft : ∀ (A : Type@{u}) (B : Type@{u})
-    (f : ∀ (x : A) → Option u B) (a : A) →
-    Id (Option u B) (O.bind u A B f (some u A a)) (f a) ≔
-  λ (A : Type@{u}) (B : Type@{u}) (f : ∀ (x : A) → Option u B) (a : A) →
+theorem bindSomeLeft : ∀ (B : Type@{u}) (f : ∀ (x : A) → Option u B)
+    (a : A) → Id (Option u B) (Op.bind B f (OA.some a)) (f a) ≔
+  λ (B : Type@{u}) (f : ∀ (x : A) → Option u B) (a : A) →
     idRefl (Option u B) (f a)
 end
 
 (* [some] is a right unit. *)
-theorem bindSomeRight : ∀ (A : Type@{u}) (o : Option u A) →
-    Id (Option u A) (O.bind u A A (λ (x : A) → some u A x) o) o ≔
-  λ (A : Type@{u}) (o : Option u A) →
-    elim o return z . Id (Option u A)
-                        (O.bind u A A (λ (x : A) → some u A x) z) z
-    | none ⇒ idRefl (Option u A) (none u A)
-    | some x ⇒ idRefl (Option u A) (some u A x)
+theorem bindSomeRight : ∀ (o : OA) →
+    Id OA (Op.bind A (λ (x : A) → OA.some x) o) o ≔
+  λ (o : OA) →
+    elim o return z . Id OA (Op.bind A (λ (x : A) → OA.some x) z) z
+    | none ⇒ idRefl OA OA.none
+    | some x ⇒ idRefl OA (OA.some x)
     end
 end
 
-theorem bindAssoc : ∀ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (f : ∀ (x : A) → Option u B) (g : ∀ (y : B) → Option u C)
-    (o : Option u A) →
-    Id (Option u C) (O.bind u B C g (O.bind u A B f o))
-      (O.bind u A C (λ (x : A) → O.bind u B C g (f x)) o) ≔
-  λ (A : Type@{u}) (B : Type@{u}) (C : Type@{u})
-    (f : ∀ (x : A) → Option u B) (g : ∀ (y : B) → Option u C)
-    (o : Option u A) →
-    elim o return z . Id (Option u C) (O.bind u B C g (O.bind u A B f z))
-                        (O.bind u A C (λ (x : A) → O.bind u B C g (f x)) z)
+theorem bindAssoc : ∀ (B : Type@{u}) (C : Type@{u})
+    (f : ∀ (x : A) → Option u B) (g : ∀ (y : B) → Option u C) (o : OA) →
+    Id (Option u C) (O.bind u B C g (Op.bind B f o))
+      (Op.bind C (λ (x : A) → O.bind u B C g (f x)) o) ≔
+  λ (B : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → Option u B)
+    (g : ∀ (y : B) → Option u C) (o : OA) →
+    elim o return z . Id (Option u C) (O.bind u B C g (Op.bind B f z))
+                        (Op.bind C (λ (x : A) → O.bind u B C g (f x)) z)
     | none ⇒ idRefl (Option u C) (none u C)
     | some x ⇒ idRefl (Option u C) (O.bind u B C g (f x))
     end
 end
 
 (* [map f] is [bind] with [some] after [f]. *)
-theorem mapBind : ∀ (A : Type@{u}) (B : Type@{u}) (f : ∀ (x : A) → B)
-    (o : Option u A) →
-    Id (Option u B) (O.map u A B f o)
-      (O.bind u A B (λ (x : A) → some u B (f x)) o) ≔
-  λ (A : Type@{u}) (B : Type@{u}) (f : ∀ (x : A) → B) (o : Option u A) →
-    elim o return z . Id (Option u B) (O.map u A B f z)
-                        (O.bind u A B (λ (x : A) → some u B (f x)) z)
+theorem mapBind : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (o : OA) →
+    Id (Option u B) (Op.map B f o)
+      (Op.bind B (λ (x : A) → some u B (f x)) o) ≔
+  λ (B : Type@{u}) (f : ∀ (x : A) → B) (o : OA) →
+    elim o return z . Id (Option u B) (Op.map B f z)
+                        (Op.bind B (λ (x : A) → some u B (f x)) z)
     | none ⇒ idRefl (Option u B) (none u B)
     | some x ⇒ idRefl (Option u B) (some u B (f x))
     end
@@ -97,56 +92,49 @@ end
 end
 
 (* The default, the test and the choice. *)
-module Access (u : Level) where
+module Access where
 
-import Prelude›Logic›Leibniz u use (Id; idRefl)
 import Prelude›Logic›Leibniz 0l as BoolId
 
 (* [getOr] commutes with [map]: mapping the default too. *)
-theorem getOrMap : ∀ (A : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → C)
-    (d : A) (o : Option u A) →
-    Id C (O.getOr u C (f d) (O.map u A C f o)) (f (O.getOr u A d o)) ≔
-  λ (A : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → C) (d : A)
-    (o : Option u A) →
-    elim o return z . Id C (O.getOr u C (f d) (O.map u A C f z))
-                        (f (O.getOr u A d z))
+theorem getOrMap : ∀ (C : Type@{u}) (f : ∀ (x : A) → C) (d : A) (o : OA) →
+    Id C (O.getOr u C (f d) (Op.map C f o)) (f (Op.getOr d o)) ≔
+  λ (C : Type@{u}) (f : ∀ (x : A) → C) (d : A) (o : OA) →
+    elim o return z . Id C (O.getOr u C (f d) (Op.map C f z))
+                        (f (Op.getOr d z))
     | none ⇒ idRefl C (f d)
     | some x ⇒ idRefl C (f x)
     end
 end
 
 (* Mapping keeps definedness. *)
-theorem isSomeMap : ∀ (A : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → C)
-    (o : Option u A) →
-    BoolId.Id Bool (O.isSome u C (O.map u A C f o)) (O.isSome u A o) ≔
-  λ (A : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → C) (o : Option u A) →
-    elim o return z . BoolId.Id Bool (O.isSome u C (O.map u A C f z))
-                        (O.isSome u A z)
-    | none ⇒ BoolId.idRefl Bool (O.isSome u A (none u A))
-    | some x ⇒ BoolId.idRefl Bool (O.isSome u A (some u A x))
+theorem isSomeMap : ∀ (C : Type@{u}) (f : ∀ (x : A) → C) (o : OA) →
+    BoolId.Id Bool (O.isSome u C (Op.map C f o)) (Op.isSome o) ≔
+  λ (C : Type@{u}) (f : ∀ (x : A) → C) (o : OA) →
+    elim o return z . BoolId.Id Bool (O.isSome u C (Op.map C f z))
+                        (Op.isSome z)
+    | none ⇒ BoolId.idRefl Bool (Op.isSome OA.none)
+    | some x ⇒ BoolId.idRefl Bool (Op.isSome (OA.some x))
     end
 end
 
 (* [none] is a right unit of [orElse] ([none] is a left unit by
    unfolding). *)
-theorem orElseNone : ∀ (A : Type@{u}) (o : Option u A) →
-    Id (Option u A) (O.orElse u A o (none u A)) o ≔
-  λ (A : Type@{u}) (o : Option u A) →
-    elim o return z . Id (Option u A) (O.orElse u A z (none u A)) z
-    | none ⇒ idRefl (Option u A) (none u A)
-    | some x ⇒ idRefl (Option u A) (some u A x)
+theorem orElseNone : ∀ (o : OA) → Id OA (Op.orElse o OA.none) o ≔
+  λ (o : OA) →
+    elim o return z . Id OA (Op.orElse z OA.none) z
+    | none ⇒ idRefl OA OA.none
+    | some x ⇒ idRefl OA (OA.some x)
     end
 end
 
-theorem orElseAssoc : ∀ (A : Type@{u}) (o : Option u A) (p : Option u A)
-    (q : Option u A) →
-    Id (Option u A) (O.orElse u A (O.orElse u A o p) q)
-      (O.orElse u A o (O.orElse u A p q)) ≔
-  λ (A : Type@{u}) (o : Option u A) (p : Option u A) (q : Option u A) →
-    elim o return z . Id (Option u A) (O.orElse u A (O.orElse u A z p) q)
-                        (O.orElse u A z (O.orElse u A p q))
-    | none ⇒ idRefl (Option u A) (O.orElse u A p q)
-    | some x ⇒ idRefl (Option u A) (some u A x)
+theorem orElseAssoc : ∀ (o : OA) (p : OA) (q : OA) →
+    Id OA (Op.orElse (Op.orElse o p) q) (Op.orElse o (Op.orElse p q)) ≔
+  λ (o : OA) (p : OA) (q : OA) →
+    elim o return z . Id OA (Op.orElse (Op.orElse z p) q)
+                        (Op.orElse z (Op.orElse p q))
+    | none ⇒ idRefl OA (Op.orElse p q)
+    | some x ⇒ idRefl OA (OA.some x)
     end
 end
 

@@ -13,7 +13,7 @@ module Prelude›Data›Tree›Binary›Properties (u : Level) (N : Type@{u})
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic›Leibniz u use (Id; idRefl; idSym; idTrans; idCong;
   idCongTwo)
-import Prelude›Arith›Equality use (Eq; refl; sym; trans)
+import Prelude›Arith›Equality use (Eq; sym; trans)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusSucc)
 open Prelude›Arith›Plus.Algebra use (plusComm; plusCongBoth)
@@ -25,9 +25,9 @@ import Prelude›Data›List›Properties.Reverse u N as RevN
 import Prelude›Data›Tree›Binary use (Tree)
 open Prelude›Data›Tree›Binary.Ops as TO
 
-inductive T ≔ Tree u N L
+private inductive T ≔ Tree u N L
 
-module Op ≔ TO u N L
+private module Op ≔ TO u N L
 
 (* [map]: the counts and the functor laws. *)
 module Maps where
@@ -73,7 +73,7 @@ theorem mapId : ∀ (t : T) →
 end
 
 (* Agda's [map-compose]. *)
-theorem mapCompose : ∀ (M : Type@{u}) (K : Type@{u}) (P : Type@{u})
+theorem mapComp : ∀ (M : Type@{u}) (K : Type@{u}) (P : Type@{u})
     (Q : Type@{u}) (f : ∀ (m : N) → M) (g : ∀ (x : L) → K)
     (h : ∀ (m : M) → P) (k : ∀ (x : K) → Q) (t : T) →
     Id (Tree u P Q) (TO.map u M K P Q h k (Op.map M K f g t))

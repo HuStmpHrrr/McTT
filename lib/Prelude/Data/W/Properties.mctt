@@ -16,9 +16,12 @@ import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
 import Prelude›Data›W use (W)
 open Prelude›Data›W.Ops as WO
 
-inductive T ≔ W u A B
+private inductive T ≔ W u A B
 
-module Op ≔ WO u A B
+private module Op ≔ WO u A B
+
+(* Nodes: the projections of [sup], surjective pairing and injectivity. *)
+module Nodes where
 
 theorem headSup : ∀ (x : A) (f : ∀ (p : B x) → T) →
     Id A (Op.head (T.sup x f)) x ≔
@@ -41,6 +44,11 @@ theorem supInjectiveShape : ∀ (x : A) (y : A) (f : ∀ (p : B x) → T)
     idCong T A Op.head (T.sup x f) (T.sup y g) h
 end
 
+end
+
+(* [map] on the head, and [foldr] on a node. *)
+module Operations where
+
 theorem headMap : ∀ (C : Type@{u}) (D : ∀ (c : C) → Type@{u})
     (m : ∀ (a : A) → C) (n : ∀ (a : A) (d : D (m a)) → B a) (w : T) →
     Id C (WO.head u C D (Op.map C D m n w)) (m (Op.head w)) ≔
@@ -61,11 +69,18 @@ theorem foldrSup : ∀ (P : Type@{u}) (alg : ∀ (x : A) (r : ∀ (p : B x) → 
     idRefl P (alg x (λ (p : B x) → Op.foldr P alg (f p)))
 end
 
+end
+
+(* When there are no trees. *)
+module Emptiness where
+
 (* Agda's [inhabited⇒empty]: every node has a subtree, so a tree would
    have an infinite descent, which [foldr] turns into a proof of [⊥]. *)
 theorem inhabitedEmpty : ∀ (b : ∀ (x : A) → B x) (w : T) → ⊥ ≔
   λ (b : ∀ (x : A) → B x) (w : T) →
     Op.foldr ⊥ (λ (x : A) (r : ∀ (p : B x) → ⊥) → r (b x)) w
+end
+
 end
 
 end
