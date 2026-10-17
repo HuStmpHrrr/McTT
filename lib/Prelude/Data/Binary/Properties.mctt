@@ -19,8 +19,8 @@ import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
 open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc)
 import Prelude›Arith›Parity use (double)
-import Prelude›Data›Binary as B use (Bin; doubleSucc; succDouble; suc;
-  toNat; fromNat; add)
+import Prelude›Data›Binary as B use (Bin; suc; toNat; fromNat; add)
+open Bin use (doubleSucc; succDouble)
 
 (* Laws of the unary doubling. *)
 private module Doubling where

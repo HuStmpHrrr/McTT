@@ -13,7 +13,7 @@ inductive Sigma : Type@{u} where
 | pair (a : A) (b : B a)
 end
 
-open Sigma export (pair)
+open Sigma use (pair)
 
 def fst (p : Sigma) : A ≔
   elim p return z . A | pair a b ⇒ a end

@@ -1239,8 +1239,8 @@ let%expect_test "lib/Lists.mctt" =
             1 : Prelude›Data›Prod.Prod 0l Prelude›Data›Bool.Bool ℕ
     Evaluate S.case 0l ℕ Bool ℕ succ (λ (x1 : Bool) → if ℕ x1 1 0)
                (S.swap 0l Bool ℕ (Sum.inl 0l Bool ℕ ff)) --> 0 : ℕ
-    Evaluate Tagged.snd (Tagged.pair tt 3) --> 3 : ℕ
-    Evaluate Tagged.snd (Tagged.pair ff ff) --> Prelude›Data›Bool.Bool.ff
+    Evaluate Tagged.snd (Tagged.Sigma.pair tt 3) --> 3 : ℕ
+    Evaluate Tagged.snd (Tagged.Sigma.pair ff ff) --> Prelude›Data›Bool.Bool.ff
       : Prelude›Data›Bool.Bool
     Evaluate lengthAppend oneTwoThree oneTwoThree --> ⋆ : ⊤
     Evaluate sumReverse oneTwoThree --> ⋆ : ⊤
@@ -3068,8 +3068,6 @@ let%expect_test "mctt-doc: the contents nest a unit's modules, inductives and ex
     inductive List #List
       | nil #List.nil
       | cons #List.cons
-    export nil #nil
-    export cons #cons
     module Ops #Ops
       def length #Ops.length
       def append #Ops.append

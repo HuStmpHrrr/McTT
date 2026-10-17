@@ -86,8 +86,8 @@ def Payload (b : Bool) : Type@0 ≔ Cond.if 1l Type@0 b ℕ Bool end
 
 import Prelude›Data›Sigma 0l Bool Payload as Tagged
 
-eval Tagged.snd (Tagged.pair tt 3)
-eval Tagged.snd (Tagged.pair ff ff)
+eval Tagged.snd (Tagged.Sigma.pair tt 3)
+eval Tagged.snd (Tagged.Sigma.pair ff ff)
 
 (* Closed instances of laws.  A law between numbers computes to [⋆]; a
    Leibniz equality is a function of the predicate. *)

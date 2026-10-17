@@ -17,7 +17,7 @@ inductive These (u : Level) (A : Type@{u}) (B : Type@{u}) : Type@{u} where
 | these (a : A) (b : B)
 end
 
-open These export (this; that; these)
+open These use (this; that; these)
 
 module Ops (u : Level) (A : Type@{u}) (B : Type@{u}) where
 

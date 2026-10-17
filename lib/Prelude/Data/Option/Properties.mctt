@@ -8,7 +8,8 @@
 module Prelude›Data›Option›Properties where
 
 import Prelude›Data›Bool use (Bool)
-import Prelude›Data›Option use (Option; none; some)
+import Prelude›Data›Option use (Option)
+open Option use (none; some)
 open Prelude›Data›Option.Ops as O
 
 (* The functor laws. *)

@@ -14,7 +14,7 @@ inductive Sum (u : Level) (A : Type@{u}) (B : Type@{u}) : Type@{u} where
 | inr (b : B)
 end
 
-open Sum export (inl; inr)
+open Sum use (inl; inr)
 
 module Ops (u : Level) (A : Type@{u}) (B : Type@{u}) where
 

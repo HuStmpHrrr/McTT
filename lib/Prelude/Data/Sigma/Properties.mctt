@@ -6,7 +6,8 @@ module Prelude›Data›Sigma›Properties (u : Level) (A : Type@{u})
     (B : ∀ (a : A) → Type@{u}) where
 
 import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
-import Prelude›Data›Sigma u A B use (Sigma; pair; fst; snd)
+import Prelude›Data›Sigma u A B use (Sigma; fst; snd)
+open Sigma use (pair)
 
 theorem fstPair : ∀ (a : A) (b : B a) → Id A (fst (pair a b)) a ≔
   λ (a : A) (b : B a) → idRefl A a

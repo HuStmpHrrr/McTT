@@ -8,7 +8,8 @@
    [p] are proved by cases on [p]. *)
 module Prelude›Data›Prod›Properties where
 
-import Prelude›Data›Prod use (Prod; pair)
+import Prelude›Data›Prod use (Prod)
+open Prod use (pair)
 open Prelude›Data›Prod.Ops as P
 
 module Laws (u : Level) where

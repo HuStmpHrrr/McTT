@@ -17,9 +17,11 @@ import Prelude›Logic›Leibniz 0l use (Id; idRefl; idSym; idTrans; idCong)
 import Prelude›Logic.Negation 1l use (Not)
 import Prelude›Arith›Plus use (plus)
 import Prelude›Arith›Mult use (mult)
-import Prelude›Data›Sign as S use (Sign; negative; positive; opposite)
-import Prelude›Data›Parity use (Parity; even; odd; inv; add; mul; parity;
-  toSign; fromSign)
+import Prelude›Data›Sign as S use (Sign; opposite)
+open Sign use (negative; positive)
+import Prelude›Data›Parity use (Parity; inv; add; mul; parity; toSign;
+  fromSign)
+open Parity use (even; odd)
 
 (* The proposition that a parity is [even]. *)
 private def IsEven (p : Parity) : Type@0 ≔

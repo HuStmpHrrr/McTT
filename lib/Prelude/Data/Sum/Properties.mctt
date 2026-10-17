@@ -6,7 +6,8 @@
 module Prelude›Data›Sum›Properties where
 
 import Prelude›Data›Bool use (Bool; not)
-import Prelude›Data›Sum use (Sum; inl; inr)
+import Prelude›Data›Sum use (Sum)
+open Sum use (inl; inr)
 open Prelude›Data›Sum.Ops as S
 
 module Laws (u : Level) where

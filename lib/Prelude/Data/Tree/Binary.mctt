@@ -20,7 +20,7 @@ inductive Tree (u : Level) (N : Type@{u}) (L : Type@{u}) : Type@{u} where
 | node (l : Tree u N L) (m : N) (r : Tree u N L)
 end
 
-open Tree export (leaf; node)
+open Tree use (leaf; node)
 
 module Ops (u : Level) (N : Type@{u}) (L : Type@{u}) where
 

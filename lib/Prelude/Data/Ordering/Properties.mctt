@@ -14,8 +14,8 @@ import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic›Leibniz 0l use (Id; idRefl; idTrans; idCong)
 import Prelude›Arith›Equality use (Eq)
 import Prelude›Arith›Order use (Lt)
-import Prelude›Data›Ordering use (Ordering; less; equal; greater; flip;
-  compare; thenCmp)
+import Prelude›Data›Ordering use (Ordering; flip; compare; thenCmp)
+open Ordering use (less; equal; greater)
 
 def Spec (m : ℕ) (n : ℕ) (o : Ordering) : Type@0 ≔
   elim o return z . Type@0

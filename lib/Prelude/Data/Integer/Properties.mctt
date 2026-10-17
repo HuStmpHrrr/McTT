@@ -26,10 +26,12 @@ open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc)
 import Prelude›Arith›Mult use (mult)
 open Prelude›Arith›Mult.Basic use (multZero; multOne; oneMult)
 open Prelude›Arith›Mult.Algebra use (multComm; multAssoc)
-import Prelude›Data›Sign as S use (Sign; negative; positive)
+import Prelude›Data›Sign as S use (Sign)
+open Sign use (negative; positive)
 import Prelude›Data›Sign›Properties.Mul as SM
-import Prelude›Data›Integer use (Int; pos; negsuc; neg; diff; add; succInt;
-  predInt; abs; sign; signed; mul)
+import Prelude›Data›Integer use (Int; neg; diff; add; succInt; predInt; abs;
+  sign; signed; mul)
+open Int use (pos; negsuc)
 
 (* Negation. *)
 module Neg where

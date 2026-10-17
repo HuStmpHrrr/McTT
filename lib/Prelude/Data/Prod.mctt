@@ -12,7 +12,7 @@ inductive Prod (u : Level) (A : Type@{u}) (B : Type@{u}) : Type@{u} where
 | pair (a : A) (b : B)
 end
 
-open Prod export (pair)
+open Prod use (pair)
 
 module Ops (u : Level) (A : Type@{u}) (B : Type@{u}) where
 

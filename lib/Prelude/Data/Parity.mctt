@@ -8,14 +8,15 @@
 module Prelude›Data›Parity where
 
 import Prelude›Builtin›Nat
-import Prelude›Data›Sign use (Sign; negative; positive)
+import Prelude›Data›Sign use (Sign)
+open Sign use (negative; positive)
 
 inductive Parity : Type@0 where
 | even
 | odd
 end
 
-open Parity export (even; odd)
+open Parity use (even; odd)
 
 def inv (p : Parity) : Parity ≔
   elim p return z . Parity | even ⇒ odd | odd ⇒ even end

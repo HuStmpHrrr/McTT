@@ -9,7 +9,7 @@ inductive Sign : Type@0 where
 | positive
 end
 
-open Sign export (negative; positive)
+open Sign use (negative; positive)
 
 def opposite (s : Sign) : Sign ≔
   elim s return z . Sign | negative ⇒ positive | positive ⇒ negative end

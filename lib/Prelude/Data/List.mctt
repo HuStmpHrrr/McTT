@@ -1,7 +1,7 @@
 (* Finite lists: [List u A] has the constructors [nil] and [cons x xs], for
    [x : A] and [xs : List u A], at every level [u].  The type takes the
    level and the element type as uniform parameters, so the constructors
-   do too: [cons 0l ℕ 1 (nil 0l ℕ) : List 0l ℕ].
+   do too: [List.cons 0l ℕ 1 (List.nil 0l ℕ) : List 0l ℕ].
 
    The operations on lists over a fixed [A] are in the module [Ops u A]:
    [length], [append], [map], [foldr] and [reverse], each by recursion on
@@ -18,7 +18,7 @@ inductive List (u : Level) (A : Type@{u}) : Type@{u} where
 | cons (x : A) (xs : List u A)
 end
 
-open List export (nil; cons)
+open List use (nil; cons)
 
 module Ops (u : Level) (A : Type@{u}) where
 

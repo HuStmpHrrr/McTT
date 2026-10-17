@@ -7,7 +7,8 @@ module Prelude›Data›Sign›Properties where
 
 import Prelude›Logic›Leibniz 0l use (Id; idRefl; idSym; idTrans; idCong)
 import Prelude›Logic.Negation 1l use (Not)
-import Prelude›Data›Sign use (Sign; negative; positive; opposite; mul)
+import Prelude›Data›Sign use (Sign; opposite; mul)
+open Sign use (negative; positive)
 
 (* The proposition that a sign is [positive]. *)
 private def IsPositive (s : Sign) : Type@0 ≔

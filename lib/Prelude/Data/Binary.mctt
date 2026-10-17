@@ -6,9 +6,9 @@
 
    [double], the successor [suc] and the addition [add] work on the binary
    forms; [toNat] and [fromNat] convert, through the doubling [double] of
-   [Prelude›Arith›Parity] on the unary side.  The constructor [zero] is
-   not exported, since it would clash with that of [ℕ]: it is [Bin.zero].
-   The laws are in [Prelude›Data›Binary›Properties]. *)
+   [Prelude›Arith›Parity] on the unary side.  The constructors are
+   reached through the type: [Bin.zero], [Bin.doubleSucc x].  The laws
+   are in [Prelude›Data›Binary›Properties]. *)
 module Prelude›Data›Binary where
 
 import Prelude›Builtin›Nat use (succ)
@@ -20,7 +20,7 @@ inductive Bin : Type@0 where
 | succDouble (x : Bin)
 end
 
-open Bin export (doubleSucc; succDouble)
+open Bin use (doubleSucc; succDouble)
 
 (* [2 x]: [2 (2 (1 + x))] is [2 (1 + (1 + 2 x))], and [2 (1 + 2 x)] is
    [2 (1 + 2 x)]. *)

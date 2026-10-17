@@ -12,7 +12,8 @@ module Prelude›Data›These›Properties where
 
 import Prelude›Data›Sum use (Sum)
 open Prelude›Data›Sum.Ops as S
-import Prelude›Data›These use (These; this; that; these)
+import Prelude›Data›These use (These)
+open These use (this; that; these)
 open Prelude›Data›These.Ops as T
 
 module Laws (u : Level) (A : Type@{u}) (B : Type@{u}) where

@@ -17,7 +17,7 @@ inductive Ordering : Type@0 where
 | greater
 end
 
-open Ordering export (less; equal; greater)
+open Ordering use (less; equal; greater)
 
 def flip (o : Ordering) : Ordering ≔
   elim o return z . Ordering

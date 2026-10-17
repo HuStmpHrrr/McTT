@@ -15,7 +15,7 @@ where
 | sup (x : A) (f : ∀ (p : B x) → W u A B)
 end
 
-open W export (sup)
+open W use (sup)
 
 module Ops (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u}) where
 
