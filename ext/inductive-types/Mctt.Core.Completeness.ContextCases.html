@@ -38,7 +38,7 @@
 <div class="paragraph"> </div>
 
     The two rules of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_ctx"><span class="id" title="inductive">wf_ctx</span></a></span>, and the two context-subtyping facts that
-    <span class="inlinecode"><span class="id" title="library">Consequences</span></span> needs.  <span class="inlinecode">⊨</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> is the inductive <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#sem_ctx"><span class="id" title="inductive">sem_ctx</span></a></span>, so the empty context
+    <span class="inlinecode"><span class="id" title="library">Consequences</span></span> needs.  <span class="inlinecode">⊨</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> is the inductive <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#sem_ctx"><span class="id" title="inductive">sem_ctx</span></a></span>, so the empty context
     is the constructor <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#sem_ctx_nil"><span class="id" title="constructor">sem_ctx_nil</span></a></span>.  The extension step is the one place that
     builds a context PER rather than taking one apart.
 
@@ -75,7 +75,7 @@
 </div>
 
 <div class="doc">
-Both witnesses have <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> on the left, so they agree up to <span class="inlinecode">&lt;~&gt;</span>.  Naming
+Both witnesses have <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> on the left, so they agree up to <span class="inlinecode">&lt;~&gt;</span>.  Naming
     the equivalence, rather than calling <span class="inlinecode"><span class="id" title="var">handle_per_ctx_env_irrel</span></span>, keeps
     <span class="inlinecode"><span class="id" title="var">env_relΓΓ'</span></span>, the only witness for the tail of the goal, in place. 
 </div>
@@ -111,7 +111,7 @@ Both witnesses have <span class="inlinecode"><a class="idref" href="Mctt.Core.Sy
 
 <div class="paragraph"> </div>
 
-    The canonical context PER of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▸</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_env_extend_def"><span class="id" title="definition">per_env_extend_def</span></a></span>, fed by
+    The canonical context PER of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▸</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_env_extend_def"><span class="id" title="definition">per_env_extend_def</span></a></span>, fed by
     the <span class="inlinecode"><span class="id" title="var">Id</span></span> instances of the judgments of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>. 
 </div>
 <div class="code">

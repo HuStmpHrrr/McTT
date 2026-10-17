@@ -42,7 +42,7 @@
 </div>
 
 <div class="doc">
-<a id="lab882"></a><h1 class="section">A Declarative Specification of Elaboration</h1>
+<a id="lab950"></a><h1 class="section">A Declarative Specification of Elaboration</h1>
 
 
 <div class="paragraph"> </div>
@@ -121,7 +121,7 @@ y, x, B, id ↦ Main.M.id, A
     <span class="inlinecode">⟨<span class="id" title="var">Main.M</span>⟩</span> and <span class="inlinecode"><span class="id" title="var">M.id</span></span> <span class="inlinecode"><span class="id" title="library">Nat</span></span> selects its member <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#id"><span class="id" title="definition">id</span></a></span> and applies it. 
 <div class="paragraph"> </div>
 
-<a id="lab883"></a><h2 class="section">Entries</h2>
+<a id="lab951"></a><h2 class="section">Entries</h2>
 
 </div>
 <div class="code">
@@ -241,7 +241,7 @@ The entries of names bound in order, innermost first: the binders of
 </div>
 
 <div class="doc">
-<a id="lab884"></a><h2 class="section">What an Entry Denotes</h2>
+<a id="lab952"></a><h2 class="section">What an Entry Denotes</h2>
 
 
 <div class="paragraph"> </div>
@@ -315,7 +315,7 @@ As a module expression.  A variable that may hold a module is a module
 </div>
 
 <div class="doc">
-<a id="lab885"></a><h2 class="section">What an Open Declares</h2>
+<a id="lab953"></a><h2 class="section">What an Open Declares</h2>
 
 
 <div class="paragraph"> </div>
@@ -379,7 +379,7 @@ What <span class="inlinecode"><span class="id" title="var">open</span></span> <s
 </div>
 
 <div class="doc">
-<a id="lab886"></a><h2 class="section">Objects</h2>
+<a id="lab954"></a><h2 class="section">Objects</h2>
 
 
 <div class="paragraph"> </div>
@@ -521,12 +521,12 @@ A local module: its parameters, then its definition under them.
 | <a id="sdf_alias" class="idref" href="#sdf_alias"><span class="id" title="constructor">sdf_alias</span></a> : <span class="id" title="keyword">forall</span> <a id="S:209" class="idref" href="#S:209"><span class="id" title="binder">S</span></a> <a id="oE:210" class="idref" href="#oE:210"><span class="id" title="binder">oE</span></a> <a id="E:211" class="idref" href="#E:211"><span class="id" title="binder">E</span></a>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Frontend.ElabSpec.html#selm:72"><span class="id" title="inductive">selm</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#S:209"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#oE:210"><span class="id" title="variable">oE</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#E:211"><span class="id" title="variable">E</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#sdef:76"><span class="id" title="inductive">sdef</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#S:209"><span class="id" title="variable">S</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.md_alias"><span class="id" title="constructor">Cst.md_alias</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#oE:210"><span class="id" title="variable">oE</span></a>) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#md_alias"><span class="id" title="constructor">md_alias</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#E:211"><span class="id" title="variable">E</span></a>)<br/>
 | <a id="sdf_where" class="idref" href="#sdf_where"><span class="id" title="constructor">sdf_where</span></a> : <span class="id" title="keyword">forall</span> <a id="S:212" class="idref" href="#S:212"><span class="id" title="binder">S</span></a> <a id="cs:213" class="idref" href="#cs:213"><span class="id" title="binder">cs</span></a> <a id="f431e1f106244292045e462852f09207" class="idref" href="#f431e1f106244292045e462852f09207"><span class="id" title="binder">Φ</span></a>,<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Frontend.ElabSpec.html#sbody:77"><span class="id" title="inductive">sbody</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#S:212"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gm_nil"><span class="id" title="constructor">gm_nil</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#cs:213"><span class="id" title="variable">cs</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#f431e1f106244292045e462852f09207"><span class="id" title="variable">Φ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#sdef:76"><span class="id" title="inductive">sdef</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#S:212"><span class="id" title="variable">S</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.md_where"><span class="id" title="constructor">Cst.md_where</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#cs:213"><span class="id" title="variable">cs</span></a>) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#md_body"><span class="id" title="constructor">md_body</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#f431e1f106244292045e462852f09207"><span class="id" title="variable">Φ</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Frontend.ElabSpec.html#sbody:77"><span class="id" title="inductive">sbody</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#S:212"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gm_nil"><span class="id" title="constructor">gm_nil</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#cs:213"><span class="id" title="variable">cs</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#f431e1f106244292045e462852f09207"><span class="id" title="variable">Φ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#sdef:76"><span class="id" title="inductive">sdef</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#S:212"><span class="id" title="variable">S</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.md_where"><span class="id" title="constructor">Cst.md_where</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#cs:213"><span class="id" title="variable">cs</span></a>) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#md_body"><span class="id" title="constructor">md_body</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sm_open"><span class="id" title="constructor">sm_open</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#f431e1f106244292045e462852f09207"><span class="id" title="variable">Φ</span></a>)<br/>
 <br/>
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#sbody"><span class="id" title="inductive">sbody</span></a></span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><span class="id" title="var">Φ</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.IndCommand.html#ConTypes.cs"><span class="id" title="variable">cs</span></a></span> <span class="inlinecode"><span class="id" title="var">Φ'</span></span>: the commands <span class="inlinecode"><a class="idref" href="Mctt.Core.IndCommand.html#ConTypes.cs"><span class="id" title="variable">cs</span></a></span> of a local body extend <span class="inlinecode"><span class="id" title="var">Φ</span></span> to <span class="inlinecode"><span class="id" title="var">Φ'</span></span>.
+<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#sbody"><span class="id" title="inductive">sbody</span></a></span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.IndCommand.html#ConTypes.cs"><span class="id" title="variable">cs</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#820f9c964c10ddec657decb304efdeee"><span class="id" title="variable">Φ'</span></a></span>: the commands <span class="inlinecode"><a class="idref" href="Mctt.Core.IndCommand.html#ConTypes.cs"><span class="id" title="variable">cs</span></a></span> of a local body extend <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> to <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#820f9c964c10ddec657decb304efdeee"><span class="id" title="variable">Φ'</span></a></span>.
     Each entry is a core binder for the entries after it.  An open is a
     pre-form the core expands (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gm_open"><span class="id" title="constructor">gm_open</span></a></span>); each of its items is a core
     binder.  The names of a body are checked fresh by the core.  A local
@@ -559,7 +559,7 @@ It loads nothing, so a unit it names must be nameable already.
 </div>
 
 <div class="doc">
-<a id="lab887"></a><h2 class="section">Inductive Declarations</h2>
+<a id="lab955"></a><h2 class="section">Inductive Declarations</h2>
 
 
 <div class="paragraph"> </div>
@@ -597,7 +597,7 @@ It loads nothing, so a unit it names must be nameable already.
 </div>
 
 <div class="doc">
-<a id="lab888"></a><h2 class="section">Commands</h2>
+<a id="lab956"></a><h2 class="section">Commands</h2>
 
 
 <div class="paragraph"> </div>
@@ -737,7 +737,7 @@ An open loads nothing, so a unit it names must be nameable already.
 </div>
 
 <div class="doc">
-<a id="lab889"></a><h2 class="section">Units</h2>
+<a id="lab957"></a><h2 class="section">Units</h2>
 
 
 <div class="paragraph"> </div>

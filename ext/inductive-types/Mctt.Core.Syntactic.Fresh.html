@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab534"></a><h1 class="section">Freshness and Un-weakening</h1>
+<a id="lab554"></a><h1 class="section">Freshness and Un-weakening</h1>
 
 
 <div class="paragraph"> </div>
@@ -81,7 +81,7 @@
 </div>
 
 <div class="doc">
-<a id="lab535"></a><h2 class="section">Un-weakening</h2>
+<a id="lab555"></a><h2 class="section">Un-weakening</h2>
 
 
 <div class="paragraph"> </div>
@@ -98,7 +98,7 @@
 </div>
 
 <div class="doc">
-<a id="lab536"></a><h2 class="section"><span class="inlinecode">#<span class="id" title="var">k</span></span> Does Not Occur</h2>
+<a id="lab556"></a><h2 class="section"><span class="inlinecode">#<span class="id" title="var">k</span></span> Does Not Occur</h2>
 
 
 <div class="paragraph"> </div>
@@ -154,7 +154,7 @@
 &nbsp;&nbsp;<span class="id" title="keyword">end</span><br/>
 <span class="id" title="keyword">with</span> <a id="moddef_fresh" class="idref" href="#moddef_fresh"><span class="id" title="definition">moddef_fresh</span></a> (<a id="k:10" class="idref" href="#k:10"><span class="id" title="binder">k</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="D:11" class="idref" href="#D:11"><span class="id" title="binder">D</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#moddef"><span class="id" title="inductive">moddef</span></a>) {<span class="id" title="keyword">struct</span> <span class="id" title="var">D</span>} : <span class="id" title="keyword">Prop</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#D:11"><span class="id" title="variable">D</span></a> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#md_body"><span class="id" title="constructor">md_body</span></a> <span class="id" title="var">Φ</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#gmod_fresh:23"><span class="id" title="definition">gmod_fresh</span></a> <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#k:10"><span class="id" title="variable">k</span></a> <span class="id" title="var">Φ</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#md_body"><span class="id" title="constructor">md_body</span></a> <span class="id" title="var">sm</span> <span class="id" title="var">Φ</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#gmod_fresh:23"><span class="id" title="definition">gmod_fresh</span></a> <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#k:10"><span class="id" title="variable">k</span></a> <span class="id" title="var">Φ</span><br/>
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#md_alias"><span class="id" title="constructor">md_alias</span></a> <span class="id" title="var">E</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#modexp_fresh:19"><span class="id" title="definition">modexp_fresh</span></a> <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#k:10"><span class="id" title="variable">k</span></a> <span class="id" title="var">E</span><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span><br/>
 <span class="id" title="keyword">with</span> <a id="gmod_fresh" class="idref" href="#gmod_fresh"><span class="id" title="definition">gmod_fresh</span></a> (<a id="k:12" class="idref" href="#k:12"><span class="id" title="binder">k</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="88e16403a2e8c3584cb2b35950a575fb" class="idref" href="#88e16403a2e8c3584cb2b35950a575fb"><span class="id" title="binder">Φ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gmod"><span class="id" title="inductive">gmod</span></a>) {<span class="id" title="keyword">struct</span> <span class="id" title="var">Φ</span>} : <span class="id" title="keyword">Prop</span> :=<br/>
@@ -167,7 +167,7 @@
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#E:15"><span class="id" title="variable">E</span></a> <span class="id" title="keyword">with</span><br/>
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ge_def"><span class="id" title="constructor">ge_def</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">A</span> <span class="id" title="var">B</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#exp_fresh:18"><span class="id" title="definition">exp_fresh</span></a> <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#k:14"><span class="id" title="variable">k</span></a> <span class="id" title="var">A</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">/\</span></a> <span class="id" title="keyword">match</span> <span class="id" title="var">B</span> <span class="id" title="keyword">with</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <span class="id" title="var">M</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#exp_fresh:18"><span class="id" title="definition">exp_fresh</span></a> <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#k:14"><span class="id" title="variable">k</span></a> <span class="id" title="var">M</span> | <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a> =&gt; <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#True"><span class="id" title="inductive">True</span></a> <span class="id" title="keyword">end</span><br/>
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ge_mod"><span class="id" title="constructor">ge_mod</span></a> <span class="id" title="var">_</span> <span class="id" title="var">U</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#gunit_fresh:21"><span class="id" title="definition">gunit_fresh</span></a> <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#k:14"><span class="id" title="variable">k</span></a> <span class="id" title="var">U</span><br/>
-&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ge_ind"><span class="id" title="constructor">ge_ind</span></a> <span class="id" title="var">_</span> <span class="id" title="var">D</span> <span class="id" title="var">Φ</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#gmod_fresh:23"><span class="id" title="definition">gmod_fresh</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_nu"><span class="id" title="projection">ind_nu</span></a> <span class="id" title="var">D</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">+</span></a> <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#k:14"><span class="id" title="variable">k</span></a>) <span class="id" title="var">Φ</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ge_ind"><span class="id" title="constructor">ge_ind</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">D</span> <span class="id" title="var">Φ</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#gmod_fresh:23"><span class="id" title="definition">gmod_fresh</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_nu"><span class="id" title="projection">ind_nu</span></a> <span class="id" title="var">D</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">+</span></a> <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#k:14"><span class="id" title="variable">k</span></a>) <span class="id" title="var">Φ</span><br/>
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ge_ind_alias"><span class="id" title="constructor">ge_ind_alias</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> =&gt; <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#True"><span class="id" title="inductive">True</span></a><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span><br/>
 <span class="id" title="keyword">with</span> <a id="centry_fresh" class="idref" href="#centry_fresh"><span class="id" title="definition">centry_fresh</span></a> (<a id="k:16" class="idref" href="#k:16"><span class="id" title="binder">k</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="e:17" class="idref" href="#e:17"><span class="id" title="binder">e</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#centry"><span class="id" title="inductive">centry</span></a>) {<span class="id" title="keyword">struct</span> <span class="id" title="var">e</span>} : <span class="id" title="keyword">Prop</span> :=<br/>
@@ -194,7 +194,7 @@ The telescope clause of <span class="inlinecode"><a class="idref" href="Mctt.Cor
 </div>
 
 <div class="doc">
-<a id="lab537"></a><h2 class="section">Two Classes of Renaming</h2>
+<a id="lab557"></a><h2 class="section">Two Classes of Renaming</h2>
 
 
 <div class="paragraph"> </div>
@@ -373,7 +373,7 @@ A renaming that sends only <span class="inlinecode"><span class="id" title="var"
 </div>
 
 <div class="doc">
-<a id="lab538"></a><h2 class="section"><span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#unwk"><span class="id" title="definition">unwk</span></a></span> <span class="inlinecode"><span class="id" title="var">k</span></span> Inverts <span class="inlinecode"><span class="id" title="var">q</span>^<span class="id" title="var">k</span></span> <span class="inlinecode">↑</span></h2>
+<a id="lab558"></a><h2 class="section"><span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#unwk"><span class="id" title="definition">unwk</span></a></span> <span class="inlinecode"><span class="id" title="var">k</span></span> Inverts <span class="inlinecode"><span class="id" title="var">q</span>^<span class="id" title="var">k</span></span> <span class="inlinecode">↑</span></h2>
 
 
 <div class="paragraph"> </div>
@@ -427,7 +427,7 @@ A renaming that sends only <span class="inlinecode"><span class="id" title="var"
 </div>
 
 <div class="doc">
-<a id="lab539"></a><h2 class="section">Normal and Neutral Forms</h2>
+<a id="lab559"></a><h2 class="section">Normal and Neutral Forms</h2>
 
 
 <div class="paragraph"> </div>
@@ -818,7 +818,7 @@ Freshness of a normal form is decidable: it is a conjunction of
 A level below a level fresh at <span class="inlinecode"><span class="id" title="var">k</span></span> mentions <span class="inlinecode"><span class="id" title="var">k</span></span> only in atoms that the
     larger one's constant absorbs: an atom of the smaller one that mentions
     <span class="inlinecode"><span class="id" title="var">k</span></span> is not an atom of the larger, and the assignment that makes it alone
-    large, at <span class="inlinecode">ω·<span class="id" title="var">s</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span> for its sort <span class="inlinecode"><span class="id" title="var">s</span></span>, is below the larger level only if
+    large, at <span class="inlinecode">ω·<span class="id" title="var">s</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> for its sort <span class="inlinecode"><span class="id" title="var">s</span></span>, is below the larger level only if
     that level's constant is at least <span class="inlinecode">ω·(<span class="id" title="var">s</span>+1)</span>. 
 </div>
 <div class="code">
@@ -858,7 +858,7 @@ A level below a level fresh at <span class="inlinecode"><span class="id" title="
 </div>
 
 <div class="doc">
-<a id="lab540"></a><h2 class="section">The Bound of a Level Under a Binder</h2>
+<a id="lab560"></a><h2 class="section">The Bound of a Level Under a Binder</h2>
 
 
 <div class="paragraph"> </div>
@@ -1008,7 +1008,7 @@ The bound, weakened back, is below every level fresh at <span class="inlinecode"
 </div>
 
 <div class="doc">
-<a id="lab541"></a><h2 class="section">The Universe of a <span class="inlinecode"><span class="id" title="var">Π</span></span></h2>
+<a id="lab561"></a><h2 class="section">The Universe of a <span class="inlinecode"><span class="id" title="var">Π</span></span></h2>
 
 
 <div class="paragraph"> </div>

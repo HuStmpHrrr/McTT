@@ -37,7 +37,7 @@
 </div>
 
 <div class="doc">
-<a id="lab548"></a><h1 class="section">Canonical Levels</h1>
+<a id="lab568"></a><h1 class="section">Canonical Levels</h1>
 
 
 <div class="paragraph"> </div>
@@ -70,7 +70,7 @@
     decidable order the universe subtyping rule uses. 
 <div class="paragraph"> </div>
 
-<a id="lab549"></a><h2 class="section">A Total Order on Normal Forms</h2>
+<a id="lab569"></a><h2 class="section">A Total Order on Normal Forms</h2>
 
 
 <div class="paragraph"> </div>
@@ -317,7 +317,7 @@ The order on the atoms of a level.
 </div>
 
 <div class="doc">
-<a id="lab550"></a><h2 class="section">Levels and Their Canonical Forms</h2>
+<a id="lab570"></a><h2 class="section">Levels and Their Canonical Forms</h2>
 
 
 <div class="paragraph"> </div>
@@ -330,7 +330,7 @@ The order on the atoms of a level.
     which respect the sorts.  Two levels are equal exactly when they agree at
     every admissible assignment.  A constant <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.c"><span class="id" title="variable">c</span></a></span> absorbs every atom of a sort
     below <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#fst"><span class="id" title="definition">fst</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.c"><span class="id" title="variable">c</span></a></span> (<span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> <span class="inlinecode">(ω,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.u"><span class="id" title="variable">u</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode">5)</span> is <span class="inlinecode">ω</span> for <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.u"><span class="id" title="variable">u</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Level@0</span></span>), and no other:
-    an atom of sort <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">≥</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#fst"><span class="id" title="definition">fst</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.c"><span class="id" title="variable">c</span></a></span> can be <span class="inlinecode">ω·<span class="id" title="var">s</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span> for any <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span>.  The type
+    an atom of sort <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">≥</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#fst"><span class="id" title="definition">fst</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.c"><span class="id" title="variable">c</span></a></span> can be <span class="inlinecode">ω·<span class="id" title="var">s</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> for any <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span>.  The type
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#lvl"><span class="id" title="definition">lvl</span></a></span> itself is in <span class="inlinecode"><span class="id" title="library">Core.Syntactic.Syntax</span></span>, with the normal forms it
     indexes. 
 <div class="paragraph"> </div>
@@ -684,7 +684,7 @@ Strictly sorted: every later atom is greater.
 </div>
 
 <div class="doc">
-The assignment that separates one atom: it alone is large, at <span class="inlinecode">ω·<span class="id" title="var">s</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span>,
+The assignment that separates one atom: it alone is large, at <span class="inlinecode">ω·<span class="id" title="var">s</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span>,
     the largest region its sort <span class="inlinecode"><span class="id" title="var">s</span></span> allows. 
 </div>
 <div class="code">
@@ -850,7 +850,7 @@ Canonicalising a part of a level does not change its canonical form: this
 </div>
 
 <div class="doc">
-<a id="lab551"></a><h2 class="section">Properties of Every Atom</h2>
+<a id="lab571"></a><h2 class="section">Properties of Every Atom</h2>
 
 
 <div class="paragraph"> </div>
@@ -921,7 +921,7 @@ Canonicalising a part of a level does not change its canonical form: this
 </div>
 
 <div class="doc">
-<a id="lab552"></a><h2 class="section">The Order on Levels</h2>
+<a id="lab572"></a><h2 class="section">The Order on Levels</h2>
 
 
 <div class="paragraph"> </div>
@@ -1026,7 +1026,7 @@ The least level, and the literals.
 </div>
 
 <div class="doc">
-<a id="lab553"></a><h2 class="section">Levels of a Sort</h2>
+<a id="lab573"></a><h2 class="section">Levels of a Sort</h2>
 
 
 <div class="paragraph"> </div>
@@ -1114,7 +1114,7 @@ The least level, and the literals.
 </div>
 
 <div class="doc">
-<a id="lab554"></a><h2 class="section">The Realiser</h2>
+<a id="lab574"></a><h2 class="section">The Realiser</h2>
 
 
 <div class="paragraph"> </div>
@@ -1169,7 +1169,7 @@ The least level, and the literals.
 </div>
 
 <div class="doc">
-<a id="lab555"></a><h2 class="section">The Order on Universe Normal Forms</h2>
+<a id="lab575"></a><h2 class="section">The Order on Universe Normal Forms</h2>
 
 
 <div class="paragraph"> </div>
@@ -1229,7 +1229,7 @@ The semantic index of a universe normal form.
 </div>
 
 <div class="doc">
-<a id="lab556"></a><h2 class="section">The Join of Two Universe Normal Forms</h2>
+<a id="lab576"></a><h2 class="section">The Join of Two Universe Normal Forms</h2>
 
 
 <div class="paragraph"> </div>
@@ -1267,7 +1267,7 @@ The semantic index of a universe normal form.
 
 <div class="doc">
 A level below a literal has no atom of a sort at least the literal's
-    tier: such an atom can be assigned <span class="inlinecode">ω·<span class="id" title="var">s</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span> for any <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span>.  Below a finite
+    tier: such an atom can be assigned <span class="inlinecode">ω·<span class="id" title="var">s</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> for any <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span>.  Below a finite
     literal, then, a level has no atom at all. 
 </div>
 <div class="code">

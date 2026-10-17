@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab257"></a><h1 class="section">Fundamental Theorem: Variables</h1>
+<a id="lab283"></a><h1 class="section">Fundamental Theorem: Variables</h1>
 
 
 <div class="paragraph"> </div>
@@ -44,7 +44,7 @@
 
 <div class="paragraph"> </div>
 
-    Both rest on two instantiations of a judgment about <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span>: along <span class="inlinecode"><span class="id" title="var">Wk</span></span> <span class="inlinecode">⨟</span> <span class="inlinecode">σ</span> at
+    Both rest on two instantiations of a judgment about <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>: along <span class="inlinecode"><span class="id" title="var">Wk</span></span> <span class="inlinecode">⨟</span> <span class="inlinecode">σ</span> at
     <span class="inlinecode"><span class="id" title="var">Γ'</span></span>, whose outer values are the goal's outer values (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_shift"><span class="id" title="lemma">exp_sub_shift</span></a></span>), and
     along <span class="inlinecode"><span class="id" title="var">Wk</span></span> at the substituted environments, whose outer values are the goal's
     inner values (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_of_shift"><span class="id" title="lemma">exp_sub_of_shift</span></a></span>).  The two share their inner values, since
@@ -71,7 +71,7 @@
 </div>
 
 <div class="doc">
-<a id="lab258"></a><h2 class="section">Semantic Weakening</h2>
+<a id="lab284"></a><h2 class="section">Semantic Weakening</h2>
 
 
 <div class="paragraph"> </div>
@@ -86,7 +86,7 @@
     is only needed for the <span class="inlinecode"><span class="id" title="var">Wk</span></span> instantiation, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_sub_shift"><span class="id" title="lemma">rel_sub_shift</span></a></span> factors through
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_wk_shift"><span class="id" title="lemma">rel_wk_shift</span></a></span>, which asks only for the two PERs, the tail's coming from <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>'s
     judgment.  This lets the η-rule use the lemma, since no premise of that rule
-    mentions <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> and so <span class="inlinecode">⊨</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> is not available there. 
+    mentions <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> and so <span class="inlinecode">⊨</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> is not available there. 
 </div>
 <div class="code">
 
@@ -109,7 +109,7 @@
 </div>
 
 <div class="doc">
-The substituted environments are related in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimIota.html#Fixed_GCtx.Iota.IotaSem.C"><span class="id" title="variable">C</span></a></span> — needed to instantiate
+The substituted environments are related in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimIota.html#Fixed_GCtx.Iota.IotaSem.C"><span class="id" title="variable">C</span></a></span> — needed to instantiate
       along <span class="inlinecode"><span class="id" title="var">Wk</span></span> at them. 
 </div>
 <div class="code">
@@ -167,7 +167,7 @@ Naming the values as the goal names them: the first instantiation's outer
 </div>
 
 <div class="doc">
-<a id="lab259"></a><h2 class="section">The Variable Case</h2>
+<a id="lab285"></a><h2 class="section">The Variable Case</h2>
 
 
 <div class="paragraph"> </div>
@@ -178,9 +178,9 @@ Naming the values as the goal names them: the first instantiation's outer
     lookup, so the induction step is <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.VariableCases.html#rel_exp_under_ctx_shift"><span class="id" title="lemma">rel_exp_under_ctx_shift</span></a></span>. 
 <div class="paragraph"> </div>
 
- <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">∋</span> <span class="inlinecode">#0</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>[↑]ʷ</span>.  The type is weakened, so its four values come from
+ <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">∋</span> <span class="inlinecode">#0</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>[↑]ʷ</span>.  The type is weakened, so its four values come from
     the weakening lemma applied to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span>'s judgment.  The term's values are all
-    <span class="inlinecode">ρσ</span> <span class="inlinecode">0</span> and <span class="inlinecode">ρ'σ'</span> <span class="inlinecode">0</span>, given by the head clause of the context PER of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span>.
+    <span class="inlinecode">ρσ</span> <span class="inlinecode">0</span> and <span class="inlinecode">ρ'σ'</span> <span class="inlinecode">0</span>, given by the head clause of the context PER of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span>.
     That clause speaks of the values of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> in the tails, so the <span class="inlinecode"><span class="id" title="var">Wk</span></span> instance of
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span>'s judgment is used a second time, to bridge those values to the values of
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>[↑]ʷ</span>. 
@@ -200,7 +200,7 @@ Naming the values as the goal names them: the first instantiation's outer
 
 <div class="doc">
 <span class="inlinecode"><span class="id" title="var">eexists_rel_exp_with</span></span> picks the context PER by <span class="inlinecode"><span class="id" title="var">eassumption</span></span>; the one the
-      inversion of <span class="inlinecode">⊨</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> left behind is redundant and must not be picked. 
+      inversion of <span class="inlinecode">⊨</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> left behind is redundant and must not be picked. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">clear</span> <span class="id" title="var">HΓAper</span> <span class="id" title="var">env_rel</span>.<br/>
@@ -208,7 +208,7 @@ Naming the values as the goal names them: the first instantiation's outer
 </div>
 
 <div class="doc">
-The head clause of the context PER of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span>: it relates the heads of two
+The head clause of the context PER of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span>: it relates the heads of two
       related environments at the values of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> in their tails. 
 </div>
 <div class="code">
@@ -280,7 +280,7 @@ Weak functionality already gives each chain a single element PER, so
 &nbsp;&nbsp;- </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▸</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">∋</span> <span class="inlinecode">#0</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>[↑]ʷ</span> is the head of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span>, restricted. 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▸</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">∋</span> <span class="inlinecode">#0</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>[↑]ʷ</span> is the head of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span>, restricted. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">inversion</span> <span class="id" title="var">HΓ</span> <span class="id" title="keyword">as</span> [| | ? ? ? <span class="id" title="var">i</span> ? <span class="id" title="var">HΓ0</span> <span class="id" title="var">HΓAper</span> <span class="id" title="var">HA</span> <span class="id" title="var">HM</span> |]; <span class="id" title="tactic">subst</span>.<br/>
@@ -292,7 +292,7 @@ Weak functionality already gives each chain a single element PER, so
 &nbsp;&nbsp;- </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span> <span class="inlinecode">::</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">∋</span> <span class="inlinecode">#(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a>)</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>[↑]ʷ</span> is the weakening of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">∋</span> <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span>. 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.e"><span class="id" title="variable">e</span></a></span> <span class="inlinecode">::</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">∋</span> <span class="inlinecode">#(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a>)</span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>[↑]ʷ</span> is the weakening of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">∋</span> <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#sem_ctx_per_ctx_env"><span class="id" title="lemma">sem_ctx_per_ctx_env</span></a> <span class="id" title="var">HΓ</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">env_relΓe</span> <span class="id" title="var">HΓeper</span>].<br/>
@@ -306,7 +306,7 @@ Weak functionality already gives each chain a single element PER, so
 </div>
 
 <div class="doc">
-<a id="lab260"></a><h2 class="section">δ for Local Definitions</h2>
+<a id="lab286"></a><h2 class="section">δ for Local Definitions</h2>
 
 
 <div class="paragraph"> </div>

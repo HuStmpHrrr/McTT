@@ -39,14 +39,14 @@
 </div>
 
 <div class="doc">
-<a id="lab285"></a><h1 class="section">The Semantic Domain</h1>
+<a id="lab299"></a><h1 class="section">The Semantic Domain</h1>
 
 
 <div class="paragraph"> </div>
 
     An environment is the list of the values of the variables in scope,
-    indexed by de Bruijn index; for <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> these are the variables of
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span>.  A term variable holds a term value and a module slot a module value
+    indexed by de Bruijn index; for <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> these are the variables of
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>.  A term variable holds a term value and a module slot a module value
     (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#dentry"><span class="id" title="inductive">dentry</span></a></span>).  The global context does not change during NbE, so it is not
     part of the environment; evaluation takes it as a separate argument.
     Module parameters are λ-variables and so live in the environment.
@@ -62,12 +62,15 @@
       outermost first;
 
 </li>
-<li> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#dm_local"><span class="id" title="constructor">dm_local</span></a></span> <span class="inlinecode">ρ</span> <span class="inlinecode"><span class="id" title="var">U</span></span> <span class="inlinecode"><span class="id" title="var">args</span></span>: the unit <span class="inlinecode"><span class="id" title="var">U</span></span> over the environment <span class="inlinecode">ρ</span>, applied to
-      <span class="inlinecode"><span class="id" title="var">args</span></span>;
+<li> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#dm_local"><span class="id" title="constructor">dm_local</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.D"><span class="id" title="variable">D</span></a></span> <span class="inlinecode">ρ</span>, <span class="inlinecode">⟨<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.D"><span class="id" title="variable">D</span></a>,</span> <span class="inlinecode">ρ⟩</span>: the definition <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.D"><span class="id" title="variable">D</span></a></span> of a unit, a body or
+      an alias, over the environment <span class="inlinecode">ρ</span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> the parameters it still lacks:
+      an application pushes the argument onto <span class="inlinecode">ρ</span> and drops the outermost
+      parameter of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span>.  The value is saturated when <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> is empty; a
+      saturated alias is never a value, it is its target's value;
 
 </li>
-<li> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#dm_member"><span class="id" title="constructor">dm_member</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.NeutCase.m"><span class="id" title="variable">m</span></a></span> <span class="inlinecode"><span class="id" title="var">ch</span></span>: the submodule at the chain <span class="inlinecode"><span class="id" title="var">ch</span></span> of a module <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.NeutCase.m"><span class="id" title="variable">m</span></a></span> still
-      lacking arguments.
+<li> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#dm_member"><span class="id" title="constructor">dm_member</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.NeutCase.m"><span class="id" title="variable">m</span></a></span> <span class="inlinecode"><span class="id" title="var">ch</span></span>: the submodule at the chain <span class="inlinecode"><span class="id" title="var">ch</span></span> of a local module <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.NeutCase.m"><span class="id" title="variable">m</span></a></span>
+      still lacking arguments.
 
 </li>
 </ul>
@@ -271,14 +274,14 @@ A global module and the arguments it has
 </div>
 
 <div class="doc">
-The closure of a unit and the arguments it has 
+The closure of a unit's definition, with the parameters it still lacks 
 </div>
 <div class="code">
-| <a id="dm_local" class="idref" href="#dm_local"><span class="id" title="constructor">dm_local</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#dentry:5"><span class="id" title="inductive">dentry</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gunit"><span class="id" title="inductive">gunit</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#dmod:4"><span class="id" title="inductive">dmod</span></a><br/>
+| <a id="dm_local" class="idref" href="#dm_local"><span class="id" title="constructor">dm_local</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#centry"><span class="id" title="inductive">centry</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#moddef"><span class="id" title="inductive">moddef</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#dentry:5"><span class="id" title="inductive">dentry</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#dmod:4"><span class="id" title="inductive">dmod</span></a><br/>
 </div>
 
 <div class="doc">
-A submodule of a module still lacking arguments 
+A submodule of a local module still lacking arguments 
 </div>
 <div class="code">
 | <a id="dm_member" class="idref" href="#dm_member"><span class="id" title="constructor">dm_member</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#dmod:4"><span class="id" title="inductive">dmod</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#dmod:4"><span class="id" title="inductive">dmod</span></a><br/>
@@ -400,7 +403,7 @@ The environment extended by arguments, outermost first, as a unit's
 </div>
 
 <div class="doc">
-<a id="lab286"></a><h2 class="section">Semantic Notations</h2>
+<a id="lab300"></a><h2 class="section">Semantic Notations</h2>
 
 
 <div class="paragraph"> </div>
@@ -459,7 +462,7 @@ The value of the universe at an index, at either tier.
 </div>
 
 <div class="doc">
-<a id="lab287"></a><h2 class="section">Level Values</h2>
+<a id="lab301"></a><h2 class="section">Level Values</h2>
 
 
 <div class="paragraph"> </div>
@@ -513,7 +516,7 @@ The successor and the join of levels: both only flatten.
 </div>
 
 <div class="doc">
-<a id="lab288"></a><h2 class="section">The Realiser of a Level Value</h2>
+<a id="lab302"></a><h2 class="section">The Realiser of a Level Value</h2>
 
 
 <div class="paragraph"> </div>
@@ -632,7 +635,7 @@ The two projections of an extended environment.
 </div>
 
 <div class="doc">
-<a id="lab289"></a><h2 class="section">Pointwise Equality</h2>
+<a id="lab303"></a><h2 class="section">Pointwise Equality</h2>
 
 
 <div class="paragraph"> </div>
@@ -681,7 +684,7 @@ The two projections of an extended environment.
 </div>
 
 <div class="doc">
-<a id="lab290"></a><h2 class="section">Weakening an Environment</h2>
+<a id="lab304"></a><h2 class="section">Weakening an Environment</h2>
 
 
 <div class="paragraph"> </div>

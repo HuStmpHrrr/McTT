@@ -88,11 +88,11 @@
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> refines <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#59ee519e63b4ceb07ebffd0f7e7200f9"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Stage.A'"><span class="id" title="variable">A'</span></a></span> because the two heads are equal, and
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> refines <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Stage.A'"><span class="id" title="variable">A'</span></a></span> because the two heads are equal, and
       <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#ctxsub_exp_eq"><span class="id" title="lemma">ctxsub_exp_eq</span></a></span> moves the codomain's normal form across. 
 </div>
 <div class="code">
-&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#1c653e0bf24c0b18b11bb43e12730da0"><span class="id" title="notation">▹</span></a> <span class="id" title="var">A</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#3384efc8bb96e797eb52e9525469fd1b"><span class="id" title="notation">⊢</span></a><a class="idref" href="Mctt.Core.Semantic.Fixed.html#3384efc8bb96e797eb52e9525469fd1b"><span class="id" title="notation">s</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Sub_Notations.::mctt_scope:'Id'"><span class="id" title="notation">Id</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#3384efc8bb96e797eb52e9525469fd1b"><span class="id" title="notation">:</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#1c653e0bf24c0b18b11bb43e12730da0"><span class="id" title="notation">▹</span></a> <span class="id" title="var">A'</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#1c653e0bf24c0b18b11bb43e12730da0"><span class="id" title="notation">▹</span></a> <span class="id" title="var">A</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">⊢ˢ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Sub_Notations.::mctt_scope:'Id'"><span class="id" title="notation">Id</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">:</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#1c653e0bf24c0b18b11bb43e12730da0"><span class="id" title="notation">▹</span></a> <span class="id" title="var">A'</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">split</span>; [<span class="id" title="var">mauto</span> 3 |].<br/>
 &nbsp;&nbsp;<span class="id" title="var">etransitivity</span>; [| <span class="id" title="tactic">symmetry</span>]; <span class="id" title="var">mauto</span> 3.<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
@@ -101,7 +101,7 @@
 </div>
 
 <div class="doc">
-<a id="lab261"></a><h2 class="section">The Parameters of an Inductive Type</h2>
+<a id="lab287"></a><h2 class="section">The Parameters of an Inductive Type</h2>
 
 
 <div class="paragraph"> </div>
@@ -168,7 +168,7 @@ A type whose normal form is an inductive type is equal to the type
 &nbsp;&nbsp;<span class="id" title="var">invert_glu_univ_elem</span> <span class="id" title="var">Hg</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">H</span> : <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#d2fa0e01ed6441a7a9a247dfcbe43d83"><span class="id" title="notation">&lt;∙&gt;</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#ind_glu_typ_pred"><span class="id" title="definition">ind_glu_typ_pred</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">apply</span> <span class="id" title="var">H</span> <span class="id" title="tactic">in</span> <span class="id" title="var">HP</span> <span class="id" title="keyword">end</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">HP</span> <span class="id" title="keyword">as</span> (<span class="id" title="var">Ps</span> &amp; <span class="id" title="var">Heq</span> &amp; <span class="id" title="var">HK</span>).<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hid</span> : <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#7952d7942d278824080edaa2d71a8af0"><span class="id" title="notation">⊢</span></a><a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#7952d7942d278824080edaa2d71a8af0"><span class="id" title="notation">k</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_id"><span class="id" title="definition">wk_id</span></a> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#7952d7942d278824080edaa2d71a8af0"><span class="id" title="notation">:</span></a> <span class="id" title="var">Γ</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hid</span> : <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#d5991f5fd4d0e3554df439052e27ed92"><span class="id" title="notation">⊢ᵏ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_id"><span class="id" title="definition">wk_id</span></a> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#d5991f5fd4d0e3554df439052e27ed92"><span class="id" title="notation">:</span></a> <span class="id" title="var">Γ</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">HK</span> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_id"><span class="id" title="definition">wk_id</span></a> <span class="id" title="var">Hid</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">Htop</span> &amp; <span class="id" title="var">_</span> &amp; <span class="id" title="var">_</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Lemmas.html#map_wk_id"><span class="id" title="lemma">map_wk_id</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Htop</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Htop</span> <span class="id" title="keyword">as</span> (<span class="id" title="var">HPl</span> &amp; <span class="id" title="var">HPt</span> &amp; <span class="id" title="var">Hrb</span>).<br/>
@@ -222,7 +222,7 @@ A type whose normal form is an inductive type is equal to the type
 </div>
 
 <div class="doc">
-<a id="lab262"></a><h2 class="section">Small Universes Are Injective</h2>
+<a id="lab288"></a><h2 class="section">Small Universes Are Injective</h2>
 
 
 <div class="paragraph"> </div>
@@ -275,7 +275,7 @@ Both level terms move to the larger of their two sorts, where the
 </div>
 
 <div class="doc">
-<a id="lab263"></a><h2 class="section">Subtyping of Universe Terms and Level Types</h2>
+<a id="lab289"></a><h2 class="section">Subtyping of Universe Terms and Level Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -743,7 +743,7 @@ The large tier is never below the small one.
 </div>
 
 <div class="doc">
-<a id="lab264"></a><h2 class="section">The Normal Forms of Small Types</h2>
+<a id="lab290"></a><h2 class="section">The Normal Forms of Small Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -777,7 +777,7 @@ An inductive type applied to its parameters.  Its sort is not
 </div>
 
 <div class="doc">
-<a id="lab265"></a><h2 class="section">The Normal Forms of the Types of a Universe</h2>
+<a id="lab291"></a><h2 class="section">The Normal Forms of the Types of a Universe</h2>
 
 
 <div class="paragraph"> </div>
@@ -1211,7 +1211,7 @@ In the empty context, a neutral without a global head has no type: its
 </div>
 
 <div class="doc">
-<a id="lab266"></a><h2 class="section">Canonical Forms and Consistency</h2>
+<a id="lab292"></a><h2 class="section">Canonical Forms and Consistency</h2>
 
 
 <div class="paragraph"> </div>
@@ -1335,7 +1335,7 @@ Consistency at a universe: there is no closed inhabitant of <span class="inlinec
 </div>
 
 <div class="doc">
-<a id="lab267"></a><h2 class="section">Canonical Forms of Inductive Types</h2>
+<a id="lab293"></a><h2 class="section">Canonical Forms of Inductive Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -1569,7 +1569,7 @@ The theorems above, with the global context explicit.
 </div>
 
 <div class="doc">
-<a id="lab268"></a><h2 class="section">Opaque Definitions</h2>
+<a id="lab294"></a><h2 class="section">Opaque Definitions</h2>
 
 
 <div class="paragraph"> </div>
@@ -1853,7 +1853,7 @@ Canonicity at a universe, at any global context: the normal form is of
 </div>
 
 <div class="doc">
-<a id="lab269"></a><h3 class="section">Without Axioms</h3>
+<a id="lab295"></a><h3 class="section">Without Axioms</h3>
 
 </div>
 <div class="code">
@@ -1999,7 +1999,7 @@ At a universe term <span class="inlinecode"><a class="idref" href="Mctt.Core.Sou
 </div>
 
 <div class="doc">
-<a id="lab270"></a><h3 class="section">Every Program</h3>
+<a id="lab296"></a><h3 class="section">Every Program</h3>
 
 
 <div class="paragraph"> </div>
