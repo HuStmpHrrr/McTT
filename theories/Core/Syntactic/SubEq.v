@@ -25,7 +25,7 @@ Import Syntax_Notations Wk_Notations.
 
 Lemma sub_eq_preserves_exp_eq : forall Θ Ξ Γ Δ A M M' σ σ',
     Θ ⍮ Ξ ⍮ Δ ⊢ M ≈ M' : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M[σ] ≈ M'[σ'] : A[σ].
 Proof.
   intros * ? H; saturate_sub_eq.
@@ -47,7 +47,7 @@ Hint Resolve sub_eq_preserves_exp_eq : mctt.
 
 Lemma sub_eq_preserves_subtyp : forall Θ Ξ Γ Δ A A' σ σ',
     Θ ⍮ Ξ ⍮ Δ ⊢ A ⊆ A' ->
-    Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ⊆ A'[σ'].
 Proof.
   intros * ? H; saturate_sub_eq.
@@ -70,7 +70,7 @@ Hint Resolve sub_eq_preserves_subtyp : mctt.
 
 Corollary exp_eq_sub_eq_head : forall Θ Ξ Γ Δ A B M M' σ i,
     Θ ⍮ Ξ ⍮ Δ ▹ A ⊢ B : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ⊢ B[σ,,M] ≈ B[σ,,M'] : Typeω@i.
 Proof.
@@ -78,8 +78,8 @@ Proof.
   assert (exists j, Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@j) as [j ?] by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ M : A[σ]) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' : A[σ]) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ : Δ) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢s σ,,M ≈ σ,,M' : Δ ▹ A) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ : Δ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ,,M ≈ σ,,M' : Δ ▹ A) by mauto 2.
   eapply sub_eq_preserves_typ; eassumption.
 Qed.
 

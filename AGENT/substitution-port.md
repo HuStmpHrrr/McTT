@@ -66,10 +66,10 @@ every case and which the lemmas above are deliberately kept free of.
    forces the order above.
 2. Sub-Univ is `i < j`, not `i ≤ j` (McTT's rule).
 3. `wf_subtyp_pi` checks both codomains in `Γ ▹ A'`, not `Γ ▹ A`.
-4. `wf_ctx_eq` and `wf_ctx_sub` are **dropped as judgments**: `Δ ⊢s Id : Γ`
+4. `wf_ctx_eq` and `wf_ctx_sub` are **dropped as judgments**: `Δ ⊢ˢ Id : Γ`
    *is* context refinement, and refinement in both directions is context
    equality. `CtxEq.v` is deleted outright; `CtxSub.v` survives, but holding only
-   the inductive `ctx_sub` and its bridge to `⊢s Id`, not a system rule.
+   the inductive `ctx_sub` and its bridge to `⊢ˢ Id`, not a system rule.
 5. `wf_wk_q`/`wf_sub_q` take an extra premise; `wf_wk_q'`/`wf_sub_q'` drop it
    again and the unprimed versions are `Remove Hints`ed.
 6. Three new congruence rules `wf_exp_eq_typ_cong`, `_nat_cong`, `_zero_cong`.
@@ -120,7 +120,7 @@ passes, and `dune exec mctt examples/Nary.mctt` prints `6 : Nat`.
 | `Corollaries.v` | the three survivors, plus `ctx_lookup_functional` (was `functional_ctx_lookup`) |
 | `SystemOpt.v` | rewriting morphisms + the rules with redundant premises removed |
 
-`CtxEq.v` is **deleted and stays deleted**: `Δ ⊢s Id : Γ` *is* context
+`CtxEq.v` is **deleted and stays deleted**: `Δ ⊢ˢ Id : Γ` *is* context
 refinement, and `ctxsub_exp` / `ctxsub_exp_eq` / `ctxsub_subtyp` (all `mctt`
 hints) are what transport judgments across it. Where a *symmetric* context
 equality is genuinely needed the semantic one is used instead — see below.
@@ -193,7 +193,7 @@ be silently shelved and only bite at `Qed`.
   `subtyp_under_ctx_simple` are what consume that extra generality.
 - `subtyp_under_ctx` drops the two `rel_typ` self-relations, so
   `rel_exp_eq_subtyp` needs an extra premise.
-- `Γ ⊢s σ : Δ → Γ ⊨s σ : Δ` is **false**, and semantic substitutions
+- `Γ ⊢ˢ σ : Δ → Γ ⊨ˢ σ : Δ` is **false**, and semantic substitutions
   **do not compose**. Every proof that wants either must go through the syntactic
   side. The extended-context PER is always the canonical one.
 - Syntactic context *equality* is not re-introduced; the semantic one is.
@@ -209,7 +209,7 @@ be silently shelved and only bite at `Qed`.
 ### Soundness and Kripke weakening
 
 **The gluing model's weakening is not the default weakening.** It uses a
-Kripke-style notion, `Γ ⊢k φ : Δ` = `wk_kripke Γ Δ φ`, in
+Kripke-style notion, `Γ ⊢ᵏ φ : Δ` = `wk_kripke Γ Δ φ`, in
 `Core/Soundness/Weakening/{Definitions,Lemmas}.v` — the weakenings built from `↑`
 alone, with no lifting under a binder. `q φ` is therefore *not* a Kripke
 weakening, and the trio `kripke_q_escape` / `kripke_preserves_exp_q` /
@@ -222,23 +222,23 @@ file's header comment before touching it; the three things it records are:
   induction on the *outer* weakening; recursing on the domain would need a
   strengthening lemma the system does not have.
 - Both rules may coarsen their codomain by `⊢ Δ' ⊆ Δ`, which the subtyping
-  cases need. The price: `⊢k` does **not** imply `⊢w`, because `wf_wk_lookup`
+  cases need. The price: `⊢ᵏ` does **not** imply `⊢ʷ`, because `wf_wk_lookup`
   demands a lookup at exactly `A[φ]ʷ` and refinement only gives a subtype. So the
-  escape lemma cannot land in `⊢w`; `kripke_escape` lands in `wf_sub` via `ι`.
+  escape lemma cannot land in `⊢ʷ`; `kripke_escape` lands in `wf_sub` via `ι`.
 - The `wk_eq` premise on each rule is what makes the judgment `Proper`, so a
   weakening may be presented in any pointwise-equal form; `kripke_shiftn`
   recovers the canonical `⇑^n`.
 
-`glu_ctx_env_sub_monotone` is stated with `⊢k` and `sb_wk`. The Soundness layer
+`glu_ctx_env_sub_monotone` is stated with `⊢ᵏ` and `sb_wk`. The Soundness layer
 has **no `⊩s` judgment at all**.
 
-The three-layer weakening bridge (syntactic `⊢w`, semantic `rel_wk`, Kripke
-`⊢k`) is completed by `rel_wk_under_ctx_shift`.
+The three-layer weakening bridge (syntactic `⊢ʷ`, semantic `rel_wk`, Kripke
+`⊢ᵏ`) is completed by `rel_wk_under_ctx_shift`.
 
 Other things worth knowing before editing a gluing proof:
 
 - `wf_sub_dom` / `wf_sub_cod` are **deliberately not** `mctt` hints. The
-  canonical prelude is `assert Δ ⊢s σ : Γ by mauto 3. saturate_sub.`, and
+  canonical prelude is `assert Δ ⊢ˢ σ : Γ by mauto 3. saturate_sub.`, and
   `saturate_kripke_escape` must likewise be followed by `saturate_sub`.
   `simplify_subs` is what reduces `ℕ[σ]` to `ℕ`.
 - `glu_univ_elem_typ_resp_ctxsub` / `..._trm_resp_ctxsub` cannot be `mctt` hints.
@@ -307,7 +307,7 @@ fixpoint/delta reduction. So these need no rewrite at all: `#0[σ,,M]`,
   `Arguments sb_q : simpl never` is what stops the `cbn` one from doing so.
 - `↑` needs `Import Wk_Notations.` — without it you get
   `Syntax Error: Lexer: Undefined token`.
-- `mauto 3` cannot prove `Γ ▹ A ⊢s Wk : Γ`; use `eapply wf_sub_shift; mauto 3`.
+- `mauto 3` cannot prove `Γ ▹ A ⊢ˢ Wk : Γ`; use `eapply wf_sub_shift; mauto 3`.
 - `assert … by …` applies to the **first** goal only. `eauto`/`mauto` never
   fail, so a "successful" `by mauto` may have left the wrong goal.
 - `eapply glu_univ_elem_*_cumu_max_*` leaves metavariables unconstrained — pin

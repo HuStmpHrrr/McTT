@@ -112,7 +112,7 @@ Lemma rel_exp_of_level_inversion : forall {Γ M M'},
     Γ ⊨ M ≈ M' : Level@n ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
     forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-      Γ' ⊨s σ ≈ σ' : Γ ->
+      Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->
@@ -132,7 +132,7 @@ Qed.
 Lemma rel_exp_of_level : forall {Γ M M'},
     (exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
       forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-        Γ' ⊨s σ ≈ σ' : Γ ->
+        Γ' ⊨ˢ σ ≈ σ' : Γ ->
         forall ρ ρ' ρσ ρ'σ',
           Dom ρ ≈ ρ' ∈ env_rel' ->
           ⟦ σ ⟧s ρ ↘ ρσ ->
@@ -472,7 +472,7 @@ Lemma rel_exp_of_suniv_tm : forall {Γ T A A'},
     Γ ⊨ T : Level@n ->
     (exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
       forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-        Γ' ⊨s σ ≈ σ' : Γ ->
+        Γ' ⊨ˢ σ ≈ σ' : Γ ->
         forall ρ ρ' ρσ ρ'σ',
           Dom ρ ≈ ρ' ∈ env_rel' ->
           ⟦ σ ⟧s ρ ↘ ρσ ->
@@ -509,7 +509,7 @@ Lemma rel_exp_of_suniv_tm_inversion : forall {Γ T A A'},
     Γ ⊨ A ≈ A' : Type⟨T⟩ ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
     forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-      Γ' ⊨s σ ≈ σ' : Γ ->
+      Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->

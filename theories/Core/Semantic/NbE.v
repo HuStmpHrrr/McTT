@@ -22,7 +22,8 @@ Inductive initial_env (Θ : gdeps) (Ξ : gstack) : ctx -> env -> Prop :=
      initial_env Θ Ξ (Γ ▸ A ≔ M) (ρ ↦ m))
 | initial_env_cons_mod :
   `( initial_env Θ Ξ Γ ρ ->
-     initial_env Θ Ξ (Γ ▹ₘ U) (ρ ↦ᵐ dm_local ρ U nil)).
+     ⟦ me_lit U ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
+     initial_env Θ Ξ (Γ ▹ₘ U) (ρ ↦ᵐ h)).
 
 #[export]
 Hint Constructors initial_env : mctt.

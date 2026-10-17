@@ -49,8 +49,8 @@ with dclean_nf : domain_nf -> Prop :=
 | dclean_dom : forall a m, dclean a -> dclean m -> dclean_nf (⇓ a m)
 with dmclean : dmod -> Prop :=
 | dmclean_global : forall p args, (forall a, In a args -> dclean a) -> dmclean (dm_global p args)
-| dmclean_local : forall (ρ : env) U args,
-    (forall x, declean (env_entry ρ x)) -> (forall a, In a args -> dclean a) -> dmclean (dm_local ρ U args)
+| dmclean_local : forall Δ D (ρ : env),
+    (forall x, declean (env_entry ρ x)) -> dmclean (dm_local Δ D ρ)
 | dmclean_member : forall h ch, dmclean h -> dmclean (dm_member h ch)
 with dclean_la : list (nat * nat * domain_ne) -> Prop :=
 | dclean_la_nil : dclean_la nil
@@ -101,9 +101,6 @@ Proof. intros * H Hn a Ha; apply in_app_or in Ha as [Ha | [<- | []]]; auto. Qed.
 Lemma env_clean_entry : forall ρ x, env_clean ρ -> declean (env_entry ρ x).
 Proof. intros * H; exact (H x). Qed.
 
-Lemma dmclean_local_nil : forall ρ U, env_clean ρ -> dmclean (dm_local ρ U nil).
-Proof. intros; constructor; [ assumption | intros ? [] ]. Qed.
-
 Lemma dmclean_global_nil : forall p, dmclean (dm_global p nil).
 Proof. intros; constructor; intros ? []. Qed.
 
@@ -128,7 +125,7 @@ Lemma dclean_lvl_max : forall d e, dclean d -> dclean e -> dclean (dlvl_max d e)
 Proof. intros; unfold dlvl_max; constructor; apply dclean_la_app; apply dclean_la_view; assumption. Qed.
 
 #[local] Hint Resolve env_clean_nil env_clean_extend env_clean_extend_mod env_clean_var env_clean_mod
-  env_clean_args clean_app_snoc dmclean_local_nil dmclean_global_nil env_clean_entry : mctt.
+  env_clean_args clean_app_snoc dmclean_global_nil env_clean_entry : mctt.
 
 (** The level lemmas are [Hint Extern], keyed on the operation in the goal: as
     [Hint Resolve] their conclusions would match a goal about an unknown
@@ -147,7 +144,9 @@ Section Transparent.
     (forall Ms ρ ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> env_clean ρ -> forall a, In a ms -> dclean a) /\
     (forall m args r, $*| m & args | Θ ⍮ Ξ ↘ r -> dclean m -> (forall a, In a args -> dclean a) -> dclean r) /\
     (forall H ρ h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h -> env_clean ρ -> dmclean h) /\
+    (forall Δ D ρ h, ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h -> env_clean ρ -> dmclean h) /\
     (forall h n r, $ᵐ| h & n | Θ ⍮ Ξ ↘ r -> dmclean h -> dclean n -> dmclean r) /\
+    (forall h ns r, $ᵐ*| h & ns | Θ ⍮ Ξ ↘ r -> dmclean h -> (forall a, In a ns -> dclean a) -> dmclean r) /\
     (forall h x r, h ·ₜ x Θ ⍮ Ξ ↘ r -> dmclean h -> dclean r) /\
     (forall h y r, h ·ₘ y Θ ⍮ Ξ ↘ r -> dmclean h -> dmclean r) /\
     (forall h ch r, h ·ₜ* ch Θ ⍮ Ξ ↘ r -> dmclean h -> dclean r) /\
@@ -166,7 +165,9 @@ Section Transparent.
              (fun Ms ρ ms _ => env_clean ρ -> forall a, In a ms -> dclean a)
              (fun m args r _ => dclean m -> (forall a, In a args -> dclean a) -> dclean r)
              (fun H ρ h _ => env_clean ρ -> dmclean h)
+             (fun Δ D ρ h _ => env_clean ρ -> dmclean h)
              (fun h n r _ => dmclean h -> dclean n -> dmclean r)
+             (fun h ns r _ => dmclean h -> (forall a, In a ns -> dclean a) -> dmclean r)
              (fun h x r _ => dmclean h -> dclean r)
              (fun h y r _ => dmclean h -> dmclean r)
              (fun h ch r _ => dmclean h -> dclean r)
@@ -281,6 +282,10 @@ Section Transparent.
           let Hs := fresh "Hs" in
           assert (Hs : env_clean ρ') by (apply IH; apply env_clean_args; assumption);
           specialize (Hs 0); rewrite He in Hs; inversion Hs; assumption end ].
+    (* module arguments, one at a time *)
+    all: try solve [ match goal with IH : dmclean ?h1 -> _ -> dmclean ?r, IH1 : dmclean ?h -> dclean ?n -> dmclean ?h1,
+                      Ha : forall a, In a (cons ?n _) -> dclean a |- dmclean ?r =>
+        apply IH; [ apply IH1; [ assumption | apply Ha; left; reflexivity ] | intros; apply Ha; right; assumption ] end ].
     all: match goal with Hin : In _ nil |- _ => destruct Hin end.
   Qed.
 
@@ -313,7 +318,7 @@ Section Transparent.
       fresh_cargs Θ Ξ p ups ρ gs s vs -> env_clean ρ -> (forall a, In a ups -> dclean a) ->
       forall a, In a vs -> dclean a.
   Proof.
-    destruct eval_clean as (He & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
+    destruct eval_clean as (He & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
     induction 1; intros Hρ Hu; [ apply all_in_nil | |].
     - assert (dclean a) by (eapply He; eassumption).
       apply all_in_cons; [ clean_val | apply IHfresh_cargs; [ clean_env | assumption ] ].
@@ -325,7 +330,7 @@ Section Transparent.
       fresh_ihs Θ Ξ ρ A ρa gs vs s ihs -> env_clean ρ -> env_clean ρa -> (forall a, In a vs -> dclean a) ->
       forall a, In a ihs -> dclean a.
   Proof.
-    destruct eval_clean as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hit).
+    destruct eval_clean as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hit).
     induction 1; intros Hρ Hρa Hv; [ apply all_in_nil | apply IHfresh_ihs; [ assumption | clean_env | all_in_with assumption ] |].
     assert (dclean a) by (eapply Hit; [ eassumption | assumption | assumption | apply Hv; left; reflexivity ]).
     apply all_in_cons; [ clean_val | apply IHfresh_ihs; [ assumption | assumption | all_in_with assumption ] ].
@@ -374,7 +379,7 @@ Section Transparent.
     (forall s ρ A p D ups cs Bs Bs', read_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
        env_clean ρ -> (forall a, In a ups -> dclean a) -> nbrs_clean Bs').
   Proof.
-    destruct eval_clean as (He & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
+    destruct eval_clean as (He & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
     apply (read_mut_ind Θ Ξ
              (fun s m W _ => dclean_nf m -> nf_clean W)
              (fun s m M _ => dclean_ne m -> ne_clean M)
@@ -433,7 +438,7 @@ Section Transparent.
 
   Lemma initial_env_clean : forall Γ ρ, initial_env Θ Ξ Γ ρ -> env_clean ρ.
   Proof.
-    destruct eval_clean as (He & _).
+    destruct eval_clean as (He & _ & _ & _ & Hm & _).
     induction 1; eauto with mctt.
   Qed.
 

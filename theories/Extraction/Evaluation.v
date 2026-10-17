@@ -81,8 +81,9 @@ Inductive feval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
      (forall m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> feval_exp_order Θ Ξ B (p ↦ m)) ->
      feval_exp_order Θ Ξ (a_let (b_def oA M) B) p )
 | feeo_let_mod :
-  `( feval_exp_order Θ Ξ B (p ↦ᵐ dm_local p U nil) ->
-     feval_exp_order Θ Ξ (ℓₘ U in B) p )
+  `( feval_close_order Θ Ξ Δ D p ->
+     (forall h, ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ p ↘ h -> feval_exp_order Θ Ξ B (p ↦ᵐ h)) ->
+     feval_exp_order Θ Ξ (ℓₘ (gu_mk Δ D) in B) p )
 | feeo_mem :
   `( modexp_spine H = (R, args, pre) ->
      feval_modexp_order Θ Ξ R p ->
@@ -204,7 +205,8 @@ with feval_modexp_order (Θ : gdeps) (Ξ : gstack) : modexp -> env -> Prop :=
 | femo_unit :
   `( feval_modexp_order Θ Ξ (me_unit fp) p )
 | femo_lit :
-  `( feval_modexp_order Θ Ξ (me_lit U) p )
+  `( feval_close_order Θ Ξ Δ D p ->
+     feval_modexp_order Θ Ξ (me_lit (gu_mk Δ D)) p )
 | femo_mem :
   `( feval_modexp_order Θ Ξ H p ->
      (forall h, ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p ↘ h -> feval_selm_order Θ Ξ h y) ->
@@ -215,24 +217,37 @@ with feval_modexp_order (Θ : gdeps) (Ξ : gstack) : modexp -> env -> Prop :=
      (forall h n, ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p ↘ h -> ⟦ N ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ n -> feval_appm_order Θ Ξ h n) ->
      feval_modexp_order Θ Ξ (me_app H N) p )
 
+with feval_close_order (Θ : gdeps) (Ξ : gstack) : ctx -> moddef -> env -> Prop :=
+| feclo_body :
+  `( feval_close_order Θ Ξ Δ (md_body sm Φ) p )
+| feclo_alias :
+  `( feval_close_order Θ Ξ (e :: Δ) (md_alias E) p )
+| feclo_alias0 :
+  `( feval_modexp_order Θ Ξ E p ->
+     feval_close_order Θ Ξ nil (md_alias E) p )
+
 with feval_appm_order (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> Prop :=
 | feapo_global :
   `( feval_appm_order Θ Ξ (dm_global pq args) n )
-| feapo_body :
-  `( List.length args < List.length Δ ->
-     feval_appm_order Θ Ξ (dm_local p (gu_mk Δ (md_body Φ)) args) n )
-| feapo_alias_unsat :
-  `( List.length args < List.length Δ ->
-     feval_appm_order Θ Ξ (dm_local p (gu_mk Δ (md_alias E)) args) n )
-| feapo_alias :
-  `( List.length args = List.length Δ ->
-     feval_modexp_order Θ Ξ E (env_args p args) ->
-     (forall h, ⟦ E ⟧ᵐᶠ Θ ⍮ Ξ ⍮ env_args p args ↘ h -> feval_appm_order Θ Ξ h n) ->
-     feval_appm_order Θ Ξ (dm_local p (gu_mk Δ (md_alias E)) args) n )
+(** The outermost missing parameter is split off as the evaluator splits
+    it off ([tele_snoc]), so that the order of the rest is a premise of the
+    order of the whole. *)
+| feapo_local :
+  `( tele_snoc Δ = Some (Δ0, ce_ass A) ->
+     feval_close_order Θ Ξ Δ0 D (p ↦ n) ->
+     feval_appm_order Θ Ξ (dm_local Δ D p) n )
 | feapo_member :
   `( feval_appm_order Θ Ξ h n ->
      (forall h', feval_appm Θ Ξ h n h' -> feval_selmc_order Θ Ξ h' ch) ->
      feval_appm_order Θ Ξ (dm_member h ch) n )
+
+with feval_appms_order (Θ : gdeps) (Ξ : gstack) : dmod -> list domain -> Prop :=
+| feamo_nil :
+  `( feval_appms_order Θ Ξ h nil )
+| feamo_cons :
+  `( feval_appm_order Θ Ξ h n ->
+     (forall h1, feval_appm Θ Ξ h n h1 -> feval_appms_order Θ Ξ h1 ns) ->
+     feval_appms_order Θ Ξ h (n :: ns) )
 
 with feval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
 | feslo_global :
@@ -258,58 +273,33 @@ with feval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
      (forall f, ⟦ ctx_fn Δ (apps (a_ind pt) Ns) ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ f -> feval_apps_order Θ Ξ f args) ->
      feval_sel_order Θ Ξ (dm_global pq args) x )
 | feslo_unsat :
-  `( List.length args < List.length (gu_params U) ->
-     feval_sel_order Θ Ξ (dm_local p U args) x )
+  `( feval_sel_order Θ Ξ (dm_local (e :: Δ) D p) x )
 | feslo_body :
-  `( List.length args = List.length Δ ->
-     gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
-     feval_benv_order Θ Ξ (env_args p args) Φ' ->
-     (forall p', feval_benv Θ Ξ (env_args p args) Φ' p' -> feval_exp_order Θ Ξ M p') ->
-     feval_sel_order Θ Ξ (dm_local p (gu_mk Δ (md_body Φ)) args) x )
-| feslo_item :
-  `( List.length args = List.length Δ ->
-     gm_item_upto Φ x = Some (Φ0, E, its1, (Some n, d, pv)) ->
-     feval_benv_order Θ Ξ (env_args p args) Φ0 ->
-     (forall p0, feval_benv Θ Ξ (env_args p args) Φ0 p0 -> feval_modexp_order Θ Ξ E p0) ->
-     (forall p0 h, feval_benv Θ Ξ (env_args p args) Φ0 p0 -> ⟦ E ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p0 ↘ h -> feval_sel_order Θ Ξ h n) ->
-     feval_sel_order Θ Ξ (dm_local p (gu_mk Δ (md_body Φ)) args) x )
-| feslo_alias :
-  `( List.length args = List.length Δ ->
-     feval_modexp_order Θ Ξ E (env_args p args) ->
-     (forall h, ⟦ E ⟧ᵐᶠ Θ ⍮ Ξ ⍮ env_args p args ↘ h -> feval_sel_order Θ Ξ h x) ->
-     feval_sel_order Θ Ξ (dm_local p (gu_mk Δ (md_alias E)) args) x )
+  `( kbody Θ Ξ p Φ Φx ->
+     gm_prefix_upto Φx x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
+     feval_benv_order Θ Ξ p Φ' ->
+     (forall p', feval_benv Θ Ξ p Φ' p' -> feval_exp_order Θ Ξ M p') ->
+     feval_sel_order Θ Ξ (dm_local nil (md_body sm Φ) p) x )
 | feslo_member :
   `( feval_sel_order Θ Ξ (dm_member h ch) x )
 
 with feval_selm_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
 | fesmo_global :
-  `( (forall U r, gc_module Θ Ξ (qname_app pq (y :: nil)) <> Some (mr_alias U r)) ->
+  `( gc_loc Θ Ξ (qname_app pq (y :: nil)) = Some TΦ ->
      feval_selm_order Θ Ξ (dm_global pq args) y )
 | fesmo_global_alias :
-  `( gc_module Θ Ξ (qname_app pq (y :: nil)) = Some (mr_alias U ch) ->
-     feval_selmc_order Θ Ξ (dm_local nil U args) ch ->
+  `( gc_module Θ Ξ (qname_app pq (y :: nil)) = Some (mr_alias (gu_mk Δ D)) ->
+     feval_close_order Θ Ξ Δ D nil ->
+     (forall h, ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ nil ↘ h -> feval_appms_order Θ Ξ h args) ->
      feval_selm_order Θ Ξ (dm_global pq args) y )
 | fesmo_unsat :
-  `( List.length args < List.length (gu_params U) ->
-     feval_selm_order Θ Ξ (dm_local p U args) y )
+  `( feval_selm_order Θ Ξ (dm_local (e :: Δ) D p) y )
 | fesmo_body :
-  `( List.length args = List.length Δ ->
-     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
-     feval_benv_order Θ Ξ (env_args p args) Φ' ->
-     feval_selm_order Θ Ξ (dm_local p (gu_mk Δ (md_body Φ)) args) y )
-| fesmo_item :
-  `( List.length args = List.length Δ ->
-     gm_item_upto Φ y = Some (Φ0, E, its1, it) ->
-     feval_benv_order Θ Ξ (env_args p args) Φ0 ->
-     (forall p0, feval_benv Θ Ξ (env_args p args) Φ0 p0 -> feval_modexp_order Θ Ξ E p0) ->
-     (forall p0 h, feval_benv Θ Ξ (env_args p args) Φ0 p0 -> ⟦ E ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p0 ↘ h ->
-        feval_selmc_order Θ Ξ h (item_ch it nil)) ->
-     feval_selm_order Θ Ξ (dm_local p (gu_mk Δ (md_body Φ)) args) y )
-| fesmo_alias :
-  `( List.length args = List.length Δ ->
-     feval_modexp_order Θ Ξ E (env_args p args) ->
-     (forall h, ⟦ E ⟧ᵐᶠ Θ ⍮ Ξ ⍮ env_args p args ↘ h -> feval_selm_order Θ Ξ h y) ->
-     feval_selm_order Θ Ξ (dm_local p (gu_mk Δ (md_alias E)) args) y )
+  `( kbody Θ Ξ p Φ Φx ->
+     gm_prefix_upto Φx y = Some (gm_ext Φ' y (ge_mod pm (gu_mk Δy Dy))) ->
+     feval_benv_order Θ Ξ p Φ' ->
+     (forall p', feval_benv Θ Ξ p Φ' p' -> feval_close_order Θ Ξ Δy Dy p') ->
+     feval_selm_order Θ Ξ (dm_local nil (md_body sm Φ) p) y )
 | fesmo_member :
   `( feval_selm_order Θ Ξ (dm_member h ch) y )
 
@@ -318,10 +308,9 @@ with feval_selc_order (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> Prop :
   `( feval_sel_order Θ Ξ h x ->
      feval_selc_order Θ Ξ h (x :: nil) )
 | fesco_cons :
-  `( ch <> nil ->
-     feval_selm_order Θ Ξ h y ->
-     (forall h1, feval_selm Θ Ξ h y h1 -> feval_selc_order Θ Ξ h1 ch) ->
-     feval_selc_order Θ Ξ h (y :: ch) )
+  `( feval_selm_order Θ Ξ h y ->
+     (forall h1, feval_selm Θ Ξ h y h1 -> feval_selc_order Θ Ξ h1 (z :: ch)) ->
+     feval_selc_order Θ Ξ h (y :: z :: ch) )
 
 with feval_selmc_order (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> Prop :=
 | fesmco_nil :
@@ -340,17 +329,12 @@ with feval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
      feval_benv_order Θ Ξ p (gm_ext Φ y (ge_def b pv A (Some M))) )
 | febo_mod :
   `( feval_benv_order Θ Ξ p Φ ->
-     feval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm Uy)) )
-| febo_open :
-  `( feval_benv_order Θ Ξ p Φ ->
-     (forall p1, feval_benv Θ Ξ p Φ p1 -> kgens_order Θ Ξ p1 E its) ->
-     (forall p1 gs, feval_benv Θ Ξ p Φ p1 -> kgens Θ Ξ p1 E its gs ->
-        feval_benv_order Θ Ξ p1 (gens_append gm_nil 0 gs)) ->
-     feval_benv_order Θ Ξ p (gm_open Φ E its) ).
+     (forall p1, feval_benv Θ Ξ p Φ p1 -> feval_close_order Θ Ξ Δy Dy p1) ->
+     feval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm (gu_mk Δy Dy))) ).
 
 #[local]
 Hint Constructors feval_exp_order feval_elim_order feval_ihs_order feval_ih_order feval_shty_order feval_ihty_order feval_app_order feval_exps_order feval_apps_order
-  feval_modexp_order feval_appm_order feval_sel_order feval_selm_order feval_selc_order feval_selmc_order
+  feval_modexp_order feval_close_order feval_appm_order feval_appms_order feval_sel_order feval_selm_order feval_selc_order feval_selmc_order
   feval_benv_order : mctt.
 
 (** Determinism of every evaluation relation, as rewriting. *)
@@ -371,21 +355,30 @@ Ltac functional_feval_all :=
     | H1 : feval_modexp ?T ?X ?M ?p ?r1, H2 : feval_modexp ?T ?X ?M ?p ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_feval_modexp _ _ _ _ H1 H2); subst; clear H2
+    | H1 : feval_close ?T ?X ?Δ ?D ?p ?r1, H2 : feval_close ?T ?X ?Δ ?D ?p ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X)))))) _ _ _ _ H1 _ H2); subst; clear H2
     | H1 : feval_appm ?T ?X ?m ?n ?r1, H2 : feval_appm ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X)))))) _ _ _ H1 _ H2); subst; clear H2
-    | H1 : feval_sel ?T ?X ?m ?n ?r1, H2 : feval_sel ?T ?X ?m ?n ?r2 |- _ =>
-        assert_fails (constr_eq r1 r2);
         pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X))))))) _ _ _ H1 _ H2); subst; clear H2
-    | H1 : feval_selm ?T ?X ?m ?n ?r1, H2 : feval_selm ?T ?X ?m ?n ?r2 |- _ =>
+    | H1 : feval_appms ?T ?X ?m ?n ?r1, H2 : feval_appms ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X)))))))) _ _ _ H1 _ H2); subst; clear H2
-    | H1 : feval_selc ?T ?X ?m ?n ?r1, H2 : feval_selc ?T ?X ?m ?n ?r2 |- _ =>
+    | H1 : kbody ?T ?X ?p ?Φ ?r1, H2 : kbody ?T ?X ?p ?Φ ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_kbody _ _ _ _ H1 H2); subst; clear H2
+    | H1 : feval_sel ?T ?X ?m ?n ?r1, H2 : feval_sel ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X))))))))) _ _ _ H1 _ H2); subst; clear H2
-    | H1 : feval_selmc ?T ?X ?m ?n ?r1, H2 : feval_selmc ?T ?X ?m ?n ?r2 |- _ =>
+    | H1 : feval_selm ?T ?X ?m ?n ?r1, H2 : feval_selm ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X)))))))))) _ _ _ H1 _ H2); subst; clear H2
+    | H1 : feval_selc ?T ?X ?m ?n ?r1, H2 : feval_selc ?T ?X ?m ?n ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X))))))))))) _ _ _ H1 _ H2); subst; clear H2
+    | H1 : feval_selmc ?T ?X ?m ?n ?r1, H2 : feval_selmc ?T ?X ?m ?n ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_feval T X)))))))))))) _ _ _ H1 _ H2); subst; clear H2
     | H1 : feval_benv ?T ?X ?m ?n ?r1, H2 : feval_benv ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_feval_benv _ _ _ _ H1 H2); subst; clear H2
@@ -416,7 +409,9 @@ Lemma feval_order_sound : forall Θ Ξ,
     (forall Ms p ms, ⟦ Ms ⟧*ᶠ Θ ⍮ Ξ ⍮ p ↘ ms -> feval_exps_order Θ Ξ Ms p) /\
     (forall m ns r, $*ᶠ| m & ns | Θ ⍮ Ξ ↘ r -> feval_apps_order Θ Ξ m ns) /\
     (forall H p h, ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p ↘ h -> feval_modexp_order Θ Ξ H p) /\
+    (forall Δ D p h, ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ p ↘ h -> feval_close_order Θ Ξ Δ D p) /\
     (forall h n r, $ᵐᶠ| h & n | Θ ⍮ Ξ ↘ r -> feval_appm_order Θ Ξ h n) /\
+    (forall h ns r, $ᵐ*ᶠ| h & ns | Θ ⍮ Ξ ↘ r -> feval_appms_order Θ Ξ h ns) /\
     (forall h x r, h ·ₜᶠ x Θ ⍮ Ξ ↘ r -> feval_sel_order Θ Ξ h x) /\
     (forall h y r, h ·ₘᶠ y Θ ⍮ Ξ ↘ r -> feval_selm_order Θ Ξ h y) /\
     (forall h ch r, h ·ₜ*ᶠ ch Θ ⍮ Ξ ↘ r -> feval_selc_order Θ Ξ h ch) /\
@@ -429,11 +424,13 @@ Lemma feval_order_sound : forall Θ Ξ,
     (forall pm A p t v a, feval_ihty Θ Ξ pm A p t v a -> feval_ihty_order Θ Ξ pm A p t v).
 Proof.
   intros Θ Ξ; apply feval_mut_ind; intros;
-    try solve [ eapply feslo_global_neut; eauto; intros; functional_feval_all; eauto
-              | econstructor; try eassumption; intros; functional_feval_all; eauto using kgens_order_sound ].
-  - (* a chain of one more selection is not empty *)
-    eapply fesco_cons; [| eauto | intros; functional_feval_all; eauto ].
-    match goal with H : feval_selc _ _ _ ?c _ |- ?c <> nil => inversion H; discriminate end.
+    (** A closure lacking a parameter lacks a first one, and a chain of one
+        more selection is not empty. *)
+    try match goal with H : 0 < List.length ?Δ |- _ => destruct Δ; [ cbn in H; lia |] end;
+    try match goal with H : feval_selc _ _ _ ?c _ |- feval_selc_order _ _ _ (_ :: ?c) =>
+          destruct c; [ inversion H |] end;
+    solve [ eapply feslo_global_neut; eauto; intros; functional_feval_all; eauto
+          | econstructor; try eassumption; intros; functional_feval_all; eauto using kgens_order_sound, tele_snoc_app ].
 Qed.
 
 Lemma feval_exp_order_sound : forall Θ Ξ m p a, ⟦ m ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ a -> feval_exp_order Θ Ξ m p.
@@ -445,6 +442,9 @@ Proof. intros Θ Ξ; exact (proj1 (proj2 (feval_order_sound Θ Ξ))). Qed.
 Lemma feval_exps_order_sound : forall Θ Ξ Ms p ms, ⟦ Ms ⟧*ᶠ Θ ⍮ Ξ ⍮ p ↘ ms -> feval_exps_order Θ Ξ Ms p.
 Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (feval_order_sound Θ Ξ)))). Qed.
 
+Lemma feval_modexp_order_sound : forall Θ Ξ H p h, ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p ↘ h -> feval_modexp_order Θ Ξ H p.
+Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (proj2 (proj2 (feval_order_sound Θ Ξ)))))). Qed.
+
 Lemma feval_shty_order_sound : forall Θ Ξ pq ups p t a, feval_shty Θ Ξ pq ups p t a -> feval_shty_order Θ Ξ pq ups p t.
 Proof. intros Θ Ξ; pose proof (feval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
@@ -452,7 +452,7 @@ Lemma feval_ihty_order_sound : forall Θ Ξ pm A p t v a, feval_ihty Θ Ξ pm A 
 Proof. intros Θ Ξ; pose proof (feval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
 #[export]
-Hint Resolve feval_exp_order_sound feval_app_order_sound feval_exps_order_sound
+Hint Resolve feval_exp_order_sound feval_app_order_sound feval_exps_order_sound feval_modexp_order_sound
   feval_shty_order_sound feval_ihty_order_sound : mctt.
 
 (** ** Constructors of the Shape of the Natural Numbers
@@ -553,6 +553,16 @@ Proof.
   cbn [List.length firstn skipn]; rewrite skipn_nil, app_nil_l, env_args_app; reflexivity.
 Qed.
 
+(** A prefix up to a name ends with the entry of that name. *)
+Lemma gm_prefix_upto_ext : forall Φ y Φ1, gm_prefix_upto Φ y = Some Φ1 -> exists Φ0 E, Φ1 = gm_ext Φ0 y E.
+Proof.
+  induction Φ as [| Φ IH x E | Φ IH H its]; intros * Hp; cbn in Hp; [ discriminate | |].
+  - destruct (String.eqb_spec y x) as [-> |]; [ injection Hp as <-; eauto | eauto ].
+  - destruct (existsb _ _); [ discriminate | eauto ].
+Qed.
+
+#[local] Hint Resolve kbody_order_sound : core.
+
 Section EvalImpl.
   Variables (Θ : gdeps) (Ξ : gstack).
   Context {F : FCtx Θ Ξ}.
@@ -574,7 +584,9 @@ Section EvalImpl.
     | H : feval_exps_order _ _ _ _ |- _ => progressive_invert H
     | H : feval_apps_order _ _ _ _ |- _ => progressive_invert H
     | H : feval_modexp_order _ _ _ _ |- _ => progressive_invert H
+    | H : feval_close_order _ _ _ _ _ |- _ => progressive_invert H
     | H : feval_appm_order _ _ _ _ |- _ => progressive_invert H
+    | H : feval_appms_order _ _ _ _ |- _ => progressive_invert H
     | H : feval_sel_order _ _ _ _ |- _ => progressive_invert H
     | H : feval_selm_order _ _ _ _ |- _ => progressive_invert H
     | H : feval_selc_order _ _ _ _ |- _ => progressive_invert H
@@ -593,12 +605,12 @@ Section EvalImpl.
   Ltac impl_obl_glob :=
     repeat match goal with
       | H : gc_entry _ _ _ = Some (ge_def _ _ _ _) |- _ => apply gc_entry_def in H
-      | H : gc_entry _ _ _ = Some (ge_ind _ _ _) |- _ =>
+      | H : gc_entry _ _ _ = Some (ge_ind _ _ _ _) |- _ =>
           let H1 := fresh "Hr" in let H2 := fresh "Hl" in destruct (gc_entry_ind _ _ _ _ _ _ H) as [H1 H2]; clear H
       | H : gc_entry ?T ?X ?p = _, H' : gc_resolve ?T ?X ?p = Some (ge_def _ _ _ _) |- _ =>
           apply gc_entry_def in H'; rewrite H in H'; discriminate H'
       | H : gc_entry ?T ?X ?p = _, H' : ind_lookup ?T ?X ?p = Some _ |- _ =>
-          let He := fresh "He" in destruct (ind_lookup_entry _ _ _ _ H') as (? & ? & He); rewrite H in He; discriminate He
+          let He := fresh "He" in destruct (ind_lookup_entry _ _ _ _ H') as (? & ? & ? & He); rewrite H in He; discriminate He
       | H : gc_entry _ _ _ = Some (ge_ind_alias _ _ _ _) |- _ =>
           let H1 := fresh "Hr" in let H2 := fresh "Ha" in destruct (gc_entry_ind_alias _ _ _ _ _ _ _ H) as [H1 H2]; clear H
       | H : gc_entry ?T ?X ?p = _, H' : ind_alias_lookup ?T ?X ?p = Some _ |- _ =>
@@ -608,8 +620,7 @@ Section EvalImpl.
       | H1 : ind_alias_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = None |- _ =>
           rewrite H1 in H2; discriminate H2
       | H1 : ind_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = Some _ |- _ =>
-          exfalso; destruct (ind_lookup_entry _ _ _ _ H1) as (? & ? & He1);
-          rewrite ind_alias_lookup_entry, He1 in H2; discriminate H2
+          exfalso; rewrite (ind_lookup_not_ind_alias _ _ _ _ H1) in H2; discriminate H2
       | H1 : gc_resolve _ _ ?p = Some _, H2 : gc_resolve _ _ ?p = Some _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : gc_resolve _ _ ?p = Some _, H2 : gc_resolve _ _ ?p = None |- _ =>
@@ -618,14 +629,30 @@ Section EvalImpl.
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : gc_module _ _ ?p = Some _, H2 : gc_module _ _ ?p = None |- _ =>
           rewrite H1 in H2; discriminate H2
-      | H1 : ind_lookup _ _ ?p = Some _, H2 : gc_module _ _ ?p = Some (mr_alias _ _) |- _ =>
-          exfalso; exact (ind_lookup_not_alias _ _ _ _ _ _ H1 H2)
-      | H1 : gc_module _ _ ?p = Some (mr_alias _ _), H2 : forall U r, gc_module _ _ ?p <> Some (mr_alias U r) |- _ =>
-          exfalso; exact (H2 _ _ H1)
+      | H1 : ind_lookup _ _ ?p = Some _, H2 : gc_module _ _ ?p = Some (mr_alias _) |- _ =>
+          exfalso; exact (ind_lookup_not_alias _ _ _ _ _ H1 H2)
+      | H1 : gc_loc _ _ ?p = Some _, H2 : gc_module _ _ ?p = Some (mr_alias _) |- _ =>
+          exfalso; exact (gc_loc_not_alias _ _ _ _ _ H1 H2)
+      | H1 : kbody _ _ ?p ?Φ ?r1, H2 : kbody _ _ ?p ?Φ ?r2 |- _ =>
+          assert_fails (constr_eq r1 r2); pose proof (functional_kbody _ _ _ _ H1 H2); subst; clear H2
+      | H : tele_snoc _ = None |- _ => rewrite tele_snoc_app in H; discriminate H
+      | H1 : tele_snoc ?Δ = Some _, H2 : tele_snoc ?Δ = Some _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : tele_snoc ?Δ = Some _, H2 : tele_snoc ?Δ = None |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H : tele_snoc (_ ++ _ :: nil) = _ |- _ =>
+          rewrite tele_snoc_app in H; injection H; clear H; intros; subst
+      | H : tele_snoc nil = _ |- _ => discriminate H
+      | H : tele_snoc ?Δ = Some _ |- _ => is_var Δ; apply tele_snoc_some in H; subst Δ
       | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = None |- _ =>
           rewrite H1 in H2; discriminate H2
+      (** A prefix up to a name ends with that name's entry. *)
+      | H : gm_prefix_upto _ _ = Some gm_nil |- _ =>
+          destruct (gm_prefix_upto_ext _ _ _ H) as (? & ? & ?); discriminate
+      | H : gm_prefix_upto _ _ = Some (gm_open _ _ _) |- _ =>
+          destruct (gm_prefix_upto_ext _ _ _ H) as (? & ? & ?); discriminate
       | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = None |- _ =>
@@ -666,7 +693,9 @@ Section EvalImpl.
     | H : feval_exp_order _ _ _ _ |- _ => dependent destruction H
     | H : feval_app_order _ _ _ _ |- _ => dependent destruction H
     | H : feval_modexp_order _ _ _ _ |- _ => dependent destruction H
+    | H : feval_close_order _ _ _ _ _ |- _ => dependent destruction H
     | H : feval_appm_order _ _ _ _ |- _ => dependent destruction H
+    | H : feval_appms_order _ _ _ _ |- _ => dependent destruction H
     | H : feval_sel_order _ _ _ _ |- _ => dependent destruction H
     | H : feval_selm_order _ _ _ _ |- _ => dependent destruction H
     | H : feval_selc_order _ _ _ _ |- _ => dependent destruction H
@@ -689,6 +718,8 @@ Section EvalImpl.
     try solve [ exfalso; lia ];
     try solve [ eapply feval_sel_global_neut; eauto ];
     try solve [ econstructor; [ intros ? ? Hc; congruence | .. ]; eauto ];
+    (** A closure lacking a first parameter lacks one. *)
+    try solve [ econstructor; cbn; lia ];
     try solve [ eauto ];
     try econstructor; eauto.
 
@@ -780,8 +811,9 @@ Section EvalImpl.
       let (m, Hm) := feval_exp_impl M p _ in
       let (r, Hr) := feval_exp_impl B (p ↦ m) _ in
       exist _ r _
-  | ℓₘ U in B, p, H =>
-      let (r, Hr) := feval_exp_impl B (p ↦ᵐ dm_local p U nil) _ in
+  | a_let (b_mod (gu_mk Δ D)) B, p, H =>
+      let (h, Hh) := feval_close_impl Δ D p _ in
+      let (r, Hr) := feval_exp_impl B (p ↦ᵐ h) _ in
       exist _ r _
   | a_mem M x, p, H with inspect (modexp_spine M) := {
     | exist _ (R, args, pre) E =>
@@ -914,7 +946,9 @@ Section EvalImpl.
   with feval_modexp_impl M p (H : feval_modexp_order Θ Ξ M p) : { h | ⟦ M ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p ↘ h } by struct H :=
   | me_var x, p, H => exist _ (env_mod p x) _
   | me_unit fp, p, H => exist _ (dm_global (q_abs fp nil) nil) _
-  | me_lit U, p, H => exist _ (dm_local p U nil) _
+  | me_lit (gu_mk Δ D), p, H =>
+      let (h, Hh) := feval_close_impl Δ D p _ in
+      exist _ h _
   | me_mem M y, p, H =>
       let (h, Hh) := feval_modexp_impl M p _ in
       let (r, Hr) := feval_selm_impl h y _ in
@@ -925,19 +959,30 @@ Section EvalImpl.
       let (r, Hr) := feval_appm_impl h n _ in
       exist _ r _
 
+  with feval_close_impl Δ D p (H : feval_close_order Θ Ξ Δ D p) : { h | ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ p ↘ h } by struct H :=
+  | Δ, md_body sm Φ, p, H => exist _ (dm_local Δ (md_body sm Φ) p) _
+  | nil, md_alias E, p, H =>
+      let (h, Hh) := feval_modexp_impl E p _ in
+      exist _ h _
+  | e :: Δ, md_alias E, p, H => exist _ (dm_local (e :: Δ) (md_alias E) p) _
+
   with feval_appm_impl h n (H : feval_appm_order Θ Ξ h n) : { r | feval_appm Θ Ξ h n r } by struct H :=
   | dm_global pq args, n, H => exist _ (dm_global pq (args ++ n :: nil)) _
-  | dm_local p (gu_mk Δ (md_body Φ)) args, n, H => exist _ (dm_local p (gu_mk Δ (md_body Φ)) (args ++ n :: nil)) _
-  | dm_local p (gu_mk Δ (md_alias E)) args, n, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
-    | exist _ Lt C => exist _ (dm_local p (gu_mk Δ (md_alias E)) (args ++ n :: nil)) _
-    | exist _ Eq C =>
-        let (h, Hh) := feval_modexp_impl E (env_args p args) _ in
-        let (r, Hr) := feval_appm_impl h n _ in
+  | dm_local Δ D p, n, H with inspect (tele_snoc Δ) := {
+    | exist _ (Some (Δ0, ce_ass A)) Es =>
+        let (r, Hr) := feval_close_impl Δ0 D (p ↦ n) _ in
         exist _ r _
-    | exist _ Gt C => False_rect _ _ }
+    | exist _ _ Es => False_rect _ _ }
   | dm_member h ch, n, H =>
       let (h', Hh') := feval_appm_impl h n _ in
       let (r, Hr) := feval_selmc_impl h' ch _ in
+      exist _ r _
+
+  with feval_appms_impl h ns (H : feval_appms_order Θ Ξ h ns) : { r | feval_appms Θ Ξ h ns r } by struct H :=
+  | h, nil, H => exist _ h _
+  | h, n :: ns, H =>
+      let (h1, Hh1) := feval_appm_impl h n _ in
+      let (r, Hr) := feval_appms_impl h1 ns _ in
       exist _ r _
 
   with feval_sel_impl h x (H : feval_sel_order Θ Ξ h x) : { r | feval_sel Θ Ξ h x r } by struct H :=
@@ -955,7 +1000,7 @@ Section EvalImpl.
         let (r, Hr) := feval_apps_impl (⇑ a (d_glob (qname_app pq (x :: nil)))) args _ in
         exist _ r _
     | exist _ (Some (ge_mod _ _)) E => False_rect _ _
-    | exist _ (Some (ge_ind _ D _)) E =>
+    | exist _ (Some (ge_ind _ _ D _)) E =>
         let (r, Hr) := feval_apps_impl (d_ind (qname_app pq (x :: nil)) nil) args _ in
         exist _ r _
     | exist _ (Some (ge_ind_alias _ Δ pt Ns)) E =>
@@ -963,54 +1008,33 @@ Section EvalImpl.
         let (r, Hr) := feval_apps_impl f args _ in
         exist _ r _
     | exist _ None E => False_rect _ _ }
-  | dm_local p (gu_mk Δ D) args, x, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
-    | exist _ Lt C => exist _ (d_member (dm_local p (gu_mk Δ D) args) (x :: nil)) _
-    | exist _ Eq C with D := {
-      | md_body Φ with inspect (gm_item_upto Φ x) := {
-        | exist _ (Some (Φ0, E, its1, (Some n, d, pv))) Ei =>
-            let (p0, Hp0) := feval_benv_impl (env_args p args) Φ0 _ in
-            let (h, Hh) := feval_modexp_impl E p0 _ in
-            let (r, Hr) := feval_sel_impl h n _ in
-            exist _ r _
-        | exist _ (Some (Φ0, E, its1, (None, d, pv))) Ei => False_rect _ _
-        | exist _ None Ei with inspect (gm_prefix_upto Φ x) := {
-          | exist _ (Some (gm_ext Φ' _ (ge_def b pv A (Some M)))) P =>
-              let (p', Hp') := feval_benv_impl (env_args p args) Φ' _ in
-              let (r, Hr) := feval_exp_impl M p' _ in
-              exist _ r _
-          | exist _ _ P => False_rect _ _ } }
-      | md_alias E =>
-          let (h, Hh) := feval_modexp_impl E (env_args p args) _ in
-          let (r, Hr) := feval_sel_impl h x _ in
-          exist _ r _ }
-    | exist _ Gt C => False_rect _ _ }
+  | dm_local (e :: Δ) D p, x, H => exist _ (d_member (dm_local (e :: Δ) D p) (x :: nil)) _
+  | dm_local nil (md_alias E) p, x, H => False_rect _ _
+  | dm_local nil (md_body sm Φ) p, x, H with kbody_impl Θ Ξ p Φ _ := {
+    | exist _ Φx HΦx with inspect (gm_prefix_upto Φx x) := {
+      | exist _ (Some (gm_ext Φ' _ (ge_def b pv A (Some M)))) P =>
+          let (p', Hp') := feval_benv_impl p Φ' _ in
+          let (r, Hr) := feval_exp_impl M p' _ in
+          exist _ r _
+      | exist _ _ P => False_rect _ _ } }
   | dm_member h ch, x, H => exist _ (d_member h (ch ++ x :: nil)) _
 
   with feval_selm_impl h y (H : feval_selm_order Θ Ξ h y) : { r | feval_selm Θ Ξ h y r } by struct H :=
   | dm_global pq args, y, H with gc_module_f Θ Ξ (qname_app pq (y :: nil)) := {
-    | exist _ (Some (mr_alias U ch)) E =>
-        let (r, Hr) := feval_selmc_impl (dm_local nil U args) ch _ in
+    | exist _ (Some (mr_alias (gu_mk Δ D))) E =>
+        let (h, Hh) := feval_close_impl Δ D nil _ in
+        let (r, Hr) := feval_appms_impl h args _ in
         exist _ r _
     | exist _ _ E => exist _ (dm_global (qname_app pq (y :: nil)) args) _ }
-  | dm_local p (gu_mk Δ D) args, y, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
-    | exist _ Lt C => exist _ (dm_member (dm_local p (gu_mk Δ D) args) (y :: nil)) _
-    | exist _ Eq C with D := {
-      | md_body Φ with inspect (gm_item_upto Φ y) := {
-        | exist _ (Some (Φ0, E, its1, it)) Ei =>
-            let (p0, Hp0) := feval_benv_impl (env_args p args) Φ0 _ in
-            let (h, Hh) := feval_modexp_impl E p0 _ in
-            let (r, Hr) := feval_selmc_impl h (item_ch it nil) _ in
-            exist _ r _
-        | exist _ None Ei with inspect (gm_prefix_upto Φ y) := {
-          | exist _ (Some (gm_ext Φ' _ (ge_mod _ Uy))) P =>
-              let (p', Hp') := feval_benv_impl (env_args p args) Φ' _ in
-              exist _ (dm_local p' Uy nil) _
-          | exist _ _ P => False_rect _ _ } }
-      | md_alias E =>
-          let (h, Hh) := feval_modexp_impl E (env_args p args) _ in
-          let (r, Hr) := feval_selm_impl h y _ in
-          exist _ r _ }
-    | exist _ Gt C => False_rect _ _ }
+  | dm_local (e :: Δ) D p, y, H => exist _ (dm_member (dm_local (e :: Δ) D p) (y :: nil)) _
+  | dm_local nil (md_alias E) p, y, H => False_rect _ _
+  | dm_local nil (md_body sm Φ) p, y, H with kbody_impl Θ Ξ p Φ _ := {
+    | exist _ Φx HΦx with inspect (gm_prefix_upto Φx y) := {
+      | exist _ (Some (gm_ext Φ' _ (ge_mod pm (gu_mk Δy Dy)))) P =>
+          let (p', Hp') := feval_benv_impl p Φ' _ in
+          let (r, Hr) := feval_close_impl Δy Dy p' _ in
+          exist _ r _
+      | exist _ _ P => False_rect _ _ } }
   | dm_member h ch, y, H => exist _ (dm_member h (ch ++ y :: nil)) _
 
   with feval_selc_impl h ch (H : feval_selc_order Θ Ξ h ch) : { r | feval_selc Θ Ξ h ch r } by struct H :=
@@ -1037,295 +1061,17 @@ Section EvalImpl.
       let (m, Hm) := feval_exp_impl M p1 _ in
       exist _ (p1 ↦ m) _
   | p, gm_ext Φ y (ge_def b pv A None), H => False_rect _ _
-  | p, gm_ext Φ y (ge_mod _ Uy), H =>
+  | p, gm_ext Φ y (ge_mod _ (gu_mk Δy Dy)), H =>
       let (p1, Hp1) := feval_benv_impl p Φ _ in
-      exist _ (p1 ↦ᵐ dm_local p1 Uy nil) _
-  | p, gm_open Φ E its, H =>
-      let (p1, Hp1) := feval_benv_impl p Φ _ in
-      let (gs, Hgs) := kgens_impl Θ Ξ p1 E its _ in
-      let (p2, Hp2) := feval_benv_impl p1 (gens_append gm_nil 0 gs) _ in
-      exist _ p2 _.
+      let (h, Hh) := feval_close_impl Δy Dy p1 _ in
+      exist _ (p1 ↦ᵐ h) _
+  | p, gm_open Φ E its, H => False_rect _ _.
 
 (** Each hole is an order premise read off the order of the whole by
     inversion, the evaluation itself by its rule, or a branch the order rules
     out ([ev_obl]).  They are transparent: the order premises are the
     arguments of the structural recursion. *)
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
-Next Obligation. all: ev_obl. Defined.
+Solve All Obligations with ev_obl.
 
   (** The type of a recursive argument and of its recursive result, for an
       argument at the type itself without indices: the type former at the
@@ -1360,7 +1106,9 @@ Extraction Inline feval_exp_impl_functional
   feval_exps_impl_functional
   feval_apps_impl_functional
   feval_modexp_impl_functional
+  feval_close_impl_functional
   feval_appm_impl_functional
+  feval_appms_impl_functional
   feval_sel_impl_functional
   feval_selm_impl_functional
   feval_selc_impl_functional

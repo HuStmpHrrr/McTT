@@ -284,7 +284,7 @@ with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
            | Cst.c_builtin _ _ :: _ => eerr "builtin is not allowed in a local module"
            | Cst.c_ind_alias _ _ _ _ :: _ => eerr "an inductive alias is not allowed in a local module"
            end) S gm_nil cs in
-      eok (md_body Φ)
+      eok (md_body sm_open Φ)
   end.
 
 Definition elab_params := elab_params_with elab.

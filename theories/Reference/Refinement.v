@@ -53,7 +53,7 @@ Section Fixed_GCtx.
     destruct (Extraction.TypeCheck.type_infer_in G HG P M H) as [[A HA] | HN],
              (Reference.TypeCheck.type_infer_in G HG P M H') as [[A' HA'] | HN']; cbn;
       destruct_conjs;
-      [ f_equal; eapply functional_alg_type_infer; eassumption
+      [ f_equal; eapply functional_alg_type_infer; [ exact (ctx_wf_gctx _ _ _ HG) | eassumption | eassumption ]
       | exfalso; eapply HN'; eassumption
       | exfalso; eapply HN; eassumption
       | reflexivity ].

@@ -21,27 +21,27 @@ Section Fixed_GCtx.
 
   (** ** Telescopes of Assumptions *)
 
-  Lemma sb_qn_eq_ext : forall Ψ Δ Γ σ σ', tele_ass Ψ -> ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Δ -> Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
-      Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Γ ⊢s sb_qn (List.length Ψ) σ ≈ sb_qn (List.length Ψ) σ' : Ψ ++ Δ.
+  Lemma sb_qn_eq_ext : forall Ψ Δ Γ σ σ', tele_ass Ψ -> ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
+      Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Γ ⊢ˢ sb_qn (List.length Ψ) σ ≈ sb_qn (List.length Ψ) σ' : Ψ ++ Δ.
   Proof.
     intros * Hass HΨ Hσ.
-    exact (proj1 (proj2 (proj2 (proj2 sub_eq_preserves_mut))) _ _ _ _ _ (ctx_ext_refl _ _ _ _ Hass HΨ) Hass _ _ _ Hσ).
+    exact (proj1 (proj1 (proj1 (proj2 (proj2 (proj2 (proj2 sub_eq_preserves_mut)))) _ _ _ _ _ (ctx_ext_refl _ _ _ _ Hass HΨ) _ _ _ Hσ) Hass)).
   Qed.
 
-  Lemma tele_sub_eq_ext : forall Ψ Δ Γ σ σ', tele_ass Ψ -> ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Δ -> Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
+  Lemma tele_sub_eq_ext : forall Ψ Δ Γ σ σ', tele_ass Ψ -> ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub Ψ σ ≈ tele_sub Ψ σ'.
   Proof.
     induction Ψ as [| e Ψ IH]; intros * Hass HΨ Hσ.
     - cbn; constructor; gen_presups; assumption.
     - inversion Hass as [| ? ? [A ->] Hass']; subst.
       cbn [List.app] in HΨ; destruct (ctx_decomp HΨ) as [HΨ' [j HA]].
-      assert (Hσσ : Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ : Δ) by (gen_presups; mauto 2).
-      assert (Hσσ' : Θ ⍮ Ξ ⍮ Γ ⊢s σ' ≈ σ' : Δ) by (gen_presups; mauto 2).
+      assert (Hσσ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ : Δ) by (gen_presups; mauto 2).
+      assert (Hσσ' : Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ' ≈ σ' : Δ) by (gen_presups; mauto 2).
       pose proof (sb_qn_eq_ext _ _ _ _ _ Hass' HΨ' Hσ) as Hq.
       pose proof (sb_qn_eq_ext _ _ _ _ _ Hass' HΨ' Hσσ) as Hq1.
       pose proof (sb_qn_eq_ext _ _ _ _ _ Hass' HΨ' Hσσ') as Hq2.
-      assert (Hs1 : Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Γ ⊢s sb_qn (List.length Ψ) σ : Ψ ++ Δ) by (gen_presups; assumption).
-      assert (Hs2 : Θ ⍮ Ξ ⍮ tele_sub Ψ σ' ++ Γ ⊢s sb_qn (List.length Ψ) σ' : Ψ ++ Δ) by (gen_presups; assumption).
+      assert (Hs1 : Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Γ ⊢ˢ sb_qn (List.length Ψ) σ : Ψ ++ Δ) by (gen_presups; assumption).
+      assert (Hs2 : Θ ⍮ Ξ ⍮ tele_sub Ψ σ' ++ Γ ⊢ˢ sb_qn (List.length Ψ) σ' : Ψ ++ Δ) by (gen_presups; assumption).
       cbn [tele_sub centry_sub].
       eapply wf_ext_eq_ass; [ exact (IH _ _ _ _ Hass' HΨ' Hσ) | exact (sub_preserves_exp _ _ _ _ _ _ _ HA Hs1)
                             | exact (sub_eq_preserves_typ _ _ _ _ _ _ _ _ HA Hq) | exact (sub_preserves_exp _ _ _ _ _ _ _ HA Hs2) ].
@@ -93,7 +93,7 @@ Section Fixed_GCtx.
 
   Lemma elim_mctx_us_eq : forall Γ p D Us Us', decl_typed Θ Ξ D -> decl_closed D -> ind_lookup Θ Ξ p = Some D -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
       List.length Us = ind_nu D -> List.length Us' = ind_nu D ->
-      Θ ⍮ Ξ ⍮ Γ ⊢s sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ ->
       Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D Us ≈ elim_mctx p D Us'.
   Proof.
     intros * HD Hc Hl HΓ HUl HUl' Hσ.
@@ -103,11 +103,12 @@ Section Fixed_GCtx.
 
   (** ** The Recursive Results' Instances *)
 
-Lemma wf_sub_eq_prefix : forall Ψ Δ Γ σ σ', Θ ⍮ Ξ ⍮ Ψ ⊢s σ ≈ σ' : Δ ++ Γ -> ⊢ Θ ⍮ Ξ ⍮ Δ -> Θ ⍮ Ξ ⍮ Ψ ⊢s σ ≈ σ' : Δ.
+Lemma wf_sub_eq_prefix : forall Ψ Δ Γ σ σ', Θ ⍮ Ξ ⍮ Ψ ⊢ˢ σ ≈ σ' : Δ ++ Γ -> ⊢ Θ ⍮ Ξ ⍮ Δ -> Θ ⍮ Ξ ⍮ Ψ ⊢ˢ σ ≈ σ' : Δ.
 Proof.
-  intros * [Hl0 Hr0 Ha] HΔ; constructor;
-    [ exact (wf_sub_prefix _ _ _ _ _ _ Hl0 HΔ) | exact (wf_sub_prefix _ _ _ _ _ _ Hr0 HΔ) |].
-  intros x A Hx; apply Ha, ctx_lookup_app_l; exact Hx.
+  intros * [Hl0 Hr0 Ha Hm] HΔ; constructor;
+    [ exact (wf_sub_prefix _ _ _ _ _ _ Hl0 HΔ) | exact (wf_sub_prefix _ _ _ _ _ _ Hr0 HΔ) | |].
+  - intros x A Hx; apply Ha, ctx_lookup_app_l; exact Hx.
+  - intros x U Hx; eapply Hm, ctx_lookup_mod_app_l; exact Hx.
 Qed.
 
 (** The motive's instance at a shape's leaf, at equal substitutions of the
@@ -116,20 +117,20 @@ Lemma ih_leaf_sub_eq : forall Γ p D Us Ψ Tc β σ σ' Ps x,
     decl_typed Θ Ξ D -> decl_closed D -> ind_lookup Θ Ξ p = Some D ->
     List.length Us = ind_nu D ->
     ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D Us ++ Γ ->
-    Θ ⍮ Ξ ⍮ Ψ ⊢s β : Γ -> Θ ⍮ Ξ ⍮ Ψ ⊢s σ : Tc -> Θ ⍮ Ξ ⍮ Ψ ⊢s σ ≈ σ' : Tc ->
+    Θ ⍮ Ξ ⍮ Ψ ⊢ˢ β : Γ -> Θ ⍮ Ξ ⍮ Ψ ⊢ˢ σ : Tc -> Θ ⍮ Ξ ⍮ Ψ ⊢ˢ σ ≈ σ' : Tc ->
     shape_uc D Us Tc σ β ->
     List.length Ps = ind_nn D ->
     (forall k P T, List.nth_error Ps k = Some P ->
        List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length Tc - ind_nu D))) Ps) k = Some T ->
        Θ ⍮ Ξ ⍮ Tc ⊢ P : T) ->
     Θ ⍮ Ξ ⍮ Ψ ⊢ x : apps (a_ind p) (List.map (fun U => U[β]) Us ++ List.map (fun P => P[σ]) Ps) ->
-    Θ ⍮ Ξ ⍮ Ψ ⊢s sb_of_list β (List.map (fun P => P[σ]) Ps ++ x :: nil)
+    Θ ⍮ Ξ ⍮ Ψ ⊢ˢ sb_of_list β (List.map (fun P => P[σ]) Ps ++ x :: nil)
       ≈ sb_of_list β (List.map (fun P => P[σ']) Ps ++ x :: nil) : elim_mctx p D Us ++ Γ.
 Proof.
   intros * HD Hc Hl HUl HM Hβ Hσ Hσσ Huc HPl HP Hx.
   assert (HN : ⊢ Θ ⍮ Ξ ⍮ tele_sub (ind_nparams D) (sb_of_list Id Us) ++ Γ)
     by (unfold elim_mctx in HM; cbn [List.app] in HM; destruct (ctx_decomp HM) as [H0 _]; exact H0).
-  assert (Hnn : Θ ⍮ Ξ ⍮ Ψ ⊢s sb_of_list β (List.map (fun P => P[σ]) Ps) ≈ sb_of_list β (List.map (fun P => P[σ']) Ps)
+  assert (Hnn : Θ ⍮ Ξ ⍮ Ψ ⊢ˢ sb_of_list β (List.map (fun P => P[σ]) Ps) ≈ sb_of_list β (List.map (fun P => P[σ']) Ps)
                   : tele_sub (ind_nparams D) (sb_of_list Id Us) ++ Γ).
   { apply wf_sub_eq_of_list; [ apply tele_ass_sub, decl_closed_nparams_ass, Hc | exact HN | apply wf_sub_eq_refl; exact Hβ
                              | rewrite length_tele_sub, List.length_map, HPl, length_nparams; reflexivity
@@ -170,8 +171,8 @@ Lemma ihty_sub_eq : forall Γ p D Us A i t Ψ Bs1 Tb β σ σ' x,
     List.length Us = ind_nu D ->
     ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D Us ++ Γ ->
     Θ ⍮ Ξ ⍮ elim_mctx p D Us ++ Γ ⊢ A : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Ψ ⊢s β : Γ -> Θ ⍮ Ξ ⍮ Ψ ⊢s σ : doms_ctx Bs1 ++ Tb ++ ind_params D ->
-    Θ ⍮ Ξ ⍮ Ψ ⊢s σ ≈ σ' : doms_ctx Bs1 ++ Tb ++ ind_params D ->
+    Θ ⍮ Ξ ⍮ Ψ ⊢ˢ β : Γ -> Θ ⍮ Ξ ⍮ Ψ ⊢ˢ σ : doms_ctx Bs1 ++ Tb ++ ind_params D ->
+    Θ ⍮ Ξ ⍮ Ψ ⊢ˢ σ ≈ σ' : doms_ctx Bs1 ++ Tb ++ ind_params D ->
     shape_uc D Us (doms_ctx Bs1 ++ Tb ++ ind_params D) σ β ->
     List.length (ptyp_ps t) = ind_nn D ->
     shape_doms_typed Θ Ξ D Bs1 Tb t -> shape_leaf_typed Θ Ξ D Bs1 Tb t ->
@@ -190,7 +191,7 @@ Proof.
   assert (HΨ' : ⊢ Θ ⍮ Ξ ⍮ Ψ ▹ B[σ]) by (econstructor; exact Hj1').
   pose proof (wf_sub_q _ _ _ _ _ _ _ Hσ Hj1 Hj1') as Hσ'.
   pose proof (wf_sub_eq_q _ _ _ _ _ _ _ _ Hσσ Hj1 HBB) as Hσσ'.
-  assert (Hβ' : Θ ⍮ Ξ ⍮ Ψ ▹ B[σ] ⊢s β ⨟ ι ↑ : Γ)
+  assert (Hβ' : Θ ⍮ Ξ ⍮ Ψ ▹ B[σ] ⊢ˢ β ⨟ ι ↑ : Γ)
     by (eapply wf_sub_compose; [ exact Hβ | apply wf_sub_of_wk, wf_wk_shift; exact HΨ' ]).
   replace ((doms_ctx Bs1 ++ Tb ++ ind_params D) ▹ B) with (doms_ctx (Bs1 ++ B :: nil) ++ Tb ++ ind_params D) in Hσ', Hσσ'
     by (rewrite doms_ctx_app_one; reflexivity).
@@ -205,7 +206,7 @@ Proof.
   pose proof (shape_arg_app _ _ _ _ _ _ _ _ Hj1' Hj2 Hx) as Hx'.
   destruct (IH _ _ _ _ _ _ _ HD Hc Hl HUl HM HA Hβ' Hσ' Hσσ' Huc' HPl HB'' HP'' Hx') as (j3 & H3).
   exists (max j1 j3).
-  eapply wf_exp_eq_pi_cong; [ eapply lift_exp_max_left; exact Hj1' | eapply lift_exp_eq_max_left; exact HBB
+  eapply wf_exp_eq_pi_cong_large; [ eapply lift_exp_max_left; exact Hj1' | eapply lift_exp_eq_max_left; exact HBB
                             | eapply lift_exp_eq_max_right; exact H3 ].
 Qed.
 
@@ -214,11 +215,11 @@ Qed.
 Lemma ihs_sub_us_eq : forall Γ p D Us Us' c gs gs1 t gs2 E,
     decl_typed Θ Ξ D -> decl_closed D -> ind_lookup Θ Ξ p = Some D -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
     List.length Us = ind_nu D ->
-    Θ ⍮ Ξ ⍮ Γ ⊢s sb_of_list Id Us : ind_uparams D ++ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢s sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us : ind_uparams D ++ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ ->
     List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
     ⊢ Θ ⍮ Ξ ⍮ E ++ cinst Γ p D Us gs ->
-    Θ ⍮ Ξ ⍮ E ++ cinst Γ p D Us gs ⊢s ihs_sub D Us (List.length gs) (cargs_pat gs1) (List.length E)
+    Θ ⍮ Ξ ⍮ E ++ cinst Γ p D Us gs ⊢ˢ ihs_sub D Us (List.length gs) (cargs_pat gs1) (List.length E)
       ≈ ihs_sub D Us' (List.length gs) (cargs_pat gs1) (List.length E) : doms_ctx nil ++ cargs_strat gs1 ++ ind_params D.
 Proof.
   intros * HD Hc Hl HΓ HUl Hσ Hσσ Hin Heq HΨ.
@@ -232,7 +233,7 @@ Proof.
   set (ρ := sb_qn (i + ind_nn D) (sb_of_list Id Us)).
   set (ρ' := sb_qn (i + ind_nn D) (sb_of_list Id Us')).
   destruct (cargs_ctx_wf _ _ _ _ _ _ HD Hc Hl Hin gs1 (ca_rec t :: gs2) Heq) as (HΨ1 & _ & Hφ).
-  assert (Hw3 : Θ ⍮ Ξ ⍮ E ++ cinst Γ p D Us gs ⊢w wk_shiftn s : cinst Γ p D Us gs1).
+  assert (Hw3 : Θ ⍮ Ξ ⍮ E ++ cinst Γ p D Us gs ⊢ʷ wk_shiftn s : cinst Γ p D Us gs1).
   { rewrite Heq in HΨ |- *; rewrite cinst_split in HΨ |- *; rewrite List.app_assoc in HΨ |- *.
     replace s with (List.length (E ++ tele_sub (cargs_ctx_aux p D (true :: cargs_pat gs1) gs2)
                                      (sb_qn (S (List.length gs1)) (sb_qn (ind_nn D) (sb_of_list Id Us)))
@@ -240,7 +241,7 @@ Proof.
                                           [sb_qn (List.length gs1) (sb_qn (ind_nn D) (sb_of_list Id Us))] :: nil))
       by (rewrite !List.length_app, length_tele_sub, length_cargs_ctx_aux; cbn; unfold s, na, i, j; rewrite Heq, List.length_app; cbn; lia).
     apply wf_wk_shiftn_app'; exact HΨ. }
-  assert (Hτ2e : Θ ⍮ Ξ ⍮ cinst Γ p D Us gs1 ⊢s ρ ≈ ρ' : cargs_ctx p D gs1 ++ ind_params D ++ Γ).
+  assert (Hτ2e : Θ ⍮ Ξ ⍮ cinst Γ p D Us gs1 ⊢ˢ ρ ≈ ρ' : cargs_ctx p D gs1 ++ ind_params D ++ Γ).
   { assert (HΨΓ : ⊢ Θ ⍮ Ξ ⍮ (cargs_ctx p D gs1 ++ ind_params D) ++ Γ).
     { apply wf_ctx_closed_app; [| eapply cargs_ctx_closed; eassumption | exact HΨ1 | exact HΓ ].
       apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | apply decl_closed_params, Hc ]. }
@@ -264,8 +265,8 @@ Qed.
 Lemma rec_ih_us_eq : forall Γ p D Us Us' A i c gs gs1 t gs2 E,
     decl_typed Θ Ξ D -> decl_closed D -> ind_lookup Θ Ξ p = Some D -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
     List.length Us = ind_nu D ->
-    Θ ⍮ Ξ ⍮ Γ ⊢s sb_of_list Id Us : ind_uparams D ++ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢s sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us : ind_uparams D ++ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ ->
     ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D Us ++ Γ ->
     Θ ⍮ Ξ ⍮ elim_mctx p D Us ++ Γ ⊢ A : Typeω@i ->
     List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
@@ -286,9 +287,9 @@ Qed.
   Lemma ihs_ctx_us_eq : forall Γ p D Us Us' A i c gs,
       decl_typed Θ Ξ D -> decl_closed D -> ind_lookup Θ Ξ p = Some D -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
       List.length Us = ind_nu D -> List.length Us' = ind_nu D ->
-      Θ ⍮ Ξ ⍮ Γ ⊢s sb_of_list Id Us : ind_uparams D ++ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢s sb_of_list Id Us' : ind_uparams D ++ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢s sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us : ind_uparams D ++ Γ ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us' : ind_uparams D ++ Γ ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ ->
       ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D Us ++ Γ -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D Us' ++ Γ ->
       Θ ⍮ Ξ ⍮ elim_mctx p D Us ++ Γ ⊢ A : Typeω@i ->
       Θ ⍮ Ξ ⍮ elim_mctx p D Us' ++ Γ ⊢ A : Typeω@i ->
@@ -330,9 +331,9 @@ Qed.
   Lemma elim_bctx_us_eq : forall Γ p D Us Us' A i c gs,
       decl_typed Θ Ξ D -> decl_closed D -> ind_lookup Θ Ξ p = Some D -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
       List.length Us = ind_nu D -> List.length Us' = ind_nu D ->
-      Θ ⍮ Ξ ⍮ Γ ⊢s sb_of_list Id Us : ind_uparams D ++ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢s sb_of_list Id Us' : ind_uparams D ++ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢s sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us : ind_uparams D ++ Γ ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us' : ind_uparams D ++ Γ ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ ->
       ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D Us ++ Γ -> ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D Us' ++ Γ ->
       Θ ⍮ Ξ ⍮ elim_mctx p D Us ++ Γ ⊢ A : Typeω@i ->
       Θ ⍮ Ξ ⍮ elim_mctx p D Us' ++ Γ ⊢ A : Typeω@i ->
@@ -369,7 +370,7 @@ Lemma wf_bty_sub_eq : forall Γ p D Us Us' A i c gs,
     Θ ⍮ Ξ ⍮ elim_mctx p D Us ++ Γ ⊢ A : Typeω@i ->
     ind_con D c = Some gs ->
     Θ ⍮ Ξ ⍮ elim_bctx p D gs A Us ++ Γ
-      ⊢s sb_of_list (ι (wk_shiftn (ind_nn D + List.length gs + cargs_nrec gs)))
+      ⊢ˢ sb_of_list (ι (wk_shiftn (ind_nn D + List.length gs + cargs_nrec gs)))
            (vars_from (cargs_nrec gs + List.length gs) (ind_nn D) ++
             apps (a_con p c) (List.map (fun U => U[wk_shiftn (ind_nn D + List.length gs + cargs_nrec gs)]ʷ) Us ++
                               vars_from (cargs_nrec gs + List.length gs) (ind_nn D) ++ vars_from (cargs_nrec gs) (List.length gs))
@@ -394,7 +395,7 @@ Proof.
   assert (HlI : List.length IHs = cargs_nrec gs) by (unfold IHs; apply length_ihs_ctx_aux).
   assert (HlC : List.length Cs = List.length gs) by (unfold Cs; rewrite length_tele_sub, length_cargs_ctx; reflexivity).
   assert (HlN : List.length Ns = ind_nn D) by (unfold Ns; apply length_ind_nparams_sub).
-  assert (Hw : Θ ⍮ Ξ ⍮ elim_bctx p D gs A Us ++ Γ ⊢w wk_shiftn n : Γ).
+  assert (Hw : Θ ⍮ Ξ ⍮ elim_bctx p D gs A Us ++ Γ ⊢ʷ wk_shiftn n : Γ).
   { rewrite HBeq, List.app_assoc.
     replace n with (List.length ((IHs ++ Cs) ++ Ns)) by (rewrite !List.length_app, HlI, HlC, HlN; unfold n; lia).
     apply wf_wk_shiftn_app'; rewrite <- List.app_assoc, <- HBeq; exact HB. }
@@ -591,7 +592,7 @@ Qed.
     assert (HUl' : List.length Us' = ind_nu D) by (unfold Us'; rewrite List.length_firstn; lia).
     pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓ HUl HUt) as Hσ.
     pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓ HUl' HUt') as Hσ'.
-    assert (Hσσ : Θ ⍮ Ξ ⍮ Γ ⊢s sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ).
+    assert (Hσσ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us ≈ sb_of_list Id Us' : ind_uparams D ++ Γ).
     { eapply wf_sub_eq_of_list; [ exact (decl_uparams_ass D Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓ)
                                 | apply wf_sub_eq_refl, wf_sub_id, HΓ
                                 | rewrite length_ind_uparams by exact Hle; exact HUl | rewrite length_ind_uparams by exact Hle; exact HUl' |].
@@ -619,7 +620,7 @@ Qed.
     - assert (HNl : List.length (List.skipn (ind_nu D) Ps) = ind_nn D) by (rewrite List.length_skipn; unfold ind_nn; lia).
       assert (HNl' : List.length (List.skipn (ind_nu D) Ps') = ind_nn D) by (rewrite List.length_skipn; unfold ind_nn; lia).
       eapply sub_eq_preserves_typ; [ exact HA |].
-      assert (Hδδ : Θ ⍮ Ξ ⍮ Γ ⊢s sb_of_list Id (List.skipn (ind_nu D) Ps) ≈ sb_of_list Id (List.skipn (ind_nu D) Ps')
+      assert (Hδδ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id (List.skipn (ind_nu D) Ps) ≈ sb_of_list Id (List.skipn (ind_nu D) Ps')
                       : tele_sub (ind_nparams D) (sb_of_list Id Us) ++ Γ).
       { eapply wf_sub_eq_of_list; [ apply tele_ass_sub, decl_closed_nparams_ass, Hc | exact (wf_nparams_sub _ _ _ HD Hc _ _ HΓ Hσ)
                                   | apply wf_sub_eq_refl, wf_sub_id, HΓ | rewrite length_tele_sub, length_nparams; exact HNl

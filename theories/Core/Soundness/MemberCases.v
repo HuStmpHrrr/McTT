@@ -32,7 +32,7 @@ Proof.
   exists Sb; split; [ exact HΓ |]; exists i.
   intros Δ σ ρ Hσ.
   destruct (HNi _ _ _ Hσ) as [a n P El Ha Hn Hglu HNσ].
-  assert (Hσs : Δ ⊢s σ : Γ) by (eapply glu_ctx_env_sub_escape; eassumption).
+  assert (Hσs : Δ ⊢ˢ σ : Γ) by (eapply glu_ctx_env_sub_escape; eassumption).
   pose proof (completeness_fundamental_exp_eq _ _ _ _ Heq) as Hc.
   destruct (glu_ctx_env_per_ctx_env HΓ) as [R HR].
   pose proof (glu_ctx_env_per_env HΓ HR Hσ) as Hρ.
@@ -66,33 +66,16 @@ Proof.
   econstructor; [ exact HΓ | exact HU | reflexivity ].
 Qed.
 
-(** δ for a member. *)
-Lemma glu_rel_exp_mem : forall {Γ H x A} {i : nat} {M},
-    me_noargs H ->
+(** δ for a member: it glues as its δ-reduct, which glues by the premise of
+    [wf_mem] on it. *)
+Lemma glu_rel_exp_mem : forall {Γ H x R A M},
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
-    member_type gc_deps gc_stack Γ H (x :: nil) (mr_term A) ->
-    Γ ⊢ A : Typeω@i ->
-    member_unfold gc_deps gc_stack Γ H x M ->
-    Γ ⊢ M : A ->
+    mdenote gc_deps gc_stack Γ (me_mem H x) R -> ds_ty gc_deps gc_stack R = Some A -> ds_red R = Some M ->
     Γ ⊩ M : A ->
     Γ ⊩ a_mem H x : A.
 Proof.
-  intros * Hn HH Hm HA HM HMt HMg.
+  intros * HH Hm Ht Hr HMg.
   eapply glu_rel_exp_of_eq; [ exact HMg | eapply wf_exp_eq_mem_delta; eassumption ].
-Qed.
-
-(** A member of an applied module is its root's member applied. *)
-Lemma glu_rel_exp_mem_app : forall {Γ H R args pre} {i : nat} {A x},
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
-    modexp_spine H = (R, args, pre) ->
-    args <> nil ->
-    Γ ⊢ A : Typeω@i ->
-    Γ ⊢ apps (member_ref R (pre ++ x :: nil)) args : A ->
-    Γ ⊩ apps (member_ref R (pre ++ x :: nil)) args : A ->
-    Γ ⊩ a_mem H x : A.
-Proof.
-  intros * HH Hs Hargs HA Ht Hg.
-  eapply glu_rel_exp_of_eq; [ exact Hg | eapply wf_exp_eq_mem_app; eassumption ].
 Qed.
 
 (** ζ for a module [let]: [σ,,ₘ⌜U[σ]⌝] glues with [ρ ↦ᵐ ⟦⌜U⌝⟧ρ] into
@@ -114,19 +97,26 @@ Proof.
   destruct (glu_ctx_env_per_ctx_env HΓ) as [R HR].
   exists TSb; split; [ exact HΓ |]; exists k.
   intros Δ σ ρ Hσ.
-  assert (Hσs : Δ ⊢s σ : Γ) by (eapply glu_ctx_env_sub_escape; eassumption).
+  assert (Hσs : Δ ⊢ˢ σ : Γ) by (eapply glu_ctx_env_sub_escape; eassumption).
   pose proof (glu_ctx_env_per_env HΓ HR Hσ) as Hρ.
-  assert (Hσ' : Δ ⊢s σ ,,ₘ me_lit U[σ]ᵘ ® ρ ↦ᵐ dm_local ρ U nil ∈ SbU).
+  (* the unit's closure, related to itself *)
+  assert (HUl : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_lit U ≈ me_lit U) by (apply wf_me_lit; exact HU).
+  destruct (rel_modexp_at _ _ _ _ _ (proj2 (proj2 completeness_fundamental_modules) _ _ _ HUl) HR _ _ Hρ)
+    as (h & h' & Hh & Hh' & Hhh).
+  pose proof (functional_eval_modexp _ _ _ _ Hh' Hh) as ->.
+  assert (Hσ' : Δ ⊢ˢ σ ,,ₘ me_lit U[σ]ᵘ ® ρ ↦ᵐ h ∈ SbU).
   { apply HSbU; econstructor.
     - apply wf_sub_extend_mod; [ exact Hσs | exact HU | eapply sub_preserves_unit; eassumption ].
-    - exact (unit_chain_at (proj1 HUc) HR _ _ Hρ).
+    - exists h; split; [ exact Hh | exact Hhh ].
     - exact Hσ. }
   destruct (HBi _ _ _ Hσ') as [c b Pc Elc Hc Hb Hgluc HBσ].
-  destruct (per_univ_of_instance_mod HR HUc HCc _ Hρ) as (c' & c'' & Hc' & Hc'' & _ & Hcc).
+  destruct (per_univ_of_instance_mod HR HUc HCc _ _ Hρ Hh) as (c' & c'' & Hc' & Hc'' & _ & Hcc).
   functional_eval_rewrite_clear.
   assert (Hgluc' : DG c' ∈ glu_univ_elem k ↘ Pc ↘ Elc)
     by (eapply glu_univ_elem_resp_per_univ; [ symmetry |]; eassumption).
-  econstructor; [ exact Hc' | eapply eval_exp_let_mod; exact Hb | exact Hgluc' |].
+  econstructor; [ exact Hc'
+                | clear - Hh Hb; destruct U as [Δu Du]; apply eval_me_lit_iff in Hh; eapply eval_exp_let_mod; [ exact Hh | exact Hb ]
+                | exact Hgluc' |].
   assert (Hζ : Δ ⊢ (ℓₘ U in B)[σ] ≈ B[Id ,,ₘ me_lit U][σ] : C[Id ,,ₘ me_lit U][σ])
     by (eapply sub_preserves_exp_eq; [ eapply wf_exp_eq_let_mod_zeta; eassumption | eassumption ]).
   rewrite (exp_sub_extend_mod_sub B), (exp_sub_extend_mod_sub C) in Hζ.
@@ -140,4 +130,4 @@ Qed.
 End Fixed_GCtx.
 
 #[export]
-Hint Resolve glu_rel_ctx_tail glu_rel_ctx_extend_mod glu_rel_exp_mem glu_rel_exp_mem_app glu_rel_exp_let_mod : mctt.
+Hint Resolve glu_rel_ctx_tail glu_rel_ctx_extend_mod glu_rel_exp_mem glu_rel_exp_let_mod : mctt.

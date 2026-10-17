@@ -249,11 +249,10 @@ with fread_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
 | frtyp_indty_nil :
   `( fread_typ_order Θ Ξ s (d_ind p nil) )
 | frtyp_indty :
-  `( as' <> nil ->
-     ind_lookup Θ Ξ p = Some D ->
-     List.length as' = ind_np D ->
-     fread_ps_order Θ Ξ s nil (List.rev (ind_params D)) as' ->
-     fread_typ_order Θ Ξ s (d_ind p as') )
+  `( ind_lookup Θ Ξ p = Some D ->
+     List.length (a :: as') = ind_np D ->
+     fread_ps_order Θ Ξ s nil (List.rev (ind_params D)) (a :: as') ->
+     fread_typ_order Θ Ξ s (d_ind p (a :: as')) )
 
 with fread_la_order (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> Prop :=
 | frla_nil :

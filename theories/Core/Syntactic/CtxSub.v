@@ -3,11 +3,11 @@
     [Θ ⍮ Ξ ⊢ Δ ⊆ Γ] transports a judgment from [Γ] to [Δ].  It is inductive
     because the gluing model recurses on it, but the transport lemmas are not
     proved by that induction: [ctx_sub_escape] turns a refinement into
-    [Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ], and [sub_preserves_wf] at [Id] does the transport
+    [Θ ⍮ Ξ ⍮ Δ ⊢ˢ Id : Γ], and [sub_preserves_wf] at [Id] does the transport
     ([ctxsub_exp] and related lemmas in [System.Lemmas]).
 
-    The inductive shape also preserves length, which [Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ] does
-    not: [Θ ⍮ Ξ ⍮ ⋅ ▹ ℕ ⊢s Id : ⋅] holds, since [⋅] has no binding to inhabit.
+    The inductive shape also preserves length, which [Θ ⍮ Ξ ⍮ Δ ⊢ˢ Id : Γ] does
+    not: [Θ ⍮ Ξ ⍮ ⋅ ▹ ℕ ⊢ˢ Id : ⋅] holds, since [⋅] has no binding to inhabit.
     The Kripke weakenings of soundness read a de Bruijn level off the length of
     their domain, so they need a refinement that preserves it. *)
 
@@ -25,7 +25,7 @@ Inductive ctx_sub (Θ : gdeps) (Ξ : gstack) : ctx -> ctx -> Prop :=
 (** As with [wf_ctx_empty], the base case carries what the judgment is relative
     to. *)
 | ctx_sub_empty :
-    ⊢g Θ ⍮ Ξ ->
+    ⊢ᵍ Θ ⍮ Ξ ->
     Θ ⍮ Ξ ⊢ ⋅ ⊆ ⋅
 | ctx_sub_extend : forall Δ Γ A A' i,
     Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
@@ -75,7 +75,7 @@ Proof. induction 1; mauto 2. Qed.
 Hint Resolve ctx_sub_dom ctx_sub_cod : mctt.
 
 (** Each rule is one of the identity refinements of [Structural]. *)
-Lemma ctx_sub_escape : forall Θ Ξ Δ Γ, Θ ⍮ Ξ ⊢ Δ ⊆ Γ -> Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ.
+Lemma ctx_sub_escape : forall Θ Ξ Δ Γ, Θ ⍮ Ξ ⊢ Δ ⊆ Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ Id : Γ.
 Proof.
   induction 1;
     [ apply wf_sub_id; mauto 2
@@ -112,7 +112,7 @@ Proof.
   induction 1; intros * HΓ2; dependent destruction HΓ2; [ now constructor | | | | |].
   (** The two steps ascribe unrelated levels to the middle type, so both have to
       be raised before the refinements can be composed. *)
-  all: assert (Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ) by mauto 2.
+  all: assert (Θ ⍮ Ξ ⍮ Δ ⊢ˢ Id : Γ) by mauto 2.
   - rename A into A1. rename A0 into A2. rename A' into A0.
     assert (Θ ⍮ Ξ ⍮ Δ ⊢ A1 ⊆ A2) by mauto 2.
     eapply ctx_sub_extend with (i := max i i0);

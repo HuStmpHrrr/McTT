@@ -12,8 +12,8 @@
 
     - [M[σ]] is not a term former, so there is nothing to invert;
     - [wf_sub] is a record, not an inductive family, so a derivation of
-      [Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ] carries no information beyond its two fields;
-      in particular [Θ ⍮ Ξ ⍮ Γ ⊢s Id : Δ] is itself a context refinement. *)
+      [Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ] carries no information beyond its two fields;
+      in particular [Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id : Δ] is itself a context refinement. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
@@ -178,9 +178,10 @@ Proof.
   dependent induction H;
     try specialize (IHwf_exp1 _ _ eq_refl);
     try destruct IHwf_exp1 as [(j & ? & ? & ?) | (L' & n' & ? & ? & ? & ?)];
-    gen_core_presups.
+    repeat match goal with Hu : wf_is_univ _ _ _ _ |- _ => inversion Hu; subst; clear Hu end;
+    cbn [exp_wk] in *; gen_core_presups.
   - left; eexists; mautosolve 4.
-  - right; exists L, n; repeat split; try assumption; mautosolve 4.
+  - right; do 2 eexists; repeat split; try eassumption; mautosolve 4.
   - left; exists j; repeat split; try assumption; mautosolve 4.
   - right; exists L', n'; repeat split; try assumption; mautosolve 4.
 Qed.
@@ -199,11 +200,11 @@ Corollary wf_pi_inversion' : forall {Θ Ξ Γ A B i},
 Proof.
   intros * [[j [? []]] | [L [n [? [? []]]]]]%wf_pi_inversion.
   2:{ assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
-      assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢w ↑ : Γ) by mauto 2.
+      assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ʷ ↑ : Γ) by mauto 2.
       assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ L[↑]ʷ : Level@n) by (eapply (wk_preserves_exp _ _ _ _ (Level@n)); eassumption).
       split; eapply wf_exp_suniv_large; eassumption. }
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢w ↑ : Γ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ʷ ↑ : Γ) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ exp_wk Typeω@j ↑ ⊆ exp_wk Typeω@i ↑) as H'
       by (eapply wk_preserves_subtyp; eassumption).
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ Typeω@j ⊆ Typeω@i) by exact H'.

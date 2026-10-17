@@ -1,0 +1,8 @@
+(* A unit with a type parameter and an inductive type over it. *)
+module Lib›Boxed (A : Type@0) where
+
+inductive Box : Type@0 where
+| box (a : A)
+end
+
+end

@@ -58,7 +58,7 @@ Lemma rel_typ_of_pi : forall {Γ A A'} {i : nat} {B B'},
     forall Γ' env_rel',
       EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' ->
       forall σ σ' ρ ρ' ρσ ρ'σ',
-        Γ' ⊨s σ ≈ σ' : Γ ->
+        Γ' ⊨ˢ σ ≈ σ' : Γ ->
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->
         ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
@@ -135,7 +135,7 @@ Qed.
     [ρσ] ([suniv_real_shift]), so all five chains are in one small universe. *)
 Lemma rel_exp_of_suniv_under_ctx_q : forall {Γ Δ σ σ' A} {i n : nat} {B B' L env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Typeω@i ->
     Δ ⊨ L : Level@n ->
     Δ ▹ A ⊨ B ≈ B' : Type⟨L[↑]ʷ⟩ ->

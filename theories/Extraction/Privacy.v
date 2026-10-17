@@ -10,10 +10,423 @@ From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic.System Require Import Definitions Privacy.
+From Mctt.Core.Syntactic.System Require Import Definitions Structural MemberLemmas GlobalPaths DescTyping GlobalPresup Privacy.
 From Mctt.Extraction Require Import MemberType.
 Import Syntax_Notations.
 #[local] Open Scope list_scope.
+
+(** ** Where a Module Is Stored, and What It Denotes
+
+    A module expression stored at [pq] ([msite]) denotes a module read off
+    what is stored there: a closed module stored at [pq], or the inductive
+    type at [pq] ([site_desc]). *)
+
+Definition site_desc (Θ : gdeps) (Ξ : gstack) (pq : qname) (R : mdesc) : Prop :=
+  (exists Θ' T Φ Ns, R = ds_closed Θ' pq T Φ Ns /\ loc Θ Ξ pq T Φ) \/ (exists Θ' Ns, R = ds_ind Θ' pq Ns).
+
+Section SiteDesc.
+  Variables (Θ : gdeps) (Ξ : gstack).
+  Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
+
+  Lemma site_desc_at : forall pq R N R', site_desc Θ Ξ pq R -> ds_at R N = Some R' -> site_desc Θ Ξ pq R'.
+  Proof.
+    intros * [(Θ' & T & Φ & Ns & -> & Hl) | (Θ' & Ns & ->)] Ha; cbn in Ha.
+    - left; destruct (tele_split (rev Θ')) as [[[? ?] ?] | ?]; injection Ha as <-; do 4 eexists; (split; [ reflexivity | exact Hl ]).
+    - right; destruct (tele_split (rev Θ')) as [[[? ?] ?] | ?]; injection Ha as <-; do 2 eexists; reflexivity.
+  Qed.
+
+  Lemma site_desc_ats : forall Ns pq R R', site_desc Θ Ξ pq R -> ds_ats R Ns = Some R' -> site_desc Θ Ξ pq R'.
+  Proof.
+    induction Ns as [| N Ns IH]; intros * Hs Ha; cbn in Ha; [ injection Ha as <-; exact Hs |].
+    destruct (ds_at R N) as [R1 |] eqn:E; [| discriminate ].
+    exact (IH _ _ _ (site_desc_at _ _ _ _ Hs E) Ha).
+  Qed.
+
+  Lemma site_desc_up : forall pq Θ' R, site_desc Θ Ξ pq R -> site_desc Θ Ξ pq (ds_up Θ' R).
+  Proof.
+    intros * [(Θ0 & T & Φ & Ns & -> & Hl) | (Θ0 & Ns & ->)]; cbn [ds_up];
+      [ left; do 4 eexists; split; [ reflexivity | exact Hl ] | right; do 2 eexists; reflexivity ].
+  Qed.
+
+  Lemma site_desc_read : forall pq rd R R', site_desc Θ Ξ pq R -> ds_read rd R = Some R' -> site_desc Θ Ξ pq R'.
+  Proof.
+    intros * Hs Hr; destruct rd as [Θ' Φ' | Θ' Ns]; cbn in Hr.
+    - destruct (gm_fill Φ') as [σ |]; cbn in Hr; [ injection Hr as <- | discriminate ].
+      apply site_desc_up.
+      destruct Hs as [(Θ0 & T & Φ & Ns & -> & Hl) | (Θ0 & Ns & ->)]; cbn [ds_sub];
+        [ left; do 4 eexists; split; [ reflexivity | exact Hl ] | right; do 2 eexists; reflexivity ].
+    - destruct (ds_ats R Ns) as [R1 |] eqn:E; cbn in Hr; [| discriminate ]; injection Hr as <-.
+      apply site_desc_up; pose proof (site_desc_ats _ _ _ _ Hs E) as Hs1.
+      apply (ds_named_cases (site_desc Θ Ξ pq)); [ exact Hs1 |].
+      destruct Hs1 as [(Θ0 & T & Φ & Ns0 & -> & Hl) | (Θ0 & Ns0 & ->)]; cbn [ds_self];
+        [ left; do 4 eexists; split; [ reflexivity | exact Hl ] | right; do 2 eexists; reflexivity ].
+  Qed.
+
+  (** The module part of a description read off storage is stored there. *)
+  Lemma site_desc_mod : forall pq R Rm, site_desc Θ Ξ pq R -> ds_mod Θ Ξ R = Some Rm ->
+      exists Θ' T Φ Ns, Rm = ds_closed Θ' pq T Φ Ns /\ loc Θ Ξ pq T Φ.
+  Proof.
+    intros * [(Θ' & T & Φ & Ns & -> & Hl) | (Θ' & Ns & ->)] Hm; cbn in Hm.
+    - injection Hm as <-; do 4 eexists; split; [ reflexivity | exact Hl ].
+    - destruct (gc_body Θ Ξ pq) as [[T Φ] |] eqn:Hb; [| discriminate ]; injection Hm as <-.
+      do 4 eexists; split; [ reflexivity | right; exact Hb ].
+  Qed.
+
+  Lemma mdenote_apps : forall Ns Γ H R R', mdenote Θ Ξ Γ H R -> ds_ats R Ns = Some R' -> mdenote Θ Ξ Γ (me_apps H Ns) R'.
+  Proof.
+    induction Ns as [| N Ns IH]; intros * Hm Ha; cbn in Ha |- *; [ injection Ha as <-; exact Hm |].
+    destruct (ds_at R N) as [R1 |] eqn:E; [| discriminate ].
+    apply (IH _ _ R1); [ eapply dn_app; eassumption | exact Ha ].
+  Qed.
+
+  (** An inductive type at its canonical path denotes it. *)
+  Lemma mdenote_ind_canon : forall p D Γ, ind_lookup Θ Ξ p = Some D -> mdenote Θ Ξ Γ (qname_mod p) (ds_ind nil p nil).
+  Proof.
+    intros * Hl.
+    destruct (ind_parent _ _ Hg _ _ Hl) as (mq & y & Tq & Φq & pv & Φ' & -> & Hlm & He).
+    rewrite qname_mod_in.
+    pose proof (mdenote_of_loc _ _ Hg _ _ _ _ Γ (mod_qname_qname_mod mq) Hlm) as Hm.
+    pose proof (loc_closed _ _ Hg _ _ _ (loc_mod_loc _ _ _ _ _ Hlm)) as [_ HcΦ].
+    destruct (gm_entry_prefix _ _ _ (body_closed_noopen _ _ HcΦ) He) as (Φ0 & Hp).
+    eapply dn_mem; [ exact Hm | reflexivity | cbn; rewrite Hp; reflexivity | constructor | reflexivity ].
+  Qed.
+
+  (** What a stored module expression denotes is read off its storage. *)
+  Theorem msite_desc : forall H pq, msite Θ Ξ H pq -> forall Γ R, mdenote Θ Ξ Γ H R -> site_desc Θ Ξ pq R.
+  Proof.
+    induction 1 as [H p T Φ Hq Hu | H pq z E Hs IH He Hb | H pq z E E' pq' Hs IH He Ha Hs' IH' | H N pq Hs IH];
+      intros Γ R Hm.
+    - (* a loaded unit or an open frame *)
+      rewrite (unit_denote_unique _ _ Hg _ _ _ _ _ _ Hq Hu Hm).
+      destruct (gc_unit_loc _ _ _ _ _ Hu) as (mp & Hq' & Hl); rewrite Hq in Hq'; injection Hq' as <-.
+      left; do 4 eexists; split; [ reflexivity | exact Hl ].
+    - (* a body module: stored at its own path, or an inductive type *)
+      inversion Hm as [? ? ? ? ? ? Hu | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst.
+      + destruct (gc_unit_loc _ _ _ _ _ Hu) as (mp & Hq & Hl).
+        rewrite (msite_unit _ _ Hg _ _ (ms_body _ _ _ _ _ _ Hs He Hb) _ _ _ Hq Hu).
+        match goal with Hq1 : mod_qname _ = Some ?p0 |- _ =>
+          assert_fails (constr_eq p0 mp); assert (mp = p0) by congruence; subst mp end.
+        left; do 4 eexists; split; [ reflexivity | exact Hl ].
+      + destruct (site_desc_mod _ _ _ (IH _ _ Hm0) Hd0) as (Θ' & T & Φ & Ns & -> & Hl).
+        cbn in He0; destruct (gm_prefix_upto Φ z) as [[| Φ0 x E1 | ? ? ?] |] eqn:Hp; try discriminate.
+        injection He0 as <- <- <-.
+        destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & Hent).
+        pose proof (proj2 (loc_entry _ _ Hg _ _ _ Hl _ _) Hent) as He1; rewrite He in He1; injection He1 as <-.
+        eapply site_desc_read; [| exact Hr ].
+        pose proof (loc_closed _ _ Hg _ _ _ Hl) as [_ HcΦ].
+        pose proof (body_closed_prefix _ _ _ _ HcΦ Hp) as HcE; cbn in HcE; destruct HcE as [_ HcE].
+        destruct E as [| pv [Δ [sm Φy | ?]] | pv pq1 D Φi | ]; cbn in Hb; try contradiction.
+        * destruct HcE as (-> & HsΔ & HcΦy); cbn [ge_read] in Hed.
+          inversion Hed; subst.
+          match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
+          match goal with Hx : body_xp _ _ _ Φy ?Φx |- _ =>
+            pose proof (proj1 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hg)))) _ _ _ Hx _
+                          (body_xp_noopen Θ Ξ _ _ (body_closed_noopen _ _ HcΦy))) as <- end.
+          match goal with Hbd : ds_body _ _ _ _ _ = Some _ |- _ => cbn in Hbd; injection Hbd as <- end.
+          left; do 4 eexists; split; [ reflexivity |].
+          right; exact (proj1 (loc_child_mod _ _ Hg _ _ _ Hl _ _ _ _ _ Hent)).
+        * cbn [ge_read] in Hed; inversion Hed; subst.
+          rewrite (gc_entry_selfpath _ _ Hg _ _ _ _ _ He).
+          right; do 2 eexists; reflexivity.
+    - (* an alias: where its target is *)
+      inversion Hm as [? ? ? ? ? ? Hu | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst.
+      + destruct (gc_unit_loc _ _ _ _ _ Hu) as (mp & Hq & Hl).
+        rewrite (msite_unit _ _ Hg _ _ (ms_alias _ _ _ _ _ _ _ _ Hs He Ha Hs') _ _ _ Hq Hu).
+        match goal with Hq1 : mod_qname _ = Some ?p0 |- _ =>
+          assert_fails (constr_eq p0 mp); assert (mp = p0) by congruence; subst mp end.
+        left; do 4 eexists; split; [ reflexivity | exact Hl ].
+      + destruct (site_desc_mod _ _ _ (IH _ _ Hm0) Hd0) as (Θ' & T & Φ & Ns & -> & Hl).
+        cbn in He0; destruct (gm_prefix_upto Φ z) as [[| Φ0 x E1 | ? ? ?] |] eqn:Hp; try discriminate.
+        injection He0 as <- <- <-.
+        destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & Hent).
+        pose proof (proj2 (loc_entry _ _ Hg _ _ _ Hl _ _) Hent) as He1; rewrite He in He1; injection He1 as <-.
+        eapply site_desc_read; [| exact Hr ].
+        destruct E as [| pv [Δ [sm Φy | E'']] | pv pq1 D Φi | pv Δ p Ns' ]; cbn in Ha; try discriminate; injection Ha as <-.
+        * cbn [ge_read] in Hed; inversion Hed; subst.
+          match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
+          apply site_desc_up.
+          match goal with Hm1 : mdenote _ _ _ E'' ?R2, Hd : ds_mod _ _ ?R2 = Some _ |- _ =>
+            destruct (site_desc_mod _ _ _ (IH' _ _ Hm1) Hd) as (Θ2 & T2 & Φ2 & Ns2 & -> & Hl2) end.
+          left; do 4 eexists; split; [ reflexivity | exact Hl2 ].
+        * (* an inductive alias: the inductive type at its canonical path *)
+          cbn [ge_read] in Hed; inversion Hed; subst.
+          destruct (loc_valid _ _ _ _ _ (gctx_valid_syn _ _ Hg) Hl) as [_ HvΦ].
+          pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ HvΦ Hp) as HE0; cbn [ge_valid] in HE0.
+          destruct HE0 as [_ HE0]; cbn [syn_V] in HE0; destruct HE0 as (D & HD & _).
+          pose proof (mdenote_apps Ns' Γ _ _ _ (mdenote_ind_canon _ _ Γ HD) (ds_ats_ind_nil Ns' p nil)) as Hm2.
+          destruct (IH' _ _ Hm2) as [(? & ? & ? & ? & Heq & _) | (? & ? & Heq)]; [ discriminate Heq |].
+          injection Heq as _ Hpq _; subst pq'.
+          right; do 2 eexists; reflexivity.
+    - (* an application *)
+      inversion Hm as [? ? ? ? ? ? Hu | | | ? ? ? R0 ? Hm0 Ha0 |]; subst; [ cbn in Hu; discriminate |].
+      exact (site_desc_at _ _ _ _ (IH _ _ Hm0) Ha0).
+  Qed.
+End SiteDesc.
+
+(** ** What Is Stored Below Stays Below
+
+    Along an embedding, a module expression that denotes in the smaller
+    context is stored where it was: lookups that succeed only in the
+    bigger context are of entries the smaller one does not have, which the
+    expression, denoting, never reads. *)
+
+Lemma mod_qname_mem : forall H p y, mod_qname H = Some p -> mod_qname (me_mem H y) = Some (qname_in p y).
+Proof. intros * Hq; cbn; rewrite Hq; reflexivity. Qed.
+
+Lemma entry_grows_body : forall E1 E2, entry_grows E1 E2 -> entry_is_body E2 -> entry_is_body E1.
+Proof.
+  intros [| ? [? [? ?| ?]] | ? ? ? ? | ? ? ? ?] [| ? [? [? ?| ?]] | ? ? ? ? | ? ? ? ?] Hgr Hb; cbn in *;
+    try contradiction; try discriminate; auto.
+Qed.
+
+Lemma entry_grows_alias : forall E1 E2 E', entry_grows E1 E2 -> entry_alias E2 = Some E' -> E1 = E2.
+Proof.
+  intros [| ? [? [? ?| ?]] | ? ? ? ? | ? ? ? ?] [| ? [? [? ?| ?]] | ? ? ? ? | ? ? ? ?] E' Hgr Ha; cbn in *;
+    try discriminate; auto.
+Qed.
+
+Section Below.
+  Variables (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack).
+  Hypothesis Hg1 : ⊢ᵍ Θ1 ⍮ Ξ1.
+  Hypothesis He : Embx Θ1 Ξ1 Θ2 Ξ2.
+
+  Let Hg2 : ⊢ᵍ Θ2 ⍮ Ξ2 := emx_wf _ _ _ _ He.
+  Let Hs : gc_sub Θ1 Ξ1 Θ2 Ξ2 := gc_subx_sub _ _ _ _ (emx_res _ _ _ _ He).
+
+  (** The entry an expression denoting in the smaller context selects from
+      where it is stored is stored there too. *)
+  Lemma entry_below : forall Γ H z R pq,
+      mdenote Θ1 Ξ1 Γ (me_mem H z) R -> msite Θ1 Ξ1 H pq ->
+      gc_unit Θ1 Ξ1 (me_mem H z) = None ->
+      exists E1, gc_entry Θ1 Ξ1 (qname_in pq z) = Some E1.
+  Proof.
+    intros * Hm Hsi Hu; inversion Hm as [? ? ? ? ? ? Hu' | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst;
+      [ congruence |].
+    destruct (site_desc_mod _ _ _ _ _ (msite_desc _ _ Hg1 _ _ Hsi _ _ Hm0) Hd0) as (Θ' & T & Φ & Ns & -> & Hl).
+    cbn in He0; destruct (gm_prefix_upto Φ z) as [[| Φ0 x E1 | ? ? ?] |] eqn:Hp; try discriminate.
+    destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & Hent).
+    exists E1; exact (proj2 (loc_entry _ _ Hg1 _ _ _ Hl _ _) Hent).
+  Qed.
+
+  (** A loaded unit or an open frame of the bigger context, at an expression
+      denoting in the smaller one, is one there too. *)
+  Lemma unit_below : forall H T2 Φ2, gc_unit Θ2 Ξ2 H = Some (T2, Φ2) ->
+      forall Γ R, mdenote Θ1 Ξ1 Γ H R -> exists T1 Φ1, gc_unit Θ1 Ξ1 H = Some (T1, Φ1).
+  Proof.
+    induction H as [fp | x | H0 IH y | H0 IH N | U]; intros T2 Φ2 Hu Γ R Hm;
+      try (unfold gc_unit in Hu; cbn in Hu; discriminate).
+    - inversion Hm; subst; eauto.
+    - destruct (gc_unit Θ1 Ξ1 (me_mem H0 y)) as [[T1 Φ1] |] eqn:Hu1; [ eauto | exfalso ].
+      inversion Hm as [? ? ? ? ? ? Hu' | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst; [ congruence |].
+      destruct (gc_unit_mem_parent _ _ Hg2 _ _ _ _ Hu) as (T2' & Φ2' & Hu0 & _).
+      destruct (IH _ _ Hu0 _ _ Hm0) as (T0 & Φ0 & Hu01).
+      destruct (gc_unit_loc _ _ _ _ _ Hu01) as (p0 & Hq0 & _).
+      destruct (entry_below _ _ _ _ _ Hm (ms_unit _ _ _ _ _ _ Hq0 Hu01) Hu1) as (E1 & HE1).
+      destruct (gc_sub_entry _ _ _ _ _ _ Hs HE1) as (E2 & HE2 & _).
+      rewrite (gc_unit_mem_entry_none _ _ _ _ _ _ _ Hu (mod_qname_mem _ _ _ Hq0)) in HE2; discriminate.
+  Qed.
+
+  (** A loaded unit or an open frame of the smaller context is, in the
+      bigger one, no alias. *)
+  Lemma unit_not_alias : forall H T1 Φ1 p E E', gc_unit Θ1 Ξ1 (me_mem H p) = Some (T1, Φ1) ->
+      forall pq0, mod_qname (me_mem H p) = Some pq0 ->
+      gc_entry Θ2 Ξ2 pq0 = Some E -> entry_alias E = Some E' -> False.
+  Proof.
+    intros * Hu pq0 Hq HE Ha.
+    destruct (gc_unit_cases _ _ _ _ _ Hu) as (mp & Hq' & [Hf | (_ & Hc & _)]); rewrite Hq in Hq'; injection Hq' as <-.
+    - destruct (gc_sub_frame_loc _ _ _ _ _ _ _ Hs Hf) as (Φ' & [Hf' | [Hb' Hm']]).
+      + rewrite (gc_unit_mem_entry_none _ _ _ _ _ _ _ (gc_unit_of_frame _ _ _ _ _ _ Hq Hf') Hq) in HE; discriminate.
+      + cbn in Hq; destruct (mod_qname H) as [q0 |] eqn:Hq0; [| discriminate ]; injection Hq as <-.
+        change {| q_unit := q_unit q0; q_chain := q_chain q0 ++ p :: nil |} with (qname_in q0 p) in *.
+        destruct (parent_loc _ _ Hg2 _ _ _ _ Hb' Hm') as (Tq & Φq & pv & Δ & Hlq & Hent & _).
+        rewrite (proj2 (loc_entry _ _ Hg2 _ _ _ (loc_mod_loc _ _ _ _ _ Hlq) _ _) Hent) in HE.
+        injection HE as <-; discriminate.
+    - cbn in Hq; destruct (mod_qname H) as [q0 |]; [| discriminate ]; injection Hq as <-.
+      cbn in Hc; destruct (q_chain q0); discriminate.
+  Qed.
+
+  Theorem msite_below : forall H pq, msite Θ2 Ξ2 H pq ->
+      forall Γ R, mdenote Θ1 Ξ1 Γ H R -> msite Θ1 Ξ1 H pq.
+  Proof.
+    induction 1 as [H p T Φ Hq Hu | H pq z E Hsi IH HE Hb | H pq z E E' pq' Hsi IH HE Ha Hsi' IH' | H N pq Hsi IH];
+      intros Γ R Hm.
+    - destruct (unit_below _ _ _ Hu _ _ Hm) as (T1 & Φ1 & Hu1); eapply ms_unit; eassumption.
+    - destruct (gc_unit Θ1 Ξ1 (me_mem H z)) as [[T1 Φ1] |] eqn:Hu1.
+      + (* an open frame there: stored at its own path *)
+        destruct (gc_unit_mem_parent _ _ Hg1 _ _ _ _ Hu1) as (T0 & Φ0 & Hu0 & _).
+        destruct (gc_unit_loc _ _ _ _ _ Hu0) as (p0 & Hq0 & _).
+        pose proof (IH _ _ (dn_unit _ _ Γ _ _ _ _ Hq0 Hu0)) as Hs1.
+        rewrite (msite_unit _ _ Hg1 _ _ Hs1 _ _ _ Hq0 Hu0).
+        eapply ms_unit; [ exact (mod_qname_mem _ _ _ Hq0) | exact Hu1 ].
+      + inversion Hm as [? ? ? ? ? ? Hu' | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst; [ congruence |].
+        pose proof (IH _ _ Hm0) as Hs1.
+        destruct (entry_below _ _ _ _ _ Hm Hs1 Hu1) as (E1 & HE1).
+        destruct (gc_sub_entry _ _ _ _ _ _ Hs HE1) as (E2 & HE2 & Hgr); rewrite HE in HE2; injection HE2 as <-.
+        eapply ms_body; [ exact Hs1 | exact HE1 | exact (entry_grows_body _ _ Hgr Hb) ].
+    - destruct (gc_unit Θ1 Ξ1 (me_mem H z)) as [[T1 Φ1] |] eqn:Hu1.
+      + (* an open frame there is no alias here *)
+        exfalso.
+        destruct (gc_unit_mem_parent _ _ Hg1 _ _ _ _ Hu1) as (T0 & Φ0 & Hu0 & _).
+        destruct (gc_unit_loc _ _ _ _ _ Hu0) as (p0 & Hq0 & _).
+        pose proof (IH _ _ (dn_unit _ _ Γ _ _ _ _ Hq0 Hu0)) as Hs1.
+        rewrite (msite_unit _ _ Hg1 _ _ Hs1 _ _ _ Hq0 Hu0) in HE.
+        exact (unit_not_alias _ _ _ _ _ _ Hu1 _ (mod_qname_mem _ _ _ Hq0) HE Ha).
+      + inversion Hm as [? ? ? ? ? ? Hu' | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst; [ congruence |].
+        pose proof (IH _ _ Hm0) as Hs1.
+        destruct (entry_below _ _ _ _ _ Hm Hs1 Hu1) as (E1 & HE1).
+        destruct (gc_sub_entry _ _ _ _ _ _ Hs HE1) as (E2 & HE2 & Hgr); rewrite HE in HE2; injection HE2 as <-.
+        pose proof (entry_grows_alias _ _ _ Hgr Ha) as <-.
+        eapply ms_alias; [ exact Hs1 | exact HE1 | exact Ha |].
+        (* the target denotes there: it is what the entry denotes *)
+        destruct (site_desc_mod _ _ _ _ _ (msite_desc _ _ Hg1 _ _ Hs1 _ _ Hm0) Hd0) as (Θ' & T & Φ & Ns & -> & Hl).
+        cbn in He0; destruct (gm_prefix_upto Φ z) as [[| Φ0 x E0' | ? ? ?] |] eqn:Hp; try discriminate.
+        injection He0 as <- <- <-.
+        destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & Hent).
+        pose proof (proj2 (loc_entry _ _ Hg1 _ _ _ Hl _ _) Hent) as He1; rewrite HE1 in He1; injection He1 as <-.
+        destruct E1 as [| pv [Δ [sm Φy | E'']] | pv pq1 D Φi | pv Δ p Ns' ]; cbn in Ha; try discriminate; injection Ha as <-.
+        * cbn [ge_read] in Hed; inversion Hed; subst.
+          match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
+          match goal with Hm1 : mdenote _ _ _ E'' _ |- _ => exact (IH' _ _ Hm1) end.
+        * destruct (loc_valid _ _ _ _ _ (gctx_valid_syn _ _ Hg1) Hl) as [_ HvΦ].
+          pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ HvΦ Hp) as HE0; cbn [ge_valid] in HE0.
+          destruct HE0 as [_ HE0]; cbn [syn_V] in HE0; destruct HE0 as (D & HD & _).
+          exact (IH' _ _ (mdenote_apps _ _ Ns' Γ _ _ _ (mdenote_ind_canon _ _ Hg1 _ _ Γ HD) (ds_ats_ind_nil Ns' p nil))).
+    - inversion Hm as [? ? ? ? ? ? Hu | | | ? ? ? R0 ? Hm0 Ha0 |]; subst; [ cbn in Hu; discriminate |].
+      exact (ms_app _ _ _ _ _ (IH _ _ Hm0)).
+  Qed.
+End Below.
+
+(** ** The Order of Sites
+
+    Finding where a module expression is stored follows its spine, and the
+    aliases it meets: their targets are read in turn.  Every module
+    expression has an order ([site_order_total]): an alias names modules
+    that were there before it, which a global induction over well-formed
+    global contexts makes precise. *)
+
+Inductive site_order (Θ : gdeps) (Ξ : gstack) : modexp -> Prop :=
+| so_unit : forall fp, site_order Θ Ξ (me_unit fp)
+| so_var : forall x, site_order Θ Ξ (me_var x)
+| so_lit : forall U, site_order Θ Ξ (me_lit U)
+| so_app : forall H N, site_order Θ Ξ H -> site_order Θ Ξ (me_app H N)
+| so_mem : forall H z,
+    site_order Θ Ξ H ->
+    (forall pq E E', msite Θ Ξ H pq -> gc_entry Θ Ξ (qname_in pq z) = Some E -> entry_alias E = Some E' ->
+       site_order Θ Ξ E') ->
+    site_order Θ Ξ (me_mem H z).
+
+(** The aliases stored in [Θ1 ⍮ Ξ1] have an order in [Θ2 ⍮ Ξ2]. *)
+Definition aliases_sited (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
+  forall p E E', gc_entry Θ1 Ξ1 p = Some E -> entry_alias E = Some E' -> site_order Θ2 Ξ2 E'.
+
+Lemma gm_entry_alias_sub : forall Φ T x ip E E', gm_entry Φ (x :: ip) = Some E -> entry_alias E = Some E' ->
+    exists Δ, gm_submodule T Φ x ip = Some (mr_alias (gu_mk Δ (md_alias E'))).
+Proof.
+  fix IH 1; intros [| Φ0 y E0 | Φ0 c its] T x ip E E' He Ha; cbn in He |- *; [ discriminate | | exact (IH _ _ _ _ _ _ He Ha) ].
+  destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ He Ha) ].
+  destruct ip as [| z ip'].
+  - injection He as <-; destruct E0 as [| ? [? [? ?| ?]] | ? ? ? ? | ? ? ? ?]; cbn in Ha; try discriminate;
+      injection Ha as <-; eexists; reflexivity.
+  - destruct E0 as [| ? [Δ [? Φ'| ?]] | ? ? D Φ' | ? ? ? ?]; try discriminate; eapply IH; eassumption.
+Qed.
+
+Lemma gc_entry_alias_module : forall Θ Ξ p E E', gc_entry Θ Ξ p = Some E -> entry_alias E = Some E' ->
+    exists Δ, gc_module Θ Ξ p = Some (mr_alias (gu_mk Δ (md_alias E'))).
+Proof.
+  intros * He Ha; unfold gc_entry, gc_entry_u in He; unfold gc_module, gc_module_u.
+  rewrite gs_find_tele_find in He.
+  destruct (gs_find_tele Ξ p) as [[[U ip] T0] |]; cbn in He.
+  - destruct ip as [| x ip]; [ rewrite gm_entry_nil in He; discriminate | exact (gm_entry_alias_sub _ _ _ _ _ _ He Ha) ].
+  - destruct (gds_lookup Θ (q_unit p)) as [U |]; [| discriminate ].
+    destruct (q_chain p) as [| x ip]; cbn; [ rewrite gm_entry_nil in He; discriminate | exact (gm_entry_alias_sub _ _ _ _ _ _ He Ha) ].
+Qed.
+
+Section Sited.
+  Variables (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack).
+  Hypothesis Hg1 : ⊢ᵍ Θ1 ⍮ Ξ1.
+  Hypothesis He : Embx Θ1 Ξ1 Θ2 Ξ2.
+  Hypothesis Ha : aliases_sited Θ1 Ξ1 Θ2 Ξ2.
+
+  Let Hs : gc_sub Θ1 Ξ1 Θ2 Ξ2 := gc_subx_sub _ _ _ _ (emx_res _ _ _ _ He).
+
+  (** What denotes in the smaller context has an order in the bigger one. *)
+  Lemma site_order_of_mdenote : forall H Γ R, mdenote Θ1 Ξ1 Γ H R -> site_order Θ2 Ξ2 H.
+  Proof.
+    induction H as [fp | x | H0 IH z | H0 IH N | U]; intros Γ R Hm; try solve [ constructor ].
+    - assert (Hm0 : exists Γ0 R0, mdenote Θ1 Ξ1 Γ0 H0 R0).
+      { inversion Hm as [? ? ? ? ? ? Hu | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst; [| eauto ].
+        destruct (gc_unit_mem_parent _ _ Hg1 _ _ _ _ Hu) as (T0 & Φ0 & Hu0 & _).
+        destruct (gc_unit_loc _ _ _ _ _ Hu0) as (p0 & Hq0 & _).
+        exists Γ, (ds_closed nil p0 T0 Φ0 nil); econstructor; [ exact Hq0 | exact Hu0 ]. }
+      destruct Hm0 as (Γ0 & R0 & Hm0).
+      apply so_mem; [ exact (IH _ _ Hm0) |].
+      intros pq E E' Hs2 HE2 Hal.
+      pose proof (msite_below _ _ _ _ Hg1 He _ _ Hs2 _ _ Hm0) as Hs1.
+      destruct (gc_unit Θ1 Ξ1 (me_mem H0 z)) as [[T1 Φ1] |] eqn:Hu1.
+      + exfalso.
+        destruct (gc_unit_mem_parent _ _ Hg1 _ _ _ _ Hu1) as (T0 & Φ0 & Hu0 & _).
+        destruct (gc_unit_loc _ _ _ _ _ Hu0) as (p0 & Hq0 & _).
+        rewrite (msite_unit _ _ Hg1 _ _ Hs1 _ _ _ Hq0 Hu0) in HE2.
+        exact (unit_not_alias _ _ _ _ He _ _ _ _ _ _ Hu1 _ (mod_qname_mem _ _ _ Hq0) HE2 Hal).
+      + destruct (entry_below _ _ Hg1 _ _ _ _ _ Hm Hs1 Hu1) as (E1 & HE1).
+        destruct (gc_sub_entry _ _ _ _ _ _ Hs HE1) as (E2 & HE2' & Hgr); rewrite HE2 in HE2'; injection HE2' as <-.
+        pose proof (entry_grows_alias _ _ _ Hgr Hal) as <-.
+        exact (Ha _ _ _ HE1 Hal).
+    - inversion Hm as [? ? ? ? ? ? Hu | | | ? ? ? R0 ? Hm0 Ha0 |]; subst; [ cbn in Hu; discriminate |].
+      exact (so_app _ _ _ _ (IH _ _ Hm0)).
+  Qed.
+End Sited.
+
+Definition sited_V (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (E : gentry) : Prop :=
+  match E with
+  | ge_mod _ (gu_mk _ (md_alias E')) => site_order Θ2 Ξ2 E'
+  | _ => True
+  end.
+
+Definition sited_F (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) : Prop := True.
+
+Definition sited_VD (Θ2 : gdeps) (Ξ2 : gstack) (D : ind_decl) : Prop := True.
+
+(** Being sited does not depend on where it is read from. *)
+Abbreviation sited_Vs := (fun (_ : gdeps) (_ : gstack) => sited_V).
+
+Lemma good_sited : forall Θ Ξ Θs Ξs Θ2 Ξ2,
+    gds_valid sited_Vs sited_F sited_VD Θs Ξs Θ2 Ξ2 Θ -> gs_valid sited_Vs sited_F sited_VD Θs Ξs Θ2 Ξ2 Ξ ->
+    aliases_sited Θ Ξ Θ2 Ξ2.
+Proof.
+  intros * HΘ HΞ p E E' HE Hal.
+  destruct (gc_entry_alias_module _ _ _ _ _ HE Hal) as (Δ & Hm).
+  destruct (good_alias _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hm) as (T & pv & HV); exact HV.
+Qed.
+
+Lemma sited_V_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 (Θs : gdeps) (Ξs : gstack),
+    tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
+    GoodV sited_Vs sited_F sited_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    sited_V Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
+Proof.
+  intros * _ _ HE HG He _; cbn [sited_V].
+  pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) as Hg.
+  destruct (HG _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ].
+  destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HE) as (_ & (R & _ & HR & _) & _).
+  exact (site_order_of_mdenote _ _ _ _ Hg He (good_sited _ _ _ _ _ _ HΘ HΞ) _ _ _ HR).
+Qed.
+
+Theorem gctx_aliases_sited : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> aliases_sited Θ Ξ Θ Ξ.
+Proof.
+  intros * Hg.
+  pose proof (global_valid sited_Vs sited_F sited_VD
+                ltac:(intros; exact I) ltac:(intros; exact I)
+                sited_V_alias ltac:(intros; exact I) ltac:(intros; exact I) ltac:(intros; split; exact I) _ _ Hg) as HG.
+  destruct (HG _ _ (Embx_refl _ _ Hg) _ _ (gc_sub_refl _ _)) as [HΘ HΞ].
+  exact (good_sited _ _ _ _ _ _ HΘ HΞ).
+Qed.
+
+Theorem site_order_total : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall H, site_order Θ Ξ H.
+Proof.
+  intros * Hg; pose proof (gctx_aliases_sited _ _ Hg) as Ha.
+  induction H as [fp | x | H IH z | H IH N | U]; constructor; auto.
+  intros pq E E' _ HE Hal; exact (Ha _ _ _ HE Hal).
+Qed.
 
 (** A private member out of reach: declared in the module of a unit, or
     an entry of a local body, at the chain of submodules [ch] from the local
@@ -24,70 +437,111 @@ Inductive priv_err : Set :=
 
 Section PrivacyImpl.
   Variables (Θ : gdeps) (Ξ : gstack).
+  Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
+
+  Definition entry_is_body_b (E : gentry) : bool :=
+    match E with
+    | ge_mod _ (gu_mk _ (md_body _ _)) | ge_ind _ _ _ _ => true
+    | _ => false
+    end.
+
+  Lemma entry_is_body_b_spec : forall E, entry_is_body_b E = true <-> entry_is_body E.
+  Proof. intros [| ? [? [? ?| ?]] | ? ? ? ? | ? ? ? ?]; cbn; split; intros; auto; try discriminate; contradiction. Qed.
+
+  Lemma gc_unit_qname : forall H T Φ, gc_unit Θ Ξ H = Some (T, Φ) -> mod_qname H = None -> False.
+  Proof. intros * Hu Hq; unfold gc_unit in Hu; rewrite Hq in Hu; discriminate. Qed.
 
   #[local]
-  Ltac decl_obl :=
+  Ltac site_obl :=
     intros; cbv beta in *;
     repeat match goal with
-      | H : mt_order _ _ _ _ _ |- _ => progressive_invert H
-      | H : umt_order _ _ _ _ _ |- _ => progressive_invert H
+      | H : site_order _ _ (me_mem _ _) |- _ => progressive_invert H
+      | H : site_order _ _ (me_app _ _) |- _ => progressive_invert H
       end;
-    repeat match goal with H : ?a = ?a -> _ |- _ => specialize (H eq_refl) end;
-    try solve [ eauto ];
-    first
-      [ solve [ match goal with Hd : exists T E, _ = _ /\ _ |- _ =>
-                  destruct Hd as (? & ? & -> & ?); eapply mdl_alias; [ | eassumption | eassumption ]; discriminate end ]
-      | solve [ eapply mdl_entry; [ eassumption | reflexivity ] ]
-      | solve [ eapply mdl_alias; [ | eassumption | eassumption ]; discriminate ]
-      | solve [ do 2 eexists; split; [ reflexivity | eassumption ] ]
-      | solve [ econstructor; eassumption ]
-      | solve [ eapply mdl_alias; eassumption ]
-      | solve [ intros; match goal with HN : forall _ _, ~ mdecl _ _ ?E ?c _ _, Hd : mdecl _ _ ?E ?c _ _ |- _ =>
-                  exact (HN _ _ Hd) end ]
-      | solve [ intros * Heq; try discriminate; injection Heq; intros; subst; intros ? ? ?;
-                match goal with HN : forall _ _, ~ mdecl _ _ ?E ?c _ _, Hd : mdecl _ _ ?E ?c _ _ |- _ =>
-                  exact (HN _ _ Hd) end ]
-      | solve [ intros * Hd; inversion Hd; subst; try congruence;
-                try match goal with HN : forall _ _, ~ mdecl _ _ _ _ _ _ |- _ => eapply HN; eassumption end;
-                try match goal with
-                    | H1 : gc_module _ _ ?p = Some _, H2 : gc_module _ _ ?p = _ |- _ =>
-                        rewrite H1 in H2; try discriminate; injection H2; intros; subst end;
-                try match goal with HN : forall _ _, ~ mdecl _ _ _ _ _ _ |- _ => eapply HN; eassumption end;
-                try match goal with HN : forall _ _, _ = _ -> forall _ _, ~ mdecl _ _ _ _ _ _ |- _ =>
-                      eapply HN; [ reflexivity | eassumption ] end;
-                congruence ] ].
+    try solve [ eauto using ms_unit, ms_app ];
+    try solve [ exfalso; eapply gc_unit_qname; eassumption ];
+    try solve [ exfalso; eapply gc_unit_qname; [ eassumption | cbn; match goal with Eqm : mod_qname _ = None |- _ => rewrite Eqm end; reflexivity ] ];
+    try solve [ eapply ms_unit; [ apply mod_qname_mem; eassumption | eassumption ] ];
+    try solve [ eapply ms_body; [ eassumption | eassumption | apply entry_is_body_b_spec; assumption ] ];
+    try solve [ eapply ms_alias; eassumption ];
+    exfalso;
+    match goal with
+    | Hd : msite _ _ _ _ |- _ =>
+        inversion Hd; subst;
+        repeat match goal with
+          | H1 : msite _ _ ?H ?a, H2 : msite _ _ ?H ?b |- _ =>
+              assert_fails (constr_eq a b); pose proof (msite_functional _ _ Hg _ _ H1 _ H2); subst; clear H2
+          | H1 : ?f = Some ?a, H2 : ?f = Some ?b |- _ =>
+              assert_fails (constr_eq a b); rewrite H1 in H2; injection H2; clear H2; intros; subst
+          | H1 : ?f = Some _, H2 : ?f = None |- _ => rewrite H1 in H2; discriminate H2
+          end;
+        first [ congruence
+              | match goal with HN : forall _, ~ msite _ _ _ _ |- _ => solve [ eapply HN; eassumption ] end
+              | match goal with Hb : entry_is_body ?E, Hf : entry_is_body_b ?E = false |- _ =>
+                  apply entry_is_body_b_spec in Hb; congruence end
+              | match goal with Hb : entry_is_body ?E, Ha : entry_alias ?E = Some _ |- _ =>
+                  destruct E as [| ? [? [? ?| ?]] | ? ? ? ? | ? ? ? ?]; cbn in Hb, Ha; try contradiction; discriminate end
+              | match goal with Hb : entry_is_body ?E, Ha : entry_alias ?E = None |- _ => fail end
+              | cbn in *; congruence ]
+    end.
 
-  #[local] Ltac decl_obl_try := try decl_obl.
-
-  #[tactic="decl_obl_try",derive(equations=no,eliminator=no)]
-  Equations decl_impl Γ H ch (Ho : mt_order Θ Ξ Γ H ch) :
-      { d : qname * bool | mdecl Θ Ξ H ch (fst d) (snd d) } + { forall qd pv, ~ mdecl Θ Ξ H ch qd pv }
+  (** Where a module expression is stored, by its order. *)
+  #[tactic="idtac",derive(equations=no,eliminator=no)]
+  Equations site_impl H (Ho : site_order Θ Ξ H) : { pq | msite Θ Ξ H pq } + { forall pq, ~ msite Θ Ξ H pq }
       by struct Ho :=
-  | Γ, me_unit fp, ch, Ho with inspect (gc_entry Θ Ξ (q_abs fp ch)) := {
-    | exist _ (Some E) Er => inleft (exist _ (q_abs fp (removelast ch), ge_private E) _)
-    | exist _ None Er with inspect (gc_module Θ Ξ (q_abs fp ch)) := {
-      | exist _ (Some (mr_alias U (y :: r))) Em with decl_unit_impl nil U (y :: r) _ := {
-        | inleft (exist _ d Hd) => inleft (exist _ d _)
-        | inright HN => inright _ }
-      | exist _ _ Em => inright _ } }
-  | Γ, me_var x, ch, Ho => inright _
-  | Γ, me_lit U, ch, Ho => inright _
-  | Γ, me_mem M y, ch, Ho with decl_impl Γ M (y :: ch) _ := {
-    | inleft (exist _ d Hd) => inleft (exist _ d _)
+  | me_unit fp, Ho with inspect (gc_unit Θ Ξ (me_unit fp)) := {
+    | exist _ (Some (T, Φ)) Eu => inleft (exist _ (q_abs fp nil) _)
+    | exist _ None Eu => inright _ }
+  | me_var x, Ho => inright _
+  | me_lit U, Ho => inright _
+  | me_app H N, Ho with site_impl H _ := {
+    | inleft (exist _ pq Hs) => inleft (exist _ pq _)
     | inright HN => inright _ }
-  | Γ, me_app M N, ch, Ho with decl_impl Γ M ch _ := {
-    | inleft (exist _ d Hd) => inleft (exist _ d _)
-    | inright HN => inright _ }
+  | me_mem H z, Ho with inspect (gc_unit Θ Ξ (me_mem H z)) := {
+    | exist _ (Some (T, Φ)) Eu with inspect (mod_qname H) := {
+      | exist _ (Some p0) Eqm => inleft (exist _ (qname_in p0 z) _)
+      | exist _ None Eqm => False_rect _ _ }
+    | exist _ None Eu with site_impl H _ := {
+      | inright HN => inright _
+      | inleft (exist _ pq Hs) with inspect (gc_entry Θ Ξ (qname_in pq z)) := {
+        | exist _ None Ee => inright _
+        | exist _ (Some E) Ee with inspect (entry_alias E) := {
+          | exist _ (Some E') Ea with site_impl E' _ := {
+            | inleft (exist _ pq' Hs') => inleft (exist _ pq' _)
+            | inright HN => inright _ }
+          | exist _ None Ea with inspect (entry_is_body_b E) := {
+            | exist _ true Eb => inleft (exist _ (qname_in pq z) _)
+            | exist _ false Eb => inright _ } } } } }.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
 
-  with decl_unit_impl Γ U ch (Ho : umt_order Θ Ξ Γ U ch) :
-      { d : qname * bool | exists T E, U = gu_mk T (md_alias E) /\ mdecl Θ Ξ E ch (fst d) (snd d) } +
-      { forall T E, U = gu_mk T (md_alias E) -> forall qd pv, ~ mdecl Θ Ξ E ch qd pv }
-      by struct Ho :=
-  | Γ, gu_mk Δ (md_alias E), ch, Ho with decl_impl (Δ ++ Γ) E ch _ := {
-    | inleft (exist _ d Hd) => inleft (exist _ d _)
-    | inright HN => inright _ }
-  | Γ, gu_mk Δ (md_body Φ), ch, Ho => inright _.
-  Next Obligation. decl_obl. Qed.
+  (** Where a member is declared: an entry of the module its module is
+      stored at. *)
+  Definition decl_impl (H : modexp) (y : string) :
+      { d : qname * bool | mdecl Θ Ξ H y (fst d) (snd d) } + { forall qd pv, ~ mdecl Θ Ξ H y qd pv }.
+  Proof.
+    destruct (site_impl H (site_order_total _ _ Hg H)) as [[pq Hs] | HN].
+    - destruct (gc_entry Θ Ξ (qname_in pq y)) as [E |] eqn:Ee.
+      + left; exists (pq, ge_private E); exact (mdl_intro _ _ _ _ _ _ Hs Ee).
+      + right; intros qd pv Hd; inversion Hd as [pq' E' Hs' He']; subst.
+        rewrite (msite_functional _ _ Hg _ _ Hs _ Hs') in Ee; congruence.
+    - right; intros qd pv Hd; inversion Hd; subst; eapply HN; eassumption.
+  Defined.
 
   (** Whether a module is an open frame or an ancestor of one. *)
   Definition open_anc_b (qd : qname) : bool :=
@@ -105,23 +559,19 @@ Section PrivacyImpl.
       rewrite H1, path_beq_refl, H2, strip_prefix_app; reflexivity.
   Qed.
 
-  Hypothesis Hg : ⊢g Θ ⍮ Ξ.
-
-  (** A reference to a member reached from a unit is checked where the
-      member is declared; a failure names that module and the member. *)
+  (** A reference to a member is checked where the member is declared; a
+      failure names that module and the member. *)
   Definition glob_check (H : modexp) (x : string) :
       { qx : qname * string | ~ glob_ok Θ Ξ H x } + { glob_ok Θ Ξ H x }.
   Proof.
     unfold glob_ok.
-    destruct (modexp_spine H) as [[[fp | k | H0 y | H0 N | U] args] pre]; try (right; exact I).
-    destruct (decl_impl nil (me_unit fp) (pre ++ x :: nil) (mt_order_unit _ _ _ _ _ Hg)) as [[[qd [|]] Hd] | HN];
-      cbn [fst snd] in *.
+    destruct (decl_impl H x) as [[[qd [|]] Hd] | HN]; cbn [fst snd] in *.
     - destruct (open_anc_b qd) eqn:Eo.
-      + right; intros qd' Hd'; destruct (mdecl_functional _ _ _ _ _ _ Hd _ _ Hd') as [<- _].
+      + right; intros qd' Hd'; destruct (mdecl_functional _ _ Hg _ _ _ _ Hd _ _ Hd') as [<- _].
         apply open_anc_b_spec; exact Eo.
       + left; exists (qd, x); intros Hok; specialize (Hok _ Hd).
         apply open_anc_b_spec in Hok; congruence.
-    - right; intros qd' Hd'; destruct (mdecl_functional _ _ _ _ _ _ Hd _ _ Hd') as [_ [=]].
+    - right; intros qd' Hd'; destruct (mdecl_functional _ _ Hg _ _ _ _ Hd _ _ Hd') as [_ [=]].
     - right; intros qd' Hd'; exfalso; exact (HN _ _ Hd').
   Defined.
 
@@ -149,34 +599,83 @@ End PrivacyImpl.
 (** ** Where a Member is Declared
 
     [def_site Θ Hg H ch] is the qualified name of the member at the chain
-    [ch] of [H] where it is declared: the module [mdecl] finds, which follows
-    aliases, then the member's own name.  The documentation generator links
-    a use of a member to it.  The proof [Hg] that [Θ] is well formed only
-    bounds the recursion, and extraction erases it. *)
-Definition def_site (Θ : gdeps) (Hg : ⊢g Θ ⍮ nil) (H : modexp) (ch : list string) : option qname :=
-  match decl_impl Θ nil nil H ch (mt_order_total _ _ Hg nil H ch) with
-  | inleft (exist _ (qd, _) _) => Some (qname_in qd (List.last ch EmptyString))
-  | inright _ => None
+    [ch] of [H] where it is declared: the module [mdecl] finds for the last
+    name of [ch], from [H] selected along the others, following aliases,
+    then the member's own name.  The documentation generator links a use of
+    a member to it.  The proof [Hg] that [Θ] is well formed only bounds the
+    recursion, and extraction erases it. *)
+Definition def_site (Θ : gdeps) (Hg : ⊢ᵍ Θ ⍮ nil) (H : modexp) (ch : list string) : option qname :=
+  match ch with
+  | nil => None
+  | _ :: _ =>
+      match decl_impl Θ nil Hg (me_mems H (removelast ch)) (List.last ch EmptyString) with
+      | inleft (exist _ (qd, _) _) => Some (qname_in qd (List.last ch EmptyString))
+      | inright _ => None
+      end
   end.
 
 Lemma def_site_spec : forall Θ Hg H ch qx,
     def_site Θ Hg H ch = Some qx <->
-    exists qd pv, mdecl Θ nil H ch qd pv /\ qx = qname_in qd (List.last ch EmptyString).
+    ch <> nil /\ exists qd pv, mdecl Θ nil (me_mems H (removelast ch)) (List.last ch EmptyString) qd pv /\
+      qx = qname_in qd (List.last ch EmptyString).
 Proof.
   intros *; unfold def_site.
-  destruct (decl_impl Θ nil nil H ch _) as [[[qd pv] Hd] | HN]; cbn [fst snd] in *; split.
-  - intros [= <-]; exists qd, pv; split; [ exact Hd | reflexivity ].
-  - intros (qd' & pv' & Hd' & ->); destruct (mdecl_functional _ _ _ _ _ _ Hd _ _ Hd') as [<- _]; reflexivity.
+  destruct ch as [| z ch']; [ split; [ discriminate | intros [Hn _]; contradiction ] |].
+  destruct (decl_impl _ _ _ _ _) as [[[qd pv] Hd] | HN]; cbn [fst snd] in *; split.
+  - intros [= <-]; split; [ discriminate |]; exists qd, pv; split; [ exact Hd | reflexivity ].
+  - intros (_ & qd' & pv' & Hd' & ->); destruct (mdecl_functional _ _ Hg _ _ _ _ Hd _ _ Hd') as [<- _]; reflexivity.
   - discriminate.
-  - intros (qd' & pv' & Hd' & _); exfalso; exact (HN _ _ Hd').
+  - intros (_ & qd' & pv' & Hd' & _); exfalso; exact (HN _ _ Hd').
 Qed.
 
-(** The name found is that of an entry, through body modules. *)
+(** The name found is that of an entry. *)
 Corollary def_site_entry : forall Θ Hg H ch qx, ch <> nil ->
     def_site Θ Hg H ch = Some qx -> exists E, gc_entry Θ nil qx = Some E.
 Proof.
-  intros * Hch Hq; apply def_site_spec in Hq as (qd & pv & Hd & ->).
-  destruct (mdecl_entry _ _ _ _ _ _ Hd Hch EmptyString) as (E & HE & _); exists E; exact HE.
+  intros * _ Hq; apply def_site_spec in Hq as (_ & qd & pv & Hd & ->).
+  destruct (mdecl_entry _ _ _ _ _ _ Hd) as (E & HE & _); exists E; exact HE.
+Qed.
+
+(** What resolves is reached through body modules. *)
+Lemma gm_resolve_walk : forall Φ ch E, gm_resolve Φ ch = Some E ->
+    forall pre y suf, ch = pre ++ y :: suf -> suf <> nil ->
+    exists E0, gm_entry Φ (pre ++ y :: nil) = Some E0 /\ entry_is_body E0.
+Proof.
+  fix IH 1; intros [| Φ0 z E1 | Φ0 c its] ch E Hr pre y suf Hch Hsuf; cbn in Hr; [ discriminate | | exact (IH _ _ _ Hr _ _ _ Hch Hsuf) ].
+  destruct ch as [| x ip]; [ discriminate |].
+  destruct (String.eqb_spec x z) as [-> | Hne].
+  - destruct ip as [| w ip']; [ destruct pre as [| ? [| ? ?]]; cbn in Hch; injection Hch; intros; subst; try contradiction; discriminate |].
+    destruct E1 as [| pv [Δ [sm Φ' | ?]] | pv pq D Φ' | ? ? ? ?]; try discriminate.
+    + destruct pre as [| x' pre']; cbn in Hch; injection Hch as <- Hip.
+      * exists (ge_mod pv (gu_mk Δ (md_body sm Φ'))); cbn; rewrite String.eqb_refl; split; [ reflexivity | exact I ].
+      * destruct (IH _ _ _ Hr _ _ _ Hip Hsuf) as (E0 & HE0 & Hb).
+        exists E0; cbn; rewrite String.eqb_refl.
+        destruct (pre' ++ y :: nil) as [| ? ?] eqn:Ep; [ destruct pre'; discriminate | exact (conj HE0 Hb) ].
+    + destruct pre as [| x' pre']; cbn in Hch; injection Hch as <- Hip.
+      * exists (ge_ind pv pq D Φ'); cbn; rewrite String.eqb_refl; split; [ reflexivity | exact I ].
+      * destruct (IH _ _ _ Hr _ _ _ Hip Hsuf) as (E0 & HE0 & Hb).
+        exists E0; cbn; rewrite String.eqb_refl.
+        destruct (pre' ++ y :: nil) as [| ? ?] eqn:Ep; [ destruct pre'; discriminate | exact (conj HE0 Hb) ].
+  - destruct (IH _ _ _ Hr _ _ _ Hch Hsuf) as (E0 & HE0 & Hb); exists E0; split; [| exact Hb ].
+    destruct pre as [| x' pre']; cbn in Hch |- *; injection Hch as <- _;
+      apply String.eqb_neq in Hne; rewrite Hne; exact HE0.
+Qed.
+
+(** A loaded unit, selected along body modules, is stored at its path. *)
+Lemma site_resolve : forall Θ fp U, ⊢ᵍ Θ ⍮ nil -> gds_lookup Θ fp = Some U ->
+    forall pre, (forall pre' y suf, pre = pre' ++ y :: suf ->
+                   exists E0, gm_entry (gu_mod U) (pre' ++ y :: nil) = Some E0 /\ entry_is_body E0) ->
+    msite Θ nil (me_mems (me_unit fp) pre) (q_abs fp pre).
+Proof.
+  intros * Hg Hl pre; induction pre as [| y pre IH] using rev_ind; intros Hw.
+  - destruct (wf_gds_body _ _ Hg _ _ Hl) as (Δ & Φ & ->).
+    eapply ms_unit; [ reflexivity | unfold gc_unit; cbn; rewrite Hl; reflexivity ].
+  - rewrite me_mems_app; cbn [me_mems].
+    destruct (Hw pre y nil eq_refl) as (E0 & HE0 & Hb).
+    replace (q_abs fp (pre ++ y :: nil)) with (qname_in (q_abs fp pre) y) by reflexivity.
+    eapply ms_body; [ | | exact Hb ].
+    + apply IH; intros pre' y' suf Hpre; apply (Hw pre' y' (suf ++ y :: nil)); rewrite Hpre, <- app_assoc; reflexivity.
+    + unfold gc_entry, gc_entry_u; cbn; rewrite Hl; exact HE0.
 Qed.
 
 (** A definition reached through body modules is declared where it stands. *)
@@ -187,7 +686,18 @@ Proof.
   assert (Hch : q_chain p <> nil).
   { intros Hn; unfold gc_resolve, gc_resolve_u in Hr; cbn in Hr; rewrite Hn in Hr.
     destruct (gds_lookup Θ (q_unit p)); [ rewrite gm_resolve_nil in Hr |]; discriminate. }
-  exists (q_abs (q_unit p) (removelast (q_chain p))), (ge_private E); split.
-  - destruct p as [fp ch]; eapply mdl_entry; [ exact (gc_entry_resolve _ _ _ _ Hr) | reflexivity ].
-  - destruct p as [fp ch]; unfold qname_in; cbn in *; rewrite <- (List.app_removelast_last _ Hch); reflexivity.
+  split; [ exact Hch |].
+  destruct p as [fp c]; cbn [q_unit q_chain] in *.
+  pose proof (gc_entry_resolve _ _ _ _ Hr) as HE.
+  unfold gc_resolve, gc_resolve_u in Hr; cbn in Hr.
+  destruct (gds_lookup Θ fp) as [U |] eqn:Hl; [| discriminate ].
+  pose proof (List.app_removelast_last EmptyString Hch) as Ec.
+  exists (q_abs fp (removelast c)), (ge_private E); split.
+  - apply mdl_intro; [ apply (site_resolve _ _ _ Hg Hl); intros pre' y suf Hpre |].
+    + apply (gm_resolve_walk _ _ _ Hr pre' y (suf ++ List.last c EmptyString :: nil)).
+      * rewrite Ec at 1; rewrite Hpre, <- app_assoc; reflexivity.
+      * destruct suf; discriminate.
+    + replace (qname_in (q_abs fp (removelast c)) (List.last c EmptyString)) with (q_abs fp c); [ exact HE |].
+      unfold qname_in; cbn; rewrite <- Ec; reflexivity.
+  - unfold qname_in; cbn; rewrite <- Ec; reflexivity.
 Qed.

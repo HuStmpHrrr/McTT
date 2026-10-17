@@ -77,7 +77,7 @@ with gunit_freshb (k : nat) (U : gunit) {struct U} : bool :=
   end
 with moddef_freshb (k : nat) (D : moddef) {struct D} : bool :=
   match D with
-  | md_body Φ => gmod_freshb k Φ
+  | md_body sm Φ => gmod_freshb k Φ
   | md_alias E => modexp_freshb k E
   end
 with gmod_freshb (k : nat) (Φ : gmod) {struct Φ} : bool :=
@@ -90,7 +90,7 @@ with gentry_freshb (k : nat) (E : gentry) {struct E} : bool :=
   match E with
   | ge_def _ _ A B => exp_freshb k A && match B with Some M => exp_freshb k M | None => true end
   | ge_mod _ U => gunit_freshb k U
-  | ge_ind _ D Φ => gmod_freshb (ind_nu D + k) Φ
+  | ge_ind _ _ D Φ => gmod_freshb (ind_nu D + k) Φ
   | ge_ind_alias _ _ _ _ => true
   end
 with centry_freshb (k : nat) (e : centry) {struct e} : bool :=
@@ -151,6 +151,8 @@ Reserved Notation "'⟦' Ms '⟧*ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' ms" (at level 7
 Reserved Notation "'⟦' Φ '⟧ᵇᶠ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" (at level 70, Φ at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ρ' at level 69).
 Reserved Notation "'$*ᶠ|' m '&' ns '|' Θ '⍮' Ξ '↘' r" (at level 70, m at level 69, ns at level 69, Θ at level 69, Ξ at level 69, r at level 69).
 Reserved Notation "'$ᵐᶠ|' h '&' n '|' Θ '⍮' Ξ '↘' r" (at level 70, h at level 69, n at level 69, Θ at level 69, Ξ at level 69, r at level 69).
+Reserved Notation "'$ᵐ*ᶠ|' h '&' ns '|' Θ '⍮' Ξ '↘' r" (at level 70, h at level 69, ns at level 69, Θ at level 69, Ξ at level 69, r at level 69).
+Reserved Notation "'⟦' Δ '⊢' D '⟧ᶜᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, Δ at level 69, D at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "h '·ₜᶠ' x Θ '⍮' Ξ '↘' r" (at level 70, x at level 0, Θ at level 69, Ξ at level 69, r at level 69).
 Reserved Notation "h '·ₘᶠ' y Θ '⍮' Ξ '↘' r" (at level 70, y at level 0, Θ at level 69, Ξ at level 69, r at level 69).
 Reserved Notation "h '·ₜ*ᶠ' ch Θ '⍮' Ξ '↘' r" (at level 70, ch at level 0, Θ at level 69, Ξ at level 69, r at level 69).
@@ -233,8 +235,9 @@ Inductive feval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      ⟦ a_let (b_def oA M) B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A local module extends it by the unit's closure. *)
 | feval_exp_let_mod :
-  `( ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ᵐ dm_local ρ U nil ↘ r ->
-     ⟦ ℓₘ U in B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
+  `( ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ ↘ h ->
+     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ᵐ h ↘ r ->
+     ⟦ ℓₘ (gu_mk Δ D) in B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A member is read off the root of its module expression, then applied to
     the module's arguments: arguments commute with selection.  Without
     arguments this is selection from the module's value. *)
@@ -379,9 +382,10 @@ with feval_modexp (Θ : gdeps) (Ξ : gstack) : modexp -> env -> dmod -> Prop :=
     are selected from it ([feval_selm_global]). *)
 | feval_me_unit :
   `( ⟦ me_unit fp ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ dm_global (q_abs fp nil) nil )
-(** A literal unit is its closure, with no argument yet. *)
+(** A literal unit is its closure. *)
 | feval_me_lit :
-  `( ⟦ me_lit U ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ dm_local ρ U nil )
+  `( ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ ↘ h ->
+     ⟦ me_lit (gu_mk Δ D) ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ h )
 (** A submodule is selected from the module's value. *)
 | feval_me_mem :
   `( ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ h ->
@@ -394,33 +398,44 @@ with feval_modexp (Θ : gdeps) (Ξ : gstack) : modexp -> env -> dmod -> Prop :=
      $ᵐᶠ| h & n | Θ ⍮ Ξ ↘ r ->
      ⟦ me_app H N ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
 where "'⟦' H '⟧ᵐᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (feval_modexp Θ Ξ H ρ r)
-(** Applying a module value to one more argument, which it must still lack.
-    A saturated alias is its target. *)
+(** The closure of a unit's definition lacking the parameters [Δ]: a body,
+    or an alias still lacking a parameter, is its closure; an alias lacking
+    none is its target's value. *)
+with feval_close (Θ : gdeps) (Ξ : gstack) : ctx -> moddef -> env -> dmod -> Prop :=
+| feval_close_body :
+  `( ⟦ Δ ⊢ md_body sm Φ ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ ↘ dm_local Δ (md_body sm Φ) ρ )
+| feval_close_alias :
+  `( 0 < List.length Δ ->
+     ⟦ Δ ⊢ md_alias E ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ ↘ dm_local Δ (md_alias E) ρ )
+| feval_close_alias0 :
+  `( ⟦ E ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ h ->
+     ⟦ nil ⊢ md_alias E ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ ↘ h )
+where "'⟦' Δ '⊢' D '⟧ᶜᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (feval_close Θ Ξ Δ D ρ r)
+(** Applying a module value to one more argument, which it must still lack. *)
 with feval_appm (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> dmod -> Prop :=
 (** A global module records the argument. *)
 | feval_appm_global :
   `( $ᵐᶠ| dm_global p args & n | Θ ⍮ Ξ ↘ dm_global p (args ++ n :: nil) )
-(** A body unit lacking arguments records it. *)
-| feval_appm_body :
-  `( List.length args < List.length Δ ->
-     $ᵐᶠ| dm_local ρ (gu_mk Δ (md_body Φ)) args & n | Θ ⍮ Ξ ↘ dm_local ρ (gu_mk Δ (md_body Φ)) (args ++ n :: nil) )
-(** So does an alias unit lacking arguments. *)
-| feval_appm_alias_unsat :
-  `( List.length args < List.length Δ ->
-     $ᵐᶠ| dm_local ρ (gu_mk Δ (md_alias E)) args & n | Θ ⍮ Ξ ↘
-       dm_local ρ (gu_mk Δ (md_alias E)) (args ++ n :: nil) )
-(** A saturated alias passes it to its target. *)
-| feval_appm_alias :
-  `( List.length args = List.length Δ ->
-     ⟦ E ⟧ᵐᶠ Θ ⍮ Ξ ⍮ env_args ρ args ↘ h ->
-     $ᵐᶠ| h & n | Θ ⍮ Ξ ↘ r ->
-     $ᵐᶠ| dm_local ρ (gu_mk Δ (md_alias E)) args & n | Θ ⍮ Ξ ↘ r )
+(** A closure takes it as its outermost missing parameter, in its
+    environment. *)
+| feval_appm_local :
+  `( ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ r ->
+     $ᵐᶠ| dm_local (Δ ++ ce_ass A :: nil) D ρ & n | Θ ⍮ Ξ ↘ r )
 (** A submodule of an unsaturated module passes it to the module, then selects again. *)
 | feval_appm_member :
   `( $ᵐᶠ| h & n | Θ ⍮ Ξ ↘ h' ->
      h' ·ₘ*ᶠ ch Θ ⍮ Ξ ↘ r ->
      $ᵐᶠ| dm_member h ch & n | Θ ⍮ Ξ ↘ r )
 where "'$ᵐᶠ|' h '&' n '|' Θ '⍮' Ξ '↘' r" := (feval_appm Θ Ξ h n r)
+(** Applying a module value to arguments, outermost first. *)
+with feval_appms (Θ : gdeps) (Ξ : gstack) : dmod -> list domain -> dmod -> Prop :=
+| feval_appms_nil :
+  `( $ᵐ*ᶠ| h & nil | Θ ⍮ Ξ ↘ h )
+| feval_appms_cons :
+  `( $ᵐᶠ| h & n | Θ ⍮ Ξ ↘ h1 ->
+     $ᵐ*ᶠ| h1 & ns | Θ ⍮ Ξ ↘ r ->
+     $ᵐ*ᶠ| h & n :: ns | Θ ⍮ Ξ ↘ r )
+where "'$ᵐ*ᶠ|' h '&' ns '|' Θ '⍮' Ξ '↘' r" := (feval_appms Θ Ξ h ns r)
 (** Selecting a term member.  A member of a global module is stored closed,
     over the module's parameters: δ evaluates a transparent one's body in the
     empty environment, and an opaque one or an axiom is a neutral at its
@@ -452,73 +467,51 @@ with feval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      ⟦ ctx_fn Δ (apps (a_ind pt) Ns) ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ f ->
      $*ᶠ| f & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
-(** A member of an unsaturated module is a member closure. *)
+(** A member of a closure lacking a parameter is a member closure. *)
 | feval_sel_unsat :
-  `( List.length args < List.length (gu_params U) ->
-     dm_local ρ U args ·ₜᶠ x Θ ⍮ Ξ ↘ d_member (dm_local ρ U args) (x :: nil) )
-(** A definition of a saturated body: its body, in the environment of the body before it. *)
+  `( 0 < List.length Δ ->
+     dm_local Δ D ρ ·ₜᶠ x Θ ⍮ Ξ ↘ d_member (dm_local Δ D ρ) (x :: nil) )
+(** A definition of a saturated body, found in the body read through the
+    entries its local opens generate: its body, in the environment of the
+    body before it. *)
 | feval_sel_body :
-  `( List.length args = List.length Δ ->
-     gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
-     ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ' ->
+  `( kbody Θ Ξ ρ Φ Φx ->
+     gm_prefix_upto Φx x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
+     ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
      ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
-     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
-(** A definition a local open of a saturated body declares: the member it
-    names in the open's target, read in the environment of the body before
-    the open. *)
-| feval_sel_item :
-  `( List.length args = List.length Δ ->
-     gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
-     ⟦ Φ0 ⟧ᵇᶠ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ0 ->
-     ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ0 ↘ h ->
-     h ·ₜᶠ n Θ ⍮ Ξ ↘ r ->
-     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
-(** A member of a saturated alias is selected from its target. *)
-| feval_sel_alias :
-  `( List.length args = List.length Δ ->
-     ⟦ E ⟧ᵐᶠ Θ ⍮ Ξ ⍮ env_args ρ args ↘ h ->
-     h ·ₜᶠ x Θ ⍮ Ξ ↘ r ->
-     dm_local ρ (gu_mk Δ (md_alias E)) args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
+     dm_local nil (md_body sm Φ) ρ ·ₜᶠ x Θ ⍮ Ξ ↘ r )
 (** A member of a submodule closure extends the chain. *)
 | feval_sel_member :
   `( dm_member h ch ·ₜᶠ x Θ ⍮ Ξ ↘ d_member h (ch ++ x :: nil) )
 where "h '·ₜᶠ' x Θ '⍮' Ξ '↘' r" := (feval_sel Θ Ξ h x r)
 (** Selecting a submodule. *)
 with feval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop :=
-(** A body submodule of a global module is a global module, with the same arguments. *)
+(** A body submodule, an open frame or the module of an inductive type in a
+    global module is a global module, with the same arguments. *)
 | feval_selm_global :
-  `( (forall U r, gc_module Θ Ξ (qname_app p (y :: nil)) <> Some (mr_alias U r)) ->
+  `( gc_loc Θ Ξ (qname_app p (y :: nil)) = Some TΦ ->
      dm_global p args ·ₘᶠ y Θ ⍮ Ξ ↘ dm_global (qname_app p (y :: nil)) args )
-(** An alias submodule of a global module is selected from the alias's closure. *)
+(** An alias submodule of a global module is the closure of the alias,
+    stored closed over the module's parameters, given the module's
+    arguments. *)
 | feval_selm_global_alias :
-  `( gc_module Θ Ξ (qname_app p (y :: nil)) = Some (mr_alias U ch) ->
-     dm_local nil U args ·ₘ*ᶠ ch Θ ⍮ Ξ ↘ r ->
+  `( gc_module Θ Ξ (qname_app p (y :: nil)) = Some (mr_alias (gu_mk Δ D)) ->
+     ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ nil ↘ h ->
+     $ᵐ*ᶠ| h & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₘᶠ y Θ ⍮ Ξ ↘ r )
-(** A submodule of an unsaturated module is a submodule closure. *)
+(** A submodule of a closure lacking a parameter is a submodule closure. *)
 | feval_selm_unsat :
-  `( List.length args < List.length (gu_params U) ->
-     dm_local ρ U args ·ₘᶠ y Θ ⍮ Ξ ↘ dm_member (dm_local ρ U args) (y :: nil) )
-(** A submodule of a saturated body is its unit's closure, in the environment of the body before it. *)
+  `( 0 < List.length Δ ->
+     dm_local Δ D ρ ·ₘᶠ y Θ ⍮ Ξ ↘ dm_member (dm_local Δ D ρ) (y :: nil) )
+(** A submodule of a saturated body, found in the body read through the
+    entries its local opens generate: its unit's closure, in the environment
+    of the body before it. *)
 | feval_selm_body :
-  `( List.length args = List.length Δ ->
-     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
-     ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ' ->
-     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₘᶠ y Θ ⍮ Ξ ↘ dm_local ρ' Uy nil )
-(** A module a local open of a saturated body declares: the target, or its
-    member the item names. *)
-| feval_selm_item :
-  `( List.length args = List.length Δ ->
-     gm_item_upto Φ y = Some (Φ0, H, its1, it) ->
-     ⟦ Φ0 ⟧ᵇᶠ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ0 ->
-     ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ0 ↘ h ->
-     h ·ₘ*ᶠ (item_ch it nil) Θ ⍮ Ξ ↘ r ->
-     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₘᶠ y Θ ⍮ Ξ ↘ r )
-(** A submodule of a saturated alias is selected from its target. *)
-| feval_selm_alias :
-  `( List.length args = List.length Δ ->
-     ⟦ E ⟧ᵐᶠ Θ ⍮ Ξ ⍮ env_args ρ args ↘ h ->
-     h ·ₘᶠ y Θ ⍮ Ξ ↘ r ->
-     dm_local ρ (gu_mk Δ (md_alias E)) args ·ₘᶠ y Θ ⍮ Ξ ↘ r )
+  `( kbody Θ Ξ ρ Φ Φx ->
+     gm_prefix_upto Φx y = Some (gm_ext Φ' y (ge_mod pm (gu_mk Δy Dy))) ->
+     ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
+     ⟦ Δy ⊢ Dy ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
+     dm_local nil (md_body sm Φ) ρ ·ₘᶠ y Θ ⍮ Ξ ↘ r )
 (** A submodule of a submodule closure extends the chain. *)
 | feval_selm_member :
   `( dm_member h ch ·ₘᶠ y Θ ⍮ Ξ ↘ dm_member h (ch ++ y :: nil) )
@@ -559,14 +552,8 @@ with feval_benv (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 (** A submodule adds its unit's closure. *)
 | feval_benv_mod :
   `( ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
-     ⟦ gm_ext Φ y (ge_mod pm Uy) ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ dm_local ρ1 Uy nil )
-(** A local open adds the entries it generates, by the kinds of the members
-    its items name. *)
-| feval_benv_open :
-  `( ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
-     kgens Θ Ξ ρ1 H its gs ->
-     ⟦ gens_append gm_nil 0 gs ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ1 ↘ ρ2 ->
-     ⟦ gm_open Φ H its ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ2 )
+     ⟦ Δy ⊢ Dy ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ1 ↘ h ->
+     ⟦ gm_ext Φ y (ge_mod pm (gu_mk Δy Dy)) ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ h )
 where "'⟦' Φ '⟧ᵇᶠ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (feval_benv Θ Ξ ρ Φ ρ').
 
 Scheme feval_exp_mut_ind := Induction for feval_exp Sort Prop
@@ -574,7 +561,9 @@ with feval_app_mut_ind := Induction for feval_app Sort Prop
 with feval_exps_mut_ind := Induction for feval_exps Sort Prop
 with feval_apps_mut_ind := Induction for feval_apps Sort Prop
 with feval_modexp_mut_ind := Induction for feval_modexp Sort Prop
+with feval_close_mut_ind := Induction for feval_close Sort Prop
 with feval_appm_mut_ind := Induction for feval_appm Sort Prop
+with feval_appms_mut_ind := Induction for feval_appms Sort Prop
 with feval_sel_mut_ind := Induction for feval_sel Sort Prop
 with feval_selm_mut_ind := Induction for feval_selm Sort Prop
 with feval_selc_mut_ind := Induction for feval_selc Sort Prop
@@ -591,7 +580,9 @@ Combined Scheme feval_mut_ind from
   feval_exps_mut_ind,
   feval_apps_mut_ind,
   feval_modexp_mut_ind,
+  feval_close_mut_ind,
   feval_appm_mut_ind,
+  feval_appms_mut_ind,
   feval_sel_mut_ind,
   feval_selm_mut_ind,
   feval_selc_mut_ind,
@@ -604,7 +595,8 @@ Combined Scheme feval_mut_ind from
   feval_ihty_mut_ind.
 
 #[export]
-Hint Constructors feval_exp feval_elim feval_ihs feval_ih feval_shty feval_ihty feval_app feval_exps feval_apps feval_modexp feval_appm feval_sel feval_selm
+Hint Constructors feval_exp feval_elim feval_ihs feval_ih feval_shty feval_ihty feval_app feval_exps feval_apps feval_modexp
+  feval_close feval_appm feval_appms feval_sel feval_selm
   feval_selc feval_selmc feval_benv : mctt.
 
 
@@ -624,7 +616,9 @@ Hint Constructors feval_exp feval_elim feval_ihs feval_ih feval_shty feval_ihty 
       (forall Ms ρ ms1, ⟦ Ms ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ms1 -> forall ms2, ⟦ Ms ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ms2 -> ms1 = ms2) /\
       (forall m args r1, $*ᶠ| m & args | Θ ⍮ Ξ ↘ r1 -> forall r2, $*ᶠ| m & args | Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall H ρ h1, ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ h1 -> forall h2, ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ ↘ h2 -> h1 = h2) /\
+      (forall Δ D ρ h1, ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ ↘ h1 -> forall h2, ⟦ Δ ⊢ D ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ ↘ h2 -> h1 = h2) /\
       (forall h n r1, $ᵐᶠ| h & n | Θ ⍮ Ξ ↘ r1 -> forall r2, $ᵐᶠ| h & n | Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
+      (forall h ns r1, $ᵐ*ᶠ| h & ns | Θ ⍮ Ξ ↘ r1 -> forall r2, $ᵐ*ᶠ| h & ns | Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall h x r1, h ·ₜᶠ x Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₜᶠ x Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall h y r1, h ·ₘᶠ y Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₘᶠ y Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall h ch r1, h ·ₜ*ᶠ ch Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₜ*ᶠ ch Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
@@ -652,7 +646,7 @@ Hint Constructors feval_exp feval_elim feval_ihs feval_ih feval_shty feval_ihty 
         | H1 : ind_alias_lookup Θ Ξ ?p = Some _, H2 : ind_alias_lookup Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : ind_lookup Θ Ξ ?p = Some _, H2 : ind_alias_lookup Θ Ξ ?p = Some _ |- _ =>
-            exfalso; destruct (ind_lookup_entry _ _ _ _ H1) as (? & ? & He1); rewrite ind_alias_lookup_entry, He1 in H2; discriminate H2
+            exfalso; rewrite (ind_lookup_not_ind_alias _ _ _ _ H1) in H2; discriminate H2
         | H1 : ind_lookup Θ Ξ ?p = Some _, H2 : ind_lookup Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
         | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = Some _ |- _ =>
@@ -661,17 +655,19 @@ Hint Constructors feval_exp feval_elim feval_ihs feval_ih feval_shty feval_ihty 
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : Members.gc_module Θ Ξ ?p = Some _, H2 : Members.gc_module Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
-        | H1 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _ _),
-          H2 : forall U r, Members.gc_module Θ Ξ ?p <> Some (Members.mr_alias U r) |- _ =>
-            exfalso; exact (H2 _ _ H1)
+        | H1 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _),
+          H2 : forall U, Members.gc_module Θ Ξ ?p <> Some (Members.mr_alias U) |- _ =>
+            exfalso; exact (H2 _ H1)
         | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
-        | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
-            rewrite (gm_prefix_item_excl _ _ _ H1) in H2; discriminate H2
-        | H1 : gm_item_upto ?Φ ?x = Some _, H2 : gm_item_upto ?Φ ?x = Some _ |- _ =>
-            rewrite H1 in H2; injection H2; intros; subst; clear H2
-        | H1 : kgens Θ Ξ ?ρ ?H ?its ?g1, H2 : kgens Θ Ξ ?ρ ?H ?its ?g2 |- _ =>
-            assert_fails (constr_eq g1 g2); pose proof (functional_kgens _ _ _ _ _ H1 H2); subst g2
+        | H1 : kbody Θ Ξ ?ρ ?Φ ?Φ1, H2 : kbody Θ Ξ ?ρ ?Φ ?Φ2 |- _ =>
+            assert_fails (constr_eq Φ1 Φ2); pose proof (functional_kbody _ _ _ _ H1 H2); subst Φ2
+        | H1 : Members.gc_loc Θ Ξ ?p = Some _, H2 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _) |- _ =>
+            exfalso; exact (gc_loc_not_alias _ _ _ _ _ H1 H2)
+        | H : _ ++ ce_ass _ :: nil = _ ++ ce_ass _ :: nil |- _ =>
+            apply List.app_inj_tail in H as [? [= ?]]; subst
+        | H : 0 < List.length (_ ++ _ :: nil) -> False |- _ =>
+            exfalso; apply H; rewrite List.length_app; cbn; lia
         | H1 : modexp_spine ?H = _, H2 : modexp_spine ?H = _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | IH : forall r, ?P r -> ?a = r, H : ?P ?b |- _ =>
@@ -679,7 +675,7 @@ Hint Constructors feval_exp feval_elim feval_ihs feval_ih feval_shty feval_ihty 
         | H : d_neut _ _ = d_neut _ _ |- _ => injection H; intros; subst; clear H
         | H : feval_selc _ _ _ nil _ |- _ => inversion H
         end;
-      cbn [gu_params] in *; try congruence; try lia; intuition (try congruence; try lia).
+      cbn [gu_params List.length] in *; try congruence; try lia; intuition (try congruence; try lia).
   Qed.
 
   Corollary functional_feval_exp : forall {Θ Ξ} M ρ m1 m2,
@@ -945,12 +941,12 @@ with fread_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
     it has no parameter to read. *)
 | fread_typ_indty_nil :
   `( Rtypᶠ d_ind p nil in Θ ⍮ Ξ ⍮ s ↘ nf_indty p nfs_nil )
+(** At one argument or more, each read at its type. *)
 | fread_typ_indty :
-  `( as' <> nil ->
-     ind_lookup Θ Ξ p = Some D ->
-     List.length as' = ind_np D ->
-     Rpsᶠ as' at List.rev (ind_params D) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
-     Rtypᶠ d_ind p as' in Θ ⍮ Ξ ⍮ s ↘ nf_indty p Ps )
+  `( ind_lookup Θ Ξ p = Some D ->
+     List.length (a :: as') = ind_np D ->
+     Rpsᶠ (a :: as') at List.rev (ind_params D) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
+     Rtypᶠ d_ind p (a :: as') in Θ ⍮ Ξ ⍮ s ↘ nf_indty p Ps )
 where "'Rtypᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (fread_typ Θ Ξ s m M) : type_scope
 (** The atoms of a level, read one by one. *)
 with fread_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> lvl_atoms -> Prop :=

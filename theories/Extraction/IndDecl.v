@@ -68,7 +68,7 @@ with gunit_mvcb (n : nat) (U : gunit) {struct U} : bool :=
   end
 with moddef_mvcb (n : nat) (D : moddef) {struct D} : bool :=
   match D with
-  | md_body Φ => gmod_mvcb n Φ
+  | md_body sm Φ => gmod_mvcb n Φ
   | md_alias E => modexp_mvcb n E
   end
 with gmod_mvcb (n : nat) (Φ : gmod) {struct Φ} : bool :=
@@ -81,7 +81,7 @@ with gentry_mvcb (n : nat) (E : gentry) {struct E} : bool :=
   match E with
   | ge_def _ _ A B => exp_mvcb n A && match B with Some M => exp_mvcb n M | None => true end
   | ge_mod _ U => gunit_mvcb n U
-  | ge_ind _ D Φ => gmod_mvcb (ind_nu D + n) Φ
+  | ge_ind _ _ D Φ => gmod_mvcb (ind_nu D + n) Φ
   | ge_ind_alias _ _ _ _ => true
   end
 with centry_mvcb (n : nat) (e : centry) {struct e} : bool :=
@@ -227,7 +227,7 @@ Defined.
 (** ** The Entry *)
 
 Lemma wf_gentry_ind_iff : forall Θ Ξ mp pv D,
-    Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄ <->
+    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄ <->
     (exists Δ, ind_params D = Δ ++ gs_tele Ξ) /\ List.length (gs_tele Ξ) <= ind_nu D /\ decl_typed Θ Ξ D.
 Proof.
   intros; split.
@@ -244,7 +244,7 @@ Qed.
     member ([wf_gentry_ind_ext]), holds of its declaration alone; and the
     recursor, generated last, has a name fresh among the constructors. *)
 Lemma wf_gentry_ind_base : forall Θ Ξ mp pv D Φ,
-    Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D Φ -> Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄.
+    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D Φ -> Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄.
 Proof.
   intros Θ Ξ mp pv D Φ; revert Ξ mp; induction Φ as [| Φ IH x E | Φ IH H its]; intros * HE;
     [ exact HE | inversion HE; subst; eauto | inversion HE ].
@@ -267,7 +267,7 @@ Proof.
 Qed.
 
 Lemma wf_gentry_ind_rec_fresh : forall Θ Ξ mp pv p D,
-    Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D (gen_body p D) -> ~ In "rec"%string (List.map fst (ind_cons D)).
+    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D (gen_body p D) -> ~ In "rec"%string (List.map fst (ind_cons D)).
 Proof.
   intros * HE Hin; unfold gen_body, ind_gens in HE; rewrite gens_body_app in HE; cbn [gens_body] in HE.
   inversion HE; subst.
@@ -285,7 +285,7 @@ Proof.
 Qed.
 
 Section Decide.
-  Variables (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢g Θ ⍮ Ξ).
+  Variables (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ).
 
   (** A term of a type in a context, which is checked first. *)
   Definition check_exp_at (Γ : ctx) (A M : exp) : {Θ ⍮ Ξ ⍮ Γ ⊢ M : A} + {~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A} :=
@@ -476,7 +476,7 @@ Section Decide.
       frames'. *)
   Definition ind_entry_dec (mp : qname) (pv : bool) (D : ind_decl)
     (Hsh : (exists Δ, ind_params D = Δ ++ gs_tele Ξ) /\ List.length (gs_tele Ξ) <= ind_nu D) :
-    {Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄} + {~ Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄} :=
+    {Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄} + {~ Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄} :=
     match decl_typed_dec D with
     | left H => left (proj2 (wf_gentry_ind_iff _ _ _ _ _) (conj (proj1 Hsh) (conj (proj2 Hsh) H)))
     | right Hn => right (fun H => Hn (proj2 (proj2 (proj1 (wf_gentry_ind_iff _ _ _ _ _) H))))
@@ -485,7 +485,7 @@ End Decide.
 
 (** The entry crosses [gds_equiv] as the term judgments do. *)
 Lemma equiv_gentry_ind : forall Θ Θ' Ξ mp pv D,
-    gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ -> Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄ -> Θ' ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄.
+    gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ -> Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄ -> Θ' ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄.
 Proof.
   intros * [Hs _] HΞ H; apply wf_gentry_ind_iff in H as (HΔ & Hle & HD).
   apply wf_gentry_ind_iff; split; [ exact HΔ | split; [ exact Hle |] ].
@@ -611,7 +611,7 @@ Definition rec_arity_ok (D : ind_decl) : bool :=
                                        | ca_arg _ => true
                                        end) (snd cg)) (ind_cons D).
 
-Lemma rec_arity_of_entry : forall Θ Ξ mp pv D, Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄ -> rec_arity_ok D = true.
+Lemma rec_arity_of_entry : forall Θ Ξ mp pv D, Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄ -> rec_arity_ok D = true.
 Proof.
   intros * H; apply wf_gentry_ind_iff in H as (_ & _ & HD).
   pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & HPl & _).
@@ -640,7 +640,7 @@ Proof.
   intros * HA; destruct (@soundness_ty (gc_mk Θ Ξ) _ _ _ HA) as [W [HW _]]; exact (nbe_ty_order_sound _ _ _ _ _ HW).
 Qed.
 
-Definition cls_arg_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢g Θ ⍮ Ξ) (R : raw_decl)
+Definition cls_arg_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (R : raw_decl)
     (args1 : list (string * exp)) (gs1 : list carg) (T : exp) :
   ({g | cls_arg_in Θ Ξ R args1 gs1 T g} + {r : cls_why | forall g, ~ cls_arg_in Θ Ξ R args1 gs1 T g})%type.
 Proof.
@@ -662,7 +662,7 @@ Proof.
     pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-; exact (HnW _ Hg').
 Defined.
 
-Definition cls_args_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢g Θ ⍮ Ξ) (R : raw_decl) :
+Definition cls_args_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (R : raw_decl) :
   forall (args : list (string * exp)) (args1 : list (string * exp)) (gs1 : list carg),
     ({gs | cls_args_in Θ Ξ R args1 gs1 args gs} + {e : (string * cls_why) | forall gs, ~ cls_args_in Θ Ξ R args1 gs1 args gs})%type.
 Proof.
@@ -677,7 +677,7 @@ Proof.
     + right; exists (y, r); intros gs' H; inversion H; subst; eapply Hg; eassumption.
 Defined.
 
-Definition cls_cons_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢g Θ ⍮ Ξ) (R : raw_decl) :
+Definition cls_cons_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (R : raw_decl) :
   ({cs | cls_cons_in Θ Ξ R cs} + {e : (string * string * cls_why) | forall cs, ~ cls_cons_in Θ Ξ R cs})%type.
 Proof.
   unfold cls_cons_in; generalize (rd_cons R); fix go 1; intros [| [c args] rcs].
@@ -705,6 +705,30 @@ Proof. intros * He; unfold gc_resolve, gc_resolve_u; rewrite (gds_equiv_lookup _
 Lemma gds_equiv_module : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> gc_module Θ Ξ p = gc_module Θ' Ξ p.
 Proof. intros * He; unfold gc_module, gc_module_u; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
 
+Lemma gds_equiv_body : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> gc_body Θ Ξ p = gc_body Θ' Ξ p.
+Proof. intros * He; unfold gc_body; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
+
+(** What module expressions denote reads the dependencies through their
+    lookups alone ([gc_unit], [ds_mod]). *)
+Lemma gds_equiv_mdenote_all : forall Θ Θ' Ξ, gds_equiv Θ Θ' ->
+    (forall Γ H R, mdenote Θ Ξ Γ H R -> mdenote Θ' Ξ Γ H R) /\
+    (forall Γ o U R, udenote Θ Ξ Γ o U R -> udenote Θ' Ξ Γ o U R) /\
+    (forall Γ o E R, edenote Θ Ξ Γ o E R -> edenote Θ' Ξ Γ o E R) /\
+    (forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> body_xp Θ' Ξ Γ Φ Φx) /\
+    (forall g Γ H its gs, items_gen Θ Ξ g Γ H its gs -> items_gen Θ' Ξ g Γ H its gs).
+Proof.
+  intros * He.
+  assert (Hu : forall H, gc_unit Θ Ξ H = gc_unit Θ' Ξ H).
+  { intros H; unfold gc_unit; destruct (mod_qname H) as [mp |]; [| reflexivity ].
+    rewrite (gds_equiv_lookup _ _ (q_unit mp) He); reflexivity. }
+  assert (Hd : forall R, ds_mod Θ Ξ R = ds_mod Θ' Ξ R)
+    by (intros [] ; cbn [ds_mod]; try reflexivity; rewrite (gds_equiv_body _ _ _ _ He); reflexivity).
+  apply mdenote_all_ind; intros; rewrite ?Hu, ?Hd in *; econstructor; eauto.
+Qed.
+
+Corollary gds_equiv_mdenote : forall Θ Θ' Ξ Γ H R, gds_equiv Θ Θ' -> mdenote Θ Ξ Γ H R -> mdenote Θ' Ξ Γ H R.
+Proof. intros * He; exact (proj1 (gds_equiv_mdenote_all _ _ _ He) _ _ _). Qed.
+
 Lemma gds_equiv_ind_alias : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> ind_alias_lookup Θ Ξ p = ind_alias_lookup Θ' Ξ p.
 Proof. intros * He; unfold ind_alias_lookup, ind_alias_lookup_u; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
 
@@ -714,17 +738,17 @@ Proof.
 Qed.
 
 Lemma equiv_cls_arg_in : forall Θ Θ' Ξ R args1 gs1 T g,
-    gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ -> cls_arg_in Θ Ξ R args1 gs1 T g -> cls_arg_in Θ' Ξ R args1 gs1 T g.
+    gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ -> cls_arg_in Θ Ξ R args1 gs1 T g -> cls_arg_in Θ' Ξ R args1 gs1 T g.
 Proof.
   intros * He HΞ H; destruct H as [g Hg | i W g Hn HT HW Hg]; [ apply cls_in_syn; exact Hg |].
   eapply cls_in_nf; [ exact Hn | exact (equiv_exp _ _ _ _ _ _ He HΞ HT) | | exact Hg ].
-  eapply nbe_ty_ext; [ | | | | exact HW ]; intros;
+  eapply nbe_ty_ext; [ | | | | | | exact HW ]; intros;
     [ apply gds_equiv_resolve | apply gds_equiv_module | rewrite ind_lookup_unfold, (gds_equiv_module _ _ _ _ He); reflexivity
-    | apply gds_equiv_ind_alias ]; exact He.
+    | apply gds_equiv_ind_alias | reflexivity | apply gds_equiv_body ]; exact He.
 Qed.
 
 Lemma equiv_cls_cons_in : forall Θ Θ' Ξ R cs,
-    gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ -> cls_cons_in Θ Ξ R cs -> cls_cons_in Θ' Ξ R cs.
+    gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ -> cls_cons_in Θ Ξ R cs -> cls_cons_in Θ' Ξ R cs.
 Proof.
   intros * He HΞ; unfold cls_cons_in; apply Forall2_impl; intros rc c [Hf Hc]; split; [ exact Hf |].
   revert Hc; generalize (@nil (string * exp)) at 1 2 as args1; generalize (@nil carg) at 1 2 as gs1.

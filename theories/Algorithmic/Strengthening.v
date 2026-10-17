@@ -20,11 +20,11 @@ From Stdlib Require Import Arith Lia List PeanoNat.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem SubstitutionCases UniverseCases PathCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem SubstitutionCases UniverseCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
-From Mctt.Core.Semantic Require Import Consequences Realizability MemberWf.
+From Mctt.Core.Semantic Require Import Consequences Realizability.
 From Mctt.Core.Syntactic Require Import CoreInversions Fresh LevelEq IndCong IndConv.
-From Mctt.Core.Syntactic.System Require Import MemberLemmas MemberWf Scoping.
+From Mctt.Core.Syntactic.System Require Import MemberLemmas MemberWf Scoping DescTyping LookupSound GlobalPresup.
 From Mctt.Algorithmic Require Import Subtyping.
 Import Domain_Notations Fixed_Notations Wk_Notations.
 
@@ -94,7 +94,7 @@ Lemma rel_wk_under_ctx_qn : forall Δ Γ A,
     ⊢ (Δ ++ Γ)%list ->
     ⊢ (tele_wk Δ ↑ ++ Γ ▹ A)%list ->
     ⊨ (Γ ▹ A) ->
-    (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊨w (wk_qn (length Δ) ↑) : (Δ ++ Γ)%list.
+    (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊨ʷ (wk_qn (length Δ) ↑) : (Δ ++ Γ)%list.
 Proof.
   induction Δ as [| e Δ IH]; intros * Hass HΓs HΓf HA;
     cbn [tele_wk List.app length wk_qn] in *.
@@ -327,7 +327,7 @@ Qed.
 Lemma wf_wk_qn : forall Δ Γ A,
     ⊢ (Δ ++ Γ)%list ->
     ⊢ (tele_wk Δ ↑ ++ Γ ▹ A)%list ->
-    (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢w (wk_qn (length Δ) ↑) : (Δ ++ Γ)%list.
+    (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ʷ (wk_qn (length Δ) ↑) : (Δ ++ Γ)%list.
 Proof.
   intros * HΓs HΓf.
   eapply wf_wk_ext; [| exact HΓf | exact HΓs ].
@@ -748,28 +748,33 @@ Proof.
                    | constructor; [ cbn; eapply (wf_succl_n_inversion k'); eapply wf_exp_subtyp'; eassumption | exact Hr ] ].
 Qed.
 
-(** A chain from a unit names a closed module: it is a module expression in
-    every well-formed context, and a member of it is typed, at a closed type,
-    in every well-formed context. *)
-Lemma chain_wf_any_ctx : forall H p Γ Γ',
+(** A path names a closed module: it is a module expression in every
+    well-formed context, denoting the same there ([mdenote_closed_any]). *)
+Lemma path_wf_any_ctx : forall H p Γ Γ',
     mod_qname H = Some p ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
     ⊢ Γ' ->
     gc_deps ⍮ gc_stack ⍮ Γ' ⊢ᵐ H ≈ H.
 Proof.
   induction H as [fp | x | H IH y | H IH N | U]; intros * Hp HH HΓ'; cbn in Hp; try discriminate.
-  - destruct (modexp_parts_of_wf _ _ _ _ HH) as (R & T & HR & HT).
-    eapply wf_me_glob; [ exact HΓ' | exact Hp | eapply mt_unit_ctx; exact HR | exact HT ].
+  - destruct (me_denotes _ _ _ _ _ HH) as (R & _ & Hm & _).
+    inversion Hm; subst; eapply wf_me_unit; eassumption.
   - destruct (mod_qname H) as [p0 |] eqn:E; [| discriminate ].
-    destruct (modexp_parts_of_wf _ _ _ _ HH) as [[HH0 (R & T & HR & HT)] | [_ (R & T & HR & HT)]].
-    + eapply wf_me_mem; [ eapply IH; [ reflexivity | exact HH0 | exact HΓ' ]
-                         | eapply mt_chain_ctx; [ exact E | exact HR ] | exact HT
-                         | eapply mt_chain_ctx; [ exact E | exact HR ] | exact HT ].
-    + eapply wf_me_glob; [ exact HΓ' | cbn; rewrite E; reflexivity | | exact HT ].
-      eapply mt_chain_ctx; [| exact HR ]; cbn; rewrite E; reflexivity.
+    pose proof (ctx_wf_gctx _ _ _ HΓ') as Hg.
+    pose proof (gctx_valid_syn _ _ Hg) as Hv.
+    pose proof (proj1 (modexp_gen _ _ _ _ _ HH)) as HH0; cbn in HH0.
+    destruct (me_denotes _ _ _ _ _ HH) as (R & Rm & Hm & Hmd).
+    destruct (desc_ok_tele _ _ _ _ (desc_ok_mod _ _ Hg _ _ _ (me_desc_ok _ _ _ _ _ _ HH Hm) Hmd)
+                (ds_mod_is_mod _ _ _ _ Hmd)) as [T HT].
+    assert (Hmt : ds_mtele gc_deps gc_stack R = Some T) by (unfold ds_mtele; rewrite Hmd; exact HT).
+    pose proof (mdenote_closed_any _ _ (wf_gstack_closed _ _ Hg) _ _ _ Γ' Hm
+                  (mod_qname_scoped (me_mem H y) (qname_app p0 (y :: nil)) 0 ltac:(cbn; rewrite E; reflexivity))) as Hm'.
+    eapply wf_me_mem; [ eapply IH; [ reflexivity | exact HH0 | exact HΓ' ] | exact Hm' | exact Hmt | exact Hm' | exact Hmt ].
 Qed.
 
-Lemma chain_mem_any_ctx : forall Γ H p x C,
+(** A member of a path is typed, at a closed type, in every well-formed
+    context: the type it is looked up at. *)
+Lemma path_mem_any_ctx : forall Γ H p x C,
     mod_qname H = Some p ->
     Γ ⊢ a_mem H x : C ->
     exists T, exp_scoped 0 T /\ Γ ⊢ T ⊆ C /\ (forall Γ', ⊢ Γ' -> Γ' ⊢ a_mem H x : T).
@@ -779,42 +784,20 @@ Proof.
   remember (a_mem H x) as M eqn:EM.
   revert H p x Hp EM.
   induction HM; intros Hm pm xm Hpm EMm; subst; try discriminate; try (injection EMm as <- <-).
-  - (** At its canonical type: the type is closed, as it is at [⋅], and the
-        member is typed in any context by [member_wf]. *)
-    assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
-    assert (HA : exp_scoped 0 A).
-    { pose proof (mt_chain_ctx _ _ _ _ nil _ _ _ Hpm H2) as Hm0.
-      exact (proj1 (member_type_scoped _ _) _ _ _ _ Hm0 (wf_gctx_closed _ _ _ HΓ) I
-               (mod_qname_scoped _ _ _ Hpm)). }
-    exists A; split; [ exact HA | split; [ eapply wf_subtyp_refl'; mauto 3 |] ].
-    intros Γ' HΓ'.
-    assert (HH' : gc_deps ⍮ gc_stack ⍮ Γ' ⊢ᵐ H ≈ H) by (eapply chain_wf_any_ctx; eassumption).
-    assert (Hm' : member_type gc_deps gc_stack Γ' H (x :: nil) (mr_term A))
-      by (eapply mt_chain_ctx; eassumption).
-    destruct (proj1 member_wf _ _ _ _ Hm' HH' ltac:(intros _; discriminate)) as ([j HAj] & HMu & _).
-    destruct (HMu eq_refl) as [M' [HM' HM'A]].
-    eapply wf_mem; [ eapply mod_qname_noargs; eassumption | exact HH' | exact Hm' | exact HAj | exact HM' | exact HM'A ].
-  - (** A chain from a unit has no arguments. *)
-    rewrite (mod_qname_spine _ _ Hpm) in *; congruence.
-  - exists A; split; [ eapply wf_gc_resolve_type_closed; eassumption |].
-    destruct (wf_glob_typ _ _ _ _ _ _ _ _ ltac:(eassumption) ltac:(eassumption)) as [j ?].
-    split; [ eapply wf_subtyp_refl'; mauto 3 |].
-    intros Γ' HΓ'; eapply wf_mem_glob; [ exact HΓ' | exact H1 | exact H2 ].
-  - (** The module of an inductive type at a path: its type former. *)
-    match goal with Hl : ind_lookup _ _ _ = Some ?D, HΓ : ⊢ _ |- _ =>
-      destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc];
-      destruct (ind_ty_typed _ _ _ _ HD Hc HΓ) as [j Hj] end.
-    exists (ind_ty D); split; [ apply decl_closed_ind_ty; exact Hc |].
-    split; [ eapply wf_subtyp_refl'; mauto 3 |].
-    intros Γ' HΓ'; eapply wf_mem_glob_ind; [ exact HΓ' | exact H1 | exact H2 ].
-  - (** An inductive alias: its type is closed. *)
-    match goal with Hl : ind_alias_lookup _ _ _ = Some _, Hd : ind_lookup _ _ _ = Some _, HΓ : wf_ctx _ _ _ |- _ =>
-      destruct (wf_ind_alias _ _ _ _ _ _ _ HΓ Hl) as (D' & HD' & _ & [j Hj] & _);
-      rewrite Hd in HD'; injection HD' as <-;
-      pose proof (proj1 (wf_ind_alias_closed _ _ _ _ _ _ _ _ HΓ Hl Hd)) as Hc end.
-    eexists; split; [ exact Hc |].
-    split; [ eapply wf_subtyp_refl'; apply wf_exp_eq_refl; exact Hj |].
-    intros Γ' HΓ'; eapply wf_mem_glob_ind_alias; [ exact HΓ' | exact H1 | exact H2 | exact H3 ].
+  - (** The type the member is looked up at: closed, as the lookup reads
+        nothing of the context. *)
+    match goal with HH : _ ⍮ _ ⍮ _ ⊢ᵐ ?H0 ≈ ?H0, Hd : mdenote _ _ _ (me_mem ?H0 ?y) ?R, Ht : ds_ty _ _ ?R = Some ?A0,
+                    HA0 : _ ⊢ ?A0 : Typeω@_ |- _ =>
+      pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg;
+      pose proof (wf_gstack_closed _ _ Hg) as Hc;
+      assert (HHs : modexp_scoped 0 (me_mem H0 y)) by (cbn; exact (mod_qname_scoped _ _ _ Hpm));
+      assert (HA : exp_scoped 0 A0)
+        by (pose proof (proj1 (mdenote_scoped_all _ _ Hc) _ _ _ Hd 0 ltac:(intros ? ? Hx; lia) HHs) as HR;
+            exact (ds_ty_scoped _ _ _ _ _ Hc HR Ht));
+      exists A0; split; [ exact HA | split; [ eapply wf_subtyp_refl'; apply wf_exp_eq_refl; exact HA0 |] ];
+      intros Γ' HΓ';
+      eapply wf_mem_desc; [ eapply path_wf_any_ctx; [ exact Hpm | exact HH | exact HΓ' ] | | exact Ht ];
+      exact (mdenote_closed_any _ _ Hc _ _ _ Γ' Hd HHs) end.
   - match goal with IH : _ = _ -> _ = _ -> forall _ _ _, _ -> _ -> _ |- _ =>
       destruct (IH eq_refl eq_refl _ _ _ Hpm eq_refl) as (T & HT & HTs & HT') end.
     exists T; split; [ exact HT | split; [ etransitivity; eassumption | exact HT' ] ].
@@ -864,7 +847,7 @@ Proof.
     destruct (exp_eq_pi_inversion Hb) as [HB1 HB2].
     assert (HAB1 : Γ ⊢ A ≈ B1 : Typeω@(max k1 k3))
       by (eapply exp_eq_trans_typ_max; [ exact HA1 | exact Hab ]).
-    assert (HId : Γ ▹ A ⊢s Id : Γ ▹ B1) by (eapply wf_sub_id_extend_eq'; symmetry; exact HAB1).
+    assert (HId : Γ ▹ A ⊢ˢ Id : Γ ▹ B1) by (eapply wf_sub_id_extend_eq'; symmetry; exact HAB1).
     split; [ eexists; eapply exp_eq_trans_typ_max; [ exact HAB1 | exact HB1 ] |].
     etransitivity; [ eapply wf_subtyp_refl'; exact HA2 |].
     etransitivity; [ eapply ctxsub_subtyp; [ exact HId | exact Hsub ] |].
@@ -1197,12 +1180,12 @@ Proof.
       assert (HΓf' : ⊢ (tele_wk (ce_ass A' :: Δ) ↑ ++ Γ ▹ A)%list) by (gen_presups; assumption).
       assert (HBs : ((Δ ++ Γ) ▹ A')%list ⊢ B' : Typeω@j)
         by (eapply (IHB (ce_ass A' :: Δ) _ (S j)); [ exact Hass' | exact HΓf' | apply wf_typ, HΓs' | exact HB ]).
-      eapply wf_exp_subtyp; [ apply wf_pi; eassumption | exact HT |].
+      eapply wf_exp_subtyp; [ apply wf_pi_large; eassumption | exact HT |].
       eapply subtyp_strengthen_closed; [ exact Hass | exact HΓf | apply wf_typ, HΓs | exact HT | reflexivity | exact Hs ].
     + (** A small [Π] at a long level: the short type is a universe
           ([typ_univ_shape_strengthen]), and the parts are checked against it. *)
       assert (HΓf1 : ⊢ ((tele_wk Δ ↑ ++ Γ ▹ A) ▹ (A' : exp)[wk_qn (length Δ) ↑]ʷ)%list) by (gen_presups; assumption).
-      assert (Hw1 : ((tele_wk Δ ↑ ++ Γ ▹ A) ▹ (A' : exp)[wk_qn (length Δ) ↑]ʷ)%list ⊢w ↑ : (tele_wk Δ ↑ ++ Γ ▹ A)%list)
+      assert (Hw1 : ((tele_wk Δ ↑ ++ Γ ▹ A) ▹ (A' : exp)[wk_qn (length Δ) ↑]ʷ)%list ⊢ʷ ↑ : (tele_wk Δ ↑ ++ Γ ▹ A)%list)
         by mauto 2.
       assert (HL1 : ((tele_wk Δ ↑ ++ Γ ▹ A) ▹ (A' : exp)[wk_qn (length Δ) ↑]ʷ)%list ⊢ L[↑]ʷ : Level@nL)
         by (eapply (wk_preserves_exp _ _ _ _ Level@nL); eassumption).
@@ -1223,7 +1206,7 @@ Proof.
           by (eapply wf_exp_subtyp; [ exact HB | apply wf_typ, HΓf1 | eapply wf_subtyp_small_large; eassumption ]).
         assert (HBs : ((Δ ++ Γ) ▹ A')%list ⊢ B' : Typeω@j)
           by (eapply (IHB (ce_ass A' :: Δ) _ (S j)); [ exact Hass' | exact HΓf1 | apply wf_typ, HΓs' | exact HBj ]).
-        eapply wf_exp_subtyp; [ apply wf_pi; eassumption | exact HT |].
+        eapply wf_exp_subtyp; [ apply wf_pi_large; eassumption | exact HT |].
         eapply wf_subtyp_refl'; symmetry; exact HTj.
       * assert (HTM : (Δ ++ Γ)%list ⊢ T ≈ (nf_univ_of M : exp) : Typeω@i) by (eapply soundness_ty'; eassumption).
         cbn [nf_to_exp nf_univ_of] in HTM.
@@ -1252,7 +1235,7 @@ Proof.
         assert (HBs : ((Δ ++ Γ) ▹ A')%list ⊢ B' : Type⟨Mx[↑]ʷ⟩)
           by (eapply (IHB (ce_ass A' :: Δ) _ 0);
               [ exact Hass' | exact HΓf1 | eapply (wf_univ_large_tm (i := 0)); eassumption | exact HBM ]).
-        eapply wf_exp_subtyp; [ eapply wf_pi_small; eassumption | exact HT |].
+        eapply wf_exp_subtyp; [ eapply wf_pi_lvl; eassumption | exact HT |].
         eapply wf_subtyp_refl'; symmetry; exact HTM.
   - (** A function: its type is a [Π] in the short context ([typ_pi_shape_strengthen]),
         whose domain is the function's, and the body is checked against its codomain. *)
@@ -1291,7 +1274,7 @@ Proof.
     eapply wf_exp_subtyp; [ eapply wf_fn; [ exact HAs | exact HMs ] | exact HT |].
     eapply wf_subtyp_refl'.
     eapply exp_eq_trans_typ_max; [| symmetry; exact HTCD ].
-    eapply wf_exp_eq_pi_cong; [ exact HA'm | exact HACs | eapply wf_exp_eq_refl, lift_exp_ge; [| exact HDs ]; lia ].
+    eapply wf_exp_eq_pi_cong_large; [ exact HA'm | exact HACs | eapply wf_exp_eq_refl, lift_exp_ge; [| exact HDs ]; lia ].
   - (** The type former applied. *)
     intros p Ms IHMs; exact (exp_str_at _ _ _ (apps_str _ _ _ _ IHMs (ind_str _ _ p))).
   - (** A constructor applied. *)
@@ -1333,7 +1316,7 @@ Proof.
     destruct (typ_ind_shape _ _ _ _ _ HT0 HRs) as (D' & PsS & Hl' & HSl & HSt & HTeq & _).
     assert (D' = D) as -> by congruence.
     assert (HuS : (Δ ++ Γ)%list ⊢ u : apps (a_ind p) PsS) by (eapply wf_conv'; [ exact HuT | exact HTeq ]).
-    assert (Hwk : Lf ⊢w φ : (Δ ++ Γ)%list) by (apply wf_wk_qn; [ exact HΓs | exact HΓf ]).
+    assert (Hwk : Lf ⊢ʷ φ : (Δ ++ Γ)%list) by (apply wf_wk_qn; [ exact HΓs | exact HΓf ]).
     (** The long parameters are the short ones, weakened. *)
     pose proof (short_wk_exp_eq _ _ _ _ _ _ HΓf HTeq) as HTeqL; rewrite wk_apps_ind in HTeqL.
     assert (HsubL : Lf ⊢ apps (a_ind p) (List.map (fun P => P[φ]ʷ) PsS) ⊆ apps (a_ind p) PsL)
@@ -1426,7 +1409,7 @@ Proof.
     + apply (f_equal (@List.rev _)) in Er; rewrite List.rev_involutive in Er; cbn in Er; subst ch.
       change (qname_mk fp (List.rev pre ++ x :: nil)) with (qname_app (qname_mk fp (List.rev pre)) (x :: nil)) in *.
       rewrite qname_term_snoc in *.
-      destruct (chain_mem_any_ctx _ _ _ _ _ (qname_mod_qname _) HW) as (T & HTc & HsT & Hany).
+      destruct (path_mem_any_ctx _ _ _ _ _ (qname_mod_qname _) HW) as (T & HTc & HsT & Hany).
       pose proof (Hany _ HΓs) as HTs.
       assert (exists j, (Δ ++ Γ)%list ⊢ T : Typeω@j) as [j HTj] by (gen_presups; eexists; eassumption).
       exists T, j; split; [ exact HTs | split; [ exact HTj | rewrite exp_closed_wk by exact HTc; exact HsT ] ].

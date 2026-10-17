@@ -32,7 +32,7 @@ Section Fixed_GCtx.
 
 Lemma rel_exp_of_typ_sub_simple : forall {Γ Δ σ σ' A A'} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A' : Typeω@i ->
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ env_relΓ ->
@@ -51,7 +51,7 @@ Qed.
 
 Lemma rel_exp_under_ctx_sub_simple : forall {Γ Δ σ σ' A M M' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ M ≈ M' : A ->
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ env_relΓ ->
@@ -95,7 +95,7 @@ Qed.
 (** The canonical context PER of a substituted definition entry. *)
 Lemma per_ctx_env_of_def_sub : forall {Γ Δ σ σ' A} {i : nat} {M env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ A : Typeω@i ->
     Δ ⊨ M : A ->
     EF Γ ▸ A[σ] ≔ M[σ] ≈ Γ ▸ A[σ] ≔ M[σ] ∈ per_ctx_env
@@ -140,9 +140,9 @@ Lemma rel_sub_under_ctx_into_def : forall {Γ Δ A} {i : nat} {M σ σ' env_rel�
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Δ ⊨ A : Typeω@i ->
     Δ ⊨ M : A ->
-    Γ ⊨s σ ≈ σ' : Δ ▹ A ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ▹ A ->
     (forall ρ ρσ, Dom ρ ≈ ρ ∈ env_relΓ -> ⟦ σ ⟧s ρ ↘ ρσ -> def_tie A M ρσ) ->
-    Γ ⊨s σ ≈ σ' : Δ ▸ A ≔ M.
+    Γ ⊨ˢ σ ≈ σ' : Δ ▸ A ≔ M.
 Proof.
   intros * HΓ HA HM [env_relΓ' [HΓ' [env_relΔA [HΔA Hσ]]]] Htie.
   pose proof (rel_exp_of_typ_inversion_simple HA) as [env_relΔ [HΔ HAs]].
@@ -174,10 +174,10 @@ Qed.
 (** [σ,,M[σ]] into [Δ ▸ A ≔ M]: the tie is the left commutation of [M]
     along [σ]. *)
 Lemma rel_sub_under_ctx_extend_sub_def : forall {Γ Δ σ σ' A} {i : nat} {M M'},
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ A : Typeω@i ->
     Δ ⊨ M ≈ M' : A ->
-    Γ ⊨s σ,,M[σ] ≈ σ',,M'[σ'] : Δ ▸ A ≔ M.
+    Γ ⊨ˢ σ,,M[σ] ≈ σ',,M'[σ'] : Δ ▸ A ≔ M.
 Proof.
   intros * Hσj HA HM.
   pose proof Hσj as [env_relΓ [HΓ _]].
@@ -233,10 +233,10 @@ Qed.
     is the tie at [ρ] moved along the left commutation of [M] at [σ], read at
     the tail [ρ↯]. *)
 Lemma rel_sub_under_ctx_q_def : forall {Γ Δ σ σ' A} {i : nat} {M},
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ A : Typeω@i ->
     Δ ⊨ M : A ->
-    Γ ▸ A[σ] ≔ M[σ] ⊨s q σ ≈ q σ' : Δ ▸ A ≔ M.
+    Γ ▸ A[σ] ≔ M[σ] ⊨ˢ q σ ≈ q σ' : Δ ▸ A ≔ M.
 Proof.
   intros * Hσj HA HM.
   pose proof Hσj as [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]].

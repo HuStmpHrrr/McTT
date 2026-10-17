@@ -11,10 +11,10 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 (** A Kripke weakening is a substitution, in the form the gluing proofs use.
-    It is not [Γ ⊢w φ : Δ]; see [Definitions]. *)
+    It is not [Γ ⊢ʷ φ : Δ]; see [Definitions]. *)
 Lemma kripke_escape : forall Γ Δ φ,
-    Γ ⊢k φ : Δ ->
-    Γ ⊢s (ι φ) : Δ.
+    Γ ⊢ᵏ φ : Δ ->
+    Γ ⊢ˢ (ι φ) : Δ.
 Proof.
   intros * H; induction H;
     saturate_ctx_sub;
@@ -36,10 +36,10 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 
-Lemma kripke_id : forall Γ, ⊢ Γ -> Γ ⊢k wk_id : Γ.
+Lemma kripke_id : forall Γ, ⊢ Γ -> Γ ⊢ᵏ wk_id : Γ.
 Proof. intros; eapply kwk_id; [ mauto 2 | reflexivity ]. Qed.
 
-Lemma kripke_shift : forall Γ A, ⊢ Γ ▹ A -> Γ ▹ A ⊢k ↑ : Γ.
+Lemma kripke_shift : forall Γ A, ⊢ Γ ▹ A -> Γ ▹ A ⊢ᵏ ↑ : Γ.
 Proof.
   intros * H; eapply kwk_shift;
     [ apply kripke_id; eassumption
@@ -48,7 +48,7 @@ Proof.
 Qed.
 
 (** Past a definition entry, by forgetting the definition. *)
-Lemma kripke_shift_def : forall Γ A M, ⊢ Γ ▸ A ≔ M -> Γ ▸ A ≔ M ⊢k ↑ : Γ.
+Lemma kripke_shift_def : forall Γ A M, ⊢ Γ ▸ A ≔ M -> Γ ▸ A ≔ M ⊢ᵏ ↑ : Γ.
 Proof.
   intros * H; eapply kwk_shift;
     [ apply kripke_id; eassumption
@@ -57,7 +57,7 @@ Proof.
 Qed.
 
 (** Past a module slot. *)
-Lemma kripke_shift_mod : forall Γ U, ⊢ Γ ▹ₘ U -> Γ ▹ₘ U ⊢k ↑ : Γ.
+Lemma kripke_shift_mod : forall Γ U, ⊢ Γ ▹ₘ U -> Γ ▹ₘ U ⊢ᵏ ↑ : Γ.
 Proof.
   intros * H; eapply kwk_shift;
     [ apply kripke_id; eassumption
@@ -70,9 +70,9 @@ Hint Resolve kripke_id kripke_shift kripke_shift_def kripke_shift_mod : mctt.
 (** The codomain may always be coarsened: this is the closure property the
     subtyping cases need, and the reason for the refinement premise. *)
 Lemma kripke_ctxsub : forall Γ Δ Δ' φ,
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Δ ⊆ Δ' ->
-    Γ ⊢k φ : Δ'.
+    Γ ⊢ᵏ φ : Δ'.
 Proof.
   intros * H ?; destruct H.
   - eapply kwk_id; [ etransitivity; eassumption | eassumption ].
@@ -82,9 +82,9 @@ Qed.
 Hint Resolve kripke_ctxsub : mctt.
 
 Lemma kripke_compose : forall Γ Δ Θ φ ψ,
-    Γ ⊢k ψ : Δ ->
-    Δ ⊢k φ : Θ ->
-    Γ ⊢k φ ⊙ ψ : Θ.
+    Γ ⊢ᵏ ψ : Δ ->
+    Δ ⊢ᵏ φ : Θ ->
+    Γ ⊢ᵏ φ ⊙ ψ : Θ.
 Proof.
   intros * Hψ Hφ; revert Γ ψ Hψ.
   induction Hφ; intros ? ? Hψ;
@@ -102,7 +102,7 @@ Hint Resolve kripke_compose : mctt.
     lengths. The gluing model needs this because readback turns a de Bruijn
     level into an index by counting from the length of the target context. *)
 Lemma kripke_shiftn : forall Γ Δ φ,
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     length Δ <= length Γ /\ wk_eq φ (wk_shiftn (length Γ - length Δ)).
 Proof.
   intros * H; induction H as [ | ? ? ? ? ? ? ? [Hle Hψ] ];
@@ -116,7 +116,7 @@ Qed.
 
 Corollary kripke_preserves_exp : forall Γ Δ A M φ,
     Δ ⊢ M : A ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ M[φ]ʷ : A[φ]ʷ.
 Proof.
   intros * ? ?%kripke_escape.
@@ -125,7 +125,7 @@ Qed.
 
 Corollary kripke_preserves_exp_eq : forall Γ Δ A M M' φ,
     Δ ⊢ M ≈ M' : A ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : A[φ]ʷ.
 Proof.
   intros * ? ?%kripke_escape.
@@ -134,7 +134,7 @@ Qed.
 
 Corollary kripke_preserves_subtyp : forall Γ Δ A A' φ,
     Δ ⊢ A ⊆ A' ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ ⊆ A'[φ]ʷ.
 Proof.
   intros * ? ?%kripke_escape.
@@ -149,7 +149,7 @@ Hint Resolve kripke_preserves_exp kripke_preserves_exp_eq kripke_preserves_subty
 
 Corollary kripke_preserves_typ : forall Γ Δ A φ i,
     Δ ⊢ A : Typeω@i ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ : Typeω@i.
 Proof.
   intros.
@@ -159,7 +159,7 @@ Qed.
 
 Corollary kripke_preserves_typ_eq : forall Γ Δ A A' φ i,
     Δ ⊢ A ≈ A' : Typeω@i ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Typeω@i.
 Proof.
   intros.
@@ -172,7 +172,7 @@ Qed.
 
 Corollary kripke_preserves_level : forall Γ Δ M φ n,
     Δ ⊢ M : Level@n ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ M[φ]ʷ : Level@n.
 Proof.
   intros.
@@ -182,7 +182,7 @@ Qed.
 
 Corollary kripke_preserves_level_eq : forall Γ Δ M M' φ n,
     Δ ⊢ M ≈ M' : Level@n ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : Level@n.
 Proof.
   intros.
@@ -194,7 +194,7 @@ Qed.
 
 Corollary kripke_preserves_True : forall Γ Δ M φ,
     Δ ⊢ M : ⊤ ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ M[φ]ʷ : ⊤.
 Proof.
   intros.
@@ -204,7 +204,7 @@ Qed.
 
 Corollary kripke_preserves_False : forall Γ Δ M φ,
     Δ ⊢ M : ⊥ ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ M[φ]ʷ : ⊥.
 Proof.
   intros.
@@ -214,7 +214,7 @@ Qed.
 
 Corollary kripke_preserves_False_eq : forall Γ Δ M M' φ,
     Δ ⊢ M ≈ M' : ⊥ ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : ⊥.
 Proof.
   intros.
@@ -229,7 +229,7 @@ Proof. intros [] ?; reflexivity. Qed.
 
 Corollary kripke_preserves_exp_univ : forall Γ Δ A φ u,
     Δ ⊢ A : ulvl_tm u ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ : ulvl_tm u.
 Proof.
   intros.
@@ -239,7 +239,7 @@ Qed.
 
 Corollary kripke_preserves_exp_eq_univ : forall Γ Δ A A' φ u,
     Δ ⊢ A ≈ A' : ulvl_tm u ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : ulvl_tm u.
 Proof.
   intros.
@@ -254,7 +254,7 @@ Hint Resolve kripke_preserves_exp_univ kripke_preserves_exp_eq_univ : mctt.
     own transports — again invisible to [eauto]. *)
 Corollary kripke_preserves_univ_eq_True : forall Γ Δ A φ u,
     Δ ⊢ A ≈ ⊤ : ulvl_tm u ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ ≈ ⊤ : ulvl_tm u.
 Proof.
   intros; assert (Γ ⊢ A[φ]ʷ ≈ (⊤ : exp)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
@@ -262,7 +262,7 @@ Qed.
 
 Corollary kripke_preserves_univ_eq_False : forall Γ Δ A φ u,
     Δ ⊢ A ≈ ⊥ : ulvl_tm u ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ ≈ ⊥ : ulvl_tm u.
 Proof.
   intros; assert (Γ ⊢ A[φ]ʷ ≈ (⊥ : exp)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
@@ -270,7 +270,7 @@ Qed.
 
 Corollary kripke_preserves_univ_eq_typ : forall Γ Δ A φ u j,
     Δ ⊢ A ≈ Typeω@j : ulvl_tm u ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ ≈ Typeω@j : ulvl_tm u.
 Proof.
   intros; assert (Γ ⊢ A[φ]ʷ ≈ (Typeω@j)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
@@ -278,7 +278,7 @@ Qed.
 
 Corollary kripke_preserves_univ_eq_suniv : forall Γ Δ A φ u t,
     Δ ⊢ A ≈ Type⟨t⟩ : ulvl_tm u ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ ≈ Type⟨t[φ]ʷ⟩ : ulvl_tm u.
 Proof.
   intros; assert (Γ ⊢ A[φ]ʷ ≈ (Type⟨t⟩)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
@@ -286,7 +286,7 @@ Qed.
 
 Corollary kripke_preserves_univ_eq_level : forall Γ Δ A φ u,
     Δ ⊢ A ≈ Level : ulvl_tm u ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ ≈ Level : ulvl_tm u.
 Proof.
   intros; assert (Γ ⊢ A[φ]ʷ ≈ (Level : exp)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
@@ -302,7 +302,7 @@ Hint Resolve kripke_preserves_univ_eq_True
 
 Corollary kripke_preserves_typ_eq_typ : forall Γ Δ A φ i j,
     Δ ⊢ A ≈ Typeω@j : Typeω@i ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ ≈ Typeω@j : Typeω@i.
 Proof.
   intros.
@@ -312,7 +312,7 @@ Qed.
 
 Corollary kripke_preserves_typ_eq_suniv : forall Γ Δ A φ i t,
     Δ ⊢ A ≈ Type⟨t⟩ : Typeω@i ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ ≈ Type⟨t[φ]ʷ⟩ : Typeω@i.
 Proof.
   intros.
@@ -324,7 +324,7 @@ Qed.
     small universe itself. *)
 Corollary kripke_preserves_exp_eq_suniv : forall Γ Δ A A' φ t,
     Δ ⊢ A ≈ A' : Type⟨t⟩ ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type⟨t[φ]ʷ⟩.
 Proof.
   intros.
@@ -334,7 +334,7 @@ Qed.
 
 Corollary kripke_preserves_typ_eq_level : forall Γ Δ A φ i n,
     Δ ⊢ A ≈ Level@n : Typeω@i ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ ≈ Level@n : Typeω@i.
 Proof.
   intros.
@@ -344,7 +344,7 @@ Qed.
 
 Corollary kripke_preserves_typ_eq_True : forall Γ Δ A φ i,
     Δ ⊢ A ≈ ⊤ : Typeω@i ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ ≈ ⊤ : Typeω@i.
 Proof.
   intros.
@@ -354,7 +354,7 @@ Qed.
 
 Corollary kripke_preserves_typ_eq_False : forall Γ Δ A φ i,
     Δ ⊢ A ≈ ⊥ : Typeω@i ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ⊢ A[φ]ʷ ≈ ⊥ : Typeω@i.
 Proof.
   intros.
@@ -376,8 +376,8 @@ Hint Resolve kripke_preserves_typ kripke_preserves_typ_eq
 
 Corollary kripke_q_escape : forall Γ Δ A φ i,
     Δ ⊢ A : Typeω@i ->
-    Γ ⊢k φ : Δ ->
-    Γ ▹ A[φ]ʷ ⊢s (ι (wk_q φ)) : Δ ▹ A.
+    Γ ⊢ᵏ φ : Δ ->
+    Γ ▹ A[φ]ʷ ⊢ˢ (ι (wk_q φ)) : Δ ▹ A.
 Proof.
   intros * ? ?%kripke_escape.
   rewrite sb_q_of_wk, <- (exp_sub_of_wk A φ); mauto 3.
@@ -386,7 +386,7 @@ Qed.
 Corollary kripke_preserves_exp_q : forall Γ Δ A B M φ i,
     Δ ▹ A ⊢ M : B ->
     Δ ⊢ A : Typeω@i ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ▹ A[φ]ʷ ⊢ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
 Proof.
   intros.
@@ -397,7 +397,7 @@ Qed.
 Corollary kripke_preserves_typ_q : forall Γ Δ A B φ i j,
     Δ ▹ A ⊢ B : Typeω@j ->
     Δ ⊢ A : Typeω@i ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ▹ A[φ]ʷ ⊢ B[wk_q φ]ʷ : Typeω@j.
 Proof.
   intros.
@@ -411,7 +411,7 @@ Qed.
 Corollary kripke_preserves_univ_q : forall Γ Δ A B φ u v,
     Δ ▹ A ⊢ B : ulvl_tm v ->
     Δ ⊢ A : ulvl_tm u ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ▹ A[φ]ʷ ⊢ B[wk_q φ]ʷ : ulvl_tm v.
 Proof.
   intros * HB HA Hφ.
@@ -430,7 +430,7 @@ Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q kripke_preserves_univ
 Corollary kripke_q_var_eq : forall Γ Δ A B M φ i,
     Δ ▹ A ⊢ M : B ->
     Δ ⊢ A : Typeω@i ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ▹ A[φ]ʷ ⊢ M[ι (φ ⊙ ↑),,#0] ≈ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
 Proof.
   intros * HM HA Hφ.
@@ -438,24 +438,26 @@ Proof.
   apply wf_exp_eq_sym.
   pose proof (kripke_q_escape _ _ _ _ _ HA Hφ) as Hq.
   pose proof (wf_sub_dom _ _ _ _ _ Hq) as HC.
-  assert (Hk : Γ ▹ A[φ]ʷ ⊢k φ ⊙ ↑ : Δ) by mauto 3.
+  assert (Hk : Γ ▹ A[φ]ʷ ⊢ᵏ φ ⊙ ↑ : Δ) by mauto 3.
   pose proof (kripke_escape _ _ _ Hk) as Hs.
-  assert (Hs' : Γ ▹ A[φ]ʷ ⊢s ι (φ ⊙ ↑),,#0 : Δ ▹ A).
+  assert (Hs' : Γ ▹ A[φ]ʷ ⊢ˢ ι (φ ⊙ ↑),,#0 : Δ ▹ A).
   { eapply wf_sub_extend; [ exact Hs | exact HA |].
     rewrite exp_sub_of_wk, <- exp_wk_wk; mauto 3. }
   eapply sub_eq_preserves_exp; [ exact HM |].
-  constructor; [ exact Hq | exact Hs' |].
-  intros x C Hx.
-  replace (#x[ι (φ ⊙ ↑),,#0]) with (#x[ι wk_q φ]) by (destruct x; reflexivity).
-  apply wf_exp_eq_refl.
-  exact (wf_sub_apply _ _ _ _ _ Hq _ _ Hx).
+  constructor; [ exact Hq | exact Hs' | |].
+  - intros x C Hx.
+    replace (#x[ι (φ ⊙ ↑),,#0]) with (#x[ι wk_q φ]) by (destruct x; reflexivity).
+    apply wf_exp_eq_refl.
+    exact (wf_sub_apply _ _ _ _ _ Hq _ _ Hx).
+  - intros x U Hx; inversion Hx; subst.
+    exact (wf_sub_mod_image _ _ _ _ _ _ _ Hq Hx).
 Qed.
 
 (** The same with the domain in any universe. *)
 Corollary kripke_q_var_eq_univ : forall Γ Δ A B M φ u,
     Δ ▹ A ⊢ M : B ->
     Δ ⊢ A : ulvl_tm u ->
-    Γ ⊢k φ : Δ ->
+    Γ ⊢ᵏ φ : Δ ->
     Γ ▹ A[φ]ʷ ⊢ M[ι (φ ⊙ ↑),,#0] ≈ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
 Proof.
   intros * HM HA Hφ.
@@ -470,7 +472,7 @@ Corollary shift_var_eq : forall Δ A B M u,
     Δ ▹ A ⊢ M[ι ↑,,#0] ≈ M : B.
 Proof.
   intros * HM HA.
-  assert (Hk : Δ ⊢k wk_id : Δ) by (apply kripke_id; mauto 2).
+  assert (Hk : Δ ⊢ᵏ wk_id : Δ) by (apply kripke_id; mauto 2).
   pose proof (kripke_q_var_eq_univ _ _ _ _ _ _ _ HM HA Hk) as H.
   rewrite exp_wk_id, !(exp_wk_id_ext _ _ wk_q_id) in H.
   replace (M[ι ↑,,#0]) with (M[ι (wk_id ⊙ ↑),,#0]); [ exact H |].
@@ -479,10 +481,10 @@ Qed.
 
 (** Both presuppositions, as [saturate_sub] supplies them for [wf_sub]: not
     hints, or [eauto] would cycle against the context introduction rules. *)
-Corollary kripke_dom : forall Γ Δ φ, Γ ⊢k φ : Δ -> ⊢ Γ.
+Corollary kripke_dom : forall Γ Δ φ, Γ ⊢ᵏ φ : Δ -> ⊢ Γ.
 Proof. intros * ?%kripke_escape; eapply wf_sub_dom; eassumption. Qed.
 
-Corollary kripke_cod : forall Γ Δ φ, Γ ⊢k φ : Δ -> ⊢ Δ.
+Corollary kripke_cod : forall Γ Δ φ, Γ ⊢ᵏ φ : Δ -> ⊢ Δ.
 Proof. intros * ?%kripke_escape; eapply wf_sub_cod; eassumption. Qed.
 
 End Fixed_GCtx.

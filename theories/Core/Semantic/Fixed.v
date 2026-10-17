@@ -22,9 +22,9 @@ Module Fixed_Notations.
   Notation "Γ ⊢ M ≈ M' : A" := (wf_exp_eq gc_deps gc_stack Γ A M M')
     (at level 70, M at level 69, M' at level 69, A at level 69) : type_scope.
   Notation "Γ ⊢ A ⊆ A'" := (wf_subtyp gc_deps gc_stack Γ A A') (at level 70, A at level 69, A' at level 69) : type_scope.
-  Notation "Γ ⊢w φ : Δ" := (wf_wk gc_deps gc_stack Γ Δ φ) (at level 70, φ constr at level 60, Δ at level 69) : type_scope.
-  Notation "Γ ⊢s σ : Δ" := (wf_sub gc_deps gc_stack Γ Δ σ) (at level 70, σ at level 69, Δ at level 69) : type_scope.
-  Notation "Γ ⊢s σ ≈ σ' : Δ" := (wf_sub_eq gc_deps gc_stack Γ Δ σ σ')
+  Notation "Γ ⊢ʷ φ : Δ" := (wf_wk gc_deps gc_stack Γ Δ φ) (at level 70, φ constr at level 60, Δ at level 69) : type_scope.
+  Notation "Γ ⊢ˢ σ : Δ" := (wf_sub gc_deps gc_stack Γ Δ σ) (at level 70, σ at level 69, Δ at level 69) : type_scope.
+  Notation "Γ ⊢ˢ σ ≈ σ' : Δ" := (wf_sub_eq gc_deps gc_stack Γ Δ σ σ')
     (at level 70, σ at level 69, σ' at level 69, Δ at level 69) : type_scope.
   (** Not [⊢ Δ ⊆ Γ], which would not parse alongside [⊢ Γ] and the long forms. *)
   Notation "Δ ⊆ Γ" := (ctx_sub gc_deps gc_stack Δ Γ) (at level 70, Γ at level 69) : type_scope.

@@ -17,6 +17,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Command.
 From Mctt.Core.Syntactic.System Require Export MemberLemmas.
+From Mctt.Core.Syntactic.System Require Import GlobalPaths.
 Import Syntax_Notations.
 #[local] Open Scope list_scope.
 
@@ -30,20 +31,8 @@ Proof.
   fix IH 1; intros [| Φ y E0 | Φ c] ip E H; cbn in H |- *; try discriminate; [| exact (IH _ _ _ H) ].
   destruct ip as [| x ip']; [ discriminate |].
   destruct (String.eqb x y); [| exact (IH _ _ _ H) ].
-  destruct ip' as [| z ip''], E0 as [b pv A B | pm [Δ [Φ' | E']] | pv D Φ' | pv Δa pa Nsa]; try discriminate; auto;
+  destruct ip' as [| z ip''], E0 as [b pv A B | pm [Δ [? Φ' | E']] | pv ? D Φ' | pv Δa pa Nsa]; try discriminate; auto;
     exact (IH _ _ _ H).
-Qed.
-
-Lemma gm_entry_alias : forall Φ T x ip U r, gm_submodule T Φ x ip = Some (mr_alias U r) -> r <> nil ->
-    gm_entry Φ (x :: ip) = None.
-Proof.
-  fix IH 1; intros [| Φ y E0 | Φ c] * H Hr; cbn in H |- *; try discriminate; [| exact (IH _ _ _ _ _ _ H Hr) ].
-  destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ H Hr) ].
-  destruct E0 as [b pv A B | pm [Δ [Φ' | E']] | pv D Φ' | pv Δa pa Nsa]; try discriminate.
-  - destruct ip as [| z ip']; [ discriminate |]; exact (IH _ _ _ _ _ _ H Hr).
-  - injection H as _ <-; destruct ip as [| z ip']; [ contradiction | reflexivity ].
-  - destruct ip as [| z ip']; [ discriminate |]; exact (IH _ _ _ _ _ _ H Hr).
-  - injection H as _ <-; destruct ip as [| z ip']; [ contradiction | reflexivity ].
 Qed.
 
 Lemma gc_entry_resolve : forall Θ Ξ p E, gc_resolve Θ Ξ p = Some E -> gc_entry Θ Ξ p = Some E.
@@ -51,15 +40,6 @@ Proof.
   intros * H; unfold gc_resolve, gc_resolve_u, gc_entry, gc_entry_u in *.
   destruct (gs_find Ξ p) as [[U ip] |]; [ apply gm_entry_resolve; exact H |].
   destruct (gds_lookup Θ (q_unit p)); [ apply gm_entry_resolve; exact H | discriminate ].
-Qed.
-
-Lemma gc_entry_alias : forall Θ Ξ p U r, gc_module Θ Ξ p = Some (mr_alias U r) -> r <> nil ->
-    gc_entry Θ Ξ p = None.
-Proof.
-  intros * H Hr; unfold gc_module, gc_module_u, gc_entry, gc_entry_u in *; rewrite gs_find_tele_find.
-  destruct (gs_find_tele Ξ p) as [[[V [| x ip]] T] |]; cbn; [ discriminate | exact (gm_entry_alias _ _ _ _ _ _ H Hr) |].
-  destruct (gds_lookup Θ (q_unit p)); [| discriminate ].
-  destruct (q_chain p) as [| x ip]; cbn in H; [ discriminate | exact (gm_entry_alias _ _ _ _ _ _ H Hr) ].
 Qed.
 
 Lemma gc_entry_dsub : forall Θ1 Θ2 Ξ p E, Θ1 ⊑ Θ2 -> gc_entry Θ1 Ξ p = Some E -> gc_entry Θ2 Ξ p = Some E.
@@ -70,83 +50,95 @@ Proof.
   rewrite (Hs _ _ E1); exact H.
 Qed.
 
-Lemma mdecl_functional : forall Θ Ξ H ch qd pv, mdecl Θ Ξ H ch qd pv ->
-    forall qd' pv', mdecl Θ Ξ H ch qd' pv' -> qd = qd' /\ pv = pv'.
+(** A module of a unit read in a bigger set of dependencies. *)
+Lemma gc_unit_dsub : forall Θ1 Θ2 Ξ H r, Θ1 ⊑ Θ2 -> gc_unit Θ1 Ξ H = Some r -> gc_unit Θ2 Ξ H = Some r.
 Proof.
-  induction 1; intros * H2; inversion H2; subst.
-  all: try match goal with H1 : gc_module _ _ ?p = Some (mr_alias _ ?r), Hr : ?r <> nil, H2 : gc_entry _ _ ?p = Some _ |- _ =>
-         rewrite (gc_entry_alias _ _ _ _ _ H1 Hr) in H2; discriminate end.
-  all: try match goal with H1 : gc_entry _ _ ?p = Some _, H2 : gc_entry _ _ ?p = Some _ |- _ =>
-         rewrite H1 in H2; injection H2; intros; subst; split; reflexivity end.
-  all: try match goal with H1 : gc_module _ _ ?p = Some _, H2 : gc_module _ _ ?p = Some _ |- _ =>
-         rewrite H1 in H2; injection H2; intros; subst end.
-  all: eauto.
+  intros * Hs H0; unfold gc_unit in *.
+  destruct (mod_qname H) as [mp |]; [| discriminate ].
+  destruct (gs_find_tele Ξ mp) as [[[U ip] T0] |]; [ exact H0 |].
+  destruct (q_chain mp); [| discriminate ].
+  destruct (gds_lookup Θ1 (q_unit mp)) as [V |] eqn:E1; [| discriminate ].
+  rewrite (Hs _ _ E1); exact H0.
+Qed.
+
+(** An open frame below another is no entry of it. *)
+Lemma gc_unit_mem_entry_none : forall Θ Ξ H z T Φ p,
+    gc_unit Θ Ξ (me_mem H z) = Some (T, Φ) -> mod_qname (me_mem H z) = Some p -> gc_entry Θ Ξ p = None.
+Proof.
+  intros * Hu Hp.
+  destruct (gc_unit_cases _ _ _ _ _ Hu) as (mp & Hq & [Hf | (_ & Hc & _)]); rewrite Hp in Hq; injection Hq as <-.
+  - unfold gc_frame in Hf; unfold gc_entry, gc_entry_u; rewrite gs_find_tele_find.
+    destruct (gs_find_tele Ξ p) as [[[[Δ [sm Φ0 | E]] [| x ip]] T0] |]; try discriminate;
+      try (destruct sm; discriminate); cbn [option_map]; apply gm_entry_nil.
+  - cbn in Hp; destruct (mod_qname H) as [p0 |]; [| discriminate ]; injection Hp as <-; cbn in Hc.
+    apply List.app_eq_nil in Hc as [_ Hc]; discriminate.
+Qed.
+
+(** A module that is a loaded unit or an open frame is stored at its own
+    path, and nowhere else. *)
+Lemma msite_unit : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall H pq, msite Θ Ξ H pq ->
+    forall p T Φ, mod_qname H = Some p -> gc_unit Θ Ξ H = Some (T, Φ) -> pq = p.
+Proof.
+  intros Θ Ξ Hg; induction 1 as [H p0 T0 Φ0 Hq Hu | H pq z E Hs IH He _ | H pq z E E' pq' Hs IH He _ _ _ | H N pq _ _];
+    intros p T Φ Hp Hu'.
+  - congruence.
+  - exfalso; destruct (gc_unit_mem_parent _ _ Hg _ _ _ _ Hu') as (T1 & Φ1 & Hu1 & _).
+    cbn in Hp; destruct (mod_qname H) as [p1 |] eqn:Hp1; [| discriminate ]; injection Hp as <-.
+    rewrite (IH _ _ _ eq_refl Hu1) in He.
+    rewrite (gc_unit_mem_entry_none _ _ _ _ _ _ (qname_in p1 z) Hu' ltac:(cbn; rewrite Hp1; reflexivity)) in He; discriminate.
+  - exfalso; destruct (gc_unit_mem_parent _ _ Hg _ _ _ _ Hu') as (T1 & Φ1 & Hu1 & _).
+    cbn in Hp; destruct (mod_qname H) as [p1 |] eqn:Hp1; [| discriminate ]; injection Hp as <-.
+    rewrite (IH _ _ _ eq_refl Hu1) in He.
+    rewrite (gc_unit_mem_entry_none _ _ _ _ _ _ (qname_in p1 z) Hu' ltac:(cbn; rewrite Hp1; reflexivity)) in He; discriminate.
+  - discriminate.
+Qed.
+
+Lemma msite_functional : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall H pq, msite Θ Ξ H pq -> forall pq', msite Θ Ξ H pq' -> pq = pq'.
+Proof.
+  intros Θ Ξ Hg; induction 1 as [H p T Φ Hq Hu | H pq z E Hs IH He Hb | H pq z E E' pq' Hs IH He Ha Hs' IH' | H N pq Hs IH];
+    intros pq0 H0.
+  - symmetry; exact (msite_unit _ _ Hg _ _ H0 _ _ _ Hq Hu).
+  - inversion H0 as [? ? ? ? Hq0 Hu0 | ? pq1 ? E1 Hs1 He1 Hb1 | ? pq1 ? E1 E1' ? Hs1 He1 Ha1 _ |]; subst.
+    + exact (msite_unit _ _ Hg _ _ (ms_body _ _ _ _ _ _ Hs He Hb) _ _ _ Hq0 Hu0).
+    + rewrite (IH _ Hs1); reflexivity.
+    + rewrite (IH _ Hs1), He1 in He; injection He as <-.
+      destruct E1 as [| ? [? [? ?| ?]] | | ]; cbn in Hb, Ha1; try contradiction; discriminate.
+  - inversion H0 as [? ? ? ? Hq0 Hu0 | ? pq1 ? E1 Hs1 He1 Hb1 | ? pq1 ? E1 E1' ? Hs1 He1 Ha1 Hs1' |]; subst.
+    + exact (msite_unit _ _ Hg _ _ (ms_alias _ _ _ _ _ _ _ _ Hs He Ha Hs') _ _ _ Hq0 Hu0).
+    + rewrite (IH _ Hs1), He1 in He; injection He as <-.
+      destruct E1 as [| ? [? [? ?| ?]] | | ]; cbn in Hb1, Ha; try contradiction; discriminate.
+    + rewrite (IH _ Hs1), He1 in He; injection He as <-; rewrite Ha1 in Ha; injection Ha as <-.
+      exact (IH' _ Hs1').
+  - inversion H0; subst; [ discriminate | exact (IH _ ltac:(eassumption)) ].
+Qed.
+
+(** Where a member is declared, and its privacy, are unique. *)
+Lemma mdecl_functional : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall H y qd pv, mdecl Θ Ξ H y qd pv ->
+    forall qd' pv', mdecl Θ Ξ H y qd' pv' -> qd = qd' /\ pv = pv'.
+Proof.
+  intros * Hg * [pq E Hs He] * [pq' E' Hs' He'].
+  rewrite <- (msite_functional _ _ Hg _ _ Hs _ Hs') in He' |- *.
+  rewrite He in He'; injection He' as <-; split; reflexivity.
 Qed.
 
 (** Declarations are read off lookups, which more dependencies only extend. *)
+Lemma msite_dsub : forall Θ1 Θ2 Ξ, Θ1 ⊑ Θ2 -> forall H pq, msite Θ1 Ξ H pq -> msite Θ2 Ξ H pq.
+Proof.
+  intros * Hs; induction 1; [ eapply ms_unit | eapply ms_body | eapply ms_alias | eapply ms_app ];
+    eauto using gc_unit_dsub, gc_entry_dsub.
+Qed.
+
 Lemma mdecl_dsub : forall Θ1 Θ2 Ξ, Θ1 ⊑ Θ2 ->
-    forall H ch qd pv, mdecl Θ1 Ξ H ch qd pv -> mdecl Θ2 Ξ H ch qd pv.
+    forall H y qd pv, mdecl Θ1 Ξ H y qd pv -> mdecl Θ2 Ξ H y qd pv.
 Proof.
-  intros * Hs; induction 1; [ eapply mdl_entry | eapply mdl_alias | eapply mdl_mem | eapply mdl_app ];
-    eauto using gc_entry_dsub, gc_sub_module, gc_sub_deps.
+  intros * Hs * [pq E HH He]; constructor; [ eapply msite_dsub; eassumption | eapply gc_entry_dsub; eassumption ].
 Qed.
 
-(** What follows an alias on a module path is the rest of that path. *)
-Lemma gm_submodule_alias_suffix : forall Φ T x ip U r,
-    gm_submodule T Φ x ip = Some (mr_alias U r) -> exists pre, ip = pre ++ r.
-Proof.
-  fix IH 1; intros [| Φ y E0 | Φ c] * H; cbn in H; try discriminate; [| exact (IH _ _ _ _ _ _ H) ].
-  destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ H) ].
-  destruct E0 as [b pv A B | pm [Δ [Φ' | E']] | pv D Φ' | pv Δa pa Nsa]; try discriminate.
-  - destruct ip as [| z ip']; [ discriminate |].
-    destruct (IH _ _ _ _ _ _ H) as (pre & ->); exists (z :: pre); reflexivity.
-  - injection H as _ <-; exists nil; reflexivity.
-  - destruct ip as [| z ip']; [ discriminate |].
-    destruct (IH _ _ _ _ _ _ H) as (pre & ->); exists (z :: pre); reflexivity.
-  - injection H as _ <-; exists nil; reflexivity.
-Qed.
-
-Lemma gs_find_tele_suffix : forall Ξ p U ip T,
-    gs_find_tele Ξ p = Some (U, ip, T) -> exists pre, q_chain p = pre ++ ip.
-Proof.
-  induction Ξ as [| [mp V] Ξ IH]; intros * H; cbn in H; [ discriminate |].
-  unfold qname_strip in H.
-  destruct (path_beq (q_unit mp) (q_unit p)); [| exact (IH _ _ _ _ H) ].
-  destruct (strip_prefix (q_chain mp) (q_chain p)) eqn:E; [| exact (IH _ _ _ _ H) ].
-  injection H as _ <- _; exists (q_chain mp); exact (strip_prefix_spec _ _ _ E).
-Qed.
-
-Lemma gc_module_alias_suffix : forall Θ Ξ p U r,
-    gc_module Θ Ξ p = Some (mr_alias U r) -> exists pre, q_chain p = pre ++ r.
-Proof.
-  intros * H; unfold gc_module, gc_module_u in H.
-  destruct (gs_find_tele Ξ p) as [[[V [| x ip]] T] |] eqn:Ef; [ discriminate | |].
-  - destruct (gs_find_tele_suffix _ _ _ _ _ Ef) as (pre & ->).
-    destruct (gm_submodule_alias_suffix _ _ _ _ _ _ H) as (pre' & ->).
-    exists (pre ++ x :: pre'); rewrite <- List.app_assoc; reflexivity.
-  - destruct (gds_lookup Θ (q_unit p)); [| discriminate ].
-    destruct (q_chain p) as [| x ip]; cbn in H; [ discriminate |].
-    destruct (gm_submodule_alias_suffix _ _ _ _ _ _ H) as (pre & ->).
-    exists (x :: pre); reflexivity.
-Qed.
-
-(** The module [mdecl] finds declares the member: the last name of the
-    chain names an entry of it, with the privacy found. *)
-Lemma mdecl_entry : forall Θ Ξ H ch qd pv, mdecl Θ Ξ H ch qd pv -> ch <> nil ->
-    forall d, exists E, gc_entry Θ Ξ (qname_in qd (List.last ch d)) = Some E /\ ge_private E = pv.
-Proof.
-  induction 1 as [fp ch E pv HE <- | fp ch T E r qd pv Hr Hm _ IH | H y ch qd pv _ IH | H N ch qd pv _ IH ];
-    intros Hch d.
-  - exists E; split; [| reflexivity ].
-    unfold qname_in; cbn; rewrite <- (List.app_removelast_last _ Hch); exact HE.
-  - destruct (gc_module_alias_suffix _ _ _ _ _ Hm) as (pre & Ep); cbn in Ep; subst ch.
-    rewrite (List.app_removelast_last d Hr), List.app_assoc, !List.last_last.
-    exact (IH Hr d).
-  - destruct ch as [| z ch]; [ contradiction |].
-    destruct (IH ltac:(discriminate) d) as (E & HE & Hp); exists E; split; [| exact Hp ].
-    cbn [List.last] in HE; exact HE.
-  - exact (IH Hch d).
-Qed.
+(** The module [mdecl] finds declares the member: the member names an entry
+    of it, with the privacy found. *)
+Lemma mdecl_entry : forall Θ Ξ H y qd pv, mdecl Θ Ξ H y qd pv ->
+    exists E, gc_entry Θ Ξ (qname_in qd y) = Some E /\ ge_private E = pv.
+Proof. intros * [pq E _ He]; exists E; split; [ exact He | reflexivity ]. Qed.
 
 (** ** Module Tables
 
@@ -224,7 +216,7 @@ with utab (S : list ptab) (U : gunit) : ptab :=
   end
 with dtab (S : list ptab) (D : moddef) : ptab :=
   match D with
-  | md_body Φ => pt_body nil (btab S Φ)
+  | md_body sm Φ => pt_body nil (btab S Φ)
   | md_alias E => mtab S E
   end
 with btab (S : list ptab) (Φ : gmod) : list (string * bool * ptab) :=
@@ -240,7 +232,7 @@ with etab (S : list ptab) (E : gentry) : ptab :=
   match E with
   | ge_def _ _ _ _ => pt_none
   | ge_mod _ U => utab S U
-  | ge_ind _ D Φ => pt_body nil (btab (repeat pt_none (ind_nu D) ++ S) Φ)
+  | ge_ind _ _ D Φ => pt_body nil (btab (repeat pt_none (ind_nu D) ++ S) Φ)
   | ge_ind_alias _ _ p _ => pt_glob (qname_mod p)
   end.
 
@@ -306,7 +298,7 @@ with gunit_refs (S : list ptab) (U : gunit) : list (ptab * string)%type :=
   end
 with moddef_refs (S : list ptab) (D : moddef) : list (ptab * string)%type :=
   match D with
-  | md_body Φ => gmod_refs S Φ
+  | md_body sm Φ => gmod_refs S Φ
   | md_alias E => modexp_refs S E
   end
 with gmod_refs (S : list ptab) (Φ : gmod) : list (ptab * string)%type :=
@@ -321,7 +313,7 @@ with gentry_refs (S : list ptab) (E : gentry) : list (ptab * string)%type :=
   match E with
   | ge_def _ _ A B => exp_refs S A ++ match B with Some M => exp_refs S M | None => nil end
   | ge_mod _ U => gunit_refs S U
-  | ge_ind _ _ _ | ge_ind_alias _ _ _ _ => nil
+  | ge_ind _ _ _ _ | ge_ind_alias _ _ _ _ => nil
   end
 with centry_refs (S : list ptab) (e : centry) : list (ptab * string)%type :=
   match e with
@@ -377,11 +369,7 @@ Definition open_anc (Ξ : gstack) (qd : qname) : Prop :=
 (** A reference to [x] in a module reached from a unit is to a public
     member, or made inside the module declaring it. *)
 Definition glob_ok (Θ : gdeps) (Ξ : gstack) (H : modexp) (x : string) : Prop :=
-  match modexp_spine H with
-  | (me_unit fp, _, pre) =>
-      forall qd, mdecl Θ Ξ (me_unit fp) (pre ++ x :: nil) qd true -> open_anc Ξ qd
-  | _ => True
-  end.
+  forall qd, mdecl Θ Ξ H x qd true -> open_anc Ξ qd.
 
 (** A reference into a local body is to a public entry: inside the body,
     its entries are variables, not references. *)
@@ -401,6 +389,5 @@ Lemma acc_ok_dsub : forall Θ1 Θ2 Ξ, Θ2 ⊑ Θ1 ->
 Proof.
   intros * Hs l Hl; eapply List.Forall_impl; [| exact Hl ].
   intros [[| H |] x]; unfold ref_ok, glob_ok; cbn [fst snd]; auto.
-  destruct (modexp_spine H) as [[[] args] pre]; auto.
   intros Hok qd Hd; apply Hok; eapply mdecl_dsub; eassumption.
 Qed.

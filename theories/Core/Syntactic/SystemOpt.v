@@ -22,7 +22,7 @@
     Equations such as [(Π A B)[σ] = Π A[σ] B[q σ]] are not rules but
     equalities of [exp], proved in [Core.Syntactic.Substitution] and used by
     [rewrite] or [simpl_sub], so they need no optimized form.  Neither does
-    context equality, which is [Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ] in both directions. *)
+    context equality, which is [Θ ⍮ Ξ ⍮ Δ ⊢ˢ Id : Γ] in both directions. *)
 
 From Stdlib Require Import Lia Setoid.
 From Mctt Require Import LibTactics.
@@ -267,7 +267,7 @@ Hint Resolve wf_exp_eq_exfalso_cong' : mctt.
 #[export]
 Remove Hints wf_exp_eq_exfalso_cong : mctt.
 
-Corollary wf_exp_eq_pi_cong' : forall Θ Ξ Γ A A' B B' i,
+Corollary wf_exp_eq_pi_cong_large' : forall Θ Ξ Γ A A' B B' i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Typeω@i.
@@ -276,9 +276,9 @@ Proof.
 Qed.
 
 #[export]
-Hint Resolve wf_exp_eq_pi_cong' : mctt.
+Hint Resolve wf_exp_eq_pi_cong_large' : mctt.
 #[export]
-Remove Hints wf_exp_eq_pi_cong : mctt.
+Remove Hints wf_exp_eq_pi_cong_large : mctt.
 
 (** The domain and the codomain rarely arrive at the same level; this is the
     congruence that takes them as they come, and the counterpart of
@@ -416,7 +416,7 @@ Remove Hints wf_exp_eq_let_zeta : mctt.
     refinement between two contexts extended by equal types needs nothing else. *)
 Corollary wf_sub_id_extend_eq' : forall Θ Ξ Γ A A' i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢s Id : Γ ▹ A.
+    Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ˢ Id : Γ ▹ A.
 Proof.
   intros * H; gen_presups; mauto 3.
 Qed.
@@ -440,7 +440,7 @@ Proof.
   assert (exists j, Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B : Typeω@j /\ Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B' : Typeω@j) as [j []]
       by (apply presup_subtyp_types; assumption).
   gen_presups.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢s Id : Γ ▹ A') by mauto 3.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ˢ Id : Γ ▹ A') by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@j) by mauto 2.
   eapply wf_subtyp_pi with (i := max i j);
     mauto 3 using lift_exp_max_left, lift_exp_max_right, lift_exp_eq_max_left.
@@ -479,14 +479,14 @@ Qed.
 Hint Resolve wf_conv_univ wf_exp_eq_conv_univ : mctt.
 
 (** [Π] and its congruence in any universe, large or small: the two rules
-    [wf_pi]/[wf_pi_small] and [wf_exp_eq_pi_cong]/[wf_exp_eq_pi_cong_small]
+    [wf_pi_large]/[wf_pi_lvl] and [wf_exp_eq_pi_cong_large]/[wf_exp_eq_pi_cong_lvl]
     as one statement over the index. *)
 Corollary wf_pi_univ : forall Θ Ξ Γ A B u,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : ulvl_tm u ->
     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : ulvl_tm u ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : ulvl_tm u.
 Proof.
-  intros * HA HB; destruct u; cbn in *; [ apply wf_pi_small_lit | apply wf_pi ]; assumption.
+  intros * HA HB; destruct u; cbn in *; [ apply wf_pi_small_lit | apply wf_pi_large ]; assumption.
 Qed.
 
 (** The principal universe of a [Π] is the join of those of its parts. *)
@@ -507,7 +507,7 @@ Corollary wf_exp_eq_pi_cong_univ : forall Θ Ξ Γ A A' B B' u,
 Proof.
   intros * HA HB; destruct u; cbn in *;
     [ apply wf_exp_eq_pi_cong_small_lit; [ gen_presups; eassumption | assumption | assumption ]
-    | apply wf_exp_eq_pi_cong'; assumption ].
+    | apply wf_exp_eq_pi_cong_large'; assumption ].
 Qed.
 
 #[export]

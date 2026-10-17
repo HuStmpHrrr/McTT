@@ -586,6 +586,13 @@ Arguments ind_cons {E C}.
       pre-form the core expands before typing, binds one per item.
     - [centry] is a context entry: an assumption, a definition, or a module
       slot [ce_mod U], which binds one index to the unit [U]. *)
+(** The two ways a module's entries are stored: open (a local module) and
+    closed (a filed module or an open frame). *)
+Inductive smark : Set := sm_open | sm_closed.
+
+Definition smark_eq_dec : forall (s s' : smark), {s = s'} + {s <> s'}.
+Proof. decide equality. Defined.
+
 (** The branches of an eliminator are nested through pairs, for which no
     [All] scheme is registered: [exp_ind] carries no hypothesis about them,
     and the mutual principle [syn_mut_ind] below is written by hand. *)
@@ -679,8 +686,10 @@ with gunit : Set :=
     them *)
 | gu_mk : list centry -> moddef -> gunit
 with moddef : Set :=
-(** A body *)
-| md_body : gmod -> moddef
+(** A body, stored open (a local module: its entries mention the parameters
+    and the entries before them) or closed (a filed module or an open frame:
+    every entry is closed over the module's full telescope) *)
+| md_body : smark -> gmod -> moddef
 (** An alias of a module expression *)
 | md_alias : modexp -> moddef
 with gmod : Set :=
@@ -699,11 +708,12 @@ with gentry : Set :=
 | ge_def : bool -> bool -> exp -> option exp -> gentry
 (** [ge_mod pv U]: a submodule, private when [pv] *)
 | ge_mod : bool -> gunit -> gentry
-(** [ge_ind pv D Φ]: an inductive type, private when [pv]: its declaration
-    [D] and the body [Φ] of its module, whose members are the constructors
-    and the recursor, under the uniform parameters of [D] ([ind_unit]).
-    Its path names the module, and the type former ([a_ind]). *)
-| ge_ind : bool -> ind_decl_g exp centry -> gmod -> gentry
+(** [ge_ind pv p D Φ]: an inductive type, private when [pv]: its own
+    canonical path [p], its declaration [D] and the body [Φ] of its module,
+    whose members are the constructors and the recursor, under the uniform
+    parameters of [D] ([ind_unit]).  The path names the module, and the
+    type former ([a_ind]). *)
+| ge_ind : bool -> qname -> ind_decl_g exp centry -> gmod -> gentry
 (** [ge_ind_alias pv Δ p Ns]: an inductive alias, private when [pv]: over
     its full telescope [Δ] (closed, as an alias's), the inductive type at
     the canonical path [p] at the first uniform parameters [Ns], terms over
@@ -780,14 +790,14 @@ Section syn_mut_ind.
     (case_b_def : forall oA M, (forall A, oA = Some A -> Pe A) -> Pe M -> Pb (b_def oA M))
     (case_b_mod : forall U, Pu U -> Pb (b_mod U))
     (case_gu_mk : forall Δ D, List.Forall Pc Δ -> Pd D -> Pu (gu_mk Δ D))
-    (case_md_body : forall Φ, Pg Φ -> Pd (md_body Φ))
+    (case_md_body : forall s Φ, Pg Φ -> Pd (md_body s Φ))
     (case_md_alias : forall E, Pm E -> Pd (md_alias E))
     (case_gm_nil : Pg gm_nil)
     (case_gm_ext : forall Φ x E, Pg Φ -> Pn E -> Pg (gm_ext Φ x E))
     (case_gm_open : forall Φ H its, Pg Φ -> Pm H -> Pg (gm_open Φ H its))
     (case_ge_def : forall b pv A B, Pe A -> (forall M, B = Some M -> Pe M) -> Pn (ge_def b pv A B))
     (case_ge_mod : forall pv U, Pu U -> Pn (ge_mod pv U))
-    (case_ge_ind : forall pv D Φ, Pg Φ -> Pn (ge_ind pv D Φ))
+    (case_ge_ind : forall pv p D Φ, Pg Φ -> Pn (ge_ind pv p D Φ))
     (case_ge_ind_alias : forall pv Δ p Ns, Pn (ge_ind_alias pv Δ p Ns))
     (case_ce_ass : forall A, Pe A -> Pc (ce_ass A))
     (case_ce_def : forall A M, Pe A -> Pe M -> Pc (ce_def A M))
@@ -858,7 +868,7 @@ Section syn_mut_ind.
     end
   with moddef_mut (D : moddef) : Pd D :=
     match D with
-    | md_body Φ => case_md_body Φ (gmod_mut Φ)
+    | md_body s Φ => case_md_body s Φ (gmod_mut Φ)
     | md_alias E => case_md_alias E (modexp_mut E)
     end
   with gmod_mut (Φ : gmod) : Pg Φ :=
@@ -878,7 +888,7 @@ Section syn_mut_ind.
                                 | eq_refl => I end)
            end)
     | ge_mod pv U => case_ge_mod pv U (gunit_mut U)
-    | ge_ind pv D Φ => case_ge_ind pv D Φ (gmod_mut Φ)
+    | ge_ind pv p D Φ => case_ge_ind pv p D Φ (gmod_mut Φ)
     | ge_ind_alias pv Δ p Ns => case_ge_ind_alias pv Δ p Ns
     end
   with centry_mut (e : centry) : Pc e :=
@@ -945,8 +955,10 @@ Fixpoint mod_qname (H : modexp) : option qname :=
 (** ** Units
 
     A body unit and a body entry, the forms every global module has. *)
-Abbreviation gu_body Δ Φ := (gu_mk Δ (md_body Φ)).
+Abbreviation gu_body Δ Φ := (gu_mk Δ (md_body sm_closed Φ)).
 Abbreviation ge_body pv Δ Φ := (ge_mod pv (gu_body Δ Φ)).
+(** A local (open) body unit. *)
+Abbreviation gu_open Δ Φ := (gu_mk Δ (md_body sm_open Φ)).
 
 Definition gu_params (U : gunit) : list centry := match U with gu_mk Δ _ => Δ end.
 
@@ -964,14 +976,14 @@ Definition ind_nparams (D : ind_decl) : list centry := List.firstn (ind_nn D) (i
 (** The module of the inductive type [D] of body [Φ], as a unit: it takes
     the uniform parameters, with the frames' parameters outside them, so
     that it is closed, as an alias is. *)
-Definition ind_unit (D : ind_decl) (Φ : gmod) : gunit := gu_mk (ind_uparams D) (md_body Φ).
+Definition ind_unit (D : ind_decl) (Φ : gmod) : gunit := gu_body (ind_uparams D) Φ.
 
 Definition gu_def (U : gunit) : moddef := match U with gu_mk _ D => D end.
 
 (** The body of a body unit, and the empty body for an alias. *)
 Definition gu_mod (U : gunit) : gmod :=
   match U with
-  | gu_mk _ (md_body Φ) => Φ
+  | gu_mk _ (md_body _ Φ) => Φ
   | gu_mk _ (md_alias _) => gm_nil
   end.
 
@@ -1069,7 +1081,7 @@ Fixpoint body_ctx (Φ : gmod) : ctx :=
   | gm_ext Φ' _ (ge_def _ _ A (Some M)) => cons (ce_def A M) (body_ctx Φ')
   | gm_ext Φ' _ (ge_def _ _ A None) => cons (ce_ass A) (body_ctx Φ')
   | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
-  | gm_ext Φ' _ (ge_ind _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_ind _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
   | gm_ext Φ' _ (ge_ind_alias _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
   | gm_open Φ' _ its => List.repeat (ce_ass a_True) (List.length its) ++ body_ctx Φ'
   end.
@@ -1628,7 +1640,7 @@ with gunit_wk (U : gunit) (φ : wk) : gunit :=
   end
 with moddef_wk (D : moddef) (φ : wk) : moddef :=
   match D with
-  | md_body Φ => md_body (gmod_wk Φ φ)
+  | md_body sm Φ => md_body sm (gmod_wk Φ φ)
   | md_alias E => md_alias (modexp_wk E φ)
   end
 with gmod_wk (Φ : gmod) (φ : wk) : gmod :=
@@ -1641,7 +1653,7 @@ with gentry_wk (E : gentry) (φ : wk) : gentry :=
   match E with
   | ge_def b pv A B => ge_def b pv (exp_wk A φ) (match B with Some M => Some (exp_wk M φ) | None => None end)
   | ge_mod pv U => ge_mod pv (gunit_wk U φ)
-  | ge_ind pv D Φ => ge_ind pv D (gmod_wk Φ (wk_qn (ind_nu D) φ))
+  | ge_ind pv p D Φ => ge_ind pv p D (gmod_wk Φ (wk_qn (ind_nu D) φ))
   | ge_ind_alias pv Δ p Ns => ge_ind_alias pv Δ p Ns
   end
 with centry_wk (e : centry) (φ : wk) : centry :=
@@ -1800,7 +1812,7 @@ with gunit_sub (U : gunit) (σ : sub) : gunit :=
   end
 with moddef_sub (D : moddef) (σ : sub) : moddef :=
   match D with
-  | md_body Φ => md_body (gmod_sub Φ σ)
+  | md_body sm Φ => md_body sm (gmod_sub Φ σ)
   | md_alias E => md_alias (modexp_sub E σ)
   end
 with gmod_sub (Φ : gmod) (σ : sub) : gmod :=
@@ -1813,7 +1825,7 @@ with gentry_sub (E : gentry) (σ : sub) : gentry :=
   match E with
   | ge_def b pv A B => ge_def b pv (exp_sub A σ) (match B with Some M => Some (exp_sub M σ) | None => None end)
   | ge_mod pv U => ge_mod pv (gunit_sub U σ)
-  | ge_ind pv D Φ => ge_ind pv D (gmod_sub Φ (sb_qn (ind_nu D) σ))
+  | ge_ind pv p D Φ => ge_ind pv p D (gmod_sub Φ (sb_qn (ind_nu D) σ))
   | ge_ind_alias pv Δ p Ns => ge_ind_alias pv Δ p Ns
   end
 with centry_sub (e : centry) (σ : sub) : centry :=
@@ -1985,6 +1997,20 @@ Class GCtx : Set := gc_mk
 #[global] Bind Scope mctt_scope with nf.
 #[global] Bind Scope mctt_scope with ne.
 Open Scope mctt_scope.
+
+(** The substitution sending the innermost binders to the terms [Ms],
+    outermost first, and the others as [σ] does. *)
+Fixpoint sb_of_list (σ : sub) (Ms : list exp) : sub :=
+  match Ms with
+  | nil => σ
+  | M :: Ms' => sb_of_list (sb_extend σ (se_exp M)) Ms'
+  end.
+
+(** The type of the type former applied to [Us], its outermost
+    parameters: the [Π] over the others, at [Us]. *)
+Definition ind_ty_at (D : ind_decl) (Us : list exp) : typ :=
+  exp_sub (ctx_pi (List.firstn (ind_np D - List.length Us) (ind_params D)) (exp_wk (ind_sort D) (wk_shiftn (ind_nn D))))
+    (sb_of_list sb_id Us).
 
 (** The notations of terms, contexts, normal forms and substitutions. *)
 Module Syntax_Notations.

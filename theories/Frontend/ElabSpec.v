@@ -278,7 +278,7 @@ with sdef : list ent -> Cst.mdef -> moddef -> Prop :=
 | sdf_alias : forall S oE E,
     selm S oE E -> sdef S (Cst.md_alias oE) (md_alias E)
 | sdf_where : forall S cs Φ,
-    sbody S gm_nil cs Φ -> sdef S (Cst.md_where cs) (md_body Φ)
+    sbody S gm_nil cs Φ -> sdef S (Cst.md_where cs) (md_body sm_open Φ)
 
 (** [sbody S Φ cs Φ']: the commands [cs] of a local body extend [Φ] to [Φ'].
     Each entry is a core binder for the entries after it.  An open is a

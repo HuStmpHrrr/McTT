@@ -16,7 +16,7 @@ Section Fixed_GCtx.
 (** A Kripke weakening is [⇑^n] on the nose ([kripke_shiftn]), so it acts on
     a variable by index arithmetic alone. *)
 Lemma wk_var_kripke : forall Γ Δ φ x,
-    Δ ⊢k φ : Γ ->
+    Δ ⊢ᵏ φ : Γ ->
     φ x = x + (length Δ - length Γ).
 Proof.
   intros * H%kripke_shiftn; destruct H as [_ Hφ].
@@ -27,7 +27,7 @@ Qed.
     context reads back as the de Bruijn index counting down from the length of
     the context the weakening lands in. *)
 Corollary wk_var0_kripke : forall Γ A Δ φ,
-    Δ ⊢k φ : Γ ▹ A ->
+    Δ ⊢ᵏ φ : Γ ▹ A ->
     φ 0 = length Δ - length Γ - 1.
 Proof. intros * H; pose proof (wk_var_kripke _ _ _ 0 H); simpl in *; lia. Qed.
 
@@ -125,7 +125,7 @@ Section IndRealize.
     match goal with H : ind_lookup _ _ p = Some ?D1 |- _ => assert (D1 = D) as -> by congruence end.
     destruct (Hk Δ φ Hφ) as ((HPl & HPt & HPr) & Hs & _).
     assert (HΔ : ⊢ Δ) by (eapply kripke_dom; eassumption).
-    assert (Hid : Δ ⊢k wk_id : Δ) by mauto 3.
+    assert (Hid : Δ ⊢ᵏ wk_id : Δ) by mauto 3.
     match goal with H : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Ms |- _ => pose proof (HPr Δ wk_id Ms Hid H) as HMs end.
     rewrite (List.map_ext _ (fun P => P) exp_wk_id), List.map_id in HMs.
     destruct HMs as [HMl HMs].
@@ -214,7 +214,7 @@ Section IndRealize.
                 forall a (V : nf), eval_shty gc_deps gc_stack p ups (env_args nil (ups ++ ms' ++ ws ++ ys)) t a ->
                 Rnf ⇓ a v in length Γ ↘ V -> Γ ⊢ N ≈ V : A)).
     2:{ intros * Hm Hr HΓ ns' Hpt Hrel w Hw. clear - Hr Hw HΓ. inversion Hw; subst.
-        assert (Hid : Γ ⊢k wk_id : Γ) by mauto 3.
+        assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
         match goal with H : Rne m in _ ↘ ?M0 |- _ => pose proof (Hr _ _ _ Hid H) as Heq end.
         rewrite !exp_wk_id in Heq; exact Heq. }
     - (** A constructor: its parameters and arguments read back as the
@@ -234,7 +234,7 @@ Section IndRealize.
       rewrite skipn_app_exact in HRc by exact Hbl.
       clear Hw Heqd.
       match goal with H : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Ps0 |- _ => rename H into HRps; rename Ps0 into PN end.
-      assert (Hid : Γ ⊢k wk_id : Γ) by mauto 3.
+      assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
       destruct Hpt as (HPsl & HPst & HPsr).
       pose proof (HPsr Γ wk_id PN Hid HRps) as HPsN.
       rewrite (List.map_ext _ (fun P => P) exp_wk_id), List.map_id in HPsN.
@@ -316,7 +316,7 @@ Section IndRealize.
       destruct (Hgn _ H01) as [_ HQt].
       destruct (ind_shape_self_inv _ _ _ _ _ _ _ _ _ _ _ Hsh) as (bs & Ebs & Hvv).
       pose proof (functional_eval_exps' _ _ _ _ Ebs Ebt) as ->.
-      assert (Hid : Γ ⊢k wk_id : Γ) by mauto 3.
+      assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
       pose proof (IH _ _ E0 HA Γ wk_id _ Hid (glu_params_top_refl _ _ _ _ (HQt Γ wk_id Hid)) HΓ bt (HQt Γ wk_id Hid) Hvv V HRV)
         as Heqn.
       rewrite exp_wk_id, (List.map_ext _ (fun P => P) exp_wk_id), List.map_id in Heqn.
@@ -341,7 +341,7 @@ Section IndRealize.
       destruct (HrD _ _ _ _ _ _ _ _ _ _ _ Hmm Hc eq_refl Hw HB Hy Ebg) as [HrT HrB].
       destruct (HevD ms ms' c0 _ gs1 t0 gs2 ws ws k1 B ys ys Hm Hc eq_refl Hw HB Hy) as (a0 & a1 & Ea0 & Ea1 & Ha01).
       pose proof (functional_eval_exp _ _ _ _ Ea0 Ebg) as ->; pose proof (functional_eval_exp _ _ _ _ Ea1 Ebt) as ->.
-      assert (Hid : Γ ⊢k wk_id : Γ) by mauto 3.
+      assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
       set (IT := B[σ']) in *.
       set (OT := ptyp_ty_at p (List.map (fun U => U[↑]ʷ) Us') (q σ') t) in *.
       (** The domain reads back as the type of the fresh variable. *)
@@ -354,7 +354,7 @@ Section IndRealize.
       (** The fresh variable, glued at the domain. *)
       set (c := ⇑! bt (length Γ)).
       assert (HΓIT : ⊢ Γ ▹ IT) by mauto 3.
-      assert (Hwk : Γ ▹ IT ⊢k ↑ : Γ) by mauto 3.
+      assert (Hwk : Γ ▹ IT ⊢ᵏ ↑ : Γ) by mauto 3.
       pose proof (HrB _ _ _ _ (var_glu_elem_bot _ _ _ _ _ _ Hgbg HITg)) as Hvg.
       pose proof (var_per_elem (length Γ) Ha01) as Hcc0.
       assert (ERg : ind_dr ups (ms ++ ws ++ ys) B <~> Rg) by (eapply per_univ_elem_right_irrel; eassumption).
@@ -590,7 +590,7 @@ Proof.
       assert (Γ ⊢ IT ® glu_typ_top i a) as [] by mauto 3.
       assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Typeω@(ulvl i)) as HA' by (rewrite <- exp_wk_pi; mauto 3).
       rewrite HA'.
-      simpl. apply wf_exp_eq_pi_cong'; [ firstorder | ].
+      simpl. apply wf_exp_eq_pi_cong_large'; [ firstorder | ].
       pose proof (var_per_elem (length Δ) H0).
       destruct_rel_mod_eval.
       simplify_evals.
@@ -600,7 +600,7 @@ Proof.
         by mauto 3 using var_glu_elem_bot.
       rewrite exp_wk_wk in HEl.
       assert (⊢ Δ ▹ IT[φ]ʷ) by mauto 3.
-      assert (Δ ▹ IT[φ]ʷ ⊢k φ ⊙ ↑ : Γ) as Hk by mauto 3.
+      assert (Δ ▹ IT[φ]ʷ ⊢ᵏ φ ⊙ ↑ : Γ) as Hk by mauto 3.
       pose proof (H14 _ _ _ _ Hk HEl H24) as HOP.
       assert (HOT : Δ ▹ IT[φ]ʷ ⊢ OT[ι (φ ⊙ ↑),,#0] ≈ OT[wk_q φ]ʷ : Typeω@(ulvl i))
         by (assert (Hqv := kripke_q_var_eq _ _ _ (Typeω@(ulvl i)) _ _ (ulvl i) H12 H17 H16);
@@ -633,7 +633,7 @@ Proof.
     + mauto 3 using domain_app_per.
     + intros Δ0 φ0 M' Hk Hrb.
       progressive_invert Hrb.
-      assert (Δ0 ⊢k φ ⊙ φ0 : Γ) as Hkc by (eapply kripke_compose; eassumption).
+      assert (Δ0 ⊢ᵏ φ ⊙ φ0 : Γ) as Hkc by (eapply kripke_compose; eassumption).
       assert (Δ0 ⊢ A[φ ⊙ φ0]ʷ ≈ Π IT[φ ⊙ φ0]ʷ OT[wk_q (φ ⊙ φ0)]ʷ : Typeω@(ulvl i)) as HAeq'
         by (rewrite <- exp_wk_pi; mauto 3).
       rewrite exp_wk_sub_of_wk_extend, <- exp_sub_wk_q_extend, exp_wk_app, exp_wk_wk.
@@ -664,7 +664,7 @@ Proof.
       cbn [nf_to_exp].
       eapply wf_exp_eq_fn_cong'; [ eapply HITrb; eassumption | ].
       assert (⊢ Δ ▹ IT[φ]ʷ) by mauto 3.
-      assert (Δ ▹ IT[φ]ʷ ⊢k φ ⊙ ↑ : Γ) as Hk' by mauto 3.
+      assert (Δ ▹ IT[φ]ʷ ⊢ᵏ φ ⊙ ↑ : Γ) as Hk' by mauto 3.
       pose proof (var_per_elem (length Δ) H0) as Hvar.
       assert (IEl (Δ ▹ IT[φ]ʷ) IT[φ]ʷ[↑]ʷ #0 ⇑! a (length Δ)) as HEl
         by mauto 3 using var_glu_elem_bot.

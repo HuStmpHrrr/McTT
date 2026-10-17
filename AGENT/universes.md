@@ -171,7 +171,7 @@ nbe_wk : ⊢ Γ ▹ A -> Γ ⊢ M : T -> nbe_f Γ M T W -> nbe_f (Γ ▹ A) M[�
 
 `nbe_ty_wk` is the same for types. The proof has three steps:
 
-1. The fundamental theorem of the PER model, along `Γ ▹ A ⊨w ↑ : Γ`,
+1. The fundamental theorem of the PER model, along `Γ ▹ A ⊨ʷ ↑ : Γ`,
    relates `⟦M[↑]ʷ⟧ρ1` to `⟦M⟧ρ`. Here `ρ1` is the initial environment of
    `Γ ▹ A`, and `ρ` is its tail, the initial environment of `Γ`.
 2. Related values read back equally at every length (`per_top`). So the

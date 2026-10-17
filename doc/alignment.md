@@ -83,9 +83,9 @@ elision there.
 ### 2.2 Context equality and context refinement are not judgments
 
 The paper's system has neither, but the pre-port McTT did, and the port removed
-them: `Δ ⊢s Id : Γ` *is* refinement, and refinement in both directions is
+them: `Δ ⊢ˢ Id : Γ` *is* refinement, and refinement in both directions is
 context equality. `CtxEq.v` is deleted; `CtxSub.v` survives holding only the
-inductive `ctx_sub` and its bridge to `⊢s Id`, not a system rule. So the
+inductive `ctx_sub` and its bridge to `⊢ˢ Id`, not a system rule. So the
 mechanization is *closer* to the paper here than its own predecessor was.
 
 ### 2.3 Evaluation is a relation, so the judgments quantify over witnesses
@@ -106,7 +106,7 @@ forall ρ ρ' ρσ ρ'σ',
 ```
 
 Nothing is lost — the claim that `σ` evaluates at `ρ` is already part of
-`Γ' ⊨s σ ≈ σ' : Γ`, which every instantiation supplies anyway — and something
+`Γ' ⊨ˢ σ ≈ σ' : Γ`, which every instantiation supplies anyway — and something
 is gained: a premise's values arrive in the *same* environment as the
 conclusion's, so two instantiations of one judgment share values instead of
 merely being pointwise equal, and `rel_chain_merge` applies. This is the single
@@ -115,7 +115,7 @@ one on paper, and it is invisible in a presentation that treats evaluation as a
 function.
 
 Relatedly, `rel_sub_under_ctx` takes the bare `rel_wk φ env_rel' env_rel` as its
-Kripke premise rather than the packaged `Γ' ⊨w φ : Γ` of report Def 6.30. The
+Kripke premise rather than the packaged `Γ' ⊨ʷ φ : Γ` of report Def 6.30. The
 two are equivalent in context (both context PERs are already in scope) and the
 bare form avoids re-packing witnesses at every use.
 
@@ -136,7 +136,7 @@ is a simplification the write-ups do not describe.
 Both documents state the fundamental theorems without a substitution part, and
 so does the mechanization — but the mechanization also records *why it cannot
 have one*: `wf_sub` constrains `σ` only at the indices `Δ` types, whereas
-`eval_sub` is total, so `⋅ ⊢s (fun _ => zero zero) : ⋅` holds vacuously
+`eval_sub` is total, so `⋅ ⊢ˢ (fun _ => zero zero) : ⋅` holds vacuously
 while its semantic counterpart would need `zero zero` to have a value. Concrete
 substitutions are handled by lemmas in `Completeness/SubstitutionCases.v` and
 `Soundness/SubstitutionCases`-style helpers instead. The documents present the
@@ -151,18 +151,18 @@ omission as a design choice; here it is a necessity.
 Report Def 7.1:
 
 ```
-KW-Id     ⊢ Γ                              KW-Shift  Γ ⊢k φ : Δ   Γ ⊢ S : Ty_i
+KW-Id     ⊢ Γ                              KW-Shift  Γ ⊢ᵏ φ : Δ   Γ ⊢ S : Ty_i
        ───────────────                              ─────────────────────────────
-        Γ ⊢k id : Γ                                    Γ,x:S ⊢k φ◦⇑ : Δ
+        Γ ⊢ᵏ id : Γ                                    Γ,x:S ⊢ᵏ φ◦⇑ : Δ
 ```
 
 `Core/Soundness/Weakening/Definitions.v`:
 
 ```coq
 Inductive wk_kripke : ctx -> ctx -> wk -> Prop :=
-| kwk_id   : `( ⊢ Γ ⊆ Δ -> wk_eq φ wk_id -> Γ ⊢k φ : Δ )
-| kwk_shift: `( Γ ⊢k ψ : Δ' ▹ A -> ⊢ Δ' ⊆ Δ ->
-                wk_eq φ (↑ ⊙ ψ) -> Γ ⊢k φ : Δ ).
+| kwk_id   : `( ⊢ Γ ⊆ Δ -> wk_eq φ wk_id -> Γ ⊢ᵏ φ : Δ )
+| kwk_shift: `( Γ ⊢ᵏ ψ : Δ' ▹ A -> ⊢ Δ' ⊆ Δ ->
+                wk_eq φ (↑ ⊙ ψ) -> Γ ⊢ᵏ φ : Δ ).
 ```
 
 Three differences, in increasing order of consequence.
@@ -181,13 +181,13 @@ Three differences, in increasing order of consequence.
 3. **Both rules may coarsen the codomain by `⊢ Δ' ⊆ Δ`.** This is what
    makes the judgment closed under `kripke_ctxsub`, which the subtyping cases
    need. **The price is that report Lemma 7.2 is false as stated**:
-   `Γ ⊢k φ : Δ` does *not* imply `Γ ⊢w φ : Δ`, because `wf_wk_lookup` demands a
+   `Γ ⊢ᵏ φ : Δ` does *not* imply `Γ ⊢ʷ φ : Δ`, because `wf_wk_lookup` demands a
    variable lookup in `Γ` at the very type `A[φ]ʷ` and refinement only gives a
    subtype of it. The escape lemma is `kripke_escape`, landing in `wf_sub` via
    `ι`:
 
    ```coq
-   Lemma kripke_escape : forall Γ Δ φ, Γ ⊢k φ : Δ -> Γ ⊢s ^(ι φ) : Δ.
+   Lemma kripke_escape : forall Γ Δ φ, Γ ⊢ᵏ φ : Δ -> Γ ⊢ˢ ^(ι φ) : Δ.
    ```
 
    It transports judgments just as well — `kripke_preserves_exp`,
@@ -509,43 +509,43 @@ every predicate already quantified over a weakening. Pre-port
 
 ```coq
 (* neut_glu_exp_pred *)
-(forall Δ σ M', Δ ⊢w σ : Γ -> Rne m in length Δ ↘ M' ->
+(forall Δ σ M', Δ ⊢ʷ σ : Γ -> Rne m in length Δ ↘ M' ->
                 Δ ⊢ M[σ] ≈ M' : A[σ]) -> ...
 (* pi_glu_typ_pred *)
-(forall Δ σ, Δ ⊢w σ : Γ -> Δ ⊢ IT[σ] ® IP) -> ...
+(forall Δ σ, Δ ⊢ʷ σ : Γ -> Δ ⊢ IT[σ] ® IP) -> ...
 ```
 
 The port replaced the *syntactic object* `σ` inside those quantifiers with a
-function, and split `⊢w` into `⊢w`/`⊢k` (§3.1). It did not add a quantifier or
+function, and split `⊢ʷ` into `⊢ʷ`/`⊢ᵏ` (§3.1). It did not add a quantifier or
 a value. So there was nothing to re-derive — only obligations to discharge more
 cheaply, which is exactly what shows up in the tactic census:
 
 | | explicit subst. | meta-level |
 | --- | --- | --- |
-| `… ⊢s …` obligations in proof scripts | 168 | 101 |
+| `… ⊢ˢ …` obligations in proof scripts | 168 | 101 |
 | `assert` | 585 | 427 |
 | `mauto` | 832 | 606 |
 | `autorewrite` | 25 | 0 |
 | plain `rewrite` | 57 | **132** |
 
-`mauto` and `assert` fall by 27 % in step with the line count, `⊢s` obligations
+`mauto` and `assert` fall by 27 % in step with the line count, `⊢ˢ` obligations
 by 40 %, and plain `rewrite` more than doubles. That is one mechanism seen from
 five angles: **a substitution fact that used to be a derivation to search for is
 now an equation to rewrite with.** The clearest single instance is the weakening
 judgment itself. Pre-port:
 
 ```coq
-| wk_id : `( Γ ⊢s σ ≈ Id : Δ -> Γ ⊢w σ : Δ )
+| wk_id : `( Γ ⊢ˢ σ ≈ Id : Δ -> Γ ⊢ʷ σ : Δ )
 ```
 
 Now:
 
 ```coq
-| kwk_id : `( ⊢ Γ ⊆ Δ -> wk_eq φ wk_id -> Γ ⊢k φ : Δ )
+| kwk_id : `( ⊢ Γ ⊆ Δ -> wk_eq φ wk_id -> Γ ⊢ᵏ φ : Δ )
 ```
 
 A `wf_sub_eq` derivation became a `pointwise_relation nat eq`. Records instead
-of rules (§3.2) does the same thing to `⊢s σ : Δ` itself: there is no rule set
+of rules (§3.2) does the same thing to `⊢ˢ σ : Δ` itself: there is no rule set
 to search, only a field to project.
 
 Two things did get more expensive, and they are the whole reason the drop is
@@ -685,7 +685,7 @@ without tactic support is.
   substitution is a constructor plus a hint database, and the composition laws
   are ordinary rule cases closed by `mauto`.
 - It pays the **gluing model's** bill in the *proofs*, where it is expensive:
-  every predicate obligation drags a `⊢s` derivation along with it, and every
+  every predicate obligation drags a `⊢ˢ` derivation along with it, and every
   weakening premise is a `wf_sub_eq` derivation.
 - Meta-level substitution inverts both. Completeness must now *prove* what it
   used to *state* — the four-value pattern is that obligation, carried in the

@@ -139,7 +139,7 @@ Proof.
     (eexists; split; [ eassumption | eapply rel_wk_shift; eassumption ]).
 Qed.
 
-(** The introduction rule of [Γ ⊨w φ : Δ], packaging its three components.
+(** The introduction rule of [Γ ⊨ʷ φ : Δ], packaging its three components.
     Kripke-style premises provide a [rel_wk] together with the two context PERs
     it connects, not the judgment itself, so each substitution case needs this
     step. *)
@@ -147,7 +147,7 @@ Lemma rel_wk_under_ctx_intro : forall {Γ Δ φ R R'},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
     EF Δ ≈ Δ ∈ per_ctx_env ↘ R' ->
     rel_wk φ R R' ->
-    Γ ⊨w φ : Δ.
+    Γ ⊨ʷ φ : Δ.
 Proof.
   intros * ? ? ?.
   eexists_rel_wk.
@@ -188,8 +188,8 @@ Hint Resolve sem_ctx_per_ctx : mctt.
     finishes. *)
 
 Lemma rel_sub_of_wk : forall {Δ ψ Γ},
-    Δ ⊨w ψ : Γ ->
-    Δ ⊨s (ι ψ) ≈ (ι ψ) : Γ.
+    Δ ⊨ʷ ψ : Γ ->
+    Δ ⊨ˢ (ι ψ) ≈ (ι ψ) : Γ.
 Proof.
   intros * [env_relΔ [HΔ [env_relΓ [HΓ [Hψm Hψ]]]]].
   eexists_rel_sub.
@@ -203,7 +203,7 @@ Qed.
 
 Corollary rel_sub_id : forall {Γ},
     ⊨ Γ ≈ Γ ->
-    Γ ⊨s Id ≈ Id : Γ.
+    Γ ⊨ˢ Id ≈ Id : Γ.
 Proof.
   intros * [env_relΓ HΓ].
   apply (rel_sub_of_wk (ψ := wk_id)).
@@ -226,7 +226,7 @@ Qed.
     soundness through them, are instantiated at. *)
 Corollary rel_wk_under_ctx_shift : forall {Γ e},
     ⊨ (e :: Γ)%list ->
-    (e :: Γ)%list ⊨w ↑ : Γ.
+    (e :: Γ)%list ⊨ʷ ↑ : Γ.
 Proof.
   intros * H.
   pose proof (sem_ctx_per_ctx_env H) as [env_relΓA HΓA].
@@ -239,7 +239,7 @@ Hint Resolve rel_wk_under_ctx_shift : mctt.
 
 Corollary rel_sub_shift : forall {Γ e},
     ⊨ (e :: Γ)%list ->
-    (e :: Γ)%list ⊨s Wk : Γ.
+    (e :: Γ)%list ⊨ˢ Wk : Γ.
 Proof.
   intros * H.
   apply (rel_sub_of_wk (rel_wk_under_ctx_shift H)).
@@ -259,7 +259,7 @@ Hint Resolve rel_sub_shift : mctt.
     [Core/Completeness.v] use these forms. *)
 
 Lemma rel_sub_under_ctx_simple : forall {Γ Δ σ σ'},
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     exists env_relΓ (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ)
        env_relΔ (_ : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ),
     forall ρ ρ',
@@ -286,7 +286,7 @@ Qed.
     this layer, because a context PER, unlike evaluation, respects [env_eq]
     ([per_ctx_env_Proper]). *)
 Lemma rel_sub_under_ctx_at : forall {Γ Δ σ σ'},
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     exists env_relΓ (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ)
        env_relΔ (_ : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ),
     forall ρ ρ' ρσ ρ'σ',
@@ -310,7 +310,7 @@ Qed.
     which renames hypotheses and so breaks proof scripts that mention them later,
     to this proof. *)
 Corollary rel_sub_under_ctx_at' : forall {Γ Δ σ σ' env_relΓ env_relΔ},
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ ->
     forall ρ ρ' ρσ ρ'σ',
@@ -398,7 +398,7 @@ Qed.
 (** * Precomposition with a Weakening
 
     Two instantiations of the same hypothesis at two weakenings.  Given
-    [Γ' ⊨w φ : Γ] and [ρ ≈ ρ' ∈ R_Γ'], instantiate [Δ ⊨s σ ≈ σ' : Δ']:
+    [Γ' ⊨ʷ φ : Γ] and [ρ ≈ ρ' ∈ R_Γ'], instantiate [Δ ⊨ˢ σ ≈ σ' : Δ']:
 
     - at [Γ'] with the composite [ψ ⊙ φ] ([rel_wk_compose]), whose outer values
       are the outer values wanted, because [σ[ψ][φ]] is [σ[ψ ⊙ φ]] ([sb_wk_wk]);
@@ -411,9 +411,9 @@ Qed.
     [functional_eval_sub] is all that identifies two evaluations of [σ]. *)
 
 Lemma rel_sub_under_ctx_wk : forall {Γ ψ Δ σ σ' Δ'},
-    Δ ⊨s σ ≈ σ' : Δ' ->
-    Γ ⊨w ψ : Δ ->
-    Γ ⊨s (sb_wk σ ψ) ≈ (sb_wk σ' ψ) : Δ'.
+    Δ ⊨ˢ σ ≈ σ' : Δ' ->
+    Γ ⊨ʷ ψ : Δ ->
+    Γ ⊨ˢ (sb_wk σ ψ) ≈ (sb_wk σ' ψ) : Δ'.
 Proof.
   intros * [env_relΔ [HΔ [env_relΔ' [HΔ' Hσ]]]] [env_relΓ [HΓ [env_relΔ2 [HΔ2 Hψ]]]].
   handle_per_ctx_env_irrel.
@@ -439,15 +439,15 @@ Qed.
     [sb_wk_wk_pre] on the outer two.  The chain is transported member by member by
     [rel_chain_map], whose hypothesis is [rel_wk φ].
 
-    The general case fails because [Γ'' ⊨s σ ⨟ τ : Γ] would need the value of
+    The general case fails because [Γ'' ⊨ˢ σ ⨟ τ : Γ] would need the value of
     [(σ x)[τ]] for every index [x], a statement about terms that the substitution
     judgment does not make.  This is why the [ℕ]-elimination [β]-rule goes
     through the generic recursor. *)
 
 Lemma rel_sub_under_ctx_wk_pre : forall {Γ Δ Δ' φ σ σ'},
-    Γ ⊨s σ ≈ σ' : Δ ->
-    Δ ⊨w φ : Δ' ->
-    Γ ⊨s (ι φ) ⨟ σ ≈ (ι φ) ⨟ σ' : Δ'.
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
+    Δ ⊨ʷ φ : Δ' ->
+    Γ ⊨ˢ (ι φ) ⨟ σ ≈ (ι φ) ⨟ σ' : Δ'.
 Proof.
   intros * [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]] [env_relΔ2 [HΔ2 [env_relΔ' [HΔ' Hφ]]]].
   handle_per_ctx_env_irrel.
@@ -465,7 +465,7 @@ Qed.
 
 (** * Semantic Weakening of a Term Judgment
 
-    A term judgment may be weakened along [Γ ⊨w φ : Δ].  The equation
+    A term judgment may be weakened along [Γ ⊨ʷ φ : Δ].  The equation
     [⟦M[φ]ʷ⟧(ρ) = ⟦M⟧(⟪φ⟫ ρ)] fails (in the [λ] case the two sides are different
     closures), so the two values must be related instead, by the judgment about
     [M] instantiated twice:
@@ -483,7 +483,7 @@ Qed.
     unrelated closures. *)
 
 Lemma rel_exp_under_ctx_wk : forall {Γ Δ φ A M M'},
-    Γ ⊨w φ : Δ ->
+    Γ ⊨ʷ φ : Δ ->
     Δ ⊨ M ≈ M' : A ->
     Γ ⊨ M[φ]ʷ ≈ M'[φ]ʷ : A[φ]ʷ.
 Proof.
@@ -529,7 +529,7 @@ Qed.
     [eval_sub_of_wk] names both inner environments, so the wanted pair (an outer
     value against the opposite inner one) is one [pairwise] away. *)
 Lemma rel_exp_under_ctx_wk_simple : forall {Γ Δ φ A M M'},
-    Γ ⊨w φ : Δ ->
+    Γ ⊨ʷ φ : Δ ->
     Δ ⊨ M ≈ M' : A ->
     exists env_relΓ (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) (i : nat),
     forall ρ ρ',
@@ -580,8 +580,8 @@ Qed.
     transported along the drop member by member. *)
 
 Lemma rel_sub_under_ctx_shift : forall {Γ Δ e σ σ'},
-    Γ ⊨s σ ≈ σ' : (e :: Δ)%list ->
-    Γ ⊨s Wk ⨟ σ ≈ Wk ⨟ σ' : Δ.
+    Γ ⊨ˢ σ ≈ σ' : (e :: Δ)%list ->
+    Γ ⊨ˢ Wk ⨟ σ ≈ Wk ⨟ σ' : Δ.
 Proof.
   intros * [env_relΓ [HΓ [env_relΔA [HΔA Hσ]]]].
   pose proof (rel_wk_shift_tail HΔA) as [env_relΔ [HΔ Hdrop]].
@@ -624,8 +624,8 @@ Proof.
 Qed.
 
 Lemma rel_sub_under_ctx_sym : forall {Γ Δ σ σ'},
-    Γ ⊨s σ ≈ σ' : Δ ->
-    Γ ⊨s σ' ≈ σ : Δ.
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ' ≈ σ : Δ.
 Proof.
   intros * [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]].
   eexists_rel_sub.
@@ -663,9 +663,9 @@ Qed.
     [rel_chain_incl] selects the four values wanted. *)
 
 Lemma rel_sub_under_ctx_trans : forall {Γ Δ σ1 σ2 σ3},
-    Γ ⊨s σ1 ≈ σ2 : Δ ->
-    Γ ⊨s σ2 ≈ σ3 : Δ ->
-    Γ ⊨s σ1 ≈ σ3 : Δ.
+    Γ ⊨ˢ σ1 ≈ σ2 : Δ ->
+    Γ ⊨ˢ σ2 ≈ σ3 : Δ ->
+    Γ ⊨ˢ σ1 ≈ σ3 : Δ.
 Proof.
   intros * [env_relΓ [HΓ [env_relΔ [HΔ H12]]]] H23'.
   pose proof H23' as [env_relΓ2 [HΓ2 [env_relΔ2 [HΔ2 H23]]]].
@@ -689,8 +689,8 @@ Qed.
     of a given substitution pair; symmetry and transitivity supply these. *)
 
 Corollary rel_sub_under_ctx_refl_left : forall {Γ Δ σ σ'},
-    Γ ⊨s σ ≈ σ' : Δ ->
-    Γ ⊨s σ : Δ.
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ : Δ.
 Proof.
   intros * H.
   pose proof (rel_sub_under_ctx_sym H).
@@ -698,8 +698,8 @@ Proof.
 Qed.
 
 Corollary rel_sub_under_ctx_refl_right : forall {Γ Δ σ σ'},
-    Γ ⊨s σ ≈ σ' : Δ ->
-    Γ ⊨s σ' : Δ.
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ' : Δ.
 Proof.
   intros * H.
   pose proof (rel_sub_under_ctx_sym H).
@@ -785,8 +785,8 @@ Lemma rel_sub_under_ctx_restrict : forall {Γ1 Γ2 Δ1 Δ2 σ σ' R1 R2 S1 S2},
     EF Δ2 ≈ Δ2 ∈ per_ctx_env ↘ S2 ->
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ R1 -> Dom ρ ≈ ρ' ∈ R2) ->
     (forall ρ ρ', Dom ρ ≈ ρ' ∈ S1 -> Dom ρ ≈ ρ' ∈ S2) ->
-    Γ2 ⊨s σ ≈ σ' : Δ1 ->
-    Γ1 ⊨s σ ≈ σ' : Δ2.
+    Γ2 ⊨ˢ σ ≈ σ' : Δ1 ->
+    Γ1 ⊨ˢ σ ≈ σ' : Δ2.
 Proof.
   intros * HΓ1 HΓ2 HΔ1 HΔ2 HR HS [R2' [HΓ2' [S1' [HΔ1' Hσ]]]].
   assert (ER : R2' <~> R2) by (eapply per_ctx_env_right_irrel; eassumption).

@@ -22,7 +22,7 @@ From Mctt.Core.Syntactic Require Import Substitution Members Inductives.
 From Mctt.Core.Syntactic.System Require Import IndSyntax.
 From Mctt.Core.Semantic.PER Require Import Tele.
 From Mctt.Core.Completeness Require Import
-  LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases UnitCases InstanceCases GlobalSem MemberReps.
+  LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases UnitCases InstanceCases GlobalArgs MemberReps.
 From Mctt.Core.Semantic Require Import Realizability IndPER Evaluation.Modules.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
@@ -368,7 +368,7 @@ Proof.
 Qed.
 
 Lemma rel_wk_under_ctx_compose : forall Γ Δ Θ' φ ψ,
-    Γ ⊨w ψ : Δ -> Δ ⊨w φ : Θ' -> Γ ⊨w (wk_compose φ ψ) : Θ'.
+    Γ ⊨ʷ ψ : Δ -> Δ ⊨ʷ φ : Θ' -> Γ ⊨ʷ (wk_compose φ ψ) : Θ'.
 Proof.
   intros * (R1 & H1 & R2 & H2 & Hψ) (R3 & H3 & R4 & H4 & Hφ).
   assert (E : R2 <~> R3) by (eapply per_ctx_env_right_irrel; eassumption).

@@ -19,11 +19,11 @@ Section Fixed_GCtx.
   Context {Θ : gdeps} {Ξ : gstack}.
 
   Lemma wf_sub_eq_of_list : forall Δ Γ Γ0 σ σ' Ms Ms',
-      tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ0 -> Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Γ0 ->
+      tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ0 -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Γ0 ->
       List.length Ms = List.length Δ -> List.length Ms' = List.length Δ ->
       (forall k N N' T, List.nth_error Ms k = Some N -> List.nth_error Ms' k = Some N' ->
          List.nth_error (tele_insts Δ σ Ms) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : T) ->
-      Θ ⍮ Ξ ⍮ Γ ⊢s sb_of_list σ Ms ≈ sb_of_list σ' Ms' : Δ ++ Γ0.
+      Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list σ Ms ≈ sb_of_list σ' Ms' : Δ ++ Γ0.
   Proof.
     induction Δ as [| e Δ IH] using List.rev_ind; intros * Hass HΔ Hσ Hl Hl' HMs.
     - destruct Ms; [| discriminate ]; destruct Ms'; [| discriminate ]; exact Hσ.
@@ -169,7 +169,7 @@ Section Fixed_GCtx.
   (** Equal instances of a telescope have equal types, position by
       position. *)
   Lemma tele_insts_cong : forall Δ Γ Γ0 σ σ' Ms Ms',
-      tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ0 -> Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Γ0 ->
+      tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ0 -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Γ0 ->
       List.length Ms = List.length Δ -> List.length Ms' = List.length Δ ->
       (forall k N N' T, List.nth_error Ms k = Some N -> List.nth_error Ms' k = Some N' ->
          List.nth_error (tele_insts Δ σ Ms) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : T) ->

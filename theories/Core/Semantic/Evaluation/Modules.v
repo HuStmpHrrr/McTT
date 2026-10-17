@@ -68,12 +68,13 @@ Section Members.
       [ eapply eval_sel_global | eapply eval_sel_global_neut | eapply eval_sel_global_ind | eapply eval_sel_global_ind_alias ]; eauto; constructor.
   Qed.
 
-  (** A chain of submodules of a global module, none of them an alias, is the
-      global module at the path the chain extends it to. *)
+  (** A chain of submodules of a global module, each a body module, an open
+      frame or the module of an inductive type, is the global module at the
+      path the chain extends it to. *)
   Lemma eval_mems_global : forall mems H mq ρ,
       ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ dm_global mq nil ->
       (forall m1 m2, mems = m1 ++ m2 -> m1 <> nil ->
-         forall U r, gc_module Θ Ξ (qname_app mq m1) <> Some (mr_alias U r)) ->
+         exists TΦ, gc_loc Θ Ξ (qname_app mq m1) = Some TΦ) ->
       ⟦ me_mems H mems ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ dm_global (qname_app mq mems) nil.
   Proof.
     induction mems as [| y mems IH]; intros * HH Hna; cbn [me_mems].
@@ -81,9 +82,9 @@ Section Members.
     - replace (qname_app mq (y :: mems)) with (qname_app (qname_app mq (y :: nil)) mems)
         by (unfold qname_app; cbn; rewrite <- app_assoc; reflexivity).
       apply IH.
-      + econstructor; [ exact HH |]; apply eval_selm_global.
-        intros U r; apply (Hna (y :: nil) mems eq_refl ltac:(discriminate)).
-      + intros m1 m2 -> Hm1 U r.
+      + econstructor; [ exact HH |].
+        destruct (Hna (y :: nil) mems eq_refl ltac:(discriminate)) as (TΦ & Hl); eapply eval_selm_global; exact Hl.
+      + intros m1 m2 -> Hm1.
         replace (qname_app (qname_app mq (y :: nil)) m1) with (qname_app mq (y :: m1))
           by (unfold qname_app; cbn; rewrite <- app_assoc; reflexivity).
         apply (Hna (y :: m1) m2 eq_refl ltac:(discriminate)).
@@ -107,7 +108,7 @@ Section Members.
 
   Corollary eval_path_mod : forall p ρ,
       (forall m1 m2, q_chain p = m1 ++ m2 -> m1 <> nil ->
-         forall U r, gc_module Θ Ξ (q_abs (q_unit p) m1) <> Some (mr_alias U r)) ->
+         exists TΦ, gc_loc Θ Ξ (q_abs (q_unit p) m1) = Some TΦ) ->
       ⟦ qname_mod p ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ dm_global p nil.
   Proof.
     intros [fp ms] ρ Hna; unfold qname_mod; cbn [q_unit q_chain] in *.
@@ -291,7 +292,7 @@ Section Members.
   Lemma eval_ctx_pi_body : forall Φ ρ ρ1 A a,
       gm_nopens Φ = 0 -> ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ a -> ⟦ ctx_pi (body_ctx Φ) A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a.
   Proof.
-    intros * Ho Hb; revert A a Ho; induction Hb; intros A0 a0 Ho HA; cbn in Ho |- *; [ assumption | | | discriminate ].
+    intros * Ho Hb; revert A a Ho; induction Hb; intros A0 a0 Ho HA; cbn in Ho |- *; [ assumption | | ].
     - apply IHHb; [ exact Ho | econstructor; eassumption ].
     - apply IHHb; [ exact Ho | econstructor; eassumption ].
   Qed.
@@ -299,7 +300,7 @@ Section Members.
   Lemma eval_ctx_fn_body : forall Φ ρ ρ1 M m,
       gm_nopens Φ = 0 -> ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m -> ⟦ ctx_fn (body_ctx Φ) M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m.
   Proof.
-    intros * Ho Hb; revert M m Ho; induction Hb; intros M0 m0 Ho HM; cbn in Ho |- *; [ assumption | | | discriminate ].
+    intros * Ho Hb; revert M m Ho; induction Hb; intros M0 m0 Ho HM; cbn in Ho |- *; [ assumption | | ].
     - apply IHHb; [ exact Ho | econstructor; eassumption ].
     - apply IHHb; [ exact Ho | econstructor; eassumption ].
   Qed.

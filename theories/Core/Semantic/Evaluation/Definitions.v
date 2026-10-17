@@ -18,6 +18,8 @@ Reserved Notation "'⟦' Ms '⟧*' Θ '⍮' Ξ '⍮' ρ '↘' ms" (at level 70, 
 Reserved Notation "'⟦' Φ '⟧ᵇ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" (at level 70, Φ at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ρ' at level 69).
 Reserved Notation "'$*|' m '&' ns '|' Θ '⍮' Ξ '↘' r" (at level 70, m at level 69, ns at level 69, Θ at level 69, Ξ at level 69, r at level 69).
 Reserved Notation "'$ᵐ|' h '&' n '|' Θ '⍮' Ξ '↘' r" (at level 70, h at level 69, n at level 69, Θ at level 69, Ξ at level 69, r at level 69).
+Reserved Notation "'$ᵐ*|' h '&' ns '|' Θ '⍮' Ξ '↘' r" (at level 70, h at level 69, ns at level 69, Θ at level 69, Ξ at level 69, r at level 69).
+Reserved Notation "'⟦' Δ '⊢' D '⟧ᶜ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, Δ at level 69, D at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "h '·ₜ' x Θ '⍮' Ξ '↘' r" (at level 70, x at level 0, Θ at level 69, Ξ at level 69, r at level 69).
 Reserved Notation "h '·ₘ' y Θ '⍮' Ξ '↘' r" (at level 70, y at level 0, Θ at level 69, Ξ at level 69, r at level 69).
 Reserved Notation "h '·ₜ*' ch Θ '⍮' Ξ '↘' r" (at level 70, ch at level 0, Θ at level 69, Ξ at level 69, r at level 69).
@@ -45,6 +47,11 @@ Definition fam_cod : exp := a_app (a_var 1) (a_var 0).
     out, and read a closure or a submodule closure as selection on module
     values does ([eval_selm]). *)
 
+(** The closure of a unit over [ρ], as kinds read it: a saturated alias is
+    left as a closure, which kinds read through. *)
+Definition dm_clo (U : gunit) (ρ : env) : dmod :=
+  match U with gu_mk Δ D => dm_local Δ D ρ end.
+
 (** [n] placeholders for parameters, terms, over [ρ]. *)
 Definition kpad (n : nat) (ρ : env) : env := List.repeat (de_term d_true) n ++ ρ.
 
@@ -52,7 +59,7 @@ Definition kpad (n : nat) (ρ : env) : env := List.repeat (de_term d_true) n ++ 
     closure; any other, a placeholder, as in [body_ctx]. *)
 Definition kbentry (ρ : env) (E : gentry) : dentry :=
   match E with
-  | ge_mod _ U => de_mod (dm_local ρ U nil)
+  | ge_mod _ U => de_mod (dm_clo U ρ)
   | _ => de_term d_true
   end.
 
@@ -61,7 +68,7 @@ Definition kbentry (ρ : env) (E : gentry) : dentry :=
     definition, a placeholder. *)
 Definition kentry (ρ : env) (k : nat) (g : igen) : dentry :=
   match g with
-  | ig_alias _ _ E => de_mod (dm_local ρ (gu_mk nil (md_alias (modexp_wk E (wk_shiftn k)))) nil)
+  | ig_alias _ _ E => de_mod (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
   | _ => de_term d_true
   end.
 
@@ -72,43 +79,62 @@ Fixpoint kgens_env (ρ : env) (k : nat) (gs : list igen) : env :=
   end.
 
 Inductive dkind (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> mkind -> Prop :=
-(** A chain of a global module, read off the global context as
-    [member_type] reads it: a definition is a term, a body module a
-    module, and a chain through an alias is read in the alias past it. *)
-| dk_global_def : forall p args ch b pv A B,
-    gc_resolve Θ Ξ (qname_app p ch) = Some (ge_def b pv A B) ->
-    dkind Θ Ξ (dm_global p args) ch mk_term
-| dk_global_mod : forall p args ch T oD,
-    gc_module Θ Ξ (qname_app p ch) = Some (mr_body T oD) ->
-    dkind Θ Ξ (dm_global p args) ch mk_mod
-| dk_global_alias : forall p args ch U r k,
-    gc_module Θ Ξ (qname_app p ch) = Some (mr_alias U r) ->
-    ukind Θ Ξ nil U r k ->
-    dkind Θ Ξ (dm_global p args) ch k
+(** A chain of a global module, read off the global context one name at a
+    time, as selection on module values reads it ([eval_selm]): the path
+    reached names a definition, a term, or a body module or an open frame,
+    a module; a chain through an alias is read in the alias past it. *)
+| dk_global_here_def : forall p args b pv A B,
+    gc_resolve Θ Ξ p = Some (ge_def b pv A B) ->
+    dkind Θ Ξ (dm_global p args) nil mk_term
+| dk_global_here_mod : forall p args,
+    (exists T oD, gc_module Θ Ξ p = Some (mr_body T oD)) \/ (exists TΦ, gc_frame Ξ p = Some TΦ) ->
+    dkind Θ Ξ (dm_global p args) nil mk_mod
+| dk_global_alias : forall p args y ch U k,
+    gc_module Θ Ξ (qname_app p (y :: nil)) = Some (mr_alias U) ->
+    ukind Θ Ξ nil U ch k ->
+    dkind Θ Ξ (dm_global p args) (y :: ch) k
+| dk_global_step : forall p args y ch k,
+    (exists TΦ, gc_loc Θ Ξ (qname_app p (y :: nil)) = Some TΦ) \/
+    (exists b pv A B, gc_resolve Θ Ξ (qname_app p (y :: nil)) = Some (ge_def b pv A B)) ->
+    dkind Θ Ξ (dm_global (qname_app p (y :: nil)) args) ch k ->
+    dkind Θ Ξ (dm_global p args) (y :: ch) k
 (** A closure, by its unit. *)
-| dk_local : forall ρ U args ch k,
-    ukind Θ Ξ ρ U ch k ->
-    dkind Θ Ξ (dm_local ρ U args) ch k
+| dk_local : forall Δ D ρ ch k,
+    ukind Θ Ξ ρ (gu_mk Δ D) ch k ->
+    dkind Θ Ξ (dm_local Δ D ρ) ch k
 (** A submodule closure, by the longer chain. *)
 | dk_member : forall h ch0 ch k,
     dkind Θ Ξ h (ch0 ++ ch) k ->
     dkind Θ Ξ (dm_member h ch0) ch k
 with ukind (Θ : gdeps) (Ξ : gstack) : env -> gunit -> list string -> mkind -> Prop :=
-| uk_self : forall ρ Δ Φ, ukind Θ Ξ ρ (gu_body Δ Φ) nil mk_mod
-| uk_def : forall ρ Δ Φ Φ' x b pv A B,
+| uk_self : forall ρ Δ sm Φ, ukind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) nil mk_mod
+| uk_def : forall ρ Δ sm Φ Φ' x b pv A B,
     gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A B)) ->
-    ukind Θ Ξ ρ (gu_body Δ Φ) (x :: nil) mk_term
-| uk_mod : forall ρ Δ Φ Φ' y pm Uy ρ1 ch k,
+    ukind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: nil) mk_term
+| uk_mod : forall ρ Δ sm Φ Φ' y pm Uy ρ1 ch k,
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
     kenv Θ Ξ (kpad (List.length Δ) ρ) Φ' ρ1 ->
     ukind Θ Ξ ρ1 Uy ch k ->
-    ukind Θ Ξ ρ (gu_body Δ Φ) (y :: ch) k
-(** A name a local open declares: the member it names, in the open's target. *)
-| uk_item : forall ρ Δ Φ Φ0 H its1 it ρ0 x ch k,
-    gm_item_upto Φ x = Some (Φ0, H, its1, it) ->
+    ukind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (y :: ch) k
+(** A name a local open declares, by the kind of the member it names in the
+    open's target, as the open generates it ([kgens]): a definition of a term
+    member, an alias of a module member or of the target itself. *)
+| uk_item_def : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x,
+    gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
     kenv Θ Ξ (kpad (List.length Δ) ρ) Φ0 ρ0 ->
-    skind Θ Ξ ρ0 H (item_ch it ch) k ->
-    ukind Θ Ξ ρ (gu_body Δ Φ) (x :: ch) k
+    skind Θ Ξ ρ0 H (n :: nil) mk_term ->
+    ukind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: nil) mk_term
+| uk_item_mod : forall ρ Δ sm Φ Φ0 H its1 n d pv ρ0 x ch k,
+    gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
+    kenv Θ Ξ (kpad (List.length Δ) ρ) Φ0 ρ0 ->
+    skind Θ Ξ ρ0 H (n :: nil) mk_mod ->
+    skind Θ Ξ ρ0 H (n :: ch) k ->
+    ukind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: ch) k
+| uk_item_self : forall ρ Δ sm Φ Φ0 H its1 d pv ρ0 x ch k,
+    gm_item_upto Φ x = Some (Φ0, H, its1, (None, d, pv)) ->
+    kenv Θ Ξ (kpad (List.length Δ) ρ) Φ0 ρ0 ->
+    skind Θ Ξ ρ0 H ch k ->
+    ukind Θ Ξ ρ (gu_mk Δ (md_body sm Φ)) (x :: ch) k
 | uk_alias : forall ρ Δ E ch k,
     skind Θ Ξ (kpad (List.length Δ) ρ) E ch k ->
     ukind Θ Ξ ρ (gu_mk Δ (md_alias E)) ch k
@@ -139,6 +165,19 @@ with kenv (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
     kenv Θ Ξ ρ Φ ρ1 ->
     kgens Θ Ξ ρ1 H its gs ->
     kenv Θ Ξ ρ (gm_open Φ H its) (kgens_env ρ1 0 gs)
+(** A body read through the entries its local opens generate, as kinds read
+    them: [body_xp] with the types left out.  Each open's items are read in
+    the environment of the expanded body before it. *)
+with kbody (Θ : gdeps) (Ξ : gstack) : env -> gmod -> gmod -> Prop :=
+| kb_nil : forall ρ, kbody Θ Ξ ρ gm_nil gm_nil
+| kb_ext : forall ρ Φ Φx x E,
+    kbody Θ Ξ ρ Φ Φx ->
+    kbody Θ Ξ ρ (gm_ext Φ x E) (gm_ext Φx x E)
+| kb_open : forall ρ Φ Φx ρ1 H its gs,
+    kbody Θ Ξ ρ Φ Φx ->
+    kenv Θ Ξ ρ Φx ρ1 ->
+    kgens Θ Ξ ρ1 H its gs ->
+    kbody Θ Ξ ρ (gm_open Φ H its) (gens_append Φx 0 gs)
 (** What the items of an open of [H] generate, by the kinds of the members
     they name, in [ρ]; a generated definition carries no type. *)
 with kgens (Θ : gdeps) (Ξ : gstack) : env -> modexp -> list iitem -> list igen -> Prop :=
@@ -159,11 +198,12 @@ Scheme dkind_mut_ind := Induction for dkind Sort Prop
 with ukind_mut_ind := Induction for ukind Sort Prop
 with skind_mut_ind := Induction for skind Sort Prop
 with kenv_mut_ind := Induction for kenv Sort Prop
+with kbody_mut_ind := Induction for kbody Sort Prop
 with kgens_mut_ind := Induction for kgens Sort Prop.
-Combined Scheme kind_mut_ind from dkind_mut_ind, ukind_mut_ind, skind_mut_ind, kenv_mut_ind, kgens_mut_ind.
+Combined Scheme kind_mut_ind from dkind_mut_ind, ukind_mut_ind, skind_mut_ind, kenv_mut_ind, kbody_mut_ind, kgens_mut_ind.
 
 #[export]
-Hint Constructors dkind ukind skind kenv kgens : mctt.
+Hint Constructors dkind ukind skind kenv kbody kgens : mctt.
 
 (** * Evaluation of Expressions
 
@@ -258,8 +298,9 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      ⟦ a_let (b_def oA M) B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A local module extends it by the unit's closure. *)
 | eval_exp_let_mod :
-  `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ᵐ dm_local ρ U nil ↘ r ->
-     ⟦ ℓₘ U in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+  `( ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ᵐ h ↘ r ->
+     ⟦ ℓₘ (gu_mk Δ D) in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A member is read off the root of its module expression, then applied to
     the module's arguments: arguments commute with selection.  Without
     arguments this is selection from the module's value. *)
@@ -402,9 +443,10 @@ with eval_modexp (Θ : gdeps) (Ξ : gstack) : modexp -> env -> dmod -> Prop :=
     are selected from it ([eval_selm_global]). *)
 | eval_me_unit :
   `( ⟦ me_unit fp ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ dm_global (q_abs fp nil) nil )
-(** A literal unit is its closure, with no argument yet. *)
+(** A literal unit is its closure. *)
 | eval_me_lit :
-  `( ⟦ me_lit U ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ dm_local ρ U nil )
+  `( ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h ->
+     ⟦ me_lit (gu_mk Δ D) ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h )
 (** A submodule is selected from the module's value. *)
 | eval_me_mem :
   `( ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
@@ -417,33 +459,45 @@ with eval_modexp (Θ : gdeps) (Ξ : gstack) : modexp -> env -> dmod -> Prop :=
      $ᵐ| h & n | Θ ⍮ Ξ ↘ r ->
      ⟦ me_app H N ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ r )
 where "'⟦' H '⟧ᵐ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_modexp Θ Ξ H ρ r)
-(** Applying a module value to one more argument, which it must still lack.
-    A saturated alias is its target. *)
+(** The closure of a unit's definition [D] lacking the parameters [Δ], over
+    [ρ]: a body, or an alias still lacking a parameter, is its closure; an
+    alias lacking none is its target's value.  So no value is a saturated
+    alias. *)
+with eval_close (Θ : gdeps) (Ξ : gstack) : ctx -> moddef -> env -> dmod -> Prop :=
+| eval_close_body :
+  `( ⟦ Δ ⊢ md_body sm Φ ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ dm_local Δ (md_body sm Φ) ρ )
+| eval_close_alias :
+  `( 0 < List.length Δ ->
+     ⟦ Δ ⊢ md_alias E ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ dm_local Δ (md_alias E) ρ )
+| eval_close_alias0 :
+  `( ⟦ E ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
+     ⟦ nil ⊢ md_alias E ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h )
+where "'⟦' Δ '⊢' D '⟧ᶜ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_close Θ Ξ Δ D ρ r)
+(** Applying a module value to one more argument, which it must still lack. *)
 with eval_appm (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> dmod -> Prop :=
 (** A global module records the argument. *)
 | eval_appm_global :
   `( $ᵐ| dm_global p args & n | Θ ⍮ Ξ ↘ dm_global p (args ++ n :: nil) )
-(** A body unit lacking arguments records it. *)
-| eval_appm_body :
-  `( List.length args < List.length Δ ->
-     $ᵐ| dm_local ρ (gu_mk Δ (md_body Φ)) args & n | Θ ⍮ Ξ ↘ dm_local ρ (gu_mk Δ (md_body Φ)) (args ++ n :: nil) )
-(** So does an alias unit lacking arguments. *)
-| eval_appm_alias_unsat :
-  `( List.length args < List.length Δ ->
-     $ᵐ| dm_local ρ (gu_mk Δ (md_alias E)) args & n | Θ ⍮ Ξ ↘
-       dm_local ρ (gu_mk Δ (md_alias E)) (args ++ n :: nil) )
-(** A saturated alias passes it to its target. *)
-| eval_appm_alias :
-  `( List.length args = List.length Δ ->
-     ⟦ E ⟧ᵐ Θ ⍮ Ξ ⍮ env_args ρ args ↘ h ->
-     $ᵐ| h & n | Θ ⍮ Ξ ↘ r ->
-     $ᵐ| dm_local ρ (gu_mk Δ (md_alias E)) args & n | Θ ⍮ Ξ ↘ r )
+(** A closure takes it as its outermost missing parameter, in its
+    environment. *)
+| eval_appm_local :
+  `( ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ r ->
+     $ᵐ| dm_local (Δ ++ ce_ass A :: nil) D ρ & n | Θ ⍮ Ξ ↘ r )
 (** A submodule of an unsaturated module passes it to the module, then selects again. *)
 | eval_appm_member :
   `( $ᵐ| h & n | Θ ⍮ Ξ ↘ h' ->
      h' ·ₘ* ch Θ ⍮ Ξ ↘ r ->
      $ᵐ| dm_member h ch & n | Θ ⍮ Ξ ↘ r )
 where "'$ᵐ|' h '&' n '|' Θ '⍮' Ξ '↘' r" := (eval_appm Θ Ξ h n r)
+(** Applying a module value to arguments, outermost first. *)
+with eval_appms (Θ : gdeps) (Ξ : gstack) : dmod -> list domain -> dmod -> Prop :=
+| eval_appms_nil :
+  `( $ᵐ*| h & nil | Θ ⍮ Ξ ↘ h )
+| eval_appms_cons :
+  `( $ᵐ| h & n | Θ ⍮ Ξ ↘ h1 ->
+     $ᵐ*| h1 & ns | Θ ⍮ Ξ ↘ r ->
+     $ᵐ*| h & n :: ns | Θ ⍮ Ξ ↘ r )
+where "'$ᵐ*|' h '&' ns '|' Θ '⍮' Ξ '↘' r" := (eval_appms Θ Ξ h ns r)
 (** Selecting a term member.  A member of a global module is stored closed,
     over the module's parameters: δ evaluates a transparent one's body in the
     empty environment, and an opaque one or an axiom is a neutral at its
@@ -477,73 +531,51 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      ⟦ ctx_fn Δ (apps (a_ind pt) Ns) ⟧ Θ ⍮ Ξ ⍮ nil ↘ f ->
      $*| f & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
-(** A member of an unsaturated module is a member closure. *)
+(** A member of a closure lacking a parameter is a member closure. *)
 | eval_sel_unsat :
-  `( List.length args < List.length (gu_params U) ->
-     dm_local ρ U args ·ₜ x Θ ⍮ Ξ ↘ d_member (dm_local ρ U args) (x :: nil) )
-(** A definition of a saturated body: its body, in the environment of the body before it. *)
+  `( 0 < List.length Δ ->
+     dm_local Δ D ρ ·ₜ x Θ ⍮ Ξ ↘ d_member (dm_local Δ D ρ) (x :: nil) )
+(** A definition of a saturated body, found in the body read through the
+    entries its local opens generate: its body, in the environment of the
+    body before it. *)
 | eval_sel_body :
-  `( List.length args = List.length Δ ->
-     gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
-     ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ' ->
+  `( kbody Θ Ξ ρ Φ Φx ->
+     gm_prefix_upto Φx x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
+     ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
-     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₜ x Θ ⍮ Ξ ↘ r )
-(** A definition a local open of a saturated body declares: the member it
-    names in the open's target, read in the environment of the body before
-    the open. *)
-| eval_sel_item :
-  `( List.length args = List.length Δ ->
-     gm_item_upto Φ x = Some (Φ0, H, its1, (Some n, d, pv)) ->
-     ⟦ Φ0 ⟧ᵇ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ0 ->
-     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ0 ↘ h ->
-     h ·ₜ n Θ ⍮ Ξ ↘ r ->
-     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₜ x Θ ⍮ Ξ ↘ r )
-(** A member of a saturated alias is selected from its target. *)
-| eval_sel_alias :
-  `( List.length args = List.length Δ ->
-     ⟦ E ⟧ᵐ Θ ⍮ Ξ ⍮ env_args ρ args ↘ h ->
-     h ·ₜ x Θ ⍮ Ξ ↘ r ->
-     dm_local ρ (gu_mk Δ (md_alias E)) args ·ₜ x Θ ⍮ Ξ ↘ r )
+     dm_local nil (md_body sm Φ) ρ ·ₜ x Θ ⍮ Ξ ↘ r )
 (** A member of a submodule closure extends the chain. *)
 | eval_sel_member :
   `( dm_member h ch ·ₜ x Θ ⍮ Ξ ↘ d_member h (ch ++ x :: nil) )
 where "h '·ₜ' x Θ '⍮' Ξ '↘' r" := (eval_sel Θ Ξ h x r)
 (** Selecting a submodule. *)
 with eval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop :=
-(** A body submodule of a global module is a global module, with the same arguments. *)
+(** A body submodule, an open frame or the module of an inductive type in a
+    global module is a global module, with the same arguments. *)
 | eval_selm_global :
-  `( (forall U r, gc_module Θ Ξ (qname_app p (y :: nil)) <> Some (mr_alias U r)) ->
+  `( gc_loc Θ Ξ (qname_app p (y :: nil)) = Some TΦ ->
      dm_global p args ·ₘ y Θ ⍮ Ξ ↘ dm_global (qname_app p (y :: nil)) args )
-(** An alias submodule of a global module is selected from the alias's closure. *)
+(** An alias submodule of a global module is the closure of the alias,
+    stored closed over the module's parameters, given the module's
+    arguments. *)
 | eval_selm_global_alias :
-  `( gc_module Θ Ξ (qname_app p (y :: nil)) = Some (mr_alias U ch) ->
-     dm_local nil U args ·ₘ* ch Θ ⍮ Ξ ↘ r ->
+  `( gc_module Θ Ξ (qname_app p (y :: nil)) = Some (mr_alias (gu_mk Δ D)) ->
+     ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ nil ↘ h ->
+     $ᵐ*| h & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₘ y Θ ⍮ Ξ ↘ r )
-(** A submodule of an unsaturated module is a submodule closure. *)
+(** A submodule of a closure lacking a parameter is a submodule closure. *)
 | eval_selm_unsat :
-  `( List.length args < List.length (gu_params U) ->
-     dm_local ρ U args ·ₘ y Θ ⍮ Ξ ↘ dm_member (dm_local ρ U args) (y :: nil) )
-(** A submodule of a saturated body is its unit's closure, in the environment of the body before it. *)
+  `( 0 < List.length Δ ->
+     dm_local Δ D ρ ·ₘ y Θ ⍮ Ξ ↘ dm_member (dm_local Δ D ρ) (y :: nil) )
+(** A submodule of a saturated body, found in the body read through the
+    entries its local opens generate: its unit's closure, in the environment
+    of the body before it. *)
 | eval_selm_body :
-  `( List.length args = List.length Δ ->
-     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
-     ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ' ->
-     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₘ y Θ ⍮ Ξ ↘ dm_local ρ' Uy nil )
-(** A module a local open of a saturated body declares: the target, or its
-    member the item names. *)
-| eval_selm_item :
-  `( List.length args = List.length Δ ->
-     gm_item_upto Φ y = Some (Φ0, H, its1, it) ->
-     ⟦ Φ0 ⟧ᵇ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ0 ->
-     ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ0 ↘ h ->
-     h ·ₘ* (item_ch it nil) Θ ⍮ Ξ ↘ r ->
-     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₘ y Θ ⍮ Ξ ↘ r )
-(** A submodule of a saturated alias is selected from its target. *)
-| eval_selm_alias :
-  `( List.length args = List.length Δ ->
-     ⟦ E ⟧ᵐ Θ ⍮ Ξ ⍮ env_args ρ args ↘ h ->
-     h ·ₘ y Θ ⍮ Ξ ↘ r ->
-     dm_local ρ (gu_mk Δ (md_alias E)) args ·ₘ y Θ ⍮ Ξ ↘ r )
+  `( kbody Θ Ξ ρ Φ Φx ->
+     gm_prefix_upto Φx y = Some (gm_ext Φ' y (ge_mod pm (gu_mk Δy Dy))) ->
+     ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
+     ⟦ Δy ⊢ Dy ⟧ᶜ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
+     dm_local nil (md_body sm Φ) ρ ·ₘ y Θ ⍮ Ξ ↘ r )
 (** A submodule of a submodule closure extends the chain. *)
 | eval_selm_member :
   `( dm_member h ch ·ₘ y Θ ⍮ Ξ ↘ dm_member h (ch ++ y :: nil) )
@@ -584,14 +616,8 @@ with eval_benv (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 (** A submodule adds its unit's closure. *)
 | eval_benv_mod :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
-     ⟦ gm_ext Φ y (ge_mod pm Uy) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ dm_local ρ1 Uy nil )
-(** A local open adds the entries it generates, by the kinds of the members
-    its items name. *)
-| eval_benv_open :
-  `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
-     kgens Θ Ξ ρ1 H its gs ->
-     ⟦ gens_append gm_nil 0 gs ⟧ᵇ Θ ⍮ Ξ ⍮ ρ1 ↘ ρ2 ->
-     ⟦ gm_open Φ H its ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ2 )
+     ⟦ Δy ⊢ Dy ⟧ᶜ Θ ⍮ Ξ ⍮ ρ1 ↘ h ->
+     ⟦ gm_ext Φ y (ge_mod pm (gu_mk Δy Dy)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ h )
 where "'⟦' Φ '⟧ᵇ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (eval_benv Θ Ξ ρ Φ ρ').
 
 Scheme eval_exp_mut_ind := Induction for eval_exp Sort Prop
@@ -599,7 +625,9 @@ with eval_app_mut_ind := Induction for eval_app Sort Prop
 with eval_exps_mut_ind := Induction for eval_exps Sort Prop
 with eval_apps_mut_ind := Induction for eval_apps Sort Prop
 with eval_modexp_mut_ind := Induction for eval_modexp Sort Prop
+with eval_close_mut_ind := Induction for eval_close Sort Prop
 with eval_appm_mut_ind := Induction for eval_appm Sort Prop
+with eval_appms_mut_ind := Induction for eval_appms Sort Prop
 with eval_sel_mut_ind := Induction for eval_sel Sort Prop
 with eval_selm_mut_ind := Induction for eval_selm Sort Prop
 with eval_selc_mut_ind := Induction for eval_selc Sort Prop
@@ -616,7 +644,9 @@ Combined Scheme eval_mut_ind from
   eval_exps_mut_ind,
   eval_apps_mut_ind,
   eval_modexp_mut_ind,
+  eval_close_mut_ind,
   eval_appm_mut_ind,
+  eval_appms_mut_ind,
   eval_sel_mut_ind,
   eval_selm_mut_ind,
   eval_selc_mut_ind,
@@ -629,7 +659,7 @@ Combined Scheme eval_mut_ind from
   eval_ihty_mut_ind.
 
 #[export]
-Hint Constructors eval_exp eval_elim eval_ihs eval_ih eval_shty eval_ihty eval_app eval_exps eval_apps eval_modexp eval_appm eval_sel eval_selm
+Hint Constructors eval_exp eval_elim eval_ihs eval_ih eval_shty eval_ihty eval_app eval_exps eval_apps eval_modexp eval_close eval_appm eval_appms eval_sel eval_selm
   eval_selc eval_selmc eval_benv : mctt.
 
 (** [eval_exp_var] with the value as a premise.  The value [ρ x] is a flexible

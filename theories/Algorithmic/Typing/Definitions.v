@@ -122,66 +122,38 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      Γ ⊢a N ⟸ A ->
      nbe_ty_f Γ B[Id,,N] C ->
      Γ ⊢a M $ N ⟹ C )
+(** A local definition: an annotation is a type and the body is checked
+    against it; without one, the body infers the type.  Then the body of the
+    [let].  The two cases are premises under the annotation they are about,
+    so that the induction principle has a hypothesis for each. *)
 | ati_let :
-  `( Γ ⊢a A ⟹ UA ->
-     is_univ_nf UA u ->
-     Γ ⊢a M ⟸ A ->
+  `( let_ann oA A ->
+     (oA = Some A -> Γ ⊢a A ⟹ UA) ->
+     (oA = Some A -> is_univ_nf UA u) ->
+     (oA = Some A -> Γ ⊢a M ⟸ A) ->
+     (oA = None -> Γ ⊢a M ⟹ W) ->
+     (oA = None -> A = nf_to_exp W) ->
      Γ ▸ A ≔ M ⊢a B ⟹ C ->
      nbe_ty_f Γ C[Id,,M] D ->
-     Γ ⊢a ℓ A ≔ M in B ⟹ D )
-(** An unannotated definition is of the type its body infers. *)
-| ati_let_infer :
-  `( Γ ⊢a M ⟹ A ->
-     Γ ▸ (A : exp) ≔ M ⊢a B ⟹ C ->
-     nbe_ty_f Γ C[Id,,M] D ->
-     Γ ⊢a ℓ ≔ M in B ⟹ D )
+     Γ ⊢a a_let (b_def oA M) B ⟹ D )
 | ati_let_mod :
   `( Γ ⊢aᵘ U ->
      Γ ▹ₘ U ⊢a B ⟹ C ->
      nbe_ty_f Γ C[Id ,,ₘ me_lit U] D ->
      Γ ⊢a ℓₘ U in B ⟹ D )
-(** A member infers the normal form of its canonical type.  Neither that
-    type nor the member's δ-reduct is checked: of a well-formed module, the
-    one is a type and the other inhabits it ([member_wf]). *)
+(** A member infers the normal form of the term part of what it denotes.
+    Neither that type nor the member's δ-reduct is checked: of a well-formed
+    module, the one is a type and the other inhabits it. *)
 | ati_mem :
-  `( me_noargs H ->
-     Γ ⊢aᵐ H ->
-     member_type gc_deps gc_stack Γ H (x :: nil) (mr_term A) ->
+  `( Γ ⊢aᵐ H ->
+     mdenote gc_deps gc_stack Γ (me_mem H x) R ->
+     ds_ty gc_deps gc_stack R = Some A ->
      nbe_ty_f Γ A B ->
      Γ ⊢a a_mem H x ⟹ B )
-(** A member of an applied module infers as its root's member applied. *)
-| ati_mem_app :
-  `( Γ ⊢aᵐ H ->
-     modexp_spine H = (R, args, pre) ->
-     args <> nil ->
-     Γ ⊢a apps (member_ref R (pre ++ x :: nil)) args ⟹ A ->
-     Γ ⊢a a_mem H x ⟹ A )
 | ati_vlookup :
   `( Γ ∋ #x : A ->
      nbe_ty_f Γ A B ->
      Γ ⊢a #x ⟹ B )
-(** A member of a chain from a unit, a global, infers the normal form of the
-    closed type that resolution returns for it. *)
-| ati_mem_glob :
-  `( mod_qname H = Some mp ->
-     gc_resolve gc_deps gc_stack (qname_app mp (x :: nil)) = Some (ge_def b pv A B) ->
-     nbe_ty_f Γ A C ->
-     Γ ⊢a a_mem H x ⟹ C )
-(** The module of an inductive type, reached by a chain from a unit, infers
-    the normal form of the type of its declaration. *)
-| ati_mem_glob_ind :
-  `( mod_qname H = Some mp ->
-     ind_lookup gc_deps gc_stack (qname_app mp (x :: nil)) = Some D ->
-     nbe_ty_f Γ (ind_ty D) C ->
-     Γ ⊢a a_mem H x ⟹ C )
-(** An inductive alias, reached by a chain from a unit, infers the normal
-    form of the closed type of the term it δ-unfolds to. *)
-| ati_mem_glob_ind_alias :
-  `( mod_qname H = Some mp ->
-     ind_alias_lookup gc_deps gc_stack (qname_app mp (x :: nil)) = Some (Δ, p, Ns) ->
-     ind_lookup gc_deps gc_stack p = Some D ->
-     nbe_ty_f Γ (ctx_pi Δ (ind_ty_at D Ns)) C ->
-     Γ ⊢a a_mem H x ⟹ C )
 where "Γ '⊢a' M ⟹ A" := (alg_type_infer Γ A M) : type_scope
 (** The well-formedness of extensions, units and module expressions, entry by
     entry, part by part. *)
@@ -214,7 +186,7 @@ with alg_unit : ctx -> gunit -> Prop :=
      body_shape Φ Φ ->
      body_shape Φx Φx ->
      List.NoDup (gm_names Φ) ->
-     Γ ⊢aᵘ gu_body Δ Φ )
+     Γ ⊢aᵘ gu_open Δ Φ )
 | aunit_alias :
   `( Γ ⊢aˣ Δ ->
      tele_ass Δ ->
@@ -241,34 +213,34 @@ with alg_body : ctx -> gmod -> gmod -> Prop :=
 | abody_open :
   `( Γ ⊢aᵇ Φ ⇝ Φx ->
      body_ctx Φx ++ Γ ⊢aᵐ H ->
-     member_type gc_deps gc_stack (body_ctx Φx ++ Γ) H nil R ->
-     mres_tl R = Some T ->
-     items_gen gc_deps gc_stack None (body_ctx Φx ++ Γ) H its gs ->
+     mdenote gc_deps gc_stack (body_ctx Φx ++ Γ) H R ->
+     ds_mod gc_deps gc_stack R = Some Rm ->
+     items_gen gc_deps gc_stack false (body_ctx Φx ++ Γ) H its gs ->
      items_ok its ->
      Γ ⊢aᵇ gm_open Φ H its ⇝ gens_append Φx 0 gs )
 where "Γ '⊢aᵇ' Φ ⇝ Φx" := (alg_body Γ Φ Φx) : type_scope
 with alg_modexp : ctx -> modexp -> Prop :=
-| amod_glob :
-  `( mod_qname H = Some mp ->
-     member_type gc_deps gc_stack Γ H nil R ->
-     mres_tl R = Some T ->
-     Γ ⊢aᵐ H )
+| amod_unit :
+  `( mdenote gc_deps gc_stack Γ (me_unit fp) R ->
+     ds_mtele gc_deps gc_stack R = Some T ->
+     Γ ⊢aᵐ me_unit fp )
 | amod_var :
-  `( Γ ∋ #x ⇒ₘ U ->
+  `( Γ ∋ #x ≔ₘ U ->
      Γ ⊢aᵐ me_var x )
 | amod_lit :
   `( Γ ⊢aᵘ U ->
      Γ ⊢aᵐ me_lit U )
 | amod_mem :
   `( Γ ⊢aᵐ H ->
-     member_type gc_deps gc_stack Γ H (y :: nil) R ->
-     mres_tl R = Some T ->
+     mdenote gc_deps gc_stack Γ (me_mem H y) R ->
+     ds_mtele gc_deps gc_stack R = Some T ->
      Γ ⊢aᵐ me_mem H y )
-(** An argument is checked against the outermost parameter of the arity. *)
+(** An argument is checked against the outermost parameter of the
+    telescope. *)
 | amod_app :
   `( Γ ⊢aᵐ H ->
-     member_type gc_deps gc_stack Γ H nil R ->
-     mres_tl R = Some T ->
+     mdenote gc_deps gc_stack Γ H R ->
+     ds_mtele gc_deps gc_stack R = Some T ->
      tele_view T = Some (B, T1) ->
      Γ ⊢a N ⟸ B ->
      Γ ⊢aᵐ me_app H N )
@@ -301,6 +273,53 @@ Combined Scheme alg_type_mut_ind from
   alg_unit_mut_ind,
   alg_body_mut_ind,
   alg_modexp_mut_ind.
+
+(** The two instances of [ati_let], with an annotation and without one. *)
+Section LetInstances.
+  Context {GC : GCtx}.
+
+  Lemma ati_let_some : forall Γ A UA u M B C D,
+      Γ ⊢a A ⟹ UA ->
+      is_univ_nf UA u ->
+      Γ ⊢a M ⟸ A ->
+      Γ ▸ A ≔ M ⊢a B ⟹ C ->
+      nbe_ty_f Γ C[Id,,M] D ->
+      Γ ⊢a ℓ A ≔ M in B ⟹ D.
+  Proof.
+    intros * HA Hu HM HB HD.
+    eapply ati_let with (W := UA);
+      [ right; reflexivity | intros _; exact HA | intros _; exact Hu | intros _; exact HM
+      | discriminate | discriminate | exact HB | exact HD ].
+  Qed.
+
+  Lemma ati_let_none : forall Γ M (A : nf) B C D,
+      Γ ⊢a M ⟹ A ->
+      Γ ▸ (A : exp) ≔ M ⊢a B ⟹ C ->
+      nbe_ty_f Γ C[Id,,M] D ->
+      Γ ⊢a ℓ ≔ M in B ⟹ D.
+  Proof.
+    intros * HM HB HD.
+    eapply ati_let with (W := A) (UA := A) (u := unl 0);
+      [ left; reflexivity | discriminate | discriminate | discriminate
+      | intros _; exact HM | intros _; reflexivity | exact HB | exact HD ].
+  Qed.
+End LetInstances.
+
+#[export]
+Hint Resolve ati_let_some ati_let_none : mctt.
+
+(** The premises of [ati_let], read at the annotation: those about the other
+    case are dropped, and those about this one are instantiated.  An
+    annotation that is a constructor already fixes the type. *)
+Ltac simpl_let_guards :=
+  repeat match goal with
+         | H : let_ann (Some _) _ |- _ => destruct H as [[=] | [= <-]]
+         | H : let_ann None _ |- _ => clear H
+         | H : ?x = ?x -> _ |- _ => specialize (H eq_refl)
+         | H : None = Some _ -> _ |- _ => clear H
+         | H : Some _ = None -> _ |- _ => clear H
+         | H : ?A = nf_to_exp _ |- _ => is_var A; subst A
+         end.
 
 (** ** User Expressions
 

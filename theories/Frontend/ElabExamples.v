@@ -366,7 +366,7 @@ Example kw_local_theorem :
   elab_spec (unit_of
     (c_eval (letb (d_mod "L" nil (md_where (def_cmd dk_theorem md_pub "a" nat (num 0) :: nil))) (num 0)) None :: nil))
     (nil, ⋅,
-     cc_eval (ℓₘ (gu_mk ⋅ (md_body (gm_ext gm_nil "a" (ge_def false false ℕ (Some (a_nlit 0)))))) in (a_nlit 0)) None :: nil).
+     cc_eval (ℓₘ (gu_mk ⋅ (md_body sm_open (gm_ext gm_nil "a" (ge_def false false ℕ (Some (a_nlit 0)))))) in (a_nlit 0)) None :: nil).
 Proof. elab_ok. Qed.
 
 (** ** One Binding per Name per Frame
@@ -577,11 +577,11 @@ Example local_body :
     (nil, ⋅,
      cc_eval
        (ℓₘ (gu_mk (⋅ ▹ Typeω@0)
-              (md_body
+              (md_body sm_open
                  (gm_ext
                     (gm_ext
                        (gm_ext gm_nil "x" (ge_def true false (Π #0 #1) (Some (λ #0 #0))))
-                       "N" (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some (a_nlit 0))))))))
+                       "N" (ge_mod false (gu_mk ⋅ (md_body sm_open (gm_ext gm_nil "y" (ge_def true false ℕ (Some (a_nlit 0))))))))
                     "z" (ge_def true false ℕ (Some (a_mem (me_var 0) "y"))))))
         in a_mem (me_var 0) "x") None :: nil).
 Proof. elab_ok. Qed.
@@ -615,12 +615,12 @@ Example local_open :
     (nil, ⋅,
      cc_eval
        (ℓₘ (gu_mk ⋅
-              (md_body
+              (md_body sm_open
                  (gm_ext
                     (gm_ext
                        (gm_open
                           (gm_open
-                             (gm_ext gm_nil "N" (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some (a_nlit 0))))))))
+                             (gm_ext gm_nil "N" (ge_mod false (gu_mk ⋅ (md_body sm_open (gm_ext gm_nil "y" (ge_def true false ℕ (Some (a_nlit 0))))))))
                              (me_var 0) ((Some "y", "y", true) :: nil))
                           (me_var 1) ((None, "K", true) :: nil))
                        "z" (ge_def true false ℕ (Some #1)))
@@ -639,7 +639,7 @@ Example local_unit_loaded :
   elab_spec (local_unit_import (c_import ("X" :: nil) :: nil))
     (cc_load ("X" :: nil) :: nil, ⋅,
      cc_load ("X" :: nil) ::
-     cc_eval (ℓₘ (gu_mk ⋅ (md_body (gm_open gm_nil (mpath ("X" :: nil) nil) ((Some "f", "f", true) :: nil))))
+     cc_eval (ℓₘ (gu_mk ⋅ (md_body sm_open (gm_open gm_nil (mpath ("X" :: nil) nil) ((Some "f", "f", true) :: nil))))
               in (a_nlit 0)) None :: nil).
 Proof. elab_ok. Qed.
 
@@ -690,9 +690,9 @@ Example local_private :
                                             c_def md_pub "t" nat (var "s") :: nil)))
                (proj (var "L") "t")) None :: nil))
     (nil, ⋅,
-     cc_eval (ℓₘ (gu_mk ⋅ (md_body (gm_ext (gm_ext (gm_ext gm_nil
+     cc_eval (ℓₘ (gu_mk ⋅ (md_body sm_open (gm_ext (gm_ext (gm_ext gm_nil
                                       "s" (ge_def true true ℕ (Some (a_nlit 0))))
-                                      "N" (ge_mod true (gu_mk ⋅ (md_body gm_nil))))
+                                      "N" (ge_mod true (gu_mk ⋅ (md_body sm_open gm_nil))))
                                       "t" (ge_def true false ℕ (Some #1)))))
               in a_mem (me_var 0) "t") None :: nil).
 Proof. elab_ok. Qed.
@@ -709,9 +709,9 @@ Example local_use_dup :
     (nil, ⋅,
      cc_eval
        (ℓₘ (gu_mk ⋅
-              (md_body
+              (md_body sm_open
                  (gm_open
-                    (gm_ext gm_nil "N" (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some (a_nlit 0))))))))
+                    (gm_ext gm_nil "N" (ge_mod false (gu_mk ⋅ (md_body sm_open (gm_ext gm_nil "y" (ge_def true false ℕ (Some (a_nlit 0))))))))
                     (me_var 0) ((Some "y", "y", true) :: (Some "y", "y", true) :: nil))))
         in (a_nlit 0)) None :: nil).
 Proof. elab_ok. Qed.
@@ -725,9 +725,9 @@ Example local_path :
           (proj (proj (proj (var "L") "A") "B") "y")) None :: nil))
     (nil, ⋅,
      cc_eval
-       (ℓₘ (gu_mk ⋅ (md_body (gm_ext gm_nil "A"
-               (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "B"
-                  (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some (a_nlit 0))))))))))))))
+       (ℓₘ (gu_mk ⋅ (md_body sm_open (gm_ext gm_nil "A"
+               (ge_mod false (gu_mk ⋅ (md_body sm_open (gm_ext gm_nil "B"
+                  (ge_mod false (gu_mk ⋅ (md_body sm_open (gm_ext gm_nil "y" (ge_def true false ℕ (Some (a_nlit 0))))))))))))))
         in a_mem (me_mem (me_mem (me_var 0) "A") "B") "y") None :: nil).
 Proof. elab_ok. Qed.
 
@@ -980,10 +980,10 @@ Example local_items :
     (nil, ⋅,
      cc_eval
        (ℓₘ (gu_mk ⋅
-              (md_body
+              (md_body sm_open
                  (gm_open
                     (gm_ext gm_nil "N" (ge_mod false (gu_mk (⋅ ▹ Typeω@0)
-                                         (md_body (gm_ext gm_nil "y" (ge_def true false Typeω@0 (Some #0)))))))
+                                         (md_body sm_open (gm_ext gm_nil "y" (ge_def true false Typeω@0 (Some #0)))))))
                     (me_app (me_var 0) ℕ) ((Some "y", "u", true) :: (Some "y", "y", false) :: nil))))
         in a_mem (me_var 0) "y") None :: nil).
 Proof. elab_ok. Qed.

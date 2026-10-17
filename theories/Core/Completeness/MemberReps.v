@@ -46,6 +46,7 @@ Lemma gsub_sem : forall {Γ τ Δ}, gsub Γ τ Δ -> ⊨ Γ /\ ⊨ Δ.
 Proof.
   induction 1 as [? HΓ | ? ? ? ? ? ? ? [IH1 IH2] HB HN | ? ? ? ? ? ? ? [IH1 IH2] HB HM
                  | ? ? ? ? ? [IH1 IH2] HU | ? ? ? ? ? [IH1 IH2] Eq | ? ? ? ? ? HG [IH1 IH2] HB
+                 | ? ? ? ? ? ? HG [IH1 IH2] HB HM | ? ? ? ? HG [IH1 IH2] HU HU'
                  | ? ? ? ? ? ? [IH1 IH2] HΓ Hσ Hl ];
     try (split; assumption).
   - split; [ assumption | eapply rel_ctx_extend'; eassumption ].
@@ -53,6 +54,10 @@ Proof.
   - split; [ assumption | eapply rel_ctx_extend_mod'; eassumption ].
   - pose proof (rel_exp_under_ctx_gsub HG HB) as H; cbn in H.
     split; eapply rel_ctx_extend'; eassumption.
+  - pose proof (rel_exp_under_ctx_gsub HG HB) as H1; cbn in H1.
+    pose proof (rel_exp_under_ctx_gsub HG HM) as H2.
+    split; eapply rel_ctx_extend_def'; eassumption.
+  - split; eapply rel_ctx_extend_mod'; eassumption.
 Qed.
 
 (** ** Generalizing over a Telescope *)

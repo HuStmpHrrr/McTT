@@ -95,11 +95,11 @@ is still the reference for syntax and typing. Its semantics (§3–§4) is
     applying the next argument, via `member_type_let` and
     `member_type_let_mod`.
 - **The outermost open frame.**
-  - The problem: `⊢g` accepted a stack whose outermost frame is a submodule,
+  - The problem: `⊢ᵍ` accepted a stack whose outermost frame is a submodule,
     e.g. `[Main.M]` with `Main` not open. That breaks "if a path resolves, its
     prefixes resolve".
   - Decision (b): `frame_fresh` requires `p_mems mp = nil` for the outermost
-    frame, so `wf_gc_resolve_prefix_closed : ⊢g → gc_resolve_prefix_closed`
+    frame, so `wf_gc_resolve_prefix_closed : ⊢ᵍ → gc_resolve_prefix_closed`
     needs no extra hypothesis.
 - **Equivalent substitutions give different units.**
   - The problem: under `σ ≈ σ'`, a slot holds `U[σ]` and `U[σ']`, which are
@@ -439,9 +439,9 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   gone (`gdep`, `gds_level`, `merge_up`, `trim_top`, `top_ne`, `wf_top`,
   `wf_below`, `gd_*`, `gds_fresh`).  Cycles are ruled out by the load
   chain `ch`, not by the shape of `gdeps`.
-- `wf_gdep` and `wf_gdeps` are folded into `wf_gstack`: `⊢g Θ ⍮ nil` says
-  the filed units are well formed.  `wf_gstack_nil : ⊢g nil ⍮ nil`, and
-  `wf_gstack_file : ⊢g Θ ⍮ (q_abs fp nil, U) :: nil -> ⊢g (fp, U) :: Θ ⍮ nil`
+- `wf_gdep` and `wf_gdeps` are folded into `wf_gstack`: `⊢ᵍ Θ ⍮ nil` says
+  the filed units are well formed.  `wf_gstack_nil : ⊢ᵍ nil ⍮ nil`, and
+  `wf_gstack_file : ⊢ᵍ Θ ⍮ (q_abs fp nil, U) :: nil -> ⊢ᵍ (fp, U) :: Θ ⍮ nil`
   files a unit by closing the only open frame, so the unit is checked
   against the units after it and its path is fresh there (`frame_fresh`).
   The mutual block has ten judgments.

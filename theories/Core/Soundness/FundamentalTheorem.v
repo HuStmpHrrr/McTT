@@ -17,7 +17,7 @@ Section soundness_fundamental.
   Context {GC : GCtx}.
 
   (** The identity is sound at a well-formed global context. *)
-  Lemma glu_msub_id_gc : ⊢g gc_deps ⍮ gc_stack -> glu_emb gc_deps gc_stack gc_deps gc_stack.
+  Lemma glu_msub_id_gc : ⊢ᵍ gc_deps ⍮ gc_stack -> glu_emb gc_deps gc_stack gc_deps gc_stack.
   Proof. exact (gctx_glu _ _). Qed.
 
   Theorem soundness_fundamental :

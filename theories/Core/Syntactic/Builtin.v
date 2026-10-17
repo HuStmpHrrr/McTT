@@ -177,7 +177,7 @@ Section Literals.
     end
   with moddef_lits (D : moddef) {struct D} : lres moddef :=
     match D with
-    | md_body Φ => let% Φ' := gmod_lits Φ in lok (md_body Φ')
+    | md_body sm Φ => let% Φ' := gmod_lits Φ in lok (md_body sm Φ')
     | md_alias E => let% E' := modexp_lits E in lok (md_alias E')
     end
   with gmod_lits (Φ : gmod) {struct Φ} : lres gmod :=
@@ -190,7 +190,7 @@ Section Literals.
     match E with
     | ge_def b pv A B => let% A' := exp_lits A in let% B' := lopt exp_lits B in lok (ge_def b pv A' B')
     | ge_mod pv U => let% U' := gunit_lits U in lok (ge_mod pv U')
-    | ge_ind _ _ _ | ge_ind_alias _ _ _ _ => lok E
+    | ge_ind _ _ _ _ | ge_ind_alias _ _ _ _ => lok E
     end
   with centry_lits (e : centry) {struct e} : lres centry :=
     match e with

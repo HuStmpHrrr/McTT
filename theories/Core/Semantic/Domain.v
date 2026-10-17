@@ -16,10 +16,13 @@ From Mctt.Core.Syntactic Require Export Levels Syntax.
 
     - [dm_global p args]: the global body module at [p], applied to [args],
       outermost first;
-    - [dm_local ρ U args]: the unit [U] over the environment [ρ], applied to
-      [args];
-    - [dm_member m ch]: the submodule at the chain [ch] of a module [m] still
-      lacking arguments.
+    - [dm_local Δ D ρ], [⟨Δ ⊢ D, ρ⟩]: the definition [D] of a unit, a body or
+      an alias, over the environment [ρ], [Δ] the parameters it still lacks:
+      an application pushes the argument onto [ρ] and drops the outermost
+      parameter of [Δ].  The value is saturated when [Δ] is empty; a
+      saturated alias is never a value, it is its target's value;
+    - [dm_member m ch]: the submodule at the chain [ch] of a local module [m]
+      still lacking arguments.
 
     [d_member m ch] is the term member at the chain [ch] of such a module: the
     semantic [λ] of a member of a module that is not yet applied to all its
@@ -97,9 +100,9 @@ with domain_nf : Set :=
 with dmod : Set :=
 (** A global module and the arguments it has *)
 | dm_global : qname -> list domain -> dmod
-(** The closure of a unit and the arguments it has *)
-| dm_local : list dentry -> gunit -> list domain -> dmod
-(** A submodule of a module still lacking arguments *)
+(** The closure of a unit's definition, with the parameters it still lacks *)
+| dm_local : list centry -> moddef -> list dentry -> dmod
+(** A submodule of a local module still lacking arguments *)
 | dm_member : dmod -> list string -> dmod
 with dentry : Set :=
 (** A term variable's value *)

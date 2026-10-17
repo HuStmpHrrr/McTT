@@ -141,18 +141,6 @@ Qed.
 
 Import Sub_Notations Wk_Notations.
 
-(** The substitution sending the innermost binders to the terms [Ms],
-    outermost first, and the others as [σ] does. *)
-Fixpoint sb_of_list (σ : sub) (Ms : list exp) : sub :=
-  match Ms with
-  | nil => σ
-  | M :: Ms' => sb_of_list (σ ,, M) Ms'
-  end.
-
-(** The type of the type former applied to [Us], its outermost
-    parameters: the [Π] over the others, at [Us]. *)
-Definition ind_ty_at (D : ind_decl) (Us : list exp) : typ :=
-  (ctx_pi (List.firstn (ind_np D - List.length Us) (ind_params D)) (ind_sort D)[wk_shiftn (ind_nn D)]ʷ)[sb_of_list Id Us].
 
 (** The variables [#(k + n - 1)], …, [#k], outermost first. *)
 Definition vars_from (k n : nat) : list exp := List.map (fun i => a_var (k + i)) (List.rev (List.seq 0 n)).
@@ -428,7 +416,7 @@ with gunit_mvc (n : nat) (U : gunit) : Prop :=
   end
 with moddef_mvc (n : nat) (D : moddef) : Prop :=
   match D with
-  | md_body Φ => gmod_mvc n Φ
+  | md_body sm Φ => gmod_mvc n Φ
   | md_alias E => modexp_mvc n E
   end
 with gmod_mvc (n : nat) (Φ : gmod) : Prop :=
@@ -441,7 +429,7 @@ with gentry_mvc (n : nat) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B => exp_mvc n A /\ match B with Some M => exp_mvc n M | None => True end
   | ge_mod _ U => gunit_mvc n U
-  | ge_ind _ D Φ => gmod_mvc (ind_nu D + n) Φ
+  | ge_ind _ _ D Φ => gmod_mvc (ind_nu D + n) Φ
   | ge_ind_alias _ _ _ _ => True
   end
 with centry_mvc (n : nat) (e : centry) : Prop :=

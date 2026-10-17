@@ -35,7 +35,7 @@ Notation "Γ ⊢ M : A ® m ∈ R" := (R Γ A M m : (Prop : (Type : Type))) (at 
 Notation "'glu_sub_pred_args'" := (Tcons ctx (Tcons sub (Tcons env Tnil))).
 Notation "'glu_sub_pred'" := (predicate glu_sub_pred_args).
 Notation "'glu_sub_pred_equivalence'" := (@predicate_equivalence glu_sub_pred_args) (only parsing).
-Notation "Γ ⊢s σ ® ρ ∈ R" := ((R Γ σ ρ : Prop) : (Prop : (Type : Type))) (at level 70, σ at level 69, ρ at level 69, R constr).
+Notation "Γ ⊢ˢ σ ® ρ ∈ R" := ((R Γ σ ρ : Prop) : (Prop : (Type : Type))) (at level 70, σ at level 69, ρ at level 69, R constr).
 
 Notation "'DG' a ∈ R ↘ P ↘ El" := (R P El a : ((Prop : Type) : (Type : Type))) (at level 70, a at level 69, R constr, P constr, El constr).
 Notation "'EG' A ∈ R ↘ Sb " := (R Sb A : ((Prop : (Type : Type)) : (Type : Type))) (at level 70, A at level 69, R constr, Sb constr).
@@ -83,7 +83,7 @@ Definition nf_lvl_ws (n : nat) (Δ : ctx) (L : nf) : Prop :=
     every sort, but the equation it satisfies is at the type the level was
     given, [Level@n]. *)
 Definition glu_lvl (n : nat) (Γ : ctx) (M : exp) (m : domain) : Prop :=
-  forall Δ φ L, Δ ⊢k φ : Γ -> Rnf ⇓ Levelᵈ m in length Δ ↘ L ->
+  forall Δ φ L, Δ ⊢ᵏ φ : Γ -> Rnf ⇓ Levelᵈ m in length Δ ↘ L ->
     Δ ⊢ M[φ]ʷ ≈ L : Level@n /\ nf_lvl_ws n Δ L.
 
 Definition level_glu_exp_pred (n : nat) (U : typ) : glu_exp_pred :=
@@ -102,7 +102,7 @@ Definition True_glu_exp_pred (U : typ) : glu_exp_pred := fun Γ A M m => Γ ⊢ 
 Inductive glu_False : ctx -> exp -> domain -> Prop :=
 | glu_False_neut :
   `{ per_bot m m ->
-     (forall {Δ φ M'}, Δ ⊢k φ : Γ -> Rne m in length Δ ↘ M' -> Δ ⊢ M[φ]ʷ ≈ M' : ⊥) ->
+     (forall {Δ φ M'}, Δ ⊢ᵏ φ : Γ -> Rne m in length Δ ↘ M' -> Δ ⊢ M[φ]ʷ ≈ M' : ⊥) ->
      glu_False Γ M ⇑ a m }.
 
 Hint Constructors glu_False : mctt.
@@ -115,7 +115,7 @@ Definition False_glu_exp_pred (U : typ) : glu_exp_pred := fun Γ A M m => Γ ⊢
 
 Definition neut_glu_typ_pred (U : typ) a : glu_typ_pred :=
   fun Γ A => Γ ⊢ A : U /\
-            (forall Δ φ A', Δ ⊢k φ : Γ -> Rne a in length Δ ↘ A' -> Δ ⊢ A[φ]ʷ ≈ A' : U).
+            (forall Δ φ A', Δ ⊢ᵏ φ : Γ -> Rne a in length Δ ↘ A' -> Δ ⊢ A[φ]ʷ ≈ A' : U).
 #[global] Arguments neut_glu_typ_pred U a Γ A/.
 
 Variant neut_glu_exp_pred (U : typ) a : glu_exp_pred :=
@@ -123,7 +123,7 @@ Variant neut_glu_exp_pred (U : typ) a : glu_exp_pred :=
   `{ Γ ⊢ A ® neut_glu_typ_pred U a ->
      Γ ⊢ M : A ->
      Dom m ≈ m ∈ per_bot ->
-     (forall Δ φ M', Δ ⊢k φ : Γ ->
+     (forall Δ φ M', Δ ⊢ᵏ φ : Γ ->
                    Rne m in length Δ ↘ M' ->
                    Δ ⊢ M[φ]ʷ ≈ M' : A[φ]ʷ) ->
      Γ ⊢ M : A ® ⇑ b m ∈ neut_glu_exp_pred U a }.
@@ -137,9 +137,9 @@ Variant pi_glu_typ_pred (U : typ)
   `{ Γ ⊢ A ≈ Π IT OT : U ->
      Γ ⊢ IT : U ->
      Γ ▹ IT ⊢ OT : U ->
-     (forall Δ φ, Δ ⊢k φ : Γ -> Δ ⊢ IT[φ]ʷ ® IP) ->
+     (forall Δ φ, Δ ⊢ᵏ φ : Γ -> Δ ⊢ IT[φ]ʷ ® IP) ->
      (forall Δ φ M m,
-         Δ ⊢k φ : Γ ->
+         Δ ⊢ᵏ φ : Γ ->
          Δ ⊢ M : IT[φ]ʷ ® m ∈ IEl ->
          forall (equiv_m : Dom m ≈ m ∈ IR),
            Δ ⊢ OT[(ι φ),,M] ® OP _ equiv_m) ->
@@ -157,9 +157,9 @@ Variant pi_glu_exp_pred (U : typ)
      Γ ⊢ A ≈ Π IT OT : U ->
      Γ ⊢ IT : U ->
      Γ ▹ IT ⊢ OT : U ->
-     (forall Δ φ, Δ ⊢k φ : Γ -> Δ ⊢ IT[φ]ʷ ® IP) ->
+     (forall Δ φ, Δ ⊢ᵏ φ : Γ -> Δ ⊢ IT[φ]ʷ ® IP) ->
      (forall Δ φ N n,
-         Δ ⊢k φ : Γ ->
+         Δ ⊢ᵏ φ : Γ ->
          Δ ⊢ N : IT[φ]ʷ ® n ∈ IEl ->
          forall (equiv_n : Dom n ≈ n ∈ IR),
          exists mn, $| m & n |↘ mn /\ Δ ⊢ M[φ]ʷ $ N : OT[(ι φ),,N] ® mn ∈ OEl _ equiv_n) ->
@@ -199,7 +199,7 @@ Definition exps_eq_at (Δ : ctx) (T : ctx) (Xs Ys : list exp) : Prop :=
 Definition glu_params_top (D : ind_decl) (Γ : ctx) (Ps : list exp) (as' : list domain) : Prop :=
   List.length Ps = ind_np D /\
   (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some A -> Γ ⊢ P : A) /\
-  (forall Δ φ Ms, Δ ⊢k φ : Γ -> Rps as' at List.rev (ind_params D) in gc_deps ⍮ gc_stack ⍮ nil ⍮ length Δ ↘ Ms ->
+  (forall Δ φ Ms, Δ ⊢ᵏ φ : Γ -> Rps as' at List.rev (ind_params D) in gc_deps ⍮ gc_stack ⍮ nil ⍮ length Δ ↘ Ms ->
      exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Ps) (nfs_to_exps Ms)).
 
 Definition glu_nparams (D : ind_decl) (NEl : nat -> list domain -> glu_exp_pred)
@@ -217,8 +217,8 @@ Fixpoint glu_shape_typ (ups : list domain) (DP : list domain -> exp -> glu_typ_p
     (DEl : list domain -> exp -> glu_exp_pred) (Γ : ctx) (pre : list domain) (t : ptyp) (T : typ) {struct t} : Prop :=
   match t with
   | pt_pi B t' => forall IT OT, T = a_pi IT OT ->
-      (forall Δ φ, Δ ⊢k φ : Γ -> Δ ⊢ IT[φ]ʷ ® DP pre B) /\
-      (forall Δ φ b c, Δ ⊢k φ : Γ -> ind_dr ups pre B c c -> Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl pre B ->
+      (forall Δ φ, Δ ⊢ᵏ φ : Γ -> Δ ⊢ IT[φ]ʷ ® DP pre B) /\
+      (forall Δ φ b c, Δ ⊢ᵏ φ : Γ -> ind_dr ups pre B c c -> Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl pre B ->
          glu_shape_typ ups DP DEl Δ (pre ++ c :: nil) t' OT[(ι φ),,b])
   | _ => True
   end.
@@ -277,7 +277,7 @@ Definition ind_typ_at (p : qname) (D : ind_decl) (ups ns : list domain)
     (DP : list domain -> exp -> glu_typ_pred) (DEl : list domain -> exp -> glu_exp_pred)
     (U : typ) (Γ : ctx) (A : typ) (Ps : list exp) : Prop :=
   Γ ⊢ A ≈ apps (a_ind p) Ps : U /\
-  forall Δ φ, Δ ⊢k φ : Γ ->
+  forall Δ φ, Δ ⊢ᵏ φ : Γ ->
     glu_params_top D Δ (List.map (fun P => P[φ]ʷ) Ps) (ups ++ ns) /\
     Δ ⊢ (ind_sort D)[wk_shiftn (ind_nn D)]ʷ[sb_of_list Id (List.map (fun P => P[φ]ʷ) Ps)] ⊆ U /\
     forall Ps', exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Ps) Ps' ->
@@ -343,7 +343,7 @@ Section GluInd.
        glu_ind Γ Ps M (d_con p c (bs ++ vs)) }
   | glu_ind_neut :
     `{ per_bot m m ->
-       (forall Δ φ M', Δ ⊢k φ : Γ -> Rne m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M' ->
+       (forall Δ φ M', Δ ⊢ᵏ φ : Γ -> Rne m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M' ->
           Δ ⊢ M[φ]ʷ ≈ M' : (apps (a_ind p) Ps)[φ]ʷ) ->
        glu_ind Γ Ps M (⇑ (d_ind p as') m) }
   (** A recursive argument [N] of type [A] and shape [t], after the values
@@ -355,17 +355,17 @@ Section GluInd.
           List.length Q = ind_np D /\ tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bsr bsr /\
           (forall bsr', tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bsr bsr' ->
              glu_nparams D NEl Γ (List.firstn (ind_nu D) Q) (List.skipn (ind_nu D) Q) bsr' /\
-             forall Δ φ, Δ ⊢k φ : Γ -> glu_params_top D Δ (List.map (fun P => P[φ]ʷ) Q) (ups ++ bsr'))) ->
+             forall Δ φ, Δ ⊢ᵏ φ : Γ -> glu_params_top D Δ (List.map (fun P => P[φ]ʷ) Q) (ups ++ bsr'))) ->
        (forall bsr Q, eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ pre)) bsr ->
           A = apps (a_ind p) Q ->
-          forall Δ φ Q', Δ ⊢k φ : Γ -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
+          forall Δ φ Q', Δ ⊢ᵏ φ : Γ -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
             glu_ind Δ Q' N[φ]ʷ v) ->
        glu_rec Γ pre (pt_self k Ps) A N v }
   | glu_rec_pi :
-    `{ (forall IT OT, A = a_pi IT OT -> forall Δ φ, Δ ⊢k φ : Γ -> Δ ⊢ IT[φ]ʷ ® DP pre B) ->
-       (forall IT OT, A = a_pi IT OT -> forall Δ φ b c, Δ ⊢k φ : Γ -> ind_dr ups pre B c c ->
+    `{ (forall IT OT, A = a_pi IT OT -> forall Δ φ, Δ ⊢ᵏ φ : Γ -> Δ ⊢ IT[φ]ʷ ® DP pre B) ->
+       (forall IT OT, A = a_pi IT OT -> forall Δ φ b c, Δ ⊢ᵏ φ : Γ -> ind_dr ups pre B c c ->
           Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl pre B -> exists fc, $| v & c | gc_deps ⍮ gc_stack ↘ fc) ->
-       (forall IT OT, A = a_pi IT OT -> forall Δ φ b c fc, Δ ⊢k φ : Γ -> ind_dr ups pre B c c ->
+       (forall IT OT, A = a_pi IT OT -> forall Δ φ b c fc, Δ ⊢ᵏ φ : Γ -> ind_dr ups pre B c c ->
           Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl pre B -> $| v & c | gc_deps ⍮ gc_stack ↘ fc ->
           glu_rec Δ (pre ++ c :: nil) t OT[(ι φ),,b] (a_app N[φ]ʷ b) fc) ->
        glu_rec Γ pre (pt_pi B t) A N v }.
@@ -388,7 +388,7 @@ Definition ind_glu_exp_pred (p : qname) (D : ind_decl) (ups ns : list domain)
     (elem_rel : relation domain) (U : typ) : glu_exp_pred :=
   fun Γ A M m => Γ ⊢ M : A /\ Dom m ≈ m ∈ elem_rel /\
     exists Ps, ind_typ_at p D ups ns NP NEl AP AEl DP DEl U Γ A Ps /\
-      forall Δ φ Ps', Δ ⊢k φ : Γ -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Ps) Ps' ->
+      forall Δ φ Ps', Δ ⊢ᵏ φ : Γ -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Ps) Ps' ->
         glu_ind p D ups NEl AEl DP DEl Δ Ps' M[φ]ʷ m.
 #[global] Arguments ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl elem_rel U Γ A M m/.
 
@@ -417,7 +417,7 @@ Section Gluing.
       Γ ⊢ M : A /\
         Γ ⊢ A ® suniv_glu_typ_pred l (Typeω@(ulvl i)) /\
         Γ ⊢ M ® univ_typ m /\
-        (forall Δ φ W, Δ ⊢k φ : Γ -> Rtyp m in length Δ ↘ W -> Δ ⊢ M[φ]ʷ ≈ W : A[φ]ʷ).
+        (forall Δ φ W, Δ ⊢ᵏ φ : Γ -> Rtyp m in length Δ ↘ W -> Δ ⊢ M[φ]ʷ ≈ W : A[φ]ʷ).
 
 #[global] Arguments suniv_glu_exp_pred' l univ_typ Γ A M m/.
 
@@ -638,7 +638,7 @@ Definition suniv_glu_exp_pred (l : domain) (U : typ) : glu_exp_pred :=
     fun Γ A M m =>
       Γ ⊢ M : A /\ Γ ⊢ A ® suniv_glu_typ_pred l U /\
         Γ ⊢ M ® glu_univ_typ (us (dlvl_real l)) m /\
-        (forall Δ φ W, Δ ⊢k φ : Γ -> Rtyp m in length Δ ↘ W -> Δ ⊢ M[φ]ʷ ≈ W : A[φ]ʷ).
+        (forall Δ φ W, Δ ⊢ᵏ φ : Γ -> Rtyp m in length Δ ↘ W -> Δ ⊢ M[φ]ʷ ≈ W : A[φ]ʷ).
 #[global] Arguments suniv_glu_exp_pred l U Γ A M m/.
 
 (** The two tiers' universe predicates, at an index: the predicates of the
@@ -803,7 +803,7 @@ Variant glu_elem_bot i a Γ A M m : Prop :=
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     Γ ⊢ A ® P ->
     Dom m ≈ m ∈ per_bot ->
-    (forall Δ φ M', Δ ⊢k φ : Γ -> Rne m in length Δ ↘ M' -> Δ ⊢ M[φ]ʷ ≈ M' : A[φ]ʷ) ->
+    (forall Δ φ M', Δ ⊢ᵏ φ : Γ -> Rne m in length Δ ↘ M' -> Δ ⊢ M[φ]ʷ ≈ M' : A[φ]ʷ) ->
     Γ ⊢ M : A ® m ∈ glu_elem_bot i a.
 Hint Constructors glu_elem_bot : mctt.
 
@@ -813,7 +813,7 @@ Variant glu_elem_top i a Γ A M m : Prop :=
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     Γ ⊢ A ® P ->
     Dom ⇓ a m ≈ ⇓ a m ∈ per_top ->
-    (forall Δ φ w, Δ ⊢k φ : Γ -> Rnf ⇓ a m in length Δ ↘ w -> Δ ⊢ M[φ]ʷ ≈ w : A[φ]ʷ) ->
+    (forall Δ φ w, Δ ⊢ᵏ φ : Γ -> Rnf ⇓ a m in length Δ ↘ w -> Δ ⊢ M[φ]ʷ ≈ w : A[φ]ʷ) ->
     Γ ⊢ M : A ® m ∈ glu_elem_top i a.
 Hint Constructors glu_elem_top : mctt.
 
@@ -821,7 +821,7 @@ Variant glu_typ_top (i : uidx) a Γ A : Prop :=
 | glu_typ_top_make :
     Γ ⊢ A : Typeω@(ulvl i) ->
     Dom a ≈ a ∈ per_top_typ ->
-    (forall Δ φ A', Δ ⊢k φ : Γ -> Rtyp a in length Δ ↘ A' -> Δ ⊢ A[φ]ʷ ≈ A' : Typeω@(ulvl i)) ->
+    (forall Δ φ A', Δ ⊢ᵏ φ : Γ -> Rtyp a in length Δ ↘ A' -> Δ ⊢ A[φ]ʷ ≈ A' : Typeω@(ulvl i)) ->
     Γ ⊢ A ® glu_typ_top i a.
 Hint Constructors glu_typ_top : mctt.
 
@@ -843,7 +843,7 @@ Variant glu_rel_exp_with_sub (i : nat) Δ M A σ ρ : Prop :=
         glu_rel_exp_with_sub i Δ M A σ ρ }.
 
 Definition nil_glu_sub_pred : glu_sub_pred :=
-  fun Δ σ ρ => Δ ⊢s σ : ⋅.
+  fun Δ σ ρ => Δ ⊢ˢ σ : ⋅.
 #[global] Arguments nil_glu_sub_pred Δ σ ρ/.
 
 (** The parameters are ordered differently from the Agda version
@@ -851,28 +851,28 @@ Definition nil_glu_sub_pred : glu_sub_pred :=
 Variant cons_glu_sub_pred (i : nat) Γ A (TSb : glu_sub_pred) : glu_sub_pred :=
 | mk_cons_glu_sub_pred :
   `{ forall P El,
-        Δ ⊢s σ : Γ ▹ A ->
+        Δ ⊢ˢ σ : Γ ▹ A ->
         ⟦ A ⟧ ρ↯ ↘ a ->
         DG a ∈ glu_univ_elem i ↘ P ↘ El ->
         (** [A[↑]ʷ[σ]] rather than [A[Wk ⨟ σ]]: it is the direct instance of
             [Γ ▹ A ⊢ #0 : A[↑]ʷ] along [σ]. *)
         Δ ⊢ #0[σ] : A[↑]ʷ[σ] ® (ρ 0) ∈ El ->
-        Δ ⊢s Wk ⨟ σ ® ρ↯ ∈ TSb ->
-        Δ ⊢s σ ® ρ ∈ cons_glu_sub_pred i Γ A TSb }.
+        Δ ⊢ˢ Wk ⨟ σ ® ρ↯ ∈ TSb ->
+        Δ ⊢ˢ σ ® ρ ∈ cons_glu_sub_pred i Γ A TSb }.
 
 (** A definition entry glues as an assumption entry whose head is also tied
     to the value of the body in the tail ([def_tie]).  The syntactic half of
-    the tie is part of [Δ ⊢s σ : Γ ▸ A ≔ M]. *)
+    the tie is part of [Δ ⊢ˢ σ : Γ ▸ A ≔ M]. *)
 Variant cons_def_glu_sub_pred (i : nat) Γ A M (TSb : glu_sub_pred) : glu_sub_pred :=
 | mk_cons_def_glu_sub_pred :
   `{ forall P El,
-        Δ ⊢s σ : Γ ▸ A ≔ M ->
+        Δ ⊢ˢ σ : Γ ▸ A ≔ M ->
         ⟦ A ⟧ ρ↯ ↘ a ->
         DG a ∈ glu_univ_elem i ↘ P ↘ El ->
         Δ ⊢ #0[σ] : A[↑]ʷ[σ] ® (ρ 0) ∈ El ->
         def_tie A M ρ ->
-        Δ ⊢s Wk ⨟ σ ® ρ↯ ∈ TSb ->
-        Δ ⊢s σ ® ρ ∈ cons_def_glu_sub_pred i Γ A M TSb }.
+        Δ ⊢ˢ Wk ⨟ σ ® ρ↯ ∈ TSb ->
+        Δ ⊢ˢ σ ® ρ ∈ cons_def_glu_sub_pred i Γ A M TSb }.
 
 (** A module slot glues by its syntactic typing and by the tie of its value
     to the closure of its unit over the tail, which is the slot clause of the
@@ -880,10 +880,10 @@ Variant cons_def_glu_sub_pred (i : nat) Γ A M (TSb : glu_sub_pred) : glu_sub_pr
     are reached through δ, whose reducts are terms. *)
 Variant cons_mod_glu_sub_pred Γ U (TSb : glu_sub_pred) : glu_sub_pred :=
 | mk_cons_mod_glu_sub_pred :
-  `{ Δ ⊢s σ : Γ ▹ₘ U ->
-     per_dmod (env_mod ρ 0) (dm_local ρ↯ U nil) ->
-     Δ ⊢s Wk ⨟ σ ® ρ↯ ∈ TSb ->
-     Δ ⊢s σ ® ρ ∈ cons_mod_glu_sub_pred Γ U TSb }.
+  `{ Δ ⊢ˢ σ : Γ ▹ₘ U ->
+     tie_mod (env_mod ρ 0) (me_lit U) ρ↯ ->
+     Δ ⊢ˢ Wk ⨟ σ ® ρ↯ ∈ TSb ->
+     Δ ⊢ˢ σ ® ρ ∈ cons_mod_glu_sub_pred Γ U TSb }.
 
 (** As with [wf_ctx_empty], the base case carries what the judgment is relative
     to: without it, [⊢ ⋅] would not follow ([glu_ctx_env_wf_ctx]). *)
@@ -891,14 +891,14 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
 | glu_ctx_env_nil :
   `{ forall Sb,
         Sb <∙> nil_glu_sub_pred ->
-        ⊢g gc_deps ⍮ gc_stack ->
+        ⊢ᵍ gc_deps ⍮ gc_stack ->
         EG ⋅ ∈ glu_ctx_env ↘ Sb }
 | glu_ctx_env_cons :
   `{ forall i TSb Sb,
         EG Γ ∈ glu_ctx_env ↘ TSb ->
         Γ ⊢ A : Typeω@i ->
         (forall Δ σ ρ,
-            Δ ⊢s σ ® ρ ∈ TSb ->
+            Δ ⊢ˢ σ ® ρ ∈ TSb ->
             glu_rel_typ_with_sub i Δ A σ ρ) ->
         Sb <∙> cons_glu_sub_pred i Γ A TSb ->
         EG Γ ▹ A ∈ glu_ctx_env ↘ Sb }
@@ -908,10 +908,10 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
         Γ ⊢ A : Typeω@i ->
         Γ ⊢ M : A ->
         (forall Δ σ ρ,
-            Δ ⊢s σ ® ρ ∈ TSb ->
+            Δ ⊢ˢ σ ® ρ ∈ TSb ->
             glu_rel_typ_with_sub i Δ A σ ρ) ->
         (forall Δ σ ρ,
-            Δ ⊢s σ ® ρ ∈ TSb ->
+            Δ ⊢ˢ σ ® ρ ∈ TSb ->
             glu_rel_exp_with_sub i Δ M A σ ρ) ->
         Sb <∙> cons_def_glu_sub_pred i Γ A M TSb ->
         EG Γ ▸ A ≔ M ∈ glu_ctx_env ↘ Sb }
@@ -930,7 +930,7 @@ Definition glu_rel_exp Γ M A : Prop :=
     EG Γ ∈ glu_ctx_env ↘ Sb /\
       exists (i : nat),
       forall Δ σ ρ,
-        Δ ⊢s σ ® ρ ∈ Sb ->
+        Δ ⊢ˢ σ ® ρ ∈ Sb ->
         glu_rel_exp_with_sub i Δ M A σ ρ.
 #[global] Arguments glu_rel_exp Γ M A/.
 
@@ -960,7 +960,7 @@ Notation "Γ ⊢ M : A ® m ∈ R" := (R Γ A M m : (Prop : (Type : Type))) (at 
 Notation "'glu_sub_pred_args'" := (Tcons ctx (Tcons sub (Tcons env Tnil))).
 Notation "'glu_sub_pred'" := (predicate glu_sub_pred_args).
 Notation "'glu_sub_pred_equivalence'" := (@predicate_equivalence glu_sub_pred_args) (only parsing).
-Notation "Γ ⊢s σ ® ρ ∈ R" := ((R Γ σ ρ : Prop) : (Prop : (Type : Type))) (at level 70, σ at level 69, ρ at level 69, R constr).
+Notation "Γ ⊢ˢ σ ® ρ ∈ R" := ((R Γ σ ρ : Prop) : (Prop : (Type : Type))) (at level 70, σ at level 69, ρ at level 69, R constr).
 Notation "'DG' a ∈ R ↘ P ↘ El" := (R P El a : ((Prop : Type) : (Type : Type))) (at level 70, a at level 69, R constr, P constr, El constr).
 Notation "'EG' A ∈ R ↘ Sb " := (R Sb A : ((Prop : (Type : Type)) : (Type : Type))) (at level 70, A at level 69, R constr, Sb constr).
 

@@ -47,7 +47,7 @@ by changing what the name resolves to inside the nest:
 | `theories/Frontend/Parser.vy`, `driver/Lexer.mll` | Surface syntax; `parserMessages.messages` holds the 102 error sentences. |
 | `theories/Core/Syntactic/Syntax.v` | `Cst.cmd`, `Cst.mods`, `Cst.ispec`, `Cst.prog`, `Cst.decl` (the `let` forms); `Cst.glob`; `qual`/`path`/`path_valid` and `a_glob`. |
 | `theories/Core/Syntactic/Syntax.v` (end), `Members.v` (start) | The global context: `gmod`/`gentry` for the `.` level, `gdeps` (the filed units, a flat list newest first) for the `::` level, `gunit`, the `gstack` of open modules, `GCtx`; resolution (`gc_resolve`, `gc_module`, `gc_body`) and its growth (`gc_sub`) in `Members.v`. |
-| `theories/Core/Syntactic/System/Definitions.v` | One mutual block of all ten `wf_*` judgments: the four term ones, the three for units, extensions and module expressions, and `⊢e`, `⊢m`, `⊢g` (`wf_gstack`, which also files units). Also `exp_closed`, the `a_glob` rules, and the `Scheme`s cut from the block. |
+| `theories/Core/Syntactic/System/Definitions.v` | One mutual block of all ten `wf_*` judgments: the four term ones, the three for units, extensions and module expressions, and `⊢ᵉ`, `⊢ᵍᵐ`, `⊢ᵍ` (`wf_gstack`, which also files units). Also `exp_closed`, the `a_glob` rules, and the `Scheme`s cut from the block. |
 | `theories/Entrypoint.v`, `driver/` | One `run_eval` per `eval`; `PrettyPrinter`; exit codes. |
 | `examples/*.mctt`, `driver/Test.ml` | 14 examples, 27 expect-tests. |
 
@@ -63,7 +63,7 @@ units agree because they come from runs of the same file (`canon_agree`).
 `gds_lookup` is a **function** returning `option gunit`, so resolution is
 deterministic whatever the data looks like.
 
-The consequence to keep in mind: `⊢g Ψ` alone does not rule out a δ-loop
+The consequence to keep in mind: `⊢ᵍ Ψ` alone does not rule out a δ-loop
 (`wf_exp_eq_glob_unfold` unfolding a global forever).  Two units filed at levels
 that name each other are still well formed, as is a unit whose member refers to
 itself, in either form — absolutely, or the `gstack` form `def x : ℕ := succ x` —
@@ -275,8 +275,8 @@ unchanged.
       so what it hands back is closed in a well-formed context
       (`wf_gc_lookup_closed`, `System/Scoping.v`); weakening and substitution
       leave it alone (`push_closed`).
-    * `⊢g Θ ⍮ Ξ` is the notation of `wf_gstack Θ Ξ`; `⊢u` is a definition
-      (`exists Δ Φ, U = gu_body Δ Φ /\ ⊢m …`), not a judgment. Units are checked at
+    * `⊢ᵍ Θ ⍮ Ξ` is the notation of `wf_gstack Θ Ξ`; `⊢ᵍᵘ` is a definition
+      (`exists Δ Φ, U = gu_body Δ Φ /\ ⊢ᵍᵐ …`), not a judgment. Units are checked at
       `⋅` with their parameters as the whole telescope; members are checked in
       the frame the module pushes, local context `⋅`. A frame's parameters
       are `$[n, k]` (`a_param`, rule `wf_param`), not local variables.
@@ -295,7 +295,7 @@ unchanged.
     units give `ins_typed` (each member, generalized, typed in the frame it
     was *inserted* into: `gm_ins`/`gm_prefix`, `GlobalCtx.v`). A definition
     records only `M : A`; that `A` is a type comes from presupposition of that
-    derivation inside `⊢g`. Every frame-to-frame step is an instance of one
+    derivation inside `⊢ᵍ`. Every frame-to-frame step is an instance of one
     transport along a module substitution (`msub_preserves_wf`,
     `System/Transport.v`): push a frame (`↑ₘ 1`), grow a frame or add a level
     (identity, `rebase_preserves_wf`), close a frame (`close_preserves_wf`,

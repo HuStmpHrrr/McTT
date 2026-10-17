@@ -119,7 +119,7 @@ Proof.
 Qed.
 
 (** The inversion of [ati_elim], at the scrutinee's inferred type. *)
-Lemma ati_elim_at : forall G nm A Bs M T p Rs,
+Lemma ati_elim_at : forall G nm A Bs M T p Rs, ⊢ᵍ gc_deps ⍮ gc_stack ->
     G ⊢a a_elim nm A Bs M ⟹ T -> G ⊢a M ⟹ nf_indty p Rs ->
     exists D UA u,
       ind_lookup gc_deps gc_stack p = Some D /\
@@ -135,10 +135,10 @@ Lemma ati_elim_at : forall G nm A Bs M T p Rs,
            ⊢a B ⟸ elim_bty p D c gs A (List.firstn (ind_nu D) (nfs_to_exps Rs))) /\
       nbe_ty_f G A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)] T.
 Proof.
-  intros * H HM.
+  intros * Hg H HM.
   inversion H; subst.
   match goal with H1 : G ⊢a M ⟹ nf_indty ?p0 ?Rs0 |- _ =>
-    pose proof (functional_alg_type_infer H1 HM) as Heq; injection Heq as -> -> end.
+    pose proof (functional_alg_type_infer Hg H1 HM) as Heq; injection Heq as -> -> end.
   do 3 eexists; repeat split; eassumption.
 Qed.
 
@@ -153,32 +153,33 @@ Definition elim_infer G (HG : ⊢ G) (P : tenv G) nm A (Bs : list (string * nat 
   { T : nf | G ⊢a a_elim nm A Bs M ⟹ T /\ (exists UA u, G ⊢a T ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ T : Typeω@i) }
   + { forall T, ~ G ⊢a a_elim nm A Bs M ⟹ T }.
 Proof.
+  pose proof (ctx_wf_gctx _ _ _ HG) as Hg.
   destruct rM as [[T (HMi & _ & _)] | HnM];
     [| right; intros T H; inversion H; subst; eapply HnM; eassumption ].
   destruct (get_indty_nf T) as [[p [Rs ->]] | HnI];
     [| right; intros T' H; inversion H; subst;
        match goal with H1 : G ⊢a M ⟹ nf_indty _ _ |- _ =>
-         pose proof (functional_alg_type_infer H1 HMi) as Heq end;
+         pose proof (functional_alg_type_infer Hg H1 HMi) as Heq end;
        symmetry in Heq; eapply HnI; exact Heq ].
   destruct (ind_lookup_f gc_deps gc_stack p) as [[D |] Hl];
-    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ H HMi) as (D' & ? & ? & HD' & _); congruence ].
+    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ Hg H HMi) as (D' & ? & ? & HD' & _); congruence ].
   pose (Us := List.firstn (ind_nu D) (nfs_to_exps Rs)).
   destruct (Nat.eq_dec (List.length (nfs_to_exps Rs)) (ind_np D)) as [HRl | HRl];
-    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ H HMi) as (D' & ? & ? & HD' & ? & _);
+    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ Hg H HMi) as (D' & ? & ? & HD' & ? & _);
        rewrite Hl in HD'; injection HD' as <-; contradiction ].
   destruct (Nat.eq_dec nm (S (ind_nn D))) as [Hnm | Hnm];
-    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ H HMi) as (D' & ? & ? & HD' & ? & ? & _);
+    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ Hg H HMi) as (D' & ? & ? & HD' & ? & ? & _);
        rewrite Hl in HD'; injection HD' as <-; contradiction ].
   pose proof (alg_elim_mctx_wf _ _ _ _ _ HG HMi Hl HRl) as HMs.
   destruct (infA _ HMs (tenv_ext G P _ HMs)) as [[UA (HAi & _)] | HnA];
-    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ H HMi) as (D' & ? & ? & HD' & ? & ? & ? & _);
+    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ Hg H HMi) as (D' & ? & ? & HD' & ? & ? & ? & _);
        rewrite Hl in HD'; injection HD' as <-; eapply HnA; eassumption ].
   destruct (univ_nf_idx_dec UA) as [[u Hu] | Hnu];
-    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ H HMi) as (D' & UA' & u' & HD' & ? & ? & HAi' & Hu' & _);
+    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ Hg H HMi) as (D' & UA' & u' & HD' & ? & ? & HAi' & Hu' & _);
        rewrite Hl in HD'; injection HD' as <-;
-       rewrite (functional_alg_type_infer HAi HAi') in Hnu; eapply Hnu; exact Hu' ].
+       rewrite (functional_alg_type_infer Hg HAi HAi') in Hnu; eapply Hnu; exact Hu' ].
   destruct (list_eq_dec string_dec (List.map fst (ind_cons D)) (List.map (fun b => fst (fst b)) Bs)) as [HBn | HBn];
-    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ H HMi) as (D' & ? & ? & HD' & ? & ? & ? & ? & HBn' & _);
+    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ Hg H HMi) as (D' & ? & ? & HD' & ? & ? & ? & ? & HBn' & _);
        rewrite Hl in HD'; injection HD' as <-; contradiction ].
   (** The arities of the branches. *)
   assert (fa : forall b, In b Bs -> {forall gs, ind_con D (fst (fst b)) = Some gs ->
@@ -191,7 +192,7 @@ Proof.
     - left; intros ? [= <-]; exact E.
     - right; intros H; exact (E (H gs eq_refl)). }
   destruct (forall_in_dec _ Bs fa) as [HBa | HBa];
-    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ H HMi) as (D' & ? & ? & HD' & ? & ? & ? & ? & ? & HBa' & _);
+    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ Hg H HMi) as (D' & ? & ? & HD' & ? & ? & ? & ? & ? & HBa' & _);
        rewrite Hl in HD'; injection HD' as <-;
        apply HBa; intros [[c n] B] Hin gs Hcon; exact (HBa' _ _ _ _ Hcon Hin) ].
   (** The branches. *)
@@ -207,7 +208,7 @@ Proof.
     - left; intros ? [= <-]; exact E.
     - right; intros H; exact (E (H gs eq_refl)). }
   destruct (forall_in_dec _ Bs fb) as [HBc | HBc];
-    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ H HMi) as (D' & ? & ? & HD' & ? & ? & ? & ? & ? & ? & HBc' & _);
+    [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ Hg H HMi) as (D' & ? & ? & HD' & ? & ? & ? & ? & ? & ? & HBc' & _);
        rewrite Hl in HD'; injection HD' as <-;
        apply HBc; intros [[c n] B] Hin gs Hcon; exact (HBc' _ _ _ _ Hcon Hin) ].
   refine (let (T', HT') := nbe_ty_env_impl gc_deps gc_stack G P

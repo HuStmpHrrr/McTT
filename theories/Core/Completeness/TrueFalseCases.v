@@ -160,7 +160,7 @@ Lemma rel_exp_of_True_inversion : forall {Γ M M'},
     Γ ⊨ M ≈ M' : ⊤ ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
     forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-      Γ' ⊨s σ ≈ σ' : Γ ->
+      Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->
@@ -180,7 +180,7 @@ Qed.
 Lemma rel_exp_of_True : forall {Γ M M'},
     (exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
       forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-        Γ' ⊨s σ ≈ σ' : Γ ->
+        Γ' ⊨ˢ σ ≈ σ' : Γ ->
         forall ρ ρ' ρσ ρ'σ',
           Dom ρ ≈ ρ' ∈ env_rel' ->
           ⟦ σ ⟧s ρ ↘ ρσ ->
@@ -204,7 +204,7 @@ Lemma rel_exp_of_False_inversion : forall {Γ M M'},
     Γ ⊨ M ≈ M' : ⊥ ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
     forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-      Γ' ⊨s σ ≈ σ' : Γ ->
+      Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->
@@ -364,7 +364,7 @@ Lemma rel_typ_of_False_motive : forall {Γ A A'} {i : nat} {env_relΓ},
     forall Γ' env_rel',
       EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' ->
       forall σ σ' ρ ρ' ρσ ρ'σ',
-        Γ' ⊨s σ ≈ σ' : Γ ->
+        Γ' ⊨ˢ σ ≈ σ' : Γ ->
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->
         ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->

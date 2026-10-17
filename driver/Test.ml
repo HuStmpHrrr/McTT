@@ -3991,3 +3991,72 @@ let%expect_test "a printed eliminator reads back as itself" =
       --> λ (x1 : N) → elim x1 return x2 . N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
       : ∀ (x1 : N) → N
     |}]
+
+(** Members through what module expressions denote *)
+
+let%expect_test "a member of a module alias is the member of its target" =
+  let _ = main_of_body "module P where axiom c : Nat end module A := P \
+                        axiom F (n : Nat) : Type@0 axiom f : F P.c eval f : F A.c" in
+  [%expect {| Evaluate f --> f : F A.c |}]
+
+let%expect_test "a member of a local alias with a parameter is the target's member under it" =
+  let _ = main_of_body "module Q where axiom c : Nat end axiom F (n : Nat) : Type@0 \
+                        axiom g : forall (n : Nat) -> F Q.c \
+                        eval let module L (n : Nat) := Q in let h : forall (n : Nat) -> F (L.c n) := g in h end end" in
+  [%expect {|
+    Evaluate let module M1 (x1 : ℕ) ≔ Q; x2 : ∀ (x3 : ℕ) → F (M1.c x3) ≔ g
+             in x2
+             end --> λ (x1 : ℕ) → g x1 : ∀ (x1 : ℕ) → F Q.c
+    |}]
+
+let%expect_test "an abstract member of a local module is not of its type outside it" =
+  let _ = main_of_body "eval let module X where abstract def f : Nat := 0 end end in X.f end : Nat" in
+  [%expect {|
+    Error: let module M1 where
+                 abstract def f : ℕ ≔
+                   0
+                 end
+               end in M1.f end is not of type ℕ
+    |}]
+
+let%expect_test "an inductive type through a unit alias" =
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "import Prelude›Builtin›Nat use (Nat; zero; succ) import Prelude›Data›List as M \
+       module X where eval M.List 0l Nat eval M.List.cons 0l Nat 1 (M.List.nil 0l Nat) end"
+  in
+  [%expect {|
+    Evaluate M.List 0l ℕ --> Prelude›Data›List.List 0l ℕ : Type@0
+    Evaluate M.List.cons 0l ℕ 1 (M.List.nil 0l ℕ)
+      --> Prelude›Data›List.List.cons 0l ℕ 1 (Prelude›Data›List.List.nil 0l ℕ)
+      : Prelude›Data›List.List 0l ℕ
+    |}]
+
+let%expect_test "an inductive type used from an applied unit" =
+  let _ = main_of_multi_string "import Lib›Boxed ⊤ use (Box) module X where eval Box end" in
+  [%expect {| Evaluate Box --> Lib›Boxed.Box ⊤ : Type@0 |}]
+
+let%expect_test "an inductive alias of an inductive alias" =
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "import Prelude›Builtin›Nat use (Nat; zero; succ) import Prelude›Data›Prod use (Prod) \
+       module X where inductive A2 (B : Type@0) := Prod 0l B B inductive K := A2 \
+       axiom F (X : Type@0) : Type@0 axiom f : F (Prod 0l Nat Nat) eval f : F (K Nat) eval (K Nat).pair 1 2 end"
+  in
+  [%expect {|
+    Evaluate f --> f : F (K ℕ)
+    Evaluate (K ℕ).pair 1 2 --> Prelude›Data›Prod.Prod.pair 0l ℕ ℕ 1 2
+      : Prelude›Data›Prod.Prod 0l ℕ ℕ
+    |}]
+
+let%expect_test "the natural numbers bound through a module alias" =
+  let _ = main_of_body "module M := Prelude›Builtin›Nat builtin natural := M.Nat eval 3" in
+  [%expect {| Evaluate 3 --> 3 : ℕ |}]
+
+let%expect_test "an alias of an inductive type's module is a module, not a term" =
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "import Prelude›Data›List use (List) module X where import Prelude›Builtin›Nat use (Nat) \
+       module L := List eval L 0l Nat end"
+  in
+  [%expect {| Error: X.L is a module, not a term |}]

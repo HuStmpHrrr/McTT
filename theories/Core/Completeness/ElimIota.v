@@ -16,7 +16,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution Members Inductives.
 From Mctt.Core.Syntactic.System Require Import Definitions Scoping IndSyntax GlobalPresup IndTyping MemberLemmas.
 From Mctt.Core.Completeness Require Import
-  LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases UnitCases InstanceCases GlobalSem MemberReps
+  LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases UnitCases InstanceCases GlobalArgs MemberReps
   VariableCases FunctionCases LevelCases IndSem TeleSem IndCases SubtypingCases ElimCases.
 From Mctt.Core.Semantic Require Import Realizability IndPER IndElim Evaluation.Modules.
 Import Domain_Notations Fixed_Notations.
@@ -89,8 +89,8 @@ Proof.
 Qed.
 
 (** ** Weakening Under a Telescope *)
-Lemma tele_wk_sem : forall Δ Γ0 Γ' φ, tele_ass Δ -> ⊨ Δ ++ Γ0 -> ⊨ Γ' -> Γ' ⊨w φ : Γ0 ->
-    ⊨ tele_wk Δ φ ++ Γ' /\ tele_wk Δ φ ++ Γ' ⊨w (wk_qn (List.length Δ) φ) : Δ ++ Γ0.
+Lemma tele_wk_sem : forall Δ Γ0 Γ' φ, tele_ass Δ -> ⊨ Δ ++ Γ0 -> ⊨ Γ' -> Γ' ⊨ʷ φ : Γ0 ->
+    ⊨ tele_wk Δ φ ++ Γ' /\ tele_wk Δ φ ++ Γ' ⊨ʷ (wk_qn (List.length Δ) φ) : Δ ++ Γ0.
 Proof.
   induction Δ as [| e Δ IH]; intros * Ha HΔ HΓ' Hφ; cbn [tele_wk List.app List.length wk_qn]; [ split; assumption |].
   assert (He : exists A, e = ce_ass A) by (inversion Ha as [| ? ? He _]; exact He).
@@ -105,7 +105,7 @@ Qed.
 
 (** The premises of an eliminator, weakened. *)
 Lemma elim_premises_wk_sem : forall Γ0 Ψ φ p D Us A (i : nat) Bs, decl_closed D -> List.length Us = ind_nu D -> ⊨ Ψ ->
-    Ψ ⊨w φ : Γ0 ->
+    Ψ ⊨ʷ φ : Γ0 ->
     elim_mctx p D Us ++ Γ0 ⊨ A : Typeω@i -> ⊨ elim_mctx p D Us ++ Γ0 ->
     (forall c gs, ind_con D c = Some gs -> ⊨ elim_bctx p D gs A Us ++ Γ0) ->
     (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
@@ -125,7 +125,7 @@ Proof.
   assert (HBc' : forall c gs, ind_con D c = Some gs ->
                  ⊨ elim_bctx p D gs A[wk_qn (S (ind_nn D)) φ]ʷ (List.map (fun U => U[φ]ʷ) Us) ++ Ψ /\
                  elim_bctx p D gs A[wk_qn (S (ind_nn D)) φ]ʷ (List.map (fun U => U[φ]ʷ) Us) ++ Ψ
-                   ⊨w (wk_qn (cargs_nrec gs + List.length gs + ind_nn D) φ) : elim_bctx p D gs A Us ++ Γ0).
+                   ⊨ʷ (wk_qn (cargs_nrec gs + List.length gs + ind_nn D) φ) : elim_bctx p D gs A Us ++ Γ0).
   { intros c gs Hcon.
     destruct (tele_wk_sem _ _ _ _ (elim_bctx_ass p D gs A Us Hc) (HBc c gs Hcon) HΨ Hφ) as [H1 H2].
     rewrite (elim_bctx_wk p D c gs A Us φ Hc (cons_lookup_in _ _ _ Hcon) HUl) in H1, H2; rewrite length_elim_bctx in H2.
@@ -342,7 +342,7 @@ Section Iota.
     Lemma r_HΨ : forall k, k <= L -> ⊨ Ψ k.
     Proof. intros k Hk; exact (gsub_sem_ctx _ _ _ (r_gsub k Hk)). Qed.
 
-    Lemma r_wk : forall k, k <= L -> Ψ k ⊨w (wk_shiftn k) : Γ.
+    Lemma r_wk : forall k, k <= L -> Ψ k ⊨ʷ (wk_shiftn k) : Γ.
     Proof.
       intros k Hk; pose proof (rel_wk_under_ctx_shiftn _ _ (r_HΨ k Hk)) as H.
       rewrite length_tele_sub, (r_dlen k Hk) in H; exact H.
@@ -849,7 +849,7 @@ Section Iota.
                      (r_dctxΓ gs1 t gs2 Heq L (le_n _)) HRΓ (proj1 (gsub_props (gsub_sigt gs1 _ Heq))) HCC
                      (eval_sigt gs1 _ C u0 ns avs Heq HUC HNC HAC) ys' Hg
                      ltac:(rewrite (r_dlen gs1 t gs2 Heq L (le_n _)); exact Lys') RΨ HRΨ). }
-          assert (Hwk : Ψ L ⊨s sb_of_wk (wk_shiftn L) ≈ sb_of_wk (wk_shiftn L) : Γ)
+          assert (Hwk : Ψ L ⊨ˢ sb_of_wk (wk_shiftn L) ≈ sb_of_wk (wk_shiftn L) : Γ)
             by exact (proj1 (gsub_props (gsub_wk _ _ _ (r_wk gs1 t gs2 Heq L (le_n _)) HΨL HΓ))).
           assert (Hev : ⟦ sb_of_wk (wk_shiftn L) ⟧s EL ↘ C).
           { pose proof (@eval_sub_of_wk gc_deps gc_stack (wk_shiftn L) EL (wk_mono_shiftn _)) as H.
@@ -1024,7 +1024,7 @@ Section Iota.
     replace (u0 ++ ns' ++ as') with ((u0 ++ ns') ++ as') in EB, Eih by (rewrite <- List.app_assoc; reflexivity).
     rewrite (skipn_app_exact (u0 ++ ns') as' _ Hnp) in EB, Eih.
     rewrite (firstn_app_exact (u0 ++ ns') as' _ Hnp), (skipn_app_exact u0 ns' _ Hu0l) in EB.
-    pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval gc_deps gc_stack))))))))))))) _ _ _ _ _ _ _ Eih _ Ee) as ->.
+    pose proof (functional_eval_ihs _ _ _ _ _ _ _ _ Eih Ee) as ->.
     (** The branch's environments. *)
     destruct (sem_ctx_per_ctx_env (HBc c gs Hcon)) as [RB HRB].
     assert (HPB : PER RB) by (eapply per_env_PER; exact HRB).

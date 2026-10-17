@@ -57,7 +57,7 @@ Proof.
   inversion Hass as [| ? ? [B ->] Hass']; subst.
   destruct (ctx_decomp HΔ) as [HΔ' [k HB]].
   eapply IH with (i := max k i); [ exact Hass' | exact HΔ' |].
-  eapply wf_exp_eq_pi_cong; [ eapply lift_exp_max_left; exact HB | apply wf_exp_eq_refl; eapply lift_exp_max_left; exact HB
+  eapply wf_exp_eq_pi_cong_large; [ eapply lift_exp_max_left; exact HB | apply wf_exp_eq_refl; eapply lift_exp_max_left; exact HB
                             | eapply lift_exp_eq_ge; [| exact HA ]; lia ].
 Qed.
 
@@ -66,14 +66,14 @@ Section ConTypes.
 
   #[local] Abbreviation D := (gs_ind Ξ (rd_filed R cs)).
   #[local] Abbreviation p := (ind_qname Ξ x).
-  #[local] Abbreviation Ξf := (gs_add x (ge_ind pv (gs_ind Ξ (rd_filed R cs)) (gen_body (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)))) Ξ).
+  #[local] Abbreviation Ξf := (gs_add x (ge_ind pv (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) (gen_body (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)))) Ξ).
   #[local] Abbreviation np := (List.length (rd_params R)).
   #[local] Abbreviation t := (List.length (gs_tele Ξ)).
   #[local] Abbreviation σ0 := (Id ,, self_inst (ind_qname Ξ x) (List.length (gs_tele Ξ))).
   #[local] Abbreviation base := (tele_wk (rd_params R) wk_shift ++ ce_ass (rd_self_ty R) :: gs_tele Ξ).
 
-  Hypothesis HΞ : ⊢g Θ ⍮ Ξ.
-  Hypothesis HΞf : ⊢g Θ ⍮ Ξf.
+  Hypothesis HΞ : ⊢ᵍ Θ ⍮ Ξ.
+  Hypothesis HΞf : ⊢ᵍ Θ ⍮ Ξf.
   Hypothesis Hemb : Emb Θ Ξ Θ Ξf.
   Hypothesis Hl : ind_lookup Θ Ξf p = Some D.
   Hypothesis HD : decl_typed Θ Ξf D.
@@ -139,13 +139,13 @@ Section ConTypes.
 
   (** [Self] substituted, from the filed parameters into the parameters and
       [Self] of the context an argument is written in. *)
-  Lemma base_sub : ⊢ Θ ⍮ Ξf ⍮ base -> Θ ⍮ Ξf ⍮ ind_params D ⊢s sb_qn np σ0 : base.
+  Lemma base_sub : ⊢ Θ ⍮ Ξf ⍮ base -> Θ ⍮ Ξf ⍮ ind_params D ⊢ˢ sb_qn np σ0 : base.
   Proof.
     intros Hb.
     pose proof HD as (_ & _ & _ & HP & _).
     assert (HT : ⊢ Θ ⍮ Ξf ⍮ gs_tele Ξ) by (rewrite D_params in HP; exact (ctx_app_wf_tail _ _ _ _ HP)).
     destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ Hb)) as [_ [j Hj]].
-    assert (Hσ0 : Θ ⍮ Ξf ⍮ gs_tele Ξ ⊢s σ0 : ce_ass (rd_self_ty R) :: gs_tele Ξ).
+    assert (Hσ0 : Θ ⍮ Ξf ⍮ gs_tele Ξ ⊢ˢ σ0 : ce_ass (rd_self_ty R) :: gs_tele Ξ).
     { eapply wf_sub_extend; [ apply wf_sub_id; exact HT | exact Hj | rewrite exp_sub_id; exact self_typed ]. }
     pose proof (wf_sub_ext _ _ (tele_wk (rd_params R) wk_shift) _ _ _ Hσ0) as H.
     rewrite tele_wk_shift_sub_extend, length_tele_wk in H.
@@ -239,7 +239,7 @@ Section ConTypes.
       rewrite sb_qn_plus in Hj; fold τ in Hj.
       replace (List.length (gs1 ++ g :: nil) + List.length gs) with (List.length gs1 + S (List.length gs)) in Hj
         by (rewrite List.length_app; cbn; lia).
-      eapply wf_exp_eq_pi_cong; [ eapply lift_exp_ge; [| exact HTL ]; lia | eapply lift_exp_eq_ge; [| exact HTe ]; lia |].
+      eapply wf_exp_eq_pi_cong_large; [ eapply lift_exp_ge; [| exact HTL ]; lia | eapply lift_exp_eq_ge; [| exact HTe ]; lia |].
       rewrite rtele_app, tele_sub_app in Hj; cbn [rtele List.map List.rev List.app tele_sub centry_sub List.length snd Nat.add] in Hj.
       rewrite length_rtele, <- sb_qn_plus, Hlen in Hj; fold τ in Hj.
       cbn [Nat.add] in Hj; rewrite <- sb_qn_plus in Hj; fold τ in Hj.
@@ -252,11 +252,11 @@ End ConTypes.
     written, with [Self] the type former at the frames' parameters, in the
     global context the run makes: the declaration filed in its module. *)
 Theorem rc_ind_con_types : forall load_path read to_core ch B Rb Θ Ξ x pv R B' Rb' Θ' Ξ',
-    run_cmd load_path read to_core ch B Rb Θ Ξ (cc_ind x pv R) B' Rb' Θ' Ξ' -> ⊢g Θ ⍮ Ξ ->
+    run_cmd load_path read to_core ch B Rb Θ Ξ (cc_ind x pv R) B' Rb' Θ' Ξ' -> ⊢ᵍ Θ ⍮ Ξ ->
     forall c args, In (c, args) (rd_cons R) ->
     exists cs gs, cls_cons_in Θ Ξ R cs /\
       ind_con (gs_ind Ξ (rd_filed R cs)) c = Some gs /\
-      Ξ' = gs_add x (ge_ind pv (gs_ind Ξ (rd_filed R cs)) (gen_body (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)))) Ξ /\
+      Ξ' = gs_add x (ge_ind pv (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) (gen_body (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)))) Ξ /\
       exists i, Θ ⍮ Ξ' ⍮ ⋅
         ⊢ con_ty (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) gs
         ≈ user_con_ty (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) (List.length (rd_params R)) args
@@ -272,9 +272,10 @@ Proof.
   destruct (decl_of_lookup _ _ ⋅ _ _ ltac:(constructor; exact HΞf) Hl) as [HD Hdc].
   pose proof HD as (_ & _ & _ & HP & _ & _ & _ & _ & _ & _ & _ & Hnd & _).
   assert (Hcon : ind_con D c = Some gs) by (apply cons_lookup_nodup; [ exact Hnd | exact Hin' ]).
-  assert (Hemb : Emb Θ' Ξ Θ' (gs_add x (ge_ind pv D (gen_body p D)) Ξ)).
+  assert (Hemb : Emb Θ' Ξ Θ' (gs_add x (ge_ind pv p D (gen_body p D)) Ξ)).
   { constructor; [ exact HΞf |].
-    destruct Ξ as [| [mq [P [Φ | E0]]] Ξ0]; [ contradiction | |].
+    destruct Ξ as [| [mq [P [[] Φ | E0]]] Ξ0]; [ contradiction | | |].
+    - exfalso; destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & (Δ' & Φ' & [=] & _) & _).
     - cbn [gs_fresh gu_mod] in Hfr; cbn [gs_add gu_params gu_mod]; apply gc_sub_grow; exact Hfr.
     - exfalso; destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & (Δ' & Φ' & [=] & _) & _). }
   exists cs, gs; split; [ exact Hcls | split; [ exact Hcon | split; [ reflexivity |] ] ].
@@ -295,7 +296,7 @@ Proof.
               ltac:(cbn; apply ctx_sub_refl; exact HP)) as [j Hj].
   cbn [rtele tele_sub List.rev List.map List.app List.length cargs_pat] in Hj.
   rewrite Nat.add_0_l in Hj.
-  assert (HP0 : ⊢ Θ' ⍮ gs_add x (ge_ind pv D (gen_body p D)) Ξ ⍮ ind_params D ++ ⋅)
+  assert (HP0 : ⊢ Θ' ⍮ gs_add x (ge_ind pv p D (gen_body p D)) Ξ ⍮ ind_params D ++ ⋅)
     by (rewrite List.app_nil_r; exact HP).
   pose proof HD as (Hass & _).
   destruct (ctx_pi_ass_eq _ _ _ ⋅ _ _ _ Hass HP0 ltac:(rewrite List.app_nil_r; exact Hj)) as [i Hi].

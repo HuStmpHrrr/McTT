@@ -22,7 +22,7 @@ From Mctt.Core.Semantic Require Export PER.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
-Reserved Notation "Γ ⊨w φ : Δ" (at level 70, φ constr at level 0, Δ at level 69).
+Reserved Notation "Γ ⊨ʷ φ : Δ" (at level 70, φ constr at level 0, Δ at level 69).
 Reserved Notation "⊨ Γ" (at level 70).
 
 Section Fixed_GCtx.
@@ -49,7 +49,7 @@ Definition rel_wk_under_ctx Γ φ Δ : Prop :=
      env_rel' (_ : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_rel'),
     rel_wk φ env_rel env_rel'.
 
-Notation "Γ ⊨w φ : Δ" := (rel_wk_under_ctx Γ φ Δ) : type_scope.
+Notation "Γ ⊨ʷ φ : Δ" := (rel_wk_under_ctx Γ φ Δ) : type_scope.
 
 (** * Semantic Substitution Equality
 
@@ -172,8 +172,8 @@ Notation "⊨ Γ ≈ Γ'" := (per_ctx Γ Γ')  (at level 70, Γ' at level 69).
 Notation "Γ ⊨ M ≈ M' : A" := (rel_exp_under_ctx Γ A M M') (at level 70, M at level 69, M' at level 69, A at level 69).
 Notation "Γ ⊨ M ⊆ M'" := (subtyp_under_ctx Γ M M') (at level 70, M at level 69, M' at level 69).
 Notation "Γ ⊨ M : A" := (valid_exp_under_ctx Γ A M) (at level 70, M at level 69, A at level 69).
-Notation "Γ ⊨s σ ≈ σ' : Δ" := (rel_sub_under_ctx Γ Δ σ σ') (at level 70, σ at level 69, σ' at level 69, Δ at level 69).
-Notation "Γ ⊨s σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (at level 70, σ at level 69, Δ at level 69).
+Notation "Γ ⊨ˢ σ ≈ σ' : Δ" := (rel_sub_under_ctx Γ Δ σ σ') (at level 70, σ at level 69, σ' at level 69, Δ at level 69).
+Notation "Γ ⊨ˢ σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (at level 70, σ at level 69, Δ at level 69).
 
 (** * Semantic Judgments for Module Expressions and Units
 
@@ -245,7 +245,7 @@ with sem_unit : ctx -> gunit -> Prop :=
     body_shape Φx Φx ->
     ⊨ body_ctx Φx ++ Δ ++ Γ ->
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Ψ ++ Δ ++ Γ ⊨ᵐ H ≈ H) ->
-    sem_unit Γ (gu_body Δ Φ)
+    sem_unit Γ (gu_open Δ Φ)
 | sem_unit_alias : forall Γ Δ E,
     tele_ass Δ ->
     ⊨ Δ ++ Γ ->
@@ -269,7 +269,7 @@ Notation "Γ ⊨ˣ Ψ ≈ Ψ'" := (rel_ext_under_ctx Γ Ψ Ψ') (at level 70, Ψ
 
 End Fixed_GCtx.
 
-Notation "Γ ⊨w φ : Δ" := (rel_wk_under_ctx Γ φ Δ) : type_scope.
+Notation "Γ ⊨ʷ φ : Δ" := (rel_wk_under_ctx Γ φ Δ) : type_scope.
 #[export]
 Hint Constructors rel_sub : mctt.
 #[export]
@@ -290,8 +290,8 @@ Notation "⊨ Γ ≈ Γ'" := (per_ctx Γ Γ')  (at level 70, Γ' at level 69).
 Notation "Γ ⊨ M ≈ M' : A" := (rel_exp_under_ctx Γ A M M') (at level 70, M at level 69, M' at level 69, A at level 69).
 Notation "Γ ⊨ M ⊆ M'" := (subtyp_under_ctx Γ M M') (at level 70, M at level 69, M' at level 69).
 Notation "Γ ⊨ M : A" := (valid_exp_under_ctx Γ A M) (at level 70, M at level 69, A at level 69).
-Notation "Γ ⊨s σ ≈ σ' : Δ" := (rel_sub_under_ctx Γ Δ σ σ') (at level 70, σ at level 69, σ' at level 69, Δ at level 69).
-Notation "Γ ⊨s σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (at level 70, σ at level 69, Δ at level 69).
+Notation "Γ ⊨ˢ σ ≈ σ' : Δ" := (rel_sub_under_ctx Γ Δ σ σ') (at level 70, σ at level 69, σ' at level 69, Δ at level 69).
+Notation "Γ ⊨ˢ σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (at level 70, σ at level 69, Δ at level 69).
 Notation "⊨ Γ" := (sem_ctx Γ) : type_scope.
 #[export]
 Hint Constructors sem_ctx sem_unit rel_mod : mctt.
@@ -306,6 +306,6 @@ Existing Class rel_wk.
 
 Existing Class rel_wk_under_ctx.
 
-#[export] Instance rel_wk_under_ctx_mono {GC : GCtx} {Γ φ Δ} (Hφ : Γ ⊨w φ : Δ) : WkMono φ.
+#[export] Instance rel_wk_under_ctx_mono {GC : GCtx} {Γ φ Δ} (Hφ : Γ ⊨ʷ φ : Δ) : WkMono φ.
 Proof. destruct Hφ as [? [? [? [? []]]]]; assumption. Qed.
 

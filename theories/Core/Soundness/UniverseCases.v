@@ -32,13 +32,13 @@ Section Fixed_GCtx.
 Lemma glu_rel_exp_of_univ : forall {Γ Sb A} {u : uidx},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     (forall Δ σ ρ,
-        Δ ⊢s σ ® ρ ∈ Sb ->
+        Δ ⊢ˢ σ ® ρ ∈ Sb ->
         Δ ⊢ A[σ] : ulvl_tm u /\
           exists a,
             ⟦ A ⟧ ρ ↘ a /\
               Dom a ≈ a ∈ per_univ u /\
               (forall P El, DG a ∈ glu_univ_elem u ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
-              (forall Δ' φ W, Δ' ⊢k φ : Δ -> Rtyp a in length Δ' ↘ W ->
+              (forall Δ' φ W, Δ' ⊢ᵏ φ : Δ -> Rtyp a in length Δ' ↘ W ->
                          Δ' ⊢ A[σ][φ]ʷ ≈ W : ulvl_tm u)) ->
     Γ ⊩ A : ulvl_tm u.
 Proof.
@@ -76,7 +76,7 @@ Proof.
   assert (⊢ Γ) by mauto 2.
   eapply (glu_rel_exp_of_univ (u := ul (ulvl_above u))); [ eassumption |].
   intros Δ σ ρ HΔ.
-  assert (Δ ⊢s σ : Γ) by mauto 3.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
   rewrite exp_sub_ulvl_tm.
   split; [ apply wf_ulvl_tm; assumption |].
@@ -105,13 +105,13 @@ Lemma glu_rel_exp_of_univ_inversion : forall {Γ Sb A} {u : uidx},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     Γ ⊩ A : ulvl_tm u ->
     forall Δ σ ρ,
-      Δ ⊢s σ ® ρ ∈ Sb ->
+      Δ ⊢ˢ σ ® ρ ∈ Sb ->
       Δ ⊢ A[σ] : ulvl_tm u /\
         exists a,
           ⟦ A ⟧ ρ ↘ a /\
             Dom a ≈ a ∈ per_univ u /\
             (forall P El, DG a ∈ glu_univ_elem u ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
-            (forall Δ' φ W, Δ' ⊢k φ : Δ -> Rtyp a in length Δ' ↘ W ->
+            (forall Δ' φ W, Δ' ⊢ᵏ φ : Δ -> Rtyp a in length Δ' ↘ W ->
                        Δ' ⊢ A[σ][φ]ʷ ≈ W : ulvl_tm u).
 Proof.
   intros * HΓ HA * HΔ.
@@ -184,7 +184,7 @@ Qed.
 Lemma glu_rel_exp_of_typ : forall {Γ Sb A} {i : nat},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     (forall Δ σ ρ,
-        Δ ⊢s σ ® ρ ∈ Sb ->
+        Δ ⊢ˢ σ ® ρ ∈ Sb ->
         Δ ⊢ A[σ] : Typeω@i /\
           exists a,
             ⟦ A ⟧ ρ ↘ a /\
@@ -208,7 +208,7 @@ Proof.
   assert (⊢ Γ) by mauto 2.
   eapply (glu_rel_exp_of_univ (u := us (a, S n))); [ eassumption |].
   intros Δ σ ρ HΔ.
-  assert (Δ ⊢s σ : Γ) by mauto 3.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
   cbn.
   split; [ apply wf_univ_lit; assumption |].
@@ -238,7 +238,7 @@ Proof.
   intros * [].
   eapply glu_rel_exp_of_typ; mauto 3.
   intros.
-  assert (Δ ⊢s σ : Γ) by mauto 3.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   split; mauto 4.
   eexists; repeat split; mauto.
   intros.

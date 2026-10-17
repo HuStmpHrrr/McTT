@@ -32,15 +32,22 @@ This is what makes an un-ported fragment a hard error rather than a misparse:
 
 The syntactic judgments carry a global context, spelled with `⍮`:
 `⊢ Ψ ⍮ Γ`, `Ψ ⍮ Γ ⊢ M : A`, `Ψ ⍮ Γ ⊢ M ≈ M' : A`, `Ψ ⍮ Γ ⊢ A ⊆ A'`,
-`Ψ ⍮ Γ ⊢w φ : Δ`, `Ψ ⍮ Γ ⊢s σ : Δ`, `Ψ ⍮ Γ ⊢s σ ≈ σ' : Δ`, and
+`Ψ ⍮ Γ ⊢ʷ φ : Δ`, `Ψ ⍮ Γ ⊢ˢ σ : Δ`, `Ψ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ`, and
 `⊢ Ψ ⍮ Δ ⊆ Γ` for context refinement.  `⍮` is a terminal of each of those
 notations, not an operator, so it has no level of its own.  The global context's
-own well-formedness uses a letter suffix in the same style as `⊢w`/`⊢s`:
-`⊢g Ψ` (the stack, notation of `wf_gstack`), plus three that also carry the
-ambient telescope the thing is checked in, again with `⍮`: `Ψ ⍮ Δ ⊢e E` (an
-entry), `Ψ ⍮ Δ ⊢m Φ` (a module), `Ψ ⍮ Δ ⊢u U` (a unit; a definition over
-`⊢m`, not a judgment).  The filed units alone are well formed when
-`⊢g Θ ⍮ nil` (no frame open).  `Γ ∋ #x : A` takes no `Ψ`.
+own well-formedness uses a superscript suffix in the same style as `⊢ʷ`/`⊢ˢ`:
+`⊢ᵍ Ψ` (the stack, notation of `wf_gstack`), plus three that also carry the
+ambient telescope the thing is checked in, again with `⍮`: `Ψ ⍮ Δ ⊢ᵉ E` (an
+entry), `Ψ ⍮ Δ ⊢ᵍᵐ Φ` (a module), `Ψ ⍮ Δ ⊢ᵍᵘ U` (a unit; a definition over
+`⊢ᵍᵐ`, not a judgment).  The filed units alone are well formed when
+`⊢ᵍ Θ ⍮ nil` (no frame open).  `Γ ∋ #x : A` takes no `Ψ`.
+
+Every suffix of a turnstile is a superscript: `⊢ˢ`, `⊢ʷ`, `⊢ᵏ` (Kripke
+weakenings), `⊢ᵍ`, `⊢ᵉ`, `⊢ᵍᵘ`, `⊢ᵍᵐ`, and semantically `⊨ˢ`, `⊨ʷ`, beside
+`⊢ᵐ`, `⊢ᵘ`, `⊢ˣ`, `⊢ᵤ`, `⊨ᵐ`, `⊨ᵘ`, `⊨ˣ`.  The global unit and body carry `ᵍ`
+before their letter, as `⊢ᵘ` and `⊢ᵐ` are the local unit and module-expression
+equalities.  The algorithmic judgments keep the letter `a` (`⊢a`, `⊢aᵐ`,
+`⊢aᵘ`, `⊢aᵇ`, `⊢aˣ`, `⊢anf`).
 
 Resolution has two notations, distinguished by a superscript because they have
 the same shape: `Φ ∋ ip ⇒ Δ ⍮ E` in a module, and `Ψ ∋ᵍ p ⇒ Δ ⍮ E` for a whole

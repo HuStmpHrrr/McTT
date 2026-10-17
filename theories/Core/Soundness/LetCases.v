@@ -22,19 +22,19 @@ Section Fixed_GCtx.
     assumption entry. *)
 Lemma cons_def_glu_sub_pred_helper : forall {Γ Sb Δ σ ρ A a} {i : nat} {P El M m},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Δ ⊢s σ ® ρ ∈ Sb ->
+    Δ ⊢ˢ σ ® ρ ∈ Sb ->
     Γ ⊢ A : Typeω@i ->
     Γ ⊢ M : A ->
     ⟦ A ⟧ ρ ↘ a ->
     ⟦ M ⟧ ρ ↘ m ->
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     Δ ⊢ M[σ] : A[σ] ® m ∈ El ->
-    Δ ⊢s σ,,M[σ] ® ρ ↦ m ∈ cons_def_glu_sub_pred i Γ A M Sb.
+    Δ ⊢ˢ σ,,M[σ] ® ρ ↦ m ∈ cons_def_glu_sub_pred i Γ A M Sb.
 Proof.
   intros * HΓ Hσ HA HM Ha Hm Hglu HMσ.
-  assert (Δ ⊢s σ : Γ) by mauto 2.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 2.
   assert (Δ ⊢ M[σ] : A[σ]) by mauto 2 using glu_univ_elem_trm_escape.
-  assert (Δ ⊢s σ,,M[σ] : Γ ▸ A ≔ M) by (eapply wf_sub_extend_def; mauto 3).
+  assert (Δ ⊢ˢ σ,,M[σ] : Γ ▸ A ≔ M) by (eapply wf_sub_extend_def; mauto 3).
   econstructor; try eassumption.
   - rewrite exp_sub_shift_extend; eassumption.
   - exists m; split; [ eassumption |].
@@ -69,15 +69,15 @@ Proof.
   eexists; split; [ eassumption |].
   exists k.
   intros Δ σ ρ HSb.
-  assert (Δ ⊢s σ : Γ) by mauto 2.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 2.
   match goal with
-  | HMg : forall Δ σ ρ, Δ ⊢s σ ® ρ ∈ SbΓ -> glu_rel_exp_with_sub i Δ M A σ ρ |- _ =>
+  | HMg : forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ SbΓ -> glu_rel_exp_with_sub i Δ M A σ ρ |- _ =>
       destruct (HMg _ _ _ HSb) as [a m P El Ha Hm Hglu HMσ]
   end.
-  assert (HSbA : Δ ⊢s σ,,M[σ] ® ρ ↦ m ∈ SbΓA)
+  assert (HSbA : Δ ⊢ˢ σ,,M[σ] ® ρ ↦ m ∈ SbΓA)
     by (unfold SbΓA; eapply cons_def_glu_sub_pred_helper; eassumption).
   match goal with
-  | HBg : forall Δ σ ρ, Δ ⊢s σ ® ρ ∈ SbΓA -> glu_rel_exp_with_sub k Δ B C σ ρ |- _ =>
+  | HBg : forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ SbΓA -> glu_rel_exp_with_sub k Δ B C σ ρ |- _ =>
       destruct (HBg _ _ _ HSbA) as [c b Pc Elc Hc Hb Hgluc HBσ]
   end.
   assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).

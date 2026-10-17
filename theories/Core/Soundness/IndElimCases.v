@@ -15,7 +15,7 @@ From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasse
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
-From Mctt.Core.Completeness Require IndCases IndSem ElimCases TeleSem SubstitutionCases InstanceCases UnitCases MemberReps.
+From Mctt.Core.Completeness Require IndCases IndSem ElimCases TeleSem SubstitutionCases InstanceCases UnitCases MemberReps GlobalArgs.
 From Mctt.Core.Completeness Require Import UniverseCases.
 From Mctt.Core.Semantic Require Import Realizability IndCanon IndElim Evaluation.Modules.
 From Mctt.Core.Syntactic Require Import Substitution IndCong.
@@ -58,10 +58,10 @@ Qed.
     the fresh ones of the types of [C], is glued at the extension. *)
 Lemma glu_sub_qn : forall C Γb Sb_b, tele_ass C -> EG Γb ∈ glu_ctx_env ↘ Sb_b ->
     forall Sb, EG C ++ Γb ∈ glu_ctx_env ↘ Sb ->
-    forall Δ σ ρ xs, Δ ⊢s σ ® ρ ∈ Sb_b -> List.length xs = List.length C ->
+    forall Δ σ ρ xs, Δ ⊢ˢ σ ® ρ ∈ Sb_b -> List.length xs = List.length C ->
     (forall k A a (i : uidx) R, List.nth_error (List.rev C) k = Some (ce_ass A) -> ⟦ A ⟧ env_args ρ (List.firstn k xs) ↘ a ->
        DF a ≈ a ∈ per_univ_elem i ↘ R -> exists x, List.nth_error xs k = Some x /\ R (⇑! a (List.length Δ + k)) x) ->
-    tele_sub C σ ++ Δ ⊢s sb_qn (List.length C) σ ® env_args ρ xs ∈ Sb.
+    tele_sub C σ ++ Δ ⊢ˢ sb_qn (List.length C) σ ® env_args ρ xs ∈ Sb.
 Proof.
   induction C as [| e C IH]; intros * Hass HΓb Sb HC * Hσ Hl Hx.
   - destruct xs; [| discriminate ]; cbn.
@@ -113,7 +113,7 @@ Qed.
 Lemma glu_sub_resp_args : forall C Γb Sb_b, tele_ass C -> EG Γb ∈ glu_ctx_env ↘ Sb_b ->
     forall Sb, EG C ++ Γb ∈ glu_ctx_env ↘ Sb ->
     forall Δ τ ρ ys xs, List.length ys = List.length C -> per_gargs (List.rev C) ρ ρ ys xs ->
-      Δ ⊢s τ ® env_args ρ ys ∈ Sb -> Δ ⊢s τ ® env_args ρ xs ∈ Sb.
+      Δ ⊢ˢ τ ® env_args ρ ys ∈ Sb -> Δ ⊢ˢ τ ® env_args ρ xs ∈ Sb.
 Proof.
   induction C as [| e C IH]; intros * Hass HΓb Sb HC * Hl Hg Hτ.
   - destruct ys; [| discriminate ]; inversion Hg; subst; exact Hτ.
@@ -148,10 +148,10 @@ Qed.
     related to those of [C], is glued at the extension. *)
 Lemma glu_sub_fresh : forall C Γb Sb_b, tele_ass C -> EG Γb ∈ glu_ctx_env ↘ Sb_b ->
     forall Sb, EG C ++ Γb ∈ glu_ctx_env ↘ Sb ->
-    forall Δ σ ρ xs, Δ ⊢s σ ® ρ ∈ Sb_b -> List.length xs = List.length C ->
+    forall Δ σ ρ xs, Δ ⊢ˢ σ ® ρ ∈ Sb_b -> List.length xs = List.length C ->
     (forall k A a, List.nth_error (List.rev C) k = Some (ce_ass A) -> ⟦ A ⟧ env_args ρ (List.firstn k xs) ↘ a ->
        exists b (j : nat), List.nth_error xs k = Some (⇑! b (List.length Δ + k)) /\ Dom a ≈ b ∈ per_univ j) ->
-    tele_sub C σ ++ Δ ⊢s sb_qn (List.length C) σ ® env_args ρ xs ∈ Sb.
+    tele_sub C σ ++ Δ ⊢ˢ sb_qn (List.length C) σ ® env_args ρ xs ∈ Sb.
 Proof.
   intros * Hass HΓb Sb HC * Hσ Hl Hx.
   eapply glu_sub_qn; [ exact Hass | exact HΓb | exact HC | exact Hσ | exact Hl |].
@@ -259,14 +259,14 @@ Proof.
   assert (HRC' : EF List.rev (List.rev C) ++ ⋅ ≈ List.rev (List.rev C) ++ ⋅ ∈ per_ctx_env ↘ RC)
     by (rewrite List.rev_involutive, List.app_nil_r; exact HRC).
   assert (L' : List.length vs = List.length (List.rev C)) by (rewrite List.length_rev; exact Lv).
-  destruct (IndSem.rel_gargs (List.rev C) ⋅ _ RC GlobalSem.per_ctx_env_nil_true HC' (List.Forall_rev Hass) HRC' ρ nil vs vs L' L' H2)
+  destruct (IndSem.rel_gargs (List.rev C) ⋅ _ RC GlobalArgs.per_ctx_env_nil_true HC' (List.Forall_rev Hass) HRC' ρ nil vs vs L' L' H2)
     as [_ Hgg]; exact Hgg.
 Qed.
 
 (** Terms glued at the instances of a closed telescope are glued
     arguments of it, at their values. *)
 Lemma params_glu_args : forall C Γ RΓ Sb Δ σ ρ Ms vs, tele_ass C -> ctx_scoped 0 C -> ⊨ C -> ⊨ Γ ->
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> EG Γ ∈ glu_ctx_env ↘ Sb -> Δ ⊢s σ ® ρ ∈ Sb -> List.length Ms = List.length C ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> EG Γ ∈ glu_ctx_env ↘ Sb -> Δ ⊢ˢ σ ® ρ ∈ Sb -> List.length Ms = List.length C ->
     (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N : T) ->
     (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊩ N : T) ->
     ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ vs -> glu_args Δ C Id nil (List.map (fun M => M[σ]) Ms) vs.
@@ -538,7 +538,7 @@ Qed.
 
 (** [β] after a Kripke weakening. *)
 Lemma fn_wk_beta : forall Δ' Δ IT OT M b φ (i : nat),
-    Δ' ⊢ IT : Typeω@i -> Δ' ▹ IT ⊢ OT : Typeω@i -> Δ' ▹ IT ⊢ M : OT -> Δ ⊢k φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ->
+    Δ' ⊢ IT : Typeω@i -> Δ' ▹ IT ⊢ OT : Typeω@i -> Δ' ▹ IT ⊢ M : OT -> Δ ⊢ᵏ φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ->
     Δ ⊢ (λ IT M)[φ]ʷ $ b ≈ M[(ι φ),,b] : OT[(ι φ),,b].
 Proof.
   intros * HIT HOT HM Hφ Hb; cbn [exp_wk].
@@ -548,7 +548,7 @@ Proof.
     | exact (kripke_preserves_exp_q _ _ _ _ _ _ _ HM HIT Hφ) | exact Hb ].
 Qed.
 
-Lemma app_wk_typed : forall Δ' Δ IT OT N b φ, Δ' ⊢ N : Π IT OT -> Δ ⊢k φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ->
+Lemma app_wk_typed : forall Δ' Δ IT OT N b φ, Δ' ⊢ N : Π IT OT -> Δ ⊢ᵏ φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ->
     Δ ⊢ N[φ]ʷ $ b : OT[(ι φ),,b].
 Proof.
   intros * HN Hφ Hb; rewrite <- exp_sub_wk_q_extend.
@@ -642,13 +642,13 @@ Proof.
 Qed.
 
 
-Lemma sub_typ_extend : forall Δ' Δ IT OT φ b (j : nat), Δ' ⊢ IT : Typeω@j -> Δ' ▹ IT ⊢ OT : Typeω@j -> Δ ⊢k φ : Δ' ->
+Lemma sub_typ_extend : forall Δ' Δ IT OT φ b (j : nat), Δ' ⊢ IT : Typeω@j -> Δ' ▹ IT ⊢ OT : Typeω@j -> Δ ⊢ᵏ φ : Δ' ->
     Δ ⊢ b : IT[φ]ʷ -> Δ ⊢ OT[(ι φ),,b] : Typeω@j.
 Proof.
   intros * HIT HOT Hφ Hb; rewrite <- exp_sub_wk_q_extend.
   pose proof (kripke_preserves_typ_q _ _ _ _ _ _ _ HOT HIT Hφ) as H.
   pose proof (kripke_preserves_typ _ _ _ _ _ HIT Hφ) as HIT'.
-  assert (Hs : Δ ⊢s Id,,b : Δ ▹ IT[φ]ʷ) by mauto 3.
+  assert (Hs : Δ ⊢ˢ Id,,b : Δ ▹ IT[φ]ʷ) by mauto 3.
   exact (sub_preserves_exp _ _ _ _ _ _ _ H Hs).
 Qed.
 
@@ -689,7 +689,7 @@ Section ElimSyn.
 
   (** The premises of the eliminator's rules, at the instance by a
       substitution. *)
-  Lemma elim_prems_at : forall Δ σ, Δ ⊢s σ : Γ ->
+  Lemma elim_prems_at : forall Δ σ, Δ ⊢ˢ σ : Γ ->
       elim_mctx p D (List.map (fun U => U[σ]) Us) ++ Δ ⊢ A[sb_qn nm σ] : Typeω@i /\
       gc_deps ⍮ gc_stack ⍮ Δ ⊢ˣ elim_mctx p D (List.map (fun U => U[σ]) Us) ≈ elim_mctx p D (List.map (fun U => U[σ]) Us) /\
       brs_names (ind_cons D) (brs_sub Bs σ) /\
@@ -754,7 +754,7 @@ Section ElimSem.
          DG b ∈ glu_univ_elem u ↘ DP (ms ++ ws ++ ys) B ↘ DEl (ms ++ ws ++ ys) B) ->
       DF d_ind p (ups0 ++ ns) ≈ d_ind p (ups0 ++ ns) ∈ per_univ_elem u ↘ R ->
       ⊢ Δ -> glu_args Δ (ind_params D) Id nil Q (ups0 ++ ns) -> Δ ⊢ M : apps (a_ind p) Q -> R m m ->
-      (forall Δ' φ Q', Δ' ⊢k φ : Δ -> exps_eq_at Δ' (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
+      (forall Δ' φ Q', Δ' ⊢ᵏ φ : Δ -> exps_eq_at Δ' (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
          glu_ind p D ups0 NEl AEl DP DEl Δ' Q' M[φ]ʷ m) ->
       exists P El, DG d_ind p (ups0 ++ ns) ∈ glu_univ_elem u ↘ P ↘ El /\ Δ ⊢ apps (a_ind p) Q ® P /\
         Δ ⊢ M : apps (a_ind p) Q ® m ∈ El.
@@ -1013,13 +1013,13 @@ Section ElimSem.
   (** The substitution of the motive's context at glued non-uniform
       parameters and a scrutinee glued at the type at them. *)
   Lemma mctx_glu_sub : forall SbM, EG elim_mctx p D Us ++ Γ ∈ glu_ctx_env ↘ SbM ->
-      forall Δ' σ' Ns ns M m (j : uidx) P El, Δ' ⊢s σ' ® ρ ∈ SbΓ ->
+      forall Δ' σ' Ns ns M m (j : uidx) P El, Δ' ⊢ˢ σ' ® ρ ∈ SbΓ ->
         glu_args Δ' (ind_nparams D) (sb_of_list Id (List.map (fun U => U[σ']) Us)) (env_args nil ups) Ns ns ->
         tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns ->
         DG d_ind p (ups ++ ns) ∈ glu_univ_elem j ↘ P ↘ El ->
         Δ' ⊢ apps (a_ind p) (List.map (fun U => U[σ']) Us ++ Ns) ® P ->
         Δ' ⊢ M : apps (a_ind p) (List.map (fun U => U[σ']) Us ++ Ns) ® m ∈ El ->
-        Δ' ⊢s sb_of_list σ' (Ns ++ M :: nil) ® env_args ρ (ns ++ m :: nil) ∈ SbM.
+        Δ' ⊢ˢ sb_of_list σ' (Ns ++ M :: nil) ® env_args ρ (ns ++ m :: nil) ∈ SbM.
   Proof.
     intros SbM HSbM Δ' σ' Ns ns M m j P El Hσ' Hg Hns Hgj HP HMg.
     pose proof (nparams_inst_args _ _ _ _ Hg Hns) as Hg1.
@@ -1099,7 +1099,7 @@ Section ElimSem.
   Variable (R0 : relation domain) (ns0 : list domain).
   Hypothesis (HR0 : DF d_ind p (ups ++ ns0) ≈ d_ind p (ups ++ ns0) ∈ per_univ_elem (ul u) ↘ R0).
 
-  Lemma us_glu_args : forall Δ'' σ'', Δ'' ⊢s σ'' ® ρ ∈ SbΓ ->
+  Lemma us_glu_args : forall Δ'' σ'', Δ'' ⊢ˢ σ'' ® ρ ∈ SbΓ ->
       glu_args Δ'' (ind_uparams D) Id nil (List.map (fun U => U[σ'']) Us) ups.
   Proof.
     intros * Hσ''.
@@ -1158,9 +1158,9 @@ Section ElimSem.
   (** The substitution of the motive's context at the fresh variables a
       stuck eliminator's readback makes, at admissible uniform parameters. *)
   Lemma mctx_fresh_glu : forall SbM, EG elim_mctx p D Us ++ Γ ∈ glu_ctx_env ↘ SbM ->
-      forall Δ σ'' ua ns_x, Δ ⊢s σ'' ® ρ ∈ SbΓ -> ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ua -> List.length ua = ind_nu D ->
+      forall Δ σ'' ua ns_x, Δ ⊢ˢ σ'' ® ρ ∈ SbΓ -> ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ua -> List.length ua = ind_nu D ->
         fresh_tele gc_deps gc_stack (env_args nil ua) (List.rev (ind_nparams D)) (List.length Δ) ns_x ->
-        elim_mctx p D (List.map (fun U => U[σ'']) Us) ++ Δ ⊢s sb_qn nm σ''
+        elim_mctx p D (List.map (fun U => U[σ'']) Us) ++ Δ ⊢ˢ sb_qn nm σ''
           ® env_args ρ (ns_x ++ ⇑! (d_ind p (ua ++ ns_x)) (List.length Δ + ind_nn D) :: nil) ∈ SbM.
   Proof.
     intros SbM HSbM Δ σ'' ua ns_x Hσ'' Hadm Lua Hfx.
@@ -1171,7 +1171,7 @@ Section ElimSem.
     pose proof (fresh_tele_length _ _ _ _ Hfx) as Lx; rewrite List.length_rev, length_nparams in Lx.
     assert (HMlen : List.length (elim_mctx p D Us) = nm) by (rewrite length_elim_mctx; symmetry; exact Hnm).
     rewrite <- (elim_mctx_sub p D Us σ'' Hc HUl), <- HMlen.
-    assert (Hws : tele_sub (elim_mctx p D Us) σ'' ++ Δ ⊢s sb_qn (List.length (elim_mctx p D Us)) σ''
+    assert (Hws : tele_sub (elim_mctx p D Us) σ'' ++ Δ ⊢ˢ sb_qn (List.length (elim_mctx p D Us)) σ''
                     ® env_args ρ (ns_u ++ ⇑! (d_ind p (ups ++ ns_u)) (List.length Δ + ind_nn D) :: nil) ∈ SbM).
     { apply (glu_sub_fresh _ Γ SbΓ (elim_mctx_ass p D Us Hc) HSbΓ SbM HSbM Δ σ'' ρ _ Hσ'');
         [ rewrite List.length_app, length_elim_mctx; cbn; lia |].
@@ -1362,12 +1362,12 @@ Section ElimSem.
       eliminator's readback makes, at admissible uniform parameters. *)
   Lemma br_fresh_glu : forall c gs, ind_con D c = Some gs ->
       forall SbB, EG elim_bctx p D gs A Us ++ Γ ∈ glu_ctx_env ↘ SbB ->
-      forall Δ σ'' ua ns_x vs_x ihs_x, Δ ⊢s σ'' ® ρ ∈ SbΓ ->
+      forall Δ σ'' ua ns_x vs_x ihs_x, Δ ⊢ˢ σ'' ® ρ ∈ SbΓ ->
         ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ua -> List.length ua = ind_nu D ->
         fresh_tele gc_deps gc_stack (env_args nil ua) (List.rev (ind_nparams D)) (List.length Δ) ns_x ->
         fresh_cargs gc_deps gc_stack p ua (env_args nil (ua ++ ns_x)) gs (List.length Δ + ind_nn D) vs_x ->
         fresh_ihs gc_deps gc_stack ρ A (env_args nil (ua ++ ns_x)) gs vs_x (List.length Δ + ind_nn D + List.length gs) ihs_x ->
-        tele_sub (elim_bctx p D gs A Us) σ'' ++ Δ ⊢s sb_qn (List.length (elim_bctx p D gs A Us)) σ''
+        tele_sub (elim_bctx p D gs A Us) σ'' ++ Δ ⊢ˢ sb_qn (List.length (elim_bctx p D gs A Us)) σ''
           ® env_args ρ (ns_x ++ vs_x ++ ihs_x) ∈ SbB.
   Proof.
     intros c gs Hcon SbB HSbB Δ σ'' ua ns_x vs_x ihs_x Hσ'' Hadm Lua Fx Cx Ix.
@@ -1398,7 +1398,7 @@ Section ElimSem.
     destruct (ElimCases.ihs_rel_len _ _ _ _ _ _ _ _ _ Hir) as [Li1 Li2].
     assert (Lb : List.length (elim_bctx p D gs A Us) = ind_nn D + List.length gs + cargs_nrec gs) by (rewrite length_elim_bctx; lia).
     (** Glued at the variables at [ups]. *)
-    assert (Hws : tele_sub (elim_bctx p D gs A Us) σ'' ++ Δ ⊢s sb_qn (List.length (elim_bctx p D gs A Us)) σ''
+    assert (Hws : tele_sub (elim_bctx p D gs A Us) σ'' ++ Δ ⊢ˢ sb_qn (List.length (elim_bctx p D gs A Us)) σ''
                     ® env_args ρ (ns_u ++ vs1 ++ ihs1) ∈ SbB).
     { apply (glu_sub_fresh _ Γ SbΓ (elim_bctx_ass p D gs A Us Hc) HSbΓ SbB HSbB Δ σ'' ρ _ Hσ'');
         [ rewrite Lb, !List.length_app; lia |].
@@ -1421,7 +1421,7 @@ Section ElimSem.
 
   (** The readback of the motive of a stuck eliminator, against its
       instance. *)
-  Lemma motive_rb : forall Δ σ'' ua ns_x af A'', Δ ⊢s σ'' ® ρ ∈ SbΓ ->
+  Lemma motive_rb : forall Δ σ'' ua ns_x af A'', Δ ⊢ˢ σ'' ® ρ ∈ SbΓ ->
       ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ua -> List.length ua = ind_nu D ->
       fresh_tele gc_deps gc_stack (env_args nil ua) (List.rev (ind_nparams D)) (List.length Δ) ns_x ->
       ⟦ A ⟧ env_args ρ (ns_x ++ ⇑! (d_ind p (ua ++ ns_x)) (List.length Δ + ind_nn D) :: nil) ↘ af ->
@@ -1446,7 +1446,7 @@ Section ElimSem.
 
   (** The readback of a branch of a stuck eliminator, against its
       instance. *)
-  Lemma br_rb : forall Δ σ'' ua c gs n B ns_x vs_x ihs_x b t Bn, Δ ⊢s σ'' ® ρ ∈ SbΓ ->
+  Lemma br_rb : forall Δ σ'' ua c gs n B ns_x vs_x ihs_x b t Bn, Δ ⊢ˢ σ'' ® ρ ∈ SbΓ ->
       ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ua -> List.length ua = ind_nu D ->
       ind_con D c = Some gs -> In (c, n, B) Bs ->
       fresh_tele gc_deps gc_stack (env_args nil ua) (List.rev (ind_nparams D)) (List.length Δ) ns_x ->
@@ -1525,9 +1525,9 @@ Section ElimSem.
 
 
   (** The motive at glued non-uniform parameters and scrutinee. *)
-  Lemma motive_glu : forall Δ' σ' Q M' m' ns, Δ' ⊢s σ' ® ρ ∈ SbΓ ->
+  Lemma motive_glu : forall Δ' σ' Q M' m' ns, Δ' ⊢ˢ σ' ® ρ ∈ SbΓ ->
       List.firstn (ind_nu D) Q = List.map (fun U => U[σ']) Us -> List.length Q = ind_np D -> Δ' ⊢ M' : apps (a_ind p) Q ->
-      (forall Δ'' φ Q', Δ'' ⊢k φ : Δ' -> exps_eq_at Δ'' (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
+      (forall Δ'' φ Q', Δ'' ⊢ᵏ φ : Δ' -> exps_eq_at Δ'' (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
          glu_ind p D ups NEl AEl DP DEl Δ'' Q' M'[φ]ʷ m') ->
       tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns ->
       ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns m' m' ->
@@ -1569,9 +1569,9 @@ Section ElimSem.
       non-uniform ones glued to the element's, its result is glued at the
       motive. *)
   Definition elim_prop (Δ' : ctx) (Q : list exp) (M' : exp) (m' : domain) : Prop :=
-    forall σ', Δ' ⊢s σ' ® ρ ∈ SbΓ -> List.firstn (ind_nu D) Q = List.map (fun U => U[σ']) Us ->
+    forall σ', Δ' ⊢ˢ σ' ® ρ ∈ SbΓ -> List.firstn (ind_nu D) Q = List.map (fun U => U[σ']) Us ->
       List.length Q = ind_np D -> Δ' ⊢ M' : apps (a_ind p) Q ->
-      (forall Δ'' φ Q', Δ'' ⊢k φ : Δ' -> exps_eq_at Δ'' (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
+      (forall Δ'' φ Q', Δ'' ⊢ᵏ φ : Δ' -> exps_eq_at Δ'' (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
          glu_ind p D ups NEl AEl DP DEl Δ'' Q' M'[φ]ʷ m') ->
       forall ns, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns ->
         ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns m' m' ->
@@ -1611,7 +1611,7 @@ Section ElimSem.
       tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms -> ind_con D c0 = Some (gs1 ++ ca_rec t0 :: gs2) ->
       tele_pre (ind_ar D ups ms c0) (List.length (cargs_nonrec gs1)) ws ws ->
       tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t0)) k ys ys ->
-      Δ' ⊢s σ' ® ρ ∈ SbΓ -> Ty = ptyp_ty_at p (List.map (fun U => U[σ']) Us) σs (ptyp_skip k t0) -> Δ' ⊢ N : Ty ->
+      Δ' ⊢ˢ σ' ® ρ ∈ SbΓ -> Ty = ptyp_ty_at p (List.map (fun U => U[σ']) Us) σs (ptyp_skip k t0) -> Δ' ⊢ N : Ty ->
       Δ' ⊢ Ty : Typeω@j -> eval_shty gc_deps gc_stack p ups (env_args nil (ups ++ ms ++ ws ++ ys)) (ptyp_skip k t0) a ->
       DF a ≈ a ∈ per_univ_elem j ↘ R -> R v v -> u <= j -> DG a ∈ glu_univ_elem j ↘ P ↘ El ->
       Δ' ⊢ N : Ty ® v ∈ El.
@@ -1663,14 +1663,14 @@ Section ElimSem.
       destruct (glu_univ_elem_pi_clean_inversion1 equiv_a_a' Hg) as (IP & IEl & OP & OEl & erel & Hgb1 & Hcodg & Hper & HPeq & HEleq).
       pose proof (HDP _ _ _ _ _ _ _ _ _ _ _ Hms Hc0 eq_refl Hws HB Hys Eb1') as HgD.
       destruct (wf_pi_inversion' HTyt) as [HITt HOTt].
-      assert (HIT : forall Δ φ, Δ ⊢k φ : Δ' -> Δ ⊢ IT[φ]ʷ ® IP).
+      assert (HIT : forall Δ φ, Δ ⊢ᵏ φ : Δ' -> Δ ⊢ IT[φ]ʷ ® IP).
       { intros Δ φ Hφ.
         eapply (glu_typ_transfer (ul u) (ul j) (ul j)); [ cbn; lia | cbn; lia | eexists; exact equiv_a_a' | exact HgD | exact Hgb1 | exact (Hq1 _ _ Hφ) ]. }
-      assert (HDEl : forall Δ φ b c, Δ ⊢k φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ® c ∈ IEl ->
+      assert (HDEl : forall Δ φ b c, Δ ⊢ᵏ φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ® c ∈ IEl ->
                        Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl (ms ++ ws ++ ys) B).
       { intros * Hφ Hb.
         eapply glu_elem_retype; [ exact Hgb1 | exact HgD | exact (glu_univ_elem_trm_typ _ _ _ _ Hgb1 _ _ _ _ Hb) | exact Hb | exact (Hq1 _ _ Hφ) ]. }
-      assert (Happ : forall Δ φ b c (equiv_c : in_rel c c), Δ ⊢k φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ® c ∈ IEl ->
+      assert (Happ : forall Δ φ b c (equiv_c : in_rel c c), Δ ⊢ᵏ φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ® c ∈ IEl ->
                        exists fc a2, $| v & c | gc_deps ⍮ gc_stack ↘ fc /\
                          ⟦ fam_cod ⟧ (nil ↦ d_shfam p ups (env_args nil (ups ++ ms ++ ws ++ ys)) t') ↦ c ↘ a2 /\
                          Δ ⊢ N[φ]ʷ $ b : OTy[(ι φ),,b] ® fc ∈ OEl c equiv_c).
@@ -1719,7 +1719,7 @@ Section ElimSem.
       ind_con D c0 = Some (gs1 ++ ca_rec t0 :: gs2) ->
       tele_pre (ind_ar D ups ms c0) (List.length (cargs_nonrec gs1)) ws ws ->
       ptyp_skip k t0 = t -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t0)) k ys ys ->
-      Δ' ⊢s σ' ® ρ ∈ SbΓ -> Ty = ptyp_ty_at p (List.map (fun U => U[σ']) Us) σs t -> Δ' ⊢ N : Ty ->
+      Δ' ⊢ˢ σ' ® ρ ∈ SbΓ -> Ty = ptyp_ty_at p (List.map (fun U => U[σ']) Us) σs t -> Δ' ⊢ N : Ty ->
       ind_shape_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) pre t v v ->
       eval_ih gc_deps gc_stack ρ nm A Bs t v r ->
       eval_ihty gc_deps gc_stack ρ A (env_args nil (ups ++ pre)) t v a ->
@@ -1733,12 +1733,12 @@ Section ElimSem.
          List.length Q = ind_np D /\ tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bsr bsr /\
          (forall bsr', tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bsr bsr' ->
             glu_nparams D NEl Δ' (List.firstn (ind_nu D) Q) (List.skipn (ind_nu D) Q) bsr' /\
-            forall Δ φ, Δ ⊢k φ : Δ' -> glu_params_top D Δ (List.map (fun P => P[φ]ʷ) Q) (ups ++ bsr'))) ->
+            forall Δ φ, Δ ⊢ᵏ φ : Δ' -> glu_params_top D Δ (List.map (fun P => P[φ]ʷ) Q) (ups ++ bsr'))) ->
       (forall bsr Q, eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ pre)) bsr -> Ty = apps (a_ind p) Q ->
-         forall Δ φ Q', Δ ⊢k φ : Δ' -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
+         forall Δ φ Q', Δ ⊢ᵏ φ : Δ' -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
            glu_ind p D ups NEl AEl DP DEl Δ Q' N[φ]ʷ v) ->
       (forall bsr Q, eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ pre)) bsr -> Ty = apps (a_ind p) Q ->
-         forall Δ φ Q', Δ ⊢k φ : Δ' -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
+         forall Δ φ Q', Δ ⊢ᵏ φ : Δ' -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
            elim_prop Δ Q' N[φ]ʷ v) ->
       rec_prop Δ' pre (pt_self k0 Ps) Ty N v.
   Proof.
@@ -1754,7 +1754,7 @@ Section ElimSem.
     set (Q := List.map (fun U => U[σ']) Us ++ List.map (fun P => P[σs]) Ps) in *.
     assert (HUl' : List.length (List.map (fun U => U[σ']) Us) = ind_nu D) by (rewrite List.length_map; exact HUl).
     destruct (Hs1 _ Q Ebs eq_refl) as (HQl & Hbs & Hgn).
-    assert (Hid : Δ' ⊢k wk_id : Δ') by mauto 3.
+    assert (Hid : Δ' ⊢ᵏ wk_id : Δ') by mauto 3.
     pose proof (proj2 (Hgn bs Hbs) Δ' wk_id Hid) as Htop.
     pose proof (IH _ Q Ebs eq_refl Δ' wk_id _ Hid (glu_params_top_refl _ _ _ _ Htop)) as HE.
     rewrite map_wk_id, exp_wk_id in HE.
@@ -1791,10 +1791,10 @@ Section ElimSem.
   Qed.
 
   Lemma rec_pi_case : forall Δ' pre B t Ty N v,
-      (forall IT OT, Ty = a_pi IT OT -> forall Δ φ, Δ ⊢k φ : Δ' -> Δ ⊢ IT[φ]ʷ ® DP pre B) ->
-      (forall IT OT, Ty = a_pi IT OT -> forall Δ φ b c, Δ ⊢k φ : Δ' -> ind_dr ups pre B c c ->
+      (forall IT OT, Ty = a_pi IT OT -> forall Δ φ, Δ ⊢ᵏ φ : Δ' -> Δ ⊢ IT[φ]ʷ ® DP pre B) ->
+      (forall IT OT, Ty = a_pi IT OT -> forall Δ φ b c, Δ ⊢ᵏ φ : Δ' -> ind_dr ups pre B c c ->
          Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl pre B -> exists fc, $| v & c | gc_deps ⍮ gc_stack ↘ fc) ->
-      (forall IT OT, Ty = a_pi IT OT -> forall Δ φ b c fc, Δ ⊢k φ : Δ' -> ind_dr ups pre B c c ->
+      (forall IT OT, Ty = a_pi IT OT -> forall Δ φ b c fc, Δ ⊢ᵏ φ : Δ' -> ind_dr ups pre B c c ->
          Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl pre B -> $| v & c | gc_deps ⍮ gc_stack ↘ fc ->
          rec_prop Δ (pre ++ c :: nil) t OT[(ι φ),,b] (a_app N[φ]ʷ b) fc) ->
       rec_prop Δ' pre (pt_pi B t) Ty N v.
@@ -1822,14 +1822,14 @@ Section ElimSem.
     destruct (rec_mvc _ _ _ _ (S k) Hc0) as [Hmd Hmp]; rewrite Hsk' in Hmd, Hmp.
     set (body := ptyp_ih nm A[sb_qn nm σ'][wk_qn nm ↑]ʷ (brs_wk (brs_sub Bs σ') ↑) (q σs) (a_app N[↑]ʷ (a_var 0)) t).
     set (OTi := ptyp_ihty A[sb_qn nm σ'] (Id ⨟ sb_of_wk ↑) (q σs) (a_app N[↑]ʷ (a_var 0)) t).
-    assert (HIT' : forall Δ φ, Δ ⊢k φ : Δ' -> Δ ⊢ IT[φ]ʷ ® IP).
+    assert (HIT' : forall Δ φ, Δ ⊢ᵏ φ : Δ' -> Δ ⊢ IT[φ]ʷ ® IP).
     { intros Δ φ Hφ.
       eapply (glu_typ_transfer (ul u) (ul j) (ul j)); [ cbn; lia | cbn; lia | eexists; exact equiv_a_a' | exact HgD | exact Hgb1 | exact (Hq1 _ _ Hφ) ]. }
-    assert (HDEl : forall Δ φ b c, Δ ⊢k φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ® c ∈ IEl ->
+    assert (HDEl : forall Δ φ b c, Δ ⊢ᵏ φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ® c ∈ IEl ->
                      Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl (ms ++ ws ++ ys) B).
     { intros * Hφ Hb.
       eapply glu_elem_retype; [ exact Hgb1 | exact HgD | exact (glu_univ_elem_trm_typ _ _ _ _ Hgb1 _ _ _ _ Hb) | exact Hb | exact (Hq1 _ _ Hφ) ]. }
-    assert (Happ : forall Δ φ b c (equiv_c : in_rel c c), Δ ⊢k φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ® c ∈ IEl ->
+    assert (Happ : forall Δ φ b c (equiv_c : in_rel c c), Δ ⊢ᵏ φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ® c ∈ IEl ->
                      exists rc a2, $| d_ihfn ρ nm A Bs t v & c | gc_deps ⍮ gc_stack ↘ rc /\
                        ⟦ fam_cod ⟧ (nil ↦ d_ihfam ρ A (env_args nil (ups ++ ms ++ ws ++ ys)) t v) ↦ c ↘ a2 /\
                        Δ ⊢ body[(ι φ),,b] : OTi[(ι φ),,b] ® rc ∈ OEl c equiv_c).
@@ -1918,12 +1918,12 @@ Section ElimSem.
           List.nth_error vs (List.length gs1) = Some v ->
           rec_prop Δ' (List.skipn (ind_nu D) bs ++ nonrec_vals gs1 (List.firstn (List.length gs1) vs)) t A N v).
     Variable (σ' : sub).
-    Hypothesis (Hσ' : Δ' ⊢s σ' ® ρ ∈ SbΓ) (HQU : List.firstn (ind_nu D) Q = List.map (fun U => U[σ']) Us)
+    Hypothesis (Hσ' : Δ' ⊢ˢ σ' ® ρ ∈ SbΓ) (HQU : List.firstn (ind_nu D) Q = List.map (fun U => U[σ']) Us)
       (HMt : Δ' ⊢ M' : apps (a_ind p) Q).
     Variable (ns : list domain).
     Hypothesis (Hns : tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns)
       (Hrel : ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns (d_con p c (bs ++ vs)) (d_con p c (bs ++ vs)))
-      (HKm : forall Δ'' φ Q', Δ'' ⊢k φ : Δ' -> exps_eq_at Δ'' (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
+      (HKm : forall Δ'' φ Q', Δ'' ⊢ᵏ φ : Δ' -> exps_eq_at Δ'' (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
          glu_ind p D ups NEl AEl DP DEl Δ'' Q' M'[φ]ʷ (d_con p c (bs ++ vs)))
       (Hgnm : glu_nparams D NEl Δ' (List.firstn (ind_nu D) Q) (List.skipn (ind_nu D) Q) ns).
     Let X := List.skipn (ind_nu D) bs.
@@ -2132,7 +2132,7 @@ Section ElimSem.
         rewrite (ptyp_ihty_sb_eq t _ _ Id _ σg N Hbδ Hθδ), Hnm; reflexivity. }
       (** The result is of its type. *)
       assert (HMt' : Δ' ⊢ ptyp_ih nm A[sb_qn nm σ'] (brs_sub Bs σ') σg N t : T).
-      { assert (Hσt : Δ' ⊢s σ' : Γ) by exact (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ').
+      { assert (Hσt : Δ' ⊢ˢ σ' : Γ) by exact (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ').
         assert (HΔ' : ⊢ Δ') by (gen_presups; assumption).
         destruct (elim_prems_at p D Hc Γ Us nm A iA Bs HUl Hnm HAt HMx HBn HBx HBa HBt Δ' σ' Hσt)
           as (HAt' & HMx' & HBn' & HBx' & HBa' & HBt').
@@ -2233,7 +2233,7 @@ Section ElimSem.
         (forall RB, EF elim_bctx p D gs A Us ++ Γ ≈ elim_bctx p D gs A Us ++ Γ ∈ per_ctx_env ↘ RB ->
            RB (env_args ρ (X ++ vs ++ ihs)) (env_args ρ (X ++ vs ++ ihs))) /\
         forall SbB, EG elim_bctx p D gs A Us ++ Γ ∈ glu_ctx_env ↘ SbB ->
-          Δ' ⊢s sb_of_list σ' (List.skipn (ind_nu D) Q ++ As ++ elim_ihs nm A[sb_qn nm σ'] (brs_sub Bs σ') (sb_of_list Id Q) gs As)
+          Δ' ⊢ˢ sb_of_list σ' (List.skipn (ind_nu D) Q ++ As ++ elim_ihs nm A[sb_qn nm σ'] (brs_sub Bs σ') (sb_of_list Id Q) gs As)
             ® env_args ρ (X ++ vs ++ ihs) ∈ SbB.
     Proof.
       destruct con_rel as (HnsX & HrelX & HiaX).
@@ -2322,7 +2322,7 @@ Section ElimSem.
       exists rb, a; split; [ exact Er | split; [ exact Ea | split; [ eapply per_univ_trans'; [ apply per_univ_sym'; exact Hpe | exact Hpe ] |] ] ].
       intros P El HgP.
       pose proof con_Q_typed as HQt.
-      assert (Hσt : Δ' ⊢s σ' : Γ) by exact (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ').
+      assert (Hσt : Δ' ⊢ˢ σ' : Γ) by exact (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ').
       assert (HΔ' : ⊢ Δ') by (gen_presups; assumption).
       destruct (motive_glu Δ' σ' Q M' _ ns Hσ' HQU HQl HMt HKm Hns Hrel Hgnm) as (a0 & Ea0 & _ & HTP).
       assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
@@ -2369,15 +2369,15 @@ Section ElimSem.
   Section NeutCase.
     Variable (m : domain_ne) (Q : list exp) (as' : list domain) (Δ' : ctx) (M' : exp).
     Hypothesis (Hm : per_bot m m)
-      (Hrb : forall Δ φ M0, Δ ⊢k φ : Δ' -> Rne m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
+      (Hrb : forall Δ φ M0, Δ ⊢ᵏ φ : Δ' -> Rne m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
          Δ ⊢ M'[φ]ʷ ≈ M0 : (apps (a_ind p) Q)[φ]ʷ).
     Variable (σ' : sub).
-    Hypothesis (Hσ' : Δ' ⊢s σ' ® ρ ∈ SbΓ) (HQU : List.firstn (ind_nu D) Q = List.map (fun U => U[σ']) Us)
+    Hypothesis (Hσ' : Δ' ⊢ˢ σ' ® ρ ∈ SbΓ) (HQU : List.firstn (ind_nu D) Q = List.map (fun U => U[σ']) Us)
       (HQl : List.length Q = ind_np D) (HMt : Δ' ⊢ M' : apps (a_ind p) Q).
     Variable (ns : list domain).
     Hypothesis (Hns : tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns)
       (Hrel : ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns (⇑ (d_ind p as') m) (⇑ (d_ind p as') m))
-      (HKm : forall Δ'' φ Q', Δ'' ⊢k φ : Δ' -> exps_eq_at Δ'' (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
+      (HKm : forall Δ'' φ Q', Δ'' ⊢ᵏ φ : Δ' -> exps_eq_at Δ'' (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
          glu_ind p D ups NEl AEl DP DEl Δ'' Q' M'[φ]ʷ (⇑ (d_ind p as') m))
       (Hgnm : glu_nparams D NEl Δ' (List.firstn (ind_nu D) Q) (List.skipn (ind_nu D) Q) ns).
 
@@ -2400,7 +2400,7 @@ Section ElimSem.
       exact (glu_args_typed _ _ _ _ _ _ Hass Hga).
     Qed.
 
-    Lemma neut_rb : forall Δ φ M0, Δ ⊢k φ : Δ' -> Rne d_elim ρ nm A Bs p as' m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
+    Lemma neut_rb : forall Δ φ M0, Δ ⊢ᵏ φ : Δ' -> Rne d_elim ρ nm A Bs p as' m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
         Δ ⊢ (a_elim nm A[sb_qn nm σ'] (brs_sub Bs σ') M')[φ]ʷ ≈ M0
           : (A[sb_qn nm σ'][sb_of_list Id (List.skipn (ind_nu D) Q ++ M' :: nil)])[φ]ʷ.
     Proof.
@@ -2411,7 +2411,7 @@ Section ElimSem.
       assert (Lua : List.length ua = ind_nu D) by (unfold ua; rewrite List.length_firstn; lia).
       pose proof (glu_ctx_env_sub_monotone _ _ HSbΓ _ _ _ _ _ Hσ' Hφ) as Hσ''.
       set (σ'' := sb_wk σ' φ) in *.
-      assert (Hσt : Δ ⊢s σ'' : Γ) by exact (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ'').
+      assert (Hσt : Δ ⊢ˢ σ'' : Γ) by exact (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ'').
       assert (HΔ : ⊢ Δ) by (gen_presups; assumption).
       assert (EA : A[sb_qn nm σ'][wk_qn nm φ]ʷ = A[sb_qn nm σ''])
         by (apply exp_wk_sub_ext, sb_qn_wk_ext; intro; reflexivity).
@@ -2468,7 +2468,7 @@ Section ElimSem.
       pose proof (HTP P El HgP) as HTg.
       pose proof (glu_univ_elem_resp_per_univ _ a a1 _ _ (ltac:(eexists; exact Haa) : Dom a ≈ a1 ∈ per_univ iA) HgP) as HgP1.
       eapply realize_glu_elem_bot; [ exact HgP1 |].
-      assert (Hσt : Δ' ⊢s σ' : Γ) by exact (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ').
+      assert (Hσt : Δ' ⊢ˢ σ' : Γ) by exact (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ').
       destruct (elim_prems_at p D Hc Γ Us nm A iA Bs HUl Hnm HAt HMx HBn HBx HBa HBt Δ' σ' Hσt)
         as (HAt' & HMx' & HBn' & HBx' & HBa' & HBt').
       rewrite <- HQU in HAt', HMx', HBx', HBt'.
@@ -2517,7 +2517,7 @@ Section ElimSem.
 
   Lemma elim_neut_case : forall m Γ' Ps M as',
       per_bot m m ->
-      (forall Δ φ M', Δ ⊢k φ : Γ' -> Rne m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M' ->
+      (forall Δ φ M', Δ ⊢ᵏ φ : Γ' -> Rne m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M' ->
          Δ ⊢ M[φ]ʷ ≈ M' : (apps (a_ind p) Ps)[φ]ʷ) ->
       elim_prop Γ' Ps M (⇑ (d_ind p as') m).
   Proof.
@@ -2632,13 +2632,13 @@ Proof.
   (** The scrutinee at the instance of the parameters. *)
   set (Q := List.map (fun P => P[σ]) Ps) in *.
   assert (HQl : List.length Q = ind_np D) by (unfold Q; rewrite List.length_map; exact HPl).
-  assert (HQeq : forall Δ0 φ, Δ0 ⊢k φ : Δ -> exps_eq_at Δ0 (ind_params D) (List.map (fun P => P[φ]ʷ) Ps0) (List.map (fun P => P[φ]ʷ) Q)).
+  assert (HQeq : forall Δ0 φ, Δ0 ⊢ᵏ φ : Δ -> exps_eq_at Δ0 (ind_params D) (List.map (fun P => P[φ]ʷ) Ps0) (List.map (fun P => P[φ]ʷ) Q)).
   { intros Δ0 φ Hφ.
     destruct HT0 as (_ & HT0); destruct (HT0 _ _ Hφ) as (Hpt0 & _ & _).
     eapply glu_params_top_eq; [ exact Hl | eapply kripke_dom; exact Hφ | exact (ind_rps_of_per _ _ _ _ _ _ HR0 Hl _) | exact Hpt0 |].
     rewrite <- Evs; apply glu_args_params_top; [ exact Hass | exact Hs0 |].
     exact (glu_args_wk _ _ _ _ _ _ _ Hass Hs0 Hφ HPga). }
-  assert (HKQ : forall Δ0 φ Q', Δ0 ⊢k φ : Δ -> exps_eq_at Δ0 (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
+  assert (HKQ : forall Δ0 φ Q', Δ0 ⊢ᵏ φ : Δ -> exps_eq_at Δ0 (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
                   glu_ind p D ups NEl AEl DP DEl Δ0 Q' M[σ][φ]ʷ m).
   { intros Δ0 φ Q' Hφ HQ'; apply (HK0 _ _ _ Hφ).
     eapply exps_eq_at_params_trans; [ exact Hl | eapply kripke_dom; exact Hφ | | exact (HQeq _ _ Hφ) | exact HQ' ].

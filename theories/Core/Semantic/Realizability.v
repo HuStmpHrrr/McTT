@@ -482,13 +482,15 @@ Proof.
     destruct IHper_ctx_env as [ρ [ρ' [? [? Hρ]]]].
     assert (Dom ρ ≈ ρ ∈ tail_rel) by solve_per.
     assert (Dom ρ' ≈ ρ' ∈ tail_rel) by solve_per.
-    match goal with HU : forall ρ ρ', tail_rel ρ ρ' -> per_dmod _ _ |- _ =>
-      destruct (mod_closure_move _ _ _ _ _ _ (ltac:(eassumption) : tail_rel ρ ρ) HU) as (M1 & M2 & M3 & M4);
-      destruct (mod_closure_move _ _ _ _ _ _ (ltac:(eassumption) : tail_rel ρ' ρ') HU) as (M1' & M2' & M3' & M4')
-    end.
-    do 2 eexists; repeat split; only 1-2: econstructor; eauto.
+    match goal with HU : forall ρ ρ', tail_rel ρ ρ' -> rel_mexp _ _ _ _ |- _ =>
+      destruct (HU _ _ Hρ) as (h & h' & Hh & Hh' & Hr) end.
+    assert (T1 : tie_mod h (me_lit U) ρ)
+      by (exists h; split; [ exact Hh | eapply per_dmod_trans; [ exact Hr | apply per_dmod_sym, Hr ] ]).
+    assert (T2 : tie_mod h' (me_lit U') ρ')
+      by (exists h'; split; [ exact Hh' | eapply per_dmod_trans; [ apply per_dmod_sym, Hr | exact Hr ] ]).
+    exists (ρ ↦ᵐ h), (ρ' ↦ᵐ h'); repeat split; only 1-2: econstructor; eauto.
     apply_relation_equivalence.
-    repeat split; assumption.
+    simpl; repeat split; try assumption; unfold env_mod; cbn [env_entry List.hd]; solve_tie.
 Qed.
 
 Lemma var_per_elem : forall {a b i R} n,

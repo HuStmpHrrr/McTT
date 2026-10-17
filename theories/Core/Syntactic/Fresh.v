@@ -84,7 +84,7 @@ with gunit_fresh (k : nat) (U : gunit) {struct U} : Prop :=
   end
 with moddef_fresh (k : nat) (D : moddef) {struct D} : Prop :=
   match D with
-  | md_body Φ => gmod_fresh k Φ
+  | md_body sm Φ => gmod_fresh k Φ
   | md_alias E => modexp_fresh k E
   end
 with gmod_fresh (k : nat) (Φ : gmod) {struct Φ} : Prop :=
@@ -97,7 +97,7 @@ with gentry_fresh (k : nat) (E : gentry) {struct E} : Prop :=
   match E with
   | ge_def _ _ A B => exp_fresh k A /\ match B with Some M => exp_fresh k M | None => True end
   | ge_mod _ U => gunit_fresh k U
-  | ge_ind _ D Φ => gmod_fresh (ind_nu D + k) Φ
+  | ge_ind _ _ D Φ => gmod_fresh (ind_nu D + k) Φ
   | ge_ind_alias _ _ _ _ => True
   end
 with centry_fresh (k : nat) (e : centry) {struct e} : Prop :=

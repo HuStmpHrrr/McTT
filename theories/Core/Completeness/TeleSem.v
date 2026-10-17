@@ -23,7 +23,7 @@ From Mctt.Core.Syntactic Require Import Substitution Members Inductives.
 From Mctt.Core.Syntactic.System Require Import IndSyntax.
 From Mctt.Core.Semantic.PER Require Import Tele.
 From Mctt.Core.Completeness Require Import
-  LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases UnitCases InstanceCases GlobalSem MemberReps
+  LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases UnitCases InstanceCases GlobalArgs MemberReps
   FunctionCases IndSem.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 Import Domain_Notations Fixed_Notations.
@@ -133,8 +133,8 @@ Qed.
 
 (** ** [q^n] of a Semantic Substitution *)
 
-Lemma rel_sub_qn : forall Δ Γ Γ' σ σ', tele_ass Δ -> ⊨ Δ ++ Γ -> Γ' ⊨s σ ≈ σ' : Γ ->
-    tele_sub Δ σ ++ Γ' ⊨s sb_qn (List.length Δ) σ ≈ sb_qn (List.length Δ) σ' : Δ ++ Γ.
+Lemma rel_sub_qn : forall Δ Γ Γ' σ σ', tele_ass Δ -> ⊨ Δ ++ Γ -> Γ' ⊨ˢ σ ≈ σ' : Γ ->
+    tele_sub Δ σ ++ Γ' ⊨ˢ sb_qn (List.length Δ) σ ≈ sb_qn (List.length Δ) σ' : Δ ++ Γ.
 Proof.
   induction Δ as [| e Δ IH]; intros * HΔa HΔ Hσ; cbn [List.app tele_sub List.length sb_qn]; [ exact Hσ |].
   assert (He : exists A, e = ce_ass A) by (inversion HΔa as [| ? ? He _]; exact He).
@@ -166,7 +166,7 @@ Qed.
     telescope's values, related to its value at the stage's own tail. *)
 Lemma stage_base : forall Ψ Γ' Γ σ RΓ RS ρ ρσ xs,
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> EF Ψ ++ Γ' ≈ Ψ ++ Γ' ∈ per_ctx_env ↘ RS ->
-    Γ' ⊨s σ ≈ σ : Γ -> RS (env_args ρ xs) (env_args ρ xs) -> List.length xs = List.length Ψ -> ⟦ σ ⟧s ρ ↘ ρσ ->
+    Γ' ⊨ˢ σ ≈ σ : Γ -> RS (env_args ρ xs) (env_args ρ xs) -> List.length xs = List.length Ψ -> ⟦ σ ⟧s ρ ↘ ρσ ->
     exists Y, ⟦ sb_wk σ (wk_shiftn (List.length Ψ)) ⟧s env_args ρ xs ↘ Y /\ RΓ Y ρσ.
 Proof.
   intros * HΓ HS Hσ HE Hl Hev.
@@ -184,7 +184,7 @@ Qed.
 (** ** Instances along a Semantic Substitution *)
 
 Lemma typ_inst_link : forall Δ0 Γ0 A A' (i : nat) τ RΓ0 E Eτ,
-    Δ0 ⊨ A ≈ A' : Typeω@i -> EF Γ0 ≈ Γ0 ∈ per_ctx_env ↘ RΓ0 -> Γ0 ⊨s τ ≈ τ : Δ0 ->
+    Δ0 ⊨ A ≈ A' : Typeω@i -> EF Γ0 ≈ Γ0 ∈ per_ctx_env ↘ RΓ0 -> Γ0 ⊨ˢ τ ≈ τ : Δ0 ->
     RΓ0 E E -> ⟦ τ ⟧s E ↘ Eτ ->
     exists a b, ⟦ A[τ] ⟧ E ↘ a /\ ⟦ A ⟧ Eτ ↘ b /\ Dom a ≈ b ∈ per_univ i.
 Proof.
@@ -195,7 +195,7 @@ Proof.
 Qed.
 
 Lemma exp_inst_link : forall Δ0 Γ0 T M M' τ RΓ0 E Eτ,
-    Δ0 ⊨ M ≈ M' : T -> EF Γ0 ≈ Γ0 ∈ per_ctx_env ↘ RΓ0 -> Γ0 ⊨s τ ≈ τ : Δ0 ->
+    Δ0 ⊨ M ≈ M' : T -> EF Γ0 ≈ Γ0 ∈ per_ctx_env ↘ RΓ0 -> Γ0 ⊨ˢ τ ≈ τ : Δ0 ->
     RΓ0 E E -> ⟦ τ ⟧s E ↘ Eτ ->
     exists m n, ⟦ M[τ] ⟧ E ↘ m /\ ⟦ M ⟧ Eτ ↘ n /\ Dom m ≈ n ∈ per_head T T Eτ Eτ.
 Proof.
@@ -213,7 +213,7 @@ Qed.
     Arguments related at a telescope over the value of [σ] at [ρ] are, over
     [ρ], related at its instance by [σ]. *)
 Lemma tele_stage_rel : forall Δ Γ Γ' σ RΓ' ρ ρσ, tele_ass Δ -> ⊨ Δ ++ Γ ->
-    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨s σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ ρσ ->
+    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ ρσ ->
     forall xs, per_gargs (List.rev Δ) ρσ ρσ xs xs -> List.length xs = List.length Δ ->
     forall RS, EF tele_sub Δ σ ++ Γ' ≈ tele_sub Δ σ ++ Γ' ∈ per_ctx_env ↘ RS -> RS (env_args ρ xs) (env_args ρ xs).
 Proof.
@@ -301,7 +301,7 @@ Lemma closed_typ_inst : forall Pre C0 Γ X (j : nat) τ RΓ RK RS B zs Bτ F,
     tele_ass (Pre ++ C0) -> ⊨ Pre ++ C0 -> tele_ass C0 -> ⊨ C0 -> ⊨ Γ ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> EF Pre ++ C0 ≈ Pre ++ C0 ∈ per_ctx_env ↘ RK ->
     EF tele_sub Pre τ ++ Γ ≈ tele_sub Pre τ ++ Γ ∈ per_ctx_env ↘ RS ->
-    Pre ++ C0 ⊨ X : Typeω@j -> Γ ⊨s τ ≈ τ : C0 ++ Γ ->
+    Pre ++ C0 ⊨ X : Typeω@j -> Γ ⊨ˢ τ ≈ τ : C0 ++ Γ ->
     RS (env_args B zs) (env_args B zs) -> List.length zs = List.length Pre ->
     ⟦ τ ⟧s B ↘ Bτ -> RK (env_args Bτ zs) F ->
     exists a b, ⟦ X[sb_qn (List.length Pre) τ] ⟧ env_args B zs ↘ a /\ ⟦ X ⟧ F ↘ b /\ Dom a ≈ b ∈ per_univ j.
@@ -375,11 +375,7 @@ Proof.
 Qed.
 
 Lemma gsub_sem_ctx : forall Γ τ Δ, gsub Γ τ Δ -> ⊨ Γ.
-Proof.
-  induction 1; try assumption.
-  eapply sem_ctx_ext_typ; [ exact IHgsub |].
-  exact (rel_exp_under_ctx_gsub H H0).
-Qed.
+Proof. intros * Hg; exact (proj1 (gsub_sem Hg)). Qed.
 
 Lemma gsub_qn : forall Pre Γ0 τ Δ0, gsub Γ0 τ Δ0 -> tele_ass Pre -> ⊨ Pre ++ Δ0 ->
     gsub (tele_sub Pre τ ++ Γ0) (sb_qn (List.length Pre) τ) (Pre ++ Δ0).
@@ -393,7 +389,7 @@ Proof.
   exact (gsub_q _ _ _ _ _ (IH _ _ _ Hg HPa' (sem_ctx_tail HP)) HB).
 Qed.
 
-Lemma gsub_wk : forall Γ φ Δ, Γ ⊨w φ : Δ -> ⊨ Γ -> ⊨ Δ -> gsub Γ (sb_of_wk φ) Δ.
+Lemma gsub_wk : forall Γ φ Δ, Γ ⊨ʷ φ : Δ -> ⊨ Γ -> ⊨ Δ -> gsub Γ (sb_of_wk φ) Δ.
 Proof.
   intros * Hφ HΓ HΔ.
   eapply gsub_eq; [ eapply gsub_comp; [ constructor; exact HΔ | exact HΓ | exact (rel_sub_of_wk Hφ) | exact (sub_link_wk Hφ) ] |].
@@ -476,13 +472,13 @@ Qed.
     environment of the instance of [Δ] over [ρ], against the judgment at
     the value of [σ] at [ρ] extended by the same arguments. *)
 Lemma outer_base : forall Δ Γ Γ' RΓ' σ ρ ρσ, tele_ass Δ -> ⊨ Δ ++ Γ ->
-    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨s σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ ρσ ->
+    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ ρσ ->
     forall xs, per_gargs (List.rev Δ) ρσ ρσ xs xs -> List.length xs = List.length Δ ->
     exists RS RΔ Y, EF tele_sub Δ σ ++ Γ' ≈ tele_sub Δ σ ++ Γ' ∈ per_ctx_env ↘ RS /\ RS (env_args ρ xs) (env_args ρ xs) /\
       EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ RΔ /\
       ⟦ sb_qn (List.length Δ) σ ⟧s env_args ρ xs ↘ env_args Y xs /\
       RΔ (env_args Y xs) (env_args ρσ xs) /\
-      tele_sub Δ σ ++ Γ' ⊨s sb_qn (List.length Δ) σ ≈ sb_qn (List.length Δ) σ : Δ ++ Γ.
+      tele_sub Δ σ ++ Γ' ⊨ˢ sb_qn (List.length Δ) σ ≈ sb_qn (List.length Δ) σ : Δ ++ Γ.
 Proof.
   intros * HΔa HΔ HΓ' Hσ Hρ Hev xs Hg Hl.
   pose proof (rel_sub_qn _ _ _ _ _ HΔa HΔ Hσ) as Hq.
@@ -506,7 +502,7 @@ Qed.
 
 Lemma outer_typ_link : forall Δ Γ Γ' RΓ' σ ρ ρσ A A' (i : nat), tele_ass Δ -> ⊨ Δ ++ Γ ->
     Δ ++ Γ ⊨ A ≈ A' : Typeω@i ->
-    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨s σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ ρσ ->
+    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ ρσ ->
     forall xs, per_gargs (List.rev Δ) ρσ ρσ xs xs -> List.length xs = List.length Δ ->
     exists a b, ⟦ A[sb_qn (List.length Δ) σ] ⟧ env_args ρ xs ↘ a /\ ⟦ A ⟧ env_args ρσ xs ↘ b /\ Dom a ≈ b ∈ per_univ i.
 Proof.
@@ -521,7 +517,7 @@ Qed.
 
 Lemma outer_exp_link : forall Δ Γ Γ' RΓ' σ ρ ρσ T M M', tele_ass Δ -> ⊨ Δ ++ Γ ->
     Δ ++ Γ ⊨ M ≈ M' : T ->
-    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨s σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ ρσ ->
+    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ ρσ ->
     forall xs, per_gargs (List.rev Δ) ρσ ρσ xs xs -> List.length xs = List.length Δ ->
     exists RΔ F m n, EF Δ ++ Γ ≈ Δ ++ Γ ∈ per_ctx_env ↘ RΔ /\ RΔ F (env_args ρσ xs) /\
       ⟦ M[sb_qn (List.length Δ) σ] ⟧ env_args ρ xs ↘ m /\ ⟦ M ⟧ env_args ρσ xs ↘ n /\

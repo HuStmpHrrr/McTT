@@ -20,7 +20,7 @@ Lemma glu_lvl_escape : forall Γ M a n,
     Γ ⊢ M : Level@n.
 Proof.
   intros * Hper H HΓ.
-  assert (Γ ⊢k wk_id : Γ) by mauto 2.
+  assert (Γ ⊢ᵏ wk_id : Γ) by mauto 2.
   apply per_lvl_then_per_top in Hper; specialize (Hper (length Γ)) as [M' []].
   clear_dups.
   assert (Γ ⊢ M[wk_id]ʷ ≈ M' : Level@n) as HM by (eapply H; eassumption).
@@ -117,7 +117,7 @@ Proof. intros; do 2 eexists; split; eassumption. Qed.
 Lemma glu_lvl_readback : forall Γ M a n,
     glu_lvl n Γ M a ->
     forall Δ φ M',
-      Δ ⊢k φ : Γ ->
+      Δ ⊢ᵏ φ : Γ ->
       Rnf ⇓ Levelᵈ a in length Δ ↘ M' ->
       Δ ⊢ M[φ]ʷ ≈ M' : Level@n.
 Proof.
@@ -128,7 +128,7 @@ Qed.
 Lemma glu_lvl_ws_readback : forall Γ M a n,
     glu_lvl n Γ M a ->
     forall Δ φ M',
-      Δ ⊢k φ : Γ ->
+      Δ ⊢ᵏ φ : Γ ->
       Rnf ⇓ Levelᵈ a in length Δ ↘ M' ->
       nf_lvl_ws n Δ M'.
 Proof.
@@ -165,7 +165,7 @@ Lemma glu_False_escape : forall Γ M a,
     Γ ⊢ M : ⊥.
 Proof.
   destruct 1; intros.
-  assert (Γ ⊢k wk_id : Γ) by mauto 2.
+  assert (Γ ⊢ᵏ wk_id : Γ) by mauto 2.
   match_by_head (per_bot m m) ltac:(fun H => specialize (H (length Γ)) as [M' []]).
   clear_dups.
   assert (Γ ⊢ M[wk_id]ʷ ≈ M' : ⊥) as HM by mauto.
@@ -206,7 +206,7 @@ Hint Resolve glu_False_resp_exp_eq : mctt.
 Lemma glu_False_readback : forall Γ M a,
     glu_False Γ M a ->
     forall Δ φ M',
-      Δ ⊢k φ : Γ ->
+      Δ ⊢ᵏ φ : Γ ->
       Rnf ⇓ ⊥ᵈ a in length Δ ↘ M' ->
       Δ ⊢ M[φ]ʷ ≈ M' : ⊥.
 Proof.
@@ -910,7 +910,7 @@ Proof.
 Qed.
 
 Lemma ind_typ_at_wk : forall p D ups ns NP NEl AP AEl DP DEl k Γ A Ps Δ φ,
-    ind_typ_at p D ups ns NP NEl AP AEl DP DEl Typeω@k Γ A Ps -> Δ ⊢k φ : Γ ->
+    ind_typ_at p D ups ns NP NEl AP AEl DP DEl Typeω@k Γ A Ps -> Δ ⊢ᵏ φ : Γ ->
     ind_typ_at p D ups ns NP NEl AP AEl DP DEl Typeω@k Δ A[φ]ʷ (List.map (fun P => P[φ]ʷ) Ps).
 Proof.
   intros * (HA & Hk) Hφ; split; [ rewrite <- wk_apps_ind; mauto 3 |].
@@ -921,7 +921,7 @@ Qed.
     ones. *)
 Lemma ind_typ_at_params_conv : forall p D ups ns NP NEl AP AEl DP DEl k Γ A Ps Δ φ Ps',
     ind_lookup gc_deps gc_stack p = Some D ->
-    ind_typ_at p D ups ns NP NEl AP AEl DP DEl Typeω@k Γ A Ps -> Δ ⊢k φ : Γ ->
+    ind_typ_at p D ups ns NP NEl AP AEl DP DEl Typeω@k Γ A Ps -> Δ ⊢ᵏ φ : Γ ->
     exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Ps) Ps' ->
     Δ ⊢ apps (a_ind p) (List.map (fun P => P[φ]ʷ) Ps) ≈ apps (a_ind p) Ps' : Typeω@k.
 Proof.
@@ -943,7 +943,7 @@ Lemma ind_glu_typ_pred_resp_ctxsub : forall p D ups ns NP NEl AP AEl DP DEl k Γ
 Proof. intros * (Ps & HPs) Hs; exists Ps; eapply ind_typ_at_resp_ctxsub; eassumption. Qed.
 
 Lemma ind_glu_typ_pred_wk : forall p D ups ns NP NEl AP AEl DP DEl k Γ A Δ φ,
-    ind_glu_typ_pred p D ups ns NP NEl AP AEl DP DEl Typeω@k Γ A -> Δ ⊢k φ : Γ ->
+    ind_glu_typ_pred p D ups ns NP NEl AP AEl DP DEl Typeω@k Γ A -> Δ ⊢ᵏ φ : Γ ->
     ind_glu_typ_pred p D ups ns NP NEl AP AEl DP DEl Typeω@k Δ A[φ]ʷ.
 Proof. intros * (Ps & HPs) Hφ; eexists; eapply ind_typ_at_wk; eassumption. Qed.
 
@@ -957,7 +957,7 @@ Proof.
 Qed.
 
 Lemma ind_glu_exp_pred_wk : forall p D ups ns NP NEl AP AEl DP DEl R k Γ A M m Δ φ,
-    ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl R Typeω@k Γ A M m -> Δ ⊢k φ : Γ ->
+    ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl R Typeω@k Γ A M m -> Δ ⊢ᵏ φ : Γ ->
     ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl R Typeω@k Δ A[φ]ʷ M[φ]ʷ m.
 Proof.
   intros * (HM & Hm & Ps & HPs & Hk) Hφ.
@@ -1133,12 +1133,12 @@ Qed.
 Lemma glu_lvl_resp_wk : forall Γ M a n,
     glu_lvl n Γ M a ->
     forall Δ φ,
-      Δ ⊢k φ : Γ ->
+      Δ ⊢ᵏ φ : Γ ->
       glu_lvl n Δ M[φ]ʷ a.
 Proof.
   intros * H * ? Δ' ψ M' Hψ Hr.
   rewrite exp_wk_wk.
-  assert (Δ' ⊢k φ ⊙ ψ : Γ) by mauto 3.
+  assert (Δ' ⊢ᵏ φ ⊙ ψ : Γ) by mauto 3.
   exact (H _ _ _ ltac:(eassumption) Hr).
 Qed.
 
@@ -1147,14 +1147,14 @@ Hint Resolve glu_lvl_resp_wk : mctt.
 Lemma glu_False_resp_wk : forall Γ M a,
     glu_False Γ M a ->
     forall Δ φ,
-      Δ ⊢k φ : Γ ->
+      Δ ⊢ᵏ φ : Γ ->
       glu_False Δ M[φ]ʷ a.
 Proof.
   destruct 1; intros.
   econstructor; trivial.
   intros Δ' ψ M' **.
   rewrite exp_wk_wk.
-  assert (Δ' ⊢k φ ⊙ ψ : Γ) by mauto 3.
+  assert (Δ' ⊢ᵏ φ ⊙ ψ : Γ) by mauto 3.
   mauto 4.
 Qed.
 
@@ -2130,7 +2130,7 @@ Ltac saturate_glu_info :=
 Ltac suniv_glu_typ_pred_wk :=
   match goal with
   | H : exists t n, glu_lvl n ?Γ t ?l /\ _,
-      Hφ : ?Δ ⊢k ?φ : ?Γ
+      Hφ : ?Δ ⊢ᵏ ?φ : ?Γ
     |- exists t n, glu_lvl n ?Δ t ?l /\ _ =>
       let t := fresh "t" in
       let Heq := fresh "Heq" in
@@ -2155,7 +2155,7 @@ Lemma glu_univ_elem_typ_monotone : forall i a P El,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Δ φ Γ A,
       Γ ⊢ A ® P ->
-      Δ ⊢k φ : Γ ->
+      Δ ⊢ᵏ φ : Γ ->
       Δ ⊢ A[φ]ʷ ® P.
 Proof.
   simpl. glu_univ_elem_induction1; intros.
@@ -2186,7 +2186,7 @@ Lemma glu_univ_elem_exp_monotone : forall i a P El,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Δ φ Γ M A m,
       Γ ⊢ M : A ® m ∈ El ->
-      Δ ⊢k φ : Γ ->
+      Δ ⊢ᵏ φ : Γ ->
       Δ ⊢ M[φ]ʷ : A[φ]ʷ ® m ∈ El.
 Proof.
   simpl. glu_univ_elem_induction1; intros.

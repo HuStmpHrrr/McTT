@@ -1557,24 +1557,98 @@ Proof.
   eapply Ht; [ exact HR | apply HRR'; exact HR' ].
 Qed.
 
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve per_univ_elem_cumu : mctt.
+#[export]
+Hint Resolve per_univ_elem_cumu_ge : mctt.
+#[export]
+Hint Resolve per_subtyp_refl1 : mctt.
+#[export]
+Hint Resolve per_subtyp_refl2 : mctt.
+#[export]
+Hint Resolve per_subtyp_trans : mctt.
+#[export] Existing Instance per_subtyp_trans_ins.
+#[export]
+Hint Resolve per_subtyp_cumu : mctt.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+(** ** Module Values *)
+
+Lemma functional_eval_appm : forall h n r1 r2,
+    $ᵐ| h & n | gc_deps ⍮ gc_stack ↘ r1 -> $ᵐ| h & n | gc_deps ⍮ gc_stack ↘ r2 -> r1 = r2.
+Proof. intros * H1 H2; pose proof (@functional_eval gc_deps gc_stack) as Hf; destruct_all; eauto. Qed.
+
+Lemma functional_eval_close : forall Δ D ρ h1 h2,
+    ⟦ Δ ⊢ D ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↘ h1 -> ⟦ Δ ⊢ D ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↘ h2 -> h1 = h2.
+Proof. intros * H1 H2; pose proof (@functional_eval gc_deps gc_stack) as Hf; destruct_all; eauto. Qed.
+
+Lemma nextparam_functional : forall h a1, nextparam h a1 -> forall a2, nextparam h a2 -> a1 = a2.
+Proof.
+  induction 1; intros a2 H2; inversion H2; subst; auto.
+  - match goal with H : _ ++ _ :: nil = _ ++ _ :: nil |- _ => apply app_inj_tail in H as [<- [= <-]] end.
+    eapply functional_eval_exp; eassumption.
+  - match goal with H1 : gc_loc _ _ ?p = Some _, H2 : gc_loc _ _ ?p = Some _ |- _ => rewrite H1 in H2; injection H2 as <- <- end.
+    match goal with H1 : nth_error ?l ?n = Some _, H2 : nth_error ?l ?n = Some _ |- _ => rewrite H1 in H2; injection H2 as -> end.
+    eapply functional_eval_exp; eassumption.
+Qed.
+
+(** A saturated value lacks no parameter. *)
+Lemma nextparam_global_sat : forall p T Φ args a,
+    gc_loc gc_deps gc_stack p = Some (T, Φ) -> List.length args = List.length T ->
+    nextparam (dm_global p args) a -> False.
+Proof.
+  intros * Hm Hl Hn; inversion Hn; subst.
+  match goal with H1 : gc_loc _ _ ?p = Some _ |- _ => rewrite Hm in H1; injection H1 as <- <- end.
+  match goal with Hx : nth_error _ _ = Some _ |- _ =>
+    assert (Hx' : nth_error (rev T) (length args) <> None) by congruence end.
+  apply nth_error_Some in Hx'; rewrite length_rev in Hx'; lia.
+Qed.
+
+Lemma nextparam_body_nil : forall sm Φ ρ a, nextparam (dm_local nil (md_body sm Φ) ρ) a -> False.
+Proof. intros * Hn; inversion Hn; subst; destruct Δ; discriminate. Qed.
+
+Lemma per_gargs_len_eq : forall ts ρ ρ' args args', per_gargs ts ρ ρ' args args' -> length args = length args'.
+Proof. induction 1; cbn; congruence. Qed.
+
+(** The expansion and environment of one body read twice are one. *)
+Ltac solve_mid_body :=
+  repeat match goal with
+    | H1 : kbody _ _ ?ρ ?Φ ?Φ1, H2 : kbody _ _ ?ρ ?Φ ?Φ2 |- _ =>
+        assert_fails (constr_eq Φ1 Φ2); pose proof (functional_kbody _ _ _ _ H1 H2); subst Φ2
+    | H1 : eval_benv _ _ ?ρ ?Φ ?r1, H2 : eval_benv _ _ ?ρ ?Φ ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2); assert (r1 = r2) by (eapply functional_eval_benv; eassumption); subst r2
+    end.
+
 (** ** Symmetry *)
 
 Lemma per_dmod_sym_all :
   (forall m m', per_dmod m m' -> per_dmod m' m) /\
   (forall ts ρ ρ' args args', per_gargs ts ρ ρ' args args' -> per_gargs ts ρ' ρ args' args) /\
-  (forall ts ρ D ts' ρ' D' args args', per_ltele ts ρ D ts' ρ' D' args args' -> per_ltele ts' ρ' D' ts ρ D args' args) /\
-  (forall ρ D ρ' D', per_mdef ρ D ρ' D' -> per_mdef ρ' D' ρ D) /\
   (forall ρ Φ ρ' Φ', per_body ρ Φ ρ' Φ' -> per_body ρ' Φ' ρ Φ).
 Proof.
   apply per_dmod_mut_ind_all; intros;
     try match goal with Hr : rel_typ _ _ _ _ _ _ |- _ => destruct (rel_typ_sym Hr) as [? Hs] end;
     try solve [ econstructor; eauto using rel_elem_sym ].
-  (* a missing parameter *)
-  all: econstructor; [ eassumption |]; intros c c' Hc; apply H, Hs, Hc.
+  - assert (Hl : length args = length args') by (eapply per_gargs_len_eq; eassumption).
+    econstructor; [ eassumption | congruence | assumption ].
+  - (* a missing parameter *)
+    match goal with Hu : per_univ_elem _ _ _ _ |- _ => destruct (per_univ_elem_sym _ _ _ _ Hu) as [Hu' Hs] end.
+    eapply per_dmod_fun; [ eassumption | eassumption | exact Hu' | | |].
+    1,2: intros c c' Hc; apply Hs in Hc; eauto.
+    intros c c' hc hc' Hc Hh Hh'.
+    match goal with IH : forall c c' hc hc', R c c' -> _ -> _ -> per_dmod hc' hc |- _ => apply (IH c' c hc' hc) end;
+      [ apply Hs, Hc | assumption | assumption ].
 Qed.
 
 Corollary per_dmod_sym : forall m m', per_dmod m m' -> per_dmod m' m.
 Proof. exact (proj1 per_dmod_sym_all). Qed.
+
+Corollary per_body_sym : forall ρ Φ ρ' Φ', per_body ρ Φ ρ' Φ' -> per_body ρ' Φ' ρ Φ.
+Proof. exact (proj2 (proj2 per_dmod_sym_all)). Qed.
 
 (** ** Transitivity *)
 
@@ -1582,66 +1656,126 @@ Lemma per_dmod_trans_all :
   (forall m1 m2, per_dmod m1 m2 -> forall m3, per_dmod m2 m3 -> per_dmod m1 m3) /\
   (forall ts ρ1 ρ2 a1 a2, per_gargs ts ρ1 ρ2 a1 a2 ->
      forall ρ3 a3, per_gargs ts ρ2 ρ3 a2 a3 -> per_gargs ts ρ1 ρ3 a1 a3) /\
-  (forall ts1 ρ1 D1 ts2 ρ2 D2 a1 a2, per_ltele ts1 ρ1 D1 ts2 ρ2 D2 a1 a2 ->
-     forall ts3 ρ3 D3 a3, per_ltele ts2 ρ2 D2 ts3 ρ3 D3 a2 a3 -> per_ltele ts1 ρ1 D1 ts3 ρ3 D3 a1 a3) /\
-  (forall ρ1 D1 ρ2 D2, per_mdef ρ1 D1 ρ2 D2 -> forall ρ3 D3, per_mdef ρ2 D2 ρ3 D3 -> per_mdef ρ1 D1 ρ3 D3) /\
   (forall ρ1 Φ1 ρ2 Φ2, per_body ρ1 Φ1 ρ2 Φ2 -> forall ρ3 Φ3, per_body ρ2 Φ2 ρ3 Φ3 -> per_body ρ1 Φ1 ρ3 Φ3).
 Proof.
-  apply per_dmod_mut_ind_all; intros;
-    match goal with H : _ |- _ => inversion H; subst; clear H end.
+  apply per_dmod_mut_ind_all; intros.
   - (* global *)
-    match goal with H1 : gc_module _ _ ?p = Some _, H2 : gc_module _ _ ?p = Some _ |- _ =>
-      rewrite H1 in H2; injection H2 as <- end.
-    econstructor; eauto.
-  - econstructor; eauto.
-  - econstructor; eauto.
-  - constructor.
-  - (* global arguments *)
-    match goal with H1 : rel_typ _ _ _ _ _ _, H2 : rel_typ _ _ _ _ _ _ |- _ =>
-      destruct (rel_typ_trans H1 H2) as (HRR & HT & Ht) end.
-    econstructor; [ exact HT | eapply Ht; [ eassumption | apply HRR; eassumption ] | eauto ].
-  - (* a supplied parameter *)
-    match goal with H1 : rel_typ _ _ _ _ _ _, H2 : rel_typ _ _ _ _ _ _ |- _ =>
-      destruct (rel_typ_trans H1 H2) as (HRR & HT & Ht) end.
-    econstructor; [ exact HT | eapply Ht; [ eassumption | apply HRR; eassumption ] | eauto ].
+    match goal with H : per_dmod _ _ |- _ => inversion H; subst; clear H end.
+    + match goal with H1 : gc_loc _ _ ?p = Some _, H2 : gc_loc _ _ ?p = Some _ |- _ =>
+        rewrite H1 in H2; injection H2 as <- <- end.
+      econstructor; eauto.
+    + match goal with HL : List.length ?args = _, HG : per_gargs _ _ _ ?args ?args' |- _ =>
+        exfalso; eapply nextparam_global_sat; [ eassumption | | eassumption ];
+        rewrite <- HL; symmetry; eapply per_gargs_len_eq; exact HG end.
+  - (* bodies *)
+    match goal with H : per_dmod _ _ |- _ => inversion H; subst; clear H end.
+    + econstructor; eauto.
+    + exfalso; eapply nextparam_body_nil; eassumption.
   - (* a missing parameter: the middle side is quantified against itself *)
+    match goal with H : per_dmod _ _ |- _ => inversion H; subst; clear H end.
+    + exfalso; eapply nextparam_global_sat; eassumption.
+    + exfalso; eapply nextparam_body_nil; eassumption.
+    + match goal with H1 : nextparam ?h ?a1, H2 : nextparam ?h ?a2 |- _ =>
+        pose proof (nextparam_functional _ _ H1 _ H2) as <-; clear H2 end.
+      match goal with H1 : per_univ_elem ?i ?R ?a ?a', H2 : per_univ_elem ?j ?R' ?a' ?a'' |- _ =>
+        rename H1 into Hu1; rename H2 into Hu2 end.
+      destruct (per_univ_elem_sym _ _ _ _ Hu1) as [Hu1s Hs1].
+      pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ Hu1s Hu2) as Eq.
+      assert (Hu2' : per_univ_elem _ R _ _) by (eapply per_univ_elem_resp_iff; [ exact Hu2 | symmetry; exact Eq ]).
+      destruct (per_univ_elem_trans _ _ _ _ Hu1) as [Ht Htr].
+      eapply per_dmod_fun; [ eassumption | eassumption | exact (Ht _ _ Hu2') | | |].
+      { intros c c3 Hc; assert (Hcc : R c c) by (eapply Htr; [ exact Hc | apply Hs1; exact Hc ]).
+        match goal with E : forall c c', R c c' -> exists hc, eval_appm _ _ h c hc |- _ => exact (E _ _ Hcc) end. }
+      { intros c c3 Hc; assert (Hc3 : R c3 c3) by (eapply Htr; [ apply Hs1; exact Hc | exact Hc ]).
+        match goal with |- exists hc', eval_appm _ _ ?h3 c3 hc' =>
+          match goal with E : forall c c', ?R2 c c' -> exists hc', eval_appm _ _ h3 c' hc' |- _ =>
+            exact (E _ _ (ltac:(apply Eq; exact Hc3))) end end. }
+      intros c c3 hc hc3 Hc Hh Hh3.
+      assert (Hc3 : R c3 c3) by (eapply Htr; [ apply Hs1; exact Hc | exact Hc ]).
+      match goal with Hex : forall c c', R c c' -> exists hc', eval_appm _ _ ?h2 c' hc', Hh3' : eval_appm _ _ ?h3 c3 hc3,
+                      H2 : forall c c' hc hc', _ -> eval_appm _ _ ?h2 c hc -> eval_appm _ _ ?h3 c' hc' -> per_dmod hc hc' |- _ =>
+        destruct (Hex c3 c3 Hc3) as (hc2 & Hh2);
+        assert (Hm23 : per_dmod hc2 hc3) by (apply (H2 c3 c3); [ apply Eq; exact Hc3 | exact Hh2 | exact Hh3' ]) end.
+      match goal with IH : forall c c' hc hc', R c c' -> _ -> _ -> forall m3, per_dmod hc' m3 -> per_dmod hc m3 |- _ =>
+        exact (IH c c3 hc hc2 Hc Hh Hh2 _ Hm23) end.
+  - (* global arguments *)
+    match goal with H : per_gargs _ _ _ _ _ |- _ => inversion H; subst; clear H end; constructor.
+  - match goal with H : per_gargs _ _ _ (_ :: _) _ |- _ => inversion H; subst; clear H end.
     match goal with H1 : rel_typ _ _ _ _ _ _, H2 : rel_typ _ _ _ _ _ _ |- _ =>
-      destruct (rel_typ_trans H1 H2) as (HRR & HT & Ht); destruct (rel_typ_sym H1) as [_ Hs] end.
-    econstructor; [ exact HT |].
-    intros c c' Hc.
-    match goal with IH : forall c c', _ -> forall ts3 ρ3 D3 a3, _ -> _, H2 : forall c c', _ -> per_ltele _ _ _ _ _ _ _ _ |- _ =>
-      eapply IH; [ eapply Ht; [ exact Hc | apply Hs; exact Hc ] | apply H2, HRR, Hc ] end.
-  - econstructor; eauto.
-  - econstructor; eauto.
-  - (* an alias: the middle target is one value *)
-    functional_eval_rewrite_clear.
-    match goal with H1 : eval_modexp _ _ ?E ?ρ ?h1, H2 : eval_modexp _ _ ?E ?ρ ?h2 |- _ =>
-      assert (h1 = h2) by (eapply functional_eval_modexp; eassumption); subst end.
-    econstructor; eauto.
-  - constructor.
-  - (* a definition *)
-    match goal with H1 : eval_benv _ _ ?ρ ?Φ ?r1, H2 : eval_benv _ _ ?ρ ?Φ ?r2 |- _ =>
-      assert (r1 = r2) by (eapply functional_eval_benv; eassumption); subst end.
+      destruct (rel_typ_trans H1 H2) as (HRR & HT & Ht) end.
+    econstructor; [ exact HT | eapply Ht; [ eassumption | apply HRR; eassumption ] | eauto ].
+  - match goal with H : per_body _ _ _ _ |- _ => inversion H; subst; clear H end; constructor.
+  - (* a definition: the middle expansion and environment are one *)
+    match goal with H : per_body _ (gm_ext _ _ _) _ _ |- _ => inversion H; subst; clear H end.
+    solve_mid_body.
     match goal with H1 : rel_typ _ _ _ _ _ _, H2 : rel_typ _ _ _ _ _ _ |- _ =>
       destruct (rel_typ_trans H1 H2) as (HRR & HT & Ht) end.
     econstructor; eauto using rel_elem_trans.
-  - (* a module *)
-    match goal with H1 : eval_benv _ _ ?ρ ?Φ ?r1, H2 : eval_benv _ _ ?ρ ?Φ ?r2 |- _ =>
-      assert (r1 = r2) by (eapply functional_eval_benv; eassumption); subst end.
+  - (* a module: the middle closure is one value *)
+    match goal with H : per_body _ (gm_ext _ _ _) _ _ |- _ => inversion H; subst; clear H end.
+    solve_mid_body.
+    match goal with H1 : eval_close _ _ ?Δ ?D ?ρ ?h1, H2 : eval_close _ _ ?Δ ?D ?ρ ?h2 |- _ =>
+      assert_fails (constr_eq h1 h2); assert (h1 = h2) by (eapply functional_eval_close; eassumption); subst end.
     econstructor; eauto.
-  - (* a local open: the middle target is one value *)
-    match goal with H1 : eval_benv _ _ ?ρ ?Φ ?r1, H2 : eval_benv _ _ ?ρ ?Φ ?r2 |- _ =>
-      assert (r1 = r2) by (eapply functional_eval_benv; eassumption); subst end.
-    match goal with H1 : eval_modexp _ _ ?E ?ρ ?h1, H2 : eval_modexp _ _ ?E ?ρ ?h2 |- _ =>
-      assert (h1 = h2) by (eapply functional_eval_modexp; eassumption); subst end.
+  - (* an open: the middle target is one value *)
+    match goal with H : per_body _ (gm_open _ _ _) _ _ |- _ => inversion H; subst; clear H end.
+    solve_mid_body.
+    match goal with H1 : eval_modexp _ _ ?H ?ρ ?h1, H2 : eval_modexp _ _ ?H ?ρ ?h2 |- _ =>
+      assert_fails (constr_eq h1 h2); assert (h1 = h2) by (eapply functional_eval_modexp; eassumption); subst end.
     econstructor; eauto.
 Qed.
 
 Corollary per_dmod_trans : forall m1 m2 m3, per_dmod m1 m2 -> per_dmod m2 m3 -> per_dmod m1 m3.
 Proof. intros; eapply (proj1 per_dmod_trans_all); eassumption. Qed.
 
+Corollary per_body_trans : forall ρ1 Φ1 ρ2 Φ2 ρ3 Φ3, per_body ρ1 Φ1 ρ2 Φ2 -> per_body ρ2 Φ2 ρ3 Φ3 -> per_body ρ1 Φ1 ρ3 Φ3.
+Proof. intros; eapply (proj2 (proj2 per_dmod_trans_all)); eassumption. Qed.
+
 #[export] Instance per_dmod_PER : PER per_dmod.
 Proof. split; [ exact per_dmod_sym | exact per_dmod_trans ]. Qed.
+
+(** ** Module Expressions Evaluating to Related Values *)
+
+Lemma rel_mexp_sym : forall H ρ H' ρ', rel_mexp H ρ H' ρ' -> rel_mexp H' ρ' H ρ.
+Proof. intros * (h & h' & Hh & Hh' & Hr); exists h', h; repeat split; [ exact Hh' | exact Hh | apply per_dmod_sym, Hr ]. Qed.
+
+Lemma rel_mexp_trans : forall H1 ρ1 H2 ρ2 H3 ρ3, rel_mexp H1 ρ1 H2 ρ2 -> rel_mexp H2 ρ2 H3 ρ3 -> rel_mexp H1 ρ1 H3 ρ3.
+Proof.
+  intros * (h1 & h2 & Hh1 & Hh2 & Hr) (h2' & h3 & Hh2' & Hh3 & Hr').
+  pose proof (functional_eval_modexp _ _ _ _ Hh2 Hh2') as <-.
+  exists h1, h3; repeat split; [ exact Hh1 | exact Hh3 | eapply per_dmod_trans; eassumption ].
+Qed.
+
+Lemma tie_mod_move : forall m H ρ H' ρ', tie_mod m H ρ -> rel_mexp H ρ H' ρ' -> tie_mod m H' ρ'.
+Proof.
+  intros * (h & Hh & Hm) (h1 & h' & Hh1 & Hh' & Hr).
+  pose proof (functional_eval_modexp _ _ _ _ Hh Hh1) as <-.
+  exists h'; split; [ exact Hh' | eapply per_dmod_trans; eassumption ].
+Qed.
+
+Lemma tie_mod_rel : forall m H ρ m' H' ρ', tie_mod m H ρ -> tie_mod m' H' ρ' -> rel_mexp H ρ H' ρ' -> per_dmod m m'.
+Proof.
+  intros * (h & Hh & Hm) (h' & Hh' & Hm') (h1 & h1' & Hh1 & Hh1' & Hr).
+  pose proof (functional_eval_modexp _ _ _ _ Hh Hh1) as <-; pose proof (functional_eval_modexp _ _ _ _ Hh' Hh1') as <-.
+  eapply per_dmod_trans; [ exact Hm | eapply per_dmod_trans; [ exact Hr | apply per_dmod_sym, Hm' ] ].
+Qed.
+
+(** The values of two module expressions related over related tails, read
+    at two related tails in either combination. *)
+Lemma rel_mexp_move : forall (T : relation env) H H' ρ1 ρ2,
+    PER T -> T ρ1 ρ2 ->
+    (forall ρ ρ', T ρ ρ' -> rel_mexp H ρ H' ρ') ->
+    rel_mexp H ρ1 H ρ2 /\ rel_mexp H ρ1 H' ρ2 /\ rel_mexp H' ρ1 H ρ2 /\ rel_mexp H' ρ1 H' ρ2.
+Proof.
+  intros * HT H12 HP.
+  assert (H11 : T ρ1 ρ1) by (etransitivity; [ exact H12 | symmetry; exact H12 ]).
+  assert (H22 : T ρ2 ρ2) by (etransitivity; [ symmetry; exact H12 | exact H12 ]).
+  pose proof (HP _ _ H12) as A; pose proof (HP _ _ H11) as B; pose proof (HP _ _ H22) as C.
+  assert (D1 : rel_mexp H ρ1 H ρ2) by (eapply rel_mexp_trans; [ exact A | apply rel_mexp_sym; exact C ]).
+  split; [ exact D1 | split; [ exact A | split ] ].
+  - eapply rel_mexp_trans; [ apply rel_mexp_sym; exact B | exact D1 ].
+  - eapply rel_mexp_trans; [ apply rel_mexp_sym; exact B | exact A ].
+Qed.
 
 Add Parametric Morphism : per_ctx_env
     with signature (@relation_equivalence env) ==> eq ==> eq ==> iff as per_ctx_env_morphism_iff.
@@ -1661,22 +1795,66 @@ Proof.
   reflexivity.
 Qed.
 
-(** A head tied to the closure of one unit is tied to the closure of any
-    unit related to it over the same tails. *)
-Lemma mod_tie_move : forall (T : relation env) U U' ρ m,
-    T ρ ρ ->
-    (forall ρ ρ', T ρ ρ' -> per_dmod (dm_local ρ U nil) (dm_local ρ' U' nil)) ->
-    per_dmod m (dm_local ρ U nil) -> per_dmod m (dm_local ρ U' nil).
-Proof. intros * Hρ HU Hm; eapply per_dmod_trans; [ exact Hm | apply HU, Hρ ]. Qed.
+(** ** Closures *)
 
-Lemma mod_tie_move_sym : forall (T : relation env) U U' ρ m,
-    PER T -> T ρ ρ ->
-    (forall ρ ρ', T ρ ρ' -> per_dmod (dm_local ρ U nil) (dm_local ρ' U' nil)) ->
-    per_dmod m (dm_local ρ U' nil) -> per_dmod m (dm_local ρ U nil).
+(** A closure given its outermost argument is the closure of the rest over
+    the environment extended by it. *)
+Lemma appm_local_inv : forall Δ A D ρ c hc h,
+    $ᵐ| dm_local (Δ ++ ce_ass A :: nil) D ρ & c | gc_deps ⍮ gc_stack ↘ hc ->
+    ⟦ Δ ⊢ D ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↦ c ↘ h -> hc = h.
 Proof.
-  intros * HT Hρ HU Hm; eapply per_dmod_trans; [ exact Hm |].
-  apply per_dmod_sym, HU, Hρ.
+  intros * Ha Hc; inversion Ha; subst.
+  match goal with H : _ ++ _ :: nil = _ ++ _ :: nil |- _ => apply app_inj_tail in H as [<- _] end.
+  eapply functional_eval_close; eassumption.
 Qed.
+
+(** Two closures lacking their outermost parameter are related when, at
+    every related pair of arguments, the closures of the rest over the
+    environments extended by them evaluate to related values. *)
+Lemma per_dmod_closure_step : forall ρ ρ' Δ Δ' A A' D D' i R a a',
+    ⟦ A ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a -> ⟦ A' ⟧ gc_deps ⍮ gc_stack ⍮ ρ' ↘ a' -> per_univ_elem i R a a' ->
+    (forall c c', R c c' -> exists h h', ⟦ Δ ⊢ D ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↦ c ↘ h /\
+                                     ⟦ Δ' ⊢ D' ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ' ↦ c' ↘ h' /\ per_dmod h h') ->
+    per_dmod (dm_local (Δ ++ ce_ass A :: nil) D ρ) (dm_local (Δ' ++ ce_ass A' :: nil) D' ρ').
+Proof.
+  intros * Ha Ha' HR HD.
+  destruct (per_univ_elem_sym _ _ _ _ HR) as [_ Hs].
+  destruct (per_univ_elem_trans _ _ _ _ HR) as [_ Htr].
+  eapply per_dmod_fun; [ constructor; exact Ha | constructor; exact Ha' | exact HR | | |].
+  - intros c c' Hc; destruct (HD _ _ Hc) as (h & _ & Hh & _); eexists; constructor; exact Hh.
+  - intros c c' Hc; destruct (HD _ _ Hc) as (_ & h' & _ & Hh' & _); eexists; constructor; exact Hh'.
+  - intros c c' hc hc' Hc Hh Hh'.
+    destruct (HD _ _ Hc) as (h & h' & Hc1 & Hc2 & Hr).
+    rewrite (appm_local_inv _ _ _ _ _ _ _ Hh Hc1), (appm_local_inv _ _ _ _ _ _ _ Hh' Hc2); exact Hr.
+Qed.
+
+
+End Fixed_GCtx.
+
+#[export] Existing Instance per_ctx_env_morphism_iff_Proper.
+#[export] Existing Instance per_ctx_env_morphism_relation_equivalence_Proper.
+
+(** A head tied to the value of one module expression is tied to the value
+    of any expression related to it over the same tail. *)
+Ltac solve_tie :=
+  match goal with
+  | |- tie_mod ?m ?H2 ?r =>
+      first [ assumption
+            | match goal with
+              | Ht : tie_mod m ?H1 ?r1, Hm : rel_mexp ?H1 ?r1 H2 r |- _ => exact (tie_mod_move _ _ _ _ _ Ht Hm)
+              end
+            | match goal with
+              | Ht : tie_mod m ?H1 r, HU : forall ρ ρ', ?T ρ ρ' -> rel_mexp ?H1 ρ H2 ρ', Hr : ?T r r |- _ =>
+                  exact (tie_mod_move _ _ _ _ _ Ht (HU _ _ Hr))
+              end
+            | match goal with
+              | Ht : tie_mod m ?H1 r, HU : forall ρ ρ', ?T ρ ρ' -> rel_mexp H2 ρ ?H1 ρ', Hr : ?T r r |- _ =>
+                  exact (tie_mod_move _ _ _ _ _ Ht (rel_mexp_sym _ _ _ _ (HU _ _ Hr)))
+              end ]
+  end.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Lemma per_ctx_env_right_irrel : forall Γ Δ Δ' R R',
     DF Γ ≈ Δ ∈ per_ctx_env ↘ R ->
@@ -1724,12 +1902,7 @@ Proof.
       assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel) by (etransitivity; [symmetry |]; intuition);
       assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel0) by (etransitivity; [| symmetry]; intuition);
       assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel0) by (etransitivity; [symmetry |]; intuition);
-      repeat split; try assumption;
-      first [ eapply mod_tie_move; [| eassumption | eassumption ]; assumption
-            | eapply mod_tie_move_sym; [ | | eassumption | eassumption ]; [ typeclasses eauto | assumption ]
-            | eapply mod_tie_move; [| eassumption |];
-              [| eapply mod_tie_move_sym; [ | | eassumption | eassumption ]; [ typeclasses eauto | assumption ] ];
-              assumption ].
+      repeat split; try assumption; solve_tie.
 Qed.
 
 Lemma per_ctx_env_sym : forall Γ Δ R,
@@ -1794,11 +1967,11 @@ Proof.
   - (** A slot.  The swapped context ties the heads to the same closures. *)
     simpl in *; destruct_conjs.
     match goal with
-    | HU : forall ρ ρ', tail_rel ρ ρ' -> per_dmod _ _,
+    | HU : forall ρ ρ', tail_rel ρ ρ' -> rel_mexp _ _ _ _,
       HE : env_rel <~> _, Hs : forall ρ ρ', tail_rel ρ ρ' -> tail_rel ρ' ρ |- _ =>
         split;
         [ eapply per_ctx_env_cons_mod; [ eassumption | eassumption | | ];
-          [ intros ρ ρ' Hρ; apply per_dmod_sym, HU, Hs, Hρ
+          [ intros ρ ρ' Hρ; apply rel_mexp_sym, HU, Hs, Hρ
           | intros ρ ρ'; split; intros Hρ; [ apply HE in Hρ | apply HE ]; destruct_conjs; repeat split; assumption ]
         | intros ρ ρ' Hρ; apply HE in Hρ; apply HE; destruct_conjs; repeat split; eauto ]
     end.
@@ -1841,21 +2014,7 @@ Qed.
 
 End Fixed_GCtx.
 
-#[export]
-Hint Resolve per_univ_elem_cumu : mctt.
-#[export]
-Hint Resolve per_univ_elem_cumu_ge : mctt.
-#[export]
-Hint Resolve per_subtyp_refl1 : mctt.
-#[export]
-Hint Resolve per_subtyp_refl2 : mctt.
-#[export]
-Hint Resolve per_subtyp_trans : mctt.
-#[export] Existing Instance per_subtyp_trans_ins.
-#[export]
-Hint Resolve per_subtyp_cumu : mctt.
-#[export] Existing Instance per_ctx_env_morphism_iff_Proper.
-#[export] Existing Instance per_ctx_env_morphism_relation_equivalence_Proper.
+
 (** The ties of a definition entry, closed from the instances of the type and
     body premises at the tails in context: the head relations of one type
     value coincide, and the ties follow by symmetry and transitivity. *)
@@ -1978,12 +2137,12 @@ Proof with solve [eauto using per_univ_trans].
         last through the middle unit. *)
     destruct IHper_ctx_env as [IHctx IHenv].
     match goal with
-    | HU1 : forall ρ ρ', ?T ρ ρ' -> per_dmod (dm_local ρ ?U1 nil) (dm_local ρ' ?U2 nil),
-      HU2 : forall ρ ρ', ?T ρ ρ' -> per_dmod (dm_local ρ ?U2 nil) (dm_local ρ' ?U3 nil),
+    | HU1 : forall ρ ρ', ?T ρ ρ' -> rel_mexp (me_lit ?U1) ρ (me_lit ?U2) ρ',
+      HU2 : forall ρ ρ', ?T ρ ρ' -> rel_mexp (me_lit ?U2) ρ (me_lit ?U3) ρ',
       HE : _ <~> _, HT : PER ?T, Hc : per_ctx_env ?T ?Γ2 ?Γ3 |- per_ctx_env _ (?Γ1 ▹ₘ ?U1) (?Γ3 ▹ₘ ?U3) =>
         eapply per_ctx_env_cons_mod with (tail_rel := T);
         [ apply IHctx; exact Hc | exact HT
-        | intros ρ ρ' Hρ; eapply per_dmod_trans;
+        | intros ρ ρ' Hρ; eapply rel_mexp_trans;
           [ apply HU1, Hρ | apply HU2; etransitivity; [ symmetry |]; exact Hρ ]
         | intros ρ ρ'; split; intros Hρ;
           [ pose proof (proj2 (HE ρ ρ') Hρ) as Hρ'; destruct Hρ' as (Ht & ? & ? & ? & ?);
@@ -1991,8 +2150,7 @@ Proof with solve [eauto using per_univ_trans].
           | destruct Hρ as (Ht & ? & ? & ? & ?);
             assert (T ρ↯ ρ↯) by (etransitivity; [| symmetry ]; exact Ht);
             assert (T ρ'↯ ρ'↯) by (etransitivity; [ symmetry |]; exact Ht);
-            repeat split; try assumption;
-            (eapply mod_tie_move; [| exact HU1 |]; eassumption) ] ]
+            repeat split; try assumption; solve_tie ] ]
     end.
 Qed.
 
@@ -2763,26 +2921,6 @@ Qed.
     holds because a context PER inspects an environment only pointwise, and
     its head relations at pointwise-equal environments coincide up to [<~>] by
     irrelevance. *)
-(** The closures of two units related over related tails, read at two
-    related tails in either combination. *)
-Lemma mod_closure_move : forall (T : relation env) U U' ρ1 ρ2,
-    PER T -> T ρ1 ρ2 ->
-    (forall ρ ρ', T ρ ρ' -> per_dmod (dm_local ρ U nil) (dm_local ρ' U' nil)) ->
-    per_dmod (dm_local ρ1 U nil) (dm_local ρ2 U nil) /\
-    per_dmod (dm_local ρ1 U nil) (dm_local ρ2 U' nil) /\
-    per_dmod (dm_local ρ1 U' nil) (dm_local ρ2 U nil) /\
-    per_dmod (dm_local ρ1 U' nil) (dm_local ρ2 U' nil).
-Proof.
-  intros * HT H12 HP.
-  assert (H11 : T ρ1 ρ1) by (etransitivity; [ exact H12 | symmetry; exact H12 ]).
-  assert (H22 : T ρ2 ρ2) by (etransitivity; [ symmetry; exact H12 | exact H12 ]).
-  pose proof (HP _ _ H12) as A; pose proof (HP _ _ H11) as B; pose proof (HP _ _ H22) as C.
-  assert (D1 : per_dmod (dm_local ρ1 U nil) (dm_local ρ2 U nil)) by (eapply per_dmod_trans; [ exact A | apply per_dmod_sym; exact C ]).
-  split; [ exact D1 | split; [ exact A | split ] ].
-  - eapply per_dmod_trans; [ apply per_dmod_sym; exact B | exact D1 ].
-  - eapply per_dmod_trans; [ apply per_dmod_sym; exact B | exact A ].
-Qed.
-
 Lemma per_ctx_env_resp_env_eq : forall {Γ Δ R},
     EF Γ ≈ Δ ∈ per_ctx_env ↘ R ->
     forall ρ1 ρ2 ρ1' ρ2',
@@ -2803,10 +2941,10 @@ Proof.
     assert (D11' : Dom ρ1'↯ ≈ ρ1'↯ ∈ tail_rel) by solve_per.
     assert (D12 : Dom ρ1↯ ≈ ρ2↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption | exact D11 ]).
     assert (D12' : Dom ρ1'↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption | exact D11' ]).
-    destruct (mod_closure_move _ _ _ _ _ _ D12 H0) as (M1 & M2 & M3 & M4).
-    destruct (mod_closure_move _ _ _ _ _ _ D12' H0) as (M1' & M2' & M3' & M4').
+    destruct (rel_mexp_move _ _ _ _ _ _ D12 H0) as (M1 & M2 & M3 & M4).
+    destruct (rel_mexp_move _ _ _ _ _ _ D12' H0) as (M1' & M2' & M3' & M4').
     rewrite <- (env_eq_mod _ _ Heq 0), <- (env_eq_mod _ _ Heq' 0).
-    repeat split; [ exact Dtail2 | .. ]; eapply per_dmod_trans; eassumption. }
+    repeat split; [ exact Dtail2 | .. ]; solve_tie. }
   all: destruct HR as [Dtail1 Hhead1];
     assert (Hd : env_eq ρ1↯ ρ2↯) by (now rewrite Heq);
     assert (Hd' : env_eq ρ1'↯ ρ2'↯) by (now rewrite Heq');

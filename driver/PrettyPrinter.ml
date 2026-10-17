@@ -455,14 +455,14 @@ let rec gmod_decls : gmod -> (exp, centry) ind_decl_g list = function
   | Coq_gm_ext (phi, _, e) ->
      let here =
        match e with
-       | Coq_ge_ind (_, d, phi') -> d :: gmod_decls phi'
-       | Coq_ge_mod (_, Coq_gu_mk (_, Coq_md_body phi')) -> gmod_decls phi'
+       | Coq_ge_ind (_, _, d, phi') -> d :: gmod_decls phi'
+       | Coq_ge_mod (_, Coq_gu_mk (_, Coq_md_body (_, phi'))) -> gmod_decls phi'
        | _ -> []
      in
      here @ gmod_decls phi
 
 let unit_decls (Coq_gu_mk (_, md) : gunit) =
-  match md with Coq_md_body phi -> gmod_decls phi | Coq_md_alias _ -> []
+  match md with Coq_md_body (_, phi) -> gmod_decls phi | Coq_md_alias _ -> []
 
 let set_ind_decls (deps : gdeps) (xi : gstack) : unit =
   ind_decls := List.concat_map (fun (_, u) -> unit_decls u) deps @ List.concat_map (fun (_, u) -> unit_decls u) xi
@@ -675,7 +675,7 @@ let exp_to_obj =
     in
     let md' = match md with
       | Coq_md_alias h -> Cst.Coq_md_alias (impl_mod ctx' h)
-      | Coq_md_body phi -> Cst.Coq_md_where (fst (impl_body ctx' phi))
+      | Coq_md_body (_, phi) -> Cst.Coq_md_where (fst (impl_body ctx' phi))
     in
     (List.rev params, md')
   and impl_body (ctx : string list) : gmod -> Cst.cmd list * string list = function
@@ -693,7 +693,7 @@ let exp_to_obj =
             let params, md = impl_unit ctx' u in
             Cst.Coq_c_mod (priv, x, params, md)
          (* A declaration is filed in a unit, never in a local body. *)
-         | Coq_ge_ind (_, _, _) -> Cst.Coq_c_error "inductive declaration"
+         | Coq_ge_ind (_, _, _, _) -> Cst.Coq_c_error "inductive declaration"
          | Coq_ge_ind_alias (_, _, _, _) -> Cst.Coq_c_error "inductive alias"
        in
        (cs @ [c], x :: ctx')

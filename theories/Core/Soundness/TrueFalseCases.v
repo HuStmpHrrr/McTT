@@ -34,10 +34,10 @@ Qed.
 (** The lifting of a related substitution under a binder of type [A]. *)
 Lemma cons_glu_sub_pred_q_helper : forall {Γ SbΓ Δ σ ρ} {i : nat} {A a},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
-    Δ ⊢s σ ® ρ ∈ SbΓ ->
+    Δ ⊢ˢ σ ® ρ ∈ SbΓ ->
     Γ ⊩ A : Typeω@i ->
     ⟦ A ⟧ ρ ↘ a ->
-    Δ ▹ A[σ] ⊢s q σ ® ρ ↦ ⇑! a (length Δ) ∈ cons_glu_sub_pred i Γ A SbΓ.
+    Δ ▹ A[σ] ⊢ˢ q σ ® ρ ↦ ⇑! a (length Δ) ∈ cons_glu_sub_pred i Γ A SbΓ.
 Proof.
   intros * ? ? HA ?.
   assert (Γ ⊢ A : Typeω@i) by mauto 2.
@@ -48,9 +48,9 @@ Proof.
   apply_predicate_equivalence.
   unfold univ_glu_exp_pred' in *.
   destruct_conjs.
-  assert (Δ ⊢s σ : Γ) by mauto 2.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 2.
   assert (⊢ Δ ▹ A[σ]) by mauto 3.
-  assert (Δ ▹ A[σ] ⊢k ↑ : Δ) by mauto 3.
+  assert (Δ ▹ A[σ] ⊢ᵏ ↑ : Δ) by mauto 3.
   unfold sb_q; eapply cons_glu_sub_pred_helper_gen; mauto 2.
   - eapply glu_ctx_env_sub_monotone; eassumption.
   - cbn [sentry_exp]; rewrite <- exp_wk_sub.
@@ -68,7 +68,7 @@ Proof.
   assert (⊢ Γ) by mauto.
   eapply glu_rel_exp_of_univ; mauto 3.
   intros.
-  assert (Δ ⊢s σ : Γ) by mauto 3.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
   split; [ simplify_subs; apply wf_True_univ; assumption |].
   eexists; repeat split; mauto 3; [| closed_typ_readback ].
@@ -99,7 +99,7 @@ Proof.
   assert (⊢ Γ) by mauto.
   eapply glu_rel_exp_of_univ; mauto 3.
   intros.
-  assert (Δ ⊢s σ : Γ) by mauto 3.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
   split; [ simplify_subs; apply wf_False_univ; assumption |].
   eexists; repeat split; mauto 3; [| closed_typ_readback ].
@@ -130,7 +130,7 @@ Proof.
   eexists; split; mauto 3.
   exists 0.
   intros.
-  assert (Δ ⊢s σ : Γ) by mauto 3.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
   econstructor; mauto 3.
   - glu_univ_elem_econstructor; mauto 3; reflexivity.
@@ -142,12 +142,12 @@ Hint Resolve glu_rel_exp_true : mctt.
 (** ** Extension by [⊥] *)
 Lemma cons_glu_sub_pred_False_helper : forall {Γ SbΓ Δ σ ρ} {i : nat} {M m},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
-    Δ ⊢s σ ® ρ ∈ SbΓ ->
+    Δ ⊢ˢ σ ® ρ ∈ SbΓ ->
     glu_False Δ M m ->
-    Δ ⊢s σ,,M ® ρ ↦ m ∈ cons_glu_sub_pred i Γ ⊥ SbΓ.
+    Δ ⊢ˢ σ,,M ® ρ ↦ m ∈ cons_glu_sub_pred i Γ ⊥ SbΓ.
 Proof.
   intros * ? HM ?.
-  assert (Δ ⊢s σ : Γ) by mauto 3.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
   assert (DG ⊥ᵈ ∈ glu_univ_elem i ↘ False_glu_typ_pred (ulvl_tm i) ↘ False_glu_exp_pred (ulvl_tm i))
     by (glu_univ_elem_econstructor; reflexivity).
@@ -162,8 +162,8 @@ Hint Resolve cons_glu_sub_pred_False_helper : mctt.
     conversion. *)
 Lemma cons_glu_sub_pred_q_False_helper : forall {Γ SbΓ Δ σ ρ} {i : nat},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
-    Δ ⊢s σ ® ρ ∈ SbΓ ->
-    Δ ▹ ⊥ ⊢s q σ ® ρ ↦ ⇑! ⊥ᵈ (length Δ) ∈ cons_glu_sub_pred i Γ ⊥ SbΓ.
+    Δ ⊢ˢ σ ® ρ ∈ SbΓ ->
+    Δ ▹ ⊥ ⊢ˢ q σ ® ρ ↦ ⇑! ⊥ᵈ (length Δ) ∈ cons_glu_sub_pred i Γ ⊥ SbΓ.
 Proof.
   intros.
   assert (⊩ Γ) by (eexists; eassumption).
@@ -203,7 +203,7 @@ Proof.
   eexists; split; [eassumption |].
   exists i.
   intros.
-  assert (Δ ⊢s σ : Γ) by mauto 3.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
   destruct_glu_rel_exp_with_sub.
   simplify_evals.
@@ -213,7 +213,7 @@ Proof.
   inversion_clear_by_head False_glu_exp_pred.
   match goal with H : glu_False _ _ _ |- _ => rename H into HMglu end.
   inversion HMglu; subst.
-  assert (Δ ⊢s σ,,M[σ] ® ρ ↦ ⇑ a m0 ∈ SbΓF) by (unfold SbΓF; mauto 3).
+  assert (Δ ⊢ˢ σ,,M[σ] ® ρ ↦ ⇑ a m0 ∈ SbΓF) by (unfold SbΓF; mauto 3).
   destruct_glu_rel_exp_with_sub.
   simplify_evals.
   match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
@@ -234,7 +234,7 @@ Proof.
   { eapply realize_glu_elem_bot; [ eassumption |].
     econstructor; [| eassumption | eassumption | |].
     - rewrite <- (exp_sub_q_extend A σ M[σ]).
-      assert (Δ ▹ ⊥ ⊢s q σ : Γ ▹ ⊥) by mauto 3.
+      assert (Δ ▹ ⊥ ⊢ˢ q σ : Γ ▹ ⊥) by mauto 3.
       assert (Δ ▹ ⊥ ⊢ A[q σ] : Typeω@i) by mauto 3.
       assert (Δ ⊢ M[σ] : ⊥) by mauto 3.
       mauto 3.
@@ -242,9 +242,9 @@ Proof.
     - intros Δ' φ W ? HW.
       saturate_kripke_escape.
       saturate_sub.
-      assert (Δ' ⊢s (sb_wk σ φ) : Γ) by (rewrite sb_wk_compose; mauto 3).
-      assert (Δ' ⊢s (sb_wk σ φ) ® ρ ∈ SbΓ) by (eapply glu_ctx_env_sub_monotone; eassumption).
-      assert (Δ' ▹ ⊥ ⊢s q (sb_wk σ φ) ® ρ ↦ ⇑! ⊥ᵈ (length Δ') ∈ SbΓF) by (unfold SbΓF; mauto 3).
+      assert (Δ' ⊢ˢ (sb_wk σ φ) : Γ) by (rewrite sb_wk_compose; mauto 3).
+      assert (Δ' ⊢ˢ (sb_wk σ φ) ® ρ ∈ SbΓ) by (eapply glu_ctx_env_sub_monotone; eassumption).
+      assert (Δ' ▹ ⊥ ⊢ˢ q (sb_wk σ φ) ® ρ ↦ ⇑! ⊥ᵈ (length Δ') ∈ SbΓF) by (unfold SbΓF; mauto 3).
       destruct_glu_rel_exp_with_sub.
       simplify_evals.
       match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
@@ -259,7 +259,7 @@ Proof.
       eapply wf_exp_eq_exfalso_cong'; fold ne_to_exp nf_to_exp.
       + assert (Δ' ▹ ⊥ ⊢ A[q (sb_wk σ φ)] ® glu_typ_top i m) as [? ? Hrbt]
           by (eapply realize_glu_typ_top; eassumption).
-        assert (Δ' ▹ ⊥ ⊢k wk_id : Δ' ▹ ⊥) by mauto 3.
+        assert (Δ' ▹ ⊥ ⊢ᵏ wk_id : Δ' ▹ ⊥) by mauto 3.
         assert (Δ' ▹ ⊥ ⊢ A[q (sb_wk σ φ)][wk_id]ʷ ≈ B' : Typeω@i) as Hat by (eapply Hrbt; eassumption).
         rewrite exp_wk_id in Hat; eassumption.
       + mauto 3. }

@@ -14,7 +14,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution Members Inductives.
 From Mctt.Core.Syntactic.System Require Import Definitions Scoping IndSyntax GlobalPresup.
 From Mctt.Core.Completeness Require Import
-  LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases UnitCases InstanceCases GlobalSem MemberReps
+  LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases UnitCases InstanceCases GlobalArgs MemberReps
   IndSem.
 From Mctt.Core.Semantic Require Import Realizability IndPER Evaluation.Modules.
 Import Domain_Notations Fixed_Notations.
@@ -403,7 +403,7 @@ Section Sort.
         by (rewrite !List.length_app; lia); apply eval_wk_shiftn_args. }
     (** The substitution of the uniform parameters: a shift past the
         arguments and the non-uniform parameters. *)
-    assert (Hwk : Ξ0 ⊨s sb_of_wk (wk_shiftn L) ≈ sb_of_wk (wk_shiftn L) : ind_uparams D).
+    assert (Hwk : Ξ0 ⊨ˢ sb_of_wk (wk_shiftn L) ≈ sb_of_wk (wk_shiftn L) : ind_uparams D).
     { apply rel_sub_of_wk.
       assert (HL : L = List.length (ptyp_tele Ps ++ astrat gs K ++ ind_nparams D))
         by (unfold L, ptyp_tele, ptyp_depth; rewrite !List.length_app, length_astrat, length_nparams, doms_ctx_length by exact HK; lia).
@@ -412,7 +412,7 @@ Section Sort.
       rewrite HΞe, HL; apply rel_wk_under_ctx_shiftn; rewrite <- HΞe; exact HΞ0. }
     (** The induction over the parameters of the recursive argument. *)
     assert (Hall : forall m, m <= ind_nn D ->
-               Ξ0 ⊨s sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn m Ps) ≈ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn m Ps)
+               Ξ0 ⊨ˢ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn m Ps) ≈ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn m Ps)
                  : npre D m ++ ind_uparams D /\
                exists bs bs', ⟦ List.firstn m Ps ⟧* gc_deps ⍮ gc_stack ⍮ E ↘ bs /\
                  ⟦ List.firstn m Ps ⟧* gc_deps ⍮ gc_stack ⍮ E' ↘ bs' /\
@@ -435,7 +435,7 @@ Section Sort.
         destruct (sd_npar _ HD _ _ HA) as (_ & j & HAv).
         set (τ := sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn m Ps)) in *.
         (** The new entry, and the substitution extended by it. *)
-        assert (Hτ' : Ξ0 ⊨s sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn (S m) Ps)
+        assert (Hτ' : Ξ0 ⊨ˢ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn (S m) Ps)
                         ≈ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn (S m) Ps) : npre D (S m) ++ ind_uparams D).
         { rewrite (firstn_S_snoc _ _ _ HP), sb_of_list_app, (npre_S _ _ HA); cbn [sb_of_list List.app].
           eapply rel_sub_under_ctx_extend; [ exact Hτ | exact HAv | exact HPv ]. }
@@ -963,7 +963,7 @@ Section Sort.
 
   (** The weakening of a prefix of the arguments to its non-recursive ones. *)
   Lemma cargs_wk : forall gs1 gs2, gs = gs1 ++ gs2 ->
-      cargs_ctx p D gs1 ++ ind_params D ⊨w (wk_pat (cargs_pat gs1)) : cargs_strat gs1 ++ ind_params D.
+      cargs_ctx p D gs1 ++ ind_params D ⊨ʷ (wk_pat (cargs_pat gs1)) : cargs_strat gs1 ++ ind_params D.
   Proof.
     induction gs1 as [| g gs1 IH] using List.rev_ind; intros gs2 Heq.
     - cbn [cargs_ctx cargs_ctx_aux cargs_strat cargs_pat List.rev List.map List.app].
@@ -987,10 +987,10 @@ Section Sort.
   (** The weakening of the context of a recursive argument's domains to that
       of their types, from the one of the arguments before it. *)
   Lemma sh_wk_gen : forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
-      cargs_ctx p D gs1 ++ ind_params D ⊨w (wk_pat (cargs_pat gs1)) : cargs_strat gs1 ++ ind_params D ->
+      cargs_ctx p D gs1 ++ ind_params D ⊨ʷ (wk_pat (cargs_pat gs1)) : cargs_strat gs1 ++ ind_params D ->
       forall k, k <= List.length (ptyp_doms t) ->
         sh_ctx (cargs_pat gs1) (List.firstn k (ptyp_doms t)) ++ cargs_ctx p D gs1 ++ ind_params D
-          ⊨w (wk_pat (List.repeat false k ++ cargs_pat gs1))
+          ⊨ʷ (wk_pat (List.repeat false k ++ cargs_pat gs1))
           : doms_ctx (List.firstn k (ptyp_doms t)) ++ cargs_strat gs1 ++ ind_params D.
   Proof.
     intros * Heq Hw0; induction k as [| k IH]; intros Hk.
@@ -1005,7 +1005,7 @@ Section Sort.
 
   Lemma sh_sem_gen : forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
       ⊨ cargs_ctx p D gs1 ++ ind_params D ->
-      cargs_ctx p D gs1 ++ ind_params D ⊨w (wk_pat (cargs_pat gs1)) : cargs_strat gs1 ++ ind_params D ->
+      cargs_ctx p D gs1 ++ ind_params D ⊨ʷ (wk_pat (cargs_pat gs1)) : cargs_strat gs1 ++ ind_params D ->
       forall k, k <= List.length (ptyp_doms t) ->
         ⊨ sh_ctx (cargs_pat gs1) (List.firstn k (ptyp_doms t)) ++ cargs_ctx p D gs1 ++ ind_params D.
   Proof.
@@ -1026,7 +1026,7 @@ Section Sort.
   Lemma sh_wk : forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
       forall k, k <= List.length (ptyp_doms t) ->
         sh_ctx (cargs_pat gs1) (List.firstn k (ptyp_doms t)) ++ cargs_ctx p D gs1 ++ ind_params D
-          ⊨w (wk_pat (List.repeat false k ++ cargs_pat gs1))
+          ⊨ʷ (wk_pat (List.repeat false k ++ cargs_pat gs1))
           : doms_ctx (List.firstn k (ptyp_doms t)) ++ cargs_strat gs1 ++ ind_params D.
   Proof. intros * Heq; exact (sh_wk_gen _ _ _ Heq (cargs_wk gs1 (ca_rec t :: gs2) Heq)). Qed.
 

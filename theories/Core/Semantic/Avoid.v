@@ -132,11 +132,10 @@ Section Avoid.
   | dav_dom : forall a m, dav a -> dav m -> dav_nf (⇓ a m)
   with dmav : dmod -> Prop :=
   | dmav_global : forall p args, (forall a, In a args -> dav a) -> dmav (dm_global p args)
-  | dmav_local : forall (ρ : env) U args K,
+  | dmav_local : forall Δ D (ρ : env) K,
       (forall x, K <> Some x -> deav (env_entry ρ x)) ->
-      oufresh K U ->
-      (forall a, In a args -> dav a) ->
-      dmav (dm_local ρ U args)
+      oufresh K (gu_mk Δ D) ->
+      dmav (dm_local Δ D ρ)
   | dmav_member : forall h ch, dmav h -> dmav (dm_member h ch)
   with dav_la : list (nat * nat * domain_ne) -> Prop :=
   | dav_la_nil : dav_la nil
@@ -248,9 +247,6 @@ Section Env.
   Lemma dav_lvl_max : forall d e, dav v b d -> dav v b e -> dav v b (dlvl_max d e).
   Proof. intros; unfold dlvl_max; constructor; apply dav_la_app; apply dav_la_view; assumption. Qed.
 
-  Lemma dmav_local_nil : forall K ρ U, env_av v b K ρ -> oufresh K U -> dmav v b (dm_local ρ U nil).
-  Proof. intros * Hρ HU; econstructor; [ exact Hρ | exact HU | intros ? [] ]. Qed.
-
   Lemma dmav_global_nil : forall p, dmav v b (dm_global p nil).
   Proof. intros; constructor; intros ? []. Qed.
 
@@ -334,6 +330,47 @@ Proof.
   exact (gens_append_fresh gs gm_nil k I (kgens_entries_fresh _ _ _ _ _ _ Hg _ Hk)).
 Qed.
 
+(** The entries generated items add after a body, the [j]-th weakened past
+    the [j] before it, are fresh where the items are. *)
+Lemma gens_append_fresh0 : forall gs Φ j m k,
+    gm_binders Φ = j + m -> gmod_fresh k Φ -> List.Forall (fun g => gentry_fresh (m + k) (snd (ig_entry g))) gs ->
+    gmod_fresh k (gens_append Φ j gs).
+Proof.
+  induction gs as [| g gs IH]; intros * Hb HΦ Hg; cbn [gens_append]; [ exact HΦ |].
+  inversion Hg as [| ? ? Hg1 Hgs]; subst.
+  destruct (ig_entry g) as [d E] eqn:Eg; cbn [snd] in Hg1.
+  apply IH with (m := m); [ cbn; lia | | exact Hgs ].
+  cbn; split; [ exact HΦ |]; rewrite Hb.
+  replace (j + m + k) with (j + (m + k)) by lia; apply gentry_fresh_shiftn; exact Hg1.
+Qed.
+
+(** A body read through the entries its local opens generate is fresh
+    where the body is. *)
+Lemma kbody_fresh : forall Θ Ξ ρ Φ Φx, kbody Θ Ξ ρ Φ Φx -> forall k, gmod_fresh k Φ -> gmod_fresh k Φx /\ gm_binders Φx = gm_binders Φ.
+Proof.
+  induction 1 as [| ρ Φ Φx x E Hb IH | ρ Φ Φx ρ1 H its gs Hb IH Hk Hg]; intros k Hf.
+  - split; [ exact I | reflexivity ].
+  - cbn in Hf |- *; destruct Hf as [Hf HE]; destruct (IH _ Hf) as [Hx Hn]; rewrite Hn; auto.
+  - cbn in Hf; destruct Hf as [Hf HH]; destruct (IH _ Hf) as [Hx Hn].
+    rewrite gens_append_binders, (kgens_length _ _ _ _ _ _ Hg); cbn [gm_binders]; split; [| lia ].
+    apply gens_append_fresh0 with (m := gm_binders Φx); [ lia | exact Hx |].
+    rewrite Hn; exact (kgens_entries_fresh _ _ _ _ _ _ Hg _ HH).
+Qed.
+
+Lemma kbody_ogfresh : forall Θ Ξ ρ Φ Φx K, kbody Θ Ξ ρ Φ Φx -> ogfresh K Φ -> ogfresh K Φx.
+Proof. intros * Hb; destruct K as [k |]; cbn; [ intros Hf; exact (proj1 (kbody_fresh _ _ _ _ _ Hb _ Hf)) | auto ]. Qed.
+
+(** A unit lacking one parameter fewer, the parameter now a variable. *)
+Lemma oufresh_snoc : forall K Δ e D, oufresh K (gu_mk (Δ ++ e :: nil) D) -> oufresh (oshift 1 K) (gu_mk Δ D).
+Proof.
+  intros [k |] * H; cbn in H |- *; [| exact I ].
+  destruct H as [HΔ HD]; split.
+  - clear HD; induction Δ as [| e' Δ IH]; cbn in HΔ |- *; [ exact I |].
+    destruct HΔ as [He HΔ]; rewrite List.length_app in He; cbn in He.
+    split; [ replace (List.length Δ + S k) with (List.length Δ + 1 + k) by lia; exact He | exact (IH HΔ) ].
+  - rewrite List.length_app in HD; cbn in HD; replace (List.length Δ + S k) with (List.length Δ + 1 + k) by lia; exact HD.
+Qed.
+
 (** The parts of a fresh compound, each at the position its binders shift
     to.  Stated at an optional position, so that one lemma serves both the
     environment with a bad position and the one without. *)
@@ -402,7 +439,7 @@ Section OFresh.
     - split; [ exact I | apply Forall_forall; intros; exact I ].
   Qed.
 
-  Lemma oufresh_body : forall Δ Φ, oufresh K (gu_body Δ Φ) -> ogfresh (oshift (List.length Δ) K) Φ.
+  Lemma oufresh_body : forall Δ sm Φ, oufresh K (gu_mk Δ (md_body sm Φ)) -> ogfresh (oshift (List.length Δ) K) Φ.
   Proof. destruct K; cbn; tauto. Qed.
   Lemma oufresh_alias : forall Δ E, oufresh K (gu_mk Δ (md_alias E)) -> omfresh (oshift (List.length Δ) K) E.
   Proof. destruct K; cbn; tauto. Qed.
@@ -425,7 +462,7 @@ End OFresh.
   ofresh_pi_A ofresh_pi_B ofresh_fn_M ofresh_app_l ofresh_app_r ofresh_let_M ofresh_let_B
   ofresh_letmod_U ofresh_mem ofresh_var omfresh_var omfresh_lit omfresh_mem omfresh_app_l omfresh_app_r
   oufresh_body oufresh_alias ogfresh_def_prefix ogfresh_def_body ogfresh_mod_prefix ogfresh_mod_unit
-  ogfresh_open_prefix ogfresh_open_target ogfresh_gens : avoid.
+  : avoid.
 (** Freshness does not read the name of an eliminator, so it is taken from
     the hypothesis rather than left to unification. *)
 #[local] Hint Extern 1 (ofresh _ _) =>
@@ -440,7 +477,7 @@ Section Eval.
   Variables (Θ : gdeps) (Ξ : gstack) (v b : nat).
 
   #[local] Hint Resolve env_av_nil env_av_cons env_av_var env_av_mod dav_args_snoc env_av_args
-    dmav_local_nil dmav_global_nil : mctt.
+    dmav_global_nil : mctt.
   #[local] Hint Extern 1 (dav _ _ (dlvl_lit _)) => repeat constructor : mctt.
   #[local] Hint Extern 1 (dav _ _ (dlvl_suc _)) => apply dav_lvl_suc : mctt.
   #[local] Hint Extern 1 (dav _ _ (dlvl_max _ _)) => apply dav_lvl_max : mctt.
@@ -498,7 +535,9 @@ Section Eval.
     (forall m args r, $*| m & args | Θ ⍮ Ξ ↘ r ->
        dav v b m -> (forall a, In a args -> dav v b a) -> dav v b r) /\
     (forall H ρ h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h -> forall K, env_av v b K ρ -> omfresh K H -> dmav v b h) /\
+    (forall Δ D ρ h, ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h -> forall K, env_av v b K ρ -> oufresh K (gu_mk Δ D) -> dmav v b h) /\
     (forall h n r, $ᵐ| h & n | Θ ⍮ Ξ ↘ r -> dmav v b h -> dav v b n -> dmav v b r) /\
+    (forall h ns r, $ᵐ*| h & ns | Θ ⍮ Ξ ↘ r -> dmav v b h -> (forall a, In a ns -> dav v b a) -> dmav v b r) /\
     (forall h x r, h ·ₜ x Θ ⍮ Ξ ↘ r -> dmav v b h -> dav v b r) /\
     (forall h y r, h ·ₘ y Θ ⍮ Ξ ↘ r -> dmav v b h -> dmav v b r) /\
     (forall h ch r, h ·ₜ* ch Θ ⍮ Ξ ↘ r -> dmav v b h -> dav v b r) /\
@@ -528,7 +567,9 @@ Section Eval.
                                 forall a, In a ms -> dav v b a)
              (fun m args r _ => dav v b m -> (forall a, In a args -> dav v b a) -> dav v b r)
              (fun H ρ h _ => forall K, env_av v b K ρ -> omfresh K H -> dmav v b h)
+             (fun Δ D ρ h _ => forall K, env_av v b K ρ -> oufresh K (gu_mk Δ D) -> dmav v b h)
              (fun h n r _ => dmav v b h -> dav v b n -> dmav v b r)
+             (fun h ns r _ => dmav v b h -> (forall a, In a ns -> dav v b a) -> dmav v b r)
              (fun h x r _ => dmav v b h -> dav v b r)
              (fun h y r _ => dmav v b h -> dmav v b r)
              (fun h ch r _ => dmav v b h -> dav v b r)
@@ -615,55 +656,43 @@ Section Eval.
             [ apply env_av_args; [ exact Hm | apply dav_args_snoc; assumption ]
             | rewrite List.length_app, Hlb; cbn [List.length]; replace (List.length Ps + 1) with (S (List.length Ps)) by lia; exact HA ]
       end ].
-    (** A local open: the entries it generates; a name it declares, the
-        newest entry of the body up to it. *)
-    all: try solve [ match goal with
-      | Hg : kgens _ _ _ _ ?its ?gs, IH : env_av _ _ (oshift (gm_binders (gens_append gm_nil 0 ?gs)) _) ?ρ2
-        |- env_av _ _ _ ?ρ2 =>
-          rewrite gens_append_binders, (kgens_length _ _ _ _ _ _ Hg), oshift_oshift in IH; cbn [gm_binders];
-          rewrite Nat.add_0_r in IH; exact IH
-      end ].
-    all: try solve [ match goal with
-      | Hi : gm_item_upto ?Φ ?x = Some (?Φ0, ?H, ?its1, _), HU : oufresh ?K (gu_body ?Δ ?Φ),
-        IHb : ogfresh _ ?Φ0 -> env_av _ _ _ ?ρ0,
-        IHh : forall K0, env_av _ _ K0 ?ρ0 -> omfresh K0 ?H -> dmav _ _ ?h |- _ =>
-          let Hf := fresh "Hf" in
-          assert (Hf : ogfresh (oshift (List.length Δ) K) (gm_open Φ0 H its1))
-            by (eapply ofresh_item_upto; [ exact Hi | apply oufresh_body; exact HU ]);
-          let Hdm := fresh "Hdm" in
-          pose proof (IHh _ (IHb (ogfresh_open_prefix _ _ _ _ Hf)) (ogfresh_open_target _ _ _ _ Hf)) as Hdm;
-          eauto
-      end ].
     (** What is left: the closures the rules build, and the module bodies,
         whose freshness is at the position their parameters and entries
         shift it to. *)
     - (* [efq] on a neutral *)
-      apply dav_neut; [ assumption |]. inversion H; subst.
+      apply dav_neut; [ assumption |].
+      match goal with Hn : dav _ _ (⇑ _ _) |- _ => inversion Hn; subst end.
       eapply dav_exfalso with (K := K); eassumption.
+    - (* an alias lacking no parameter: its target *)
+      match goal with IH : omfresh ?K ?E -> _, Hu : oufresh ?K (gu_mk nil (md_alias ?E)) |- _ =>
+        apply IH; pose proof (oufresh_alias _ _ _ Hu) as Hx; cbn [List.length] in Hx; rewrite oshift_zero in Hx; exact Hx end.
+    - (* a closure given its outermost parameter *)
+      match goal with IH : oufresh (oshift 1 ?K) _ -> _, Hu : oufresh ?K (gu_mk (_ ++ _) _) |- _ =>
+        exact (IH (oufresh_snoc _ _ _ _ Hu)) end.
     - (* the module of an inductive type, a member of a global module: the
          type former, applied to the module's arguments *)
-      apply H; [ constructor; all_in_with assumption | exact H1 ].
-    - (* a definition of a saturated body *)
-      assert (HΦ : ogfresh (oshift (List.length Δ) K) (gm_ext Φ' x (ge_def b0 pv A (Some M))))
-        by (eapply ofresh_prefix_upto; [ exact e0 | apply oufresh_body; exact H3 ]).
-      specialize (H (ogfresh_def_prefix _ _ _ _ _ _ _ HΦ)).
-      eapply H0; [ exact H | exact (ogfresh_def_body _ _ _ _ _ _ _ HΦ) ].
-    - (* an alias submodule of a global module: a closure over the empty environment *)
-      apply H. apply (dmav_local v b nil U args None); [ apply env_av_nil | exact I | exact H1 ].
-    - (* a submodule of a saturated body *)
-      assert (HΦ : ogfresh (oshift (List.length Δ) K) (gm_ext Φ' y (ge_mod pm Uy)))
-        by (eapply ofresh_prefix_upto; [ exact e0 | apply oufresh_body; exact H2 ]).
-      specialize (H (ogfresh_mod_prefix _ _ _ _ _ HΦ)).
-      eapply dmav_local_nil; [ exact H | exact (ogfresh_mod_unit _ _ _ _ _ HΦ) ].
+      match goal with IH : dav _ _ (d_ind _ _) -> _ -> _, Ha : forall a, In a _ -> dav _ _ a |- _ =>
+        apply IH; [ constructor; intros ? [] | exact Ha ] end.
+    - (* a definition of a saturated body, in its expansion *)
+      match goal with Hb : kbody _ _ _ ?Φ ?Φx, Hp : gm_prefix_upto ?Φx _ = Some _, Hu : oufresh ?K (gu_mk nil (md_body _ ?Φ)),
+                      IHb : ogfresh ?K _ -> _, IHM : forall K0, _ -> ofresh K0 _ -> _ |- _ =>
+        pose proof (oufresh_body _ _ _ _ Hu) as HΦ; cbn [List.length] in HΦ; rewrite oshift_zero in HΦ;
+        pose proof (ofresh_prefix_upto _ _ _ _ Hp (kbody_ogfresh _ _ _ _ _ _ Hb HΦ)) as HΦ';
+        exact (IHM _ (IHb (ogfresh_def_prefix _ _ _ _ _ _ _ HΦ')) (ogfresh_def_body _ _ _ _ _ _ _ HΦ')) end.
+    - (* a submodule of a saturated body, in its expansion *)
+      match goal with Hb : kbody _ _ _ ?Φ ?Φx, Hp : gm_prefix_upto ?Φx _ = Some _, Hu : oufresh ?K (gu_mk nil (md_body _ ?Φ)),
+                      IHb : ogfresh ?K _ -> _, IHM : forall K0, _ -> oufresh K0 _ -> _ |- _ =>
+        pose proof (oufresh_body _ _ _ _ Hu) as HΦ; cbn [List.length] in HΦ; rewrite oshift_zero in HΦ;
+        pose proof (ofresh_prefix_upto _ _ _ _ Hp (kbody_ogfresh _ _ _ _ _ _ Hb HΦ)) as HΦ';
+        exact (IHM _ (IHb (ogfresh_mod_prefix _ _ _ _ _ HΦ')) (ogfresh_mod_unit _ _ _ _ _ HΦ')) end.
     - (* the empty body *)
-      cbn [gm_binders]; rewrite oshift_zero; exact H.
+      cbn [gm_binders]; rewrite oshift_zero; assumption.
     - (* a definition entry *)
       cbn [gm_binders]; replace (S (gm_binders Φ)) with (1 + gm_binders Φ) by lia; rewrite <- oshift_oshift.
-      apply env_av_cons; [ exact H | constructor; exact H0 ].
+      apply env_av_cons; [ assumption | constructor; assumption ].
     - (* a submodule entry *)
       cbn [gm_binders]; replace (S (gm_binders Φ)) with (1 + gm_binders Φ) by lia; rewrite <- oshift_oshift.
-      apply env_av_cons;
-        [ exact H | constructor; eapply dmav_local_nil; [ exact H | exact (ogfresh_mod_unit _ _ _ _ _ H1) ] ].
+      apply env_av_cons; [ assumption | constructor; assumption ].
   Qed.
 End Eval.
 
@@ -692,7 +721,7 @@ Proof. intros * H; exact (proj1 (proj2 (eval_av Θ Ξ v b)) _ _ _ H). Qed.
 Lemma shty_av : forall Θ Ξ v b p ups ρ t a K, eval_shty Θ Ξ p ups ρ t a ->
     env_av v b K ρ -> ptfresh K t -> (forall u, In u ups -> dav v b u) -> dav v b a.
 Proof.
-  intros * H; destruct (eval_av Θ Ξ v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
+  intros * H; destruct (eval_av Θ Ξ v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
   exact (Hs _ _ _ _ _ H K).
 Qed.
 
@@ -700,7 +729,7 @@ Lemma ihty_av : forall Θ Ξ v b ρm A ρ t m a Km K, eval_ihty Θ Ξ ρm A ρ t
     env_av v b Km ρm -> ofresh (oshift (S (List.length (ptyp_ps t))) Km) A ->
     env_av v b K ρ -> ptfresh K t -> dav v b m -> dav v b a.
 Proof.
-  intros * H; destruct (eval_av Θ Ξ v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
+  intros * H; destruct (eval_av Θ Ξ v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
   intros; eapply Hy; eassumption.
 Qed.
 
@@ -1041,7 +1070,7 @@ Proof.
     constructor; eapply (proj1 (eval_av Θ Ξ v' b')); [ eassumption | apply IHinitial_env; lia | exact I ].
   - change None with (oshift 1 None).
     apply env_av_cons; [ apply IHinitial_env; lia |].
-    constructor; eapply dmav_local_nil; [ apply IHinitial_env; lia | exact I ].
+    constructor; eapply (proj1 (proj2 (proj2 (proj2 (proj2 (eval_av Θ Ξ v' b')))))); [ eassumption | apply IHinitial_env; lia | exact I ].
 Qed.
 
 (** The environment of [Γ ▹ A] avoids the new variable everywhere except at

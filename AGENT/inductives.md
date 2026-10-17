@@ -250,13 +250,13 @@ stored closed over them, as every definition is.
   (`System/Definitions.v`):
 
   ```
-  wf_gentry_ind_nil : … D ok … -> Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄
+  wf_gentry_ind_nil : … D ok … -> Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv D ⋄
   wf_gentry_ind_ext :
-    Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y ⊢e ge_ind pv D Φ ->
+    Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y ⊢ᵉ ge_ind pv D Φ ->
     Θ ⍮ (mq, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv D Φ)) :: Ξ ⍮ ind_uparams D ⊢ M : A ->
     gm_fresh x Φ ->
     Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y
-      ⊢e ge_ind pv D (Φ ⊳ x ↦ ge_def b pv' (ctx_pi (ind_uparams D) A) (Some (ctx_fn (ind_uparams D) M)))
+      ⊢ᵉ ge_ind pv D (Φ ⊳ x ↦ ge_def b pv' (ctx_pi (ind_uparams D) A) (Some (ctx_fn (ind_uparams D) M)))
   ```
 
   Each member is checked with the entry so far visible in its frame.  That
@@ -266,25 +266,23 @@ stored closed over them, as every definition is.
   growth that keeps every body.
 * `rc_ind` (`System/Command.v`):
   `cls_cons_in Θ Ξ R cs -> gs_fresh x Ξ ->
-   Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢e ge_ind pv D' (gen_body (ind_qname Ξ x) D') ->
-   Θ ⍮ Ξ ⊢[ch] cc_ind x pv R ⇝ Θ ⍮ gs_add x (ge_ind pv D' (gen_body …)) Ξ`,
+   Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_ind pv p D' (gen_body p D') ->
+   Θ ⍮ Ξ ⊢[ch] cc_ind x pv R ⇝ Θ ⍮ gs_add x (ge_ind pv p D' (gen_body p D')) Ξ`,
+  `p = ind_qname Ξ x`, the entry's own canonical path, and
   `D' = gs_ind Ξ (rd_filed R cs)`.  `ind_gens_typed` (`IndRec.v`) derives
-  that premise from `ge_ind pv D' ⋄` and `rec` not naming a constructor; the
+  that premise from `ge_ind pv p D' ⋄` and `rec` not naming a constructor; the
   checker (`Extraction/Command.v`, `ind_ok`) decides only those two.
 
 ## Names (option B)
 
-Only a direct path to a `ge_ind` is the type former:
-
-```
-wf_mem_glob_ind : ⊢ Θ ⍮ Ξ ⍮ Γ -> mod_qname H = Some mp ->
-  ind_lookup Θ Ξ (qname_app mp (x :: nil)) = Some D -> Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : ind_ty D
-wf_exp_eq_mem_glob_ind_unfold : … -> Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ a_ind (qname_app mp (x :: nil)) : ind_ty D
-```
-
-As a module, the type resolves (`member_type`) to `mr_mod T`, `T` the
-parameters it still takes (`mt_unit_mod`, at a `mr_body T (Some D)`).  A
-module alias of it (`module M := N`) is a module only:
+A member is typed by one rule, `wf_mem`, over what its module expression
+denotes (`mdenote`, `Core/Syntactic/Members.v`): a `ge_ind` entry denotes
+`ds_ind Θ' p Ns`, whose type (`ds_ty`) is the type former's at the
+arguments, and whose δ-reduct (`ds_red`) is the type former `p Ns`
+(`wf_exp_eq_mem_delta`).  Selecting from it reads the module part
+(`ds_mod`): the inductive type's module, at its canonical path.  A module
+alias of it (`module M := N`) denotes the module, not the type former, so
+it is a module only:
 
 ```
 inductive N : Type@0 where | z end
@@ -297,18 +295,19 @@ The checker names that case (`mod_blame`, `re_mod_term`).
 
 ## Inductive aliases
 
-`[private] inductive L (Δ) := X Ms` (`cc_ind_alias`, `rc_ind_alias`) names
-the inductive type `X`, or the target of the inductive alias `X`, at
-arguments for a prefix of its uniform parameters.  The entry is
-`ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns`: `p` the canonical path, `Ns` (at
-most `ind_nu D` of them) over the alias's telescope; an alias of an alias
-is resolved when it is declared (`ind_target`, `Ns[Ms] ++ Ks`).
+`[private] inductive L (Δ) := E` (`cc_ind_alias`, `rc_ind_alias`): `E`, a
+well-formed module expression in `Δ ++ gs_tele Ξ`, denotes an inductive
+type `ds_ind Θ' p Ns`, over the parameters `Θ'` it still takes (any
+number: an alias of an alias is accepted as what it names).  The entry is
+`ge_ind_alias pv (Θ' ++ Δ ++ gs_tele Ξ) p Ns`: `p` the canonical path,
+`Ns` (at most `ind_nu D` of them) over the alias's telescope.  The checker
+(`indalias_step`) checks `Δ`, the module `E` applies, `E`, then reads its
+description.
 
-* As a term (`wf_mem_glob_ind_alias`), `L` is `λΔ. p Ns`, of type
-  `ctx_pi Δ (ind_ty_at D Ns)`, δ-unfolding to it
-  (`wf_exp_eq_mem_glob_ind_alias_unfold`).
-* As a module (`gc_module`), it is `gu_mk Δ (md_alias (me_apps (qname_mod p)
-  Ns))`: `L.cons` is `(p Ns).cons`, and `L.rec` the type's recursor.
+* As a term, `L` denotes `ds_ind` again: of type `ctx_pi Δ (ind_ty_at D
+  Ns)`, δ-reducing to `λΔ. p Ns` (`wf_mem`, `wf_exp_eq_mem_delta`).
+* As a module, `L.cons` is `(p Ns).cons`, and `L.rec` the type's
+  recursor.
 * `open … use (X)` declares an inductive alias where `X` is an inductive
   type or an inductive alias (`item_gen`, `ig_ind_alias`).
 

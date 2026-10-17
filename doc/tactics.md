@@ -334,7 +334,7 @@ all: mauto 3.
 
 | Family | Lines | Description |
 | --- | --- | --- |
-| `saturate_wk`, `saturate_sub`, `saturate_sub_eq` | 92, 97, 1171 | Add the domain and codomain well-formedness of every operation in the context. `wf_sub_dom`/`wf_sub_cod` are **deliberately not** `mctt` hints, so these are how you get them; the canonical opening of a gluing proof is `assert Δ ⊢s σ : Γ by mauto 3. saturate_sub.` |
+| `saturate_wk`, `saturate_sub`, `saturate_sub_eq` | 92, 97, 1171 | Add the domain and codomain well-formedness of every operation in the context. `wf_sub_dom`/`wf_sub_cod` are **deliberately not** `mctt` hints, so these are how you get them; the canonical opening of a gluing proof is `assert Δ ⊢ˢ σ : Γ by mauto 3. saturate_sub.` |
 | `push_wk_step`, `push_wk_in`, `push_wk_goal`, `push_wk` | 205, 210, 213, 225 | Move an operation **inward**, toward the leaves: the induction hypothesis produces it on the outside, the rule to be applied wants it on the inside. Alternates `simpl` (which distributes over the term formers) with the `Substitution.v` corollaries that move it past a substitution. Uses `setoid_rewrite` throughout, because the induction hypotheses are still quantified over the target context and plain `rewrite` will not descend under a binder. |
 | `push_sub_step`, `push_sub_in`, `push_sub_goal`, `push_sub` | 523, 529, 532, 540 | The same for substitutions. |
 | `lift_wk_nat`, `lift_wk_step`, `lift_wk` | 245, 253, 262 | Saturate with the **lifted** operations `q φ`, one `assert` per binder. `wf_wk_q` *is* a hint, but reconstructing `q φ` inside the `eauto` search costs three levels on top of the rule application, which puts the wide cases (`λ`-E, `ℕ`-E) out of reach at any terminating depth. `lift_wk_nat` seeds the `ℕ`-eliminator cases separately: their first binder is over the closed type `ℕ`, which has no induction hypothesis of its own for `lift_wk_step` to use. |
@@ -355,7 +355,7 @@ those side facts, so there is machinery to add all of them at once.
 | --- | --- | --- |
 | `invert_wf_ctx1 H` | 22 | From `⊢ Γ ▹ A` derive `⊢ Γ` and `∃ i, Γ ⊢ A : Type@i` via `ctx_decomp`, but *skip* introducing the level if an equivalent hypothesis (marked or not) is already present. |
 | `invert_wf_ctx` | 38 | `invert_wf_ctx1` on every hypothesis, then `clear_dups`. |
-| `gen_core_presup H` | 47 | The core presupposition generator, one case per judgment form: `⊢ Γ ≈ Δ` ⇒ `presup_ctx_eq`; `⊢ Γ ⊆ Δ` ⇒ `presup_ctx_sub`; `Γ ⊢ M : A` ⇒ `presup_exp`; `Γ ⊢s σ : Δ` ⇒ `presup_sub`. |
+| `gen_core_presup H` | 47 | The core presupposition generator, one case per judgment form: `⊢ Γ ≈ Δ` ⇒ `presup_ctx_eq`; `⊢ Γ ⊆ Δ` ⇒ `presup_ctx_sub`; `Γ ⊢ M : A` ⇒ `presup_exp`; `Γ ⊢ˢ σ : Δ` ⇒ `presup_sub`. |
 | `gen_lookup_presup H` | 63 | From `Γ ∋ #x : A` derive `∃ i, Γ ⊢ A : Type@i`, unless already known. |
 | `gen_core_presups` | 76 | Run `gen_core_presup` on everything, `invert_wf_ctx`, then `gen_lookup_presup` on everything, then dedupe. |
 
@@ -373,7 +373,7 @@ Related:
 
 | Tactic | Location | Description |
 | --- | --- | --- |
-| `saturate_ctx_sub` | `Core/Syntactic/CtxSub.v:121` | For every `⊢ Γ ⊆ Δ` in the context add its four consequences — `ctx_sub_escape` (the refinement substitution `Γ ⊢s Id : Δ`), `ctx_sub_dom`, `ctx_sub_cod`, `ctx_sub_length` — then dedupe. |
+| `saturate_ctx_sub` | `Core/Syntactic/CtxSub.v:121` | For every `⊢ Γ ⊆ Δ` in the context add its four consequences — `ctx_sub_escape` (the refinement substitution `Γ ⊢ˢ Id : Δ`), `ctx_sub_dom`, `ctx_sub_cod`, `ctx_sub_length` — then dedupe. |
 | `impl_opt_constructor` | `Core/Syntactic/SystemOpt.v:68` | `intros; gen_presups; mautosolve 4`. Proves the "optimized" typing rules in `SystemOpt.v` — variants with fewer premises, since the missing premises are recoverable as presuppositions. Each is then swapped into the `mctt` database in place of the original (`Hint Resolve` + `Remove Hints`). |
 | `apply_subtyping` | `Algorithmic/Subtyping/Lemmas.v:9` | From `Γ ⊢ M : A` and `Γ ⊢ A ⊆ B`, derive `Γ ⊢ M : B` and clear the original. |
 
@@ -572,14 +572,14 @@ machinery as the PER layer, with `<∙>` (predicate equivalence) in place of
 | --- | --- | --- |
 | `saturate_glu_by_per1` / `saturate_glu_by_per` | `CoreLemmas.v:684, 696` | Transport a `glu_univ_elem i P El a` along a `per_univ_elem i _ a a'` (in either direction) to get the glue predicate for the other value. |
 | `saturate_glu_info1` / `saturate_glu_info` | `CoreLemmas.v:751, 763` | Extract the syntactic consequences of glue membership: from `P Γ A` get `Γ ⊢ A : Type@i` (`glu_univ_elem_univ_lvl`), from `El …` get the typing of the term (`glu_univ_elem_trm_escape`). |
-| `saturate_kripke_escape` | `Weakening/Lemmas.v:26` | For every Kripke weakening `Γ ⊢k φ : Δ` add `kripke_escape`, i.e. `Γ ⊢s ι φ : Δ`. Because `wf_sub_dom`/`wf_sub_cod` are not hints, this must be **followed by `saturate_sub`** to get the two contexts. |
+| `saturate_kripke_escape` | `Weakening/Lemmas.v:26` | For every Kripke weakening `Γ ⊢ᵏ φ : Δ` add `kripke_escape`, i.e. `Γ ⊢ˢ ι φ : Δ`. Because `wf_sub_dom`/`wf_sub_cod` are not hints, this must be **followed by `saturate_sub`** to get the two contexts. |
 | `saturate_kripke` | `Weakening/Lemmas.v:245` | The same for `kripke_dom`/`kripke_cod` directly. Those two are deliberately not hints either — `eauto` would cycle them against the context introduction rules. |
 
 ### 6.5 Judgment-level destruction and inversion (`Core/Soundness/LogicalRelation/Lemmas.v`)
 
 | Tactic | Line | Description |
 | --- | --- | --- |
-| `destruct_glu_rel_by_assumption sub_glu_rel H` | 996 | The `glu` analogue of `destruct_rel_by_assumption`: for every `Δ ⊢s σ ® ρ ∈ Sb` in the context, instantiate `H` and destruct. |
+| `destruct_glu_rel_by_assumption sub_glu_rel H` | 996 | The `glu` analogue of `destruct_rel_by_assumption`: for every `Δ ⊢ˢ σ ® ρ ∈ Sb` in the context, instantiate `H` and destruct. |
 | `destruct_glu_rel_exp_with_sub` | 1006 | Apply it to every `glu_rel_exp_with_sub`-valued hypothesis; also destruct bare ones. |
 | `destruct_glu_rel_typ_with_sub` | 1015 | Same for `glu_rel_typ_with_sub`. |
 | `invert_glu_rel_exp H` | 1069 | Fallback chain over `glu_rel_exp_clean_inversion2`, `…1`, then `inversion`. The "clean" versions require a `glu_ctx_env` (and for `2` also a typing) premise, which they discharge by `eassumption`, and give back a single universe level instead of an existential. |

@@ -1,7 +1,7 @@
 (** * NbE Reads the Global Context Only Through Its Lookups
 
     Evaluation and readback read the global context through [gc_resolve],
-    [gc_module], [ind_lookup] and [ind_alias_lookup] alone, so two global contexts with the same
+    [gc_module], [ind_lookup], [ind_alias_lookup] and [gc_frame] alone, so two global contexts with the same
     lookups normalize alike. *)
 
 From Mctt Require Import LibTactics.
@@ -16,9 +16,14 @@ Section GlobalExt.
   Hypothesis Hmod : forall p, gc_module Θ1 Ξ1 p = gc_module Θ2 Ξ2 p.
   Hypothesis Hind : forall p, ind_lookup Θ1 Ξ1 p = ind_lookup Θ2 Ξ2 p.
   Hypothesis Hia : forall p, ind_alias_lookup Θ1 Ξ1 p = ind_alias_lookup Θ2 Ξ2 p.
+  Hypothesis Hfr : forall p, gc_frame Ξ1 p = gc_frame Ξ2 p.
+  Hypothesis Hbody : forall p, gc_body Θ1 Ξ1 p = gc_body Θ2 Ξ2 p.
 
   Lemma ind_lookup_ext : forall p, ind_lookup Θ1 Ξ1 p = ind_lookup Θ2 Ξ2 p.
   Proof. exact Hind. Qed.
+
+  Lemma gc_loc_ext : forall p, gc_loc Θ1 Ξ1 p = gc_loc Θ2 Ξ2 p.
+  Proof. intros; unfold gc_loc; rewrite Hfr, Hbody; reflexivity. Qed.
 
   #[local] Ltac ext_case :=
     intros; econstructor;
@@ -41,14 +46,16 @@ Section GlobalExt.
     (forall ρ U ch k, ukind Θ1 Ξ1 ρ U ch k -> ukind Θ2 Ξ2 ρ U ch k) /\
     (forall ρ H ch k, skind Θ1 Ξ1 ρ H ch k -> skind Θ2 Ξ2 ρ H ch k) /\
     (forall ρ Φ ρ', kenv Θ1 Ξ1 ρ Φ ρ' -> kenv Θ2 Ξ2 ρ Φ ρ') /\
+    (forall ρ Φ Φx, kbody Θ1 Ξ1 ρ Φ Φx -> kbody Θ2 Ξ2 ρ Φ Φx) /\
     (forall ρ H its gs, kgens Θ1 Ξ1 ρ H its gs -> kgens Θ2 Ξ2 ρ H its gs).
   Proof.
     apply kind_mut_ind; intros;
-      first [ solve [ eapply dk_global_mod; rewrite <- Hmod; eassumption ]
-            | solve [ eapply dk_global_alias; [ rewrite <- Hmod; eassumption | eauto ] ]
-            | solve [ eapply dk_global_def; rewrite <- Hres; eassumption ]
-            | solve [ eapply uk_item; eauto ]
-            | solve [ econstructor; eauto ] ].
+      repeat match goal with
+             | H : _ \/ _ |- _ => destruct H
+             | H : exists _, _ |- _ => destruct H
+             end;
+      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext in *;
+      solve [ econstructor; eauto 6 ].
   Qed.
 
   Lemma eval_ext :
@@ -57,7 +64,9 @@ Section GlobalExt.
     (forall Ms ρ ms, eval_exps Θ1 Ξ1 Ms ρ ms -> eval_exps Θ2 Ξ2 Ms ρ ms) /\
     (forall m ns r, eval_apps Θ1 Ξ1 m ns r -> eval_apps Θ2 Ξ2 m ns r) /\
     (forall H ρ h, eval_modexp Θ1 Ξ1 H ρ h -> eval_modexp Θ2 Ξ2 H ρ h) /\
+    (forall Δ D ρ h, eval_close Θ1 Ξ1 Δ D ρ h -> eval_close Θ2 Ξ2 Δ D ρ h) /\
     (forall h n r, eval_appm Θ1 Ξ1 h n r -> eval_appm Θ2 Ξ2 h n r) /\
+    (forall h ns r, eval_appms Θ1 Ξ1 h ns r -> eval_appms Θ2 Ξ2 h ns r) /\
     (forall h x r, eval_sel Θ1 Ξ1 h x r -> eval_sel Θ2 Ξ2 h x r) /\
     (forall h y r, eval_selm Θ1 Ξ1 h y r -> eval_selm Θ2 Ξ2 h y r) /\
     (forall h ch r, eval_selc Θ1 Ξ1 h ch r -> eval_selc Θ2 Ξ2 h ch r) /\
@@ -75,7 +84,9 @@ Section GlobalExt.
              (fun Ms ρ ms _ => eval_exps Θ2 Ξ2 Ms ρ ms)
              (fun m ns r _ => eval_apps Θ2 Ξ2 m ns r)
              (fun H ρ h _ => eval_modexp Θ2 Ξ2 H ρ h)
+             (fun Δ D ρ h _ => eval_close Θ2 Ξ2 Δ D ρ h)
              (fun h n r _ => eval_appm Θ2 Ξ2 h n r)
+             (fun h ns r _ => eval_appms Θ2 Ξ2 h ns r)
              (fun h x r _ => eval_sel Θ2 Ξ2 h x r)
              (fun h y r _ => eval_selm Θ2 Ξ2 h y r)
              (fun h ch r _ => eval_selc Θ2 Ξ2 h ch r)
@@ -86,9 +97,13 @@ Section GlobalExt.
              (fun ρ nm A Bs t v r _ => eval_ih Θ2 Ξ2 ρ nm A Bs t v r)
              (fun p ups ρ t a _ => eval_shty Θ2 Ξ2 p ups ρ t a)
              (fun ρm A ρ t v a _ => eval_ihty Θ2 Ξ2 ρm A ρ t v a)).
-    all: try solve [ intros; eapply eval_benv_open; eauto; apply kind_ext; assumption ].
-    all: try solve [ ext_case | intros; econstructor; eauto
-                   | intros * H; econstructor; intros ? ?; rewrite <- Hmod; apply H ].
+    all: intros;
+      repeat match goal with
+             | H : _ \/ _ |- _ => destruct H
+             | H : exists _, _ |- _ => destruct H
+             end;
+      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?ind_lookup_ext, ?Hia in *.
+    all: try solve [ econstructor; eauto; apply kind_ext; assumption ].
   Qed.
 
   Lemma fresh_tele_ext : forall ρ T s vs, fresh_tele Θ1 Ξ1 ρ T s vs -> fresh_tele Θ2 Ξ2 ρ T s vs.

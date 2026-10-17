@@ -36,6 +36,7 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic.System Require Export Tactics.
+From Mctt.Core.Syntactic.System Require Import LookupSound.
 Import Syntax_Notations Wk_Notations.
 
 (** ** The Two Sides of a Term Equation *)
@@ -45,6 +46,17 @@ Lemma presup_exp_eq_sides : forall {Θ Ξ Γ M M' A},
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\ Θ ⍮ Ξ ⍮ Γ ⊢ M' : A.
 Proof.
   induction 1; assert (⊢ Θ ⍮ Ξ ⍮ Γ) by mauto 2; destruct_conjs; split; mauto 3.
+
+  (** Members: the left-hand side by [wf_mem], at the type the lookup reads,
+      which is a type; a δ-reduct is of that type. *)
+  all: try solve [
+    match goal with HH : _ ⍮ _ ⍮ _ ⊢ᵐ ?H ≈ _, Hm : mdenote _ _ _ (me_mem ?H _) ?R, Ht : ds_ty _ _ ?R = Some ?A |- _ =>
+      let Hv := fresh "Hv" in
+      pose proof (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH))) as Hv;
+      destruct (desc_ok_ty _ _ Hv _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Ht) as [[? HA] HM];
+      first [ eapply wf_mem; [ eapply wf_modexp_eq_refl_left; exact HH | exact Hm | exact Ht | exact HA | exact HM ]
+            | apply HM; assumption ]
+    end ].
 
   (** The universe congruence is stated at [Type⟨succl M⟩], so its
       right-hand side has to be moved there from [Type⟨succl M'⟩].  Its goal
@@ -75,33 +87,33 @@ Proof.
       [A'[Id ,, M']] and then transported twice: along [Id ,, M' ≈ Id ,, M] by
       [sub_eq_preserves_exp], and along [A' ≈ A] by [sub_preserves_wf]. *)
   - assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ ⊥) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M : Γ ▹ ⊥) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M' : Γ ▹ ⊥) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,M : Γ ▹ ⊥) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,M' : Γ ▹ ⊥) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ efq M' return A' : A'[Id,,M']) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' ≈ M : ⊥) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M' ≈ Id,,M : Γ ▹ ⊥) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,M' ≈ Id,,M : Γ ▹ ⊥) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M'] ≈ A'[Id,,M] : Typeω@i) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M] ≈ A[Id,,M] : Typeω@i) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[Id,,M] : Typeω@i) by mauto 2.
     eapply wf_conv; [ eassumption | eassumption | mauto 2 ].
 
   (** [Π], right.  Only the codomain has to move, and it moves by context
-      conversion: [Γ ▹ A'] refines [Γ ▹ A]. *)
-  - assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢s Id : Γ ▹ A) by mauto 3.
-    mauto 3.
-
-  (** Small [Π], right: the same, with the domain moved to a large
-      universe for context conversion. *)
-  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@0) by (eapply wf_exp_eq_suniv_large; eassumption).
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@0) by (eapply wf_exp_suniv_large; eassumption).
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@0) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢s Id : Γ ▹ A) by mauto 3.
-    mauto 3.
+      conversion: [Γ ▹ A'] refines [Γ ▹ A].  In a small universe, the domain
+      is moved to a large one for context conversion first. *)
+  - match goal with Hu : _ ⍮ _ ⍮ _ ⊢ᵤ _ |- _ => inversion Hu; subst end.
+    + assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ˢ Id : Γ ▹ A) by mauto 3.
+      eapply wf_pi; [ eassumption | eassumption | cbn in *; mauto 3 ].
+    + match goal with HL : _ ⍮ _ ⍮ _ ⊢ _ : Level@?n |- _ => rename HL into HL0 end.
+      assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@0) by (eapply wf_exp_eq_suniv_large; eassumption).
+      assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@0) by (eapply wf_exp_suniv_large; eassumption).
+      assert (Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@0) by mauto 3.
+      assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ˢ Id : Γ ▹ A) by mauto 3.
+      eapply wf_pi; [ eassumption | eassumption | mauto 3 ].
 
   (** [λ], right.  The codomain [B] is not the type of any premise, so its
       level is unrelated to [i] and the bridging equation [Π A' B ≈ Π A B] has
       to be assembled at the maximum of the two. *)
-  - assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢s Id : Γ ▹ A) by mauto 3.
+  - assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ˢ Id : Γ ▹ A) by mauto 3.
     assert (exists j, Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@j) as [j] by mauto 2 using presup_exp_typ.
     assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B : Typeω@j) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ λ A' M' : Π A' B) by mauto 3.
@@ -116,10 +128,10 @@ Proof.
 
   (** application, right: the type is the codomain at the argument, and the
       arguments are equal. *)
-  - assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,N : Γ ▹ A) by mauto 2.
+  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,N : Γ ▹ A) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' $ N' : B[Id,,N']) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ N' ≈ N : A) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,N' ≈ Id,,N : Γ ▹ A) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,N' ≈ Id,,N : Γ ▹ A) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ B[Id,,N'] ≈ B[Id,,N] : Typeω@i) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ B[Id,,N] : Typeω@i) by mauto 2.
     eapply wf_conv; eassumption.
@@ -127,11 +139,11 @@ Proof.
   (** [let], right: as for [λ], the body moves by context conversion, and the
       type moves along the equal bodies. *)
   - assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' : A') by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢s Id : Γ ▸ A ≔ M) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢ˢ Id : Γ ▸ A ≔ M) by mauto 3.
     assert (exists j, Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ C : Typeω@j) as [j] by mauto 2 using presup_exp_typ.
     assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢ B' : C) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA' M') B' : C[Id,,M']) by (eapply wf_let; cycle 3; [ eassumption | eassumption .. ]).
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M ≈ Id,,M' : Γ ▸ A ≔ M) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id,,M ≈ Id,,M' : Γ ▸ A ≔ M) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ≈ C[Id,,M'] : Typeω@j) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] : Typeω@j) by mauto 3.
     eapply wf_conv; [ eassumption | eassumption | mauto 2 ].
@@ -140,14 +152,6 @@ Proof.
   - assert (exists j, Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Typeω@j) as [j] by mauto 2 using presup_exp_typ.
     eapply wf_let_mod; eauto using wf_unit_eq_refl_left.
 
-  (** [δ], right: the generalized body, which [presup_global] types. *)
-  - eapply wf_glob_body; eassumption.
-
-  (** An inductive alias unfolded: the term it δ-unfolds to, which
-      [presup_global] types too. *)
-  - match goal with HΓ : ⊢ _ ⍮ _ ⍮ _, Hl : ind_alias_lookup _ _ _ = Some _, Hd : ind_lookup _ _ _ = Some _ |- _ =>
-      destruct (wf_ind_alias _ _ _ _ _ _ _ HΓ Hl) as (D' & Hd' & _ & _ & HM);
-      rewrite Hd in Hd'; injection Hd' as <-; exact HM end.
 Qed.
 
 Theorem presup_exp_eq : forall {Θ Ξ Γ M M' A},
@@ -210,8 +214,8 @@ Hint Resolve presup_subtyp_left : mctt.
 (** ** Substitution Equivalence *)
 
 Theorem presup_sub_eq : forall {Θ Ξ Γ Δ σ σ'},
-    Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
-    ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ /\ Θ ⍮ Ξ ⍮ Γ ⊢s σ' : Δ /\ ⊢ Θ ⍮ Ξ ⍮ Δ.
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ /\ Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ' : Δ /\ ⊢ Θ ⍮ Ξ ⍮ Δ.
 Proof.
   intros * [Hσ Hσ' _].
   exact (conj (wf_sub_dom _ _ _ _ _ Hσ) (conj Hσ (conj Hσ' (wf_sub_cod _ _ _ _ _ Hσ)))).

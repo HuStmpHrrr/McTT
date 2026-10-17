@@ -74,7 +74,7 @@ Section Rename.
   with dmrn (h : dmod) : dmod :=
     match h with
     | dm_global p args => dm_global p (List.map drn args)
-    | dm_local ρ U args => dm_local (List.map dern ρ) U (List.map drn args)
+    | dm_local Δ D ρ => dm_local Δ D (List.map dern ρ)
     | dm_member h ch => dm_member (dmrn h) ch
     end
   with dern (e : dentry) : dentry :=
@@ -148,7 +148,7 @@ Section Eval.
   Proof. intros; unfold kpad, ern; rewrite List.map_app; f_equal; induction n; cbn; f_equal; assumption. Qed.
 
   Lemma kbentry_rn : forall ρ E, dern f (kbentry ρ E) = kbentry (ern f ρ) E.
-  Proof. intros ρ []; reflexivity. Qed.
+  Proof. intros ρ [? ? ? ? | ? [] | ? ? ? ? | ? ? ? ?]; reflexivity. Qed.
 
   Lemma kgens_env_rn : forall gs ρ k, ern f (kgens_env ρ k gs) = kgens_env (ern f ρ) k gs.
   Proof.
@@ -162,6 +162,7 @@ Section Eval.
     (forall ρ U ch k, ukind Θ Ξ ρ U ch k -> ukind Θ Ξ (ern f ρ) U ch k) /\
     (forall ρ H ch k, skind Θ Ξ ρ H ch k -> skind Θ Ξ (ern f ρ) H ch k) /\
     (forall ρ Φ ρ', kenv Θ Ξ ρ Φ ρ' -> kenv Θ Ξ (ern f ρ) Φ (ern f ρ')) /\
+    (forall ρ Φ Φx, kbody Θ Ξ ρ Φ Φx -> kbody Θ Ξ (ern f ρ) Φ Φx) /\
     (forall ρ H its gs, kgens Θ Ξ ρ H its gs -> kgens Θ Ξ (ern f ρ) H its gs).
   Proof.
     apply kind_mut_ind; intros; cbn [dmrn ern List.map dern drn] in *;
@@ -173,6 +174,7 @@ Section Eval.
     all: try solve [ econstructor; [ eassumption | rewrite <- kpad_rn; eassumption | eassumption ] ].
     all: try solve [ econstructor; rewrite <- kpad_rn; eassumption ].
     all: try solve [ econstructor; rewrite env_mod_rn; eassumption ].
+    all: try solve [ eapply uk_item_mod; [ eassumption | rewrite <- kpad_rn; eassumption | eassumption | eassumption ] ].
   Qed.
 
   Lemma eval_rn :
@@ -181,7 +183,9 @@ Section Eval.
     (forall Ms ρ ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ern f ρ ↘ List.map (drn f) ms) /\
     (forall m args r, $*| m & args | Θ ⍮ Ξ ↘ r -> $*| drn f m & List.map (drn f) args | Θ ⍮ Ξ ↘ drn f r) /\
     (forall H ρ h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h -> ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ern f ρ ↘ dmrn f h) /\
+    (forall Δ D ρ h, ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h -> ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ern f ρ ↘ dmrn f h) /\
     (forall h n r, $ᵐ| h & n | Θ ⍮ Ξ ↘ r -> $ᵐ| dmrn f h & drn f n | Θ ⍮ Ξ ↘ dmrn f r) /\
+    (forall h ns r, $ᵐ*| h & ns | Θ ⍮ Ξ ↘ r -> $ᵐ*| dmrn f h & List.map (drn f) ns | Θ ⍮ Ξ ↘ dmrn f r) /\
     (forall h x r, h ·ₜ x Θ ⍮ Ξ ↘ r -> dmrn f h ·ₜ x Θ ⍮ Ξ ↘ drn f r) /\
     (forall h y r, h ·ₘ y Θ ⍮ Ξ ↘ r -> dmrn f h ·ₘ y Θ ⍮ Ξ ↘ dmrn f r) /\
     (forall h ch r, h ·ₜ* ch Θ ⍮ Ξ ↘ r -> dmrn f h ·ₜ* ch Θ ⍮ Ξ ↘ drn f r) /\
@@ -201,7 +205,9 @@ Section Eval.
              (fun Ms ρ ms _ => ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ern f ρ ↘ List.map (drn f) ms)
              (fun m args r _ => $*| drn f m & List.map (drn f) args | Θ ⍮ Ξ ↘ drn f r)
              (fun H ρ h _ => ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ern f ρ ↘ dmrn f h)
+             (fun Δ D ρ h _ => ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ern f ρ ↘ dmrn f h)
              (fun h n r _ => $ᵐ| dmrn f h & drn f n | Θ ⍮ Ξ ↘ dmrn f r)
+             (fun h ns r _ => $ᵐ*| dmrn f h & List.map (drn f) ns | Θ ⍮ Ξ ↘ dmrn f r)
              (fun h x r _ => dmrn f h ·ₜ x Θ ⍮ Ξ ↘ drn f r)
              (fun h y r _ => dmrn f h ·ₘ y Θ ⍮ Ξ ↘ dmrn f r)
              (fun h ch r _ => dmrn f h ·ₜ* ch Θ ⍮ Ξ ↘ drn f r)
@@ -217,10 +223,7 @@ Section Eval.
       repeat change (List.map (dern f) ?ρ) with (ern f ρ) in *;
       autorewrite with rn in *; cbn [List.map] in *;
       try solve [ econstructor; autorewrite with rn; eauto ].
-    all: try solve [ eapply eval_benv_open; [ eauto | apply kind_rn; eassumption | eauto ] ].
-    all: try solve [ first [ eapply eval_sel_item | eapply eval_selm_item ];
-                     [ autorewrite with rn; assumption | eassumption | eauto
-                     | rewrite env_entry_rn; match goal with He : env_entry _ 0 = _ |- _ => rewrite He; reflexivity end ] ].
+    all: try solve [ econstructor; [ apply kind_rn; eassumption | eassumption | eauto | eauto ] ].
     - (* a variable *) rewrite <- env_var_rn; apply eval_exp_var.
     - (* a module slot *) rewrite <- env_mod_rn; apply eval_me_var.
   Qed.
@@ -524,14 +527,14 @@ Section Read.
   Lemma shty_rn : forall p ups ρ t a,
       eval_shty Θ Ξ p ups ρ t a -> eval_shty Θ Ξ p (List.map (drn f) ups) (ern f ρ) t (drn f a).
   Proof.
-    intros * H; destruct (eval_rn Θ Ξ f) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
+    intros * H; destruct (eval_rn Θ Ξ f) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
     exact (Hs _ _ _ _ _ H).
   Qed.
 
   Lemma ihty_rn : forall ρm A ρ t m a,
       eval_ihty Θ Ξ ρm A ρ t m a -> eval_ihty Θ Ξ (ern f ρm) A (ern f ρ) t (drn f m) (drn f a).
   Proof.
-    intros * H; destruct (eval_rn Θ Ξ f) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
+    intros * H; destruct (eval_rn Θ Ξ f) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
     exact (Hy _ _ _ _ _ _ H).
   Qed.
 
@@ -806,7 +809,9 @@ Proof.
     assert (drn f m = m) as Em by (eapply functional_eval_exp; eassumption).
     cbn [extend_env ern List.map dern]; fold (ern f ρ).
     rewrite Hρ, Em; reflexivity.
-  - cbn [extend_env_mod ern List.map dern dmrn]; fold (ern f ρ); rewrite Hρ; reflexivity.
+  - pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (eval_rn Θ Ξ f))))) _ _ _ H0) as Hh; rewrite Hρ in Hh.
+    assert (dmrn f h = h) as Eh by (eapply functional_eval_modexp; eassumption).
+    cbn [extend_env_mod ern List.map dern]; fold (ern f ρ); rewrite Hρ, Eh; reflexivity.
 Qed.
 
 Corollary eval_initial_rn : forall Θ Ξ Γ ρ M m,

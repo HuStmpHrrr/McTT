@@ -892,37 +892,64 @@ Hint Unfold rel_elem : mctt.
 
 (** * Module PER
 
-    Module values are related closure-style, as [Π] relates [λ]-closures:
-    through what their parts evaluate to, never by comparing syntax or
-    environments.
+    Module values are related extensionally in their missing parameters, as
+    [Π] relates functions, and structurally once saturated:
 
-    - Two global modules are the same path with arguments related at the
-      types of its telescope.
-    - Two local units walk their parameters outermost first, each type
-      related: supplied arguments are related, and missing ones quantified
-      over related pairs.  Then their bodies are related entry by entry, with
-      the same names in the same order: a definition by its type and value,
-      a module by its closure, a local open by the value of its target; or
-      their alias targets by their values.
-    - Member closures are related componentwise.
+    - Two values still lacking a parameter are related when their next
+      parameters' types are, and the values at every related pair of
+      arguments are related ([per_dmod_fun]).
+    - Two saturated values are related when they are the same global module
+      at related arguments ([per_dmod_global]), or two bodies related entry
+      by entry as written, each entry seen in the environment the entries
+      before it make, read through the entries their local opens generate
+      ([per_dmod_body]): a definition by its type and value, a module by its
+      closure, a local open by the value of its target.
 
-    The relation is not indexed by a type: the types it relates members at are
+    No value is a saturated alias ([eval_close]), so these are all the
+    saturated values.  Two different global paths are never related.  The
+    relation is not indexed by a type: the types it relates members at are
     those the units declare. *)
 
+(** The next parameter's type a module value still lacks: a closure's
+    outermost missing parameter, in its environment; a global module's
+    first parameter past its arguments; a submodule closure's base's. *)
+Inductive nextparam : dmod -> domain -> Prop :=
+| np_local : forall Δ A D ρ a,
+    ⟦ A ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ a ->
+    nextparam (dm_local (Δ ++ ce_ass A :: nil) D ρ) a
+| np_global : forall p T Φ args A a,
+    gc_loc gc_deps gc_stack p = Some (T, Φ) ->
+    List.nth_error (List.rev T) (List.length args) = Some (ce_ass A) ->
+    ⟦ A ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil args ↘ a ->
+    nextparam (dm_global p args) a
+| np_member : forall h ch a,
+    nextparam h a ->
+    nextparam (dm_member h ch) a.
+
 Inductive per_dmod : dmod -> dmod -> Prop :=
-(** The same global module, its arguments related at its telescope. *)
+(** The same saturated global module, its arguments related at its
+    telescope: a body stored at [p], a closed module or an open frame. *)
 | per_dmod_global :
-  `{ gc_module gc_deps gc_stack p = Some (mr_body T oD) ->
+  `{ gc_loc gc_deps gc_stack p = Some (T, Φ) ->
+     List.length args = List.length T ->
      per_gargs (List.rev T) nil nil args args' ->
      per_dmod (dm_global p args) (dm_global p args') }
-(** Two unit closures, related through their parameters and contents. *)
-| per_dmod_local :
-  `{ per_ltele (List.rev (gu_params U)) ρ (gu_def U) (List.rev (gu_params U')) ρ' (gu_def U') args args' ->
-     per_dmod (dm_local ρ U args) (dm_local ρ' U' args') }
-(** Submodule closures of related modules, at the same chain. *)
-| per_dmod_member :
-  `{ per_dmod h h' ->
-     per_dmod (dm_member h ch) (dm_member h' ch) }
+(** Two saturated bodies, related entry by entry as written. *)
+| per_dmod_body :
+  `{ per_body ρ Φ ρ' Φ' ->
+     per_dmod (dm_local nil (md_body sm Φ) ρ) (dm_local nil (md_body sm' Φ') ρ') }
+(** Two values lacking a parameter: related at every related pair of
+    arguments. *)
+| per_dmod_fun :
+  `{ forall R,
+       nextparam h a ->
+       nextparam h' a' ->
+       per_univ_elem i R a a' ->
+       (forall c c', R c c' -> exists hc, $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc) ->
+       (forall c c', R c c' -> exists hc', $ᵐ| h' & c' | gc_deps ⍮ gc_stack ↘ hc') ->
+       (forall c c' hc hc', R c c' -> $ᵐ| h & c | gc_deps ⍮ gc_stack ↘ hc -> $ᵐ| h' & c' | gc_deps ⍮ gc_stack ↘ hc' ->
+          per_dmod hc hc') ->
+       per_dmod h h' }
 (** Arguments of a global module, outermost first, against its telescope. *)
 with per_gargs : list centry -> env -> env -> list domain -> list domain -> Prop :=
 (** No more arguments. *)
@@ -935,37 +962,9 @@ with per_gargs : list centry -> env -> env -> list domain -> list domain -> Prop
        R a a' ->
        per_gargs ts (ρ ↦ a) (ρ' ↦ a') args args' ->
        per_gargs (ce_ass A :: ts) ρ ρ' (a :: args) (a' :: args') }
-(** The parameters of two local units, outermost first, then their contents. *)
-with per_ltele : list centry -> env -> moddef -> list centry -> env -> moddef -> list domain -> list domain -> Prop :=
-(** A parameter both have an argument for. *)
-| per_ltele_supplied :
-  `{ forall R,
-       rel_typ i A ρ A' ρ' R ->
-       R a a' ->
-       per_ltele ts (ρ ↦ a) D ts' (ρ' ↦ a') D' args args' ->
-       per_ltele (ce_ass A :: ts) ρ D (ce_ass A' :: ts') ρ' D' (a :: args) (a' :: args') }
-(** A parameter neither has an argument for: the rest related at every related pair. *)
-| per_ltele_missing :
-  `{ forall R,
-       rel_typ i A ρ A' ρ' R ->
-       (forall c c', R c c' -> per_ltele ts (ρ ↦ c) D ts' (ρ' ↦ c') D' nil nil) ->
-       per_ltele (ce_ass A :: ts) ρ D (ce_ass A' :: ts') ρ' D' nil nil }
-(** All parameters crossed: the contents. *)
-| per_ltele_done :
-  `{ per_mdef ρ D ρ' D' ->
-     per_ltele nil ρ D nil ρ' D' nil nil }
-with per_mdef : env -> moddef -> env -> moddef -> Prop :=
-(** Two bodies. *)
-| per_mdef_body :
-  `{ per_body ρ Φ ρ' Φ' ->
-     per_mdef ρ (md_body Φ) ρ' (md_body Φ') }
-(** Two aliases with related targets. *)
-| per_mdef_alias :
-  `{ eval_modexp gc_deps gc_stack E ρ h ->
-     eval_modexp gc_deps gc_stack E' ρ' h' ->
-     per_dmod h h' ->
-     per_mdef ρ (md_alias E) ρ' (md_alias E') }
-(** Two bodies, each entry seen in the environment its predecessors make. *)
+(** Two bodies as written, each entry seen in the environment its
+    predecessors make, read through the entries their local opens generate
+    ([kbody], [eval_benv]). *)
 with per_body : env -> gmod -> env -> gmod -> Prop :=
 (** Two empty bodies. *)
 | per_body_nil :
@@ -974,38 +973,71 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
 | per_body_def :
   `{ forall R,
        per_body ρ Φ ρ' Φ' ->
-       eval_benv gc_deps gc_stack ρ Φ ρ1 ->
-       eval_benv gc_deps gc_stack ρ' Φ' ρ1' ->
+       kbody gc_deps gc_stack ρ Φ Φx ->
+       kbody gc_deps gc_stack ρ' Φ' Φx' ->
+       eval_benv gc_deps gc_stack ρ Φx ρ1 ->
+       eval_benv gc_deps gc_stack ρ' Φx' ρ1' ->
        rel_typ i A ρ1 A' ρ1' R ->
        rel_elem M ρ1 M' ρ1' R ->
        per_body ρ (gm_ext Φ y (ge_def b pv A (Some M))) ρ' (gm_ext Φ' y (ge_def b' pv' A' (Some M'))) }
 (** A submodule each, with related closures. *)
 | per_body_mod :
   `{ per_body ρ Φ ρ' Φ' ->
-     eval_benv gc_deps gc_stack ρ Φ ρ1 ->
-     eval_benv gc_deps gc_stack ρ' Φ' ρ1' ->
-     per_dmod (dm_local ρ1 Uy nil) (dm_local ρ1' Uy' nil) ->
-     per_body ρ (gm_ext Φ y (ge_mod pm Uy)) ρ' (gm_ext Φ' y (ge_mod pm' Uy')) }
-(** A local open each, of the same items, with related targets. *)
+     kbody gc_deps gc_stack ρ Φ Φx ->
+     kbody gc_deps gc_stack ρ' Φ' Φx' ->
+     eval_benv gc_deps gc_stack ρ Φx ρ1 ->
+     eval_benv gc_deps gc_stack ρ' Φx' ρ1' ->
+     eval_close gc_deps gc_stack Δy Dy ρ1 h ->
+     eval_close gc_deps gc_stack Δy' Dy' ρ1' h' ->
+     per_dmod h h' ->
+     per_body ρ (gm_ext Φ y (ge_mod pm (gu_mk Δy Dy))) ρ' (gm_ext Φ' y (ge_mod pm' (gu_mk Δy' Dy'))) }
+(** A local open each, of the same items, with related targets, the
+    entries each generates evaluating.  Each side's target, read again after
+    the first [k] entries it generates (as the [k+1]-th entry reads it), has
+    a value related to its value before them. *)
 | per_body_open :
   `{ per_body ρ Φ ρ' Φ' ->
-     eval_benv gc_deps gc_stack ρ Φ ρ1 ->
-     eval_benv gc_deps gc_stack ρ' Φ' ρ1' ->
-     eval_modexp gc_deps gc_stack H ρ1 h ->
-     eval_modexp gc_deps gc_stack H' ρ1' h' ->
+     kbody gc_deps gc_stack ρ Φ Φx ->
+     kbody gc_deps gc_stack ρ' Φ' Φx' ->
+     eval_benv gc_deps gc_stack ρ Φx ρ1 ->
+     eval_benv gc_deps gc_stack ρ' Φx' ρ1' ->
+     ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ h ->
+     ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ1' ↘ h' ->
      per_dmod h h' ->
+     kbody gc_deps gc_stack ρ (gm_open Φ H its) Φo ->
+     kbody gc_deps gc_stack ρ' (gm_open Φ' H' its) Φo' ->
+     eval_benv gc_deps gc_stack ρ Φo ρo ->
+     eval_benv gc_deps gc_stack ρ' Φo' ρo' ->
+     (forall k ρk, k < List.length its ->
+        eval_benv gc_deps gc_stack ρ (gm_dropn (List.length its - k) Φo) ρk ->
+        exists hk, ⟦ modexp_wk H (wk_shiftn k) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρk ↘ hk) ->
+     (forall k ρk', k < List.length its ->
+        eval_benv gc_deps gc_stack ρ' (gm_dropn (List.length its - k) Φo') ρk' ->
+        exists hk', ⟦ modexp_wk H' (wk_shiftn k) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρk' ↘ hk') ->
+     (forall k ρk hk, k < List.length its ->
+        eval_benv gc_deps gc_stack ρ (gm_dropn (List.length its - k) Φo) ρk ->
+        ⟦ modexp_wk H (wk_shiftn k) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρk ↘ hk -> per_dmod hk h) ->
+     (forall k ρk' hk', k < List.length its ->
+        eval_benv gc_deps gc_stack ρ' (gm_dropn (List.length its - k) Φo') ρk' ->
+        ⟦ modexp_wk H' (wk_shiftn k) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρk' ↘ hk' -> per_dmod hk' h') ->
      per_body ρ (gm_open Φ H its) ρ' (gm_open Φ' H' its) }
 .
 
 Scheme per_dmod_mut_ind := Induction for per_dmod Sort Prop
 with per_gargs_mut_ind := Induction for per_gargs Sort Prop
-with per_ltele_mut_ind := Induction for per_ltele Sort Prop
-with per_mdef_mut_ind := Induction for per_mdef Sort Prop
 with per_body_mut_ind := Induction for per_body Sort Prop.
 Combined Scheme per_dmod_mut_ind_all from
-  per_dmod_mut_ind, per_gargs_mut_ind, per_ltele_mut_ind, per_mdef_mut_ind, per_body_mut_ind.
+  per_dmod_mut_ind, per_gargs_mut_ind, per_body_mut_ind.
 
-Hint Constructors per_dmod per_gargs per_ltele per_mdef per_body : mctt.
+Hint Constructors nextparam per_dmod per_gargs per_body : mctt.
+
+(** Two module expressions evaluate to related module values. *)
+Definition rel_mexp (H : modexp) (ρ : env) (H' : modexp) (ρ' : env) : Prop :=
+  exists h h', ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h /\ ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ' ↘ h' /\ per_dmod h h'.
+
+(** A module value is related to the value of a module expression. *)
+Definition tie_mod (m : dmod) (H : modexp) (ρ : env) : Prop :=
+  exists h, ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h /\ per_dmod m h.
 
 (** * Context/Environment PER *)
 
@@ -1050,21 +1082,21 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
                (exists m', ⟦ M ⟧ ρ'↯ ↘ m' /\ Dom m' ≈ (ρ' 0) ∈ head_rel equiv_ρ_drop_ρ'_drop) /\
                (exists m', ⟦ M' ⟧ ρ'↯ ↘ m' /\ Dom m' ≈ (ρ' 0) ∈ head_rel equiv_ρ_drop_ρ'_drop)) ->
         EF Γ ▸ A ≔ M ≈ Γ' ▸ A' ≔ M' ∈ per_ctx_env ↘ env_rel }
-(** A module slot: the two units' closures over related tails are related, and
-    each head of the environment is related to the closures of both units
-    over its own tail. *)
+(** A module slot: the two units, as literals, evaluate to related values
+    over related tails, and each head of the environment is related to the
+    values of both units over its own tail. *)
 | per_ctx_env_cons_mod :
   `{ forall tail_rel env_rel
         (equiv_Γ_Γ' : EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel),
         PER tail_rel ->
         (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
-            per_dmod (dm_local ρ U nil) (dm_local ρ' U' nil)) ->
+            rel_mexp (me_lit U) ρ (me_lit U') ρ') ->
         (env_rel <~> fun ρ ρ' =>
              (Dom ρ↯ ≈ ρ'↯ ∈ tail_rel) /\
-             per_dmod (env_mod ρ 0) (dm_local ρ↯ U nil) /\
-             per_dmod (env_mod ρ 0) (dm_local ρ↯ U' nil) /\
-             per_dmod (env_mod ρ' 0) (dm_local ρ'↯ U nil) /\
-             per_dmod (env_mod ρ' 0) (dm_local ρ'↯ U' nil)) ->
+             tie_mod (env_mod ρ 0) (me_lit U) ρ↯ /\
+             tie_mod (env_mod ρ 0) (me_lit U') ρ↯ /\
+             tie_mod (env_mod ρ' 0) (me_lit U) ρ'↯ /\
+             tie_mod (env_mod ρ' 0) (me_lit U') ρ'↯) ->
         EF Γ ▹ₘ U ≈ Γ' ▹ₘ U' ∈ per_ctx_env ↘ env_rel }
 .
 Hint Constructors per_ctx_env : mctt.
@@ -1169,7 +1201,7 @@ Hint Transparent rel_elem : mctt.
 #[export]
 Hint Unfold rel_elem : mctt.
 #[export]
-Hint Constructors per_dmod per_gargs per_ltele per_mdef per_body : mctt.
+Hint Constructors nextparam per_dmod per_gargs per_body : mctt.
 #[export]
 Hint Constructors per_ctx_env : mctt.
 #[export]

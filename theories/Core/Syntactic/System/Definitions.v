@@ -26,7 +26,7 @@
     filed units [Θ] and the definition stack [Ξ], as in
     [Θ ⍮ Ξ ⍮ Γ ⊢ M : A].  They are indices, not parameters: no rule about terms
     changes them, but a filed unit is checked against the units before it and a
-    stack frame against the frames outside it, so [⊢g Θ ⍮ Ξ] is an induction
+    stack frame against the frames outside it, so [⊢ᵍ Θ ⍮ Ξ] is an induction
     that varies them, as [⊢ Γ] varies [Γ]. *)
 
 From Stdlib Require Import Lia List Classes.RelationClasses Setoid Morphisms.
@@ -40,18 +40,19 @@ Reserved Notation "⊢ Θ ⍮ Ξ ⍮ Γ" (at level 70, Θ at level 69, Ξ at lev
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ M : A" (at level 70, Ξ at level 69, Γ at level 69, M at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A" (at level 70, Ξ at level 69, Γ at level 69, M at level 69, M' at level 69, A at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A'" (at level 70, Ξ at level 69, Γ at level 69, A at level 69, A' at level 69).
+Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U" (at level 70, Ξ at level 69, Γ at level 69, U at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'" (at level 70, Ξ at level 69, Γ at level 69, Ψ at level 69, Ψ' at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U'" (at level 70, Ξ at level 69, Γ at level 69, U at level 69, U' at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'" (at level 70, Ξ at level 69, Γ at level 69, H at level 69, H' at level 69).
-Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢w φ : Δ" (at level 70, Ξ at level 69, Γ at level 69, φ constr at level 60, Δ at level 69).
-Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ" (at level 70, Ξ at level 69, Γ at level 69, σ at level 69, Δ at level 69).
-Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ" (at level 70, Ξ at level 69, Γ at level 69, σ at level 69, σ' at level 69, Δ at level 69).
+Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ʷ φ : Δ" (at level 70, Ξ at level 69, Γ at level 69, φ constr at level 60, Δ at level 69).
+Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ" (at level 70, Ξ at level 69, Γ at level 69, σ at level 69, Δ at level 69).
+Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ" (at level 70, Ξ at level 69, Γ at level 69, σ at level 69, σ' at level 69, Δ at level 69).
 Reserved Notation "Γ ∋ '#' x : A" (at level 70, x constr at level 0, A at level 69).
 Reserved Notation "Γ ∋ '#' x ≔ M : A" (at level 70, x constr at level 0, M at level 69, A at level 69).
-Reserved Notation "⊢g Θ ⍮ Ξ" (at level 70, Θ at level 69, Ξ at level 69).
-Reserved Notation "Θ ⍮ Ξ ⍮ mp ⊢e E" (at level 70, Ξ at level 69, mp at level 69, E at level 69).
-Reserved Notation "Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ" (at level 70, Ξ at level 69, mp at level 69, Δ at level 69, Φ at level 69).
-Reserved Notation "Θ ⍮ Ξ ⍮ mp ⊢u U" (at level 70, Ξ at level 69, mp at level 69, U at level 69).
+Reserved Notation "⊢ᵍ Θ ⍮ Ξ" (at level 70, Θ at level 69, Ξ at level 69).
+Reserved Notation "Θ ⍮ Ξ ⍮ mp ⊢ᵉ E" (at level 70, Ξ at level 69, mp at level 69, E at level 69).
+Reserved Notation "Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ" (at level 70, Ξ at level 69, mp at level 69, Δ at level 69, Φ at level 69).
+Reserved Notation "Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U" (at level 70, Ξ at level 69, mp at level 69, U at level 69).
 
 Generalizable All Variables.
 
@@ -113,10 +114,10 @@ Inductive wf_ctx : gdeps -> gstack -> ctx -> Prop :=
 (** The base case carries what the judgment is relative to, as [wf_gmod_nil] and
     [wf_gstack_nil] do; [wf_ctx_extend] then needs no context premise of its own,
     since typing its head presupposes one.  This is the edge that makes the block
-    genuinely mutual in both directions: a term appeals to [⊢g], and [⊢g] is
+    genuinely mutual in both directions: a term appeals to [⊢ᵍ], and [⊢ᵍ] is
     checked by the term judgments. *)
 | wf_ctx_empty :
-  `( ⊢g Θ ⍮ Ξ ->
+  `( ⊢ᵍ Θ ⍮ Ξ ->
      ⊢ Θ ⍮ Ξ ⍮ ⋅ )
 | wf_ctx_extend :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
@@ -218,21 +219,14 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
         Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_elim nm A Bs M : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
+(** A [Π] is in a universe its domain and codomain are in, small or large.
+    The codomain's universe is the weakening of the domain's: a universe that
+    mentions the bound variable has no name here. *)
 | wf_pi :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Typeω@i )
-(** A [Π] of small types at a level is small at that level.  The level is a
-    term of [Γ], so the codomain's universe is its weakening: a level that
-    mentions the bound variable has no universe to name here.  The premise on
-    the level follows from the domain's by presupposition; it is stated so
-    that weakening and substitution, which come before presupposition, can
-    move the domain into a large universe and extend the context with it. *)
-| wf_pi_small :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ L : Level@n ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type⟨L[↑]ʷ⟩ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Type⟨L⟩ )
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A : U ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : U[↑]ʷ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : U )
 | wf_fn :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M : B ->
@@ -259,56 +253,24 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B : C[Id ,,ₘ me_lit U] )
-(** A member of a module expression with no argument, at its canonical type.
-    The canonical type is a type, and the member's δ-reduct inhabits it. *)
+(** A member: the module expression is well formed and looks the member up
+    ([mdenote] of the selection) as a term, at the type the lookup reads.
+    This is the only typing rule for members.  The type is premised to be a
+    type, as the induction moving a typing along equivalent substitutions
+    needs it, and the δ-reduct, if any, to inhabit it, as soundness needs
+    it.  A filed axiom or abstract definition read bare has no δ-reduct
+    ([ds_named]), so the premise never asks for the member itself. *)
 | wf_mem :
-  `( me_noargs H ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
-     member_type Θ Ξ Γ H (x :: nil) (mr_term A) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     member_unfold Θ Ξ Γ H x M ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : A )
-(** A member of an applied module is the member of its root, applied to the
-    arguments: arguments and selections commute. *)
-| wf_mem_app :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
-     modexp_spine H = (R, args, pre) ->
-     args <> nil ->
+     mdenote Θ Ξ Γ (me_mem H x) R ->
+     ds_ty Θ Ξ R = Some A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ apps (member_ref R (pre ++ x :: nil)) args : A ->
+     (forall M, ds_red R = Some M -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : A )
 | wf_vlookup :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Γ ∋ #x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ #x : A )
-(** A member of a chain from a unit, a global, is used at the type
-    resolution hands back, which is closed: it is generalized over the
-    parameters of every module enclosing the member, and applying it to them
-    is the user's business.  The chain need not be a module: it may end in an
-    open frame.  Nothing else is premised; that the type is a type is a
-    presupposition. *)
-| wf_mem_glob :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     mod_qname H = Some mp ->
-     gc_resolve Θ Ξ (qname_app mp (x :: nil)) = Some (ge_def b pv A B) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : A )
-(** The module of an inductive type, reached by a chain from a unit, is its
-    type former, of the type of its declaration; as for a global, the chain
-    may end in an open frame. *)
-| wf_mem_glob_ind :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     mod_qname H = Some mp ->
-     ind_lookup Θ Ξ (qname_app mp (x :: nil)) = Some D ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : ind_ty D )
-(** An inductive alias, reached by a chain from a unit, is the type former
-    at its arguments, over its telescope. *)
-| wf_mem_glob_ind_alias :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     mod_qname H = Some mp ->
-     ind_alias_lookup Θ Ξ (qname_app mp (x :: nil)) = Some (Δ, p, Ns) ->
-     ind_lookup Θ Ξ p = Some D ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : ctx_pi Δ (ind_ty_at D Ns) )
 | wf_exp_subtyp :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      (** This premise is needed for soundness.  It is asymmetric: only [A'] is
@@ -430,16 +392,11 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
           : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_elim nm A Bs M ≈ a_elim nm A' Bs' M' : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 | wf_exp_eq_pi_cong :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Typeω@i )
-| wf_exp_eq_pi_cong_small :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ L : Level@n ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type⟨L⟩ ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Type⟨L[↑]ʷ⟩ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Type⟨L⟩ )
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A : U ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : U ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : U[↑]ʷ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : U )
 | wf_exp_eq_fn_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
@@ -467,27 +424,22 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B ≈ B' : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U' in B' : C[Id ,,ₘ me_lit U] ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ ℓₘ U' in B' : C[Id ,,ₘ me_lit U] )
-(** Members of equivalent module expressions without arguments, at the
-    canonical type of the left one.  A member of an applied module is the
-    member of its root, applied ([wf_exp_eq_mem_app]), which is how equations
-    about it are derived. *)
+(** Members of equivalent module expressions, both looked up as terms, at
+    the type the left one is looked up at.  The right-hand side is premised
+    to be typed there, as presupposition needs it before any lemma relating
+    what equivalent module expressions look up. *)
 | wf_exp_eq_mem_cong :
-  `( me_noargs H ->
-     me_noargs H' ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
-     member_type Θ Ξ Γ H (x :: nil) (mr_term A) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : A ->
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
+     mdenote Θ Ξ Γ (me_mem H x) R ->
+     ds_ty Θ Ξ R = Some A ->
+     mdenote Θ Ξ Γ (me_mem H' x) R' ->
+     ds_ty Θ Ξ R' = Some A' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H' x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ a_mem H' x : A )
 | wf_exp_eq_var :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Γ ∋ #x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ #x ≈ #x : A )
-| wf_exp_eq_mem_glob :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     mod_qname H = Some mp ->
-     gc_resolve Θ Ξ (qname_app mp (x :: nil)) = Some (ge_def b pv A B) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ a_mem H x : A )
 (** *** Computation rules *)
 | wf_exp_eq_pi_beta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
@@ -538,49 +490,21 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : C[Id ,,ₘ me_lit U] )
-(** [δ] for members: a member is its δ-reduct. *)
+(** [δ] for members: a member is the δ-reduct the lookup reads: the body of
+    a transparent definition at the arguments, the name of a filed axiom or
+    abstract definition at them, or a type former. *)
 | wf_exp_eq_mem_delta :
-  `( me_noargs H ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
-     member_type Θ Ξ Γ H (x :: nil) (mr_term A) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     member_unfold Θ Ξ Γ H x M ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ M : A )
-(** Arguments commute with selection. *)
-| wf_exp_eq_mem_app :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
-     modexp_spine H = (R, args, pre) ->
-     args <> nil ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ apps (member_ref R (pre ++ x :: nil)) args : A ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ apps (member_ref R (pre ++ x :: nil)) args : A )
+     mdenote Θ Ξ Γ (me_mem H x) R ->
+     ds_ty Θ Ξ R = Some A ->
+     ds_red R = Some M ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ M : A )
 (** [δ] for local definitions: a defined variable is its body.  It is stated
     at every depth, since weakening moves a definition arbitrarily deep. *)
 | wf_exp_eq_var_delta :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Γ ∋ #x ≔ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ #x ≈ M : A )
-(** [δ]: a transparent global unfolds.  An [abstract] one ([b = false]) and
-    an axiom ([B = None]) do not.  Both are stored closed. *)
-| wf_exp_eq_mem_glob_unfold :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     mod_qname H = Some mp ->
-     gc_resolve Θ Ξ (qname_app mp (x :: nil)) = Some (ge_def true pv A (Some M)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ M : A )
-(** The module of an inductive type, as a term, is its type former. *)
-| wf_exp_eq_mem_glob_ind_unfold :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     mod_qname H = Some mp ->
-     ind_lookup Θ Ξ (qname_app mp (x :: nil)) = Some D ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ a_ind (qname_app mp (x :: nil)) : ind_ty D )
-(** An inductive alias, as a term, is the type former at its arguments. *)
-| wf_exp_eq_mem_glob_ind_alias_unfold :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     mod_qname H = Some mp ->
-     ind_alias_lookup Θ Ξ (qname_app mp (x :: nil)) = Some (Δ, p, Ns) ->
-     ind_lookup Θ Ξ p = Some D ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ ctx_fn Δ (apps (a_ind p) Ns) : ctx_pi Δ (ind_ty_at D Ns) )
 (** *** Uniqueness rule *)
 | wf_exp_eq_fn_eta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
@@ -654,6 +578,21 @@ with wf_subtyp : gdeps -> gstack -> ctx -> typ -> typ -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ⊆ Π A' B' )
 where "Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A'" := (wf_subtyp Θ Ξ Γ A A') : type_scope
 
+(** *** Universes
+
+    [Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U]: [U] is a universe, large or small at a level of
+    [Γ]. *)
+with wf_is_univ : gdeps -> gstack -> ctx -> typ -> Prop :=
+| wf_is_univ_large :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵤ Typeω@i )
+| wf_is_univ_small :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ L : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵤ Type⟨L⟩ )
+where "Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U" := (wf_is_univ Θ Ξ Γ U) : type_scope
+
+
+
 (** ** Modules
 
     Equivalence of modules is pointwise: two units are equivalent when their
@@ -690,25 +629,87 @@ with wf_ext_eq : gdeps -> gstack -> ctx -> ctx -> ctx -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹ₘ U ≈ Ψ' ▹ₘ U' )
 where "Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'" := (wf_ext_eq Θ Ξ Γ Ψ Ψ') : type_scope
 
-(** Units.  A body unit's parameters and body are compared as one extension of
-    [Γ]: the body read as the entries its local opens generate
-    ([body_xp]), with the target of each open a module where it stands. *)
+(** Units.  Each side of a body unit is well formed where it stands: its
+    body, read as the entries its local opens generate ([body_xp]), and its
+    parameters form an extension of [Γ], and the target of each open is a
+    module there.
+    The two sides have the same shape as written, opens at the same places
+    with the same items, and as expanded ([body_shape]), and are compared
+    entry by entry through their expansions; the targets of the opens are
+    compared pairwise, filled in like the entries.  Each entry is compared with the entries
+    before it filled in ([gm_fill]: a definition by its body, a module by
+    its unit), in the left parameters' context, and each filled-in entry of
+    the right side is typed in the right parameters' context, as the parts of
+    an extension are: so the comparison never reads one side's entries in the
+    other side's body.  Every entry can be filled in:
+    a local body has no bodiless definition and no inductive type.  The
+    level of the type of the definition named [y] is [lv y]. *)
 with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
 | wf_unit_eq_body :
   `( body_xp Θ Ξ (Δ ++ Γ) Φ Φx ->
      body_xp Θ Ξ (Δ' ++ Γ) Φ' Φx' ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δ ≈ body_ctx Φx' ++ Δ' ->
-     (forall k Ψ H Ψ' H', nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> nth_error (body_opens Φ' Φx') k = Some (Ψ', H') ->
-        Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ ⊢ᵐ H ≈ H') ->
-     (forall k Ψ H Ψ' H', nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> nth_error (body_opens Φ' Φx') k = Some (Ψ', H') ->
-        Θ ⍮ Ξ ⍮ Ψ' ++ Δ' ++ Γ ⊢ᵐ H' ≈ H') ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δ ≈ body_ctx Φx ++ Δ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx' ++ Δ' ≈ body_ctx Φx' ++ Δ' ->
+     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+        Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] : Typeω@(lv y)) ->
+     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+        Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] ≈ A'[σ'] : Typeω@(lv y)) ->
+     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+        Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ M[σ] : A[σ]) ->
+     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+        Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ M[σ] ≈ M'[σ'] : A[σ]) ->
+     (forall y Φ0 pv U Φ0' pv' U' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+        Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵘ U[σ]ᵘ ≈ U'[σ']ᵘ) ->
+     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+        Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ A'[σ'] : Typeω@(lv y)) ->
+     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+        Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ M'[σ'] : A'[σ']) ->
+     (forall y Φ0 pv U Φ0' pv' U' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+        Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ᵘ U'[σ']ᵘ ≈ U'[σ']ᵘ) ->
+     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ ⊢ᵐ H ≈ H) ->
+     (forall k Ψ' H', nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> Θ ⍮ Ξ ⍮ Ψ' ++ Δ' ++ Γ ⊢ᵐ H' ≈ H') ->
+     (forall k Φ0 H Φ0' H' σ σ',
+        nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) ->
+        nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') ->
+        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+        Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵐ H[σ]ᵐ ≈ H'[σ']ᵐ) ->
+     (forall k Φ0 H Φ0' H' σ σ',
+        nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) ->
+        nth_error (body_opens_at Φ' Φx') k = Some (Φ0', H') ->
+        gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
+        Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ᵐ H'[σ']ᵐ ≈ H'[σ']ᵐ) ->
      tele_ass Δ ->
      tele_ass Δ' ->
      List.length Δ = List.length Δ' ->
      body_shape Φ Φ' ->
      body_shape Φx Φx' ->
      List.NoDup (gm_names Φ) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_body Δ Φ ≈ gu_body Δ' Φ' )
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ' Φ' )
 | wf_unit_eq_alias :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
      tele_ass Δ ->
@@ -716,6 +717,15 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵐ E ≈ E' ->
      Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ᵐ E' ≈ E' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E') )
+(** An alias of a literal is the literal over both telescopes, the alias's
+    outermost: the merge lookup performs ([un_alias], [ds_up]).  The
+    alias's parameters form an extension of [Γ], and the literal is a unit
+    under them. *)
+| wf_unit_eq_flatten :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ ->
+     tele_ass Δ ->
+     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵘ gu_mk Δ' D ≈ gu_mk Δ' D ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))) ≈ gu_mk (Δ' ++ Δ) D )
 | wf_unit_eq_sym :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U' ≈ U )
@@ -725,46 +735,82 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U'' )
 where "Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U'" := (wf_unit_eq Θ Ξ Γ U U') : type_scope
 
-(** Module expressions.  A chain from a unit must name a module, and an
-    argument is checked against the outermost parameter of the module's arity
+(** Module expressions.  A module expression is a module when the module
+    part of what it denotes has a telescope ([ds_mtele]), and an argument is
+    checked against the outermost parameter of that telescope
     ([tele_view]): a module is applied to at most as many arguments as it has
     parameters.  Both arguments are typed, as the parts of an extension are,
     and so is the parameter's type. *)
 with wf_modexp_eq : gdeps -> gstack -> ctx -> modexp -> modexp -> Prop :=
-| wf_me_glob :
+(** *** Congruence *)
+(** A loaded unit or an open frame. *)
+| wf_me_unit :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     mod_qname H = Some mp ->
-     member_type Θ Ξ Γ H nil R ->
-     mres_tl R = Some T ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H )
+     gc_unit Θ Ξ (me_unit fp) = Some TΦ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_unit fp ≈ me_unit fp )
 | wf_me_var :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Γ ∋ #x ⇒ₘ U ->
+     Γ ∋ #x ≔ₘ U ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_var x ≈ me_var x )
 | wf_me_lit :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_lit U ≈ me_lit U' )
+(** A selection: on both sides the member is a module, by what the
+    selection denotes ([mdenote]), the module part having a telescope. *)
 | wf_me_mem :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
-     member_type Θ Ξ Γ H (y :: nil) R ->
-     mres_tl R = Some T ->
-     member_type Θ Ξ Γ H' (y :: nil) R' ->
-     mres_tl R' = Some T' ->
+     mdenote Θ Ξ Γ (me_mem H y) R ->
+     ds_mtele Θ Ξ R = Some T ->
+     mdenote Θ Ξ Γ (me_mem H' y) R' ->
+     ds_mtele Θ Ξ R' = Some T' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H' y )
+(** An application: the argument is checked against the outermost
+    parameter of the telescope of what the module expression denotes. *)
 | wf_me_app :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
-     member_type Θ Ξ Γ H nil R ->
-     mres_tl R = Some T ->
+     mdenote Θ Ξ Γ H R ->
+     ds_mtele Θ Ξ R = Some T ->
      tele_view T = Some (B, T1) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ B : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : B ->
-     member_type Θ Ξ Γ H' nil R' ->
-     mres_tl R' = Some T' ->
+     mdenote Θ Ξ Γ H' R' ->
+     ds_mtele Θ Ξ R' = Some T' ->
      tele_view T' = Some (B', T1') ->
      Θ ⍮ Ξ ⍮ Γ ⊢ B' : Typeω@j ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N' : B' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H' N' )
+(** *** [δ] *)
+(** A slot is its unit. *)
+| wf_me_delta_slot :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Γ ∋ #x ≔ₘ U ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_var x ≈ me_lit U )
+(** A module member is the unit the module part of what the selection looks
+    up stands for ([ds_unit]): a body module of a filed module, the filed
+    module at its own path; an alias, its target's; a module of a local
+    body, its literal with the entries before it filled in. *)
+| wf_me_delta_sel :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y ->
+     mdenote Θ Ξ Γ (me_mem H y) R ->
+     ds_mod Θ Ξ R = Some Rm ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ ds_unit Rm )
+(** *** [β] *)
+(** A literal body or alias given its outermost parameter is the literal
+    instantiated; an alias with no parameter is its target. *)
+| wf_me_beta_body :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk (Δ ++ ce_ass X :: nil) (md_body sm_open Φ) ≈ gu_mk (Δ ++ ce_ass X :: nil) (md_body sm_open Φ) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ N : X ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_app (me_lit (gu_mk (Δ ++ ce_ass X :: nil) (md_body sm_open Φ))) N
+       ≈ me_lit (gu_mk (tele_sub Δ (Id,,N)) (md_body sm_open (gmod_sub Φ (sb_qn (length Δ) (Id,,N))))) )
+| wf_me_beta_alias :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_mk (Δ ++ ce_ass X :: nil) (md_alias E) ≈ gu_mk (Δ ++ ce_ass X :: nil) (md_alias E) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ N : X ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_app (me_lit (gu_mk (Δ ++ ce_ass X :: nil) (md_alias E))) N
+       ≈ me_lit (gu_mk (tele_sub Δ (Id,,N)) (md_alias E[sb_qn (length Δ) (Id,,N)]ᵐ)) )
+| wf_me_beta_alias0 :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_lit (gu_mk nil (md_alias E)) ≈ E )
 | wf_me_sym :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H' ≈ H )
@@ -777,7 +823,7 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'" := (wf_modexp_eq Θ Ξ Γ H H') : type_
 (** ** Well-formedness of the Global Context
 
     Part of the same mutual definition: an entry's type and body are checked by
-    the term judgments, and a use of a global appeals to [⊢g Θ ⍮ Ξ].
+    the term judgments, and a use of a global appeals to [⊢ᵍ Θ ⍮ Ξ].
 
     A unit is checked against the units filed before it, and a frame against
     the frames outside it, which is why both components are indices of the whole
@@ -801,19 +847,16 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'" := (wf_modexp_eq Θ Ξ Γ H H') : type_
     is the entry's own module path, which a nested module's frame is named by. *)
 
 with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
-(** An axiom: only its type is checked, there being no body to carry it. *)
-| wf_gentry_axiom :
-  `( Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ mp ⊢e ge_def b pv (ctx_pi (gs_tele Ξ) A) None )
-(** A definition: its body carries the type recorded for it, so the type needs no
-    premise of its own — that is presupposition. *)
+(** A definition or an axiom: its type is a type, and its body, if it has
+    one, carries the type. *)
 | wf_gentry_def :
-  `( Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
-     Θ ⍮ Ξ ⍮ mp ⊢e ge_def b pv (ctx_pi (gs_tele Ξ) A) (Some (ctx_fn (gs_tele Ξ) M)) )
+  `( Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i ->
+     (forall M, oM = Some M -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A) ->
+     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv (ctx_pi (gs_tele Ξ) A) (option_map (ctx_fn (gs_tele Ξ)) oM) )
 (** An internal module, under the parameters [Δ'] it declares. *)
 | wf_gentry_mod :
-  `( Θ ⍮ Ξ ⍮ mp ⍮ Δ' ⊢m Φ ->
-     Θ ⍮ Ξ ⍮ mp ⊢e ge_body pv Δ' Φ )
+  `( Θ ⍮ Ξ ⍮ mp ⍮ Δ' ⊢ᵍᵐ Φ ->
+     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_body pv Δ' Φ )
 (** An alias, under the parameters [Δ] it declares.  It is filed with its
     full telescope, so that it is closed; its target is checked, and its
     arguments with it, where it is declared. *)
@@ -821,7 +864,7 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
   `( tele_ass Δ ->
      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-     Θ ⍮ Ξ ⍮ mp ⊢e ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E)) )
+     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E)) )
 (** An inductive type, before the members of its module: its declaration,
     with parameters [Δ] over the frames' parameters, which are uniform.  The sort is checked in the uniform
     parameters, a non-recursive argument of a constructor in the parameters
@@ -863,17 +906,17 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
         Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ ind_params D ⊢ P : T) ->
      (forall Δ1 T Δ2, ind_nparams D = Δ1 ++ ce_ass T :: Δ2 ->
         Θ ⍮ Ξ ⍮ Δ2 ++ ind_uparams D ⊢ T : (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ) ->
-     Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄ )
+     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄ )
 (** One more member of the module of an inductive type, a definition: it is
     checked with the entry so far declared in the innermost frame, under the
     uniform parameters, the module's ([ind_unit]), and stored generalized
     over them, so that it is closed. *)
 | wf_gentry_ind_ext :
-  `( Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y ⊢e ge_ind pv D Φ ->
-     Θ ⍮ (mq, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv D Φ)) :: Ξ ⍮ ind_uparams D ⊢ M : A ->
+  `( Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y ⊢ᵉ ge_ind pv (qname_in mq y) D Φ ->
+     Θ ⍮ (mq, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv (qname_in mq y) D Φ)) :: Ξ ⍮ ind_uparams D ⊢ M : A ->
      gm_fresh x Φ ->
      Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y
-       ⊢e ge_ind pv D (Φ ⊳ x ↦ ge_def b pv' (ctx_pi (ind_uparams D) A) (Some (ctx_fn (ind_uparams D) M))) )
+       ⊢ᵉ ge_ind pv (qname_in mq y) D (Φ ⊳ x ↦ ge_def b pv' (ctx_pi (ind_uparams D) A) (Some (ctx_fn (ind_uparams D) M))) )
 (** An inductive alias with parameters [Δ] over the frames' parameters,
     of the inductive type at the canonical path [p] at arguments [Ns] for
     its first uniform parameters; it is stored over its full telescope, as
@@ -885,8 +928,8 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      List.length Ns <= ind_nu D ->
      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ apps (a_ind p) Ns : ind_ty_at D Ns ->
      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ me_apps (qname_mod p) Ns ≈ me_apps (qname_mod p) Ns ->
-     Θ ⍮ Ξ ⍮ mp ⊢e ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns )
-where "Θ ⍮ Ξ ⍮ mp ⊢e E" := (wf_gentry Θ Ξ mp E) : type_scope
+     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns )
+where "Θ ⍮ Ξ ⍮ mp ⊢ᵉ E" := (wf_gentry Θ Ξ mp E) : type_scope
 
 (** The module at path [mp], with own parameters [Δ], a telescope over the
     frames' parameters [gs_tele Ξ]. *)
@@ -894,15 +937,15 @@ with wf_gmod : gdeps -> gstack -> qname -> ctx -> gmod -> Prop :=
 | wf_gmod_nil :
   `( tele_ass Δ ->
      ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
-     Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m ⋄ )
+     Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ ⋄ )
 (** The entry is checked against the members declared before it: the module so
     far is [gu_mk Δ Φ], pushed as the innermost frame under its own path. *)
 | wf_gmod_ext :
-  `( Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ ->
-     Θ ⍮ (mp, gu_body Δ Φ) :: Ξ ⍮ qname_in mp x ⊢e E ->
+  `( Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ ->
+     Θ ⍮ (mp, gu_body Δ Φ) :: Ξ ⍮ qname_in mp x ⊢ᵉ E ->
      gm_fresh x Φ ->
-     Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ ⊳ x ↦ E )
-where "Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ" := (wf_gmod Θ Ξ mp Δ Φ) : type_scope
+     Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ ⊳ x ↦ E )
+where "Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ" := (wf_gmod Θ Ξ mp Δ Φ) : type_scope
 
 (** The filed units [Θ] and the stack [Ξ] of open frames, innermost first.
     A frame is checked against the frames outside it, and a unit is filed by
@@ -912,16 +955,16 @@ where "Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ" := (wf_gmod Θ Ξ mp Δ Φ) : type_scope
     Freshness ([frame_fresh]) makes a path filed at most once. *)
 
 with wf_gstack : gdeps -> gstack -> Prop :=
-| wf_gstack_nil : ⊢g nil ⍮ nil
+| wf_gstack_nil : ⊢ᵍ nil ⍮ nil
 | wf_gstack_file :
-  `( ⊢g Θ ⍮ (q_abs fp nil, U) :: nil ->
-     ⊢g (fp, U) :: Θ ⍮ nil )
+  `( ⊢ᵍ Θ ⍮ (q_abs fp nil, U) :: nil ->
+     ⊢ᵍ (fp, U) :: Θ ⍮ nil )
 | wf_gstack_cons :
-  `( ⊢g Θ ⍮ Ξ ->
-     Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ ->
+  `( ⊢ᵍ Θ ⍮ Ξ ->
+     Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ ->
      frame_fresh Θ Ξ mp ->
-     ⊢g Θ ⍮ (mp, gu_body Δ Φ) :: Ξ )
-where "⊢g Θ ⍮ Ξ" := (wf_gstack Θ Ξ) : type_scope.
+     ⊢ᵍ Θ ⍮ (mp, gu_body Δ Φ) :: Ξ )
+where "⊢ᵍ Θ ⍮ Ξ" := (wf_gstack Θ Ξ) : type_scope.
 
 (** The schemes are [Minimality], not [Induction]: nothing in this development
     is proved by a statement that mentions the derivation itself, and dropping
@@ -935,6 +978,7 @@ Scheme wf_ctx_mut_ind := Minimality for wf_ctx Sort Prop
 with wf_exp_mut_ind := Minimality for wf_exp Sort Prop
 with wf_exp_eq_mut_ind := Minimality for wf_exp_eq Sort Prop
 with wf_subtyp_mut_ind := Minimality for wf_subtyp Sort Prop
+with wf_is_univ_mut_ind := Minimality for wf_is_univ Sort Prop
 with wf_ext_eq_mut_ind := Minimality for wf_ext_eq Sort Prop
 with wf_unit_eq_mut_ind := Minimality for wf_unit_eq Sort Prop
 with wf_modexp_eq_mut_ind := Minimality for wf_modexp_eq Sort Prop.
@@ -943,6 +987,7 @@ Combined Scheme syntactic_wf_mut_ind from
   wf_exp_mut_ind,
   wf_exp_eq_mut_ind,
   wf_subtyp_mut_ind,
+  wf_is_univ_mut_ind,
   wf_ext_eq_mut_ind,
   wf_unit_eq_mut_ind,
   wf_modexp_eq_mut_ind.
@@ -958,6 +1003,7 @@ Combined Scheme syntactic_wf_mut_ind from
 Scheme wf_exp_mind := Minimality for wf_exp Sort Prop
 with wf_exp_eq_mind := Minimality for wf_exp_eq Sort Prop
 with wf_subtyp_mind := Minimality for wf_subtyp Sort Prop
+with wf_is_univ_mind := Minimality for wf_is_univ Sort Prop
 with wf_ext_eq_mind := Minimality for wf_ext_eq Sort Prop
 with wf_unit_eq_mind := Minimality for wf_unit_eq Sort Prop
 with wf_modexp_eq_mind := Minimality for wf_modexp_eq Sort Prop.
@@ -965,6 +1011,7 @@ Combined Scheme syntactic_wf_mut_ind' from
   wf_exp_mind,
   wf_exp_eq_mind,
   wf_subtyp_mind,
+  wf_is_univ_mind,
   wf_ext_eq_mind,
   wf_unit_eq_mind,
   wf_modexp_eq_mind.
@@ -975,10 +1022,12 @@ Combined Scheme syntactic_wf_mut_ind' from
     two equality judgments needs a predicate. *)
 
 Scheme wf_ctx_mind' := Minimality for wf_ctx Sort Prop
-with wf_exp_mind' := Minimality for wf_exp Sort Prop.
+with wf_exp_mind' := Minimality for wf_exp Sort Prop
+with wf_is_univ_mind' := Minimality for wf_is_univ Sort Prop.
 Combined Scheme syntactic_wf_ctx_exp_mut_ind from
   wf_ctx_mind',
-  wf_exp_mind'.
+  wf_exp_mind',
+  wf_is_univ_mind'.
 
 (** The global subset: the shape of [wf_global_canon] and
     [gsub_preserves_global]. *)
@@ -990,13 +1039,14 @@ Combined Scheme global_wf_mut_ind from
   wf_gmod_mut_ind.
 
 (** The whole block, for a statement that has to cross between the two
-    directions — the term judgments appeal to [⊢g Θ ⍮ Ξ] and the global ones to
+    directions — the term judgments appeal to [⊢ᵍ Θ ⍮ Ξ] and the global ones to
     typing, so presupposition is proved here or not at all. *)
 
 Scheme wf_ctx_mut_ind_all := Minimality for wf_ctx Sort Prop
 with wf_exp_mut_ind_all := Minimality for wf_exp Sort Prop
 with wf_exp_eq_mut_ind_all := Minimality for wf_exp_eq Sort Prop
 with wf_subtyp_mut_ind_all := Minimality for wf_subtyp Sort Prop
+with wf_is_univ_mut_ind_all := Minimality for wf_is_univ Sort Prop
 with wf_ext_eq_mut_ind_all := Minimality for wf_ext_eq Sort Prop
 with wf_unit_eq_mut_ind_all := Minimality for wf_unit_eq Sort Prop
 with wf_modexp_eq_mut_ind_all := Minimality for wf_modexp_eq Sort Prop
@@ -1008,6 +1058,7 @@ Combined Scheme wf_mut_ind_all from
   wf_exp_mut_ind_all,
   wf_exp_eq_mut_ind_all,
   wf_subtyp_mut_ind_all,
+  wf_is_univ_mut_ind_all,
   wf_ext_eq_mut_ind_all,
   wf_unit_eq_mut_ind_all,
   wf_modexp_eq_mut_ind_all,
@@ -1018,45 +1069,46 @@ Combined Scheme wf_mut_ind_all from
 (** ** Units
 
     A unit filed at a level, or a frame of the stack, is a body checked by
-    [⊢m]: [⊢u] is not a judgment of its own, but this definition, which the
+    [⊢ᵍᵐ]: [⊢ᵍᵘ] is not a judgment of its own, but this definition, which the
     block states inline ([wf_gstack_cons]).  Two further
     projections are presuppositions, in [Presup]: [⊢ Θ ⍮ Ξ ⍮ gu_params U] of
-    [⊢m], hence of [⊢u], and [⊢g Θ ⍮ nil] of [⊢g Θ ⍮ Ξ]. *)
+    [⊢ᵍᵐ], hence of [⊢ᵍᵘ], and [⊢ᵍ Θ ⍮ nil] of [⊢ᵍ Θ ⍮ Ξ]. *)
 
 Definition wf_gunit (Θ : gdeps) (Ξ : gstack) (mp : qname) (U : gunit) : Prop :=
-  exists Δ Φ, U = gu_body Δ Φ /\ Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ.
-Notation "Θ ⍮ Ξ ⍮ mp ⊢u U" := (wf_gunit Θ Ξ mp U) : type_scope.
+  exists Δ Φ, U = gu_body Δ Φ /\ Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ.
+Notation "Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U" := (wf_gunit Θ Ξ mp U) : type_scope.
 
-Lemma wf_gunit_intro : forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> Θ ⍮ Ξ ⍮ mp ⊢u gu_body Δ Φ.
+Lemma wf_gunit_intro : forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ -> Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ gu_body Δ Φ.
 Proof. intros; do 2 eexists; split; [ reflexivity | assumption ]. Qed.
 
-Lemma wf_gunit_mod : forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢u U -> Θ ⍮ Ξ ⍮ mp ⍮ gu_params U ⊢m gu_mod U.
+Lemma wf_gunit_mod : forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U -> Θ ⍮ Ξ ⍮ mp ⍮ gu_params U ⊢ᵍᵐ gu_mod U.
 Proof. intros * (Δ & Φ & -> & H); exact H. Qed.
 
 (** The unit form of the two constructors that file one. *)
 
 Lemma wf_gstack_cons' : forall Θ Ξ mp U,
-    ⊢g Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ mp ⊢u U -> frame_fresh Θ Ξ mp -> ⊢g Θ ⍮ (mp, U) :: Ξ.
+    ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U -> frame_fresh Θ Ξ mp -> ⊢ᵍ Θ ⍮ (mp, U) :: Ξ.
 Proof. intros * ? (Δ & Φ & -> & ?) ?; apply wf_gstack_cons; assumption. Qed.
 
 Lemma wf_gstack_cons_inv : forall Θ Ξ mp U,
-    ⊢g Θ ⍮ (mp, U) :: Ξ -> ⊢g Θ ⍮ Ξ /\ Θ ⍮ Ξ ⍮ mp ⊢u U /\ frame_fresh Θ Ξ mp.
+    ⊢ᵍ Θ ⍮ (mp, U) :: Ξ -> ⊢ᵍ Θ ⍮ Ξ /\ Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U /\ frame_fresh Θ Ξ mp.
 Proof. inversion 1; subst; eauto using wf_gunit_intro. Qed.
 
 (** Filing, from the premises of the frame it closes. *)
 Lemma wf_gstack_file' : forall Θ fp U,
-    ⊢g Θ ⍮ nil -> Θ ⍮ nil ⍮ q_abs fp nil ⊢u U -> gds_lookup Θ fp = None -> ⊢g (fp, U) :: Θ ⍮ nil.
+    ⊢ᵍ Θ ⍮ nil -> Θ ⍮ nil ⍮ q_abs fp nil ⊢ᵍᵘ U -> gds_lookup Θ fp = None -> ⊢ᵍ (fp, U) :: Θ ⍮ nil.
 Proof. intros * ? ? ?; apply wf_gstack_file, wf_gstack_cons'; [ assumption | assumption | split; [ assumption | reflexivity ] ]. Qed.
 
 Lemma wf_gstack_file_inv : forall Θ fp U,
-    ⊢g (fp, U) :: Θ ⍮ nil -> ⊢g Θ ⍮ nil /\ Θ ⍮ nil ⍮ q_abs fp nil ⊢u U /\ gds_lookup Θ fp = None.
+    ⊢ᵍ (fp, U) :: Θ ⍮ nil -> ⊢ᵍ Θ ⍮ nil /\ Θ ⍮ nil ⍮ q_abs fp nil ⊢ᵍᵘ U /\ gds_lookup Θ fp = None.
 Proof.
   inversion 1; subst.
-  match goal with H : ⊢g _ ⍮ _ :: nil |- _ => destruct (wf_gstack_cons_inv _ _ _ _ H) as (? & ? & [? _]) end; auto.
+  match goal with H : ⊢ᵍ _ ⍮ _ :: nil |- _ => destruct (wf_gstack_cons_inv _ _ _ _ H) as (? & ? & [? _]) end; auto.
 Qed.
 
 #[export]
-Hint Constructors wf_ctx wf_exp wf_exp_eq wf_subtyp ctx_lookup ctx_lookup_def : mctt.
+Hint Constructors wf_ctx wf_exp wf_exp_eq wf_subtyp wf_is_univ ctx_lookup ctx_lookup_def : mctt.
+
 
 Lemma let_ann_none : forall A, let_ann None A.
 Proof. intros; left; reflexivity. Qed.
@@ -1076,8 +1128,29 @@ Ltac destruct_let_ann :=
 #[export]
 Hint Constructors wf_ext_eq wf_unit_eq wf_modexp_eq : mctt.
 
+(** The two instances of [wf_gentry_def], with a body and without (an
+    axiom), whose conclusions name the entry as it is filed. *)
+Lemma wf_gentry_def_body : forall Θ Ξ mp b pv A M i,
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv (ctx_pi (gs_tele Ξ) A) (Some (ctx_fn (gs_tele Ξ) M)).
+Proof.
+  intros * HA HM; change (Some (ctx_fn (gs_tele Ξ) M)) with (option_map (ctx_fn (gs_tele Ξ)) (Some M)).
+  eapply wf_gentry_def; [ exact HA | intros ? [= <-]; exact HM ].
+Qed.
+
+Lemma wf_gentry_def_axiom : forall Θ Ξ mp b pv A i,
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv (ctx_pi (gs_tele Ξ) A) None.
+Proof.
+  intros * HA; change (@None exp) with (option_map (ctx_fn (gs_tele Ξ)) None).
+  eapply wf_gentry_def; [ exact HA | discriminate ].
+Qed.
+
 #[export]
 Hint Constructors wf_gentry wf_gmod wf_gstack : mctt.
+#[export]
+Hint Resolve wf_gentry_def_body wf_gentry_def_axiom : mctt.
 #[export]
 Hint Resolve wf_gunit_intro : mctt.
 
@@ -1099,9 +1172,9 @@ Record wf_wk (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (φ : wk) : Prop := wf_wk_
 (** A renaming sends a definition to the same definition. *)
 ; wf_wk_lookup_def : forall x A M, Δ ∋ #x ≔ M : A -> Γ ∋ #(φ x) ≔ M[φ]ʷ : A[φ]ʷ
 (** A renaming sends a module slot to a slot of the same unit. *)
-; wf_wk_lookup_mod : forall x U, Δ ∋ #x ⇒ₘ U -> Γ ∋ #(φ x) ⇒ₘ gunit_wk U φ
+; wf_wk_lookup_mod : forall x U, Δ ∋ #x ≔ₘ U -> Γ ∋ #(φ x) ≔ₘ gunit_wk U φ
 }.
-Notation "Θ ⍮ Ξ ⍮ Γ ⊢w φ : Δ" := (wf_wk Θ Ξ Γ Δ φ) : type_scope.
+Notation "Θ ⍮ Ξ ⍮ Γ ⊢ʷ φ : Δ" := (wf_wk Θ Ξ Γ Δ φ) : type_scope.
 
 Record wf_sub (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (σ : sub) : Prop := wf_sub_intro
 { wf_sub_dom : ⊢ Θ ⍮ Ξ ⍮ Γ
@@ -1111,22 +1184,24 @@ Record wf_sub (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (σ : sub) : Prop := wf_s
 ; wf_sub_apply_def : forall x A M, Δ ∋ #x ≔ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ #x[σ] ≈ M[σ] : A[σ]
 (** A substitution sends a module slot to the unit it holds, transported:
     as a well-formed literal, or as a slot holding that unit. *)
-; wf_sub_apply_mod : forall x U, Δ ∋ #x ⇒ₘ U ->
-    (σ x = se_mod (me_lit U[σ]ᵘ) /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[σ]ᵘ ≈ U[σ]ᵘ) \/ exists y, σ x = se_var y /\ Γ ∋ #y ⇒ₘ U[σ]ᵘ
+; wf_sub_apply_mod : forall x U, Δ ∋ #x ≔ₘ U ->
+    (σ x = se_mod (me_lit U[σ]ᵘ) /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[σ]ᵘ ≈ U[σ]ᵘ) \/ exists y, σ x = se_var y /\ Γ ∋ #y ≔ₘ U[σ]ᵘ
 }.
-Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ" := (wf_sub Θ Ξ Γ Δ σ) : type_scope.
+Notation "Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ" := (wf_sub Θ Ξ Γ Δ σ) : type_scope.
 
 (** The type at which the images are equated is [A[σ]]; it could equally be
     [A[σ']], since [sub_eq_preserves_exp] shows the two are equal types. *)
 Record wf_sub_eq (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (σ σ' : sub) : Prop := wf_sub_eq_intro
-{ wf_sub_eq_left : Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ
-; wf_sub_eq_right : Θ ⍮ Ξ ⍮ Γ ⊢s σ' : Δ
+{ wf_sub_eq_left : Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ
+; wf_sub_eq_right : Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ' : Δ
 ; wf_sub_eq_apply : forall x A, Δ ∋ #x : A -> Θ ⍮ Ξ ⍮ Γ ⊢ #x[σ] ≈ #x[σ'] : A[σ]
+(** A module slot is sent to equal module expressions. *)
+; wf_sub_eq_apply_mod : forall x U, Δ ∋ #x ≔ₘ U -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ sentry_modexp (σ x) ≈ sentry_modexp (σ' x)
 }.
-Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ" := (wf_sub_eq Θ Ξ Γ Δ σ σ') : type_scope.
+Notation "Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ" := (wf_sub_eq Θ Ξ Γ Δ σ σ') : type_scope.
 
 (** The projections are not registered in [mctt]: each of them
-    has a conclusion ([⊢ Γ], [Γ ⊢s σ : Δ]) that the corresponding introduction
+    has a conclusion ([⊢ Γ], [Γ ⊢ˢ σ : Δ]) that the corresponding introduction
     rule also produces, so the pair would let [eauto] cycle. [Lemmas.v] states
     the presuppositions it actually wants as separate lemmas. *)
 
@@ -1138,7 +1213,7 @@ Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ" := (wf_sub_eq Θ Ξ Γ Δ σ σ
 #[export]
 Instance wf_wk_Proper Θ Ξ Γ Δ : Proper (wk_eq ==> iff) (wf_wk Θ Ξ Γ Δ).
 Proof.
-  assert (forall φ ψ, wk_eq φ ψ -> Θ ⍮ Ξ ⍮ Γ ⊢w φ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢w ψ : Δ) as Himp.
+  assert (forall φ ψ, wk_eq φ ψ -> Θ ⍮ Ξ ⍮ Γ ⊢ʷ φ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ʷ ψ : Δ) as Himp.
   {
     intros φ ψ Heq [? ? Hlk Hlkd Hlkm].
     econstructor; try eassumption.
@@ -1161,7 +1236,7 @@ Qed.
 #[export]
 Instance wf_sub_Proper Θ Ξ Γ Δ : Proper (sb_eq ==> iff) (wf_sub Θ Ξ Γ Δ).
 Proof.
-  assert (forall σ τ, sb_eq σ τ -> Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢s τ : Δ) as Himp.
+  assert (forall σ τ, sb_eq σ τ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ τ : Δ) as Himp.
   {
     intros σ τ Heq [? ? Hap Hapd Hapm].
     econstructor; try eassumption.
@@ -1488,6 +1563,130 @@ Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ ≈ ⊥ : Typeω@?i) => fix_open_level i; a
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type⟨_⟩ ≈ Type⟨_⟩ : Typeω@?i) => fix_open_level i; eapply wf_exp_eq_univ_cong_large_tm : mctt.
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type⟨𝕃ᵒ _⟩ ≈ Type⟨𝕃ᵒ _⟩ : Typeω@?i) => fix_open_level i; apply wf_exp_eq_univ_cong_large : mctt.
+
+(** ** The Context of a Judgment
+
+    Every judgment presupposes its context well formed.  These come first,
+    each by an induction that reads it off whichever premise is stated at
+    [Γ]. *)
+
+Lemma presup_ext_eq_ctx : forall {Θ Ξ Γ Ψ Ψ'}, Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> ⊢ Θ ⍮ Ξ ⍮ Γ.
+Proof.
+  induction 1; auto.
+Qed.
+
+#[export]
+Hint Resolve presup_ext_eq_ctx : mctt.
+
+Lemma presup_unit_eq_ctx : forall {Θ Ξ Γ U U'}, Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> ⊢ Θ ⍮ Ξ ⍮ Γ.
+Proof.
+  induction 1; mautosolve 2.
+Qed.
+
+#[export]
+Hint Resolve presup_unit_eq_ctx : mctt.
+
+Lemma presup_modexp_eq_ctx : forall {Θ Ξ Γ H H'}, Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> ⊢ Θ ⍮ Ξ ⍮ Γ.
+Proof.
+  induction 1; mautosolve 2.
+Qed.
+
+#[export]
+Hint Resolve presup_modexp_eq_ctx : mctt.
+
+(** A unit equivalence presupposes the reflexive instances of both sides. *)
+Lemma wf_unit_eq_refl_left : forall {Θ Ξ Γ U U'}, Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U.
+Proof. intros; eapply wf_unit_eq_trans; [ eassumption | apply wf_unit_eq_sym; eassumption ]. Qed.
+
+Lemma wf_unit_eq_refl_right : forall {Θ Ξ Γ U U'}, Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U' ≈ U'.
+Proof. intros; eapply wf_unit_eq_trans; [ apply wf_unit_eq_sym; eassumption | eassumption ]. Qed.
+
+Lemma wf_modexp_eq_refl_left : forall {Θ Ξ Γ H H'}, Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H.
+Proof. intros; eapply wf_me_trans; [ eassumption | apply wf_me_sym; eassumption ]. Qed.
+
+Lemma wf_modexp_eq_refl_right : forall {Θ Ξ Γ H H'}, Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H' ≈ H'.
+Proof. intros; eapply wf_me_trans; [ apply wf_me_sym; eassumption | eassumption ]. Qed.
+
+Lemma ctx_decomp_mod : forall {Θ Ξ Γ U},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ▹ₘ U ->
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U.
+Proof.
+  inversion 1; eauto using presup_unit_eq_ctx.
+Qed.
+
+Corollary ctx_decomp_mod_left : forall {Θ Ξ Γ U}, ⊢ Θ ⍮ Ξ ⍮ Γ ▹ₘ U -> ⊢ Θ ⍮ Ξ ⍮ Γ.
+Proof. intros * ?%ctx_decomp_mod; easy. Qed.
+
+Corollary ctx_decomp_mod_unit : forall {Θ Ξ Γ U}, ⊢ Θ ⍮ Ξ ⍮ Γ ▹ₘ U -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U.
+Proof. intros * ?%ctx_decomp_mod; easy. Qed.
+
+#[export]
+Hint Resolve ctx_decomp_mod_left ctx_decomp_mod_unit : mctt.
+
+Lemma presup_exp_ctx : forall {Θ Ξ Γ M A}, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> ⊢ Θ ⍮ Ξ ⍮ Γ.
+Proof.
+  induction 1; mautosolve 2.
+Qed.
+
+#[export]
+Hint Resolve presup_exp_ctx : mctt.
+
+Lemma presup_exp_eq_ctx : forall {Θ Ξ Γ M M' A}, Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> ⊢ Θ ⍮ Ξ ⍮ Γ.
+Proof.
+  induction 1; mautosolve 2.
+Qed.
+
+#[export]
+Hint Resolve presup_exp_eq_ctx : mctt.
+
+Lemma presup_is_univ_ctx : forall {Θ Ξ Γ U}, Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U -> ⊢ Θ ⍮ Ξ ⍮ Γ.
+Proof.
+  inversion 1; mautosolve 2.
+Qed.
+
+#[export]
+Hint Resolve presup_is_univ_ctx : mctt.
+
+Lemma presup_subtyp_ctx : forall {Θ Ξ Γ A B}, Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ B -> ⊢ Θ ⍮ Ξ ⍮ Γ.
+Proof.
+  induction 1; mautosolve 2.
+Qed.
+
+#[export]
+Hint Resolve presup_subtyp_ctx : mctt.
+
+(** The two instances of [wf_pi] and of its congruence, at a large
+    universe and at a small one. *)
+Lemma wf_pi_large : forall Θ Ξ Γ i A B,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Typeω@i.
+Proof. intros * HA HB; eapply wf_pi; [ apply wf_is_univ_large; eapply presup_exp_ctx, HA | exact HA | exact HB ]. Qed.
+
+Lemma wf_pi_lvl : forall Θ Ξ Γ n L A B,
+    Θ ⍮ Ξ ⍮ Γ ⊢ L : Level@n -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ -> Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type⟨L[↑]ʷ⟩ -> Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Type⟨L⟩.
+Proof. intros * HL HA HB; eapply wf_pi; [ eapply wf_is_univ_small, HL | exact HA | exact HB ]. Qed.
+
+Lemma wf_exp_eq_pi_cong_large : forall Θ Ξ Γ i A A' B B',
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i -> Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Typeω@i.
+Proof. intros * HA HAA HB; eapply wf_exp_eq_pi_cong; [ apply wf_is_univ_large; eapply presup_exp_ctx, HA | exact HA | exact HAA | exact HB ]. Qed.
+
+Lemma wf_exp_eq_pi_cong_lvl : forall Θ Ξ Γ n L A A' B B',
+    Θ ⍮ Ξ ⍮ Γ ⊢ L : Level@n -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type⟨L⟩ ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Type⟨L[↑]ʷ⟩ -> Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Type⟨L⟩.
+Proof. intros * HL HA HAA HB; eapply wf_exp_eq_pi_cong; [ eapply wf_is_univ_small, HL | exact HA | exact HAA | exact HB ]. Qed.
+
+#[export]
+Hint Resolve wf_pi_large wf_pi_lvl wf_exp_eq_pi_cong_large wf_exp_eq_pi_cong_lvl : mctt.
+
+(** A universe is a type. *)
+Lemma wf_is_univ_typ : forall {Θ Ξ Γ U}, Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ U : Typeω@i.
+Proof.
+  inversion 1; subst; [ exists (S i); apply wf_typ; assumption |].
+  exists 0; eapply wf_exp_subtyp; [ eapply wf_univ; eassumption | apply wf_typ; mauto 2 | eapply wf_subtyp_small_large; mauto 2 ].
+Qed.
+
+#[export]
+Hint Resolve wf_is_univ_typ : mctt.
 
 Lemma presup_subtyp_right : forall {Θ Ξ Γ A B}, Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ B -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ B : Typeω@i.
 Proof.

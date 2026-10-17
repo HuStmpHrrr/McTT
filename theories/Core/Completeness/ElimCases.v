@@ -20,7 +20,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution Members Inductives.
 From Mctt.Core.Syntactic.System Require Import Definitions Scoping IndSyntax GlobalPresup IndTyping MemberLemmas.
 From Mctt.Core.Completeness Require Import
-  LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases UnitCases InstanceCases GlobalSem MemberReps
+  LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases UnitCases InstanceCases GlobalArgs MemberReps
   VariableCases FunctionCases LevelCases IndSem TeleSem IndCases SubtypingCases.
 From Mctt.Core.Semantic Require Import Realizability IndPER IndElim Evaluation.Modules.
 Import Domain_Notations Fixed_Notations Wk_Notations.
@@ -97,8 +97,8 @@ Proof.
 Qed.
 
 Lemma rel_sub_under_ctx_head_term : forall {Γ' Γ A σ σ'},
-    Γ' ⊨s σ ≈ σ' : Γ ▹ A ->
-    Γ' ⊨s sb_head_term σ ≈ σ' : Γ ▹ A.
+    Γ' ⊨ˢ σ ≈ σ' : Γ ▹ A ->
+    Γ' ⊨ˢ sb_head_term σ ≈ σ' : Γ ▹ A.
 Proof.
   intros * [env_rel [HΓ' [env_relo [HΓA Hσ]]]].
   exists env_rel, HΓ', env_relo, HΓA.
@@ -282,7 +282,7 @@ Qed.
 (** The head relation of an instance is that of the type at the values of
     the substitution. *)
 Lemma per_head_inst : forall Δ0 Γ0 A (i : nat) τ RΓ0 E E' Eτ Eτ',
-    Δ0 ⊨ A : Typeω@i -> EF Γ0 ≈ Γ0 ∈ per_ctx_env ↘ RΓ0 -> Γ0 ⊨s τ ≈ τ : Δ0 ->
+    Δ0 ⊨ A : Typeω@i -> EF Γ0 ≈ Γ0 ∈ per_ctx_env ↘ RΓ0 -> Γ0 ⊨ˢ τ ≈ τ : Δ0 ->
     RΓ0 E E' -> ⟦ τ ⟧s E ↘ Eτ -> ⟦ τ ⟧s E' ↘ Eτ' ->
     (per_head A[τ] A[τ] E E' <~> per_head A A Eτ Eτ').
 Proof.
@@ -640,7 +640,7 @@ Section CargsSem.
 
   Lemma cargs_sem_all : forall c gs, ind_con D c = Some gs -> forall gs1 gs2, gs = gs1 ++ gs2 ->
       ⊨ cargs_ctx p D gs1 ++ ind_params D /\
-      cargs_ctx p D gs1 ++ ind_params D ⊨w (wk_pat (cargs_pat gs1)) : cargs_strat gs1 ++ ind_params D.
+      cargs_ctx p D gs1 ++ ind_params D ⊨ʷ (wk_pat (cargs_pat gs1)) : cargs_strat gs1 ++ ind_params D.
   Proof.
     intros c gs Hcon.
     pose proof (cons_lookup_in _ _ _ Hcon) as Hin.
@@ -676,7 +676,7 @@ Section CargsSem.
           assert (HΦ : ⊨ Φ ++ cargs_ctx p D gs1 ++ ind_params D).
           { pose proof (sh_sem_gen D HD p c gs Hcon gs1 Ps gs2 Heq HΨ IHw L (le_n _)) as H.
             unfold L in H; rewrite List.firstn_all in H; exact H. }
-          assert (HwΦ : Φ ++ cargs_ctx p D gs1 ++ ind_params D ⊨w (wk_pat pat') : ptyp_tele Ps ++ cargs_strat gs1 ++ ind_params D).
+          assert (HwΦ : Φ ++ cargs_ctx p D gs1 ++ ind_params D ⊨ʷ (wk_pat pat') : ptyp_tele Ps ++ cargs_strat gs1 ++ ind_params D).
           { pose proof (sh_wk_gen D HD p c gs Hcon gs1 Ps gs2 Heq IHw L (le_n _)) as H.
             unfold L in H; rewrite List.firstn_all in H; exact H. }
           assert (Hleaf : exists j : nat, Φ ++ cargs_ctx p D gs1 ++ ind_params D
@@ -1489,7 +1489,7 @@ Section Elim.
     assert (HlI : List.length IHs = cargs_nrec gs) by (unfold IHs; apply length_ihs_ctx_aux).
     assert (HlC : List.length Cs = List.length gs) by (unfold Cs; rewrite length_tele_sub, length_cargs_ctx; reflexivity).
     assert (HlN : List.length Ns = ind_nn D) by (unfold Ns; apply length_ind_nparams_sub).
-    assert (Hwj : elim_bctx p D gs A Us ++ Γ ⊨w (wk_shiftn n) : Γ).
+    assert (Hwj : elim_bctx p D gs A Us ++ Γ ⊨ʷ (wk_shiftn n) : Γ).
     { replace n with (List.length (elim_bctx p D gs A Us))
         by (unfold elim_bctx; fold IHs Cs Ns; rewrite !List.length_app, HlI, HlC, HlN; unfold n; lia).
       apply rel_wk_under_ctx_shiftn; exact HB. }
@@ -1575,7 +1575,7 @@ Section Elim.
   (** ** The Arguments Before a Position, Weakened to Their Non-Recursive
       Ones, over [Γ] *)
   Lemma cargs_wk_ext : forall c gs, ind_con D c = Some gs -> forall gs1 gs2, gs = gs1 ++ gs2 ->
-      cargs_ctx p D gs1 ++ ind_params D ++ Γ ⊨w (wk_pat (cargs_pat gs1)) : cargs_strat gs1 ++ ind_params D ++ Γ.
+      cargs_ctx p D gs1 ++ ind_params D ++ Γ ⊨ʷ (wk_pat (cargs_pat gs1)) : cargs_strat gs1 ++ ind_params D ++ Γ.
   Proof.
     intros c gs Hcon.
     pose proof (sd_cargs D HD p c gs Hl Hcon) as HΨ.
@@ -1767,10 +1767,10 @@ Section Elim.
           rewrite params_split in HΨ1Γ; rewrite <- !List.app_assoc in HΨ1Γ |- *; rewrite <- List.app_assoc in HΨ1Γ; exact HΨ1Γ. }
         destruct (gsub_props Hτ2) as [Hτ2v Hτ2l].
         pose proof (gsub_comp _ _ _ _ _ G0 (gsub_sem_ctx _ _ _ Hτ2) Hτ2v Hτ2l) as G1.
-        assert (Hw3 : Ctx ⊨w (wk_shiftn (na - List.length pat + j)) : cinst Γ p D Us gs1).
+        assert (Hw3 : Ctx ⊨ʷ (wk_shiftn (na - List.length pat + j)) : cinst Γ p D Us gs1).
         { pose proof e_HCtx as H0; unfold Ctx in H0 |- *.
           rewrite Heq in H0 |- *; rewrite cinst_split in H0 |- *; rewrite List.app_assoc in H0 |- *.
-          match goal with |- ?C ++ _ ⊨w _ : _ => replace (na - List.length pat + j) with (List.length C) end.
+          match goal with |- ?C ++ _ ⊨ʷ _ : _ => replace (na - List.length pat + j) with (List.length C) end.
           - apply rel_wk_under_ctx_shiftn; exact H0.
           - rewrite !List.length_app, length_tele_sub, length_cargs_ctx_aux, e_LE, e_Lna, e_Lpat; cbn; lia. }
         exact (gsub_comp _ _ _ _ _ G1 e_HCtx (rel_sub_of_wk Hw3) (sub_link_wk Hw3)).
@@ -2870,7 +2870,7 @@ Section Elim.
       etransitivity; [ symmetry; exact Haa | exact Hbd ].
     Qed.
 
-    Lemma mot_out : forall Γ' RΓ' σ0 ρ0 ρ0σ0 A0, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨s σ0 ≈ σ0 : Γ ->
+    Lemma mot_out : forall Γ' RΓ' σ0 ρ0 ρ0σ0 A0, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ0 ≈ σ0 : Γ ->
         RΓ' ρ0 ρ0 -> ⟦ σ0 ⟧s ρ0 ↘ ρ0σ0 -> RΓ ρ0σ0 C1 ->
         elim_mctx p D Us ++ Γ ⊨ A ≈ A0 : Typeω@iA ->
         forall ns ns' m m', tele_full nr T ns ns' -> ind_rel p D u0 nr ar dr ns m m' ->
@@ -2961,7 +2961,7 @@ Section Elim.
                       Hnn Hb Hb' Hs Hs' Har Hia Hir r r') Hrr).
     Qed.
 
-    Lemma br_out : forall Γ' RΓ' σ0 ρ0 ρ0σ0 Bs0, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨s σ0 ≈ σ0 : Γ ->
+    Lemma br_out : forall Γ' RΓ' σ0 ρ0 ρ0σ0 Bs0, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ0 ≈ σ0 : Γ ->
         RΓ' ρ0 ρ0 -> ⟦ σ0 ⟧s ρ0 ↘ ρ0σ0 -> RΓ ρ0σ0 C1 ->
         (forall c gs n B0, ind_con D c = Some gs -> brs_lookup Bs0 c = Some (n, B0) ->
            n = (ind_nn D + List.length gs + cargs_nrec gs)%nat /\ elim_bctx p D gs A Us ++ Γ ⊨ B0 : elim_bty p D c gs A Us) ->
@@ -3023,7 +3023,7 @@ Section Elim.
         (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
         (forall c gs n B, ind_con D c = Some gs -> brs_lookup Bs c = Some (n, B) ->
            elim_bctx p D gs A Us ++ Γ ⊨ B : elim_bty p D c gs A Us) ->
-        forall Γ' RΓ' σ ρ, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨s σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ C1 ->
+        forall Γ' RΓ' σ ρ, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ C1 ->
         forall ns ns' m m', tele_full nr T ns ns' -> ind_rel p D u0 nr ar dr ns m m' ->
           exists r1 r2, eval_elim gc_deps gc_stack ρ nm A[sb_qn nm σ] (brs_sub Bs σ) m r1 /\
             eval_elim gc_deps gc_stack C1 nm A Bs m' r2 /\ Rel ns m ns' m' r1 r2.
@@ -3057,7 +3057,7 @@ Section Elim.
         List.length Ns = ind_nn D ->
         gsub Γ (sb_of_list Id (Ns ++ M :: nil)) (elim_mctx p D Us ++ Γ) ->
         Γ ⊨ M ≈ M' : apps (a_ind p) (Us ++ Ns) ->
-        forall Γ' RΓ' σ σ' ρ ρ', EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨s σ ≈ σ' : Γ -> RΓ' ρ ρ' ->
+        forall Γ' RΓ' σ σ' ρ ρ', EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ' : Γ -> RΓ' ρ ρ' ->
         ⟦ σ ⟧s ρ ↘ C1 -> ⟦ σ' ⟧s ρ' ↘ C2 ->
         exists R, rel_exp (A[sb_of_list Id (Ns ++ M :: nil)]) σ ρ C1 (A[sb_of_list Id (Ns ++ M :: nil)]) σ' ρ' C2 (per_univ_elem iA R) /\
           rel_exp (a_elim nm A Bs M) σ ρ C1 (a_elim nm A' Bs' M') σ' ρ' C2 R.

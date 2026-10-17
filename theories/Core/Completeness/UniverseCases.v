@@ -32,7 +32,7 @@ Lemma rel_exp_of_univ_inversion : forall {Γ A A' u},
     Γ ⊨ A ≈ A' : ulvl_tm u ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
     forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-      Γ' ⊨s σ ≈ σ' : Γ ->
+      Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->
@@ -73,7 +73,7 @@ Qed.
 Lemma rel_exp_of_univ : forall {Γ A A' u},
     (exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
       forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-        Γ' ⊨s σ ≈ σ' : Γ ->
+        Γ' ⊨ˢ σ ≈ σ' : Γ ->
         forall ρ ρ' ρσ ρ'σ',
           Dom ρ ≈ ρ' ∈ env_rel' ->
           ⟦ σ ⟧s ρ ↘ ρσ ->
@@ -135,7 +135,7 @@ Lemma rel_exp_of_typ_inversion : forall {Γ A A'} {i : nat},
     Γ ⊨ A ≈ A' : Typeω@i ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
     forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-      Γ' ⊨s σ ≈ σ' : Γ ->
+      Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->
@@ -201,7 +201,7 @@ Qed.
     supplies the value at [⟪φ⟫ ρ].  The two values are not equal; [per_univ i]
     relates them. *)
 Corollary rel_exp_of_typ_inversion_wk : forall {Γ Δ φ A A'} {i : nat},
-    Γ ⊨w φ : Δ ->
+    Γ ⊨ʷ φ : Δ ->
     Δ ⊨ A ≈ A' : Typeω@i ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
     forall ρ ρ',
@@ -263,7 +263,7 @@ Qed.
 Lemma rel_exp_of_typ : forall {Γ A A'} {i : nat},
     (exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
       forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-        Γ' ⊨s σ ≈ σ' : Γ ->
+        Γ' ⊨ˢ σ ≈ σ' : Γ ->
         forall ρ ρ' ρσ ρ'σ',
           Dom ρ ≈ ρ' ∈ env_rel' ->
           ⟦ σ ⟧s ρ ↘ ρσ ->

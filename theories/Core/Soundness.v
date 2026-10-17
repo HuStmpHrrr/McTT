@@ -30,12 +30,12 @@ Proof.
   pose proof (per_ctx_then_per_env_initial_env ltac:(eassumption)) as [ρ [? ?]].
   destruct_conjs.
   functional_initial_env_rewrite_clear.
-  assert (Γ ⊢s Id ® ρ ∈ Sb) by (eapply initial_env_glu_rel_exp; mauto 3).
+  assert (Γ ⊢ˢ Id ® ρ ∈ Sb) by (eapply initial_env_glu_rel_exp; mauto 3).
   destruct_glu_rel_exp_with_sub.
   assert (Γ ⊢ M[Id] : A[Id] ® m ∈ glu_elem_top i a) as [? ? ? ? ? ? Hrb]
       by (eapply realize_glu_elem_top; mauto 3).
   match_by_head per_top ltac:(fun H => destruct (H (length Γ)) as [W []]).
-  assert (Γ ⊢k wk_id : Γ) by mauto 3.
+  assert (Γ ⊢ᵏ wk_id : Γ) by mauto 3.
   assert (Γ ⊢ M[Id][wk_id]ʷ ≈ W : A[Id][wk_id]ʷ) as Heq by (eapply Hrb; eassumption).
   rewrite !exp_wk_id, !exp_sub_id in Heq.
   exists W; split; [econstructor |]; eassumption.
@@ -90,14 +90,14 @@ Proof.
   pose proof (per_ctx_then_per_env_initial_env ltac:(eassumption)) as [ρ [? ?]].
   destruct_conjs.
   functional_initial_env_rewrite_clear.
-  assert (HId : Γ ⊢s Id ® ρ ∈ Sb) by (eapply initial_env_glu_rel_exp; mauto 3).
+  assert (HId : Γ ⊢ˢ Id ® ρ ∈ Sb) by (eapply initial_env_glu_rel_exp; mauto 3).
   destruct (glu_rel_exp_level_elim (n := n) HSb (soundness_fundamental_exp _ _ _ H) _ _ _ HId)
     as [m [Hev [_ Hglu]]].
   inversion Hn; subst.
   functional_initial_env_rewrite_clear.
   functional_eval_rewrite_clear.
   match goal with He : ⟦ Level@n ⟧ _ ↘ _ |- _ => inversion He; subst end.
-  assert (Γ ⊢k wk_id : Γ) by mauto 3.
+  assert (Γ ⊢ᵏ wk_id : Γ) by mauto 3.
   match goal with Hr : Rnf ⇓ (Levelᵈ@n) m in _ ↘ W |- _ =>
     exact (proj2 (Hglu _ _ _ ltac:(eassumption) (read_nf_level_sort _ _ 0 _ _ Hr))) end.
 Qed.

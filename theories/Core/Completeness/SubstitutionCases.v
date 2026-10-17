@@ -63,7 +63,7 @@ Qed.
     pattern. *)
 Lemma per_ctx_env_of_typ_sub : forall {Γ Δ σ σ' A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Typeω@i ->
     EF Γ ▹ A[σ] ≈ Γ ▹ A[σ] ∈ per_ctx_env ↘ (per_env_extend A[σ] A[σ] env_relΓ).
 Proof.
@@ -90,7 +90,7 @@ Qed.
     shared value and the caller has the left one. *)
 Lemma per_env_extend_sub_intro : forall {Γ Δ σ σ' A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Typeω@i ->
     forall ρ ρ' j a b R c c',
       Dom ρ ≈ ρ' ∈ env_relΓ ->
@@ -233,9 +233,9 @@ Qed.
     obligation is one bridging step. *)
 
 Lemma rel_wk_under_ctx_q : forall {Γ ψ Δ A} {i : nat},
-    Γ ⊨w ψ : Δ ->
+    Γ ⊨ʷ ψ : Δ ->
     Δ ⊨ A ≈ A : Typeω@i ->
-    Γ ▹ A[ψ]ʷ ⊨w (wk_q ψ) : Δ ▹ A.
+    Γ ▹ A[ψ]ʷ ⊨ʷ (wk_q ψ) : Δ ▹ A.
 Proof.
   intros * Hψj HA.
   pose proof Hψj as [env_relΓ [HΓ [env_relΔ [HΔ Hψ]]]].
@@ -279,7 +279,7 @@ Qed.
 (** ** Extension is Semantic
 
     The first of three extension lemmas, and the template for the other two.  At
-    every Kripke stage [Γ' ⊨w φ : Γ] it produces four environments and the chain
+    every Kripke stage [Γ' ⊨ʷ φ : Γ] it produces four environments and the chain
     relating them in the extended context PER of [Δ ▹ A].
 
     The four environments come from the two judgments about [σ ,, M]: the tails
@@ -298,10 +298,10 @@ Qed.
     ([solve_per_env_extend_chain]). *)
 
 Lemma rel_sub_under_ctx_extend : forall {Γ Δ σ σ' A} {i : nat} {M M'},
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Typeω@i ->
     Γ ⊨ M ≈ M' : A[σ] ->
-    Γ ⊨s σ,,M ≈ σ',,M' : Δ ▹ A.
+    Γ ⊨ˢ σ,,M ≈ σ',,M' : Δ ▹ A.
 Proof.
   intros * Hσj HA HM.
   pose proof Hσj as [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]].
@@ -363,9 +363,9 @@ Qed.
     value. *)
 
 Lemma rel_sub_under_ctx_extend_sub : forall {Γ Δ σ σ' T M M'},
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ M ≈ M' : T ->
-    Γ ⊨s σ,,M[σ] ≈ σ',,M'[σ'] : Δ ▹ T.
+    Γ ⊨ˢ σ,,M[σ] ≈ σ',,M'[σ'] : Δ ▹ T.
 Proof.
   intros * Hσj HM.
   pose proof Hσj as [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]].
@@ -423,7 +423,7 @@ Qed.
 (** ** Double Extension by Precomposed Terms
 
     Two applications of [rel_sub_under_ctx_extend_sub]: the first builds
-    [Γ ⊨s σ,,M[σ] : Δ ▹ T], and the second uses it as its substitution.  The outer
+    [Γ ⊨ˢ σ,,M[σ] : Δ ▹ T], and the second uses it as its substitution.  The outer
     extension term is [N] precomposed with the substitution the first application
     produced, which is why the statement repeats [σ ,, M[σ]]. *)
 
@@ -434,8 +434,8 @@ Qed.
     and by the variable [ψ 0].
 
     Tails: [q σ] extends [σ[↑]ʷ], so all four tails are values of [σ[↑]ʷ], which is
-    a semantic substitution [Γ ▹ A[σ] ⊨s σ[↑]ʷ : Δ] by [rel_sub_under_ctx_wk]
-    applied to the weakening [Γ ▹ A[σ] ⊨w ↑ : Γ].  One instantiation of it
+    a semantic substitution [Γ ▹ A[σ] ⊨ˢ σ[↑]ʷ : Δ] by [rel_sub_under_ctx_wk]
+    applied to the weakening [Γ ▹ A[σ] ⊨ʷ ↑ : Γ].  One instantiation of it
     produces all four tails and their chain; the merge this would otherwise need
     is done once, in the proof of [rel_sub_under_ctx_wk].
 
@@ -456,9 +456,9 @@ Qed.
       environments connects them, as in [rel_sub_under_ctx_extend_sub]. *)
 
 Lemma rel_sub_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat},
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Typeω@i ->
-    Γ ▹ A[σ] ⊨s q σ ≈ q σ' : Δ ▹ A.
+    Γ ▹ A[σ] ⊨ˢ q σ ≈ q σ' : Δ ▹ A.
 Proof.
   intros * Hσj HA.
   pose proof Hσj as [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]].
@@ -473,7 +473,7 @@ Proof.
   rename HΓ2 into HΓ; rename HΔ2 into HΔ.
   pose proof (per_ctx_env_of_typ HΔ HA) as HΔA.
   pose proof (per_ctx_env_of_typ_sub HΓ Hσj HA) as HΓA.
-  (** [Γ ▹ A[σ] ⊨s σ[↑]ʷ : Δ] — the substitution [q σ] extends.  All four tails
+  (** [Γ ▹ A[σ] ⊨ˢ σ[↑]ʷ : Δ] — the substitution [q σ] extends.  All four tails
       come from this one judgment. *)
   pose proof (rel_wk_shift HΓ HΓA) as Hshift.
   pose proof (rel_wk_under_ctx_intro HΓA HΓ Hshift) as Hshiftj.
@@ -556,7 +556,7 @@ Qed.
 Lemma rel_sub_under_ctx_q_at : forall {Γ Δ σ σ' A} {i : nat} {env_relΓ env_relΔA},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ env_relΔA ->
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Typeω@i ->
     forall ρ ρ' ρσ ρ'σ' c c',
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
@@ -637,7 +637,7 @@ Qed.
     and selecting is [pairwise]. *)
 Lemma rel_exp_of_univ_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {B B' j env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Typeω@i ->
     Δ ▹ A ⊨ B ≈ B' : ulvl_tm j ->
     forall ρ ρ' ρσ ρ'σ' c c',
@@ -706,7 +706,7 @@ Qed.
 
 Corollary rel_exp_of_typ_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {B B'} {j : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Typeω@i ->
     Δ ▹ A ⊨ B ≈ B' : Typeω@j ->
     forall ρ ρ' ρσ ρ'σ' c c',
@@ -753,7 +753,7 @@ mid —⟦B⟧(⟦σ⟧ρ ↦ c)— L1 —⟦B⟧(s ↦ c)— main —⟦B⟧(s'
     the PER [mid] is stated at. *)
 Lemma rel_exp_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {M M' B env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨s σ ≈ σ' : Δ ->
+    Γ ⊨ˢ σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Typeω@i ->
     Δ ▹ A ⊨ M ≈ M' : B ->
     forall ρ ρ' ρσ ρ'σ' c c',
@@ -878,7 +878,7 @@ Lemma rel_typ_of_instance : forall {Γ A} {i : nat} {B N},
     forall Γ' env_rel',
       EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' ->
       forall σ σ' ρ ρ' ρσ ρ'σ',
-        Γ' ⊨s σ ≈ σ' : Γ ->
+        Γ' ⊨ˢ σ ≈ σ' : Γ ->
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->
         ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->

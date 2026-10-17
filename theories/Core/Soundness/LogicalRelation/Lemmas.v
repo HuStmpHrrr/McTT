@@ -327,7 +327,7 @@ Qed.
 
 (** Equal lists of terms at a closed telescope are equal at every
     weakening. *)
-Lemma exps_eq_at_wk : forall Δ Δ' φ T Xs Ys, tele_ass T -> ctx_scoped 0 T -> Δ' ⊢k φ : Δ ->
+Lemma exps_eq_at_wk : forall Δ Δ' φ T Xs Ys, tele_ass T -> ctx_scoped 0 T -> Δ' ⊢ᵏ φ : Δ ->
     exps_eq_at Δ T Xs Ys -> exps_eq_at Δ' T (List.map (fun X => X[φ]ʷ) Xs) (List.map (fun Y => Y[φ]ʷ) Ys).
 Proof.
   intros * Hass Hs Hφ [Hl H]; split; [ rewrite !List.length_map; exact Hl |].
@@ -343,7 +343,7 @@ Qed.
 (** The parameters of a type predicate at a weakening, at a list equal to
     them there, are equal to the ones of another predicate glued to the same
     values. *)
-Lemma exps_eq_at_params_wk : forall p D Δ Δ' φ Xs Ys, ind_lookup gc_deps gc_stack p = Some D -> Δ' ⊢k φ : Δ ->
+Lemma exps_eq_at_params_wk : forall p D Δ Δ' φ Xs Ys, ind_lookup gc_deps gc_stack p = Some D -> Δ' ⊢ᵏ φ : Δ ->
     exps_eq_at Δ (ind_params D) Xs Ys ->
     exps_eq_at Δ' (ind_params D) (List.map (fun X => X[φ]ʷ) Xs) (List.map (fun Y => Y[φ]ʷ) Ys).
 Proof.
@@ -437,13 +437,13 @@ Definition ind_comps_kripke (p : qname) (D : ind_decl) (ups : list domain)
     (AEl : list domain -> String.string -> nat -> list domain -> glu_exp_pred)
     (DP : list domain -> exp -> glu_typ_pred) (DEl : list domain -> exp -> glu_exp_pred)
     (Γ : ctx) (Us : list exp) : Prop :=
-  forall Δ φ, Δ ⊢k φ : Γ ->
+  forall Δ φ, Δ ⊢ᵏ φ : Γ ->
     ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ (List.map (fun U => U[φ]ʷ) Us) /\
     forall Us', exps_eq_at Δ (ind_uparams D) (List.map (fun U => U[φ]ʷ) Us) Us' ->
       ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ Us'.
 
 Lemma ind_comps_kripke_wk : forall p D ups NP NEl AP AEl DP DEl Γ Us Δ φ,
-    ind_comps_kripke p D ups NP NEl AP AEl DP DEl Γ Us -> Δ ⊢k φ : Γ ->
+    ind_comps_kripke p D ups NP NEl AP AEl DP DEl Γ Us -> Δ ⊢ᵏ φ : Γ ->
     ind_comps_kripke p D ups NP NEl AP AEl DP DEl Δ (List.map (fun U => U[φ]ʷ) Us).
 Proof.
   intros * Hk Hφ Δ' φ' Hφ'; rewrite map_wk_wk; apply Hk; eapply kripke_compose; eassumption.
@@ -471,7 +471,7 @@ Lemma glu_ind_lower : forall p D ups NP NEl AP AEl DP DEl (NEl' : nat -> list do
        List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
        forall Γ A M m, DEl (ms ++ ws ++ ys) B Γ A M m -> DEl' (ms ++ ws ++ ys) B Γ A M m) ->
     forall Γ Ps M m, glu_ind p D ups NEl' AEl' DP' DEl' Γ Ps M m ->
-      (forall Δ φ, Δ ⊢k φ : Γ ->
+      (forall Δ φ, Δ ⊢ᵏ φ : Γ ->
          ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ (List.firstn (ind_nu D) (List.map (fun P => P[φ]ʷ) Ps)) /\
          forall Us', exps_eq_at Δ (ind_uparams D) (List.firstn (ind_nu D) (List.map (fun P => P[φ]ʷ) Ps)) Us' ->
            ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ Us') ->
@@ -481,7 +481,7 @@ Proof.
   pose proof Hcp as (HnP & HnI & HaP & HaI & HdP & HdI).
   apply (glu_ind_mut_ind p D ups NEl' AEl' DP' DEl'
            (fun Γ Ps M m _ =>
-              (forall Δ φ, Δ ⊢k φ : Γ ->
+              (forall Δ φ, Δ ⊢ᵏ φ : Γ ->
                  ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ (List.firstn (ind_nu D) (List.map (fun P => P[φ]ʷ) Ps)) /\
                  forall Us', exps_eq_at Δ (ind_uparams D) (List.firstn (ind_nu D) (List.map (fun P => P[φ]ʷ) Ps)) Us' ->
                    ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ Us') ->
@@ -500,7 +500,7 @@ Proof.
     assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
     destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [_ Hc].
     pose proof Hc as (_ & Hle & _).
-    assert (Hid : Γ ⊢k wk_id : Γ) by mauto 3.
+    assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
     pose proof (proj1 (Hk _ _ Hid)) as Hc0.
     rewrite map_wk_id in Hc0.
     pose proof (glu_nparams_lower _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hc0 HNl Hb Hnp) as Hnp'.
@@ -542,7 +542,7 @@ Proof.
   - intros * Hs1 Hs2 IH ms c0 gs1 t0 gs2 ws k1 ys Hpre Hm Hc Hw Hsk Hk1 Hy _ HΓ Us σ HUl HA Hk.
     cbn [ptyp_ty_at] in HA.
     destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [_ Hcl].
-    assert (Hid : Γ ⊢k wk_id : Γ) by mauto 3.
+    assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
     pose proof (proj1 (Hk _ _ Hid)) as Hc0; rewrite map_wk_id in Hc0.
     (** The uniform parameters of the leaf's type are [Us]. *)
     assert (HU : forall Q, A = apps (a_ind p) Q -> List.firstn (ind_nu D) Q = Us).
@@ -614,7 +614,7 @@ Lemma glu_params_top_eq : forall p D Δ Ps Qs as',
     glu_params_top D Δ Ps as' -> glu_params_top D Δ Qs as' -> exps_eq_at Δ (ind_params D) Ps Qs.
 Proof.
   intros * Hl HΔ (Ms & HMs) (HPl & _ & HPr) (HQl & _ & HQr).
-  assert (Hid : Δ ⊢k wk_id : Δ) by mauto 3.
+  assert (Hid : Δ ⊢ᵏ wk_id : Δ) by mauto 3.
   pose proof (HPr _ _ _ Hid HMs) as [HPM HPMs]; pose proof (HQr _ _ _ Hid HMs) as [HQM HQMs].
   rewrite (map_wk_id Ps) in HPM, HPMs; rewrite (map_wk_id Qs) in HQM, HQMs.
   split; [ congruence |].
@@ -651,15 +651,15 @@ Qed.
 Lemma ind_typ_at_params_change : forall p D ups ns NP NEl AP AEl DP DEl a Γ A Ps Qs,
     ind_lookup gc_deps gc_stack p = Some D ->
     (forall n, exists Ms, Rps ups ++ ns at List.rev (ind_params D) in gc_deps ⍮ gc_stack ⍮ nil ⍮ n ↘ Ms) ->
-    (forall Δ φ, Δ ⊢k φ : Γ -> glu_params_top D Δ (List.map (fun P => P[φ]ʷ) Qs) (ups ++ ns)) ->
+    (forall Δ φ, Δ ⊢ᵏ φ : Γ -> glu_params_top D Δ (List.map (fun P => P[φ]ʷ) Qs) (ups ++ ns)) ->
     ind_typ_at p D ups ns NP NEl AP AEl DP DEl Typeω@a Γ A Ps -> ind_typ_at p D ups ns NP NEl AP AEl DP DEl Typeω@a Γ A Qs.
 Proof.
   intros * Hl Hrb HQ (HA0 & Hk).
-  assert (Heq : forall Δ φ, Δ ⊢k φ : Γ -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Ps) (List.map (fun P => P[φ]ʷ) Qs)).
+  assert (Heq : forall Δ φ, Δ ⊢ᵏ φ : Γ -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Ps) (List.map (fun P => P[φ]ʷ) Qs)).
   { intros Δ φ Hφ; destruct (Hk Δ φ Hφ) as (Hpt & _ & _).
     eapply glu_params_top_eq; [ exact Hl | eapply kripke_dom; eassumption | apply Hrb | exact Hpt | exact (HQ _ _ Hφ) ]. }
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
-  assert (Hid : Γ ⊢k wk_id : Γ) by mauto 3.
+  assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
   split.
   - destruct (Hk _ _ Hid) as ((HPl & _) & Hs & _).
     destruct (Heq _ _ Hid) as [_ HPQ]; destruct (HQ _ _ Hid) as (HQl & _).
@@ -1559,7 +1559,7 @@ Qed.
 Hint Resolve mk_glu_rel_exp_with_sub'' : mctt.
 
 Lemma glu_rel_exp_with_sub_implies_glu_rel_exp_sub_with_typ : forall {i : nat} {Δ A M σ Γ ρ},
-  Δ ⊢s σ : Γ ->
+  Δ ⊢ˢ σ : Γ ->
   glu_rel_exp_with_sub i Δ M A σ ρ ->
   glu_rel_exp_with_sub (S i) Δ A Typeω@i σ ρ.
 Proof.
@@ -1588,7 +1588,7 @@ Qed.
 Hint Resolve glu_rel_exp_with_sub_implies_glu_rel_typ_with_sub : mctt.
 
 Lemma glu_rel_typ_with_sub_implies_glu_rel_exp_with_sub : forall {Δ A} {j : nat} {σ Γ ρ},
-  Δ ⊢s σ : Γ ->
+  Δ ⊢ˢ σ : Γ ->
   glu_rel_typ_with_sub j Δ A σ ρ ->
   glu_rel_exp_with_sub (S j) Δ A Typeω@j σ ρ.
 Proof.
@@ -1606,9 +1606,9 @@ Hint Resolve glu_rel_typ_with_sub_implies_glu_rel_exp_with_sub : mctt.
 Lemma glu_ctx_env_sub_resp_sub_eq : forall {Γ Sb},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     forall {Δ σ σ' ρ},
-      Δ ⊢s σ ® ρ ∈ Sb ->
-      Δ ⊢s σ ≈ σ' : Γ ->
-      Δ ⊢s σ' ® ρ ∈ Sb.
+      Δ ⊢ˢ σ ® ρ ∈ Sb ->
+      Δ ⊢ˢ σ ≈ σ' : Γ ->
+      Δ ⊢ˢ σ' ® ρ ∈ Sb.
 Proof.
   (** [gen_presup] misses [wf_sub_eq] (its pattern is one argument short), so
       the two projections are taken by hand, here and below. *)
@@ -1654,23 +1654,23 @@ Qed.
 Lemma cons_glu_sub_pred_resp_wf_sub_eq : forall {i : nat} {Γ A Sb Δ σ σ' ρ},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     Γ ⊢ A : Typeω@i ->
-    Δ ⊢s σ ≈ σ' : Γ ▹ A ->
-    Δ ⊢s σ ® ρ ∈ cons_glu_sub_pred i Γ A Sb ->
-    Δ ⊢s σ' ® ρ ∈ cons_glu_sub_pred i Γ A Sb.
+    Δ ⊢ˢ σ ≈ σ' : Γ ▹ A ->
+    Δ ⊢ˢ σ ® ρ ∈ cons_glu_sub_pred i Γ A Sb ->
+    Δ ⊢ˢ σ' ® ρ ∈ cons_glu_sub_pred i Γ A Sb.
 Proof.
   intros * Hglu HA Heq Hσ.
   dependent destruction Hσ.
   (pose proof (wf_sub_eq_left _ _ _ _ _ _ Heq) as Hσ; pose proof (wf_sub_eq_right _ _ _ _ _ _ Heq) as Hσ').
   assert (⊢ Γ ▹ A) by mauto 3.
-  assert (Γ ▹ A ⊢s Wk : Γ) by mauto 3.
+  assert (Γ ▹ A ⊢ˢ Wk : Γ) by mauto 3.
   assert (Γ ▹ A ⊢ A[↑]ʷ : Typeω@i) by (eapply wk_preserves_typ; mauto 3).
-  assert (Δ ⊢s Wk ⨟ σ : Γ) by mauto 3.
-  assert (Δ ⊢s Wk ⨟ σ' : Γ) by mauto 3.
-  assert (Δ ⊢s Wk ⨟ σ ≈ Wk ⨟ σ' : Γ) by mauto 3.
+  assert (Δ ⊢ˢ Wk ⨟ σ : Γ) by mauto 3.
+  assert (Δ ⊢ˢ Wk ⨟ σ' : Γ) by mauto 3.
+  assert (Δ ⊢ˢ Wk ⨟ σ ≈ Wk ⨟ σ' : Γ) by mauto 3.
   econstructor; mauto 3.
   - assert (Δ ⊢ A[↑]ʷ[σ] ≈ A[↑]ʷ[σ'] : Typeω@i) as <- by mauto 4.
     assert (Δ ⊢ #0[σ] ≈ #0[σ'] : A[↑]ʷ[σ]) as <-; mauto 3.
-  - assert (Δ ⊢s Wk ⨟ σ ≈ Wk ⨟ σ' : Γ) as <-; eassumption.
+  - assert (Δ ⊢ˢ Wk ⨟ σ ≈ Wk ⨟ σ' : Γ) as <-; eassumption.
 Qed.
 
 Add Parametric Morphism i Γ A Sb Δ (Hglu : EG Γ ∈ glu_ctx_env ↘ Sb) (HA : Γ ⊢ A : Typeω@i) : (cons_glu_sub_pred i Γ A Sb Δ)
@@ -1682,7 +1682,7 @@ Qed.
 Lemma glu_ctx_env_per_env : forall {Γ Sb env_rel Δ σ ρ},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel ->
-    Δ ⊢s σ ® ρ ∈ Sb ->
+    Δ ⊢ˢ σ ® ρ ∈ Sb ->
     Dom ρ ≈ ρ ∈ env_rel.
 Proof.
   intros * Hglu Hper.
@@ -1737,8 +1737,8 @@ Qed.
 Lemma glu_ctx_env_sub_escape : forall {Γ Sb},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     forall Δ σ ρ,
-      Δ ⊢s σ ® ρ ∈ Sb ->
-      Δ ⊢s σ : Γ.
+      Δ ⊢ˢ σ ® ρ ∈ Sb ->
+      Δ ⊢ˢ σ : Γ.
 Proof.
   induction 1; intros;
     handle_functional_glu_univ_elem;
@@ -1785,7 +1785,7 @@ Proof.
   all: rename TSb0 into TSb'.
   all: assert (TSb -∙> TSb') by intuition.
   all: intros Δ' σ' ρ' [].
-  all: assert (Δ ⊢s Wk ⨟ σ ® ρ↯ ∈ TSb') by intuition.
+  all: assert (Δ ⊢ˢ Wk ⨟ σ ® ρ↯ ∈ TSb') by intuition.
   all: assert (glu_rel_typ_with_sub j Δ A (Wk ⨟ σ) ρ↯) as [] by mauto 3.
   all: destruct_rel_typ.
   all: handle_functional_glu_univ_elem.
@@ -1874,7 +1874,7 @@ Lemma glu_ctx_env_cons_clean_inversion : forall {Γ TSb A Sb},
   exists i,
     Γ ⊢ A : Typeω@i /\
       (forall Δ σ ρ,
-          Δ ⊢s σ ® ρ ∈ TSb ->
+          Δ ⊢ˢ σ ® ρ ∈ TSb ->
           glu_rel_typ_with_sub i Δ A σ ρ) /\
       (Sb <∙> cons_glu_sub_pred i Γ A TSb).
 Proof.
@@ -1898,10 +1898,10 @@ Lemma glu_ctx_env_cons_def_clean_inversion : forall {Γ TSb A M Sb},
     Γ ⊢ A : Typeω@i /\
       Γ ⊢ M : A /\
       (forall Δ σ ρ,
-          Δ ⊢s σ ® ρ ∈ TSb ->
+          Δ ⊢ˢ σ ® ρ ∈ TSb ->
           glu_rel_typ_with_sub i Δ A σ ρ) /\
       (forall Δ σ ρ,
-          Δ ⊢s σ ® ρ ∈ TSb ->
+          Δ ⊢ˢ σ ® ρ ∈ TSb ->
           glu_rel_exp_with_sub i Δ M A σ ρ) /\
       (Sb <∙> cons_def_glu_sub_pred i Γ A M TSb).
 Proof.
@@ -1938,9 +1938,9 @@ Section Fixed_GCtx.
 Lemma glu_ctx_env_sub_monotone : forall Γ Sb,
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     forall Δ' φ Δ τ ρ,
-      Δ ⊢s τ ® ρ ∈ Sb ->
-      Δ' ⊢k φ : Δ ->
-      Δ' ⊢s (sb_wk τ φ) ® ρ ∈ Sb.
+      Δ ⊢ˢ τ ® ρ ∈ Sb ->
+      Δ' ⊢ᵏ φ : Δ ->
+      Δ' ⊢ˢ (sb_wk τ φ) ® ρ ∈ Sb.
 Proof.
   induction 1; intros * HSb Hφ;
     apply_predicate_equivalence;
@@ -1950,8 +1950,8 @@ Proof.
   (** A module slot: [ρ] does not move, so the tie is unchanged. *)
   3:{ destruct_by_head cons_mod_glu_sub_pred.
       econstructor; [ rewrite sb_wk_compose; mauto 3 | eassumption |].
-      assert (Δ' ⊢s (sb_wk (Wk ⨟ σ) φ) ® ρ↯ ∈ TSb) by mauto 3.
-      assert (Δ' ⊢s (sb_wk (Wk ⨟ σ) φ) : Γ) by (rewrite sb_wk_compose; mauto 3).
+      assert (Δ' ⊢ˢ (sb_wk (Wk ⨟ σ) φ) ® ρ↯ ∈ TSb) by mauto 3.
+      assert (Δ' ⊢ˢ (sb_wk (Wk ⨟ σ) φ) : Γ) by (rewrite sb_wk_compose; mauto 3).
       eapply glu_ctx_env_sub_resp_sub_eq; [ eassumption | eassumption | ].
       eapply wf_sub_eq_of_sb_eq; [ eassumption | apply sb_wk_shift_pre ]. }
 
@@ -1963,8 +1963,8 @@ Proof.
   all: econstructor; mauto 3.
   1,4: (rewrite sb_wk_compose; mauto 3).
   1,3: (rewrite <- !exp_wk_sub; eapply glu_univ_elem_exp_monotone; eassumption).
-  all: assert (Δ' ⊢s (sb_wk (Wk ⨟ σ) φ) ® ρ↯ ∈ TSb) by mauto 3.
-  all: assert (Δ' ⊢s (sb_wk (Wk ⨟ σ) φ) : Γ) by (rewrite sb_wk_compose; mauto 3).
+  all: assert (Δ' ⊢ˢ (sb_wk (Wk ⨟ σ) φ) ® ρ↯ ∈ TSb) by mauto 3.
+  all: assert (Δ' ⊢ˢ (sb_wk (Wk ⨟ σ) φ) : Γ) by (rewrite sb_wk_compose; mauto 3).
   all: eapply glu_ctx_env_sub_resp_sub_eq; [ eassumption | eassumption | ].
   all: eapply wf_sub_eq_of_sb_eq; [ eassumption | apply sb_wk_shift_pre ].
 Qed.
@@ -1972,18 +1972,18 @@ Qed.
 (** Extension by any entry whose term projection glues as the head. *)
 Lemma cons_glu_sub_pred_helper_gen : forall {Γ Sb Δ σ ρ A a} {i : nat} {P El en c},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Δ ⊢s σ ® ρ ∈ Sb ->
+    Δ ⊢ˢ σ ® ρ ∈ Sb ->
     Γ ⊢ A : Typeω@i ->
     ⟦ A ⟧ ρ ↘ a ->
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     Δ ⊢ sentry_exp en : A[σ] ® c ∈ El ->
-    Δ ⊢s sb_extend σ en ® ρ ↦ c ∈ cons_glu_sub_pred i Γ A Sb.
+    Δ ⊢ˢ sb_extend σ en ® ρ ↦ c ∈ cons_glu_sub_pred i Γ A Sb.
 Proof.
   intros.
-  assert (Δ ⊢s σ : Γ) by mauto 2.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 2.
   assert (Δ ⊢ sentry_exp en : A[σ]) by mauto 2 using glu_univ_elem_trm_escape.
   assert (⊢ Γ ▹ A) by mauto 3.
-  assert (Δ ⊢s sb_extend σ en : Γ ▹ A).
+  assert (Δ ⊢ˢ sb_extend σ en : Γ ▹ A).
   { apply wf_sub_extend_gen; [ assumption | assumption | | |].
     - intros B Hlk; inversion Hlk; subst; rewrite exp_sub_shift_extend; assumption.
     - intros B L Hlk; inversion Hlk.
@@ -1994,17 +1994,17 @@ Qed.
 
 Lemma cons_glu_sub_pred_helper : forall {Γ Sb Δ σ ρ A a} {i : nat} {P El M c},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Δ ⊢s σ ® ρ ∈ Sb ->
+    Δ ⊢ˢ σ ® ρ ∈ Sb ->
     Γ ⊢ A : Typeω@i ->
     ⟦ A ⟧ ρ ↘ a ->
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     Δ ⊢ M : A[σ] ® c ∈ El ->
-    Δ ⊢s σ,,M ® ρ ↦ c ∈ cons_glu_sub_pred i Γ A Sb.
+    Δ ⊢ˢ σ,,M ® ρ ↦ c ∈ cons_glu_sub_pred i Γ A Sb.
 Proof.
   intros.
-  assert (Δ ⊢s σ : Γ) by mauto 2.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 2.
   assert (Δ ⊢ M : A[σ]) by mauto 2 using glu_univ_elem_trm_escape.
-  assert (Δ ⊢s σ,,M : Γ ▹ A) by mauto 2.
+  assert (Δ ⊢ˢ σ,,M : Γ ▹ A) by mauto 2.
   (** [#0[σ,,M]] is [M] and [Wk ⨟ (σ,,M)] is [σ], both by computation; only
       [A[↑]ʷ[σ,,M]] needs a rewrite. *)
   econstructor; mauto 3.
@@ -2016,7 +2016,7 @@ Hint Resolve cons_glu_sub_pred_helper : mctt.
 Lemma initial_env_glu_rel_exp : forall {Γ ρ Sb},
     initial_env_f Γ ρ ->
     EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Γ ⊢s Id ® ρ ∈ Sb.
+    Γ ⊢ˢ Id ® ρ ∈ Sb.
 Proof.
   intros * Hinit HΓ.
   gen ρ.
@@ -2037,7 +2037,7 @@ Proof.
   - (** A definition: the head is [⟦M⟧ρ], glued with [M[↑]ʷ] by the gluing
         of [M] along [↑], hence with [#0] by δ. *)
     assert (⊢ Γ ▸ A ≔ M) by mauto 3.
-    assert (HWk : Γ ▸ A ≔ M ⊢s Wk ® ρ ∈ TSb)
+    assert (HWk : Γ ▸ A ≔ M ⊢ˢ Wk ® ρ ∈ TSb)
       by (eapply (glu_ctx_env_sub_monotone _ _ H (Γ ▸ A ≔ M) wk_shift Γ Id ρ);
           [ apply IHHΓ; assumption | apply kripke_shift_def; assumption ]).
     assert (glu_rel_exp_with_sub i (Γ ▸ A ≔ M) M A Wk ρ) as [] by mauto.
@@ -2055,8 +2055,8 @@ Proof.
   - (** A module slot: its closure is related to itself, by the unit's
         validity at the initial environment. *)
     assert (⊢ Γ ▹ₘ U) by mauto 3.
-    assert (HId : Γ ⊢s Id ® ρ ∈ TSb) by (apply IHHΓ; assumption).
-    assert (HWk : Γ ▹ₘ U ⊢s Wk ® ρ ∈ TSb)
+    assert (HId : Γ ⊢ˢ Id ® ρ ∈ TSb) by (apply IHHΓ; assumption).
+    assert (HWk : Γ ▹ₘ U ⊢ˢ Wk ® ρ ∈ TSb)
       by (eapply (glu_ctx_env_sub_monotone _ _ H (Γ ▹ₘ U) wk_shift Γ Id ρ);
           [ exact HId | apply kripke_shift_mod; assumption ]).
     econstructor; [ mauto 3 | | exact HWk ].
@@ -2064,7 +2064,12 @@ Proof.
     pose proof (glu_ctx_env_per_env H HR HId) as Hρ.
     match goal with Hu : wf_unit_eq _ _ _ _ _ |- _ =>
       destruct (proj1 (proj2 completeness_fundamental_modules) _ _ _ Hu) as (HU & _) end.
-    exact (unit_chain_at HU HR _ _ Hρ).
+    destruct (rel_modexp_at _ _ _ _ _ HU HR _ _ Hρ) as (h1 & h2 & Hh1 & Hh2 & Hr).
+    match goal with Hh : ⟦ me_lit U ⟧ᵐ _ ⍮ _ ⍮ ρ ↘ h |- _ =>
+      pose proof (functional_eval_modexp _ _ _ _ Hh1 Hh) as ->; pose proof (functional_eval_modexp _ _ _ _ Hh2 Hh) as -> end.
+    cbn; exists h; split; assumption.
+  (** The level of an assumption's type, left free by the assumption case. *)
+  Unshelve. all: exact 0.
 Qed.
 
 (** *** Tactics for [glu_rel_*] *)
@@ -2076,7 +2081,7 @@ Hint Resolve cons_glu_sub_pred_helper : mctt.
 Ltac destruct_glu_rel_by_assumption sub_glu_rel H :=
   repeat
     match goal with
-    | H' : ?Δ ⊢s ?σ ® ?ρ ∈ ?sub_glu_rel0 |- _ =>
+    | H' : ?Δ ⊢ˢ ?σ ® ?ρ ∈ ?sub_glu_rel0 |- _ =>
         unify sub_glu_rel0 sub_glu_rel;
         destruct (H _ _ _ H') as [];
         destruct_conjs;
@@ -2086,7 +2091,7 @@ Ltac destruct_glu_rel_by_assumption sub_glu_rel H :=
 Ltac destruct_glu_rel_exp_with_sub :=
   repeat
     match goal with
-    | H : (forall Δ σ ρ, Δ ⊢s σ ® ρ ∈ ?sub_glu_rel -> glu_rel_exp_with_sub _ _ _ _ _ _) |- _ =>
+    | H : (forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ ?sub_glu_rel -> glu_rel_exp_with_sub _ _ _ _ _ _) |- _ =>
         destruct_glu_rel_by_assumption sub_glu_rel H; mark H
     | H : glu_rel_exp_with_sub _ _ _ _ _ _ |- _ =>
         dependent destruction H
@@ -2095,7 +2100,7 @@ Ltac destruct_glu_rel_exp_with_sub :=
 Ltac destruct_glu_rel_typ_with_sub :=
   repeat
     match goal with
-    | H : (forall Δ σ ρ, Δ ⊢s σ ® ρ ∈ ?sub_glu_rel -> glu_rel_typ_with_sub _ _ _ _ _) |- _ =>
+    | H : (forall Δ σ ρ, Δ ⊢ˢ σ ® ρ ∈ ?sub_glu_rel -> glu_rel_typ_with_sub _ _ _ _ _) |- _ =>
         destruct_glu_rel_by_assumption sub_glu_rel H; mark H
     | H : glu_rel_exp_with_sub _ _ _ _ _ _ |- _ =>
         dependent destruction H
@@ -2113,7 +2118,7 @@ Lemma glu_rel_exp_clean_inversion1 : forall {Γ Sb M A},
     Γ ⊩ M : A ->
     exists i,
     forall Δ σ ρ,
-      Δ ⊢s σ ® ρ ∈ Sb ->
+      Δ ⊢ˢ σ ® ρ ∈ Sb ->
       glu_rel_exp_with_sub i Δ M A σ ρ.
 Proof.
   intros * ? [].
@@ -2125,7 +2130,7 @@ Qed.
 
 Definition glu_rel_exp_clean_inversion2_result i Sb M A :=
   forall Δ σ ρ,
-    Δ ⊢s σ ® ρ ∈ Sb ->
+    Δ ⊢ˢ σ ® ρ ∈ Sb ->
     glu_rel_exp_with_sub i Δ M A σ ρ.
 
 Lemma glu_rel_exp_clean_inversion2 : forall {i : nat} {Γ Sb M A},
@@ -2173,7 +2178,7 @@ Proof.
   assert (exists ρ ρ', initial_env_f Γ ρ /\ initial_env_f Γ ρ' /\ Dom ρ ≈ ρ' ∈ env_rel) as [ρ] by mauto using per_ctx_then_per_env_initial_env.
   destruct_conjs.
   functional_initial_env_rewrite_clear.
-  assert (Γ ⊢s Id ® ρ ∈ Sb) by (eapply initial_env_glu_rel_exp; mauto 3).
+  assert (Γ ⊢ˢ Id ® ρ ∈ Sb) by (eapply initial_env_glu_rel_exp; mauto 3).
   destruct_glu_rel_exp_with_sub.
   assert (Γ ⊢ M[Id] : A[Id]) as HId by mauto 3 using glu_univ_elem_trm_escape.
   rewrite !exp_sub_id in HId; eassumption.

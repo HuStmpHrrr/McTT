@@ -54,7 +54,7 @@ Proof.
   assert (Γ ⊢ A' ≈ A : Typeω@i) by mauto 3.
   (** [Γ ▹ A] refines [Γ ▹ A'] because the two heads are equal, and
       [ctxsub_exp_eq] moves the codomain's normal form across. *)
-  assert (Γ ▹ A ⊢s Id : Γ ▹ A') by mauto 3.
+  assert (Γ ▹ A ⊢ˢ Id : Γ ▹ A') by mauto 3.
   split; [mauto 3 |].
   etransitivity; [| symmetry]; mauto 3.
 Qed.
@@ -115,7 +115,7 @@ Proof.
   invert_glu_univ_elem Hg.
   match goal with H : _ <∙> ind_glu_typ_pred _ _ _ _ _ _ _ _ _ _ _ |- _ => apply H in HP end.
   destruct HP as (Ps & Heq & HK).
-  assert (Hid : Γ ⊢k wk_id : Γ) by mauto 3.
+  assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
   destruct (HK Γ wk_id Hid) as (Htop & _ & _).
   rewrite map_wk_id in Htop.
   destruct Htop as (HPl & HPt & Hrb).

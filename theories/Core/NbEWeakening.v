@@ -4,7 +4,7 @@
     weakened normal form" ([nbe_wk]):
 
     - [M] is a term of [Γ], so the fundamental theorem of the PER model,
-      along the semantic weakening [Γ ▹ A ⊨w ↑ : Γ], relates the value of
+      along the semantic weakening [Γ ▹ A ⊨ʷ ↑ : Γ], relates the value of
       [M[↑]] at the initial environment of [Γ ▹ A] to the value of [M] at its
       tail, the initial environment of [Γ];
     - related values read back equally at every length ([per_top]), so the

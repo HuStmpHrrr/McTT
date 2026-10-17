@@ -41,6 +41,8 @@ Inductive initial_env_order (Θ : gdeps) (Ξ : gstack) : ctx -> Prop :=
      initial_env_order Θ Ξ (Γ ▸ A ≔ M))
 | ie_cons_mod :
   `( initial_env_order Θ Ξ Γ ->
+     (forall p, initial_env Θ Ξ Γ p ->
+           eval_modexp_order Θ Ξ (me_lit U) p) ->
      initial_env_order Θ Ξ (Γ ▹ₘ U)).
 
 #[local]
@@ -135,6 +137,20 @@ Section Orders.
   Lemma eval_of_order : forall M p, eval_exp_order Θ Ξ M p -> exists a, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ a.
   Proof. intros * H; destruct (eval_exp_impl Θ Ξ M p H) as [a Ha]; eauto. Qed.
 
+  (** Likewise for a module expression. *)
+  Lemma feval_modexp_of_ref : forall H p p' h,
+      ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> env_agree (fun x => ~ modexp_fresh x H) p p' ->
+      Evaluation.feval_modexp_order Θ Ξ H p' /\ forall h', ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ p' ↘ h' -> dmsim h h'.
+  Proof.
+    intros * Hh Hp.
+    destruct (feval_modexp_sim Θ Ξ _ _ _ Hh _ Hp) as (h'' & Hh'' & Hs).
+    split; [ eapply Evaluation.feval_modexp_order_sound; eassumption |].
+    intros h' Hh'; rewrite <- (functional_feval_modexp _ _ _ _ Hh'' Hh'); exact Hs.
+  Qed.
+
+  Lemma eval_modexp_of_order : forall H p, eval_modexp_order Θ Ξ H p -> exists h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h.
+  Proof. intros * Ho; destruct (eval_modexp_impl Θ Ξ H p Ho) as [h Hh]; eauto. Qed.
+
   Lemma read_typ_of_order : forall s a, read_typ_order Θ Ξ s a -> exists W, Rtyp a in Θ ⍮ Ξ ⍮ s ↘ W.
   Proof. intros * H; destruct (read_typ_impl Θ Ξ s a H) as [W HW]; eauto. Qed.
 
@@ -171,7 +187,8 @@ Section InitialEnvImpl.
       exist _ (p ↦ m) _
   | cons (ce_mod U) G, H =>
       let (p, Hp) := initial_env_impl G _ in
-      exist _ (p ↦ᵐ dm_local p U nil) _.
+      let (h, Hh) := Evaluation.feval_modexp_impl Θ Ξ (me_lit U) p _ in
+      exist _ (p ↦ᵐ h) _.
   Next Obligation. (* nil *) exists nil; split; [ constructor | apply env_agree_nil ]. Qed.
   Next Obligation. (* initial_env_order G *) progressive_invert H; assumption. Defined.
   Next Obligation. (* the order of the type's fast evaluation *)
@@ -204,11 +221,19 @@ Section InitialEnvImpl.
     eapply env_agree_cons; [ eassumption | constructor; assumption | intros; exact I ].
   Qed.
   Next Obligation. (* initial_env_order G *) progressive_invert H; assumption. Defined.
+  Next Obligation. (* the order of the module's fast evaluation *)
+    fnbe_obl.
+    match goal with Hord : forall p, initial_env _ _ _ p -> eval_modexp_order _ _ (me_lit U) p, Hi : initial_env _ _ _ ?p0 |- _ =>
+      destruct (eval_modexp_of_order _ _ _ _ (Hord _ Hi)) as [h Hh];
+      eapply (feval_modexp_of_ref _ _ _ _ _ _ Hh); apply agree_all; assumption end.
+  Defined.
   Next Obligation. (* the extended environment *)
     fnbe_obl.
+    match goal with Hord : forall p, initial_env _ _ _ p -> eval_modexp_order _ _ (me_lit U) p, Hi : initial_env _ _ _ ?p0 |- _ =>
+      destruct (eval_modexp_of_order _ _ _ _ (Hord _ Hi)) as [h0 Hh0];
+      pose proof (proj2 (feval_modexp_of_ref _ _ _ _ _ _ Hh0 ltac:(apply agree_all; eassumption)) _ Hh) end.
     eexists; split; [ econstructor; eassumption |].
-    eapply env_agree_cons; [ eassumption | | intros; exact I ].
-    constructor; constructor; [ apply agree_all; assumption | constructor ].
+    eapply env_agree_cons; [ eassumption | constructor; assumption | intros; exact I ].
   Qed.
 End InitialEnvImpl.
 

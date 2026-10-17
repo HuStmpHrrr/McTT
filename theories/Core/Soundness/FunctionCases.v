@@ -33,16 +33,16 @@ Section Fixed_GCtx.
 
 Lemma cons_glu_sub_pred_pi_helper : forall {Γ Sb Γ' σ ρ A a} {i : nat} {P El Γ'' φ M c},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Γ' ⊢s σ ® ρ ∈ Sb ->
+    Γ' ⊢ˢ σ ® ρ ∈ Sb ->
     Γ ⊢ A : Typeω@i ->
     ⟦ A ⟧ ρ ↘ a ->
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
-    Γ'' ⊢k φ : Γ' ->
+    Γ'' ⊢ᵏ φ : Γ' ->
     Γ'' ⊢ M : A[σ][φ]ʷ ® c ∈ El ->
-    Γ'' ⊢s (sb_wk σ φ),,M ® ρ ↦ c ∈ cons_glu_sub_pred i Γ A Sb.
+    Γ'' ⊢ˢ (sb_wk σ φ),,M ® ρ ↦ c ∈ cons_glu_sub_pred i Γ A Sb.
 Proof.
   intros.
-  assert (Γ'' ⊢s (sb_wk σ φ) ® ρ ∈ Sb) by (eapply glu_ctx_env_sub_monotone; eassumption).
+  assert (Γ'' ⊢ˢ (sb_wk σ φ) ® ρ ∈ Sb) by (eapply glu_ctx_env_sub_monotone; eassumption).
   eapply cons_glu_sub_pred_helper; try eassumption.
   rewrite <- exp_wk_sub; eassumption.
 Qed.
@@ -56,19 +56,19 @@ Hint Resolve cons_glu_sub_pred_pi_helper : mctt.
     merged the two steps into one substitution and [exp_sub_q_extend] has put
     both bodies into [q]-form. *)
 Lemma exp_eq_fn_sub_wk_beta : forall {Γ Δ Δ' σ φ A B M N} {i : nat},
-    Δ ⊢s σ : Γ ->
+    Δ ⊢ˢ σ : Γ ->
     Γ ⊢ A : Typeω@i ->
     Γ ▹ A ⊢ B : Typeω@i ->
     Γ ▹ A ⊢ M : B ->
-    Δ' ⊢k φ : Δ ->
+    Δ' ⊢ᵏ φ : Δ ->
     Δ' ⊢ N : A[(sb_wk σ φ)] ->
     Δ' ⊢ (λ A M)[σ][φ]ʷ $ N ≈ M[(sb_wk σ φ),,N] : B[(sb_wk σ φ),,N].
 Proof.
   intros.
   saturate_kripke_escape.
-  assert (Δ' ⊢s (sb_wk σ φ) : Γ) by (rewrite sb_wk_compose; mauto 3).
+  assert (Δ' ⊢ˢ (sb_wk σ φ) : Γ) by (rewrite sb_wk_compose; mauto 3).
   assert (Δ' ⊢ A[(sb_wk σ φ)] : Typeω@i) by mauto 3.
-  assert (Δ' ▹ A[(sb_wk σ φ)] ⊢s q (sb_wk σ φ) : Γ ▹ A) by mauto 3.
+  assert (Δ' ▹ A[(sb_wk σ φ)] ⊢ˢ q (sb_wk σ φ) : Γ ▹ A) by mauto 3.
   assert (Δ' ▹ A[(sb_wk σ φ)] ⊢ B[q (sb_wk σ φ)] : Typeω@i) by mauto 3.
   assert (Δ' ▹ A[(sb_wk σ φ)] ⊢ M[q (sb_wk σ φ)] : B[q (sb_wk σ φ)]) by mauto 3.
   rewrite exp_wk_sub.
@@ -110,9 +110,9 @@ Proof.
   handle_per_ctx_env_irrel.
   eapply glu_rel_exp_of_univ; [ eassumption |].
   intros Δ σ ρ HSb.
-  assert (Δ ⊢s σ : Γ) by mauto 4.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 4.
   destruct (HAg _ _ _ HSb) as [HAσ [a [Hae [[in_rel Hin] [HaP HaR]]]]].
-  assert (Δ ▹ A[σ] ⊢s q σ : Γ ▹ A) by mauto 3.
+  assert (Δ ▹ A[σ] ⊢ˢ q σ : Γ ▹ A) by mauto 3.
   assert (Δ ▹ A[σ] ⊢ B[q σ] : ulvl_tm u)
     by (rewrite <- (exp_sub_ulvl_tm u (q σ)); mauto 3).
   split; [ cbn; apply wf_pi_univ; assumption |].
@@ -150,9 +150,9 @@ Proof.
       assert (Δ' ⊢ A[σ][φ]ʷ : Typeω@(ulvl u))
         by (eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | exact HAφ ]).
       assert (⊢ Δ' ▹ A[σ][φ]ʷ) by mauto 3.
-      assert (Hk : Δ' ▹ A[σ][φ]ʷ ⊢k φ ⊙ ↑ : Δ) by mauto 3.
+      assert (Hk : Δ' ▹ A[σ][φ]ʷ ⊢ᵏ φ ⊙ ↑ : Δ) by mauto 3.
       rewrite exp_wk_wk in Hv'.
-      assert (Hcons : Δ' ▹ A[σ][φ]ʷ ⊢s (sb_wk σ (φ ⊙ ↑)),,#0 ® ρ ↦ ⇑! a (length Δ')
+      assert (Hcons : Δ' ▹ A[σ][φ]ʷ ⊢ˢ (sb_wk σ (φ ⊙ ↑)),,#0 ® ρ ↦ ⇑! a (length Δ')
                         ∈ cons_glu_sub_pred (ulvl u) Γ A SbΓ) by mauto 2.
       destruct (HBg _ _ _ Hcons) as [_ [b0 [Hb0 [_ [_ HbR]]]]].
       simplify_evals.
@@ -195,7 +195,7 @@ Proof.
       assert (Δ' ⊢ M : A[σ][φ]ʷ ® m ∈ El')
         by (eapply (glu_univ_elem_exp_cumu_ge_uidx (i := u) (j := ulvl u));
             [ apply uidx_le_ulvl | exact Hx | exact Hl | exact HM ]) end.
-    assert (Δ' ⊢s (sb_wk σ φ),,M ® ρ ↦ m ∈ cons_glu_sub_pred (ulvl u) Γ A SbΓ) as Hcons by mauto 2.
+    assert (Δ' ⊢ˢ (sb_wk σ φ),,M ® ρ ↦ m ∈ cons_glu_sub_pred (ulvl u) Γ A SbΓ) as Hcons by mauto 2.
     destruct (HBg _ _ _ Hcons) as [? [b [Hbe [? [HbP _]]]]].
     simplify_evals.
     (** The codomain families are existentials from [invert_glu_univ_elem], so
@@ -250,23 +250,23 @@ Proof.
   assert (HAc : Γ ⊨ A ≈ A : Typeω@0) by mauto 3 using completeness_fundamental_exp.
   eapply glu_rel_exp_of_suniv_tm; [ exact HSbΓ | exact HL |].
   intros Δ σ ρ HSb l Hl.
-  assert (Δ ⊢s σ : Γ) by mauto 4.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 4.
   destruct (HAg _ _ _ HSb) as (l0 & Hl0 & Hlper & Hlglu & HAσ & a & Hae & [in_rel Hin] & HaP & HaR).
   assert (l0 = l) as -> by (eapply functional_eval_exp; eassumption).
   assert (⊢ Δ) by mauto 3.
   assert (HLσ : Δ ⊢ L[σ] : Level@nL) by (eapply (glu_lvl_escape _ _ _ _ Hlper Hlglu); assumption).
   assert (HAσl : Δ ⊢ A[σ] : Typeω@0) by (eapply wf_exp_suniv_large; eassumption).
-  assert (Hq : Δ ▹ A[σ] ⊢s q σ : Γ ▹ A) by mauto 3.
+  assert (Hq : Δ ▹ A[σ] ⊢ˢ q σ : Γ ▹ A) by mauto 3.
   assert (HBq : Δ ▹ A[σ] ⊢ B[q σ] : Type⟨L[σ][↑]ʷ⟩)
     by (rewrite <- exp_wk_shift_sub_q; eapply (sub_preserves_exp _ _ _ _ Type⟨L[↑]ʷ⟩); eassumption).
-  split; [ cbn [exp_sub]; eapply wf_pi_small; eassumption |].
+  split; [ cbn [exp_sub]; eapply wf_pi_lvl; eassumption |].
   assert (Hρ : Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
   set (n := dlvl_real l) in *.
   (** Every realiser met below is [n]. *)
   assert (Hreal : forall e x e' x' t, Dom e ↦ x ≈ e' ↦ x' ∈ per_env_extend A A env_relΓ ->
                    ⟦ L[↑]ʷ ⟧ e ↦ x ↘ t -> ⟦ L ⟧ e' ↘ l -> dlvl_real t = n).
   { intros * Hee Ht Hl'; exact (FunctionCases.suniv_real_shift HAc HLc HΓA' _ _ _ _ _ _ Hee Ht Hl'). }
-  assert (Hrealg : forall Δ0 σ0 x, Δ0 ⊢s σ0 ® ρ ↦ x ∈ cons_glu_sub_pred 0 Γ A SbΓ ->
+  assert (Hrealg : forall Δ0 σ0 x, Δ0 ⊢ˢ σ0 ® ρ ↦ x ∈ cons_glu_sub_pred 0 Γ A SbΓ ->
                     forall t, ⟦ L[↑]ʷ ⟧ ρ ↦ x ↘ t -> dlvl_real t = n).
   { intros * Hc t Ht.
     assert (Dom ρ ↦ x ≈ ρ ↦ x ∈ per_env_extend A A env_relΓ) as Hxx
@@ -302,9 +302,9 @@ Proof.
       assert (exists nk, Δ' ⊢ L[σ][φ]ʷ : Level@nk) as [nk HLφ] by (eapply wf_univ_lvl_inversion; exact Hk).
       assert (Δ' ⊢ A[σ][φ]ʷ : Typeω@0) by (eapply wf_exp_suniv_large; eassumption).
       assert (⊢ Δ' ▹ A[σ][φ]ʷ) by mauto 3.
-      assert (Hk' : Δ' ▹ A[σ][φ]ʷ ⊢k φ ⊙ ↑ : Δ) by mauto 3.
+      assert (Hk' : Δ' ▹ A[σ][φ]ʷ ⊢ᵏ φ ⊙ ↑ : Δ) by mauto 3.
       rewrite exp_wk_wk in Hv'.
-      assert (Hcons : Δ' ▹ A[σ][φ]ʷ ⊢s (sb_wk σ (φ ⊙ ↑)),,#0 ® ρ ↦ ⇑! a (length Δ')
+      assert (Hcons : Δ' ▹ A[σ][φ]ʷ ⊢ˢ (sb_wk σ (φ ⊙ ↑)),,#0 ® ρ ↦ ⇑! a (length Δ')
                         ∈ cons_glu_sub_pred 0 Γ A SbΓ) by mauto 2.
       destruct (HBg _ _ _ Hcons) as (l' & Hl' & _ & _ & b0 & Hb0 & _ & _ & HbR).
       pose proof (Hrealg _ _ _ Hcons _ Hl') as Hn'.
@@ -320,7 +320,7 @@ Proof.
       cbn [exp_wk] in Hq'.
       rewrite exp_wk_shift_wk_q in Hq'.
       rewrite E1 in HBW.
-      eapply wf_exp_eq_pi_cong_small; [ exact HLφ | exact HAφ | exact HA0 |].
+      eapply wf_exp_eq_pi_cong_lvl; [ exact HLφ | exact HAφ | exact HA0 |].
       etransitivity; [ symmetry; exact Hq' | exact HBW ]. }
   intros P El HPEl.
   invert_glu_univ_elem HPEl.
@@ -328,7 +328,7 @@ Proof.
   handle_functional_glu_univ_elem.
   assert (HPieq : Δ ⊢ Π A[σ] B[q σ] ≈ Π A[σ] B[q σ] : Typeω@0).
   { eapply wf_exp_eq_suniv_large; [ exact HLσ |].
-    eapply wf_exp_eq_pi_cong_small; [ exact HLσ | exact HAσ | mauto 3 | mauto 3 ]. }
+    eapply wf_exp_eq_pi_cong_lvl; [ exact HLσ | exact HAσ | mauto 3 | mauto 3 ]. }
   assert (Δ ▹ A[σ] ⊢ B[q σ] : Typeω@0)
     by (eapply wf_exp_suniv_large; [| exact HBq ]; eapply (wk_preserves_exp _ _ _ _ (Level@nL)); mauto 3).
   econstructor; [ eassumption | mauto 3 | eassumption | | ]; intros Δ' φ **.
@@ -341,7 +341,7 @@ Proof.
       assert (Δ' ⊢ M : A[σ][φ]ʷ ® m ∈ El')
         by (eapply (glu_univ_elem_exp_cumu_ge_uidx (i := us n) (j := ul 0));
             [ exact I | exact Hx | exact Hl0' | exact HM ]) end.
-    assert (Δ' ⊢s (sb_wk σ φ),,M ® ρ ↦ m ∈ cons_glu_sub_pred 0 Γ A SbΓ) as Hcons by mauto 2.
+    assert (Δ' ⊢ˢ (sb_wk σ φ),,M ® ρ ↦ m ∈ cons_glu_sub_pred 0 Γ A SbΓ) as Hcons by mauto 2.
     destruct (HBg _ _ _ Hcons) as (l' & Hl' & _ & _ & b & Hbe & _ & HbP & _).
     pose proof (Hrealg _ _ _ Hcons _ Hl') as Hn'.
     rewrite Hn' in HbP.
@@ -358,7 +358,7 @@ Lemma glu_rel_exp_of_pi : forall {Γ M A B} {i : nat} {Sb},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     Γ ⊨ Π A B : Typeω@i ->
     (forall Δ σ ρ,
-        Δ ⊢s σ ® ρ ∈ Sb ->
+        Δ ⊢ˢ σ ® ρ ∈ Sb ->
         exists a m,
           ⟦ A ⟧ ρ ↘ a /\
             ⟦ M ⟧ ρ ↘ m /\
@@ -401,7 +401,7 @@ Proof.
   assert (Γ ⊨ Π A B : Typeω@i) by mauto 3 using completeness_fundamental_exp.
   eapply glu_rel_exp_of_pi; mauto 3.
   intros Δ σ ρ HSb.
-  assert (Δ ⊢s σ : Γ) by mauto 4.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 4.
   assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
   destruct_glu_rel_exp_with_sub.
   simplify_evals.
@@ -418,7 +418,7 @@ Proof.
   handle_functional_glu_univ_elem.
   match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H).
   apply_relation_equivalence.
-  assert (Δ ▹ A[σ] ⊢s q σ : Γ ▹ A) by mauto 3.
+  assert (Δ ▹ A[σ] ⊢ˢ q σ : Γ ▹ A) by mauto 3.
   assert (Δ ▹ A[σ] ⊢ B[q σ] : Typeω@i) by mauto 3.
   assert (Δ ⊢ Π A[σ] B[q σ] ≈ Π A[σ] B[q σ] : Typeω@i) as HPieq by mauto 3.
   econstructor; [ mauto 3 | | eassumption | mauto 3 | eassumption | | ]; intros.
@@ -447,7 +447,7 @@ Proof.
         form, so the [β] equation must be spelled that way for [rewrite]. *)
     assert (Δ0 ⊢ (λ A[σ] M[q σ])[φ]ʷ $ N ≈ M[(sb_wk σ φ),,N] : B[(sb_wk σ φ),,N]) as ->
         by (eapply exp_eq_fn_sub_wk_beta; eassumption).
-    assert (Δ0 ⊢s (sb_wk σ φ),,N ® ρ ↦ n ∈ SbΓA) as HSbΓA by (unfold SbΓA; mauto 2).
+    assert (Δ0 ⊢ˢ (sb_wk σ φ),,N ® ρ ↦ n ∈ SbΓA) as HSbΓA by (unfold SbΓA; mauto 2).
     (on_all_hyp: destruct_glu_rel_by_assumption SbΓA).
     simplify_evals.
     match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
@@ -538,7 +538,7 @@ Proof.
   assert (DG c ∈ glu_univ_elem i ↘ OP n equiv_n ↘ OEl n equiv_n)
       by (eapply glu_univ_elem_resp_per_univ; eassumption).
   handle_functional_glu_univ_elem.
-  assert (Δ ⊢k wk_id : Δ) by mauto 3.
+  assert (Δ ⊢ᵏ wk_id : Δ) by mauto 3.
   assert (Δ ⊢ IT[wk_id]ʷ ® IP) as HIT by mauto 2.
   rewrite exp_wk_id in HIT.
   assert (Δ ⊢ IT : Typeω@i) by (eapply (glu_univ_elem_univ_lvl (ul i)); revgoals; [ eassumption | eassumption | reflexivity ]).
@@ -549,10 +549,10 @@ Proof.
   destruct_conjs.
   functional_eval_rewrite_clear.
   rewrite exp_wk_id in *.
-  assert (Δ ⊢s σ : Γ) by mauto 2.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 2.
   assert (Δ ⊢ N[σ] : A[σ]) by mauto 2.
   assert (Δ ⊢ N[σ] : A[σ][wk_id]ʷ ® n ∈ IEl) by (rewrite exp_wk_id; eassumption).
-  assert (Δ ⊢s σ,,N[σ] ® ρ ↦ n ∈ SbΓA) as Hcons by (unfold SbΓA; mauto 2).
+  assert (Δ ⊢ˢ σ,,N[σ] ® ρ ↦ n ∈ SbΓA) as Hcons by (unfold SbΓA; mauto 2).
   (on_all_hyp: destruct_glu_rel_by_assumption SbΓA).
   simplify_evals.
   match_by_head1 glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).

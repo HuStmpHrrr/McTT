@@ -27,7 +27,7 @@ Lemma wf_app_var0 : forall Θ Ξ Γ A B M i,
 Proof.
   intros.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢w ↑ : Γ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ʷ ↑ : Γ) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ exp_wk M ↑ : exp_wk (Π A B) ↑) as H'
       by (eapply wk_preserves_exp; eassumption).
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ : Π A[↑]ʷ B[wk_q ↑]ʷ) by exact H'.
@@ -183,7 +183,7 @@ Section RecTyped.
   Qed.
 
   Lemma uvars_sub : forall Φ, ⊢ Θ ⍮ Ξ ⍮ Φ ++ Γ0 ->
-      Θ ⍮ Ξ ⍮ Φ ++ Γ0 ⊢s sb_of_list Id (vars_from (List.length Φ) nu) : Γ0 ++ Φ ++ Γ0.
+      Θ ⍮ Ξ ⍮ Φ ++ Γ0 ⊢ˢ sb_of_list Id (vars_from (List.length Φ) nu) : Γ0 ++ Φ ++ Γ0.
   Proof.
     intros Φ HΦ; apply (wf_sub_uparams _ _ _ HD Hc); [ exact HΦ | apply length_vars_from | apply uvars_typed, HΦ ].
   Qed.
@@ -273,7 +273,7 @@ Section RecTyped.
       (forall k U T, List.nth_error (rec_uvars D (List.length E)) k = Some U ->
          List.nth_error (tele_insts Γ0 Id (rec_uvars D (List.length E))) k = Some T ->
          Θ ⍮ Ξ ⍮ E ++ Lm ⊢ U : T) /\
-      Θ ⍮ Ξ ⍮ E ++ Lm ⊢s sb_of_list Id (rec_uvars D (List.length E)) : Γ0 ++ E ++ Lm.
+      Θ ⍮ Ξ ⍮ E ++ Lm ⊢ˢ sb_of_list Id (rec_uvars D (List.length E)) : Γ0 ++ E ++ Lm.
   Proof.
     intros E HE.
     assert (HΦ : ⊢ Θ ⍮ Ξ ⍮ (E ++ ce_ass (rec_mty p D) :: ce_ass (a_level 0) :: nil) ++ Γ0)
@@ -494,13 +494,13 @@ End RecTyped.
 
 Section GensRun.
   Variables (Θ : gdeps) (mq : qname) (Δ : ctx) (Φ0 : gmod) (Ξ0 : gstack) (y : string) (pv : bool) (D : ind_decl).
-  Hypothesis Hg : ⊢g Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0.
+  Hypothesis Hg : ⊢ᵍ Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0.
   Hypothesis Hy : gm_fresh y Φ0.
 
   #[local] Abbreviation p := (qname_in mq y).
-  #[local] Abbreviation fr Φ := ((mq, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv D Φ)) :: Ξ0).
+  #[local] Abbreviation fr Φ := ((mq, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv p D Φ)) :: Ξ0).
 
-  Definition gens_inv (Φ : gmod) : Prop := Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0 ⍮ p ⊢e ge_ind pv D Φ.
+  Definition gens_inv (Φ : gmod) : Prop := Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0 ⍮ p ⊢ᵉ ge_ind pv p D Φ.
 
   Lemma inv_typed : forall Φ, gens_inv Φ ->
       ind_lookup Θ (fr Φ) p = Some D /\ decl_typed Θ (fr Φ) D /\ decl_closed D /\ ⊢ Θ ⍮ fr Φ ⍮ ind_uparams D.
@@ -549,10 +549,10 @@ End GensRun.
     [rec], which the declaration's own names must leave free ([rec] is a
     keyword, so no source names a constructor so). *)
 Theorem ind_gens_typed : forall Θ mq Δ Φ0 Ξ0 y pv D,
-    ⊢g Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0 -> gm_fresh y Φ0 ->
-    Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0 ⍮ qname_in mq y ⊢e ge_ind pv D ⋄ ->
+    ⊢ᵍ Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0 -> gm_fresh y Φ0 ->
+    Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0 ⍮ qname_in mq y ⊢ᵉ ge_ind pv (qname_in mq y) D ⋄ ->
     ~ In "rec"%string (List.map fst (ind_cons D)) ->
-    Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0 ⍮ qname_in mq y ⊢e ge_ind pv D (gen_body (qname_in mq y) D).
+    Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0 ⍮ qname_in mq y ⊢ᵉ ge_ind pv (qname_in mq y) D (gen_body (qname_in mq y) D).
 Proof.
   intros * Hg Hy HE Hrec.
   destruct (inv_typed _ _ _ _ _ _ _ _ Hg Hy _ HE) as (_ & HD & _).
@@ -565,14 +565,15 @@ Qed.
 (** So a declaration whose arguments classify, and whose declaration is
     well formed where it is declared, is run. *)
 Corollary rc_ind_runs : forall load_path read to_core ch B Rb Θ Ξ x pv R cs,
-    ⊢g Θ ⍮ Ξ -> cls_cons_in Θ Ξ R cs -> gs_fresh x Ξ ->
-    Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢e ge_ind pv (gs_ind Ξ (rd_filed R cs)) ⋄ ->
+    ⊢ᵍ Θ ⍮ Ξ -> cls_cons_in Θ Ξ R cs -> gs_fresh x Ξ ->
+    Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_ind pv (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) ⋄ ->
     ~ In "rec"%string (List.map fst cs) ->
     exists Θ' Ξ', run_cmd load_path read to_core ch B Rb Θ Ξ (cc_ind x pv R) B Rb Θ' Ξ'.
 Proof.
   intros * HΞ Hcls Hfr HE Hrec.
-  destruct Ξ as [| [mq [Δ [Φ0 | E0]]] Ξ0]; [ contradiction | |].
-  - do 2 eexists; eapply rc_ind; [ exact Hcls | exact Hfr |].
+  destruct Ξ as [| [mq [Δ [sm Φ0 | E0]]] Ξ0]; [ contradiction | |].
+  - destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & (Δ' & Φ' & Heq & _) & _); injection Heq; intros; subst.
+    do 2 eexists; eapply rc_ind; [ exact Hcls | exact Hfr |].
     apply ind_gens_typed; [ exact HΞ | exact Hfr | exact HE | exact Hrec ].
   - exfalso; destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & (Δ' & Φ' & [=] & _) & _).
 Qed.

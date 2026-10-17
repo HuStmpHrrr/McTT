@@ -42,7 +42,7 @@ Proof.
   assert (⊢ Γ) by mauto.
   eapply glu_rel_exp_of_univ; mauto 3.
   intros.
-  assert (Δ ⊢s σ : Γ) by mauto 3.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
   split; [ simplify_subs; apply wf_level_univ; assumption |].
   eexists; repeat split; mauto 3; [| closed_typ_readback ].
@@ -69,7 +69,7 @@ Hint Resolve glu_rel_exp_level : mctt.
 Lemma glu_rel_exp_of_level : forall {Γ Sb M},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     (forall Δ σ ρ,
-        Δ ⊢s σ ® ρ ∈ Sb ->
+        Δ ⊢ˢ σ ® ρ ∈ Sb ->
         exists m, ⟦ M ⟧ ρ ↘ m /\ Dom m ≈ m ∈ per_lvl_at n /\ glu_lvl n Δ M[σ] m) ->
     Γ ⊩ M : Level@n.
 Proof.
@@ -77,7 +77,7 @@ Proof.
   eexists; split; mauto 3.
   exists 0.
   intros.
-  assert (Δ ⊢s σ : Γ) by mauto 3.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
   edestruct Hbody as [? [? []]]; mauto 3.
   econstructor; mauto 3.
@@ -101,7 +101,7 @@ Lemma glu_rel_exp_level_elim : forall {Γ Sb M},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     Γ ⊩ M : Level@n ->
     forall Δ σ ρ,
-      Δ ⊢s σ ® ρ ∈ Sb ->
+      Δ ⊢ˢ σ ® ρ ∈ Sb ->
       exists m, ⟦ M ⟧ ρ ↘ m /\ Dom m ≈ m ∈ per_lvl_at n /\ glu_lvl n Δ M[σ] m.
 Proof.
   intros * HSb HM * Hσ.
@@ -128,7 +128,7 @@ Proof.
   assert (⊢ Γ) by mauto 2.
   eapply glu_rel_exp_of_level; [ eassumption |].
   intros Δ σ ρ Hσ.
-  assert (Δ ⊢s σ : Γ) by mauto 3.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
   exists (dlvl_lit o); split; [ mauto 3 | split; [ apply per_lvl_at_lit; exact Ho |] ].
   simplify_subs; apply glu_lvl_lit; assumption.
@@ -259,7 +259,7 @@ Proof.
   eexists; split; [ eassumption |].
   exists 0.
   intros Δ σ ρ Hσ.
-  assert (Δ ⊢s σ : Γ) by mauto 3.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
   destruct (glu_rel_exp_level_elim HSb HM _ _ _ Hσ) as [m [Hev [Hper0 Hglu]]].
   destruct (glu_rel_exp_level_elim HSb HSM _ _ _ Hσ) as [m' [Hev' [Hper0' Hglu']]].
@@ -315,7 +315,7 @@ Lemma glu_rel_exp_of_suniv_tm_inversion' : forall {Γ Sb T A},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     Γ ⊩ A : Type⟨T⟩ ->
     forall Δ σ ρ,
-      Δ ⊢s σ ® ρ ∈ Sb ->
+      Δ ⊢ˢ σ ® ρ ∈ Sb ->
       exists l,
         ⟦ T ⟧ ρ ↘ l /\ Dom l ≈ l ∈ per_lvl /\
         Δ ⊢ A[σ] : Type⟨T[σ]⟩ /\
@@ -323,7 +323,7 @@ Lemma glu_rel_exp_of_suniv_tm_inversion' : forall {Γ Sb T A},
           ⟦ A ⟧ ρ ↘ a /\
             Dom a ≈ a ∈ per_univ (us (dlvl_real l)) /\
             (forall P El, DG a ∈ glu_univ_elem (us (dlvl_real l)) ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
-            (forall Δ' φ W, Δ' ⊢k φ : Δ -> Rtyp a in length Δ' ↘ W ->
+            (forall Δ' φ W, Δ' ⊢ᵏ φ : Δ -> Rtyp a in length Δ' ↘ W ->
                        Δ' ⊢ A[σ][φ]ʷ ≈ W : Type⟨T[σ][φ]ʷ⟩).
 Proof.
   intros * HΓ HA * HΔ.
@@ -350,14 +350,14 @@ Lemma glu_rel_exp_of_suniv_tm : forall {Γ Sb T A},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     Γ ⊩ T : Level@n ->
     (forall Δ σ ρ,
-        Δ ⊢s σ ® ρ ∈ Sb ->
+        Δ ⊢ˢ σ ® ρ ∈ Sb ->
         forall l, ⟦ T ⟧ ρ ↘ l ->
         Δ ⊢ A[σ] : Type⟨T[σ]⟩ /\
           exists a,
             ⟦ A ⟧ ρ ↘ a /\
               Dom a ≈ a ∈ per_univ (us (dlvl_real l)) /\
               (forall P El, DG a ∈ glu_univ_elem (us (dlvl_real l)) ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
-              (forall Δ' φ W, Δ' ⊢k φ : Δ -> Rtyp a in length Δ' ↘ W ->
+              (forall Δ' φ W, Δ' ⊢ᵏ φ : Δ -> Rtyp a in length Δ' ↘ W ->
                          Δ' ⊢ A[σ][φ]ʷ ≈ W : Type⟨T[σ][φ]ʷ⟩)) ->
     Γ ⊩ A : Type⟨T⟩.
 Proof.
@@ -365,7 +365,7 @@ Proof.
   eexists; split; [ eassumption |].
   exists 0.
   intros Δ σ ρ Hσ.
-  assert (Δ ⊢s σ : Γ) by mauto 3.
+  assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
   destruct (glu_rel_exp_level_elim HΓ HT _ _ _ Hσ) as [l [Hl [Hper0 Hglu]]].
   pose proof (per_lvl_at_lvl _ _ _ Hper0) as Hper.
@@ -391,7 +391,7 @@ Lemma glu_rel_exp_of_suniv_tm_inversion : forall {Γ Sb T A},
     Γ ⊩ T : Level@n ->
     Γ ⊩ A : Type⟨T⟩ ->
     forall Δ σ ρ,
-      Δ ⊢s σ ® ρ ∈ Sb ->
+      Δ ⊢ˢ σ ® ρ ∈ Sb ->
       exists l,
         ⟦ T ⟧ ρ ↘ l /\ Dom l ≈ l ∈ per_lvl /\ glu_lvl n Δ T[σ] l /\
         Δ ⊢ A[σ] : Type⟨T[σ]⟩ /\
@@ -399,7 +399,7 @@ Lemma glu_rel_exp_of_suniv_tm_inversion : forall {Γ Sb T A},
           ⟦ A ⟧ ρ ↘ a /\
             Dom a ≈ a ∈ per_univ (us (dlvl_real l)) /\
             (forall P El, DG a ∈ glu_univ_elem (us (dlvl_real l)) ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
-            (forall Δ' φ W, Δ' ⊢k φ : Δ -> Rtyp a in length Δ' ↘ W ->
+            (forall Δ' φ W, Δ' ⊢ᵏ φ : Δ -> Rtyp a in length Δ' ↘ W ->
                        Δ' ⊢ A[σ][φ]ʷ ≈ W : Type⟨T[σ][φ]ʷ⟩).
 Proof.
   intros * HΓ HT HA * HΔ.

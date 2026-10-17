@@ -15,7 +15,7 @@ Import Syntax_Notations GlobalCtx_Notations.
     [Extraction.TypeCheck]: well-formedness of local contexts [⊢ Θ ⍮ Ξ ⍮ Γ],
     of types and of terms.
 
-    [⊢g Θ ⍮ nil] is not decided here: the filed units are what a unit is
+    [⊢ᵍ Θ ⍮ nil] is not decided here: the filed units are what a unit is
     compiled against, and they are given already checked.  [Θ] is
     therefore a parameter of everything below, and only [Ξ] and the local
     context are traversed. *)
@@ -150,7 +150,7 @@ Section Bridge.
     assert (exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u) as [UA [u [HA Hu]]]
         by eauto using alg_type_infer_large_typ_complete'.
     assert (B = UA)
-      by (eapply (functional_alg_type_infer (GC := gc_mk Θ Ξ)); eassumption).
+      by (eapply (functional_alg_type_infer (GC := gc_mk Θ Ξ)); [ exact (ctx_wf_gctx _ _ _ (presup_exp_ctx H)) | eassumption .. ]).
     subst; exact (Hne _ Hu).
   Qed.
 
@@ -252,7 +252,7 @@ Section check_exp.
     intros * HΓ HB Hne n H.
     destruct (alg_type_check_level_infer (GC := gc_mk Θ Ξ) HΓ (alg_type_check_complete' _ _ _ _ _ H))
       as [m [Hm _]].
-    exact (Hne m (functional_alg_type_infer (GC := gc_mk Θ Ξ) HB Hm)).
+    exact (Hne m (functional_alg_type_infer (GC := gc_mk Θ Ξ) (ctx_wf_gctx _ _ _ HΓ) HB Hm)).
   Qed.
 
   (** "Is [t] a level?", decided as the premise of [ati_suniv]: infer a type
@@ -421,7 +421,7 @@ Section check_ctx.
 
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations check_ctx Θ Ξ (HΞ : ⊢g Θ ⍮ Ξ) Γ :
+  Equations check_ctx Θ Ξ (HΞ : ⊢ᵍ Θ ⍮ Ξ) Γ :
     { ⊢ Θ ⍮ Ξ ⍮ Γ } + { ~ ⊢ Θ ⍮ Ξ ⍮ Γ } :=
   | Θ, Ξ, HΞ, ⋅ => pureb _
   | Θ, Ξ, HΞ, Γ ▹ A =>
