@@ -75,7 +75,9 @@ def cons (A : Type@{u}) (a : A) (l : List A) : List A ≔
   λ (C : Type@{u}) (n : C) (c : ∀ (x : A) (r : C) → C) → c a (l C n c)
 end
 
-def foldr (A : Type@{u}) (C : Type@{u}) (n : C) (c : ∀ (a : A) (r : C) → C)
+(* Right fold, with the step before the start as in
+   [Prelude›Data›List.Ops.foldr]: [foldr A C c n l] is [l C n c]. *)
+def foldr (A : Type@{u}) (C : Type@{u}) (c : ∀ (a : A) (r : C) → C) (n : C)
     (l : List A) : C ≔
   l C n c
 end
