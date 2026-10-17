@@ -1,13 +1,13 @@
-(* Laws of [Prelude›Data›Church], at every level [u]: the arithmetic of numerals
-   agrees with that of [ℕ], moving between levels keeps the number, and the
-   length and sum of lists.
+(* Laws of [Prelude›Data›Church u]: the arithmetic of numerals agrees with
+   that of [ℕ], and the length and sum of lists.
 
    A Church numeral is any function of the right type, and without
    parametricity nothing can be said of an arbitrary one.  So the laws are
-   about the numerals of numbers, [fromNat u n], and are proved by
-   induction on [n].  Laws that only unfold definitions, like [lengthMap],
-   hold for every list. *)
-module Prelude›Data›Church›Properties where
+   about the numerals of numbers, [fromNat n], and are proved by induction
+   on [n].  Laws that only unfold definitions, like [lengthMap], hold for
+   every list.  The laws across two levels are in
+   [Prelude›Data›Church›Levels›Properties]. *)
+module Prelude›Data›Church›Properties (u : Level) where
 
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
@@ -15,8 +15,7 @@ import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusZero)
 open Prelude›Arith›Plus.Algebra use (plusAssoc)
 import Prelude›Arith›Mult use (mult)
-import Prelude›Arith›Pow use (pow)
-import Prelude›Data›Church as C
+import Prelude›Data›Church u as C
 
 (* The successor on numbers, the function [toNat] iterates. *)
 private def S (k : ℕ) : ℕ ≔ succ k end
@@ -24,20 +23,18 @@ private def S (k : ℕ) : ℕ ≔ succ k end
 (* Numerals of numbers. *)
 module Numerals where
 
-theorem toNatFromNat : ∀ (u : Level) (n : ℕ) →
-    Eq (C.toNat u (C.fromNat u n)) n ≔
-  λ (u : Level) (n : ℕ) →
-    elim n return x . Eq (C.toNat u (C.fromNat u x)) x
+theorem toNatFromNat : ∀ (n : ℕ) → Eq (C.toNat (C.fromNat n)) n ≔
+  λ (n : ℕ) →
+    elim n return x . Eq (C.toNat (C.fromNat x)) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
 end
 
 (* The numeral of [m], iterating the successor from [y], adds [m]. *)
-theorem fromNatAdds : ∀ (u : Level) (m : ℕ) (y : ℕ) →
-    Eq (C.fromNat u m ℕ S y) (plus m y) ≔
-  λ (u : Level) (m : ℕ) (y : ℕ) →
-    elim m return x . Eq (C.fromNat u x ℕ S y) (plus x y)
+theorem fromNatAdds : ∀ (m : ℕ) (y : ℕ) → Eq (C.fromNat m ℕ S y) (plus m y) ≔
+  λ (m : ℕ) (y : ℕ) →
+    elim m return x . Eq (C.fromNat x ℕ S y) (plus x y)
     | zero ⇒ refl y
     | succ p, ih ⇒ ih
     end
@@ -45,15 +42,15 @@ end
 
 (* If [g] adds [c], then the numeral of [m], iterating [g] from [y], adds
    [m] times [c]. *)
-theorem fromNatAddsMult : ∀ (u : Level) (c : ℕ) (g : ∀ (k : ℕ) → ℕ)
+theorem fromNatAddsMult : ∀ (c : ℕ) (g : ∀ (k : ℕ) → ℕ)
     (hg : ∀ (k : ℕ) → Eq (g k) (plus c k)) (m : ℕ) (y : ℕ) →
-    Eq (C.fromNat u m ℕ g y) (plus (mult m c) y) ≔
-  λ (u : Level) (c : ℕ) (g : ∀ (k : ℕ) → ℕ)
-    (hg : ∀ (k : ℕ) → Eq (g k) (plus c k)) (m : ℕ) (y : ℕ) →
-    elim m return x . Eq (C.fromNat u x ℕ g y) (plus (mult x c) y)
+    Eq (C.fromNat m ℕ g y) (plus (mult m c) y) ≔
+  λ (c : ℕ) (g : ∀ (k : ℕ) → ℕ) (hg : ∀ (k : ℕ) → Eq (g k) (plus c k))
+    (m : ℕ) (y : ℕ) →
+    elim m return x . Eq (C.fromNat x ℕ g y) (plus (mult x c) y)
     | zero ⇒ refl y
     | succ p, ih ⇒
-        let r ≔ C.fromNat u p ℕ g y
+        let r ≔ C.fromNat p ℕ g y
         in trans (g r) (plus c r) (plus (mult (succ p) c) y)
              (hg r)
              (trans (plus c r) (plus c (plus (mult p c) y))
@@ -72,75 +69,23 @@ open Numerals use (toNatFromNat; fromNatAdds; fromNatAddsMult)
 (* The operations on numerals compute the operations on numbers. *)
 module Arithmetic where
 
-theorem toNatPlus : ∀ (u : Level) (m : ℕ) (n : ℕ) →
-    Eq (C.toNat u (C.cplus u (C.fromNat u m) (C.fromNat u n))) (plus m n) ≔
-  λ (u : Level) (m : ℕ) (n : ℕ) →
-    let k ≔ C.toNat u (C.fromNat u n)
-    in trans (C.fromNat u m ℕ S k) (plus m k) (plus m n)
-         (fromNatAdds u m k)
-         (cong (λ (j : ℕ) → plus m j) k n (toNatFromNat u n))
+theorem toNatPlus : ∀ (m : ℕ) (n : ℕ) →
+    Eq (C.toNat (C.cplus (C.fromNat m) (C.fromNat n))) (plus m n) ≔
+  λ (m : ℕ) (n : ℕ) →
+    let k ≔ C.toNat (C.fromNat n)
+    in trans (C.fromNat m ℕ S k) (plus m k) (plus m n)
+         (fromNatAdds m k)
+         (cong (λ (j : ℕ) → plus m j) k n (toNatFromNat n))
     end
 end
 
-theorem toNatMult : ∀ (u : Level) (m : ℕ) (n : ℕ) →
-    Eq (C.toNat u (C.cmult u (C.fromNat u m) (C.fromNat u n))) (mult m n) ≔
-  λ (u : Level) (m : ℕ) (n : ℕ) →
-    trans (C.fromNat u m ℕ (C.fromNat u n ℕ S) 0) (plus (mult m n) 0)
+theorem toNatMult : ∀ (m : ℕ) (n : ℕ) →
+    Eq (C.toNat (C.cmult (C.fromNat m) (C.fromNat n))) (mult m n) ≔
+  λ (m : ℕ) (n : ℕ) →
+    trans (C.fromNat m ℕ (C.fromNat n ℕ S) 0) (plus (mult m n) 0)
       (mult m n)
-      (fromNatAddsMult u n (C.fromNat u n ℕ S) (fromNatAdds u n) m 0)
+      (fromNatAddsMult n (C.fromNat n ℕ S) (fromNatAdds n) m 0)
       (plusZero (mult m n))
-end
-
-(* The numeral [cpow u (fromNat u m) (fromNat (succl u) k)] adds [pow m k]
-   when it iterates the successor.  The induction is on [k], with the
-   starting point general, so the step can use [fromNatAddsMult]. *)
-theorem cpowAdds : ∀ (u : Level) (m : ℕ) (k : ℕ) (y : ℕ) →
-    Eq (C.cpow u (C.fromNat u m) (C.fromNat (succl u) k) ℕ S y)
-       (plus (pow m k) y) ≔
-  λ (u : Level) (m : ℕ) (k : ℕ) →
-    elim k return x . (∀ (y : ℕ) →
-                         Eq (C.cpow u (C.fromNat u m) (C.fromNat (succl u) x)
-                               ℕ S y)
-                            (plus (pow m x) y))
-    | zero ⇒ λ (y : ℕ) → refl (succ y)
-    | succ p, ih ⇒ λ (y : ℕ) →
-        fromNatAddsMult u (pow m p)
-          (C.cpow u (C.fromNat u m) (C.fromNat (succl u) p) ℕ S) ih m y
-    end
-end
-
-theorem toNatPow : ∀ (u : Level) (m : ℕ) (k : ℕ) →
-    Eq (C.toNat u (C.cpow u (C.fromNat u m) (C.fromNat (succl u) k)))
-       (pow m k) ≔
-  λ (u : Level) (m : ℕ) (k : ℕ) →
-    trans (C.toNat u (C.cpow u (C.fromNat u m) (C.fromNat (succl u) k)))
-      (plus (pow m k) 0) (pow m k)
-      (cpowAdds u m k 0) (plusZero (pow m k))
-end
-
-end
-
-(* Moving between levels keeps the number. *)
-module Levels where
-
-theorem toNatLower : ∀ (u : Level) (n : ℕ) →
-    Eq (C.toNat u (C.lower u (C.fromNat (succl u) n))) n ≔
-  λ (u : Level) (n : ℕ) →
-    elim n return x . Eq (C.toNat u (C.lower u (C.fromNat (succl u) x))) x
-    | zero ⇒ ⋆
-    | succ p, ih ⇒ ih
-    end
-end
-
-theorem toNatRaise : ∀ (u : Level) (n : C.Numeral u) →
-    Eq (C.toNat (succl u) (C.raise u n)) (C.toNat u n) ≔
-  λ (u : Level) (n : C.Numeral u) → toNatFromNat (succl u) (C.toNat u n)
-end
-
-(* [isZero] answers [cfalse] on every successor numeral, by conversion. *)
-theorem isZeroSucc : ∀ (u : Level) (n : C.Numeral (succl u)) →
-    Eq (C.boolToNat u (C.isZero u (C.csucc (succl u) n))) 0 ≔
-  λ (u : Level) (n : C.Numeral (succl u)) → ⋆
 end
 
 end
@@ -149,44 +94,42 @@ end
 module Lists where
 
 (* Mapping keeps the length of every list, by conversion. *)
-theorem lengthMap : ∀ (u : Level) (A : Type@{u}) (B : Type@{u})
-    (f : ∀ (a : A) → B) (l : C.List u A) →
-    Eq (C.length u B (C.map u A B f l)) (C.length u A l) ≔
-  λ (u : Level) (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) → B)
-    (l : C.List u A) →
-    refl (C.length u A l)
+theorem lengthMap : ∀ (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) → B)
+    (l : C.List A) → Eq (C.length B (C.map A B f l)) (C.length A l) ≔
+  λ (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) → B) (l : C.List A) →
+    refl (C.length A l)
 end
 
-theorem lengthReplicate : ∀ (u : Level) (A : Type@{u}) (n : ℕ) (a : A) →
-    Eq (C.length u A (C.replicate u A n a)) n ≔
-  λ (u : Level) (A : Type@{u}) (n : ℕ) (a : A) →
-    elim n return x . Eq (C.length u A (C.replicate u A x a)) x
+theorem lengthReplicate : ∀ (A : Type@{u}) (n : ℕ) (a : A) →
+    Eq (C.length A (C.replicate A n a)) n ≔
+  λ (A : Type@{u}) (n : ℕ) (a : A) →
+    elim n return x . Eq (C.length A (C.replicate A x a)) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
 end
 
 (* Appending [n] copies of [a] in front adds [n] to the length. *)
-theorem lengthAppendReplicate : ∀ (u : Level) (A : Type@{u}) (n : ℕ) (a : A)
-    (l : C.List u A) →
-    Eq (C.length u A (C.append u A (C.replicate u A n a) l))
-       (plus n (C.length u A l)) ≔
-  λ (u : Level) (A : Type@{u}) (n : ℕ) (a : A) (l : C.List u A) →
-    elim n return x . Eq (C.length u A (C.append u A (C.replicate u A x a) l))
-                         (plus x (C.length u A l))
-    | zero ⇒ refl (C.length u A l)
+theorem lengthAppendReplicate : ∀ (A : Type@{u}) (n : ℕ) (a : A)
+    (l : C.List A) →
+    Eq (C.length A (C.append A (C.replicate A n a) l))
+       (plus n (C.length A l)) ≔
+  λ (A : Type@{u}) (n : ℕ) (a : A) (l : C.List A) →
+    elim n return x . Eq (C.length A (C.append A (C.replicate A x a) l))
+                         (plus x (C.length A l))
+    | zero ⇒ refl (C.length A l)
     | succ p, ih ⇒ ih
     end
 end
 
-theorem sumReplicate : ∀ (u : Level) (n : ℕ) (c : ℕ) →
-    Eq (C.sum u (C.replicate u ℕ n c)) (mult n c) ≔
-  λ (u : Level) (n : ℕ) (c : ℕ) →
-    elim n return x . Eq (C.sum u (C.replicate u ℕ x c)) (mult x c)
+theorem sumReplicate : ∀ (n : ℕ) (c : ℕ) →
+    Eq (C.sum (C.replicate ℕ n c)) (mult n c) ≔
+  λ (n : ℕ) (c : ℕ) →
+    elim n return x . Eq (C.sum (C.replicate ℕ x c)) (mult x c)
     | zero ⇒ ⋆
     | succ p, ih ⇒
-        cong (λ (k : ℕ) → plus c k)
-          (C.sum u (C.replicate u ℕ p c)) (mult p c) ih
+        cong (λ (k : ℕ) → plus c k) (C.sum (C.replicate ℕ p c)) (mult p c)
+          ih
     end
 end
 

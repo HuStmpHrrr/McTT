@@ -1,144 +1,105 @@
-(* Church encodings at a universe level: numerals, booleans and lists.
+(* Church encodings at the universe level [u]: numerals, booleans and lists.
 
    A Church encoding at level [u] quantifies over the types of [Type@{u}],
-   so it lives one level up, in [Type@{succl u}].  An encoding can only be
-   eliminated into the types of its own level, so the operations that
-   eliminate into another encoding take their argument one level up:
-   exponentiation [cpow u m n] iterates multiplication by [m], a numeral at
-   [u], so it takes [n] at [succl u], and [isZero] returns a boolean at [u]
-   from a numeral at [succl u].  Moving down a level is direct ([lower]);
-   moving up goes through [ℕ] ([raise]).
-
-   The definitions take their levels one by one, since operations relate
-   encodings at different levels.  Pairs and sums at level [u] are
-   [Prelude›Logic.Conj u] and [Prelude›Logic.Disj u]. *)
-module Prelude›Data›Church where
+   so it lives one level up, in [Type@{succl u}].  Every operation here
+   stays at [u], so the level is the unit's parameter: [Prelude›Data›Church
+   0l] has the numerals over the types of [Type@0].  The operations that
+   relate two levels, such as exponentiation, are in
+   [Prelude›Data›Church›Levels].  Pairs and sums at level [u] are
+   [Prelude›Logic.Conj u] and [Prelude›Logic.Disj u].  The laws are in
+   [Prelude›Data›Church›Properties]. *)
+module Prelude›Data›Church (u : Level) where
 
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Plus use (plus)
 
 (* Numerals: [n] applies a function [n] times. *)
-def Numeral (u : Level) : Type@{succl u} ≔
+def Numeral : Type@{succl u} ≔
   ∀ (A : Type@{u}) (f : ∀ (a : A) → A) (x : A) → A
 end
 
-def czero (u : Level) : Numeral u ≔
-  λ (A : Type@{u}) (f : ∀ (a : A) → A) (x : A) → x
-end
+def czero : Numeral ≔ λ (A : Type@{u}) (f : ∀ (a : A) → A) (x : A) → x end
 
-def csucc (u : Level) (n : Numeral u) : Numeral u ≔
+def csucc (n : Numeral) : Numeral ≔
   λ (A : Type@{u}) (f : ∀ (a : A) → A) (x : A) → f (n A f x)
 end
 
-(* [cplus u m n] applies [f] [n] times, then [m] times. *)
-def cplus (u : Level) (m : Numeral u) (n : Numeral u) : Numeral u ≔
+(* [cplus m n] applies [f] [n] times, then [m] times. *)
+def cplus (m : Numeral) (n : Numeral) : Numeral ≔
   λ (A : Type@{u}) (f : ∀ (a : A) → A) (x : A) → m A f (n A f x)
 end
 
-(* [cmult u m n] applies [n]-fold [f] [m] times. *)
-def cmult (u : Level) (m : Numeral u) (n : Numeral u) : Numeral u ≔
+(* [cmult m n] applies [n]-fold [f] [m] times. *)
+def cmult (m : Numeral) (n : Numeral) : Numeral ≔
   λ (A : Type@{u}) (f : ∀ (a : A) → A) → m A (n A f)
 end
 
 (* The numeral of a number, by recursion. *)
-def fromNat (u : Level) (n : ℕ) : Numeral u ≔
-  elim n return y . Numeral u
-  | zero ⇒ czero u
-  | succ p, r ⇒ csucc u r
-  end
+def fromNat (n : ℕ) : Numeral ≔
+  elim n return y . Numeral | zero ⇒ czero | succ p, r ⇒ csucc r end
 end
 
 (* The number of a numeral: [ℕ] is in [Type@0], hence in every [Type@{u}]. *)
-def toNat (u : Level) (n : Numeral u) : ℕ ≔ n ℕ (λ (k : ℕ) → succ k) 0 end
-
-(* [cpow u m n] is [m] to the power [n]: [n] iterates [cmult u m] on the
-   numerals of level [u], which are a type of level [succl u]. *)
-def cpow (u : Level) (m : Numeral u) (n : Numeral (succl u)) : Numeral u ≔
-  n (Numeral u) (cmult u m) (csucc u (czero u))
-end
-
-(* A numeral one level down, by iterating [csucc] at [u]. *)
-def lower (u : Level) (n : Numeral (succl u)) : Numeral u ≔
-  n (Numeral u) (csucc u) (czero u)
-end
-
-(* A numeral one level up.  It cannot be iterated at [succl u], so it is
-   rebuilt from its number. *)
-def raise (u : Level) (n : Numeral u) : Numeral (succl u) ≔
-  fromNat (succl u) (toNat u n)
-end
+def toNat (n : Numeral) : ℕ ≔ n ℕ (λ (k : ℕ) → succ k) 0 end
 
 (* Booleans: a boolean chooses one of two elements. *)
-def Boolean (u : Level) : Type@{succl u} ≔
-  ∀ (A : Type@{u}) (t : A) (f : A) → A
-end
+def Boolean : Type@{succl u} ≔ ∀ (A : Type@{u}) (t : A) (f : A) → A end
 
-def ctrue (u : Level) : Boolean u ≔ λ (A : Type@{u}) (t : A) (f : A) → t end
+def ctrue : Boolean ≔ λ (A : Type@{u}) (t : A) (f : A) → t end
 
-def cfalse (u : Level) : Boolean u ≔ λ (A : Type@{u}) (t : A) (f : A) → f end
+def cfalse : Boolean ≔ λ (A : Type@{u}) (t : A) (f : A) → f end
 
-def cif (u : Level) (A : Type@{u}) (b : Boolean u) (t : A) (f : A) : A ≔
-  b A t f
-end
+def cif (A : Type@{u}) (b : Boolean) (t : A) (f : A) : A ≔ b A t f end
 
-def cnot (u : Level) (b : Boolean u) : Boolean u ≔
+def cnot (b : Boolean) : Boolean ≔
   λ (A : Type@{u}) (t : A) (f : A) → b A f t
 end
 
-def cand (u : Level) (b : Boolean u) (c : Boolean u) : Boolean u ≔
+def cand (b : Boolean) (c : Boolean) : Boolean ≔
   λ (A : Type@{u}) (t : A) (f : A) → b A (c A t f) f
 end
 
 (* The boolean of a boolean, as 1 or 0. *)
-def boolToNat (u : Level) (b : Boolean u) : ℕ ≔ b ℕ 1 0 end
-
-(* Whether a numeral is zero.  The numeral iterates on the booleans of
-   level [u], which are a type of level [succl u]. *)
-def isZero (u : Level) (n : Numeral (succl u)) : Boolean u ≔
-  n (Boolean u) (λ (b : Boolean u) → cfalse u) (ctrue u)
-end
+def boolToNat (b : Boolean) : ℕ ≔ b ℕ 1 0 end
 
 (* Lists over [A]: a list is its right fold. *)
-def List (u : Level) (A : Type@{u}) : Type@{succl u} ≔
+def List (A : Type@{u}) : Type@{succl u} ≔
   ∀ (C : Type@{u}) (n : C) (c : ∀ (a : A) (r : C) → C) → C
 end
 
-def nil (u : Level) (A : Type@{u}) : List u A ≔
+def nil (A : Type@{u}) : List A ≔
   λ (C : Type@{u}) (n : C) (c : ∀ (a : A) (r : C) → C) → n
 end
 
-def cons (u : Level) (A : Type@{u}) (a : A) (l : List u A) : List u A ≔
+def cons (A : Type@{u}) (a : A) (l : List A) : List A ≔
   λ (C : Type@{u}) (n : C) (c : ∀ (x : A) (r : C) → C) → c a (l C n c)
 end
 
-def foldr (u : Level) (A : Type@{u}) (C : Type@{u}) (n : C)
-    (c : ∀ (a : A) (r : C) → C) (l : List u A) : C ≔
+def foldr (A : Type@{u}) (C : Type@{u}) (n : C) (c : ∀ (a : A) (r : C) → C)
+    (l : List A) : C ≔
   l C n c
 end
 
-def append (u : Level) (A : Type@{u}) (k : List u A) (l : List u A) : List u A ≔
+def append (A : Type@{u}) (k : List A) (l : List A) : List A ≔
   λ (C : Type@{u}) (n : C) (c : ∀ (a : A) (r : C) → C) → k C (l C n c) c
 end
 
-def map (u : Level) (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) → B)
-    (l : List u A) : List u B ≔
+def map (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) → B) (l : List A) :
+    List B ≔
   λ (C : Type@{u}) (n : C) (c : ∀ (b : B) (r : C) → C) →
     l C n (λ (a : A) (r : C) → c (f a) r)
 end
 
-def length (u : Level) (A : Type@{u}) (l : List u A) : ℕ ≔
+def length (A : Type@{u}) (l : List A) : ℕ ≔
   l ℕ 0 (λ (a : A) (r : ℕ) → succ r)
 end
 
 (* The list of [n] copies of [a]. *)
-def replicate (u : Level) (A : Type@{u}) (n : ℕ) (a : A) : List u A ≔
-  elim n return y . List u A
-  | zero ⇒ nil u A
-  | succ p, r ⇒ cons u A a r
-  end
+def replicate (A : Type@{u}) (n : ℕ) (a : A) : List A ≔
+  elim n return y . List A | zero ⇒ nil A | succ p, r ⇒ cons A a r end
 end
 
 (* The sum of a list of numbers. *)
-def sum (u : Level) (l : List u ℕ) : ℕ ≔ l ℕ 0 plus end
+def sum (l : List ℕ) : ℕ ≔ l ℕ 0 plus end
 
 end

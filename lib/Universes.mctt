@@ -19,11 +19,12 @@ import Prelude›Universe›Levels use (LEq; LLe; ofNat; plusl)
 open Prelude›Universe›Levels.Equality use (lrefl; lsym; ltrans; lcong)
 open Prelude›Universe›Levels.Embedding use (ofNatMax)
 import Prelude›Universe›Formers
-  use (Lift; up; Arrow; Pi; Endo; Fun; Sigma; pair; first; Universe; universeIn)
+  use (up; Arrow; Pi; Endo; Fun; Sigma; pair; first; Universe; universeIn)
 import Prelude›Data›Church as C
-import Prelude›Data›Church›Properties
-open Prelude›Data›Church›Properties.Arithmetic use (toNatPlus; toNatPow)
-open Prelude›Data›Church›Properties.Levels use (toNatLower)
+import Prelude›Data›Church›Levels as CL
+import Prelude›Data›Church›Properties.Arithmetic use (toNatPlus)
+import Prelude›Data›Church›Levels›Properties.Power use (toNatPow)
+import Prelude›Data›Church›Levels›Properties.Moves use (toNatLower)
 
 (* 1. Levels are data.  [ofNat] computes a level from a number, and the laws
    of [maxl] hold by conversion, so [lrefl] proves their closed instances. *)
@@ -125,13 +126,13 @@ eval Iter.iter 1l Type@0 (λ (A : Type@0) → ∀ (a : A) → A) 2 ℕ
 (* 5. Church numerals.  Exponentiation iterates multiplication at [0l], so
    its exponent is a numeral at [1l]. *)
 
-eval C.toNat 0l (C.cpow 0l (C.fromNat 0l 2) (C.fromNat 1l 5))
+eval C.toNat 0l (CL.cpow 0l (C.fromNat 0l 2) (C.fromNat 1l 5))
 
-eval C.toNat 0l (C.lower 0l (C.fromNat 1l 4))
+eval C.toNat 0l (CL.lower 0l (C.fromNat 1l 4))
 
-eval C.boolToNat 0l (C.isZero 0l (C.fromNat 1l 0))
+eval C.boolToNat 0l (CL.isZero 0l (C.fromNat 1l 0))
 
-eval C.boolToNat 0l (C.isZero 0l (C.fromNat 1l 3))
+eval C.boolToNat 0l (CL.isZero 0l (C.fromNat 1l 3))
 
 (* A Church list of types, at [1l]. *)
 eval C.length 1l Type@0

@@ -1,0 +1,74 @@
+(* Laws of [Prelude›Data›Church›Levels u]: exponentiation computes the
+   power, moving between the levels [u] and [succl u] keeps the number, and
+   [isZero] answers [cfalse] on successors.  As in
+   [Prelude›Data›Church›Properties], the laws are about numerals of
+   numbers. *)
+module Prelude›Data›Church›Levels›Properties (u : Level) where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Arith›Equality use (Eq; refl; trans)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusZero)
+import Prelude›Arith›Pow use (pow)
+import Prelude›Data›Church u as C
+import Prelude›Data›Church (succl u) as Up
+import Prelude›Data›Church›Levels u use (cpow; lower; raise; isZero)
+import Prelude›Data›Church›Properties.Numerals u use (fromNatAddsMult)
+import Prelude›Data›Church›Properties.Numerals (succl u) use (toNatFromNat)
+
+(* The successor on numbers, the function [C.toNat] iterates. *)
+private def S (k : ℕ) : ℕ ≔ succ k end
+
+(* Exponentiation computes the power. *)
+module Power where
+
+(* The numeral [cpow (C.fromNat m) (Up.fromNat k)] adds [pow m k] when it
+   iterates the successor.  The induction is on [k], with the starting
+   point general, so the step can use [fromNatAddsMult]. *)
+private theorem cpowAdds : ∀ (m : ℕ) (k : ℕ) (y : ℕ) →
+    Eq (cpow (C.fromNat m) (Up.fromNat k) ℕ S y) (plus (pow m k) y) ≔
+  λ (m : ℕ) (k : ℕ) →
+    elim k return x . (∀ (y : ℕ) →
+                         Eq (cpow (C.fromNat m) (Up.fromNat x) ℕ S y)
+                            (plus (pow m x) y))
+    | zero ⇒ λ (y : ℕ) → refl (succ y)
+    | succ p, ih ⇒ λ (y : ℕ) →
+        fromNatAddsMult (pow m p) (cpow (C.fromNat m) (Up.fromNat p) ℕ S) ih
+          m y
+    end
+end
+
+theorem toNatPow : ∀ (m : ℕ) (k : ℕ) →
+    Eq (C.toNat (cpow (C.fromNat m) (Up.fromNat k))) (pow m k) ≔
+  λ (m : ℕ) (k : ℕ) →
+    trans (C.toNat (cpow (C.fromNat m) (Up.fromNat k))) (plus (pow m k) 0)
+      (pow m k) (cpowAdds m k 0) (plusZero (pow m k))
+end
+
+end
+
+(* Moving between levels keeps the number. *)
+module Moves where
+
+theorem toNatLower : ∀ (n : ℕ) → Eq (C.toNat (lower (Up.fromNat n))) n ≔
+  λ (n : ℕ) →
+    elim n return x . Eq (C.toNat (lower (Up.fromNat x))) x
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ ih
+    end
+end
+
+theorem toNatRaise : ∀ (n : C.Numeral) →
+    Eq (Up.toNat (raise n)) (C.toNat n) ≔
+  λ (n : C.Numeral) → toNatFromNat (C.toNat n)
+end
+
+(* [isZero] answers [cfalse] on every successor numeral, by conversion. *)
+theorem isZeroSucc : ∀ (n : Up.Numeral) →
+    Eq (C.boolToNat (isZero (Up.csucc n))) 0 ≔
+  λ (n : Up.Numeral) → ⋆
+end
+
+end
+
+end

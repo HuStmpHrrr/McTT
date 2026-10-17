@@ -1,0 +1,36 @@
+(* Church numerals across two levels: those of [Prelude›Data›Church u]
+   and of [Prelude›Data›Church (succl u)], one level up.
+
+   An encoding can only be eliminated into the types of its own level, so
+   an operation that eliminates into the numerals or booleans of [u],
+   which are types of [Type@{succl u}], takes its argument one level up:
+   exponentiation [cpow m n] iterates multiplication by [m], a numeral at
+   [u], so it takes [n] at [succl u], and [isZero] returns a boolean at
+   [u] from a numeral at [succl u].  Moving down a level is direct
+   ([lower]); moving up goes through [ℕ] ([raise]).  The laws are in
+   [Prelude›Data›Church›Levels›Properties]. *)
+module Prelude›Data›Church›Levels (u : Level) where
+
+import Prelude›Data›Church u as C
+import Prelude›Data›Church (succl u) as Up
+
+(* [cpow m n] is [m] to the power [n]: [n] iterates [C.cmult m] on the
+   numerals of level [u], which are a type of level [succl u]. *)
+def cpow (m : C.Numeral) (n : Up.Numeral) : C.Numeral ≔
+  n C.Numeral (C.cmult m) (C.csucc C.czero)
+end
+
+(* A numeral one level down, by iterating [C.csucc]. *)
+def lower (n : Up.Numeral) : C.Numeral ≔ n C.Numeral C.csucc C.czero end
+
+(* A numeral one level up.  It cannot be iterated at [succl u], so it is
+   rebuilt from its number. *)
+def raise (n : C.Numeral) : Up.Numeral ≔ Up.fromNat (C.toNat n) end
+
+(* Whether a numeral is zero.  The numeral iterates on the booleans of
+   level [u], which are a type of level [succl u]. *)
+def isZero (n : Up.Numeral) : C.Boolean ≔
+  n C.Boolean (λ (b : C.Boolean) → C.cfalse) C.ctrue
+end
+
+end

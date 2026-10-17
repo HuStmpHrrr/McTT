@@ -3222,7 +3222,7 @@ let%expect_test "mctt-doc: ℕ links to the type bound as the natural numbers" =
   let page = Doc.render_unit lib' (Doc.anchor_kinds lib') u in
   Printf.printf "%d links, %d without a link\n" (doc_count "ℕ</a>" page) (doc_count span page);
   [%expect {|
-    2777 links to Nat, 0 other links, 0 without a link
+    2779 links to Nat, 0 other links, 0 without a link
     NoNat: not checked
     0 links, 2 without a link
     |}]
@@ -3375,10 +3375,10 @@ let%expect_test "lib/Universes.mctt" =
       --> ∀ (x1 : ∀ (x2 : ℕ) → ℕ)
             (x3 : ℕ)
             → ℕ : Type@0
-    Evaluate C.toNat 0l (C.cpow 0l (C.fromNat 0l 2) (C.fromNat 1l 5)) --> 32 : ℕ
-    Evaluate C.toNat 0l (C.lower 0l (C.fromNat 1l 4)) --> 4 : ℕ
-    Evaluate C.boolToNat 0l (C.isZero 0l (C.fromNat 1l 0)) --> 1 : ℕ
-    Evaluate C.boolToNat 0l (C.isZero 0l (C.fromNat 1l 3)) --> 0 : ℕ
+    Evaluate C.toNat 0l (CL.cpow 0l (C.fromNat 0l 2) (C.fromNat 1l 5)) --> 32 : ℕ
+    Evaluate C.toNat 0l (CL.lower 0l (C.fromNat 1l 4)) --> 4 : ℕ
+    Evaluate C.boolToNat 0l (CL.isZero 0l (C.fromNat 1l 0)) --> 1 : ℕ
+    Evaluate C.boolToNat 0l (CL.isZero 0l (C.fromNat 1l 3)) --> 0 : ℕ
     Evaluate C.length 1l Type@0
                (C.cons 1l Type@0 ℕ (C.cons 1l Type@0 ⊤ (C.nil 1l Type@0))) --> 2
       : ℕ
