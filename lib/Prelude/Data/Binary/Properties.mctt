@@ -17,7 +17,7 @@ import Prelude›Logic›Leibniz 0l use (Id; idRefl; idSym; idTrans; idCong;
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
-open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc)
+open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc; plusCongBoth)
 import Prelude›Arith›Parity use (double)
 import Prelude›Data›Binary as B use (Bin; suc; toNat; fromNat; add)
 open Bin use (doubleSucc; succDouble)
@@ -330,8 +330,8 @@ theorem fromNatPlus : ∀ (m : ℕ) (n : ℕ) →
             (trans (toNat (add (fromNat m) (fromNat n)))
                (plus (toNat (fromNat m)) (toNat (fromNat n))) (plus m n)
                (toNatAdd (fromNat m) (fromNat n))
-               (Prelude›Arith›Plus.Algebra.plusCongBoth (toNat (fromNat m))
-                  (toNat (fromNat n)) m n (toNatFromNat m) (toNatFromNat n)))))
+               (plusCongBoth (toNat (fromNat m)) (toNat (fromNat n)) m n
+                  (toNatFromNat m) (toNatFromNat n)))))
 end
 
 end
