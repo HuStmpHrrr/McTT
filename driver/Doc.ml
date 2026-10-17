@@ -109,6 +109,12 @@ type vb = { v_link : link; v_mod : mden }
 
 type env = { sc : E.ent list; vs : vb list }
 
+(* An entry of a unit's contents: a declaration of the unit's body, at any
+   depth of its modules, with the anchor its name declares.  [te_depth] is
+   the length of the member chain it is declared in; [te_kw] is the
+   keyword shown in front of it. *)
+type toc_entry = { te_depth : int; te_name : string; te_anchor : string; te_kw : string; te_kind : kind }
+
 let push x v env = { sc = E.Coq_en_var x :: env.sc; vs = v :: env.vs }
 
 type st = {
@@ -118,7 +124,7 @@ type st = {
   occ : occ array;             (* indexed like [vars] *)
   mutable cur : int;           (* the next VAR to pair *)
   items : (string list * string list, link) Hashtbl.t;  (* open items, see [items] below *)
-  decls : (string * kind) list ref;                     (* the unit's top-level declarations *)
+  mutable toc : toc_entry list;  (* the unit's declarations at every depth, last first *)
   mutable notes : string list;
   mutable evals : (C.obj * C.obj option) list;  (* the evals walked, last first *)
 }
@@ -352,22 +358,34 @@ and mdef st env (md : C.mdef) : mden =
 
 let anchor_of ch x = String.concat "." (ch @ [ x ])
 
+(* The keyword of the definition whose name is the VAR [i]: the token in
+   front of the name. *)
+let def_kw st i =
+  match st.toks.(st.vars.(i) - 1).t with
+  | P.THEOREM _ -> "theorem" | P.LEMMA _ -> "lemma" | P.FACT _ -> "fact" | P.REMARK _ -> "remark"
+  | P.LET _ -> "let" | P.GIVEN _ -> "given" | _ -> "def"
+
 (* [cmd st fp ch o ov f fv c]: the command [c] in the frame at member chain
    [ch], whose entries are [f] inside the scope [o]; [fv] and [ov] are the
-   binders of [f] and [o].  The frame's next entries are [elab_cmd]'s. *)
+   binders of [f] and [o].  The frame's next entries are [elab_cmd]'s.  Each
+   declaration of the body is an entry of the unit's contents. *)
 let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
   let env = { sc = f @ o; vs = fv @ ov } in
-  let decl x k =
+  (* An entry of the contents, declared in the member chain [ch']. *)
+  let entry ch' x kw k =
+    st.toc <- { te_depth = List.length ch'; te_name = x; te_anchor = anchor_of ch' x; te_kw = kw; te_kind = k }
+              :: st.toc in
+  let decl kw x k =
     let i = next st x in
     declare st i (anchor_of ch x) k;
-    if ch = [] then st.decls := !(st.decls) @ [ (x, k) ];
+    entry ch x (match kw with Some kw -> kw | None -> def_kw st i) k;
     i
   in
   (match c with
-   | C.Coq_c_def (_, x, a, b) -> let i = decl x Def in def_parts st env i a b
-   | C.Coq_c_axiom (x, a) -> ignore (decl x Def); term st env a
+   | C.Coq_c_def (_, x, a, b) -> let i = decl None x Def in def_parts st env i a b
+   | C.Coq_c_axiom (x, a) -> ignore (decl (Some "axiom") x Def); term st env a
    | C.Coq_c_mod (_, x, ps, md) ->
-       ignore (decl x Mod);
+       ignore (decl (Some "module") x Mod);
        let env', vbs = params st env ps in
        (match md with
         | C.Coq_md_where body ->
@@ -376,15 +394,19 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
    | C.Coq_c_import fq -> unit_path st fq
    | C.Coq_c_open (fq, ip, args, its) ->
        let m = target st env fq ip args in
-       List.iter (fun (d, i, _, l) ->
-           declare st i (anchor_of ch d) (if l = None then Mod else Def);
-           Option.iter (Hashtbl.replace st.items (fp, ch @ [ d ])) l) (items st m its)
+       (* An exported item is a member of the module, and an entry of the
+          contents; a [use]d one, or an [as] alias, only names one in scope. *)
+       List.iter2 (fun (d, i, _, l) (_, pv) ->
+           let k = if l = None then Mod else Def in
+           declare st i (anchor_of ch d) k;
+           if not pv then entry ch d "export" k;
+           Option.iter (Hashtbl.replace st.items (fp, ch @ [ d ])) l) (items st m its) its
    | C.Coq_c_eval (e, t) -> st.evals <- (e, t) :: st.evals; term st env e; Option.iter (term st env) t
    | C.Coq_c_error e -> raise (Misaligned ("rejected by the parser: " ^ e))
    (* An inductive alias: its name, a module, its parameters, then the
       type it names, as a module alias's target. *)
    | C.Coq_c_ind_alias (_, x, ps, e) ->
-       ignore (decl x Mod);
+       ignore (decl (Some "inductive") x Mod);
        let env', _ = params st env ps in
        ignore (modv st env' e)
    (* A builtin binding: its kind, which declares nothing and links where
@@ -399,7 +421,7 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
       is a variable linked to the declaration, and each argument binds its
       name for the next. *)
    | C.Coq_c_ind (_, x, ps, t, cs) ->
-       ignore (decl x Mod);
+       ignore (decl (Some "inductive") x Mod);
        let envu, _ = params st env ps in
        let rec pis env t =
          match t with
@@ -419,6 +441,7 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
        let envs = { sc = take k enva.sc @ base.sc; vs = take k enva.vs @ base.vs } in
        List.iter (fun (c, args) ->
            declare st (next st c) (anchor_of (ch @ [ x ]) c) Def;
+           entry (ch @ [ x ]) c "|" Def;
            ignore (List.fold_left (fun env (y, a) ->
                let v = bind st y in term st env a; push y v env) envs args)) cs);
   next_frame st fp ch o f c
@@ -450,7 +473,7 @@ type unit_info = {
   u_comments : (int * int) list;
   u_vars : int array;
   u_occ : occ array;
-  u_decls : (string * kind) list;
+  u_toc : toc_entry list;      (* the declarations of the body at every depth, in order *)
   u_notes : string list;
   u_evals : (int * int) list;  (* each eval's first and last token, in order *)
 }
@@ -502,7 +525,7 @@ let walk (file : string list) (src : string) (items : (string list * string list
            | P.VAR _ -> Some i
            | _ -> None) (Array.to_list toks))) in
   let occ = Array.init (Array.length vars) (fun _ -> { link = None; anchor = None; kind = None; bare = false }) in
-  let st = { unit = fp; toks; vars; occ; cur = 0; items; decls = ref []; notes = []; evals = [] } in
+  let st = { unit = fp; toks; vars; occ; cur = 0; items; toc = []; notes = []; evals = [] } in
   let l = List.fold_left (lead st fp) [] leads in
   List.iter (fun x -> let i = next st x in declare st i "" Unit) fp;
   let env, vbs = params st { sc = l; vs = [] } ps in
@@ -513,7 +536,7 @@ let walk (file : string list) (src : string) (items : (string list * string list
   if st.cur <> Array.length vars then
     raise (Misaligned (Printf.sprintf "%d of %d names paired" st.cur (Array.length vars)));
   { u_file = file; u_path = fp; u_src = src; u_toks = toks; u_comments = comments src toks;
-    u_vars = vars; u_occ = occ; u_decls = !(st.decls); u_notes = List.rev st.notes;
+    u_vars = vars; u_occ = occ; u_toc = List.rev st.toc; u_notes = List.rev st.notes;
     u_evals = eval_spans toks (List.rev st.evals) }
 
 let rec find_units root dir acc =
@@ -635,9 +658,27 @@ let stats lib : stats =
 (* A unit path as the printer spells it, joined by [›]. *)
 let unit_name fq = String.concat "\u{203A}" fq
 
+(* The contents of a unit that do not link: an entry whose anchor no name
+   of the page declares, and an anchor declared twice, which a link cannot
+   tell apart.  The page gives every declared anchor to its name, as [id],
+   and each entry links to [#] its anchor ([render_unit]). *)
+let toc_problems (u : unit_info) : string list =
+  let n = Hashtbl.create 256 in
+  Array.iter (fun o -> match o.anchor with
+      | Some a when a <> "" -> Hashtbl.replace n a (1 + Option.value (Hashtbl.find_opt n a) ~default:0)
+      | _ -> ()) u.u_occ;
+  let name = unit_name u.u_path in
+  List.filter_map (fun e ->
+      if Hashtbl.mem n e.te_anchor then None
+      else Some (Printf.sprintf "%s: the contents entry %s links to a missing anchor #%s" name e.te_name e.te_anchor))
+    u.u_toc
+  @ List.sort compare (Hashtbl.fold (fun a k acc ->
+      if k > 1 then Printf.sprintf "%s: the anchor #%s is declared %d times" name a k :: acc else acc) n [])
+
 (* The problems [--check] reports, one per line. *)
 let problems ?(resolve = true) (lib : lib) : string list =
   List.map (fun (f, m) -> Printf.sprintf "%s: %s" (String.concat "/" f) m) lib.failed
+  @ List.concat_map toc_problems lib.units
   @ (if not resolve then [] else
        let s = stats lib in
        List.filter_map (fun u -> if Hashtbl.mem lib.thetas u.u_path then None
@@ -785,6 +826,50 @@ let eval_box (c : int) (out : string) : string =
   Printf.sprintf "<details class=\"eval\" style=\"margin-left:%dch\"><summary>output</summary>\
                   <pre class=\"out\" onclick=\"this.parentElement.open=false\">%s</pre></details>\n" c (esc out)
 
+(* Without it a phone lays the page out at a desktop's width, and the
+   stylesheet's narrow layout never applies. *)
+let viewport = "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+
+(* The contents as a tree: an entry's children are the entries after it
+   that are deeper, up to the next one that is not.  A module's members
+   and an inductive's constructors follow its name in the source. *)
+type toc = Toc of toc_entry * toc list
+
+let rec toc_forest d (es : toc_entry list) : toc list * toc_entry list =
+  match es with
+  | e :: rest when e.te_depth >= d ->
+      let kids, rest = toc_forest (e.te_depth + 1) rest in
+      let sibs, rest = toc_forest d rest in
+      (Toc (e, kids) :: sibs, rest)
+  | _ -> ([], es)
+
+(* The contents of the unit [name], one entry per declaration, nested as
+   its modules are; an entry with members folds them in a [<details>].
+   One [<nav>] serves both layouts of the stylesheet: a side panel beside
+   the text on a wide screen; on a narrow one, a drawer the "Contents"
+   button opens, as the target of its link, and any link closes, the
+   entries' included, as the target moves to their anchor.  [#-close] is
+   no anchor, so it closes the drawer in place; names never start with
+   [-], so neither [-contents] nor [-close] is a name's anchor. *)
+let toc_html name (es : toc_entry list) : string =
+  let b = Buffer.create 1024 in
+  let rec node (Toc (e, kids)) =
+    let line = Printf.sprintf "<span class=\"kw\">%s</span> <a class=\"%s\" href=\"#%s\">%s</a>"
+        (esc e.te_kw) (kind_class e.te_kind) (esc e.te_anchor) (esc e.te_name) in
+    match kids with
+    | [] -> Printf.bprintf b "<li>%s</li>" line
+    | _ ->
+        Printf.bprintf b "<li><details open><summary>%s</summary><ul>" line;
+        List.iter node kids; Buffer.add_string b "</ul></details></li>"
+  in
+  Printf.bprintf b "<a class=\"toc-open\" href=\"#-contents\">&#9776; Contents</a>\n\
+                    <nav class=\"toc\" id=\"-contents\" aria-label=\"Contents\"><div class=\"toc-head\">\
+                    <a href=\"#\">%s</a> <a class=\"toc-close\" href=\"#-close\" aria-label=\"Close\">&times;</a></div><ul>"
+    (esc name);
+  List.iter node (fst (toc_forest 0 es));
+  Buffer.add_string b "</ul></nav>\n";
+  Buffer.contents b
+
 let render_unit lib kinds (u : unit_info) : string =
   let src = u.u_src in
   let b = Buffer.create (4 * String.length src) in
@@ -875,14 +960,11 @@ let render_unit lib kinds (u : unit_info) : string =
     Buffer.add_string b (esc (String.trim (String.sub src !pos (String.length src - !pos)))); close_code ()
   end;
   let name = unit_name u.u_path in
-  let toc = String.concat "" (List.map (fun (x, k) ->
-      Printf.sprintf "<li><span class=\"kw\">%s</span> <a href=\"#%s\">%s</a></li>"
-        (match k with Mod -> "module" | _ -> "def") (esc x) (esc x)) u.u_decls) in
   Printf.sprintf
-    "<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\"><title>%s</title>\
-     <link rel=\"stylesheet\" href=\"mctt.css\"></head><body>\n%s\
-     <h1>%s</h1>\n<details class=\"toc\"><summary>Contents</summary><ul>%s</ul></details>\n%s</body></html>\n"
-    name nav name toc (Buffer.contents b)
+    "<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\">%s<title>%s</title>\
+     <link rel=\"stylesheet\" href=\"mctt.css\"></head><body class=\"unit\">\n%s%s\
+     <h1>%s</h1>\n%s</body></html>\n"
+    viewport name (toc_html name u.u_toc) nav name (Buffer.contents b)
 
 let summary (u : unit_info) =
   match u.u_comments with
@@ -906,7 +988,25 @@ a.def,a.mod,a.unit,a.var,a.ty{text-decoration:none}a:hover{text-decoration:under
 .def{color:#1f4fa3}.mod{color:#a3341f}.unit{color:#a3341f}.var{color:#333}.free{color:#c00}
 .bind.def,.bind.mod{font-weight:700}
 :target{background:#fff3b0}
-details.toc{font-size:.9em;margin-bottom:1em}details.toc ul{columns:3;list-style:none;padding-left:1em}
+nav.toc,nav.toc:target{font-family:Menlo,Consolas,monospace;font-size:.8em;line-height:1.5;background:#f7f7f4;margin:0;box-sizing:border-box}
+nav.toc ul{list-style:none;margin:0;padding-left:1.2em}nav.toc>ul{padding-left:0}
+nav.toc li{margin:.05em 0;overflow-wrap:anywhere}nav.toc summary{cursor:pointer}
+nav.toc a{text-decoration:none}nav.toc a:hover{text-decoration:underline}
+nav.toc .toc-head{font-weight:700;padding-bottom:.4em;margin-bottom:.4em;border-bottom:1px solid #ddd}
+nav.toc .toc-head a{color:#a3341f}
+a.toc-open,a.toc-close{display:none}
+@media (min-width:64em){
+body.unit{margin-left:max(20rem,calc(50vw - 29em))}
+nav.toc{position:fixed;top:0;left:0;bottom:0;width:18rem;overflow-y:auto;padding:1em;border-right:1px solid #ddd}
+}
+@media (max-width:63.99em){
+nav.toc{display:none}
+nav.toc:target{display:block;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10;overflow-y:auto;padding:1em 1.2em;font-size:.95em}
+nav.toc .toc-head{display:flex;justify-content:space-between}
+a.toc-open{display:block;position:fixed;top:.5em;right:.5em;z-index:5;padding:.2em .7em;font-size:.9em;color:#333;text-decoration:none;background:#fdfdfb;border:1px solid #c9d3e0;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+a.toc-close{display:inline;font-size:1.4em;line-height:1;color:#555}
+:target{scroll-margin-top:2.6em}
+}
 details.eval{font-family:"JetBrains Mono",Menlo,Consolas,monospace;font-size:.88em;margin-top:-.6em;margin-bottom:.6em;padding-left:1em}
 details.eval summary{cursor:pointer;color:#6a737d;font-size:.9em;width:max-content}
 details.eval pre.out{cursor:pointer;margin:.2em 0;padding:.3em .8em;border:1px solid #dde3ea;border-radius:3px;background:#fbfcfd;white-space:pre-wrap;line-height:1.4}
@@ -926,7 +1026,7 @@ let write_site lib out =
       (page_name u.u_path) (unit_name u.u_path) (summary u) in
   let prel, progs = List.partition (fun u -> List.hd u.u_path = "Prelude") lib.units in
   w "index.html"
-    (Printf.sprintf "<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\"><title>McTT library</title>\
+    (Printf.sprintf "<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\">%s<title>McTT library</title>\
                      <link rel=\"stylesheet\" href=\"mctt.css\"></head><body>\n%s<h1>The McTT library</h1>\n\
                      <h2>Prelude</h2><ul class=\"units\">%s</ul><h2>Programs</h2><ul class=\"units\">%s</ul></body></html>\n"
-       nav (String.concat "" (List.map item prel)) (String.concat "" (List.map item progs)))
+       viewport nav (String.concat "" (List.map item prel)) (String.concat "" (List.map item progs)))

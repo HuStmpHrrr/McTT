@@ -3059,6 +3059,38 @@ let%expect_test "mctt-doc: a generated member links to its inductive declaration
     rec 4: line 22: Lib›Unary#U
     |}]
 
+let%expect_test "mctt-doc: the contents nest a unit's modules, inductives and exports" =
+  let lib = Lazy.force doc_lib in
+  let u = List.find (fun u -> u.Doc.u_path = [ "Prelude"; "Data"; "List" ]) lib.Doc.units in
+  List.iter (fun e -> Printf.printf "%s%s %s #%s\n" (String.make (2 * e.Doc.te_depth) ' ')
+                e.Doc.te_kw e.Doc.te_name e.Doc.te_anchor) u.Doc.u_toc;
+  [%expect {|
+    inductive List #List
+      | nil #List.nil
+      | cons #List.cons
+    export nil #nil
+    export cons #cons
+    module Ops #Ops
+      def length #Ops.length
+      def append #Ops.append
+      def map #Ops.map
+      def foldr #Ops.foldr
+      def reverse #Ops.reverse
+    def sum #sum
+    |}]
+
+let%expect_test "mctt-doc: a contents entry with no anchor, and an anchor declared twice, are reported" =
+  let items = Hashtbl.create 4 in
+  (* The parameter [x], the third name, has the local anchor [l2], which is
+     also the anchor of the definition [l2]. *)
+  let u = Doc.walk [ "Twice" ] "module Twice where\ndef l2 (x : Type@0) : Type@0 := x end\nend\n" items in
+  let ghost = { Doc.te_depth = 0; te_name = "ghost"; te_anchor = "ghost"; te_kw = "def"; te_kind = Doc.Def } in
+  List.iter print_endline (Doc.toc_problems { u with Doc.u_toc = u.Doc.u_toc @ [ ghost ] });
+  [%expect {|
+    Twice: the contents entry ghost links to a missing anchor #ghost
+    Twice: the anchor #l2 is declared 2 times
+    |}]
+
 (* The output boxes of a page, unescaped, in order. *)
 let doc_find sub s i =
   let n = String.length sub in
