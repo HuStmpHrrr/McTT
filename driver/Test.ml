@@ -3016,6 +3016,15 @@ let%expect_test "lib/Tutorial.mctt" =
     Evaluate lift 3l --> 3l : Level@1
     Evaluate ∀ (x1 : Level@1) → Type@{x1} --> ∀ (x1 : Level@1) → Type@{x1}
       : Type@{ω·2}
+    Evaluate size (Shape.stack (Shape.line 3)) --> 4 : ℕ
+    Evaluate L.List.cons 0l ℕ 1 (L.List.nil 0l ℕ)
+      --> Prelude›Data›List.List.cons 0l ℕ 1 (Prelude›Data›List.List.nil 0l ℕ)
+      : Prelude›Data›List.List 0l ℕ
+    Evaluate L.Ops.length 0l ℕ oneTwo --> 2 : ℕ
+    Evaluate cons 3 nil
+      --> Prelude›Data›List.List.cons 0l ℕ 3 (Prelude›Data›List.List.nil 0l ℕ)
+      : Prelude›Data›List.List 0l ℕ
+    Evaluate Pairs.snd twoThree --> 3 : ℕ
     |}]
 
 (** The documentation generator ([Doc]) *)
@@ -3144,7 +3153,7 @@ let%expect_test "mctt-doc: every eval of lib has one output box, with mctt's out
   List.iter (fun b -> if String.starts_with ~prefix:"Evaluate Adding.five " b then print_endline b)
     (doc_boxes (Doc.render_unit lib kinds tut));
   [%expect {|
-    493 evals, 493 boxes, 493 equal to mctt's output
+    498 evals, 498 boxes, 498 equal to mctt's output
     Evaluate Adding.five --> 5 : ℕ
     |}]
 
@@ -3156,7 +3165,7 @@ let%expect_test "mctt-doc: a unit whose log is out of step with its evals is rep
   let tut = List.find (fun u -> u.Doc.u_path = [ "Tutorial" ]) lib.Doc.units in
   Printf.printf "%d boxes\n" (List.length (doc_boxes (Doc.render_unit lib (Doc.anchor_kinds lib) tut)));
   [%expect {|
-    Tutorial: 40 evals, 1 outputs
+    Tutorial: 45 evals, 1 outputs
     0 boxes
     |}]
 
@@ -3221,7 +3230,7 @@ let%expect_test "mctt-doc: ℕ links to the type bound as the natural numbers" =
   let page = Doc.render_unit lib' (Doc.anchor_kinds lib') u in
   Printf.printf "%d links, %d without a link\n" (doc_count "ℕ</a>" page) (doc_count span page);
   [%expect {|
-    2777 links to Nat, 0 other links, 0 without a link
+    2787 links to Nat, 0 other links, 0 without a link
     NoNat: not checked
     0 links, 2 without a link
     |}]

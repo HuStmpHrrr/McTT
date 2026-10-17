@@ -348,4 +348,62 @@ eval lift 3l
 (* Quantifying over the levels of [Level@1] gives a type at ω·2. *)
 eval (∀ (u : Level@1) → Type@{u}) : Type@{ω·2}
 
+(* 15. Inductive types. [inductive T (ps) : Type@n where | c (x : A) … end]
+   declares a type and its constructors, and [T.c] reaches a constructor.
+   [elim t return z . P | c x ⇒ … end] eliminates [t]; a recursive
+   argument also gives an induction hypothesis, named after a comma. *)
+
+inductive Shape : Type@0 where
+| dot
+| line (n : ℕ)
+| stack (s : Shape)
+end
+
+def size (s : Shape) : ℕ ≔
+  elim s return z . ℕ | dot ⇒ 0 | line n ⇒ n | stack t, r ⇒ succ r end
+end
+
+eval size (Shape.stack (Shape.line 3))
+
+(* An inductive type of another unit is reached through its import, by
+   name with [use] or through an [as] alias: [L.List 0l ℕ] is a type, and
+   [L.List.nil 0l ℕ] one of its elements. The parameters of the type come
+   first in its constructors. *)
+import Prelude›Data›List as L use (List)
+
+eval L.List.cons 0l ℕ 1 (L.List.nil 0l ℕ)
+
+(* [inductive A ≔ T ps] declares an inductive alias: [A] is [T] at those
+   parameters, with [T]'s constructors, which then take no parameters. An
+   alias of an alias is an alias of the same type. *)
+inductive NatList ≔ List 0l ℕ
+
+inductive Numbers ≔ NatList
+
+def oneTwo : Numbers ≔ Numbers.cons 1 (NatList.cons 2 NatList.nil) end
+
+eval L.Ops.length 0l ℕ oneTwo
+
+(* [open T use (c)] declares constructors of [T] as names. The data units
+   of the Prelude keep their constructors to their type, so a client opens
+   the ones it uses; [Nat] and [Bool] export theirs. *)
+open NatList use (nil; cons)
+
+eval cons 3 nil
+
+(* A unit with parameters may declare an inductive type over them, and
+   [use (T)] names that type at the arguments of the import. *)
+import Prelude›Data›Sigma 0l ℕ (λ (n : ℕ) → ℕ) as Pairs use (Sigma)
+
+def twoThree : Sigma ≔ Sigma.pair 2 3 end
+
+eval Pairs.snd twoThree
+
+(* Rejected:
+     module M ≔ List   then   eval M 0l ℕ
+                                 Error: Tutorial.M is a module, not a term
+     an [open … use (List)] in a local module body
+                       Error: an inductive type cannot be opened in a local
+                              module: List *)
+
 end
