@@ -37,7 +37,7 @@ end
 
 (* Monoids on numbers, up to equality: the unit applied to the carrier and
    the setoid, and to the congruence of the given operation. *)
-module OnNat (op : ∀ (x : ℕ) (y : ℕ) → ℕ) ≔
+private module OnNat (op : ∀ (x : ℕ) (y : ℕ) → ℕ) ≔
   Monoid 0l ℕ Eq refl sym trans op (congBoth op)
 
 (* Numbers under addition: [Additive.pow x n] is [n] times [x]. *)

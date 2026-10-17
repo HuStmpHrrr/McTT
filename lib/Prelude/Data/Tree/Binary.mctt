@@ -24,7 +24,7 @@ open Tree use (leaf; node)
 
 module Ops (u : Level) (N : Type@{u}) (L : Type@{u}) where
 
-inductive T ≔ Tree u N L
+private inductive T ≔ Tree u N L
 
 def map (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M)
     (g : ∀ (x : L) → K) (t : T) : Tree u M K ≔

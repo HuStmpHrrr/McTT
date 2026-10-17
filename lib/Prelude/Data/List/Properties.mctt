@@ -27,9 +27,9 @@ module Append (u : Level) (A : Type@{u}) where
 
 import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
 
-inductive L ≔ List u A
+private inductive L ≔ List u A
 
-module Op ≔ Ops u A
+private module Op ≔ Ops u A
 
 (* [nil] is a right unit; it is a left unit by unfolding. *)
 theorem appendNil : ∀ (l : L) → Id L (Op.append l L.nil) l ≔
@@ -71,9 +71,9 @@ module Maps (u : Level) (A : Type@{u}) where
 
 import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
 
-inductive L ≔ List u A
+private inductive L ≔ List u A
 
-module Op ≔ Ops u A
+private module Op ≔ Ops u A
 
 theorem mapId : ∀ (l : L) → Id L (Op.map A (λ (x : A) → x) l) l ≔
   λ (l : L) →
@@ -131,9 +131,9 @@ module Folds (u : Level) (A : Type@{u}) where
 
 import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
 
-inductive L ≔ List u A
+private inductive L ≔ List u A
 
-module Op ≔ Ops u A
+private module Op ≔ Ops u A
 
 (* Folding a concatenation folds the second list, then the first from
    that result. *)
@@ -189,9 +189,9 @@ module Reverse (u : Level) (A : Type@{u}) where
 
 import Prelude›Logic›Leibniz u use (Id; idRefl; idSym; idTrans; idCong)
 
-inductive L ≔ List u A
+private inductive L ≔ List u A
 
-module Op ≔ Ops u A
+private module Op ≔ Ops u A
 
 open Append u A use (appendNil; appendAssoc; lengthAppend)
 open Maps u A use (mapAppend)
@@ -287,9 +287,9 @@ end
 (* Sums of lists of numbers. *)
 module Sums where
 
-inductive NL ≔ List 0l ℕ
+private inductive NL ≔ List 0l ℕ
 
-module Op ≔ Ops 0l ℕ
+private module Op ≔ Ops 0l ℕ
 
 theorem sumAppend : ∀ (l : NL) (m : NL) →
     Eq (sum (Op.append l m)) (plus (sum l) (sum m)) ≔

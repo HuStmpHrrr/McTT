@@ -21,9 +21,9 @@ end
 
 module Ops (u : Level) (A : Type@{u}) where
 
-inductive N ≔ NonEmpty u A
+private inductive N ≔ NonEmpty u A
 
-inductive LA ≔ List u A
+private inductive LA ≔ List u A
 
 def head (l : N) : A ≔ elim l return z . A | cons x xs ⇒ x end end
 

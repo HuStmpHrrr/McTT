@@ -168,7 +168,7 @@ theorem addInverseLeft : ∀ (i : Int) → Id Int (add (neg i) i) (pos 0) ≔
 end
 
 (* A difference plus a number: [(m - n) + p] is [(m + p) - n]. *)
-theorem addDiffPos : ∀ (m : ℕ) (n : ℕ) (p : ℕ) →
+private theorem addDiffPos : ∀ (m : ℕ) (n : ℕ) (p : ℕ) →
     Id Int (add (diff m n) (pos p)) (diff (plus m p) n) ≔
   λ (m : ℕ) →
     elim m return x . (∀ (n : ℕ) (p : ℕ) →
@@ -189,7 +189,7 @@ end
 
 (* A difference plus a negative: [(m - n) - (q + 1)] is
    [m - (n + (q + 1))]. *)
-theorem addDiffNegsuc : ∀ (m : ℕ) (n : ℕ) (q : ℕ) →
+private theorem addDiffNegsuc : ∀ (m : ℕ) (n : ℕ) (q : ℕ) →
     Id Int (add (diff m n) (negsuc q)) (diff m (plus n (succ q))) ≔
   λ (m : ℕ) →
     elim m return x . (∀ (n : ℕ) (q : ℕ) →
@@ -260,16 +260,16 @@ theorem diffAdd : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) →
 end
 
 (* The positive and negative parts of an integer. *)
-def posPart (i : Int) : ℕ ≔
+private def posPart (i : Int) : ℕ ≔
   elim i return z . ℕ | pos n ⇒ n | negsuc n ⇒ 0 end
 end
 
-def negPart (i : Int) : ℕ ≔
+private def negPart (i : Int) : ℕ ≔
   elim i return z . ℕ | pos n ⇒ 0 | negsuc n ⇒ succ n end
 end
 
 (* Every integer is the difference of its parts. *)
-theorem diffParts : ∀ (i : Int) → Id Int (diff (posPart i) (negPart i)) i ≔
+private theorem diffParts : ∀ (i : Int) → Id Int (diff (posPart i) (negPart i)) i ≔
   λ (i : Int) →
     elim i return z . Id Int (diff (posPart z) (negPart z)) z
     | pos n ⇒ idSym Int (pos n) (diff n 0) (diffZeroRight n)

@@ -7,7 +7,7 @@
    tail, since every operation is one on lists under [cons]. *)
 module Prelude›Data›List›NonEmpty›Properties (u : Level) (A : Type@{u}) where
 
-import Prelude›Builtin›Nat use (succ)
+import Prelude›Builtin›Nat
 import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
 import Prelude›Arith›Equality use (Eq; refl; trans)
 import Prelude›Arith›Plus use (plus)
@@ -19,11 +19,11 @@ import Prelude›Data›Option use (Option)
 import Prelude›Data›List›NonEmpty use (NonEmpty)
 open Prelude›Data›List›NonEmpty.Ops as NE
 
-inductive N ≔ NonEmpty u A
+private inductive N ≔ NonEmpty u A
 
-inductive LA ≔ List u A
+private inductive LA ≔ List u A
 
-module Op ≔ NE u A
+private module Op ≔ NE u A
 
 (* [toList] and the concatenations. *)
 module ToList where

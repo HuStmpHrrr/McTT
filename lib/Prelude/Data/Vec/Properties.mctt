@@ -25,7 +25,7 @@ open Prelude›Arith›Sum.Basic use (sumToShift)
 import Prelude›Data›Vec as V
 
 (* Vectors of numbers, the instance most laws below are about. *)
-module NV ≔ V 0l ℕ
+private module NV ≔ V 0l ℕ
 
 (* The sum of a vector of numbers. *)
 def sumVec (n : ℕ) (v : NV.Vec n) : ℕ ≔

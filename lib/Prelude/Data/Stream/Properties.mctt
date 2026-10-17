@@ -19,7 +19,7 @@ import Prelude›Data›Vec›Properties use (sumVec)
 import Prelude›Data›Stream as St
 
 (* Streams of numbers: every law below is about this one instance. *)
-module S ≔ St 0l ℕ
+private module S ≔ St 0l ℕ
 
 (* The elements of the operations. *)
 module Elements where

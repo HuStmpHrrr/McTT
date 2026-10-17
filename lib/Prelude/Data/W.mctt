@@ -19,7 +19,7 @@ open W use (sup)
 
 module Ops (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u}) where
 
-inductive T ≔ W u A B
+private inductive T ≔ W u A B
 
 def head (w : T) : A ≔ elim w return z . A | sup x f, h ⇒ x end end
 
