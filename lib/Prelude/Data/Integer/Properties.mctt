@@ -1,6 +1,6 @@
-(* Laws of [Prelude›Data›Integer], after Agda's [Data.Integer.Properties],
-   stated with the Leibniz equality of [Prelude›Logic›Leibniz] at [Int]:
-   [neg] is an injective involution; [diff] and [neg]; [add] is a
+(* Laws of [Prelude›Data›Integer], stated with the Leibniz equality of
+   [Prelude›Logic›Leibniz] at [Int]: [neg] is an injective involution;
+   [diff] and [neg]; [add] is a
    commutative group with unit [pos 0] and inverse [neg]; [succInt] and
    [predInt] are inverse; and [mul] is commutative and associative, with
    unit [pos 1] and zero [pos 0], and [abs] takes it to [mult].
@@ -63,7 +63,7 @@ end
 (* Differences of numbers. *)
 module Diff where
 
-(* Agda's [n⊖n≡0]. *)
+(* The difference of a number and itself is [0]. *)
 theorem diffSelf : ∀ (n : ℕ) → Id Int (diff n n) (pos 0) ≔
   λ (n : ℕ) →
     elim n return x . Id Int (diff x x) (pos 0)
@@ -80,7 +80,7 @@ theorem diffZeroRight : ∀ (n : ℕ) → Id Int (pos n) (diff n 0) ≔
     end
 end
 
-(* Agda's [-[n⊖m]≡m⊖n]. *)
+(* Negating a difference swaps its numbers. *)
 theorem negDiff : ∀ (m : ℕ) (n : ℕ) → Id Int (neg (diff m n)) (diff n m) ≔
   λ (m : ℕ) →
     elim m return x . (∀ (n : ℕ) → Id Int (neg (diff x n)) (diff n x))
@@ -147,7 +147,7 @@ theorem addComm : ∀ (i : Int) (j : Int) → Id Int (add i j) (add j i) ≔
     end
 end
 
-(* Agda's [+-inverseʳ]. *)
+(* [neg i] is a right inverse of [i] for [add]. *)
 theorem addInverseRight : ∀ (i : Int) → Id Int (add i (neg i)) (pos 0) ≔
   λ (i : Int) →
     elim i return z . Id Int (add z (neg z)) (pos 0)
@@ -160,7 +160,7 @@ theorem addInverseRight : ∀ (i : Int) → Id Int (add i (neg i)) (pos 0) ≔
     end
 end
 
-(* Agda's [+-inverseˡ]. *)
+(* [neg i] is a left inverse of [i] for [add], by commutativity. *)
 theorem addInverseLeft : ∀ (i : Int) → Id Int (add (neg i) i) (pos 0) ≔
   λ (i : Int) →
     idTrans Int (add (neg i) i) (add i (neg i)) (pos 0)
@@ -315,8 +315,8 @@ private def assocDiff (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) (e : ℕ) (f : ℕ
           (diffAdd a b (plus c e) (plus d f))))
 end
 
-(* Agda's [+-assoc]: each integer is replaced by the difference of its
-   parts, and back. *)
+(* Addition is associative: each integer is replaced by the difference of
+   its parts, and back. *)
 theorem addAssoc : ∀ (i : Int) (j : Int) (k : Int) →
     Id Int (add (add i j) k) (add i (add j k)) ≔
   λ (i : Int) (j : Int) (k : Int) →
@@ -379,8 +379,7 @@ theorem absSigned : ∀ (s : Sign) (n : ℕ) → Eq (abs (signed s n)) n ≔
     end
 end
 
-(* Agda's [◃-inverse]: an integer is determined by its sign and its
-   absolute value. *)
+(* An integer is determined by its sign and its absolute value. *)
 theorem signedAbs : ∀ (i : Int) → Id Int (signed (sign i) (abs i)) i ≔
   λ (i : Int) →
     elim i return z . Id Int (signed (sign z) (abs z)) z
@@ -399,7 +398,8 @@ private def signedCong (s : Sign) (t : Sign) (m : ℕ) (n : ℕ)
   idCongTwo Sign ℕ Int signed s t m n hst (eqToId m n hmn)
 end
 
-(* Agda's [abs-*]. *)
+(* The absolute value of a product is the product of the absolute
+   values. *)
 theorem absMul : ∀ (i : Int) (j : Int) →
     Eq (abs (mul i j)) (mult (abs i) (abs j)) ≔
   λ (i : Int) (j : Int) →
@@ -486,7 +486,7 @@ theorem signedSignRight : ∀ (s : Sign) (t : Sign) (n : ℕ) (m : ℕ) →
     end
 end
 
-(* Agda's [*-assoc]. *)
+(* Multiplication is associative. *)
 theorem mulAssoc : ∀ (i : Int) (j : Int) (k : Int) →
     Id Int (mul (mul i j) k) (mul i (mul j k)) ≔
   λ (i : Int) (j : Int) (k : Int) →

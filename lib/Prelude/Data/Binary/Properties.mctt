@@ -1,14 +1,12 @@
-(* Laws of [Prelude›Data›Binary], after Agda's [Data.Nat.Binary.Properties]:
-   [toNat] takes [suc], [double] and [add] to [succ], doubling and [plus]
-   ([toℕ-suc], [toℕ-double], [toℕ-homo-+]); [toNat] and [fromNat] are
-   inverse ([toℕ-fromℕ], [fromℕ-toℕ]), so both are injective; and [add] is
-   a commutative monoid with unit [Bin.zero], with [fromNat] a homomorphism
-   into it ([fromℕ-homo-+]) and [suc] adding one ([suc≗1+]).
+(* Laws of [Prelude›Data›Binary]: [toNat] takes [suc], [double] and [add]
+   to [succ], doubling and [plus]; [toNat] and [fromNat] are inverse, so
+   both are injective; and [add] is a commutative monoid with unit
+   [Bin.zero], with [fromNat] a homomorphism into it and [suc] adding one.
 
    Equalities of numbers are [Prelude›Arith›Equality], equalities of
-   binary numbers the Leibniz equality of [Prelude›Logic›Leibniz].  As in
-   Agda, the laws of [add] are moved from those of [plus] by the
-   injectivity of [toNat]. *)
+   binary numbers the Leibniz equality of [Prelude›Logic›Leibniz].  The
+   laws of [add] are moved from those of [plus] by the injectivity of
+   [toNat]. *)
 module Prelude›Data›Binary›Properties where
 
 import Prelude›Builtin›Nat use (succ)
@@ -35,7 +33,7 @@ end
 (* [toNat] and the operations. *)
 module ToNat where
 
-(* Agda's [toℕ-suc]. *)
+(* [toNat] takes the binary successor to [succ]. *)
 theorem toNatSuc : ∀ (x : Bin) → Eq (toNat (suc x)) (succ (toNat x)) ≔
   λ (x : Bin) →
     elim x return z . Eq (toNat (suc z)) (succ (toNat z))
@@ -46,7 +44,7 @@ theorem toNatSuc : ∀ (x : Bin) → Eq (toNat (suc x)) (succ (toNat x)) ≔
     end
 end
 
-(* Agda's [toℕ-double]. *)
+(* [toNat] takes the binary doubling to the unary one. *)
 theorem toNatDouble : ∀ (x : Bin) → Eq (toNat (B.double x)) (double (toNat x)) ≔
   λ (x : Bin) →
     elim x return z . Eq (toNat (B.double z)) (double (toNat z))
@@ -58,7 +56,7 @@ theorem toNatDouble : ∀ (x : Bin) → Eq (toNat (B.double x)) (double (toNat x
     end
 end
 
-(* Agda's [toℕ-fromℕ]. *)
+(* Converting a number to binary and back gives the number. *)
 theorem toNatFromNat : ∀ (n : ℕ) → Eq (toNat (fromNat n)) n ≔
   λ (n : ℕ) →
     elim n return x . Eq (toNat (fromNat x)) x
@@ -106,8 +104,8 @@ private def carryOdd (s : Bin) (a : ℕ) (b : ℕ) (h : Eq (toNat s) (plus a b))
           (plusSucc (double a) (double b))))
 end
 
-(* Agda's [toℕ-homo-+]: by recursion on [x] and cases on [y], each case
-   one of the carries. *)
+(* [toNat] takes [add] to [plus]: by recursion on [x] and cases on [y],
+   each case one of the carries. *)
 theorem toNatAdd : ∀ (x : Bin) (y : Bin) →
     Eq (toNat (add x y)) (plus (toNat x) (toNat y)) ≔
   λ (x : Bin) →
@@ -187,7 +185,8 @@ theorem fromNatDouble : ∀ (n : ℕ) →
     end
 end
 
-(* Agda's [fromℕ-toℕ]. *)
+(* Converting a binary number to unary and back gives the binary number:
+   each has exactly one form. *)
 theorem fromNatToNat : ∀ (x : Bin) → Id Bin (fromNat (toNat x)) x ≔
   λ (x : Bin) →
     elim x return z . Id Bin (fromNat (toNat z)) z
@@ -216,7 +215,7 @@ theorem fromNatToNat : ∀ (x : Bin) → Id Bin (fromNat (toNat x)) x ≔
     end
 end
 
-(* Agda's [toℕ-injective]. *)
+(* Binary numbers with the same value are equal. *)
 theorem toNatInjective : ∀ (x : Bin) (y : Bin) (h : Eq (toNat x) (toNat y)) →
     Id Bin x y ≔
   λ (x : Bin) (y : Bin) (h : Eq (toNat x) (toNat y)) →
@@ -228,8 +227,8 @@ theorem toNatInjective : ∀ (x : Bin) (y : Bin) (h : Eq (toNat x) (toNat y)) �
       (fromNatToNat y)
 end
 
-(* Agda's [fromℕ-injective]: transport [Eq m (toNat (fromNat m))] along
-   the equality of the binary numbers. *)
+(* Numbers with equal binary forms are equal: transport
+   [Eq m (toNat (fromNat m))] along the equality of the binary numbers. *)
 theorem fromNatInjective : ∀ (m : ℕ) (n : ℕ)
     (h : Id Bin (fromNat m) (fromNat n)) →
     Eq m n ≔
@@ -294,7 +293,7 @@ theorem addAssoc : ∀ (x : Bin) (y : Bin) (z : Bin) →
     end
 end
 
-(* Agda's [suc≗1+]. *)
+(* The successor adds one. *)
 theorem sucOnePlus : ∀ (x : Bin) → Id Bin (suc x) (add (suc Bin.zero) x) ≔
   λ (x : Bin) →
     toNatInjective (suc x) (add (suc Bin.zero) x)
@@ -304,7 +303,7 @@ theorem sucOnePlus : ∀ (x : Bin) → Id Bin (suc x) (add (suc Bin.zero) x) ≔
             (toNatAdd (suc Bin.zero) x)))
 end
 
-(* Agda's [fromℕ-homo-+]. *)
+(* [fromNat] takes [plus] to [add]. *)
 theorem fromNatPlus : ∀ (m : ℕ) (n : ℕ) →
     Id Bin (fromNat (plus m n)) (add (fromNat m) (fromNat n)) ≔
   λ (m : ℕ) (n : ℕ) →

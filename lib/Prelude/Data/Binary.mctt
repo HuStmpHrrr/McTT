@@ -1,7 +1,7 @@
-(* Binary natural numbers, after Agda's [Data.Nat.Binary] ([ℕᵇ]): [Bin]
-   has the constructors [zero], [doubleSucc x] for [2 (1 + x)] (Agda's
-   [2[1+ x ]]) and [succDouble x] for [1 + 2 x] ([1+[2 x ]]), so every
-   number has exactly one form, of length its number of binary digits.
+(* Binary natural numbers: [Bin] has the constructors [zero],
+   [doubleSucc x] for [2 (1 + x)] and [succDouble x] for [1 + 2 x], so
+   every number has exactly one form, of length its number of binary
+   digits.
    [Prelude›Arith›Binary] has the binary digits of unary numbers instead.
 
    [double], the successor [suc] and the addition [add] work on the binary

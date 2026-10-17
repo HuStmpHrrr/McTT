@@ -1,9 +1,8 @@
 (* Laws of [Prelude›Data›Tree›Binary] over node labels [N] and leaf labels
-   [L], after Agda's [Data.Tree.Binary.Properties]: [map] keeps the counts
-   ([#nodes-map], [#leaves-map]) and is a functor ([map-id],
-   [map-compose], [map-cong]); beyond Agda, a tree has one more leaf than
-   nodes, the lists of labels have the counts as lengths, and [mirror] is
-   an involution that keeps the counts and reverses [toListInfix].
+   [L]: [map] keeps the counts and is a functor, respecting pointwise
+   equality of functions; a tree has one more leaf than nodes, the lists
+   of labels have the counts as lengths, and [mirror] is an involution
+   that keeps the counts and reverses [toListInfix].
 
    Equalities of trees and lists are the Leibniz equality of
    [Prelude›Logic›Leibniz], equalities of counts [Prelude›Arith›Equality]. *)
@@ -72,7 +71,7 @@ theorem mapId : ∀ (t : T) →
     end
 end
 
-(* Agda's [map-compose]. *)
+(* Mapping twice is mapping the composites. *)
 theorem mapComp : ∀ (M : Type@{u}) (K : Type@{u}) (P : Type@{u})
     (Q : Type@{u}) (f : ∀ (m : N) → M) (g : ∀ (x : L) → K)
     (h : ∀ (m : M) → P) (k : ∀ (x : K) → Q) (t : T) →
@@ -95,7 +94,7 @@ theorem mapComp : ∀ (M : Type@{u}) (K : Type@{u}) (P : Type@{u})
     end
 end
 
-(* Agda's [map-cong]: pointwise equal functions have equal maps.  In the
+(* Pointwise equal functions have equal maps.  In the
    step, the node label is rewritten by [hf m], then the subtrees by the
    hypotheses. *)
 theorem mapCong : ∀ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M)

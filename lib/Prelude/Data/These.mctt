@@ -1,6 +1,6 @@
-(* Inclusive unions, after Agda's [Data.These]: [These u A B] has the
-   constructors [this a], [that b] and [these a b], at every level [u]:
-   a value of [A], of [B], or of both.
+(* Inclusive unions: [These u A B] has the constructors [this a], [that b]
+   and [these a b], at every level [u]: a value of [A], of [B], or of
+   both.
 
    The operations over fixed [A] and [B] are in the module [Ops u A B]:
    the injection [fromSum] of a disjoint union, [map] on both sides and on

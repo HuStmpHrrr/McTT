@@ -1,7 +1,7 @@
-(* Laws of [Prelude›Data›List›NonEmpty], at every level [u], after Agda's
-   [Data.List.NonEmpty.Properties].  Equalities of lists are the Leibniz
-   equality of [Prelude›Logic›Leibniz], equalities of lengths
-   [Prelude›Arith›Equality].
+(* Laws of [Prelude›Data›List›NonEmpty], at every level [u]: [toList]
+   and the concatenations, the lengths, and [map].  Equalities of lists
+   are the Leibniz equality of [Prelude›Logic›Leibniz], equalities of
+   lengths [Prelude›Arith›Equality].
 
    Most laws reduce to a law of [Prelude›Data›List›Properties] on the
    tail, since every operation is one on lists under [cons]. *)
@@ -30,13 +30,13 @@ private module LOp ≔ L u A
 (* [toList] and the concatenations. *)
 module ToList where
 
-(* [toList] of [cons x xs] is [List.cons x xs] (Agda's [toList-fromList]). *)
+(* [toList] of [cons x xs] is [List.cons x xs]. *)
 theorem toListCons : ∀ (x : A) (xs : LA) →
     Id LA (Op.toList (N.cons x xs)) (LA.cons x xs) ≔
   λ (x : A) (xs : LA) → idRefl LA (LA.cons x xs)
 end
 
-(* Agda's [toList-⁺++]. *)
+(* [toList] takes [appendList] to the concatenation of lists. *)
 theorem toListAppendList : ∀ (l : N) (m : LA) →
     Id LA (LOp.append (Op.toList l) m) (Op.toList (Op.appendList l m)) ≔
   λ (l : N) (m : LA) →
@@ -46,7 +46,7 @@ theorem toListAppendList : ∀ (l : N) (m : LA) →
     end
 end
 
-(* Agda's [toList-⁺++⁺]. *)
+(* [toList] takes [append] to the concatenation of lists. *)
 theorem toListAppend : ∀ (l : N) (m : N) →
     Id LA (LOp.append (Op.toList l) (Op.toList m))
       (Op.toList (Op.append l m)) ≔
@@ -101,7 +101,7 @@ theorem lengthToList : ∀ (l : N) →
     end
 end
 
-(* Agda's [length-⁺++⁺]. *)
+(* The length of [append l m] is the sum of the lengths. *)
 theorem lengthAppend : ∀ (l : N) (m : N) →
     Eq (Op.length (Op.append l m)) (plus (Op.length l) (Op.length m)) ≔
   λ (l : N) (m : N) →
@@ -115,7 +115,7 @@ theorem lengthAppend : ∀ (l : N) (m : N) →
     end
 end
 
-(* Agda's [length-++⁺]. *)
+(* The length of [prependList l m] is the sum of the lengths. *)
 theorem lengthPrependList : ∀ (l : LA) (m : N) →
     Eq (Op.length (Op.prependList l m)) (plus (LOp.length l) (Op.length m)) ≔
   λ (l : LA) (m : N) →
@@ -147,7 +147,7 @@ theorem mapId : ∀ (l : N) → Id N (Op.map A (λ (x : A) → x) l) l ≔
     end
 end
 
-(* Agda's [map-∘]. *)
+(* Mapping [f] then [g] is mapping their composite. *)
 theorem mapComp : ∀ (B : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → B)
     (g : ∀ (y : B) → C) (l : N) →
     Id (NonEmpty u C) (NE.map u B C g (Op.map B f l))
@@ -163,7 +163,7 @@ theorem mapComp : ∀ (B : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → B)
     end
 end
 
-(* Agda's [map-cong]: pointwise equal functions have equal maps.  The
+(* Pointwise equal functions have equal maps.  The
    hypothesis for the tail is [List]'s, proved here by induction. *)
 theorem mapCong : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (g : ∀ (x : A) → B)
     (h : ∀ (x : A) → Id B (f x) (g x)) (l : N) →
@@ -202,7 +202,7 @@ theorem toListMap : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) →
     end
 end
 
-(* Agda's [length-map]. *)
+(* Mapping keeps the length. *)
 theorem lengthMap : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) →
     Eq (NE.length u B (Op.map B f l)) (Op.length l) ≔
   λ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) →
@@ -211,7 +211,7 @@ theorem lengthMap : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) →
     end
 end
 
-(* Agda's [map-⁺++⁺]. *)
+(* Mapping distributes over [append]. *)
 theorem mapAppend : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) (m : N) →
     Id (NonEmpty u B) (Op.map B f (Op.append l m))
       (NE.append u B (Op.map B f l) (Op.map B f m)) ≔

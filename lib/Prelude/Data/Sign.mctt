@@ -1,7 +1,6 @@
-(* Signs, after Agda's [Data.Sign]: [negative] and [positive] (Agda's [-]
-   and [+]), with the opposite sign and the multiplication of signs, under
-   which they form a group with unit [positive].  The laws are in
-   [Prelude›Data›Sign›Properties]. *)
+(* Signs: [negative] and [positive], with the opposite sign and the
+   multiplication of signs, under which they form a group with unit
+   [positive].  The laws are in [Prelude›Data›Sign›Properties]. *)
 module Prelude›Data›Sign where
 
 inductive Sign : Type@0 where

@@ -1,7 +1,7 @@
-(* A client of the inductive types of [Prelude›Data] ported from Agda's
-   standard library: comparisons, inclusive unions, non-empty lists, binary
-   trees, signs and parities, integers, binary numbers and W-types,
-   computed on closed values, and closed instances of their laws. *)
+(* A client of the inductive types of [Prelude›Data]: comparisons,
+   inclusive unions, non-empty lists, binary trees, signs and parities,
+   integers, binary numbers and well-founded trees, computed on closed
+   values, and closed instances of their laws. *)
 module DataTypes where
 
 import Prelude›Builtin›Nat use (succ)

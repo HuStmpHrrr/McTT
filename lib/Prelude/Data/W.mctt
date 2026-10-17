@@ -1,7 +1,7 @@
-(* Well-founded trees, after Agda's [Data.W]: [W u A B] has the one
-   constructor [sup x f], a node of shape [x : A] with a subtree [f p] at
-   each position [p : B x], at every level [u].  The recursive argument
-   [f] is a function into the type.
+(* Well-founded trees: [W u A B] has the one constructor [sup x f], a node
+   of shape [x : A] with a subtree [f p] at each position [p : B x], at
+   every level [u].  The recursive argument [f] is a function into the
+   type.
 
    The operations over fixed [A] and [B] are in the module [Ops u A B]: the
    projections [head] and [tail], [map] along a morphism of containers

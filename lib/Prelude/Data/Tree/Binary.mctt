@@ -1,13 +1,12 @@
-(* Binary trees, after Agda's [Data.Tree.Binary]: [Tree u N L] has leaves
-   [leaf x] labelled by [x : L] and nodes [node l m r] labelled by
-   [m : N], with two subtrees, at every level [u].
+(* Binary trees: [Tree u N L] has leaves [leaf x] labelled by [x : L] and
+   nodes [node l m r] labelled by [m : N], with two subtrees, at every
+   level [u].
 
    The operations over fixed [N] and [L] are in the module [Ops u N L]:
    [map] on both labels and on one ([mapNodes], [mapLeaves]), the counts
-   [nodes] (Agda's [#nodes]) and [leaves] ([#leaves]), [foldr], the
-   left-to-right lists [toListInfix] of node labels and [toListLeaves] of
-   leaf labels, and the mirror image [mirror].  The laws are in
-   [Prelude›Data›Tree›Binary›Properties]. *)
+   [nodes] and [leaves], [foldr], the left-to-right lists [toListInfix] of
+   node labels and [toListLeaves] of leaf labels, and the mirror image
+   [mirror].  The laws are in [Prelude›Data›Tree›Binary›Properties]. *)
 module Prelude›Data›Tree›Binary where
 
 import Prelude›Builtin›Nat use (succ)
@@ -43,7 +42,7 @@ def mapLeaves (K : Type@{u}) (g : ∀ (x : L) → K) (t : T) : Tree u N K ≔
 end
 
 (* The number of nodes: [nodes (node l m r)] is
-   [plus (nodes l) (succ (nodes r))], as in Agda. *)
+   [plus (nodes l) (succ (nodes r))]. *)
 def nodes (t : T) : ℕ ≔
   elim t return z . ℕ
   | leaf x ⇒ 0

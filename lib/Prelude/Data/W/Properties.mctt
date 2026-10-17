@@ -1,9 +1,8 @@
-(* Laws of [Prelude›Data›W], at every level [u], after Agda's [Data.W],
-   stated with the Leibniz equality of [Prelude›Logic›Leibniz]: the
-   projections of [sup] and surjective pairing, the injectivity of [sup] in
-   its shape ([sup-injective₁]), [map] on the head, the computation of
-   [foldr], and [inhabited⇒empty]: if every shape has a position, there is
-   no tree.
+(* Laws of [Prelude›Data›W], at every level [u], stated with the Leibniz
+   equality of [Prelude›Logic›Leibniz]: the projections of [sup] and
+   surjective pairing, the injectivity of [sup] in its shape, [map] on the
+   head, the computation of [foldr], and emptiness: if every shape has a
+   position, there is no tree.
 
    The functor laws of [map] are not here: two maps agree on a node only
    when their subtrees agree at every position, and equality of functions
@@ -36,7 +35,7 @@ theorem supEta : ∀ (w : T) → Id T (T.sup (Op.head w) (Op.tail w)) w ≔
     end
 end
 
-(* Agda's [sup-injective₁]. *)
+(* Equal nodes have equal shapes. *)
 theorem supInjectiveShape : ∀ (x : A) (y : A) (f : ∀ (p : B x) → T)
     (g : ∀ (p : B y) → T) (h : Id T (T.sup x f) (T.sup y g)) → Id A x y ≔
   λ (x : A) (y : A) (f : ∀ (p : B x) → T) (g : ∀ (p : B y) → T)
@@ -74,7 +73,8 @@ end
 (* When there are no trees. *)
 module Emptiness where
 
-(* Agda's [inhabited⇒empty]: every node has a subtree, so a tree would
+(* If every shape has a position, there is no tree: every node has a
+   subtree, so a tree would
    have an infinite descent, which [foldr] turns into a proof of [⊥]. *)
 theorem inhabitedEmpty : ∀ (b : ∀ (x : A) → B x) (w : T) → ⊥ ≔
   λ (b : ∀ (x : A) → B x) (w : T) →

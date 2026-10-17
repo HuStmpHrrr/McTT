@@ -1,8 +1,7 @@
-(* Laws of [Prelude›Data›Parity], after Agda's [Data.Parity.Properties],
-   stated with the Leibniz equality of [Prelude›Logic›Leibniz] at
-   [Parity]: [inv] is an injective involution without fixed point; [add]
-   is a commutative group with unit [even] in which every parity is its
-   own inverse; [mul] is commutative, associative and idempotent, with
+(* Laws of [Prelude›Data›Parity], stated with the Leibniz equality of
+   [Prelude›Logic›Leibniz] at [Parity]: [inv] is an injective involution
+   without fixed point; [add] is a commutative group with unit [even] in
+   which every parity is its own inverse; [mul] is commutative, associative and idempotent, with
    unit [odd] and zero [even], and distributes over [add]; [toSign] is an
    isomorphism taking [add] to the product of signs; and [parity] takes
    [succ], [plus] and [mult] to [inv], [add] and [mul].
@@ -49,7 +48,7 @@ theorem invInjective : ∀ (p : Parity) (q : Parity)
       (invInv q)
 end
 
-(* Agda's [p≢p⁻¹]. *)
+(* No parity is its own opposite. *)
 theorem parityNeInv : ∀ (p : Parity) → Not (Id Parity p (inv p)) ≔
   λ (p : Parity) →
     elim p return z . Not (Id Parity z (inv z))
@@ -78,7 +77,7 @@ theorem addIdentityRight : ∀ (p : Parity) → Id Parity (add p even) p ≔
     end
 end
 
-(* Agda's [p+p≡0ℙ] and [+-inverse]: every parity is its own inverse. *)
+(* Every parity is its own inverse: [add p p] is [even]. *)
 theorem addSelf : ∀ (p : Parity) → Id Parity (add p p) even ≔
   λ (p : Parity) →
     elim p return z . Id Parity (add z z) even
@@ -87,7 +86,7 @@ theorem addSelf : ∀ (p : Parity) → Id Parity (add p p) even ≔
     end
 end
 
-(* Agda's [p+p⁻¹≡1ℙ]. *)
+(* A parity plus its opposite is [odd]. *)
 theorem addInv : ∀ (p : Parity) → Id Parity (add p (inv p)) odd ≔
   λ (p : Parity) →
     elim p return z . Id Parity (add z (inv z)) odd
@@ -126,7 +125,7 @@ theorem addAssoc : ∀ (p : Parity) (q : Parity) (r : Parity) →
     end
 end
 
-(* Agda's [+-cancelˡ-≡]. *)
+(* Adding the same parity on the left is injective. *)
 theorem addCancelLeft : ∀ (p : Parity) (q : Parity) (r : Parity)
     (h : Id Parity (add p q) (add p r)) → Id Parity q r ≔
   λ (p : Parity) →
@@ -194,7 +193,7 @@ theorem mulAssoc : ∀ (p : Parity) (q : Parity) (r : Parity) →
     end
 end
 
-(* Agda's [*-distribˡ-+]. *)
+(* Multiplication distributes over addition on the left. *)
 theorem mulDistribLeft : ∀ (p : Parity) (q : Parity) (r : Parity) →
     Id Parity (mul p (add q r)) (add (mul p q) (mul p r)) ≔
   λ (p : Parity) (q : Parity) (r : Parity) →
@@ -214,7 +213,7 @@ theorem mulInvLeft : ∀ (p : Parity) (q : Parity) →
     end
 end
 
-(* Agda's [*-distribʳ-+]. *)
+(* Multiplication distributes over addition on the right. *)
 theorem mulDistribRight : ∀ (p : Parity) (q : Parity) (r : Parity) →
     Id Parity (mul (add p q) r) (add (mul p r) (mul q r)) ≔
   λ (p : Parity) (q : Parity) (r : Parity) →
@@ -245,7 +244,7 @@ theorem fromSignToSign : ∀ (p : Parity) → Id Parity (fromSign (toSign p)) p 
     end
 end
 
-(* Agda's [⁻¹-homo-opposite]. *)
+(* [toSign] takes the opposite parity to the opposite sign. *)
 theorem invHomoOpposite : ∀ (p : Parity) →
     Id Sign (toSign (inv p)) (opposite (toSign p)) ≔
   λ (p : Parity) →
@@ -255,7 +254,7 @@ theorem invHomoOpposite : ∀ (p : Parity) →
     end
 end
 
-(* Agda's [+-homo-*]. *)
+(* [toSign] takes the sum of parities to the product of signs. *)
 theorem addHomoMul : ∀ (p : Parity) (q : Parity) →
     Id Sign (toSign (add p q)) (S.mul (toSign p) (toSign q)) ≔
   λ (p : Parity) (q : Parity) →
@@ -272,12 +271,12 @@ module Homo where
 
 open Inv use (invInv)
 
-(* Agda's [suc-homo-⁻¹]. *)
+(* The opposite of the parity of [succ n] is the parity of [n]. *)
 theorem succHomoInv : ∀ (n : ℕ) → Id Parity (inv (parity (succ n))) (parity n) ≔
   λ (n : ℕ) → invInv (parity n)
 end
 
-(* Agda's [+-homo-+]. *)
+(* [parity] takes [plus] to [add]. *)
 theorem plusHomoAdd : ∀ (m : ℕ) (n : ℕ) →
     Id Parity (parity (plus m n)) (add (parity m) (parity n)) ≔
   λ (m : ℕ) (n : ℕ) →
@@ -295,7 +294,7 @@ theorem plusHomoAdd : ∀ (m : ℕ) (n : ℕ) →
     end
 end
 
-(* Agda's [*-homo-*].  In the step, [mult (succ p) n] is
+(* [parity] takes [mult] to [mul].  In the step, [mult (succ p) n] is
    [plus n (mult p n)]. *)
 theorem multHomoMul : ∀ (m : ℕ) (n : ℕ) →
     Id Parity (parity (mult m n)) (mul (parity m) (parity n)) ≔

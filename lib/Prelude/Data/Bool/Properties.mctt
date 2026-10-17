@@ -30,7 +30,7 @@ theorem ttNeFf : Not (Id Bool tt ff) ≔
   λ (h : Id Bool tt ff) → h IsTrue ⋆
 end
 
-(* Agda's [not-injective]. *)
+(* Negation is injective. *)
 theorem notInjective : ∀ (a : Bool) (b : Bool) (h : Id Bool (not a) (not b)) →
     Id Bool a b ≔
   λ (a : Bool) (b : Bool) (h : Id Bool (not a) (not b)) →
@@ -213,7 +213,7 @@ theorem orAndDistrib : ∀ (a : Bool) (b : Bool) (c : Bool) →
     end
 end
 
-(* The absorption laws (Agda's [∧-absorbs-∨] and [∨-absorbs-∧]). *)
+(* The absorption laws: [and a (or a b)] and [or a (and a b)] are [a]. *)
 theorem andAbsorbsOr : ∀ (a : Bool) (b : Bool) → Id Bool (and a (or a b)) a ≔
   λ (a : Bool) (b : Bool) →
     elim a return x . Id Bool (and x (or x b)) x

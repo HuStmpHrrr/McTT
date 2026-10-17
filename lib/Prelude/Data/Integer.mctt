@@ -1,16 +1,15 @@
-(* The integers as an inductive type, after Agda's [Data.Integer.Base]:
-   [pos n] is the integer [n] and [negsuc n] is [-(n + 1)] (Agda's [+ n]
-   and [-[1+ n ]]), so every integer has exactly one form.
+(* The integers as an inductive type: [pos n] is the integer [n] and
+   [negsuc n] is [-(n + 1)], so every integer has exactly one form.
    [Prelude›Algebra›Integers] has another encoding, as pairs of numbers.
 
-   [diff m n] is the integer [m - n] of two numbers (Agda's [m ⊖ n]),
-   by recursion on both: [diff (succ m) (succ n)] is [diff m n].  Addition
-   [add] is by cases on the forms, through [diff]; negation [neg],
-   subtraction [sub], successor [succInt] and predecessor [predInt]
-   follow.  Multiplication [mul] is by signs and absolute values, as in
-   Agda: [mul i j] is [signed (S.mul (sign i) (sign j)) (mult (abs i) (abs
-   j))], where [signed s n] (Agda's [s ◃ n]) is the integer of sign [s] and
-   absolute value [n].  The laws are in [Prelude›Data›Integer›Properties]. *)
+   [diff m n] is the integer [m - n] of two numbers, by recursion on both:
+   [diff (succ m) (succ n)] is [diff m n].  Addition [add] is by cases on
+   the forms, through [diff]; negation [neg], subtraction [sub], successor
+   [succInt] and predecessor [predInt] follow.  Multiplication [mul] is by
+   signs and absolute values: [mul i j] is
+   [signed (S.mul (sign i) (sign j)) (mult (abs i) (abs j))], where
+   [signed s n] is the integer of sign [s] and absolute value [n].  The
+   laws are in [Prelude›Data›Integer›Properties]. *)
 module Prelude›Data›Integer where
 
 import Prelude›Builtin›Nat use (succ)
@@ -68,7 +67,7 @@ def abs (i : Int) : ℕ ≔
   elim i return z . ℕ | pos n ⇒ n | negsuc n ⇒ succ n end
 end
 
-(* The sign; [0] counts as [positive], as in Agda. *)
+(* The sign; [0] counts as [positive]. *)
 def sign (i : Int) : Sign ≔
   elim i return z . Sign | pos n ⇒ positive | negsuc n ⇒ negative end
 end

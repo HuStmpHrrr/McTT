@@ -1,9 +1,8 @@
 (* Laws of [Prelude›Data›These] over fixed component types [A] and [B] of
    [Type@{u}], stated with the Leibniz equality of
-   [Prelude›Logic›Leibniz]: the constructors are injective (Agda's
-   [this-injective], [that-injective], [these-injectiveˡ],
-   [these-injectiveʳ]) and pairwise distinct, [swap] is an involution,
-   [map] is a functor, and [fold] after [swap] or [fromSum].
+   [Prelude›Logic›Leibniz]: the constructors are injective, [these] in
+   each component, and pairwise distinct, [swap] is an involution, [map]
+   is a functor, and [fold] after [swap] or [fromSum].
 
    Injectivity is congruence through a projection that is the identity on
    the constructor at hand; distinctness transports [⋆] along a predicate

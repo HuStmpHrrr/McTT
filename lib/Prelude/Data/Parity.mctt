@@ -1,6 +1,5 @@
-(* Parities, after Agda's [Data.Parity]: [even] and [odd] (Agda's [0ℙ]
-   and [1ℙ]), the integers modulo 2, with the opposite parity [inv]
-   (Agda's [_⁻¹]), addition [add] and multiplication [mul], the parity of a
+(* Parities: [even] and [odd], the integers modulo 2, with the opposite
+   parity [inv], addition [add] and multiplication [mul], the parity of a
    number, and the isomorphism [toSign] with the signs of
    [Prelude›Data›Sign].  [Prelude›Arith›Parity] has the predicates [Even]
    and [Odd] on numbers instead.  The laws are in

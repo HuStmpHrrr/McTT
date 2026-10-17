@@ -1,5 +1,5 @@
-(* Laws of [Prelude›Data›Sign], after Agda's [Data.Sign.Properties],
-   stated with the Leibniz equality of [Prelude›Logic›Leibniz] at [Sign]:
+(* Laws of [Prelude›Data›Sign], stated with the Leibniz equality of
+   [Prelude›Logic›Leibniz] at [Sign]:
    [opposite] is an injective involution without fixed point, and [mul] is
    a commutative group with unit [positive] in which every sign is its own
    inverse.  Each law is proved by cases. *)
@@ -36,7 +36,7 @@ theorem oppositeInjective : ∀ (s : Sign) (t : Sign)
       (oppositeOpposite t)
 end
 
-(* Agda's [s≢opposite[s]]. *)
+(* No sign is its own opposite. *)
 theorem signNeOpposite : ∀ (s : Sign) → Not (Id Sign s (opposite s)) ≔
   λ (s : Sign) →
     elim s return z . Not (Id Sign z (opposite z))
@@ -63,7 +63,7 @@ theorem mulIdentityRight : ∀ (s : Sign) → Id Sign (mul s positive) s ≔
     end
 end
 
-(* Agda's [s*s≡+] and [*-inverse]: every sign is its own inverse. *)
+(* Every sign is its own inverse: [mul s s] is [positive]. *)
 theorem mulSelf : ∀ (s : Sign) → Id Sign (mul s s) positive ≔
   λ (s : Sign) →
     elim s return z . Id Sign (mul z z) positive
@@ -72,7 +72,7 @@ theorem mulSelf : ∀ (s : Sign) → Id Sign (mul s s) positive ≔
     end
 end
 
-(* Agda's [s*opposite[s]≡-]. *)
+(* A sign times its opposite is [negative]. *)
 theorem mulOpposite : ∀ (s : Sign) → Id Sign (mul s (opposite s)) negative ≔
   λ (s : Sign) →
     elim s return z . Id Sign (mul z (opposite z)) negative
@@ -109,8 +109,7 @@ theorem mulAssoc : ∀ (s : Sign) (t : Sign) (r : Sign) →
     end
 end
 
-(* Agda's [*-cancelˡ-≡]: multiplying by the same sign on the left is
-   injective. *)
+(* Multiplying by the same sign on the left is injective. *)
 theorem mulCancelLeft : ∀ (s : Sign) (t : Sign) (r : Sign)
     (h : Id Sign (mul s t) (mul s r)) → Id Sign t r ≔
   λ (s : Sign) →
