@@ -6,7 +6,7 @@ import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (Not; absurd)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight)
 open Prelude›Arith›Plus.Algebra use (plusAssoc; plusLeftComm)
 open Prelude›Arith›Plus.Cancel use (plusEqZero)
 
@@ -22,7 +22,7 @@ end
 (* Multiplication by zero, successors and one. *)
 module Basic where
 
-theorem multZero : ∀ (n : ℕ) → Eq (mult n 0) 0 ≔
+theorem multZeroRight : ∀ (n : ℕ) → Eq (mult n 0) 0 ≔
   λ (n : ℕ) →
     elim n return x . Eq (mult x 0) 0
     | zero ⇒ ⋆
@@ -51,7 +51,7 @@ theorem multSucc : ∀ (n : ℕ) (m : ℕ) →
     end
 end
 
-theorem multOne : ∀ (n : ℕ) → Eq (mult n 1) n ≔
+theorem multIdentityRight : ∀ (n : ℕ) → Eq (mult n 1) n ≔
   λ (n : ℕ) →
     elim n return x . Eq (mult x 1) x
     | zero ⇒ ⋆
@@ -59,13 +59,13 @@ theorem multOne : ∀ (n : ℕ) → Eq (mult n 1) n ≔
     end
 end
 
-theorem oneMult : ∀ (n : ℕ) → Eq (mult 1 n) n ≔
-  λ (n : ℕ) → plusZero n
+theorem multIdentityLeft : ∀ (n : ℕ) → Eq (mult 1 n) n ≔
+  λ (n : ℕ) → plusIdentityRight n
 end
 
 end
 
-open Basic use (multZero; multSucc)
+open Basic use (multZeroRight; multSucc)
 
 (* Commutativity, distributivity and associativity. *)
 module Algebra where
@@ -73,7 +73,7 @@ module Algebra where
 theorem multComm : ∀ (a : ℕ) (b : ℕ) → Eq (mult a b) (mult b a) ≔
   λ (a : ℕ) (b : ℕ) →
     elim a return x . Eq (mult x b) (mult b x)
-    | zero ⇒ sym (mult b 0) 0 (multZero b)
+    | zero ⇒ sym (mult b 0) 0 (multZeroRight b)
     | succ p, ih ⇒
         let step : Eq (plus b (mult p b)) (plus b (mult b p)) ≔
               cong (λ (y : ℕ) → plus b y) (mult p b) (mult b p) ih;

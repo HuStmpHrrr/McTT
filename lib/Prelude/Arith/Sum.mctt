@@ -5,10 +5,10 @@ module Prelude›Arith›Sum where
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight)
 open Prelude›Arith›Plus.Algebra use (plusAssoc; plusLeftComm; plusSwapMiddle)
 import Prelude›Arith›Mult use (mult)
-open Prelude›Arith›Mult.Basic use (multZero; multSucc)
+open Prelude›Arith›Mult.Basic use (multZeroRight; multSucc)
 open Prelude›Arith›Mult.Algebra
   use (multComm; multDistribLeft; multDistribRight)
 import Prelude›Function›Combinators use (Generic)
@@ -102,7 +102,7 @@ theorem sumToScale : ∀ (c : ℕ) (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
   λ (c : ℕ) (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
     elim n return x . Eq (sumTo (λ (i : ℕ) → mult c (f i)) x)
                          (mult c (sumTo f x))
-    | zero ⇒ sym (mult c 0) 0 (multZero c)
+    | zero ⇒ sym (mult c 0) 0 (multZeroRight c)
     | succ p, ih ⇒
         let cf ≔ mult c (f p);
             scf ≔ sumTo (λ (i : ℕ) → mult c (f i)) p;
@@ -180,7 +180,7 @@ theorem sumOdd : ∀ (n : ℕ) →
             stepA : Eq lhs a ≔ cong (λ (y : ℕ) → plus (mult 2 p) y) s pp ih;
             stepB : Eq a b ≔ plusAssoc p (plus p 0) pp;
             stepC : Eq b c ≔
-              cong (λ (y : ℕ) → plus p (plus y pp)) (plus p 0) p (plusZero p);
+              cong (λ (y : ℕ) → plus p (plus y pp)) (plus p 0) p (plusIdentityRight p);
             stepD : Eq c rhs ≔
               cong (λ (y : ℕ) → plus p y) (plus p pp) (mult p (succ p))
                 (sym (mult p (succ p)) (plus p pp) (multSucc p p))

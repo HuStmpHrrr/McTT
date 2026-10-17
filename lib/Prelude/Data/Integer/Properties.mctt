@@ -21,10 +21,10 @@ import Prelude›Logic›Leibniz 0l use (Id; idRefl; idSym; idTrans; idCong;
   idCongTwo; eqToId)
 import Prelude›Arith›Equality use (Eq; refl; sym)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight; plusSucc)
 open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc)
 import Prelude›Arith›Mult use (mult)
-open Prelude›Arith›Mult.Basic use (multZero; multOne; oneMult)
+open Prelude›Arith›Mult.Basic use (multZeroRight; multIdentityRight; multIdentityLeft)
 open Prelude›Arith›Mult.Algebra use (multComm; multAssoc)
 import Prelude›Data›Sign as S use (Sign)
 open Sign use (negative; positive)
@@ -36,7 +36,7 @@ open Int use (pos; negsuc)
 (* Negation. *)
 module Neg where
 
-theorem negInvolutive : ∀ (i : Int) → Id Int (neg (neg i)) i ≔
+theorem negNeg : ∀ (i : Int) → Id Int (neg (neg i)) i ≔
   λ (i : Int) →
     elim i return z . Id Int (neg (neg z)) z
     | pos n ⇒
@@ -53,9 +53,9 @@ theorem negInjective : ∀ (i : Int) (j : Int) (h : Id Int (neg i) (neg j)) →
   λ (i : Int) (j : Int) (h : Id Int (neg i) (neg j)) →
     idTrans Int i (neg (neg j)) j
       (idTrans Int i (neg (neg i)) (neg (neg j))
-         (idSym Int (neg (neg i)) i (negInvolutive i))
+         (idSym Int (neg (neg i)) i (negNeg i))
          (idCong Int Int neg (neg i) (neg j) h))
-      (negInvolutive j)
+      (negNeg j)
 end
 
 end
@@ -122,7 +122,7 @@ end
 theorem addIdentityRight : ∀ (i : Int) → Id Int (add i (pos 0)) i ≔
   λ (i : Int) →
     elim i return z . Id Int (add z (pos 0)) z
-    | pos m ⇒ idCong ℕ Int pos (plus m 0) m (eqToId (plus m 0) m (plusZero m))
+    | pos m ⇒ idCong ℕ Int pos (plus m 0) m (eqToId (plus m 0) m (plusIdentityRight m))
     | negsuc m ⇒ idRefl Int (negsuc m)
     end
 end
@@ -229,13 +229,13 @@ theorem diffAdd : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) →
               (diff (plus a 0) (plus b 0))
               (addDiffPos a b 0)
               (diffCong (plus a 0) (plus a 0) b (plus b 0) (refl (plus a 0))
-                 (sym (plus b 0) b (plusZero b)))
+                 (sym (plus b 0) b (plusIdentityRight b)))
         | succ k, s ⇒
             idTrans Int (add (diff a b) (negsuc k)) (diff a (plus b (succ k)))
               (diff (plus a 0) (plus b (succ k)))
               (addDiffNegsuc a b k)
               (diffCong a (plus a 0) (plus b (succ k)) (plus b (succ k))
-                 (sym (plus a 0) a (plusZero a)) (refl (plus b (succ k))))
+                 (sym (plus a 0) a (plusIdentityRight a)) (refl (plus b (succ k))))
         end
     | succ p, ih ⇒ λ (d : ℕ) →
         elim d return y . Id Int (add (diff a b) (diff (succ p) y))
@@ -245,7 +245,7 @@ theorem diffAdd : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) →
               (diff (plus a (succ p)) b) (diff (plus a (succ p)) (plus b 0))
               (addDiffPos a b (succ p))
               (diffCong (plus a (succ p)) (plus a (succ p)) b (plus b 0)
-                 (refl (plus a (succ p))) (sym (plus b 0) b (plusZero b)))
+                 (refl (plus a (succ p))) (sym (plus b 0) b (plusIdentityRight b)))
         | succ k, s ⇒
             idTrans Int (add (diff a b) (diff p k)) (diff (plus a p) (plus b k))
               (diff (plus a (succ p)) (plus b (succ k)))
@@ -421,14 +421,14 @@ theorem mulZeroRight : ∀ (i : Int) → Id Int (mul i (pos 0)) (pos 0) ≔
   λ (i : Int) →
     signedCong (S.mul (sign i) positive) (S.mul (sign i) positive)
       (mult (abs i) 0) 0 (idRefl Sign (S.mul (sign i) positive))
-      (multZero (abs i))
+      (multZeroRight (abs i))
 end
 
 theorem mulIdentityLeft : ∀ (i : Int) → Id Int (mul (pos 1) i) i ≔
   λ (i : Int) →
     idTrans Int (signed (sign i) (mult 1 (abs i))) (signed (sign i) (abs i)) i
       (signedCong (sign i) (sign i) (mult 1 (abs i)) (abs i)
-         (idRefl Sign (sign i)) (oneMult (abs i)))
+         (idRefl Sign (sign i)) (multIdentityLeft (abs i)))
       (signedAbs i)
 end
 
@@ -437,7 +437,7 @@ theorem mulIdentityRight : ∀ (i : Int) → Id Int (mul i (pos 1)) i ≔
     idTrans Int (signed (S.mul (sign i) positive) (mult (abs i) 1))
       (signed (sign i) (abs i)) i
       (signedCong (S.mul (sign i) positive) (sign i) (mult (abs i) 1) (abs i)
-         (SM.mulIdentityRight (sign i)) (multOne (abs i)))
+         (SM.mulIdentityRight (sign i)) (multIdentityRight (abs i)))
       (signedAbs i)
 end
 
@@ -461,7 +461,7 @@ theorem signedSignLeft : ∀ (s : Sign) (t : Sign) (n : ℕ) (m : ℕ) →
 end
 
 (* The same on the right; when [m] is [0], [mult n 0] is [0] by
-   [multZero]. *)
+   [multZeroRight]. *)
 theorem signedSignRight : ∀ (s : Sign) (t : Sign) (n : ℕ) (m : ℕ) →
     Id Int (signed (S.mul s (sign (signed t m))) (mult n m))
       (signed (S.mul s t) (mult n m)) ≔
@@ -472,10 +472,10 @@ theorem signedSignRight : ∀ (s : Sign) (t : Sign) (n : ℕ) (m : ℕ) →
         idTrans Int (signed (S.mul s positive) (mult n 0)) (pos 0)
           (signed (S.mul s t) (mult n 0))
           (signedCong (S.mul s positive) (S.mul s positive) (mult n 0) 0
-             (idRefl Sign (S.mul s positive)) (multZero n))
+             (idRefl Sign (S.mul s positive)) (multZeroRight n))
           (idSym Int (signed (S.mul s t) (mult n 0)) (pos 0)
              (signedCong (S.mul s t) (S.mul s t) (mult n 0) 0
-                (idRefl Sign (S.mul s t)) (multZero n)))
+                (idRefl Sign (S.mul s t)) (multZeroRight n)))
     | succ k, r ⇒
         elim t return w . Id Int (signed (S.mul s (sign (signed w (succ k))))
                                     (mult n (succ k)))

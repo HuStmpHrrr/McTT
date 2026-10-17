@@ -31,7 +31,7 @@ end
 (* [inv]. *)
 module Inv where
 
-theorem invInvolutive : ∀ (p : Parity) → Id Parity (inv (inv p)) p ≔
+theorem invInv : ∀ (p : Parity) → Id Parity (inv (inv p)) p ≔
   λ (p : Parity) →
     elim p return z . Id Parity (inv (inv z)) z
     | even ⇒ idRefl Parity even
@@ -44,9 +44,9 @@ theorem invInjective : ∀ (p : Parity) (q : Parity)
   λ (p : Parity) (q : Parity) (h : Id Parity (inv p) (inv q)) →
     idTrans Parity p (inv (inv q)) q
       (idTrans Parity p (inv (inv p)) (inv (inv q))
-         (idSym Parity (inv (inv p)) p (invInvolutive p))
+         (idSym Parity (inv (inv p)) p (invInv p))
          (idCong Parity Parity inv (inv p) (inv q) h))
-      (invInvolutive q)
+      (invInv q)
 end
 
 (* Agda's [p≢p⁻¹]. *)
@@ -64,7 +64,7 @@ end
 (* [add]. *)
 module Add where
 
-open Inv use (invInvolutive)
+open Inv use (invInv)
 
 theorem addIdentityLeft : ∀ (p : Parity) → Id Parity (add even p) p ≔
   λ (p : Parity) → idRefl Parity p
@@ -102,7 +102,7 @@ theorem addInvLeft : ∀ (p : Parity) (q : Parity) →
   λ (p : Parity) (q : Parity) →
     elim p return z . Id Parity (add (inv z) q) (inv (add z q))
     | even ⇒ idRefl Parity (inv q)
-    | odd ⇒ idSym Parity (inv (inv q)) q (invInvolutive q)
+    | odd ⇒ idSym Parity (inv (inv q)) q (invInv q)
     end
 end
 
@@ -270,11 +270,11 @@ end
 (* [parity] is a homomorphism from the numbers. *)
 module Homo where
 
-open Inv use (invInvolutive)
+open Inv use (invInv)
 
 (* Agda's [suc-homo-⁻¹]. *)
 theorem succHomoInv : ∀ (n : ℕ) → Id Parity (inv (parity (succ n))) (parity n) ≔
-  λ (n : ℕ) → invInvolutive (parity n)
+  λ (n : ℕ) → invInv (parity n)
 end
 
 (* Agda's [+-homo-+]. *)

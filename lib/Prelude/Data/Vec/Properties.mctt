@@ -10,10 +10,10 @@ import Prelude›Logic use (absurd)
 open Prelude›Logic.Negation as Neg
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight)
 open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc; plusSwapMiddle)
 import Prelude›Arith›Mult use (mult)
-open Prelude›Arith›Mult.Basic use (multZero)
+open Prelude›Arith›Mult.Basic use (multZeroRight)
 open Prelude›Arith›Mult.Algebra use (multDistribLeft)
 import Prelude›Arith›Sub use (sub)
 import Prelude›Arith›Order use (Lt)
@@ -265,7 +265,7 @@ theorem sumMapScale : ∀ (c : ℕ) (n : ℕ) (v : NV.Vec n) →
     (elim n return k . (∀ (w : NV.Vec k) →
                           Eq (sumVec k (NV.map ℕ (mult c) k w))
                              (mult c (sumVec k w)))
-     | zero ⇒ λ (w : NV.Vec 0) → sym (mult c 0) 0 (multZero c)
+     | zero ⇒ λ (w : NV.Vec 0) → sym (mult c 0) 0 (multZeroRight c)
      | succ p, ih ⇒ λ (w : NV.Vec (succ p)) →
          let a ≔ w 0 ⋆;
              t ≔ NV.tail p w;
@@ -311,7 +311,7 @@ theorem foldlPlus : ∀ (a : ℕ) (n : ℕ) (v : NV.Vec n) →
   λ (a : ℕ) (n : ℕ) (v : NV.Vec n) →
     (elim n return k . (∀ (w : NV.Vec k) (acc : ℕ) →
                           Eq (NV.foldl ℕ plus acc k w) (plus acc (sumVec k w)))
-     | zero ⇒ λ (w : NV.Vec 0) (acc : ℕ) → sym (plus acc 0) acc (plusZero acc)
+     | zero ⇒ λ (w : NV.Vec 0) (acc : ℕ) → sym (plus acc 0) acc (plusIdentityRight acc)
      | succ p, ih ⇒ λ (w : NV.Vec (succ p)) (acc : ℕ) →
          let b ≔ w 0 ⋆;
              s ≔ sumVec p (NV.tail p w)
@@ -329,7 +329,7 @@ theorem sumSnoc : ∀ (n : ℕ) (v : NV.Vec n) (a : ℕ) →
     (elim n return k . (∀ (w : NV.Vec k) →
                           Eq (sumVec (succ k) (NV.snoc k w a))
                              (plus (sumVec k w) a))
-     | zero ⇒ λ (w : NV.Vec 0) → plusZero a
+     | zero ⇒ λ (w : NV.Vec 0) → plusIdentityRight a
      | succ p, ih ⇒ λ (w : NV.Vec (succ p)) →
          let b ≔ w 0 ⋆;
              t ≔ NV.tail p w;
@@ -350,7 +350,7 @@ theorem sumInitLast : ∀ (n : ℕ) (v : NV.Vec (succ n)) →
     elim n return k . (∀ (v : NV.Vec (succ k)) →
                          Eq (sumVec (succ k) v)
                             (plus (sumVec k (NV.init k v)) (NV.last k v)))
-    | zero ⇒ λ (v : NV.Vec 1) → plusZero (v 0 ⋆)
+    | zero ⇒ λ (v : NV.Vec 1) → plusIdentityRight (v 0 ⋆)
     | succ p, ih ⇒ λ (w : NV.Vec (succ (succ p))) →
         let a ≔ w 0 ⋆;
             t ≔ NV.tail (succ p) w;

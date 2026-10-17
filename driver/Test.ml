@@ -2845,15 +2845,15 @@ let%expect_test "a leading open of a unit that is not imported is rejected" =
 let%expect_test "an open in a module names the unit that is not imported" =
   let _ =
     main_of_program_string ~search_root:"../lib"
-      "module Scratch where open Prelude::Arith::Plus.Basic use (plusZero) end"
+      "module Scratch where open Prelude::Arith::Plus.Basic use (plusIdentityRight) end"
   in
   [%expect {| Error: the unit Prelude›Arith›Plus is not imported |}];
   let _ =
     main_of_program_string ~search_root:"../lib"
-      "import Prelude›Builtin›Nat import Prelude::Arith::Plus module Scratch where open Prelude::Arith::Plus.Basic use (plusZero) \
-       eval plusZero 0 end"
+      "import Prelude›Builtin›Nat import Prelude::Arith::Plus module Scratch where open Prelude::Arith::Plus.Basic use (plusIdentityRight) \
+       eval plusIdentityRight 0 end"
   in
-  [%expect {| Evaluate plusZero 0 --> ⋆ : ⊤ |}]
+  [%expect {| Evaluate plusIdentityRight 0 --> ⋆ : ⊤ |}]
 
 let%expect_test "a leading open may not export" =
   let _ =

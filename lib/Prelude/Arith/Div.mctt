@@ -12,10 +12,10 @@ module Prelude›Arith›Div where
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong; transport)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight; plusSucc)
 open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc)
 import Prelude›Arith›Mult use (mult)
-open Prelude›Arith›Mult.Basic use (multOne)
+open Prelude›Arith›Mult.Basic use (multIdentityRight)
 import Prelude›Arith›Order use (Le; Lt)
 open Prelude›Arith›Order.LeLaws use (leRefl; leTrans; leSucc)
 open Prelude›Arith›Order.LtLaws use (ltNotEq)
@@ -123,7 +123,7 @@ abstract def divModSpec : ∀ (n : ℕ) (d : ℕ) →
                   (plusSucc m r) ih)
              (λ (h : Eq r d) →
                 let toSum : Eq (plus (plus d m) 0) (plus d m) ≔
-                      plusZero (plus d m);
+                      plusIdentityRight (plus d m);
                     swap : Eq (plus d m) (plus m d) ≔ plusComm d m;
                     toRem : Eq (plus m d) (plus m r) ≔
                       cong (λ (y : ℕ) → plus m y) d r (sym r d h)
@@ -304,8 +304,8 @@ abstract def divOne : ∀ (n : ℕ) → Eq (div n 1) n ≔
           cong (λ (y : ℕ) → plus (mult q 1) y) 0 (mod n 1)
             (sym (mod n 1) 0 (modOne n));
         dropPlus : Eq (mult q 1) (plus (mult q 1) 0) ≔
-          sym (plus (mult q 1) 0) (mult q 1) (plusZero (mult q 1));
-        dropMult : Eq q (mult q 1) ≔ sym (mult q 1) q (multOne q)
+          sym (plus (mult q 1) 0) (mult q 1) (plusIdentityRight (mult q 1));
+        dropMult : Eq q (mult q 1) ≔ sym (mult q 1) q (multIdentityRight q)
     in trans q (mult q 1) n dropMult
          (trans (mult q 1) (plus (mult q 1) 0) n dropPlus
             (trans (plus (mult q 1) 0) (plus (mult q 1) (mod n 1)) n

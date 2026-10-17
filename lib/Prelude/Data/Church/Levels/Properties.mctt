@@ -8,7 +8,7 @@ module Prelude›Data›Church›Levels›Properties (u : Level) where
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; trans)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight)
 import Prelude›Arith›Pow use (pow)
 import Prelude›Data›Church u as C
 import Prelude›Data›Church (succl u) as Up
@@ -42,7 +42,7 @@ theorem toNatPow : ∀ (m : ℕ) (k : ℕ) →
     Eq (C.toNat (cpow (C.fromNat m) (Up.fromNat k))) (pow m k) ≔
   λ (m : ℕ) (k : ℕ) →
     trans (C.toNat (cpow (C.fromNat m) (Up.fromNat k))) (plus (pow m k) 0)
-      (pow m k) (cpowAdds m k 0) (plusZero (pow m k))
+      (pow m k) (cpowAdds m k 0) (plusIdentityRight (pow m k))
 end
 
 end

@@ -5,7 +5,7 @@ module Prelude›Arith›Fibonacci›Properties where
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; sym; trans; cong; transport)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight; plusSucc)
 open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc; plusRightComm)
 import Prelude›Arith›Mult use (mult)
 open Prelude›Arith›Mult.Algebra use (multDistribLeft; multDistribRight)
@@ -144,8 +144,8 @@ theorem fibPlus : ∀ (m : ℕ) (n : ℕ) →
         (* The right-hand side computes to [plus (plus (fib (succ n)) 0) 0]. *)
         let g ≔ fib (succ n)
         in sym (plus (plus g 0) 0) g
-             (trans (plus (plus g 0) 0) (plus g 0) g (plusZero (plus g 0))
-                (plusZero g))
+             (trans (plus (plus g 0) 0) (plus g 0) g (plusIdentityRight (plus g 0))
+                (plusIdentityRight g))
         end
     | succ p, ih ⇒ λ (n : ℕ) →
         let a ≔ fib (succ p);

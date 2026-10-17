@@ -43,11 +43,11 @@ theorem predSucc : ∀ (n : ℕ) → Eq (pred (succ n)) n ≔
   λ (n : ℕ) → refl n
 end
 
-theorem subZero : ∀ (n : ℕ) → Eq (sub n 0) n ≔
+theorem subIdentityRight : ∀ (n : ℕ) → Eq (sub n 0) n ≔
   λ (n : ℕ) → refl n
 end
 
-theorem zeroSub : ∀ (n : ℕ) → Eq (sub 0 n) 0 ≔
+theorem subZeroLeft : ∀ (n : ℕ) → Eq (sub 0 n) 0 ≔
   λ (n : ℕ) →
     elim n return x . Eq (sub 0 x) 0
     | zero ⇒ ⋆
@@ -75,7 +75,7 @@ theorem subSuccRight : ∀ (a : ℕ) (b : ℕ) →
     elim a return x . (∀ (b : ℕ) → Eq (sub x (succ b)) (pred (sub x b)))
     | zero ⇒ λ (b : ℕ) →
         transport (λ (m : ℕ) → Eq 0 (pred m)) 0 (sub 0 b)
-          (sym (sub 0 b) 0 (zeroSub b)) ⋆
+          (sym (sub 0 b) 0 (subZeroLeft b)) ⋆
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b return y . Eq (sub (succ p) (succ y)) (pred (sub (succ p) y))
         | zero ⇒ refl p

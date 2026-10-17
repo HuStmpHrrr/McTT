@@ -17,7 +17,7 @@ import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusSucc)
 open Prelude›Arith›Plus.Algebra use (plusComm)
 import Prelude›Arith›Mult use (mult)
-open Prelude›Arith›Mult.Basic use (multOne; oneMult)
+open Prelude›Arith›Mult.Basic use (multIdentityRight; multIdentityLeft)
 import Prelude›Arith›Order use (Le)
 open Prelude›Arith›Order.LeLaws use (leRefl; leTrans; leStep)
 import Prelude›Arith›Monotone.Mono use (lePlusMono)
@@ -230,13 +230,13 @@ lemma timesPow : ∀ (b : ℕ) (h : Le b 1) (x : ℕ) (y : ℕ) →
   λ (b : ℕ) →
     elim b return k . (∀ (h : Le k 1) (x : ℕ) (y : ℕ) →
                          Eq (times k x y) (mult (pow x k) y))
-    | zero ⇒ λ (h : ⊤) (x : ℕ) (y : ℕ) → sym (mult 1 y) y (oneMult y)
+    | zero ⇒ λ (h : ⊤) (x : ℕ) (y : ℕ) → sym (mult 1 y) y (multIdentityLeft y)
     | succ c, ih ⇒
         elim c return k . (∀ (h : Le (succ k) 1) (x : ℕ) (y : ℕ) →
                              Eq (times (succ k) x y) (mult (pow x (succ k)) y))
         | zero ⇒ λ (h : ⊤) (x : ℕ) (y : ℕ) →
             cong (λ (z : ℕ) → mult z y) x (mult x 1)
-              (sym (mult x 1) x (multOne x))
+              (sym (mult x 1) x (multIdentityRight x))
         | succ e, s ⇒ λ (h : ⊥) (x : ℕ) (y : ℕ) →
             absurd (Eq (times (succ (succ e)) x y)
                        (mult (pow x (succ (succ e))) y)) h

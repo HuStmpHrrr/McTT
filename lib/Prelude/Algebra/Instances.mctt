@@ -13,13 +13,13 @@ module Prelude›Algebra›Instances where
 
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight)
 open Prelude›Arith›Plus.Algebra use (plusAssoc; plusComm)
 import Prelude›Arith›Mult use (mult)
-open Prelude›Arith›Mult.Basic use (multOne; oneMult)
+open Prelude›Arith›Mult.Basic use (multIdentityRight; multIdentityLeft)
 open Prelude›Arith›Mult.Algebra use (multAssoc; multComm)
 import Prelude›Arith›MinMax use (max)
-open Prelude›Arith›MinMax.Laws use (maxZero; maxComm)
+open Prelude›Arith›MinMax.Laws use (maxIdentityRight; maxComm)
 import Prelude›Arith›Lattice.Algebra use (maxAssoc)
 import Prelude›Algebra›Monoid as Monoid
 
@@ -41,18 +41,18 @@ private module OnNat (op : ∀ (x : ℕ) (y : ℕ) → ℕ) ≔
   Monoid 0l ℕ Eq refl sym trans op (congBoth op)
 
 (* Numbers under addition: [Additive.pow x n] is [n] times [x]. *)
-module Additive ≔ OnNat plus 0 plusAssoc refl plusZero
+module Additive ≔ OnNat plus 0 plusAssoc refl plusIdentityRight
 
 module AdditiveComm ≔ Additive.Commutative plusComm
 
 (* Numbers under multiplication: [Multiplicative.pow x n] is [x] to the
    [n]. *)
-module Multiplicative ≔ OnNat mult 1 multAssoc oneMult multOne
+module Multiplicative ≔ OnNat mult 1 multAssoc multIdentityLeft multIdentityRight
 
 module MultiplicativeComm ≔ Multiplicative.Commutative multComm
 
 (* Numbers under maximum, with [0] as the neutral element. *)
-module Maximum ≔ OnNat max 0 maxAssoc refl maxZero
+module Maximum ≔ OnNat max 0 maxAssoc refl maxIdentityRight
 
 module MaximumComm ≔ Maximum.Commutative maxComm
 

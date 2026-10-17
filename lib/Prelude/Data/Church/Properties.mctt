@@ -12,7 +12,7 @@ module Prelude›Data›Church›Properties (u : Level) where
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight)
 open Prelude›Arith›Plus.Algebra use (plusAssoc)
 import Prelude›Arith›Mult use (mult)
 import Prelude›Data›Church u as C
@@ -85,7 +85,7 @@ theorem toNatMult : ∀ (m : ℕ) (n : ℕ) →
     trans (C.fromNat m ℕ (C.fromNat n ℕ S) 0) (plus (mult m n) 0)
       (mult m n)
       (fromNatAddsMult n (C.fromNat n ℕ S) (fromNatAdds n) m 0)
-      (plusZero (mult m n))
+      (plusIdentityRight (mult m n))
 end
 
 end

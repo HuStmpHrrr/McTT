@@ -12,7 +12,7 @@ module Prelude›Algebra›Integers where
 
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight)
 open Prelude›Arith›Plus.Algebra
   use (plusComm; plusAssoc; plusRightComm; plusCongBoth; plusSwapMiddle)
 open Prelude›Arith›Plus.Cancel use (plusCancelRight)
@@ -136,14 +136,14 @@ theorem addAssoc : ∀ (x : Int) (y : Int) (z : Int) →
 end
 
 (* Zero on the left holds by conversion: [plus 0 n] is [n]. *)
-theorem zeroAdd : ∀ (x : Int) → Same (add (ofNat 0) x) x ≔
+theorem addIdentityLeft : ∀ (x : Int) → Same (add (ofNat 0) x) x ≔
   λ (x : Int) → refl (plus (x 0) (x 1))
 end
 
-theorem addZero : ∀ (x : Int) → Same (add x (ofNat 0)) x ≔
+theorem addIdentityRight : ∀ (x : Int) → Same (add x (ofNat 0)) x ≔
   λ (x : Int) →
-    plusCongBoth (plus (x 0) 0) (x 1) (x 0) (plus (x 1) 0) (plusZero (x 0))
-      (sym (plus (x 1) 0) (x 1) (plusZero (x 1)))
+    plusCongBoth (plus (x 0) 0) (x 1) (x 0) (plus (x 1) 0) (plusIdentityRight (x 0))
+      (sym (plus (x 1) 0) (x 1) (plusIdentityRight (x 1)))
 end
 
 theorem addComm : ∀ (x : Int) (y : Int) → Same (add x y) (add y x) ≔
@@ -166,25 +166,25 @@ end
 theorem negateLeft : ∀ (x : Int) → Same (add (negate x) x) (ofNat 0) ≔
   λ (x : Int) →
     trans (plus (plus (x 1) (x 0)) 0) (plus (x 1) (x 0)) (plus (x 0) (x 1))
-      (plusZero (plus (x 1) (x 0))) (plusComm (x 1) (x 0))
+      (plusIdentityRight (plus (x 1) (x 0))) (plusComm (x 1) (x 0))
 end
 
 theorem negateRight : ∀ (x : Int) → Same (add x (negate x)) (ofNat 0) ≔
   λ (x : Int) →
     trans (plus (plus (x 0) (x 1)) 0) (plus (x 0) (x 1)) (plus (x 1) (x 0))
-      (plusZero (plus (x 0) (x 1))) (plusComm (x 0) (x 1))
+      (plusIdentityRight (plus (x 0) (x 1))) (plusComm (x 0) (x 1))
 end
 
 end
 
 open Addition
-  use (addCong; addAssoc; zeroAdd; addZero; addComm; negateCong; negateLeft;
+  use (addCong; addAssoc; addIdentityLeft; addIdentityRight; addComm; negateCong; negateLeft;
        negateRight)
 
 (* The integers under addition: [Additive.Base.pow x n] is [n] times [x]. *)
 module Additive ≔
   Group 0l Int Same sameRefl sameSym sameTrans add addCong (ofNat 0)
-    addAssoc zeroAdd addZero negate negateCong negateLeft negateRight
+    addAssoc addIdentityLeft addIdentityRight negate negateCong negateLeft negateRight
 
 module AdditiveComm ≔ Additive.Base.Commutative addComm
 
@@ -200,8 +200,8 @@ end
 theorem ofNatInj : ∀ (m : ℕ) (n : ℕ) (h : Same (ofNat m) (ofNat n)) →
     Eq m n ≔
   λ (m : ℕ) (n : ℕ) (h : Same (ofNat m) (ofNat n)) →
-    trans m (plus m 0) n (sym (plus m 0) m (plusZero m))
-      (trans (plus m 0) (plus n 0) n h (plusZero n))
+    trans m (plus m 0) n (sym (plus m 0) m (plusIdentityRight m))
+      (trans (plus m 0) (plus n 0) n h (plusIdentityRight n))
 end
 
 end

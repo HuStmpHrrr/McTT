@@ -12,7 +12,7 @@ import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
 import Prelude›Arith›Mult use (mult)
-open Prelude›Arith›Mult.Basic use (multOne)
+open Prelude›Arith›Mult.Basic use (multIdentityRight)
 open Prelude›Arith›Mult.Algebra use (multLeftComm)
 import Prelude›Arith›Pow use (pow)
 open Prelude›Arith›Pow.Basic use (onePow)
@@ -93,7 +93,7 @@ theorem hornerNaive : ∀ (c : Coeffs) (n : ℕ) → Eq (horner c n) (naive c n)
              first : Eq (plus (d 0) shifted) whole ≔
                trans (plus (d 0) shifted) (plus (term d 0) shifted) whole
                  (cong (λ (y : ℕ) → plus y shifted) (d 0) (term d 0)
-                    (sym (term d 0) (d 0) (multOne (d 0))))
+                    (sym (term d 0) (d 0) (multIdentityRight (d 0))))
                  (sym whole (plus (term d 0) shifted) (sumToShift (term d) p))
          in trans (plus (d 0) (mult x rest)) (plus (d 0) shifted) whole
               (cong (λ (y : ℕ) → plus (d 0) y) (mult x rest) shifted
@@ -118,7 +118,7 @@ theorem hornerAtOne : ∀ (c : Coeffs) (n : ℕ) →
             (λ (i : ℕ) →
                trans (mult (c i) (pow 1 i)) (mult (c i) 1) (c i)
                  (cong (λ (y : ℕ) → mult (c i) y) (pow 1 i) 1 (onePow i))
-                 (multOne (c i)))
+                 (multIdentityRight (c i)))
             n)
     end
 end

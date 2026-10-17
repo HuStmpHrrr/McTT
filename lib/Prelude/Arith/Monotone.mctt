@@ -7,7 +7,7 @@ import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (absurd)
 import Prelude›Arith›Equality use (Eq; refl; trans)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight; plusSucc)
 import Prelude›Arith›Mult use (mult)
 import Prelude›Arith›Sub use (sub)
 import Prelude›Arith›Order use (Le; Lt)
@@ -199,7 +199,7 @@ theorem plusSubCancel : ∀ (a : ℕ) (b : ℕ) (h : Le b a) →
     Eq (plus (sub a b) b) a ≔
   λ (a : ℕ) (b : ℕ) →
     (elim b return y . (∀ (x : ℕ) (h : Le y x) → Eq (plus (sub x y) y) x)
-     | zero ⇒ λ (x : ℕ) (h : ⊤) → plusZero x
+     | zero ⇒ λ (x : ℕ) (h : ⊤) → plusIdentityRight x
      | succ q, ih ⇒ λ (x : ℕ) →
          elim x return z . (∀ (h : Le (succ q) z) →
                               Eq (plus (sub z (succ q)) (succ q)) z)

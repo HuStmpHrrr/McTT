@@ -55,7 +55,7 @@ end
 (* Conjunction: [tt] is its unit, [ff] absorbs. *)
 module Conj where
 
-theorem andTrueRight : ∀ (b : Bool) → Id Bool (and b tt) b ≔
+theorem andIdentityRight : ∀ (b : Bool) → Id Bool (and b tt) b ≔
   λ (b : Bool) →
     elim b return z . Id Bool (and z tt) z
     | tt ⇒ idRefl Bool tt
@@ -63,7 +63,7 @@ theorem andTrueRight : ∀ (b : Bool) → Id Bool (and b tt) b ≔
     end
 end
 
-theorem andFalseRight : ∀ (b : Bool) → Id Bool (and b ff) ff ≔
+theorem andZeroRight : ∀ (b : Bool) → Id Bool (and b ff) ff ≔
   λ (b : Bool) →
     elim b return z . Id Bool (and z ff) ff
     | tt ⇒ idRefl Bool ff
@@ -116,7 +116,7 @@ end
 (* Disjunction: [ff] is its unit, [tt] absorbs. *)
 module Disj where
 
-theorem orFalseRight : ∀ (b : Bool) → Id Bool (or b ff) b ≔
+theorem orIdentityRight : ∀ (b : Bool) → Id Bool (or b ff) b ≔
   λ (b : Bool) →
     elim b return z . Id Bool (or z ff) z
     | tt ⇒ idRefl Bool tt
@@ -124,7 +124,7 @@ theorem orFalseRight : ∀ (b : Bool) → Id Bool (or b ff) b ≔
     end
 end
 
-theorem orTrueRight : ∀ (b : Bool) → Id Bool (or b tt) tt ≔
+theorem orZeroRight : ∀ (b : Bool) → Id Bool (or b tt) tt ≔
   λ (b : Bool) →
     elim b return z . Id Bool (or z tt) tt
     | tt ⇒ idRefl Bool tt
@@ -235,7 +235,7 @@ end
 (* Exclusive or. *)
 module Xor where
 
-theorem xorFalseRight : ∀ (b : Bool) → Id Bool (xor b ff) b ≔
+theorem xorIdentityRight : ∀ (b : Bool) → Id Bool (xor b ff) b ≔
   λ (b : Bool) →
     elim b return z . Id Bool (xor z ff) z
     | tt ⇒ idRefl Bool tt

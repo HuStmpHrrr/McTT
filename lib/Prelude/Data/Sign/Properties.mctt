@@ -18,7 +18,7 @@ end
 (* [opposite]. *)
 module Opposite where
 
-theorem oppositeInvolutive : ∀ (s : Sign) → Id Sign (opposite (opposite s)) s ≔
+theorem oppositeOpposite : ∀ (s : Sign) → Id Sign (opposite (opposite s)) s ≔
   λ (s : Sign) →
     elim s return z . Id Sign (opposite (opposite z)) z
     | negative ⇒ idRefl Sign negative
@@ -31,9 +31,9 @@ theorem oppositeInjective : ∀ (s : Sign) (t : Sign)
   λ (s : Sign) (t : Sign) (h : Id Sign (opposite s) (opposite t)) →
     idTrans Sign s (opposite (opposite t)) t
       (idTrans Sign s (opposite (opposite s)) (opposite (opposite t))
-         (idSym Sign (opposite (opposite s)) s (oppositeInvolutive s))
+         (idSym Sign (opposite (opposite s)) s (oppositeOpposite s))
          (idCong Sign Sign opposite (opposite s) (opposite t) h))
-      (oppositeInvolutive t)
+      (oppositeOpposite t)
 end
 
 (* Agda's [s≢opposite[s]]. *)
@@ -102,7 +102,7 @@ theorem mulAssoc : ∀ (s : Sign) (t : Sign) (r : Sign) →
     | negative ⇒ elim t return y . Id Sign (mul (opposite y) r)
                                     (opposite (mul y r))
                  | negative ⇒ idSym Sign (opposite (opposite r)) r
-                                (Opposite.oppositeInvolutive r)
+                                (Opposite.oppositeOpposite r)
                  | positive ⇒ idRefl Sign (opposite r)
                  end
     | positive ⇒ idRefl Sign (mul t r)

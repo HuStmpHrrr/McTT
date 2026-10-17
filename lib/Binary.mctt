@@ -8,7 +8,7 @@ module Binary where
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; trans; cong)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight)
 import Prelude›Arith›Mult use (mult)
 import Prelude›Arith›Pow use (pow)
 open Prelude›Arith›Pow.Exp use (powPlus)
@@ -75,7 +75,7 @@ theorem fromBitsDouble : ∀ (n : ℕ) (k : ℕ) →
     in trans (plus (double upper) (bit (double n))) (plus (double upper) 0)
          (double lower) lowest
          (trans (plus (double upper) 0) (double upper) (double lower)
-            (plusZero (double upper))
+            (plusIdentityRight (double upper))
             (cong (λ (m : ℕ) → double m) upper lower shifted))
     end
 end

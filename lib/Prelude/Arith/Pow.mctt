@@ -5,9 +5,9 @@ module Prelude›Arith›Pow where
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight)
 import Prelude›Arith›Mult use (mult)
-open Prelude›Arith›Mult.Basic use (multOne; oneMult)
+open Prelude›Arith›Mult.Basic use (multIdentityRight; multIdentityLeft)
 open Prelude›Arith›Mult.Algebra use (multAssoc; multSwapMiddle)
 
 (* [pow a n] is [a] to the power [n]: [pow a 0] is [1] and
@@ -31,7 +31,7 @@ theorem powSucc : ∀ (a : ℕ) (n : ℕ) → Eq (pow a (succ n)) (mult a (pow a
 end
 
 theorem powOne : ∀ (a : ℕ) → Eq (pow a 1) a ≔
-  λ (a : ℕ) → multOne a
+  λ (a : ℕ) → multIdentityRight a
 end
 
 (* [pow 1 (succ p)] computes to [plus (pow 1 p) 0]. *)
@@ -39,7 +39,7 @@ theorem onePow : ∀ (n : ℕ) → Eq (pow 1 n) 1 ≔
   λ (n : ℕ) →
     elim n return x . Eq (pow 1 x) 1
     | zero ⇒ ⋆
-    | succ p, ih ⇒ trans (plus (pow 1 p) 0) (pow 1 p) 1 (plusZero (pow 1 p)) ih
+    | succ p, ih ⇒ trans (plus (pow 1 p) 0) (pow 1 p) 1 (plusIdentityRight (pow 1 p)) ih
     end
 end
 
@@ -56,7 +56,7 @@ theorem powPlus : ∀ (a : ℕ) (m : ℕ) (n : ℕ) →
     Eq (pow a (plus m n)) (mult (pow a m) (pow a n)) ≔
   λ (a : ℕ) (m : ℕ) (n : ℕ) →
     elim m return x . Eq (pow a (plus x n)) (mult (pow a x) (pow a n))
-    | zero ⇒ sym (mult 1 (pow a n)) (pow a n) (oneMult (pow a n))
+    | zero ⇒ sym (mult 1 (pow a n)) (pow a n) (multIdentityLeft (pow a n))
     | succ p, ih ⇒
         let lhs ≔ mult a (pow a (plus p n));
             mid ≔ mult a (mult (pow a p) (pow a n));

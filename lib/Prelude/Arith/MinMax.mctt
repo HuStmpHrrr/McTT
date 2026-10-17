@@ -5,7 +5,7 @@ module Prelude›Arith›MinMax where
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight; plusSucc)
 
 def min (a : ℕ) (b : ℕ) : ℕ ≔
   (elim a return y . (∀ (x : ℕ) → ℕ)
@@ -72,7 +72,7 @@ theorem minIdem : ∀ (n : ℕ) → Eq (min n n) n ≔
     end
 end
 
-theorem minZero : ∀ (n : ℕ) → Eq (min n 0) 0 ≔
+theorem minZeroRight : ∀ (n : ℕ) → Eq (min n 0) 0 ≔
   λ (n : ℕ) →
     elim n return x . Eq (min x 0) 0
     | zero ⇒ ⋆
@@ -88,7 +88,7 @@ theorem maxIdem : ∀ (n : ℕ) → Eq (max n n) n ≔
     end
 end
 
-theorem maxZero : ∀ (n : ℕ) → Eq (max n 0) n ≔
+theorem maxIdentityRight : ∀ (n : ℕ) → Eq (max n 0) n ≔
   λ (n : ℕ) →
     elim n return x . Eq (max x 0) x
     | zero ⇒ ⋆
@@ -106,7 +106,7 @@ theorem plusMinMax : ∀ (a : ℕ) (b : ℕ) →
     | succ p, ih ⇒ λ (b : ℕ) →
         elim b return y . Eq (plus (min (succ p) y) (max (succ p) y))
                              (plus (succ p) y)
-        | zero ⇒ sym (plus p 0) p (plusZero p)
+        | zero ⇒ sym (plus p 0) p (plusIdentityRight p)
         | succ q, s ⇒
             let m ≔ min p q;
                 M ≔ max p q;

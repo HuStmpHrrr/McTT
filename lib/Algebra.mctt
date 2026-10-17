@@ -7,12 +7,12 @@ module Algebra where
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight)
 open Prelude›Arith›Plus.Algebra use (plusAssoc; plusCongBoth)
 import Prelude›Arith›Mult use (mult)
 import Prelude›Arith›Pow use (pow)
 import Prelude›Arith›MinMax use (max)
-open Prelude›Arith›MinMax.Laws use (maxIdem; maxZero)
+open Prelude›Arith›MinMax.Laws use (maxIdem; maxIdentityRight)
 import Prelude›Algebra›Monoid as Monoid
 import Prelude›Algebra›Instances
   use (Additive; AdditiveComm; Multiplicative; MultiplicativeComm; Maximum;
@@ -119,7 +119,7 @@ end
    addition again, so its powers agree with [Additive]'s. *)
 module NatMonoid ≔ Monoid 0l ℕ Eq refl sym trans
 
-module Sums ≔ NatMonoid plus plusCongBoth 0 plusAssoc refl plusZero
+module Sums ≔ NatMonoid plus plusCongBoth 0 plusAssoc refl plusIdentityRight
 
 eval Sums.pow 6 3
 
@@ -130,7 +130,7 @@ eval Sums.pow 6 3
 theorem maxPowSucc : ∀ (x : ℕ) (n : ℕ) → Eq (Maximum.pow x (succ n)) x ≔
   λ (x : ℕ) (n : ℕ) →
     elim n return k . Eq (Maximum.pow x (succ k)) x
-    | zero ⇒ maxZero x
+    | zero ⇒ maxIdentityRight x
     | succ p, ih ⇒
         let power ≔ Maximum.pow x (succ p);
             module L where

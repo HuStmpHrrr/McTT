@@ -17,7 +17,7 @@ module Prelude›Data›List›Properties where
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight; plusSucc)
 open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc)
 import Prelude›Data›List use (List; sum)
 open Prelude›Data›List.Ops as Ops
@@ -256,7 +256,7 @@ theorem lengthReverse : ∀ (l : L) →
              (plusSucc (Op.length (Op.reverse xs)) 0)
              (trans (plus (Op.length (Op.reverse xs)) 0)
                 (Op.length (Op.reverse xs)) (Op.length xs)
-                (plusZero (Op.length (Op.reverse xs))) ih))
+                (plusIdentityRight (Op.length (Op.reverse xs))) ih))
     end
 end
 

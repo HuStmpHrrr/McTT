@@ -6,7 +6,7 @@ module Prelude›Arith›Binomial›Properties where
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight; plusSucc)
 open Prelude›Arith›Plus.Algebra use (plusComm; plusSwapMiddle; plusCongBoth)
 import Prelude›Arith›Sub use (sub)
 import Prelude›Arith›Order use (Le; Lt)
@@ -93,7 +93,7 @@ end
 lemma zeroRight : ∀ (a : ℕ) → Eq (split a 0) 1 ≔
   λ (a : ℕ) →
     trans (choose (plus a 0) a) (choose a a) 1
-      (cong (λ (y : ℕ) → choose y a) (plus a 0) a (plusZero a))
+      (cong (λ (y : ℕ) → choose y a) (plus a 0) a (plusIdentityRight a))
       (chooseSelf a)
 end
 
@@ -187,8 +187,8 @@ fact rowPrefixSucc : ∀ (p : ℕ) (m : ℕ) →
         (* The goal computes to [Eq 1 (plus (plus (choose p 0) 0) 0)]. *)
         sym (plus (plus (choose p 0) 0) 0) 1
           (trans (plus (plus (choose p 0) 0) 0) (plus (choose p 0) 0) 1
-             (plusZero (plus (choose p 0) 0))
-             (trans (plus (choose p 0) 0) (choose p 0) 1 (plusZero (choose p 0))
+             (plusIdentityRight (plus (choose p 0) 0))
+             (trans (plus (choose p 0) 0) (choose p 0) 1 (plusIdentityRight (choose p 0))
                 (chooseZero p)))
     | succ q, ih ⇒
         let a ≔ choose p q;
@@ -227,7 +227,7 @@ theorem rowSum : ∀ (n : ℕ) → Eq (sumTo (choose n) (succ n)) (pow 2 n) ≔
                 (chooseOver p (succ p) (leRefl p));
             first : Eq longer P ≔ trans longer s P dropTop ih;
             second : Eq s (plus P 0) ≔
-              trans s P (plus P 0) ih (sym (plus P 0) P (plusZero P))
+              trans s P (plus P 0) ih (sym (plus P 0) P (plusIdentityRight P))
         in trans (sumTo (choose (succ p)) (succ (succ p))) (plus longer s)
              (plus P (plus P 0))
              (rowPrefixSucc p (succ p))

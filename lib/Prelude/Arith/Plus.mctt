@@ -15,7 +15,7 @@ end
 (* Addition of zero and of a successor on the right. *)
 module Basic where
 
-theorem plusZero : ∀ (n : ℕ) → Eq (plus n 0) n ≔
+theorem plusIdentityRight : ∀ (n : ℕ) → Eq (plus n 0) n ≔
   λ (n : ℕ) →
     elim n return x . Eq (plus x 0) x
     | zero ⇒ ⋆
@@ -33,7 +33,7 @@ end
 
 end
 
-open Basic use (plusZero; plusSucc)
+open Basic use (plusIdentityRight; plusSucc)
 
 (* Commutativity and associativity, and their consequences. *)
 module Algebra where
@@ -41,7 +41,7 @@ module Algebra where
 theorem plusComm : ∀ (a : ℕ) (b : ℕ) → Eq (plus a b) (plus b a) ≔
   λ (a : ℕ) (b : ℕ) →
     elim a return x . Eq (plus x b) (plus b x)
-    | zero ⇒ sym (plus b 0) b (plusZero b)
+    | zero ⇒ sym (plus b 0) b (plusIdentityRight b)
     | succ p, ih ⇒
         let back : Eq (succ (plus b p)) (plus b (succ p)) ≔
               sym (plus b (succ p)) (succ (plus b p)) (plusSucc b p)

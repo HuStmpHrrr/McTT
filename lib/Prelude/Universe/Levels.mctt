@@ -91,7 +91,7 @@ theorem maxlIdem : ∀ (u : Level) → LEq (maxl u u) u ≔
 end
 
 (* [0l] is neutral for [maxl]. *)
-theorem maxlZero : ∀ (u : Level) → LEq (maxl u 0l) u ≔
+theorem maxlIdentityRight : ∀ (u : Level) → LEq (maxl u 0l) u ≔
   λ (u : Level) → lrefl u
 end
 

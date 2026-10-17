@@ -16,7 +16,7 @@ import Prelude›Logic›Leibniz 0l use (Id; idRefl; idSym; idTrans; idCong;
   eqToId)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
-open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight; plusSucc)
 open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc; plusCongBoth)
 import Prelude›Arith›Parity use (double)
 import Prelude›Data›Binary as B use (Bin; suc; toNat; fromNat; add)
@@ -133,7 +133,7 @@ theorem toNatAdd : ∀ (x : Bin) (y : Bin) →
                             (plus (toNat (doubleSucc a)) (toNat w))
         | zero ⇒
             sym (plus (toNat (doubleSucc a)) 0) (toNat (doubleSucc a))
-              (plusZero (toNat (doubleSucc a)))
+              (plusIdentityRight (toNat (doubleSucc a)))
         | doubleSucc b, s ⇒ carryEven (add a b) (toNat a) (toNat b) (ih b)
         | succDouble b, s ⇒ carryOdd (add a b) (toNat a) (toNat b) (ih b)
         end
@@ -142,7 +142,7 @@ theorem toNatAdd : ∀ (x : Bin) (y : Bin) →
                             (plus (toNat (succDouble a)) (toNat w))
         | zero ⇒
             sym (plus (toNat (succDouble a)) 0) (toNat (succDouble a))
-              (plusZero (toNat (succDouble a)))
+              (plusIdentityRight (toNat (succDouble a)))
         | doubleSucc b, s ⇒ carryEven (add a b) (toNat a) (toNat b) (ih b)
         | succDouble b, s ⇒
             trans (succ (double (toNat (add a b))))
@@ -270,7 +270,7 @@ theorem addIdentityRight : ∀ (x : Bin) → Id Bin (add x Bin.zero) x ≔
   λ (x : Bin) →
     toNatInjective (add x Bin.zero) x
       (trans (toNat (add x Bin.zero)) (plus (toNat x) 0) (toNat x)
-         (toNatAdd x Bin.zero) (plusZero (toNat x)))
+         (toNatAdd x Bin.zero) (plusIdentityRight (toNat x)))
 end
 
 theorem addComm : ∀ (x : Bin) (y : Bin) → Id Bin (add x y) (add y x) ≔

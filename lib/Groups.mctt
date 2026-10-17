@@ -9,7 +9,7 @@ import Prelude›Algebra›Integers
   use (Int; pair; Same; ofNat; add; negate; minus; magnitude; negative;
        Additive; AdditiveComm)
 open Prelude›Algebra›Integers.Setoid use (sameSym; sameTrans)
-open Prelude›Algebra›Integers.Addition use (zeroAdd; negateRight)
+open Prelude›Algebra›Integers.Addition use (addIdentityLeft; negateRight)
 
 (* [-3], as [2 - 5]. *)
 def minusThree : Int ≔ pair 2 5 end
@@ -43,7 +43,7 @@ theorem solve : ∀ (a : Int) (b : Int) (x : Int) (h : Same (add a x) b) →
           (assocBack a (negate a) b)
           (sameTrans (add (add a (negate a)) b) (add (ofNat 0) b) b
              (congLeft (add a (negate a)) (ofNat 0) b (negateRight a))
-             (zeroAdd b))
+             (addIdentityLeft b))
       end
       def cancel : Same x (add (negate a) b) ≔
         leftCancel a x (add (negate a) b)
