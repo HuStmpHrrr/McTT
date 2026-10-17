@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Prelude›Arith›Induction</title><link rel="stylesheet" href="mctt.css"></head><body>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prelude›Arith›Induction</title><link rel="stylesheet" href="mctt.css"></head><body class="unit">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">Prelude›Arith›Induction</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><details open><summary><span class="kw">module</span> <a class="mod" href="#Principles">Principles</a></summary><ul><li><span class="kw">def</span> <a class="def" href="#Principles.caseNat">caseNat</a></li><li><span class="kw">def</span> <a class="def" href="#Principles.twoStepInd">twoStepInd</a></li><li><span class="kw">def</span> <a class="def" href="#Principles.strongInd">strongInd</a></li></ul></details></li><li><span class="kw">export</span> <a class="def" href="#caseNat">caseNat</a></li><li><span class="kw">export</span> <a class="def" href="#twoStepInd">twoStepInd</a></li><li><span class="kw">export</span> <a class="def" href="#strongInd">strongInd</a></li></ul></nav>
 <nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
 <h1>Prelude›Arith›Induction</h1>
-<details class="toc"><summary>Contents</summary><ul><li><span class="kw">module</span> <a href="#Principles">Principles</a></li></ul></details>
 <div class="doc"><p>Derived induction principles on natural numbers: case analysis, two-step induction and strong (course-of-values) induction, all from <code>elim</code>, for motives of any level.  <code>Principles u</code> states them for motives into <code>Type@{u}</code>; the unit exports them at <code>0l</code>.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Arith</span><span class="sym">›</span><span class="unit bind">Induction</span> <span class="kw">where</span>

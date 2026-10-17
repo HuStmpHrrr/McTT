@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Prelude›Arith›Gcd</title><link rel="stylesheet" href="mctt.css"></head><body>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prelude›Arith›Gcd</title><link rel="stylesheet" href="mctt.css"></head><body class="unit">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">Prelude›Arith›Gcd</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><span class="kw">def</span> <a class="def" href="#gcdFuel">gcdFuel</a></li><li><span class="kw">def</span> <a class="def" href="#gcd">gcd</a></li></ul></nav>
 <nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
 <h1>Prelude›Arith›Gcd</h1>
-<details class="toc"><summary>Contents</summary><ul><li><span class="kw">def</span> <a href="#gcdFuel">gcdFuel</a></li><li><span class="kw">def</span> <a href="#gcd">gcd</a></li></ul></details>
 <div class="doc"><p>The greatest common divisor, by Euclid's algorithm.  <code>gcd a b</code> replaces <code>(a, b)</code> by <code>(b, mod a b)</code> until the second number is <code>0</code>; the recursion is primitive, on a fuel bound above <code>b</code>, since every step strictly lowers the second number.  Fuel is preferred to strong induction, whose recursive calls are transported along order proofs and compute slowly. <code>gcd a 0</code> is <code>a</code>, so <code>gcd 0 0</code> is <code>0</code>.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Arith</span><span class="sym">›</span><span class="unit bind">Gcd</span> <span class="kw">where</span>

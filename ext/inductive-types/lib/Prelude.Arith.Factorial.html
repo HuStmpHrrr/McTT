@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Prelude›Arith›Factorial</title><link rel="stylesheet" href="mctt.css"></head><body>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prelude›Arith›Factorial</title><link rel="stylesheet" href="mctt.css"></head><body class="unit">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">Prelude›Arith›Factorial</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><span class="kw">def</span> <a class="def" href="#factorial">factorial</a></li><li><details open><summary><span class="kw">module</span> <a class="mod" href="#Laws">Laws</a></summary><ul><li><span class="kw">theorem</span> <a class="def" href="#Laws.factZero">factZero</a></li><li><span class="kw">theorem</span> <a class="def" href="#Laws.factSucc">factSucc</a></li></ul></details></li><li><details open><summary><span class="kw">module</span> <a class="mod" href="#Bounds">Bounds</a></summary><ul><li><span class="kw">theorem</span> <a class="def" href="#Bounds.factPos">factPos</a></li><li><span class="kw">theorem</span> <a class="def" href="#Bounds.factLeSucc">factLeSucc</a></li><li><span class="kw">theorem</span> <a class="def" href="#Bounds.lePowFact">lePowFact</a></li></ul></details></li></ul></nav>
 <nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
 <h1>Prelude›Arith›Factorial</h1>
-<details class="toc"><summary>Contents</summary><ul><li><span class="kw">def</span> <a href="#factorial">factorial</a></li><li><span class="kw">module</span> <a href="#Laws">Laws</a></li><li><span class="kw">module</span> <a href="#Bounds">Bounds</a></li></ul></details>
 <div class="doc"><p>The factorial, with its defining equations, positivity, monotonicity in one step, and the bound <code>pow 2 n &lt;= factorial (succ n)</code>.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Arith</span><span class="sym">›</span><span class="unit bind">Factorial</span> <span class="kw">where</span>

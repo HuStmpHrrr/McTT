@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Prelude›Data›Sign</title><link rel="stylesheet" href="mctt.css"></head><body>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prelude›Data›Sign</title><link rel="stylesheet" href="mctt.css"></head><body class="unit">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">Prelude›Data›Sign</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><details open><summary><span class="kw">inductive</span> <a class="mod" href="#Sign">Sign</a></summary><ul><li><span class="kw">|</span> <a class="def" href="#Sign.negative">negative</a></li><li><span class="kw">|</span> <a class="def" href="#Sign.positive">positive</a></li></ul></details></li><li><span class="kw">def</span> <a class="def" href="#opposite">opposite</a></li><li><span class="kw">def</span> <a class="def" href="#mul">mul</a></li></ul></nav>
 <nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
 <h1>Prelude›Data›Sign</h1>
-<details class="toc"><summary>Contents</summary><ul><li><span class="kw">module</span> <a href="#Sign">Sign</a></li><li><span class="kw">def</span> <a href="#opposite">opposite</a></li><li><span class="kw">def</span> <a href="#mul">mul</a></li></ul></details>
-<div class="doc"><p>Signs, after Agda's <code>Data.Sign</code>: <code>negative</code> and <code>positive</code> (Agda's <code>-</code> and <code>+</code>), with the opposite sign and the multiplication of signs, under which they form a group with unit <code>positive</code>.  The laws are in <code>Prelude›Data›Sign›Properties</code>.</p>
+<div class="doc"><p>Signs: <code>negative</code> and <code>positive</code>, with the opposite sign and the multiplication of signs, under which they form a group with unit <code>positive</code>.  The laws are in <code>Prelude›Data›Sign›Properties</code>.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Data</span><span class="sym">›</span><span class="unit bind">Sign</span> <span class="kw">where</span>
 
@@ -12,7 +13,7 @@
 <span class="sym">|</span> <span class="def bind" id="Sign.positive">positive</span>
 <span class="kw">end</span>
 
-<span class="kw">open</span> <a class="mod" href="#Sign">Sign</a> <span class="kw">export</span> <span class="sym">(</span><a class="def bind" id="negative" href="#Sign.negative">negative</a><span class="sym">;</span> <a class="def bind" id="positive" href="#Sign.positive">positive</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="mod" href="#Sign">Sign</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="negative" href="#Sign.negative">negative</a><span class="sym">;</span> <a class="def bind" id="positive" href="#Sign.positive">positive</a><span class="sym">)</span>
 
 <span class="kw">def</span> <span class="def bind" id="opposite">opposite</span> <span class="sym">(</span><span class="var bind" id="l10">s</span> <span class="sym">:</span> <a class="mod" href="#Sign">Sign</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Sign">Sign</a> <span class="sym">≔</span>
   <span class="kw">elim</span> <a class="var" href="#l10">s</a> <span class="kw">return</span> <span class="var bind" id="l14">z</span> <span class="sym">.</span> <a class="mod" href="#Sign">Sign</a> <span class="sym">|</span> <span class="free">negative</span> <span class="sym">⇒</span> <a class="def" href="#Sign.positive">positive</a> <span class="sym">|</span> <span class="free">positive</span> <span class="sym">⇒</span> <a class="def" href="#Sign.negative">negative</a> <span class="kw">end</span>

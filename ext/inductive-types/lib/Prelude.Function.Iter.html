@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Prelude›Function›Iter</title><link rel="stylesheet" href="mctt.css"></head><body>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prelude›Function›Iter</title><link rel="stylesheet" href="mctt.css"></head><body class="unit">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">Prelude›Function›Iter</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><span class="kw">def</span> <a class="def" href="#iter">iter</a></li></ul></nav>
 <nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
 <h1>Prelude›Function›Iter</h1>
-<details class="toc"><summary>Contents</summary><ul><li><span class="kw">def</span> <a href="#iter">iter</a></li></ul></details>
 <div class="doc"><p>Iteration of an arbitrary function: a unit parameterized by the level <code>u</code> of the type, the type <code>A</code> and the function, so each client instantiates it as it needs: <code>Iter.iter 0l ℕ f n a</code> iterates on numbers, <code>Iter.iter 1l Type@0 F n A</code> iterates a type former.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Function</span><span class="sym">›</span><span class="unit bind">Iter</span>

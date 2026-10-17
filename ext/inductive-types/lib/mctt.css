@@ -10,7 +10,25 @@ a.def,a.mod,a.unit,a.var,a.ty{text-decoration:none}a:hover{text-decoration:under
 .def{color:#1f4fa3}.mod{color:#a3341f}.unit{color:#a3341f}.var{color:#333}.free{color:#c00}
 .bind.def,.bind.mod{font-weight:700}
 :target{background:#fff3b0}
-details.toc{font-size:.9em;margin-bottom:1em}details.toc ul{columns:3;list-style:none;padding-left:1em}
+nav.toc,nav.toc:target{font-family:Menlo,Consolas,monospace;font-size:.8em;line-height:1.5;background:#f7f7f4;margin:0;box-sizing:border-box}
+nav.toc ul{list-style:none;margin:0;padding-left:1.2em}nav.toc>ul{padding-left:0}
+nav.toc li{margin:.05em 0;overflow-wrap:anywhere}nav.toc summary{cursor:pointer}
+nav.toc a{text-decoration:none}nav.toc a:hover{text-decoration:underline}
+nav.toc .toc-head{font-weight:700;padding-bottom:.4em;margin-bottom:.4em;border-bottom:1px solid #ddd}
+nav.toc .toc-head a{color:#a3341f}
+a.toc-open,a.toc-close{display:none}
+@media (min-width:64em){
+body.unit{margin-left:max(20rem,calc(50vw - 29em))}
+nav.toc{position:fixed;top:0;left:0;bottom:0;width:18rem;overflow-y:auto;padding:1em;border-right:1px solid #ddd}
+}
+@media (max-width:63.99em){
+nav.toc{display:none}
+nav.toc:target{display:block;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10;overflow-y:auto;padding:1em 1.2em;font-size:.95em}
+nav.toc .toc-head{display:flex;justify-content:space-between}
+a.toc-open{display:block;position:fixed;top:.5em;right:.5em;z-index:5;padding:.2em .7em;font-size:.9em;color:#333;text-decoration:none;background:#fdfdfb;border:1px solid #c9d3e0;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+a.toc-close{display:inline;font-size:1.4em;line-height:1;color:#555}
+:target{scroll-margin-top:2.6em}
+}
 details.eval{font-family:"JetBrains Mono",Menlo,Consolas,monospace;font-size:.88em;margin-top:-.6em;margin-bottom:.6em;padding-left:1em}
 details.eval summary{cursor:pointer;color:#6a737d;font-size:.9em;width:max-content}
 details.eval pre.out{cursor:pointer;margin:.2em 0;padding:.3em .8em;border:1px solid #dde3ea;border-radius:3px;background:#fbfcfd;white-space:pre-wrap;line-height:1.4}

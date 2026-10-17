@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Prelude›Data›Prod</title><link rel="stylesheet" href="mctt.css"></head><body>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prelude›Data›Prod</title><link rel="stylesheet" href="mctt.css"></head><body class="unit">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">Prelude›Data›Prod</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><details open><summary><span class="kw">inductive</span> <a class="mod" href="#Prod">Prod</a></summary><ul><li><span class="kw">|</span> <a class="def" href="#Prod.pair">pair</a></li></ul></details></li><li><details open><summary><span class="kw">module</span> <a class="mod" href="#Ops">Ops</a></summary><ul><li><span class="kw">def</span> <a class="def" href="#Ops.fst">fst</a></li><li><span class="kw">def</span> <a class="def" href="#Ops.snd">snd</a></li><li><span class="kw">def</span> <a class="def" href="#Ops.swap">swap</a></li><li><span class="kw">def</span> <a class="def" href="#Ops.assoc">assoc</a></li><li><span class="kw">def</span> <a class="def" href="#Ops.unassoc">unassoc</a></li><li><span class="kw">def</span> <a class="def" href="#Ops.map">map</a></li><li><span class="kw">def</span> <a class="def" href="#Ops.curry">curry</a></li><li><span class="kw">def</span> <a class="def" href="#Ops.uncurry">uncurry</a></li></ul></details></li></ul></nav>
 <nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
 <h1>Prelude›Data›Prod</h1>
-<details class="toc"><summary>Contents</summary><ul><li><span class="kw">module</span> <a href="#Prod">Prod</a></li><li><span class="kw">module</span> <a href="#Ops">Ops</a></li></ul></details>
 <div class="doc"><p>Pairs: <code>Prod u A B</code> has the one constructor <code>pair a b</code>, for <code>a : A</code> and <code>b : B</code>, at every level <code>u</code>.  The dependent pairs, whose second component has a type depending on the first, are <code>Prelude›Data›Sigma</code>.</p>
 <p>The operations on pairs over fixed <code>A</code> and <code>B</code> are in the module <code>Ops u A B</code>: the projections, <code>swap</code>, the reassociations <code>assoc</code> and <code>unassoc</code>, <code>map</code> on both components, and currying.  The laws are in <code>Prelude›Data›Prod›Properties</code>.</p>
 </div>
@@ -12,7 +13,7 @@
 <span class="sym">|</span> <span class="def bind" id="Prod.pair">pair</span> <span class="sym">(</span><span class="var bind" id="l11">a</span> <span class="sym">:</span> <a class="var" href="#l5">A</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l13">b</span> <span class="sym">:</span> <a class="var" href="#l7">B</a><span class="sym">)</span>
 <span class="kw">end</span>
 
-<span class="kw">open</span> <a class="mod" href="#Prod">Prod</a> <span class="kw">export</span> <span class="sym">(</span><a class="def bind" id="pair" href="#Prod.pair">pair</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="mod" href="#Prod">Prod</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="pair" href="#Prod.pair">pair</a><span class="sym">)</span>
 
 <span class="kw">module</span> <span class="mod bind" id="Ops">Ops</span> <span class="sym">(</span><span class="var bind" id="l18">u</span> <span class="sym">:</span> <span class="ty">Level</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l19">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l18">u</a><span class="sym">}</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l21">B</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l18">u</a><span class="sym">}</span><span class="sym">)</span> <span class="kw">where</span>
 
