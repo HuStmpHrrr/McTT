@@ -962,7 +962,7 @@ let render_unit lib kinds (u : unit_info) : string =
   let name = unit_name u.u_path in
   Printf.sprintf
     "<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\">%s<title>%s</title>\
-     <link rel=\"stylesheet\" href=\"mctt.css\"></head><body class=\"unit\">\n%s%s\
+     <link rel=\"stylesheet\" href=\"mctt.css\"></head><body class=\"unit-page\">\n%s%s\
      <h1>%s</h1>\n%s</body></html>\n"
     viewport name (toc_html name u.u_toc) nav name (Buffer.contents b)
 
@@ -996,7 +996,7 @@ nav.toc .toc-head{font-weight:700;padding-bottom:.4em;margin-bottom:.4em;border-
 nav.toc .toc-head a{color:#a3341f}
 a.toc-open,a.toc-close{display:none}
 @media (min-width:64em){
-body.unit{margin-left:max(20rem,calc(50vw - 29em))}
+body.unit-page{margin-left:max(20rem,calc(50vw - 29em))}
 nav.toc{position:fixed;top:0;left:0;bottom:0;width:18rem;overflow-y:auto;padding:1em;border-right:1px solid #ddd}
 }
 @media (max-width:63.99em){
