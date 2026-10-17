@@ -5,9 +5,8 @@
 module NumberTheory where
 
 import Prelude›Builtin›Nat use (succ)
-import Prelude›Arith›Mult use (mult)
 import Prelude›Arith›Sum use (sumTo)
-import Prelude›Arith›Decide use (pick)
+import Prelude›Data›Bool use (if; cond)
 import Prelude›Arith›Divides.Closure use (dividesMultLeft; dividesPlusCancel)
 import Prelude›Function›Combinators use (Generic)
 import Prelude›Arith›Gcd use (gcd)
@@ -36,9 +35,9 @@ module Primes where
    [2 n + 2], which contain one by Bertrand's postulate. *)
 let nextPrime (n : ℕ) : ℕ ≔
   (elim n return y . (∀ (c : ℕ) → ℕ)
-   | zero ⇒ λ (c : ℕ) → pick (isPrime c) (λ (u : ℕ) → succ c) (λ (u : ℕ) → c)
+   | zero ⇒ λ (c : ℕ) → cond ℕ (isPrime c) (λ (u : ⊤) → c) (λ (u : ⊤) → succ c)
    | succ p, r ⇒ λ (c : ℕ) →
-       pick (isPrime c) (λ (u : ℕ) → r (succ c)) (λ (u : ℕ) → c)
+       cond ℕ (isPrime c) (λ (u : ⊤) → c) (λ (u : ⊤) → r (succ c))
    end) (succ n)
 end
 
@@ -72,10 +71,11 @@ eval nthPrime 9
 
 eval nthPrime 10
 
-(* There are ten primes below 30, and they add up to 129. *)
-eval sumTo isPrime 30
+(* There are ten primes below 30, and they add up to 129: the sums of 1,
+   and of [i], at each prime [i]. *)
+eval sumTo (λ (i : ℕ) → if ℕ (isPrime i) 1 0) 30
 
-eval sumTo (λ (i : ℕ) → mult i (isPrime i)) 30
+eval sumTo (λ (i : ℕ) → if ℕ (isPrime i) i 0) 30
 
 eval smallestDivisor 91
 

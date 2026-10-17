@@ -11,35 +11,23 @@ open Prelude›Logic.Disj 0l use (Or; orInl; orSwap)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusSucc)
+import Prelude›Data›Bool use (Bool; tt; ff; not; IsTrue)
 
-(* Parity flags, and numbers having a given flag.  [Even] and [Odd] below
-   unfold to [HasParity]; the flags themselves stay private. *)
-private module Flag where
-
-(* Exchanges the parity flags 0 (even) and 1 (odd). *)
-def flip (b : ℕ) : ℕ ≔
-  elim b return y . ℕ | zero ⇒ 1 | succ q, s ⇒ 0 end
-end
-
-(* [HasParity n b] says that [n] has parity [b], where 0 is even and 1 is
-   odd.  It recurses on [n] and flips [b] at each step, so by conversion
-   [Even (succ n)] is [Odd n] and [Odd (succ n)] is [Even n]. *)
-def HasParity : ∀ (n : ℕ) (b : ℕ) → Type@0 ≔
+(* [HasParity n b] says that [n] is even when [b] is [tt], and odd when it
+   is [ff].  It recurses on [n] and negates [b] at each step, so by
+   conversion [Even (succ n)] is [Odd n] and [Odd (succ n)] is [Even n].
+   [Even] and [Odd] below unfold to it; it stays private. *)
+private def HasParity : ∀ (n : ℕ) (b : Bool) → Type@0 ≔
   λ (n : ℕ) →
-    elim n return y . (∀ (b : ℕ) → Type@0)
-    | zero ⇒ λ (b : ℕ) →
-        elim b return z . Type@0 | zero ⇒ ⊤ | succ q, s ⇒ ⊥ end
-    | succ p, r ⇒ λ (b : ℕ) → r (flip b)
+    elim n return y . (∀ (b : Bool) → Type@0)
+    | zero ⇒ λ (b : Bool) → IsTrue b
+    | succ p, r ⇒ λ (b : Bool) → r (not b)
     end
 end
 
-end
+def Even (n : ℕ) : Type@0 ≔ HasParity n tt end
 
-open Flag use (HasParity)
-
-def Even (n : ℕ) : Type@0 ≔ HasParity n 0 end
-
-def Odd (n : ℕ) : Type@0 ≔ HasParity n 1 end
+def Odd (n : ℕ) : Type@0 ≔ HasParity n ff end
 
 def double (n : ℕ) : ℕ ≔
   elim n return y . ℕ

@@ -1356,10 +1356,10 @@ let%expect_test "lib/OrderParity.mctt" =
       : ∀ (x1 : ⊥) → ⊥
     Evaluate notLtZero 2
       --> λ (x1 : ⊥) → Prelude›Arith›Order.LtLaws.notLtZero 2 x1 : ∀ (x1 : ⊥) → ⊥
-    Evaluate leb 2 5 --> 1 : ℕ
-    Evaluate leb 5 2 --> 0 : ℕ
+    Evaluate leb 2 5 --> Prelude›Data›Bool.Bool.tt : Prelude›Data›Bool.Bool
+    Evaluate leb 5 2 --> Prelude›Data›Bool.Bool.ff : Prelude›Data›Bool.Bool
     Evaluate lebComplete 2 5 ⋆ --> ⋆ : ⊤
-    Evaluate lebZero 5 2 ⋆ --> ⋆ : ⊤
+    Evaluate lebFalse 5 2 ⋆ --> ⋆ : ⊤
     Evaluate double 7 --> 14 : ℕ
     Evaluate evenDouble 7 --> ⋆ : ⊤
     Evaluate orElim (Even 7) (Odd 7) ℕ (evenOrOdd 7) (λ (x1 : Even 7) → 0)
@@ -1434,22 +1434,30 @@ let%expect_test "lib/Induction.mctt" =
                  → x3)
                5 --> ⋆ : ⊤
     Evaluate caseNat (λ (x1 : ℕ) → ℕ) 0 (λ (x2 : ℕ) → x2) 9 --> 8 : ℕ
-    Evaluate orElim (Eq 3 3) (Not (Eq 3 3)) ℕ (decEq 3 3) (λ (x1 : Eq 3 3) → 1)
-               (λ (x2 : Not (Eq 3 3)) → 0) --> 1 : ℕ
-    Evaluate orElim (Eq 3 4) (Not (Eq 3 4)) ℕ (decEq 3 4) (λ (x1 : Eq 3 4) → 1)
-               (λ (x2 : Not (Eq 3 4)) → 0) --> 0 : ℕ
-    Evaluate orElim (Le 2 5) (Not (Le 2 5)) ℕ (decLe 2 5) (λ (x1 : Le 2 5) → 1)
-               (λ (x2 : Not (Le 2 5)) → 0) --> 1 : ℕ
-    Evaluate orElim (Lt 5 5) (Not (Lt 5 5)) ℕ (decLt 5 5) (λ (x1 : Lt 5 5) → 1)
-               (λ (x2 : Not (Lt 5 5)) → 0) --> 0 : ℕ
+    Evaluate orElim (Eq 3 3) (Not (Eq 3 3)) Bool (decEq 3 3)
+               (λ (x1 : Eq 3 3) → tt)
+               (λ (x2 : Not (Eq 3 3)) → ff) --> Prelude›Data›Bool.Bool.tt
+      : Prelude›Data›Bool.Bool
+    Evaluate orElim (Eq 3 4) (Not (Eq 3 4)) Bool (decEq 3 4)
+               (λ (x1 : Eq 3 4) → tt)
+               (λ (x2 : Not (Eq 3 4)) → ff) --> Prelude›Data›Bool.Bool.ff
+      : Prelude›Data›Bool.Bool
+    Evaluate orElim (Le 2 5) (Not (Le 2 5)) Bool (decLe 2 5)
+               (λ (x1 : Le 2 5) → tt)
+               (λ (x2 : Not (Le 2 5)) → ff) --> Prelude›Data›Bool.Bool.tt
+      : Prelude›Data›Bool.Bool
+    Evaluate orElim (Lt 5 5) (Not (Lt 5 5)) Bool (decLt 5 5)
+               (λ (x1 : Lt 5 5) → tt)
+               (λ (x2 : Not (Lt 5 5)) → ff) --> Prelude›Data›Bool.Bool.ff
+      : Prelude›Data›Bool.Bool
     Evaluate decStable (Eq 4 4) (decEq 4 4) (λ (x1 : Not (Eq 4 4)) → x1 ⋆) --> ⋆
       : ⊤
-    Evaluate eqb 6 6 --> 1 : ℕ
-    Evaluate eqb 6 2 --> 0 : ℕ
-    Evaluate iffFwd (Eq (eqb 5 5) 1) (Eq 5 5) (eqbSpec 5 5) ⋆ --> ⋆ : ⊤
-    Evaluate iffBwd (Eq (eqb 5 5) 1) (Eq 5 5) (eqbSpec 5 5) ⋆ --> ⋆ : ⊤
-    Evaluate eqbZero 2 3 ⋆
-      --> λ (x1 : ⊥) → Prelude›Arith›Decide.EqbLaws.eqbZero 2 3 ⋆ x1
+    Evaluate eqb 6 6 --> Prelude›Data›Bool.Bool.tt : Prelude›Data›Bool.Bool
+    Evaluate eqb 6 2 --> Prelude›Data›Bool.Bool.ff : Prelude›Data›Bool.Bool
+    Evaluate iffFwd (IsTrue (eqb 5 5)) (Eq 5 5) (eqbSpec 5 5) ⋆ --> ⋆ : ⊤
+    Evaluate iffBwd (IsTrue (eqb 5 5)) (Eq 5 5) (eqbSpec 5 5) ⋆ --> ⋆ : ⊤
+    Evaluate eqbFalse 2 3 ⋆
+      --> λ (x1 : ⊥) → Prelude›Arith›Decide.EqbLaws.eqbFalse 2 3 ⋆ x1
       : ∀ (x1 : ⊥) → ⊥
     Evaluate existsElim (λ (x1 : ℕ) → Eq (plus x1 x1) 6) ℕ
                (existsIntro (λ (x2 : ℕ) → Eq (plus x2 x2) 6) 3 ⋆)
@@ -1567,11 +1575,14 @@ let%expect_test "lib/Vectors.mctt" =
     Evaluate NV.last 4 (NV.reverse 5 oneToFive) --> 1 : ℕ
     Evaluate NV.nth 3 (NV.take 3 2 oneToFive) 2 ⋆ --> 3 : ℕ
     Evaluate NV.nth 2 (NV.drop 3 2 oneToFive) 0 ⋆ --> 4 : ℕ
-    Evaluate NV.allb (λ (x1 : ℕ) → x1) 5 oneToFive --> 1 : ℕ
-    Evaluate NV.allb (λ (x1 : ℕ) → x1) 4 (NV.cons 3 0 oneTwoThree) --> 0 : ℕ
-    Evaluate NV.anyb (λ (x1 : ℕ) → x1) 3 (NV.snoc 2 (NV.replicate 2 0) 9) --> 1
-      : ℕ
-    Evaluate NV.anyb (λ (x1 : ℕ) → x1) 3 (NV.replicate 3 0) --> 0 : ℕ
+    Evaluate NV.allb positive 5 oneToFive --> Prelude›Data›Bool.Bool.tt
+      : Prelude›Data›Bool.Bool
+    Evaluate NV.allb positive 4 (NV.cons 3 0 oneTwoThree)
+      --> Prelude›Data›Bool.Bool.ff : Prelude›Data›Bool.Bool
+    Evaluate NV.anyb positive 3 (NV.snoc 2 (NV.replicate 2 0) 9)
+      --> Prelude›Data›Bool.Bool.tt : Prelude›Data›Bool.Bool
+    Evaluate NV.anyb positive 3 (NV.replicate 3 0) --> Prelude›Data›Bool.Bool.ff
+      : Prelude›Data›Bool.Bool
     Evaluate nthTabulate square 4 3 ⋆ --> ⋆ : ⊤
     Evaluate nthZipWith 0l ℕ ℕ mult 2 (NV.take 2 1 oneTwoThree) fourFive 1 ⋆
       --> ⋆ : ⊤
@@ -1588,18 +1599,16 @@ let%expect_test "lib/Vectors.mctt" =
     Evaluate sumInitLast 4 oneToFive --> ⋆ : ⊤
     Evaluate sumReverse 5 oneToFive --> ⋆ : ⊤
     Evaluate sumTabulate square 4 --> ⋆ : ⊤
-    Evaluate allbSound 0l ℕ (λ (x1 : ℕ) → x1) 5 oneToFive ⋆ 2 ⋆ --> ⋆ : ⊤
-    Evaluate allbComplete 0l ℕ (λ (x1 : ℕ) → x1) 4 (NV.replicate 4 3)
-               (λ (x2 : ℕ)
-                  (x3 : Lt x2 4)
+    Evaluate allbSound 0l ℕ positive 5 oneToFive ⋆ 2 ⋆ --> ⋆ : ⊤
+    Evaluate allbComplete 0l ℕ positive 4 (NV.replicate 4 3)
+               (λ (x1 : ℕ)
+                  (x2 : Lt x1 4)
                  → ⋆) --> ⋆ : ⊤
-    Evaluate anybSound 0l ℕ (λ (x1 : ℕ) → x1) 3 (NV.snoc 2 (NV.replicate 2 0) 9)
-               ⋆
-               ℕ
-               (λ (x2 : ℕ)
-                  (x3 : Lt x2 3)
-                  (x4 : Lt 0 (NV.snoc 2 (NV.replicate 2 0) 9 x2 x3))
-                 → x2) --> 2 : ℕ
+    Evaluate anybSound 0l ℕ positive 3 (NV.snoc 2 (NV.replicate 2 0) 9) ⋆ ℕ
+               (λ (x1 : ℕ)
+                  (x2 : Lt x1 3)
+                  (x3 : IsTrue (positive (NV.snoc 2 (NV.replicate 2 0) 9 x1 x2)))
+                 → x1) --> 2 : ℕ
     |}]
 
 let%expect_test "lib/Powers.mctt" =
@@ -1734,8 +1743,8 @@ let%expect_test "lib/NumberTheory.mctt" =
     Evaluate nthPrime 8 --> 23 : ℕ
     Evaluate nthPrime 9 --> 29 : ℕ
     Evaluate nthPrime 10 --> 31 : ℕ
-    Evaluate sumTo isPrime 30 --> 10 : ℕ
-    Evaluate sumTo (λ (x1 : ℕ) → mult x1 (isPrime x1)) 30 --> 129 : ℕ
+    Evaluate sumTo (λ (x1 : ℕ) → if ℕ (isPrime x1) 1 0) 30 --> 10 : ℕ
+    Evaluate sumTo (λ (x1 : ℕ) → if ℕ (isPrime x1) x1 0) 30 --> 129 : ℕ
     Evaluate smallestDivisor 91 --> 7 : ℕ
     Evaluate smallestDivisor 29 --> 29 : ℕ
     Evaluate Prime 29 --> ⊤ : Type@0
@@ -2537,11 +2546,14 @@ let%expect_test "lib/Binary.mctt" =
 let%expect_test "lib/Groups.mctt" =
   let _ = main_of_lib "Groups.mctt" in
   [%expect {|
-    Evaluate negative minusThree --> 1 : ℕ
+    Evaluate negative minusThree --> Prelude›Data›Bool.Bool.tt
+      : Prelude›Data›Bool.Bool
     Evaluate magnitude minusThree --> 3 : ℕ
-    Evaluate negative (Additive.Base.pow minusThree 4) --> 1 : ℕ
+    Evaluate negative (Additive.Base.pow minusThree 4)
+      --> Prelude›Data›Bool.Bool.tt : Prelude›Data›Bool.Bool
     Evaluate magnitude (Additive.Base.pow minusThree 4) --> 12 : ℕ
-    Evaluate negative (minus (ofNat 4) (ofNat 9)) --> 1 : ℕ
+    Evaluate negative (minus (ofNat 4) (ofNat 9)) --> Prelude›Data›Bool.Bool.tt
+      : Prelude›Data›Bool.Bool
     Evaluate magnitude (minus (ofNat 4) (ofNat 9)) --> 5 : ℕ
     Evaluate solve (ofNat 2) (ofNat 5) (ofNat 3) ⋆ --> ⋆ : ⊤
     Evaluate solve minusThree (ofNat 1) (pair 4 0) ⋆ --> ⋆ : ⊤
@@ -3230,7 +3242,7 @@ let%expect_test "mctt-doc: ℕ links to the type bound as the natural numbers" =
   let page = Doc.render_unit lib' (Doc.anchor_kinds lib') u in
   Printf.printf "%d links, %d without a link\n" (doc_count "ℕ</a>" page) (doc_count span page);
   [%expect {|
-    2787 links to Nat, 0 other links, 0 without a link
+    2673 links to Nat, 0 other links, 0 without a link
     NoNat: not checked
     0 links, 2 without a link
     |}]

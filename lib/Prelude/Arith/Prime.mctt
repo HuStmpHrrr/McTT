@@ -1,68 +1,70 @@
 (* Prime numbers by trial division.  [smallestDivisor n] tries the
    candidates [2, 3, ...] while their square is at most [n], and answers the
    first one that divides [n], or [n] itself when none does.  [isPrime n] is
-   1 when [n] is at least 2 and has no such divisor, and 0 otherwise;
-   [Prime n] is the computed proposition [Eq (isPrime n) 1]. *)
+   [tt] when [n] is at least 2 and has no such divisor, and [ff] otherwise;
+   [Prime n] is the computed proposition [IsTrue (isPrime n)]. *)
 module Prelude›Arith›Prime where
 
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic use (Not; absurd)
 import Prelude›Arith›Equality use (Eq; refl)
 import Prelude›Arith›Mult use (mult)
-import Prelude›Arith›Sub use (monus)
 import Prelude›Arith›Order use (Le; leb)
-import Prelude›Arith›Decide use (pick; eqb)
+import Prelude›Arith›Decide use (eqb)
 open Prelude›Arith›Decide.EqbLaws use (eqbCases)
 import Prelude›Arith›Div use (mod)
 import Prelude›Arith›Divides use (Divides)
 open Prelude›Arith›Divides.Basic use (dividesRefl)
-import Prelude›Arith›Induction use (caseNat)
+import Prelude›Data›Bool use (Bool; tt; ff; IsTrue; IsFalse; cond)
 
 (* Trial division and the invariants of its search.  The definitions
    below unfold to it, and clients see only them. *)
 private module TrialDivision where
 
 (* Trial division of [n] from the candidate [d], for at most [fuel]
-   candidates.  It answers [found d] for the first candidate [d] that
-   divides [n], and [none] once [mult d d] exceeds [n] or the fuel runs
-   out. *)
-def trialDivision (n : ℕ) (none : ℕ) (found : ∀ (d : ℕ) → ℕ) (fuel : ℕ) :
-    ∀ (d : ℕ) → ℕ ≔
-  elim fuel return y . (∀ (d : ℕ) → ℕ)
+   candidates, answering in [A].  It answers [found d] for the first
+   candidate [d] that divides [n], and [none] once [mult d d] exceeds [n]
+   or the fuel runs out.  It branches with [cond], so only the chosen
+   branch, and not the recursive call, is computed. *)
+def trialDivision (A : Type@0) (n : ℕ) (none : A) (found : ∀ (d : ℕ) → A)
+    (fuel : ℕ) : ∀ (d : ℕ) → A ≔
+  elim fuel return y . (∀ (d : ℕ) → A)
   | zero ⇒ λ (d : ℕ) → none
   | succ f, r ⇒ λ (d : ℕ) →
-      pick (monus (mult d d) n)
-        (λ (u : ℕ) →
-           pick (eqb (mod n d) 0) (λ (v : ℕ) → r (succ d))
-             (λ (v : ℕ) → found d))
-        (λ (u : ℕ) → none)
+      cond A (leb (mult d d) n)
+        (λ (u : ⊤) →
+           cond A (eqb (mod n d) 0) (λ (v : ⊤) → found d)
+             (λ (v : ⊤) → r (succ d)))
+        (λ (u : ⊤) → none)
   end
 end
 
-(* [1] when trial division finds no divisor of [n], and [0] otherwise. *)
-def noSmallDivisor (n : ℕ) : ℕ ≔ trialDivision n 1 (λ (d : ℕ) → 0) n 2 end
+(* [tt] when trial division finds no divisor of [n], and [ff] otherwise. *)
+def noSmallDivisor (n : ℕ) : Bool ≔
+  trialDivision Bool n tt (λ (d : ℕ) → ff) n 2
+end
 
 (* Every answer of the search for a divisor divides [n]: a candidate is
    answered only when the remainder of [n] by it is [0]. *)
 lemma trialDivisionDivides : ∀ (n : ℕ) (fuel : ℕ) (d : ℕ) →
-    Divides (trialDivision n n (λ (x : ℕ) → x) fuel d) n ≔
+    Divides (trialDivision ℕ n n (λ (x : ℕ) → x) fuel d) n ≔
   λ (n : ℕ) (fuel : ℕ) →
     elim fuel return x . (∀ (d : ℕ) →
-                            Divides (trialDivision n n (λ (y : ℕ) → y) x d) n)
+                            Divides (trialDivision ℕ n n (λ (y : ℕ) → y) x d) n)
     | zero ⇒ λ (d : ℕ) → dividesRefl n
     | succ f, ih ⇒ λ (d : ℕ) →
-        let next ≔ trialDivision n n (λ (y : ℕ) → y) f (succ d);
-            inner ≔ pick (eqb (mod n d) 0) (λ (v : ℕ) → next) (λ (v : ℕ) → d)
-        in caseNat
-             (λ (b : ℕ) →
-                Divides (pick b (λ (u : ℕ) → inner) (λ (u : ℕ) → n)) n)
-             (eqbCases (mod n d) 0
-                (λ (b : ℕ) →
-                   Divides (pick b (λ (v : ℕ) → next) (λ (v : ℕ) → d)) n)
-                (λ (h : Eq (eqb (mod n d) 0) 0) → ih (succ d))
-                (λ (h : Eq (mod n d) 0) → h))
-             (λ (k : ℕ) → dividesRefl n)
-             (monus (mult d d) n)
+        let next ≔ trialDivision ℕ n n (λ (y : ℕ) → y) f (succ d);
+            inner ≔ cond ℕ (eqb (mod n d) 0) (λ (v : ⊤) → d) (λ (v : ⊤) → next)
+        in elim leb (mult d d) n return c .
+             Divides (cond ℕ c (λ (u : ⊤) → inner) (λ (u : ⊤) → n)) n
+           | tt ⇒
+               eqbCases (mod n d) 0
+                 (λ (c : Bool) →
+                    Divides (cond ℕ c (λ (v : ⊤) → d) (λ (v : ⊤) → next)) n)
+                 (λ (h : IsFalse (eqb (mod n d) 0)) → ih (succ d))
+                 (λ (h : Eq (mod n d) 0) → h)
+           | ff ⇒ dividesRefl n
+           end
         end
     end
 end
@@ -70,38 +72,37 @@ end
 (* When the search for a divisor fails, the smallest divisor is the number
    itself: both searches run through the same candidates. *)
 lemma trialDivisionNone : ∀ (n : ℕ) (fuel : ℕ) (d : ℕ)
-    (h : Eq (trialDivision n 1 (λ (x : ℕ) → 0) fuel d) 1) →
-    Eq (trialDivision n n (λ (x : ℕ) → x) fuel d) n ≔
+    (h : IsTrue (trialDivision Bool n tt (λ (x : ℕ) → ff) fuel d)) →
+    Eq (trialDivision ℕ n n (λ (x : ℕ) → x) fuel d) n ≔
   λ (n : ℕ) (fuel : ℕ) →
-    elim fuel return x . (∀ (d : ℕ)
-                           (h : Eq (trialDivision n 1 (λ (y : ℕ) → 0) x d) 1) →
-                           Eq (trialDivision n n (λ (y : ℕ) → y) x d) n)
+    elim fuel return x .
+      (∀ (d : ℕ) (h : IsTrue (trialDivision Bool n tt (λ (y : ℕ) → ff) x d)) →
+         Eq (trialDivision ℕ n n (λ (y : ℕ) → y) x d) n)
     | zero ⇒ λ (d : ℕ) (h : ⊤) → refl n
     | succ f, ih ⇒ λ (d : ℕ) →
-        let flagNext ≔ trialDivision n 1 (λ (y : ℕ) → 0) f (succ d);
-            next ≔ trialDivision n n (λ (y : ℕ) → y) f (succ d)
-        in caseNat
-             (λ (b : ℕ) →
-                ∀ (h : Eq (pick b
-                                (λ (u : ℕ) →
-                                   pick (eqb (mod n d) 0) (λ (v : ℕ) → flagNext)
-                                     (λ (v : ℕ) → 0))
-                                (λ (u : ℕ) → 1)) 1) →
-                Eq (pick b
-                    (λ (u : ℕ) →
-                       pick (eqb (mod n d) 0) (λ (v : ℕ) → next)
-                         (λ (v : ℕ) → d))
-                    (λ (u : ℕ) → n)) n)
-             (caseNat
-                (λ (c : ℕ) →
-                   ∀ (h : Eq (pick c (λ (v : ℕ) → flagNext)
-                                (λ (v : ℕ) → 0)) 1) →
-                   Eq (pick c (λ (v : ℕ) → next) (λ (v : ℕ) → d)) n)
-                (λ (h : Eq flagNext 1) → ih (succ d) h)
-                (λ (k : ℕ) (h : ⊥) → absurd (Eq d n) h)
-                (eqb (mod n d) 0))
-             (λ (k : ℕ) (h : ⊤) → refl n)
-             (monus (mult d d) n)
+        let flagNext ≔ trialDivision Bool n tt (λ (y : ℕ) → ff) f (succ d);
+            next ≔ trialDivision ℕ n n (λ (y : ℕ) → y) f (succ d)
+        in elim leb (mult d d) n return c .
+             (∀ (h : IsTrue (cond Bool c
+                               (λ (u : ⊤) →
+                                  cond Bool (eqb (mod n d) 0) (λ (v : ⊤) → ff)
+                                    (λ (v : ⊤) → flagNext))
+                               (λ (u : ⊤) → tt))) →
+                Eq (cond ℕ c
+                      (λ (u : ⊤) →
+                         cond ℕ (eqb (mod n d) 0) (λ (v : ⊤) → d)
+                           (λ (v : ⊤) → next))
+                      (λ (u : ⊤) → n)) n)
+           | tt ⇒
+               elim eqb (mod n d) 0 return e .
+                 (∀ (h : IsTrue (cond Bool e (λ (v : ⊤) → ff)
+                                   (λ (v : ⊤) → flagNext))) →
+                    Eq (cond ℕ e (λ (v : ⊤) → d) (λ (v : ⊤) → next)) n)
+               | tt ⇒ λ (h : ⊥) → absurd (Eq d n) h
+               | ff ⇒ λ (h : IsTrue flagNext) → ih (succ d) h
+               end
+           | ff ⇒ λ (h : ⊤) → refl n
+           end
         end
     end
 end
@@ -114,16 +115,18 @@ open TrialDivision
 (* The smallest divisor of [n] from 2 on, found by trial division up to the
    square root.  It is [n] when [n] is prime, and also when [n] is [0] or
    [1]. *)
-def smallestDivisor (n : ℕ) : ℕ ≔ trialDivision n n (λ (d : ℕ) → d) n 2 end
+def smallestDivisor (n : ℕ) : ℕ ≔
+  trialDivision ℕ n n (λ (d : ℕ) → d) n 2
+end
 
-(* The primality test: [1] for primes, [0] otherwise. *)
-def isPrime (n : ℕ) : ℕ ≔
-  pick (leb 2 n) (λ (u : ℕ) → 0) (λ (u : ℕ) → noSmallDivisor n)
+(* The primality test: [tt] for primes, [ff] otherwise. *)
+def isPrime (n : ℕ) : Bool ≔
+  cond Bool (leb 2 n) (λ (u : ⊤) → noSmallDivisor n) (λ (u : ⊤) → ff)
 end
 
 (* [Prime n] says that [n] is prime.  It computes, so a closed instance is
    [⊤] or [⊥]. *)
-def Prime (n : ℕ) : Type@0 ≔ Eq (isPrime n) 1 end
+def Prime (n : ℕ) : Type@0 ≔ IsTrue (isPrime n) end
 
 (* The smallest divisor divides, primes are at least 2 and are their own
    smallest divisor. *)
@@ -134,7 +137,7 @@ theorem smallestDivisorDivides : ∀ (n : ℕ) → Divides (smallestDivisor n) n
   λ (n : ℕ) → trialDivisionDivides n n 2
 end
 
-(* Every prime is at least 2: below 2, [isPrime] answers 0. *)
+(* Every prime is at least 2: below 2, [isPrime] answers [ff]. *)
 theorem primeGeTwo : ∀ (n : ℕ) (h : Prime n) → Le 2 n ≔
   λ (n : ℕ) →
     elim n return x . (∀ (h : Prime x) → Le 2 x)
@@ -157,7 +160,7 @@ theorem primeSmallestDivisor : ∀ (n : ℕ) (h : Prime n) →
         elim p return y . (∀ (h : Prime (succ y)) →
                              Eq (smallestDivisor (succ y)) (succ y))
         | zero ⇒ λ (h : ⊥) → absurd (Eq (smallestDivisor 1) 1) h
-        | succ q, s ⇒ λ (h : Eq (noSmallDivisor (succ (succ q))) 1) →
+        | succ q, s ⇒ λ (h : IsTrue (noSmallDivisor (succ (succ q)))) →
             trialDivisionNone (succ (succ q)) (succ (succ q)) 2 h
         end
     end

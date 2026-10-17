@@ -1,6 +1,7 @@
 (* Laws of [Prelude›Data›Vec], stated with [Prelude›Arith›Equality] on
    number-valued observations: elements read with [nth], sums of vectors of
-   numbers ([sumVec] of [Prelude›Data›Vec›Nat]), and the answers of the tests [allb] and [anyb].  Bound proofs are
+   numbers ([sumVec] of [Prelude›Data›Vec›Nat]), and with [IsTrue] on the
+   answers of the boolean tests [allb] and [anyb].  Bound proofs are
    irrelevant to the elements read ([nthIrrel]), which, with [sumExt], lets
    laws relate vectors that agree only up to those proofs. *)
 module Prelude›Data›Vec›Properties where
@@ -23,6 +24,7 @@ open Prelude›Arith›Monotone.SubLaws use (subLe)
 import Prelude›Arith›Sum use (sumTo)
 open Prelude›Arith›Sum.Basic use (sumToShift)
 import Prelude›Data›Vec as V
+import Prelude›Data›Bool use (Bool; tt; ff; and; or; IsTrue)
 import Prelude›Data›Vec›Nat use (sumVec)
 
 (* Vectors of numbers, the instance most laws below are about. *)
@@ -496,87 +498,64 @@ module Tests where
    element. *)
 private module Step where
 
-(* One step of [allb]: [elim x | zero ⇒ 0 | succ ⇒ b] is 1 exactly when [x]
-   is positive and [b] is 1.  These three lemmas take the step apart and put
-   it together. *)
-lemma allHead : ∀ (x : ℕ) (b : ℕ)
-    (e : Eq (elim x return y . ℕ | zero ⇒ 0 | succ q, s ⇒ b end) 1) → Lt 0 x ≔
-  λ (x : ℕ) (b : ℕ) →
-    elim x return z . (∀ (e : Eq (elim z return y . ℕ
-                                 | zero ⇒ 0
-                                 | succ q, s ⇒ b
-                                 end) 1) →
-                        Lt 0 z)
-    | zero ⇒ λ (e : ⊥) → e
-    | succ r, t ⇒ λ (e : Eq b 1) → ⋆
+(* One step of [allb]: [and x b] holds exactly when [x] and [b] do.  These
+   three lemmas take the step apart and put it together. *)
+lemma allHead : ∀ (x : Bool) (b : Bool) (e : IsTrue (and x b)) → IsTrue x ≔
+  λ (x : Bool) (b : Bool) →
+    elim x return z . (∀ (e : IsTrue (and z b)) → IsTrue z)
+    | tt ⇒ λ (e : IsTrue b) → ⋆
+    | ff ⇒ λ (e : ⊥) → e
     end
 end
 
-lemma allTail : ∀ (x : ℕ) (b : ℕ)
-    (e : Eq (elim x return y . ℕ | zero ⇒ 0 | succ q, s ⇒ b end) 1) → Eq b 1 ≔
-  λ (x : ℕ) (b : ℕ) →
-    elim x return z . (∀ (e : Eq (elim z return y . ℕ
-                                 | zero ⇒ 0
-                                 | succ q, s ⇒ b
-                                 end) 1) →
-                        Eq b 1)
-    | zero ⇒ λ (e : ⊥) → absurd (Eq b 1) e
-    | succ r, t ⇒ λ (e : Eq b 1) → e
+lemma allTail : ∀ (x : Bool) (b : Bool) (e : IsTrue (and x b)) → IsTrue b ≔
+  λ (x : Bool) (b : Bool) →
+    elim x return z . (∀ (e : IsTrue (and z b)) → IsTrue b)
+    | tt ⇒ λ (e : IsTrue b) → e
+    | ff ⇒ λ (e : ⊥) → absurd (IsTrue b) e
     end
 end
 
-lemma allIntro : ∀ (x : ℕ) (b : ℕ) (hx : Lt 0 x) (hb : Eq b 1) →
-    Eq (elim x return y . ℕ | zero ⇒ 0 | succ q, s ⇒ b end) 1 ≔
-  λ (x : ℕ) (b : ℕ) →
-    elim x return z . (∀ (hx : Lt 0 z) (hb : Eq b 1) →
-                         Eq (elim z return y . ℕ
-                            | zero ⇒ 0
-                            | succ q, s ⇒ b
-                            end) 1)
-    | zero ⇒ λ (hx : ⊥) (hb : Eq b 1) → absurd ⊥ hx
-    | succ r, t ⇒ λ (hx : ⊤) (hb : Eq b 1) → hb
+lemma allIntro : ∀ (x : Bool) (b : Bool) (hx : IsTrue x) (hb : IsTrue b) →
+    IsTrue (and x b) ≔
+  λ (x : Bool) (b : Bool) →
+    elim x return z . (∀ (hx : IsTrue z) (hb : IsTrue b) → IsTrue (and z b))
+    | tt ⇒ λ (hx : ⊤) (hb : IsTrue b) → hb
+    | ff ⇒ λ (hx : ⊥) (hb : IsTrue b) → hx
     end
 end
 
-(* One step of [anyb]: when [elim x | zero ⇒ b | succ ⇒ 1] is 1, either [x]
-   is positive or [b] is 1.  The conclusion is eliminated into any [C], of
-   any level [u]. *)
-def anyCases : ∀ (u : Level) (x : ℕ) (b : ℕ)
-    (e : Eq (elim x return y . ℕ | zero ⇒ b | succ q, s ⇒ 1 end) 1)
-    (C : Type@{u}) (l : ∀ (hx : Lt 0 x) → C) (r : ∀ (hb : Eq b 1) → C) → C ≔
-  λ (u : Level) (x : ℕ) (b : ℕ) →
-    elim x return z . (∀ (e : Eq (elim z return y . ℕ
-                                 | zero ⇒ b
-                                 | succ q, s ⇒ 1
-                                 end) 1)
-                        (C : Type@{u}) (l : ∀ (hx : Lt 0 z) → C)
-                        (r : ∀ (hb : Eq b 1) → C) → C)
-    | zero ⇒ λ (e : Eq b 1) (C : Type@{u}) (l : ∀ (hx : ⊥) → C)
-               (r : ∀ (hb : Eq b 1) → C) → r e
-    | succ q, t ⇒ λ (e : ⊤) (C : Type@{u}) (l : ∀ (hx : ⊤) → C)
-                    (r : ∀ (hb : Eq b 1) → C) → l ⋆
+(* One step of [anyb]: when [or x b] holds, [x] or [b] does.  The
+   conclusion is eliminated into any [C], of any level [u]. *)
+def anyCases : ∀ (u : Level) (x : Bool) (b : Bool) (e : IsTrue (or x b))
+    (C : Type@{u}) (l : ∀ (hx : IsTrue x) → C) (r : ∀ (hb : IsTrue b) → C) →
+    C ≔
+  λ (u : Level) (x : Bool) (b : Bool) →
+    elim x return z . (∀ (e : IsTrue (or z b)) (C : Type@{u})
+                         (l : ∀ (hx : IsTrue z) → C)
+                         (r : ∀ (hb : IsTrue b) → C) → C)
+    | tt ⇒ λ (e : ⊤) (C : Type@{u}) (l : ∀ (hx : ⊤) → C)
+             (r : ∀ (hb : IsTrue b) → C) → l ⋆
+    | ff ⇒ λ (e : IsTrue b) (C : Type@{u}) (l : ∀ (hx : ⊥) → C)
+             (r : ∀ (hb : IsTrue b) → C) → r e
     end
 end
 
 end
 
-(* [allb] answers 1 only when the test is positive on every element. *)
-def allbSound : ∀ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : ℕ)
-    (v : V.Vec u A n) (e : Eq (V.allb u A p n v) 1) →
-    V.All u A (λ (a : A) → Lt 0 (p a)) n v ≔
-  λ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : ℕ) →
-    elim n return k . (∀ (v : V.Vec u A k) (e : Eq (V.allb u A p k v) 1) →
-                         V.All u A (λ (a : A) → Lt 0 (p a)) k v)
+(* [allb] answers [tt] only when the test holds of every element. *)
+def allbSound : ∀ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → Bool) (n : ℕ)
+    (v : V.Vec u A n) (e : IsTrue (V.allb u A p n v)) →
+    V.All u A (λ (a : A) → IsTrue (p a)) n v ≔
+  λ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → Bool) (n : ℕ) →
+    elim n return k . (∀ (v : V.Vec u A k) (e : IsTrue (V.allb u A p k v)) →
+                         V.All u A (λ (a : A) → IsTrue (p a)) k v)
     | zero ⇒ λ (v : V.Vec u A 0) (e : ⊤) (i : ℕ) (h : Lt i 0) →
-        absurd (Lt 0 (p (v i h))) h
+        absurd (IsTrue (p (v i h))) h
     | succ m, ih ⇒ λ (w : V.Vec u A (succ m)) →
         let b ≔ V.allb u A p m (V.tail u A m w)
-        in λ (e : Eq (elim (p (w 0 ⋆)) return y . ℕ
-                      | zero ⇒ 0
-                      | succ q, s ⇒ b
-                      end) 1)
-             (i : ℕ) →
-             elim i return x . (∀ (h : Lt x (succ m)) → Lt 0 (p (w x h)))
+        in λ (e : IsTrue (and (p (w 0 ⋆)) b)) (i : ℕ) →
+             elim i return x . (∀ (h : Lt x (succ m)) → IsTrue (p (w x h)))
              | zero ⇒ λ (h : ⊤) → Step.allHead (p (w 0 ⋆)) b e
              | succ j, s ⇒ λ (h : Lt j m) →
                  ih (V.tail u A m w) (Step.allTail (p (w 0 ⋆)) b e) j h
@@ -585,45 +564,41 @@ def allbSound : ∀ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : �
     end
 end
 
-(* [allb] answers 1 when the test is positive on every element. *)
-theorem allbComplete : ∀ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : ℕ)
-    (v : V.Vec u A n) (h : V.All u A (λ (a : A) → Lt 0 (p a)) n v) →
-    Eq (V.allb u A p n v) 1 ≔
-  λ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : ℕ) →
+(* [allb] answers [tt] when the test holds of every element. *)
+theorem allbComplete : ∀ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → Bool)
+    (n : ℕ) (v : V.Vec u A n) (h : V.All u A (λ (a : A) → IsTrue (p a)) n v) →
+    IsTrue (V.allb u A p n v) ≔
+  λ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → Bool) (n : ℕ) →
     elim n return k . (∀ (v : V.Vec u A k)
-                         (h : V.All u A (λ (a : A) → Lt 0 (p a)) k v) →
-                         Eq (V.allb u A p k v) 1)
+                         (h : V.All u A (λ (a : A) → IsTrue (p a)) k v) →
+                         IsTrue (V.allb u A p k v))
     | zero ⇒ λ (v : V.Vec u A 0)
-               (h : V.All u A (λ (a : A) → Lt 0 (p a)) 0 v) → ⋆
+               (h : V.All u A (λ (a : A) → IsTrue (p a)) 0 v) → ⋆
     | succ m, ih ⇒ λ (w : V.Vec u A (succ m))
-                     (h : V.All u A (λ (a : A) → Lt 0 (p a)) (succ m) w) →
+                     (h : V.All u A (λ (a : A) → IsTrue (p a)) (succ m) w) →
         Step.allIntro (p (w 0 ⋆)) (V.allb u A p m (V.tail u A m w)) (h 0 ⋆)
           (ih (V.tail u A m w) (λ (i : ℕ) (hi : Lt i m) → h (succ i) hi))
     end
 end
 
-(* When [anyb] answers 1, the test is positive on some element. *)
-def anybSound : ∀ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : ℕ)
-    (v : V.Vec u A n) (e : Eq (V.anyb u A p n v) 1) →
-    V.Any u A (λ (a : A) → Lt 0 (p a)) n v ≔
-  λ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : ℕ) →
-    elim n return k . (∀ (v : V.Vec u A k) (e : Eq (V.anyb u A p k v) 1) →
-                         V.Any u A (λ (a : A) → Lt 0 (p a)) k v)
+(* When [anyb] answers [tt], the test holds of some element. *)
+def anybSound : ∀ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → Bool) (n : ℕ)
+    (v : V.Vec u A n) (e : IsTrue (V.anyb u A p n v)) →
+    V.Any u A (λ (a : A) → IsTrue (p a)) n v ≔
+  λ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → Bool) (n : ℕ) →
+    elim n return k . (∀ (v : V.Vec u A k) (e : IsTrue (V.anyb u A p k v)) →
+                         V.Any u A (λ (a : A) → IsTrue (p a)) k v)
     | zero ⇒ λ (v : V.Vec u A 0) (e : ⊥) →
-        Neg.absurd (succl u) (V.Any u A (λ (a : A) → Lt 0 (p a)) 0 v) e
+        Neg.absurd (succl u) (V.Any u A (λ (a : A) → IsTrue (p a)) 0 v) e
     | succ m, ih ⇒ λ (w : V.Vec u A (succ m)) →
         let b ≔ V.anyb u A p m (V.tail u A m w)
-        in λ (e : Eq (elim (p (w 0 ⋆)) return y . ℕ
-                      | zero ⇒ b
-                      | succ q, s ⇒ 1
-                      end) 1)
-             (C : Type@{u})
-             (k : ∀ (i : ℕ) (h : Lt i (succ m)) (q : Lt 0 (p (w i h))) → C) →
+        in λ (e : IsTrue (or (p (w 0 ⋆)) b)) (C : Type@{u})
+             (k : ∀ (i : ℕ) (h : Lt i (succ m)) (q : IsTrue (p (w i h))) → C) →
              Step.anyCases u (p (w 0 ⋆)) b e C
-               (λ (hx : Lt 0 (p (w 0 ⋆))) → k 0 ⋆ hx)
-               (λ (hb : Eq b 1) →
+               (λ (hx : IsTrue (p (w 0 ⋆))) → k 0 ⋆ hx)
+               (λ (hb : IsTrue b) →
                   ih (V.tail u A m w) hb C
-                    (λ (i : ℕ) (h : Lt i m) (q : Lt 0 (p (w (succ i) h))) →
+                    (λ (i : ℕ) (h : Lt i m) (q : IsTrue (p (w (succ i) h))) →
                        k (succ i) h q))
         end
     end

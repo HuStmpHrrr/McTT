@@ -1,6 +1,6 @@
 (* A client of [Prelude›Arith›Induction] and [Prelude›Arith›Decide]: halving by
-   strong and by two-step induction, decisions eliminated into [ℕ] to show which
-   branch they compute, and the equality test [eqb]. *)
+   strong and by two-step induction, decisions eliminated into [Bool] to show
+   which branch they compute, and the equality test [eqb]. *)
 module Induction where
 
 import Prelude›Builtin›Nat use (succ)
@@ -17,7 +17,8 @@ import Prelude›Arith›Parity use (Even; double)
 import Prelude›Arith›Induction use (caseNat; twoStepInd; strongInd)
 import Prelude›Arith›Decide use (eqb)
 open Prelude›Arith›Decide.Deciders use (decEq; decLe; decLt)
-open Prelude›Arith›Decide.EqbLaws use (eqbSpec; eqbZero)
+open Prelude›Arith›Decide.EqbLaws use (eqbSpec; eqbFalse)
+import Prelude›Data›Bool use (Bool; tt; ff; IsTrue)
 
 (* Halving, by the two induction principles; [eval]s below compare them. *)
 module Halving where
@@ -64,19 +65,19 @@ eval twoStepInd (λ (k : ℕ) → Even (double k)) ⋆ ⋆
 (* Case analysis: the predecessor. *)
 eval caseNat (λ (k : ℕ) → ℕ) 0 (λ (k : ℕ) → k) 9
 
-(* Decisions, eliminated into [ℕ]: 1 for the positive branch, 0 for the
-   negative one. *)
-eval orElim (Eq 3 3) (Not (Eq 3 3)) ℕ (decEq 3 3)
-       (λ (h : Eq 3 3) → 1) (λ (h : Not (Eq 3 3)) → 0)
+(* Decisions, eliminated into [Bool]: [tt] for the positive branch, [ff]
+   for the negative one. *)
+eval orElim (Eq 3 3) (Not (Eq 3 3)) Bool (decEq 3 3)
+       (λ (h : Eq 3 3) → tt) (λ (h : Not (Eq 3 3)) → ff)
 
-eval orElim (Eq 3 4) (Not (Eq 3 4)) ℕ (decEq 3 4)
-       (λ (h : Eq 3 4) → 1) (λ (h : Not (Eq 3 4)) → 0)
+eval orElim (Eq 3 4) (Not (Eq 3 4)) Bool (decEq 3 4)
+       (λ (h : Eq 3 4) → tt) (λ (h : Not (Eq 3 4)) → ff)
 
-eval orElim (Le 2 5) (Not (Le 2 5)) ℕ (decLe 2 5)
-       (λ (h : Le 2 5) → 1) (λ (h : Not (Le 2 5)) → 0)
+eval orElim (Le 2 5) (Not (Le 2 5)) Bool (decLe 2 5)
+       (λ (h : Le 2 5) → tt) (λ (h : Not (Le 2 5)) → ff)
 
-eval orElim (Lt 5 5) (Not (Lt 5 5)) ℕ (decLt 5 5)
-       (λ (h : Lt 5 5) → 1) (λ (h : Not (Lt 5 5)) → 0)
+eval orElim (Lt 5 5) (Not (Lt 5 5)) Bool (decLt 5 5)
+       (λ (h : Lt 5 5) → tt) (λ (h : Not (Lt 5 5)) → ff)
 
 (* A decidable proposition is stable under double negation. *)
 eval decStable (Eq 4 4) (decEq 4 4) (λ (n : Not (Eq 4 4)) → n ⋆)
@@ -86,11 +87,11 @@ eval eqb 6 6
 eval eqb 6 2
 
 (* Both directions of [eqbSpec] at closed numbers. *)
-eval iffFwd (Eq (eqb 5 5) 1) (Eq 5 5) (eqbSpec 5 5) ⋆
+eval iffFwd (IsTrue (eqb 5 5)) (Eq 5 5) (eqbSpec 5 5) ⋆
 
-eval iffBwd (Eq (eqb 5 5) 1) (Eq 5 5) (eqbSpec 5 5) ⋆
+eval iffBwd (IsTrue (eqb 5 5)) (Eq 5 5) (eqbSpec 5 5) ⋆
 
-eval eqbZero 2 3 ⋆
+eval eqbFalse 2 3 ⋆
 
 (* An existence proof, eliminated into [ℕ] to recover its witness. *)
 eval existsElim (λ (k : ℕ) → Eq (plus k k) 6) ℕ

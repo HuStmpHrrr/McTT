@@ -19,20 +19,19 @@ open Prelude›Arith›Mult.Basic use (multIdentityRight)
 import Prelude›Arith›Order use (Le; Lt)
 open Prelude›Arith›Order.LeLaws use (leRefl; leTrans; leSucc)
 open Prelude›Arith›Order.LtLaws use (ltNotEq)
-import Prelude›Arith›Decide use (pick; eqb)
-open Prelude›Arith›Decide.EqbLaws use (eqbRefl; eqbCases; leEqbZero)
+import Prelude›Arith›Decide use (eqb)
+open Prelude›Arith›Decide.EqbLaws use (eqbCases; eqbFalse; leEqbFalse)
+import Prelude›Data›Bool use (Bool; IsFalse; if)
 import Prelude›Function›Combinators use (Generic; IterateLaws)
 
 (* One step of the remainder modulo [succ d]: [succ r], or [0] when [r] has
    reached [d]. *)
-def wrap (r : ℕ) (d : ℕ) : ℕ ≔
-  pick (eqb r d) (λ (u : ℕ) → succ r) (λ (u : ℕ) → 0)
-end
+def wrap (r : ℕ) (d : ℕ) : ℕ ≔ if ℕ (eqb r d) 0 (succ r) end
 
 (* One step of the quotient: it grows by one exactly when the remainder
    wraps. *)
 private def carry (r : ℕ) (d : ℕ) (q : ℕ) : ℕ ≔
-  pick (eqb r d) (λ (u : ℕ) → q) (λ (u : ℕ) → succ q)
+  if ℕ (eqb r d) (succ q) q
 end
 
 (* The remainder of [n] by [succ d]: [n] steps of [wrap] from [0]. *)
@@ -113,12 +112,11 @@ abstract def divModSpec : ∀ (n : ℕ) (d : ℕ) →
             q ≔ div p (succ d);
             m ≔ mult q (succ d)
         in eqbCases r d
-             (λ (b : ℕ) →
-                Eq (plus (mult (pick b (λ (u : ℕ) → q) (λ (u : ℕ) → succ q))
-                           (succ d))
-                         (pick b (λ (u : ℕ) → succ r) (λ (u : ℕ) → 0)))
+             (λ (b : Bool) →
+                Eq (plus (mult (if ℕ b (succ q) q) (succ d))
+                         (if ℕ b 0 (succ r)))
                    (succ p))
-             (λ (h : Eq (eqb r d) 0) →
+             (λ (h : IsFalse (eqb r d)) →
                 trans (plus m (succ r)) (succ (plus m r)) (succ p)
                   (plusSucc m r) ih)
              (λ (h : Eq r d) →
@@ -145,8 +143,8 @@ abstract def modLt : ∀ (n : ℕ) (d : ℕ) → Lt (mod n (succ d)) (succ d) �
     | succ p, ih ⇒
         let r ≔ mod p (succ d)
         in eqbCases r d
-             (λ (b : ℕ) → Le (pick b (λ (u : ℕ) → succ r) (λ (u : ℕ) → 0)) d)
-             (λ (h : Eq (eqb r d) 0) → leEqbZero r d ih h)
+             (λ (b : Bool) → Le (if ℕ b 0 (succ r)) d)
+             (λ (h : IsFalse (eqb r d)) → leEqbFalse r d ih h)
              (λ (h : Eq r d) → ⋆)
         end
     end
@@ -163,9 +161,8 @@ abstract def modSmall : ∀ (n : ℕ) (d : ℕ) (h : Lt n (succ d)) →
               ih (leTrans p (succ p) d (leSucc p) h);
             atP : Eq (wrap p d) (succ p) ≔
               eqbCases p d
-                (λ (b : ℕ) →
-                   Eq (pick b (λ (u : ℕ) → succ p) (λ (u : ℕ) → 0)) (succ p))
-                (λ (e : Eq (eqb p d) 0) → refl p)
+                (λ (b : Bool) → Eq (if ℕ b 0 (succ p)) (succ p))
+                (λ (e : IsFalse (eqb p d)) → refl p)
                 (λ (e : Eq p d) → ltNotEq p d h e)
         in transport (λ (x : ℕ) → Eq (wrap x d) (succ p)) p (mod p (succ d))
              (sym (mod p (succ d)) p hp) atP
@@ -185,8 +182,8 @@ abstract def divSmall : ∀ (n : ℕ) (d : ℕ) (h : Lt n (succ d)) →
             hr : Eq (mod p (succ d)) p ≔ modSmall p d hp;
             atZero : Eq (carry p d 0) 0 ≔
               eqbCases p d
-                (λ (b : ℕ) → Eq (pick b (λ (u : ℕ) → 0) (λ (u : ℕ) → 1)) 0)
-                (λ (e : Eq (eqb p d) 0) → ⋆)
+                (λ (b : Bool) → Eq (if ℕ b 1 0) 0)
+                (λ (e : IsFalse (eqb p d)) → ⋆)
                 (λ (e : Eq p d) → ltNotEq p d h e);
             atP : Eq (carry p d (div p (succ d))) 0 ≔
               transport (λ (y : ℕ) → Eq (carry p d y) 0) 0 (div p (succ d))
@@ -210,9 +207,8 @@ abstract def modSelf : ∀ (d : ℕ) → Eq (mod (succ d) (succ d)) 0 ≔
     let hd : Eq (mod d (succ d)) d ≔ modSmall d d (leRefl d);
         atD : Eq (wrap d d) 0 ≔
           eqbCases d d
-            (λ (b : ℕ) → Eq (pick b (λ (u : ℕ) → succ d) (λ (u : ℕ) → 0)) 0)
-            (λ (e : Eq (eqb d d) 0) →
-               transport (λ (m : ℕ) → Eq m 1) (eqb d d) 0 e (eqbRefl d))
+            (λ (b : Bool) → Eq (if ℕ b 0 (succ d)) 0)
+            (λ (e : IsFalse (eqb d d)) → eqbFalse d d e (refl d))
             (λ (e : Eq d d) → ⋆)
     in transport (λ (x : ℕ) → Eq (wrap x d) 0) d (mod d (succ d))
          (sym (mod d (succ d)) d hd) atD

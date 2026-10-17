@@ -8,7 +8,7 @@ import Prelude›Arith›Order use (Le; leb)
 open Prelude›Arith›Order.LeLaws
   use (leTrans; leAntisym; leSucc; lePlusRight; leTotal)
 open Prelude›Arith›Order.LtLaws use (ltIrrefl; notLtZero)
-open Prelude›Arith›Order.LebLaws use (lebComplete; lebZero)
+open Prelude›Arith›Order.LebLaws use (lebComplete; lebFalse)
 import Prelude›Arith›Parity use (Even; Odd; double)
 open Prelude›Arith›Parity.Laws
   use (evenDouble; evenOrOdd; evenSuccOdd; evenPlus)
@@ -36,7 +36,7 @@ eval leb 5 2
 
 eval lebComplete 2 5 ⋆
 
-eval lebZero 5 2 ⋆
+eval lebFalse 5 2 ⋆
 
 eval double 7
 

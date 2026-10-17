@@ -7,7 +7,8 @@ module Vectors where
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Plus use (plus)
 import Prelude›Arith›Mult use (mult)
-import Prelude›Arith›Order use (Lt)
+import Prelude›Arith›Order use (Lt; leb)
+import Prelude›Data›Bool use (Bool; IsTrue)
 import Prelude›Data›Vec as V
 import Prelude›Data›Vec›Nat use (sumVec)
 import Prelude›Data›Vec›Properties
@@ -23,6 +24,9 @@ open Prelude›Data›Vec›Properties.Tests use (allbSound; allbComplete; anybS
 
 (* Vectors of numbers. *)
 module NV ≔ V 0l ℕ
+
+(* The test that a number is positive. *)
+def positive (x : ℕ) : Bool ≔ leb 1 x end
 
 (* The vector [1, 2, 3]. *)
 def oneTwoThree : NV.Vec 3 ≔
@@ -98,15 +102,15 @@ eval NV.nth 3 (NV.take 3 2 oneToFive) 2 ⋆
 
 eval NV.nth 2 (NV.drop 3 2 oneToFive) 0 ⋆
 
-(* Tests with the identity: [allb] is 1 on [1, ..., 5] and 0 on [0, 1, 2, 3];
-   [anyb] is 1 on [0, 0, 9] and 0 on [0, 0, 0]. *)
-eval NV.allb (λ (x : ℕ) → x) 5 oneToFive
+(* Tests with [positive]: [allb] is [tt] on [1, ..., 5] and [ff] on
+   [0, 1, 2, 3]; [anyb] is [tt] on [0, 0, 9] and [ff] on [0, 0, 0]. *)
+eval NV.allb positive 5 oneToFive
 
-eval NV.allb (λ (x : ℕ) → x) 4 (NV.cons 3 0 oneTwoThree)
+eval NV.allb positive 4 (NV.cons 3 0 oneTwoThree)
 
-eval NV.anyb (λ (x : ℕ) → x) 3 (NV.snoc 2 (NV.replicate 2 0) 9)
+eval NV.anyb positive 3 (NV.snoc 2 (NV.replicate 2 0) 9)
 
-eval NV.anyb (λ (x : ℕ) → x) 3 (NV.replicate 3 0)
+eval NV.anyb positive 3 (NV.replicate 3 0)
 
 (* Closed instances of the new laws. *)
 eval nthTabulate square 4 3 ⋆
@@ -139,17 +143,18 @@ eval sumReverse 5 oneToFive
 
 eval sumTabulate square 4
 
-(* [allbSound] gives, at index 2, a proof of [Lt 0 3], which is [⋆]. *)
-eval allbSound 0l ℕ (λ (x : ℕ) → x) 5 oneToFive ⋆ 2 ⋆
+(* [allbSound] gives, at index 2, a proof of [IsTrue (positive 3)], which
+   is [⋆]. *)
+eval allbSound 0l ℕ positive 5 oneToFive ⋆ 2 ⋆
 
-(* Every element of [replicate 4 3] is 3, so [Lt 0 3], that is [⊤], holds at
-   every index. *)
-eval allbComplete 0l ℕ (λ (x : ℕ) → x) 4 (NV.replicate 4 3)
+(* Every element of [replicate 4 3] is 3, so [IsTrue (positive 3)], that is
+   [⊤], holds at every index. *)
+eval allbComplete 0l ℕ positive 4 (NV.replicate 4 3)
        (λ (i : ℕ) (h : Lt i 4) → ⋆)
 
 (* [anybSound] is eliminated into [ℕ] to recover the index it found. *)
-eval anybSound 0l ℕ (λ (x : ℕ) → x) 3 (NV.snoc 2 (NV.replicate 2 0) 9) ⋆ ℕ
+eval anybSound 0l ℕ positive 3 (NV.snoc 2 (NV.replicate 2 0) 9) ⋆ ℕ
        (λ (i : ℕ) (h : Lt i 3)
-          (q : Lt 0 (NV.snoc 2 (NV.replicate 2 0) 9 i h)) → i)
+          (q : IsTrue (positive (NV.snoc 2 (NV.replicate 2 0) 9 i h))) → i)
 
 end

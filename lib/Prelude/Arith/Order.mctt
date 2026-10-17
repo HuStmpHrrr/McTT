@@ -9,6 +9,7 @@ open Prelude›Logic.Negation as Neg
 open Prelude›Logic.Disj 0l use (Or; orInl; orInr)
 import Prelude›Arith›Equality use (Eq; sym; transport)
 import Prelude›Arith›Plus use (plus)
+import Prelude›Data›Bool use (Bool; tt; ff; IsTrue; IsFalse)
 
 (* [Le n m] computes to [⊤] or [⊥]: [Le 0 m] is [⊤], [Le (succ n) 0] is [⊥], and
    [Le (succ n) (succ m)] is [Le n m]. *)
@@ -185,55 +186,55 @@ open Cases 0l export (leCases)
 
 end
 
-(* Decision of [Le]: [leb a b] is 1 when [a] is at most [b], and 0
+(* Decision of [Le]: [leb a b] is [tt] when [a] is at most [b], and [ff]
    otherwise. *)
-def leb : ∀ (n : ℕ) (m : ℕ) → ℕ ≔
+def leb : ∀ (n : ℕ) (m : ℕ) → Bool ≔
   λ (n : ℕ) →
-    elim n return y . (∀ (m : ℕ) → ℕ)
-    | zero ⇒ λ (m : ℕ) → 1
+    elim n return y . (∀ (m : ℕ) → Bool)
+    | zero ⇒ λ (m : ℕ) → tt
     | succ p, r ⇒ λ (m : ℕ) →
-        elim m return z . ℕ | zero ⇒ 0 | succ q, s ⇒ r q end
+        elim m return z . Bool | zero ⇒ ff | succ q, s ⇒ r q end
     end
 end
 
 (* The boolean test [leb] agrees with [Le]. *)
 module LebLaws where
 
-(* [leb] answers 1 exactly on [Le]: soundness. *)
-theorem lebSound : ∀ (a : ℕ) (b : ℕ) (h : Eq (leb a b) 1) → Le a b ≔
+(* [leb] answers [tt] exactly on [Le]: soundness. *)
+theorem lebSound : ∀ (a : ℕ) (b : ℕ) (h : IsTrue (leb a b)) → Le a b ≔
   λ (a : ℕ) →
-    elim a return x . (∀ (b : ℕ) (h : Eq (leb x b) 1) → Le x b)
+    elim a return x . (∀ (b : ℕ) (h : IsTrue (leb x b)) → Le x b)
     | zero ⇒ λ (b : ℕ) (h : ⊤) → ⋆
     | succ p, ih ⇒ λ (b : ℕ) →
-        elim b return z . (∀ (h : Eq (leb (succ p) z) 1) → Le (succ p) z)
+        elim b return z . (∀ (h : IsTrue (leb (succ p) z)) → Le (succ p) z)
         | zero ⇒ λ (h : ⊥) → h
-        | succ q, s ⇒ λ (h : Eq (leb p q) 1) → ih q h
+        | succ q, s ⇒ λ (h : IsTrue (leb p q)) → ih q h
         end
     end
 end
 
-(* [leb] answers 1 exactly on [Le]: completeness. *)
-theorem lebComplete : ∀ (a : ℕ) (b : ℕ) (h : Le a b) → Eq (leb a b) 1 ≔
+(* [leb] answers [tt] exactly on [Le]: completeness. *)
+theorem lebComplete : ∀ (a : ℕ) (b : ℕ) (h : Le a b) → IsTrue (leb a b) ≔
   λ (a : ℕ) →
-    elim a return x . (∀ (b : ℕ) (h : Le x b) → Eq (leb x b) 1)
+    elim a return x . (∀ (b : ℕ) (h : Le x b) → IsTrue (leb x b))
     | zero ⇒ λ (b : ℕ) (h : ⊤) → ⋆
     | succ p, ih ⇒ λ (b : ℕ) →
-        elim b return z . (∀ (h : Le (succ p) z) → Eq (leb (succ p) z) 1)
+        elim b return z . (∀ (h : Le (succ p) z) → IsTrue (leb (succ p) z))
         | zero ⇒ λ (h : ⊥) → h
         | succ q, s ⇒ λ (h : Le p q) → ih q h
         end
     end
 end
 
-(* When [leb a b] answers 0, the order holds strictly the other way. *)
-theorem lebZero : ∀ (a : ℕ) (b : ℕ) (h : Eq (leb a b) 0) → Lt b a ≔
+(* When [leb a b] answers [ff], the order holds strictly the other way. *)
+theorem lebFalse : ∀ (a : ℕ) (b : ℕ) (h : IsFalse (leb a b)) → Lt b a ≔
   λ (a : ℕ) →
-    elim a return x . (∀ (b : ℕ) (h : Eq (leb x b) 0) → Lt b x)
+    elim a return x . (∀ (b : ℕ) (h : IsFalse (leb x b)) → Lt b x)
     | zero ⇒ λ (b : ℕ) (h : ⊥) → absurd (Lt b 0) h
     | succ p, ih ⇒ λ (b : ℕ) →
-        elim b return z . (∀ (h : Eq (leb (succ p) z) 0) → Lt z (succ p))
+        elim b return z . (∀ (h : IsFalse (leb (succ p) z)) → Lt z (succ p))
         | zero ⇒ λ (h : ⊤) → ⋆
-        | succ q, s ⇒ λ (h : Eq (leb p q) 0) → ih q h
+        | succ q, s ⇒ λ (h : IsFalse (leb p q)) → ih q h
         end
     end
 end

@@ -43,6 +43,11 @@ def IsTrue (b : Bool) : Type@0 ≔
   elim b return z . Type@0 | tt ⇒ ⊤ | ff ⇒ ⊥ end
 end
 
+(* The proposition that a boolean is [ff]. *)
+def IsFalse (b : Bool) : Type@0 ≔
+  elim b return z . Type@0 | tt ⇒ ⊥ | ff ⇒ ⊤ end
+end
+
 (* The conditional, into a type of any level [u]. *)
 module Cond (u : Level) where
 
@@ -51,9 +56,18 @@ def if (A : Type@{u}) (b : Bool) (t : A) (e : A) : A ≔
   elim b return z . A | tt ⇒ t | ff ⇒ e end
 end
 
+(* The conditional with delayed branches: [cond A b t e] is [t ⋆] when [b]
+   is [tt], and [e ⋆] when it is [ff].  The branches are functions of [⊤],
+   so only the chosen one is computed; a recursive program branches with
+   [cond], since [if] would compute the recursive call in both cases. *)
+def cond (A : Type@{u}) (b : Bool) (t : ∀ (x : ⊤) → A) (e : ∀ (x : ⊤) → A) :
+    A ≔
+  (elim b return z . (∀ (x : ⊤) → A) | tt ⇒ t | ff ⇒ e end) ⋆
 end
 
-(* The conditional into [Type@0]. *)
-open Cond 0l export (if)
+end
+
+(* The conditionals into [Type@0]. *)
+open Cond 0l export (if; cond)
 
 end

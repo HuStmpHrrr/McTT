@@ -17,7 +17,8 @@ open Prelude›Arith›Plus.Algebra
   use (plusComm; plusAssoc; plusRightComm; plusCongBoth; plusSwapMiddle)
 open Prelude›Arith›Plus.Cancel use (plusCancelRight)
 import Prelude›Arith›Sub use (monus)
-import Prelude›Arith›Decide use (pick)
+import Prelude›Arith›Order use (leb)
+import Prelude›Data›Bool use (Bool; not)
 import Prelude›Algebra›Group as Group
 
 (* A pair of numbers, as a function from the index 0 or 1. *)
@@ -50,10 +51,9 @@ def magnitude (x : Int) : ℕ ≔
   plus (monus (x 0) (x 1)) (monus (x 1) (x 0))
 end
 
-(* [1] when the difference is negative, and [0] otherwise. *)
-def negative (x : Int) : ℕ ≔
-  pick (monus (x 1) (x 0)) (λ (u : ℕ) → 0) (λ (u : ℕ) → 1)
-end
+(* [tt] when the difference is negative, that is when [x 1] is not at most
+   [x 0], and [ff] otherwise. *)
+def negative (x : Int) : Bool ≔ not (leb (x 1) (x 0)) end
 
 (* [Same] is an equivalence. *)
 module Setoid where

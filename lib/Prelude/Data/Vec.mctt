@@ -29,6 +29,7 @@ import Prelude›Arith›Order use (Lt)
 open Prelude›Arith›Order.LeLaws use (leRefl; leStep; lePlusRight)
 import Prelude›Arith›Monotone.Strict use (ltLeTrans; ltPlusMonoRight)
 open Prelude›Arith›Monotone.SubLaws use (subLe)
+import Prelude›Data›Bool use (Bool; tt; ff; and; or)
 
 def Vec (n : ℕ) : Type@{u} ≔ ∀ (i : ℕ) (h : Lt i n) → A end
 
@@ -155,22 +156,16 @@ def Any (P : ∀ (a : A) → Type@{u}) (n : ℕ) (v : Vec n) : Type@{succl u} �
   ∀ (C : Type@{u}) (k : ∀ (i : ℕ) (h : Lt i n) (q : P (v i h)) → C) → C
 end
 
-(* [allb p n v] is 1 when [p] is nonzero on every element of [v], and 0
-   otherwise. *)
-def allb (p : ∀ (a : A) → ℕ) (n : ℕ) (v : Vec n) : ℕ ≔
-  foldr ℕ
-    (λ (a : A) (b : ℕ) →
-       elim (p a) return y . ℕ | zero ⇒ 0 | succ q, s ⇒ b end)
-    1 n v
+(* [allb p n v] is [tt] when the test [p] holds of every element of [v],
+   and [ff] otherwise. *)
+def allb (p : ∀ (a : A) → Bool) (n : ℕ) (v : Vec n) : Bool ≔
+  foldr Bool (λ (a : A) (b : Bool) → and (p a) b) tt n v
 end
 
-(* [anyb p n v] is 1 when [p] is nonzero on some element of [v], and 0
-   otherwise. *)
-def anyb (p : ∀ (a : A) → ℕ) (n : ℕ) (v : Vec n) : ℕ ≔
-  foldr ℕ
-    (λ (a : A) (b : ℕ) →
-       elim (p a) return y . ℕ | zero ⇒ b | succ q, s ⇒ 1 end)
-    0 n v
+(* [anyb p n v] is [tt] when the test [p] holds of some element of [v],
+   and [ff] otherwise. *)
+def anyb (p : ∀ (a : A) → Bool) (n : ℕ) (v : Vec n) : Bool ≔
+  foldr Bool (λ (a : A) (b : Bool) → or (p a) b) ff n v
 end
 
 end
