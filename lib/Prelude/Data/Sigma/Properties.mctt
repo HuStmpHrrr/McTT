@@ -6,11 +6,7 @@ module Prelude›Data›Sigma›Properties (u : Level) (A : Type@{u})
     (B : ∀ (a : A) → Type@{u}) where
 
 import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
-import Prelude›Data›Sigma u A B use (pair; fst; snd)
-
-(* The type, as an inductive alias by its path: [import … u A B use
-   (Sigma)] declares [Sigma] as a module only. *)
-inductive Sigma ≔ Prelude›Data›Sigma.Sigma u A B
+import Prelude›Data›Sigma u A B use (Sigma; pair; fst; snd)
 
 theorem fstPair : ∀ (a : A) (b : B a) → Id A (fst (pair a b)) a ≔
   λ (a : A) (b : B a) → idRefl A a

@@ -21,8 +21,7 @@ import Prelude›Data›Tree›Binary›Properties 0l ℕ Bool as TP
 import Prelude›Data›Parity use (Parity; parity; toSign)
 import Prelude›Data›Integer use (Int; pos; negsuc; neg; add; sub; mul; abs)
 import Prelude›Data›Integer›Properties.Mul use (absMul)
-import Prelude›Data›Binary use (Bin; toNat; fromNat)
-import Prelude›Data›Binary as Bn
+import Prelude›Data›Binary as Bn use (Bin; toNat; fromNat)
 import Prelude›Data›Binary›Properties.ToNat use (toNatAdd)
 import Prelude›Data›W use (W)
 open Prelude›Data›W.Ops as WO

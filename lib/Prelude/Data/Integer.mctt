@@ -16,8 +16,7 @@ module Prelude›Data›Integer where
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Plus use (plus)
 import Prelude›Arith›Mult use (mult)
-import Prelude›Data›Sign use (Sign; negative; positive)
-import Prelude›Data›Sign as S
+import Prelude›Data›Sign as S use (Sign; negative; positive)
 
 inductive Int : Type@0 where
 | pos (n : ℕ)
