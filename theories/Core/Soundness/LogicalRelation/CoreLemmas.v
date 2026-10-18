@@ -148,19 +148,19 @@ Proof.
   cbn; split; [ apply wf_exp_eq_llit_cong; assumption | split; [ exact Ho | exact I ] ].
 Qed.
 
-(** The same lemmas for [glu_False], whose values are all neutral. *)
-Lemma glu_False_per_ne : forall Γ M a,
-    glu_False Γ M a ->
+(** The same lemmas for [False_glu_elem], whose values are all neutral. *)
+Lemma False_glu_elem_per_ne : forall Γ M a,
+    False_glu_elem Γ M a ->
     Dom a ≈ a ∈ per_ne.
 Proof.
   destruct 1; mauto.
 Qed.
 
 #[local]
-Hint Resolve glu_False_per_ne : mctt.
+Hint Resolve False_glu_elem_per_ne : mctt.
 
-Lemma glu_False_escape : forall Γ M a,
-    glu_False Γ M a ->
+Lemma False_glu_elem_escape : forall Γ M a,
+    False_glu_elem Γ M a ->
     ⊢ Γ ->
     Γ ⊢ M : ⊥.
 Proof.
@@ -174,25 +174,25 @@ Proof.
   mauto.
 Qed.
 
-Hint Resolve glu_False_escape : mctt.
+Hint Resolve False_glu_elem_escape : mctt.
 
-Lemma glu_False_resp_ctxsub : forall Γ M a Δ,
-    glu_False Γ M a ->
+Lemma False_glu_elem_resp_ctxsub : forall Γ M a Δ,
+    False_glu_elem Γ M a ->
     Δ ⊆ Γ ->
-    glu_False Δ M a.
+    False_glu_elem Δ M a.
 Proof.
   destruct 1; intros.
   econstructor; trivial.
   intros; mauto 4.
 Qed.
 
-Hint Resolve glu_False_resp_ctxsub : mctt.
+Hint Resolve False_glu_elem_resp_ctxsub : mctt.
 
-Lemma glu_False_resp_exp_eq : forall Γ M a,
-    glu_False Γ M a ->
+Lemma False_glu_elem_resp_exp_eq : forall Γ M a,
+    False_glu_elem Γ M a ->
     forall M',
     Γ ⊢ M ≈ M' : ⊥ ->
-    glu_False Γ M' a.
+    False_glu_elem Γ M' a.
 Proof.
   destruct 1; intros.
   econstructor; trivial.
@@ -201,10 +201,10 @@ Proof.
 Qed.
 
 #[local]
-Hint Resolve glu_False_resp_exp_eq : mctt.
+Hint Resolve False_glu_elem_resp_exp_eq : mctt.
 
-Lemma glu_False_readback : forall Γ M a,
-    glu_False Γ M a ->
+Lemma False_glu_elem_readback : forall Γ M a,
+    False_glu_elem Γ M a ->
     forall Δ φ M',
       Δ ⊢ᵏ φ : Γ ->
       Rnf ⇓ ⊥ᵈ a in length Δ ↘ M' ->
@@ -469,24 +469,24 @@ Section GluIndProps.
     apply tele_pre_of_full with (T := T); [ exact Hns | unfold T; rewrite List.length_rev, length_nparams; lia ].
   Qed.
 
-  Lemma glu_ind_resp_exp_eq : forall Γ Ps M m, glu_ind p D ups NEl AEl DP DEl Γ Ps M m ->
-      forall M', Γ ⊢ M ≈ M' : apps (a_ind p) Ps -> glu_ind p D ups NEl AEl DP DEl Γ Ps M' m.
+  Lemma ind_glu_elem_resp_exp_eq : forall Γ Ps M m, ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m ->
+      forall M', Γ ⊢ M ≈ M' : apps (a_ind p) Ps -> ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M' m.
   Proof.
     intros * H; destruct H; intros M' HMM.
-    - eapply glu_ind_con; try eassumption.
+    - eapply ind_glu_elem_con; try eassumption.
       etransitivity; [ symmetry; exact HMM | eassumption ].
-    - eapply glu_ind_neut; [ eassumption |].
+    - eapply ind_glu_elem_neut; [ eassumption |].
       intros * Hφ Hrb.
       etransitivity; [| match goal with Hr : forall _ _ _, _ -> _ -> _ |- _ => eapply Hr; eassumption end ].
       symmetry; mauto 4.
   Qed.
 
-  (** [glu_ind] moves along a related representative [ups'] of the uniform
+  (** [ind_glu_elem] moves along a related representative [ups'] of the uniform
       parameters, and along gluings of the non-uniform parameters and of
       the non-recursive arguments that contain the given ones, and of the
       domains of the shapes contained in the given ones, their types'
       gluings containing the given ones. *)
-  Lemma glu_ind_move : forall ups' (NEl' : nat -> list domain -> glu_exp_pred)
+  Lemma ind_glu_elem_move : forall ups' (NEl' : nat -> list domain -> glu_exp_pred)
       (AEl' : list domain -> String.string -> nat -> list domain -> glu_exp_pred)
       (DP' : list domain -> exp -> glu_typ_pred) (DEl' : list domain -> exp -> glu_exp_pred),
       ind_lookup gc_deps gc_stack p = Some D ->
@@ -502,7 +502,7 @@ Section GluIndProps.
          tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys ->
          (forall Γ A, DP (ms ++ ws ++ ys) B Γ A -> DP' (ms ++ ws ++ ys) B Γ A) /\
          (forall Γ A M m, DEl' (ms ++ ws ++ ys) B Γ A M m -> DEl (ms ++ ws ++ ys) B Γ A M m)) ->
-      forall Γ Ps M m, glu_ind p D ups NEl AEl DP DEl Γ Ps M m -> glu_ind p D ups' NEl' AEl' DP' DEl' Γ Ps M m.
+      forall Γ Ps M m, ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m -> ind_glu_elem p D ups' NEl' AEl' DP' DEl' Γ Ps M m.
   Proof.
     intros ups' NEl' AEl' DP' DEl' Hl Hag Hadm Hrbt HN HA HD.
     destruct Hcp as [HnP HnI HaP HaI HdP HdI].
@@ -527,14 +527,14 @@ Section GluIndProps.
                     Hm Hm2 Hc Heq Hw Hw2 ltac:(lia) Hy) as Hy2.
       pose proof (Hfd _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hm2 Hc Heq Hw Hw2 Hkl Hy Hy2) as Hdd.
       unfold shape_tr in Hdd; rewrite (List.nth_error_nth _ _ _ HB) in Hdd; exact Hdd. }
-    apply (glu_ind_mut_ind p D ups NEl AEl DP DEl
-             (fun Γ Ps M m _ => glu_ind p D ups' NEl' AEl' DP' DEl' Γ Ps M m)
+    apply (ind_glu_elem_mut_ind p D ups NEl AEl DP DEl
+             (fun Γ Ps M m _ => ind_glu_elem p D ups' NEl' AEl' DP' DEl' Γ Ps M m)
              (fun Γ pre t A N v _ => forall ms c0 gs1 t0 gs2 ws k ys, pre = ms ++ ws ++ ys -> tele_full nr T ms ms ->
                 ind_con D c0 = Some (gs1 ++ ca_rec t0 :: gs2) -> tele_pre (ar ms c0) (List.length (cargs_nonrec gs1)) ws ws ->
                 ptyp_skip k t0 = t -> k <= List.length (ptyp_doms t0) -> tele_pre (shape_tr dr ms ws (ptyp_doms t0)) k ys ys ->
                 glu_rec p D ups' NEl' AEl' DP' DEl' Γ pre t A N v)).
     - intros * Hcon HPl Hbl Hvl HAl HM Hb Hv Hnp HAs Harg Hrec IH.
-      eapply glu_ind_con; try eassumption.
+      eapply ind_glu_elem_con; try eassumption.
       + exact (F1 _ _ Hb).
       + apply (tele_full_map _ (ar (List.skipn (ind_nu D) bs) c)); [| exact Hv ].
         intros k pa pb x y Hk Hp1 Hp2 Hr; apply (Hfa _ _ _ _ _ _ _ _ _ Hb (F1 _ _ Hb) Hcon Hk Hp1 Hp2); exact Hr.
@@ -548,7 +548,7 @@ Section GluIndProps.
                  (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) 0 nil);
           [ rewrite List.app_nil_r; reflexivity | exact Hb | rewrite <- Heq; exact Hcon
           | eapply nonrec_prefix_pre; eassumption | reflexivity | lia | apply tele_pre_nil ].
-    - intros; eapply glu_ind_neut; eassumption.
+    - intros; eapply ind_glu_elem_neut; eassumption.
     - intros * Hs1 Hs2 IH ms c0 gs1 t0 gs2 ws k1 ys Hpre Hm Hc Hw Hsk Hk Hy.
       destruct (ptyp_skip_self _ _ _ _ Hsk) as [HkL HPs].
       assert (Hk1 : k1 = List.length (ptyp_doms t0)) by lia.
@@ -592,7 +592,7 @@ Section GluIndProps.
           | exact (Hstep _ _ Hc0) ].
   Qed.
 
-  Lemma glu_ind_mono : forall (NEl' : nat -> list domain -> glu_exp_pred)
+  Lemma ind_glu_elem_mono : forall (NEl' : nat -> list domain -> glu_exp_pred)
       (AEl' : list domain -> String.string -> nat -> list domain -> glu_exp_pred)
       (DP' : list domain -> exp -> glu_typ_pred) (DEl' : list domain -> exp -> glu_exp_pred),
       (forall k vs, k < ind_nn D -> tele_pre nr k vs vs ->
@@ -604,18 +604,18 @@ Section GluIndProps.
          tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys ->
          (forall Γ A, DP (ms ++ ws ++ ys) B Γ A -> DP' (ms ++ ws ++ ys) B Γ A) /\
          (forall Γ A M m, DP (ms ++ ws ++ ys) B Γ A -> DEl' (ms ++ ws ++ ys) B Γ A M m -> DEl (ms ++ ws ++ ys) B Γ A M m)) ->
-      forall Γ Ps M m, glu_ind p D ups NEl AEl DP DEl Γ Ps M m -> glu_ind p D ups NEl' AEl' DP' DEl' Γ Ps M m.
+      forall Γ Ps M m, ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m -> ind_glu_elem p D ups NEl' AEl' DP' DEl' Γ Ps M m.
   Proof.
     intros NEl' AEl' DP' DEl' HN HA HD.
     destruct Hcp as [HnP HnI HaP HaI HdP HdI].
-    apply (glu_ind_mut_ind p D ups NEl AEl DP DEl
-             (fun Γ Ps M m _ => glu_ind p D ups NEl' AEl' DP' DEl' Γ Ps M m)
+    apply (ind_glu_elem_mut_ind p D ups NEl AEl DP DEl
+             (fun Γ Ps M m _ => ind_glu_elem p D ups NEl' AEl' DP' DEl' Γ Ps M m)
              (fun Γ pre t A N v _ => forall ms c0 gs1 t0 gs2 ws k ys, pre = ms ++ ws ++ ys -> tele_full nr T ms ms ->
                 ind_con D c0 = Some (gs1 ++ ca_rec t0 :: gs2) -> tele_pre (ar ms c0) (List.length (cargs_nonrec gs1)) ws ws ->
                 ptyp_skip k t0 = t -> k <= List.length (ptyp_doms t0) -> tele_pre (shape_tr dr ms ws (ptyp_doms t0)) k ys ys ->
                 glu_rec p D ups NEl' AEl' DP' DEl' Γ pre t A N v)).
     - intros * Hcon HPl Hbl Hvl HAl HM Hb Hv Hnp HAs Harg Hrec IH.
-      eapply glu_ind_con; try eassumption.
+      eapply ind_glu_elem_con; try eassumption.
       + eapply glu_nparams_mono; eassumption.
       + intros * Heq HN0 HA0 Hv0.
         eapply HA; [ exact Hb | exact Hcon | | eapply nonrec_prefix_pre; eassumption
@@ -626,7 +626,7 @@ Section GluIndProps.
                  (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) 0 nil);
           [ rewrite List.app_nil_r; reflexivity | exact Hb | rewrite <- Heq; exact Hcon
           | eapply nonrec_prefix_pre; eassumption | reflexivity | lia | apply tele_pre_nil ].
-    - intros; eapply glu_ind_neut; eassumption.
+    - intros; eapply ind_glu_elem_neut; eassumption.
     - intros * Hs1 Hs2 IH ms c0 gs1 t0 gs2 ws k1 ys Hpre Hm Hc Hw Hsk Hk Hy.
       apply glu_rec_self.
       + intros bsr Q Hbs HQ.
@@ -665,7 +665,7 @@ Section GluIndProps.
     apply tele_pre_of_full with (T := T); [ exact Hns | unfold T; rewrite List.length_rev, length_nparams; lia ].
   Qed.
 
-  Lemma glu_ind_resp_per : ind_adm D ups nr ar dr ups ->
+  Lemma ind_glu_elem_resp_per : ind_adm D ups nr ar dr ups ->
       (forall k vs vs', k < ind_nn D -> tele_pre nr k vs vs' ->
          forall Γ A N n n', NEl k vs Γ A N n -> nr k vs n n' -> NEl k vs' Γ A N n') ->
       (forall ms ms' c gs k vs vs', tele_full nr T ms ms' -> ind_con D c = Some gs -> k < List.length (cargs_nonrec gs) ->
@@ -675,8 +675,8 @@ Section GluIndProps.
          List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
          (forall Γ A, DP (ms ++ ws ++ ys) B Γ A -> DP (ms' ++ ws' ++ ys') B Γ A) /\
          (forall Γ A N n, DEl (ms' ++ ws' ++ ys') B Γ A N n -> DEl (ms ++ ws ++ ys) B Γ A N n)) ->
-      forall Γ Ps M m, glu_ind p D ups NEl AEl DP DEl Γ Ps M m ->
-      forall ns m', ind_rel p D ups nr ar dr ns m m' -> glu_ind p D ups NEl AEl DP DEl Γ Ps M m'.
+      forall Γ Ps M m, ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m ->
+      forall ns m', ind_rel p D ups nr ar dr ns m m' -> ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m'.
   Proof.
     intros Hadm HNe HAe HDe.
     pose proof Hcp as [HnP HnI HaP HaI HdP HdI].
@@ -690,8 +690,8 @@ Section GluIndProps.
     pose proof (tar_pre_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as RaL.
     pose proof (proj1 (proj2 (proj2 (ind_rel_move p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups Hadm)))) as Msh.
     pose proof Hadm as [_ _ Hcl _].
-    apply (glu_ind_mut_ind p D ups NEl AEl DP DEl
-             (fun Γ Ps M m _ => forall ns m', ind_rel p D ups nr ar dr ns m m' -> glu_ind p D ups NEl AEl DP DEl Γ Ps M m')
+    apply (ind_glu_elem_mut_ind p D ups NEl AEl DP DEl
+             (fun Γ Ps M m _ => forall ns m', ind_rel p D ups nr ar dr ns m m' -> ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m')
              (fun Γ pre t A N v _ => forall ms ms' c0 gs1 t0 gs2 ws ws' k ys ys' v', pre = ms ++ ws ++ ys ->
                 tele_full nr T ms ms' -> ind_con D c0 = Some (gs1 ++ ca_rec t0 :: gs2) ->
                 tele_pre (ar ms c0) (List.length (cargs_nonrec gs1)) ws ws' ->
@@ -702,7 +702,7 @@ Section GluIndProps.
         intros * Hm Hr ns m' Hrel.
         inversion Hrel; subst.
         match goal with Hb : per_bot m ?m0 |- _ => rename m0 into e'; rename Hb into Hbe end.
-        eapply glu_ind_neut; [ etransitivity; [ symmetry |]; exact Hbe |].
+        eapply ind_glu_elem_neut; [ etransitivity; [ symmetry |]; exact Hbe |].
         intros Δ φ M' Hφ Hrb.
         destruct (Hbe (length Δ)) as (M0 & HM0 & HM0').
         pose proof (functional_read_ne _ _ _ _ Hrb HM0') as ->.
@@ -716,7 +716,7 @@ Section GluIndProps.
       assert (Hmm' : tele_full nr T (List.skipn (ind_nu D) bs) (List.skipn (ind_nu D) bs'))
         by exact (Tn _ _ _ (Sn _ _ Hs) Hs').
       assert (Hvl' : length vs' = length gs) by exact (proj2 (ind_args_rel_len _ _ _ _ _ _ _ _ _ _ Hia)).
-      refine (glu_ind_con p D ups NEl AEl DP DEl Hcon HPl Hbl' Hvl' HAl HM _ _ _ HAs _ _).
+      refine (ind_glu_elem_con p D ups NEl AEl DP DEl Hcon HPl Hbl' Hvl' HAl HM _ _ _ HAs _ _).
       + exact (RnR _ _ Hmm').
       + exact (Ia _ _ _ _ _ _ Hs' Hcon (Ta _ _ _ Hns Hcon _ _ _ (Sa _ _ _ Hns Hcon _ _ Ha) Ha)).
       + exact (glu_nparams_resp_per HNe _ _ _ _ _ Hmm' Hnp).
@@ -974,7 +974,7 @@ Proof.
   intros * Hl [HM Hm Ps HPs Hk] HMM.
   refine (mk_ind_glu_exp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Ps HPs _); [ mauto 3 |].
   intros Δ φ Ps' Hφ HPs'.
-  eapply glu_ind_resp_exp_eq; [ exact (Hk Δ φ Ps' Hφ HPs') |].
+  eapply ind_glu_elem_resp_exp_eq; [ exact (Hk Δ φ Ps' Hφ HPs') |].
   pose proof (ind_typ_at_params_conv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hl HPs Hφ HPs') as HPP.
   rewrite <- wk_apps_ind in HPP.
   destruct HPs as [HA _].
@@ -993,9 +993,9 @@ Hint Resolve glu_lvl_escape glu_lvl_resp_ctxsub : mctt.
 #[local]
 Hint Resolve glu_lvl_resp_exp_eq glu_lvl_readback glu_lvl_ws_readback : mctt.
 #[export]
-Hint Resolve glu_False_escape glu_False_resp_ctxsub : mctt.
+Hint Resolve False_glu_elem_escape False_glu_elem_resp_ctxsub : mctt.
 #[local]
-Hint Resolve glu_False_per_ne glu_False_resp_exp_eq : mctt.
+Hint Resolve False_glu_elem_per_ne False_glu_elem_resp_exp_eq : mctt.
 #[global]
 Ltac simpl_glu_rel :=
   apply_equiv_left;
@@ -1144,11 +1144,11 @@ Qed.
 
 Hint Resolve glu_lvl_resp_wk : mctt.
 
-Lemma glu_False_resp_wk : forall Γ M a,
-    glu_False Γ M a ->
+Lemma False_glu_elem_resp_wk : forall Γ M a,
+    False_glu_elem Γ M a ->
     forall Δ φ,
       Δ ⊢ᵏ φ : Γ ->
-      glu_False Δ M[φ]ʷ a.
+      False_glu_elem Δ M[φ]ʷ a.
 Proof.
   destruct 1; intros.
   econstructor; trivial.
@@ -1158,7 +1158,7 @@ Proof.
   mauto 4.
 Qed.
 
-Hint Resolve glu_False_resp_wk : mctt.
+Hint Resolve False_glu_elem_resp_wk : mctt.
 
 Lemma glu_univ_elem_trm_escape : forall i P El a,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
@@ -1353,7 +1353,7 @@ End Fixed_GCtx.
 #[export] Existing Instance glu_univ_elem_typ_morphism_iff1_Proper.
 #[export] Existing Instance glu_univ_elem_trm_morphism_iff1_Proper.
 #[export]
-Hint Resolve glu_lvl_resp_wk glu_False_resp_wk : mctt.
+Hint Resolve glu_lvl_resp_wk False_glu_elem_resp_wk : mctt.
 #[export]
 Hint Resolve glu_univ_elem_per_univ : mctt.
 #[export] Existing Instance glu_univ_elem_trm_morphism_iff3_Proper.
@@ -1527,13 +1527,13 @@ Proof.
         split; intros [? ? Ps HPs Hk];
           (econstructor; [ assumption | apply EE + apply EE; assumption | | ]).
         + eapply ind_typ_at_mono; [ exact H1 | exact Hcp | | | | exact HPs ]; fam_tac HNq HAq HDq.
-        + intros Δ φ Ps' Hφ HPs'; eapply (glu_ind_mono p D ups _ _ _ _ H1 Hcp); [ | | | exact (Hk Δ φ Ps' Hφ HPs') ];
+        + intros Δ φ Ps' Hφ HPs'; eapply (ind_glu_elem_mono p D ups _ _ _ _ H1 Hcp); [ | | | exact (Hk Δ φ Ps' Hφ HPs') ];
             intros; [ eapply HNq | eapply HAq | ]; try eassumption.
           destruct (HDq _ _ _ _ _ _ _ _ _ _ ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption)
                       ltac:(eassumption) ltac:(eassumption)) as [E1 E2].
           split; intros; [ apply E1 | apply E2 ]; assumption.
         + eapply ind_typ_at_mono; [ exact H1 | exact Hcp | | | | exact HPs ]; fam_tac HNq HAq HDq.
-        + intros Δ φ Ps' Hφ HPs'; eapply (glu_ind_mono p D ups _ _ _ _ H1 Hcp); [ | | | exact (Hk Δ φ Ps' Hφ HPs') ];
+        + intros Δ φ Ps' Hφ HPs'; eapply (ind_glu_elem_mono p D ups _ _ _ _ H1 Hcp); [ | | | exact (Hk Δ φ Ps' Hφ HPs') ];
             intros; [ eapply HNq | eapply HAq | ]; try eassumption.
           destruct (HDq _ _ _ _ _ _ _ _ _ _ ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption)
                       ltac:(eassumption) ltac:(eassumption)) as [E1 E2].
@@ -1857,13 +1857,13 @@ Proof.
           refine (mk_ind_glu_exp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM _ Ps _ _); [ apply ER; exact Hm | |].
           * eapply ind_typ_at_resp_per_top; [ eassumption | exact H0 | exact Hcp | exact Htop | exact Hfam | exact HPs ].
           * intros Δ φ Ps' Hφ HPs'.
-            eapply (glu_ind_move p D ups NEl AEl DP DEl H0 Hcp ups' NEl AEl DP DEl H Hfam Hadm Hrbt);
+            eapply (ind_glu_elem_move p D ups NEl AEl DP DEl H0 Hcp ups' NEl AEl DP DEl H Hfam Hadm Hrbt);
               [ intros; assumption | intros; assumption | intros; split; intros; assumption | exact (Hk Δ φ Ps' Hφ HPs') ].
         + apply Hb; destruct HH as [HM Hm Ps HPs Hk].
           refine (mk_ind_glu_exp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM _ Ps _ _); [ apply ER; exact Hm | |].
           * eapply ind_typ_at_resp_per_top; [ eassumption | exact H0 | exact Hcp' | exact Htop' | exact Hfam' | exact HPs ].
           * intros Δ φ Ps' Hφ HPs'.
-            eapply (glu_ind_move p D ups' NEl AEl DP DEl H0 Hcp' ups NEl AEl DP DEl H Hfam' Hadm' Hrbt');
+            eapply (ind_glu_elem_move p D ups' NEl AEl DP DEl H0 Hcp' ups NEl AEl DP DEl H Hfam' Hadm' Hrbt');
               [ intros; assumption | intros; assumption | intros; split; intros; assumption | exact (Hk Δ φ Ps' Hφ HPs') ]. }
   all:
     saturate_refl_for per_univ_elem;
@@ -2360,7 +2360,7 @@ Proof.
   pose proof (functional_read_typ _ _ _ _ HL' Hr) as ->; exact HL.
 Qed.
 
-Lemma glu_False_resp_per : forall Γ M m, glu_False Γ M m -> forall m', Dom m ≈ m' ∈ per_ne -> glu_False Γ M m'.
+Lemma False_glu_elem_resp_per : forall Γ M m, False_glu_elem Γ M m -> forall m', Dom m ≈ m' ∈ per_ne -> False_glu_elem Γ M m'.
 Proof.
   intros * [? ? ? ? Hb Hrb] m'' Hm; inversion Hm; subst.
   constructor; [ etransitivity; [ symmetry |]; eassumption |].
@@ -2374,7 +2374,7 @@ Lemma glu_univ_elem_trm_resp_per_elem : forall i P El a,
 Proof.
   simpl.
   glu_univ_elem_induction1; intros.
-  8:{ (** An inductive type: [glu_ind] moves along the canonical relation,
+  8:{ (** An inductive type: [ind_glu_elem] moves along the canonical relation,
           given that the telescopes' gluings move along theirs. *)
       match goal with
       | HEl : El <∙> _, HE : El ?Γ0 ?A0 ?M0 ?m0 |- El ?Γ0 ?A0 ?M0 ?m1 =>
@@ -2462,7 +2462,7 @@ Proof.
       assert (HPe : PER elem_rel) by (eapply per_elem_PER; eassumption).
       refine (mk_ind_glu_exp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMt _ Ps0 HPt _); [ etransitivity; [ symmetry |]; exact Hmm' |].
       intros Δ φ Ps' Hφ HPs'; pose proof (Hgl Δ φ Ps' Hφ HPs') as Hg.
-      exact (glu_ind_resp_per p D ups NEl AEl DP DEl H1 Hcp Hadm HNe HAe HDe _ _ _ _ Hg _ _ (proj1 (Herel _ _) Hmm')). }
+      exact (ind_glu_elem_resp_per p D ups NEl AEl DP DEl H1 Hcp Hadm HNe HAe HDe _ _ _ _ Hg _ _ (proj1 (Herel _ _) Hmm')). }
   6:{ handle_per_univ_elem_irrel.
       apply_predicate_equivalence.
       destruct_by_head pi_glu_exp_pred.
@@ -2504,7 +2504,7 @@ Proof.
       | eapply per_lvl_at_trans; [ eapply per_lvl_at_sym; exact Hmm' | exact Hmm' ]
       | eapply glu_lvl_resp_per; [ eassumption | eapply per_lvl_at_lvl; exact Hmm' ] ].
   - split; assumption.
-  - split; [ assumption | eapply glu_False_resp_per; [ eassumption | apply H1; eassumption ] ].
+  - split; [ assumption | eapply False_glu_elem_resp_per; [ eassumption | apply H1; eassumption ] ].
   - destruct_by_head neut_glu_exp_pred.
     match goal with E : _ <~> per_ne, Hm : _ ?x ?y |- _ => apply E in Hm; inversion Hm; subst end.
     econstructor; [ assumption | assumption | etransitivity; [ symmetry |]; eassumption |].

@@ -142,7 +142,7 @@ Hint Resolve glu_rel_exp_true : mctt.
 Lemma cons_glu_sub_pred_False_helper : forall {Γ SbΓ Δ σ ρ} {i : nat} {M m},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
     Δ ⊢ˢ σ ® ρ ∈ SbΓ ->
-    glu_False Δ M m ->
+    False_glu_elem Δ M m ->
     Δ ⊢ˢ σ,,M ® ρ ↦ m ∈ cons_glu_sub_pred i Γ ⊥ SbΓ.
 Proof.
   intros * ? HM ?.
@@ -209,7 +209,7 @@ Proof.
   apply_predicate_equivalence.
   clear_dups.
   inversion_clear_by_head False_glu_exp_pred.
-  match goal with H : glu_False _ _ _ |- _ => rename H into HMglu end.
+  match goal with H : False_glu_elem _ _ _ |- _ => rename H into HMglu end.
   inversion HMglu; subst.
   assert (Δ ⊢ˢ σ,,M[σ] ® ρ ↦ ⇑ a m0 ∈ SbΓF) by (unfold SbΓF; mauto 3).
   destruct_glu_rel_exp_with_sub.
@@ -278,3 +278,55 @@ End Fixed_GCtx.
 
 #[export]
 Hint Resolve glu_rel_exp_True glu_rel_exp_False glu_rel_exp_true glu_rel_exp_exfalso : mctt.
+
+(** ** The Rules *)
+
+#[local] Generalizable All Variables.
+
+Lemma glu_True :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ ⊤ : Type@0 ).
+Proof. glu_intro; apply glu_rel_exp_True_small; assumption. Qed.
+
+Lemma glu_true :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ ⋆ : ⊤ ).
+Proof. glu_intro; apply glu_rel_exp_true; assumption. Qed.
+
+Lemma glu_False :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ ⊥ : Type@0 ).
+Proof. glu_intro; apply glu_rel_exp_False_small; assumption. Qed.
+
+Lemma glu_exfalso :
+  `( Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊩ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : ⊥ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ efq M return A : A[Id,,M] ).
+Proof. glu_intro; eapply glu_rel_exp_exfalso; eassumption. Qed.
+
+Lemma glu_exp_eq_True_cong :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_true_cong :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_False_cong :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_exfalso_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊩ A : Typeω@i ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_true_eta :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ M : ⊤ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.

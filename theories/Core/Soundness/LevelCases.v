@@ -425,3 +425,120 @@ End Fixed_GCtx.
 #[export]
 Hint Resolve glu_rel_exp_level glu_rel_exp_level_small glu_rel_exp_llit
   glu_rel_exp_succl glu_rel_exp_maxl glu_rel_exp_univ_lvl : mctt.
+
+(** ** The Rules *)
+
+#[local] Generalizable All Variables.
+
+Lemma glu_univ :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ Type⟨M⟩ : Type⟨succl M⟩ ).
+Proof. glu_intro; eapply glu_rel_exp_univ_lvl; eassumption. Qed.
+
+Lemma glu_level :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ Level@n : Type@0 ).
+Proof. glu_intro; apply glu_rel_exp_level_small; assumption. Qed.
+
+Lemma glu_llit :
+  `( fst o <= n ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ 𝕃ᵒ o : Level@n ).
+Proof. glu_intro; apply glu_rel_exp_llit; assumption. Qed.
+
+Lemma glu_succl :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ succl M : Level@n ).
+Proof. glu_intro; eapply glu_rel_exp_succl; eassumption. Qed.
+
+Lemma glu_maxl :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ N : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ maxl M N : Level@n ).
+Proof. glu_intro; eapply glu_rel_exp_maxl; eassumption. Qed.
+
+Lemma glu_exp_eq_univ_cong :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_level_cong :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_llit_cong :
+  `( @fst nat nat o <= n ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_succl_cong :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_maxl_cong :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_llit_succl :
+  `( a <= n ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_maxl_absorb :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_maxl_zero :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_maxl_assoc :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ N : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ P : Level@n ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_maxl_comm :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ N : Level@n ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_maxl_idem :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_succl_maxl :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ N : Level@n ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_maxl_succl :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_subtyp_suniv :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M' : Level@n ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_subtyp_small_large :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : Level@n ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.

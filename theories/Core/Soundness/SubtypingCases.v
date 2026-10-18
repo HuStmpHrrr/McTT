@@ -8,7 +8,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Semantic Require Import Realizability.
-From Mctt.Core.Soundness Require Import LogicalRelation.
+From Mctt.Core.Soundness Require Import LogicalRelation TermStructureCases.
 Import Domain_Notations Fixed_Notations.
 
 
@@ -23,7 +23,7 @@ Lemma glu_rel_exp_subtyp : forall {Γ M A A'} {i : nat},
 Proof.
   intros * [] HA' Hsub%completeness_fundamental_subtyp.
   destruct_conjs.
-  pose proof (subtyp_under_ctx_simple Hsub) as [env_relΓ [HΓ [k Hsubsimple]]].
+  pose proof (rel_subtyp_under_ctx_simple Hsub) as [env_relΓ [HΓ [k Hsubsimple]]].
   invert_glu_rel_exp HA'.
   eapply mk_glu_rel_exp with (gre_lvl := max i k); [eassumption |].
   intros Δ σ ρ HSb.
@@ -62,3 +62,66 @@ End Fixed_GCtx.
 Hint Resolve glu_rel_exp_subtyp : mctt.
 #[export]
 Hint Resolve glu_rel_exp_conv : mctt.
+
+(** ** The Rules *)
+
+#[local] Generalizable All Variables.
+
+Lemma glu_exp_subtyp :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : A' ).
+Proof. glu_intro; glu_emb_wf; eapply glu_rel_exp_subtyp; [ eassumption | eassumption | apply Hwst; eassumption ]. Qed.
+
+Lemma glu_exp_eq_subtyp :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ A' : Typeω@i ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_sym :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_trans :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_subtyp_refl :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ M' : Typeω@i ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_subtyp_trans :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_subtyp_univ :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     i < j ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_subtyp_level :
+  `( m <= n ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_subtyp_pi :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ A' : Typeω@i ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊩ B : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A' ⊩ B' : Typeω@i ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ▹ A' ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.

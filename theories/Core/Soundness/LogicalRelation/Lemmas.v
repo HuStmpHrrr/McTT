@@ -457,7 +457,7 @@ Qed.
     parameters equal to the ones of its type.  A recursive argument of a
     function shape is moved down at the domains' gluings of the
     components, its argument moved up. *)
-Lemma glu_ind_lower : forall p D ups NP NEl AP AEl DP DEl (NEl' : nat -> list domain -> glu_exp_pred)
+Lemma ind_glu_elem_lower : forall p D ups NP NEl AP AEl DP DEl (NEl' : nat -> list domain -> glu_exp_pred)
     (AEl' : list domain -> String.string -> nat -> list domain -> glu_exp_pred)
     (DP' : list domain -> exp -> glu_typ_pred) (DEl' : list domain -> exp -> glu_exp_pred),
     ind_lookup gc_deps gc_stack p = Some D -> tele_ass (ind_params D) -> ind_canon_props D ups ->
@@ -470,22 +470,22 @@ Lemma glu_ind_lower : forall p D ups NP NEl AP AEl DP DEl (NEl' : nat -> list do
        gs = gs1 ++ ca_rec t :: gs2 -> tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
        List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
        forall Γ A M m, DEl (ms ++ ws ++ ys) B Γ A M m -> DEl' (ms ++ ws ++ ys) B Γ A M m) ->
-    forall Γ Ps M m, glu_ind p D ups NEl' AEl' DP' DEl' Γ Ps M m ->
+    forall Γ Ps M m, ind_glu_elem p D ups NEl' AEl' DP' DEl' Γ Ps M m ->
       (forall Δ φ, Δ ⊢ᵏ φ : Γ ->
          ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ (List.firstn (ind_nu D) (List.map (fun P => P[φ]ʷ) Ps)) /\
          forall Us', exps_eq_at Δ (ind_uparams D) (List.firstn (ind_nu D) (List.map (fun P => P[φ]ʷ) Ps)) Us' ->
            ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ Us') ->
-      glu_ind p D ups NEl AEl DP DEl Γ Ps M m.
+      ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m.
 Proof.
   intros p D ups NP NEl AP AEl DP DEl NEl' AEl' DP' DEl' Hl Hass Hcp HNl HAl HDl.
   pose proof Hcp as [HnP HnI HaP HaI HdP HdI].
-  apply (glu_ind_mut_ind p D ups NEl' AEl' DP' DEl'
+  apply (ind_glu_elem_mut_ind p D ups NEl' AEl' DP' DEl'
            (fun Γ Ps M m _ =>
               (forall Δ φ, Δ ⊢ᵏ φ : Γ ->
                  ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ (List.firstn (ind_nu D) (List.map (fun P => P[φ]ʷ) Ps)) /\
                  forall Us', exps_eq_at Δ (ind_uparams D) (List.firstn (ind_nu D) (List.map (fun P => P[φ]ʷ) Ps)) Us' ->
                    ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ Us') ->
-              glu_ind p D ups NEl AEl DP DEl Γ Ps M m)
+              ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m)
            (fun Γ pre t A N v _ => forall ms c0 gs1 t0 gs2 ws k ys, pre = ms ++ ws ++ ys ->
               tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
               ind_con D c0 = Some (gs1 ++ ca_rec t0 :: gs2) ->
@@ -514,7 +514,7 @@ Proof.
                     ltac:(rewrite List.app_nil_r; reflexivity) Hvl Hv) as L.
       rewrite List.firstn_skipn in L.
       exact (L Harg). }
-    eapply glu_ind_con; try eassumption.
+    eapply ind_glu_elem_con; try eassumption.
     intros gs1 t gs2 N A v Heq HN0 HA0 Hv0.
     assert (Hlt : List.length gs1 < List.length vs) by (rewrite Hvl, Heq, List.length_app; cbn; lia).
     assert (Hpw : tele_pre (ind_ar D ups (List.skipn (ind_nu D) bs) c) (List.length (cargs_nonrec gs1))
@@ -538,7 +538,7 @@ Proof.
              ltac:(rewrite List.app_nil_r; reflexivity) Hb ltac:(rewrite <- Heq; exact Hcon) Hpw eq_refl ltac:(lia)
              (tele_pre_nil _) Hsh HΓ (List.firstn (ind_nu D) Ps) _ ltac:(rewrite List.length_firstn; pose proof (decl_closed_nu D Hc); lia) HAσ).
     intros Δ φ Hφ; rewrite <- List.firstn_map; exact (Hk Δ φ Hφ).
-  - intros * Hm Hr _; eapply glu_ind_neut; eassumption.
+  - intros * Hm Hr _; eapply ind_glu_elem_neut; eassumption.
   - intros * Hs1 Hs2 IH ms c0 gs1 t0 gs2 ws k1 ys Hpre Hm Hc Hw Hsk Hk1 Hy _ HΓ Us σ HUl HA Hk.
     cbn [ptyp_ty_at] in HA.
     destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [_ Hcl].
@@ -765,7 +765,7 @@ Proof.
   - intros Γ A (Ps & HPs); exists Ps; eapply ind_typ_at_cumu; [ exact Hass | exact Hcp | exact Hij | exact HN2 | exact HA2 | exact HD2 | exact HPs ].
   - intros Γ A M m [HM Hm Ps HPs Hk].
     refine (mk_ind_glu_exp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM _ Ps _ _); [ apply Hrel; exact Hm | eapply ind_typ_at_cumu; [ exact Hass | exact Hcp | exact Hij | exact HN2 | exact HA2 | exact HD2 | exact HPs ] |].
-    intros Δ φ Ps' Hφ HPs'; eapply (glu_ind_mono p D ups NEl AEl DP DEl Hass Hcp); [| | | exact (Hk _ _ _ Hφ HPs') ].
+    intros Δ φ Ps' Hφ HPs'; eapply (ind_glu_elem_mono p D ups NEl AEl DP DEl Hass Hcp); [| | | exact (Hk _ _ _ Hφ HPs') ].
     + intros k vs Hk' Hp; apply (proj1 (proj2 (HN k vs Hk' Hp))).
     + intros ms c gs k vs Hm' Hc Hk' Hp; apply (proj1 (proj2 (HA ms c gs k vs Hm' Hc Hk' Hp))).
     + exact HD2.
@@ -774,7 +774,7 @@ Proof.
     + eapply ind_typ_at_params_change; [ exact Hl | exact Hrb | | exact HPs ].
       intros Δ φ Hφ; exact (proj1 (proj2 HQs Δ φ Hφ)).
     + intros Δ φ Ps' Hφ HPs'.
-      eapply glu_ind_lower; [ exact Hl | exact Hass | exact Hcp | | | | exact (Hk _ _ _ Hφ HPs') | ].
+      eapply ind_glu_elem_lower; [ exact Hl | exact Hass | exact Hcp | | | | exact (Hk _ _ _ Hφ HPs') | ].
       * intros k vs Hk' Hp; apply (proj2 (proj2 (HN k vs Hk' Hp))).
       * intros ms c gs k vs Hm' Hc Hk' Hp; apply (proj2 (proj2 (HA ms c gs k vs Hm' Hc Hk' Hp))).
       * intros * Hm' Hc Heq Hw HB Hy; exact (proj1 (proj2 (HD _ _ _ _ _ _ _ _ _ _ Hm' Hc Heq Hw HB Hy))).
@@ -1690,7 +1690,7 @@ Proof.
     assert (HAs : Γ ⊨ A : Typeω@i) by (apply completeness_fundamental_exp; eassumption).
     assert (HMs : Γ ⊨ M : A) by (apply completeness_fundamental_exp; eassumption).
     assert (⊢ Γ) by mauto 3.
-    destruct (sem_ctx_per_ctx_env (completeness_fundamental_ctx _ ltac:(eassumption))) as [tail_rel Htail].
+    destruct (rel_ctx_wf_per_ctx_env (completeness_fundamental_ctx _ ltac:(eassumption))) as [tail_rel Htail].
     pose proof (per_ctx_env_of_def Htail HAs HMs) as Hd.
     assert (E : env_rel <~> per_env_extend_def A M tail_rel) by (eapply per_ctx_env_right_irrel; eassumption).
     apply E.
@@ -1743,7 +1743,7 @@ Lemma glu_ctx_env_per_ctx_env : forall {Γ Sb},
     exists env_rel, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel.
 Proof.
   intros.
-  eapply sem_ctx_per_ctx_env, completeness_fundamental_ctx; mauto 2.
+  eapply rel_ctx_wf_per_ctx_env, completeness_fundamental_ctx; mauto 2.
 Qed.
 
 Hint Resolve glu_ctx_env_per_ctx_env : mctt.

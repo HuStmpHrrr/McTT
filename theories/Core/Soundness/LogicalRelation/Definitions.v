@@ -6,7 +6,11 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Export PER IndPER.
 From Mctt.Core.Syntactic Require Export SystemOpt.
 From Mctt.Core.Syntactic Require Import Levels LevelEq.
+From Mctt.Core.Syntactic.System Require Import GlobalPresup GlobalPaths.
 From Mctt.Core.Soundness.Weakening Require Export Definitions.
+(** [nparams_prefix] and [nonrec_args_prefix], which [glu_ind_decl] reads
+    as [valid_ind_decl] does. *)
+From Mctt.Core.Completeness.LogicalRelation Require Import Definitions.
 
 Import Domain_Notations Wk_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
@@ -102,18 +106,18 @@ Definition True_glu_exp_pred (U : typ) : glu_exp_pred := fun Γ A M m => Γ ⊢ 
 #[global] Arguments True_glu_exp_pred U Γ A M m/.
 
 (** [⊥] has no canonical values, so its gluing is that of its neutrals. *)
-Inductive glu_False : ctx -> exp -> domain -> Prop :=
-| glu_False_neut :
+Inductive False_glu_elem : ctx -> exp -> domain -> Prop :=
+| False_glu_elem_neut :
   `{ per_bot m m ->
      (forall {Δ φ M'}, Δ ⊢ᵏ φ : Γ -> Rne m in length Δ ↘ M' -> Δ ⊢ M[φ]ʷ ≈ M' : ⊥) ->
-     glu_False Γ M ⇑ a m }.
+     False_glu_elem Γ M ⇑ a m }.
 
-Hint Constructors glu_False : mctt.
+Hint Constructors False_glu_elem : mctt.
 
 Definition False_glu_typ_pred (U : typ) : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ ⊥ : U.
 #[global] Arguments False_glu_typ_pred U Γ A/.
 
-Definition False_glu_exp_pred (U : typ) : glu_exp_pred := fun Γ A M m => Γ ⊢ A ® False_glu_typ_pred U /\ glu_False Γ M m.
+Definition False_glu_exp_pred (U : typ) : glu_exp_pred := fun Γ A M m => Γ ⊢ A ® False_glu_typ_pred U /\ False_glu_elem Γ M m.
 #[global] Arguments False_glu_exp_pred U Γ A M m/.
 
 Definition neut_glu_typ_pred (U : typ) a : glu_typ_pred :=
@@ -315,8 +319,8 @@ Section GluInd.
       parameters of its type; and neutrals, by their readback.  The
       non-uniform parameters of a recursive argument's type are glued to
       every instance related to the values they evaluate to, so that
-      [glu_ind] does not depend on the representative [ups] of the uniform
-      parameters (see [glu_ind_move]).  A recursive argument is an element
+      [ind_glu_elem] does not depend on the representative [ups] of the uniform
+      parameters (see [ind_glu_elem_move]).  A recursive argument is an element
       at every weakening and every instance of the parameters equal to
       those of its type, like the element itself in [ind_glu_exp_pred]:
       weakening commutes with the instances of the telescopes only for a
@@ -326,8 +330,8 @@ Section GluInd.
       glued at a domain of the shape ([DEl], indexed by the values before
       the domain and the domain), it is a recursive argument of the rest of
       the shape; its domain type is glued at [DP]. *)
-  Inductive glu_ind : ctx -> list exp -> exp -> domain -> Prop :=
-  | glu_ind_con :
+  Inductive ind_glu_elem : ctx -> list exp -> exp -> domain -> Prop :=
+  | ind_glu_elem_con :
     `{ ind_con D c = Some gs ->
        List.length Ps = ind_np D ->
        List.length bs = ind_np D ->
@@ -350,12 +354,12 @@ Section GluInd.
           List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id Ps) As) (List.length gs1) = Some A ->
           List.nth_error vs (List.length gs1) = Some v ->
           glu_rec Γ (List.skipn (ind_nu D) bs ++ nonrec_vals gs1 (List.firstn (List.length gs1) vs)) t A N v) ->
-       glu_ind Γ Ps M (d_con p c (bs ++ vs)) }
-  | glu_ind_neut :
+       ind_glu_elem Γ Ps M (d_con p c (bs ++ vs)) }
+  | ind_glu_elem_neut :
     `{ per_bot m m ->
        (forall Δ φ M', Δ ⊢ᵏ φ : Γ -> Rne m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M' ->
           Δ ⊢ M[φ]ʷ ≈ M' : (apps (a_ind p) Ps)[φ]ʷ) ->
-       glu_ind Γ Ps M (⇑ (d_ind p as') m) }
+       ind_glu_elem Γ Ps M (⇑ (d_ind p as') m) }
   (** A recursive argument [N] of type [A] and shape [t], after the values
       [pre] of the shape's components (the uniform parameters left out). *)
   with glu_rec : ctx -> list domain -> ptyp -> typ -> exp -> domain -> Prop :=
@@ -369,7 +373,7 @@ Section GluInd.
        (forall bsr Q, eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ pre)) bsr ->
           A = apps (a_ind p) Q ->
           forall Δ φ Q', Δ ⊢ᵏ φ : Γ -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
-            glu_ind Δ Q' N[φ]ʷ v) ->
+            ind_glu_elem Δ Q' N[φ]ʷ v) ->
        glu_rec Γ pre (pt_self k Ps) A N v }
   | glu_rec_pi :
     `{ (forall IT OT, A = a_pi IT OT -> forall Δ φ, Δ ⊢ᵏ φ : Γ -> Δ ⊢ IT[φ]ʷ ® DP pre B) ->
@@ -381,9 +385,9 @@ Section GluInd.
        glu_rec Γ pre (pt_pi B t) A N v }.
 End GluInd.
 
-Scheme glu_ind_mut_ind := Induction for glu_ind Sort Prop
+Scheme ind_glu_elem_mut_ind := Induction for ind_glu_elem Sort Prop
 with glu_rec_mut_ind := Induction for glu_rec Sort Prop.
-Combined Scheme glu_ind_mut_ind_all from glu_ind_mut_ind, glu_rec_mut_ind.
+Combined Scheme ind_glu_elem_mut_ind_all from ind_glu_elem_mut_ind, glu_rec_mut_ind.
 
 (** An element of the inductive type: typed, related to itself, and an
     element at every weakening and at every instance of the parameters
@@ -402,7 +406,7 @@ Record ind_glu_exp (p : qname) (D : ind_decl) (ups ns : list domain)
   ; ige_params : list exp
   ; ige_at : ind_typ_at p D ups ns NP NEl AP AEl DP DEl U Γ A ige_params
   ; ige_glu : forall Δ φ Ps', Δ ⊢ᵏ φ : Γ -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) ige_params) Ps' ->
-      glu_ind p D ups NEl AEl DP DEl Δ Ps' M[φ]ʷ m }.
+      ind_glu_elem p D ups NEl AEl DP DEl Δ Ps' M[φ]ʷ m }.
 
 Definition ind_glu_exp_pred (p : qname) (D : ind_decl) (ups ns : list domain)
     (NP : nat -> list domain -> glu_typ_pred) (NEl : nat -> list domain -> glu_exp_pred)
@@ -1013,7 +1017,7 @@ Notation "'DG' a ∈ R ↘ P ↘ El" := (R P El a : ((Prop : Type) : (Type : Typ
 Notation "'EG' A ∈ R ↘ Sb " := (R Sb A : ((Prop : (Type : Type)) : (Type : Type))) (at level 70, A at level 69, R constr, Sb constr).
 
 #[export]
-Hint Constructors glu_False : mctt.
+Hint Constructors False_glu_elem : mctt.
 #[export]
 Hint Constructors neut_glu_exp_pred pi_glu_typ_pred pi_glu_exp_pred : mctt.
 #[export]
@@ -1089,3 +1093,92 @@ Ltac glu_univ_elem_induction1 :=
   | H : glu_univ_elem _ _ _ _ |- _ =>
       glu_univ_elem_induction_core H ltac:(idtac; let n := fresh "IH" in intro n)
   end.
+
+(** ** Glued Declarations
+
+    The judgments of a declaration's typing, read in the gluing model, as
+    [valid_ind_decl] reads them in the PER model.  [nparams_prefix D k] is
+    the context of the first [k] non-uniform parameters, [nonrec_args_prefix
+    gs k] that of the first [k] non-recursive arguments of a constructor. *)
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+Record glu_ind_decl (D : ind_decl) : Prop := mk_glu_ind_decl
+{ gid_params : ⊩ ind_params D
+; gid_lvl : exists n, ind_uparams D ⊩ ind_sort_lvl (ind_sort D) : Level@n
+; gid_lvlP : exists n, ind_params D ⊩ (ind_sort_lvl (ind_sort D))[wk_shiftn (ind_nn D)]ʷ : Level@n
+; gid_npar : forall k A, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
+    nparams_prefix D k ++ ind_uparams D ⊩ A : (ind_sort D)[wk_shiftn k]ʷ
+; gid_arg : forall c gs k A, ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
+    nonrec_args_prefix gs k ++ ind_params D ⊩ A : (ind_sort D)[wk_shiftn (k + ind_nn D)]ʷ
+; gid_rec : forall c gs gs1 t gs2 m P T, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+    List.nth_error (ptyp_ps t) m = Some P ->
+    List.nth_error (tele_insts (ind_nparams D)
+                      (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_nonrec gs1) + ind_nn D))) (ptyp_ps t)) m
+      = Some T ->
+    ptyp_tele t ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ ind_params D ⊩ P : T
+(** The domains of a recursive argument's shape, each over those before
+    it, are types of the sort. *)
+; gid_dom : forall c gs gs1 t gs2 k B, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+    List.nth_error (ptyp_doms t) k = Some B ->
+    doms_ctx (List.firstn k (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ ind_params D
+      ⊩ B : (ind_sort D)[wk_shiftn (k + List.length (cargs_nonrec gs1) + ind_nn D)]ʷ
+; gid_dctx : forall c gs gs1 t gs2 k, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+    k <= List.length (ptyp_doms t) ->
+    ⊩ doms_ctx (List.firstn k (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ ind_params D
+}.
+
+End Fixed_GCtx.
+
+(** ** Sound Embeddings *)
+
+(** [Θ1 ⍮ Ξ1] embeds soundly into [Θ2 ⍮ Ξ2]: it grows into it, its
+    declarations glue there, and so does a member of one of its stored
+    bodies that is an axiom or an abstract definition, at its stored type. *)
+Record glu_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
+  { gem_emb : Emb Θ1 Ξ1 Θ2 Ξ2
+  ; gem_ind : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @glu_ind_decl (gc_mk Θ2 Ξ2) D
+  ; gem_glob : forall p T Φ x Φ0 b pv A oM Γ,
+      loc Θ1 Ξ1 p T Φ ->
+      gm_prefix_upto Φ x = Some (gm_ext Φ0 x (ge_def b pv A oM)) ->
+      (if b then oM else None) = None ->
+      @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ ->
+      @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_mem (qname_mod p) x) A
+  }.
+
+(** ** The Gluing Judgments
+
+    A gluing judgment is stated at a global context [Θ ⍮ Ξ] and holds at
+    every global context [Θ2 ⍮ Ξ2] that [Θ ⍮ Ξ] embeds into soundly
+    ([glu_emb]), as the gluing relation read there.  The model is unary, so
+    there are three judgments: a context glues, a term glues at its type,
+    and a universe is one.  Of the other judgments (equality, subtyping,
+    extensions, units and module expressions), soundness states that their
+    context glues. *)
+
+(** A universe at one target, as its two cases: large, or small at a level
+    that glues. *)
+Record glu_is_univ_at (Θ2 : gdeps) (Ξ2 : gstack) (Γ : ctx) (U : typ) : Prop := mk_glu_is_univ_at
+  { giu_ctx : @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ
+  ; giu_univ : (exists i : nat, U = Typeω@i) \/
+               (exists L (n : nat), U = Type⟨L⟩ /\ @glu_rel_exp (gc_mk Θ2 Ξ2) Γ L (Level@n)) }.
+
+Arguments giu_ctx {Θ2 Ξ2 Γ U}.
+Arguments giu_univ {Θ2 Ξ2 Γ U}.
+
+Definition glu_ctx Θ Ξ Γ : Prop :=
+  forall Θ2 Ξ2, glu_emb Θ Ξ Θ2 Ξ2 -> @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ.
+
+Definition glu_exp Θ Ξ Γ A M : Prop :=
+  forall Θ2 Ξ2, glu_emb Θ Ξ Θ2 Ξ2 -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ M A.
+
+Definition glu_is_univ Θ Ξ Γ U : Prop :=
+  forall Θ2 Ξ2, glu_emb Θ Ξ Θ2 Ξ2 -> glu_is_univ_at Θ2 Ξ2 Γ U.
+
+Notation "⊩ Θ ⍮ Ξ ⍮ Γ" := (glu_ctx Θ Ξ Γ)
+  (at level 70, Θ at next level, Ξ at level 69, Γ at level 69) : type_scope.
+Notation "Θ ⍮ Ξ ⍮ Γ ⊩ M : A" := (glu_exp Θ Ξ Γ A M)
+  (at level 70, Ξ at level 69, Γ at level 69, M at level 69, A at level 69) : type_scope.
+Notation "Θ ⍮ Ξ ⍮ Γ ⊩ᵤ U" := (glu_is_univ Θ Ξ Γ U)
+  (at level 70, Ξ at level 69, Γ at level 69, U at level 69) : type_scope.

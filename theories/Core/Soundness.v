@@ -11,7 +11,7 @@ From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic Require Export NbE.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Soundness Require Export FundamentalTheorem.
-From Mctt.Core.Soundness Require Import LevelCases GlobalGlu.
+From Mctt.Core.Soundness Require Import LevelCases.
 Import Domain_Notations Fixed_Notations.
 
 
@@ -27,7 +27,7 @@ Proof.
   intros * H HG.
   assert (⊢ Γ) by mauto 3.
   assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ]
-      by mauto 3 using completeness_fundamental_ctx, sem_ctx_per_ctx_env.
+      by mauto 3 using completeness_fundamental_ctx, rel_ctx_wf_per_ctx_env.
   destruct HG as [Sb ? i ?].
   pose proof (per_ctx_then_per_env_initial_env ltac:(eassumption)) as [ρ [? ?]].
   destruct_conjs.
@@ -52,7 +52,7 @@ Theorem soundness : forall {Θ Ξ Γ M A},
     exists W, nbe Θ Ξ Γ M A W /\ Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ W : A.
 Proof.
   intros * H.
-  pose proof (proj1 (proj2 soundness_fundamental) _ _ _ _ _ H _ _ (gctx_glu _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))) as HG.
+  pose proof (proj1 (proj2 soundness_fundamental) _ _ _ _ _ H _ _ (glu_emb_refl _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))) as HG.
   exact (@soundness_of_glu (gc_mk Θ Ξ) _ _ _ H HG).
 Qed.
 
@@ -102,7 +102,7 @@ Proof.
   intros * H Hn.
   assert (⊢ Γ) by mauto 3.
   assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ]
-      by mauto 3 using completeness_fundamental_ctx, sem_ctx_per_ctx_env.
+      by mauto 3 using completeness_fundamental_ctx, rel_ctx_wf_per_ctx_env.
   pose proof (soundness_fundamental_exp _ _ _ H) as HM.
   destruct HM as [Sb HSb _ _].
   pose proof (per_ctx_then_per_env_initial_env ltac:(eassumption)) as [ρ [? ?]].

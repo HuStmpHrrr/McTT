@@ -1,6 +1,6 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Soundness Require Import LogicalRelation.
+From Mctt.Core.Soundness Require Import LogicalRelation TermStructureCases.
 Import Domain_Notations Fixed_Notations.
 
 
@@ -52,3 +52,23 @@ End Fixed_GCtx.
 Hint Resolve glu_rel_ctx_empty : mctt.
 #[export]
 Hint Resolve glu_rel_ctx_extend glu_rel_ctx_extend_def : mctt.
+
+(** ** The Rules *)
+
+#[local] Generalizable All Variables.
+
+Lemma glu_ctx_empty :
+  `( ⊢ᵍ Θ ⍮ Ξ ->
+     ⊩ Θ ⍮ Ξ ⍮ ⋅ ).
+Proof. glu_intro; eapply glu_rel_ctx_empty; eapply em_wf, gem_emb; eassumption. Qed.
+
+Lemma glu_ctx_extend :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ▹ A ).
+Proof. glu_intro; eapply glu_rel_ctx_extend; [ eapply presup_ctx_glu_rel_exp |]; eassumption. Qed.
+
+Lemma glu_ctx_extend_def :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ).
+Proof. glu_intro; eapply glu_rel_ctx_extend_def; [ eapply presup_ctx_glu_rel_exp | |]; eassumption. Qed.

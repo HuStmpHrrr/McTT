@@ -265,6 +265,32 @@ End Fixed_GCtx.
 
 #[export]
 Hint Resolve glu_rel_exp_typ glu_rel_exp_suniv : mctt.
+
+(** ** The Rules *)
+
+#[local] Generalizable All Variables.
+
+Lemma glu_typ :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ Typeω@i : Typeω@(S i) ).
+Proof. glu_intro; apply glu_rel_exp_typ; assumption. Qed.
+
+Lemma glu_exp_eq_typ_cong :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_is_univ_large :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ᵤ Typeω@i ).
+Proof. glu_intro; [ assumption | left; eexists; reflexivity ]. Qed.
+
+Lemma glu_is_univ_small :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ L : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ᵤ Type⟨L⟩ ).
+Proof.
+  glu_intro; [ eapply presup_ctx_glu_rel_exp; eassumption | right; do 2 eexists; split; [ reflexivity | eassumption ] ].
+Qed.
 Ltac invert_glu_rel_exp H ::=
   (unshelve eapply (glu_rel_exp_clean_inversion2' _) in H; shelve_unifiable; [eassumption |];
    unfold glu_rel_exp_clean_inversion2_result in H)

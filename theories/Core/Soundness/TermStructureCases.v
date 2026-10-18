@@ -182,3 +182,30 @@ Hint Resolve presup_ctx_glu_rel_exp : mctt.
 Hint Resolve presup_typ_glu_rel_exp : mctt.
 #[export]
 Hint Resolve glu_rel_exp_vlookup : mctt.
+
+(** ** The Rules *)
+
+#[local] Generalizable All Variables.
+
+(** The case of a rule whose conclusion only glues its context: a premise
+    glues the context, or a term glued in it. *)
+Ltac glu_ctx_case :=
+  glu_intro; first [ assumption | eapply presup_ctx_glu_rel_exp; eassumption ].
+
+Lemma glu_vlookup :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Γ ∋ #x : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ #x : A ).
+Proof. glu_intro; eapply glu_rel_exp_vlookup; eassumption. Qed.
+
+Lemma glu_exp_eq_var :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Γ ∋ #x : A ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_var_delta :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Γ ∋ #x ≔ M : A ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.

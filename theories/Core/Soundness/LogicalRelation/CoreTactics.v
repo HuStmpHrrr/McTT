@@ -3,6 +3,7 @@ From Equations Require Import Equations.
 From Stdlib Require Import Lia.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
+From Mctt.Core.Syntactic.System Require Import GlobalPresup.
 From Mctt.Core.Soundness.LogicalRelation Require Import Definitions.
 
 (** State the universes below a level, [glu_univ_below i j], by
@@ -72,3 +73,26 @@ Ltac invert_glu_rel1 :=
       progressive_invert H
   | _ => destruct_glu_record1
   end.
+
+(** ** The Gluing Judgments *)
+
+(** Open the case of a rule: fix a sound embedding, read every premise at
+    its target, take the universes apart, and state a universe at the
+    target by its two parts. *)
+Ltac glu_intro :=
+  unfold glu_ctx, glu_exp, glu_is_univ in *; intros;
+  repeat match goal with IH : forall _ _, glu_emb _ _ _ _ -> _, Hμ : glu_emb _ _ _ _ |- _ =>
+    specialize (IH _ _ Hμ) end;
+  repeat match goal with H : glu_is_univ_at _ _ _ _ |- _ => destruct H end;
+  try match goal with |- glu_is_univ_at _ _ _ _ => constructor end.
+
+(** The syntactic judgments of the source, moved along the sound embedding
+    to its target ([emb_preserves_wf]). *)
+Ltac glu_emb_wf :=
+  match goal with Hμ : glu_emb _ _ _ _ |- _ =>
+    let Hem := fresh "Hem" in
+    pose proof (gem_emb _ _ _ _ Hμ) as Hem;
+    let Hwc := fresh "Hwc" in let Hwe := fresh "Hwe" in let Hweq := fresh "Hweq" in
+    let Hwst := fresh "Hwst" in let Hwx := fresh "Hwx" in let Hwu := fresh "Hwu" in
+    let Hwm := fresh "Hwm" in
+    destruct (emb_preserves_wf _ _ _ _ Hem) as (Hwc & Hwe & Hweq & Hwst & Hwx & Hwu & Hwm) end.

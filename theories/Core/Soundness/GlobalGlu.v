@@ -1,10 +1,14 @@
-(** * Every Well-Formed Global Context Glues
+(** * Glued Global Contexts
 
-    The soundness counterpart of [Core/Completeness/GlobalSem.v]: a
-    well-formed global context embeds soundly into itself ([gctx_glu]).  The
-    validity of each entry where it is checked ([global_valid]) is that the
-    type of a definition glues; a stored axiom or abstract definition then
-    glues as the neutral of its path. *)
+    The soundness counterpart of [Core/Completeness/GlobalSem.v]: what an
+    entry of a global context is worth at a target ([glu_entry],
+    [glu_mod_tele], [glu_ind_decl_entry]), and the sound embedding that the
+    validity of every entry gives ([glu_emb_of], [glu_emb_good]).  The
+    validity of an entry is that the type of a definition glues; a stored
+    axiom or abstract definition then glues as the neutral of its path.
+    Nothing here uses the fundamental theorem; that each entry is valid
+    where it is checked, and so that a well-formed global context embeds
+    soundly into itself, is proved with it in [FundamentalTheorem.v]. *)
 
 From Stdlib Require Import Lia List PeanoNat.
 
@@ -16,7 +20,7 @@ From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases Modu
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Soundness Require Import LevelCases.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases TermStructureCases MemberCases
-  SubtypingCases UniverseCases FunctionCases LetCases TrueFalseCases IndCases ModuleCases KripkeCases.
+  SubtypingCases UniverseCases FunctionCases LetCases TrueFalseCases IndCases ModuleCases.
 From Mctt.Core.Completeness Require IndCases.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
@@ -121,25 +125,25 @@ Section Raw.
 End Raw.
 
 
-(** ** 2. Every well-formed global context glues *)
+(** ** 2. Valid entries make a sound embedding *)
 
 (** What an entry is worth at [Θ2 ⍮ Ξ2]: a definition's type glues, in the
     empty context.  Bodies need nothing: a member with a δ-reduct glues as
     the reduct, which [wf_mem] premises typed. *)
-Definition glu_V (_ : gdeps) (_ : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (_ : ctx) (E : gentry) : Prop :=
+Definition glu_entry (_ : gdeps) (_ : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (_ : ctx) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A _ => exists i, @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ A (Typeω@i)
   | _ => True
   end.
 
-Definition glu_F (_ : gdeps) (_ : gstack) (_ : ctx) : Prop := True.
+Definition glu_mod_tele (_ : gdeps) (_ : gstack) (_ : ctx) : Prop := True.
 
-Definition glu_VD (Θ2 : gdeps) (Ξ2 : gstack) (D : ind_decl) : Prop := @glu_core (gc_mk Θ2 Ξ2) D.
+Definition glu_ind_decl_entry (Θ2 : gdeps) (Ξ2 : gstack) (D : ind_decl) : Prop := @glu_ind_decl (gc_mk Θ2 Ξ2) D.
 
 (** A stored body of the source, valid. *)
 Lemma glu_loc_valid : forall Θ Ξ Θs Ξs Θ2 Ξ2 p T Φ,
-    gds_valid glu_V glu_F glu_VD Θs Ξs Θ2 Ξ2 Θ -> gs_valid glu_V glu_F glu_VD Θs Ξs Θ2 Ξ2 Ξ -> loc Θ Ξ p T Φ ->
-    gm_valid glu_V glu_F glu_VD Θs Ξs Θ2 Ξ2 T Φ.
+    gds_valid glu_entry glu_mod_tele glu_ind_decl_entry Θs Ξs Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry Θs Ξs Θ2 Ξ2 Ξ -> loc Θ Ξ p T Φ ->
+    gm_valid glu_entry glu_mod_tele glu_ind_decl_entry Θs Ξs Θ2 Ξ2 T Φ.
 Proof.
   intros * HΘ HΞ [Hl | Hl].
   - unfold gc_frame in Hl.
@@ -151,7 +155,7 @@ Qed.
 (** A sound embedding, from the validity at the target of what the source
     files and has open. *)
 Theorem glu_emb_of : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
-    gds_valid glu_V glu_F glu_VD Θ Ξ Θ2 Ξ2 Θ -> gs_valid glu_V glu_F glu_VD Θ Ξ Θ2 Ξ2 Ξ -> glu_emb Θ Ξ Θ2 Ξ2.
+    gds_valid glu_entry glu_mod_tele glu_ind_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry Θ Ξ Θ2 Ξ2 Ξ -> glu_emb Θ Ξ Θ2 Ξ2.
 Proof.
   intros * Hg He HΘ HΞ; pose proof He as [Hg2 Hs].
   constructor; [ exact He | intros p D Hl; exact (good_ind _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) |].
@@ -170,116 +174,9 @@ Proof.
   exact (glob_glu _ _ Hg2 _ _ _ _ _ _ _ _ _ _ Hl2 Hp2 Hn HA).
 Qed.
 
-Corollary glu_emb_good : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> GoodV glu_V glu_F glu_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+Corollary glu_emb_good : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
     glu_emb Θ Ξ Θ2 Ξ2.
 Proof.
   intros * Hg HG He; destruct (HG _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ].
   exact (glu_emb_of _ _ _ _ Hg (Embx_emb _ _ _ _ He) HΘ HΞ).
-Qed.
-
-(** *** Each entry is valid where it is checked *)
-
-Lemma glu_V_def : forall Θ Ξ T A M b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ T ⊢ M : A -> GoodV glu_V glu_F glu_VD Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
-    gds_valid glu_V glu_F glu_VD Θ Ξ Θ2 Ξ2 Θ -> gs_valid glu_V glu_F glu_VD Θ Ξ Θ2 Ξ2 Ξ ->
-    forall Θs Ξs, glu_V Θs Ξs Θ2 Ξ2 T (ge_def b pv (ctx_pi T A) (Some (ctx_fn T M))).
-Proof.
-  intros * HM _ He HΘ HΞ Θs Ξs.
-  pose proof (glu_emb_of _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) He HΘ HΞ) as Hμ.
-  destruct (presup_exp_typ HM) as [i HA].
-  destruct (ctx_pi_wf0 _ _ _ _ _ HA) as [j HT].
-  exists j; exact (kglu_read _ _ _ _ _ _ Hμ HT).
-Qed.
-
-Lemma glu_V_ax : forall Θ Ξ A i b pv Θ2 Ξ2 Θs Ξs,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> GoodV glu_V glu_F glu_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
-    glu_V Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
-Proof.
-  intros * HA HG He _.
-  pose proof (glu_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HA)) HG He) as Hμ.
-  destruct (ctx_pi_wf0 _ _ _ _ _ HA) as [j HT].
-  exists j; exact (kglu_read _ _ _ _ _ _ Hμ HT).
-Qed.
-
-Lemma glu_V_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 Θs Ξs,
-    tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    GoodV glu_V glu_F glu_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
-    glu_V Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
-Proof. intros; exact I. Qed.
-
-Lemma glu_V_indalias : forall Θ Ξ pv Δ p Ns D Θ2 Ξ2 Θs Ξs,
-    tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> ind_lookup Θ Ξ p = Some D -> List.length Ns <= ind_nu D ->
-    Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ apps (a_ind p) Ns : ind_ty_at D Ns ->
-    Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ me_apps (qname_mod p) Ns ≈ me_apps (qname_mod p) Ns ->
-    GoodV glu_V glu_F glu_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
-    glu_V Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns).
-Proof. intros; exact I. Qed.
-
-Lemma glu_F_nil : forall Θ Ξ Δ Θ2 Ξ2,
-    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV glu_V glu_F glu_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
-    glu_F Θ2 Ξ2 (Δ ++ gs_tele Ξ).
-Proof. intros; exact I. Qed.
-
-(** A declaration typed at the source glues at the target: its judgments,
-    glued. *)
-Lemma glu_V_ind : forall Θ Ξ D Θ2 Ξ2,
-    decl_typed Θ Ξ D -> GoodV glu_V glu_F glu_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
-    glu_VD Θ2 Ξ2 D /\ glu_F Θ2 Ξ2 (ind_uparams D).
-Proof.
-  intros * Hdt HG He; split; [| exact I ]; unfold glu_VD.
-  pose proof Hdt as [Hass _ Hle HΔ Hsu [i HS] [n Hn] HA HPl HP HN Hnd Hsh].
-  pose proof (glu_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ HΔ) HG He) as Hμ.
-  destruct soundness_fundamental as (Kc & Ke & _).
-  constructor.
-  - exact (Kc _ _ _ HΔ _ _ Hμ).
-  - exists n; exact (Ke _ _ _ _ _ Hn _ _ Hμ).
-  - exists n.
-    assert (Hn' : Θ ⍮ Ξ ⍮ ind_params D ⊢ (ind_sort_lvl (ind_sort D))[wk_shiftn (ind_nn D)]ʷ : Level@n).
-    { pose proof HΔ as HΔ'; rewrite params_split in HΔ'.
-      pose proof (wf_wk_shiftn_app' _ _ _ _ HΔ') as Hw.
-      rewrite length_nparams in Hw; rewrite params_split.
-      exact (wk_preserves_exp _ _ _ _ _ _ _ Hn Hw). }
-    exact (Ke _ _ _ _ _ Hn' _ _ Hμ).
-  - intros k A HA0.
-    destruct (Completeness.IndCases.nparams_nth_split _ _ _ HA0) as [Δ1 HΔ1].
-    assert (Hk : k < ind_nn D)
-      by (rewrite <- (length_nparams D), <- List.length_rev; apply List.nth_error_Some; congruence).
-    pose proof (HN _ _ _ HΔ1) as HT; rewrite Completeness.IndCases.length_npre in HT by lia.
-    exact (Ke _ _ _ _ _ HT _ _ Hμ).
-  - intros * Hcon HA0.
-    destruct (Completeness.IndCases.nonrec_nth_split _ _ _ HA0) as (gs1 & gs2 & Heq & Hk).
-    pose proof (HA _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq) as HT.
-    assert (Hls : List.length (cargs_strat gs1) = k)
-      by (rewrite Completeness.IndCases.cargs_strat_nonrec, List.length_rev, List.length_map; exact Hk).
-    rewrite Hls, (Completeness.IndCases.astrat_prefix gs1 (ca_arg A :: gs2)), Hk, <- Heq in HT.
-    exact (Ke _ _ _ _ _ HT _ _ Hμ).
-  - intros * Hcon Heq HPk HT.
-    assert (Hls : List.length (cargs_nonrec gs1) = List.length (cargs_strat gs1))
-      by (rewrite Completeness.IndCases.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
-    rewrite Hls in HT.
-    pose proof (HP _ _ _ _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq HPk HT) as H.
-    rewrite (Completeness.IndCases.astrat_prefix gs1 (ca_rec t :: gs2)), <- Heq in H.
-    exact (Ke _ _ _ _ _ H _ _ Hμ).
-  - intros * Hcon Heq HB.
-    destruct (Hsh _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq) as [_ Hs2].
-    destruct (doms_split_nth _ _ _ HB) as [Hsplit _].
-    pose proof (Hs2 _ _ _ Hsplit) as HT.
-    assert (Hk : List.length (List.firstn k (ptyp_doms t)) = k)
-      by (rewrite List.length_firstn; assert (k < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia).
-    assert (Hls : List.length (cargs_strat gs1) = List.length (cargs_nonrec gs1))
-      by (rewrite Completeness.IndCases.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
-    rewrite Hk, Hls, (Completeness.IndCases.astrat_prefix gs1 (ca_rec t :: gs2)), <- Heq in HT.
-    exact (Ke _ _ _ _ _ HT _ _ Hμ).
-  - intros * Hcon Heq Hk.
-    pose proof (doms_prefix_wf _ _ _ _ _ Hdt (cons_lookup_in _ _ _ Hcon) _ _ _ Heq _ Hk) as H.
-    rewrite (Completeness.IndCases.astrat_prefix gs1 (ca_rec t :: gs2)), <- Heq in H.
-    exact (Kc _ _ _ H _ _ Hμ).
-Qed.
-
-(** Every well-formed global context glues: the identity is a sound
-    embedding. *)
-Theorem gctx_glu : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> glu_emb Θ Ξ Θ Ξ.
-Proof.
-  intros * Hg; apply glu_emb_good; [ exact Hg | | apply Embx_refl; exact Hg ].
-  exact (global_valid glu_V glu_F glu_VD glu_V_def glu_V_ax glu_V_alias glu_V_indalias glu_F_nil glu_V_ind _ _ Hg).
 Qed.

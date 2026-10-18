@@ -147,7 +147,7 @@ Section IndRealize.
     intros Δ φ Ps' Hφ HPs'.
     pose proof (ind_typ_at_params_conv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hl HPs Hφ HPs') as HPeq.
     destruct HPs as [HAPs _].
-    eapply glu_ind_neut; [ exact Hm |].
+    eapply ind_glu_elem_neut; [ exact Hm |].
     intros Θ ψ M' Hψ Hr.
     pose proof (kripke_compose _ _ _ _ _ Hψ Hφ) as Hc.
     rewrite exp_wk_wk.
@@ -189,7 +189,7 @@ Section IndRealize.
        (forall Γ A R, DF b ≈ b ∈ per_univ_elem i ↘ R -> Γ ⊢ A ® DP (ms ++ ws ++ ys) B -> Γ ⊢ A ® glu_typ_top i b) /\
        (forall Γ M A m, Γ ⊢ M : A ® m ∈ glu_elem_bot i b -> Γ ⊢ M : A ® ⇑ b m ∈ DEl (ms ++ ws ++ ys) B)).
 
-  Lemma glu_ind_readback : forall Γ Ps M m, glu_ind p D ups NEl AEl DP DEl Γ Ps M m -> ⊢ Γ ->
+  Lemma ind_glu_elem_readback : forall Γ Ps M m, ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m -> ⊢ Γ ->
       forall ns', glu_params_top D Γ Ps (ups ++ ns') ->
       ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns' m m ->
       forall (w : nf), Rnf ⇓ (d_ind p (ups ++ ns')) m in length Γ ↘ w -> Γ ⊢ M ≈ w : apps (a_ind p) Ps.
@@ -198,7 +198,7 @@ Section IndRealize.
     destruct (per_univ_elem_ind_evals _ _ _ _ _ _ _ _ Hper Hl Hu Hu) as (HevN & HevAr & HevD).
     pose proof Hcp as [HnP HnI HaP HaI HdP HdI].
     pose proof Hadm as [_ _ Hcl _].
-    apply (glu_ind_mut_ind p D ups NEl AEl DP DEl
+    apply (ind_glu_elem_mut_ind p D ups NEl AEl DP DEl
              (fun Γ Ps M m _ => ⊢ Γ -> forall ns', glu_params_top D Γ Ps (ups ++ ns') ->
                 ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns' m m ->
                 forall (w : nf), Rnf ⇓ (d_ind p (ups ++ ns')) m in length Γ ↘ w -> Γ ⊢ M ≈ w : apps (a_ind p) Ps)
@@ -405,7 +405,7 @@ Section IndRealize.
     destruct (HQk Δ φ Hφ) as (Hpt & _ & _).
     pose proof (Hk Δ φ _ Hφ (glu_params_top_refl _ _ _ _ Hpt)) as Hg.
     assert (HΔ : ⊢ Δ) by (eapply kripke_dom; eassumption).
-    pose proof (glu_ind_readback _ _ _ _ Hg HΔ ns Hpt (proj1 (Herel _ _) (proj1 (ER _ _) Hm)) w Hw) as Hrb.
+    pose proof (ind_glu_elem_readback _ _ _ _ Hg HΔ ns Hpt (proj1 (Herel _ _) (proj1 (ER _ _) Hm)) w Hw) as Hrb.
     eapply wf_exp_eq_conv'; [ exact Hrb |].
     rewrite <- wk_apps_ind; symmetry; mauto 3.
   Qed.
@@ -574,7 +574,7 @@ Proof.
     + apply_equiv_left. trivial.
     + intros.
       saturate_kripke_escape.
-      eapply wf_exp_eq_conv'; [ eapply glu_False_readback; eassumption | mauto 3 ].
+      eapply wf_exp_eq_conv'; [ eapply False_glu_elem_readback; eassumption | mauto 3 ].
   (* pi *)
   - match_by_head pi_glu_typ_pred progressive_invert.
     handle_per_univ_elem_irrel.

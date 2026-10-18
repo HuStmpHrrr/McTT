@@ -131,3 +131,42 @@ End Fixed_GCtx.
 
 #[export]
 Hint Resolve glu_rel_ctx_tail glu_rel_ctx_extend_mod glu_rel_exp_mem glu_rel_exp_let_mod : mctt.
+
+(** ** The Rules
+
+    A module slot and a module [let] read their syntactic premises at the
+    target, moved along the embedding. *)
+
+#[local] Generalizable All Variables.
+
+(** A slot glues when the context does and its unit is well formed. *)
+Lemma glu_ctx_extend_mod :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ▹ₘ U ).
+Proof. glu_intro; glu_emb_wf; eapply (@glu_rel_ctx_extend_mod (gc_mk _ _)); [ eassumption | apply Hwu; eassumption ]. Qed.
+
+Lemma glu_let_mod :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊩ C : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : C ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊩ B : C ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ ℓₘ U in B : C[Id ,,ₘ me_lit U] ).
+Proof.
+  glu_intro; glu_emb_wf.
+  eapply (@glu_rel_exp_let_mod (gc_mk _ _)); [ apply Hwu; eassumption | apply Hwe; eassumption | eassumption ].
+Qed.
+
+Lemma glu_exp_eq_let_mod_cong :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ▹ₘ U ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ ℓₘ U' in B' : C[Id ,,ₘ me_lit U] ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_let_mod_zeta :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊩ C : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊩ B : C ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.

@@ -113,3 +113,34 @@ End Fixed_GCtx.
 
 #[export]
 Hint Resolve glu_rel_exp_let : mctt.
+
+(** ** The Rules *)
+
+#[local] Generalizable All Variables.
+
+Lemma glu_let :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊩ B : C ->
+     let_ann oA A ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ a_let (b_def oA M) B : C[Id,,M] ).
+Proof. glu_intro; eapply glu_rel_exp_let; eassumption. Qed.
+
+Lemma glu_exp_eq_let_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ->
+     let_ann oA A ->
+     let_ann oA' A' ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_let_zeta :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊩ B : C ->
+     let_ann oA A ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.

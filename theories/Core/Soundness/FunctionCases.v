@@ -600,3 +600,72 @@ Hint Resolve glu_rel_exp_pi : mctt.
 Hint Resolve glu_rel_exp_fn : mctt.
 #[export]
 Hint Resolve glu_rel_exp_app : mctt.
+
+(** ** The Rules *)
+
+#[local] Generalizable All Variables.
+
+(** [Π] at a universe: the case of a large universe and that of a small
+    one. *)
+Lemma glu_pi :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ᵤ U ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ A : U ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊩ B : U[↑]ʷ ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ Π A B : U ).
+Proof.
+  glu_intro.
+  match goal with HU : (exists i, ?U = Typeω@i) \/ _ |- _ => destruct HU as [[? ->] | (? & ? & -> & ?)] end;
+    [ eapply glu_rel_exp_pi | eapply glu_rel_exp_pi_small_tm ]; eassumption.
+Qed.
+
+Lemma glu_fn :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊩ M : B ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ λ A M : Π A B ).
+Proof. glu_intro; eapply glu_rel_exp_fn; eassumption. Qed.
+
+Lemma glu_app :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊩ B : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : Π A B ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ N : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M $ N : B[Id,,N] ).
+Proof. glu_intro; eapply glu_rel_exp_app; eassumption. Qed.
+
+Lemma glu_exp_eq_pi_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ᵤ U ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ A : U ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ▹ A ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_fn_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ▹ A ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_app_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊩ B : Typeω@i ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_pi_beta :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊩ B : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊩ M : B ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ N : A ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
+Lemma glu_exp_eq_fn_eta :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊩ B : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : Π A B ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
