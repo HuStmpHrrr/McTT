@@ -34,7 +34,15 @@ brief says so explicitly.
   - Don't run `rocq c`, `coqc`, `coqtop` or per-file `make` by hand.
   - The only exception is the full build:
     `make -f CoqMakefile.mk real-all` then `make -f CoqMakefile.mk post-all`,
-    in `theories/`.
+    in `theories/`. A single-target `make` is allowed only to rebuild
+    dependencies the MCP cannot; if the MCP times out on a file, report the
+    file and the call instead of switching to `make` silently.
+- **Always prefer the MCP.** Check the file you are working on with
+  `rocq_check` / `rocq_step_multi` / `rocq_compile_file`, not with `make`.
+- **Edit files with the Edit tool** (Write for new files). Never edit `.v`
+  files (or any source) through `python3`, `sed -i`, `awk` or heredoc
+  rewrites in the shell; read-only shell (`grep`, `sed -n`, `git show`) is
+  fine.
 - **Print Assumptions,** after a full build: use `rocq_query` in *preamble*
   mode, e.g. `preamble="From Mctt Require Import Entrypoint."`,
   `command="Print Assumptions Mctt.Entrypoint.main_sound."`.
@@ -87,6 +95,10 @@ brief says so explicitly.
   consistency and canonicity.
 - **Privacy** is checked once per command, by the command judgment, outside
   typing. Typing and δ ignore privacy.
+- **Big predicates are Records.** A predicate in `Prop` that is a big
+  conjunction or a long existential (3 or more conjuncts, or 2 or more
+  witnesses with a conjunction) is defined as a `Record … : Prop` with named
+  fields, never as `… /\ … /\ …` or `exists a b c, …`.
 - **Shared tactics:** prefer improving them (`mauto`, the inversion and
   presupposition tactics) over ad-hoc proof scripts.
 - **Read** `AGENT/README.md`, `AGENT/notations.md` and
