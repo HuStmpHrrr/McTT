@@ -47,11 +47,11 @@ Proof.
   - assert (He : exists A, e = ce_ass A) by (inversion HCa as [| ? ? He _]; exact He).
     destruct He as [A ->].
     assert (HCa' : tele_ass C) by (inversion HCa; assumption).
-    destruct (sem_ctx_ass_inv HC) as [i HA].
-    pose proof (sem_ctx_tail HC) as HC'.
+    destruct (rel_ctx_wf_ass_inv HC) as [i HA].
+    pose proof (rel_ctx_wf_tail HC) as HC'.
     destruct (IH Γ HCa' HC' HΓ) as [HCΓ Hres].
-    destruct (sem_ctx_per_ctx_env HC') as [RC' HRC'].
-    destruct (sem_ctx_per_ctx_env HCΓ) as [RCΓ' HRCΓ'].
+    destruct (rel_ctx_wf_per_ctx_env HC') as [RC' HRC'].
+    destruct (rel_ctx_wf_per_ctx_env HCΓ) as [RCΓ' HRCΓ'].
     assert (HA' : C ++ Γ ⊨ A ≈ A : Typeω@i)
       by (eapply rel_exp_under_ctx_restrict; [ exact HRCΓ' | exact HRC' | apply Hres; assumption | exact HA ]).
     pose proof (per_ctx_env_of_typ HRC' HA) as HRCA.
@@ -69,8 +69,8 @@ Lemma closed_app_valid : forall C Γ T M M', tele_ass C -> ⊨ C -> ⊨ Γ ->
 Proof.
   intros * HCa HC HΓ HM.
   destruct (closed_app_sem C Γ HCa HC HΓ) as [HCΓ Hres].
-  destruct (sem_ctx_per_ctx_env HC) as [RC HRC].
-  destruct (sem_ctx_per_ctx_env HCΓ) as [RCΓ HRCΓ].
+  destruct (rel_ctx_wf_per_ctx_env HC) as [RC HRC].
+  destruct (rel_ctx_wf_per_ctx_env HCΓ) as [RCΓ HRCΓ].
   eapply rel_exp_under_ctx_restrict; [ exact HRCΓ | exact HRC | apply Hres; assumption | exact HM ].
 Qed.
 
@@ -86,8 +86,8 @@ Proof.
   - assert (He : exists A, e = ce_ass A) by (inversion HCa as [| ? ? He _]; exact He).
     destruct He as [A ->].
     assert (HCa' : tele_ass C) by (inversion HCa; assumption).
-    destruct (sem_ctx_ass_inv HC) as [i HA].
-    pose proof (sem_ctx_tail HC) as HC'.
+    destruct (rel_ctx_wf_ass_inv HC) as [i HA].
+    pose proof (rel_ctx_wf_tail HC) as HC'.
     destruct (List.exists_last (l := Ms) ltac:(intros ->; cbn in Hl; discriminate)) as (Ms' & M & ->).
     rewrite List.length_app in Hl; cbn in Hl.
     assert (Hl' : List.length Ms' = List.length C) by lia; clear Hl.
@@ -140,9 +140,9 @@ Proof.
   assert (He : exists A, e = ce_ass A) by (inversion HΔa as [| ? ? He _]; exact He).
   destruct He as [A ->].
   assert (HΔa' : tele_ass Δ) by (inversion HΔa; assumption).
-  destruct (sem_ctx_ass_inv HΔ) as [i HA].
+  destruct (rel_ctx_wf_ass_inv HΔ) as [i HA].
   cbn [centry_sub].
-  exact (rel_sub_under_ctx_q (IH _ _ _ _ HΔa' (sem_ctx_tail HΔ) Hσ) HA).
+  exact (rel_sub_under_ctx_q (IH _ _ _ _ HΔa' (rel_ctx_wf_tail HΔ) Hσ) HA).
 Qed.
 
 Lemma env_entry_args_lt : forall ρ ρ' xs x, x < List.length xs -> env_entry (env_args ρ xs) x = env_entry (env_args ρ' xs) x.
@@ -224,8 +224,8 @@ Proof.
   - assert (He : exists A, e = ce_ass A) by (inversion HΔa as [| ? ? He _]; exact He).
     destruct He as [B ->].
     assert (HΔa' : tele_ass Δ) by (inversion HΔa; assumption).
-    destruct (sem_ctx_ass_inv HΔ) as [i HB].
-    pose proof (sem_ctx_tail HΔ) as HΔ'.
+    destruct (rel_ctx_wf_ass_inv HΔ) as [i HB].
+    pose proof (rel_ctx_wf_tail HΔ) as HΔ'.
     destruct (List.exists_last (l := xs) ltac:(intros ->; cbn in Hl; discriminate)) as (xs' & x & ->).
     rewrite List.length_app in Hl; cbn in Hl.
     assert (Hl' : List.length xs' = List.length Δ) by lia; clear Hl.
@@ -234,9 +234,9 @@ Proof.
     destruct (per_gargs_app (List.rev Δ) (ce_ass B :: nil) ρσ ρσ xs' xs' (x :: nil) (x :: nil) Hlr Hg Hlr)
       as [Hg' Hgx].
     inversion Hgx as [| ? ? ? ? ? ? ? ? ? R0 HB0 Hx _]; subst.
-    pose proof (sem_ctx_app_r _ _ HΔ') as HΓ.
-    destruct (sem_ctx_per_ctx_env HΓ) as [RΓ HRΓ].
-    destruct (sem_ctx_per_ctx_env HΔ') as [RΔ HRΔ].
+    pose proof (rel_ctx_wf_app_r _ _ HΔ') as HΓ.
+    destruct (rel_ctx_wf_per_ctx_env HΓ) as [RΓ HRΓ].
+    destruct (rel_ctx_wf_per_ctx_env HΔ') as [RΔ HRΔ].
     pose proof (rel_sub_qn _ _ _ _ _ HΔa' HΔ' Hσ) as Hq.
     destruct (rel_sub_under_ctx_simple Hq) as (RS' & HS' & _).
     pose proof (IH _ _ _ _ _ _ HΔa' HΔ' HΓ' Hσ Hρ Hev xs' Hg' Hl' RS' HS') as IHx.
@@ -309,8 +309,8 @@ Proof.
   intros * HKa HK HC0a HC0 HΓ HRΓ HRK HRS HX Hτ HE Hl Hev HF.
   destruct (closed_app_sem _ _ HKa HK HΓ) as [HKΓ HresK].
   destruct (closed_app_sem _ _ HC0a HC0 HΓ) as [HC0Γ Hres0].
-  destruct (sem_ctx_per_ctx_env HC0Γ) as [R0Γ HR0Γ].
-  destruct (sem_ctx_per_ctx_env HC0) as [R0 HR0].
+  destruct (rel_ctx_wf_per_ctx_env HC0Γ) as [R0Γ HR0Γ].
+  destruct (rel_ctx_wf_per_ctx_env HC0) as [R0 HR0].
   assert (HPK : PER RK) by (eapply per_env_PER; exact HRK).
   assert (HP0 : PER R0) by (eapply per_env_PER; exact HR0).
   assert (HPa : tele_ass Pre) by (apply List.Forall_app in HKa as [H _]; exact H).
@@ -350,8 +350,8 @@ Proof.
   - assert (He : exists A, e = ce_ass A) by (inversion HCa as [| ? ? He _]; exact He).
     destruct He as [A ->].
     assert (HCa' : tele_ass Δ) by (inversion HCa; assumption).
-    destruct (sem_ctx_ass_inv HC) as [i HA].
-    pose proof (sem_ctx_tail HC) as HC'.
+    destruct (rel_ctx_wf_ass_inv HC) as [i HA].
+    pose proof (rel_ctx_wf_tail HC) as HC'.
     destruct (List.exists_last (l := Ms) ltac:(intros ->; cbn in Hl; discriminate)) as (Ms' & M & ->).
     rewrite List.length_app in Hl; cbn in Hl.
     assert (Hl' : List.length Ms' = List.length Δ) by lia; clear Hl.
@@ -368,13 +368,13 @@ Proof.
       rewrite Hti, List.nth_error_app2, HlT, Nat.sub_diag by lia; reflexivity.
 Qed.
 
-Lemma sem_ctx_ext_typ : forall Γ A (i : nat), ⊨ Γ -> Γ ⊨ A : Typeω@i -> ⊨ Γ ▹ A.
+Lemma rel_ctx_wf_ext_typ : forall Γ A (i : nat), ⊨ Γ -> Γ ⊨ A : Typeω@i -> ⊨ Γ ▹ A.
 Proof.
-  intros * HΓ HA; destruct (sem_ctx_per_ctx_env HΓ) as [R HR].
+  intros * HΓ HA; destruct (rel_ctx_wf_per_ctx_env HΓ) as [R HR].
   econstructor; [ exact HΓ | exact (per_ctx_env_of_typ HR HA) | exact HA ].
 Qed.
 
-Lemma gsub_sem_ctx : forall Γ τ Δ, gsub Γ τ Δ -> ⊨ Γ.
+Lemma gsub_rel_ctx_wf : forall Γ τ Δ, gsub Γ τ Δ -> ⊨ Γ.
 Proof. intros * Hg; exact (proj1 (gsub_sem Hg)). Qed.
 
 Lemma gsub_qn : forall Pre Γ0 τ Δ0, gsub Γ0 τ Δ0 -> tele_ass Pre -> ⊨ Pre ++ Δ0 ->
@@ -384,9 +384,9 @@ Proof.
   assert (He : exists A, e = ce_ass A) by (inversion HPa as [| ? ? He _]; exact He).
   destruct He as [B ->].
   assert (HPa' : tele_ass Pre) by (inversion HPa; assumption).
-  destruct (sem_ctx_ass_inv HP) as [i HB].
+  destruct (rel_ctx_wf_ass_inv HP) as [i HB].
   cbn [centry_sub].
-  exact (gsub_q _ _ _ _ _ (IH _ _ _ Hg HPa' (sem_ctx_tail HP)) HB).
+  exact (gsub_q _ _ _ _ _ (IH _ _ _ Hg HPa' (rel_ctx_wf_tail HP)) HB).
 Qed.
 
 Lemma gsub_wk : forall Γ φ Δ, Γ ⊨ʷ φ : Δ -> ⊨ Γ -> ⊨ Δ -> gsub Γ (sb_of_wk φ) Δ.
@@ -405,10 +405,10 @@ Proof.
   assert (He : exists A, e = ce_ass A) by (inversion HΔa as [| ? ? He _]; exact He).
   destruct He as [A ->].
   assert (HΔa' : tele_ass Δ) by (inversion HΔa; assumption).
-  destruct (sem_ctx_ass_inv HΔ) as [k HA].
+  destruct (rel_ctx_wf_ass_inv HΔ) as [k HA].
   cbn [ctx_pi].
-  apply (IH _ _ (max k i) HΔa' (sem_ctx_tail HΔ)).
-  apply rel_exp_pi_cong; [ eapply rel_exp_cumu_ge; [| exact HA ]; lia | eapply rel_exp_cumu_ge; [| exact HB ]; lia ].
+  apply (IH _ _ (max k i) HΔa' (rel_ctx_wf_tail HΔ)).
+  apply rel_exp_under_ctx_pi_cong; [ eapply rel_exp_cumu_ge; [| exact HA ]; lia | eapply rel_exp_cumu_ge; [| exact HB ]; lia ].
 Qed.
 
 Lemma rel_exp_apps_ctx_pi_n : forall n Δ Γ B (i : nat) M Ms,
@@ -427,20 +427,20 @@ Proof.
     rewrite List.length_app in Hl; cbn in Hl.
     destruct Ms as [| M0 Ms]; [ cbn in Hl; lia |]; cbn in Hl.
     rewrite ctx_pi_snoc in HM; rewrite <- List.app_assoc in HΔ, HB; cbn [List.app] in HΔ, HB.
-    pose proof (sem_ctx_app_r _ _ HΔ) as HΓA.
-    destruct (sem_ctx_ass_inv HΓA) as [k HA0].
-    pose proof (sem_ctx_tail HΓA) as HΓ.
+    pose proof (rel_ctx_wf_app_r _ _ HΔ) as HΓA.
+    destruct (rel_ctx_wf_ass_inv HΓA) as [k HA0].
+    pose proof (rel_ctx_wf_tail HΓA) as HΓ.
     destruct (rel_exp_ctx_pi _ _ _ _ Hass HΔ HB) as [j HPi].
     assert (HM0 : Γ ⊨ M0 : A0)
       by (rewrite <- (exp_sub_id A0); apply (HMs 0); [ reflexivity | rewrite tele_insts_snoc; reflexivity ]).
     assert (Happ : Γ ⊨ M $ M0 : (ctx_pi Δ B)[Id,,M0]).
-    { eapply (rel_exp_app_cong (i := max k j)); [ eapply rel_exp_cumu_ge; [| exact HA0 ]; lia
+    { eapply (rel_exp_under_ctx_app_cong (i := max k j)); [ eapply rel_exp_cumu_ge; [| exact HA0 ]; lia
                                                 | eapply rel_exp_cumu_ge; [| exact HPi ]; lia | exact HM | exact HM0 ]. }
     rewrite ctx_pi_sub in Happ.
     assert (Hg0 : gsub Γ (Id,,M0) (Γ ▹ A0)).
     { eapply gsub_ass; [ constructor; exact HΓ | exact HA0 | rewrite exp_sub_id; exact HM0 ]. }
     pose proof (gsub_qn _ _ _ _ Hg0 Hass HΔ) as Hgq.
-    pose proof (gsub_sem_ctx _ _ _ Hgq) as HΔ'.
+    pose proof (gsub_rel_ctx_wf _ _ _ Hgq) as HΔ'.
     pose proof (rel_exp_under_ctx_gsub Hgq HB) as HB'; cbn [exp_sub] in HB'.
     cbn [apps_exp sb_of_list].
     replace (B[sb_of_list (Id,,M0) Ms]) with (B[sb_qn (List.length Δ) (Id,,M0)][sb_of_list Id Ms])
@@ -460,7 +460,7 @@ Proof.
   intros * HΓ H.
   rewrite <- (exp_wk_id_ext T wk_id), <- (exp_wk_id_ext N wk_id), <- (exp_wk_id_ext N' wk_id) by (intros x; reflexivity).
   eapply rel_exp_under_ctx_wk; [| exact H ].
-  destruct (sem_ctx_per_ctx_env HΓ) as [R HR].
+  destruct (rel_ctx_wf_per_ctx_env HΓ) as [R HR].
   eapply (rel_wk_under_ctx_intro (R' := fun _ _ => True)); [ exact HR | |].
   - apply per_ctx_env_nil; reflexivity.
   - constructor; [ apply wk_mono_id | intros; exact I ].
@@ -484,9 +484,9 @@ Proof.
   pose proof (rel_sub_qn _ _ _ _ _ HΔa HΔ Hσ) as Hq.
   destruct (rel_sub_under_ctx_simple Hq) as (RS & HRS & _).
   pose proof (tele_stage_rel _ _ _ _ _ _ _ HΔa HΔ HΓ' Hσ Hρ Hev _ Hg Hl _ HRS) as HE.
-  pose proof (sem_ctx_app_r _ _ HΔ) as HΓ.
-  destruct (sem_ctx_per_ctx_env HΓ) as [RΓ HRΓ].
-  destruct (sem_ctx_per_ctx_env HΔ) as [RΔ HRΔ].
+  pose proof (rel_ctx_wf_app_r _ _ HΔ) as HΓ.
+  destruct (rel_ctx_wf_per_ctx_env HΓ) as [RΓ HRΓ].
+  destruct (rel_ctx_wf_per_ctx_env HΔ) as [RΔ HRΔ].
   destruct (stage_base (tele_sub Δ σ) Γ' Γ σ RΓ RS ρ ρσ xs HRΓ HRS Hσ HE ltac:(rewrite length_tele_sub; exact Hl) Hev)
     as (Y & HY & HYρ).
   rewrite length_tele_sub in HY.

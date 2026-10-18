@@ -21,6 +21,7 @@ From Mctt.Core.Completeness Require Import LogicalRelation SubstitutionCases Uni
 From Mctt.Core.Semantic Require Import Levels Realizability.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
+#[local] Generalizable All Variables.
 
 (** A link of a chain of levels at a sort as a fact of [per_lvl], and the
     bounds of the values of a chain of four. *)
@@ -67,16 +68,16 @@ Qed.
 
 Hint Resolve rel_exp_of_typ_level : mctt.
 
-Corollary valid_exp_level : forall {Γ} {i : nat},
+Corollary valid_exp_under_ctx_level : forall {Γ} {i : nat},
     ⊨ Γ ->
     Γ ⊨ Level@n : Typeω@i.
 Proof.
-  intros * H%sem_ctx_per_ctx_env.
+  intros * H%rel_ctx_wf_per_ctx_env.
   destruct H as [env_relΓ HΓ].
   eapply rel_exp_of_typ_level; eassumption.
 Qed.
 
-Hint Resolve valid_exp_level : mctt.
+Hint Resolve valid_exp_under_ctx_level : mctt.
 
 (** [Level@n] in a universe at any index, in particular in the small ones. *)
 Lemma rel_exp_of_univ_level : forall {Γ u env_relΓ},
@@ -93,16 +94,26 @@ Proof.
   apply rel_chain_4; assumption.
 Qed.
 
-Corollary valid_exp_level_small : forall {Γ o},
-    ⊨ Γ ->
-    Γ ⊨ Level@n : Type⟨𝕃ᵒ o⟩.
+End Fixed_GCtx.
+
+Corollary sem_level :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Level@n : Type@0 ).
 Proof.
-  intros * H%sem_ctx_per_ctx_env.
+  intros * H; sem_intro; [ assumption |].
+  apply rel_ctx_wf_per_ctx_env in H.
   destruct H as [env_relΓ HΓ].
-  exact (rel_exp_of_univ_level (u := us o) HΓ).
+  exact (rel_exp_of_univ_level (u := us (0, 0)) HΓ).
 Qed.
 
-Hint Resolve valid_exp_level_small : mctt.
+Lemma sem_exp_eq_level_cong :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Level@n ≈ Level@n : Type@0 ).
+Proof. intros; eapply sem_level; eassumption. Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+  Context {n : nat}.
 
 (** ** Levels as Terms
 
@@ -145,7 +156,7 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   exists (per_lvl_at n).
   split; [| eapply H; eassumption].
-  pose proof (per_univ_elem_level 0) as Hn.
+  pose proof (per_univ_elem_level (n := n) 0) as Hn.
   econstructor; try apply eval_exp_level.
   apply rel_chain_4; assumption.
 Qed.
@@ -157,7 +168,7 @@ End Fixed_GCtx.
 #[export]
 Hint Resolve per_univ_elem_level : mctt.
 #[export]
-Hint Resolve rel_exp_of_typ_level valid_exp_level valid_exp_level_small : mctt.
+Hint Resolve rel_exp_of_typ_level valid_exp_under_ctx_level : mctt.
 #[export]
 Hint Resolve rel_exp_of_level : mctt.
 Ltac eexists_rel_exp_of_level :=
@@ -188,19 +199,30 @@ Proof.
   apply rel_chain_4; apply per_lvl_at_lit; exact Ho.
 Qed.
 
-Corollary valid_exp_llit : forall {Γ o},
-    fst o <= n ->
-    ⊨ Γ ->
-    Γ ⊨ 𝕃ᵒ o : Level@n.
+End Fixed_GCtx.
+
+Corollary sem_llit :
+  `( fst o <= n ->
+     ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ 𝕃ᵒ o : Level@n ).
 Proof.
-  intros * Ho H%sem_ctx_per_ctx_env.
+  intros * Ho H; sem_intro; [ assumption |].
+  apply rel_ctx_wf_per_ctx_env in H.
   destruct H as [env_relΓ HΓ].
   eapply rel_exp_llit; eassumption.
 Qed.
 
-Hint Resolve valid_exp_llit : mctt.
+Lemma sem_exp_eq_llit_cong :
+  `( fst o <= n ->
+     ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ 𝕃ᵒ o ≈ 𝕃ᵒ o : Level@n ).
+Proof. intros; eapply sem_llit; eassumption. Qed.
 
-Lemma rel_exp_succl_cong : forall {Γ M M'},
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+  Context {n : nat}.
+
+Lemma rel_exp_under_ctx_succl_cong : forall {Γ M M'},
     Γ ⊨ M ≈ M' : Level@n ->
     Γ ⊨ succl M ≈ succl M' : Level@n.
 Proof.
@@ -215,14 +237,26 @@ Proof.
   apply rel_chain_4; apply per_lvl_at_suc; pairwise.
 Qed.
 
-Hint Resolve rel_exp_succl_cong : mctt.
+Hint Resolve rel_exp_under_ctx_succl_cong : mctt.
 
-Lemma rel_exp_maxl_cong : forall {Γ M M' N N'},
-    Γ ⊨ M ≈ M' : Level@n ->
-    Γ ⊨ N ≈ N' : Level@n ->
-    Γ ⊨ maxl M N ≈ maxl M' N' : Level@n.
+End Fixed_GCtx.
+
+Lemma sem_exp_eq_succl_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M' : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ succl M ≈ succl M' : Level@n ).
+Proof. intros * HM; sem_intro; [ assumption | exact (rel_exp_under_ctx_succl_cong HM) ]. Qed.
+
+Lemma sem_succl :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ succl M : Level@n ).
+Proof. intros; eapply sem_exp_eq_succl_cong; eassumption. Qed.
+
+Lemma sem_exp_eq_maxl_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M' : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ N ≈ N' : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ maxl M N ≈ maxl M' N' : Level@n ).
 Proof.
-  intros * HM HN.
+  intros * HM HN; sem_intro; [ assumption |].
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
   pose proof (rel_exp_of_level_inversion HN) as [env_relΓ2 [HΓ2 HNgen]].
   eexists_rel_exp_of_level.
@@ -236,7 +270,15 @@ Proof.
   apply rel_chain_4; apply per_lvl_at_max; pairwise.
 Qed.
 
-Hint Resolve rel_exp_maxl_cong : mctt.
+Lemma sem_maxl :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ N : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ maxl M N : Level@n ).
+Proof. intros; eapply sem_exp_eq_maxl_cong; eassumption. Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+  Context {n : nat}.
 
 (** ** The Level Equations
 
@@ -260,23 +302,24 @@ Proof.
     | apply per_lvl_at_suc, per_lvl_at_lit; exact Ha ].
 Qed.
 
-Corollary valid_exp_llit_succl : forall {Γ a b},
-    a <= n ->
-    ⊨ Γ ->
-    Γ ⊨ 𝕃ᵒ(a, S b) ≈ succl (𝕃ᵒ(a, b)) : Level@n.
+End Fixed_GCtx.
+
+Corollary sem_exp_eq_llit_succl :
+  `( a <= n ->
+     ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ 𝕃ᵒ(a, S b) ≈ succl (𝕃ᵒ(a, b)) : Level@n ).
 Proof.
-  intros * Ha H%sem_ctx_per_ctx_env.
+  intros * Ha H; sem_intro; [ assumption |].
+  apply rel_ctx_wf_per_ctx_env in H.
   destruct H as [env_relΓ HΓ].
   eapply rel_exp_llit_succl; eassumption.
 Qed.
 
-Hint Resolve rel_exp_llit_succl valid_exp_llit_succl : mctt.
-
-Lemma rel_exp_maxl_zero : forall {Γ M},
-    Γ ⊨ M : Level@n ->
-    Γ ⊨ maxl (𝕃@0) M ≈ M : Level@n.
+Lemma sem_exp_eq_maxl_zero :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ maxl (𝕃@0) M ≈ M : Level@n ).
 Proof.
-  intros * HM.
+  intros * HM; sem_intro; [ assumption |].
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
   eexists_rel_exp_of_level.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
@@ -291,15 +334,13 @@ Proof.
     | pairwise ].
 Qed.
 
-Hint Resolve rel_exp_maxl_zero : mctt.
-
-Lemma rel_exp_maxl_assoc : forall {Γ M N P},
-    Γ ⊨ M : Level@n ->
-    Γ ⊨ N : Level@n ->
-    Γ ⊨ P : Level@n ->
-    Γ ⊨ maxl (maxl M N) P ≈ maxl M (maxl N P) : Level@n.
+Lemma sem_exp_eq_maxl_assoc :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ N : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ P : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ maxl (maxl M N) P ≈ maxl M (maxl N P) : Level@n ).
 Proof.
-  intros * HM HN HP.
+  intros * HM HN HP; sem_intro; [ assumption |].
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
   pose proof (rel_exp_of_level_inversion HN) as [env_relΓ2 [HΓ2 HNgen]].
   pose proof (rel_exp_of_level_inversion HP) as [env_relΓ3 [HΓ3 HPgen]].
@@ -321,14 +362,12 @@ Proof.
     | apply per_lvl_at_max; [| apply per_lvl_at_max ]; pairwise ].
 Qed.
 
-Hint Resolve rel_exp_maxl_assoc : mctt.
-
-Lemma rel_exp_maxl_comm : forall {Γ M N},
-    Γ ⊨ M : Level@n ->
-    Γ ⊨ N : Level@n ->
-    Γ ⊨ maxl M N ≈ maxl N M : Level@n.
+Lemma sem_exp_eq_maxl_comm :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ N : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ maxl M N ≈ maxl N M : Level@n ).
 Proof.
-  intros * HM HN.
+  intros * HM HN; sem_intro; [ assumption |].
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
   pose proof (rel_exp_of_level_inversion HN) as [env_relΓ2 [HΓ2 HNgen]].
   eexists_rel_exp_of_level.
@@ -345,13 +384,11 @@ Proof.
     | apply per_lvl_at_max; pairwise ].
 Qed.
 
-Hint Resolve rel_exp_maxl_comm : mctt.
-
-Lemma rel_exp_maxl_idem : forall {Γ M},
-    Γ ⊨ M : Level@n ->
-    Γ ⊨ maxl M M ≈ M : Level@n.
+Lemma sem_exp_eq_maxl_idem :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ maxl M M ≈ M : Level@n ).
 Proof.
-  intros * HM.
+  intros * HM; sem_intro; [ assumption |].
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
   eexists_rel_exp_of_level.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
@@ -366,14 +403,12 @@ Proof.
     | pairwise ].
 Qed.
 
-Hint Resolve rel_exp_maxl_idem : mctt.
-
-Lemma rel_exp_succl_maxl : forall {Γ M N},
-    Γ ⊨ M : Level@n ->
-    Γ ⊨ N : Level@n ->
-    Γ ⊨ succl (maxl M N) ≈ maxl (succl M) (succl N) : Level@n.
+Lemma sem_exp_eq_succl_maxl :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ N : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ succl (maxl M N) ≈ maxl (succl M) (succl N) : Level@n ).
 Proof.
-  intros * HM HN.
+  intros * HM HN; sem_intro; [ assumption |].
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
   pose proof (rel_exp_of_level_inversion HN) as [env_relΓ2 [HΓ2 HNgen]].
   eexists_rel_exp_of_level.
@@ -392,13 +427,11 @@ Proof.
     | apply per_lvl_at_max; apply per_lvl_at_suc; pairwise ].
 Qed.
 
-Hint Resolve rel_exp_succl_maxl : mctt.
-
-Lemma rel_exp_maxl_succl : forall {Γ M},
-    Γ ⊨ M : Level@n ->
-    Γ ⊨ maxl M (succl M) ≈ succl M : Level@n.
+Lemma sem_exp_eq_maxl_succl :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ maxl M (succl M) ≈ succl M : Level@n ).
 Proof.
-  intros * HM.
+  intros * HM; sem_intro; [ assumption |].
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
   eexists_rel_exp_of_level.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
@@ -414,7 +447,9 @@ Proof.
     | apply per_lvl_at_suc; pairwise ].
 Qed.
 
-Hint Resolve rel_exp_maxl_succl : mctt.
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+  Context {n : nat}.
 
 (** Absorption: the limit [ω·(n+1)] is above every level of sort [n]
     ([per_lvl_absorb]).  The two sides are levels of sort [n+1]. *)
@@ -444,14 +479,14 @@ Proof.
     | apply per_lvl_at_lit; cbn; lia ].
 Qed.
 
-Corollary valid_exp_maxl_absorb : forall {Γ M},
-    Γ ⊨ M : Level@n ->
-    Γ ⊨ maxl M (𝕃ᵒ(S n, 0)) ≈ 𝕃ᵒ(S n, 0) : Level@(S n).
-Proof. intros; apply rel_exp_maxl_absorb; assumption. Qed.
-
-Hint Resolve rel_exp_maxl_absorb valid_exp_maxl_absorb : mctt.
+Hint Resolve rel_exp_maxl_absorb : mctt.
 
 End Fixed_GCtx.
+
+Corollary sem_exp_eq_maxl_absorb :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ maxl M (𝕃ᵒ(S n, 0)) ≈ 𝕃ᵒ(S n, 0) : Level@(S n) ).
+Proof. intros * HM; sem_intro; [ assumption | apply rel_exp_maxl_absorb; assumption ]. Qed.
 
 (** ** Universes at a Level@n Term
 
@@ -576,13 +611,15 @@ Qed.
 (** [Type⟨M⟩] is a type of [Type⟨succl M⟩]: its four values are small
     universes at related levels, each a universe below the realiser of
     [succl M], which is one more than the realiser of [M]. *)
-Lemma rel_exp_univ_cong_tm : forall {Γ M M'},
-    Γ ⊨ M ≈ M' : Level@n ->
-    Γ ⊨ Type⟨M⟩ ≈ Type⟨M'⟩ : Type⟨succl M⟩.
+End Fixed_GCtx.
+
+Lemma sem_exp_eq_univ_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M' : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Type⟨M⟩ ≈ Type⟨M'⟩ : Type⟨succl M⟩ ).
 Proof.
-  intros * HM.
+  intros * HM; sem_intro; [ assumption |].
   pose proof (rel_exp_under_ctx_refl_left HM) as HMM.
-  apply rel_exp_of_suniv_tm; [ apply rel_exp_succl_cong; exact HMM |].
+  apply (rel_exp_of_suniv_tm (n := n)); [ apply rel_exp_under_ctx_succl_cong; exact HMM |].
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
   eexists; eexists; [ eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev' t Ht.
@@ -602,10 +639,10 @@ Proof.
     first [ eassumption | cbn; ord | reflexivity ].
 Qed.
 
-Corollary valid_exp_univ_tm : forall {Γ M},
-    Γ ⊨ M : Level@n ->
-    Γ ⊨ Type⟨M⟩ : Type⟨succl M⟩.
-Proof. intros; apply rel_exp_univ_cong_tm; assumption. Qed.
+Corollary sem_univ :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Type⟨M⟩ : Type⟨succl M⟩ ).
+Proof. intros; eapply sem_exp_eq_univ_cong; eassumption. Qed.
 
 (** ** Subtyping of Small Universes
 
@@ -613,13 +650,14 @@ Proof. intros; apply rel_exp_univ_cong_tm; assumption. Qed.
     two levels at every length ([per_sublvl_of_max]), which is what
     [per_subtyp_suniv] asks.  A small universe below a large one needs only
     that its level is a level. *)
-Lemma subtyp_suniv_tm : forall {Γ M M'},
-    Γ ⊨ M : Level@n ->
-    Γ ⊨ M' : Level@n ->
-    Γ ⊨ maxl M M' ≈ M' : Level@n ->
-    Γ ⊨ Type⟨M⟩ ⊆ Type⟨M'⟩.
+Lemma sem_subtyp_suniv :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M' : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ maxl M M' ≈ M' : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Type⟨M⟩ ⊆ Type⟨M'⟩ ).
 Proof.
-  intros * HM HM' Hmax.
+  intros * HΓc HM HM' Hmax; sem_intro; [ assumption |].
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
   pose proof (rel_exp_of_level_inversion HM') as [env_relΓ' [HΓ' HM'gen]].
   pose proof (rel_exp_of_level_inversion Hmax) as [env_relΓ'' [HΓ'' Hmaxgen]].
@@ -648,11 +686,12 @@ Proof.
     apply (per_sublvl_of_max m2 n2 n3); assumption.
 Qed.
 
-Lemma subtyp_small_large_tm : forall {Γ M} {i : nat},
-    Γ ⊨ M : Level@n ->
-    Γ ⊨ Type⟨M⟩ ⊆ Typeω@i.
+Lemma sem_subtyp_small_large :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Type⟨M⟩ ⊆ Typeω@i ).
 Proof.
-  intros * HM.
+  intros * HΓc HM; sem_intro; [ assumption |].
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
   eexists_subtyp_with (S i).
   intros Γ' env_rel' HΓ0 σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
@@ -667,13 +706,5 @@ Proof.
   - apply per_subtyp_small_large; [ assumption | solve_uidx ].
 Qed.
 
-End Fixed_GCtx.
-
 #[export]
-Hint Resolve rel_exp_univ_cong_tm valid_exp_univ_tm subtyp_suniv_tm subtyp_small_large_tm : mctt.
-
-#[export]
-Hint Resolve valid_exp_llit rel_exp_succl_cong rel_exp_maxl_cong : mctt.
-#[export]
-Hint Resolve rel_exp_llit_succl valid_exp_llit_succl rel_exp_maxl_zero rel_exp_maxl_assoc rel_exp_maxl_comm
-  rel_exp_maxl_idem rel_exp_succl_maxl rel_exp_maxl_succl valid_exp_maxl_absorb : mctt.
+Hint Resolve rel_exp_under_ctx_succl_cong rel_exp_llit_succl rel_exp_maxl_absorb : mctt.

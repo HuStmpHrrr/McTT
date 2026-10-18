@@ -1152,9 +1152,6 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
 Hint Constructors per_ctx_env : mctt.
 
 Definition per_ctx : relation ctx := fun Γ Γ' => exists R', per_ctx_env R' Γ Γ'.
-Definition valid_ctx : ctx -> Prop := fun Γ => per_ctx Γ Γ.
-Hint Transparent valid_ctx : mctt.
-Hint Unfold valid_ctx : mctt.
 
 
 (** * Context Subtyping *)
@@ -1254,10 +1251,6 @@ Hint Unfold rel_elem : mctt.
 Hint Constructors nextparam per_dmod per_gargs per_body : mctt.
 #[export]
 Hint Constructors per_ctx_env : mctt.
-#[export]
-Hint Transparent valid_ctx : mctt.
-#[export]
-Hint Unfold valid_ctx : mctt.
 Notation "'SubE' Γ <: Δ" := (per_ctx_subtyp Γ Δ) : type_scope.
 #[export]
 Hint Constructors per_ctx_subtyp : mctt.

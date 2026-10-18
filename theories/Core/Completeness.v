@@ -7,7 +7,7 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Completeness Require Import UniverseCases GlobalSem.
+From Mctt.Core.Completeness Require Import UniverseCases.
 From Mctt.Core.Completeness Require Export FundamentalTheorem.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic Require Export NbE.
@@ -70,7 +70,7 @@ Theorem completeness : forall {Θ Ξ Γ M M' A},
 Proof.
   intros * H.
   pose proof (proj1 (proj2 (proj2 completeness_fundamental)) _ _ _ _ _ _ H) as HK.
-  pose proof (kea_rel (HK _ _ (gctx_sem _ _ (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))))) as Hrel.
+  pose proof (sea_rel (HK _ _ (valid_emb_refl _ _ (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))))) as Hrel.
   destruct (@rel_exp_under_ctx_at_initial_env (gc_mk Θ Ξ) _ _ _ _ Hrel)
     as [ρ [i [elem_rel [a [m [m' [Hρ [Ha [Hm [Hm' [Htyp Hrel']]]]]]]]]]].
   destruct (per_elem_then_per_top Htyp Hrel' (length Γ)) as [W [HW HW']].

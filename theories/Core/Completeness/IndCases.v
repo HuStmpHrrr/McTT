@@ -1,6 +1,6 @@
 (** * Inductive Types: the Type Former and the Constructors
 
-    A declaration is semantically valid ([sem_decl]) when its telescopes and
+    A declaration is semantically valid ([valid_ind_decl_cons]) when its telescopes and
     types are: these are the judgments of its typing, read in the PER model.
     From them, the inductive type at related parameters is a type of the
     universe its sort denotes ([ind_relate]), with the canonical relations of
@@ -25,75 +25,38 @@ Section Fixed_GCtx.
 
 (** ** Semantic Validity of a Declaration
 
-    The context of the first [k] non-uniform parameters, and of the first
-    [k] non-recursive arguments of a constructor. *)
-Definition npre (D : ind_decl) (k : nat) : ctx := List.rev (List.firstn k (List.rev (ind_nparams D))).
-Definition astrat (gs : list carg) (k : nat) : ctx := List.rev (List.firstn k (List.map ce_ass (cargs_nonrec gs))).
-
-Record sem_core (D : ind_decl) : Prop := mk_sem_core
-{ sd_params : ⊨ ind_params D
-; sd_sort : exists i, ind_uparams D ⊨ ind_sort D : Typeω@i
-; sd_ty : exists i, ⋅ ⊨ ind_ty D : Typeω@i
-; sd_npar : forall k A, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
-    npre D k ++ ind_uparams D ⊨ A : (ind_sort D)[wk_shiftn k]ʷ /\
-    exists j, npre D k ++ ind_uparams D ⊨ A : Typeω@j
-; sd_strat : forall c gs k, ind_con D c = Some gs -> k <= List.length (cargs_nonrec gs) ->
-    ⊨ astrat gs k ++ ind_params D
-; sd_arg : forall c gs k A, ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
-    astrat gs k ++ ind_params D ⊨ A : (ind_sort D)[wk_shiftn (k + ind_nn D)]ʷ /\
-    exists j, astrat gs k ++ ind_params D ⊨ A : Typeω@j
-; sd_nodup : List.NoDup (List.map fst (ind_cons D))
-; sd_rec : forall c gs gs1 t gs2 m P T, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-    List.nth_error (ptyp_ps t) m = Some P ->
-    List.nth_error (tele_insts (ind_nparams D)
-                      (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_nonrec gs1) + ind_nn D))) (ptyp_ps t)) m
-      = Some T ->
-    ptyp_tele t ++ astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D ⊨ P : T
-(** The domains of a recursive argument's shape, each over those before
-    it, are types of the sort. *)
-; sd_dom : forall c gs gs1 t gs2 k B, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-    List.nth_error (ptyp_doms t) k = Some B ->
-    doms_ctx (List.firstn k (ptyp_doms t)) ++ astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D
-      ⊨ B : (ind_sort D)[wk_shiftn (k + List.length (cargs_nonrec gs1) + ind_nn D)]ʷ /\
-    exists j, doms_ctx (List.firstn k (ptyp_doms t)) ++ astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D
-      ⊨ B : Typeω@j
-; sd_simple : forall c gs gs1 t gs2, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 -> ptyp_simple t = true
-; sd_plen : forall c gs gs1 t gs2, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 -> List.length (ptyp_ps t) = ind_nn D
-; sd_dctx : forall c gs gs1 t gs2 k, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-    k <= List.length (ptyp_doms t) ->
-    ⊨ doms_ctx (List.firstn k (ptyp_doms t)) ++ astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D
-}.
-
-(** The judgments of the declaration's constructors: their contexts of
-    arguments and their types, which mention the type former, so that
-    they are read once the type former is known to be valid. *)
-Record sem_decl (D : ind_decl) : Prop := mk_sem_decl
-{ sd_c :> sem_core D
-; sd_cargs : forall p c gs, ind_lookup gc_deps gc_stack p = Some D -> ind_con D c = Some gs ->
+    The core of a declaration's validity ([valid_ind_decl], with [nparams_prefix] and
+    [nonrec_args_prefix]) is defined in [LogicalRelation/Definitions.v].  The judgments
+    of the declaration's constructors: their contexts of arguments and their
+    types, which mention the type former, so that they are read once the
+    type former is known to be valid. *)
+Record valid_ind_decl_cons (D : ind_decl) : Prop := mk_valid_ind_decl_cons
+{ vic_core :> valid_ind_decl D
+; vic_cargs : forall p c gs, ind_lookup gc_deps gc_stack p = Some D -> ind_con D c = Some gs ->
     ⊨ cargs_ctx p D gs ++ ind_params D
-; sd_cod : forall p c gs, ind_lookup gc_deps gc_stack p = Some D -> ind_con D c = Some gs ->
+; vic_cod : forall p c gs, ind_lookup gc_deps gc_stack p = Some D -> ind_con D c = Some gs ->
     exists j, cargs_ctx p D gs ++ ind_params D ⊨ apps (a_ind p) (ind_pvars D (List.length gs)) : Typeω@j
-; sd_conty : forall p c gs, ind_lookup gc_deps gc_stack p = Some D -> ind_con D c = Some gs ->
+; vic_conty : forall p c gs, ind_lookup gc_deps gc_stack p = Some D -> ind_con D c = Some gs ->
     exists j, ⋅ ⊨ con_ty p D gs : Typeω@j
 }.
 
 (** ** Lists *)
 
-Lemma length_npre : forall D k, k <= ind_nn D -> List.length (npre D k) = k.
-Proof. intros; unfold npre; rewrite List.length_rev, List.length_firstn, List.length_rev, length_nparams; lia. Qed.
+Lemma length_nparams_prefix : forall D k, k <= ind_nn D -> List.length (nparams_prefix D k) = k.
+Proof. intros; unfold nparams_prefix; rewrite List.length_rev, List.length_firstn, List.length_rev, length_nparams; lia. Qed.
 
-Lemma length_astrat : forall gs k, k <= List.length (cargs_nonrec gs) -> List.length (astrat gs k) = k.
-Proof. intros; unfold astrat; rewrite List.length_rev, List.length_firstn, List.length_map; lia. Qed.
+Lemma length_nonrec_args_prefix : forall gs k, k <= List.length (cargs_nonrec gs) -> List.length (nonrec_args_prefix gs k) = k.
+Proof. intros; unfold nonrec_args_prefix; rewrite List.length_rev, List.length_firstn, List.length_map; lia. Qed.
 
-Lemma npre_suffix : forall D k, exists Δ, ind_params D = Δ ++ npre D k ++ ind_uparams D.
+Lemma nparams_prefix_suffix : forall D k, exists Δ, ind_params D = Δ ++ nparams_prefix D k ++ ind_uparams D.
 Proof.
   intros; exists (List.rev (List.skipn k (List.rev (ind_nparams D)))).
   rewrite params_split, List.app_assoc; f_equal.
-  unfold npre; rewrite <- List.rev_app_distr, List.firstn_skipn, List.rev_involutive; reflexivity.
+  unfold nparams_prefix; rewrite <- List.rev_app_distr, List.firstn_skipn, List.rev_involutive; reflexivity.
 Qed.
 
-Lemma rev_npre : forall D k, List.rev (npre D k ++ ind_uparams D) = List.rev (ind_uparams D) ++ List.firstn k (List.rev (ind_nparams D)).
-Proof. intros; unfold npre; rewrite List.rev_app_distr, List.rev_involutive; reflexivity. Qed.
+Lemma rev_nparams_prefix : forall D k, List.rev (nparams_prefix D k ++ ind_uparams D) = List.rev (ind_uparams D) ++ List.firstn k (List.rev (ind_nparams D)).
+Proof. intros; unfold nparams_prefix; rewrite List.rev_app_distr, List.rev_involutive; reflexivity. Qed.
 
 Lemma doms_ctx_snoc : forall Bs B, doms_ctx (Bs ++ B :: nil) = ce_ass B :: doms_ctx Bs.
 Proof. intros; unfold doms_ctx; rewrite List.map_app, List.rev_app_distr; reflexivity. Qed.
@@ -138,9 +101,9 @@ Proof. induction As; constructor; eauto. Qed.
 Lemma cargs_strat_nonrec : forall gs, cargs_strat gs = List.rev (List.map ce_ass (cargs_nonrec gs)).
 Proof. induction gs as [| [A | Ps] gs IH]; cbn; rewrite ?IH; reflexivity. Qed.
 
-Lemma astrat_prefix : forall gs1 gs2, cargs_strat gs1 = astrat (gs1 ++ gs2) (List.length (cargs_nonrec gs1)).
+Lemma nonrec_args_prefix_cargs_strat : forall gs1 gs2, cargs_strat gs1 = nonrec_args_prefix (gs1 ++ gs2) (List.length (cargs_nonrec gs1)).
 Proof.
-  intros; unfold astrat; rewrite cargs_strat_nonrec, cargs_nonrec_app, List.map_app, List.firstn_app.
+  intros; unfold nonrec_args_prefix; rewrite cargs_strat_nonrec, cargs_nonrec_app, List.map_app, List.firstn_app.
   rewrite List.firstn_all2 by (rewrite List.length_map; lia).
   rewrite List.length_map, Nat.sub_diag; cbn; rewrite List.app_nil_r; reflexivity.
 Qed.
@@ -156,13 +119,13 @@ Proof.
 Qed.
 
 Lemma nparams_nth_split : forall D k A, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
-    exists Δ1, ind_nparams D = Δ1 ++ ce_ass A :: npre D k.
+    exists Δ1, ind_nparams D = Δ1 ++ ce_ass A :: nparams_prefix D k.
 Proof.
   intros * H; destruct (List.nth_error_split _ _ H) as (l1 & l2 & Hl & Hlen).
   exists (List.rev l2).
   assert (Hf : List.firstn k (List.rev (ind_nparams D)) = l1)
     by (rewrite Hl, <- Hlen, List.firstn_app, Nat.sub_diag, List.firstn_all; cbn; apply List.app_nil_r).
-  unfold npre; rewrite Hf, <- (List.rev_involutive (ind_nparams D)), Hl, List.rev_app_distr; cbn.
+  unfold nparams_prefix; rewrite Hf, <- (List.rev_involutive (ind_nparams D)), Hl, List.rev_app_distr; cbn.
   rewrite <- List.app_assoc; reflexivity.
 Qed.
 
@@ -173,7 +136,7 @@ Qed.
     of the universe the sort denotes at the uniform parameters. *)
 Section Sort.
   Variable (D : ind_decl).
-  Hypothesis (HD : sem_core D) (Hc : decl_closed D) (Hsu : ind_sort_univ (ind_sort D)).
+  Hypothesis (HD : valid_ind_decl D) (Hc : decl_closed D) (Hsu : ind_sort_univ (ind_sort D)).
 
   Lemma sort_univ : forall ρ b, ⟦ ind_sort D ⟧ ρ ↘ b -> is_univ b.
   Proof.
@@ -197,7 +160,7 @@ Section Sort.
   Proof.
     intros * HC HT * Hz Hz' Hu Hu' Hg a Ha.
     pose proof (decl_closed_nu D Hc) as Hle.
-    destruct (sem_ctx_per_ctx_env HC) as [R HR].
+    destruct (rel_ctx_wf_per_ctx_env HC) as [R HR].
     assert (HRe : R (env_args nil (ups ++ zs)) (env_args nil (ups' ++ zs'))).
     { assert (HC' : ⊨ List.rev (List.rev (Pre ++ ind_uparams D)) ++ ⋅)
         by (rewrite List.rev_involutive, List.app_nil_r; exact HC).
@@ -214,7 +177,7 @@ Section Sort.
     destruct (Hsimp _ _ HRe) as (b & b' & R0 & Eb & Eb' & HR0 & t & t' & Et & Et' & Htt).
     destruct (per_univ_elem_univ _ _ _ _ HR0 (sort_wk_univ _ _ _ Eb)) as [_ ER0].
     (** The sort shifted past [Pre] is the sort at the uniform parameters. *)
-    destruct (sd_sort _ HD) as [i HS].
+    destruct (vid_sort _ HD) as [i HS].
     destruct (rel_exp_under_ctx_wk_simple (rel_wk_under_ctx_shiftn _ _ HC) HS) as (RΓ & HΓ & j & Hwk).
     assert (E : R <~> RΓ) by (eapply per_ctx_env_right_irrel; eassumption).
     destruct (Hwk _ _ (proj1 (E _ _) HRee)) as (x & x' & Rx & Ex & Ex' & HRx & m & m' & Em & Em' & Hmm).
@@ -240,7 +203,8 @@ Section Sort.
       ⟦ ind_sort D ⟧ env_args nil ups ↘ a ->
       (forall j A, List.nth_error ts j = Some (ce_ass A) ->
          ⊨ List.rev (List.firstn j ts) ++ Pre0 ++ ind_uparams D /\
-         List.rev (List.firstn j ts) ++ Pre0 ++ ind_uparams D ⊨ A : (ind_sort D)[wk_shiftn (j + List.length Pre0)]ʷ) ->
+         List.rev (List.firstn j ts) ++ Pre0 ++ ind_uparams D
+           ⊨ A : (ind_sort D)[wk_shiftn (j + List.length Pre0)]ʷ) ->
       (forall j A pre, List.nth_error ts j = Some (ce_ass A) ->
          (tr j pre <~> per_head A A (env_args nil (ups ++ zs ++ pre)) (env_args nil (ups ++ zs ++ pre)))) ->
       forall k vs vs', k <= List.length ts -> tele_pre tr k vs vs' ->
@@ -343,12 +307,12 @@ Section Sort.
   Lemma eval_exps_length : forall Ms ρ ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms -> List.length ms = List.length Ms.
   Proof. induction 1; cbn; congruence. Qed.
 
-  Lemma npre_S : forall k A, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
-      npre D (S k) = ce_ass A :: npre D k.
-  Proof. intros * H; unfold npre; rewrite (firstn_S_snoc _ _ _ H), List.rev_app_distr; reflexivity. Qed.
+  Lemma nparams_prefix_S : forall k A, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
+      nparams_prefix D (S k) = ce_ass A :: nparams_prefix D k.
+  Proof. intros * H; unfold nparams_prefix; rewrite (firstn_S_snoc _ _ _ H), List.rev_app_distr; reflexivity. Qed.
 
-  Lemma npre_full : npre D (ind_nn D) = ind_nparams D.
-  Proof. unfold npre; rewrite List.firstn_all2 by (rewrite List.length_rev, length_nparams; lia); apply List.rev_involutive. Qed.
+  Lemma nparams_prefix_full : nparams_prefix D (ind_nn D) = ind_nparams D.
+  Proof. unfold nparams_prefix; rewrite List.firstn_all2 by (rewrite List.length_rev, length_nparams; lia); apply List.rev_involutive. Qed.
 
   Lemma length_rec_ps : forall c gs gs1 Ps gs2, ind_con D c = Some gs -> gs = gs1 ++ ca_rec Ps :: gs2 ->
       List.length (ptyp_ps Ps) = ind_nn D.
@@ -365,7 +329,7 @@ Section Sort.
         List.length ys = ptyp_depth t ->
         List.length ups' = ind_nu D -> List.length ms' = ind_nn D -> List.length ws' = List.length (cargs_nonrec gs1) ->
         List.length ys' = ptyp_depth t ->
-        per_gargs (List.rev (ptyp_tele t ++ astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D)) nil nil
+        per_gargs (List.rev (ptyp_tele t ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ ind_params D)) nil nil
           (ups ++ ms ++ ws ++ ys) (ups' ++ ms' ++ ws' ++ ys') ->
         exists bs bs', ⟦ (ptyp_ps t) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ms ++ ws ++ ys) ↘ bs /\
           ⟦ (ptyp_ps t) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups' ++ ms' ++ ws' ++ ys') ↘ bs' /\
@@ -382,17 +346,17 @@ Section Sort.
     pose proof (decl_closed_nu D Hc) as Hle.
     set (K := List.length (cargs_nonrec gs1)) in *.
     set (L := ptyp_depth Ps + K + ind_nn D).
-    set (Ξ0 := ptyp_tele Ps ++ astrat gs K ++ ind_params D).
+    set (Ξ0 := ptyp_tele Ps ++ nonrec_args_prefix gs K ++ ind_params D).
     set (E := env_args nil (ups ++ ms ++ ws ++ ys)); set (E' := env_args nil (ups' ++ ms' ++ ws' ++ ys')).
     assert (HK : K <= List.length (cargs_nonrec gs)) by (unfold K; rewrite Heq, cargs_nonrec_app, List.length_app; lia).
     assert (HΞ0 : ⊨ Ξ0).
-    { pose proof (sd_dctx _ HD _ _ _ _ _ (List.length (ptyp_doms Ps)) Hcon Heq (le_n _)) as H.
+    { pose proof (vid_dctx _ HD _ _ _ _ _ (List.length (ptyp_doms Ps)) Hcon Heq (le_n _)) as H.
       rewrite List.firstn_all in H; exact H. }
-    destruct (sem_ctx_per_ctx_env HΞ0) as [R0 HR0].
+    destruct (rel_ctx_wf_per_ctx_env HΞ0) as [R0 HR0].
     assert (HP0 : PER R0) by (eapply per_env_PER; exact HR0).
     assert (HEE : R0 E E').
     { apply (gargs_env_rel Ξ0 R0 (ups ++ ms ++ ws ++ ys) (ups' ++ ms' ++ ws' ++ ys') nil nil); [ exact HR0 | exact HΞ0 | | exact Hg ].
-      unfold Ξ0, ptyp_tele; rewrite !List.length_app, length_astrat, doms_ctx_length by exact HK.
+      unfold Ξ0, ptyp_tele; rewrite !List.length_app, length_nonrec_args_prefix, doms_ctx_length by exact HK.
       rewrite params_split, List.length_app, length_nparams, length_ind_uparams by exact Hle; unfold ptyp_depth in Hy; lia. }
     pose proof (length_rec_ps _ _ _ _ _ Hcon Heq) as HPl.
     assert (HwkE : ⟪wk_shiftn L⟫ E = env_args nil ups).
@@ -405,15 +369,15 @@ Section Sort.
         arguments and the non-uniform parameters. *)
     assert (Hwk : Ξ0 ⊨ˢ sb_of_wk (wk_shiftn L) ≈ sb_of_wk (wk_shiftn L) : ind_uparams D).
     { apply rel_sub_of_wk.
-      assert (HL : L = List.length (ptyp_tele Ps ++ astrat gs K ++ ind_nparams D))
-        by (unfold L, ptyp_tele, ptyp_depth; rewrite !List.length_app, length_astrat, length_nparams, doms_ctx_length by exact HK; lia).
-      assert (HΞe : Ξ0 = (ptyp_tele Ps ++ astrat gs K ++ ind_nparams D) ++ ind_uparams D)
+      assert (HL : L = List.length (ptyp_tele Ps ++ nonrec_args_prefix gs K ++ ind_nparams D))
+        by (unfold L, ptyp_tele, ptyp_depth; rewrite !List.length_app, length_nonrec_args_prefix, length_nparams, doms_ctx_length by exact HK; lia).
+      assert (HΞe : Ξ0 = (ptyp_tele Ps ++ nonrec_args_prefix gs K ++ ind_nparams D) ++ ind_uparams D)
         by (unfold Ξ0; rewrite params_split, <- !List.app_assoc; reflexivity).
       rewrite HΞe, HL; apply rel_wk_under_ctx_shiftn; rewrite <- HΞe; exact HΞ0. }
     (** The induction over the parameters of the recursive argument. *)
     assert (Hall : forall m, m <= ind_nn D ->
                Ξ0 ⊨ˢ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn m Ps) ≈ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn m Ps)
-                 : npre D m ++ ind_uparams D /\
+                 : nparams_prefix D m ++ ind_uparams D /\
                exists bs bs', ⟦ List.firstn m Ps ⟧* gc_deps ⍮ gc_stack ⍮ E ↘ bs /\
                  ⟦ List.firstn m Ps ⟧* gc_deps ⍮ gc_stack ⍮ E' ↘ bs' /\
                  per_gargs (List.firstn m (List.rev (ind_nparams D))) (env_args nil ups) (env_args nil ups') bs bs' /\
@@ -421,7 +385,7 @@ Section Sort.
                     List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn L)) Ps) m' = Some T ->
                     (per_head T T E E' <~> ind_nr D ups m' (List.firstn m' bs)))).
     { induction m as [| m IH]; intros Hmn.
-      - cbn [List.firstn sb_of_list]; unfold npre; cbn [List.firstn List.rev List.app].
+      - cbn [List.firstn sb_of_list]; unfold nparams_prefix; cbn [List.firstn List.rev List.app].
         split; [ exact Hwk |]; exists nil, nil; split; [ constructor | split; [ constructor | split; [ constructor | intros; lia ] ] ].
       - destruct (IH ltac:(lia)) as (Hτ & bs & bs' & Ebs & Ebs' & Hgb & Hil).
         destruct (nth_error_lt_some' Ps m ltac:(lia)) as [P HP].
@@ -431,13 +395,13 @@ Section Sort.
           rewrite length_nparams; lia. }
         destruct HT as [T HT].
         destruct (tele_insts_nth _ _ _ _ _ HT) as (A & HA & ->).
-        pose proof (sd_rec _ HD _ _ _ _ _ _ _ _ Hcon Heq HP HT) as HPv.
-        destruct (sd_npar _ HD _ _ HA) as (_ & j & HAv).
+        pose proof (vid_rec _ HD _ _ _ _ _ _ _ _ Hcon Heq HP HT) as HPv.
+        destruct (vid_npar _ HD _ _ HA) as (_ & j & HAv).
         set (τ := sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn m Ps)) in *.
         (** The new entry, and the substitution extended by it. *)
         assert (Hτ' : Ξ0 ⊨ˢ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn (S m) Ps)
-                        ≈ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn (S m) Ps) : npre D (S m) ++ ind_uparams D).
-        { rewrite (firstn_S_snoc _ _ _ HP), sb_of_list_app, (npre_S _ _ HA); cbn [sb_of_list List.app].
+                        ≈ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn (S m) Ps) : nparams_prefix D (S m) ++ ind_uparams D).
+        { rewrite (firstn_S_snoc _ _ _ HP), sb_of_list_app, (nparams_prefix_S _ _ HA); cbn [sb_of_list List.app].
           eapply rel_sub_under_ctx_extend; [ exact Hτ | exact HAv | exact HPv ]. }
         split; [ exact Hτ' |].
         (** The values of the new parameter, and its type's. *)
@@ -488,12 +452,12 @@ Section Sort.
 
   Lemma uparams_sem : ⊨ ind_uparams D.
   Proof.
-    destruct (npre_suffix D 0) as [Δ HΔ]; unfold npre in HΔ; cbn [List.firstn List.rev List.app] in HΔ.
-    pose proof (sd_params _ HD) as H; rewrite HΔ in H; exact (sem_ctx_app_r _ _ H).
+    destruct (nparams_prefix_suffix D 0) as [Δ HΔ]; unfold nparams_prefix in HΔ; cbn [List.firstn List.rev List.app] in HΔ.
+    pose proof (vid_params _ HD) as H; rewrite HΔ in H; exact (rel_ctx_wf_app_r _ _ H).
   Qed.
 
-  Lemma npre_sem : forall k, ⊨ npre D k ++ ind_uparams D.
-  Proof. intros; destruct (npre_suffix D k) as [Δ HΔ]; pose proof (sd_params _ HD) as H; rewrite HΔ in H; exact (sem_ctx_app_r _ _ H). Qed.
+  Lemma nparams_prefix_sem : forall k, ⊨ nparams_prefix D k ++ ind_uparams D.
+  Proof. intros; destruct (nparams_prefix_suffix D k) as [Δ HΔ]; pose proof (vid_params _ HD) as H; rewrite HΔ in H; exact (rel_ctx_wf_app_r _ _ H). Qed.
 
   Lemma rev_uparams_sem : ⊨ List.rev (List.rev (ind_uparams D)) ++ ⋅.
   Proof. rewrite List.rev_involutive, List.app_nil_r; exact uparams_sem. Qed.
@@ -523,7 +487,7 @@ Section Sort.
                   ltac:(rewrite !List.app_nil_r; exact Hg) Ha) as Hcan.
     rewrite !List.app_nil_r in Hcan; apply Hcan; [ | | rewrite List.length_rev, length_nparams; exact Hk | exact Hp ].
     - intros j A HA; cbn [List.app List.length]; rewrite Nat.add_0_r.
-      split; [ exact (npre_sem j) | exact (proj1 (sd_npar _ HD _ _ HA)) ].
+      split; [ exact (nparams_prefix_sem j) | exact (proj1 (vid_npar _ HD _ _ HA)) ].
     - intros j A pre HA; unfold ind_nr; rewrite (nth_ctyp_eq _ _ _ HA); reflexivity.
   Qed.
 
@@ -565,9 +529,9 @@ Section Sort.
       rewrite List.nth_error_map in HA.
       destruct (List.nth_error (cargs_nonrec gs) j) as [A0 |] eqn:HA0; cbn in HA; [ injection HA as -> | discriminate ].
       assert (Hj : j < List.length (cargs_nonrec gs)) by (apply List.nth_error_Some; congruence).
-      destruct (sd_arg _ HD _ _ _ _ Hcon HA0) as [HAv _].
+      destruct (vid_arg _ HD _ _ _ _ Hcon HA0) as [HAv _].
       rewrite length_nparams, <- params_split.
-      split; [ exact (sd_strat _ HD _ _ j Hcon ltac:(lia)) | exact HAv ].
+      split; [ exact (vid_strat _ HD _ _ j Hcon ltac:(lia)) | exact HAv ].
     - intros j A pre HA.
       rewrite List.nth_error_map in HA.
       destruct (List.nth_error (cargs_nonrec gs) j) as [A0 |] eqn:HA0; cbn in HA; [ injection HA as -> | discriminate ].
@@ -594,24 +558,24 @@ Section Sort.
     pose proof Hw as Hw0; rewrite tele_pre_iff in Hw0; destruct Hw0 as (Hlw & Hlw' & _).
     pose proof (params_gargs _ _ _ _ _ Hg Hu Ha Hm) as Hpg.
     pose proof (ar_gargs _ _ _ _ _ _ _ Hcon Hg Hu Ha Hm _ ws ws' HK Hw) as Hgw.
-    eapply (tele_canon_gargs (List.map ce_ass (ptyp_doms t)) (astrat gs K ++ ind_nparams D)
+    eapply (tele_canon_gargs (List.map ce_ass (ptyp_doms t)) (nonrec_args_prefix gs K ++ ind_nparams D)
               (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) ups ups' (ms ++ ws) (ms' ++ ws') a);
       [ apply tele_ass_map_ass | exact Hu | exact Hu'
-      | rewrite !List.length_app, length_astrat, length_nparams by exact HK; lia
-      | rewrite !List.length_app, length_astrat, length_nparams by exact HK; lia
+      | rewrite !List.length_app, length_nonrec_args_prefix, length_nparams by exact HK; lia
+      | rewrite !List.length_app, length_nonrec_args_prefix, length_nparams by exact HK; lia
       | | exact Ha | | | rewrite List.length_map; exact Hk | exact Hp ].
     - rewrite <- List.app_assoc, <- params_split, List.rev_app_distr, (List.app_assoc ups), (List.app_assoc ups').
       apply per_gargs_app_intro; [ rewrite List.length_app, List.length_rev, params_split, List.length_app, length_nparams, length_ind_uparams
                                      by exact (decl_closed_nu D Hc); lia | exact Hpg |].
-      unfold astrat; rewrite List.rev_involutive; exact Hgw.
+      unfold nonrec_args_prefix; rewrite List.rev_involutive; exact Hgw.
     - intros j A HA.
       rewrite List.nth_error_map in HA.
       destruct (List.nth_error (ptyp_doms t) j) as [B |] eqn:HB; cbn in HA; [ injection HA as -> | discriminate ].
       assert (Hj : j < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence).
-      destruct (sd_dom _ HD _ _ _ _ _ _ _ Hcon Heq HB) as [HBv _].
+      destruct (vid_dom _ HD _ _ _ _ _ _ _ Hcon Heq HB) as [HBv _].
       rewrite List.firstn_map; fold (doms_ctx (List.firstn j (ptyp_doms t))).
-      rewrite <- !List.app_assoc, <- params_split, !List.length_app, length_astrat, length_nparams by exact HK.
-      split; [ exact (sd_dctx _ HD _ _ _ _ _ j Hcon Heq ltac:(lia)) |].
+      rewrite <- !List.app_assoc, <- params_split, !List.length_app, length_nonrec_args_prefix, length_nparams by exact HK.
+      split; [ exact (vid_dctx _ HD _ _ _ _ _ j Hcon Heq ltac:(lia)) |].
       replace (j + (K + ind_nn D)) with (j + K + ind_nn D) by lia; exact HBv.
     - intros j A pre HA.
       rewrite List.nth_error_map in HA.
@@ -644,10 +608,10 @@ Section Sort.
         by (rewrite <- length_nparams, <- List.length_rev; apply List.nth_error_Some; congruence).
       pose proof (nr_gargs _ _ _ Hg2 Hu Ha k vs vs' ltac:(lia) Hp) as Hgv.
       pose proof Hp as Hp0; rewrite tele_pre_iff in Hp0; destruct Hp0 as (Hlv & Hlv' & _).
-      pose proof (proj1 (sd_npar _ HD _ _ HA)) as HAv; rewrite <- (length_npre D k) in HAv at 2 by lia.
-      eapply (sort_typ_rel (npre D k) A (npre_sem k) HAv ups ups2 vs vs');
-        [ rewrite length_npre; lia | rewrite length_npre; lia | exact Hu | exact Hu2 | | exact Ha ].
-      rewrite rev_npre; apply per_gargs_app_intro; [ rewrite Hlu; exact Hu | exact Hg2 | exact Hgv ].
+      pose proof (proj1 (vid_npar _ HD _ _ HA)) as HAv; rewrite <- (length_nparams_prefix D k) in HAv at 2 by lia.
+      eapply (sort_typ_rel (nparams_prefix D k) A (nparams_prefix_sem k) HAv ups ups2 vs vs');
+        [ rewrite length_nparams_prefix; lia | rewrite length_nparams_prefix; lia | exact Hu | exact Hu2 | | exact Ha ].
+      rewrite rev_nparams_prefix; apply per_gargs_app_intro; [ rewrite Hlu; exact Hu | exact Hg2 | exact Hgv ].
     Qed.
 
     Lemma canon_ha : forall ups2, per_gargs (List.rev (ind_uparams D)) nil nil ups ups2 ->
@@ -665,19 +629,19 @@ Section Sort.
       pose proof Hp as Hp0; rewrite tele_pre_iff in Hp0; destruct Hp0 as (Hlv & Hlv' & _).
       pose proof Hm as Hm0; rewrite tele_full_iff in Hm0; destruct Hm0 as (Hlm & Hlm' & _).
       rewrite List.length_rev, length_nparams in Hlm, Hlm'.
-      destruct (sd_arg _ HD _ _ _ _ Hcon HA) as [HAv _].
-      assert (HC : ⊨ (astrat gs k ++ ind_nparams D) ++ ind_uparams D)
-        by (rewrite <- List.app_assoc, <- params_split; exact (sd_strat _ HD _ _ k Hcon ltac:(lia))).
-      assert (HT : (astrat gs k ++ ind_nparams D) ++ ind_uparams D
-                     ⊨ A : (ind_sort D)[wk_shiftn (List.length (astrat gs k ++ ind_nparams D))]ʷ)
-        by (rewrite <- List.app_assoc, <- params_split, List.length_app, length_astrat, length_nparams by lia; exact HAv).
-      eapply (sort_typ_rel (astrat gs k ++ ind_nparams D) A HC HT ups ups2 (ms ++ vs) (ms' ++ vs'));
-        [ rewrite !List.length_app, length_astrat, length_nparams by lia; lia
-        | rewrite !List.length_app, length_astrat, length_nparams by lia; lia | exact Hu | exact Hu2 | | exact Ha ].
+      destruct (vid_arg _ HD _ _ _ _ Hcon HA) as [HAv _].
+      assert (HC : ⊨ (nonrec_args_prefix gs k ++ ind_nparams D) ++ ind_uparams D)
+        by (rewrite <- List.app_assoc, <- params_split; exact (vid_strat _ HD _ _ k Hcon ltac:(lia))).
+      assert (HT : (nonrec_args_prefix gs k ++ ind_nparams D) ++ ind_uparams D
+                     ⊨ A : (ind_sort D)[wk_shiftn (List.length (nonrec_args_prefix gs k ++ ind_nparams D))]ʷ)
+        by (rewrite <- List.app_assoc, <- params_split, List.length_app, length_nonrec_args_prefix, length_nparams by lia; exact HAv).
+      eapply (sort_typ_rel (nonrec_args_prefix gs k ++ ind_nparams D) A HC HT ups ups2 (ms ++ vs) (ms' ++ vs'));
+        [ rewrite !List.length_app, length_nonrec_args_prefix, length_nparams by lia; lia
+        | rewrite !List.length_app, length_nonrec_args_prefix, length_nparams by lia; lia | exact Hu | exact Hu2 | | exact Ha ].
       rewrite <- List.app_assoc, <- params_split, List.rev_app_distr, !List.app_assoc.
       apply per_gargs_app_intro; [ rewrite List.length_app; rewrite List.length_rev, params_split, List.length_app, length_nparams, length_ind_uparams by exact Hle; lia
                                  | exact Hpg |].
-      unfold astrat; rewrite List.rev_involutive; exact Hgv.
+      unfold nonrec_args_prefix; rewrite List.rev_involutive; exact Hgv.
     Qed.
 
     Lemma canon_hd : forall ups2, per_gargs (List.rev (ind_uparams D)) nil nil ups ups2 ->
@@ -702,30 +666,30 @@ Section Sort.
       pose proof Hy as Hy0; rewrite tele_pre_iff in Hy0; destruct Hy0 as (Hly & Hly' & _).
       pose proof Hm as Hm0; rewrite tele_full_iff in Hm0; destruct Hm0 as (Hlm & Hlm' & _).
       rewrite List.length_rev, length_nparams in Hlm, Hlm'.
-      destruct (sd_dom _ HD _ _ _ _ _ _ _ Hcon Heq HB) as [HBv _].
-      set (Pre := doms_ctx (List.firstn k (ptyp_doms t)) ++ astrat gs K ++ ind_nparams D).
+      destruct (vid_dom _ HD _ _ _ _ _ _ _ Hcon Heq HB) as [HBv _].
+      set (Pre := doms_ctx (List.firstn k (ptyp_doms t)) ++ nonrec_args_prefix gs K ++ ind_nparams D).
       fold K in HBv.
       assert (HLP : List.length Pre = k + K + ind_nn D)
-        by (unfold Pre; rewrite !List.length_app, doms_ctx_length, List.length_firstn, length_astrat, length_nparams by exact HK; lia).
+        by (unfold Pre; rewrite !List.length_app, doms_ctx_length, List.length_firstn, length_nonrec_args_prefix, length_nparams by exact HK; lia).
       assert (HC : ⊨ Pre ++ ind_uparams D)
-        by (unfold Pre; rewrite <- !List.app_assoc, <- params_split; exact (sd_dctx _ HD _ _ _ _ _ k Hcon Heq ltac:(lia))).
+        by (unfold Pre; rewrite <- !List.app_assoc, <- params_split; exact (vid_dctx _ HD _ _ _ _ _ k Hcon Heq ltac:(lia))).
       assert (HT : Pre ++ ind_uparams D ⊨ B : (ind_sort D)[wk_shiftn (List.length Pre)]ʷ)
         by (rewrite HLP; unfold Pre; rewrite <- !List.app_assoc, <- params_split; exact HBv).
       eapply (sort_typ_rel Pre B HC HT ups ups2 (ms ++ ws ++ ys) (ms' ++ ws' ++ ys'));
         [ rewrite HLP, !List.length_app; lia | rewrite HLP, !List.length_app; lia | exact Hu | exact Hu2 | | exact Ha ].
       unfold Pre; rewrite <- !List.app_assoc, <- params_split.
-      assert (Hrv : List.rev (doms_ctx (List.firstn k (ptyp_doms t)) ++ astrat gs K ++ ind_params D)
-                    = (List.rev (ind_params D) ++ List.rev (astrat gs K)) ++ List.rev (doms_ctx (List.firstn k (ptyp_doms t))))
+      assert (Hrv : List.rev (doms_ctx (List.firstn k (ptyp_doms t)) ++ nonrec_args_prefix gs K ++ ind_params D)
+                    = (List.rev (ind_params D) ++ List.rev (nonrec_args_prefix gs K)) ++ List.rev (doms_ctx (List.firstn k (ptyp_doms t))))
         by (rewrite !List.rev_app_distr; reflexivity).
       rewrite Hrv.
       replace (ups ++ ms ++ ws ++ ys) with (((ups ++ ms) ++ ws) ++ ys) by (rewrite <- !List.app_assoc; reflexivity).
       replace (ups2 ++ ms' ++ ws' ++ ys') with (((ups2 ++ ms') ++ ws') ++ ys') by (rewrite <- !List.app_assoc; reflexivity).
       apply per_gargs_app_intro;
-        [ rewrite !List.length_app, !List.length_rev, length_astrat, params_split, List.length_app,
+        [ rewrite !List.length_app, !List.length_rev, length_nonrec_args_prefix, params_split, List.length_app,
             length_nparams, length_ind_uparams by (exact HK || exact Hle); lia | |].
       - apply per_gargs_app_intro; [ rewrite List.length_app, List.length_rev, params_split, List.length_app, length_nparams, length_ind_uparams
                                        by exact Hle; lia | exact Hpg |].
-        unfold astrat; rewrite List.rev_involutive; exact Hgw.
+        unfold nonrec_args_prefix; rewrite List.rev_involutive; exact Hgw.
       - unfold doms_ctx; rewrite List.rev_involutive, <- List.firstn_map, <- !List.app_assoc; exact Hgy.
     Qed.
 
@@ -752,18 +716,18 @@ Section Sort.
       destruct (rec_closure _ _ _ _ _ Hcon Heq ups ups2 ms ms' ws ws' ys ys' Hu Hlm Hlw Hly Hu2 Hlm' Hlw' Hly')
         as (bs & bs' & Ebs & Ebs' & Hgb & _).
       { unfold ptyp_tele.
-        assert (Hrv : List.rev (doms_ctx (ptyp_doms t) ++ astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D)
-                      = (List.rev (ind_params D) ++ List.rev (astrat gs (List.length (cargs_nonrec gs1)))) ++ List.rev (doms_ctx (ptyp_doms t)))
+        assert (Hrv : List.rev (doms_ctx (ptyp_doms t) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ ind_params D)
+                      = (List.rev (ind_params D) ++ List.rev (nonrec_args_prefix gs (List.length (cargs_nonrec gs1)))) ++ List.rev (doms_ctx (ptyp_doms t)))
           by (rewrite !List.rev_app_distr; reflexivity).
         rewrite Hrv.
         replace (ups ++ ms ++ ws ++ ys) with (((ups ++ ms) ++ ws) ++ ys) by (rewrite <- !List.app_assoc; reflexivity).
         replace (ups2 ++ ms' ++ ws' ++ ys') with (((ups2 ++ ms') ++ ws') ++ ys') by (rewrite <- !List.app_assoc; reflexivity).
         apply per_gargs_app_intro;
-          [ rewrite !List.length_app, !List.length_rev, length_astrat, params_split, List.length_app,
+          [ rewrite !List.length_app, !List.length_rev, length_nonrec_args_prefix, params_split, List.length_app,
               length_nparams, length_ind_uparams by (exact HK || exact Hle); lia | |].
         - apply per_gargs_app_intro; [ rewrite List.length_app, List.length_rev, params_split, List.length_app, length_nparams, length_ind_uparams
                                          by exact Hle; lia | exact Hpg |].
-          unfold astrat; rewrite List.rev_involutive; exact Hgv.
+          unfold nonrec_args_prefix; rewrite List.rev_involutive; exact Hgv.
         - unfold doms_ctx; rewrite List.rev_involutive, <- !List.app_assoc; exact Hgy. }
       apply (mk_exps_rel _ _ _ _ bs bs' Ebs Ebs').
       eapply (gargs_tele_canon _ (ind_nr D ups) (env_args nil ups)); [ | exact Hgb |].
@@ -843,7 +807,7 @@ Section Sort.
   Qed.
 
   Lemma rev_params_sem : ⊨ List.rev (List.rev (ind_params D)) ++ ⋅.
-  Proof. rewrite List.rev_involutive, List.app_nil_r; exact (sd_params _ HD). Qed.
+  Proof. rewrite List.rev_involutive, List.app_nil_r; exact (vid_params _ HD). Qed.
 
   Lemma rev_params_ass : tele_ass (List.rev (ind_params D)).
   Proof. apply List.Forall_rev, (decl_closed_params D Hc). Qed.
@@ -888,8 +852,8 @@ Section Sort.
     assert (Hys' : ys' = ups' ++ ns') by (symmetry; apply List.firstn_skipn).
     assert (Hlns : List.length ns = ind_nn D) by (unfold ns; rewrite List.length_skipn; unfold ind_nn; lia).
     assert (Hlur : List.length ups = List.length (ind_uparams D)) by (rewrite length_ind_uparams by exact Hle; exact Hlu).
-    destruct (sd_sort _ HD) as [i HS].
-    destruct (sem_ctx_per_ctx_env uparams_sem) as [RU HRU].
+    destruct (vid_sort _ HD) as [i HS].
+    destruct (rel_ctx_wf_per_ctx_env uparams_sem) as [RU HRU].
     pose proof (uparams_refl_l _ _ Hgu) as Hgu0.
     assert (Huass : tele_ass (List.rev (ind_uparams D))) by (apply List.Forall_rev, (decl_uparams_ass D Hc)).
     pose proof (per_gargs_base _ _ _ per_ctx_env_nil_true rev_uparams_sem Huass nil nil ρ nil _ _ I I I Hgu0) as Hgρ.
@@ -899,12 +863,12 @@ Section Sort.
         uniform ones. *)
     assert (Hub : is_univ b) by exact (sort_wk_univ _ _ _ Eb).
     destruct (per_univ_elem_univ _ _ _ _ HR0 Hub) as [_ ER0].
-    destruct (sem_ctx_per_ctx_env (sd_params _ HD)) as [RP HRP].
+    destruct (rel_ctx_wf_per_ctx_env (vid_params _ HD)) as [RP HRP].
     assert (HPP : PER RP) by (eapply per_env_PER; exact HRP).
     assert (HRP0 : RP (env_args ρ ys) (env_args ρ' ys'))
-      by (apply (gargs_env_rel _ _ _ _ _ _ HRP (sd_params _ HD)); [ unfold ind_np in Hlen; exact Hlen | exact Hg ]).
+      by (apply (gargs_env_rel _ _ _ _ _ _ HRP (vid_params _ HD)); [ unfold ind_np in Hlen; exact Hlen | exact Hg ]).
     assert (HRPd : RP (env_args ρ ys) (env_args ρ ys)) by (etransitivity; [ exact HRP0 | symmetry; exact HRP0 ]).
-    assert (HCp : ⊨ ind_nparams D ++ ind_uparams D) by (rewrite <- params_split; exact (sd_params _ HD)).
+    assert (HCp : ⊨ ind_nparams D ++ ind_uparams D) by (rewrite <- params_split; exact (vid_params _ HD)).
     assert (HRP' : EF ind_nparams D ++ ind_uparams D ≈ ind_nparams D ++ ind_uparams D ∈ per_ctx_env ↘ RP)
       by (rewrite <- params_split; exact HRP).
     assert (Hwk : ⟪wk_shiftn (List.length (ind_nparams D))⟫ (env_args ρ ys) = env_args ρ ups)
@@ -922,9 +886,9 @@ Section Sort.
   Qed.
 
   (** ** The Type Former *)
-  Lemma valid_exp_ind0 : ⋅ ⊨ a_ind p : ind_ty D.
+  Lemma valid_exp_under_ctx_ind : ⋅ ⊨ a_ind p : ind_ty D.
   Proof.
-    destruct (sd_ty _ HD) as [i HT].
+    destruct (vid_ty _ HD) as [i HT].
     destruct (rel_exp_of_typ_inversion_simple HT) as (R & HR & Hsimp).
     apply (rel_exp_closed_intro _ _ i); [ intros; apply ind_ty_sub, Hc | intros; reflexivity |].
     intros ρ ρ'.
@@ -957,7 +921,7 @@ Section Sort.
   Proof.
     intros * Heq; pose proof HΨ as H.
     rewrite Heq in H; unfold cargs_ctx in H; rewrite cargs_ctx_aux_app, <- List.app_assoc in H.
-    exact (sem_ctx_app_r _ _ H).
+    exact (rel_ctx_wf_app_r _ _ H).
   Qed.
 
   (** The weakening of a prefix of the arguments to its non-recursive ones. *)
@@ -966,7 +930,7 @@ Section Sort.
   Proof.
     induction gs1 as [| g gs1 IH] using List.rev_ind; intros gs2 Heq.
     - cbn [cargs_ctx cargs_ctx_aux cargs_strat cargs_pat List.rev List.map List.app].
-      destruct (sem_ctx_per_ctx_env (sd_params _ HD)) as [R HR].
+      destruct (rel_ctx_wf_per_ctx_env (vid_params _ HD)) as [R HR].
       eapply rel_wk_under_ctx_intro; [ exact HR | exact HR | exact (rel_wk_id R) ].
     - rewrite <- List.app_assoc in Heq; cbn [List.app] in Heq.
       pose proof (IH _ Heq) as IHw.
@@ -976,8 +940,8 @@ Section Sort.
       + rewrite cargs_strat_snoc_arg.
         assert (HA : List.nth_error (cargs_nonrec gs) (List.length (cargs_nonrec gs1)) = Some A)
           by (rewrite Heq, cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
-        destruct (sd_arg _ HD _ _ _ _ Hcon HA) as (_ & j & HAv).
-        rewrite Heq, <- astrat_prefix in HAv.
+        destruct (vid_arg _ HD _ _ _ _ Hcon HA) as (_ & j & HAv).
+        rewrite Heq, <- nonrec_args_prefix_cargs_strat in HAv.
         exact (rel_wk_under_ctx_q IHw HAv).
       + rewrite cargs_strat_snoc_rec.
         exact (rel_wk_under_ctx_compose _ _ _ _ _ (rel_wk_under_ctx_shift HC) IHw).
@@ -997,8 +961,8 @@ Section Sort.
     - destruct (nth_error_lt_some' (ptyp_doms t) k ltac:(lia)) as [B HB].
       rewrite (firstn_S_snoc _ _ _ HB), sh_ctx_snoc, doms_ctx_snoc, List.length_firstn, Nat.min_l by lia.
       cbn [List.repeat List.app wk_pat].
-      destruct (sd_dom _ HD _ _ _ _ _ _ _ Hcon Heq HB) as (_ & j & HBv).
-      rewrite Heq, <- astrat_prefix in HBv.
+      destruct (vid_dom _ HD _ _ _ _ _ _ _ Hcon Heq HB) as (_ & j & HBv).
+      rewrite Heq, <- nonrec_args_prefix_cargs_strat in HBv.
       exact (rel_wk_under_ctx_q (IH ltac:(lia)) HBv).
   Qed.
 
@@ -1012,11 +976,11 @@ Section Sort.
     - exact HC0.
     - destruct (nth_error_lt_some' (ptyp_doms t) k ltac:(lia)) as [B HB].
       pose proof (sh_wk_gen _ _ _ Heq Hw0 k ltac:(lia)) as Hw.
-      destruct (sd_dom _ HD _ _ _ _ _ _ _ Hcon Heq HB) as (_ & j & HBv).
-      rewrite Heq, <- astrat_prefix in HBv.
+      destruct (vid_dom _ HD _ _ _ _ _ _ _ Hcon Heq HB) as (_ & j & HBv).
+      rewrite Heq, <- nonrec_args_prefix_cargs_strat in HBv.
       pose proof (rel_exp_under_ctx_wk Hw HBv) as HBw; cbn [exp_wk] in HBw.
       pose proof (IH ltac:(lia)) as HC.
-      destruct (sem_ctx_per_ctx_env HC) as [R HR].
+      destruct (rel_ctx_wf_per_ctx_env HC) as [R HR].
       rewrite (firstn_S_snoc _ _ _ HB), sh_ctx_snoc, List.length_firstn, Nat.min_l by lia.
       cbn [List.app].
       econstructor; [ exact HC | exact (per_ctx_env_of_typ HR HBw) | exact HBw ].
@@ -1093,7 +1057,7 @@ Section Sort.
     (** The arguments before, as arguments of their telescope. *)
     assert (Hgpf : per_gargs (List.rev (cargs_ctx p D gs1 ++ ind_params D)) nil nil (ups ++ ns ++ fa) (ups ++ ns ++ fa)).
     { pose proof (cargs_prefix_sem gs1 (ca_rec t :: gs2) Heq) as HC.
-      destruct (sem_ctx_per_ctx_env HC) as [R0 HR0].
+      destruct (rel_ctx_wf_per_ctx_env HC) as [R0 HR0].
       assert (HC' : ⊨ List.rev (List.rev (cargs_ctx p D gs1 ++ ind_params D)) ++ ⋅)
         by (rewrite List.rev_involutive, List.app_nil_r; exact HC).
       assert (HR0' : EF List.rev (List.rev (cargs_ctx p D gs1 ++ ind_params D)) ++ ⋅
@@ -1104,7 +1068,7 @@ Section Sort.
       assert (Hta : tele_ass (List.rev (cargs_ctx p D gs1 ++ ind_params D)))
         by (apply List.Forall_rev, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (decl_closed_params D Hc) ]).
       exact (proj2 (rel_gargs _ _ _ _ per_ctx_env_nil_true HC' Hta HR0' nil nil _ _ Hl0 Hl0 (Hpre _ HR0))). }
-    assert (Hsimp : ptyp_simple t = true) by exact (sd_simple _ HD _ _ _ _ _ Hcon Heq).
+    assert (Hsimp : ptyp_simple t = true) by exact (vid_simple _ HD _ _ _ _ _ Hcon Heq).
     (** The environment of the arguments and [k] domains, in the context of
         their types. *)
     assert (Henv : forall k ys, k <= List.length (ptyp_doms t) -> List.length ys = k ->
@@ -1133,8 +1097,8 @@ Section Sort.
          rename H3 into Eb, H1 into HE, H0 into Hcod, H into HPin.
          pose proof Hy as Hy0; rewrite tele_pre_iff in Hy0; destruct Hy0 as (Hly & _ & _).
          pose proof (sh_wk _ _ _ Heq k ltac:(lia)) as Hw; fold pat in Hw.
-         destruct (sd_dom _ HD _ _ _ _ _ _ _ Hcon Heq HB) as (_ & j & HBv).
-         rewrite Heq, <- astrat_prefix in HBv.
+         destruct (vid_dom _ HD _ _ _ _ _ _ _ Hcon Heq HB) as (_ & j & HBv).
+         rewrite Heq, <- nonrec_args_prefix_cargs_strat in HBv.
          destruct (rel_exp_under_ctx_wk_simple Hw HBv) as (RΓ & HΓ & i0 & Hwk).
          pose proof (Henv k ys ltac:(lia) Hly Hgy RΓ HΓ) as Hρ.
          destruct (Hwk _ _ Hρ) as (y & y' & Ry & Ey & Ey' & HRy & m & m' & Em & Em' & Hmm).
@@ -1203,24 +1167,24 @@ Section Sort.
     cbn [ptyp_ty ptyp_ps] in Ea.
     set (L := List.length (ptyp_doms t)) in *.
     pose proof Hy as Hy0; rewrite tele_pre_iff in Hy0; destruct Hy0 as (Hly & _ & _).
-    assert (Hgall : per_gargs (List.rev (ptyp_tele t ++ astrat gs K ++ ind_params D)) nil nil
+    assert (Hgall : per_gargs (List.rev (ptyp_tele t ++ nonrec_args_prefix gs K ++ ind_params D)) nil nil
                       (ups ++ ns ++ nv ++ ys) (ups ++ ns ++ nv ++ ys)).
     { pose proof (params_gargs _ _ _ _ _ Hgu0 Hlu Ha0 Hnsd) as Hpg.
       pose proof (ar_gargs _ _ _ _ _ _ _ Hcon Hgu0 Hlu Ha0 Hnsd _ nv nv HK INV) as Hgv.
       pose proof (dom_gargs _ _ _ _ _ _ _ _ _ _ _ _ Hcon Heq Hgu0 Hlu Ha0 Hnsd INV L ys ys (le_n _) Hy) as Hgd.
       rewrite List.firstn_all2 in Hgd by (rewrite List.length_map; lia).
       unfold ptyp_tele.
-      assert (Hrv : List.rev (doms_ctx (ptyp_doms t) ++ astrat gs K ++ ind_params D)
-                    = (List.rev (ind_params D) ++ List.rev (astrat gs K)) ++ List.rev (doms_ctx (ptyp_doms t)))
+      assert (Hrv : List.rev (doms_ctx (ptyp_doms t) ++ nonrec_args_prefix gs K ++ ind_params D)
+                    = (List.rev (ind_params D) ++ List.rev (nonrec_args_prefix gs K)) ++ List.rev (doms_ctx (ptyp_doms t)))
         by (rewrite !List.rev_app_distr; reflexivity).
       rewrite Hrv.
       replace (ups ++ ns ++ nv ++ ys) with (((ups ++ ns) ++ nv) ++ ys) by (rewrite <- !List.app_assoc; reflexivity).
       apply per_gargs_app_intro;
-        [ rewrite !List.length_app, !List.length_rev, length_astrat, params_split, List.length_app,
+        [ rewrite !List.length_app, !List.length_rev, length_nonrec_args_prefix, params_split, List.length_app,
             length_nparams, length_ind_uparams by (exact HK || exact Hle); lia | |].
       - apply per_gargs_app_intro; [ rewrite List.length_app, List.length_rev, params_split, List.length_app, length_nparams, length_ind_uparams
                                        by exact Hle; lia | exact Hpg |].
-        unfold astrat; rewrite List.rev_involutive; exact Hgv.
+        unfold nonrec_args_prefix; rewrite List.rev_involutive; exact Hgv.
       - unfold doms_ctx; rewrite List.rev_involutive, <- !List.app_assoc; exact Hgd. }
     destruct (rec_closure _ _ _ _ _ Hcon Heq ups ups ns ns nv nv ys ys Hlu Hlns Hlnv Hly Hlu Hlns Hlnv Hly Hgall)
       as (bs & bs0 & Ebs & _ & _ & Hil).
@@ -1238,8 +1202,8 @@ Section Sort.
                exists b1 b, ⟦ P[wk_pat pat']ʷ ⟧ env_args nil (ups ++ ns ++ fa ++ ys) ↘ b1 /\ ⟦ P ⟧ env_args nil (ups ++ ns ++ nv ++ ys) ↘ b /\
                  ind_nr D ups m (List.firstn m bs) b b1).
     { intros * HP HTm.
-      pose proof (sd_rec _ HD _ _ _ _ _ _ _ _ Hcon Heq HP HTm) as HPv.
-      rewrite Heq, <- astrat_prefix in HPv.
+      pose proof (vid_rec _ HD _ _ _ _ _ _ _ _ Hcon Heq HP HTm) as HPv.
+      rewrite Heq, <- nonrec_args_prefix_cargs_strat in HPv.
       destruct (rel_exp_under_ctx_wk_simple Hw HPv) as (RΓ' & HΓ' & i1 & Hwk).
       pose proof (Henv L ys (le_n _) Hly Hgy RΓ') as Hρ.
       rewrite Hft in Hρ; specialize (Hρ HΓ').
@@ -1337,7 +1301,7 @@ Section Sort.
     (** The arguments before, as arguments of their telescope. *)
     assert (Hgpf : per_gargs (List.rev (cargs_ctx p D gs1 ++ ind_params D)) nil nil (ups ++ ns ++ fa) (ups ++ ns ++ fa)).
     { pose proof (cargs_prefix_sem gs1 (ca_rec t :: gs2) Heq) as HC.
-      destruct (sem_ctx_per_ctx_env HC) as [R0 HR0].
+      destruct (rel_ctx_wf_per_ctx_env HC) as [R0 HR0].
       assert (HC' : ⊨ List.rev (List.rev (cargs_ctx p D gs1 ++ ind_params D)) ++ ⋅)
         by (rewrite List.rev_involutive, List.app_nil_r; exact HC).
       assert (HR0' : EF List.rev (List.rev (cargs_ctx p D gs1 ++ ind_params D)) ++ ⋅
@@ -1348,7 +1312,7 @@ Section Sort.
       assert (Hta : tele_ass (List.rev (cargs_ctx p D gs1 ++ ind_params D)))
         by (apply List.Forall_rev, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (decl_closed_params D Hc) ]).
       exact (proj2 (rel_gargs _ _ _ _ per_ctx_env_nil_true HC' Hta HR0' nil nil _ _ Hl0 Hl0 (Hpre _ HR0))). }
-    assert (Hsimp : ptyp_simple t = true) by exact (sd_simple _ HD _ _ _ _ _ Hcon Heq).
+    assert (Hsimp : ptyp_simple t = true) by exact (vid_simple _ HD _ _ _ _ _ Hcon Heq).
     (** The environment of the arguments and [k] domains, in the context of
         their types. *)
     assert (Henv : forall k ys, k <= List.length (ptyp_doms t) -> List.length ys = k ->
@@ -1369,8 +1333,8 @@ Section Sort.
     split.
     - intros B HB.
       pose proof (sh_wk _ _ _ Heq k ltac:(lia)) as Hw; fold pat in Hw.
-      destruct (sd_dom _ HD _ _ _ _ _ _ _ Hcon Heq HB) as (_ & j & HBv).
-      rewrite Heq, <- astrat_prefix in HBv.
+      destruct (vid_dom _ HD _ _ _ _ _ _ _ Hcon Heq HB) as (_ & j & HBv).
+      rewrite Heq, <- nonrec_args_prefix_cargs_strat in HBv.
       destruct (rel_exp_under_ctx_wk_simple Hw HBv) as (RΓ & HΓ & i0 & Hwk).
       pose proof (Henv k ys ltac:(lia) Hly Hgy RΓ HΓ) as Hρ.
       destruct (Hwk _ _ Hρ) as (y & y' & Ry & Ey & Ey' & HRy & m & m' & Em & Em' & Hmm).
@@ -1382,24 +1346,24 @@ Section Sort.
       exists j, m, m'; split; [ exact Em | split; [ exact Em' | exact Hmm ] ].
     - intros Hkd; rewrite Hkd in Hly, Hy, Hgy |- *; clear Hkd Hk.
       set (L := List.length (ptyp_doms t)) in *.
-      assert (Hgall : per_gargs (List.rev (ptyp_tele t ++ astrat gs K ++ ind_params D)) nil nil
+      assert (Hgall : per_gargs (List.rev (ptyp_tele t ++ nonrec_args_prefix gs K ++ ind_params D)) nil nil
                         (ups ++ ns ++ nv ++ ys) (ups ++ ns ++ nv ++ ys)).
       { pose proof (params_gargs _ _ _ _ _ Hgu0 Hlu Ha0 Hnsd) as Hpg.
         pose proof (ar_gargs _ _ _ _ _ _ _ Hcon Hgu0 Hlu Ha0 Hnsd _ nv nv HK INV) as Hgv.
         pose proof (dom_gargs _ _ _ _ _ _ _ _ _ _ _ _ Hcon Heq Hgu0 Hlu Ha0 Hnsd INV L ys ys (le_n _) Hy) as Hgd.
         rewrite List.firstn_all2 in Hgd by (rewrite List.length_map; lia).
         unfold ptyp_tele.
-        assert (Hrv : List.rev (doms_ctx (ptyp_doms t) ++ astrat gs K ++ ind_params D)
-                      = (List.rev (ind_params D) ++ List.rev (astrat gs K)) ++ List.rev (doms_ctx (ptyp_doms t)))
+        assert (Hrv : List.rev (doms_ctx (ptyp_doms t) ++ nonrec_args_prefix gs K ++ ind_params D)
+                      = (List.rev (ind_params D) ++ List.rev (nonrec_args_prefix gs K)) ++ List.rev (doms_ctx (ptyp_doms t)))
           by (rewrite !List.rev_app_distr; reflexivity).
         rewrite Hrv.
         replace (ups ++ ns ++ nv ++ ys) with (((ups ++ ns) ++ nv) ++ ys) by (rewrite <- !List.app_assoc; reflexivity).
         apply per_gargs_app_intro;
-          [ rewrite !List.length_app, !List.length_rev, length_astrat, params_split, List.length_app,
+          [ rewrite !List.length_app, !List.length_rev, length_nonrec_args_prefix, params_split, List.length_app,
               length_nparams, length_ind_uparams by (exact HK || exact Hle); lia | |].
         - apply per_gargs_app_intro; [ rewrite List.length_app, List.length_rev, params_split, List.length_app, length_nparams, length_ind_uparams
                                          by exact Hle; lia | exact Hpg |].
-          unfold astrat; rewrite List.rev_involutive; exact Hgv.
+          unfold nonrec_args_prefix; rewrite List.rev_involutive; exact Hgv.
         - unfold doms_ctx; rewrite List.rev_involutive, <- !List.app_assoc; exact Hgd. }
       destruct (rec_closure _ _ _ _ _ Hcon Heq ups ups ns ns nv nv ys ys Hlu Hlns Hlnv Hly Hlu Hlns Hlnv Hly Hgall)
         as (bs & bs0 & Ebs & _ & _ & Hil).
@@ -1417,8 +1381,8 @@ Section Sort.
                  exists b1 b, ⟦ P[wk_pat pat']ʷ ⟧ env_args nil (ups ++ ns ++ fa ++ ys) ↘ b1 /\ ⟦ P ⟧ env_args nil (ups ++ ns ++ nv ++ ys) ↘ b /\
                    ind_nr D ups m (List.firstn m bs) b b1).
       { intros * HP HTm.
-        pose proof (sd_rec _ HD _ _ _ _ _ _ _ _ Hcon Heq HP HTm) as HPv.
-        rewrite Heq, <- astrat_prefix in HPv.
+        pose proof (vid_rec _ HD _ _ _ _ _ _ _ _ Hcon Heq HP HTm) as HPv.
+        rewrite Heq, <- nonrec_args_prefix_cargs_strat in HPv.
         destruct (rel_exp_under_ctx_wk_simple Hw HPv) as (RΓ' & HΓ' & i1 & Hwk).
         pose proof (Henv L ys (le_n _) Hly Hgy RΓ') as Hρ.
         rewrite Hft in Hρ; specialize (Hρ HΓ').
@@ -1476,7 +1440,7 @@ Section Sort.
     set (nv := nonrec_vals gs1 fa) in *.
     set (K := List.length (cargs_nonrec gs1)) in *.
     set (pat := cargs_pat gs1) in *.
-    assert (Hsimp : ptyp_simple t = true) by exact (sd_simple _ HD _ _ _ _ _ Hcon Heq).
+    assert (Hsimp : ptyp_simple t = true) by exact (vid_simple _ HD _ _ _ _ _ Hcon Heq).
     (** The type of the rest of the shape exists. *)
     assert (Hex : forall k ys, k <= List.length (ptyp_doms t) ->
                tele_pre (shape_tr (ind_dr ups) ns nv (ptyp_doms t)) k ys ys ->
@@ -1594,8 +1558,8 @@ Section Sort.
     Lemma con_sort : exists a, ⟦ ind_sort D ⟧ env_args nil ups ↘ a.
     Proof.
       destruct con_ups as (_ & Hgu0 & Hlu & _).
-      destruct (sd_sort _ HD) as [i HS].
-      destruct (sem_ctx_per_ctx_env uparams_sem) as [RU HRU].
+      destruct (vid_sort _ HD) as [i HS].
+      destruct (rel_ctx_wf_per_ctx_env uparams_sem) as [RU HRU].
       assert (HRU0 : RU (env_args nil ups) (env_args nil ups)).
       { apply (gargs_env_rel _ _ _ _ _ _ HRU uparams_sem); [ rewrite length_ind_uparams by exact (decl_closed_nu D Hc); exact Hlu | exact Hgu0 ]. }
       destruct (rel_exp_of_typ_inversion_simple_at HRU HS _ _ HRU0) as (a & _ & Ea & _ & _); eauto.
@@ -1690,8 +1654,8 @@ Section Sort.
       cbn [cargs_ctx_aux List.app] in HT; injection HT as <-.
       assert (HA : List.nth_error (cargs_nonrec gs) (List.length (cargs_nonrec gs1)) = Some A)
         by (rewrite Heq, cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
-      destruct (sd_arg _ HD _ _ _ _ Hcon HA) as (_ & jA & HAv).
-      rewrite Heq, <- astrat_prefix in HAv.
+      destruct (vid_arg _ HD _ _ _ _ Hcon HA) as (_ & jA & HAv).
+      rewrite Heq, <- nonrec_args_prefix_cargs_strat in HAv.
       destruct (rel_exp_under_ctx_wk_simple (cargs_wk _ _ ltac:(exact Heq)) HAv) as (RΓ & HΓ & i0 & Hwk).
       pose proof (con_prefix_env _ _ Heq _ HΓ) as HE1.
       destruct (Hwk _ _ HE1) as (y & y' & Ry & Ey & Ey' & HRy & m & m' & Em & Em' & Hmm).
@@ -1863,7 +1827,8 @@ Section Sort.
     apply E; exact Hrel.
   Qed.
 
-  Lemma valid_exp_con0 : forall i, ⋅ ⊨ con_ty p D gs : Typeω@i -> ⋅ ⊨ a_con p c : con_ty p D gs.
+  Lemma valid_exp_under_ctx_con : forall i, ⋅ ⊨ con_ty p D gs : Typeω@i ->
+      ⋅ ⊨ a_con p c : con_ty p D gs.
   Proof.
     intros i HT.
     destruct (rel_exp_of_typ_inversion_simple HT) as (R & HR & Hsimp).

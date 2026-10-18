@@ -5,16 +5,16 @@
     η rules are validated here.
 
     The file is organised around [rel_typ_of_pi]: the type judgment of a Π, in the
-    form needed at each stage of [subtyp_under_ctx].  In all five rules the type is
+    form needed at each stage of [rel_subtyp_under_ctx].  In all five rules the type is
     a Π built from a domain judgment and a judgment in the extended context, so the
     element PER is always the canonical [per_pi].  The remaining work of each rule
     concerns its own four values:
 
-    - [rel_exp_pi_cong] has nothing more to do: the type judgment is the goal,
+    - [sem_exp_eq_pi_cong] has nothing more to do: the type judgment is the goal,
       read at [per_univ i] instead of at the element PER.
-    - [rel_exp_fn_cong] applies [rel_exp_under_ctx_q], whose three obligations
+    - [sem_exp_eq_fn_cong] applies [rel_exp_under_ctx_q], whose three obligations
       are the three links of [per_pi] once [eval_app_fn] has stripped the λ.
-    - [rel_exp_app_cong], [rel_exp_pi_beta] and [rel_exp_fn_eta] read the
+    - [sem_exp_eq_app_cong], [sem_exp_eq_pi_beta] and [sem_exp_eq_fn_eta] read the
       canonical [per_pi] off a Π-typed judgment with [per_pi_iff], and differ in
       what they do with the resulting [rel_mod_app].
 
@@ -33,10 +33,11 @@ From Mctt.Core.Completeness Require Import
   ContextCases LevelCases LogicalRelation SubstitutionCases UniverseCases VariableCases.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
+#[local] Generalizable All Variables.
 
 (** ** The Type Judgment of a Π
 
-    A stage of [subtyp_under_ctx], that is, a related pair of environments and a
+    A stage of [rel_subtyp_under_ctx], that is, a related pair of environments and a
     related pair of substitutions out of it, determines four Π-values and the
     canonical element PER they carry.  Both are forced: [(Π A B)[σ]] is
     [Π (A[σ]) (B[q σ])] definitionally, so [eval_exp_pi] applies to the
@@ -214,7 +215,7 @@ Qed.
 (** The small [Π] at a level term: at each pair of environments it is the
     small [Π] at the realiser of the level's value, whose codomain obligations
     [rel_exp_of_suniv_under_ctx_q] discharges. *)
-Lemma rel_exp_pi_cong_small_tm : forall {Γ L A A' B B'} {n : nat},
+Lemma rel_exp_under_ctx_pi_cong_small : forall {Γ L A A' B B'} {n : nat},
     Γ ⊨ L : Level@n ->
     Γ ⊨ A ≈ A' : Type⟨L⟩ ->
     Γ ▹ A ⊨ B ≈ B' : Type⟨L[↑]ʷ⟩ ->
@@ -244,11 +245,11 @@ Proof.
     eassumption.
 Qed.
 
-Hint Resolve rel_exp_pi_cong_small_tm : mctt.
+Hint Resolve rel_exp_under_ctx_pi_cong_small : mctt.
 
 (** ** Π-Congruence *)
 
-Lemma rel_exp_pi_cong : forall {Γ A A'} {i : nat} {B B'},
+Lemma rel_exp_under_ctx_pi_cong : forall {Γ A A'} {i : nat} {B B'},
     Γ ⊨ A ≈ A' : Typeω@i ->
     Γ ▹ A ⊨ B ≈ B' : Typeω@i ->
     Γ ⊨ Π A B ≈ Π A' B' : Typeω@i.
@@ -264,7 +265,32 @@ Proof.
   eapply rel_typ_implies_rel_exp; eassumption.
 Qed.
 
-Hint Resolve rel_exp_pi_cong : mctt.
+Hint Resolve rel_exp_under_ctx_pi_cong : mctt.
+
+End Fixed_GCtx.
+
+(** A [Π] in a universe: a large one, or a small one at a level term. *)
+Lemma sem_exp_eq_pi_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ᵤ U ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A : U ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A ≈ A' : U ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B ≈ B' : U[↑]ʷ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Π A B ≈ Π A' B' : U ).
+Proof.
+  intros * HU HA0 HA HB; sem_intro; [ assumption |].
+  destruct HU as [[? ->] | (? & ? & -> & ?)]; cbn [exp_wk] in *;
+    [ eapply rel_exp_under_ctx_pi_cong; eassumption | eapply rel_exp_under_ctx_pi_cong_small; eassumption ].
+Qed.
+
+Lemma sem_pi :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ᵤ U ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A : U ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : U[↑]ʷ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Π A B : U ).
+Proof. intros * HU HA HB; eapply sem_exp_eq_pi_cong; eassumption. Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** ** λ-Congruence
 
@@ -273,7 +299,7 @@ Hint Resolve rel_exp_pi_cong : mctt.
     which [eval_app_fn] turns into evaluating the two bodies in the two extended
     environments.  These are the three obligations of [rel_exp_under_ctx_q], and
     they land in the [per_head] that [per_pi] asks for. *)
-Lemma rel_exp_fn_cong : forall {Γ A A'} {i : nat} {B M M'},
+Lemma rel_exp_under_ctx_fn_cong : forall {Γ A A'} {i : nat} {B M M'},
     Γ ⊨ A ≈ A' : Typeω@i ->
     Γ ▹ A ⊨ M ≈ M' : B ->
     Γ ⊨ λ A M ≈ λ A' M' : Π A B.
@@ -304,7 +330,25 @@ Proof.
   - econstructor; [ apply eval_app_fn; exact Hp1 | apply eval_app_fn; exact Hp2 | exact Hp ].
 Qed.
 
-Hint Resolve rel_exp_fn_cong : mctt.
+Hint Resolve rel_exp_under_ctx_fn_cong : mctt.
+
+End Fixed_GCtx.
+
+Lemma sem_exp_eq_fn_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A ≈ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ M ≈ M' : B ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ λ A M ≈ λ A' M' : Π A B ).
+Proof. intros * _ HA HM; sem_intro; [ assumption | exact (rel_exp_under_ctx_fn_cong HA HM) ]. Qed.
+
+Lemma sem_fn :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ M : B ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ λ A M : Π A B ).
+Proof. intros * HA HM; eapply sem_exp_eq_fn_cong; eassumption. Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** ** Application Congruence
 
@@ -316,7 +360,7 @@ Hint Resolve rel_exp_fn_cong : mctt.
     The element PER is the head PER of [B] at the arguments the type names,
     [⟦N⟧ρσ] and [⟦N⟧ρ'σ'].  Each link of [M]'s chain arrives in the head PER of its
     own pair of arguments, and [per_head_of_args] moves it. *)
-Lemma rel_exp_app_cong : forall {Γ A} {i : nat} {B M M' N N'},
+Lemma rel_exp_under_ctx_app_cong : forall {Γ A} {i : nat} {B M M' N N'},
     Γ ⊨ A ≈ A : Typeω@i ->
     Γ ▹ A ⊨ B ≈ B : Typeω@i ->
     Γ ⊨ M ≈ M' : Π A B ->
@@ -407,7 +451,25 @@ Proof.
     | apply (per_head_of_args Hcod n3 n4 n2 p3 Hn34 Hn2p3 Hn24); exact Hu ].
 Qed.
 
-Hint Resolve rel_exp_app_cong : mctt.
+Hint Resolve rel_exp_under_ctx_app_cong : mctt.
+
+End Fixed_GCtx.
+
+Lemma sem_exp_eq_app_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M' : Π A B ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ N ≈ N' : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M $ N ≈ M' $ N' : B[Id,,N] ).
+Proof. intros * HA HB HM HN; sem_intro; [ assumption | exact (rel_exp_under_ctx_app_cong HA HB HM HN) ]. Qed.
+
+Lemma sem_app :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M : Π A B ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ N : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M $ N : B[Id,,N] ).
+Proof. intros * HA HB HM HN; eapply sem_exp_eq_app_cong; eassumption. Qed.
 
 (** ** β
 
@@ -428,14 +490,14 @@ Hint Resolve rel_exp_app_cong : mctt.
     at the substituted environments for the inner one) and the same bridge, which
     here is [M] at the crossing pair of arguments.  Three merges then select the
     goal's four values, all in the canonical head PER. *)
-Lemma rel_exp_pi_beta : forall {Γ A} {i : nat} {B M N},
-    Γ ⊨ A ≈ A : Typeω@i ->
-    Γ ▹ A ⊨ B ≈ B : Typeω@i ->
-    Γ ▹ A ⊨ M ≈ M : B ->
-    Γ ⊨ N ≈ N : A ->
-    Γ ⊨ (λ A M) $ N ≈ M[Id,,N] : B[Id ,, N].
+Lemma sem_exp_eq_pi_beta :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ M : B ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ N : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ (λ A M) $ N ≈ M[Id,,N] : B[Id,,N] ).
 Proof.
-  intros * HA HB HM HN.
+  intros * HA HB HM HN; sem_intro; [ assumption |].
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓ _]].
   pose proof (rel_sub_under_ctx_extend_sub (rel_sub_id (ex_intro _ _ HΓ)) HN) as HidN.
   rewrite exp_sub_id in HidN.
@@ -530,8 +592,6 @@ Proof.
   merge_rel_chain Hlink1 Hmerge2 g2.
 Qed.
 
-Hint Resolve rel_exp_pi_beta : mctt.
-
 (** ** η
 
     The only rule whose statement mentions a weakening rather than a substitution.
@@ -559,13 +619,13 @@ Hint Resolve rel_exp_pi_beta : mctt.
     So both nontrivial links come from one application of
     [rel_exp_under_ctx_shift_at]: the second from its chain, the third from its
     type PER. *)
-Lemma rel_exp_fn_eta : forall {Γ A} {i : nat} {B M},
-    Γ ⊨ A ≈ A : Typeω@i ->
-    Γ ▹ A ⊨ B ≈ B : Typeω@i ->
-    Γ ⊨ M ≈ M : Π A B ->
-    Γ ⊨ M ≈ λ A M[↑]ʷ $ #0 : Π A B.
+Lemma sem_exp_eq_fn_eta :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M : Π A B ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ λ A M[↑]ʷ $ #0 : Π A B ).
 Proof.
-  intros * HA HB HM.
+  intros * HA HB HM; sem_intro; [ assumption |].
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓ _]].
   pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
   pose proof (rel_exp_under_ctx_shift HΓA HM) as HMwk.
@@ -646,17 +706,5 @@ Proof.
       | exact Hrr' ].
 Qed.
 
-Hint Resolve rel_exp_fn_eta : mctt.
-
-End Fixed_GCtx.
-
 #[export]
-Hint Resolve rel_exp_pi_cong : mctt.
-#[export]
-Hint Resolve rel_exp_fn_cong : mctt.
-#[export]
-Hint Resolve rel_exp_app_cong : mctt.
-#[export]
-Hint Resolve rel_exp_pi_beta : mctt.
-#[export]
-Hint Resolve rel_exp_fn_eta : mctt.
+Hint Resolve rel_exp_under_ctx_pi_cong rel_exp_under_ctx_fn_cong rel_exp_under_ctx_app_cong : mctt.

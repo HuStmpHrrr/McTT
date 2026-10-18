@@ -1,8 +1,9 @@
 (** * Contexts
 
-    The two rules of [wf_ctx], and the two context-subtyping facts that
-    [Consequences] needs.  [⊨ Γ] is the inductive [sem_ctx], so the empty context
-    is the constructor [sem_ctx_nil].  The extension step is the one place that
+    The rules of [wf_ctx] but the module slot's (which is in
+    [MemberReps.v]), and the two context-subtyping facts that
+    [Consequences] needs.  [⊨ Γ] is inductive, so the empty context is
+    the constructor [rel_ctx_wf_nil].  The extension step is the one place that
     builds a context PER rather than taking one apart.
 
     The head relation of the extension is the impredicative [per_head], "whatever
@@ -21,7 +22,7 @@ Import Domain_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma rel_ctx_extend : forall {Γ Γ' A A'} {i : nat},
+Lemma per_ctx_extend : forall {Γ Γ' A A'} {i : nat},
     ⊨ Γ ≈ Γ' ->
     Γ ⊨ A ≈ A' : Typeω@i ->
     ⊨ Γ ▹ A ≈ Γ' ▹ A'.
@@ -39,22 +40,37 @@ Proof.
   now apply HA.
 Qed.
 
-Lemma rel_ctx_extend' : forall {Γ A} {i : nat},
+Lemma rel_ctx_wf_extend : forall {Γ A} {i : nat},
     ⊨ Γ ->
     Γ ⊨ A : Typeω@i ->
     ⊨ Γ ▹ A.
 Proof.
   intros * HΓ HA.
-  pose proof (rel_ctx_extend (sem_ctx_per_ctx HΓ) HA) as [env_relΓA HΓA].
+  pose proof (per_ctx_extend (rel_ctx_wf_per_ctx HΓ) HA) as [env_relΓA HΓA].
   econstructor; eassumption.
 Qed.
 
-Hint Resolve rel_ctx_extend rel_ctx_extend' : mctt.
+Hint Resolve per_ctx_extend rel_ctx_wf_extend : mctt.
+
+End Fixed_GCtx.
+
+#[local] Generalizable All Variables.
+
+Lemma sem_ctx_extend :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Typeω@i ->
+     ⊨ Θ ⍮ Ξ ⍮ Γ ▹ A ).
+Proof.
+  intros * HA; sem_intro.
+  apply valid_ctx_ass; [ assumption | eapply rel_ctx_wf_extend; eassumption ].
+Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** ** Definition Entries
 
     The canonical context PER of [Γ ▸ A ≔ M] is [per_env_extend_def], fed by
-    the [Id] instances of the judgments of [A] and [M]. *)
+    the [Id] instances of the relations of [A] and [M]. *)
 Lemma per_ctx_env_of_def : forall {Γ A} {i : nat} {M env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ A : Typeω@i ->
@@ -67,18 +83,32 @@ Proof.
   - exact (rel_exp_under_ctx_simple_at HΓ HM).
 Qed.
 
-Lemma rel_ctx_extend_def' : forall {Γ A} {i : nat} {M},
+Lemma rel_ctx_wf_extend_def : forall {Γ A} {i : nat} {M},
     ⊨ Γ ->
     Γ ⊨ A : Typeω@i ->
     Γ ⊨ M : A ->
     ⊨ Γ ▸ A ≔ M.
 Proof.
   intros * HΓ HA HM.
-  destruct (sem_ctx_per_ctx_env HΓ) as [env_relΓ HΓ'].
+  destruct (rel_ctx_wf_per_ctx_env HΓ) as [env_relΓ HΓ'].
   econstructor; [ eassumption | eapply per_ctx_env_of_def; eassumption | eassumption | eassumption ].
 Qed.
 
-Hint Resolve rel_ctx_extend_def' : mctt.
+Hint Resolve rel_ctx_wf_extend_def : mctt.
+
+End Fixed_GCtx.
+
+Lemma sem_ctx_extend_def :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M : A ->
+     ⊨ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ).
+Proof.
+  intros * HA HM; sem_intro.
+  apply valid_ctx_def; [ assumption | eapply rel_ctx_wf_extend_def; eassumption ].
+Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** A definition entry refines an assumption entry of the same type. *)
 Lemma per_ctx_env_def_forget : forall {Γ A} {i : nat} {M R R'},
@@ -140,10 +170,10 @@ Lemma rel_ctx_sub_extend : forall {Γ Δ} {i : nat} {A A'},
   SubE Γ ▹ A <: Δ ▹ A'.
 Proof.
   intros * Hsub HΓ HΔ HA HA' Hsubtyp.
-  pose proof (rel_ctx_extend' HΓ HA) as HΓA%sem_ctx_per_ctx_env.
-  pose proof (rel_ctx_extend' HΔ HA') as HΔA'%sem_ctx_per_ctx_env.
+  pose proof (rel_ctx_wf_extend HΓ HA) as HΓA%rel_ctx_wf_per_ctx_env.
+  pose proof (rel_ctx_wf_extend HΔ HA') as HΔA'%rel_ctx_wf_per_ctx_env.
   destruct HΓA as [env_relΓA HΓA], HΔA' as [env_relΔA' HΔA'].
-  pose proof (subtyp_under_ctx_simple Hsubtyp) as [env_relΓ [HΓ' [j Hsub2]]].
+  pose proof (rel_subtyp_under_ctx_simple Hsubtyp) as [env_relΓ [HΓ' [j Hsub2]]].
   econstructor; try eassumption.
   intros ρ ρ' a a' Hρ Ha Ha'.
   destruct (Hsub2 _ _ Hρ) as [a2 [a2' [Ha2 [Ha2' Hsubaa']]]].
@@ -156,6 +186,13 @@ Hint Resolve rel_ctx_sub_empty rel_ctx_sub_extend : mctt.
 End Fixed_GCtx.
 
 #[export]
-Hint Resolve rel_ctx_extend rel_ctx_extend' rel_ctx_extend_def' : mctt.
+Hint Resolve per_ctx_extend rel_ctx_wf_extend rel_ctx_wf_extend_def : mctt.
 #[export]
 Hint Resolve rel_ctx_sub_empty rel_ctx_sub_extend : mctt.
+
+(** The empty context, which has no relation of its own: [⊨ ⋅] is a
+    constructor. *)
+Lemma sem_ctx_empty :
+  `( ⊢ᵍ Θ ⍮ Ξ ->
+     ⊨ Θ ⍮ Ξ ⍮ ⋅ ).
+Proof. intros * H; sem_intro; constructor. Qed.

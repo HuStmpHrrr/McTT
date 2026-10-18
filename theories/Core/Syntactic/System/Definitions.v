@@ -36,7 +36,9 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Substitution Members Inductives.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
-Reserved Notation "⊢ Θ ⍮ Ξ ⍮ Γ" (at level 70, Θ at level 69, Ξ at level 69, Γ at level 69).
+(** [Θ] at next level, as [Γ] of the short form [⊢ Γ] ([Fixed.v]), so that
+    the two share their prefix and parse together. *)
+Reserved Notation "⊢ Θ ⍮ Ξ ⍮ Γ" (at level 70, Θ at next level, Ξ at level 69, Γ at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ M : A" (at level 70, Ξ at level 69, Γ at level 69, M at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A" (at level 70, Ξ at level 69, Γ at level 69, M at level 69, M' at level 69, A at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A'" (at level 70, Ξ at level 69, Γ at level 69, A at level 69, A' at level 69).

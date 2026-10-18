@@ -27,14 +27,15 @@ Import Wk_Notations.
 (** ** Semantic Weakening
 
     A judgment of a context still holds when read in an extension of it, with
-    everything weakened.  This is the form the induction step of [valid_exp_var]
+    everything weakened.  This is the form the induction step of [valid_exp_under_ctx_vlookup]
     needs.
 
-    The premise is the context PER of the extension, not its [⊨]: the extension
-    is only needed for the [Wk] instantiation, and [rel_sub_shift] factors through
-    [rel_wk_shift], which asks only for the two PERs, the tail's coming from [M]'s
-    judgment.  This lets the η-rule use the lemma, since no premise of that rule
-    mentions [Γ] and so [⊨ Γ] is not available there. *)
+    The premise is the context PER of the extension, not its [rel_ctx_wf]: the
+    extension is only needed for the [Wk] instantiation, and [rel_sub_shift]
+    factors through [rel_wk_shift], which asks only for the two PERs, the
+    tail's coming from [M]'s relation.  This lets the η-rule use the lemma,
+    since no premise of that rule mentions [Γ] and so [⊨ Γ] is not
+    available there. *)
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
@@ -99,7 +100,7 @@ Hint Resolve rel_exp_under_ctx_shift : mctt.
     That clause speaks of the values of [A] in the tails, so the [Wk] instance of
     [A]'s judgment is used a second time, to bridge those values to the values of
     [A[↑]ʷ]. *)
-Lemma valid_exp_var_here : forall {Γ A},
+Lemma valid_exp_under_ctx_var_here : forall {Γ A},
     ⊨ Γ ▹ A ->
     Γ ▹ A ⊨ #0 : A[↑]ʷ.
 Proof.
@@ -152,26 +153,45 @@ Proof.
     apply rel_chain_4_of_2; [ solve_chain_PER | eassumption ].
 Qed.
 
-Lemma valid_exp_var : forall {Γ x A},
+Lemma valid_exp_under_ctx_vlookup : forall {Γ x A},
     Γ ∋ #x : A ->
     ⊨ Γ ->
     Γ ⊨ #x : A.
 Proof.
   induction 1 as [A Γ | A M Γ | x A Γ e Hx IH]; intros HΓ.
-  - apply valid_exp_var_here; assumption.
+  - apply valid_exp_under_ctx_var_here; assumption.
   - (** [Γ ▸ A ≔ M ∋ #0 : A[↑]ʷ] is the head of [Γ ▹ A], restricted. *)
     inversion HΓ as [| | ? ? ? i ? HΓ0 HΓAper HA HM |]; subst.
-    pose proof (rel_ctx_extend' HΓ0 HA) as HΓA.
-    pose proof (sem_ctx_per_ctx_env HΓA) as [env_relΓA HΓAper'].
+    pose proof (rel_ctx_wf_extend HΓ0 HA) as HΓA.
+    pose proof (rel_ctx_wf_per_ctx_env HΓA) as [env_relΓA HΓAper'].
     eapply rel_exp_under_ctx_restrict; [ exact HΓAper | exact HΓAper' | | ].
     + eapply per_ctx_env_def_forget; eassumption.
-    + apply valid_exp_var_here; assumption.
+    + apply valid_exp_under_ctx_var_here; assumption.
   - (** [e :: Γ ∋ #(S x) : A[↑]ʷ] is the weakening of [Γ ∋ #x : A]. *)
-    pose proof (sem_ctx_per_ctx_env HΓ) as [env_relΓe HΓeper].
-    exact (rel_exp_under_ctx_shift HΓeper (IH (sem_ctx_tail HΓ))).
+    pose proof (rel_ctx_wf_per_ctx_env HΓ) as [env_relΓe HΓeper].
+    exact (rel_exp_under_ctx_shift HΓeper (IH (rel_ctx_wf_tail HΓ))).
 Qed.
 
-Hint Resolve valid_exp_var : mctt.
+Hint Resolve valid_exp_under_ctx_vlookup : mctt.
+
+End Fixed_GCtx.
+
+#[local] Generalizable All Variables.
+
+Lemma sem_vlookup :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Γ ∋ #x : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ #x : A ).
+Proof. intros * HΓ Hx; sem_intro; [ assumption | exact (valid_exp_under_ctx_vlookup Hx HΓ) ]. Qed.
+
+Lemma sem_exp_eq_var :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Γ ∋ #x : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ #x ≈ #x : A ).
+Proof. intros; eapply sem_vlookup; eassumption. Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** ** δ for Local Definitions
 
@@ -180,17 +200,17 @@ Hint Resolve valid_exp_var : mctt.
     of the environment, the value of [M[↑]ʷ] is related to the value of [M] in
     the tail, and the tie relates those two.  A deeper lookup is again a
     weakened one. *)
-Lemma rel_exp_var_delta_here : forall {Γ A M},
+Lemma rel_exp_under_ctx_var_delta_here : forall {Γ A M},
     ⊨ Γ ▸ A ≔ M ->
     Γ ▸ A ≔ M ⊨ #0 ≈ M[↑]ʷ : A[↑]ʷ.
 Proof.
   intros * HΓ.
   pose proof HΓ as HΓd.
   inversion HΓd as [| | ? ? ? i ? HΓ0 HΓdper HA HM |]; subst.
-  pose proof (sem_ctx_per_ctx_env HΓ0) as [env_relΓ HΓper].
+  pose proof (rel_ctx_wf_per_ctx_env HΓ0) as [env_relΓ HΓper].
   pose proof (per_ctx_env_of_def HΓper HA HM) as HΓdc.
   eapply rel_exp_under_ctx_of_simple; [ exact HΓdc | | | ].
-  - eapply valid_exp_var; [ constructor | assumption ].
+  - eapply valid_exp_under_ctx_vlookup; [ constructor | assumption ].
   - exact (rel_exp_under_ctx_shift HΓdc HM).
   - intros ρ ρ' Hρ.
     (** [M[↑]ʷ] against [M] in the tail, along the weakening [↑]. *)
@@ -216,22 +236,22 @@ Proof.
     solve_per.
 Qed.
 
-Lemma rel_exp_var_delta : forall {Γ x A M},
-    Γ ∋ #x ≔ M : A ->
-    ⊨ Γ ->
-    Γ ⊨ #x ≈ M : A.
-Proof.
-  induction 1 as [A M Γ | x A M Γ e Hx IH]; intros HΓ.
-  - apply rel_exp_var_delta_here; assumption.
-  - pose proof (sem_ctx_per_ctx_env HΓ) as [env_relΓe HΓeper].
-    exact (rel_exp_under_ctx_shift HΓeper (IH (sem_ctx_tail HΓ))).
-Qed.
-
-Hint Resolve rel_exp_var_delta : mctt.
-
 End Fixed_GCtx.
+
+Lemma sem_exp_eq_var_delta :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Γ ∋ #x ≔ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ #x ≈ M : A ).
+Proof.
+  intros * HΓ Hx; sem_intro; [ assumption |].
+  clear - Hx HΓ; revert HΓ.
+  induction Hx as [A M Γ | x A M Γ e Hx IH]; intros HΓ.
+  - apply rel_exp_under_ctx_var_delta_here; assumption.
+  - pose proof (rel_ctx_wf_per_ctx_env HΓ) as [env_relΓe HΓeper].
+    exact (rel_exp_under_ctx_shift HΓeper (IH (rel_ctx_wf_tail HΓ))).
+Qed.
 
 #[export]
 Hint Resolve rel_exp_under_ctx_shift : mctt.
 #[export]
-Hint Resolve valid_exp_var rel_exp_var_delta : mctt.
+Hint Resolve valid_exp_under_ctx_vlookup : mctt.

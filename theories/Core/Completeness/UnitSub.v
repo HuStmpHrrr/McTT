@@ -28,9 +28,9 @@ Section Fixed_GCtx.
   Hypothesis Hgm : ⊢ᵍ Θm ⍮ Ξm.
   Hypothesis Hsub : gc_sub Θm Ξm gc_deps gc_stack.
 
-Scheme sem_ctx_mut_ind := Induction for sem_ctx Sort Prop
-with sem_unit_mut_ind := Induction for sem_unit Sort Prop.
-Combined Scheme sem_ctx_unit_ind from sem_ctx_mut_ind, sem_unit_mut_ind.
+Scheme rel_ctx_wf_mut_ind := Induction for rel_ctx_wf Sort Prop
+with rel_unit_wf_mut_ind := Induction for rel_unit_wf Sort Prop.
+Combined Scheme rel_ctx_wf_unit_ind from rel_ctx_wf_mut_ind, rel_unit_wf_mut_ind.
 
 (** The expansion of a valid body, read at the source, is the one at the
     target. *)
@@ -44,14 +44,14 @@ Qed.
 Lemma tele_sub_cons : forall e Ψ σ, tele_sub (e :: Ψ) σ = centry_sub e (sb_qn (length Ψ) σ) :: tele_sub Ψ σ.
 Proof. reflexivity. Qed.
 
-Lemma sem_ctx_unit_gsub_all :
+Lemma rel_ctx_wf_unit_gsub_all :
   (forall C, ⊨ C -> forall Ψ2 Ψ Δ, C = Ψ2 ++ Ψ ++ Δ -> ⊢ Θm ⍮ Ξm ⍮ C ->
      forall Γ τ, gsub Γ τ Δ -> sub_mod_compat τ Γ Δ ->
      ⊨ tele_sub Ψ τ ++ Γ /\ gsub (tele_sub Ψ τ ++ Γ) (sb_qn (length Ψ) τ) (Ψ ++ Δ)) /\
-  (forall C U, sem_unit C U -> ⊢ Θm ⍮ Ξm ⍮ C ▹ₘ U ->
-     forall Γ τ, gsub Γ τ C -> sub_mod_compat τ Γ C -> sem_unit Γ U[τ]ᵘ).
+  (forall C U, rel_unit_wf C U -> ⊢ Θm ⍮ Ξm ⍮ C ▹ₘ U ->
+     forall Γ τ, gsub Γ τ C -> sub_mod_compat τ Γ C -> rel_unit_wf Γ U[τ]ᵘ).
 Proof.
-  apply sem_ctx_unit_ind.
+  apply rel_ctx_wf_unit_ind.
   - (* the empty context *)
     intros Ψ2 Ψ Δ Heq _ Γ τ Hg _.
     destruct Ψ2, Ψ, Δ; try discriminate; cbn; split; [ exact (proj1 (gsub_sem Hg)) | exact Hg ].
@@ -64,7 +64,7 @@ Proof.
         destruct (IHC nil Ψ Δ eq_refl (ctx_decomp_tail HwC) _ _ Hg Hc) as [HΓ' Hg'].
         pose proof (rel_exp_under_ctx_gsub Hg' HA) as HA'; cbn in HA'.
         rewrite tele_sub_cons; cbn [centry_sub List.app].
-        split; [ eapply rel_ctx_extend'; eassumption | eapply gsub_q; eassumption ].
+        split; [ eapply rel_ctx_wf_extend; eassumption | eapply gsub_q; eassumption ].
     + injection Heq as <- ->.
       exact (IHC Ψ2 Ψ Δ eq_refl (ctx_decomp_tail HwC) _ _ Hg Hc).
   - (* a definition *)
@@ -77,7 +77,7 @@ Proof.
         pose proof (rel_exp_under_ctx_gsub Hg' HA) as HA'; cbn in HA'.
         pose proof (rel_exp_under_ctx_gsub Hg' HM) as HM'.
         rewrite tele_sub_cons; cbn [centry_sub List.app].
-        split; [ eapply rel_ctx_extend_def'; eassumption | eapply gsub_q_def; eassumption ].
+        split; [ eapply rel_ctx_wf_extend_def; eassumption | eapply gsub_q_def; eassumption ].
     + injection Heq as <- ->.
       exact (IHC Ψ2 Ψ Δ eq_refl (ctx_decomp_tail HwC) _ _ Hg Hc).
   - (* a module slot *)
@@ -92,7 +92,7 @@ Proof.
         assert (HUU : tele_sub Ψ τ ++ Γ ⊨ᵘ U[sb_qn (length Ψ) τ]ᵘ ≈ U[sb_qn (length Ψ) τ]ᵘ)
           by (constructor; [ exact HU' | exact HsU' | exact HsU' ]).
         rewrite tele_sub_cons; cbn [centry_sub List.app].
-        split; [ eapply rel_ctx_extend_mod'; eassumption
+        split; [ eapply rel_ctx_wf_extend_mod; eassumption
                | eapply gsub_q_mod; [ exact Hg' | constructor; [ exact HU | exact HsU | exact HsU ] | exact HUU ] ].
     + injection Heq as <- ->.
       exact (IHC Ψ2 Ψ Δ eq_refl (ctx_decomp_tail HwC) _ _ Hg Hc).
@@ -111,7 +111,7 @@ Proof.
     pose proof (body_xp_sub _ _ (wf_gstack_closed _ _ Hgw) _ _ _ Hx HΔCs
                   ltac:(rewrite length_app; exact (proj2 HDs)) _ _ Hcx) as Hxσ.
     destruct (IHCx nil (body_ctx Φx ++ Δu) C ltac:(rewrite <- app_assoc; reflexivity) HwCx _ _ Hg Hc) as [HCxσ Hgx].
-    apply (sem_unit_body _ _ _ (gmod_sub Φx (sb_qn (length Δu) τ))).
+    apply (rel_unit_wf_body _ _ _ (gmod_sub Φx (sb_qn (length Δu) τ))).
     + apply tele_ass_sub; exact HΔu.
     + exact Hxσ.
     + apply body_shape_sub; exact Hs.
@@ -133,17 +133,17 @@ Proof.
     destruct (proj1 (unit_full_of_eq _ _ _ _ _ HUU)) as (HwΔ & _ & _).
     destruct (IHC nil Δu C eq_refl HwΔ _ _ Hg Hc) as [HΔσ Hgx].
     rewrite gunit_sub_mk; cbn [moddef_sub].
-    apply sem_unit_alias; [ apply tele_ass_sub; exact HΔu | exact HΔσ |].
+    apply rel_unit_wf_alias; [ apply tele_ass_sub; exact HΔu | exact HΔσ |].
     exact (rel_modexp_under_ctx_gsub Hgx HE).
 Qed.
 
-Corollary sem_ctx_gsub : forall Ψ Δ Γ τ, ⊨ Ψ ++ Δ -> ⊢ Θm ⍮ Ξm ⍮ Ψ ++ Δ ->
+Corollary rel_ctx_wf_gsub : forall Ψ Δ Γ τ, ⊨ Ψ ++ Δ -> ⊢ Θm ⍮ Ξm ⍮ Ψ ++ Δ ->
     gsub Γ τ Δ -> sub_mod_compat τ Γ Δ ->
     ⊨ tele_sub Ψ τ ++ Γ /\ gsub (tele_sub Ψ τ ++ Γ) (sb_qn (length Ψ) τ) (Ψ ++ Δ).
-Proof. intros * HC HwC Hg Hc; exact (proj1 sem_ctx_unit_gsub_all _ HC nil Ψ Δ eq_refl HwC _ _ Hg Hc). Qed.
+Proof. intros * HC HwC Hg Hc; exact (proj1 rel_ctx_wf_unit_gsub_all _ HC nil Ψ Δ eq_refl HwC _ _ Hg Hc). Qed.
 
-Corollary sem_unit_gsub : forall C U Γ τ, sem_unit C U -> ⊢ Θm ⍮ Ξm ⍮ C ▹ₘ U ->
-    gsub Γ τ C -> sub_mod_compat τ Γ C -> sem_unit Γ U[τ]ᵘ.
-Proof. intros * HU HwU Hg Hc; exact (proj2 sem_ctx_unit_gsub_all _ _ HU HwU _ _ Hg Hc). Qed.
+Corollary rel_unit_wf_gsub : forall C U Γ τ, rel_unit_wf C U -> ⊢ Θm ⍮ Ξm ⍮ C ▹ₘ U ->
+    gsub Γ τ C -> sub_mod_compat τ Γ C -> rel_unit_wf Γ U[τ]ᵘ.
+Proof. intros * HU HwU Hg Hc; exact (proj2 rel_ctx_wf_unit_gsub_all _ _ HU HwU _ _ Hg Hc). Qed.
 
 End Fixed_GCtx.

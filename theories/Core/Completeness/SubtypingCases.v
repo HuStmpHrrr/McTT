@@ -3,7 +3,7 @@
     The four rules of [wf_subtyp] and the subsumption rule of [wf_exp_subtyp],
     validated semantically.
 
-    At each instantiation, [subtyp_under_ctx] states three facts: the two
+    At each instantiation, [rel_subtyp_under_ctx] states three facts: the two
     commutation links [⟦A[σ]⟧ρ ≈ ⟦A⟧ρσ] and [⟦A'[σ']⟧ρ' ≈ ⟦A'⟧ρ'σ'], and
     [Sub ⟦A⟧ρσ <: ⟦A'⟧ρ'σ' at i] between the two middles.  It is a four-value
     pattern whose middle link is a subtyping, so every proof below has three
@@ -12,12 +12,14 @@
     Two consequences of this shape look like omissions but are not:
 
     - the judgment never relates [A'] at two different environments (both of its
-      links stay within one column), so [rel_exp_eq_subtyp] cannot reconstruct
+      links stay within one column), so [sem_exp_eq_subtyp] cannot reconstruct
       [A']'s type chain and must be given it.  This is why [wf_exp_subtyp] and
       [wf_exp_eq_subtyp] carry the extra premise [Γ ⊢ A' : Typeω@i];
-    - [subtyp_refl] needs only [Γ ⊨ A ≈ A' : Typeω@i], not also
-      [Γ ⊨ A' ≈ A' : Typeω@i], since the second link is the first judgment's
-      third-to-fourth link read backwards. *)
+    - [sem_subtyp_refl] needs only [Θ ⍮ Ξ ⍮ Γ ⊨ A ≈ A' : Typeω@i], not also
+      [Θ ⍮ Ξ ⍮ Γ ⊨ A' : Typeω@i], since the second link is the first judgment's
+      third-to-fourth link read backwards.
+
+    The symmetry and transitivity of term equality are here too. *)
 
 From Stdlib Require Import Lia List Morphisms_Relations RelationClasses.
 Import ListNotations.
@@ -28,6 +30,7 @@ From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Completeness Require Import LogicalRelation UniverseCases SubstitutionCases FunctionCases.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
+#[local] Generalizable All Variables.
 
 (** ** [Sub-Eq]
 
@@ -39,7 +42,7 @@ Import Wk_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma subtyp_refl : forall {Γ A A'} {i : nat},
+Lemma rel_subtyp_under_ctx_refl : forall {Γ A A'} {i : nat},
     Γ ⊨ A ≈ A' : Typeω@i ->
     Γ ⊨ A ⊆ A'.
 Proof.
@@ -52,7 +55,7 @@ Proof.
   exists a1 a2 a4 a3; try eassumption.
   - pairwise.
   - (** The second obligation runs the other way: the chain has [a3 ≈ a4] and
-      [subtyp_under_ctx] asks for [a4 ≈ a3].  A chain in a PER relates every pair
+      [rel_subtyp_under_ctx] asks for [a4 ≈ a3].  A chain in a PER relates every pair
       in both directions, so [pairwise] serves both. *)
     pairwise.
   - assert (Hmid : Dom a2 ≈ a3 ∈ per_univ i) by pairwise.
@@ -60,19 +63,30 @@ Proof.
     eapply per_subtyp_refl1; eassumption.
 Qed.
 
-Hint Resolve subtyp_refl : mctt.
+Hint Resolve rel_subtyp_under_ctx_refl : mctt.
+
+End Fixed_GCtx.
+
+Lemma sem_subtyp_refl :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M ⊆ M' ).
+Proof. intros * _ HM; sem_intro; [ assumption | exact (rel_subtyp_under_ctx_refl HM) ]. Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** ** [Sub-Trans]
 
-    The asymmetry of [subtyp_under_ctx] makes transitivity nontrivial.  The two
+    The asymmetry of [rel_subtyp_under_ctx] makes transitivity nontrivial.  The two
     hypotheses at the same data do not chain: the first gives
     [Sub ⟦A⟧ρσ <: ⟦A'⟧ρ'σ'] and the second [Sub ⟦A'⟧ρσ <: ⟦A''⟧ρ'σ'], whose middles
     are values of [A'] at different environments.  What does chain is the second
     hypothesis taken again at [Id] and at the pair [(ρ'σ', ρ'σ')], which is allowed
     because [ρσ ≈ ρ'σ'] makes [ρ'σ'] self-related.  It gives
     [Sub ⟦A'⟧ρ'σ' <: ⟦A''⟧ρ'σ'], which meets the first hypothesis exactly.
-    [subtyp_under_ctx_simple] packages that instance. *)
-Lemma subtyp_trans : forall {Γ A A' A''},
+    [rel_subtyp_under_ctx_simple] packages that instance. *)
+Lemma rel_subtyp_under_ctx_trans : forall {Γ A A' A''},
     Γ ⊨ A ⊆ A' ->
     Γ ⊨ A' ⊆ A'' ->
     Γ ⊨ A ⊆ A''.
@@ -80,7 +94,7 @@ Proof.
   intros * H1 H2.
   destruct H1 as [env_relΓ HΓ i H1gen].
   pose proof H2 as [env_relΓ2 HΓ2 j H2gen].
-  pose proof (subtyp_under_ctx_simple H2) as [env_relΓ3 [HΓ3 [j' H2simple]]].
+  pose proof (rel_subtyp_under_ctx_simple H2) as [env_relΓ3 [HΓ3 [j' H2simple]]].
   assert (Hiff3 : env_relΓ3 <~> env_relΓ)
     by (eapply per_ctx_env_right_irrel; [ exact HΓ3 | exact HΓ ]).
   eexists_subtyp_with (max i (max j j')).
@@ -107,12 +121,20 @@ Proof.
       (eapply per_subtyp_cumu; [ eassumption | lia ]).
 Qed.
 
-Hint Resolve subtyp_trans : mctt.
+Hint Resolve rel_subtyp_under_ctx_trans : mctt.
 
-#[local] Instance subtyp_Transitive Γ : Transitive (subtyp_under_ctx Γ).
+#[local] Instance rel_subtyp_under_ctx_Transitive Γ : Transitive (rel_subtyp_under_ctx Γ).
 Proof.
-  intros A A' A''; apply subtyp_trans.
+  intros A A' A''; apply rel_subtyp_under_ctx_trans.
 Qed.
+
+End Fixed_GCtx.
+
+Lemma sem_subtyp_trans :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M ⊆ M' ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M' ⊆ M'' ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M ⊆ M'' ).
+Proof. intros * H1 H2; sem_intro; [ assumption | exact (rel_subtyp_under_ctx_trans H1 H2) ]. Qed.
 
 (** ** [Sub-Univ]
 
@@ -120,13 +142,14 @@ Qed.
     two commutation obligations are reflexivity.  Only the middle has content, and
     it is [per_subtyp_univ].  The ambient level must be strictly above [j], hence
     [S j]. *)
-Lemma subtyp_univ : forall {Γ} {i : nat} {j},
-    ⊨ Γ ->
-    i <= j ->
-    Γ ⊨ Typeω@i ⊆ Typeω@j.
+Lemma sem_subtyp_univ :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     i < j ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Typeω@i ⊆ Typeω@j ).
 Proof.
-  intros * HΓsem Hij.
-  pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
+  intros * HΓsem Hij; sem_intro; [ assumption |].
+  assert (Hij' : i <= j) by lia; clear Hij; rename Hij' into Hij.
+  pose proof (rel_ctx_wf_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with (S j).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   exists 𝕌ω@i 𝕌ω@i 𝕌ω@j 𝕌ω@j; try apply eval_exp_typ.
@@ -135,19 +158,17 @@ Proof.
   - apply per_subtyp_univ; solve [ lia | solve_uidx ].
 Qed.
 
-Hint Resolve subtyp_univ : mctt.
-
 (** ** Types of Levels
 
     A type of levels is below every type of levels of a larger sort: in the
     model their elements are the same, the level values. *)
-Lemma subtyp_level : forall {Γ m n},
-    ⊨ Γ ->
-    m <= n ->
-    Γ ⊨ Level@m ⊆ Level@n.
+Lemma sem_subtyp_level :
+  `( m <= n ->
+     ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Level@m ⊆ Level@n ).
 Proof.
-  intros * HΓsem Hmn.
-  pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
+  intros * Hmn HΓsem; sem_intro; [ assumption |].
+  pose proof (rel_ctx_wf_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with 0.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   exists (Levelᵈ@m) (Levelᵈ@m) (Levelᵈ@n) (Levelᵈ@n); try apply eval_exp_level.
@@ -156,19 +177,20 @@ Proof.
   - apply per_subtyp_level; assumption.
 Qed.
 
-Hint Resolve subtyp_level : mctt.
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** ** Small Universes
 
-    As [subtyp_univ], at the small level, and from a small universe to a large
+    As [sem_subtyp_univ], at the small level, and from a small universe to a large
     one; any ambient level relates small universes. *)
-Lemma subtyp_suniv : forall {Γ n m},
+Lemma rel_subtyp_under_ctx_suniv : forall {Γ n m},
     ⊨ Γ ->
     ole n m ->
     Γ ⊨ Type⟨𝕃ᵒ n⟩ ⊆ Type⟨𝕃ᵒ m⟩.
 Proof.
   intros * HΓsem Hnm.
-  pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
+  pose proof (rel_ctx_wf_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with 0.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   exists 𝕌@(dlvl_lit n) 𝕌@(dlvl_lit n) 𝕌@(dlvl_lit m) 𝕌@(dlvl_lit m); try (apply eval_exp_univ, eval_exp_llit).
@@ -177,12 +199,12 @@ Proof.
   - apply per_subtyp_suniv; [ apply per_sublvl_lit; assumption | solve_uidx ].
 Qed.
 
-Lemma subtyp_small_large : forall {Γ n} {i : nat},
+Lemma rel_subtyp_under_ctx_small_large : forall {Γ n} {i : nat},
     ⊨ Γ ->
     Γ ⊨ Type⟨𝕃ᵒ n⟩ ⊆ Typeω@i.
 Proof.
   intros * HΓsem.
-  pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
+  pose proof (rel_ctx_wf_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with (S i).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   exists 𝕌@(dlvl_lit n) 𝕌@(dlvl_lit n) 𝕌ω@i 𝕌ω@i; try (apply eval_exp_univ, eval_exp_llit); try apply eval_exp_typ.
@@ -191,7 +213,9 @@ Proof.
   - apply per_subtyp_small_large; [ apply per_lvl_lit | solve_uidx ].
 Qed.
 
-Hint Resolve subtyp_suniv subtyp_small_large : mctt.
+Hint Resolve rel_subtyp_under_ctx_suniv rel_subtyp_under_ctx_small_large : mctt.
+
+End Fixed_GCtx.
 
 (** ** [Sub-Pi]
 
@@ -208,21 +232,21 @@ Hint Resolve subtyp_suniv subtyp_small_large : mctt.
     [⟦A'⟧ρ'σ'], so [per_univ_elem_left_irrel] identifies them.
 
     Levels: the premises fix [i], the codomain subtyping comes at whatever level
-    [subtyp_under_ctx_simple] reports, and [per_subtyp_pi] requires all its
+    [rel_subtyp_under_ctx_simple] reports, and [per_subtyp_pi] requires all its
     premises and its conclusion to agree, so everything is raised to
     [max i i0]. *)
-Lemma subtyp_pi : forall {Γ A A'} {i : nat} {B B'},
-    Γ ⊨ A ≈ A : Typeω@i ->
-    Γ ⊨ A' ≈ A' : Typeω@i ->
-    Γ ⊨ A ≈ A' : Typeω@i ->
-    Γ ▹ A ⊨ B ≈ B : Typeω@i ->
-    Γ ▹ A' ⊨ B' ≈ B' : Typeω@i ->
-    Γ ▹ A' ⊨ B ⊆ B' ->
-    Γ ⊨ Π A B ⊆ Π A' B'.
+Lemma sem_subtyp_pi :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A ≈ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊨ B : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A' ⊨ B' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A' ⊨ B ⊆ B' ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Π A B ⊆ Π A' B' ).
 Proof.
-  intros * HAself HA'self HAA' HB HB' Hsub.
+  intros * HAself HA'self HAA' HB HB' Hsub; sem_intro; [ assumption |].
   pose proof (rel_exp_of_typ_inversion HAA') as [env_relΓ [HΓ HAA'gen]].
-  pose proof (subtyp_under_ctx_simple Hsub) as [env_relΓA' [HΓA' [i0 Hsubgen]]].
+  pose proof (rel_subtyp_under_ctx_simple Hsub) as [env_relΓA' [HΓA' [i0 Hsubgen]]].
   pose proof (per_ctx_env_of_typ HΓ HA'self) as HΓA'can.
   assert (HiffA' : env_relΓA' <~> per_env_extend A' A' env_relΓ)
     by (eapply per_ctx_env_right_irrel; [ exact HΓA' | exact HΓA'can ]).
@@ -277,7 +301,8 @@ Proof.
     + eapply per_univ_elem_cumu_max_left; pairwise.
 Qed.
 
-Hint Resolve subtyp_pi : mctt.
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** ** [Subsump]
 
@@ -291,7 +316,7 @@ Hint Resolve subtyp_pi : mctt.
     instead of leaving an existential for [per_elem_subtyping].  And the common
     level is [max (max i j) k], the levels of the three hypotheses, since
     [per_elem_subtyping] needs its subtyping and both type values at one level. *)
-Lemma rel_exp_eq_subtyp : forall {Γ A A'} {i : nat} {M M'},
+Lemma rel_exp_under_ctx_subtyp : forall {Γ A A'} {i : nat} {M M'},
     Γ ⊨ M ≈ M' : A ->
     Γ ⊨ A' ≈ A' : Typeω@i ->
     Γ ⊨ A ⊆ A' ->
@@ -337,18 +362,43 @@ Proof.
     eapply per_elem_subtyping; [ exact HsubL | exact HRAL | exact HHL | exact Hwz ].
 Qed.
 
-Hint Resolve rel_exp_eq_subtyp : mctt.
+Hint Resolve rel_exp_under_ctx_subtyp : mctt.
 
 End Fixed_GCtx.
 
+Lemma sem_exp_eq_subtyp :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M' : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A ⊆ A' ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M' : A' ).
+Proof. intros * HM HA' Hsub; sem_intro; [ assumption | exact (rel_exp_under_ctx_subtyp HM HA' Hsub) ]. Qed.
+
+Lemma sem_exp_subtyp :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A ⊆ A' ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M : A' ).
+Proof. intros * HM HA' Hsub; eapply sem_exp_eq_subtyp; eassumption. Qed.
+
+(** ** Symmetry and Transitivity of Term Equality *)
+
+Lemma sem_exp_eq_sym :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M' : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M' ≈ M : A ).
+Proof. intros * HM; sem_intro; [ assumption | exact (rel_exp_under_ctx_sym HM) ]. Qed.
+
+Lemma sem_exp_eq_trans :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M' : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M' ≈ M'' : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M'' : A ).
+Proof. intros * H1 H2; sem_intro; [ assumption | exact (rel_exp_under_ctx_trans H1 H2) ]. Qed.
+
 #[export]
-Hint Resolve subtyp_refl : mctt.
+Hint Resolve rel_subtyp_under_ctx_refl : mctt.
 #[export]
-Hint Resolve subtyp_trans : mctt.
-#[export] Existing Instance subtyp_Transitive.
+Hint Resolve rel_subtyp_under_ctx_trans : mctt.
+#[export] Existing Instance rel_subtyp_under_ctx_Transitive.
 #[export]
-Hint Resolve subtyp_univ subtyp_suniv subtyp_small_large : mctt.
+Hint Resolve rel_subtyp_under_ctx_suniv rel_subtyp_under_ctx_small_large : mctt.
 #[export]
-Hint Resolve subtyp_pi : mctt.
-#[export]
-Hint Resolve rel_exp_eq_subtyp : mctt.
+Hint Resolve rel_exp_under_ctx_subtyp : mctt.

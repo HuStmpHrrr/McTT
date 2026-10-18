@@ -476,7 +476,7 @@ Proof.
 Qed.
 
 (** [ζ]. *)
-Corollary rel_exp_let_zeta : forall {Γ oA A} {i : nat} {M B C},
+Corollary rel_exp_under_ctx_let_zeta : forall {Γ oA A} {i : nat} {M B C},
     Γ ⊨ A : Typeω@i ->
     Γ ⊨ M : A ->
     Γ ▸ A ≔ M ⊨ B : C ->
@@ -487,10 +487,25 @@ Proof.
   exact (rel_exp_let_gen HA HM HB).
 Qed.
 
-Hint Resolve rel_exp_let_zeta : mctt.
+Hint Resolve rel_exp_under_ctx_let_zeta : mctt.
+
+End Fixed_GCtx.
+
+#[local] Generalizable All Variables.
+
+Lemma sem_exp_eq_let_zeta :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊨ B : C ->
+     let_ann oA A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ a_let (b_def oA M) B ≈ B[Id,,M] : C[Id,,M] ).
+Proof. intros * HA HM HB _; sem_intro; [ assumption | exact (rel_exp_under_ctx_let_zeta HA HM HB) ]. Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** Congruence: both sides are related to the instance [B[Id,,M]]. *)
-Corollary rel_exp_let_cong : forall {Γ oA oA' A} {i : nat} {M M' B B' C},
+Corollary rel_exp_under_ctx_let_cong : forall {Γ oA oA' A} {i : nat} {M M' B B' C},
     Γ ⊨ A : Typeω@i ->
     Γ ⊨ M ≈ M' : A ->
     Γ ▸ A ≔ M ⊨ B ≈ B' : C ->
@@ -502,21 +517,47 @@ Proof.
   exact (rel_exp_let_gen HA (rel_exp_under_ctx_refl_left HM) (rel_exp_under_ctx_refl_left HB)).
 Qed.
 
-Hint Resolve rel_exp_let_cong : mctt.
+Hint Resolve rel_exp_under_ctx_let_cong : mctt.
 
-Corollary valid_exp_let : forall {Γ oA A} {i : nat} {M B C},
+End Fixed_GCtx.
+
+Lemma sem_exp_eq_let_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ A ≈ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M' : A ->
+     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊨ B ≈ B' : C ->
+     let_ann oA A ->
+     let_ann oA' A' ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ a_let (b_def oA M) B ≈ a_let (b_def oA' M') B' : C[Id,,M] ).
+Proof.
+  intros * HA _ _ HM HB _ _; sem_intro; [ assumption | exact (rel_exp_under_ctx_let_cong HA HM HB) ].
+Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+Corollary valid_exp_under_ctx_let : forall {Γ oA A} {i : nat} {M B C},
     Γ ⊨ A : Typeω@i ->
     Γ ⊨ M : A ->
     Γ ▸ A ≔ M ⊨ B : C ->
     Γ ⊨ a_let (b_def oA M) B : C[Id,,M].
 Proof.
   intros * HA HM HB.
-  exact (rel_exp_let_cong HA HM HB).
+  exact (rel_exp_under_ctx_let_cong HA HM HB).
 Qed.
 
-Hint Resolve valid_exp_let : mctt.
+Hint Resolve valid_exp_under_ctx_let : mctt.
 
 End Fixed_GCtx.
 
+Lemma sem_let :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊨ B : C ->
+     let_ann oA A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ a_let (b_def oA M) B : C[Id,,M] ).
+Proof. intros * HA HM HB _; sem_intro; [ assumption | exact (valid_exp_under_ctx_let HA HM HB) ]. Qed.
+
 #[export]
-Hint Resolve rel_exp_let_zeta rel_exp_let_cong valid_exp_let : mctt.
+Hint Resolve rel_exp_under_ctx_let_zeta rel_exp_under_ctx_let_cong valid_exp_under_ctx_let : mctt.

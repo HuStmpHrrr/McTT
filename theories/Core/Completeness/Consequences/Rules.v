@@ -23,7 +23,7 @@ Corollary per_ctx_of_exp_eq : forall {Γ A A'} {i : nat},
 Proof.
   intros * H.
   assert (⊢ Γ) by mauto 2.
-  eapply rel_ctx_extend; [ apply sem_ctx_per_ctx | ]; mauto 2.
+  eapply per_ctx_extend; [ apply rel_ctx_wf_per_ctx | ]; mauto 2.
 Qed.
 
 Hint Resolve per_ctx_of_exp_eq : mctt.

@@ -529,7 +529,7 @@ Proof.
   induction 1 as [? HΓ | ? ? ? ? ? ? ? [IH1 IH2] HB HN | ? ? ? ? ? ? ? [IH1 IH2] HB HM
                  | ? ? ? ? ? [IH1 IH2] HU | ? ? ? ? ? [IH1 IH2] Eq | ? ? ? ? ? ? [IH1 IH2] HB
                  | ? ? ? ? ? ? ? [IH1 IH2] HB HM | ? ? ? ? ? [IH1 IH2] HU _ | ? ? ? ? ? ? [IH1 IH2] _ Hσ Hl ].
-  - split; [ exact (rel_sub_id (sem_ctx_per_ctx_env HΓ)) | exact sub_link_id ].
+  - split; [ exact (rel_sub_id (rel_ctx_wf_per_ctx_env HΓ)) | exact sub_link_id ].
   - split; [ eapply rel_sub_under_ctx_extend; eassumption | eapply sub_link_ass; eassumption ].
   - split; [ eapply rel_sub_under_ctx_extend_sub_def; eassumption | eapply sub_link_def; eassumption ].
   - destruct HU as [HU _ _].
@@ -626,8 +626,8 @@ Proof.
   pose proof Hτj as [RΓ HΓ RΔ HΔ _].
   assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
   assert (PER per_dmod) by typeclasses eauto.
-  pose proof (rel_modexp_trans HH (rel_modexp_sym HH)) as HHl.
-  pose proof (rel_modexp_trans (rel_modexp_sym HH) HH) as HHr.
+  pose proof (rel_modexp_under_ctx_trans HH (rel_modexp_under_ctx_sym HH)) as HHl.
+  pose proof (rel_modexp_under_ctx_trans (rel_modexp_under_ctx_sym HH) HH) as HHr.
   pose proof HH as [R0 HΔ0 HHgen].
   refine (mk_rel_modexp_under_ctx _ _ _ RΓ HΓ _).
   intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
@@ -651,7 +651,7 @@ Proof.
          | H1 : ⟦ ?M ⟧ᵐ _ ⍮ _ ⍮ ?r ↘ ?a, H2 : ⟦ ?M ⟧ᵐ _ ⍮ _ ⍮ ?r ↘ ?b |- _ =>
              tryif unify a b then fail else (pose proof (functional_eval_modexp _ _ _ _ H1 H2); subst b; clear H2)
          end.
-  apply (mk_rel_mod c1 d1 d4 c4); try (rewrite modexp_sub_sub; assumption); try assumption.
+  apply (mk_rel_modexp c1 d1 d4 c4); try (rewrite modexp_sub_sub; assumption); try assumption.
   apply rel_chain_4.
   - etransitivity; [ exact C12 |]; etransitivity; [ exact Hxx | symmetry; exact D12 ].
   - etransitivity; [ exact D12 |]; etransitivity; [ exact D23 | exact D34 ].

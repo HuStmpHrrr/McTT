@@ -137,7 +137,7 @@ Proof.
   assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
   inversion Hg as [| ? A0 ? ? x x' ? ys ys' R HA Hx Hg']; subst; [ constructor |].
   cbn [List.rev] in HC; rewrite <- List.app_assoc in HC; cbn [List.app] in HC.
-  destruct (sem_ctx_ass_inv (sem_ctx_app_r _ _ HC)) as [j HAv].
+  destruct (rel_ctx_wf_ass_inv (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
   pose proof (per_ctx_env_of_typ HTb HAv) as HTb'.
   assert (HP : PER RTb) by (eapply per_env_PER; exact HTb).
   assert (H34 : RTb ρ3 ρ4) by (etransitivity; [ symmetry; exact H13 | etransitivity; [ exact H12 | exact H24 ] ]).
@@ -175,7 +175,7 @@ Proof.
   assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
   inversion Hg as [| ? A0 ? ? x x' ? ys ys' R HA Hx Hg']; subst; [ constructor |].
   cbn [List.rev] in HC; rewrite <- List.app_assoc in HC; cbn [List.app] in HC.
-  destruct (sem_ctx_ass_inv (sem_ctx_app_r _ _ HC)) as [j HAv].
+  destruct (rel_ctx_wf_ass_inv (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
   pose proof (per_ctx_env_of_typ HTb HAv) as HTb'.
   assert (HP : PER RTb) by (eapply per_env_PER; exact HTb).
   assert (Hρρ : RTb ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
@@ -207,7 +207,7 @@ Proof.
     assert (Hts' : tele_ass ts) by (inversion Hts; assumption).
     destruct xs as [| x xs], xs' as [| x' xs']; cbn in Hl, Hl'; try discriminate.
     cbn [List.rev] in HC, HR; rewrite <- List.app_assoc in HC, HR; cbn [List.app] in HC, HR.
-    destruct (sem_ctx_ass_inv (sem_ctx_app_r _ _ HC)) as [j HAv].
+    destruct (rel_ctx_wf_ass_inv (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
     pose proof (per_ctx_env_of_typ HTb HAv) as HTb'.
     destruct (IH _ _ _ HTb' HC Hts' HR (ρ ↦ x) (ρ' ↦ x') xs xs' ltac:(lia) ltac:(lia) Hρ) as [[Hb Hh] Hg].
     split; [ exact Hb |].

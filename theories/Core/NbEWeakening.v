@@ -46,7 +46,7 @@ Proof.
   intros * HΓA HM Hn.
   assert (HA : ⊨ Γ ▹ A) by (apply completeness_fundamental_ctx; exact HΓA).
   assert (exists R1, EF (Γ ▹ A) ≈ (Γ ▹ A) ∈ per_ctx_env ↘ R1) as [R1 HR1]
-      by mauto 3 using sem_ctx_per_ctx_env.
+      by mauto 3 using rel_ctx_wf_per_ctx_env.
   apply completeness_fundamental_exp in HM as [R0 HR0 j HMg].
   (** The initial environment of [Γ ▹ A], related to itself. *)
   destruct (per_ctx_then_per_env_initial_env HR1) as (ρ1 & ρ1' & Hρ1 & Hρ1' & Hrel1).

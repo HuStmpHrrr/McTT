@@ -26,7 +26,7 @@ Proof.
   induction 1 as [ts ρ ρ' | i A ρ ρ' a a' ts args args' R1 HA Ha Hg IH]; intros Tb Rb HTb Hρ HC; cbn [firstn List.length rev app].
   - exists Rb; split; assumption.
   - cbn [rev] in HC; rewrite <- app_assoc in HC; cbn [app] in HC.
-    destruct (sem_ctx_ass_inv (sem_ctx_app_r _ _ HC)) as [j HAv].
+    destruct (rel_ctx_wf_ass_inv (rel_ctx_wf_app_r _ _ HC)) as [j HAv].
     pose proof (per_ctx_env_of_typ HTb HAv) as HTb'.
     assert (Hρ' : per_env_extend A A Rb (ρ ↦ a) (ρ' ↦ a')).
     { split; [ exact Hρ |].

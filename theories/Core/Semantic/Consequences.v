@@ -84,7 +84,7 @@ Proof.
   eexists; split; [ reflexivity |].
   destruct (soundness_fundamental_ctx _ HΓ) as [Sb HSb].
   pose proof (initial_env_glu_rel_exp Hinit HSb) as Hσ.
-  pose proof (completeness_fundamental_ctx _ HΓ) as HΓs; destruct (sem_ctx_per_ctx_env HΓs) as [RΓ HRΓ].
+  pose proof (completeness_fundamental_ctx _ HΓ) as HΓs; destruct (rel_ctx_wf_per_ctx_env HΓs) as [RΓ HRΓ].
   pose proof (IndElimCases.params_glu_args _ _ _ _ _ _ _ _ _ Hass Hs0 (completeness_fundamental_ctx _ HΔ) HΓs HRΓ HSb Hσ
                 HMl
                 ltac:(intros; eapply completeness_fundamental_exp; eauto)

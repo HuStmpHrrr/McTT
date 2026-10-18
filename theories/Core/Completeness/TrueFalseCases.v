@@ -23,6 +23,7 @@ From Mctt.Core.Completeness Require Import LogicalRelation SubstitutionCases Uni
 From Mctt.Core.Semantic Require Import Realizability.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
+#[local] Generalizable All Variables.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
@@ -63,16 +64,16 @@ Qed.
 
 Hint Resolve rel_exp_of_typ_True : mctt.
 
-Corollary valid_exp_True : forall {Γ} {i : nat},
+Corollary valid_exp_under_ctx_True : forall {Γ} {i : nat},
     ⊨ Γ ->
     Γ ⊨ ⊤ : Typeω@i.
 Proof.
-  intros * H%sem_ctx_per_ctx_env.
+  intros * H%rel_ctx_wf_per_ctx_env.
   destruct H as [env_relΓ HΓ].
   eapply rel_exp_of_typ_True; eassumption.
 Qed.
 
-Hint Resolve valid_exp_True : mctt.
+Hint Resolve valid_exp_under_ctx_True : mctt.
 
 Lemma rel_exp_of_typ_False : forall {Γ} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
@@ -89,16 +90,16 @@ Qed.
 
 Hint Resolve rel_exp_of_typ_False : mctt.
 
-Corollary valid_exp_False : forall {Γ} {i : nat},
+Corollary valid_exp_under_ctx_False : forall {Γ} {i : nat},
     ⊨ Γ ->
     Γ ⊨ ⊥ : Typeω@i.
 Proof.
-  intros * H%sem_ctx_per_ctx_env.
+  intros * H%rel_ctx_wf_per_ctx_env.
   destruct H as [env_relΓ HΓ].
   eapply rel_exp_of_typ_False; eassumption.
 Qed.
 
-Hint Resolve valid_exp_False : mctt.
+Hint Resolve valid_exp_under_ctx_False : mctt.
 
 (** [⊤] in a universe at any index, in particular in the small ones. *)
 Lemma rel_exp_of_univ_True : forall {Γ u env_relΓ},
@@ -115,16 +116,25 @@ Proof.
   apply rel_chain_4; assumption.
 Qed.
 
-Corollary valid_exp_True_small : forall {Γ n},
-    ⊨ Γ ->
-    Γ ⊨ ⊤ : Type⟨𝕃ᵒ n⟩.
+End Fixed_GCtx.
+
+Corollary sem_True :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ ⊤ : Type@0 ).
 Proof.
-  intros * H%sem_ctx_per_ctx_env.
+  intros * H; sem_intro; [ assumption |].
+  apply rel_ctx_wf_per_ctx_env in H.
   destruct H as [env_relΓ HΓ].
-  exact (rel_exp_of_univ_True (u := us n) HΓ).
+  exact (rel_exp_of_univ_True (u := us (0, 0)) HΓ).
 Qed.
 
-Hint Resolve valid_exp_True_small : mctt.
+Lemma sem_exp_eq_True_cong :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ ⊤ ≈ ⊤ : Type@0 ).
+Proof. intros; eapply sem_True; eassumption. Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** [⊥] in a universe at any index, in particular in the small ones. *)
 Lemma rel_exp_of_univ_False : forall {Γ u env_relΓ},
@@ -141,16 +151,25 @@ Proof.
   apply rel_chain_4; assumption.
 Qed.
 
-Corollary valid_exp_False_small : forall {Γ n},
-    ⊨ Γ ->
-    Γ ⊨ ⊥ : Type⟨𝕃ᵒ n⟩.
+End Fixed_GCtx.
+
+Corollary sem_False :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ ⊥ : Type@0 ).
 Proof.
-  intros * H%sem_ctx_per_ctx_env.
+  intros * H; sem_intro; [ assumption |].
+  apply rel_ctx_wf_per_ctx_env in H.
   destruct H as [env_relΓ HΓ].
-  exact (rel_exp_of_univ_False (u := us n) HΓ).
+  exact (rel_exp_of_univ_False (u := us (0, 0)) HΓ).
 Qed.
 
-Hint Resolve valid_exp_False_small : mctt.
+Lemma sem_exp_eq_False_cong :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ ⊥ ≈ ⊥ : Type@0 ).
+Proof. intros; eapply sem_False; eassumption. Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** ** [⊤] and [⊥] as the Types of Terms
 
@@ -226,9 +245,9 @@ End Fixed_GCtx.
 #[export]
 Hint Resolve per_univ_elem_True per_univ_elem_False : mctt.
 #[export]
-Hint Resolve rel_exp_of_typ_True valid_exp_True valid_exp_True_small : mctt.
+Hint Resolve rel_exp_of_typ_True valid_exp_under_ctx_True : mctt.
 #[export]
-Hint Resolve rel_exp_of_typ_False valid_exp_False valid_exp_False_small : mctt.
+Hint Resolve rel_exp_of_typ_False valid_exp_under_ctx_False : mctt.
 #[export]
 Hint Resolve rel_exp_of_True : mctt.
 Ltac eexists_rel_exp_of_True :=
@@ -242,7 +261,7 @@ Section Fixed_GCtx.
 (** ** [⋆] and η
 
     [⋆[σ]] is [⋆], and every pair of values is related at [⊤]. *)
-Lemma rel_exp_true : forall {Γ env_relΓ},
+Lemma rel_exp_under_ctx_true : forall {Γ env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ ⋆ ≈ ⋆ : ⊤.
 Proof.
@@ -253,22 +272,28 @@ Proof.
   apply rel_chain_4; exact I.
 Qed.
 
-Corollary valid_exp_true : forall {Γ},
-    ⊨ Γ ->
-    Γ ⊨ ⋆ : ⊤.
+End Fixed_GCtx.
+
+Corollary sem_true :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ ⋆ : ⊤ ).
 Proof.
-  intros * H%sem_ctx_per_ctx_env.
+  intros * H; sem_intro; [ assumption |].
+  apply rel_ctx_wf_per_ctx_env in H.
   destruct H as [env_relΓ HΓ].
-  eapply rel_exp_true; eassumption.
+  eapply rel_exp_under_ctx_true; eassumption.
 Qed.
 
-Hint Resolve valid_exp_true : mctt.
+Lemma sem_exp_eq_true_cong :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ ⋆ ≈ ⋆ : ⊤ ).
+Proof. intros; eapply sem_true; eassumption. Qed.
 
-Lemma rel_exp_true_eta : forall {Γ M},
-    Γ ⊨ M : ⊤ ->
-    Γ ⊨ M ≈ ⋆ : ⊤.
+Lemma sem_exp_eq_true_eta :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ M : ⊤ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ ⋆ : ⊤ ).
 Proof.
-  intros * HM.
+  intros * HM; sem_intro; [ assumption |].
   pose proof (rel_exp_of_True_inversion HM) as [env_relΓ [HΓ HMgen]].
   eexists_rel_exp_of_True.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
@@ -278,7 +303,8 @@ Proof.
     solve [ eassumption | apply eval_exp_true | apply rel_chain_4; exact I ].
 Qed.
 
-Hint Resolve rel_exp_true_eta : mctt.
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** ** Extension by [⊥]
 
@@ -453,12 +479,15 @@ Qed.
     scrutinee's chain, in the family of head PERs of the motive that
     [rel_typ_of_instance] reports; [per_head_of_args] then moves each link to
     the argument pair the type names, as in [rel_exp_natrec_cong]. *)
-Lemma rel_exp_exfalso_cong : forall {Γ A A'} {i : nat} {M M'},
-    Γ ▹ ⊥ ⊨ A ≈ A' : Typeω@i ->
-    Γ ⊨ M ≈ M' : ⊥ ->
-    Γ ⊨ efq M return A ≈ efq M' return A' : A[Id ,, M].
+End Fixed_GCtx.
+
+Lemma sem_exp_eq_exfalso_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊨ A ≈ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M' : ⊥ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ efq M return A ≈ efq M' return A' : A[Id,,M] ).
 Proof.
-  intros * HA HM.
+  intros * HA0 HA HM; sem_intro; [ assumption |].
   pose proof (rel_exp_under_ctx_refl_left HA) as HAl.
   pose proof (rel_exp_under_ctx_refl_left HM) as HMl.
   pose proof (rel_exp_of_False_inversion HM) as [env_relΓ [HΓ HMgen]].
@@ -523,9 +552,8 @@ Proof.
     | apply (per_head_of_args Hcodn m3 m4 m2 p3 Hm34 Hm2p3 Hm24); exact Hu34 ].
 Qed.
 
-Hint Resolve rel_exp_exfalso_cong : mctt.
-
-End Fixed_GCtx.
-
-#[export]
-Hint Resolve valid_exp_true rel_exp_true_eta rel_exp_exfalso_cong : mctt.
+Lemma sem_exfalso :
+  `( Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M : ⊥ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ efq M return A : A[Id,,M] ).
+Proof. intros * HA HM; eapply sem_exp_eq_exfalso_cong; eassumption. Qed.

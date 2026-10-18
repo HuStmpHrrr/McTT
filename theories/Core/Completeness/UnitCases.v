@@ -17,6 +17,7 @@ From Mctt.Core.Completeness Require Import LogicalRelation ContextCases Universe
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
+#[local] Generalizable All Variables.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
@@ -32,8 +33,8 @@ Proof.
   inversion H; subst; eauto.
 Qed.
 
-Lemma sem_ctx_app_r : forall Ψ Γ, ⊨ Ψ ++ Γ -> ⊨ Γ.
-Proof. induction Ψ; intros * H; cbn in *; [ exact H | apply IHΨ; eapply sem_ctx_tail; exact H ]. Qed.
+Lemma rel_ctx_wf_app_r : forall Ψ Γ, ⊨ Ψ ++ Γ -> ⊨ Γ.
+Proof. induction Ψ; intros * H; cbn in *; [ exact H | apply IHΨ; eapply rel_ctx_wf_tail; exact H ]. Qed.
 
 (** ** Slots *)
 
@@ -244,7 +245,8 @@ Qed.
 
 (** ** Module Expressions: Symmetry and Transitivity *)
 
-Lemma rel_modexp_sym : forall {Γ H H'}, Γ ⊨ᵐ H ≈ H' -> Γ ⊨ᵐ H' ≈ H.
+Lemma rel_modexp_under_ctx_sym : forall {Γ H H'},
+    Γ ⊨ᵐ H ≈ H' -> Γ ⊨ᵐ H' ≈ H.
 Proof.
   intros * [R HΓ HH]; refine (mk_rel_modexp_under_ctx _ _ _ R HΓ _).
   intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
@@ -255,7 +257,18 @@ Proof.
   now apply rel_chain_4_sym.
 Qed.
 
-Lemma rel_modexp_trans : forall {Γ H1 H2 H3}, Γ ⊨ᵐ H1 ≈ H2 -> Γ ⊨ᵐ H2 ≈ H3 -> Γ ⊨ᵐ H1 ≈ H3.
+End Fixed_GCtx.
+
+Lemma sem_me_sym :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ᵐ H ≈ H' ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ᵐ H' ≈ H ).
+Proof. intros * HH; sem_intro; first [ assumption | exact (rel_modexp_under_ctx_sym HH) ]. Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+Lemma rel_modexp_under_ctx_trans : forall {Γ H1 H2 H3},
+    Γ ⊨ᵐ H1 ≈ H2 -> Γ ⊨ᵐ H2 ≈ H3 -> Γ ⊨ᵐ H1 ≈ H3.
 Proof.
   intros * [R HΓ H12] [R2 HΓ2 H23].
   refine (mk_rel_modexp_under_ctx _ _ _ R HΓ _).
@@ -274,11 +287,22 @@ Proof.
   match type of Hc1 with rel_chain _ (_ :: _ :: ?c :: _) => merge_rel_chain Hc1 Hc2 c end.
 Qed.
 
+End Fixed_GCtx.
+
+Lemma sem_me_trans :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ᵐ H ≈ H' ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ᵐ H' ≈ H'' ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ᵐ H ≈ H'' ).
+Proof. intros * H1 H2; sem_intro; first [ assumption | exact (rel_modexp_under_ctx_trans H1 H2) ]. Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 Corollary rel_modexp_refl_left : forall {Γ H H'}, Γ ⊨ᵐ H ≈ H' -> Γ ⊨ᵐ H ≈ H.
-Proof. intros * HH; eapply rel_modexp_trans; [ exact HH | apply rel_modexp_sym, HH ]. Qed.
+Proof. intros * HH; eapply rel_modexp_under_ctx_trans; [ exact HH | apply rel_modexp_under_ctx_sym, HH ]. Qed.
 
 Corollary rel_modexp_refl_right : forall {Γ H H'}, Γ ⊨ᵐ H ≈ H' -> Γ ⊨ᵐ H' ≈ H'.
-Proof. intros * HH; eapply rel_modexp_trans; [ apply rel_modexp_sym, HH | exact HH ]. Qed.
+Proof. intros * HH; eapply rel_modexp_under_ctx_trans; [ apply rel_modexp_under_ctx_sym, HH | exact HH ]. Qed.
 
 (** ** Extensions *)
 
@@ -320,58 +344,80 @@ Proof.
     apply (per_head_iff Ha Hb HR2); exact Hmm'.
 Qed.
 
-Lemma rel_ext_nil : forall {Γ}, ⊨ Γ -> Γ ⊨ˣ nil ≈ nil.
-Proof. intros * H; constructor; [ exact H | exact H | exact (sem_ctx_per_ctx H) ]. Qed.
+End Fixed_GCtx.
 
-Lemma rel_ext_ass : forall {Γ Ψ Ψ' A A'} {i : nat},
-    Γ ⊨ˣ Ψ ≈ Ψ' ->
-    Ψ ++ Γ ⊨ A : Typeω@i ->
-    Ψ ++ Γ ⊨ A ≈ A' : Typeω@i ->
-    Ψ' ++ Γ ⊨ A' : Typeω@i ->
-    Γ ⊨ˣ Ψ ▹ A ≈ Ψ' ▹ A'.
+Lemma sem_ext_eq_nil :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ˣ ⋅ ≈ ⋅ ).
 Proof.
-  intros * [H1 H2 H3] HA HAA' HA'.
-  constructor; cbn [app].
-  - exact (rel_ctx_extend' H1 HA).
-  - exact (rel_ctx_extend' H2 HA').
-  - exact (rel_ctx_extend H3 HAA').
+  intros * H; sem_intro; [ assumption | | assumption | assumption ].
+  constructor; [ exact H | exact H | exact (rel_ctx_wf_per_ctx H) ].
 Qed.
 
-Lemma rel_ext_def : forall {Γ Ψ Ψ' A A' M M'} {i : nat},
-    Γ ⊨ˣ Ψ ≈ Ψ' ->
-    Ψ ++ Γ ⊨ A : Typeω@i ->
-    Ψ ++ Γ ⊨ A ≈ A' : Typeω@i ->
-    Ψ ++ Γ ⊨ M : A ->
-    Ψ ++ Γ ⊨ M ≈ M' : A ->
-    Ψ' ++ Γ ⊨ A' : Typeω@i ->
-    Ψ' ++ Γ ⊨ M' : A' ->
-    Γ ⊨ˣ Ψ ▸ A ≔ M ≈ Ψ' ▸ A' ≔ M'.
+Lemma sem_ext_eq_ass :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ˣ Ψ ≈ Ψ' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ A ≈ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊨ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ˣ Ψ ▹ A ≈ Ψ' ▹ A' ).
 Proof.
-  intros * [H1 H2 [R HR]] HA HAA' HM HMM' HA' HM'.
-  constructor; cbn [app].
-  - exact (rel_ctx_extend_def' H1 HA HM).
-  - exact (rel_ctx_extend_def' H2 HA' HM').
-  - exact (per_ctx_env_extend_def_cross HR HAA' HMM').
+  intros * HΨ HA HAA' HA'; sem_intro0.
+  assert (Hr : Γ ⊨ˣ Ψ ▹ A ≈ Ψ' ▹ A').
+  { destruct HΨ as [H1 H2 H3].
+    constructor; cbn [app].
+    - exact (rel_ctx_wf_extend H1 HA).
+    - exact (rel_ctx_wf_extend H2 HA').
+    - exact (per_ctx_extend H3 HAA'). }
+  constructor; [ assumption | exact Hr | apply valid_ctx_ass | apply valid_ctx_ass ];
+    first [ assumption | exact (rxu_left _ _ _ Hr) | exact (rxu_right _ _ _ Hr) ].
 Qed.
 
-Lemma rel_ext_mod : forall {Γ Ψ Ψ' U U'},
-    Γ ⊨ˣ Ψ ≈ Ψ' ->
-    Ψ ++ Γ ⊨ᵘ U ≈ U' ->
-    Ψ' ++ Γ ⊨ᵘ U' ≈ U' ->
-    Γ ⊨ˣ Ψ ▹ₘ U ≈ Ψ' ▹ₘ U'.
+Lemma sem_ext_eq_def :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ˣ Ψ ≈ Ψ' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ A ≈ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ M : A ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ M ≈ M' : A ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊨ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊨ M' : A' ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ˣ Ψ ▸ A ≔ M ≈ Ψ' ▸ A' ≔ M' ).
 Proof.
-  intros * [H1 H2 [Rx HRx]] [HU HsU _] [HU' HsU' _].
-  destruct (sem_ctx_per_ctx_env H1) as [R HR].
-  destruct (sem_ctx_per_ctx_env H2) as [R' HR'].
-  pose proof (rel_modexp_refl_left HU) as HUU.
-  constructor; cbn [app].
-  - econstructor; [ exact H1 | exact (per_ctx_env_of_mod HR HUU) | exact HUU | exact HsU ].
-  - econstructor; [ exact H2 | exact (per_ctx_env_of_mod HR' HU') | exact HU' | exact HsU' ].
-  - assert (E : Rx <~> R) by (eapply per_ctx_env_right_irrel; eassumption).
-    exists (env_ext_mod U U' Rx).
-    eapply per_ctx_env_cons_mod; [ exact HRx | eapply per_env_PER; exact HRx | | apply env_ext_mod_inline ].
-    intros ρ ρ' Hρ; eapply unit_chain_at; [ exact HU | exact HR | apply E, Hρ ].
+  intros * HΨ HA HAA' HM HMM' HA' HM'; sem_intro0.
+  assert (Hr : Γ ⊨ˣ Ψ ▸ A ≔ M ≈ Ψ' ▸ A' ≔ M').
+  { destruct HΨ as [H1 H2 [R HR]].
+    constructor; cbn [app].
+    - exact (rel_ctx_wf_extend_def H1 HA HM).
+    - exact (rel_ctx_wf_extend_def H2 HA' HM').
+    - exact (per_ctx_env_extend_def_cross HR HAA' HMM'). }
+  constructor; [ assumption | exact Hr | apply valid_ctx_def | apply valid_ctx_def ];
+    first [ assumption | exact (rxu_left _ _ _ Hr) | exact (rxu_right _ _ _ Hr) ].
 Qed.
+
+Lemma sem_ext_eq_mod :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ˣ Ψ ≈ Ψ' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊨ᵘ U ≈ U' ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊨ᵘ U' ≈ U' ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ˣ Ψ ▹ₘ U ≈ Ψ' ▹ₘ U' ).
+Proof.
+  intros * HΨ HUU' HU'U'; sem_intro0.
+  assert (Hr : Γ ⊨ˣ Ψ ▹ₘ U ≈ Ψ' ▹ₘ U').
+  { destruct HΨ as [H1 H2 [Rx HRx]]; destruct HUU' as [HU HsU _]; destruct HU'U' as [HU' HsU' _].
+    destruct (rel_ctx_wf_per_ctx_env H1) as [R HR].
+    destruct (rel_ctx_wf_per_ctx_env H2) as [R' HR'].
+    pose proof (rel_modexp_refl_left HU) as HUU.
+    constructor; cbn [app].
+    - econstructor; [ exact H1 | exact (per_ctx_env_of_mod HR HUU) | exact HUU | exact HsU ].
+    - econstructor; [ exact H2 | exact (per_ctx_env_of_mod HR' HU') | exact HU' | exact HsU' ].
+    - assert (E : Rx <~> R) by (eapply per_ctx_env_right_irrel; eassumption).
+      exists (env_ext_mod U U' Rx).
+      eapply per_ctx_env_cons_mod; [ exact HRx | eapply per_env_PER; exact HRx | | apply env_ext_mod_inline ].
+      intros ρ ρ' Hρ; eapply unit_chain_at; [ exact HU | exact HR | apply E, Hρ ]. }
+  constructor; [ assumption | exact Hr | apply valid_ctx_mod | apply valid_ctx_mod ];
+    first [ assumption | exact (rxu_left _ _ _ Hr) | exact (rxu_right _ _ _ Hr) ].
+Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** ** Module Lets *)
 
@@ -577,7 +623,7 @@ Proof.
 Qed.
 
 (** [ζ] for modules. *)
-Corollary rel_exp_let_mod_zeta : forall {Γ U B C},
+Corollary rel_exp_under_ctx_let_mod_zeta : forall {Γ U B C},
     Γ ⊨ᵘ U ≈ U ->
     Γ ▹ₘ U ⊨ B : C ->
     Γ ⊨ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : C[Id ,,ₘ me_lit U].
@@ -587,8 +633,20 @@ Proof.
   exact (rel_exp_let_mod_gen HU HB).
 Qed.
 
+End Fixed_GCtx.
+
+Lemma sem_exp_eq_let_mod_zeta :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ᵘ U ≈ U ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊨ C : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊨ B : C ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : C[Id ,,ₘ me_lit U] ).
+Proof. intros * HU _ HB; sem_intro; [ assumption | exact (rel_exp_under_ctx_let_mod_zeta HU HB) ]. Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 (** Congruence: both sides are related to the instance [B[Id,,ₘ⌜U⌝]]. *)
-Corollary rel_exp_let_mod_cong : forall {Γ U U' B B' C},
+Corollary rel_exp_under_ctx_let_mod_cong : forall {Γ U U' B B' C},
     Γ ⊨ᵘ U ≈ U' ->
     Γ ▹ₘ U ⊨ B ≈ B' : C ->
     Γ ⊨ ℓₘ U in B ≈ ℓₘ U' in B' : C[Id ,,ₘ me_lit U].
@@ -601,11 +659,35 @@ Proof.
            (rel_exp_under_ctx_refl_left HB)).
 Qed.
 
-Corollary valid_exp_let_mod : forall {Γ U B C},
+End Fixed_GCtx.
+
+Lemma sem_exp_eq_let_mod_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ᵘ U ≈ U' ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊨ B ≈ B' : C ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ ℓₘ U' in B' : C[Id ,,ₘ me_lit U] ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ ℓₘ U in B ≈ ℓₘ U' in B' : C[Id ,,ₘ me_lit U] ).
+Proof. intros * HU HB _; sem_intro; [ assumption | exact (rel_exp_under_ctx_let_mod_cong HU HB) ]. Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+Corollary valid_exp_under_ctx_let_mod : forall {Γ U B C},
     Γ ⊨ᵘ U ≈ U ->
     Γ ▹ₘ U ⊨ B : C ->
     Γ ⊨ ℓₘ U in B : C[Id ,,ₘ me_lit U].
-Proof. intros * HU HB; exact (rel_exp_let_mod_cong HU HB). Qed.
+Proof. intros * HU HB; exact (rel_exp_under_ctx_let_mod_cong HU HB). Qed.
+
+End Fixed_GCtx.
+
+Lemma sem_let_mod :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ᵘ U ≈ U ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊨ C : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊨ B : C ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ ℓₘ U in B : C[Id ,,ₘ me_lit U] ).
+Proof. intros * HU _ HB; sem_intro; [ assumption | exact (valid_exp_under_ctx_let_mod HU HB) ]. Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** What the gluing model needs of an instance by a literal:
     [⟦B[Id,,ₘ⌜U⌝]⟧ρ] and [⟦B⟧(ρ ↦ᵐ ⟦⌜U⌝⟧ρ)] are related. *)
@@ -690,8 +772,8 @@ Qed.
 Lemma rel_wk_under_ctx_shiftn : forall Ψ Γ, ⊨ Ψ ++ Γ -> Ψ ++ Γ ⊨ʷ (wk_shiftn (List.length Ψ)) : Γ.
 Proof.
   intros * H.
-  destruct (sem_ctx_per_ctx_env H) as [R HR].
-  destruct (sem_ctx_per_ctx_env (sem_ctx_app_r _ _ H)) as [RΓ HΓ].
+  destruct (rel_ctx_wf_per_ctx_env H) as [R HR].
+  destruct (rel_ctx_wf_per_ctx_env (rel_ctx_wf_app_r _ _ H)) as [RΓ HΓ].
   eapply rel_wk_under_ctx_intro; [ exact HR | exact HΓ | exact (rel_wk_shiftn _ _ _ _ HR HΓ) ].
 Qed.
 

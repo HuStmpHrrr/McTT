@@ -6,7 +6,7 @@
     computes on it, so the universe has no substitution rule.
 
     The file is organised around the converse pair [rel_exp_of_typ_inversion] /
-    [rel_exp_of_typ]: a judgment [Γ ⊨ A ≈ A' : Typeω@i] is exactly the four-value
+    [rel_exp_of_typ]: the relation [Γ ⊨ A ≈ A' : Typeω@i] is exactly the four-value
     pattern of [A] and [A'] in [per_univ i].  The type chain of [rel_exp_under_ctx]
     is forced (all four of its values are [𝕌ω@i]) and fixes the element PER to
     [per_univ i].  So the universe is where the two chains of a term judgment
@@ -93,7 +93,7 @@ Qed.
 
 (** Cumulativity across the tiers, in particular from a small universe to
     every large one. *)
-Lemma rel_exp_univ_cumu : forall {Γ A A' u v},
+Lemma rel_exp_under_ctx_univ_cumu : forall {Γ A A' u v},
     uidx_le u v ->
     Γ ⊨ A ≈ A' : ulvl_tm u ->
     Γ ⊨ A ≈ A' : ulvl_tm v.
@@ -110,17 +110,17 @@ Proof.
   intros ? ? [R HR]; exists R; eapply per_univ_elem_cumu_uidx; eassumption.
 Qed.
 
-Corollary rel_exp_small_large : forall {Γ A A' n} {i : nat},
+Corollary rel_exp_under_ctx_small_large : forall {Γ A A' n} {i : nat},
     Γ ⊨ A ≈ A' : Type⟨𝕃ᵒ n⟩ ->
     Γ ⊨ A ≈ A' : Typeω@i.
-Proof. intros * H; exact (rel_exp_univ_cumu (u := us n) (v := ul i) I H). Qed.
+Proof. intros * H; exact (rel_exp_under_ctx_univ_cumu (u := us n) (v := ul i) I H). Qed.
 
-Lemma valid_exp_univ : forall {a n Γ},
+Lemma valid_exp_under_ctx_univ : forall {a n Γ},
     ⊨ Γ ->
     Γ ⊨ Type⟨𝕃ᵒ(a, n)⟩ : Type⟨𝕃ᵒ(a, S n)⟩.
 Proof.
   intros * H.
-  pose proof (sem_ctx_per_ctx_env H) as [env_relΓ HΓ].
+  pose proof (rel_ctx_wf_per_ctx_env H) as [env_relΓ HΓ].
   apply (rel_exp_of_univ (u := us (a, S n))).
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
@@ -311,16 +311,14 @@ Ltac eexists_rel_exp_of_typ :=
   eexists;
   eexists; [eassumption |].
 
-Section Fixed_GCtx.
-  Context {GC : GCtx}.
+#[local] Generalizable All Variables.
 
-
-Lemma valid_exp_typ : forall {i : nat} {Γ},
-    ⊨ Γ ->
-    Γ ⊨ Typeω@i : Typeω@(S i).
+Lemma sem_typ :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Typeω@i : Typeω@(S i) ).
 Proof.
-  intros * H.
-  pose proof (sem_ctx_per_ctx_env H) as [env_relΓ HΓ].
+  intros * H; sem_intro; [ assumption |].
+  pose proof (rel_ctx_wf_per_ctx_env H) as [env_relΓ HΓ].
   eexists_rel_exp_of_typ.
   (** [Typeω@i] ignores the environment, so the two substituted environments
     named by the caller are unused. *)
@@ -331,7 +329,15 @@ Proof.
   apply rel_chain_4; assumption.
 Qed.
 
-Hint Resolve valid_exp_typ valid_exp_univ rel_exp_small_large : mctt.
+Lemma sem_exp_eq_typ_cong :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ Typeω@i ≈ Typeω@i : Typeω@(S i) ).
+Proof. intros; eapply sem_typ; eassumption. Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+Hint Resolve valid_exp_under_ctx_univ rel_exp_under_ctx_small_large : mctt.
 
 (** Cumulativity acts on the chain member by member: [rel_chain_mono] at
     [per_univ_elem_cumu]. *)
@@ -368,8 +374,20 @@ Hint Resolve rel_exp_cumu_ge : mctt.
 End Fixed_GCtx.
 
 #[export]
-Hint Resolve valid_exp_typ valid_exp_univ rel_exp_small_large : mctt.
+Hint Resolve valid_exp_under_ctx_univ rel_exp_under_ctx_small_large : mctt.
 #[export]
 Hint Resolve rel_exp_cumu : mctt.
 #[export]
 Hint Resolve rel_exp_cumu_ge : mctt.
+
+(** ** The Universes as Judgments *)
+
+Lemma sem_is_univ_large :
+  `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ᵤ Typeω@i ).
+Proof. intros * H; sem_intro; [ assumption | left; eexists; reflexivity ]. Qed.
+
+Lemma sem_is_univ_small :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ L : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ᵤ Type⟨L⟩ ).
+Proof. intros * H; sem_intro; [ assumption | right; do 2 eexists; split; [ reflexivity | eassumption ] ]. Qed.

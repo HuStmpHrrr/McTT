@@ -156,10 +156,10 @@ Qed.
 
 (** * Reading a Context PER off [⊨ Γ]
 
-    [sem_ctx] stores the witness in the extension rule, so there is nothing to
+    [rel_ctx_wf] stores the witness in the extension rule, so there is nothing to
     reconstruct. *)
 
-Lemma sem_ctx_per_ctx_env : forall {Γ},
+Lemma rel_ctx_wf_per_ctx_env : forall {Γ},
     ⊨ Γ ->
     exists R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R.
 Proof.
@@ -167,16 +167,16 @@ Proof.
   eexists; econstructor; apply Equivalence_Reflexive.
 Qed.
 
-Hint Resolve sem_ctx_per_ctx_env : mctt.
+Hint Resolve rel_ctx_wf_per_ctx_env : mctt.
 
-Corollary sem_ctx_per_ctx : forall {Γ},
+Corollary rel_ctx_wf_per_ctx : forall {Γ},
     ⊨ Γ ->
     ⊨ Γ ≈ Γ.
 Proof.
-  intros * H. apply sem_ctx_per_ctx_env in H. exact H.
+  intros * H. apply rel_ctx_wf_per_ctx_env in H. exact H.
 Qed.
 
-Hint Resolve sem_ctx_per_ctx : mctt.
+Hint Resolve rel_ctx_wf_per_ctx : mctt.
 
 (** * Semantic Weakenings are Semantic Substitutions
 
@@ -215,12 +215,20 @@ Hint Resolve rel_sub_id : mctt.
 
 (** The tail of a semantically well-formed context is semantically
     well-formed. *)
-Lemma sem_ctx_tail : forall {Γ e},
+Lemma rel_ctx_wf_tail : forall {Γ e},
     ⊨ (e :: Γ)%list ->
     ⊨ Γ.
 Proof.
   intros * H; inversion H; assumption.
 Qed.
+
+(** A context with valid slots is semantically well formed, and so is its
+    tail, with valid slots. *)
+Lemma valid_ctx_rel_ctx_wf : forall {Θm Ξm Γ}, valid_ctx Θm Ξm Γ -> ⊨ Γ.
+Proof. intros * H; destruct H; [ constructor | assumption .. ]. Qed.
+
+Lemma valid_ctx_tail : forall {Θm Ξm Γ e}, valid_ctx Θm Ξm (e :: Γ)%list -> valid_ctx Θm Ξm Γ.
+Proof. intros * H; inversion H; assumption. Qed.
 
 (** [⇑] as a weakening judgment — the form the weakening lemmas below, and
     soundness through them, are instantiated at. *)
@@ -229,8 +237,8 @@ Corollary rel_wk_under_ctx_shift : forall {Γ e},
     (e :: Γ)%list ⊨ʷ ↑ : Γ.
 Proof.
   intros * H.
-  pose proof (sem_ctx_per_ctx_env H) as [env_relΓA HΓA].
-  pose proof (sem_ctx_per_ctx_env (sem_ctx_tail H)) as [env_relΓ HΓ'].
+  pose proof (rel_ctx_wf_per_ctx_env H) as [env_relΓA HΓA].
+  pose proof (rel_ctx_wf_per_ctx_env (rel_ctx_wf_tail H)) as [env_relΓ HΓ'].
   eapply rel_wk_under_ctx_intro; try eassumption.
   eapply rel_wk_shift; eassumption.
 Qed.
@@ -373,7 +381,7 @@ Proof.
   eapply per_head_of; eassumption.
 Qed.
 
-Lemma subtyp_under_ctx_simple : forall {Γ A A'},
+Lemma rel_subtyp_under_ctx_simple : forall {Γ A A'},
     Γ ⊨ A ⊆ A' ->
     exists env_relΓ (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) (i : nat),
     forall ρ ρ',
@@ -388,7 +396,7 @@ Proof.
   intros ρ ρ' Hρ.
   destruct (HA _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
     as [aσ a a'σ' a' HaσI ? Ha'σ'I ? Hl Hr Hsub].
-  (** Both commutation obligations of [subtyp_under_ctx] compare a value with
+  (** Both commutation obligations of [rel_subtyp_under_ctx] compare a value with
     itself, so the subtyping need not be transported. *)
   rewrite exp_sub_id in HaσI, Ha'σ'I.
   exists a, a'.
@@ -868,9 +876,9 @@ Hint Resolve rel_typ_elem_PER : mctt.
 #[export]
 Hint Resolve rel_wk_id : mctt.
 #[export]
-Hint Resolve sem_ctx_per_ctx_env : mctt.
+Hint Resolve rel_ctx_wf_per_ctx_env : mctt.
 #[export]
-Hint Resolve sem_ctx_per_ctx : mctt.
+Hint Resolve rel_ctx_wf_per_ctx : mctt.
 #[export]
 Hint Resolve rel_sub_id : mctt.
 #[export]

@@ -2,11 +2,11 @@
 
     A term member of a module expression [K] is valid at a type [A] when, at
     every environment of the context, every module value related to [K]'s
-    selects it, related at [A] to [K]'s own ([smem]); and a module member,
+    selects it, related at [A] to [K]'s own ([valid_mem]); and a module member,
     when the submodule every related value selects is related to a given
-    module expression's value ([smod]).  So the members of a module
-    expression related to [K] are related to [K]'s ([rel_mem_of_smem],
-    [rel_sel_of_smod]).  Selection from a value lacking a parameter commutes
+    module expression's value ([valid_sel]).  So the members of a module
+    expression related to [K] are related to [K]'s ([rel_mem_of_valid_mem],
+    [rel_sel_of_valid_sel]).  Selection from a value lacking a parameter commutes
     with application ([sel_app_comm]), and a member, which is evaluated by
     the root of its module expression and the arguments after it, is the
     member selected from the expression's value ([eval_mem_of_sel]). *)
@@ -193,8 +193,8 @@ Qed.
 
 (** The four values of a valid module expression are related to the one at
     the substituted environment. *)
-Lemma rel_mod_hub : forall H σ ρ ρσ H' σ' ρ' ρ'σ',
-    rel_mod H σ ρ ρσ H' σ' ρ' ρ'σ' ->
+Lemma rel_modexp_hub : forall H σ ρ ρσ H' σ' ρ' ρ'σ',
+    rel_modexp H σ ρ ρσ H' σ' ρ' ρ'σ' ->
     exists h1 h2 h3 h4,
       eval_modexp gc_deps gc_stack H[σ]ᵐ ρ h1 /\ ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρσ ↘ h2 /\
       ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ'σ' ↘ h3 /\ eval_modexp gc_deps gc_stack H'[σ']ᵐ ρ' h4 /\
@@ -212,63 +212,63 @@ Qed.
 (** The member [x] of the module value [k], related at [R] to that of any
     value related to [k]. *)
 #[warnings="-cannot-define-projection"]
-Record mem_vals (h k : dmod) (x : String.string) (R : relation domain) : Prop := mk_mem_vals
-  { mv_left : domain
-  ; mv_right : domain
-  ; mv_eval_left : h ·ₜ x gc_deps ⍮ gc_stack ↘ mv_left
-  ; mv_eval_right : k ·ₜ x gc_deps ⍮ gc_stack ↘ mv_right
-  ; mv_rel : R mv_left mv_right }.
+Record rel_mem_val (h k : dmod) (x : String.string) (R : relation domain) : Prop := mk_rel_mem_val
+  { rmv_left : domain
+  ; rmv_right : domain
+  ; rmv_eval_left : h ·ₜ x gc_deps ⍮ gc_stack ↘ rmv_left
+  ; rmv_eval_right : k ·ₜ x gc_deps ⍮ gc_stack ↘ rmv_right
+  ; rmv_rel : R rmv_left rmv_right }.
 
-Definition mty (k : dmod) (x : String.string) (R : relation domain) : Prop :=
-  forall h, per_dmod h k -> mem_vals h k x R.
+Definition dmod_has_mem (k : dmod) (x : String.string) (R : relation domain) : Prop :=
+  forall h, per_dmod h k -> rel_mem_val h k x R.
 
 (** The δ-reduct [M] of the member [x] of [k], at [ρ]: its value is related
     at [RA] to the member's. *)
 #[warnings="-cannot-define-projection"]
-Record red_vals (M : exp) (ρ : env) (k : dmod) (x : String.string) (RA : relation domain) : Prop := mk_red_vals
-  { rdv_val : domain
-  ; rdv_mem : domain
-  ; rdv_eval : ⟦ M ⟧ ρ ↘ rdv_val
-  ; rdv_sel : k ·ₜ x gc_deps ⍮ gc_stack ↘ rdv_mem
-  ; rdv_rel : RA rdv_val rdv_mem }.
+Record rel_mem_reduct (M : exp) (ρ : env) (k : dmod) (x : String.string) (RA : relation domain) : Prop := mk_rel_mem_reduct
+  { rmr_val : domain
+  ; rmr_mem : domain
+  ; rmr_eval : ⟦ M ⟧ ρ ↘ rmr_val
+  ; rmr_sel : k ·ₜ x gc_deps ⍮ gc_stack ↘ rmr_mem
+  ; rmr_rel : RA rmr_val rmr_mem }.
 
 (** The member [x] of [K] at [ρ], of type [A] and δ-reduct [om]: [K]'s
     value has the member at the value of [A], and the reduct, if any, is
     related to it. *)
 #[warnings="-cannot-define-projection"]
-Record smem_at (K : modexp) (x : String.string) (A : typ) (om : option exp) (ρ : env) : Prop := mk_smem_at
-  { sma_mod : dmod
-  ; sma_typ : domain
-  ; sma_lvl : uidx
-  ; sma_rel : relation domain
-  ; sma_eval_mod : ⟦ K ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ sma_mod
-  ; sma_eval_typ : ⟦ A ⟧ ρ ↘ sma_typ
-  ; sma_per : per_univ_elem sma_lvl sma_rel sma_typ sma_typ
-  ; sma_mty : mty sma_mod x sma_rel
-  ; sma_red : forall M, om = Some M -> red_vals M ρ sma_mod x sma_rel }.
+Record valid_mem_at (K : modexp) (x : String.string) (A : typ) (om : option exp) (ρ : env) : Prop := mk_valid_mem_at
+  { vma_mod : dmod
+  ; vma_typ : domain
+  ; vma_lvl : uidx
+  ; vma_rel : relation domain
+  ; vma_eval_mod : ⟦ K ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ vma_mod
+  ; vma_eval_typ : ⟦ A ⟧ ρ ↘ vma_typ
+  ; vma_per : per_univ_elem vma_lvl vma_rel vma_typ vma_typ
+  ; vma_has_mem : dmod_has_mem vma_mod x vma_rel
+  ; vma_red : forall M, om = Some M -> rel_mem_reduct M ρ vma_mod x vma_rel }.
 
-Record smem (Γ : ctx) (K : modexp) (x : String.string) (A : typ) (om : option exp) : Prop := mk_smem
-  { sm_typ : exists i, Γ ⊨ A : Typeω@i
-  ; sm_body : forall M, om = Some M -> Γ ⊨ M : A
-  ; sm_vals : forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ -> smem_at K x A om ρ }.
+Record valid_mem (Γ : ctx) (K : modexp) (x : String.string) (A : typ) (om : option exp) : Prop := mk_valid_mem
+  { vm_typ : exists i, Γ ⊨ A : Typeω@i
+  ; vm_body : forall M, om = Some M -> Γ ⊨ M : A
+  ; vm_vals : forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ -> valid_mem_at K x A om ρ }.
 
 (** The submodule [y] of [K] at every environment, from any value related
     to [K]'s, related to the value of [V]. *)
 #[warnings="-cannot-define-projection"]
-Record smod_vals (K : modexp) (y : String.string) (V : modexp) (ρ : env) : Prop := mk_smod_vals
-  { smv_mod : dmod
-  ; smv_val : dmod
-  ; smv_eval_mod : ⟦ K ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ smv_mod
-  ; smv_eval_val : ⟦ V ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ smv_val
-  ; smv_sel : forall h, per_dmod h smv_mod -> exists r, h ·ₘ y gc_deps ⍮ gc_stack ↘ r /\ per_dmod r smv_val }.
+Record valid_sel_at (K : modexp) (y : String.string) (V : modexp) (ρ : env) : Prop := mk_valid_sel_at
+  { vsa_mod : dmod
+  ; vsa_val : dmod
+  ; vsa_eval_mod : ⟦ K ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ vsa_mod
+  ; vsa_eval_val : ⟦ V ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ vsa_val
+  ; vsa_sel : forall h, per_dmod h vsa_mod -> exists r, h ·ₘ y gc_deps ⍮ gc_stack ↘ r /\ per_dmod r vsa_val }.
 
-Definition smod (Γ : ctx) (K : modexp) (y : String.string) (V : modexp) : Prop :=
-  forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ -> smod_vals K y V ρ.
+Definition valid_sel (Γ : ctx) (K : modexp) (y : String.string) (V : modexp) : Prop :=
+  forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ -> valid_sel_at K y V ρ.
 
 (** ** Members of Related Module Expressions *)
 
-Lemma rel_mem_of_smem : forall Γ H K x A om,
-    Γ ⊨ᵐ H ≈ K -> smem Γ K x A om -> Γ ⊨ a_mem H x ≈ a_mem K x : A.
+Lemma rel_mem_of_valid_mem : forall Γ H K x A om,
+    Γ ⊨ᵐ H ≈ K -> valid_mem Γ K x A om -> Γ ⊨ a_mem H x ≈ a_mem K x : A.
 Proof.
   intros * [R HR HH] [[i HA] _ HS].
   pose proof (rel_exp_of_typ_inversion HA) as [RA0 [HRA HAgen]].
@@ -280,7 +280,7 @@ Proof.
   exists Rel; split; [ exact HT |].
   destruct HT as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 (T12 & T23 & T34)].
   assert (HPR : PER Rel) by (eapply per_elem_PER; exact T23).
-  destruct (rel_mod_hub _ _ _ _ _ _ _ _ (HH _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev'))
+  destruct (rel_modexp_hub _ _ _ _ _ _ _ _ (HH _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev'))
     as (h1 & h2 & h3 & h4 & E1 & E2 & E3 & E4 & D1 & D2 & D3 & D4).
   destruct (HS _ HR _ Hρσ') as [k a j RA Hk Ha HRA' Hm _].
   pose proof (functional_eval_modexp _ _ _ _ Hk E3) as ->.
@@ -296,8 +296,8 @@ Proof.
   cbn; split; [ etransitivity; [ exact V1 | symmetry; exact V2 ] |]; split; [ exact V2 | symmetry; exact V4 ].
 Qed.
 
-Lemma rel_mem_red_of_smem : forall Γ H K x A M,
-    Γ ⊨ᵐ H ≈ K -> smem Γ K x A (Some M) -> Γ ⊨ a_mem H x ≈ M : A.
+Lemma rel_mem_red_of_valid_mem : forall Γ H K x A M,
+    Γ ⊨ᵐ H ≈ K -> valid_mem Γ K x A (Some M) -> Γ ⊨ a_mem H x ≈ M : A.
 Proof.
   intros * [R HR HH] [[i HA] HM HS].
   pose proof (rel_exp_of_typ_inversion HA) as [RA0 [HRA HAgen]].
@@ -313,7 +313,7 @@ Proof.
   destruct (HMgen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [RelM [[b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 (B12 & B23 & B34)] [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 (M12 & M23 & M34)]]].
   functional_eval_rewrite_clear.
   assert (EM : RelM <~> Rel) by (eapply per_univ_elem_right_irrel; [ exact B23 | exact T23 ]).
-  destruct (rel_mod_hub _ _ _ _ _ _ _ _ (HH _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev'))
+  destruct (rel_modexp_hub _ _ _ _ _ _ _ _ (HH _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev'))
     as (h1 & h2 & h3 & h4 & E1 & E2 & E3 & E4 & D1 & D2 & D3 & D4).
   destruct (HS _ HR _ Hρσ') as [k a j RA Hk Ha HRA' Hm Hred].
   pose proof (functional_eval_modexp _ _ _ _ Hk E3) as ->.
@@ -330,8 +330,9 @@ Proof.
   cbn; split; [ etransitivity; [ exact V1 | symmetry; exact V2 ] |]; split; [ etransitivity; [ exact V2 | symmetry; exact HRv ] | exact M34 ].
 Qed.
 
-Lemma rel_sel_of_smod : forall Γ H K y V,
-    Γ ⊨ᵐ H ≈ K -> smod Γ K y V -> Γ ⊨ᵐ V ≈ V -> Γ ⊨ᵐ me_mem H y ≈ V.
+Lemma rel_sel_of_valid_sel : forall Γ H K y V,
+    Γ ⊨ᵐ H ≈ K -> valid_sel Γ K y V -> Γ ⊨ᵐ V ≈ V ->
+    Γ ⊨ᵐ me_mem H y ≈ V.
 Proof.
   intros * [R HR HH] HS [RV HRV HV].
   refine (mk_rel_modexp_under_ctx _ _ _ R HR _); intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
@@ -339,16 +340,16 @@ Proof.
   assert (HP : PER R) by (eapply per_env_PER; exact HR).
   assert (Hρσ' : R ρ'σ' ρ'σ') by (etransitivity; [ symmetry; exact Hρσ | exact Hρσ ]).
   assert (EV : R <~> RV) by (eapply per_ctx_env_right_irrel; eassumption).
-  destruct (rel_mod_hub _ _ _ _ _ _ _ _ (HH _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev'))
+  destruct (rel_modexp_hub _ _ _ _ _ _ _ _ (HH _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev'))
     as (h1 & h2 & h3 & h4 & E1 & E2 & E3 & E4 & D1 & D2 & D3 & D4).
-  destruct (rel_mod_hub _ _ _ _ _ _ _ _ (HV _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev'))
+  destruct (rel_modexp_hub _ _ _ _ _ _ _ _ (HV _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev'))
     as (g1 & g2 & g3 & g4 & F1 & F2 & F3 & F4 & G1 & G2 & G3 & G4).
   destruct (HS _ HR _ Hρσ') as [k v Hk Hv Hsel].
   pose proof (functional_eval_modexp _ _ _ _ Hk E3) as ->.
   pose proof (functional_eval_modexp _ _ _ _ Hv F3) as ->.
   destruct (Hsel _ D1) as (r1 & S1 & R1).
   destruct (Hsel _ D2) as (r2 & S2 & R2).
-  apply (mk_rel_mod r1 r2 g3 g4); [ cbn; econstructor; eassumption | econstructor; eassumption | exact F3 | exact F4 |].
+  apply (mk_rel_modexp r1 r2 g3 g4); [ cbn; econstructor; eassumption | econstructor; eassumption | exact F3 | exact F4 |].
   split; [ exact (per_dmod_trans _ _ _ R1 (per_dmod_sym _ _ R2)) |].
   split; [ exact R2 | exact (per_dmod_sym _ _ G4) ].
 Qed.
@@ -371,14 +372,14 @@ Qed.
 (** The member of a value lacking a parameter, at a [Π] over a type of
     that parameter: when it is related at the codomain once applied, it is
     related at the [Π]. *)
-Lemma mty_fun : forall k a0 x i E a ρB B,
+Lemma dmod_has_mem_fun : forall k a0 x i E a ρB B,
     nextparam k a0 -> per_dmod k k ->
     per_univ_elem i E (Πᵈ a ρB B) (Πᵈ a ρB B) ->
     (exists j R0, per_univ_elem j R0 a0 a) ->
     (forall j Ra c, per_univ_elem j Ra a a -> Ra c c -> forall kc b, $ᵐ| k & c | gc_deps ⍮ gc_stack ↘ kc ->
-       ⟦ B ⟧ ρB ↦ c ↘ b -> exists l Rb, per_univ_elem l Rb b b /\ mty kc x Rb) ->
+       ⟦ B ⟧ ρB ↦ c ↘ b -> exists l Rb, per_univ_elem l Rb b b /\ dmod_has_mem kc x Rb) ->
     (exists f, k ·ₜ x gc_deps ⍮ gc_stack ↘ f) ->
-    mty k x E.
+    dmod_has_mem k x E.
 Proof.
   intros * Hpk Hkk HE (j0 & R0 & H0) Hcod (fk & Hfk) h Hh.
   destruct (per_dmod_appm _ _ _ (per_dmod_sym _ _ Hh) Hpk) as (ih & R & ah & Hph & HRh & Happ0).
@@ -411,7 +412,7 @@ Proof.
 Qed.
 
 (** Robust member typing is a property of the class in the module PER. *)
-Lemma mty_resp : forall k k' x R, PER R -> per_dmod k' k -> mty k x R -> mty k' x R.
+Lemma dmod_has_mem_resp : forall k k' x R, PER R -> per_dmod k' k -> dmod_has_mem k x R -> dmod_has_mem k' x R.
 Proof.
   intros * HP Hk Hm h Hh.
   destruct (Hm _ (per_dmod_trans _ _ _ Hh Hk)) as [r r1 Hr Hr1 Hrr].
@@ -420,7 +421,7 @@ Proof.
   exists r r'; try assumption; etransitivity; [ exact Hrr | symmetry; exact Hrr' ].
 Qed.
 
-Lemma mty_iff : forall k x R R', mty k x R -> (R <~> R') -> mty k x R'.
+Lemma dmod_has_mem_iff : forall k x R R', dmod_has_mem k x R -> (R <~> R') -> dmod_has_mem k x R'.
 Proof. intros * Hm E h Hh; destruct (Hm _ Hh) as [r r' Hr Hr' Hrr]; exists r r'; try assumption; apply E, Hrr. Qed.
 
 (** A function related, once applied, to the member of the applied values
@@ -430,7 +431,7 @@ Lemma red_fun : forall k a0 x i E a ρB B f fk,
     per_univ_elem i E (Πᵈ a ρB B) (Πᵈ a ρB B) ->
     (exists j R0, per_univ_elem j R0 a0 a) -> per_dmod k k -> k ·ₜ x gc_deps ⍮ gc_stack ↘ fk ->
     (forall j Ra c, per_univ_elem j Ra a a -> Ra c c -> forall kc b, $ᵐ| k & c | gc_deps ⍮ gc_stack ↘ kc ->
-       ⟦ B ⟧ ρB ↦ c ↘ b -> exists l Rb fc r, per_univ_elem l Rb b b /\ mty kc x Rb /\
+       ⟦ B ⟧ ρB ↦ c ↘ b -> exists l Rb fc r, per_univ_elem l Rb b b /\ dmod_has_mem kc x Rb /\
          $| f & c |↘ fc /\ kc ·ₜ x gc_deps ⍮ gc_stack ↘ r /\ Rb fc r) ->
     E f fk.
 Proof.

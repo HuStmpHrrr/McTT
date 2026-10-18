@@ -20,8 +20,6 @@
 ./Core/Completeness/LevelCases.v
 ./Core/Completeness/LogicalRelation.v
 ./Core/Completeness/ModuleCases.v
-./Core/Completeness/Judgments.v
-./Core/Completeness/KripkeCases.v
 ./Core/Completeness/LogicalRelation/Definitions.v
 ./Core/Completeness/LogicalRelation/Lemmas.v
 ./Core/Completeness/LogicalRelation/Tactics.v
@@ -32,7 +30,7 @@
 ./Core/Completeness/InstanceCases.v
 ./Core/Completeness/ModuleVal.v
 ./Core/Completeness/ModuleSem.v
-./Core/Completeness/SemK.v
+./Core/Completeness/ValidUnit.v
 ./Core/Completeness/UnitBody.v
 ./Core/Completeness/FiledSem.v
 ./Core/Completeness/UnitSub.v

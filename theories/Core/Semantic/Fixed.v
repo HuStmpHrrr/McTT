@@ -10,14 +10,16 @@ Import Domain_Notations.
     readback without [Θ ⍮ Ξ], relative to that fixed context.  Where two
     global contexts meet, the long forms are used. *)
 
-(** The short and long forms do not parse together ([⊢ Γ] against
-    [⊢ Θ ⍮ Ξ ⍮ Γ]), so the short forms are a separate module.  Files that
-    import it refer to a judgment at another global context by its constant. *)
+(** The short forms are a separate module, imported where a global context
+    is fixed; they parse together with the long forms ([⊢ Γ] shares its
+    prefix with [⊢ Θ ⍮ Ξ ⍮ Γ]). *)
 Module Fixed_Notations.
 
 (** ** Judgments *)
   
-  Notation "⊢ Γ" := (wf_ctx gc_deps gc_stack Γ) (at level 70, Γ at level 69) : type_scope.
+  (** [Γ] at next level, as [Θ] of [⊢ Θ ⍮ Ξ ⍮ Γ], so that the two share
+      their prefix and parse together. *)
+  Notation "⊢ Γ" := (wf_ctx gc_deps gc_stack Γ) (at level 70, Γ at next level) : type_scope.
   Notation "Γ ⊢ M : A" := (wf_exp gc_deps gc_stack Γ A M) (at level 70, M at level 69) : type_scope.
   Notation "Γ ⊢ M ≈ M' : A" := (wf_exp_eq gc_deps gc_stack Γ A M M')
     (at level 70, M at level 69, M' at level 69, A at level 69) : type_scope.
