@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab430"></a><h1 class="section">NbE Commutes with Weakening</h1>
+<a id="lab421"></a><h1 class="section">NbE Commutes with Weakening</h1>
 
 
 <div class="paragraph"> </div>
@@ -99,7 +99,7 @@
 </div>
 
 <div class="doc">
-<a id="lab431"></a><h2 class="section">NbE Commutes with Weakening</h2>
+<a id="lab422"></a><h2 class="section">NbE Commutes with Weakening</h2>
 
 </div>
 <div class="code">
@@ -112,7 +112,7 @@
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">HΓA</span> <span class="id" title="var">HM</span> <span class="id" title="var">Hn</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">HA</span> : <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#697cbaa778db3852efdf114bc9fc26a5"><span class="id" title="notation">⊨</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#1c653e0bf24c0b18b11bb43e12730da0"><span class="id" title="notation">▹</span></a> <span class="id" title="var">A</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.FundamentalTheorem.html#completeness_fundamental_ctx"><span class="id" title="lemma">completeness_fundamental_ctx</span></a>; <span class="id" title="tactic">exact</span> <span class="id" title="var">HΓA</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">exists</span></a> <a id="R1:11" class="idref" href="#R1:11"><span class="id" title="binder"><span id="R1:12" class="id">R1</span></span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">EF</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">(</span></a><span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#1c653e0bf24c0b18b11bb43e12730da0"><span class="id" title="notation">▹</span></a> <span class="id" title="var">A</span><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">)</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">≈</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">(</span></a><span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#1c653e0bf24c0b18b11bb43e12730da0"><span class="id" title="notation">▹</span></a> <span class="id" title="var">A</span><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">)</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">∈</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_ctx_env"><span class="id" title="inductive">per_ctx_env</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">↘</span></a> <a class="idref" href="Mctt.Core.NbEWeakening.html#R1:11"><span class="id" title="variable">R1</span></a>) <span class="id" title="keyword">as</span> [<span class="id" title="var">R1</span> <span class="id" title="var">HR1</span>]<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3 <span class="id" title="keyword">using</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#sem_ctx_per_ctx_env"><span class="id" title="lemma">sem_ctx_per_ctx_env</span></a>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3 <span class="id" title="keyword">using</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_ctx_wf_per_ctx_env"><span class="id" title="lemma">rel_ctx_wf_per_ctx_env</span></a>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.FundamentalTheorem.html#completeness_fundamental_exp"><span class="id" title="lemma">completeness_fundamental_exp</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">HM</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">R0</span> <span class="id" title="var">HR0</span> <span class="id" title="var">j</span> <span class="id" title="var">HMg</span>].<br/>
 </div>
 
@@ -174,7 +174,7 @@ One variable further out, the short value reads back as the weakening
 </div>
 
 <div class="doc">
-<a id="lab432"></a><h2 class="section">NbE Invents No Variables, Semantically</h2>
+<a id="lab423"></a><h2 class="section">NbE Invents No Variables, Semantically</h2>
 
 </div>
 <div class="code">
@@ -209,7 +209,7 @@ One variable further out, the short value reads back as the weakening
 </div>
 
 <div class="doc">
-<a id="lab433"></a><h2 class="section">Strengthening an Equation</h2>
+<a id="lab424"></a><h2 class="section">Strengthening an Equation</h2>
 
 
 <div class="paragraph"> </div>

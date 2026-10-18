@@ -101,7 +101,7 @@
 </div>
 
 <div class="doc">
-<a id="lab305"></a><h2 class="section">The Parameters of an Inductive Type</h2>
+<a id="lab296"></a><h2 class="section">The Parameters of an Inductive Type</h2>
 
 
 <div class="paragraph"> </div>
@@ -131,7 +131,7 @@
 &nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">reflexivity</span> |].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#soundness_fundamental_ctx"><span class="id" title="lemma">soundness_fundamental_ctx</span></a> <span class="id" title="var">_</span> <span class="id" title="var">HΓ</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">Sb</span> <span class="id" title="var">HSb</span>].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Lemmas.html#initial_env_glu_rel_exp"><span class="id" title="lemma">initial_env_glu_rel_exp</span></a> <span class="id" title="var">Hinit</span> <span class="id" title="var">HSb</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">H</span>σ.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.FundamentalTheorem.html#completeness_fundamental_ctx"><span class="id" title="lemma">completeness_fundamental_ctx</span></a> <span class="id" title="var">_</span> <span class="id" title="var">HΓ</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">HΓs</span>; <span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#sem_ctx_per_ctx_env"><span class="id" title="lemma">sem_ctx_per_ctx_env</span></a> <span class="id" title="var">HΓs</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">RΓ</span> <span class="id" title="var">HRΓ</span>].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.FundamentalTheorem.html#completeness_fundamental_ctx"><span class="id" title="lemma">completeness_fundamental_ctx</span></a> <span class="id" title="var">_</span> <span class="id" title="var">HΓ</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">HΓs</span>; <span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_ctx_wf_per_ctx_env"><span class="id" title="lemma">rel_ctx_wf_per_ctx_env</span></a> <span class="id" title="var">HΓs</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">RΓ</span> <span class="id" title="var">HRΓ</span>].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#params_glu_args"><span class="id" title="lemma">IndElimCases.params_glu_args</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hass</span> <span class="id" title="var">Hs0</span> (<a class="idref" href="Mctt.Core.Completeness.FundamentalTheorem.html#completeness_fundamental_ctx"><span class="id" title="lemma">completeness_fundamental_ctx</span></a> <span class="id" title="var">_</span> <span class="id" title="var">HΔ</span>) <span class="id" title="var">HΓs</span> <span class="id" title="var">HRΓ</span> <span class="id" title="var">HSb</span> <span class="id" title="var">H</span>σ<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">HMl</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">ltac</span>:(<span class="id" title="tactic">intros</span>; <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.FundamentalTheorem.html#completeness_fundamental_exp"><span class="id" title="lemma">completeness_fundamental_exp</span></a>; <span class="id" title="tactic">eauto</span>)<br/>
@@ -222,7 +222,7 @@ A type whose normal form is an inductive type is equal to the type
 </div>
 
 <div class="doc">
-<a id="lab306"></a><h2 class="section">Small Universes Are Injective</h2>
+<a id="lab297"></a><h2 class="section">Small Universes Are Injective</h2>
 
 
 <div class="paragraph"> </div>
@@ -275,7 +275,7 @@ Both level terms move to the larger of their two sorts, where the
 </div>
 
 <div class="doc">
-<a id="lab307"></a><h2 class="section">Subtyping of Universe Terms and Level Types</h2>
+<a id="lab298"></a><h2 class="section">Subtyping of Universe Terms and Level Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -743,7 +743,7 @@ The large tier is never below the small one.
 </div>
 
 <div class="doc">
-<a id="lab308"></a><h2 class="section">The Normal Forms of Small Types</h2>
+<a id="lab299"></a><h2 class="section">The Normal Forms of Small Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -777,7 +777,7 @@ An inductive type applied to its parameters.  Its sort is not
 </div>
 
 <div class="doc">
-<a id="lab309"></a><h2 class="section">The Normal Forms of the Types of a Universe</h2>
+<a id="lab300"></a><h2 class="section">The Normal Forms of the Types of a Universe</h2>
 
 
 <div class="paragraph"> </div>
@@ -1211,7 +1211,7 @@ In the empty context, a neutral without a global head has no type: its
 </div>
 
 <div class="doc">
-<a id="lab310"></a><h2 class="section">Canonical Forms and Consistency</h2>
+<a id="lab301"></a><h2 class="section">Canonical Forms and Consistency</h2>
 
 
 <div class="paragraph"> </div>
@@ -1335,7 +1335,7 @@ Consistency at a universe: there is no closed inhabitant of <span class="inlinec
 </div>
 
 <div class="doc">
-<a id="lab311"></a><h2 class="section">Canonical Forms of Inductive Types</h2>
+<a id="lab302"></a><h2 class="section">Canonical Forms of Inductive Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -1569,7 +1569,7 @@ The theorems above, with the global context explicit.
 </div>
 
 <div class="doc">
-<a id="lab312"></a><h2 class="section">Opaque Definitions</h2>
+<a id="lab303"></a><h2 class="section">Opaque Definitions</h2>
 
 
 <div class="paragraph"> </div>
@@ -1853,7 +1853,7 @@ Canonicity at a universe, at any global context: the normal form is of
 </div>
 
 <div class="doc">
-<a id="lab313"></a><h3 class="section">Without Axioms</h3>
+<a id="lab304"></a><h3 class="section">Without Axioms</h3>
 
 </div>
 <div class="code">
@@ -1999,7 +1999,7 @@ At a universe term <span class="inlinecode"><a class="idref" href="Mctt.Core.Sou
 </div>
 
 <div class="doc">
-<a id="lab314"></a><h3 class="section">Every Program</h3>
+<a id="lab305"></a><h3 class="section">Every Program</h3>
 
 
 <div class="paragraph"> </div>

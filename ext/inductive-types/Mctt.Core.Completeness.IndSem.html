@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab233"></a><h1 class="section">Telescopes in the PER Model</h1>
+<a id="lab221"></a><h1 class="section">Telescopes in the PER Model</h1>
 
 
 <div class="paragraph"> </div>
@@ -88,7 +88,7 @@
 </div>
 
 <div class="doc">
-<a id="lab234"></a><h2 class="section">Arguments at a Telescope</h2>
+<a id="lab222"></a><h2 class="section">Arguments at a Telescope</h2>
 
 </div>
 <div class="code">
@@ -153,7 +153,7 @@ A type at a small index is also one at a large index.
 </div>
 
 <div class="doc">
-<a id="lab235"></a><h2 class="section">The Elements of a <span class="inlinecode"><span class="id" title="var">Π</span></span> over a Telescope</h2>
+<a id="lab223"></a><h2 class="section">The Elements of a <span class="inlinecode"><span class="id" title="var">Π</span></span> over a Telescope</h2>
 
 
 <div class="paragraph"> </div>
@@ -205,7 +205,7 @@ A type at a small index is also one at a large index.
 </div>
 
 <div class="doc">
-<a id="lab236"></a><h2 class="section">Arguments over Another Base</h2>
+<a id="lab224"></a><h2 class="section">Arguments over Another Base</h2>
 
 
 <div class="paragraph"> </div>
@@ -226,7 +226,7 @@ A type at a small index is also one at a large index.
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hts'</span> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#tele_ass"><span class="id" title="definition">tele_ass</span></a> <span class="id" title="var">ts</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">inversion</span> <span class="id" title="var">Hts</span>; <span class="id" title="tactic">assumption</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">inversion</span> <span class="id" title="var">Hg</span> <span class="id" title="keyword">as</span> [| ? <span class="id" title="var">A0</span> ? ? <span class="id" title="var">x</span> <span class="id" title="var">x'</span> ? <span class="id" title="var">ys</span> <span class="id" title="var">ys'</span> <span class="id" title="var">R</span> <span class="id" title="var">HA</span> <span class="id" title="var">Hx</span> <span class="id" title="var">Hg'</span>]; <span class="id" title="tactic">subst</span>; [ <span class="id" title="tactic">constructor</span> |].<br/>
 &nbsp;&nbsp;<span class="id" title="var">cbn</span> [<span class="id" title="definition">List.rev</span>] <span class="id" title="tactic">in</span> <span class="id" title="var">HC</span>; <span class="id" title="tactic">rewrite</span> &lt;- <span class="id" title="lemma">List.app_assoc</span> <span class="id" title="tactic">in</span> <span class="id" title="var">HC</span>; <span class="id" title="var">cbn</span> [<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#app"><span class="id" title="definition">List.app</span></a>] <span class="id" title="tactic">in</span> <span class="id" title="var">HC</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.MemberReps.html#sem_ctx_ass_inv"><span class="id" title="lemma">sem_ctx_ass_inv</span></a> (<a class="idref" href="Mctt.Core.Completeness.UnitCases.html#sem_ctx_app_r"><span class="id" title="lemma">sem_ctx_app_r</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HC</span>)) <span class="id" title="keyword">as</span> [<span class="id" title="var">j</span> <span class="id" title="var">HAv</span>].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.MemberReps.html#rel_ctx_wf_ass_inv"><span class="id" title="lemma">rel_ctx_wf_ass_inv</span></a> (<a class="idref" href="Mctt.Core.Completeness.UnitCases.html#rel_ctx_wf_app_r"><span class="id" title="lemma">rel_ctx_wf_app_r</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HC</span>)) <span class="id" title="keyword">as</span> [<span class="id" title="var">j</span> <span class="id" title="var">HAv</span>].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#per_ctx_env_of_typ"><span class="id" title="lemma">per_ctx_env_of_typ</span></a> <span class="id" title="var">HTb</span> <span class="id" title="var">HAv</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">HTb'</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">HP</span> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#PER"><span class="id" title="class">PER</span></a> <span class="id" title="var">RTb</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_env_PER"><span class="id" title="instance">per_env_PER</span></a>; <span class="id" title="tactic">exact</span> <span class="id" title="var">HTb</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">H34</span> : <span class="id" title="var">RTb</span> ρ3 ρ4) <span class="id" title="tactic">by</span> (<span class="id" title="var">etransitivity</span>; [ <span class="id" title="tactic">symmetry</span>; <span class="id" title="tactic">exact</span> <span class="id" title="var">H13</span> | <span class="id" title="var">etransitivity</span>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">H12</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">H24</span> ] ]).<br/>
@@ -270,7 +270,7 @@ The left arguments are related to themselves, over the left base.
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hts'</span> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#tele_ass"><span class="id" title="definition">tele_ass</span></a> <span class="id" title="var">ts</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">inversion</span> <span class="id" title="var">Hts</span>; <span class="id" title="tactic">assumption</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">inversion</span> <span class="id" title="var">Hg</span> <span class="id" title="keyword">as</span> [| ? <span class="id" title="var">A0</span> ? ? <span class="id" title="var">x</span> <span class="id" title="var">x'</span> ? <span class="id" title="var">ys</span> <span class="id" title="var">ys'</span> <span class="id" title="var">R</span> <span class="id" title="var">HA</span> <span class="id" title="var">Hx</span> <span class="id" title="var">Hg'</span>]; <span class="id" title="tactic">subst</span>; [ <span class="id" title="tactic">constructor</span> |].<br/>
 &nbsp;&nbsp;<span class="id" title="var">cbn</span> [<span class="id" title="definition">List.rev</span>] <span class="id" title="tactic">in</span> <span class="id" title="var">HC</span>; <span class="id" title="tactic">rewrite</span> &lt;- <span class="id" title="lemma">List.app_assoc</span> <span class="id" title="tactic">in</span> <span class="id" title="var">HC</span>; <span class="id" title="var">cbn</span> [<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#app"><span class="id" title="definition">List.app</span></a>] <span class="id" title="tactic">in</span> <span class="id" title="var">HC</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.MemberReps.html#sem_ctx_ass_inv"><span class="id" title="lemma">sem_ctx_ass_inv</span></a> (<a class="idref" href="Mctt.Core.Completeness.UnitCases.html#sem_ctx_app_r"><span class="id" title="lemma">sem_ctx_app_r</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HC</span>)) <span class="id" title="keyword">as</span> [<span class="id" title="var">j</span> <span class="id" title="var">HAv</span>].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.MemberReps.html#rel_ctx_wf_ass_inv"><span class="id" title="lemma">rel_ctx_wf_ass_inv</span></a> (<a class="idref" href="Mctt.Core.Completeness.UnitCases.html#rel_ctx_wf_app_r"><span class="id" title="lemma">rel_ctx_wf_app_r</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HC</span>)) <span class="id" title="keyword">as</span> [<span class="id" title="var">j</span> <span class="id" title="var">HAv</span>].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#per_ctx_env_of_typ"><span class="id" title="lemma">per_ctx_env_of_typ</span></a> <span class="id" title="var">HTb</span> <span class="id" title="var">HAv</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">HTb'</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">HP</span> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#PER"><span class="id" title="class">PER</span></a> <span class="id" title="var">RTb</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_env_PER"><span class="id" title="instance">per_env_PER</span></a>; <span class="id" title="tactic">exact</span> <span class="id" title="var">HTb</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">H</span>ρρ : <span class="id" title="var">RTb</span> ρ ρ) <span class="id" title="tactic">by</span> (<span class="id" title="var">etransitivity</span>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">H</span>ρ | <span class="id" title="tactic">symmetry</span>; <span class="id" title="tactic">exact</span> <span class="id" title="var">H</span>ρ ]).<br/>
@@ -308,7 +308,7 @@ Environments related at an extension are arguments related at its
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hts'</span> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#tele_ass"><span class="id" title="definition">tele_ass</span></a> <span class="id" title="var">ts</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">inversion</span> <span class="id" title="var">Hts</span>; <span class="id" title="tactic">assumption</span>).<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">xs</span> <span class="id" title="keyword">as</span> [| <span class="id" title="var">x</span> <span class="id" title="var">xs</span>], <span class="id" title="var">xs'</span> <span class="id" title="keyword">as</span> [| <span class="id" title="var">x'</span> <span class="id" title="var">xs'</span>]; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hl</span>, <span class="id" title="var">Hl'</span>; <span class="id" title="tactic">try</span> <span class="id" title="tactic">discriminate</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">cbn</span> [<span class="id" title="definition">List.rev</span>] <span class="id" title="tactic">in</span> <span class="id" title="var">HC</span>, <span class="id" title="var">HR</span>; <span class="id" title="tactic">rewrite</span> &lt;- <span class="id" title="lemma">List.app_assoc</span> <span class="id" title="tactic">in</span> <span class="id" title="var">HC</span>, <span class="id" title="var">HR</span>; <span class="id" title="var">cbn</span> [<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#app"><span class="id" title="definition">List.app</span></a>] <span class="id" title="tactic">in</span> <span class="id" title="var">HC</span>, <span class="id" title="var">HR</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.MemberReps.html#sem_ctx_ass_inv"><span class="id" title="lemma">sem_ctx_ass_inv</span></a> (<a class="idref" href="Mctt.Core.Completeness.UnitCases.html#sem_ctx_app_r"><span class="id" title="lemma">sem_ctx_app_r</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HC</span>)) <span class="id" title="keyword">as</span> [<span class="id" title="var">j</span> <span class="id" title="var">HAv</span>].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.MemberReps.html#rel_ctx_wf_ass_inv"><span class="id" title="lemma">rel_ctx_wf_ass_inv</span></a> (<a class="idref" href="Mctt.Core.Completeness.UnitCases.html#rel_ctx_wf_app_r"><span class="id" title="lemma">rel_ctx_wf_app_r</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HC</span>)) <span class="id" title="keyword">as</span> [<span class="id" title="var">j</span> <span class="id" title="var">HAv</span>].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#per_ctx_env_of_typ"><span class="id" title="lemma">per_ctx_env_of_typ</span></a> <span class="id" title="var">HTb</span> <span class="id" title="var">HAv</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">HTb'</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">IH</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HTb'</span> <span class="id" title="var">HC</span> <span class="id" title="var">Hts'</span> <span class="id" title="var">HR</span> (ρ <a class="idref" href="Mctt.Core.Semantic.Domain.html#024e7ed689b45f79045ed7176cdfd8d3"><span class="id" title="notation">↦</span></a> <span class="id" title="var">x</span>) (ρ' <a class="idref" href="Mctt.Core.Semantic.Domain.html#024e7ed689b45f79045ed7176cdfd8d3"><span class="id" title="notation">↦</span></a> <span class="id" title="var">x'</span>) <span class="id" title="var">xs</span> <span class="id" title="var">xs'</span> <span class="id" title="keyword">ltac</span>:(<span class="id" title="var">lia</span>) <span class="id" title="keyword">ltac</span>:(<span class="id" title="var">lia</span>) <span class="id" title="var">H</span>ρ) <span class="id" title="keyword">as</span> [[<span class="id" title="var">Hb</span> <span class="id" title="var">Hh</span>] <span class="id" title="var">Hg</span>].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">Hb</span> |].<br/>
@@ -339,7 +339,7 @@ Arguments related at a telescope read back alike.
 </div>
 
 <div class="doc">
-<a id="lab237"></a><h2 class="section">Environments of Arguments</h2>
+<a id="lab225"></a><h2 class="section">Environments of Arguments</h2>
 
 </div>
 <div class="code">
@@ -357,7 +357,7 @@ Arguments related at a telescope read back alike.
 </div>
 
 <div class="doc">
-<a id="lab238"></a><h2 class="section">Universes</h2>
+<a id="lab226"></a><h2 class="section">Universes</h2>
 
 <div class="paragraph"> </div>
 
@@ -387,7 +387,7 @@ Arguments related at a telescope read back alike.
 </div>
 
 <div class="doc">
-<a id="lab239"></a><h2 class="section">Closed Terms</h2>
+<a id="lab227"></a><h2 class="section">Closed Terms</h2>
 
 
 <div class="paragraph"> </div>
@@ -467,7 +467,7 @@ The index of a universe shifted past a context is that of the
 </div>
 
 <div class="doc">
-<a id="lab240"></a><h2 class="section">The Weakenings of Constructor Arguments</h2>
+<a id="lab228"></a><h2 class="section">The Weakenings of Constructor Arguments</h2>
 
 </div>
 <div class="code">
@@ -537,7 +537,7 @@ The index of a universe shifted past a context is that of the
 </div>
 
 <div class="doc">
-<a id="lab241"></a><h2 class="section">Variables of an Environment of Arguments</h2>
+<a id="lab229"></a><h2 class="section">Variables of an Environment of Arguments</h2>
 
 </div>
 <div class="code">
