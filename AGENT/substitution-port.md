@@ -185,14 +185,14 @@ be silently shelved and only bite at `Qed`.
 
 ### Completeness
 
-- `⊨ Γ` is now the **inductive** `sem_ctx`
-  (`Completeness/LogicalRelation/Definitions.v`), with `sem_ctx_per_ctx_env` as
+- `⊨ Γ` is now the **inductive** `rel_ctx_wf`
+  (`Completeness/LogicalRelation/Definitions.v`), with `rel_ctx_wf_per_ctx_env` as
   the bridge to `per_ctx_env`.
-- `rel_exp_under_ctx` and `subtyp_under_ctx` are stated with the substitutions
+- `rel_exp_under_ctx` and `rel_subtyp_under_ctx` are stated with the substitutions
   **universally quantified**; `rel_exp_under_ctx_simple` and
-  `subtyp_under_ctx_simple` are what consume that extra generality.
-- `subtyp_under_ctx` drops the two `rel_typ` self-relations, so
-  `rel_exp_eq_subtyp` needs an extra premise.
+  `rel_subtyp_under_ctx_simple` are what consume that extra generality.
+- `rel_subtyp_under_ctx` drops the two `rel_typ` self-relations, so
+  `rel_exp_under_ctx_subtyp` needs an extra premise.
 - `Γ ⊢ˢ σ : Δ → Γ ⊨ˢ σ : Δ` is **false**, and semantic substitutions
   **do not compose**. Every proof that wants either must go through the syntactic
   side. The extended-context PER is always the canonical one.

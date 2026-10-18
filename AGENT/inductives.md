@@ -141,7 +141,8 @@ end
   rest of its type, is well formed (`shape_rest_wf'` derives it;
   `wf_con_of_lookup` is the rule without it, a `mctt` hint).  The Kripke
   fundamental theorem needs the rest's types valid at the target
-  (`k_con`), and no inversion on a `Π` gives them.
+  (`rel_exp_under_ctx_con_of_emb`, `glu_rel_exp_con_of_emb`), and no
+  inversion on a `Π` gives them.
 * The classification: `cls_sh nu np gs1 d T t` (a shape under `d`
   domains), `cls_rec` files it.  `cls_wkd d np gs1 = wk_pat (repeat false d
   ++ cargs_pat gs1 ++ repeat false np ++ [true])`.  The normal-form path
@@ -229,7 +230,7 @@ step to be proved never to fail at the user's type, beyond
 | values `d_ind`, `d_con`, neutral eliminator; evaluation, readback | `Core/Semantic/Domain.v`, `Evaluation*`, `Readback*` |
 | PER: `ind_rel`, `ind_adm`; canonical relations `ind_nr`, `ind_ar` | `Core/Semantic/PER/Definitions.v`, `IndPER.v`, `IndCanon.v`, `IndElim.v`, `PER/Tele.v` |
 | completeness | `Core/Completeness/IndSem.v`, `IndCases.v`, `ElimCases.v`, `TeleSem.v` |
-| gluing (`glu_univ_elem_core_indty`, `ind_typ_at`, `glu_ind`, `ind_glu_exp_pred`) and soundness | `Core/Soundness/LogicalRelation/*`, `Soundness/IndCases.v`, `IndElimCases.v` |
+| gluing (`glu_univ_elem_core_indty`, `ind_typ_at`, `ind_glu_elem`, `ind_glu_exp_pred`) and soundness | `Core/Soundness/LogicalRelation/*`, `Soundness/IndCases.v`, `IndElimCases.v` |
 | commands: `cc_ind`, `rc_ind`, `rd_uparams`, `ind_qname`, `gs_ind`, `ind_gens`, `gen_body` | `Core/Syntactic/Command.v`, `System/Command.v` |
 | the members' derivation (`ind_gens_typed`) | `System/IndRec.v` |
 
@@ -504,14 +505,15 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
 5. **Gluing redesigns.** The components of the type (non-uniform parameter
    types and argument types) are glued inside the type predicate
    (`ind_glu_comps`), the sort is required `⊆` the gluing's universe, the
-   recursive facts of `glu_ind_con` are closed under related parameter
+   recursive facts of `ind_glu_elem_con` are closed under related parameter
    values (PER-closed) and under weakening and equal instances of the
    parameters (Kripke wrappers), the earlier link between the type
    predicate and the element predicate is removed, and
-   `ind_glu_exp_pred` asks `glu_ind` at every equal instance of the
+   `ind_glu_exp_pred` asks `ind_glu_elem` at every equal instance of the
    parameters (eq-closed).
-6. The eliminator's case along an embedding (`k_elim`, in
-   `Completeness/ModuleCases.v` and `Soundness/ModuleCases.v`) takes the
+6. The eliminator's case along an embedding
+   (`valid_exp_under_ctx_elim_of_emb` in `Completeness/ElimCases.v`,
+   `glu_rel_exp_elim_of_emb` in `Soundness/IndElimCases.v`) takes the
    `⊢ˣ` premises of `wf_elim` too.
 7. `ati_elim` has the premise `length (nfs_to_exps Rs) = ind_np D`; the
    checker decides it.

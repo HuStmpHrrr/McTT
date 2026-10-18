@@ -38,11 +38,11 @@ Worth stating first, so the divergences below read as the exceptions they are.
   the same order, and the same reading (commutation / relatedness /
   commutation). Paper Lemma 2.5 (Pairwise) and Lemma 2.6 (Merge) are
   `rel_chain_pairwise` and `rel_chain_merge` in `Semantic/PER/Chain.v`.
-- **Semantic subtyping.** Report Def 6.32 is `subtyp_under_ctx`, including its
+- **Semantic subtyping.** Report Def 6.32 is `rel_subtyp_under_ctx`, including its
   asymmetry: two one-sided commutations in `per_univ i` plus `Sub a <: a' at i`
   between the inner two values, not a chain.
 - **Semantic context well-formedness.** Report Def 6.33 / paper Def 5.7 is the
-  inductive `sem_ctx`, carrying both the context-PER witness and
+  inductive `rel_ctx_wf`, carrying both the context-PER witness and
   `Γ ⊨ A ≈ A : Type@i` in the extension rule — including the third premise the
   paper flags as having no counterpart in the explicit-substitution McTT.
 - **Kripke gluing.** Report Def 7.4's `U*_i ↘ P ↘ El`, the concrete predicates
@@ -344,7 +344,7 @@ localization to extract.
 **(c) But the four-value packaging is already close to minimal, and it is not
 the expensive part.** Two observations:
 
-- `subtyp_under_ctx` shows the pattern decomposes: with no symmetry available
+- `rel_subtyp_under_ctx` shows the pattern decomposes: with no symmetry available
   it is written as two one-sided commutations plus one relation, and works
   fine. The chain is a *convenience* for the symmetric case, not the content.
   The content is one commutation obligation per side, and equality has two

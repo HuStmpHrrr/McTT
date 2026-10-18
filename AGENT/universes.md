@@ -128,7 +128,7 @@ runs in five steps:
 In the model, the level's value has a realiser `n` at each pair of
 environments, and the case is the old one at index `us n`:
 
-- completeness: `rel_exp_pi_cong_small_tm`;
+- completeness: `rel_exp_under_ctx_pi_cong_small`;
 - soundness: `glu_rel_exp_pi_small_tm`.
 
 The codomain is at the weakened level. Its value at an extended environment

@@ -3,10 +3,10 @@ From Mctt Require Import Core.Completeness Core.Soundness Core.Semantic.Conseque
 From Mctt Require Import Reference.Refinement Extraction.Simulation Extraction.GlobalCheck.
 From Mctt Require Import Core.Syntactic.Presup Core.Syntactic.System.GlobalPresup Core.Syntactic.System.IndRec Core.IndCommand.
 Print Assumptions Mctt.Core.Completeness.completeness.
-Print Assumptions Mctt.Core.Completeness.KripkeCases.completeness_fundamental.
+Print Assumptions Mctt.Core.Completeness.FundamentalTheorem.completeness_fundamental.
 Print Assumptions Mctt.Core.Soundness.soundness.
 Print Assumptions Mctt.Core.Soundness.soundness'.
-Print Assumptions Mctt.Core.Soundness.KripkeCases.soundness_fundamental.
+Print Assumptions Mctt.Core.Soundness.FundamentalTheorem.soundness_fundamental.
 Print Assumptions Mctt.Core.Semantic.Consequences.consistency.
 Print Assumptions Mctt.Core.Semantic.Consequences.consistency_gctx.
 Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_typ_gctx.

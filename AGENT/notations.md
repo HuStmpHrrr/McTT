@@ -45,14 +45,21 @@ entry), `Ψ ⍮ Δ ⊢ᵍᵐ Φ` (a module), `Ψ ⍮ Δ ⊢ᵍᵘ U` (a unit; a 
 The semantic judgments carry it the same way: `⊨ Θ ⍮ Ξ ⍮ Γ`,
 `Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M' : A`, `Θ ⍮ Ξ ⍮ Γ ⊨ M : A`, `Θ ⍮ Ξ ⍮ Γ ⊨ A ⊆ A'`,
 `Θ ⍮ Ξ ⍮ Γ ⊨ᵤ U`, `Θ ⍮ Ξ ⍮ Γ ⊨ˣ Ψ ≈ Ψ'`, `Θ ⍮ Ξ ⍮ Γ ⊨ᵘ U ≈ U'` and
-`Θ ⍮ Ξ ⍮ Γ ⊨ᵐ H ≈ H'` (`Core/Completeness/Judgments.v`), and the gluing
+`Θ ⍮ Ξ ⍮ Γ ⊨ᵐ H ≈ H'` (`sem_ctx`, `sem_exp_eq`, …, `sem_modexp_eq`, defined
+in `Core/Completeness/LogicalRelation/Definitions.v`), and the gluing
 judgments `⊩ Θ ⍮ Ξ ⍮ Γ`, `Θ ⍮ Ξ ⍮ Γ ⊩ M : A` and `Θ ⍮ Ξ ⍮ Γ ⊩ᵤ U`
-(`Core/Soundness/Judgments.v`).  Without the global context, `Γ ⊨ …` and
+(`glu_ctx`, `glu_exp`, `glu_is_univ`, in
+`Core/Soundness/LogicalRelation/Definitions.v`); the gluing model has no
+judgment relating two terms, and soundness states of the other judgments
+that their context glues.  Without the global context, `Γ ⊨ …` and
 `Γ ⊩ …` are the relations at the global context of the section, their
-building blocks.  `⊨ Γ` and `⊩ Γ` share their prefix with `⊨ Θ ⍮ …` and
-`⊩ Θ ⍮ …`, which parse only because both put their first argument at the
-default ("next") level: declaring one of them `at level 69` explicitly
-breaks the other without a warning.
+building blocks (`rel_exp_under_ctx`, `rel_ctx_wf`, `glu_rel_exp`, …).
+`⊨ Γ` and `⊩ Γ` share their prefix with `⊨ Θ ⍮ …` and `⊩ Θ ⍮ …`, and
+`⊢ Γ` (`Core/Semantic/Fixed.v`) with `⊢ Θ ⍮ Ξ ⍮ Γ`; they parse together only because
+each pair puts its first argument at the same level, "next" level:
+declaring one of them `at level 69` explicitly breaks the other (without
+a warning when both say `at level 69`, with
+`notation-incompatible-prefix` when only one does).
 
 Every suffix of a turnstile is a superscript: `⊢ˢ`, `⊢ʷ`, `⊢ᵏ` (Kripke
 weakenings), `⊢ᵍ`, `⊢ᵉ`, `⊢ᵍᵘ`, `⊢ᵍᵐ`, and semantically `⊨ˢ`, `⊨ʷ`, beside
