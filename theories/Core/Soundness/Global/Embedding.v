@@ -22,8 +22,10 @@ From Mctt.Core.Completeness.Global Require Import Embedding.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Soundness Require Import LevelCases.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases UnitCases
-  SubtypingCases UniverseCases FunctionCases LetCases TrueFalseCases IndCases ModuleCases.
-From Mctt.Core.Completeness Require IndCases.
+  SubtypingCases UniverseCases FunctionCases LetCases TrueFalseCases.
+From Mctt.Core.Soundness.Inductives Require Import Con.
+From Mctt.Core.Soundness Require Import IndCases ModuleCases.
+From Mctt.Core.Completeness.Inductives Require Con.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 

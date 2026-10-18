@@ -26,9 +26,12 @@ From Mctt.Core.Completeness Require Import
   SubtypingCases TrueFalseCases UniverseCases VariableCases LogicalRelation UnitCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
 From Mctt.Core.Completeness.Modules Require Import MemberTypes.
-From Mctt.Core.Completeness Require Import IndCases.
+From Mctt.Core.Completeness.Inductives Require Import Con.
 From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
-From Mctt.Core.Completeness Require Import ElimCases IotaCases.
+From Mctt.Core.Completeness.Inductives Require Import Elim.
+From Mctt.Core.Completeness Require Import IndCases ElimCases.
+From Mctt.Core.Completeness.Inductives Require Import Iota.
+From Mctt.Core.Completeness Require Import IotaCases.
 From Mctt.Core.Completeness.Modules Require Import ModuleVal Values UnitSubst ModexpRel.
 From Mctt.Core.Completeness.Global Require Import Args.
 From Mctt.Core.Completeness.Inductives Require Import Decl.

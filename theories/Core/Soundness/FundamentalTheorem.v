@@ -29,10 +29,14 @@ From Mctt.Core.Completeness.Global Require Import Embedding.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Soundness Require Import LevelCases.
 From Mctt.Core.Soundness Require Import ContextCases VariableCases UnitCases
-  SubtypingCases UniverseCases FunctionCases LetCases TrueFalseCases IndCases ModuleCases.
+  SubtypingCases UniverseCases FunctionCases LetCases TrueFalseCases.
+From Mctt.Core.Soundness.Inductives Require Import Con.
+From Mctt.Core.Soundness Require Import IndCases ModuleCases.
 From Mctt.Core.Soundness.Global Require Import Embedding.
-From Mctt.Core.Completeness Require IndCases.
+From Mctt.Core.Completeness.Inductives Require Con.
+Require Import Mctt.Core.Soundness.Inductives.Elim.
 Require Import Mctt.Core.Soundness.ElimCases.
+Require Import Mctt.Core.Soundness.IotaCases.
 From Mctt.Core.Soundness Require Export LogicalRelation.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
@@ -162,24 +166,24 @@ Proof.
       exact (wk_preserves_exp _ _ _ _ _ _ _ Hn Hw). }
     exact (Ke _ _ _ _ _ Hn' _ _ Hμ).
   - intros k A HA0.
-    destruct (Completeness.IndCases.nparams_nth_split _ _ _ HA0) as [Δ1 HΔ1].
+    destruct (Completeness.Inductives.Con.nparams_nth_split _ _ _ HA0) as [Δ1 HΔ1].
     assert (Hk : k < ind_nn D)
       by (rewrite <- (length_nparams D), <- List.length_rev; apply List.nth_error_Some; congruence).
-    pose proof (HN _ _ _ HΔ1) as HT; rewrite Completeness.IndCases.length_nparams_prefix in HT by lia.
+    pose proof (HN _ _ _ HΔ1) as HT; rewrite Completeness.Inductives.Con.length_nparams_prefix in HT by lia.
     exact (Ke _ _ _ _ _ HT _ _ Hμ).
   - intros * Hcon HA0.
-    destruct (Completeness.IndCases.nonrec_nth_split _ _ _ HA0) as (gs1 & gs2 & Heq & Hk).
+    destruct (Completeness.Inductives.Con.nonrec_nth_split _ _ _ HA0) as (gs1 & gs2 & Heq & Hk).
     pose proof (HA _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq) as HT.
     assert (Hls : List.length (cargs_strat gs1) = k)
-      by (rewrite Completeness.IndCases.cargs_strat_nonrec, List.length_rev, List.length_map; exact Hk).
-    rewrite Hls, (Completeness.IndCases.nonrec_args_prefix_cargs_strat gs1 (ca_arg A :: gs2)), Hk, <- Heq in HT.
+      by (rewrite Completeness.Inductives.Con.cargs_strat_nonrec, List.length_rev, List.length_map; exact Hk).
+    rewrite Hls, (Completeness.Inductives.Con.nonrec_args_prefix_cargs_strat gs1 (ca_arg A :: gs2)), Hk, <- Heq in HT.
     exact (Ke _ _ _ _ _ HT _ _ Hμ).
   - intros * Hcon Heq HPk HT.
     assert (Hls : List.length (cargs_nonrec gs1) = List.length (cargs_strat gs1))
-      by (rewrite Completeness.IndCases.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
+      by (rewrite Completeness.Inductives.Con.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
     rewrite Hls in HT.
     pose proof (HP _ _ _ _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq HPk HT) as H.
-    rewrite (Completeness.IndCases.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
+    rewrite (Completeness.Inductives.Con.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
     exact (Ke _ _ _ _ _ H _ _ Hμ).
   - intros * Hcon Heq HB.
     destruct (Hsh _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq) as [_ Hs2].
@@ -188,12 +192,12 @@ Proof.
     assert (Hk : List.length (List.firstn k (ptyp_doms t)) = k)
       by (rewrite List.length_firstn; assert (k < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia).
     assert (Hls : List.length (cargs_strat gs1) = List.length (cargs_nonrec gs1))
-      by (rewrite Completeness.IndCases.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
-    rewrite Hk, Hls, (Completeness.IndCases.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in HT.
+      by (rewrite Completeness.Inductives.Con.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
+    rewrite Hk, Hls, (Completeness.Inductives.Con.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in HT.
     exact (Ke _ _ _ _ _ HT _ _ Hμ).
   - intros * Hcon Heq Hk.
     pose proof (doms_prefix_wf _ _ _ _ _ Hdt (cons_lookup_in _ _ _ Hcon) _ _ _ Heq _ Hk) as H.
-    rewrite (Completeness.IndCases.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
+    rewrite (Completeness.Inductives.Con.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
     exact (Kc _ _ _ H _ _ Hμ).
 Qed.
 

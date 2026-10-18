@@ -45,6 +45,9 @@
 ./Core/Completeness/Global/Embedding.v
 ./Core/Completeness/Inductives/Decl.v
 ./Core/Completeness/LogicalRelation/Telescope.v
+./Core/Completeness/Inductives/Con.v
+./Core/Completeness/Inductives/Elim.v
+./Core/Completeness/Inductives/Iota.v
 ./Core/Completeness/IndCases.v
 ./Core/Completeness/ElimCases.v
 ./Core/Completeness/IotaCases.v
@@ -88,8 +91,11 @@
 ./Core/NbEWeakening.v
 ./Core/Soundness/ContextCases.v
 ./Core/Soundness/FunctionCases.v
+./Core/Soundness/Inductives/Con.v
+./Core/Soundness/Inductives/Elim.v
 ./Core/Soundness/IndCases.v
 ./Core/Soundness/ElimCases.v
+./Core/Soundness/IotaCases.v
 ./Core/Soundness/FundamentalTheorem.v
 ./Core/Soundness/LetCases.v
 ./Core/Soundness/LevelCases.v

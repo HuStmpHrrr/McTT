@@ -8,7 +8,7 @@ From Mctt.Core.Syntactic Require Import CoreInversions.
 From Mctt.Core.Syntactic.Levels Require Import LevelEq.
 From Mctt.Core.Semantic Require Import Realizability Levels.
 From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
-From Mctt.Core.Soundness Require IndCases ElimCases.
+From Mctt.Core.Soundness.Inductives Require Con Elim.
 From Mctt.Core.Syntactic.Inductives Require Import IndCong.
 Require Import Mctt.Core.Syntactic.Command.
 From Mctt.Core.Syntactic Require Import Builtin.
@@ -86,12 +86,12 @@ Proof.
   destruct (soundness_fundamental_ctx _ HΓ) as [Sb HSb].
   pose proof (initial_env_glu_rel_exp Hinit HSb) as Hσ.
   pose proof (completeness_fundamental_ctx _ HΓ) as HΓs; destruct (rel_ctx_wf_per_ctx_env HΓs) as [RΓ HRΓ].
-  pose proof (Soundness.ElimCases.params_glu_args _ _ _ _ _ _ _ _ _ Hass Hs0 (completeness_fundamental_ctx _ HΔ) HΓs HRΓ HSb Hσ
+  pose proof (Soundness.Inductives.Elim.params_glu_args _ _ _ _ _ _ _ _ _ Hass Hs0 (completeness_fundamental_ctx _ HΔ) HΓs HRΓ HSb Hσ
                 HMl
                 ltac:(intros; eapply completeness_fundamental_exp; eauto)
                 ltac:(intros; eapply soundness_fundamental_exp; eauto) Ems) as Hg.
   rewrite (List.map_ext (fun M => M[Id]) (fun M => M) exp_sub_id), List.map_id in Hg.
-  destruct (IndCases.glu_args_params_top _ _ _ _ Hass Hs0 Hg) as [_ _ Htop].
+  destruct (Soundness.Inductives.Con.glu_args_params_top _ _ _ _ Hass Hs0 Hg) as [_ _ Htop].
   pose proof (Htop Γ wk_id _ ltac:(mauto 3) ltac:(eassumption)) as H.
   rewrite map_wk_id in H; exact H.
 Qed.
@@ -109,7 +109,7 @@ Proof.
   inversion HRa; subst.
   destruct (soundness_fundamental_ctx _ HΓ) as [Sb HSb].
   pose proof (initial_env_glu_rel_exp Hinit HSb) as Hσ.
-  destruct (IndCases.glu_rel_typ_at _ _ _ _ _ _ _ HSb (soundness_fundamental_exp _ _ _ HT) Hσ) as (_ & a' & Ea' & Hpa & HPa).
+  destruct (Soundness.Inductives.Con.glu_rel_typ_at _ _ _ _ _ _ _ HSb (soundness_fundamental_exp _ _ _ HT) Hσ) as (_ & a' & Ea' & Hpa & HPa).
   assert (a' = d_ind p as') as -> by (eapply functional_eval_exp; eassumption).
   destruct (per_univ_glu_univ_elem _ _ Hpa) as (P & El & Hg).
   pose proof (HPa P El Hg) as HP; rewrite exp_sub_id in HP.
