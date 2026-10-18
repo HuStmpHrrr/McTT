@@ -42,6 +42,18 @@ entry), `Ψ ⍮ Δ ⊢ᵍᵐ Φ` (a module), `Ψ ⍮ Δ ⊢ᵍᵘ U` (a unit; a 
 `⊢ᵍᵐ`, not a judgment).  The filed units alone are well formed when
 `⊢ᵍ Θ ⍮ nil` (no frame open).  `Γ ∋ #x : A` takes no `Ψ`.
 
+The semantic judgments carry it the same way: `⊨ Θ ⍮ Ξ ⍮ Γ`,
+`Θ ⍮ Ξ ⍮ Γ ⊨ M ≈ M' : A`, `Θ ⍮ Ξ ⍮ Γ ⊨ M : A`, `Θ ⍮ Ξ ⍮ Γ ⊨ A ⊆ A'`,
+`Θ ⍮ Ξ ⍮ Γ ⊨ᵤ U`, `Θ ⍮ Ξ ⍮ Γ ⊨ˣ Ψ ≈ Ψ'`, `Θ ⍮ Ξ ⍮ Γ ⊨ᵘ U ≈ U'` and
+`Θ ⍮ Ξ ⍮ Γ ⊨ᵐ H ≈ H'` (`Core/Completeness/Judgments.v`), and the gluing
+judgments `⊩ Θ ⍮ Ξ ⍮ Γ`, `Θ ⍮ Ξ ⍮ Γ ⊩ M : A` and `Θ ⍮ Ξ ⍮ Γ ⊩ᵤ U`
+(`Core/Soundness/Judgments.v`).  Without the global context, `Γ ⊨ …` and
+`Γ ⊩ …` are the relations at the global context of the section, their
+building blocks.  `⊨ Γ` and `⊩ Γ` share their prefix with `⊨ Θ ⍮ …` and
+`⊩ Θ ⍮ …`, which parse only because both put their first argument at the
+default ("next") level: declaring one of them `at level 69` explicitly
+breaks the other without a warning.
+
 Every suffix of a turnstile is a superscript: `⊢ˢ`, `⊢ʷ`, `⊢ᵏ` (Kripke
 weakenings), `⊢ᵍ`, `⊢ᵉ`, `⊢ᵍᵘ`, `⊢ᵍᵐ`, and semantically `⊨ˢ`, `⊨ʷ`, beside
 `⊢ᵐ`, `⊢ᵘ`, `⊢ˣ`, `⊢ᵤ`, `⊨ᵐ`, `⊨ᵘ`, `⊨ˣ`.  The global unit and body carry `ᵍ`

@@ -95,6 +95,22 @@ These are the ways an edit to a tactic goes wrong silently.
   the mutual recursive-call hypotheses and `fixproto` bindings by matching
   their spelled-out types. Change `type_check`/`type_infer`'s signature and it
   silently stops matching, and the obligations start failing confusingly.
+- **Records name what `destruct` introduces.** A predicate with three or more
+  conjuncts, or two witnesses and a conjunction, is a `Record … : Prop`
+  (`mctt-rules.md`), and taking one apart without an intro pattern names the
+  hypotheses after its fields, not `H`, `H0`, …. A record that replaced a
+  single-constructor inductive keeps the constructor's binder names for its
+  witness fields (`mσ m m' m'σ'` of `rel_exp`, `ρ a m` of `nbe`): a Prop
+  record defines no projection for an informative field, so the name costs
+  nothing and the old automatic names survive. Its proof fields have real
+  names; a shared tactic that took the inductive apart anonymously uses
+  `destruct_anon` (`LibTactics.v`), which names them as `destruct` names
+  anonymous premises. Build a record with `exists a b` (bindings, no commas),
+  `econstructor`, or `apply mk_… with (field := …)`: `exists a, b` fails on
+  it. A record cannot have the arity `<∙>` needs, so a gluing predicate that
+  is one has a `…_pred` definition beside it, and the automation reaches the
+  pair through a pattern-less `Hint Extern` (`Soundness/LogicalRelation/Definitions.v`):
+  a pattern headed by a definition never fires.
 
 ## 4. Cost discipline
 
