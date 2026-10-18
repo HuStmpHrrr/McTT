@@ -3,7 +3,8 @@ From Stdlib Require Import Lia List PeanoNat String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Members Inductives.
+From Mctt.Core.Syntactic Require Import Members.
+From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Semantic Require Import Evaluation.
 From Mctt.Extraction Require Import FastEval Kinds.
 From Mctt.Extraction Require Export Lookup.

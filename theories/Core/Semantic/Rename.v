@@ -32,7 +32,8 @@ From Stdlib Require Import Arith Lia List PeanoNat String.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import NbE Avoid.
-From Mctt.Core.Syntactic Require Import Fresh Members NfRename Inductives.
+From Mctt.Core.Syntactic Require Import Fresh Members NfRename.
+From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 Import Domain_Notations Syntax_Notations Wk_Notations.
 
 (** ** The Renaming *)

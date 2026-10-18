@@ -36,7 +36,7 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic.System Require Export Tactics.
-From Mctt.Core.Syntactic.System Require Import LookupSound.
+From Mctt.Core.Syntactic.System.Global Require Import LookupSound.
 Import Syntax_Notations Wk_Notations.
 
 (** ** The Two Sides of a Term Equation *)
@@ -73,7 +73,7 @@ Proof.
   1: mauto 4.
 
   (** The eliminator of an inductive type, congruence and [ι]: each side
-      by the lemmas of [IndTyping].  The positional branch premise of the
+      by the lemmas of [System/Inductives/Typing.v].  The positional branch premise of the
       congruence gives the branches of either side, one component of its
       induction hypothesis each. *)
   all: try solve [ eapply wf_iota_lhs; eassumption | eapply wf_iota_rhs; eassumption ].

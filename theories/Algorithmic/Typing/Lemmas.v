@@ -5,10 +5,12 @@ From Mctt.Algorithmic.Subtyping Require Export Lemmas.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import Consequences.Rules.
 From Mctt.Core.Semantic Require Import Consequences.
-From Mctt.Core.Syntactic Require Import CoreInversions Corollaries Fresh LevelEq IndCong IndConv.
-From Mctt.Core.Syntactic Require Levels.
+From Mctt.Core.Syntactic Require Import CoreInversions Corollaries Fresh.
+From Mctt.Core.Syntactic.Levels Require Import LevelEq.
+From Mctt.Core.Syntactic.Inductives Require Import IndCong IndConv.
+From Mctt.Core.Syntactic.Levels Require Levels.
 From Mctt.Algorithmic Require Import Strengthening.
-From Mctt.Core.Syntactic.System Require Import GlobalModules GlobalPaths DescTyping LookupSound MemberWf.
+From Mctt.Core.Syntactic.System.Global Require Import Modules Paths DescTyping LookupSound MemberWf.
 From Mctt.Core.Semantic Require Import MemberWf Avoid.
 Import Domain_Notations Fixed_Notations Wk_Notations.
 

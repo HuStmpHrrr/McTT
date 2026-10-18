@@ -19,7 +19,9 @@ From Stdlib Require Import Lia Classes.RelationClasses Setoid Morphisms.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic.System Require Export Scoping MemberLemmas IndSyntax.
+From Mctt.Core.Syntactic.System Require Export Scoping.
+From Mctt.Core.Syntactic.System.Global Require Export MemberLemmas.
+From Mctt.Core.Syntactic.System.Inductives Require Export Syntax.
 Import Syntax_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 

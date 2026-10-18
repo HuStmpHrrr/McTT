@@ -4,7 +4,8 @@ From Mctt.Core.Semantic Require Import Evaluation.
 From Mctt.Core.Semantic Require Export Domain.
 Import Domain_Notations.
 #[local] Open Scope list_scope.
-From Mctt.Core.Syntactic Require Import Members Inductives.
+From Mctt.Core.Syntactic Require Import Members.
+From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 
 Reserved Notation "'Rnf' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
 Reserved Notation "'Rne' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).

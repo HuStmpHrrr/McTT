@@ -13,7 +13,7 @@ From Stdlib Require Import Lia List PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
-From Mctt.Core.Syntactic.System Require Import MemberWf MemberLemmas DescTyping LookupSound GlobalPresup.
+From Mctt.Core.Syntactic.System.Global Require Import MemberWf MemberLemmas DescTyping LookupSound Presup.
 From Mctt.Core.Semantic Require Import Fixed.
 Import Syntax_Notations.
 

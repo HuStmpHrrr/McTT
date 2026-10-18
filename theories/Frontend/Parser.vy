@@ -2,7 +2,7 @@
 
 From Stdlib Require Import List Arith.PeanoNat String.
 
-From Mctt Require Import Syntax.
+From Mctt.Core.Syntactic Require Import Syntax.
 
 Parameter loc : Type.
 

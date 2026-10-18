@@ -18,7 +18,7 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export SubEq.
-From Mctt.Core.Syntactic.System Require Import MemberWf.
+From Mctt.Core.Syntactic.System.Global Require Import MemberWf.
 Import Syntax_Notations Wk_Notations.
 
 Lemma wf_typ_inversion : forall {Θ Ξ Γ i A},

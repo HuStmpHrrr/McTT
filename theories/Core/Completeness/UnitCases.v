@@ -5,7 +5,7 @@
     file builds such PERs, the semantic substitutions into slots, the
     symmetry and transitivity of the module judgment, the extensions of a
     context, and the module [let]s.  The closures of related units are
-    related in [UnitBody]. *)
+    related in [Modules/Body.v]. *)
 
 From Stdlib Require Import Lia List Morphisms_Relations PeanoNat RelationClasses.
 Import ListNotations.
@@ -13,7 +13,9 @@ Import ListNotations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution Members.
-From Mctt.Core.Completeness Require Import LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases.
+From Mctt.Core.Completeness Require Import LogicalRelation ContextCases UniverseCases.
+From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
+From Mctt.Core.Completeness Require Import LetCases.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.

@@ -4,7 +4,8 @@ From Stdlib Require Import List PeanoNat String.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Readback Evaluation.
-From Mctt.Core.Syntactic Require Import Members Inductives.
+From Mctt.Core.Syntactic Require Import Members.
+From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Reference Require Import Evaluation.
 From Mctt.Extraction Require Import Readback.
 Import Domain_Notations.

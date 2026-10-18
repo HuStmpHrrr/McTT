@@ -1,7 +1,7 @@
 From Stdlib Require Import Lia List Morphisms Relation_Definitions RelationClasses Setoid String Wf_nat.
 
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Export Ordinals.
+From Mctt.Core.Syntactic.Levels Require Export Ordinals.
 
 (** An item of an open: [(Some n, d, pv)] declares [d] as the member [n] of
     the opened module, [(None, d, pv)] declares [d] as the opened module
@@ -1136,7 +1136,7 @@ End Ctx_Notations.
     The universes of the model form two tiers:
 
     - the small tier [us o], indexed by an ordinal [o] below ω² (see
-      [Core.Syntactic.Ordinals]), whose universes are the small universes
+      [Core.Syntactic.Levels.Ordinals]), whose universes are the small universes
       [𝕌@l] whose levels realise an ordinal below [o];
     - the large tier [ul n] (the syntactic [Typeω@n], read as [Typeω²+n]),
       whose universes are every small universe and the large ones [𝕌ω@m] for
@@ -1284,7 +1284,7 @@ Inductive nf : Set :=
 (** The type [Level@n] *)
 | nf_level : nat -> nf
 (** A canonical level [max (c, k₁ + a₁, …)]: the atoms are strictly sorted by
-    their neutral and their sort (see [Core.Syntactic.Levels]) with no
+    their neutral and their sort (see [Core.Syntactic.Levels.Levels]) with no
     repetition, no atom is of a sort below the constant's tier (the constant
     absorbs it), and the constant [c] is [0] unless it exceeds every
     offset.  [nf_lvl_of] builds
@@ -1400,7 +1400,7 @@ Proof. induction Ms; intros; cbn; congruence. Qed.
 (** * Canonical Levels
 
     A canonical level is its constant and its atoms.  The operations on
-    canonical levels, and their order, are [Core.Syntactic.Levels]; the type
+    canonical levels, and their order, are [Core.Syntactic.Levels.Levels]; the type
     is here because the universe normal forms below are indexed by it. *)
 Definition lvl : Set := (o2 * lvl_atoms)%type.
 
@@ -1423,7 +1423,7 @@ Proof. intros ? ? H; apply nf_lvl_of_inj in H as ->; reflexivity. Qed.
     small universe at a canonical level, or a large one.  It is not the
     semantic index [uidx]: a small universe's semantic index is the realiser
     of its level, an ordinal below ω², while the checker compares the canonical
-    levels themselves (see [Core.Syntactic.Levels]: [unf_le], [unf_max]). *)
+    levels themselves (see [Core.Syntactic.Levels.Levels]: [unf_le], [unf_max]). *)
 Inductive unf : Set :=
 (** A small universe at a canonical level *)
 | uns : lvl -> unf

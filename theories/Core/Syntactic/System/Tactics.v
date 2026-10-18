@@ -13,7 +13,8 @@
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic.System Require Export Definitions Lemmas IndTyping.
+From Mctt.Core.Syntactic.System Require Export Definitions Lemmas.
+From Mctt.Core.Syntactic.System.Inductives Require Export Typing.
 Import Syntax_Notations Wk_Notations.
 
 (** [ctx_decomp] on a single context well-formedness hypothesis.  The type of

@@ -3,7 +3,8 @@ From Stdlib Require Import List ListDec String PeanoNat Bool.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
-From Mctt.Core.Syntactic.System Require Import GlobalPresup Command.
+From Mctt.Core.Syntactic.System.Global Require Import Presup.
+From Mctt.Core.Syntactic.System Require Import Command.
 From Mctt.Core Require Import Soundness.
 From Mctt.Core.Semantic Require Import GlobalExt.
 From Mctt.Extraction Require Import Lookup PseudoMonadic NbE TypeCheckBase IndCheck GlobalCheck.

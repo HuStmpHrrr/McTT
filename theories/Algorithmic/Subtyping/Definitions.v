@@ -25,7 +25,7 @@ Inductive alg_subtyping_nf : nf -> nf -> Prop :=
     i <= j ->
     ⊢anf Typeωⁿ@i ⊆ Typeωⁿ@j
 (** A small universe below one at a larger level: the decidable order on
-    canonical levels ([Core.Syntactic.Levels.lvl_le]), which is the order on
+    canonical levels ([Core.Syntactic.Levels.Levels.lvl_le]), which is the order on
     every assignment to the atoms, never the order on realisers. *)
 | asnf_suniv : forall c xs d ys,
     lvl_le (c, xs) (d, ys) ->

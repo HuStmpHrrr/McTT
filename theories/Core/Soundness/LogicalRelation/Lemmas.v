@@ -3,9 +3,12 @@ From Stdlib Require Import Lia List PeanoNat Equivalence Morphisms Morphisms_Pro
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import ContextCases FundamentalTheorem UniverseCases UnitCases.
-From Mctt.Core.Semantic Require Import Realizability IndCanon.
-From Mctt.Core.Soundness Require Export Realizability.
-From Mctt.Core.Syntactic Require Import LevelEq Substitution IndCong.
+From Mctt.Core.Semantic Require Import Realizability.
+From Mctt.Core.Semantic.Inductives Require Import IndCanon.
+From Mctt.Core.Soundness.LogicalRelation Require Export Realizability.
+From Mctt.Core.Syntactic.Levels Require Import LevelEq.
+From Mctt.Core.Syntactic Require Import Substitution.
+From Mctt.Core.Syntactic.Inductives Require Import IndCong.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Section Fixed_GCtx.

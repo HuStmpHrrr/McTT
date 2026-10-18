@@ -4,19 +4,28 @@
     types are: these are the judgments of its typing, read in the PER model.
     From them, the inductive type at related parameters is a type of the
     universe its sort denotes ([ind_relate]), with the canonical relations of
-    [Core.Semantic.IndPER]; the type former and the constructors are then
+    [Core.Semantic.Inductives.IndPER]; the type former and the constructors are then
     elements of their [Π]-types. *)
 
 From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasses.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Substitution Members Inductives.
-From Mctt.Core.Syntactic.System Require Import Definitions Scoping IndSyntax GlobalPresup.
-From Mctt.Core.Completeness Require Import
-  LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases UnitCases InstanceCases GlobalArgs MemberReps
-  IndSem.
-From Mctt.Core.Semantic Require Import Realizability IndPER Evaluation.Modules.
+From Mctt.Core.Syntactic Require Import Substitution Members.
+From Mctt.Core.Syntactic.Inductives Require Import Inductives.
+From Mctt.Core.Syntactic.System Require Import Definitions Scoping.
+From Mctt.Core.Syntactic.System.Inductives Require Import Syntax.
+From Mctt.Core.Syntactic.System.Global Require Import Presup.
+From Mctt.Core.Completeness Require Import LogicalRelation ContextCases UniverseCases.
+From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
+From Mctt.Core.Completeness Require Import LetCases UnitCases.
+From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
+From Mctt.Core.Completeness.Global Require Import Args.
+From Mctt.Core.Completeness.Modules Require Import MemberTypes.
+From Mctt.Core.Completeness.Inductives Require Import Decl.
+From Mctt.Core.Semantic Require Import Realizability.
+From Mctt.Core.Semantic.Inductives Require Import IndPER.
+From Mctt.Core.Semantic Require Import Evaluation.Modules.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 

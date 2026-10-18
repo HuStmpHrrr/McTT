@@ -31,7 +31,8 @@ From Stdlib Require Import List Relations.
 Import ListNotations.
 
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Members Inductives.
+From Mctt.Core.Syntactic Require Import Members.
+From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Syntactic.System Require Import Scoping.
 From Mctt.Core.Semantic Require Export PER.
 Import Domain_Notations Fixed_Notations.

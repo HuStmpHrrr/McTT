@@ -6,19 +6,20 @@
     operation on the canonical forms of its arguments
     ([Core.Semantic.Levels]).  So each case is: read the atoms of the arguments,
     and then rewrite the syntax by the level equations until it is the canonical
-    form — which is [Core.Syntactic.LevelEq]. *)
+    form — which is [Core.Syntactic.Levels.LevelEq]. *)
 
 From Stdlib Require Import PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem LevelCases.
 From Mctt.Core.Semantic Require Import Levels Realizability.
-From Mctt.Core.Syntactic Require Import LevelEq Substitution.
+From Mctt.Core.Syntactic.Levels Require Import LevelEq.
+From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Soundness Require Import
   ContextCases
   LogicalRelation
   SubtypingCases
-  TermStructureCases
+  VariableCases
   UniverseCases.
 Import Domain_Notations Wk_Notations.
 

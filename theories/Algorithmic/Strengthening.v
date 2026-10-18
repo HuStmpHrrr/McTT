@@ -20,11 +20,17 @@ From Stdlib Require Import Arith Lia List PeanoNat.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem SubstitutionCases UniverseCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem.
+From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
+From Mctt.Core.Completeness Require Import UniverseCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
 From Mctt.Core.Semantic Require Import Consequences Realizability.
-From Mctt.Core.Syntactic Require Import CoreInversions Fresh LevelEq IndCong IndConv.
-From Mctt.Core.Syntactic.System Require Import MemberLemmas MemberWf Scoping DescTyping LookupSound GlobalPresup.
+From Mctt.Core.Syntactic Require Import CoreInversions Fresh.
+From Mctt.Core.Syntactic.Levels Require Import LevelEq.
+From Mctt.Core.Syntactic.Inductives Require Import IndCong IndConv.
+From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas MemberWf.
+From Mctt.Core.Syntactic.System Require Import Scoping.
+From Mctt.Core.Syntactic.System.Global Require Import DescTyping LookupSound Presup.
 From Mctt.Algorithmic Require Import Subtyping.
 Import Domain_Notations Fixed_Notations Wk_Notations.
 

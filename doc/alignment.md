@@ -138,7 +138,7 @@ so does the mechanization — but the mechanization also records *why it cannot
 have one*: `wf_sub` constrains `σ` only at the indices `Δ` types, whereas
 `eval_sub` is total, so `⋅ ⊢ˢ (fun _ => zero zero) : ⋅` holds vacuously
 while its semantic counterpart would need `zero zero` to have a value. Concrete
-substitutions are handled by lemmas in `Completeness/SubstitutionCases.v` and
+substitutions are handled by lemmas in `Completeness/LogicalRelation/Substitution.v` and
 `Soundness/SubstitutionCases`-style helpers instead. The documents present the
 omission as a design choice; here it is a necessity.
 
@@ -354,7 +354,7 @@ the expensive part.** Two observations:
   | File | Pre | Now | Factor |
   | --- | --- | --- | --- |
   | `Completeness/LogicalRelation/Lemmas.v` | 38 | 520 | ×13.7 |
-  | `Completeness/SubstitutionCases.v` | 257 | 640 | ×2.5 |
+  | `Completeness/LogicalRelation/Substitution.v` | 257 | 640 | ×2.5 |
   | `Completeness/LogicalRelation/Definitions.v` | 51 | 113 | ×2.2 |
   | `Completeness/NatCases.v` | 734 | 909 | ×1.24 |
   | `Completeness/FunctionCases.v` | 297 | 344 | ×1.16 |
@@ -633,7 +633,7 @@ exp_sub_id` plus `rel_chain_4_related`. The 99 `rel_chain_*` uses in the layer
 are overwhelmingly that projection step: `rel_chain_4_related` 50,
 `rel_chain_4` 44, `rel_chain_4_outer` 26, against `rel_chain_merge` 3.
 
-**(c) `SubstitutionCases.v` changed job.** Pre-port it proved the fifteen cases
+**(c) `LogicalRelation/Substitution.v` changed job.** Pre-port it proved the fifteen cases
 of the substitution judgment; about 173 of its 257 lines were the ten
 composition and extension laws, each a dozen lines of near-automatic proof.
 There is no such judgment now, so the file instead *builds* the substitution
@@ -661,14 +661,14 @@ The net +1 153 decomposes exactly as:
 | --- | --- | --- | --- |
 | rule cases (`Context`/`Function`/`Nat`/`Subtyping`/`Universe`/`Variable`) | 1 438 | 1 782 | +344 |
 | `TermStructureCases.v` (deleted) | 194 | — | −194 |
-| `SubstitutionCases.v` (new purpose) | 257 | 640 | +383 |
+| `LogicalRelation/Substitution.v` (new purpose) | 257 | 640 | +383 |
 | `LogicalRelation/{Definitions,Lemmas,Tactics}` | 123 | 668 | **+545** |
 | `Consequences/*` + `FundamentalTheorem.v` | 231 | 272 | +41 |
 | `Completeness.v` | 30 | 64 | +34 |
 | **total** | **2 273** | **3 426** | **+1 153** |
 
 Four fifths of the growth (+928 of +1 153) is in the two files that hold the
-judgment API — `LogicalRelation/Lemmas.v` and `SubstitutionCases.v` — and
+judgment API — `LogicalRelation/Lemmas.v` and `LogicalRelation/Substitution.v` — and
 neither contains a case of the fundamental theorem.
 
 **(e) The rule cases are nearly flat.** Excluding the two files whose purpose
@@ -706,7 +706,7 @@ in new proof scripts. In rough order of expected return:
 1. Generalize `destruct_rel_by_assumption` and `on_all_hyp` to skip the eight
    leading binders, supplying `rel_sub_id`/`eval_sub_id` when the caller wants
    the instance at `Id`. That alone addresses the 94 + 113 lost call sites.
-2. Give `SubstitutionCases.v`'s eighteen constructions `Hint Extern` entries
+2. Give `LogicalRelation/Substitution.v`'s eighteen constructions `Hint Extern` entries
    keyed on the goal's substitution shape, so `q σ` and `σ ,, M` goals close
    without hand instantiation.
 3. `functional_eval_rewrite_clear` (`Semantic/Evaluation/Lemmas.v:86`) already

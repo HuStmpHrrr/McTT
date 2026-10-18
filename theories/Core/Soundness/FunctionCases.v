@@ -11,7 +11,9 @@
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import FundamentalTheorem SubstitutionCases UniverseCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem.
+From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
+From Mctt.Core.Completeness Require Import UniverseCases.
 From Mctt.Core.Completeness Require LevelCases FunctionCases.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Soundness Require Import
@@ -19,7 +21,7 @@ From Mctt.Core.Soundness Require Import
   LevelCases
   LogicalRelation
   SubtypingCases
-  TermStructureCases
+  VariableCases
   UniverseCases.
 Import Domain_Notations Wk_Notations.
 

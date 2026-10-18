@@ -18,9 +18,11 @@ From Stdlib Require Import List String PeanoNat Bool.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Command Members Builtin.
-From Mctt.Core.Syntactic.System Require Import Definitions Lemmas Structural GlobalPresup.
-From Mctt.Core.Syntactic.System Require Export IndClassify.
-From Mctt.Core.Syntactic.System Require Import IndTyping MemberWf GlobalModules.
+From Mctt.Core.Syntactic.System Require Import Definitions Lemmas Structural.
+From Mctt.Core.Syntactic.System.Global Require Import Presup.
+From Mctt.Core.Syntactic.System.Inductives Require Export Classify.
+From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
+From Mctt.Core.Syntactic.System.Global Require Import MemberWf Modules.
 From Mctt.Core.Syntactic.System Require Export Privacy.
 From Mctt.Core.Semantic Require Import NbE.
 Import Syntax_Notations GlobalCtx_Notations.

@@ -2,8 +2,11 @@ From Stdlib Require Import Equivalence Morphisms Morphisms_Prop Morphisms_Relati
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Corollaries Substitution LevelEq IndCong.
-From Mctt.Core.Semantic Require Import Realizability IndCanon.
+From Mctt.Core.Syntactic Require Import Corollaries Substitution.
+From Mctt.Core.Syntactic.Levels Require Import LevelEq.
+From Mctt.Core.Syntactic.Inductives Require Import IndCong.
+From Mctt.Core.Semantic Require Import Realizability.
+From Mctt.Core.Semantic.Inductives Require Import IndCanon.
 From Mctt.Core.Soundness.LogicalRelation Require Import CoreTactics Definitions.
 From Mctt.Core.Soundness.Weakening Require Export Lemmas.
 Import Domain_Notations Wk_Notations Fixed_Notations.

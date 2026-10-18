@@ -315,7 +315,7 @@ with sbody : list ent -> gmod -> list Cst.cmd -> gmod -> Prop :=
     constructors' argument types as an ordinary variable, [Self], outside
     the declaration's parameters, so a recursive occurrence is written with
     all of them, and every argument binds its name for the ones after it.  Which arguments are recursive is the core's to decide
-    ([Core.Syntactic.System.IndClassify]). *)
+    ([Core.Syntactic.System.Inductives.Classify]). *)
 Fixpoint split_pis (o : Cst.obj) : (list (string * Cst.obj) * Cst.obj)%type :=
   match o with
   | Cst.pi y oA oB => let (ps, oS) := split_pis oB in ((y, oA) :: ps, oS)

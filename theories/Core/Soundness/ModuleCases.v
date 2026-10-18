@@ -15,14 +15,17 @@ From Stdlib Require Import Lia List PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
-From Mctt.Core.Syntactic.System Require Import MemberLemmas GlobalModules GlobalPaths DescTyping LookupSound.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases ModuleSem ModuleCases GlobalSem.
+From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Modules Paths DescTyping LookupSound.
+From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness.Modules Require Import Values.
+From Mctt.Core.Completeness Require Import ModuleCases.
+From Mctt.Core.Completeness.Global Require Import Embedding.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Soundness Require Import LevelCases.
-From Mctt.Core.Soundness Require Import LogicalRelation ContextCases TermStructureCases MemberCases
+From Mctt.Core.Soundness Require Import LogicalRelation ContextCases VariableCases UnitCases
   SubtypingCases UniverseCases FunctionCases LetCases TrueFalseCases IndCases.
 From Mctt.Core.Completeness Require IndCases.
-Require Import Mctt.Core.Soundness.IndElimCases.
+Require Import Mctt.Core.Soundness.ElimCases.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 

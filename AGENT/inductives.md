@@ -163,7 +163,7 @@ inside the parameters of the enclosing frames, which stay implicit).  A
 recursive occurrence is written Rocq-style with all the declaration's own
 parameters, `cons (x : A) (xs : List A)`.
 `rc_ind` classifies each argument (`cls_args nu np`,
-`Core/Syntactic/System/IndClassify.v`):
+`Core/Syntactic/System/Inductives/Classify.v`):
 
 * `cls_free`: `T = A[cls_wk np gs1]` — neither `Self` nor an earlier
   recursive argument occurs; filed `ca_arg A`;
@@ -224,15 +224,15 @@ step to be proved never to fail at the user's type, beyond
 | What | Where |
 | --- | --- |
 | `a_ind p`, `a_con p c`, `a_elim nm A Bs M`; `ind_decl`, `carg`, `ge_ind pv D Φ`, `ge_ind_alias pv Δ p Ns` | `Core/Syntactic/Syntax.v` |
-| telescopes, `ind_ty`, `con_ty`, `cargs_ctx`, `elim_mctx`, `elim_bctx`, `elim_bty`, `elim_ihs` | `Core/Syntactic/Inductives.v` |
+| telescopes, `ind_ty`, `con_ty`, `cargs_ctx`, `elim_mctx`, `elim_bctx`, `elim_bty`, `elim_ihs` | `Core/Syntactic/Inductives/Inductives.v` |
 | `wf_ind`, `wf_con`, `wf_elim`, congruences, `wf_exp_eq_elim_iota`, `wf_gentry_indty` (in the mutual block) | `Core/Syntactic/System/Definitions.v` |
-| declarations are well typed (`decl_typed`), presupposition | `System/GlobalPresup.v`, `System/IndTyping.v`, `Syntactic/IndCong.v`, `Syntactic/IndConv.v` |
+| declarations are well typed (`decl_typed`), presupposition | `System/Global/Presup.v`, `System/Inductives/Typing.v`, `Syntactic/Inductives/IndCong.v`, `Syntactic/Inductives/IndConv.v` |
 | values `d_ind`, `d_con`, neutral eliminator; evaluation, readback | `Core/Semantic/Domain.v`, `Evaluation*`, `Readback*` |
-| PER: `ind_rel`, `ind_adm`; canonical relations `ind_nr`, `ind_ar` | `Core/Semantic/PER/Definitions.v`, `IndPER.v`, `IndCanon.v`, `IndElim.v`, `PER/Tele.v` |
-| completeness | `Core/Completeness/IndSem.v`, `IndCases.v`, `ElimCases.v`, `TeleSem.v` |
-| gluing (`glu_univ_elem_core_indty`, `ind_typ_at`, `ind_glu_elem`, `ind_glu_exp_pred`) and soundness | `Core/Soundness/LogicalRelation/*`, `Soundness/IndCases.v`, `IndElimCases.v` |
+| PER: `ind_rel`, `ind_adm`; canonical relations `ind_nr`, `ind_ar` | `Core/Semantic/PER/Definitions.v`, `Inductives/IndPER.v`, `Inductives/IndCanon.v`, `Inductives/IndElim.v`, `PER/Tele.v` |
+| completeness | `Core/Completeness/Inductives/{Decl,Con,Elim,Iota}.v`, `IndCases.v`, `ElimCases.v`, `IotaCases.v`, `LogicalRelation/Telescope.v` |
+| gluing (`glu_univ_elem_core_indty`, `ind_typ_at`, `ind_glu_elem`, `ind_glu_exp_pred`) and soundness | `Core/Soundness/LogicalRelation/*`, `Soundness/Inductives/{Con,Elim}.v`, `IndCases.v`, `ElimCases.v`, `IotaCases.v` |
 | commands: `cc_ind`, `rc_ind`, `rd_uparams`, `ind_qname`, `gs_ind`, `ind_gens`, `gen_body` | `Core/Syntactic/Command.v`, `System/Command.v` |
-| the members' derivation (`ind_gens_typed`) | `System/IndRec.v` |
+| the members' derivation (`ind_gens_typed`) | `System/Inductives/Rec.v` |
 
 ## The entry: `ge_ind pv D Φ`
 
@@ -270,7 +270,7 @@ stored closed over them, as every definition is.
    Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_ind pv p D' (gen_body p D') ->
    Θ ⍮ Ξ ⊢[ch] cc_ind x pv R ⇝ Θ ⍮ gs_add x (ge_ind pv p D' (gen_body p D')) Ξ`,
   `p = ind_qname Ξ x`, the entry's own canonical path, and
-  `D' = gs_ind Ξ (rd_filed R cs)`.  `ind_gens_typed` (`IndRec.v`) derives
+  `D' = gs_ind Ξ (rd_filed R cs)`.  `ind_gens_typed` (`Rec.v`) derives
   that premise from `ge_ind pv p D' ⋄` and `rec` not naming a constructor; the
   checker (`Extraction/Command.v`, `ind_ok`) decides only those two.
 
@@ -350,7 +350,7 @@ rec := λ u P b_c … . λ Δn z. a_elim (S nn) P' [(c, n_c, b_c $ its n_c vars)
 `System/Command.v`): each branch argument has exactly the type the
 eliminator gives the branch at the motive `P`.  It is a member of the
 entry like the constructors (`wf_gentry_ind_ext`), and it always checks:
-`ind_gens_typed` (`System/IndRec.v`) derives the whole entry from the
+`ind_gens_typed` (`System/Inductives/Rec.v`) derives the whole entry from the
 declaration's, and `rc_ind_runs` shows that such a declaration command
 runs.  The surface reads `X.rec`; `rec` is an ordinary name, so `open X
 use (rec)` declares it too.
@@ -360,7 +360,7 @@ use (rec)` declares it too.
 * `ati_ind`, `ati_con`, `ati_elim` (`Algorithmic/Typing/Definitions.v`); the
   eliminator's scrutinee infers `nf_indty p Rs`, and the motive and branches
   are checked at the parameters' normal forms `Rs`, related to the
-  derivation's by `wf_elim_params_conv` (`Core/Syntactic/IndConv.v`).
+  derivation's by `wf_elim_params_conv` (`Core/Syntactic/Inductives/IndConv.v`).
 * Completeness is by induction on the derivation with an outer induction on
   `exp_lets`; an eliminator counts `+1` there, since its motive and branches
   are re-derived at `Rs` and are no longer subderivations; its head counts
@@ -512,8 +512,8 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
    `ind_glu_exp_pred` asks `ind_glu_elem` at every equal instance of the
    parameters (eq-closed).
 6. The eliminator's case along an embedding
-   (`valid_exp_under_ctx_elim_of_emb` in `Completeness/ElimCases.v`,
-   `glu_rel_exp_elim_of_emb` in `Soundness/IndElimCases.v`) takes the
+   (`valid_exp_under_ctx_elim_of_emb` in `Completeness/Inductives/Elim.v`,
+   `glu_rel_exp_elim_of_emb` in `Soundness/Inductives/Elim.v`) takes the
    `⊢ˣ` premises of `wf_elim` too.
 7. `ati_elim` has the premise `length (nfs_to_exps Rs) = ind_np D`; the
    checker decides it.

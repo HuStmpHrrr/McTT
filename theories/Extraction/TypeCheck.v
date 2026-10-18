@@ -4,9 +4,10 @@ From Equations Require Import Equations.
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base Completeness.
-From Mctt.Core.Completeness Require Import FundamentalTheorem SubstitutionCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem.
+From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Semantic Require Import Consequences Realizability.
-From Mctt.Core.Syntactic.System Require Import MemberWf.
+From Mctt.Core.Syntactic.System.Global Require Import MemberWf.
 From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Semantic Require Import MemberWf.
 From Mctt.Extraction Require Import FastEval Simulation Evaluation Readback NbE PseudoMonadic Subtyping MemberType.

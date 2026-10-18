@@ -27,7 +27,9 @@ Import ListNotations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Completeness Require Import LogicalRelation UniverseCases SubstitutionCases FunctionCases.
+From Mctt.Core.Completeness Require Import LogicalRelation UniverseCases.
+From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
+From Mctt.Core.Completeness Require Import FunctionCases.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 #[local] Generalizable All Variables.

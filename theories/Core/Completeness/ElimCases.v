@@ -17,12 +17,26 @@ From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasse
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Substitution Members Inductives.
-From Mctt.Core.Syntactic.System Require Import Definitions Scoping IndSyntax GlobalPresup IndTyping MemberLemmas.
-From Mctt.Core.Completeness Require Import
-  LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases UnitCases InstanceCases GlobalArgs MemberReps
-  VariableCases FunctionCases LevelCases IndSem TeleSem IndCases SubtypingCases.
-From Mctt.Core.Semantic Require Import Realizability IndPER IndElim Evaluation.Modules.
+From Mctt.Core.Syntactic Require Import Substitution Members.
+From Mctt.Core.Syntactic.Inductives Require Import Inductives.
+From Mctt.Core.Syntactic.System Require Import Definitions Scoping.
+From Mctt.Core.Syntactic.System.Inductives Require Import Syntax.
+From Mctt.Core.Syntactic.System.Global Require Import Presup.
+From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
+From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas.
+From Mctt.Core.Completeness Require Import LogicalRelation ContextCases UniverseCases.
+From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
+From Mctt.Core.Completeness Require Import LetCases UnitCases.
+From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
+From Mctt.Core.Completeness.Global Require Import Args.
+From Mctt.Core.Completeness.Modules Require Import MemberTypes.
+From Mctt.Core.Completeness Require Import VariableCases FunctionCases LevelCases.
+From Mctt.Core.Completeness.Inductives Require Import Decl.
+From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
+From Mctt.Core.Completeness Require Import IndCases SubtypingCases.
+From Mctt.Core.Semantic Require Import Realizability.
+From Mctt.Core.Semantic.Inductives Require Import IndPER IndElim.
+From Mctt.Core.Semantic Require Import Evaluation.Modules.
 Import Domain_Notations Fixed_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 

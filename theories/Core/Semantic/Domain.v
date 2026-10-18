@@ -1,7 +1,8 @@
 From Equations Require Import Equations.
 From Stdlib Require Import Lia List PeanoNat String Morphisms Relation_Definitions RelationClasses.
 
-From Mctt.Core.Syntactic Require Export Levels Syntax.
+From Mctt.Core.Syntactic.Levels Require Export Levels.
+From Mctt.Core.Syntactic Require Export Syntax.
 
 (** * The Semantic Domain
 
@@ -245,7 +246,7 @@ Definition dlvl_lit (o : o2) : domain := d_lvl o nil.
     The value of a level when every atom is [0].  It is the index of a small
     universe in the PER and gluing models: those are indexed by ordinals, and
     a level's canonical form depends on the length of the context, so no
-    finer index would be stable.  See [Core.Syntactic.Levels.lvl_real]. *)
+    finer index would be stable.  See [Core.Syntactic.Levels.Levels.lvl_real]. *)
 (** The maximum of the offsets of the atoms and the constant.  The constant is
     the base of the fold rather than an [omax] on top of it, so that the
     realiser of a literal level is that literal by computation. *)

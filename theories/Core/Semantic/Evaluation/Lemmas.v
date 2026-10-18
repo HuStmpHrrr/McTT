@@ -2,7 +2,8 @@ From Stdlib Require Import Lia PeanoNat Relations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Members Inductives.
+From Mctt.Core.Syntactic Require Import Members.
+From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Semantic.Evaluation Require Import Definitions.
 Import Domain_Notations.
 #[local] Open Scope list_scope.

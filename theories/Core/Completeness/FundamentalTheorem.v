@@ -8,7 +8,7 @@
 
     The theorem then gives the rest.  Each entry of a global context is
     valid where it is checked, so a well-formed global context embeds
-    soundly into itself ([valid_emb_refl]), from what [GlobalSem.v] makes of
+    soundly into itself ([valid_emb_refl]), from what [Global/Embedding.v] makes of
     valid entries.  At that embedding the theorem states each judgment of
     one global context by its relation there ([completeness_fundamental_ctx]
     and the corollaries after it). *)
@@ -17,13 +17,22 @@ From Stdlib Require Import Lia List.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import System IndCong.
-From Mctt.Core.Syntactic.System Require Import MemberLemmas MemberWf GlobalModules GlobalPaths DescTyping LookupSound
-  IndSyntax.
+From Mctt.Core.Syntactic Require Import System.
+From Mctt.Core.Syntactic.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Global Require Import
+  MemberLemmas MemberWf Modules Paths DescTyping LookupSound.
+From Mctt.Core.Syntactic.System.Inductives Require Import Syntax.
+From Mctt.Core.Completeness Require Import ContextCases FunctionCases LetCases LevelCases.
+From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Completeness Require Import
-  ContextCases FunctionCases LetCases LevelCases SubstitutionCases SubtypingCases
-  TrueFalseCases UniverseCases VariableCases UnitCases InstanceCases MemberReps IndCases TeleSem ElimCases ElimIota
-  ModuleCases ValidUnit GlobalSem.
+  SubtypingCases TrueFalseCases UniverseCases VariableCases UnitCases.
+From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
+From Mctt.Core.Completeness.Modules Require Import MemberTypes.
+From Mctt.Core.Completeness Require Import IndCases.
+From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
+From Mctt.Core.Completeness Require Import ElimCases IotaCases ModuleCases.
+From Mctt.Core.Completeness.Modules Require Import ValidUnit.
+From Mctt.Core.Completeness.Global Require Import Embedding.
 From Mctt.Core.Completeness Require Export LogicalRelation.
 From Mctt.Core.Syntactic Require Export SystemOpt.
 From Mctt.Core.Semantic Require Import Realizability.
@@ -283,7 +292,7 @@ Qed.
     whereas [eval_sub] is total, so [⋅ ⊢ˢ (fun _ => zero $ zero) : ⋅] holds
     vacuously while its semantic counterpart would need [zero zero] to have
     a value.  The concrete semantic substitutions that are needed are built
-    directly by the lemmas of [SubstitutionCases.v].  Context refinement and
+    directly by the lemmas of [LogicalRelation/Substitution.v].  Context refinement and
     context equality are not separate judgments: they are [Δ ⊢ˢ Id : Γ] in
     one direction and in both. *)
 

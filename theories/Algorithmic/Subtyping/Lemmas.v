@@ -1,7 +1,9 @@
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic.Subtyping Require Import Definitions.
 From Mctt.Core Require Import Base Soundness.
-From Mctt.Core.Syntactic Require Import CoreInversions LevelEq SystemOpt.
+From Mctt.Core.Syntactic Require Import CoreInversions.
+From Mctt.Core.Syntactic.Levels Require Import LevelEq.
+From Mctt.Core.Syntactic Require Import SystemOpt.
 From Mctt.Core.Semantic Require Import Levels Consequences.
 From Mctt.Core.Completeness.Consequences Require Import Rules.
 Import Syntax_Notations Fixed_Notations.

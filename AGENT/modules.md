@@ -290,7 +290,7 @@ unchanged.
     `wf_mut_ind_all` over all of them.
 
     **Presupposition** is the mutual theorem `presup_global`
-    (`System/GlobalPresup.v`): term judgments give `rwf Θ Ξ` (every resolved
+    (`System/Global/Presup.v`): term judgments give `rwf Θ Ξ` (every resolved
     global's `ctx_pi Δ A` is a type at `⋅`, its body typed there), modules and
     units give `ins_typed` (each member, generalized, typed in the frame it
     was *inserted* into: `gm_ins`/`gm_prefix`, `GlobalCtx.v`). A definition

@@ -3,7 +3,7 @@ From Equations Require Import Equations.
 From Stdlib Require Import Lia.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic.System Require Import GlobalPresup.
+From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Soundness.LogicalRelation Require Import Definitions.
 
 (** State the universes below a level, [glu_univ_below i j], by

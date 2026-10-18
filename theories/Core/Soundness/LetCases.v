@@ -12,7 +12,7 @@ From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Soundness Require Import
   ContextCases
   LogicalRelation
-  TermStructureCases.
+  VariableCases.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Section Fixed_GCtx.

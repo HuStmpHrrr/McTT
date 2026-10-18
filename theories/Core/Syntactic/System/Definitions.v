@@ -33,7 +33,8 @@ From Stdlib Require Import Lia List Classes.RelationClasses Setoid Morphisms.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Export Substitution Members Inductives.
+From Mctt.Core.Syntactic Require Export Substitution Members.
+From Mctt.Core.Syntactic.Inductives Require Export Inductives.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
 (** [Θ] at next level, as [Γ] of the short form [⊢ Γ] ([Fixed.v]), so that
@@ -314,7 +315,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
     [b]-th successor of the limit [ω·a], and the limit [ω·(n+1)] is above
     every level of sort [n] (absorption).  These are the equations of
     Danielsson–Favier–Kubánek Fig. 2 and absorption, and they are complete
-    for the canonical forms of [Core.Syntactic.Levels]: two levels are equal
+    for the canonical forms of [Core.Syntactic.Levels.Levels]: two levels are equal
     exactly when they have the same canonical form. *)
 | wf_exp_eq_llit_succl :
   `( a <= n ->
@@ -550,7 +551,7 @@ with wf_subtyp : gdeps -> gstack -> ctx -> typ -> typ -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ Typeω@i ⊆ Typeω@j )
 (** A small universe below one at a larger level.  The order on levels is
     [maxl M M' ≈ M'], which is decidable on canonical forms
-    ([Core.Syntactic.Levels.lvl_le]) and never the order on realisers. *)
+    ([Core.Syntactic.Levels.Levels.lvl_le]) and never the order on realisers. *)
 | wf_subtyp_suniv :
   (** The two typings let the presupposition lemmas be proved independently,
       as in [wf_subtyp_refl]. *)

@@ -5,7 +5,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Consequences Realizability.
-From Mctt.Core.Syntactic.System Require Import MemberWf.
+From Mctt.Core.Syntactic.System.Global Require Import MemberWf.
 From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Semantic Require Import MemberWf.
 From Mctt.Extraction Require Import Evaluation NbE PseudoMonadic Subtyping MemberType TypeCheckBase IndCheck.

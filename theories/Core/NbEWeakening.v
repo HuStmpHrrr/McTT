@@ -23,7 +23,8 @@ From Stdlib Require Import Arith Lia List PeanoNat.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base Completeness Soundness.
-From Mctt.Core.Completeness Require Import FundamentalTheorem SubstitutionCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem.
+From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
 From Mctt.Core.Semantic Require Import Realizability Rename.
 From Mctt.Core.Syntactic Require Import Fresh NfRename.

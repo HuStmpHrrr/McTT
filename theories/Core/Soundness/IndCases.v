@@ -12,18 +12,25 @@ From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasse
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
-From Mctt.Core.Completeness Require IndCases IndSem UnitCases ElimCases TeleSem SubstitutionCases GlobalArgs.
+From Mctt.Core.Completeness Require IndCases.
+From Mctt.Core.Completeness.Inductives Require Decl.
+From Mctt.Core.Completeness Require UnitCases ElimCases.
+From Mctt.Core.Completeness.LogicalRelation Require Telescope Substitution.
+From Mctt.Core.Completeness.Global Require Args.
 From Mctt.Core.Completeness Require Import UniverseCases.
-From Mctt.Core.Semantic Require Import Realizability IndCanon.
-From Mctt.Core.Syntactic Require Import Substitution IndCong.
-From Mctt.Core.Syntactic.System Require Import MemberLemmas GlobalPresup IndTyping.
+From Mctt.Core.Semantic Require Import Realizability.
+From Mctt.Core.Semantic.Inductives Require Import IndCanon.
+From Mctt.Core.Syntactic Require Import Substitution.
+From Mctt.Core.Syntactic.Inductives Require Import IndCong.
+From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup.
+From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Soundness Require Import
   ContextCases
   FunctionCases
   LevelCases
   LogicalRelation
   SubtypingCases
-  TermStructureCases
+  VariableCases
   UniverseCases.
 Import Domain_Notations Wk_Notations.
 #[local] Open Scope list_scope.
@@ -636,7 +643,7 @@ Proof.
             by exact HK; lia).
     assert (HΞe : Ξ0 = (ptyp_tele t ++ nonrec_args_prefix gs K ++ ind_nparams D0) ++ ind_uparams D0)
       by (unfold Ξ0; rewrite params_split, <- !List.app_assoc; reflexivity).
-    fold L; rewrite HΞe, HL; apply UnitCases.rel_wk_under_ctx_shiftn; rewrite <- HΞe; exact HΞ0.
+    fold L; rewrite HΞe, HL; apply Completeness.UnitCases.rel_wk_under_ctx_shiftn; rewrite <- HΞe; exact HΞ0.
   - pose proof (IH ltac:(lia)) as Hτ.
     destruct (nth_error_lt_some (ptyp_ps t) m ltac:(lia)) as [P HP].
     assert (HT : exists T, List.nth_error (tele_insts (ind_nparams D0) (sb_of_wk (wk_shiftn L)) (ptyp_ps t)) m = Some T).
@@ -648,7 +655,7 @@ Proof.
     pose proof (vid_rec _ HD _ _ _ _ _ _ _ _ Hcon Heq HP HT) as HPv.
     destruct (vid_npar _ HD _ _ HA) as (_ & j & HAv).
     rewrite (firstn_S_snoc _ _ _ HP), sb_of_list_app, (IndCases.nparams_prefix_S _ _ _ HA); cbn [sb_of_list List.app].
-    eapply SubstitutionCases.rel_sub_under_ctx_extend; [ exact Hτ | exact HAv | exact HPv ].
+    eapply Completeness.LogicalRelation.Substitution.rel_sub_under_ctx_extend; [ exact Hτ | exact HAv | exact HPv ].
 Qed.
 
 (** A term glued at a type of a value is glued at that type of a value
@@ -816,7 +823,7 @@ Section Comps.
     (AEl : list domain -> String.string -> nat -> list domain -> glu_exp_pred)
     (DP : list domain -> exp -> glu_typ_pred) (DEl : list domain -> exp -> glu_exp_pred).
   Hypothesis (Hu : List.length ups = ind_nu D) (Hbu : ⟦ ind_sort D ⟧ env_args nil ups ↘ bu)
-    (Hule : uidx_le (IndSem.univ_idx bu) u)
+    (Hule : uidx_le (Completeness.Inductives.Decl.univ_idx bu) u)
     (HeN : forall k A vs, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
        tele_pre (ind_nr D ups) k vs vs -> exists b, ⟦ A ⟧ env_args nil (ups ++ vs) ↘ b)
     (HNP : forall k A vs b, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
@@ -850,26 +857,26 @@ Section Comps.
   Lemma sort_typ_glued : forall Pre A Sb Δ σ zs, ⊢ Pre ++ ind_uparams D -> List.length zs = List.length Pre ->
       EG Pre ++ ind_uparams D ∈ glu_ctx_env ↘ Sb -> Pre ++ ind_uparams D ⊩ A : (ind_sort D)[wk_shiftn (List.length Pre)]ʷ ->
       Δ ⊢ˢ σ ® env_args nil (ups ++ zs) ∈ Sb ->
-      exists a, ⟦ A ⟧ env_args nil (ups ++ zs) ↘ a /\ Dom a ≈ a ∈ per_univ (IndSem.univ_idx bu) /\
-        forall P El, DG a ∈ glu_univ_elem (IndSem.univ_idx bu) ↘ P ↘ El -> Δ ⊢ A[σ] ® P.
+      exists a, ⟦ A ⟧ env_args nil (ups ++ zs) ↘ a /\ Dom a ≈ a ∈ per_univ (Completeness.Inductives.Decl.univ_idx bu) /\
+        forall P El, DG a ∈ glu_univ_elem (Completeness.Inductives.Decl.univ_idx bu) ↘ P ↘ El -> Δ ⊢ A[σ] ® P.
   Proof.
     intros * HPre Hzs HSb HA Hσ.
     pose proof (dt_sort _ _ _ Hdt) as [iS HS].
     destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq in HA, HS, Hbu; cbn [exp_wk] in HA.
     - destruct (glu_rel_exp_of_univ_inversion (u := ul i0) HSb HA _ _ _ Hσ) as (_ & a & Ha & Hpa & HP & _).
-      inversion Hbu; subst; cbn [IndSem.univ_idx].
+      inversion Hbu; subst; cbn [Completeness.Inductives.Decl.univ_idx].
       exists a; split; [ exact Ha | split; [ exact Hpa | exact HP ] ].
     - destruct (glu_rel_exp_of_suniv_tm_inversion' HSb HA _ _ _ Hσ) as (l & Hlv & _ & _ & a & Ha & Hpa & HP & _).
       exists a; split; [ exact Ha |].
-      assert (Hidx : IndSem.univ_idx bu = us (dlvl_real l)).
+      assert (Hidx : Completeness.Inductives.Decl.univ_idx bu = us (dlvl_real l)).
       { assert (HCs : ⊨ Pre ++ ind_uparams D) by (apply completeness_fundamental_ctx; exact HPre).
         assert (HSs : ind_uparams D ⊨ Type⟨t⟩ : Typeω@iS) by (apply completeness_fundamental_exp; exact HS).
         destruct (rel_ctx_wf_per_ctx_env HCs) as [R HR].
         pose proof (glu_ctx_env_per_env HSb HR Hσ) as HE.
         assert (Eb : ⟦ Type⟨t⟩[wk_shiftn (List.length Pre)]ʷ ⟧ env_args nil (ups ++ zs) ↘ d_suniv l) by (cbn [exp_wk]; econstructor; exact Hlv).
         assert (Ea : ⟦ Type⟨t⟩ ⟧ ⟪wk_shiftn (List.length Pre)⟫ (env_args nil (ups ++ zs)) ↘ bu)
-          by (rewrite env_args_app, <- Hzs, UnitCases.eval_wk_shiftn_args; exact Hbu).
-        pose proof (IndSem.univ_idx_wk _ _ _ _ _ _ _ _ _ HCs HSs HR HE Eb Ea ltac:(right; eauto)) as Hi.
+          by (rewrite env_args_app, <- Hzs, Completeness.UnitCases.eval_wk_shiftn_args; exact Hbu).
+        pose proof (Completeness.Inductives.Decl.univ_idx_wk _ _ _ _ _ _ _ _ _ HCs HSs HR HE Eb Ea ltac:(right; eauto)) as Hi.
         rewrite Hi; reflexivity. }
       rewrite Hidx; split; [ exact Hpa | exact HP ].
   Qed.
@@ -1248,12 +1255,12 @@ Section Comps.
     pose proof (glu_ctx_env_per_env HSbC' HR0 Hσ') as HE.
     pose proof (rec_sub_valid D HDc Hc c gs gs1 t gs2 Hcon Heq k (Nat.lt_le_incl _ _ Hk)) as Hτ.
     assert (Hτev : ⟦ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn k (ptyp_ps t)) ⟧s ρ ↘ env_args (env_args nil ups) (List.firstn k bsr)).
-    { apply IndSem.eval_sb_of_list; [| apply eval_exps_firstn; exact Hbsr ].
-      replace (env_args nil ups) with (⟪wk_shiftn L⟫ ρ); [ apply eval_sub_of_wk; apply UnitCases.wk_mono_shiftn |].
+    { apply Completeness.Inductives.Decl.eval_sb_of_list; [| apply eval_exps_firstn; exact Hbsr ].
+      replace (env_args nil ups) with (⟪wk_shiftn L⟫ ρ); [ apply eval_sub_of_wk; apply Completeness.UnitCases.wk_mono_shiftn |].
       unfold ρ, L; rewrite env_args_app.
       replace (ptyp_depth t + K + ind_nn D) with (List.length (ns ++ nv ++ ys)) by (rewrite !List.length_app; lia).
-      apply UnitCases.eval_wk_shiftn_args. }
-    destruct (TeleSem.typ_inst_link _ _ _ _ _ _ _ _ _ HAv HR0 Hτ HE Hτev) as (a & b & Ea & Eb & Hab).
+      apply Completeness.UnitCases.eval_wk_shiftn_args. }
+    destruct (Completeness.LogicalRelation.Telescope.typ_inst_link _ _ _ _ _ _ _ _ _ HAv HR0 Hτ HE Hτev) as (a & b & Ea & Eb & Hab).
     fold K L in Ea; rewrite <- ETk in Ea.
     assert (a = a1) as -> by (eapply functional_eval_exp; eassumption).
     destruct (glu_transfer_per j j0 a1 b P1 El1 Δ _ _ v Hg1 Hab ltac:(eapply glu_univ_elem_trm_typ; eassumption) HM1)
@@ -1449,7 +1456,7 @@ Section Former.
   Lemma ind_sort_le : forall Δ Ms bu ups, ⊢ Δ -> List.length Ms = ind_np D ->
       (forall k M T, List.nth_error Ms k = Some M -> List.nth_error (tele_insts (ind_params D) Id Ms) k = Some T -> Δ ⊢ M : T) ->
       ⟦ ind_sort D ⟧ env_args nil ups ↘ bu ->
-      Δ ⊢ (ind_sort D)[wk_shiftn (ind_nn D)]ʷ[sb_of_list Id Ms] ⊆ Typeω@(ulvl (IndSem.univ_idx bu)).
+      Δ ⊢ (ind_sort D)[wk_shiftn (ind_nn D)]ʷ[sb_of_list Id Ms] ⊆ Typeω@(ulvl (Completeness.Inductives.Decl.univ_idx bu)).
   Proof.
     intros * HΔ HMl HMs Hbu.
     pose proof (decl_closed_nu D Hc) as Hle.
@@ -1460,7 +1467,7 @@ Section Former.
     rewrite <- (List.firstn_skipn (ind_nu D) Ms) at 1.
     replace (ind_nn D) with (List.length (List.skipn (ind_nu D) Ms)) by (rewrite List.length_skipn; unfold ind_nn, ind_np in *; lia).
     rewrite exp_shift_past.
-    destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq in Hbu, Hn |- *; inversion Hbu; subst; cbn [IndSem.univ_idx ulvl exp_sub].
+    destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq in Hbu, Hn |- *; inversion Hbu; subst; cbn [Completeness.Inductives.Decl.univ_idx ulvl exp_sub].
     - eapply wf_subtyp_refl'; apply wf_exp_eq_refl; mauto 3.
     - cbn in Hn; eapply wf_subtyp_small_large; eassumption.
   Qed.
@@ -1478,7 +1485,7 @@ Section Former.
 
   Lemma ind_typ_at_of_args : forall Δ Ms ups ns bu (u : uidx) NP NEl AP AEl DP DEl, ⊢ Δ ->
       glu_args Δ (ind_params D) Id nil Ms (ups ++ ns) -> List.length ups = ind_nu D ->
-      ⟦ ind_sort D ⟧ env_args nil ups ↘ bu -> uidx_le (IndSem.univ_idx bu) u ->
+      ⟦ ind_sort D ⟧ env_args nil ups ↘ bu -> uidx_le (Completeness.Inductives.Decl.univ_idx bu) u ->
       (forall k A vs, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
          tele_pre (ind_nr D ups) k vs vs -> exists b, ⟦ A ⟧ env_args nil (ups ++ vs) ↘ b) ->
       (forall k A vs b, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
@@ -1511,7 +1518,7 @@ Section Former.
     { intros Δ' Ms' HΔ'0 HMl' HMs'.
       eapply wf_subtyp_trans; [ eapply ind_sort_le; eassumption |].
       pose proof (uidx_le_ulvl_le _ _ Hule) as Hlv.
-      destruct (Nat.eq_dec (ulvl (IndSem.univ_idx bu)) (ulvl u)) as [-> | Hne].
+      destruct (Nat.eq_dec (ulvl (Completeness.Inductives.Decl.univ_idx bu)) (ulvl u)) as [-> | Hne].
       - eapply wf_subtyp_refl'; apply wf_exp_eq_refl; mauto 3.
       - apply wf_subtyp_univ; [ exact HΔ'0 | lia ]. }
     pose proof (decl_closed_params D Hc) as Hass.
@@ -1601,7 +1608,7 @@ Section Former.
       uniform ones. *)
   Lemma sort_idx_params : forall Δ Ms vs b, ⊢ Δ -> glu_args Δ (ind_params D) Id nil Ms vs ->
       ⟦ (ind_sort D)[wk_shiftn (ind_nn D)]ʷ ⟧ env_args nil vs ↘ b ->
-      exists bu, ⟦ ind_sort D ⟧ env_args nil (List.firstn (ind_nu D) vs) ↘ bu /\ IndSem.univ_idx bu = IndSem.univ_idx b.
+      exists bu, ⟦ ind_sort D ⟧ env_args nil (List.firstn (ind_nu D) vs) ↘ bu /\ Completeness.Inductives.Decl.univ_idx bu = Completeness.Inductives.Decl.univ_idx b.
   Proof.
     intros * HΔ Hg Hb.
     pose proof (dc_nu _ Hc) as Hle.
@@ -1631,8 +1638,8 @@ Section Former.
           by (rewrite <- env_args_app, List.firstn_skipn; reflexivity).
         replace (List.length (ind_nparams D)) with (List.length (List.skipn (ind_nu D) vs))
           by (rewrite List.length_skipn, length_nparams; unfold ind_nn, ind_np in *; lia).
-        rewrite UnitCases.eval_wk_shiftn_args; econstructor; exact Hl'. }
-      exact (IndSem.univ_idx_wk _ _ _ _ _ _ _ _ _ HCs HSs HR HE Eb Ea ltac:(right; eauto)).
+        rewrite Completeness.UnitCases.eval_wk_shiftn_args; econstructor; exact Hl'. }
+      exact (Completeness.Inductives.Decl.univ_idx_wk _ _ _ _ _ _ _ _ _ HCs HSs HR HE Eb Ea ltac:(right; eauto)).
   Qed.
 
   Lemma sort_shift_scoped : exp_scoped (ind_np D) (ind_sort D)[wk_shiftn (ind_nn D)]ʷ.
@@ -1675,25 +1682,25 @@ Section Former.
     assert (HAt : Δ ⊢ apps (a_ind p) Ms : (ind_sort D)[wk_shiftn (ind_nn D)]ʷ[sb_of_list Id Ms]) by (gen_presups; assumption).
     destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [Rb HRb].
     pose proof (HPER _ HRb) as Hdind.
-    assert (Hub : IndSem.is_univ b)
+    assert (Hub : Completeness.Inductives.Decl.is_univ b)
       by (destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq in Hb; cbn in Hb; inversion Hb; [ left | right ]; eauto).
-    destruct (IndSem.per_univ_elem_univ _ _ _ _ HRb Hub) as [_ HRb'].
+    destruct (Completeness.Inductives.Decl.per_univ_elem_univ _ _ _ _ HRb Hub) as [_ HRb'].
     apply HRb' in Hdind; destruct Hdind as [R' HR'].
     rewrite <- Hidx in HR'; rewrite Hvs in HR', Hg.
     destruct (ind_glu_elem_of_per _ R' ups ns HR' Hu)
       as (NP & NEl & AP & AEl & DP & DEl & Pd & Eld & R'' & Hglud & HPd & HEd & HRR & HeN & HNP & HeA & HAP & HeD & HDP).
     pose proof (ind_typ_at_of_args _ _ _ _ _ _ _ _ _ _ _ _ HΔ Hg Hu Hbu (uidx_le_refl _) HeN HNP HeA HAP HeD HDP) as Hit.
-    assert (Hgd : glu_univ_typ (IndSem.univ_idx bu) (d_ind p vs) Δ (apps (a_ind p) Ms))
+    assert (Hgd : glu_univ_typ (Completeness.Inductives.Decl.univ_idx bu) (d_ind p vs) Δ (apps (a_ind p) Ms))
       by (rewrite Hvs; apply (mk_glu_typ_at _ _ _ _ Pd Eld); [ exact Hglud | apply HPd; exists Ms; exact Hit ]).
     clear HPER.
     destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq in Hb, HAt |- *; cbn [exp_wk exp_sub] in Hb, HAt |- *; inversion Hb; subst b.
     - invert_glu_univ_elem Hglu.
       apply_predicate_equivalence.
-      cbn [IndSem.univ_idx] in Hidx; rewrite Hidx in Hgd.
+      cbn [Completeness.Inductives.Decl.univ_idx] in Hidx; rewrite Hidx in Hgd.
       econstructor; [ exact HAt | apply wf_exp_eq_refl; mauto 3 | exact Hgd ].
     - invert_glu_univ_elem Hglu.
       apply_predicate_equivalence.
-      cbn [IndSem.univ_idx] in Hidx; rewrite Hidx in Hgd.
+      cbn [Completeness.Inductives.Decl.univ_idx] in Hidx; rewrite Hidx in Hgd.
       destruct (gid_lvlP _ HG) as [n HLv]; rewrite Heq in HLv; cbn [ind_sort_lvl exp_wk] in HLv.
       pose proof HLv as [SbP HSbP _ _].
       rewrite <- Hvs in Hg.
@@ -1812,7 +1819,7 @@ Section ConArgs.
     assert (ER : R <~> R') by (eapply per_ctx_env_right_irrel; eassumption).
     destruct (Hsimp E E ltac:(apply ER; exact HE)) as (b & b' & Rb & Hb & Hb' & HRb & m & m' & Hm & Hm' & Hmm).
     inversion Hb; subst; inversion Hb'; subst.
-    destruct (IndSem.per_univ_elem_univ _ _ _ _ HRb ltac:(left; eauto)) as [_ HRb'].
+    destruct (Completeness.Inductives.Decl.per_univ_elem_univ _ _ _ _ HRb ltac:(left; eauto)) as [_ HRb'].
     assert (m = a1) as -> by (eapply functional_eval_exp; eassumption).
     assert (m' = a2) as -> by (eapply functional_eval_exp; eassumption).
     exists (ul j); apply HRb' in Hmm; exact Hmm.
@@ -1866,12 +1873,12 @@ Section ConArgs.
       by (rewrite !List.length_app, List.length_rev, List.length_app, length_cargs_ctx, Hlu, Hlns, Hlfa; unfold ind_nn; unfold ind_np in Hle |- *; lia).
     assert (Hta : tele_ass (List.rev (cargs_ctx p D gs1 ++ ind_params D)))
       by (apply List.Forall_rev, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (decl_closed_params D Hc) ]).
-    pose proof (proj2 (IndSem.rel_gargs _ _ _ _ GlobalArgs.per_ctx_env_nil_true HC' Hta HR0' nil nil _ _ Hl0 Hl0 (INV _ HR0))) as Hgpf.
+    pose proof (proj2 (Completeness.Inductives.Decl.rel_gargs _ _ _ _ Completeness.Global.Args.per_ctx_env_nil_true HC' Hta HR0' nil nil _ _ Hl0 Hl0 (INV _ HR0))) as Hgpf.
     rewrite List.rev_app_distr in Hgpf.
     replace (ups ++ ns ++ fa) with ((ups ++ ns) ++ fa) in Hgpf by (rewrite <- List.app_assoc; reflexivity).
     assert (Hlp : List.length (ups ++ ns) = List.length (List.rev (ind_params D)))
       by (rewrite List.length_app, List.length_rev, Hlu, Hlns; unfold ind_nn; unfold ind_np in Hle |- *; lia).
-    destruct (IndSem.per_gargs_app _ _ _ _ _ _ _ _ Hlp Hgpf Hlp) as [Hp _].
+    destruct (Completeness.Inductives.Decl.per_gargs_app _ _ _ _ _ _ _ _ Hlp Hgpf Hlp) as [Hp _].
     destruct (IndCases.params_split_rel D HDc Hc _ _ _ _ Hp ltac:(rewrite List.length_app, Hlu, Hlns; unfold ind_nn; lia))
       as (Hu0 & _).
     rewrite firstn_app_exact in Hu0 by exact Hlu; exact Hu0.
@@ -1915,7 +1922,7 @@ Section ConGlu.
     (AEl : list domain -> String.string -> nat -> list domain -> glu_exp_pred)
     (DP : list domain -> exp -> glu_typ_pred) (DEl : list domain -> exp -> glu_exp_pred).
   Hypothesis (Hu : List.length ups = ind_nu D) (Hbu : ⟦ ind_sort D ⟧ env_args nil ups ↘ bu)
-    (Hule : uidx_le (IndSem.univ_idx bu) u)
+    (Hule : uidx_le (Completeness.Inductives.Decl.univ_idx bu) u)
     (HeN : forall k A vs, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
        tele_pre (ind_nr D ups) k vs vs -> exists b, ⟦ A ⟧ env_args nil (ups ++ vs) ↘ b)
     (HNP : forall k A vs b, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
@@ -2002,7 +2009,7 @@ Section ConGlu.
       pose proof (cargs_env_rel p D Hc gs hs1 (ca_arg B :: hs2) R Sb1 Δ (Us ++ Ns) (ups ++ ns) _ _ Heq HΔ HR HSb1 HgP HgA1) as HE.
       rewrite <- env_args_app in Ha1.
       assert (Ea2 : ⟦ B ⟧ ⟪wk_pat (cargs_pat hs1)⟫ (env_args nil ((ups ++ ns) ++ List.firstn (List.length hs1) ws)) ↘ b).
-      { rewrite env_args_app, IndSem.eval_wk_pat_args by (rewrite List.length_firstn; lia).
+      { rewrite env_args_app, Completeness.Inductives.Decl.eval_wk_pat_args by (rewrite List.length_firstn; lia).
         rewrite <- env_args_app, <- List.app_assoc; exact Hb. }
       exact (cargs_arg_val_rel p D Hl Hc Hdt Hsu HDc c gs Hcon hs1 B hs2 Heq R _ a1 b HR HE Ha1 Ea2). }
     destruct Hrel as [k0 Hrel].
@@ -2187,7 +2194,7 @@ Section ConGlu.
             unfold shape_tr; rewrite (List.nth_error_nth _ _ _ HB); exact Hc'.
           * rewrite (firstn_S_snoc _ _ _ HB), sh_ctx_snoc, List.length_firstn, Nat.min_l by lia.
             cbn [List.rev].
-            apply (IndSem.per_gargs_snoc _ _ _ _ _ _ _ _ jd Rab);
+            apply (Completeness.Inductives.Decl.per_gargs_snoc _ _ _ _ _ _ _ _ jd Rab);
               [ rewrite List.length_rev, length_sh_ctx, List.length_firstn; lia | exact Hgy | | exact Hcc ].
             rewrite <- !env_args_app, <- !List.app_assoc.
             exact (mk_rel_mod_eval a1 a1 Ea1 Ea1 HRaa).
@@ -2218,7 +2225,7 @@ Section ConGlu.
         replace (List.length (List.repeat false k ++ pat) + ind_nn D) with (List.length (ns ++ fa ++ ys))
           by (unfold pat; rewrite !List.length_app, List.repeat_length, length_cargs_pat; lia).
         replace (ind_nu D) with (List.length ups) by exact Hu.
-        apply IndSem.eval_vars_from_args.
+        apply Completeness.Inductives.Decl.eval_vars_from_args.
       - change (d_ind p (ups ++ bs1)) with (d_ind p (nil ++ (ups ++ bs1))).
         apply (IndCases.eval_apps_ind D p Hl).
         rewrite List.length_app, (IndCases.eval_exps_length _ _ _ Ebs1), List.length_map, HPl; cbn; unfold ind_nn; lia. }
@@ -2439,7 +2446,7 @@ Section ConFT.
          ⊩ ptyp_ty p D (List.repeat false k ++ cargs_pat gs1) (ptyp_skip k t) : Typeω@j).
 
   (** The universes of the sort, below a large one. *)
-  Lemma sort_bound : exists n, forall ρ bu, ⟦ ind_sort D ⟧ ρ ↘ bu -> forall i, n <= i -> uidx_le (IndSem.univ_idx bu) (ul i).
+  Lemma sort_bound : exists n, forall ρ bu, ⟦ ind_sort D ⟧ ρ ↘ bu -> forall i, n <= i -> uidx_le (Completeness.Inductives.Decl.univ_idx bu) (ul i).
   Proof.
     destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq; [ exists i0 | exists 0 ]; intros * Hb i Hi; inversion Hb; subst; cbn; [ lia | exact I ].
   Qed.
@@ -2488,7 +2495,7 @@ Section ConFT.
   (** The constructor applied to glued parameters and arguments is glued at
       the type at the parameters. *)
   Lemma con_base : forall Δ Ms vs (i : nat) b P El, ⊢ Δ ->
-      (forall ρ bu, ⟦ ind_sort D ⟧ ρ ↘ bu -> uidx_le (IndSem.univ_idx bu) (ul i)) ->
+      (forall ρ bu, ⟦ ind_sort D ⟧ ρ ↘ bu -> uidx_le (Completeness.Inductives.Decl.univ_idx bu) (ul i)) ->
       glu_args Δ (cargs_ctx p D gs ++ ind_params D) Id nil Ms vs ->
       ⟦ apps (a_ind p) (ind_pvars D (List.length gs)) ⟧ env_args nil vs ↘ b -> DG b ∈ glu_univ_elem i ↘ P ↘ El ->
       (forall R, DF b ≈ b ∈ per_univ_elem i ↘ R -> R (d_con p c vs) (d_con p c vs)) ->
@@ -2519,7 +2526,7 @@ Section ConFT.
     rewrite EB.
     assert (Eb : ⟦ apps (a_ind p) (ind_pvars D (List.length gs)) ⟧ env_args nil vs ↘ d_ind p ps).
     { apply Modules.eval_apps_exp; exists (d_ind p nil), ps; split; [ constructor | split ].
-      - unfold ind_pvars; rewrite EV, <- Lws, <- Lps; apply IndSem.eval_vars_from_args.
+      - unfold ind_pvars; rewrite EV, <- Lws, <- Lps; apply Completeness.Inductives.Decl.eval_vars_from_args.
       - change (d_ind p ps) with (d_ind p (nil ++ ps)); apply (IndCases.eval_apps_ind D p Hl); cbn; lia. }
     assert (b = d_ind p ps) as -> by (eapply functional_eval_exp; eassumption).
     set (ups := List.firstn (ind_nu D) ps) in *; set (ns := List.skipn (ind_nu D) ps) in *.

@@ -1,7 +1,7 @@
 (** * Contexts
 
     The rules of [wf_ctx] but the module slot's (which is in
-    [MemberReps.v]), and the two context-subtyping facts that
+    [Modules/MemberTypes.v]), and the two context-subtyping facts that
     [Consequences] needs.  [⊨ Γ] is inductive, so the empty context is
     the constructor [rel_ctx_wf_nil].  The extension step is the one place that
     builds a context PER rather than taking one apart.

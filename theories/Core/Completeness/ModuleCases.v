@@ -13,12 +13,20 @@ From Stdlib Require Import Lia List PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
-From Mctt.Core.Syntactic.System Require Import MemberLemmas GlobalModules GlobalPaths DescTyping LookupSound.
+From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Modules Paths DescTyping LookupSound.
+From Mctt.Core.Completeness Require Import ContextCases FunctionCases LetCases LevelCases.
+From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Completeness Require Import
-  ContextCases FunctionCases LetCases LevelCases SubstitutionCases SubtypingCases
-  TrueFalseCases UniverseCases VariableCases LogicalRelation UnitCases InstanceCases
-  MemberReps IndCases TeleSem ElimCases ElimIota
-  ModuleVal ModuleSem UnitSub ModexpRules GlobalArgs IndSem ValidUnit UnitBody FiledSem UnitSem MemSem CanonSem AppSem SelSem.
+  SubtypingCases TrueFalseCases UniverseCases VariableCases LogicalRelation UnitCases.
+From Mctt.Core.Completeness.LogicalRelation Require Import Instance.
+From Mctt.Core.Completeness.Modules Require Import MemberTypes.
+From Mctt.Core.Completeness Require Import IndCases.
+From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
+From Mctt.Core.Completeness Require Import ElimCases IotaCases.
+From Mctt.Core.Completeness.Modules Require Import ModuleVal Values UnitSubst ModexpRel.
+From Mctt.Core.Completeness.Global Require Import Args.
+From Mctt.Core.Completeness.Inductives Require Import Decl.
+From Mctt.Core.Completeness.Modules Require Import ValidUnit Body Filed Unit Mem Canon App Sel.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.

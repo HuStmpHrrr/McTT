@@ -20,8 +20,10 @@ From Stdlib Require Import Lia List PeanoNat String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Substitution Members Fresh Inductives.
-From Mctt.Core.Semantic Require Import Domain Evaluation Readback Avoid Kinds.
+From Mctt.Core.Syntactic Require Import Substitution Members Fresh.
+From Mctt.Core.Syntactic.Inductives Require Import Inductives.
+From Mctt.Core.Semantic Require Import Domain Evaluation Readback Avoid.
+From Mctt.Core.Semantic.Kinds Require Import Kinds.
 From Mctt.Extraction Require Import FastEval.
 Import Domain_Notations.
 #[local] Open Scope list_scope.

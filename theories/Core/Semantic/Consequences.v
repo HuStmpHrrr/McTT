@@ -4,11 +4,12 @@ From Mctt.Core Require Export Soundness.
 From Mctt.Core.Completeness.Consequences Require Export Types.
 From Mctt.Core.Semantic Require Export Transparency Stuck.
 From Mctt.Core.Syntactic Require Export Unseal.
-From Mctt.Core.Syntactic Require Import CoreInversions LevelEq.
+From Mctt.Core.Syntactic Require Import CoreInversions.
+From Mctt.Core.Syntactic.Levels Require Import LevelEq.
 From Mctt.Core.Semantic Require Import Realizability Levels.
 From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
-From Mctt.Core.Soundness Require IndCases IndElimCases.
-From Mctt.Core.Syntactic Require Import IndCong.
+From Mctt.Core.Soundness Require IndCases ElimCases.
+From Mctt.Core.Syntactic.Inductives Require Import IndCong.
 Require Import Mctt.Core.Syntactic.Command.
 From Mctt.Core.Syntactic Require Import Builtin.
 Import Domain_Notations Fixed_Notations.
@@ -85,7 +86,7 @@ Proof.
   destruct (soundness_fundamental_ctx _ HΓ) as [Sb HSb].
   pose proof (initial_env_glu_rel_exp Hinit HSb) as Hσ.
   pose proof (completeness_fundamental_ctx _ HΓ) as HΓs; destruct (rel_ctx_wf_per_ctx_env HΓs) as [RΓ HRΓ].
-  pose proof (IndElimCases.params_glu_args _ _ _ _ _ _ _ _ _ Hass Hs0 (completeness_fundamental_ctx _ HΔ) HΓs HRΓ HSb Hσ
+  pose proof (Soundness.ElimCases.params_glu_args _ _ _ _ _ _ _ _ _ Hass Hs0 (completeness_fundamental_ctx _ HΔ) HΓs HRΓ HSb Hσ
                 HMl
                 ltac:(intros; eapply completeness_fundamental_exp; eauto)
                 ltac:(intros; eapply soundness_fundamental_exp; eauto) Ems) as Hg.

@@ -3,10 +3,11 @@ From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Semantic Require Export PER IndPER.
+From Mctt.Core.Semantic Require Export PER.
+From Mctt.Core.Semantic.Inductives Require Export IndPER.
 From Mctt.Core.Syntactic Require Export SystemOpt.
-From Mctt.Core.Syntactic Require Import Levels LevelEq.
-From Mctt.Core.Syntactic.System Require Import GlobalPresup GlobalPaths.
+From Mctt.Core.Syntactic.Levels Require Import Levels LevelEq.
+From Mctt.Core.Syntactic.System.Global Require Import Presup Paths.
 From Mctt.Core.Soundness.Weakening Require Export Definitions.
 (** [nparams_prefix] and [nonrec_args_prefix], which [glu_ind_decl] reads
     as [valid_ind_decl] does. *)
@@ -525,7 +526,7 @@ Section Gluing.
       parameters glue at the related values before them, and so do the
       non-recursive arguments of each constructor, at each related instance
       of the non-uniform parameters; the relations are the canonical ones
-      of [Core.Semantic.IndPER]. *)
+      of [Core.Semantic.Inductives.IndPER]. *)
   | glu_univ_elem_core_indty :
     `{ forall (NP : nat -> list domain -> glu_typ_pred) (NEl : nat -> list domain -> glu_exp_pred)
          (AP : list domain -> String.string -> nat -> list domain -> glu_typ_pred)

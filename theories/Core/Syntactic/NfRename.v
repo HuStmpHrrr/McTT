@@ -17,7 +17,8 @@
 From Stdlib Require Import Arith Lia List PeanoNat.
 
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Levels Fresh.
+From Mctt.Core.Syntactic.Levels Require Import Levels.
+From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Semantic Require Import Domain.
 Import Syntax_Notations.
 

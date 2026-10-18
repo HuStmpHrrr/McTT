@@ -609,7 +609,7 @@ Hint Constructors per_univ_elem_core : mctt.
     extensionality for its unfolding equation.)
 
     A small index is an ordinal [(a, b)] below ω² (see
-    [Core.Syntactic.Ordinals]), so the small tier is built by a nested
+    [Core.Syntactic.Levels.Ordinals]), so the small tier is built by a nested
     recursion: on the tier [a], and inside a tier on [b].  [per_rec_at a
     lower inner] is the family below an index of tier [a]: the universes of
     the lower tiers, [lower a' b'] for [a' < a], and those of tier [a] below

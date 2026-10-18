@@ -19,7 +19,8 @@ From Stdlib Require Import Lia List Morphisms PeanoNat Relations String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Substitution Members Fresh Inductives.
+From Mctt.Core.Syntactic Require Import Substitution Members Fresh.
+From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Semantic Require Import Domain Evaluation Readback.
 Import Domain_Notations.
 Import Wk_Notations GlobalCtx_Notations.

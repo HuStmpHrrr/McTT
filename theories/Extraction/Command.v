@@ -29,7 +29,9 @@ From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base Soundness.
 From Mctt.Core.Syntactic Require Import System.
-From Mctt.Core.Syntactic.System Require Import Structural Command IndRec MemberWf GlobalPaths LookupSound.
+From Mctt.Core.Syntactic.System Require Import Structural Command.
+From Mctt.Core.Syntactic.System.Inductives Require Import Rec.
+From Mctt.Core.Syntactic.System.Global Require Import MemberWf Paths LookupSound.
 From Mctt.Extraction Require Import Lookup NbE TypeCheck GlobalCheck IndDecl MemberType Opens Privacy.
 Import Syntax_Notations GlobalCtx_Notations.
 

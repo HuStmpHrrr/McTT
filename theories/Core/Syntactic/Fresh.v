@@ -22,7 +22,7 @@ From Stdlib Require Import Arith Lia List PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Substitution.
-From Mctt.Core.Syntactic Require Import Levels.
+From Mctt.Core.Syntactic.Levels Require Import Levels.
 Import Syntax_Notations Wk_Notations.
 
 (** ** Un-weakening

@@ -1,6 +1,6 @@
 (** * Properties of the Judgments, continued
 
-    Everything here uses presupposition, which [GlobalPresup] proves by a mutual
+    Everything here uses presupposition, which [Global/Presup.v] proves by a mutual
     induction over all the judgments; the structural properties it relies on
     are in [Structural]. *)
 
@@ -8,13 +8,13 @@ From Stdlib Require Import Lia Classes.RelationClasses Setoid Morphisms.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic.System Require Export GlobalPresup.
+From Mctt.Core.Syntactic.System.Global Require Export Presup.
 Import Syntax_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 
 (** ** Presupposition for Typing
 
-    [presup_exp_typ] is proved in [GlobalPresup], from the mutual theorem. *)
+    [presup_exp_typ] is proved in [Global/Presup.v], from the mutual theorem. *)
 
 Corollary presup_exp : forall {Θ Ξ Γ M A},
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->

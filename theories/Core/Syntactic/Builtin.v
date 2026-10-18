@@ -19,7 +19,8 @@ From Stdlib Require Import List String Bool.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Export Inductives Members Command.
+From Mctt.Core.Syntactic.Inductives Require Export Inductives.
+From Mctt.Core.Syntactic Require Export Members Command.
 Import Syntax_Notations.
 #[local] Open Scope list_scope.
 

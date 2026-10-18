@@ -141,7 +141,7 @@ In order of expected return:
 
 1. Generalize `destruct_rel_by_assumption` / `on_all_hyp` past the eight leading
    binders, defaulting to `rel_sub_id` / `eval_sub_id` for the instance at `Id`.
-2. Give the eighteen constructions in `Completeness/SubstitutionCases.v`
+2. Give the eighteen constructions in `Completeness/LogicalRelation/Substitution.v`
    `Hint Extern` entries keyed on the goal's substitution shape — none of them
    is currently reachable by automation at all.
 3. Extend `functional_eval_rewrite_clear`

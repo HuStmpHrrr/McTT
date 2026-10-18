@@ -1,6 +1,6 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Soundness Require Import LogicalRelation TermStructureCases.
+From Mctt.Core.Soundness Require Import LogicalRelation VariableCases.
 Import Domain_Notations Fixed_Notations.
 
 

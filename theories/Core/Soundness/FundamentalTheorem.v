@@ -9,7 +9,7 @@
 
     The theorem then gives the rest.  Each entry of a global context is
     valid where it is checked, so a well-formed global context embeds
-    soundly into itself ([glu_emb_refl]), from what [GlobalGlu.v] makes of
+    soundly into itself ([glu_emb_refl]), from what [Global/Embedding.v] makes of
     valid entries.  At that embedding the gluing judgments are the gluing
     relations at the global context, as the corollaries below state them for
     contexts and terms.  There is no part for substitutions, since the
@@ -22,14 +22,17 @@ From Stdlib Require Import Lia List PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
-From Mctt.Core.Syntactic.System Require Import MemberLemmas GlobalModules GlobalPaths DescTyping LookupSound.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases ModuleSem GlobalSem.
+From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Modules Paths DescTyping LookupSound.
+From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness.Modules Require Import Values.
+From Mctt.Core.Completeness.Global Require Import Embedding.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Soundness Require Import LevelCases.
-From Mctt.Core.Soundness Require Import ContextCases TermStructureCases MemberCases
-  SubtypingCases UniverseCases FunctionCases LetCases TrueFalseCases IndCases ModuleCases GlobalGlu.
+From Mctt.Core.Soundness Require Import ContextCases VariableCases UnitCases
+  SubtypingCases UniverseCases FunctionCases LetCases TrueFalseCases IndCases ModuleCases.
+From Mctt.Core.Soundness.Global Require Import Embedding.
 From Mctt.Core.Completeness Require IndCases.
-Require Import Mctt.Core.Soundness.IndElimCases.
+Require Import Mctt.Core.Soundness.ElimCases.
 From Mctt.Core.Soundness Require Export LogicalRelation.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations Fixed_Notations.
 #[local] Open Scope list_scope.

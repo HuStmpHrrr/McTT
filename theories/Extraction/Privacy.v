@@ -10,7 +10,9 @@ From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic.System Require Import Definitions Structural MemberLemmas GlobalPaths DescTyping GlobalPresup Privacy.
+From Mctt.Core.Syntactic.System Require Import Definitions Structural.
+From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Paths DescTyping Presup.
+From Mctt.Core.Syntactic.System Require Import Privacy.
 From Mctt.Extraction Require Import MemberType.
 Import Syntax_Notations.
 #[local] Open Scope list_scope.

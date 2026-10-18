@@ -154,7 +154,7 @@ The types of levels are indexed by a sort: `Level@n` in `exp` (`a_level n`),
 `Levelᵈ@n` in `domain`, `Levelⁿ@n` in `nf`, and `Level`, `Levelᵈ`, `Levelⁿ`
 are the sort-0 ones.  `Level@m ⊆ Level@n` for `m <= n`
 (`wf_subtyp_level`), and every `Level@n` is in `Type@0`.  Their terms are `𝕃ᵒ o` (a literal: an ordinal
-`o = (a, b)`, that is `ω·a + b`, below ω²; `Core/Syntactic/Ordinals.v`),
+`o = (a, b)`, that is `ω·a + b`, below ω²; `Core/Syntactic/Levels/Ordinals.v`),
 `succl M` and `maxl M N`, with `dlvl_lit`, `dlvl_suc`, `dlvl_max` on values
 and `nf_lvl_of L` on normal forms.  `𝕃@n` is the finite literal
 `𝕃ᵒ (0, n)` and `Type@n` is `Type⟨𝕃@n⟩`: both notations match only a
