@@ -304,7 +304,7 @@ Proof.
 Qed.
 
 (** A submodule of an alias is its target's, over the parameters. *)
-Lemma alias_mod_desc : forall Γ Δ E y R Rm, wf_ctx Θm Ξm (Δ ++ Γ) ->
+Lemma alias_mod_desc : forall Γ Δ E y R Rm, ⊢ Θm ⍮ Ξm ⍮ Δ ++ Γ ->
     mdenote Θm Ξm Γ (me_mem (me_lit (gu_mk Δ (md_alias E))) y) R -> ds_mod Θm Ξm R = Some Rm ->
     exists R', mdenote Θm Ξm (Δ ++ Γ) (me_mem E y) R' /\ R = ds_up Δ R'.
 Proof.

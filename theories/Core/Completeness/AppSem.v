@@ -190,7 +190,7 @@ Qed.
 (** A module expression valid in what it denotes, given arguments for the
     outermost parameters of an abstraction its description is. *)
 Lemma valid_modexp_apps_up : forall Ns Γ Δa R H, valid_modexp Γ H -> Θm ⍮ Ξm ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θm Ξm Γ H (ds_up Δa R) -> ds_is_mod R ->
-    wf_ctx Θm Ξm (Δa ++ Γ) -> tele_ass Δa -> List.length Ns <= List.length Δa ->
+    ⊢ Θm ⍮ Ξm ⍮ Δa ++ Γ -> tele_ass Δa -> List.length Ns <= List.length Δa ->
     (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Δa Id Ns) k = Some A -> Θm ⍮ Ξm ⍮ Γ ⊢ N : A) ->
     (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts Δa Id Ns) k = Some A -> Γ ⊨ N : A) ->
     desc_ok Θm Ξm (Δa ++ Γ) R ->
@@ -205,7 +205,7 @@ Proof.
   rewrite <- List.app_assoc in HΔ, HR; cbn [List.app] in HΔ, HR.
   destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ [j HC]].
   pose proof (wf_sub_single _ _ _ _ _ _ HC HN) as Hs1.
-  assert (HΔN : wf_ctx Θm Ξm (tele_sub Δ1 (Id,,N) ++ Γ)) by (eapply ctx_sub_wf_gen; eassumption).
+  assert (HΔN : ⊢ Θm ⍮ Ξm ⍮ tele_sub Δ1 (Id,,N) ++ Γ) by (eapply ctx_sub_wf_gen; eassumption).
   assert (Hσ : Θm ⍮ Ξm ⍮ tele_sub Δ1 (Id,,N) ++ Γ ⊢ˢ sb_qn (List.length Δ1) (Id,,N) : Δ1 ++ ce_ass C :: Γ)
     by (apply wf_sub_ext; assumption).
   destruct (desc_ok_tele _ _ _ _ HR Hmod) as (T0 & Ht0).

@@ -284,9 +284,9 @@ Qed.
   repeat match goal with Hi : is_univ_nf ?UA u |- _ =>
     assert_fails (constr_eq UA (univ_nf u));
     rewrite (is_univ_nf_eq _ _ Hi) in * end;
-  assert (wf_exp gc_deps gc_stack Δ (unf_tm u) A)
+  assert (Δ ⊢ A : unf_tm u)
     by (rewrite <- nf_to_exp_univ_nf; mauto 2);
-  assert (wf_exp gc_deps gc_stack Δ (a_typ (unf_large u)) A)
+  assert (Δ ⊢ A : a_typ (unf_large u))
     by (apply wf_exp_unf_large; eassumption).
 
 (** The eliminator: the parameters of the scrutinee's type are typed, so
@@ -684,9 +684,9 @@ Qed.
   repeat match goal with Hi : is_univ_nf ?UA u |- _ =>
     assert_fails (constr_eq UA (univ_nf u));
     rewrite (is_univ_nf_eq _ _ Hi) in * end;
-  assert (wf_exp gc_deps gc_stack Δ (unf_tm u) A)
+  assert (Δ ⊢ A : unf_tm u)
     by (rewrite <- nf_to_exp_univ_nf; mauto 3 using alg_type_infer_sound);
-  assert (wf_exp gc_deps gc_stack Δ (a_typ (unf_large u)) A)
+  assert (Δ ⊢ A : a_typ (unf_large u))
     by (apply wf_exp_unf_large; eassumption).
 
 (** The type the eliminator infers is the normal form of a type. *)
@@ -1489,7 +1489,7 @@ Qed.
 (** The whole block, the universes included; [alg_type_complete_lets] below
     is the statement without them. *)
 Lemma alg_type_complete_lets_all : forall n,
-  (forall Θ Ξ Γ, wf_ctx Θ Ξ Γ -> True) /\
+  (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> True) /\
   (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ = gc_deps -> Ξ = gc_stack -> user_exp M ->
      exp_lets M <= n -> Γ ⊢a M ⟸ A) /\
   (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> True) /\
@@ -1831,7 +1831,7 @@ Proof.
 Qed.
 
 Lemma alg_type_complete_lets : forall n,
-  (forall Θ Ξ Γ, wf_ctx Θ Ξ Γ -> True) /\
+  (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> True) /\
   (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ = gc_deps -> Ξ = gc_stack -> user_exp M ->
      exp_lets M <= n -> Γ ⊢a M ⟸ A) /\
   (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> True) /\
@@ -1855,7 +1855,7 @@ Proof.
 Qed.
 
 Lemma alg_type_complete_all :
-  (forall Θ Ξ Γ, wf_ctx Θ Ξ Γ -> True) /\
+  (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> True) /\
   (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ = gc_deps -> Ξ = gc_stack -> user_exp M -> Γ ⊢a M ⟸ A) /\
   (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> True) /\
   (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> True) /\

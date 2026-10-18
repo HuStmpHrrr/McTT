@@ -587,9 +587,9 @@ Ltac is_type_obl :=
 Ltac saturate_infer_univ :=
   repeat match goal with
     | Ha : ?G ⊢a ?A ⟹ ?UA, Hu : is_univ_nf ?UA ?u |- _ =>
-        let T := constr:(wf_exp gc_deps gc_stack G (a_typ (unf_large u)) A) in
+        let T := constr:(G ⊢ A : a_typ (unf_large u)) in
         assert_fails (assert T by assumption);
-        assert (wf_exp gc_deps gc_stack G (unf_tm u) A)
+        assert (G ⊢ A : unf_tm u)
           by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
               eapply alg_type_infer_sound; [ exact Ha | ctx_wf_tac ]);
         assert T by (apply wf_exp_unf_large; eassumption)
@@ -597,7 +597,7 @@ Ltac saturate_infer_univ :=
       HC : ?G ▹ ?A ⊢a ?B ⟹ ?UB, HB : ?G ⊢a ?A ⟹ ?UA, Hu : is_univ_nf ?UA _ |- _ =>
         (** A codomain whose universe was normalised ([ati_pi]): its
             typing at the large level of the normal form's index. *)
-        let T := constr:(wf_exp gc_deps gc_stack (G ▹ A) (a_typ (unf_large v)) B) in
+        let T := constr:(G ▹ A ⊢ B : a_typ (unf_large v)) in
         assert_fails (assert T by assumption);
         let HG' := fresh "HG" in
         assert (HG' : ⊢ G) by ctx_wf_tac;

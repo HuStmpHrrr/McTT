@@ -72,7 +72,7 @@ Section Closed.
   Hypothesis Hgm : ⊢ᵍ Θm ⍮ Ξm.
   Hypothesis Hsub : gc_sub Θm Ξm gc_deps gc_stack.
 
-  Lemma rel_wk_to_nil : forall Γ, ⊨ Γ -> rel_wk_under_ctx Γ (wk_shiftn (length Γ)) ⋅.
+  Lemma rel_wk_to_nil : forall Γ, ⊨ Γ -> Γ ⊨ʷ (wk_shiftn (length Γ)) : ⋅.
   Proof.
     intros * HΓ.
     destruct (rel_ctx_wf_per_ctx_env HΓ) as [R HR].
@@ -80,11 +80,11 @@ Section Closed.
     constructor; [ exact (wk_mono_shiftn _) | intros; exact I ].
   Qed.
 
-  Lemma valid_unit_closed_weaken : forall Γ U, valid_unit Θm Ξm ⋅ (me_lit U) -> gunit_scoped 0 U -> ⊨ Γ -> wf_ctx Θm Ξm Γ ->
+  Lemma valid_unit_closed_weaken : forall Γ U, valid_unit Θm Ξm ⋅ (me_lit U) -> gunit_scoped 0 U -> ⊨ Γ -> ⊢ Θm ⍮ Ξm ⍮ Γ ->
       valid_unit Θm Ξm Γ (me_lit U).
   Proof.
     intros * HK HU HΓ Hw.
-    assert (Hw' : wf_ctx Θm Ξm (Γ ++ ⋅)) by (rewrite app_nil_r; exact Hw).
+    assert (Hw' : ⊢ Θm ⍮ Ξm ⍮ Γ ++ ⋅) by (rewrite app_nil_r; exact Hw).
     pose proof (wf_wk_shiftn_app' _ _ _ _ Hw') as Hφ; rewrite app_nil_r in Hφ.
     pose proof (valid_unit_gsub Hgw _ _ Hgm Hsub _ _ _ _ HK (gsub_wk _ _ _ (rel_wk_to_nil _ HΓ) HΓ rel_ctx_wf_nil)
                   (wf_sub_of_wk _ _ _ _ _ Hφ)) as H.
@@ -373,7 +373,7 @@ Section FiledOk.
   Lemma fo_alias : forall p T Φ y Φ0 E Ua, gc_loc Θm Ξm p = Some (T, Φ) ->
       gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
       gc_module Θ2 Ξ2 (qname_in p y) = Some (mr_alias Ua) /\
-      forall Γ, ⊨ Γ -> wf_ctx Θm Ξm Γ -> valid_unit Θm Ξm Γ (me_lit Ua).
+      forall Γ, ⊨ Γ -> ⊢ Θm ⍮ Ξm ⍮ Γ -> valid_unit Θm Ξm Γ (me_lit Ua).
   Proof.
     intros * Hl Hp HUa; split; [ exact (fo_alias_module _ _ _ _ _ _ _ Hl Hp HUa) |].
     intros Γ HΓ Hw.

@@ -2138,7 +2138,7 @@ Ltac suniv_glu_typ_pred_wk :=
       [ eapply glu_lvl_resp_wk; eassumption
       | match type of Heq with
         | wf_exp_eq ?T ?X _ ?U ?A _ =>
-            assert (wf_exp_eq T X Δ U A[φ]ʷ (Type⟨t⟩)[φ]ʷ) by mauto 2; eassumption
+            assert (T ⍮ X ⍮ Δ ⊢ A[φ]ʷ ≈ (Type⟨t⟩)[φ]ʷ : U) by mauto 2; eassumption
         end ]
   end.
 

@@ -408,7 +408,7 @@ Ltac push_wk :=
 Ltac lift_wk_False :=
   match goal with
   | _ : wf_exp ?Θ ?Ξ (cons (ce_ass a_False) ?Γ) (a_typ _) _, Hφ : wf_wk ?Θ ?Ξ ?Δ ?Γ ?φ |- _ =>
-      let T := constr:(wf_wk Θ Ξ (cons (ce_ass a_False) Δ) (cons (ce_ass a_False) Γ) (wk_q φ)) in
+      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass a_False) Δ ⊢ʷ wk_q φ : cons (ce_ass a_False) Γ) in
       assert_fails (assert T by assumption);
       assert T by (apply wf_wk_q_False; exact Hφ)
   end.
@@ -417,12 +417,12 @@ Ltac lift_wk_step :=
   match goal with
   | Hφ : wf_wk ?Θ ?Ξ ?Δ ?Γ ?φ,
     IH : forall _ _, wf_wk ?Θ ?Ξ _ ?Γ _ -> wf_exp ?Θ ?Ξ _ (a_typ _) (exp_wk ?A _) |- _ =>
-      let T := constr:(wf_wk Θ Ξ (cons (ce_ass (exp_wk A φ)) Δ) (cons (ce_ass A) Γ) (wk_q φ)) in
+      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass (exp_wk A φ)) Δ ⊢ʷ wk_q φ : cons (ce_ass A) Γ) in
       assert_fails (assert T by assumption);
       assert T by (eapply wf_wk_q; [ exact Hφ | | exact (IH _ _ Hφ) ]; mauto 2)
   | Hφ : wf_wk ?Θ ?Ξ ?Δ ?Γ ?φ,
     IH : forall _ _, wf_wk ?Θ ?Ξ _ ?Γ _ -> wf_exp ?Θ ?Ξ _ (a_univ _) (exp_wk ?A _) |- _ =>
-      let T := constr:(wf_wk Θ Ξ (cons (ce_ass (exp_wk A φ)) Δ) (cons (ce_ass A) Γ) (wk_q φ)) in
+      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass (exp_wk A φ)) Δ ⊢ʷ wk_q φ : cons (ce_ass A) Γ) in
       assert_fails (assert T by assumption);
       assert T by (eapply (wf_wk_q _ _ _ _ _ _ 0); [ exact Hφ | | exact (wf_exp_small_large (IH _ _ Hφ)) ];
                    eapply wf_exp_small_large; eassumption)
@@ -436,7 +436,7 @@ Ltac lift_wk_def :=
     _ : forall _ _, wf_wk ?Θ ?Ξ _ (cons (ce_def ?A ?M) ?Γ) _ -> _,
     IHA : forall _ _, wf_wk ?Θ ?Ξ _ ?Γ _ -> wf_exp ?Θ ?Ξ _ (a_typ _) (exp_wk ?A _),
     IHM : forall _ _, wf_wk ?Θ ?Ξ _ ?Γ _ -> wf_exp ?Θ ?Ξ _ (exp_wk ?A _) (exp_wk ?M _) |- _ =>
-      let T := constr:(wf_wk Θ Ξ (cons (ce_def (exp_wk A φ) (exp_wk M φ)) Δ) (cons (ce_def A M) Γ) (wk_q φ)) in
+      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_def (exp_wk A φ) (exp_wk M φ)) Δ ⊢ʷ wk_q φ : cons (ce_def A M) Γ) in
       assert_fails (assert T by assumption);
       assert T by (eapply wf_wk_q_def; [ exact Hφ | | | exact (IHA _ _ Hφ) | exact (IHM _ _ Hφ) ]; mauto 2)
   end.
@@ -1505,9 +1505,9 @@ Proof.
       HA : wf_exp ?T ?X ?Γ (a_univ ?L) ?A,
       Hφ : wf_wk ?T ?X ?Δ ?Γ ?φ,
       HL0 : wf_exp ?T ?X ?Γ (a_level ?n) ?L |- _ =>
-        assert (wf_exp T X Γ (a_typ 0) A) by (eapply wf_exp_suniv_large; eassumption);
-        assert (wf_exp T X Δ (a_typ 0) A[φ]ʷ) by (eapply wf_exp_suniv_large; eauto);
-        assert (wf_wk T X (Δ ▹ A[φ]ʷ) (Γ ▹ A) (wk_q φ)) by (eapply wf_wk_q; eassumption);
+        assert (T ⍮ X ⍮ Γ ⊢ A : a_typ 0) by (eapply wf_exp_suniv_large; eassumption);
+        assert (T ⍮ X ⍮ Δ ⊢ A[φ]ʷ : a_typ 0) by (eapply wf_exp_suniv_large; eauto);
+        assert (T ⍮ X ⍮ Δ ▹ A[φ]ʷ ⊢ʷ wk_q φ : Γ ▹ A) by (eapply wf_wk_q; eassumption);
         first [ eapply wf_pi_lvl | eapply wf_exp_eq_pi_cong_lvl ];
         rewrite <- ?exp_wk_shift_wk_q; eauto
     end ].
@@ -1516,13 +1516,13 @@ Proof.
   all: try solve [
     match goal with
     | HU : wf_is_univ ?T ?X ?Γ ?U, HA : wf_exp ?T ?X ?Γ ?U ?A, Hφ : wf_wk ?T ?X ?Δ ?Γ ?φ |- wf_exp _ _ _ _ (a_pi _ _) =>
-        assert (wf_wk T X (Δ ▹ A[φ]ʷ) (Γ ▹ A) (wk_q φ)) by (eapply wf_wk_q_univ; eauto);
+        assert (T ⍮ X ⍮ Δ ▹ A[φ]ʷ ⊢ʷ wk_q φ : Γ ▹ A) by (eapply wf_wk_q_univ; eauto);
         eapply wf_pi; [ eauto | eauto | rewrite <- exp_wk_shift_wk_q; eauto ]
     end ].
   all: try solve [
     match goal with
     | HU : wf_is_univ ?T ?X ?Γ ?U, HA : wf_exp ?T ?X ?Γ ?U ?A, Hφ : wf_wk ?T ?X ?Δ ?Γ ?φ |- wf_exp_eq _ _ _ _ (a_pi _ _) _ =>
-        assert (wf_wk T X (Δ ▹ A[φ]ʷ) (Γ ▹ A) (wk_q φ)) by (eapply wf_wk_q_univ; eauto);
+        assert (T ⍮ X ⍮ Δ ▹ A[φ]ʷ ⊢ʷ wk_q φ : Γ ▹ A) by (eapply wf_wk_q_univ; eauto);
         eapply wf_exp_eq_pi_cong; [ eauto | eauto | eauto | rewrite <- exp_wk_shift_wk_q; eauto ]
     end ].
   (** The type former and the constructors: their types are closed. *)
@@ -1963,7 +1963,7 @@ Ltac push_sub :=
 Ltac lift_sub_False :=
   match goal with
   | _ : wf_exp ?Θ ?Ξ (cons (ce_ass a_False) ?Δ) (a_typ _) _, Hσ : wf_sub ?Θ ?Ξ ?Γ ?Δ ?σ |- _ =>
-      let T := constr:(wf_sub Θ Ξ (cons (ce_ass a_False) Γ) (cons (ce_ass a_False) Δ) (sb_q σ)) in
+      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass a_False) Γ ⊢ˢ sb_q σ : cons (ce_ass a_False) Δ) in
       assert_fails (assert T by assumption);
       assert T by (apply wf_sub_q_False; exact Hσ)
   end.
@@ -1972,12 +1972,12 @@ Ltac lift_sub_step :=
   match goal with
   | Hσ : wf_sub ?Θ ?Ξ ?Γ ?Δ ?σ,
     IH : forall _ _, wf_sub ?Θ ?Ξ _ ?Δ _ -> wf_exp ?Θ ?Ξ _ (a_typ _) (exp_sub ?A _) |- _ =>
-      let T := constr:(wf_sub Θ Ξ (cons (ce_ass (exp_sub A σ)) Γ) (cons (ce_ass A) Δ) (sb_q σ)) in
+      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass (exp_sub A σ)) Γ ⊢ˢ sb_q σ : cons (ce_ass A) Δ) in
       assert_fails (assert T by assumption);
       assert T by (eapply wf_sub_q; [ exact Hσ | | exact (IH _ _ Hσ) ]; mauto 2)
   | Hσ : wf_sub ?Θ ?Ξ ?Γ ?Δ ?σ,
     IH : forall _ _, wf_sub ?Θ ?Ξ _ ?Δ _ -> wf_exp ?Θ ?Ξ _ (a_univ _) (exp_sub ?A _) |- _ =>
-      let T := constr:(wf_sub Θ Ξ (cons (ce_ass (exp_sub A σ)) Γ) (cons (ce_ass A) Δ) (sb_q σ)) in
+      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass (exp_sub A σ)) Γ ⊢ˢ sb_q σ : cons (ce_ass A) Δ) in
       assert_fails (assert T by assumption);
       assert T by (eapply (wf_sub_q _ _ _ _ _ _ 0); [ exact Hσ | | exact (wf_exp_small_large (IH _ _ Hσ)) ];
                    eapply wf_exp_small_large; eassumption)
@@ -1989,7 +1989,7 @@ Ltac lift_sub_def :=
     _ : forall _ _, wf_sub ?Θ ?Ξ _ (cons (ce_def ?A ?M) ?Δ) _ -> _,
     IHA : forall _ _, wf_sub ?Θ ?Ξ _ ?Δ _ -> wf_exp ?Θ ?Ξ _ (a_typ _) (exp_sub ?A _),
     IHM : forall _ _, wf_sub ?Θ ?Ξ _ ?Δ _ -> wf_exp ?Θ ?Ξ _ (exp_sub ?A _) (exp_sub ?M _) |- _ =>
-      let T := constr:(wf_sub Θ Ξ (cons (ce_def (exp_sub A σ) (exp_sub M σ)) Γ) (cons (ce_def A M) Δ) (sb_q σ)) in
+      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_def (exp_sub A σ) (exp_sub M σ)) Γ ⊢ˢ sb_q σ : cons (ce_def A M) Δ) in
       assert_fails (assert T by assumption);
       assert T by (eapply wf_sub_q_def; [ exact Hσ | | | exact (IHA _ _ Hσ) | exact (IHM _ _ Hσ) ]; mauto 2)
   end.
@@ -2627,13 +2627,13 @@ Proof.
   all: try solve [
     match goal with
     | HU : wf_is_univ ?T ?X ?Δ ?U, HA : wf_exp ?T ?X ?Δ ?U ?A, Hσ : wf_sub ?T ?X ?Γ ?Δ ?σ |- wf_exp _ _ _ _ (a_pi _ _) =>
-        assert (wf_sub T X (Γ ▹ A[σ]) (Δ ▹ A) (q σ)) by (eapply wf_sub_q_univ; eauto);
+        assert (T ⍮ X ⍮ Γ ▹ A[σ] ⊢ˢ q σ : Δ ▹ A) by (eapply wf_sub_q_univ; eauto);
         eapply wf_pi; [ eauto | eauto | rewrite <- exp_wk_shift_sub_q; eauto ]
     end ].
   all: try solve [
     match goal with
     | HU : wf_is_univ ?T ?X ?Δ ?U, HA : wf_exp ?T ?X ?Δ ?U ?A, Hσ : wf_sub ?T ?X ?Γ ?Δ ?σ |- wf_exp_eq _ _ _ _ (a_pi _ _) _ =>
-        assert (wf_sub T X (Γ ▹ A[σ]) (Δ ▹ A) (q σ)) by (eapply wf_sub_q_univ; eauto);
+        assert (T ⍮ X ⍮ Γ ▹ A[σ] ⊢ˢ q σ : Δ ▹ A) by (eapply wf_sub_q_univ; eauto);
         eapply wf_exp_eq_pi_cong; [ eauto | eauto | eauto | rewrite <- exp_wk_shift_sub_q; eauto ]
     end ].
   (** The type former and the constructors: their types are closed. *)

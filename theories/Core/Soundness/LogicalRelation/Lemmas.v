@@ -828,11 +828,11 @@ Section glu_univ_elem_cumulativity.
         let Hl := fresh "Hl" in
         pose proof (uidx_le_ulvl_le _ _ Hge) as Hl;
         repeat match goal with H : _ ⍮ _ ⍮ _ ⊢ ?A ≈ ?B : Typeω@(ulvl u) |- _ =>
-          let T := constr:(wf_exp_eq gc_deps gc_stack _ (Typeω@(ulvl v)) A B) in
+          let T := constr:(_ ⊢ A ≈ B : Typeω@(ulvl v)) in
           assert_fails (assert T by assumption);
           pose proof (lift_exp_eq_ge _ _ _ _ _ _ _ Hl H) end;
         repeat match goal with H : _ ⍮ _ ⍮ _ ⊢ ?A : Typeω@(ulvl u) |- _ =>
-          let T := constr:(wf_exp gc_deps gc_stack _ (Typeω@(ulvl v)) A) in
+          let T := constr:(_ ⊢ A : Typeω@(ulvl v)) in
           assert_fails (assert T by assumption);
           pose proof (lift_exp_ge _ _ _ _ _ _ Hl H) end end;
       try solve [repeat split; intros; destruct_conjs; mauto 2 | intuition mauto 3].

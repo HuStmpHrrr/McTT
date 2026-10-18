@@ -330,7 +330,7 @@ Qed.
 Ltac lift_sub_eq_False :=
   match goal with
   | _ : wf_exp ?Θ ?Ξ (cons (ce_ass a_False) ?Δ) (a_typ _) _, Hσ : wf_sub_eq ?Θ ?Ξ ?Γ ?Δ ?σ ?σ' |- _ =>
-      let T := constr:(wf_sub_eq Θ Ξ (cons (ce_ass a_False) Γ) (cons (ce_ass a_False) Δ) (sb_q σ) (sb_q σ')) in
+      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass a_False) Γ ⊢ˢ sb_q σ ≈ sb_q σ' : cons (ce_ass a_False) Δ) in
       assert_fails (assert T by assumption);
       assert T by (apply wf_sub_eq_q_False; exact Hσ)
   end.
@@ -339,7 +339,7 @@ Ltac lift_sub_eq_step :=
   match goal with
   | Hσ : wf_sub_eq ?Θ ?Ξ ?Γ ?Δ ?σ ?σ',
     IH : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ ?Δ _ _ -> wf_exp_eq ?Θ ?Ξ _ (a_typ _) (exp_sub ?A _) _ |- _ =>
-      let T := constr:(wf_sub_eq Θ Ξ (cons (ce_ass (exp_sub A σ)) Γ) (cons (ce_ass A) Δ) (sb_q σ) (sb_q σ')) in
+      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass (exp_sub A σ)) Γ ⊢ˢ sb_q σ ≈ sb_q σ' : cons (ce_ass A) Δ) in
       assert_fails (assert T by assumption);
       assert T by (eapply wf_sub_eq_q; [ exact Hσ | | exact (IH _ _ _ Hσ) ]; mauto 2)
   (** A domain in a small universe, at a level it is given to be one: both are
@@ -348,7 +348,7 @@ Ltac lift_sub_eq_step :=
     HL : wf_exp ?Θ ?Ξ ?Δ (a_level ?n) ?L,
     HA : wf_exp ?Θ ?Ξ ?Δ (a_univ ?L) ?A,
     IH : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ ?Δ _ _ -> wf_exp_eq ?Θ ?Ξ _ (a_univ _) (exp_sub ?A _) _ |- _ =>
-      let T := constr:(wf_sub_eq Θ Ξ (cons (ce_ass (exp_sub A σ)) Γ) (cons (ce_ass A) Δ) (sb_q σ) (sb_q σ')) in
+      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_ass (exp_sub A σ)) Γ ⊢ˢ sb_q σ ≈ sb_q σ' : cons (ce_ass A) Δ) in
       assert_fails (assert T by assumption);
       assert T by (eapply (wf_sub_eq_q _ _ _ _ _ _ _ 0);
                    [ exact Hσ | exact (wf_exp_suniv_large HL HA)
@@ -364,7 +364,7 @@ Ltac lift_sub_eq_def :=
     _ : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ (cons (ce_def ?A ?M) ?Δ) _ _ -> _,
     IHA : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ ?Δ _ _ -> wf_exp_eq ?Θ ?Ξ _ (a_typ _) (exp_sub ?A _) _,
     IHM : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ ?Δ _ _ -> wf_exp_eq ?Θ ?Ξ _ (exp_sub ?A _) (exp_sub ?M _) _ |- _ =>
-      let T := constr:(wf_sub_eq Θ Ξ (cons (ce_def (exp_sub A σ) (exp_sub M σ)) Γ) (cons (ce_def A M) Δ) (sb_q σ) (sb_q σ')) in
+      let T := constr:(Θ ⍮ Ξ ⍮ cons (ce_def (exp_sub A σ) (exp_sub M σ)) Γ ⊢ˢ sb_q σ ≈ sb_q σ' : cons (ce_def A M) Δ) in
       assert_fails (assert T by assumption);
       assert T by (eapply wf_sub_eq_q_def; [ exact Hσ | | | exact (IHA _ _ _ Hσ) | exact (IHM _ _ _ Hσ) ]; mauto 2)
   end.
@@ -382,11 +382,11 @@ Ltac lift_sub_eq := repeat first [ lift_sub_eq_False | lift_sub_eq_step | lift_s
 Ltac saturate_sub_typ :=
   repeat match goal with
   | H : wf_exp ?Θ ?Ξ ?Δ (a_typ ?i) ?A, Hσ : wf_sub ?Θ ?Ξ ?Γ ?Δ ?σ |- _ =>
-      let T := constr:(wf_exp Θ Ξ Γ (a_typ i) (exp_sub A σ)) in
+      let T := constr:(Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ : a_typ i) in
       assert_fails (assert T by assumption);
       assert T by (eapply sub_preserves_typ; eassumption)
   | H : wf_exp ?Θ ?Ξ ?Δ (a_univ ?i) ?A, Hσ : wf_sub ?Θ ?Ξ ?Γ ?Δ ?σ |- _ =>
-      let T := constr:(wf_exp Θ Ξ Γ (a_univ i) (exp_sub A σ)) in
+      let T := constr:(Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ : a_univ i) in
       assert_fails (assert T by assumption);
       assert T by (eapply sub_preserves_styp; eassumption)
   end.
@@ -1053,7 +1053,7 @@ Proof.
     match goal with
     | Hσ : wf_sub_eq ?T ?X ?G0 ?G ?σ ?σ', Hx : _ ∋ #?x ≔ₘ ?U |- wf_modexp_eq _ _ _ (modexp_sub (me_var ?x) _) _ /\ wf_modexp_eq _ _ _ (modexp_sub (me_lit ?U) _) _ =>
         pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hl; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hr;
-        assert (Hlit : forall s, wf_sub T X G0 G s -> wf_modexp_eq T X G0 (sentry_modexp (s x)) (me_lit U[s]ᵘ))
+        assert (Hlit : forall s, T ⍮ X ⍮ G0 ⊢ˢ s : G -> T ⍮ X ⍮ G0 ⊢ᵐ sentry_modexp (s x) ≈ me_lit U[s]ᵘ)
           by (intros s Hs; destruct (wf_sub_apply_mod _ _ _ _ _ Hs _ _ Hx) as [[-> HUσ] | (y & -> & Hy)]; cbn;
               [ apply wf_me_lit; exact HUσ | eapply wf_me_delta_slot; [ eapply wf_sub_dom; exact Hs | exact Hy ] ]);
         cbn; split; [ eapply wf_sub_eq_apply_mod; eassumption |];
@@ -1082,8 +1082,8 @@ Proof.
       IHU : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_unit_eq _ _ _ (gunit_sub (gu_mk (?Δ ++ ce_ass ?X :: nil) ?D) _) _ /\ _,
       HN : wf_exp _ _ _ ?X ?N, IHN : forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?N _) _ |- _ =>
         pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hl; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hr;
-        assert (Hred : wf_modexp_eq _ _ _ (modexp_sub (me_app (me_lit (gu_mk (Δ ++ ce_ass X :: nil) D)) N) σ)
-                                         (modexp_sub (me_app (me_lit (gu_mk (Δ ++ ce_ass X :: nil) D)) N) σ'))
+        assert (Hred : _ ⍮ _ ⍮ _ ⊢ᵐ modexp_sub (me_app (me_lit (gu_mk (Δ ++ ce_ass X :: nil) D)) N) σ
+                                    ≈ modexp_sub (me_app (me_lit (gu_mk (Δ ++ ce_ass X :: nil) D)) N) σ')
           by (cbn [modexp_sub]; pose proof (proj1 (IHU _ _ _ Hσ)) as HUσ; rewrite !gunit_sub_last in HUσ |- *;
               eapply lit_app_cong; [ exact HUσ | eapply sub_preserves_exp; [ exact HN | exact Hl ] | exact (IHN _ _ _ Hσ)
                                    | eapply sub_preserves_exp; [ exact HN | exact Hr ] ]);

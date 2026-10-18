@@ -168,7 +168,7 @@ Record rel_exp_under_ctx Γ A M M' : Prop := mk_rel_exp_under_ctx
   ; reu_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ reu_rel
   ; reu_lvl : nat
   ; reu_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-      rel_sub_under_ctx Γ' Γ σ σ' ->
+      Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->
@@ -208,7 +208,7 @@ Record rel_subtyp_under_ctx Γ A A' : Prop := mk_rel_subtyp_under_ctx
   ; rstu_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rstu_rel
   ; rstu_lvl : nat
   ; rstu_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-      rel_sub_under_ctx Γ' Γ σ σ' ->
+      Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->
@@ -244,7 +244,7 @@ Record rel_modexp_under_ctx Γ H H' : Prop := mk_rel_modexp_under_ctx
   { rmu_rel : relation env
   ; rmu_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rmu_rel
   ; rmu_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-      rel_sub_under_ctx Γ' Γ σ σ' ->
+      Γ' ⊨ˢ σ ≈ σ' : Γ ->
       forall ρ ρ' ρσ ρ'σ',
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->
@@ -473,7 +473,7 @@ Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_file
       valid_filed_term p T x R0
   ; vfm_aliases : forall y Φ0 E Ua, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
       gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias Ua) /\
-      forall Γ, ⊨ Γ -> wf_ctx Θm Ξm Γ -> valid_unit Θm Ξm Γ (me_lit Ua) }.
+      forall Γ, ⊨ Γ -> ⊢ Θm ⍮ Ξm ⍮ Γ -> valid_unit Θm Ξm Γ (me_lit Ua) }.
 
 Definition valid_filed_mods : Prop :=
   forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) -> valid_filed_mod p T Φ.

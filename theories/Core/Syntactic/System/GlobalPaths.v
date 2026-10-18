@@ -81,7 +81,7 @@ Lemma gc_body_frame_here : forall Θ mp U Ξ x ip,
 Proof. intros; unfold gc_body; cbn; rewrite qname_strip_app; reflexivity. Qed.
 
 (** Every frame of a well-formed stack belongs to a unit not filed. *)
-Lemma wf_gstack_frames : forall Θ Ξ, wf_gstack Θ Ξ ->
+Lemma wf_gstack_frames : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
     forall mp U, List.In (mp, U) Ξ -> gds_lookup Θ (q_unit mp) = None.
 Proof.
   induction 1 as [| | Θ Ξ mq Δ Φ HΞ IH HV Hff]; intros mp V0 Hin; try (cbn in Hin; contradiction).
@@ -267,7 +267,7 @@ Qed.
 
 (** ** Coherence of What a Well-Formed Context Reads *)
 
-Lemma wf_gstack_coh : forall Θ Ξ, wf_gstack Θ Ξ ->
+Lemma wf_gstack_coh : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
     forall p U ip T, gs_find_tele Ξ p = Some (U, ip, T) -> gm_coh (gu_params U ++ T) (gu_mod U).
 Proof.
   induction 1 as [| | Θ Ξ mp Δ Φ HΞ IH HΦ Hff]; intros * Hf; cbn in Hf; try discriminate.
@@ -330,7 +330,7 @@ Proof.
     split; [ exact H1 | split; [ exact H2 | intros _; exact H3 ] ].
 Qed.
 
-Lemma gs_find_tele_app : forall Θ Ξ, wf_gstack Θ Ξ ->
+Lemma gs_find_tele_app : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
     forall p U x ip T, gs_find_tele Ξ p = Some (U, x :: ip, T) -> List.In x (gm_names (gu_mod U)) ->
     forall ch, gs_find_tele Ξ (qname_app p ch) = Some (U, x :: ip ++ ch, T).
 Proof.
@@ -352,7 +352,7 @@ Proof.
 Qed.
 
 
-Lemma gs_find_tele_filed : forall Θ Ξ, wf_gstack Θ Ξ ->
+Lemma gs_find_tele_filed : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
     forall p U, gds_lookup Θ (q_unit p) = Some U -> forall ch, gs_find_tele Ξ (qname_app p ch) = None.
 Proof.
   intros * HΞ p U Hl ch.
@@ -531,7 +531,7 @@ Qed.
 
 (** ** Frames Do Not Hide the Members of a Closed Module *)
 
-Lemma gs_find_tele_head : forall Θ Ξ, wf_gstack Θ Ξ ->
+Lemma gs_find_tele_head : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
     forall p U x ip T, gs_find_tele Ξ p = Some (U, x :: ip, T) -> List.In x (gm_names (gu_mod U)) ->
     exists Fp, p = qname_app Fp (x :: ip) /\
       forall ip', gs_find_tele Ξ (qname_app Fp (x :: ip')) = Some (U, x :: ip', T).
@@ -693,7 +693,7 @@ Qed.
 (** An open frame is found at its own path, over the telescope of the frames
     outside it; the frame outside it is found at its parent path, and the
     frame's own name is fresh there.  The outermost frame is a unit not filed. *)
-Lemma gs_find_tele_frame : forall Θ Ξ, wf_gstack Θ Ξ ->
+Lemma gs_find_tele_frame : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
     forall mp U T0, gs_find_tele Ξ mp = Some (U, nil, T0) ->
     (q_chain mp = nil /\ gds_lookup Θ (q_unit mp) = None /\ T0 = nil) \/
     (exists c y V T1, q_chain mp = c ++ y :: nil /\
@@ -727,7 +727,7 @@ Proof.
 Qed.
 
 (** A closed module has no open frame inside it. *)
-Lemma gc_module_child_not_frame : forall Θ Ξ, wf_gstack Θ Ξ ->
+Lemma gc_module_child_not_frame : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
     forall p r y, gc_module Θ Ξ p = Some r -> gc_frame Ξ (qname_in p y) = None.
 Proof.
   intros * HΞ * Hm; unfold gc_frame.
@@ -745,7 +745,7 @@ Qed.
 
 (** Below an open frame, a name it declares is read in it: no frame inside
     it is named so, a frame being named fresh where it is pushed. *)
-Lemma gs_find_tele_frame_app : forall Θ Ξ, wf_gstack Θ Ξ ->
+Lemma gs_find_tele_frame_app : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
     forall mp U T0, gs_find_tele Ξ mp = Some (U, nil, T0) ->
     forall y, List.In y (gm_names (gu_mod U)) ->
     forall ch, gs_find_tele Ξ (qname_app mp (y :: ch)) = Some (U, y :: ch, T0).
@@ -768,7 +768,7 @@ Proof.
 Qed.
 
 (** A name just below an open frame is a frame itself, or read in it. *)
-Lemma gs_find_tele_child : forall Θ Ξ, wf_gstack Θ Ξ ->
+Lemma gs_find_tele_child : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
     forall mp U T0, gs_find_tele Ξ mp = Some (U, nil, T0) ->
     forall y, (exists V T1, gs_find_tele Ξ (qname_in mp y) = Some (V, nil, T1)) \/
               gs_find_tele Ξ (qname_in mp y) = Some (U, y :: nil, T0).
@@ -871,7 +871,7 @@ Proof.
 Qed.
 
 (** An open frame names nothing it does not declare. *)
-Lemma gc_entry_frame_name : forall Θ Ξ, wf_gstack Θ Ξ ->
+Lemma gc_entry_frame_name : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
     forall mp T Φ, gc_frame Ξ mp = Some (T, Φ) ->
     forall y E, gc_entry Θ Ξ (qname_in mp y) = Some E -> List.In y (gm_names Φ).
 Proof.
@@ -934,7 +934,7 @@ Proof.
 Qed.
 
 (** Frames hold body units. *)
-Lemma gs_find_tele_body : forall Θ Ξ, wf_gstack Θ Ξ -> forall p U ip T,
+Lemma gs_find_tele_body : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p U ip T,
     gs_find_tele Ξ p = Some (U, ip, T) -> exists Δ Φ, U = gu_body Δ Φ.
 Proof.
   induction 1 as [| | Θ Ξ mf Δf Φf HΞ IH HΦ Hff]; intros * Hf; cbn in Hf; try discriminate.
@@ -1675,7 +1675,7 @@ Proof.
     + intros * ->; exact (proj2 (proj1 H2 _ _ _ _ eq_refl)).
 Qed.
 
-Lemma wf_gstack_selfpath : forall Θ Ξ, wf_gstack Θ Ξ ->
+Lemma wf_gstack_selfpath : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
     (forall fp U, gds_lookup Θ fp = Some U -> gm_selfpath (q_abs fp nil) (gu_mod U)) /\
     (forall mp U, List.In (mp, U) Ξ -> gm_selfpath mp (gu_mod U)).
 Proof.

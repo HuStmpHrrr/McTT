@@ -102,9 +102,9 @@ Qed.
 
 (** ** Valid Units along Substitutions Built from Valid Parts *)
 
-Lemma ext_gsub : forall Ψ Δ Γ τ, ⊨ Ψ ++ Δ -> wf_ctx Θm Ξm (Ψ ++ Δ) -> gsub Γ τ Δ -> Θm ⍮ Ξm ⍮ Γ ⊢ˢ τ : Δ ->
+Lemma ext_gsub : forall Ψ Δ Γ τ, ⊨ Ψ ++ Δ -> ⊢ Θm ⍮ Ξm ⍮ Ψ ++ Δ -> gsub Γ τ Δ -> Θm ⍮ Ξm ⍮ Γ ⊢ˢ τ : Δ ->
     ⊨ tele_sub Ψ τ ++ Γ /\ gsub (tele_sub Ψ τ ++ Γ) (sb_qn (length Ψ) τ) (Ψ ++ Δ) /\
-    wf_ctx Θm Ξm (tele_sub Ψ τ ++ Γ) /\ Θm ⍮ Ξm ⍮ tele_sub Ψ τ ++ Γ ⊢ˢ sb_qn (length Ψ) τ : Ψ ++ Δ.
+    ⊢ Θm ⍮ Ξm ⍮ tele_sub Ψ τ ++ Γ /\ Θm ⍮ Ξm ⍮ tele_sub Ψ τ ++ Γ ⊢ˢ sb_qn (length Ψ) τ : Ψ ++ Δ.
 Proof.
   intros * HC HwC Hg Hτ.
   destruct (rel_ctx_wf_gsub Θm Ξm Hgw Hgm Hsub _ _ _ _ HC HwC Hg (wf_sub_mod_compat _ _ _ _ _ Hτ)) as [H1 H2].

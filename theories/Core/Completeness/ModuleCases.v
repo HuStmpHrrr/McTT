@@ -60,7 +60,7 @@ Lemma valid_slots_mod : forall Γ U, valid_slots Γ -> valid_unit Γ (me_lit U) 
 Proof. intros * H HU; apply valid_slots_cons; [ exact H | intros U0 [= <-]; exact HU ]. Qed.
 
 (** A valid unit stays valid one entry further in. *)
-Lemma valid_unit_shift : forall e Γ K, valid_unit Γ K -> ⊨ e :: Γ -> wf_ctx Θm Ξm (e :: Γ) -> valid_unit (e :: Γ) K[sb_of_wk ↑]ᵐ.
+Lemma valid_unit_shift : forall e Γ K, valid_unit Γ K -> ⊨ e :: Γ -> ⊢ Θm ⍮ Ξm ⍮ e :: Γ -> valid_unit (e :: Γ) K[sb_of_wk ↑]ᵐ.
 Proof.
   intros * HK HC Hw.
   eapply (valid_unit_gsub Hgw _ _ Hgm Hsub); [ exact HK | exact (gsub_wk _ _ _ (rel_wk_under_ctx_shift HC) HC (rel_ctx_wf_tail HC)) |].
@@ -68,7 +68,7 @@ Proof.
 Qed.
 
 (** The unit of a slot of a valid context is valid there. *)
-Lemma slot_valid_unit : forall Γ x U, Γ ∋ #x ≔ₘ U -> ⊨ Γ -> wf_ctx Θm Ξm Γ -> valid_slots Γ -> valid_unit Γ (me_lit U).
+Lemma slot_valid_unit : forall Γ x U, Γ ∋ #x ≔ₘ U -> ⊨ Γ -> ⊢ Θm ⍮ Ξm ⍮ Γ -> valid_slots Γ -> valid_unit Γ (me_lit U).
 Proof.
   induction 1 as [U0 Γ0 | n U1 Γ0 e Hl IH]; intros HC Hw Hok.
   - pose proof (valid_unit_shift _ _ _ (Hok nil U0 Γ0 eq_refl : valid_unit Γ0 (me_lit U0)) HC Hw) as H.
@@ -204,7 +204,7 @@ Proof.
 Qed.
 
 (** A loaded unit or an open frame, by its path. *)
-Lemma valid_modexp_unit : forall Γ fp TΦ, wf_ctx Θm Ξm Γ -> gc_unit Θm Ξm (me_unit fp) = Some TΦ -> ⊨ Γ ->
+Lemma valid_modexp_unit : forall Γ fp TΦ, ⊢ Θm ⍮ Ξm ⍮ Γ -> gc_unit Θm Ξm (me_unit fp) = Some TΦ -> ⊨ Γ ->
     Γ ⊨ᵐ me_unit fp ≈ me_unit fp /\ valid_modexp Γ (me_unit fp).
 Proof.
   intros * HwΓ Hu HΓ.

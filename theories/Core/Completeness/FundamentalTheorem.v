@@ -89,7 +89,7 @@ Proof.
   exact (sea_rel (Ke _ _ _ _ _ HM _ _ Hμ)).
 Qed.
 
-Lemma rel_ctx_wf_of_emb : forall Θ Ξ Θ2 Ξ2 Γ, valid_emb Θ Ξ Θ2 Ξ2 -> wf_ctx Θ Ξ Γ -> @rel_ctx_wf (gc_mk Θ2 Ξ2) Γ.
+Lemma rel_ctx_wf_of_emb : forall Θ Ξ Θ2 Ξ2 Γ, valid_emb Θ Ξ Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ -> @rel_ctx_wf (gc_mk Θ2 Ξ2) Γ.
 Proof.
   intros * Hμ HΓ; destruct completeness_fundamental as (Kc & _).
   exact (valid_ctx_rel_ctx_wf (Kc _ _ _ HΓ _ _ Hμ)).
@@ -129,7 +129,7 @@ Proof.
   pose proof (valid_emb_good _ _ _ _ Hg HG He) as Hμ.
   assert (Ht : tele_ass (Δ ++ gs_tele Ξ)) by (apply List.Forall_app; split; [ exact HΔ | exact (good_tele _ _ _ _ HG He) ]).
   assert (HE' : Θ ⍮ Ξ ⍮ (Δ ++ gs_tele Ξ) ++ ⋅ ⊢ᵐ E ≈ E) by (rewrite app_nil_r; exact HE).
-  assert (HC : wf_ctx Θ Ξ ((Δ ++ gs_tele Ξ) ++ ⋅)) by (rewrite app_nil_r; exact (presup_modexp_eq_ctx HE)).
+  assert (HC : ⊢ Θ ⍮ Ξ ⍮ (Δ ++ gs_tele Ξ) ++ ⋅) by (rewrite app_nil_r; exact (presup_modexp_eq_ctx HE)).
   assert (HU : Θ ⍮ Ξ ⍮ ⋅ ⊢ᵘ gu_mk (Δ ++ gs_tele Ξ) (md_alias E) ≈ gu_mk (Δ ++ gs_tele Ξ) (md_alias E))
     by (apply wf_unit_eq_alias; [ exact (ext_of_ctx _ _ _ _ HC) | exact Ht | exact Ht | exact HE' | exact HE' ]).
   destruct completeness_fundamental as (_ & _ & _ & _ & _ & _ & Ku & _).
@@ -156,7 +156,7 @@ Proof.
 Qed.
 
 Lemma valid_mod_tele_nil : forall Θ Ξ Δ Θ2 Ξ2,
-    tele_ass Δ -> wf_ctx Θ Ξ (Δ ++ gs_tele Ξ) -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
     valid_mod_tele Θ2 Ξ2 (Δ ++ gs_tele Ξ).
 Proof.
   intros * HΔ HC HG He.
