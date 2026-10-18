@@ -989,7 +989,7 @@ Record glu_rel_exp Γ M A : Prop := mk_glu_rel_exp
     handled by lemmas about [glu_rel_exp] instead, just as
     [completeness_fundamental] has no substitution part. *)
 
-Notation "⊩ Γ" := (glu_rel_ctx Γ) (at level 70, Γ at level 69).
+Notation "⊩ Γ" := (glu_rel_ctx Γ) (at level 70).
 Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (at level 70, M at level 69, A at level 69).
 
 End Fixed_GCtx.
@@ -1043,7 +1043,7 @@ Hint Extern 1 =>
   | |- glu_univ_typ _ _ _ _ => econstructor
   | |- ind_glu_exp_pred _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ => econstructor
   end : mctt.
-Notation "⊩ Γ" := (glu_rel_ctx Γ) (at level 70, Γ at level 69).
+Notation "⊩ Γ" := (glu_rel_ctx Γ) (at level 70).
 Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (at level 70, M at level 69, A at level 69).
 
 (** [induction H using glu_univ_elem_ind] does not apply, for the reason

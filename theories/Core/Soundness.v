@@ -1,8 +1,8 @@
 (** * Soundness of Normalization by Evaluation
 
     The fundamental theorem of the gluing model, instantiated at the identity
-    substitution.  [exp_sub_id] and [exp_wk_id] line the statement up with the
-    gluing predicate by rewriting. *)
+    embedding and the identity substitution.  [exp_sub_id] and [exp_wk_id]
+    line the statement up with the gluing predicate by rewriting. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
@@ -11,22 +11,24 @@ From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic Require Export NbE.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Soundness Require Export FundamentalTheorem.
-From Mctt.Core.Soundness Require Import LevelCases.
+From Mctt.Core.Soundness Require Import LevelCases GlobalGlu.
 Import Domain_Notations Fixed_Notations.
 
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Theorem soundness : forall {Γ M A},
+(** A typed term that glues has a normal form, equal to it. *)
+Lemma soundness_of_glu : forall {Γ M A},
     Γ ⊢ M : A ->
+    Γ ⊩ M : A ->
     exists W, nbe_f Γ M A W /\ Γ ⊢ M ≈ W : A.
 Proof.
-  intros * H.
+  intros * H HG.
   assert (⊢ Γ) by mauto 3.
   assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ]
       by mauto 3 using completeness_fundamental_ctx, sem_ctx_per_ctx_env.
-  destruct (soundness_fundamental_exp _ _ _ H) as [Sb ? i ?].
+  destruct HG as [Sb ? i ?].
   pose proof (per_ctx_then_per_env_initial_env ltac:(eassumption)) as [ρ [? ?]].
   destruct_conjs.
   functional_initial_env_rewrite_clear.
@@ -41,15 +43,31 @@ Proof.
   exists W; split; [econstructor |]; eassumption.
 Qed.
 
-Theorem soundness' : forall {Γ M A W},
-    Γ ⊢ M : A ->
-    nbe_f Γ M A W ->
-    Γ ⊢ M ≈ W : A.
+End Fixed_GCtx.
+
+(** A typed term has a normal form, equal to it: it glues by
+    [soundness_fundamental], read at the identity embedding. *)
+Theorem soundness : forall {Θ Ξ Γ M A},
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    exists W, nbe Θ Ξ Γ M A W /\ Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ W : A.
+Proof.
+  intros * H.
+  pose proof (proj1 (proj2 soundness_fundamental) _ _ _ _ _ H _ _ (gctx_glu _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))) as HG.
+  exact (@soundness_of_glu (gc_mk Θ Ξ) _ _ _ H HG).
+Qed.
+
+Theorem soundness' : forall {Θ Ξ Γ M A W},
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    nbe Θ Ξ Γ M A W ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ W : A.
 Proof.
   intros * [? []]%soundness ?.
   functional_nbe_rewrite_clear.
   eassumption.
 Qed.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Lemma soundness_ty : forall {Γ} {i : nat} {A},
     Γ ⊢ A : Typeω@i ->
@@ -103,16 +121,3 @@ Proof.
 Qed.
 
 End Fixed_GCtx.
-
-
-(** Soundness at a global context named explicitly. *)
-Theorem soundness_gctx : forall Θ Ξ Γ M A,
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    exists W, nbe Θ Ξ Γ M A W /\ Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ W : A.
-Proof. intros * H; exact (@soundness (gc_mk Θ Ξ) _ _ _ H). Qed.
-
-Theorem soundness_gctx' : forall Θ Ξ Γ M A W,
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    nbe Θ Ξ Γ M A W ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ W : A.
-Proof. intros * H; exact (@soundness' (gc_mk Θ Ξ) _ _ _ _ H). Qed.

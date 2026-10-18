@@ -400,7 +400,7 @@ Proof.
 Defined.
 
 Lemma typed_nbe_order {Θ Ξ Γ M A} : Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> nbe_order Θ Ξ Γ M A.
-Proof. intros H; destruct (soundness_gctx _ _ _ _ _ H) as (W & HW & _); exact (nbe_order_sound _ _ _ _ _ _ HW). Qed.
+Proof. intros H; destruct (soundness H) as (W & HW & _); exact (nbe_order_sound _ _ _ _ _ _ HW). Qed.
 
 (** Normalize a checked [eval] into its entry. *)
 Lemma eval_log_ok {Θ Ξ M A W} : ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> nbe Θ Ξ (gs_tele Ξ) M A W ->

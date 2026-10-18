@@ -1413,8 +1413,8 @@ Proof.
   exists W; split; [ exact HW | split ].
   - eapply nat_chain_stuck_mono; [| exact Hc ]; intros; apply gstuck_gopaque; assumption.
   - exists V, n; repeat split; [ exact HV | exact HcV | exact Hn |].
-    pose proof (unseal_exp_eq _ _ _ _ _ _ (soundness_gctx' _ _ _ _ _ _ HM HW)).
-    pose proof (soundness_gctx' _ _ _ _ _ _ HM' HV).
+    pose proof (unseal_exp_eq _ _ _ _ _ _ (soundness' HM HW)).
+    pose proof (soundness' HM' HV).
     etransitivity; [ symmetry |]; eassumption.
 Qed.
 
@@ -1441,8 +1441,8 @@ Proof.
   exists u, W; split; [ exact Hu | split; [ exact HW | split; [| split; [ exact Hc |] ] ] ].
   - apply (nf_stuck_mono (gstuck Θ Ξ)); [ intros; apply gstuck_gopaque; assumption | exact Hs ].
   - exists u', V; split; [ exact Hu' | split; [ exact HV | split; [ exact HcV |] ] ].
-    pose proof (unseal_exp_eq _ _ _ _ _ _ (soundness_gctx' _ _ _ _ _ _ HM HW)).
-    pose proof (soundness_gctx' _ _ _ _ _ _ HM' HV).
+    pose proof (unseal_exp_eq _ _ _ _ _ _ (soundness' HM HW)).
+    pose proof (soundness' HM' HV).
     etransitivity; [ symmetry |]; eassumption.
 Qed.
 

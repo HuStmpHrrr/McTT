@@ -5,8 +5,8 @@ From Mctt Require Import Core.Syntactic.Presup Core.Syntactic.System.GlobalPresu
 Print Assumptions Mctt.Core.Completeness.completeness.
 Print Assumptions Mctt.Core.Completeness.KripkeCases.completeness_fundamental.
 Print Assumptions Mctt.Core.Soundness.soundness.
-Print Assumptions Mctt.Core.Soundness.soundness_gctx.
-Print Assumptions Mctt.Core.Soundness.soundness_gctx'.
+Print Assumptions Mctt.Core.Soundness.soundness'.
+Print Assumptions Mctt.Core.Soundness.KripkeCases.soundness_fundamental.
 Print Assumptions Mctt.Core.Semantic.Consequences.consistency.
 Print Assumptions Mctt.Core.Semantic.Consequences.consistency_gctx.
 Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_typ_gctx.
