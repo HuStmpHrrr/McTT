@@ -108,7 +108,7 @@ Proof.
 Qed.
 
 Lemma eval_sub_extend_inv : forall σ e ρ ρσ,
-    ⟦ sb_extend σ e ⟧s ρ ↘ ρσ -> ⟦ σ ⟧s ρ ↘ ρσ↯ /\ eval_sentry gc_deps gc_stack e ρ (env_entry ρσ 0).
+    ⟦ sb_extend σ e ⟧s ρ ↘ ρσ -> ⟦ σ ⟧s ρ ↘ ρσ↯ /\ ⟦ e ⟧ᵉ gc_deps ⍮ gc_stack ⍮ ρ ↘ env_entry ρσ 0.
 Proof.
   intros * H; split; [| exact (H 0) ].
   intros x; specialize (H (S x)); cbn in H.

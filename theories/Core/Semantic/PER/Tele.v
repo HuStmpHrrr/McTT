@@ -222,7 +222,7 @@ Section Tele.
   Qed.
 
   Lemma functional_eval_exps' : forall Ms ρ ms1 ms2,
-      eval_exps gc_deps gc_stack Ms ρ ms1 -> eval_exps gc_deps gc_stack Ms ρ ms2 -> ms1 = ms2.
+      ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms1 -> ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms2 -> ms1 = ms2.
   Proof. intros; eapply (proj1 (proj2 (proj2 (@functional_eval gc_deps gc_stack)))); eassumption. Qed.
 
   Lemma nparams_nth_ass : forall D k e,

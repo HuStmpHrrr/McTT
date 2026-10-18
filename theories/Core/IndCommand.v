@@ -252,7 +252,7 @@ End ConTypes.
     written, with [Self] the type former at the frames' parameters, in the
     global context the run makes: the declaration filed in its module. *)
 Theorem rc_ind_con_types : forall load_path read to_core ch B Rb Θ Ξ x pv R B' Rb' Θ' Ξ',
-    run_cmd load_path read to_core ch B Rb Θ Ξ (cc_ind x pv R) B' Rb' Θ' Ξ' -> ⊢ᵍ Θ ⍮ Ξ ->
+    Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_ind x pv R ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> ⊢ᵍ Θ ⍮ Ξ ->
     forall c args, In (c, args) (rd_cons R) ->
     exists cs gs, cls_cons_in Θ Ξ R cs /\
       ind_con (gs_ind Ξ (rd_filed R cs)) c = Some gs /\

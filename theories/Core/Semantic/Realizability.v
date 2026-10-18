@@ -14,9 +14,9 @@ Section Fixed_GCtx.
 
 (** ** Reading Back at Telescopes *)
 
-Lemma read_ps_app : forall s ρ T1 vs1 Ms1, read_ps gc_deps gc_stack s ρ T1 vs1 Ms1 ->
-    forall T2 vs2 Ms2, read_ps gc_deps gc_stack s (env_args ρ vs1) T2 vs2 Ms2 ->
-    read_ps gc_deps gc_stack s ρ (T1 ++ T2) (vs1 ++ vs2) (nfs_app Ms1 Ms2).
+Lemma read_ps_app : forall s ρ T1 vs1 Ms1, Rps vs1 at T1 in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Ms1 ->
+    forall T2 vs2 Ms2, Rps vs2 at T2 in gc_deps ⍮ gc_stack ⍮ env_args ρ vs1 ⍮ s ↘ Ms2 ->
+    Rps vs1 ++ vs2 at T1 ++ T2 in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ nfs_app Ms1 Ms2.
 Proof.
   induction 1; intros * H2; cbn [List.app nfs_app]; [ exact H2 |].
   econstructor; [ eassumption | eassumption | apply IHread_ps; exact H2 ].
@@ -36,13 +36,13 @@ Lemma read_ps_tele : forall (T : list centry) (tr : nat -> list domain -> relati
        exists a a', ⟦ A ⟧ env_args ρ pre ↘ a /\ ⟦ A ⟧ env_args ρ' pre' ↘ a' /\
          (forall b b', tr k pre b b' -> Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top)) ->
     forall vs vs', tele_full tr T vs vs' ->
-    forall s, exists Ms, read_ps gc_deps gc_stack s ρ T vs Ms /\ read_ps gc_deps gc_stack s ρ' T vs' Ms.
+    forall s, exists Ms, Rps vs at T in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Ms /\ Rps vs' at T in gc_deps ⍮ gc_stack ⍮ ρ' ⍮ s ↘ Ms.
 Proof.
   intros * Hass Hev vs vs' Hf s.
   pose proof Hf as Hf'; rewrite tele_full_iff in Hf'; destruct Hf' as (Hl & Hl' & Hr).
   assert (Hall : forall m j, m + j = List.length T ->
-             exists Ms, read_ps gc_deps gc_stack s (env_args ρ (List.firstn j vs)) (List.skipn j T) (List.skipn j vs) Ms /\
-                        read_ps gc_deps gc_stack s (env_args ρ' (List.firstn j vs')) (List.skipn j T) (List.skipn j vs') Ms).
+             exists Ms, Rps List.skipn j vs at List.skipn j T in gc_deps ⍮ gc_stack ⍮ env_args ρ (List.firstn j vs) ⍮ s ↘ Ms /\
+                        Rps List.skipn j vs' at List.skipn j T in gc_deps ⍮ gc_stack ⍮ env_args ρ' (List.firstn j vs') ⍮ s ↘ Ms).
   { induction m as [| m IH]; intros j Hj.
     - rewrite !List.skipn_all2 by lia; exists nfs_nil; split; constructor.
     - destruct (nth_error_lt_some' T j ltac:(lia)) as [e He].
@@ -68,19 +68,19 @@ Proof.
   rewrite <- List.rev_app_distr, List.firstn_skipn; reflexivity.
 Qed.
 
-Lemma read_ps_length : forall s ρ T vs Ms, read_ps gc_deps gc_stack s ρ T vs Ms -> List.length vs = List.length T.
+Lemma read_ps_length : forall s ρ T vs Ms, Rps vs at T in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Ms -> List.length vs = List.length T.
 Proof. induction 1; cbn; congruence. Qed.
 
 (** The codomain of the type of an argument of a function shape, at an
     argument. *)
 Lemma eval_fam_cod_shfam : forall p ups ρ t x a,
-    eval_shty gc_deps gc_stack p ups (ρ ↦ x) t a ->
+    ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↦ x ↘ a ->
     ⟦ fam_cod ⟧ nil ↦ d_shfam p ups ρ t ↦ x ↘ a.
 Proof. intros; unfold fam_cod; econstructor; [ apply eval_exp_var | apply eval_exp_var | econstructor; eassumption ]. Qed.
 
 Lemma eval_fam_cod_ihfam : forall ρm A ρ t f x fx a,
     $| f & x | gc_deps ⍮ gc_stack ↘ fx ->
-    eval_ihty gc_deps gc_stack ρm A (ρ ↦ x) t fx a ->
+    ⟦ihty fx of t under ρm A ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↦ x ↘ a ->
     ⟦ fam_cod ⟧ nil ↦ d_ihfam ρm A ρ t f ↦ x ↘ a.
 Proof. intros; unfold fam_cod; econstructor; [ apply eval_exp_var | apply eval_exp_var | econstructor; eassumption ]. Qed.
 
@@ -161,16 +161,16 @@ Proof.
          List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
          tele_full nr (List.rev (ind_nparams D)) xs xs' -> ind_con D c = Some gsf -> gsf = gs1 ++ gs ->
          tele_full (ar xs c) (cargs_nonrec gsf) (nonrec_vals gsf (vp ++ vs)) (nonrec_vals gsf (vp' ++ vs')) ->
-         forall s, exists Vs, read_cargs gc_deps gc_stack s p ups (env_args nil (ups ++ pre)) gs vs Vs /\
-           read_cargs gc_deps gc_stack s p ups' (env_args nil (ups' ++ xs' ++ nonrec_vals gs1 vp')) gs vs' Vs) /\
+         forall s, exists Vs, Rcargs vs at gs of p ups in gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ⍮ s ↘ Vs /\
+           Rcargs vs' at gs of p ups' in gc_deps ⍮ gc_stack ⍮ env_args nil (ups' ++ xs' ++ nonrec_vals gs1 vp') ⍮ s ↘ Vs) /\
     (forall pre t v v', ind_shape_rel p D ups nr ar dr pre t v v' ->
        forall xs xs' c gs1 t0 gs2 ws ws' k ys ys', pre = xs ++ ws ++ ys ->
          tele_full nr (List.rev (ind_nparams D)) xs xs' -> ind_con D c = Some (gs1 ++ ca_rec t0 :: gs2) ->
          tele_pre (ar xs c) (List.length (cargs_nonrec gs1)) ws ws' ->
          ptyp_skip k t0 = t -> k <= List.length (ptyp_doms t0) ->
          tele_pre (shape_tr dr xs ws (ptyp_doms t0)) k ys ys' ->
-         forall s, exists a a' V, eval_shty gc_deps gc_stack p ups (env_args nil (ups ++ pre)) t a /\
-           eval_shty gc_deps gc_stack p ups' (env_args nil (ups' ++ xs' ++ ws' ++ ys')) t a' /\
+         forall s, exists a a' V, ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ a /\
+           ⟦shty t of p ups' ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups' ++ xs' ++ ws' ++ ys') ↘ a' /\
            Rnf ⇓ a v in gc_deps ⍮ gc_stack ⍮ s ↘ V /\ Rnf ⇓ a' v' in gc_deps ⍮ gc_stack ⍮ s ↘ V) /\
     (forall pre t f x f' x', ind_app_rel p D ups nr ar dr pre t f x f' x' ->
        forall xs xs' c gs1 t0 gs2 ws ws' k ys ys', pre = xs ++ ws ++ ys ->
@@ -179,8 +179,8 @@ Proof.
          ptyp_skip k t0 = t -> k <= List.length (ptyp_doms t0) ->
          tele_pre (shape_tr dr xs ws (ptyp_doms t0)) k ys ys' ->
          forall s, exists r r' a a' V, $| f & x | gc_deps ⍮ gc_stack ↘ r /\ $| f' & x' | gc_deps ⍮ gc_stack ↘ r' /\
-           eval_shty gc_deps gc_stack p ups (env_args nil (ups ++ pre)) t a /\
-           eval_shty gc_deps gc_stack p ups' (env_args nil (ups' ++ xs' ++ ws' ++ ys')) t a' /\
+           ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ a /\
+           ⟦shty t of p ups' ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups' ++ xs' ++ ws' ++ ys') ↘ a' /\
            Rnf ⇓ a r in gc_deps ⍮ gc_stack ⍮ s ↘ V /\ Rnf ⇓ a' r' in gc_deps ⍮ gc_stack ⍮ s ↘ V)).
   { apply ind_rel_mut_ind_all.
     - intros * _ Hc Hb Hb' _ _ Ha0 Hia IH xs' Hx s.

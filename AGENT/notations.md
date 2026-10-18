@@ -102,6 +102,37 @@ and so do the module relations: `⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h` (module ex
 environment after a body).  The selected name and the chain are at level 0:
 `h ·ₜ* (pre ++ x :: nil) Θ ⍮ Ξ ↘ f`.
 
+The eliminator's auxiliary relations follow `⟦ihs vs of gs under nm A Bs ⟧`:
+`⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r` (`eval_ih`, the recursive result
+of an argument `v` of shape `t`), `⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a`
+(`eval_shty`, the type of an argument of shape `t` at the uniform parameters
+`ups` of `p`) and `⟦ihty v of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a` (`eval_ihty`, the
+type of its recursive result, the motive `A` in `ρm`); the components after
+`under` and `of p` are at level 0.  A substitution entry evaluates by
+`⟦ e ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ d` (`eval_sentry`).  Readback at a constructor's
+arguments and at the branches of a stuck eliminator follows `Rps`:
+`Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs` (`read_cargs`) and
+`Rbrs Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs'` (`read_brs`).  The
+fresh variables of readback are `Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs`
+(`fresh_tele`), `Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs` (`fresh_cargs`)
+and `Fihs vs at gs under ρm A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ihs` (`fresh_ihs`).  The
+extracted evaluation and readback (`Extraction/FastEval.v`) carry a `ᶠ` on
+every keyword: `⟦ihᶠ … ⟧ᶠ`, `⟦shtyᶠ … ⟧ᶠ`, `⟦ihtyᶠ … ⟧ᶠ`, `Rcargsᶠ`,
+`Rbrsᶠ`, `Fteleᶠ`, `Fcargsᶠ`, and `Fihsᶠ vs at gs under ρm A for B in …`,
+whose branch `B` is the one of `⟦ihsᶠ … for B ⟧ᶠ`.  The domain predicates of
+the reference and extracted implementations (`eval_exp_order`,
+`fread_nf_order`, …) have no notation.
+
+Running a command is `Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ] c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'` (and
+`cs ⇝* …` for several) inside `Section Semantics` of
+`Core/Syntactic/System/Command.v`, where the file IO, the parser and the
+elaborator are section variables.  Outside it the judgments name them after
+the chain: `Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ]⟨ lp ⍮ rd ⍮ tc ⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'`
+is `run_cmd lp rd tc ch B Rb Θ Ξ c B' Rb' Θ' Ξ'`, and `⇝*` is `run_cmds`.
+`]⟨` is one token, so `⊢[ ch ]` and `⊢[ ch ]⟨` share their prefix up to the
+chain.  These notations are top-level in `Command.v`: a file that only
+requires it, without importing it, cannot use them.
+
 ## Universes and levels
 
 The two tiers of universes are spelled so that the Rocq notation and the

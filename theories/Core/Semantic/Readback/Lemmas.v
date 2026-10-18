@@ -11,22 +11,22 @@ Import Domain_Notations.
       ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms1 -> ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms2 -> ms1 = ms2.
   Proof. intros Θ Ξ; pose proof (@functional_eval Θ Ξ); firstorder. Qed.
 
-  Lemma functional_fresh_tele : forall {Θ Ξ} ρ T s vs1, fresh_tele Θ Ξ ρ T s vs1 ->
-      forall vs2, fresh_tele Θ Ξ ρ T s vs2 -> vs1 = vs2.
+  Lemma functional_fresh_tele : forall {Θ Ξ} ρ T s vs1, Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs1 ->
+      forall vs2, Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs2 -> vs1 = vs2.
   Proof.
     induction 1; intros * H2; inversion H2; subst; [ reflexivity |].
     functional_eval_rewrite_clear; f_equal; auto.
   Qed.
 
-  Lemma functional_fresh_cargs : forall {Θ Ξ} p ups ρ gs s vs1, fresh_cargs Θ Ξ p ups ρ gs s vs1 ->
-      forall vs2, fresh_cargs Θ Ξ p ups ρ gs s vs2 -> vs1 = vs2.
+  Lemma functional_fresh_cargs : forall {Θ Ξ} p ups ρ gs s vs1, Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs1 ->
+      forall vs2, Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs2 -> vs1 = vs2.
   Proof.
     induction 1; intros * H2; inversion H2; subst; [ auto | |];
       functional_eval_rewrite_clear; f_equal; auto.
   Qed.
 
-  Lemma functional_fresh_ihs : forall {Θ Ξ} ρ A ρa gs vs s ihs1, fresh_ihs Θ Ξ ρ A ρa gs vs s ihs1 ->
-      forall ihs2, fresh_ihs Θ Ξ ρ A ρa gs vs s ihs2 -> ihs1 = ihs2.
+  Lemma functional_fresh_ihs : forall {Θ Ξ} ρ A ρa gs vs s ihs1, Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs1 ->
+      forall ihs2, Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs2 -> ihs1 = ihs2.
   Proof.
     induction 1; intros * H2; inversion H2; subst; auto.
     functional_eval_rewrite_clear; f_equal; auto.
@@ -70,10 +70,10 @@ Import Domain_Notations.
             Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys2 ->
             ys1 = ys2) /\
       (forall s ρ T vs Vs1, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs1 -> forall Vs2, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs2 -> Vs1 = Vs2) /\
-      (forall s p ups ρ gs vs Vs1, read_cargs Θ Ξ s p ups ρ gs vs Vs1 ->
-         forall Vs2, read_cargs Θ Ξ s p ups ρ gs vs Vs2 -> Vs1 = Vs2) /\
-      (forall s ρ A p D ups cs Bs Bs1, read_brs Θ Ξ s ρ A p D ups cs Bs Bs1 ->
-         forall Bs2, read_brs Θ Ξ s ρ A p D ups cs Bs Bs2 -> Bs1 = Bs2).
+      (forall s p ups ρ gs vs Vs1, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs1 ->
+         forall Vs2, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs2 -> Vs1 = Vs2) /\
+      (forall s ρ A p D ups cs Bs Bs1, Rbrs Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs1 ->
+         forall Bs2, Rbrs Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs2 -> Bs1 = Bs2).
   Proof.
     intros Θ Ξ; apply read_mut_ind; intros; progressive_inversion; functional_eval_rewrite_clear;
       functional_fresh_rewrite_clear; functional_eval_rewrite_clear;
@@ -173,13 +173,13 @@ Ltac functional_read_rewrite_clear := repeat functional_read_rewrite_clear1.
 (** One fresh variable per member of a telescope, per argument, and per
     recursive argument. *)
 Lemma fresh_tele_length : forall {Θ Ξ} ρ T s vs,
-    fresh_tele Θ Ξ ρ T s vs -> List.length vs = List.length T.
+    Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> List.length vs = List.length T.
 Proof. induction 1; cbn; congruence. Qed.
 
 Lemma fresh_cargs_length : forall {Θ Ξ} p ups ρ gs s vs,
-    fresh_cargs Θ Ξ p ups ρ gs s vs -> List.length vs = List.length gs.
+    Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> List.length vs = List.length gs.
 Proof. induction 1; cbn; congruence. Qed.
 
 Lemma fresh_ihs_length : forall {Θ Ξ} ρ A ρa gs vs s ihs,
-    fresh_ihs Θ Ξ ρ A ρa gs vs s ihs -> List.length ihs = cargs_nrec gs.
+    Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> List.length ihs = cargs_nrec gs.
 Proof. induction 1; cbn; congruence. Qed.

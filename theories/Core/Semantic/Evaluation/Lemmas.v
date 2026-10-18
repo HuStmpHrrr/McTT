@@ -87,9 +87,9 @@ Import Domain_Notations.
           ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
           forall r2, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
       (forall ρ nm A Bs t v r1,
-          eval_ih Θ Ξ ρ nm A Bs t v r1 -> forall r2, eval_ih Θ Ξ ρ nm A Bs t v r2 -> r1 = r2) /\
-      (forall p ups ρ t a1, eval_shty Θ Ξ p ups ρ t a1 -> forall a2, eval_shty Θ Ξ p ups ρ t a2 -> a1 = a2) /\
-      (forall ρm A ρ t v a1, eval_ihty Θ Ξ ρm A ρ t v a1 -> forall a2, eval_ihty Θ Ξ ρm A ρ t v a2 -> a1 = a2).
+          ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 -> forall r2, ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
+      (forall p ups ρ t a1, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> forall a2, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2) /\
+      (forall ρm A ρ t v a1, ⟦ihty v of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> forall a2, ⟦ihty v of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2).
   Proof.
     intros Θ Ξ; apply eval_mut_ind; intros;
       (* invert the other evaluation, then use the hypotheses on its parts; the
@@ -170,19 +170,19 @@ Import Domain_Notations.
   Qed.
 
   Corollary functional_eval_ih : forall {Θ Ξ} ρ nm A Bs t v r1 r2,
-      eval_ih Θ Ξ ρ nm A Bs t v r1 -> eval_ih Θ Ξ ρ nm A Bs t v r2 -> r1 = r2.
+      ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 -> ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
 
   Corollary functional_eval_shty : forall {Θ Ξ} p ups ρ t a1 a2,
-      eval_shty Θ Ξ p ups ρ t a1 -> eval_shty Θ Ξ p ups ρ t a2 -> a1 = a2.
+      ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
 
   Corollary functional_eval_ihty : forall {Θ Ξ} ρm A ρ t v a1 a2,
-      eval_ihty Θ Ξ ρm A ρ t v a1 -> eval_ihty Θ Ξ ρm A ρ t v a2 -> a1 = a2.
+      ⟦ihty v of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> ⟦ihty v of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.

@@ -1208,7 +1208,7 @@ Section Comps.
       List.length ns = ind_nn D -> List.length nv = List.length (cargs_nonrec gs1) -> List.length ys = ptyp_depth t ->
       EG ptyp_tele t ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ ind_params D ∈ glu_ctx_env ↘ SbC ->
       Δ ⊢ˢ sb_of_list τ (Us ++ Ys) ® env_args nil (ups ++ ns ++ nv ++ ys) ∈ SbC ->
-      eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups ++ ns ++ nv ++ ys)) bsr ->
+      ⟦ ptyp_ps t ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ns ++ nv ++ ys) ↘ bsr ->
       glu_args Δ (ind_nparams D) (sb_of_list Id Us) (env_args nil ups)
         (List.map (fun P => P[sb_of_list τ (Us ++ Ys)]) (ptyp_ps t)) bsr.
   Proof.

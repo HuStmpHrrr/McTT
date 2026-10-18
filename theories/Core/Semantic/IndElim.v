@@ -35,8 +35,8 @@ Section Fixed_GCtx.
     - destruct (IH _ _ _ Hn Hc) as (n & B & HB & Hin); exists n, B; split; [ exact HB | right; exact Hin ].
   Qed.
 
-  Lemma functional_fresh_tele : forall ρ T s vs vs', fresh_tele gc_deps gc_stack ρ T s vs ->
-      fresh_tele gc_deps gc_stack ρ T s vs' -> vs = vs'.
+  Lemma functional_fresh_tele : forall ρ T s vs vs', Ftele T in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ vs ->
+      Ftele T in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ vs' -> vs = vs'.
   Proof.
     intros * H; revert vs'; induction H; intros vs' H'; inversion H'; subst; [ reflexivity |].
     functional_eval_rewrite_clear; f_equal; auto.
@@ -130,7 +130,7 @@ Section Fixed_GCtx.
         pointwise. *)
     Fixpoint ih_rel (pre : list domain) (t : ptyp) (v v' ih ih' : domain) : Prop :=
       match t with
-      | pt_self _ Ps => exists bs, eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ pre)) bs /\ Rel bs v bs v' ih ih'
+      | pt_self _ Ps => exists bs, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ bs /\ Rel bs v bs v' ih ih'
       | pt_aux _ _ => False
       | pt_pi B t => forall c c', dr pre B c c' ->
           exists fc fc' r r', $| v & c | gc_deps ⍮ gc_stack ↘ fc /\ $| v' & c' | gc_deps ⍮ gc_stack ↘ fc' /\
@@ -194,8 +194,8 @@ Section Fixed_GCtx.
         [ups]. *)
     Lemma fresh_np : forall ua, ind_adm D ups nr ar dr ua -> forall T' T0 vs vs' s, T = T0 ++ T' ->
         tele_pre nr (List.length T0) vs vs' ->
-        exists ws ws', fresh_tele gc_deps gc_stack (env_args nil (ups ++ vs)) T' s ws /\
-          fresh_tele gc_deps gc_stack (env_args nil (ua ++ vs')) T' s ws' /\
+        exists ws ws', Ftele T' in gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ vs) ⍮ s ↘ ws /\
+          Ftele T' in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ vs') ⍮ s ↘ ws' /\
           tele_pre nr (List.length T) (vs ++ ws) (vs' ++ ws').
     Proof.
       intros ua [Hn _ _ _]; induction T' as [| e T' IH]; intros T0 vs vs' s HT Hp.
@@ -217,8 +217,8 @@ Section Fixed_GCtx.
     Qed.
 
     Lemma fresh_np2 : forall ua1 ua2 s, ind_adm D ups nr ar dr ua1 -> ind_adm D ups nr ar dr ua2 ->
-        exists ns1 ns2, fresh_tele gc_deps gc_stack (env_args nil ua1) T s ns1 /\
-          fresh_tele gc_deps gc_stack (env_args nil ua2) T s ns2 /\ tele_full nr T ns1 ns2.
+        exists ns1 ns2, Ftele T in gc_deps ⍮ gc_stack ⍮ env_args nil ua1 ⍮ s ↘ ns1 /\
+          Ftele T in gc_deps ⍮ gc_stack ⍮ env_args nil ua2 ⍮ s ↘ ns2 /\ tele_full nr T ns1 ns2.
     Proof.
       intros * H1 H2.
       destruct (fresh_np _ H1 T nil nil nil s eq_refl (tele_pre_nil _)) as (w0 & w1 & F0 & F1 & P1).
@@ -268,7 +268,7 @@ Section Fixed_GCtx.
         forall ns1 ns2 c gs1 t0 gs2 ws1 ws2, tele_full nr T ns1 ns2 -> ind_con D c = Some (gs1 ++ ca_rec t0 :: gs2) ->
         tele_pre (ar ns1 c) (List.length (cargs_nonrec gs1)) ws1 ws2 ->
         forall k ys1 ys2, k <= List.length (ptyp_doms t0) -> tele_pre (shape_tr dr ns1 ws1 (ptyp_doms t0)) k ys1 ys2 ->
-          exists a, eval_shty gc_deps gc_stack p ua (env_args nil (ua ++ ns2 ++ ws2 ++ ys2)) (ptyp_skip k t0) a.
+          exists a, ⟦shty ptyp_skip k t0 of p ua ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ ns2 ++ ws2 ++ ys2) ↘ a.
     Proof.
       intros ua [_ _ Hcl Hdt] * H12 Hc Hw k ys1 ys2 Hk Hy.
       pose proof (Hsimple _ _ _ _ _ Hc eq_refl) as Hs0.
@@ -291,8 +291,8 @@ Section Fixed_GCtx.
         tele_pre (ar ns1 c) (List.length (cargs_nonrec gs1)) ws1 ws2 ->
         forall n k ys1 ys2 a1 a2 m m', k + n = List.length (ptyp_doms t0) ->
           tele_pre (shape_tr dr ns1 ws1 (ptyp_doms t0)) k ys1 ys2 ->
-          eval_shty gc_deps gc_stack p ua1 (env_args nil (ua1 ++ ns1 ++ ws1 ++ ys1)) (ptyp_skip k t0) a1 ->
-          eval_shty gc_deps gc_stack p ua2 (env_args nil (ua2 ++ ns2 ++ ws2 ++ ys2)) (ptyp_skip k t0) a2 ->
+          ⟦shty ptyp_skip k t0 of p ua1 ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ua1 ++ ns1 ++ ws1 ++ ys1) ↘ a1 ->
+          ⟦shty ptyp_skip k t0 of p ua2 ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ua2 ++ ns2 ++ ws2 ++ ys2) ↘ a2 ->
           Dom m ≈ m' ∈ per_bot ->
           ind_shape_rel p D ups nr ar dr (ns1 ++ ws1 ++ ys1) (ptyp_skip k t0) (⇑ a1 m) (⇑ a2 m').
     Proof.
@@ -366,11 +366,11 @@ Section Fixed_GCtx.
         tele_pre (ar ns1 c) (List.length (cargs_nonrec gs1)) ws1 ws2 ->
         forall n k ys1 ys2 a1 a2 m m' e e', k + n = List.length (ptyp_doms t0) ->
           tele_pre (shape_tr dr ns1 ws1 (ptyp_doms t0)) k ys1 ys2 ->
-          eval_shty gc_deps gc_stack p ua1 (env_args nil (ua1 ++ ns1 ++ ws1 ++ ys1)) (ptyp_skip k t0) a1 ->
-          eval_shty gc_deps gc_stack p ua2 (env_args nil (ua2 ++ ns2 ++ ws2 ++ ys2)) (ptyp_skip k t0) a2 ->
+          ⟦shty ptyp_skip k t0 of p ua1 ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ua1 ++ ns1 ++ ws1 ++ ys1) ↘ a1 ->
+          ⟦shty ptyp_skip k t0 of p ua2 ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ua2 ++ ns2 ++ ws2 ++ ys2) ↘ a2 ->
           Dom m ≈ m' ∈ per_bot -> Dom e ≈ e' ∈ per_bot ->
-          exists h1 h2, eval_ihty gc_deps gc_stack ρa Aa (env_args nil (ua1 ++ ns1 ++ ws1 ++ ys1)) (ptyp_skip k t0) (⇑ a1 m) h1 /\
-            eval_ihty gc_deps gc_stack ρb Ab (env_args nil (ua2 ++ ns2 ++ ws2 ++ ys2)) (ptyp_skip k t0) (⇑ a2 m') h2 /\
+          exists h1 h2, ⟦ihty ⇑ a1 m of ptyp_skip k t0 under ρa Aa ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ua1 ++ ns1 ++ ws1 ++ ys1) ↘ h1 /\
+            ⟦ihty ⇑ a2 m' of ptyp_skip k t0 under ρb Ab ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ua2 ++ ns2 ++ ws2 ++ ys2) ↘ h2 /\
             ih_rel (ns1 ++ ws1 ++ ys1) (ptyp_skip k t0) (⇑ a1 m) (⇑ a2 m') (⇑ h1 e) (⇑ h2 e').
     Proof.
       intros ua1 ua2 Ha1 Ha2 L1 L2 ns1 ns2 c gs1 t0 gs2 ws1 ws2 H12 Hc Hw.
@@ -462,10 +462,10 @@ Section Fixed_GCtx.
         forall gs' gs1 ws1 ws2 s s2, gs = gs1 ++ gs' ->
         tele_pre (ar ns1 c) (List.length (cargs_nonrec gs1)) ws1 ws2 ->
         exists vs1 vs2 ihs1 ihs2,
-          fresh_cargs gc_deps gc_stack p ua1 (env_args nil (ua1 ++ ns1 ++ ws1)) gs' s vs1 /\
-          fresh_cargs gc_deps gc_stack p ua2 (env_args nil (ua2 ++ ns2 ++ ws2)) gs' s vs2 /\
-          fresh_ihs gc_deps gc_stack ρa Aa (env_args nil (ua1 ++ ns1 ++ ws1)) gs' vs1 s2 ihs1 /\
-          fresh_ihs gc_deps gc_stack ρb Ab (env_args nil (ua2 ++ ns2 ++ ws2)) gs' vs2 s2 ihs2 /\
+          Fcargs gs' of p ua1 in gc_deps ⍮ gc_stack ⍮ env_args nil (ua1 ++ ns1 ++ ws1) ⍮ s ↘ vs1 /\
+          Fcargs gs' of p ua2 in gc_deps ⍮ gc_stack ⍮ env_args nil (ua2 ++ ns2 ++ ws2) ⍮ s ↘ vs2 /\
+          Fihs vs1 at gs' under ρa Aa in gc_deps ⍮ gc_stack ⍮ env_args nil (ua1 ++ ns1 ++ ws1) ⍮ s2 ↘ ihs1 /\
+          Fihs vs2 at gs' under ρb Ab in gc_deps ⍮ gc_stack ⍮ env_args nil (ua2 ++ ns2 ++ ws2) ⍮ s2 ↘ ihs2 /\
           tele_pre (ar ns1 c) (List.length (cargs_nonrec gs)) (ws1 ++ nonrec_vals gs' vs1) (ws2 ++ nonrec_vals gs' vs2) /\
           ind_args_rel p D ups nr ar dr (ns1 ++ ws1) gs' vs1 vs2 /\
           ihs_rel (ns1 ++ ws1) gs' vs1 vs2 ihs1 ihs2.
@@ -531,13 +531,13 @@ Section Fixed_GCtx.
     (** ** The Stuck Eliminator *)
     Lemma read_brs_rel : forall ua1 ua2 s ns1 ns2, ind_adm D ups nr ar dr ua1 -> ind_adm D ups nr ar dr ua2 ->
         List.length ua1 = ind_nu D -> List.length ua2 = ind_nu D ->
-        fresh_tele gc_deps gc_stack (env_args nil ua1) T s ns1 ->
-        fresh_tele gc_deps gc_stack (env_args nil ua2) T s ns2 -> tele_full nr T ns1 ns2 ->
+        Ftele T in gc_deps ⍮ gc_stack ⍮ env_args nil ua1 ⍮ s ↘ ns1 ->
+        Ftele T in gc_deps ⍮ gc_stack ⍮ env_args nil ua2 ⍮ s ↘ ns2 -> tele_full nr T ns1 ns2 ->
         forall cs Bs1 Bs2, (forall c gs, In (c, gs) cs -> ind_con D c = Some gs) ->
         (forall c n B, In (c, n, B) Bs1 -> brs_lookup Bsa c = Some (n, B) /\ In (c, n, B) Bsa) ->
         (forall c n B, In (c, n, B) Bs2 -> brs_lookup Bsb c = Some (n, B) /\ In (c, n, B) Bsb) ->
         brs_names cs Bs1 -> brs_names cs Bs2 ->
-        exists Bs', read_brs gc_deps gc_stack s ρa Aa p D ua1 cs Bs1 Bs' /\ read_brs gc_deps gc_stack s ρb Ab p D ua2 cs Bs2 Bs'.
+        exists Bs', Rbrs Bs1 at cs of p D ua1 under Aa in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ Bs' /\ Rbrs Bs2 at cs of p D ua2 under Ab in gc_deps ⍮ gc_stack ⍮ ρb ⍮ s ↘ Bs'.
     Proof.
       intros ua1 ua2 s ns1 ns2 Ha1 Ha2 L1 L2 F1 F2 H12.
       pose proof (trefl _ _ H12) as H11.
@@ -608,17 +608,17 @@ Section Fixed_GCtx.
     (** ** Related Elements Eliminate to Related Values *)
     Lemma per_ind_elim_all :
       (forall ns m m', ind_rel p D ups nr ar dr ns m m' -> forall ns', tele_full nr T ns ns' ->
-         exists r r', eval_elim gc_deps gc_stack ρa nm Aa Bsa m r /\ eval_elim gc_deps gc_stack ρb nm Ab Bsb m' r' /\
+         exists r r', ⟦elim m under nm Aa Bsa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ r /\ ⟦elim m' under nm Ab Bsb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ r' /\
            Rel ns m ns' m' r r') /\
       (forall pre gs vs vs', ind_args_rel p D ups nr ar dr pre gs vs vs' ->
-         exists ihs ihs', eval_ihs gc_deps gc_stack ρa nm Aa Bsa gs vs ihs /\ eval_ihs gc_deps gc_stack ρb nm Ab Bsb gs vs' ihs' /\
+         exists ihs ihs', ⟦ihs vs of gs under nm Aa Bsa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ ihs /\ ⟦ihs vs' of gs under nm Ab Bsb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ihs' /\
            ihs_rel pre gs vs vs' ihs ihs') /\
       (forall pre t v v', ind_shape_rel p D ups nr ar dr pre t v v' ->
-         exists ih ih', eval_ih gc_deps gc_stack ρa nm Aa Bsa t v ih /\ eval_ih gc_deps gc_stack ρb nm Ab Bsb t v' ih' /\
+         exists ih ih', ⟦ih v of t under nm Aa Bsa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ ih /\ ⟦ih v' of t under nm Ab Bsb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ih' /\
            ih_rel pre t v v' ih ih') /\
       (forall pre t f c f' c', ind_app_rel p D ups nr ar dr pre t f c f' c' ->
          exists fc fc' r r', $| f & c | gc_deps ⍮ gc_stack ↘ fc /\ $| f' & c' | gc_deps ⍮ gc_stack ↘ fc' /\
-           eval_ih gc_deps gc_stack ρa nm Aa Bsa t fc r /\ eval_ih gc_deps gc_stack ρb nm Ab Bsb t fc' r' /\
+           ⟦ih fc of t under nm Aa Bsa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ r /\ ⟦ih fc' of t under nm Ab Bsb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ r' /\
            ih_rel pre t fc fc' r r').
     Proof.
       apply ind_rel_mut_ind_all.

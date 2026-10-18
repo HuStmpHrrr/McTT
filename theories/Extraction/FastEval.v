@@ -146,6 +146,9 @@ Reserved Notation "'$ᶠ|' m '&' n '|' Θ '⍮' Ξ '↘' r" (at level 70, m at l
 Reserved Notation "'⟦elimᶠ' m 'under' nm A Bs '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦ihsᶠ' vs 'of' gs 'under' nm A Bs 'for' B '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs at level 69, nm at level 0, A at level 0, Bs at level 0, B at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 
+Reserved Notation "'⟦ihᶠ' v 'of' t 'under' nm A Bs '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, v at level 69, t at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦shtyᶠ' t 'of' p ups '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, t at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦ihtyᶠ' v 'of' t 'under' ρm A '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, v at level 69, t at level 69, ρm at level 0, A at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦' H '⟧ᵐᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, H at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦' Ms '⟧*ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' ms" (at level 70, Ms at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ms at level 69).
 Reserved Notation "'⟦' Φ '⟧ᵇᶠ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" (at level 70, Φ at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ρ' at level 69).
@@ -282,7 +285,7 @@ with feval_ihs (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * 
 (** The branch reads the recursive result: it is computed. *)
 | feval_ihs_rec :
   `( exp_freshb (cargs_nrec gs) B = false ->
-     feval_ih Θ Ξ ρ nm A Bs t v ih ->
+     ⟦ihᶠ v of t under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ih ->
      ⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
      ⟦ihsᶠ v :: vs of ca_rec t :: gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ih :: ihs )
 (** It does not: the entry is [𝕌ω@0], which nothing reads. *)
@@ -297,24 +300,27 @@ where "'⟦ihsᶠ' vs 'of' gs 'under' nm A Bs 'for' B '⟧ᶠ' Θ '⍮' Ξ '⍮'
 with feval_ih (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> ptyp -> domain -> domain -> Prop :=
 | feval_ih_self :
   `( ⟦elimᶠ v under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     feval_ih Θ Ξ ρ nm A Bs (pt_self k Ps) v r )
+     ⟦ihᶠ v of pt_self k Ps under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
 | feval_ih_pi :
-  `( feval_ih Θ Ξ ρ nm A Bs (pt_pi B t) v (d_ihfn ρ nm A Bs t v) )
+  `( ⟦ihᶠ v of pt_pi B t under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_ihfn ρ nm A Bs t v )
+where "'⟦ihᶠ' v 'of' t 'under' nm A Bs '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (feval_ih Θ Ξ ρ nm A Bs t v r)
 with feval_shty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> domain -> Prop :=
 | feval_shty_self :
   `( ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs ->
-     feval_shty Θ Ξ p ups ρ (pt_self k Ps) (d_ind p (ups ++ bs)) )
+     ⟦shtyᶠ pt_self k Ps of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_ind p (ups ++ bs) )
 | feval_shty_pi :
   `( ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ b ->
-     feval_shty Θ Ξ p ups ρ (pt_pi B t) (Πᵈ b (nil ↦ d_shfam p ups ρ t) fam_cod) )
+     ⟦shtyᶠ pt_pi B t of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_shfam p ups ρ t) fam_cod )
+where "'⟦shtyᶠ' t 'of' p ups '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (feval_shty Θ Ξ p ups ρ t r)
 with feval_ihty (Θ : gdeps) (Ξ : gstack) : env -> exp -> env -> ptyp -> domain -> domain -> Prop :=
 | feval_ihty_self :
   `( ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs ->
      ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρm (bs ++ v :: nil) ↘ a ->
-     feval_ihty Θ Ξ ρm A ρ (pt_self k Ps) v a )
+     ⟦ihtyᶠ v of pt_self k Ps under ρm A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a )
 | feval_ihty_pi :
   `( ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ b ->
-     feval_ihty Θ Ξ ρm A ρ (pt_pi B t) v (Πᵈ b (nil ↦ d_ihfam ρm A ρ t v) fam_cod) )
+     ⟦ihtyᶠ v of pt_pi B t under ρm A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_ihfam ρm A ρ t v) fam_cod )
+where "'⟦ihtyᶠ' v 'of' t 'under' ρm A '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (feval_ihty Θ Ξ ρm A ρ t v r)
 with feval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 (** A function's body, at the argument. *)
 | feval_app_fn :
@@ -339,14 +345,14 @@ with feval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :
     of an argument of a function shape and of its recursive result. *)
 | feval_app_ihfn :
   `( $ᶠ| f & n | Θ ⍮ Ξ ↘ fn ->
-     feval_ih Θ Ξ ρ nm A Bs t fn r ->
+     ⟦ihᶠ fn of t under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r ->
      $ᶠ| d_ihfn ρ nm A Bs t f & n | Θ ⍮ Ξ ↘ r )
 | feval_app_shfam :
-  `( feval_shty Θ Ξ p ups (ρ ↦ n) t a ->
+  `( ⟦shtyᶠ t of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ a ->
      $ᶠ| d_shfam p ups ρ t & n | Θ ⍮ Ξ ↘ a )
 | feval_app_ihfam :
   `( $ᶠ| f & n | Θ ⍮ Ξ ↘ fn ->
-     feval_ihty Θ Ξ ρm A (ρ ↦ n) t fn a ->
+     ⟦ihtyᶠ fn of t under ρm A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ a ->
      $ᶠ| d_ihfam ρm A ρ t f & n | Θ ⍮ Ξ ↘ a )
 (** A member closure takes the next argument of its module, and selects again. *)
 | feval_app_member :
@@ -630,9 +636,9 @@ Hint Constructors feval_exp feval_elim feval_ihs feval_ih feval_shty feval_ihty 
       (forall ρ nm A Bs B gs vs r1,
           ⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
           forall r2, ⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
-      (forall ρ nm A Bs t v r1, feval_ih Θ Ξ ρ nm A Bs t v r1 -> forall r2, feval_ih Θ Ξ ρ nm A Bs t v r2 -> r1 = r2) /\
-      (forall p ups ρ t a1, feval_shty Θ Ξ p ups ρ t a1 -> forall a2, feval_shty Θ Ξ p ups ρ t a2 -> a1 = a2) /\
-      (forall ρm A ρ t v a1, feval_ihty Θ Ξ ρm A ρ t v a1 -> forall a2, feval_ihty Θ Ξ ρm A ρ t v a2 -> a1 = a2).
+      (forall ρ nm A Bs t v r1, ⟦ihᶠ v of t under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 -> forall r2, ⟦ihᶠ v of t under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
+      (forall p ups ρ t a1, ⟦shtyᶠ t of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> forall a2, ⟦shtyᶠ t of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2) /\
+      (forall ρm A ρ t v a1, ⟦ihtyᶠ v of t under ρm A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> forall a2, ⟦ihtyᶠ v of t under ρm A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2).
   Proof.
     intros Θ Ξ; apply feval_mut_ind; intros;
       (* invert the other evaluation, then use the hypotheses on its parts; the
@@ -719,15 +725,15 @@ Hint Constructors feval_exp feval_elim feval_ihs feval_ih feval_shty feval_ihty 
   Qed.
 
   Corollary functional_feval_ih : forall {Θ Ξ} ρ nm A Bs t v r1 r2,
-      feval_ih Θ Ξ ρ nm A Bs t v r1 -> feval_ih Θ Ξ ρ nm A Bs t v r2 -> r1 = r2.
+      ⟦ihᶠ v of t under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 -> ⟦ihᶠ v of t under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
   Proof. intros Θ Ξ; pose proof (@functional_feval Θ Ξ); destruct_all; eauto. Qed.
 
   Corollary functional_feval_shty : forall {Θ Ξ} p ups ρ t a1 a2,
-      feval_shty Θ Ξ p ups ρ t a1 -> feval_shty Θ Ξ p ups ρ t a2 -> a1 = a2.
+      ⟦shtyᶠ t of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> ⟦shtyᶠ t of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2.
   Proof. intros Θ Ξ; pose proof (@functional_feval Θ Ξ); destruct_all; eauto. Qed.
 
   Corollary functional_feval_ihty : forall {Θ Ξ} ρm A ρ t v a1 a2,
-      feval_ihty Θ Ξ ρm A ρ t v a1 -> feval_ihty Θ Ξ ρm A ρ t v a2 -> a1 = a2.
+      ⟦ihtyᶠ v of t under ρm A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> ⟦ihtyᶠ v of t under ρm A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2.
   Proof. intros Θ Ξ; pose proof (@functional_feval Θ Ξ); destruct_all; eauto. Qed.
 
   Corollary functional_feval_exps : forall {Θ Ξ} Ms ρ ms1 ms2,
@@ -779,6 +785,12 @@ Reserved Notation "'Rneᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at
 Reserved Notation "'Rtypᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
 Reserved Notation "'Rlaᶠ' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" (at level 70, xs at level 69, Θ at level 69, Ξ at level 69, s constr, ys at level 69).
 Reserved Notation "'Rpsᶠ' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" (at level 70, vs at level 69, T at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Ms at level 69).
+Reserved Notation "'Rcargsᶠ' vs 'at' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" (at level 70, vs at level 69, gs at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Ms at level 69).
+Reserved Notation "'Rbrsᶠ' Bs 'at' cs 'of' p D ups 'under' A 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Bs'" (at level 70, Bs at level 69, cs at level 69, p at level 0, D at level 0, ups at level 0, A at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Bs' at level 69).
+
+Reserved Notation "'Fteleᶠ' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" (at level 70, T at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, vs at level 69).
+Reserved Notation "'Fcargsᶠ' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" (at level 70, gs at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, vs at level 69).
+Reserved Notation "'Fihsᶠ' vs 'at' gs 'under' ρm A 'for' B 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ ihs" (at level 70, vs at level 69, gs at level 69, ρm at level 0, A at level 0, B at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, ihs at level 69).
 
 Generalizable All Variables.
 
@@ -786,24 +798,26 @@ Generalizable All Variables.
     [Core.Semantic.Readback]. *)
 Inductive ffresh_tele (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> list domain -> Prop :=
 | ffresh_tele_nil :
-  `( ffresh_tele Θ Ξ ρ nil s nil )
+  `( Fteleᶠ nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 | ffresh_tele_cons :
   `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     ffresh_tele Θ Ξ (ρ ↦ ⇑! a s) T (S s) vs ->
-     ffresh_tele Θ Ξ ρ (ce_ass A :: T) s (⇑! a s :: vs) ).
+     Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⍮ S s ↘ vs ->
+     Fteleᶠ ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
+where "'Fteleᶠ' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (ffresh_tele Θ Ξ ρ T s vs) : type_scope.
 
 Inductive ffresh_cargs (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain) :
   env -> list carg -> nat -> list domain -> Prop :=
 | ffresh_cargs_nil :
-  `( ffresh_cargs Θ Ξ p ups ρ nil s nil )
+  `( Fcargsᶠ nil of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 | ffresh_cargs_arg :
   `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     ffresh_cargs Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s) vs ->
-     ffresh_cargs Θ Ξ p ups ρ (ca_arg A :: gs) s (⇑! a s :: vs) )
+     Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⍮ S s ↘ vs ->
+     Fcargsᶠ ca_arg A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
 | ffresh_cargs_rec :
-  `( feval_shty Θ Ξ p ups ρ t a ->
-     ffresh_cargs Θ Ξ p ups ρ gs (S s) vs ->
-     ffresh_cargs Θ Ξ p ups ρ (ca_rec t :: gs) s (⇑! a s :: vs) ).
+  `( ⟦shtyᶠ t of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ S s ↘ vs ->
+     Fcargsᶠ ca_rec t :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
+where "'Fcargsᶠ' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (ffresh_cargs Θ Ξ p ups ρ gs s vs) : type_scope.
 
 (** The recursive results of a branch [B] of a stuck eliminator, as fresh
     variables: the type of one the branch does not read, the variable
@@ -812,19 +826,20 @@ Inductive ffresh_cargs (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain
 Inductive ffresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (A : exp) (B : exp) :
   env -> list carg -> list domain -> nat -> list domain -> Prop :=
 | ffresh_ihs_nil :
-  `( ffresh_ihs Θ Ξ ρ A B ρa nil nil s nil )
+  `( Fihsᶠ nil at nil under ρ A for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ nil )
 | ffresh_ihs_arg :
-  `( ffresh_ihs Θ Ξ ρ A B (ρa ↦ v) gs vs s ihs ->
-     ffresh_ihs Θ Ξ ρ A B ρa (ca_arg T :: gs) (v :: vs) s ihs )
+  `( Fihsᶠ vs at gs under ρ A for B in Θ ⍮ Ξ ⍮ ρa ↦ v ⍮ s ↘ ihs ->
+     Fihsᶠ v :: vs at ca_arg T :: gs under ρ A for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs )
 | ffresh_ihs_rec :
   `( exp_freshb (cargs_nrec gs) B = false ->
-     feval_ihty Θ Ξ ρ A ρa t v a ->
-     ffresh_ihs Θ Ξ ρ A B ρa gs vs (S s) ihs ->
-     ffresh_ihs Θ Ξ ρ A B ρa (ca_rec t :: gs) (v :: vs) s (⇑! a s :: ihs) )
+     ⟦ihtyᶠ v of t under ρ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρa ↘ a ->
+     Fihsᶠ vs at gs under ρ A for B in Θ ⍮ Ξ ⍮ ρa ⍮ S s ↘ ihs ->
+     Fihsᶠ v :: vs at ca_rec t :: gs under ρ A for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ⇑! a s :: ihs )
 | ffresh_ihs_skip :
   `( exp_freshb (cargs_nrec gs) B = true ->
-     ffresh_ihs Θ Ξ ρ A B ρa gs vs (S s) ihs ->
-     ffresh_ihs Θ Ξ ρ A B ρa (ca_rec t :: gs) (v :: vs) s (⇑! 𝕌ω@0 s :: ihs) ).
+     Fihsᶠ vs at gs under ρ A for B in Θ ⍮ Ξ ⍮ ρa ⍮ S s ↘ ihs ->
+     Fihsᶠ v :: vs at ca_rec t :: gs under ρ A for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ⇑! 𝕌ω@0 s :: ihs )
+where "'Fihsᶠ' vs 'at' gs 'under' ρm A 'for' B 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ ihs" := (ffresh_ihs Θ Ξ ρm A B ρ gs vs s ihs) : type_scope.
 
 #[export]
 Hint Constructors ffresh_tele ffresh_cargs ffresh_ihs : mctt.
@@ -874,7 +889,7 @@ Inductive fread_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :
      List.length as' = ind_np D ->
      List.length vs = (ind_np D + List.length gs)%nat ->
      Rpsᶠ as' at List.rev (ind_params D) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
-     fread_cargs Θ Ξ s p (List.firstn (ind_nu D) as') (env_args nil as') gs (List.skipn (ind_np D) vs) Args ->
+     Rcargsᶠ List.skipn (ind_np D) vs at gs of p (List.firstn (ind_nu D) as') in Θ ⍮ Ξ ⍮ env_args nil as' ⍮ s ↘ Args ->
      Rnfᶠ ⇓ (d_ind p as') (d_con p c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p c (nfs_app Ps Args) )
 | fread_nf_ind_neut :
   `( Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
@@ -902,10 +917,10 @@ with fread_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
   `( ind_lookup Θ Ξ p = Some D ->
      List.length as' = ind_np D ->
      nm = S (ind_nn D) ->
-     ffresh_tele Θ Ξ (env_args nil (List.firstn (ind_nu D) as')) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ns ->
+     Fteleᶠ List.rev (List.firstn (ind_nn D) (ind_params D)) in Θ ⍮ Ξ ⍮ env_args nil (List.firstn (ind_nu D) as') ⍮ s ↘ ns ->
      ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ ⇑! (d_ind p (List.firstn (ind_nu D) as' ++ ns)) ((s + ind_nn D)%nat) :: nil) ↘ a ->
      Rtypᶠ a in Θ ⍮ Ξ ⍮ S (s + ind_nn D)%nat ↘ A' ->
-     fread_brs Θ Ξ s ρ A p D (List.firstn (ind_nu D) as') (ind_cons D) Bs Bs' ->
+     Rbrsᶠ Bs at ind_cons D of p D (List.firstn (ind_nu D) as') under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
      Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rneᶠ d_elim ρ nm A Bs p as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim nm A' Bs' M )
 where "'Rneᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (fread_ne Θ Ξ s m M) : type_scope
@@ -968,32 +983,34 @@ with fread_ps (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list dom
 where "'Rpsᶠ' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (fread_ps Θ Ξ s ρ T vs Ms) : type_scope
 with fread_cargs (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> list carg -> list domain -> nfs -> Prop :=
 | fread_cargs_nil :
-  `( fread_cargs Θ Ξ s p ups ρ nil nil nfs_nil )
+  `( Rcargsᶠ nil at nil of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_nil )
 | fread_cargs_arg :
   `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Rnfᶠ ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
-     fread_cargs Θ Ξ s p ups (ρ ↦ v) gs vs Vs ->
-     fread_cargs Θ Ξ s p ups ρ (ca_arg A :: gs) (v :: vs) (nfs_cons V Vs) )
+     Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ v ⍮ s ↘ Vs ->
+     Rcargsᶠ v :: vs at ca_arg A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons V Vs )
 | fread_cargs_rec :
-  `( feval_shty Θ Ξ p ups ρ t a ->
+  `( ⟦shtyᶠ t of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Rnfᶠ ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
-     fread_cargs Θ Ξ s p ups ρ gs vs Vs ->
-     fread_cargs Θ Ξ s p ups ρ (ca_rec t :: gs) (v :: vs) (nfs_cons V Vs) )
+     Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs ->
+     Rcargsᶠ v :: vs at ca_rec t :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons V Vs )
+where "'Rcargsᶠ' vs 'at' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (fread_cargs Θ Ξ s p ups ρ gs vs Ms) : type_scope
 with fread_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> exp -> qname -> ind_decl -> list domain ->
                                     list (string * list carg) -> list (string * nat * exp) -> nbrs -> Prop :=
 | fread_brs_nil :
-  `( fread_brs Θ Ξ s ρ A p D ups nil nil nbrs_nil )
+  `( Rbrsᶠ nil at nil of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_nil )
 | fread_brs_cons :
   `( n = (ind_nn D + List.length gs + cargs_nrec gs)%nat ->
      cargs_plen (ind_nn D) gs ->
-     ffresh_tele Θ Ξ (env_args nil ups) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ns ->
-     ffresh_cargs Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D)%nat vs ->
-     ffresh_ihs Θ Ξ ρ A B (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs)%nat ihs ->
+     Fteleᶠ List.rev (List.firstn (ind_nn D) (ind_params D)) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
+     Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + ind_nn D)%nat ↘ vs ->
+     Fihsᶠ vs at gs under ρ A for B in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + ind_nn D + List.length gs)%nat ↘ ihs ->
      ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ vs ++ ihs) ↘ b ->
      ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ d_con p c (ups ++ ns ++ vs) :: nil) ↘ t ->
      Rnfᶠ ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
-     fread_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
-     fread_brs Θ Ξ s ρ A p D ups ((c, gs) :: cs) ((c, n, B) :: Bs) (nbrs_cons c n B' Bs') )
+     Rbrsᶠ Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
+     Rbrsᶠ (c, n, B) :: Bs at (c, gs) :: cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_cons c n B' Bs' )
+where "'Rbrsᶠ' Bs 'at' cs 'of' p D ups 'under' A 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Bs'" := (fread_brs Θ Ξ s ρ A p D ups cs Bs Bs') : type_scope
 .
 
 Scheme fread_nf_mut_ind := Induction for fread_nf Sort Prop
@@ -1015,22 +1032,22 @@ Combined Scheme fread_mut_ind from
 #[export]
 Hint Constructors fread_nf fread_ne fread_typ fread_la fread_ps fread_cargs fread_brs : mctt.
 
-  Lemma functional_ffresh_tele : forall {Θ Ξ} ρ T s vs1, ffresh_tele Θ Ξ ρ T s vs1 ->
-      forall vs2, ffresh_tele Θ Ξ ρ T s vs2 -> vs1 = vs2.
+  Lemma functional_ffresh_tele : forall {Θ Ξ} ρ T s vs1, Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs1 ->
+      forall vs2, Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs2 -> vs1 = vs2.
   Proof.
     induction 1; intros * H2; inversion H2; subst; [ reflexivity |].
     functional_feval_rewrite_clear; f_equal; auto.
   Qed.
 
-  Lemma functional_ffresh_cargs : forall {Θ Ξ} p ups ρ gs s vs1, ffresh_cargs Θ Ξ p ups ρ gs s vs1 ->
-      forall vs2, ffresh_cargs Θ Ξ p ups ρ gs s vs2 -> vs1 = vs2.
+  Lemma functional_ffresh_cargs : forall {Θ Ξ} p ups ρ gs s vs1, Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs1 ->
+      forall vs2, Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs2 -> vs1 = vs2.
   Proof.
     induction 1; intros * H2; inversion H2; subst; [ auto | |];
       functional_feval_rewrite_clear; f_equal; auto.
   Qed.
 
-  Lemma functional_ffresh_ihs : forall {Θ Ξ} ρ A B ρa gs vs s ihs1, ffresh_ihs Θ Ξ ρ A B ρa gs vs s ihs1 ->
-      forall ihs2, ffresh_ihs Θ Ξ ρ A B ρa gs vs s ihs2 -> ihs1 = ihs2.
+  Lemma functional_ffresh_ihs : forall {Θ Ξ} ρ A B ρa gs vs s ihs1, Fihsᶠ vs at gs under ρ A for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs1 ->
+      forall ihs2, Fihsᶠ vs at gs under ρ A for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs2 -> ihs1 = ihs2.
   Proof.
     induction 1; intros * H2; inversion H2; subst; auto; try congruence.
     all: functional_feval_rewrite_clear; f_equal; auto.
@@ -1071,10 +1088,10 @@ Hint Constructors fread_nf fread_ne fread_typ fread_la fread_ps fread_cargs frea
             Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys2 ->
             ys1 = ys2) /\
       (forall s ρ T vs Vs1, Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs1 -> forall Vs2, Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs2 -> Vs1 = Vs2) /\
-      (forall s p ups ρ gs vs Vs1, fread_cargs Θ Ξ s p ups ρ gs vs Vs1 ->
-         forall Vs2, fread_cargs Θ Ξ s p ups ρ gs vs Vs2 -> Vs1 = Vs2) /\
-      (forall s ρ A p D ups cs Bs Bs1, fread_brs Θ Ξ s ρ A p D ups cs Bs Bs1 ->
-         forall Bs2, fread_brs Θ Ξ s ρ A p D ups cs Bs Bs2 -> Bs1 = Bs2).
+      (forall s p ups ρ gs vs Vs1, Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs1 ->
+         forall Vs2, Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs2 -> Vs1 = Vs2) /\
+      (forall s ρ A p D ups cs Bs Bs1, Rbrsᶠ Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs1 ->
+         forall Bs2, Rbrsᶠ Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs2 -> Bs1 = Bs2).
   Proof.
     intros Θ Ξ; apply fread_mut_ind; intros; progressive_inversion; functional_feval_rewrite_clear;
       functional_ffresh_rewrite_clear; functional_feval_rewrite_clear;

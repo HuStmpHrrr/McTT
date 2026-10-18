@@ -155,9 +155,9 @@ Section Transparent.
     (forall ρ nm A Bs m r, ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_clean ρ -> dclean m -> dclean r) /\
     (forall ρ nm A Bs gs vs ihs, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
        env_clean ρ -> (forall a, In a vs -> dclean a) -> forall a, In a ihs -> dclean a) /\
-    (forall ρ nm A Bs t v r, eval_ih Θ Ξ ρ nm A Bs t v r -> env_clean ρ -> dclean v -> dclean r) /\
-    (forall p ups ρ t a, eval_shty Θ Ξ p ups ρ t a -> (forall u, In u ups -> dclean u) -> env_clean ρ -> dclean a) /\
-    (forall ρm A ρ t v a, eval_ihty Θ Ξ ρm A ρ t v a -> env_clean ρm -> env_clean ρ -> dclean v -> dclean a).
+    (forall ρ nm A Bs t v r, ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_clean ρ -> dclean v -> dclean r) /\
+    (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> (forall u, In u ups -> dclean u) -> env_clean ρ -> dclean a) /\
+    (forall ρm A ρ t v a, ⟦ihty v of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> env_clean ρm -> env_clean ρ -> dclean v -> dclean a).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => env_clean ρ -> dclean m)
@@ -306,7 +306,7 @@ Section Transparent.
 
   (** The fresh variables of the telescopes of a declaration are clean. *)
   Lemma fresh_tele_clean : forall ρ T s vs,
-      fresh_tele Θ Ξ ρ T s vs -> env_clean ρ -> forall a, In a vs -> dclean a.
+      Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> env_clean ρ -> forall a, In a vs -> dclean a.
   Proof.
     destruct eval_clean as (He & _).
     induction 1; intros Hρ; [ apply all_in_nil |].
@@ -315,7 +315,7 @@ Section Transparent.
   Qed.
 
   Lemma fresh_cargs_clean : forall p ups ρ gs s vs,
-      fresh_cargs Θ Ξ p ups ρ gs s vs -> env_clean ρ -> (forall a, In a ups -> dclean a) ->
+      Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> env_clean ρ -> (forall a, In a ups -> dclean a) ->
       forall a, In a vs -> dclean a.
   Proof.
     destruct eval_clean as (He & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
@@ -327,7 +327,7 @@ Section Transparent.
   Qed.
 
   Lemma fresh_ihs_clean : forall ρ A ρa gs vs s ihs,
-      fresh_ihs Θ Ξ ρ A ρa gs vs s ihs -> env_clean ρ -> env_clean ρa -> (forall a, In a vs -> dclean a) ->
+      Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> env_clean ρ -> env_clean ρa -> (forall a, In a vs -> dclean a) ->
       forall a, In a ihs -> dclean a.
   Proof.
     destruct eval_clean as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hit).
@@ -373,10 +373,10 @@ Section Transparent.
        dclean_la xs -> la_clean ys) /\
     (forall s ρ T vs Ms, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        env_clean ρ -> (forall a, In a vs -> dclean a) -> nfs_clean Ms) /\
-    (forall s p ups ρ gs vs Ms, read_cargs Θ Ξ s p ups ρ gs vs Ms ->
+    (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        env_clean ρ -> (forall a, In a ups -> dclean a) -> (forall a, In a vs -> dclean a) ->
        nfs_clean Ms) /\
-    (forall s ρ A p D ups cs Bs Bs', read_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
+    (forall s ρ A p D ups cs Bs Bs', Rbrs Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
        env_clean ρ -> (forall a, In a ups -> dclean a) -> nbrs_clean Bs').
   Proof.
     destruct eval_clean as (He & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).

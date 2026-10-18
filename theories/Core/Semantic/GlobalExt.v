@@ -60,23 +60,23 @@ Section GlobalExt.
 
   Lemma eval_ext :
     (forall M ρ m, ⟦ M ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ m -> ⟦ M ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ m) /\
-    (forall m n r, eval_app Θ1 Ξ1 m n r -> eval_app Θ2 Ξ2 m n r) /\
-    (forall Ms ρ ms, eval_exps Θ1 Ξ1 Ms ρ ms -> eval_exps Θ2 Ξ2 Ms ρ ms) /\
-    (forall m ns r, eval_apps Θ1 Ξ1 m ns r -> eval_apps Θ2 Ξ2 m ns r) /\
-    (forall H ρ h, eval_modexp Θ1 Ξ1 H ρ h -> eval_modexp Θ2 Ξ2 H ρ h) /\
-    (forall Δ D ρ h, eval_close Θ1 Ξ1 Δ D ρ h -> eval_close Θ2 Ξ2 Δ D ρ h) /\
-    (forall h n r, eval_appm Θ1 Ξ1 h n r -> eval_appm Θ2 Ξ2 h n r) /\
-    (forall h ns r, eval_appms Θ1 Ξ1 h ns r -> eval_appms Θ2 Ξ2 h ns r) /\
-    (forall h x r, eval_sel Θ1 Ξ1 h x r -> eval_sel Θ2 Ξ2 h x r) /\
-    (forall h y r, eval_selm Θ1 Ξ1 h y r -> eval_selm Θ2 Ξ2 h y r) /\
-    (forall h ch r, eval_selc Θ1 Ξ1 h ch r -> eval_selc Θ2 Ξ2 h ch r) /\
-    (forall h ch r, eval_selmc Θ1 Ξ1 h ch r -> eval_selmc Θ2 Ξ2 h ch r) /\
-    (forall ρ Φ ρ', eval_benv Θ1 Ξ1 ρ Φ ρ' -> eval_benv Θ2 Ξ2 ρ Φ ρ') /\
-    (forall ρ nm A Bs m r, eval_elim Θ1 Ξ1 ρ nm A Bs m r -> eval_elim Θ2 Ξ2 ρ nm A Bs m r) /\
-    (forall ρ nm A Bs gs vs ihs, eval_ihs Θ1 Ξ1 ρ nm A Bs gs vs ihs -> eval_ihs Θ2 Ξ2 ρ nm A Bs gs vs ihs) /\
-    (forall ρ nm A Bs t v r, eval_ih Θ1 Ξ1 ρ nm A Bs t v r -> eval_ih Θ2 Ξ2 ρ nm A Bs t v r) /\
-    (forall p ups ρ t a, eval_shty Θ1 Ξ1 p ups ρ t a -> eval_shty Θ2 Ξ2 p ups ρ t a) /\
-    (forall ρm A ρ t v a, eval_ihty Θ1 Ξ1 ρm A ρ t v a -> eval_ihty Θ2 Ξ2 ρm A ρ t v a).
+    (forall m n r, $| m & n | Θ1 ⍮ Ξ1 ↘ r -> $| m & n | Θ2 ⍮ Ξ2 ↘ r) /\
+    (forall Ms ρ ms, ⟦ Ms ⟧* Θ1 ⍮ Ξ1 ⍮ ρ ↘ ms -> ⟦ Ms ⟧* Θ2 ⍮ Ξ2 ⍮ ρ ↘ ms) /\
+    (forall m ns r, $*| m & ns | Θ1 ⍮ Ξ1 ↘ r -> $*| m & ns | Θ2 ⍮ Ξ2 ↘ r) /\
+    (forall H ρ h, ⟦ H ⟧ᵐ Θ1 ⍮ Ξ1 ⍮ ρ ↘ h -> ⟦ H ⟧ᵐ Θ2 ⍮ Ξ2 ⍮ ρ ↘ h) /\
+    (forall Δ D ρ h, ⟦ Δ ⊢ D ⟧ᶜ Θ1 ⍮ Ξ1 ⍮ ρ ↘ h -> ⟦ Δ ⊢ D ⟧ᶜ Θ2 ⍮ Ξ2 ⍮ ρ ↘ h) /\
+    (forall h n r, $ᵐ| h & n | Θ1 ⍮ Ξ1 ↘ r -> $ᵐ| h & n | Θ2 ⍮ Ξ2 ↘ r) /\
+    (forall h ns r, $ᵐ*| h & ns | Θ1 ⍮ Ξ1 ↘ r -> $ᵐ*| h & ns | Θ2 ⍮ Ξ2 ↘ r) /\
+    (forall h x r, h ·ₜ x Θ1 ⍮ Ξ1 ↘ r -> h ·ₜ x Θ2 ⍮ Ξ2 ↘ r) /\
+    (forall h y r, h ·ₘ y Θ1 ⍮ Ξ1 ↘ r -> h ·ₘ y Θ2 ⍮ Ξ2 ↘ r) /\
+    (forall h ch r, h ·ₜ* ch Θ1 ⍮ Ξ1 ↘ r -> h ·ₜ* ch Θ2 ⍮ Ξ2 ↘ r) /\
+    (forall h ch r, h ·ₘ* ch Θ1 ⍮ Ξ1 ↘ r -> h ·ₘ* ch Θ2 ⍮ Ξ2 ↘ r) /\
+    (forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ1 ⍮ Ξ1 ⍮ ρ ↘ ρ' -> ⟦ Φ ⟧ᵇ Θ2 ⍮ Ξ2 ⍮ ρ ↘ ρ') /\
+    (forall ρ nm A Bs m r, ⟦elim m under nm A Bs ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ r -> ⟦elim m under nm A Bs ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ r) /\
+    (forall ρ nm A Bs gs vs ihs, ⟦ihs vs of gs under nm A Bs ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ ihs -> ⟦ihs vs of gs under nm A Bs ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ ihs) /\
+    (forall ρ nm A Bs t v r, ⟦ih v of t under nm A Bs ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ r -> ⟦ih v of t under nm A Bs ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ r) /\
+    (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a -> ⟦shty t of p ups ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a) /\
+    (forall ρm A ρ t v a, ⟦ihty v of t under ρm A ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a -> ⟦ihty v of t under ρm A ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a).
   Proof.
     apply (eval_mut_ind Θ1 Ξ1
              (fun M ρ m _ => ⟦ M ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ m)
@@ -106,25 +106,25 @@ Section GlobalExt.
     all: try solve [ econstructor; eauto; apply kind_ext; assumption ].
   Qed.
 
-  Lemma fresh_tele_ext : forall ρ T s vs, fresh_tele Θ1 Ξ1 ρ T s vs -> fresh_tele Θ2 Ξ2 ρ T s vs.
+  Lemma fresh_tele_ext : forall ρ T s vs, Ftele T in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ vs -> Ftele T in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ vs.
   Proof. pose proof eval_ext; destruct_all; induction 1; econstructor; eauto. Qed.
 
   Lemma fresh_cargs_ext : forall p ups ρ gs s vs,
-      fresh_cargs Θ1 Ξ1 p ups ρ gs s vs -> fresh_cargs Θ2 Ξ2 p ups ρ gs s vs.
+      Fcargs gs of p ups in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ vs -> Fcargs gs of p ups in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ vs.
   Proof. pose proof eval_ext; destruct_all; induction 1; econstructor; eauto. Qed.
 
   Lemma fresh_ihs_ext : forall ρ A ρa gs vs s ihs,
-      fresh_ihs Θ1 Ξ1 ρ A ρa gs vs s ihs -> fresh_ihs Θ2 Ξ2 ρ A ρa gs vs s ihs.
+      Fihs vs at gs under ρ A in Θ1 ⍮ Ξ1 ⍮ ρa ⍮ s ↘ ihs -> Fihs vs at gs under ρ A in Θ2 ⍮ Ξ2 ⍮ ρa ⍮ s ↘ ihs.
   Proof. pose proof eval_ext; destruct_all; induction 1; econstructor; eauto. Qed.
 
   Lemma read_ext :
-    (forall s m M, read_nf Θ1 Ξ1 s m M -> read_nf Θ2 Ξ2 s m M) /\
-    (forall s m M, read_ne Θ1 Ξ1 s m M -> read_ne Θ2 Ξ2 s m M) /\
-    (forall s m M, read_typ Θ1 Ξ1 s m M -> read_typ Θ2 Ξ2 s m M) /\
-    (forall s xs ys, read_la Θ1 Ξ1 s xs ys -> read_la Θ2 Ξ2 s xs ys) /\
-    (forall s ρ T vs Ms, read_ps Θ1 Ξ1 s ρ T vs Ms -> read_ps Θ2 Ξ2 s ρ T vs Ms) /\
-    (forall s p ups ρ gs vs Ms, read_cargs Θ1 Ξ1 s p ups ρ gs vs Ms -> read_cargs Θ2 Ξ2 s p ups ρ gs vs Ms) /\
-    (forall s ρ A p D ups cs Bs Bs', read_brs Θ1 Ξ1 s ρ A p D ups cs Bs Bs' -> read_brs Θ2 Ξ2 s ρ A p D ups cs Bs Bs').
+    (forall s m M, Rnf m in Θ1 ⍮ Ξ1 ⍮ s ↘ M -> Rnf m in Θ2 ⍮ Ξ2 ⍮ s ↘ M) /\
+    (forall s m M, Rne m in Θ1 ⍮ Ξ1 ⍮ s ↘ M -> Rne m in Θ2 ⍮ Ξ2 ⍮ s ↘ M) /\
+    (forall s m M, Rtyp m in Θ1 ⍮ Ξ1 ⍮ s ↘ M -> Rtyp m in Θ2 ⍮ Ξ2 ⍮ s ↘ M) /\
+    (forall s xs ys, Rla xs in Θ1 ⍮ Ξ1 ⍮ s ↘ ys -> Rla xs in Θ2 ⍮ Ξ2 ⍮ s ↘ ys) /\
+    (forall s ρ T vs Ms, Rps vs at T in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Ms -> Rps vs at T in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Ms) /\
+    (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Ms -> Rcargs vs at gs of p ups in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Ms) /\
+    (forall s ρ A p D ups cs Bs Bs', Rbrs Bs at cs of p D ups under A in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Bs' -> Rbrs Bs at cs of p D ups under A in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Bs').
   Proof.
     pose proof eval_ext as He; destruct_all.
     apply (read_mut_ind Θ1 Ξ1

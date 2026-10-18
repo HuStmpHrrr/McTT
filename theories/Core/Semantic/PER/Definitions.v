@@ -175,7 +175,7 @@ Fixpoint nonrec_vals (gs : list carg) (vs : list domain) : list domain :=
 
 (** Two lists of values read back equally at a telescope, at every length. *)
 Definition per_top_ps (T : list centry) (vs vs' : list domain) : Prop :=
-  forall s, exists Ms, read_ps gc_deps gc_stack s nil T vs Ms /\ read_ps gc_deps gc_stack s nil T vs' Ms.
+  forall s, exists Ms, Rps vs at T in gc_deps ⍮ gc_stack ⍮ nil ⍮ s ↘ Ms /\ Rps vs' at T in gc_deps ⍮ gc_stack ⍮ nil ⍮ s ↘ Ms.
 
 (** The domains [Bs] of a shape as a telescope of relations, after the
     values of the shape's components, the non-uniform parameters [ms] and
@@ -190,8 +190,8 @@ Definition shape_tr (dr : list domain -> exp -> relation domain) (ms ws : list d
 Record exps_rel (Ps : list exp) (ρ ρ' : env) (R : list domain -> list domain -> Prop) : Prop := mk_exps_rel
   { er_left : list domain
   ; er_right : list domain
-  ; er_eval_left : eval_exps gc_deps gc_stack Ps ρ er_left
-  ; er_eval_right : eval_exps gc_deps gc_stack Ps ρ' er_right
+  ; er_eval_left : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ er_left
+  ; er_eval_right : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ ρ' ↘ er_right
   ; er_rel : R er_left er_right }.
 
 (** Uniform parameters [ua] admissible beside [ups]: what the type
@@ -212,8 +212,8 @@ Record exps_rel (Ps : list exp) (ρ ρ' : env) (R : list domain -> list domain -
 Record adm_vals (A : exp) (ρ ρ' : env) (R : relation domain) (s : nat) : Prop := mk_adm_vals
   { a : domain
   ; a' : domain
-  ; adv_eval : eval_exp gc_deps gc_stack A ρ a
-  ; adv_eval' : eval_exp gc_deps gc_stack A ρ' a'
+  ; adv_eval : ⟦ A ⟧ ρ ↘ a
+  ; adv_eval' : ⟦ A ⟧ ρ' ↘ a'
   ; adv_rel : R (⇑! a s) (⇑! a' s) }.
 
 (** A domain of a shape at two environments: its two values, whose
@@ -222,8 +222,8 @@ Record adm_vals (A : exp) (ρ ρ' : env) (R : relation domain) (s : nat) : Prop 
 Record dom_vals (B : exp) (ρ ρ' : env) (R : relation domain) : Prop := mk_dom_vals
   { a : domain
   ; a' : domain
-  ; dmv_eval : eval_exp gc_deps gc_stack B ρ a
-  ; dmv_eval' : eval_exp gc_deps gc_stack B ρ' a'
+  ; dmv_eval : ⟦ B ⟧ ρ ↘ a
+  ; dmv_eval' : ⟦ B ⟧ ρ' ↘ a'
   ; dmv_top : forall x x', R x x' -> per_top (d_dom a x) (d_dom a' x') }.
 
 Record ind_adm (D : ind_decl) (ups : list domain)
@@ -315,7 +315,7 @@ with ind_shape_rel (p : qname) (D : ind_decl) (ups : list domain)
     (dr : list domain -> exp -> relation domain)
   : list domain -> ptyp -> domain -> domain -> Prop :=
 | ind_shape_self :
-  `{ eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ pre)) bs ->
+  `{ ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ bs ->
      ind_rel p D ups nr ar dr bs v v' ->
      ind_shape_rel p D ups nr ar dr pre (pt_self k Ps) v v' }
 | ind_shape_pi :
@@ -327,8 +327,8 @@ with ind_app_rel (p : qname) (D : ind_decl) (ups : list domain)
     (dr : list domain -> exp -> relation domain)
   : list domain -> ptyp -> domain -> domain -> domain -> domain -> Prop :=
 | ind_app_mk :
-  `{ eval_app gc_deps gc_stack f c r ->
-     eval_app gc_deps gc_stack f' c' r' ->
+  `{ $| f & c |↘ r ->
+     $| f' & c' |↘ r' ->
      ind_shape_rel p D ups nr ar dr pre t r r' ->
      ind_app_rel p D ups nr ar dr pre t f c f' c' }
 .
@@ -1020,8 +1020,8 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
        per_body ρ Φ ρ' Φ' ->
        kbody gc_deps gc_stack ρ Φ Φx ->
        kbody gc_deps gc_stack ρ' Φ' Φx' ->
-       eval_benv gc_deps gc_stack ρ Φx ρ1 ->
-       eval_benv gc_deps gc_stack ρ' Φx' ρ1' ->
+       ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
+       ⟦ Φx' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
        rel_typ i A ρ1 A' ρ1' R ->
        rel_elem M ρ1 M' ρ1' R ->
        per_body ρ (gm_ext Φ y (ge_def b pv A (Some M))) ρ' (gm_ext Φ' y (ge_def b' pv' A' (Some M'))) }
@@ -1030,10 +1030,10 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
   `{ per_body ρ Φ ρ' Φ' ->
      kbody gc_deps gc_stack ρ Φ Φx ->
      kbody gc_deps gc_stack ρ' Φ' Φx' ->
-     eval_benv gc_deps gc_stack ρ Φx ρ1 ->
-     eval_benv gc_deps gc_stack ρ' Φx' ρ1' ->
-     eval_close gc_deps gc_stack Δy Dy ρ1 h ->
-     eval_close gc_deps gc_stack Δy' Dy' ρ1' h' ->
+     ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
+     ⟦ Φx' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
+     ⟦ Δy ⊢ Dy ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ h ->
+     ⟦ Δy' ⊢ Dy' ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ1' ↘ h' ->
      per_dmod h h' ->
      per_body ρ (gm_ext Φ y (ge_mod pm (gu_mk Δy Dy))) ρ' (gm_ext Φ' y (ge_mod pm' (gu_mk Δy' Dy'))) }
 (** A local open each, of the same items, with related targets, the
@@ -1044,26 +1044,26 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
   `{ per_body ρ Φ ρ' Φ' ->
      kbody gc_deps gc_stack ρ Φ Φx ->
      kbody gc_deps gc_stack ρ' Φ' Φx' ->
-     eval_benv gc_deps gc_stack ρ Φx ρ1 ->
-     eval_benv gc_deps gc_stack ρ' Φx' ρ1' ->
+     ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
+     ⟦ Φx' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
      ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ h ->
      ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ1' ↘ h' ->
      per_dmod h h' ->
      kbody gc_deps gc_stack ρ (gm_open Φ H its) Φo ->
      kbody gc_deps gc_stack ρ' (gm_open Φ' H' its) Φo' ->
-     eval_benv gc_deps gc_stack ρ Φo ρo ->
-     eval_benv gc_deps gc_stack ρ' Φo' ρo' ->
+     ⟦ Φo ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρo ->
+     ⟦ Φo' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρo' ->
      (forall k ρk, k < List.length its ->
-        eval_benv gc_deps gc_stack ρ (gm_dropn (List.length its - k) Φo) ρk ->
+        ⟦ gm_dropn (List.length its - k) Φo ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρk ->
         exists hk, ⟦ modexp_wk H (wk_shiftn k) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρk ↘ hk) ->
      (forall k ρk', k < List.length its ->
-        eval_benv gc_deps gc_stack ρ' (gm_dropn (List.length its - k) Φo') ρk' ->
+        ⟦ gm_dropn (List.length its - k) Φo' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρk' ->
         exists hk', ⟦ modexp_wk H' (wk_shiftn k) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρk' ↘ hk') ->
      (forall k ρk hk, k < List.length its ->
-        eval_benv gc_deps gc_stack ρ (gm_dropn (List.length its - k) Φo) ρk ->
+        ⟦ gm_dropn (List.length its - k) Φo ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρk ->
         ⟦ modexp_wk H (wk_shiftn k) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρk ↘ hk -> per_dmod hk h) ->
      (forall k ρk' hk', k < List.length its ->
-        eval_benv gc_deps gc_stack ρ' (gm_dropn (List.length its - k) Φo') ρk' ->
+        ⟦ gm_dropn (List.length its - k) Φo' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρk' ->
         ⟦ modexp_wk H' (wk_shiftn k) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρk' ↘ hk' -> per_dmod hk' h') ->
      per_body ρ (gm_open Φ H its) ρ' (gm_open Φ' H' its) }
 .

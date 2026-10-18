@@ -51,13 +51,13 @@ Qed.
 
 
 (** The arguments of a constructor read back position by position. *)
-Lemma read_cargs_nth : forall s p ups ρ gs vs Vs, read_cargs gc_deps gc_stack s p ups ρ gs vs Vs ->
+Lemma read_cargs_nth : forall s p ups ρ gs vs Vs, Rcargs vs at gs of p ups in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Vs ->
     List.length (nfs_to_exps Vs) = List.length gs /\
     (forall gs1 A gs2 v, gs = gs1 ++ ca_arg A :: gs2 -> List.nth_error vs (List.length gs1) = Some v ->
        exists a (V : nf), ⟦ A ⟧ env_args ρ (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
          Rnf ⇓ a v in s ↘ V /\ List.nth_error (nfs_to_exps Vs) (List.length gs1) = Some (V : exp)) /\
     (forall gs1 Pr gs2 v, gs = gs1 ++ ca_rec Pr :: gs2 -> List.nth_error vs (List.length gs1) = Some v ->
-       exists a (V : nf), eval_shty gc_deps gc_stack p ups (env_args ρ (nonrec_vals gs1 (List.firstn (List.length gs1) vs))) Pr a /\
+       exists a (V : nf), ⟦shty Pr of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args ρ (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
          Rnf ⇓ a v in s ↘ V /\ List.nth_error (nfs_to_exps Vs) (List.length gs1) = Some (V : exp)).
 Proof.
   induction 1.
@@ -88,7 +88,7 @@ Qed.
 (** The codomain of the type of an argument of a function shape, at an
     argument, is the type of the rest of the shape. *)
 Lemma eval_fam_cod_shfam_inv : forall p ups ρ t x a,
-    ⟦ fam_cod ⟧ nil ↦ d_shfam p ups ρ t ↦ x ↘ a -> eval_shty gc_deps gc_stack p ups (ρ ↦ x) t a.
+    ⟦ fam_cod ⟧ nil ↦ d_shfam p ups ρ t ↦ x ↘ a -> ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↦ x ↘ a.
 Proof.
   intros * H; unfold fam_cod in H; inversion H; subst.
   match goal with H1 : ⟦ #1 ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H1; subst end.
@@ -210,7 +210,7 @@ Section IndRealize.
                 ptyp_skip k t0 = t -> k <= List.length (ptyp_doms t0) ->
                 tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t0)) k ys ys ->
                 ind_shape_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) (ms' ++ ws ++ ys) t v v ->
-                forall a (V : nf), eval_shty gc_deps gc_stack p ups (env_args nil (ups ++ ms' ++ ws ++ ys)) t a ->
+                forall a (V : nf), ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ms' ++ ws ++ ys) ↘ a ->
                 Rnf ⇓ a v in length Γ ↘ V -> Γ ⊢ N ≈ V : A)).
     2:{ intros * Hm Hr HΓ ns' Hpt Hrel w Hw. clear - Hr Hw HΓ. inversion Hw; subst.
         assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
@@ -370,7 +370,7 @@ Section IndRealize.
         by (rewrite <- exp_sub_wk_q_extend; eapply wf_app'; [ exact HNw | mauto 3 ]).
       assert (HOTf : exists Us'' σ'', OT[(ι ↑),,#0] = ptyp_ty_at p Us'' σ'' t)
         by (do 2 eexists; unfold OT; rewrite ptyp_ty_at_sub; reflexivity).
-      assert (Ecod'' : eval_shty gc_deps gc_stack p ups (env_args nil (ups ++ ms' ++ ws ++ ys ++ c :: nil)) t b2')
+      assert (Ecod'' : ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ms' ++ ws ++ ys ++ c :: nil) ↘ b2')
         by (rewrite env_args_snoc3; exact Ecod').
       pose proof (IH _ _ HA (Γ ▹ IT) ↑ #0 c m' Hwk Hcc Hvc Hvapp HΓIT HNapp HOTf ms ms' c0 gs1 t0 gs2 ws (S k1) (ys ++ c :: nil)
                     ltac:(rewrite <- !List.app_assoc; reflexivity) Hm Hc Hw Hs' Hk' (Hstep _ _ Hcc)

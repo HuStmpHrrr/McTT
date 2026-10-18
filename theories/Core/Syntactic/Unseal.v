@@ -981,9 +981,9 @@ Section Run.
   Hypothesis Hload : forall prg u, to_core prg = Some u -> unit_no_axioms u.
 
   Theorem run_no_axioms :
-    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', run_cmd load_path read to_core ch B Rb Θ Ξ c B' Rb' Θ' Ξ' ->
+    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        cmd_no_axioms c -> gc_no_axioms Θ Ξ -> gc_no_axioms Θ' Ξ') /\
-    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', run_cmds load_path read to_core ch B Rb Θ Ξ cs B' Rb' Θ' Ξ' ->
+    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        cmds_no_axioms cs -> gc_no_axioms Θ Ξ -> gc_no_axioms Θ' Ξ') /\
     (forall ch u B Rb Θ U, run_unit load_path read to_core ch u B Rb Θ U ->
        unit_no_axioms u -> gds_no_axioms Θ /\ gm_no_axioms (gu_mod U)).
@@ -1037,7 +1037,7 @@ Section Run.
 
   (** Every state a unit runs through, from nothing, has no axioms. *)
   Corollary run_cmds_no_axioms : forall ch B Rb cs B' Rb' Θ Ξ,
-      run_cmds load_path read to_core ch B Rb nil nil cs B' Rb' Θ Ξ -> cmds_no_axioms cs -> gc_no_axioms Θ Ξ.
+      nil ⍮ nil ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ ⍮ Ξ ⍮ B' ⍮ Rb' -> cmds_no_axioms cs -> gc_no_axioms Θ Ξ.
   Proof. intros * H Hc; eapply run_no_axioms; [ exact H | exact Hc | split; auto with mctt ]. Qed.
 
   (** What a program files, filed with it. *)

@@ -568,7 +568,7 @@ Corollary rc_ind_runs : forall load_path read to_core ch B Rb Θ Ξ x pv R cs,
     ⊢ᵍ Θ ⍮ Ξ -> cls_cons_in Θ Ξ R cs -> gs_fresh x Ξ ->
     Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_ind pv (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) ⋄ ->
     ~ In "rec"%string (List.map fst cs) ->
-    exists Θ' Ξ', run_cmd load_path read to_core ch B Rb Θ Ξ (cc_ind x pv R) B Rb Θ' Ξ'.
+    exists Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_ind x pv R ⇝ Θ' ⍮ Ξ' ⍮ B ⍮ Rb.
 Proof.
   intros * HΞ Hcls Hfr HE Hrec.
   destruct Ξ as [| [mq [Δ [sm Φ0 | E0]]] Ξ0]; [ contradiction | |].

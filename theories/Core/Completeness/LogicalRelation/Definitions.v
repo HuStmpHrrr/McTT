@@ -231,10 +231,10 @@ Record rel_modexp (H : modexp) (σ : sub) (ρ ρσ : env) (H' : modexp) (σ' : s
   ; h : dmod
   ; h' : dmod
   ; h'σ' : dmod
-  ; rm_eval_sub : eval_modexp gc_deps gc_stack H[σ]ᵐ ρ hσ
-  ; rm_eval : eval_modexp gc_deps gc_stack H ρσ h
-  ; rm_eval' : eval_modexp gc_deps gc_stack H' ρ'σ' h'
-  ; rm_eval_sub' : eval_modexp gc_deps gc_stack H'[σ']ᵐ ρ' h'σ'
+  ; rm_eval_sub : ⟦ H[σ]ᵐ ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ hσ
+  ; rm_eval : ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρσ ↘ h
+  ; rm_eval' : ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ'σ' ↘ h'
+  ; rm_eval_sub' : ⟦ H'[σ']ᵐ ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ' ↘ h'σ'
   ; rm_chain : rel_chain per_dmod ([hσ; h; h'; h'σ']) }.
 #[global] Arguments mk_rel_modexp {_ _ _ _ _ _ _ _}.
 Hint Constructors rel_modexp : mctt.

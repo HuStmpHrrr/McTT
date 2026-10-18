@@ -218,7 +218,7 @@ Qed.
 
 (** Arguments related at a telescope read back alike. *)
 Lemma per_gargs_top : forall ts ρ ρ' xs xs', per_gargs ts ρ ρ' xs xs' -> List.length xs = List.length ts ->
-    forall s, exists Ms, read_ps gc_deps gc_stack s ρ ts xs Ms /\ read_ps gc_deps gc_stack s ρ' ts xs' Ms.
+    forall s, exists Ms, Rps xs at ts in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Ms /\ Rps xs' at ts in gc_deps ⍮ gc_stack ⍮ ρ' ⍮ s ↘ Ms.
 Proof.
   induction 1 as [ts ρ ρ' | i A ρ ρ' a a' ts args args' R HA Ha Hg IH]; intros Hl s.
   - destruct ts; cbn in Hl; try discriminate; exists nfs_nil; split; constructor.

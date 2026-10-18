@@ -622,17 +622,17 @@ Section Eval.
        (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
        dsim_list vs vs' -> exists ihs', ⟦ihsᶠ vs' of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ihs' /\
        dsim_list_at (fun x => ~ exp_fresh x B) ihs ihs') /\
-    (forall ρ nm A Bs t m r, eval_ih Θ Ξ ρ nm A Bs t m r -> forall ρ' m',
+    (forall ρ nm A Bs t m r, ⟦ih m of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> forall ρ' m',
        env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ' ->
        (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-       dsim m m' -> exists r', feval_ih Θ Ξ ρ' nm A Bs t m' r' /\ dsim r r') /\
-    (forall p ups ρ t a, eval_shty Θ Ξ p ups ρ t a -> forall ups' ρ',
+       dsim m m' -> exists r', ⟦ihᶠ m' of t under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r') /\
+    (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ups' ρ',
        dsim_list ups ups' -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' ->
-       exists a', feval_shty Θ Ξ p ups' ρ' t a' /\ dsim a a') /\
-    (forall ρm A ρ t m a, eval_ihty Θ Ξ ρm A ρ t m a -> forall ρm' ρ' m',
+       exists a', ⟦shtyᶠ t of p ups' ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a') /\
+    (forall ρm A ρ t m a, ⟦ihty m of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ρm' ρ' m',
        env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) A) ρm ρm' ->
        env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> dsim m m' ->
-       exists a', feval_ihty Θ Ξ ρm' A ρ' t m' a' /\ dsim a a').
+       exists a', ⟦ihtyᶠ m' of t under ρm' A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a').
   Proof.
     apply (eval_mut_ind Θ Ξ
       (fun M ρ m _ => forall ρ', env_agree (fun x => ~ exp_fresh x M) ρ ρ' ->
@@ -667,14 +667,14 @@ Section Eval.
       (fun ρ nm A Bs t m r _ => forall ρ' m',
          env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ' ->
          (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-         dsim m m' -> exists r', feval_ih Θ Ξ ρ' nm A Bs t m' r' /\ dsim r r')
+         dsim m m' -> exists r', ⟦ihᶠ m' of t under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r')
       (fun p ups ρ t a _ => forall ups' ρ',
          dsim_list ups ups' -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' ->
-         exists a', feval_shty Θ Ξ p ups' ρ' t a' /\ dsim a a')
+         exists a', ⟦shtyᶠ t of p ups' ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a')
       (fun ρm A ρ t m a _ => forall ρm' ρ' m',
          env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) A) ρm ρm' ->
          env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> dsim m m' ->
-         exists a', feval_ihty Θ Ξ ρm' A ρ' t m' a' /\ dsim a a'));
+         exists a', ⟦ihtyᶠ m' of t under ρm' A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a'));
       intros.
     all: repeat first [ sim_inv | sim_fwd ].
     all: try solve [ sim_fin ].
@@ -935,9 +935,9 @@ Section Read.
 
   (** The fresh variables of the telescopes of a declaration, from
       environments related everywhere. *)
-  Lemma ffresh_tele_sim : forall ρ T s ns, fresh_tele Θ Ξ ρ T s ns ->
+  Lemma ffresh_tele_sim : forall ρ T s ns, Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ns ->
       forall ρ', env_agree (fun _ => True) ρ ρ' ->
-      exists ns', ffresh_tele Θ Ξ ρ' T s ns' /\ dsim_list ns ns'.
+      exists ns', Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ ns' /\ dsim_list ns ns'.
   Proof.
     induction 1; intros ρ' Hρ; [ exists nil; split; constructor |].
     destruct (feval_exp_sim _ _ _ H ρ') as (a' & Ha' & Hsa); [ eapply env_agree_mono; [ exact Hρ | intros; exact I ] |].
@@ -946,26 +946,26 @@ Section Read.
     exists (⇑! a' s :: ns'); split; constructor; try eassumption; repeat constructor; assumption.
   Qed.
 
-  Lemma feval_shty_sim : forall p ups ρ t a, eval_shty Θ Ξ p ups ρ t a -> forall ups' ρ',
+  Lemma feval_shty_sim : forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ups' ρ',
       dsim_list ups ups' -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' ->
-      exists a', feval_shty Θ Ξ p ups' ρ' t a' /\ dsim a a'.
+      exists a', ⟦shtyᶠ t of p ups' ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a'.
   Proof.
     intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
     exact (Hs _ _ _ _ _ H).
   Qed.
 
-  Lemma feval_ihty_sim : forall ρm A ρ t m a, eval_ihty Θ Ξ ρm A ρ t m a -> forall ρm' ρ' m',
+  Lemma feval_ihty_sim : forall ρm A ρ t m a, ⟦ihty m of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ρm' ρ' m',
       env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) A) ρm ρm' ->
       env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> dsim m m' ->
-      exists a', feval_ihty Θ Ξ ρm' A ρ' t m' a' /\ dsim a a'.
+      exists a', ⟦ihtyᶠ m' of t under ρm' A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a'.
   Proof.
     intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
     exact (Hy _ _ _ _ _ _ H).
   Qed.
 
-  Lemma ffresh_cargs_sim : forall p ups ρ gs s vs, fresh_cargs Θ Ξ p ups ρ gs s vs ->
+  Lemma ffresh_cargs_sim : forall p ups ρ gs s vs, Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs ->
       forall ups' ρ', dsim_list ups ups' -> env_agree (fun _ => True) ρ ρ' ->
-      exists vs', ffresh_cargs Θ Ξ p ups' ρ' gs s vs' /\ dsim_list vs vs'.
+      exists vs', Fcargsᶠ gs of p ups' in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ vs' /\ dsim_list vs vs'.
   Proof.
     induction 1; intros ups' ρ' Hu Hρ.
     - exists nil; repeat constructor.
@@ -981,12 +981,12 @@ Section Read.
 
   (** The recursive results of a branch [B]: related where [B] reads them,
       the head of [ihs] being the entry [List.length] of its tail. *)
-  Lemma ffresh_ihs_sim : forall ρ A ρa gs vs s ihs, fresh_ihs Θ Ξ ρ A ρa gs vs s ihs ->
+  Lemma ffresh_ihs_sim : forall ρ A ρa gs vs s ihs, Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs ->
       forall B nn ρ' ρa' vs', env_agree (fun x => ~ exp_fresh (S nn + x) A) ρ ρ' ->
       env_agree (fun _ => True) ρa ρa' ->
       Forall (fun g => match g with ca_rec t => List.length (ptyp_ps t) = nn | ca_arg _ => True end) gs ->
       dsim_list vs vs' ->
-      exists ihs', ffresh_ihs Θ Ξ ρ' A B ρa' gs vs' s ihs' /\ dsim_list_at (fun x => ~ exp_fresh x B) ihs ihs'.
+      exists ihs', Fihsᶠ vs' at gs under ρ' A for B in Θ ⍮ Ξ ⍮ ρa' ⍮ s ↘ ihs' /\ dsim_list_at (fun x => ~ exp_fresh x B) ihs ihs'.
   Proof.
     induction 1; intros B nn ρ' ρa' vs' HA Hρa Hl Hv.
     - inversion Hv; subst; exists nil; split; constructor.
@@ -1019,12 +1019,12 @@ Section Read.
     (forall s xs ys, Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys -> forall xs', dsim_la xs xs' -> Rlaᶠ xs' in Θ ⍮ Ξ ⍮ s ↘ ys) /\
     (forall s ρ T vs Ms, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms -> forall ρ' vs',
        env_agree (fun _ => True) ρ ρ' -> dsim_list vs vs' -> Rpsᶠ vs' at T in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Ms) /\
-    (forall s p ups ρ gs vs Ms, read_cargs Θ Ξ s p ups ρ gs vs Ms -> forall ups' ρ' vs',
-       dsim_list ups ups' -> env_agree (fun _ => True) ρ ρ' -> dsim_list vs vs' -> fread_cargs Θ Ξ s p ups' ρ' gs vs' Ms) /\
-    (forall s ρ A p D ups cs Bs Bs', read_brs Θ Ξ s ρ A p D ups cs Bs Bs' -> forall ρ' ups',
+    (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms -> forall ups' ρ' vs',
+       dsim_list ups ups' -> env_agree (fun _ => True) ρ ρ' -> dsim_list vs vs' -> Rcargsᶠ vs' at gs of p ups' in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Ms) /\
+    (forall s ρ A p D ups cs Bs Bs', Rbrs Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' -> forall ρ' ups',
        env_agree (fun x => ~ exp_fresh (S (ind_nn D) + x) A) ρ ρ' ->
        (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-       dsim_list ups ups' -> fread_brs Θ Ξ s ρ' A p D ups' cs Bs Bs').
+       dsim_list ups ups' -> Rbrsᶠ Bs at cs of p D ups' under A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs').
   Proof.
     apply (read_mut_ind Θ Ξ
       (fun s n W _ => forall n', dsim_nf n n' -> Rnfᶠ n' in Θ ⍮ Ξ ⍮ s ↘ W)
@@ -1034,11 +1034,11 @@ Section Read.
       (fun s ρ T vs Ms _ => forall ρ' vs',
          env_agree (fun _ => True) ρ ρ' -> dsim_list vs vs' -> Rpsᶠ vs' at T in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Ms)
       (fun s p ups ρ gs vs Ms _ => forall ups' ρ' vs',
-         dsim_list ups ups' -> env_agree (fun _ => True) ρ ρ' -> dsim_list vs vs' -> fread_cargs Θ Ξ s p ups' ρ' gs vs' Ms)
+         dsim_list ups ups' -> env_agree (fun _ => True) ρ ρ' -> dsim_list vs vs' -> Rcargsᶠ vs' at gs of p ups' in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Ms)
       (fun s ρ A p D ups cs Bs Bs' _ => forall ρ' ups',
          env_agree (fun x => ~ exp_fresh (S (ind_nn D) + x) A) ρ ρ' ->
          (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-         dsim_list ups ups' -> fread_brs Θ Ξ s ρ' A p D ups' cs Bs Bs'));
+         dsim_list ups ups' -> Rbrsᶠ Bs at cs of p D ups' under A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs'));
       intros;
       repeat match goal with
         | H : dsim_nf _ _ |- _ => inversion H; subst; clear H

@@ -554,8 +554,8 @@ Section GluIndProps.
       assert (Hk1 : k1 = List.length (ptyp_doms t0)) by lia.
       assert (Hys : tele_full (shape_tr dr ms ws (ptyp_doms t0)) (ptyp_doms t0) ys ys)
         by (apply tele_full_of_pre; rewrite <- Hk1; exact Hy).
-      assert (Hev : forall bsr', eval_exps gc_deps gc_stack Ps (env_args nil (ups' ++ pre)) bsr' ->
-                 exists bsr, eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ pre)) bsr /\ tele_full nr T bsr bsr').
+      assert (Hev : forall bsr', ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups' ++ pre) ↘ bsr' ->
+                 exists bsr, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ bsr /\ tele_full nr T bsr bsr').
       { intros bsr' Hbs'.
         destruct (Hcl ms ms c0 _ gs1 t0 gs2 ws ws ys ys Hm Hc eq_refl Hw Hys) as [b0 b1 E0 E1 H01].
         rewrite HPs in E0, E1; subst pre.

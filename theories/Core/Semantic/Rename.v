@@ -195,9 +195,9 @@ Section Eval.
        ⟦elim drn f m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f r) /\
     (forall ρ nm A Bs gs vs ihs, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
        ⟦ihs List.map (drn f) vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ List.map (drn f) ihs) /\
-    (forall ρ nm A Bs t m r, eval_ih Θ Ξ ρ nm A Bs t m r -> eval_ih Θ Ξ (ern f ρ) nm A Bs t (drn f m) (drn f r)) /\
-    (forall p ups ρ t a, eval_shty Θ Ξ p ups ρ t a -> eval_shty Θ Ξ p (List.map (drn f) ups) (ern f ρ) t (drn f a)) /\
-    (forall ρm A ρ t m a, eval_ihty Θ Ξ ρm A ρ t m a -> eval_ihty Θ Ξ (ern f ρm) A (ern f ρ) t (drn f m) (drn f a)).
+    (forall ρ nm A Bs t m r, ⟦ih m of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> ⟦ih drn f m of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f r) /\
+    (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> ⟦shty t of p (List.map (drn f) ups) ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f a) /\
+    (forall ρm A ρ t m a, ⟦ihty m of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> ⟦ihty drn f m of t under (ern f ρm) A ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f a).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => ⟦ M ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f m)
@@ -216,9 +216,9 @@ Section Eval.
              (fun ρ nm A Bs m r _ => ⟦elim drn f m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f r)
              (fun ρ nm A Bs gs vs ihs _ =>
                 ⟦ihs List.map (drn f) vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ List.map (drn f) ihs)
-             (fun ρ nm A Bs t m r _ => eval_ih Θ Ξ (ern f ρ) nm A Bs t (drn f m) (drn f r))
-             (fun p ups ρ t a _ => eval_shty Θ Ξ p (List.map (drn f) ups) (ern f ρ) t (drn f a))
-             (fun ρm A ρ t m a _ => eval_ihty Θ Ξ (ern f ρm) A (ern f ρ) t (drn f m) (drn f a)));
+             (fun ρ nm A Bs t m r _ => ⟦ih drn f m of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f r)
+             (fun p ups ρ t a _ => ⟦shty t of p (List.map (drn f) ups) ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f a)
+             (fun ρm A ρ t m a _ => ⟦ihty drn f m of t under (ern f ρm) A ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f a));
       intros; cbn [drn drn_ne drn_nf dmrn dern List.map extend_env] in *;
       repeat change (List.map (dern f) ?ρ) with (ern f ρ) in *;
       autorewrite with rn in *; cbn [List.map] in *;
@@ -379,7 +379,7 @@ Section Bound.
 
   (** The fresh variables of the telescopes of a declaration are above the
       readback length, and below the length past them. *)
-  Lemma fresh_tele_dbd : forall ρ T s ns, fresh_tele Θ Ξ ρ T s ns -> env_dbd s ρ ->
+  Lemma fresh_tele_dbd : forall ρ T s ns, Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ns -> env_dbd s ρ ->
       forall a, In a ns -> dbd (s + List.length T) a.
   Proof.
     induction 1; intros Hρ; [ intros ? [] |].
@@ -390,13 +390,13 @@ Section Bound.
     - apply IHfresh_tele; [| exact Hd ]. apply env_dbd_cons; [ eapply env_dbd_mono; [| exact Hρ ]; lia | apply dbd_fresh; [ lia | exact Ha ] ].
   Qed.
 
-  Lemma shty_dbd : forall p ups ρ t a b, eval_shty Θ Ξ p ups ρ t a ->
+  Lemma shty_dbd : forall p ups ρ t a b, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
       env_dbd b ρ -> (forall u, In u ups -> dbd b u) -> dbd b a.
   Proof.
     intros * H Hρ Hu v Hv; eapply shty_av; [ exact H | apply Hρ, Hv | apply ptfresh_none | intros; apply Hu; assumption ].
   Qed.
 
-  Lemma fresh_cargs_dbd : forall p ups ρ gs s vs, fresh_cargs Θ Ξ p ups ρ gs s vs ->
+  Lemma fresh_cargs_dbd : forall p ups ρ gs s vs, Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs ->
       env_dbd s ρ -> (forall a, In a ups -> dbd s a) ->
       forall a, In a vs -> dbd (s + List.length gs) a.
   Proof.
@@ -415,7 +415,7 @@ Section Bound.
         [ eapply env_dbd_mono; [| exact Hρ ]; lia | intros; eapply dbd_mono; [| apply Hu; eassumption ]; lia | exact Hd ].
   Qed.
 
-  Lemma fresh_ihs_dbd : forall ρ A ρa gs vs s ihs, fresh_ihs Θ Ξ ρ A ρa gs vs s ihs ->
+  Lemma fresh_ihs_dbd : forall ρ A ρa gs vs s ihs, Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs ->
       forall nn b, b <= s -> dbd_eclo b ρ A (S nn) -> env_dbd s ρa ->
       Forall (fun g => match g with ca_rec t => List.length (ptyp_ps t) = nn | ca_arg _ => True end) gs ->
       (forall a, In a vs -> dbd s a) ->
@@ -512,9 +512,9 @@ Section Read.
 
   (** The fresh variables of the telescopes of a declaration, renamed: from
       the readback length on, [f] is the shift to the other length. *)
-  Lemma fresh_tele_rn : forall ρ T s ns, fresh_tele Θ Ξ ρ T s ns ->
+  Lemma fresh_tele_rn : forall ρ T s ns, Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ns ->
       forall s', (forall x, s <= x -> f x = x + (s' - s)) -> s <= s' ->
-      fresh_tele Θ Ξ (ern f ρ) T s' (List.map (drn f) ns).
+      Ftele T in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ List.map (drn f) ns.
   Proof.
     induction 1; intros s' Hf Hs; cbn [List.map]; [ constructor |].
     cbn [drn drn_ne]; rewrite (Hf s) by lia; replace (s + (s' - s)) with s' by lia.
@@ -525,22 +525,22 @@ Section Read.
   Qed.
 
   Lemma shty_rn : forall p ups ρ t a,
-      eval_shty Θ Ξ p ups ρ t a -> eval_shty Θ Ξ p (List.map (drn f) ups) (ern f ρ) t (drn f a).
+      ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> ⟦shty t of p (List.map (drn f) ups) ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f a.
   Proof.
     intros * H; destruct (eval_rn Θ Ξ f) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
     exact (Hs _ _ _ _ _ H).
   Qed.
 
   Lemma ihty_rn : forall ρm A ρ t m a,
-      eval_ihty Θ Ξ ρm A ρ t m a -> eval_ihty Θ Ξ (ern f ρm) A (ern f ρ) t (drn f m) (drn f a).
+      ⟦ihty m of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> ⟦ihty drn f m of t under (ern f ρm) A ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f a.
   Proof.
     intros * H; destruct (eval_rn Θ Ξ f) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
     exact (Hy _ _ _ _ _ _ H).
   Qed.
 
-  Lemma fresh_cargs_rn : forall p ups ρ gs s vs, fresh_cargs Θ Ξ p ups ρ gs s vs ->
+  Lemma fresh_cargs_rn : forall p ups ρ gs s vs, Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs ->
       forall s', (forall x, s <= x -> f x = x + (s' - s)) -> s <= s' ->
-      fresh_cargs Θ Ξ p (List.map (drn f) ups) (ern f ρ) gs s' (List.map (drn f) vs).
+      Fcargs gs of p (List.map (drn f) ups) in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ List.map (drn f) vs.
   Proof.
     induction 1; intros s' Hf Hs; cbn [List.map]; [ constructor | |].
     - cbn [drn drn_ne]; rewrite (Hf s) by lia; replace (s + (s' - s)) with s' by lia.
@@ -553,9 +553,9 @@ Section Read.
       apply (IHfresh_cargs (S s')); [ intros; rewrite Hf by lia; lia | lia ].
   Qed.
 
-  Lemma fresh_ihs_rn : forall ρ A ρa gs vs s ihs, fresh_ihs Θ Ξ ρ A ρa gs vs s ihs ->
+  Lemma fresh_ihs_rn : forall ρ A ρa gs vs s ihs, Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs ->
       forall s', (forall x, s <= x -> f x = x + (s' - s)) -> s <= s' ->
-      fresh_ihs Θ Ξ (ern f ρ) A (ern f ρa) gs (List.map (drn f) vs) s' (List.map (drn f) ihs).
+      Fihs List.map (drn f) vs at gs under (ern f ρ) A in Θ ⍮ Ξ ⍮ ern f ρa ⍮ s' ↘ List.map (drn f) ihs.
   Proof.
     induction 1; intros s' Hf Hs; cbn [List.map]; [ constructor | |].
     - constructor; pose proof (IHfresh_ihs s' Hf Hs) as IH.
@@ -577,14 +577,14 @@ Section Read.
     (forall s ρ T vs Ms, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        forall s' φ, rn_ok f s s' φ -> env_dbd s ρ -> (forall a, In a vs -> dbd s a) ->
        Rps List.map (drn f) vs at T in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nfs_wk φ Ms) /\
-    (forall s p ups ρ gs vs Ms, read_cargs Θ Ξ s p ups ρ gs vs Ms ->
+    (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> dbd s a) -> env_dbd s ρ ->
        (forall a, In a vs -> dbd s a) ->
-       read_cargs Θ Ξ s' p (List.map (drn f) ups) (ern f ρ) gs (List.map (drn f) vs) (nfs_wk φ Ms)) /\
-    (forall s ρ A p D ups cs Bs Bs', read_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
+       Rcargs List.map (drn f) vs at gs of p (List.map (drn f) ups) in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nfs_wk φ Ms) /\
+    (forall s ρ A p D ups cs Bs Bs', Rbrs Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
        forall s' φ, rn_ok f s s' φ -> dbd_eclo s ρ A (S (ind_nn D)) ->
        (forall c n B, In (c, n, B) Bs -> dbd_clon Θ Ξ s ρ B n) -> (forall a, In a ups -> dbd s a) ->
-       read_brs Θ Ξ s' (ern f ρ) A p D (List.map (drn f) ups) cs Bs (nbrs_wk φ Bs')).
+       Rbrs Bs at cs of p D (List.map (drn f) ups) under A in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nbrs_wk φ Bs').
   Proof.
     apply (read_mut_ind Θ Ξ
              (fun s m W _ => forall s' φ, rn_ok f s s' φ -> dbd_nf s m -> Rnf drn_nf f m in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ W)
@@ -595,10 +595,10 @@ Section Read.
                 Rps List.map (drn f) vs at T in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nfs_wk φ Ms)
              (fun s p ups ρ gs vs Ms _ => forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> dbd s a) ->
                 env_dbd s ρ -> (forall a, In a vs -> dbd s a) ->
-                read_cargs Θ Ξ s' p (List.map (drn f) ups) (ern f ρ) gs (List.map (drn f) vs) (nfs_wk φ Ms))
+                Rcargs List.map (drn f) vs at gs of p (List.map (drn f) ups) in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nfs_wk φ Ms)
              (fun s ρ A p D ups cs Bs Bs' _ => forall s' φ, rn_ok f s s' φ -> dbd_eclo s ρ A (S (ind_nn D)) ->
                 (forall c n B, In (c, n, B) Bs -> dbd_clon Θ Ξ s ρ B n) -> (forall a, In a ups -> dbd s a) ->
-                read_brs Θ Ξ s' (ern f ρ) A p D (List.map (drn f) ups) cs Bs (nbrs_wk φ Bs')));
+                Rbrs Bs at cs of p D (List.map (drn f) ups) under A in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nbrs_wk φ Bs'));
       intros; cbn [drn drn_ne drn_nf dmrn dern nf_wk ne_wk la_wk larn nfs_wk nbrs_wk List.map] in *.
     (** The bounds of the parts. *)
     all: repeat match goal with

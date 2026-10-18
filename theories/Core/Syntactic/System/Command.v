@@ -29,6 +29,10 @@ Reserved Notation "Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ] c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮
   (at level 70, Ξ at level 69, B at level 69, Rb at level 69, ch at level 69, c at level 69, Θ' at level 69, Ξ' at level 69, B' at level 69, Rb' at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ] cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'"
   (at level 70, Ξ at level 69, B at level 69, Rb at level 69, ch at level 69, cs at level 69, Θ' at level 69, Ξ' at level 69, B' at level 69, Rb' at level 69).
+Reserved Notation "Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ]⟨ lp ⍮ rd ⍮ tc ⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'"
+  (at level 70, Ξ at level 69, B at level 69, Rb at level 69, ch at level 69, lp at level 69, rd at level 69, tc at level 69, c at level 69, Θ' at level 69, Ξ' at level 69, B' at level 69, Rb' at level 69).
+Reserved Notation "Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ]⟨ lp ⍮ rd ⍮ tc ⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'"
+  (at level 70, Ξ at level 69, B at level 69, Rb at level 69, ch at level 69, lp at level 69, rd at level 69, tc at level 69, cs at level 69, Θ' at level 69, Ξ' at level 69, B' at level 69, Rb' at level 69).
 
 (** ** The Stack
 
@@ -459,13 +463,20 @@ Section Semantics.
     ; ps_run : run_unit (prog_path prg :: nil) ps_unit B ps_record Θ U }.
 End Semantics.
 
+(** Outside the section, the judgments also name the file IO [lp], the
+    lexer and parser [rd] and the elaborator [tc] they run with. *)
+Notation "Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ]⟨ lp ⍮ rd ⍮ tc ⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'" :=
+  (run_cmd lp rd tc ch B Rb Θ Ξ c B' Rb' Θ' Ξ').
+Notation "Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ]⟨ lp ⍮ rd ⍮ tc ⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'" :=
+  (run_cmds lp rd tc ch B Rb Θ Ξ cs B' Rb' Θ' Ξ').
+
 
 (** ** A Cycle Has No Meaning *)
 
 Lemma load_acyclic : forall load_path read to_core ch B Rb Θ Ξ fp B' Rb' Θ' Ξ',
     In fp ch ->
     gds_lookup Θ fp = None ->
-    ~ run_cmd load_path read to_core ch B Rb Θ Ξ (cc_load fp) B' Rb' Θ' Ξ'.
+    ~ Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_load fp ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'.
 Proof.
   intros * Hin Hnone Hr; inversion Hr; subst; [ congruence | contradiction ].
 Qed.
@@ -503,11 +514,11 @@ Section Determinism.
       binding, so two runs of it agree when their chains have the same
       head. *)
   Theorem run_functional :
-    (forall ch B Rb Θ Ξ c B1 Rb1 Θ1 Ξ1, run_cmd ch B Rb Θ Ξ c B1 Rb1 Θ1 Ξ1 ->
-       forall ch' B2 Rb2 Θ2 Ξ2, run_cmd ch' B Rb Θ Ξ c B2 Rb2 Θ2 Ξ2 ->
+    (forall ch B Rb Θ Ξ c B1 Rb1 Θ1 Ξ1, Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
+       forall ch' B2 Rb2 Θ2 Ξ2, Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch']⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2 ->
          Θ1 = Θ2 /\ Ξ1 = Ξ2 /\ B1 = B2 /\ Rb1 = Rb2) /\
-    (forall ch B Rb Θ Ξ cs B1 Rb1 Θ1 Ξ1, run_cmds ch B Rb Θ Ξ cs B1 Rb1 Θ1 Ξ1 ->
-       forall ch' B2 Rb2 Θ2 Ξ2, run_cmds ch' B Rb Θ Ξ cs B2 Rb2 Θ2 Ξ2 ->
+    (forall ch B Rb Θ Ξ cs B1 Rb1 Θ1 Ξ1, Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
+       forall ch' B2 Rb2 Θ2 Ξ2, Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch']⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2 ->
          Θ1 = Θ2 /\ Ξ1 = Ξ2 /\ B1 = B2 /\ Rb1 = Rb2) /\
     (forall ch u B1 Rb1 Θ1 U1, run_unit ch u B1 Rb1 Θ1 U1 ->
        forall ch' B2 Rb2 Θ2 U2, hd nil ch = hd nil ch' -> run_unit ch' u B2 Rb2 Θ2 U2 ->
@@ -595,11 +606,13 @@ Section Determinism.
   Qed.
 
   Corollary run_cmd_functional : forall ch ch' B Rb Θ Ξ c B1 Rb1 Θ1 Ξ1 B2 Rb2 Θ2 Ξ2,
-      run_cmd ch B Rb Θ Ξ c B1 Rb1 Θ1 Ξ1 -> run_cmd ch' B Rb Θ Ξ c B2 Rb2 Θ2 Ξ2 -> Θ1 = Θ2 /\ Ξ1 = Ξ2 /\ B1 = B2 /\ Rb1 = Rb2.
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch']⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2 -> Θ1 = Θ2 /\ Ξ1 = Ξ2 /\ B1 = B2 /\ Rb1 = Rb2.
   Proof. intros * H1 H2; exact (proj1 run_functional _ _ _ _ _ _ _ _ _ _ H1 _ _ _ _ _ H2). Qed.
 
   Corollary run_cmds_functional : forall ch ch' B Rb Θ Ξ cs B1 Rb1 Θ1 Ξ1 B2 Rb2 Θ2 Ξ2,
-      run_cmds ch B Rb Θ Ξ cs B1 Rb1 Θ1 Ξ1 -> run_cmds ch' B Rb Θ Ξ cs B2 Rb2 Θ2 Ξ2 -> Θ1 = Θ2 /\ Ξ1 = Ξ2 /\ B1 = B2 /\ Rb1 = Rb2.
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch']⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2 -> Θ1 = Θ2 /\ Ξ1 = Ξ2 /\ B1 = B2 /\ Rb1 = Rb2.
   Proof. intros * H1 H2; exact (proj1 (proj2 run_functional) _ _ _ _ _ _ _ _ _ _ H1 _ _ _ _ _ H2). Qed.
 
   Corollary run_unit_functional : forall ch ch' u B1 Rb1 Θ1 U1 B2 Rb2 Θ2 U2,
@@ -963,9 +976,9 @@ Section WellFormed.
   #[local] Abbreviation run_unit := (run_unit load_path read to_core).
 
   Lemma run_chain_fresh :
-    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', run_cmd ch B Rb Θ Ξ c B' Rb' Θ' Ξ' ->
+    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        forall fq, In fq ch -> gds_lookup Θ fq = None -> gds_lookup Θ' fq = None) /\
-    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', run_cmds ch B Rb Θ Ξ cs B' Rb' Θ' Ξ' ->
+    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        forall fq, In fq ch -> gds_lookup Θ fq = None -> gds_lookup Θ' fq = None) /\
     (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U -> forall fq, In fq ch -> gds_lookup Θ fq = None).
   Proof.
@@ -981,8 +994,8 @@ Section WellFormed.
 
   (** A run keeps the parameters of every frame. *)
   Lemma run_params :
-    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', run_cmd ch B Rb Θ Ξ c B' Rb' Θ' Ξ' -> gs_shape Ξ' = gs_shape Ξ) /\
-    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', run_cmds ch B Rb Θ Ξ cs B' Rb' Θ' Ξ' -> gs_shape Ξ' = gs_shape Ξ) /\
+    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> gs_shape Ξ' = gs_shape Ξ) /\
+    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> gs_shape Ξ' = gs_shape Ξ) /\
     (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U -> True).
   Proof.
     apply run_mut_ind; intros; rewrite ?gs_add_params;
@@ -1075,9 +1088,9 @@ Section WellFormed.
   Qed.
 
   Theorem run_wf :
-    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', run_cmd ch B Rb Θ Ξ c B' Rb' Θ' Ξ' ->
+    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ -> ⊢ᵍ Θ' ⍮ Ξ' /\ canon Rb' Θ' /\ Θ ⊑ Θ' /\ bt_le B B') /\
-    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', run_cmds ch B Rb Θ Ξ cs B' Rb' Θ' Ξ' ->
+    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ -> ⊢ᵍ Θ' ⍮ Ξ' /\ canon Rb' Θ' /\ Θ ⊑ Θ' /\ bt_le B B') /\
     (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U ->
        ⊢ᵍ Θ ⍮ nil /\ canon Rb Θ /\ Θ ⍮ nil ⍮ q_abs (hd nil ch) nil ⊢ᵍᵘ U).
@@ -1194,7 +1207,7 @@ Section WellFormed.
 
   Corollary load_coherent : forall ch B Rb B' Rb' Θ Ξ fp Θ',
       ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ ->
-      run_cmd ch B Rb Θ Ξ (cc_load fp) B' Rb' Θ' Ξ ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_load fp ⇝ Θ' ⍮ Ξ ⍮ B' ⍮ Rb' ->
       ⊢ᵍ Θ' ⍮ nil /\ gds_lookup Θ' fp <> None.
   Proof.
     intros * HΞ Hc Hst Hr; destruct (proj1 run_wf _ _ _ _ _ _ _ _ _ _ Hr HΞ Hc Hst) as (H' & _ & _).
@@ -1219,10 +1232,10 @@ Section WellFormed.
       and records are merged ([bt_merge_wf]).  The record of a unit, and
       those of the units it filed, are read where it is filed. *)
   Theorem run_builtins_wf :
-    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', run_cmd ch B Rb Θ Ξ c B' Rb' Θ' Ξ' ->
+    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ -> builtins_wf Θ Ξ B -> bm_wf Θ Rb ->
        builtins_wf Θ' Ξ' B' /\ bm_wf Θ' Rb') /\
-    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', run_cmds ch B Rb Θ Ξ cs B' Rb' Θ' Ξ' ->
+    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ -> builtins_wf Θ Ξ B -> bm_wf Θ Rb ->
        builtins_wf Θ' Ξ' B' /\ bm_wf Θ' Rb') /\
     (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U ->
@@ -1260,7 +1273,7 @@ Section WellFormed.
          was read before *)
       intros ch B Rb B' Θ Ξ fp src prg u BU RbU ΘU U Hn Hnin Hl Hrd Hpp Ht Hu IH Hm HΞ Hc Hst Hb HR.
       cbn [hd] in IH; destruct IH as [HbU HRU].
-      assert (Hrun : run_cmd ch B Rb Θ Ξ (cc_load fp) B' (bm_merge Rb ((fp, BU) :: RbU)) (gds_merge Θ ((fp, U) :: ΘU)) Ξ)
+      assert (Hrun : Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_load fp ⇝ gds_merge Θ ((fp, U) :: ΘU) ⍮ Ξ ⍮ B' ⍮ bm_merge Rb ((fp, BU) :: RbU))
         by (eapply rc_load; eassumption).
       destruct (proj1 run_wf _ _ _ _ _ _ _ _ _ _ Hrun HΞ Hc Hst) as (HΞ' & _ & Hsub & _).
       pose proof (proj2 (proj2 run_chain_fresh) _ _ _ _ _ _ Hu fp ltac:(left; reflexivity)) as HfU.
@@ -1485,9 +1498,9 @@ Section Runs.
   #[local] Abbreviation run_unit := (run_unit load_path read to_core).
 
   Lemma run_dom_mono :
-    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', run_cmd ch B Rb Θ Ξ c B' Rb' Θ' Ξ' ->
+    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        forall x, gds_lookup Θ x <> None -> gds_lookup Θ' x <> None) /\
-    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', run_cmds ch B Rb Θ Ξ cs B' Rb' Θ' Ξ' ->
+    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        forall x, gds_lookup Θ x <> None -> gds_lookup Θ' x <> None) /\
     (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U -> True).
   Proof.
@@ -1499,15 +1512,15 @@ Section Runs.
       any chain avoiding every unit it filed: what justifies sharing a unit
       loaded under one chain with an import under another. *)
   Lemma run_chain_irrel :
-    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', run_cmd ch B Rb Θ Ξ c B' Rb' Θ' Ξ' ->
-       forall ch', (forall x, In x ch' -> gds_lookup Θ' x = None) -> run_cmd ch' B Rb Θ Ξ c B' Rb' Θ' Ξ') /\
-    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', run_cmds ch B Rb Θ Ξ cs B' Rb' Θ' Ξ' ->
-       forall ch', (forall x, In x ch' -> gds_lookup Θ' x = None) -> run_cmds ch' B Rb Θ Ξ cs B' Rb' Θ' Ξ') /\
+    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
+       forall ch', (forall x, In x ch' -> gds_lookup Θ' x = None) -> Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch']⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb') /\
+    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
+       forall ch', (forall x, In x ch' -> gds_lookup Θ' x = None) -> Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch']⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb') /\
     (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U ->
        forall ch', (forall x, In x (hd nil ch :: ch') -> gds_lookup Θ x = None) -> run_unit (hd nil ch :: ch') u B Rb Θ U).
   Proof.
     (* what a run filed before its last step it still has after it *)
-    assert (Hpre : forall ch B Rb Θ Ξ cs B1 Rb1 Θ1 Ξ1 ch', run_cmds ch B Rb Θ Ξ cs B1 Rb1 Θ1 Ξ1 ->
+    assert (Hpre : forall ch B Rb Θ Ξ cs B1 Rb1 Θ1 Ξ1 ch', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
               (forall x, In x ch' -> gds_lookup Θ1 x = None) ->
               forall x, In x ch' -> gds_lookup Θ x = None).
     { intros * Hr Hch x Hx; destruct (gds_lookup Θ x) eqn:Ef; [ exfalso | reflexivity ].
@@ -1540,8 +1553,8 @@ Section Runs.
   Qed.
 
   Lemma run_tl :
-    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', run_cmd ch B Rb Θ Ξ c B' Rb' Θ' Ξ' -> tl Ξ' = tl Ξ /\ List.length Ξ' = List.length Ξ) /\
-    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', run_cmds ch B Rb Θ Ξ cs B' Rb' Θ' Ξ' -> tl Ξ' = tl Ξ /\ List.length Ξ' = List.length Ξ) /\
+    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> tl Ξ' = tl Ξ /\ List.length Ξ' = List.length Ξ) /\
+    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> tl Ξ' = tl Ξ /\ List.length Ξ' = List.length Ξ) /\
     (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U -> True).
   Proof.
     assert (Hadd : forall x E Ξ, tl (gs_add x E Ξ) = tl Ξ /\ List.length (gs_add x E Ξ) = List.length Ξ)
@@ -1555,13 +1568,13 @@ Section Runs.
   (** Commands keep the stack below the frame they run in, and an empty stack
       empty. *)
   Corollary run_cmds_tail : forall ch B Rb Θ F Ξ cs B' Rb' Θ' Ξ',
-      run_cmds ch B Rb Θ (F :: Ξ) cs B' Rb' Θ' Ξ' -> exists F', Ξ' = F' :: Ξ.
+      Θ ⍮ F :: Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> exists F', Ξ' = F' :: Ξ.
   Proof.
     intros * H; destruct (proj1 (proj2 run_tl) _ _ _ _ _ _ _ _ _ _ H) as [Ht Hl].
     destruct Ξ' as [| F' Ξ']; cbn in *; [ discriminate | subst; eauto ].
   Qed.
 
-  Corollary run_cmds_empty : forall ch B Rb Θ cs B' Rb' Θ' Ξ', run_cmds ch B Rb Θ nil cs B' Rb' Θ' Ξ' -> Ξ' = nil.
+  Corollary run_cmds_empty : forall ch B Rb Θ cs B' Rb' Θ' Ξ', Θ ⍮ nil ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> Ξ' = nil.
   Proof.
     intros * H; destruct (proj1 (proj2 run_tl) _ _ _ _ _ _ _ _ _ _ H) as [_ Hl].
     destruct Ξ'; [ reflexivity | discriminate ].

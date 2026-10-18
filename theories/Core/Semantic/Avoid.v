@@ -551,12 +551,12 @@ Section Eval.
        forall K, env_av v b K ρ -> ofresh (oshift nm K) A ->
             (forall c n B, In (c, n, B) Bs -> ofresh (oshift n K) B) ->
             (forall a, In a vs -> dav v b a) -> forall a, In a ihs -> dav v b a) /\
-    (forall ρ nm A Bs t m r, eval_ih Θ Ξ ρ nm A Bs t m r ->
+    (forall ρ nm A Bs t m r, ⟦ih m of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
        forall K, env_av v b K ρ -> ofresh (oshift nm K) A ->
             (forall c n B, In (c, n, B) Bs -> ofresh (oshift n K) B) -> dav v b m -> dav v b r) /\
-    (forall p ups ρ t a, eval_shty Θ Ξ p ups ρ t a ->
+    (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
        forall K, env_av v b K ρ -> ptfresh K t -> (forall u, In u ups -> dav v b u) -> dav v b a) /\
-    (forall ρm A ρ t m a, eval_ihty Θ Ξ ρm A ρ t m a ->
+    (forall ρm A ρ t m a, ⟦ihty m of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
        forall Km, env_av v b Km ρm -> ofresh (oshift (S (List.length (ptyp_ps t))) Km) A ->
        forall K, env_av v b K ρ -> ptfresh K t -> dav v b m -> dav v b a).
   Proof.
@@ -718,14 +718,14 @@ Qed.
 Lemma app_av : forall Θ Ξ v b m n r, $| m & n | Θ ⍮ Ξ ↘ r -> dav v b m -> dav v b n -> dav v b r.
 Proof. intros * H; exact (proj1 (proj2 (eval_av Θ Ξ v b)) _ _ _ H). Qed.
 
-Lemma shty_av : forall Θ Ξ v b p ups ρ t a K, eval_shty Θ Ξ p ups ρ t a ->
+Lemma shty_av : forall Θ Ξ v b p ups ρ t a K, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
     env_av v b K ρ -> ptfresh K t -> (forall u, In u ups -> dav v b u) -> dav v b a.
 Proof.
   intros * H; destruct (eval_av Θ Ξ v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
   exact (Hs _ _ _ _ _ H K).
 Qed.
 
-Lemma ihty_av : forall Θ Ξ v b ρm A ρ t m a Km K, eval_ihty Θ Ξ ρm A ρ t m a ->
+Lemma ihty_av : forall Θ Ξ v b ρm A ρ t m a Km K, ⟦ihty m of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
     env_av v b Km ρm -> ofresh (oshift (S (List.length (ptyp_ps t))) Km) A ->
     env_av v b K ρ -> ptfresh K t -> dav v b m -> dav v b a.
 Proof.
@@ -790,7 +790,7 @@ Section Read.
   (** The fresh variables of the telescopes of a declaration are above the
       readback length, and below the length past them.  The types of the
       telescopes are closed, so their environments avoid [v] everywhere. *)
-  Lemma fresh_tele_av : forall ρ T s vs, fresh_tele Θ Ξ ρ T s vs ->
+  Lemma fresh_tele_av : forall ρ T s vs, Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs ->
       forall b, v < s -> b <= s -> env_av v b None ρ -> forall a, In a vs -> dav v (s + List.length T) a.
   Proof.
     induction 1; intros b0 Hv Hb Hρ; [ apply all_in_nil |].
@@ -803,7 +803,7 @@ Section Read.
       apply env_av_cons; [ eapply env_av_mono; [| exact Hρ ]; lia | constructor; apply (dav_fresh_var b0); assumption ].
   Qed.
 
-  Lemma fresh_cargs_av : forall p ups ρ gs s vs, fresh_cargs Θ Ξ p ups ρ gs s vs ->
+  Lemma fresh_cargs_av : forall p ups ρ gs s vs, Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs ->
       forall b, v < s -> b <= s -> env_av v b None ρ -> (forall a, In a ups -> dav v b a) ->
       forall a, In a vs -> dav v (s + List.length gs) a.
   Proof.
@@ -825,7 +825,7 @@ Section Read.
       argument and its parameters: as many as the motive binds, when each
       recursive argument has as many parameters as the type has non-uniform
       ones. *)
-  Lemma fresh_ihs_av : forall ρ A ρa gs vs s ihs, fresh_ihs Θ Ξ ρ A ρa gs vs s ihs ->
+  Lemma fresh_ihs_av : forall ρ A ρa gs vs s ihs, Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs ->
       forall nn b K, v < s -> b <= s -> env_av v b K ρ -> ofresh (oshift (S nn) K) A -> env_av v b None ρa ->
       List.Forall (fun g => match g with ca_rec t => List.length (ptyp_ps t) = nn | ca_arg _ => True end) gs ->
       (forall a, In a vs -> dav v b a) ->
@@ -863,10 +863,10 @@ Section Read.
     (forall s ρ T vs Ms, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        forall b, v < s -> b <= s -> env_av v b None ρ -> (forall a, In a vs -> dav v b a) ->
        nfs_fresh (s - v - 1) Ms) /\
-    (forall s p ups ρ gs vs Ms, read_cargs Θ Ξ s p ups ρ gs vs Ms ->
+    (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        forall b, v < s -> b <= s -> env_av v b None ρ -> (forall a, In a ups -> dav v b a) ->
        (forall a, In a vs -> dav v b a) -> nfs_fresh (s - v - 1) Ms) /\
-    (forall s ρ A p D ups cs Bs Bs', read_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
+    (forall s ρ A p D ups cs Bs Bs', Rbrs Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
        forall b K, v < s -> b <= s -> env_av v b K ρ -> ofresh (oshift (S (ind_nn D)) K) A ->
        (forall c n B, In (c, n, B) Bs -> ofresh (oshift n K) B) ->
        (forall a, In a ups -> dav v b a) -> nbrs_fresh (s - v - 1) Bs').

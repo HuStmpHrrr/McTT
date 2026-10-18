@@ -196,8 +196,8 @@ Qed.
 Lemma rel_modexp_hub : forall H σ ρ ρσ H' σ' ρ' ρ'σ',
     rel_modexp H σ ρ ρσ H' σ' ρ' ρ'σ' ->
     exists h1 h2 h3 h4,
-      eval_modexp gc_deps gc_stack H[σ]ᵐ ρ h1 /\ ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρσ ↘ h2 /\
-      ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ'σ' ↘ h3 /\ eval_modexp gc_deps gc_stack H'[σ']ᵐ ρ' h4 /\
+      ⟦ H[σ]ᵐ ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h1 /\ ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρσ ↘ h2 /\
+      ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ'σ' ↘ h3 /\ ⟦ H'[σ']ᵐ ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ' ↘ h4 /\
       per_dmod h1 h3 /\ per_dmod h2 h3 /\ per_dmod h3 h3 /\ per_dmod h4 h3.
 Proof.
   intros * [h1 h2 h3 h4 E1 E2 E3 E4 (C12 & C23 & C34)].

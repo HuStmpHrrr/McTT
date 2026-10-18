@@ -93,8 +93,8 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
      eval_modexp_order Θ Ξ R p ->
      (forall h, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> eval_selc_order Θ Ξ h (pre ++ x :: nil)) ->
      eval_exps_order Θ Ξ args p ->
-     (forall h f ns, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> eval_selc Θ Ξ h (pre ++ x :: nil) f ->
-        eval_exps Θ Ξ args p ns -> eval_apps_order Θ Ξ f ns) ->
+     (forall h f ns, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> h ·ₜ* (pre ++ x :: nil) Θ ⍮ Ξ ↘ f ->
+        ⟦ args ⟧* Θ ⍮ Ξ ⍮ p ↘ ns -> eval_apps_order Θ Ξ f ns) ->
      eval_exp_order Θ Ξ (a_mem H x) p )
 
 with eval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> domain -> Prop :=
@@ -179,7 +179,7 @@ with eval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
      eval_app_order Θ Ξ (d_ihfam pm A p t f) n )
 | eao_member :
   `( eval_appm_order Θ Ξ h n ->
-     (forall h', eval_appm Θ Ξ h n h' -> eval_selc_order Θ Ξ h' ch) ->
+     (forall h', $ᵐ| h & n | Θ ⍮ Ξ ↘ h' -> eval_selc_order Θ Ξ h' ch) ->
      eval_app_order Θ Ξ (d_member h ch) n )
 
 with eval_exps_order (Θ : gdeps) (Ξ : gstack) : list exp -> env -> Prop :=
@@ -237,7 +237,7 @@ with eval_appm_order (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> Prop :=
      eval_appm_order Θ Ξ (dm_local Δ D p) n )
 | eapo_member :
   `( eval_appm_order Θ Ξ h n ->
-     (forall h', eval_appm Θ Ξ h n h' -> eval_selmc_order Θ Ξ h' ch) ->
+     (forall h', $ᵐ| h & n | Θ ⍮ Ξ ↘ h' -> eval_selmc_order Θ Ξ h' ch) ->
      eval_appm_order Θ Ξ (dm_member h ch) n )
 
 with eval_appms_order (Θ : gdeps) (Ξ : gstack) : dmod -> list domain -> Prop :=
@@ -245,7 +245,7 @@ with eval_appms_order (Θ : gdeps) (Ξ : gstack) : dmod -> list domain -> Prop :
   `( eval_appms_order Θ Ξ h nil )
 | eamo_cons :
   `( eval_appm_order Θ Ξ h n ->
-     (forall h1, eval_appm Θ Ξ h n h1 -> eval_appms_order Θ Ξ h1 ns) ->
+     (forall h1, $ᵐ| h & n | Θ ⍮ Ξ ↘ h1 -> eval_appms_order Θ Ξ h1 ns) ->
      eval_appms_order Θ Ξ h (n :: ns) )
 
 with eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
@@ -277,7 +277,7 @@ with eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
   `( kbody Θ Ξ p Φ Φx ->
      gm_prefix_upto Φx x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
      eval_benv_order Θ Ξ p Φ' ->
-     (forall p', eval_benv Θ Ξ p Φ' p' -> eval_exp_order Θ Ξ M p') ->
+     (forall p', ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' -> eval_exp_order Θ Ξ M p') ->
      eval_sel_order Θ Ξ (dm_local nil (md_body sm Φ) p) x )
 | eslo_member :
   `( eval_sel_order Θ Ξ (dm_member h ch) x )
@@ -297,7 +297,7 @@ with eval_selm_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
   `( kbody Θ Ξ p Φ Φx ->
      gm_prefix_upto Φx y = Some (gm_ext Φ' y (ge_mod pm (gu_mk Δy Dy))) ->
      eval_benv_order Θ Ξ p Φ' ->
-     (forall p', eval_benv Θ Ξ p Φ' p' -> eval_close_order Θ Ξ Δy Dy p') ->
+     (forall p', ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' -> eval_close_order Θ Ξ Δy Dy p') ->
      eval_selm_order Θ Ξ (dm_local nil (md_body sm Φ) p) y )
 | esmo_member :
   `( eval_selm_order Θ Ξ (dm_member h ch) y )
@@ -308,7 +308,7 @@ with eval_selc_order (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> Prop :=
      eval_selc_order Θ Ξ h (x :: nil) )
 | esco_cons :
   `( eval_selm_order Θ Ξ h y ->
-     (forall h1, eval_selm Θ Ξ h y h1 -> eval_selc_order Θ Ξ h1 (z :: ch)) ->
+     (forall h1, h ·ₘ y Θ ⍮ Ξ ↘ h1 -> eval_selc_order Θ Ξ h1 (z :: ch)) ->
      eval_selc_order Θ Ξ h (y :: z :: ch) )
 
 with eval_selmc_order (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> Prop :=
@@ -316,7 +316,7 @@ with eval_selmc_order (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> Prop :
   `( eval_selmc_order Θ Ξ h nil )
 | esmco_cons :
   `( eval_selm_order Θ Ξ h y ->
-     (forall h1, eval_selm Θ Ξ h y h1 -> eval_selmc_order Θ Ξ h1 ch) ->
+     (forall h1, h ·ₘ y Θ ⍮ Ξ ↘ h1 -> eval_selmc_order Θ Ξ h1 ch) ->
      eval_selmc_order Θ Ξ h (y :: ch) )
 
 with eval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
@@ -324,11 +324,11 @@ with eval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
   `( eval_benv_order Θ Ξ p gm_nil )
 | ebo_def :
   `( eval_benv_order Θ Ξ p Φ ->
-     (forall p1, eval_benv Θ Ξ p Φ p1 -> eval_exp_order Θ Ξ M p1) ->
+     (forall p1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p1 -> eval_exp_order Θ Ξ M p1) ->
      eval_benv_order Θ Ξ p (gm_ext Φ y (ge_def b pv A (Some M))) )
 | ebo_mod :
   `( eval_benv_order Θ Ξ p Φ ->
-     (forall p1, eval_benv Θ Ξ p Φ p1 -> eval_close_order Θ Ξ Δy Dy p1) ->
+     (forall p1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p1 -> eval_close_order Θ Ξ Δy Dy p1) ->
      eval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm (gu_mk Δy Dy))) ).
 
 #[local]
@@ -418,9 +418,9 @@ Lemma eval_order_sound : forall Θ Ξ,
     (forall p Φ p', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' -> eval_benv_order Θ Ξ p Φ) /\
     (forall p nm A Bs m r, ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ r -> eval_elim_order Θ Ξ p nm A Bs m) /\
     (forall p nm A Bs gs vs ihs, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ ihs -> eval_ihs_order Θ Ξ p nm A Bs gs vs) /\
-    (forall p nm A Bs t v r, eval_ih Θ Ξ p nm A Bs t v r -> eval_ih_order Θ Ξ p nm A Bs t v) /\
-    (forall pq ups p t a, eval_shty Θ Ξ pq ups p t a -> eval_shty_order Θ Ξ pq ups p t) /\
-    (forall pm A p t v a, eval_ihty Θ Ξ pm A p t v a -> eval_ihty_order Θ Ξ pm A p t v).
+    (forall p nm A Bs t v r, ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ r -> eval_ih_order Θ Ξ p nm A Bs t v) /\
+    (forall pq ups p t a, ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_shty_order Θ Ξ pq ups p t) /\
+    (forall pm A p t v a, ⟦ihty v of t under pm A ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_ihty_order Θ Ξ pm A p t v).
 Proof.
   intros Θ Ξ; apply eval_mut_ind; intros;
     (** A closure lacking a parameter lacks a first one, and a chain of one
@@ -444,10 +444,10 @@ Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (eval_order_sound Θ Ξ)))). Qed
 Lemma eval_modexp_order_sound : forall Θ Ξ H p h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> eval_modexp_order Θ Ξ H p.
 Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (proj2 (proj2 (eval_order_sound Θ Ξ)))))). Qed.
 
-Lemma eval_shty_order_sound : forall Θ Ξ pq ups p t a, eval_shty Θ Ξ pq ups p t a -> eval_shty_order Θ Ξ pq ups p t.
+Lemma eval_shty_order_sound : forall Θ Ξ pq ups p t a, ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_shty_order Θ Ξ pq ups p t.
 Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
-Lemma eval_ihty_order_sound : forall Θ Ξ pm A p t v a, eval_ihty Θ Ξ pm A p t v a -> eval_ihty_order Θ Ξ pm A p t v.
+Lemma eval_ihty_order_sound : forall Θ Ξ pm A p t v a, ⟦ihty v of t under pm A ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_ihty_order Θ Ξ pm A p t v.
 Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
 #[export]
@@ -723,14 +723,14 @@ Section EvalImpl.
       exist _ (ih :: ihs) _
   | p, nm, A, Bs, _, _, H => False_rect _ _
 
-  with eval_ih_impl p nm A Bs t v (H : eval_ih_order Θ Ξ p nm A Bs t v) : { r | eval_ih Θ Ξ p nm A Bs t v r } by struct H :=
+  with eval_ih_impl p nm A Bs t v (H : eval_ih_order Θ Ξ p nm A Bs t v) : { r | ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
   | p, nm, A, Bs, pt_self k Ps, v, H =>
       let (r, Hr) := eval_elim_impl p nm A Bs v _ in
       exist _ r _
   | p, nm, A, Bs, pt_pi B t, v, H => exist _ (d_ihfn p nm A Bs t v) _
   | p, nm, A, Bs, pt_aux k Ps, v, H => False_rect _ _
 
-  with eval_shty_impl pq ups p t (H : eval_shty_order Θ Ξ pq ups p t) : { a | eval_shty Θ Ξ pq ups p t a } by struct H :=
+  with eval_shty_impl pq ups p t (H : eval_shty_order Θ Ξ pq ups p t) : { a | ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a } by struct H :=
   | pq, ups, p, pt_self k Ps, H =>
       let (bs, Hbs) := eval_exps_impl Ps p _ in
       exist _ (d_ind pq (ups ++ bs)) _
@@ -739,7 +739,7 @@ Section EvalImpl.
       exist _ (Πᵈ b (nil ↦ d_shfam pq ups p t) fam_cod) _
   | pq, ups, p, pt_aux k Ps, H => False_rect _ _
 
-  with eval_ihty_impl pm A p t v (H : eval_ihty_order Θ Ξ pm A p t v) : { a | eval_ihty Θ Ξ pm A p t v a } by struct H :=
+  with eval_ihty_impl pm A p t v (H : eval_ihty_order Θ Ξ pm A p t v) : { a | ⟦ihty v of t under pm A ⟧ Θ ⍮ Ξ ⍮ p ↘ a } by struct H :=
   | pm, A, p, pt_self k Ps, v, H =>
       let (bs, Hbs) := eval_exps_impl Ps p _ in
       let (a, Ha) := eval_exp_impl A (env_args pm (bs ++ v :: nil)) _ in
@@ -775,14 +775,14 @@ Section EvalImpl.
       exist _ a _
   | _, n, H => False_rect _ _
 
-  with eval_exps_impl Ms p (H : eval_exps_order Θ Ξ Ms p) : { ms | eval_exps Θ Ξ Ms p ms } by struct H :=
+  with eval_exps_impl Ms p (H : eval_exps_order Θ Ξ Ms p) : { ms | ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ p ↘ ms } by struct H :=
   | nil, p, H => exist _ nil _
   | M :: Ms, p, H =>
       let (m, Hm) := eval_exp_impl M p _ in
       let (ms, Hms) := eval_exps_impl Ms p _ in
       exist _ (m :: ms) _
 
-  with eval_apps_impl m ns (H : eval_apps_order Θ Ξ m ns) : { r | eval_apps Θ Ξ m ns r } by struct H :=
+  with eval_apps_impl m ns (H : eval_apps_order Θ Ξ m ns) : { r | $*| m & ns | Θ ⍮ Ξ ↘ r } by struct H :=
   | m, nil, H => exist _ m _
   | m, n :: ns, H =>
       let (m1, Hm1) := eval_app_impl m n _ in
@@ -812,7 +812,7 @@ Section EvalImpl.
       exist _ h _
   | e :: Δ, md_alias E, p, H => exist _ (dm_local (e :: Δ) (md_alias E) p) _
 
-  with eval_appm_impl h n (H : eval_appm_order Θ Ξ h n) : { r | eval_appm Θ Ξ h n r } by struct H :=
+  with eval_appm_impl h n (H : eval_appm_order Θ Ξ h n) : { r | $ᵐ| h & n | Θ ⍮ Ξ ↘ r } by struct H :=
   | dm_global pq args, n, H => exist _ (dm_global pq (args ++ n :: nil)) _
   | dm_local Δ D p, n, H with inspect (tele_snoc Δ) := {
     | exist _ (Some (Δ0, ce_ass A)) Es =>
@@ -824,14 +824,14 @@ Section EvalImpl.
       let (r, Hr) := eval_selmc_impl h' ch _ in
       exist _ r _
 
-  with eval_appms_impl h ns (H : eval_appms_order Θ Ξ h ns) : { r | eval_appms Θ Ξ h ns r } by struct H :=
+  with eval_appms_impl h ns (H : eval_appms_order Θ Ξ h ns) : { r | $ᵐ*| h & ns | Θ ⍮ Ξ ↘ r } by struct H :=
   | h, nil, H => exist _ h _
   | h, n :: ns, H =>
       let (h1, Hh1) := eval_appm_impl h n _ in
       let (r, Hr) := eval_appms_impl h1 ns _ in
       exist _ r _
 
-  with eval_sel_impl h x (H : eval_sel_order Θ Ξ h x) : { r | eval_sel Θ Ξ h x r } by struct H :=
+  with eval_sel_impl h x (H : eval_sel_order Θ Ξ h x) : { r | h ·ₜ x Θ ⍮ Ξ ↘ r } by struct H :=
   | dm_global pq args, x, H with inspect (gc_resolve Θ Ξ (qname_app pq (x :: nil))) := {
     | exist _ (Some (ge_def true pv A (Some M))) E =>
         let (f, Hf) := eval_exp_impl M nil _ in
@@ -869,7 +869,7 @@ Section EvalImpl.
       | exist _ _ P => False_rect _ _ } }
   | dm_member h ch, x, H => exist _ (d_member h (ch ++ x :: nil)) _
 
-  with eval_selm_impl h y (H : eval_selm_order Θ Ξ h y) : { r | eval_selm Θ Ξ h y r } by struct H :=
+  with eval_selm_impl h y (H : eval_selm_order Θ Ξ h y) : { r | h ·ₘ y Θ ⍮ Ξ ↘ r } by struct H :=
   | dm_global pq args, y, H with inspect (gc_module Θ Ξ (qname_app pq (y :: nil))) := {
     | exist _ (Some (mr_alias (gu_mk Δ D))) E =>
         let (h, Hh) := eval_close_impl Δ D nil _ in
@@ -887,7 +887,7 @@ Section EvalImpl.
       | exist _ _ P => False_rect _ _ } }
   | dm_member h ch, y, H => exist _ (dm_member h (ch ++ y :: nil)) _
 
-  with eval_selc_impl h ch (H : eval_selc_order Θ Ξ h ch) : { r | eval_selc Θ Ξ h ch r } by struct H :=
+  with eval_selc_impl h ch (H : eval_selc_order Θ Ξ h ch) : { r | h ·ₜ* ch Θ ⍮ Ξ ↘ r } by struct H :=
   | h, x :: nil, H =>
       let (r, Hr) := eval_sel_impl h x _ in
       exist _ r _
@@ -897,14 +897,14 @@ Section EvalImpl.
       exist _ r _
   | h, nil, H => False_rect _ _
 
-  with eval_selmc_impl h ch (H : eval_selmc_order Θ Ξ h ch) : { r | eval_selmc Θ Ξ h ch r } by struct H :=
+  with eval_selmc_impl h ch (H : eval_selmc_order Θ Ξ h ch) : { r | h ·ₘ* ch Θ ⍮ Ξ ↘ r } by struct H :=
   | h, nil, H => exist _ h _
   | h, y :: ch, H =>
       let (h1, Hh1) := eval_selm_impl h y _ in
       let (r, Hr) := eval_selmc_impl h1 ch _ in
       exist _ r _
 
-  with eval_benv_impl p Φ (H : eval_benv_order Θ Ξ p Φ) : { p' | eval_benv Θ Ξ p Φ p' } by struct H :=
+  with eval_benv_impl p Φ (H : eval_benv_order Θ Ξ p Φ) : { p' | ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' } by struct H :=
   | p, gm_nil, H => exist _ p _
   | p, gm_ext Φ y (ge_def b pv A (Some M)), H =>
       let (p1, Hp1) := eval_benv_impl p Φ _ in

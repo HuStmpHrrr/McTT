@@ -2372,7 +2372,7 @@ Section Elim.
           ⟦ ptyp_ihty A (sb_shift_iter k β) (sb_qn k σ) (apps_vars_iter k (a_var idx)) (ptyp_skip k t) ⟧
             env_args (env_args B (X ++ fa ++ v :: aft ++ ihp)) ys ↘ a ->
           DF a ≈ a ∈ per_univ_elem i ↘ R ->
-          exists b, eval_ihty gc_deps gc_stack B A (env_args nil (u0 ++ X ++ nonrec_vals gs1 fa ++ ys)) (ptyp_skip k t) f b /\
+          exists b, ⟦ihty f of ptyp_skip k t under B A ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (u0 ++ X ++ nonrec_vals gs1 fa ++ ys) ↘ b /\
             Dom a ≈ b ∈ per_univ i.
       Proof.
         pose proof (ind_rel_mv p D u0 nr ar dr Hl (decl_closed_params D Hc) HnP HnI HaP HaI HdP HdI Had Hle Hsimp Hplen) as imv.
@@ -3026,8 +3026,8 @@ Section Elim.
            elim_bctx p D gs A Us ++ Γ ⊨ B : elim_bty p D c gs A Us) ->
         forall Γ' RΓ' σ ρ, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ C1 ->
         forall ns ns' m m', tele_full nr T ns ns' -> ind_rel p D u0 nr ar dr ns m m' ->
-          exists r1 r2, eval_elim gc_deps gc_stack ρ nm A[sb_qn nm σ] (brs_sub Bs σ) m r1 /\
-            eval_elim gc_deps gc_stack C1 nm A Bs m' r2 /\ Rel ns m ns' m' r1 r2.
+          exists r1 r2, ⟦elim m under nm (A[sb_qn nm σ]) (brs_sub Bs σ) ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r1 /\
+            ⟦elim m' under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ r2 /\ Rel ns m ns' m' r1 r2.
     Proof.
       intros * Hnm HBn Hnb HBv * HRΓ' Hσ Hρ Hev * Hns Hm.
       subst nm.

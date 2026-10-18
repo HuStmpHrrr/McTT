@@ -12,6 +12,12 @@ Reserved Notation "'Rtyp' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at l
 Reserved Notation "'Rla' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" (at level 70, xs at level 69, Θ at level 69, Ξ at level 69, s constr, ys at level 69).
 
 Reserved Notation "'Rps' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" (at level 70, vs at level 69, T at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Ms at level 69).
+Reserved Notation "'Rcargs' vs 'at' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" (at level 70, vs at level 69, gs at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Ms at level 69).
+Reserved Notation "'Rbrs' Bs 'at' cs 'of' p D ups 'under' A 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Bs'" (at level 70, Bs at level 69, cs at level 69, p at level 0, D at level 0, ups at level 0, A at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Bs' at level 69).
+
+Reserved Notation "'Ftele' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" (at level 70, T at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, vs at level 69).
+Reserved Notation "'Fcargs' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" (at level 70, gs at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, vs at level 69).
+Reserved Notation "'Fihs' vs 'at' gs 'under' ρm A 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ ihs" (at level 70, vs at level 69, gs at level 69, ρm at level 0, A at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, ihs at level 69).
 
 Generalizable All Variables.
 
@@ -28,11 +34,12 @@ Generalizable All Variables.
     before it. *)
 Inductive fresh_tele (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> list domain -> Prop :=
 | fresh_tele_nil :
-  `( fresh_tele Θ Ξ ρ nil s nil )
+  `( Ftele nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 | fresh_tele_cons :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     fresh_tele Θ Ξ (ρ ↦ ⇑! a s) T (S s) vs ->
-     fresh_tele Θ Ξ ρ (ce_ass A :: T) s (⇑! a s :: vs) ).
+     Ftele T in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⍮ S s ↘ vs ->
+     Ftele ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
+where "'Ftele' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (fresh_tele Θ Ξ ρ T s vs) : type_scope.
 
 (** The arguments of a constructor of [p] at the uniform parameters [ups]:
     a non-recursive one of the type its declaration gives, in the
@@ -41,15 +48,16 @@ Inductive fresh_tele (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> l
 Inductive fresh_cargs (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain) :
   env -> list carg -> nat -> list domain -> Prop :=
 | fresh_cargs_nil :
-  `( fresh_cargs Θ Ξ p ups ρ nil s nil )
+  `( Fcargs nil of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 | fresh_cargs_arg :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     fresh_cargs Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s) vs ->
-     fresh_cargs Θ Ξ p ups ρ (ca_arg A :: gs) s (⇑! a s :: vs) )
+     Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ⍮ S s ↘ vs ->
+     Fcargs ca_arg A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
 | fresh_cargs_rec :
-  `( eval_shty Θ Ξ p ups ρ t a ->
-     fresh_cargs Θ Ξ p ups ρ gs (S s) vs ->
-     fresh_cargs Θ Ξ p ups ρ (ca_rec t :: gs) s (⇑! a s :: vs) ).
+  `( ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ S s ↘ vs ->
+     Fcargs ca_rec t :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ ⇑! a s :: vs )
+where "'Fcargs' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (fresh_cargs Θ Ξ p ups ρ gs s vs) : type_scope.
 
 (** The recursive results of the arguments [vs]: one per recursive argument,
     of the type of its recursive result, the motive [A] in [ρ], the shape's
@@ -58,14 +66,15 @@ Inductive fresh_cargs (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain)
 Inductive fresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (A : exp) :
   env -> list carg -> list domain -> nat -> list domain -> Prop :=
 | fresh_ihs_nil :
-  `( fresh_ihs Θ Ξ ρ A ρa nil nil s nil )
+  `( Fihs nil at nil under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ nil )
 | fresh_ihs_arg :
-  `( fresh_ihs Θ Ξ ρ A (ρa ↦ v) gs vs s ihs ->
-     fresh_ihs Θ Ξ ρ A ρa (ca_arg T :: gs) (v :: vs) s ihs )
+  `( Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ↦ v ⍮ s ↘ ihs ->
+     Fihs v :: vs at ca_arg T :: gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs )
 | fresh_ihs_rec :
-  `( eval_ihty Θ Ξ ρ A ρa t v a ->
-     fresh_ihs Θ Ξ ρ A ρa gs vs (S s) ihs ->
-     fresh_ihs Θ Ξ ρ A ρa (ca_rec t :: gs) (v :: vs) s (⇑! a s :: ihs) ).
+  `( ⟦ihty v of t under ρ A ⟧ Θ ⍮ Ξ ⍮ ρa ↘ a ->
+     Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ S s ↘ ihs ->
+     Fihs v :: vs at ca_rec t :: gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ⇑! a s :: ihs )
+where "'Fihs' vs 'at' gs 'under' ρm A 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ ihs" := (fresh_ihs Θ Ξ ρm A ρ gs vs s ihs) : type_scope.
 
 #[export]
 Hint Constructors fresh_tele fresh_cargs fresh_ihs : mctt.
@@ -118,7 +127,7 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
      List.length as' = ind_np D ->
      List.length vs = (ind_np D + List.length gs)%nat ->
      Rps as' at List.rev (ind_params D) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
-     read_cargs Θ Ξ s p (List.firstn (ind_nu D) as') (env_args nil as') gs (List.skipn (ind_np D) vs) Args ->
+     Rcargs List.skipn (ind_np D) vs at gs of p (List.firstn (ind_nu D) as') in Θ ⍮ Ξ ⍮ env_args nil as' ⍮ s ↘ Args ->
      Rnf ⇓ (d_ind p as') (d_con p c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p c (nfs_app Ps Args) )
 | read_nf_ind_neut :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
@@ -148,10 +157,10 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
   `( ind_lookup Θ Ξ p = Some D ->
      List.length as' = ind_np D ->
      nm = S (ind_nn D) ->
-     fresh_tele Θ Ξ (env_args nil (List.firstn (ind_nu D) as')) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ns ->
+     Ftele List.rev (List.firstn (ind_nn D) (ind_params D)) in Θ ⍮ Ξ ⍮ env_args nil (List.firstn (ind_nu D) as') ⍮ s ↘ ns ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ ⇑! (d_ind p (List.firstn (ind_nu D) as' ++ ns)) ((s + ind_nn D)%nat) :: nil) ↘ a ->
      Rtyp a in Θ ⍮ Ξ ⍮ S (s + ind_nn D)%nat ↘ A' ->
-     read_brs Θ Ξ s ρ A p D (List.firstn (ind_nu D) as') (ind_cons D) Bs Bs' ->
+     Rbrs Bs at ind_cons D of p D (List.firstn (ind_nu D) as') under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
      Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rne d_elim ρ nm A Bs p as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim nm A' Bs' M )
 where "'Rne' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_ne Θ Ξ s m M) : type_scope
@@ -215,35 +224,37 @@ where "'Rps' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (read_ps Θ 
     a recursive one at the type itself. *)
 with read_cargs (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> list carg -> list domain -> nfs -> Prop :=
 | read_cargs_nil :
-  `( read_cargs Θ Ξ s p ups ρ nil nil nfs_nil )
+  `( Rcargs nil at nil of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_nil )
 | read_cargs_arg :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
-     read_cargs Θ Ξ s p ups (ρ ↦ v) gs vs Vs ->
-     read_cargs Θ Ξ s p ups ρ (ca_arg A :: gs) (v :: vs) (nfs_cons V Vs) )
+     Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ v ⍮ s ↘ Vs ->
+     Rcargs v :: vs at ca_arg A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons V Vs )
 | read_cargs_rec :
-  `( eval_shty Θ Ξ p ups ρ t a ->
+  `( ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
-     read_cargs Θ Ξ s p ups ρ gs vs Vs ->
-     read_cargs Θ Ξ s p ups ρ (ca_rec t :: gs) (v :: vs) (nfs_cons V Vs) )
+     Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs ->
+     Rcargs v :: vs at ca_rec t :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons V Vs )
+where "'Rcargs' vs 'at' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (read_cargs Θ Ξ s p ups ρ gs vs Ms) : type_scope
 (** The branches of a stuck eliminator, one per constructor in order: each
     under the non-uniform parameters, the arguments and the recursive
     results, at the motive's instance at the constructor. *)
 with read_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> exp -> qname -> ind_decl -> list domain ->
                                     list (string * list carg) -> list (string * nat * exp) -> nbrs -> Prop :=
 | read_brs_nil :
-  `( read_brs Θ Ξ s ρ A p D ups nil nil nbrs_nil )
+  `( Rbrs nil at nil of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_nil )
 | read_brs_cons :
   `( n = (ind_nn D + List.length gs + cargs_nrec gs)%nat ->
      cargs_plen (ind_nn D) gs ->
-     fresh_tele Θ Ξ (env_args nil ups) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ns ->
-     fresh_cargs Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D)%nat vs ->
-     fresh_ihs Θ Ξ ρ A (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs)%nat ihs ->
+     Ftele List.rev (List.firstn (ind_nn D) (ind_params D)) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
+     Fcargs gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + ind_nn D)%nat ↘ vs ->
+     Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + ind_nn D + List.length gs)%nat ↘ ihs ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ vs ++ ihs) ↘ b ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ d_con p c (ups ++ ns ++ vs) :: nil) ↘ t ->
      Rnf ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
-     read_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
-     read_brs Θ Ξ s ρ A p D ups ((c, gs) :: cs) ((c, n, B) :: Bs) (nbrs_cons c n B' Bs') )
+     Rbrs Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
+     Rbrs (c, n, B) :: Bs at (c, gs) :: cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_cons c n B' Bs' )
+where "'Rbrs' Bs 'at' cs 'of' p D ups 'under' A 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Bs'" := (read_brs Θ Ξ s ρ A p D ups cs Bs Bs') : type_scope
 .
 
 Scheme read_nf_mut_ind := Induction for read_nf Sort Prop

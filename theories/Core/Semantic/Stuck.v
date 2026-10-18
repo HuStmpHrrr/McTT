@@ -200,23 +200,23 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
   Lemma eval_stuck :
     (forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> env_stuck ρ -> dstuck m) /\
     (forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> dstuck m -> dstuck n -> dstuck r) /\
-    (forall Ms ρ ms, eval_exps Θ Ξ Ms ρ ms -> env_stuck ρ -> forall a, In a ms -> dstuck a) /\
-    (forall m args r, eval_apps Θ Ξ m args r -> dstuck m -> (forall a, In a args -> dstuck a) -> dstuck r) /\
+    (forall Ms ρ ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> env_stuck ρ -> forall a, In a ms -> dstuck a) /\
+    (forall m args r, $*| m & args | Θ ⍮ Ξ ↘ r -> dstuck m -> (forall a, In a args -> dstuck a) -> dstuck r) /\
     (forall H ρ h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h -> env_stuck ρ -> dmstuck h) /\
     (forall Δ D ρ h, ⟦ Δ ⊢ D ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h -> env_stuck ρ -> dmstuck h) /\
-    (forall h n r, eval_appm Θ Ξ h n r -> dmstuck h -> dstuck n -> dmstuck r) /\
-    (forall h ns r, eval_appms Θ Ξ h ns r -> dmstuck h -> (forall a, In a ns -> dstuck a) -> dmstuck r) /\
-    (forall h x r, eval_sel Θ Ξ h x r -> dmstuck h -> dstuck r) /\
-    (forall h y r, eval_selm Θ Ξ h y r -> dmstuck h -> dmstuck r) /\
-    (forall h ch r, eval_selc Θ Ξ h ch r -> dmstuck h -> dstuck r) /\
-    (forall h ch r, eval_selmc Θ Ξ h ch r -> dmstuck h -> dmstuck r) /\
-    (forall ρ Φ ρ', eval_benv Θ Ξ ρ Φ ρ' -> env_stuck ρ -> env_stuck ρ') /\
+    (forall h n r, $ᵐ| h & n | Θ ⍮ Ξ ↘ r -> dmstuck h -> dstuck n -> dmstuck r) /\
+    (forall h ns r, $ᵐ*| h & ns | Θ ⍮ Ξ ↘ r -> dmstuck h -> (forall a, In a ns -> dstuck a) -> dmstuck r) /\
+    (forall h x r, h ·ₜ x Θ ⍮ Ξ ↘ r -> dmstuck h -> dstuck r) /\
+    (forall h y r, h ·ₘ y Θ ⍮ Ξ ↘ r -> dmstuck h -> dmstuck r) /\
+    (forall h ch r, h ·ₜ* ch Θ ⍮ Ξ ↘ r -> dmstuck h -> dstuck r) /\
+    (forall h ch r, h ·ₘ* ch Θ ⍮ Ξ ↘ r -> dmstuck h -> dmstuck r) /\
+    (forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' -> env_stuck ρ -> env_stuck ρ') /\
     (forall ρ nm A Bs m r, ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_stuck ρ -> dstuck m -> dstuck r) /\
     (forall ρ nm A Bs gs vs ihs, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
        env_stuck ρ -> (forall a, In a vs -> dstuck a) -> forall a, In a ihs -> dstuck a) /\
-    (forall ρ nm A Bs t v r, eval_ih Θ Ξ ρ nm A Bs t v r -> env_stuck ρ -> dstuck v -> dstuck r) /\
-    (forall p ups ρ t a, eval_shty Θ Ξ p ups ρ t a -> (forall u, In u ups -> dstuck u) -> env_stuck ρ -> dstuck a) /\
-    (forall ρm A ρ t v a, eval_ihty Θ Ξ ρm A ρ t v a -> env_stuck ρm -> env_stuck ρ -> dstuck v -> dstuck a).
+    (forall ρ nm A Bs t v r, ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_stuck ρ -> dstuck v -> dstuck r) /\
+    (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> (forall u, In u ups -> dstuck u) -> env_stuck ρ -> dstuck a) /\
+    (forall ρm A ρ t v a, ⟦ihty v of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> env_stuck ρm -> env_stuck ρ -> dstuck v -> dstuck a).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => env_stuck ρ -> dstuck m)
@@ -362,7 +362,7 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
 
   (** The fresh variables of the telescopes of a declaration are stuck. *)
   Lemma fresh_tele_stuck : forall ρ T s vs,
-      fresh_tele Θ Ξ ρ T s vs -> env_stuck ρ -> forall a, In a vs -> dstuck a.
+      Ftele T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> env_stuck ρ -> forall a, In a vs -> dstuck a.
   Proof.
     destruct eval_stuck as (He & _).
     induction 1; intros Hρ; [ apply all_in_nil |].
@@ -371,7 +371,7 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
   Qed.
 
   Lemma fresh_cargs_stuck : forall p ups ρ gs s vs,
-      fresh_cargs Θ Ξ p ups ρ gs s vs -> env_stuck ρ -> (forall a, In a ups -> dstuck a) ->
+      Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> env_stuck ρ -> (forall a, In a ups -> dstuck a) ->
       forall a, In a vs -> dstuck a.
   Proof.
     destruct eval_stuck as (He & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
@@ -383,7 +383,7 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
   Qed.
 
   Lemma fresh_ihs_stuck : forall ρ A ρa gs vs s ihs,
-      fresh_ihs Θ Ξ ρ A ρa gs vs s ihs -> env_stuck ρ -> env_stuck ρa -> (forall a, In a vs -> dstuck a) ->
+      Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> env_stuck ρ -> env_stuck ρa -> (forall a, In a vs -> dstuck a) ->
       forall a, In a ihs -> dstuck a.
   Proof.
     destruct eval_stuck as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hit).
@@ -429,10 +429,10 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
        dstuck_la xs -> la_stuck (gstuck Θ Ξ) ys) /\
     (forall s ρ T vs Ms, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        env_stuck ρ -> (forall a, In a vs -> dstuck a) -> nfs_stuck (gstuck Θ Ξ) Ms) /\
-    (forall s p ups ρ gs vs Ms, read_cargs Θ Ξ s p ups ρ gs vs Ms ->
+    (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        env_stuck ρ -> (forall a, In a ups -> dstuck a) -> (forall a, In a vs -> dstuck a) ->
        nfs_stuck (gstuck Θ Ξ) Ms) /\
-    (forall s ρ A p D ups cs Bs Bs', read_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
+    (forall s ρ A p D ups cs Bs Bs', Rbrs Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
        env_stuck ρ -> (forall a, In a ups -> dstuck a) -> nbrs_stuck (gstuck Θ Ξ) Bs').
   Proof.
     destruct eval_stuck as (He & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).

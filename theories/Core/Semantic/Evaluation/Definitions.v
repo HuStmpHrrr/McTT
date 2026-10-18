@@ -11,6 +11,10 @@ Reserved Notation "'⟦' M '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, M a
 Reserved Notation "'$|' m '&' n '|' Θ '⍮' Ξ '↘' r" (at level 70, m at level 69, n at level 69, Θ at level 69, Ξ at level 69, r at level 69).
 Reserved Notation "'⟦elim' m 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦ihs' vs 'of' gs 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦ih' v 'of' t 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, v at level 69, t at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦shty' t 'of' p ups '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, t at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦ihty' v 'of' t 'under' ρm A '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, v at level 69, t at level 69, ρm at level 0, A at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦' e '⟧ᵉ' Θ '⍮' Ξ '⍮' ρ '↘' d" (at level 70, e at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, d at level 69).
 Reserved Notation "'⟦' σ '⟧s' Θ '⍮' Ξ '⍮' ρ '↘' ρσ" (at level 70, σ at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ρσ at level 69).
 
 Reserved Notation "'⟦' H '⟧ᵐ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, H at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
@@ -342,7 +346,7 @@ with eval_ihs (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * n
   `( ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
      ⟦ihs v :: vs of ca_arg T :: gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs )
 | eval_ihs_rec :
-  `( eval_ih Θ Ξ ρ nm A Bs t v ih ->
+  `( ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih ->
      ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
      ⟦ihs v :: vs of ca_rec t :: gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih :: ihs )
 where "'⟦ihs' vs 'of' gs 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihs Θ Ξ ρ nm A Bs gs vs r)
@@ -352,18 +356,20 @@ where "'⟦ihs' vs 'of' gs 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" :
 with eval_ih (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> ptyp -> domain -> domain -> Prop :=
 | eval_ih_self :
   `( ⟦elim v under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     eval_ih Θ Ξ ρ nm A Bs (pt_self k Ps) v r )
+     ⟦ih v of pt_self k Ps under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 | eval_ih_pi :
-  `( eval_ih Θ Ξ ρ nm A Bs (pt_pi B t) v (d_ihfn ρ nm A Bs t v) )
+  `( ⟦ih v of pt_pi B t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ihfn ρ nm A Bs t v )
+where "'⟦ih' v 'of' t 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ih Θ Ξ ρ nm A Bs t v r)
 (** The type of an argument of shape [t] in [ρ], at the uniform parameters
     [ups] of [p]. *)
 with eval_shty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> domain -> Prop :=
 | eval_shty_self :
   `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
-     eval_shty Θ Ξ p ups ρ (pt_self k Ps) (d_ind p (ups ++ bs)) )
+     ⟦shty pt_self k Ps of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ind p (ups ++ bs) )
 | eval_shty_pi :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
-     eval_shty Θ Ξ p ups ρ (pt_pi B t) (Πᵈ b (nil ↦ d_shfam p ups ρ t) fam_cod) )
+     ⟦shty pt_pi B t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_shfam p ups ρ t) fam_cod )
+where "'⟦shty' t 'of' p ups '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_shty Θ Ξ p ups ρ t r)
 (** The type of the recursive result of an argument [v] of shape [t], its
     components in [ρ]: the motive [A] in [ρm] at the shape's non-uniform
     parameters and [v]. *)
@@ -371,10 +377,11 @@ with eval_ihty (Θ : gdeps) (Ξ : gstack) : env -> exp -> env -> ptyp -> domain 
 | eval_ihty_self :
   `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρm (bs ++ v :: nil) ↘ a ->
-     eval_ihty Θ Ξ ρm A ρ (pt_self k Ps) v a )
+     ⟦ihty v of pt_self k Ps under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a )
 | eval_ihty_pi :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
-     eval_ihty Θ Ξ ρm A ρ (pt_pi B t) v (Πᵈ b (nil ↦ d_ihfam ρm A ρ t v) fam_cod) )
+     ⟦ihty v of pt_pi B t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_ihfam ρm A ρ t v) fam_cod )
+where "'⟦ihty' v 'of' t 'under' ρm A '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihty Θ Ξ ρm A ρ t v r)
 with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 (** A function's body, at the argument. *)
 | eval_app_fn :
@@ -398,16 +405,16 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 (** The recursive result of a function shape, at the argument's value. *)
 | eval_app_ihfn :
   `( $| f & n | Θ ⍮ Ξ ↘ fn ->
-     eval_ih Θ Ξ ρ nm A Bs t fn r ->
+     ⟦ih fn of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
      $| d_ihfn ρ nm A Bs t f & n | Θ ⍮ Ξ ↘ r )
 (** The families of the types of an argument of a function shape and of its
     recursive result. *)
 | eval_app_shfam :
-  `( eval_shty Θ Ξ p ups (ρ ↦ n) t a ->
+  `( ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ a ->
      $| d_shfam p ups ρ t & n | Θ ⍮ Ξ ↘ a )
 | eval_app_ihfam :
   `( $| f & n | Θ ⍮ Ξ ↘ fn ->
-     eval_ihty Θ Ξ ρm A (ρ ↦ n) t fn a ->
+     ⟦ihty fn of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ a ->
      $| d_ihfam ρm A ρ t f & n | Θ ⍮ Ξ ↘ a )
 (** A member closure takes the next argument of its module, and selects again. *)
 | eval_app_member :
@@ -684,8 +691,10 @@ Definition eval_sentry (Θ : gdeps) (Ξ : gstack) (e : sentry) (ρ : env) (d : d
   | se_mod H => exists h, d = de_mod h /\ ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h
   end.
 
+Notation "'⟦' e '⟧ᵉ' Θ '⍮' Ξ '⍮' ρ '↘' d" := (eval_sentry Θ Ξ e ρ d) : mctt_scope.
+
 Definition eval_sub (Θ : gdeps) (Ξ : gstack) (σ : sub) (ρ ρσ : env) : Prop :=
-  forall x, eval_sentry Θ Ξ (σ x) ρ (env_entry ρσ x).
+  forall x, ⟦ σ x ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ env_entry ρσ x.
 Arguments eval_sub : simpl never.
 
 Notation "'⟦' σ '⟧s' Θ '⍮' Ξ '⍮' ρ '↘' ρσ" := (eval_sub Θ Ξ σ ρ ρσ) : mctt_scope.
@@ -728,7 +737,7 @@ Qed.
 
 Proposition eval_sub_index : forall {Θ Ξ} σ (ρ ρσ : env),
     ⟦ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
-    forall x, eval_sentry Θ Ξ (σ x) ρ (env_entry ρσ x).
+    forall x, ⟦ σ x ⟧ᵉ Θ ⍮ Ξ ⍮ ρ ↘ env_entry ρσ x.
 Proof. intros * H. exact H. Qed.
 
 (** The variables of a term and of a module expression read the entry their

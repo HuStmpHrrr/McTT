@@ -364,13 +364,13 @@ Section GluInd.
       [pre] of the shape's components (the uniform parameters left out). *)
   with glu_rec : ctx -> list domain -> ptyp -> typ -> exp -> domain -> Prop :=
   | glu_rec_self :
-    `{ (forall bsr Q, eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ pre)) bsr ->
+    `{ (forall bsr Q, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ bsr ->
           A = apps (a_ind p) Q ->
           List.length Q = ind_np D /\ tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bsr bsr /\
           (forall bsr', tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bsr bsr' ->
              glu_nparams D NEl Γ (List.firstn (ind_nu D) Q) (List.skipn (ind_nu D) Q) bsr' /\
              forall Δ φ, Δ ⊢ᵏ φ : Γ -> glu_params_top D Δ (List.map (fun P => P[φ]ʷ) Q) (ups ++ bsr'))) ->
-       (forall bsr Q, eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ pre)) bsr ->
+       (forall bsr Q, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ bsr ->
           A = apps (a_ind p) Q ->
           forall Δ φ Q', Δ ⊢ᵏ φ : Γ -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
             ind_glu_elem Δ Q' N[φ]ʷ v) ->

@@ -559,18 +559,18 @@ Section Impl.
 
   Definition post_cmd ch Θ K D B Ξ c (r : cstate) : Prop :=
     forall ΘR RbR, linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR ->
-      cmd_post (fun RbR' ΘR' => run_cmd ch B RbR ΘR Ξ c (cs_bt r) RbR' ΘR' (cs_stack r)) ch Θ K r.
+      cmd_post (fun RbR' ΘR' => ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ ΘR' ⍮ cs_stack r ⍮ cs_bt r ⍮ RbR') ch Θ K r.
 
   Definition post_cmds ch Θ K D B Ξ cs (r : cstate) : Prop :=
     forall ΘR RbR, linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR ->
-      cmd_post (fun RbR' ΘR' => run_cmds ch B RbR ΘR Ξ cs (cs_bt r) RbR' ΘR' (cs_stack r)) ch Θ K r.
+      cmd_post (fun RbR' ΘR' => ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* ΘR' ⍮ cs_stack r ⍮ cs_bt r ⍮ RbR') ch Θ K r.
 
   (** A command with its literals generated ([Builtin]) and run, as
       [rcs_cons] does. *)
   Definition post_lcmd ch Θ K D B Ξ c (r : cstate) : Prop :=
     forall ΘR RbR, linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR ->
       cmd_post (fun RbR' ΘR' => exists c1, cmd_lits_ok ΘR Ξ B c c1 /\
-                                  run_cmd ch B RbR ΘR Ξ c1 (cs_bt r) RbR' ΘR' (cs_stack r)) ch Θ K r.
+                                  ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c1 ⇝ ΘR' ⍮ cs_stack r ⍮ cs_bt r ⍮ RbR') ch Θ K r.
 
   (** A unit runs from no binding and nothing filed. *)
   #[warnings="-cannot-define-projection"]
@@ -653,7 +653,7 @@ Section Impl.
   Proof. intros [] H Hs; constructor; assumption. Qed.
 
   Lemma linv_run_wf {ch Θ K D B RbR ΘR Ξ c B' RbR' ΘR' Ξ'} :
-    linv ch Θ K D ΘR Ξ -> canon RbR ΘR -> run_cmd ch B RbR ΘR Ξ c B' RbR' ΘR' Ξ' ->
+    linv ch Θ K D ΘR Ξ -> canon RbR ΘR -> ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
     ⊢ᵍ ΘR' ⍮ Ξ' /\ canon RbR' ΘR' /\ ΘR ⊑ ΘR' /\ bt_le B B'.
   Proof.
     intros Hli Hc Hr;
@@ -661,14 +661,14 @@ Section Impl.
   Qed.
 
   Lemma linv_run_stack {ch Θ K D B RbR ΘR Ξ c B' RbR' ΘR' Ξ'} :
-    linv ch Θ K D ΘR Ξ -> run_cmd ch B RbR ΘR Ξ c B' RbR' ΘR' Ξ' -> stack_in ch Ξ'.
+    linv ch Θ K D ΘR Ξ -> ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' -> stack_in ch Ξ'.
   Proof.
     intros Hli Hr; exact (stack_in_shape _ _ _ (proj1 (run_params load_path read to_core) _ _ _ _ _ _ _ _ _ _ Hr)
                             (li_stack _ _ _ _ _ _ Hli)).
   Qed.
 
   Lemma linv_run_same {ch Θ K D B RbR ΘR Ξ c B' Ξ'} :
-    linv ch Θ K D ΘR Ξ -> canon RbR ΘR -> run_cmd ch B RbR ΘR Ξ c B' RbR ΘR Ξ' -> linv ch Θ K D ΘR Ξ'.
+    linv ch Θ K D ΘR Ξ -> canon RbR ΘR -> ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ ΘR ⍮ Ξ' ⍮ B' ⍮ RbR -> linv ch Θ K D ΘR Ξ'.
   Proof.
     intros Hli Hc Hr; apply (linv_stack Hli); [ exact (proj1 (linv_run_wf Hli Hc Hr)) | exact (linv_run_stack Hli Hr) ].
   Qed.
@@ -783,7 +783,7 @@ Section Impl.
     post_cmd ch Θ K D B Ξ (cc_def x b pv A (Some M)) (cst Θ K D B (gs_add x (gs_def b pv Ξ A M) Ξ)).
   Proof.
     intros Hfr HM ΘR RbR Hli Hrb; cbn [cs_deps cs_k cs_dom cs_bt cs_stack].
-    assert (Hr : run_cmd ch B RbR ΘR Ξ (cc_def x b pv A (Some M)) B RbR ΘR (gs_add x (gs_def b pv Ξ A M) Ξ)).
+    assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_def x b pv A (Some M) ⇝ ΘR ⍮ gs_add x (gs_def b pv Ξ A M) Ξ ⍮ B ⍮ RbR).
     { constructor; [| exact Hfr ].
       exact (equiv_exp _ _ _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) HM). }
     apply (mk_cmd_post _ _ _ _ _ ΘR RbR);
@@ -795,7 +795,7 @@ Section Impl.
     post_cmd ch Θ K D B Ξ (cc_def x b pv A None) (cst Θ K D B (gs_add x (gs_axiom b pv Ξ A) Ξ)).
   Proof.
     intros Hfr HA ΘR RbR Hli Hrb; cbn [cs_deps cs_k cs_dom cs_bt cs_stack].
-    assert (Hr : run_cmd ch B RbR ΘR Ξ (cc_def x b pv A None) B RbR ΘR (gs_add x (gs_axiom b pv Ξ A) Ξ)).
+    assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_def x b pv A None ⇝ ΘR ⍮ gs_add x (gs_axiom b pv Ξ A) Ξ ⍮ B ⍮ RbR).
     { econstructor; [| exact Hfr ].
       exact (equiv_exp _ _ _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) HA). }
     apply (mk_cmd_post _ _ _ _ _ ΘR RbR);
@@ -807,7 +807,7 @@ Section Impl.
     post_cmd ch Θ K D B Ξ (cc_eval M (Some A)) (cst Θ K D B Ξ).
   Proof.
     intros HM ΘR RbR Hli Hrb; cbn [cs_deps cs_k cs_dom cs_bt cs_stack].
-    assert (Hr : run_cmd ch B RbR ΘR Ξ (cc_eval M (Some A)) B RbR ΘR Ξ)
+    assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_eval M (Some A) ⇝ ΘR ⍮ Ξ ⍮ B ⍮ RbR)
       by (constructor; exact (equiv_exp _ _ _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) HM)).
     apply (mk_cmd_post _ _ _ _ _ ΘR RbR); [ exact Hr | exact Hli | exact Hrb | apply ext_refl | apply grows_refl ].
   Qed.
@@ -823,7 +823,7 @@ Section Impl.
   Proof.
     intros HE Hm Hl Hs Hsort Hb ΘR RbR Hli Hrb; cbn [cs_deps cs_k cs_dom cs_bt cs_stack].
     pose proof (gds_equiv_sym _ _ (linv_equiv Hli)) as He.
-    assert (Hr : run_cmd ch B RbR ΘR Ξ (cc_builtin nat_kind E) B' RbR ΘR Ξ).
+    assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_builtin nat_kind E ⇝ ΘR ⍮ Ξ ⍮ B' ⍮ RbR).
     { eapply rc_builtin; [ exact (equiv_modexp _ _ _ _ _ He (li_wf _ _ _ _ _ _ Hli) HE)
                          | exact (gds_equiv_mdenote _ _ _ _ _ _ He Hm)
                          | rewrite ind_lookup_unfold in *; rewrite <- (gds_equiv_module _ _ _ _ He); exact Hl
@@ -836,7 +836,7 @@ Section Impl.
     post_cmd ch Θ K D B Ξ (cc_eval M None) (cst Θ K D B Ξ).
   Proof.
     intros HM ΘR RbR Hli Hrb; cbn [cs_deps cs_k cs_dom cs_bt cs_stack].
-    assert (Hr : run_cmd ch B RbR ΘR Ξ (cc_eval M None) B RbR ΘR Ξ)
+    assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_eval M None ⇝ ΘR ⍮ Ξ ⍮ B ⍮ RbR)
       by (econstructor; exact (equiv_exp _ _ _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) HM)).
     apply (mk_cmd_post _ _ _ _ _ ΘR RbR); [ exact Hr | exact Hli | exact Hrb | apply ext_refl | apply grows_refl ].
   Qed.
@@ -856,7 +856,7 @@ Section Impl.
     destruct (Hpost _ _ Hli' Hrb) as [ΘR' RbR' Hrun Hli2 Hrb2 Hext Hgr]; cbn beta in Hrun.
     rewrite HΞ in Hrun, Hli2.
     destruct (run_cmds_tail _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hrun) as [F HF]; injection HF as <- ->.
-    assert (Hr : run_cmd ch B RbR ΘR Ξ (cc_mod x pv Δ cs) (cs_bt r) RbR' ΘR' (gs_add x (ge_body pv Δ (gu_mod U)) Ξ))
+    assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_mod x pv Δ cs ⇝ ΘR' ⍮ gs_add x (ge_body pv Δ (gu_mod U)) Ξ ⍮ cs_bt r ⍮ RbR')
       by (econstructor; eassumption).
     apply (mk_cmd_post _ _ _ _ _ ΘR' RbR' Hr); [| exact Hrb2 | assumption | assumption ].
     apply (linv_stack Hli2); [ exact (proj1 (linv_run_wf Hli (proj1 Hrb) Hr)) | exact (linv_run_stack Hli Hr) ].
@@ -869,7 +869,7 @@ Section Impl.
   Proof.
     intros Htel HΔ HE Hfr ΘR RbR Hli Hrb; cbn [cs_deps cs_k cs_dom cs_bt cs_stack].
     pose proof (gds_equiv_sym _ _ (linv_equiv Hli)) as Heq.
-    assert (Hr : run_cmd ch B RbR ΘR Ξ (cc_alias x pv Δ E) B RbR ΘR (gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ))
+    assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_alias x pv Δ E ⇝ ΘR ⍮ gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ ⍮ B ⍮ RbR)
       by (constructor; [ exact Htel | exact (equiv_ext _ _ _ _ _ Heq (li_wf _ _ _ _ _ _ Hli) HΔ)
                        | exact (equiv_modexp _ _ _ _ _ Heq (li_wf _ _ _ _ _ _ Hli) HE) | exact Hfr ]).
     apply (mk_cmd_post _ _ _ _ _ ΘR RbR);
@@ -889,7 +889,7 @@ Section Impl.
     pose proof (gds_equiv_sym _ _ (linv_equiv Hli)) as Heq.
     pose proof (equiv_ind_alias_entry _ _ _ _ _ _ _ _ Heq (li_wf _ _ _ _ _ _ Hli) HEn) as HEn'.
     rewrite <- List.app_assoc in HEn'.
-    assert (Hr : run_cmd ch B RbR ΘR Ξ (cc_ind_alias x pv Δ E) B RbR ΘR (gs_add x (ge_ind_alias pv (Θ' ++ Δ ++ gs_tele Ξ) p Ns) Ξ)).
+    assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_ind_alias x pv Δ E ⇝ ΘR ⍮ gs_add x (ge_ind_alias pv (Θ' ++ Δ ++ gs_tele Ξ) p Ns) Ξ ⍮ B ⍮ RbR).
     { eapply rc_ind_alias; [ exact (equiv_modexp _ _ _ _ _ Heq (li_wf _ _ _ _ _ _ Hli) HE)
                            | exact (gds_equiv_mdenote _ _ _ _ _ _ Heq Hm) | exact HEn' | exact Hfr ]. }
     apply (mk_cmd_post _ _ _ _ _ ΘR RbR);
@@ -907,7 +907,7 @@ Section Impl.
     destruct (gds_lookup ΘR fp) as [V |] eqn:E'; [| contradiction ].
     destruct (proj1 (proj1 Hrb) _ _ E') as [BU' src prg u ch0 RbU ΘU EB _ _ _ _].
     pose proof (proj2 Hrb _ _ EB) as HB'; rewrite HB in HB'; injection HB' as <-.
-    assert (Hr : run_cmd ch B RbR ΘR Ξ (cc_load fp) B' RbR ΘR Ξ) by (eapply rc_load_filed; eassumption).
+    assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_load fp ⇝ ΘR ⍮ Ξ ⍮ B' ⍮ RbR) by (eapply rc_load_filed; eassumption).
     apply (mk_cmd_post _ _ _ _ _ ΘR RbR); [ exact Hr | exact Hli | exact Hrb | apply ext_refl | apply grows_refl ].
   Qed.
 
@@ -967,7 +967,7 @@ Section Impl.
   Proof.
     intros Hnin HU HK HB Hm ΘR RbR Hli Hrb; cbn [cs_deps cs_k cs_dom cs_bt cs_stack].
     destruct (hit_linv Hnin HU HK HB _ _ Hli Hrb) as (src & prg & u & RbU & ΘU & Hn & Hnch & Hl & Hrd & Hp & Ht & Hu & Hli' & Hrb').
-    assert (Hr : run_cmd ch B RbR ΘR Ξ (cc_load fp) B' (bm_merge RbR ((fp, BU) :: RbU)) (gds_merge ΘR ((fp, U) :: ΘU)) Ξ)
+    assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_load fp ⇝ gds_merge ΘR ((fp, U) :: ΘU) ⍮ Ξ ⍮ B' ⍮ bm_merge RbR ((fp, BU) :: RbU))
       by (eapply rc_load; eassumption).
     apply (mk_cmd_post _ _ _ _ _ (gds_merge ΘR ((fp, U) :: ΘU)) (bm_merge RbR ((fp, BU) :: RbU)));
       [ exact Hr | exact Hli' | exact Hrb' | apply ext_refl | apply grows_refl ].
@@ -1083,8 +1083,8 @@ Section Impl.
   Proof.
     intros Hn Hnch Hl Hrd Hp Ht Hpost Hm ΘR RbR Hli Hrb.
     destruct (load_linv (B' := B') Hn Hnch Hl Hrd Hp Ht Hpost _ _ Hli Hrb) as (RbU & ΘU & HnR & Hu & Hli' & Hrb' & Hext & Hgr).
-    assert (Hr : run_cmd ch B RbR ΘR Ξ (cc_load fp) B' (bm_merge RbR ((fp, us_bt r) :: RbU))
-                   (gds_merge ΘR ((fp, us_unit r) :: ΘU)) Ξ)
+    assert (Hr : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_load fp ⇝
+                   gds_merge ΘR ((fp, us_unit r) :: ΘU) ⍮ Ξ ⍮ B' ⍮ bm_merge RbR ((fp, us_bt r) :: RbU))
       by (eapply rc_load; eassumption).
     apply (mk_cmd_post _ _ _ _ _ (gds_merge ΘR ((fp, us_unit r) :: ΘU)) (bm_merge RbR ((fp, us_bt r) :: RbU)));
       [ exact Hr | exact Hli' | exact Hrb' | exact Hext | exact Hgr ].
@@ -1219,7 +1219,7 @@ Section Impl.
     pose proof (li_wf _ _ _ _ _ _ Hli) as HΞ.
     pose proof (equiv_gentry_ind _ _ _ _ _ _ Heq HΞ HE) as HE'.
     pose proof (equiv_cls_cons_in _ _ _ _ _ Heq HΞ Hcls) as Hcls'.
-    assert (Hrun : run_cmd ch B RbR ΘR Ξ (cc_ind x pv R) B RbR ΘR (gs_add x (ge_ind pv (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) (gen_body (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)))) Ξ)).
+    assert (Hrun : ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_ind x pv R ⇝ ΘR ⍮ gs_add x (ge_ind pv (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) (gen_body (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)))) Ξ ⍮ B ⍮ RbR).
     { eapply rc_ind; [ exact Hcls' | exact Hfr |].
       destruct Ξ as [| [mq [Δ [[] Φ0 | E0]]] Ξ0]; [ contradiction | | |].
       - exfalso; destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & [Δ' Φ' [=] _] & _).
@@ -1285,7 +1285,7 @@ Section Impl.
 
   (** The imports of a later step include those of an earlier one. *)
   Lemma dom_grows {ch Θ1 K1 D1 B1 RbR1 ΘR1 Ξ1 Θ2 K2 D2 B2 RbR2 ΘR2 Ξ2 cs} :
-    linv ch Θ1 K1 D1 ΘR1 Ξ1 -> canon RbR1 ΘR1 -> run_cmds ch B1 RbR1 ΘR1 Ξ1 cs B2 RbR2 ΘR2 Ξ2 ->
+    linv ch Θ1 K1 D1 ΘR1 Ξ1 -> canon RbR1 ΘR1 -> ΘR1 ⍮ Ξ1 ⍮ B1 ⍮ RbR1 ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* ΘR2 ⍮ Ξ2 ⍮ B2 ⍮ RbR2 ->
     linv ch Θ2 K2 D2 ΘR2 Ξ2 -> incl D1 D2.
   Proof.
     intros Hli1 Hc Hr Hli2 x Hx.
@@ -1316,7 +1316,7 @@ Section Impl.
       stack empty. *)
   Lemma unit_imports {ch Θ K imps r1} :
     ginv ch Θ K -> post_cmds ch Θ K nil bt_empty nil imps r1 ->
-    exists ΘR1 RbR1, run_cmds ch bt_empty nil nil nil imps (cs_bt r1) RbR1 ΘR1 nil /\ cs_stack r1 = nil /\
+    exists ΘR1 RbR1, nil ⍮ nil ⍮ bt_empty ⍮ nil ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ imps ⇝* ΘR1 ⍮ nil ⍮ cs_bt r1 ⍮ RbR1 /\ cs_stack r1 = nil /\
       linv ch (cs_deps r1) (cs_k r1) (cs_dom r1) ΘR1 nil /\ rb_ok (cs_k r1) ΘR1 RbR1 /\
       ext Θ K (cs_deps r1) (cs_k r1) /\ grows Θ (cs_deps r1) (cs_dom r1).
   Proof.
@@ -1872,7 +1872,7 @@ Section Impl.
   Theorem run_cmd_impl_sound : forall ch L Θ K D B Ξ c H r ΘR RbR,
       linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR -> run_cmd_impl ch L Θ K D B Ξ c H = rok r ->
       exists c1 ΘR' RbR', cmd_lits_ok ΘR Ξ B c c1 /\
-        run_cmd ch B RbR ΘR Ξ c1 (cs_bt (proj1_sig (fst r))) RbR' ΘR' (cs_stack (proj1_sig (fst r))) /\
+        ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c1 ⇝ ΘR' ⍮ cs_stack (proj1_sig (fst r)) ⍮ cs_bt (proj1_sig (fst r)) ⍮ RbR' /\
         linv ch (cs_deps (proj1_sig (fst r))) (cs_k (proj1_sig (fst r))) (cs_dom (proj1_sig (fst r))) ΘR' (cs_stack (proj1_sig (fst r))) /\ logs_ok (proj1_sig (snd r)).
   Proof.
     intros * Hli Hrb _; destruct r as [[r Hr] [l Hl]]; destruct (Hr _ _ Hli Hrb) as [ΘR' RbR' (c1 & ? & ?) ? _ _ _]; cbn; eauto 9.
@@ -1880,7 +1880,7 @@ Section Impl.
 
   Theorem run_cmds_impl_sound : forall ch L Θ K D B Ξ cs H r ΘR RbR,
       linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR -> run_cmds_impl ch L Θ K D B Ξ cs H = rok r ->
-      exists ΘR' RbR', run_cmds ch B RbR ΘR Ξ cs (cs_bt (proj1_sig (fst r))) RbR' ΘR' (cs_stack (proj1_sig (fst r))) /\
+      exists ΘR' RbR', ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* ΘR' ⍮ cs_stack (proj1_sig (fst r)) ⍮ cs_bt (proj1_sig (fst r)) ⍮ RbR' /\
         linv ch (cs_deps (proj1_sig (fst r))) (cs_k (proj1_sig (fst r))) (cs_dom (proj1_sig (fst r))) ΘR' (cs_stack (proj1_sig (fst r))) /\ logs_ok (proj1_sig (snd r)).
   Proof.
     intros * Hli Hrb _; destruct r as [[r Hr] [l Hl]]; destruct (Hr _ _ Hli Hrb) as [ΘR' RbR' ? ? _ _ _]; cbn; eauto.
@@ -1905,7 +1905,7 @@ Section Impl.
       command with an oracle meeting the specification, hence identically. *)
 
   Lemma def_complete : forall ch B RbR ΘR Ξ x b pv A oM B' RbR' ΘR' Ξ' Θ K D (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ),
-      linv ch Θ K D ΘR Ξ -> run_cmd ch B RbR ΘR Ξ (cc_def x b pv A oM) B' RbR' ΘR' Ξ' ->
+      linv ch Θ K D ΘR Ξ -> ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_def x b pv A oM ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
       exists r, defalias_step ch Θ K D B Ξ (cc_def x b pv A oM) H = rok r.
   Proof.
     intros * Hli Hr; inversion Hr; subst; simp defalias_step;
@@ -1925,7 +1925,7 @@ Section Impl.
   Qed.
 
   Lemma builtin_complete : forall ch B RbR ΘR Ξ k E B' RbR' ΘR' Ξ' Θ K D (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ),
-      linv ch Θ K D ΘR Ξ -> run_cmd ch B RbR ΘR Ξ (cc_builtin k E) B' RbR' ΘR' Ξ' ->
+      linv ch Θ K D ΘR Ξ -> ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_builtin k E ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
       exists r, builtin_step ch Θ K D B Ξ k E H = rok r.
   Proof.
     intros * Hli Hr; inversion Hr; subst.
@@ -1956,7 +1956,7 @@ Section Impl.
   Qed.
 
   Lemma indalias_complete : forall ch B RbR ΘR Ξ x pv Δ E B' RbR' ΘR' Ξ' Θ K D (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ),
-      linv ch Θ K D ΘR Ξ -> run_cmd ch B RbR ΘR Ξ (cc_ind_alias x pv Δ E) B' RbR' ΘR' Ξ' ->
+      linv ch Θ K D ΘR Ξ -> ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_ind_alias x pv Δ E ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
       exists r, indalias_step ch Θ K D B Ξ x pv Δ E H = rok r.
   Proof.
     intros * Hli Hr; inversion Hr; subst.
@@ -1991,7 +1991,7 @@ Section Impl.
   Qed.
 
   Lemma alias_complete : forall ch B RbR ΘR Ξ x pv Δ E B' RbR' ΘR' Ξ' Θ K D (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ),
-      linv ch Θ K D ΘR Ξ -> run_cmd ch B RbR ΘR Ξ (cc_alias x pv Δ E) B' RbR' ΘR' Ξ' ->
+      linv ch Θ K D ΘR Ξ -> ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_alias x pv Δ E ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
       exists r, defalias_step ch Θ K D B Ξ (cc_alias x pv Δ E) H = rok r.
   Proof.
     intros * Hli Hr; inversion Hr as [| | | ? ? ? ? ? ? ? ? ? Htel HΔ HE Hfr | | | | | | | |]; subst; simp defalias_step.
@@ -2085,11 +2085,11 @@ Section Impl.
   Qed.
 
   Theorem run_impl_complete :
-    (forall ch B RbR ΘR Ξ c' B' RbR' ΘR' Ξ', run_cmd ch B RbR ΘR Ξ c' B' RbR' ΘR' Ξ' ->
+    (forall ch B RbR ΘR Ξ c' B' RbR' ΘR' Ξ', ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c' ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
        forall Hacc Θ K D (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ), linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR ->
        forall c, cmd_lits_ok ΘR Ξ B c c' ->
          exists r, run_cmd_impl ch (loader_of ch Hacc) Θ K D B Ξ c H = rok r) /\
-    (forall ch B RbR ΘR Ξ cs B' RbR' ΘR' Ξ', run_cmds ch B RbR ΘR Ξ cs B' RbR' ΘR' Ξ' ->
+    (forall ch B RbR ΘR Ξ cs B' RbR' ΘR' Ξ', ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
        forall Hacc Θ K D (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ), linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR ->
          exists r, run_cmds_impl ch (loader_of ch Hacc) Θ K D B Ξ cs H = rok r) /\
     (forall ch u B' RbU ΘU U, run_unit ch u B' RbU ΘU U ->
@@ -2275,7 +2275,7 @@ Section Impl.
   Corollary run_cmd_impl_complete : forall ch B RbR ΘR Ξ c0 c B' RbR' ΘR' Ξ' Hacc Θ K D
       (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ),
       linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR -> cmd_lits_ok ΘR Ξ B c0 c ->
-      run_cmd ch B RbR ΘR Ξ c B' RbR' ΘR' Ξ' ->
+      ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
       exists r, run_cmd_impl ch (loader_of ch Hacc) Θ K D B Ξ c0 H = rok r /\ cs_stack (proj1_sig (fst r)) = Ξ' /\
         cs_bt (proj1_sig (fst r)) = B' /\
         linv ch (cs_deps (proj1_sig (fst r))) (cs_k (proj1_sig (fst r))) (cs_dom (proj1_sig (fst r))) ΘR' Ξ' /\
@@ -2292,7 +2292,7 @@ Section Impl.
 
   Corollary run_cmds_impl_complete : forall ch B RbR ΘR Ξ cs B' RbR' ΘR' Ξ' Hacc Θ K D
       (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ),
-      linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR -> run_cmds ch B RbR ΘR Ξ cs B' RbR' ΘR' Ξ' ->
+      linv ch Θ K D ΘR Ξ -> rb_ok K ΘR RbR -> ΘR ⍮ Ξ ⍮ B ⍮ RbR ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* ΘR' ⍮ Ξ' ⍮ B' ⍮ RbR' ->
       exists r, run_cmds_impl ch (loader_of ch Hacc) Θ K D B Ξ cs H = rok r /\ cs_stack (proj1_sig (fst r)) = Ξ' /\
         cs_bt (proj1_sig (fst r)) = B' /\
         linv ch (cs_deps (proj1_sig (fst r))) (cs_k (proj1_sig (fst r))) (cs_dom (proj1_sig (fst r))) ΘR' Ξ' /\

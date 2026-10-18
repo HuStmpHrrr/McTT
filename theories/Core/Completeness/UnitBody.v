@@ -260,7 +260,7 @@ Qed.
 Lemma sub_walk_alias : forall Γ' Γ σ Ψ E ρl ρr,
     sub_walk_inv Γ' Γ σ Ψ ρl ρr ->
     Ψ ++ Γ ⊨ᵐ E ≈ E ->
-    exists h h', eval_modexp gc_deps gc_stack E[sb_qn (List.length Ψ) σ]ᵐ ρl h /\
+    exists h h', ⟦ E[sb_qn (List.length Ψ) σ]ᵐ ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρl ↘ h /\
       ⟦ E ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρr ↘ h' /\ per_dmod h h'.
 Proof.
   intros * [Rl Rr HΓl HΓr Hsub Hl [ρm [Hm Hmr]]] [R0 HΓ0 HE].

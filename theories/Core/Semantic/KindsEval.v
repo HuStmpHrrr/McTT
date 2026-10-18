@@ -333,9 +333,9 @@ Section KindsEval.
     (forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' -> forall σ, kshape ρ σ -> exists σ', kenv Θ Ξ σ Φ σ' /\ kshape ρ' σ') /\
     (forall ρ nm A Bs m r, ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> True) /\
     (forall ρ nm A Bs gs vs r, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> True) /\
-    (forall ρ nm A Bs t v r, eval_ih Θ Ξ ρ nm A Bs t v r -> True) /\
-    (forall p ups ρ t a, eval_shty Θ Ξ p ups ρ t a -> True) /\
-    (forall ρm A ρ t v a, eval_ihty Θ Ξ ρm A ρ t v a -> True).
+    (forall ρ nm A Bs t v r, ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> True) /\
+    (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> True) /\
+    (forall ρm A ρ t v a, ⟦ihty v of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> True).
   Proof.
     apply eval_mut_ind; intros; try exact I.
     (* module expressions *)

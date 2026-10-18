@@ -818,7 +818,7 @@ Section Iota.
           tele_pre (shape_tr dr ns nv (ptyp_doms t)) k ys ys' ->
           $*| a & ys | gc_deps ⍮ gc_stack ↘ f -> $*| a & ys' | gc_deps ⍮ gc_stack ↘ f' ->
           ind_shape_rel p D u0 nr ar dr (ns ++ nv ++ ys) (ptyp_skip k t) f f' ->
-          exists re rc, eval_ih gc_deps gc_stack C nm A Bs (ptyp_skip k t) f re /\
+          exists re rc, ⟦ih f of ptyp_skip k t under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ C ↘ re /\
             ⟦ ptyp_ih nm (exp_wk_qn_iter nm k A) (brs_wk_iter k Bs) (sb_qn k σt) (apps_vars_iter k Mt) (ptyp_skip k t) ⟧ env_args C ys' ↘ rc /\
             ih_rel u0 dr Rel (ns ++ nv ++ ys) (ptyp_skip k t) f f' re rc.
       Proof.
@@ -930,7 +930,7 @@ Section Iota.
     End RecSem.
 
     Lemma s_ihs : forall rest gs1, gs = gs1 ++ rest ->
-        exists ihe ihc, eval_ihs gc_deps gc_stack C nm A Bs rest (List.skipn (List.length gs1) avs) ihe /\
+        exists ihe ihc, ⟦ihs List.skipn (List.length gs1) avs of rest under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ C ↘ ihe /\
           ⟦ elim_ihs nm A Bs (cargs_sub σP gs1 As) rest (List.skipn (List.length gs1) As) ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ ihc /\
           ihs_rel u0 dr Rel (ns ++ nonrec_vals gs1 (List.firstn (List.length gs1) avs)) rest
             (List.skipn (List.length gs1) avs) (List.skipn (List.length gs1) avs) ihe ihc.

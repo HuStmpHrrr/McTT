@@ -250,7 +250,7 @@ Section Members.
     pose proof (modexp_spine_root_spine _ _ _ _ Hs) as HR.
     rewrite (eval_mem_spine _ _ _ _ _ _ _ Hs), eval_apps_exp.
     assert (Href : forall f, ⟦ member_ref R (pre ++ [x]) ⟧ Θ ⍮ Ξ ⍮ ρ ↘ f <->
-                        exists h, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h /\ eval_selc Θ Ξ h (pre ++ [x]) f).
+                        exists h, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h /\ h ·ₜ* (pre ++ [x]) Θ ⍮ Ξ ↘ f).
     { intros f; rewrite eval_member_ref by (destruct pre; discriminate).
       rewrite HR; cbn [app]; split.
       - intros (h & f' & ns & ? & ? & Hns & Ha); inversion Hns; subst; inversion Ha; subst; eauto.

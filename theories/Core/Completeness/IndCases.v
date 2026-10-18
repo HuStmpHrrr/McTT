@@ -1431,7 +1431,7 @@ Section Sort.
           (env_args nil (ups ++ ns ++ fa)) (env_args nil (ups ++ ns ++ fa)) ys ys ->
         ⟦ ptyp_ty p D (List.repeat false k ++ cargs_pat gs1) (ptyp_skip k t) ⟧ env_args nil (ups ++ ns ++ fa ++ ys) ↘ a ->
         DF a ≈ a ∈ per_univ_elem i ↘ R ->
-        eval_shty gc_deps gc_stack p ups (env_args nil (ups ++ ns ++ nonrec_vals gs1 fa ++ ys)) (ptyp_skip k t) b ->
+        ⟦shty ptyp_skip k t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ns ++ nonrec_vals gs1 fa ++ ys) ↘ b ->
         Dom a ≈ b ∈ per_univ i.
   Proof.
     intros gs1 t gs2 Heq ups ns fa a0 Hlu Hlns Hlk Hgu0 Ha0 Hnsd INV Hpre.
@@ -1445,7 +1445,7 @@ Section Sort.
     assert (Hex : forall k ys, k <= List.length (ptyp_doms t) ->
                tele_pre (shape_tr (ind_dr ups) ns nv (ptyp_doms t)) k ys ys ->
                per_gargs (List.rev (sh_ctx pat (List.firstn k (ptyp_doms t)))) (env_args nil (ups ++ ns ++ fa)) (env_args nil (ups ++ ns ++ fa)) ys ys ->
-               exists b, eval_shty gc_deps gc_stack p ups (env_args nil (ups ++ ns ++ nv ++ ys)) (ptyp_skip k t) b).
+               exists b, ⟦shty ptyp_skip k t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ns ++ nv ++ ys) ↘ b).
     { intros k ys Hk Hy Hgy.
       destruct (Nat.lt_ge_cases k (List.length (ptyp_doms t))) as [Hlt | Hge].
       - destruct (ptyp_skip_lt k t Hlt) as (B & HB & Hs); rewrite Hs.

@@ -412,7 +412,7 @@ Qed.
 
 Lemma eval_ihs_nth : forall ρ nm A Bs gs1 gs vs ihs, ⟦ihs vs of gs under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ ihs ->
     forall t gs2 v, gs = gs1 ++ ca_rec t :: gs2 -> List.nth_error vs (List.length gs1) = Some v ->
-    exists r, List.nth_error ihs (cargs_nrec gs1) = Some r /\ eval_ih gc_deps gc_stack ρ nm A Bs t v r.
+    exists r, List.nth_error ihs (cargs_nrec gs1) = Some r /\ ⟦ih v of t under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r.
 Proof.
   intros ρ nm A Bs gs1; induction gs1 as [| g gs1 IH]; intros gs vs ihs H t gs2 v -> Hv; inversion H; subst; cbn in *.
   - injection Hv as ->; eauto.
@@ -422,7 +422,7 @@ Qed.
 
 (** ** Fresh Variables of Readback *)
 
-Lemma fresh_tele_nth : forall E T s vs, fresh_tele gc_deps gc_stack E T s vs ->
+Lemma fresh_tele_nth : forall E T s vs, Ftele T in gc_deps ⍮ gc_stack ⍮ E ⍮ s ↘ vs ->
     forall k A, List.nth_error T k = Some (ce_ass A) ->
       exists b, ⟦ A ⟧ env_args E (List.firstn k vs) ↘ b /\ List.nth_error vs k = Some (⇑! b (s + k)).
 Proof.
@@ -433,11 +433,11 @@ Proof.
     rewrite Hb; do 3 f_equal; lia.
 Qed.
 
-Lemma fresh_tele_length : forall E T s vs, fresh_tele gc_deps gc_stack E T s vs -> List.length vs = List.length T.
+Lemma fresh_tele_length : forall E T s vs, Ftele T in gc_deps ⍮ gc_stack ⍮ E ⍮ s ↘ vs -> List.length vs = List.length T.
 Proof. induction 1; cbn; congruence. Qed.
 
-Lemma functional_fresh_cargs : forall p ups E gs s vs, fresh_cargs gc_deps gc_stack p ups E gs s vs ->
-    forall vs', fresh_cargs gc_deps gc_stack p ups E gs s vs' -> vs = vs'.
+Lemma functional_fresh_cargs : forall p ups E gs s vs, Fcargs gs of p ups in gc_deps ⍮ gc_stack ⍮ E ⍮ s ↘ vs ->
+    forall vs', Fcargs gs of p ups in gc_deps ⍮ gc_stack ⍮ E ⍮ s ↘ vs' -> vs = vs'.
 Proof.
   induction 1; intros vs' H'; inversion H'; subst; [ reflexivity | |].
   - functional_eval_rewrite_clear.
@@ -447,8 +447,8 @@ Proof.
     match goal with H : fresh_cargs _ _ _ _ _ _ _ _ |- _ => rewrite (IHfresh_cargs _ H) end; reflexivity.
 Qed.
 
-Lemma functional_fresh_ihs : forall ρ A ρa gs vs s ihs, fresh_ihs gc_deps gc_stack ρ A ρa gs vs s ihs ->
-    forall ihs', fresh_ihs gc_deps gc_stack ρ A ρa gs vs s ihs' -> ihs = ihs'.
+Lemma functional_fresh_ihs : forall ρ A ρa gs vs s ihs, Fihs vs at gs under ρ A in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ ihs ->
+    forall ihs', Fihs vs at gs under ρ A in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ ihs' -> ihs = ihs'.
 Proof.
   induction 1; intros ihs' H'; inversion H'; subst; [ reflexivity | auto |].
   match goal with H1 : eval_ihty _ _ ?r ?A ?E ?t ?v ?a1, H2 : eval_ihty _ _ ?r ?A ?E ?t ?v ?a2 |- _ =>
@@ -456,11 +456,11 @@ Proof.
   f_equal; auto.
 Qed.
 
-Lemma fresh_cargs_nth : forall p ups E gs s vs, fresh_cargs gc_deps gc_stack p ups E gs s vs ->
+Lemma fresh_cargs_nth : forall p ups E gs s vs, Fcargs gs of p ups in gc_deps ⍮ gc_stack ⍮ E ⍮ s ↘ vs ->
     forall gs1 g gs2, gs = gs1 ++ g :: gs2 ->
     (forall A, g = ca_arg A -> exists a, ⟦ A ⟧ env_args E (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
        List.nth_error vs (List.length gs1) = Some (⇑! a (s + List.length gs1))) /\
-    (forall t, g = ca_rec t -> exists a, eval_shty gc_deps gc_stack p ups (env_args E (nonrec_vals gs1 (List.firstn (List.length gs1) vs))) t a /\
+    (forall t, g = ca_rec t -> exists a, ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args E (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
        List.nth_error vs (List.length gs1) = Some (⇑! a (s + List.length gs1))).
 Proof.
   intros p ups E gs s vs H gs1; revert E gs s vs H; induction gs1 as [| g1 gs1 IH]; intros * H g gs2 Heq; cbn in Heq.
@@ -479,10 +479,10 @@ Proof.
         rewrite Hv; do 3 f_equal; lia.
 Qed.
 
-Lemma fresh_ihs_nth : forall ρ A ρa gs vs s ihs, fresh_ihs gc_deps gc_stack ρ A ρa gs vs s ihs ->
+Lemma fresh_ihs_nth : forall ρ A ρa gs vs s ihs, Fihs vs at gs under ρ A in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ ihs ->
     forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
     exists v a, List.nth_error vs (List.length gs1) = Some v /\
-      eval_ihty gc_deps gc_stack ρ A (env_args ρa (nonrec_vals gs1 (List.firstn (List.length gs1) vs))) t v a /\
+      ⟦ihty v of t under ρ A ⟧ gc_deps ⍮ gc_stack ⍮ env_args ρa (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
       List.nth_error ihs (cargs_nrec gs1) = Some (⇑! a (s + cargs_nrec gs1)).
 Proof.
   intros ρ A ρa gs vs s ihs H gs1; revert ρa gs vs s ihs H; induction gs1 as [| g1 gs1 IH]; intros * H t gs2 Heq; cbn in Heq.
@@ -501,10 +501,10 @@ Qed.
 Lemma read_ne_elim_inv : forall s ρ0 nm A0 Bs0 p D as0 m0 M0, ind_lookup gc_deps gc_stack p = Some D ->
     Rne d_elim ρ0 nm A0 Bs0 p as0 m0 in gc_deps ⍮ gc_stack ⍮ s ↘ M0 ->
     exists ns a A'' Bs'' Mr, M0 = ne_elim nm A'' Bs'' Mr /\ List.length as0 = ind_np D /\ nm = S (ind_nn D) /\
-      fresh_tele gc_deps gc_stack (env_args nil (List.firstn (ind_nu D) as0)) (List.rev (ind_nparams D)) s ns /\
+      Ftele List.rev (ind_nparams D) in gc_deps ⍮ gc_stack ⍮ env_args nil (List.firstn (ind_nu D) as0) ⍮ s ↘ ns /\
       ⟦ A0 ⟧ env_args ρ0 (ns ++ ⇑! (d_ind p (List.firstn (ind_nu D) as0 ++ ns)) (s + ind_nn D) :: nil) ↘ a /\
       Rtyp a in gc_deps ⍮ gc_stack ⍮ S (s + ind_nn D) ↘ A'' /\
-      read_brs gc_deps gc_stack s ρ0 A0 p D (List.firstn (ind_nu D) as0) (ind_cons D) Bs0 Bs'' /\
+      Rbrs Bs0 at ind_cons D of p D (List.firstn (ind_nu D) as0) under A0 in gc_deps ⍮ gc_stack ⍮ ρ0 ⍮ s ↘ Bs'' /\
       Rne m0 in gc_deps ⍮ gc_stack ⍮ s ↘ Mr.
 Proof.
   intros * Hl H; inversion H; subst.
@@ -512,17 +512,17 @@ Proof.
   eexists _, _, _, _, _; split; [ reflexivity |]; eauto 10.
 Qed.
 
-Lemma read_brs_fst : forall s ρ0 A0 p D ua cs Bs Bs'', read_brs gc_deps gc_stack s ρ0 A0 p D ua cs Bs Bs'' ->
+Lemma read_brs_fst : forall s ρ0 A0 p D ua cs Bs Bs'', Rbrs Bs at cs of p D ua under A0 in gc_deps ⍮ gc_stack ⍮ ρ0 ⍮ s ↘ Bs'' ->
     List.map fst (nbrs_to_brs Bs'') = List.map fst Bs.
 Proof. induction 1; cbn; congruence. Qed.
 
-Lemma read_brs_nth : forall s ρ0 A0 p D ua cs Bs Bs'', read_brs gc_deps gc_stack s ρ0 A0 p D ua cs Bs Bs'' ->
+Lemma read_brs_nth : forall s ρ0 A0 p D ua cs Bs Bs'', Rbrs Bs at cs of p D ua under A0 in gc_deps ⍮ gc_stack ⍮ ρ0 ⍮ s ↘ Bs'' ->
     forall k c n B, List.nth_error Bs k = Some (c, n, B) ->
     exists gs ns vs ihs b t Bn, List.nth_error cs k = Some (c, gs) /\
       List.nth_error (nbrs_to_brs Bs'') k = Some (c, n, nf_to_exp Bn) /\
-      fresh_tele gc_deps gc_stack (env_args nil ua) (List.rev (ind_nparams D)) s ns /\
-      fresh_cargs gc_deps gc_stack p ua (env_args nil (ua ++ ns)) gs (s + ind_nn D) vs /\
-      fresh_ihs gc_deps gc_stack ρ0 A0 (env_args nil (ua ++ ns)) gs vs (s + ind_nn D + List.length gs) ihs /\
+      Ftele List.rev (ind_nparams D) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ ns /\
+      Fcargs gs of p ua in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ ns) ⍮ (s + ind_nn D) ↘ vs /\
+      Fihs vs at gs under ρ0 A0 in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ ns) ⍮ (s + ind_nn D + List.length gs) ↘ ihs /\
       ⟦ B ⟧ env_args ρ0 (ns ++ vs ++ ihs) ↘ b /\
       ⟦ A0 ⟧ env_args ρ0 (ns ++ d_con p c (ua ++ ns ++ vs) :: nil) ↘ t /\
       Rnf ⇓ t b in gc_deps ⍮ gc_stack ⍮ (s + n) ↘ Bn.
@@ -557,7 +557,7 @@ Qed.
 
 Lemma eval_fam_cod_ihfam_inv : forall ρm A0 ρ0 t f x a,
     ⟦ fam_cod ⟧ nil ↦ d_ihfam ρm A0 ρ0 t f ↦ x ↘ a ->
-    exists fx, $| f & x | gc_deps ⍮ gc_stack ↘ fx /\ eval_ihty gc_deps gc_stack ρm A0 (ρ0 ↦ x) t fx a.
+    exists fx, $| f & x | gc_deps ⍮ gc_stack ↘ fx /\ ⟦ihty fx of t under ρm A0 ⟧ gc_deps ⍮ gc_stack ⍮ ρ0 ↦ x ↘ a.
 Proof.
   intros * H; unfold fam_cod in H; inversion H; subst.
   match goal with H1 : ⟦ #1 ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H1; subst end.
@@ -652,15 +652,15 @@ Proof.
   exact (sub_preserves_exp _ _ _ _ _ _ _ H Hs).
 Qed.
 
-Lemma eval_ih_pi_inv : forall ρ0 nm0 A0 Bs0 B t v r, eval_ih gc_deps gc_stack ρ0 nm0 A0 Bs0 (pt_pi B t) v r -> r = d_ihfn ρ0 nm0 A0 Bs0 t v.
+Lemma eval_ih_pi_inv : forall ρ0 nm0 A0 Bs0 B t v r, ⟦ih v of pt_pi B t under nm0 A0 Bs0 ⟧ gc_deps ⍮ gc_stack ⍮ ρ0 ↘ r -> r = d_ihfn ρ0 nm0 A0 Bs0 t v.
 Proof. intros * H; inversion H; reflexivity. Qed.
 
-Lemma eval_ihty_pi_inv : forall ρm A0 ρ0 B t v a, eval_ihty gc_deps gc_stack ρm A0 ρ0 (pt_pi B t) v a ->
+Lemma eval_ihty_pi_inv : forall ρm A0 ρ0 B t v a, ⟦ihty v of pt_pi B t under ρm A0 ⟧ gc_deps ⍮ gc_stack ⍮ ρ0 ↘ a ->
     exists b, ⟦ B ⟧ ρ0 ↘ b /\ a = Πᵈ b (nil ↦ d_ihfam ρm A0 ρ0 t v) fam_cod.
 Proof. intros * H; inversion H; subst; eauto. Qed.
 
 Lemma eval_app_ihfn_inv : forall ρ0 nm0 A0 Bs0 t f c r, $| d_ihfn ρ0 nm0 A0 Bs0 t f & c | gc_deps ⍮ gc_stack ↘ r ->
-    exists fc, $| f & c | gc_deps ⍮ gc_stack ↘ fc /\ eval_ih gc_deps gc_stack ρ0 nm0 A0 Bs0 t fc r.
+    exists fc, $| f & c | gc_deps ⍮ gc_stack ↘ fc /\ ⟦ih fc of t under nm0 A0 Bs0 ⟧ gc_deps ⍮ gc_stack ⍮ ρ0 ↘ r.
 Proof. intros * H; inversion H; subst; eauto. Qed.
 
 Lemma per_gargs_nth_el : forall ts ρ ρ' xs xs' k A, per_gargs ts ρ ρ' xs xs' ->
@@ -961,7 +961,7 @@ Section ElimSem.
 
   (** The fresh variables at [ups] of the motive's context, against its
       instance's types. *)
-  Lemma mctx_entry_link : forall s ns_u, fresh_tele gc_deps gc_stack (env_args nil ups) (List.rev (ind_nparams D)) s ns_u ->
+  Lemma mctx_entry_link : forall s ns_u, Ftele List.rev (ind_nparams D) in gc_deps ⍮ gc_stack ⍮ env_args nil ups ⍮ s ↘ ns_u ->
       tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns_u ns_u ->
       forall k X a, List.nth_error (List.rev (elim_mctx p D Us)) k = Some (ce_ass X) ->
         ⟦ X ⟧ env_args ρ (List.firstn k (ns_u ++ ⇑! (d_ind p (ups ++ ns_u)) (s + ind_nn D) :: nil)) ↘ a ->
@@ -1159,7 +1159,7 @@ Section ElimSem.
       stuck eliminator's readback makes, at admissible uniform parameters. *)
   Lemma mctx_fresh_glu : forall SbM, EG elim_mctx p D Us ++ Γ ∈ glu_ctx_env ↘ SbM ->
       forall Δ σ'' ua ns_x, Δ ⊢ˢ σ'' ® ρ ∈ SbΓ -> ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ua -> List.length ua = ind_nu D ->
-        fresh_tele gc_deps gc_stack (env_args nil ua) (List.rev (ind_nparams D)) (List.length Δ) ns_x ->
+        Ftele List.rev (ind_nparams D) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ List.length Δ ↘ ns_x ->
         elim_mctx p D (List.map (fun U => U[σ'']) Us) ++ Δ ⊢ˢ sb_qn nm σ''
           ® env_args ρ (ns_x ++ ⇑! (d_ind p (ua ++ ns_x)) (List.length Δ + ind_nn D) :: nil) ∈ SbM.
   Proof.
@@ -1195,9 +1195,9 @@ Section ElimSem.
       instance's types. *)
   Lemma bctx_entry_link : forall c gs, ind_con D c = Some gs ->
       forall s ns_u vs_u ihs_u,
-      fresh_tele gc_deps gc_stack (env_args nil ups) (List.rev (ind_nparams D)) s ns_u ->
-      fresh_cargs gc_deps gc_stack p ups (env_args nil (ups ++ ns_u)) gs (s + ind_nn D) vs_u ->
-      fresh_ihs gc_deps gc_stack ρ A (env_args nil (ups ++ ns_u)) gs vs_u (s + ind_nn D + List.length gs) ihs_u ->
+      Ftele List.rev (ind_nparams D) in gc_deps ⍮ gc_stack ⍮ env_args nil ups ⍮ s ↘ ns_u ->
+      Fcargs gs of p ups in gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ns_u) ⍮ (s + ind_nn D) ↘ vs_u ->
+      Fihs vs_u at gs under ρ A in gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ns_u) ⍮ (s + ind_nn D + List.length gs) ↘ ihs_u ->
       tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns_u ns_u ->
       tele_full (ind_ar D ups ns_u c) (cargs_nonrec gs) (nonrec_vals gs vs_u) (nonrec_vals gs vs_u) ->
       ind_args_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns_u gs vs_u vs_u ->
@@ -1364,9 +1364,9 @@ Section ElimSem.
       forall SbB, EG elim_bctx p D gs A Us ++ Γ ∈ glu_ctx_env ↘ SbB ->
       forall Δ σ'' ua ns_x vs_x ihs_x, Δ ⊢ˢ σ'' ® ρ ∈ SbΓ ->
         ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ua -> List.length ua = ind_nu D ->
-        fresh_tele gc_deps gc_stack (env_args nil ua) (List.rev (ind_nparams D)) (List.length Δ) ns_x ->
-        fresh_cargs gc_deps gc_stack p ua (env_args nil (ua ++ ns_x)) gs (List.length Δ + ind_nn D) vs_x ->
-        fresh_ihs gc_deps gc_stack ρ A (env_args nil (ua ++ ns_x)) gs vs_x (List.length Δ + ind_nn D + List.length gs) ihs_x ->
+        Ftele List.rev (ind_nparams D) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ List.length Δ ↘ ns_x ->
+        Fcargs gs of p ua in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ ns_x) ⍮ (List.length Δ + ind_nn D) ↘ vs_x ->
+        Fihs vs_x at gs under ρ A in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ ns_x) ⍮ (List.length Δ + ind_nn D + List.length gs) ↘ ihs_x ->
         tele_sub (elim_bctx p D gs A Us) σ'' ++ Δ ⊢ˢ sb_qn (List.length (elim_bctx p D gs A Us)) σ''
           ® env_args ρ (ns_x ++ vs_x ++ ihs_x) ∈ SbB.
   Proof.
@@ -1423,7 +1423,7 @@ Section ElimSem.
       instance. *)
   Lemma motive_rb : forall Δ σ'' ua ns_x af A'', Δ ⊢ˢ σ'' ® ρ ∈ SbΓ ->
       ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ua -> List.length ua = ind_nu D ->
-      fresh_tele gc_deps gc_stack (env_args nil ua) (List.rev (ind_nparams D)) (List.length Δ) ns_x ->
+      Ftele List.rev (ind_nparams D) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ List.length Δ ↘ ns_x ->
       ⟦ A ⟧ env_args ρ (ns_x ++ ⇑! (d_ind p (ua ++ ns_x)) (List.length Δ + ind_nn D) :: nil) ↘ af ->
       Rtyp af in gc_deps ⍮ gc_stack ⍮ S (List.length Δ + ind_nn D) ↘ A'' ->
       elim_mctx p D (List.map (fun U => U[σ'']) Us) ++ Δ ⊢ A[sb_qn nm σ''] ≈ A'' : Typeω@iA.
@@ -1449,9 +1449,9 @@ Section ElimSem.
   Lemma br_rb : forall Δ σ'' ua c gs n B ns_x vs_x ihs_x b t Bn, Δ ⊢ˢ σ'' ® ρ ∈ SbΓ ->
       ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ua -> List.length ua = ind_nu D ->
       ind_con D c = Some gs -> In (c, n, B) Bs ->
-      fresh_tele gc_deps gc_stack (env_args nil ua) (List.rev (ind_nparams D)) (List.length Δ) ns_x ->
-      fresh_cargs gc_deps gc_stack p ua (env_args nil (ua ++ ns_x)) gs (List.length Δ + ind_nn D) vs_x ->
-      fresh_ihs gc_deps gc_stack ρ A (env_args nil (ua ++ ns_x)) gs vs_x (List.length Δ + ind_nn D + List.length gs) ihs_x ->
+      Ftele List.rev (ind_nparams D) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ List.length Δ ↘ ns_x ->
+      Fcargs gs of p ua in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ ns_x) ⍮ (List.length Δ + ind_nn D) ↘ vs_x ->
+      Fihs vs_x at gs under ρ A in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ ns_x) ⍮ (List.length Δ + ind_nn D + List.length gs) ↘ ihs_x ->
       ⟦ B ⟧ env_args ρ (ns_x ++ vs_x ++ ihs_x) ↘ b ->
       ⟦ A ⟧ env_args ρ (ns_x ++ d_con p c (ua ++ ns_x ++ vs_x) :: nil) ↘ t ->
       Rnf ⇓ t b in gc_deps ⍮ gc_stack ⍮ (List.length Δ + n) ↘ Bn ->
@@ -1621,7 +1621,7 @@ Section ElimSem.
       tele_pre (ind_ar D ups ms c0) (List.length (cargs_nonrec gs1)) ws ws ->
       tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t0)) k ys ys ->
       Δ' ⊢ˢ σ' ® ρ ∈ SbΓ -> Ty = ptyp_ty_at p (List.map (fun U => U[σ']) Us) σs (ptyp_skip k t0) -> Δ' ⊢ N : Ty ->
-      Δ' ⊢ Ty : Typeω@j -> eval_shty gc_deps gc_stack p ups (env_args nil (ups ++ ms ++ ws ++ ys)) (ptyp_skip k t0) a ->
+      Δ' ⊢ Ty : Typeω@j -> ⟦shty ptyp_skip k t0 of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ms ++ ws ++ ys) ↘ a ->
       DF a ≈ a ∈ per_univ_elem j ↘ R -> R v v -> u <= j -> DG a ∈ glu_univ_elem j ↘ P ↘ El ->
       Δ' ⊢ N : Ty ® v ∈ El.
   Proof.
@@ -1703,7 +1703,7 @@ Section ElimSem.
         pose proof (glu_univ_elem_trm_escape _ _ _ _ Hgb1 _ _ _ _ Hb) as Hbt.
         pose proof (app_wk_typed _ _ _ _ _ _ _ HN Hφ Hbt) as HNt'.
         pose proof (sub_typ_extend _ _ _ _ _ _ _ HITt HOTt Hφ Hbt) as HTyt'.
-        assert (Ea2s' : eval_shty gc_deps gc_stack p ups (env_args nil (ups ++ ms ++ ws ++ ys ++ c :: nil)) (ptyp_skip (S k) t0) a2).
+        assert (Ea2s' : ⟦shty ptyp_skip (S k) t0 of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ms ++ ws ++ ys ++ c :: nil) ↘ a2).
         { replace (ups ++ ms ++ ws ++ ys ++ c :: nil) with ((ups ++ ms ++ ws ++ ys) ++ c :: nil) by (rewrite <- !List.app_assoc; reflexivity).
           rewrite env_args_snoc; exact Ea2s. }
         rewrite <- !List.app_assoc in Hgr'; cbn [List.app] in Hgr'.
@@ -1730,23 +1730,23 @@ Section ElimSem.
       ptyp_skip k t0 = t -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t0)) k ys ys ->
       Δ' ⊢ˢ σ' ® ρ ∈ SbΓ -> Ty = ptyp_ty_at p (List.map (fun U => U[σ']) Us) σs t -> Δ' ⊢ N : Ty ->
       ind_shape_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) pre t v v ->
-      eval_ih gc_deps gc_stack ρ nm A Bs t v r ->
-      eval_ihty gc_deps gc_stack ρ A (env_args nil (ups ++ pre)) t v a ->
+      ⟦ih v of t under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r ->
+      ⟦ihty v of t under ρ A ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ a ->
       DF a ≈ a ∈ per_univ_elem j ↘ R -> R r r -> u <= j -> iA <= j ->
       DG a ∈ glu_univ_elem j ↘ P ↘ El ->
       Δ' ⊢ ptyp_ihty A[sb_qn nm σ'] Id σs N t : Typeω@j ->
       Δ' ⊢ ptyp_ih nm A[sb_qn nm σ'] (brs_sub Bs σ') σs N t : ptyp_ihty A[sb_qn nm σ'] Id σs N t ® r ∈ El.
 
   Lemma rec_self_case : forall Δ' pre k0 Ps Ty N v,
-      (forall bsr Q, eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ pre)) bsr -> Ty = apps (a_ind p) Q ->
+      (forall bsr Q, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ bsr -> Ty = apps (a_ind p) Q ->
          List.length Q = ind_np D /\ tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bsr bsr /\
          (forall bsr', tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bsr bsr' ->
             glu_nparams D NEl Δ' (List.firstn (ind_nu D) Q) (List.skipn (ind_nu D) Q) bsr' /\
             forall Δ φ, Δ ⊢ᵏ φ : Δ' -> glu_params_top D Δ (List.map (fun P => P[φ]ʷ) Q) (ups ++ bsr'))) ->
-      (forall bsr Q, eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ pre)) bsr -> Ty = apps (a_ind p) Q ->
+      (forall bsr Q, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ bsr -> Ty = apps (a_ind p) Q ->
          forall Δ φ Q', Δ ⊢ᵏ φ : Δ' -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
            ind_glu_elem p D ups NEl AEl DP DEl Δ Q' N[φ]ʷ v) ->
-      (forall bsr Q, eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ pre)) bsr -> Ty = apps (a_ind p) Q ->
+      (forall bsr Q, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ bsr -> Ty = apps (a_ind p) Q ->
          forall Δ φ Q', Δ ⊢ᵏ φ : Δ' -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
            elim_prop Δ Q' N[φ]ʷ v) ->
       rec_prop Δ' pre (pt_self k0 Ps) Ty N v.
