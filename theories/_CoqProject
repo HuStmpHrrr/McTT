@@ -20,6 +20,8 @@
 ./Core/Completeness/LevelCases.v
 ./Core/Completeness/LogicalRelation.v
 ./Core/Completeness/ModuleCases.v
+./Core/Completeness/Judgments.v
+./Core/Completeness/KripkeCases.v
 ./Core/Completeness/LogicalRelation/Definitions.v
 ./Core/Completeness/LogicalRelation/Lemmas.v
 ./Core/Completeness/LogicalRelation/Tactics.v

@@ -1,6 +1,11 @@
-(** * The Fundamental Theorem of the PER Model
+(** * The Fundamental Theorem of the PER Model, at One Global Context
 
-    In four parts: contexts, terms, term equality and subtyping.  There is no
+    [completeness_fundamental] ([KripkeCases.v]) states every judgment of a
+    global context semantically, along every sound embedding.  A
+    well-formed global context embeds soundly into itself ([gctx_sem]); at
+    that embedding the semantic judgments are the relations at the global
+    context, as the corollaries below state them for contexts, terms, term
+    equality, subtyping and the module judgments.  There is no
     substitution part, and there cannot be: [wf_sub] constrains [σ] only at the
     indices [Δ] types, whereas [eval_sub] is total, so
     [⋅ ⊢ˢ (fun _ => zero $ zero) : ⋅] holds vacuously while its semantic
@@ -19,6 +24,7 @@ From Mctt.Core.Completeness Require Import
   UniverseCases VariableCases.
 From Mctt.Core.Completeness Require Export LogicalRelation.
 From Mctt.Core.Completeness Require Import ModuleCases GlobalSem.
+From Mctt.Core.Completeness Require Export KripkeCases.
 From Mctt.Core.Syntactic Require Export SystemOpt.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
@@ -30,56 +36,53 @@ Section FundamentalTheorem.
   Lemma sem_msub_id_gc : ⊢ᵍ gc_deps ⍮ gc_stack -> sem_emb gc_deps gc_stack gc_deps gc_stack.
   Proof. exact (gctx_sem _ _). Qed.
 
-  Theorem completeness_fundamental :
-    (forall Γ, ⊢ Γ -> ⊨ Γ) /\
-      (forall Γ A M, Γ ⊢ M : A -> Γ ⊨ M : A) /\
-      (forall Γ A M M', Γ ⊢ M ≈ M' : A -> Γ ⊨ M ≈ M' : A) /\
-      (forall Γ A A', Γ ⊢ A ⊆ A' -> Γ ⊨ A ⊆ A').
+  (** At the identity embedding, the semantic judgments of [GC] are the
+      relations at [GC]. *)
+
+  Corollary completeness_fundamental_ctx : forall Γ, ⊢ Γ -> ⊨ Γ.
   Proof.
-    destruct kripke_fundamental as (Kc & Ke & Kq & Ks & _).
-    repeat split; intros * H;
-      [ pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ H)) as Hid
-      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H))) as Hid
-      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))) as Hid
-      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_subtyp_ctx H))) as Hid ];
-      [ destruct (Kc _ _ _ H _ _ Hid) as [H' _]
-      | destruct (Ke _ _ _ _ _ H _ _ Hid) as (_ & _ & H')
-      | destruct (Kq _ _ _ _ _ _ H _ _ Hid) as (_ & _ & H')
-      | destruct (Ks _ _ _ _ _ H _ _ Hid) as (_ & _ & H') ];
-      destruct GC; exact H'.
+    intros * H; pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ H)) as Hid.
+    destruct completeness_fundamental as (Kc & _).
+    pose proof (kca_ctx (Kc _ _ _ H _ _ Hid)) as H'; destruct GC; exact H'.
+  Qed.
+
+  Corollary completeness_fundamental_exp : forall Γ M A, Γ ⊢ M : A -> Γ ⊨ M : A.
+  Proof.
+    intros * H; pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H))) as Hid.
+    destruct completeness_fundamental as (_ & Ke & _).
+    pose proof (kea_rel (Ke _ _ _ _ _ H _ _ Hid)) as H'; destruct GC; exact H'.
+  Qed.
+
+  Corollary completeness_fundamental_exp_eq : forall Γ M M' A, Γ ⊢ M ≈ M' : A -> Γ ⊨ M ≈ M' : A.
+  Proof.
+    intros * H; pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))) as Hid.
+    destruct completeness_fundamental as (_ & _ & Kq & _).
+    pose proof (kea_rel (Kq _ _ _ _ _ _ H _ _ Hid)) as H'; destruct GC; exact H'.
+  Qed.
+
+  Corollary completeness_fundamental_subtyp : forall Γ A A', Γ ⊢ A ⊆ A' -> Γ ⊨ A ⊆ A'.
+  Proof.
+    intros * H; pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_subtyp_ctx H))) as Hid.
+    destruct completeness_fundamental as (_ & _ & _ & Ks & _).
+    pose proof (ksa_rel (Ks _ _ _ _ _ H _ _ Hid)) as H'; destruct GC; exact H'.
   Qed.
 
   (** The module judgments. *)
-  Theorem completeness_fundamental_modules :
+  Corollary completeness_fundamental_modules :
     (forall Γ Ψ Ψ', gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> Γ ⊨ˣ Ψ ≈ Ψ') /\
       (forall Γ U U', gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U' -> Γ ⊨ᵘ U ≈ U') /\
       (forall Γ H H', gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H' -> Γ ⊨ᵐ H ≈ H').
   Proof.
-    destruct kripke_fundamental as (_ & _ & _ & _ & _ & Kx & Ku & Km).
+    destruct completeness_fundamental as (_ & _ & _ & _ & _ & Kx & Ku & Km).
     split; [| split ]; intros * HJ;
       [ pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_ext_eq_ctx HJ))) as Hid
       | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_unit_eq_ctx HJ))) as Hid
       | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HJ))) as Hid ];
-      [ destruct (Kx _ _ _ _ _ HJ _ _ Hid) as [HR _]
-      | destruct (Ku _ _ _ _ _ HJ _ _ Hid) as [HR _]
-      | destruct (Km _ _ _ _ _ HJ _ _ Hid) as [HR _] ];
+      [ pose proof (kxa_rel (Kx _ _ _ _ _ HJ _ _ Hid)) as HR
+      | pose proof (kna_rel (Ku _ _ _ _ _ HJ _ _ Hid)) as HR
+      | pose proof (kma_rel (Km _ _ _ _ _ HJ _ _ Hid)) as HR ];
       destruct GC; exact HR.
   Qed.
-
-  #[local]
-  Ltac solve_it := pose proof completeness_fundamental; firstorder.
-
-  Theorem completeness_fundamental_ctx : forall Γ, ⊢ Γ -> ⊨ Γ.
-  Proof. solve_it. Qed.
-
-  Theorem completeness_fundamental_exp : forall Γ M A, Γ ⊢ M : A -> Γ ⊨ M : A.
-  Proof. solve_it. Qed.
-
-  Theorem completeness_fundamental_exp_eq : forall Γ M M' A, Γ ⊢ M ≈ M' : A -> Γ ⊨ M ≈ M' : A.
-  Proof. solve_it. Qed.
-
-  Theorem completeness_fundamental_subtyp : forall Γ A A', Γ ⊢ A ⊆ A' -> Γ ⊨ A ⊆ A'.
-  Proof. solve_it. Qed.
 
 End FundamentalTheorem.
 

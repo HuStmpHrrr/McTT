@@ -19,7 +19,7 @@ From Mctt.Core.Completeness Require Import
   TrueFalseCases UniverseCases VariableCases LogicalRelation UnitCases InstanceCases
   MemberReps IndCases TeleSem ElimCases ElimIota
   ModuleVal ModuleSem UnitSub ModexpRules GlobalArgs IndSem SemK UnitBody FiledSem UnitSem MemSem CanonSem AppSem SelSem
-  ModuleCases.
+  ModuleCases KripkeCases.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
@@ -590,14 +590,14 @@ Qed.
 Lemma kread : forall Θ Ξ Θ2 Ξ2 Γ A M, sem_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M.
 Proof.
-  intros * Hμ HM; destruct kripke_fundamental as (_ & Ke & _).
-  exact (proj2 (proj2 (Ke _ _ _ _ _ HM _ _ Hμ))).
+  intros * Hμ HM; destruct completeness_fundamental as (_ & Ke & _).
+  exact (kea_rel (Ke _ _ _ _ _ HM _ _ Hμ)).
 Qed.
 
 Lemma kread_ctx : forall Θ Ξ Θ2 Ξ2 Γ, sem_emb Θ Ξ Θ2 Ξ2 -> wf_ctx Θ Ξ Γ -> @sem_ctx (gc_mk Θ2 Ξ2) Γ.
 Proof.
-  intros * Hμ HΓ; destruct kripke_fundamental as (Kc & _).
-  exact (proj1 (Kc _ _ _ HΓ _ _ Hμ)).
+  intros * Hμ HΓ; destruct completeness_fundamental as (Kc & _).
+  exact (kca_ctx (Kc _ _ _ HΓ _ _ Hμ)).
 Qed.
 
 Lemma svalid_tele : forall Θs Ξs Θ2 Ξ2 Ξ, gs_valid sem_V sem_F sem_VD Θs Ξs Θ2 Ξ2 Ξ -> tele_ass (gs_tele Ξ).
@@ -643,8 +643,8 @@ Proof.
   assert (HC : wf_ctx Θ Ξ ((Δ ++ gs_tele Ξ) ++ ⋅)) by (rewrite app_nil_r; exact (presup_modexp_eq_ctx HE)).
   assert (HU : Θ ⍮ Ξ ⍮ ⋅ ⊢ᵘ gu_mk (Δ ++ gs_tele Ξ) (md_alias E) ≈ gu_mk (Δ ++ gs_tele Ξ) (md_alias E))
     by (apply wf_unit_eq_alias; [ exact (ext_of_ctx _ _ _ _ HC) | exact Ht | exact Ht | exact HE' | exact HE' ]).
-  destruct kripke_fundamental as (_ & _ & _ & _ & _ & _ & Ku & _).
-  destruct (Ku _ _ _ _ _ HU _ _ Hμ) as (_ & HK & _).
+  destruct completeness_fundamental as (_ & _ & _ & _ & _ & _ & Ku & _).
+  destruct (Ku _ _ _ _ _ HU _ _ Hμ) as [_ _ HK _].
   exact (semK_grow _ _ _ _ Hg {| em_wf := HgS; em_res := Hs |} _ _ HK).
 Qed.
 
@@ -688,7 +688,7 @@ Lemma sem_core_of_typed : forall Θ Ξ D Θ2 Ξ2, decl_typed Θ Ξ D -> sem_emb 
 Proof.
   intros * Hdt Hμ.
   pose proof Hdt as [Hass _ Hle HΔ Hsu [i HS] _ HA HPl HP HN Hnd Hsh].
-  destruct kripke_fundamental as (Kc & _).
+  destruct completeness_fundamental as (Kc & _).
   assert (Harg : forall c gs k A, ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
              @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (astrat gs k ++ ind_params D) ((ind_sort D)[wk_shiftn (k + ind_nn D)]ʷ) A A /\
              exists j : nat, @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (astrat gs k ++ ind_params D) (Typeω@j) A A).
@@ -702,7 +702,7 @@ Proof.
   assert (Hstrat : forall c gs k, ind_con D c = Some gs -> k <= List.length (cargs_nonrec gs) ->
              @sem_ctx (gc_mk Θ2 Ξ2) (astrat gs k ++ ind_params D)).
   { intros c gs k Hcon; induction k as [| k IH]; intros Hk.
-    + unfold astrat; cbn [List.firstn List.rev List.app]; exact (proj1 (Kc _ _ _ HΔ _ _ Hμ)).
+    + unfold astrat; cbn [List.firstn List.rev List.app]; exact (kca_ctx (Kc _ _ _ HΔ _ _ Hμ)).
     + destruct (nth_error_lt_some' (cargs_nonrec gs) k ltac:(lia)) as [A HA0].
       assert (Hst : astrat gs (S k) = ce_ass A :: astrat gs k).
       { unfold astrat; rewrite (firstn_S_snoc _ _ (ce_ass A)) by (rewrite List.nth_error_map, HA0; reflexivity).
@@ -729,7 +729,7 @@ Proof.
     pose proof (kread _ _ _ _ _ _ _ Hμ HT) as H.
     split; [ exact H | exact (sort_large_sem _ _ _ _ Hsu H) ]. }
   constructor.
-  - exact (proj1 (Kc _ _ _ HΔ _ _ Hμ)).
+  - exact (kca_ctx (Kc _ _ _ HΔ _ _ Hμ)).
   - exists i; exact (kread _ _ _ _ _ _ _ Hμ HS).
   - destruct (ind_ty_typed0 _ _ _ Hdt) as [j Hj]; exists j; exact (kread _ _ _ _ _ _ _ Hμ Hj).
   - intros k A HA0.
