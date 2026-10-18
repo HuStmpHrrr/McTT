@@ -33,8 +33,8 @@ Lemma rel_modexp_of_at : forall Γ H H', Γ ⊨ᵐ H ≈ H -> Γ ⊨ᵐ H' ≈ H
        exists h h', ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h /\ ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ' ↘ h' /\ per_dmod h h') ->
     Γ ⊨ᵐ H ≈ H'.
 Proof.
-  intros * [R [HR HH]] [R2 [HR2 HH']] Hat.
-  exists R, HR; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  intros * [R HR HH] [R2 HR2 HH'] Hat.
+  refine (mk_rel_modexp_under_ctx _ _ _ R HR _); intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   pose proof (rel_sub_under_ctx_at' Hσ HΓ' HR _ _ _ _ Hρ Hev Hev') as Hρσ.
   assert (HP' : PER R') by (eapply per_env_PER; exact HΓ').
   assert (Hρρ : R' ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
@@ -63,9 +63,9 @@ Definition mlinks (Γ : ctx) (H : modexp) : Prop :=
 (** A valid module expression is so moved. *)
 Lemma mlinks_of_valid : forall Γ H H', Γ ⊨ᵐ H ≈ H' -> mlinks Γ H.
 Proof.
-  intros * [R [HR HH]] Γ' R' σ σ' ρ ρσ HΓ' Hσ Hρ Hev.
+  intros * [R HR HH] Γ' R' σ σ' ρ ρσ HΓ' Hσ Hρ Hev.
   destruct (HH _ _ HΓ' _ _ (rel_sub_under_ctx_refl_left Hσ) _ _ _ _ Hρ Hev Hev) as [h1 h2 h3 h4 E1 E2 _ _ (C12 & _)].
-  exists h1, h2; repeat split; assumption.
+  exists h1 h2; assumption.
 Qed.
 
 (** The output of a substitution is determined only pointwise. *)
@@ -82,14 +82,14 @@ Lemma rel_modexp_of_links : forall Γ H H', ⊨ Γ -> mlinks Γ H -> mlinks Γ H
 Proof.
   intros * HΓ L L' Hat.
   destruct (sem_ctx_per_ctx_env HΓ) as [R HR].
-  exists R, HR; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  refine (mk_rel_modexp_under_ctx _ _ _ R HR _); intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   pose proof (rel_sub_under_ctx_at' Hσ HΓ' HR _ _ _ _ Hρ Hev Hev') as Hρσ.
   assert (HP' : PER R') by (eapply per_env_PER; exact HΓ').
   assert (Hρρ : R' ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
   assert (Hρ'ρ' : R' ρ' ρ') by (etransitivity; [ symmetry; exact Hρ | exact Hρ ]).
-  destruct (L _ _ _ _ _ _ HΓ' Hσ Hρρ Hev) as (h1 & h2 & E1 & E2 & D12).
-  destruct (L' _ _ _ _ _ _ HΓ' (rel_sub_under_ctx_sym Hσ) Hρ'ρ' Hev') as (h4 & h3 & E4 & E3 & D43).
-  destruct (Hat _ HR _ _ Hρσ) as (g2 & g3 & F2 & F3 & D23).
+  destruct (L _ _ _ _ _ _ HΓ' Hσ Hρρ Hev) as [h1 h2 E1 E2 D12].
+  destruct (L' _ _ _ _ _ _ HΓ' (rel_sub_under_ctx_sym Hσ) Hρ'ρ' Hev') as [h4 h3 E4 E3 D43].
+  destruct (Hat _ HR _ _ Hρσ) as [g2 g3 F2 F3 D23].
   pose proof (functional_eval_modexp _ _ _ _ F2 E2) as ->; pose proof (functional_eval_modexp _ _ _ _ F3 E3) as ->.
   apply (mk_rel_mod h1 h2 h3 h4); try assumption.
   split; [ exact D12 | split; [ exact D23 | exact (per_dmod_sym _ _ D43) ] ].
@@ -115,7 +115,7 @@ Proof.
   induction 1 as [U0 Γ0 | n U1 Γ0 e Hl IH]; intros R HR ρ ρ' Hρ.
   - destruct (per_ctx_env_tail_of _ _ _ HR) as (R0 & HR0 & _).
     destruct (per_ctx_env_cons_mod_inversion HR0 HR) as [HU ER].
-    destruct (proj1 (ER ρ ρ') Hρ) as (Ht & H1 & _ & H3 & _).
+    destruct (proj1 (ER ρ ρ') Hρ) as [Ht H1 _ H3 _].
     exact (tie_mod_rel _ _ _ _ _ _ H1 H3 (HU _ _ Ht)).
   - destruct (per_ctx_env_tail_of _ _ _ HR) as (R0 & HR0 & Ht).
     rewrite !env_mod_S; exact (IH _ HR0 _ _ (Ht _ _ Hρ)).
@@ -125,7 +125,7 @@ Lemma rel_me_var : forall Γ x U, ⊨ Γ -> Γ ∋ #x ≔ₘ U -> Γ ⊨ᵐ me_v
 Proof.
   intros * HΓ Hl.
   destruct (sem_ctx_per_ctx_env HΓ) as [R HR].
-  exists R, HR; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  refine (mk_rel_modexp_under_ctx _ _ _ R HR _); intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   pose proof (rel_sub_under_ctx_at' Hσ HΓ' HR _ _ _ _ Hρ Hev Hev') as Hρσ.
   pose proof (slot_rel _ _ _ Hl _ HR _ _ Hρσ) as Hd.
   apply (mk_rel_mod (env_mod ρσ x) (env_mod ρσ x) (env_mod ρ'σ' x) (env_mod ρ'σ' x));
@@ -147,21 +147,21 @@ Proof.
     intros R ρ HR Hρ.
     destruct (per_ctx_env_tail_of _ _ _ HR) as (R0 & HR0 & _).
     destruct (per_ctx_env_cons_mod_inversion HR0 HR) as [_ ER].
-    destruct (proj1 (ER ρ ρ) Hρ) as (_ & Hd & _).
+    destruct (proj1 (ER ρ ρ) Hρ) as [_ Hd _ _ _].
     rewrite eval_wk_shift; exact Hd.
   - destruct (IH (sem_ctx_tail HC)) as (G0 & U0 & φ & Hφ & -> & HG0 & HsU & Ht).
     exists G0, U0, (φ ⊙ wk_shift); split; [| split; [ apply gunit_wk_wk | split; [ exact HG0 | split; [ exact HsU |] ] ] ].
-    + destruct (rel_wk_under_ctx_shift HC) as [R1 [HR1 [R2 [HR2 Hs]]]].
-      destruct Hφ as [R3 [HR3 [R4 [HR4 Hw]]]].
+    + destruct (rel_wk_under_ctx_shift HC) as [R1 HR1 R2 HR2 Hs].
+      destruct Hφ as [R3 HR3 R4 HR4 Hw].
       assert (E : R2 <~> R3) by (eapply per_ctx_env_right_irrel; eassumption).
-      exists R1, HR1, R4, HR4.
+      refine (mk_rel_wk_under_ctx _ _ _ R1 HR1 R4 HR4 _).
       destruct Hs as [Hsm Hs]; destruct Hw as [Hwm Hw].
       split; [ apply wk_mono_compose; assumption |].
       intros ρ ρ' Hρ; rewrite !(@eval_wk_compose φ wk_shift _ Hwm Hsm).
       apply Hw, E, Hs, Hρ.
     + intros R ρ HR Hρ.
       destruct (per_ctx_env_tail_of _ _ _ HR) as (R0 & HR0 & Htl).
-      destruct Hφ as [_ [_ [_ [_ [Hwm _]]]]].
+      destruct Hφ as [_ _ _ _ [Hwm _]].
       rewrite (@eval_wk_compose φ wk_shift _ Hwm wk_mono_shift), eval_wk_shift, env_mod_S.
       exact (Ht _ _ HR0 (Htl _ _ Hρ)).
 Qed.
@@ -170,7 +170,7 @@ Qed.
 Lemma slot_unit_valid : forall Γ x U, Γ ∋ #x ≔ₘ U -> ⊨ Γ -> Γ ⊨ᵐ me_lit U ≈ me_lit U.
 Proof.
   intros * Hl HC.
-  destruct (slot_decomp _ _ _ Hl HC) as (Γ0 & U0 & φ & Hφ & -> & HG0 & (HU & _) & _).
+  destruct (slot_decomp _ _ _ Hl HC) as (Γ0 & U0 & φ & Hφ & -> & HG0 & [HU _ _] & _).
   pose proof (rel_modexp_under_ctx_gsub (gsub_wk _ _ _ Hφ HC HG0) HU) as H.
   cbn [modexp_sub] in H; rewrite gunit_sub_of_wk in H; exact H.
 Qed.
@@ -179,8 +179,8 @@ Lemma slot_closure_tie : forall Γ x U, Γ ∋ #x ≔ₘ U -> ⊨ Γ ->
     forall R ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> R ρ ρ -> tie_mod (env_mod ρ x) (me_lit U) ρ.
 Proof.
   intros * Hl HC R ρ HR Hρ.
-  destruct (slot_decomp _ _ _ Hl HC) as (Γ0 & U0 & φ & Hφ & -> & _ & (HU & _) & Ht).
-  pose proof Hφ as [_ [_ [_ [_ [Hwm _]]]]].
+  destruct (slot_decomp _ _ _ Hl HC) as (Γ0 & U0 & φ & Hφ & -> & _ & [HU _ _] & Ht).
+  pose proof Hφ as [_ _ _ _ [Hwm _]].
   pose proof (mlinks_of_valid _ _ _ HU _ _ _ _ _ _ HR (rel_sub_of_wk Hφ) Hρ (@eval_sub_of_wk _ _ φ ρ Hwm)) as Hd.
   cbn [modexp_sub] in Hd; rewrite gunit_sub_of_wk in Hd.
   exact (tie_mod_move _ _ _ _ _ (Ht _ _ HR Hρ) (rel_mexp_sym _ _ _ _ Hd)).
@@ -195,7 +195,7 @@ Proof.
   intros R HR ρ ρ' Hρ.
   assert (HP : PER R) by (eapply per_env_PER; exact HR).
   destruct (slot_closure_tie _ _ _ Hl HC _ _ HR ltac:(etransitivity; [ exact Hρ | symmetry; exact Hρ ])) as (h & Hh & Hd).
-  destruct (unit_chain_at HU HR _ _ Hρ) as (h1 & h' & Hh1 & Hh' & Hd').
+  destruct (unit_chain_at HU HR _ _ Hρ) as [h1 h' Hh1 Hh' Hd'].
   pose proof (functional_eval_modexp _ _ _ _ Hh Hh1) as <-.
   exists (env_mod ρ x), h'; split; [ constructor |]; split; [ exact Hh' | eapply per_dmod_trans; eassumption ].
 Qed.
@@ -203,17 +203,27 @@ Qed.
 (** ** Applications *)
 
 (** The values of a module expression lack a parameter of type [B]. *)
+#[warnings="-cannot-define-projection"]
+Record lacks_at (H : modexp) (B : typ) (ρ : env) : Prop := mk_lacks_at
+  { lk_mod : dmod
+  ; lk_param : domain
+  ; lk_typ : domain
+  ; lk_lvl : uidx
+  ; lk_rel : relation domain
+  ; lk_eval_mod : ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ lk_mod
+  ; lk_next : nextparam lk_mod lk_param
+  ; lk_eval_typ : ⟦ B ⟧ ρ ↘ lk_typ
+  ; lk_per : per_univ_elem lk_lvl lk_rel lk_param lk_typ }.
+
 Definition me_lacks (Γ : ctx) (H : modexp) (B : typ) : Prop :=
-  forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ ->
-    exists h a b i RB, ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h /\ nextparam h a /\
-      ⟦ B ⟧ ρ ↘ b /\ per_univ_elem i RB a b.
+  forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ -> lacks_at H B ρ.
 
 Lemma rel_me_app : forall Γ H H' B N N', Γ ⊨ᵐ H ≈ H' -> Γ ⊨ N ≈ N' : B -> me_lacks Γ H B ->
     Γ ⊨ᵐ me_app H N ≈ me_app H' N'.
 Proof.
-  intros * [R [HR HH]] HN Hl.
-  pose proof HN as [RN [HRN [iN HNgen]]].
-  exists R, HR; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  intros * [R HR HH] HN Hl.
+  pose proof HN as [RN HRN iN HNgen].
+  refine (mk_rel_modexp_under_ctx _ _ _ R HR _); intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   pose proof (rel_sub_under_ctx_at' Hσ HΓ' HR _ _ _ _ Hρ Hev Hev') as Hρσ.
   assert (HP : PER R) by (eapply per_env_PER; exact HR).
   assert (Hρσσ : R ρσ ρσ) by (etransitivity; [ exact Hρσ | symmetry; exact Hρσ ]).
@@ -221,7 +231,7 @@ Proof.
     as (h1 & h2 & h3 & h4 & E1 & E2 & E3 & E4 & D1 & D2 & D3 & D4).
   destruct (HNgen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
     as [RB [[b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 (B12 & B23 & B34)] [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 (N12 & N23 & N34)]]].
-  destruct (Hl _ HR _ Hρσσ) as (h & a & b & i & Ra & Eh & Hp & Eb & HRa).
+  destruct (Hl _ HR _ Hρσσ) as [h a b i Ra Eh Hp Eb HRa].
   pose proof (functional_eval_modexp _ _ _ _ Eh E2) as ->.
   pose proof (functional_eval_exp _ _ _ _ Eb Hb2) as ->.
   assert (HPB : PER RB) by (eapply per_elem_PER; exact B23).
@@ -254,11 +264,11 @@ Lemma me_lacks_resp : forall Γ H H' B, Γ ⊨ᵐ H ≈ H' -> me_lacks Γ H' B -
 Proof.
   intros * HH Hl R HR ρ Hρ.
   destruct (rel_modexp_at _ _ _ _ _ HH HR _ _ Hρ) as (h & h' & Eh & Eh' & Hhh).
-  destruct (Hl _ HR _ Hρ) as (h0 & a' & b & i & RB & Eh0 & Hp' & Eb & HRB).
+  destruct (Hl _ HR _ Hρ) as [h0 a' b i RB Eh0 Hp' Eb HRB].
   pose proof (functional_eval_modexp _ _ _ _ Eh0 Eh') as ->.
   destruct (per_dmod_appm _ _ _ (per_dmod_sym _ _ Hhh) Hp') as (j & Ra & a & Hp & HRa & _).
   destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ (proj1 (per_univ_elem_sym _ _ _ _ HRa)) HRB) as (R2 & HR2 & _).
-  exists h, a, b, j, R2; repeat split; eassumption.
+  exists h a b j R2; eassumption.
 Qed.
 
 (** ** [β] *)
@@ -285,8 +295,7 @@ Proof.
   intros * HX R HR ρ Hρ.
   destruct (rel_exp_of_typ_inversion_simple_at HR HX _ _ Hρ) as (a & a' & Ha & Ha' & [Ra HRa]).
   pose proof (functional_eval_exp _ _ _ _ Ha Ha') as <-.
-  exists (dm_local (Δ ++ ce_ass X :: nil) D ρ), a, a, i, Ra.
-  split; [ apply lit_params_val |]; split; [ constructor; exact Ha |]; split; [ exact Ha | exact HRa ].
+  exists (dm_local (Δ ++ ce_ass X :: nil) D ρ) a a i Ra; [ apply lit_params_val | constructor; exact Ha | exact Ha | exact HRa ].
 Qed.
 
 (** The closures of related literals with an outermost parameter, given
@@ -297,7 +306,7 @@ Lemma rel_lit_arg : forall Γ Δ X D Δ' X' D' R,
     rel_mexp (me_lit (gu_mk Δ D)) (ρ ↦ c) (me_lit (gu_mk Δ' D')) (ρ' ↦ c').
 Proof.
   intros * HU HR * Hρ Ha Hc.
-  destruct (unit_chain_at HU HR _ _ Hρ) as (h & h' & Hh & Hh' & Hd).
+  destruct (unit_chain_at HU HR _ _ Hρ) as [h h' Hh Hh' Hd].
   pose proof (functional_eval_modexp _ _ _ _ Hh (lit_params_val _ _ _ _)) as ->.
   pose proof (functional_eval_modexp _ _ _ _ Hh' (lit_params_val _ _ _ _)) as ->.
   destruct (per_dmod_appm _ _ _ Hd (np_local _ _ _ _ _ Ha)) as (i & RX & a' & Hp' & HRX & Hap).
@@ -306,7 +315,7 @@ Proof.
   destruct (Hap c c' (Hc _ _ _ _ Ha Ha' HRX)) as (hc & hc' & Hc1 & Hc2 & Hcc).
   inversion Hc1; subst; inversion Hc2; subst.
   repeat match goal with Hl : _ ++ _ = _ ++ _ |- _ => apply app_inj_tail in Hl as [-> [= ->]] end.
-  exists hc, hc'; split; [ apply eval_me_lit; assumption | split; [ apply eval_me_lit; assumption | exact Hcc ] ].
+  exists hc hc'; [ apply eval_me_lit; assumption | apply eval_me_lit; assumption | exact Hcc ].
 Qed.
 
 Section Beta.
@@ -388,8 +397,8 @@ Section Beta.
       assert (Hρρ : R ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
       assert (Hρ'ρ' : R ρ' ρ') by (etransitivity; [ symmetry; exact Hρ | exact Hρ ]).
       destruct (rel_exp_under_ctx_simple_at HR HN _ _ Hρ) as (n & n' & Hn & Hn' & _).
-      destruct (beta_mid _ _ _ _ _ HR Hρ Hn Hn') as (hc & hc' & Hc & Hc' & Hcc).
-      destruct (beta_link _ _ _ HR Hρ'ρ' Hn') as (g & hc'' & Hg & Hc'' & Hgc).
+      destruct (beta_mid _ _ _ _ _ HR Hρ Hn Hn') as [hc hc' Hc Hc' Hcc].
+      destruct (beta_link _ _ _ HR Hρ'ρ' Hn') as [g hc'' Hg Hc'' Hgc].
       pose proof (functional_eval_modexp _ _ _ _ Hc'' Hc') as ->.
       exists hc, g; split; [| split; [ exact Hg | exact (per_dmod_trans _ _ _ Hcc (per_dmod_sym _ _ Hgc)) ] ].
       econstructor; [ apply lit_params_val | exact Hn | apply eval_appm_local, eval_me_lit_iff; exact Hc ].
@@ -398,8 +407,8 @@ End Beta.
 
 Lemma rel_me_beta_alias0 : forall Γ E, Γ ⊨ᵐ E ≈ E -> Γ ⊨ᵐ me_lit (gu_mk nil (md_alias E)) ≈ E.
 Proof.
-  intros * [R [HR HE]].
-  exists R, HR; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  intros * [R HR HE].
+  refine (mk_rel_modexp_under_ctx _ _ _ R HR _); intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HE _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [e1 e2 e3 e4 E1 E2 E3 E4 Ch].
   apply (mk_rel_mod e1 e2 e3 e4); [ cbn; rewrite gunit_sub_mk; cbn; apply eval_me_lit, eval_close_alias0; exact E1
                                   | apply eval_me_lit, eval_close_alias0; exact E2 | exact E3 | exact E4 | exact Ch ].

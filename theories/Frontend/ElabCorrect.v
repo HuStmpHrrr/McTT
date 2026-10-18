@@ -71,28 +71,29 @@ Proof. intros; unfold names; apply flat_map_app. Qed.
 Lemma lookup_iff : forall x S k e n, lookup x S = Some (k, e, n) <-> bound S x k e n.
 Proof.
   intros x. induction S as [| e0 S IH]; intros k e n; cbn [lookup].
-  - split; [ discriminate | intros ([] & ? & [=] & _) ].
+  - split; [ discriminate | intros [[] ? [=] _ _ _ _] ].
   - destruct (binds_b x e0) eqn:E; split.
-    + intros [=<- <- <-]. exists nil, S. apply binds_b_iff in E. cbn; tauto.
-    + intros ([| e1 S1] & S2 & Heq & Hx & Hn & -> & ->); cbn in Heq.
+    + intros [=<- <- <-]. apply binds_b_iff in E. apply (mk_bound _ _ _ _ _ nil S); cbn; tauto.
+    + intros [[| e1 S1] S2 Heq Hx Hn -> ->]; cbn in Heq.
       * injection Heq as <- <-; reflexivity.
       * injection Heq as <- ->. exfalso; apply Hn. rewrite names_cons. apply binds_b_iff in E. rewrite E. left; reflexivity.
     + case_eq (lookup x S); [ intros [[k' e'] n'] El | intros _ ]; cbn; [| discriminate ].
-      intros [=<- <- <-]. apply IH in El as (S1 & S2 & -> & Hx & Hn & -> & ->).
-      exists (e0 :: S1), S2; cbn; repeat split; try assumption.
+      intros [=<- <- <-]. apply IH in El as [S1 S2 -> Hx Hn -> ->].
+      apply (mk_bound _ _ _ _ _ (e0 :: S1) S2); cbn; try reflexivity; try assumption.
       change (flat_map _ S1) with (names S1). intros Hin. apply in_app_or in Hin as [Hin | Hin]; [| contradiction ].
       destruct (ent_name e0) as [y |] eqn:Ey; [| contradiction ].
       destruct Hin as [-> | []]. apply (proj2 (binds_b_iff _ _)) in Ey. congruence.
-    + intros ([| e1 S1] & S2 & Heq & Hx & Hn & -> & ->); cbn in Heq.
+    + intros [[| e1 S1] S2 Heq Hx Hn -> ->]; cbn in Heq.
       * injection Heq as <- <-. apply (proj2 (binds_b_iff _ _)) in Hx. congruence.
       * injection Heq as <- ->. rewrite names_cons in Hn.
-        rewrite (proj2 (IH _ _ _)) by (exists S1, S2; repeat split; auto; intros Hin; apply Hn, in_or_app; auto).
+        rewrite (proj2 (IH _ _ _))
+          by (apply (mk_bound _ _ _ _ _ S1 S2); auto; intros Hin; apply Hn, in_or_app; auto).
         reflexivity.
 Qed.
 
 Lemma bound_in : forall S x k e n, bound S x k e n -> In x (names S).
 Proof.
-  intros * (S1 & S2 & -> & Hx & _). rewrite names_app, names_cons, Hx. apply in_or_app; right; left; reflexivity.
+  intros * [S1 S2 -> Hx _ _ _]. rewrite names_app, names_cons, Hx. apply in_or_app; right; left; reflexivity.
 Qed.
 
 Lemma lookup_none : forall x S, lookup x S = None <-> ~ In x (names S).

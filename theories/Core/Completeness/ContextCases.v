@@ -116,12 +116,12 @@ Proof.
   assert (PER env_relΓ) by (eapply per_env_PER; eassumption).
   assert (PER (per_env_extend A A env_relΓ)) by (eapply per_env_PER; eassumption).
   apply E2; apply E1 in Hρ.
-  destruct Hρ as [Hρ [Ht Ht']].
+  destruct Hρ as [Hρ Ht Ht'].
   assert (Hρρ : Dom ρ ≈ ρ ∈ per_env_extend A A env_relΓ) by solve_per.
   assert (Hρ'ρ' : Dom ρ' ≈ ρ' ∈ per_env_extend A A env_relΓ) by solve_per.
   pose proof (rel_exp_of_typ_inversion_simple_at HΓ HA) as HAat.
   pose proof (rel_exp_under_ctx_simple_at HΓ HM) as HMat.
-  split; [ exact Hρ | split ].
+  constructor; [ exact Hρ | |].
   - exact (def_tie_resp _ HAat HMat Hρρ Ht).
   - exact (def_tie_resp _ HAat HMat Hρ'ρ' Ht').
 Qed.

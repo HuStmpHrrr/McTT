@@ -119,7 +119,7 @@ Lemma rel_exp_of_level_inversion : forall {Γ M M'},
         ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
         rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' (per_lvl_at n).
 Proof.
-  intros * [env_relΓ [HΓ [i HM]]].
+  intros * [env_relΓ HΓ i HM].
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HM _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
@@ -516,7 +516,7 @@ Lemma rel_exp_of_suniv_tm_inversion : forall {Γ T A A'},
         ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
         exists t, ⟦ T ⟧ ρσ ↘ t /\ rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ (us (dlvl_real t))).
 Proof.
-  intros * [env_relΓ [HΓ [i HA]]].
+  intros * [env_relΓ HΓ i HA].
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HA _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
@@ -639,8 +639,7 @@ Proof.
   assert (Dom n2 ≈ n3 ∈ per_lvl) by lvl_pw.
   assert (Dom dlvl_max m2 n2 ≈ n3 ∈ per_lvl) by lvl_pw.
   functional_eval_rewrite_clear.
-  exists 𝕌@m1, 𝕌@m2, 𝕌@n4, 𝕌@n3.
-  repeat apply conj; try (apply eval_exp_univ; eassumption).
+  exists 𝕌@m1 𝕌@m2 𝕌@n4 𝕌@n3; try (apply eval_exp_univ; eassumption).
   - eexists; apply per_univ_elem_core_suniv';
       [ eassumption | exact I | reflexivity ].
   - eexists; apply per_univ_elem_core_suniv';
@@ -661,8 +660,7 @@ Proof.
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
   assert (Dom m1 ≈ m2 ∈ per_lvl) by lvl_pw.
   assert (Dom m2 ≈ m2 ∈ per_lvl) by lvl_pw.
-  exists 𝕌@m1, 𝕌@m2, 𝕌ω@i, 𝕌ω@i.
-  repeat apply conj; try (apply eval_exp_univ; eassumption); try apply eval_exp_typ.
+  exists 𝕌@m1 𝕌@m2 𝕌ω@i 𝕌ω@i; try (apply eval_exp_univ; eassumption); try apply eval_exp_typ.
   - eexists; apply per_univ_elem_core_suniv';
       [ eassumption | exact I | reflexivity ].
   - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].

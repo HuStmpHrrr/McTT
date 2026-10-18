@@ -60,17 +60,15 @@ Qed.
 Hint Resolve initial_env_order_sound : mctt.
 
 (** The order of NbE in [Θ ⍮ Ξ ⍮ Γ]. *)
-Inductive nbe_order Θ Ξ G M A : Prop :=
-| nbe_order_run :
-  `( initial_env_order Θ Ξ G ->
-     (forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ A p) ->
-     (forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ M p) ->
-     (forall p a m,
-         initial_env Θ Ξ G p ->
-         ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a ->
-         ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m ->
-         read_nf_order Θ Ξ (List.length G) ⇓ a m) ->
-     nbe_order Θ Ξ G M A ).
+Record nbe_order Θ Ξ G M A : Prop := nbe_order_run
+  { nord_init : initial_env_order Θ Ξ G
+  ; nord_typ : forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ A p
+  ; nord_exp : forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ M p
+  ; nord_read : forall p a m,
+      initial_env Θ Ξ G p ->
+      ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a ->
+      ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m ->
+      read_nf_order Θ Ξ (List.length G) ⇓ a m }.
 
 #[local]
 Hint Constructors nbe_order : mctt.
@@ -87,15 +85,13 @@ Qed.
 #[local]
 Hint Resolve nbe_order_sound : mctt.
 
-Inductive nbe_ty_order Θ Ξ G A : Prop :=
-| nbe_ty_order_run :
-  `( initial_env_order Θ Ξ G ->
-     (forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ A p) ->
-     (forall p a,
-         initial_env Θ Ξ G p ->
-         ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a ->
-         read_typ_order Θ Ξ (List.length G) a) ->
-     nbe_ty_order Θ Ξ G A ).
+Record nbe_ty_order Θ Ξ G A : Prop := nbe_ty_order_run
+  { nto_init : initial_env_order Θ Ξ G
+  ; nto_typ : forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ A p
+  ; nto_read : forall p a,
+      initial_env Θ Ξ G p ->
+      ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a ->
+      read_typ_order Θ Ξ (List.length G) a }.
 
 #[local]
 Hint Constructors nbe_ty_order : mctt.

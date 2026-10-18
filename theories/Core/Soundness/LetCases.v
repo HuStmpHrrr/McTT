@@ -66,8 +66,7 @@ Proof.
   assert (EG Γ ▸ A ≔ M ∈ glu_ctx_env ↘ SbΓA) by (econstructor; mauto 3; reflexivity).
   invert_glu_rel_exp HB.
   assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ HΓ] by mauto 3.
-  eexists; split; [ eassumption |].
-  exists k.
+  eapply mk_glu_rel_exp with (gre_lvl := k); [ eassumption |].
   intros Δ σ ρ HSb.
   assert (Δ ⊢ˢ σ : Γ) by mauto 2.
   match goal with

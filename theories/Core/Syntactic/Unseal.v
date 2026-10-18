@@ -1044,7 +1044,7 @@ Section Run.
   Corollary prog_sem_no_axioms : forall prg B Θ U,
       prog_sem load_path read to_core prg B Θ U -> gc_no_axioms ((prog_path prg, U) :: Θ) nil.
   Proof.
-    intros * (u & Rb & Ht & Hu); destruct (run_unit_no_axioms _ _ _ _ _ _ Hu (Hload _ _ Ht)).
+    intros * [u Rb Ht Hu]; destruct (run_unit_no_axioms _ _ _ _ _ _ Hu (Hload _ _ Ht)).
     split; auto with mctt.
   Qed.
 End Run.

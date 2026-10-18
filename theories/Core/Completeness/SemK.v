@@ -34,9 +34,15 @@ Section Fixed_GCtx.
     parameters of the closed telescope [T], each valid in [Γ] at its
     parameter's type instantiated by the arguments before it, as
     [args_ok] says syntactically. *)
-Definition sargs (Γ : ctx) (T : ctx) (Ns : list exp) : Prop :=
-  exists T1 T2, T = T1 ++ T2 /\ List.length T2 = List.length Ns /\ tele_ass T2 /\ ctx_scoped 0 T2 /\
-    (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts T2 Id Ns) k = Some A -> Γ ⊨ N : A).
+#[warnings="-cannot-define-projection"]
+Record sargs (Γ : ctx) (T : ctx) (Ns : list exp) : Prop := mk_sargs
+  { sa_rest : ctx
+  ; sa_filled : ctx
+  ; sa_split : T = sa_rest ++ sa_filled
+  ; sa_length : List.length sa_filled = List.length Ns
+  ; sa_ass : tele_ass sa_filled
+  ; sa_scoped : ctx_scoped 0 sa_filled
+  ; sa_args : forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts sa_filled Id Ns) k = Some A -> Γ ⊨ N : A }.
 
 (** ** Valid Units *)
 
@@ -97,7 +103,7 @@ Lemma valid_inst : forall Δ M A D τ RD, Δ ⊨ M : A -> D ⊨ˢ τ ≈ τ : Δ
     forall ρ ρτ, RD ρ ρ -> ⟦ τ ⟧s ρ ↘ ρτ ->
     exists m1 m2 a i R, ⟦ M[τ] ⟧ ρ ↘ m1 /\ ⟦ M ⟧ ρτ ↘ m2 /\ ⟦ A ⟧ ρτ ↘ a /\ per_univ_elem i R a a /\ R m1 m2.
 Proof.
-  intros * [RΔ [HΔ [i Hgen]]] Hτ HD ρ ρτ Hρ Hev.
+  intros * [RΔ HΔ i Hgen] Hτ HD ρ ρτ Hρ Hev.
   destruct (Hgen _ _ HD _ _ Hτ _ _ _ _ Hρ Hev Hev) as [E [[a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 (T12 & T23 & _)] [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 (M12 & _)]]].
   exists m1, m2, a2, i, E; repeat split; try assumption.
   etransitivity; [ symmetry; exact T12 | exact T12 ].
@@ -107,7 +113,7 @@ Lemma valid_at : forall Δ M A RΔ, Δ ⊨ M : A -> EF Δ ≈ Δ ∈ per_ctx_env
     forall ρ ρ', RΔ ρ ρ' ->
     exists m m' a i R, ⟦ M ⟧ ρ ↘ m /\ ⟦ M ⟧ ρ' ↘ m' /\ ⟦ A ⟧ ρ ↘ a /\ per_univ_elem i R a a /\ R m m'.
 Proof.
-  intros * [RΔ0 [HΔ0 [i Hgen]]] HΔ ρ ρ' Hρ.
+  intros * [RΔ0 HΔ0 i Hgen] HΔ ρ ρ' Hρ.
   destruct (Hgen _ _ HΔ _ _ (rel_sub_id (ex_intro _ _ HΔ)) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
     as [E [[a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 (T12 & T23 & _)] [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 (_ & M23 & _)]]].
   exists m2, m3, a2, i, E; repeat split; try assumption.
@@ -128,7 +134,7 @@ Lemma valid_mod_inst : forall Δ H D τ RD, Δ ⊨ᵐ H ≈ H -> D ⊨ˢ τ ≈ 
     forall ρ ρτ, RD ρ ρ -> ⟦ τ ⟧s ρ ↘ ρτ ->
     exists h1 h2, ⟦ H[τ]ᵐ ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h1 /\ ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρτ ↘ h2 /\ per_dmod h1 h2.
 Proof.
-  intros * [R0 [HΔ0 HH]] Hτ HD ρ ρτ Hρ Hev.
+  intros * [R0 HΔ0 HH] Hτ HD ρ ρτ Hρ Hev.
   destruct (HH _ _ HD _ _ Hτ _ _ _ _ Hρ Hev Hev) as [h1 h2 h3 h4 H1 H2 H3 H4 (C12 & _)].
   exists h1, h2; repeat split; assumption.
 Qed.
@@ -202,15 +208,15 @@ Proof.
       * eapply per_head_of; [ exact Ha2 | exact Hx' | exact Hxx | symmetry; exact Hm12 ].
     + (* a submodule: the closure of its filled-in unit, against its closure in the body's *)
       pose proof (sem_ctx_tail HC) as HC0.
-      pose proof (sem_ctx_mod_inv HC) as HU.
+      pose proof (ruu_lit _ _ _ (sem_ctx_mod_inv HC)) as HU.
       destruct (sem_ctx_per_ctx_env HC0) as [R0 HR0].
       destruct (IH _ _ Hn eq_refl HC0 _ _ HD HR0 _ Hρ) as (ρσ0 & ρ10 & Hσ0 & Hb0 & H0).
       pose proof (gsub_valid (fill_gsub _ _ _ Hn Hf0 HC0)) as Hτ.
       assert (HP0 : PER R0) by (eapply per_env_PER; exact HR0).
-      pose proof (per_ctx_env_of_mod HR0 (proj1 HU)) as HR'.
+      pose proof (per_ctx_env_of_mod HR0 HU) as HR'.
       assert (EQ : R <~> env_ext_mod U U R0) by (eapply per_ctx_env_right_irrel; eassumption).
-      destruct (unit_sub_chain HD Hτ (proj1 HU) _ _ _ _ Hρ Hσ0 Hσ0) as ((g1 & g2 & Hg1 & Hg2 & G12) & _).
-      destruct (unit_chain_at (proj1 HU) HR0 _ _ H0) as (k2 & k3 & Hk2 & Hk3 & K23).
+      destruct (unit_sub_chain HD Hτ HU _ _ _ _ Hρ Hσ0 Hσ0) as ([g1 g2 Hg1 Hg2 G12] & _).
+      destruct (unit_chain_at HU HR0 _ _ H0) as [k2 k3 Hk2 Hk3 K23].
       pose proof (functional_eval_modexp _ _ _ _ Hg2 Hk2) as <-.
       destruct U as [Δy Dy].
       exists (ρσ0 ↦ᵐ g1), (ρ10 ↦ᵐ k3).
@@ -218,7 +224,7 @@ Proof.
       split; [ econstructor; [ exact Hb0 | apply eval_me_lit_iff; exact Hk3 ] |].
       apply EQ.
       assert (K33 : per_dmod k3 k3) by (etransitivity; [ symmetry; exact K23 | exact K23 ]).
-      unfold env_ext_mod, extend_env_mod, env_mod; cbn [drop_env tl nth_error env_entry hd].
+      unfold extend_env_mod, env_mod; cbn [drop_env tl nth_error env_entry hd].
       repeat split; try assumption;
         solve [ exists g2; split; [ exact Hg2 | exact G12 ] | exists k3; split; [ exact Hk3 | exact K33 ] ].
 Qed.
@@ -487,28 +493,32 @@ Qed.
     (an inductive type's reduct, its type former at the arguments, is not
     a [λ]); each alias entry is a valid
     unit in any valid context. *)
+Record filed_ok (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_filed_ok
+  { fok_stored : exists Φ', gc_loc gc_deps gc_stack p = Some (T, Φ')
+  ; fok_path : forall ρ, ⟦ qname_mod p ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ dm_global p nil
+  ; fok_tele_sem : ⊨ T
+  ; fok_tele_ass : tele_ass T
+  ; fok_tele_scoped : ctx_scoped 0 T
+  ; fok_kinds : forall x Φ0 E, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
+      dkind gc_deps gc_stack (dm_global p nil) (x :: nil) (ent_kind E)
+  ; fok_sub_kinds : forall x TΦ, gc_loc Θm Ξm (qname_app p (x :: nil)) = Some TΦ ->
+      dkind gc_deps gc_stack (dm_global p nil) (x :: nil) mk_mod
+  ; fok_terms : forall x Φ0 E R0, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) -> entry_term E = Some R0 ->
+      exists A0 i g, T ⊨ A0 : Typeω@i /\
+        (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> ds_ats R0 Ns = Some R1 ->
+           ds_ty Θm Ξm R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
+           (ds_red R1 = None \/
+            exists M1, ds_red R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 A0 /\
+              forall ns m, List.length ns = List.length T2 -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
+                $*| g & ns | gc_deps ⍮ gc_stack ↘ m)) /\
+        dm_global p nil ·ₜ x gc_deps ⍮ gc_stack ↘ g /\
+        (exists j E0 e, ⟦ ctx_pi T A0 ⟧ nil ↘ e /\ per_univ_elem j E0 e e /\ E0 g g)
+  ; fok_aliases : forall y Φ0 E Ua, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
+      gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias Ua) /\
+      forall Γ, ⊨ Γ -> wf_ctx Θm Ξm Γ -> semK Γ (me_lit Ua) }.
+
 Definition gfiled_ok : Prop :=
-  forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) ->
-    (exists Φ', gc_loc gc_deps gc_stack p = Some (T, Φ')) /\
-    (forall ρ, ⟦ qname_mod p ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ dm_global p nil) /\
-    ⊨ T /\ tele_ass T /\ ctx_scoped 0 T /\
-    (forall x Φ0 E, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
-       dkind gc_deps gc_stack (dm_global p nil) (x :: nil) (ent_kind E)) /\
-    (forall x TΦ, gc_loc Θm Ξm (qname_app p (x :: nil)) = Some TΦ ->
-       dkind gc_deps gc_stack (dm_global p nil) (x :: nil) mk_mod) /\
-    (forall x Φ0 E R0, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) -> entry_term E = Some R0 ->
-       exists A0 i g, T ⊨ A0 : Typeω@i /\
-         (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> ds_ats R0 Ns = Some R1 ->
-            ds_ty Θm Ξm R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
-            (ds_red R1 = None \/
-             exists M1, ds_red R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 A0 /\
-               forall ns m, List.length ns = List.length T2 -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
-                 $*| g & ns | gc_deps ⍮ gc_stack ↘ m)) /\
-         dm_global p nil ·ₜ x gc_deps ⍮ gc_stack ↘ g /\
-         (exists j E0 e, ⟦ ctx_pi T A0 ⟧ nil ↘ e /\ per_univ_elem j E0 e e /\ E0 g g)) /\
-    (forall y Φ0 E Ua, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
-       gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias Ua) /\
-       forall Γ, ⊨ Γ -> wf_ctx Θm Ξm Γ -> semK Γ (me_lit Ua)).
+  forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) -> filed_ok p T Φ.
 
 Hypothesis Hgm : ⊢ᵍ Θm ⍮ Ξm.
 Hypothesis Hgf : gfiled_ok.
@@ -531,7 +541,7 @@ Proof.
   cbn [mod_qname] in Hqp; rewrite Hq in Hqp; injection Hqp as <-.
   pose proof (gc_loc_of_loc _ _ Hgm _ _ _ Hl0) as Hgl0.
   pose proof (gc_loc_of_loc _ _ Hgm _ _ _ Hl) as Hgl.
-  destruct (Hgf _ _ _ Hgl0) as (_ & Hp & _ & _ & _ & _ & Hsub & _).
+  destruct (Hgf _ _ _ Hgl0) as [_ Hp _ _ _ _ Hsub _ _].
   rewrite (mod_qname_inv _ _ Hq).
   apply (kind_eval_modexp _ _ _ _ _ (Hp ρ)), (Hsub x (T', Φ')); exact Hgl.
 Qed.
@@ -602,7 +612,7 @@ Proof.
     destruct (filed_denote _ _ Hgm _ _ _ Γ Ns Hgl) as (R1 & Hm1 & Hmod1).
     rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ Hm _ Hm1), Hmod1 in Hmod; injection Hmod as <-.
     destruct (ds_entry_closed_inv _ _ _ _ _ _ _ _ _ He) as (Φ0 & E0 & Hp & ->).
-    destruct (Hgf _ _ _ Hgl) as (_ & Hpe & _ & _ & _ & Hk & _).
+    destruct (Hgf _ _ _ Hgl) as [_ Hpe _ _ _ Hk _ _ _].
     apply skind_apps, (kind_eval_modexp _ _ _ _ _ (Hpe ρ)); rewrite ent_kind_read; exact (Hk _ _ _ Hp).
   - (* a body *)
     intros Γ Δ Φ Φx Hw Hx HΔ HΓ HC Hslots IHslots Hs Hsx HK Hopv Hops IHops.
@@ -641,7 +651,7 @@ Proof.
       apply (kx_kenv _ _ Hk') in Hσ1.
       pose proof (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hσ1 _ Hk1) as <-.
       apply (ukind_id _ _ _ _ (proj1 (kshape_sym _ _ Hs1))), skind_lit_iff.
-      exact (valid_nil_kind _ _ _ (proj1 (sem_ctx_mod_inv HC1)) HR0 _ Hρ1).
+      exact (valid_nil_kind _ _ _ (ruu_lit _ _ _ (sem_ctx_mod_inv HC1)) HR0 _ Hρ1).
   - (* an alias *)
     intros Γ Δ E Hw HΔ HΓ HΔΓ HK HE Hsmt IHE.
     split; [| intros x TΦ Hu; cbn in Hu; unfold gc_unit in Hu; cbn in Hu; discriminate ].

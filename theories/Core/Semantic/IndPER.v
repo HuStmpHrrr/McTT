@@ -97,14 +97,14 @@ Section Fixed_GCtx.
                    ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
                    tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
                    tele_full (shape_tr dr ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
-                   exists bs bs', eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) bs /\
-                     eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups' ++ ms' ++ ws' ++ ys')) bs' /\ tele_full nr T bs bs').
+                   exps_rel (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (ups' ++ ms' ++ ws' ++ ys'))
+                     (tele_full nr T)).
     Hypothesis (Hcd : forall ms ms' c gs gs1 t gs2 ws ws' ys ys', tele_full nr T ms ms' ->
                    ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
                    tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
                    tele_full (shape_tr dr ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
-                   exists bs bs', eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) bs /\
-                     eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups ++ ms' ++ ws' ++ ys')) bs' /\ tele_full nr T bs bs').
+                   exps_rel (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (ups ++ ms' ++ ws' ++ ys'))
+                     (tele_full nr T)).
 
     (** The evidence at a position, at the head PER. *)
     Lemma canon_n_ev : forall k A vs vs', List.nth_error T k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
@@ -290,8 +290,7 @@ Section Fixed_GCtx.
            ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
            tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
            tele_full (shape_tr dr ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
-           exists bs bs', eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) bs /\
-             eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (u2 ++ ms' ++ ws' ++ ys')) bs' /\ tele_full nr T bs bs') ->
+           exps_rel (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (u2 ++ ms' ++ ws' ++ ys')) (tele_full nr T)) ->
         (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys', tele_full nr T ms ms' ->
            ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
            tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
@@ -300,7 +299,7 @@ Section Fixed_GCtx.
              ⟦ B ⟧ env_args nil (u2 ++ ms' ++ ws' ++ ys') ↘ a' /\ Dom a ≈ a' ∈ per_univ u) ->
         ind_adm D ups nr ar dr u2.
     Proof.
-      intros u2 Hn2 Ha2 Hc2 Hd2; split; [| split; [| split; [ exact Hc2 |] ] ].
+      intros u2 Hn2 Ha2 Hc2 Hd2; constructor; [ | | exact Hc2 | ].
       - intros k A vs vs' s Hk Hp; destruct (Hn2 _ _ _ _ Hk Hp) as (a & a' & Ea & Ea' & [R HR]).
         exists a, a'; split; [ exact Ea | split; [ exact Ea' |] ].
         unfold T in Hk; unfold nr, ind_nr; rewrite (nth_ctyp_eq _ _ _ Hk).

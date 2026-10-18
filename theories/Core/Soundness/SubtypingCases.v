@@ -25,8 +25,8 @@ Proof.
   destruct_conjs.
   pose proof (subtyp_under_ctx_simple Hsub) as [env_relΓ [HΓ [k Hsubsimple]]].
   invert_glu_rel_exp HA'.
-  econstructor; split; [eassumption |].
-  exists (max i k); intros Δ σ ρ HSb.
+  eapply mk_glu_rel_exp with (gre_lvl := max i k); [eassumption |].
+  intros Δ σ ρ HSb.
   destruct_glu_rel_exp_with_sub.
   simplify_evals.
   match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
@@ -34,7 +34,7 @@ Proof.
   assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; mauto).
   destruct (Hsubsimple _ _ ltac:(eassumption)) as [a1 [a2 [? [? ?]]]].
   functional_eval_rewrite_clear.
-  unfold univ_glu_exp_pred' in *.
+  destruct_glu_records.
   destruct_conjs.
   eapply mk_glu_rel_exp_with_sub'; try eassumption.
   - eapply glu_univ_elem_cumu_max_left; eassumption.

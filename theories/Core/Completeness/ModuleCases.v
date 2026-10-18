@@ -196,7 +196,7 @@ Proof.
   pose proof (wf_me_beta_alias0 _ _ _ _ Hw) as Hb.
   pose proof (wf_me_trans _ _ _ _ _ _ Hb (wf_me_sym _ _ _ _ _ Hb)) as Hw'.
   assert (HL : Γ ⊨ᵐ me_lit (gu_mk nil (md_alias E)) ≈ me_lit (gu_mk nil (md_alias E))).
-  { apply rel_lit_alias; [ split; [ exact HΓ | split; [ exact HΓ | exact (sem_ctx_per_ctx HΓ) ] ] | constructor | constructor
+  { apply rel_lit_alias; [ constructor; [ exact HΓ | exact HΓ | exact (sem_ctx_per_ctx HΓ) ] | constructor | constructor
                          | reflexivity | exact HE | exact HE ]. }
   split; [ exact (rel_me_beta_alias0 _ _ HE) |].
   apply (smt_of_semK _ _ Hgf).
@@ -214,8 +214,8 @@ Proof.
   pose proof (mod_qname_inv _ _ Hq) as Heq.
   pose proof (gc_loc_of_loc _ _ Hgm _ _ _ Hl) as Hgl.
   assert (Hs : sargs Γ T nil).
-  { exists T, nil; rewrite app_nil_r; split; [ reflexivity |]; split; [ reflexivity |]; split; [ constructor |].
-    split; [ cbn; auto | intros [|k] ? ? Hk; discriminate ]. }
+  { apply (mk_sargs _ _ _ T nil); [ rewrite app_nil_r; reflexivity | reflexivity | constructor | cbn; auto
+                                  | intros [|k] ? ? Hk; discriminate ]. }
   rewrite Heq in Hw |- *.
   pose proof (sk_filed _ _ _ _ _ _ nil Hw Hgl HΓ Hs) as HK.
   split; [ exact (filed_valid _ _ Hgf _ _ _ _ nil Hgl HΓ Hs) | exact (smt_of_semK _ _ Hgf _ _ HK) ].
@@ -231,11 +231,11 @@ Lemma k_unit_alias : forall Γ Δ Δ' E E',
 Proof.
   intros * Hu HΔw HΔ Ha Ha' HΓ HE HE' Hs Hs'.
   pose proof (ext_eq_length _ _ _ _ _ HΔw) as Hl.
-  pose proof HΔ as (HΔΓ & HΔ'Γ & _).
+  pose proof HΔ as [HΔΓ HΔ'Γ _].
   pose proof (rel_lit_alias _ _ _ _ _ HΔ Ha Ha' Hl HE HE') as HR.
   pose proof (wf_me_lit _ _ _ _ _ (wf_unit_eq_trans _ _ _ _ _ _ Hu (wf_unit_eq_sym _ _ _ _ _ Hu))) as Hw.
   pose proof (wf_me_lit _ _ _ _ _ (wf_unit_eq_trans _ _ _ _ _ _ (wf_unit_eq_sym _ _ _ _ _ Hu) Hu)) as Hw'.
-  split; [ split; [ exact HR | split; apply sem_unit_alias; first [ assumption | exact (rel_modexp_refl_left HE) ] ] |].
+  split; [ constructor; [ exact HR | .. ]; apply sem_unit_alias; first [ assumption | exact (rel_modexp_refl_left HE) ] |].
   split; [ eapply sk_alias; [ exact Hw | exact Ha | exact HΓ | exact HΔΓ | exact (rel_modexp_refl_left HR)
                             | exact (rel_modexp_refl_left HE) | exact Hs ] |].
   eapply sk_alias; [ exact Hw' | exact Ha' | exact HΓ | exact HΔ'Γ | exact (rel_modexp_refl_right HR) | exact HE' | exact Hs' ].
@@ -253,7 +253,7 @@ Proof.
   pose proof (semK_valid _ _ Hgf _ _ HK) as HV.
   pose proof (semK_abs _ _ Hgm Hgf _ _ _ HK Ha) as HK'; cbn [gunit_abs] in HK'.
   pose proof (wf_me_lit _ _ _ _ _ (wf_unit_eq_trans _ _ _ _ _ _ Hu (wf_unit_eq_sym _ _ _ _ _ Hu))) as Hw.
-  split; [ split; [ exact HR | split; [ apply sem_unit_alias; assumption | exact (proj2 (proj2 (semK_lit_unit Hgw _ _ Hgm Hsub _ _ HK'))) ] ] |].
+  split; [ constructor; [ exact HR | apply sem_unit_alias; assumption | exact (ruu_right _ _ _ (semK_lit_unit Hgw _ _ Hgm Hsub _ _ HK')) ] |].
   split; [| exact HK' ].
   eapply sk_alias; [ exact Hw | exact Ha | exact HΓ | exact HΔΓ | exact (rel_modexp_refl_left HR) | exact HV
                    | exact (smt_of_semK _ _ Hgf _ _ HK) ].
@@ -307,7 +307,7 @@ Proof.
   { intros * Hok Hn * Hp.
     destruct (prefix_body_ctx _ _ _ Hn Hp) as [X HX]; cbn [body_ctx] in HX.
     apply (Hok X U); rewrite HX, <- app_assoc; reflexivity. }
-  split; [ split; [ exact HR | split ] |].
+  split; [ constructor; [ exact HR | | ] |].
   - eapply sem_unit_body; [ exact Ha | exact (body_xp_target Hgw _ _ Hgm Hsub _ _ _ Hx) | exact Hsw | exact Hsx | exact HC |].
     intros * Hn; exact (proj1 (Ho _ _ _ Hn)).
   - eapply sem_unit_body; [ exact Ha' | exact (body_xp_target Hgw _ _ Hgm Hsub _ _ _ Hx') | exact Hsw' | exact Hsx' | exact HC' |].
@@ -386,7 +386,7 @@ Proof.
   intros * He HΓ Hl.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [Hdt Hc].
   pose proof (decl_typed_emb _ _ _ _ _ (sme_emb _ _ _ _ He) Hdt) as Hdt2.
-  pose proof Hdt as (_ & _ & _ & _ & Hsu & _).
+  pose proof (dt_sort_univ _ _ _ Hdt) as Hsu.
   pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (em_res _ _ _ _ (sme_emb _ _ _ _ He)) Hl) as Hl2.
   split; [ exact Hl2 | split; [| split; [ exact Hc | split; [ exact Hsu | exact Hdt2 ] ] ] ].
   exact (@sem_decl_of_core (gc_mk Θ2 Ξ2) D (sme_ind _ _ _ _ He _ _ Hl) Hc Hsu Hdt2).
@@ -435,8 +435,8 @@ Proof.
   destruct (k_decl _ _ _ _ _ _ _ He (presup_exp_eq_ctx HMs) Hl) as (Hl2 & HD & Hc & Hsu & Hdt2).
   eapply (@rel_exp_elim_cong (gc_mk Θ2 Ξ2)); try eassumption.
   - intros * HP HT; exact (proj2 (proj2 (HPs _ _ _ HP HT _ _ He))).
-  - exact (proj1 HMx).
-  - intros c gs Hcon; exact (proj1 (proj1 (HBc _ _ Hcon _ _ He))).
+  - exact (rxu_left _ _ _ HMx).
+  - intros c gs Hcon; exact (rxu_left _ _ _ (proj1 (HBc _ _ Hcon _ _ He))).
   - intros * Hk Hk' Hcon; exact (proj2 (proj2 (HB _ _ _ _ _ _ Hk Hk' Hcon _ _ He))).
 Qed.
 
@@ -463,8 +463,8 @@ Proof.
   destruct (k_decl _ _ _ _ _ _ _ He (presup_exp_ctx HMs) Hl) as (Hl2 & HD & Hc & Hsu & Hdt2).
   eapply (@rel_exp_elim_cong (gc_mk Θ2 Ξ2)); try eassumption; [ | | | reflexivity |].
   - intros * HP HT; exact (proj2 (proj2 (HPs _ _ _ HP HT _ _ He))).
-  - exact (proj1 HMx).
-  - intros c gs Hcon; exact (proj1 (proj1 (HBc _ _ Hcon _ _ He))).
+  - exact (rxu_left _ _ _ HMx).
+  - intros c gs Hcon; exact (rxu_left _ _ _ (proj1 (HBc _ _ Hcon _ _ He))).
   - intros * Hk Hk' Hcon; rewrite Hk in Hk'; injection Hk' as <-.
     exact (proj2 (proj2 (HB _ _ _ _ Hcon (List.nth_error_In _ _ Hk) _ _ He))).
 Qed.
@@ -509,7 +509,7 @@ Proof.
                    @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ T N N)
     by (intros * HN HT; rewrite <- HPeq in HT; exact (proj2 (proj2 (HAs _ _ _ HN HT _ _ He)))).
   pose proof (@rel_exp_elim_iota_at (gc_mk Θ2 Ξ2) Γ p D Us Ns As c gs nm A i Bs HD Hc Hsu Hdt2 Hl2 HΓ2 Hcon HUl HUs HNl HAl Hnm HA
-                (proj1 HMx) HBn (fun c gs Hcon => proj1 (proj1 (HBc c gs Hcon _ _ He))) Hnb
+                (rxu_left _ _ _ HMx) HBn (fun c gs Hcon => rxu_left _ _ _ (proj1 (HBc c gs Hcon _ _ He))) Hnb
                 (fun c gs n B Hcon Hin => proj2 (proj2 (HB c gs n B Hcon Hin _ _ He))) HNs HAs' n B Hlk) as Hi.
   rewrite HPeq, <- List.app_assoc; exact Hi.
 Qed.
@@ -551,10 +551,10 @@ Proof.
   change (⊢ᵍ @gc_deps (gc_mk Θ2 Ξ2) ⍮ @gc_stack (gc_mk Θ2 Ξ2)) in Hgw.
   change (gc_sub Θ Ξ (@gc_deps (gc_mk Θ2 Ξ2)) (@gc_stack (gc_mk Θ2 Ξ2))) in Hsub.
   apply (@k_unit_body (gc_mk Θ2 Ξ2) Hgw _ _ (sme_wf _ _ _ _ He) Hsub (sme_filed _ _ _ _ He) _ _ _ _ _ _ _ Hu Hx Hx' HΔ HΓ
-           (proj1 HC) HokC (proj1 HC') HokC'); try assumption.
+           (rxu_left _ _ _ HC) HokC (rxu_left _ _ _ HC') HokC'); try assumption.
   - intros * Hp Hp' Hf Hf'; split; [ eexists; exact (proj2 (proj2 (HA _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf Hf' _ _ He))) |].
     exact (proj2 (proj2 (HM _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf Hf' _ _ He))).
-  - intros * Hp Hp' Hf Hf'; exact (proj1 (proj1 (HU _ _ _ _ _ _ _ _ _ Hp Hp' Hf Hf' _ _ He))).
+  - intros * Hp Hp' Hf Hf'; exact (ruu_lit _ _ _ (proj1 (HU _ _ _ _ _ _ _ _ _ Hp Hp' Hf Hf' _ _ He))).
   - intros * Hk Hk' Hf Hf'; exact (proj1 (HO _ _ _ _ _ _ _ Hk Hk' Hf Hf' _ _ He)).
   - intros * Hk; destruct (Ho _ _ _ Hk _ _ He) as (HV & HS & _); exact (conj HV HS).
   - intros * Hk; destruct (Ho' _ _ _ Hk _ _ He) as (HV & HS & _); exact (conj HV HS).
@@ -668,11 +668,11 @@ Proof.
       first [ eapply k_unit_alias; [ eapply wf_unit_eq_alias; eassumption | eassumption .. ]
             | eapply (k_unit_flatten Hgw _ _ Hgm Hsub Hgf); [ eapply wf_unit_eq_flatten; eassumption | eassumption .. ] ] end ].
   all: try solve [ split; [ match goal with HU : _ ⊨ᵘ _ ≈ _ |- _ =>
-                              destruct HU as (? & ? & ?); split; [ apply rel_modexp_sym; assumption | split; assumption ] end
+                              destruct HU as [? ? ?]; constructor; [ apply rel_modexp_sym; assumption | assumption .. ] end
                           | repeat (split; [ assumption |]); assumption ] ].
   all: try solve [ split; [ match goal with HU1 : _ ⊨ᵘ ?U1 ≈ ?U2, HU2 : _ ⊨ᵘ ?U2 ≈ ?U3 |- _ ⊨ᵘ ?U1 ≈ ?U3 =>
-                              destruct HU1 as (? & ? & ?); destruct HU2 as (? & ? & ?);
-                              split; [ eapply rel_modexp_trans; eassumption | split; assumption ] end
+                              destruct HU1 as [? ? ?]; destruct HU2 as [? ? ?];
+                              constructor; [ eapply rel_modexp_trans; eassumption | assumption .. ] end
                           | repeat (split; [ assumption |]); assumption ] ].
   (** Module expressions. *)
   all: try solve [
@@ -685,7 +685,7 @@ Proof.
         split; [ first [ eapply rel_me_var; eassumption | eapply rel_me_delta_slot; eassumption ] |];
         split; [ assumption |]; split; [ first [ assumption | apply (smt_of_semK _ _ Hgf); assumption ] | split; assumption ]
       | eapply (k_var Hgw _ _ Hgm Hsub); [ eapply wf_me_var; eassumption | eassumption .. ] ] end ].
-  all: try solve [ split; [ match goal with HU : _ ⊨ᵘ _ ≈ _ |- _ => exact (proj1 HU) end |];
+  all: try solve [ split; [ match goal with HU : _ ⊨ᵘ _ ≈ _ |- _ => exact (ruu_lit _ _ _ HU) end |];
                    split; [ apply (smt_of_semK _ _ Hgf); assumption |]; split; [ apply (smt_of_semK _ _ Hgf); assumption |];
                    split; assumption ].
   all: try solve [

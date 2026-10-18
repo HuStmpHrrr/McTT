@@ -451,8 +451,12 @@ Section Semantics.
 
   (** The unit given on the command line: run like an imported one, with
       itself as the whole chain; [B] is the record it ends with. *)
-  Definition prog_sem (prg : Cst.prog) (B : builtins) (Θ : gdeps) (U : gunit) : Prop :=
-    exists u Rb, to_core prg = Some u /\ run_unit (prog_path prg :: nil) u B Rb Θ U.
+  #[warnings="-cannot-define-projection"]
+  Record prog_sem (prg : Cst.prog) (B : builtins) (Θ : gdeps) (U : gunit) : Prop := mk_prog_sem
+    { ps_unit : cunit
+    ; ps_record : bmap
+    ; ps_core : to_core prg = Some ps_unit
+    ; ps_run : run_unit (prog_path prg :: nil) ps_unit B ps_record Θ U }.
 End Semantics.
 
 
@@ -476,7 +480,7 @@ Qed.
 Lemma open_gens_functional : forall Θ Ξ io Γ H its gs1 gs2, ⊢ᵍ Θ ⍮ Ξ ->
     open_gens Θ Ξ io Γ H its gs1 -> open_gens Θ Ξ io Γ H its gs2 -> gs1 = gs2.
 Proof.
-  intros * Hg (_ & H1 & _) (_ & H2 & _).
+  intros * Hg [_ _ _ _ H1 _] [_ _ _ _ H2 _].
   destruct (mdenote_functional_all _ _ Hg) as (_ & _ & _ & _ & Hf); exact (Hf _ _ _ _ _ H1 _ H2).
 Qed.
 
@@ -740,7 +744,7 @@ Section GrowDeps.
     destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (HΞ0 & HU & Hff).
     assert (HΞ' : ⊢ᵍ Θ' ⍮ Ξ) by (apply IH; [ assumption | assumption | intros; eapply Hfr; right; eassumption ]).
     pose proof (Hfr mp U (or_introl eq_refl)) as Hn.
-    destruct HU as (Δ & Φ & -> & HΦ).
+    destruct HU as [Δ Φ -> HΦ].
     apply wf_gstack_cons; [ exact HΞ' | | eapply frame_fresh_grow; eassumption ].
     eapply (proj2 global_deps_grow); eauto.
   Qed.
@@ -751,7 +755,7 @@ Section GrowDeps.
       ⊢ᵍ Θ' ⍮ nil -> gds_lookup Θ' fp = None ->
       Θ ⍮ nil ⍮ q_abs fp nil ⊢ᵍᵘ U -> Θ' ⍮ nil ⍮ q_abs fp nil ⊢ᵍᵘ U.
   Proof.
-    intros * HΘ' Hn (Δ & Φ & -> & HΦ); apply wf_gunit_intro.
+    intros * HΘ' Hn [Δ Φ -> HΦ]; apply wf_gunit_intro.
     eapply (proj2 global_deps_grow); [ eassumption | reflexivity | exact HΘ' | exact Hn ].
   Qed.
 End GrowDeps.
@@ -878,7 +882,7 @@ Lemma ind_lookup_add : forall Θ Ξ x E p D,
 Proof.
   intros * HΞ Hfr Hl.
   destruct Ξ as [| [mq U] Ξ0]; [ contradiction |].
-  destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & (P & Ψ & -> & _) & _).
+  destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & [P Ψ -> _] & _).
   cbn in Hfr |- *.
   eapply ind_lookup_gc_sub; [ apply gc_sub_grow; exact Hfr | exact Hl ].
 Qed.
@@ -904,7 +908,7 @@ Proof.
   destruct (ind_lookup_module _ _ _ _ Hl) as [T Hm].
   apply gc_module_frame in Hm as [(y & ip & -> & Hm) | Hm].
   - destruct Ξ as [| [mq U] Ξ0]; [ contradiction |].
-    destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & (P & Ψ & -> & _) & _).
+    destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & [P Ψ -> _] & _).
     cbn [gs_path gs_add gu_params gu_mod gs_tele] in Hm |- *.
     assert (Hp : qname_app (qname_in mq x) (y :: ip) = qname_app mq (x :: y :: ip))
       by (unfold qname_app, qname_in; cbn; rewrite <- List.app_assoc; reflexivity).
@@ -933,7 +937,7 @@ Qed.
 Lemma builtins_wf_mono : forall Θ Ξ Θ' Ξ' B,
     (forall p D, ind_lookup Θ Ξ p = Some D -> ind_lookup Θ' Ξ' p = Some D) ->
     builtins_wf Θ Ξ B -> builtins_wf Θ' Ξ' B.
-Proof. intros * Hm Hb p Hp; destruct (Hb p Hp) as (D & z & s & Hl & Hs & Ho); exists D, z, s; auto. Qed.
+Proof. intros * Hm Hb p Hp; destruct (Hb p Hp) as [D z s Hl Hs Ho]; exact (mk_nat_binding_ok _ _ _ D z s (Hm _ _ Hl) Hs Ho). Qed.
 
 (** A record read under no frame is read under frames of units not filed. *)
 Lemma builtins_wf_below : forall Θ Ξ B,
@@ -988,10 +992,23 @@ Section WellFormed.
 
   (** A filed unit is what loading its file yields, and its record in [Rb]
       the record that run ends with; [Rb] records only filed units. *)
+  #[warnings="-cannot-define-projection"]
+  Record canon_entry (Rb : bmap) (fp : path) (U : gunit) : Prop := mk_canon_entry
+    { cn_record : builtins
+    ; cn_src : string
+    ; cn_prog : Cst.prog
+    ; cn_unit : cunit
+    ; cn_chain : list path
+    ; cn_rb : bmap
+    ; cn_deps : gdeps
+    ; cn_lookup : bm_lookup Rb fp = Some cn_record
+    ; cn_load : load_path fp = Some cn_src
+    ; cn_read : read cn_src = Some cn_prog
+    ; cn_core : to_core cn_prog = Some cn_unit
+    ; cn_run : run_unit (fp :: cn_chain) cn_unit cn_record cn_rb cn_deps U }.
+
   Definition canon (Rb : bmap) (Θ : gdeps) : Prop :=
-    (forall fp U, gds_lookup Θ fp = Some U ->
-       exists BU src prg u ch RbU ΘU, bm_lookup Rb fp = Some BU /\ load_path fp = Some src /\
-         read src = Some prg /\ to_core prg = Some u /\ run_unit (fp :: ch) u BU RbU ΘU U) /\
+    (forall fp U, gds_lookup Θ fp = Some U -> canon_entry Rb fp U) /\
     (forall fp BU, bm_lookup Rb fp = Some BU -> gds_lookup Θ fp <> None).
 
   Definition bm_agree (Rb Rb' : bmap) : Prop :=
@@ -1004,8 +1021,8 @@ Section WellFormed.
     assert (Hrun : forall fp U1 U2, gds_lookup Θ1 fp = Some U1 -> gds_lookup Θ2 fp = Some U2 ->
                      U1 = U2 /\ bm_lookup Rb1 fp = bm_lookup Rb2 fp).
     { intros fp U1 U2 E1 E2.
-      destruct (H1 _ _ E1) as (B1 & src & prg & u & ch & R1 & T1 & EB1 & Hl & Hr & Ht & Hu).
-      destruct (H2 _ _ E2) as (B2 & src' & prg' & u' & ch' & R2 & T2 & EB2 & Hl' & Hr' & Ht' & Hu').
+      destruct (H1 _ _ E1) as [B1 src prg u ch R1 T1 EB1 Hl Hr Ht Hu].
+      destruct (H2 _ _ E2) as [B2 src' prg' u' ch' R2 T2 EB2 Hl' Hr' Ht' Hu'].
       rewrite Hl in Hl'; injection Hl' as <-; rewrite Hr in Hr'; injection Hr' as <-;
         rewrite Ht in Ht'; injection Ht' as <-.
       destruct (run_unit_functional load_path read to_core (fp :: ch) (fp :: ch') _ _ _ _ _ _ _ _ _ eq_refl Hu Hu') as (_ & -> & -> & _).
@@ -1028,10 +1045,9 @@ Section WellFormed.
     intros * Hl Hr Ht Hu [Hc Hc']; split.
     - intros fq V HV; cbn in HV; destruct (path_beq fq fp) eqn:Hb.
       + apply path_beq_true in Hb as ->; injection HV as <-.
-        exists BU, src, prg, u, ch, RbU, ΘU; split; [ cbn; rewrite path_beq_refl; reflexivity |].
-        repeat split; assumption.
-      + destruct (Hc _ _ HV) as (B0 & src0 & prg0 & u0 & ch0 & R0 & T0 & E0 & Hrest).
-        exists B0, src0, prg0, u0, ch0, R0, T0; split; [ cbn; rewrite Hb; exact E0 | exact Hrest ].
+        apply (mk_canon_entry _ _ _ BU src prg u ch RbU ΘU); [ cbn; rewrite path_beq_refl; reflexivity | assumption .. ].
+      + destruct (Hc _ _ HV) as [B0 src0 prg0 u0 ch0 R0 T0 E0 Hl0 Hr0 Ht0 Hu0].
+        apply (mk_canon_entry _ _ _ B0 src0 prg0 u0 ch0 R0 T0); [ cbn; rewrite Hb; exact E0 | assumption .. ].
     - intros fq B0 HB; cbn in HB |- *; destruct (path_beq fq fp); [ discriminate | exact (Hc' _ _ HB) ].
   Qed.
 
@@ -1040,10 +1056,10 @@ Section WellFormed.
     intros * [H1 H1'] [H2 H2']; split.
     - intros fp U HU; rewrite gds_lookup_merge in HU.
       destruct (gds_lookup Θ1 fp) as [U1 |] eqn:E1.
-      + injection HU as <-; destruct (H1 _ _ E1) as (B0 & src & prg & u & ch & R0 & T0 & EB & Hrest).
-        exists B0, src, prg, u, ch, R0, T0; split; [ rewrite bm_lookup_merge, EB; reflexivity | exact Hrest ].
-      + destruct (H2 _ _ HU) as (B0 & src & prg & u & ch & R0 & T0 & EB & Hrest).
-        exists B0, src, prg, u, ch, R0, T0; split; [| exact Hrest ].
+      + injection HU as <-; destruct (H1 _ _ E1) as [B0 src prg u ch R0 T0 EB Hl Hr Ht Hu].
+        apply (mk_canon_entry _ _ _ B0 src prg u ch R0 T0); [ rewrite bm_lookup_merge, EB; reflexivity | assumption .. ].
+      + destruct (H2 _ _ HU) as [B0 src prg u ch R0 T0 EB Hl Hr Ht Hu].
+        apply (mk_canon_entry _ _ _ B0 src prg u ch R0 T0); [| assumption .. ].
         rewrite bm_lookup_merge; destruct (bm_lookup Rb1 fp) eqn:F; [ exfalso; exact (H1' _ _ F E1) | exact EB ].
     - intros fp B0 HB; rewrite bm_lookup_merge in HB; rewrite gds_lookup_merge.
       destruct (bm_lookup Rb1 fp) eqn:F.
@@ -1192,7 +1208,7 @@ Section WellFormed.
       prog_sem load_path read to_core prg B Θ U ->
       ⊢ᵍ Θ ⍮ nil /\ Θ ⍮ nil ⍮ q_abs (prog_path prg) nil ⊢ᵍᵘ U.
   Proof.
-    intros * (u & Rb & _ & Hu); destruct (proj2 (proj2 run_wf) _ _ _ _ _ _ Hu) as (? & _ & ?); split; assumption.
+    intros * [u Rb _ Hu]; destruct (proj2 (proj2 run_wf) _ _ _ _ _ _ Hu) as (? & _ & ?); split; assumption.
   Qed.
 
   (** ** Builtin Bindings Stay Well Formed
@@ -1230,7 +1246,7 @@ Section WellFormed.
       destruct (proj1 (proj2 run_wf) _ _ _ _ _ _ _ _ _ _ Hr Hpush Hc Hst') as (HΞ' & _).
       destruct (IH Hpush Hc Hst' Hb0 HR) as [Hb' HR'].
       pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr) as Hp; cbn in Hp; injection Hp as -> HP.
-      destruct (wf_gstack_cons_inv _ _ _ _ HΞ') as (HΞ0 & (Δ' & Φ' & -> & _) & _).
+      destruct (wf_gstack_cons_inv _ _ _ _ HΞ') as (HΞ0 & [Δ' Φ' -> _] & _).
       cbn in HP; subst Δ'; cbn [gu_mod].
       split; [| exact HR' ].
       eapply builtins_wf_mono; [| exact Hb' ].
@@ -1270,7 +1286,7 @@ Section WellFormed.
     - (* a binding: of a type read here *)
       intros ch B Rb B' Θ Ξ H p D z0 s0 _ Hl Hs Ho Hso Hbd _ _ _ Hb HR; split; [| exact HR ].
       eapply bt_merge_wf; [ exact Hb | | exact Hbd ].
-      intros p1 Hq; cbn in Hq; injection Hq as <-; exists D, z0, s0; auto.
+      intros p1 Hq; cbn in Hq; injection Hq as <-; exact (mk_nat_binding_ok _ _ _ D z0 s0 Hs Ho Hso).
     - intros * _ _ _ Hfr HΞ _ _ Hb HR; split; [ apply Hadd; assumption | exact HR ].
     - intros; split; assumption.
     - intros; split; assumption.
@@ -1308,7 +1324,7 @@ Section WellFormed.
   (** At the end of a program, its record is of a type it reads. *)
   Corollary prog_sem_builtins_wf : forall prg B Θ U,
       prog_sem load_path read to_core prg B Θ U -> builtins_wf ((prog_path prg, U) :: Θ) nil B.
-  Proof. intros * (u & Rb & _ & Hu); exact (proj1 (proj2 (proj2 run_builtins_wf) _ _ _ _ _ _ Hu)). Qed.
+  Proof. intros * [u Rb _ Hu]; exact (proj1 (proj2 (proj2 run_builtins_wf) _ _ _ _ _ _ Hu)). Qed.
 End WellFormed.
 
 

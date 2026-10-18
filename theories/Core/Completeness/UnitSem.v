@@ -45,9 +45,9 @@ Proof.
     subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |].
   - assert (Hsu : sem_unit Γ (gu_open Δ Φ))
       by (eapply sem_unit_body; [ exact HΔ | exact (body_xp_target _ _ _ Hx) | exact Hsh | exact Hsx | exact HC | exact Hov ]).
-    split; [ exact HU | split; exact Hsu ].
+    constructor; [ exact HU | exact Hsu | exact Hsu ].
   - assert (Hsu : sem_unit Γ (gu_mk Δ (md_alias E))) by (apply sem_unit_alias; assumption).
-    split; [ exact HU | split; exact Hsu ].
+    constructor; [ exact HU | exact Hsu | exact Hsu ].
 Qed.
 
 Lemma semK_valid : forall Γ K, semK Γ K -> Γ ⊨ᵐ K ≈ K.
@@ -59,7 +59,7 @@ Qed.
 (** Member typing moves along related module expressions. *)
 Lemma smem_transport : forall Γ H K x A om, Γ ⊨ᵐ H ≈ K -> smem Γ K x A om -> smem Γ H x A om.
 Proof.
-  intros * HHK [HA [HM HS]]; split; [ exact HA | split; [ exact HM |] ].
+  intros * HHK [HA HM HS]; constructor; [ exact HA | exact HM |].
   intros R HR ρ Hρ.
   destruct (HS _ HR _ Hρ) as (k & a & i & RA & Hk & Ha & HRA & Hm & Hred).
   destruct (rel_modexp_at _ _ _ _ _ HHK HR _ _ Hρ) as (h & k' & Hh & Hk' & Hhk).
@@ -67,7 +67,7 @@ Proof.
   assert (HPA : PER RA) by (eapply per_elem_PER; exact HRA).
   exists h, a, i, RA; repeat split; try assumption; [ eapply mty_resp; [ exact HPA | exact Hhk | exact Hm ] |].
   intros M HM0; destruct (Hred _ HM0) as (m & r & Hm0 & Hr & Hmr).
-  destruct (Hm _ Hhk) as (r1 & r2 & Hr1 & Hr2 & Hrr).
+  destruct (Hm _ Hhk) as [r1 r2 Hr1 Hr2 Hrr].
   pose proof (functional_eval_sel _ _ _ _ Hr2 Hr) as ->.
   exists m, r1; repeat split; [ exact Hm0 | exact Hr1 | etransitivity; [ exact Hmr | symmetry; exact Hrr ] ].
 Qed.
@@ -210,8 +210,8 @@ Proof.
     pose proof (sub_preserves_modexp _ _ _ _ _ _ _ Hw Hτ) as Hw'.
     rewrite me_apps_sub, qname_mod_sub in Hw' |- *.
     eapply sk_filed; [ exact Hw' | exact Hgl | exact (proj1 (gsub_sem Hg)) |].
-    destruct Hs as (T1 & T2 & -> & Hl & Ha & Hsc & HN).
-    exists T1, T2; split; [ reflexivity |]; split; [ rewrite length_map; exact Hl |]; split; [ exact Ha |]; split; [ exact Hsc |].
+    destruct Hs as [T1 T2 -> Hl Ha Hsc HN].
+    apply (mk_sargs _ _ _ T1 T2); [ reflexivity | rewrite length_map; exact Hl | exact Ha | exact Hsc |].
     intros k N A HNk HAk.
     rewrite List.nth_error_map in HNk; destruct (nth_error Ns k) as [N0 |] eqn:HN0; [| discriminate ]; injection HNk as <-.
     rewrite <- (tele_insts_sub T2 0 Id Id τ Ns Ha Hsc ltac:(intros; lia)), List.nth_error_map in HAk.
@@ -299,16 +299,16 @@ Proof.
     pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
     destruct (rel_exp_of_typ_inversion_simple_at HΓ HA _ _ Hρ) as (a & a' & Ha & Ha' & [Ra HRa]).
     rewrite app_assoc.
-    exists (dm_local ((Δy ++ Δ0) ++ ce_ass A :: nil) D ρ), (dm_local ((Δy ++ Δ0) ++ ce_ass A :: nil) D ρ').
-    split; [ apply lit_params_val |]; split; [ apply lit_params_val |].
+    apply (mk_rel_mexp _ _ _ _ (dm_local ((Δy ++ Δ0) ++ ce_ass A :: nil) D ρ) (dm_local ((Δy ++ Δ0) ++ ce_ass A :: nil) D ρ'));
+      [ apply lit_params_val | apply lit_params_val |].
     assert (Hstep : forall c c', Ra c c' -> rel_mexp (me_lit (gu_mk (Δy ++ Δ0) D)) (ρ ↦ c) (me_lit (gu_mk (Δy ++ Δ0) D)) (ρ' ↦ c')).
     { intros c c' Hc; apply (IH (Γ ▹ A) _ _ _ HΔ0 HC HΓA HU).
       split; [ exact Hρ | eapply per_head_of; [ exact Ha | exact Ha' | exact HRa | exact Hc ] ]. }
     eapply (per_dmod_fun Ra); [ constructor; exact Ha | constructor; exact Ha' | exact HRa | | |].
-    + intros c c' Hc; destruct (Hstep _ _ Hc) as (hc & _ & Hhc & _); exists hc; apply eval_appm_local, eval_me_lit_iff; exact Hhc.
-    + intros c c' Hc; destruct (Hstep _ _ Hc) as (_ & hc' & _ & Hhc' & _); exists hc'; apply eval_appm_local, eval_me_lit_iff; exact Hhc'.
+    + intros c c' Hc; destruct (Hstep _ _ Hc) as [hc _ Hhc _ _]; exists hc; apply eval_appm_local, eval_me_lit_iff; exact Hhc.
+    + intros c c' Hc; destruct (Hstep _ _ Hc) as [_ hc' _ Hhc' _]; exists hc'; apply eval_appm_local, eval_me_lit_iff; exact Hhc'.
     + intros c c' hc hc' Hc Hhc Hhc'.
-      destruct (Hstep _ _ Hc) as (g & g' & Hg & Hg' & Hgg).
+      destruct (Hstep _ _ Hc) as [g g' Hg Hg' Hgg].
       inversion Hhc; subst; inversion Hhc'; subst.
       repeat match goal with Hl : _ ++ _ = _ ++ _ |- _ => apply app_inj_tail in Hl as [-> [= ->]] end.
       apply eval_me_lit_iff in Hg, Hg'.

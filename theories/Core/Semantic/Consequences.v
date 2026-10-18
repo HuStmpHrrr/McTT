@@ -73,9 +73,9 @@ Proof.
   intros * Hl HΓ HMl HMt HW.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [Hdt Hc].
   pose proof (decl_closed_params D Hc) as Hass.
-  pose proof Hc as (_ & _ & Hs0 & _).
-  pose proof Hdt as (_ & _ & _ & HΔ & _).
-  inversion HW as [? ? ρ a ? Hinit Ea HRa]; subst.
+  pose proof (dc_params _ Hc) as Hs0.
+  pose proof (dt_params _ _ _ Hdt) as HΔ.
+  inversion HW as [ρ a Hinit Ea HRa]; subst.
   apply Modules.eval_apps_exp in Ea as (f & ms & Ef & Ems & Eap).
   inversion Ef; subst.
   apply eval_apps_ind_inv in Eap; cbn in Eap; subst.
@@ -90,7 +90,7 @@ Proof.
                 ltac:(intros; eapply completeness_fundamental_exp; eauto)
                 ltac:(intros; eapply soundness_fundamental_exp; eauto) Ems) as Hg.
   rewrite (List.map_ext (fun M => M[Id]) (fun M => M) exp_sub_id), List.map_id in Hg.
-  destruct (IndCases.glu_args_params_top _ _ _ _ Hass Hs0 Hg) as (_ & _ & Htop).
+  destruct (IndCases.glu_args_params_top _ _ _ _ Hass Hs0 Hg) as [_ _ Htop].
   pose proof (Htop Γ wk_id _ ltac:(mauto 3) ltac:(eassumption)) as H.
   rewrite map_wk_id in H; exact H.
 Qed.
@@ -104,7 +104,7 @@ Lemma typ_ind_shape : forall Γ T i p Rs, Γ ⊢ T : Typeω@i -> nbe_ty_f Γ T (
 Proof.
   intros * HT HW.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
-  inversion HW as [? ? ρ a ? Hinit Ea HRa]; subst.
+  inversion HW as [ρ a Hinit Ea HRa]; subst.
   inversion HRa; subst.
   destruct (soundness_fundamental_ctx _ HΓ) as [Sb HSb].
   pose proof (initial_env_glu_rel_exp Hinit HSb) as Hσ.
@@ -118,7 +118,7 @@ Proof.
   assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
   destruct (HK Γ wk_id Hid) as (Htop & _ & _).
   rewrite map_wk_id in Htop.
-  destruct Htop as (HPl & HPt & Hrb).
+  destruct Htop as [HPl HPt Hrb].
   match goal with H : ind_lookup _ _ p = Some ?D0, H' : ind_lookup _ _ p = Some ?D1 |- _ =>
     assert (D0 = D1) as -> by congruence end.
   eexists _, Ps; split; [ eassumption | split; [ exact HPl | split; [ exact HPt | split; [ exact Heq |] ] ] ].
@@ -610,12 +610,12 @@ Lemma subtyp_suniv_bound : forall {Γ M N L L'},
     lvl_le L L'.
 Proof.
   intros * Hs Hn Hn'.
-  apply completeness_fundamental_subtyp in Hs as [R [HR [i Hg]]].
+  apply completeness_fundamental_subtyp in Hs as [R HR i Hg].
   destruct (per_ctx_then_per_env_initial_env HR) as (ρ & ρ' & Hρ & Hρ' & Hrel).
   assert (ρ' = ρ) as -> by (eapply functional_initial_env; eassumption).
   assert (⊨ Γ ≈ Γ) as HsΓ by (eexists; exact HR).
   destruct (Hg _ _ HR _ _ (rel_sub_id HsΓ) _ _ _ _ Hrel (eval_sub_id _) (eval_sub_id _))
-    as (aσ & a & a'σ' & a' & Ha1 & Ha2 & Ha3 & Ha4 & _ & _ & Hsub).
+    as [aσ a a'σ' a' Ha1 Ha2 Ha3 Ha4 _ _ Hsub].
   inversion Hn; subst.
   inversion Hn'; subst.
   dir_inversion_by_head eval_exp; subst.
@@ -623,7 +623,7 @@ Proof.
   functional_eval_rewrite_clear.
   inversion Hsub; subst.
   match goal with Hl : per_sublvl _ _ |- _ =>
-    destruct (Hl (length Γ)) as (L0 & L1 & HL0 & HL1 & Hle) end.
+    destruct (Hl (length Γ)) as [L0 L1 HL0 HL1 Hle] end.
   functional_read_rewrite_clear.
   repeat match goal with H : nf_lvl_of _ = nf_lvl_of _ |- _ => apply nf_lvl_of_inj in H; subst end.
   exact Hle.
@@ -977,7 +977,7 @@ Proof.
   exists W; split; [ exact Hn |].
   pose proof (nbe_clean _ _ Htr _ _ _ _ Hn) as Hc.
   assert (HW : ⋅ ⊢ W : apps (a_ind p) Ps) by (gen_presups; assumption).
-  inversion Hn as [? ? ? ? ? a m Hi Ha Hm Hr]; subst.
+  inversion Hn as [? a m Hi Ha Hm Hr]; subst.
   inversion Hi; subst.
   destruct (eval_ind_value _ _ _ _ Ha) as [ms ->].
   inversion Hr; subst.
@@ -1075,7 +1075,7 @@ Proof.
   pose proof (nbe_clean _ _ Htr _ _ _ _ Hn) as Hc.
   assert (HW : ⋅ ⊢ W : a_ind p) by (gen_presups; assumption).
   assert (Hch : nat_chain_nf p z s W).
-  { inversion Hn as [? ? ? ? ? a m Hi Ha Hm Hr]; subst.
+  { inversion Hn as [? a m Hi Ha Hm Hr]; subst.
     inversion Hi; subst; inversion Ha; subst.
     eapply nat_chain_of_read; eassumption. }
   destruct (nat_chain_nf_numeral _ _ _ _ Hch) as [n Hnum].
@@ -1207,7 +1207,7 @@ Definition gopaque (Θ : gdeps) (Ξ : gstack) (p : qname) : Prop :=
 
 Lemma gstuck_gopaque : forall Θ Ξ p, gc_no_axioms Θ Ξ -> gstuck Θ Ξ p -> gopaque Θ Ξ p.
 Proof.
-  intros * Hna (b & pv & A & B & Hr & Hb).
+  intros * Hna [b pv A B Hr Hb].
   pose proof (gc_no_axioms_resolve _ _ _ _ _ _ _ Hna Hr) as HB.
   destruct B as [M |]; [| congruence ].
   destruct Hb as [-> | ?]; [| discriminate ].
@@ -1289,7 +1289,7 @@ Proof.
   pose proof (nbe_stuck _ _ _ _ _ _ Hn) as Hc.
   assert (HW : ⋅ ⊢ W : a_ind p) by (gen_presups; assumption).
   exists W; split; [ exact Hn |].
-  inversion Hn as [? ? ? ? ? a m Hi Ha Hm Hr]; subst.
+  inversion Hn as [? a m Hi Ha Hm Hr]; subst.
   inversion Hi; subst; inversion Ha; subst.
   eapply nat_chain_stuck_of_read; eassumption.
 Qed.
@@ -1520,7 +1520,7 @@ Proof.
   intros * Hp Θ' Hb HM.
   pose proof (prog_sem_no_axioms _ _ _ Hload _ _ _ _ Hp) as Hna.
   pose proof (Mctt.Core.Syntactic.System.Command.prog_sem_builtins_wf _ _ _ _ _ _ _ Hp) as Hw.
-  destruct (Hw _ Hb) as (D & z & s & Hl & Hs & _).
+  destruct (Hw _ Hb) as [D z s Hl Hs _].
   exists z, s.
   destruct (canonical_form_of_ind_nat_no_axioms _ _ _ _ _ _ _ Hna Hl Hs HM) as (_ & _ & _ & V & n & HV & _ & Hn & _).
   exists V, n; split; [ unfold nat_view, Θ'; rewrite Hb, Hl, Hs; reflexivity | split; assumption ].

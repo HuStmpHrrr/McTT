@@ -45,7 +45,7 @@ Lemma rel_exp_under_ctx_shift : forall {Γ e A M M' env_relΓC},
     (e :: Γ)%list ⊨ M[↑]ʷ ≈ M'[↑]ʷ : A[↑]ʷ.
 Proof.
   intros * HΓCper HM.
-  destruct HM as [env_relΓ [HΓ [i HMgen]]].
+  destruct HM as [env_relΓ HΓ i HMgen].
   pose proof (rel_sub_of_wk (rel_wk_under_ctx_intro HΓCper HΓ (rel_wk_shift HΓ HΓCper)))
     as HWk.
   eexists_rel_exp_with i.
@@ -200,7 +200,7 @@ Proof.
     assert (Hρ'ρ' : Dom ρ' ≈ ρ' ∈ per_env_extend_def A M env_relΓ) by solve_per.
     destruct (Hws _ _ (proj1 (E _ _) Hρ'ρ')) as [a1 [a1' [R1 [Ha1 [Ha1' [HR1 [m1 [m1' [Hm1 [Hm1' Hmm1]]]]]]]]]].
     destruct (Hws _ _ (proj1 (E _ _) Hρ)) as [a0 [a0' [R2 [Ha0 [Ha0' [HR2 _]]]]]].
-    destruct Hρ as [[Ht Hh] [_ [m' [Hm' Htie']]]].
+    destruct Hρ as [[Ht Hh] _ [m' [Hm' Htie']]].
     destruct (rel_exp_of_typ_inversion_simple_at HΓper HA _ _ Ht) as [b [b' [Hb [Hb' [R3 HR3]]]]].
     rewrite eval_wk_shift in *.
     exists (ρ 0), m1.

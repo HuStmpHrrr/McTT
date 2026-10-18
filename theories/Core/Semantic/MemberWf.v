@@ -41,7 +41,7 @@ Lemma args_ok_next : forall Γ T Ns C T1',
     tele_view (List.firstn (length T - length Ns) T) = Some (C, T1') ->
     exists i, Γ ⊢ C[sb_of_list Id Ns] : Typeω@i.
 Proof.
-  intros * (T1 & T2 & -> & Hl & Ha2 & Hs2 & HT2 & HN) Ha Hs HT Hv.
+  intros * [T1 T2 -> Hl Ha2 Hs2 HT2 HN] Ha Hs HT Hv.
   replace (firstn (length (T1 ++ T2) - length Ns) (T1 ++ T2)) with T1 in Hv
     by (rewrite List.length_app, <- Hl, Nat.add_sub, List.firstn_app, Nat.sub_diag, List.firstn_O, List.app_nil_r, List.firstn_all; reflexivity).
   apply List.Forall_app in Ha as [Ha1 _].

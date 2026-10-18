@@ -199,16 +199,16 @@ Lemma glu_args_link : forall Δ C C' τ τ' ρ1 ρ2 Ms vs, List.length C = List.
     (forall k e', List.nth_error (List.rev C') k = Some e' -> exists A, List.nth_error (List.rev C) k = Some (ce_ass A) /\ exists A', e' = ce_ass A') ->
     glu_args Δ C' τ' ρ2 Ms vs.
 Proof.
-  intros * HlC HT (L1 & L2 & H) Hlink Hass.
-  split; [ congruence | split; [ congruence |] ].
+  intros * HlC HT [L1 L2 H] Hlink Hass.
+  constructor; [ congruence | congruence |].
   intros k M T v A' HM HT' Hv HA'.
   destruct (Hass _ _ HA') as (A & HA & A'' & E); injection E as <-.
   rewrite <- HT in HT'.
-  destruct (H _ _ _ _ _ HM HT' Hv HA) as (j & a & P & El & Ea & Hg & HP & HMg).
+  destruct (H _ _ _ _ _ HM HT' Hv HA) as [j a P El Ea Hg HP HMg].
   assert (Hk : k < List.length vs) by (apply List.nth_error_Some; congruence).
   destruct (Hlink _ _ _ _ HA HA' Hk Ea) as (a' & i & Ea' & Hr).
   destruct (glu_transfer_per' j i a a' P El Δ T M v Hg (per_univ_sym' _ _ _ Hr) HP HMg) as (k' & P' & El' & Hg' & HP' & HM').
-  exists k', a', P', El'; auto.
+  exact (mk_glu_arg _ _ _ _ _ _ k' a' P' El' Ea' Hg' HP' HM').
 Qed.
 
 (** ** Arguments of a Closed Telescope, Glued *)
@@ -275,7 +275,7 @@ Proof.
   pose proof (glu_ctx_env_per_env HSb HRΓ Hσ) as Hρ.
   pose proof (closed_args_gargs _ _ _ _ _ _ Hass HC HΓ HRΓ Hρ Hl HMs Hv) as Hpg.
   assert (Lv : List.length vs = List.length C) by (rewrite <- Hl; exact (IndCases.eval_exps_length _ _ _ Hv)).
-  split; [ rewrite List.length_map; exact Hl | split; [ exact Lv |] ].
+  constructor; [ rewrite List.length_map; exact Hl | exact Lv |].
   intros k M T v A HM HT Hv' HA.
   apply nth_error_map_inv in HM as (N & HN & ->).
   rewrite <- (tele_insts_sub C 0 Id Id σ Ms Hass Hs ltac:(intros; lia)) in HT.
@@ -309,7 +309,7 @@ Proof.
   assert (Hlink : Dom a ≈ a2 ∈ per_univ j) by (eapply per_univ_trans'; [ exact Hab | exists R; exact HR ]).
   destruct (glu_transfer_per' i j a a2 P El Δ T0[σ] N[σ] v0 Hgl Hlink ltac:(eapply glu_univ_elem_trm_typ; eassumption) HNg)
     as (k' & P' & El' & Hg' & HP' & HM').
-  exists k', a2, P', El'; auto.
+  apply (mk_glu_arg _ _ _ _ _ _ k' a2 P' El'); assumption.
 Qed.
 
 (** ** Lists of Parameters *)
@@ -768,7 +768,7 @@ Section ElimSem.
                   HeN' HNP' HeA' HAP' HeD' HDP') as HT.
     exists P, El; split; [ exact Hg' | split ].
     - apply HP; exists Q; exact HT.
-    - apply HEl; split; [ exact HM | split; [ apply HRR; exact Hm | exists Q; split; [ exact HT |] ] ].
+    - apply HEl; refine (mk_ind_glu_exp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM _ Q HT _); [ apply HRR; exact Hm |].
       intros Δ' φ Q' Hφ HQ'.
       apply (glu_ind_mono p D ups0 NEl AEl DP DEl Hass Hcp NEl' AEl' DP' DEl'); [ | | | exact (HK _ _ _ Hφ HQ') ].
       + intros k vs Hk Hp Γ0 A0 N n HN.
@@ -1050,7 +1050,7 @@ Section ElimSem.
     assert (Hpu : Dom d_ind p (ups ++ ns) ≈ d_ind p (w ++ ns) ∈ per_univ n) by (eexists; exact Hn).
     destruct (glu_transfer_per' j n _ _ P El Δ' _ M m Hgj Hpu HP HMg) as (k' & P' & El' & Hg' & HP' & HM').
     rewrite it_inst by exact LN.
-    exists k', (d_ind p (w ++ ns)), P', El'; split; [ exact Ew | split; [ exact Hg' | split; assumption ] ].
+    exact (mk_glu_arg _ _ _ _ _ _ k' (d_ind p (w ++ ns)) P' El' Ew Hg' HP' HM').
   Qed.
 
   (** ** The Eliminator, by Induction on the Gluing of the Scrutinee *)
@@ -1429,7 +1429,7 @@ Section ElimSem.
       elim_mctx p D (List.map (fun U => U[σ'']) Us) ++ Δ ⊢ A[sb_qn nm σ''] ≈ A'' : Typeω@iA.
   Proof.
     intros * Hσ'' Hadm Lua Fx Eaf HRA.
-    pose proof HAg as [SbM [HSbM _]].
+    pose proof HAg as [SbM HSbM _ _].
     pose proof (mctx_fresh_glu SbM HSbM Δ σ'' ua ns_x Hσ'' Hadm Lua Fx) as Hτ.
     destruct (glu_rel_typ_at _ _ _ _ _ _ _ HSbM HAg Hτ) as (HAτ & a & Ea & Hpa & HPa).
     assert (a = af) as -> by (eapply functional_eval_exp; eassumption).
@@ -1460,7 +1460,7 @@ Section ElimSem.
   Proof.
     intros * Hσ'' Hadm Lua Hcon Hin Fx Cx Ix Eb Et HRn.
     pose proof (HBa c gs n B Hcon Hin) as Hn.
-    pose proof (HBg c gs n B Hcon Hin) as HBgl; destruct HBgl as [SbB [HSbB _]].
+    pose proof (HBg c gs n B Hcon Hin) as HBgl; destruct HBgl as [SbB HSbB _ _].
     pose proof (br_fresh_glu c gs Hcon SbB HSbB Δ σ'' ua ns_x vs_x ihs_x Hσ'' Hadm Lua Fx Cx Ix) as Hτ.
     destruct (glu_rel_exp_clean_inversion1 HSbB (HBg c gs n B Hcon Hin)) as [iB HiB].
     destruct (HiB _ _ _ Hτ) as [eb rb Pb Elb Eeb Erb Hgb HBglue]; clear HiB.
@@ -1537,7 +1537,7 @@ Section ElimSem.
           Δ' ⊢ A[sb_qn nm σ'][sb_of_list Id (List.skipn (ind_nu D) Q ++ M' :: nil)] ® P.
   Proof.
     intros * Hσ' HQU HQl HMt HK Hns Hrel Hgn.
-    pose proof HAg as [SbM [HSbM _]].
+    pose proof HAg as [SbM HSbM _ _].
     assert (HΔ' : ⊢ Δ') by (pose proof (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ'); gen_presups; assumption).
     destruct (per_univ_elem_ind_reinst _ _ _ _ _ _ _ _ HR0 Hl ups_len ups_len ns ns Hns) as [R HR].
     destruct (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ HR Hl ups_len ups_len) as (_ & _ & _ & _ & _ & _ & _ & HRi).
@@ -1568,6 +1568,18 @@ Section ElimSem.
       to [ρ] instantiating the uniform parameters, and any values of the
       non-uniform ones glued to the element's, its result is glued at the
       motive. *)
+  #[warnings="-cannot-define-projection"]
+  Record elim_out (Δ' : ctx) (Q : list exp) (M' : exp) (m' : domain) (σ' : sub) (ns : list domain) : Prop :=
+    mk_elim_out
+    { eli_val : domain
+    ; eli_motive : domain
+    ; eli_eval : ⟦elim m' under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ eli_val
+    ; eli_eval_motive : ⟦ A ⟧ env_args ρ (ns ++ m' :: nil) ↘ eli_motive
+    ; eli_per : Dom eli_motive ≈ eli_motive ∈ per_univ iA
+    ; eli_glu : forall P El, DG eli_motive ∈ glu_univ_elem iA ↘ P ↘ El ->
+        Δ' ⊢ a_elim nm A[sb_qn nm σ'] (brs_sub Bs σ') M'
+           : A[sb_qn nm σ'][sb_of_list Id (List.skipn (ind_nu D) Q ++ M' :: nil)] ® eli_val ∈ El }.
+
   Definition elim_prop (Δ' : ctx) (Q : list exp) (M' : exp) (m' : domain) : Prop :=
     forall σ', Δ' ⊢ˢ σ' ® ρ ∈ SbΓ -> List.firstn (ind_nu D) Q = List.map (fun U => U[σ']) Us ->
       List.length Q = ind_np D -> Δ' ⊢ M' : apps (a_ind p) Q ->
@@ -1576,17 +1588,14 @@ Section ElimSem.
       forall ns, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns ->
         ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns m' m' ->
         glu_nparams D NEl Δ' (List.firstn (ind_nu D) Q) (List.skipn (ind_nu D) Q) ns ->
-        exists r a, ⟦elim m' under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r /\ ⟦ A ⟧ env_args ρ (ns ++ m' :: nil) ↘ a /\
-          Dom a ≈ a ∈ per_univ iA /\ forall P El, DG a ∈ glu_univ_elem iA ↘ P ↘ El ->
-            Δ' ⊢ a_elim nm A[sb_qn nm σ'] (brs_sub Bs σ') M'
-               : A[sb_qn nm σ'][sb_of_list Id (List.skipn (ind_nu D) Q ++ M' :: nil)] ® r ∈ El.
+        elim_out Δ' Q M' m' σ' ns.
 
 
   Lemma rec_mvc : forall c0 gs1 t0 gs2 k, ind_con D c0 = Some (gs1 ++ ca_rec t0 :: gs2) ->
       List.Forall (exp_mvc 0) (ptyp_doms (ptyp_skip k t0)) /\ List.Forall (exp_mvc 0) (ptyp_ps (ptyp_skip k t0)).
   Proof.
     intros * Hc0.
-    pose proof Hdt as (_ & (_ & _ & Hcm) & _).
+    pose proof (dmv_cons _ (dt_mvc _ _ _ Hdt)) as Hcm.
     pose proof (Hcm _ _ (cons_lookup_in _ _ _ Hc0)) as Hf.
     apply List.Forall_app in Hf as [_ Hf]; inversion Hf as [| ? ? Hct _]; subst; cbn in Hct; destruct Hct as [Hd Hp].
     rewrite ptyp_doms_skip, ptyp_ps_skip; split; [| exact Hp ].
@@ -1758,7 +1767,7 @@ Section ElimSem.
     pose proof (proj2 (Hgn bs Hbs) Δ' wk_id Hid) as Htop.
     pose proof (IH _ Q Ebs eq_refl Δ' wk_id _ Hid (glu_params_top_refl _ _ _ _ Htop)) as HE.
     rewrite map_wk_id, exp_wk_id in HE.
-    destruct (HE σ' Hσ' ltac:(unfold Q; apply firstn_app_len; exact HUl') HQl HN) with (ns := bs) as (r' & a' & Er'' & Ea'' & Haa & Hgl).
+    destruct (HE σ' Hσ' ltac:(unfold Q; apply firstn_app_len; exact HUl') HQl HN) with (ns := bs) as [r' a' Er'' Ea'' Haa Hgl].
     - intros Δ'' φ Q'' Hφ HQ''; exact (Hs2 _ Q Ebs eq_refl Δ'' φ Q'' Hφ HQ'').
     - exact Hbs.
     - exact Hir.
@@ -1954,7 +1963,7 @@ Section ElimSem.
       apply glu_args_app; [ exact (decl_closed_nparams_ass D Hc) | rewrite length_nparams; exact LXs | rewrite length_nparams; exact LX |].
       split; [ exact (glu_args_of_nparams D ups u NP NEl HeN HNP Δ' _ _ _ Hnp Hb) |].
       rewrite <- sb_of_list_app, List.firstn_skipn, <- env_args_app.
-      split; [ rewrite length_cargs_ctx; exact HAl | split; [ rewrite length_cargs_ctx; exact Hvl |] ].
+      constructor; [ rewrite length_cargs_ctx; exact HAl | rewrite length_cargs_ctx; exact Hvl |].
       intros k N T v B HN HT Hv' HB.
       assert (Hk : k < List.length gs) by (rewrite <- Hvl; apply List.nth_error_Some; congruence).
       destruct (nth_error_lt_some gs k Hk) as [g Hg].
@@ -1996,7 +2005,7 @@ Section ElimSem.
         destruct (IndSem.per_univ_elem_to_nat _ _ _ _ Hlk) as [n Hn].
         assert (Hba : Dom b ≈ a1 ∈ per_univ n) by (apply per_univ_sym'; eexists; exact Hn).
         destruct (glu_transfer_per' u n b a1 _ _ Δ' T N v Hgb Hba (glu_univ_elem_trm_typ _ _ _ _ Hgb _ _ _ _ HNg) HNg) as (k' & P' & El' & Hg' & HP' & HM').
-        exists k', a1, P', El'; auto.
+        apply (mk_glu_arg _ _ _ _ _ _ k' a1 P' El'); assumption.
       - pose proof (cargs_rev_nth_rec p D gs gs1 Pr gs2 Heq) as HB'; rewrite HB in HB'; injection HB' as ->.
         pose proof (Hrec gs1 Pr gs2 N T v Heq HN HT Hv') as Hgr.
         pose proof (nonrec_prefix_pre _ _ _ _ _ _ Hv Hvl Heq) as Hpk.
@@ -2036,7 +2045,7 @@ Section ElimSem.
                       (lift_exp_ge _ _ _ _ jT j ltac:(unfold j; lia) HjT)
                       ltac:(rewrite List.app_nil_r; exact Eb) HRbb HRbv ltac:(unfold j; lia) Hgb) as HMr.
         pose proof (glu_univ_elem_resp_per_univ _ _ _ _ _ (ex_intro _ Rab HRba) Hgb) as Hga1.
-        exists (ul j), a1, P, El; split; [ exact Ea1 | split; [ exact Hga1 | split; [ exact (glu_univ_elem_trm_typ _ _ _ _ Hgb _ _ _ _ HMr) | exact HMr ] ] ].
+        exact (mk_glu_arg _ _ _ _ _ _ (ul j) a1 P El Ea1 Hga1 (glu_univ_elem_trm_typ _ _ _ _ Hgb _ _ _ _ HMr) HMr).
     Qed.
     Lemma con_Q_typed : forall k P T, List.nth_error Q k = Some P ->
         List.nth_error (tele_insts (ind_params D) Id Q) k = Some T -> Δ' ⊢ P : T.
@@ -2081,7 +2090,7 @@ Section ElimSem.
           by (rewrite <- env_args_app, <- List.app_assoc; exact HZ).
         destruct (IndSem.rel_gargs _ _ _ _ HRC HBs' (List.Forall_rev (ihs_ctx_aux_ass _ _ _ _ _ _ _)) HRB' _ _ _ _ Lr Lr HZ') as [_ H].
         exact H. }
-      split; [ rewrite length_elim_ihs, length_ihs_ctx_aux by exact HAl; reflexivity | split; [ rewrite length_ihs_ctx_aux; exact Lih |] ].
+      constructor; [ rewrite length_elim_ihs, length_ihs_ctx_aux by exact HAl; reflexivity | rewrite length_ihs_ctx_aux; exact Lih |].
       intros k M T r B0 HMk HT Hr HB0.
       destruct (ihs_rev_nth D A Us (List.length gs) gs k _ HB0) as (gs1 & t & gs2 & Heq & Hk & EB).
       injection EB as ->; subst k.
@@ -2101,7 +2110,7 @@ Section ElimSem.
             symmetry; etransitivity; [ apply sb_qn_of_list | apply sb_of_list_cong, sb_compose_id_right ]. }
       rewrite <- tele_insts_tele_sub in HT.
       rewrite (ihs_ctx_aux_sub D A Us (List.length gs) σ' gs nil 0 Hc HUl eq_refl) in HT.
-      2:{ intros * Heq'; pose proof Hc as (_ & _ & _ & _ & _ & HPs & HPl).
+      2:{ intros * Heq'; pose proof Hc as [_ _ _ _ _ HPs HPl].
             split; [ exact (HPs _ _ _ _ _ Hin Heq') | exact (HPl _ _ _ _ _ Hin Heq') ]. }
       assert (ET : T = ptyp_ihty A[sb_qn nm σ'] Id σg N t).
       { pose proof HT as HT0.
@@ -2226,8 +2235,7 @@ Section ElimSem.
                     (tele_pre_nil _) Hσ' HTNeq (HAs _ _ _ HN HTN) Hsh Er' Eb HRbb HRr ltac:(unfold J; lia) ltac:(unfold J; lia) Hgb
                     (lift_exp_ge _ _ _ _ jT J ltac:(unfold J; lia) HjT)) as HMg.
       pose proof (glu_univ_elem_resp_per_univ _ _ _ _ _ (ex_intro _ Rab HRba) Hgb) as Hgae.
-      exists (ul J), ae, P, El; split; [ exact Eae | split; [ exact Hgae |] ].
-      rewrite ET; split; [ exact (glu_univ_elem_trm_typ _ _ _ _ Hgb _ _ _ _ HMg) | exact HMg ].
+      rewrite ET; exact (mk_glu_arg _ _ _ _ _ _ (ul J) ae P El Eae Hgae (glu_univ_elem_trm_typ _ _ _ _ Hgb _ _ _ _ HMg) HMg).
     Qed.
     Lemma con_bctx : exists ihs, ⟦ihs vs of gs under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ ihs /\
         (forall RB, EF elim_bctx p D gs A Us ++ Γ ≈ elim_bctx p D gs A Us ++ Γ ∈ per_ctx_env ↘ RB ->
@@ -2277,18 +2285,14 @@ Section ElimSem.
                           | rewrite List.length_app, length_tele_sub, List.length_app, length_cargs_ctx, length_nparams; lia |].
       split; [ exact Hg1' | exact Hg2 ].
     Qed.
-    Lemma con_main : exists r a, ⟦elim d_con p c (bs ++ vs) under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r /\
-        ⟦ A ⟧ env_args ρ (ns ++ d_con p c (bs ++ vs) :: nil) ↘ a /\ Dom a ≈ a ∈ per_univ iA /\
-        forall P El, DG a ∈ glu_univ_elem iA ↘ P ↘ El ->
-          Δ' ⊢ a_elim nm A[sb_qn nm σ'] (brs_sub Bs σ') M'
-             : A[sb_qn nm σ'][sb_of_list Id (List.skipn (ind_nu D) Q ++ M' :: nil)] ® r ∈ El.
+    Lemma con_main : elim_out Δ' Q M' (d_con p c (bs ++ vs)) σ' ns.
     Proof.
       destruct con_bctx as (ihs & Ei & HZ & Hgs).
       destruct (ind_rel_con_inv _ _ _ _ _ _ _ _ Hcon Hbl Hrel) as (_ & HnX & Hvn & Hian).
       destruct (IndElim.brs_names_lookup _ _ _ _ HBn Hcon) as (n & B & HBl & HBin).
       pose proof (HBa c gs n B Hcon HBin) as Hn.
       pose proof (HBg c gs n B Hcon HBin) as HBgl.
-      destruct HBgl as [SbB [HSbB _]].
+      destruct HBgl as [SbB HSbB _ _].
       destruct (glu_rel_exp_clean_inversion1 HSbB (HBg c gs n B Hcon HBin)) as [iB HiB].
       destruct (HiB _ _ _ (Hgs SbB HSbB)) as [eb rb Pb Elb Eeb Erb Hgb HBglue].
       clear HiB.
@@ -2319,7 +2323,7 @@ Section ElimSem.
       assert (a' = b) as -> by (eapply functional_eval_exp; eassumption).
       assert (Hpe : Dom eb ≈ a ∈ per_univ iA).
       { eapply per_univ_trans'; [ exact Hebb | apply per_univ_sym'; eexists; exact Haa ]. }
-      exists rb, a; split; [ exact Er | split; [ exact Ea | split; [ eapply per_univ_trans'; [ apply per_univ_sym'; exact Hpe | exact Hpe ] |] ] ].
+      apply (mk_elim_out _ _ _ _ _ _ rb a Er Ea); [ eapply per_univ_trans'; [ apply per_univ_sym'; exact Hpe | exact Hpe ] |].
       intros P El HgP.
       pose proof con_Q_typed as HQt.
       assert (Hσt : Δ' ⊢ˢ σ' : Γ) by exact (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ').
@@ -2451,17 +2455,14 @@ Section ElimSem.
         exact (br_rb Δ σ'' ua c1 gs n1 B1 nsx vs1 ihs1 b1 t1 Bn Hσ'' Hadm Lua Hc0 (List.nth_error_In _ _ H1) Fx C1 I1 Eb1 Et1 HRn).
     Qed.
 
-    Lemma neut_main : exists r a, ⟦elim ⇑ (d_ind p as') m under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r /\
-        ⟦ A ⟧ env_args ρ (ns ++ ⇑ (d_ind p as') m :: nil) ↘ a /\ Dom a ≈ a ∈ per_univ iA /\
-        forall P El, DG a ∈ glu_univ_elem iA ↘ P ↘ El ->
-          Δ' ⊢ a_elim nm A[sb_qn nm σ'] (brs_sub Bs σ') M'
-             : A[sb_qn nm σ'][sb_of_list Id (List.skipn (ind_nu D) Q ++ M' :: nil)] ® r ∈ El.
+    Lemma neut_main : elim_out Δ' Q M' (⇑ (d_ind p as') m) σ' ns.
     Proof.
       destruct neut_inv as (Lan & Hadm & Hsn).
       destruct (mmid _ _ _ _ Hsn Hrel) as (a & a1 & Ea & Ea1 & Haa).
       assert (Er : ⟦elim ⇑ (d_ind p as') m under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ ⇑ a1 (d_elim ρ nm A Bs p as' m))
         by (eapply eval_elim_neut; eassumption).
-      exists (⇑ a1 (d_elim ρ nm A Bs p as' m)), a; split; [ exact Er | split; [ exact Ea | split; [ eapply per_univ_trans'; [ eexists; exact Haa | apply per_univ_sym'; eexists; exact Haa ] |] ] ].
+      apply (mk_elim_out _ _ _ _ _ _ (⇑ a1 (d_elim ρ nm A Bs p as' m)) a Er Ea);
+        [ eapply per_univ_trans'; [ eexists; exact Haa | apply per_univ_sym'; eexists; exact Haa ] |].
       intros P El HgP.
       destruct (motive_glu Δ' σ' Q M' _ ns Hσ' HQU HQl HMt HKm Hns Hrel Hgnm) as (a0 & Ea0 & _ & HTP).
       assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
@@ -2561,10 +2562,10 @@ Proof.
   intros * Hl HG HDc HPl HPt HPg HMt HMg Hnm HAt HMx HAg Hn HBx Hk HBt HBg.
   destruct (presup_exp HMt) as [HΓw _].
   destruct (decl_of_lookup _ _ _ _ _ HΓw Hl) as [Hdt Hc].
-  pose proof Hdt as (_ & _ & _ & _ & Hsu & _).
+  pose proof (dt_sort_univ _ _ _ Hdt) as Hsu.
   pose proof (decl_closed_nu D Hc) as Hle.
   pose proof (decl_closed_params D Hc) as Hass.
-  pose proof Hc as (_ & _ & Hs0 & _).
+  pose proof (dc_params _ Hc) as Hs0.
   pose proof (completeness_fundamental_ctx _ HΓw) as HΓs.
   destruct (sem_ctx_per_ctx_env HΓs) as [RΓ HRΓ].
   destruct (sem_ctx_per_ctx_env (IndCases.uparams_sem D HDc)) as [RU HRU].
@@ -2577,8 +2578,8 @@ Proof.
   fold Us Ns in HNt', HUg, HUs, HNs.
   pose proof (completeness_fundamental_ctx _ (proj1 (presup_exp HAt))) as HMs.
   assert (HNt : ⊨ tele_sub (ind_nparams D) (sb_of_list Id Us) ++ Γ) by (unfold elim_mctx in HMs; cbn [List.app] in HMs; eapply sem_ctx_tail; exact HMs).
-  pose proof HMg as [SbΓ [HSbΓ _]].
-  exists SbΓ; split; [ exact HSbΓ |]; exists i; intros Δ σ ρ Hσ.
+  pose proof HMg as [SbΓ HSbΓ _ _].
+  eapply mk_glu_rel_exp with (gre_lvl := i); [ exact HSbΓ |]; intros Δ σ ρ Hσ.
   pose proof (glu_ctx_env_per_env HSbΓ HRΓ Hσ) as Hρ.
   assert (HΔ : ⊢ Δ) by (pose proof (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ); gen_presups; assumption).
   assert (HPv : forall k P, List.nth_error Ps k = Some P -> exists v, ⟦ P ⟧ ρ ↘ v).
@@ -2624,7 +2625,7 @@ Proof.
   destruct (glu_ind_of_per p D Hl (ul u) R0 ups ns0 HR0 Hu)
     as (NP & NEl & AP & AEl & DP & DEl & P2 & El2 & R' & Hg2 & HP2 & HEl2 & HRR & HeN & HNP & HeA & HAP & HeD & HDP).
   destruct (functional_glu_univ_elem _ _ _ _ _ _ Hg1 Hg2) as [_ EE].
-  apply EE, HEl2 in HMσ1; destruct HMσ1 as (HMt' & Hmm & Ps0 & HT0 & HK0).
+  apply EE, HEl2 in HMσ1; destruct HMσ1 as [HMt' Hmm Ps0 HT0 HK0].
   clear EE HgM HMσ HP2 HEl2 Hg2 P1 El1 Hg1 PM ElM.
   destruct (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ HR0 Hl Hu Hu) as (_ & _ & Hcp & _ & _ & Hadm & Hns0 & HRi).
   assert (Hrel0 : ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns0 m m) by (apply HRi, HRR; exact Hmm).
@@ -2655,7 +2656,7 @@ Proof.
     eapply glu_params_top_refl; apply glu_args_params_top; [ exact Hass | exact Hs0 | exact HPga ]. }
   destruct (proj1 (elim_glu p D Hl HG Hc Hdt Hsu HDc Γ RΓ HRΓ HΓs RU HRU Us HUl HUs ρ ups Hρ HUv bu Hbu HNt SbΓ HSbΓ nm A i Bs
               Hnm HAt HMx Hn HBx Hk HBt HAg HBg HUg u NP NEl AP AEl DP DEl Hule HeN HNP HeA HAP HDP R0 ns0 HR0) Δ Q M[σ] m HM0
-              σ Hσ HQU HQl HMQ HKQ ns0 Hns0 Hrel0 Hgn) as (r & a & Er & Ea & _ & Hglr).
+              σ Hσ HQU HQl HMQ HKQ ns0 Hns0 Hrel0 Hgn) as [r a Er Ea _ Hglr].
   clear HM0 HKQ Hgn Hcomps HNga HUga HPga.
   (** The type at the instance, against the motive at the values. *)
   assert (HNl : List.length Ns = ind_nn D) by (unfold Ns; rewrite List.length_skipn; unfold ind_nn; lia).

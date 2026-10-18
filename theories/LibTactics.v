@@ -91,6 +91,32 @@ Ltac destruct_logic :=
 
 Ltac destruct_all := repeat destruct_logic.
 
+(** Take apart a record [H] in [Prop], naming its proof fields [H], [H0], …
+    as [destruct] names the anonymous premises of a constructor, and its
+    witnesses after their fields.  Existentials and conjunctions are taken
+    apart by [destruct] itself. *)
+Inductive anon_stop : Prop := anon_stop_intro.
+
+Ltac intro_anon_fields :=
+  lazymatch goal with
+  | |- anon_stop -> _ => intros _
+  | |- forall x : ?T, _ =>
+      tryif (let _ := constr:(T : Prop) in idtac)
+      then (let h := fresh "H" in intro h)
+      else intro;
+      intro_anon_fields
+  end.
+
+Ltac destruct_anon H :=
+  lazymatch type of H with
+  | ex _ => destruct H as []
+  | and _ _ => destruct H as []
+  | _ =>
+      let Hs := fresh "Hs" in
+      pose proof anon_stop_intro as Hs; revert Hs;
+      case H; try clear H; intro_anon_fields
+  end.
+
 Ltac not_let_bind name :=
   match goal with
   | [x := _ |- _] =>

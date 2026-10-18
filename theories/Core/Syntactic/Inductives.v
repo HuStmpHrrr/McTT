@@ -452,9 +452,10 @@ Definition carg_mvc (g : carg) : Prop :=
   | ca_rec t => List.Forall (exp_mvc 0) (ptyp_doms t) /\ List.Forall (exp_mvc 0) (ptyp_ps t)
   end.
 
-Definition decl_mvc (D : ind_decl) : Prop :=
-  ctx_mvc (ind_params D) /\ exp_mvc 0 (ind_sort D) /\
-  (forall c gs, In (c, gs) (ind_cons D) -> List.Forall carg_mvc gs).
+Record decl_mvc (D : ind_decl) : Prop := mk_decl_mvc
+  { dmv_params : ctx_mvc (ind_params D)
+  ; dmv_sort : exp_mvc 0 (ind_sort D)
+  ; dmv_cons : forall c gs, In (c, gs) (ind_cons D) -> List.Forall carg_mvc gs }.
 
 (** The types are read off a declaration once; [simpl] leaves them
     folded, and the lemmas below compute with them. *)

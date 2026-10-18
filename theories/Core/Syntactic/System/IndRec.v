@@ -327,13 +327,13 @@ Section RecTyped.
   Lemma cons_con : forall c gs, In (c, gs) (ind_cons D) -> ind_con D c = Some gs.
   Proof.
     intros; apply cons_lookup_nodup; [| assumption ].
-    pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd & _); exact Hnd.
+    exact (dt_nodup _ _ _ HD).
   Qed.
 
   Lemma con_in : forall c gs gs', ind_con D c = Some gs -> In (c, gs') (ind_cons D) -> gs = gs'.
   Proof.
     intros * Hcon Hin; apply cons_lookup_in in Hcon.
-    pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd & _).
+    pose proof (dt_nodup _ _ _ HD) as Hnd.
     eapply nodup_in_fst; eassumption.
   Qed.
 
@@ -556,7 +556,7 @@ Theorem ind_gens_typed : forall Θ mq Δ Φ0 Ξ0 y pv D,
 Proof.
   intros * Hg Hy HE Hrec.
   destruct (inv_typed _ _ _ _ _ _ _ _ Hg Hy _ HE) as (_ & HD & _).
-  pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd & _).
+  pose proof (dt_nodup _ _ _ HD) as Hnd.
   exact (gens_inv_cons _ _ _ _ _ _ _ _ Hg Hy (ind_cons D) ⋄
            (fun c gs Hin => cons_lookup_nodup _ _ _ Hnd Hin) Hnd Hrec HE
            (fun c _ H => H) (fun H => H)).
@@ -572,8 +572,8 @@ Corollary rc_ind_runs : forall load_path read to_core ch B Rb Θ Ξ x pv R cs,
 Proof.
   intros * HΞ Hcls Hfr HE Hrec.
   destruct Ξ as [| [mq [Δ [sm Φ0 | E0]]] Ξ0]; [ contradiction | |].
-  - destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & (Δ' & Φ' & Heq & _) & _); injection Heq; intros; subst.
+  - destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & [Δ' Φ' Heq _] & _); injection Heq; intros; subst.
     do 2 eexists; eapply rc_ind; [ exact Hcls | exact Hfr |].
     apply ind_gens_typed; [ exact HΞ | exact Hfr | exact HE | exact Hrec ].
-  - exfalso; destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & (Δ' & Φ' & [=] & _) & _).
+  - exfalso; destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & [Δ' Φ' [=] _] & _).
 Qed.

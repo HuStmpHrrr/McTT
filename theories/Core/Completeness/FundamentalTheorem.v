@@ -93,7 +93,7 @@ Corollary completeness_fundamental_sub_single : forall Γ M A,
 Proof.
   intros * HM%completeness_fundamental_exp.
   pose proof (presup_rel_exp_under_ctx HM) as [i HA].
-  pose proof HM as [env_relΓ [HΓ _]].
+  pose proof HM as [env_relΓ HΓ _ _].
   eapply rel_sub_under_ctx_extend;
     [ apply (rel_sub_id (ex_intro _ _ HΓ)) | eassumption |].
   rewrite exp_sub_id.

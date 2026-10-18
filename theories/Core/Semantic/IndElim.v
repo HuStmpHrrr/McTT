@@ -198,7 +198,7 @@ Section Fixed_GCtx.
           fresh_tele gc_deps gc_stack (env_args nil (ua ++ vs')) T' s ws' /\
           tele_pre nr (List.length T) (vs ++ ws) (vs' ++ ws').
     Proof.
-      intros ua (Hn & _); induction T' as [| e T' IH]; intros T0 vs vs' s HT Hp.
+      intros ua [Hn _ _ _]; induction T' as [| e T' IH]; intros T0 vs vs' s HT Hp.
       - exists nil, nil; rewrite !List.app_nil_r; rewrite HT, List.app_nil_r.
         split; [ constructor | split; [ constructor | exact Hp ] ].
       - assert (Hk : List.nth_error T (List.length T0) = Some e)
@@ -270,13 +270,13 @@ Section Fixed_GCtx.
         forall k ys1 ys2, k <= List.length (ptyp_doms t0) -> tele_pre (shape_tr dr ns1 ws1 (ptyp_doms t0)) k ys1 ys2 ->
           exists a, eval_shty gc_deps gc_stack p ua (env_args nil (ua ++ ns2 ++ ws2 ++ ys2)) (ptyp_skip k t0) a.
     Proof.
-      intros ua (_ & _ & Hcl & Hdt) * H12 Hc Hw k ys1 ys2 Hk Hy.
+      intros ua [_ _ Hcl Hdt] * H12 Hc Hw k ys1 ys2 Hk Hy.
       pose proof (Hsimple _ _ _ _ _ Hc eq_refl) as Hs0.
       destruct (Nat.eq_dec k (List.length (ptyp_doms t0))) as [-> | Hne].
       - rewrite (ptyp_skip_end _ Hs0).
         assert (Hyf : tele_full (shape_tr dr ns1 ws1 (ptyp_doms t0)) (ptyp_doms t0) ys1 ys2)
           by (destruct Hy as [Hyl Hya]; split; [ exact Hyl | exact Hya ]).
-        destruct (Hcl _ _ _ _ _ _ _ _ _ _ _ H12 Hc eq_refl Hw Hyf) as (bs & bs' & _ & E' & _).
+        destruct (Hcl _ _ _ _ _ _ _ _ _ _ _ H12 Hc eq_refl Hw Hyf) as [bs bs' _ E' _].
         eexists; econstructor; exact E'.
       - destruct (ptyp_skip_lt k t0 ltac:(lia)) as (B & HB & Hs); rewrite Hs.
         destruct (Hdt _ _ _ _ _ _ _ _ _ _ _ _ _ H12 Hc eq_refl Hw HB Hy) as (b & b' & _ & Eb' & _).
@@ -301,8 +301,8 @@ Section Fixed_GCtx.
       assert (HK : List.length (cargs_nonrec gs1) <= List.length (cargs_nonrec (gs1 ++ ca_rec t0 :: gs2)))
         by (rewrite cargs_nonrec_app, List.length_app; lia).
       pose proof (tprl _ _ _ H11 Hc _ _ _ HK Hw) as Hww.
-      pose proof Ha1 as (_ & _ & Hcl1 & _); pose proof Ha2 as (_ & _ & Hcl2 & _).
-      pose proof (adm_base p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Ha1 Ha2) as (_ & _ & _ & Hd12).
+      pose proof (iad_recs _ _ _ _ _ _ Ha1) as Hcl1; pose proof (iad_recs _ _ _ _ _ _ Ha2) as Hcl2.
+      pose proof (iad_doms _ _ _ _ _ _ (adm_base p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Ha1 Ha2)) as Hd12.
       induction n as [| n IH]; intros k ys1 ys2 a1 a2 m m' Hkn Hy E1 E2 Hm.
       - destruct (ptyp_skip k t0) as [j Ps | j Ps | B t] eqn:Hs.
         + destruct (ptyp_skip_self _ _ _ _ Hs) as [Hkd HPs].
@@ -316,8 +316,8 @@ Section Fixed_GCtx.
           { apply tele_full_of_pre.
             eapply (tsh_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ns1 c _ gs1 t0 gs2 ws1 H11 Hc eq_refl Hww);
               [ lia | apply tele_full_pre; exact Hyf ]. }
-          destruct (Hcl1 _ _ _ _ _ _ _ _ _ _ _ H11 Hc eq_refl Hww Hyy) as (b0 & b1 & F0 & F1 & R1).
-          destruct (Hcl2 _ _ _ _ _ _ _ _ _ _ _ H12 Hc eq_refl Hw Hyf) as (b0' & b2 & F0' & F2 & R2).
+          destruct (Hcl1 _ _ _ _ _ _ _ _ _ _ _ H11 Hc eq_refl Hww Hyy) as [b0 b1 F0 F1 R1].
+          destruct (Hcl2 _ _ _ _ _ _ _ _ _ _ _ H12 Hc eq_refl Hw Hyf) as [b0' b2 F0' F2 R2].
           rewrite HPs in F0, F1, F0', F2.
           pose proof (functional_eval_exps' _ _ _ _ F0 F0') as <-.
           pose proof (functional_eval_exps' _ _ _ _ F1 Ebs1) as <-.
@@ -378,8 +378,8 @@ Section Fixed_GCtx.
       assert (HK : List.length (cargs_nonrec gs1) <= List.length (cargs_nonrec (gs1 ++ ca_rec t0 :: gs2)))
         by (rewrite cargs_nonrec_app, List.length_app; lia).
       pose proof (tprl _ _ _ H11 Hc _ _ _ HK Hw) as Hww.
-      pose proof Ha1 as (_ & _ & Hcl1 & _); pose proof Ha2 as (_ & _ & Hcl2 & _).
-      pose proof (adm_base p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Ha1 Ha2) as (_ & _ & _ & Hd12).
+      pose proof (iad_recs _ _ _ _ _ _ Ha1) as Hcl1; pose proof (iad_recs _ _ _ _ _ _ Ha2) as Hcl2.
+      pose proof (iad_doms _ _ _ _ _ _ (adm_base p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Ha1 Ha2)) as Hd12.
       induction n as [| n IH]; intros k ys1 ys2 a1 a2 m m' e e' Hkn Hy E1 E2 Hm He.
       - destruct (ptyp_skip k t0) as [j Ps | j Ps | B t] eqn:Hs.
         + destruct (ptyp_skip_self _ _ _ _ Hs) as [Hkd HPs].
@@ -393,8 +393,8 @@ Section Fixed_GCtx.
           { apply tele_full_of_pre.
             eapply (tsh_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ns1 c _ gs1 t0 gs2 ws1 H11 Hc eq_refl Hww);
               [ lia | apply tele_full_pre; exact Hyf ]. }
-          destruct (Hcl1 _ _ _ _ _ _ _ _ _ _ _ H11 Hc eq_refl Hww Hyy) as (b0 & b1 & F0 & F1 & R1).
-          destruct (Hcl2 _ _ _ _ _ _ _ _ _ _ _ H12 Hc eq_refl Hw Hyf) as (b0' & b2 & F0' & F2 & R2).
+          destruct (Hcl1 _ _ _ _ _ _ _ _ _ _ _ H11 Hc eq_refl Hww Hyy) as [b0 b1 F0 F1 R1].
+          destruct (Hcl2 _ _ _ _ _ _ _ _ _ _ _ H12 Hc eq_refl Hw Hyf) as [b0' b2 F0' F2 R2].
           rewrite HPs in F0, F1, F0', F2.
           pose proof (functional_eval_exps' _ _ _ _ F0 F0') as <-.
           pose proof (functional_eval_exps' _ _ _ _ F1 Ebs1) as <-.
@@ -472,7 +472,7 @@ Section Fixed_GCtx.
     Proof.
       intros ua1 ua2 ns1 ns2 c gs Ha1 Ha2 L1 L2 H12 Hc.
       pose proof (trefl _ _ H12) as H11.
-      pose proof Ha1 as (_ & Hn1 & _); pose proof Ha2 as (_ & Hn2 & _).
+      pose proof (iad_args _ _ _ _ _ _ Ha1) as Hn1; pose proof (iad_args _ _ _ _ _ _ Ha2) as Hn2.
       induction gs' as [| g gs' IH]; intros gs1 ws1 ws2 s s2 Heq Hp.
       - exists nil, nil, nil, nil; cbn; rewrite !List.app_nil_r.
         rewrite Heq, List.app_nil_r.

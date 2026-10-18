@@ -167,7 +167,7 @@ Lemma rel_exp_of_True_inversion : forall {Γ M M'},
         ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
         rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' per_True.
 Proof.
-  intros * [env_relΓ [HΓ [i HM]]].
+  intros * [env_relΓ HΓ i HM].
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HM _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
@@ -211,7 +211,7 @@ Lemma rel_exp_of_False_inversion : forall {Γ M M'},
         ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
         rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' per_ne.
 Proof.
-  intros * [env_relΓ [HΓ [i HM]]].
+  intros * [env_relΓ HΓ i HM].
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HM _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].

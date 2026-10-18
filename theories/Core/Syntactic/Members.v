@@ -680,45 +680,47 @@ Proof.
     cbn; intros; destruct_all; subst; try congruence; auto.
 Qed.
 
-Definition gc_sub (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
-  (forall p E, gc_resolve Θ1 Ξ1 p = Some E -> gc_resolve Θ2 Ξ2 p = Some E) /\
-  (forall p r, gc_module Θ1 Ξ1 p = Some r -> gc_module Θ2 Ξ2 p = Some r) /\
-  (forall p T Φ, gc_body Θ1 Ξ1 p = Some (T, Φ) ->
-     exists Φ', gc_body Θ2 Ξ2 p = Some (T, Φ') /\ gm_grows Φ Φ') /\
-  (forall pq v, ind_alias_lookup Θ1 Ξ1 pq = Some v -> ind_alias_lookup Θ2 Ξ2 pq = Some v) /\
-  (forall p T Φ, gc_frame Ξ1 p = Some (T, Φ) ->
-     exists Φ', gc_frame Ξ2 p = Some (T, Φ') \/
-       (gc_body Θ2 Ξ2 p = Some (T, Φ') /\ gc_module Θ2 Ξ2 p = Some (mr_body T None))) /\
-  (forall p E, gc_entry Θ1 Ξ1 p = Some E -> exists E', gc_entry Θ2 Ξ2 p = Some E' /\ entry_grows E E').
+(** [gc_sub Θ1 Ξ1 Θ2 Ξ2]: what [Θ1 ⍮ Ξ1] resolves, [Θ2 ⍮ Ξ2] resolves the
+    same way, its bodies perhaps grown, its open frames perhaps closed. *)
+Record gc_sub (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop := mk_gc_sub
+  { gcs_resolve : forall p E, gc_resolve Θ1 Ξ1 p = Some E -> gc_resolve Θ2 Ξ2 p = Some E
+  ; gcs_module : forall p r, gc_module Θ1 Ξ1 p = Some r -> gc_module Θ2 Ξ2 p = Some r
+  ; gcs_body : forall p T Φ, gc_body Θ1 Ξ1 p = Some (T, Φ) ->
+      exists Φ', gc_body Θ2 Ξ2 p = Some (T, Φ') /\ gm_grows Φ Φ'
+  ; gcs_ind_alias : forall pq v, ind_alias_lookup Θ1 Ξ1 pq = Some v -> ind_alias_lookup Θ2 Ξ2 pq = Some v
+  ; gcs_frame : forall p T Φ, gc_frame Ξ1 p = Some (T, Φ) ->
+      exists Φ', gc_frame Ξ2 p = Some (T, Φ') \/
+        (gc_body Θ2 Ξ2 p = Some (T, Φ') /\ gc_module Θ2 Ξ2 p = Some (mr_body T None))
+  ; gcs_entry : forall p E, gc_entry Θ1 Ξ1 p = Some E -> exists E', gc_entry Θ2 Ξ2 p = Some E' /\ entry_grows E E' }.
 
 Lemma gc_sub_resolve : forall Θ1 Ξ1 Θ2 Ξ2 p E,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_resolve Θ1 Ξ1 p = Some E -> gc_resolve Θ2 Ξ2 p = Some E.
-Proof. intros * [H _]; apply H. Qed.
+Proof. intros * H; apply (gcs_resolve _ _ _ _ H). Qed.
 
 Lemma gc_sub_module : forall Θ1 Ξ1 Θ2 Ξ2 p r,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_module Θ1 Ξ1 p = Some r -> gc_module Θ2 Ξ2 p = Some r.
-Proof. intros * [_ [H _]]; apply H. Qed.
+Proof. intros * H; apply (gcs_module _ _ _ _ H). Qed.
 
 Lemma gc_sub_body : forall Θ1 Ξ1 Θ2 Ξ2 p T Φ,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_body Θ1 Ξ1 p = Some (T, Φ) ->
     exists Φ', gc_body Θ2 Ξ2 p = Some (T, Φ') /\ gm_grows Φ Φ'.
-Proof. intros * [_ [_ [H _]]]; apply H. Qed.
+Proof. intros * H; apply (gcs_body _ _ _ _ H). Qed.
 
 Lemma gc_sub_ind_alias : forall Θ1 Ξ1 Θ2 Ξ2 pq v,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> ind_alias_lookup Θ1 Ξ1 pq = Some v -> ind_alias_lookup Θ2 Ξ2 pq = Some v.
-Proof. intros * [_ [_ [_ [H _]]]]; apply H. Qed.
+Proof. intros * H; apply (gcs_ind_alias _ _ _ _ H). Qed.
 
 (** An open frame is still one, or has been closed into a body module. *)
 Lemma gc_sub_frame_loc : forall Θ1 Ξ1 Θ2 Ξ2 p T Φ,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_frame Ξ1 p = Some (T, Φ) ->
     exists Φ', gc_frame Ξ2 p = Some (T, Φ') \/
       (gc_body Θ2 Ξ2 p = Some (T, Φ') /\ gc_module Θ2 Ξ2 p = Some (mr_body T None)).
-Proof. intros * [_ [_ [_ [_ [H _]]]]]; apply H. Qed.
+Proof. intros * H; apply (gcs_frame _ _ _ _ H). Qed.
 
 (** What is stored at a path stays there, its bodies perhaps grown. *)
 Lemma gc_sub_entry : forall Θ1 Ξ1 Θ2 Ξ2 p E,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_entry Θ1 Ξ1 p = Some E -> exists E', gc_entry Θ2 Ξ2 p = Some E' /\ entry_grows E E'.
-Proof. intros * [_ [_ [_ [_ [_ H]]]]]; apply H. Qed.
+Proof. intros * H; apply (gcs_entry _ _ _ _ H). Qed.
 
 Lemma gc_sub_refl : forall Θ Ξ, gc_sub Θ Ξ Θ Ξ.
 Proof. repeat split; intros * H; eauto using entry_grows_refl with mctt. Qed.
@@ -726,7 +728,7 @@ Proof. repeat split; intros * H; eauto using entry_grows_refl with mctt. Qed.
 Lemma gc_sub_trans : forall Θ1 Ξ1 Θ2 Ξ2 Θ3 Ξ3,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_sub Θ2 Ξ2 Θ3 Ξ3 -> gc_sub Θ1 Ξ1 Θ3 Ξ3.
 Proof.
-  intros * [H12 [M12 [B12 [I12 [F12 E12]]]]] [H23 [M23 [B23 [I23 [F23 E23]]]]]; repeat split; intros * H;
+  intros * [H12 M12 B12 I12 F12 E12] [H23 M23 B23 I23 F23 E23]; constructor; intros * H;
     [ apply H23, H12, H | apply M23, M12, H | | apply I23, I12, H | | ].
   - destruct (B12 _ _ _ H) as (Φ2 & H2 & G12); destruct (B23 _ _ _ H2) as (Φ3 & H3 & G23).
     exists Φ3; split; [ exact H3 | exact (gm_grows_trans _ _ _ G12 G23) ].
@@ -763,20 +765,20 @@ Proof. intros * Hg T oD [| x ip]; cbn; [ reflexivity | apply gm_grows_submodule;
 
 (** One body growing into another, as [gc_sub] asks of the frame holding
     it. *)
-Definition gm_sub (Φ1 Φ2 : gmod) : Prop :=
-  (forall ip E, gm_resolve Φ1 ip = Some E -> gm_resolve Φ2 ip = Some E) /\
-  (forall T z ip r, gm_submodule T Φ1 z ip = Some r -> gm_submodule T Φ2 z ip = Some r) /\
-  (forall T z ip T' Φ, gm_subbody T Φ1 z ip = Some (T', Φ) ->
-     exists Φ', gm_subbody T Φ2 z ip = Some (T', Φ') /\ gm_grows Φ Φ') /\
-  (forall ip v, gm_ind_target Φ1 ip = Some v -> gm_ind_target Φ2 ip = Some v) /\
-  (forall ip E, gm_entry Φ1 ip = Some E -> exists E', gm_entry Φ2 ip = Some E' /\ entry_grows E E').
+Record gm_sub (Φ1 Φ2 : gmod) : Prop := mk_gm_sub
+  { gms_resolve : forall ip E, gm_resolve Φ1 ip = Some E -> gm_resolve Φ2 ip = Some E
+  ; gms_submodule : forall T z ip r, gm_submodule T Φ1 z ip = Some r -> gm_submodule T Φ2 z ip = Some r
+  ; gms_subbody : forall T z ip T' Φ, gm_subbody T Φ1 z ip = Some (T', Φ) ->
+      exists Φ', gm_subbody T Φ2 z ip = Some (T', Φ') /\ gm_grows Φ Φ'
+  ; gms_ind_target : forall ip v, gm_ind_target Φ1 ip = Some v -> gm_ind_target Φ2 ip = Some v
+  ; gms_entry : forall ip E, gm_entry Φ1 ip = Some E -> exists E', gm_entry Φ2 ip = Some E' /\ entry_grows E E' }.
 
 Lemma gm_sub_refl : forall Φ, gm_sub Φ Φ.
 Proof. repeat split; intros * H; eauto using entry_grows_refl with mctt. Qed.
 
 Lemma gm_sub_trans : forall Φ1 Φ2 Φ3, gm_sub Φ1 Φ2 -> gm_sub Φ2 Φ3 -> gm_sub Φ1 Φ3.
 Proof.
-  intros * [H12 [M12 [B12 [I12 E12]]]] [H23 [M23 [B23 [I23 E23]]]]; repeat split; intros * H;
+  intros * [H12 M12 B12 I12 E12] [H23 M23 B23 I23 E23]; constructor; intros * H;
     [ apply H23, H12, H | apply M23, M12, H | | apply I23, I12, H | ].
   - destruct (B12 _ _ _ _ _ H) as (Φ2' & H2 & G12); destruct (B23 _ _ _ _ _ H2) as (Φ3' & H3 & G23).
     exists Φ3'; split; [ exact H3 | exact (gm_grows_trans _ _ _ G12 G23) ].
@@ -800,7 +802,7 @@ Lemma gc_sub_frame : forall Θ Ξ mp Δ Φ1 Φ2,
     gm_sub Φ1 Φ2 ->
     gc_sub Θ ((mp, gu_body Δ Φ1) :: Ξ) Θ ((mp, gu_body Δ Φ2) :: Ξ).
 Proof.
-  intros * [HR [HM [HB [HI HE]]]]; repeat split.
+  intros * [HR HM HB HI HE]; constructor.
   - intros p E0 Hr; unfold gc_resolve, gc_resolve_u in *; cbn in *.
     destruct (qname_strip mp p); [ apply HR; exact Hr | exact Hr ].
   - intros p r Hr; unfold gc_module, gc_module_u in *; cbn in *.
@@ -1934,9 +1936,17 @@ Hint Constructors mdenote udenote edenote body_xp items_gen : mctt.
 
 
 (** [open_gens Θ Ξ g Γ H its gs]: an open of [H] with items [its], in [Γ]:
-    [H] is a module, and [gs] is what the items declare. *)
-Definition open_gens (Θ : gdeps) (Ξ : gstack) (g : bool) (Γ : ctx) (H : modexp) (its : list iitem) (gs : list igen) : Prop :=
-  (exists R Rm, mdenote Θ Ξ Γ H R /\ ds_mod Θ Ξ R = Some Rm) /\ items_gen Θ Ξ g Γ H its gs /\ items_ok its.
+    [H] is a module, and [gs] is what the items declare.  (Its witnesses
+    are informative, so they have no projections.) *)
+#[warnings="-cannot-define-projection"]
+Record open_gens (Θ : gdeps) (Ξ : gstack) (g : bool) (Γ : ctx) (H : modexp) (its : list iitem) (gs : list igen) : Prop :=
+  mk_open_gens
+  { og_desc : mdesc
+  ; og_mod : mdesc
+  ; og_denote : mdenote Θ Ξ Γ H og_desc
+  ; og_is_mod : ds_mod Θ Ξ og_desc = Some og_mod
+  ; og_items : items_gen Θ Ξ g Γ H its gs
+  ; og_ok : items_ok its }.
 
 (** A unit with its body expanded; an alias is its own. *)
 Inductive unit_xp (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : gunit -> gunit -> Prop :=

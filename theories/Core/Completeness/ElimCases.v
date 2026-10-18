@@ -100,8 +100,8 @@ Lemma rel_sub_under_ctx_head_term : forall {Γ' Γ A σ σ'},
     Γ' ⊨ˢ σ ≈ σ' : Γ ▹ A ->
     Γ' ⊨ˢ sb_head_term σ ≈ σ' : Γ ▹ A.
 Proof.
-  intros * [env_rel [HΓ' [env_relo [HΓA Hσ]]]].
-  exists env_rel, HΓ', env_relo, HΓA.
+  intros * [env_rel HΓ' env_relo HΓA Hσ].
+  refine (mk_rel_sub_under_ctx _ _ _ _ env_rel HΓ' env_relo HΓA _).
   intros Γ'' env_rel' HΓ'' φ Hφ ρ ρ' Hρ.
   destruct (Hσ _ _ HΓ'' _ Hφ _ _ Hρ) as [a b c d Ha Hb Hc Hd Hchain].
   apply (mk_rel_sub (env_head_term a) (env_head_term b) c d);
@@ -644,8 +644,8 @@ Section CargsSem.
   Proof.
     intros c gs Hcon.
     pose proof (cons_lookup_in _ _ _ Hcon) as Hin.
-    pose proof Hdt as (Hass & (Hmv & Hmvs & Hmvc) & Hle & _ & _ & _ & _ & _ & HPl & _).
-    pose proof Hc as (_ & _ & Hs & HsS & _).
+    pose proof Hdt as [Hass [Hmv Hmvs Hmvc] Hle _ _ _ _ _ HPl _ _ _ _].
+    pose proof Hc as [_ _ Hs HsS _ _ _].
     induction gs1 as [| g gs1 IH] using List.rev_ind; intros gs2 Heq.
     - cbn [cargs_ctx cargs_ctx_aux cargs_strat cargs_pat List.rev List.map List.app].
       destruct (sem_ctx_per_ctx_env (sd_params _ HD)) as [R HR].
@@ -742,8 +742,8 @@ Section CargsSem.
       exists j : nat, cargs_ctx p D gs ++ ind_params D ⊨ apps (a_ind p) (ind_pvars D (List.length gs)) : Typeω@j.
   Proof.
     intros c gs Hcon.
-    pose proof Hdt as (Hass & (Hmv & _ & _) & _).
-    pose proof Hc as (_ & _ & Hs & _).
+    pose proof (dt_ass _ _ _ Hdt) as Hass; pose proof (dmv_params _ (dt_mvc _ _ _ Hdt)) as Hmv.
+    pose proof (dc_params _ Hc) as Hs.
     destruct (cargs_sem_all c gs Hcon gs nil (eq_sym (List.app_nil_r gs))) as [HΨ _].
     apply valid_ind_apps; [ exact HΨ | unfold ind_pvars; apply length_vars_from |].
     intros k N T HN HT.
@@ -902,7 +902,7 @@ Section Elim.
     exists w, u; split; [ exact Hw | split; [ exact Hu |] ].
     destruct (closed_app_sem _ _ Ua Usem HΓ) as [HUΓ Hres].
     destruct (sem_ctx_per_ctx_env HUΓ) as [RUΓ HRUΓ].
-    pose proof (gsub_valid gsub_U) as (R1 & H1 & R2 & H2 & Hσ).
+    pose proof (gsub_valid gsub_U) as [R1 H1 R2 H2 Hσ].
     destruct (Hσ _ _ HRS _ (proj2 (rel_wk_morphism _ _ _ (reflexivity _) _ _ (per_ctx_env_right_irrel _ _ _ _ _ H1 HRΓ)) Hwk) _ _ HE)
       as [y1 y2 y3 y4 Hy1 Hy2 Hy3 Hy4 Hch].
     assert (Hev1 : ⟦ sb_wk τU (wk_shiftn (List.length Ψ)) ⟧s env_args B zs ↘ env_args B w).
@@ -3032,7 +3032,7 @@ Section Elim.
       subst nm.
       assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
       assert (HC11 : RΓ C1 C1) by (etransitivity; [ exact HC12 | symmetry; exact HC12 ]).
-      pose proof Hdt as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd & _).
+      pose proof (dt_nodup _ _ _ Hdt) as Hnd.
       assert (Hlk1 : forall c gs n B0, ind_con D c = Some gs -> brs_lookup Bs c = Some (n, B0) ->
                  n = (ind_nn D + List.length gs + cargs_nrec gs)%nat /\ elim_bctx p D gs A Us ++ Γ ⊨ B0 : elim_bty p D c gs A Us)
         by (intros * Hcon Hlb; split; [ exact (Hnb _ _ _ _ Hcon (brs_lookup_in _ _ _ _ Hlb)) | exact (HBv _ _ _ _ Hcon Hlb) ]).
@@ -3070,12 +3070,12 @@ Section Elim.
       assert (HC11 : RΓ C1 C1) by (etransitivity; [ exact HC12 | symmetry; exact HC12 ]).
       assert (HC21 : RΓ C2 C1) by (symmetry; exact HC12).
       assert (HC22 : RΓ C2 C2) by (etransitivity; [ exact HC21 | exact HC12 ]).
-      pose proof Hdt as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd & _).
+      pose proof (dt_nodup _ _ _ Hdt) as Hnd.
       assert (HPΓ' : PER RΓ') by (eapply per_env_PER; exact HRΓ').
       assert (Hρρ : RΓ' ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
       assert (Hρ'ρ' : RΓ' ρ' ρ') by (etransitivity; [ symmetry; exact Hρ | exact Hρ ]).
       (** The scrutinee and its type. *)
-      destruct HMM as (RΓm & HRΓm & iM & HMg).
+      destruct HMM as [RΓm HRΓm iM HMg].
       destruct (HMg _ _ HRΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as (RMe & [t1 t2 t3 t4 Et1 Et2 Et3 Et4 Htc] & [m1 m2 m3 m4 Em1 Em2 Em3 Em4 Hmc]).
       pose proof Et2 as Et2i; apply eval_apps_exp in Et2i as (f2 & ps2 & _ & Eps2 & _).
       apply eval_exps_app_inv in Eps2 as (us2 & ns2 & _ & _ & Hns2).
@@ -3205,7 +3205,7 @@ Proof.
     destruct (brs_lookup_pair _ _ _ _ _ HBf HlB) as (k & B'' & Hk & Hk' & HlB'').
     rewrite HlB' in HlB''; injection HlB'' as <-.
     exact (HBB _ _ _ _ _ _ Hk Hk' Hcon). }
-  exists RΓ, HRΓ, i.
+  refine (mk_rel_exp_under_ctx _ _ _ _ RΓ HRΓ i _).
   intros Γ' RΓ' HRΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (HC12 : RΓ ρσ ρ'σ') by (eapply (rel_sub_under_ctx_at' Hσ HRΓ' HRΓ); eassumption).
   assert (HC11 : RΓ ρσ ρσ) by (etransitivity; [ exact HC12 | symmetry; exact HC12 ]).

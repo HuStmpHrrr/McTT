@@ -170,7 +170,7 @@ Lemma stage_base : forall Ψ Γ' Γ σ RΓ RS ρ ρσ xs,
     exists Y, ⟦ sb_wk σ (wk_shiftn (List.length Ψ)) ⟧s env_args ρ xs ↘ Y /\ RΓ Y ρσ.
 Proof.
   intros * HΓ HS Hσ HE Hl Hev.
-  destruct Hσ as (R1 & H1 & R2 & H2 & Hσ).
+  destruct Hσ as [R1 H1 R2 H2 Hσ].
   pose proof (rel_wk_shiftn _ _ _ _ HS H1) as Hwk.
   destruct (Hσ _ _ HS _ Hwk _ _ HE) as [y1 y2 y3 y4 Hy1 Hy2 Hy3 Hy4 Hc].
   rewrite <- Hl, eval_wk_shiftn_args in Hy2.
@@ -201,7 +201,7 @@ Lemma exp_inst_link : forall Δ0 Γ0 T M M' τ RΓ0 E Eτ,
 Proof.
   intros * HM HΓ0 Hτ HE Hev.
   pose proof (rel_exp_under_ctx_refl_left HM) as HMl.
-  destruct HMl as (R & HR & i & Hgen).
+  destruct HMl as [R HR i Hgen].
   destruct (Hgen _ _ HΓ0 _ _ Hτ _ _ _ _ HE Hev Hev) as (R0 & [a b c d Ha Hb Hc Hd Hch] & [m n n' m' Hm Hn Hn' Hm' Hmc]).
   exists m, n; split; [ exact Hm | split; [ exact Hn |] ].
   destruct Hch as (_ & Hbc & _); destruct Hmc as (Hmn & _).

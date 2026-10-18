@@ -35,7 +35,7 @@ Lemma ctxeq_nbe_eq : forall Γ Γ' M A,
 Proof.
   intros * HM%completeness_fundamental_exp HΓΓ'.
   pose proof (per_ctx_respects_length HΓΓ') as Hlen.
-  destruct HM as [env_relΓ [HΓ [i HMgen]]].
+  destruct HM as [env_relΓ HΓ i HMgen].
   destruct HΓΓ' as [env_rel HΓΓ'].
   assert (Hirrel : env_rel <~> env_relΓ)
     by (eapply per_ctx_env_right_irrel; [ exact HΓΓ' | exact HΓ ]).

@@ -90,9 +90,10 @@ Proof.
         pose proof (rel_modexp_under_ctx_gsub Hg' HU) as HU'; cbn [modexp_sub] in HU'.
         pose proof (IHU HwC _ _ Hg' (sub_mod_compat_ext Ψ _ _ _ Hc)) as HsU'.
         assert (HUU : tele_sub Ψ τ ++ Γ ⊨ᵘ U[sb_qn (length Ψ) τ]ᵘ ≈ U[sb_qn (length Ψ) τ]ᵘ)
-          by (split; [ exact HU' | split; exact HsU' ]).
+          by (constructor; [ exact HU' | exact HsU' | exact HsU' ]).
         rewrite tele_sub_cons; cbn [centry_sub List.app].
-        split; [ eapply rel_ctx_extend_mod'; eassumption | eapply gsub_q_mod; [ exact Hg' | split; [ exact HU | split; exact HsU ] | exact HUU ] ].
+        split; [ eapply rel_ctx_extend_mod'; eassumption
+               | eapply gsub_q_mod; [ exact Hg' | constructor; [ exact HU | exact HsU | exact HsU ] | exact HUU ] ].
     + injection Heq as <- ->.
       exact (IHC Ψ2 Ψ Δ eq_refl (ctx_decomp_tail HwC) _ _ Hg Hc).
   - (* a body unit *)

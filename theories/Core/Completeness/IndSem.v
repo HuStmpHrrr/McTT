@@ -271,7 +271,7 @@ Lemma rel_exp_closed_intro : forall T N (i : nat),
     ⋅ ⊨ N : T.
 Proof.
   intros * HT HN H.
-  exists (fun _ _ => True), per_ctx_env_nil_true, i.
+  refine (mk_rel_exp_under_ctx _ _ _ _ (fun _ _ => True) per_ctx_env_nil_true i _).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (H ρ ρσ) as (a1 & a2 & R12 & n1 & n2 & Ea1 & Ea2 & HR12 & En1 & En2 & Hn12).
   destruct (H ρσ ρ'σ') as (b2 & a3 & R23 & m2 & n3 & Eb2 & Ea3 & HR23 & Em2 & En3 & Hn23).
@@ -370,7 +370,7 @@ Qed.
 Lemma rel_wk_under_ctx_compose : forall Γ Δ Θ' φ ψ,
     Γ ⊨ʷ ψ : Δ -> Δ ⊨ʷ φ : Θ' -> Γ ⊨ʷ (wk_compose φ ψ) : Θ'.
 Proof.
-  intros * (R1 & H1 & R2 & H2 & Hψ) (R3 & H3 & R4 & H4 & Hφ).
+  intros * [R1 H1 R2 H2 Hψ] [R3 H3 R4 H4 Hφ].
   assert (E : R2 <~> R3) by (eapply per_ctx_env_right_irrel; eassumption).
   eapply rel_wk_under_ctx_intro; [ exact H1 | exact H4 |].
   eapply rel_wk_compose; [ exact Hψ |].

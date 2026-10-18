@@ -46,7 +46,7 @@ Proof.
   simplify_evals.
   match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
   apply_predicate_equivalence.
-  unfold univ_glu_exp_pred' in *.
+  destruct_glu_records.
   destruct_conjs.
   assert (Δ ⊢ˢ σ : Γ) by mauto 2.
   assert (⊢ Δ ▹ A[σ]) by mauto 3.
@@ -127,8 +127,7 @@ Lemma glu_rel_exp_true : forall {Γ},
     Γ ⊩ ⋆ : ⊤.
 Proof.
   intros * [Sb].
-  eexists; split; mauto 3.
-  exists 0.
+  eapply mk_glu_rel_exp with (gre_lvl := 0); [ mauto 3 |].
   intros.
   assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
@@ -200,8 +199,7 @@ Proof.
   pose proof HA as HAglu.
   invert_glu_rel_exp HM.
   invert_glu_rel_exp HA.
-  eexists; split; [eassumption |].
-  exists i.
+  eapply mk_glu_rel_exp with (gre_lvl := i); [eassumption |].
   intros.
   assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
@@ -218,7 +216,7 @@ Proof.
   simplify_evals.
   match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
   apply_predicate_equivalence.
-  unfold univ_glu_exp_pred' in *.
+  destruct_glu_records.
   destruct_conjs.
   clear_dups.
   match goal with
@@ -249,7 +247,7 @@ Proof.
       simplify_evals.
       match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
       apply_predicate_equivalence.
-      unfold univ_glu_exp_pred' in *.
+      destruct_glu_records.
       destruct_conjs.
       handle_functional_glu_univ_elem.
       match_by_head read_ne ltac:(fun H => directed inversion_clear H).

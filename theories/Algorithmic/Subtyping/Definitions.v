@@ -49,13 +49,15 @@ Hint Constructors alg_subtyping_nf : mctt.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Inductive alg_subtyping : ctx -> typ -> typ -> Prop :=
-| alg_subtyp_run : forall Γ A B A' B',
-    nbe_ty_f Γ A A' ->
-    nbe_ty_f Γ B B' ->
-    ⊢anf A' ⊆ B' ->
-    Γ ⊢a A ⊆ B
-where "Γ ⊢a A ⊆ B" := (alg_subtyping Γ A B) : type_scope.
+#[warnings="-cannot-define-projection"]
+Record alg_subtyping (Γ : ctx) (A B : typ) : Prop := alg_subtyp_run
+  { A' : nf
+  ; B' : nf
+  ; asub_nbe : nbe_ty_f Γ A A'
+  ; asub_nbe' : nbe_ty_f Γ B B'
+  ; asub_sub : ⊢anf A' ⊆ B' }.
+
+Notation "Γ ⊢a A ⊆ B" := (alg_subtyping Γ A B) : type_scope.
 
 Hint Constructors alg_subtyping : mctt.
 

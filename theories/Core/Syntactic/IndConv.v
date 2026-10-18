@@ -52,7 +52,7 @@ Section Fixed_GCtx.
   Lemma uparams_ctx_wf : forall Γ D, decl_typed Θ Ξ D -> decl_closed D -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊢ Θ ⍮ Ξ ⍮ ind_uparams D ++ Γ.
   Proof.
     intros * HD Hc HΓ.
-    pose proof HD as (_ & _ & _ & HΔ & _); rewrite params_split in HΔ.
+    pose proof (dt_params _ _ _ HD) as HΔ; rewrite params_split in HΔ.
     apply wf_ctx_closed_app; [ exact (decl_uparams_ass D Hc) | exact (decl_uparams_closed D Hc) | eapply ctx_app_wf_tail; exact HΔ | exact HΓ ].
   Qed.
 
@@ -62,7 +62,7 @@ Section Fixed_GCtx.
         Θ ⍮ Ξ ⍮ ind_uparams D ++ Γ ⊢ U : T.
   Proof.
     intros * HD Hc HΓ k U T HU HT.
-    pose proof HD as (_ & (Hmv & _) & _).
+    pose proof (dmv_params _ (dt_mvc _ _ _ HD)) as Hmv.
     pose proof (decl_closed_nu D Hc) as Hle.
     rewrite <- (length_ind_uparams D Hle) in HU, HT.
     change 0 with (List.length (@nil centry)) in HU, HT.
@@ -223,7 +223,7 @@ Lemma ihs_sub_us_eq : forall Γ p D Us Us' c gs gs1 t gs2 E,
       ≈ ihs_sub D Us' (List.length gs) (cargs_pat gs1) (List.length E) : doms_ctx nil ++ cargs_strat gs1 ++ ind_params D.
 Proof.
   intros * HD Hc Hl HΓ HUl Hσ Hσσ Hin Heq HΨ.
-  pose proof HD as (Hass & (Hmv & Hmvs & Hmvc) & Hle & HΔ & HS & _).
+  pose proof HD as [Hass [Hmv Hmvs Hmvc] Hle HΔ HS _ _ _ _ _ _ _ _].
   set (pat := cargs_pat gs1) in *.
   assert (Hpat : List.length pat = List.length gs1) by apply length_cargs_pat.
   set (i := List.length pat) in *.
@@ -543,7 +543,7 @@ Qed.
   Proof.
     intros * Hl HΓ HXl HYl HXY.
     pose proof (wf_exp_eq_ind_apps _ _ _ _ _ Hl HΓ HXl HYl HXY) as Heq.
-    destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [(_ & _ & _ & _ & Hsu & _) _].
+    destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [[_ _ _ _ Hsu _ _ _ _ _ _ _ _] _].
     destruct Hsu as [[i0 Hs] | [t Hs]]; rewrite Hs in Heq; cbn in Heq.
     - exists i0; exact Heq.
     - exists 0.

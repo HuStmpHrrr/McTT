@@ -32,52 +32,54 @@ Section Fixed_GCtx.
   Qed.
 
   (** The conditions of the clause on the canonical relations. *)
-  Definition ind_canon_props (D : ind_decl) (ups : list domain) : Prop :=
-    let T := List.rev (ind_nparams D) in
-    let nr := ind_nr D ups in
-    let ar := ind_ar D ups in
-    let dr := ind_dr ups in
-    (forall k A vs vs', List.nth_error T k = Some (ce_ass A) -> tele_pre nr k vs vs' -> PER (nr k vs)) /\
-    (forall k A vs vs', List.nth_error T k = Some (ce_ass A) -> tele_pre nr k vs vs' -> (nr k vs <~> nr k vs')) /\
-    (forall ms ms' c gs k A vs vs', tele_full nr T ms ms' -> ind_con D c = Some gs ->
-       List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' -> PER (ar ms c k vs)) /\
-    (forall ms ms' c gs k A vs vs', tele_full nr T ms ms' -> ind_con D c = Some gs ->
-       List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' -> (ar ms c k vs <~> ar ms' c k vs')) /\
-    (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys', tele_full nr T ms ms' -> ind_con D c = Some gs ->
-       gs = gs1 ++ ca_rec t :: gs2 -> tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-       List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
-       PER (dr (ms ++ ws ++ ys) B)) /\
-    (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys', tele_full nr T ms ms' -> ind_con D c = Some gs ->
-       gs = gs1 ++ ca_rec t :: gs2 -> tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-       List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
-       (dr (ms ++ ws ++ ys) B <~> dr (ms' ++ ws' ++ ys') B)).
+  Record ind_canon_props (D : ind_decl) (ups : list domain) : Prop := mk_ind_canon_props
+    { icp_np_per : forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
+        tele_pre (ind_nr D ups) k vs vs' -> PER (ind_nr D ups k vs)
+    ; icp_np_iff : forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
+        tele_pre (ind_nr D ups) k vs vs' -> (ind_nr D ups k vs <~> ind_nr D ups k vs')
+    ; icp_arg_per : forall ms ms' c gs k A vs vs', tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms' ->
+        ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
+        tele_pre (ind_ar D ups ms c) k vs vs' -> PER (ind_ar D ups ms c k vs)
+    ; icp_arg_iff : forall ms ms' c gs k A vs vs', tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms' ->
+        ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
+        tele_pre (ind_ar D ups ms c) k vs vs' -> (ind_ar D ups ms c k vs <~> ind_ar D ups ms' c k vs')
+    ; icp_dom_per : forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
+        tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms' -> ind_con D c = Some gs ->
+        gs = gs1 ++ ca_rec t :: gs2 -> tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+        List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys' ->
+        PER (ind_dr ups (ms ++ ws ++ ys) B)
+    ; icp_dom_iff : forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
+        tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms' -> ind_con D c = Some gs ->
+        gs = gs1 ++ ca_rec t :: gs2 -> tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+        List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys' ->
+        (ind_dr ups (ms ++ ws ++ ys) B <~> ind_dr ups (ms' ++ ws' ++ ys') B) }.
 
   (** Two families of relations agree where both are defined, as the
       section [FamChange] of [Core.Semantic.PER.Tele] needs. *)
-  Definition ind_fam_agree (D : ind_decl) (nr1 nr2 : nat -> list domain -> relation domain)
+  Record ind_fam_agree (D : ind_decl) (nr1 nr2 : nat -> list domain -> relation domain)
       (ar1 ar2 : list domain -> String.string -> nat -> list domain -> relation domain)
-      (dr1 dr2 : list domain -> exp -> relation domain) : Prop :=
-    let T := List.rev (ind_nparams D) in
-    (forall k vs vs1 vs2, k < List.length T -> tele_pre nr1 k vs vs1 -> tele_pre nr2 k vs vs2 ->
-       (nr1 k vs <~> nr2 k vs)) /\
-    (forall ms ms1 ms2 c gs k vs vs1 vs2, tele_full nr1 T ms ms1 -> tele_full nr2 T ms ms2 ->
-       ind_con D c = Some gs -> k < List.length (cargs_nonrec gs) ->
-       tele_pre (ar1 ms c) k vs vs1 -> tele_pre (ar2 ms c) k vs vs2 ->
-       (ar1 ms c k vs <~> ar2 ms c k vs)) /\
-    (forall ms ms1 ms2 c gs gs1 t gs2 ws ws1 ws2 k ys ys1 ys2,
-       tele_full nr1 T ms ms1 -> tele_full nr2 T ms ms2 ->
-       ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-       tele_pre (ar1 ms c) (List.length (cargs_nonrec gs1)) ws ws1 ->
-       tele_pre (ar2 ms c) (List.length (cargs_nonrec gs1)) ws ws2 ->
-       k < List.length (ptyp_doms t) ->
-       tele_pre (shape_tr dr1 ms ws (ptyp_doms t)) k ys ys1 ->
-       tele_pre (shape_tr dr2 ms ws (ptyp_doms t)) k ys ys2 ->
-       (shape_tr dr1 ms ws (ptyp_doms t) k ys <~> shape_tr dr2 ms ws (ptyp_doms t) k ys)).
+      (dr1 dr2 : list domain -> exp -> relation domain) : Prop := mk_ind_fam_agree
+    { ifa_np : forall k vs vs1 vs2, k < List.length (List.rev (ind_nparams D)) ->
+        tele_pre nr1 k vs vs1 -> tele_pre nr2 k vs vs2 -> (nr1 k vs <~> nr2 k vs)
+    ; ifa_arg : forall ms ms1 ms2 c gs k vs vs1 vs2,
+        tele_full nr1 (List.rev (ind_nparams D)) ms ms1 -> tele_full nr2 (List.rev (ind_nparams D)) ms ms2 ->
+        ind_con D c = Some gs -> k < List.length (cargs_nonrec gs) ->
+        tele_pre (ar1 ms c) k vs vs1 -> tele_pre (ar2 ms c) k vs vs2 ->
+        (ar1 ms c k vs <~> ar2 ms c k vs)
+    ; ifa_dom : forall ms ms1 ms2 c gs gs1 t gs2 ws ws1 ws2 k ys ys1 ys2,
+        tele_full nr1 (List.rev (ind_nparams D)) ms ms1 -> tele_full nr2 (List.rev (ind_nparams D)) ms ms2 ->
+        ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+        tele_pre (ar1 ms c) (List.length (cargs_nonrec gs1)) ws ws1 ->
+        tele_pre (ar2 ms c) (List.length (cargs_nonrec gs1)) ws ws2 ->
+        k < List.length (ptyp_doms t) ->
+        tele_pre (shape_tr dr1 ms ws (ptyp_doms t)) k ys ys1 ->
+        tele_pre (shape_tr dr2 ms ws (ptyp_doms t)) k ys ys2 ->
+        (shape_tr dr1 ms ws (ptyp_doms t) k ys <~> shape_tr dr2 ms ws (ptyp_doms t) k ys) }.
 
   Lemma ind_fam_agree_sym : forall D nr1 nr2 ar1 ar2 dr1 dr2,
       ind_fam_agree D nr1 nr2 ar1 ar2 dr1 dr2 -> ind_fam_agree D nr2 nr1 ar2 ar1 dr2 dr1.
   Proof.
-    intros * (Hn & Ha & Hd); split; [| split ]; intros; symmetry; [ eapply Hn | eapply Ha | eapply Hd ]; eassumption.
+    intros * [Hn Ha Hd]; constructor; intros; symmetry; [ eapply Hn | eapply Ha | eapply Hd ]; eassumption.
   Qed.
 
   (** The relations of the clause agree with the canonical ones at the
@@ -99,7 +101,7 @@ Section Fixed_GCtx.
            DF b ≈ b' ∈ per_univ_elem i ↘ dr (ms ++ ws ++ ys) B) ->
       ind_fam_agree D nr (ind_nr D ups) ar (ind_ar D ups) dr (ind_dr ups).
   Proof.
-    intros * Hass Hn Ha Hd; split; [| split ].
+    intros * Hass Hn Ha Hd; constructor.
     - intros * Hk Hp _.
       destruct (nparams_lt_ass D k Hass Hk) as [A HA].
       destruct (Hn _ _ _ _ HA Hp) as (a & a' & Ea & Ea' & HR).
@@ -140,8 +142,8 @@ Section Fixed_GCtx.
       - intros * HA Hp; destruct (H5 _ _ _ _ HA Hp) as [a a' Ea Ea' HR]; eauto.
       - intros * Hm Hc HA Hp; destruct (H8 _ _ _ _ _ _ _ _ Hm Hc HA Hp) as [a a' Ea Ea' HR]; eauto.
       - intros * Hm Hc Heq Hw HB Hy; destruct (H11 _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hw HB Hy) as [b b' Eb Eb' HR]; eauto. }
-    destruct Hag as (Hn0 & Ha0 & Hd0).
-    destruct (ind_fam_agree_sym _ _ _ _ _ _ _ (conj Hn0 (conj Ha0 Hd0))) as (Hn0' & Ha0' & Hd0').
+    destruct Hag as [Hn0 Ha0 Hd0].
+    destruct (ind_fam_agree_sym _ _ _ _ _ _ _ (mk_ind_fam_agree _ _ _ _ _ _ _ Hn0 Ha0 Hd0)) as [Hn0' Ha0' Hd0'].
     pose proof (tele_full_nr_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0) as F1.
     pose proof (tele_full_nr_change p D ups _ _ _ _ _ _ Hn0' Ha0' Hd0') as F2.
     pose proof (tele_pre_nr_change' p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0) as P2.
@@ -183,7 +185,7 @@ Section Fixed_GCtx.
       pose proof (Hd0 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hm2 Hc Heq Hw Hw2 Hkl Hy Hy2) as Hdd.
       unfold shape_tr in Hdd; rewrite (List.nth_error_nth _ _ _ HB) in Hdd; exact Hdd. }
     assert (Hcp : ind_canon_props D ups).
-    { split; [| split; [| split; [| split; [| split ] ] ] ].
+    { constructor.
       - intros * HA Hp.
         assert (Hk : k < length (rev (ind_nparams D))) by (apply nth_error_Some; congruence).
         pose proof (P2 k vs vs' (Nat.lt_le_incl _ _ Hk) Hp) as Hp'.
@@ -231,7 +233,7 @@ Section Fixed_GCtx.
         rewrite <- (HDr _ _ _ _ _ _ _ _ _ _ _ _ _ Hm' Hc Heq Hw' HB Hy').
         rewrite <- (HDr _ _ _ _ _ _ _ _ _ _ _ _ _ Hmr Hc Heq Hwr HB Hyr).
         eapply H12; eassumption. }
-    split; [ exact H0 | split; [ exact H3 | split; [ exact Hcp | split; [ split; [| split ] | split; [| split; [| split ] ] ] ] ] ].
+    split; [ exact H0 | split; [ exact H3 | split; [ exact Hcp | split; [ constructor | split; [| split; [| split ] ] ] ] ] ].
     - (** At [ups'], the relations of the right types. *)
       intros * Hk Hp1 Hp2.
       pose proof (P2 k vs vs1 (Nat.lt_le_incl _ _ Hk) Hp1) as Hp'.
@@ -304,8 +306,8 @@ Section Fixed_GCtx.
       - intros * HA Hp; destruct (H5 _ _ _ _ HA Hp) as [a a' Ea Ea' HR]; eauto.
       - intros * Hm Hc HA Hp; destruct (H8 _ _ _ _ _ _ _ _ Hm Hc HA Hp) as [a a' Ea Ea' HR]; eauto.
       - intros * Hm Hc Heq Hw HB Hy; destruct (H11 _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hw HB Hy) as [b b' Eb Eb' HR]; eauto. }
-    destruct Hag as (Hn0 & Ha0 & Hd0).
-    destruct (ind_fam_agree_sym _ _ _ _ _ _ _ (conj Hn0 (conj Ha0 Hd0))) as (Hn0' & Ha0' & Hd0').
+    destruct Hag as [Hn0 Ha0 Hd0].
+    destruct (ind_fam_agree_sym _ _ _ _ _ _ _ (mk_ind_fam_agree _ _ _ _ _ _ _ Hn0 Ha0 Hd0)) as [Hn0' Ha0' Hd0'].
     pose proof (tele_full_nr_change p D ups _ _ _ _ _ _ Hn0' Ha0' Hd0') as F2.
     pose proof (tele_pre_nr_change' p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0) as P2.
     split; [| split ].
@@ -354,7 +356,7 @@ Section Fixed_GCtx.
       - intros * HA Hp; destruct (H5 _ _ _ _ HA Hp) as [a a' Ea Ea' HR]; eauto.
       - intros * Hm Hc HA Hp; destruct (H8 _ _ _ _ _ _ _ _ Hm Hc HA Hp) as [a a' Ea Ea' HR]; eauto.
       - intros * Hm Hc Heq Hw HB Hy; destruct (H11 _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hw HB Hy) as [b b' Eb Eb' HR]; eauto. }
-    destruct (ind_fam_agree_sym _ _ _ _ _ _ _ Hag) as (Hn0' & Ha0' & Hd0').
+    destruct (ind_fam_agree_sym _ _ _ _ _ _ _ Hag) as [Hn0' Ha0' Hd0'].
     pose proof (tele_full_nr_change p D ups _ _ _ _ _ _ Hn0' Ha0' Hd0' _ _ Hbs) as Hbs'.
     eexists; basic_per_univ_elem_econstructor; try eassumption; reflexivity.
   Qed.
@@ -376,10 +378,10 @@ Section Fixed_GCtx.
     Let dr := ind_dr ups.
 
     Lemma canon_tnr_sym : forall a b, tele_full nr T a b -> tele_full nr T b a.
-    Proof. destruct Hcp as (? & ? & ? & ? & ? & ?); eapply (tnr_sym p D ups nr ar dr Hass); eassumption. Qed.
+    Proof. destruct Hcp as [? ? ? ? ? ?]; eapply (tnr_sym p D ups nr ar dr Hass); eassumption. Qed.
 
     Lemma canon_tnr_trans : forall a b c, tele_full nr T a b -> tele_full nr T b c -> tele_full nr T a c.
-    Proof. destruct Hcp as (? & ? & ? & ? & ? & ?); eapply (tnr_trans p D ups nr ar dr Hass); eassumption. Qed.
+    Proof. destruct Hcp as [? ? ? ? ? ?]; eapply (tnr_trans p D ups nr ar dr Hass); eassumption. Qed.
 
     Lemma canon_tnr_refl_l' : forall a b, tele_full nr T a b -> tele_full nr T a a.
     Proof. intros * H; exact (canon_tnr_trans _ _ _ H (canon_tnr_sym _ _ H)). Qed.

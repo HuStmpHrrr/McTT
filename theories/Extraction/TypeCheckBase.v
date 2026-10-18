@@ -282,7 +282,7 @@ Section type_check.
   Proof.
     intros * HGU Hp.
     assert (G ▹ₘ U ⊢ ⊤ : Typeω@0) as [W [HW _]]%soundness_ty by mauto 2.
-    inversion HW as [? ? ? ? ? Hi _ _]; subst.
+    inversion HW as [? ? Hi _ _]; subst.
     inversion Hi; subst; functional_initial_env_rewrite_clear; eauto.
   Qed.
 

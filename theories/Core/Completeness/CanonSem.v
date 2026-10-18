@@ -43,25 +43,25 @@ Lemma flat_walk : forall Δ Γ Δ' D RΓ, tele_ass Δ -> ⊨ Δ ++ Γ -> EF Γ �
 Proof.
   induction Δ as [| e Δ0 IH] using rev_ind; intros * HΔ HC HΓ HU ρ ρ' Hρ; cbn [List.app] in *.
   - rewrite app_nil_r.
-    destruct (unit_chain_at HU HΓ _ _ Hρ) as (h & h' & Hh & Hh' & Hhh).
-    exists h, h'; split; [ apply eval_me_lit, eval_close_alias0; exact Hh | split; [ exact Hh' | exact Hhh ] ].
+    destruct (unit_chain_at HU HΓ _ _ Hρ) as [h h' Hh Hh' Hhh].
+    apply (mk_rel_mexp _ _ _ _ h h'); [ apply eval_me_lit, eval_close_alias0; exact Hh | exact Hh' | exact Hhh ].
   - destruct (tele_ass_app_inv _ _ HΔ) as [HΔ0 He]; inversion He as [| ? ? [A ->] _]; subst.
     rewrite <- app_assoc in HC, HU; cbn [List.app] in HC, HU.
     destruct (sem_ctx_ass_inv (sem_ctx_app_r _ _ HC)) as [i HA].
     pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
     destruct (rel_exp_of_typ_inversion_simple_at HΓ HA _ _ Hρ) as (a & a' & Ha & Ha' & [Ra HRa]).
     rewrite app_assoc.
-    eexists _, _; split; [ apply eval_me_lit, close_unsat; rewrite length_app; cbn; lia |].
-    split; [ apply eval_me_lit, close_unsat; rewrite length_app; cbn; lia |].
+    econstructor; [ apply eval_me_lit, close_unsat; rewrite length_app; cbn; lia
+                  | apply eval_me_lit, close_unsat; rewrite length_app; cbn; lia |].
     eapply per_dmod_closure_step; [ exact Ha | exact Ha' | exact HRa |].
     intros c c' Hc.
-    destruct (IH (Γ ▹ A) _ _ _ HΔ0 HC HΓA HU (ρ ↦ c) (ρ' ↦ c')) as (h & h' & Hh & Hh' & Hhh).
+    destruct (IH (Γ ▹ A) _ _ _ HΔ0 HC HΓA HU (ρ ↦ c) (ρ' ↦ c')) as [h h' Hh Hh' Hhh].
     { split; [ exact Hρ | eapply per_head_of; [ exact Ha | exact Ha' | exact HRa | exact Hc ] ]. }
     apply eval_me_lit_iff in Hh, Hh'; exists h, h'; repeat split; assumption.
 Qed.
 
 Lemma ext_refl : forall Γ Δ, ⊨ Δ ++ Γ -> Γ ⊨ˣ Δ ≈ Δ.
-Proof. intros * HC; split; [ exact HC | split; [ exact HC | exact (sem_ctx_per_ctx HC) ] ]. Qed.
+Proof. intros * HC; constructor; [ exact HC | exact HC | exact (sem_ctx_per_ctx HC) ]. Qed.
 
 (** An alias of a literal is the literal over both telescopes. *)
 Lemma rel_lit_flatten : forall Γ Δ Δ' D, tele_ass Δ -> semK (Δ ++ Γ) (me_lit (gu_mk Δ' D)) ->
@@ -77,7 +77,8 @@ Proof.
   - exact (semK_valid _ _ Hgf _ _ (semK_abs _ _ Hgm Hgf _ _ _ HK HΔ)).
   - intros R HR ρ ρ' Hρ.
     assert (E : R <~> RΓ) by (eapply per_ctx_env_right_irrel; eassumption).
-    exact (flat_walk _ _ _ _ _ HΔ HC HRΓ HU _ _ (proj1 (E _ _) Hρ)).
+    destruct (flat_walk _ _ _ _ _ HΔ HC HRΓ HU _ _ (proj1 (E _ _) Hρ)) as [h h' Hh Hh' Hhh].
+    exists h, h'; auto.
 Qed.
 
 (** ** Aliases of Canonical Units *)

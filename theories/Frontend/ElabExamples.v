@@ -81,7 +81,7 @@ Example a_preapplied :
   sel (en_var "B" :: en_mem "a" (q_abs ("U" :: nil) ("a" :: nil)) :: en_var "A" :: nil) (var "a") (U_a $ #1).
 Proof.
   apply (sel_var _ _ 1 (en_mem "a" (q_abs ("U" :: nil) ("a" :: nil))) 1); [| apply dt_mem ].
-  exists (en_var "B" :: nil), (en_var "A" :: nil); cbn; repeat split.
+  apply (mk_bound _ _ _ _ _ (en_var "B" :: nil) (en_var "A" :: nil)); cbn; try reflexivity.
   intros [H | []]; discriminate.
 Qed.
 

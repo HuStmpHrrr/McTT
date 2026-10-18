@@ -284,7 +284,7 @@ Lemma per_lvl_at_canon_bnd : forall n l l' s L,
     lvl_bnd n L.
 Proof.
   intros * H HL.
-  destruct (H s) as (L' & HL' & _ & Hb).
+  destruct (H s) as [L' HL' _ Hb].
   apply dlvl_canon_of_read in HL' as [_ [L'' [Heq HL'']]].
   apply nf_lvl_of_inj in Heq as <-.
   assert (L = L') as -> by (eapply dlvl_canon_functional; eassumption).
@@ -301,7 +301,7 @@ Proof.
   intros * H Hb s.
   destruct (H s) as (W & HW & HW').
   pose proof HW as HW0; apply dlvl_canon_of_read in HW0 as [_ [L [-> HL]]].
-  exists L; split; [| split ]; [ exact HW | exact HW' | eapply Hb; exact HL ].
+  exists L; [ exact HW | exact HW' | eapply Hb; exact HL ].
 Qed.
 
 Lemma per_lvl_at_of_lvl : forall n l l',
@@ -553,8 +553,7 @@ Proof.
   assert (B = B') as <- by (eapply per_lvl_eq; [ exact Hm | exact HB | exact HB' ]).
   assert (lvl_canon (lvl_max A B) = B) as Hj
     by (eapply per_lvl_eq; [ exact Hmax | apply dlvl_canon_max; [ exact HA | exact HB ] | exact HB' ]).
-  exists A, B; repeat split;
-    [ apply dlvl_canon_read; assumption | apply dlvl_canon_read; assumption |].
+  exists A B; [ apply dlvl_canon_read; assumption | apply dlvl_canon_read; assumption |].
   unfold lvl_le; rewrite Hj; symmetry; exact (dlvl_canon_canonical _ _ _ HB').
 Qed.
 

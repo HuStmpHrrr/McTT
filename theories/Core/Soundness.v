@@ -26,7 +26,7 @@ Proof.
   assert (⊢ Γ) by mauto 3.
   assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ]
       by mauto 3 using completeness_fundamental_ctx, sem_ctx_per_ctx_env.
-  destruct (soundness_fundamental_exp _ _ _ H) as [Sb [? [i]]].
+  destruct (soundness_fundamental_exp _ _ _ H) as [Sb ? i ?].
   pose proof (per_ctx_then_per_env_initial_env ltac:(eassumption)) as [ρ [? ?]].
   destruct_conjs.
   functional_initial_env_rewrite_clear.
@@ -86,7 +86,7 @@ Proof.
   assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ]
       by mauto 3 using completeness_fundamental_ctx, sem_ctx_per_ctx_env.
   pose proof (soundness_fundamental_exp _ _ _ H) as HM.
-  destruct HM as [Sb [HSb Hrest]].
+  destruct HM as [Sb HSb _ _].
   pose proof (per_ctx_then_per_env_initial_env ltac:(eassumption)) as [ρ [? ?]].
   destruct_conjs.
   functional_initial_env_rewrite_clear.

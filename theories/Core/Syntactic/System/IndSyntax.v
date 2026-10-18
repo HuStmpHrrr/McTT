@@ -398,7 +398,7 @@ Section Closed.
 
   Lemma decl_closed_nparams_scoped : ctx_scoped (ind_nu D) (ind_nparams D).
   Proof.
-    destruct HD as (_ & _ & HΔ & _).
+    pose proof (dc_params _ HD) as HΔ.
     rewrite <- (firstn_skipn (ind_nn D) (ind_params D)) in HΔ.
     apply ctx_scoped_app in HΔ as [H _]; fold (ind_nparams D) (ind_uparams D) in H.
     rewrite decl_closed_uparams_length, Nat.add_0_r in H; exact H.
@@ -410,7 +410,7 @@ Section Closed.
   Lemma decl_closed_cargs_scoped : forall p c gs,
       In (c, gs) (ind_cons D) -> ctx_scoped (ind_np D) (cargs_ctx p D gs).
   Proof.
-    intros * Hin; destruct HD as (_ & Hle & _ & _ & HA & HPs & _).
+    intros * Hin; destruct HD as [_ Hle _ _ HA HPs _].
     apply (cargs_ctx_aux_scoped p D gs nil 0 Hle eq_refl); intros; cbn; eauto.
   Qed.
 End Closed.
@@ -592,7 +592,7 @@ Proof.
   rewrite !tele_sub_app, length_app, length_tele_sub, length_cargs_ctx, length_ind_nparams_sub.
   f_equal; [| f_equal ].
   - apply (ihs_ctx_aux_sub D A Us (List.length gs) τ gs nil 0 HD Hl eq_refl).
-    destruct HD as (_ & _ & _ & _ & _ & HPs & HPl).
+    destruct HD as [_ _ _ _ _ HPs HPl].
     intros * Heq; split; [ exact (HPs _ _ _ _ _ Hin Heq) | exact (HPl _ _ _ _ _ Hin Heq) ].
   - rewrite tele_sub_sub.
     rewrite (tele_sub_sb_eq _ _ (sb_qn (ind_nn D) (sb_of_list Id Us ⨟ τ))) by (apply sb_qn_compose_ext; reflexivity).
@@ -693,7 +693,7 @@ Proof.
   intros * HD Hin Hl; rewrite elim_ihs_sub.
   eapply (elim_ihs_agree _ _ _ _ _ _ _ (List.length Ps)).
   - intros y Hy; cbn [sb_compose]; apply sb_of_list_lt_compose; exact Hy.
-  - intros gs1 t gs2 E; pose proof HD as (_ & _ & _ & _ & _ & Ht & _); rewrite Hl; exact (Ht _ _ _ _ _ Hin E).
+  - intros gs1 t gs2 E; pose proof (dc_recs _ HD) as Ht; rewrite Hl; exact (Ht _ _ _ _ _ Hin E).
 Qed.
 
 (** ** Lists of Branches *)

@@ -116,7 +116,7 @@ Proof.
   inversion Ha0; subst.
   assert (HB' : G ▹ A ⊨ B ≈ B : Typeω@i) by (apply completeness_fundamental_exp_eq; mauto 3).
   assert (HN' : G ⊨ N ≈ N : A) by (apply completeness_fundamental_exp_eq; mauto 3).
-  pose proof HN' as [env_relΓ [HΓr _]].
+  pose proof HN' as [env_relΓ HΓr _ _].
   pose proof (per_ctx_then_per_env_initial_env HΓr) as [ρ1 [ρ2 [Hρ1 [Hρ2 Hrel]]]].
   assert (ρ1 = ρ) by (eapply functional_initial_env; eassumption); subst.
   assert (ρ2 = ρ) by (eapply functional_initial_env; eassumption); subst.
@@ -151,15 +151,24 @@ Section type_check.
   (** The type of a term as a value at the environment [P]: a value related
       ([dsim]) to one that stands for the normal form [T] at the initial
       environment. *)
-  Definition typ_val G (P : tenv G) (v : domain) (T : nf) : Prop :=
-    exists (i : nat) p a v0, initial_env_f G p /\ env_agree (fun _ => True) p (proj1_sig P) /\
-      G ⊢ T : Typeω@i /\ ⟦ T ⟧ p ↘ a /\ Dom v0 ≈ a ∈ per_univ i /\ dsim v0 v.
+  #[warnings="-cannot-define-projection"]
+  Record typ_val G (P : tenv G) (v : domain) (T : nf) : Prop := mk_typ_val
+    { tv_lvl : nat
+    ; tv_env : env
+    ; tv_sem : domain
+    ; tv_rel : domain
+    ; tv_init : initial_env_f G tv_env
+    ; tv_agree : env_agree (fun _ => True) tv_env (proj1_sig P)
+    ; tv_typ : G ⊢ T : Typeω@tv_lvl
+    ; tv_eval : ⟦ T ⟧ tv_env ↘ tv_sem
+    ; tv_per : Dom tv_rel ≈ tv_sem ∈ per_univ tv_lvl
+    ; tv_sim : dsim tv_rel v }.
 
   (** A type as a value reads back to the type it stands for. *)
   Lemma typ_val_rtyp : forall G P M v T,
       ⊢ G -> G ⊢a M ⟹ T -> typ_val G P v T -> Rtypᶠ v in gc_deps ⍮ gc_stack ⍮ (List.length G) ↘ T.
   Proof.
-    intros * HG HM (i & p & a & v0 & Hp & _ & HT & Ha & Hv0 & Hs).
+    intros * HG HM [i p a v0 Hp _ HT Ha Hv0 Hs].
     eapply fread_typ_sim; [| exact Hs ].
     eapply typ_val_read; [ eassumption | eapply alg_type_infer_self; eassumption | eassumption | eassumption ].
   Qed.
@@ -172,7 +181,7 @@ Section type_check.
     intros * HG HM Hv.
     pose proof (typ_val_rtyp _ _ _ _ _ HG HM Hv) as Hr.
     inversion Hr; subst.
-    destruct Hv as (i & _ & _ & _ & _ & _ & HT & _).
+    destruct Hv as [i _ _ _ _ _ HT _ _ _].
     do 3 eexists; repeat split; eassumption.
   Qed.
 
@@ -183,7 +192,7 @@ Section type_check.
       feval_exp_order gc_deps gc_stack N (proj1_sig P) /\
       forall n', ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (proj1_sig P) ↘ n' -> feval_exp_order gc_deps gc_stack b (ρ ↦ n').
   Proof.
-    intros G [p' Hp'] * HG HM (i & p & a1 & v0 & Hp & Hag & HT & Ha1 & Hv0 & Hs) HN; cbn in *.
+    intros G [p' Hp'] * HG HM [i p a1 v0 Hp Hag HT Ha1 Hv0 Hs] HN; cbn in *.
     assert (G ⊢ A : Typeω@i /\ G ▹ A ⊢ B : Typeω@i) as [HA HB] by mauto 3.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n Hn].
@@ -203,7 +212,7 @@ Section type_check.
       ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (proj1_sig P) ↘ n -> ⟦ b ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (ρ ↦ n) ↘ v ->
       exists T, G ⊢a M $ N ⟹ T /\ typ_val G P v T.
   Proof.
-    intros G [p' Hp'] * HG HM (i & p & a1 & v0 & Hp & Hag & HΠ & Ha1 & Hv0 & Hs) HN Hn' Hv'; cbn in *.
+    intros G [p' Hp'] * HG HM [i p a1 v0 Hp Hag HΠ Ha1 Hv0 Hs] HN Hn' Hv'; cbn in *.
     assert (G ⊢ A : Typeω@i /\ G ▹ A ⊢ B : Typeω@i) as [HA HB] by mauto 3.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n0 Hn0].
@@ -216,7 +225,7 @@ Section type_check.
     destruct (soundness_ty HBN) as (W & HW & HeqW).
     destruct (typ_val_conv _ _ _ _ _ _ _ Hp HeqW Hc Hv1c) as (c' & Hc' & Hvc').
     exists W; split; [ econstructor; eassumption |].
-    exists i, p, c', v1; repeat split; try assumption.
+    apply (mk_typ_val _ _ _ _ i p c' v1); try assumption.
     gen_presups; assumption.
   Qed.
 
@@ -224,10 +233,10 @@ Section type_check.
       the argument when the codomain does not read it ([exp_freshb]): its
       entry is then [𝕌ω@0], which nothing reads.  A numeral, a chain of
       [succ]s, is thus typed in linear time. *)
-  Definition app_cod_order G (P : tenv G) N ρ b : Prop :=
-    feval_exp_order gc_deps gc_stack N (proj1_sig P) /\
-    (forall n', ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (proj1_sig P) ↘ n' -> feval_exp_order gc_deps gc_stack b (ρ ↦ n')) /\
-    (exp_freshb 0 b = true -> feval_exp_order gc_deps gc_stack b (ρ ↦ 𝕌ω@0)).
+  Record app_cod_order G (P : tenv G) N ρ b : Prop := mk_app_cod_order
+    { aco_arg : feval_exp_order gc_deps gc_stack N (proj1_sig P)
+    ; aco_cod : forall n', ⟦ N ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (proj1_sig P) ↘ n' -> feval_exp_order gc_deps gc_stack b (ρ ↦ n')
+    ; aco_unread : exp_freshb 0 b = true -> feval_exp_order gc_deps gc_stack b (ρ ↦ 𝕌ω@0) }.
 
   Definition app_cod_val G (P : tenv G) N ρ b v : Prop :=
     (exp_freshb 0 b = true /\ ⟦ b ⟧ᶠ gc_deps ⍮ gc_stack ⍮ (ρ ↦ 𝕌ω@0) ↘ v) \/
@@ -237,11 +246,11 @@ Section type_check.
   Equations app_cod G (P : tenv G) N ρ b (H : app_cod_order G P N ρ b) : { v | app_cod_val G P N ρ b v } :=
   | G, P, N, ρ, b, H with inspect (exp_freshb 0 b) := {
     | exist _ true E =>
-        let (v, Hv) := feval_exp_impl gc_deps gc_stack b (ρ ↦ 𝕌ω@0) (proj2 (proj2 H) E) in
+        let (v, Hv) := feval_exp_impl gc_deps gc_stack b (ρ ↦ 𝕌ω@0) (aco_unread _ _ _ _ _ H E) in
         exist _ v (or_introl (conj E Hv))
     | exist _ false E =>
-        let (n, Hn) := feval_exp_impl gc_deps gc_stack N (proj1_sig P) (proj1 H) in
-        let (v, Hv) := feval_exp_impl gc_deps gc_stack b (ρ ↦ n) (proj1 (proj2 H) n Hn) in
+        let (n, Hn) := feval_exp_impl gc_deps gc_stack N (proj1_sig P) (aco_arg _ _ _ _ _ H) in
+        let (v, Hv) := feval_exp_impl gc_deps gc_stack b (ρ ↦ n) (aco_cod _ _ _ _ _ H n Hn) in
         exist _ v (or_intror (ex_intro _ n (conj Hn Hv))) }.
 
   Lemma typ_val_app_cod_order : forall G P M N A B a ρ b,
@@ -250,9 +259,9 @@ Section type_check.
   Proof.
     intros * HG HM Hv HN.
     destruct (typ_val_app_order _ _ _ _ _ _ _ _ _ HG HM Hv HN) as [Ho1 Ho2].
-    split; [ exact Ho1 | split; [ exact Ho2 |] ].
+    constructor; [ exact Ho1 | exact Ho2 |].
     intros Ef; apply exp_freshb_sound in Ef.
-    destruct P as [p' Hp']; destruct Hv as (i & p & a1 & v0 & Hp & Hag & HT & Ha1 & Hv0 & Hs); cbn in *.
+    destruct P as [p' Hp']; destruct Hv as [i p a1 v0 Hp Hag HT Ha1 Hv0 Hs]; cbn in *.
     assert (G ⊢ A : Typeω@i /\ G ▹ A ⊢ B : Typeω@i) as [HA HB] by mauto 3.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n Hn].
@@ -269,7 +278,7 @@ Section type_check.
   Proof.
     intros * HG HM Hv HN [(Ef & Hv') | (n & Hn' & Hv')]; [| eapply typ_val_app_step; eassumption ].
     apply exp_freshb_sound in Ef.
-    destruct P as [p' Hp']; destruct Hv as (i & p & a1 & v0 & Hp & Hag & HΠ & Ha1 & Hv0 & Hs); cbn in *.
+    destruct P as [p' Hp']; destruct Hv as [i p a1 v0 Hp Hag HΠ Ha1 Hv0 Hs]; cbn in *.
     assert (G ⊢ A : Typeω@i /\ G ▹ A ⊢ B : Typeω@i) as [HA HB] by mauto 3.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n0 Hn0].
@@ -281,7 +290,7 @@ Section type_check.
     destruct (soundness_ty HBN) as (W & HW & HeqW).
     destruct (typ_val_conv _ _ _ _ _ _ _ Hp HeqW Hc Hv1c) as (c' & Hc' & Hvc').
     exists W; split; [ econstructor; eassumption |].
-    exists i, p, c', v1; repeat split; try assumption.
+    apply (mk_typ_val _ _ _ _ i p c' v1); try assumption.
     gen_presups; assumption.
   Qed.
 
@@ -292,7 +301,7 @@ Section type_check.
     intros G [p' (p & Hp & Hag)] * HT Hv; cbn in *.
     destruct (typ_val_self _ _ _ _ Hp HT) as (a & Ha & Haa).
     pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha (agree_all _ _ _ Hag)) _ Hv).
-    exists i, p, a, a; repeat split; assumption.
+    apply (mk_typ_val _ _ _ _ i p a a); assumption.
   Qed.
 
   (** The type of a term as a value evaluates. *)
@@ -737,7 +746,7 @@ Section type_check.
   Obligation 65. (* G ⊢a M' $ N' ⟹ W, and [W] is a type *)
     clear_defs; destruct_conjs.
     match goal with Hi : G ⊢a _ ⟹ ?T, Hv : typ_val G P ?v ?T |- _ =>
-      pose proof (typ_val_rtyp _ _ _ _ _ HG Hi Hv); destruct Hv as (? & ? & ? & ? & ? & ? & ? & _) end.
+      pose proof (typ_val_rtyp _ _ _ _ _ HG Hi Hv); destruct Hv as [? ? ? ? ? ? ? ? ? ?] end.
     functional_fread_rewrite_clear.
     split; [ assumption | eapply infer_post_of_typ; eassumption ].
   Qed.

@@ -50,9 +50,17 @@ Definition bt_empty : builtins := mk_builtins None.
 (** A binding is well formed where its type is an inductive type of the
     shape of the natural numbers, in [Type@0], filed or on the stack.  This
     is a condition on its own, not part of typing. *)
+#[warnings="-cannot-define-projection"]
+Record nat_binding_ok (Θ : gdeps) (Ξ : gstack) (p : qname) : Prop := mk_nat_binding_ok
+  { nbo_decl : ind_decl
+  ; nbo_zero : string
+  ; nbo_succ : string
+  ; nbo_lookup : ind_lookup Θ Ξ p = Some nbo_decl
+  ; nbo_shape : nat_shape nbo_decl = Some (nbo_zero, nbo_succ)
+  ; nbo_sort : ind_sort nbo_decl = nat_sort }.
+
 Definition builtins_wf (Θ : gdeps) (Ξ : gstack) (B : builtins) : Prop :=
-  forall p, bt_nat B = Some p ->
-    exists D z s, ind_lookup Θ Ξ p = Some D /\ nat_shape D = Some (z, s) /\ ind_sort D = nat_sort.
+  forall p, bt_nat B = Some p -> nat_binding_ok Θ Ξ p.
 
 (** What a literal stands for at a state: the bound type and its
     constructors, the one without arguments first. *)

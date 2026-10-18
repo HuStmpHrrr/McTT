@@ -1074,21 +1074,25 @@ Combined Scheme wf_mut_ind_all from
     projections are presuppositions, in [Presup]: [⊢ Θ ⍮ Ξ ⍮ gu_params U] of
     [⊢ᵍᵐ], hence of [⊢ᵍᵘ], and [⊢ᵍ Θ ⍮ nil] of [⊢ᵍ Θ ⍮ Ξ]. *)
 
-Definition wf_gunit (Θ : gdeps) (Ξ : gstack) (mp : qname) (U : gunit) : Prop :=
-  exists Δ Φ, U = gu_body Δ Φ /\ Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ.
+#[warnings="-cannot-define-projection"]
+Record wf_gunit (Θ : gdeps) (Ξ : gstack) (mp : qname) (U : gunit) : Prop := mk_wf_gunit
+  { wgu_params : ctx
+  ; wgu_body : gmod
+  ; wgu_eq : U = gu_body wgu_params wgu_body
+  ; wgu_wf : Θ ⍮ Ξ ⍮ mp ⍮ wgu_params ⊢ᵍᵐ wgu_body }.
 Notation "Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U" := (wf_gunit Θ Ξ mp U) : type_scope.
 
 Lemma wf_gunit_intro : forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ -> Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ gu_body Δ Φ.
-Proof. intros; do 2 eexists; split; [ reflexivity | assumption ]. Qed.
+Proof. intros; econstructor; [ reflexivity | eassumption ]. Qed.
 
 Lemma wf_gunit_mod : forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U -> Θ ⍮ Ξ ⍮ mp ⍮ gu_params U ⊢ᵍᵐ gu_mod U.
-Proof. intros * (Δ & Φ & -> & H); exact H. Qed.
+Proof. intros * [Δ Φ -> H]; exact H. Qed.
 
 (** The unit form of the two constructors that file one. *)
 
 Lemma wf_gstack_cons' : forall Θ Ξ mp U,
     ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U -> frame_fresh Θ Ξ mp -> ⊢ᵍ Θ ⍮ (mp, U) :: Ξ.
-Proof. intros * ? (Δ & Φ & -> & ?) ?; apply wf_gstack_cons; assumption. Qed.
+Proof. intros * ? [Δ Φ -> ?] ?; apply wf_gstack_cons; assumption. Qed.
 
 Lemma wf_gstack_cons_inv : forall Θ Ξ mp U,
     ⊢ᵍ Θ ⍮ (mp, U) :: Ξ -> ⊢ᵍ Θ ⍮ Ξ /\ Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U /\ frame_fresh Θ Ξ mp.

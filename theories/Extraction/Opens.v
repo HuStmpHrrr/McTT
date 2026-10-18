@@ -158,19 +158,19 @@ Section Gen.
     Theorem import_gen_spec : forall g its gs,
         import_gen g its = xok gs <-> open_gens Θ Ξ g Γ H its gs.
     Proof.
-      intros; unfold import_gen, open_gens, items_ok.
+      intros; unfold import_gen.
       destruct (denote_of Γ H _) as [R |] eqn:E; cbn [option_map].
       - apply denote_of_spec in E.
         destruct (ds_mod Θ Ξ R) as [Rm |] eqn:Em.
         + destruct (xmap (item_gen g) its) as [gs' | e] eqn:Er; cbn.
-          * destruct (both_dup its) eqn:Eb; [ split; [ discriminate | intros (_ & _ & Hb & _); discriminate ] |].
-            destruct (name_dup (map iitem_name its)) eqn:En; [ split; [ discriminate | intros (_ & _ & _ & Hn); discriminate ] |].
-            split; [ intros [= <-]; repeat split; eauto; apply xmap_item_gen_spec; exact Er |].
-            intros (_ & Hi & _); apply xmap_item_gen_spec in Hi; congruence.
-          * split; [ discriminate |]; intros (_ & Hi & _); apply xmap_item_gen_spec in Hi; congruence.
-        + split; [ discriminate |]; intros ((R' & Rm' & HR & HRm) & _).
+          * destruct (both_dup its) eqn:Eb; [ split; [ discriminate | intros [_ _ _ _ _ [Hb _]]; congruence ] |].
+            destruct (name_dup (map iitem_name its)) eqn:En; [ split; [ discriminate | intros [_ _ _ _ _ [_ Hn]]; congruence ] |].
+            split; [ intros [= <-]; eapply mk_open_gens; [ exact E | exact Em | apply xmap_item_gen_spec; exact Er | split; assumption ] |].
+            intros [_ _ _ _ Hi _]; apply xmap_item_gen_spec in Hi; congruence.
+          * split; [ discriminate |]; intros [_ _ _ _ Hi _]; apply xmap_item_gen_spec in Hi; congruence.
+        + split; [ discriminate |]; intros [R' Rm' HR HRm _ _].
           rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ HR _ E) in HRm; congruence.
-      - split; [ discriminate |]; intros ((R' & Rm' & HR & _) & _).
+      - split; [ discriminate |]; intros [R' Rm' HR _ _ _].
         rewrite (proj2 (denote_of_spec _ _ _ _) HR) in E; discriminate.
     Qed.
   End Target.

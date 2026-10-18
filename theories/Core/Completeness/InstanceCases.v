@@ -35,8 +35,8 @@ Qed.
 Lemma rel_sub_under_ctx_sb_eq : forall {Γ Δ σ1 σ2 τ1 τ2},
     Γ ⊨ˢ σ1 ≈ σ2 : Δ -> sb_eq σ1 τ1 -> sb_eq σ2 τ2 -> Γ ⊨ˢ τ1 ≈ τ2 : Δ.
 Proof.
-  intros * [R [HΓ [RΔ [HΔ Hσ]]]] E1 E2.
-  exists R, HΓ, RΔ, HΔ.
+  intros * [R HΓ RΔ HΔ Hσ] E1 E2.
+  refine (mk_rel_sub_under_ctx _ _ _ _ R HΓ RΔ HΔ _).
   intros Γ' R' HΓ' φ Hφ ρ ρ' Hρ.
   destruct (Hσ _ _ HΓ' _ Hφ _ _ Hρ) as [x1 x2 x3 x4 H1 H2 H3 H4 Hc].
   econstructor; [ | | | | exact Hc ].
@@ -63,11 +63,11 @@ Lemma rel_sub_compose_of_link : forall {Γ Δ τ},
     forall Γ' σ σ', Γ' ⊨ˢ σ ≈ σ' : Γ -> Γ' ⊨ˢ τ ⨟ σ ≈ τ ⨟ σ' : Δ.
 Proof.
   intros * Hτj Hl * Hσj.
-  pose proof Hσj as [R' [HΓ' [RΓ [HΓ Hσ]]]].
-  pose proof Hτj as [RΓ2 [HΓ2 [RΔ [HΔ _]]]].
+  pose proof Hσj as [R' HΓ' RΓ HΓ Hσ].
+  pose proof Hτj as [RΓ2 HΓ2 RΔ HΔ _].
   assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
   assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HΓ).
-  exists R', HΓ', RΔ, HΔ.
+  refine (mk_rel_sub_under_ctx _ _ _ _ R' HΓ' RΔ HΔ _).
   intros Γ'' R'' HΓ'' φ Hφ ρ ρ' Hρ.
   assert (HP'' : PER R'') by (eapply per_env_PER; exact HΓ'').
   pose proof (rel_sub_under_ctx_wk Hσj (rel_wk_under_ctx_intro HΓ'' HΓ' Hφ)) as Hσφ.
@@ -133,14 +133,14 @@ Lemma sub_link_ass : forall {Γ Δ τ B} {i : nat} {N},
     sub_link Γ (Δ ▹ B) (τ ,, N).
 Proof.
   intros * Hτj Hl HB HN Γ' R' HΓ' σ σ' Hσ RΔB HΔB ρ ρσ Hρ Hev.
-  pose proof Hτj as [RΓ [HΓ [RΔ [HΔ _]]]].
+  pose proof Hτj as [RΓ HΓ RΔ HΔ _].
   pose proof (per_ctx_env_of_typ HΔ HB) as HΔB'.
   assert (E : RΔB <~> per_env_extend B B RΔ) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
   assert (Hρσ : RΓ ρσ ρσ)
     by (eapply (rel_sub_under_ctx_at' (rel_sub_under_ctx_refl_left Hσ) HΓ' HΓ); eassumption).
   destruct (Hl _ _ HΓ' _ _ Hσ _ HΔ _ _ Hρ Hev) as [e1 [He1 L]].
-  pose proof HN as [RΓ2 [HΓ2 [j HNgen]]].
+  pose proof HN as [RΓ2 HΓ2 j HNgen].
   destruct (HNgen _ _ HΓ' _ _ (rel_sub_under_ctx_refl_left Hσ) _ _ _ _ Hρ Hev Hev)
     as [R1 [[b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbc] [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnc]]].
   exists (e1 ↦ n1); split.
@@ -173,7 +173,7 @@ Lemma rel_exp_comm_head : forall {Γ' Δ τ τ' R' B M},
       exists m', ⟦ M ⟧ e ↘ m' /\ per_head B B e e m m'.
 Proof.
   intros * HΓ' Hτ HM * Hρ Hev Hm.
-  pose proof HM as [R0 [HΔ0 [j HMgen]]].
+  pose proof HM as [R0 HΔ0 j HMgen].
   destruct (HMgen _ _ HΓ' _ _ (rel_sub_under_ctx_refl_left Hτ) _ _ _ _ Hρ Hev Hev)
     as [E [[a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hac] [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmc]]].
   functional_eval_rewrite_clear.
@@ -190,7 +190,7 @@ Lemma sub_link_def : forall {Γ Δ τ B} {i : nat} {M},
     sub_link Γ (Δ ▸ B ≔ M) (τ ,, M[τ]).
 Proof.
   intros * Hτj Hl HB HM Γ' R' HΓ' σ σ' Hσ RΔB HΔB ρ ρσ Hρ Hev.
-  pose proof Hτj as [RΓ [HΓ [RΔ [HΔ _]]]].
+  pose proof Hτj as [RΓ HΓ RΔ HΔ _].
   pose proof (per_ctx_env_of_def HΔ HB HM) as HΔB'.
   assert (E : RΔB <~> per_env_extend_def B M RΔ) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
@@ -236,7 +236,7 @@ Lemma sub_link_mod : forall {Γ Δ τ U},
     sub_link Γ (Δ ▹ₘ U) (τ ,,ₘ me_lit U[τ]ᵘ).
 Proof.
   intros * Hτj Hl HU Γ' R' HΓ' σ σ' Hσ RΔU HΔU ρ ρσ Hρ Hev.
-  pose proof Hτj as [RΓ [HΓ [RΔ [HΔ _]]]].
+  pose proof Hτj as [RΓ HΓ RΔ HΔ _].
   pose proof (per_ctx_env_of_mod HΔ HU) as HΔU'.
   assert (E : RΔU <~> env_ext_mod U U RΔ) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (Hρσ : RΓ ρσ ρσ)
@@ -244,7 +244,7 @@ Proof.
   pose proof (rel_sub_compose_of_link Hτj Hl _ _ _ Hσ) as Hτσ.
   destruct (Hl _ _ HΓ' _ _ Hσ _ HΔ _ _ Hρ Hev) as [e1 [He1 L]].
   destruct (unit_sub_chain HΓ' (rel_sub_under_ctx_refl_left Hτσ) HU _ _ _ _ Hρ He1 He1)
-    as ((g1 & g2 & Hg1 & Hg2 & G12) & _).
+    as ([g1 g2 Hg1 Hg2 G12] & _).
   exists (e1 ↦ᵐ g1); split.
   - rewrite sb_extend_compose_gen; apply eval_sub_extend_mod; [ exact He1 |].
     cbn [sentry_sub modexp_sub]; rewrite gunit_sub_sub; exact Hg1.
@@ -256,9 +256,9 @@ Proof.
       by (intros [| x]; [ exact Hh2e | destruct e2; reflexivity ]).
     rewrite Heq.
     destruct (unit_sub_chain HΓ (rel_sub_under_ctx_refl_left Hτj) HU _ _ _ _ Hρσ Ht2 Ht2)
-      as ((k1 & k2 & Hk1 & Hk2 & K12) & _).
+      as ([k1 k2 Hk1 Hk2 K12] & _).
     pose proof (functional_eval_modexp _ _ _ _ Hh2 Hk1) as <-.
-    unfold env_ext_mod; cbn [drop_env tl env_mod env_entry hd]; repeat split;
+    cbn [drop_env tl env_mod env_entry hd]; repeat split;
       solve [ assumption | eexists; split; eassumption ].
 Qed.
 
@@ -280,8 +280,8 @@ Lemma sub_link_comp : forall {Γ0 Δ τ Γ σ0},
     sub_link Γ Δ (τ ⨟ σ0).
 Proof.
   intros * Hτj Hl Hσ0j Hl0 Γ' R' HΓ' σ σ' Hσ RΔ HΔ ρ ρσ Hρ Hev.
-  pose proof Hτj as [RΓ0 [HΓ0 [RΔ0 [HΔ0 _]]]].
-  pose proof Hσ0j as [RΓ [HΓ [RΓ0' [HΓ0' _]]]].
+  pose proof Hτj as [RΓ0 HΓ0 RΔ0 HΔ0 _].
+  pose proof Hσ0j as [RΓ HΓ RΓ0' HΓ0' _].
   assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
   assert (HPΓ0 : PER RΓ0) by (eapply per_env_PER; exact HΓ0).
   pose proof (rel_sub_compose_of_link Hσ0j Hl0 _ _ _ Hσ) as Hσ1.
@@ -311,7 +311,7 @@ Qed.
 Lemma sub_link_wk : forall {Γ ψ Δ}, Γ ⊨ʷ ψ : Δ -> sub_link Γ Δ (sb_of_wk ψ).
 Proof.
   intros * Hψj Γ' R' HΓ' σ σ' Hσ RΔ HΔ ρ ρσ Hρ Hev.
-  pose proof Hψj as [RΓ [HΓ [RΔ0 [HΔ0 [Hψm Hψ]]]]].
+  pose proof Hψj as [RΓ HΓ RΔ0 HΔ0 [Hψm Hψ]].
   exists (⟪ψ⟫ ρσ); split.
   - intros x; cbn; rewrite (eval_wk_entry _ _ Hψm x); exact (Hev (ψ x)).
   - intros e2 He2.
@@ -330,7 +330,7 @@ Lemma sub_link_q : forall {Γ Δ τ B} {i : nat},
     sub_link (Γ ▹ B[τ]) (Δ ▹ B) (q τ).
 Proof.
   intros * Hτj Hl HB Γ' R' HΓ' σ σ' Hσ RΔB HΔB ρ ρσ Hρ Hev.
-  pose proof Hτj as [RΓ [HΓ [RΔ [HΔ _]]]].
+  pose proof Hτj as [RΓ HΓ RΔ HΔ _].
   assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
   assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HΓ).
   pose proof (per_ctx_env_of_typ_sub HΓ Hτj HB) as HΓB.
@@ -389,7 +389,7 @@ Lemma sub_link_q_def : forall {Γ Δ τ B} {i : nat} {M},
     sub_link (Γ ▸ B[τ] ≔ M[τ]) (Δ ▸ B ≔ M) (q τ).
 Proof.
   intros * Hτj Hl HB HM Γ' R' HΓ' σ σ' Hσ RΔB HΔB ρ ρσ Hρ Hev.
-  pose proof Hτj as [RΓ [HΓ [RΔ [HΔ _]]]].
+  pose proof Hτj as [RΓ HΓ RΔ HΔ _].
   assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
   assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HΓ).
   pose proof (per_ctx_env_of_def_sub HΓ Hτj HB HM) as HΓBd.
@@ -406,7 +406,7 @@ Proof.
   pose proof (L _ He2) as H12.
   assert (Hρσ : per_env_extend_def B[τ] M[τ] RΓ ρσ ρσ)
     by (eapply (rel_sub_under_ctx_at' (rel_sub_under_ctx_refl_left Hσ) HΓ' HΓBd); eassumption).
-  destruct Hρσ as [[Hρσt _] [[m0 [Hm0 Htie0]] _]].
+  destruct Hρσ as [[Hρσt _] [m0 [Hm0 Htie0]] _].
   (* the tail of [e2] is [τ] at the tail of [ρσ], up to [RΔ]; its head is [ρσ]'s *)
   assert (Hwk : (Γ ▸ B[τ] ≔ M[τ]) ⊨ʷ wk_shift : Γ)
     by (eapply rel_wk_under_ctx_intro; [ exact HΓBd | exact HΓ | eapply rel_wk_shift; eassumption ]).
@@ -447,8 +447,7 @@ Proof.
     replace (e2 0) with (ρσ 0) by (unfold env_var; rewrite Hh; reflexivity).
     etransitivity; [ exact T2 |]; etransitivity; [ symmetry; exact T1 | exact T0 ]. }
   destruct H12 as [H12t H12h].
-  split; [ split; assumption |].
-  split; [| exact Htie2 ].
+  constructor; [ split; assumption | | exact Htie2 ].
   eapply def_tie_resp; [ exact HPΔ | exact HS | exact HMs | symmetry; split; eassumption | exact Htie2 ].
 Qed.
 
@@ -460,7 +459,7 @@ Lemma sub_link_q_mod : forall {Γ Δ τ U},
     sub_link (Γ ▹ₘ U[τ]ᵘ) (Δ ▹ₘ U) (q τ).
 Proof.
   intros * Hτj Hl HU Γ' R' HΓ' σ σ' Hσ RΔU HΔU ρ ρσ Hρ Hev.
-  pose proof Hτj as [RΓ [HΓ [RΔ [HΔ _]]]].
+  pose proof Hτj as [RΓ HΓ RΔ HΔ _].
   assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
   assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HΓ).
   pose proof (per_ctx_env_of_mod_sub HΓ Hτj HU) as HΓU.
@@ -486,7 +485,7 @@ Proof.
     destruct (Hl _ _ HΓU _ _ HWk _ HΔ _ _ Hρσ (@eval_sub_of_wk _ _ wk_shift ρσ wk_mono_shift)) as [g1 [Hg1 Lg]].
     assert (Heq : env_eq e2↯ g1) by (eapply functional_eval_sub; eassumption).
     rewrite eval_wk_shift in Lg.
-    destruct Hρσ as (Hρσt & Hρσh & _).
+    destruct Hρσ as [Hρσt Hρσh _ _ _].
     pose proof (rel_sub_under_ctx_simple Hτj) as [RΓ3 [HΓ3 [RΔ3 [HΔ3 Hτs]]]].
     assert (E3 : RΓ <~> RΓ3) by (eapply per_ctx_env_right_irrel; eassumption).
     destruct (Hτs _ _ (proj1 (E3 _ _) Hρσt)) as [t [_ [Ht [_ _]]]].
@@ -500,10 +499,9 @@ Proof.
     assert (Hm1 : tie_mod (env_mod ρσ 0) (me_lit U) e1) by exact (tie_mod_move _ _ _ _ _ Tt D1).
     assert (Hm2 : tie_mod (env_mod ρσ 0) (me_lit U) e2↯) by exact (tie_mod_move _ _ _ _ _ Tt D2).
     assert (Hme : env_mod e2 0 = env_mod ρσ 0) by (unfold env_mod; rewrite Hh; reflexivity).
-    apply E; unfold env_ext_mod.
-    change (env_mod (env_entry ρσ 0 :: e1) 0) with (env_mod ρσ 0).
-    cbn [drop_env List.tl]; rewrite Hme.
-    repeat split; assumption.
+    apply E; constructor;
+      change (env_mod (env_entry ρσ 0 :: e1) 0) with (env_mod ρσ 0);
+      cbn [drop_env List.tl]; try rewrite Hme; assumption.
 Qed.
 
 (** ** Substitutions Built from Valid Parts *)
@@ -534,12 +532,12 @@ Proof.
   - split; [ exact (rel_sub_id (sem_ctx_per_ctx_env HΓ)) | exact sub_link_id ].
   - split; [ eapply rel_sub_under_ctx_extend; eassumption | eapply sub_link_ass; eassumption ].
   - split; [ eapply rel_sub_under_ctx_extend_sub_def; eassumption | eapply sub_link_def; eassumption ].
-  - destruct HU as (HU & _ & _).
+  - destruct HU as [HU _ _].
     split; [ exact (rel_sub_under_ctx_extend_mod IH1 HU) | eapply sub_link_mod; eassumption ].
   - split; [ exact (rel_sub_under_ctx_sb_eq IH1 Eq Eq) | exact (sub_link_sb_eq Eq IH2) ].
   - split; [ exact (rel_sub_under_ctx_q IH1 HB) | exact (sub_link_q IH1 IH2 HB) ].
   - split; [ exact (rel_sub_under_ctx_q_def IH1 HB HM) | exact (sub_link_q_def IH1 IH2 HB HM) ].
-  - destruct HU as (HU & _ & _).
+  - destruct HU as [HU _ _].
     split; [ exact (rel_sub_under_ctx_q_mod IH1 HU) | exact (sub_link_q_mod IH1 IH2 HU) ].
   - split; [ exact (rel_sub_compose_of_link IH1 IH2 _ _ _ Hσ) | exact (sub_link_comp IH1 IH2 Hσ Hl) ].
 Qed.
@@ -561,14 +559,14 @@ Lemma rel_exp_under_ctx_gsub : forall {Γ τ Δ T M M'},
 Proof.
   intros * Hg HM.
   destruct (gsub_props Hg) as [Hτj Hl].
-  pose proof Hτj as [RΓ [HΓ [RΔ [HΔ _]]]].
+  pose proof Hτj as [RΓ HΓ RΔ HΔ _].
   assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
   pose proof (rel_exp_under_ctx_refl_left HM) as HMl.
   pose proof (rel_exp_under_ctx_refl_right HM) as HMr.
   destruct (rel_exp_under_ctx_simple_full_at HΔ HMl) as [kl HBl].
   destruct (rel_exp_under_ctx_simple_full_at HΔ HMr) as [kr HBr].
-  pose proof HM as [R0 [HΔ0 [i HMgen]]].
-  exists RΓ, HΓ, i.
+  pose proof HM as [R0 HΔ0 i HMgen].
+  refine (mk_rel_exp_under_ctx _ _ _ _ RΓ HΓ i _).
   intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (HP' : PER R') by (eapply per_env_PER; exact HΓ').
   assert (Hρρ : R' ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
@@ -625,13 +623,13 @@ Lemma rel_modexp_under_ctx_gsub : forall {Γ τ Δ H H'},
 Proof.
   intros * Hg HH.
   destruct (gsub_props Hg) as [Hτj Hl].
-  pose proof Hτj as [RΓ [HΓ [RΔ [HΔ _]]]].
+  pose proof Hτj as [RΓ HΓ RΔ HΔ _].
   assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
   assert (PER per_dmod) by typeclasses eauto.
   pose proof (rel_modexp_trans HH (rel_modexp_sym HH)) as HHl.
   pose proof (rel_modexp_trans (rel_modexp_sym HH) HH) as HHr.
-  pose proof HH as [R0 [HΔ0 HHgen]].
-  exists RΓ, HΓ.
+  pose proof HH as [R0 HΔ0 HHgen].
+  refine (mk_rel_modexp_under_ctx _ _ _ RΓ HΓ _).
   intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (HP' : PER R') by (eapply per_env_PER; exact HΓ').
   assert (Hρρ : R' ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).

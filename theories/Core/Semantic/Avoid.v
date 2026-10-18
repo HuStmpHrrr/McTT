@@ -1090,7 +1090,7 @@ Theorem nbe_wk_fresh : forall Θ Ξ Γ A M T W,
     nbe Θ Ξ (Γ ▹ A) M[↑]ʷ T[↑]ʷ W ->
     nf_fresh 0 W.
 Proof.
-  intros * Hn; inversion_clear Hn as [? ? ? ? ? ? ? Hρ].
+  intros * Hn; inversion_clear Hn as [? ? ? Hρ].
   pose proof (initial_env_wk_av _ _ _ _ _ Hρ).
   replace 0 with (S (List.length Γ) - List.length Γ - 1) by lia.
   eapply (proj1 (read_av Θ Ξ (List.length Γ))); [ eassumption | cbn; lia | cbn; reflexivity |].
@@ -1102,7 +1102,7 @@ Theorem nbe_ty_wk_fresh : forall Θ Ξ Γ A T W,
     nbe_ty Θ Ξ (Γ ▹ A) T[↑]ʷ W ->
     nf_fresh 0 W.
 Proof.
-  intros * Hn; inversion_clear Hn as [? ? ? ? ? Hρ].
+  intros * Hn; inversion_clear Hn as [? ? Hρ].
   pose proof (initial_env_wk_av _ _ _ _ _ Hρ).
   replace 0 with (S (List.length Γ) - List.length Γ - 1) by lia.
   eapply (proj1 (proj2 (proj2 (read_av Θ Ξ (List.length Γ))))); [ eassumption | cbn; lia | cbn; reflexivity |].

@@ -49,8 +49,7 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
     as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hchain].
-  exists a1, a2, a4, a3.
-  repeat apply conj; try eassumption.
+  exists a1 a2 a4 a3; try eassumption.
   - pairwise.
   - (** The second obligation runs the other way: the chain has [a3 ≈ a4] and
       [subtyp_under_ctx] asks for [a4 ≈ a3].  A chain in a PER relates every pair
@@ -79,17 +78,17 @@ Lemma subtyp_trans : forall {Γ A A' A''},
     Γ ⊨ A ⊆ A''.
 Proof.
   intros * H1 H2.
-  destruct H1 as [env_relΓ [HΓ [i H1gen]]].
-  pose proof H2 as [env_relΓ2 [HΓ2 [j H2gen]]].
+  destruct H1 as [env_relΓ HΓ i H1gen].
+  pose proof H2 as [env_relΓ2 HΓ2 j H2gen].
   pose proof (subtyp_under_ctx_simple H2) as [env_relΓ3 [HΓ3 [j' H2simple]]].
   assert (Hiff3 : env_relΓ3 <~> env_relΓ)
     by (eapply per_ctx_env_right_irrel; [ exact HΓ3 | exact HΓ ]).
   eexists_subtyp_with (max i (max j j')).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (H1gen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
-    as [a1 [a2 [a3 [a4 [Ha1 [Ha2 [Ha3 [Ha4 [Hl1 [Hr1 Hsub1]]]]]]]]]].
+    as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hl1 Hr1 Hsub1].
   destruct (H2gen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
-    as [b1 [b2 [b3 [b4 [Hb1 [Hb2 [Hb3 [Hb4 [Hl2 [Hr2 Hsub2]]]]]]]]]].
+    as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hl2 Hr2 Hsub2].
   (** [ρ'σ'] is self-related, so the second hypothesis may be read at it. *)
   assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ)
     by (eapply (rel_sub_under_ctx_at' Hσ HΓ' HΓ); eassumption).
@@ -99,8 +98,7 @@ Proof.
   (** The three values of [A'] and the one of [A''] that the two readings share. *)
   assert (c = a4) as -> by (eapply functional_eval_exp; [ exact Hc | exact Ha4 ]).
   assert (c' = b4) as -> by (eapply functional_eval_exp; [ exact Hc' | exact Hb4 ]).
-  exists a1, a2, b3, b4.
-  repeat apply conj; try eassumption.
+  exists a1 a2 b3 b4; try eassumption.
   - destruct Hl1 as [R HR]; exists R.
     eapply per_univ_elem_cumu_max_left; eassumption.
   - destruct Hr2 as [R HR]; exists R.
@@ -131,8 +129,7 @@ Proof.
   pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with (S j).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists 𝕌ω@i, 𝕌ω@i, 𝕌ω@j, 𝕌ω@j.
-  repeat apply conj; try apply eval_exp_typ.
+  exists 𝕌ω@i 𝕌ω@i 𝕌ω@j 𝕌ω@j; try apply eval_exp_typ.
   - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].
   - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].
   - apply per_subtyp_univ; solve [ lia | solve_uidx ].
@@ -153,8 +150,7 @@ Proof.
   pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with 0.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists (Levelᵈ@m), (Levelᵈ@m), (Levelᵈ@n), (Levelᵈ@n).
-  repeat apply conj; try apply eval_exp_level.
+  exists (Levelᵈ@m) (Levelᵈ@m) (Levelᵈ@n) (Levelᵈ@n); try apply eval_exp_level.
   - eexists; per_univ_elem_econstructor; reflexivity.
   - eexists; per_univ_elem_econstructor; reflexivity.
   - apply per_subtyp_level; assumption.
@@ -175,8 +171,7 @@ Proof.
   pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with 0.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists 𝕌@(dlvl_lit n), 𝕌@(dlvl_lit n), 𝕌@(dlvl_lit m), 𝕌@(dlvl_lit m).
-  repeat apply conj; try (apply eval_exp_univ, eval_exp_llit).
+  exists 𝕌@(dlvl_lit n) 𝕌@(dlvl_lit n) 𝕌@(dlvl_lit m) 𝕌@(dlvl_lit m); try (apply eval_exp_univ, eval_exp_llit).
   - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_uidx | reflexivity ].
   - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_uidx | reflexivity ].
   - apply per_subtyp_suniv; [ apply per_sublvl_lit; assumption | solve_uidx ].
@@ -190,8 +185,7 @@ Proof.
   pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with (S i).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists 𝕌@(dlvl_lit n), 𝕌@(dlvl_lit n), 𝕌ω@i, 𝕌ω@i.
-  repeat apply conj; try (apply eval_exp_univ, eval_exp_llit); try apply eval_exp_typ.
+  exists 𝕌@(dlvl_lit n) 𝕌@(dlvl_lit n) 𝕌ω@i 𝕌ω@i; try (apply eval_exp_univ, eval_exp_llit); try apply eval_exp_typ.
   - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_uidx | reflexivity ].
   - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].
   - apply per_subtyp_small_large; [ apply per_lvl_lit | solve_uidx ].
@@ -254,11 +248,10 @@ Proof.
   assert (d3 = q3) as -> by (eapply functional_eval_exp; [ exact Hd3 | exact Hq3 ]).
   assert (Hmid : Dom p2 ≈ q3 ∈ per_univ i) by pairwise.
   destruct Hmid as [in_rel Hin_rel].
-  exists P1, Πᵈ p2 ρσ B, Q4, Πᵈ q3 ρ'σ' B'.
   (** The two element PERs are named rather than left to [eexists]: [pairwise]
       matches its [rel_chain] hypothesis syntactically, so a metavariable in the
       relation position of the goal finds nothing. *)
-  repeat apply conj; try eassumption.
+  exists P1 (Πᵈ p2 ρσ B) Q4 (Πᵈ q3 ρ'σ' B'); try eassumption.
   - exists (per_pi in1 B ρσ B ρ'σ').
     eapply per_univ_elem_cumu_max_left; pairwise.
   - (** [Q4 ≈ Q3], i.e. the second chain's last link read backwards. *)
@@ -306,8 +299,8 @@ Lemma rel_exp_eq_subtyp : forall {Γ A A'} {i : nat} {M M'},
 Proof.
   intros * HM HA' Hsub.
   pose proof (rel_exp_of_typ_inversion HA') as [env_relΓ [HΓ HA'gen]].
-  destruct HM as [? [? [j HMgen]]].
-  destruct Hsub as [? [? [k Hsubgen]]].
+  destruct HM as [? ? j HMgen].
+  destruct Hsub as [? ? k Hsubgen].
   eexists_rel_exp_with i.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HA'gen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
@@ -320,7 +313,7 @@ Proof.
   destruct HAtyp as [s1 s2 s3 s4 Hs1 Hs2 Hs3 Hs4 Hschain].
   destruct HAexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
   destruct (Hsubgen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
-    as [u1 [u2 [u3 [u4 [Hu1 [Hu2 [Hu3 [Hu4 [_ [_ Hsubst]]]]]]]]]].
+    as [u1 u2 u3 u4 Hu1 Hu2 Hu3 Hu4 _ _ Hsubst].
   assert (u2 = s2) as -> by (eapply functional_eval_exp; [ exact Hu2 | exact Hs2 ]).
   assert (u4 = t3) as -> by (eapply functional_eval_exp; [ exact Hu4 | exact Ht3 ]).
   assert (HsubL : Sub s2 <: t3 at (max (max i j) k))

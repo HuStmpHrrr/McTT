@@ -11,7 +11,13 @@ Ltac destruct_rel_by_assumption in_rel H :=
     match goal with
     | H' : Dom ?c ≈ ?c' ∈ ?in_rel0 |- _ =>
         unify in_rel0 in_rel;
-        destruct (H _ _ H') as [];
+        lazymatch type of (H _ _ H') with
+        | rel_mod_eval _ _ _ _ _ _ => let Hr := fresh "Hr" in pose proof (H _ _ H') as Hr; destruct_anon Hr
+        | rel_typ _ _ _ _ _ _ => let Hr := fresh "Hr" in pose proof (H _ _ H') as Hr; destruct_anon Hr
+        | rel_elem _ _ _ _ _ => let Hr := fresh "Hr" in pose proof (H _ _ H') as Hr; destruct_anon Hr
+        | rel_mod_app _ _ _ _ _ => let Hr := fresh "Hr" in pose proof (H _ _ H') as Hr; destruct_anon Hr
+        | _ => destruct (H _ _ H') as []
+        end;
         destruct_all;
         mark_with H' 1
     end;
@@ -22,7 +28,7 @@ Ltac destruct_rel_mod_eval :=
     | H : (forall c c' (equiv_c_c' : Dom c ≈ c' ∈ ?in_rel), rel_mod_eval _ _ _ _ _ _) |- _ =>
         destruct_rel_by_assumption in_rel H; mark H
     | H : rel_mod_eval _ _ _ _ _ _ |- _ =>
-        dependent destruction H
+        destruct_anon H
     end;
   unmark_all.
 Ltac destruct_rel_mod_app :=
@@ -31,7 +37,7 @@ Ltac destruct_rel_mod_app :=
     | H : (forall c c' (equiv_c_c' : Dom c ≈ c' ∈ ?in_rel), rel_mod_app _ _ _ _ _) |- _ =>
         destruct_rel_by_assumption in_rel H; mark H
     | H : rel_mod_app _ _ _ _ _ |- _ =>
-        dependent destruction H
+        destruct_anon H
     end;
   unmark_all.
 Ltac destruct_rel_typ :=
@@ -40,12 +46,12 @@ Ltac destruct_rel_typ :=
     | H : (forall c c' (equiv_c_c' : Dom c ≈ c' ∈ ?in_rel), rel_typ _ _ _ _ _ _) |- _ =>
         destruct_rel_by_assumption in_rel H; mark H
     | H : rel_typ _ _ _ _ _ _ |- _ =>
-        dependent destruction H
+        destruct_anon H
     (** The bodies of a definition entry come with the types. *)
     | H : (forall c c' (equiv_c_c' : Dom c ≈ c' ∈ ?in_rel), rel_elem _ _ _ _ _) |- _ =>
         destruct_rel_by_assumption in_rel H; mark H
     | H : rel_elem _ _ _ _ _ |- _ =>
-        dependent destruction H
+        destruct_anon H
     end;
   unmark_all.
 

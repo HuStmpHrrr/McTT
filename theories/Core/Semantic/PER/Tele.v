@@ -637,11 +637,10 @@ Section Tele.
       forall ms ms' c gs gs1 t gs2 ws ws' ys ys', tele_full nr T ms ms' -> ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
         tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
         tele_full (shape_tr dr ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
-        exists bs bs', eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) bs /\
-          eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups2 ++ ms' ++ ws' ++ ys')) bs' /\ tele_full nr T bs bs'.
+        exps_rel (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (ups2 ++ ms' ++ ws' ++ ys')) (tele_full nr T).
 
     Lemma adm_cl : forall u, ind_adm D ups nr ar dr u -> ind_closure u.
-    Proof. intros u (_ & _ & H & _); exact H. Qed.
+    Proof. intros u [_ _ H _]; exact H. Qed.
 
     Lemma shape_k_le : forall gs gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
         List.length (cargs_nonrec gs1) <= List.length (cargs_nonrec gs).
@@ -653,7 +652,7 @@ Section Tele.
     (** Admissibility at another base admissible beside [ups]. *)
     Lemma adm_base : forall u1 u2, ind_adm D ups nr ar dr u1 -> ind_adm D ups nr ar dr u2 -> ind_adm D u1 nr ar dr u2.
     Proof.
-      intros u1 u2 (H1n & H1a & H1c & H1d) (H2n & H2a & H2c & H2d); split; [| split; [| split ] ].
+      intros u1 u2 [H1n H1a H1c H1d] [H2n H2a H2c H2d]; constructor.
       - intros k A vs vs' s Hk Hp.
         assert (Hkl : k < List.length T) by (apply List.nth_error_Some; unfold T; congruence).
         destruct (H1n _ _ _ _ s Hk (tnrp_refl_l k vs vs' ltac:(lia) Hp)) as (a0 & a1 & E0 & E1 & R1).
@@ -677,10 +676,10 @@ Section Tele.
         pose proof (tar_pre_refl_l ms c gs Hmm Hc _ ws ws' Hk Hp) as Hww.
         assert (Hyy : tele_full (shape_tr dr ms ws (ptyp_doms t)) (ptyp_doms t) ys ys)
           by (apply tele_full_of_pre; eapply (tsh_refl_l ms c gs gs1 t gs2 ws Hmm Hc Heq Hww); [ lia | apply tele_full_pre; exact Hy ]).
-        destruct (H1c _ _ _ _ _ _ _ _ _ _ _ Hmm Hc Heq Hww Hyy) as (b0 & b1 & E0 & E1 & H01).
-        destruct (H2c _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hp Hy) as (b0' & b2 & E0' & E2 & H02).
+        destruct (H1c _ _ _ _ _ _ _ _ _ _ _ Hmm Hc Heq Hww Hyy) as [b0 b1 E0 E1 H01].
+        destruct (H2c _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hp Hy) as [b0' b2 E0' E2 H02].
         pose proof (functional_eval_exps' _ _ _ _ E0 E0') as <-.
-        exists b1, b2; split; [ exact E1 | split; [ exact E2 | exact (tnr_trans _ _ _ (tnr_sym _ _ H01) H02) ] ].
+        exists b1 b2; [ exact E1 | exact E2 | exact (tnr_trans _ _ _ (tnr_sym _ _ H01) H02) ].
       - intros ms ms' c gs gs1 t gs2 ws ws' k B ys ys' Hm Hc Heq Hp HB Hy.
         pose proof (shape_k_le _ _ _ _ Heq) as Hk.
         pose proof (nth_error_lt' _ _ _ HB) as Hkl.
@@ -700,7 +699,7 @@ Section Tele.
     (** Admissibility composes. *)
     Lemma adm_compose : forall u1 u2, ind_adm D ups nr ar dr u1 -> ind_adm D u1 nr ar dr u2 -> ind_adm D ups nr ar dr u2.
     Proof.
-      intros u1 u2 (H1n & H1a & H1c & H1d) (H2n & H2a & H2c & H2d); split; [| split; [| split ] ].
+      intros u1 u2 [H1n H1a H1c H1d] [H2n H2a H2c H2d]; constructor.
       - intros k A vs vs' s Hk Hp.
         assert (Hkl : k < List.length T) by (apply List.nth_error_Some; unfold T; congruence).
         destruct (H1n _ _ _ _ s Hk Hp) as (a0 & a1 & E0 & E1 & R1).
@@ -725,10 +724,10 @@ Section Tele.
         pose proof (tarp_refl_r _ _ _ _ _ _ _ Hm Hc Hk Hp) as Hw'.
         assert (Hy' : tele_full (shape_tr dr ms' ws' (ptyp_doms t)) (ptyp_doms t) ys' ys')
           by (apply tele_full_of_pre; eapply tsh_refl_inst; [ exact Hm | exact Hc | exact Heq | exact Hp | lia | apply tele_full_pre; exact Hy ]).
-        destruct (H1c _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hp Hy) as (b0 & b1 & E0 & E1 & H01).
-        destruct (H2c _ _ _ _ _ _ _ _ _ _ _ (tnr_refl_r _ _ Hm) Hc Heq Hw' Hy') as (b1' & b2 & E1' & E2 & H12).
+        destruct (H1c _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hp Hy) as [b0 b1 E0 E1 H01].
+        destruct (H2c _ _ _ _ _ _ _ _ _ _ _ (tnr_refl_r _ _ Hm) Hc Heq Hw' Hy') as [b1' b2 E1' E2 H12].
         pose proof (functional_eval_exps' _ _ _ _ E1 E1') as <-.
-        exists b0, b2; split; [ exact E0 | split; [ exact E2 | exact (tnr_trans _ _ _ H01 H12) ] ].
+        exists b0 b2; [ exact E0 | exact E2 | exact (tnr_trans _ _ _ H01 H12) ].
       - intros ms ms' c gs gs1 t gs2 ws ws' k B ys ys' Hm Hc Heq Hp HB Hy.
         pose proof (shape_k_le _ _ _ _ Heq) as Hk.
         pose proof (nth_error_lt' _ _ _ HB) as Hkl.
@@ -857,7 +856,7 @@ Section Tele.
         destruct (ptyp_skip_self _ _ _ _ Hs) as [Hkd HPs].
         assert (Hyf : tele_full (shape_tr dr ns ws (ptyp_doms t0)) (ptyp_doms t0) ys ys)
           by (destruct Hy as [Hyl Hya]; split; [ lia | exact Hya ]).
-        destruct (Hcl ns ns1 c _ gs1 t0 gs2 ws ws ys ys Hn Hc eq_refl Hw Hyf) as (bs0 & bs1 & E0 & E1 & Hbs).
+        destruct (Hcl ns ns1 c _ gs1 t0 gs2 ws ws ys ys Hn Hc eq_refl Hw Hyf) as [bs0 bs1 E0 E1 Hbs].
         rewrite HPs in E0, E1; subst pre.
         pose proof (functional_eval_exps' _ _ _ _ Hb E0) as <-.
         econstructor; [ exact E1 | exact (IHr _ Hbs) ].
@@ -929,7 +928,7 @@ Section Tele.
         destruct (ptyp_skip_self _ _ _ _ Hs) as [Hkd HPs].
         assert (Hyf : tele_full (shape_tr dr ns ws (ptyp_doms t0)) (ptyp_doms t0) ys ys')
           by (destruct Hy as [Hyl Hya]; split; [ lia | exact Hya ]).
-        destruct (Hcd ns ns c _ gs1 t0 gs2 ws ws' ys ys' Hn Hc eq_refl Hw Hyf) as (bs0 & bs1 & E0 & E1 & Hbs).
+        destruct (Hcd ns ns c _ gs1 t0 gs2 ws ws' ys ys' Hn Hc eq_refl Hw Hyf) as [bs0 bs1 E0 E1 Hbs].
         rewrite HPs in E0, E1; subst pre.
         pose proof (functional_eval_exps' _ _ _ _ Hb E0) as <-.
         econstructor; [ exact E1 | exact (proj1 (ind_rel_move ups Had) _ _ _ IHr _ Hbs) ].
@@ -1042,7 +1041,7 @@ Section Tele.
         end.
         assert (Hyf : tele_full (shape_tr dr ns ws (ptyp_doms t0)) (ptyp_doms t0) ys ys')
           by (destruct Hy as [Hyl Hya]; split; [ lia | exact Hya ]).
-        destruct (Hcd ns ns c _ gs1 t0 gs2 ws ws' ys ys' Hn Hc eq_refl Hw Hyf) as (bsa & bsb & E0 & E1 & Hbs).
+        destruct (Hcd ns ns c _ gs1 t0 gs2 ws ws' ys ys' Hn Hc eq_refl Hw Hyf) as [bsa bsb E0 E1 Hbs].
         try rewrite HPs in E0, E1.
         pose proof (functional_eval_exps' _ _ _ _ Hb E0) as <-.
         pose proof (functional_eval_exps' _ _ _ _ Hb2 E1) as <-.
@@ -1164,7 +1163,7 @@ Section Tele.
 
     Lemma adm_change : forall ua, ind_adm D ups nr1 ar1 dr1 ua -> ind_adm D ups nr2 ar2 dr2 ua.
     Proof.
-      intros ua (H1 & H2 & H3 & H4); split; [| split; [| split ] ].
+      intros ua [H1 H2 H3 H4]; constructor.
       - intros k A vs vs' s Hk Hp.
         assert (Hkl : k < List.length T) by (apply List.nth_error_Some; unfold T; congruence).
         pose proof (tele_pre_nr_change' k vs vs' ltac:(lia) Hp) as Hp1.
@@ -1186,8 +1185,8 @@ Section Tele.
         assert (Hy1 : tele_full (shape_tr dr1 ms ws (ptyp_doms t)) (ptyp_doms t) ys ys').
         { apply tele_full_of_pre; eapply tele_pre_sh_change'; [ exact Hm1 | exact Hm | exact Hc | exact Heq | exact Hp1 | exact Hp
                                                               | lia | apply tele_full_pre; exact Hy ]. }
-        destruct (H3 _ _ _ _ _ _ _ _ _ _ _ Hm1 Hc Heq Hp1 Hy1) as (bs & bs' & E & E' & R).
-        exists bs, bs'; split; [ exact E | split; [ exact E' | exact (tele_full_nr_change _ _ R) ] ].
+        destruct (H3 _ _ _ _ _ _ _ _ _ _ _ Hm1 Hc Heq Hp1 Hy1) as [bs bs' E E' R].
+        exists bs bs'; [ exact E | exact E' | exact (tele_full_nr_change _ _ R) ].
       - intros ms ms' c gs gs1 t gs2 ws ws' k B ys ys' Hm Hc Heq Hp HB Hy.
         assert (Hk : List.length (cargs_nonrec gs1) <= List.length (cargs_nonrec gs))
           by (rewrite Heq, cargs_nonrec_app, List.length_app; lia).

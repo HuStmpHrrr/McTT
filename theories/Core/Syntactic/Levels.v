@@ -445,18 +445,21 @@ Proof.
   intros k' t' b' Hin; apply la_keep_In in Hin as [Hin _]; eapply Hb; eauto.
 Qed.
 
-Definition lvl_canonical (l : lvl) : Prop :=
-  la_sorted (snd l) /\
-    (forall k s a, la_In k s a (snd l) -> fst (fst l) <= s) /\
-    (fst l = oz \/ olt (ofin (la_maxoff (snd l))) (fst l)).
+(** A canonical level: its atoms sorted, each of a sort the constant's tier
+    does not exceed, and its constant zero or above every offset. *)
+Record lvl_canonical (l : lvl) : Prop := mk_lvl_canonical
+  { lc_sorted : la_sorted (snd l)
+  ; lc_sorts : forall k s a, la_In k s a (snd l) -> fst (fst l) <= s
+  ; lc_const : fst l = oz \/ olt (ofin (la_maxoff (snd l))) (fst l) }.
 
 Lemma lvl_canon_canonical : forall l, lvl_canonical (lvl_canon l).
 Proof.
-  intros [c xs]; unfold lvl_canon, lvl_canonical; cbn [fst snd].
-  split; [ apply la_keep_sorted, la_sort_sorted |].
+  intros [c xs]; unfold lvl_canon; constructor; cbn [fst snd]; [ apply la_keep_sorted, la_sort_sorted | |];
   destruct (o2_dominated c (la_maxoff (la_keep c (la_sort xs)))) eqn:E; cbn [fst].
-  - split; [ intros; cbn; lia | left; reflexivity ].
-  - split; [ intros k s a H; apply la_keep_In in H as [_ H]; exact H | right ].
+  - intros; cbn; lia.
+  - intros k s a H; apply la_keep_In in H as [_ H]; exact H.
+  - left; reflexivity.
+  - right.
     assert (~ ole c (ofin (la_maxoff (la_keep c (la_sort xs))))) as Hn
       by (rewrite <- o2_dominated_spec, E; discriminate).
     revert Hn; generalize (la_maxoff (la_keep c (la_sort xs))); intros; ord.
@@ -541,7 +544,7 @@ Qed.
 Theorem lvl_canonical_unique : forall l1 l2, lvl_canonical l1 -> lvl_canonical l2 ->
     (forall ν, lvl_adm ν -> lvl_ev ν l1 = lvl_ev ν l2) -> l1 = l2.
 Proof.
-  intros [c1 ys1] [c2 ys2] [S1 [K1 C1]] [S2 [K2 C2]] Hev; cbn [fst snd] in *.
+  intros [c1 ys1] [c2 ys2] [S1 K1 C1] [S2 K2 C2] Hev; cbn [fst snd] in *.
   assert (Hys : ys1 = ys2).
   { apply la_sorted_unique; auto; intros a s.
     set (N := S (snd c1 + snd c2 + la_maxoff ys1 + la_maxoff ys2)).
@@ -755,7 +758,7 @@ Proof. intros; unfold lvl_ev, lvl_lit; cbn; apply omax_zero_r. Qed.
 
 Lemma lvl_canon_lit : forall o, lvl_canon (lvl_lit o) = lvl_lit o.
 Proof.
-  intros; apply lvl_canonical_canon; split; [ exact I | split; [ intros ? ? ? [] |] ].
+  intros; apply lvl_canonical_canon; constructor; [ exact I | intros ? ? ? [] |].
   cbn; destruct o as [[|] [|]]; [ left | right .. ]; ord.
 Qed.
 

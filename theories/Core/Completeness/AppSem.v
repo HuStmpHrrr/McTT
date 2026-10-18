@@ -92,14 +92,14 @@ Proof.
     assert (HmtK : ds_mtele Θm Ξm R1 = Some T') by (unfold ds_mtele; rewrite Hmod1; exact Ht).
     assert (HwN : Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_app (me_apps (qname_mod p) Ns) N ≈ me_app (me_apps (qname_mod p) Ns) N)
       by exact (app_wf _ _ _ _ _ _ _ _ Hw Hm1 HmtK Hv HBw HNw).
-    pose proof Hs as (T1s & T2s & -> & Hlen & HTa2 & HTs2 & HNs).
+    pose proof Hs as [T1s T2s -> Hlen HTa2 HTs2 HNs].
     cbn [ds_tele] in Ht.
     rewrite length_app in Ht.
     destruct (Nat.leb_spec (List.length Ns) (List.length T1s + List.length T2s)) as [_ | Hgt]; [| lia ].
     injection Ht as <-.
     replace (List.length T1s + List.length T2s - List.length Ns) with (List.length T1s) in Hv by lia.
     rewrite List.firstn_app, List.firstn_all, Nat.sub_diag in Hv; cbn [List.firstn] in Hv; rewrite !app_nil_r in Hv.
-    destruct (Hgf _ _ _ Hgl) as (_ & _ & _ & HTa & _).
+    destruct (Hgf _ _ _ Hgl) as [_ _ _ HTa _ _ _ _ _].
     destruct (tele_ass_app_inv _ _ HTa) as [HTa1 _].
     destruct (List.exists_last (l := T1s)) as (L & e & ->); [ intros ->; cbn in Hv; discriminate |].
     destruct (tele_ass_app_inv _ _ HTa1) as [_ He]; inversion He as [| ? ? [A ->] _]; subst.
@@ -110,9 +110,9 @@ Proof.
     pose proof (filed_lacks _ _ Hgf _ _ _ _ _ _ _ _ Hgl HΓ eq_refl (eq_sym Hlen) HNs) as Hl.
     split; [ exact Hl |].
     assert (Hs' : sargs Γ (L ++ ce_ass A :: T2s) (Ns ++ N :: nil)).
-    { exists L, (ce_ass A :: T2s); split; [ reflexivity |]; split; [ cbn; rewrite length_app; cbn; lia |].
-      split; [ constructor; [ eexists; reflexivity | exact HTa2 ] |].
-      split; [ destruct (Hgf _ _ _ Hgl) as (_ & _ & _ & _ & HTs & _); exact (proj2 (proj1 (ctx_scoped_app_iff _ _) HTs)) |].
+    { apply (mk_sargs _ _ _ L (ce_ass A :: T2s));
+        [ reflexivity | cbn; rewrite length_app; cbn; lia | constructor; [ eexists; reflexivity | exact HTa2 ]
+        | destruct (Hgf _ _ _ Hgl) as [_ _ _ _ HTs _ _ _ _]; exact (proj2 (proj1 (ctx_scoped_app_iff _ _) HTs)) |].
       assert (Hti : tele_insts (ce_ass A :: T2s) Id (Ns ++ N :: nil) = tele_insts T2s Id Ns ++ A[sb_of_list Id Ns] :: nil).
       { change (ce_ass A :: T2s) with ((ce_ass A :: nil) ++ T2s).
         rewrite tele_insts_app by (try exact HTa2; lia); reflexivity. }

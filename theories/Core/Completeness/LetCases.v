@@ -62,7 +62,7 @@ Proof.
   pose proof (rel_sub_under_ctx_simple Hσσ) as [env_relΓ1 [HΓ1 [env_relΔ [HΔ Hs]]]].
   assert (E : env_relΓ <~> env_relΓ1) by (eapply per_ctx_env_right_irrel; eassumption).
   destruct (Hs _ _ (proj1 (E _ _) Hρ)) as [ρσ [ρ'σ [Hev [Hev' _]]]].
-  destruct HM as [env_relΔ' [HΔ' [j HMgen]]].
+  destruct HM as [env_relΔ' HΔ' j HMgen].
   destruct (HMgen _ _ HΓ _ _ Hσσ _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
   destruct Htyp as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
   destruct Hexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
@@ -131,7 +131,7 @@ Proof.
   assert (Hext : Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend S S R)
     by (apply per_env_extend_intro'; assumption).
   assert (Ht : def_tie S M (ρ ↦ c)) by (exists m; split; [ exact Hm | apply E; exact Hmc ]).
-  split; [ exact Hext | split; [ exact Ht | exact (def_tie_resp _ HS HM Hext Ht) ] ].
+  constructor; [ exact Hext | exact Ht | exact (def_tie_resp _ HS HM Hext Ht) ].
 Qed.
 
 (** ** Substitutions into a Definition Entry *)
@@ -144,7 +144,7 @@ Lemma rel_sub_under_ctx_into_def : forall {Γ Δ A} {i : nat} {M σ σ' env_rel�
     (forall ρ ρσ, Dom ρ ≈ ρ ∈ env_relΓ -> ⟦ σ ⟧s ρ ↘ ρσ -> def_tie A M ρσ) ->
     Γ ⊨ˢ σ ≈ σ' : Δ ▸ A ≔ M.
 Proof.
-  intros * HΓ HA HM [env_relΓ' [HΓ' [env_relΔA [HΔA Hσ]]]] Htie.
+  intros * HΓ HA HM [env_relΓ' HΓ' env_relΔA HΔA Hσ] Htie.
   pose proof (rel_exp_of_typ_inversion_simple HA) as [env_relΔ [HΔ HAs]].
   pose proof (per_ctx_env_extend HΔ HAs) as HΔAc.
   pose proof (per_ctx_env_of_def HΔ HA HM) as HΔd.
@@ -154,7 +154,7 @@ Proof.
   assert (EΔ : env_relΔA <~> per_env_extend A A env_relΔ) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (PER env_relΔ) by (eapply per_env_PER; eassumption).
   assert (PER (per_env_extend A A env_relΔ)) by (eapply per_env_PER; eassumption).
-  exists env_relΓ', HΓ', (per_env_extend_def A M env_relΔ), HΔd.
+  refine (mk_rel_sub_under_ctx _ _ _ _ env_relΓ' HΓ' (per_env_extend_def A M env_relΔ) HΔd _).
   intros Γ'' env_rel'' HΓ'' φ Hφ ρ ρ' Hρ.
   destruct (Hσ _ _ HΓ'' _ Hφ _ _ Hρ) as [v1 v2 v3 v4 H1 H2 H3 H4 Hchain].
   econstructor; try eassumption.
@@ -168,7 +168,7 @@ Proof.
   assert (T1 : def_tie A M v1) by (eapply (def_tie_resp (ρ := v2) _ HAat HMat); [ pairwise | exact Ht2 ]).
   assert (T3 : def_tie A M v3) by (eapply (def_tie_resp (ρ := v2) _ HAat HMat); [ pairwise | exact Ht2 ]).
   assert (T4 : def_tie A M v4) by (eapply (def_tie_resp (ρ := v2) _ HAat HMat); [ pairwise | exact Ht2 ]).
-  apply rel_chain_4; (split; [ pairwise | split; assumption ]).
+  apply rel_chain_4; (constructor; [ pairwise | assumption | assumption ]).
 Qed.
 
 (** [σ,,M[σ]] into [Δ ▸ A ≔ M]: the tie is the left commutation of [M]
@@ -180,7 +180,7 @@ Lemma rel_sub_under_ctx_extend_sub_def : forall {Γ Δ σ σ' A} {i : nat} {M M'
     Γ ⊨ˢ σ,,M[σ] ≈ σ',,M'[σ'] : Δ ▸ A ≔ M.
 Proof.
   intros * Hσj HA HM.
-  pose proof Hσj as [env_relΓ [HΓ _]].
+  pose proof Hσj as [env_relΓ HΓ _ _ _].
   pose proof (rel_exp_under_ctx_refl_left HM) as HMl.
   eapply rel_sub_under_ctx_into_def; [ exact HΓ | exact HA | exact HMl | |].
   - exact (rel_sub_under_ctx_extend_sub Hσj HM).
@@ -189,7 +189,7 @@ Proof.
     assert (Hev0 : ⟦ M[σ] ⟧ ρ ↘ ρτ 0)
       by (destruct (Hev 0) as (m0 & Hm0 & Hx); unfold env_var; rewrite Hm0; exact Hx).
     pose proof (rel_sub_under_ctx_refl_left Hσj) as Hσσ.
-    destruct HMl as [env_relΔ [HΔ [j HMgen]]].
+    destruct HMl as [env_relΔ HΔ j HMgen].
     destruct (HMgen _ _ HΓ _ _ Hσσ _ _ _ _ Hρ Hev1 Hev1) as [R [Htyp Hexp]].
     destruct Htyp as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
     destruct Hexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
@@ -239,7 +239,7 @@ Lemma rel_sub_under_ctx_q_def : forall {Γ Δ σ σ' A} {i : nat} {M},
     Γ ▸ A[σ] ≔ M[σ] ⊨ˢ q σ ≈ q σ' : Δ ▸ A ≔ M.
 Proof.
   intros * Hσj HA HM.
-  pose proof Hσj as [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]].
+  pose proof Hσj as [env_relΓ HΓ env_relΔ HΔ Hσ].
   pose proof (per_ctx_env_of_def_sub HΓ Hσj HA HM) as HΓd.
   pose proof (per_ctx_env_of_typ_sub HΓ Hσj HA) as HΓa.
   pose proof (per_ctx_env_of_typ HΔ HA) as HΔA.
@@ -253,7 +253,7 @@ Proof.
       by (intros x; pose proof (Hev (S x)) as Hx; rewrite sb_q_succ in Hx; exact Hx).
     assert (Hev0 : ρq 0 = ρ 0)
       by (pose proof (Hev 0) as Hx; rewrite sb_q_zero in Hx; cbn [eval_sentry] in Hx; unfold env_var; rewrite Hx; reflexivity).
-    pose proof Hρ as [[Ht Hh] [[t [Ht0 Htie]] _]].
+    pose proof Hρ as [[Ht Hh] [t [Ht0 Htie]] _].
     (** [σ] at the Kripke stage [↑], which relates [⟦σ[↑]ʷ⟧ρ] to
         [⟦σ⟧(ρ↯)]. *)
     pose proof (rel_wk_shift HΓ HΓd) as Hshift.
@@ -263,7 +263,7 @@ Proof.
     assert (Hqu : Dom ρq↯ ≈ u ∈ env_relΔ) by (rewrite Heq; pairwise).
     (** [M] along [σ] at the tail. *)
     pose proof (rel_sub_under_ctx_refl_left Hσj) as Hσσ.
-    pose proof HM as [env_relΔ' [HΔ' [j HMgen]]].
+    pose proof HM as [env_relΔ' HΔ' j HMgen].
     destruct (HMgen _ _ HΓ _ _ Hσσ _ _ _ _ Ht Hu Hu) as [RN [Htyp Hexp]].
     destruct Htyp as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
     destruct Hexp as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain].
@@ -323,9 +323,9 @@ Proof.
   destruct (rel_exp_under_ctx_simple_full_at HΓd HB) as [kX HX].
   destruct (rel_exp_under_ctx_simple_full_at HΓd HBl) as [kY HY].
   destruct (rel_exp_under_ctx_simple_full_at HΓd' HB'r) as [kZ HZ].
-  pose proof HBl as [? [? [k HBlgen]]].
-  pose proof HB'r as [? [? [k3 HB'gen]]].
-  exists env_relΓ, HΓ, k.
+  pose proof HBl as [? ? k HBlgen].
+  pose proof HB'r as [? ? k3 HB'gen].
+  refine (mk_rel_exp_under_ctx _ _ _ _ env_relΓ HΓ k _).
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (PER env_rel') by (eapply per_env_PER; eassumption).
   assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ) by (eapply rel_sub_under_ctx_at'; eassumption).
@@ -334,11 +334,11 @@ Proof.
 
       The four values of [M ≈ M'] and the two inner values of [M] on the
       right, which the instances of [B] along [Id,,M] and [σ',,M[σ']] use. *)
-  pose proof HM as [? [? [j HMgen]]].
+  pose proof HM as [? ? j HMgen].
   destruct (HMgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RN [HNtyp HNexp]].
   destruct HNtyp as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
   destruct HNexp as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain].
-  pose proof HMl as [? [? [jl HMlgen]]].
+  pose proof HMl as [? ? jl HMlgen].
   destruct (HMlgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RNl [HNltyp HNlexp]].
   destruct HNltyp as [a1' a2' a3' a4' Ha1' Ha2' Ha3' Ha4' Halchain].
   destruct HNlexp as [n1' n2' n3m n4m Hn1' Hn2' Hn3m Hn4m Hnlchain].
@@ -406,7 +406,7 @@ Proof.
   { eapply (per_env_extend_def_intro _ HAσ' HMσ' Hρ'ρ'); [ | exact Hn4 | ].
     - eapply per_head_of; [ exact Ha4 | exact Ha4 | exact Ha44 | exact Hn44 ].
     - eapply per_head_of; [ exact Ha4 | exact Ha4 | exact Ha44 | exact Hn44 ]. }
-  destruct (rel_sub_under_ctx_q_at HΓ' HΓA Hσ'σ' HA _ _ _ _ _ _ (proj1 Hpair) Hev' Hev')
+  destruct (rel_sub_under_ctx_q_at HΓ' HΓA Hσ'σ' HA _ _ _ _ _ _ (ped_ext _ _ _ _ _ Hpair) Hev' Hev')
     as [s [s' [Hqs [Hqs' Hqchain]]]].
   destruct (HB'gen _ _ HΓ'd _ _ Hq _ _ _ _ Hpair Hqs Hqs) as [R3 [HI3t HI3e]].
   destruct HI3t as [e1 e2 e3 e4 He1 He2 He3 He4 He1chain].

@@ -1422,10 +1422,17 @@ Section DescOk.
 
   (** The arguments [Ns] fill, in order, the outermost parameters of the
       closed telescope [T], in [Γ]. *)
-  Definition args_ok (Γ : ctx) (T : ctx) (Ns : list exp) : Prop :=
-    exists T1 T2, T = T1 ++ T2 /\ length T2 = length Ns /\ tele_ass T2 /\ ctx_scoped 0 T2 /\
-      ⊢ Θ ⍮ Ξ ⍮ T2 ++ Γ /\
-      (forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts T2 Id Ns) k = Some A -> Θ ⍮ Ξ ⍮ Γ ⊢ N : A).
+  #[warnings="-cannot-define-projection"]
+  Record args_ok (Γ : ctx) (T : ctx) (Ns : list exp) : Prop := mk_args_ok
+    { ao_rest : ctx
+    ; ao_filled : ctx
+    ; ao_split : T = ao_rest ++ ao_filled
+    ; ao_length : length ao_filled = length Ns
+    ; ao_ass : tele_ass ao_filled
+    ; ao_scoped : ctx_scoped 0 ao_filled
+    ; ao_wf : ⊢ Θ ⍮ Ξ ⍮ ao_filled ++ Γ
+    ; ao_args : forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts ao_filled Id Ns) k = Some A ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ N : A }.
 
   (** [desc_ok Γ R]: the description [R] is typed in [Γ].  A term is of a
       type, its δ-reduct of that type; an inductive type exists and is given
@@ -1466,9 +1473,9 @@ Section DescOk.
   Lemma args_ok_sub : forall Γ T Ns Γ' σ, args_ok Γ T Ns -> Θ ⍮ Ξ ⍮ Γ' ⊢ˢ σ : Γ ->
       args_ok Γ' T (List.map (fun M => M[σ]) Ns).
   Proof.
-    intros * (T1 & T2 & -> & Hl & Ha & Hs & HT2 & HN) Hσ.
-    exists T1, T2; split; [ reflexivity |]; split; [ rewrite length_map; exact Hl |]; split; [ exact Ha |]; split; [ exact Hs |].
-    split; [ rewrite <- (tele_sub_closed T2 σ Hs); eapply ctx_sub_wf_gen; eassumption |].
+    intros * [T1 T2 -> Hl Ha Hs HT2 HN] Hσ.
+    exists T1 T2; [ reflexivity | rewrite length_map; exact Hl | exact Ha | exact Hs
+                   | rewrite <- (tele_sub_closed T2 σ Hs); eapply ctx_sub_wf_gen; eassumption |].
     intros k N A HNk HAk.
     rewrite List.nth_error_map in HNk; destruct (nth_error Ns k) as [N0 |] eqn:HN0; [| discriminate ]; injection HNk as <-.
     rewrite <- (tele_insts_sub T2 0 Id Id σ Ns Ha Hs ltac:(intros; lia)), List.nth_error_map in HAk.
@@ -1539,18 +1546,18 @@ Section DescOk.
       tele_view (List.firstn (length T - length Ns) T) = Some (C, T1') ->
       Θ ⍮ Ξ ⍮ Γ ⊢ N : C[sb_of_list Id Ns] -> args_ok Γ T (Ns ++ N :: nil).
   Proof.
-    intros * (T1 & T2 & -> & Hl & Ha2 & Hs2 & HT2 & HN) Ha Hs HT Hv HN0.
+    intros * [T1 T2 -> Hl Ha2 Hs2 HT2 HN] Ha Hs HT Hv HN0.
     replace (firstn (length (T1 ++ T2) - length Ns) (T1 ++ T2)) with T1 in Hv
       by (rewrite List.length_app, <- Hl, Nat.add_sub, List.firstn_app, Nat.sub_diag, List.firstn_O, List.app_nil_r, List.firstn_all; reflexivity).
     apply List.Forall_app in Ha as [Ha1 _].
     pose proof (tele_view_ass _ _ _ Ha1 Hv) as ->.
-    exists T1', (ce_ass C :: T2); rewrite <- List.app_assoc; split; [ reflexivity |].
-    split; [ cbn; rewrite List.length_app, Hl; cbn; lia |].
-    split; [ constructor; [ eauto | exact Ha2 ] |].
     rewrite <- List.app_assoc in Hs, HT; cbn [List.app] in Hs, HT.
     assert (Hs' : ctx_scoped 0 (ce_ass C :: T2)) by (apply ctx_scoped_app_iff in Hs as [_ Hs]; exact Hs).
-    split; [ exact Hs' |].
-    split.
+    exists T1' (ce_ass C :: T2).
+    - rewrite <- List.app_assoc; reflexivity.
+    - cbn; rewrite List.length_app, Hl; cbn; lia.
+    - constructor; [ eauto | exact Ha2 ].
+    - exact Hs'.
     - apply closed_tele_wf; [ exact Hs' | exact (ctx_app_wf_tail _ _ _ _ HT) | exact (ctx_app_wf_tail _ _ _ _ HT2) ].
     - intros k N1 A HNk HAk.
       change (ce_ass C :: T2) with ((ce_ass C :: nil) ++ T2) in HAk.
@@ -1611,7 +1618,7 @@ Section DescOk.
       pose proof (args_ok_sub _ _ _ _ _ Hargs Hsw) as Hargs'.
       eapply args_ok_snoc; [ exact Hargs' | exact Ha | exact Hs | exact HT | rewrite length_map; exact HvC |].
       rewrite exp_sub_sub in HN.
-      destruct Hargs as (T1x & T2 & -> & Hl & _).
+      destruct Hargs as [T1x T2 -> Hl _ _ _ _].
       replace (firstn (length (T1x ++ T2) - length Ns) (T1x ++ T2)) with T1x in HvC
         by (rewrite List.length_app, <- Hl, Nat.add_sub, List.firstn_app, Nat.sub_diag, List.firstn_O, List.app_nil_r, List.firstn_all; reflexivity).
       apply List.Forall_app in Ha as [Ha1 _].
@@ -1805,16 +1812,16 @@ Section DescOk.
 
   Lemma args_ok_ext : forall Γ T Ns Δ0, args_ok Γ T Ns -> args_ok Γ (Δ0 ++ T) Ns.
   Proof.
-    intros * (T1 & T2 & -> & H); exists (Δ0 ++ T1), T2; rewrite List.app_assoc; split; [ reflexivity | exact H ].
+    intros * [T1 T2 -> Hl Ha Hs HT HN]; exists (Δ0 ++ T1) T2; try assumption; rewrite List.app_assoc; reflexivity.
   Qed.
 
   Lemma args_ok_length : forall Γ T Ns, args_ok Γ T Ns -> length Ns <= length T.
-  Proof. intros * (T1 & T2 & -> & Hl & _); rewrite List.length_app; lia. Qed.
+  Proof. intros * [T1 T2 -> Hl _ _ _ _]; rewrite List.length_app; lia. Qed.
 
   Lemma args_ok_insts : forall Γ T Ns, args_ok Γ T Ns ->
       forall k N A, nth_error Ns k = Some N -> nth_error (tele_insts T Id Ns) k = Some A -> Θ ⍮ Ξ ⍮ Γ ⊢ N : A.
   Proof.
-    intros * (T1 & T2 & -> & Hl & Ha & _ & _ & HN) * HNk HAk.
+    intros * [T1 T2 -> Hl Ha _ _ HN] * HNk HAk.
     rewrite <- (List.app_nil_r Ns) in HAk.
     rewrite tele_insts_app in HAk by (first [ exact Ha | lia ]).
     rewrite List.nth_error_app1 in HAk.

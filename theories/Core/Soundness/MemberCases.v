@@ -28,8 +28,8 @@ Lemma glu_rel_exp_of_eq : forall {Γ M N A},
     Γ ⊩ M : A.
 Proof.
   intros * HN Heq.
-  pose proof HN as [Sb [HΓ [i HNi]]].
-  exists Sb; split; [ exact HΓ |]; exists i.
+  pose proof HN as [Sb HΓ i HNi].
+  eapply mk_glu_rel_exp with (gre_lvl := i); [ exact HΓ |].
   intros Δ σ ρ Hσ.
   destruct (HNi _ _ _ Hσ) as [a n P El Ha Hn Hglu HNσ].
   assert (Hσs : Δ ⊢ˢ σ : Γ) by (eapply glu_ctx_env_sub_escape; eassumption).
@@ -91,11 +91,11 @@ Proof.
   pose proof (glu_rel_exp_to_wf_exp HCg) as HC.
   pose proof (proj1 (proj2 completeness_fundamental_modules) _ _ _ HU) as HUc.
   pose proof (completeness_fundamental_exp _ _ _ HC) as HCc.
-  pose proof HB as [SbU [HΓU _]].
+  pose proof HB as [SbU HΓU _ _].
   pose proof (glu_rel_exp_clean_inversion2 HΓU HCg HB) as HBi.
   inversion HΓU as [| | | ? ? TSb ? HΓ _ HSbU]; subst.
   destruct (glu_ctx_env_per_ctx_env HΓ) as [R HR].
-  exists TSb; split; [ exact HΓ |]; exists k.
+  eapply mk_glu_rel_exp with (gre_lvl := k); [ exact HΓ |].
   intros Δ σ ρ Hσ.
   assert (Hσs : Δ ⊢ˢ σ : Γ) by (eapply glu_ctx_env_sub_escape; eassumption).
   pose proof (glu_ctx_env_per_env HΓ HR Hσ) as Hρ.

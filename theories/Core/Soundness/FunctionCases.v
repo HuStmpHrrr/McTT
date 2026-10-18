@@ -367,8 +367,7 @@ Lemma glu_rel_exp_of_pi : forall {Γ M A B} {i : nat} {Sb},
 Proof.
   intros * ? HPi%rel_exp_of_typ_inversion_simple Hbody.
   destruct HPi as [env_relΓ [HΓ HPisimple]].
-  eexists; split; mauto 3.
-  eexists; intros Δ σ ρ HSb.
+  econstructor; [ mauto 3 |]; intros Δ σ ρ HSb.
   edestruct Hbody as [a [m [? [? Hglu]]]]; [eassumption |].
   assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
   destruct (HPisimple _ _ ltac:(eassumption)) as [? [? [? [? ?]]]].
@@ -407,7 +406,7 @@ Proof.
   simplify_evals.
   match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
   apply_predicate_equivalence.
-  unfold univ_glu_exp_pred' in *.
+  destruct_glu_records.
   destruct_conjs.
   handle_functional_glu_univ_elem.
   rename m into a.
@@ -503,14 +502,13 @@ Proof.
   assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ HΓ] by mauto 3.
   assert (Γ ▹ A ⊨ B : Typeω@i) by mauto 3 using completeness_fundamental_exp.
   assert (Γ ⊨ N : A) by mauto 3 using completeness_fundamental_exp.
-  eexists; split; [eassumption |].
-  eexists.
+  econstructor; [eassumption |].
   intros Δ σ ρ HSb.
   destruct_glu_rel_exp_with_sub.
   simplify_evals.
   match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
   apply_predicate_equivalence.
-  unfold univ_glu_exp_pred' in *.
+  destruct_glu_records.
   destruct_conjs.
   handle_functional_glu_univ_elem.
   match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H).
@@ -557,7 +555,7 @@ Proof.
   simplify_evals.
   match_by_head1 glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
   apply_predicate_equivalence.
-  unfold univ_glu_exp_pred' in *.
+  destruct_glu_records.
   destruct_conjs.
   handle_functional_glu_univ_elem.
   rewrite exp_sub_extend_sub.
@@ -580,7 +578,7 @@ Proof.
   rename i0 into j.
   rename TSb into SbΓ.
   assert (Γ ▹ A ⊩ B : Typeω@i) by mauto 4.
-  assert (Γ ⊩ A : Typeω@j) by (eexists; intuition; eexists; mauto 4).
+  assert (Γ ⊩ A : Typeω@j) by (econstructor; [eassumption |]; mauto 4).
   assert (⊩ Γ) by mauto 2.
   assert (j <= max i j) by lia.
   assert (Γ ⊢ Typeω@j ⊆ Typeω@(max i j)) by mauto 3.

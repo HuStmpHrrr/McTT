@@ -189,7 +189,7 @@ Lemma args_ok_init : forall Θ Ξ Γ T Ns N, args_ok Θ Ξ Γ T (Ns ++ N :: nil)
     args_ok Θ Ξ Γ T Ns /\ exists T1 C T2, T = T1 ++ ce_ass C :: T2 /\ length T2 = length Ns /\
       Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Ns : T2 ++ Γ /\ (exists i, Θ ⍮ Ξ ⍮ T2 ++ Γ ⊢ C : Typeω@i) /\ Θ ⍮ Ξ ⍮ Γ ⊢ N : C[sb_of_list Id Ns].
 Proof.
-  intros * (T1 & T2 & -> & Hl & Ha & Hs & HT2 & HN).
+  intros * [T1 T2 -> Hl Ha Hs HT2 HN].
   destruct T2 as [| e T2']; [ rewrite length_app in Hl; cbn in Hl; lia |].
   inversion Ha as [| ? ? [C ->] Ha']; subst.
   assert (Hl' : length T2' = length Ns) by (rewrite length_app in Hl; cbn in Hl; lia).
@@ -202,10 +202,8 @@ Proof.
   { intros k M A HM HA; apply (HN k); [ rewrite nth_error_app1; [ exact HM | apply nth_error_Some; congruence ] |].
     rewrite nth_error_app1; [ exact HA | apply nth_error_Some; congruence ]. }
   split.
-  - exists (T1 ++ ce_ass C :: nil), T2'; rewrite <- app_assoc; cbn [List.app].
-    split; [ reflexivity |]; split; [ exact Hl' |]; split; [ exact Ha' |].
-    split; [ destruct Hs; assumption |].
-    split; [ exact HT2' | exact HNs ].
+  - exists (T1 ++ ce_ass C :: nil) T2'; [ rewrite <- app_assoc; reflexivity | exact Hl' | exact Ha'
+                                        | destruct Hs; assumption | exact HT2' | exact HNs ].
   - exists T1, C, T2'; split; [ reflexivity |]; split; [ exact Hl' |].
     split; [ exact (wf_sub_of_list_id _ _ _ _ _ Ha' HT2' (eq_sym Hl') HNs) |].
     split; [ exists i; exact HC |].
@@ -667,9 +665,9 @@ Lemma wf_ind_args_eq : forall Θ Ξ Γ D Ns M M',
     decl_typed Θ Ξ D -> ⊢ Θ ⍮ Ξ ⍮ Γ -> args_ok Θ Ξ Γ (ind_uparams D) Ns ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ind_ty_at D nil -> Θ ⍮ Ξ ⍮ Γ ⊢ apps M Ns ≈ apps M' Ns : ind_ty_at D Ns.
 Proof.
-  intros * HD HΓ (T1 & T2 & HT & Hlen & Ha & Hs & HT2 & HN) HM0.
+  intros * HD HΓ [T1 T2 HT Hlen Ha Hs HT2 HN] HM0.
   destruct (ind_sort_shift_typed _ _ _ HD) as [i Hi].
-  pose proof HD as (_ & _ & _ & HP & _).
+  pose proof (dt_params _ _ _ HD) as HP.
   assert (Hp : ind_params D = (ind_nparams D ++ T1) ++ T2) by (rewrite <- List.app_assoc, <- HT; apply params_split).
   rewrite Hp in Hi, HP.
   destruct (ctx_pi_wf _ _ _ _ _ _ HP Hi) as [j HB].

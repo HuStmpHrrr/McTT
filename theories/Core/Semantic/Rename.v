@@ -463,19 +463,19 @@ Ltac dbd_solve :=
     levels and the weakening [φ] of indices agree on the levels below [s];
     from [s] on, [f] is the shift by [s' - s], so the fresh levels of the two
     readbacks correspond. *)
-Definition rn_ok (f : nat -> nat) (s s' : nat) (φ : wk) : Prop :=
-  s <= s' /\
-  (forall x, s <= x -> f x = x + (s' - s)) /\
-  (forall x, x < s -> f x < s') /\
-  (forall x, x < s -> φ (s - x - 1) = s' - f x - 1) /\
-  wk_mono φ.
+Record rn_ok (f : nat -> nat) (s s' : nat) (φ : wk) : Prop := mk_rn_ok
+  { rn_le : s <= s'
+  ; rn_above : forall x, s <= x -> f x = x + (s' - s)
+  ; rn_below : forall x, x < s -> f x < s'
+  ; rn_index : forall x, x < s -> φ (s - x - 1) = s' - f x - 1
+  ; rn_mono : wk_mono φ }.
 
 Lemma rn_ok_fresh : forall f s s' φ, rn_ok f s s' φ -> f s = s'.
-Proof. intros * (? & Hf & _); rewrite Hf; lia. Qed.
+Proof. intros * [? Hf _ _ _]; rewrite Hf; lia. Qed.
 
 Lemma rn_ok_q : forall f s s' φ, rn_ok f s s' φ -> rn_ok f (S s) (S s') (wk_q φ).
 Proof.
-  intros * (Hs & Hf & Hlt & Hφ & Hm); repeat split.
+  intros * [Hs Hf Hlt Hφ Hm]; constructor.
   - lia.
   - intros x Hx; rewrite (Hf x); lia.
   - intros x Hx; destruct (Nat.eq_dec x s) as [-> |]; [ rewrite (Hf s); lia | specialize (Hlt x ltac:(lia)); lia ].
@@ -636,14 +636,14 @@ Section Read.
     (** A level: the renaming commutes with its canonical form. *)
     all: try match goal with
          | Hok : rn_ok f _ _ ?φ |- read_nf _ _ _ _ (nf_wk _ (nf_lvl_of (lvl_canon _))) =>
-             rewrite nf_lvl_of_wk, <- lvl_canon_wk by (destruct Hok as (_ & _ & _ & _ & ?); assumption);
+             rewrite nf_lvl_of_wk, <- lvl_canon_wk by exact (rn_mono _ _ _ _ Hok);
              unfold lvl_wk; cbn [fst snd]
          end.
     (** A variable: the index of [x] at [s] is renamed to that of [f x] at [s']. *)
     all: try match goal with
          | Hok : rn_ok f ?s _ _, Hx : dbd_ne _ (d_var ?x) |- read_ne _ _ _ (d_var _) _ =>
              let Hφ := fresh "Hφ" in
-             destruct Hok as (_ & _ & _ & Hφ & _); rewrite Hφ by (eapply dbd_var_inv; exact Hx)
+             pose proof (rn_index _ _ _ _ Hok) as Hφ; rewrite Hφ by (eapply dbd_var_inv; exact Hx)
          end.
     (** A small universe: the same through [nf_univ_of]. *)
     all: try match goal with |- read_typ _ _ _ (d_suniv _) _ => rewrite nf_univ_of_wk end.
@@ -667,7 +667,7 @@ Section Read.
         variables at the other length; the motive is read one binder
         further than its non-uniform parameters. *)
     all: try solve [ lazymatch goal with |- read_ne _ _ _ (d_elim _ _ _ _ _ _ _) _ =>
-      pose proof H2 as (Hss & Hfx & _);
+      pose proof H2 as [Hss Hfx _ _ _];
       pose proof (fresh_tele_length _ _ _ _ f0) as Hlen; rewrite ind_nn_tele_length in Hlen;
       assert (Hns : forall x, In x ns -> dbd (s + ind_nn D) x)
         by (rewrite <- (ind_nn_tele_length D); eapply (fresh_tele_dbd Θ Ξ);
@@ -713,7 +713,7 @@ Section Read.
       | apply H0; [ exact H1 | exact H2 | exact H3 | exact (all_in_tail _ _ _ H4) ] ] end ].
     (** A branch: under its fresh variables, renamed, as many as it binds. *)
     all: try solve [ lazymatch goal with |- read_brs _ _ _ _ _ _ _ _ (_ :: _) _ _ =>
-      pose proof H1 as (Hss & Hfx & _);
+      pose proof H1 as [Hss Hfx _ _ _];
       match goal with Hp : cargs_plen _ _ |- _ => rename Hp into Hpl end;
       match goal with Fa : fresh_cargs _ _ _ _ _ _ _ _ |- _ => rename Fa into Fc end;
       match goal with Fi : fresh_ihs _ _ _ _ _ _ _ _ _ |- _ => rename Fi into Fi' end;
@@ -785,7 +785,7 @@ Definition lvl_shift_above (s : nat) : nat -> nat := fun x => if x <? s then x e
 
 Lemma rn_ok_shift : forall s, rn_ok (lvl_shift_above s) s (S s) wk_shift.
 Proof.
-  intros s; unfold lvl_shift_above; repeat split.
+  intros s; unfold lvl_shift_above; constructor.
   - lia.
   - intros x Hx; destruct (Nat.ltb_spec x s); lia.
   - intros x Hx; destruct (Nat.ltb_spec x s); lia.

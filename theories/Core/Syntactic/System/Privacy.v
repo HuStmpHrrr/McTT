@@ -363,8 +363,14 @@ Definition cmd_refs (c : ccmd) : list (ptab * string)%type :=
 
 (** The module [qd] is an open frame, or an ancestor of one: a reference made
     here is made inside it. *)
-Definition open_anc (Ξ : gstack) (qd : qname) : Prop :=
-  exists mp U suf, List.In (mp, U) Ξ /\ q_unit mp = q_unit qd /\ q_chain mp = q_chain qd ++ suf.
+#[warnings="-cannot-define-projection"]
+Record open_anc (Ξ : gstack) (qd : qname) : Prop := mk_open_anc
+  { oa_frame : qname
+  ; oa_unit : gunit
+  ; oa_suffix : list string
+  ; oa_in : List.In (oa_frame, oa_unit) Ξ
+  ; oa_same_unit : q_unit oa_frame = q_unit qd
+  ; oa_chain : q_chain oa_frame = q_chain qd ++ oa_suffix }.
 
 (** A reference to [x] in a module reached from a unit is to a public
     member, or made inside the module declaring it. *)

@@ -94,7 +94,7 @@ Section NbEDef.
     repeat impl_obl_tac1; try econstructor; mauto.
 
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
-  Equations nbe_impl Θ Ξ G M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } by struct H :=
+  Equations nbe_impl Θ Ξ G M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } :=
   | Θ, Ξ, G, M, A, H =>
       let (p, Hp) := initial_env_impl Θ Ξ G _ in
       let (a, Ha) := eval_exp_impl Θ Ξ A p _ in
@@ -124,7 +124,7 @@ Section NbETyDef.
     repeat impl_obl_tac1; try econstructor; mauto.
 
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
-  Equations nbe_ty_impl Θ Ξ G A (H : nbe_ty_order Θ Ξ G A) : { w | nbe_ty Θ Ξ G A w } by struct H :=
+  Equations nbe_ty_impl Θ Ξ G A (H : nbe_ty_order Θ Ξ G A) : { w | nbe_ty Θ Ξ G A w } :=
   | Θ, Ξ, G, A, H =>
       let (p, Hp) := initial_env_impl Θ Ξ G _ in
       let (a, Ha) := eval_exp_impl Θ Ξ A p _ in

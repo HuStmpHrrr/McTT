@@ -328,8 +328,8 @@ Proof.
     reflexive-left form of [HN]; [HN] itself is used only for the term chain. *)
   pose proof (rel_exp_under_ctx_refl_left HN) as HNl.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓ _]].
-  destruct HM as [? [? [k HMgen]]].
-  destruct HN as [? [? [l HNgen]]].
+  destruct HM as [? ? k HMgen].
+  destruct HN as [? ? l HNgen].
   eexists_rel_exp_with i.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   (** *** The Type
@@ -439,7 +439,7 @@ Proof.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓ _]].
   pose proof (rel_sub_under_ctx_extend_sub (rel_sub_id (ex_intro _ _ HΓ)) HN) as HidN.
   rewrite exp_sub_id in HidN.
-  pose proof HM as [? [? [k HMgen]]].
+  pose proof HM as [? ? k HMgen].
   eexists_rel_exp_with i.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (rel_typ_of_instance HA HB HN _ _ HΓ' _ _ _ _ _ _ Hσj Hρ Hev Hev')
@@ -569,7 +569,7 @@ Proof.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓ _]].
   pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
   pose proof (rel_exp_under_ctx_shift HΓA HM) as HMwk.
-  pose proof HM as [? [? [k HMgen]]].
+  pose proof HM as [? ? k HMgen].
   eexists_rel_exp_with i.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (rel_typ_of_pi HA HB _ _ HΓ' _ _ _ _ _ _ Hσj Hρ Hev Hev')

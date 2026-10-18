@@ -37,20 +37,20 @@ Definition sel_to (y : String.string) (k v : dmod) : Prop :=
 Lemma smod_resp_l : forall Γ H K y V, Γ ⊨ᵐ H ≈ K -> smod Γ K y V -> smod Γ H y V.
 Proof.
   intros * HHK HS R HR ρ Hρ.
-  destruct (HS _ HR _ Hρ) as (k & v & Hk & Hv & Hs).
+  destruct (HS _ HR _ Hρ) as [k v Hk Hv Hs].
   destruct (rel_modexp_at _ _ _ _ _ HHK HR _ _ Hρ) as (h0 & k' & Hh0 & Hk' & Hhk).
   pose proof (functional_eval_modexp _ _ _ _ Hk' Hk) as ->.
-  exists h0, v; split; [ exact Hh0 |]; split; [ exact Hv |].
+  apply (mk_smod_vals _ _ _ _ h0 v); [ exact Hh0 | exact Hv |].
   intros h Hh; exact (Hs _ (per_dmod_trans _ _ _ Hh Hhk)).
 Qed.
 
 Lemma smod_resp_r : forall Γ K y V V', smod Γ K y V -> Γ ⊨ᵐ V ≈ V' -> smod Γ K y V'.
 Proof.
   intros * HS HVV R HR ρ Hρ.
-  destruct (HS _ HR _ Hρ) as (k & v & Hk & Hv & Hs).
+  destruct (HS _ HR _ Hρ) as [k v Hk Hv Hs].
   destruct (rel_modexp_at _ _ _ _ _ HVV HR _ _ Hρ) as (v0 & v' & Hv0 & Hv' & Hvv).
   pose proof (functional_eval_modexp _ _ _ _ Hv0 Hv) as ->.
-  exists k, v'; split; [ exact Hk |]; split; [ exact Hv' |].
+  apply (mk_smod_vals _ _ _ _ k v'); [ exact Hk | exact Hv' |].
   intros h Hh; destruct (Hs _ Hh) as (r & Hr & Hrv); exists r; split; [ exact Hr | exact (per_dmod_trans _ _ _ Hrv Hvv) ].
 Qed.
 
@@ -466,7 +466,7 @@ Proof.
       pose proof (sem_ctx_mod_inv HC) as HU.
       destruct (sem_ctx_per_ctx_env HC0) as [R1 HR1].
       destruct (benv_exists _ _ Hn (proj1 (body_shape_fill _ _ Hn Hsx0)) HC0 _ _ HRD HR1 _ Hρ) as (ρ1 & Hb1 & Hρ1).
-      destruct (rel_modexp_at _ _ _ _ _ (proj1 HU) HR1 _ _ Hρ1) as (r & _ & Hr & _ & _).
+      destruct (rel_modexp_at _ _ _ _ _ (ruu_lit _ _ _ HU) HR1 _ _ Hρ1) as (r & _ & Hr & _ & _).
       apply eval_me_lit_iff in Hr.
       exists ρ1, r; split; [ exact Hb1 | split; [ exact Hr |] ].
       intros ρh Φh Φhk Hbh Hkh.
@@ -593,7 +593,7 @@ Proof.
         eapply per_dmod_trans; [ exact Hhjh |]; eapply per_dmod_trans; [ exact Hht | apply per_dmod_sym; exact Hhjt ].
       * (* the target's submodule *)
         destruct (HS _ _ HmH HRn) as (V & Hsm).
-        destruct (Hsm _ HRo _ Hρo) as (k0 & v & Hk0 & Hv & Hsel).
+        destruct (Hsm _ HRo _ Hρo) as [k0 v Hk0 Hv Hsel].
         pose proof (functional_eval_modexp _ _ _ _ Hk0 Ht) as ->.
         destruct (Hsel _ Hhjt) as (r2 & Hr2 & Hr2v).
         exists ρ', r2; split; [ exact Hb' |]; split; [ apply eval_close_alias0; econstructor; [ exact Hhj | exact Hr2 ] |].
@@ -678,7 +678,7 @@ Proof.
   { intros R HR ρ Hρ.
     assert (E : R <~> RΓ) by (eapply per_ctx_env_right_irrel; eassumption).
     destruct (sel_walk _ _ _ _ _ _ HΔ HC HRΓ Hbase _ _ (proj1 (E _ _) Hρ)) as (k & v & Hk & Hv & Hs).
-    exists k, v; split; [ apply eval_me_lit_iff; exact Hk | split; [ apply eval_me_lit_iff; exact Hv | exact Hs ] ]. }
+    apply (mk_smod_vals _ _ _ _ k v); [ apply eval_me_lit_iff; exact Hk | apply eval_me_lit_iff; exact Hv | exact Hs ]. }
   destruct Δ as [| e Δ0].
   - rewrite ds_up_nil; cbn [List.app] in *.
     split; [| exact HK ].
@@ -759,18 +759,18 @@ Lemma filed_body_sel : forall Γ p T Φ Ns y Tq Φq, gc_loc Θm Ξm p = Some (T,
     semK Γ (me_apps (qname_mod (qname_in p y)) Ns).
 Proof.
   intros * Hgl Hglq HΓ Hs Hw.
-  destruct (Hgf _ _ _ Hgl) as ((Φd & Hm) & _ & HT & HTa & _).
-  destruct (Hgf _ _ _ Hglq) as ((Φdq & Hmq) & _ & HTq & HTaq & _).
+  destruct (Hgf _ _ _ Hgl) as [(Φd & Hm) _ HT HTa _ _ _ _ _].
+  destruct (Hgf _ _ _ Hglq) as [(Φdq & Hmq) _ HTq HTaq _ _ _ _ _].
   destruct (loc_child_tele _ _ Hgw _ _ _ _ _ _ Hm Hmq) as (Δ' & -> & _).
   destruct (gc_loc_sub _ _ _ Hglq) as (TΦ & Hglt).
-  pose proof Hs as (T1 & T2 & HT12 & Hlen & HTa2 & HTs2 & HNs).
-  assert (Hs' : sargs Γ (Δ' ++ T) Ns) by (exists (Δ' ++ T1), T2; rewrite HT12, app_assoc; repeat split; assumption).
+  pose proof Hs as [T1 T2 HT12 Hlen HTa2 HTs2 HNs].
+  assert (Hs' : sargs Γ (Δ' ++ T) Ns)
+    by (apply (mk_sargs _ _ _ (Δ' ++ T1) T2); [ rewrite HT12, app_assoc; reflexivity | assumption .. ]).
   split; [| eapply sk_filed; [ exact Hw | exact Hglq | exact HΓ | exact Hs' ] ].
   intros R HR ρ Hρ.
   destruct (sargs_gargs _ _ _ _ HT HΓ Hs HR _ _ Hρ) as (ns & ns' & Hns & Hns' & Hgs).
-  exists (dm_global p ns), (dm_global (qname_in p y) ns').
-  split; [ exact (eval_apps_filed _ _ Hgf _ _ _ _ _ _ Hgl Hns) |].
-  split; [ exact (eval_apps_filed _ _ Hgf _ _ _ _ _ _ Hglq Hns') |].
+  apply (mk_smod_vals _ _ _ _ (dm_global p ns) (dm_global (qname_in p y) ns'));
+    [ exact (eval_apps_filed _ _ Hgf _ _ _ _ _ _ Hgl Hns) | exact (eval_apps_filed _ _ Hgf _ _ _ _ _ _ Hglq Hns') |].
   assert (Hle : List.length ns <= List.length T)
     by (rewrite (eval_exps_length _ _ _ Hns), HT12, length_app; lia).
   refine (global_sel p T Φd y (fun ns w => w = dm_global (qname_in p y) ns) Hm HTa HT _ _ _ ns ns' _ Hle Hgs eq_refl).
@@ -817,7 +817,7 @@ Lemma filed_alias_sel : forall Γ p T Φ Ns y Φ0 E Ua, gc_loc Θm Ξm p = Some 
     smod Γ (me_apps (qname_mod p) Ns) y (me_apps (me_lit Ua) Ns) /\ smt Γ (me_apps (me_lit Ua) Ns).
 Proof.
   intros * Hgl Hp HUa HΓ Hs Hw.
-  destruct (Hgf _ _ _ Hgl) as ((Φd & Hm) & _ & HT & HTa & HTs & _ & _ & _ & Hals).
+  destruct (Hgf _ _ _ Hgl) as [(Φd & Hm) _ HT HTa HTs _ _ _ Hals].
   destruct (Hals _ _ _ _ Hp HUa) as (HmUa & HsUa).
   assert (HUa' : exists Ta Ea, Ua = gu_mk Ta (md_alias Ea))
     by (destruct E as [| pv [Ta [| Ea]] | | pv Δa pq Nsa]; cbn in HUa; try discriminate; injection HUa as <-; eauto).
@@ -827,7 +827,7 @@ Proof.
   pose proof (HsUa _ HΓ HwΓ) as HKUa.
   pose proof (HsUa _ sem_ctx_nil (wf_ctx_empty _ _ Hgm)) as HKUa0.
   pose proof (semK_valid _ _ Hgf _ _ HKUa0) as HV0.
-  pose proof Hs as (T1 & T2 & HT12 & Hlen & HTa2 & HTs2 & HNs).
+  pose proof Hs as [T1 T2 HT12 Hlen HTa2 HTs2 HNs].
   assert (HaT : tele_ass (Δ0 ++ T)) by (apply List.Forall_app; split; assumption).
   (* the unit at the arguments is valid in what it denotes *)
   pose proof (semK_wf _ _ _ _ HKUa) as HwUa.
@@ -872,7 +872,7 @@ Proof.
     as (h0 & h1 & ws & v' & Hh0 & Hh1 & Hws & Hv' & Hwv).
   pose proof (functional_eval_close _ _ _ _ _ Hh1 Hu0) as ->.
   pose proof (functional_eval_appms _ _ _ _ Hv' Hav) as ->.
-  exists (dm_global p ns), v; split; [ exact (eval_apps_filed _ _ Hgf _ _ _ _ _ _ Hgl Hns) | split; [ exact Hv |] ].
+  apply (mk_smod_vals _ _ _ _ (dm_global p ns) v); [ exact (eval_apps_filed _ _ Hgf _ _ _ _ _ _ Hgl Hns) | exact Hv |].
   apply (sel_to_resp_r _ _ ws); [| exact Hwv ].
   refine (global_sel p T Φd y (fun ns w => $ᵐ*| h0 & ns | gc_deps ⍮ gc_stack ↘ w) Hm HTa HT _ _ _ ns ns _ Hle Hgs Hws).
   - intros ns1 ns2 w Hl1 Hg1 Hw2.
@@ -940,7 +940,7 @@ Proof.
     apply (sel_finish _ _ _ _ _ HΔ HΔΓ HΓ (ds_mod_is_mod _ _ _ _ Hmd') HKE).
     intros R HR ρ ρ' Hρ.
     assert (HP : PER R) by (eapply per_env_PER; exact HR).
-    destruct (HSE _ HR ρ ltac:(etransitivity; [ exact Hρ | symmetry; exact Hρ ])) as (k & v & Hk & Hv & Hsel).
+    destruct (HSE _ HR ρ ltac:(etransitivity; [ exact Hρ | symmetry; exact Hρ ])) as [k v Hk Hv Hsel].
     destruct (rel_modexp_at _ _ _ _ _ (semK_valid _ _ Hgf _ _ HKE) HR _ _ Hρ) as (v1 & v0 & Hv1 & Hv0 & Hvv).
     pose proof (functional_eval_modexp _ _ _ _ Hv1 Hv) as ->.
     exists k, v0; split; [ apply eval_close_alias0; exact Hk | split; [ exact Hv0 | exact (sel_to_resp_r _ _ _ _ Hsel Hvv) ] ].
@@ -957,8 +957,8 @@ Proof.
       pose proof (mod_qname_inv _ _ Hq0) as ->.
       cbn [ds_unit] in HwU |- *.
       assert (Hs0 : sargs Γ T0 nil).
-      { exists T0, nil; rewrite app_nil_r; split; [ reflexivity |]; split; [ reflexivity |]; split; [ constructor |].
-        split; [ cbn; auto | intros [|k] ? ? Hk; discriminate ]. }
+      { apply (mk_sargs _ _ _ T0 nil); [ rewrite app_nil_r; reflexivity | reflexivity | constructor | cbn; auto
+                                       | intros [|k] ? ? Hk; discriminate ]. }
       change (q_abs (q_unit p0) (q_chain p0 ++ y :: nil)) with (qname_in p0 y) in *.
       exact (filed_body_sel _ _ _ _ nil _ _ _ (gc_loc_of_loc _ _ Hgm _ _ _ Hl0) (gc_loc_of_loc _ _ Hgm _ _ _ Hl1)
                (semK_ctx _ _ _ _ HK) Hs0 HwU).

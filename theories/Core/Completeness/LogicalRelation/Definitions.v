@@ -44,10 +44,13 @@ Record rel_wk (φ : wk) (R R' : relation env) : Prop := mk_rel_wk
       Dom ρ ≈ ρ' ∈ R ->
       Dom ⟪φ⟫ ρ ≈ ⟪φ⟫ ρ' ∈ R' }.
 
-Definition rel_wk_under_ctx Γ φ Δ : Prop :=
-  exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel)
-     env_rel' (_ : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_rel'),
-    rel_wk φ env_rel env_rel'.
+#[warnings="-cannot-define-projection"]
+Record rel_wk_under_ctx Γ φ Δ : Prop := mk_rel_wk_under_ctx
+  { rwu_rel : relation env
+  ; rwu_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rwu_rel
+  ; rwu_rel' : relation env
+  ; rwu_per' : EF Δ ≈ Δ ∈ per_ctx_env ↘ rwu_rel'
+  ; rwu_wk : rel_wk φ rwu_rel rwu_rel' }.
 
 Notation "Γ ⊨ʷ φ : Δ" := (rel_wk_under_ctx Γ φ Δ) : type_scope.
 
@@ -59,25 +62,31 @@ Notation "Γ ⊨ʷ φ : Δ" := (rel_wk_under_ctx Γ φ Δ) : type_scope.
     [σ[φ]] in [ρ] (the substitution [sb_wk σ φ], which is [σ] postcomposed with
     [φ]) against [σ] in [⟪φ⟫ ρ]. *)
 
-Inductive rel_sub (σ : sub) (φ : wk) (ρ : env) (σ' : sub) (ρ' : env) (R : relation env) : Prop :=
-| mk_rel_sub : forall ρσφ ρσ ρ'σ' ρ'σ'φ,
-    ⟦ (sb_wk σ φ) ⟧s ρ ↘ ρσφ ->
-    ⟦ σ ⟧s ⟪φ⟫ ρ ↘ ρσ ->
-    ⟦ σ' ⟧s ⟪φ⟫ ρ' ↘ ρ'σ' ->
-    ⟦ (sb_wk σ' φ) ⟧s ρ' ↘ ρ'σ'φ ->
-    rel_chain R ([ρσφ; ρσ; ρ'σ'; ρ'σ'φ]) ->
-    rel_sub σ φ ρ σ' ρ' R.
+#[warnings="-cannot-define-projection"]
+Record rel_sub (σ : sub) (φ : wk) (ρ : env) (σ' : sub) (ρ' : env) (R : relation env) : Prop := mk_rel_sub
+  { ρσφ : env
+  ; ρσ : env
+  ; ρ'σ' : env
+  ; ρ'σ'φ : env
+  ; rs_eval_wk : ⟦ (sb_wk σ φ) ⟧s ρ ↘ ρσφ
+  ; rs_eval : ⟦ σ ⟧s ⟪φ⟫ ρ ↘ ρσ
+  ; rs_eval' : ⟦ σ' ⟧s ⟪φ⟫ ρ' ↘ ρ'σ'
+  ; rs_eval_wk' : ⟦ (sb_wk σ' φ) ⟧s ρ' ↘ ρ'σ'φ
+  ; rs_chain : rel_chain R ([ρσφ; ρσ; ρ'σ'; ρ'σ'φ]) }.
 #[global] Arguments mk_rel_sub {_ _ _ _ _ _}.
 Hint Constructors rel_sub : mctt.
 
-Definition rel_sub_under_ctx Γ Δ σ σ' : Prop :=
-  exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel)
-     env_rel_o (_ : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_rel_o),
-  forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') φ,
-    rel_wk φ env_rel' env_rel ->
-    forall ρ ρ',
-      Dom ρ ≈ ρ' ∈ env_rel' ->
-      rel_sub σ φ ρ σ' ρ' env_rel_o.
+#[warnings="-cannot-define-projection"]
+Record rel_sub_under_ctx Γ Δ σ σ' : Prop := mk_rel_sub_under_ctx
+  { rsu_rel : relation env
+  ; rsu_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rsu_rel
+  ; rsu_rel_o : relation env
+  ; rsu_per_o : EF Δ ≈ Δ ∈ per_ctx_env ↘ rsu_rel_o
+  ; rsu_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') φ,
+      rel_wk φ env_rel' rsu_rel ->
+      forall ρ ρ',
+        Dom ρ ≈ ρ' ∈ env_rel' ->
+        rel_sub σ φ ρ σ' ρ' rsu_rel_o }.
 
 Definition valid_sub_under_ctx Γ Δ σ := rel_sub_under_ctx Γ Δ σ σ.
 #[global] Arguments valid_sub_under_ctx _ _ _ /.
@@ -93,14 +102,17 @@ Hint Unfold valid_sub_under_ctx : mctt.
     environments: closures capture their environment, so replacing it by a
     pointwise-equal one changes the values. *)
 
-Inductive rel_exp (M : exp) (σ : sub) (ρ ρσ : env) (M' : exp) (σ' : sub) (ρ' ρ'σ' : env) (R : relation domain) : Prop :=
-| mk_rel_exp : forall mσ m m' m'σ',
-    ⟦ M[σ] ⟧ ρ ↘ mσ ->
-    ⟦ M ⟧ ρσ ↘ m ->
-    ⟦ M' ⟧ ρ'σ' ↘ m' ->
-    ⟦ M'[σ'] ⟧ ρ' ↘ m'σ' ->
-    rel_chain R ([mσ; m; m'; m'σ']) ->
-    rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' R.
+#[warnings="-cannot-define-projection"]
+Record rel_exp (M : exp) (σ : sub) (ρ ρσ : env) (M' : exp) (σ' : sub) (ρ' ρ'σ' : env) (R : relation domain) : Prop := mk_rel_exp
+  { mσ : domain
+  ; m : domain
+  ; m' : domain
+  ; m'σ' : domain
+  ; re_eval_sub : ⟦ M[σ] ⟧ ρ ↘ mσ
+  ; re_eval : ⟦ M ⟧ ρσ ↘ m
+  ; re_eval' : ⟦ M' ⟧ ρ'σ' ↘ m'
+  ; re_eval_sub' : ⟦ M'[σ'] ⟧ ρ' ↘ m'σ'
+  ; re_chain : rel_chain R ([mσ; m; m'; m'σ']) }.
 #[global] Arguments mk_rel_exp {_ _ _ _ _ _ _ _ _}.
 Hint Constructors rel_exp : mctt.
 
@@ -128,17 +140,20 @@ Hint Unfold rel_typ : mctt.
     premise's values arrive in the same environment as the conclusion's, so two
     instantiations of one judgment share values rather than being pointwise
     equal, and [rel_chain_merge] applies. *)
-Definition rel_exp_under_ctx Γ A M M' : Prop :=
-  exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel) i,
-  forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-    rel_sub_under_ctx Γ' Γ σ σ' ->
-    forall ρ ρ' ρσ ρ'σ',
-      Dom ρ ≈ ρ' ∈ env_rel' ->
-      ⟦ σ ⟧s ρ ↘ ρσ ->
-      ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
-      exists (elem_rel : relation domain),
-        rel_typ i A σ ρ ρσ A σ' ρ' ρ'σ' elem_rel /\
-        rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' elem_rel.
+#[warnings="-cannot-define-projection"]
+Record rel_exp_under_ctx Γ A M M' : Prop := mk_rel_exp_under_ctx
+  { reu_rel : relation env
+  ; reu_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ reu_rel
+  ; reu_lvl : nat
+  ; reu_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
+      rel_sub_under_ctx Γ' Γ σ σ' ->
+      forall ρ ρ' ρσ ρ'σ',
+        Dom ρ ≈ ρ' ∈ env_rel' ->
+        ⟦ σ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+        exists (elem_rel : relation domain),
+          rel_typ reu_lvl A σ ρ ρσ A σ' ρ' ρ'σ' elem_rel /\
+          rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' elem_rel }.
 
 Definition valid_exp_under_ctx Γ A M := rel_exp_under_ctx Γ A M M.
 #[global] Arguments valid_exp_under_ctx _ _ _ /.
@@ -151,22 +166,32 @@ Hint Unfold valid_exp_under_ctx : mctt.
     obligations are stated on their own sides and the subtyping obligation
     relates the two inner values only. *)
 
-Definition subtyp_under_ctx Γ A A' : Prop :=
-  exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel) (i : nat),
-  forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-    rel_sub_under_ctx Γ' Γ σ σ' ->
-    forall ρ ρ' ρσ ρ'σ',
-      Dom ρ ≈ ρ' ∈ env_rel' ->
-      ⟦ σ ⟧s ρ ↘ ρσ ->
-      ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
-      exists aσ a a'σ' a',
-          ⟦ A[σ] ⟧ ρ ↘ aσ /\
-          ⟦ A ⟧ ρσ ↘ a /\
-          ⟦ A'[σ'] ⟧ ρ' ↘ a'σ' /\
-          ⟦ A' ⟧ ρ'σ' ↘ a' /\
-          Dom aσ ≈ a ∈ per_univ i /\
-          Dom a'σ' ≈ a' ∈ per_univ i /\
-          Sub a <: a' at i.
+#[warnings="-cannot-define-projection"]
+Record subtyp_vals (i : nat) A σ ρ ρσ A' σ' ρ' ρ'σ' : Prop := mk_subtyp_vals
+  { stv_aσ : domain
+  ; stv_a : domain
+  ; stv_a'σ' : domain
+  ; stv_a' : domain
+  ; stv_eval_aσ : ⟦ A[σ] ⟧ ρ ↘ stv_aσ
+  ; stv_eval_a : ⟦ A ⟧ ρσ ↘ stv_a
+  ; stv_eval_a'σ' : ⟦ A'[σ'] ⟧ ρ' ↘ stv_a'σ'
+  ; stv_eval_a' : ⟦ A' ⟧ ρ'σ' ↘ stv_a'
+  ; stv_left : Dom stv_aσ ≈ stv_a ∈ per_univ i
+  ; stv_right : Dom stv_a'σ' ≈ stv_a' ∈ per_univ i
+  ; stv_sub : Sub stv_a <: stv_a' at i }.
+
+#[warnings="-cannot-define-projection"]
+Record subtyp_under_ctx Γ A A' : Prop := mk_subtyp_under_ctx
+  { stu_rel : relation env
+  ; stu_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ stu_rel
+  ; stu_lvl : nat
+  ; stu_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
+      rel_sub_under_ctx Γ' Γ σ σ' ->
+      forall ρ ρ' ρσ ρ'σ',
+        Dom ρ ≈ ρ' ∈ env_rel' ->
+        ⟦ σ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+        subtyp_vals stu_lvl A σ ρ ρσ A' σ' ρ' ρ'σ' }.
 
 Notation "⊨ Γ ≈ Γ'" := (per_ctx Γ Γ')  (at level 70, Γ' at level 69).
 Notation "Γ ⊨ M ≈ M' : A" := (rel_exp_under_ctx Γ A M M') (at level 70, M at level 69, M' at level 69, A at level 69).
@@ -186,26 +211,31 @@ Notation "Γ ⊨ˢ σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (at level 70, σ a
     they stand, and an alias's target is valid under its parameters; this
     is what the members of its closure are read off. *)
 
-Inductive rel_mod (H : modexp) (σ : sub) (ρ ρσ : env) (H' : modexp) (σ' : sub) (ρ' ρ'σ' : env) : Prop :=
-| mk_rel_mod : forall hσ h h' h'σ',
-    eval_modexp gc_deps gc_stack H[σ]ᵐ ρ hσ ->
-    eval_modexp gc_deps gc_stack H ρσ h ->
-    eval_modexp gc_deps gc_stack H' ρ'σ' h' ->
-    eval_modexp gc_deps gc_stack H'[σ']ᵐ ρ' h'σ' ->
-    rel_chain per_dmod ([hσ; h; h'; h'σ']) ->
-    rel_mod H σ ρ ρσ H' σ' ρ' ρ'σ'.
+#[warnings="-cannot-define-projection"]
+Record rel_mod (H : modexp) (σ : sub) (ρ ρσ : env) (H' : modexp) (σ' : sub) (ρ' ρ'σ' : env) : Prop := mk_rel_mod
+  { hσ : dmod
+  ; h : dmod
+  ; h' : dmod
+  ; h'σ' : dmod
+  ; rm_eval_sub : eval_modexp gc_deps gc_stack H[σ]ᵐ ρ hσ
+  ; rm_eval : eval_modexp gc_deps gc_stack H ρσ h
+  ; rm_eval' : eval_modexp gc_deps gc_stack H' ρ'σ' h'
+  ; rm_eval_sub' : eval_modexp gc_deps gc_stack H'[σ']ᵐ ρ' h'σ'
+  ; rm_chain : rel_chain per_dmod ([hσ; h; h'; h'σ']) }.
 #[global] Arguments mk_rel_mod {_ _ _ _ _ _ _ _}.
 Hint Constructors rel_mod : mctt.
 
-Definition rel_modexp_under_ctx Γ H H' : Prop :=
-  exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
-  forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
-    rel_sub_under_ctx Γ' Γ σ σ' ->
-    forall ρ ρ' ρσ ρ'σ',
-      Dom ρ ≈ ρ' ∈ env_rel' ->
-      ⟦ σ ⟧s ρ ↘ ρσ ->
-      ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
-      rel_mod H σ ρ ρσ H' σ' ρ' ρ'σ'.
+#[warnings="-cannot-define-projection"]
+Record rel_modexp_under_ctx Γ H H' : Prop := mk_rel_modexp_under_ctx
+  { rmu_rel : relation env
+  ; rmu_per : EF Γ ≈ Γ ∈ per_ctx_env ↘ rmu_rel
+  ; rmu_body : forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
+      rel_sub_under_ctx Γ' Γ σ σ' ->
+      forall ρ ρ' ρσ ρ'σ',
+        Dom ρ ≈ ρ' ∈ env_rel' ->
+        ⟦ σ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+        rel_mod H σ ρ ρσ H' σ' ρ' ρ'σ' }.
 
 Notation "Γ ⊨ᵐ H ≈ H'" := (rel_modexp_under_ctx Γ H H') (at level 70, H at level 69, H' at level 69).
 
@@ -258,11 +288,15 @@ Hint Constructors sem_ctx sem_unit : mctt.
 (** Two units are equivalent when their closures are related and each is valid
     in its parts.  Two extensions of a context are equivalent when both
     extended contexts are semantically well formed and related. *)
-Definition rel_unit_under_ctx Γ U U' : Prop :=
-  Γ ⊨ᵐ me_lit U ≈ me_lit U' /\ sem_unit Γ U /\ sem_unit Γ U'.
+Record rel_unit_under_ctx Γ U U' : Prop := mk_rel_unit_under_ctx
+  { ruu_lit : Γ ⊨ᵐ me_lit U ≈ me_lit U'
+  ; ruu_left : sem_unit Γ U
+  ; ruu_right : sem_unit Γ U' }.
 
-Definition rel_ext_under_ctx Γ Ψ Ψ' : Prop :=
-  ⊨ Ψ ++ Γ /\ ⊨ Ψ' ++ Γ /\ ⊨ Ψ ++ Γ ≈ Ψ' ++ Γ.
+Record rel_ext_under_ctx Γ Ψ Ψ' : Prop := mk_rel_ext_under_ctx
+  { rxu_left : ⊨ Ψ ++ Γ
+  ; rxu_right : ⊨ Ψ' ++ Γ
+  ; rxu_eq : ⊨ Ψ ++ Γ ≈ Ψ' ++ Γ }.
 
 Notation "Γ ⊨ᵘ U ≈ U'" := (rel_unit_under_ctx Γ U U') (at level 70, U at level 69, U' at level 69).
 Notation "Γ ⊨ˣ Ψ ≈ Ψ'" := (rel_ext_under_ctx Γ Ψ Ψ') (at level 70, Ψ at level 69, Ψ' at level 69).
@@ -307,5 +341,5 @@ Existing Class rel_wk.
 Existing Class rel_wk_under_ctx.
 
 #[export] Instance rel_wk_under_ctx_mono {GC : GCtx} {Γ φ Δ} (Hφ : Γ ⊨ʷ φ : Δ) : WkMono φ.
-Proof. destruct Hφ as [? [? [? [? []]]]]; assumption. Qed.
+Proof. destruct Hφ as [? ? ? ? []]; assumption. Qed.
 

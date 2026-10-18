@@ -353,7 +353,7 @@ Section Sort.
   Lemma length_rec_ps : forall c gs gs1 Ps gs2, ind_con D c = Some gs -> gs = gs1 ++ ca_rec Ps :: gs2 ->
       List.length (ptyp_ps Ps) = ind_nn D.
   Proof.
-    intros * Hcon Heq; pose proof Hc as (_ & _ & _ & _ & _ & _ & HPl).
+    intros * Hcon Heq; pose proof (dc_rec_len _ Hc) as HPl.
     exact (HPl _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq).
   Qed.
 
@@ -734,9 +734,8 @@ Section Sort.
                ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
                tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
                tele_full (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
-               exists bs bs', ⟦ (ptyp_ps t) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ms ++ ws ++ ys) ↘ bs /\
-                 ⟦ (ptyp_ps t) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups2 ++ ms' ++ ws' ++ ys') ↘ bs' /\
-                 tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bs bs'.
+               exps_rel (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (ups2 ++ ms' ++ ws' ++ ys'))
+                 (tele_full (ind_nr D ups) (List.rev (ind_nparams D))).
     Proof.
       intros ups2 Hg2 * Hm Hcon Heq Hp Hy.
       pose proof (length_ups_gargs _ _ Hg2 Hu) as Hu2.
@@ -766,7 +765,7 @@ Section Sort.
                                          by exact Hle; lia | exact Hpg |].
           unfold astrat; rewrite List.rev_involutive; exact Hgv.
         - unfold doms_ctx; rewrite List.rev_involutive, <- !List.app_assoc; exact Hgy. }
-      exists bs, bs'; split; [ exact Ebs | split; [ exact Ebs' |] ].
+      apply (mk_exps_rel _ _ _ _ bs bs' Ebs Ebs').
       eapply (gargs_tele_canon _ (ind_nr D ups) (env_args nil ups)); [ | exact Hgb |].
       - intros j A pre HA; unfold ind_nr; rewrite (nth_ctyp_eq _ _ _ HA), env_args_app; reflexivity.
       - rewrite (eval_exps_length _ _ _ Ebs), List.length_rev, length_nparams; exact (length_rec_ps _ _ _ _ _ Hcon Heq).

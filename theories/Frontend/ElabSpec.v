@@ -96,9 +96,15 @@ Definition binders (S : list ent) : nat := fold_right (fun e n => ent_binders e 
 
 (** [bound S x k e n]: [e] is the innermost entry of [S] that binds [x], with
     [k] core binders inside it and [n] outside. *)
-Definition bound (S : list ent) (x : string) (k : nat) (e : ent) (n : nat) : Prop :=
-  exists S1 S2, S = S1 ++ e :: S2 /\ ent_name e = Some x /\ ~ In x (names S1) /\
-           k = binders S1 /\ n = binders S2.
+#[warnings="-cannot-define-projection"]
+Record bound (S : list ent) (x : string) (k : nat) (e : ent) (n : nat) : Prop := mk_bound
+  { bd_inner : list ent
+  ; bd_outer : list ent
+  ; bd_split : S = bd_inner ++ e :: bd_outer
+  ; bd_name : ent_name e = Some x
+  ; bd_first : ~ In x (names bd_inner)
+  ; bd_inner_binders : k = binders bd_inner
+  ; bd_outer_binders : n = binders bd_outer }.
 
 (** A frame may bind a name once. *)
 Definition fresh (x : string) (F : list ent) : Prop := ~ In x (names F).

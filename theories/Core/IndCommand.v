@@ -89,7 +89,7 @@ Section ConTypes.
   Proof. unfold ind_np; cbn; apply List.length_app. Qed.
 
   Lemma D_le : rd_nu R <= np.
-  Proof. pose proof HD as (_ & _ & Hle & _); rewrite D_nu, D_np in Hle; lia. Qed.
+  Proof. pose proof (dt_nu _ _ _ HD) as Hle; rewrite D_nu, D_np in Hle; lia. Qed.
 
   Lemma D_nn : ind_nn D = np - rd_nu R.
   Proof. unfold ind_nn; rewrite D_nu, D_np; lia. Qed.
@@ -97,8 +97,8 @@ Section ConTypes.
   (** The type former at the frames' parameters is of [Self]'s type. *)
   Lemma self_typed : Θ ⍮ Ξf ⍮ gs_tele Ξ ⊢ self_inst p t : rd_self_ty R.
   Proof.
-    pose proof HD as (Hass & (Hmv & _) & _ & HP & _).
-    pose proof Hdc as (_ & _ & Hs & HsS & _).
+    pose proof HD as [Hass [Hmv _ _] _ HP _ _ _ _ _ _ _ _ _].
+    pose proof Hdc as [_ _ Hs HsS _ _ _].
     rewrite D_params in Hass, Hmv, HP, Hs.
     assert (HT : ⊢ Θ ⍮ Ξf ⍮ gs_tele Ξ) by exact (ctx_app_wf_tail _ _ _ _ HP).
     assert (Hassi : tele_ass (gs_tele Ξ)) by (unfold tele_ass in *; apply Forall_app in Hass as [_ H]; exact H).
@@ -118,7 +118,7 @@ Section ConTypes.
       eapply exp_scoped_wk; [ exact HsS |]; intros y Hy.
       rewrite D_nu in Hy; unfold wk_shiftn; pose proof D_le; lia. }
     assert (HmT : exp_mvc 0 (rd_self_ty R)).
-    { pose proof HD as (_ & (_ & HmS & _) & _).
+    { pose proof (dmv_sort _ (dt_mvc _ _ _ HD)) as HmS.
       unfold ctx_mvc in Hmv; apply Forall_app in Hmv as [Hmp _].
       unfold rd_self_ty; apply ctx_pi_mvc; [ unfold tele_ass in Hass; apply Forall_app in Hass as [H _]; exact H | exact Hmp |].
       eapply exp_mvc_mono; [| apply exp_mvc_wk; exact HmS ]; lia. }
@@ -142,7 +142,7 @@ Section ConTypes.
   Lemma base_sub : ⊢ Θ ⍮ Ξf ⍮ base -> Θ ⍮ Ξf ⍮ ind_params D ⊢ˢ sb_qn np σ0 : base.
   Proof.
     intros Hb.
-    pose proof HD as (_ & _ & _ & HP & _).
+    pose proof (dt_params _ _ _ HD) as HP.
     assert (HT : ⊢ Θ ⍮ Ξf ⍮ gs_tele Ξ) by (rewrite D_params in HP; exact (ctx_app_wf_tail _ _ _ _ HP)).
     destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ Hb)) as [_ [j Hj]].
     assert (Hσ0 : Θ ⍮ Ξf ⍮ gs_tele Ξ ⊢ˢ σ0 : ce_ass (rd_self_ty R) :: gs_tele Ξ).
@@ -173,7 +173,7 @@ Section ConTypes.
     induction 1 as [args1 gs1 | args1 gs1 y T args g gs Hg Hgs IH]; intros Hlen c Hin Hsub.
     - (* no argument left: the result type *)
       rewrite List.app_nil_r in Hin.
-      destruct (con_cod_typed _ _ _ _ _ _ HD Hdc Hl (cons_lookup_nodup _ _ _ ltac:(pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd & _); exact Hnd) Hin))
+      destruct (con_cod_typed _ _ _ _ _ _ HD Hdc Hl (cons_lookup_nodup _ _ _ (dt_nodup _ _ _ HD) Hin))
         as [j Hj].
       exists j; cbn [rtele tele_sub ctx_pi List.length cargs_ctx_aux List.rev List.map]; rewrite Nat.add_0_r.
       apply wf_exp_eq_refl.
@@ -182,7 +182,7 @@ Section ConTypes.
     - (* an argument: equal at its type as written and as filed, then the
          rest *)
       assert (Hin' : In (c, (gs1 ++ g :: nil) ++ gs) (ind_cons D)) by (rewrite <- List.app_assoc; exact Hin).
-      pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd & _).
+      pose proof (dt_nodup _ _ _ HD) as Hnd.
       set (τ := sb_qn (List.length gs1 + np) σ0).
       (* the argument as classified, and its filed entry *)
       assert (HT' : exists T', cls_arg (rd_nu R) np gs1 T' g /\
@@ -270,14 +270,14 @@ Proof.
   pose proof (ind_lookup_added Θ' Ξ x pv D (gen_body p D) HΞn) as Hl.
   change (qname_in (gs_path Ξ) x) with p in Hl.
   destruct (decl_of_lookup _ _ ⋅ _ _ ltac:(constructor; exact HΞf) Hl) as [HD Hdc].
-  pose proof HD as (_ & _ & _ & HP & _ & _ & _ & _ & _ & _ & _ & Hnd & _).
+  pose proof (dt_params _ _ _ HD) as HP; pose proof (dt_nodup _ _ _ HD) as Hnd.
   assert (Hcon : ind_con D c = Some gs) by (apply cons_lookup_nodup; [ exact Hnd | exact Hin' ]).
   assert (Hemb : Emb Θ' Ξ Θ' (gs_add x (ge_ind pv p D (gen_body p D)) Ξ)).
   { constructor; [ exact HΞf |].
     destruct Ξ as [| [mq [P [[] Φ | E0]]] Ξ0]; [ contradiction | | |].
-    - exfalso; destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & (Δ' & Φ' & [=] & _) & _).
+    - exfalso; destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & [Δ' Φ' [=] _] & _).
     - cbn [gs_fresh gu_mod] in Hfr; cbn [gs_add gu_params gu_mod]; apply gc_sub_grow; exact Hfr.
-    - exfalso; destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & (Δ' & Φ' & [=] & _) & _). }
+    - exfalso; destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & [Δ' Φ' [=] _] & _). }
   exists cs, gs; split; [ exact Hcls | split; [ exact Hcon | split; [ reflexivity |] ] ].
   unfold con_ty, cargs_ctx, user_con_ty; rewrite ctx_pi_sub.
   assert (Ht : ind_np D - List.length (rd_params R) = List.length (gs_tele Ξ))
@@ -298,7 +298,7 @@ Proof.
   rewrite Nat.add_0_l in Hj.
   assert (HP0 : ⊢ Θ' ⍮ gs_add x (ge_ind pv p D (gen_body p D)) Ξ ⍮ ind_params D ++ ⋅)
     by (rewrite List.app_nil_r; exact HP).
-  pose proof HD as (Hass & _).
+  pose proof (dt_ass _ _ _ HD) as Hass.
   destruct (ctx_pi_ass_eq _ _ _ ⋅ _ _ _ Hass HP0 ltac:(rewrite List.app_nil_r; exact Hj)) as [i Hi].
   exists i; apply wf_exp_eq_sym; exact Hi.
 Qed.

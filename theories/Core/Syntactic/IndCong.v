@@ -117,7 +117,7 @@ Section Fixed_GCtx.
     intros * Hl HΨ HMl HMl' HMs.
     destruct (decl_of_lookup _ _ _ _ _ HΨ Hl) as [HD Hc].
     destruct (ind_sort_shift_typed _ _ _ HD) as [i Hi].
-    pose proof Hc as (Hass & Hle & Hs & HsS & _).
+    pose proof Hc as [Hass Hle Hs HsS _ _ _].
     eapply wf_exp_eq_apps_closed_pi; [ exact Hass | exact Hs | | exact Hi | exact HΨ | | exact HMl | exact HMl' | exact HMs ].
     - eapply exp_scoped_wk; [ exact HsS |]; intros x Hx; unfold wk_shiftn, ind_nn; unfold ind_np in *; lia.
     - apply wf_exp_eq_refl; eapply wf_ind; eassumption.
@@ -202,7 +202,7 @@ Section Fixed_GCtx.
     intros * Hl HΨ.
     destruct (decl_of_lookup _ _ _ _ _ HΨ Hl) as [HD Hc].
     destruct (ind_sort_shift_typed _ _ _ HD) as [i Hi].
-    pose proof Hc as (Hass & _ & Hs & _).
+    pose proof Hc as [Hass _ Hs _ _ _ _].
     assert (HΔ0 : ⊢ Θ ⍮ Ξ ⍮ ind_params D ++ ⋅) by (rewrite List.app_nil_r; eapply presup_exp_ctx; exact Hi).
     pose proof (wf_wk_shiftn_app Θ Ξ Γ ⋅) as Hw; rewrite List.app_nil_r in Hw.
     specialize (Hw HΨ ltac:(constructor; eapply ctx_wf_gctx; eassumption)).
@@ -312,7 +312,7 @@ Section Fixed_GCtx.
     intros * Hl HΨ HMl HMl' HMs.
     destruct (decl_of_lookup _ _ _ _ _ HΨ Hl) as [HD Hc].
     destruct (ind_sort_shift_typed _ _ _ HD) as [i Hi].
-    pose proof Hc as (Hass & Hle & Hs & HsS & _).
+    pose proof Hc as [Hass Hle Hs HsS _ _ _].
     assert (HsB : exp_scoped (List.length (ind_params D)) (ind_sort D)[wk_shiftn (ind_nn D)]ʷ)
       by (eapply exp_scoped_wk; [ exact HsS |]; intros x Hx; unfold wk_shiftn, ind_nn; unfold ind_np in *; lia).
     assert (HΔ0 : ⊢ Θ ⍮ Ξ ⍮ ind_params D ++ ⋅) by (rewrite List.app_nil_r; eapply presup_exp_ctx; exact Hi).

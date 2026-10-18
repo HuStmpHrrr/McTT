@@ -921,15 +921,17 @@ Fixpoint ptyp_scoped (n : nat) (t : ptyp) : Prop :=
   | pt_self _ Ps | pt_aux _ Ps => List.Forall (exp_scoped n) Ps
   end.
 
-Definition decl_closed (D : ind_decl) : Prop :=
-  tele_ass (ind_params D) /\ ind_nu D <= ind_np D /\ ctx_scoped 0 (ind_params D) /\
-  exp_scoped (ind_nu D) (ind_sort D) /\
-  (forall c gs gs1 A gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_arg A :: gs2 ->
-     exp_scoped (List.length (cargs_strat gs1) + ind_np D) A) /\
-  (forall c gs gs1 t gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
-     ptyp_scoped (List.length (cargs_strat gs1) + ind_np D) t) /\
-  (forall c gs gs1 t gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
-     List.length (ptyp_ps t) = ind_nn D).
+Record decl_closed (D : ind_decl) : Prop := mk_decl_closed
+  { dc_ass : tele_ass (ind_params D)
+  ; dc_nu : ind_nu D <= ind_np D
+  ; dc_params : ctx_scoped 0 (ind_params D)
+  ; dc_sort : exp_scoped (ind_nu D) (ind_sort D)
+  ; dc_args : forall c gs gs1 A gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_arg A :: gs2 ->
+      exp_scoped (List.length (cargs_strat gs1) + ind_np D) A
+  ; dc_recs : forall c gs gs1 t gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
+      ptyp_scoped (List.length (cargs_strat gs1) + ind_np D) t
+  ; dc_rec_len : forall c gs gs1 t gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
+      List.length (ptyp_ps t) = ind_nn D }.
 
 Lemma ptyp_scoped_mono : forall t n m, n <= m -> ptyp_scoped n t -> ptyp_scoped m t.
 Proof.
@@ -1054,7 +1056,7 @@ Qed.
 
 Lemma decl_closed_ind_ty : forall D, decl_closed D -> exp_scoped 0 (ind_ty D).
 Proof.
-  intros D (_ & Hle & HΔ & HS & _); unfold ind_ty; apply ctx_pi_scoped; [ assumption |].
+  intros D [_ Hle HΔ HS _ _ _]; unfold ind_ty; apply ctx_pi_scoped; [ assumption |].
   eapply exp_scoped_wk; [ exact HS |]; intros x Hx; unfold ind_nn in *.
   cbn; unfold ind_np in *; lia.
 Qed.
@@ -1063,7 +1065,7 @@ Qed.
 Lemma decl_closed_ind_ty_at : forall D k, decl_closed D -> k <= ind_np D ->
     exp_scoped k (ctx_pi (List.firstn (ind_np D - k) (ind_params D)) (ind_sort D)[wk_shiftn (ind_nn D)]ʷ).
 Proof.
-  intros D k (_ & Hle & HΔ & HS & _) Hk.
+  intros D k [_ Hle HΔ HS _ _ _] Hk.
   rewrite <- (List.firstn_skipn (ind_np D - k) (ind_params D)) in HΔ.
   apply ctx_scoped_app in HΔ as [HΔ1 _]; rewrite Nat.add_0_r in HΔ1.
   rewrite List.length_skipn in HΔ1; unfold ind_np in *.
@@ -1087,7 +1089,7 @@ Qed.
 
 Lemma decl_closed_con_ty : forall p D c gs, decl_closed D -> In (c, gs) (ind_cons D) -> exp_scoped 0 (con_ty p D gs).
 Proof.
-  intros p D c gs (_ & Hle & HΔ & _ & HA & HPs & _) Hin; unfold con_ty; apply ctx_pi_scoped; [ assumption |].
+  intros p D c gs [_ Hle HΔ _ HA HPs _] Hin; unfold con_ty; apply ctx_pi_scoped; [ assumption |].
   rewrite Nat.add_0_r; apply ctx_pi_scoped.
   - apply (cargs_ctx_aux_scoped p D gs nil 0 Hle eq_refl); intros; cbn; eauto.
   - apply exp_scoped_apps; split; [ exact I |].
@@ -1216,7 +1218,7 @@ Lemma elim_ihs_scoped_at : forall D c gs nm A Bs Ps As m,
     List.Forall (exp_scoped m) Ps -> List.Forall (exp_scoped m) As ->
     List.Forall (exp_scoped m) (elim_ihs nm A Bs (sb_of_list Id Ps) gs As).
 Proof.
-  intros * Hc Hcon Hl HA HBs HPs HAs; pose proof Hc as (_ & _ & _ & _ & _ & Ht & _).
+  intros * Hc Hcon Hl HA HBs HPs HAs; pose proof (dc_recs _ Hc) as Ht.
   eapply (elim_ihs_scoped _ _ _ _ _ _ _ (List.length Ps + 0)); [ exact HA | exact HBs | | | exact HAs ].
   - apply sb_of_list_bound; [ intros; lia | exact HPs ].
   - intros gs1 t gs2 E; rewrite Nat.add_0_r, Hl; exact (Ht _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) E).
@@ -1250,10 +1252,10 @@ Proof.
 Qed.
 
 Lemma decl_closed_nu : forall D, decl_closed D -> ind_nu D <= ind_np D.
-Proof. intros D (_ & H & _); exact H. Qed.
+Proof. exact dc_nu. Qed.
 
 Lemma decl_closed_params : forall D, decl_closed D -> tele_ass (ind_params D).
-Proof. intros D (H & _); exact H. Qed.
+Proof. exact dc_ass. Qed.
 
 Lemma Forall_skipn' : forall {A} (P : A -> Prop) n l, List.Forall P l -> List.Forall P (List.skipn n l).
 Proof. intros * H; rewrite <- (firstn_skipn n l) in H; apply List.Forall_app in H as [_ H]; exact H. Qed.
@@ -1387,7 +1389,7 @@ Proof.
       assert (Hu : unit_closed (Δ ++ T) Φ1) by (split; [ apply ctx_scoped_app_iff; auto | rewrite length_app; exact HΦ1 ]).
       exact (proj1 (IH _ _ Hu) _ _ Hr).
     + destruct HE as [HD HΦ1].
-      assert (Hu : unit_closed (ind_uparams D) Φ1) by (split; [ apply ctx_scoped_uparams, (proj1 (proj2 (proj2 HD))) | exact HΦ1 ]).
+      assert (Hu : unit_closed (ind_uparams D) Φ1) by (split; [ apply ctx_scoped_uparams, (dc_params _ HD) | exact HΦ1 ]).
       exact (proj1 (IH _ _ Hu) _ _ Hr).
   - intros x ip r Hr; cbn in Hr.
     destruct (String.eqb x y); [| eapply IHm; exact Hr ].
@@ -1398,7 +1400,7 @@ Proof.
       exact (proj2 (IH _ _ Hu) _ _ _ Hr).
     + destruct ip; [ injection Hr as <-; exact HE | discriminate ].
     + destruct HE as [HD HΦ1].
-      assert (Hu : unit_closed (ind_uparams D) Φ1) by (split; [ apply ctx_scoped_uparams, (proj1 (proj2 (proj2 HD))) | exact HΦ1 ]).
+      assert (Hu : unit_closed (ind_uparams D) Φ1) by (split; [ apply ctx_scoped_uparams, (dc_params _ HD) | exact HΦ1 ]).
       destruct ip as [| z ip]; [ injection Hr as <-; split; [ apply Hu | exact HD ] |].
       exact (proj2 (IH _ _ Hu) _ _ _ Hr).
     + destruct ip; [ injection Hr as <- | discriminate ].

@@ -146,13 +146,15 @@ Qed.
 Lemma decl_mvcb_spec : forall D, decl_mvcb D = true <-> decl_mvc D.
 Proof.
   destruct mvcb_spec as (He & _ & _ & _ & _ & _ & _ & Hc).
-  intros D; unfold decl_mvcb, decl_mvc, ctx_mvc; rewrite !andb_true_iff.
+  intros D; unfold decl_mvcb, ctx_mvc; rewrite !andb_true_iff.
   rewrite (forallb_Forall _ _ _ (fun e => Hc e 0)), He.
   rewrite (forallb_Forall _ (fun cg => List.Forall carg_mvc (snd cg)))
     by (intros; apply forallb_Forall, carg_mvcb_spec).
   rewrite List.Forall_forall.
-  split; [ intros [[? ?] HF]; repeat split; auto; intros c gs Hin; exact (proj1 (List.Forall_forall _ _) HF (c, gs) Hin)
-         | intros (? & ? & HF); repeat split; auto; apply List.Forall_forall; intros [c gs] Hin; exact (HF c gs Hin) ].
+  split; [ intros [[H1 H2] HF]; constructor; [ unfold ctx_mvc; apply List.Forall_forall; exact H1 | exact H2 |];
+           intros c gs Hin; exact (proj1 (List.Forall_forall _ _) HF (c, gs) Hin)
+         | intros [H1 H2 HF]; unfold ctx_mvc in H1; rewrite List.Forall_forall in H1; repeat split; auto;
+           apply List.Forall_forall; intros [c gs] Hin; exact (HF c gs Hin) ].
 Qed.
 
 Definition decl_mvc_dec (D : ind_decl) : {decl_mvc D} + {~ decl_mvc D} :=
@@ -233,8 +235,8 @@ Proof.
   intros; split.
   - intros H; inversion H; subst.
     split; [ eexists; eassumption |]; split; [ assumption |].
-    unfold decl_typed; split; [ assumption | split; [ assumption | repeat split; eauto ] ].
-  - intros ([Δ HΔ] & Hle & Hass & Hmvc & Hnp & HP & HS & [i Hi] & [n Hn] & HA & HPl & HPt & HN & Hnd & Hsh).
+    constructor; eauto.
+  - intros ([Δ HΔ] & Hle & [Hass Hmvc Hnp HP HS [i Hi] [n Hn] HA HPl HPt HN Hnd Hsh]).
     econstructor; try eassumption.
     + intros * Hin E; exact (proj1 (Hsh _ _ _ _ _ Hin E)).
     + intros * Hin E Ed; exact (proj2 (Hsh _ _ _ _ _ Hin E) _ _ _ Ed).
@@ -431,29 +433,24 @@ Section Decide.
 
   Definition decl_typed_dec (D : ind_decl) : {decl_typed Θ Ξ D} + {~ decl_typed Θ Ξ D}.
   Proof.
-    unfold decl_typed.
-    destruct (tele_ass_dec (ind_params D)) as [Hass | Hn]; [| right; intros (H & _); exact (Hn H) ].
-    destruct (decl_mvc_dec D) as [Hmv | Hn]; [| right; intros (_ & H & _); exact (Hn H) ].
-    destruct (Compare_dec.le_dec (ind_nu D) (ind_np D)) as [Hle | Hn]; [| right; intros (_ & _ & H & _); exact (Hn H) ].
-    destruct (check_ctx fctx_none Θ Ξ HΞ (ind_params D)) as [HP | Hn]; [| right; intros (_ & _ & _ & H & _); exact (Hn H) ].
-    destruct (ind_sort_univ_dec (ind_sort D)) as [HS | Hn]; [| right; intros (_ & _ & _ & _ & H & _); exact (Hn H) ].
+    destruct (tele_ass_dec (ind_params D)) as [Hass | Hn]; [| right; intros H; exact (Hn (dt_ass _ _ _ H)) ].
+    destruct (decl_mvc_dec D) as [Hmv | Hn]; [| right; intros H; exact (Hn (dt_mvc _ _ _ H)) ].
+    destruct (Compare_dec.le_dec (ind_nu D) (ind_np D)) as [Hle | Hn]; [| right; intros H; exact (Hn (dt_nu _ _ _ H)) ].
+    destruct (check_ctx fctx_none Θ Ξ HΞ (ind_params D)) as [HP | Hn]; [| right; intros H; exact (Hn (dt_params _ _ _ H)) ].
+    destruct (ind_sort_univ_dec (ind_sort D)) as [HS | Hn]; [| right; intros H; exact (Hn (dt_sort_univ _ _ _ H)) ].
     destruct (check_ctx fctx_none Θ Ξ HΞ (ind_uparams D)) as [HU | Hn];
-      [| right; intros (_ & _ & _ & _ & _ & [i Hi] & _); exact (Hn (presup_exp_ctx Hi)) ].
+      [| right; intros H; destruct (dt_sort _ _ _ H) as [i Hi]; exact (Hn (presup_exp_ctx Hi)) ].
     destruct (check_typ fctx_none Θ Ξ (ind_uparams D) HU (ind_sort D)) as [[i Hi] | Hn];
-      [| right; intros (_ & _ & _ & _ & _ & [i Hi] & _); exact (Hn i Hi) ].
+      [| right; intros H; destruct (dt_sort _ _ _ H) as [i Hi]; exact (Hn i Hi) ].
     destruct (check_level fctx_none Θ Ξ (ind_uparams D) HU (ind_sort_lvl (ind_sort D))) as [[n Hl] | Hn];
-      [| right; intros (_ & _ & _ & _ & _ & _ & [n Hl] & _); exact (Hn n Hl) ].
-    destruct (args_dec D) as [HA | Hn]; [| right; intros (_ & _ & _ & _ & _ & _ & _ & H & _); exact (Hn H) ].
+      [| right; intros H; destruct (dt_sort_lvl _ _ _ H) as [n Hl]; exact (Hn n Hl) ].
+    destruct (args_dec D) as [HA | Hn]; [| right; intros H; exact (Hn (dt_args _ _ _ H)) ].
     destruct (recs_dec D) as [[HPl HPt] | Hn];
-      [| right; intros (_ & _ & _ & _ & _ & _ & _ & _ & HPl & HPt & _); exact (Hn (conj HPl HPt)) ].
-    destruct (nparams_dec D) as [HN | Hn];
-      [| right; intros (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H & _); exact (Hn H) ].
-    destruct (nodup_dec (List.map fst (ind_cons D))) as [Hnd | Hn];
-      [| right; intros (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H & _); exact (Hn H) ].
-    destruct (shapes_dec D) as [Hsh | Hn];
-      [| right; intros (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H); exact (Hn H) ].
-    left; exact (conj Hass (conj Hmv (conj Hle (conj HP (conj HS (conj (ex_intro _ i Hi) (conj (ex_intro _ n Hl)
-                  (conj HA (conj HPl (conj HPt (conj HN (conj Hnd Hsh)))))))))))).
+      [| right; intros H; exact (Hn (conj (dt_rec_len _ _ _ H) (dt_rec_ps _ _ _ H))) ].
+    destruct (nparams_dec D) as [HN | Hn]; [| right; intros H; exact (Hn (dt_nparams _ _ _ H)) ].
+    destruct (nodup_dec (List.map fst (ind_cons D))) as [Hnd | Hn]; [| right; intros H; exact (Hn (dt_nodup _ _ _ H)) ].
+    destruct (shapes_dec D) as [Hsh | Hn]; [| right; intros H; exact (Hn (dt_recs _ _ _ H)) ].
+    left; exact (mk_decl_typed _ _ _ Hass Hmv Hle HP HS (ex_intro _ i Hi) (ex_intro _ n Hl) HA HPl HPt HN Hnd Hsh).
   Defined.
 
   (** Which non-uniform parameter, if any, has a type not in the sort, for
@@ -614,7 +611,7 @@ Definition rec_arity_ok (D : ind_decl) : bool :=
 Lemma rec_arity_of_entry : forall Θ Ξ mp pv D, Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄ -> rec_arity_ok D = true.
 Proof.
   intros * H; apply wf_gentry_ind_iff in H as (_ & _ & HD).
-  pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & HPl & _).
+  pose proof (dt_rec_len _ _ _ HD) as HPl.
   unfold rec_arity_ok; apply forallb_forall; intros [c gs] Hin; apply forallb_forall; cbn [snd].
   intros [A | t] Hg; [ reflexivity |].
   apply in_split in Hg as (gs1 & gs2 & Hgs); subst gs; apply Nat.eqb_eq; exact (HPl _ _ _ _ _ Hin eq_refl).

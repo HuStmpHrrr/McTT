@@ -220,12 +220,16 @@ Section Kinds.
     forall φ ρ ρ', kren φ ρ ρ' -> forall ch k,
       ukind Θ Ξ ρ (gu_mk nil (moddef_wk D φ)) ch k <-> ukind Θ Ξ ρ' (gu_mk nil D) ch k.
 
+  (** A body read by kinds at a renamed environment, against the body
+      renamed: the environments it makes, both ways, and its members. *)
+  Record kren_body_at (Φ : gmod) (φ : wk) (ρ ρ' : env) : Prop := mk_kren_body_at
+    { krb_fwd : forall ρ1', kenv Θ Ξ ρ' Φ ρ1' -> exists ρ1, kenv Θ Ξ ρ (gmod_wk Φ φ) ρ1 /\ kren (wk_qn (gm_binders Φ) φ) ρ1 ρ1'
+    ; krb_bwd : forall ρ1, kenv Θ Ξ ρ (gmod_wk Φ φ) ρ1 -> exists ρ1', kenv Θ Ξ ρ' Φ ρ1' /\ kren (wk_qn (gm_binders Φ) φ) ρ1 ρ1'
+    ; krb_kind : forall sm x ch k, ukind Θ Ξ ρ (gu_mk nil (md_body sm (gmod_wk Φ φ))) (x :: ch) k <->
+        ukind Θ Ξ ρ' (gu_mk nil (md_body sm Φ)) (x :: ch) k }.
+
   Definition kren_body (Φ : gmod) : Prop :=
-    forall φ ρ ρ', kren φ ρ ρ' ->
-      (forall ρ1', kenv Θ Ξ ρ' Φ ρ1' -> exists ρ1, kenv Θ Ξ ρ (gmod_wk Φ φ) ρ1 /\ kren (wk_qn (gm_binders Φ) φ) ρ1 ρ1') /\
-      (forall ρ1, kenv Θ Ξ ρ (gmod_wk Φ φ) ρ1 -> exists ρ1', kenv Θ Ξ ρ' Φ ρ1' /\ kren (wk_qn (gm_binders Φ) φ) ρ1 ρ1') /\
-      (forall sm x ch k, ukind Θ Ξ ρ (gu_mk nil (md_body sm (gmod_wk Φ φ))) (x :: ch) k <->
-                     ukind Θ Ξ ρ' (gu_mk nil (md_body sm Φ)) (x :: ch) k).
+    forall φ ρ ρ', kren φ ρ ρ' -> kren_body_at Φ φ ρ ρ'.
 
   Definition kren_entry (E : gentry) : Prop :=
     match E with
@@ -275,13 +279,13 @@ Section Kinds.
     - (* an alias *)
       intros φ ρ ρ' Hφ ch kk; cbn [moddef_wk]; rewrite !ukind_alias_iff; kih.
     - (* the empty body *)
-      intros φ ρ ρ' Hφ; split; [| split ].
+      intros φ ρ ρ' Hφ; constructor.
       + intros ρ1' Hk; inversion Hk; subst; exists ρ; split; [ constructor | exact Hφ ].
       + intros ρ1 Hk; inversion Hk; subst; exists ρ'; split; [ constructor | exact Hφ ].
       + intros sm0 x ch kk; split; intros Hk; inversion Hk; subst; cbn in *; discriminate.
     - (* an entry *)
-      intros φ ρ ρ' Hφ; destruct (H _ _ _ Hφ) as (IH1 & IH2 & IH3); rename H0 into IHE.
-      split; [| split ].
+      intros φ ρ ρ' Hφ; destruct (H _ _ _ Hφ) as [IH1 IH2 IH3]; rename H0 into IHE.
+      constructor.
       + intros ρb Hk; inversion Hk; subst; cbn [gmod_wk gm_binders wk_qn].
         destruct (IH1 _ ltac:(eassumption)) as (ρa & Hk1 & Hr1).
         eexists; split; [ apply ke_ext; exact Hk1 |].
@@ -313,10 +317,10 @@ Section Kinds.
           eapply uk_mod; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
     - (* an open *)
-      intros φ ρ ρ' Hφ; rename H0 into IHΦ, H1 into IHH; destruct (IHΦ _ _ _ Hφ) as (IH1 & IH2 & IH3).
+      intros φ ρ ρ' Hφ; rename H0 into IHΦ, H1 into IHH; destruct (IHΦ _ _ _ Hφ) as [IH1 IH2 IH3].
       assert (Hcomp : forall n, wk_eq (wk_qn n (wk_qn (gm_binders Φ) φ)) (wk_qn (n + gm_binders Φ) φ))
         by (intros n x; apply (wk_qn_add n (gm_binders Φ) φ x)).
-      split; [| split ].
+      constructor.
       + intros ρ2' Hk; inversion Hk; subst; cbn [gmod_wk gm_binders].
         destruct (IH1 _ ltac:(eassumption)) as (ρa & Hk1 & Hr1).
         match goal with Hg : kgens _ _ _ _ _ ?gs |- _ =>
@@ -394,12 +398,16 @@ Section Kinds.
     forall σ ρ ρ', ksub σ ρ ρ' -> forall ch k,
       ukind Θ Ξ ρ (gu_mk nil (moddef_sub D σ)) ch k <-> ukind Θ Ξ ρ' (gu_mk nil D) ch k.
 
+  (** The same at a substituted environment, against the body
+      substituted. *)
+  Record ksub_body_at (Φ : gmod) (σ : sub) (ρ ρ' : env) : Prop := mk_ksub_body_at
+    { ksb_fwd : forall ρ1', kenv Θ Ξ ρ' Φ ρ1' -> exists ρ1, kenv Θ Ξ ρ (gmod_sub Φ σ) ρ1 /\ ksub (sb_qn (gm_binders Φ) σ) ρ1 ρ1'
+    ; ksb_bwd : forall ρ1, kenv Θ Ξ ρ (gmod_sub Φ σ) ρ1 -> exists ρ1', kenv Θ Ξ ρ' Φ ρ1' /\ ksub (sb_qn (gm_binders Φ) σ) ρ1 ρ1'
+    ; ksb_kind : forall sm x ch k, ukind Θ Ξ ρ (gu_mk nil (md_body sm (gmod_sub Φ σ))) (x :: ch) k <->
+        ukind Θ Ξ ρ' (gu_mk nil (md_body sm Φ)) (x :: ch) k }.
+
   Definition ksub_body (Φ : gmod) : Prop :=
-    forall σ ρ ρ', ksub σ ρ ρ' ->
-      (forall ρ1', kenv Θ Ξ ρ' Φ ρ1' -> exists ρ1, kenv Θ Ξ ρ (gmod_sub Φ σ) ρ1 /\ ksub (sb_qn (gm_binders Φ) σ) ρ1 ρ1') /\
-      (forall ρ1, kenv Θ Ξ ρ (gmod_sub Φ σ) ρ1 -> exists ρ1', kenv Θ Ξ ρ' Φ ρ1' /\ ksub (sb_qn (gm_binders Φ) σ) ρ1 ρ1') /\
-      (forall sm x ch k, ukind Θ Ξ ρ (gu_mk nil (md_body sm (gmod_sub Φ σ))) (x :: ch) k <->
-                     ukind Θ Ξ ρ' (gu_mk nil (md_body sm Φ)) (x :: ch) k).
+    forall σ ρ ρ', ksub σ ρ ρ' -> ksub_body_at Φ σ ρ ρ'.
 
   Definition ksub_entry (E : gentry) : Prop :=
     match E with
@@ -505,13 +513,13 @@ Section Kinds.
     - (* an alias *)
       intros σ ρ ρ' Hσ ch kk; cbn [moddef_sub]; rewrite !ukind_alias_iff; ksih.
     - (* the empty body *)
-      intros σ ρ ρ' Hσ; split; [| split ].
+      intros σ ρ ρ' Hσ; constructor.
       + intros ρ1' Hk; inversion Hk; subst; exists ρ; split; [ constructor | exact Hσ ].
       + intros ρ1 Hk; inversion Hk; subst; exists ρ'; split; [ constructor | exact Hσ ].
       + intros sm0 x ch kk; split; intros Hk; inversion Hk; subst; cbn in *; discriminate.
     - (* an entry *)
-      intros σ ρ ρ' Hσ; destruct (H _ _ _ Hσ) as (IH1 & IH2 & IH3); rename H0 into IHE.
-      split; [| split ].
+      intros σ ρ ρ' Hσ; destruct (H _ _ _ Hσ) as [IH1 IH2 IH3]; rename H0 into IHE.
+      constructor.
       + intros ρb Hk; inversion Hk; subst; cbn [gmod_sub gm_binders sb_qn].
         destruct (IH1 _ ltac:(eassumption)) as (ρa & Hk1 & Hr1).
         eexists; split; [ apply ke_ext; exact Hk1 |].
@@ -543,10 +551,10 @@ Section Kinds.
           eapply uk_mod; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
     - (* an open *)
-      intros σ ρ ρ' Hσ; rename H0 into IHΦ, H1 into IHH; destruct (IHΦ _ _ _ Hσ) as (IH1 & IH2 & IH3).
+      intros σ ρ ρ' Hσ; rename H0 into IHΦ, H1 into IHH; destruct (IHΦ _ _ _ Hσ) as [IH1 IH2 IH3].
       assert (Hcomp : forall n, sb_eq (sb_qn n (sb_qn (gm_binders Φ) σ)) (sb_qn (n + gm_binders Φ) σ))
         by (intros n x; rewrite sb_qn_plus; reflexivity).
-      split; [| split ].
+      constructor.
       + intros ρ2' Hk; inversion Hk; subst; cbn [gmod_sub gm_binders].
         destruct (IH1 _ ltac:(eassumption)) as (ρa & Hk1 & Hr1).
         match goal with Hg : kgens _ _ _ _ _ ?gs |- _ =>

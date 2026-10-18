@@ -74,15 +74,14 @@ Lemma glu_rel_exp_of_level : forall {Γ Sb M},
     Γ ⊩ M : Level@n.
 Proof.
   intros * ? Hbody.
-  eexists; split; mauto 3.
-  exists 0.
+  eapply mk_glu_rel_exp with (gre_lvl := 0); [ mauto 3 |].
   intros.
   assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
   edestruct Hbody as [? [? []]]; mauto 3.
   econstructor; mauto 3.
   - glu_univ_elem_econstructor; mauto 3; reflexivity.
-  - simpl; split; [| split ]; [ mauto 3 | assumption | assumption ].
+  - simpl; econstructor; [ mauto 3 | assumption | assumption ].
 Qed.
 
 Lemma glu_rel_exp_clean_inversion_level : forall {Γ Sb M},
@@ -111,7 +110,7 @@ Proof.
   simplify_evals.
   match_by_head1 glu_univ_elem invert_glu_univ_elem.
   apply_predicate_equivalence.
-  simpl in *; destruct_conjs.
+  simpl in *; destruct_conjs; destruct_glu_records.
   eexists; split; [| split ]; eassumption.
 Qed.
 
@@ -256,8 +255,7 @@ Proof.
   intros * HM.
   assert (⊩ Γ) as [Sb HSb] by mauto 3.
   pose proof (glu_rel_exp_succl HM) as HSM.
-  eexists; split; [ eassumption |].
-  exists 0.
+  eapply mk_glu_rel_exp with (gre_lvl := 0); [ eassumption |].
   intros Δ σ ρ Hσ.
   assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
@@ -272,14 +270,14 @@ Proof.
     | apply glu_univ_elem_core_suniv'; [ exact Hper' | exact I | reflexivity | reflexivity ]
     |].
   simplify_subs; cbn [exp_sub] in *.
-  repeat split.
+  econstructor.
   - eapply wf_univ; eassumption.
-  - exists (succl M[σ]), n; split; [ exact Hglu' |].
+  - apply (mk_suniv_glu_typ _ _ _ _ (succl M[σ]) n); [ exact Hglu' |].
     eapply wf_exp_eq_univ_cong_large_tm; [ assumption | mauto 3 | mauto 3 ].
   - rewrite dlvl_real_suc.
-    do 2 eexists; split;
+    glu_witness2;
       [ apply glu_univ_elem_core_suniv'; [ exact Hper | cbn; ord | reflexivity | reflexivity ] |].
-    exists M[σ], n; split; [ exact Hglu |].
+    apply (mk_suniv_glu_typ _ _ _ _ M[σ] n); [ exact Hglu |].
     eapply wf_exp_eq_univ_cong_large_tm; [ assumption | eassumption | mauto 3 ].
   - intros Δ' φ W Hφ Hr.
     assert (⊢ Δ') by (eapply kripke_dom; eassumption).
@@ -332,9 +330,8 @@ Proof.
   inversion Ha0; subst.
   invert_glu_univ_elem HPEl.
   apply_predicate_equivalence.
-  cbn [suniv_glu_exp_pred'] in Hglu.
-  destruct Hglu as [HAσ [_ [Hty Hrb]]].
-  destruct Hty as [Pm [Elm [HPm HP]]].
+  destruct Hglu as [HAσ _ Hty Hrb].
+  destruct Hty as [Pm Elm HPm HP].
   match goal with Hl : ⟦ T ⟧ ρ ↘ ?l |- _ => exists l; split; [ exact Hl |] end.
   split; [ assumption |].
   split; [ exact HAσ |].
@@ -362,8 +359,7 @@ Lemma glu_rel_exp_of_suniv_tm : forall {Γ Sb T A},
     Γ ⊩ A : Type⟨T⟩.
 Proof.
   intros * HΓ HT Hbody.
-  eexists; split; [ eassumption |].
-  exists 0.
+  eapply mk_glu_rel_exp with (gre_lvl := 0); [ eassumption |].
   intros Δ σ ρ Hσ.
   assert (Δ ⊢ˢ σ : Γ) by mauto 3.
   saturate_sub.
@@ -377,12 +373,12 @@ Proof.
     | eassumption
     | apply glu_univ_elem_core_suniv'; [ exact Hper | exact I | reflexivity | reflexivity ]
     |].
-  cbn [exp_sub suniv_glu_exp_pred'].
-  repeat split.
+  cbn [exp_sub].
+  econstructor.
   - exact HAσ.
-  - exists T[σ], n; split; [ exact Hglu |].
+  - apply (mk_suniv_glu_typ _ _ _ _ T[σ] n); [ exact Hglu |].
     eapply wf_exp_eq_univ_cong_large_tm; [ assumption | eassumption | mauto 3 ].
-  - exists P, El; split; [ exact HPEl | exact (HaP _ _ HPEl) ].
+  - exact (mk_glu_typ_at _ _ _ _ P El HPEl (HaP _ _ HPEl)).
   - exact Hrb.
 Qed.
 
@@ -412,9 +408,8 @@ Proof.
   functional_eval_rewrite_clear.
   invert_glu_univ_elem HPEl.
   apply_predicate_equivalence.
-  cbn [suniv_glu_exp_pred'] in Hglu.
-  destruct Hglu as [HAσ [_ [Hty Hrb]]].
-  destruct Hty as [Pm [Elm [HPm HP]]].
+  destruct Hglu as [HAσ _ Hty Hrb].
+  destruct Hty as [Pm Elm HPm HP].
   exists l; split; [ assumption | split; [ assumption | split; [ assumption |] ] ].
   split; [ exact HAσ |].
   exists m; split; [ assumption | split; [| split ] ].

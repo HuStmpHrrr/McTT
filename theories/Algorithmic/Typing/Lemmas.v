@@ -332,14 +332,17 @@ Qed.
 (** What a checked body is: the body, read in an extension [Ψ] of [Γ0], is
     its expansion, which extends [Ψ], and the targets of its opens are
     well-formed modules where they stand. *)
+Record abody_ok (Γ0 Ψ Γ : ctx) (Φ Φx : gmod) : Prop := mk_abody_ok
+  { abo_xp : body_xp gc_deps gc_stack Γ Φ Φx
+  ; abo_ext : gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ body_ctx Φx ++ Ψ ≈ body_ctx Φx ++ Ψ
+  ; abo_opens : forall k Ψo H, List.nth_error (body_opens Φ Φx) k = Some (Ψo, H) -> gc_deps ⍮ gc_stack ⍮ Ψo ++ Γ ⊢ᵐ H ≈ H }.
+
 Definition alg_body_sound (Γ : ctx) (Φ Φx : gmod) : Prop :=
-  forall Γ0 Ψ, Γ = Ψ ++ Γ0 -> ⊢ Γ0 -> gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ Ψ ≈ Ψ ->
-    body_xp gc_deps gc_stack Γ Φ Φx /\ gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ body_ctx Φx ++ Ψ ≈ body_ctx Φx ++ Ψ /\
-    (forall k Ψo H, List.nth_error (body_opens Φ Φx) k = Some (Ψo, H) -> gc_deps ⍮ gc_stack ⍮ Ψo ++ Γ ⊢ᵐ H ≈ H).
+  forall Γ0 Ψ, Γ = Ψ ++ Γ0 -> ⊢ Γ0 -> gc_deps ⍮ gc_stack ⍮ Γ0 ⊢ˣ Ψ ≈ Ψ -> abody_ok Γ0 Ψ Γ Φ Φx.
 
 Lemma abody_nil_sound : forall Γ, alg_body_sound Γ gm_nil gm_nil.
 Proof.
-  intros Γ Γ0 Ψ -> HΓ0 HΨ; split; [ constructor | split; [ exact HΨ |] ].
+  intros Γ Γ0 Ψ -> HΓ0 HΨ; constructor; [ constructor | exact HΨ |].
   intros [| k] * Hk; discriminate.
 Qed.
 
@@ -350,10 +353,10 @@ Lemma abody_def_sound : forall Γ Φ Φx x b pv A M i,
     alg_body_sound Γ (gm_ext Φ x (ge_def b pv A (Some M))) (gm_ext Φx x (ge_def b pv A (Some M))).
 Proof.
   intros * IH HA HM Γ0 Ψ -> HΓ0 HΨ.
-  destruct (IH _ _ eq_refl HΓ0 HΨ) as (Hbx & HX & Ho).
+  destruct (IH _ _ eq_refl HΓ0 HΨ) as [Hbx HX Ho].
   pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
   specialize (HA HC); specialize (HM HC); rewrite List.app_assoc in HA, HM.
-  split; [ constructor; exact Hbx | split; [| exact Ho ] ].
+  constructor; [ constructor; exact Hbx | | exact Ho ].
   cbn [body_ctx List.app].
   eapply wf_ext_eq_def; [ exact HX | exact HA | apply wf_exp_eq_refl; exact HA | exact HM | apply wf_exp_eq_refl; exact HM
                         | exact HA | exact HM ].
@@ -365,10 +368,10 @@ Lemma abody_mod_sound : forall Γ Φ Φx x pm U,
     alg_body_sound Γ (gm_ext Φ x (ge_mod pm U)) (gm_ext Φx x (ge_mod pm U)).
 Proof.
   intros * IH HU Γ0 Ψ -> HΓ0 HΨ.
-  destruct (IH _ _ eq_refl HΓ0 HΨ) as (Hbx & HX & Ho).
+  destruct (IH _ _ eq_refl HΓ0 HΨ) as [Hbx HX Ho].
   pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
   specialize (HU HC); rewrite List.app_assoc in HU.
-  split; [ constructor; exact Hbx | split; [| exact Ho ] ].
+  constructor; [ constructor; exact Hbx | | exact Ho ].
   cbn [body_ctx List.app]; apply wf_ext_eq_mod; [ exact HX | exact HU | exact HU ].
 Qed.
 
@@ -382,11 +385,10 @@ Lemma abody_open_sound : forall Γ Φ Φx H R Rm its gs,
     alg_body_sound Γ (gm_open Φ H its) (gens_append Φx 0 gs).
 Proof.
   intros * IH HH HR HRm Hg Hok Γ0 Ψ -> HΓ0 HΨ.
-  destruct (IH _ _ eq_refl HΓ0 HΨ) as (Hbx & HX & Ho).
+  destruct (IH _ _ eq_refl HΓ0 HΨ) as [Hbx HX Ho].
   pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
   specialize (HH HC).
-  split; [ econstructor; eassumption |].
-  split; [ exact (gens_ext_wf _ _ _ _ _ _ Hg HH HX) |].
+  constructor; [ econstructor; eassumption | exact (gens_ext_wf _ _ _ _ _ _ Hg HH HX) |].
   cbn [body_opens]; rewrite <- (items_gen_length _ _ _ _ _ _ _ Hg), gm_dropn_gens_append.
   intros [| k] * Hk; cbn in Hk; [ injection Hk as <- <-; exact HH | exact (Ho _ _ _ Hk) ].
 Qed.
@@ -399,7 +401,7 @@ Lemma aunit_body_sound : forall Γ Δ Φ Φx,
     ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ gu_open Δ Φ ≈ gu_open Δ Φ.
 Proof.
   intros * HΔ Ht HB Hs Hsx Hn HΓ.
-  destruct (HB _ _ eq_refl HΓ (HΔ HΓ)) as (Hbx & HX & Ho).
+  destruct (HB _ _ eq_refl HΓ (HΔ HΓ)) as [Hbx HX Ho].
   pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
   exact (unit_eq_of_full _ _ _ _ (unit_full_body _ _ _ _ _ _ Hbx HC Ho Ht Hs Hsx Hn)).
 Qed.
@@ -635,7 +637,7 @@ Lemma alg_body_ctx : forall {Γ Φ Φx}, ⊢ Γ -> Γ ⊢aᵇ Φ ⇝ Φx -> ⊢ 
 Proof.
   intros * HΓ HB.
   destruct (proj1 (proj2 (proj2 (proj2 (proj2 alg_type_sound)))) _ _ _ HB Γ nil eq_refl HΓ
-              ltac:(apply wf_ext_eq_nil; exact HΓ)) as (_ & HX & _).
+              ltac:(apply wf_ext_eq_nil; exact HΓ)) as [_ HX _].
   pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite List.app_nil_r in HC; exact HC.
 Qed.
 
@@ -883,7 +885,7 @@ Lemma alg_type_check_typ_implies_alg_type_infer_typ : forall {Γ A i},
 Proof.
   intros * ? Hcheck.
   inversion Hcheck as [? A' ? ? Hinfer Hsub]; subst.
-  inversion Hsub as [? ? ? A'' ? Hnbe1 Hnbe2 Hnfsub]; subst.
+  inversion Hsub as [A'' ? Hnbe1 Hnbe2 Hnfsub]; subst.
   replace A' with A'' in * by (symmetry; mauto 3).
   inversion Hnbe2; subst.
   dir_inversion_by_head eval_exp; subst.
@@ -904,7 +906,7 @@ Proof.
   intros * ? ? Hcheck.
   assert (Γ ⊢ A : Typeω@i /\ Γ ▹ A ⊢ B : Typeω@i) as [] by mauto 3.
   inversion Hcheck as [? A' ? ? Hinfer Hsub]; subst.
-  inversion Hsub as [? ? ? A'' C Hnbe1 Hnbe2 Hnfsub]; subst.
+  inversion Hsub as [A'' C Hnbe1 Hnbe2 Hnfsub]; subst.
   replace A' with A'' in * by (symmetry; mauto 3).
   inversion Hnbe2; subst.
   dir_inversion_by_head eval_exp; subst.
@@ -1131,7 +1133,7 @@ Lemma alg_type_check_suniv_tm_implies_alg_type_infer_univ : forall {Γ A t},
 Proof.
   intros * ? Hcheck.
   inversion Hcheck as [? A' ? ? Hinfer Hsub]; subst.
-  inversion Hsub as [? ? ? A'' B' Hnbe1 Hnbe2 Hnfsub]; subst.
+  inversion Hsub as [A'' B' Hnbe1 Hnbe2 Hnfsub]; subst.
   replace A' with A'' in * by (symmetry; mauto 3).
   pose proof Hnbe2 as Hn.
   inversion Hn; subst.
@@ -1152,7 +1154,7 @@ Lemma alg_type_check_level_infer : forall {Γ M n},
 Proof.
   intros * ? Hcheck.
   inversion Hcheck as [? A' ? ? Hinfer Hsub]; subst.
-  inversion Hsub as [? ? ? A'' ? Hnbe1 Hnbe2 Hnfsub]; subst.
+  inversion Hsub as [A'' ? Hnbe1 Hnbe2 Hnfsub]; subst.
   replace A' with A'' in * by (symmetry; mauto 3).
   inversion Hnbe2; subst.
   dir_inversion_by_head eval_exp; subst.
@@ -1938,7 +1940,7 @@ Proof.
   intros * HA HT HAT.
   pose proof (alg_type_check_complete HA HAT) as Hcheck.
   inversion Hcheck as [? A' ? ? Hinfer Hsub]; subst.
-  inversion Hsub as [? ? ? A'' B' Hnbe1 Hnbe2 Hnfsub]; subst.
+  inversion Hsub as [A'' B' Hnbe1 Hnbe2 Hnfsub]; subst.
   replace A' with A'' in * by (symmetry; mauto 3).
   destruct (nbe_ty_univ_term HT Hnbe2) as [u ->].
   destruct (asnf_univ_inv _ _ Hnfsub) as (v & -> & Hle).

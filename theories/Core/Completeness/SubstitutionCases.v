@@ -206,7 +206,7 @@ Proof.
   pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
   pose proof (rel_sub_of_wk (rel_wk_under_ctx_intro HΓA HΓ (rel_wk_shift HΓ HΓA)))
     as HWk.
-  destruct HM as [env_relΓ2 [HΓ2 [j HMgen]]].
+  destruct HM as [env_relΓ2 HΓ2 j HMgen].
   (** [(ρ ↦ c)↯] is [ρ] up to conversion, so the two substituted environments
     that [rel_exp_under_ctx] asks to be named are the tails themselves.  This makes
     the inner pair of both chains a statement about [ρ] and [ρ'] rather than about
@@ -238,7 +238,7 @@ Lemma rel_wk_under_ctx_q : forall {Γ ψ Δ A} {i : nat},
     Γ ▹ A[ψ]ʷ ⊨ʷ (wk_q ψ) : Δ ▹ A.
 Proof.
   intros * Hψj HA.
-  pose proof Hψj as [env_relΓ [HΓ [env_relΔ [HΔ Hψ]]]].
+  pose proof Hψj as [env_relΓ HΓ env_relΔ HΔ Hψ].
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΔ' [HΔ' HAgen]].
   handle_per_ctx_env_irrel.
   (** The commutation obligation of [A] along [ι ψ].  It is used twice, to build
@@ -304,10 +304,10 @@ Lemma rel_sub_under_ctx_extend : forall {Γ Δ σ σ' A} {i : nat} {M M'},
     Γ ⊨ˢ σ,,M ≈ σ',,M' : Δ ▹ A.
 Proof.
   intros * Hσj HA HM.
-  pose proof Hσj as [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]].
+  pose proof Hσj as [env_relΓ HΓ env_relΔ HΔ Hσ].
   pose proof (per_ctx_env_of_typ HΔ HA) as HΔA.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΔ' [HΔ' HAgen]].
-  destruct HM as [env_relΓ2 [HΓ2 [j HMgen]]].
+  destruct HM as [env_relΓ2 HΓ2 j HMgen].
   handle_per_ctx_env_irrel.
   eexists_rel_sub.
   intros Γ' env_rel' HΓ' φ Hφ ρ ρ' Hρ.
@@ -368,12 +368,12 @@ Lemma rel_sub_under_ctx_extend_sub : forall {Γ Δ σ σ' T M M'},
     Γ ⊨ˢ σ,,M[σ] ≈ σ',,M'[σ'] : Δ ▹ T.
 Proof.
   intros * Hσj HM.
-  pose proof Hσj as [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]].
+  pose proof Hσj as [env_relΓ HΓ env_relΔ HΔ Hσ].
   pose proof (presup_rel_exp_under_ctx HM) as [i HT].
   pose proof (per_ctx_env_of_typ HΔ HT) as HΔT.
   pose proof (rel_exp_under_ctx_refl_left HM) as HMrefl.
-  destruct HM as [env_relΔ2 [HΔ2 [j HMgen]]].
-  destruct HMrefl as [env_relΔ3 [HΔ3 [j' HMrgen]]].
+  destruct HM as [env_relΔ2 HΔ2 j HMgen].
+  destruct HMrefl as [env_relΔ3 HΔ3 j' HMrgen].
   handle_per_ctx_env_irrel.
   eexists_rel_sub.
   intros Γ' env_rel' HΓ' φ Hφ ρ ρ' Hρ.
@@ -461,7 +461,7 @@ Lemma rel_sub_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat},
     Γ ▹ A[σ] ⊨ˢ q σ ≈ q σ' : Δ ▹ A.
 Proof.
   intros * Hσj HA.
-  pose proof Hσj as [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]].
+  pose proof Hσj as [env_relΓ HΓ env_relΔ HΔ Hσ].
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΔ' [HΔ' HAgen]].
   (** The simple form of the hypothesis, at [σ ≈ σ].  The first of the three type
     instantiations below runs at a pair of [σ]-evaluated environments, which this
@@ -478,7 +478,7 @@ Proof.
   pose proof (rel_wk_shift HΓ HΓA) as Hshift.
   pose proof (rel_wk_under_ctx_intro HΓA HΓ Hshift) as Hshiftj.
   pose proof (rel_sub_under_ctx_wk Hσj Hshiftj) as Hσwkj.
-  pose proof Hσwkj as [env_relΓA [HΓA' [env_relΔ3 [HΔ3 Hσwk]]]].
+  pose proof Hσwkj as [env_relΓA HΓA' env_relΔ3 HΔ3 Hσwk].
   handle_per_ctx_env_irrel.
   eexists_rel_sub.
   intros Γ' env_rel' HΓ' ψ Hψ ρ ρ' Hρ.
@@ -571,7 +571,7 @@ Lemma rel_sub_under_ctx_q_at : forall {Γ Δ σ σ' A} {i : nat} {env_relΓ env_
 Proof.
   intros * HΓ HΔA Hσj HA * Hpair Hev Hev'.
   pose proof Hpair as [Hρ Hhead].
-  pose proof Hσj as [env_relΓ2 [HΓ2 [env_relΔ [HΔ Hσ]]]].
+  pose proof Hσj as [env_relΓ2 HΓ2 env_relΔ HΔ Hσ].
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΔ2 [HΔ2 HAgen]].
   pose proof (rel_exp_of_typ_inversion_simple HA) as [env_relΔ3 [HΔ3 HAsimple]].
   pose proof (rel_sub_under_ctx_simple (rel_sub_under_ctx_refl_left Hσj))
@@ -773,7 +773,7 @@ Proof.
   intros * HΓ Hσj HA HM * Hpair Hev Hev'.
   pose proof (per_ctx_env_of_typ_sub HΓ Hσj HA) as HΓA.
   pose proof (rel_sub_under_ctx_q Hσj HA) as Hqj.
-  pose proof HM as [env_relΔA [HΔA [k HMgen]]].
+  pose proof HM as [env_relΔA HΔA k HMgen].
   pose proof (rel_exp_under_ctx_simple HM) as [env_relΔA2 [HΔA2 [k1 HMmid]]].
   pose proof (rel_exp_under_ctx_simple (rel_exp_under_ctx_refl_left HM))
     as [env_relΔA3 [HΔA3 [k2 HMl]]].
@@ -912,7 +912,7 @@ Proof.
   (** The argument, and the two pairs of values of its type: the outer one is what
       an extended context PER is built at, the inner one what the codomain is read
       at. *)
-  pose proof HN as [? [? [j HNgen]]].
+  pose proof HN as [? ? j HNgen].
   destruct (HNgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RN [HNtyp HNexp]].
   destruct HNtyp as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
   destruct HNexp as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain].

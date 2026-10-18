@@ -78,8 +78,8 @@ Section Weaken.
 
   Lemma glu_rel_exp_nil_weaken : forall Γ N T, ⊩ Γ -> ⋅ ⊩ N : T -> Γ ⊩ N : T.
   Proof.
-    intros * [SbΓ HΓ] [Sb0 [H0 [i Hi]]].
-    exists SbΓ; split; [ exact HΓ |]; exists i; intros Δ σ ρ Hσ.
+    intros * [SbΓ HΓ] [Sb0 H0 i Hi].
+    eapply mk_glu_rel_exp with (gre_lvl := i); [ exact HΓ |]; intros Δ σ ρ Hσ.
     apply Hi.
     inversion H0 as [Sb' Heq Hg | | |]; subst.
     apply (Heq Δ σ ρ); cbn.
@@ -93,7 +93,7 @@ Section Weaken.
     assert (HΓ : exists TSb, EG Γ ∈ glu_ctx_env ↘ TSb) by (inversion HS; subst; eexists; eassumption).
     destruct HΓ as [TSb HΓ].
     destruct (glu_ctx_env_cons_clean_inversion HΓ HS) as (i & _ & HAs & _).
-    exists i, TSb; split; [ exact HΓ |]; exists (S i); intros Δ σ ρ Hσ.
+    exists i; eapply mk_glu_rel_exp with (gre_lvl := S i); [ exact HΓ |]; intros Δ σ ρ Hσ.
     exact (glu_rel_typ_with_sub_implies_glu_rel_exp_with_sub (glu_ctx_env_sub_escape HΓ _ _ _ Hσ) (HAs _ _ _ Hσ)).
   Qed.
 End Weaken.
@@ -108,7 +108,7 @@ Proof.
   intros * He HΓ Hl.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [Hdt Hc].
   pose proof (decl_typed_emb _ _ _ _ _ (gme_emb _ _ _ _ He) Hdt) as Hdt2.
-  pose proof Hdt as (_ & _ & _ & _ & Hsu & _).
+  pose proof (dt_sort_univ _ _ _ Hdt) as Hsu.
   pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (em_res _ _ _ _ (gme_emb _ _ _ _ He)) Hl) as Hl2.
   split; [ exact Hl2 | split; [ exact (gme_ind _ _ _ _ He _ _ Hl) | split; [ exact Hc | split; [ exact Hsu | exact Hdt2 ] ] ] ].
 Qed.
@@ -390,15 +390,15 @@ Section Cook.
   Proof.
     intros * HT HTs HGs HTw HGw HGty Hd Hrb Hev.
     pose proof (glu_rel_exp_to_wf_exp HT) as HTwf.
-    pose proof HT as [Sb0 [H0 _]].
+    pose proof HT as [Sb0 H0 _ _].
     pose proof (glu_rel_exp_clean_inversion2' H0 HT) as HTi.
-    exists Sb0; split; [ exact H0 |]; exists i; intros Δ σ ρ Hσ.
+    eapply mk_glu_rel_exp with (gre_lvl := i); [ exact H0 |]; intros Δ σ ρ Hσ.
     destruct (HTi _ _ _ Hσ) as [? ? ? ? Hevu HevT Hu HTσ].
     inversion Hevu; subst.
     match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
     apply_predicate_equivalence.
-    unfold univ_glu_exp_pred' in *; destruct_conjs.
-    rename H2 into Pa, H3 into Ela, H4 into HPa, H5 into HTPa.
+    destruct_glu_records; destruct_conjs.
+    rename gta_typ into Pa, gta_exp into Ela, gta_elem into HPa, gta_glu into HTPa.
     assert (HΔ : ⊢ Δ) by exact (wf_sub_dom _ _ _ _ _ (glu_ctx_env_sub_escape H0 _ _ _ Hσ)).
     destruct (typ_nil_rel _ _ ρ nil HTwf) as (a1 & a0 & Ha1 & Ha0 & Hrel).
     functional_eval_rewrite_clear.
@@ -559,7 +559,7 @@ Lemma glu_V_ind : forall Θ Ξ D Θ2 Ξ2,
     glu_VD Θ2 Ξ2 D /\ glu_F Θ2 Ξ2 (ind_uparams D).
 Proof.
   intros * Hdt HG He; split; [| exact I ]; unfold glu_VD.
-  pose proof Hdt as (Hass & _ & Hle & HΔ & Hsu & [i HS] & [n Hn] & HA & HPl & HP & HN & Hnd & Hsh).
+  pose proof Hdt as [Hass _ Hle HΔ Hsu [i HS] [n Hn] HA HPl HP HN Hnd Hsh].
   pose proof (glu_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ HΔ) HG He) as Hμ.
   destruct kglu_fundamental as (Kc & Ke & _).
   constructor.

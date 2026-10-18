@@ -30,9 +30,14 @@ Generalizable All Variables.
 
 (** *** Helper Bundles *)
 (** Related modulo evaluation. *)
-Inductive rel_mod_eval (R : relation domain -> domain -> domain -> Prop) A ρ A' ρ' R' : Prop :=
 (** Both evaluate, to values related by [R] at [R']. *)
-| mk_rel_mod_eval : forall a a', ⟦ A ⟧ ρ ↘ a -> ⟦ A' ⟧ ρ' ↘ a' -> DF a ≈ a' ∈ R ↘ R' -> rel_mod_eval R A ρ A' ρ' R'.
+#[warnings="-cannot-define-projection"]
+Record rel_mod_eval (R : relation domain -> domain -> domain -> Prop) A ρ A' ρ' R' : Prop := mk_rel_mod_eval
+  { a : domain
+  ; a' : domain
+  ; rme_eval : ⟦ A ⟧ ρ ↘ a
+  ; rme_eval' : ⟦ A' ⟧ ρ' ↘ a'
+  ; rme_rel : DF a ≈ a' ∈ R ↘ R' }.
 #[global] Arguments mk_rel_mod_eval {_ _ _ _ _ _}.
 Hint Constructors rel_mod_eval : mctt.
 (** [per_univ_elem_core] nests through [rel_mod_eval], so generating its
@@ -40,9 +45,14 @@ Hint Constructors rel_mod_eval : mctt.
 Scheme All for rel_mod_eval.
 
 (** Related modulo application. *)
-Inductive rel_mod_app f a f' a' (R : relation domain) : Prop :=
 (** Both applications evaluate, to values related by [R]. *)
-| mk_rel_mod_app : forall fa f'a', $| f & a |↘ fa -> $| f' & a' |↘ f'a' -> Dom fa ≈ f'a' ∈ R -> rel_mod_app f a f' a' R.
+#[warnings="-cannot-define-projection"]
+Record rel_mod_app f a f' a' (R : relation domain) : Prop := mk_rel_mod_app
+  { fa : domain
+  ; f'a' : domain
+  ; rma_app : $| f & a |↘ fa
+  ; rma_app' : $| f' & a' |↘ f'a'
+  ; rma_rel : Dom fa ≈ f'a' ∈ R }.
 #[global] Arguments mk_rel_mod_app {_ _ _ _ _}.
 Hint Constructors rel_mod_app : mctt.
 
@@ -81,20 +91,31 @@ Definition per_lvl : relation domain := fun m m' => Dom ⇓ Levelᵈ m ≈ ⇓ L
     universe is indexed by any level, so its levels are related by [per_lvl]
     alone.  Like [per_lvl] it has a [forall] head, so the shared scripts do
     not split it. *)
+#[warnings="-cannot-define-projection"]
+Record lvl_reads (n : nat) (m m' : domain) (s : nat) : Prop := mk_lvl_reads
+  { lr_lvl : lvl
+  ; lr_left : Rnf ⇓ Levelᵈ m in s ↘ nf_lvl_of lr_lvl
+  ; lr_right : Rnf ⇓ Levelᵈ m' in s ↘ nf_lvl_of lr_lvl
+  ; lr_bnd : lvl_bnd n lr_lvl }.
+
 Definition per_lvl_at (n : nat) : relation domain :=
-  fun m m' => forall s, exists L,
-      Rnf ⇓ Levelᵈ m in s ↘ nf_lvl_of L /\ Rnf ⇓ Levelᵈ m' in s ↘ nf_lvl_of L /\ lvl_bnd n L.
+  fun m m' => forall s, lvl_reads n m m' s.
 
 (** [l] is below [l'] when at every length their canonical forms are ordered
     by the decidable order on canonical levels.  It is the semantic
     counterpart of [maxl M M' ≈ M'], and the order the algorithmic subtyping
     of two small universes decides.  The order on realisers would be coarser:
     [max u 3] and [3] have the same realiser and are not comparable. *)
+#[warnings="-cannot-define-projection"]
+Record sublvl_reads (l l' : domain) (s : nat) : Prop := mk_sublvl_reads
+  { slr_left_lvl : lvl
+  ; slr_right_lvl : lvl
+  ; slr_left : Rnf ⇓ Levelᵈ l in s ↘ nf_lvl_of slr_left_lvl
+  ; slr_right : Rnf ⇓ Levelᵈ l' in s ↘ nf_lvl_of slr_right_lvl
+  ; slr_le : lvl_le slr_left_lvl slr_right_lvl }.
+
 Definition per_sublvl (l l' : domain) : Prop :=
-  forall s, exists L L',
-    Rnf ⇓ Levelᵈ l in s ↘ nf_lvl_of L /\
-    Rnf ⇓ Levelᵈ l' in s ↘ nf_lvl_of L' /\
-    lvl_le L L'.
+  forall s, sublvl_reads l l' s.
 
 (** Every pair of values is related at [⊤]: its elements are equal by η. *)
 Definition per_True : relation domain := fun _ _ => True.
@@ -164,6 +185,15 @@ Definition per_top_ps (T : list centry) (vs vs' : list domain) : Prop :=
 Definition shape_tr (dr : list domain -> exp -> relation domain) (ms ws : list domain) (Bs : list exp) : nat -> list domain -> relation domain :=
   fun k ys => dr (ms ++ ws ++ ys) (List.nth k Bs a_True).
 
+(** The terms [Ps] evaluate, in [ρ] and in [ρ'], to lists related by [R]. *)
+#[warnings="-cannot-define-projection"]
+Record exps_rel (Ps : list exp) (ρ ρ' : env) (R : list domain -> list domain -> Prop) : Prop := mk_exps_rel
+  { er_left : list domain
+  ; er_right : list domain
+  ; er_eval_left : eval_exps gc_deps gc_stack Ps ρ er_left
+  ; er_eval_right : eval_exps gc_deps gc_stack Ps ρ' er_right
+  ; er_rel : R er_left er_right }.
+
 (** Uniform parameters [ua] admissible beside [ups]: what the type
     evaluates from them is related, as elements, to what it evaluates from
     [ups].  A fresh variable of a non-uniform parameter's or an argument's
@@ -176,36 +206,35 @@ Definition shape_tr (dr : list domain -> exp -> relation domain) (ms ws : list d
     admissible.  The relations are elements of the type's universe, so the
     condition is one the elements can state: the types of the uniform
     parameters may be larger. *)
-Definition ind_adm (D : ind_decl) (ups : list domain)
+Record ind_adm (D : ind_decl) (ups : list domain)
     (nr : nat -> list domain -> relation domain)
     (ar : list domain -> String.string -> nat -> list domain -> relation domain)
     (dr : list domain -> exp -> relation domain)
-    (ua : list domain) : Prop :=
-  (forall k A vs vs' s, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
-     exists a a', eval_exp gc_deps gc_stack A (env_args nil (ups ++ vs)) a /\
-       eval_exp gc_deps gc_stack A (env_args nil (ua ++ vs')) a' /\ nr k vs (⇑! a s) (⇑! a' s)) /\
-  (forall ms ms' c gs k A vs vs' s,
-     tele_full nr (List.rev (ind_nparams D)) ms ms' -> ind_con D c = Some gs ->
-     List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
-     exists a a', eval_exp gc_deps gc_stack A (env_args nil (ups ++ ms ++ vs)) a /\
-       eval_exp gc_deps gc_stack A (env_args nil (ua ++ ms' ++ vs')) a' /\ ar ms c k vs (⇑! a s) (⇑! a' s)) /\
-  (forall ms ms' c gs gs1 t gs2 ws ws' ys ys',
-     tele_full nr (List.rev (ind_nparams D)) ms ms' ->
-     ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-     tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-     tele_full (shape_tr dr ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
-     exists bs bs', eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) bs /\
-       eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ua ++ ms' ++ ws' ++ ys')) bs' /\
-       tele_full nr (List.rev (ind_nparams D)) bs bs') /\
-  (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
-     tele_full nr (List.rev (ind_nparams D)) ms ms' ->
-     ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-     tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-     List.nth_error (ptyp_doms t) k = Some B ->
-     tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
-     exists a a', eval_exp gc_deps gc_stack B (env_args nil (ups ++ ms ++ ws ++ ys)) a /\
-       eval_exp gc_deps gc_stack B (env_args nil (ua ++ ms' ++ ws' ++ ys')) a' /\
-       (forall x x', dr (ms ++ ws ++ ys) B x x' -> per_top (d_dom a x) (d_dom a' x'))).
+    (ua : list domain) : Prop := mk_ind_adm
+  { iad_nparams : forall k A vs vs' s, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+      exists a a', eval_exp gc_deps gc_stack A (env_args nil (ups ++ vs)) a /\
+        eval_exp gc_deps gc_stack A (env_args nil (ua ++ vs')) a' /\ nr k vs (⇑! a s) (⇑! a' s)
+  ; iad_args : forall ms ms' c gs k A vs vs' s,
+      tele_full nr (List.rev (ind_nparams D)) ms ms' -> ind_con D c = Some gs ->
+      List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+      exists a a', eval_exp gc_deps gc_stack A (env_args nil (ups ++ ms ++ vs)) a /\
+        eval_exp gc_deps gc_stack A (env_args nil (ua ++ ms' ++ vs')) a' /\ ar ms c k vs (⇑! a s) (⇑! a' s)
+  ; iad_recs : forall ms ms' c gs gs1 t gs2 ws ws' ys ys',
+      tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+      ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+      tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+      tele_full (shape_tr dr ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
+      exps_rel (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (ua ++ ms' ++ ws' ++ ys'))
+        (tele_full nr (List.rev (ind_nparams D)))
+  ; iad_doms : forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
+      tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+      ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+      tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+      List.nth_error (ptyp_doms t) k = Some B ->
+      tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
+      exists a a', eval_exp gc_deps gc_stack B (env_args nil (ups ++ ms ++ ws ++ ys)) a /\
+        eval_exp gc_deps gc_stack B (env_args nil (ua ++ ms' ++ ws' ++ ys')) a' /\
+        (forall x x', dr (ms ++ ws ++ ys) B x x' -> per_top (d_dom a x) (d_dom a' x')) }.
 
 (** The elements of the inductive type [p] at the uniform parameters [ups]
     and the non-uniform ones [ns], of the left type: the relation of two
@@ -1032,8 +1061,13 @@ Combined Scheme per_dmod_mut_ind_all from
 Hint Constructors nextparam per_dmod per_gargs per_body : mctt.
 
 (** Two module expressions evaluate to related module values. *)
-Definition rel_mexp (H : modexp) (ρ : env) (H' : modexp) (ρ' : env) : Prop :=
-  exists h h', ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h /\ ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ' ↘ h' /\ per_dmod h h'.
+#[warnings="-cannot-define-projection"]
+Record rel_mexp (H : modexp) (ρ : env) (H' : modexp) (ρ' : env) : Prop := mk_rel_mexp
+  { rme_left : dmod
+  ; rme_right : dmod
+  ; rme_eval_left : ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ rme_left
+  ; rme_eval_right : ⟦ H' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ' ↘ rme_right
+  ; rme_rel : per_dmod rme_left rme_right }.
 
 (** A module value is related to the value of a module expression. *)
 Definition tie_mod (m : dmod) (H : modexp) (ρ : env) : Prop :=

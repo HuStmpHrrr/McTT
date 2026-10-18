@@ -70,13 +70,15 @@ Ltac functional_initial_env_rewrite_clear := repeat functional_initial_env_rewri
 
 (** NbE in [Θ ⍮ Ξ ⍮ Γ]: evaluate in the initial environment of [Γ], then read
     back.  Only [Γ] contributes variables; globals are resolved in [Θ ⍮ Ξ]. *)
-Inductive nbe (Θ : gdeps) (Ξ : gstack) : ctx -> exp -> typ -> nf -> Prop :=
-| nbe_run :
-  `( initial_env Θ Ξ Γ ρ ->
-     ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     Rnf ⇓ a m in Θ ⍮ Ξ ⍮ length Γ ↘ w ->
-     nbe Θ Ξ Γ M A w ).
+#[warnings="-cannot-define-projection"]
+Record nbe (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M : exp) (A : typ) (w : nf) : Prop := nbe_run
+  { ρ : env
+  ; a : domain
+  ; m : domain
+  ; nbe_init : initial_env Θ Ξ Γ ρ
+  ; nbe_eval_typ : ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a
+  ; nbe_eval : ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m
+  ; nbe_read : Rnf ⇓ a m in Θ ⍮ Ξ ⍮ length Γ ↘ w }.
 
 #[export]
 Hint Constructors nbe : mctt.
@@ -148,12 +150,13 @@ Qed.
 Hint Resolve functional_nbe_of_typ : mctt.
 
 
-Inductive nbe_ty (Θ : gdeps) (Ξ : gstack) : ctx -> typ -> nf -> Prop :=
-| nbe_ty_run :
-  `( initial_env Θ Ξ Γ ρ ->
-     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     Rtyp m in Θ ⍮ Ξ ⍮ length Γ ↘ W ->
-     nbe_ty Θ Ξ Γ M W ).
+#[warnings="-cannot-define-projection"]
+Record nbe_ty (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M : typ) (W : nf) : Prop := nbe_ty_run
+  { ρ : env
+  ; m : domain
+  ; nbt_init : initial_env Θ Ξ Γ ρ
+  ; nbt_eval : ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m
+  ; nbt_read : Rtyp m in Θ ⍮ Ξ ⍮ length Γ ↘ W }.
 
 #[export]
 Hint Constructors nbe_ty : mctt.

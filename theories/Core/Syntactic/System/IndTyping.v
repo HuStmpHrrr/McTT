@@ -24,7 +24,7 @@ Lemma decl_of_lookup : forall Θ Ξ Γ p D,
     ⊢ Θ ⍮ Ξ ⍮ Γ -> ind_lookup Θ Ξ p = Some D -> decl_typed Θ Ξ D /\ decl_closed D.
 Proof.
   intros * HΓ Hl; split.
-  - exact (proj1 (proj2 (gctx_rwf _ _ (ctx_wf_gctx _ _ _ HΓ))) _ _ Hl).
+  - exact (gv_decls _ _ _ _ _ _ (gctx_rwf _ _ (ctx_wf_gctx _ _ _ HΓ)) _ _ Hl).
   - exact (gctx_closed_ind _ _ _ _ (wf_gctx_closed _ _ _ HΓ) Hl).
 Qed.
 
@@ -162,26 +162,26 @@ Section Params.
   Context (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (HD : decl_typed Θ Ξ D) (Hc : decl_closed D).
 
   Lemma decl_uparams_closed : ctx_scoped 0 (ind_uparams D).
-  Proof. pose proof Hc as (_ & _ & Hs & _); rewrite params_split in Hs; apply ctx_scoped_app in Hs as [_ Hs]; exact Hs. Qed.
+  Proof. pose proof (dc_params _ Hc) as Hs; rewrite params_split in Hs; apply ctx_scoped_app in Hs as [_ Hs]; exact Hs. Qed.
 
   Lemma decl_uparams_ass : tele_ass (ind_uparams D).
   Proof. apply Forall_skipn', decl_closed_params, Hc. Qed.
 
   Lemma decl_uparams_mvc : ctx_mvc (ind_uparams D).
-  Proof. pose proof HD as (_ & (Hmv & _) & _); apply Forall_skipn'; exact Hmv. Qed.
+  Proof. pose proof (dmv_params _ (dt_mvc _ _ _ HD)) as Hmv; apply Forall_skipn'; exact Hmv. Qed.
 
   Lemma decl_nparams_mvc : ctx_mvc (ind_nparams D).
-  Proof. pose proof HD as (_ & (Hmv & _) & _); apply Forall_firstn'; exact Hmv. Qed.
+  Proof. pose proof (dmv_params _ (dt_mvc _ _ _ HD)) as Hmv; apply Forall_firstn'; exact Hmv. Qed.
 
   Lemma wf_params_app : forall Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊢ Θ ⍮ Ξ ⍮ ind_params D ++ Γ.
   Proof.
-    intros * HΓ; pose proof HD as (Hass & _ & _ & HΔ & _); pose proof Hc as (_ & _ & Hs & _).
+    intros * HΓ; pose proof (dt_ass _ _ _ HD) as Hass; pose proof (dt_params _ _ _ HD) as HΔ; pose proof (dc_params _ Hc) as Hs.
     apply wf_ctx_closed_app; assumption.
   Qed.
 
   Lemma wf_uparams_app : forall Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊢ Θ ⍮ Ξ ⍮ ind_uparams D ++ Γ.
   Proof.
-    intros * HΓ; pose proof HD as (_ & _ & _ & HΔ & _); rewrite params_split in HΔ.
+    intros * HΓ; pose proof (dt_params _ _ _ HD) as HΔ; rewrite params_split in HΔ.
     apply wf_ctx_closed_app; [ apply decl_uparams_ass | apply decl_uparams_closed | eapply ctx_app_wf_tail; exact HΔ | exact HΓ ].
   Qed.
 
@@ -239,8 +239,8 @@ Section Params.
       ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us : ind_uparams D ++ Γ ->
       exists n, Θ ⍮ Ξ ⍮ Γ ⊢ ind_sort_lvl (ind_sort D)[sb_of_list Id Us] : Level@n.
   Proof.
-    intros * HΓ Hσ; pose proof HD as (_ & _ & Hle & _ & HS & _ & [n Hn] & _); exists n.
-    pose proof Hc as (_ & _ & _ & HsS & _).
+    intros * HΓ Hσ; pose proof HD as [_ _ Hle _ HS _ [n Hn] _ _ _ _ _ _]; exists n.
+    pose proof (dc_sort _ Hc) as HsS.
     destruct (ind_sort_univ_sub (ind_sort D) (sb_of_list Id Us) HS) as [_ <-].
     assert (Hn' : Θ ⍮ Ξ ⍮ ind_uparams D ++ Γ ⊢ ind_sort_lvl (ind_sort D) : Level@n).
     { apply wf_exp_closed_app; [ apply decl_uparams_ass | apply decl_uparams_closed | | exact I | exact Hn | exact HΓ ].
@@ -253,7 +253,7 @@ Section Params.
       ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us : ind_uparams D ++ Γ ->
       Θ ⍮ Ξ ⍮ Γ ⊢ A : (ind_sort D)[sb_of_list Id Us] -> exists j, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@j.
   Proof.
-    intros * HΓ Hσ HA; pose proof HD as (_ & _ & _ & _ & HS & _).
+    intros * HΓ Hσ HA; pose proof (dt_sort_univ _ _ _ HD) as HS.
     destruct (sort_lvl_at _ _ HΓ Hσ) as [n Hn].
     destruct (ind_sort_univ_sub (ind_sort D) (sb_of_list Id Us) HS) as [HS' Hl].
     eapply sort_large; eassumption.
@@ -331,7 +331,7 @@ Lemma cargs_ctx_closed : forall p D c gs gs1 gs2,
     decl_closed D -> List.In (c, gs) (ind_cons D) -> gs = gs1 ++ gs2 ->
     ctx_scoped 0 (cargs_ctx p D gs1 ++ ind_params D).
 Proof.
-  intros * Hc Hin Heq; pose proof Hc as (_ & Hle & Hs & _ & HA & HPs & _).
+  intros * Hc Hin Heq; pose proof Hc as [_ Hle Hs _ HA HPs _].
   apply ctx_scoped_app; split; [| exact Hs ].
   rewrite Nat.add_0_r; change (List.length (ind_params D)) with (List.length (@nil bool) + ind_np D).
   apply (cargs_ctx_aux_scoped p D gs1 nil 0 Hle eq_refl); cbn.
@@ -710,7 +710,7 @@ Lemma rec_arg_inst : forall Θ Ξ Γ p D Us c gs gs1 t gs2 E,
           (ihs_sub D Us (List.length gs) (cargs_pat gs1) (List.length E)) t.
 Proof.
   intros * HD Hc Hl HΓ HUl Hσ Hin Heq HΨ.
-  pose proof HD as (Hass & (Hmv & Hmvs & Hmvc) & Hle & HΔ & HS & _).
+  pose proof HD as [Hass [Hmv Hmvs Hmvc] Hle HΔ HS _ _ _ _ _ _ _ _].
   set (pat := cargs_pat gs1) in *.
   assert (Hpat : List.length pat = List.length gs1) by apply length_cargs_pat.
   set (i := List.length pat) in *.
@@ -795,7 +795,7 @@ Lemma decl_shape_facts : forall Θ Ξ D c gs gs1 t gs2,
     shape_leaf_typed Θ Ξ D nil (cargs_strat gs1) t.
 Proof.
   intros * HD Hc Hin Heq.
-  pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & HPl & HP & _ & _ & Hsh).
+  pose proof HD as [_ _ _ _ _ _ _ _ HPl HP _ _ Hsh].
   split; [ exact (HPl _ _ _ _ _ Hin Heq) | split ].
   - intros Bs1' B Bs2 E; cbn [List.app].
     pose proof (proj2 (Hsh _ _ _ _ _ Hin Heq) _ _ _ E) as HB.
@@ -962,7 +962,7 @@ Qed.
 
 Lemma cargs_ctx_mvc : forall Θ Ξ p D c gs,
     decl_typed Θ Ξ D -> List.In (c, gs) (ind_cons D) -> ctx_mvc (cargs_ctx p D gs).
-Proof. intros * (_ & (_ & _ & Hmvc) & _) Hin; apply cargs_ctx_aux_mvc; eauto. Qed.
+Proof. intros * HD Hin; pose proof (dmv_cons _ (dt_mvc _ _ _ HD)) as Hmvc; apply cargs_ctx_aux_mvc; eauto. Qed.
 
 Lemma wf_bty_sub : forall Θ Ξ Γ p D Us A i c gs,
     decl_typed Θ Ξ D -> decl_closed D -> ind_lookup Θ Ξ p = Some D -> ⊢ Θ ⍮ Ξ ⍮ Γ ->

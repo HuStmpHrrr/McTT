@@ -120,9 +120,8 @@ Lemma realize_ind : forall p D ups ups' ns ns'
        ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
        tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
        tele_full (shape_tr dr ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
-       exists bs bs', eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) bs /\
-         eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups' ++ ms' ++ ws' ++ ys')) bs' /\
-         tele_full nr (List.rev (ind_nparams D)) bs bs') ->
+       exps_rel (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (ups' ++ ms' ++ ws' ++ ys'))
+         (tele_full nr (List.rev (ind_nparams D)))) ->
     tele_full nr (List.rev (ind_nparams D)) ns ns' ->
     Dom d_ind p (ups ++ ns) ≈ d_ind p (ups' ++ ns') ∈ per_top_typ /\
     (forall b b', ind_rel p D ups nr ar dr ns b b' -> Dom ⇓ (d_ind p (ups ++ ns)) b ≈ ⇓ (d_ind p (ups' ++ ns')) b' ∈ per_top).
@@ -250,7 +249,7 @@ Proof.
       destruct (ptyp_skip_self _ _ _ _ Hs) as [Hkd HPs].
       assert (Hyf : tele_full (shape_tr dr xs ws (ptyp_doms t0)) (ptyp_doms t0) ys ys')
         by (destruct Hy as [Hyl Hya]; split; [ lia | exact Hya ]).
-      destruct (Hcl xs xs' c _ gs1 t0 gs2 ws ws' ys ys' Hx Hc eq_refl Hw Hyf) as (bs0 & bs1 & E0 & E1 & Hbs).
+      destruct (Hcl xs xs' c _ gs1 t0 gs2 ws ws' ys ys' Hx Hc eq_refl Hw Hyf) as [bs0 bs1 E0 E1 Hbs].
       rewrite HPs in E0, E1; subst pre.
       pose proof (functional_eval_exps' _ _ _ _ Hb E0) as <-.
       destruct (IHr _ Hbs s) as (V & HV & HV').
@@ -405,7 +404,7 @@ Proof.
     (on_all_hyp: fun H => specialize (H s) as [? []]); (solve [try (try (eexists; split); econstructor); mauto]).
   (** An inductive type: [realize_ind], from the realisability of the
       types of its telescopes. *)
-  - unshelve epose proof (realize_ind p D ups ups' ns ns' nr ar dr H H0 H1 H3 _ _ _ (proj1 (proj2 (proj2 H13))) H15) as [Hrt _];
+  - unshelve epose proof (realize_ind p D ups ups' ns ns' nr ar dr H H0 H1 H3 _ _ _ (iad_recs _ _ _ _ _ _ H13) H15) as [Hrt _];
     [ intros k A vs vs' Hk Hp; destruct (H5 _ _ _ _ Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
     | intros ms ms' c0 gs k A vs vs' Hm Hc Hk Hp; destruct (H8 _ _ _ _ _ _ _ _ Hm Hc Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
     | intros ms ms' c0 gs gs1 t gs2 ws ws' k B ys ys' Hm Hc Heq Hw HB Hy;
@@ -413,7 +412,7 @@ Proof.
       exists a, a'; repeat split; eauto
     | exact Hrt ].
   - eapply ind_rel_neut_canon; eassumption.
-  - unshelve epose proof (realize_ind p D ups ups' ns ns' nr ar dr H H0 H1 H3 _ _ _ (proj1 (proj2 (proj2 H13))) H15) as [_ Hre];
+  - unshelve epose proof (realize_ind p D ups ups' ns ns' nr ar dr H H0 H1 H3 _ _ _ (iad_recs _ _ _ _ _ _ H13) H15) as [_ Hre];
     [ intros k A vs vs' Hk Hp; destruct (H5 _ _ _ _ Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
     | intros ms ms' c0 gs k A vs vs' Hm Hc Hk Hp; destruct (H8 _ _ _ _ _ _ _ _ Hm Hc Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
     | intros ms ms' c0 gs gs1 t gs2 ws ws' k B ys ys' Hm Hc Heq Hw HB Hy;
@@ -483,7 +482,7 @@ Proof.
     assert (Dom ρ ≈ ρ ∈ tail_rel) by solve_per.
     assert (Dom ρ' ≈ ρ' ∈ tail_rel) by solve_per.
     match goal with HU : forall ρ ρ', tail_rel ρ ρ' -> rel_mexp _ _ _ _ |- _ =>
-      destruct (HU _ _ Hρ) as (h & h' & Hh & Hh' & Hr) end.
+      destruct (HU _ _ Hρ) as [h h' Hh Hh' Hr] end.
     assert (T1 : tie_mod h (me_lit U) ρ)
       by (exists h; split; [ exact Hh | eapply per_dmod_trans; [ exact Hr | apply per_dmod_sym, Hr ] ]).
     assert (T2 : tie_mod h' (me_lit U') ρ')

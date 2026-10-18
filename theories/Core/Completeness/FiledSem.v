@@ -248,8 +248,8 @@ Proof.
       functional_eval_rewrite_clear.
       pose proof (functional_eval_apps _ _ _ _ Hu' Hv) as ->.
       assert (E1 : R1 <~> R) by (eapply per_univ_elem_left_irrel; [ exact HR1 | exact HR ]).
-      exists u, v; split; [ eapply eval_sel_global_apps; eassumption |].
-      split; [ eapply eval_sel_global_apps; eassumption | apply E1; exact Huu ].
+      exists u v; [ eapply eval_sel_global_apps; eassumption | eapply eval_sel_global_apps; eassumption
+                  | apply E1; exact Huu ].
     + exfalso; destruct (nextparam_global_lt _ _ _ Hpf') as (T1 & oT1 & Hm1 & Hlt).
       rewrite Hm in Hm1; injection Hm1 as <- <-; lia.
   - (* one more parameter missing *)
@@ -322,7 +322,7 @@ Lemma sargs_gargs : forall Γ T Ns RΓ, ⊨ T -> ⊨ Γ -> sargs Γ T Ns -> EF �
     forall ρ ρ', RΓ ρ ρ' -> exists ns ns', ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns /\ ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ' ↘ ns' /\
       per_gargs (rev T) nil nil ns ns'.
 Proof.
-  intros * HT HΓ (T1 & T2 & -> & Hlen & HTa2 & HTs2 & HNs) HR ρ ρ' Hρ.
+  intros * HT HΓ [T1 T2 -> Hlen HTa2 HTs2 HNs] HR ρ ρ' Hρ.
   pose proof (sem_ctx_app_r _ _ HT) as HT2.
   destruct (closed_inst_env _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HR _ _ Hρ)
     as (ns & ns' & RC & RCΓ & Hns & Hns' & HRC & _ & _ & Hbase & Hl1 & Hl2).
@@ -340,9 +340,9 @@ Qed.
 Lemma valid_exp_eval_iff : forall Γ A M M', Γ ⊨ M : A ->
     (forall σ ρ r, ⟦ M[σ] ⟧ ρ ↘ r <-> ⟦ M'[σ] ⟧ ρ ↘ r) -> Γ ⊨ M' : A.
 Proof.
-  intros * [R [HR [i HM]]] Hiff.
+  intros * [R HR i HM] Hiff.
   assert (Hid : forall ρ r, ⟦ M ⟧ ρ ↘ r <-> ⟦ M' ⟧ ρ ↘ r) by (intros ρ r; rewrite <- (exp_sub_id M), <- (exp_sub_id M'); apply Hiff).
-  exists R, HR, i; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  refine (mk_rel_exp_under_ctx _ _ _ _ R HR i _); intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HM _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [Rel [HT [m1 m2 m3 m4 H1 H2 H3 H4 Hc]]].
   exists Rel; split; [ exact HT |].
   apply (mk_rel_exp m1 m2 m3 m4); [ apply Hiff | apply Hid | apply Hid | apply Hiff | ]; assumption.
@@ -385,7 +385,7 @@ Section Filed.
 Lemma eval_apps_filed : forall p T Φ Ns ρ ns, gc_loc Θm Ξm p = Some (T, Φ) ->
     ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns -> ⟦ me_apps (qname_mod p) Ns ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ dm_global p ns.
 Proof.
-  intros * Hl Hns; destruct (Hgf _ _ _ Hl) as (_ & Hp & _).
+  intros * Hl Hns; destruct (Hgf _ _ _ Hl) as [_ Hp _ _ _ _ _ _ _].
   exact (eval_apps_global _ _ _ nil _ _ (Hp ρ) Hns).
 Qed.
 
@@ -393,7 +393,7 @@ Lemma filed_gval : forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) ->
     forall args args', List.length args <= List.length T -> per_gargs (rev T) nil nil args args' ->
     per_dmod (dm_global p args) (dm_global p args').
 Proof.
-  intros * Hl * Hle Hg; destruct (Hgf _ _ _ Hl) as ((Φ' & Hm) & _ & HT & HTa & _).
+  intros * Hl * Hle Hg; destruct (Hgf _ _ _ Hl) as [(Φ' & Hm) _ HT HTa _ _ _ _ _].
   exact (gval_rel _ _ _ Hm HTa HT _ _ _ eq_refl Hle Hg).
 Qed.
 
@@ -405,15 +405,15 @@ Lemma filed_lacks : forall Γ p T Φ L A T2 Ns, gc_loc Θm Ξm p = Some (T, Φ) 
     me_lacks Γ (me_apps (qname_mod p) Ns) A[sb_of_list Id Ns].
 Proof.
   intros * Hl HΓ -> Hlen HNs R HR ρ Hρ.
-  destruct (Hgf _ _ _ Hl) as ((oD & Hm) & Hp & HT & HTa & HTs & _).
+  destruct (Hgf _ _ _ Hl) as [(oD & Hm) Hp HT HTa HTs _ _ _ _].
   pose proof (sem_ctx_app_r _ _ HT) as HAT2.
   destruct (sem_ctx_ass_inv HAT2) as [i HA].
   pose proof (sem_ctx_tail HAT2) as HT2.
   destruct (tele_ass_app_inv _ _ HTa) as [_ HTa2]; inversion HTa2 as [| ? ? _ HTa2']; subst.
   destruct (closed_inst_typ _ _ _ _ _ _ HTa2' HT2 HΓ Hlen HNs HA HR _ Hρ) as (ns & a & b & RA & Hns & Ha & Hb & HRA).
-  exists (dm_global p ns), b, a, i, RA.
-  split; [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) |].
-  split; [ econstructor; [ exact Hm | | exact Hb ] |]; [| split; [ exact Ha | exact (proj1 (per_univ_elem_sym _ _ _ _ HRA)) ] ].
+  exists (dm_global p ns) b a i RA;
+    [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | econstructor; [ exact Hm | | exact Hb ] | exact Ha
+    | exact (proj1 (per_univ_elem_sym _ _ _ _ HRA)) ].
   pose proof (eval_exps_length _ _ _ Hns) as Hlns.
   rewrite rev_app_distr; cbn [rev List.app]; rewrite <- app_assoc; cbn [List.app].
   rewrite nth_error_app2 by (rewrite length_rev; lia).
@@ -424,13 +424,13 @@ Qed.
 Lemma filed_valid : forall Γ p T Φ Ns, gc_loc Θm Ξm p = Some (T, Φ) -> ⊨ Γ -> sargs Γ T Ns ->
     Γ ⊨ᵐ me_apps (qname_mod p) Ns ≈ me_apps (qname_mod p) Ns.
 Proof.
-  intros * Hl HΓ (T1 & T2 & -> & Hlen & HTa2 & HTs2 & HNs).
+  intros * Hl HΓ [T1 T2 -> Hlen HTa2 HTs2 HNs].
   revert T1 T2 Hl Hlen HTa2 HTs2 HNs.
   induction Ns as [| N Ns IH] using rev_ind; intros * Hl Hlen HTa2 HTs2 HNs.
-  - destruct (Hgf _ _ _ Hl) as (_ & Hp & _).
+  - destruct (Hgf _ _ _ Hl) as [_ Hp _ _ _ _ _ _ _].
     destruct (sem_ctx_per_ctx_env HΓ) as [R HR].
     pose proof (filed_gval _ _ _ Hl nil nil ltac:(cbn; lia) ltac:(constructor)) as Hd.
-    cbn [me_apps]; exists R, HR; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+    cbn [me_apps]; refine (mk_rel_modexp_under_ctx _ _ _ R HR _); intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
     apply (mk_rel_mod (dm_global p nil) (dm_global p nil) (dm_global p nil) (dm_global p nil));
       [ rewrite qname_mod_sub; apply Hp | apply Hp | apply Hp | rewrite qname_mod_sub; apply Hp |].
     repeat split; exact Hd.
@@ -500,8 +500,8 @@ Proof.
   intros * Hl HΓ Hs Hm Ht.
   destruct (filed_mem_desc _ _ _ _ _ _ _ _ Hl Hm Ht) as (Φ0 & E & R0 & R1 & Hp & He & Ha & ->).
   rewrite ds_ty_named_m in Ht.
-  destruct (Hgf _ _ _ Hl) as ((oD & Hmo) & Hpe & HT & HTa & HTs & _ & _ & Hents & _).
-  pose proof Hs as (T1 & T2 & -> & Hlen & HTa2 & HTs2 & HNs).
+  destruct (Hgf _ _ _ Hl) as [(oD & Hmo) Hpe HT HTa HTs _ _ Hents _].
+  pose proof Hs as [T1 T2 -> Hlen HTa2 HTs2 HNs].
   destruct (Hents _ _ _ _ Hp He) as (A0 & i & g & HA0 & Hats & Hsel & (j & E0 & e & He0 & HE0 & Hgg)).
   destruct (Hats _ _ _ _ eq_refl Hlen Ha) as [HtyR1 HredR1].
   rewrite HtyR1 in Ht; injection Ht as <-.
@@ -532,14 +532,14 @@ Proof.
     exists ns, a, RX; repeat split; [ exact Hns | exact Ha1 | exact Haa | apply (mty_iff _ _ R'); [ exact Hmt | symmetry; exact ER ] |].
     apply (filed_gval _ _ _ Hl); [ rewrite length_app; lia | exact Hgs ]. }
   assert (HS0 : smem Γ K x (ctx_pi T1 A0)[sb_of_list Id Ns] None).
-  { split; [ exists iX; exact HXΓ | split; [ discriminate |] ].
+  { constructor; [ exists iX; exact HXΓ | discriminate |].
     intros RΓ HR ρ Hρ.
     destruct (Hpt _ HR _ Hρ) as (ns & a & RX & Hns & Ha1 & Haa & Hmt & _).
     exists (dm_global p ns), a, iX, RX; repeat split; try assumption; [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | discriminate ]. }
   destruct HredR1 as [HredR1 | (M1 & HredR1 & HM1 & HevM1)].
   2:{ (* a reduct: a term over the outer parameters, instantiated *)
     rewrite (ds_red_named_some _ _ _ _ _ HredR1).
-    split; [ exists iX; exact HXΓ | split ].
+    constructor; [ exists iX; exact HXΓ | |].
     + intros M HM; injection HM as <-.
       exact (rel_exp_under_ctx_gsub Hg (closed_app_valid _ _ _ _ _ HTa2 HT2 HΓ HM1)).
     + intros RΓ HR ρ Hρ.
@@ -566,14 +566,14 @@ Proof.
       rewrite qname_mod_sub; apply eval_mem_filed. }
     pose proof (filed_valid _ _ _ _ _ Hl HΓ Hs) as HK.
     pose proof (rel_mem_of_smem _ _ _ _ _ _ HK HS0) as HKx.
-    split; [ exists iX; exact HXΓ | split ].
+    constructor; [ exists iX; exact HXΓ | |].
     + intros M HM; injection HM as <-; exact (valid_exp_eval_iff _ _ _ _ HKx Hiff).
     + intros RΓ HR ρ Hρ.
       destruct (Hpt _ HR _ Hρ) as (ns & a & RX & Hns & Ha1 & Haa & Hmt & Hkk).
       exists (dm_global p ns), a, iX, RX; split; [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) |].
       split; [ exact Ha1 |]; split; [ exact Haa |]; split; [ exact Hmt |].
       intros M HM; injection HM as <-.
-      destruct (Hmt _ Hkk) as (r & r' & Hr & Hr' & Hrr).
+      destruct (Hmt _ Hkk) as [r r' Hr Hr' Hrr].
       pose proof (functional_eval_sel _ _ _ _ Hr Hr') as <-.
       exists r, r; split; [| split; [ exact Hr | exact Hrr ] ].
       rewrite <- (exp_sub_id Mn); apply Hiff; rewrite exp_sub_id.

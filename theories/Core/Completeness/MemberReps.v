@@ -28,7 +28,7 @@ Section Fixed_GCtx.
 
 Lemma rel_ctx_extend_mod' : forall {Γ U}, ⊨ Γ -> Γ ⊨ᵘ U ≈ U -> ⊨ Γ ▹ₘ U.
 Proof.
-  intros * HΓ (HU & HsU & _).
+  intros * HΓ [HU HsU _].
   destruct (sem_ctx_per_ctx_env HΓ) as [R HR].
   econstructor; [ exact HΓ | exact (per_ctx_env_of_mod HR HU) | exact HU | exact HsU ].
 Qed.
@@ -40,7 +40,7 @@ Lemma sem_ctx_def_inv : forall {Γ A M}, ⊨ Γ ▸ A ≔ M -> (exists i, Γ ⊨
 Proof. intros * H; inversion H; subst; eauto. Qed.
 
 Lemma sem_ctx_mod_inv : forall {Γ U}, ⊨ Γ ▹ₘ U -> Γ ⊨ᵘ U ≈ U.
-Proof. intros * H; inversion H; subst; split; [ assumption | split; assumption ]. Qed.
+Proof. intros * H; inversion H; subst; constructor; assumption. Qed.
 
 Lemma gsub_sem : forall {Γ τ Δ}, gsub Γ τ Δ -> ⊨ Γ /\ ⊨ Δ.
 Proof.

@@ -39,7 +39,7 @@ Lemma rel_exp_of_univ_inversion : forall {Γ A A' u},
         ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
         rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ u).
 Proof.
-  intros * [env_relΓ [HΓ [j HA]]].
+  intros * [env_relΓ HΓ j HA].
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
@@ -142,7 +142,7 @@ Lemma rel_exp_of_typ_inversion : forall {Γ A A'} {i : nat},
         ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
         rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ i).
 Proof.
-  intros * [env_relΓ [HΓ [j HA]]].
+  intros * [env_relΓ HΓ j HA].
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
@@ -213,7 +213,7 @@ Corollary rel_exp_of_typ_inversion_wk : forall {Γ Δ φ A A'} {i : nat},
 Proof.
   intros * Hφ H%rel_exp_of_typ_inversion.
   destruct H as [env_relΔ [HΔ HA]].
-  pose proof Hφ as [env_relΓ [HΓ [env_relΔ2 [HΔ2 _]]]].
+  pose proof Hφ as [env_relΓ HΓ env_relΔ2 HΔ2 _].
   handle_per_ctx_env_irrel.
   eexists; eexists; [eassumption |].
   intros ρ ρ' Hρ.
@@ -293,7 +293,7 @@ Corollary presup_rel_exp_under_ctx : forall {Γ A M M'},
     Γ ⊨ M ≈ M' : A ->
     exists i, Γ ⊨ A ≈ A : Typeω@i.
 Proof.
-  intros * [env_relΓ [HΓ [i HM]]].
+  intros * [env_relΓ HΓ i HM].
   exists i.
   apply rel_exp_of_typ.
   eexists; eexists; [eassumption |].

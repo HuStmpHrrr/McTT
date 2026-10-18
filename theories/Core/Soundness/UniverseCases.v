@@ -43,8 +43,7 @@ Lemma glu_rel_exp_of_univ : forall {Γ Sb A} {u : uidx},
     Γ ⊩ A : ulvl_tm u.
 Proof.
   intros * ? Hbody.
-  eexists; split; [ eassumption |].
-  exists (ulvl_above u).
+  eapply mk_glu_rel_exp with (gre_lvl := ulvl_above u); [ eassumption |].
   intros * HΔ.
   destruct (Hbody _ _ _ HΔ) as [H0 [a [? [[] [H3 Hrb]]]]].
   assert (⊢ Δ) by (gen_presups; eassumption).
@@ -55,15 +54,15 @@ Proof.
   destruct u as [n | j]; cbn [univ_glu_exp_pred_at ulvl_tm ulvl_above] in *.
   - (** A type of a small universe at a literal level: the level term is the
         literal, and the readback clause is the premise's. *)
-    repeat split.
+    econstructor.
     + exact H0.
-    + exists (𝕃ᵒ n), (fst n); split; [ apply glu_lvl_lit; [ reflexivity | assumption ] | mauto 3 ].
-    + exists P, El; split; [ exact HPEl | exact (H3 P El HPEl) ].
+    + apply (mk_suniv_glu_typ _ _ _ _ (𝕃ᵒ n) (fst n)); [ apply glu_lvl_lit; [ reflexivity | assumption ] | mauto 3 ].
+    + exact (mk_glu_typ_at _ _ _ _ P El HPEl (H3 P El HPEl)).
     + exact Hrb.
-  - repeat split.
+  - econstructor.
     + exact H0.
     + mauto 3.
-    + exists P, El; split; [ exact HPEl | exact (H3 P El HPEl) ].
+    + exact (mk_glu_typ_at _ _ _ _ P El HPEl (H3 P El HPEl)).
 Qed.
 
 (** The universe at [u] is itself a term of [Typeω@(ulvl_above u)]: the
@@ -88,7 +87,7 @@ Proof.
     pose proof (glu_univ_elem_univ_at (u := u) (i := ul (ulvl_above u)) (uidx_lt_ulvl_above u)).
     handle_functional_glu_univ_elem.
     destruct u as [n | j]; cbn [univ_glu_typ_pred_at ulvl_tm ulvl_above ulvl] in *.
-    + exists (𝕃ᵒ n), (fst n); split; [ apply glu_lvl_lit; [ reflexivity | assumption ] | mauto 3 ].
+    + apply (mk_suniv_glu_typ _ _ _ _ (𝕃ᵒ n) (fst n)); [ apply glu_lvl_lit; [ reflexivity | assumption ] | mauto 3 ].
     + apply wf_exp_eq_typ_cong; assumption.
   - (** The universe reads back as itself. *)
     intros Δ' φ W Hφ Hr.
@@ -127,7 +126,7 @@ Proof.
       is part of it in the small tier, and realizability in the large one. *)
   destruct u as [n | j]; cbn [univ_glu_exp_pred_at ulvl_tm ulvl_above] in *.
   - match goal with H : suniv_glu_exp_pred _ _ _ _ _ _ |- _ =>
-      destruct H as [HAσ [_ [[Pm [Elm [HPEl HP]]] Hrb]]] end.
+      destruct H as [HAσ _ [Pm Elm HPEl HP] Hrb] end.
     rewrite ?exp_sub_ulvl_tm in *.
     split; [ assumption |].
     exists m; split; [ assumption | split; [| split ] ].
@@ -137,7 +136,7 @@ Proof.
       assumption.
     + exact Hrb.
   - match goal with H : univ_glu_exp_pred _ _ _ _ _ _ |- _ =>
-      destruct H as [HAσ [Heq [Pm [Elm [HPEl HP]]]]] end.
+      destruct H as [HAσ Heq [Pm Elm HPEl HP]] end.
     rewrite ?exp_sub_ulvl_tm in *.
     split; [ assumption |].
     exists m; split; [ assumption | split; [| split ] ].
@@ -177,7 +176,7 @@ Proof.
   assert (⊢ Γ) by mauto 3 using glu_rel_exp_to_wf_exp.
   eapply glu_rel_exp_subtyp;
     [ exact HA
-    | eapply glu_rel_exp_univ_tm; destruct HA as [Sb []]; eexists; eassumption
+    | eapply glu_rel_exp_univ_tm; destruct HA as [Sb ? ? ?]; eexists; eassumption
     | apply wf_subtyp_uidx; assumption ].
 Qed.
 
@@ -193,8 +192,7 @@ Lemma glu_rel_exp_of_typ : forall {Γ Sb A} {i : nat},
     Γ ⊩ A : Typeω@i.
 Proof.
   intros * ? Hbody.
-  eexists; split; mauto.
-  exists (S i).
+  eapply mk_glu_rel_exp with (gre_lvl := S i); [ mauto |].
   intros.
   edestruct Hbody as [? [? [? []]]]; mauto.
 Qed.
@@ -219,7 +217,7 @@ Proof.
   - intros P El HPEl.
     pose proof (glu_univ_elem_univ_at (u := us (a, n)) (i := us (a, S n)) ltac:(cbn; ord)).
     handle_functional_glu_univ_elem.
-    cbn; exists (𝕃ᵒ(a, n)), a; split; [ apply glu_lvl_lit; [ reflexivity | assumption ] | mauto 3 ].
+    cbn; apply (mk_suniv_glu_typ _ _ _ _ (𝕃ᵒ(a, n)) a); [ apply glu_lvl_lit; [ reflexivity | assumption ] | mauto 3 ].
   - (** The small universe reads back as itself. *)
     intros Δ' φ W Hφ Hr.
     assert (⊢ Δ') by (eapply kripke_dom; eassumption).

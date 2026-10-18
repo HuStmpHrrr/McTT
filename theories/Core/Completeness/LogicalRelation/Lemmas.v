@@ -191,7 +191,7 @@ Lemma rel_sub_of_wk : forall {Δ ψ Γ},
     Δ ⊨ʷ ψ : Γ ->
     Δ ⊨ˢ (ι ψ) ≈ (ι ψ) : Γ.
 Proof.
-  intros * [env_relΔ [HΔ [env_relΓ [HΓ [Hψm Hψ]]]]].
+  intros * [env_relΔ HΔ env_relΓ HΓ [Hψm Hψ]].
   eexists_rel_sub.
   intros Γ' env_rel' HΓ' φ [Hφm Hφ] ρ ρ' Hρ.
   apply mk_rel_sub with (ρσφ := ⟪ψ ⊙ φ⟫ ρ) (ρσ := ⟪ψ⟫ (⟪φ⟫ ρ)) (ρ'σ' := ⟪ψ⟫ (⟪φ⟫ ρ')) (ρ'σ'φ := ⟪ψ ⊙ φ⟫ ρ');
@@ -269,7 +269,7 @@ Lemma rel_sub_under_ctx_simple : forall {Γ Δ σ σ'},
         ⟦ σ' ⟧s ρ' ↘ ρ'σ' /\
         Dom ρσ ≈ ρ'σ' ∈ env_relΔ.
 Proof.
-  intros * [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]].
+  intros * [env_relΓ HΓ env_relΔ HΔ Hσ].
   eexists_rel_sub.
   intros ρ ρ' Hρ.
   destruct (Hσ _ _ HΓ wk_id (rel_wk_id _) _ _ Hρ) as [? ρσ ρ'σ' ? ? ? ? ? Hchain].
@@ -339,7 +339,7 @@ Lemma rel_exp_under_ctx_simple : forall {Γ A M M'},
           ⟦ M' ⟧ ρ' ↘ m' /\
           Dom m ≈ m' ∈ R.
 Proof.
-  intros * [env_relΓ [HΓ [i HM]]].
+  intros * [env_relΓ HΓ i HM].
   eexists_rel_exp_with i.
   intros ρ ρ' Hρ.
   destruct (HM _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
@@ -383,11 +383,11 @@ Lemma subtyp_under_ctx_simple : forall {Γ A A'},
         ⟦ A' ⟧ ρ' ↘ a' /\
         Sub a <: a' at i.
 Proof.
-  intros * [env_relΓ [HΓ [i HA]]].
+  intros * [env_relΓ HΓ i HA].
   eexists_subtyp_with i.
   intros ρ ρ' Hρ.
   destruct (HA _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
-    as [aσ [a [a'σ' [a' [HaσI [? [Ha'σ'I [? [Hl [Hr Hsub]]]]]]]]]].
+    as [aσ a a'σ' a' HaσI ? Ha'σ'I ? Hl Hr Hsub].
   (** Both commutation obligations of [subtyp_under_ctx] compare a value with
     itself, so the subtyping need not be transported. *)
   rewrite exp_sub_id in HaσI, Ha'σ'I.
@@ -415,7 +415,7 @@ Lemma rel_sub_under_ctx_wk : forall {Γ ψ Δ σ σ' Δ'},
     Γ ⊨ʷ ψ : Δ ->
     Γ ⊨ˢ (sb_wk σ ψ) ≈ (sb_wk σ' ψ) : Δ'.
 Proof.
-  intros * [env_relΔ [HΔ [env_relΔ' [HΔ' Hσ]]]] [env_relΓ [HΓ [env_relΔ2 [HΔ2 Hψ]]]].
+  intros * [env_relΔ HΔ env_relΔ' HΔ' Hσ] [env_relΓ HΓ env_relΔ2 HΔ2 Hψ].
   handle_per_ctx_env_irrel.
   eexists_rel_sub.
   intros Γ' env_rel' HΓ' φ Hφ ρ ρ' Hρ.
@@ -449,7 +449,7 @@ Lemma rel_sub_under_ctx_wk_pre : forall {Γ Δ Δ' φ σ σ'},
     Δ ⊨ʷ φ : Δ' ->
     Γ ⊨ˢ (ι φ) ⨟ σ ≈ (ι φ) ⨟ σ' : Δ'.
 Proof.
-  intros * [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]] [env_relΔ2 [HΔ2 [env_relΔ' [HΔ' Hφ]]]].
+  intros * [env_relΓ HΓ env_relΔ HΔ Hσ] [env_relΔ2 HΔ2 env_relΔ' HΔ' Hφ].
   handle_per_ctx_env_irrel.
   eexists_rel_sub.
   intros Γ' env_rel' HΓ' ψ Hψ ρ ρ' Hρ.
@@ -488,8 +488,8 @@ Lemma rel_exp_under_ctx_wk : forall {Γ Δ φ A M M'},
     Γ ⊨ M[φ]ʷ ≈ M'[φ]ʷ : A[φ]ʷ.
 Proof.
   intros * Hφj HM.
-  pose proof Hφj as [env_relΓ [HΓ [env_relΔ [HΔ Hφ]]]].
-  pose proof HM as [env_relΔ2 [HΔ2 [i HMgen]]].
+  pose proof Hφj as [env_relΓ HΓ env_relΔ HΔ Hφ].
+  pose proof HM as [env_relΔ2 HΔ2 i HMgen].
   handle_per_ctx_env_irrel.
   eexists_rel_exp_with i.
   intros Γ' env_rel' HΓ' τ τ' Hτj ρ ρ' ρτ ρ'τ' Hρ Hev Hev'.
@@ -544,8 +544,8 @@ Lemma rel_exp_under_ctx_wk_simple : forall {Γ Δ φ A M M'},
           Dom m ≈ m' ∈ R.
 Proof.
   intros * Hφj HM.
-  pose proof Hφj as [env_relΓ [HΓ [env_relΔ [HΔ Hφ]]]].
-  pose proof HM as [env_relΔ2 [HΔ2 [i HMgen]]].
+  pose proof Hφj as [env_relΓ HΓ env_relΔ HΔ Hφ].
+  pose proof HM as [env_relΔ2 HΔ2 i HMgen].
   handle_per_ctx_env_irrel.
   eexists_rel_exp_with i.
   intros ρ ρ' Hρ.
@@ -583,7 +583,7 @@ Lemma rel_sub_under_ctx_shift : forall {Γ Δ e σ σ'},
     Γ ⊨ˢ σ ≈ σ' : (e :: Δ)%list ->
     Γ ⊨ˢ Wk ⨟ σ ≈ Wk ⨟ σ' : Δ.
 Proof.
-  intros * [env_relΓ [HΓ [env_relΔA [HΔA Hσ]]]].
+  intros * [env_relΓ HΓ env_relΔA HΔA Hσ].
   pose proof (rel_wk_shift_tail HΔA) as [env_relΔ [HΔ Hdrop]].
   eexists_rel_sub.
   intros Γ' env_rel' HΓ' φ Hφ ρ ρ' Hρ.
@@ -627,7 +627,7 @@ Lemma rel_sub_under_ctx_sym : forall {Γ Δ σ σ'},
     Γ ⊨ˢ σ ≈ σ' : Δ ->
     Γ ⊨ˢ σ' ≈ σ : Δ.
 Proof.
-  intros * [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]].
+  intros * [env_relΓ HΓ env_relΔ HΔ Hσ].
   eexists_rel_sub.
   intros Γ' env_rel' HΓ' φ Hφ ρ ρ' Hρ.
   apply rel_sub_sym; [ solve_chain_PER |].
@@ -643,7 +643,7 @@ Lemma rel_exp_under_ctx_sym : forall {Γ A M M'},
     Γ ⊨ M ≈ M' : A ->
     Γ ⊨ M' ≈ M : A.
 Proof.
-  intros * [env_relΓ [HΓ [i HM]]].
+  intros * [env_relΓ HΓ i HM].
   eexists_rel_exp_with i.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (Hρ' : Dom ρ' ≈ ρ ∈ env_rel') by (symmetry; eassumption).
@@ -667,8 +667,8 @@ Lemma rel_sub_under_ctx_trans : forall {Γ Δ σ1 σ2 σ3},
     Γ ⊨ˢ σ2 ≈ σ3 : Δ ->
     Γ ⊨ˢ σ1 ≈ σ3 : Δ.
 Proof.
-  intros * [env_relΓ [HΓ [env_relΔ [HΔ H12]]]] H23'.
-  pose proof H23' as [env_relΓ2 [HΓ2 [env_relΔ2 [HΔ2 H23]]]].
+  intros * [env_relΓ HΓ env_relΔ HΔ H12] H23'.
+  pose proof H23' as [env_relΓ2 HΓ2 env_relΔ2 HΔ2 H23].
   handle_per_ctx_env_irrel.
   eexists_rel_sub.
   intros Γ' env_rel' HΓ' φ Hφ ρ ρ' Hρ.
@@ -723,8 +723,8 @@ Lemma rel_exp_under_ctx_trans : forall {Γ A M1 M2 M3},
     Γ ⊨ M2 ≈ M3 : A ->
     Γ ⊨ M1 ≈ M3 : A.
 Proof.
-  intros * [env_relΓ [HΓ [i H12]]] H23'.
-  pose proof H23' as [env_relΓ2 [HΓ2 [j H23]]].
+  intros * [env_relΓ HΓ i H12] H23'.
+  pose proof H23' as [env_relΓ2 HΓ2 j H23].
   handle_per_ctx_env_irrel.
   eexists_rel_exp_with i.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
@@ -788,10 +788,10 @@ Lemma rel_sub_under_ctx_restrict : forall {Γ1 Γ2 Δ1 Δ2 σ σ' R1 R2 S1 S2},
     Γ2 ⊨ˢ σ ≈ σ' : Δ1 ->
     Γ1 ⊨ˢ σ ≈ σ' : Δ2.
 Proof.
-  intros * HΓ1 HΓ2 HΔ1 HΔ2 HR HS [R2' [HΓ2' [S1' [HΔ1' Hσ]]]].
+  intros * HΓ1 HΓ2 HΔ1 HΔ2 HR HS [R2' HΓ2' S1' HΔ1' Hσ].
   assert (ER : R2' <~> R2) by (eapply per_ctx_env_right_irrel; eassumption).
   assert (ES : S1' <~> S1) by (eapply per_ctx_env_right_irrel; eassumption).
-  exists R1, HΓ1, S2, HΔ2.
+  refine (mk_rel_sub_under_ctx _ _ _ _ R1 HΓ1 S2 HΔ2 _).
   intros Γ' env_rel' HΓ' φ [Hφm Hφ] ρ ρ' Hρ.
   assert (Hφ' : rel_wk φ env_rel' R2')
     by (split; [ assumption | intros; apply ER, HR, Hφ; assumption ]).
@@ -808,8 +808,8 @@ Lemma rel_exp_under_ctx_restrict : forall {Γ1 Γ2 R1 R2 A M M'},
     Γ2 ⊨ M ≈ M' : A ->
     Γ1 ⊨ M ≈ M' : A.
 Proof.
-  intros * HΓ1 HΓ2 HR [R2' [HΓ2' [i HM]]].
-  exists R1, HΓ1, i.
+  intros * HΓ1 HΓ2 HR [R2' HΓ2' i HM].
+  refine (mk_rel_exp_under_ctx _ _ _ _ R1 HΓ1 i _).
   intros Γ' env_rel' HΓ' σ σ' Hσ.
   apply (HM _ _ HΓ').
   eapply rel_sub_under_ctx_restrict; [ eassumption | eassumption | exact HΓ1 | exact HΓ2 | | exact HR | exact Hσ ].
@@ -831,8 +831,8 @@ Lemma rel_exp_under_ctx_of_simple : forall {Γ T N N' env_relΓ},
         exists n n', ⟦ N ⟧ ρ ↘ n /\ ⟦ N' ⟧ ρ' ↘ n' /\ Dom n ≈ n' ∈ per_head T T ρ ρ') ->
     Γ ⊨ N ≈ N' : T.
 Proof.
-  intros * HΓ [R1' [HΓ1 [i HN]]] [R2' [HΓ2 [j HN']]] Hpt.
-  exists env_relΓ, HΓ, i.
+  intros * HΓ [R1' HΓ1 i HN] [R2' HΓ2 j HN'] Hpt.
+  refine (mk_rel_exp_under_ctx _ _ _ _ env_relΓ HΓ i _).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HN _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [R1 [Ht1 He1]].
   destruct (HN' _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [R2 [Ht2 He2]].

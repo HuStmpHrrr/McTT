@@ -58,15 +58,21 @@ Lemma nfs_stuck_app : forall G Ms Ns, nfs_stuck G Ms -> nfs_stuck G Ns -> nfs_st
 Proof. induction Ms; cbn; intuition. Qed.
 
 (** A global that does not unfold: an opaque definition or an axiom. *)
-Definition gstuck (Θ : gdeps) (Ξ : gstack) (p : qname) : Prop :=
-  exists b pv A B, gc_resolve Θ Ξ p = Some (ge_def b pv A B) /\ (b = false \/ B = None).
+#[warnings="-cannot-define-projection"]
+Record gstuck (Θ : gdeps) (Ξ : gstack) (p : qname) : Prop := mk_gstuck
+  { gst_transparent : bool
+  ; gst_private : bool
+  ; gst_typ : typ
+  ; gst_body : option exp
+  ; gst_resolve : gc_resolve Θ Ξ p = Some (ge_def gst_transparent gst_private gst_typ gst_body)
+  ; gst_opaque : gst_transparent = false \/ gst_body = None }.
 
 Section Stuck.
   Variables (Θ : gdeps) (Ξ : gstack).
 
   Lemma gstuck_intro : forall p b pv A B,
       gc_resolve Θ Ξ p = Some (ge_def b pv A B) -> b = false \/ B = None -> gstuck Θ Ξ p.
-  Proof. unfold gstuck; eauto 7. Qed.
+  Proof. intros * Hr Ho; exact (mk_gstuck _ _ _ _ _ _ _ Hr Ho). Qed.
   #[local] Hint Resolve gstuck_intro : mctt.
 
 (** ** Values Whose Global Neutrals Are Stuck *)

@@ -130,8 +130,7 @@ Lemma per_sublvl_lit : forall n m,
     ole n m ->
     per_sublvl (dlvl_lit n) (dlvl_lit m).
 Proof.
-  intros n m Hle s; exists (lvl_lit n), (lvl_lit m);
-    repeat split; [ apply read_nf_dlvl_lit | apply read_nf_dlvl_lit |].
+  intros n m Hle s; exists (lvl_lit n) (lvl_lit m); [ apply read_nf_dlvl_lit | apply read_nf_dlvl_lit |].
   apply lvl_le_lit; assumption.
 Qed.
 
@@ -161,14 +160,14 @@ Lemma per_sublvl_left : forall l l',
     per_sublvl l l' ->
     Dom l ≈ l ∈ per_lvl.
 Proof.
-  intros * H s; destruct (H s) as [L [L' [HL [HL' _]]]]; eauto.
+  intros * H s; destruct (H s) as [L L' HL HL' _]; eauto.
 Qed.
 
 Lemma per_sublvl_right : forall l l',
     per_sublvl l l' ->
     Dom l' ≈ l' ∈ per_lvl.
 Proof.
-  intros * H s; destruct (H s) as [L [L' [HL [HL' _]]]]; eauto.
+  intros * H s; destruct (H s) as [L L' HL HL' _]; eauto.
 Qed.
 
 Hint Resolve per_sublvl_left per_sublvl_right : mctt.
@@ -177,7 +176,7 @@ Lemma per_sublvl_real : forall l l',
     per_sublvl l l' ->
     ole (dlvl_real l) (dlvl_real l').
 Proof.
-  intros * H; destruct (H 0) as [L [L' [HL [HL' Hle]]]].
+  intros * H; destruct (H 0) as [L L' HL HL' Hle].
   apply read_nf_level_real in HL as [L1 [HL1 <-]].
   apply read_nf_level_real in HL' as [L1' [HL1' <-]].
   apply nf_lvl_of_inj in HL1 as <-; apply nf_lvl_of_inj in HL1' as <-.
@@ -190,7 +189,7 @@ Lemma per_sublvl_of_per_lvl : forall l l',
 Proof.
   intros * H s; destruct (H s) as [W [HW HW']].
   destruct (read_nf_level_real _ _ _ _ HW) as [L [-> _]].
-  exists L, L; repeat split; [ assumption | assumption | apply lvl_le_refl ].
+  exists L L; [ assumption | assumption | apply lvl_le_refl ].
 Qed.
 
 Hint Resolve per_sublvl_of_per_lvl : mctt.
@@ -201,12 +200,11 @@ Lemma per_sublvl_trans : forall l l' l'',
     per_sublvl l l''.
 Proof.
   intros * H H' s.
-  destruct (H s) as [L [L1 [HL [HL1 Hle]]]].
-  destruct (H' s) as [L1' [L2 [HL1' [HL2 Hle']]]].
+  destruct (H s) as [L L1 HL HL1 Hle].
+  destruct (H' s) as [L1' L2 HL1' HL2 Hle'].
   assert (L1 = L1') as <-
       by (apply nf_lvl_of_inj; eapply functional_read_nf; eassumption).
-  exists L, L2; repeat split;
-    [ assumption | assumption | eapply lvl_le_trans; eassumption ].
+  exists L L2; [ assumption | assumption | eapply lvl_le_trans; eassumption ].
 Qed.
 
 Hint Resolve per_sublvl_trans : mctt.
@@ -252,21 +250,21 @@ Hint Resolve per_bot_then_per_lvl : mctt.
 (** The levels of sort [n] form a PER, and a neutral of type [Level@n] is
     one. *)
 Lemma per_lvl_at_lvl : forall n l l', Dom l ≈ l' ∈ per_lvl_at n -> Dom l ≈ l' ∈ per_lvl.
-Proof. intros * H s; destruct (H s) as (L & HL & HL' & _); eexists; split; eassumption. Qed.
+Proof. intros * H s; destruct (H s) as [L HL HL' _]; eexists; split; eassumption. Qed.
 
 Lemma per_lvl_at_sym : forall n m m',
     Dom m ≈ m' ∈ per_lvl_at n ->
     Dom m' ≈ m ∈ per_lvl_at n.
-Proof. intros * H s; destruct (H s) as (L & HL & HL' & Hb); exists L; split; [| split ]; assumption. Qed.
+Proof. intros * H s; destruct (H s) as [L HL HL' Hb]; exists L; assumption. Qed.
 
 Lemma per_lvl_at_trans : forall n m m' m'',
     Dom m ≈ m' ∈ per_lvl_at n ->
     Dom m' ≈ m'' ∈ per_lvl_at n ->
     Dom m ≈ m'' ∈ per_lvl_at n.
 Proof.
-  intros * H H' s; destruct (H s) as (L & HL & HL' & Hb), (H' s) as (L' & HM & HM' & Hb').
+  intros * H H' s; destruct (H s) as [L HL HL' Hb], (H' s) as [L' HM HM' Hb'].
   assert (L' = L) as -> by (apply nf_lvl_of_inj; exact (functional_read_nf _ _ _ _ HM HL')).
-  exists L; split; [| split ]; assumption.
+  exists L; assumption.
 Qed.
 
 #[local] Instance per_lvl_at_PER n : PER (per_lvl_at n).
@@ -281,8 +279,8 @@ Proof. intros * Hmn [Hc Ha]; split; [ lia | intros; eapply Nat.le_trans; [ eappl
 
 Lemma per_lvl_at_mono : forall m n l l', m <= n -> Dom l ≈ l' ∈ per_lvl_at m -> Dom l ≈ l' ∈ per_lvl_at n.
 Proof.
-  intros * Hmn H s; destruct (H s) as (L & HL & HL' & Hb).
-  exists L; split; [| split ]; [ assumption | assumption | eapply lvl_bnd_mono; eassumption ].
+  intros * Hmn H s; destruct (H s) as [L HL HL' Hb].
+  exists L; [ assumption | assumption | eapply lvl_bnd_mono; eassumption ].
 Qed.
 
 Lemma per_bot_then_per_lvl_at : forall n m m',
@@ -291,7 +289,7 @@ Lemma per_bot_then_per_lvl_at : forall n m m',
 Proof.
   intros * H s.
   destruct (H s) as [M [Hl Hr]].
-  exists (oz, la_cons 0 n M la_nil); split; [| split ]; [ econstructor; eassumption .. | split; [ cbn; lia |] ].
+  exists (oz, la_cons 0 n M la_nil); [ econstructor; eassumption .. | split; [ cbn; lia |] ].
   intros k t a Hin; cbn in Hin; destruct Hin as [(_ & -> & _) | []]; lia.
 Qed.
 
@@ -1737,25 +1735,25 @@ Proof. split; [ exact per_dmod_sym | exact per_dmod_trans ]. Qed.
 (** ** Module Expressions Evaluating to Related Values *)
 
 Lemma rel_mexp_sym : forall H ρ H' ρ', rel_mexp H ρ H' ρ' -> rel_mexp H' ρ' H ρ.
-Proof. intros * (h & h' & Hh & Hh' & Hr); exists h', h; repeat split; [ exact Hh' | exact Hh | apply per_dmod_sym, Hr ]. Qed.
+Proof. intros * [h h' Hh Hh' Hr]; exists h' h; [ exact Hh' | exact Hh | apply per_dmod_sym, Hr ]. Qed.
 
 Lemma rel_mexp_trans : forall H1 ρ1 H2 ρ2 H3 ρ3, rel_mexp H1 ρ1 H2 ρ2 -> rel_mexp H2 ρ2 H3 ρ3 -> rel_mexp H1 ρ1 H3 ρ3.
 Proof.
-  intros * (h1 & h2 & Hh1 & Hh2 & Hr) (h2' & h3 & Hh2' & Hh3 & Hr').
+  intros * [h1 h2 Hh1 Hh2 Hr] [h2' h3 Hh2' Hh3 Hr'].
   pose proof (functional_eval_modexp _ _ _ _ Hh2 Hh2') as <-.
-  exists h1, h3; repeat split; [ exact Hh1 | exact Hh3 | eapply per_dmod_trans; eassumption ].
+  exists h1 h3; [ exact Hh1 | exact Hh3 | eapply per_dmod_trans; eassumption ].
 Qed.
 
 Lemma tie_mod_move : forall m H ρ H' ρ', tie_mod m H ρ -> rel_mexp H ρ H' ρ' -> tie_mod m H' ρ'.
 Proof.
-  intros * (h & Hh & Hm) (h1 & h' & Hh1 & Hh' & Hr).
+  intros * (h & Hh & Hm) [h1 h' Hh1 Hh' Hr].
   pose proof (functional_eval_modexp _ _ _ _ Hh Hh1) as <-.
   exists h'; split; [ exact Hh' | eapply per_dmod_trans; eassumption ].
 Qed.
 
 Lemma tie_mod_rel : forall m H ρ m' H' ρ', tie_mod m H ρ -> tie_mod m' H' ρ' -> rel_mexp H ρ H' ρ' -> per_dmod m m'.
 Proof.
-  intros * (h & Hh & Hm) (h' & Hh' & Hm') (h1 & h1' & Hh1 & Hh1' & Hr).
+  intros * (h & Hh & Hm) (h' & Hh' & Hm') [h1 h1' Hh1 Hh1' Hr].
   pose proof (functional_eval_modexp _ _ _ _ Hh Hh1) as <-; pose proof (functional_eval_modexp _ _ _ _ Hh' Hh1') as <-.
   eapply per_dmod_trans; [ exact Hm | eapply per_dmod_trans; [ exact Hr | apply per_dmod_sym, Hm' ] ].
 Qed.
@@ -2477,9 +2475,10 @@ Qed.
 Definition def_tie (S : typ) (M : exp) (ρ : env) : Prop :=
   exists m, ⟦ M ⟧ ρ↯ ↘ m /\ Dom m ≈ (ρ 0) ∈ per_head S S ρ↯ ρ↯.
 
-Definition per_env_extend_def (S : typ) (M : exp) (R : relation env) : relation env :=
-  fun ρ ρ' =>
-    Dom ρ ≈ ρ' ∈ per_env_extend S S R /\ def_tie S M ρ /\ def_tie S M ρ'.
+Record per_env_extend_def (S : typ) (M : exp) (R : relation env) (ρ ρ' : env) : Prop := mk_per_env_extend_def
+  { ped_ext : Dom ρ ≈ ρ' ∈ per_env_extend S S R
+  ; ped_tie_left : def_tie S M ρ
+  ; ped_tie_right : def_tie S M ρ' }.
 
 (** The head PER of a type is the same at any two related pairs of tails. *)
 Lemma per_head_resp_simple : forall {S R i},
@@ -2540,7 +2539,7 @@ Proof.
       assert (H22 : Dom ρ2 ≈ ρ2 ∈ env_relΔ) by solve_per.
       split; eapply (per_head_resp_simple HPER HS); apply rel_chain_4; solve_per. }
     split.
-    + intros [[Ht Hh] [[m [Hm Htie]] [m' [Hm' Htie']]]].
+    + intros [[Ht Hh] [m [Hm Htie]] [m' [Hm' Htie']]].
       destruct (Hmove _ _ Ht) as [H1 H2].
       exists Ht.
       repeat split; try eassumption.

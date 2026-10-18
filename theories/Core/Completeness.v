@@ -28,7 +28,7 @@ Lemma rel_exp_under_ctx_at_initial_env : forall {Γ A M M'},
       Dom m ≈ m' ∈ elem_rel.
 Proof.
   intros * H.
-  destruct H as [env_relΓ [HΓ [i HMgen]]].
+  destruct H as [env_relΓ HΓ i HMgen].
   pose proof (per_ctx_then_per_env_initial_env HΓ) as [ρ [ρ' [Hρ [Hρ' Hrel]]]].
   assert (ρ' = ρ) as -> by (eapply functional_initial_env; eassumption).
   destruct (HMgen _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hrel

@@ -550,12 +550,12 @@ Section PrivacyImpl.
 
   Lemma open_anc_b_spec : forall qd, open_anc_b qd = true <-> open_anc Ξ qd.
   Proof.
-    intros qd; unfold open_anc_b, open_anc; rewrite existsb_exists; split.
+    intros qd; unfold open_anc_b; rewrite existsb_exists; split.
     - intros ([mp U] & Hin & Hb); apply andb_prop in Hb as [H1 H2]; cbn in *.
       apply path_beq_true in H1.
       destruct (strip_prefix (q_chain qd) (q_chain mp)) as [suf |] eqn:E; [| discriminate ].
-      exists mp, U, suf; repeat split; [ exact Hin | exact H1 | exact (strip_prefix_spec _ _ _ E) ].
-    - intros (mp & U & suf & Hin & H1 & H2); exists (mp, U); split; [ exact Hin |]; cbn.
+      exact (mk_open_anc _ _ mp U suf Hin H1 (strip_prefix_spec _ _ _ E)).
+    - intros [mp U suf Hin H1 H2]; exists (mp, U); split; [ exact Hin |]; cbn.
       rewrite H1, path_beq_refl, H2, strip_prefix_app; reflexivity.
   Qed.
 

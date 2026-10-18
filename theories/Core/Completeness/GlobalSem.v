@@ -483,7 +483,7 @@ Section FiledOk.
       pose proof (gc_entry_selfpath _ _ Hgm _ _ _ _ _ HeE) as ->.
       destruct (good_ind _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hindm) as [HD HDs].
       destruct (decl_of_lookup _ _ ⋅ _ _ (wf_ctx_empty _ _ Hgm) Hindm) as [Hdt Hc].
-      pose proof Hdt as (_ & _ & _ & _ & Hsu & _).
+      pose proof (dt_sort_univ _ _ _ Hdt) as Hsu.
       pose proof (loc_coh _ _ Hgm _ _ _ (gc_loc_loc _ _ _ _ _ Hl)) as Hcoh.
       destruct (gm_coh_child _ _ _ _ Hcoh (gm_entry_submodule _ T _ _ _ _ _ _ Hent))
         as [(Δu & oD & [= HU _] & HΔu) | (? & ? & [=] & _)].
@@ -564,12 +564,10 @@ Proof.
   destruct (good_loc _ _ _ _ HΘ HΞ _ _ _ Hl) as [[HT HTa] _].
   destruct (gc_loc_grow _ _ _ _ (em_wf _ _ _ _ He) (em_res _ _ _ _ He) _ _ _ Hl) as (Φ2 & Hl2 & _).
   pose proof (loc_closed _ _ Hgm _ _ _ (gc_loc_loc _ _ _ _ _ Hl)) as [HTs _].
-  split; [ eauto |]; split; [ intros ρ; exact (gc_loc_path _ _ (em_wf _ _ _ _ He) _ _ ρ Hl2) |].
-  split; [ exact HT |]; split; [ exact HTa |]; split; [ exact HTs |].
-  split; [ intros; eapply fo_kind; eassumption |].
-  split; [ intros; eapply fo_sub_kind; eassumption |].
-  split; [ intros; eapply fo_term; eassumption |].
-  intros; eapply fo_alias; eassumption.
+  constructor;
+    [ eauto | intros ρ; exact (gc_loc_path _ _ (em_wf _ _ _ _ He) _ _ ρ Hl2) | exact HT | exact HTa | exact HTs
+    | intros; eapply fo_kind; eassumption | intros; eapply fo_sub_kind; eassumption
+    | intros; eapply fo_term; eassumption | intros; eapply fo_alias; eassumption ].
 Qed.
 
 (** A sound embedding, from the validity at the target of what the source
@@ -689,7 +687,7 @@ Qed.
 Lemma sem_core_of_typed : forall Θ Ξ D Θ2 Ξ2, decl_typed Θ Ξ D -> sem_emb Θ Ξ Θ2 Ξ2 -> @sem_core (gc_mk Θ2 Ξ2) D.
 Proof.
   intros * Hdt Hμ.
-  pose proof Hdt as (Hass & _ & Hle & HΔ & Hsu & [i HS] & _ & HA & HPl & HP & HN & Hnd & Hsh).
+  pose proof Hdt as [Hass _ Hle HΔ Hsu [i HS] _ HA HPl HP HN Hnd Hsh].
   destruct kripke_fundamental as (Kc & _).
   assert (Harg : forall c gs k A, ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
              @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (astrat gs k ++ ind_params D) ((ind_sort D)[wk_shiftn (k + ind_nn D)]ʷ) A A /\
@@ -767,7 +765,7 @@ Lemma sem_V_ind : forall Θ Ξ D Θ2 Ξ2,
     decl_typed Θ Ξ D -> GoodV sem_V sem_F sem_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> sem_VD Θ2 Ξ2 D /\ sem_F Θ2 Ξ2 (ind_uparams D).
 Proof.
   intros * Hdt HG He.
-  pose proof Hdt as (Hass & _ & _ & HΔ & _).
+  pose proof (dt_ass _ _ _ Hdt) as Hass; pose proof (dt_params _ _ _ Hdt) as HΔ.
   pose proof (sem_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ HΔ) HG He) as Hμ.
   split; [ split; [ exact (sem_core_of_typed _ _ _ _ _ Hdt Hμ) |] |].
   - intros Δ1 Δ2 Hpar.

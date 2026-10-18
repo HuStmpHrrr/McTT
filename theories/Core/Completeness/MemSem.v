@@ -179,7 +179,7 @@ Proof.
       destruct (Ho 0 _ _ eq_refl) as [HH HS].
       destruct (sem_ctx_per_ctx_env HC0) as [Ro HRo].
       destruct (benv_exists _ _ Hn (proj1 (body_shape_fill _ _ Hn Hsx0)) HC0 _ _ HRD HRo _ Hρ) as (ρo & Hbo & Hρo).
-      destruct (HS _ _ _ HmH eq_refl) as [[iA HAn] [_ HSn]].
+      destruct (HS _ _ _ HmH eq_refl) as [[iA HAn] _ HSn].
       destruct (HSn _ HRo _ Hρo) as (t & an & i_n & RAn & Ht & Han & HRAn & Hmt & _).
       (* the environment after the first [j] entries *)
       assert (HnP : gm_nopens (gens_append Φx 0 gs0) = 0) by (rewrite gens_append_nopens; exact Hn).
@@ -201,7 +201,7 @@ Proof.
       destruct (wk_coh_ex _ _ _ _ _ _ HH HCP HRP Hρ' Hskip) as (hj & Hhj).
       pose proof (wk_coh _ _ _ _ _ _ _ _ HH HCP HRP Hρ' Hskip Ht Hhj) as Hhjt.
       rewrite HlX in Hhj.
-      destruct (Hmt _ Hhjt) as (r & r0 & Hr & Hr0 & Hrr0).
+      destruct (Hmt _ Hhjt) as [r r0 Hr Hr0 Hrr0].
       (* the type, under the shift past the entries *)
       pose proof (rel_sub_of_wk (rel_wk_under_ctx_shiftn _ _ HCP)) as Hτ.
       pose proof (@eval_sub_of_wk gc_deps gc_stack (wk_shiftn (List.length (body_ctx (gens_append gm_nil 0 gs0)))) ρ' (wk_mono_shiftn _)) as Hev.
@@ -256,7 +256,7 @@ Proof.
         rewrite firstn_app, Nat.sub_diag, firstn_all; cbn [firstn]; rewrite app_nil_r; exact Hbq'. }
       destruct (H16 _ _ Hj Hdq) as (hhj & Hhhj).
       pose proof (H21 _ _ _ Hj Hdq Hhhj) as Hhth.
-      destruct (Hmt _ (per_dmod_trans _ _ _ Hhth H11)) as (rh & r0' & Hrh & Hr0' & Hrr').
+      destruct (Hmt _ (per_dmod_trans _ _ _ Hhth H11)) as [rh r0' Hrh Hr0' Hrr'].
       pose proof (functional_eval_sel _ _ _ _ Hr0' Hr0) as ->.
       rewrite Hph, gens_append_snoc.
       do 7 eexists; split; [ reflexivity |].
@@ -377,13 +377,13 @@ Proof.
   cbn [ds_unit me_apps] in HEP.
   pose proof (smem_transport _ _ _ _ _ _ (rel_modexp_sym HEP) Hsm) as HsmP.
   pose proof (rel_mem_of_smem _ _ _ _ _ _ (rel_modexp_trans (rel_modexp_sym HEP) HEP) HsmP) as HPx.
-  destruct Hsm as [HA [_ HS]].
-  split; [ exact HA | split; [ intros M [= <-]; exact HPx |] ].
+  destruct Hsm as [HA _ HS].
+  constructor; [ exact HA | intros M [= <-]; exact HPx |].
   intros RΓ HR ρ Hρ.
   destruct (HS _ HR _ Hρ) as (k & a & i & RA & Hk & Ha & HRA & Hmt & _).
   destruct (rel_modexp_at _ _ _ _ _ HEP HR _ _ Hρ) as (k1 & kp & Hk1 & Hkp & Hkk).
   pose proof (functional_eval_modexp _ _ _ _ Hk1 Hk) as ->.
-  destruct (Hmt _ (per_dmod_sym _ _ Hkk)) as (r & r' & Hr & Hr' & Hrr).
+  destruct (Hmt _ (per_dmod_sym _ _ Hkk)) as [r r' Hr Hr' Hrr].
   exists k, a, i, RA; repeat split; try assumption.
   intros M [= <-]; exists r, r'; split; [ eapply eval_mem_of_sel; eassumption | split; assumption ].
 Qed.
@@ -535,7 +535,7 @@ Proof.
     match goal with Hb0 : per_body ?ρh ?Φh ρ Φ |- _ => rename Hb0 into Hbh end.
     destruct (per_body_kbody_l _ _ _ _ Hbh) as (Φhk & Hkh).
     destruct (Hh _ _ _ Hbh Hkh) as (Φhk' & bh & pvh & Ah & Mh & ρh' & rh & Hph & Hbh' & Hmh & Hrr).
-    exists rh, r; split; [ eapply eval_sel_body; eassumption |]; split; [ exact Hsel | apply E; exact Hrr ].
+    apply (mk_mem_vals _ _ _ _ rh r); [ eapply eval_sel_body; eassumption | exact Hsel | apply E; exact Hrr ].
   - exists m1, r; split; [ exact Hm1 | split; [ exact Hsel | exact HRm ] ].
 Qed.
 
@@ -576,8 +576,7 @@ Proof.
     pose proof (body_xp_nopens _ _ _ _ _ Hx) as Hn.
     destruct (body_def_valid _ _ _ _ _ _ _ _ _ Hn HC Hp Hf) as ([i HAσ] & HMσ).
     destruct (valid_ctx_pi _ _ _ _ HΔΓ HAσ) as [j HP].
-    split; [ exists j; exact HP |].
-    split; [ intros M' [= <-]; exact (valid_ctx_fn _ _ _ _ HΔ HΔΓ HMσ) |].
+    constructor; [ exists j; exact HP | intros M' [= <-]; exact (valid_ctx_fn _ _ _ _ HΔ HΔΓ HMσ) |].
     intros RΓ HRΓ ρ Hρ.
     destruct (rel_modexp_at _ _ _ _ _ HK HRΓ _ _ Hρ) as (k & k' & Hk & Hk' & Hkk).
     pose proof (functional_eval_modexp _ _ _ _ Hk' Hk) as ->.
@@ -607,11 +606,11 @@ Proof.
       - cbn in Ht; injection Ht as <-.
         exists A0, (Some (a_mem (qname_mod p) x)); split; [ reflexivity | split; [ reflexivity |] ].
         exact (smem_bare_name _ _ _ _ _ _ _ _ Hsmt HmE HmdE (IHE _ _ _ Hm' eq_refl)). }
-    destruct Hk as (A' & om' & -> & -> & [[iA HA'] [HM' HS']]).
+    destruct Hk as (A' & om' & -> & -> & [[iA HA'] HM' HS']).
     destruct (valid_ctx_pi _ _ _ _ HΔΓ HA') as [j HP].
-    split; [ exists j; exact HP |].
-    split; [ intros M Hom; destruct om' as [M' |]; cbn in Hom; [ injection Hom as <- | discriminate ];
-             exact (valid_ctx_fn _ _ _ _ HΔ HΔΓ (HM' _ eq_refl)) |].
+    constructor; [ exists j; exact HP
+                 | intros M Hom; destruct om' as [M' |]; cbn in Hom; [ injection Hom as <- | discriminate ];
+                   exact (valid_ctx_fn _ _ _ _ HΔ HΔΓ (HM' _ eq_refl)) |].
     intros RΓ HRΓ ρ Hρ.
     destruct (rel_modexp_at _ _ _ _ _ HK HRΓ _ _ Hρ) as (k & k' & Hk & Hk' & Hkk).
     pose proof (functional_eval_modexp _ _ _ _ Hk' Hk) as ->.

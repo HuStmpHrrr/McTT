@@ -211,30 +211,45 @@ Qed.
 
 (** The member [x] of the module value [k], related at [R] to that of any
     value related to [k]. *)
-Definition mty (k : dmod) (x : String.string) (R : relation domain) : Prop :=
-  forall h, per_dmod h k -> exists r r', h ·ₜ x gc_deps ⍮ gc_stack ↘ r /\ k ·ₜ x gc_deps ⍮ gc_stack ↘ r' /\ R r r'.
+#[warnings="-cannot-define-projection"]
+Record mem_vals (h k : dmod) (x : String.string) (R : relation domain) : Prop := mk_mem_vals
+  { mv_left : domain
+  ; mv_right : domain
+  ; mv_eval_left : h ·ₜ x gc_deps ⍮ gc_stack ↘ mv_left
+  ; mv_eval_right : k ·ₜ x gc_deps ⍮ gc_stack ↘ mv_right
+  ; mv_rel : R mv_left mv_right }.
 
-Definition smem (Γ : ctx) (K : modexp) (x : String.string) (A : typ) (om : option exp) : Prop :=
-  (exists i, Γ ⊨ A : Typeω@i) /\ (forall M, om = Some M -> Γ ⊨ M : A) /\
-  forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ ->
-    exists k a i RA, ⟦ K ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ k /\ ⟦ A ⟧ ρ ↘ a /\ per_univ_elem i RA a a /\ mty k x RA /\
-      forall M, om = Some M -> exists m r, ⟦ M ⟧ ρ ↘ m /\ k ·ₜ x gc_deps ⍮ gc_stack ↘ r /\ RA m r.
+Definition mty (k : dmod) (x : String.string) (R : relation domain) : Prop :=
+  forall h, per_dmod h k -> mem_vals h k x R.
+
+Record smem (Γ : ctx) (K : modexp) (x : String.string) (A : typ) (om : option exp) : Prop := mk_smem
+  { sm_typ : exists i, Γ ⊨ A : Typeω@i
+  ; sm_body : forall M, om = Some M -> Γ ⊨ M : A
+  ; sm_vals : forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ ->
+      exists k a i RA, ⟦ K ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ k /\ ⟦ A ⟧ ρ ↘ a /\ per_univ_elem i RA a a /\ mty k x RA /\
+        forall M, om = Some M -> exists m r, ⟦ M ⟧ ρ ↘ m /\ k ·ₜ x gc_deps ⍮ gc_stack ↘ r /\ RA m r }.
 
 (** The submodule [y] of [K] at every environment, from any value related
     to [K]'s, related to the value of [V]. *)
+#[warnings="-cannot-define-projection"]
+Record smod_vals (K : modexp) (y : String.string) (V : modexp) (ρ : env) : Prop := mk_smod_vals
+  { smv_mod : dmod
+  ; smv_val : dmod
+  ; smv_eval_mod : ⟦ K ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ smv_mod
+  ; smv_eval_val : ⟦ V ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ smv_val
+  ; smv_sel : forall h, per_dmod h smv_mod -> exists r, h ·ₘ y gc_deps ⍮ gc_stack ↘ r /\ per_dmod r smv_val }.
+
 Definition smod (Γ : ctx) (K : modexp) (y : String.string) (V : modexp) : Prop :=
-  forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ ->
-    exists k v, ⟦ K ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ k /\ ⟦ V ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ v /\
-      forall h, per_dmod h k -> exists r, h ·ₘ y gc_deps ⍮ gc_stack ↘ r /\ per_dmod r v.
+  forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ, R ρ ρ -> smod_vals K y V ρ.
 
 (** ** Members of Related Module Expressions *)
 
 Lemma rel_mem_of_smem : forall Γ H K x A om,
     Γ ⊨ᵐ H ≈ K -> smem Γ K x A om -> Γ ⊨ a_mem H x ≈ a_mem K x : A.
 Proof.
-  intros * [R [HR HH]] [[i HA] [_ HS]].
+  intros * [R HR HH] [[i HA] _ HS].
   pose proof (rel_exp_of_typ_inversion HA) as [RA0 [HRA HAgen]].
-  exists R, HR, i; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  refine (mk_rel_exp_under_ctx _ _ _ _ R HR i _); intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   pose proof (rel_sub_under_ctx_at' Hσ HΓ' HR _ _ _ _ Hρ Hev Hev') as Hρσ.
   assert (HP : PER R) by (eapply per_env_PER; exact HR).
   assert (Hρσ' : R ρ'σ' ρ'σ') by (etransitivity; [ symmetry; exact Hρσ | exact Hρσ ]).
@@ -248,9 +263,9 @@ Proof.
   pose proof (functional_eval_modexp _ _ _ _ Hk E3) as ->.
   pose proof (functional_eval_exp _ _ _ _ Ha Ha3) as ->.
   assert (E : RA <~> Rel) by (eapply per_univ_elem_right_irrel; [ exact HRA' | etransitivity; [ symmetry; exact T23 | exact T23 ] ]).
-  destruct (Hm _ D1) as (v1 & v & S1 & S3 & V1).
-  destruct (Hm _ D2) as (v2 & v' & S2 & S3' & V2).
-  destruct (Hm _ D4) as (v4 & v'' & S4 & S3'' & V4).
+  destruct (Hm _ D1) as [v1 v S1 S3 V1].
+  destruct (Hm _ D2) as [v2 v' S2 S3' V2].
+  destruct (Hm _ D4) as [v4 v'' S4 S3'' V4].
   pose proof (functional_eval_sel _ _ _ _ S3 S3') as <-.
   pose proof (functional_eval_sel _ _ _ _ S3 S3'') as <-.
   apply E in V1, V2, V4.
@@ -261,10 +276,10 @@ Qed.
 Lemma rel_mem_red_of_smem : forall Γ H K x A M,
     Γ ⊨ᵐ H ≈ K -> smem Γ K x A (Some M) -> Γ ⊨ a_mem H x ≈ M : A.
 Proof.
-  intros * [R [HR HH]] [[i HA] [HM HS]].
+  intros * [R HR HH] [[i HA] HM HS].
   pose proof (rel_exp_of_typ_inversion HA) as [RA0 [HRA HAgen]].
-  pose proof (HM _ eq_refl) as [RM [HRM [iM HMgen]]].
-  exists R, HR, i; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  pose proof (HM _ eq_refl) as [RM HRM iM HMgen].
+  refine (mk_rel_exp_under_ctx _ _ _ _ R HR i _); intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   pose proof (rel_sub_under_ctx_at' Hσ HΓ' HR _ _ _ _ Hρ Hev Hev') as Hρσ.
   assert (HP : PER R) by (eapply per_env_PER; exact HR).
   assert (Hρσ' : R ρ'σ' ρ'σ') by (etransitivity; [ symmetry; exact Hρσ | exact Hρσ ]).
@@ -283,8 +298,8 @@ Proof.
   assert (E : RA <~> Rel) by (eapply per_univ_elem_right_irrel; [ exact HRA' | etransitivity; [ symmetry; exact T23 | exact T23 ] ]).
   destruct (Hred _ eq_refl) as (m & v & Hm0 & Hv & HRv).
   pose proof (functional_eval_exp _ _ _ _ Hm0 Hm3) as ->.
-  destruct (Hm _ D1) as (v1 & v' & S1 & S3 & V1).
-  destruct (Hm _ D2) as (v2 & v'' & S2 & S3' & V2).
+  destruct (Hm _ D1) as [v1 v' S1 S3 V1].
+  destruct (Hm _ D2) as [v2 v'' S2 S3' V2].
   pose proof (functional_eval_sel _ _ _ _ Hv S3) as <-.
   pose proof (functional_eval_sel _ _ _ _ Hv S3') as <-.
   apply E in V1, V2, HRv. apply EM in M34.
@@ -295,8 +310,8 @@ Qed.
 Lemma rel_sel_of_smod : forall Γ H K y V,
     Γ ⊨ᵐ H ≈ K -> smod Γ K y V -> Γ ⊨ᵐ V ≈ V -> Γ ⊨ᵐ me_mem H y ≈ V.
 Proof.
-  intros * [R [HR HH]] HS [RV [HRV HV]].
-  exists R, HR; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  intros * [R HR HH] HS [RV HRV HV].
+  refine (mk_rel_modexp_under_ctx _ _ _ R HR _); intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   pose proof (rel_sub_under_ctx_at' Hσ HΓ' HR _ _ _ _ Hρ Hev Hev') as Hρσ.
   assert (HP : PER R) by (eapply per_env_PER; exact HR).
   assert (Hρσ' : R ρ'σ' ρ'σ') by (etransitivity; [ symmetry; exact Hρσ | exact Hρσ ]).
@@ -305,7 +320,7 @@ Proof.
     as (h1 & h2 & h3 & h4 & E1 & E2 & E3 & E4 & D1 & D2 & D3 & D4).
   destruct (rel_mod_hub _ _ _ _ _ _ _ _ (HV _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev'))
     as (g1 & g2 & g3 & g4 & F1 & F2 & F3 & F4 & G1 & G2 & G3 & G4).
-  destruct (HS _ HR _ Hρσ') as (k & v & Hk & Hv & Hsel).
+  destruct (HS _ HR _ Hρσ') as [k v Hk Hv Hsel].
   pose proof (functional_eval_modexp _ _ _ _ Hk E3) as ->.
   pose proof (functional_eval_modexp _ _ _ _ Hv F3) as ->.
   destruct (Hsel _ D1) as (r1 & S1 & R1).
@@ -358,15 +373,15 @@ Proof.
   destruct (Happ _ _ Hc0) as (hc0 & kc0 & Hhc0 & Hkc0 & Hc00).
   destruct (Hout _ _ Hc0) as [b0 b0' Hb0 Hb0' Hbb0].
   destruct (Hcod _ _ _ Hin Hc0 _ _ Hkc0 Hb0') as (l0 & Rb0 & _ & Hm0).
-  destruct (Hm0 _ Hc00) as (y0 & _ & Hy0 & _ & _).
+  destruct (Hm0 _ Hc00) as [y0 _ Hy0 _ _].
   destruct (sel_of_appm _ _ Hph _ _ _ _ Hhc0 Hy0) as (fh & Hfh).
-  exists fh, fk; split; [ exact Hfh | split; [ exact Hfk |] ].
+  exists fh fk; [ exact Hfh | exact Hfk |].
   apply HEq; intros c c' Hc.
   assert (Hc' : in_rel c' c') by (etransitivity; [ symmetry; exact Hc | exact Hc ]).
   destruct (Happ _ _ Hc) as (hc & kc & Hhc & Hkc & Hcc).
   destruct (Hout _ _ Hc) as [b1 b2 Hb1 Hb2 Hbb].
   destruct (Hcod _ _ _ Hin Hc' _ _ Hkc Hb2) as (l & Rb & HRb & Hm).
-  destruct (Hm _ Hcc) as (y1 & y2 & Hy1 & Hy2 & Hyy).
+  destruct (Hm _ Hcc) as [y1 y2 Hy1 Hy2 Hyy].
   assert (Eo : out_rel c c' Hc <~> Rb) by (eapply per_univ_elem_right_irrel; [ apply per_univ_elem_sym; exact Hbb | exact HRb ]).
   econstructor; [ apply (proj2 (sel_app_comm _ _ Hph _ _ Hhc _ _ Hfh y1)); exact Hy1
                 | apply (proj2 (sel_app_comm _ _ Hpk _ _ Hkc _ _ Hfk y2)); exact Hy2 | apply Eo; exact Hyy ].
@@ -376,14 +391,14 @@ Qed.
 Lemma mty_resp : forall k k' x R, PER R -> per_dmod k' k -> mty k x R -> mty k' x R.
 Proof.
   intros * HP Hk Hm h Hh.
-  destruct (Hm _ (per_dmod_trans _ _ _ Hh Hk)) as (r & r1 & Hr & Hr1 & Hrr).
-  destruct (Hm _ Hk) as (r' & r1' & Hr' & Hr1' & Hrr').
+  destruct (Hm _ (per_dmod_trans _ _ _ Hh Hk)) as [r r1 Hr Hr1 Hrr].
+  destruct (Hm _ Hk) as [r' r1' Hr' Hr1' Hrr'].
   pose proof (functional_eval_sel _ _ _ _ Hr1 Hr1') as <-.
-  exists r, r'; repeat split; try assumption; etransitivity; [ exact Hrr | symmetry; exact Hrr' ].
+  exists r r'; try assumption; etransitivity; [ exact Hrr | symmetry; exact Hrr' ].
 Qed.
 
 Lemma mty_iff : forall k x R R', mty k x R -> (R <~> R') -> mty k x R'.
-Proof. intros * Hm E h Hh; destruct (Hm _ Hh) as (r & r' & Hr & Hr' & Hrr); exists r, r'; repeat split; try assumption; apply E, Hrr. Qed.
+Proof. intros * Hm E h Hh; destruct (Hm _ Hh) as [r r' Hr Hr' Hrr]; exists r r'; try assumption; apply E, Hrr. Qed.
 
 (** A function related, once applied, to the member of the applied values
     is related to the member at the [Π]. *)
@@ -408,7 +423,7 @@ Proof.
   destruct (Happ c c' (proj2 (E1 _ _) (proj2 (E2 _ _) Hc))) as (kc & kc' & Hkc & Hkc' & Hkk').
   destruct (Hout _ _ Hc) as [b1 b2 Hb1 Hb2 Hbb].
   destruct (Hcod _ _ _ Hin Hcc _ _ Hkc Hb1) as (l & Rb & fc & r & HRb & Hm & Hfc & Hr & Hfr).
-  destruct (Hm _ (per_dmod_sym _ _ Hkk')) as (r' & r2 & Hr' & Hr2 & Hrr).
+  destruct (Hm _ (per_dmod_sym _ _ Hkk')) as [r' r2 Hr' Hr2 Hrr].
   pose proof (functional_eval_sel _ _ _ _ Hr2 Hr) as ->.
   assert (HPb : PER Rb) by (eapply per_elem_PER; exact HRb).
   assert (Eo : out_rel c c' Hc <~> Rb) by (eapply per_univ_elem_right_irrel; [ exact Hbb | exact HRb ]).
