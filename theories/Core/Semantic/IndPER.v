@@ -301,18 +301,18 @@ Section Fixed_GCtx.
     Proof.
       intros u2 Hn2 Ha2 Hc2 Hd2; constructor; [ | | exact Hc2 | ].
       - intros k A vs vs' s Hk Hp; destruct (Hn2 _ _ _ _ Hk Hp) as (a & a' & Ea & Ea' & [R HR]).
-        exists a, a'; split; [ exact Ea | split; [ exact Ea' |] ].
+        exists a a'; [ exact Ea | exact Ea' |].
         unfold T in Hk; unfold nr, ind_nr; rewrite (nth_ctyp_eq _ _ _ Hk).
         eapply per_head_of; [ exact Ea | exact Ea | | exact (var_per_elem s HR) ].
         eapply per_univ_trans; [ exact HR | apply per_univ_sym; exact HR ].
       - intros ms ms' c gs k A vs vs' s Hm Hc Hk Hp; destruct (Ha2 _ _ _ _ _ _ _ _ Hm Hc Hk Hp) as (a & a' & Ea & Ea' & [R HR]).
-        exists a, a'; split; [ exact Ea | split; [ exact Ea' |] ].
+        exists a a'; [ exact Ea | exact Ea' |].
         unfold ar, ind_ar; rewrite (nth_atyp_eq _ _ _ _ _ Hc Hk).
         eapply per_head_of; [ exact Ea | exact Ea | | exact (var_per_elem s HR) ].
         eapply per_univ_trans; [ exact HR | apply per_univ_sym; exact HR ].
       - intros ms ms' c gs gs1 t gs2 ws ws' k B ys ys' Hm Hc Heq Hw HB Hy.
         destruct (Hd2 _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hw HB Hy) as (a & a' & Ea & Ea' & [R HR]).
-        exists a, a'; split; [ exact Ea | split; [ exact Ea' |] ].
+        exists a a'; [ exact Ea | exact Ea' |].
         pose proof (per_head_diag Ea HR) as HR'.
         destruct (realize_per_univ_elem_gen HR') as (_ & _ & Hrb).
         intros x x' Hx; apply Hrb; exact Hx.

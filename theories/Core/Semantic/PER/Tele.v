@@ -655,20 +655,20 @@ Section Tele.
       intros u1 u2 [H1n H1a H1c H1d] [H2n H2a H2c H2d]; constructor.
       - intros k A vs vs' s Hk Hp.
         assert (Hkl : k < List.length T) by (apply List.nth_error_Some; unfold T; congruence).
-        destruct (H1n _ _ _ _ s Hk (tnrp_refl_l k vs vs' ltac:(lia) Hp)) as (a0 & a1 & E0 & E1 & R1).
-        destruct (H2n _ _ _ _ s Hk Hp) as (b0 & a2 & F0 & E2 & R2).
+        destruct (H1n _ _ _ _ s Hk (tnrp_refl_l k vs vs' ltac:(lia) Hp)) as [a0 a1 E0 E1 R1].
+        destruct (H2n _ _ _ _ s Hk Hp) as [b0 a2 F0 E2 R2].
         functional_eval_rewrite_clear.
         pose proof (HnP _ _ _ _ Hk Hp) as HP.
-        exists a1, a2; split; [ exact E1 | split; [ exact E2 |] ].
+        exists a1 a2; [ exact E1 | exact E2 |].
         etransitivity; [ symmetry; exact R1 | exact R2 ].
       - intros ms ms' c gs k A vs vs' s Hm Hc Hk Hp.
         assert (Hkl : k < List.length (cargs_nonrec gs)) by (apply List.nth_error_Some; congruence).
         pose proof (tnr_refl_l _ _ Hm) as Hmm.
-        destruct (H1a _ _ _ _ _ _ _ _ s Hmm Hc Hk (tar_pre_refl_l ms c gs Hmm Hc k vs vs' ltac:(lia) Hp)) as (a0 & a1 & E0 & E1 & R1).
-        destruct (H2a _ _ _ _ _ _ _ _ s Hm Hc Hk Hp) as (b0 & a2 & F0 & E2 & R2).
+        destruct (H1a _ _ _ _ _ _ _ _ s Hmm Hc Hk (tar_pre_refl_l ms c gs Hmm Hc k vs vs' ltac:(lia) Hp)) as [a0 a1 E0 E1 R1].
+        destruct (H2a _ _ _ _ _ _ _ _ s Hm Hc Hk Hp) as [b0 a2 F0 E2 R2].
         functional_eval_rewrite_clear.
         pose proof (HaP _ _ _ _ _ _ _ _ Hm Hc Hk Hp) as HP.
-        exists a1, a2; split; [ exact E1 | split; [ exact E2 |] ].
+        exists a1 a2; [ exact E1 | exact E2 |].
         etransitivity; [ symmetry; exact R1 | exact R2 ].
       - intros ms ms' c gs gs1 t gs2 ws ws' ys ys' Hm Hc Heq Hp Hy.
         pose proof (shape_k_le _ _ _ _ Heq) as Hk.
@@ -687,10 +687,10 @@ Section Tele.
         pose proof (tar_pre_refl_l ms c gs Hmm Hc _ ws ws' Hk Hp) as Hww.
         pose proof (tsh_refl_l ms c gs gs1 t gs2 ws Hmm Hc Heq Hww k ys ys' ltac:(lia) Hy) as Hyy.
         pose proof (HdP _ _ _ _ _ _ _ _ _ _ _ _ _ Hmm Hc Heq Hww HB Hyy) as HPd.
-        destruct (H1d _ _ _ _ _ _ _ _ _ _ _ _ _ Hmm Hc Heq Hww HB Hyy) as (a0 & a1 & E0 & E1 & T1).
-        destruct (H2d _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hp HB Hy) as (a0' & a2 & E0' & E2 & T2).
+        destruct (H1d _ _ _ _ _ _ _ _ _ _ _ _ _ Hmm Hc Heq Hww HB Hyy) as [a0 a1 E0 E1 T1].
+        destruct (H2d _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hp HB Hy) as [a0' a2 E0' E2 T2].
         functional_eval_rewrite_clear.
-        exists a1, a2; split; [ exact E1 | split; [ exact E2 |] ].
+        exists a1 a2; [ exact E1 | exact E2 |].
         intros x x' Hx.
         assert (Hxx : dr (ms ++ ws ++ ys) B x x) by (etransitivity; [ exact Hx | symmetry; exact Hx ]).
         exact (per_top_trans' _ _ _ (per_top_sym' _ _ (T1 _ _ Hxx)) (T2 _ _ Hx)).
@@ -702,22 +702,22 @@ Section Tele.
       intros u1 u2 [H1n H1a H1c H1d] [H2n H2a H2c H2d]; constructor.
       - intros k A vs vs' s Hk Hp.
         assert (Hkl : k < List.length T) by (apply List.nth_error_Some; unfold T; congruence).
-        destruct (H1n _ _ _ _ s Hk Hp) as (a0 & a1 & E0 & E1 & R1).
-        destruct (H2n _ _ _ _ s Hk (tnrp_refl_r k vs vs' ltac:(lia) Hp)) as (b1 & a2 & F1 & E2 & R2).
+        destruct (H1n _ _ _ _ s Hk Hp) as [a0 a1 E0 E1 R1].
+        destruct (H2n _ _ _ _ s Hk (tnrp_refl_r k vs vs' ltac:(lia) Hp)) as [b1 a2 F1 E2 R2].
         functional_eval_rewrite_clear.
         pose proof (HnP _ _ _ _ Hk Hp) as HP.
         apply (HnI _ _ _ _ Hk Hp) in R2.
-        exists a0, a2; split; [ exact E0 | split; [ exact E2 |] ].
+        exists a0 a2; [ exact E0 | exact E2 |].
         etransitivity; [ exact R1 | exact R2 ].
       - intros ms ms' c gs k A vs vs' s Hm Hc Hk Hp.
         assert (Hkl : k < List.length (cargs_nonrec gs)) by (apply List.nth_error_Some; congruence).
-        destruct (H1a _ _ _ _ _ _ _ _ s Hm Hc Hk Hp) as (a0 & a1 & E0 & E1 & R1).
+        destruct (H1a _ _ _ _ _ _ _ _ s Hm Hc Hk Hp) as [a0 a1 E0 E1 R1].
         destruct (H2a _ _ _ _ _ _ _ _ s (tnr_refl_r _ _ Hm) Hc Hk (tarp_refl_r ms ms' c gs k vs vs' Hm Hc ltac:(lia) Hp))
-          as (b1 & a2 & F1 & E2 & R2).
+          as [b1 a2 F1 E2 R2].
         functional_eval_rewrite_clear.
         pose proof (HaP _ _ _ _ _ _ _ _ Hm Hc Hk Hp) as HP.
         apply (HaI _ _ _ _ _ _ _ _ Hm Hc Hk Hp) in R2.
-        exists a0, a2; split; [ exact E0 | split; [ exact E2 |] ].
+        exists a0 a2; [ exact E0 | exact E2 |].
         etransitivity; [ exact R1 | exact R2 ].
       - intros ms ms' c gs gs1 t gs2 ws ws' ys ys' Hm Hc Heq Hp Hy.
         pose proof (shape_k_le _ _ _ _ Heq) as Hk.
@@ -734,11 +734,11 @@ Section Tele.
         pose proof (tarp_refl_r _ _ _ _ _ _ _ Hm Hc Hk Hp) as Hw'.
         pose proof (tsh_refl_inst ms ms' c gs gs1 t gs2 ws ws' k ys ys' Hm Hc Heq Hp ltac:(lia) Hy) as Hy'.
         pose proof (HdP _ _ _ _ _ _ _ _ _ _ _ _ _ (tnr_refl_r _ _ Hm) Hc Heq Hw' HB Hy') as HPd.
-        destruct (H1d _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hp HB Hy) as (a0 & a1 & E0 & E1 & T1).
-        destruct (H2d _ _ _ _ _ _ _ _ _ _ _ _ _ (tnr_refl_r _ _ Hm) Hc Heq Hw' HB Hy') as (a1' & a2 & E1' & E2 & T2).
+        destruct (H1d _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hp HB Hy) as [a0 a1 E0 E1 T1].
+        destruct (H2d _ _ _ _ _ _ _ _ _ _ _ _ _ (tnr_refl_r _ _ Hm) Hc Heq Hw' HB Hy') as [a1' a2 E1' E2 T2].
         pose proof (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hp HB Hy) as HdIe.
         functional_eval_rewrite_clear.
-        exists a0, a2; split; [ exact E0 | split; [ exact E2 |] ].
+        exists a0 a2; [ exact E0 | exact E2 |].
         intros x x' Hx.
         pose proof (proj1 (HdIe _ _) Hx) as Hx'.
         assert (Hxx : dr (ms' ++ ws' ++ ys') B x' x') by (etransitivity; [ symmetry; exact Hx' | exact Hx' ]).
@@ -1167,15 +1167,15 @@ Section Tele.
       - intros k A vs vs' s Hk Hp.
         assert (Hkl : k < List.length T) by (apply List.nth_error_Some; unfold T; congruence).
         pose proof (tele_pre_nr_change' k vs vs' ltac:(lia) Hp) as Hp1.
-        destruct (H1 _ _ _ _ s Hk Hp1) as (a & a' & E & E' & R).
-        exists a, a'; split; [ exact E | split; [ exact E' |] ].
+        destruct (H1 _ _ _ _ s Hk Hp1) as [a a' E E' R].
+        exists a a'; [ exact E | exact E' |].
         eapply Hn; [ exact Hkl | exact Hp1 | exact Hp | exact R ].
       - intros ms ms' c gs k A vs vs' s Hm Hc Hk Hp.
         assert (Hkl : k < List.length (cargs_nonrec gs)) by (apply List.nth_error_Some; congruence).
         pose proof (tele_full_nr_change' _ _ Hm) as Hm1.
         pose proof (tele_pre_ar_change' ms ms' ms' c gs k vs vs' Hm1 Hm Hc ltac:(lia) Hp) as Hp1.
-        destruct (H2 _ _ _ _ _ _ _ _ s Hm1 Hc Hk Hp1) as (a & a' & E & E' & R).
-        exists a, a'; split; [ exact E | split; [ exact E' |] ].
+        destruct (H2 _ _ _ _ _ _ _ _ s Hm1 Hc Hk Hp1) as [a a' E E' R].
+        exists a a'; [ exact E | exact E' |].
         eapply Ha; [ exact Hm1 | exact Hm | exact Hc | exact Hkl | exact Hp1 | exact Hp | exact R ].
       - intros ms ms' c gs gs1 t gs2 ws ws' ys ys' Hm Hc Heq Hp Hy.
         assert (Hk : List.length (cargs_nonrec gs1) <= List.length (cargs_nonrec gs))
@@ -1196,8 +1196,8 @@ Section Tele.
         pose proof (tele_pre_sh_change' ms ms' ms' c gs gs1 t gs2 ws ws' ws' k ys ys' Hm1 Hm Hc Heq Hp1 Hp ltac:(lia) Hy) as Hy1.
         pose proof (Hd _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm1 Hm Hc Heq Hp1 Hp Hkl Hy1 Hy) as Hdd.
         unfold shape_tr in Hdd; rewrite (List.nth_error_nth _ _ _ HB) in Hdd.
-        destruct (H4 _ _ _ _ _ _ _ _ _ _ _ _ _ Hm1 Hc Heq Hp1 HB Hy1) as (a & a' & E & E' & Ht).
-        exists a, a'; split; [ exact E | split; [ exact E' |] ].
+        destruct (H4 _ _ _ _ _ _ _ _ _ _ _ _ _ Hm1 Hc Heq Hp1 HB Hy1) as [a a' E E' Ht].
+        exists a a'; [ exact E | exact E' |].
         intros x x' Hx; exact (Ht _ _ (proj2 (Hdd _ _) Hx)).
     Qed.
 

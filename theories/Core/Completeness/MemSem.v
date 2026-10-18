@@ -180,7 +180,7 @@ Proof.
       destruct (sem_ctx_per_ctx_env HC0) as [Ro HRo].
       destruct (benv_exists _ _ Hn (proj1 (body_shape_fill _ _ Hn Hsx0)) HC0 _ _ HRD HRo _ Hρ) as (ρo & Hbo & Hρo).
       destruct (HS _ _ _ HmH eq_refl) as [[iA HAn] _ HSn].
-      destruct (HSn _ HRo _ Hρo) as (t & an & i_n & RAn & Ht & Han & HRAn & Hmt & _).
+      destruct (HSn _ HRo _ Hρo) as [t an i_n RAn Ht Han HRAn Hmt _].
       (* the environment after the first [j] entries *)
       assert (HnP : gm_nopens (gens_append Φx 0 gs0) = 0) by (rewrite gens_append_nopens; exact Hn).
       assert (HshP : body_shape (gens_append Φx 0 gs0) (gens_append Φx 0 gs0)).
@@ -380,12 +380,12 @@ Proof.
   destruct Hsm as [HA _ HS].
   constructor; [ exact HA | intros M [= <-]; exact HPx |].
   intros RΓ HR ρ Hρ.
-  destruct (HS _ HR _ Hρ) as (k & a & i & RA & Hk & Ha & HRA & Hmt & _).
+  destruct (HS _ HR _ Hρ) as [k a i RA Hk Ha HRA Hmt _].
   destruct (rel_modexp_at _ _ _ _ _ HEP HR _ _ Hρ) as (k1 & kp & Hk1 & Hkp & Hkk).
   pose proof (functional_eval_modexp _ _ _ _ Hk1 Hk) as ->.
   destruct (Hmt _ (per_dmod_sym _ _ Hkk)) as [r r' Hr Hr' Hrr].
-  exists k, a, i, RA; repeat split; try assumption.
-  intros M [= <-]; exists r, r'; split; [ eapply eval_mem_of_sel; eassumption | split; assumption ].
+  apply mk_smem_at with (sma_mod := k) (sma_typ := a) (sma_lvl := i) (sma_rel := RA); try assumption.
+  intros M [= <-]; apply (mk_red_vals _ _ _ _ _ r r'); [ eapply eval_mem_of_sel; eassumption | assumption | assumption ].
 Qed.
 
 (** ** Units Lacking Parameters *)
@@ -593,8 +593,10 @@ Proof.
                       exists a, i', Ra; repeat split; try assumption; intros M1 [= <-]; exists m, r; repeat split; assumption)
                 HRΓ _ Hρ _ Hk Hkk)
       as (a & i' & Ra & Ha & HRa & Hmt & Hred).
-    exists k, a, i', Ra; split; [ exact Hk' |]; split; [ exact Ha |]; split; [ exact HRa |]; split; [ exact Hmt |].
-    intros M' [= <-]; exact (Hred _ eq_refl).
+    apply mk_smem_at with (sma_mod := k) (sma_typ := a) (sma_lvl := i') (sma_rel := Ra);
+      [ exact Hk' | exact Ha | exact HRa | exact Hmt |].
+    intros M' [= <-]; destruct (Hred _ eq_refl) as (m & r & Hm0 & Hr & Hmr).
+    exact (mk_red_vals _ _ _ _ _ m r Hm0 Hr Hmr).
   - (* an alias *)
     intros Γ Δ E Hw HΔ HΓ HΔΓ HK HE Hsmt IHE x R A Hm Ht.
     (* the target's member, its δ-reduct, if any, or the filed member it
@@ -617,14 +619,17 @@ Proof.
     apply eval_me_lit_iff in Hk.
     destruct (unit_walk Δ Γ (md_alias E) x A' om' RΓ HΔ HΔΓ (ex_intro _ iA HA')
                 ltac:(intros R0 HR0 ρ0 Hρ0 k0 Hk0; inversion Hk0; subst; try (cbn in *; lia);
-                      destruct (HS' _ HR0 _ Hρ0) as (k1 & a & i' & Ra & Hk1 & Ha & HRa & Hm1 & Hred1);
+                      destruct (HS' _ HR0 _ Hρ0) as [k1 a i' Ra Hk1 Ha HRa Hm1 Hred1];
                       match goal with Hk2 : ⟦ E ⟧ᵐ _ ⍮ _ ⍮ ρ0 ↘ k0 |- _ => pose proof (functional_eval_modexp _ _ _ _ Hk1 Hk2) as -> end;
-                      exists a, i', Ra; repeat split; assumption)
+                      exists a, i', Ra; repeat split; try assumption;
+                      intros M0 HM0; destruct (Hred1 _ HM0) as [m r Hm2 Hr2 Hmr2]; exists m, r; repeat split; assumption)
                 HRΓ _ Hρ _ Hk Hkk)
       as (a & i' & Ra & Ha & HRa & Hmt & Hred).
-    exists k, a, i', Ra; split; [ exact Hk' |]; split; [ exact Ha |]; split; [ exact HRa |]; split; [ exact Hmt |].
+    apply mk_smem_at with (sma_mod := k) (sma_typ := a) (sma_lvl := i') (sma_rel := Ra);
+      [ exact Hk' | exact Ha | exact HRa | exact Hmt |].
     intros M Hom; destruct om' as [M' |]; cbn in Hom; [ injection Hom as <- | discriminate ].
-    exact (Hred _ eq_refl).
+    destruct (Hred _ eq_refl) as (m & r & Hm0 & Hr & Hmr).
+    exact (mk_red_vals _ _ _ _ _ m r Hm0 Hr Hmr).
   - (* a module expression equal to a valid unit *)
     intros Γ H R Rm K RK HwH HmH HmodH HHK HK IHK HmK HmodK x R' A Hm Ht.
     inversion Hm as [? ? ? ? ? _ _ | | | | ? ? ? R0 R0m Γy E rd R1 ? Hm0 Hmd He Hed Hr]; subst; [ cbn in Ht; discriminate |].

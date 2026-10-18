@@ -206,19 +206,37 @@ Record exps_rel (Ps : list exp) (ρ ρ' : env) (R : list domain -> list domain -
     admissible.  The relations are elements of the type's universe, so the
     condition is one the elements can state: the types of the uniform
     parameters may be larger. *)
+(** A type at two environments: its two values, whose variables at [s]
+    are related by [R]. *)
+#[warnings="-cannot-define-projection"]
+Record adm_vals (A : exp) (ρ ρ' : env) (R : relation domain) (s : nat) : Prop := mk_adm_vals
+  { a : domain
+  ; a' : domain
+  ; adv_eval : eval_exp gc_deps gc_stack A ρ a
+  ; adv_eval' : eval_exp gc_deps gc_stack A ρ' a'
+  ; adv_rel : R (⇑! a s) (⇑! a' s) }.
+
+(** A domain of a shape at two environments: its two values, whose
+    applications to arguments related by [R] read back alike. *)
+#[warnings="-cannot-define-projection"]
+Record dom_vals (B : exp) (ρ ρ' : env) (R : relation domain) : Prop := mk_dom_vals
+  { a : domain
+  ; a' : domain
+  ; dmv_eval : eval_exp gc_deps gc_stack B ρ a
+  ; dmv_eval' : eval_exp gc_deps gc_stack B ρ' a'
+  ; dmv_top : forall x x', R x x' -> per_top (d_dom a x) (d_dom a' x') }.
+
 Record ind_adm (D : ind_decl) (ups : list domain)
     (nr : nat -> list domain -> relation domain)
     (ar : list domain -> String.string -> nat -> list domain -> relation domain)
     (dr : list domain -> exp -> relation domain)
     (ua : list domain) : Prop := mk_ind_adm
   { iad_nparams : forall k A vs vs' s, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
-      exists a a', eval_exp gc_deps gc_stack A (env_args nil (ups ++ vs)) a /\
-        eval_exp gc_deps gc_stack A (env_args nil (ua ++ vs')) a' /\ nr k vs (⇑! a s) (⇑! a' s)
+      adm_vals A (env_args nil (ups ++ vs)) (env_args nil (ua ++ vs')) (nr k vs) s
   ; iad_args : forall ms ms' c gs k A vs vs' s,
       tele_full nr (List.rev (ind_nparams D)) ms ms' -> ind_con D c = Some gs ->
       List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
-      exists a a', eval_exp gc_deps gc_stack A (env_args nil (ups ++ ms ++ vs)) a /\
-        eval_exp gc_deps gc_stack A (env_args nil (ua ++ ms' ++ vs')) a' /\ ar ms c k vs (⇑! a s) (⇑! a' s)
+      adm_vals A (env_args nil (ups ++ ms ++ vs)) (env_args nil (ua ++ ms' ++ vs')) (ar ms c k vs) s
   ; iad_recs : forall ms ms' c gs gs1 t gs2 ws ws' ys ys',
       tele_full nr (List.rev (ind_nparams D)) ms ms' ->
       ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
@@ -232,9 +250,7 @@ Record ind_adm (D : ind_decl) (ups : list domain)
       tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
       List.nth_error (ptyp_doms t) k = Some B ->
       tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
-      exists a a', eval_exp gc_deps gc_stack B (env_args nil (ups ++ ms ++ ws ++ ys)) a /\
-        eval_exp gc_deps gc_stack B (env_args nil (ua ++ ms' ++ ws' ++ ys')) a' /\
-        (forall x x', dr (ms ++ ws ++ ys) B x x' -> per_top (d_dom a x) (d_dom a' x')) }.
+      dom_vals B (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (ua ++ ms' ++ ws' ++ ys')) (dr (ms ++ ws ++ ys) B) }.
 
 (** The elements of the inductive type [p] at the uniform parameters [ups]
     and the non-uniform ones [ns], of the left type: the relation of two

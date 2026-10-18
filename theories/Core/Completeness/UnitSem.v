@@ -61,15 +61,16 @@ Lemma smem_transport : forall Γ H K x A om, Γ ⊨ᵐ H ≈ K -> smem Γ K x A 
 Proof.
   intros * HHK [HA HM HS]; constructor; [ exact HA | exact HM |].
   intros R HR ρ Hρ.
-  destruct (HS _ HR _ Hρ) as (k & a & i & RA & Hk & Ha & HRA & Hm & Hred).
+  destruct (HS _ HR _ Hρ) as [k a i RA Hk Ha HRA Hm Hred].
   destruct (rel_modexp_at _ _ _ _ _ HHK HR _ _ Hρ) as (h & k' & Hh & Hk' & Hhk).
   pose proof (functional_eval_modexp _ _ _ _ Hk' Hk) as ->.
   assert (HPA : PER RA) by (eapply per_elem_PER; exact HRA).
-  exists h, a, i, RA; repeat split; try assumption; [ eapply mty_resp; [ exact HPA | exact Hhk | exact Hm ] |].
-  intros M HM0; destruct (Hred _ HM0) as (m & r & Hm0 & Hr & Hmr).
+  apply mk_smem_at with (sma_mod := h) (sma_typ := a) (sma_lvl := i) (sma_rel := RA); try assumption;
+    [ eapply mty_resp; [ exact HPA | exact Hhk | exact Hm ] |].
+  intros M HM0; destruct (Hred _ HM0) as [m r Hm0 Hr Hmr].
   destruct (Hm _ Hhk) as [r1 r2 Hr1 Hr2 Hrr].
   pose proof (functional_eval_sel _ _ _ _ Hr2 Hr) as ->.
-  exists m, r1; repeat split; [ exact Hm0 | exact Hr1 | etransitivity; [ exact Hmr | symmetry; exact Hrr ] ].
+  apply (mk_red_vals _ _ _ _ _ m r1); [ exact Hm0 | exact Hr1 | etransitivity; [ exact Hmr | symmetry; exact Hrr ] ].
 Qed.
 
 (** ** Valid Units along Substitutions, in the PER Model *)

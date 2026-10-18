@@ -502,7 +502,7 @@ Proof.
   rewrite ds_ty_named_m in Ht.
   destruct (Hgf _ _ _ Hl) as [(oD & Hmo) Hpe HT HTa HTs _ _ Hents _].
   pose proof Hs as [T1 T2 -> Hlen HTa2 HTs2 HNs].
-  destruct (Hents _ _ _ _ Hp He) as (A0 & i & g & HA0 & Hats & Hsel & (j & E0 & e & He0 & HE0 & Hgg)).
+  destruct (Hents _ _ _ _ Hp He) as [A0 i g HA0 Hats Hsel [j E0 e He0 HE0 Hgg]].
   destruct (Hats _ _ _ _ eq_refl Hlen Ha) as [HtyR1 HredR1].
   rewrite HtyR1 in Ht; injection Ht as <-.
   set (K := me_apps (qname_mod p) Ns).
@@ -535,7 +535,8 @@ Proof.
   { constructor; [ exists iX; exact HXΓ | discriminate |].
     intros RΓ HR ρ Hρ.
     destruct (Hpt _ HR _ Hρ) as (ns & a & RX & Hns & Ha1 & Haa & Hmt & _).
-    exists (dm_global p ns), a, iX, RX; repeat split; try assumption; [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | discriminate ]. }
+    apply mk_smem_at with (sma_mod := dm_global p ns) (sma_typ := a) (sma_lvl := iX) (sma_rel := RX); try assumption;
+      [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | discriminate ]. }
   destruct HredR1 as [HredR1 | (M1 & HredR1 & HM1 & HevM1)].
   2:{ (* a reduct: a term over the outer parameters, instantiated *)
     rewrite (ds_red_named_some _ _ _ _ _ HredR1).
@@ -544,8 +545,8 @@ Proof.
       exact (rel_exp_under_ctx_gsub Hg (closed_app_valid _ _ _ _ _ HTa2 HT2 HΓ HM1)).
     + intros RΓ HR ρ Hρ.
       destruct (Hpt _ HR _ Hρ) as (ns & a & RX & Hns & Ha1 & Haa & Hmt & _).
-      exists (dm_global p ns), a, iX, RX; split; [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) |].
-      split; [ exact Ha1 |]; split; [ exact Haa |]; split; [ exact Hmt |].
+      apply mk_smem_at with (sma_mod := dm_global p ns) (sma_typ := a) (sma_lvl := iX) (sma_rel := RX);
+        [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | exact Ha1 | exact Haa | exact Hmt |].
       intros M HM; injection HM as <-.
       destruct (closed_inst_exp _ _ _ _ _ _ HTa2 HT2 HΓ (eq_sym Hlen) HNs HM1 HR _ Hρ)
         as (ns' & m & n & a2 & i2 & R2 & Hns' & Hm' & Hn & Ha2 & HR2 & Hmn).
@@ -553,7 +554,7 @@ Proof.
       pose proof (Hfs _ _ _ Hns' _ Hns) as ->.
       functional_eval_rewrite_clear.
       assert (Hlns : List.length ns = List.length T2) by (rewrite (eval_exps_length _ _ _ Hns); lia).
-      exists m, n; split; [ exact Hm' | split; [ eapply eval_sel_global_apps; [ exact Hsel | exact (HevM1 _ _ Hlns Hn) ] |] ].
+      apply (mk_red_vals _ _ _ _ _ m n); [ exact Hm' | eapply eval_sel_global_apps; [ exact Hsel | exact (HevM1 _ _ Hlns Hn) ] |].
       assert (E2 : R2 <~> RX) by (eapply per_univ_elem_right_irrel; [ exact HR2 | exact Haa ]).
       apply E2; exact Hmn. }
   - (* an axiom or an abstract definition: its name at the arguments, or,
@@ -570,12 +571,12 @@ Proof.
     + intros M HM; injection HM as <-; exact (valid_exp_eval_iff _ _ _ _ HKx Hiff).
     + intros RΓ HR ρ Hρ.
       destruct (Hpt _ HR _ Hρ) as (ns & a & RX & Hns & Ha1 & Haa & Hmt & Hkk).
-      exists (dm_global p ns), a, iX, RX; split; [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) |].
-      split; [ exact Ha1 |]; split; [ exact Haa |]; split; [ exact Hmt |].
+      apply mk_smem_at with (sma_mod := dm_global p ns) (sma_typ := a) (sma_lvl := iX) (sma_rel := RX);
+        [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | exact Ha1 | exact Haa | exact Hmt |].
       intros M HM; injection HM as <-.
       destruct (Hmt _ Hkk) as [r r' Hr Hr' Hrr].
       pose proof (functional_eval_sel _ _ _ _ Hr Hr') as <-.
-      exists r, r; split; [| split; [ exact Hr | exact Hrr ] ].
+      apply (mk_red_vals _ _ _ _ _ r r); [| exact Hr | exact Hrr ].
       rewrite <- (exp_sub_id Mn); apply Hiff; rewrite exp_sub_id.
       eapply eval_mem_of_sel; [ exact (eval_apps_filed _ _ _ _ _ _ Hl Hns) | exact Hr ].
 Qed.

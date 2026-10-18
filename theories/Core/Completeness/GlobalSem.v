@@ -392,7 +392,7 @@ Section FiledOk.
           exists M1, ds_red R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 A0 /\
             forall ns m, List.length ns = List.length T2 -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
               $*| g & ns | gc_deps ⍮ gc_stack ↘ m)) /\
-      (exists j E0 e, ⟦ ctx_pi T A0 ⟧ nil ↘ e /\ per_univ_elem j E0 e e /\ E0 g g).
+      self_rel_at T A0 g.
   Proof.
     intros * HTa HT HA0 HM0 Hg Hats; split.
     - intros * -> Hl Ha; destruct (Hats _ _ _ _ eq_refl Hl Ha) as [Hty Hred]; split; [ exact Hty | right ].
@@ -406,7 +406,7 @@ Section FiledOk.
       pose proof (valid_ctx_fn _ _ _ _ HTa HT0 HM0') as Hfn.
       destruct (valid_at _ _ _ _ Hfn per_ctx_env_nil_true nil nil I) as (m & m' & e & j & E0 & Hm & Hm' & He0 & HE0 & Hmm).
       pose proof (functional_eval_exp _ _ _ _ Hm Hg) as ->; pose proof (functional_eval_exp _ _ _ _ Hm' Hg) as ->.
-      exists j, E0, e; repeat split; assumption.
+      exact (mk_self_rel_at _ _ _ j E0 e He0 HE0 Hmm).
   Qed.
 
   (** The reduct clause for an abstracted description, by its parts. *)
@@ -424,15 +424,7 @@ Section FiledOk.
 
   Lemma fo_term : forall p T Φ x Φ0 E R0, gc_loc Θm Ξm p = Some (T, Φ) ->
       gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) -> entry_term E = Some R0 ->
-      exists A0 i g, T ⊨ A0 : Typeω@i /\
-        (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> ds_ats R0 Ns = Some R1 ->
-           ds_ty Θm Ξm R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
-           (ds_red R1 = None \/
-            exists M1, ds_red R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 A0 /\
-              forall ns m, List.length ns = List.length T2 -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
-                $*| g & ns | gc_deps ⍮ gc_stack ↘ m)) /\
-        dm_global p nil ·ₜ x gc_deps ⍮ gc_stack ↘ g /\
-        (exists j E0 e, ⟦ ctx_pi T A0 ⟧ nil ↘ e /\ per_univ_elem j E0 e e /\ E0 g g).
+      filed_term Θm Ξm p T x R0.
   Proof.
     intros * Hl Hp HR0.
     destruct (good_loc _ _ _ Hl) as [[HT HTa] Hv].
@@ -460,7 +452,7 @@ Section FiledOk.
         destruct (valid_at _ _ _ _ (valid_ctx_fn _ _ _ _ HTa HT0 HM0') per_ctx_env_nil_true nil nil I)
           as (g & _ & _ & _ & _ & Hg & _).
         destruct (fo_term_fn _ _ _ _ _ g HTa HT HA0 (HM0 _ eq_refl) Hg Hats) as [Hred Hper].
-        exists A0, i, g; split; [ exact HA0 | split; [ exact Hred | split; [| exact Hper ] ] ].
+        apply mk_filed_term with (ftm_typ := A0) (ftm_lvl := i) (ftm_val := g); [ exact HA0 | exact Hred | | exact Hper ].
         eapply eval_sel_global; [ exact HeE2 | exact Hg | constructor ]. }
       all: (* an axiom or an abstract definition: its name, a neutral *)
         assert (HT0 : ⊨ T ++ ⋅) by (rewrite app_nil_r; exact HT);
@@ -468,11 +460,12 @@ Section FiledOk.
         destruct (rel_exp_ctx_pi _ _ _ _ HTa HT0 HA0') as [j HP];
         destruct (rel_exp_of_typ_inversion_simple_at per_ctx_env_nil_true HP nil nil I) as (e & e' & Hev & Hev' & [E0 HE0]);
         pose proof (functional_eval_exp _ _ _ _ Hev' Hev) as ->;
-        exists A0, i, (⇑ e (d_glob (qname_app p (x :: nil)))); split; [ exact HA0 |]; split;
-        [ intros * HT12 Hlen Ha; destruct (Hats _ _ _ _ HT12 Hlen Ha) as [Hty Hred]; cbn in Hred;
-          split; [ exact Hty | left; exact Hred ] |];
-        split; [ eapply eval_sel_global_neut; [ exact HeE2 | first [ left; reflexivity | right; reflexivity ] | exact Hev | constructor ] |];
-        exists j, E0, e; split; [ exact Hev |]; split; [ exact HE0 | exact (per_bot_then_per_elem HE0 (per_bot_glob _)) ].
+        apply mk_filed_term with (ftm_typ := A0) (ftm_lvl := i) (ftm_val := ⇑ e (d_glob (qname_app p (x :: nil))));
+        [ exact HA0
+        | intros * HT12 Hlen Ha; destruct (Hats _ _ _ _ HT12 Hlen Ha) as [Hty Hred]; cbn in Hred;
+          split; [ exact Hty | left; exact Hred ]
+        | eapply eval_sel_global_neut; [ exact HeE2 | first [ left; reflexivity | right; reflexivity ] | exact Hev | constructor ]
+        | exact (mk_self_rel_at _ _ _ j E0 e Hev HE0 (per_bot_then_per_elem HE0 (per_bot_glob _))) ].
     - (* an inductive type: its type former *)
       assert (HE2 : exists ΦD2, E2 = ge_ind pv pq D ΦD2)
         by (destruct E2 as [b' pv' A' B' | pv' U' | pv' pq' D' ΦD2 | pv' Δ' pq' Ns'']; cbn in Hgr; try discriminate;
@@ -498,8 +491,8 @@ Section FiledOk.
       destruct (valid_at _ _ _ _ Hind0 per_ctx_env_nil_true nil nil I) as (g & g' & e & j & E0 & Hg & Hg' & He0 & HE0 & Hgg).
       assert (Hgd : ⟦ a_ind (qname_in p x) ⟧ nil ↘ d_ind (qname_in p x) nil) by constructor.
       pose proof (functional_eval_exp _ _ _ _ Hg Hgd) as ->; pose proof (functional_eval_exp _ _ _ _ Hg' Hgd) as ->.
-      exists (ctx_pi Δp S'), i, (d_ind (qname_in p x) nil).
-      split; [ exact HA0 |]; split; [| split ].
+      apply mk_filed_term with (ftm_typ := ctx_pi Δp S') (ftm_lvl := i) (ftm_val := d_ind (qname_in p x) nil);
+        [ exact HA0 | | | ].
       + intros Ns R1 T1 T2 HT12 Hlen Ha.
         rewrite ds_ats_ind_nil in Ha; injection Ha as <-; cbn [app].
         split.
@@ -528,7 +521,7 @@ Section FiledOk.
              pose proof (functional_eval_exps _ _ _ _ Hns' Hvs) as ->; exact Hfa.
       + rewrite qname_in_app in Hres2, Hind2.
         eapply eval_sel_global_ind; [ exact Hres2 | exact Hind2 | constructor ].
-      + exists j, E0, e; repeat split; assumption.
+      + exact (mk_self_rel_at _ _ _ j E0 e He0 HE0 Hgg).
     - (* an inductive alias: its type former at its arguments *)
       cbn in HV; destruct HV as [_ (Δ0 & D & i & -> & HlD & HlD2 & HA0 & HM0)].
       assert (HE2 : ge_ind_alias pv (Δ0 ++ T) pq Ns' = E2)
@@ -548,7 +541,8 @@ Section FiledOk.
         split; [ apply Hty; cbn [ds_up ds_ty]; rewrite HlD, <- ctx_pi_app; reflexivity |].
         rewrite Hred; cbn [ds_up ds_red option_map]; rewrite ctx_fn_app; reflexivity. }
       destruct (fo_term_fn _ _ _ _ _ g HTa HT HA0 HM0 Hg Hats) as [Hred Hper].
-      exists (ctx_pi Δ0 (ind_ty_at D Ns')), i, g; split; [ exact HA0 | split; [ exact Hred | split; [| exact Hper ] ] ].
+      apply mk_filed_term with (ftm_typ := ctx_pi Δ0 (ind_ty_at D Ns')) (ftm_lvl := i) (ftm_val := g);
+        [ exact HA0 | exact Hred | | exact Hper ].
       rewrite <- ctx_fn_app in Hg.
       eapply eval_sel_global_ind_alias; [ exact Hres2 | exact Hia2 | exact Hg | constructor ].
   Qed.

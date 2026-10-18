@@ -493,6 +493,37 @@ Qed.
     (an inductive type's reduct, its type former at the arguments, is not
     a [λ]); each alias entry is a valid
     unit in any valid context. *)
+(** A value [g] related to itself at the value of the closed type
+    [ctx_pi T A0]. *)
+#[warnings="-cannot-define-projection"]
+Record self_rel_at (T : ctx) (A0 : exp) (g : domain) : Prop := mk_self_rel_at
+  { sra_lvl : uidx
+  ; sra_rel : relation domain
+  ; sra_typ : domain
+  ; sra_eval : ⟦ ctx_pi T A0 ⟧ nil ↘ sra_typ
+  ; sra_per : per_univ_elem sra_lvl sra_rel sra_typ sra_typ
+  ; sra_elem : sra_rel g g }.
+
+(** The term member [x] of the filed module [p], over its telescope [T],
+    read as [R0]: of a type over [T], of a value related to itself, with
+    its δ-reduct at arguments for the outer part of [T], if it has one, a
+    term over that part instantiated, valid there, whose value at arguments
+    is the member's value applied to them. *)
+#[warnings="-cannot-define-projection"]
+Record filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) : Prop := mk_filed_term
+  { ftm_typ : exp
+  ; ftm_lvl : nat
+  ; ftm_val : domain
+  ; ftm_typed : T ⊨ ftm_typ : Typeω@ftm_lvl
+  ; ftm_reads : forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> ds_ats R0 Ns = Some R1 ->
+      ds_ty Θm Ξm R1 = Some (ctx_pi T1 ftm_typ)[sb_of_list Id Ns] /\
+      (ds_red R1 = None \/
+       exists M1, ds_red R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 ftm_typ /\
+         forall ns m, List.length ns = List.length T2 -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
+           $*| ftm_val & ns | gc_deps ⍮ gc_stack ↘ m)
+  ; ftm_sel : dm_global p nil ·ₜ x gc_deps ⍮ gc_stack ↘ ftm_val
+  ; ftm_self : self_rel_at T ftm_typ ftm_val }.
+
 Record filed_ok (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_filed_ok
   { fok_stored : exists Φ', gc_loc gc_deps gc_stack p = Some (T, Φ')
   ; fok_path : forall ρ, ⟦ qname_mod p ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ dm_global p nil
@@ -504,15 +535,7 @@ Record filed_ok (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_filed_ok
   ; fok_sub_kinds : forall x TΦ, gc_loc Θm Ξm (qname_app p (x :: nil)) = Some TΦ ->
       dkind gc_deps gc_stack (dm_global p nil) (x :: nil) mk_mod
   ; fok_terms : forall x Φ0 E R0, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) -> entry_term E = Some R0 ->
-      exists A0 i g, T ⊨ A0 : Typeω@i /\
-        (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> ds_ats R0 Ns = Some R1 ->
-           ds_ty Θm Ξm R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
-           (ds_red R1 = None \/
-            exists M1, ds_red R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 A0 /\
-              forall ns m, List.length ns = List.length T2 -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
-                $*| g & ns | gc_deps ⍮ gc_stack ↘ m)) /\
-        dm_global p nil ·ₜ x gc_deps ⍮ gc_stack ↘ g /\
-        (exists j E0 e, ⟦ ctx_pi T A0 ⟧ nil ↘ e /\ per_univ_elem j E0 e e /\ E0 g g)
+      filed_term p T x R0
   ; fok_aliases : forall y Φ0 E Ua, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
       gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias Ua) /\
       forall Γ, ⊨ Γ -> wf_ctx Θm Ξm Γ -> semK Γ (me_lit Ua) }.

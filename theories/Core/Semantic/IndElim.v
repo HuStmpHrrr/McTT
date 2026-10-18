@@ -206,7 +206,7 @@ Section Fixed_GCtx.
         assert (HA : exists A, List.nth_error T (List.length T0) = Some (ce_ass A)).
         { apply (nparams_lt_ass D); [ exact Hass |]. apply List.nth_error_Some; unfold T in Hk; congruence. }
         destruct HA as [A HA]; rewrite Hk in HA; injection HA as ->.
-        destruct (Hn _ _ _ _ s Hk Hp) as (a & a' & Ea & Ea' & Hr).
+        destruct (Hn _ _ _ _ s Hk Hp) as [a a' Ea Ea' Hr].
         destruct (IH (T0 ++ ce_ass A :: nil) (vs ++ ⇑! a s :: nil) (vs' ++ ⇑! a' s :: nil) (S s)) as (ws & ws' & F & F' & Hp').
         { rewrite HT, <- List.app_assoc; reflexivity. }
         { rewrite List.length_app, Nat.add_comm; cbn; apply tele_pre_snoc; assumption. }
@@ -279,7 +279,7 @@ Section Fixed_GCtx.
         destruct (Hcl _ _ _ _ _ _ _ _ _ _ _ H12 Hc eq_refl Hw Hyf) as [bs bs' _ E' _].
         eexists; econstructor; exact E'.
       - destruct (ptyp_skip_lt k t0 ltac:(lia)) as (B & HB & Hs); rewrite Hs.
-        destruct (Hdt _ _ _ _ _ _ _ _ _ _ _ _ _ H12 Hc eq_refl Hw HB Hy) as (b & b' & _ & Eb' & _).
+        destruct (Hdt _ _ _ _ _ _ _ _ _ _ _ _ _ H12 Hc eq_refl Hw HB Hy) as [b b' _ Eb' _].
         eexists; econstructor; exact Eb'.
     Qed.
 
@@ -335,7 +335,7 @@ Section Fixed_GCtx.
           match goal with H : ⟦ B ⟧ _ ⍮ _ ⍮ env_args nil (ua1 ++ _) ↘ ?b |- _ => rename H into Eb1; rename b into b1 end.
           inversion E2; subst a2.
           match goal with H : ⟦ B ⟧ _ ⍮ _ ⍮ env_args nil (ua2 ++ _) ↘ ?b |- _ => rename H into Eb2; rename b into b2 end.
-          destruct (Hd12 _ _ _ _ _ _ _ _ _ _ _ _ _ H12 Hc eq_refl Hw HB Hy) as (b1' & b2' & Eb1' & Eb2' & Htop).
+          destruct (Hd12 _ _ _ _ _ _ _ _ _ _ _ _ _ H12 Hc eq_refl Hw HB Hy) as [b1' b2' Eb1' Eb2' Htop].
           assert (b1' = b1) as -> by (eapply functional_eval_exp; eassumption).
           assert (b2' = b2) as -> by (eapply functional_eval_exp; eassumption).
           pose proof (tsh_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ns1 c _ gs1 t0 gs2 ws1 H11 Hc eq_refl Hww k ys1 ys2
@@ -420,7 +420,7 @@ Section Fixed_GCtx.
           match goal with H : ⟦ B ⟧ _ ⍮ _ ⍮ env_args nil (ua1 ++ _) ↘ ?b |- _ => rename H into Eb1; rename b into b1 end.
           inversion E2; subst a2.
           match goal with H : ⟦ B ⟧ _ ⍮ _ ⍮ env_args nil (ua2 ++ _) ↘ ?b |- _ => rename H into Eb2; rename b into b2 end.
-          destruct (Hd12 _ _ _ _ _ _ _ _ _ _ _ _ _ H12 Hc eq_refl Hw HB Hy) as (b1' & b2' & Eb1' & Eb2' & Htop).
+          destruct (Hd12 _ _ _ _ _ _ _ _ _ _ _ _ _ H12 Hc eq_refl Hw HB Hy) as [b1' b2' Eb1' Eb2' Htop].
           assert (b1' = b1) as -> by (eapply functional_eval_exp; eassumption).
           assert (b2' = b2) as -> by (eapply functional_eval_exp; eassumption).
           pose proof (tsh_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ns1 c _ gs1 t0 gs2 ws1 H11 Hc eq_refl Hww k ys1 ys2
@@ -483,8 +483,8 @@ Section Fixed_GCtx.
         destruct g as [A | t].
         + assert (HA : List.nth_error (cargs_nonrec gs) (List.length (cargs_nonrec gs1)) = Some A)
             by (rewrite Heq, cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
-          destruct (Hn1 _ _ _ _ _ _ _ _ s H11 Hc HA Hp11) as (a0 & a1 & E0 & E1 & R1).
-          destruct (Hn2 _ _ _ _ _ _ _ _ s H12 Hc HA Hp) as (a0' & a2 & E0' & E2 & R2).
+          destruct (Hn1 _ _ _ _ _ _ _ _ s H11 Hc HA Hp11) as [a0 a1 E0 E1 R1].
+          destruct (Hn2 _ _ _ _ _ _ _ _ s H12 Hc HA Hp) as [a0' a2 E0' E2 R2].
           pose proof (functional_eval_exp _ _ _ _ E0 E0') as <-.
           pose proof (HaP _ _ _ _ _ _ _ _ H12 Hc HA Hp) as HP.
           assert (R12 : ar ns1 c (List.length (cargs_nonrec gs1)) ws1 (⇑! a1 s) (⇑! a2 s))
