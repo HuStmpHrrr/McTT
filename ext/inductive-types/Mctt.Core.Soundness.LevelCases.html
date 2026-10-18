@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab446"></a><h1 class="section">Levels in the Gluing Model</h1>
+<a id="lab464"></a><h1 class="section">Levels in the Gluing Model</h1>
 
 
 <div class="paragraph"> </div>
@@ -126,7 +126,7 @@ The sort of the levels is a parameter of the file: the elements of
 </div>
 
 <div class="doc">
-<a id="lab447"></a><h2 class="section">Terms of Type <span class="inlinecode"><span class="id" title="var">Level@n</span></span></h2>
+<a id="lab465"></a><h2 class="section">Terms of Type <span class="inlinecode"><span class="id" title="var">Level@n</span></span></h2>
 
 </div>
 <div class="code">
@@ -138,15 +138,14 @@ The sort of the levels is a parameter of the file: the elements of
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.LevelCases.html#d5be501d00a8c9c4c28302f544699b7d"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.LevelCases.html#M:10"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#d194ddba520215d375d6523257e1eb0d"><span class="id" title="notation">Level@n</span></a>.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> * ? <span class="id" title="var">Hbody</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span>; <span class="id" title="var">mauto</span> 3.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">exists</span> 0.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">gre_lvl</span> := 0); [ <span class="id" title="var">mauto</span> 3 |].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Δ</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">⊢ˢ</span></a> σ <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">:</span></a> <span class="id" title="var">Γ</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>
 &nbsp;&nbsp;<span class="id" title="var">saturate_sub</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">edestruct</span> <span class="id" title="var">Hbody</span> <span class="id" title="keyword">as</span> [? [? []]]; <span class="id" title="var">mauto</span> 3.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">econstructor</span>; <span class="id" title="var">mauto</span> 3.<br/>
 &nbsp;&nbsp;- <span class="id" title="var">glu_univ_elem_econstructor</span>; <span class="id" title="var">mauto</span> 3; <span class="id" title="tactic">reflexivity</span>.<br/>
-&nbsp;&nbsp;- <span class="id" title="tactic">simpl</span>; <span class="id" title="tactic">split</span>; [| <span class="id" title="tactic">split</span> ]; [ <span class="id" title="var">mauto</span> 3 | <span class="id" title="tactic">assumption</span> | <span class="id" title="tactic">assumption</span> ].<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">simpl</span>; <span class="id" title="tactic">econstructor</span>; [ <span class="id" title="var">mauto</span> 3 | <span class="id" title="tactic">assumption</span> | <span class="id" title="tactic">assumption</span> ].<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>
@@ -182,7 +181,7 @@ The glued level of a term of type <span class="inlinecode"><span class="id" titl
 &nbsp;&nbsp;<span class="id" title="var">simplify_evals</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">match_by_head1</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_elem"><span class="id" title="definition">glu_univ_elem</span></a> <span class="id" title="var">invert_glu_univ_elem</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">apply_predicate_equivalence</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> *; <span class="id" title="var">destruct_conjs</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">simpl</span> <span class="id" title="tactic">in</span> *; <span class="id" title="var">destruct_conjs</span>; <span class="id" title="var">destruct_glu_records</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span>; [| <span class="id" title="tactic">split</span> ]; <span class="id" title="var">eassumption</span>.<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
 
@@ -190,7 +189,7 @@ The glued level of a term of type <span class="inlinecode"><span class="id" titl
 </div>
 
 <div class="doc">
-<a id="lab448"></a><h2 class="section">The Level Forms</h2>
+<a id="lab466"></a><h2 class="section">The Level Forms</h2>
 
 
 <div class="paragraph"> </div>
@@ -341,7 +340,7 @@ The syntax is the canonical form of the argument; the successor of
 </div>
 
 <div class="doc">
-<a id="lab449"></a><h2 class="section">The Small Universe at a Level@n Term</h2>
+<a id="lab467"></a><h2 class="section">The Small Universe at a Level@n Term</h2>
 
 
 <div class="paragraph"> </div>
@@ -360,8 +359,7 @@ The syntax is the canonical form of the argument; the successor of
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">HM</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#e23b7ac855a2ed06c5566b8263fb3d2f"><span class="id" title="notation">⊩</span></a> <span class="id" title="var">Γ</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">Sb</span> <span class="id" title="var">HSb</span>] <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Soundness.LevelCases.html#glu_rel_exp_succl"><span class="id" title="lemma">glu_rel_exp_succl</span></a> <span class="id" title="var">HM</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">HSM</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="var">eassumption</span> |].<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">exists</span> 0.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">gre_lvl</span> := 0); [ <span class="id" title="var">eassumption</span> |].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">Δ</span> σ ρ <span class="id" title="var">H</span>σ.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Δ</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">⊢ˢ</span></a> σ <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">:</span></a> <span class="id" title="var">Γ</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>
 &nbsp;&nbsp;<span class="id" title="var">saturate_sub</span>.<br/>
@@ -376,14 +374,14 @@ The syntax is the canonical form of the argument; the successor of
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#glu_univ_elem_core_suniv'"><span class="id" title="lemma">glu_univ_elem_core_suniv'</span></a>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">Hper'</span> | <span class="id" title="tactic">exact</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#I"><span class="id" title="constructor">I</span></a> | <span class="id" title="tactic">reflexivity</span> | <span class="id" title="tactic">reflexivity</span> ]<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;|].<br/>
 &nbsp;&nbsp;<span class="id" title="var">simplify_subs</span>; <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a>] <span class="id" title="tactic">in</span> *.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="tactic">split</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">econstructor</span>.<br/>
 &nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_univ"><span class="id" title="constructor">wf_univ</span></a>; <span class="id" title="var">eassumption</span>.<br/>
-&nbsp;&nbsp;- <span class="id" title="tactic">exists</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Exp_Notations.::mctt_scope:'succl'_x"><span class="id" title="notation">succl</span></a> <span class="id" title="var">M</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#9c9fe047eb515f9c07d3522ff258a118"><span class="id" title="notation">[</span></a>σ<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#9c9fe047eb515f9c07d3522ff258a118"><span class="id" title="notation">]</span></a>), <a class="idref" href="Mctt.Core.Soundness.LevelCases.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">Hglu'</span> |].<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_suniv_glu_typ"><span class="id" title="constructor">mk_suniv_glu_typ</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Exp_Notations.::mctt_scope:'succl'_x"><span class="id" title="notation">succl</span></a> <span class="id" title="var">M</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#9c9fe047eb515f9c07d3522ff258a118"><span class="id" title="notation">[</span></a>σ<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#9c9fe047eb515f9c07d3522ff258a118"><span class="id" title="notation">]</span></a>) <a class="idref" href="Mctt.Core.Soundness.LevelCases.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>); [ <span class="id" title="tactic">exact</span> <span class="id" title="var">Hglu'</span> |].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_univ_cong_large_tm"><span class="id" title="lemma">wf_exp_eq_univ_cong_large_tm</span></a>; [ <span class="id" title="tactic">assumption</span> | <span class="id" title="var">mauto</span> 3 | <span class="id" title="var">mauto</span> 3 ].<br/>
 &nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#dlvl_real_suc"><span class="id" title="lemma">dlvl_real_suc</span></a>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">do</span> 2 <span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">glu_witness2</span>;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#glu_univ_elem_core_suniv'"><span class="id" title="lemma">glu_univ_elem_core_suniv'</span></a>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">Hper</span> | <span class="id" title="var">cbn</span>; <span class="id" title="var">ord</span> | <span class="id" title="tactic">reflexivity</span> | <span class="id" title="tactic">reflexivity</span> ] |].<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">M</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#9c9fe047eb515f9c07d3522ff258a118"><span class="id" title="notation">[</span></a>σ<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#9c9fe047eb515f9c07d3522ff258a118"><span class="id" title="notation">]</span></a>, <a class="idref" href="Mctt.Core.Soundness.LevelCases.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">Hglu</span> |].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_suniv_glu_typ"><span class="id" title="constructor">mk_suniv_glu_typ</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">M</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#9c9fe047eb515f9c07d3522ff258a118"><span class="id" title="notation">[</span></a>σ<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#9c9fe047eb515f9c07d3522ff258a118"><span class="id" title="notation">]</span></a> <a class="idref" href="Mctt.Core.Soundness.LevelCases.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>); [ <span class="id" title="tactic">exact</span> <span class="id" title="var">Hglu</span> |].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_univ_cong_large_tm"><span class="id" title="lemma">wf_exp_eq_univ_cong_large_tm</span></a>; [ <span class="id" title="tactic">assumption</span> | <span class="id" title="var">eassumption</span> | <span class="id" title="var">mauto</span> 3 ].<br/>
 &nbsp;&nbsp;- <span class="id" title="tactic">intros</span> <span class="id" title="var">Δ'</span> φ <span class="id" title="var">W</span> <span class="id" title="var">H</span>φ <span class="id" title="var">Hr</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<a class="idref" href="Mctt.Core.Semantic.Fixed.html#f478f7ff183196729a187ddd7c2a86f5"><span class="id" title="notation">⊢</span></a> <span class="id" title="var">Δ'</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_dom"><span class="id" title="lemma">kripke_dom</span></a>; <span class="id" title="var">eassumption</span>).<br/>
@@ -400,7 +398,7 @@ The syntax is the canonical form of the argument; the successor of
 </div>
 
 <div class="doc">
-<a id="lab450"></a><h2 class="section">Types of the Small Universe at a Level Term</h2>
+<a id="lab468"></a><h2 class="section">Types of the Small Universe at a Level Term</h2>
 
 
 <div class="paragraph"> </div>
@@ -452,9 +450,8 @@ The same inversion without the level's own gluing: the index of the
 &nbsp;&nbsp;<span class="id" title="tactic">inversion</span> <span class="id" title="var">Ha0</span>; <span class="id" title="tactic">subst</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">invert_glu_univ_elem</span> <span class="id" title="var">HPEl</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">apply_predicate_equivalence</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#suniv_glu_exp_pred'"><span class="id" title="definition">suniv_glu_exp_pred'</span></a>] <span class="id" title="tactic">in</span> <span class="id" title="var">Hglu</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hglu</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">HA</span>σ [<span class="id" title="var">_</span> [<span class="id" title="var">Hty</span> <span class="id" title="var">Hrb</span>]]].<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hty</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">Pm</span> [<span class="id" title="var">Elm</span> [<span class="id" title="var">HPm</span> <span class="id" title="var">HP</span>]]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hglu</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">HA</span>σ <span class="id" title="var">_</span> <span class="id" title="var">Hty</span> <span class="id" title="var">Hrb</span>].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hty</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">Pm</span> <span class="id" title="var">Elm</span> <span class="id" title="var">HPm</span> <span class="id" title="var">HP</span>].<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">Hl</span> : <a class="idref" href="Mctt.Core.Semantic.Fixed.html#6cc9ce08f51ac97860b6993336aafa18"><span class="id" title="notation">⟦</span></a> <span class="id" title="var">T</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#6cc9ce08f51ac97860b6993336aafa18"><span class="id" title="notation">⟧</span></a> ρ <a class="idref" href="Mctt.Core.Semantic.Fixed.html#6cc9ce08f51ac97860b6993336aafa18"><span class="id" title="notation">↘</span></a> ?<span class="id" title="var">l</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">exists</span> <span class="id" title="var">l</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">Hl</span> |] <span class="id" title="keyword">end</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">assumption</span> |].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">HA</span>σ |].<br/>
@@ -483,8 +480,7 @@ The same inversion without the level's own gluing: the index of the
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.LevelCases.html#893aef7061fe05b037fc27cff76f1e6f"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.LevelCases.html#A:53"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f131e899c70376f7a1740218fa332d0"><span class="id" title="notation">Type</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f131e899c70376f7a1740218fa332d0"><span class="id" title="notation">⟨</span></a><a class="idref" href="Mctt.Core.Soundness.LevelCases.html#T:52"><span class="id" title="variable">T</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f131e899c70376f7a1740218fa332d0"><span class="id" title="notation">⟩</span></a>.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">HΓ</span> <span class="id" title="var">HT</span> <span class="id" title="var">Hbody</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="var">eassumption</span> |].<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">exists</span> 0.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">gre_lvl</span> := 0); [ <span class="id" title="var">eassumption</span> |].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">Δ</span> σ ρ <span class="id" title="var">H</span>σ.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Δ</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">⊢ˢ</span></a> σ <a class="idref" href="Mctt.Core.Semantic.Fixed.html#2049add0d9df304d7709ca771691d349"><span class="id" title="notation">:</span></a> <span class="id" title="var">Γ</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>
 &nbsp;&nbsp;<span class="id" title="var">saturate_sub</span>.<br/>
@@ -498,12 +494,12 @@ The same inversion without the level's own gluing: the index of the
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">eassumption</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#glu_univ_elem_core_suniv'"><span class="id" title="lemma">glu_univ_elem_core_suniv'</span></a>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">Hper</span> | <span class="id" title="tactic">exact</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#I"><span class="id" title="constructor">I</span></a> | <span class="id" title="tactic">reflexivity</span> | <span class="id" title="tactic">reflexivity</span> ]<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;|].<br/>
-&nbsp;&nbsp;<span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#suniv_glu_exp_pred'"><span class="id" title="definition">suniv_glu_exp_pred'</span></a>].<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="tactic">split</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a>].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">econstructor</span>.<br/>
 &nbsp;&nbsp;- <span class="id" title="tactic">exact</span> <span class="id" title="var">HA</span>σ.<br/>
-&nbsp;&nbsp;- <span class="id" title="tactic">exists</span> <span class="id" title="var">T</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#9c9fe047eb515f9c07d3522ff258a118"><span class="id" title="notation">[</span></a>σ<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#9c9fe047eb515f9c07d3522ff258a118"><span class="id" title="notation">]</span></a>, <a class="idref" href="Mctt.Core.Soundness.LevelCases.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">Hglu</span> |].<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_suniv_glu_typ"><span class="id" title="constructor">mk_suniv_glu_typ</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">T</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#9c9fe047eb515f9c07d3522ff258a118"><span class="id" title="notation">[</span></a>σ<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#9c9fe047eb515f9c07d3522ff258a118"><span class="id" title="notation">]</span></a> <a class="idref" href="Mctt.Core.Soundness.LevelCases.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>); [ <span class="id" title="tactic">exact</span> <span class="id" title="var">Hglu</span> |].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_univ_cong_large_tm"><span class="id" title="lemma">wf_exp_eq_univ_cong_large_tm</span></a>; [ <span class="id" title="tactic">assumption</span> | <span class="id" title="var">eassumption</span> | <span class="id" title="var">mauto</span> 3 ].<br/>
-&nbsp;&nbsp;- <span class="id" title="tactic">exists</span> <span class="id" title="var">P</span>, <span class="id" title="var">El</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">HPEl</span> | <span class="id" title="tactic">exact</span> (<span class="id" title="var">HaP</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HPEl</span>) ].<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_typ_at"><span class="id" title="constructor">mk_glu_typ_at</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">P</span> <span class="id" title="var">El</span> <span class="id" title="var">HPEl</span> (<span class="id" title="var">HaP</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HPEl</span>)).<br/>
 &nbsp;&nbsp;- <span class="id" title="tactic">exact</span> <span class="id" title="var">Hrb</span>.<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
 
@@ -534,9 +530,8 @@ The same inversion without the level's own gluing: the index of the
 &nbsp;&nbsp;<span class="id" title="var">functional_eval_rewrite_clear</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">invert_glu_univ_elem</span> <span class="id" title="var">HPEl</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">apply_predicate_equivalence</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#suniv_glu_exp_pred'"><span class="id" title="definition">suniv_glu_exp_pred'</span></a>] <span class="id" title="tactic">in</span> <span class="id" title="var">Hglu</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hglu</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">HA</span>σ [<span class="id" title="var">_</span> [<span class="id" title="var">Hty</span> <span class="id" title="var">Hrb</span>]]].<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hty</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">Pm</span> [<span class="id" title="var">Elm</span> [<span class="id" title="var">HPm</span> <span class="id" title="var">HP</span>]]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hglu</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">HA</span>σ <span class="id" title="var">_</span> <span class="id" title="var">Hty</span> <span class="id" title="var">Hrb</span>].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Hty</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">Pm</span> <span class="id" title="var">Elm</span> <span class="id" title="var">HPm</span> <span class="id" title="var">HP</span>].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">l</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">assumption</span> | <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">assumption</span> | <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">assumption</span> |] ] ].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">HA</span>σ |].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">m</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">assumption</span> | <span class="id" title="tactic">split</span>; [| <span class="id" title="tactic">split</span> ] ].<br/>

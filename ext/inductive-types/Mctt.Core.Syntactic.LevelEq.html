@@ -41,7 +41,7 @@
 </div>
 
 <div class="doc">
-<a id="lab577"></a><h1 class="section">Levels as Expressions: the Equations of a Canonical Form</h1>
+<a id="lab604"></a><h1 class="section">Levels as Expressions: the Equations of a Canonical Form</h1>
 
 
 <div class="paragraph"> </div>
@@ -59,9 +59,9 @@
     where <span class="inlinecode">⌈<a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.c"><span class="id" title="variable">c</span></a>,</span> <span class="inlinecode"><span class="id" title="var">xs</span>⌉</span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#lvl_exp_of"><span class="id" title="definition">lvl_exp_of</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#la_to_list"><span class="id" title="definition">la_to_list</span></a></span> <span class="inlinecode"><span class="id" title="var">xs</span>)</span>, the expression a
     canonical level reads back as.  Each step of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.html#lvl_canon"><span class="id" title="definition">lvl_canon</span></a></span> is an instance of
     the level equations: sorting is commutativity and associativity, merging is
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode">(<span class="id" title="var">k</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.IndCases.html#Fixed_GCtx.Sort.Canon.a"><span class="id" title="variable">a</span></a>)</span> <span class="inlinecode">(<span class="id" title="var">k'</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.IndCases.html#Fixed_GCtx.Sort.Canon.a"><span class="id" title="variable">a</span></a>)</span> <span class="inlinecode">≈</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> <span class="inlinecode"><span class="id" title="var">k</span></span> <span class="inlinecode"><span class="id" title="var">k'</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.IndCases.html#Fixed_GCtx.Sort.Canon.a"><span class="id" title="variable">a</span></a></span>, dropping an atom of a sort below
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode">(<span class="id" title="var">k</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a>)</span> <span class="inlinecode">(<span class="id" title="var">k'</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a>)</span> <span class="inlinecode">≈</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> <span class="inlinecode"><span class="id" title="var">k</span></span> <span class="inlinecode"><span class="id" title="var">k'</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>, dropping an atom of a sort below
     the constant's tier is absorption, and dropping the constant is
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode">≤</span> <span class="inlinecode"><span class="id" title="var">k</span></span> <span class="inlinecode">-&gt;</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode">(<span class="id" title="var">k</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.IndCases.html#Fixed_GCtx.Sort.Canon.a"><span class="id" title="variable">a</span></a>)</span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">k</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.IndCases.html#Fixed_GCtx.Sort.Canon.a"><span class="id" title="variable">a</span></a></span>.  Absorption needs every atom typed at
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode">≤</span> <span class="inlinecode"><span class="id" title="var">k</span></span> <span class="inlinecode">-&gt;</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode">(<span class="id" title="var">k</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a>)</span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">k</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>.  Absorption needs every atom typed at
     its own sort (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#la_ws"><span class="id" title="definition">la_ws</span></a></span>); the other steps only at the sort of the whole
     (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#la_wf"><span class="id" title="definition">la_wf</span></a></span>).
 
@@ -93,7 +93,7 @@ Every equation of this file is at one sort, the levels below <span class="inline
 </div>
 
 <div class="doc">
-<a id="lab578"></a><h2 class="section">The Iterated Successor</h2>
+<a id="lab605"></a><h2 class="section">The Iterated Successor</h2>
 
 </div>
 <div class="code">
@@ -124,7 +124,7 @@ Every equation of this file is at one sort, the levels below <span class="inline
 </div>
 
 <div class="doc">
-A literal <span class="inlinecode">ω·<a class="idref" href="Mctt.Core.Completeness.IndCases.html#Fixed_GCtx.Sort.Canon.a"><span class="id" title="variable">a</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#Eval.b"><span class="id" title="variable">b</span></a></span> is the <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#Eval.b"><span class="id" title="variable">b</span></a></span>-th successor of the limit <span class="inlinecode">ω·<a class="idref" href="Mctt.Core.Completeness.IndCases.html#Fixed_GCtx.Sort.Canon.a"><span class="id" title="variable">a</span></a></span>. 
+A literal <span class="inlinecode">ω·<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#Eval.b"><span class="id" title="variable">b</span></a></span> is the <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#Eval.b"><span class="id" title="variable">b</span></a></span>-th successor of the limit <span class="inlinecode">ω·<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="wf_exp_eq_llit_succl_n" class="idref" href="#wf_exp_eq_llit_succl_n"><span class="id" title="lemma">wf_exp_eq_llit_succl_n</span></a> : <span class="id" title="keyword">forall</span> {<a id="6f77cad99d2eda9ef19109858c066b07" class="idref" href="#6f77cad99d2eda9ef19109858c066b07"><span class="id" title="binder">Γ</span></a>} <a id="a:15" class="idref" href="#a:15"><span class="id" title="binder">a</span></a> <a id="b:16" class="idref" href="#b:16"><span class="id" title="binder">b</span></a>,<br/>
@@ -158,7 +158,7 @@ The iterated distributivity of <span class="inlinecode"><a class="idref" href="M
 </div>
 
 <div class="doc">
-<a id="lab579"></a><h2 class="section">The Order on Levels</h2>
+<a id="lab606"></a><h2 class="section">The Order on Levels</h2>
 
 
 <div class="paragraph"> </div>
@@ -338,7 +338,7 @@ The drop step: a constant below an offset of an atom is absorbed.
 </div>
 
 <div class="doc">
-<a id="lab580"></a><h2 class="section">The Atoms of a Level, Well Typed</h2>
+<a id="lab607"></a><h2 class="section">The Atoms of a Level, Well Typed</h2>
 
 <div class="paragraph"> </div>
 
@@ -470,7 +470,7 @@ Every atom a level of its own sort, at most <span class="inlinecode"><a class="i
 </div>
 
 <div class="doc">
-<a id="lab581"></a><h2 class="section">The Two Folds</h2>
+<a id="lab608"></a><h2 class="section">The Two Folds</h2>
 
 
 <div class="paragraph"> </div>
@@ -721,7 +721,7 @@ No atom on the left: the two constants join in front of the right.
 </div>
 
 <div class="doc">
-<a id="lab582"></a><h2 class="section">Sorting, Merging and Dropping</h2>
+<a id="lab609"></a><h2 class="section">Sorting, Merging and Dropping</h2>
 
 </div>
 <div class="code">
@@ -942,7 +942,7 @@ Some atom of the tail does.
 </div>
 
 <div class="doc">
-<a id="lab583"></a><h2 class="section">The Canonical Form</h2>
+<a id="lab610"></a><h2 class="section">The Canonical Form</h2>
 
 
 <div class="paragraph"> </div>
@@ -1001,7 +1001,7 @@ Some atom of the tail does.
 </div>
 
 <div class="doc">
-<a id="lab584"></a><h2 class="section">The Atoms of a Well-Typed Level</h2>
+<a id="lab611"></a><h2 class="section">The Atoms of a Well-Typed Level</h2>
 
 
 <div class="paragraph"> </div>
@@ -1025,7 +1025,7 @@ Some atom of the tail does.
 </div>
 
 <div class="doc">
-<a id="lab585"></a><h2 class="section">The Order on Canonical Levels, Syntactically</h2>
+<a id="lab612"></a><h2 class="section">The Order on Canonical Levels, Syntactically</h2>
 
 
 <div class="paragraph"> </div>
@@ -1086,8 +1086,8 @@ Some atom of the tail does.
 </div>
 
 <div class="doc">
-An atom typed at its own sort, at most <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.NeutCase.m"><span class="id" title="variable">m</span></a></span>, is at a sort at most every
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">≥</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.NeutCase.m"><span class="id" title="variable">m</span></a></span>. 
+An atom typed at its own sort, at most <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#m"><span class="id" title="projection">m</span></a></span>, is at a sort at most every
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">≥</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#m"><span class="id" title="projection">m</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="la_ws_mono" class="idref" href="#la_ws_mono"><span class="id" title="lemma">la_ws_mono</span></a> : <span class="id" title="keyword">forall</span> {<a id="12bc2dd224527c047bb66dd0fc3a527e" class="idref" href="#12bc2dd224527c047bb66dd0fc3a527e"><span class="id" title="binder">Θ</span></a> <a id="20564b99cb053250bf04a9ddfc5b0350" class="idref" href="#20564b99cb053250bf04a9ddfc5b0350"><span class="id" title="binder">Ξ</span></a>} <a id="m:185" class="idref" href="#m:185"><span class="id" title="binder">m</span></a> <a id="n:186" class="idref" href="#n:186"><span class="id" title="binder">n</span></a> <a id="a3659dace81f0834ea0666465bcde48d" class="idref" href="#a3659dace81f0834ea0666465bcde48d"><span class="id" title="binder">Γ</span></a> <a id="xs:188" class="idref" href="#xs:188"><span class="id" title="binder">xs</span></a>,<br/>

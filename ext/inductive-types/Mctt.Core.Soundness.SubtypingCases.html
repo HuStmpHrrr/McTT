@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab478"></a><h1 class="section">Subtyping and Conversion</h1>
+<a id="lab505"></a><h1 class="section">Subtyping and Conversion</h1>
 
 
 <div class="paragraph"> </div>
@@ -66,8 +66,8 @@
 &nbsp;&nbsp;<span class="id" title="var">destruct_conjs</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#subtyp_under_ctx_simple"><span class="id" title="lemma">subtyp_under_ctx_simple</span></a> <span class="id" title="var">Hsub</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">env_relΓ</span> [<span class="id" title="var">HΓ</span> [<span class="id" title="var">k</span> <span class="id" title="var">Hsubsimple</span>]]].<br/>
 &nbsp;&nbsp;<span class="id" title="var">invert_glu_rel_exp</span> <span class="id" title="var">HA'</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">econstructor</span>; <span class="id" title="tactic">split</span>; [<span class="id" title="var">eassumption</span> |].<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">exists</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a> <span class="id" title="var">i</span> <span class="id" title="var">k</span>); <span class="id" title="tactic">intros</span> <span class="id" title="var">Δ</span> σ ρ <span class="id" title="var">HSb</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_glu_rel_exp"><span class="id" title="constructor">mk_glu_rel_exp</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">gre_lvl</span> := <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a> <span class="id" title="var">i</span> <span class="id" title="var">k</span>); [<span class="id" title="var">eassumption</span> |].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">Δ</span> σ ρ <span class="id" title="var">HSb</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">destruct_glu_rel_exp_with_sub</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">simplify_evals</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">match_by_head</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_elem"><span class="id" title="definition">glu_univ_elem</span></a> <span class="id" title="keyword">ltac</span>:(<span class="id" title="keyword">fun</span> <span class="id" title="var">H</span> =&gt; <span class="id" title="var">directed</span> <span class="id" title="var">invert_glu_univ_elem</span> <span class="id" title="var">H</span>).<br/>
@@ -75,7 +75,7 @@
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#9234bdd99f17e87e437ea2e067f42b84"><span class="id" title="notation">Dom</span></a> ρ <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#9234bdd99f17e87e437ea2e067f42b84"><span class="id" title="notation">≈</span></a> ρ <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#9234bdd99f17e87e437ea2e067f42b84"><span class="id" title="notation">∈</span></a> <span class="id" title="var">env_relΓ</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Lemmas.html#glu_ctx_env_per_env"><span class="id" title="lemma">glu_ctx_env_per_env</span></a>; <span class="id" title="var">mauto</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">Hsubsimple</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="keyword">ltac</span>:(<span class="id" title="var">eassumption</span>)) <span class="id" title="keyword">as</span> [<span class="id" title="var">a1</span> [<span class="id" title="var">a2</span> [? [? ?]]]].<br/>
 &nbsp;&nbsp;<span class="id" title="var">functional_eval_rewrite_clear</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#univ_glu_exp_pred'"><span class="id" title="definition">univ_glu_exp_pred'</span></a> <span class="id" title="tactic">in</span> *.<br/>
+&nbsp;&nbsp;<span class="id" title="var">destruct_glu_records</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">destruct_conjs</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Lemmas.html#mk_glu_rel_exp_with_sub'"><span class="id" title="lemma">mk_glu_rel_exp_with_sub'</span></a>; <span class="id" title="tactic">try</span> <span class="id" title="var">eassumption</span>.<br/>
 &nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Lemmas.html#glu_univ_elem_cumu_max_left"><span class="id" title="lemma">glu_univ_elem_cumu_max_left</span></a>; <span class="id" title="var">eassumption</span>.<br/>

@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab721"></a><h1 class="section">Properties of the Judgments, continued</h1>
+<a id="lab748"></a><h1 class="section">Properties of the Judgments, continued</h1>
 
 
 <div class="paragraph"> </div>
@@ -57,7 +57,7 @@
 </div>
 
 <div class="doc">
-<a id="lab722"></a><h2 class="section">Presupposition for Typing</h2>
+<a id="lab749"></a><h2 class="section">Presupposition for Typing</h2>
 
 
 <div class="paragraph"> </div>
@@ -78,7 +78,7 @@
 </div>
 
 <div class="doc">
-<a id="lab723"></a><h2 class="section">Context Conversion of Substitutions</h2>
+<a id="lab750"></a><h2 class="section">Context Conversion of Substitutions</h2>
 
 
 <div class="paragraph"> </div>
@@ -117,7 +117,7 @@
 </div>
 
 <div class="doc">
-<a id="lab724"></a><h1 class="section">Substitution Equivalence</h1>
+<a id="lab751"></a><h1 class="section">Substitution Equivalence</h1>
 
 
 <div class="paragraph"> </div>
@@ -451,7 +451,7 @@ Two sides reduced to equal terms, at types that are equal.
 </div>
 
 <div class="doc">
-<a id="lab725"></a><h2 class="section">Equivalent Substitutions Preserve Typing</h2>
+<a id="lab752"></a><h2 class="section">Equivalent Substitutions Preserve Typing</h2>
 
 
 <div class="paragraph"> </div>
@@ -619,7 +619,7 @@ The eliminator: the motive and the branches move under the equivalent
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">Hl</span> <span class="id" title="var">HPl</span> <span class="id" title="var">HPs</span> <span class="id" title="var">HM</span> <span class="id" title="var">Hnm</span> <span class="id" title="var">HA</span> <span class="id" title="var">HAA</span> <span class="id" title="var">HΨ</span> <span class="id" title="var">HΨl</span> <span class="id" title="var">Hn</span> <span class="id" title="var">HΨB</span> <span class="id" title="var">HΨBl</span> <span class="id" title="var">Hk</span> <span class="id" title="var">HBB</span> <span class="id" title="var">H</span>σ.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_eq_left"><span class="id" title="projection">wf_sub_eq_left</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>σ) <span class="id" title="keyword">as</span> <span class="id" title="var">Hs</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">HD</span> : <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#decl_closed"><span class="id" title="definition">decl_closed</span></a> <span class="id" title="var">D</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#gctx_closed_ind"><span class="id" title="lemma">gctx_closed_ind</span></a>; [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.MemberLemmas.html#wf_gctx_closed"><span class="id" title="lemma">wf_gctx_closed</span></a>, (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_dom"><span class="id" title="projection">wf_sub_dom</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hs</span>) | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hl</span> ]).<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">HD</span> : <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#decl_closed"><span class="id" title="record">decl_closed</span></a> <span class="id" title="var">D</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#gctx_closed_ind"><span class="id" title="lemma">gctx_closed_ind</span></a>; [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.MemberLemmas.html#wf_gctx_closed"><span class="id" title="lemma">wf_gctx_closed</span></a>, (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_dom"><span class="id" title="projection">wf_sub_dom</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hs</span>) | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hl</span> ]).<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wk_firstn_length"><span class="id" title="lemma">wk_firstn_length</span></a> <span class="id" title="var">D</span> <span class="id" title="var">Ps</span> <span class="id" title="var">HD</span> <span class="id" title="var">HPl</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">HUl</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#sub_elim_type"><span class="id" title="lemma">sub_elim_type</span></a> <span class="id" title="var">D</span> <span class="id" title="var">Ps</span> <span class="id" title="var">A</span> <span class="id" title="var">M</span> <span class="id" title="var">nm</span> σ <span class="id" title="var">HPl</span> <span class="id" title="var">Hnm</span>); <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a>]; <span class="id" title="tactic">subst</span> <span class="id" title="var">nm</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">HΨ</span>σ : <span class="id" title="var">Θ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#c856852fee8fc1494c5c6b8440e791ba"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Ξ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#c856852fee8fc1494c5c6b8440e791ba"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Δ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#c856852fee8fc1494c5c6b8440e791ba"><span class="id" title="notation">⊢ˣ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#tele_sub"><span class="id" title="definition">tele_sub</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Inductives.html#elim_mctx"><span class="id" title="definition">elim_mctx</span></a> <span class="id" title="var">p</span> <span class="id" title="var">D</span> (<span class="id" title="abbreviation">List.firstn</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_nu"><span class="id" title="projection">ind_nu</span></a> <span class="id" title="var">D</span>) <span class="id" title="var">Ps</span>)) σ<br/>
@@ -660,7 +660,7 @@ The eliminator: the motive and the branches move under the equivalent
 </div>
 
 <div class="doc">
-<a id="lab726"></a><h2 class="section">The Module Cases of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#sub_eq_preserves_mut"><span class="id" title="lemma">sub_eq_preserves_mut</span></a></span></h2>
+<a id="lab753"></a><h2 class="section">The Module Cases of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#sub_eq_preserves_mut"><span class="id" title="lemma">sub_eq_preserves_mut</span></a></span></h2>
 
 
 <div class="paragraph"> </div>
@@ -1443,7 +1443,7 @@ The type former and the constructors: their types are closed.
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">Hl</span> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#ind_lookup"><span class="id" title="definition">ind_lookup</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> ?<span class="id" title="var">D</span>, <span class="id" title="var">H</span>σ : <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub"><span class="id" title="record">wf_sub</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> <span class="id" title="var">HD</span> := <span class="id" title="tactic">fresh</span> "HD" <span class="id" title="tactic">in</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">HD</span> : <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#decl_closed"><span class="id" title="definition">decl_closed</span></a> <span class="id" title="var">D</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">HD</span> : <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#decl_closed"><span class="id" title="record">decl_closed</span></a> <span class="id" title="var">D</span>)<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#gctx_closed_ind"><span class="id" title="lemma">gctx_closed_ind</span></a>; [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.MemberLemmas.html#wf_gctx_closed"><span class="id" title="lemma">wf_gctx_closed</span></a>, (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_dom"><span class="id" title="projection">wf_sub_dom</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>σ) | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hl</span> ]);<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">try</span> <span class="id" title="tactic">rewrite</span> (<a class="idref" href="Mctt.Core.Syntactic.System.IndSyntax.html#ind_ty_sub"><span class="id" title="lemma">ind_ty_sub</span></a> <span class="id" title="var">D</span> <span class="id" title="var">_</span> <span class="id" title="var">HD</span>); <span class="id" title="tactic">try</span> (<span class="id" title="var">erewrite</span> (<a class="idref" href="Mctt.Core.Syntactic.System.IndSyntax.html#con_ty_sub"><span class="id" title="lemma">con_ty_sub</span></a> <span class="id" title="var">_</span> <span class="id" title="var">D</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HD</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">eassumption</span>);<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">first</span> [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_ind_cong"><span class="id" title="constructor">wf_exp_eq_ind_cong</span></a> | <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_con_cong"><span class="id" title="constructor">wf_exp_eq_con_cong</span></a> ]; <span class="id" title="tactic">eauto</span> <span class="id" title="keyword">using</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_dom"><span class="id" title="projection">wf_sub_dom</span></a><br/>
@@ -1459,7 +1459,7 @@ The module of an inductive type as a term: its chain is closed, and
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">Hl</span> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#ind_lookup"><span class="id" title="definition">ind_lookup</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> ?<span class="id" title="var">D</span>, <span class="id" title="var">Hp</span> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#mod_qname"><span class="id" title="definition">mod_qname</span></a> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <span class="id" title="var">_</span>, <span class="id" title="var">H</span>σ : <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub"><span class="id" title="record">wf_sub</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> ?σ |- <span class="id" title="var">_</span> =&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> <span class="id" title="var">HD</span> := <span class="id" title="tactic">fresh</span> "HD" <span class="id" title="tactic">in</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">HD</span> : <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#decl_closed"><span class="id" title="definition">decl_closed</span></a> <span class="id" title="var">D</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">HD</span> : <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#decl_closed"><span class="id" title="record">decl_closed</span></a> <span class="id" title="var">D</span>)<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#gctx_closed_ind"><span class="id" title="lemma">gctx_closed_ind</span></a>; [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.MemberLemmas.html#wf_gctx_closed"><span class="id" title="lemma">wf_gctx_closed</span></a>, (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_dom"><span class="id" title="projection">wf_sub_dom</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>σ) | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hl</span> ]);<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> (<a class="idref" href="Mctt.Core.Syntactic.System.IndSyntax.html#ind_ty_sub"><span class="id" title="lemma">ind_ty_sub</span></a> <span class="id" title="var">D</span> <span class="id" title="var">_</span> <span class="id" title="var">HD</span>); <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a>]; <span class="id" title="tactic">rewrite</span> !(<a class="idref" href="Mctt.Core.Syntactic.System.MemberLemmas.html#mod_qname_sub"><span class="id" title="lemma">mod_qname_sub</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hp</span>);<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_trans"><span class="id" title="constructor">wf_exp_eq_trans</span></a>;<br/>
@@ -1573,7 +1573,7 @@ Equivalent substitutions move a well-formed module expression and a
 </div>
 
 <div class="doc">
-<a id="lab727"></a><h2 class="section">Substitution Equivalence is a PER</h2>
+<a id="lab754"></a><h2 class="section">Substitution Equivalence is a PER</h2>
 
 
 <div class="paragraph"> </div>
@@ -1656,7 +1656,7 @@ Equivalent substitutions move a well-formed module expression and a
 </div>
 
 <div class="doc">
-<a id="lab728"></a><h2 class="section">Composition of Equivalent Substitutions</h2>
+<a id="lab755"></a><h2 class="section">Composition of Equivalent Substitutions</h2>
 
 
 <div class="paragraph"> </div>
@@ -1715,7 +1715,7 @@ Equivalent substitutions move a well-formed module expression and a
 </div>
 
 <div class="doc">
-<a id="lab729"></a><h2 class="section">η-Expansion</h2>
+<a id="lab756"></a><h2 class="section">η-Expansion</h2>
 
 
 <div class="paragraph"> </div>
@@ -1789,7 +1789,7 @@ Equivalent substitutions move a well-formed module expression and a
 </div>
 
 <div class="doc">
-<a id="lab730"></a><h2 class="section">Closed Neutrals</h2>
+<a id="lab757"></a><h2 class="section">Closed Neutrals</h2>
 
 
 <div class="paragraph"> </div>
@@ -1822,7 +1822,7 @@ Equivalent substitutions move a well-formed module expression and a
 </div>
 
 <div class="doc">
-<a id="lab731"></a><h2 class="section">Conversion</h2>
+<a id="lab758"></a><h2 class="section">Conversion</h2>
 
 
 <div class="paragraph"> </div>
@@ -1862,7 +1862,7 @@ Equivalent substitutions move a well-formed module expression and a
 </div>
 
 <div class="doc">
-<a id="lab732"></a><h2 class="section">The Global Context</h2>
+<a id="lab759"></a><h2 class="section">The Global Context</h2>
 
 
 <div class="paragraph"> </div>

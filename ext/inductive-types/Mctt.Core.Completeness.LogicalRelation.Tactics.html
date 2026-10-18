@@ -32,49 +32,68 @@
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.LibTactics.html#"><span class="id" title="library">LibTactics</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Semantic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Semantic.PER.html#"><span class="id" title="library">PER</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness.LogicalRelation</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#"><span class="id" title="library">Definitions</span></a>.<br/>
 <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#Domain_Notations"><span class="id" title="module">Domain_Notations</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#Fixed_Notations"><span class="id" title="module">Fixed_Notations</span></a>.<br/>
 
 <br/>
-<span class="id" title="keyword">Ltac</span> <span class="id" title="var">eexists_rel_exp</span> :=<br/>
+</div>
+
+<div class="doc">
+Each semantic judgment is a record whose witnesses come first: the
+    context PERs, read off a hypothesis by <span class="inlinecode"><span class="id" title="var">eassumption</span></span>, and the universe
+    level, left to be found.  These open one, leaving its body.  The derived
+    forms of the judgments (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_exp_under_ctx_simple"><span class="id" title="lemma">rel_exp_under_ctx_simple</span></a></span> and the like) state the
+    same witnesses as existentials, which the second alternative opens. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">eexists_ctx_level</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">eexists</span>;<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; [<span class="id" title="var">eassumption</span> |];<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">eexists</span>.<br/>
 
 <br/>
-<span class="id" title="keyword">Ltac</span> <span class="id" title="var">eexists_rel_exp_with</span> <span class="id" title="var">i</span> :=<br/>
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">eexists_ctx_level_with</span> <span class="id" title="var">i</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">eexists</span>;<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; [<span class="id" title="var">eassumption</span> |];<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">i</span>.<br/>
 
 <br/>
-<span class="id" title="keyword">Ltac</span> <span class="id" title="var">eexists_rel_sub</span> :=<br/>
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">eexists_ctx_pair</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">eexists</span>;<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; [<span class="id" title="var">eassumption</span> |];<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">eexists</span>;<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; [<span class="id" title="var">eassumption</span> |].<br/>
 
 <br/>
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">eexists_rel_exp</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">first</span> [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#mk_rel_exp_under_ctx"><span class="id" title="constructor">mk_rel_exp_under_ctx</span></a>; [<span class="id" title="var">eassumption</span> |] | <span class="id" title="var">eexists_ctx_level</span> ].<br/>
+
+<br/>
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">eexists_rel_exp_with</span> <span class="id" title="var">i</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">first</span> [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#mk_rel_exp_under_ctx"><span class="id" title="constructor">mk_rel_exp_under_ctx</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">reu_lvl</span> := <span class="id" title="var">i</span>); [<span class="id" title="var">eassumption</span> |] | <span class="id" title="var">eexists_ctx_level_with</span> <span class="id" title="var">i</span> ].<br/>
+
+<br/>
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">eexists_rel_sub</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">first</span> [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#mk_rel_sub_under_ctx"><span class="id" title="constructor">mk_rel_sub_under_ctx</span></a>; [<span class="id" title="var">eassumption</span> | <span class="id" title="var">eassumption</span> |] | <span class="id" title="var">eexists_ctx_pair</span> ].<br/>
+
+<br/>
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#rel_wk_under_ctx"><span class="id" title="definition">rel_wk_under_ctx</span></a></span> has the same outer shape as <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#rel_sub_under_ctx"><span class="id" title="definition">rel_sub_under_ctx</span></a></span> — two
-    environment PERs, each with its context witness read off the goal — so one
-    tactic opens both. 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#rel_wk_under_ctx"><span class="id" title="record">rel_wk_under_ctx</span></a></span> has the same outer shape as <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#rel_sub_under_ctx"><span class="id" title="record">rel_sub_under_ctx</span></a></span> — two
+    environment PERs, each with its context witness read off the goal. 
 </div>
 <div class="code">
-<span class="id" title="keyword">Ltac</span> <span class="id" title="var">eexists_rel_wk</span> := <span class="id" title="var">eexists_rel_sub</span>.<br/>
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">eexists_rel_wk</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">first</span> [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#mk_rel_wk_under_ctx"><span class="id" title="constructor">mk_rel_wk_under_ctx</span></a>; [<span class="id" title="var">eassumption</span> | <span class="id" title="var">eassumption</span> |] | <span class="id" title="var">eexists_ctx_pair</span> ].<br/>
 
 <br/>
 <span class="id" title="keyword">Ltac</span> <span class="id" title="var">eexists_subtyp</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">eexists</span>;<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; [<span class="id" title="var">eassumption</span> |];<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">eexists</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">first</span> [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#mk_subtyp_under_ctx"><span class="id" title="constructor">mk_subtyp_under_ctx</span></a>; [<span class="id" title="var">eassumption</span> |] | <span class="id" title="var">eexists_ctx_level</span> ].<br/>
 
 <br/>
 <span class="id" title="keyword">Ltac</span> <span class="id" title="var">eexists_subtyp_with</span> <span class="id" title="var">i</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">eexists</span>;<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; [<span class="id" title="var">eassumption</span> |];<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">exists</span> <span class="id" title="var">i</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">first</span> [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#mk_subtyp_under_ctx"><span class="id" title="constructor">mk_subtyp_under_ctx</span></a> <span class="id" title="keyword">with</span> (<span class="id" title="var">stu_lvl</span> := <span class="id" title="var">i</span>); [<span class="id" title="var">eassumption</span> |] | <span class="id" title="var">eexists_ctx_level_with</span> <span class="id" title="var">i</span> ].<br/>
 
 <br/>
 <span class="id" title="keyword">Ltac</span> <span class="id" title="var">invert_rel_typ_body</span> :=<br/>
@@ -85,8 +104,6 @@
 &nbsp;&nbsp;<span class="id" title="var">handle_per_univ_elem_irrel</span>;<br/>
 &nbsp;&nbsp;<span class="id" title="var">clear_dups</span>;<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">try</span> <span class="id" title="tactic">rewrite</span> &lt;- <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem_equation_1"><span class="id" title="lemma">per_univ_elem_equation_1</span></a> <span class="id" title="tactic">in</span> *.<br/>
-
-<br/>
 </div>
 </div>
 <div id="footer">
