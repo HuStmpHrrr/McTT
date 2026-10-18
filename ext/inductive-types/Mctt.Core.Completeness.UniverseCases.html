@@ -32,23 +32,23 @@
 </div>
 
 <div class="doc">
-<a id="lab290"></a><h1 class="section">The Universe</h1>
+<a id="lab293"></a><h1 class="section">The Universe</h1>
 
 
 <div class="paragraph"> </div>
 
     The rules that mention the universe directly (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_typ"><span class="id" title="constructor">wf_typ</span></a></span> and
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_typ_cong"><span class="id" title="constructor">wf_exp_eq_typ_cong</span></a></span>), and cumulativity (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#rel_exp_cumu"><span class="id" title="lemma">rel_exp_cumu</span></a></span>), which brings any two
-    type judgments to a common level.  <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.i"><span class="id" title="variable">i</span></a>[σ]</span> is <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.i"><span class="id" title="variable">i</span></a></span> because <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a></span>
+    type judgments to a common level.  <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.i"><span class="id" title="variable">i</span></a>[σ]</span> is <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.i"><span class="id" title="variable">i</span></a></span> because <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a></span>
     computes on it, so the universe has no substitution rule.
 
 <div class="paragraph"> </div>
 
     The file is organised around the converse pair <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#rel_exp_of_typ_inversion"><span class="id" title="lemma">rel_exp_of_typ_inversion</span></a></span> /
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#rel_exp_of_typ"><span class="id" title="lemma">rel_exp_of_typ</span></a></span>: the relation <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">⊨</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Stage.A'"><span class="id" title="variable">A'</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.i"><span class="id" title="variable">i</span></a></span> is exactly the four-value
-    pattern of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Stage.A'"><span class="id" title="variable">A'</span></a></span> in <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.i"><span class="id" title="variable">i</span></a></span>.  The type chain of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#rel_exp_under_ctx"><span class="id" title="record">rel_exp_under_ctx</span></a></span>
-    is forced (all four of its values are <span class="inlinecode">𝕌ω@<a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.i"><span class="id" title="variable">i</span></a></span>) and fixes the element PER to
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.i"><span class="id" title="variable">i</span></a></span>.  So the universe is where the two chains of a term judgment
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#rel_exp_of_typ"><span class="id" title="lemma">rel_exp_of_typ</span></a></span>: the relation <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">⊨</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Stage.A'"><span class="id" title="variable">A'</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.i"><span class="id" title="variable">i</span></a></span> is exactly the four-value
+    pattern of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Stage.A'"><span class="id" title="variable">A'</span></a></span> in <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.i"><span class="id" title="variable">i</span></a></span>.  The type chain of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#rel_exp_under_ctx"><span class="id" title="record">rel_exp_under_ctx</span></a></span>
+    is forced (all four of its values are <span class="inlinecode">𝕌ω@<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.i"><span class="id" title="variable">i</span></a></span>) and fixes the element PER to
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.i"><span class="id" title="variable">i</span></a></span>.  So the universe is where the two chains of a term judgment
     decouple, and stripping the trivial one keeps the type-level lemmas of the
     later files readable. 
 </div>
@@ -204,7 +204,7 @@ Cumulativity across the tiers, in particular from a small universe to
 
 <div class="doc">
 The type chain is a chain of universes, so inverting it identifies <span class="inlinecode"><a class="idref" href="Mctt.Core.IndCommand.html#ConTypes.R"><span class="id" title="variable">R</span></a></span>
-    with <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.i"><span class="id" title="variable">i</span></a></span>, and then <span class="inlinecode"><span class="id" title="var">Hexp</span></span> is the goal. 
+    with <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.i"><span class="id" title="variable">i</span></a></span>, and then <span class="inlinecode"><span class="id" title="var">Hexp</span></span> is the goal. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">Htyp</span> <span class="id" title="keyword">as</span> [? ? ? ? ? ? ? ? <span class="id" title="var">Hchain</span>].<br/>
@@ -218,9 +218,9 @@ The type chain is a chain of universes, so inverting it identifies <span class="
 
 <div class="doc">
 The instance of the above at <span class="inlinecode"><span class="id" title="var">Id</span></span>.  This is the form a context PER needs:
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_ctx_env_cons"><span class="id" title="constructor">per_ctx_env_cons</span></a></span> asks for the values of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Stage.A'"><span class="id" title="variable">A'</span></a></span> in the environments
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_ctx_env_cons"><span class="id" title="constructor">per_ctx_env_cons</span></a></span> asks for the values of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Stage.A'"><span class="id" title="variable">A'</span></a></span> in the environments
     themselves, and at <span class="inlinecode"><span class="id" title="var">Id</span></span> these coincide with the substituted ones, since <span class="inlinecode"><span class="id" title="var">Id</span></span>
-    evaluates to the environment itself and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span>]</span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span>.  The chain collapses
+    evaluates to the environment itself and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span>]</span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a></span>.  The chain collapses
     onto its middle link. 
 </div>
 <div class="code">
@@ -273,7 +273,7 @@ The same at any context PER of <span class="inlinecode"><a class="idref" href="M
 <div class="doc">
 The same instance at a weakening instead of <span class="inlinecode"><span class="id" title="var">Id</span></span>, as the gluing model needs:
     it reads a type's value at <span class="inlinecode">ρ</span> after <span class="inlinecode">[φ]ʷ</span>, while the context relation
-    supplies the value at <span class="inlinecode">⟪φ⟫</span> <span class="inlinecode">ρ</span>.  The two values are not equal; <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.i"><span class="id" title="variable">i</span></a></span>
+    supplies the value at <span class="inlinecode">⟪φ⟫</span> <span class="inlinecode">ρ</span>.  The two values are not equal; <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.i"><span class="id" title="variable">i</span></a></span>
     relates them. 
 </div>
 <div class="code">
@@ -339,8 +339,8 @@ The same instance at a weakening instead of <span class="inlinecode"><span class
 </div>
 
 <div class="doc">
-The middle link runs the other way: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> is on the left of the judgment and
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Stage.A'"><span class="id" title="variable">A'</span></a></span> on the right, so the instance whose values are <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Stage.A'"><span class="id" title="variable">A'</span></a>⟧ρ2</span> and <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>⟧ρ3</span> is
+The middle link runs the other way: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a></span> is on the left of the judgment and
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Stage.A'"><span class="id" title="variable">A'</span></a></span> on the right, so the instance whose values are <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Stage.A'"><span class="id" title="variable">A'</span></a>⟧ρ2</span> and <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a>⟧ρ3</span> is
     the one at <span class="inlinecode">(ρ3,</span> <span class="inlinecode">ρ2)</span>. 
 </div>
 <div class="code">
@@ -381,8 +381,8 @@ The middle link runs the other way: <span class="inlinecode"><a class="idref" hr
 
 <div class="doc">
 Semantic presupposition: a term judgment contains a type judgment, its own
-    type chain, which lives in <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Realizability.html#Fixed_GCtx.IndRealize.elem_rel"><span class="id" title="variable">elem_rel</span></a></span> and hence in
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.i"><span class="id" title="variable">i</span></a></span>.  This is the semantic counterpart of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Presup.html#presup_exp_eq"><span class="id" title="lemma">presup_exp_eq</span></a></span>; the
+    type chain, which lives in <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Realizability.html#Fixed_GCtx.IndRealize.elem_rel"><span class="id" title="variable">elem_rel</span></a></span> and hence in
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.i"><span class="id" title="variable">i</span></a></span>.  This is the semantic counterpart of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Presup.html#presup_exp_eq"><span class="id" title="lemma">presup_exp_eq</span></a></span>; the
     substitution cases use it to build the context PER of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span> from a judgment
     about a term of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span>. 
 </div>
@@ -425,7 +425,7 @@ Semantic presupposition: a term judgment contains a type judgment, its own
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.i"><span class="id" title="variable">i</span></a></span> ignores the environment, so the two substituted environments
+<span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.i"><span class="id" title="variable">i</span></a></span> ignores the environment, so the two substituted environments
     named by the caller are unused. 
 </div>
 <div class="code">
@@ -481,7 +481,7 @@ Cumulativity acts on the chain member by member: <span class="inlinecode"><a cla
 <div class="doc">
 Iterated cumulativity.  This is how a Π-type reconciles the levels of its
     domain and codomain: <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_univ_elem_pi_canonical"><span class="id" title="lemma">per_univ_elem_pi_canonical</span></a></span> requires them to agree,
-    while the syntax allows <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> and <span class="inlinecode"><span class="id" title="definition">B</span></span> at unrelated levels. 
+    while the syntax allows <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a></span> and <span class="inlinecode"><span class="id" title="definition">B</span></span> at unrelated levels. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Corollary</span> <a id="rel_exp_cumu_ge" class="idref" href="#rel_exp_cumu_ge"><span class="id" title="lemma">rel_exp_cumu_ge</span></a> : <span class="id" title="keyword">forall</span> {<a id="i:132" class="idref" href="#i:132"><span class="id" title="binder">i</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>} {<a id="j:133" class="idref" href="#j:133"><span class="id" title="binder">j</span></a> <a id="784d768ae6e85e0848ed43b713b18d98" class="idref" href="#784d768ae6e85e0848ed43b713b18d98"><span class="id" title="binder">Γ</span></a> <a id="A:135" class="idref" href="#A:135"><span class="id" title="binder">A</span></a> <a id="A':136" class="idref" href="#A':136"><span class="id" title="binder">A'</span></a>},<br/>
@@ -510,7 +510,7 @@ Iterated cumulativity.  This is how a Π-type reconciles the levels of its
 </div>
 
 <div class="doc">
-<a id="lab291"></a><h2 class="section">The Universes as Judgments</h2>
+<a id="lab294"></a><h2 class="section">The Universes as Judgments</h2>
 
 </div>
 <div class="code">

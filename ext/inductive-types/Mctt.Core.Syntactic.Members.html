@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab520"></a><h1 class="section">Resolution and Members of Modules</h1>
+<a id="lab526"></a><h1 class="section">Resolution and Members of Modules</h1>
 
 
 <div class="paragraph"> </div>
@@ -65,15 +65,15 @@
 </div>
 
 <div class="doc">
-<a id="lab521"></a><h2 class="section">Resolution in a Module</h2>
+<a id="lab527"></a><h2 class="section">Resolution in a Module</h2>
 
 
 <div class="paragraph"> </div>
 
     A module is a sequence of entries, in declaration order: definitions and
     nested modules (see <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gentry"><span class="id" title="inductive">gentry</span></a></span> in <span class="inlinecode"><span class="id" title="keyword">Syntax</span></span>).  A nested module of a filed
-    unit is a body <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ge_body"><span class="id" title="abbreviation">ge_body</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.pv"><span class="id" title="variable">pv</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>, with <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> the parameters it adds to the ones
-    it is already under, or an alias <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ge_mod"><span class="id" title="constructor">ge_mod</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.pv"><span class="id" title="variable">pv</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gu_mk"><span class="id" title="constructor">gu_mk</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#md_alias"><span class="id" title="constructor">md_alias</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a>))</span>, with <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span>
+    unit is a body <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ge_body"><span class="id" title="abbreviation">ge_body</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.pv"><span class="id" title="variable">pv</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>, with <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> the parameters it adds to the ones
+    it is already under, or an alias <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ge_mod"><span class="id" title="constructor">ge_mod</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.pv"><span class="id" title="variable">pv</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gu_mk"><span class="id" title="constructor">gu_mk</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#md_alias"><span class="id" title="constructor">md_alias</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a>))</span>, with <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span>
     its full telescope.
 
 <div class="paragraph"> </div>
@@ -147,7 +147,7 @@ An entry with a fresh name shadows nothing.
 </div>
 
 <div class="doc">
-<a id="lab522"></a><h2 class="section">Resolution of a Module</h2>
+<a id="lab528"></a><h2 class="section">Resolution of a Module</h2>
 
 
 <div class="paragraph"> </div>
@@ -166,7 +166,7 @@ An entry with a fresh name shadows nothing.
 </div>
 
 <div class="doc">
-The submodule <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">::</span> <span class="inlinecode"><span class="id" title="var">ip</span></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>, whose enclosing telescope is <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span>. 
+The submodule <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">::</span> <span class="inlinecode"><span class="id" title="var">ip</span></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>, whose enclosing telescope is <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="gm_submodule" class="idref" href="#gm_submodule"><span class="id" title="definition">gm_submodule</span></a> (<a id="T:21" class="idref" href="#T:21"><span class="id" title="binder">T</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a>) (<a id="aac3510b991e7964a311c1cfd19ce29e" class="idref" href="#aac3510b991e7964a311c1cfd19ce29e"><span class="id" title="binder">Φ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gmod"><span class="id" title="inductive">gmod</span></a>) (<a id="x:23" class="idref" href="#x:23"><span class="id" title="binder">x</span></a> : <span class="id" title="inductive">string</span>) (<a id="ip:24" class="idref" href="#ip:24"><span class="id" title="binder">ip</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="inductive">string</span>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Mctt.Core.Syntactic.Members.html#modres"><span class="id" title="inductive">modres</span></a> :=<br/>
@@ -247,7 +247,7 @@ The module <span class="inlinecode"><span class="id" title="var">ip</span></span
 </div>
 
 <div class="doc">
-The body module <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">::</span> <span class="inlinecode"><span class="id" title="var">ip</span></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>, with its full telescope. 
+The body module <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">::</span> <span class="inlinecode"><span class="id" title="var">ip</span></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>, with its full telescope. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="gm_subbody" class="idref" href="#gm_subbody"><span class="id" title="definition">gm_subbody</span></a> (<a id="T:49" class="idref" href="#T:49"><span class="id" title="binder">T</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a>) (<a id="cd8bab98b89be933d89353523b6e2fb0" class="idref" href="#cd8bab98b89be933d89353523b6e2fb0"><span class="id" title="binder">Φ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gmod"><span class="id" title="inductive">gmod</span></a>) (<a id="x:51" class="idref" href="#x:51"><span class="id" title="binder">x</span></a> : <span class="id" title="inductive">string</span>) (<a id="ip:52" class="idref" href="#ip:52"><span class="id" title="binder">ip</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="inductive">string</span>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gmod"><span class="id" title="inductive">gmod</span></a>) :=<br/>
@@ -302,7 +302,7 @@ The body module <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntac
 </div>
 
 <div class="doc">
-<a id="lab523"></a><h2 class="section">Resolution of a Path</h2>
+<a id="lab529"></a><h2 class="section">Resolution of a Path</h2>
 
 
 <div class="paragraph"> </div>
@@ -311,7 +311,7 @@ The body module <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntac
     the filed unit it names. 
 <div class="paragraph"> </div>
 
- The innermost open frame <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span> is in, with <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span> read inside it. 
+ The innermost open frame <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span> is in, with <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span> read inside it. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="gs_find" class="idref" href="#gs_find"><span class="id" title="definition">gs_find</span></a> (<a id="10d40b1ab18ed6c32cc3ba3f984a872d" class="idref" href="#10d40b1ab18ed6c32cc3ba3f984a872d"><span class="id" title="binder">Ξ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gstack"><span class="id" title="definition">gstack</span></a>) (<a id="p:75" class="idref" href="#p:75"><span class="id" title="binder">p</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gunit"><span class="id" title="inductive">gunit</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="inductive">string</span>) :=<br/>
@@ -328,7 +328,7 @@ The body module <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntac
 </div>
 
 <div class="doc">
-The innermost open frame <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span> is in, with the telescope of the frames
+The innermost open frame <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span> is in, with the telescope of the frames
     outside it. 
 </div>
 <div class="code">
@@ -406,7 +406,7 @@ A module path inside an open frame is read there, provided it names a
 </div>
 
 <div class="doc">
-The body module at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span>, with its full telescope. 
+The body module at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span>, with its full telescope. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="gc_body" class="idref" href="#gc_body"><span class="id" title="definition">gc_body</span></a> (<a id="f0dfc53e69fe195e07cea7ffefc05324" class="idref" href="#f0dfc53e69fe195e07cea7ffefc05324"><span class="id" title="binder">Θ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gdeps"><span class="id" title="definition">gdeps</span></a>) (<a id="15e9cfabb323424ea95f66ee391bc336" class="idref" href="#15e9cfabb323424ea95f66ee391bc336"><span class="id" title="binder">Ξ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gstack"><span class="id" title="definition">gstack</span></a>) (<a id="p:100" class="idref" href="#p:100"><span class="id" title="binder">p</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gmod"><span class="id" title="inductive">gmod</span></a>) :=<br/>
@@ -424,7 +424,7 @@ The body module at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syn
 </div>
 
 <div class="doc">
-The open frame at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span>, with its full telescope: its own parameters, then
+The open frame at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span>, with its full telescope: its own parameters, then
     those of the frames outside it. 
 </div>
 <div class="code">
@@ -451,7 +451,7 @@ An open frame names no definition.
 </div>
 
 <div class="doc">
-The declaration of the inductive type whose module is at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span>, read off
+The declaration of the inductive type whose module is at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span>, read off
     the type's entry (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#gm_submodule"><span class="id" title="definition">gm_submodule</span></a></span>). 
 </div>
 <div class="code">
@@ -530,12 +530,12 @@ Where a resolved entry comes from: a frame of the stack or a filed unit.
 </div>
 
 <div class="doc">
-<a id="lab524"></a><h2 class="section">Entries</h2>
+<a id="lab530"></a><h2 class="section">Entries</h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#gc_entry"><span class="id" title="definition">gc_entry</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span> is the entry a path names, a definition or a submodule,
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#gc_entry"><span class="id" title="definition">gc_entry</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span> is the entry a path names, a definition or a submodule,
     read through body modules as <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#gc_resolve"><span class="id" title="definition">gc_resolve</span></a></span> is: it carries the privacy flag
     of a submodule, which no other lookup reports. 
 </div>
@@ -613,7 +613,7 @@ Whether an entry is private.
 </div>
 
 <div class="doc">
-<a id="lab525"></a><h2 class="section">The Inductive Alias a Path Names</h2>
+<a id="lab531"></a><h2 class="section">The Inductive Alias a Path Names</h2>
 
 
 <div class="paragraph"> </div>
@@ -721,7 +721,7 @@ The lookups at a function agreeing with <span class="inlinecode"><a class="idref
 </div>
 
 <div class="doc">
-<a id="lab526"></a><h2 class="section">One Lookup for a Global</h2>
+<a id="lab532"></a><h2 class="section">One Lookup for a Global</h2>
 
 
 <div class="paragraph"> </div>
@@ -902,7 +902,7 @@ A path names an inductive type or an inductive alias, not both.
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#gm_grows"><span class="id" title="inductive">gm_grows</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#820f9c964c10ddec657decb304efdeee"><span class="id" title="variable">Φ'</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#820f9c964c10ddec657decb304efdeee"><span class="id" title="variable">Φ'</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> with more definitions, of fresh names,
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#gm_grows"><span class="id" title="inductive">gm_grows</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#820f9c964c10ddec657decb304efdeee"><span class="id" title="variable">Φ'</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#820f9c964c10ddec657decb304efdeee"><span class="id" title="variable">Φ'</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> with more definitions, of fresh names,
     after it, and no more modules.  The body of the module of an inductive
     type grows so while its members are checked (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gentry_ind_ext"><span class="id" title="constructor">wf_gentry_ind_ext</span></a></span>). 
 </div>
@@ -923,7 +923,7 @@ A path names an inductive type or an inductive alias, not both.
 </div>
 
 <div class="doc">
-<a id="lab527"></a><h2 class="section">How Resolution Grows</h2>
+<a id="lab533"></a><h2 class="section">How Resolution Grows</h2>
 
 
 <div class="paragraph"> </div>
@@ -1353,7 +1353,7 @@ Filing more units under the same stack.
 </div>
 
 <div class="doc">
-<a id="lab528"></a><h2 class="section">Growth Keeping Bodies</h2>
+<a id="lab534"></a><h2 class="section">Growth Keeping Bodies</h2>
 
 
 <div class="paragraph"> </div>
@@ -1434,7 +1434,7 @@ Filing more units under the same stack.
 </div>
 
 <div class="doc">
-<a id="lab529"></a><h2 class="section">Transparent Global Contexts</h2>
+<a id="lab535"></a><h2 class="section">Transparent Global Contexts</h2>
 
 
 <div class="paragraph"> </div>
@@ -1496,7 +1496,7 @@ Filing more units under the same stack.
 </div>
 
 <div class="doc">
-<a id="lab530"></a><h2 class="section">Module Slots</h2>
+<a id="lab536"></a><h2 class="section">Module Slots</h2>
 
 </div>
 <div class="code">
@@ -1568,7 +1568,7 @@ A slot under one more entry
 </div>
 
 <div class="doc">
-<a id="lab531"></a><h2 class="section">Syntactic Helpers</h2>
+<a id="lab537"></a><h2 class="section">Syntactic Helpers</h2>
 
 <div class="paragraph"> </div>
 
@@ -1700,7 +1700,7 @@ The Π a type is, looking through local definitions and local modules.
 </div>
 
 <div class="doc">
-<a id="lab532"></a><h2 class="section">Arities</h2>
+<a id="lab538"></a><h2 class="section">Arities</h2>
 
 
 <div class="paragraph"> </div>
@@ -1745,7 +1745,7 @@ The Π a type is, looking through local definitions and local modules.
 
 <div class="doc">
 The telescope left when the outermost parameter is instantiated with
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span>: a module of arity <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span>, applied to <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span>, has arity <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#tele_inst"><span class="id" title="definition">tele_inst</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span>. 
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span>: a module of arity <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span>, applied to <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span>, has arity <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#tele_inst"><span class="id" title="definition">tele_inst</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="tele_inst" class="idref" href="#tele_inst"><span class="id" title="definition">tele_inst</span></a> (<a id="T:599" class="idref" href="#T:599"><span class="id" title="binder">T</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a>) (<a id="N:600" class="idref" href="#N:600"><span class="id" title="binder">N</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a> :=<br/>
@@ -1758,7 +1758,7 @@ The telescope left when the outermost parameter is instantiated with
 </div>
 
 <div class="doc">
-A module <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#NbE.F"><span class="id" title="variable">F</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@0)</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Semantic.Rename.html#Read.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="keyword">forall</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>)</span> <span class="inlinecode">-&gt;</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>)</span> takes <span class="inlinecode">⋅</span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@0</span> <span class="inlinecode">▹</span>
+A module <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#NbE.F"><span class="id" title="variable">F</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@0)</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Semantic.Rename.html#Read.f"><span class="id" title="variable">f</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="keyword">forall</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a>)</span> <span class="inlinecode">-&gt;</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a>)</span> takes <span class="inlinecode">⋅</span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@0</span> <span class="inlinecode">▹</span>
     <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode">#0</span> <span class="inlinecode">#1</span>; applied to <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, it takes <span class="inlinecode">⋅</span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span>. 
 </div>
 <div class="code">
@@ -1769,7 +1769,7 @@ A module <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines
 </div>
 
 <div class="doc">
-<a id="lab533"></a><h2 class="section">Descriptions</h2>
+<a id="lab539"></a><h2 class="section">Descriptions</h2>
 
 
 <div class="paragraph"> </div>
@@ -1777,14 +1777,14 @@ A module <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines
     A description says what a module expression denotes (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#mdenote"><span class="id" title="inductive">mdenote</span></a></span> below):
     a term of a type with its δ-reduct, if it has one (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ds_term"><span class="id" title="constructor">ds_term</span></a></span>); an open
     (local) module, its parameters, its body as written and the body read
-    through the entries its local opens generate (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ds_open"><span class="id" title="constructor">ds_open</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#8162ed779df0d96ffb69b782d8026821"><span class="id" title="variable">Φx</span></a></span>: the
+    through the entries its local opens generate (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ds_open"><span class="id" title="constructor">ds_open</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#8162ed779df0d96ffb69b782d8026821"><span class="id" title="variable">Φx</span></a></span>: the
     module is the written body, its entries are read in the expansion); a closed module,
-    stored at its canonical path <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span> closed over its full telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span>,
-    given the arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimIota.html#Fixed_GCtx.Iota.Ns"><span class="id" title="variable">Ns</span></a></span> and still abstracted over the parameters <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span>
-    that come from outside it (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ds_closed"><span class="id" title="constructor">ds_closed</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimIota.html#Fixed_GCtx.Iota.Ns"><span class="id" title="variable">Ns</span></a></span>): the path is what
+    stored at its canonical path <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span> closed over its full telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span>,
+    given the arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Iota.html#Fixed_GCtx.Iota.Ns"><span class="id" title="variable">Ns</span></a></span> and still abstracted over the parameters <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span>
+    that come from outside it (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ds_closed"><span class="id" title="constructor">ds_closed</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#Fixed_GCtx.GluIndProps.T"><span class="id" title="variable">T</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Iota.html#Fixed_GCtx.Iota.Ns"><span class="id" title="variable">Ns</span></a></span>): the path is what
     identifies a filed module, two filed modules with equal bodies staying
-    distinct; or the inductive type declared at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span>, given the
-    arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimIota.html#Fixed_GCtx.Iota.Ns"><span class="id" title="variable">Ns</span></a></span> and still abstracted over <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ds_ind"><span class="id" title="constructor">ds_ind</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimIota.html#Fixed_GCtx.Iota.Ns"><span class="id" title="variable">Ns</span></a></span>).  The
+    distinct; or the inductive type declared at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span>, given the
+    arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Iota.html#Fixed_GCtx.Iota.Ns"><span class="id" title="variable">Ns</span></a></span> and still abstracted over <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ds_ind"><span class="id" title="constructor">ds_ind</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Iota.html#Fixed_GCtx.Iota.Ns"><span class="id" title="variable">Ns</span></a></span>).  The
     arguments are terms over the context extended by <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span>.  A description
     never contains an alias, and its entries are read where no local open
     is left.
@@ -1839,7 +1839,7 @@ A description of a module, of either storage.
 </div>
 
 <div class="doc">
-The description of a body module <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>, read as <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#8162ed779df0d96ffb69b782d8026821"><span class="id" title="variable">Φx</span></a></span> through the entries
+The description of a body module <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>, read as <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#8162ed779df0d96ffb69b782d8026821"><span class="id" title="variable">Φx</span></a></span> through the entries
     its local opens generate, by its storage: an open one is its parameters,
     its body and the expansion; a closed one, stored at the path <span class="inlinecode"><span class="id" title="var">o</span></span> it is
     read at, is given no argument yet.  A closed body is a module only where
@@ -2013,9 +2013,9 @@ The outermost assumption of a telescope, given outermost first: its
 </div>
 
 <div class="doc">
-Application "R at N": <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> is the next parameter.  A leading definition
+Application "R at N": <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> is the next parameter.  A leading definition
     entry is substituted away first, in every form.  An open module
-    substitutes <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> into its body; a closed one with outside parameters left
+    substitutes <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> into its body; a closed one with outside parameters left
     fills the outermost of them, and with none records the argument, the
     stored module being read as it is; likewise for an inductive type. 
 </div>
@@ -2139,7 +2139,7 @@ A term with no δ-reduct read as the name <span class="inlinecode"><a class="idr
 
 <div class="doc">
 A term of a closed body read at the outside parameters <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> and the
-    arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimIota.html#Fixed_GCtx.Iota.Ns"><span class="id" title="variable">Ns</span></a></span>, as the name <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> there: with an outside parameter or an
+    arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Iota.html#Fixed_GCtx.Iota.Ns"><span class="id" title="variable">Ns</span></a></span>, as the name <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> there: with an outside parameter or an
     argument, one with no δ-reduct δ-reduces to its name; read bare, at
     neither, it is its own name already, and has no δ-reduct. 
 </div>
@@ -2220,7 +2220,7 @@ Read at an outside parameter or an argument, it is <span class="inlinecode"><a c
 
 <div class="doc">
 How an entry's description is read: one of an open body, the entries
-    before it <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#820f9c964c10ddec657decb304efdeee"><span class="id" title="variable">Φ'</span></a></span> filled in, abstracted over the body's parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span>; one
+    before it <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#820f9c964c10ddec657decb304efdeee"><span class="id" title="variable">Φ'</span></a></span> filled in, abstracted over the body's parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span>; one
     of a closed body, given the arguments recorded, a term with no δ-reduct
     being its name <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> there (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ds_named"><span class="id" title="definition">ds_named</span></a></span>), then abstracted over the outside
     parameters. 
@@ -2265,9 +2265,9 @@ A stored closed entry read in a closed body of telescope <span class="inlinecode
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">entry</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.IndCommand.html#ConTypes.R"><span class="id" title="variable">R</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.y"><span class="id" title="variable">y</span></a></span>: the entry <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.y"><span class="id" title="variable">y</span></a></span> of the module described by <span class="inlinecode"><a class="idref" href="Mctt.Core.IndCommand.html#ConTypes.R"><span class="id" title="variable">R</span></a></span>, the context
+<span class="inlinecode"><span class="id" title="var">entry</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.IndCommand.html#ConTypes.R"><span class="id" title="variable">R</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.y"><span class="id" title="variable">y</span></a></span>: the entry <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.y"><span class="id" title="variable">y</span></a></span> of the module described by <span class="inlinecode"><a class="idref" href="Mctt.Core.IndCommand.html#ConTypes.R"><span class="id" title="variable">R</span></a></span>, the context
     it is read in (over the module's context) and how its description is
-    read; <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a></span> for a term, or when <span class="inlinecode"><a class="idref" href="Mctt.Core.IndCommand.html#ConTypes.R"><span class="id" title="variable">R</span></a></span> has no entry <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.y"><span class="id" title="variable">y</span></a></span>. 
+    read; <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a></span> for a term, or when <span class="inlinecode"><a class="idref" href="Mctt.Core.IndCommand.html#ConTypes.R"><span class="id" title="variable">R</span></a></span> has no entry <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.y"><span class="id" title="variable">y</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="ds_entry" class="idref" href="#ds_entry"><span class="id" title="definition">ds_entry</span></a> (<a id="R:715" class="idref" href="#R:715"><span class="id" title="binder">R</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#mdesc"><span class="id" title="inductive">mdesc</span></a>) (<a id="y:716" class="idref" href="#y:716"><span class="id" title="binder">y</span></a> : <span class="id" title="inductive">string</span>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gentry"><span class="id" title="inductive">gentry</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.Members.html#reader"><span class="id" title="inductive">reader</span></a>) :=<br/>
@@ -2334,7 +2334,7 @@ The path an entry of a module is stored at: that of a closed module's
 </div>
 
 <div class="doc">
-The stored unit a path <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.html#AllIn.P"><span class="id" title="variable">P</span></a></span> names when it is a loaded unit or an open
+The stored unit a path <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#AllIn.P"><span class="id" title="variable">P</span></a></span> names when it is a loaded unit or an open
     frame, with its full telescope: an open frame's own parameters, then
     those of the frames outside it. 
 </div>
@@ -2438,13 +2438,13 @@ A path through an alias names no definition, and a path naming a module
 </div>
 
 <div class="doc">
-<a id="lab534"></a><h2 class="section">What an Open Generates</h2>
+<a id="lab540"></a><h2 class="section">What an Open Generates</h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a></span> <span class="inlinecode"><span class="id" title="var">use</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>)</span> declares <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> as a private definition equal to <span class="inlinecode"><span class="id" title="var">E.n</span></span>,
-    <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a></span> <span class="inlinecode"><span class="id" title="keyword">as</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.y"><span class="id" title="variable">y</span></a></span> declares <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.y"><span class="id" title="variable">y</span></a></span> a private alias of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a></span>, and, at the global
+    <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a></span> <span class="inlinecode"><span class="id" title="var">use</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>)</span> declares <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> as a private definition equal to <span class="inlinecode"><span class="id" title="var">E.n</span></span>,
+    <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a></span> <span class="inlinecode"><span class="id" title="keyword">as</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.y"><span class="id" title="variable">y</span></a></span> declares <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.y"><span class="id" title="variable">y</span></a></span> a private alias of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a></span>, and, at the global
     level, an item naming an inductive type declares an inductive alias of
     it; a local open of one is rejected.  At the global level the generated
     entries are filed by the command (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#rc_open"><span class="id" title="constructor">rc_open</span></a></span>);
@@ -2461,22 +2461,22 @@ A path through an alias names no definition, and a path naming a module
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ig_def"><span class="id" title="constructor">ig_def</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.pv"><span class="id" title="variable">pv</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>: the definition <span class="inlinecode"><span class="id" title="var">d</span></span> of type <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> equal to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ig_def"><span class="id" title="constructor">ig_def</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.pv"><span class="id" title="variable">pv</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>: the definition <span class="inlinecode"><span class="id" title="var">d</span></span> of type <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a></span> equal to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> 
 </div>
 <div class="code">
 | <a id="ig_def" class="idref" href="#ig_def"><span class="id" title="constructor">ig_def</span></a> : <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#typ"><span class="id" title="abbreviation">typ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Members.html#igen:745"><span class="id" title="inductive">igen</span></a><br/>
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ig_alias"><span class="id" title="constructor">ig_alias</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.pv"><span class="id" title="variable">pv</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a></span>: the alias <span class="inlinecode"><span class="id" title="var">d</span></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a></span> 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ig_alias"><span class="id" title="constructor">ig_alias</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.pv"><span class="id" title="variable">pv</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a></span>: the alias <span class="inlinecode"><span class="id" title="var">d</span></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a></span> 
 </div>
 <div class="code">
 | <a id="ig_alias" class="idref" href="#ig_alias"><span class="id" title="constructor">ig_alias</span></a> : <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#modexp"><span class="id" title="inductive">modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Members.html#igen:745"><span class="id" title="inductive">igen</span></a><br/>
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ig_ind_alias"><span class="id" title="constructor">ig_ind_alias</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.pv"><span class="id" title="variable">pv</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimIota.html#Fixed_GCtx.Iota.Ns"><span class="id" title="variable">Ns</span></a></span>: the inductive alias <span class="inlinecode"><span class="id" title="var">d</span></span>, over <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span>, of the
-    inductive type at the canonical path <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimIota.html#Fixed_GCtx.Iota.Ns"><span class="id" title="variable">Ns</span></a></span> 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ig_ind_alias"><span class="id" title="constructor">ig_ind_alias</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.pv"><span class="id" title="variable">pv</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Iota.html#Fixed_GCtx.Iota.Ns"><span class="id" title="variable">Ns</span></a></span>: the inductive alias <span class="inlinecode"><span class="id" title="var">d</span></span>, over <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span>, of the
+    inductive type at the canonical path <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Iota.html#Fixed_GCtx.Iota.Ns"><span class="id" title="variable">Ns</span></a></span> 
 </div>
 <div class="code">
 | <a id="ig_ind_alias" class="idref" href="#ig_ind_alias"><span class="id" title="constructor">ig_ind_alias</span></a> : <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#centry"><span class="id" title="inductive">centry</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Members.html#igen:745"><span class="id" title="inductive">igen</span></a>.<br/>
@@ -2503,7 +2503,7 @@ A generated item as a body entry.
 
 <div class="doc">
 A generated item under a weakening and a substitution, as its entry
-    is (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.MemberLemmas.html#ig_entry_wk"><span class="id" title="lemma">ig_entry_wk</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.MemberLemmas.html#ig_entry_sub"><span class="id" title="lemma">ig_entry_sub</span></a></span>): an inductive alias is closed. 
+    is (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#ig_entry_wk"><span class="id" title="lemma">ig_entry_wk</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#ig_entry_sub"><span class="id" title="lemma">ig_entry_sub</span></a></span>): an inductive alias is closed. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="igen_wk" class="idref" href="#igen_wk"><span class="id" title="definition">igen_wk</span></a> (<a id="g:750" class="idref" href="#g:750"><span class="id" title="binder">g</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Members.html#igen"><span class="id" title="inductive">igen</span></a>) (<a id="31c4ebdf1b3f19dc281b8d2b63bb4908" class="idref" href="#31c4ebdf1b3f19dc281b8d2b63bb4908"><span class="id" title="binder">φ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk"><span class="id" title="definition">wk</span></a>) : <a class="idref" href="Mctt.Core.Syntactic.Members.html#igen"><span class="id" title="inductive">igen</span></a> :=<br/>
@@ -2525,7 +2525,7 @@ A generated item under a weakening and a substitution, as its entry
 </div>
 
 <div class="doc">
-The generated entries appended to <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>, in order.  All are read in the
+The generated entries appended to <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>, in order.  All are read in the
     context of the open, so the <span class="inlinecode"><span class="id" title="var">k</span></span>-th is weakened by the <span class="inlinecode"><span class="id" title="var">k</span></span> before it. 
 </div>
 <div class="code">
@@ -2610,7 +2610,7 @@ A telescope of parameters has assumptions only: a module's arguments are
 </div>
 
 <div class="doc">
-<a id="lab535"></a><h2 class="section">What a Module Expression Denotes</h2>
+<a id="lab541"></a><h2 class="section">What a Module Expression Denotes</h2>
 
 
 <div class="paragraph"> </div>
@@ -2633,7 +2633,7 @@ A telescope of parameters has assumptions only: a module's arguments are
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#edenote"><span class="id" title="inductive">edenote</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode"><span class="id" title="var">o</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.IndCommand.html#ConTypes.R"><span class="id" title="variable">R</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a></span> <span class="inlinecode"><span class="id" title="var">denotes</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.IndCommand.html#ConTypes.R"><span class="id" title="variable">R</span></a></span>: what an entry stored at <span class="inlinecode"><span class="id" title="var">o</span></span>
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#edenote"><span class="id" title="inductive">edenote</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode"><span class="id" title="var">o</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.IndCommand.html#ConTypes.R"><span class="id" title="variable">R</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a></span> <span class="inlinecode"><span class="id" title="var">denotes</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.IndCommand.html#ConTypes.R"><span class="id" title="variable">R</span></a></span>: what an entry stored at <span class="inlinecode"><span class="id" title="var">o</span></span>
     denotes, one rule per entry kind.  A definition is a term of its type, whose δ-reduct is
     its body when it is transparent; a module is what its unit denotes; an
     inductive type is its type former with no argument; an inductive alias,
@@ -2685,7 +2685,7 @@ A telescope of parameters has assumptions only: a module's arguments are
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#body_xp"><span class="id" title="inductive">body_xp</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#8162ed779df0d96ffb69b782d8026821"><span class="id" title="variable">Φx</span></a></span>: the body <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>, read in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>, is <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#8162ed779df0d96ffb69b782d8026821"><span class="id" title="variable">Φx</span></a></span> with every
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#body_xp"><span class="id" title="inductive">body_xp</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#8162ed779df0d96ffb69b782d8026821"><span class="id" title="variable">Φx</span></a></span>: the body <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>, read in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>, is <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#8162ed779df0d96ffb69b782d8026821"><span class="id" title="variable">Φx</span></a></span> with every
     local open replaced by the entries it generates (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#items_gen"><span class="id" title="inductive">items_gen</span></a></span>), in the
     context its own expanded prefix makes.  The entries themselves are not
     looked into. 
@@ -2706,12 +2706,12 @@ A telescope of parameters has assumptions only: a module's arguments are
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#items_gen"><span class="id" title="inductive">items_gen</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndSyntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> <span class="inlinecode"><span class="id" title="var">its</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.gs"><span class="id" title="variable">gs</span></a></span>: what the items <span class="inlinecode"><span class="id" title="var">its</span></span> of an open of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span>
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#items_gen"><span class="id" title="inductive">items_gen</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> <span class="inlinecode"><span class="id" title="var">its</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimSem.ConCase.gs"><span class="id" title="variable">gs</span></a></span>: what the items <span class="inlinecode"><span class="id" title="var">its</span></span> of an open of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span>
     declare, all read in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>, by what the member each names denotes: a term
     gives a definition of its type, a module an alias, and, at the global
-    level only (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndSyntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a></span>), an inductive type an inductive alias of it over
+    level only (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a></span>), an inductive type an inductive alias of it over
     the parameters it is still abstracted over; an item naming no member,
-    the alias of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> itself.  A local open (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndSyntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a></span>) has no case for an
+    the alias of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> itself.  A local open (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a></span>) has no case for an
     inductive type: a local open of one is rejected. 
 </div>
 <div class="code">
@@ -2750,8 +2750,8 @@ A telescope of parameters has assumptions only: a module's arguments are
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#open_gens"><span class="id" title="record">open_gens</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndSyntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> <span class="inlinecode"><span class="id" title="var">its</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.gs"><span class="id" title="variable">gs</span></a></span>: an open of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> with items <span class="inlinecode"><span class="id" title="var">its</span></span>, in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>:
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> is a module, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.gs"><span class="id" title="variable">gs</span></a></span> is what the items declare.  (Its witnesses
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#open_gens"><span class="id" title="record">open_gens</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> <span class="inlinecode"><span class="id" title="var">its</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimSem.ConCase.gs"><span class="id" title="variable">gs</span></a></span>: an open of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> with items <span class="inlinecode"><span class="id" title="var">its</span></span>, in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>:
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> is a module, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimSem.ConCase.gs"><span class="id" title="variable">gs</span></a></span> is what the items declare.  (Its witnesses
     are informative, so they have no projections.) 
 </div>
 <div class="code">
@@ -2784,9 +2784,9 @@ A unit with its body expanded; an alias is its own.
 </div>
 
 <div class="doc">
-The targets of the local opens of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>, newest first, each with the
-    context its expanded prefix makes, where <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#8162ed779df0d96ffb69b782d8026821"><span class="id" title="variable">Φx</span></a></span> is the expansion of
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>. 
+The targets of the local opens of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>, newest first, each with the
+    context its expanded prefix makes, where <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#8162ed779df0d96ffb69b782d8026821"><span class="id" title="variable">Φx</span></a></span> is the expansion of
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="gm_dropn" class="idref" href="#gm_dropn"><span class="id" title="definition">gm_dropn</span></a> (<a id="n:933" class="idref" href="#n:933"><span class="id" title="binder">n</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="a54a5532f6c503ef0cdfe5d51073433a" class="idref" href="#a54a5532f6c503ef0cdfe5d51073433a"><span class="id" title="binder">Φ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gmod"><span class="id" title="inductive">gmod</span></a>) : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gmod"><span class="id" title="inductive">gmod</span></a> :=<br/>
@@ -2856,7 +2856,7 @@ The number of local opens of a body.
 </div>
 
 <div class="doc">
-<a id="lab536"></a><h3 class="section">The Shape of an Expansion</h3>
+<a id="lab542"></a><h3 class="section">The Shape of an Expansion</h3>
 
 </div>
 <div class="code">
@@ -2976,7 +2976,7 @@ The opens of a body after an entry, or after an open, are those of the
 
 <div class="doc">
 The expansion of the body before the open that declares <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>, read off
-    the body <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> and its expansion <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UnitBody.html#8162ed779df0d96ffb69b782d8026821"><span class="id" title="variable">Φx</span></a></span>. 
+    the body <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#dcccc597dd1cc0a3350b850b95634b64"><span class="id" title="variable">Φ</span></a></span> and its expansion <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Body.html#8162ed779df0d96ffb69b782d8026821"><span class="id" title="variable">Φx</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="gm_item_xp" class="idref" href="#gm_item_xp"><span class="id" title="definition">gm_item_xp</span></a> (<a id="d155f4b821a4884464072b8830d63d09" class="idref" href="#d155f4b821a4884464072b8830d63d09"><span class="id" title="binder">Φ</span></a> <a id="03ca0c45c74e4dfb1de4a610bc1c120f" class="idref" href="#03ca0c45c74e4dfb1de4a610bc1c120f"><span class="id" title="binder">Φx</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gmod"><span class="id" title="inductive">gmod</span></a>) (<a id="x:1042" class="idref" href="#x:1042"><span class="id" title="binder">x</span></a> : <span class="id" title="inductive">string</span>) : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gmod"><span class="id" title="inductive">gmod</span></a> :=<br/>
@@ -3005,7 +3005,7 @@ The expansion of the body before the open that declares <span class="inlinecode"
 </div>
 
 <div class="doc">
-<a id="lab537"></a><h2 class="section">The Module that Declares a Member</h2>
+<a id="lab543"></a><h2 class="section">The Module that Declares a Member</h2>
 
 
 <div class="paragraph"> </div>
@@ -3014,9 +3014,9 @@ The expansion of the body before the open that declares <span class="inlinecode"
     module stored at <span class="inlinecode"><span class="id" title="var">q</span></span>, read step by step: a loaded unit or an open frame is
     stored at its own path, a body module (or the module of an inductive
     type) at its entry's path, an alias (or the module view of an inductive
-    alias) where its target is, and arguments change nothing.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#mdecl"><span class="id" title="inductive">mdecl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.y"><span class="id" title="variable">y</span></a></span>
-    <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.pv"><span class="id" title="variable">pv</span></a></span>: the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.y"><span class="id" title="variable">y</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> is the entry <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.y"><span class="id" title="variable">y</span></a></span> of the module stored at
-    <span class="inlinecode"><span class="id" title="var">q</span></span>, with privacy <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#GensRun.pv"><span class="id" title="variable">pv</span></a></span>. 
+    alias) where its target is, and arguments change nothing.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#mdecl"><span class="id" title="inductive">mdecl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.y"><span class="id" title="variable">y</span></a></span>
+    <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.pv"><span class="id" title="variable">pv</span></a></span>: the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.y"><span class="id" title="variable">y</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> is the entry <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.y"><span class="id" title="variable">y</span></a></span> of the module stored at
+    <span class="inlinecode"><span class="id" title="var">q</span></span>, with privacy <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.pv"><span class="id" title="variable">pv</span></a></span>. 
 <div class="paragraph"> </div>
 
  The body an entry stores, as a module. 
@@ -3103,12 +3103,12 @@ An application, where its module is
 </div>
 
 <div class="doc">
-<a id="lab538"></a><h2 class="section">Stored Modules and Entries</h2>
+<a id="lab544"></a><h2 class="section">Stored Modules and Entries</h2>
 
 
 <div class="paragraph"> </div>
 
-    A unit is a filed module at arguments, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.html#AllIn.P"><span class="id" title="variable">P</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>⃗</span> (a loaded unit, an open
+    A unit is a filed module at arguments, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#AllIn.P"><span class="id" title="variable">P</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>⃗</span> (a loaded unit, an open
     frame, or a body module stored at its path, given arguments), or a
     literal <span class="inlinecode">(<span class="id" title="var">U</span>)</span>. 
 <div class="paragraph"> </div>

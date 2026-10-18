@@ -167,7 +167,7 @@ The codomain may always be coarsened: this is the closure property the
 </div>
 
 <div class="doc">
-Every Kripke weakening is <span class="inlinecode">⇑^<a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>, where <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> is the difference of the two
+Every Kripke weakening is <span class="inlinecode">⇑^<a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>, where <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> is the difference of the two
     lengths. The gluing model needs this because readback turns a de Bruijn
     level into an index by counting from the length of the target context. 
 </div>
@@ -222,7 +222,7 @@ Every Kripke weakening is <span class="inlinecode">⇑^<a class="idref" href="Mc
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.i"><span class="id" title="variable">i</span></a></span> is closed, so transporting them is the identity, but
+<span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.i"><span class="id" title="variable">i</span></a></span> is closed, so transporting them is the identity, but
     only up to reduction, which the <span class="inlinecode"><span class="id" title="tactic">simple</span></span> <span class="inlinecode"><span class="id" title="tactic">apply</span></span> of <span class="inlinecode"><span class="id" title="tactic">eauto</span></span> does not
     perform. Compare <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wk_preserves_typ"><span class="id" title="lemma">wk_preserves_typ</span></a></span> in <span class="inlinecode"><span class="id" title="library">System.Lemmas</span></span>. 
 </div>
@@ -326,7 +326,7 @@ The same for <span class="inlinecode">⊤</span> and <span class="inlinecode">�
 </div>
 
 <div class="doc">
-A universe, as the term <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ulvl_tm"><span class="id" title="definition">ulvl_tm</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.u"><span class="id" title="variable">u</span></a></span>, is closed, so it is its own
+A universe, as the term <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ulvl_tm"><span class="id" title="definition">ulvl_tm</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimSem.u"><span class="id" title="variable">u</span></a></span>, is closed, so it is its own
     transport: the gluing predicates state every equation in it. 
 </div>
 <div class="code">
@@ -420,7 +420,7 @@ The shapes the gluing predicates state a type in, each in the ambient
 </div>
 
 <div class="doc">
-The shapes the gluing predicates state a type in, such as <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Bctx.Entry.j"><span class="id" title="variable">j</span></a></span>
+The shapes the gluing predicates state a type in, such as <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Bctx.Entry.j"><span class="id" title="variable">j</span></a></span>
     for the universe.  The right-hand sides are closed, so they are their own
     transports — again invisible to <span class="inlinecode"><span class="id" title="tactic">eauto</span></span>. 
 </div>

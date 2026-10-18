@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab869"></a><h1 class="section">Saturating the Context with Presuppositions</h1>
+<a id="lab875"></a><h1 class="section">Saturating the Context with Presuppositions</h1>
 
 
 <div class="paragraph"> </div>
@@ -55,7 +55,8 @@
 <br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.LibTactics.html#"><span class="id" title="library">LibTactics</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
-<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic.System</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#"><span class="id" title="library">Definitions</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#"><span class="id" title="library">Lemmas</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#"><span class="id" title="library">IndTyping</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic.System</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#"><span class="id" title="library">Definitions</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#"><span class="id" title="library">Lemmas</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic.System.Inductives</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#"><span class="id" title="library">Typing</span></a>.<br/>
 <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations"><span class="id" title="module">Syntax_Notations</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Wk_Notations"><span class="id" title="module">Wk_Notations</span></a>.<br/>
 
 <br/>
@@ -105,7 +106,7 @@
 </div>
 
 <div class="doc">
-The presuppositions that need no induction over equality: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.GlobalPresup.html#presup_exp_typ"><span class="id" title="lemma">presup_exp_typ</span></a></span>
+The presuppositions that need no induction over equality: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#presup_exp_typ"><span class="id" title="lemma">presup_exp_typ</span></a></span>
     for typing, and the two projections of a weakening or a substitution.  The
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_wk"><span class="id" title="record">wf_wk</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub"><span class="id" title="record">wf_sub</span></a></span> cases are exactly <span class="inlinecode"><span class="id" title="var">saturate_wk</span></span> and <span class="inlinecode"><span class="id" title="var">saturate_sub</span></span>,
     which <span class="inlinecode"><span class="id" title="var">gen_core_presups</span></span> calls. 

@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab539"></a><h1 class="section">Computing What an Open Generates</h1>
+<a id="lab545"></a><h1 class="section">Computing What an Open Generates</h1>
 
 
 <div class="paragraph"> </div>
@@ -41,7 +41,7 @@
     expression generates (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Opens.html#import_gen"><span class="id" title="definition">import_gen</span></a></span>) from what its members denote
     (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.MemberType.html#mdenote_impl"><span class="id" title="definition">mdenote_impl</span></a></span>): it computes exactly the generation relation of the core
     (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#open_gens"><span class="id" title="record">open_gens</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Opens.html#import_gen_spec"><span class="id" title="lemma">import_gen_spec</span></a></span>), or says why there is none (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Opens.html#xerr"><span class="id" title="inductive">xerr</span></a></span>).  A
-    local open (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndSyntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a></span>) of an inductive type is rejected (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Opens.html#xe_ind"><span class="id" title="constructor">xe_ind</span></a></span>). 
+    local open (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a></span>) of an inductive type is rejected (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Opens.html#xe_ind"><span class="id" title="constructor">xe_ind</span></a></span>). 
 </div>
 <div class="code">
 
@@ -53,7 +53,7 @@
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Syntactic.Members.html#"><span class="id" title="library">Members</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.Command.html#"><span class="id" title="library">Command</span></a>.<br/>
-<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic.System</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.System.GlobalModules.html#"><span class="id" title="library">GlobalModules</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic.System.Global</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.System.Global.Modules.html#"><span class="id" title="library">Modules</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Extraction</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Extraction.MemberType.html#"><span class="id" title="library">MemberType</span></a>.<br/>
 <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations"><span class="id" title="module">Syntax_Notations</span></a>.<br/>
 #[<span class="id" title="var">local</span>] <span class="id" title="keyword">Open</span> <span class="id" title="keyword">Scope</span> <span class="id" title="var">list_scope</span>.<br/>
@@ -62,7 +62,7 @@
 </div>
 
 <div class="doc">
-<a id="lab540"></a><h2 class="section">Results</h2>
+<a id="lab546"></a><h2 class="section">Results</h2>
 
 <div class="paragraph"> </div>
 
@@ -137,7 +137,7 @@ An inductive type, or an inductive alias, opened in a local module
 </div>
 
 <div class="doc">
-<a id="lab541"></a><h2 class="section">Generation</h2>
+<a id="lab547"></a><h2 class="section">Generation</h2>
 
 </div>
 <div class="code">
@@ -166,7 +166,7 @@ What a module expression denotes, when it has an order.
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">intros</span> *; <span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Extraction.Opens.html#denote_of"><span class="id" title="definition">denote_of</span></a>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Extraction.MemberType.html#mdenote_impl"><span class="id" title="definition">mdenote_impl</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span>) <span class="id" title="keyword">as</span> [[<span class="id" title="var">R'</span> <span class="id" title="var">HR'</span>] | <span class="id" title="var">HN</span>]; <span class="id" title="tactic">split</span>; <span class="id" title="tactic">intros</span> <span class="id" title="var">HR</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;- <span class="id" title="tactic">injection</span> <span class="id" title="var">HR</span> <span class="id" title="keyword">as</span> &lt;-; <span class="id" title="tactic">exact</span> <span class="id" title="var">HR'</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;- <span class="id" title="tactic">f_equal</span>; <span class="id" title="tactic">exact</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#proj1"><span class="id" title="lemma">proj1</span></a> (<a class="idref" href="Mctt.Core.Syntactic.System.GlobalPaths.html#mdenote_functional_all"><span class="id" title="lemma">mdenote_functional_all</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Extraction.Opens.html#Gen.Hg"><span class="id" title="variable">Hg</span></a>) <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HR'</span> <span class="id" title="var">_</span> <span class="id" title="var">HR</span>).<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;- <span class="id" title="tactic">f_equal</span>; <span class="id" title="tactic">exact</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#proj1"><span class="id" title="lemma">proj1</span></a> (<a class="idref" href="Mctt.Core.Syntactic.System.Global.Paths.html#mdenote_functional_all"><span class="id" title="lemma">mdenote_functional_all</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Extraction.Opens.html#Gen.Hg"><span class="id" title="variable">Hg</span></a>) <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HR'</span> <span class="id" title="var">_</span> <span class="id" title="var">HR</span>).<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;- <span class="id" title="tactic">discriminate</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;- <span class="id" title="var">exfalso</span>; <span class="id" title="tactic">exact</span> (<span class="id" title="var">HN</span> <span class="id" title="var">_</span> <span class="id" title="var">HR</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Qed</span>.<br/>
@@ -182,7 +182,7 @@ What a module expression denotes, when it has an order.
 <div class="doc">
 The item <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#ModBlame.it"><span class="id" title="variable">it</span></a></span> of an open of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span>, by what the member it names
         denotes: a term gives a definition, a module an alias, an inductive
-        type at the global level (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndSyntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a></span>) an inductive alias; or the
+        type at the global level (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a></span>) an inductive alias; or the
         alias of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> itself. 
 </div>
 <div class="code">
@@ -202,7 +202,7 @@ The item <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Opens.html#import_gen"><span class="id" title="definition">import_gen</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndSyntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode"><span class="id" title="var">its</span></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> is a module, each item names a member of
+<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Opens.html#import_gen"><span class="id" title="definition">import_gen</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Syntax.html#Branches.g"><span class="id" title="variable">g</span></a></span> <span class="inlinecode"><span class="id" title="var">its</span></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.H"><span class="id" title="variable">H</span></a></span> is a module, each item names a member of
         it, no member is both used and exported, and the names declared are
         distinct; then each item's declaration, all in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>. 
 </div>
@@ -226,7 +226,7 @@ The item <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command
 </div>
 
 <div class="doc">
-<a id="lab542"></a><h2 class="section">Generation Computes the Relation</h2>
+<a id="lab548"></a><h2 class="section">Generation Computes the Relation</h2>
 
 </div>
 <div class="code">
@@ -292,7 +292,7 @@ The item <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">intros</span> [<span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hi</span> <span class="id" title="var">_</span>]; <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Extraction.Opens.html#xmap_item_gen_spec"><span class="id" title="lemma">xmap_item_gen_spec</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hi</span>; <span class="id" title="tactic">congruence</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;* <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">discriminate</span> |]; <span class="id" title="tactic">intros</span> [<span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hi</span> <span class="id" title="var">_</span>]; <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Extraction.Opens.html#xmap_item_gen_spec"><span class="id" title="lemma">xmap_item_gen_spec</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hi</span>; <span class="id" title="tactic">congruence</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">discriminate</span> |]; <span class="id" title="tactic">intros</span> [<span class="id" title="var">R'</span> <span class="id" title="var">Rm'</span> <span class="id" title="var">HR</span> <span class="id" title="var">HRm</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span>].<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#proj1"><span class="id" title="lemma">proj1</span></a> (<a class="idref" href="Mctt.Core.Syntactic.System.GlobalPaths.html#mdenote_functional_all"><span class="id" title="lemma">mdenote_functional_all</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Extraction.Opens.html#Gen.Hg"><span class="id" title="variable">Hg</span></a>) <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HR</span> <span class="id" title="var">_</span> <span class="id" title="var">E</span>) <span class="id" title="tactic">in</span> <span class="id" title="var">HRm</span>; <span class="id" title="tactic">congruence</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#proj1"><span class="id" title="lemma">proj1</span></a> (<a class="idref" href="Mctt.Core.Syntactic.System.Global.Paths.html#mdenote_functional_all"><span class="id" title="lemma">mdenote_functional_all</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="Mctt.Extraction.Opens.html#Gen.Hg"><span class="id" title="variable">Hg</span></a>) <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HR</span> <span class="id" title="var">_</span> <span class="id" title="var">E</span>) <span class="id" title="tactic">in</span> <span class="id" title="var">HRm</span>; <span class="id" title="tactic">congruence</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">discriminate</span> |]; <span class="id" title="tactic">intros</span> [<span class="id" title="var">R'</span> <span class="id" title="var">Rm'</span> <span class="id" title="var">HR</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span>].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#proj2"><span class="id" title="lemma">proj2</span></a> (<a class="idref" href="Mctt.Extraction.Opens.html#denote_of_spec"><span class="id" title="lemma">denote_of_spec</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span>) <span class="id" title="var">HR</span>) <span class="id" title="tactic">in</span> <span class="id" title="var">E</span>; <span class="id" title="tactic">discriminate</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">Qed</span>.<br/>
@@ -303,7 +303,7 @@ The item <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command
 </div>
 
 <div class="doc">
-<a id="lab543"></a><h2 class="section">The First Open That Generates Nothing</h2>
+<a id="lab549"></a><h2 class="section">The First Open That Generates Nothing</h2>
 
 
 <div class="paragraph"> </div>

@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab576"></a><h1 class="section">The Algebra of Weakenings and Substitutions</h1>
+<a id="lab582"></a><h1 class="section">The Algebra of Weakenings and Substitutions</h1>
 
 
 <div class="paragraph"> </div>
@@ -270,7 +270,7 @@ The heads that do meet a binder.  Kept out of the databases above: pushing
 </div>
 
 <div class="doc">
-<a id="lab577"></a><h3 class="section">Shared Tactics</h3>
+<a id="lab583"></a><h3 class="section">Shared Tactics</h3>
 
 
 <div class="paragraph"> </div>
@@ -400,7 +400,7 @@ The variable cases of most laws are the pointwise hypothesis read at the
 </div>
 
 <div class="doc">
-<a id="lab578"></a><h2 class="section">Weakenings</h2>
+<a id="lab584"></a><h2 class="section">Weakenings</h2>
 
 </div>
 <div class="code">
@@ -659,7 +659,7 @@ Weakening application respects composition.
 </div>
 
 <div class="doc">
-The action of <span class="inlinecode"><span class="id" title="var">q</span>^<a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> on indices. 
+The action of <span class="inlinecode"><span class="id" title="var">q</span>^<a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> on indices. 
 </div>
 <div class="code">
 
@@ -684,7 +684,7 @@ The action of <span class="inlinecode"><span class="id" title="var">q</span>^<a 
 </div>
 
 <div class="doc">
-The <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>-fold shift, and its interaction with lifting. 
+The <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>-fold shift, and its interaction with lifting. 
 </div>
 <div class="code">
 
@@ -709,8 +709,8 @@ The <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.LevelEq.
 </div>
 
 <div class="doc">
-<a id="lab579"></a><h2 class="section">Substitutions</h2>
-<a id="lab580"></a><h2 class="section">Substitutions</h2>
+<a id="lab585"></a><h2 class="section">Substitutions</h2>
+<a id="lab586"></a><h2 class="section">Substitutions</h2>
 
 </div>
 <div class="code">
@@ -1192,7 +1192,7 @@ Precomposing with a weakening.
 The two instances at <span class="inlinecode">↑</span>, spelled with <span class="inlinecode"><span class="id" title="var">Wk</span></span> instead of <span class="inlinecode"><span class="id" title="var">ι</span></span> <span class="inlinecode">↑</span>.  <span class="inlinecode"><span class="id" title="var">Wk</span></span> is
     <span class="inlinecode"><span class="id" title="var">ι</span></span> <span class="inlinecode">↑</span> by definition, but <span class="inlinecode"><span class="id" title="tactic">rewrite</span></span> matches syntactically, and the semantic
     shift lemmas speak of <span class="inlinecode"><span class="id" title="var">Wk</span></span>; a context lookup needs these spellings to move
-    its <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>[↑]ʷ</span> along a substitution. 
+    its <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a>[↑]ʷ</span> along a substitution. 
 </div>
 <div class="code">
 
@@ -1210,7 +1210,7 @@ The two instances at <span class="inlinecode">↑</span>, spelled with <span cla
 <div class="doc">
 Instantiating the codomain of a weakened <span class="inlinecode"><span class="id" title="var">Π</span></span>-type.  This is the shape the
     gluing model states its <span class="inlinecode"><span class="id" title="var">Π</span></span> clauses in: the elimination rule
-    produces <span class="inlinecode"><span class="id" title="var">OT</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">φ]ʷ[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>]</span> and the clause speaks of <span class="inlinecode"><span class="id" title="var">OT</span>[<span class="id" title="var">ι</span></span> <span class="inlinecode">φ</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>]</span>. 
+    produces <span class="inlinecode"><span class="id" title="var">OT</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">φ]ʷ[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>]</span> and the clause speaks of <span class="inlinecode"><span class="id" title="var">OT</span>[<span class="id" title="var">ι</span></span> <span class="inlinecode">φ</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>]</span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Corollary</span> <a id="exp_sub_wk_q_extend" class="idref" href="#exp_sub_wk_q_extend"><span class="id" title="lemma">exp_sub_wk_q_extend</span></a> : <span class="id" title="keyword">forall</span> <a id="M:744" class="idref" href="#M:744"><span class="id" title="binder">M</span></a> <a id="76fd23494f24585d11d4c11e7f0a5ad0" class="idref" href="#76fd23494f24585d11d4c11e7f0a5ad0"><span class="id" title="binder">φ</span></a> <a id="N:746" class="idref" href="#N:746"><span class="id" title="binder">N</span></a>,<br/>
@@ -1336,8 +1336,8 @@ Weakening and substitution commute.  The pointwise hypothesis is what
 
 <div class="doc">
 The instances the rest of the development needs: the commutation above at
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode">0</span>, once for a lifted substitution and once for a lifted weakening.  Together with
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_shift_extend"><span class="id" title="lemma">exp_sub_shift_extend</span></a></span> below, these three are what push the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>[↑]ʷ</span> produced
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode">0</span>, once for a lifted substitution and once for a lifted weakening.  Together with
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_shift_extend"><span class="id" title="lemma">exp_sub_shift_extend</span></a></span> below, these three are what push the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a>[↑]ʷ</span> produced
     by a context lookup past a lifted operation, and hence what every
     <span class="inlinecode"><span class="id" title="var">q</span></span>-preservation lemma reduces to. 
 </div>
@@ -1699,7 +1699,7 @@ Every substitution is its own expansion.
 
 <div class="doc">
 A lifted substitution meeting an extension.  These are the equations
-    behind the <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#af2f1de13dbe3b1f0e655e44388cb47f"><span class="id" title="variable">β</span></a></span>-rule and the elimination rules.
+    behind the <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#af2f1de13dbe3b1f0e655e44388cb47f"><span class="id" title="variable">β</span></a></span>-rule and the elimination rules.
 
 <div class="paragraph"> </div>
 
@@ -1781,7 +1781,7 @@ A single substitution commutes past a lifted one.
 <div class="doc">
 The form the completeness proof uses it in: an instantiated type or term,
     substituted, is the instantiation along the substitution.  Every rule whose
-    type is an <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>]</span> reads its two outer values through this equation,
+    type is an <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>]</span> reads its two outer values through this equation,
     because those are values at <span class="inlinecode">ρ</span> and <span class="inlinecode">ρ'</span> of the substituted expression while
     the judgment about <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> can only produce values along a substitution into the
     extended context. 
@@ -1819,14 +1819,14 @@ The same for a module extension.
 </div>
 
 <div class="doc">
-<a id="lab581"></a><h2 class="section">The Instances the Typing Rules Need</h2>
+<a id="lab587"></a><h2 class="section">The Instances the Typing Rules Need</h2>
 
 
 <div class="paragraph"> </div>
 
     Every type appearing in an elimination rule is of one of three
-    shapes: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>]</span> (application, <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-elimination), <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModexpRules.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">N'</span>]</span> (the
-    <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#af2f1de13dbe3b1f0e655e44388cb47f"><span class="id" title="variable">β</span></a></span> rule for <span class="inlinecode"><span class="id" title="var">succ</span></span>) or <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Wk</span>⨟<span class="id" title="var">Wk</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">succ</span></span> <span class="inlinecode">#1]</span> (the successor branch of the
+    shapes: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>]</span> (application, <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-elimination), <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">N'</span>]</span> (the
+    <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#af2f1de13dbe3b1f0e655e44388cb47f"><span class="id" title="variable">β</span></a></span> rule for <span class="inlinecode"><span class="id" title="var">succ</span></span>) or <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Wk</span>⨟<span class="id" title="var">Wk</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">succ</span></span> <span class="inlinecode">#1]</span> (the successor branch of the
     eliminator).  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wk_preserves_wf"><span class="id" title="lemma">wk_preserves_wf</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#sub_preserves_wf"><span class="id" title="lemma">sub_preserves_wf</span></a></span> have to push a
     weakening, respectively a
     substitution, past each of them, and the six corollaries below are exactly
@@ -1884,7 +1884,7 @@ The same for a module extension.
 
 <div class="doc">
 The two-argument analogue of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_extend_sub"><span class="id" title="lemma">exp_sub_extend_sub</span></a></span>, which is what the
-    right-hand side of that rule — an <span class="inlinecode"><span class="id" title="var">MS</span>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a>]</span> — is read through. 
+    right-hand side of that rule — an <span class="inlinecode"><span class="id" title="var">MS</span>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Bctx.Entry.E"><span class="id" title="variable">E</span></a>]</span> — is read through. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Corollary</span> <a id="exp_sub_extend_sub2" class="idref" href="#exp_sub_extend_sub2"><span class="id" title="lemma">exp_sub_extend_sub2</span></a> : <span class="id" title="keyword">forall</span> <a id="M:1119" class="idref" href="#M:1119"><span class="id" title="binder">M</span></a> <a id="40987b06db313a22a542c3eb913f9919" class="idref" href="#40987b06db313a22a542c3eb913f9919"><span class="id" title="binder">σ</span></a> <a id="N:1121" class="idref" href="#N:1121"><span class="id" title="binder">N</span></a> <a id="N':1122" class="idref" href="#N':1122"><span class="id" title="binder">N'</span></a>,<br/>
@@ -1926,7 +1926,7 @@ The type of the <span class="inlinecode"><span class="id" title="var">η</span><
 </div>
 
 <div class="doc">
-The action of <span class="inlinecode"><span class="id" title="var">q</span>^<a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> on indices. 
+The action of <span class="inlinecode"><span class="id" title="var">q</span>^<a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> on indices. 
 </div>
 <div class="code">
 
@@ -1957,7 +1957,7 @@ The action of <span class="inlinecode"><span class="id" title="var">q</span>^<a 
 </div>
 
 <div class="doc">
-<a id="lab582"></a><h2 class="section">Automation</h2>
+<a id="lab588"></a><h2 class="section">Automation</h2>
 
 
 <div class="paragraph"> </div>
@@ -2018,7 +2018,7 @@ A unit is moved by its telescope and definition (<span class="inlinecode"><a cla
 </div>
 
 <div class="doc">
-<a id="lab583"></a><h2 class="section">Lifting Under Several Binders, and Application Spines</h2>
+<a id="lab589"></a><h2 class="section">Lifting Under Several Binders, and Application Spines</h2>
 
 </div>
 <div class="code">

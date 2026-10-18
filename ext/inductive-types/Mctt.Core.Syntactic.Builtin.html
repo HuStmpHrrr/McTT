@@ -32,12 +32,12 @@
 </div>
 
 <div class="doc">
-<a id="lab551"></a><h1 class="section">Builtin Bindings</h1>
+<a id="lab557"></a><h1 class="section">Builtin Bindings</h1>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><span class="id" title="var">builtin</span></span> <span class="inlinecode"><span class="id" title="var">natural</span></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.X"><span class="id" title="variable">X</span></a></span> binds the inductive type <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.X"><span class="id" title="variable">X</span></a></span> as the natural
+    <span class="inlinecode"><span class="id" title="var">builtin</span></span> <span class="inlinecode"><span class="id" title="var">natural</span></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimSem.ConCase.X"><span class="id" title="variable">X</span></a></span> binds the inductive type <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimSem.ConCase.X"><span class="id" title="variable">X</span></a></span> as the natural
     numbers.  The bindings are a record, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Builtin.html#builtins"><span class="id" title="record">builtins</span></a></span>, apart from the filed
     units and the stack: no typing judgment reads it.  Each unit runs from
     the empty record; it gains the bindings of its own <span class="inlinecode"><span class="id" title="var">builtin</span></span> commands
@@ -62,7 +62,8 @@
 <br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.LibTactics.html#"><span class="id" title="library">LibTactics</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
-<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Syntactic.Inductives.html#"><span class="id" title="library">Inductives</span></a> <a class="idref" href="Mctt.Core.Syntactic.Members.html#"><span class="id" title="library">Members</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#"><span class="id" title="library">Command</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic.Inductives</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#"><span class="id" title="library">Inductives</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Syntactic.Members.html#"><span class="id" title="library">Members</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#"><span class="id" title="library">Command</span></a>.<br/>
 <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations"><span class="id" title="module">Syntax_Notations</span></a>.<br/>
 #[<span class="id" title="var">local</span>] <span class="id" title="keyword">Open</span> <span class="id" title="keyword">Scope</span> <span class="id" title="var">list_scope</span>.<br/>
 
@@ -104,7 +105,7 @@ The sort the natural numbers are declared in: <span class="inlinecode"><span cla
 </div>
 
 <div class="doc">
-<a id="lab552"></a><h2 class="section">The Configuration</h2>
+<a id="lab558"></a><h2 class="section">The Configuration</h2>
 
 <div class="paragraph"> </div>
 
@@ -165,7 +166,7 @@ What a literal stands for at a state: the bound type and its
 </div>
 
 <div class="doc">
-The numeral <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> as the chain of the constructors <span class="inlinecode"><span class="id" title="var">z</span></span> and <span class="inlinecode"><span class="id" title="var">s</span></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span>. 
+The numeral <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> as the chain of the constructors <span class="inlinecode"><span class="id" title="var">z</span></span> and <span class="inlinecode"><span class="id" title="var">s</span></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="nat_chain" class="idref" href="#nat_chain"><span class="id" title="definition">nat_chain</span></a> (<a id="p:21" class="idref" href="#p:21"><span class="id" title="binder">p</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a>) (<a id="z:22" class="idref" href="#z:22"><span class="id" title="binder">z</span></a> <a id="s:23" class="idref" href="#s:23"><span class="id" title="binder">s</span></a> : <span class="id" title="inductive">string</span>) (<a id="n:24" class="idref" href="#n:24"><span class="id" title="binder">n</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a> :=<br/>
@@ -178,7 +179,7 @@ The numeral <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.
 </div>
 
 <div class="doc">
-<a id="lab553"></a><h2 class="section">Literals</h2>
+<a id="lab559"></a><h2 class="section">Literals</h2>
 
 <div class="paragraph"> </div>
 
@@ -374,7 +375,7 @@ The literals of a command at a state.
 </div>
 
 <div class="doc">
-<a id="lab554"></a><h2 class="section">Merging</h2>
+<a id="lab560"></a><h2 class="section">Merging</h2>
 
 
 <div class="paragraph"> </div>
@@ -460,9 +461,9 @@ A merge of well-formed records is well formed.
 </div>
 
 <div class="doc">
-The binding a <span class="inlinecode"><span class="id" title="var">builtin</span></span> <span class="inlinecode"><span class="id" title="var">natural</span></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.X"><span class="id" title="variable">X</span></a></span> command makes, from the bindings
-    before it: <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.IndElimCases.html#Fixed_GCtx.ElimSem.ConCase.X"><span class="id" title="variable">X</span></a></span> names the inductive type <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span>, with the shape of the
-    natural numbers, in <span class="inlinecode"><span class="id" title="var">Type@0</span></span>; it merges the binding of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndRec.html#p"><span class="id" title="abbreviation">p</span></a></span> alone. 
+The binding a <span class="inlinecode"><span class="id" title="var">builtin</span></span> <span class="inlinecode"><span class="id" title="var">natural</span></span> <span class="inlinecode">≔</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimSem.ConCase.X"><span class="id" title="variable">X</span></a></span> command makes, from the bindings
+    before it: <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimSem.ConCase.X"><span class="id" title="variable">X</span></a></span> names the inductive type <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span>, with the shape of the
+    natural numbers, in <span class="inlinecode"><span class="id" title="var">Type@0</span></span>; it merges the binding of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#p"><span class="id" title="abbreviation">p</span></a></span> alone. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="bt_bind_nat" class="idref" href="#bt_bind_nat"><span class="id" title="definition">bt_bind_nat</span></a> (<a id="B:182" class="idref" href="#B:182"><span class="id" title="binder">B</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Builtin.html#builtins"><span class="id" title="record">builtins</span></a>) (<a id="p:183" class="idref" href="#p:183"><span class="id" title="binder">p</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Mctt.Core.Syntactic.Builtin.html#builtins"><span class="id" title="record">builtins</span></a> := <a class="idref" href="Mctt.Core.Syntactic.Builtin.html#bt_merge"><span class="id" title="definition">bt_merge</span></a> <a class="idref" href="Mctt.Core.Syntactic.Builtin.html#B:182"><span class="id" title="variable">B</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Builtin.html#mk_builtins"><span class="id" title="constructor">mk_builtins</span></a> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <a class="idref" href="Mctt.Core.Syntactic.Builtin.html#p:183"><span class="id" title="variable">p</span></a>)).<br/>
@@ -471,7 +472,7 @@ The binding a <span class="inlinecode"><span class="id" title="var">builtin</spa
 </div>
 
 <div class="doc">
-<a id="lab555"></a><h2 class="section">Bindings Only Grow</h2>
+<a id="lab561"></a><h2 class="section">Bindings Only Grow</h2>
 
 
 <div class="paragraph"> </div>

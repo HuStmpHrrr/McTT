@@ -37,8 +37,8 @@
 
 <div class="paragraph"> </div>
 
-    Distinct type constructors are never judgmentally equal, and <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Bctx.Entry.j"><span class="id" title="variable">j</span></a></span>
-    forces <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ElimCases.html#Fixed_GCtx.Elim.Bctx.Entry.j"><span class="id" title="variable">j</span></a></span>.  Each proof reads the judgment at the initial environment and
+    Distinct type constructors are never judgmentally equal, and <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Bctx.Entry.j"><span class="id" title="variable">j</span></a></span>
+    forces <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#Fixed_GCtx.Elim.Bctx.Entry.j"><span class="id" title="variable">j</span></a></span>.  Each proof reads the judgment at the initial environment and
     inverts the resulting <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span>; only the variable-against-variable case needs
     work, since there the values are neutrals whose levels must be turned back
     into indices. 
@@ -275,7 +275,7 @@ Only the variable case survives: <span class="inlinecode">⇑!</span> <span clas
 &nbsp;&nbsp;- </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.IndTyping.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><span class="id" title="definition">B</span></span> evaluates to a <span class="inlinecode"><span class="id" title="var">Π</span></span>-value once its domain does. 
+<span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><span class="id" title="definition">B</span></span> evaluates to a <span class="inlinecode"><span class="id" title="var">Π</span></span>-value once its domain does. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">match_by_head</span> <a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_exp"><span class="id" title="inductive">eval_exp</span></a> <span class="id" title="keyword">ltac</span>:(<span class="id" title="keyword">fun</span> <span class="id" title="var">H</span> =&gt; <span class="id" title="var">directed</span> <span class="id" title="tactic">dependent</span> <span class="id" title="tactic">destruction</span> <span class="id" title="var">H</span>).<br/>
