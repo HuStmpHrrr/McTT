@@ -22,7 +22,10 @@ function makeGraphPannable(svg) {
   svg.addEventListener('wheel', (e) => {
     e.preventDefault();
     const p = toGraph(e);
-    const factor = e.deltaY < 0 ? 0.8 : 1.25;
+    // Proportional to the wheel distance: about 10% per notch (deltaY ≈ 100 px),
+    // and smooth on touchpads; line or page deltas are scaled to pixels.
+    const pixels = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 800 : 1);
+    const factor = Math.exp(Math.max(-0.5, Math.min(0.5, pixels * 0.001)));
     const w = Math.min(home.w, Math.max(home.w / 40, vb.w * factor));
     const k = w / vb.w;
     vb = { x: p.x - (p.x - vb.x) * k, y: p.y - (p.y - vb.y) * k, w: w, h: vb.h * k };
