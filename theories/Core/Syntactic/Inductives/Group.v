@@ -16,6 +16,120 @@ From Mctt.Core.Syntactic Require Export Syntax.
 Import Syntax_Notations Sub_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 
+(** ** Decidable Equality of Terms
+
+    The pieces of syntax generic in the sorts of terms and entries are
+    decided given deciders for those; the terms then by a mutual
+    recursion that passes itself to them. *)
+
+Section GenericDec.
+  Context {E C : Set} (de : forall x y : E, {x = y} + {x <> y}) (dc : forall x y : C, {x = y} + {x <> y}).
+
+  Fixpoint ptyp_eq_dec_g (t t' : ptyp_g E) {struct t} : {t = t'} + {t <> t'}.
+  Proof.
+    destruct t as [k Ps | A t], t' as [k' Ps' | A' t']; try (right; discriminate).
+    - destruct (Nat.eq_dec k k') as [<- |]; [| right; congruence ].
+      destruct (list_eq_dec de Ps Ps') as [<- |]; [ left; reflexivity | right; congruence ].
+    - destruct (de A A') as [<- |]; [| right; congruence ].
+      destruct (ptyp_eq_dec_g t t') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  Definition carg_eq_dec_g (g g' : carg_g E) : {g = g'} + {g <> g'}.
+  Proof.
+    destruct g as [A | t], g' as [A' | t']; try (right; discriminate).
+    - destruct (de A A') as [<- |]; [ left; reflexivity | right; congruence ].
+    - destruct (ptyp_eq_dec_g t t') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  Definition cons_eq_dec_g (cs cs' : list (string * list (carg_g E))) : {cs = cs'} + {cs <> cs'}.
+  Proof.
+    revert cs'; induction cs as [| [c gs] cs IH]; intros [| [c' gs'] cs']; try (right; discriminate);
+      [ left; reflexivity |].
+    destruct (string_dec c c') as [<- |]; [| right; congruence ].
+    destruct (list_eq_dec carg_eq_dec_g gs gs') as [<- |]; [| right; congruence ].
+    destruct (IH cs') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  Definition mhead_eq_dec_g (h h' : mhead_g E) : {h = h'} + {h <> h'}.
+  Proof.
+    destruct h as [p | qc k Is vm], h' as [p' | qc' k' Is' vm']; try (right; discriminate).
+    - destruct (qname_eq_dec p p') as [<- |]; [ left; reflexivity | right; congruence ].
+    - destruct (qname_eq_dec qc qc') as [<- |]; [| right; congruence ].
+      destruct (Nat.eq_dec k k') as [<- |]; [| right; congruence ].
+      destruct (list_eq_dec de Is Is') as [<- |]; [| right; congruence ].
+      destruct (list_eq_dec Nat.eq_dec vm vm') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  Definition imember_eq_dec_g (M M' : imember_g E C) : {M = M'} + {M <> M'}.
+  Proof.
+    destruct M as [h ps cs], M' as [h' ps' cs'].
+    destruct (mhead_eq_dec_g h h') as [<- |]; [| right; congruence ].
+    destruct (list_eq_dec dc ps ps') as [<- |]; [| right; congruence ].
+    destruct (cons_eq_dec_g cs cs') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  Definition ind_decl_eq_dec_g (D D' : ind_decl_g E C) : {D = D'} + {D <> D'}.
+  Proof.
+    destruct D as [us S ms], D' as [us' S' ms'].
+    destruct (list_eq_dec dc us us') as [<- |]; [| right; congruence ].
+    destruct (de S S') as [<- |]; [| right; congruence ].
+    destruct (list_eq_dec imember_eq_dec_g ms ms') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  Definition brs_eq_dec_g (Bs Bs' : list (string * nat * E)) : {Bs = Bs'} + {Bs <> Bs'}.
+  Proof.
+    revert Bs'; induction Bs as [| [[c n] B] Bs IH]; intros [| [[c' n'] B'] Bs']; try (right; discriminate);
+      [ left; reflexivity |].
+    destruct (string_dec c c') as [<- |]; [| right; congruence ].
+    destruct (Nat.eq_dec n n') as [<- |]; [| right; congruence ].
+    destruct (de B B') as [<- |]; [| right; congruence ].
+    destruct (IH Bs') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  Definition eblocks_eq_dec_g (Bks Bks' : list (eblock_g E)) : {Bks = Bks'} + {Bks <> Bks'}.
+  Proof.
+    revert Bks'; induction Bks as [| [nm oZ A Bs] Bks IH]; intros [| [nm' oZ' A' Bs'] Bks']; try (right; discriminate);
+      [ left; reflexivity |].
+    destruct (Nat.eq_dec nm nm') as [<- |]; [| right; congruence ].
+    assert (HZ : {oZ = oZ'} + {oZ <> oZ'})
+      by (destruct oZ as [Z |], oZ' as [Z' |]; try (right; discriminate); [| left; reflexivity ];
+          destruct (de Z Z') as [<- |]; [ left; reflexivity | right; congruence ]).
+    destruct HZ as [<- |]; [| right; congruence ].
+    destruct (de A A') as [<- |]; [| right; congruence ].
+    destruct (brs_eq_dec_g Bs Bs') as [<- |]; [| right; congruence ].
+    destruct (IH Bks') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+End GenericDec.
+
+Fixpoint exp_eq_dec (M N : exp) {struct M} : {M = N} + {M <> N}
+with modexp_eq_dec (M N : modexp) {struct M} : {M = N} + {M <> N}
+with bnd_eq_dec (M N : bnd) {struct M} : {M = N} + {M <> N}
+with gunit_eq_dec (M N : gunit) {struct M} : {M = N} + {M <> N}
+with moddef_eq_dec (M N : moddef) {struct M} : {M = N} + {M <> N}
+with gmod_eq_dec (M N : gmod) {struct M} : {M = N} + {M <> N}
+with gentry_eq_dec (M N : gentry) {struct M} : {M = N} + {M <> N}
+with centry_eq_dec (M N : centry) {struct M} : {M = N} + {M <> N}.
+Proof.
+  all: decide equality;
+    first [ apply Nat.eq_dec | apply string_dec | apply qname_eq_dec | apply bool_dec
+          | apply list_eq_dec, string_dec | apply o2_eq_dec | apply (list_eq_dec exp_eq_dec)
+          | apply (list_eq_dec centry_eq_dec) | apply (eblocks_eq_dec_g exp_eq_dec)
+          | apply (ind_decl_eq_dec_g exp_eq_dec centry_eq_dec) | idtac ].
+  all: try (decide equality; fail).
+  all: try (decide equality; apply qname_eq_dec).
+  (* the items of an open *)
+  apply list_eq_dec; intros; repeat (decide equality || apply string_dec || apply bool_dec).
+Defined.
+
+(** Decidable equality of the views of classification. *)
+Definition rview_eq_dec (x y : (qname * nat * list exp)%type) : {x = y} + {x <> y}.
+Proof.
+  destruct x as [[qc k] Cs], y as [[qc' k'] Cs'].
+  destruct (qname_eq_dec qc qc') as [<- |]; [| right; congruence ].
+  destruct (Nat.eq_dec k k') as [<- |]; [| right; congruence ].
+  destruct (list_eq_dec exp_eq_dec Cs Cs') as [<- |]; [ left; reflexivity | right; congruence ].
+Defined.
+
 (** ** Lists of Variables and Pattern Weakenings *)
 
 (** The variables [#(k + n - 1)], …, [#k], outermost first. *)
@@ -119,9 +233,9 @@ Definition cls_wkd (d np n : nat) (gs1 : list carg) : wk :=
     terms over the group's [nu] own uniform parameters, the [n] [Self]s and
     the frames' parameters: they are not in the image of the weakening past
     the [Self]s. *)
-Definition selfs_occur (nu n : nat) (Cs : list exp) : Prop :=
+Definition selfs_occur (nu n : nat) (Cs : list exp) : bool :=
   let pat := List.repeat false nu ++ List.repeat true n in
-  List.map (fun C => C[unwk_pat pat]ʷ[wk_pat pat]ʷ) Cs <> Cs.
+  if list_eq_dec exp_eq_dec (List.map (fun C => C[unwk_pat pat]ʷ[wk_pat pat]ʷ) Cs) Cs then false else true.
 
 Section Classify.
   (** The number of uniform parameters of the filed group at [q]. *)
@@ -145,7 +259,7 @@ Section Classify.
   | cls_sh_nest : forall d qc k Cs Ns v,
       grp_nu qc = Some (List.length Cs) ->
       List.nth_error Vs v = Some (qc, k, Cs) ->
-      selfs_occur nu n Cs ->
+      selfs_occur nu n Cs = true ->
       cls_sh d
         (apps_exp (a_ind qc k)
            (List.map (fun C => C[wk_shiftn (d + List.length gs1 + (np - nu))]ʷ) Cs ++
@@ -181,29 +295,33 @@ Definition cons_views (n : nat) (cs : list (string * list carg)) : list nat :=
     the declared members' constructors, then those of the views, in order
     (constructors in order, arguments left to right).  An instance met for
     the first time adds, at that point, the members of its own group at
-    its arguments, in that group's order ([sibs x ss]: [ss] lists them,
-    normal; [x] is among them): the eliminator at a view reads back as the
-    eliminator of the view's group, which needs a block for each of them.
-    An argument nested twice, as [List 0l (List 0l (Rose A))], meets the
-    outer instance only; the inner one is met by the outer view's
-    constructors: the outer instance comes first.  [views_enum acc tr Vs]:
-    the views found so far are [acc], those after meeting the instances
-    [tr] are [Vs]. *)
-(** [views_add acc ss acc']: [acc'] is [acc] followed by those of [ss] not
-    in it, in order. *)
-Inductive views_add : list rview -> list rview -> list rview -> Prop :=
-| views_add_nil : forall acc, views_add acc nil acc
-| views_add_old : forall acc s ss acc', In s acc -> views_add acc ss acc' -> views_add acc (s :: ss) acc'
-| views_add_new : forall acc s ss acc', ~ In s acc -> views_add (acc ++ s :: nil) ss acc' -> views_add acc (s :: ss) acc'.
+    its arguments, in that group's order ([sibs x], normal; [x] is among
+    them): the eliminator at a view reads back as the eliminator of the
+    view's group, which needs a block for each of them.  An argument nested
+    twice, as [List 0l (List 0l (Rose A))], meets the outer instance only;
+    the inner one is met by the outer view's constructors: the outer
+    instance comes first.  [views_enum sibs acc tr]: the views after those
+    found so far, [acc], meet the instances [tr].  The command gives
+    [sibs] as a table of the instances it meets, each entry normalized
+    there. *)
 
-Section Views.
-  Variable (sibs : rview -> list rview -> Prop).
+(** [acc] followed by those of [ss] not in it, in order. *)
+Fixpoint views_add (acc ss : list rview) : list rview :=
+  match ss with
+  | nil => acc
+  | s :: ss' => views_add (if List.in_dec rview_eq_dec s acc then acc else acc ++ s :: nil) ss'
+  end.
 
-  Inductive views_enum : list rview -> list rview -> list rview -> Prop :=
-  | views_enum_nil : forall acc, views_enum acc nil acc
-  | views_enum_seen : forall acc x tr Vs,
-      In x acc -> views_enum acc tr Vs -> views_enum acc (x :: tr) Vs
-  | views_enum_new : forall acc acc' x tr ss Vs,
-      ~ In x acc -> sibs x ss -> views_add acc ss acc' ->
-      views_enum acc' tr Vs -> views_enum acc (x :: tr) Vs.
-End Views.
+Fixpoint views_enum (sibs : rview -> list rview) (acc tr : list rview) : list rview :=
+  match tr with
+  | nil => acc
+  | x :: tr' => views_enum sibs (if List.in_dec rview_eq_dec x acc then acc else views_add acc (sibs x)) tr'
+  end.
+
+(** The siblings of an instance, read off a table, the instance alone if
+    it has no entry. *)
+Fixpoint sibs_of (tbl : list (rview * list rview)) (x : rview) : list rview :=
+  match tbl with
+  | nil => x :: nil
+  | (y, ss) :: tbl' => if rview_eq_dec x y then ss else sibs_of tbl' x
+  end.

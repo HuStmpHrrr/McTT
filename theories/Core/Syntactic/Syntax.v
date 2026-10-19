@@ -776,12 +776,12 @@ with gentry : Set :=
     uniform parameters of [D] ([ind_unit]).  As a term the entry is the
     type former [a_ind pq k]. *)
 | ge_ind : bool -> qname -> nat -> ind_decl_g exp centry -> gmod -> gentry
-(** [ge_ind_alias pv Δ pq k Ns]: an inductive alias, private when [pv]:
+(** [ge_ind_alias pv Δ pm pq k Ns]: an inductive alias, private when [pv]:
     over its full telescope [Δ] (closed, as an alias's), the member [k] of
-    the group [pq] at the first uniform parameters [Ns], terms over [Δ].
-    As a term it is [λ Δ. a_ind pq k Ns], as a module the member's module
-    at [Ns]. *)
-| ge_ind_alias : bool -> list centry -> qname -> nat -> list exp -> gentry
+    the group [pq], whose module is at [pm], at the first uniform
+    parameters [Ns], terms over [Δ].  As a term it is
+    [λ Δ. a_ind pq k Ns], as a module the member's module at [Ns]. *)
+| ge_ind_alias : bool -> list centry -> qname -> qname -> nat -> list exp -> gentry
 with centry : Set :=
 (** An assumption of a type *)
 | ce_ass : exp -> centry
@@ -806,6 +806,18 @@ Fixpoint all_brs {A : Type} (f : nat -> A -> Prop) (Bs : list (string * nat * A)
   | nil => True
   | b :: Bs' => f (snd (fst b)) (snd b) /\ all_brs f Bs'
   end.
+
+(** A property of every block of an eliminator: of its binder count, its
+    annotation, its motive and its branches. *)
+Fixpoint all_blocks {A : Set} (f : nat -> option A -> A -> list (string * nat * A) -> Prop) (Bks : list (eblock_g A)) : Prop :=
+  match Bks with
+  | nil => True
+  | eb_mk nm oZ M Bs :: Bks' => f nm oZ M Bs /\ all_blocks f Bks'
+  end.
+
+(** The annotation of a block, scoped as [f] says, when there is one. *)
+Definition opt_all {A : Set} (f : A -> Prop) (o : option A) : Prop :=
+  match o with Some a => f a | None => True end.
 
 Lemma all_brs_Forall : forall {A : Type} (f : nat -> A -> Prop) Bs,
     all_brs f Bs <-> List.Forall (fun b => f (snd (fst b)) (snd b)) Bs.
@@ -866,7 +878,7 @@ Section syn_mut_ind.
     (case_ge_def : forall b pv A B, Pe A -> (forall M, B = Some M -> Pe M) -> Pn (ge_def b pv A B))
     (case_ge_mod : forall pv U, Pu U -> Pn (ge_mod pv U))
     (case_ge_ind : forall pv p k D Φ, Pg Φ -> Pn (ge_ind pv p k D Φ))
-    (case_ge_ind_alias : forall pv Δ p k Ns, Pn (ge_ind_alias pv Δ p k Ns))
+    (case_ge_ind_alias : forall pv Δ pm p k Ns, Pn (ge_ind_alias pv Δ pm p k Ns))
     (case_ce_ass : forall A, Pe A -> Pc (ce_ass A))
     (case_ce_def : forall A M, Pe A -> Pe M -> Pc (ce_def A M))
     (case_ce_mod : forall U, Pu U -> Pc (ce_mod U)).
@@ -974,7 +986,7 @@ Section syn_mut_ind.
            end)
     | ge_mod pv U => case_ge_mod pv U (gunit_mut U)
     | ge_ind pv p k D Φ => case_ge_ind pv p k D Φ (gmod_mut Φ)
-    | ge_ind_alias pv Δ p k Ns => case_ge_ind_alias pv Δ p k Ns
+    | ge_ind_alias pv Δ pm p k Ns => case_ge_ind_alias pv Δ pm p k Ns
     end
   with centry_mut (e : centry) : Pc e :=
     match e with
@@ -1172,7 +1184,7 @@ Fixpoint body_ctx (Φ : gmod) : ctx :=
   | gm_ext Φ' _ (ge_def _ _ A None) => cons (ce_ass A) (body_ctx Φ')
   | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
   | gm_ext Φ' _ (ge_ind _ _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
-  | gm_ext Φ' _ (ge_ind_alias _ _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_ind_alias _ _ _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
   | gm_open Φ' _ its => List.repeat (ce_ass a_True) (List.length its) ++ body_ctx Φ'
   end.
 
@@ -1768,7 +1780,7 @@ with gentry_wk (E : gentry) (φ : wk) : gentry :=
   | ge_def b pv A B => ge_def b pv (exp_wk A φ) (match B with Some M => Some (exp_wk M φ) | None => None end)
   | ge_mod pv U => ge_mod pv (gunit_wk U φ)
   | ge_ind pv p k D Φ => ge_ind pv p k D (gmod_wk Φ (wk_qn (ind_nu D) φ))
-  | ge_ind_alias pv Δ p k Ns => ge_ind_alias pv Δ p k Ns
+  | ge_ind_alias pv Δ pm p k Ns => ge_ind_alias pv Δ pm p k Ns
   end
 with centry_wk (e : centry) (φ : wk) : centry :=
   match e with
@@ -1945,7 +1957,7 @@ with gentry_sub (E : gentry) (σ : sub) : gentry :=
   | ge_def b pv A B => ge_def b pv (exp_sub A σ) (match B with Some M => Some (exp_sub M σ) | None => None end)
   | ge_mod pv U => ge_mod pv (gunit_sub U σ)
   | ge_ind pv p k D Φ => ge_ind pv p k D (gmod_sub Φ (sb_qn (ind_nu D) σ))
-  | ge_ind_alias pv Δ p k Ns => ge_ind_alias pv Δ p k Ns
+  | ge_ind_alias pv Δ pm p k Ns => ge_ind_alias pv Δ pm p k Ns
   end
 with centry_sub (e : centry) (σ : sub) : centry :=
   match e with

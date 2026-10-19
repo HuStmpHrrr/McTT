@@ -27,14 +27,20 @@ Import Syntax_Notations.
 (** The kind of the binding, as the command names it. *)
 Definition nat_kind : string := "natural".
 
-(** The shape of the natural numbers: no parameter, and two constructors,
-    one without arguments, [z], and one with a single recursive argument,
-    [s], in either order. *)
+(** The shape of the natural numbers: a group of one declared member and
+    no view, no parameter, and two constructors, one without arguments,
+    [z], and one with a single recursive argument, [s], in either order. *)
+Definition nat_cons_shape (cs : list (string * list carg)) : option (string * string) :=
+  match cs with
+  | (c1, nil) :: (c2, ca_rec (pt_self 0 nil) :: nil) :: nil => Some (c1, c2)
+  | (c2, ca_rec (pt_self 0 nil) :: nil) :: (c1, nil) :: nil => Some (c1, c2)
+  | _ => None
+  end.
+
 Definition nat_shape (D : ind_decl) : option (string * string) :=
-  match ind_nu D, ind_params D, ind_cons D with
-  | 0, nil, (c1, nil) :: (c2, ca_rec (pt_self 0 nil) :: nil) :: nil => Some (c1, c2)
-  | 0, nil, (c2, ca_rec (pt_self 0 nil) :: nil) :: (c1, nil) :: nil => Some (c1, c2)
-  | _, _, _ => None
+  match ind_uparams D, ind_members D with
+  | nil, mk_imember (mh_decl _) nil cs :: nil => nat_cons_shape cs
+  | _, _ => None
   end.
 
 (** The sort the natural numbers are declared in: [Type@0]. *)
@@ -82,8 +88,8 @@ Definition nat_view (Θ : gdeps) (Ξ : gstack) (B : builtins) : option (qname * 
 (** The numeral [n] as the chain of the constructors [z] and [s] of [p]. *)
 Fixpoint nat_chain (p : qname) (z s : string) (n : nat) : exp :=
   match n with
-  | 0 => a_con p z
-  | S n' => a_app (a_con p s) (nat_chain p z s n')
+  | 0 => a_con p 0 z
+  | S n' => a_app (a_con p 0 s) (nat_chain p z s n')
   end.
 
 (** ** Literals *)
@@ -128,10 +134,10 @@ Section Literals.
 
   Fixpoint exp_lits (M : exp) {struct M} : lres exp :=
     match M with
-    | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False | a_var _ | a_ind _ | a_con _ _ => lok M
+    | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False | a_var _ | a_ind _ _ | a_con _ _ _ => lok M
     | a_ntok =>
         match nv with
-        | Some (p, _, _) => lok (a_ind p)
+        | Some (p, _, _) => lok (a_ind p 0)
         | None => lfail le_tok
         end
     | a_nlit n =>
@@ -143,18 +149,29 @@ Section Literals.
     | a_succl M => let% M' := exp_lits M in lok (a_succl M')
     | a_maxl M N => let% M' := exp_lits M in let% N' := exp_lits N in lok (a_maxl M' N')
     | a_exfalso A M => let% A' := exp_lits A in let% M' := exp_lits M in lok (a_exfalso A' M')
-    | a_elim nm A Bs M =>
-        let% A' := exp_lits A in
-        let% Bs' := (fix brs_lits (Bs : list (String.string * nat * exp)) : lres (list (String.string * nat * exp)) :=
-                       match Bs with
-                       | nil => lok nil
-                       | b :: Bs0 =>
-                           let% B' := exp_lits (snd b) in
-                           let% Bs0' := brs_lits Bs0 in
-                           lok ((fst b, B') :: Bs0')
-                       end) Bs in
+    | a_elim oq m Bks M =>
+        let% Bks' := (fix blocks_lits (Bks : list eblock) : lres (list eblock) :=
+                        match Bks with
+                        | nil => lok nil
+                        | eb_mk nm oZ A Bs :: Bks0 =>
+                            let% oZ' := (match oZ with
+                                         | Some Z => let% Z' := exp_lits Z in lok (Some Z')
+                                         | None => lok None
+                                         end) in
+                            let% A' := exp_lits A in
+                            let% Bs' := (fix brs_lits (Bs : list (String.string * nat * exp)) : lres (list (String.string * nat * exp)) :=
+                                           match Bs with
+                                           | nil => lok nil
+                                           | b :: Bs0 =>
+                                               let% B' := exp_lits (snd b) in
+                                               let% Bs0' := brs_lits Bs0 in
+                                               lok ((fst b, B') :: Bs0')
+                                           end) Bs in
+                            let% Bks0' := blocks_lits Bks0 in
+                            lok (eb_mk nm oZ' A' Bs' :: Bks0')
+                        end) Bks in
         let% M' := exp_lits M in
-        lok (a_elim nm A' Bs' M')
+        lok (a_elim oq m Bks' M')
     | a_pi A B => let% A' := exp_lits A in let% B' := exp_lits B in lok (a_pi A' B')
     | a_fn A M => let% A' := exp_lits A in let% M' := exp_lits M in lok (a_fn A' M')
     | a_app M N => let% M' := exp_lits M in let% N' := exp_lits N in lok (a_app M' N')
@@ -199,7 +216,7 @@ Section Literals.
     match E with
     | ge_def b pv A B => let% A' := exp_lits A in let% B' := lopt exp_lits B in lok (ge_def b pv A' B')
     | ge_mod pv U => let% U' := gunit_lits U in lok (ge_mod pv U')
-    | ge_ind _ _ _ _ | ge_ind_alias _ _ _ _ => lok E
+    | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ => lok E
     end
   with centry_lits (e : centry) {struct e} : lres centry :=
     match e with
@@ -210,13 +227,26 @@ Section Literals.
 
   Definition tele_lits (Δ : ctx) : lres ctx := lmap centry_lits Δ.
 
-  (** A declaration as written. *)
-  Definition decl_lits (R : raw_decl) : lres raw_decl :=
-    let% Δ' := tele_lits (rd_params R) in
-    let% A' := exp_lits (rd_sort R) in
+  (** A group's declaration as written. *)
+  Definition member_lits (Rm : raw_member) : lres raw_member :=
+    let% Δ' := tele_lits (rm_nparams Rm) in
+    let% A' := exp_lits (rm_sort Rm) in
     let% cs' := lmap (fun cg => let% args := lmap (fun yT => let% T' := exp_lits (snd yT) in lok (fst yT, T')) (snd cg) in
-                                lok (fst cg, args)) (rd_cons R) in
-    lok (mk_raw (rd_nu R) Δ' A' cs').
+                                lok (fst cg, args)) (rm_cons Rm) in
+    lok (mk_rmem (rm_name Rm) Δ' A' cs').
+
+  Definition decl_lits (R : raw_decl) : lres raw_decl :=
+    let% Δ' := tele_lits (rd_uparams R) in
+    let% ms' := lmap member_lits (rd_members R) in
+    lok (mk_raw Δ' ms').
+
+  (** A function of a [mutual def] as written. *)
+  Definition fun_lits (F : raw_fun) : lres raw_fun :=
+    let% ys' := tele_lits (rf_nparams F) in
+    let% Z' := exp_lits (rf_scrut F) in
+    let% A' := exp_lits (rf_res F) in
+    let% cl' := lmap (fun b => let% B' := exp_lits (snd b) in lok (fst b, B')) (rf_clauses F) in
+    lok (mk_rfun (rf_name F) ys' Z' A' cl').
 
   (** A command's own terms: the nested commands of a module get their
       literals when they run. *)
@@ -228,7 +258,8 @@ Section Literals.
     | cc_load fp => lok (cc_load fp)
     | cc_open E its => let% E' := modexp_lits E in lok (cc_open E' its)
     | cc_eval M oA => let% M' := exp_lits M in let% oA' := lopt exp_lits oA in lok (cc_eval M' oA')
-    | cc_ind x pv D => let% D' := decl_lits D in lok (cc_ind x pv D')
+    | cc_ind pv D => let% D' := decl_lits D in lok (cc_ind pv D')
+    | cc_mdef b pv Δ fs => let% Δ' := tele_lits Δ in let% fs' := lmap fun_lits fs in lok (cc_mdef b pv Δ' fs')
     | cc_builtin k H => let% H' := modexp_lits H in lok (cc_builtin k H')
     | cc_ind_alias x pv Δ H => let% Δ' := tele_lits Δ in let% H' := modexp_lits H in lok (cc_ind_alias x pv Δ' H')
     end.

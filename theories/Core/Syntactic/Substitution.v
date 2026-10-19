@@ -227,6 +227,67 @@ Ltac syn_ext_brs lift liftn :=
       f_equal; [ f_equal; autorewrite with syn_ops; solve [ eauto using lift, liftn ] | assumption ]
   end.
 
+(** The blocks of an eliminator: each its annotation (under one binder
+    fewer than its motive), its motive and its branches. *)
+Ltac syn_ext_blocks lift liftn :=
+  match goal with
+  | HF : List.Forall (fun b => _ /\ _) ?Bks |- _ =>
+      lazymatch goal with |- List.map _ _ = _ => idtac | |- _ = List.map _ _ => idtac end;
+      let HZ := fresh "HZ" in let HA := fresh "HA" in let HB := fresh "HB" in
+      induction HF as [| [? oZ ? ?] ? [HZ [HA HB]] ? ?]; cbn [List.map eb_ann eb_motive eb_brs option_map] in *;
+        [ reflexivity |];
+      f_equal; [| assumption ];
+      f_equal;
+        [ destruct oZ; cbn [option_map]; [ f_equal; specialize (HZ _ eq_refl); autorewrite with syn_ops;
+                                          solve [ eauto using lift, liftn ] | reflexivity ]
+        | autorewrite with syn_ops; solve [ eauto using lift, liftn ]
+        | syn_ext_brs lift liftn ]
+  end.
+
+(** For a property of terms read through [all_brs] and [all_blocks]: the
+    branches of an eliminator, an induction over the [Forall] the principle
+    carries, the hypotheses about the list reverted first. *)
+Ltac brs_case :=
+  match goal with
+  | HF : List.Forall _ ?Bs |- _ =>
+      repeat match goal with H : context [Bs] |- _ => lazymatch H with HF => fail | _ => revert H end end;
+      induction HF as [| [[? ?] ?] ? HB ? IH]; intros; cbn [all_brs List.map fst snd] in *; destruct_all
+  end.
+
+(** The blocks of an eliminator, likewise: in each block the annotation,
+    the motive and the branches, each closed by [one] from its induction
+    hypothesis. *)
+Ltac blocks_case one :=
+  match goal with
+  | HF : List.Forall (fun b => (forall Z, eb_ann b = Some Z -> _) /\ _) ?Bks |- _ =>
+      repeat match goal with H : context [Bks] |- _ => lazymatch H with HF => fail | _ => revert H end end;
+      let HZ := fresh "HZ" in let HA := fresh "HA" in let HBs := fresh "HBs" in
+      induction HF as [| [? oZ ? ?] ? [HZ [HA HBs]] ? IHb]; intros;
+      cbn [all_blocks List.map eb_ann eb_motive eb_brs option_map opt_all] in *; destruct_all;
+      [ solve [ auto ]
+      | split; [ split; [ destruct oZ; cbn [opt_all option_map] in *; [ specialize (HZ _ eq_refl); one HZ | exact I ]
+                       | split; [ one HA | brs_case; [ solve [ auto ]
+                                                     | split; [ match goal with H : _ |- _ => solve [ one H ] end | auto ] ] ] ]
+               | solve [ eauto ] ] ]
+  end.
+
+(** The same for an equation between two lists of blocks. *)
+Ltac blocks_eq_case one :=
+  match goal with
+  | HF : List.Forall (fun b => (forall Z, eb_ann b = Some Z -> _) /\ _) ?Bks |- _ =>
+      repeat match goal with H : context [Bks] |- _ => lazymatch H with HF => fail | _ => revert H end end;
+      let HZ := fresh "HZ" in let HA := fresh "HA" in let HBs := fresh "HBs" in
+      induction HF as [| [? oZ ? ?] ? [HZ [HA HBs]] ? IHb]; intros;
+      cbn [all_blocks List.map eb_ann eb_motive eb_brs option_map opt_all] in *; destruct_all;
+      [ reflexivity
+      | f_equal; [ f_equal;
+                   [ destruct oZ; cbn [option_map opt_all] in *; [ f_equal; specialize (HZ _ eq_refl); one HZ | reflexivity ]
+                   | one HA
+                   | brs_case; [ reflexivity
+                               | f_equal; [ f_equal; match goal with H : _ |- _ => solve [ one H ] end | auto ] ] ]
+                 | solve [ eauto ] ] ]
+  end.
+
 Ltac syn_ext_case_with lift liftn vars :=
   intros; autorewrite with syn_ops; intros;
   cbn [exp_wk modexp_wk bnd_wk moddef_wk gmod_wk gentry_wk centry_wk
@@ -237,7 +298,8 @@ Ltac syn_ext_case_with lift liftn vars :=
          end;
   f_equal;
   try match goal with |- Some _ = Some _ => f_equal end;
-  first [ solve [ eauto using lift, liftn ] | syn_ext_brs lift liftn | syn_ext_tele lift liftn | solve [ vars ] ].
+  first [ solve [ eauto using lift, liftn ] | syn_ext_blocks lift liftn | syn_ext_brs lift liftn
+        | syn_ext_tele lift liftn | solve [ vars ] ].
 
 (** The variable cases of most laws are the pointwise hypothesis read at the
     variable, through the projections of an entry. *)

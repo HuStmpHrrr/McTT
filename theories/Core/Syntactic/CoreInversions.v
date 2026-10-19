@@ -314,49 +314,74 @@ Proof.
   eapply wf_subtyp_refl; [ exact Hi | apply wf_exp_eq_refl; exact Hi ].
 Qed.
 
-Lemma wf_ind_inversion : forall {Θ Ξ Γ p T},
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_ind p : T ->
-    exists D, ind_lookup Θ Ξ p = Some D /\ Θ ⍮ Ξ ⍮ Γ ⊢ ind_ty D ⊆ T.
+(** What the type former [a_ind p k] is typed by. *)
+#[warnings="-cannot-define-projection"]
+Record ind_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (p : qname) (k : nat) (T : typ) : Prop := mk_ind_inv
+  { ii_decl : ind_decl
+  ; ii_mem : imember
+  ; ii_lookup : ind_lookup Θ Ξ p = Some ii_decl
+  ; ii_member : ind_member ii_decl k = Some ii_mem
+  ; ii_lt : k < ind_ndecl ii_decl
+  ; ii_sub : Θ ⍮ Ξ ⍮ Γ ⊢ ind_ty ii_decl ii_mem ⊆ T }.
+
+Lemma wf_ind_inversion : forall {Θ Ξ Γ p k T}, Θ ⍮ Ξ ⍮ Γ ⊢ a_ind p k : T -> ind_inv Θ Ξ Γ p k T.
 Proof.
   intros * H; dependent induction H.
-  - exists D; split; [ assumption | eapply wf_subtyp_of_typed; econstructor; eassumption ].
-  - destruct (IHwf_exp1 _ eq_refl) as (D & HD & Hs); exists D; split; [ exact HD | eapply wf_subtyp_trans; eassumption ].
+  - econstructor; try eassumption; eapply wf_subtyp_of_typed; econstructor; eassumption.
+  - destruct (IHwf_exp1 _ _ eq_refl) as [D Mk Hl Hk Hlt Hs].
+    econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
 Qed.
 
-Lemma wf_con_inversion : forall {Θ Ξ Γ p c T},
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_con p c : T ->
-    exists D gs, ind_lookup Θ Ξ p = Some D /\ ind_con D c = Some gs /\ Θ ⍮ Ξ ⍮ Γ ⊢ con_ty p D gs ⊆ T.
+(** What the constructor [a_con p k c] is typed by. *)
+#[warnings="-cannot-define-projection"]
+Record con_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (p : qname) (k : nat) (c : String.string) (T : typ) : Prop :=
+  mk_con_inv
+  { ci_decl : ind_decl
+  ; ci_mem : imember
+  ; ci_args : list carg
+  ; ci_lookup : ind_lookup Θ Ξ p = Some ci_decl
+  ; ci_member : ind_member ci_decl k = Some ci_mem
+  ; ci_lt : k < ind_ndecl ci_decl
+  ; ci_con : ind_con ci_mem c = Some ci_args
+  ; ci_sub : Θ ⍮ Ξ ⍮ Γ ⊢ con_ty p ci_decl k ci_mem ci_args ⊆ T }.
+
+Lemma wf_con_inversion : forall {Θ Ξ Γ p k c T}, Θ ⍮ Ξ ⍮ Γ ⊢ a_con p k c : T -> con_inv Θ Ξ Γ p k c T.
 Proof.
   intros * H; dependent induction H.
-  - exists D, gs; split; [ assumption | split; [ assumption | eapply wf_subtyp_of_typed; econstructor; eassumption ] ].
-  - destruct (IHwf_exp1 _ _ eq_refl) as (D & gs & HD & Hc & Hs); exists D, gs.
-    split; [ exact HD | split; [ exact Hc | eapply wf_subtyp_trans; eassumption ] ].
+  - econstructor; try eassumption; eapply wf_subtyp_of_typed; econstructor; eassumption.
+  - destruct (IHwf_exp1 _ _ _ eq_refl) as [D Mk gs Hl Hk Hlt Hc Hs].
+    econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
 Qed.
 
-Lemma wf_elim_inversion : forall {Θ Ξ Γ nm A Bs M T},
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim nm A Bs M : T ->
-    exists p D Ps i,
-      ind_lookup Θ Ξ p = Some D /\
-      List.length Ps = ind_np D /\
-      (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
-         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) /\
-      Θ ⍮ Ξ ⍮ Γ ⊢ M : apps (a_ind p) Ps /\
-      nm = S (ind_nn D) /\
-      Θ ⍮ Ξ ⍮ elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ ⊢ A : Typeω@i /\
-      Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D (List.firstn (ind_nu D) Ps) /\
-      brs_names (ind_cons D) Bs /\
-      (forall c gs, ind_con D c = Some gs ->
-         Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ≈ elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) /\
-      (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs ->
-         n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) /\
-      (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs ->
-         Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
-           : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) /\
-      Θ ⍮ Ξ ⍮ Γ ⊢ A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] ⊆ T.
+(** What the eliminator [a_elim oq m Bks M] is typed by: the premises of
+    [wf_elim], and the type it gives below [T]. *)
+#[warnings="-cannot-define-projection"]
+Record elim_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (oq : option qname) (m : nat) (Bks : list eblock) (M T : typ)
+    : Prop := mk_elim_inv
+  { ei_grp : qname
+  ; ei_decl : ind_decl
+  ; ei_mem : imember
+  ; ei_block : eblock
+  ; ei_params : list exp
+  ; ei_lvl : nat
+  ; ei_lookup : ind_lookup Θ Ξ ei_grp = Some ei_decl
+  ; ei_elim_grp : elim_grp ei_decl oq ei_grp m
+  ; ei_member : ind_member ei_decl m = Some ei_mem
+  ; ei_nth : List.nth_error Bks m = Some ei_block
+  ; ei_plen : List.length ei_params = im_np ei_decl ei_mem
+  ; ei_ps : forall k P T, List.nth_error ei_params k = Some P ->
+      List.nth_error (tele_insts (im_params ei_decl ei_mem) Id ei_params) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ P : T
+  ; ei_scrut : Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty ei_grp ei_decl m (List.firstn (ind_nu ei_decl) ei_params)
+                                 (List.skipn (ind_nu ei_decl) ei_params)
+  ; ei_ann : elim_view_ann ei_decl m Bks
+  ; ei_blocks : blocks_typed Θ Ξ Γ ei_grp ei_decl (List.firstn (ind_nu ei_decl) ei_params) Bks ei_lvl
+  ; ei_sub : Θ ⍮ Ξ ⍮ Γ ⊢ (eb_motive ei_block)[sb_of_list Id (List.skipn (ind_nu ei_decl) ei_params ++ M :: nil)] ⊆ T }.
+
+Lemma wf_elim_inversion : forall {Θ Ξ Γ oq m Bks M T}, Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq m Bks M : T -> elim_inv Θ Ξ Γ oq m Bks M T.
 Proof.
   intros * H; dependent induction H.
-  - exists p, D, Ps, i; repeat (split; [ first [ assumption | reflexivity ] |]).
-    eapply wf_subtyp_of_typed; eapply wf_elim; (eassumption || reflexivity).
-  - destruct (IHwf_exp1 _ _ _ _ eq_refl) as (p & D & Ps & i0 & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ?).
-    exists p, D, Ps, i0; repeat (split; [ first [ assumption | reflexivity ] |]); eapply wf_subtyp_trans; eassumption.
+  - econstructor; try eassumption; [ constructor; eassumption |].
+    eapply wf_subtyp_of_typed; eapply wf_elim; eassumption.
+  - destruct (IHwf_exp1 _ _ _ _ eq_refl) as [p D Mm bm Ps i0 Hl Hg Hm Hb HPl HPs HM Hann HBt Hs].
+    econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
 Qed.

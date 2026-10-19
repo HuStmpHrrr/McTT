@@ -45,15 +45,10 @@ Fixpoint exp_fresh (k : nat) (M : exp) {struct M} : Prop :=
   | a_univ M | a_succl M => exp_fresh k M
   | a_maxl M N | a_app M N => exp_fresh k M /\ exp_fresh k N
   | a_exfalso A M => exp_fresh (S k) A /\ exp_fresh k M
-  | a_ind _ | a_con _ _ | a_nlit _ | a_ntok => True
-  | a_elim nm A Bs M =>
-      exp_fresh (nm + k) A /\
-      (fix brs_fresh (Bs : list (String.string * nat * exp)) : Prop :=
-         match Bs with
-         | nil => True
-         | cons b Bs' => exp_fresh (snd (fst b) + k) (snd b) /\ brs_fresh Bs'
-         end) Bs /\
-      exp_fresh k M
+  | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => True
+  | a_elim _ _ Bks M =>
+      all_blocks (fun nm oZ A Bs => opt_all (exp_fresh (nm - 1 + k)) oZ /\ exp_fresh (nm + k) A /\
+                                    all_brs (fun n B => exp_fresh (n + k) B) Bs) Bks /\ exp_fresh k M
   | a_pi A B | a_fn A B => exp_fresh k A /\ exp_fresh (S k) B
   | a_var x => x <> k
   | a_let b B => bnd_fresh k b /\ exp_fresh (S k) B
@@ -97,8 +92,8 @@ with gentry_fresh (k : nat) (E : gentry) {struct E} : Prop :=
   match E with
   | ge_def _ _ A B => exp_fresh k A /\ match B with Some M => exp_fresh k M | None => True end
   | ge_mod _ U => gunit_fresh k U
-  | ge_ind _ _ D Φ => gmod_fresh (ind_nu D + k) Φ
-  | ge_ind_alias _ _ _ _ => True
+  | ge_ind _ _ _ D Φ => gmod_fresh (ind_nu D + k) Φ
+  | ge_ind_alias _ _ _ _ _ _ => True
   end
 with centry_fresh (k : nat) (e : centry) {struct e} : Prop :=
   match e with
@@ -113,6 +108,11 @@ Fixpoint tele_fresh (k : nat) (Δ : list centry) : Prop :=
   | nil => True
   | cons e Δ' => centry_fresh (List.length Δ' + k) e /\ tele_fresh k Δ'
   end.
+
+(** The blocks clause of [exp_fresh], as a definition of its own. *)
+Definition blocks_fresh (k : nat) (Bks : list eblock) : Prop :=
+  all_blocks (fun nm oZ A Bs => opt_all (exp_fresh (nm - 1 + k)) oZ /\ exp_fresh (nm + k) A /\
+                                all_brs (fun n B => exp_fresh (n + k) B) Bs) Bks.
 
 (** ** Two Classes of Renaming
 
@@ -169,13 +169,9 @@ Proof.
   syn_mut_ind; fresh_case;
     try solve [ match goal with H : wk_id_away _ _ |- _ => apply H; assumption end
               | match goal with H : forall A, Some ?X = Some A -> _ |- _ => eapply (H X); eauto end ].
-  (** The branches of an eliminator, and the telescope of a unit: their own
+  (** The blocks of an eliminator, and the telescope of a unit: their own
       inductions, over the [Forall] the principle carries. *)
-  1: match goal with
-     | HF : List.Forall _ _, Hf : _ ?Bs, Hw : wk_id_away _ _ |- List.map _ ?Bs = ?Bs =>
-         clear - HF Hf Hw; induction HF as [| [[? ?] ?] ? HB ? IH]; cbn in *; destruct_conjs;
-           f_equal; [ f_equal; eapply HB; eauto | eauto ]
-     end.
+  1: blocks_eq_case ltac:(fun H => eapply H; [ eassumption | auto ]).
   match goal with
   | HF : List.Forall _ _ |- _ => clear - HF H1 H2; induction HF; cbn in *; destruct_conjs; f_equal; eauto
   end.
@@ -193,10 +189,7 @@ Lemma syn_wk_fresh :
 Proof.
   syn_mut_ind; fresh_case; rewrite ?gm_binders_wk, ?length_tele_wk; eauto;
     try solve [ match goal with H : forall A, Some ?X = Some A -> _ |- _ => eapply (H X); eauto end ].
-  1: match goal with
-     | HF : List.Forall _ _, Hw : wk_avoids _ _ |- _ =>
-         clear - HF Hw; induction HF as [| [[? ?] ?] ? HB ? IH]; cbn in *; [ exact I | split; eauto ]
-     end.
+  1: blocks_case ltac:(fun H => eapply H; auto).
   match goal with
   | HF : List.Forall _ _ |- _ =>
       clear - HF H1; induction HF; cbn in *; [ exact I | rewrite length_tele_wk; split; eauto ]
@@ -229,11 +222,7 @@ Proof.
   syn_mut_ind; fresh_case; rewrite ?gm_binders_wk, ?length_tele_wk; eauto;
     try solve [ match goal with H : wk_reflects _ _ _ |- _ => intros Heq; apply H in Heq; contradiction end
               | match goal with H : forall A, Some ?X = Some A -> _ |- _ => eapply (H X); eauto end ].
-  - match goal with
-    | HF : List.Forall _ ?Bs, Hf : _ ?Bs, Hw : wk_reflects _ _ _ |- _ =>
-        clear - HF Hf Hw; induction HF as [| [[? ?] ?] ? HB ? IH]; cbn in *; destruct_conjs; [ exact I | split ];
-        [ eapply HB; [ eassumption | apply wk_reflects_qn; assumption ] | apply IH; assumption ]
-    end.
+  - blocks_case ltac:(fun H => eapply H; [ eassumption | apply wk_reflects_qn; assumption ]).
   - match goal with
     | HF : List.Forall _ ?Δ, Hf : _ ?Δ, Hw : wk_reflects _ _ _ |- _ =>
         clear - HF Hf Hw; induction HF as [| ? ? HB ? IH]; cbn in *; destruct_conjs; [ exact I | rewrite length_tele_wk; split ];
@@ -307,24 +296,15 @@ Scheme nf_mind := Induction for nf Sort Prop
   with ne_mind := Induction for ne Sort Prop
   with la_mind := Induction for lvl_atoms Sort Prop
   with nfs_mind := Induction for nfs Sort Prop
-  with nbrs_mind := Induction for nbrs Sort Prop.
+  with nbrs_mind := Induction for nbrs Sort Prop
+  with nblocks_mind := Induction for nblocks Sort Prop.
 
-Combined Scheme nf_mut_ind from nf_mind, ne_mind, la_mind, nfs_mind, nbrs_mind.
+Combined Scheme nf_mut_ind from nf_mind, ne_mind, la_mind, nfs_mind, nbrs_mind, nblocks_mind.
 
-(** Freshness of an eliminator, its branches as a list. *)
-Lemma exp_fresh_elim : forall k nm A Bs M,
-    exp_fresh k (a_elim nm A Bs M) <->
-    exp_fresh (nm + k) A /\ List.Forall (fun b => exp_fresh (snd (fst b) + k) (snd b)) Bs /\ exp_fresh k M.
-Proof.
-  intros; cbn; enough (forall Bs : list (String.string * nat * exp),
-    (fix brs_fresh (Bs : list (String.string * nat * exp)) : Prop :=
-       match Bs with
-       | nil => True
-       | cons b Bs' => exp_fresh (snd (fst b) + k) (snd b) /\ brs_fresh Bs'
-       end) Bs <-> List.Forall (fun b => exp_fresh (snd (fst b) + k) (snd b)) Bs) as -> by reflexivity.
-  induction Bs0 as [| b Bs0 IH]; [ split; auto |].
-  rewrite IH; split; [ intros []; constructor; assumption | intros Hx; inversion Hx; auto ].
-Qed.
+(** Freshness of an eliminator: of its blocks and its scrutinee. *)
+Lemma exp_fresh_elim : forall k oq m Bks M,
+    exp_fresh k (a_elim oq m Bks M) <-> blocks_fresh k Bks /\ exp_fresh k M.
+Proof. reflexivity. Qed.
 
 Lemma apps_exp_fresh : forall Ms M k,
     exp_fresh k M -> List.Forall (exp_fresh k) Ms -> exp_fresh k (apps_exp M Ms).
@@ -335,13 +315,13 @@ Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
   | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => True
   | nf_univ _ xs | nf_lvl _ xs => la_fresh k xs
   | nf_pi A B | nf_fn A B => nf_fresh k A /\ nf_fresh (S k) B
-  | nf_indty _ Ms | nf_con _ _ Ms => nfs_fresh k Ms
+  | nf_indty _ _ Ms | nf_con _ _ _ Ms => nfs_fresh k Ms
   | nf_neut u => ne_fresh k u
   end
 with ne_fresh (k : nat) (u : ne) {struct u} : Prop :=
   match u with
   | ne_exfalso A u => nf_fresh (S k) A /\ ne_fresh k u
-  | ne_elim nm A Bs u => nf_fresh (nm + k) A /\ nbrs_fresh k Bs /\ ne_fresh k u
+  | ne_elim _ _ Bks u => nblocks_fresh k Bks /\ ne_fresh k u
   | ne_app u W => ne_fresh k u /\ nf_fresh k W
   | ne_var x => x <> k
   | ne_glob _ => True
@@ -360,6 +340,11 @@ with nbrs_fresh (k : nat) (Bs : nbrs) {struct Bs} : Prop :=
   match Bs with
   | nbrs_nil => True
   | nbrs_cons _ n B Bs => nf_fresh (n + k) B /\ nbrs_fresh k Bs
+  end
+with nblocks_fresh (k : nat) (Bks : nblocks) {struct Bks} : Prop :=
+  match Bks with
+  | nblocks_nil => True
+  | nblocks_cons nm A Bs Bks => nf_fresh (nm + k) A /\ nbrs_fresh k Bs /\ nblocks_fresh k Bks
   end.
 
 Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
@@ -373,14 +358,14 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
   | nf_False => nf_False
   | nf_pi A B => nf_pi (nf_unwk k A) (nf_unwk (S k) B)
   | nf_fn A M => nf_fn (nf_unwk k A) (nf_unwk (S k) M)
-  | nf_indty p Ms => nf_indty p (nfs_unwk k Ms)
-  | nf_con p c Ms => nf_con p c (nfs_unwk k Ms)
+  | nf_indty p j Ms => nf_indty p j (nfs_unwk k Ms)
+  | nf_con p j c Ms => nf_con p j c (nfs_unwk k Ms)
   | nf_neut u => nf_neut (ne_unwk k u)
   end
 with ne_unwk (k : nat) (u : ne) {struct u} : ne :=
   match u with
   | ne_exfalso A u => ne_exfalso (nf_unwk (S k) A) (ne_unwk k u)
-  | ne_elim nm A Bs u => ne_elim nm (nf_unwk (nm + k) A) (nbrs_unwk k Bs) (ne_unwk k u)
+  | ne_elim p m Bks u => ne_elim p m (nblocks_unwk k Bks) (ne_unwk k u)
   | ne_app u W => ne_app (ne_unwk k u) (nf_unwk k W)
   | ne_var x => ne_var (unwk k x)
   | ne_glob p => ne_glob p
@@ -399,6 +384,11 @@ with nbrs_unwk (k : nat) (Bs : nbrs) {struct Bs} : nbrs :=
   match Bs with
   | nbrs_nil => nbrs_nil
   | nbrs_cons c n B Bs => nbrs_cons c n (nf_unwk (n + k) B) (nbrs_unwk k Bs)
+  end
+with nblocks_unwk (k : nat) (Bks : nblocks) {struct Bks} : nblocks :=
+  match Bks with
+  | nblocks_nil => nblocks_nil
+  | nblocks_cons nm A Bs Bks => nblocks_cons nm (nf_unwk (nm + k) A) (nbrs_unwk k Bs) (nblocks_unwk k Bks)
   end.
 
 (** Weakening of a level expression: [lvl_exp_of] builds a term out of a
@@ -492,11 +482,13 @@ Lemma nf_fresh_to_exp :
   (forall u k, ne_fresh k u -> exp_fresh k (ne_to_exp u)) /\
   (forall xs k, la_fresh k xs -> List.Forall (fun p => exp_fresh k (snd p)) (la_to_list xs)) /\
   (forall Ms k, nfs_fresh k Ms -> List.Forall (exp_fresh k) (nfs_to_exps Ms)) /\
-  (forall Bs k, nbrs_fresh k Bs -> List.Forall (fun b => exp_fresh (snd (fst b) + k) (snd b)) (nbrs_to_brs Bs)).
+  (forall Bs k, nbrs_fresh k Bs -> all_brs (fun n B => exp_fresh (n + k) B) (nbrs_to_brs Bs)) /\
+  (forall Bks k, nblocks_fresh k Bks -> blocks_fresh k (nblocks_to_blocks Bks)).
 Proof.
   apply nf_mut_ind; intros;
-    cbn [nf_to_exp ne_to_exp la_to_list nfs_to_exps nbrs_to_brs nf_fresh ne_fresh la_fresh nfs_fresh nbrs_fresh fst snd] in *;
-    destruct_conjs;
+    cbn [nf_to_exp ne_to_exp la_to_list nfs_to_exps nbrs_to_brs nblocks_to_blocks nf_fresh ne_fresh la_fresh nfs_fresh
+         nbrs_fresh nblocks_fresh blocks_fresh all_blocks all_brs opt_all fst snd] in *;
+    unfold blocks_fresh in *; destruct_conjs;
     try exact I;
     try solve [ repeat split; eauto
               | apply lvl_exp_of_fresh; eauto
@@ -514,7 +506,13 @@ Lemma nf_unwk_to_exp :
                 = List.map (fun p => (fst p, (snd p)[unwk k]ʷ)) (la_to_list xs)) /\
   (forall Ms k, nfs_to_exps (nfs_unwk k Ms) = List.map (fun M => M[unwk k]ʷ) (nfs_to_exps Ms)) /\
   (forall Bs k, nbrs_to_brs (nbrs_unwk k Bs)
-                = List.map (fun b => (fst b, (snd b)[wk_qn (snd (fst b)) (unwk k)]ʷ)) (nbrs_to_brs Bs)).
+                = List.map (fun b => (fst b, (snd b)[wk_qn (snd (fst b)) (unwk k)]ʷ)) (nbrs_to_brs Bs)) /\
+  (forall Bks k, nblocks_to_blocks (nblocks_unwk k Bks)
+                 = List.map (fun b => match b with
+                                      | eb_mk nm oZ A Bs =>
+                                          eb_mk nm (option_map (fun Z => Z[wk_qn (nm - 1) (unwk k)]ʷ) oZ) A[wk_qn nm (unwk k)]ʷ
+                                            (List.map (fun br => (fst br, (snd br)[wk_qn (snd (fst br)) (unwk k)]ʷ)) Bs)
+                                      end) (nblocks_to_blocks Bks)).
 Proof.
   apply nf_mut_ind; intros; cbn; rewrite ?apps_exp_wk;
     try reflexivity;
@@ -549,13 +547,13 @@ Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
   | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => true
   | nf_univ _ xs | nf_lvl _ xs => la_freshb k xs
   | nf_pi A B | nf_fn A B => nf_freshb k A && nf_freshb (S k) B
-  | nf_indty _ Ms | nf_con _ _ Ms => nfs_freshb k Ms
+  | nf_indty _ _ Ms | nf_con _ _ _ Ms => nfs_freshb k Ms
   | nf_neut u => ne_freshb k u
   end
 with ne_freshb (k : nat) (u : ne) {struct u} : bool :=
   match u with
   | ne_exfalso A u => nf_freshb (S k) A && ne_freshb k u
-  | ne_elim nm A Bs u => nf_freshb (nm + k) A && nbrs_freshb k Bs && ne_freshb k u
+  | ne_elim _ _ Bks u => nblocks_freshb k Bks && ne_freshb k u
   | ne_app u W => ne_freshb k u && nf_freshb k W
   | ne_var x => negb (Nat.eqb x k)
   | ne_glob _ => true
@@ -574,6 +572,11 @@ with nbrs_freshb (k : nat) (Bs : nbrs) {struct Bs} : bool :=
   match Bs with
   | nbrs_nil => true
   | nbrs_cons _ n B Bs => nf_freshb (n + k) B && nbrs_freshb k Bs
+  end
+with nblocks_freshb (k : nat) (Bks : nblocks) {struct Bks} : bool :=
+  match Bks with
+  | nblocks_nil => true
+  | nblocks_cons nm A Bs Bks => nf_freshb (nm + k) A && nbrs_freshb k Bs && nblocks_freshb k Bks
   end.
 
 Lemma nf_freshb_iff :
@@ -581,7 +584,8 @@ Lemma nf_freshb_iff :
   (forall u k, ne_freshb k u = true <-> ne_fresh k u) /\
   (forall xs k, la_freshb k xs = true <-> la_fresh k xs) /\
   (forall Ms k, nfs_freshb k Ms = true <-> nfs_fresh k Ms) /\
-  (forall Bs k, nbrs_freshb k Bs = true <-> nbrs_fresh k Bs).
+  (forall Bs k, nbrs_freshb k Bs = true <-> nbrs_fresh k Bs) /\
+  (forall Bks k, nblocks_freshb k Bks = true <-> nblocks_fresh k Bks).
 Proof.
   apply nf_mut_ind; intros; cbn;
     repeat rewrite Bool.andb_true_iff;

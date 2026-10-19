@@ -536,8 +536,8 @@ Proof.
 Qed.
 
 (** What an inductive alias's entry records is closed. *)
-Lemma gentry_scoped_ind_alias : forall n pv Δ p Ns,
-    gentry_scoped n (ge_ind_alias pv Δ p Ns) <-> ctx_scoped 0 Δ /\ List.Forall (exp_scoped (length Δ)) Ns.
+Lemma gentry_scoped_ind_alias : forall n pv Δ pm p k Ns,
+    gentry_scoped n (ge_ind_alias pv Δ pm p k Ns) <-> ctx_scoped 0 Δ /\ List.Forall (exp_scoped (length Δ)) Ns.
 Proof.
   intros; cbn; split; intros [HΔ HNs]; split.
   - clear HNs; induction Δ as [| e Δ IH]; cbn in *; [ exact I |]; destruct HΔ as [He HΔ]; rewrite Nat.add_0_r; split; [ exact He | apply IH, HΔ ].
@@ -557,7 +557,7 @@ Definition ds_scoped (n : nat) (R : mdesc) : Prop :=
   | ds_term A om => exp_scoped n A /\ opt_scoped n om
   | ds_open Δ Φ Φx => gunit_scoped n (gu_open Δ Φ) /\ gunit_scoped n (gu_open Δ Φx)
   | ds_closed Θ _ T Φ Ns => ctx_scoped n Θ /\ unit_closed T Φ /\ List.Forall (exp_scoped (length Θ + n)) Ns
-  | ds_ind Θ p Ns => ctx_scoped n Θ /\ List.Forall (exp_scoped (length Θ + n)) Ns
+  | ds_ind Θ p _ Ns => ctx_scoped n Θ /\ List.Forall (exp_scoped (length Θ + n)) Ns
   end.
 
 Lemma sentry_scoped_sub : forall e m k σ,
@@ -731,16 +731,17 @@ Qed.
 Lemma ds_ty_scoped : forall Θ Ξ R A n,
     gctx_closed Θ Ξ -> ds_scoped n R -> ds_ty Θ Ξ R = Some A -> exp_scoped n A.
 Proof.
-  intros * Hc HR Ht; destruct R as [A0 om | | | Θ' p Ns]; cbn in *; try discriminate.
+  intros * Hc HR Ht; destruct R as [A0 om | | | Θ' p k Ns]; cbn in *; try discriminate.
   - injection Ht as <-; apply HR.
-  - destruct (ind_lookup Θ Ξ p) as [D |] eqn:E; [| discriminate ]; injection Ht as <-.
+  - destruct (ind_lookup Θ Ξ p) as [D |] eqn:E; [| discriminate ].
+    destruct (ind_member D k) as [M |] eqn:EM; [| discriminate ]; injection Ht as <-.
     destruct HR as [HΘ HNs]; apply ctx_pi_scoped; [ exact HΘ |].
-    apply ind_ty_at_scoped; [ eapply gctx_closed_ind; eassumption | exact HNs ].
+    eapply ind_ty_at_scoped; [ eapply gctx_closed_ind; eassumption | exact EM | exact HNs ].
 Qed.
 
 Lemma ds_red_scoped : forall R M n, ds_scoped n R -> ds_red R = Some M -> exp_scoped n M.
 Proof.
-  intros [A om | | | Θ' p Ns] * HR Hr; cbn in *; try discriminate.
+  intros [A om | | | Θ' p k Ns] * HR Hr; cbn in *; try discriminate.
   - subst; apply HR.
   - injection Hr as <-; destruct HR as [HΘ HNs]; apply ctx_fn_scoped; [ exact HΘ |].
     apply exp_scoped_apps; split; [ exact I | exact HNs ].
@@ -758,15 +759,15 @@ Lemma gm_entry_closed : forall Φ k ip E, body_closed k Φ -> gm_entry Φ ip = S
                | ge_def _ _ A B => exp_scoped 0 A /\ opt_scoped 0 B
                | ge_mod _ (gu_mk Δ (md_body sm Φ1)) => sm = sm_closed /\ ctx_scoped k' Δ /\ body_closed (length Δ + k') Φ1
                | ge_mod _ U => gunit_scoped 0 U
-               | ge_ind _ _ D Φ1 => decl_closed D /\ body_closed (length (ind_uparams D)) Φ1
-               | ge_ind_alias _ Δ _ Ns => ctx_scoped 0 Δ /\ List.Forall (exp_scoped (length Δ)) Ns
+               | ge_ind _ _ _ D Φ1 => decl_closed D /\ body_closed (length (ind_uparams D)) Φ1
+               | ge_ind_alias _ Δ _ _ _ Ns => ctx_scoped 0 Δ /\ List.Forall (exp_scoped (length Δ)) Ns
                end.
 Proof.
   fix IH 1; intros [| Φ y E0 | Φ H its] k [| x ip] E HΦ He; cbn in He, HΦ; try discriminate; try contradiction.
   destruct HΦ as [HΦ HE0].
   destruct (String.eqb x y); [| exact (IH _ _ _ _ HΦ He) ].
   destruct ip as [| z ip]; [ injection He as <-; exists k; exact HE0 |].
-  destruct E0 as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq D Φ1 | pv Δa pa Nsa]; try discriminate.
+  destruct E0 as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Δa pma pa ka Nsa]; try discriminate.
   - destruct HE0 as (_ & _ & HΦ1); exact (IH _ _ _ _ HΦ1 He).
   - destruct HE0 as [_ HΦ1]; exact (IH _ _ _ _ HΦ1 He).
 Qed.
@@ -777,8 +778,8 @@ Definition entry_sc (n : nat) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B => exp_scoped n A /\ opt_scoped n B
   | ge_mod _ U => gunit_scoped n U \/ exists T Φ, U = gu_body T Φ /\ unit_closed T Φ
-  | ge_ind _ _ _ _ => True
-  | ge_ind_alias _ Δ _ Ns => ctx_scoped 0 Δ /\ List.Forall (exp_scoped (length Δ)) Ns
+  | ge_ind _ _ _ _ _ => True
+  | ge_ind_alias _ Δ _ _ _ Ns => ctx_scoped 0 Δ /\ List.Forall (exp_scoped (length Δ)) Ns
   end.
 
 (** The entries before a member, filled in, are over the body's
@@ -829,7 +830,7 @@ Proof.
   intros [A om | Δ Φw Φ | Θ p0 T Φ Ns | Θ p Ns] * HR He; cbn in He, HR; try discriminate.
   - destruct HR as [_ HR]; rewrite gunit_scoped_mk in HR; destruct HR as [HΔ [_ HΦ]].
     destruct (gm_prefix_upto Φ y) as [[| Φ' x E' | Φ' H its] |] eqn:Hp; try discriminate.
-    destruct E' as [[|] pv A0 [B |] | pv U | pv pq D Φ1 | pv Δa pa Nsa]; try discriminate.
+    destruct E' as [[|] pv A0 [B |] | pv U | pv pq k0 D Φ1 | pv Δa pma pa ka Nsa]; try discriminate.
     all: injection He as <- <- <-.
     all: pose proof (gm_prefix_upto_scoped _ _ _ _ Hp HΦ) as HΦx; cbn in HΦx; destruct HΦx as [HΦ' HE'].
     all: assert (Hc : ctx_scoped n (body_ctx Φ' ++ Δ))
@@ -844,7 +845,7 @@ Proof.
     pose proof (body_closed_prefix _ _ _ _ HΦ Hp) as HΦx; cbn in HΦx; destruct HΦx as [_ HE'].
     split; [ exact I | split; [| split; [ reflexivity | split; [ assumption | split; [ assumption |] ] ] ] ];
       [| apply exp_scoped_apps; split; [ apply qname_mod_scoped | exact HNs ] ].
-    cbn [length]; destruct E' as [b pv A0 B | pv [Δ [[|] Φ1 | E1]] | pv pq D Φ1 | pv Δa pa Nsa]; cbn in HE' |- *.
+    cbn [length]; destruct E' as [b pv A0 B | pv [Δ [[|] Φ1 | E1]] | pv pq k0 D Φ1 | pv Δa pma pa ka Nsa]; cbn in HE' |- *.
     + destruct HE' as [HA HB]; split; [ eapply exp_scoped_mono; [| exact HA ]; lia |].
       destruct B; cbn in *; [ eapply exp_scoped_mono; [| exact HB ]; lia | exact I ].
     + destruct HE' as [[=] _].
@@ -856,7 +857,7 @@ Proof.
 Qed.
 
 Lemma ds_self_scoped : forall M R n, exp_scoped n M -> ds_scoped n R -> ds_scoped n (ds_self M R).
-Proof. intros M [A [] | | |] n HM HR; cbn in *; try exact HR; split; [ apply HR | exact HM ]. Qed.
+Proof. intros M R n HM HR; destruct R as [A [] | | | ? ? ? ?]; cbn in *; try exact HR; split; [ apply HR | exact HM ]. Qed.
 
 Lemma ds_named_scoped : forall Θ Ns M R n, exp_scoped n M -> ds_scoped n R -> ds_scoped n (ds_named Θ Ns M R).
 Proof. intros [|] [|] * HM HR; cbn; first [ exact HR | apply ds_self_scoped; assumption ]. Qed.
@@ -896,13 +897,13 @@ Proof.
   fix IH 1; intros [| Φ y E0 | Φ H its] T x ip T' Φ' [HT HΦ] He; cbn in He, HΦ; try discriminate; try contradiction.
   destruct HΦ as [HΦ HE0].
   destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ (conj HT HΦ) He) ].
-  destruct E0 as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq D Φ1 | pv Δa pa Nsa]; try discriminate.
+  destruct E0 as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Δa pma pa ka Nsa]; try discriminate.
   - destruct HE0 as (_ & HΔ & HΦ1).
     assert (HU : unit_closed (Δ ++ T) Φ1)
       by (split; [ apply ctx_scoped_app; split; [ rewrite Nat.add_0_r; exact HΔ | exact HT ] | rewrite length_app; exact HΦ1 ]).
     destruct ip as [| z ip]; [ injection He as <- <-; exact HU | exact (IH _ _ _ _ _ _ HU He) ].
   - destruct HE0 as [HD HΦ1].
-    assert (HU : unit_closed (ind_uparams D) Φ1) by (split; [ apply ctx_scoped_uparams; apply HD | exact HΦ1 ]).
+    assert (HU : unit_closed (ind_uparams D) Φ1) by (split; [ apply (dc_uparams _ HD) | exact HΦ1 ]).
     destruct ip as [| z ip]; [ injection He as <- <-; exact HU | exact (IH _ _ _ _ _ _ HU He) ].
 Qed.
 
@@ -918,27 +919,29 @@ Proof.
 Qed.
 
 (** The module part and its telescope. *)
-Lemma gctx_closed_entry_ind : forall Θ Ξ p pv pq D Φ,
-    gctx_closed Θ Ξ -> gc_entry Θ Ξ p = Some (ge_ind pv pq D Φ) -> unit_closed (ind_uparams D) Φ.
+Lemma gctx_closed_entry_ind : forall Θ Ξ p pv pq k D Φ,
+    gctx_closed Θ Ξ -> gc_entry Θ Ξ p = Some (ge_ind pv pq k D Φ) -> unit_closed (ind_uparams D) Φ.
 Proof.
   intros * [HΘ HΞ] He; unfold gc_entry, gc_entry_u in He.
   destruct (gs_find Ξ p) as [[U ip] |] eqn:Hf.
   - destruct (gs_find_unit _ _ _ _ Hf) as (mp & Hin & _).
     destruct (stack_closed_in _ _ _ HΞ Hin) as (T & _ & HU).
     destruct (gm_entry_closed _ _ _ _ HU He) as (_ & HD & HΦ).
-    split; [ apply ctx_scoped_uparams; apply HD | exact HΦ ].
+    split; [ apply (dc_uparams _ HD) | exact HΦ ].
   - destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:Hl; [| discriminate ].
     destruct (HΘ _ _ Hl) as (_ & HU).
     destruct (gm_entry_closed _ _ _ _ HU He) as (_ & HD & HΦ).
-    split; [ apply ctx_scoped_uparams; apply HD | exact HΦ ].
+    split; [ apply (dc_uparams _ HD) | exact HΦ ].
 Qed.
 
 Lemma ds_mod_scoped : forall Θ Ξ R R' n,
     gctx_closed Θ Ξ -> ds_scoped n R -> ds_mod Θ Ξ R = Some R' -> ds_scoped n R'.
 Proof.
-  intros * Hc HR Hm; destruct R as [A om | Δ Φ | Θ0 ? T Φ Ns | Θ0 p Ns]; cbn in Hm; try discriminate;
+  intros * Hc HR Hm; destruct R as [A om | Δ Φ | Θ0 ? T Φ Ns | Θ0 p k Ns]; cbn in Hm; try discriminate;
     try (injection Hm as <-; exact HR).
-  destruct (gc_body Θ Ξ p) as [[T Φ] |] eqn:He; try discriminate; injection Hm as <-.
+  destruct (ind_lookup Θ Ξ p) as [D |]; [| discriminate ].
+  destruct (ind_mpath D k) as [pm |]; [| discriminate ].
+  destruct (gc_body Θ Ξ pm) as [[T Φ] |] eqn:He; try discriminate; injection Hm as <-.
   destruct HR as [HΘ HNs]; cbn; split; [ exact HΘ | split; [ eapply gctx_closed_body; eassumption | exact HNs ] ].
 Qed.
 
@@ -1145,22 +1148,79 @@ Definition ctx_ok (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : Prop :=
     binders, a branch under as many as its context has, and the lists of
     parameters and arguments are typed one by one. *)
 Ltac ind_motive_scoped :=
-  subst; rewrite ?length_elim_mctx, ?length_tele_sub, ?length_nparams in *; assumption.
+  subst; rewrite ?length_elim_mctx, ?length_tele_sub in *; assumption.
 
-Ltac ind_brs_scoped :=
+(** A term the premise of a rule types, scoped by the premise's induction
+    hypothesis: the hypothesis is found by trying them. *)
+Ltac ind_pick_close H :=
+  rewrite ?length_app, ?length_tele_sub, ?length_elim_mctx in H;
+  first [ exact H
+        | eapply exp_scoped_mono; [| exact H ]; unfold im_nn in *; lia
+        | rewrite ?length_app; exact H
+        | (* an annotation, the head of the annotated context of its motive *)
+          let H' := fresh "Hs" in
+          cbn [ctx_scoped centry_scoped] in H; destruct H as [H' _]; rewrite ?length_tele_sub in H';
+          first [ exact H' | eapply exp_scoped_mono; [| exact H' ]; unfold im_nn in *; lia ] ].
+
+Ltac ind_pick :=
+  match goal with
+  | |- exp_scoped _ _ =>
+      match goal with IH : _ |- _ =>
+        let H := fresh "Hs" in
+        first [ edestruct IH as (_ & H & _); [ eassumption .. |]; ind_pick_close H
+              | edestruct IH as (_ & _ & H & _); [ eassumption .. |]; ind_pick_close H ]
+      end
+  end.
+
+(** The declaration of a group is closed, by the induction hypotheses of
+    the premises of its rule, found by their shapes. *)
+Ltac ind_decl_scoped :=
+  match goal with
+  | Hc : gctx_closed _ _,
+    HN : forall k Mk Δ1 T Δ2, ind_member _ k = Some Mk -> im_nparams Mk = _ -> (_ /\ _) /\ exp_scoped _ T /\ _,
+    HA : forall k Mk c gs gs1 A gs2, ind_member _ k = Some Mk -> In _ _ -> gs = _ -> (_ /\ _) /\ exp_scoped _ A /\ _,
+    HB : forall k Mk c gs gs1 t gs2 Bs1 B Bs2, ind_member _ k = Some Mk -> In _ _ -> gs = _ -> ptyp_doms t = _ ->
+           (_ /\ _) /\ exp_scoped _ B /\ _,
+    HL : forall k Mk c gs, ind_member _ k = Some Mk -> In _ _ -> cargs_plen _ gs,
+    HP : forall k Mk c gs gs1 t gs2 Mj j P T, ind_member _ k = Some Mk -> In _ _ -> gs = _ -> ind_member _ _ = Some Mj ->
+           nth_error _ j = Some P -> nth_error _ j = Some T -> (_ /\ _) /\ exp_scoped _ P /\ _,
+    HX : forall k Mk qc k' Is vm, ind_member _ k = Some Mk -> im_head Mk = mh_view qc k' Is vm -> exists D', _,
+    HI : forall k Mk qc k' Is vm D' j I T, ind_member _ k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+           ind_lookup _ _ qc = Some D' -> nth_error Is j = Some I -> nth_error _ j = Some T -> (_ /\ _) /\ exp_scoped _ I /\ _
+    |- decl_closed _ =>
+      apply decl_closed_intro; [ assumption | assumption | assumption |];
+      let HMk := fresh "HMk" in
+      intros ? ? HMk; apply member_closed_intro; [ assumption | assumption | eauto | | | | | | ];
+      [ let E := fresh "E" in let HT := fresh "HT" in
+        intros * E; edestruct HN as (_ & HT & _); [ exact HMk | exact E | exact HT ]
+      | let Hh := fresh "Hh" in let D' := fresh "D'" in let HD' := fresh "HD'" in let HlIs := fresh "HlIs" in
+        intros * Hh; destruct (HX _ _ _ _ _ _ HMk Hh) as (D' & ? & HD' & _ & _ & HlIs & _);
+        lazymatch type of Hh with _ = mh_view _ _ ?Is _ =>
+          eapply (nth_typed_scoped Is (tele_insts (ind_uparams D') Id Is)) end;
+        [ rewrite length_tele_insts by exact (dc_ass _ (gctx_closed_ind _ _ _ _ Hc HD')); unfold ind_nu in HlIs; lia
+        | let HI0 := fresh "HI0" in let HT0 := fresh "HT0" in let HIs := fresh "HIs" in
+          intros ? ? ? HI0 HT0; edestruct HI as (_ & HIs & _); [ exact HMk | exact Hh | exact HD' | exact HI0 | exact HT0 | exact HIs ] ]
+      | let Hin := fresh "Hin" in let E := fresh "E" in let HA0 := fresh "HA0" in
+        intros * Hin E; edestruct HA as (_ & HA0 & _); [ exact HMk | exact Hin | exact E | exact HA0 ]
+      | let Hin := fresh "Hin" in let E := fresh "E" in let Ed := fresh "Ed" in let HB0 := fresh "HB0" in
+        intros * Hin E Ed; edestruct HB as (_ & HB0 & _); [ exact HMk | exact Hin | exact E | exact Ed | exact HB0 ]
+      | let Hin := fresh "Hin" in intros * Hin; eapply HL; [ exact HMk | exact Hin ]
+      | let Hin := fresh "Hin" in let E := fresh "E" in let HMj := fresh "HMj" in let HP0 := fresh "HP0" in
+        let HT0 := fresh "HT0" in let HPs := fresh "HPs" in
+        intros * Hin E HMj HP0 HT0; edestruct HP as (_ & HPs & _);
+          [ exact HMk | exact Hin | exact E | exact HMj | exact HP0 | exact HT0 | exact HPs ] ]
+  end.
+
+
+Ltac ind_blocks_scoped :=
   first
-    [ eapply elim_brs_scoped; [ eassumption | eassumption |];
-      intros; rewrite <- length_app;
-      match goal with IH : forall c gs n B, _ -> _ -> _ |- _ =>
-        edestruct IH as (_ & ? & _); [ eassumption | eassumption | eassumption ] end
-    | eapply elim_brs_scoped'; [ eassumption | eassumption | eassumption |];
-      intros; rewrite <- length_app;
-      match goal with IH : forall k c gs n B B', _ -> _ -> _ -> _ |- _ =>
-        edestruct IH as (_ & _ & ? & _); [ eassumption | eassumption | eassumption | eassumption ] end
-    | eapply elim_brs_scoped_l; [ eassumption | eassumption | eassumption |];
-      intros; rewrite <- length_app;
-      match goal with IH : forall k c gs n B B', _ -> _ -> _ -> _ |- _ =>
-        edestruct IH as (_ & ? & _); [ eassumption | eassumption | eassumption | eassumption ] end ].
+    [ eapply elim_blocks_scoped; [ eassumption | eassumption | | | eassumption | eassumption |]; intros; ind_pick
+    | eapply elim_blocks_scoped'; [ eassumption | eassumption | | | eassumption | eassumption | eassumption | | eassumption ];
+      intros; ind_pick
+    | eapply elim_blocks_scoped_l; [ eassumption | eassumption | | | eassumption | eassumption | eassumption | | eassumption ];
+      intros; ind_pick ].
+
+Ltac ind_brs_scoped := ind_blocks_scoped.
 
 Ltac ind_list_scoped :=
   repeat first
@@ -1176,29 +1236,33 @@ Ltac ind_list_scoped :=
         eapply nth_typed_scoped;
           [| let Hk := fresh "Hk" in let HT := fresh "HT" in
              intros ? ? ? Hk HT; edestruct IH as (_ & ? & _); [ exact Hk | exact HT | eassumption ] ];
-          first [ apply length_tele_insts_params; [ eapply decl_closed_params; eassumption | assumption ]
+          first [ apply length_tele_insts_params; [ eapply decl_closed_params_ass; eassumption | assumption ]
                 | apply length_tele_insts_cargs; assumption ]
       end
-    | eapply elim_ihs_scoped_at; [ eassumption | eassumption | assumption | ind_motive_scoped | ind_brs_scoped | |] ].
+    | eapply im_pre_scoped; [ eassumption | eassumption | rewrite List.length_firstn; unfold im_np in *; lia |]
+    | eapply elim_ihs_scoped_at; [ eassumption | eassumption | eassumption | assumption | eassumption | ind_blocks_scoped | |] ].
 
 Ltac ind_scoped :=
   first
     [ eapply exp_scoped_mono; [| eapply decl_closed_ind_ty; eassumption ]; lia
-    | eapply exp_scoped_mono; [| eapply decl_closed_con_ty; [ eassumption | apply cons_lookup_in; eassumption ] ]; lia
+    | eapply exp_scoped_mono; [| eapply decl_closed_con_ty; [ eassumption | eassumption | apply cons_lookup_in; eassumption ] ]; lia
     | ind_motive_scoped
-    | ind_brs_scoped
+    | ind_blocks_scoped
+    | eapply vwrap_scoped; [ eassumption | eassumption | rewrite List.length_firstn; unfold im_np in *; lia
+                           | ind_list_scoped | eassumption | ind_blocks_scoped | eassumption | eassumption ]
     | apply exp_scoped_apps; split; [ exact I | ind_list_scoped ]
+    | eapply ind_mty_scoped; [ eassumption | rewrite List.length_firstn; unfold im_np in *; lia | ind_list_scoped | ind_list_scoped ]
     | eapply elim_inst_scoped;
-        [ eapply decl_closed_nu; eassumption | assumption | ind_motive_scoped | ind_list_scoped
+        [ eassumption | ind_pick | ind_list_scoped
         | first [ assumption | apply exp_scoped_apps; split; [ exact I | ind_list_scoped ] ] ]
     | apply exp_scoped_sb_of_list; [| ind_list_scoped ];
       match goal with
-      | IH : forall c gs n B, _ -> _ -> _, Hl : brs_lookup _ _ = Some (_, _) |- _ =>
+      | IH : forall k Mk b c gs n B, _ -> _ -> _ -> _ -> _, Hl : brs_lookup _ _ = Some (_, _) |- _ =>
           let HB := fresh "HB" in
-          edestruct IH as (_ & HB & _); [ eassumption | apply brs_lookup_in; exact Hl |];
+          edestruct IH as (_ & HB & _); [ eassumption | eassumption | eassumption | apply brs_lookup_in; exact Hl |];
           rewrite length_app, length_elim_bctx in HB; eapply exp_scoped_mono; [| exact HB ];
           rewrite !length_app, length_skipn, length_elim_ihs by assumption;
-          unfold ind_nn in *; lia
+          unfold im_np, im_nn in *; lia
       end ].
 
 Theorem wf_scoped :
@@ -1268,8 +1332,8 @@ Proof.
   all: try (apply ctx_pi_scoped; [ assumption | rewrite Nat.add_0_r; assumption ]).
   all: try (apply ctx_fn_scoped; [ assumption | rewrite Nat.add_0_r; assumption ]).
   all: try (rewrite gunit_scoped_mk, ?ctx_scoped_app_iff, ?length_app; repeat split; assumption).
-  all: try match goal with Hl : ind_lookup _ _ _ = Some ?D, Hc : gctx_closed _ _ |- _ =>
-         pose proof (gctx_closed_ind _ _ _ _ Hc Hl) end.
+  all: repeat match goal with Hl : ind_lookup _ _ _ = Some ?D, Hc : gctx_closed _ _ |- _ =>
+         lazymatch goal with _ : decl_closed D |- _ => fail | _ => pose proof (gctx_closed_ind _ _ _ _ Hc Hl) end end.
   all: try match goal with Hl : ind_alias_lookup _ _ _ = Some _, Hc : gctx_closed _ _ |- _ =>
          pose proof (gctx_closed_ind_alias _ _ _ _ _ _ Hc Hl) end.
   all: try match goal with
@@ -1281,9 +1345,7 @@ Proof.
   all: try match goal with Hs : exp_scoped _ (apps _ ?Ns) |- List.Forall _ ?Ns =>
          exact (proj2 (proj1 (exp_scoped_apps _ _ _) Hs)) end.
   all: try solve [ ind_scoped ].
-  all: try solve [ eapply decl_closed_intro; try eassumption; intros;
-                   match goal with IH : forall c gs gs1 x gs2, _ -> _ -> _ |- _ =>
-                     edestruct IH as (_ & ? & _); eassumption end ].
+  all: try solve [ ind_decl_scoped ].
   all: try match goal with HM : forall M, ?o = Some M -> (_ /\ _) /\ _ |- opt_scoped _ (option_map _ ?o) =>
          destruct o as [M0 |]; cbn;
          [ destruct (HM M0 eq_refl) as (_ & ? & _); apply ctx_fn_scoped; [ assumption | rewrite Nat.add_0_r; assumption ]
@@ -1357,17 +1419,18 @@ Qed.
 
 (** In a well-formed context, an inductive alias as a term, and its type,
     are closed. *)
-Corollary wf_ind_alias_closed : forall Θ Ξ Γ pq Δ p Ns D,
+Corollary wf_ind_alias_closed : forall Θ Ξ Γ pq Δ pm p k Ns D Mk,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    ind_alias_lookup Θ Ξ pq = Some (Δ, p, Ns) ->
+    ind_alias_lookup Θ Ξ pq = Some (Δ, pm, p, k, Ns) ->
     ind_lookup Θ Ξ p = Some D ->
-    exp_scoped 0 (ctx_pi Δ (ind_ty_at D Ns)) /\ exp_scoped 0 (ctx_fn Δ (apps (a_ind p) Ns)).
+    ind_member D k = Some Mk ->
+    exp_scoped 0 (ctx_pi Δ (ind_ty_at D Mk Ns)) /\ exp_scoped 0 (ctx_fn Δ (apps (a_ind p k) Ns)).
 Proof.
-  intros * HΓ Hl HD; pose proof (wf_gctx_closed _ _ _ HΓ) as Hc.
-  destruct (gctx_closed_ind_alias _ _ _ _ _ _ Hc Hl) as [HΔ HNs].
+  intros * HΓ Hl HD HMk; pose proof (wf_gctx_closed _ _ _ HΓ) as Hc.
+  destruct (gctx_closed_ind_alias _ _ _ _ _ _ _ _ Hc Hl) as [HΔ HNs].
   pose proof (gctx_closed_ind _ _ _ _ Hc HD) as HcD.
   split; [ apply ctx_pi_scoped | apply ctx_fn_scoped ]; try assumption; rewrite Nat.add_0_r;
-    [ apply ind_ty_at_scoped; assumption | apply exp_scoped_apps; split; [ exact I | assumption ] ].
+    [ eapply ind_ty_at_scoped; eassumption | apply exp_scoped_apps; split; [ exact I | assumption ] ].
 Qed.
 
 Corollary wf_gc_resolve_type_closed : forall Θ Ξ Γ p b pv A B,
@@ -1576,7 +1639,7 @@ Qed.
 (** A closed description is not moved. *)
 Lemma ds_closed_sub : forall R σ, ds_scoped 0 R -> ds_sub R σ = R.
 Proof.
-  intros [A om | Δ Φ | Θ p0 T Φ Ns | Θ p Ns] σ HR; cbn in *.
+  intros [A om | Δ Φ | Θ p0 T Φ Ns | Θ p k Ns] σ HR; cbn in *.
   - destruct HR as [HA Hom]; rewrite exp_closed_sub by exact HA; destruct om; cbn in *; [ rewrite exp_closed_sub by exact Hom |]; reflexivity.
   - destruct HR as [HR1 HR2].
     pose proof (gunit_closed_sub _ σ HR1) as H; rewrite gunit_sub_mk in H; cbn in H; injection H as -> ->.
@@ -1601,39 +1664,42 @@ Proof.
   intros [| y] Hy; cbn; [ reflexivity | apply Hσ; lia ].
 Qed.
 
-Lemma ind_ty_at_sub : forall D Ns τ, decl_closed D ->
-    (ind_ty_at D Ns)[τ] = ind_ty_at D (List.map (fun M => M[τ]) Ns).
+Lemma ind_ty_at_sub : forall D j M Ns τ, decl_closed D -> ind_member D j = Some M ->
+    (ind_ty_at D M Ns)[τ] = ind_ty_at D M (List.map (fun N => N[τ]) Ns).
 Proof.
-  intros * HD; unfold ind_ty_at; rewrite exp_sub_sub, List.length_map.
+  intros * HD HM; unfold ind_ty_at; rewrite exp_sub_sub, List.length_map.
   apply (exp_scoped_sub_agree _ (List.length Ns)).
-  - destruct (Nat.le_gt_cases (List.length Ns) (ind_np D)).
-    + apply decl_closed_ind_ty_at; assumption.
-    + replace (ind_np D - List.length Ns) with (ind_np D - ind_np D) by lia.
-      eapply exp_scoped_mono; [| apply decl_closed_ind_ty_at; [ eassumption | lia ] ]; lia.
+  - destruct (Nat.le_gt_cases (List.length Ns) (im_np D M)).
+    + eapply decl_closed_ind_ty_at; eassumption.
+    + replace (im_np D M - List.length Ns) with (im_np D M - im_np D M) by lia.
+      eapply exp_scoped_mono; [| eapply decl_closed_ind_ty_at; [ eassumption | eassumption | lia ] ]; lia.
   - intros x Hx; apply (sb_of_list_compose_gen _ _ _ _ 0); [ intros; lia | lia ].
 Qed.
 
 Lemma ds_ty_sub : forall Θ Ξ R A σ,
     gctx_closed Θ Ξ -> ds_ty Θ Ξ R = Some A -> ds_ty Θ Ξ (ds_sub R σ) = Some A[σ].
 Proof.
-  intros * Hc Ht; destruct R as [A0 om | | | Θ' p Ns]; cbn in *; try discriminate.
+  intros * Hc Ht; destruct R as [A0 om | | | Θ' p k Ns]; cbn in *; try discriminate.
   - injection Ht as <-; reflexivity.
-  - destruct (ind_lookup Θ Ξ p) as [D |] eqn:E; [| discriminate ]; injection Ht as <-.
-    rewrite ctx_pi_sub, ind_ty_at_sub by (eapply gctx_closed_ind; eassumption); reflexivity.
+  - destruct (ind_lookup Θ Ξ p) as [D |] eqn:E; [| discriminate ].
+    destruct (ind_member D k) as [M |] eqn:EM; [| discriminate ]; injection Ht as <-.
+    rewrite ctx_pi_sub; erewrite ind_ty_at_sub by first [ eapply gctx_closed_ind; eassumption | eassumption ]; reflexivity.
 Qed.
 
 Lemma ds_red_sub : forall R M σ, ds_red R = Some M -> ds_red (ds_sub R σ) = Some M[σ].
 Proof.
-  intros [A om | | | Θ' p Ns] * Hr; cbn in *; try discriminate.
+  intros [A om | | | Θ' p k Ns] * Hr; cbn in *; try discriminate.
   - subst; reflexivity.
   - injection Hr as <-; rewrite ctx_fn_sub, apps_exp_sub; reflexivity.
 Qed.
 
 Lemma ds_mod_sub : forall Θ Ξ R R' σ, ds_mod Θ Ξ R = Some R' -> ds_mod Θ Ξ (ds_sub R σ) = Some (ds_sub R' σ).
 Proof.
-  intros * Hm; destruct R as [A om | Δ Φ | Θ0 p0 T Φ Ns | Θ0 p Ns]; cbn in *; try discriminate;
+  intros * Hm; destruct R as [A om | Δ Φ | Θ0 p0 T Φ Ns | Θ0 p k Ns]; cbn in *; try discriminate;
     try (injection Hm as <-; reflexivity).
-  destruct (gc_body Θ Ξ p) as [[T Φ] |]; try discriminate; injection Hm as <-; reflexivity.
+  destruct (ind_lookup Θ Ξ p) as [D |]; [| discriminate ].
+  destruct (ind_mpath D k) as [pm |]; [| discriminate ].
+  destruct (gc_body Θ Ξ pm) as [[T Φ] |]; try discriminate; injection Hm as <-; reflexivity.
 Qed.
 
 Lemma ds_tele_sub : forall R T σ,
@@ -1747,7 +1813,7 @@ Proof.
   injection He as <- <- <-; split; [ reflexivity | split; [| reflexivity ] ].
   destruct HU as [HT HΦ].
   pose proof (body_closed_prefix _ _ _ _ HΦ Hp) as HΦx; cbn in HΦx; destruct HΦx as [_ HE'].
-  cbn [length]; destruct E' as [b pv A0 B | pv [Δ [[|] Φ1 | E1]] | pv pq D Φ1 | pv Δa pa Nsa]; cbn in HE' |- *.
+  cbn [length]; destruct E' as [b pv A0 B | pv [Δ [[|] Φ1 | E1]] | pv pq k0 D Φ1 | pv Δa pma pa ka Nsa]; cbn in HE' |- *.
   - exact HE'.
   - destruct HE' as [[=] _].
   - destruct HE' as (_ & HΔ & HΦ1); right; do 2 eexists; split; [ reflexivity |].
@@ -1763,7 +1829,7 @@ Proof.
   fix IH 1; intros [| Φ y E | Φ H its] k σ HΦ Hσ; cbn in HΦ |- *; [ reflexivity | | contradiction ].
   destruct HΦ as [HΦ HE]; rewrite (IH Φ k σ HΦ Hσ); f_equal.
   assert (Hσ' : forall x, x < gm_binders Φ + k -> sb_qn (gm_binders Φ) σ x = se_var x) by (apply sb_qn_fix; exact Hσ).
-  destruct E as [b pv A B | pv [Δ [sm Φ1 | E1]] | pv pq D Φ1 | pv Δa pa Nsa]; cbn in HE |- *.
+  destruct E as [b pv A B | pv [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Δa pma pa ka Nsa]; cbn in HE |- *.
   - destruct HE as [HA HB]; rewrite exp_closed_sub by exact HA; destruct B; cbn in *; [ rewrite exp_closed_sub by exact HB |]; reflexivity.
   - destruct HE as (-> & HΔ & HΦ1).
     rewrite gunit_sub_mk; cbn [moddef_sub]; f_equal; f_equal.
@@ -1776,8 +1842,7 @@ Proof.
   - rewrite gunit_closed_sub by exact HE; reflexivity.
   - destruct HE as [HD HΦ1]; f_equal.
     eapply IH; [ exact HΦ1 |].
-    rewrite length_ind_uparams by (apply HD).
-    intros x Hx; rewrite sb_qn_lt by lia; reflexivity.
+    intros x Hx; rewrite sb_qn_lt by (unfold ind_nu; lia); reflexivity.
   - reflexivity.
 Qed.
 
@@ -1789,9 +1854,9 @@ Qed.
 
 (** What a closed entry denotes is closed, and it denotes the same anywhere. *)
 Lemma entry_closed_sub : forall E σ, entry_sc 0 E ->
-    match E with ge_ind _ _ _ _ => True | _ => gentry_sub E σ = E end.
+    match E with ge_ind _ _ _ _ _ => True | _ => gentry_sub E σ = E end.
 Proof.
-  intros [b pv A B | pv U | pv pq D Φ | pv Δ p Ns] σ HE; cbn in HE |- *; [| | exact I |].
+  intros [b pv A B | pv U | pv pq k D Φ | pv Δ pm p k Ns] σ HE; cbn in HE |- *; [| | exact I |].
   - destruct HE as [HA HB]; rewrite exp_closed_sub by exact HA; destruct B; cbn in *; [ rewrite exp_closed_sub by exact HB |]; reflexivity.
   - destruct HE as [HU | (T & Φ & -> & HU)]; [ rewrite gunit_closed_sub by exact HU | rewrite unit_closed_sub by exact HU ]; reflexivity.
   - reflexivity.
@@ -2131,10 +2196,10 @@ Proof.
   - (* a module *)
     intros Γ o pv U R u IHu m HS HE Γ' σ Hσ; cbn in *; constructor; eapply IHu; eassumption.
   - (* an inductive type *)
-    intros Γ o pv p D Φ m HS HE Γ' σ Hσ; cbn; constructor.
+    intros Γ o pv p k D Φ m HS HE Γ' σ Hσ; cbn; constructor.
   - (* an inductive alias *)
-    intros Γ o pv Δ pq Ns m HS HE Γ' σ Hσ; cbn in HE; destruct HE as [HΔ HNs].
-    rewrite (ds_closed_sub (ds_ind Δ pq Ns) σ) by (split; [ exact HΔ | rewrite Nat.add_0_r; exact HNs ]).
+    intros Γ o pv Δ pm pq k Ns m HS HE Γ' σ Hσ; cbn in HE; destruct HE as [HΔ HNs].
+    rewrite (ds_closed_sub (ds_ind Δ pq k Ns) σ) by (split; [ exact HΔ | rewrite Nat.add_0_r; exact HNs ]).
     cbn; constructor.
   - (* the empty body *) intros; constructor.
   - (* an entry *)

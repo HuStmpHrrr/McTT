@@ -33,14 +33,14 @@ Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   | nf_False => nf_False
   | nf_pi A B => nf_pi (nf_wk φ A) (nf_wk (wk_q φ) B)
   | nf_fn A M => nf_fn (nf_wk φ A) (nf_wk (wk_q φ) M)
-  | nf_indty p Ms => nf_indty p (nfs_wk φ Ms)
-  | nf_con p c Ms => nf_con p c (nfs_wk φ Ms)
+  | nf_indty p k Ms => nf_indty p k (nfs_wk φ Ms)
+  | nf_con p k c Ms => nf_con p k c (nfs_wk φ Ms)
   | nf_neut u => nf_neut (ne_wk φ u)
   end
 with ne_wk (φ : wk) (u : ne) {struct u} : ne :=
   match u with
   | ne_exfalso A u => ne_exfalso (nf_wk (wk_q φ) A) (ne_wk φ u)
-  | ne_elim nm A Bs u => ne_elim nm (nf_wk (wk_qn nm φ) A) (nbrs_wk φ Bs) (ne_wk φ u)
+  | ne_elim p m Bks u => ne_elim p m (nblocks_wk φ Bks) (ne_wk φ u)
   | ne_app u W => ne_app (ne_wk φ u) (nf_wk φ W)
   | ne_var x => ne_var (φ x)
   | ne_glob p => ne_glob p
@@ -59,6 +59,11 @@ with nbrs_wk (φ : wk) (Bs : nbrs) {struct Bs} : nbrs :=
   match Bs with
   | nbrs_nil => nbrs_nil
   | nbrs_cons c n B Bs => nbrs_cons c n (nf_wk (wk_qn n φ) B) (nbrs_wk φ Bs)
+  end
+with nblocks_wk (φ : wk) (Bks : nblocks) {struct Bks} : nblocks :=
+  match Bks with
+  | nblocks_nil => nblocks_nil
+  | nblocks_cons nm A Bs Bks => nblocks_cons nm (nf_wk (wk_qn nm φ) A) (nbrs_wk φ Bs) (nblocks_wk φ Bks)
   end.
 
 Definition lvl_wk (φ : wk) (l : lvl) : lvl := (fst l, la_wk φ (snd l)).
@@ -78,7 +83,13 @@ Lemma nf_wk_to_exp :
                 = List.map (fun p => (fst p, (snd p)[φ]ʷ)) (la_to_list xs)) /\
   (forall Ms φ, nfs_to_exps (nfs_wk φ Ms) = List.map (fun M => M[φ]ʷ) (nfs_to_exps Ms)) /\
   (forall Bs φ, nbrs_to_brs (nbrs_wk φ Bs)
-                = List.map (fun b => (fst b, (snd b)[wk_qn (snd (fst b)) φ]ʷ)) (nbrs_to_brs Bs)).
+                = List.map (fun b => (fst b, (snd b)[wk_qn (snd (fst b)) φ]ʷ)) (nbrs_to_brs Bs)) /\
+  (forall Bks φ, nblocks_to_blocks (nblocks_wk φ Bks)
+                 = List.map (fun b => match b with
+                                      | eb_mk nm oZ A Bs =>
+                                          eb_mk nm (option_map (fun Z => Z[wk_qn (nm - 1) φ]ʷ) oZ) A[wk_qn nm φ]ʷ
+                                            (List.map (fun br => (fst br, (snd br)[wk_qn (snd (fst br)) φ]ʷ)) Bs)
+                                      end) (nblocks_to_blocks Bks)).
 Proof.
   apply nf_mut_ind; intros; cbn; rewrite ?apps_exp_wk;
     try reflexivity;
@@ -106,6 +117,7 @@ Definition nf_cmp (M N : nf) : comparison := lt_cmp (nf_code M lt_nil) (nf_code 
 Definition la_cmp (xs ys : lvl_atoms) : comparison := lt_cmp (la_code xs lt_nil) (la_code ys lt_nil).
 Definition nfs_cmp (Ms Ns : nfs) : comparison := lt_cmp (nfs_code Ms lt_nil) (nfs_code Ns lt_nil).
 Definition nbrs_cmp (Bs Cs : nbrs) : comparison := lt_cmp (nbrs_code Bs lt_nil) (nbrs_code Cs lt_nil).
+Definition nblocks_cmp (Bks Cks : nblocks) : comparison := lt_cmp (nblocks_code Bks lt_nil) (nblocks_code Cks lt_nil).
 
 Lemma cmp_then_eq : forall c, cmp_then c Eq = c.
 Proof. intros []; reflexivity. Qed.
@@ -172,17 +184,25 @@ Proof.
   rewrite (IH Cs t t'), (IH Cs lt_nil lt_nil); cbn [lt_cmp]; rewrite !cmp_then_eq, !cmp_then_assoc; reflexivity.
 Qed.
 
+Lemma nblocks_code_cmp : forall Bks Cks t t',
+    lt_cmp (nblocks_code Bks t) (nblocks_code Cks t') = cmp_then (nblocks_cmp Bks Cks) (lt_cmp t t').
+Proof.
+  unfold nblocks_cmp; induction Bks as [| nm A Bs Bks IH]; intros [| nm' A' Bs' Cks] t t'; cbn [nblocks_code];
+    rewrite ?lt_cmp_node; cbn [Nat.compare lt_cmp cmp_then]; try reflexivity.
+  rewrite (IH Cks t t'), (IH Cks lt_nil lt_nil); cbn [lt_cmp]; rewrite !cmp_then_eq, !cmp_then_assoc; reflexivity.
+Qed.
+
 Lemma wk_mono_qn : forall n φ, wk_mono φ -> wk_mono (wk_qn n φ).
 Proof. induction n; intros; cbn; [ assumption | apply wk_mono_q; auto ]. Qed.
 
 (** Every coding is compared by [lt_cmp] of a node, so the comparisons
     reduce to [cmp_then] of the comparisons of the parts. *)
 Ltac cmp_norm :=
-  unfold nf_cmp, la_cmp, ne_cmp, nfs_cmp, nbrs_cmp;
-  cbn [nf_code ne_code la_code nfs_code nbrs_code nf_wk ne_wk la_wk nfs_wk nbrs_wk];
+  unfold nf_cmp, la_cmp, ne_cmp, nfs_cmp, nbrs_cmp, nblocks_cmp;
+  cbn [nf_code ne_code la_code nfs_code nbrs_code nblocks_code nf_wk ne_wk la_wk nfs_wk nbrs_wk nblocks_wk];
   rewrite ?lt_cmp_node; cbn [lt_cmp];
   repeat first [ rewrite nf_code_cmp | rewrite ne_code_cmp | rewrite la_code_cmp
-               | rewrite nfs_code_cmp | rewrite nbrs_code_cmp ]; cbn [lt_cmp];
+               | rewrite nfs_code_cmp | rewrite nbrs_code_cmp | rewrite nblocks_code_cmp ]; cbn [lt_cmp];
   rewrite ?cmp_then_eq.
 
 Lemma compare_mono : forall φ, wk_mono φ -> forall x y, Nat.compare (φ x) (φ y) = Nat.compare x y.
@@ -198,7 +218,8 @@ Lemma nf_cmp_wk :
   (forall m φ n, wk_mono φ -> ne_cmp (ne_wk φ m) (ne_wk φ n) = ne_cmp m n) /\
   (forall xs φ ys, wk_mono φ -> la_cmp (la_wk φ xs) (la_wk φ ys) = la_cmp xs ys) /\
   (forall Ms φ Ns, wk_mono φ -> nfs_cmp (nfs_wk φ Ms) (nfs_wk φ Ns) = nfs_cmp Ms Ns) /\
-  (forall Bs φ Cs, wk_mono φ -> nbrs_cmp (nbrs_wk φ Bs) (nbrs_wk φ Cs) = nbrs_cmp Bs Cs).
+  (forall Bs φ Cs, wk_mono φ -> nbrs_cmp (nbrs_wk φ Bs) (nbrs_wk φ Cs) = nbrs_cmp Bs Cs) /\
+  (forall Bks φ Cks, wk_mono φ -> nblocks_cmp (nblocks_wk φ Bks) (nblocks_wk φ Cks) = nblocks_cmp Bks Cks).
 Proof.
   apply nf_mut_ind; intros;
     match goal with
@@ -207,6 +228,7 @@ Proof.
     | |- la_cmp _ (la_wk _ ?N) = _ => destruct N
     | |- nfs_cmp _ (nfs_wk _ ?N) = _ => destruct N
     | |- nbrs_cmp _ (nbrs_wk _ ?N) = _ => destruct N
+    | |- nblocks_cmp _ (nblocks_wk _ ?N) = _ => destruct N
     end;
     repeat match goal with p : o2 |- _ => destruct p end;
     cmp_norm; try reflexivity.
@@ -272,7 +294,8 @@ Lemma nf_wk_fresh :
   (forall u k φ, wk_avoids k φ -> ne_fresh k (ne_wk φ u)) /\
   (forall xs k φ, wk_avoids k φ -> la_fresh k (la_wk φ xs)) /\
   (forall Ms k φ, wk_avoids k φ -> nfs_fresh k (nfs_wk φ Ms)) /\
-  (forall Bs k φ, wk_avoids k φ -> nbrs_fresh k (nbrs_wk φ Bs)).
+  (forall Bs k φ, wk_avoids k φ -> nbrs_fresh k (nbrs_wk φ Bs)) /\
+  (forall Bks k φ, wk_avoids k φ -> nblocks_fresh k (nblocks_wk φ Bks)).
 Proof.
   apply nf_mut_ind; intros; cbn; repeat split; eauto 6 using wk_avoids_q, wk_avoids_qn.
 Qed.
@@ -296,7 +319,8 @@ Lemma nf_wk_inj :
   (forall u φ u', wk_inj φ -> ne_wk φ u = ne_wk φ u' -> u = u') /\
   (forall xs φ xs', wk_inj φ -> la_wk φ xs = la_wk φ xs' -> xs = xs') /\
   (forall Ms φ Ms', wk_inj φ -> nfs_wk φ Ms = nfs_wk φ Ms' -> Ms = Ms') /\
-  (forall Bs φ Bs', wk_inj φ -> nbrs_wk φ Bs = nbrs_wk φ Bs' -> Bs = Bs').
+  (forall Bs φ Bs', wk_inj φ -> nbrs_wk φ Bs = nbrs_wk φ Bs' -> Bs = Bs') /\
+  (forall Bks φ Bks', wk_inj φ -> nblocks_wk φ Bks = nblocks_wk φ Bks' -> Bks = Bks').
 Proof.
   apply nf_mut_ind; intros;
     match goal with
@@ -305,6 +329,7 @@ Proof.
     | H : la_wk _ _ = la_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
     | H : nfs_wk _ _ = nfs_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
     | H : nbrs_wk _ _ = nbrs_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
+    | H : nblocks_wk _ _ = nblocks_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
     end;
     f_equal; eauto using wk_inj_q, wk_inj_qn.
 Qed.

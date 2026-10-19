@@ -399,97 +399,221 @@ Ltac saturate_sub_eq_IH :=
       pose proof (IH _ _ _ Hσ)
   end.
 
-(** The eliminator: the motive and the branches move under the equivalent
-    substitutions lifted over their contexts, which the induction
-    hypotheses of the telescope premises give. *)
-Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D Ps M nm i A Bs,
-    ind_lookup Θ Ξ p = Some D -> List.length Ps = ind_np D ->
-    (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
-       Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
-    (forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[τ] ≈ M[τ'] : (apps (a_ind p) Ps)[τ]) ->
-    nm = S (ind_nn D) ->
-    Θ ⍮ Ξ ⍮ elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ ⊢ A : Typeω@i ->
-    (forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ ->
-       Θ ⍮ Ξ ⍮ Δ0 ⊢ A[τ] ≈ A[τ'] : Typeω@i[τ]) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D (List.firstn (ind_nu D) Ps) ->
-    (forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ ->
-     (tele_ass (elim_mctx p D (List.firstn (ind_nu D) Ps)) ->
-       Θ ⍮ Ξ ⍮ tele_sub (elim_mctx p D (List.firstn (ind_nu D) Ps)) τ ++ Δ0
-         ⊢ˢ sb_qn (List.length (elim_mctx p D (List.firstn (ind_nu D) Ps))) τ
-          ≈ sb_qn (List.length (elim_mctx p D (List.firstn (ind_nu D) Ps))) τ'
-         : elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ /\
-       Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D (List.firstn (ind_nu D) Ps)) τ
-         ≈ tele_sub (elim_mctx p D (List.firstn (ind_nu D) Ps)) τ') /\
-     (tele_ass (elim_mctx p D (List.firstn (ind_nu D) Ps)) ->
-       Θ ⍮ Ξ ⍮ tele_sub (elim_mctx p D (List.firstn (ind_nu D) Ps)) τ ++ Δ0
-         ⊢ˢ sb_qn (List.length (elim_mctx p D (List.firstn (ind_nu D) Ps))) τ
-          ≈ sb_qn (List.length (elim_mctx p D (List.firstn (ind_nu D) Ps))) τ'
-         : elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ /\
-       Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D (List.firstn (ind_nu D) Ps)) τ
-         ≈ tele_sub (elim_mctx p D (List.firstn (ind_nu D) Ps)) τ')) ->
-    brs_names (ind_cons D) Bs ->
-    (forall c gs, ind_con D c = Some gs ->
-       Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ≈ elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) ->
-    (forall c gs, ind_con D c = Some gs ->
-       forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ ->
-       (tele_ass (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) ->
-         Θ ⍮ Ξ ⍮ tele_sub (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) τ ++ Δ0
-           ⊢ˢ sb_qn (List.length (elim_bctx p D gs A (List.firstn (ind_nu D) Ps))) τ
-            ≈ sb_qn (List.length (elim_bctx p D gs A (List.firstn (ind_nu D) Ps))) τ'
-           : elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ /\
-         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) τ
-           ≈ tele_sub (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) τ') /\
-       (tele_ass (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) ->
-         Θ ⍮ Ξ ⍮ tele_sub (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) τ ++ Δ0
-           ⊢ˢ sb_qn (List.length (elim_bctx p D gs A (List.firstn (ind_nu D) Ps))) τ
-            ≈ sb_qn (List.length (elim_bctx p D gs A (List.firstn (ind_nu D) Ps))) τ'
-           : elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ /\
-         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) τ
-           ≈ tele_sub (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) τ')) ->
-    (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs -> n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
-    (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs ->
-       forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ->
-         Θ ⍮ Ξ ⍮ Δ0 ⊢ B[τ] ≈ B[τ'] : (elim_bty p D c gs A (List.firstn (ind_nu D) Ps))[τ]) ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ ≈ σ' : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim nm A Bs M)[σ] ≈ (a_elim nm A Bs M)[σ'] : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
+(** The head of an equation of telescopes of assumptions. *)
+Lemma ext_eq_ass_inv : forall Θ Ξ Γ Ψ Ψ' A A', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹ A ≈ Ψ' ▹ A' ->
+    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' /\ Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ≈ A' : Typeω@i /\
+      Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : Typeω@i.
+Proof. intros * H; inversion H; subst; eexists; eauto. Qed.
+
+(** An annotated motive context [T ▹ Z] equal to [T' ▹ Z'] and to the
+    motive's context [T ▹ H]: [T ▹ Z'] is equal to the motive's context
+    too. *)
+Lemma ann_ctx_trans : forall Θ Ξ Δ T T' Z Z' H,
+    Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹ Z ≈ T' ▹ Z' -> Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹ Z ≈ T ▹ H -> tele_ass T ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ˣ T ▹ Z' ≈ T ▹ H.
 Proof.
-  intros * Hl HPl HPs HM Hnm HA HAA HΨ HΨl Hn HΨB HΨBl Hk HBB Hσ.
-  pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs.
+  intros * Ha Hb HT.
+  destruct (ext_eq_ass_inv _ _ _ _ _ _ _ Ha) as (i & HTT' & HZ & HZZ' & HZ').
+  destruct (ext_eq_ass_inv _ _ _ _ _ _ _ Hb) as (j & HTT & _ & HZH & HH).
+  pose proof (ctxsub_exp _ _ _ _ _ _ (ctxsub_ext_rev _ _ _ _ _ HTT' HT) HZ') as HZ'l.
+  eapply wf_ext_eq_ass with (i := max i j);
+    [ exact HTT | eapply lift_exp_max_left; exact HZ'l
+    | eapply wf_exp_eq_trans; [ eapply wf_exp_eq_sym, lift_exp_eq_max_left; exact HZZ' | eapply lift_exp_eq_max_right; exact HZH ]
+    | eapply lift_exp_max_right; exact HH ].
+Qed.
+
+(** The eliminator: the scrutinee, the motives, the annotations and the
+    branches move under the equivalent substitutions lifted over their
+    contexts, which the induction hypotheses of the telescope premises
+    give; the annotations of the second side by the equations of the
+    annotated contexts. *)
+Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D oq m Mm Bks bm Ps M i,
+    ind_lookup Θ Ξ p = Some D ->
+    elim_grp D oq p m ->
+    ind_member D m = Some Mm ->
+    List.nth_error Bks m = Some bm ->
+    List.length Bks = List.length (ind_members D) ->
+    List.length Ps = im_np D Mm ->
+    (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
+    (forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ ->
+       Θ ⍮ Ξ ⍮ Δ0 ⊢ M[τ] ≈ M[τ'] : (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps))[τ]) ->
+    elim_view_ann D m Bks ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
+    (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
+                    ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
+       forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ ->
+       (tele_ass (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z) ->
+         Θ ⍮ Ξ ⍮ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z) τ ++ Δ0
+           ⊢ˢ sb_qn (List.length (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z)) τ
+            ≈ sb_qn (List.length (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z)) τ'
+           : (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z) ++ Γ /\
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z) τ
+           ≈ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z) τ') /\
+       (tele_ass (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+         Θ ⍮ Ξ ⍮ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ ++ Δ0
+           ⊢ˢ sb_qn (List.length (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) τ
+            ≈ sb_qn (List.length (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) τ'
+           : elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ /\
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ
+           ≈ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ')) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊢ eb_motive b : Typeω@i) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ->
+       Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[τ] ≈ (eb_motive b)[τ'] : Typeω@i[τ]) ->
+    (forall k Mk, ind_member D k = Some Mk ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk, ind_member D k = Some Mk ->
+       forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ ->
+       (tele_ass (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+         Θ ⍮ Ξ ⍮ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ ++ Δ0
+           ⊢ˢ sb_qn (List.length (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) τ
+            ≈ sb_qn (List.length (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) τ'
+           : elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ /\
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ
+           ≈ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ') /\
+       (tele_ass (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+         Θ ⍮ Ξ ⍮ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ ++ Δ0
+           ⊢ˢ sb_qn (List.length (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) τ
+            ≈ sb_qn (List.length (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps))) τ'
+           : elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ /\
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ
+           ≈ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) τ')) ->
+    (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
+    (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
+                    ≈ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+       forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ ->
+       (tele_ass (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+         Θ ⍮ Ξ ⍮ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ ++ Δ0
+           ⊢ˢ sb_qn (List.length (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ
+            ≈ sb_qn (List.length (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ'
+           : elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ /\
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ
+           ≈ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ') /\
+       (tele_ass (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+         Θ ⍮ Ξ ⍮ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ ++ Δ0
+           ⊢ˢ sb_qn (List.length (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ
+            ≈ sb_qn (List.length (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps))) τ'
+           : elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ /\
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ
+           ≈ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) τ')) ->
+    (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
+       n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+    (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
+       Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
+         : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+    (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+       ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
+       forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ->
+       Θ ⍮ Ξ ⍮ Δ0 ⊢ B[τ] ≈ B[τ'] : (elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[τ]) ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ ≈ σ' : Γ ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq m Bks M)[σ] ≈ (a_elim oq m Bks M)[σ']
+      : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
+Proof.
+  intros * Hl Hg HMm Hbm HlB HlP HPs IHM Hann Hnm HZ IHZ HA IHA HΨ IHΨ Hn HΨB IHΨB Hk HB IHB Hσ.
+  pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hs'.
   assert (HD : decl_closed D) by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hs) | exact Hl ]).
-  pose proof (wk_firstn_length D Ps HD HPl) as HUl.
-  rewrite (sub_elim_type D Ps A M nm σ HPl Hnm); cbn [exp_sub]; subst nm.
-  assert (HΨσ : Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_sub (elim_mctx p D (List.firstn (ind_nu D) Ps)) σ
-                  ≈ tele_sub (elim_mctx p D (List.firstn (ind_nu D) Ps)) σ)
-    by (eapply sub_preserves_ext; eassumption).
-  pose proof (sub_elim_motive_ctx _ _ _ _ _ _ _ _ HD HUl Hs HΨ HΨσ) as Hq.
-  pose proof (proj1 (proj1 (HΨl _ _ _ Hσ) (elim_mctx_ass _ _ _ HD))) as Hlift.
-  rewrite length_elim_mctx, elim_mctx_sub in Hlift by assumption.
-  eapply wf_exp_eq_elim_cong with (Ps := List.map (fun P => P[σ]) Ps).
-  - exact Hl.
-  - rewrite List.length_map; exact HPl.
-  - eapply sub_elim_params; [ exact HD | | exact Hs ].
-    intros * HP HT ? ? Hs0; eapply sub_preserves_exp; [ eapply HPs; eassumption | exact Hs0 ].
-  - rewrite <- sub_apps_ind; apply HM; exact Hσ.
-  - reflexivity.
-  - rewrite List.firstn_map; exact (sub_preserves_exp _ _ _ _ _ _ _ HA Hq).
-  - rewrite List.firstn_map, <- elim_mctx_sub by assumption; exact HΨσ.
-  - rewrite List.firstn_map; exact (HAA _ _ _ Hlift).
-  - apply brs_names_map; exact Hn.
-  - intros c gs Hc; rewrite List.firstn_map, <- (elim_bctx_sub p D c gs A _ σ HD (cons_lookup_in _ _ _ Hc) HUl).
-    eapply sub_preserves_ext; [ apply (HΨB c gs Hc) | exact Hs ].
-  - rewrite !brs_fst_map; reflexivity.
-  - intros c gs n B' Hc Hin; apply brs_in_map in Hin as (B & Hin & ->); eapply Hk; eassumption.
-  - intros k c gs n B1 B2 Hk1 Hk2 Hc.
-    apply nth_error_map_inv in Hk1 as ([[c1 n1] B] & Hk1 & Heq1); cbn in Heq1; injection Heq1 as E1 E2 E3; subst.
-    apply nth_error_map_inv in Hk2 as ([[c2 n2] B'] & Hk2 & Heq2); cbn in Heq2; injection Heq2 as E4 E5 E6; subst.
-    rewrite Hk1 in Hk2; injection Hk2 as <-.
-    cbn [fst snd]; pose proof (List.nth_error_In _ _ Hk1) as Hin.
-    rewrite List.firstn_map, <- elim_bty_sub, (Hk _ _ _ _ Hc Hin).
-    apply (HBB _ gs _ B Hc Hin).
-    pose proof (proj1 (proj1 (HΨBl _ gs Hc _ _ _ Hσ) (elim_bctx_ass _ _ _ _ _ HD))) as HlB.
-    rewrite length_elim_bctx, (elim_bctx_sub p D _ gs A _ σ HD (cons_lookup_in _ _ _ Hc) HUl) in HlB.
-    replace (ind_nn D + List.length gs + cargs_nrec gs) with (cargs_nrec gs + List.length gs + ind_nn D) by lia.
-    exact HlB.
+  assert (HUl : List.length (List.firstn (ind_nu D) Ps) = ind_nu D) by (rewrite List.length_firstn; unfold im_np in HlP; lia).
+  (* the premises at one substitution *)
+  assert (HPs1 : forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
+             forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ P[σ0] : T[σ0])
+    by (intros; eapply sub_preserves_exp; eauto).
+  assert (HZ1 : forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
+             forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 Γ ->
+             Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z) σ0
+                          ≈ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) σ0)
+    by (intros; eapply sub_preserves_ext; eauto).
+  assert (HA1 : forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+             forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ) ->
+             Θ ⍮ Ξ ⍮ Δ0 ⊢ (eb_motive b)[σ0] : Typeω@i[σ0])
+    by (intros; eapply sub_preserves_exp; eauto).
+  assert (HΨ1 : forall k Mk, ind_member D k = Some Mk -> forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 Γ ->
+             Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) σ0
+                          ≈ tele_sub (elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) σ0)
+    by (intros; eapply sub_preserves_ext; eauto).
+  assert (HΨB1 : forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+             forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 Γ ->
+             Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) σ0
+                          ≈ tele_sub (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) σ0)
+    by (intros; eapply sub_preserves_ext; eauto).
+  assert (HB1 : forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+             ind_con Mk c = Some gs -> List.In (c, n, B) (eb_brs b) ->
+             forall Δ0 σ0, sub_as_sub Θ Ξ Δ0 σ0 (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
+             Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0])
+    by (intros; eapply sub_preserves_exp; eauto).
+  pose proof (sub_as_sub_dom Θ Ξ) as Rd; pose proof (sub_as_sub_ext Θ Ξ) as Re.
+  rewrite !exp_sub_elim, (elim_type_sub D Mm bm) by eauto.
+  eapply wf_exp_eq_elim_cong;
+    [ exact Hl | exact Hg | exact Hg | exact HMm | rewrite nth_error_blocks_sub, Hbm; reflexivity
+    | rewrite length_blocks_sub; exact HlB | rewrite length_blocks_sub; exact HlB | rewrite List.length_map; exact HlP | .. ].
+  - eapply mv_elim_params with (R := sub_as_sub Θ Ξ); eassumption.
+  - rewrite <- ind_mty_split_sub by (try assumption; unfold im_np in HlP; lia); exact (IHM _ _ _ Hσ).
+  - apply elim_view_ann_sub; exact Hann.
+  - apply elim_view_ann_sub; exact Hann.
+  - apply blocks_nm_ok_sub; exact Hnm.
+  - apply blocks_nm_ok_sub; exact Hnm.
+  - rewrite List.firstn_map; eapply mv_blocks_ann with (R := sub_as_sub Θ Ξ); eassumption.
+  - (* the annotations at the second substitution, at the parameters at the
+       first: equal to those at the first *)
+    intros k Mk b Z HMk Hb HZb.
+    rewrite nth_error_blocks_sub in Hb; destruct (List.nth_error Bks k) as [b0 |] eqn:Hb0; cbn in Hb; [| discriminate ].
+    injection Hb as <-; destruct b0 as [nm oZ A0 Bs0]; cbn in HZb; destruct oZ as [Z0 |]; [| discriminate ].
+    injection HZb as <-.
+    pose proof (Hnm _ _ _ HMk Hb0) as Enm; cbn in Enm; subst nm.
+    replace (S (im_nn Mk) - 1) with (im_nn Mk) by lia.
+    assert (Hlft : Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.map (fun U => U[σ]) (List.firstn (ind_nu D) Ps)))
+                                  ▹ Z0[sb_qn (im_nn Mk) σ]
+                                ≈ elim_mctx p D k Mk (List.map (fun U => U[σ]) (List.firstn (ind_nu D) Ps))).
+    { eapply mv_blocks_ann with (R := sub_as_sub Θ Ξ) (k := k) (b := eblock_sub (eb_mk (S (im_nn Mk)) (Some Z0) A0 Bs0) σ);
+        first [ eassumption | rewrite nth_error_blocks_sub, Hb0; reflexivity | cbn [eblock_sub eb_ann option_map]; replace (S (im_nn Mk) - 1) with (im_nn Mk) by lia; reflexivity ]. }
+    assert (HtZ : tele_ass (tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z0))
+      by (constructor; [ eauto | apply tele_ass_sub; eapply decl_closed_nparams_ass; eassumption ]).
+    destruct (proj1 (IHZ _ _ _ _ HMk Hb0 eq_refl _ _ _ Hσ) HtZ) as [_ HZσ].
+    cbn [tele_sub centry_sub] in HZσ; rewrite length_tele_sub in HZσ; fold (im_nn Mk) in HZσ.
+    erewrite !nparams_sub in HZσ by eassumption.
+    rewrite List.firstn_map; unfold elim_mctx in Hlft |- *; eapply ann_ctx_trans; [ exact HZσ | exact Hlft |].
+    apply tele_ass_sub; eapply decl_closed_nparams_ass; eassumption.
+  - rewrite List.firstn_map; eapply mv_blocks_motive with (R := sub_as_sub Θ Ξ); eassumption.
+  - (* the motives at the two substitutions *)
+    intros k Mk b b' HMk Hb Hb'.
+    rewrite !nth_error_blocks_sub in Hb, Hb'; destruct (List.nth_error Bks k) as [b0 |] eqn:Hb0; cbn in Hb, Hb'; [| discriminate ].
+    injection Hb as <-; injection Hb' as <-.
+    pose proof (Hnm _ _ _ HMk Hb0) as Enm; destruct b0 as [nm oZ A0 Bs0]; cbn in Enm |- *; subst nm.
+    destruct (proj1 (IHΨ _ _ HMk _ _ _ Hσ) (elim_mctx_ass _ _ _ _ _ HD HMk)) as [Hlift _].
+    rewrite length_elim_mctx in Hlift; erewrite elim_mctx_sub in Hlift by eassumption.
+    rewrite List.firstn_map; exact (IHA _ _ _ HMk Hb0 _ _ _ Hlift).
+  - intros k Mk HMk; rewrite List.firstn_map; erewrite <- elim_mctx_sub by eassumption; exact (HΨ1 _ _ HMk _ _ Hs).
+  - apply mv_blocks_names; exact Hn.
+  - intros k b b' Hb Hb'; rewrite !nth_error_blocks_sub in Hb, Hb'.
+    destruct (List.nth_error Bks k) as [[nm oZ A0 Bs0] |]; cbn in Hb, Hb'; [| discriminate ].
+    injection Hb as <-; injection Hb' as <-; cbn; unfold brs_sub; rewrite !brs_fst_map; reflexivity.
+  - rewrite List.firstn_map; eapply mv_blocks_bctx with (R := sub_as_sub Θ Ξ); eassumption.
+  - apply mv_blocks_counts; exact Hk.
+  - (* the branches at the two substitutions *)
+    intros k Mk b b' i0 c gs n B1 B2 HMk Hb Hb' Hi Hi' Hc.
+    rewrite !nth_error_blocks_sub in Hb, Hb'; destruct (List.nth_error Bks k) as [b0 |] eqn:Hb0; cbn in Hb, Hb'; [| discriminate ].
+    injection Hb as <-; injection Hb' as <-.
+    pose proof (Hnm _ _ _ HMk Hb0) as Enm; destruct b0 as [nm oZ A0 Bs0]; cbn in Enm, Hi, Hi' |- *; subst nm.
+    unfold brs_sub in Hi, Hi'.
+    apply nth_error_map_inv in Hi as ([[c1 n1] B] & Hi & Heq1); cbn in Heq1; injection Heq1 as -> -> ->.
+    apply nth_error_map_inv in Hi' as ([[c2 n2] B'] & Hi' & Heq2); cbn in Heq2; injection Heq2 as -> -> ->.
+    rewrite Hi in Hi'; injection Hi' as <-.
+    pose proof (List.nth_error_In _ _ Hi) as Hin; cbn [eb_brs] in Hin.
+    pose proof (Hk _ _ _ _ _ _ _ HMk Hb0 Hc Hin) as En; cbn in En; subst n2.
+    destruct (proj1 (IHΨB _ _ _ _ HMk Hc _ _ _ Hσ) (elim_bctx_ass _ _ _ _ _ _ _ HD HMk)) as [Hlift _].
+    rewrite length_elim_bctx in Hlift.
+    erewrite elim_bctx_sub in Hlift;
+      [| eassumption | eassumption | apply cons_lookup_in; eassumption | eassumption | intros j0 Mj HMj; eapply blocks_motives_sub; eassumption ].
+    rewrite List.firstn_map; erewrite <- elim_bty_sub by eassumption.
+    replace (im_nn Mk + List.length gs + cargs_nrec gs) with (cargs_nrec gs + List.length gs + im_nn Mk) by lia.
+    exact (IHB _ _ _ _ _ _ _ HMk Hb0 Hc Hin _ _ _ Hlift).
 Qed.
 
 (** ** The Module Cases of [sub_eq_preserves_mut]
@@ -1171,7 +1295,7 @@ Proof.
         let HD := fresh "HD" in
         assert (HD : decl_closed D)
           by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hσ) | exact Hl ]);
-        try rewrite (ind_ty_sub D _ HD); try (erewrite (con_ty_sub _ D _ _ _ HD) by eassumption);
+        try (erewrite (ind_ty_sub D) by eassumption); try (erewrite (con_ty_sub _ D) by eassumption);
         first [ eapply wf_exp_eq_ind_cong | eapply wf_exp_eq_con_cong ]; eauto using wf_sub_dom
     end ].
   (** The module of an inductive type as a term: its chain is closed, and

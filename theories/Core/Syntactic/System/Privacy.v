@@ -232,8 +232,8 @@ with etab (S : list ptab) (E : gentry) : ptab :=
   match E with
   | ge_def _ _ _ _ => pt_none
   | ge_mod _ U => utab S U
-  | ge_ind _ _ D Φ => pt_body nil (btab (repeat pt_none (ind_nu D) ++ S) Φ)
-  | ge_ind_alias _ _ p _ => pt_glob (qname_mod p)
+  | ge_ind _ _ _ D Φ => pt_body nil (btab (repeat pt_none (ind_nu D) ++ S) Φ)
+  | ge_ind_alias _ _ pm _ _ _ => pt_glob (qname_mod pm)
   end.
 
 (** The table a local binding gives its index. *)
@@ -262,14 +262,20 @@ Fixpoint exp_refs (S : list ptab) (M : exp) : list (ptab * string)%type :=
   | a_succl M | a_univ M => exp_refs S M
   | a_maxl M N => exp_refs S M ++ exp_refs S N
   | a_exfalso A M => exp_refs (pt_none :: S) A ++ exp_refs S M
-  | a_ind _ | a_con _ _ | a_nlit _ | a_ntok => nil
-  | a_elim nm A Bs M =>
-      exp_refs (repeat pt_none nm ++ S) A ++
-        (fix brs_refs (Bs : list (string * nat * exp)) : list (ptab * string)%type :=
-           match Bs with
-           | nil => nil
-           | b :: Bs' => exp_refs (repeat pt_none (snd (fst b)) ++ S) (snd b) ++ brs_refs Bs'
-           end) Bs ++ exp_refs S M
+  | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => nil
+  | a_elim _ _ Bks M =>
+      (fix blks_refs (Bks : list eblock) : list (ptab * string)%type :=
+         match Bks with
+         | nil => nil
+         | eb_mk nm oZ A Bs :: Bks' =>
+             match oZ with Some Z => exp_refs (repeat pt_none (nm - 1) ++ S) Z | None => nil end ++
+             exp_refs (repeat pt_none nm ++ S) A ++
+             (fix brs_refs (Bs : list (string * nat * exp)) : list (ptab * string)%type :=
+                match Bs with
+                | nil => nil
+                | b :: Bs' => exp_refs (repeat pt_none (snd (fst b)) ++ S) (snd b) ++ brs_refs Bs'
+                end) Bs ++ blks_refs Bks'
+         end) Bks ++ exp_refs S M
   | a_pi A M | a_fn A M => exp_refs S A ++ exp_refs (pt_none :: S) M
   | a_app M N => exp_refs S M ++ exp_refs S N
   | a_let b B => bnd_refs S b ++ exp_refs (bnd_tab S b :: S) B
@@ -313,7 +319,7 @@ with gentry_refs (S : list ptab) (E : gentry) : list (ptab * string)%type :=
   match E with
   | ge_def _ _ A B => exp_refs S A ++ match B with Some M => exp_refs S M | None => nil end
   | ge_mod _ U => gunit_refs S U
-  | ge_ind _ _ _ _ | ge_ind_alias _ _ _ _ => nil
+  | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ => nil
   end
 with centry_refs (S : list ptab) (e : centry) : list (ptab * string)%type :=
   match e with
@@ -328,20 +334,34 @@ Fixpoint tele_refs (S : list ptab) (Δ : ctx) : list (ptab * string)%type :=
   | e :: Δ' => centry_refs (repeat pt_none (List.length Δ') ++ S) e ++ tele_refs S Δ'
   end.
 
-(** The references of a declaration as written: its parameters, its sort
-    over the uniform ones, and its constructors' arguments over the declared
-    type and all the parameters, each argument binding a variable for the
-    ones after it. *)
+(** The references of a group as written: its uniform parameters, and of
+    each member its non-uniform parameters and sort over the uniform ones,
+    and its constructors' arguments over the declared types and all the
+    member's parameters, each argument binding a variable for the ones after
+    it. *)
 Fixpoint rargs_refs (S : list ptab) (args : list (string * exp)) : list (ptab * string)%type :=
   match args with
   | nil => nil
   | (_, T) :: args' => exp_refs S T ++ rargs_refs (pt_none :: S) args'
   end.
 
+Definition rmem_refs (nu nself : nat) (Mr : raw_member) : list (ptab * string)%type :=
+  tele_refs (repeat pt_none nu) (rm_nparams Mr) ++
+  exp_refs (repeat pt_none nu) (rm_sort Mr) ++
+  flat_map (fun cg => rargs_refs (repeat pt_none (List.length (rm_nparams Mr) + nu + nself)) (snd cg)) (rm_cons Mr).
+
 Definition decl_refs (R : raw_decl) : list (ptab * string)%type :=
-  tele_refs nil (rd_params R) ++
-  exp_refs (repeat pt_none (List.length (List.skipn (List.length (rd_params R) - rd_nu R) (rd_params R)))) (rd_sort R) ++
-  flat_map (fun cg => rargs_refs (repeat pt_none (S (List.length (rd_params R)))) (snd cg)) (rd_cons R).
+  tele_refs nil (rd_uparams R) ++
+  flat_map (rmem_refs (List.length (rd_uparams R)) (List.length (rd_members R))) (rd_members R).
+
+(** The references of a function of a [mutual def] as written, under the
+    block's parameters: its non-uniform parameters, its scrutinee's type,
+    its result type and its clauses. *)
+Definition rfun_refs (np : nat) (f : raw_fun) : list (ptab * string)%type :=
+  tele_refs (repeat pt_none np) (rf_nparams f) ++
+  exp_refs (repeat pt_none (List.length (rf_nparams f) + np)) (rf_scrut f) ++
+  exp_refs (repeat pt_none (S (List.length (rf_nparams f) + np))) (rf_res f) ++
+  flat_map (fun cl => exp_refs (repeat pt_none (snd (fst cl) + np)) (snd cl)) (rf_clauses f).
 
 (** The references a command makes, as written: its own terms, and for an
     import, its target and each member its items name.  A module's nested
@@ -354,7 +374,8 @@ Definition cmd_refs (c : ccmd) : list (ptab * string)%type :=
   | cc_load _ => nil
   | cc_open E its => modexp_refs nil E ++ item_refs (mtab nil E) its
   | cc_eval M oA => exp_refs nil M ++ match oA with Some A => exp_refs nil A | None => nil end
-  | cc_ind _ _ D => decl_refs D
+  | cc_ind _ D => decl_refs D
+  | cc_mdef _ _ Δ fs => tele_refs nil Δ ++ flat_map (rfun_refs (List.length Δ)) fs
   | cc_builtin _ H => modexp_refs nil H
   | cc_ind_alias _ _ Δ H => tele_refs nil Δ ++ modexp_refs nil H
   end.
