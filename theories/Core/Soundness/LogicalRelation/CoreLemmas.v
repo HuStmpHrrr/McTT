@@ -423,29 +423,31 @@ Proof.
 Qed.
 
 (** The relation of a recursive argument's values. *)
-Lemma ind_args_rel_shape : forall p D ups nr ar dr pre gs vs vs', ind_args_rel p D ups nr ar dr pre gs vs vs' ->
+Lemma ind_args_rel_shape : forall p D Ok nr ar dr u u' pre pre' gs vs vs', ind_args_rel p D Ok nr ar dr u u' pre pre' gs vs vs' ->
     forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
     exists x x', List.nth_error vs (List.length gs1) = Some x /\ List.nth_error vs' (List.length gs1) = Some x' /\
-      ind_shape_rel p D ups nr ar dr (pre ++ nonrec_vals gs1 (List.firstn (List.length gs1) vs)) t x x'.
+      ind_shape_rel p D Ok nr ar dr u u' (pre ++ nonrec_vals gs1 (List.firstn (List.length gs1) vs))
+        (pre' ++ nonrec_vals gs1 (List.firstn (List.length gs1) vs')) t x x'.
 Proof.
   induction 1; intros [| g gs1] Qs gs2 Heq; cbn [List.app] in Heq; inversion Heq; subst;
     try match goal with IH : forall _ _ _, _ = _ -> _ |- _ => destruct (IH _ _ _ eq_refl) as (x & x' & Hx & Hx' & Hr0) end.
-  - exists x, x'; cbn; rewrite <- List.app_assoc in Hr0; repeat split; assumption.
-  - do 2 eexists; cbn; rewrite List.app_nil_r; repeat split; eassumption.
+  - exists x, x'; cbn; rewrite <- !List.app_assoc in Hr0; repeat split; assumption.
+  - do 2 eexists; cbn; rewrite !List.app_nil_r; repeat split; eassumption.
   - exists x, x'; cbn; repeat split; assumption.
 Qed.
 
-Lemma ind_args_rel_rec : forall p D ups nr ar dr pre gs vs vs', ind_args_rel p D ups nr ar dr pre gs vs vs' ->
+Lemma ind_args_rel_rec : forall p D Ok nr ar dr u u' pre pre' gs vs vs', ind_args_rel p D Ok nr ar dr u u' pre pre' gs vs vs' ->
     forall gs1 Pr gs2 v v', gs = gs1 ++ ca_rec Pr :: gs2 ->
       List.nth_error vs (List.length gs1) = Some v -> List.nth_error vs' (List.length gs1) = Some v' ->
-      ind_shape_rel p D ups nr ar dr (pre ++ nonrec_vals gs1 (List.firstn (List.length gs1) vs)) Pr v v'.
+      ind_shape_rel p D Ok nr ar dr u u' (pre ++ nonrec_vals gs1 (List.firstn (List.length gs1) vs))
+        (pre' ++ nonrec_vals gs1 (List.firstn (List.length gs1) vs')) Pr v v'.
 Proof.
   intros * H * Heq Hv Hv'.
-  destruct (ind_args_rel_shape _ _ _ _ _ _ _ _ _ _ H _ _ _ Heq) as (x & x' & Hx & Hx' & Hr).
+  destruct (ind_args_rel_shape _ _ _ _ _ _ _ _ _ _ _ _ _ H _ _ _ Heq) as (x & x' & Hx & Hx' & Hr).
   rewrite Hv in Hx; injection Hx as <-; rewrite Hv' in Hx'; injection Hx' as <-; exact Hr.
 Qed.
 
-Lemma ind_args_rel_len : forall p D ups nr ar dr pre gs vs vs', ind_args_rel p D ups nr ar dr pre gs vs vs' ->
+Lemma ind_args_rel_len : forall p D Ok nr ar dr u u' pre pre' gs vs vs', ind_args_rel p D Ok nr ar dr u u' pre pre' gs vs vs' ->
     List.length vs = List.length gs /\ List.length vs' = List.length gs.
 Proof. induction 1; cbn; lia. Qed.
 
@@ -668,7 +670,10 @@ Section GluIndProps.
     apply tele_pre_of_full with (T := T); [ exact Hns | unfold T; rewrite List.length_rev, length_nparams; lia ].
   Qed.
 
-  Lemma ind_glu_elem_resp_per : ind_adm D ups nr ar dr ups ->
+  (** [ind_glu_elem] at [ups] moves along the relation of the elements at
+      any [Ok] whose uniform parameters are admissible beside [ups]. *)
+  Lemma ind_glu_elem_resp_per : forall Ok : list domain -> Prop, (forall u, Ok u -> ind_adm D ups nr ar dr u) ->
+      ind_adm D ups nr ar dr ups ->
       (forall k vs vs', k < ind_nn D -> tele_pre nr k vs vs' ->
          forall Γ A N n n', NEl k vs Γ A N n -> nr k vs n n' -> NEl k vs' Γ A N n') ->
       (forall ms ms' c gs k vs vs', tele_full nr T ms ms' -> ind_con D c = Some gs -> k < List.length (cargs_nonrec gs) ->
@@ -679,9 +684,9 @@ Section GluIndProps.
          (forall Γ A, DP (ms ++ ws ++ ys) B Γ A -> DP (ms' ++ ws' ++ ys') B Γ A) /\
          (forall Γ A N n, DEl (ms' ++ ws' ++ ys') B Γ A N n -> DEl (ms ++ ws ++ ys) B Γ A N n)) ->
       forall Γ Ps M m, ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m ->
-      forall ns m', ind_rel p D ups nr ar dr ns m m' -> ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m'.
+      forall ns ns' m', ind_rel p D Ok nr ar dr ns ns' m m' -> ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m'.
   Proof.
-    intros Hadm HNe HAe HDe.
+    intros Ok HOk Hadm HNe HAe HDe.
     pose proof Hcp as [HnP HnI HaP HaI HdP HdI].
     pose proof (tnr_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as Sn.
     pose proof (tnr_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as Tn.
@@ -691,18 +696,22 @@ Section GluIndProps.
     pose proof (tar_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as Sa.
     pose proof (tarp_inst p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as Iap.
     pose proof (tar_pre_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as RaL.
-    pose proof (proj1 (proj2 (proj2 (ind_rel_move p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups Hadm)))) as Msh.
-    pose proof Hadm as [_ _ Hcl _].
+    pose proof (tar_pre_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as SaP.
+    pose proof (proj1 (ind_shape_rel_rebase p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI Ok)) as Reb.
+    (** The uniform parameters of a related element are admissible beside
+        [ups], and [ups] beside them. *)
+    assert (Hback : forall u, Ok u -> ind_adm D u nr ar dr ups)
+      by (intros u Hu; exact (proj1 (adm_iff p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI u (HOk u Hu) ups) Hadm)).
     apply (ind_glu_elem_mut_ind p D ups NEl AEl DP DEl
-             (fun Γ Ps M m _ => forall ns m', ind_rel p D ups nr ar dr ns m m' -> ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m')
+             (fun Γ Ps M m _ => forall ns ns' m', ind_rel p D Ok nr ar dr ns ns' m m' -> ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m')
              (fun Γ pre t A N v _ => forall ms ms' c0 gs1 t0 gs2 ws ws' k ys ys' v', pre = ms ++ ws ++ ys ->
                 tele_full nr T ms ms' -> ind_con D c0 = Some (gs1 ++ ca_rec t0 :: gs2) ->
                 tele_pre (ar ms c0) (List.length (cargs_nonrec gs1)) ws ws' ->
                 ptyp_skip k t0 = t -> k <= List.length (ptyp_doms t0) -> tele_pre (shape_tr dr ms ws (ptyp_doms t0)) k ys ys' ->
-                ind_shape_rel p D ups nr ar dr pre t v v' ->
+                ind_shape_rel p D Ok nr ar dr ups ups pre (ms' ++ ws' ++ ys') t v v' ->
                 glu_rec p D ups NEl AEl DP DEl Γ (ms' ++ ws' ++ ys') t A N v')).
     2:{ (** A neutral: related neutrals read back equally. *)
-        intros * Hm Hr ns m' Hrel.
+        intros * Hm Hr ns ns' m' Hrel.
         inversion Hrel; subst.
         match goal with Hb : per_bot m ?m0 |- _ => rename m0 into e'; rename Hb into Hbe end.
         eapply ind_glu_elem_neut; [ etransitivity; [ symmetry |]; exact Hbe |].
@@ -712,16 +721,17 @@ Section GluIndProps.
         exact (Hr _ _ _ Hφ HM0). }
     - (** A constructor: the related one has the same arguments' gluings, at
           the related values. *)
-      intros * Hcon HPl Hbl Hvl HAl HM Hb Hv Hnp HAs Harg Hrec IH ns m' Hrel.
-      destruct (ind_rel_con_inv p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ Hrel Hbl)
-        as (gs0 & bs' & vs' & -> & Hns & Hc0 & Hbl' & Hs & Hs' & Ha & Hia).
+      intros * Hcon HPl Hbl Hvl HAl HM Hb Hv Hnp HAs Harg Hrec IH ns ns' m' Hrel.
+      destruct (ind_rel_con_inv p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ Hrel Hbl)
+        as (gs0 & bs' & vs' & -> & Hns & Hc0 & Hbl' & Ho & Ho' & Hs & Hs' & Ha & Hia).
       rewrite Hcon in Hc0; injection Hc0 as <-.
       assert (Hmm' : tele_full nr T (List.skipn (ind_nu D) bs) (List.skipn (ind_nu D) bs'))
-        by exact (Tn _ _ _ (Sn _ _ Hs) Hs').
-      assert (Hvl' : length vs' = length gs) by exact (proj2 (ind_args_rel_len _ _ _ _ _ _ _ _ _ _ Hia)).
+        by exact (Tn _ _ _ (Sn _ _ Hs) (Tn _ _ _ Hns Hs')).
+      pose proof (RnR _ _ Hs) as Hbb.
+      assert (Hvl' : length vs' = length gs) by exact (proj2 (ind_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ Hia)).
       refine (ind_glu_elem_con p D ups NEl AEl DP DEl Hcon HPl Hbl' Hvl' HAl HM _ _ _ HAs _ _).
       + exact (RnR _ _ Hmm').
-      + exact (Ia _ _ _ _ _ _ Hs' Hcon (Ta _ _ _ Hns Hcon _ _ _ (Sa _ _ _ Hns Hcon _ _ Ha) Ha)).
+      + exact (Ia _ _ _ _ _ _ Hmm' Hcon (Ta _ _ _ Hbb Hcon _ _ _ (Sa _ _ _ Hbb Hcon _ _ Ha) Ha)).
       + exact (glu_nparams_resp_per HNe _ _ _ _ _ Hmm' Hnp).
       + intros gs1 A0 gs2 N A v' Heq HN0 HA0 Hv0'.
         assert (Hlt : length gs1 < length vs) by (rewrite Hvl, Heq, List.length_app; cbn; lia).
@@ -729,9 +739,6 @@ Section GluIndProps.
         assert (HK : length (cargs_nonrec gs1) < length (cargs_nonrec gs))
           by (rewrite Heq, cargs_nonrec_app, List.length_app; cbn; lia).
         assert (HK' : length (cargs_nonrec gs1) <= length (cargs_nonrec gs)) by lia.
-        assert (HA0' : List.nth_error (cargs_nonrec gs) (length (cargs_nonrec gs1)) = Some A0)
-          by (rewrite Heq, cargs_nonrec_app, List.nth_error_app2 by lia;
-              replace (length (cargs_nonrec gs1) - length (cargs_nonrec gs1)) with 0 by lia; reflexivity).
         pose proof (nonrec_nth_arg _ _ _ _ _ _ Heq Hvl Hv0) as Hn1.
         pose proof (nonrec_nth_arg _ _ _ _ _ _ Heq Hvl' Hv0') as Hn2.
         pose proof Ha as Ha'; rewrite tele_full_iff in Ha'; destruct Ha' as (_ & _ & Har).
@@ -739,11 +746,8 @@ Section GluIndProps.
         rewrite (nonrec_firstn _ _ _ _ _ Heq Hvl) in Hvv.
         pose proof (tele_pre_of_full _ _ _ _ (length (cargs_nonrec gs1)) Ha HK') as Hpre.
         rewrite (nonrec_firstn _ _ _ _ _ Heq Hvl), (nonrec_firstn _ _ _ _ _ Heq Hvl') in Hpre.
-        pose proof (Iap _ _ _ _ _ _ _ Hs Hcon HK' Hpre) as Hpre'.
-        pose proof (RaL _ _ _ Hns Hcon _ _ _ HK' Hpre) as Hpd.
-        pose proof (HaI _ _ _ _ _ _ _ _ Hs Hcon HA0' Hpd) as Hiff.
-        eapply HAe; [ exact Hmm' | exact Hcon | exact HK | exact Hpre'
-                    | exact (Harg _ _ _ _ _ _ Heq HN0 HA0 Hv0) | apply Hiff; exact Hvv ].
+        eapply HAe; [ exact Hmm' | exact Hcon | exact HK | exact Hpre
+                    | exact (Harg _ _ _ _ _ _ Heq HN0 HA0 Hv0) | exact Hvv ].
       + intros gs1 t gs2 N A v' Heq HN0 HA0 Hv0'.
         assert (Hlt : length gs1 < length vs) by (rewrite Hvl, Heq, List.length_app; cbn; lia).
         destruct (nth_error_lt_some' vs (length gs1) Hlt) as [v Hv0].
@@ -751,34 +755,30 @@ Section GluIndProps.
           by (rewrite Heq, cargs_nonrec_app, List.length_app; cbn; lia).
         pose proof (tele_pre_of_full _ _ _ _ (length (cargs_nonrec gs1)) Ha HK') as Hpre.
         rewrite (nonrec_firstn _ _ _ _ _ Heq Hvl), (nonrec_firstn _ _ _ _ _ Heq Hvl') in Hpre.
-        pose proof (Iap _ _ _ _ _ _ _ Hs Hcon HK' Hpre) as Hpre1.
-        pose proof (RaL _ _ _ Hns Hcon _ _ _ HK' Hpre) as Hpre0.
-        pose proof (ind_args_rel_rec _ _ _ _ _ _ _ _ _ _ Hia _ _ _ _ _ Heq Hv0 Hv0') as Hsh.
-        pose proof (Msh _ _ _ _ Hsh ns (List.skipn (ind_nu D) bs) c gs1 t gs2 _ 0 nil
-                      ltac:(rewrite List.app_nil_r; reflexivity) Hs ltac:(rewrite <- Heq; exact Hcon) Hpre0
-                      eq_refl ltac:(lia) (tele_pre_nil _)) as Hsh'.
-        rewrite List.app_nil_r in Hsh'.
+        pose proof (RaL _ _ _ Hbb Hcon _ _ _ HK' Hpre) as Hpre0.
+        pose proof (Iap _ _ _ _ _ _ _ Hmm' Hcon HK' (RaL _ _ _ Hbb Hcon _ _ _ HK' (SaP _ _ _ Hbb Hcon _ _ _ HK' Hpre))) as Hpre0'.
+        pose proof (ind_args_rel_rec _ _ _ _ _ _ _ _ _ _ _ _ _ Hia _ _ _ _ _ Heq Hv0 Hv0') as Hsh.
+        (** The recursive argument, read at [ups] on both sides. *)
+        pose proof (Reb _ _ _ _ _ _ _ Hsh ups ups _ _ _ _ c gs1 t gs2 _ _ _ _ 0 nil nil nil nil
+                      ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity)
+                      (Hback _ Ho) (Hback _ Ho') ltac:(rewrite <- Heq; exact Hcon) Hmm' Hbb (RnR _ _ Hmm')
+                      Hpre Hpre0 Hpre0' eq_refl ltac:(lia) (tele_pre_nil _) (tele_pre_nil _) (tele_pre_nil _)) as Hsh'.
+        rewrite (List.app_nil_r (nonrec_vals gs1 (List.firstn (length gs1) vs))) in Hsh'.
         pose proof (IH _ _ _ _ _ _ Heq HN0 HA0 Hv0 (List.skipn (ind_nu D) bs) (List.skipn (ind_nu D) bs') c gs1 t gs2
                       _ _ 0 nil nil v' ltac:(rewrite List.app_nil_r; reflexivity) Hmm' ltac:(rewrite <- Heq; exact Hcon)
-                      Hpre1 eq_refl ltac:(lia) (tele_pre_nil _) Hsh') as H.
+                      Hpre eq_refl ltac:(lia) (tele_pre_nil _) Hsh') as H.
         rewrite List.app_nil_r in H; exact H.
     - intros * Hs1 Hs2 IH ms ms' c0 gs1 t0 gs2 ws ws' k1 ys ys' v' Hpre Hm Hc Hw Hsk Hk Hy Hsh.
-      destruct (ptyp_skip_self _ _ _ _ Hsk) as [HkL HPs].
-      assert (Hk1 : k1 = List.length (ptyp_doms t0)) by lia.
-      assert (Hys : tele_full (shape_tr dr ms ws (ptyp_doms t0)) (ptyp_doms t0) ys ys')
-        by (apply tele_full_of_pre; rewrite <- Hk1; exact Hy).
-      destruct (ind_shape_self_inv _ _ _ _ _ _ _ _ _ _ _ Hsh) as (bs & Ebs & Hvv).
-      destruct (Hcl ms ms' c0 _ gs1 t0 gs2 ws ws' ys ys' Hm Hc eq_refl Hw Hys) as [b0 b1 E0 E1 H01].
-      rewrite HPs in E0, E1; subst pre.
+      destruct (ind_shape_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh) as (bs & bs' & Ebs & Ebs' & Hvv).
+      pose proof (ind_rel_ns p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ Hvv) as H01.
       apply glu_rec_self.
       + intros bsr' Q Hbs' HQ.
-        pose proof (functional_eval_exps' _ _ _ _ E1 Hbs') as ->.
-        destruct (Hs1 _ _ E0 HQ) as (HQl & _ & Hgn).
+        pose proof (functional_eval_exps' _ _ _ _ Ebs' Hbs') as ->.
+        destruct (Hs1 _ _ Ebs HQ) as (HQl & _ & Hgn).
         split; [ exact HQl | split; [ exact (RnR _ _ H01) |] ].
         intros bsr'' Hb''; exact (Hgn _ (Tn _ _ _ H01 Hb'')).
       + intros bsr' Q Hbs' HQ Δ φ Q' Hφ HQ'.
-        pose proof (functional_eval_exps' _ _ _ _ Ebs E0) as <-.
-        exact (IH _ _ Ebs HQ Δ φ Q' Hφ HQ' _ _ Hvv).
+        exact (IH _ _ Ebs HQ Δ φ Q' Hφ HQ' _ _ _ Hvv).
     - intros * Hd He Hg IH ms ms' c0 gs1 t0 gs2 ws ws' k1 ys ys' v' Hpre Hm Hc Hw Hsk Hk Hy Hsh.
       destruct (shape_pi_step p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ms c0 gs1 t0 gs2 ws ws' k1 ys ys' B t
                   (Tn _ _ _ Hm (Sn _ _ Hm)) Hc Hw Hsk Hy) as (HB & Hs' & Hk' & _ & Hstep).
@@ -789,13 +789,14 @@ Section GluIndProps.
       + intros * HA0 Δ φ Hφ; exact (HDP _ _ (Hd _ _ HA0 Δ φ Hφ)).
       + intros * HA0 Δ φ b0 c Hφ Hc' Hb.
         pose proof (proj2 (Edr _ _) Hc') as Hc0.
-        destruct (ind_shape_pi_inv _ _ _ _ _ _ _ _ _ _ _ Hsh c c Hc0) as (r & r' & Er & Er' & _).
+        destruct (ind_shape_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh c c Hc0) as (r & r' & Er & Er' & _).
         exists r'; exact Er'.
       + intros * HA0 Δ φ b0 c fc' Hφ Hc' Hb Hfc'.
         pose proof (proj2 (Edr _ _) Hc') as Hc0.
-        destruct (ind_shape_pi_inv _ _ _ _ _ _ _ _ _ _ _ Hsh c c Hc0) as (r & r' & Er & Er' & Hsh').
+        destruct (ind_shape_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh c c Hc0) as (r & r' & Er & Er' & Hsh').
         pose proof (functional_eval_app _ _ _ _ Er' Hfc') as ->.
-        replace ((ms' ++ ws' ++ ys') ++ c :: nil) with (ms' ++ ws' ++ ys' ++ c :: nil) by (rewrite <- !List.app_assoc; reflexivity).
+        replace ((ms' ++ ws' ++ ys') ++ c :: nil) with (ms' ++ ws' ++ ys' ++ c :: nil) in Hsh' |- *
+          by (rewrite <- !List.app_assoc; reflexivity).
         apply (IH _ _ HA0 Δ φ b0 c r Hφ Hc0 (HDEl _ _ _ _ Hb) Er ms ms' c0 gs1 t0 gs2 ws ws' (S k1) (ys ++ c :: nil) (ys' ++ c :: nil) fc');
           [ rewrite <- !List.app_assoc; reflexivity | exact Hm | exact Hc | exact Hw | exact Hs' | exact Hk'
           | exact (Hstep _ _ Hc0) | exact Hsh' ].
@@ -2465,7 +2466,7 @@ Proof.
       assert (HPe : PER elem_rel) by (eapply per_elem_PER; eassumption).
       refine (mk_ind_glu_exp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMt _ Ps0 HPt _); [ etransitivity; [ symmetry |]; exact Hmm' |].
       intros Δ φ Ps' Hφ HPs'; pose proof (Hgl Δ φ Ps' Hφ HPs') as Hg.
-      exact (ind_glu_elem_resp_per p D ups NEl AEl DP DEl H1 Hcp Hadm HNe HAe HDe _ _ _ _ Hg _ _ (proj1 (Herel _ _) Hmm')). }
+      exact (ind_glu_elem_resp_per p D ups NEl AEl DP DEl H1 Hcp _ (fun u Hu => Hu) Hadm HNe HAe HDe _ _ _ _ Hg _ _ _ (proj1 (Herel _ _) Hmm')). }
   6:{ handle_per_univ_elem_irrel.
       apply_predicate_equivalence.
       destruct_by_head pi_glu_exp_pred.

@@ -558,7 +558,7 @@ Proof.
     apply_relation_equivalence;
     try reflexivity.
   (** An inductive type: the telescope relations agree with those of the
-      other derivation, and so do the elements ([ind_rel_transport]). *)
+      other derivation, and so do the elements. *)
   2: {
     assert (D0 = D) as -> by congruence.
     destruct (app_split_eq _ _ _ _ x ltac:(congruence)) as [-> ->].
@@ -609,13 +609,59 @@ Proof.
           destruct (He _ _ _ _ _ _ _ _ _ _ _ _ _ Hm2 Hc Heq Hw2 HB Hp2) as [a2 a2' E2 E2' Hper2]
       end.
       functional_eval_rewrite_clear; exact (Hmot _ _ _ eq_refl Hper2). }
+    (** The elements: the relations and the admissible bases change
+        ([ind_rel_change]), and the right index moves ([ind_rel_idx]). *)
+    assert (HnF : forall k vs vs1 vs2, k < List.length (List.rev (ind_nparams D)) ->
+                    tele_pre nr k vs vs1 -> tele_pre nr0 k vs vs2 -> (nr k vs <~> nr0 k vs))
+      by (intros; eapply Hnr; eassumption).
+    assert (HaF : forall ms ms1 ms2 c gs k vs vs1 vs2,
+               tele_full nr (List.rev (ind_nparams D)) ms ms1 -> tele_full nr0 (List.rev (ind_nparams D)) ms ms2 ->
+               ind_con D c = Some gs -> k < List.length (cargs_nonrec gs) ->
+               tele_pre (ar ms c) k vs vs1 -> tele_pre (ar0 ms c) k vs vs2 -> (ar ms c k vs <~> ar0 ms c k vs))
+      by (intros; eapply Har; eassumption).
+    assert (HdF : forall ms ms1 ms2 c gs gs1 t gs2 ws ws1 ws2 k ys ys1 ys2,
+               tele_full nr (List.rev (ind_nparams D)) ms ms1 -> tele_full nr0 (List.rev (ind_nparams D)) ms ms2 ->
+               ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+               tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws1 ->
+               tele_pre (ar0 ms c) (List.length (cargs_nonrec gs1)) ws ws2 ->
+               k < List.length (ptyp_doms t) ->
+               tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys1 -> tele_pre (shape_tr dr0 ms ws (ptyp_doms t)) k ys ys2 ->
+               (shape_tr dr ms ws (ptyp_doms t) k ys <~> shape_tr dr0 ms ws (ptyp_doms t) k ys))
+      by (intros; eapply Hdr; eassumption).
+    assert (HnB : forall k vs vs1 vs2, k < List.length (List.rev (ind_nparams D)) ->
+                    tele_pre nr0 k vs vs1 -> tele_pre nr k vs vs2 -> (nr0 k vs <~> nr k vs))
+      by (intros; symmetry; eapply Hnr; eassumption).
+    assert (HaB : forall ms ms1 ms2 c gs k vs vs1 vs2,
+               tele_full nr0 (List.rev (ind_nparams D)) ms ms1 -> tele_full nr (List.rev (ind_nparams D)) ms ms2 ->
+               ind_con D c = Some gs -> k < List.length (cargs_nonrec gs) ->
+               tele_pre (ar0 ms c) k vs vs1 -> tele_pre (ar ms c) k vs vs2 -> (ar0 ms c k vs <~> ar ms c k vs))
+      by (intros; symmetry; eapply Har; eassumption).
+    assert (HdB : forall ms ms1 ms2 c gs gs1 t gs2 ws ws1 ws2 k ys ys1 ys2,
+               tele_full nr0 (List.rev (ind_nparams D)) ms ms1 -> tele_full nr (List.rev (ind_nparams D)) ms ms2 ->
+               ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+               tele_pre (ar0 ms c) (List.length (cargs_nonrec gs1)) ws ws1 ->
+               tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws2 ->
+               k < List.length (ptyp_doms t) ->
+               tele_pre (shape_tr dr0 ms ws (ptyp_doms t)) k ys ys1 -> tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys2 ->
+               (shape_tr dr0 ms ws (ptyp_doms t) k ys <~> shape_tr dr ms ws (ptyp_doms t) k ys))
+      by (intros; symmetry; eapply Hdr; eassumption).
+    pose proof (tele_full_nr_change p D ups nr nr0 ar ar0 dr dr0 HnF HaF HdF _ _ H15) as H15'.
+    pose proof (tele_full_nr_change' p D ups nr nr0 ar ar0 dr dr0 HnF HaF HdF _ _ H33) as H33'.
     intros m m'; split; intro Hm.
-    - eapply (proj1 (ind_rel_change p D ups nr nr0 ar ar0 dr dr0
-                       ltac:(intros; eapply Hnr; eassumption) ltac:(intros; eapply Har; eassumption)
-                       ltac:(intros; eapply Hdr; eassumption))); eassumption.
-    - eapply (proj1 (ind_rel_change p D ups nr0 nr ar0 ar dr0 dr
-                       ltac:(intros; symmetry; eapply Hnr; eassumption) ltac:(intros; symmetry; eapply Har; eassumption)
-                       ltac:(intros; symmetry; eapply Hdr; eassumption))); eassumption. }
+    - eapply (ind_rel_idx p D ups nr0 ar0 dr0 H0 H22 H24 H25 H27 H28 H30 _ ns ns');
+        [ eapply (proj1 (ind_rel_change p D ups nr nr0 ar ar0 dr dr0 HnF HaF HdF _ _
+                           (adm_change p D ups nr nr0 ar ar0 dr dr0 HnF HaF HdF)
+                           (tnr_refl_r p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12))); exact Hm
+        | exact (tnr_refl_l p D ups nr0 ar0 dr0 H0 H22 H24 H25 H27 H28 H30 _ _ H33)
+        | exact (tnr_trans p D ups nr0 ar0 dr0 H0 H22 H24 H25 H27 H28 H30 _ _ _
+                   (tnr_sym p D ups nr0 ar0 dr0 H0 H22 H24 H25 H27 H28 H30 _ _ H15') H33) ].
+    - eapply (ind_rel_idx p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12 _ ns ns'0);
+        [ eapply (proj1 (ind_rel_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB _ _
+                           (adm_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB)
+                           (tnr_refl_r p D ups nr0 ar0 dr0 H0 H22 H24 H25 H27 H28 H30))); exact Hm
+        | exact (tnr_refl_l p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12 _ _ H15)
+        | exact (tnr_trans p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12 _ _ _
+                   (tnr_sym p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12 _ _ H33') H15) ]. }
   specialize (IHHorig _ _ _ eq_refl equiv_a_a').
   split; intros.
   - rename equiv_c_c' into equiv0_c_c'.
@@ -704,13 +750,16 @@ Proof.
   - (** An inductive type: the same relations serve the swapped type, by
         the invariance of [nr] and [ar] along related prefixes and the
         symmetry of their types; the elements are swapped by
-        [ind_rel_sym_all] and moved to the other side by [ind_rel_move]. *)
+        [ind_rel_sym_all], their indices exchanged by [ind_rel_idx], and the
+        bases admissible beside [ups] are those admissible beside [ups']
+        ([adm_iff]). *)
     rename H into Hl, H0 into Hass, H1 into Hu, H2 into Hu', H3 into Hps, H4 into HnP, H5 into Hn, H6 into HnI,
       H7 into HaP, H8 into Ha, H9 into HaI,
       H10 into HdP, H11 into Hd, H12 into HdI, H13 into Hcl, H14 into Hcd, H15 into Hns, H16 into HE.
-    pose proof (ind_rel_move p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl) as [Hmv _].
-    pose proof (ind_rel_move p D ups' nr ar dr Hass HnP HnI HaP HaI HdP HdI ups
-                  (adm_flip p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl Hcd)) as [Hmv' _].
+    pose proof (adm_iff p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl) as Hiff.
+    pose proof (tnr_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hns) as Hsn.
+    pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as Hidx.
+    pose proof (fun Ok1 Ok2 HO => proj1 (ind_rel_ok p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI Ok1 Ok2 HO)) as Hok.
     split.
     + basic_per_univ_elem_econstructor;
         [ exact Hl | exact Hass | exact Hu' | exact Hu | exact (per_top_ps_sym _ _ _ Hps) | exact HnP | | exact HnI | exact HaP
@@ -747,10 +796,13 @@ Proof.
         econstructor; [ exact Ea' | exact Ea |].
         eapply per_univ_elem_resp_iff; [ exact Hsym |]; symmetry; exact (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hp HB Hy).
       * intros m m'; split; intro Hm0.
-        -- apply HE in Hm0; exact (Hmv _ _ _ Hm0 _ Hns).
-        -- apply HE; exact (Hmv' _ _ _ Hm0 _ (tnr_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hns)).
+        -- apply HE in Hm0.
+           exact (Hidx _ _ _ _ _ _ _ (Hok _ _ (fun u => proj1 (Hiff u)) _ _ _ _ Hm0) Hns Hsn).
+        -- apply HE.
+           exact (Hidx _ _ _ _ _ _ _ (Hok _ _ (fun u => proj2 (Hiff u)) _ _ _ _ Hm0) Hsn Hns).
     + intros m m' Hm0; apply HE in Hm0; apply HE.
-      exact (proj1 (ind_rel_sym_all p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI Hcd) _ _ _ Hm0).
+      pose proof (proj1 (ind_rel_sym_all p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _) _ _ _ _ Hm0) as Hm1.
+      exact (Hidx _ _ _ _ _ _ _ Hm1 Hsn Hns).
 Qed.
 
 Corollary per_univ_sym : forall i R a b,
@@ -983,7 +1035,7 @@ Proof.
         eapply HdP2; [ exact (Hrefl0 _ _ Hm) | exact Hc | exact Heq | exact Hw2 | exact HB | eassumption ]. }
     basic_per_univ_elem_econstructor;
       [ exact Hl | exact Hass | exact Hu | exact Hu2' | exact (per_top_ps_trans _ _ _ _ Hps Hps2) | exact HnP | | exact HnI
-      | exact HaP | | exact HaI | exact HdP | | exact HdI | | exact Hcd | exact (Hcomp _ _ _ Hns Hns2) | exact HE ].
+      | exact HaP | | exact HaI | exact HdP | | exact HdI | | exact Hcd | exact (Hcomp _ _ _ Hns Hns2) | ].
     + intros k A vs vs'' Hk Hp.
       assert (Hkl : k < List.length (List.rev (ind_nparams D))) by (apply List.nth_error_Some; congruence).
       assert (Hp2 : tele_pre nr0 k vs'' vs'').
@@ -1032,8 +1084,17 @@ Proof.
         eapply (Hdcr ms ms ms1 c gs gs1 t gs2 ws ws ws1 k ys ys ys1);
           [ exact Hmm | exact Hm1 | exact Hc | exact Heq | exact Hww | exact Hw1 | exact Hk | | exact Hp1 ].
         eapply (tsh_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ms c gs gs1 t gs2 ws Hmm Hc Heq Hww); [ lia | exact Hp2 ].
+    + (** The elements, at the composite's right index ([ind_rel_idx]). *)
+      pose proof (Hcomp _ _ _ Hns Hns2) as Hns13.
+      pose proof (tnr_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _
+                    (tnr_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hns) Hns13) as H23.
+      pose proof (tnr_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hns) as H11.
+      intros m m'; split; intro Hm; [ apply HE in Hm | apply HE ].
+      * exact (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ Hm H11 H23).
+      * exact (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ Hm H11
+                 (tnr_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ H23)).
   - (** Its elements. *)
-    exact (proj1 (ind_rel_trans_all p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12 H14) _ _ _ HTR1 _ HTR2).
+    exact (proj1 (ind_rel_trans_all p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12 _) _ _ _ _ HTR1 _ _ _ HTR2).
 Qed.
 
 Corollary per_univ_trans : forall i j R a1 a2 a3,

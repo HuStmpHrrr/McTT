@@ -320,7 +320,7 @@ Section Fixed_GCtx.
 
     (** The clause. *)
     Lemma per_univ_elem_indty_canon : forall ns ns', tele_full nr T ns ns' ->
-        DF d_ind p (ups ++ ns) ≈ d_ind p (ups' ++ ns') ∈ per_univ_elem u ↘ (ind_rel p D ups nr ar dr ns).
+        DF d_ind p (ups ++ ns) ≈ d_ind p (ups' ++ ns') ∈ per_univ_elem u ↘ (ind_rel p D (ind_adm D ups nr ar dr) nr ar dr ns ns').
     Proof.
       intros * Hns.
       basic_per_univ_elem_econstructor;
@@ -335,16 +335,17 @@ Section Fixed_GCtx.
   End Canon.
 
   (** Inverting the relation of a recursive argument by its shape. *)
-Lemma ind_shape_self_inv : forall p D ups nr ar dr pre k Ps v v',
-    ind_shape_rel p D ups nr ar dr pre (pt_self k Ps) v v' ->
-    exists bs, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ bs /\ ind_rel p D ups nr ar dr bs v v'.
-Proof. intros * H; inversion H; subst; eauto. Qed.
+Lemma ind_shape_self_inv : forall p D Ok nr ar dr u u' pre pre' k Ps v v',
+    ind_shape_rel p D Ok nr ar dr u u' pre pre' (pt_self k Ps) v v' ->
+    exists bs bs', ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u ++ pre) ↘ bs /\
+      ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u' ++ pre') ↘ bs' /\ ind_rel p D Ok nr ar dr bs bs' v v'.
+Proof. intros * H; inversion H; subst; eauto 6. Qed.
 
-Lemma ind_shape_pi_inv : forall p D ups nr ar dr pre B t f f',
-    ind_shape_rel p D ups nr ar dr pre (pt_pi B t) f f' ->
+Lemma ind_shape_pi_inv : forall p D Ok nr ar dr u u' pre pre' B t f f',
+    ind_shape_rel p D Ok nr ar dr u u' pre pre' (pt_pi B t) f f' ->
     forall c c', dr pre B c c' ->
       exists r r', $| f & c | gc_deps ⍮ gc_stack ↘ r /\ $| f' & c' | gc_deps ⍮ gc_stack ↘ r' /\
-        ind_shape_rel p D ups nr ar dr (pre ++ c :: nil) t r r'.
+        ind_shape_rel p D Ok nr ar dr u u' (pre ++ c :: nil) (pre' ++ c' :: nil) t r r'.
 Proof.
   intros * H c c' Hc; inversion H; subst.
   match goal with Hf : forall c c', dr _ _ c c' -> _ |- _ => pose proof (Hf c c' Hc) as Happ end.

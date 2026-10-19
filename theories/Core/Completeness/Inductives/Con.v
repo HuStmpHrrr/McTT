@@ -792,6 +792,16 @@ Section Sort.
       - exact (canon_d_I _ D ups ups (decl_closed_params D Hc) Hu Hu Hn Hv Hd).
       - apply (canon_adm (univ_idx a) D ups ups Hn Hv); intros; [ eapply canon_hc | eapply canon_hd ]; eassumption.
     Qed.
+
+    (** A base related to [ups] is admissible beside it. *)
+    Lemma canon_adm_beside : forall ups2, per_gargs (List.rev (ind_uparams D)) nil nil ups ups2 ->
+        ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ups2.
+    Proof.
+      intros ups2 Hg2.
+      apply (canon_adm (univ_idx a) D ups ups2); intros;
+        [ eapply (canon_hn ups2 Hg2) | eapply (canon_ha ups2 Hg2) | eapply (canon_hc ups2 Hg2) | eapply (canon_hd ups2 Hg2) ];
+        eassumption.
+    Qed.
   End Canon.
 
   Lemma ind_relate : forall ups ups' ns ns' a,
@@ -800,7 +810,7 @@ Section Sort.
       ⟦ ind_sort D ⟧ env_args nil ups ↘ a ->
       tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns' ->
       DF d_ind p (ups ++ ns) ≈ d_ind p (ups' ++ ns') ∈ per_univ_elem (univ_idx a)
-        ↘ (ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns).
+        ↘ (ind_rel p D (ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups)) (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns ns').
   Proof.
     intros * Hg Hu Ha Hns.
     pose proof (length_ups_gargs _ _ Hg Hu) as Hu'.
@@ -1045,10 +1055,18 @@ Section Sort.
           (env_args nil (ups ++ ns ++ fa)) (env_args nil (ups ++ ns ++ fa)) ys ys ->
         ⟦ ptyp_ty p D (List.repeat false k ++ cargs_pat gs1) (ptyp_skip k t) ⟧ env_args nil (ups ++ ns ++ fa ++ ys) ↘ a ->
         DF a ≈ a ∈ per_univ_elem i ↘ R ->
-        (R <~> ind_shape_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) (ns ++ nonrec_vals gs1 fa ++ ys) (ptyp_skip k t)).
+        (R <~> ind_shape_rel p D (ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups)) (ind_nr D ups) (ind_ar D ups) (ind_dr ups)
+                 ups ups (ns ++ nonrec_vals gs1 fa ++ ys) (ns ++ nonrec_vals gs1 fa ++ ys) (ptyp_skip k t)).
   Proof.
     intros gs1 t gs2 Heq ups ns fa a0 Hlu Hlns Hlk Hgu0 Ha0 Hnsd INV Hpre.
     pose proof (decl_closed_nu D Hc) as Hle.
+    destruct (ind_canon ups a0 Hgu0 Hlu Ha0) as (CnP & CnI & CaP & CaI & CdP & CdI & Cad).
+    pose proof (decl_closed_params D Hc) as Hass.
+    pose proof (proj1 (ind_shape_rel_rebase p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI
+                         (ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups)))) as Hreb.
+    pose proof (ind_rel_idx p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI
+                  (ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups))) as Hidx.
+    pose proof (tnr_sym p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI) as Hsym.
     set (nv := nonrec_vals gs1 fa) in *.
     set (K := List.length (cargs_nonrec gs1)) in *.
     set (pat := cargs_pat gs1) in *.
@@ -1132,8 +1150,9 @@ Section Sort.
          (** The codomain at related arguments, by the induction. *)
          assert (Hcodr : forall c0 c0' (Hin : in_rel c0 c0'), exists a2,
                     ⟦ ptyp_ty p D (false :: pat') t' ⟧ env_args nil (ups ++ ns ++ fa ++ ys) ↦ c0 ↘ a2 /\
-                    (out_rel c0 c0' Hin <~> ind_shape_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups)
-                                              ((ns ++ nv ++ ys) ++ c0 :: nil) t')).
+                    (out_rel c0 c0' Hin <~> ind_shape_rel p D (ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups))
+                                              (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ups ups
+                                              ((ns ++ nv ++ ys) ++ c0 :: nil) ((ns ++ nv ++ ys) ++ c0 :: nil) t')).
          { intros c0 c0' Hin.
            assert (Hin0 : in_rel c0 c0) by (etransitivity; [ exact Hin | symmetry; exact Hin ]).
            destruct (Hcod _ _ Hin) as [a2 a2' Ea2 Ea2' HR2].
@@ -1154,20 +1173,36 @@ Section Sort.
            + cbn [List.repeat List.app].
              replace (ups ++ ns ++ fa ++ ys ++ c0 :: nil) with ((ups ++ ns ++ fa ++ ys) ++ c0 :: nil) by (rewrite <- !List.app_assoc; reflexivity).
              rewrite env_args_snoc; exact Ea2. }
+         (** The type's relation is the shape's at its own argument on both
+             sides; the shape's at the right argument is that one, moved
+             along the domain ([ind_shape_rel_rebase]). *)
+         assert (Hmv : forall c0 c1 c2 r r', ind_dr ups (ns ++ nv ++ ys) B c0 c1 -> ind_dr ups (ns ++ nv ++ ys) B c1 c2 ->
+                    ind_shape_rel p D (ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups)) (ind_nr D ups) (ind_ar D ups) (ind_dr ups)
+                      ups ups ((ns ++ nv ++ ys) ++ c0 :: nil) ((ns ++ nv ++ ys) ++ c1 :: nil) t' r r' ->
+                    ind_shape_rel p D (ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups)) (ind_nr D ups) (ind_ar D ups) (ind_dr ups)
+                      ups ups ((ns ++ nv ++ ys) ++ c0 :: nil) ((ns ++ nv ++ ys) ++ c2 :: nil) t' r r').
+         { intros c0 c1 c2 r r' H01 H12 Hs0.
+           assert (H00 : ind_dr ups (ns ++ nv ++ ys) B c0 c0) by (etransitivity; [ exact H01 | symmetry; exact H01 ]).
+           rewrite <- !List.app_assoc in Hs0 |- *.
+           eapply (Hreb _ _ _ _ _ _ _ Hs0 ups ups ns ns ns ns c gs1 t gs2 nv nv nv nv (S k)
+                     (ys ++ c0 :: nil) (ys ++ c1 :: nil) (ys ++ c0 :: nil) (ys ++ c2 :: nil));
+             [ reflexivity | reflexivity | exact Cad | exact Cad | rewrite <- Heq; exact Hcon
+             | exact Hnsd | exact Hnsd | exact Hnsd | exact INV | exact INV | exact INV | reflexivity | lia | | | ];
+             (apply tele_pre_snoc; [ exact Hy | unfold shape_tr; rewrite (List.nth_error_nth _ _ _ HB); assumption ]). }
          intros x x'; split; intro Hx.
          - constructor; intros c0 c0' Hcc.
            pose proof (proj1 (Edr _ _) Hcc) as Hin.
            pose proof (proj1 (HE x x') Hx) as Hx2; cbn beta in Hx2.
            destruct (Hx2 _ _ Hin) as [r r' Er Er' Hrr].
            destruct (Hcodr _ _ Hin) as (a2 & _ & Ecod).
-           econstructor; [ exact Er | exact Er' | apply Ecod; exact Hrr ].
-         - inversion Hx; subst.
-           match goal with Hf : forall c c', ind_dr _ _ _ c c' -> _ |- _ => rename Hf into Hfx end.
-           apply HE; intros c0 c0' Hin.
+           assert (H00 : ind_dr ups (ns ++ nv ++ ys) B c0 c0) by (etransitivity; [ exact Hcc | symmetry; exact Hcc ]).
+           econstructor; [ exact Er | exact Er' | exact (Hmv _ _ _ _ _ H00 Hcc (proj1 (Ecod _ _) Hrr)) ].
+         - apply HE; intros c0 c0' Hin.
            pose proof (proj2 (Edr _ _) Hin) as Hcc.
-           pose proof (Hfx _ _ Hcc) as Happ; inversion Happ as [? ? r ? ? r' ? ? Er Er' Hrr]; subst.
+           destruct (ind_shape_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hx _ _ Hcc) as (r & r' & Er & Er' & Hrr).
            destruct (Hcodr _ _ Hin) as (a2 & _ & Ecod).
-           econstructor; [ exact Er | exact Er' | apply Ecod; exact Hrr ]. }
+           assert (Hc'c : ind_dr ups (ns ++ nv ++ ys) B c0' c0) by (symmetry; exact Hcc).
+           econstructor; [ exact Er | exact Er' | apply Ecod; exact (Hmv _ _ _ _ _ Hcc Hc'c Hrr) ]. }
     (** The end of the shape: an element of the inductive type at the
         parameters it evaluates to. *)
     assert (Hkd : k = List.length (ptyp_doms t)) by lia.
@@ -1257,13 +1292,15 @@ Section Sort.
       - change (d_ind p (ups ++ bs1)) with (d_ind p (nil ++ (ups ++ bs1))).
         apply eval_apps_ind; rewrite List.length_app, (eval_exps_length _ _ _ Ebs1), List.length_map; cbn; unfold ind_nn in *; lia. }
     assert (a = d_ind p (ups ++ bs1)) as -> by (eapply functional_eval_exp; eassumption).
-    assert (ERk : R <~> ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) bs)
+    assert (ERk : R <~> ind_rel p D (ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups)) (ind_nr D ups) (ind_ar D ups) (ind_dr ups) bs bs1)
       by (eapply per_univ_elem_right_irrel; [ exact HR | exact Hind' ]).
+    pose proof (tnr_refl_l p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI _ _ Htf) as Hbb.
     intros x x'; split; intro Hx.
-    - econstructor; [ exact Ebs | apply ERk, Hx ].
-    - inversion Hx; subst.
-      match goal with E : ⟦ _ ⟧* _ ⍮ _ ⍮ env_args nil (ups ++ ns ++ nv ++ ys) ↘ ?b, Hr : ind_rel _ _ _ _ _ _ ?b x x' |- _ =>
-        pose proof (functional_eval_exps' _ _ _ _ E Ebs) as Hbe; rewrite Hbe in Hr; apply ERk; exact Hr end.
+    - econstructor; [ exact Ebs | exact Ebs | exact (Hidx _ _ _ _ _ _ (proj1 (ERk _ _) Hx) Hbb (Hsym _ _ Htf)) ].
+    - destruct (ind_shape_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hx) as (b1 & b2 & E1 & E2 & Hr).
+      pose proof (functional_eval_exps' _ _ _ _ E1 Ebs) as ->.
+      pose proof (functional_eval_exps' _ _ _ _ E2 Ebs) as ->.
+      apply ERk; exact (Hidx _ _ _ _ _ _ Hr Hbb Htf).
   Qed.
 
   (** The links of a recursive argument's type to its shape after [k]
@@ -1690,11 +1727,15 @@ Section Sort.
     Lemma con_rec_step : forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
         tele_pre (ind_ar D ups ns c) (List.length (cargs_nonrec gs1))
           (nonrec_vals gs1 (List.firstn (List.length gs1) as1)) (nonrec_vals gs1 (List.firstn (List.length gs1) as1)) ->
+        tele_pre (ind_ar D ups ns c) (List.length (cargs_nonrec gs1))
+          (nonrec_vals gs1 (List.firstn (List.length gs1) as1)) (nonrec_vals gs1 (List.firstn (List.length gs1) as1')) ->
         exists x x', List.nth_error as1 (List.length gs1) = Some x /\ List.nth_error as1' (List.length gs1) = Some x' /\
-          ind_shape_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups)
-            (ns ++ nonrec_vals gs1 (List.firstn (List.length gs1) as1)) t x x'.
+          ind_shape_rel p D (ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups)) (ind_nr D ups) (ind_ar D ups) (ind_dr ups)
+            ups (List.firstn (ind_nu D) ps')
+            (ns ++ nonrec_vals gs1 (List.firstn (List.length gs1) as1))
+            (List.skipn (ind_nu D) ps' ++ nonrec_vals gs1 (List.firstn (List.length gs1) as1')) t x x'.
     Proof.
-      intros * Heq INV.
+      intros * Heq INV INVc.
       destruct (con_entry _ _ _ Heq) as (T & x & x' & i & Rk & HT & Hx & Hx' & [a a' Ea Ea' HRk] & Hxx).
       cbn [cargs_ctx_aux List.app] in HT; injection HT as <-.
       exists x, x'; split; [ exact Hx | split; [ exact Hx' |] ].
@@ -1711,7 +1752,20 @@ Section Sort.
       rewrite con_ps, <- List.app_assoc in Ea.
       pose proof (shape_char _ _ _ Heq ups ns _ a0 Hlu Hlns Hlk Hgu0 Ha0 Hnsd INV Hpre (List.length (ptyp_doms t)) 0 nil a i Rk
                     eq_refl (tele_pre_nil _) ltac:(cbn; constructor) ltac:(rewrite List.app_nil_r; exact Ea) HRd) as H.
-      rewrite List.app_nil_r in H; apply H; exact Hxx.
+      rewrite List.app_nil_r in H; apply H in Hxx.
+      (** The right argument at the right constructor's own parameters. *)
+      destruct con_ups as (Hgu & _ & _ & _).
+      destruct con_ns as (Hns & _).
+      destruct (ind_canon ups a0 Hgu0 Hlu Ha0) as (CnP & CnI & CaP & CaI & CdP & CdI & Cad).
+      assert (Cad' : ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) (List.firstn (ind_nu D) ps'))
+        by (eapply canon_adm_beside; eassumption).
+      pose proof (proj1 (ind_shape_rel_rebase p D ups _ _ _ (decl_closed_params D Hc) CnP CnI CaP CaI CdP CdI _)
+                    _ _ _ _ _ _ _ Hxx ups (List.firstn (ind_nu D) ps') ns ns ns (List.skipn (ind_nu D) ps') c gs1 t gs2
+                    _ _ _ _ 0 nil nil nil nil
+                    ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity) Cad Cad'
+                    ltac:(rewrite <- Heq; exact Hcon) Hnsd Hnsd Hns INV INV INVc eq_refl ltac:(lia)
+                    (tele_pre_nil _) (tele_pre_nil _) (tele_pre_nil _)) as Hg.
+      repeat rewrite List.app_nil_r in Hg; exact Hg.
     Qed.
 
     Lemma con_split_at : forall k g, List.nth_error gs k = Some g ->
@@ -1747,14 +1801,16 @@ Section Sort.
     Qed.
 
     Lemma con_args_rel : forall gs2 gs1, gs = gs1 ++ gs2 ->
-        ind_args_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups)
-          (ns ++ nonrec_vals gs1 (List.firstn (List.length gs1) as1)) gs2
+        ind_args_rel p D (ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups)) (ind_nr D ups) (ind_ar D ups) (ind_dr ups)
+          ups (List.firstn (ind_nu D) ps')
+          (ns ++ nonrec_vals gs1 (List.firstn (List.length gs1) as1))
+          (List.skipn (ind_nu D) ps' ++ nonrec_vals gs1 (List.firstn (List.length gs1) as1')) gs2
           (List.skipn (List.length gs1) as1) (List.skipn (List.length gs1) as1').
     Proof.
       pose proof con_las' as Hla'.
       induction gs2 as [| g gs2 IH]; intros gs1 Heq.
       - rewrite List.app_nil_r in Heq.
-        rewrite !List.skipn_all2 by (rewrite <- Heq; lia); constructor.
+        rewrite (List.skipn_all2 as1), (List.skipn_all2 as1') by (rewrite <- Heq; lia); constructor.
       - assert (Hk : List.length gs1 < List.length gs) by (rewrite Heq, List.length_app; cbn; lia).
         destruct (nth_error_lt_some' as1 (List.length gs1) ltac:(lia)) as [x Hx].
         destruct (nth_error_lt_some' as1' (List.length gs1) ltac:(lia)) as [x' Hx'].
@@ -1762,31 +1818,38 @@ Section Sort.
         assert (Heq' : gs = (gs1 ++ g :: nil) ++ gs2) by (rewrite <- List.app_assoc; exact Heq).
         pose proof (IH _ Heq') as IHg.
         rewrite List.length_app in IHg; cbn [List.length] in IHg; rewrite Nat.add_1_r in IHg.
-        rewrite (firstn_S_snoc _ _ _ Hx), nonrec_vals_app in IHg by (rewrite List.length_firstn; lia).
+        rewrite (firstn_S_snoc _ _ _ Hx), (firstn_S_snoc _ _ _ Hx'), !nonrec_vals_app in IHg by (rewrite List.length_firstn; lia).
         destruct g as [A | Ps]; cbn [nonrec_vals] in IHg.
         + constructor.
-          rewrite <- List.app_assoc; exact IHg.
+          rewrite <- !List.app_assoc; exact IHg.
         + assert (Hpre : List.firstn (List.length gs1) gs = gs1)
             by (rewrite Heq, firstn_app_exact by reflexivity; reflexivity).
-          destruct (con_prefix (List.length gs1) ltac:(lia)) as [_ INVd].
-          rewrite Hpre in INVd.
-          destruct (con_rec_step _ _ _ Heq INVd) as (y & y' & Hy & Hy' & Hrel).
+          destruct (con_prefix (List.length gs1) ltac:(lia)) as [INVc INVd].
+          rewrite Hpre in INVc, INVd.
+          destruct (con_rec_step _ _ _ Heq INVd INVc) as (y & y' & Hy & Hy' & Hrel).
           rewrite Hx in Hy; injection Hy as <-; rewrite Hx' in Hy'; injection Hy' as <-.
           constructor; [ exact Hrel |].
-          rewrite List.app_nil_r in IHg; exact IHg.
+          repeat rewrite List.app_nil_r in IHg; exact IHg.
     Qed.
 
-    Lemma con_rel : ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns (d_con p c (ps ++ as1)) (d_con p c (ps' ++ as1')).
+    Lemma con_rel : ind_rel p D (ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups)) (ind_nr D ups) (ind_ar D ups) (ind_dr ups)
+        ns (List.skipn (ind_nu D) ps') (d_con p c (ps ++ as1)) (d_con p c (ps' ++ as1')).
     Proof.
       pose proof con_las' as Hla'.
-      destruct con_ups as (_ & _ & _ & Hlp').
+      destruct con_ups as (Hgu & Hgu0 & Hlu & Hlp').
+      destruct con_sort as [a0 Ha0].
       destruct con_ns as (Hns & Hnsd).
+      destruct (ind_canon ups a0 Hgu0 Hlu Ha0) as (CnP & CnI & CaP & CaI & CdP & CdI & Cad).
+      assert (Cad' : ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) (List.firstn (ind_nu D) ps'))
+        by (eapply canon_adm_beside; eassumption).
       destruct (con_prefix (List.length gs) (le_n _)) as [Hnr _].
       rewrite List.firstn_all, !List.firstn_all2 in Hnr by lia.
-      econstructor; [ exact Hnsd | exact Hcon | exact Hlp | exact Hlp' | exact Hnsd | exact Hns
-                    | exact (tele_full_of_pre _ _ _ _ Hnr) |].
+      apply ind_rel_con with (gs := gs);
+        [ exact Hns | exact Hcon | exact Hlp | exact Hlp' | exact Cad | exact Cad' | exact Hnsd
+        | exact (tnr_refl_r p D ups _ _ _ (decl_closed_params D Hc) CnP CnI CaP CaI CdP CdI _ _ Hns)
+        | exact (tele_full_of_pre _ _ _ _ Hnr) |].
       pose proof (con_args_rel gs nil eq_refl) as H; cbn [List.length List.skipn nonrec_vals List.firstn] in H.
-      rewrite List.app_nil_r in H; exact H.
+      repeat rewrite List.app_nil_r in H; exact H.
     Qed.
   End ConArgs.
 
@@ -1830,8 +1893,11 @@ Section Sort.
       - unfold ind_pvars; rewrite <- Hla, <- Hlp; exact (eval_vars_from_args ps nil as1).
       - change (d_ind p ps) with (d_ind p (nil ++ ps)); apply eval_apps_ind; cbn; lia. }
     assert (bb = d_ind p ps) as -> by (eapply functional_eval_exp; eassumption).
-    assert (E : Rb <~> ind_rel p D (List.firstn (ind_nu D) ps) (ind_nr D (List.firstn (ind_nu D) ps))
-                       (ind_ar D (List.firstn (ind_nu D) ps)) (ind_dr (List.firstn (ind_nu D) ps)) (List.skipn (ind_nu D) ps))
+    assert (E : Rb <~> ind_rel p D (ind_adm D (List.firstn (ind_nu D) ps) (ind_nr D (List.firstn (ind_nu D) ps))
+                                      (ind_ar D (List.firstn (ind_nu D) ps)) (ind_dr (List.firstn (ind_nu D) ps)))
+                       (ind_nr D (List.firstn (ind_nu D) ps))
+                       (ind_ar D (List.firstn (ind_nu D) ps)) (ind_dr (List.firstn (ind_nu D) ps))
+                       (List.skipn (ind_nu D) ps) (List.skipn (ind_nu D) ps'))
       by (eapply per_univ_elem_right_irrel; [ exact HRb | exact Hind ]).
     apply E; exact Hrel.
   Qed.

@@ -129,7 +129,8 @@ Section Fixed_GCtx.
       ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ups' /\
       ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ups /\
       tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns' /\
-      (R <~> ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns).
+      (R <~> ind_rel p D (ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups))
+               (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns ns').
   Proof.
     intros * H Hl Hu Hu'.
     basic_invert_per_univ_elem H.
@@ -272,8 +273,9 @@ Section Fixed_GCtx.
     - exact (adm_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0 _ H14).
     - exact (F1 _ _ H15).
     - rewrite H16; intros a b; split.
-      + apply (proj1 (ind_rel_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0)).
-      + apply (proj1 (ind_rel_change p D ups _ _ _ _ _ _ Hn0' Ha0' Hd0')).
+      + apply (proj1 (ind_rel_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0 _ _ (adm_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0) RnR)).
+      + apply (proj1 (ind_rel_change p D ups _ _ _ _ _ _ Hn0' Ha0' Hd0' _ _ (adm_change p D ups _ _ _ _ _ _ Hn0' Ha0' Hd0')
+                        (fun a b H => F1 _ _ (RnR _ _ (F2 _ _ H))))).
   Qed.
 
   (** The types of the telescopes of related inductive types are related at

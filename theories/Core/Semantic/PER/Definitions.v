@@ -252,85 +252,100 @@ Record ind_adm (D : ind_decl) (ups : list domain)
       tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
       dom_vals B (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (ua ++ ms' ++ ws' ++ ys')) (dr (ms ++ ws ++ ys) B) }.
 
-(** The elements of the inductive type [p] at the uniform parameters [ups]
-    and the non-uniform ones [ns], of the left type: the relation of two
-    related types is that of the left one, so nothing of the right type is
-    needed.  A constructor at the parameters [bs] and [bs'] it was built
-    at, and its arguments: the non-uniform ones of both related to [ns] (the
-    eliminator binds those), the non-recursive arguments related at their
-    types, and the recursive ones by their shapes, evaluated at the left
-    one's arguments.  The uniform parameters in [bs] and [bs'] are never
-    read.  And neutrals that read back equally, of the type at parameters
-    that are so too: the non-uniform ones related to [ns], the uniform ones
-    admissible ([ind_adm]), since a stuck eliminator reads them. *)
-Inductive ind_rel (p : qname) (D : ind_decl) (ups : list domain)
+(** The elements of the inductive type [p], two-sided: [x] at the
+    non-uniform parameters [ns] and [y] at [ns'].  Each element is read at
+    its own parameters, the ones it stores (a constructor's [bs], a
+    neutral's annotation); the type's uniform parameters enter only through
+    [Ok], the admissible uniform parameters, which each element's own must
+    satisfy (the universe takes [ind_adm] at the type's, since a stuck
+    eliminator reads them).  A constructor and its arguments: the
+    non-uniform parameters of each related to its side's index, the
+    non-recursive arguments related at their types, and the recursive ones
+    by their shapes, each side evaluated at its own parameters and
+    arguments.  And neutrals that read back equally, of the type at
+    parameters that are so too.  Two relations are read at the left
+    element's prefix only: the non-recursive arguments' [ar] at its
+    non-uniform parameters, and a function shape's domain [dr] at its
+    [pre].  This is harmless: the universe clause asks both to be
+    invariant along related prefixes ([nr], [ar] and [dr] at related
+    values agree), so the right element's prefix gives the same
+    relation. *)
+Inductive ind_rel (p : qname) (D : ind_decl) (Ok : list domain -> Prop)
     (nr : nat -> list domain -> relation domain)
     (ar : list domain -> String.string -> nat -> list domain -> relation domain)
     (dr : list domain -> exp -> relation domain)
-  : list domain -> relation domain :=
+  : list domain -> list domain -> relation domain :=
 | ind_rel_con :
-  `{ tele_full nr (List.rev (ind_nparams D)) ns ns ->
+  `{ tele_full nr (List.rev (ind_nparams D)) ns ns' ->
      ind_con D c = Some gs ->
      List.length bs = ind_np D ->
      List.length bs' = ind_np D ->
+     Ok (List.firstn (ind_nu D) bs) ->
+     Ok (List.firstn (ind_nu D) bs') ->
      tele_full nr (List.rev (ind_nparams D)) ns (List.skipn (ind_nu D) bs) ->
-     tele_full nr (List.rev (ind_nparams D)) ns (List.skipn (ind_nu D) bs') ->
-     tele_full (ar ns c) (cargs_nonrec gs) (nonrec_vals gs vs) (nonrec_vals gs vs') ->
-     ind_args_rel p D ups nr ar dr ns gs vs vs' ->
-     ind_rel p D ups nr ar dr ns (d_con p c (bs ++ vs)) (d_con p c (bs' ++ vs')) }
+     tele_full nr (List.rev (ind_nparams D)) ns' (List.skipn (ind_nu D) bs') ->
+     tele_full (ar (List.skipn (ind_nu D) bs) c) (cargs_nonrec gs) (nonrec_vals gs vs) (nonrec_vals gs vs') ->
+     ind_args_rel p D Ok nr ar dr (List.firstn (ind_nu D) bs) (List.firstn (ind_nu D) bs')
+       (List.skipn (ind_nu D) bs) (List.skipn (ind_nu D) bs') gs vs vs' ->
+     ind_rel p D Ok nr ar dr ns ns' (d_con p c (bs ++ vs)) (d_con p c (bs' ++ vs')) }
 | ind_rel_neut :
-  `{ List.length as1 = ind_np D ->
+  `{ tele_full nr (List.rev (ind_nparams D)) ns ns' ->
+     List.length as1 = ind_np D ->
      List.length as2 = ind_np D ->
-     ind_adm D ups nr ar dr (List.firstn (ind_nu D) as1) ->
-     ind_adm D ups nr ar dr (List.firstn (ind_nu D) as2) ->
+     Ok (List.firstn (ind_nu D) as1) ->
+     Ok (List.firstn (ind_nu D) as2) ->
      tele_full nr (List.rev (ind_nparams D)) ns (List.skipn (ind_nu D) as1) ->
-     tele_full nr (List.rev (ind_nparams D)) ns (List.skipn (ind_nu D) as2) ->
+     tele_full nr (List.rev (ind_nparams D)) ns' (List.skipn (ind_nu D) as2) ->
      Dom m ≈ m' ∈ per_bot ->
-     ind_rel p D ups nr ar dr ns (⇑ (d_ind p as1) m) (⇑ (d_ind p as2) m') }
-(** The arguments, after the values [pre] of the non-uniform parameters
-    and the non-recursive arguments of the left one before them: a
-    recursive one by its shape. *)
-with ind_args_rel (p : qname) (D : ind_decl) (ups : list domain)
+     ind_rel p D Ok nr ar dr ns ns' (⇑ (d_ind p as1) m) (⇑ (d_ind p as2) m') }
+(** The arguments of two constructors with the uniform parameters [u] and
+    [u'], after the values [pre] and [pre'] of their non-uniform
+    parameters and the non-recursive arguments before them: a recursive
+    one by its shape. *)
+with ind_args_rel (p : qname) (D : ind_decl) (Ok : list domain -> Prop)
     (nr : nat -> list domain -> relation domain)
     (ar : list domain -> String.string -> nat -> list domain -> relation domain)
     (dr : list domain -> exp -> relation domain)
-  : list domain -> list carg -> list domain -> list domain -> Prop :=
+  : list domain -> list domain -> list domain -> list domain -> list carg -> list domain -> list domain -> Prop :=
 | ind_args_nil :
-  `{ ind_args_rel p D ups nr ar dr pre nil nil nil }
+  `{ ind_args_rel p D Ok nr ar dr u u' pre pre' nil nil nil }
 | ind_args_arg :
-  `{ ind_args_rel p D ups nr ar dr (pre ++ v :: nil) gs vs vs' ->
-     ind_args_rel p D ups nr ar dr pre (ca_arg A :: gs) (v :: vs) (v' :: vs') }
+  `{ ind_args_rel p D Ok nr ar dr u u' (pre ++ v :: nil) (pre' ++ v' :: nil) gs vs vs' ->
+     ind_args_rel p D Ok nr ar dr u u' pre pre' (ca_arg A :: gs) (v :: vs) (v' :: vs') }
 | ind_args_rec :
-  `{ ind_shape_rel p D ups nr ar dr pre t v v' ->
-     ind_args_rel p D ups nr ar dr pre gs vs vs' ->
-     ind_args_rel p D ups nr ar dr pre (ca_rec t :: gs) (v :: vs) (v' :: vs') }
-(** A recursive argument of a shape, after the values [pre] of its
-    components (the uniform parameters left out): at the end an element at
-    the parameters the shape evaluates to, and at a domain pointwise:
-    related arguments of the domain give related results, of the rest of
-    the shape, after [pre] and the argument. *)
-with ind_shape_rel (p : qname) (D : ind_decl) (ups : list domain)
+  `{ ind_shape_rel p D Ok nr ar dr u u' pre pre' t v v' ->
+     ind_args_rel p D Ok nr ar dr u u' pre pre' gs vs vs' ->
+     ind_args_rel p D Ok nr ar dr u u' pre pre' (ca_rec t :: gs) (v :: vs) (v' :: vs') }
+(** A recursive argument of a shape, after the values [pre] and [pre'] of
+    its components on each side (the uniform parameters [u] and [u']
+    apart): at the end elements at the parameters the shape evaluates to on
+    each side, and at a domain pointwise: related arguments of the domain
+    give related results, of the rest of the shape, after [pre], [pre'] and
+    the arguments. *)
+with ind_shape_rel (p : qname) (D : ind_decl) (Ok : list domain -> Prop)
     (nr : nat -> list domain -> relation domain)
     (ar : list domain -> String.string -> nat -> list domain -> relation domain)
     (dr : list domain -> exp -> relation domain)
-  : list domain -> ptyp -> domain -> domain -> Prop :=
+  : list domain -> list domain -> list domain -> list domain -> ptyp -> domain -> domain -> Prop :=
 | ind_shape_self :
-  `{ ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ bs ->
-     ind_rel p D ups nr ar dr bs v v' ->
-     ind_shape_rel p D ups nr ar dr pre (pt_self k Ps) v v' }
+  `{ ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u ++ pre) ↘ bs ->
+     ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u' ++ pre') ↘ bs' ->
+     ind_rel p D Ok nr ar dr bs bs' v v' ->
+     ind_shape_rel p D Ok nr ar dr u u' pre pre' (pt_self k Ps) v v' }
 | ind_shape_pi :
-  `{ (forall c c', dr pre B c c' -> ind_app_rel p D ups nr ar dr (pre ++ c :: nil) t f c f' c') ->
-     ind_shape_rel p D ups nr ar dr pre (pt_pi B t) f f' }
-with ind_app_rel (p : qname) (D : ind_decl) (ups : list domain)
+  `{ (forall c c', dr pre B c c' ->
+        ind_app_rel p D Ok nr ar dr u u' (pre ++ c :: nil) (pre' ++ c' :: nil) t f c f' c') ->
+     ind_shape_rel p D Ok nr ar dr u u' pre pre' (pt_pi B t) f f' }
+with ind_app_rel (p : qname) (D : ind_decl) (Ok : list domain -> Prop)
     (nr : nat -> list domain -> relation domain)
     (ar : list domain -> String.string -> nat -> list domain -> relation domain)
     (dr : list domain -> exp -> relation domain)
-  : list domain -> ptyp -> domain -> domain -> domain -> domain -> Prop :=
+  : list domain -> list domain -> list domain -> list domain -> ptyp -> domain -> domain -> domain -> domain -> Prop :=
 | ind_app_mk :
   `{ $| f & c |↘ r ->
      $| f' & c' |↘ r' ->
-     ind_shape_rel p D ups nr ar dr pre t r r' ->
-     ind_app_rel p D ups nr ar dr pre t f c f' c' }
+     ind_shape_rel p D Ok nr ar dr u u' pre pre' t r r' ->
+     ind_app_rel p D Ok nr ar dr u u' pre pre' t f c f' c' }
 .
 
 Scheme ind_rel_mut_ind := Induction for ind_rel Sort Prop
@@ -398,7 +413,9 @@ Section Per_univ_elem_core_def.
       equally; the non-uniform ones, whose types are in the sort, are
       related at their telescope [nr], and so are the non-recursive
       arguments of each constructor at each related instance of the
-      non-uniform parameters ([ar]).  Its elements are [ind_rel]. *)
+      non-uniform parameters ([ar]).  Its elements are [ind_rel] at the
+      two sides' non-uniform parameters, their own uniform parameters
+      admissible beside the left type's. *)
   | per_univ_elem_core_indty :
     `{ forall (nr : nat -> list domain -> relation domain)
          (ar : list domain -> String.string -> nat -> list domain -> relation domain)
@@ -457,7 +474,7 @@ Section Per_univ_elem_core_def.
          ind_adm D ups nr ar dr ups' ->
          ind_adm D ups nr ar dr ups ->
          tele_full nr (List.rev (ind_nparams D)) ns ns' ->
-         (elem_rel <~> ind_rel p D ups nr ar dr ns) ->
+         (elem_rel <~> ind_rel p D (ind_adm D ups nr ar dr) nr ar dr ns ns') ->
          DF d_ind p (ups ++ ns) ≈ d_ind p (ups' ++ ns') ∈ per_univ_elem_core ↘ elem_rel }
   (** A neutral type, its elements neutrals. *)
   | per_univ_elem_core_neut :
@@ -560,7 +577,7 @@ Section Per_univ_elem_core_def.
           ind_adm D ups nr ar dr ups' ->
           ind_adm D ups nr ar dr ups ->
           tele_full nr (List.rev (ind_nparams D)) ns ns' ->
-          (elem_rel <~> ind_rel p D ups nr ar dr ns) ->
+          (elem_rel <~> ind_rel p D (ind_adm D ups nr ar dr) nr ar dr ns ns') ->
           motive elem_rel (d_ind p (ups ++ ns)) (d_ind p (ups' ++ ns'))).
 
   #[derive(equations=no, eliminator=no)]
@@ -845,7 +862,7 @@ Section Per_univ_elem_ind_def.
           ind_adm D ups nr ar dr ups' ->
           ind_adm D ups nr ar dr ups ->
           tele_full nr (List.rev (ind_nparams D)) ns ns' ->
-          (elem_rel <~> ind_rel p D ups nr ar dr ns) ->
+          (elem_rel <~> ind_rel p D (ind_adm D ups nr ar dr) nr ar dr ns ns') ->
           motive i elem_rel (d_ind p (ups ++ ns)) (d_ind p (ups' ++ ns'))).
 
   Lemma per_univ_elem_ind i a b R (H : per_univ_elem i a b R) : motive i a b R.

@@ -190,18 +190,26 @@ Section IndRealize.
        (forall Γ A R, DF b ≈ b ∈ per_univ_elem i ↘ R -> Γ ⊢ A ® DP (ms ++ ws ++ ys) B -> Γ ⊢ A ® glu_typ_top i b) /\
        (forall Γ M A m, Γ ⊢ M : A ® m ∈ glu_elem_bot i b -> Γ ⊢ M : A ® ⇑ b m ∈ DEl (ms ++ ws ++ ys) B)).
 
-  Lemma ind_glu_elem_readback : forall Γ Ps M m, ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m -> ⊢ Γ ->
+  Lemma ind_glu_elem_readback : forall Ok : list domain -> Prop,
+      (forall u, Ok u -> ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) u) ->
+      forall Γ Ps M m, ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m -> ⊢ Γ ->
       forall ns', glu_params_top D Γ Ps (ups ++ ns') ->
-      ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns' m m ->
+      ind_rel p D Ok (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns' ns' m m ->
       forall (w : nf), Rnf ⇓ (d_ind p (ups ++ ns')) m in length Γ ↘ w -> Γ ⊢ M ≈ w : apps (a_ind p) Ps.
   Proof.
+    intros Ok HOk.
     destruct (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ Hper Hl Hu Hu) as (_ & _ & Hcp & _ & _ & Hadm & _ & _).
     destruct (per_univ_elem_ind_evals _ _ _ _ _ _ _ _ Hper Hl Hu Hu) as (HevN & HevAr & HevD).
     pose proof Hcp as [HnP HnI HaP HaI HdP HdI].
     pose proof Hadm as [_ _ Hcl _].
+    pose proof (proj1 (ind_shape_rel_rebase p D ups _ _ _ Hass HnP HnI HaP HaI HdP HdI Ok)) as Reb.
+    (** The uniform parameters of an element are admissible beside [ups],
+        and [ups] beside them. *)
+    assert (Hback : forall u, Ok u -> ind_adm D u (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ups)
+      by (intros u Hou; exact (proj1 (adm_iff p D ups _ _ _ Hass HnP HnI HaP HaI HdP HdI u (HOk u Hou) ups) Hadm)).
     apply (ind_glu_elem_mut_ind p D ups NEl AEl DP DEl
              (fun Γ Ps M m _ => ⊢ Γ -> forall ns', glu_params_top D Γ Ps (ups ++ ns') ->
-                ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns' m m ->
+                ind_rel p D Ok (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns' ns' m m ->
                 forall (w : nf), Rnf ⇓ (d_ind p (ups ++ ns')) m in length Γ ↘ w -> Γ ⊢ M ≈ w : apps (a_ind p) Ps)
              (fun Γ pre t A N v _ => ⊢ Γ -> Γ ⊢ N : A -> (exists Us' σ', A = ptyp_ty_at p Us' σ' t) ->
                 forall ms ms' c0 gs1 t0 gs2 ws k ys, pre = ms ++ ws ++ ys ->
@@ -210,7 +218,7 @@ Section IndRealize.
                 tele_pre (ind_ar D ups ms c0) (List.length (cargs_nonrec gs1)) ws ws ->
                 ptyp_skip k t0 = t -> k <= List.length (ptyp_doms t0) ->
                 tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t0)) k ys ys ->
-                ind_shape_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) (ms' ++ ws ++ ys) t v v ->
+                ind_shape_rel p D Ok (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ups ups (ms' ++ ws ++ ys) (ms' ++ ws ++ ys) t v v ->
                 forall a (V : nf), ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ms' ++ ws ++ ys) ↘ a ->
                 Rnf ⇓ a v in length Γ ↘ V -> Γ ⊢ N ≈ V : A)).
     2:{ intros * Hm Hr HΓ ns' Hpt Hrel w Hw. clear - Hr Hw HΓ. inversion Hw; subst.
@@ -220,12 +228,12 @@ Section IndRealize.
     - (** A constructor: its parameters and arguments read back as the
           constructor's, at the type's parameters. *)
       intros * Hcon HPl Hbl Hvl HAl HM Hb Hv Hnp HAs Harg Hrec IH HΓ ns' Hpt Hrel w Hw.
-      destruct (ind_rel_con_inv p D ups _ _ _ Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ Hrel Hbl)
-        as (gs0 & bs' & vs' & Heqd & Hns & Hc0 & Hbl' & Hs & Hs' & Ha & Hia).
+      destruct (ind_rel_con_inv p D ups _ _ _ Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ Hrel Hbl)
+        as (gs0 & bs' & vs' & Heqd & Hns & Hc0 & Hbl' & Ho & Ho' & Hs & Hs' & Ha & Hia).
       rewrite Hcon in Hc0; injection Hc0 as <-.
       injection Heqd as Heqd.
       destruct (app_split_eq _ _ _ _ Heqd ltac:(congruence)) as [<- <-].
-      clear Hs' Hbl' Hrel.
+      clear Hs' Hbl' Hrel Ho'.
       inversion Hw; subst.
       match goal with H : ind_lookup _ _ p = Some ?D1 |- _ => assert (D1 = D) as -> by congruence end.
       match goal with H : ind_con D c = Some gs0 |- _ => rewrite Hcon in H; injection H as <- end.
@@ -293,12 +301,18 @@ Section IndRealize.
         rewrite HV in HnV; injection HnV as ->.
         rewrite <- env_args_app, <- List.app_assoc in Ea.
         pose proof (nonrec_prefix_pre _ _ _ _ _ _ Hv Hvl Heq) as Hpre.
-        pose proof (ind_args_rel_rec _ _ _ _ _ _ _ _ _ _ Hia _ _ _ _ _ Heq Hv0 Hv0) as Hsh.
+        pose proof (ind_args_rel_rec _ _ _ _ _ _ _ _ _ _ _ _ _ Hia _ _ _ _ _ Heq Hv0 Hv0) as Hsh0.
+        (** The recursive argument, read at [ups] and at the type's
+            non-uniform parameters. *)
+        pose proof (Reb _ _ _ _ _ _ _ Hsh0 ups ups ms ms ns' ns' c gs1 Pr gs2 pv pv pv pv 0 nil nil nil nil
+                      ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity)
+                      (Hback _ Ho) (Hback _ Ho) ltac:(rewrite <- Heq; exact Hcon) Hb Hsm Hsm Hpre Hpre Hpre
+                      eq_refl ltac:(lia) (tele_pre_nil _) (tele_pre_nil _) (tele_pre_nil _)) as Hsh.
         assert (HTf : exists Us' σ', T = ptyp_ty_at p Us' σ' Pr)
           by (do 2 eexists; rewrite (cargs_rec_type p D gs gs1 Pr gs2 _ _ _ Heq HT), ptyp_ty_eq_at, ptyp_ty_at_sub; reflexivity).
         eapply (IH _ _ _ _ _ _ Heq HN HT Hv0 HΓ (HAs _ _ _ HN HT) HTf ms ns' c gs1 Pr gs2 pv 0 nil);
           [ rewrite List.app_nil_r; reflexivity | exact Hsm | rewrite <- Heq; exact Hcon | exact Hpre | reflexivity | lia
-          | apply tele_pre_nil | rewrite List.app_nil_r; exact Hsh | rewrite List.app_nil_r; exact Ea | exact HRV ].
+          | apply tele_pre_nil | exact Hsh | rewrite List.app_nil_r; exact Ea | exact HRV ].
     - (** The end of a shape: the element read back at the parameters the
           shape evaluates to. *)
       intros * Hs1 Hs2 IH HΓ HN HAf ms ms' c0 gs1 t0 gs2 ws k1 ys Hpre Hm Hc Hw Hsk Hk Hy Hsh a V Ea HRV.
@@ -314,8 +328,9 @@ Section IndRealize.
       pose proof (functional_eval_exps' _ _ _ _ E1 Ebt) as ->.
       destruct (Hs1 _ _ E0 HA) as (HQl & _ & Hgn).
       destruct (Hgn _ H01) as [_ HQt].
-      destruct (ind_shape_self_inv _ _ _ _ _ _ _ _ _ _ _ Hsh) as (bs & Ebs & Hvv).
+      destruct (ind_shape_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh) as (bs & bs' & Ebs & Ebs' & Hvv).
       pose proof (functional_eval_exps' _ _ _ _ Ebs Ebt) as ->.
+      pose proof (functional_eval_exps' _ _ _ _ Ebs' Ebt) as ->.
       assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
       pose proof (IH _ _ E0 HA Γ wk_id _ Hid (glu_params_top_refl _ _ _ _ (HQt Γ wk_id Hid)) HΓ bt (HQt Γ wk_id Hid) Hvv V HRV)
         as Heqn.
@@ -363,7 +378,7 @@ Section IndRealize.
       assert (Hcc : ind_dr ups (ms ++ ws ++ ys) B c c) by (etransitivity; [ symmetry |]; exact Hcc0).
       (** The rest of the shape, at the variable. *)
       pose proof (proj1 (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc eq_refl Hw HB Hy _ _) Hcc) as Hcc'.
-      destruct (ind_shape_pi_inv _ _ _ _ _ _ _ _ _ _ _ Hsh c c Hcc') as (r & r' & Er & Er' & Hsh').
+      destruct (ind_shape_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh c c Hcc') as (r & r' & Er & Er' & Hsh').
       pose proof (functional_eval_app _ _ _ _ Er Hvapp) as ->.
       pose proof (functional_eval_app _ _ _ _ Er' Hvapp) as ->.
       assert (HNw : Γ ▹ IT ⊢ N[↑]ʷ : Π IT[↑]ʷ OT[wk_q ↑]ʷ) by (rewrite <- exp_wk_pi; rewrite HA in HN; mauto 3).
@@ -406,7 +421,7 @@ Section IndRealize.
     destruct (HQk Δ φ Hφ) as (Hpt & _ & _).
     pose proof (Hk Δ φ _ Hφ (glu_params_top_refl _ _ _ _ Hpt)) as Hg.
     assert (HΔ : ⊢ Δ) by (eapply kripke_dom; eassumption).
-    pose proof (ind_glu_elem_readback _ _ _ _ Hg HΔ ns Hpt (proj1 (Herel _ _) (proj1 (ER _ _) Hm)) w Hw) as Hrb.
+    pose proof (ind_glu_elem_readback _ (fun u Hu => Hu) _ _ _ _ Hg HΔ ns Hpt (proj1 (Herel _ _) (proj1 (ER _ _) Hm)) w Hw) as Hrb.
     eapply wf_exp_eq_conv'; [ exact Hrb |].
     rewrite <- wk_apps_ind; symmetry; mauto 3.
   Qed.

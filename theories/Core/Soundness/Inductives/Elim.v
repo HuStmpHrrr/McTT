@@ -367,15 +367,17 @@ Proof.
   eapply (params_eq_trans _ p D Xs Ys Zs Hl HΔ); [ exact HXl | congruence | congruence | exact H1 | exact H2 ].
 Qed.
 
-Lemma ind_rel_con_inv : forall p D ups ns c gs bs vs, ind_con D c = Some gs -> List.length bs = ind_np D ->
-    ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns (d_con p c (bs ++ vs)) (d_con p c (bs ++ vs)) ->
-    tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns /\
-    tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns (List.skipn (ind_nu D) bs) /\
-    tele_full (ind_ar D ups ns c) (cargs_nonrec gs) (nonrec_vals gs vs) (nonrec_vals gs vs) /\
-    ind_args_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns gs vs vs.
+(** A constructor related to itself, at its own parameters. *)
+Lemma ind_rel_con_inv : forall p D Ok nr ar dr ns c gs bs vs, ind_con D c = Some gs -> List.length bs = ind_np D ->
+    ind_rel p D Ok nr ar dr ns ns (d_con p c (bs ++ vs)) (d_con p c (bs ++ vs)) ->
+    tele_full nr (List.rev (ind_nparams D)) ns ns /\ Ok (List.firstn (ind_nu D) bs) /\
+    tele_full nr (List.rev (ind_nparams D)) ns (List.skipn (ind_nu D) bs) /\
+    tele_full (ar (List.skipn (ind_nu D) bs) c) (cargs_nonrec gs) (nonrec_vals gs vs) (nonrec_vals gs vs) /\
+    ind_args_rel p D Ok nr ar dr (List.firstn (ind_nu D) bs) (List.firstn (ind_nu D) bs)
+      (List.skipn (ind_nu D) bs) (List.skipn (ind_nu D) bs) gs vs vs.
 Proof.
   intros * Hcn Hbl H.
-  inversion H as [? ? gs0 bs0 bs0' vs0 vs0' Hn Hc0 Hb0 Hb0' Hs Hs' Hav Hia | ]; subst.
+  inversion H as [? ? ? gs0 bs0 bs0' vs0 vs0' Hn Hc0 Hb0 Hb0' Ho Ho' Hs Hs' Hav Hia | ]; subst.
   match goal with E : bs0 ++ vs0 = bs ++ vs |- _ => destruct (app_split_eq _ _ _ _ E ltac:(congruence)) as [-> ->] end.
   match goal with E : bs0' ++ vs0' = bs ++ vs |- _ => destruct (app_split_eq _ _ _ _ E ltac:(congruence)) as [-> ->] end.
   rewrite Hcn in Hc0; injection Hc0 as <-.
@@ -1128,9 +1130,41 @@ Section ElimSem.
   Let Had := proj2 (proj2 (proj2 (proj2 (proj2 (proj2 Hcan))))).
   Let Hass : tele_ass (ind_params D) := decl_closed_params D Hc.
   Let Hle : ind_nu D <= ind_np D := decl_closed_nu D Hc.
-  Let imv := IndElim.ind_rel_mv p D ups _ _ _ Hl Hass HnP HnI HaP HaI HdP HdI Had Hle Hsimp Hplen.
+  (** The admissible uniform parameters, those admissible beside [ups]. *)
+  Let Okc := ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups).
+  Let HOkc : forall u, Okc u -> ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) u := fun u Hu => Hu.
+  Let idxc := ind_rel_idx p D ups _ _ _ Hass HnP HnI HaP HaI HdP HdI Okc.
   Let tsym := tnr_sym p D ups _ _ _ Hass HnP HnI HaP HaI HdP HdI.
   Let ttrans := tnr_trans p D ups _ _ _ Hass HnP HnI HaP HaI HdP HdI.
+
+  (** [ups] is admissible beside admissible uniform parameters. *)
+  Lemma ok_back : forall Y u2, Okc Y -> Okc u2 -> ind_adm D Y (ind_nr D ups) (ind_ar D ups) (ind_dr ups) u2.
+  Proof. intros * HY Hu2; exact (proj1 (adm_iff p D ups _ _ _ Hass HnP HnI HaP HaI HdP HdI Y HY u2) Hu2). Qed.
+
+  (** Uniform parameters related to [ups] are admissible. *)
+  Lemma ok_of_ru : forall w, RU (env_args nil w) (env_args nil ups) -> List.length w = ind_nu D -> Okc w.
+  Proof.
+    intros w H Lw.
+    assert (HPU : PER RU) by (eapply per_env_PER; exact HRU).
+    exact (Completeness.Inductives.Con.canon_adm_beside D HDc Hc Hsu ups bu ups_len Hbu w
+             (Completeness.Inductives.Elim.U_gargs D HD Hc RU HRU _ _ (symmetry H) ups_len Lw)).
+  Qed.
+
+  (** Arguments related at admissible uniform parameters, at other
+      admissible ones. *)
+  Lemma args_rebase_ok : forall c gs Y Y' X X' vs vs' u2 u2', ind_con D c = Some gs ->
+      Okc Y -> Okc Y' -> Okc u2 -> Okc u2' -> tele_full (ind_nr D ups) (List.rev (ind_nparams D)) X X' ->
+      tele_full (ind_ar D ups X c) (cargs_nonrec gs) (nonrec_vals gs vs) (nonrec_vals gs vs') ->
+      ind_args_rel p D Okc (ind_nr D ups) (ind_ar D ups) (ind_dr ups) Y Y' X X' gs vs vs' ->
+      ind_args_rel p D Okc (ind_nr D ups) (ind_ar D ups) (ind_dr ups) u2 u2' X X' gs vs vs'.
+  Proof.
+    intros * Hcon HY HY' Hu2 Hu2' Hs Har Hia.
+    pose proof (ind_args_rel_rebase p D ups _ _ _ Hass HnP HnI HaP HaI HdP HdI Okc _ _ _ _ _ _ _ Hia
+                  u2 u2' X X' X X' c gs nil nil nil ltac:(cbn; rewrite List.app_nil_r; reflexivity)
+                  ltac:(cbn; rewrite List.app_nil_r; reflexivity) eq_refl eq_refl (ok_back _ _ HY Hu2) (ok_back _ _ HY' Hu2')
+                  Hcon eq_refl Hs (ttrans _ _ _ Hs (tsym _ _ Hs)) (ttrans _ _ _ (tsym _ _ Hs) Hs) Har) as H.
+    cbn [nonrec_vals] in H; repeat rewrite List.app_nil_r in H; exact H.
+  Qed.
   Let mmid := Completeness.Inductives.Elim.mot_mid D HD Hc Hsu p Hl Γ RΓ HRΓ HΓ RU HRU Us HUl HUs ups bu ups_gargs ups_len Hbu HNt HM A A iA HAv ρ ρ Hρ HUv.
 
   Let Rel := fun ns m ns' m' => per_head A A (env_args ρ (ns ++ m :: nil)) (env_args ρ (ns' ++ m' :: nil)).
@@ -1151,17 +1185,17 @@ Section ElimSem.
 
   Let Hbrm := Completeness.Inductives.Elim.br_mid D HD Hc Hsu Hdt p Hl Γ RΓ HRΓ HΓ RU HRU Us HUl HUs ups bu ups_gargs ups_len Hbu HNt HM
                A A iA HAv ρ ρ Hρ HUv bctx_sem Bs Bs brs_rel.
-  Let pelim := IndElim.per_ind_elim_all p D ups _ _ _ Hl Hass HnP HnI HaP HaI HdP HdI Had Hle Hsimp Hplen iA nm ρ ρ A A Bs Bs Rel Hnm
+  Let pelim := IndElim.per_ind_elim_all p D ups _ _ _ Hl Hass HnP HnI HaP HaI HdP HdI Okc HOkc Hle Hsimp Hplen iA nm ρ ρ A A Bs Bs Rel Hnm
                  (vid_nodup D HDc) HBn HBn HBa HBa mmid Hbrm.
-  Let fnp2 := IndElim.fresh_np2 p D ups _ _ _ Hl Hass HnP HnI HaP HaI HdP HdI Had Hle Hsimp Hplen iA nm ρ ρ A A Bs Bs Rel Hnm
+  Let fnp2 := IndElim.fresh_np2 p D ups _ _ _ Hl Hass HnP HnI HaP HaI HdP HdI Okc HOkc Hle Hsimp Hplen iA nm ρ ρ A A Bs Bs Rel Hnm
                 (vid_nodup D HDc) HBn HBn HBa HBa mmid Hbrm.
-  Let frargs := IndElim.fresh_args p D ups _ _ _ Hl Hass HnP HnI HaP HaI HdP HdI Had Hle Hsimp Hplen iA nm ρ ρ A A Bs Bs Rel Hnm
+  Let frargs := IndElim.fresh_args p D ups _ _ _ Hl Hass HnP HnI HaP HaI HdP HdI Okc HOkc Hle Hsimp Hplen iA nm ρ ρ A A Bs Bs Rel Hnm
                 (vid_nodup D HDc) HBn HBn HBa HBa mmid Hbrm.
-  Let irvar := IndElim.ind_rel_var p D ups _ _ _ Hl Hass HnP HnI HaP HaI HdP HdI Had Hle Hsimp Hplen iA nm ρ ρ A A Bs Bs Rel Hnm
+  Let irvar := IndElim.ind_rel_var p D ups _ _ _ Hl Hass HnP HnI HaP HaI HdP HdI Okc HOkc Hle Hsimp Hplen iA nm ρ ρ A A Bs Bs Rel Hnm
                 (vid_nodup D HDc) HBn HBn HBa HBa mmid Hbrm.
-  Let shex := IndElim.shty_exists p D ups _ _ _ Hl Hass HnP HnI HaP HaI HdP HdI Had Hle Hsimp Hplen iA nm ρ ρ A A Bs Bs Rel Hnm
+  Let shex := IndElim.shty_exists p D ups _ _ _ Hl Hass HnP HnI HaP HaI HdP HdI Okc HOkc Hle Hsimp Hplen iA nm ρ ρ A A Bs Bs Rel Hnm
                 (vid_nodup D HDc) HBn HBn HBa HBa mmid Hbrm.
-  Let pbelim := IndElim.per_bot_elim p D ups _ _ _ Hl Hass HnP HnI HaP HaI HdP HdI Had Hle Hsimp Hplen iA nm ρ ρ A A Bs Bs Rel Hnm
+  Let pbelim := IndElim.per_bot_elim p D ups _ _ _ Hl Hass HnP HnI HaP HaI HdP HdI Okc HOkc Hle Hsimp Hplen iA nm ρ ρ A A Bs Bs Rel Hnm
                 (vid_nodup D HDc) HBn HBn HBa HBa mmid Hbrm.
 
   (** The substitution of the motive's context at the fresh variables a
@@ -1186,7 +1220,8 @@ Section ElimSem.
         [ rewrite List.length_app, length_elim_mctx; cbn; lia |].
       intros k X a HX Ea; exact (mctx_entry_link _ _ Fu Huu k X a HX Ea). }
     destruct (rel_ctx_wf_per_ctx_env HM) as [RM HRM].
-    pose proof (irvar ns_u ups ua ns_u ns_x (List.length Δ + ind_nn D) Had Hadm ups_len Lua Huu Hux) as Hv.
+    pose proof (irvar ns_u ns_x ups ua ns_u ns_x (List.length Δ + ind_nn D) Had Hadm ups_len Lua Hux Huu
+                  (ttrans _ _ _ (tsym _ _ Hux) Hux)) as Hv.
     pose proof (Completeness.Inductives.Elim.cv_mctx D HD Hc Hsu p Hl Γ RΓ HRΓ HΓ RU HRU Us HUl HUs ups bu ups_gargs ups_len Hbu HNt HM
                   ρ ρ ups ups Hρ HUv HUv ups_RU ups_RU RM HRM _ _ _ _ Hux Hv) as HE.
     assert (HMr : ⊨ List.rev (List.rev (elim_mctx p D Us)) ++ Γ) by (rewrite List.rev_involutive; exact HM).
@@ -1209,16 +1244,16 @@ Section ElimSem.
       Fihs vs_u at gs under ρ A in gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ns_u) ⍮ (s + ind_nn D + List.length gs) ↘ ihs_u ->
       tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns_u ns_u ->
       tele_full (ind_ar D ups ns_u c) (cargs_nonrec gs) (nonrec_vals gs vs_u) (nonrec_vals gs vs_u) ->
-      ind_args_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns_u gs vs_u vs_u ->
-      ihs_rel ups (ind_dr ups) Rel ns_u gs vs_u vs_u ihs_u ihs_u ->
+      ind_args_rel p D Okc (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ups ups ns_u ns_u gs vs_u vs_u ->
+      ihs_rel (ind_dr ups) Rel ups ups ns_u ns_u gs vs_u vs_u ihs_u ihs_u ->
       forall k X a, List.nth_error (List.rev (elim_bctx p D gs A Us)) k = Some (ce_ass X) ->
         ⟦ X ⟧ env_args ρ (List.firstn k (ns_u ++ vs_u ++ ihs_u)) ↘ a ->
         exists b (j : nat), List.nth_error (ns_u ++ vs_u ++ ihs_u) k = Some (⇑! b (s + k)) /\ Dom a ≈ b ∈ per_univ j.
   Proof.
     intros c gs Hcon s ns_u vs_u ihs_u Fn Fc Fi Hns Har Hia Hir k X a HX Ea.
     pose proof (fresh_tele_length _ _ _ _ Fn) as Ln; rewrite List.length_rev, length_nparams in Ln.
-    destruct (Completeness.Inductives.Elim.ind_args_rel_len _ _ _ _ _ _ _ _ _ _ Hia) as [Lv _].
-    destruct (Completeness.Inductives.Elim.ihs_rel_len _ _ _ _ _ _ _ _ _ Hir) as [Li _].
+    destruct (Completeness.Inductives.Elim.ind_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ Hia) as [Lv _].
+    destruct (Completeness.Inductives.Elim.ihs_rel_len _ _ _ _ _ _ _ _ _ _ _ Hir) as [Li _].
     pose proof (cons_lookup_in _ _ _ Hcon) as Hin.
     pose proof (bctx_sem c gs Hcon) as HBs.
     assert (Hbe : elim_bctx p D gs A Us = ihs_ctx_aux D A Us (List.length gs) nil 0 gs ++ tele_sub (cargs_ctx p D gs ++ ind_nparams D) τU)
@@ -1310,7 +1345,7 @@ Section ElimSem.
       assert (Hfk : List.firstn k (ns_u ++ vs_u ++ ihs_u) = (ns_u ++ vs_u) ++ List.firstn j ihs_u)
         by (rewrite List.app_assoc, firstn_app_ge by (rewrite List.length_app; lia); rewrite List.length_app, Ln, Lv, Hi'; reflexivity).
       rewrite Hfk in Ea.
-      destruct (Completeness.Inductives.Elim.ind_args_rel_at D p ups _ gs vs_u vs_u Hia gs1 t gs2 Heq) as (v & v' & Hv1 & Hv1' & Hsh).
+      destruct (Completeness.Inductives.Elim.ind_args_rel_at D p ups _ _ _ _ gs vs_u vs_u Hia gs1 t gs2 Heq) as (v & v' & Hv1 & Hv1' & Hsh).
       rewrite Hv1' in Hv1; injection Hv1 as <-.
       destruct (fresh_ihs_nth _ _ _ _ _ _ _ Fi gs1 t gs2 Heq) as (v0 & a' & Hv0 & Ea' & Hih).
       rewrite Hv1' in Hv0; injection Hv0 as <-.
@@ -1388,13 +1423,15 @@ Section ElimSem.
     destruct (frargs ups ua ns_u ns_x c gs Had Hadm ups_len Lua Hux Hcon
                 gs nil nil nil (s + ind_nn D) (s + ind_nn D + List.length gs) eq_refl (tele_pre_nil _))
       as (vs1 & vs2 & ihs1 & ihs2 & C1 & C2 & I1 & I2 & P & Hia & Hir).
-    rewrite !List.app_nil_r in C1, C2, I1, I2, Hia, Hir; cbn in P.
+    rewrite !List.app_nil_r in C1, C2, I1, I2; cbn in P.
+    repeat rewrite List.app_nil_r in Hia; repeat rewrite List.app_nil_r in Hir.
     pose proof (functional_fresh_cargs _ _ _ _ _ _ C2 _ Cx) as ->.
     pose proof (functional_fresh_ihs _ _ _ _ _ _ _ I2 _ Ix) as ->.
     destruct (frargs ups ups ns_u ns_u c gs Had Had ups_len ups_len Huu Hcon
                 gs nil nil nil (s + ind_nn D) (s + ind_nn D + List.length gs) eq_refl (tele_pre_nil _))
       as (vs1' & vs1'' & ihs1' & ihs1'' & C1' & C1'' & I1' & I1'' & P' & Hia' & Hir').
-    rewrite !List.app_nil_r in C1', C1'', I1', I1'', Hia', Hir'; cbn in P'.
+    rewrite !List.app_nil_r in C1', C1'', I1', I1''; cbn in P'.
+    repeat rewrite List.app_nil_r in Hia'; repeat rewrite List.app_nil_r in Hir'.
     pose proof (functional_fresh_cargs _ _ _ _ _ _ C1' _ C1) as ->.
     pose proof (functional_fresh_cargs _ _ _ _ _ _ C1'' _ C1) as ->.
     pose proof (functional_fresh_ihs _ _ _ _ _ _ _ I1' _ I1) as ->.
@@ -1403,8 +1440,8 @@ Section ElimSem.
     pose proof (tele_full_of_pre _ _ _ _ P') as Har'.
     pose proof (fresh_tele_length _ _ _ _ Fu) as Lu; rewrite List.length_rev, length_nparams in Lu.
     pose proof (fresh_tele_length _ _ _ _ Fx) as Lx; rewrite List.length_rev, length_nparams in Lx.
-    destruct (Completeness.Inductives.Elim.ind_args_rel_len _ _ _ _ _ _ _ _ _ _ Hia) as [Lv1 Lv2].
-    destruct (Completeness.Inductives.Elim.ihs_rel_len _ _ _ _ _ _ _ _ _ Hir) as [Li1 Li2].
+    destruct (Completeness.Inductives.Elim.ind_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ Hia) as [Lv1 Lv2].
+    destruct (Completeness.Inductives.Elim.ihs_rel_len _ _ _ _ _ _ _ _ _ _ _ Hir) as [Li1 Li2].
     assert (Lb : List.length (elim_bctx p D gs A Us) = ind_nn D + List.length gs + cargs_nrec gs) by (rewrite length_elim_bctx; lia).
     (** Glued at the variables at [ups]. *)
     assert (Hws : tele_sub (elim_bctx p D gs A Us) σ'' ++ Δ ⊢ˢ sb_qn (List.length (elim_bctx p D gs A Us)) σ''
@@ -1415,8 +1452,8 @@ Section ElimSem.
       exact (bctx_entry_link c gs Hcon s ns_u vs1 ihs1 Fu C1 I1 Huu Har' Hia' Hir' k X a HX Ea). }
     (** Related to those at [ua]. *)
     destruct (rel_ctx_wf_per_ctx_env HBs) as [RB HRB].
-    pose proof (Completeness.Inductives.Elim.cv_bctx D HD Hc Hsu Hdt p Hl Γ RΓ HRΓ HΓ RU HRU Us HUl HUs ups bu ups_gargs ups_len Hbu HNt HM
-                  A iA HAv ρ ρ Hρ HUv c gs Hcon HBs ρ ρ Hρ Hρ ns_u ns_u ns_x vs1 vs_x ihs1 ihs_x Huu Hux Har Hia Hir RB HRB) as HE.
+    pose proof (Completeness.Inductives.Elim.cv_bctx_own D HD Hc Hsu Hdt p Hl Γ RΓ HRΓ HΓ RU HRU Us HUl HUs ups bu ups_gargs ups_len Hbu HNt HM
+                  A iA HAv ρ ρ Hρ HUv c gs Hcon HBs ρ ρ Hρ Hρ ups ua ns_u ns_x vs1 vs_x ihs1 ihs_x Had Hadm Hux Har Hia Hir RB HRB) as HE.
     assert (HBr : ⊨ List.rev (List.rev (elim_bctx p D gs A Us)) ++ Γ) by (rewrite List.rev_involutive; exact HBs).
     assert (HRBr : EF List.rev (List.rev (elim_bctx p D gs A Us)) ++ Γ ≈ List.rev (List.rev (elim_bctx p D gs A Us)) ++ Γ ∈ per_ctx_env ↘ RB)
       by (rewrite List.rev_involutive; exact HRB).
@@ -1483,22 +1520,24 @@ Section ElimSem.
     destruct (frargs ua ua ns_x ns_x c gs Hadm Hadm Lua Lua Hxx Hcon
                 gs nil nil nil (s + ind_nn D) (s + ind_nn D + List.length gs) eq_refl (tele_pre_nil _))
       as (vs1 & vs2 & ihs1 & ihs2 & C1 & C2 & I1 & I2 & P & Hia & Hir).
-    rewrite !List.app_nil_r in C1, C2, I1, I2, Hia, Hir; cbn in P.
+    rewrite !List.app_nil_r in C1, C2, I1, I2; cbn in P.
+    repeat rewrite List.app_nil_r in Hia; repeat rewrite List.app_nil_r in Hir.
     pose proof (functional_fresh_cargs _ _ _ _ _ _ C1 _ Cx) as ->.
     pose proof (functional_fresh_cargs _ _ _ _ _ _ C2 _ Cx) as ->.
     pose proof (functional_fresh_ihs _ _ _ _ _ _ _ I1 _ Ix) as ->.
     pose proof (functional_fresh_ihs _ _ _ _ _ _ _ I2 _ Ix) as ->.
     pose proof (tele_full_of_pre _ _ _ _ P) as Har.
     pose proof (fresh_tele_length _ _ _ _ Fx) as LX; rewrite List.length_rev, length_nparams in LX.
-    destruct (Completeness.Inductives.Elim.ind_args_rel_len _ _ _ _ _ _ _ _ _ _ Hia) as [Lv _].
-    destruct (Completeness.Inductives.Elim.ihs_rel_len _ _ _ _ _ _ _ _ _ Hir) as [Li _].
+    destruct (Completeness.Inductives.Elim.ind_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ Hia) as [Lv _].
+    destruct (Completeness.Inductives.Elim.ihs_rel_len _ _ _ _ _ _ _ _ _ _ _ Hir) as [Li _].
     destruct (rel_ctx_wf_per_ctx_env HBs) as [RB HRB].
-    pose proof (Completeness.Inductives.Elim.cv_bctx D HD Hc Hsu Hdt p Hl Γ RΓ HRΓ HΓ RU HRU Us HUl HUs ups bu ups_gargs ups_len Hbu HNt HM
-                  A iA HAv ρ ρ Hρ HUv c gs Hcon HBs ρ ρ Hρ Hρ ns_x ns_x ns_x vs_x vs_x ihs_x ihs_x Hxx Hxx Har Hia Hir RB HRB) as HE.
+    pose proof (Completeness.Inductives.Elim.cv_bctx_own D HD Hc Hsu Hdt p Hl Γ RΓ HRΓ HΓ RU HRU Us HUl HUs ups bu ups_gargs ups_len Hbu HNt HM
+                  A iA HAv ρ ρ Hρ HUv c gs Hcon HBs ρ ρ Hρ Hρ ua ua ns_x ns_x vs_x vs_x ihs_x ihs_x Hadm Hadm Hxx Har Hia Hir RB HRB) as HE.
     (** The branch type's value, against the motive at the constructor. *)
     assert (Lb : List.length (elim_bctx p D gs A Us) = ind_nn D + List.length gs + cargs_nrec gs) by (rewrite length_elim_bctx; lia).
     destruct (Completeness.Inductives.Elim.us_wk_vals D HD Hc Γ RΓ HRΓ HΓ RU HRU Us HUl HUs _ RB ρ (ns_x ++ vs_x ++ ihs_x) HRB HBs HE
-                ltac:(rewrite Lb, !List.length_app; lia)) as (w & u' & Hw & _ & _).
+                ltac:(rewrite Lb, !List.length_app; lia)) as (w & u' & Hw & Hu' & Hwu).
+    pose proof (functional_eval_exps' _ _ _ _ Hu' HUv) as ->.
     rewrite Lb in Hw.
     pose proof (Completeness.Inductives.Elim.eval_bty D Hc p Hl Us HUl ups ups_len c gs Hcon ρ ns_x vs_x ihs_x w LX Lv Li Hw) as Hev.
     pose proof (Completeness.Inductives.Elim.gsub_bty D HD Hc Hsu Hdt p Hl Γ HΓ Us HUl HUs ups ups_len HM A c gs Hcon HBs) as Hgb'.
@@ -1506,12 +1545,17 @@ Section ElimSem.
     rewrite <- Completeness.Inductives.Elim.elim_bty_args in Eeb'.
     assert (eb' = eb) as -> by (eapply functional_eval_exp; eassumption).
     assert (Lw : List.length w = ind_nu D) by (rewrite (Completeness.Inductives.Con.eval_exps_length _ _ _ Hw), List.length_map; exact HUl).
-    assert (Hm1 : ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns_x (d_con p c ((w ++ ns_x) ++ vs_x)) (d_con p c ((ua ++ ns_x) ++ vs_x))).
+    pose proof (ok_of_ru w Hwu Lw) as Hw0.
+    assert (Hm1 : ind_rel p D Okc (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns_x ns_x
+                    (d_con p c ((w ++ ns_x) ++ vs_x)) (d_con p c ((ua ++ ns_x) ++ vs_x))).
     { eapply ind_rel_con; [ exact Hxx | exact Hcon | rewrite List.length_app; pose proof Hle; unfold ind_nn in *; lia
                           | rewrite List.length_app; pose proof Hle; unfold ind_nn in *; lia
+                          | rewrite firstn_app_exact by exact Lw; exact Hw0 | rewrite firstn_app_exact by exact Lua; exact Hadm
                           | rewrite skipn_app_exact by exact Lw; exact Hxx | rewrite skipn_app_exact by exact Lua; exact Hxx
-                          | exact Har | exact Hia ]. }
-    destruct (mmid _ _ _ _ Hxx Hm1) as (a1 & a2 & Ea1 & Ea2 & Haa).
+                          | rewrite skipn_app_exact by exact Lw; exact Har
+                          | rewrite firstn_app_exact, firstn_app_exact, skipn_app_exact, skipn_app_exact by assumption;
+                            exact (args_rebase_ok _ _ _ _ _ _ _ _ _ _ Hcon Hadm Hadm Hw0 Hadm Hxx Har Hia) ]. }
+    destruct (mmid _ _ _ _ Hm1) as (a1 & a2 & Ea1 & Ea2 & Haa).
     rewrite <- List.app_assoc in Ea1, Ea2.
     assert (a1 = b0) as -> by (eapply functional_eval_exp; eassumption).
     assert (a2 = t) as -> by (eapply functional_eval_exp; eassumption).
@@ -1539,7 +1583,7 @@ Section ElimSem.
       (forall Δ'' φ Q', Δ'' ⊢ᵏ φ : Δ' -> exps_eq_at Δ'' (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
          ind_glu_elem p D ups NEl AEl DP DEl Δ'' Q' M'[φ]ʷ m') ->
       tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns ->
-      ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns m' m' ->
+      ind_rel p D Okc (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns ns m' m' ->
       glu_nparams D NEl Δ' (List.firstn (ind_nu D) Q) (List.skipn (ind_nu D) Q) ns ->
       exists a, ⟦ A ⟧ env_args ρ (ns ++ m' :: nil) ↘ a /\ Dom a ≈ a ∈ per_univ iA /\
         forall P El, DG a ∈ glu_univ_elem iA ↘ P ↘ El ->
@@ -1595,7 +1639,7 @@ Section ElimSem.
       (forall Δ'' φ Q', Δ'' ⊢ᵏ φ : Δ' -> exps_eq_at Δ'' (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
          ind_glu_elem p D ups NEl AEl DP DEl Δ'' Q' M'[φ]ʷ m') ->
       forall ns, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns ->
-        ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns m' m' ->
+        ind_rel p D Okc (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns ns m' m' ->
         glu_nparams D NEl Δ' (List.firstn (ind_nu D) Q) (List.skipn (ind_nu D) Q) ns ->
         elim_out Δ' Q M' m' σ' ns.
 
@@ -1738,7 +1782,7 @@ Section ElimSem.
       tele_pre (ind_ar D ups ms c0) (List.length (cargs_nonrec gs1)) ws ws ->
       ptyp_skip k t0 = t -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t0)) k ys ys ->
       Δ' ⊢ˢ σ' ® ρ ∈ SbΓ -> Ty = ptyp_ty_at p (List.map (fun U => U[σ']) Us) σs t -> Δ' ⊢ N : Ty ->
-      ind_shape_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) pre t v v ->
+      ind_shape_rel p D Okc (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ups ups pre pre t v v ->
       ⟦ih v of t under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r ->
       ⟦ihty v of t under ρ A ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ a ->
       DF a ≈ a ∈ per_univ_elem j ↘ R -> R r r -> u <= j -> iA <= j ->
@@ -1763,7 +1807,8 @@ Section ElimSem.
     intros * Hs1 Hs2 IH; unfold rec_prop; intros * Hpre Hms Hc0 Hws Hsk Hys Hσ' HTy HN Hsh Er Ea HR Hr Huj HiAj Hg HIT.
     subst Ty; cbn [ptyp_ih ptyp_ihty ptyp_ty_at ptyp_ps] in *.
     assert (HΔ' : ⊢ Δ') by (pose proof (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ'); gen_presups; assumption).
-    destruct (ind_shape_self_inv _ _ _ _ _ _ _ _ _ _ _ Hsh) as (bs & Ebs & Hir).
+    destruct (ind_shape_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh) as (bs & bs0 & Ebs & Ebs0 & Hir).
+    pose proof (functional_eval_exps' _ _ _ _ Ebs0 Ebs) as ->.
     inversion Er; subst.
     match goal with H : ⟦elim v under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => rename H into Er' end.
     inversion Ea; subst.
@@ -1864,7 +1909,7 @@ Section ElimSem.
       assert (fx = fc) as -> by (eapply functional_eval_app; eassumption).
       destruct (eval_app_ihfn_inv _ _ _ _ _ _ _ _ Erc) as (y & Ey & Erc0).
       assert (y = fc) as -> by (eapply functional_eval_app; eassumption).
-      destruct (ind_shape_pi_inv _ _ _ _ _ _ _ _ _ _ _ Hsh c c Hdc) as (r0 & r0' & Er0 & Er0' & Hsh').
+      destruct (ind_shape_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh c c Hdc) as (r0 & r0' & Er0 & Er0' & Hsh').
       assert (r0 = fc) as -> by (eapply functional_eval_app; eassumption).
       assert (r0' = fc) as -> by (eapply functional_eval_app; eassumption).
       exists rc, a2; split; [ exact Erc | split; [ exact Ea2 |] ].
@@ -1940,20 +1985,21 @@ Section ElimSem.
       (HMt : Δ' ⊢ M' : apps (a_ind p) Q).
     Variable (ns : list domain).
     Hypothesis (Hns : tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns)
-      (Hrel : ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns (d_con p c (bs ++ vs)) (d_con p c (bs ++ vs)))
+      (Hrel : ind_rel p D Okc (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns ns (d_con p c (bs ++ vs)) (d_con p c (bs ++ vs)))
       (HKm : forall Δ'' φ Q', Δ'' ⊢ᵏ φ : Δ' -> exps_eq_at Δ'' (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
          ind_glu_elem p D ups NEl AEl DP DEl Δ'' Q' M'[φ]ʷ (d_con p c (bs ++ vs)))
       (Hgnm : glu_nparams D NEl Δ' (List.firstn (ind_nu D) Q) (List.skipn (ind_nu D) Q) ns).
     Let X := List.skipn (ind_nu D) bs.
 
+    (** The constructor's own non-uniform parameters, and its arguments at
+        [ups]. *)
     Lemma con_rel : tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns X /\
-        ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) X (d_con p c (bs ++ vs)) (d_con p c (bs ++ vs)) /\
-        ind_args_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) X gs vs vs.
+        Okc (List.firstn (ind_nu D) bs) /\
+        ind_args_rel p D Okc (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ups ups X X gs vs vs.
     Proof.
-      destruct (ind_rel_con_inv _ _ _ _ _ _ _ _ Hcon Hbl Hrel) as (_ & HnX & _ & _).
-      pose proof (imv _ _ _ _ Hrel HnX) as HrX.
-      destruct (ind_rel_con_inv _ _ _ _ _ _ _ _ Hcon Hbl HrX) as (_ & _ & _ & Hia).
-      auto.
+      destruct (ind_rel_con_inv _ _ _ _ _ _ _ _ _ _ _ Hcon Hbl Hrel) as (_ & Ho & HnX & Har & Hia).
+      split; [ exact HnX | split; [ exact Ho |] ].
+      exact (args_rebase_ok _ _ _ _ _ _ _ _ _ _ Hcon Ho Ho Had Had Hb Har Hia).
     Qed.
 
     (** The non-uniform parameters and the arguments, glued at the
@@ -2034,7 +2080,7 @@ Section ElimSem.
         pose proof (Completeness.Inductives.Con.shape_char D HDc Hc Hsu p Hl c gs Hcon HΨ gs1 Pr gs2 Heq ups X _ bu ups_len LX Lfa ups_gargs Hbu Hb Hpk HPre
                       (List.length (ptyp_doms Pr)) 0 nil a1 i0 Ra ltac:(lia) (tele_pre_nil _) ltac:(cbn; apply per_gargs_nil)
                       ltac:(cbn [List.repeat List.app ptyp_skip]; rewrite List.app_nil_r; exact Ea1c) HRa) as Hsr.
-        destruct (Completeness.Inductives.Elim.ind_args_rel_at D p ups _ gs vs vs HiaX gs1 Pr gs2 Heq) as (x & x' & Hx & Hx' & Hsh).
+        destruct (Completeness.Inductives.Elim.ind_args_rel_at D p ups _ _ _ _ gs vs vs HiaX gs1 Pr gs2 Heq) as (x & x' & Hx & Hx' & Hsh).
         rewrite Hv' in Hx; injection Hx as <-; rewrite Hv' in Hx'; injection Hx' as <-.
         assert (HRav : Ra v v) by (apply Hsr; cbn [ptyp_skip]; rewrite List.app_nil_r; exact Hsh).
         destruct Hab as [Rab HRab].
@@ -2107,7 +2153,7 @@ Section ElimSem.
       assert (Hlt : List.length gs1 < List.length As) by (rewrite HAl, Heq, List.length_app; cbn; lia).
       destruct (nth_error_lt_some As _ Hlt) as [N HN].
       rewrite (elim_ihs_nth _ _ _ gs1 _ gs t gs2 As N Heq HAl HN) in HMk; injection HMk as <-.
-      destruct (Completeness.Inductives.Elim.ind_args_rel_at D p ups _ gs vs vs HiaX gs1 t gs2 Heq) as (v & v' & Hv1 & Hv1' & Hsh).
+      destruct (Completeness.Inductives.Elim.ind_args_rel_at D p ups _ _ _ _ gs vs vs HiaX gs1 t gs2 Heq) as (v & v' & Hv1 & Hv1' & Hsh).
       rewrite Hv1' in Hv1; injection Hv1 as <-.
       destruct (eval_ihs_nth _ _ _ _ gs1 _ _ _ Ei t gs2 v' Heq Hv1') as (r' & Hr' & Er').
       fold j in Hr'; rewrite Hr in Hr'; injection Hr' as <-.
@@ -2254,7 +2300,7 @@ Section ElimSem.
             ® env_args ρ (X ++ vs ++ ihs) ∈ SbB.
     Proof.
       destruct con_rel as (HnsX & HrelX & HiaX).
-      destruct (proj1 (proj2 pelim) _ _ _ _ HiaX) as (ihs & ihs' & Ei & Ei' & Hir).
+      destruct (proj1 (proj2 pelim) _ _ _ _ _ _ _ HiaX) as (ihs & ihs' & Ei & Ei' & Hir).
       pose proof (functional_eval_ihs _ _ _ _ _ _ _ _ Ei Ei') as <-; clear Ei'.
       pose proof (bctx_sem c gs Hcon) as HBs.
       assert (HZ : forall RB, EF elim_bctx p D gs A Us ++ Γ ≈ elim_bctx p D gs A Us ++ Γ ∈ per_ctx_env ↘ RB ->
@@ -2297,7 +2343,8 @@ Section ElimSem.
     Lemma con_main : elim_out Δ' Q M' (d_con p c (bs ++ vs)) σ' ns.
     Proof.
       destruct con_bctx as (ihs & Ei & HZ & Hgs).
-      destruct (ind_rel_con_inv _ _ _ _ _ _ _ _ Hcon Hbl Hrel) as (_ & HnX & Hvn & Hian).
+      destruct (ind_rel_con_inv _ _ _ _ _ _ _ _ _ _ _ Hcon Hbl Hrel) as (_ & Ho & HnX & Hvn & _).
+      destruct con_rel as (_ & _ & HiaX).
       destruct (IndElim.brs_names_lookup _ _ _ _ HBn Hcon) as (n & B & HBl & HBin).
       pose proof (HBa c gs n B Hcon HBin) as Hn.
       pose proof (HBg c gs n B Hcon HBin) as HBgl.
@@ -2316,7 +2363,8 @@ Section ElimSem.
       pose proof (HZ RB HRB) as HE.
       assert (Lb : List.length (elim_bctx p D gs A Us) = ind_nn D + List.length gs + cargs_nrec gs) by (rewrite length_elim_bctx; lia).
       destruct (Completeness.Inductives.Elim.us_wk_vals D HD Hc Γ RΓ HRΓ HΓ RU HRU Us HUl HUs _ RB ρ (X ++ vs ++ ihs) HRB HBs HE
-                  ltac:(rewrite Lb, !List.length_app; lia)) as (w & u' & Hw & _ & _).
+                  ltac:(rewrite Lb, !List.length_app; lia)) as (w & u' & Hw & Hu' & Hwu).
+      pose proof (functional_eval_exps' _ _ _ _ Hu' HUv) as ->.
       rewrite Lb in Hw.
       pose proof (Completeness.Inductives.Elim.eval_bty D Hc p Hl Us HUl ups ups_len c gs Hcon ρ X vs ihs w LX Hvl Lih Hw) as Hev.
       pose proof (Completeness.Inductives.Elim.gsub_bty D HD Hc Hsu Hdt p Hl Γ HΓ Us HUl HUs ups ups_len HM A c gs Hcon HBs) as Hgb'.
@@ -2324,10 +2372,14 @@ Section ElimSem.
       rewrite <- Completeness.Inductives.Elim.elim_bty_args in Eeb'.
       assert (eb' = eb) as -> by (eapply functional_eval_exp; eassumption).
       assert (Lw : List.length w = ind_nu D) by (rewrite (Completeness.Inductives.Con.eval_exps_length _ _ _ Hw), List.length_map; exact HUl).
-      assert (Hm1 : ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns (d_con p c (bs ++ vs)) (d_con p c ((w ++ X) ++ vs))).
-      { eapply ind_rel_con; [ exact Hns | exact Hcon | exact Hbl | rewrite List.length_app; pose proof Hle; unfold ind_nn in *; lia
-                            | exact HnX | rewrite skipn_app_exact by exact Lw; exact HnX | exact Hvn | exact Hian ]. }
-      destruct (mmid _ _ _ _ HnX Hm1) as (a & a' & Ea & Ea' & Haa).
+      pose proof (ok_of_ru w Hwu Lw) as Hw0.
+      assert (Hm1 : ind_rel p D Okc (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns X (d_con p c (bs ++ vs)) (d_con p c ((w ++ X) ++ vs))).
+      { eapply ind_rel_con; [ exact HnX | exact Hcon | exact Hbl | rewrite List.length_app; pose proof Hle; unfold ind_nn in *; lia
+                            | exact Ho | rewrite firstn_app_exact by exact Lw; exact Hw0
+                            | exact HnX | rewrite skipn_app_exact by exact Lw; exact Hb | exact Hvn
+                            | rewrite firstn_app_exact, skipn_app_exact by exact Lw;
+                              exact (args_rebase_ok _ _ _ _ _ _ _ _ _ _ Hcon Had Had Ho Hw0 Hb Hvn HiaX) ]. }
+      destruct (mmid _ _ _ _ Hm1) as (a & a' & Ea & Ea' & Haa).
       rewrite <- List.app_assoc in Ea'.
       assert (a' = b) as -> by (eapply functional_eval_exp; eassumption).
       assert (Hpe : Dom eb ≈ a ∈ per_univ iA).
@@ -2389,7 +2441,7 @@ Section ElimSem.
       (HQl : List.length Q = ind_np D) (HMt : Δ' ⊢ M' : apps (a_ind p) Q).
     Variable (ns : list domain).
     Hypothesis (Hns : tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns)
-      (Hrel : ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns (⇑ (d_ind p as') m) (⇑ (d_ind p as') m))
+      (Hrel : ind_rel p D Okc (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns ns (⇑ (d_ind p as') m) (⇑ (d_ind p as') m))
       (HKm : forall Δ'' φ Q', Δ'' ⊢ᵏ φ : Δ' -> exps_eq_at Δ'' (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
          ind_glu_elem p D ups NEl AEl DP DEl Δ'' Q' M'[φ]ʷ (⇑ (d_ind p as') m))
       (Hgnm : glu_nparams D NEl Δ' (List.firstn (ind_nu D) Q) (List.skipn (ind_nu D) Q) ns).
@@ -2467,7 +2519,7 @@ Section ElimSem.
     Lemma neut_main : elim_out Δ' Q M' (⇑ (d_ind p as') m) σ' ns.
     Proof.
       destruct neut_inv as (Lan & Hadm & Hsn).
-      destruct (mmid _ _ _ _ Hsn Hrel) as (a & a1 & Ea & Ea1 & Haa).
+      destruct (mmid _ _ _ _ (idxc _ _ _ _ _ _ Hrel Hns Hsn)) as (a & a1 & Ea & Ea1 & Haa).
       assert (Er : ⟦elim ⇑ (d_ind p as') m under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ ⇑ a1 (d_elim ρ nm A Bs p as' m))
         by (eapply eval_elim_neut; eassumption).
       apply (mk_elim_out _ _ _ _ _ _ (⇑ a1 (d_elim ρ nm A Bs p as' m)) a Er Ea);
@@ -2485,7 +2537,7 @@ Section ElimSem.
       econstructor; [ | exact HgP1 | exact HTg | |].
       - eapply wf_elim; [ exact Hl | exact HQl | exact neut_Q_typed | exact HMt | exact Hnm | exact HAt' | exact HMx'
                         | exact HBn' | exact HBx' | exact HBa' | exact HBt' ].
-      - exact (pbelim ns as' as' m m Lan Lan Hadm Hadm Hsn Hsn Hm).
+      - exact (pbelim as' as' m m Lan Lan Hadm Hadm Hm).
       - intros Δ φ M0 Hφ HR; exact (neut_rb Δ φ M0 Hφ HR).
     Qed.
   End NeutCase.
@@ -2637,7 +2689,8 @@ Proof.
   apply EE, HEl2 in HMσ1; destruct HMσ1 as [HMt' Hmm Ps0 HT0 HK0].
   clear EE HgM HMσ HP2 HEl2 Hg2 P1 El1 Hg1 PM ElM.
   destruct (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ HR0 Hl Hu Hu) as (_ & _ & Hcp & _ & _ & Hadm & Hns0 & HRi).
-  assert (Hrel0 : ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns0 m m) by (apply HRi, HRR; exact Hmm).
+  assert (Hrel0 : ind_rel p D (ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups)) (ind_nr D ups) (ind_ar D ups) (ind_dr ups)
+                    ns0 ns0 m m) by (apply HRi, HRR; exact Hmm).
   clear HMg Hmm HRR R'.
   (** The scrutinee at the instance of the parameters. *)
   set (Q := List.map (fun P => P[σ]) Ps) in *.

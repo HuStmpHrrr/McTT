@@ -2309,7 +2309,8 @@ Section ConGlu.
       forall Δ Ps As ns ws, ⊢ Δ ->
         glu_args Δ (ind_params D) Id nil Ps (ups ++ ns) ->
         glu_args Δ (cargs_ctx p D gs) (sb_of_list Id Ps) (env_args nil (ups ++ ns)) As ws ->
-        ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns (d_con p c ((ups ++ ns) ++ ws)) (d_con p c ((ups ++ ns) ++ ws)) ->
+        ind_rel p D (ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups)) (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns ns
+          (d_con p c ((ups ++ ns) ++ ws)) (d_con p c ((ups ++ ns) ++ ws)) ->
         ind_glu_elem p D ups NEl AEl DP DEl Δ Ps (apps (a_con p c) (Ps ++ As)) (d_con p c ((ups ++ ns) ++ ws)).
   Proof.
     intros R0 ns0 HR0 Δ Ps As ns ws HΔ HgP HgA Hrel.
@@ -2322,13 +2323,14 @@ Section ConGlu.
     destruct (glu_args_length _ _ _ _ _ _ HgA) as [LA LW]; rewrite length_cargs_ctx in LA, LW.
     assert (LPn : List.length Ps = ind_np D) by exact LP.
     assert (Lns : List.length ns = ind_nn D) by (rewrite List.length_app, Hu in LV; unfold ind_nn, ind_np in *; lia).
-    inversion Hrel as [? ? gs0 bs bs' vs vs' Hnsr Hc0 Hbl Hbl' Hs1 Hs2 Hav Hia |]; subst.
+    inversion Hrel as [? ? ? gs0 bs bs' vs vs' Hnsr Hc0 Hbl Hbl' Ho Ho' Hs1 Hs2 Hav Hia |]; subst.
     assert (Hlb : List.length bs = List.length (ups ++ ns)) by (rewrite List.length_app, Hu, Lns, Hbl; unfold ind_nn; lia).
-    destruct (app_split_eq _ _ _ _ H1 Hlb) as [-> ->].
+    match goal with H1 : bs ++ vs = _ |- _ => destruct (app_split_eq _ _ _ _ H1 Hlb) as [-> ->]; clear H1 end.
     assert (Hlb' : List.length bs' = List.length (ups ++ ns)) by (rewrite List.length_app, Hu, Lns, Hbl'; unfold ind_nn; lia).
-    destruct (app_split_eq _ _ _ _ H2 Hlb') as [-> ->].
+    match goal with H2 : bs' ++ vs' = _ |- _ => destruct (app_split_eq _ _ _ _ H2 Hlb') as [-> ->]; clear H2 end.
     rewrite Hcon in Hc0; injection Hc0 as <-.
-    clear Hbl' Hs2 H1 H2 Hlb Hlb'.
+    rewrite skipn_app_exact in Hav by exact Hu.
+    clear Hbl' Hs2 Hlb Hlb' Ho Ho' Hia.
     set (Us := List.firstn (ind_nu D) Ps); set (Ns := List.skipn (ind_nu D) Ps).
     assert (EPs : Ps = Us ++ Ns) by (symmetry; apply List.firstn_skipn).
     assert (LU : List.length Us = ind_nu D) by (unfold Us; rewrite List.length_firstn; lia).
