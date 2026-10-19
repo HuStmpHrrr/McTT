@@ -496,46 +496,62 @@ Definition qname_strip (mp p : qname) : option (list string) :=
 
 (** * Inductive Declarations
 
-    The declaration of an inductive type, as a unit stores it.  It is generic
-    in the sorts of terms [E] and context entries [C] so that it can be
-    defined before them: [gentry] holds an [ind_decl_g exp centry]
+    The declaration of a group of inductive types, as a unit stores it.  It
+    is generic in the sorts of terms [E] and context entries [C] so that it
+    can be defined before them: [gentry] holds an [ind_decl_g exp centry]
     ([ind_decl]), and no syntactic operation looks inside it, since a
     declaration is always filed closed.
 
-    - [ind_nu] is the number of uniform parameters, the outermost ones;
-    - [ind_params] is the parameter telescope [Δ], innermost first;
-    - [ind_sort] is the universe the type lives in, a term over the uniform
-      parameters only;
-    - [ind_cons] lists the constructors in declaration order, each with its
-      arguments, outermost first.
+    A group has members ([imember_g]): first the types it declares, in the
+    order they are written (one for a single inductive type, several for a
+    mutual block), then its views: the instances of types of groups filed
+    before, at uniform arguments that mention a member, that its
+    constructors nest through (as [List 0l (Rose A)] in
+    [Rose A := node (x : A) (ts : List 0l (Rose A))]), in the order the
+    command meets them.  The members share the uniform parameters and the
+    sort; each has its own non-uniform parameters and constructors.
 
-    The arguments are stratified: a non-recursive argument [ca_arg A] has
-    its type [A] over the non-recursive arguments before it and [Δ], and a
-    recursive argument [ca_rec t] has a shape [t] ([ptyp_g]), whose
-    parameters are over the non-recursive arguments before it and [Δ].
-    Nothing may mention a recursive argument, so it occupies no binder of
-    the arguments after it. *)
+    - [ind_uparams] is the telescope of the uniform parameters, innermost
+      first, closed (the parameters of the enclosing frames outermost);
+    - [ind_sort] is the universe every member lives in, a term over the
+      uniform parameters;
+    - [ind_members] lists the members.
 
-(** The shape of a recursive argument: the [k]-th type of the declaration's
-    block at the non-uniform parameters [Ps] ([pt_self k Ps]), the [k]-th
-    auxiliary type of a nested occurrence at [Ps] ([pt_aux k Ps]), or a
-    function from [A] to a shape ([pt_pi A t]).  Stage A′ has one type per
-    block and no nesting: a declaration is well formed with the shapes
-    [pt_pi A1 (… (pt_pi Ak (pt_self 0 Ps)))] ([ptyp_simple],
-    [wf_gentry_indty]). *)
+    The type former of member [k] is [a_ind pq k], [pq] the path of the
+    group, that of its first member's entry ([ge_ind]): every member is
+    named by the group, so that the types of the constructors of one member
+    may mention any other member before the entries of the others are
+    filed.
+
+    The arguments of a constructor are stratified: a non-recursive argument
+    [ca_arg A] has its type [A] over the non-recursive arguments before it
+    and the member's parameters, and a recursive argument [ca_rec t] has a
+    shape [t] ([ptyp_g]), whose components are over the non-recursive
+    arguments before it and the member's parameters.  Nothing may mention a
+    recursive argument, so it occupies no binder of the arguments after
+    it. *)
+
+(** The shape of a recursive argument: the member [k] of the group at its
+    non-uniform parameters [Ps] ([pt_self k Ps]), or a function from [A] to
+    a shape ([pt_pi A t]). *)
 Inductive ptyp_g (E : Set) : Set :=
 | pt_self : nat -> list E -> ptyp_g E
-| pt_aux : nat -> list E -> ptyp_g E
 | pt_pi : E -> ptyp_g E -> ptyp_g E.
 Arguments pt_self {E}.
-Arguments pt_aux {E}.
 Arguments pt_pi {E}.
 
 (** The non-uniform parameters at which a shape ends. *)
 Fixpoint ptyp_ps {E : Set} (t : ptyp_g E) : list E :=
   match t with
-  | pt_self _ Ps | pt_aux _ Ps => Ps
+  | pt_self _ Ps => Ps
   | pt_pi _ t => ptyp_ps t
+  end.
+
+(** The member a shape ends in. *)
+Fixpoint ptyp_mem {E : Set} (t : ptyp_g E) : nat :=
+  match t with
+  | pt_self k _ => k
+  | pt_pi _ t => ptyp_mem t
   end.
 
 (** In stage A a shape is read by its parameters alone, so it stands for
@@ -550,16 +566,60 @@ Inductive carg_g (E : Set) : Set :=
 Arguments ca_arg {E}.
 Arguments ca_rec {E}.
 
+(** The head of a member: a declared type, by the canonical path of its
+    own entry ([mh_decl p]), or a view ([mh_view q k Is vm]): the declared
+    member [k] of the group filed at [q], at the uniform arguments [Is],
+    terms over this group's uniform parameters in which this group's
+    members occur, in normal form.  A view of a member of [q]'s group is
+    one of all of them: [vm] lists, for each member of [q]'s group in its
+    order, the member of this group that is that member at [Is] (the
+    [k]-th is the view itself).  The eliminator at a view reads back as
+    [q]'s group's eliminator, whose blocks are those of these members. *)
+Inductive mhead_g (E : Set) : Set :=
+| mh_decl : qname -> mhead_g E
+| mh_view : qname -> nat -> list E -> list nat -> mhead_g E.
+Arguments mh_decl {E}.
+Arguments mh_view {E}.
+
+(** A member: its head, its non-uniform parameters (a telescope over the
+    uniform ones, innermost first) and its constructors, in order, each with
+    its arguments, outermost first.  A view's are the filed ones of the
+    member of [q]'s group at [Is], classified for this group: a recursive
+    argument is one of a member of this group. *)
+Record imember_g (E C : Set) : Set := mk_imember
+  { im_head : mhead_g E
+  ; im_nparams : list C
+  ; im_cons : list (string * list (carg_g E)) }.
+Arguments mk_imember {E C}.
+Arguments im_head {E C}.
+Arguments im_nparams {E C}.
+Arguments im_cons {E C}.
+
 Record ind_decl_g (E C : Set) : Set := mk_ind
-  { ind_nu : nat
-  ; ind_params : list C
+  { ind_uparams : list C
   ; ind_sort : E
-  ; ind_cons : list (string * list (carg_g E)) }.
+  ; ind_members : list (imember_g E C) }.
 Arguments mk_ind {E C}.
-Arguments ind_nu {E C}.
-Arguments ind_params {E C}.
+Arguments ind_uparams {E C}.
 Arguments ind_sort {E C}.
-Arguments ind_cons {E C}.
+Arguments ind_members {E C}.
+
+(** A block of an eliminator ([a_elim]), one per member of the group, in
+    the group's order: [eb_mk nm oZ A Bs].  The motive [A] binds [nm]
+    variables, the member's non-uniform parameters and the scrutinee; [oZ]
+    is the type of the scrutinee as written, if it is written, over the
+    non-uniform parameters; each branch [(c, n, B)] is the case of the
+    constructor [c], in order, and binds [n] variables: the non-uniform
+    parameters, the arguments, and one recursive result per recursive
+    argument. *)
+Inductive eblock_g (E : Set) : Set :=
+| eb_mk : nat -> option E -> E -> list (string * nat * E) -> eblock_g E.
+Arguments eb_mk {E}.
+
+Definition eb_nm {E : Set} (b : eblock_g E) : nat := match b with eb_mk nm _ _ _ => nm end.
+Definition eb_ann {E : Set} (b : eblock_g E) : option E := match b with eb_mk _ oZ _ _ => oZ end.
+Definition eb_motive {E : Set} (b : eblock_g E) : E := match b with eb_mk _ _ A _ => A end.
+Definition eb_brs {E : Set} (b : eblock_g E) : list (string * nat * E) := match b with eb_mk _ _ _ Bs => Bs end.
 
 (** * Terms, Module Expressions and Units
 
@@ -631,24 +691,25 @@ Inductive exp : Set :=
 (** [a_exfalso A M] eliminates [M] into the motive [A], which binds the
     scrutinee. *)
 | a_exfalso : exp -> exp -> exp
-(** The type former of an inductive type, to be applied to its parameters:
-    [p] names the inductive ([ge_ind]). *)
-| a_ind : qname -> exp
-(** The constructor [c] of the inductive type [p], to be applied to the
-    parameters and the arguments. *)
-| a_con : qname -> string -> exp
+(** The type former of the member [k] of the group [pq] of inductive types,
+    to be applied to its parameters: [pq] names the group, the path of its
+    first member's entry ([ge_ind]). *)
+| a_ind : qname -> nat -> exp
+(** The constructor [c] of the member [k] of the group [pq], to be applied
+    to the parameters and the arguments. *)
+| a_con : qname -> nat -> string -> exp
 (** A numeral as written.  It is not a term of the typing judgment:
     literal generation ([Builtin]) replaces it by the chain of constructors of the
     inductive type bound as the natural numbers ([builtin natural]). *)
 | a_nlit : nat -> exp
-(** [a_elim nm A Bs M] eliminates [M], of an inductive type, into the
-    motive [A], which binds the non-uniform parameters and the scrutinee
-    ([nm] of them).  The type, and its parameters, are those of the
-    scrutinee's type.  Each branch [(c, n, B)] is the case of the
-    constructor [c], in declaration order, and binds [n] variables: the
-    non-uniform parameters, the arguments, and one recursive result per
-    recursive argument. *)
-| a_elim : nat -> exp -> list (string * nat * exp) -> exp -> exp
+(** [a_elim oq m Bks M] eliminates [M], of the member [m] of a group of
+    inductive types, by the blocks [Bks], one per member of the group in
+    its order ([eblock_g]); the result is the motive of block [m].  The
+    group is [pq] when [oq = Some pq]; when [oq = None] it is that of the
+    scrutinee's type, the member [m] a declared one.  The uniform
+    parameters are those of the scrutinee's type (of the annotation of the
+    first block, when the scrutinee is of a view). *)
+| a_elim : option qname -> nat -> list (eblock_g exp) -> exp -> exp
 (** Functions: [a_pi A B], [B] binding the argument *)
 | a_pi : exp -> exp -> exp
 (** [a_fn A M], [M] binding the argument *)
@@ -708,18 +769,19 @@ with gentry : Set :=
 | ge_def : bool -> bool -> exp -> option exp -> gentry
 (** [ge_mod pv U]: a submodule, private when [pv] *)
 | ge_mod : bool -> gunit -> gentry
-(** [ge_ind pv p D Φ]: an inductive type, private when [pv]: its own
-    canonical path [p], its declaration [D] and the body [Φ] of its module,
-    whose members are the constructors and the recursor, under the uniform
-    parameters of [D] ([ind_unit]).  The path names the module, and the
-    type former ([a_ind]). *)
-| ge_ind : bool -> qname -> ind_decl_g exp centry -> gmod -> gentry
-(** [ge_ind_alias pv Δ p Ns]: an inductive alias, private when [pv]: over
-    its full telescope [Δ] (closed, as an alias's), the inductive type at
-    the canonical path [p] at the first uniform parameters [Ns], terms over
-    [Δ].  As a term it is [λ Δ. a_ind p Ns], as a module the module of [p]
+(** [ge_ind pv pq k D Φ]: the declared member [k] of the group [D] of
+    inductive types, private when [pv]: the group's path [pq] (the path of
+    the entry of member [0]), and the body [Φ] of the member's module,
+    whose members are its constructors (and the recursor), under the
+    uniform parameters of [D] ([ind_unit]).  As a term the entry is the
+    type former [a_ind pq k]. *)
+| ge_ind : bool -> qname -> nat -> ind_decl_g exp centry -> gmod -> gentry
+(** [ge_ind_alias pv Δ pq k Ns]: an inductive alias, private when [pv]:
+    over its full telescope [Δ] (closed, as an alias's), the member [k] of
+    the group [pq] at the first uniform parameters [Ns], terms over [Δ].
+    As a term it is [λ Δ. a_ind pq k Ns], as a module the member's module
     at [Ns]. *)
-| ge_ind_alias : bool -> list centry -> qname -> list exp -> gentry
+| ge_ind_alias : bool -> list centry -> qname -> nat -> list exp -> gentry
 with centry : Set :=
 (** An assumption of a type *)
 | ce_ass : exp -> centry
@@ -732,6 +794,9 @@ Abbreviation typ := exp.
 Abbreviation carg := (carg_g exp).
 Abbreviation ptyp := (ptyp_g exp).
 Abbreviation ind_decl := (ind_decl_g exp centry).
+Abbreviation imember := (imember_g exp centry).
+Abbreviation mhead := (mhead_g exp).
+Abbreviation eblock := (eblock_g exp).
 
 (** A property of every branch of an eliminator, under its binders.  A
     structural recursion on the list, so that a recursive function on terms
@@ -772,10 +837,13 @@ Section syn_mut_ind.
     (case_true : Pe a_true)
     (case_False : Pe a_False)
     (case_exfalso : forall A M, Pe A -> Pe M -> Pe (a_exfalso A M))
-    (case_ind : forall p, Pe (a_ind p))
-    (case_con : forall p c, Pe (a_con p c))
+    (case_ind : forall p k, Pe (a_ind p k))
+    (case_con : forall p k c, Pe (a_con p k c))
     (case_nlit : forall n, Pe (a_nlit n))
-    (case_elim : forall nm A Bs M, Pe A -> List.Forall (fun b => Pe (snd b)) Bs -> Pe M -> Pe (a_elim nm A Bs M))
+    (case_elim : forall oq m Bks M,
+        List.Forall (fun b => (forall Z, eb_ann b = Some Z -> Pe Z) /\ Pe (eb_motive b) /\
+                              List.Forall (fun br => Pe (snd br)) (eb_brs b)) Bks ->
+        Pe M -> Pe (a_elim oq m Bks M))
     (case_pi : forall A B, Pe A -> Pe B -> Pe (a_pi A B))
     (case_fn : forall A M, Pe A -> Pe M -> Pe (a_fn A M))
     (case_app : forall M N, Pe M -> Pe N -> Pe (a_app M N))
@@ -797,8 +865,8 @@ Section syn_mut_ind.
     (case_gm_open : forall Φ H its, Pg Φ -> Pm H -> Pg (gm_open Φ H its))
     (case_ge_def : forall b pv A B, Pe A -> (forall M, B = Some M -> Pe M) -> Pn (ge_def b pv A B))
     (case_ge_mod : forall pv U, Pu U -> Pn (ge_mod pv U))
-    (case_ge_ind : forall pv p D Φ, Pg Φ -> Pn (ge_ind pv p D Φ))
-    (case_ge_ind_alias : forall pv Δ p Ns, Pn (ge_ind_alias pv Δ p Ns))
+    (case_ge_ind : forall pv p k D Φ, Pg Φ -> Pn (ge_ind pv p k D Φ))
+    (case_ge_ind_alias : forall pv Δ p k Ns, Pn (ge_ind_alias pv Δ p k Ns))
     (case_ce_ass : forall A, Pe A -> Pc (ce_ass A))
     (case_ce_def : forall A M, Pe A -> Pe M -> Pc (ce_def A M))
     (case_ce_mod : forall U, Pu U -> Pc (ce_mod U)).
@@ -816,16 +884,33 @@ Section syn_mut_ind.
     | a_true => case_true
     | a_False => case_False
     | a_exfalso A M => case_exfalso A M (exp_mut A) (exp_mut M)
-    | a_ind p => case_ind p
-    | a_con p c => case_con p c
+    | a_ind p k => case_ind p k
+    | a_con p k c => case_con p k c
     | a_nlit n => case_nlit n
-    | a_elim nm A Bs M =>
-        case_elim nm A Bs M (exp_mut A)
-          ((fix brs_mut (Bs : list (string * nat * exp)) : List.Forall (fun b => Pe (snd b)) Bs :=
-              match Bs with
+    | a_elim oq m Bks M =>
+        case_elim oq m Bks M
+          ((fix blocks_mut (Bks : list eblock) :
+              List.Forall (fun b => (forall Z, eb_ann b = Some Z -> Pe Z) /\ Pe (eb_motive b) /\
+                                    List.Forall (fun br => Pe (snd br)) (eb_brs b)) Bks :=
+              match Bks with
               | nil => List.Forall_nil _
-              | cons b Bs' => List.Forall_cons b (exp_mut (snd b)) (brs_mut Bs')
-              end) Bs)
+              | cons (eb_mk nm oZ A Bs) Bks' =>
+                  List.Forall_cons (eb_mk nm oZ A Bs)
+                    (conj
+                       (match oZ as o return (forall Z, o = Some Z -> Pe Z) with
+                        | Some Z0 => fun Z e => match e in _ = o' return match o' with Some Z => Pe Z | None => True end with
+                                               | eq_refl => exp_mut Z0 end
+                        | None => fun Z e => False_ind _ (match e in _ = o' return match o' with Some _ => False | None => True end with
+                                             | eq_refl => I end)
+                        end)
+                       (conj (exp_mut A)
+                          ((fix brs_mut (Bs : list (string * nat * exp)) : List.Forall (fun b => Pe (snd b)) Bs :=
+                              match Bs with
+                              | nil => List.Forall_nil _
+                              | cons b Bs' => List.Forall_cons b (exp_mut (snd b)) (brs_mut Bs')
+                              end) Bs)))
+                    (blocks_mut Bks')
+              end) Bks)
           (exp_mut M)
     | a_pi A B => case_pi A B (exp_mut A) (exp_mut B)
     | a_fn A M => case_fn A M (exp_mut A) (exp_mut M)
@@ -888,8 +973,8 @@ Section syn_mut_ind.
                                 | eq_refl => I end)
            end)
     | ge_mod pv U => case_ge_mod pv U (gunit_mut U)
-    | ge_ind pv p D Φ => case_ge_ind pv p D Φ (gmod_mut Φ)
-    | ge_ind_alias pv Δ p Ns => case_ge_ind_alias pv Δ p Ns
+    | ge_ind pv p k D Φ => case_ge_ind pv p k D Φ (gmod_mut Φ)
+    | ge_ind_alias pv Δ p k Ns => case_ge_ind_alias pv Δ p k Ns
     end
   with centry_mut (e : centry) : Pc e :=
     match e with
@@ -962,16 +1047,21 @@ Abbreviation gu_open Δ Φ := (gu_mk Δ (md_body sm_open Φ)).
 
 Definition gu_params (U : gunit) : list centry := match U with gu_mk Δ _ => Δ end.
 
-(** The number of parameters of a declaration, and of non-uniform ones. *)
-Definition ind_np (D : ind_decl) : nat := List.length (ind_params D).
-Definition ind_nn (D : ind_decl) : nat := ind_np D - ind_nu D.
+(** The number of uniform parameters of a group. *)
+Definition ind_nu (D : ind_decl) : nat := List.length (ind_uparams D).
 
-Lemma ind_np_nil : forall D, ind_params D = nil -> ind_np D = 0.
-Proof. intros D H; unfold ind_np; rewrite H; reflexivity. Qed.
+(** The member [k] of a group. *)
+Definition ind_member (D : ind_decl) (k : nat) : option imember := List.nth_error (ind_members D) k.
 
-(** The uniform parameters, and the non-uniform ones. *)
-Definition ind_uparams (D : ind_decl) : list centry := List.skipn (ind_nn D) (ind_params D).
-Definition ind_nparams (D : ind_decl) : list centry := List.firstn (ind_nn D) (ind_params D).
+(** The parameters of a member, innermost first: its non-uniform ones
+    inside the group's uniform ones; their numbers. *)
+Definition im_params (D : ind_decl) (M : imember) : list centry := im_nparams M ++ ind_uparams D.
+Definition im_nn (M : imember) : nat := List.length (im_nparams M).
+Definition im_np (D : ind_decl) (M : imember) : nat := im_nn M + ind_nu D.
+
+(** A declared member, and the path of its entry. *)
+Definition im_path (M : imember) : option qname :=
+  match im_head M with mh_decl p => Some p | mh_view _ _ _ _ => None end.
 
 (** The module of the inductive type [D] of body [Φ], as a unit: it takes
     the uniform parameters, with the frames' parameters outside them, so
@@ -1081,8 +1171,8 @@ Fixpoint body_ctx (Φ : gmod) : ctx :=
   | gm_ext Φ' _ (ge_def _ _ A (Some M)) => cons (ce_def A M) (body_ctx Φ')
   | gm_ext Φ' _ (ge_def _ _ A None) => cons (ce_ass A) (body_ctx Φ')
   | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
-  | gm_ext Φ' _ (ge_ind _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
-  | gm_ext Φ' _ (ge_ind_alias _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_ind _ _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_ind_alias _ _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
   | gm_open Φ' _ its => List.repeat (ce_ass a_True) (List.length its) ++ body_ctx Φ'
   end.
 
@@ -1300,17 +1390,19 @@ Inductive nf : Set :=
 | nf_pi : nf -> nf -> nf
 (** A function, its domain and body normal *)
 | nf_fn : nf -> nf -> nf
-(** An inductive type at its parameters *)
-| nf_indty : qname -> nfs -> nf
+(** A member of a group of inductive types at its parameters *)
+| nf_indty : qname -> nat -> nfs -> nf
 (** A constructor at the parameters of its type and its arguments *)
-| nf_con : qname -> string -> nfs -> nf
+| nf_con : qname -> nat -> string -> nfs -> nf
 (** A neutral *)
 | nf_neut : ne -> nf
 with ne : Set :=
 (** The [⊥]-eliminator, always stuck *)
 | ne_exfalso : nf -> ne -> ne
-(** The eliminator of an inductive type stuck on a neutral *)
-| ne_elim : nat -> nf -> nbrs -> ne -> ne
+(** The eliminator of the group [pq], at its declared member [m], stuck
+    on a neutral; its blocks carry no annotation.  (An eliminator at a view
+    is stuck as the eliminator of the view's own group.) *)
+| ne_elim : qname -> nat -> nblocks -> ne -> ne
 (** A neutral applied *)
 | ne_app : ne -> nf -> ne
 (** A variable *)
@@ -1335,6 +1427,11 @@ with nfs : Set :=
 with nbrs : Set :=
 | nbrs_nil : nbrs
 | nbrs_cons : string -> nat -> nf -> nbrs -> nbrs
+(** The blocks of a stuck eliminator: the number of variables the motive
+    binds, the motive, the branches. *)
+with nblocks : Set :=
+| nblocks_nil : nblocks
+| nblocks_cons : nat -> nf -> nbrs -> nblocks -> nblocks
 .
 
 (** [M] applied to [args], outermost first. *)
@@ -1355,14 +1452,14 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   | nf_False => a_False
   | nf_pi A B => a_pi (nf_to_exp A) (nf_to_exp B)
   | nf_fn A M => a_fn (nf_to_exp A) (nf_to_exp M)
-  | nf_indty p Ms => apps_exp (a_ind p) (nfs_to_exps Ms)
-  | nf_con p c Ms => apps_exp (a_con p c) (nfs_to_exps Ms)
+  | nf_indty p k Ms => apps_exp (a_ind p k) (nfs_to_exps Ms)
+  | nf_con p k c Ms => apps_exp (a_con p k c) (nfs_to_exps Ms)
   | nf_neut M => ne_to_exp M
   end
 with ne_to_exp (M : ne) : exp :=
   match M with
   | ne_exfalso A M => a_exfalso (nf_to_exp A) (ne_to_exp M)
-  | ne_elim nm A Bs M => a_elim nm (nf_to_exp A) (nbrs_to_brs Bs) (ne_to_exp M)
+  | ne_elim p m Bks M => a_elim (Some p) m (nblocks_to_blocks Bks) (ne_to_exp M)
   | ne_app M N => a_app (ne_to_exp M) (nf_to_exp N)
   | ne_var x => a_var x
   | ne_glob p => qname_term p
@@ -1381,6 +1478,11 @@ with nbrs_to_brs (Bs : nbrs) : list (string * nat * exp) :=
   match Bs with
   | nbrs_nil => nil
   | nbrs_cons c n B Bs => (c, n, nf_to_exp B) :: nbrs_to_brs Bs
+  end
+with nblocks_to_blocks (Bks : nblocks) : list eblock :=
+  match Bks with
+  | nblocks_nil => nil
+  | nblocks_cons nm A Bs Bks => eb_mk nm None (nf_to_exp A) (nbrs_to_brs Bs) :: nblocks_to_blocks Bks
   end
 .
 
@@ -1471,13 +1573,13 @@ Fixpoint nf_clean (W : nf) : Prop :=
   | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => True
   | nf_univ _ xs | nf_lvl _ xs => la_clean xs
   | nf_pi A B | nf_fn A B => nf_clean A /\ nf_clean B
-  | nf_indty _ Ms | nf_con _ _ Ms => nfs_clean Ms
+  | nf_indty _ _ Ms | nf_con _ _ _ Ms => nfs_clean Ms
   | nf_neut M => ne_clean M
   end
 with ne_clean (M : ne) : Prop :=
   match M with
   | ne_exfalso A M => nf_clean A /\ ne_clean M
-  | ne_elim _ A Bs M => nf_clean A /\ nbrs_clean Bs /\ ne_clean M
+  | ne_elim _ _ Bks M => nblocks_clean Bks /\ ne_clean M
   | ne_app M N => ne_clean M /\ nf_clean N
   | ne_var _ => True
   | ne_glob _ => False
@@ -1496,6 +1598,11 @@ with nbrs_clean (Bs : nbrs) : Prop :=
   match Bs with
   | nbrs_nil => True
   | nbrs_cons _ _ B Bs => nf_clean B /\ nbrs_clean Bs
+  end
+with nblocks_clean (Bks : nblocks) : Prop :=
+  match Bks with
+  | nblocks_nil => True
+  | nblocks_cons _ A Bs Bks => nf_clean A /\ nbrs_clean Bs /\ nblocks_clean Bks
   end.
 
 Fact nf_eq_dec : forall (M M' : nf),
@@ -1507,7 +1614,9 @@ with la_eq_dec : forall (xs xs' : lvl_atoms),
 with nfs_eq_dec : forall (Ms Ms' : nfs),
     ({Ms = Ms'} + {Ms <> Ms'})%type
 with nbrs_eq_dec : forall (Bs Bs' : nbrs),
-    ({Bs = Bs'} + {Bs <> Bs'})%type.
+    ({Bs = Bs'} + {Bs <> Bs'})%type
+with nblocks_eq_dec : forall (Bks Bks' : nblocks),
+    ({Bks = Bks'} + {Bks <> Bks'})%type.
 Proof.
   (** Names are compared by [string_dec], before [decide equality] could
       take a string apart character by character. *)
@@ -1599,13 +1708,18 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_true => a_true
   | a_False => a_False
   | a_exfalso A M => a_exfalso (exp_wk A (wk_q φ)) (exp_wk M φ)
-  | a_ind p => a_ind p
-  | a_con p c => a_con p c
+  | a_ind p k => a_ind p k
+  | a_con p k c => a_con p k c
   | a_nlit n => a_nlit n
-  | a_elim nm A Bs M =>
-      a_elim nm (exp_wk A (wk_qn nm φ))
-             (List.map (fun b => (fst b, exp_wk (snd b) (wk_qn (snd (fst b)) φ))) Bs)
-             (exp_wk M φ)
+  | a_elim oq m Bks M =>
+      a_elim oq m
+        (List.map (fun b =>
+           match b with
+           | eb_mk nm oZ A Bs =>
+               eb_mk nm (option_map (fun Z => exp_wk Z (wk_qn (nm - 1) φ)) oZ) (exp_wk A (wk_qn nm φ))
+                 (List.map (fun br => (fst br, exp_wk (snd br) (wk_qn (snd (fst br)) φ))) Bs)
+           end) Bks)
+        (exp_wk M φ)
   | a_pi A B => a_pi (exp_wk A φ) (exp_wk B (wk_q φ))
   | a_fn A M => a_fn (exp_wk A φ) (exp_wk M (wk_q φ))
   | a_app M N => a_app (exp_wk M φ) (exp_wk N φ)
@@ -1653,8 +1767,8 @@ with gentry_wk (E : gentry) (φ : wk) : gentry :=
   match E with
   | ge_def b pv A B => ge_def b pv (exp_wk A φ) (match B with Some M => Some (exp_wk M φ) | None => None end)
   | ge_mod pv U => ge_mod pv (gunit_wk U φ)
-  | ge_ind pv p D Φ => ge_ind pv p D (gmod_wk Φ (wk_qn (ind_nu D) φ))
-  | ge_ind_alias pv Δ p Ns => ge_ind_alias pv Δ p Ns
+  | ge_ind pv p k D Φ => ge_ind pv p k D (gmod_wk Φ (wk_qn (ind_nu D) φ))
+  | ge_ind_alias pv Δ p k Ns => ge_ind_alias pv Δ p k Ns
   end
 with centry_wk (e : centry) (φ : wk) : centry :=
   match e with
@@ -1773,13 +1887,18 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_true => a_true
   | a_False => a_False
   | a_exfalso A M => a_exfalso (exp_sub A (sb_q σ)) (exp_sub M σ)
-  | a_ind p => a_ind p
-  | a_con p c => a_con p c
+  | a_ind p k => a_ind p k
+  | a_con p k c => a_con p k c
   | a_nlit n => a_nlit n
-  | a_elim nm A Bs M =>
-      a_elim nm (exp_sub A (sb_qn nm σ))
-             (List.map (fun b => (fst b, exp_sub (snd b) (sb_qn (snd (fst b)) σ))) Bs)
-             (exp_sub M σ)
+  | a_elim oq m Bks M =>
+      a_elim oq m
+        (List.map (fun b =>
+           match b with
+           | eb_mk nm oZ A Bs =>
+               eb_mk nm (option_map (fun Z => exp_sub Z (sb_qn (nm - 1) σ)) oZ) (exp_sub A (sb_qn nm σ))
+                 (List.map (fun br => (fst br, exp_sub (snd br) (sb_qn (snd (fst br)) σ))) Bs)
+           end) Bks)
+        (exp_sub M σ)
   | a_pi A B => a_pi (exp_sub A σ) (exp_sub B (sb_q σ))
   | a_fn A M => a_fn (exp_sub A σ) (exp_sub M (sb_q σ))
   | a_app M N => a_app (exp_sub M σ) (exp_sub N σ)
@@ -1825,8 +1944,8 @@ with gentry_sub (E : gentry) (σ : sub) : gentry :=
   match E with
   | ge_def b pv A B => ge_def b pv (exp_sub A σ) (match B with Some M => Some (exp_sub M σ) | None => None end)
   | ge_mod pv U => ge_mod pv (gunit_sub U σ)
-  | ge_ind pv p D Φ => ge_ind pv p D (gmod_sub Φ (sb_qn (ind_nu D) σ))
-  | ge_ind_alias pv Δ p Ns => ge_ind_alias pv Δ p Ns
+  | ge_ind pv p k D Φ => ge_ind pv p k D (gmod_sub Φ (sb_qn (ind_nu D) σ))
+  | ge_ind_alias pv Δ p k Ns => ge_ind_alias pv Δ p k Ns
   end
 with centry_sub (e : centry) (σ : sub) : centry :=
   match e with
@@ -2006,10 +2125,10 @@ Fixpoint sb_of_list (σ : sub) (Ms : list exp) : sub :=
   | M :: Ms' => sb_of_list (sb_extend σ (se_exp M)) Ms'
   end.
 
-(** The type of the type former applied to [Us], its outermost
-    parameters: the [Π] over the others, at [Us]. *)
-Definition ind_ty_at (D : ind_decl) (Us : list exp) : typ :=
-  exp_sub (ctx_pi (List.firstn (ind_np D - List.length Us) (ind_params D)) (exp_wk (ind_sort D) (wk_shiftn (ind_nn D))))
+(** The type of the type former of the member [M] applied to [Us], its
+    outermost parameters: the [Π] over the others, at [Us]. *)
+Definition ind_ty_at (D : ind_decl) (M : imember) (Us : list exp) : typ :=
+  exp_sub (ctx_pi (List.firstn (im_np D M - List.length Us) (im_params D M)) (exp_wk (ind_sort D) (wk_shiftn (im_nn M))))
     (sb_of_list sb_id Us).
 
 (** The notations of terms, contexts, normal forms and substitutions. *)

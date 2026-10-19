@@ -121,6 +121,7 @@
 ./Core/Syntactic/CtxSub.v
 ./Core/Syntactic/Members.v
 ./Extraction/Opens.v
+./Core/Syntactic/Inductives/Group.v
 ./Core/Syntactic/Inductives/Inductives.v
 ./Core/Syntactic/Builtin.v
 ./Core/Syntactic/Inductives/IndCong.v
