@@ -8,6 +8,7 @@ SVG_ELEMENT = SVG.getElementsByTagName("svg")[0]
 ENTIRE_GRAPH_ELEMENT = SVG_ELEMENT.getElementsByTagName("g")[0]
 ENTIRE_GRAPH_ELEMENT.removeChild(ENTIRE_GRAPH_ELEMENT.getElementsByTagName("title")[0])
 SVG_ELEMENT.setAttribute("onload", "makeEdgesInteractive(evt)")
+SVG_ELEMENT.setAttribute("class", "depgraph")
 for line in io.open(PROJECT_ROOT / "assets" / "extra" / "header.html"):
     print(line, end='')
 print('<link href="resources/depgraph.css" rel="stylesheet" type="text/css" />')
