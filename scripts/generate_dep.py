@@ -23,16 +23,12 @@ GRAPH_SET: set[str] = set()
 def under_subgraph(name: str, body: str) -> str:
     return f"""subgraph "{name}" {{ {body} }}"""
 
-# Only the layers (Algorithmic, Core/Completeness, …, Frontend) are drawn as
-# boxes.  Subfolders are not: their files are labelled with their path inside
-# the layer instead, so a layer's files can share ranks and the graph grows
-# downwards along the dependencies rather than sideways.
-def subgraph_decl(*, name: str, label: str = "", tooltip: str = "", color: str, body: str = "", cluster: bool = True) -> str:
+def subgraph_decl(*, name: str, label: str = "", tooltip: str = "", color: str, body: str = "") -> str:
     GRAPH_SET.add(name)
-    return under_subgraph(name, f"""graph[cluster={str(cluster).lower()},color={color},fontcolor={color},label="{label}",tooltip="{tooltip}"]; node[fillcolor={color}]; {body}""")
+    return under_subgraph(name, f"""graph[color={color},fontcolor={color},label="{label}",tooltip="{tooltip}"]; node[fillcolor={color}]; {body}""")
 
-def default_subgraph_decl(name: str, body: str = "", cluster: bool = True) -> str:
-    return subgraph_decl(name=name, label=name, tooltip=f"{ROOT_MODULE_NAME}.{name}", color=COLORS[name], body=body, cluster=cluster)
+def default_subgraph_decl(name: str, body: str = "") -> str:
+    return subgraph_decl(name=name, label=name, tooltip=f"{ROOT_MODULE_NAME}.{name}", color=COLORS[name], body=body)
 
 def core_subgraph_decl(name: str, body: str = "") -> str:
     return under_subgraph("Core", subgraph_decl(name=f"Core/{name}", label=name, tooltip=f"{ROOT_MODULE_NAME}.Core.{name}", color=COLORS[name], body=body))
@@ -55,8 +51,7 @@ def node_of_path(path: str) -> str:
     color = next((COLORS[part] for part in reversed(dedupe_parts) if part in COLORS),COLORS["others"])
     subgraph_names = list(itertools.accumulate(parts[:-1], func="{0}/{1}".format))
     module_name = module_name_of_module_parts(parts)
-    layer_depth = 2 if parts[0] == "Core" and len(parts) > 2 else 1
-    node_label = "/".join(parts[layer_depth:]) or parts[-1]
+    node_label = parts[-1]
 
     # Handle special case for two main theorems
     # so that printed graph looks better
@@ -72,6 +67,9 @@ def node_of_path(path: str) -> str:
     for subgraph_name in reversed(subgraph_names):
         if subgraph_name in GRAPH_SET:
             result = under_subgraph(subgraph_name, result)
+        else:
+            GRAPH_SET.add(subgraph_name)
+            result = under_subgraph(subgraph_name, f"""graph[cluster=true,label={parts[subgraph_names.index(subgraph_name)]},tooltip="{module_name_of_module_parts(subgraph_name.split("/"))}"]; {result}""")
 
     return result
 
@@ -89,10 +87,10 @@ def gen_graph() -> str:
     newline = "\n"
     return textwrap.dedent(f"""
       digraph Mctt {{
-        graph [center=true,class="depgraph",cluster=false,fontname="Open Sans",fontsize=28,label="Mctt",labeljust=l,labelloc=t,nodesep=0.1,penwidth=2,splines=true,tooltip=""];
+        graph [center=true,class="depgraph",cluster=true,fontname="Open Sans",fontsize=28,label="Mctt",labeljust=l,labelloc=t,nodesep=0.1,penwidth=2,splines=true,tooltip=""];
         node [fontsize=18,shape=note,style=filled,URL="\\N.html"];
         {default_subgraph_decl("Algorithmic")}
-        {default_subgraph_decl("Core", cluster=False)}
+        {default_subgraph_decl("Core")}
         {core_subgraph_decl("Completeness")}
         {core_subgraph_decl("Semantic")}
         {core_subgraph_decl("Soundness")}
