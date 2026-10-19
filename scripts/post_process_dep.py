@@ -11,9 +11,12 @@ SVG_ELEMENT.setAttribute("onload", "makeEdgesInteractive(evt)")
 SVG_ELEMENT.setAttribute("class", "depgraph")
 for line in io.open(PROJECT_ROOT / "assets" / "extra" / "header.html"):
     print(line, end='')
+    # Phones: lay the page out at the screen's width, so the graph fills it.
+    if line.strip() == "<head>":
+        print('<meta name="viewport" content="width=device-width, initial-scale=1" />')
 print('<link href="resources/depgraph.css" rel="stylesheet" type="text/css" />')
 print('<script type="text/javascript" src="resources/depgraph.js"></script>')
-print('<p class="depgraph-hint">Scroll to zoom, drag to move, double-click to see the whole graph; click an edge to highlight it.</p>')
+print('<p class="depgraph-hint">Scroll or pinch to zoom, drag to move, double-click or double-tap to see the whole graph; click an edge to highlight it.</p>')
 SVG_ELEMENT.writexml(sys.stdout)
 for line in io.open(PROJECT_ROOT / "assets" / "extra" / "footer.html"):
     print(line, end='')
