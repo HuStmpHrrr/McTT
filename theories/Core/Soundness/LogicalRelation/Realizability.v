@@ -55,10 +55,10 @@ Qed.
 Lemma read_cargs_nth : forall s p ups ρ gs vs Vs, Rcargs vs at gs of p ups in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Vs ->
     List.length (nfs_to_exps Vs) = List.length gs /\
     (forall gs1 A gs2 v, gs = gs1 ++ ca_arg A :: gs2 -> List.nth_error vs (List.length gs1) = Some v ->
-       exists a (V : nf), ⟦ A ⟧ env_args ρ (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
+       exists a (V : nf), ⟦ A ⟧ env_args ρ (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
          Rnf ⇓ a v in s ↘ V /\ List.nth_error (nfs_to_exps Vs) (List.length gs1) = Some (V : exp)) /\
     (forall gs1 Pr gs2 v, gs = gs1 ++ ca_rec Pr :: gs2 -> List.nth_error vs (List.length gs1) = Some v ->
-       exists a (V : nf), ⟦shty Pr of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args ρ (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
+       exists a (V : nf), ⟦shty Pr of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args ρ (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
          Rnf ⇓ a v in s ↘ V /\ List.nth_error (nfs_to_exps Vs) (List.length gs1) = Some (V : exp)).
 Proof.
   induction 1.
@@ -158,43 +158,43 @@ Section IndRealize.
   Qed.
 
   Hypothesis
-    (HeA : forall ms c gs k A vs, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+    (HeA : forall ms c gs k A vs, tele_rel (canon_nparams_rel D ups) (List.rev (ind_nparams D)) ms ms ->
        ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
-       tele_pre (ind_ar D ups ms c) k vs vs -> exists b, ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ b)
-    (HgA : forall ms c gs k A vs b, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+       tele_prefix_rel (canon_args_rel D ups ms c) k vs vs -> exists b, ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ b)
+    (HgA : forall ms c gs k A vs b, tele_rel (canon_nparams_rel D ups) (List.rev (ind_nparams D)) ms ms ->
        ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
-       tele_pre (ind_ar D ups ms c) k vs vs -> ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ b ->
+       tele_prefix_rel (canon_args_rel D ups ms c) k vs vs -> ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ b ->
        DG b ∈ glu_univ_elem i ↘ AP ms c k vs ↘ AEl ms c k vs)
-    (HtA : forall ms c gs k A vs b, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+    (HtA : forall ms c gs k A vs b, tele_rel (canon_nparams_rel D ups) (List.rev (ind_nparams D)) ms ms ->
        ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
-       tele_pre (ind_ar D ups ms c) k vs vs -> ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ b ->
+       tele_prefix_rel (canon_args_rel D ups ms c) k vs vs -> ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ b ->
        forall Γ M A' m R, DG b ∈ glu_univ_elem i ↘ AP ms c k vs ↘ AEl ms c k vs ->
          Γ ⊢ M : A' ® m ∈ AEl ms c k vs -> DF b ≈ b ∈ per_univ_elem i ↘ R -> Dom m ≈ m ∈ R ->
          Γ ⊢ M : A' ® m ∈ glu_elem_top i b)
-    (HeD : forall ms c gs gs1 t gs2 ws k B ys, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+    (HeD : forall ms c gs gs1 t gs2 ws k B ys, tele_rel (canon_nparams_rel D ups) (List.rev (ind_nparams D)) ms ms ->
        ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-       tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
-       List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+       tele_prefix_rel (canon_args_rel D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+       List.nth_error (ptyp_doms t) k = Some B -> tele_prefix_rel (shape_doms_rel (canon_doms_rel ups) ms ws (ptyp_doms t)) k ys ys ->
        exists b, ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b)
-    (HgD : forall ms c gs gs1 t gs2 ws k B ys b, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+    (HgD : forall ms c gs gs1 t gs2 ws k B ys b, tele_rel (canon_nparams_rel D ups) (List.rev (ind_nparams D)) ms ms ->
        ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-       tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
-       List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+       tele_prefix_rel (canon_args_rel D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+       List.nth_error (ptyp_doms t) k = Some B -> tele_prefix_rel (shape_doms_rel (canon_doms_rel ups) ms ws (ptyp_doms t)) k ys ys ->
        ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b ->
        DG b ∈ glu_univ_elem i ↘ DP (ms ++ ws ++ ys) B ↘ DEl (ms ++ ws ++ ys) B)
-    (HrD : forall ms c gs gs1 t gs2 ws k B ys b, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+    (HrD : forall ms c gs gs1 t gs2 ws k B ys b, tele_rel (canon_nparams_rel D ups) (List.rev (ind_nparams D)) ms ms ->
        ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-       tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
-       List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+       tele_prefix_rel (canon_args_rel D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+       List.nth_error (ptyp_doms t) k = Some B -> tele_prefix_rel (shape_doms_rel (canon_doms_rel ups) ms ws (ptyp_doms t)) k ys ys ->
        ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b ->
        (forall Γ A R, DF b ≈ b ∈ per_univ_elem i ↘ R -> Γ ⊢ A ® DP (ms ++ ws ++ ys) B -> Γ ⊢ A ® glu_typ_top i b) /\
        (forall Γ M A m, Γ ⊢ M : A ® m ∈ glu_elem_bot i b -> Γ ⊢ M : A ® ⇑ b m ∈ DEl (ms ++ ws ++ ys) B)).
 
   Lemma ind_glu_elem_readback : forall Ok : list domain -> Prop,
-      (forall u, Ok u -> ind_adm D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) u) ->
+      (forall u, Ok u -> adm_uparams D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) u) ->
       forall Γ Ps M m, ind_glu_elem p D ups NEl AEl DP DEl Γ Ps M m -> ⊢ Γ ->
       forall ns', glu_params_top D Γ Ps (ups ++ ns') ->
-      ind_rel p D Ok (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns' ns' m m ->
+      ind_rel p D Ok (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) ns' ns' m m ->
       forall (w : nf), Rnf ⇓ (d_ind p (ups ++ ns')) m in length Γ ↘ w -> Γ ⊢ M ≈ w : apps (a_ind p) Ps.
   Proof.
     intros Ok HOk.
@@ -202,23 +202,23 @@ Section IndRealize.
     destruct (per_univ_elem_ind_evals _ _ _ _ _ _ _ _ Hper Hl Hu Hu) as (HevN & HevAr & HevD).
     pose proof Hcp as [HnP HnI HaP HaI HdP HdI].
     pose proof Hadm as [_ _ Hcl _].
-    pose proof (proj1 (ind_shape_rel_rebase p D ups _ _ _ Hass HnP HnI HaP HaI HdP HdI Ok)) as Reb.
+    pose proof (proj1 (rec_arg_rel_rebase p D ups _ _ _ Hass HnP HnI HaP HaI HdP HdI Ok)) as Reb.
     (** The uniform parameters of an element are admissible beside [ups],
         and [ups] beside them. *)
-    assert (Hback : forall u, Ok u -> ind_adm D u (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ups)
+    assert (Hback : forall u, Ok u -> adm_uparams D u (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) ups)
       by (intros u Hou; exact (proj1 (adm_iff p D ups _ _ _ Hass HnP HnI HaP HaI HdP HdI u (HOk u Hou) ups) Hadm)).
     apply (ind_glu_elem_mut_ind p D ups NEl AEl DP DEl
              (fun Γ Ps M m _ => ⊢ Γ -> forall ns', glu_params_top D Γ Ps (ups ++ ns') ->
-                ind_rel p D Ok (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns' ns' m m ->
+                ind_rel p D Ok (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) ns' ns' m m ->
                 forall (w : nf), Rnf ⇓ (d_ind p (ups ++ ns')) m in length Γ ↘ w -> Γ ⊢ M ≈ w : apps (a_ind p) Ps)
              (fun Γ pre t A N v _ => ⊢ Γ -> Γ ⊢ N : A -> (exists Us' σ', A = ptyp_ty_at p Us' σ' t) ->
                 forall ms ms' c0 gs1 t0 gs2 ws k ys, pre = ms ++ ws ++ ys ->
-                tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms' ->
+                tele_rel (canon_nparams_rel D ups) (List.rev (ind_nparams D)) ms ms' ->
                 ind_con D c0 = Some (gs1 ++ ca_rec t0 :: gs2) ->
-                tele_pre (ind_ar D ups ms c0) (List.length (cargs_nonrec gs1)) ws ws ->
+                tele_prefix_rel (canon_args_rel D ups ms c0) (List.length (cargs_nonrec gs1)) ws ws ->
                 ptyp_skip k t0 = t -> k <= List.length (ptyp_doms t0) ->
-                tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t0)) k ys ys ->
-                ind_shape_rel p D Ok (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ups ups (ms' ++ ws ++ ys) (ms' ++ ws ++ ys) t v v ->
+                tele_prefix_rel (shape_doms_rel (canon_doms_rel ups) ms ws (ptyp_doms t0)) k ys ys ->
+                rec_arg_rel p D Ok (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) ups ups (ms' ++ ws ++ ys) (ms' ++ ws ++ ys) t v v ->
                 forall a (V : nf), ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ms' ++ ws ++ ys) ↘ a ->
                 Rnf ⇓ a v in length Γ ↘ V -> Γ ⊢ N ≈ V : A)).
     2:{ intros * Hm Hr HΓ ns' Hpt Hrel w Hw. clear - Hr Hw HΓ. inversion Hw; subst.
@@ -259,8 +259,8 @@ Section IndRealize.
       subst k.
       destruct (nth_error_lt_some vs (length gs1) ltac:(lia)) as [v Hv0].
       set (ms := List.skipn (ind_nu D) bs) in *.
-      set (pv := nonrec_vals gs1 (List.firstn (length gs1) vs)) in *.
-      pose proof (canon_tnr_sym p D ups Hass Hcp _ _ Hs) as Hsm.
+      set (pv := nonrec_arg_vals gs1 (List.firstn (length gs1) vs)) in *.
+      pose proof (canon_nparams_rel_sym p D ups Hass Hcp _ _ Hs) as Hsm.
       destruct g as [A0 | Pr].
       + (** A non-recursive argument reads back by its gluing, at the type at
             the constructor's non-uniform parameters, related to the one at
@@ -275,11 +275,11 @@ Section IndRealize.
         pose proof (HgA _ _ _ _ _ _ _ Hb Hcon HA0' Hpre Eb) as Hgb.
         destruct (glu_univ_elem_per_univ _ _ _ _ Hgb) as [Rb HRb].
         pose proof (nonrec_nth_arg _ _ _ _ _ _ Heq Hvl Hv0) as Hn1.
-        pose proof Hv as Hv'; rewrite tele_full_iff in Hv'; destruct Hv' as (_ & _ & Hvr).
+        pose proof Hv as Hv'; rewrite tele_rel_iff in Hv'; destruct Hv' as (_ & _ & Hvr).
         pose proof (Hvr _ _ _ Hn1 Hn1) as Hvv0.
         rewrite (nonrec_firstn _ _ _ _ _ Heq Hvl) in Hvv0.
         pose proof Hvv0 as Hvv.
-        unfold ind_ar in Hvv; rewrite (nth_atyp_eq _ _ _ _ _ Hcon HA0') in Hvv.
+        unfold canon_args_rel in Hvv; rewrite (nth_atyp_eq _ _ _ _ _ Hcon HA0') in Hvv.
         pose proof (per_head_iff Eb Eb HRb) as HRh.
         assert (Hvv' : Rb v v) by (apply HRh; exact Hvv).
         pose proof (HtA _ _ _ _ _ _ _ Hb Hcon HA0' Hpre Eb _ _ _ _ _ Hgb (Harg _ _ _ _ _ _ Heq HN HT Hv0) HRb Hvv') as Htop.
@@ -301,18 +301,18 @@ Section IndRealize.
         rewrite HV in HnV; injection HnV as ->.
         rewrite <- env_args_app, <- List.app_assoc in Ea.
         pose proof (nonrec_prefix_pre _ _ _ _ _ _ Hv Hvl Heq) as Hpre.
-        pose proof (ind_args_rel_rec _ _ _ _ _ _ _ _ _ _ _ _ _ Hia _ _ _ _ _ Heq Hv0 Hv0) as Hsh0.
+        pose proof (con_args_rel_rec _ _ _ _ _ _ _ _ _ _ _ _ _ Hia _ _ _ _ _ Heq Hv0 Hv0) as Hsh0.
         (** The recursive argument, read at [ups] and at the type's
             non-uniform parameters. *)
         pose proof (Reb _ _ _ _ _ _ _ Hsh0 ups ups ms ms ns' ns' c gs1 Pr gs2 pv pv pv pv 0 nil nil nil nil
                       ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity)
                       (Hback _ Ho) (Hback _ Ho) ltac:(rewrite <- Heq; exact Hcon) Hb Hsm Hsm Hpre Hpre Hpre
-                      eq_refl ltac:(lia) (tele_pre_nil _) (tele_pre_nil _) (tele_pre_nil _)) as Hsh.
+                      eq_refl ltac:(lia) (tele_prefix_rel_nil _) (tele_prefix_rel_nil _) (tele_prefix_rel_nil _)) as Hsh.
         assert (HTf : exists Us' σ', T = ptyp_ty_at p Us' σ' Pr)
           by (do 2 eexists; rewrite (cargs_rec_type p D gs gs1 Pr gs2 _ _ _ Heq HT), ptyp_ty_eq_at, ptyp_ty_at_sub; reflexivity).
         eapply (IH _ _ _ _ _ _ Heq HN HT Hv0 HΓ (HAs _ _ _ HN HT) HTf ms ns' c gs1 Pr gs2 pv 0 nil);
           [ rewrite List.app_nil_r; reflexivity | exact Hsm | rewrite <- Heq; exact Hcon | exact Hpre | reflexivity | lia
-          | apply tele_pre_nil | exact Hsh | rewrite List.app_nil_r; exact Ea | exact HRV ].
+          | apply tele_prefix_rel_nil | exact Hsh | rewrite List.app_nil_r; exact Ea | exact HRV ].
     - (** The end of a shape: the element read back at the parameters the
           shape evaluates to. *)
       intros * Hs1 Hs2 IH HΓ HN HAf ms ms' c0 gs1 t0 gs2 ws k1 ys Hpre Hm Hc Hw Hsk Hk Hy Hsh a V Ea HRV.
@@ -320,15 +320,15 @@ Section IndRealize.
       match goal with Hbs : ⟦ Ps ⟧* _ ⍮ _ ⍮ _ ↘ ?bs0 |- _ => rename Hbs into Ebt; rename bs0 into bt end.
       destruct (ptyp_skip_self _ _ _ _ Hsk) as [HkL HPs].
       assert (Hk1 : k1 = List.length (ptyp_doms t0)) by lia.
-      assert (Hys : tele_full (shape_tr (ind_dr ups) ms ws (ptyp_doms t0)) (ptyp_doms t0) ys ys)
-        by (apply tele_full_of_pre; rewrite <- Hk1; exact Hy).
+      assert (Hys : tele_rel (shape_doms_rel (canon_doms_rel ups) ms ws (ptyp_doms t0)) (ptyp_doms t0) ys ys)
+        by (apply tele_rel_of_pre; rewrite <- Hk1; exact Hy).
       destruct HAf as (Us' & σ' & HA); cbn [ptyp_ty_at ptyp_ps] in HA.
       destruct (Hcl ms ms' c0 _ gs1 t0 gs2 ws ws ys ys Hm Hc eq_refl Hw Hys) as [b0 b1 E0 E1 H01].
       rewrite HPs in E0, E1.
       pose proof (functional_eval_exps' _ _ _ _ E1 Ebt) as ->.
       destruct (Hs1 _ _ E0 HA) as (HQl & _ & Hgn).
       destruct (Hgn _ H01) as [_ HQt].
-      destruct (ind_shape_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh) as (bs & bs' & Ebs & Ebs' & Hvv).
+      destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh) as (bs & bs' & Ebs & Ebs' & Hvv).
       pose proof (functional_eval_exps' _ _ _ _ Ebs Ebt) as ->.
       pose proof (functional_eval_exps' _ _ _ _ Ebs' Ebt) as ->.
       assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
@@ -348,7 +348,7 @@ Section IndRealize.
       match goal with HRM0 : Rnf ⇓ b2' m' in _ ↘ ?M1 |- _ => rename HRM0 into HRM; rename M1 into M' end.
       pose proof (eval_fam_cod_shfam_inv _ _ _ _ _ _ Ecod) as Ecod'.
       destruct HAf as (Us' & σ' & HA); cbn [ptyp_ty_at] in HA.
-      pose proof (canon_tnr_refl_l' p D ups Hass Hcp _ _ Hm) as Hmm.
+      pose proof (canon_nparams_rel_refl_l' p D ups Hass Hcp _ _ Hm) as Hmm.
       destruct (shape_pi_step p D ups _ _ _ Hass HnP HnI HaP HaI HdP HdI ms c0 gs1 t0 gs2 ws ws k1 ys ys B t Hmm Hc Hw Hsk Hy)
         as (HB & Hs' & Hk' & HPd & Hstep).
       destruct (HeD _ _ _ _ _ _ _ _ _ _ Hmm Hc eq_refl Hw HB Hy) as [bg Ebg].
@@ -372,13 +372,13 @@ Section IndRealize.
       assert (Hwk : Γ ▹ IT ⊢ᵏ ↑ : Γ) by mauto 3.
       pose proof (HrB _ _ _ _ (var_glu_elem_bot _ _ _ _ _ _ Hgbg HITg)) as Hvg.
       pose proof (var_per_elem (length Γ) Ha01) as Hcc0.
-      assert (ERg : ind_dr ups (ms ++ ws ++ ys) B <~> Rg) by (eapply per_univ_elem_right_irrel; eassumption).
+      assert (ERg : canon_doms_rel ups (ms ++ ws ++ ys) B <~> Rg) by (eapply per_univ_elem_right_irrel; eassumption).
       assert (Hvc : Γ ▹ IT ⊢ #0 : IT[↑]ʷ ® c ∈ DEl (ms ++ ws ++ ys) B)
         by (eapply glu_univ_elem_trm_resp_per_elem; [ exact Hgbg | exact HRg | exact Hvg | apply ERg; exact Hcc0 ]).
-      assert (Hcc : ind_dr ups (ms ++ ws ++ ys) B c c) by (etransitivity; [ symmetry |]; exact Hcc0).
+      assert (Hcc : canon_doms_rel ups (ms ++ ws ++ ys) B c c) by (etransitivity; [ symmetry |]; exact Hcc0).
       (** The rest of the shape, at the variable. *)
       pose proof (proj1 (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc eq_refl Hw HB Hy _ _) Hcc) as Hcc'.
-      destruct (ind_shape_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh c c Hcc') as (r & r' & Er & Er' & Hsh').
+      destruct (rec_arg_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh c c Hcc') as (r & r' & Er & Er' & Hsh').
       pose proof (functional_eval_app _ _ _ _ Er Hvapp) as ->.
       pose proof (functional_eval_app _ _ _ _ Er' Hvapp) as ->.
       assert (HNw : Γ ▹ IT ⊢ N[↑]ʷ : Π IT[↑]ʷ OT[wk_q ↑]ʷ) by (rewrite <- exp_wk_pi; rewrite HA in HN; mauto 3).

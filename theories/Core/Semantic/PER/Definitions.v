@@ -138,24 +138,24 @@ Hint Constructors per_ne : mctt.
     values before it.  A family of relations [tr k pre] relates the [k]-th
     values, given the prefix [pre] of the left list before them (the
     relation of a pair of related types is that of the left type);
-    [tele_full] relates two whole lists, [tele_pre] two prefixes of length
+    [tele_rel] relates two whole lists, [tele_prefix_rel] two prefixes of length
     [k].  The relations are a family indexed by prefixes, not a nested
     structure, so that the clause of [per_univ_elem_core] for inductive types
     states them with [rel_mod_eval] alone, as the clause for [Π] does. *)
 
-Fixpoint tele_rel_aux (tr : nat -> list domain -> relation domain)
+Fixpoint tele_rel_from (tr : nat -> list domain -> relation domain)
     (k : nat) (pre vs vs' : list domain) : Prop :=
   match vs, vs' with
   | nil, nil => True
-  | v :: vs, v' :: vs' => tr k pre v v' /\ tele_rel_aux tr (S k) (pre ++ v :: nil) vs vs'
+  | v :: vs, v' :: vs' => tr k pre v v' /\ tele_rel_from tr (S k) (pre ++ v :: nil) vs vs'
   | _, _ => False
   end.
 
-Definition tele_full {X : Type} (tr : nat -> list domain -> relation domain) (T : list X) (vs vs' : list domain) : Prop :=
-  List.length vs = List.length T /\ tele_rel_aux tr 0 nil vs vs'.
+Definition tele_rel {X : Type} (tr : nat -> list domain -> relation domain) (T : list X) (vs vs' : list domain) : Prop :=
+  List.length vs = List.length T /\ tele_rel_from tr 0 nil vs vs'.
 
-Definition tele_pre (tr : nat -> list domain -> relation domain) (k : nat) (vs vs' : list domain) : Prop :=
-  List.length vs = k /\ tele_rel_aux tr 0 nil vs vs'.
+Definition tele_prefix_rel (tr : nat -> list domain -> relation domain) (k : nat) (vs vs' : list domain) : Prop :=
+  List.length vs = k /\ tele_rel_from tr 0 nil vs vs'.
 
 (** The types of the non-recursive arguments of a constructor, outermost
     first, and the values at them among the arguments. *)
@@ -166,10 +166,10 @@ Fixpoint cargs_nonrec (gs : list carg) : list typ :=
   | ca_rec _ :: gs => cargs_nonrec gs
   end.
 
-Fixpoint nonrec_vals (gs : list carg) (vs : list domain) : list domain :=
+Fixpoint nonrec_arg_vals (gs : list carg) (vs : list domain) : list domain :=
   match gs, vs with
-  | ca_arg _ :: gs, v :: vs => v :: nonrec_vals gs vs
-  | ca_rec _ :: gs, _ :: vs => nonrec_vals gs vs
+  | ca_arg _ :: gs, v :: vs => v :: nonrec_arg_vals gs vs
+  | ca_rec _ :: gs, _ :: vs => nonrec_arg_vals gs vs
   | _, _ => nil
   end.
 
@@ -180,19 +180,19 @@ Definition per_top_ps (T : list centry) (vs vs' : list domain) : Prop :=
 (** The domains [Bs] of a shape as a telescope of relations, after the
     values of the shape's components, the non-uniform parameters [ms] and
     the non-recursive arguments [ws] before it (the uniform parameters left
-    out): the relation of a domain is the one [dr] gives its type after
+    out): the relation of a domain is the one [doms_rel] gives its type after
     them and the values of the domains before it. *)
-Definition shape_tr (dr : list domain -> exp -> relation domain) (ms ws : list domain) (Bs : list exp) : nat -> list domain -> relation domain :=
-  fun k ys => dr (ms ++ ws ++ ys) (List.nth k Bs a_True).
+Definition shape_doms_rel (doms_rel : list domain -> exp -> relation domain) (ms ws : list domain) (Bs : list exp) : nat -> list domain -> relation domain :=
+  fun k ys => doms_rel (ms ++ ws ++ ys) (List.nth k Bs a_True).
 
 (** The terms [Ps] evaluate, in [ρ] and in [ρ'], to lists related by [R]. *)
 #[warnings="-cannot-define-projection"]
-Record exps_rel (Ps : list exp) (ρ ρ' : env) (R : list domain -> list domain -> Prop) : Prop := mk_exps_rel
-  { er_left : list domain
-  ; er_right : list domain
-  ; er_eval_left : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ er_left
-  ; er_eval_right : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ ρ' ↘ er_right
-  ; er_rel : R er_left er_right }.
+Record rel_evals (Ps : list exp) (ρ ρ' : env) (R : list domain -> list domain -> Prop) : Prop := mk_rel_evals
+  { rev_left : list domain
+  ; rev_right : list domain
+  ; rev_eval_left : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ rev_left
+  ; rev_eval_right : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ ρ' ↘ rev_right
+  ; rev_rel : R rev_left rev_right }.
 
 (** Uniform parameters [ua] admissible beside [ups]: what the type
     evaluates from them is related, as elements, to what it evaluates from
@@ -209,152 +209,152 @@ Record exps_rel (Ps : list exp) (ρ ρ' : env) (R : list domain -> list domain -
 (** A type at two environments: its two values, whose variables at [s]
     are related by [R]. *)
 #[warnings="-cannot-define-projection"]
-Record adm_vals (A : exp) (ρ ρ' : env) (R : relation domain) (s : nat) : Prop := mk_adm_vals
-  { a : domain
-  ; a' : domain
-  ; adv_eval : ⟦ A ⟧ ρ ↘ a
-  ; adv_eval' : ⟦ A ⟧ ρ' ↘ a'
-  ; adv_rel : R (⇑! a s) (⇑! a' s) }.
+Record rel_fresh_vars (A : exp) (ρ ρ' : env) (R : relation domain) (s : nat) : Prop := mk_rel_fresh_vars
+  { rfv_left : domain
+  ; rfv_right : domain
+  ; rfv_eval_left : ⟦ A ⟧ ρ ↘ rfv_left
+  ; rfv_eval_right : ⟦ A ⟧ ρ' ↘ rfv_right
+  ; rfv_rel : R (⇑! rfv_left s) (⇑! rfv_right s) }.
 
 (** A domain of a shape at two environments: its two values, whose
     applications to arguments related by [R] read back alike. *)
 #[warnings="-cannot-define-projection"]
-Record dom_vals (B : exp) (ρ ρ' : env) (R : relation domain) : Prop := mk_dom_vals
-  { a : domain
-  ; a' : domain
-  ; dmv_eval : ⟦ B ⟧ ρ ↘ a
-  ; dmv_eval' : ⟦ B ⟧ ρ' ↘ a'
-  ; dmv_top : forall x x', R x x' -> per_top (d_dom a x) (d_dom a' x') }.
+Record rel_dom_apps (B : exp) (ρ ρ' : env) (R : relation domain) : Prop := mk_rel_dom_apps
+  { rda_left : domain
+  ; rda_right : domain
+  ; rda_eval_left : ⟦ B ⟧ ρ ↘ rda_left
+  ; rda_eval_right : ⟦ B ⟧ ρ' ↘ rda_right
+  ; rda_top : forall x x', R x x' -> per_top (d_dom rda_left x) (d_dom rda_right x') }.
 
-Record ind_adm (D : ind_decl) (ups : list domain)
-    (nr : nat -> list domain -> relation domain)
-    (ar : list domain -> String.string -> nat -> list domain -> relation domain)
-    (dr : list domain -> exp -> relation domain)
-    (ua : list domain) : Prop := mk_ind_adm
-  { iad_nparams : forall k A vs vs' s, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
-      adm_vals A (env_args nil (ups ++ vs)) (env_args nil (ua ++ vs')) (nr k vs) s
-  ; iad_args : forall ms ms' c gs k A vs vs' s,
-      tele_full nr (List.rev (ind_nparams D)) ms ms' -> ind_con D c = Some gs ->
-      List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
-      adm_vals A (env_args nil (ups ++ ms ++ vs)) (env_args nil (ua ++ ms' ++ vs')) (ar ms c k vs) s
-  ; iad_recs : forall ms ms' c gs gs1 t gs2 ws ws' ys ys',
-      tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+Record adm_uparams (D : ind_decl) (ups : list domain)
+    (nparams_rel : nat -> list domain -> relation domain)
+    (args_rel : list domain -> String.string -> nat -> list domain -> relation domain)
+    (doms_rel : list domain -> exp -> relation domain)
+    (ua : list domain) : Prop := mk_adm_uparams
+  { adm_nparam_vars : forall k A vs vs' s, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_prefix_rel nparams_rel k vs vs' ->
+      rel_fresh_vars A (env_args nil (ups ++ vs)) (env_args nil (ua ++ vs')) (nparams_rel k vs) s
+  ; adm_arg_vars : forall ms ms' c gs k A vs vs' s,
+      tele_rel nparams_rel (List.rev (ind_nparams D)) ms ms' -> ind_con D c = Some gs ->
+      List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (args_rel ms c) k vs vs' ->
+      rel_fresh_vars A (env_args nil (ups ++ ms ++ vs)) (env_args nil (ua ++ ms' ++ vs')) (args_rel ms c k vs) s
+  ; adm_rec_params : forall ms ms' c gs gs1 t gs2 ws ws' ys ys',
+      tele_rel nparams_rel (List.rev (ind_nparams D)) ms ms' ->
       ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-      tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-      tele_full (shape_tr dr ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
-      exps_rel (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (ua ++ ms' ++ ws' ++ ys'))
-        (tele_full nr (List.rev (ind_nparams D)))
-  ; iad_doms : forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
-      tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+      tele_prefix_rel (args_rel ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+      tele_rel (shape_doms_rel doms_rel ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
+      rel_evals (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (ua ++ ms' ++ ws' ++ ys'))
+        (tele_rel nparams_rel (List.rev (ind_nparams D)))
+  ; adm_shape_doms : forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
+      tele_rel nparams_rel (List.rev (ind_nparams D)) ms ms' ->
       ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-      tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+      tele_prefix_rel (args_rel ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
       List.nth_error (ptyp_doms t) k = Some B ->
-      tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
-      dom_vals B (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (ua ++ ms' ++ ws' ++ ys')) (dr (ms ++ ws ++ ys) B) }.
+      tele_prefix_rel (shape_doms_rel doms_rel ms ws (ptyp_doms t)) k ys ys' ->
+      rel_dom_apps B (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (ua ++ ms' ++ ws' ++ ys')) (doms_rel (ms ++ ws ++ ys) B) }.
 
 (** The elements of the inductive type [p], two-sided: [x] at the
     non-uniform parameters [ns] and [y] at [ns'].  Each element is read at
     its own parameters, the ones it stores (a constructor's [bs], a
     neutral's annotation); the type's uniform parameters enter only through
-    [Ok], the admissible uniform parameters, which each element's own must
-    satisfy (the universe takes [ind_adm] at the type's, since a stuck
+    [adm], the admissible uniform parameters, which each element's own must
+    satisfy (the universe takes [adm_uparams] at the type's, since a stuck
     eliminator reads them).  A constructor and its arguments: the
     non-uniform parameters of each related to its side's index, the
     non-recursive arguments related at their types, and the recursive ones
     by their shapes, each side evaluated at its own parameters and
     arguments.  And neutrals that read back equally, of the type at
     parameters that are so too.  Two relations are read at the left
-    element's prefix only: the non-recursive arguments' [ar] at its
-    non-uniform parameters, and a function shape's domain [dr] at its
+    element's prefix only: the non-recursive arguments' [args_rel] at its
+    non-uniform parameters, and a function shape's domain [doms_rel] at its
     [pre].  This is harmless: the universe clause asks both to be
-    invariant along related prefixes ([nr], [ar] and [dr] at related
+    invariant along related prefixes ([nparams_rel], [args_rel] and [doms_rel] at related
     values agree), so the right element's prefix gives the same
     relation. *)
-Inductive ind_rel (p : qname) (D : ind_decl) (Ok : list domain -> Prop)
-    (nr : nat -> list domain -> relation domain)
-    (ar : list domain -> String.string -> nat -> list domain -> relation domain)
-    (dr : list domain -> exp -> relation domain)
+Inductive ind_rel (p : qname) (D : ind_decl) (adm : list domain -> Prop)
+    (nparams_rel : nat -> list domain -> relation domain)
+    (args_rel : list domain -> String.string -> nat -> list domain -> relation domain)
+    (doms_rel : list domain -> exp -> relation domain)
   : list domain -> list domain -> relation domain :=
 | ind_rel_con :
-  `{ tele_full nr (List.rev (ind_nparams D)) ns ns' ->
+  `{ tele_rel nparams_rel (List.rev (ind_nparams D)) ns ns' ->
      ind_con D c = Some gs ->
      List.length bs = ind_np D ->
      List.length bs' = ind_np D ->
-     Ok (List.firstn (ind_nu D) bs) ->
-     Ok (List.firstn (ind_nu D) bs') ->
-     tele_full nr (List.rev (ind_nparams D)) ns (List.skipn (ind_nu D) bs) ->
-     tele_full nr (List.rev (ind_nparams D)) ns' (List.skipn (ind_nu D) bs') ->
-     tele_full (ar (List.skipn (ind_nu D) bs) c) (cargs_nonrec gs) (nonrec_vals gs vs) (nonrec_vals gs vs') ->
-     ind_args_rel p D Ok nr ar dr (List.firstn (ind_nu D) bs) (List.firstn (ind_nu D) bs')
+     adm (List.firstn (ind_nu D) bs) ->
+     adm (List.firstn (ind_nu D) bs') ->
+     tele_rel nparams_rel (List.rev (ind_nparams D)) ns (List.skipn (ind_nu D) bs) ->
+     tele_rel nparams_rel (List.rev (ind_nparams D)) ns' (List.skipn (ind_nu D) bs') ->
+     tele_rel (args_rel (List.skipn (ind_nu D) bs) c) (cargs_nonrec gs) (nonrec_arg_vals gs vs) (nonrec_arg_vals gs vs') ->
+     con_args_rel p D adm nparams_rel args_rel doms_rel (List.firstn (ind_nu D) bs) (List.firstn (ind_nu D) bs')
        (List.skipn (ind_nu D) bs) (List.skipn (ind_nu D) bs') gs vs vs' ->
-     ind_rel p D Ok nr ar dr ns ns' (d_con p c (bs ++ vs)) (d_con p c (bs' ++ vs')) }
+     ind_rel p D adm nparams_rel args_rel doms_rel ns ns' (d_con p c (bs ++ vs)) (d_con p c (bs' ++ vs')) }
 | ind_rel_neut :
-  `{ tele_full nr (List.rev (ind_nparams D)) ns ns' ->
+  `{ tele_rel nparams_rel (List.rev (ind_nparams D)) ns ns' ->
      List.length as1 = ind_np D ->
      List.length as2 = ind_np D ->
-     Ok (List.firstn (ind_nu D) as1) ->
-     Ok (List.firstn (ind_nu D) as2) ->
-     tele_full nr (List.rev (ind_nparams D)) ns (List.skipn (ind_nu D) as1) ->
-     tele_full nr (List.rev (ind_nparams D)) ns' (List.skipn (ind_nu D) as2) ->
+     adm (List.firstn (ind_nu D) as1) ->
+     adm (List.firstn (ind_nu D) as2) ->
+     tele_rel nparams_rel (List.rev (ind_nparams D)) ns (List.skipn (ind_nu D) as1) ->
+     tele_rel nparams_rel (List.rev (ind_nparams D)) ns' (List.skipn (ind_nu D) as2) ->
      Dom m ≈ m' ∈ per_bot ->
-     ind_rel p D Ok nr ar dr ns ns' (⇑ (d_ind p as1) m) (⇑ (d_ind p as2) m') }
+     ind_rel p D adm nparams_rel args_rel doms_rel ns ns' (⇑ (d_ind p as1) m) (⇑ (d_ind p as2) m') }
 (** The arguments of two constructors with the uniform parameters [u] and
     [u'], after the values [pre] and [pre'] of their non-uniform
     parameters and the non-recursive arguments before them: a recursive
     one by its shape. *)
-with ind_args_rel (p : qname) (D : ind_decl) (Ok : list domain -> Prop)
-    (nr : nat -> list domain -> relation domain)
-    (ar : list domain -> String.string -> nat -> list domain -> relation domain)
-    (dr : list domain -> exp -> relation domain)
+with con_args_rel (p : qname) (D : ind_decl) (adm : list domain -> Prop)
+    (nparams_rel : nat -> list domain -> relation domain)
+    (args_rel : list domain -> String.string -> nat -> list domain -> relation domain)
+    (doms_rel : list domain -> exp -> relation domain)
   : list domain -> list domain -> list domain -> list domain -> list carg -> list domain -> list domain -> Prop :=
-| ind_args_nil :
-  `{ ind_args_rel p D Ok nr ar dr u u' pre pre' nil nil nil }
-| ind_args_arg :
-  `{ ind_args_rel p D Ok nr ar dr u u' (pre ++ v :: nil) (pre' ++ v' :: nil) gs vs vs' ->
-     ind_args_rel p D Ok nr ar dr u u' pre pre' (ca_arg A :: gs) (v :: vs) (v' :: vs') }
-| ind_args_rec :
-  `{ ind_shape_rel p D Ok nr ar dr u u' pre pre' t v v' ->
-     ind_args_rel p D Ok nr ar dr u u' pre pre' gs vs vs' ->
-     ind_args_rel p D Ok nr ar dr u u' pre pre' (ca_rec t :: gs) (v :: vs) (v' :: vs') }
+| con_args_nil :
+  `{ con_args_rel p D adm nparams_rel args_rel doms_rel u u' pre pre' nil nil nil }
+| con_args_arg :
+  `{ con_args_rel p D adm nparams_rel args_rel doms_rel u u' (pre ++ v :: nil) (pre' ++ v' :: nil) gs vs vs' ->
+     con_args_rel p D adm nparams_rel args_rel doms_rel u u' pre pre' (ca_arg A :: gs) (v :: vs) (v' :: vs') }
+| con_args_rec :
+  `{ rec_arg_rel p D adm nparams_rel args_rel doms_rel u u' pre pre' t v v' ->
+     con_args_rel p D adm nparams_rel args_rel doms_rel u u' pre pre' gs vs vs' ->
+     con_args_rel p D adm nparams_rel args_rel doms_rel u u' pre pre' (ca_rec t :: gs) (v :: vs) (v' :: vs') }
 (** A recursive argument of a shape, after the values [pre] and [pre'] of
     its components on each side (the uniform parameters [u] and [u']
     apart): at the end elements at the parameters the shape evaluates to on
     each side, and at a domain pointwise: related arguments of the domain
     give related results, of the rest of the shape, after [pre], [pre'] and
     the arguments. *)
-with ind_shape_rel (p : qname) (D : ind_decl) (Ok : list domain -> Prop)
-    (nr : nat -> list domain -> relation domain)
-    (ar : list domain -> String.string -> nat -> list domain -> relation domain)
-    (dr : list domain -> exp -> relation domain)
+with rec_arg_rel (p : qname) (D : ind_decl) (adm : list domain -> Prop)
+    (nparams_rel : nat -> list domain -> relation domain)
+    (args_rel : list domain -> String.string -> nat -> list domain -> relation domain)
+    (doms_rel : list domain -> exp -> relation domain)
   : list domain -> list domain -> list domain -> list domain -> ptyp -> domain -> domain -> Prop :=
-| ind_shape_self :
+| rec_arg_self :
   `{ ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u ++ pre) ↘ bs ->
      ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u' ++ pre') ↘ bs' ->
-     ind_rel p D Ok nr ar dr bs bs' v v' ->
-     ind_shape_rel p D Ok nr ar dr u u' pre pre' (pt_self k Ps) v v' }
-| ind_shape_pi :
-  `{ (forall c c', dr pre B c c' ->
-        ind_app_rel p D Ok nr ar dr u u' (pre ++ c :: nil) (pre' ++ c' :: nil) t f c f' c') ->
-     ind_shape_rel p D Ok nr ar dr u u' pre pre' (pt_pi B t) f f' }
-with ind_app_rel (p : qname) (D : ind_decl) (Ok : list domain -> Prop)
-    (nr : nat -> list domain -> relation domain)
-    (ar : list domain -> String.string -> nat -> list domain -> relation domain)
-    (dr : list domain -> exp -> relation domain)
+     ind_rel p D adm nparams_rel args_rel doms_rel bs bs' v v' ->
+     rec_arg_rel p D adm nparams_rel args_rel doms_rel u u' pre pre' (pt_self k Ps) v v' }
+| rec_arg_pi :
+  `{ (forall c c', doms_rel pre B c c' ->
+        rec_arg_app_rel p D adm nparams_rel args_rel doms_rel u u' (pre ++ c :: nil) (pre' ++ c' :: nil) t f c f' c') ->
+     rec_arg_rel p D adm nparams_rel args_rel doms_rel u u' pre pre' (pt_pi B t) f f' }
+with rec_arg_app_rel (p : qname) (D : ind_decl) (adm : list domain -> Prop)
+    (nparams_rel : nat -> list domain -> relation domain)
+    (args_rel : list domain -> String.string -> nat -> list domain -> relation domain)
+    (doms_rel : list domain -> exp -> relation domain)
   : list domain -> list domain -> list domain -> list domain -> ptyp -> domain -> domain -> domain -> domain -> Prop :=
-| ind_app_mk :
+| rec_arg_app_mk :
   `{ $| f & c |↘ r ->
      $| f' & c' |↘ r' ->
-     ind_shape_rel p D Ok nr ar dr u u' pre pre' t r r' ->
-     ind_app_rel p D Ok nr ar dr u u' pre pre' t f c f' c' }
+     rec_arg_rel p D adm nparams_rel args_rel doms_rel u u' pre pre' t r r' ->
+     rec_arg_app_rel p D adm nparams_rel args_rel doms_rel u u' pre pre' t f c f' c' }
 .
 
 Scheme ind_rel_mut_ind := Induction for ind_rel Sort Prop
-with ind_args_rel_mut_ind := Induction for ind_args_rel Sort Prop
-with ind_shape_rel_mut_ind := Induction for ind_shape_rel Sort Prop
-with ind_app_rel_mut_ind := Induction for ind_app_rel Sort Prop.
-Combined Scheme ind_rel_mut_ind_all from ind_rel_mut_ind, ind_args_rel_mut_ind, ind_shape_rel_mut_ind, ind_app_rel_mut_ind.
+with con_args_rel_mut_ind := Induction for con_args_rel Sort Prop
+with rec_arg_rel_mut_ind := Induction for rec_arg_rel Sort Prop
+with rec_arg_app_rel_mut_ind := Induction for rec_arg_app_rel Sort Prop.
+Combined Scheme ind_rel_mut_ind_all from ind_rel_mut_ind, con_args_rel_mut_ind, rec_arg_rel_mut_ind, rec_arg_app_rel_mut_ind.
 
-Hint Constructors ind_rel ind_args_rel ind_shape_rel ind_app_rel : mctt.
+Hint Constructors ind_rel con_args_rel rec_arg_rel rec_arg_app_rel : mctt.
 
 (** * Universe/Element PER *)
 (** ** Universe/Element PER Definition *)
@@ -415,7 +415,8 @@ Section Per_univ_elem_core_def.
       arguments of each constructor at each related instance of the
       non-uniform parameters ([ar]).  Its elements are [ind_rel] at the
       two sides' non-uniform parameters, their own uniform parameters
-      admissible beside the left type's. *)
+      admissible beside the left type's.  (The binders keep their short
+      names, which the inversions name their hypotheses after.) *)
   | per_univ_elem_core_indty :
     `{ forall (nr : nat -> list domain -> relation domain)
          (ar : list domain -> String.string -> nat -> list domain -> relation domain)
@@ -426,55 +427,55 @@ Section Per_univ_elem_core_def.
          List.length ups = ind_nu D ->
          List.length ups' = ind_nu D ->
          per_top_ps (List.rev (ind_uparams D)) ups ups' ->
-         (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+         (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_prefix_rel nr k vs vs' ->
             PER (nr k vs)) ->
-         (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+         (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_prefix_rel nr k vs vs' ->
             rel_mod_eval per_univ_elem_core A (env_args nil (ups ++ vs)) A (env_args nil (ups' ++ vs')) (nr k vs)) ->
-         (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+         (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_prefix_rel nr k vs vs' ->
             (nr k vs <~> nr k vs')) ->
          (forall ms ms' c gs k A vs vs',
-            tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+            tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
             ind_con D c = Some gs ->
-            List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+            List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar ms c) k vs vs' ->
             PER (ar ms c k vs)) ->
          (forall ms ms' c gs k A vs vs',
-            tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+            tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
             ind_con D c = Some gs ->
-            List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+            List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar ms c) k vs vs' ->
             rel_mod_eval per_univ_elem_core A (env_args nil (ups ++ ms ++ vs)) A (env_args nil (ups' ++ ms' ++ vs'))
               (ar ms c k vs)) ->
          (forall ms ms' c gs k A vs vs',
-            tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+            tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
             ind_con D c = Some gs ->
-            List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+            List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar ms c) k vs vs' ->
             (ar ms c k vs <~> ar ms' c k vs')) ->
          (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
-            tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+            tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
             ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-            tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+            tele_prefix_rel (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
             List.nth_error (ptyp_doms t) k = Some B ->
-            tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
+            tele_prefix_rel (shape_doms_rel dr ms ws (ptyp_doms t)) k ys ys' ->
             PER (dr (ms ++ ws ++ ys) B)) ->
          (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
-            tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+            tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
             ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-            tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+            tele_prefix_rel (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
             List.nth_error (ptyp_doms t) k = Some B ->
-            tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
+            tele_prefix_rel (shape_doms_rel dr ms ws (ptyp_doms t)) k ys ys' ->
             rel_mod_eval per_univ_elem_core
               B (env_args nil (ups ++ ms ++ ws ++ ys)) B (env_args nil (ups' ++ ms' ++ ws' ++ ys'))
               (dr (ms ++ ws ++ ys) B)) ->
          (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
-            tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+            tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
             ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-            tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+            tele_prefix_rel (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
             List.nth_error (ptyp_doms t) k = Some B ->
-            tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
+            tele_prefix_rel (shape_doms_rel dr ms ws (ptyp_doms t)) k ys ys' ->
             (dr (ms ++ ws ++ ys) B <~> dr (ms' ++ ws' ++ ys') B)) ->
-         ind_adm D ups nr ar dr ups' ->
-         ind_adm D ups nr ar dr ups ->
-         tele_full nr (List.rev (ind_nparams D)) ns ns' ->
-         (elem_rel <~> ind_rel p D (ind_adm D ups nr ar dr) nr ar dr ns ns') ->
+         adm_uparams D ups nr ar dr ups' ->
+         adm_uparams D ups nr ar dr ups ->
+         tele_rel nr (List.rev (ind_nparams D)) ns ns' ->
+         (elem_rel <~> ind_rel p D (adm_uparams D ups nr ar dr) nr ar dr ns ns') ->
          DF d_ind p (ups ++ ns) ≈ d_ind p (ups' ++ ns') ∈ per_univ_elem_core ↘ elem_rel }
   (** A neutral type, its elements neutrals. *)
   | per_univ_elem_core_neut :
@@ -528,56 +529,56 @@ Section Per_univ_elem_core_def.
           List.length ups = ind_nu D ->
           List.length ups' = ind_nu D ->
           per_top_ps (List.rev (ind_uparams D)) ups ups' ->
-          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_prefix_rel nr k vs vs' ->
              PER (nr k vs)) ->
-          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_prefix_rel nr k vs vs' ->
              rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem_core ↘ R /\ motive R x y)
                A (env_args nil (ups ++ vs)) A (env_args nil (ups' ++ vs')) (nr k vs)) ->
-          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_prefix_rel nr k vs vs' ->
              (nr k vs <~> nr k vs')) ->
           (forall ms ms' c gs k A vs vs',
-             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
              ind_con D c = Some gs ->
-             List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+             List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar ms c) k vs vs' ->
              PER (ar ms c k vs)) ->
           (forall ms ms' c gs k A vs vs',
-             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
              ind_con D c = Some gs ->
-             List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+             List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar ms c) k vs vs' ->
              rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem_core ↘ R /\ motive R x y)
                A (env_args nil (ups ++ ms ++ vs)) A (env_args nil (ups' ++ ms' ++ vs')) (ar ms c k vs)) ->
           (forall ms ms' c gs k A vs vs',
-             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
              ind_con D c = Some gs ->
-             List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+             List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar ms c) k vs vs' ->
              (ar ms c k vs <~> ar ms' c k vs')) ->
           (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
-             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
              ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-             tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+             tele_prefix_rel (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
              List.nth_error (ptyp_doms t) k = Some B ->
-             tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
+             tele_prefix_rel (shape_doms_rel dr ms ws (ptyp_doms t)) k ys ys' ->
              PER (dr (ms ++ ws ++ ys) B)) ->
           (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
-             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
              ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-             tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+             tele_prefix_rel (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
              List.nth_error (ptyp_doms t) k = Some B ->
-             tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
+             tele_prefix_rel (shape_doms_rel dr ms ws (ptyp_doms t)) k ys ys' ->
              rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem_core ↘ R /\ motive R x y)
                B (env_args nil (ups ++ ms ++ ws ++ ys)) B (env_args nil (ups' ++ ms' ++ ws' ++ ys'))
                (dr (ms ++ ws ++ ys) B)) ->
           (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
-             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
              ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-             tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+             tele_prefix_rel (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
              List.nth_error (ptyp_doms t) k = Some B ->
-             tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
+             tele_prefix_rel (shape_doms_rel dr ms ws (ptyp_doms t)) k ys ys' ->
              (dr (ms ++ ws ++ ys) B <~> dr (ms' ++ ws' ++ ys') B)) ->
-          ind_adm D ups nr ar dr ups' ->
-          ind_adm D ups nr ar dr ups ->
-          tele_full nr (List.rev (ind_nparams D)) ns ns' ->
-          (elem_rel <~> ind_rel p D (ind_adm D ups nr ar dr) nr ar dr ns ns') ->
+          adm_uparams D ups nr ar dr ups' ->
+          adm_uparams D ups nr ar dr ups ->
+          tele_rel nr (List.rev (ind_nparams D)) ns ns' ->
+          (elem_rel <~> ind_rel p D (adm_uparams D ups nr ar dr) nr ar dr ns ns') ->
           motive elem_rel (d_ind p (ups ++ ns)) (d_ind p (ups' ++ ns'))).
 
   #[derive(equations=no, eliminator=no)]
@@ -813,56 +814,56 @@ Section Per_univ_elem_ind_def.
           List.length ups = ind_nu D ->
           List.length ups' = ind_nu D ->
           per_top_ps (List.rev (ind_uparams D)) ups ups' ->
-          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_prefix_rel nr k vs vs' ->
              PER (nr k vs)) ->
-          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_prefix_rel nr k vs vs' ->
              rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem i ↘ R /\ motive i R x y)
                A (env_args nil (ups ++ vs)) A (env_args nil (ups' ++ vs')) (nr k vs)) ->
-          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_prefix_rel nr k vs vs' ->
              (nr k vs <~> nr k vs')) ->
           (forall ms ms' c gs k A vs vs',
-             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
              ind_con D c = Some gs ->
-             List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+             List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar ms c) k vs vs' ->
              PER (ar ms c k vs)) ->
           (forall ms ms' c gs k A vs vs',
-             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
              ind_con D c = Some gs ->
-             List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+             List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar ms c) k vs vs' ->
              rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem i ↘ R /\ motive i R x y)
                A (env_args nil (ups ++ ms ++ vs)) A (env_args nil (ups' ++ ms' ++ vs')) (ar ms c k vs)) ->
           (forall ms ms' c gs k A vs vs',
-             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
              ind_con D c = Some gs ->
-             List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+             List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar ms c) k vs vs' ->
              (ar ms c k vs <~> ar ms' c k vs')) ->
           (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
-             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
              ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-             tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+             tele_prefix_rel (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
              List.nth_error (ptyp_doms t) k = Some B ->
-             tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
+             tele_prefix_rel (shape_doms_rel dr ms ws (ptyp_doms t)) k ys ys' ->
              PER (dr (ms ++ ws ++ ys) B)) ->
           (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
-             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
              ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-             tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+             tele_prefix_rel (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
              List.nth_error (ptyp_doms t) k = Some B ->
-             tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
+             tele_prefix_rel (shape_doms_rel dr ms ws (ptyp_doms t)) k ys ys' ->
              rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem i ↘ R /\ motive i R x y)
                B (env_args nil (ups ++ ms ++ ws ++ ys)) B (env_args nil (ups' ++ ms' ++ ws' ++ ys'))
                (dr (ms ++ ws ++ ys) B)) ->
           (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
-             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             tele_rel nr (List.rev (ind_nparams D)) ms ms' ->
              ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-             tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+             tele_prefix_rel (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
              List.nth_error (ptyp_doms t) k = Some B ->
-             tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
+             tele_prefix_rel (shape_doms_rel dr ms ws (ptyp_doms t)) k ys ys' ->
              (dr (ms ++ ws ++ ys) B <~> dr (ms' ++ ws' ++ ys') B)) ->
-          ind_adm D ups nr ar dr ups' ->
-          ind_adm D ups nr ar dr ups ->
-          tele_full nr (List.rev (ind_nparams D)) ns ns' ->
-          (elem_rel <~> ind_rel p D (ind_adm D ups nr ar dr) nr ar dr ns ns') ->
+          adm_uparams D ups nr ar dr ups' ->
+          adm_uparams D ups nr ar dr ups ->
+          tele_rel nr (List.rev (ind_nparams D)) ns ns' ->
+          (elem_rel <~> ind_rel p D (adm_uparams D ups nr ar dr) nr ar dr ns ns') ->
           motive i elem_rel (d_ind p (ups ++ ns)) (d_ind p (ups' ++ ns'))).
 
   Lemma per_univ_elem_ind i a b R (H : per_univ_elem i a b R) : motive i a b R.

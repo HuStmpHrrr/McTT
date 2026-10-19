@@ -356,7 +356,7 @@ Qed.
 
 (** [wk_pat] drops the recursive arguments of an environment of arguments. *)
 Lemma eval_wk_pat_args : forall gs1 E vs, List.length vs = List.length gs1 ->
-    ⟪wk_pat (cargs_pat gs1)⟫ (env_args E vs) = env_args E (nonrec_vals gs1 vs).
+    ⟪wk_pat (cargs_pat gs1)⟫ (env_args E vs) = env_args E (nonrec_arg_vals gs1 vs).
 Proof.
   induction gs1 as [| g gs1 IH] using List.rev_ind; intros E vs Hl.
   - destruct vs; cbn in *; try discriminate; apply eval_wk_id.
@@ -364,9 +364,9 @@ Proof.
     assert (Hvs : exists vs0 v, vs = vs0 ++ v :: nil)
       by (destruct vs as [| v vs0] using List.rev_ind; [ cbn in Hl; lia | eauto ]).
     destruct Hvs as (vs0 & v & ->); rewrite List.length_app in Hl; cbn in Hl.
-    rewrite cargs_pat_snoc, nonrec_vals_app by lia.
+    rewrite cargs_pat_snoc, nonrec_arg_vals_app by lia.
     rewrite env_args_snoc.
-    destruct g as [A | Ps]; cbn [wk_pat nonrec_vals].
+    destruct g as [A | Ps]; cbn [wk_pat nonrec_arg_vals].
     + rewrite eval_wk_q_cons by typeclasses eauto; rewrite IH by lia.
       rewrite env_args_snoc; reflexivity.
     + rewrite eval_wk_compose by typeclasses eauto.

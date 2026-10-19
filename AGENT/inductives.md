@@ -228,7 +228,7 @@ step to be proved never to fail at the user's type, beyond
 | `wf_ind`, `wf_con`, `wf_elim`, congruences, `wf_exp_eq_elim_iota`, `wf_gentry_indty` (in the mutual block) | `Core/Syntactic/System/Definitions.v` |
 | declarations are well typed (`decl_typed`), presupposition | `System/Global/Presup.v`, `System/Inductives/Typing.v`, `Syntactic/Inductives/IndCong.v`, `Syntactic/Inductives/IndConv.v` |
 | values `d_ind`, `d_con`, neutral eliminator; evaluation, readback | `Core/Semantic/Domain.v`, `Evaluation*`, `Readback*` |
-| PER: `ind_rel`, `ind_adm`; canonical relations `ind_nr`, `ind_ar` | `Core/Semantic/PER/Definitions.v`, `Inductives/IndPER.v`, `Inductives/IndCanon.v`, `Inductives/IndElim.v`, `PER/Tele.v` |
+| PER: `ind_rel` (two-sided, each element at its own parameters, indexed by both sides' non-uniform parameters), `con_args_rel`, `rec_arg_rel`, `rec_arg_app_rel`, `adm_uparams`; canonical relations `canon_nparams_rel`, `canon_args_rel`, `canon_doms_rel`; telescopes `tele_rel`, `tele_prefix_rel`, `shape_doms_rel` | `Core/Semantic/PER/Definitions.v`, `Inductives/IndPER.v`, `Inductives/IndCanon.v`, `Inductives/IndElim.v`, `PER/Tele.v` |
 | completeness | `Core/Completeness/Inductives/{Decl,Con,Elim,Iota}.v`, `IndCases.v`, `ElimCases.v`, `IotaCases.v`, `LogicalRelation/Telescope.v` |
 | gluing (`glu_univ_elem_core_indty`, `ind_typ_at`, `ind_glu_elem`, `ind_glu_exp_pred`) and soundness | `Core/Soundness/LogicalRelation/*`, `Soundness/Inductives/{Con,Elim}.v`, `IndCases.v`, `ElimCases.v`, `IotaCases.v` |
 | commands: `cc_ind`, `rc_ind`, `rd_uparams`, `ind_qname`, `gs_ind`, `ind_gens`, `gen_body` | `Core/Syntactic/Command.v`, `System/Command.v` |
@@ -498,10 +498,15 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
    type of the constructor, and, for each recursive argument and each
    prefix of its shape's domains, the rest of its type over them
    (`shape_rest_wf'`; `wf_con_of_lookup` states the rule without them).
-4. **Admissible uniform parameters** (`ind_adm`, option K): a stuck
+4. **Admissible uniform parameters** (`adm_uparams`, option K): a stuck
    eliminator's readback makes fresh variables from the uniform parameters of
-   the scrutinee's type, so the neutral clause of `ind_rel` asks them to be
-   admissible beside the canonical ones.
+   the scrutinee's type, so `ind_rel` asks each element's own uniform
+   parameters to satisfy a predicate `adm` (the universe takes
+   `adm_uparams` beside the type's).  `ind_rel` is symmetric in form
+   (design B): each element is read at its own stored parameters; lemmas
+   move elements between indices (`ind_rel_idx`) and rebase shapes and
+   arguments to other bases (`rec_arg_rel_rebase`, `con_args_rel_rebase`,
+   `rec_result_rel_rebase`).
 5. **Gluing redesigns.** The components of the type (non-uniform parameter
    types and argument types) are glued inside the type predicate
    (`ind_glu_comps`), the sort is required `⊆` the gluing's universe, the

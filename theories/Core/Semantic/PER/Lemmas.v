@@ -564,47 +564,47 @@ Proof.
     destruct (app_split_eq _ _ _ _ x ltac:(congruence)) as [-> ->].
     match goal with Hass : tele_ass (ind_params D) |- _ => rename Hass into Hass0 end.
     assert (Hnr : forall k vs vs1 vs2, k < List.length (List.rev (ind_nparams D)) ->
-                    tele_pre nr k vs vs1 -> tele_pre nr0 k vs vs2 -> (nr k vs <~> nr0 k vs)).
+                    tele_prefix_rel nr k vs vs1 -> tele_prefix_rel nr0 k vs vs2 -> (nr k vs <~> nr0 k vs)).
     { intros k vs vs1 vs2 Hk Hp1 Hp2.
       destruct (nparams_lt_ass D k Hass0 Hk) as [A HA].
       match goal with
-      | Hm : forall k A vs vs', _ -> tele_pre nr k vs vs' -> rel_mod_eval _ _ _ _ _ (nr k vs),
-        He : forall k A vs vs', _ -> tele_pre nr0 k vs vs' -> rel_mod_eval _ _ _ _ _ (nr0 k vs) |- _ =>
+      | Hm : forall k A vs vs', _ -> tele_prefix_rel nr k vs vs' -> rel_mod_eval _ _ _ _ _ (nr k vs),
+        He : forall k A vs vs', _ -> tele_prefix_rel nr0 k vs vs' -> rel_mod_eval _ _ _ _ _ (nr0 k vs) |- _ =>
           destruct (Hm _ _ _ _ HA Hp1) as [a1 a1' E1 E1' [Hper Hmot]];
           destruct (He _ _ _ _ HA Hp2) as [a2 a2' E2 E2' Hper2]
       end.
       functional_eval_rewrite_clear; exact (Hmot _ _ _ eq_refl Hper2). }
     assert (Har : forall ms ms1 ms2 c gs k vs vs1 vs2,
-               tele_full nr (List.rev (ind_nparams D)) ms ms1 -> tele_full nr0 (List.rev (ind_nparams D)) ms ms2 ->
+               tele_rel nr (List.rev (ind_nparams D)) ms ms1 -> tele_rel nr0 (List.rev (ind_nparams D)) ms ms2 ->
                ind_con D c = Some gs -> k < List.length (cargs_nonrec gs) ->
-               tele_pre (ar ms c) k vs vs1 -> tele_pre (ar0 ms c) k vs vs2 ->
+               tele_prefix_rel (ar ms c) k vs vs1 -> tele_prefix_rel (ar0 ms c) k vs vs2 ->
                (ar ms c k vs <~> ar0 ms c k vs)).
     { intros ms ms1 ms2 c gs k vs vs1 vs2 Hm1 Hm2 Hc Hk Hp1 Hp2.
       destruct (nth_error_lt_some' _ _ Hk) as [A HA].
       match goal with
-      | Hm : forall ms ms' c gs k A vs vs', _ -> _ -> _ -> tele_pre (ar ms c) k vs vs' -> rel_mod_eval _ _ _ _ _ (ar ms c k vs),
-        He : forall ms ms' c gs k A vs vs', _ -> _ -> _ -> tele_pre (ar0 ms c) k vs vs' -> rel_mod_eval _ _ _ _ _ (ar0 ms c k vs) |- _ =>
+      | Hm : forall ms ms' c gs k A vs vs', _ -> _ -> _ -> tele_prefix_rel (ar ms c) k vs vs' -> rel_mod_eval _ _ _ _ _ (ar ms c k vs),
+        He : forall ms ms' c gs k A vs vs', _ -> _ -> _ -> tele_prefix_rel (ar0 ms c) k vs vs' -> rel_mod_eval _ _ _ _ _ (ar0 ms c k vs) |- _ =>
           destruct (Hm _ _ _ _ _ _ _ _ Hm1 Hc HA Hp1) as [a1 a1' E1 E1' [Hper Hmot]];
           destruct (He _ _ _ _ _ _ _ _ Hm2 Hc HA Hp2) as [a2 a2' E2 E2' Hper2]
       end.
       functional_eval_rewrite_clear; exact (Hmot _ _ _ eq_refl Hper2). }
     assert (Hdr : forall ms ms1 ms2 c gs gs1 t gs2 ws ws1 ws2 k ys ys1 ys2,
-               tele_full nr (List.rev (ind_nparams D)) ms ms1 -> tele_full nr0 (List.rev (ind_nparams D)) ms ms2 ->
+               tele_rel nr (List.rev (ind_nparams D)) ms ms1 -> tele_rel nr0 (List.rev (ind_nparams D)) ms ms2 ->
                ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-               tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws1 ->
-               tele_pre (ar0 ms c) (List.length (cargs_nonrec gs1)) ws ws2 ->
+               tele_prefix_rel (ar ms c) (List.length (cargs_nonrec gs1)) ws ws1 ->
+               tele_prefix_rel (ar0 ms c) (List.length (cargs_nonrec gs1)) ws ws2 ->
                k < List.length (ptyp_doms t) ->
-               tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys1 ->
-               tele_pre (shape_tr dr0 ms ws (ptyp_doms t)) k ys ys2 ->
-               (shape_tr dr ms ws (ptyp_doms t) k ys <~> shape_tr dr0 ms ws (ptyp_doms t) k ys)).
+               tele_prefix_rel (shape_doms_rel dr ms ws (ptyp_doms t)) k ys ys1 ->
+               tele_prefix_rel (shape_doms_rel dr0 ms ws (ptyp_doms t)) k ys ys2 ->
+               (shape_doms_rel dr ms ws (ptyp_doms t) k ys <~> shape_doms_rel dr0 ms ws (ptyp_doms t) k ys)).
     { intros ms ms1 ms2 c gs gs1 t gs2 ws ws1 ws2 k ys ys1 ys2 Hm1 Hm2 Hc Heq Hw1 Hw2 Hk Hp1 Hp2.
       destruct (nth_error_lt_some' _ _ Hk) as [B HB].
-      unfold shape_tr at 1 2; rewrite (List.nth_error_nth _ _ _ HB).
+      unfold shape_doms_rel at 1 2; rewrite (List.nth_error_nth _ _ _ HB).
       match goal with
       | Hm : forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys', _ -> _ -> _ -> _ -> _ ->
-               tele_pre (shape_tr dr ms ws _) k ys ys' -> rel_mod_eval _ _ _ _ _ (dr _ B),
+               tele_prefix_rel (shape_doms_rel dr ms ws _) k ys ys' -> rel_mod_eval _ _ _ _ _ (dr _ B),
         He : forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys', _ -> _ -> _ -> _ -> _ ->
-               tele_pre (shape_tr dr0 ms ws _) k ys ys' -> rel_mod_eval _ _ _ _ _ (dr0 _ B) |- _ =>
+               tele_prefix_rel (shape_doms_rel dr0 ms ws _) k ys ys' -> rel_mod_eval _ _ _ _ _ (dr0 _ B) |- _ =>
           destruct (Hm _ _ _ _ _ _ _ _ _ _ _ _ _ Hm1 Hc Heq Hw1 HB Hp1) as [a1 a1' E1 E1' [Hper Hmot]];
           destruct (He _ _ _ _ _ _ _ _ _ _ _ _ _ Hm2 Hc Heq Hw2 HB Hp2) as [a2 a2' E2 E2' Hper2]
       end.
@@ -612,56 +612,56 @@ Proof.
     (** The elements: the relations and the admissible bases change
         ([ind_rel_change]), and the right index moves ([ind_rel_idx]). *)
     assert (HnF : forall k vs vs1 vs2, k < List.length (List.rev (ind_nparams D)) ->
-                    tele_pre nr k vs vs1 -> tele_pre nr0 k vs vs2 -> (nr k vs <~> nr0 k vs))
+                    tele_prefix_rel nr k vs vs1 -> tele_prefix_rel nr0 k vs vs2 -> (nr k vs <~> nr0 k vs))
       by (intros; eapply Hnr; eassumption).
     assert (HaF : forall ms ms1 ms2 c gs k vs vs1 vs2,
-               tele_full nr (List.rev (ind_nparams D)) ms ms1 -> tele_full nr0 (List.rev (ind_nparams D)) ms ms2 ->
+               tele_rel nr (List.rev (ind_nparams D)) ms ms1 -> tele_rel nr0 (List.rev (ind_nparams D)) ms ms2 ->
                ind_con D c = Some gs -> k < List.length (cargs_nonrec gs) ->
-               tele_pre (ar ms c) k vs vs1 -> tele_pre (ar0 ms c) k vs vs2 -> (ar ms c k vs <~> ar0 ms c k vs))
+               tele_prefix_rel (ar ms c) k vs vs1 -> tele_prefix_rel (ar0 ms c) k vs vs2 -> (ar ms c k vs <~> ar0 ms c k vs))
       by (intros; eapply Har; eassumption).
     assert (HdF : forall ms ms1 ms2 c gs gs1 t gs2 ws ws1 ws2 k ys ys1 ys2,
-               tele_full nr (List.rev (ind_nparams D)) ms ms1 -> tele_full nr0 (List.rev (ind_nparams D)) ms ms2 ->
+               tele_rel nr (List.rev (ind_nparams D)) ms ms1 -> tele_rel nr0 (List.rev (ind_nparams D)) ms ms2 ->
                ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-               tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws1 ->
-               tele_pre (ar0 ms c) (List.length (cargs_nonrec gs1)) ws ws2 ->
+               tele_prefix_rel (ar ms c) (List.length (cargs_nonrec gs1)) ws ws1 ->
+               tele_prefix_rel (ar0 ms c) (List.length (cargs_nonrec gs1)) ws ws2 ->
                k < List.length (ptyp_doms t) ->
-               tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys1 -> tele_pre (shape_tr dr0 ms ws (ptyp_doms t)) k ys ys2 ->
-               (shape_tr dr ms ws (ptyp_doms t) k ys <~> shape_tr dr0 ms ws (ptyp_doms t) k ys))
+               tele_prefix_rel (shape_doms_rel dr ms ws (ptyp_doms t)) k ys ys1 -> tele_prefix_rel (shape_doms_rel dr0 ms ws (ptyp_doms t)) k ys ys2 ->
+               (shape_doms_rel dr ms ws (ptyp_doms t) k ys <~> shape_doms_rel dr0 ms ws (ptyp_doms t) k ys))
       by (intros; eapply Hdr; eassumption).
     assert (HnB : forall k vs vs1 vs2, k < List.length (List.rev (ind_nparams D)) ->
-                    tele_pre nr0 k vs vs1 -> tele_pre nr k vs vs2 -> (nr0 k vs <~> nr k vs))
+                    tele_prefix_rel nr0 k vs vs1 -> tele_prefix_rel nr k vs vs2 -> (nr0 k vs <~> nr k vs))
       by (intros; symmetry; eapply Hnr; eassumption).
     assert (HaB : forall ms ms1 ms2 c gs k vs vs1 vs2,
-               tele_full nr0 (List.rev (ind_nparams D)) ms ms1 -> tele_full nr (List.rev (ind_nparams D)) ms ms2 ->
+               tele_rel nr0 (List.rev (ind_nparams D)) ms ms1 -> tele_rel nr (List.rev (ind_nparams D)) ms ms2 ->
                ind_con D c = Some gs -> k < List.length (cargs_nonrec gs) ->
-               tele_pre (ar0 ms c) k vs vs1 -> tele_pre (ar ms c) k vs vs2 -> (ar0 ms c k vs <~> ar ms c k vs))
+               tele_prefix_rel (ar0 ms c) k vs vs1 -> tele_prefix_rel (ar ms c) k vs vs2 -> (ar0 ms c k vs <~> ar ms c k vs))
       by (intros; symmetry; eapply Har; eassumption).
     assert (HdB : forall ms ms1 ms2 c gs gs1 t gs2 ws ws1 ws2 k ys ys1 ys2,
-               tele_full nr0 (List.rev (ind_nparams D)) ms ms1 -> tele_full nr (List.rev (ind_nparams D)) ms ms2 ->
+               tele_rel nr0 (List.rev (ind_nparams D)) ms ms1 -> tele_rel nr (List.rev (ind_nparams D)) ms ms2 ->
                ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-               tele_pre (ar0 ms c) (List.length (cargs_nonrec gs1)) ws ws1 ->
-               tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws2 ->
+               tele_prefix_rel (ar0 ms c) (List.length (cargs_nonrec gs1)) ws ws1 ->
+               tele_prefix_rel (ar ms c) (List.length (cargs_nonrec gs1)) ws ws2 ->
                k < List.length (ptyp_doms t) ->
-               tele_pre (shape_tr dr0 ms ws (ptyp_doms t)) k ys ys1 -> tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys2 ->
-               (shape_tr dr0 ms ws (ptyp_doms t) k ys <~> shape_tr dr ms ws (ptyp_doms t) k ys))
+               tele_prefix_rel (shape_doms_rel dr0 ms ws (ptyp_doms t)) k ys ys1 -> tele_prefix_rel (shape_doms_rel dr ms ws (ptyp_doms t)) k ys ys2 ->
+               (shape_doms_rel dr0 ms ws (ptyp_doms t) k ys <~> shape_doms_rel dr ms ws (ptyp_doms t) k ys))
       by (intros; symmetry; eapply Hdr; eassumption).
-    pose proof (tele_full_nr_change p D ups nr nr0 ar ar0 dr dr0 HnF HaF HdF _ _ H15) as H15'.
-    pose proof (tele_full_nr_change' p D ups nr nr0 ar ar0 dr dr0 HnF HaF HdF _ _ H33) as H33'.
+    pose proof (tele_rel_nr_change p D ups nr nr0 ar ar0 dr dr0 HnF HaF HdF _ _ H15) as H15'.
+    pose proof (tele_rel_nr_change' p D ups nr nr0 ar ar0 dr dr0 HnF HaF HdF _ _ H33) as H33'.
     intros m m'; split; intro Hm.
     - eapply (ind_rel_idx p D ups nr0 ar0 dr0 H0 H22 H24 H25 H27 H28 H30 _ ns ns');
         [ eapply (proj1 (ind_rel_change p D ups nr nr0 ar ar0 dr dr0 HnF HaF HdF _ _
                            (adm_change p D ups nr nr0 ar ar0 dr dr0 HnF HaF HdF)
-                           (tnr_refl_r p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12))); exact Hm
-        | exact (tnr_refl_l p D ups nr0 ar0 dr0 H0 H22 H24 H25 H27 H28 H30 _ _ H33)
-        | exact (tnr_trans p D ups nr0 ar0 dr0 H0 H22 H24 H25 H27 H28 H30 _ _ _
-                   (tnr_sym p D ups nr0 ar0 dr0 H0 H22 H24 H25 H27 H28 H30 _ _ H15') H33) ].
+                           (nparams_rel_refl_r p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12))); exact Hm
+        | exact (nparams_rel_refl_l p D ups nr0 ar0 dr0 H0 H22 H24 H25 H27 H28 H30 _ _ H33)
+        | exact (nparams_rel_trans p D ups nr0 ar0 dr0 H0 H22 H24 H25 H27 H28 H30 _ _ _
+                   (nparams_rel_sym p D ups nr0 ar0 dr0 H0 H22 H24 H25 H27 H28 H30 _ _ H15') H33) ].
     - eapply (ind_rel_idx p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12 _ ns ns'0);
         [ eapply (proj1 (ind_rel_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB _ _
                            (adm_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB)
-                           (tnr_refl_r p D ups nr0 ar0 dr0 H0 H22 H24 H25 H27 H28 H30))); exact Hm
-        | exact (tnr_refl_l p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12 _ _ H15)
-        | exact (tnr_trans p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12 _ _ _
-                   (tnr_sym p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12 _ _ H33') H15) ]. }
+                           (nparams_rel_refl_r p D ups nr0 ar0 dr0 H0 H22 H24 H25 H27 H28 H30))); exact Hm
+        | exact (nparams_rel_refl_l p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12 _ _ H15)
+        | exact (nparams_rel_trans p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12 _ _ _
+                   (nparams_rel_sym p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12 _ _ H33') H15) ]. }
   specialize (IHHorig _ _ _ eq_refl equiv_a_a').
   split; intros.
   - rename equiv_c_c' into equiv0_c_c'.
@@ -757,41 +757,41 @@ Proof.
       H7 into HaP, H8 into Ha, H9 into HaI,
       H10 into HdP, H11 into Hd, H12 into HdI, H13 into Hcl, H14 into Hcd, H15 into Hns, H16 into HE.
     pose proof (adm_iff p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl) as Hiff.
-    pose proof (tnr_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hns) as Hsn.
+    pose proof (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hns) as Hsn.
     pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as Hidx.
     pose proof (fun Ok1 Ok2 HO => proj1 (ind_rel_ok p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI Ok1 Ok2 HO)) as Hok.
     split.
     + basic_per_univ_elem_econstructor;
         [ exact Hl | exact Hass | exact Hu' | exact Hu | exact (per_top_ps_sym _ _ _ Hps) | exact HnP | | exact HnI | exact HaP
         | | exact HaI | exact HdP | | exact HdI | exact (adm_flip p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl Hcd)
-        | exact (adm_diag_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl) | exact (tnr_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hns) |].
+        | exact (adm_diag_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl) | exact (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hns) |].
       * intros k A vs vs' Hk Hp.
         assert (Hkl : k < List.length (List.rev (ind_nparams D))) by (apply List.nth_error_Some; congruence).
-        pose proof (tnrp_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k vs vs' ltac:(lia) Hp) as Hp'.
+        pose proof (nparams_prefix_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k vs vs' ltac:(lia) Hp) as Hp'.
         destruct (Hn _ _ _ _ Hk Hp') as [a a' Ea Ea' (_ & Hsym & _)].
         econstructor; [ exact Ea' | exact Ea |].
         eapply per_univ_elem_resp_iff; [ exact Hsym |]; symmetry; exact (HnI _ _ _ _ Hk Hp).
       * intros ms ms' c gs k A vs vs' Hm Hc Hk Hp.
         assert (Hkl : k < List.length (cargs_nonrec gs)) by (apply List.nth_error_Some; congruence).
-        assert (Hp' : tele_pre (ar ms' c) k vs' vs)
-          by (eapply (tarp_inst p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [ exact Hm | exact Hc | lia |];
-              eapply (tarp_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [ exact (tnr_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hm) | exact Hc | lia | exact Hp ]).
-        destruct (Ha _ _ _ _ _ _ _ _ (tnr_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hm) Hc Hk Hp') as [a a' Ea Ea' (_ & Hsym & _)].
+        assert (Hp' : tele_prefix_rel (ar ms' c) k vs' vs)
+          by (eapply (args_prefix_rel_inst p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [ exact Hm | exact Hc | lia |];
+              eapply (args_prefix_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [ exact (nparams_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hm) | exact Hc | lia | exact Hp ]).
+        destruct (Ha _ _ _ _ _ _ _ _ (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hm) Hc Hk Hp') as [a a' Ea Ea' (_ & Hsym & _)].
         econstructor; [ exact Ea' | exact Ea |].
         eapply per_univ_elem_resp_iff; [ exact Hsym |]; symmetry; exact (HaI _ _ _ _ _ _ _ _ Hm Hc Hk Hp).
       * intros ms ms' c gs gs1 t gs2 ws ws' k B ys ys' Hm Hc Heq Hp HB Hy.
         assert (Hk1 : List.length (cargs_nonrec gs1) <= List.length (cargs_nonrec gs))
           by (rewrite Heq, cargs_nonrec_app, List.length_app; lia).
         assert (Hkl : k < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence).
-        pose proof (tnr_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hm) as Hmm.
-        assert (Hp' : tele_pre (ar ms' c) (List.length (cargs_nonrec gs1)) ws' ws)
-          by (eapply (tarp_inst p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [ exact Hm | exact Hc | exact Hk1 |];
-              eapply (tarp_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [ exact Hmm | exact Hc | exact Hk1 | exact Hp ]).
-        pose proof (tar_pre_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ms c gs Hmm Hc _ ws ws' Hk1 Hp) as Hww.
-        assert (Hy' : tele_pre (shape_tr dr ms' ws' (ptyp_doms t)) k ys' ys).
-        { eapply (tsh_inst p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [ exact Hm | exact Hc | exact Heq | exact Hp | lia |].
-          eapply (tsh_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ms c gs gs1 t gs2 ws Hmm Hc Heq Hww); [ lia | exact Hy ]. }
-        destruct (Hd _ _ _ _ _ _ _ _ _ _ _ _ _ (tnr_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hm) Hc Heq Hp' HB Hy')
+        pose proof (nparams_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hm) as Hmm.
+        assert (Hp' : tele_prefix_rel (ar ms' c) (List.length (cargs_nonrec gs1)) ws' ws)
+          by (eapply (args_prefix_rel_inst p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [ exact Hm | exact Hc | exact Hk1 |];
+              eapply (args_prefix_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [ exact Hmm | exact Hc | exact Hk1 | exact Hp ]).
+        pose proof (args_rel_pre_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ms c gs Hmm Hc _ ws ws' Hk1 Hp) as Hww.
+        assert (Hy' : tele_prefix_rel (shape_doms_rel dr ms' ws' (ptyp_doms t)) k ys' ys).
+        { eapply (doms_rel_inst p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [ exact Hm | exact Hc | exact Heq | exact Hp | lia |].
+          eapply (doms_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ms c gs gs1 t gs2 ws Hmm Hc Heq Hww); [ lia | exact Hy ]. }
+        destruct (Hd _ _ _ _ _ _ _ _ _ _ _ _ _ (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hm) Hc Heq Hp' HB Hy')
           as [a a' Ea Ea' (_ & Hsym & _)].
         econstructor; [ exact Ea' | exact Ea |].
         eapply per_univ_elem_resp_iff; [ exact Hsym |]; symmetry; exact (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hp HB Hy).
@@ -968,7 +968,7 @@ Proof.
       H25 into HaP2, H26 into Ha2, H27 into HaI2, H28 into HdP2, H29 into Hd2, H30 into HdI2,
       H31 into Hcl2, H33 into Hns2.
     assert (Hcr : forall k pa pb pc, k < List.length (List.rev (ind_nparams D)) ->
-              tele_pre nr k pa pb -> tele_pre nr0 k pb pc -> (nr k pa <~> nr0 k pb)).
+              tele_prefix_rel nr k pa pb -> tele_prefix_rel nr0 k pb pc -> (nr k pa <~> nr0 k pb)).
     { intros k pa pb pc Hk Hp1 Hp2.
       destruct (nparams_lt_ass D k Hass Hk) as [A HA].
       destruct (Hn _ _ _ _ HA Hp1) as [a a' Ea Ea' (Hper & _)].
@@ -976,70 +976,70 @@ Proof.
       functional_eval_rewrite_clear.
       eapply per_univ_elem_left_irrel; [ exact Hper | apply per_univ_sym; exact Hper2 ]. }
     assert (Hacr : forall ms ms' ms'' c gs k pa pb pc,
-              tele_full nr (List.rev (ind_nparams D)) ms ms' -> tele_full nr0 (List.rev (ind_nparams D)) ms' ms'' ->
+              tele_rel nr (List.rev (ind_nparams D)) ms ms' -> tele_rel nr0 (List.rev (ind_nparams D)) ms' ms'' ->
               ind_con D c = Some gs -> k < List.length (cargs_nonrec gs) ->
-              tele_pre (ar ms c) k pa pb -> tele_pre (ar0 ms' c) k pb pc -> (ar ms c k pa <~> ar0 ms' c k pb)).
+              tele_prefix_rel (ar ms c) k pa pb -> tele_prefix_rel (ar0 ms' c) k pb pc -> (ar ms c k pa <~> ar0 ms' c k pb)).
     { intros ms ms' ms'' c gs k pa pb pc Hm1 Hm2 Hc Hk Hp1 Hp2.
       destruct (nth_error_lt_some' _ _ Hk) as [A HA].
       destruct (Ha _ _ _ _ _ _ _ _ Hm1 Hc HA Hp1) as [a a' Ea Ea' (Hper & _)].
       destruct (Ha2 _ _ _ _ _ _ _ _ Hm2 Hc HA Hp2) as [b b' Eb Eb' Hper2].
       functional_eval_rewrite_clear.
       eapply per_univ_elem_left_irrel; [ exact Hper | apply per_univ_sym; exact Hper2 ]. }
-    assert (HnP0 : forall k vs vs', k < List.length (List.rev (ind_nparams D)) -> tele_pre nr0 k vs vs' -> PER (nr0 k vs))
+    assert (HnP0 : forall k vs vs', k < List.length (List.rev (ind_nparams D)) -> tele_prefix_rel nr0 k vs vs' -> PER (nr0 k vs))
       by (intros k ? ? Hk ?; destruct (nparams_lt_ass D k Hass Hk) as [A HA]; eapply HnP2; eassumption).
-    assert (HnP1 : forall k vs vs', k < List.length (List.rev (ind_nparams D)) -> tele_pre nr k vs vs' -> PER (nr k vs))
+    assert (HnP1 : forall k vs vs', k < List.length (List.rev (ind_nparams D)) -> tele_prefix_rel nr k vs vs' -> PER (nr k vs))
       by (intros k ? ? Hk ?; destruct (nparams_lt_ass D k Hass Hk) as [A HA]; eapply HnP; eassumption).
-    assert (Hrefl0 : forall ms ms'', tele_full nr (List.rev (ind_nparams D)) ms ms'' ->
-              tele_full nr0 (List.rev (ind_nparams D)) ms'' ms'').
-    { intros * Hm; eapply (tele_full_cross_refl _ nr nr0); [ | exact HnP0 | exact Hm ].
+    assert (Hrefl0 : forall ms ms'', tele_rel nr (List.rev (ind_nparams D)) ms ms'' ->
+              tele_rel nr0 (List.rev (ind_nparams D)) ms'' ms'').
+    { intros * Hm; eapply (tele_rel_cross_refl _ nr nr0); [ | exact HnP0 | exact Hm ].
       intros k pa pb Hk Hp1 Hp2; exact (Hcr _ _ _ _ Hk Hp1 Hp2). }
-    assert (Hcomp : forall a b c, tele_full nr (List.rev (ind_nparams D)) a b -> tele_full nr0 (List.rev (ind_nparams D)) b c ->
-              tele_full nr (List.rev (ind_nparams D)) a c).
-    { intros * H1 H2; eapply (tele_full_compose_cross _ nr nr0); [ | exact HnP1 | exact H1 | exact H2 ].
+    assert (Hcomp : forall a b c, tele_rel nr (List.rev (ind_nparams D)) a b -> tele_rel nr0 (List.rev (ind_nparams D)) b c ->
+              tele_rel nr (List.rev (ind_nparams D)) a c).
+    { intros * H1 H2; eapply (tele_rel_compose_cross _ nr nr0); [ | exact HnP1 | exact H1 | exact H2 ].
       intros k pa pb pc Hk Hp1 Hp2; exact (Hcr _ _ _ _ Hk Hp1 Hp2). }
-    assert (Haprefl : forall ms ms'' c gs k vs vs'', tele_full nr (List.rev (ind_nparams D)) ms ms'' ->
+    assert (Haprefl : forall ms ms'' c gs k vs vs'', tele_rel nr (List.rev (ind_nparams D)) ms ms'' ->
               ind_con D c = Some gs -> k <= List.length (cargs_nonrec gs) ->
-              tele_pre (ar ms c) k vs vs'' -> tele_pre (ar0 ms'' c) k vs'' vs'').
+              tele_prefix_rel (ar ms c) k vs vs'' -> tele_prefix_rel (ar0 ms'' c) k vs'' vs'').
     { intros * Hm Hc Hk Hp.
-      eapply (tele_pre_cross_refl (ar ms c) (ar0 ms'' c) (List.length (cargs_nonrec gs))); [ exact Hk | | | exact Hp ].
+      eapply (tele_prefix_rel_cross_refl (ar ms c) (ar0 ms'' c) (List.length (cargs_nonrec gs))); [ exact Hk | | | exact Hp ].
       - intros j0 pa pb Hj Hp1 Hp2; exact (Hacr _ _ _ _ _ _ _ _ _ Hm (Hrefl0 _ _ Hm) Hc Hj Hp1 Hp2).
       - intros j0 ? ? Hj ?; destruct (nth_error_lt_some' _ _ Hj) as [A HA]; eapply HaP2; [ exact (Hrefl0 _ _ Hm) | exact Hc | exact HA | eassumption ]. }
     assert (Hdcr : forall ms ms' ms'' c gs gs1 t gs2 ws ws' ws'' k ys ys' ys'',
-              tele_full nr (List.rev (ind_nparams D)) ms ms' -> tele_full nr0 (List.rev (ind_nparams D)) ms' ms'' ->
+              tele_rel nr (List.rev (ind_nparams D)) ms ms' -> tele_rel nr0 (List.rev (ind_nparams D)) ms' ms'' ->
               ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-              tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-              tele_pre (ar0 ms' c) (List.length (cargs_nonrec gs1)) ws' ws'' ->
+              tele_prefix_rel (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+              tele_prefix_rel (ar0 ms' c) (List.length (cargs_nonrec gs1)) ws' ws'' ->
               k < List.length (ptyp_doms t) ->
-              tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' -> tele_pre (shape_tr dr0 ms' ws' (ptyp_doms t)) k ys' ys'' ->
-              (shape_tr dr ms ws (ptyp_doms t) k ys <~> shape_tr dr0 ms' ws' (ptyp_doms t) k ys')).
+              tele_prefix_rel (shape_doms_rel dr ms ws (ptyp_doms t)) k ys ys' -> tele_prefix_rel (shape_doms_rel dr0 ms' ws' (ptyp_doms t)) k ys' ys'' ->
+              (shape_doms_rel dr ms ws (ptyp_doms t) k ys <~> shape_doms_rel dr0 ms' ws' (ptyp_doms t) k ys')).
     { intros * Hm1 Hm2 Hc Heq Hw1 Hw2 Hk Hp1 Hp2.
       destruct (nth_error_lt_some' _ _ Hk) as [B HB].
-      unfold shape_tr at 1 2; rewrite (List.nth_error_nth _ _ _ HB).
+      unfold shape_doms_rel at 1 2; rewrite (List.nth_error_nth _ _ _ HB).
       destruct (Hd _ _ _ _ _ _ _ _ _ _ _ _ _ Hm1 Hc Heq Hw1 HB Hp1) as [a a' Ea Ea' (Hper & _)].
       destruct (Hd2 _ _ _ _ _ _ _ _ _ _ _ _ _ Hm2 Hc Heq Hw2 HB Hp2) as [b b' Eb Eb' Hper2].
       functional_eval_rewrite_clear.
       eapply per_univ_elem_left_irrel; [ exact Hper | apply per_univ_sym; exact Hper2 ]. }
-    assert (Hdprefl : forall ms ms'' c gs gs1 t gs2 ws ws'' k ys ys'', tele_full nr (List.rev (ind_nparams D)) ms ms'' ->
+    assert (Hdprefl : forall ms ms'' c gs gs1 t gs2 ws ws'' k ys ys'', tele_rel nr (List.rev (ind_nparams D)) ms ms'' ->
               ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-              tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws'' -> k <= List.length (ptyp_doms t) ->
-              tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys'' -> tele_pre (shape_tr dr0 ms'' ws'' (ptyp_doms t)) k ys'' ys'').
+              tele_prefix_rel (ar ms c) (List.length (cargs_nonrec gs1)) ws ws'' -> k <= List.length (ptyp_doms t) ->
+              tele_prefix_rel (shape_doms_rel dr ms ws (ptyp_doms t)) k ys ys'' -> tele_prefix_rel (shape_doms_rel dr0 ms'' ws'' (ptyp_doms t)) k ys'' ys'').
     { intros * Hm Hc Heq Hw Hk Hp.
       assert (Hk1 : List.length (cargs_nonrec gs1) <= List.length (cargs_nonrec gs))
         by (rewrite Heq, cargs_nonrec_app, List.length_app; lia).
       pose proof (Haprefl _ _ _ _ _ _ _ Hm Hc Hk1 Hw) as Hw2.
-      eapply (tele_pre_cross_refl (shape_tr dr ms ws (ptyp_doms t)) (shape_tr dr0 ms'' ws'' (ptyp_doms t)) (List.length (ptyp_doms t)));
+      eapply (tele_prefix_rel_cross_refl (shape_doms_rel dr ms ws (ptyp_doms t)) (shape_doms_rel dr0 ms'' ws'' (ptyp_doms t)) (List.length (ptyp_doms t)));
         [ exact Hk | | | exact Hp ].
       - intros j0 pa pb Hj Hp1 Hp2; exact (Hdcr _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm (Hrefl0 _ _ Hm) Hc Heq Hw Hw2 Hj Hp1 Hp2).
       - intros j0 ? ? Hj ?; destruct (nth_error_lt_some' _ _ Hj) as [B HB].
-        unfold shape_tr at 1; rewrite (List.nth_error_nth _ _ _ HB).
+        unfold shape_doms_rel at 1; rewrite (List.nth_error_nth _ _ _ HB).
         eapply HdP2; [ exact (Hrefl0 _ _ Hm) | exact Hc | exact Heq | exact Hw2 | exact HB | eassumption ]. }
     basic_per_univ_elem_econstructor;
       [ exact Hl | exact Hass | exact Hu | exact Hu2' | exact (per_top_ps_trans _ _ _ _ Hps Hps2) | exact HnP | | exact HnI
       | exact HaP | | exact HaI | exact HdP | | exact HdI | | exact Hcd | exact (Hcomp _ _ _ Hns Hns2) | ].
     + intros k A vs vs'' Hk Hp.
       assert (Hkl : k < List.length (List.rev (ind_nparams D))) by (apply List.nth_error_Some; congruence).
-      assert (Hp2 : tele_pre nr0 k vs'' vs'').
-      { eapply (tele_pre_cross_refl nr nr0 (List.length (List.rev (ind_nparams D)))); [ lia | | exact HnP0 | exact Hp ].
+      assert (Hp2 : tele_prefix_rel nr0 k vs'' vs'').
+      { eapply (tele_prefix_rel_cross_refl nr nr0 (List.length (List.rev (ind_nparams D)))); [ lia | | exact HnP0 | exact Hp ].
         intros j0 pa pb Hj Hp1 Hp2; exact (Hcr _ _ _ _ Hj Hp1 Hp2). }
       destruct (Hn _ _ _ _ Hk Hp) as [a a' Ea Ea' (_ & Htr & _)].
       destruct (Hn2 _ _ _ _ Hk Hp2) as [b b' Eb Eb' Hper2].
@@ -1064,35 +1064,35 @@ Proof.
       destruct (Hd _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hw HB Hy) as [a a' Ea Ea' (_ & Htr & _)].
       destruct (Hd2 _ _ _ _ _ _ _ _ _ _ _ _ _ (Hrefl0 _ _ Hm) Hc Heq Hw2 HB Hy2) as [b b' Eb Eb' Hper2].
       pose proof (Hdcr _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm (Hrefl0 _ _ Hm) Hc Heq Hw Hw2 Hkl Hy Hy2) as Hdd.
-      unfold shape_tr in Hdd; rewrite (List.nth_error_nth _ _ _ HB) in Hdd.
+      unfold shape_doms_rel in Hdd; rewrite (List.nth_error_nth _ _ _ HB) in Hdd.
       functional_eval_rewrite_clear.
       econstructor; [ exact Ea | exact Eb' |].
       apply (Htr j); eapply per_univ_elem_resp_iff; [ exact Hper2 |]; symmetry; exact Hdd.
     + apply (adm_compose p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups'); [ exact Hcl |].
       apply (adm_change p D ups' nr0 nr ar0 ar dr0 dr); [ | | | exact Hcl2 ].
       * intros k vs vs1 vs2 Hk Hp1 Hp2; symmetry; eapply Hcr; [ exact Hk | | exact Hp1 ].
-        eapply (tnrp_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k vs vs2); [ lia | exact Hp2 ].
+        eapply (nparams_prefix_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k vs vs2); [ lia | exact Hp2 ].
       * intros ms ms1 ms2 c gs k vs vs1 vs2 Hm1 Hm2 Hc Hk Hp1 Hp2; symmetry.
-        pose proof (tnr_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hm2) as Hmm.
+        pose proof (nparams_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hm2) as Hmm.
         eapply (Hacr ms ms ms1); [ exact Hmm | exact Hm1 | exact Hc | exact Hk | | exact Hp1 ].
-        eapply (tar_pre_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ms c gs Hmm Hc k vs vs2); [ lia | exact Hp2 ].
+        eapply (args_rel_pre_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ms c gs Hmm Hc k vs vs2); [ lia | exact Hp2 ].
       * intros ms ms1 ms2 c gs gs1 t gs2 ws ws1 ws2 k ys ys1 ys2 Hm1 Hm2 Hc Heq Hw1 Hw2 Hk Hp1 Hp2; symmetry.
         assert (Hk1 : List.length (cargs_nonrec gs1) <= List.length (cargs_nonrec gs))
           by (rewrite Heq, cargs_nonrec_app, List.length_app; lia).
-        pose proof (tnr_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hm2) as Hmm.
-        pose proof (tar_pre_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ms c gs Hmm Hc _ ws ws2 Hk1 Hw2) as Hww.
+        pose proof (nparams_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hm2) as Hmm.
+        pose proof (args_rel_pre_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ms c gs Hmm Hc _ ws ws2 Hk1 Hw2) as Hww.
         eapply (Hdcr ms ms ms1 c gs gs1 t gs2 ws ws ws1 k ys ys ys1);
           [ exact Hmm | exact Hm1 | exact Hc | exact Heq | exact Hww | exact Hw1 | exact Hk | | exact Hp1 ].
-        eapply (tsh_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ms c gs gs1 t gs2 ws Hmm Hc Heq Hww); [ lia | exact Hp2 ].
+        eapply (doms_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ms c gs gs1 t gs2 ws Hmm Hc Heq Hww); [ lia | exact Hp2 ].
     + (** The elements, at the composite's right index ([ind_rel_idx]). *)
       pose proof (Hcomp _ _ _ Hns Hns2) as Hns13.
-      pose proof (tnr_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _
-                    (tnr_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hns) Hns13) as H23.
-      pose proof (tnr_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hns) as H11.
+      pose proof (nparams_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _
+                    (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hns) Hns13) as H23.
+      pose proof (nparams_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hns) as H11.
       intros m m'; split; intro Hm; [ apply HE in Hm | apply HE ].
       * exact (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ Hm H11 H23).
       * exact (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ Hm H11
-                 (tnr_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ H23)).
+                 (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ H23)).
   - (** Its elements. *)
     exact (proj1 (ind_rel_trans_all p D ups nr ar dr H0 H4 H6 H7 H9 H10 H12 _) _ _ _ _ HTR1 _ _ _ HTR2).
 Qed.
