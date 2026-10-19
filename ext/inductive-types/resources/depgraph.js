@@ -1,5 +1,72 @@
+// The graph fits the window; the mouse wheel zooms around the pointer,
+// dragging pans, and a double click shows the whole graph again.
+function makeGraphPannable(svg) {
+  const full = svg.viewBox.baseVal;
+  const home = { x: full.x, y: full.y, w: full.width, h: full.height };
+  let vb = { ...home };
+  svg.removeAttribute('width');
+  svg.removeAttribute('height');
+
+  const apply = () => svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  // Graph units per screen pixel (the viewBox is fitted, keeping its aspect).
+  const unitsPerPixel = () => {
+    const r = svg.getBoundingClientRect();
+    return Math.max(vb.w / r.width, vb.h / r.height);
+  };
+  const toGraph = (e) => {
+    const p = svg.createSVGPoint();
+    p.x = e.clientX; p.y = e.clientY;
+    return p.matrixTransform(svg.getScreenCTM().inverse());
+  };
+
+  svg.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const p = toGraph(e);
+    const factor = e.deltaY < 0 ? 0.8 : 1.25;
+    const w = Math.min(home.w, Math.max(home.w / 40, vb.w * factor));
+    const k = w / vb.w;
+    vb = { x: p.x - (p.x - vb.x) * k, y: p.y - (p.y - vb.y) * k, w: w, h: vb.h * k };
+    apply();
+  }, { passive: false });
+
+  let drag = null;
+  svg.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    drag = { cx: e.clientX, cy: e.clientY, x: vb.x, y: vb.y, s: unitsPerPixel(), moved: false };
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.cx, dy = e.clientY - drag.cy;
+    if (Math.abs(dx) + Math.abs(dy) > 3) {
+      drag.moved = true;
+      svg.classList.add('depgraph-dragging');
+    }
+    if (drag.moved) {
+      vb.x = drag.x - dx * drag.s;
+      vb.y = drag.y - dy * drag.s;
+      apply();
+    }
+  });
+  // The click that ends a drag must not follow a link or toggle an edge.
+  let suppressClickUntil = 0;
+  svg.addEventListener('click', (e) => {
+    if (Date.now() < suppressClickUntil) { e.preventDefault(); e.stopPropagation(); }
+  }, { capture: true });
+  window.addEventListener('pointerup', () => {
+    if (drag && drag.moved) suppressClickUntil = Date.now() + 300;
+    drag = null;
+    svg.classList.remove('depgraph-dragging');
+  });
+  svg.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    vb = { ...home };
+    apply();
+  });
+}
+
 function makeEdgesInteractive(evt) {
   let svg = evt.target;
+  makeGraphPannable(svg);
   let viewBox = svg.viewBox.baseVal;
   let edges = document.getElementsByClassName('edge');
 
