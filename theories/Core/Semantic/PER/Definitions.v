@@ -311,309 +311,47 @@ Inductive fresh_cargs_rel (D : ind_decl) (ups ua : list domain)
     fresh_cargs_rel D ups ua nparams_rel args_rel doms_rel ns ns' k ws ws' (S s) gs ->
     fresh_cargs_rel D ups ua nparams_rel args_rel doms_rel ns ns' k ws ws' s (ca_rec t :: gs).
 
-(** ** The Container's Telescopes at a View, at the Fresh Variables
-
-    A view of a group is read by a stuck eliminator through its container:
-    readback makes fresh variables of the container's raw telescopes at the
-    container's uniform parameters.  These are compared, at a view's
-    instance at two arguments [cu] and [cy] of the container, in the view's
-    own component relations.  At a position the view treats as recursive,
-    only the form of the type is compared ([vshape_rel]): at the end of the
-    shape, a type of the same group's member on both sides, at indices
-    related to the view's own index at the group's uniform parameters
-    [ups], the right one at uniform parameters [Qy] admits; under a domain,
-    applications at related arguments.  No group relation occurs here.
-    The left side's uniform parameters are not compared: they are those the
-    container's evaluation produces at [⟦Is⟧ups], which at a container's
-    own view need not be the member's [mref] at [ups] (they are only
-    convertible to it). *)
-Inductive vshape_rel (p : qname) (D : ind_decl) (ups : list domain)
-    (nparams_rel : nat -> nat -> list domain -> relation domain)
-    (doms_rel : list domain -> exp -> relation domain)
-    (Qy : nat -> qname -> nat -> list domain -> Prop) :
-    list domain -> ptyp -> domain -> domain -> Prop :=
-| vshape_self :
-  `{ ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ bs ->
-     Qy j hd k py ->
-     ntele_rel D nparams_rel j bs i ->
-     ntele_rel D nparams_rel j bs i' ->
-     vshape_rel p D ups nparams_rel doms_rel Qy pre (pt_self j Ps) (d_ind hd k (pu ++ i)) (d_ind hd k (py ++ i')) }
-| vshape_pi :
-  `{ (forall x x', doms_rel pre B x x' -> per_top (d_dom b x) (d_dom b' x')) ->
-     (forall c c', doms_rel pre B c c' -> exists a2, ⟦ F ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↦ c ↘ a2) ->
-     (forall c c', doms_rel pre B c c' -> exists a2', ⟦ F' ⟧ gc_deps ⍮ gc_stack ⍮ ρ' ↦ c' ↘ a2') ->
-     (forall c c' a2 a2', doms_rel pre B c c' ->
-        ⟦ F ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↦ c ↘ a2 -> ⟦ F' ⟧ gc_deps ⍮ gc_stack ⍮ ρ' ↦ c' ↘ a2' ->
-        vshape_rel p D ups nparams_rel doms_rel Qy (pre ++ c :: nil) t a2 a2') ->
-     vshape_rel p D ups nparams_rel doms_rel Qy pre (pt_pi B t) (Πᵈ b ρ F) (Πᵈ b' ρ' F') }.
-
-(** The arguments of a constructor of the container (kinds [gs']) as the
-    view has them (kinds [gs]), after the fresh non-uniform parameters [nsu]
-    and [nsy]: [wcu] and [wcy] the container's non-recursive arguments
-    before (its environment), [wvu] and [wvy] the view's, [k] of them.  A
-    position non-recursive in both: its fresh variables related in the
-    view's argument relation; one the view nests through (non-recursive in
-    the container): its type by [vshape_rel] at [Qn]; one recursive in
-    both: the container's shape type by [vshape_rel] at [Qr]. *)
-Inductive vfresh_cargs (p : qname) (D : ind_decl) (ups : list domain)
-    (nparams_rel : nat -> nat -> list domain -> relation domain)
-    (qc : qname) (cu cy : list domain)
-    (args_rel : nat -> list domain -> relation domain)
-    (doms_rel : list domain -> exp -> relation domain)
-    (Qn Qr : nat -> qname -> nat -> list domain -> Prop) (nsu nsy : list domain) :
-    nat -> list domain -> list domain -> list domain -> list domain -> nat -> list carg -> list carg -> Prop :=
-| vfresh_cargs_nil : forall k wcu wcy wvu wvy s,
-    vfresh_cargs p D ups nparams_rel qc cu cy args_rel doms_rel Qn Qr nsu nsy k wcu wcy wvu wvy s nil nil
-| vfresh_cargs_arg : forall k wcu wcy wvu wvy s A' A gs' gs a a',
-    ⟦ A' ⟧ env_args nil (cu ++ nsu ++ wcu) ↘ a ->
-    ⟦ A' ⟧ env_args nil (cy ++ nsy ++ wcy) ↘ a' ->
-    args_rel k wvu (⇑! a s) (⇑! a' s) ->
-    vfresh_cargs p D ups nparams_rel qc cu cy args_rel doms_rel Qn Qr nsu nsy (S k)
-      (wcu ++ ⇑! a s :: nil) (wcy ++ ⇑! a' s :: nil) (wvu ++ ⇑! a s :: nil) (wvy ++ ⇑! a' s :: nil) (S s) gs' gs ->
-    vfresh_cargs p D ups nparams_rel qc cu cy args_rel doms_rel Qn Qr nsu nsy k wcu wcy wvu wvy s (ca_arg A' :: gs') (ca_arg A :: gs)
-| vfresh_cargs_nest : forall k wcu wcy wvu wvy s A' t gs' gs a a',
-    ⟦ A' ⟧ env_args nil (cu ++ nsu ++ wcu) ↘ a ->
-    ⟦ A' ⟧ env_args nil (cy ++ nsy ++ wcy) ↘ a' ->
-    vshape_rel p D ups nparams_rel doms_rel Qn (nsu ++ wvu) t a a' ->
-    vfresh_cargs p D ups nparams_rel qc cu cy args_rel doms_rel Qn Qr nsu nsy k
-      (wcu ++ ⇑! a s :: nil) (wcy ++ ⇑! a' s :: nil) wvu wvy (S s) gs' gs ->
-    vfresh_cargs p D ups nparams_rel qc cu cy args_rel doms_rel Qn Qr nsu nsy k wcu wcy wvu wvy s (ca_arg A' :: gs') (ca_rec t :: gs)
-| vfresh_cargs_rec : forall k wcu wcy wvu wvy s t' t gs' gs a a',
-    ⟦shty t' of qc cu ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (cu ++ nsu ++ wcu) ↘ a ->
-    ⟦shty t' of qc cy ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (cy ++ nsy ++ wcy) ↘ a' ->
-    vshape_rel p D ups nparams_rel doms_rel Qr (nsu ++ wvu) t a a' ->
-    vfresh_cargs p D ups nparams_rel qc cu cy args_rel doms_rel Qn Qr nsu nsy k wcu wcy wvu wvy (S s) gs' gs ->
-    vfresh_cargs p D ups nparams_rel qc cu cy args_rel doms_rel Qn Qr nsu nsy k wcu wcy wvu wvy s (ca_rec t' :: gs') (ca_rec t :: gs).
-
 (** A member's type at the uniform parameters [X] of the group, as the
     end of a shape that nests through a view at [X] has it. *)
 Definition mref_at (p : qname) (X : list domain) : nat -> qname -> nat -> list domain -> Prop :=
   fun j hd k py => ⟦mref j of p X ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, py).
 
-(** ** A View's Container at the Fresh Variables
-
-    [view_fresh qc Is Y]: the views of the group at the container [qc]
-    and the instance [Is] at the container's uniform parameters [Y], as a
-    stuck eliminator at one of them reads them (E1′: the container's
-    eliminator, one block per member of the container's group).  For each
-    member [i'] of the container's group and the member [j] of this group
-    the views take it to, the telescopes of [i'] (as the container's group
-    has them) at [cups := ⟦Is⟧ups] and at [Y] give fresh variables related
-    in [j]'s components.  A nested-through position's type is a member's
-    type at uniform parameters of its own, admissible as the member's
-    neutrals are ([end_ok]): each position may have its own, as in the
-    container's own relation.  A position recursive in the container ends
-    in a member of this group that is a view: one of the same instance, at
-    [Y] itself; one of another instance (a view of the container's own
-    group's view), at the parameters the container's evaluation produces,
-    there by [view_fresh] again.  The same holds of the container's group's
-    own views as members ([i'] a view): at the parameters the container's
-    evaluation gives them. *)
-(** A member [i'] of the container's group [Dq] of the views of the group
-    at [qc] and [Is], and the member [j] of the group the views take it to
-    ([vm]). *)
-#[warnings="-cannot-define-projection"]
-Record view_cmember (D : ind_decl) (qc : qname) (Is : list exp) (Dq : ind_decl)
-    (i' : nat) (Mi' : imember) (j : nat) (Mj : imember) : Prop := mk_view_cmember
-  { vcm_view : nat
-  ; vcm_vmem : imember
-  ; vcm_kc : nat
-  ; vcm_vm : list nat
-  ; vcm_member : ind_member D vcm_view = Some vcm_vmem
-  ; vcm_head : im_head vcm_vmem = mh_view qc vcm_kc Is vcm_vm
-  ; vcm_lookup : ind_lookup gc_deps gc_stack qc = Some Dq
-  ; vcm_cmember : ind_member Dq i' = Some Mi'
-  ; vcm_vm_at : List.nth_error vcm_vm i' = Some j
-  ; vcm_dmember : ind_member D j = Some Mj }.
-
-(** A view of the group at [qc] and [Is], its instance defined at [ups]. *)
-#[warnings="-cannot-define-projection"]
-Record view_instance (D : ind_decl) (ups : list domain) (qc : qname) (Is : list exp) : Prop := mk_view_instance
-  { vi_view : nat
-  ; vi_vmem : imember
-  ; vi_kc : nat
-  ; vi_vm : list nat
-  ; vi_cups : list domain
-  ; vi_member : ind_member D vi_view = Some vi_vmem
-  ; vi_head : im_head vi_vmem = mh_view qc vi_kc Is vi_vm
-  ; vi_eval : ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ vi_cups }.
-
-(** The uniform parameters [ua] of the group admissible at the fresh
-    variables: for each member, fresh variables of its non-uniform
-    parameters' types ([fresh_tele_rel]) and, after them, of its
-    constructors' arguments' types ([fresh_cargs_rel]), each related to the
-    one at [ups]; and each view member's container at the fresh variables
-    at [⟦Is⟧ua] ([view_fresh]).  A position a view nests through ends in a
-    member of the group at its own uniform parameters, admissible as that
-    member's neutrals are ([end_ok]), as the container's own relation has
-    it.
-
-    The admissibilities refer to each other in cycles: a view's container
-    may have a view of its own whose positions nest through the first view
-    again, at the same parameters.  For [inductive C (B) := mk : Sigma (C
-    B) (λ _. B) → C B] and [inductive T := t : C T → T], the view [C[T]]
-    at [Y] asks the view [Sigma[C T, λ _. T]] at [⟦[C B, λ _. B]⟧Y] (the
-    container's own view), whose first argument nests through [C[T]] at [Y]
-    again.  So the four admissibilities are the greatest predicates closed
-    under their clauses: [adm_fresh] and [view_fresh] hold of what lies in
-    some pair of predicates [Sa] and [Sv] each of whose members satisfies
-    its clause, the inner admissibilities read in [Sa] and [Sv]
-    ([fresh_inv]).
-
-    *** The Clauses, at Given Inner Admissibilities
-
-    The end of a position a view nests through, at the member [j] of this
-    group the shape ends in, its type the declared member [k] of the group
-    at [hd] at the uniform parameters [py]: admissible as a neutral of [j]
-    is ([Sa] at a declared member, [Sv] its container at a view). *)
-Inductive end_ok_in (p : qname) (D : ind_decl) (Sa : list domain -> Prop)
-    (Sv : qname -> list exp -> list domain -> Prop) : nat -> qname -> nat -> list domain -> Prop :=
-| end_ok_in_decl : forall j Mj pm py, ind_member D j = Some Mj -> im_head Mj = mh_decl pm -> List.length py = ind_nu D ->
-    Sa py -> end_ok_in p D Sa Sv j p j py
-| end_ok_in_view : forall j Mj qv kv Is' vm' py, ind_member D j = Some Mj -> im_head Mj = mh_view qv kv Is' vm' ->
-    List.length py = List.length Is' ->
-    Sv qv Is' py -> end_ok_in p D Sa Sv j qv kv py.
-
-(** The end of a position recursive in the container, at the member [j]
-    of this group the shape ends in, a view at the container's member
-    [kc] of [qc'] and [Is'], at the container's uniform parameters [py] the
-    container's evaluation gives: of the same instance, at [Y] itself; of
-    another, by [Sv] there. *)
-Inductive view_rec_end_in (D : ind_decl) (Sv : qname -> list exp -> list domain -> Prop) :
-    qname -> list exp -> list domain -> nat -> qname -> nat -> list domain -> Prop :=
-| view_rec_end_in_same : forall qc Is Y j Mj kc vm', ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm' ->
-    view_rec_end_in D Sv qc Is Y j qc kc Y
-| view_rec_end_in_inner : forall qc Is Y j Mj qc' kc' Is' vm' py, ind_member D j = Some Mj ->
-    im_head Mj = mh_view qc' kc' Is' vm' -> List.length py = List.length Is' ->
-    Sv qc' Is' py -> view_rec_end_in D Sv qc Is Y j qc' kc' py.
-
-(** The clause of [adm_fresh] at [ua], the views' containers read in [Sv]. *)
-#[warnings="-cannot-define-projection"]
-Record adm_fresh_step (p : qname) (D : ind_decl) (ups : list domain)
-    (nparams_rel : nat -> nat -> list domain -> relation domain)
-    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain)
-    (Sv : qname -> list exp -> list domain -> Prop) (ua : list domain) : Prop := mk_adm_fresh_step
-  { afs_nparams : forall m Mm s, ind_member D m = Some Mm ->
-      fresh_tele_rel (nparams_rel m) ups ua 0 nil nil s (List.rev (im_nparams Mm))
-  ; afs_args : forall m Mm c gs s ns ns', ind_member D m = Some Mm -> ind_con Mm c = Some gs ->
-      Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ups ⍮ s ↘ ns ->
-      Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ ns' ->
-      fresh_cargs_rel D ups ua nparams_rel (args_rel m ns c) (doms_rel m) ns ns' 0 nil nil (s + im_nn Mm) gs
-  ; afs_evals : forall v Mv qc kc Is vm, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
-      exists Y, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ua ↘ Y
-  ; afs_views : forall v Mv qc kc Is vm Y, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
-      ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ua ↘ Y -> Sv qc Is Y }.
-
-(** The clause of [view_fresh] at [qc], [Is] and [Y], the inner
-    admissibilities read in [Sa] and [Sv]. *)
-#[warnings="-cannot-define-projection"]
-Record view_fresh_step (p : qname) (D : ind_decl) (ups : list domain)
-    (nparams_rel : nat -> nat -> list domain -> relation domain)
-    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain)
-    (Sa : list domain -> Prop) (Sv : qname -> list exp -> list domain -> Prop)
-    (qc : qname) (Is : list exp) (Y : list domain) : Prop := mk_view_fresh_step
-  { vfs_instance : view_instance D ups qc Is
-  ; vfs_nparams : forall Dq i' Mi' j Mj cups s, view_cmember D qc Is Dq i' Mi' j Mj ->
-      ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
-      fresh_tele_rel (nparams_rel j) cups Y 0 nil nil s (List.rev (im_nparams Mi'))
-  ; vfs_args : forall Dq i' Mi' j Mj cups s c gs' gs nsu nsy, view_cmember D qc Is Dq i' Mi' j Mj ->
-      ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
-      ind_con Mi' c = Some gs' -> ind_con Mj c = Some gs ->
-      Ftele List.rev (im_nparams Mi') in gc_deps ⍮ gc_stack ⍮ env_args nil cups ⍮ s ↘ nsu ->
-      Ftele List.rev (im_nparams Mi') in gc_deps ⍮ gc_stack ⍮ env_args nil Y ⍮ s ↘ nsy ->
-      vfresh_cargs p D ups nparams_rel qc cups Y (args_rel j nsu c) (doms_rel j)
-        (end_ok_in p D Sa Sv) (view_rec_end_in D Sv qc Is Y)
-        nsu nsy 0 nil nil nil nil (s + im_nn Mi') gs' gs
-  ; vfs_inner_ex : forall Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm', view_cmember D qc Is Dq i' Mi' j Mj ->
-      im_head Mi' = mh_view qv kv Is'' vm'' -> im_head Mj = mh_view qv kv Is' vm' ->
-      exists py, ⟦mref i' of qc Y ⟧ gc_deps ⍮ gc_stack ↘ (qv, kv, py)
-  ; vfs_inner : forall Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm' py, view_cmember D qc Is Dq i' Mi' j Mj ->
-      im_head Mi' = mh_view qv kv Is'' vm'' -> im_head Mj = mh_view qv kv Is' vm' ->
-      ⟦mref i' of qc Y ⟧ gc_deps ⍮ gc_stack ↘ (qv, kv, py) -> Sv qv Is' py }.
-
-(** *** The Greatest Fixed Point
-
-    A pair of predicates closed under the clauses: each member of [Sa]
-    satisfies [adm_fresh]'s clause, each member of [Sv] [view_fresh]'s,
-    the inner admissibilities read in [Sa] and [Sv]. *)
-#[warnings="-cannot-define-projection"]
-Record fresh_inv (p : qname) (D : ind_decl) (ups : list domain)
-    (nparams_rel : nat -> nat -> list domain -> relation domain)
-    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain)
-    (Sa : list domain -> Prop) (Sv : qname -> list exp -> list domain -> Prop) : Prop := mk_fresh_inv
-  { fi_adm : forall ua, Sa ua -> adm_fresh_step p D ups nparams_rel args_rel doms_rel Sv ua
-  ; fi_view : forall qc Is Y, Sv qc Is Y -> view_fresh_step p D ups nparams_rel args_rel doms_rel Sa Sv qc Is Y }.
-
-(** [ua] lies in an invariant pair. *)
+(** The uniform parameters [ua] of a group without views admissible at the
+    fresh variables (model L): for each member, fresh variables of its
+    non-uniform parameters' types ([fresh_tele_rel]) and, after them, of
+    its constructors' arguments' types ([fresh_cargs_rel]), each related
+    to the one at [ups].  (A group with views is read back at its
+    eliminator's uniform parameters, model P, and needs no admissibility.) *)
 #[warnings="-cannot-define-projection"]
 Record adm_fresh (p : qname) (D : ind_decl) (ups : list domain)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (doms_rel : nat -> list domain -> exp -> relation domain) (ua : list domain) : Prop := mk_adm_fresh
-  { afr_set : list domain -> Prop
-  ; afr_vset : qname -> list exp -> list domain -> Prop
-  ; afr_inv : fresh_inv p D ups nparams_rel args_rel doms_rel afr_set afr_vset
-  ; afr_in : afr_set ua }.
+  { afr_nparams : forall m Mm s, ind_member D m = Some Mm ->
+      fresh_tele_rel (nparams_rel m) ups ua 0 nil nil s (List.rev (im_nparams Mm))
+  ; afr_args : forall m Mm c gs s ns ns', ind_member D m = Some Mm -> ind_con Mm c = Some gs ->
+      Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ups ⍮ s ↘ ns ->
+      Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ ns' ->
+      fresh_cargs_rel D ups ua nparams_rel (args_rel m ns c) (doms_rel m) ns ns' 0 nil nil (s + im_nn Mm) gs }.
 
-(** [(qc, Is, Y)] lies in an invariant pair. *)
-#[warnings="-cannot-define-projection"]
-Record view_fresh (p : qname) (D : ind_decl) (ups : list domain)
-    (nparams_rel : nat -> nat -> list domain -> relation domain)
-    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain)
-    (qc : qname) (Is : list exp) (Y : list domain) : Prop := mk_view_fresh
-  { vfr_aset : list domain -> Prop
-  ; vfr_set : qname -> list exp -> list domain -> Prop
-  ; vfr_inv : fresh_inv p D ups nparams_rel args_rel doms_rel vfr_aset vfr_set
-  ; vfr_in : vfr_set qc Is Y }.
-
-(** The ends, at the greatest fixed point. *)
-Definition end_ok (p : qname) (D : ind_decl) (ups : list domain)
-    (nparams_rel : nat -> nat -> list domain -> relation domain)
-    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain) : nat -> qname -> nat -> list domain -> Prop :=
-  end_ok_in p D (adm_fresh p D ups nparams_rel args_rel doms_rel) (view_fresh p D ups nparams_rel args_rel doms_rel).
-
-Definition view_rec_end (p : qname) (D : ind_decl) (ups : list domain)
-    (nparams_rel : nat -> nat -> list domain -> relation domain)
-    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain) :
-    qname -> list exp -> list domain -> nat -> qname -> nat -> list domain -> Prop :=
-  view_rec_end_in D (view_fresh p D ups nparams_rel args_rel doms_rel).
-
-(** Each view member of the group at uniform parameters [X]: its instance
-    defined at [ups] and at [X], and its container at the fresh variables
-    at [⟦Is⟧X] ([view_fresh]): the universe clause asks it of the two
-    sides' parameters. *)
-#[warnings="-cannot-define-projection"]
-Record views_fresh (p : qname) (D : ind_decl) (ups : list domain)
-    (nparams_rel : nat -> nat -> list domain -> relation domain)
-    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain)
-    (X : list domain) : Prop := mk_views_fresh
-  { vfr_evals : forall v Mv qc kc Is vm, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
-      exists cups Y, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups /\ ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil X ↘ Y
-  ; vfr_views : forall v Mv qc kc Is vm Y, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
-      ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil X ↘ Y ->
-      view_fresh p D ups nparams_rel args_rel doms_rel qc Is Y }.
-
-(** The admissibility of a neutral's uniform parameters, by its member: at
-    the fresh variables for a declared member, the container at the fresh
-    variables for a view. *)
+(** The admissibility of a neutral's uniform parameters, by its member.
+    The eliminator of a group with views carries the group's uniform
+    parameters, and a stuck one is read back at them (model P): its
+    neutrals need no condition.  For a group without views (model L) a
+    stuck eliminator is read at its scrutinee's annotation: a member's
+    neutrals have their parameters admissible at the fresh variables. *)
 Definition grp_adm (p : qname) (D : ind_decl) (ups : list domain)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (doms_rel : nat -> list domain -> exp -> relation domain) : nat -> list domain -> Prop :=
-  fun k Y => match ind_member D k with
-          | Some Mk => match im_head Mk with
-                      | mh_decl _ => adm_fresh p D ups nparams_rel args_rel doms_rel Y
-                      | mh_view qc _ Is _ => view_fresh p D ups nparams_rel args_rel doms_rel qc Is Y
-                      end
-          | None => False
-          end.
+  fun k Y => if ind_has_views D then True
+          else match ind_member D k with
+               | Some Mk => match im_head Mk with
+                           | mh_decl _ => adm_fresh p D ups nparams_rel args_rel doms_rel Y
+                           | mh_view _ _ _ _ => False
+                           end
+               | None => False
+               end.
 
 (** ** Admissible Indices
 
@@ -973,8 +711,6 @@ Section Per_univ_elem_core_def.
          doms_inv D nr ar dr ->
          adm_uparams D ups nr ar dr ups' ->
          adm_uparams D ups nr ar dr ups ->
-         views_fresh p D ups nr ar dr ups' ->
-         views_fresh p D ups nr ar dr ups ->
          tele_rel (nr k) (List.rev (im_nparams M)) ns ns' ->
          (elem_rel <~> grp_rel p D ups nr ar dr k ups ups' ns ns') ->
          DF d_ind p k (ups ++ ns) ≈ d_ind p k (ups' ++ ns') ∈ per_univ_elem_core ↘ elem_rel }
@@ -1043,8 +779,6 @@ Section Per_univ_elem_core_def.
           doms_inv D nr ar dr ->
           adm_uparams D ups nr ar dr ups' ->
           adm_uparams D ups nr ar dr ups ->
-          views_fresh p D ups nr ar dr ups' ->
-          views_fresh p D ups nr ar dr ups ->
           tele_rel (nr k) (List.rev (im_nparams M)) ns ns' ->
           (elem_rel <~> grp_rel p D ups nr ar dr k ups ups' ns ns') ->
           motive elem_rel (d_ind p k (ups ++ ns)) (d_ind p k (ups' ++ ns'))).
@@ -1064,7 +798,7 @@ Section Per_univ_elem_core_def.
                               end)
         HE;
   | R, a, b, (per_univ_elem_core_neut _ equiv_b_b' HE)                => case_ne equiv_b_b' HE;
-  | R, a, b, (per_univ_elem_core_indty nr ar dr _ Hl Hass HM Hh Hu Hu' Hps HnP Hn HnI HaP Ha HaI HdP Hd HdI Hcl Hcd Hvl Hvd Hns HE) =>
+  | R, a, b, (per_univ_elem_core_indty nr ar dr _ Hl Hass HM Hh Hu Hu' Hps HnP Hn HnI HaP Ha HaI HdP Hd HdI Hcl Hcd Hns HE) =>
       case_Ind nr ar dr Hl Hass HM Hh Hu Hu' Hps HnP
         (fun m Mm k A vs vs' Hm Hk Hpre => match Hn m Mm k A vs vs' Hm Hk Hpre with
                                    | mk_rel_mod_eval b b' evb evb' Rel =>
@@ -1081,7 +815,7 @@ Section Per_univ_elem_core_def.
            | mk_rel_mod_eval b b' evb evb' Rel =>
                mk_rel_mod_eval b b' evb evb' (conj Rel (per_univ_elem_core_strong_ind _ _ _ Rel))
            end)
-        HdI Hcl Hcd Hvl Hvd Hns HE.
+        HdI Hcl Hcd Hns HE.
 
 End Per_univ_elem_core_def.
 
@@ -1295,8 +1029,6 @@ Section Per_univ_elem_ind_def.
           doms_inv D nr ar dr ->
           adm_uparams D ups nr ar dr ups' ->
           adm_uparams D ups nr ar dr ups ->
-          views_fresh p D ups nr ar dr ups' ->
-          views_fresh p D ups nr ar dr ups ->
           tele_rel (nr k) (List.rev (im_nparams M)) ns ns' ->
           (elem_rel <~> grp_rel p D ups nr ar dr k ups ups' ns ns') ->
           motive i elem_rel (d_ind p k (ups ++ ns)) (d_ind p k (ups' ++ ns'))).
@@ -1317,7 +1049,7 @@ Section Per_univ_elem_ind_def.
       eapply case_SU; eauto.
     - intros * Ha IHa Hper HT HE.
       eapply case_Pi; eassumption.
-    - intros * Hl Hass HM Hh Hu Hu' Hps HnP Hn HnI HaP Ha HaI HdP Hd HdI Hcl Hcd Hvl Hvd Hns HE.
+    - intros * Hl Hass HM Hh Hu Hu' Hps HnP Hn HnI HaP Ha HaI HdP Hd HdI Hcl Hcd Hns HE.
       eapply case_Ind; eassumption.
   Qed.
 End Per_univ_elem_ind_def.
@@ -1729,7 +1461,7 @@ Ltac per_univ_elem_induction_core HH ih :=
       (** The level case has one binder more than the other closed types: the
           sort of its type of levels. *)
       [ do 8 intro | do 8 intro | do 4 intro | do 3 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro
-      | do 36 intro ]; cbv beta
+      | do 34 intro ]; cbv beta
   end.
 
 (** The analogue of [induction H using per_univ_elem_ind]; the induction

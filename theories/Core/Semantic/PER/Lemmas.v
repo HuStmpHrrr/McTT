@@ -382,10 +382,8 @@ Proof.
   (** An inductive type: its relations are untouched. *)
   all: intros R0 HR0; basic_per_univ_elem_econstructor; try eassumption;
     unfold nparams_evals, args_evals, doms_evals in *;
-    [ intros; eapply rel_mod_eval_proj1; match goal with H : _ |- _ => eapply H; eassumption end
-    | intros; eapply rel_mod_eval_proj1; match goal with H : _ |- _ => eapply H; eassumption end
-    | intros; eapply rel_mod_eval_proj1; match goal with H : _ |- _ => eapply H; eassumption end
-    | etransitivity; [ symmetry + idtac | ]; eassumption ].
+    try (intros; eapply rel_mod_eval_proj1; match goal with H : _ |- _ => eapply H; eassumption end);
+    try (etransitivity; [ symmetry + idtac | ]; eassumption).
 Qed.
 
 (** The morphism in forward form.  [apply -> per_univ_elem_morphism_iff] needs
@@ -566,9 +564,9 @@ Proof.
       assert_fails constr_eq M1 M2; rewrite H1 in H2; injection H2 as <- end.
     destruct (app_split_eq _ _ _ _ x ltac:(congruence)) as [-> ->].
     rename H into Hl, H0 into Hass, H1 into HM, H2 into Hh, H6 into HnP, H7 into Hn, H8 into HnI, H9 into HaP, H10 into Ha,
-      H11 into HaI, H12 into HdP, H13 into Hd, H14 into HdI, H19 into Hns.
-    rename H28 into HnP0, H29 into Hn0, H30 into HnI0, H31 into HaP0, H32 into Ha0, H33 into HaI0, H34 into HdP0, H35 into Hd0,
-      H36 into HdI0, H41 into Hns0.
+      H11 into HaI, H12 into HdP, H13 into Hd, H14 into HdI, H17 into Hns.
+    rename H26 into HnP0, H27 into Hn0, H28 into HnI0, H29 into HaP0, H30 into Ha0, H31 into HaI0, H32 into HdP0, H33 into Hd0,
+      H34 into HdI0, H37 into Hns0.
     assert (Hnr : forall m Mm kk vs vs1 vs2, ind_member D m = Some Mm -> kk < List.length (List.rev (im_nparams Mm)) ->
                     tele_prefix_rel (nr m) kk vs vs1 -> tele_prefix_rel (nr0 m) kk vs vs2 -> (nr m kk vs <~> nr0 m kk vs)).
     { intros m Mm kk vs vs1 vs2 Hm Hk Hp1 Hp2.
@@ -626,11 +624,11 @@ Proof.
     pose proof (tele_rel_nr_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr _ _ HM _ _ Hns) as Hns'.
     pose proof (tele_rel_nr_change' p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr _ _ HM _ _ Hns0) as Hns0'.
     unfold grp_rel; intros m m'; split; intro Hm.
-    - eapply (proj1 (ind_rel_base_r p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 ups'0 H37 _ ups'
+    - eapply (proj1 (ind_rel_base_r p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 ups'0 H35 _ ups'
                        (adm_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr ups' H15))); [| reflexivity ].
       eapply (ind_rel_idx p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 _ _ _ _ _ _ ns ns' _ _ _ _ HM);
         [ eapply (proj1 (ind_rel_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr _ _ _ _
-                           (grp_adm_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr Hass)
+                           (grp_adm_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr)
                            (okr_at_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr)
                            (fun m Mm a b Hm H => nparams_rel_refl_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI m Mm Hm a b H)));
           exact Hm
@@ -638,10 +636,10 @@ Proof.
         | exact (nparams_rel_trans p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 _ _ HM _ _ _
                    (nparams_rel_sym p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 _ _ HM _ _ Hns') Hns0) ].
     - eapply (proj1 (ind_rel_base_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' H15 _ ups'0
-                       (adm_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB ups'0 H37))); [| reflexivity ].
+                       (adm_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB ups'0 H35))); [| reflexivity ].
       eapply (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ ns ns'0 _ _ _ _ HM);
         [ eapply (proj1 (ind_rel_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB _ _ _ _
-                           (grp_adm_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB Hass)
+                           (grp_adm_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB)
                            (okr_at_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB)
                            (fun m Mm a b Hm H => nparams_rel_refl_r p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 m Mm Hm a b H)));
           exact Hm
@@ -741,17 +739,15 @@ Proof.
         ([adm_iff]). *)
     rename H into Hl, H0 into Hass, H1 into HM, H2 into Hh, H3 into Hu, H4 into Hu', H5 into Hps, H6 into HnP, H7 into Hn,
       H8 into HnI, H9 into HaP, H10 into Ha, H11 into HaI,
-      H12 into HdP, H13 into Hd, H14 into HdI, H15 into Hcl, H16 into Hcd, H17 into Hvl, H18 into Hvd, H19 into Hns,
-      H20 into HE.
+      H12 into HdP, H13 into Hd, H14 into HdI, H15 into Hcl, H16 into Hcd, H17 into Hns,
+      H18 into HE.
     pose proof (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ HM _ _ Hns) as Hsn.
     pose proof (adm_flip p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl Hcd) as Hfl.
-    pose proof (views_fresh_base p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl Hvl _ Hvd) as Hvfl.
     split.
     + basic_per_univ_elem_econstructor;
         [ exact Hl | exact Hass | exact HM | exact Hh | exact Hu' | exact Hu | exact (per_top_ps_sym _ _ _ Hps) | exact HnP | | exact HnI
         | exact HaP | | exact HaI | exact HdP | | exact HdI | exact Hfl
-        | exact (adm_diag_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl) | exact Hvfl
-        | exact (views_fresh_base p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl Hvl _ Hvl) | exact Hsn |].
+        | exact (adm_diag_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl) | exact Hsn |].
       * intros m Mm k0 A vs vs' Hm Hk Hp.
         assert (Hkl : k0 < List.length (List.rev (im_nparams Mm))) by (apply List.nth_error_Some; congruence).
         pose proof (nparams_prefix_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI m Mm Hm k0 vs vs' ltac:(lia) Hp) as Hp'.
@@ -796,7 +792,7 @@ Proof.
            apply (proj1 (ind_rel_okr_base p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl _)).
            apply (ind_rel_bases p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ ups ups' _ _ _ _ _ _ Hcd Hcl Hcl Hcd).
            apply (proj1 (ind_rel_ok p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _
-                           (grp_adm_base p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl Hvl) (fun _ _ _ _ H => H))).
+                           (grp_adm_base p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl) (fun _ _ _ _ H => H))).
            exact Hm0.
         -- apply HE; unfold grp_rel.
            eapply (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ ns' ns _ _ _ _ HM); [| exact Hsn | exact Hns ].
@@ -805,7 +801,7 @@ Proof.
                     (adm_diag_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl) Hfl Hfl
                     (adm_diag_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl)).
            apply (proj1 (ind_rel_ok p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _
-                           (grp_adm_base p D ups' nr ar dr Hass HnP HnI HaP HaI HdP HdI ups Hfl Hvfl) (fun _ _ _ _ H => H))).
+                           (grp_adm_base p D ups' nr ar dr Hass HnP HnI HaP HaI HdP HdI ups Hfl) (fun _ _ _ _ H => H))).
            exact Hm0.
     + intros m m' Hm0; apply HE in Hm0; apply HE; unfold grp_rel in *.
       pose proof (proj1 (ind_rel_sym_all p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _) _ _ _ _ _ _ _ Hm0) as Hm1.
@@ -972,10 +968,10 @@ Proof.
     destruct (app_split_eq _ _ _ _ x ltac:(congruence)) as [-> ->].
     rename H into Hl, H0 into Hass, H1 into HM, H2 into Hh, H3 into Hu, H4 into Hu', H5 into Hps, H6 into HnP, H7 into Hn,
       H8 into HnI, H9 into HaP, H10 into Ha, H11 into HaI, H12 into HdP, H13 into Hd, H14 into HdI,
-      H15 into Hcl, H16 into Hcd, H17 into Hvl, H18 into Hvd, H19 into Hns, H20 into HE.
-    rename H25 into Hu2, H26 into Hu2', H27 into Hps2, H28 into HnP2, H29 into Hn2, H30 into HnI2,
-      H31 into HaP2, H32 into Ha2, H33 into HaI2, H34 into HdP2, H35 into Hd2, H36 into HdI2,
-      H37 into Hcl2, H39 into Hvl2, H41 into Hns2.
+      H15 into Hcl, H16 into Hcd, H17 into Hns, H18 into HE.
+    rename H23 into Hu2, H24 into Hu2', H25 into Hps2, H26 into HnP2, H27 into Hn2, H28 into HnI2,
+      H29 into HaP2, H30 into Ha2, H31 into HaI2, H32 into HdP2, H33 into Hd2, H34 into HdI2,
+      H35 into Hcl2, H37 into Hns2.
     assert (Hcr : forall m Mm k pa pb pc, ind_member D m = Some Mm -> k < List.length (List.rev (im_nparams Mm)) ->
               tele_prefix_rel (nr m) k pa pb -> tele_prefix_rel (nr0 m) k pb pc -> (nr m k pa <~> nr0 m k pb)).
     { intros m Mm k0 pa pb pc Hm Hk Hp1 Hp2.
@@ -1087,15 +1083,10 @@ Proof.
         [ exact Hm0 | exact Hmm | exact Hm1 | exact Hc | exact Heq | exact Hww | exact Hw1 | exact Hk | | exact Hp1 ].
       eapply (doms_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI m Mm Hm0 ms c gs gs1 t gs2 ws Hmm Hc Heq Hww);
         [ lia | exact Hp2 ]. }
-    (** The composite's views: the second's at the first's relations, at
-        the base [ups'], moved to [ups]. *)
     pose proof (adm_flip p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl Hcd) as Hfl.
-    pose proof (views_fresh_base p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl Hvl _ Hvd) as Hvfl.
-    pose proof (views_fresh_change p D ups' nr0 nr ar0 ar dr0 dr HnC HaC HdC Hass _ Hvl2) as Hvl2'.
     basic_per_univ_elem_econstructor;
       [ exact Hl | exact Hass | exact HM | exact Hh | exact Hu | exact Hu2' | exact (per_top_ps_trans _ _ _ _ Hps Hps2)
       | exact HnP | | exact HnI | exact HaP | | exact HaI | exact HdP | | exact HdI | | exact Hcd
-      | exact (views_fresh_base p D ups' nr ar dr Hass HnP HnI HaP HaI HdP HdI ups Hfl Hvfl _ Hvl2') | exact Hvd
       | exact (Hcomp _ _ _ _ _ HM Hns Hns2) | ].
     + intros m Mm k0 A vs vs'' Hm Hk Hp.
       assert (Hkl : k0 < List.length (List.rev (im_nparams Mm))) by (apply List.nth_error_Some; congruence).

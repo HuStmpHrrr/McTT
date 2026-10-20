@@ -203,6 +203,10 @@ Definition im_starts (D : ind_decl) (M : imember) : bool := im_is_decl M || (0 <
     views. *)
 Definition ind_ndecl (D : ind_decl) : nat := List.length (List.filter im_is_decl (ind_members D)).
 
+(** A group has views when some member is not declared: its eliminator
+    then carries the group's uniform parameters. *)
+Definition ind_has_views (D : ind_decl) : bool := negb (List.forallb im_is_decl (ind_members D)).
+
 Definition ind_order_ok (D : ind_decl) : Prop :=
   forall k M, ind_member D k = Some M -> (im_is_decl M = true <-> k < ind_ndecl D).
 

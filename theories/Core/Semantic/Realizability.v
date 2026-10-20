@@ -497,7 +497,7 @@ Proof.
       [ind_rel_neut_canon], the fresh-variable admissibility of the type's
       own uniform parameters following from the type-level one. *)
   - unshelve epose proof (realize_indty p D ups ups' nr ar dr (grp_adm p D ups nr ar dr) H H0 H3 H5 H6 H8 H9 H11 H12 H14
-                            _ _ _ H15 H16 k M ns ns' H1 H19) as [Hrt _];
+                            _ _ _ H15 H16 k M ns ns' H1 H17) as [Hrt _];
     [ intros m Mm k0 A vs vs' Hm Hk Hp; destruct (H7 _ _ _ _ _ _ Hm Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
     | intros m Mm ms ms' c0 gs k0 A vs vs' Hm0 Hm Hc Hk Hp;
       destruct (H10 _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
@@ -507,10 +507,12 @@ Proof.
     | exact Hrt ].
   - unfold grp_rel.
     eapply ind_rel_neut_canon; try eassumption.
-    + unfold grp_adm; rewrite H1, H2; exact (adm_fresh_of_uparams p D ups nr ar dr H0 H6 H8 H9 H11 H12 H14 ups H16 H18).
-    + unfold grp_adm; rewrite H1, H2; exact (adm_fresh_of_uparams p D ups nr ar dr H0 H6 H8 H9 H11 H12 H14 ups' H15 H17).
+    + unfold grp_adm; destruct (ind_has_views D); [ exact I |].
+      rewrite H1, H2; exact (adm_fresh_of_uparams p D ups nr ar dr H0 H6 H8 H9 H11 H12 H14 ups H16).
+    + unfold grp_adm; destruct (ind_has_views D); [ exact I |].
+      rewrite H1, H2; exact (adm_fresh_of_uparams p D ups nr ar dr H0 H6 H8 H9 H11 H12 H14 ups' H15).
   - unshelve epose proof (realize_indty p D ups ups' nr ar dr (grp_adm p D ups nr ar dr) H H0 H3 H5 H6 H8 H9 H11 H12 H14
-                            _ _ _ H15 H16 k M ns ns' H1 H19) as [_ Hre];
+                            _ _ _ H15 H16 k M ns ns' H1 H17) as [_ Hre];
     [ intros m Mm k0 A vs vs' Hm Hk Hp; destruct (H7 _ _ _ _ _ _ Hm Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
     | intros m Mm ms ms' c0 gs k0 A vs vs' Hm0 Hm Hc Hk Hp;
       destruct (H10 _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto

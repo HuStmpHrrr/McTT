@@ -109,8 +109,6 @@ Section Fixed_GCtx.
         (canon_args_rel D ups') (canon_doms_rel ups) (canon_doms_rel ups')
     ; icc_adm : adm_uparams D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) ups'
     ; icc_adm_diag : adm_uparams D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) ups
-    ; icc_views : views_fresh p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) ups'
-    ; icc_views_diag : views_fresh p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) ups
     ; icc_ns : tele_rel (canon_nparams_rel D ups k) (List.rev (member_nparams D k)) ns ns'
     ; icc_elems : R <~> grp_rel p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) k ups ups' ns ns' }.
 
@@ -125,8 +123,8 @@ Section Fixed_GCtx.
     destruct (app_split_eq _ _ _ _ x0 ltac:(congruence)) as [-> ->].
     destruct (app_split_eq _ _ _ _ x ltac:(congruence)) as [-> ->].
     rename H0 into Hass, H1 into HM, H2 into Hh, H5 into Hps, H6 into HnP, H7 into Hn, H8 into HnI, H9 into HaP, H10 into Ha,
-      H11 into HaI, H12 into HdP, H13 into Hd, H14 into HdI, H15 into Hcl, H16 into Hcd, H17 into Hvl, H18 into Hvd,
-      H19 into Hns, H20 into HE.
+      H11 into HaI, H12 into HdP, H13 into Hd, H14 into HdI, H15 into Hcl, H16 into Hcd,
+      H17 into Hns, H18 into HE.
     (** The relations of the clause are the canonical ones at [ups]. *)
     pose proof (ind_fam_agree_of_evals i D ups ups' nr ar dr Hass
                   ltac:(red; intros * HM0 HA Hp; destruct (Hn _ _ _ _ _ _ HM0 HA Hp) as [a a' Ea Ea' HR]; econstructor; eauto)
@@ -229,7 +227,7 @@ Section Fixed_GCtx.
         rewrite <- (HDr _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM0 Hm' Hc Heq Hw' HB Hy').
         rewrite <- (HDr _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM0 Hmr Hc Heq Hwr HB Hyr).
         eapply HdI; eassumption. }
-    constructor; [ exact Hass | exact Hps | exact Hcp | constructor | | | | | |].
+    constructor; [ exact Hass | exact Hps | exact Hcp | constructor | | | |].
     - (** At [ups'], the relations of the right types. *)
       intros m Mm k0 vs vs1 vs2 HM0 Hk Hp1 Hp2.
       pose proof (P2 _ _ HM0 k0 vs vs1 (Nat.lt_le_incl _ _ Hk) Hp1) as Hp'.
@@ -266,14 +264,12 @@ Section Fixed_GCtx.
       unfold canon_doms_rel; exact (per_head_right Eb Eb' HR).
     - exact (adm_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0 _ Hcl).
     - exact (adm_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0 _ Hcd).
-    - exact (views_fresh_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0 Hass _ Hvl).
-    - exact (views_fresh_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0 Hass _ Hvd).
     - unfold member_nparams; rewrite HM; exact (F1 _ _ HM _ _ Hns).
     - rewrite HE; intros a b; split.
-      + apply (proj1 (ind_rel_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0 _ _ _ _ (grp_adm_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0 Hass)
+      + apply (proj1 (ind_rel_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0 _ _ _ _ (grp_adm_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0)
                         (okr_at_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0) (fun m Mm a b HM0 H => RnR m Mm HM0 a b H))).
       + apply (proj1 (ind_rel_change p D ups _ _ _ _ _ _ Hn0' Ha0' Hd0' _ _ _ _
-                        (grp_adm_change p D ups _ _ _ _ _ _ Hn0' Ha0' Hd0' Hass)
+                        (grp_adm_change p D ups _ _ _ _ _ _ Hn0' Ha0' Hd0')
                         (okr_at_change p D ups _ _ _ _ _ _ Hn0' Ha0' Hd0')
                         (fun m Mm a b HM0 H => F1 _ _ HM0 _ _ (RnR _ _ HM0 _ _ (F2 _ _ HM0 _ _ H))))).
   Qed.

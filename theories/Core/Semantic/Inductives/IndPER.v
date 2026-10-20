@@ -108,7 +108,6 @@ Section Fixed_GCtx.
     Hypothesis (Ha : args_related ups') (Had : args_related ups).
     Hypothesis (Hdm : doms_related ups') (Hdmd : doms_related ups).
     Hypothesis (Hcl : recs_related ups') (Hcd : recs_related ups).
-    Hypothesis (Hvl : views_fresh p D ups nr ar dr ups') (Hvd : views_fresh p D ups nr ar dr ups).
 
     (** The evidence at a position, at the head PER. *)
     Lemma canon_nparams_evals : forall m Mm k A vs vs', ind_member D m = Some Mm ->
@@ -323,7 +322,7 @@ Section Fixed_GCtx.
       basic_per_univ_elem_econstructor;
         [ exact Hl | exact Hass | exact HM | exact Hh | exact Hu | exact Hu' | exact Hps | exact canon_nparams_per | | exact canon_nparams_invariant
         | exact canon_args_per | | exact canon_args_invariant | exact canon_doms_per | | exact canon_doms_invariant
-        | exact (canon_adm ups' Hn Ha Hcl Hdm) | exact (canon_adm ups Hnd Had Hcd Hdmd) | exact Hvl | exact Hvd
+        | exact (canon_adm ups' Hn Ha Hcl Hdm) | exact (canon_adm ups Hnd Had Hcd Hdmd)
         | exact Hns | reflexivity ].
       - red; intros; eapply canon_nparams_evals; eassumption.
       - red; intros; eapply canon_args_evals; eassumption.
