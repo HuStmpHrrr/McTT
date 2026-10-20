@@ -29,22 +29,22 @@ Inductive dclean : domain -> Prop :=
 | dclean_fn : forall (ρ : env) M, (forall x, declean (env_entry ρ x)) -> dclean (λᵈ ρ M)
 | dclean_neut : forall a m, dclean a -> dclean_ne m -> dclean (⇑ a m)
 | dclean_member : forall h ch, dmclean h -> dclean (d_member h ch)
-| dclean_indty : forall p args, (forall a, In a args -> dclean a) -> dclean (d_ind p args)
-| dclean_con : forall p c args, (forall a, In a args -> dclean a) -> dclean (d_con p c args)
-| dclean_ihfn : forall (ρ : env) nm A Bs t f, (forall x, declean (env_entry ρ x)) -> dclean f -> dclean (d_ihfn ρ nm A Bs t f)
+| dclean_indty : forall p k args, (forall a, In a args -> dclean a) -> dclean (d_ind p k args)
+| dclean_con : forall p k c args, (forall a, In a args -> dclean a) -> dclean (d_con p k c args)
+| dclean_ihfn : forall (ρ : env) Bks p t f, (forall x, declean (env_entry ρ x)) -> dclean f -> dclean (d_ihfn ρ Bks p t f)
 | dclean_shfam : forall p ups (ρ : env) t, (forall a, In a ups -> dclean a) -> (forall x, declean (env_entry ρ x)) ->
     dclean (d_shfam p ups ρ t)
-| dclean_ihfam : forall (ρm : env) A (ρ : env) t f, (forall x, declean (env_entry ρm x)) -> (forall x, declean (env_entry ρ x)) ->
-    dclean f -> dclean (d_ihfam ρm A ρ t f)
+| dclean_ihfam : forall (ρm : env) As (ρ : env) t f, (forall x, declean (env_entry ρm x)) -> (forall x, declean (env_entry ρ x)) ->
+    dclean f -> dclean (d_ihfam ρm As ρ t f)
 with dclean_ne : domain_ne -> Prop :=
 | dclean_var : forall x, dclean_ne (#ᵈ x)
 | dclean_app : forall m n, dclean_ne m -> dclean_nf n -> dclean_ne (m $ᵈ n)
 | dclean_exfalso : forall (ρ : env) A m,
     (forall x, declean (env_entry ρ x)) -> dclean_ne m ->
     dclean_ne (efqᵈ m under ρ return A)
-| dclean_elim : forall (ρ : env) nm A Bs p args m,
+| dclean_elim : forall (ρ : env) Bks p j args m,
     (forall x, declean (env_entry ρ x)) -> (forall a, In a args -> dclean a) -> dclean_ne m ->
-    dclean_ne (d_elim ρ nm A Bs p args m)
+    dclean_ne (d_elim ρ Bks p j args m)
 with dclean_nf : domain_nf -> Prop :=
 | dclean_dom : forall a m, dclean a -> dclean m -> dclean_nf (⇓ a m)
 with dmclean : dmod -> Prop :=
@@ -152,12 +152,13 @@ Section Transparent.
     (forall h ch r, h ·ₜ* ch Θ ⍮ Ξ ↘ r -> dmclean h -> dclean r) /\
     (forall h ch r, h ·ₘ* ch Θ ⍮ Ξ ↘ r -> dmclean h -> dmclean r) /\
     (forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' -> env_clean ρ -> env_clean ρ') /\
-    (forall ρ nm A Bs m r, ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_clean ρ -> dclean m -> dclean r) /\
-    (forall ρ nm A Bs gs vs ihs, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+    (forall ρ p Bks j m r, ⟦elim m at j of p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_clean ρ -> dclean m -> dclean r) /\
+    (forall ρ p Bks gs vs ihs, ⟦ihs vs of gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
        env_clean ρ -> (forall a, In a vs -> dclean a) -> forall a, In a ihs -> dclean a) /\
-    (forall ρ nm A Bs t v r, ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_clean ρ -> dclean v -> dclean r) /\
+    (forall ρ p Bks t v r, ⟦ih v of t under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_clean ρ -> dclean v -> dclean r) /\
+    (forall p ups j r, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r -> (forall u, In u ups -> dclean u) -> forall a, In a (snd r) -> dclean a) /\
     (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> (forall u, In u ups -> dclean u) -> env_clean ρ -> dclean a) /\
-    (forall ρm A ρ t v a, ⟦ihty v of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> env_clean ρm -> env_clean ρ -> dclean v -> dclean a).
+    (forall ρm As ρ t v a, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> env_clean ρm -> env_clean ρ -> dclean v -> dclean a).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => env_clean ρ -> dclean m)
@@ -173,25 +174,36 @@ Section Transparent.
              (fun h ch r _ => dmclean h -> dclean r)
              (fun h ch r _ => dmclean h -> dmclean r)
              (fun ρ Φ ρ' _ => env_clean ρ -> env_clean ρ')
-             (fun ρ nm A Bs m r _ => env_clean ρ -> dclean m -> dclean r)
-             (fun ρ nm A Bs gs vs ihs _ => env_clean ρ -> (forall a, In a vs -> dclean a) -> forall a, In a ihs -> dclean a)
-             (fun ρ nm A Bs t v r _ => env_clean ρ -> dclean v -> dclean r)
+             (fun ρ p Bks j m r _ => env_clean ρ -> dclean m -> dclean r)
+             (fun ρ p Bks gs vs ihs _ => env_clean ρ -> (forall a, In a vs -> dclean a) -> forall a, In a ihs -> dclean a)
+             (fun ρ p Bks t v r _ => env_clean ρ -> dclean v -> dclean r)
+             (fun p ups j r _ => (forall u, In u ups -> dclean u) -> forall a, In a (snd r) -> dclean a)
              (fun p ups ρ t a _ => (forall u, In u ups -> dclean u) -> env_clean ρ -> dclean a)
-             (fun ρm A ρ t v a _ => env_clean ρm -> env_clean ρ -> dclean v -> dclean a));
-      intros.
+             (fun ρm As ρ t v a _ => env_clean ρm -> env_clean ρ -> dclean v -> dclean a));
+      intros; cbn [snd] in *.
     all: repeat match goal with
-           | H : dclean (d_ind _ _) |- _ => inversion_clear H
-           | H : dclean (d_con _ _ _) |- _ => inversion_clear H
+           | H : dclean (d_ind _ _ _) |- _ => inversion_clear H
+           | H : dclean (d_con _ _ _ _) |- _ => inversion_clear H
            | H : dclean (_ _) |- _ => inversion_clear H
            | H : dmclean (_ _ _) |- _ => inversion_clear H
            | H : dmclean (_ _ _ _) |- _ => inversion_clear H
            end.
+    (* a member's head and uniform parameters: the group's own, or a view's
+       evaluated in them *)
+    all: try solve [ match goal with
+           | IH : env_clean (env_args nil ?ups) -> forall a, In a ?cups -> dclean a,
+             Hu : forall u, In u ?ups -> dclean u |- forall a, In a ?cups -> dclean a =>
+               apply IH, env_clean_args; [ apply env_clean_nil | exact Hu ]
+           end ].
     (* the recursive results of function shapes and the families of their
        types: closures over clean environments *)
-    all: try solve [ lazymatch goal with |- dclean (d_ihfn _ _ _ _ _ _) => constructor; assumption end ].
-    all: try solve [ lazymatch goal with |- dclean (d_ind _ (_ ++ ?bs)) =>
+    all: try solve [ lazymatch goal with |- dclean (d_ihfn _ _ _ _ _) => constructor; assumption end ].
+    all: try solve [ lazymatch goal with |- dclean (d_ind _ _ (?pre ++ ?bs)) =>
            match goal with IH : env_clean ?ρ -> forall a, In a bs -> dclean a, Hρ : env_clean ?ρ |- _ =>
-             pose proof (IH Hρ); constructor; all_in_with assumption end end ].
+             pose proof (IH Hρ) end;
+           match goal with IHm : (forall u, In u ?ups -> dclean u) -> forall a, In a pre -> dclean a,
+                           Hu : forall u, In u ?ups -> dclean u |- _ => pose proof (IHm Hu) end;
+           constructor; all_in_with assumption end ].
     all: try solve [ lazymatch goal with |- dclean (Πᵈ _ (_ ↦ d_shfam _ _ _ _) _) =>
            match goal with IH : env_clean ?ρ -> dclean ?b, Hρ : env_clean ?ρ |- dclean (Πᵈ ?b _ _) =>
              constructor; [ exact (IH Hρ) | apply env_clean_extend; [ apply env_clean_nil | constructor; assumption ] ] end end ].
@@ -216,7 +228,7 @@ Section Transparent.
            end ].
     (* inductive types: the values are lists, of which evaluation takes
        segments *)
-    all: try solve [ lazymatch goal with |- dclean (d_ind _ _) => idtac | |- dclean (d_con _ _ _) => idtac end;
+    all: try solve [ lazymatch goal with |- dclean (d_ind _ _ _) => idtac | |- dclean (d_con _ _ _ _) => idtac end;
                      constructor; all_in_with assumption ].
     (* the branch of a constructor, in the environment of its parameters,
        arguments and recursive results *)
@@ -228,7 +240,7 @@ Section Transparent.
       end ].
     (* the eliminator on a neutral *)
     all: try solve [ match goal with
-      | IH : env_clean (env_args ?ρ _) -> dclean ?t, Hρ : env_clean ?ρ |- dclean (⇑ ?t (d_elim _ _ _ _ _ _ _)) =>
+      | IH : env_clean (env_args ?ρ _) -> dclean ?t, Hρ : env_clean ?ρ |- dclean (⇑ ?t (d_elim _ _ _ _ _ _)) =>
           constructor;
             [ apply IH, env_clean_args;
                 [ exact Hρ | all_in_with ltac:(constructor; [ constructor; assumption | assumption ]) ]
@@ -271,7 +283,7 @@ Section Transparent.
       | Hin : In ?a (cons _ _) |- _ => destruct Hin as [<- | Hin]; eauto with mctt end ].
     all: try solve [ eauto 6 with mctt ].
     (* the module of an inductive type: the type former, applied *)
-    all: try solve [ match goal with IH : dclean (d_ind _ nil) -> _ -> dclean ?r |- dclean ?r =>
+    all: try solve [ match goal with IH : dclean (d_ind _ _ nil) -> _ -> dclean ?r |- dclean ?r =>
                        apply IH; [ first [ constructor; intros ? [] | repeat constructor ] | assumption ] end ].
     (* a local open, and a name it declares: the entry its open makes *)
     all: try solve [ match goal with
@@ -286,6 +298,16 @@ Section Transparent.
     all: try solve [ match goal with IH : dmclean ?h1 -> _ -> dmclean ?r, IH1 : dmclean ?h -> dclean ?n -> dmclean ?h1,
                       Ha : forall a, In a (cons ?n _) -> dclean a |- dmclean ?r =>
         apply IH; [ apply IH1; [ assumption | apply Ha; left; reflexivity ] | intros; apply Ha; right; assumption ] end ].
+    (* a constructor of a view at the uniform parameters: the container's at
+       the view's arguments, evaluated in an environment of clean values *)
+    all: try solve [ apply dclean_con;
+      match goal with H : env_clean (env_args nil _) -> forall a, In a _ -> dclean a |- _ =>
+        apply H; apply env_clean_args;
+          [ exact env_clean_nil
+          | first [ intros ? [] | intros a Ha; apply List.in_app_or in Ha as [Ha | [<- | []]]; auto ] ] end ].
+    (* the type of a recursive argument: the member at the shape's
+       parameters after the uniform ones *)
+    all: try solve [ apply dclean_indty; intros a Ha; apply List.in_app_or in Ha as [Ha | Ha]; auto ].
     all: match goal with Hin : In _ nil |- _ => destruct Hin end.
   Qed.
 
@@ -318,7 +340,7 @@ Section Transparent.
       Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> env_clean ρ -> (forall a, In a ups -> dclean a) ->
       forall a, In a vs -> dclean a.
   Proof.
-    destruct eval_clean as (He & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
+    destruct eval_clean as (He & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
     induction 1; intros Hρ Hu; [ apply all_in_nil | |].
     - assert (dclean a) by (eapply He; eassumption).
       apply all_in_cons; [ clean_val | apply IHfresh_cargs; [ clean_env | assumption ] ].
@@ -330,16 +352,37 @@ Section Transparent.
       Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> env_clean ρ -> env_clean ρa -> (forall a, In a vs -> dclean a) ->
       forall a, In a ihs -> dclean a.
   Proof.
-    destruct eval_clean as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hit).
+    destruct eval_clean as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hit).
     induction 1; intros Hρ Hρa Hv; [ apply all_in_nil | apply IHfresh_ihs; [ assumption | clean_env | all_in_with assumption ] |].
     assert (dclean a) by (eapply Hit; [ eassumption | assumption | assumption | apply Hv; left; reflexivity ]).
     apply all_in_cons; [ clean_val | apply IHfresh_ihs; [ assumption | assumption | all_in_with assumption ] ].
   Qed.
 
+  Lemma wrap_ihs_eval_clean : forall ρ p Bks gs' gs vs ihs r,
+      ⟦wihs vs of gs' gs with ihs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_clean ρ ->
+      (forall a, In a vs -> dclean a) -> (forall a, In a ihs -> dclean a) -> forall a, In a r -> dclean a.
+  Proof.
+    destruct eval_clean as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hih & _).
+    induction 1; intros Hρ Hv Hi; [ apply all_in_nil | | |].
+    - apply all_in_cons; [ apply Hi; left; reflexivity | apply IHwrap_ihs_eval; [ assumption | all_in_with assumption | all_in_with assumption ] ].
+    - apply all_in_cons; [ eapply Hih; [ eassumption | assumption | apply Hv; left; reflexivity ] |].
+      apply IHwrap_ihs_eval; [ assumption | all_in_with assumption | assumption ].
+    - apply IHwrap_ihs_eval; [ assumption | all_in_with assumption | assumption ].
+  Qed.
+
   (** Forward reasoning on the premises of the readback of an inductive
       type: what each evaluation or telescope of fresh variables gives. *)
-  Ltac clean_fwd He Hes Hsh :=
+  Ltac clean_fwd He Hes Hsh Hm :=
     repeat match goal with
+      | H : eval_mref _ _ _ ?ups _ (_, _, ?pre) |- _ =>
+          let h := fresh "Hs" in
+          assert (h : forall x, In x pre -> dclean x) by (exact (Hm _ _ _ _ H ltac:(solve [ all_in_with clean_val ])));
+          clear H
+      | H : wrap_ihs_eval _ _ _ _ _ _ _ _ _ ?r |- _ =>
+          let h := fresh "Hs" in
+          assert (h : forall x, In x r -> dclean x)
+            by (eapply wrap_ihs_eval_clean; [ exact H | clean_env | solve [ all_in_with clean_val ] | solve [ all_in_with clean_val ] ]);
+          clear H
       | H : fresh_tele _ _ ?ρ _ _ ?ns |- _ =>
           let h := fresh "Hs" in
           assert (h : forall x, In x ns -> dclean x) by (eapply fresh_tele_clean; [ exact H | clean_env ]);
@@ -376,10 +419,14 @@ Section Transparent.
     (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        env_clean ρ -> (forall a, In a ups -> dclean a) -> (forall a, In a vs -> dclean a) ->
        nfs_clean Ms) /\
-    (forall s ρ A p D ups cs Bs Bs', Rbrs Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-       env_clean ρ -> (forall a, In a ups -> dclean a) -> nbrs_clean Bs').
+    (forall s p ups ρ t x X, Rsh x at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ X ->
+       env_clean ρ -> (forall a, In a ups -> dclean a) -> dclean x -> nf_clean X) /\
+    (forall s ρ p Bks sel pc X i Ms NBks, Rblks i Ms of pc X from p Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
+       env_clean ρ -> (forall a, In a X -> dclean a) -> nblocks_clean NBks) /\
+    (forall s ρ p Bks sel Mv A pc X Mi r cs Bs Bs', Rbrs Bs at cs of Mi r pc X from p Bks sel Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
+       env_clean ρ -> (forall a, In a X -> dclean a) -> (forall a, In a (snd r) -> dclean a) -> nbrs_clean Bs').
   Proof.
-    destruct eval_clean as (He & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
+    destruct eval_clean as (He & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hm & Hsh & _).
     apply (read_mut_ind Θ Ξ
              (fun s m W _ => dclean_nf m -> nf_clean W)
              (fun s m M _ => dclean_ne m -> ne_clean M)
@@ -388,9 +435,11 @@ Section Transparent.
              (fun s ρ T vs Ms _ => env_clean ρ -> (forall a, In a vs -> dclean a) -> nfs_clean Ms)
              (fun s p ups ρ gs vs Ms _ => env_clean ρ -> (forall a, In a ups -> dclean a) ->
                                         (forall a, In a vs -> dclean a) -> nfs_clean Ms)
-             (fun s ρ A p D ups cs Bs Bs' _ => env_clean ρ -> (forall a, In a ups -> dclean a) ->
-                                             nbrs_clean Bs'));
-      intros; cbn;
+             (fun s p ups ρ t x X _ => env_clean ρ -> (forall a, In a ups -> dclean a) -> dclean x -> nf_clean X)
+             (fun s ρ p Bks sel pc X i Ms NBks _ => env_clean ρ -> (forall a, In a X -> dclean a) -> nblocks_clean NBks)
+             (fun s ρ p Bks sel Mv A pc X Mi r cs Bs Bs' _ => env_clean ρ -> (forall a, In a X -> dclean a) ->
+                                                            (forall a, In a (snd r) -> dclean a) -> nbrs_clean Bs'));
+      intros; cbn [snd] in *; cbn;
       repeat match goal with
         | H : dclean (_ _) |- _ => inversion_clear H
         | H : dclean (_ _ _) |- _ => inversion_clear H
@@ -405,13 +454,14 @@ Section Transparent.
     (** Inductive types: each component is read back at a type, in an
         environment, of clean values. *)
     all: try solve [
-      clean_fwd He Hes Hsh;
+      clean_fwd He Hes Hsh Hm;
       try apply nfs_clean_app;
       match goal with
       | IH : context [ nf_clean ?W ] |- nf_clean ?W => apply IH
       | IH : context [ ne_clean ?W ] |- ne_clean ?W => apply IH
       | IH : context [ nfs_clean ?W ] |- nfs_clean ?W => apply IH
       | IH : context [ nbrs_clean ?W ] |- nbrs_clean ?W => apply IH
+      | IH : context [ nblocks_clean ?W ] |- nblocks_clean ?W => apply IH
       end;
       first [ clean_env | solve [ all_in_with clean_val ] | clean_val | solve [ constructor; clean_val ] ] ].
     (** A level reads back canonically, so its atoms are sorted and merged;
@@ -426,6 +476,17 @@ Section Transparent.
          | IH : _ -> nf_clean (nf_lvl_of _) |- la_clean _ =>
              apply IH; repeat constructor; assumption
          end.
+    (* a recursive argument of a function shape, under a fresh variable *)
+    all: try solve [ match goal with
+      | e : ⟦ ?B ⟧ _ ⍮ _ ⍮ ?ρ ↘ ?b, e0 : $| ?x & ⇑! ?b ?s | _ ⍮ _ ↘ ?r, Hρ : env_clean ?ρ, Hx : dclean ?x,
+        Hu : forall a, In a ?ups -> dclean a,
+        IH : env_clean (?ρ ↦ _) -> (forall a, In a ?ups -> dclean a) -> dclean ?r -> nf_clean ?V
+        |- nf_clean ?V =>
+          let Hb := fresh "Hb" in
+          assert (Hb : dclean b) by (eapply He; eassumption);
+          apply IH; [ apply env_clean_extend; [ exact Hρ | repeat constructor; assumption ] | exact Hu
+                    | eapply Ha; [ exact e0 | exact Hx | repeat constructor; assumption ] ]
+      end ].
     (* each component is read back from a value built of clean ones *)
     all: match goal with
          | IH : _ -> nf_clean ?W |- nf_clean ?W => apply IH

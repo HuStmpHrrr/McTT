@@ -194,6 +194,11 @@ Definition im_con (M : imember) (c : string) : option (list carg) := cons_lookup
 Definition im_is_decl (M : imember) : bool :=
   match im_head M with mh_decl _ => true | mh_view _ _ _ _ => false end.
 
+(** A constructor of the member [M] is a value of its own before any
+    argument: always at a declared member, and at a view when the group has
+    uniform parameters (with none, it is at once the container's). *)
+Definition im_starts (D : ind_decl) (M : imember) : bool := im_is_decl M || (0 <? ind_nu D).
+
 (** The declared members come first: [ind_ndecl D] of them, then the
     views. *)
 Definition ind_ndecl (D : ind_decl) : nat := List.length (List.filter im_is_decl (ind_members D)).
@@ -218,16 +223,107 @@ Definition ind_order_ok (D : ind_decl) : Prop :=
     parameters, the [Self]s and the frames' parameters.  The view [v] is
     the member [n + v].
 
-    [cls_wkd d np n gs1] sends the context of the domains, the
-    non-recursive arguments before, the parameters and the frames into the
-    full one: a term in its image mentions no recursive argument and no
-    [Self]. *)
+    [cls_pat d np n pat] is the pattern of the weakening that sends the
+    context of the domains, the non-recursive arguments before ([pat] tells,
+    innermost first, which arguments before are recursive), the parameters
+    and the frames into the full one: a term in its image mentions no
+    recursive argument and no [Self].
+
+    The classification is a function, written as a recognizer: a term is in
+    the image of a pattern weakening exactly when it is the image of its own
+    preimage candidate ([img_pat]).  A nested occurrence is classified with
+    its instance, not yet numbered ([rptyp]); the command numbers the views
+    once it has found them all ([rptyp_num]). *)
 
 (** A view during classification. *)
 Definition rview : Set := (qname * nat * list exp)%type.
 
-Definition cls_wkd (d np n : nat) (gs1 : list carg) : wk :=
-  wk_pat (List.repeat false d ++ cargs_pat gs1 ++ List.repeat false np ++ List.repeat true n).
+Definition cls_pat (d np n : nat) (pat : list bool) : list bool :=
+  List.repeat false d ++ pat ++ List.repeat false np ++ List.repeat true n.
+
+(** The preimage of a term under a pattern weakening, if it has one. *)
+Definition img_pat (pat : list bool) (T : exp) : option exp :=
+  if exp_eq_dec T T[unwk_pat pat]ʷ[wk_pat pat]ʷ then Some T[unwk_pat pat]ʷ else None.
+
+Fixpoint img_pats (pat : list bool) (Ts : list exp) : option (list exp) :=
+  match Ts with
+  | nil => Some nil
+  | T :: Ts' =>
+      match img_pat pat T, img_pats pat Ts' with
+      | Some A, Some As => Some (A :: As)
+      | _, _ => None
+      end
+  end.
+
+(** The head and the arguments of an application spine. *)
+Fixpoint app_head (M : exp) : exp :=
+  match M with
+  | a_app M _ => app_head M
+  | _ => M
+  end.
+
+Fixpoint app_args (M : exp) : list exp :=
+  match M with
+  | a_app M N => app_args M ++ N :: nil
+  | _ => nil
+  end.
+
+(** The position of an instance among the views. *)
+Fixpoint rview_index (x : rview) (Vs : list rview) : option nat :=
+  match Vs with
+  | nil => None
+  | y :: Vs' => if rview_eq_dec x y then Some 0 else option_map S (rview_index x Vs')
+  end.
+
+Definition rview_mem (x : rview) (Vs : list rview) : bool :=
+  match rview_index x Vs with Some _ => true | None => false end.
+
+(** A shape as classified, a nested occurrence at its instance; an
+    argument as classified. *)
+Inductive rptyp : Set :=
+| rp_self : nat -> list exp -> rptyp
+| rp_nest : rview -> list exp -> rptyp
+| rp_pi : exp -> rptyp -> rptyp.
+
+Inductive rcarg : Set :=
+| rc_arg : exp -> rcarg
+| rc_rec : rptyp -> rcarg.
+
+Definition rcarg_bit (g : rcarg) : bool := match g with rc_rec _ => true | rc_arg _ => false end.
+
+(** The views numbered: the view [v] is the member [n + v]. *)
+Fixpoint rptyp_num (n : nat) (Vs : list rview) (t : rptyp) : option ptyp :=
+  match t with
+  | rp_self j Ps => Some (pt_self j Ps)
+  | rp_nest x Ns => option_map (fun v => pt_self (n + v) Ns) (rview_index x Vs)
+  | rp_pi B t' => option_map (pt_pi B) (rptyp_num n Vs t')
+  end.
+
+Definition rcarg_num (n : nat) (Vs : list rview) (g : rcarg) : option carg :=
+  match g with
+  | rc_arg A => Some (ca_arg A)
+  | rc_rec t => option_map ca_rec (rptyp_num n Vs t)
+  end.
+
+Fixpoint rcargs_num (n : nat) (Vs : list rview) (gs : list rcarg) : option (list carg) :=
+  match gs with
+  | nil => Some nil
+  | g :: gs' =>
+      match rcarg_num n Vs g, rcargs_num n Vs gs' with
+      | Some g', Some gs'' => Some (g' :: gs'')
+      | _, _ => None
+      end
+  end.
+
+Fixpoint rcons_num (n : nat) (Vs : list rview) (cs : list (string * list rcarg)) : option (list (string * list carg)) :=
+  match cs with
+  | nil => Some nil
+  | (c, gs) :: cs' =>
+      match rcargs_num n Vs gs, rcons_num n Vs cs' with
+      | Some gs', Some cs'' => Some ((c, gs') :: cs'')
+      | _, _ => None
+      end
+  end.
 
 (** A [Self] occurs in the uniform arguments [Cs] of a nested occurrence,
     terms over the group's [nu] own uniform parameters, the [n] [Self]s and
@@ -238,56 +334,85 @@ Definition selfs_occur (nu n : nat) (Cs : list exp) : bool :=
   if list_eq_dec exp_eq_dec (List.map (fun C => C[unwk_pat pat]ʷ[wk_pat pat]ʷ) Cs) Cs then false else true.
 
 Section Classify.
-  (** The number of uniform parameters of the filed group at [q]. *)
-  Variable (grp_nu : qname -> option nat).
-  Variables (Vs : list rview) (nu np n : nat) (gs1 : list carg).
+  (** The number of uniform parameters of the filed group at [q], if its
+      member [k] is a declared one. *)
+  Variable (grp_nu : qname -> nat -> option nat).
+  Variables (nu np n : nat) (pat : list bool).
 
-  (** A shape under [d] of its domains: a [Self] at the uniform parameters
-      and Self-free non-uniform ones; a declared member [k] of a filed
-      group at uniform arguments [Cs] in which a [Self] occurs, and no
-      argument, domain or non-uniform parameter, and at Self-free
-      non-uniform ones: the view [(q, k, Cs)]; or a [Π] over a Self-free
-      domain into a shape.  A [Self] thus occurs only strictly positively,
-      and in a nested occurrence only in its uniform arguments. *)
-  Inductive cls_sh : nat -> exp -> ptyp -> Prop :=
-  | cls_sh_self : forall d j Ps,
-      j < n ->
-      cls_sh d
-        (apps_exp (a_var (d + List.length gs1 + np + (n - 1 - j)))
-           (vars_from (d + List.length gs1 + (np - nu)) nu ++ List.map (fun P => P[cls_wkd d np n gs1]ʷ) Ps))
-        (pt_self j Ps)
-  | cls_sh_nest : forall d qc k Cs Ns v,
-      grp_nu qc = Some (List.length Cs) ->
-      List.nth_error Vs v = Some (qc, k, Cs) ->
-      selfs_occur nu n Cs = true ->
-      cls_sh d
-        (apps_exp (a_ind qc k)
-           (List.map (fun C => C[wk_shiftn (d + List.length gs1 + (np - nu))]ʷ) Cs ++
-            List.map (fun P => P[cls_wkd d np n gs1]ʷ) Ns))
-        (pt_self (n + v) Ns)
-  | cls_sh_pi : forall d B T t,
-      cls_sh (S d) T t ->
-      cls_sh d (a_pi B[cls_wkd d np n gs1]ʷ T) (pt_pi B t).
+  (** A [Self_j] at the uniform parameters and Self-free non-uniform ones,
+      under [d] domains: the variable [x] at [args]. *)
+  Definition cls_self (d x : nat) (args : list exp) : option rptyp :=
+    let b := (d + List.length pat + np)%nat in
+    if (b <=? x) && (x <? b + n) then
+      if list_eq_dec exp_eq_dec (List.firstn nu args) (vars_from (d + List.length pat + (np - nu)) nu)
+      then option_map (rp_self (n - 1 - (x - b))) (img_pats (cls_pat d np n pat) (List.skipn nu args))
+      else None
+    else None.
+
+  (** A declared member [k] of a filed group at uniform arguments [Cs] in
+      which a [Self] occurs, and no argument, domain or non-uniform
+      parameter, and at Self-free non-uniform ones: the view [(qc, k, Cs)]. *)
+  Definition cls_nest (d : nat) (qc : qname) (k : nat) (args : list exp) : option rptyp :=
+    match grp_nu qc k with
+    | Some m =>
+        if m <=? List.length args then
+          match img_pats (List.repeat true (d + List.length pat + (np - nu))) (List.firstn m args),
+                img_pats (cls_pat d np n pat) (List.skipn m args) with
+          | Some Cs, Some Ns => if selfs_occur nu n Cs then Some (rp_nest (qc, k, Cs) Ns) else None
+          | _, _ => None
+          end
+        else None
+    | None => None
+    end.
+
+  (** A shape under [d] of its domains: [cls_self], [cls_nest], or a [Π]
+      over a Self-free domain into a shape.  A [Self] thus occurs only
+      strictly positively, and in a nested occurrence only in its uniform
+      arguments. *)
+  Fixpoint cls_sh (d : nat) (T : exp) : option rptyp :=
+    match T with
+    | a_pi B T' =>
+        match img_pat (cls_pat d np n pat) B with
+        | Some B0 => option_map (rp_pi B0) (cls_sh (S d) T')
+        | None => None
+        end
+    | _ =>
+        match app_head T with
+        | a_var x => cls_self d x (app_args T)
+        | a_ind qc k => cls_nest d qc k (app_args T)
+        | _ => None
+        end
+    end.
 
   (** An argument: Self-free (and free of the recursive arguments before
       it), or recursive of a shape. *)
-  Inductive cls_nf : exp -> carg -> Prop :=
-  | cls_nf_free : forall A, cls_nf A[cls_wkd 0 np n gs1]ʷ (ca_arg A)
-  | cls_nf_rec : forall T t, cls_sh 0 T t -> cls_nf T (ca_rec t).
+  Definition cls_arg (T : exp) : option rcarg :=
+    match img_pat (cls_pat 0 np n pat) T with
+    | Some A => Some (rc_arg A)
+    | None => option_map rc_rec (cls_sh 0 T)
+    end.
 End Classify.
 
-(** The views a classified argument meets, in order: the view of the
-    shape it ends in, if it ends in one. *)
-Definition carg_view (n : nat) (g : carg) : list nat :=
-  match g with
-  | ca_rec t => if n <=? ptyp_mem t then ptyp_mem t - n :: nil else nil
-  | ca_arg _ => nil
+(** No filed group: the classification as written finds no nested
+    occurrence. *)
+Definition grp_none : qname -> nat -> option nat := fun _ _ => None.
+
+(** The instances a classified argument meets, in order: the one its
+    shape ends in, if it ends in a nested occurrence. *)
+Fixpoint rptyp_view (t : rptyp) : list rview :=
+  match t with
+  | rp_nest x _ => x :: nil
+  | rp_pi _ t' => rptyp_view t'
+  | rp_self _ _ => nil
   end.
 
-(** The views the constructors [cs] meet, constructors in order, arguments
-    left to right. *)
-Definition cons_views (n : nat) (cs : list (string * list carg)) : list nat :=
-  List.concat (List.map (fun c => List.concat (List.map (carg_view n) (snd c))) cs).
+Definition rcarg_view (g : rcarg) : list rview :=
+  match g with rc_rec t => rptyp_view t | rc_arg _ => nil end.
+
+(** The instances the constructors [cs] meet, constructors in order,
+    arguments left to right. *)
+Definition rcons_views (cs : list (string * list rcarg)) : list rview :=
+  List.concat (List.map (fun c => List.concat (List.map rcarg_view (snd c))) cs).
 
 (** ** The Views of a Group
 
@@ -300,28 +425,90 @@ Definition cons_views (n : nat) (cs : list (string * list carg)) : list nat :=
     view's group, which needs a block for each of them.  An argument nested
     twice, as [List 0l (List 0l (Rose A))], meets the outer instance only;
     the inner one is met by the outer view's constructors: the outer
-    instance comes first.  [views_enum sibs acc tr]: the views after those
-    found so far, [acc], meet the instances [tr].  The command gives
-    [sibs] as a table of the instances it meets, each entry normalized
-    there. *)
+    instance comes first.  [views_bfs sibs meets acc tr Vs]: from the views
+    found so far, [acc], and the instances still to meet, [tr], in order,
+    the views are [Vs]; a view found has the instances its constructors
+    meet ([meets]) queued after the others.  The command gives [sibs] and
+    [meets] as tables of the instances it meets. *)
 
-(** [acc] followed by those of [ss] not in it, in order. *)
-Fixpoint views_add (acc ss : list rview) : list rview :=
+(** Those of [ss] not in [acc], in order, each once. *)
+Fixpoint views_new (acc ss : list rview) : list rview :=
   match ss with
-  | nil => acc
-  | s :: ss' => views_add (if List.in_dec rview_eq_dec s acc then acc else acc ++ s :: nil) ss'
+  | nil => nil
+  | s :: ss' => if rview_mem s acc then views_new acc ss' else s :: views_new (acc ++ s :: nil) ss'
   end.
 
-Fixpoint views_enum (sibs : rview -> list rview) (acc tr : list rview) : list rview :=
-  match tr with
-  | nil => acc
-  | x :: tr' => views_enum sibs (if List.in_dec rview_eq_dec x acc then acc else views_add acc (sibs x)) tr'
-  end.
+(** The views an instance met for the first time adds: its siblings, and
+    itself if they do not list it. *)
+Definition views_met (sibs : rview -> list rview) (acc : list rview) (x : rview) : list rview :=
+  if rview_mem x acc then nil else views_new acc (sibs x ++ x :: nil).
 
-(** The siblings of an instance, read off a table, the instance alone if
-    it has no entry. *)
-Fixpoint sibs_of (tbl : list (rview * list rview)) (x : rview) : list rview :=
-  match tbl with
-  | nil => x :: nil
-  | (y, ss) :: tbl' => if rview_eq_dec x y then ss else sibs_of tbl' x
-  end.
+Inductive views_bfs (sibs meets : rview -> list rview) : list rview -> list rview -> list rview -> Prop :=
+| views_bfs_done : forall acc, views_bfs sibs meets acc nil acc
+| views_bfs_step : forall acc x tr Vs,
+    views_bfs sibs meets (acc ++ views_met sibs acc x)
+      (tr ++ List.concat (List.map meets (views_met sibs acc x))) Vs ->
+    views_bfs sibs meets acc (x :: tr) Vs.
+
+Lemma rview_index_in : forall x Vs v, rview_index x Vs = Some v -> List.nth_error Vs v = Some x.
+Proof.
+  induction Vs as [| y Vs IH]; cbn; intros v H; [ discriminate |].
+  destruct (rview_eq_dec x y) as [-> | _]; [ injection H as <-; reflexivity |].
+  destruct (rview_index x Vs) as [v' |] eqn:E; cbn in H; [ injection H as <-; cbn; apply IH; reflexivity | discriminate ].
+Qed.
+
+Lemma rview_mem_spec : forall x Vs, rview_mem x Vs = true <-> In x Vs.
+Proof.
+  unfold rview_mem; induction Vs as [| y Vs IH]; cbn; [ split; [ discriminate | intros [] ] |].
+  destruct (rview_eq_dec x y) as [-> | Hne]; [ split; auto |].
+  destruct (rview_index x Vs); cbn in *; rewrite <- IH; split; auto.
+  intros [-> | H]; [ congruence | exact H ].
+Qed.
+
+Lemma views_new_in : forall acc ss x, In x ss -> In x acc \/ In x (views_new acc ss).
+Proof.
+  intros acc ss; revert acc; induction ss as [| s ss IH]; cbn; intros acc x H; [ destruct H |].
+  destruct (rview_mem s acc) eqn:Es.
+  - destruct H as [<- | H]; [ left; apply rview_mem_spec; exact Es | exact (IH _ _ H) ].
+  - destruct H as [<- | H]; [ right; left; reflexivity |].
+    destruct (IH (acc ++ s :: nil) x H) as [H' | H']; [| right; right; exact H' ].
+    apply List.in_app_or in H' as [H' | [<- | []]]; [ left; exact H' | right; left; reflexivity ].
+Qed.
+
+Lemma views_bfs_incl : forall sibs meets acc tr Vs, views_bfs sibs meets acc tr Vs -> forall y, In y acc -> In y Vs.
+Proof. induction 1; intros y Hy; [ exact Hy | apply IHviews_bfs, List.in_or_app; left; exact Hy ]. Qed.
+
+(** Two runs from the same state whose tables agree at the views both find
+    find the same views. *)
+Lemma views_bfs_functional : forall sibs1 meets1 acc tr Vs1, views_bfs sibs1 meets1 acc tr Vs1 ->
+    forall sibs2 meets2 Vs2, views_bfs sibs2 meets2 acc tr Vs2 ->
+    (forall x, In x Vs1 -> In x Vs2 -> sibs1 x = sibs2 x /\ meets1 x = meets2 x) -> Vs1 = Vs2.
+Proof.
+  induction 1 as [acc | acc x tr Vs1 H1 IH]; intros sibs2 meets2 Vs2 H2 Hag; inversion H2; subst; [ reflexivity |].
+  match goal with H : views_bfs sibs2 meets2 _ _ Vs2 |- _ => rename H into H5 end.
+  assert (Hm : views_met sibs1 acc x = views_met sibs2 acc x).
+  { destruct (rview_mem x acc) eqn:Ex; [ unfold views_met; rewrite Ex; reflexivity |].
+    assert (Hx : forall sibs meets tr' Vs, views_bfs sibs meets (acc ++ views_met sibs acc x) tr' Vs -> In x Vs).
+    { intros * Hb; apply (views_bfs_incl _ _ _ _ _ Hb), List.in_or_app.
+      unfold views_met; rewrite Ex.
+      destruct (views_new_in acc (sibs x ++ x :: nil) x ltac:(apply List.in_or_app; right; left; reflexivity)) as [Hi | Hi];
+        [ left; exact Hi | right; exact Hi ]. }
+    pose proof (proj1 (Hag x (Hx _ _ _ _ H1) (Hx _ _ _ _ H5))) as Es.
+    unfold views_met; rewrite Ex, Es; reflexivity. }
+  assert (Hms : List.map meets1 (views_met sibs1 acc x) = List.map meets2 (views_met sibs1 acc x)).
+  { apply List.map_ext_in; intros y Hy.
+    assert (Hy1 : In y Vs1) by (apply (views_bfs_incl _ _ _ _ _ H1), List.in_or_app; right; exact Hy).
+    assert (Hy2 : In y Vs2) by (rewrite Hm in Hy; apply (views_bfs_incl _ _ _ _ _ H5), List.in_or_app; right; exact Hy).
+    exact (proj2 (Hag y Hy1 Hy2)). }
+  apply (IH sibs2 meets2); [| exact Hag ].
+  rewrite Hms, Hm; exact H5.
+Qed.
+
+(** The siblings and the instances met of an instance, read off tables
+    aligned with the views; an instance not among them is alone and meets
+    nothing. *)
+Definition sibs_tbl (Vs : list rview) (Ss : list (list rview)) (x : rview) : list rview :=
+  match rview_index x Vs with Some v => List.nth v Ss (x :: nil) | None => x :: nil end.
+
+Definition meets_tbl (Vs : list rview) (Cs : list (list (string * list rcarg))) (x : rview) : list rview :=
+  match rview_index x Vs with Some v => rcons_views (List.nth v Cs nil) | None => nil end.

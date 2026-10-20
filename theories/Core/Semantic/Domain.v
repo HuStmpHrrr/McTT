@@ -58,30 +58,38 @@ Inductive domain : Set :=
 | d_neut : domain -> domain_ne -> domain
 (** A term member of a module still lacking arguments (see above) *)
 | d_member : dmod -> list string -> domain
-(** [d_ind p as]: the type former of the inductive type [p] applied to
-    [as]; a type once [as] holds all the parameters, a function before. *)
-| d_ind : qname -> list domain -> domain
-(** [d_con p c vs]: the constructor [c] of [p] applied to [vs]; a value of
-    the type once [vs] holds all the parameters and arguments, a function
-    before. *)
-| d_con : qname -> string -> list domain -> domain
-(** [d_ihfn ρ nm A Bs t f]: the recursive result of an argument [f] of a
+(** [d_ind p k as]: the type former of the member [k] of the group of
+    inductive types at [p], applied to [as]; a type once [as] holds all the
+    member's parameters, a function before.  At a view member it is only
+    the type at which readback reads the recursive arguments of the group
+    that are of the view ([read_shape]); a term, a value and a neutral of
+    the view's type have the container's type. *)
+| d_ind : qname -> nat -> list domain -> domain
+(** [d_con p k c vs]: the constructor [c] of the member [k] of the group
+    at [p], applied to [vs]; a value of the member once [vs] holds all its
+    parameters and the arguments, a function before.  A value of a view is
+    one of the container's member: a constructor of a view is the view's
+    only until it has the group's uniform parameters, then the container's
+    at the view's arguments there. *)
+| d_con : qname -> nat -> string -> list domain -> domain
+(** [d_ihfn ρ Bks p t f]: the recursive result of an argument [f] of a
     function shape, whose shape after the first domain is [t]: applied to
-    [c], the recursive result of shape [t] at [f c], by the eliminator with
-    the motive [A] and the branches [Bs] in [ρ]. *)
-| d_ihfn : list dentry -> nat -> exp -> list (string * nat * exp) -> ptyp -> domain -> domain
+    [c], the recursive result of shape [t] at [f c], by the eliminator of
+    the group at [p] with the blocks [Bks] in [ρ]. *)
+| d_ihfn : list dentry -> list eblock -> qname -> ptyp -> domain -> domain
 (** [d_shfam p ups ρ t]: the codomain of the type of an argument of a
     function shape, whose shape after the first domain is [t]: applied to
     [c], the type of shape [t] in [ρ] extended by [c], at the uniform
-    parameters [ups] of [p].  A [Π] whose codomain is [#1 $ #0] in the
-    environment of this family is the type of such an argument. *)
+    parameters [ups] of the group at [p].  A [Π] whose codomain is
+    [#1 $ #0] in the environment of this family is the type of such an
+    argument. *)
 | d_shfam : qname -> list domain -> list dentry -> ptyp -> domain
-(** [d_ihfam ρm A ρ t f]: the codomain of the type of the recursive result
+(** [d_ihfam ρm As ρ t f]: the codomain of the type of the recursive result
     of an argument [f] of a function shape, whose shape after the first
     domain is [t]: applied to [c], the type of the recursive result of shape
-    [t] at [f c], the motive [A] in [ρm], the shape's components in [ρ]
-    extended by [c]. *)
-| d_ihfam : list dentry -> exp -> list dentry -> ptyp -> domain -> domain
+    [t] at [f c], the motives [As] of the members in [ρm], the shape's
+    components in [ρ] extended by [c]. *)
+| d_ihfam : list dentry -> list exp -> list dentry -> ptyp -> domain -> domain
 with domain_ne : Set :=
 (** [x] is a de Bruijn level, not an index: it names a variable absolutely and
     does not change under binders. *)
@@ -92,9 +100,11 @@ with domain_ne : Set :=
 | d_exfalso : list dentry -> typ -> domain_ne -> domain_ne
 (** An opaque definition or an axiom. *)
 | d_glob : qname -> domain_ne
-(** [d_elim ρ nm A Bs p as m]: the eliminator of [p] on a neutral of type
-    [d_ind p as], its motive and branches as closures in [ρ]. *)
-| d_elim : list dentry -> nat -> typ -> list (string * nat * exp) -> qname -> list domain -> domain_ne -> domain_ne
+(** [d_elim ρ Bks p m as m']: the eliminator of the group at [p] at its
+    member [m], the blocks [Bks] closures in [ρ], on a neutral [m'] of the
+    member's type, the declared member it is at the parameters [as] (at a
+    view, the container's member). *)
+| d_elim : list dentry -> list eblock -> qname -> nat -> list domain -> domain_ne -> domain_ne
 with domain_nf : Set :=
 (** [d_dom a m]: the value [m] at the type [a], to be read back *)
 | d_dom : domain -> domain -> domain_nf

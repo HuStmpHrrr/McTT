@@ -22,6 +22,9 @@ Section GlobalExt.
   Lemma ind_lookup_ext : forall p, ind_lookup Θ1 Ξ1 p = ind_lookup Θ2 Ξ2 p.
   Proof. exact Hind. Qed.
 
+  Lemma ind_mlookup_ext : forall p, ind_mlookup Θ1 Ξ1 p = ind_mlookup Θ2 Ξ2 p.
+  Proof. intros; rewrite !ind_mlookup_unfold, Hmod; reflexivity. Qed.
+
   Lemma gc_loc_ext : forall p, gc_loc Θ1 Ξ1 p = gc_loc Θ2 Ξ2 p.
   Proof. intros; unfold gc_loc; rewrite Hfr, Hbody; reflexivity. Qed.
 
@@ -72,11 +75,12 @@ Section GlobalExt.
     (forall h ch r, h ·ₜ* ch Θ1 ⍮ Ξ1 ↘ r -> h ·ₜ* ch Θ2 ⍮ Ξ2 ↘ r) /\
     (forall h ch r, h ·ₘ* ch Θ1 ⍮ Ξ1 ↘ r -> h ·ₘ* ch Θ2 ⍮ Ξ2 ↘ r) /\
     (forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ1 ⍮ Ξ1 ⍮ ρ ↘ ρ' -> ⟦ Φ ⟧ᵇ Θ2 ⍮ Ξ2 ⍮ ρ ↘ ρ') /\
-    (forall ρ nm A Bs m r, ⟦elim m under nm A Bs ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ r -> ⟦elim m under nm A Bs ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ r) /\
-    (forall ρ nm A Bs gs vs ihs, ⟦ihs vs of gs under nm A Bs ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ ihs -> ⟦ihs vs of gs under nm A Bs ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ ihs) /\
-    (forall ρ nm A Bs t v r, ⟦ih v of t under nm A Bs ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ r -> ⟦ih v of t under nm A Bs ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ r) /\
+    (forall ρ p Bks j m r, ⟦elim m at j of p Bks ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ r -> ⟦elim m at j of p Bks ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ r) /\
+    (forall ρ p Bks gs vs ihs, ⟦ihs vs of gs under p Bks ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ ihs -> ⟦ihs vs of gs under p Bks ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ ihs) /\
+    (forall ρ p Bks t v r, ⟦ih v of t under p Bks ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ r -> ⟦ih v of t under p Bks ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ r) /\
+    (forall p ups j r, ⟦mref j of p ups ⟧ Θ1 ⍮ Ξ1 ↘ r -> ⟦mref j of p ups ⟧ Θ2 ⍮ Ξ2 ↘ r) /\
     (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a -> ⟦shty t of p ups ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a) /\
-    (forall ρm A ρ t v a, ⟦ihty v of t under ρm A ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a -> ⟦ihty v of t under ρm A ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a).
+    (forall ρm As ρ t v a, ⟦ihty v of t under ρm As ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a -> ⟦ihty v of t under ρm As ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a).
   Proof.
     apply (eval_mut_ind Θ1 Ξ1
              (fun M ρ m _ => ⟦ M ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ m)
@@ -92,17 +96,18 @@ Section GlobalExt.
              (fun h ch r _ => eval_selc Θ2 Ξ2 h ch r)
              (fun h ch r _ => eval_selmc Θ2 Ξ2 h ch r)
              (fun ρ Φ ρ' _ => eval_benv Θ2 Ξ2 ρ Φ ρ')
-             (fun ρ nm A Bs m r _ => eval_elim Θ2 Ξ2 ρ nm A Bs m r)
-             (fun ρ nm A Bs gs vs ihs _ => eval_ihs Θ2 Ξ2 ρ nm A Bs gs vs ihs)
-             (fun ρ nm A Bs t v r _ => eval_ih Θ2 Ξ2 ρ nm A Bs t v r)
+             (fun ρ p Bks j m r _ => eval_elim Θ2 Ξ2 ρ p Bks j m r)
+             (fun ρ p Bks gs vs ihs _ => eval_ihs Θ2 Ξ2 ρ p Bks gs vs ihs)
+             (fun ρ p Bks t v r _ => eval_ih Θ2 Ξ2 ρ p Bks t v r)
+             (fun p ups j r _ => eval_mref Θ2 Ξ2 p ups j r)
              (fun p ups ρ t a _ => eval_shty Θ2 Ξ2 p ups ρ t a)
-             (fun ρm A ρ t v a _ => eval_ihty Θ2 Ξ2 ρm A ρ t v a)).
+             (fun ρm As ρ t v a _ => eval_ihty Θ2 Ξ2 ρm As ρ t v a)).
     all: intros;
       repeat match goal with
              | H : _ \/ _ |- _ => destruct H
              | H : exists _, _ |- _ => destruct H
              end;
-      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?ind_lookup_ext, ?Hia in *.
+      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?ind_lookup_ext, ?ind_mlookup_ext, ?Hia in *.
     all: try solve [ econstructor; eauto; apply kind_ext; assumption ].
   Qed.
 
@@ -113,8 +118,12 @@ Section GlobalExt.
       Fcargs gs of p ups in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ vs -> Fcargs gs of p ups in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ vs.
   Proof. pose proof eval_ext; destruct_all; induction 1; econstructor; eauto. Qed.
 
-  Lemma fresh_ihs_ext : forall ρ A ρa gs vs s ihs,
-      Fihs vs at gs under ρ A in Θ1 ⍮ Ξ1 ⍮ ρa ⍮ s ↘ ihs -> Fihs vs at gs under ρ A in Θ2 ⍮ Ξ2 ⍮ ρa ⍮ s ↘ ihs.
+  Lemma fresh_ihs_ext : forall ρ As ρa gs vs s ihs,
+      Fihs vs at gs under ρ As in Θ1 ⍮ Ξ1 ⍮ ρa ⍮ s ↘ ihs -> Fihs vs at gs under ρ As in Θ2 ⍮ Ξ2 ⍮ ρa ⍮ s ↘ ihs.
+  Proof. pose proof eval_ext; destruct_all; induction 1; econstructor; eauto. Qed.
+
+  Lemma wrap_ihs_eval_ext : forall ρ p Bks gs' gs vs ihs r,
+      ⟦wihs vs of gs' gs with ihs under p Bks ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ r -> ⟦wihs vs of gs' gs with ihs under p Bks ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ r.
   Proof. pose proof eval_ext; destruct_all; induction 1; econstructor; eauto. Qed.
 
   Lemma read_ext :
@@ -124,7 +133,11 @@ Section GlobalExt.
     (forall s xs ys, Rla xs in Θ1 ⍮ Ξ1 ⍮ s ↘ ys -> Rla xs in Θ2 ⍮ Ξ2 ⍮ s ↘ ys) /\
     (forall s ρ T vs Ms, Rps vs at T in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Ms -> Rps vs at T in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Ms) /\
     (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Ms -> Rcargs vs at gs of p ups in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Ms) /\
-    (forall s ρ A p D ups cs Bs Bs', Rbrs Bs at cs of p D ups under A in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Bs' -> Rbrs Bs at cs of p D ups under A in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Bs').
+    (forall s p ups ρ t v V, Rsh v at t of p ups in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ V -> Rsh v at t of p ups in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ V) /\
+    (forall s ρ p Bks sel pc X i Ms NBks, Rblks i Ms of pc X from p Bks sel in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ NBks ->
+       Rblks i Ms of pc X from p Bks sel in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ NBks) /\
+    (forall s ρ p Bks sel Mv A pc X Mi r cs Bs Bs', Rbrs Bs at cs of Mi r pc X from p Bks sel Mv A in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Bs' ->
+       Rbrs Bs at cs of Mi r pc X from p Bks sel Mv A in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Bs').
   Proof.
     pose proof eval_ext as He; destruct_all.
     apply (read_mut_ind Θ1 Ξ1
@@ -134,11 +147,13 @@ Section GlobalExt.
              (fun s xs ys _ => read_la Θ2 Ξ2 s xs ys)
              (fun s ρ T vs Ms _ => read_ps Θ2 Ξ2 s ρ T vs Ms)
              (fun s p ups ρ gs vs Ms _ => read_cargs Θ2 Ξ2 s p ups ρ gs vs Ms)
-             (fun s ρ A p D ups cs Bs Bs' _ => read_brs Θ2 Ξ2 s ρ A p D ups cs Bs Bs')).
+             (fun s p ups ρ t v V _ => read_shape Θ2 Ξ2 s p ups ρ t v V)
+             (fun s ρ p Bks sel pc X i Ms NBks _ => read_blocks Θ2 Ξ2 s ρ p Bks sel pc X i Ms NBks)
+             (fun s ρ p Bks sel Mv A pc X Mi r cs Bs Bs' _ => read_brs Θ2 Ξ2 s ρ p Bks sel Mv A pc X Mi r cs Bs Bs')).
     all: intros; econstructor;
-      try match goal with
+      repeat match goal with
           | H : ind_lookup Θ1 Ξ1 _ = _ |- _ => rewrite ind_lookup_ext in H
-          end; eauto using fresh_tele_ext, fresh_cargs_ext, fresh_ihs_ext.
+          end; eauto using fresh_tele_ext, fresh_cargs_ext, fresh_ihs_ext, wrap_ihs_eval_ext.
   Qed.
 
   Lemma initial_env_ext : forall Γ ρ, initial_env Θ1 Ξ1 Γ ρ -> initial_env Θ2 Ξ2 Γ ρ.

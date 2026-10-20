@@ -1865,6 +1865,24 @@ Proof.
         try (erewrite (ind_ty_wk D) by eassumption); try (erewrite (con_ty_wk _ D) by eassumption);
         first [ eapply wf_ind | eapply wf_con | eapply wf_exp_eq_ind_cong | eapply wf_exp_eq_con_cong ]; eauto
     end ].
+  (** A constructor of a view at the uniform parameters: the view's
+      arguments there move with them ([im_pre_wk]). *)
+  all: try solve [
+    match goal with
+    | Hl : ind_lookup _ _ _ = Some ?D, HM : ind_member ?D _ = Some ?Mj, HU : List.length ?Us = ind_nu ?D,
+      IH1 : forall Δ0 φ0, wf_wk _ _ Δ0 _ φ0 -> wf_exp _ _ Δ0 _ (apps_exp (a_con _ _ _) (?Us ++ _))[φ0]ʷ,
+      IH2 : forall Δ0 φ0, wf_wk _ _ Δ0 _ φ0 -> wf_exp _ _ Δ0 _ (apps_exp (a_con _ _ _) (im_pre ?Mj ?Us ++ _))[φ0]ʷ,
+      Hφ : wf_wk _ _ _ _ _ |- _ =>
+        let HD := fresh "HD" in
+        assert (HD : decl_closed D)
+          by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_wk_dom _ _ _ _ _ Hφ) | exact Hl ]);
+        pose proof (IH1 _ _ Hφ) as E1; pose proof (IH2 _ _ Hφ) as E2;
+        rewrite apps_exp_wk, List.map_app in E1, E2; rewrite !apps_exp_wk, !List.map_app;
+        cbn in E1, E2 |- *;
+        rewrite (im_pre_wk D _ Mj Us) in E2 |- * by eassumption;
+        eapply wf_exp_eq_con_view; [ eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
+                                   | exact E1 | exact E2 ]
+    end ].
 Qed.
 
 Corollary wk_preserves_exp : forall Θ Ξ Γ Δ A M φ,
@@ -2746,6 +2764,24 @@ Proof.
           by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hσ) | exact Hl ]);
         try (erewrite (ind_ty_sub D) by eassumption); try (erewrite (con_ty_sub _ D) by eassumption);
         first [ eapply wf_ind | eapply wf_con | eapply wf_exp_eq_ind_cong | eapply wf_exp_eq_con_cong ]; eauto
+    end ].
+  (** A constructor of a view at the uniform parameters, as for
+      weakening ([im_pre_sub]). *)
+  all: try solve [
+    match goal with
+    | Hl : ind_lookup _ _ _ = Some ?D, HM : ind_member ?D _ = Some ?Mj, HU : List.length ?Us = ind_nu ?D,
+      IH1 : forall Γ0 σ0, wf_sub _ _ Γ0 _ σ0 -> wf_exp _ _ Γ0 _ (apps_exp (a_con _ _ _) (?Us ++ _))[σ0],
+      IH2 : forall Γ0 σ0, wf_sub _ _ Γ0 _ σ0 -> wf_exp _ _ Γ0 _ (apps_exp (a_con _ _ _) (im_pre ?Mj ?Us ++ _))[σ0],
+      Hσ : wf_sub _ _ _ _ _ |- _ =>
+        let HD := fresh "HD" in
+        assert (HD : decl_closed D)
+          by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hσ) | exact Hl ]);
+        pose proof (IH1 _ _ Hσ) as E1; pose proof (IH2 _ _ Hσ) as E2;
+        rewrite apps_exp_sub, List.map_app in E1, E2; rewrite !apps_exp_sub, !List.map_app;
+        cbn in E1, E2 |- *;
+        rewrite (im_pre_sub D _ Mj Us) in E2 |- * by eassumption;
+        eapply wf_exp_eq_con_view; [ eassumption | eassumption | eassumption | rewrite List.length_map; exact HU
+                                   | exact E1 | exact E2 ]
     end ].
 Qed.
 

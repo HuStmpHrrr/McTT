@@ -338,6 +338,38 @@ Proof. reflexivity. Qed.
 (** The motives of the blocks, in order. *)
 Definition blocks_motives (Bks : list eblock) : list exp := List.map eb_motive Bks.
 
+(** ** Reading an Eliminator at its Member
+
+    An eliminator of a group at its member [m] is read, when stuck, as the
+    eliminator of the group the member is at: the group itself at a
+    declared member, the container's at a view (E1′).  The blocks it reads
+    are those of the members of that group, each the block of the member
+    of this group [elim_src] gives: itself at a declared member, the view
+    [vm] lists at a view.  Nothing is built: a block is looked up. *)
+Definition im_sel (M : imember) : option (list nat) :=
+  match im_head M with
+  | mh_decl _ => None
+  | mh_view _ _ _ vm => Some vm
+  end.
+
+Definition elim_src (sel : option (list nat)) (i : nat) : nat :=
+  match sel with
+  | None => i
+  | Some vm => List.nth i vm 0
+  end.
+
+(** The motives of the members of the group read, in its order. *)
+Definition motives_sel (sel : option (list nat)) (As : list exp) : list exp :=
+  match sel with
+  | None => As
+  | Some vm => List.map (fun v => List.nth v As a_True) vm
+  end.
+
+(** The motive of each block read binds the non-uniform parameters of the
+    member of the group read it is the block of, and the scrutinee. *)
+Definition blocks_nm_at (Dq : ind_decl) (sel : option (list nat)) (Bks : list eblock) : Prop :=
+  forall i Mi b, ind_member Dq i = Some Mi -> List.nth_error Bks (elim_src sel i) = Some b -> eb_nm b = S (im_nn Mi).
+
 (** The blocks with the first one annotated by the type of the first
     member at the uniform parameters [Us]: the eliminator at a view must
     have its first block annotated, so that its uniform parameters can be
@@ -416,6 +448,18 @@ Fixpoint cargs_corr (vm : list nat) (gs' gs : list carg) : Prop :=
   | ca_arg _ :: gs1', ca_arg _ :: gs1 => cargs_corr vm gs1' gs1
   | ca_arg _ :: gs1', ca_rec _ :: gs1 => cargs_corr vm gs1' gs1
   | _, _ => False
+  end.
+
+(** The arguments of a view's constructor that the view nests through
+    (non-recursive in the container [gs'], recursive in the view [gs]) end
+    in members of rank below [r] ([rk]).  The eliminator at a view reads
+    back its branches with the eliminator at those members applied to fresh
+    variables; the rank orders these readbacks. *)
+Fixpoint cargs_nest_ok (rk : nat -> nat) (r : nat) (gs' gs : list carg) : Prop :=
+  match gs', gs with
+  | ca_arg _ :: gs1', ca_rec t :: gs1 => rk (ptyp_mem t) < r /\ cargs_nest_ok rk r gs1' gs1
+  | _ :: gs1', _ :: gs1 => cargs_nest_ok rk r gs1' gs1
+  | _, _ => True
   end.
 
 (** ** The Eliminator at a View, as the Container's

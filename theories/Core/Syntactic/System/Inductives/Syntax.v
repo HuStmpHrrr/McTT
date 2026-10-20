@@ -196,6 +196,12 @@ Proof.
   cbn [Nat.add]; rewrite !vars_from_S; cbn [List.app]; rewrite IH; do 2 f_equal; lia.
 Qed.
 
+Lemma vars_from_wk_shiftn : forall n m k,
+    List.map (fun M => M[wk_shiftn n]ʷ) (vars_from m k) = vars_from (m + n) k.
+Proof.
+  intros; unfold vars_from; rewrite List.map_map; apply List.map_ext; intros i; cbn; f_equal; lia.
+Qed.
+
 Lemma sb_of_list_vars : forall σ j k x, x < k -> sb_of_list σ (vars_from j k) x = se_exp (a_var (j + x)).
 Proof.
   intros * Hx; rewrite (sb_of_list_nth _ _ _ (a_var 0)) by (rewrite length_vars_from; exact Hx).

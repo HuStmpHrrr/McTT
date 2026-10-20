@@ -25,11 +25,19 @@ Import Domain_Notations.
       functional_eval_rewrite_clear; f_equal; auto.
   Qed.
 
-  Lemma functional_fresh_ihs : forall {Θ Ξ} ρ A ρa gs vs s ihs1, Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs1 ->
-      forall ihs2, Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs2 -> ihs1 = ihs2.
+  Lemma functional_fresh_ihs : forall {Θ Ξ} ρ As ρa gs vs s ihs1, Fihs vs at gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs1 ->
+      forall ihs2, Fihs vs at gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs2 -> ihs1 = ihs2.
   Proof.
     induction 1; intros * H2; inversion H2; subst; auto.
     functional_eval_rewrite_clear; f_equal; auto.
+  Qed.
+
+  Lemma functional_wrap_ihs_eval : forall {Θ Ξ} ρ p Bks gs' gs vs ihs r1,
+      ⟦wihs vs of gs' gs with ihs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+      forall r2, ⟦wihs vs of gs' gs with ihs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
+  Proof.
+    induction 1; intros * H2; inversion H2; subst; auto.
+    all: functional_eval_rewrite_clear; f_equal; auto.
   Qed.
 
   Ltac functional_fresh_rewrite_clear :=
@@ -40,9 +48,23 @@ Import Domain_Notations.
           pose proof (functional_fresh_cargs _ _ _ _ _ _ H1 _ H2); subst; clear H2
       | H1 : fresh_ihs ?T ?X ?ρ ?A ?ρa ?gs ?vs ?s ?i1, H2 : fresh_ihs ?T ?X ?ρ ?A ?ρa ?gs ?vs ?s ?i2 |- _ =>
           pose proof (functional_fresh_ihs _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : wrap_ihs_eval ?T ?X ?ρ ?p ?Bks ?g' ?g ?vs ?ih ?r1, H2 : wrap_ihs_eval ?T ?X ?ρ ?p ?Bks ?g' ?g ?vs ?ih ?r2 |- _ =>
+          pose proof (functional_wrap_ihs_eval _ _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
       | H1 : ⟦ ?Ps ⟧* ?T ⍮ ?X ⍮ ?ρ ↘ ?b1, H2 : ⟦ ?Ps ⟧* ?T ⍮ ?X ⍮ ?ρ ↘ ?b2 |- _ =>
           pose proof (functional_eval_exps _ _ _ _ H1 H2); subst; clear H2
+      | H1 : eval_mref ?T ?X ?p ?ups ?j ?r1, H2 : eval_mref ?T ?X ?p ?ups ?j ?r2 |- _ =>
+          let E := fresh "E" in
+          pose proof (functional_eval_mref _ _ _ _ _ H1 H2) as E; injection E; intros; subst; clear H2
+      | H : (_, _) = (_, _) |- _ => injection H; intros; subst; clear H
       | H1 : ind_lookup ?T ?X ?p = Some _, H2 : ind_lookup ?T ?X ?p = Some _ |- _ =>
+          rewrite H1 in H2; injection H2 as ?; subst
+      | H1 : ind_member ?D ?k = Some _, H2 : ind_member ?D ?k = Some _ |- _ =>
+          rewrite H1 in H2; injection H2 as ?; subst
+      | H1 : im_ref ?p ?j ?M = _, H2 : im_ref ?p ?j ?M = _ |- _ =>
+          rewrite H1 in H2; injection H2; intros; subst; clear H2
+      | H1 : im_head ?M = _, H2 : im_head ?M = _ |- _ =>
+          rewrite H1 in H2; injection H2; intros; subst; clear H2
+      | H1 : List.nth_error ?Bks ?j = Some _, H2 : List.nth_error ?Bks ?j = Some _ |- _ =>
           rewrite H1 in H2; injection H2 as ?; subst
       | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = Some _ |- _ =>
           rewrite H1 in H2; injection H2 as ?; subst
@@ -72,19 +94,30 @@ Import Domain_Notations.
       (forall s ρ T vs Vs1, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs1 -> forall Vs2, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs2 -> Vs1 = Vs2) /\
       (forall s p ups ρ gs vs Vs1, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs1 ->
          forall Vs2, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs2 -> Vs1 = Vs2) /\
-      (forall s ρ A p D ups cs Bs Bs1, Rbrs Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs1 ->
-         forall Bs2, Rbrs Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs2 -> Bs1 = Bs2).
+      (forall s p ups ρ t v V1, Rsh v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V1 ->
+         forall V2, Rsh v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V2 -> V1 = V2) /\
+      (forall s ρ p Bks sel pc X i Ms NBks1, Rblks i Ms of pc X from p Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks1 ->
+         forall NBks2, Rblks i Ms of pc X from p Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks2 -> NBks1 = NBks2) /\
+      (forall s ρ p Bks sel Mv A pc X Mi r cs Bs Bs1, Rbrs Bs at cs of Mi r pc X from p Bks sel Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs1 ->
+         forall Bs2, Rbrs Bs at cs of Mi r pc X from p Bks sel Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs2 -> Bs1 = Bs2).
   Proof.
     intros Θ Ξ; apply read_mut_ind; intros; progressive_inversion; functional_eval_rewrite_clear;
-      functional_fresh_rewrite_clear; functional_eval_rewrite_clear;
-      first
-        [ (** A small universe takes the canonical level that its level reads
-              back as, so its case is that equality under [nf_univ_of]. *)
-          solve [ apply nf_univ_of_cong; eauto ]
-          (** The other level cases read back a canonical form, so the equality
-              is under [nf_lvl_of (lvl_canon …)]: [repeat f_equal] reaches the
-              atoms. *)
-        | repeat f_equal; solve [eauto] ].
+      functional_fresh_rewrite_clear; functional_eval_rewrite_clear.
+    (** A small universe takes the canonical level that its level reads
+        back as, so its case is that equality under [nf_univ_of].  The other
+        level cases read back a canonical form, so the equality is under
+        [nf_lvl_of (lvl_canon …)]: [repeat f_equal] reaches the atoms. *)
+    all: try solve [ apply nf_univ_of_cong; eauto | repeat f_equal; solve [eauto] ].
+    (** A constructor at an inductive type, read by one of two rules (a
+        declared member, or a view): the other side is inverted here, the
+        two rules excluding each other by the member's head. *)
+    all: match goal with H : read_nf _ _ _ _ _ |- _ = _ => inversion H; subst; clear H end;
+      functional_fresh_rewrite_clear; functional_eval_rewrite_clear; try congruence;
+      repeat match goal with
+        | H1 : List.length ?v = (?a + ?g)%nat, H2 : List.length ?v = (?b + ?g)%nat |- _ =>
+            assert_fails (constr_eq a b); assert (a = b) by lia; subst b
+        end;
+      repeat f_equal; solve [eauto].
   Qed.
 
   Corollary functional_read_nf : forall {Θ Ξ} s m M1 M2,
@@ -180,6 +213,6 @@ Lemma fresh_cargs_length : forall {Θ Ξ} p ups ρ gs s vs,
     Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> List.length vs = List.length gs.
 Proof. induction 1; cbn; congruence. Qed.
 
-Lemma fresh_ihs_length : forall {Θ Ξ} ρ A ρa gs vs s ihs,
-    Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> List.length ihs = cargs_nrec gs.
+Lemma fresh_ihs_length : forall {Θ Ξ} ρ As ρa gs vs s ihs,
+    Fihs vs at gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> List.length ihs = cargs_nrec gs.
 Proof. induction 1; cbn; congruence. Qed.

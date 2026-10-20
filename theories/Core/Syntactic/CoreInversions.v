@@ -341,7 +341,6 @@ Record con_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (p : qname) (k : nat) (c : 
   ; ci_args : list carg
   ; ci_lookup : ind_lookup Θ Ξ p = Some ci_decl
   ; ci_member : ind_member ci_decl k = Some ci_mem
-  ; ci_lt : k < ind_ndecl ci_decl
   ; ci_con : ind_con ci_mem c = Some ci_args
   ; ci_sub : Θ ⍮ Ξ ⍮ Γ ⊢ con_ty p ci_decl k ci_mem ci_args ⊆ T }.
 
@@ -349,7 +348,7 @@ Lemma wf_con_inversion : forall {Θ Ξ Γ p k c T}, Θ ⍮ Ξ ⍮ Γ ⊢ a_con p
 Proof.
   intros * H; dependent induction H.
   - econstructor; try eassumption; eapply wf_subtyp_of_typed; econstructor; eassumption.
-  - destruct (IHwf_exp1 _ _ _ eq_refl) as [D Mk gs Hl Hk Hlt Hc Hs].
+  - destruct (IHwf_exp1 _ _ _ eq_refl) as [D Mk gs Hl Hk Hc Hs].
     econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
 Qed.
 

@@ -550,6 +550,9 @@ Record decl_typed (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : Prop := mk_decl_ty
         List.nth_error vm k' = Some k /\
         List.map fst (im_cons Mk) = List.map fst (im_cons Mk') /\
         (forall c gs' gs, ind_con Mk' c = Some gs' -> ind_con Mk c = Some gs -> cargs_corr vm gs' gs)
+  ; dt_rank : exists rk, view_rank_ok Θ Ξ D rk
+  ; dt_vwrap : forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+      exists D', ind_lookup Θ Ξ qc = Some D' /\ vwrap_ok D D' vm
   ; dt_view_is : forall k Mk qc k' Is vm D' j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup Θ Ξ qc = Some D' -> nth_error Is j = Some I ->
       nth_error (tele_insts (ind_uparams D') Id Is) j = Some T ->
@@ -627,7 +630,7 @@ Proof.
   intros * He HD; pose proof (em_res _ _ _ _ He) as Hs.
   pose proof (decl_typed_container _ _ _ _ _ Hs HD) as Hcont.
   destruct (emb_preserves_wf _ _ _ _ He) as (Hc & Ht & Hq & Hst & Hx & _).
-  destruct HD as [Ha Hmv HU Ho Hsu [i Hi] [n Hn] Hna Hnd HN HA HB Hpl HP Hv Hvi Hvd Hvv Hvvi Hvn Hva Hvdm Hvp Hvs].
+  destruct HD as [Ha Hmv HU Ho Hsu [i Hi] [n Hn] Hna Hnd HN HA HB Hpl HP Hv Hrk Hvw Hvi Hvd Hvv Hvvi Hvn Hva Hvdm Hvp Hvs].
   constructor; try assumption.
   - exact (Hc _ HU).
   - exists i; exact (Ht _ _ _ Hi).
@@ -638,6 +641,10 @@ Proof.
   - intros; apply Ht; eapply HP; eassumption.
   - intros * Hk Hh; destruct (Hv _ _ _ _ _ _ Hk Hh) as (D' & Mk' & Hl & Hrest).
     exists D', Mk'; split; [ exact (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hl) | exact Hrest ].
+  - destruct Hrk as [rk [Hr0 Hr1]]; exists rk; constructor; [ exact Hr0 |].
+    intros * Hk Hh Hl; pose proof (Hcont _ _ _ _ _ _ _ Hk Hh Hl); intros; eapply Hr1; eassumption.
+  - intros * Hk Hh; destruct (Hvw _ _ _ _ _ _ Hk Hh) as (D' & Hl & Hw).
+    exists D'; split; [ exact (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hl) | exact Hw ].
   - intros * Hk Hh Hl; pose proof (Hcont _ _ _ _ _ _ _ Hk Hh Hl); intros; apply Ht; eapply Hvi; eassumption.
   - intros * Hk Hh Hl; pose proof (Hcont _ _ _ _ _ _ _ Hk Hh Hl); intros; eapply Hvd; eassumption.
   - intros * Hk Hh Hl; pose proof (Hcont _ _ _ _ _ _ _ Hk Hh Hl); intros; eapply Hvv; eassumption.

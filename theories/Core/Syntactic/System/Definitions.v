@@ -106,6 +106,21 @@ Fixpoint body_shape (Φ Φ' : gmod) : Prop :=
     at; without one, the type is any its body has. *)
 Definition let_ann (oA : option typ) (A : typ) : Prop := oA = None \/ oA = Some A.
 
+(** A rank [rk] of the members of a group [D]: [0] at a declared member,
+    and below a view's at every member the view nests through in any block
+    the eliminator at the view reads (one per member [i'] of the
+    container's group, the block of the member [v] the view takes it to).
+    The readback of a stuck eliminator at a view reads its branches with
+    the eliminator at those members applied to fresh variables; the rank
+    makes that recursion well founded. *)
+#[warnings="-cannot-define-projection"]
+Record view_rank_ok (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (rk : nat -> nat) : Prop := mk_view_rank_ok
+  { vro_decl : forall k Mk pm, ind_member D k = Some Mk -> im_head Mk = mh_decl pm -> rk k = 0
+  ; vro_nest : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs, ind_member D k = Some Mk ->
+      im_head Mk = mh_view qc k' Is vm -> ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' ->
+      List.nth_error vm i' = Some v -> ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
+      cargs_nest_ok rk (rk k) gs' gs }.
+
 (** ** The Mutually Defined Judgments
 
     Four about terms, three about units, extensions and module expressions,
@@ -185,17 +200,19 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      ind_member D k = Some M ->
      k < ind_ndecl D ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_ind p k : ind_ty D M )
-(** A constructor of a declared member: a [Π] over the parameters and the
-    arguments of the member at the parameters.  The type is a closed type,
-    of a well-formed context of arguments, and the rest of the type of a
-    recursive argument after any number of its shape's domains is a type,
-    under those domains: all follow from the declaration, and are premises
-    so that the semantic models read them off the derivation. *)
+(** A constructor of a member: a [Π] over the parameters and the
+    arguments of the member at the parameters.  At a view, the view's own
+    parameters and arguments, into the container's member at the view's
+    arguments: the normal form of a value read at a view
+    ([wf_exp_eq_con_view]).  The type is a closed type, of a well-formed
+    context of arguments, and the rest of the type of a recursive argument
+    after any number of its shape's domains is a type, under those domains:
+    all follow from the declaration, and are premises so that the semantic
+    models read them off the derivation. *)
 | wf_con :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      ind_lookup Θ Ξ p = Some D ->
      ind_member D k = Some M ->
-     k < ind_ndecl D ->
      ind_con M c = Some gs ->
      ⊢ Θ ⍮ Ξ ⍮ cargs_ctx p D M gs ++ im_params D M ->
      (forall gs1 t gs2 j, gs = gs1 ++ ca_rec t :: gs2 -> j <= List.length (ptyp_doms t) ->
@@ -392,7 +409,6 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      ind_lookup Θ Ξ p = Some D ->
      ind_member D k = Some M ->
-     k < ind_ndecl D ->
      ind_con M c = Some gs ->
      ⊢ Θ ⍮ Ξ ⍮ cargs_ctx p D M gs ++ im_params D M ->
      Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p D k M gs : Typeω@i ->
@@ -588,6 +604,17 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
           : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq m Bks M ≈ a_elim (Some qc) k' (vwrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
        : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
+(** A constructor of a view at the group's uniform parameters [Us] is the
+    container's constructor at the view's arguments there, both sides at
+    the same type. *)
+| wf_exp_eq_con_view :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_view qc k Is vm ->
+     List.length Us = ind_nu D ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms) : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp (a_con p j c) (Us ++ Ms) ≈ apps_exp (a_con qc k c) (im_pre Mj Us ++ Ms) : A )
 (** [ζ]: a local definition is substituted into its body. *)
 | wf_exp_eq_let_zeta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
@@ -1104,6 +1131,12 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      (forall k Mk qc k' Is vm D', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         ind_lookup Θ Ξ qc = Some D' ->
         Θ ⍮ Ξ ⍮ ind_uparams D ⊢ (ind_sort D')[sb_of_list Id Is] ⊆ ind_sort D) ->
+     (** the views' nesting is well founded *)
+     (exists rk, view_rank_ok Θ Ξ D rk) ->
+     (** each view's members are those of the container's group, as the
+         eliminator at the view reads them *)
+     (forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+        exists D', ind_lookup Θ Ξ qc = Some D' /\ vwrap_ok D D' vm) ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp 0 D ⋄ )
 (** A later declared member of a group, before the members of its module:
     the group is filed at its first member, [y0], an entry of the same

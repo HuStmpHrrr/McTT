@@ -81,16 +81,17 @@ Import Domain_Notations.
       (forall h ch r1, h ·ₜ* ch Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₜ* ch Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall h ch r1, h ·ₘ* ch Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₘ* ch Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall ρ Φ ρ1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> forall ρ2, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ2 -> ρ1 = ρ2) /\
-      (forall ρ nm A Bs m r1,
-          ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-          forall r2, ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
-      (forall ρ nm A Bs gs vs r1,
-          ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-          forall r2, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
-      (forall ρ nm A Bs t v r1,
-          ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 -> forall r2, ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
+      (forall ρ p Bks j m r1,
+          ⟦elim m at j of p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+          forall r2, ⟦elim m at j of p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
+      (forall ρ p Bks gs vs r1,
+          ⟦ihs vs of gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+          forall r2, ⟦ihs vs of gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
+      (forall ρ p Bks t v r1,
+          ⟦ih v of t under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 -> forall r2, ⟦ih v of t under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
+      (forall p ups j r1, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r1 -> forall r2, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall p ups ρ t a1, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> forall a2, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2) /\
-      (forall ρm A ρ t v a1, ⟦ihty v of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> forall a2, ⟦ihty v of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2).
+      (forall ρm As ρ t v a1, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> forall a2, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2).
   Proof.
     intros Θ Ξ; apply eval_mut_ind; intros;
       (* invert the other evaluation, then use the hypotheses on its parts; the
@@ -103,9 +104,23 @@ Import Domain_Notations.
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
         | H1 : ind_alias_lookup Θ Ξ ?p = Some _, H2 : ind_alias_lookup Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
-        | H1 : ind_lookup Θ Ξ ?p = Some _, H2 : ind_alias_lookup Θ Ξ ?p = Some _ |- _ =>
-            exfalso; rewrite (ind_lookup_not_ind_alias _ _ _ _ H1) in H2; discriminate H2
+        | H1 : ind_mlookup Θ Ξ ?p = Some _, H2 : ind_alias_lookup Θ Ξ ?p = Some _ |- _ =>
+            exfalso; rewrite (ind_mlookup_not_ind_alias _ _ _ _ H1) in H2; discriminate H2
+        | H1 : ind_mlookup Θ Ξ ?p = Some _, H2 : ind_mlookup Θ Ξ ?p = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : ind_lookup Θ Ξ ?p = Some _, H2 : ind_lookup Θ Ξ ?p = Some _ |- _ =>
+            rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : ind_member ?D ?k = Some _, H2 : ind_member ?D ?k = Some _ |- _ =>
+            rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : im_head ?M = _, H2 : im_head ?M = _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : im_starts _ ?M = true, H2 : im_head ?M = mh_view _ _ _ _ |- _ =>
+            unfold im_starts, im_is_decl in H1; rewrite H2 in H1; cbn [orb] in H1; apply Nat.ltb_lt in H1
+        | H1 : im_ref ?p ?j ?M = _, H2 : im_ref ?p ?j ?M = _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : List.nth_error ?Bks ?j = Some _, H2 : List.nth_error ?Bks ?j = Some _ |- _ =>
+            rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : elim_grp_of ?oq ?m = Some _, H2 : elim_grp_of ?oq ?m = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
         | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
@@ -154,24 +169,30 @@ Import Domain_Notations.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ); intuition.
   Qed.
 
-  Corollary functional_eval_elim : forall {Θ Ξ} ρ nm A Bs m r1 r2,
-      ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-      ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
+  Corollary functional_eval_elim : forall {Θ Ξ} ρ p Bks j m r1 r2,
+      ⟦elim m at j of p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+      ⟦elim m at j of p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
       r1 = r2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
 
-  Corollary functional_eval_ihs : forall {Θ Ξ} ρ nm A Bs gs vs r1 r2,
-      ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-      ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
+  Corollary functional_eval_ihs : forall {Θ Ξ} ρ p Bks gs vs r1 r2,
+      ⟦ihs vs of gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+      ⟦ihs vs of gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
       r1 = r2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
 
-  Corollary functional_eval_ih : forall {Θ Ξ} ρ nm A Bs t v r1 r2,
-      ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 -> ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
+  Corollary functional_eval_ih : forall {Θ Ξ} ρ p Bks t v r1 r2,
+      ⟦ih v of t under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 -> ⟦ih v of t under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
+  Qed.
+
+  Corollary functional_eval_mref : forall {Θ Ξ} p ups j r1 r2,
+      ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r1 -> ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r2 -> r1 = r2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
@@ -182,8 +203,8 @@ Import Domain_Notations.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
 
-  Corollary functional_eval_ihty : forall {Θ Ξ} ρm A ρ t v a1 a2,
-      ⟦ihty v of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> ⟦ihty v of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2.
+  Corollary functional_eval_ihty : forall {Θ Ξ} ρm As ρ t v a1 a2,
+      ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
@@ -218,7 +239,7 @@ Import Domain_Notations.
   Qed.
 
 #[export]
-Hint Resolve functional_eval_exp functional_eval_elim functional_eval_ihs functional_eval_ih functional_eval_shty functional_eval_ihty functional_eval_app functional_eval_modexp functional_eval_sub : mctt.
+Hint Resolve functional_eval_exp functional_eval_elim functional_eval_ihs functional_eval_ih functional_eval_mref functional_eval_shty functional_eval_ihty functional_eval_app functional_eval_modexp functional_eval_sub : mctt.
 
 
 
@@ -231,15 +252,17 @@ Ltac functional_eval_rewrite_clear1 :=
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : (⟦ ?H ⟧ᵐ ?T ⍮ ?X ⍮ ?ρ ↘ ?h1), H2 : (⟦ ?H ⟧ᵐ ?T ⍮ ?X ⍮ ?ρ ↘ ?h2) |- _ =>
       clean replace h2 with h1 by first [solve [mauto 2] | tactic_error h2 h1]; clear H2
-  | H1 : (⟦elim ?m under ?nm ?A ?Bs ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦elim ?m under ?nm ?A ?Bs ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
+  | H1 : eval_elim ?T ?X ?ρ ?p ?Bks ?j ?m ?r1, H2 : eval_elim ?T ?X ?ρ ?p ?Bks ?j ?m ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
-  | H1 : (⟦ihs ?vs of ?gs under ?nm ?A ?Bs ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦ihs ?vs of ?gs under ?nm ?A ?Bs ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
+  | H1 : eval_ihs ?T ?X ?ρ ?p ?Bks ?gs ?vs ?r1, H2 : eval_ihs ?T ?X ?ρ ?p ?Bks ?gs ?vs ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
-  | H1 : eval_ih ?T ?X ?ρ ?nm ?A ?Bs ?t ?v ?r1, H2 : eval_ih ?T ?X ?ρ ?nm ?A ?Bs ?t ?v ?r2 |- _ =>
+  | H1 : eval_ih ?T ?X ?ρ ?p ?Bks ?t ?v ?r1, H2 : eval_ih ?T ?X ?ρ ?p ?Bks ?t ?v ?r2 |- _ =>
+      clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
+  | H1 : eval_mref ?T ?X ?p ?ups ?j ?r1, H2 : eval_mref ?T ?X ?p ?ups ?j ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r1, H2 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
-  | H1 : eval_ihty ?T ?X ?ρm ?A ?ρ ?t ?v ?r1, H2 : eval_ihty ?T ?X ?ρm ?A ?ρ ?t ?v ?r2 |- _ =>
+  | H1 : eval_ihty ?T ?X ?ρm ?As ?ρ ?t ?v ?r1, H2 : eval_ihty ?T ?X ?ρm ?As ?ρ ?t ?v ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   end.
 (** There is no [eval_sub] case: [functional_eval_sub] gives only pointwise
@@ -254,7 +277,7 @@ Proof. intros ? ? [] ?; cbn; repeat econstructor. Qed.
 Hint Resolve eval_ulvl_tm : mctt.
 
 (** One recursive result per recursive argument. *)
-Lemma eval_ihs_length : forall {Θ Ξ} ρ nm A Bs gs vs ihs,
-    ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+Lemma eval_ihs_length : forall {Θ Ξ} ρ p Bks gs vs ihs,
+    ⟦ihs vs of gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
     List.length vs = List.length gs /\ List.length ihs = cargs_nrec gs.
 Proof. induction 1; cbn; intuition congruence. Qed.

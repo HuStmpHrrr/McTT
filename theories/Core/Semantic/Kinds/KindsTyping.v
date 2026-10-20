@@ -66,22 +66,19 @@ Lemma gens_prefix_some : forall Θ Ξ io Γ H its gs, items_gen Θ Ξ io Γ H it
       (exists R Rg, its = its1 ++ R /\ gs = gs0 ++ g :: Rg) /\
       forall Φ k, gm_prefix_upto (gens_append Φ k gs) y = Some (gens_append Φ k (gs0 ++ g :: nil)).
 Proof.
-  intros * Hg; induction Hg as [| | | | ]; intros y its1 it0 Hu; cbn [items_upto] in Hu; try discriminate;
-    match type of Hu with
-    | match items_upto ?y ?its with _ => _ end = _ =>
-        destruct (items_upto y its) as [[its1' it1] |] eqn:Eu
-    end.
+  intros * Hg; induction Hg as [| | | | ]; intros y its1 it0 Hu; cbn [items_upto] in Hu; try discriminate.
+  all: destruct (items_upto y its) as [[its1' it1] |] eqn:Eu.
   all: try (injection Hu as <- <-;
             destruct (IHHg _ _ _ Eu) as (its0 & gs0 & g0 & -> & Hg0 & Hg1 & (Rits & Rg & -> & ->) & Hp);
             eexists (_ :: its0), (_ :: gs0), g0; split; [ reflexivity |]; split; [ econstructor; eassumption |];
             split; [ exact Hg1 |]; split; [ exists Rits, Rg; split; reflexivity |];
-            intros Φ k; cbn [gens_append app]; apply Hp).
+            intros Φ kk; cbn [gens_append app]; apply Hp).
   all: match type of Hu with context [String.eqb ?a ?b] => destruct (String.eqb a b) eqn:Ey end; [| discriminate ]; injection Hu as <- <-.
   all: pose proof (items_upto_none_iff _ _ Eu) as Hn; rewrite <- (items_gen_names _ _ _ _ _ _ _ Hg) in Hn.
   all: eexists nil, nil, _; split; [ reflexivity |]; split; [ constructor |].
   all: split; [ solve [ econstructor; eauto using ign_nil ] |].
   all: split; [ eexists _, _; split; reflexivity |].
-  all: intros Φ k; cbn [gens_append app ig_entry]; rewrite gens_prefix_none by exact Hn;
+  all: intros Φ kk; cbn [gens_append app ig_entry]; rewrite gens_prefix_none by exact Hn;
          cbn [gm_prefix_upto iitem_name] in *; rewrite Ey; reflexivity.
 Qed.
 

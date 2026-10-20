@@ -34,13 +34,13 @@ Qed.
 (** A constructor is typed at its type without the shape premise of
     [wf_con]: that premise follows from the groups in scope. *)
 Lemma wf_con_of_lookup : forall Θ Ξ Γ p D k M c gs i,
-    ⊢ Θ ⍮ Ξ ⍮ Γ -> ind_lookup Θ Ξ p = Some D -> ind_member D k = Some M -> k < ind_ndecl D ->
+    ⊢ Θ ⍮ Ξ ⍮ Γ -> ind_lookup Θ Ξ p = Some D -> ind_member D k = Some M ->
     ind_con M c = Some gs ->
     ⊢ Θ ⍮ Ξ ⍮ cargs_ctx p D M gs ++ im_params D M ->
     Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p D k M gs : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ a_con p k c : con_ty p D k M gs.
 Proof.
-  intros * HΓ Hl Hk Hlt Hcon HΨ Hty.
+  intros * HΓ Hl Hk Hcon HΨ Hty.
   eapply wf_con; try eassumption.
   exact (shape_rest_wf' _ _ _ _ _ _ _ _ (ctx_wf_gctx _ _ _ HΓ) (decls_of_ctx _ _ _ HΓ) Hl Hk Hcon).
 Qed.

@@ -123,7 +123,7 @@ Lemma gens_ext_wf_gen : forall g Γ1 H its gs, items_gen gc_deps gc_stack g Γ1 
                                 body_ctx (gens_append Φg (List.length (body_ctx Φg)) gs) ++ Ψ.
 Proof.
   induction 1 as [| g Γ1 H d pv its gs _ IH | g Γ1 H n d pv A om its gs Hm _ IH | g Γ1 H n d pv R its gs Hm Hmod _ IH
-                 | Γ1 H n d pv Θ' p Ns its gs Hm _ IH ];
+                 | Γ1 H n d pv Θ' p k D pm Ns its gs Hm _ _ _ _ IH ];
     intros Eg Γ0 Ψ -> HH Φg HX; cbn [gens_append ig_entry]; try exact HX; [| | | discriminate ].
   all: pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- app_assoc in HC.
   all: pose proof (wf_wk_shiftn_app' _ _ _ _ HC) as Hw.

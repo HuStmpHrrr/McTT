@@ -10,11 +10,12 @@ Import Wk_Notations GlobalCtx_Notations.
 
 Reserved Notation "'⟦' M '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, M at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'$|' m '&' n '|' Θ '⍮' Ξ '↘' r" (at level 70, m at level 69, n at level 69, Θ at level 69, Ξ at level 69, r at level 69).
-Reserved Notation "'⟦elim' m 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
-Reserved Notation "'⟦ihs' vs 'of' gs 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
-Reserved Notation "'⟦ih' v 'of' t 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, v at level 69, t at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦elim' m 'at' j 'of' p Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, j at level 0, p at level 0, Bks at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦ihs' vs 'of' gs 'under' p Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs at level 69, p at level 0, Bks at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦ih' v 'of' t 'under' p Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, v at level 69, t at level 69, p at level 0, Bks at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦shty' t 'of' p ups '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, t at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
-Reserved Notation "'⟦ihty' v 'of' t 'under' ρm A '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, v at level 69, t at level 69, ρm at level 0, A at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦ihty' v 'of' t 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, v at level 69, t at level 69, ρm at level 0, As at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦mref' j 'of' p ups '⟧' Θ '⍮' Ξ '↘' r" (at level 70, j at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, r at level 69).
 Reserved Notation "'⟦' e '⟧ᵉ' Θ '⍮' Ξ '⍮' ρ '↘' d" (at level 70, e at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, d at level 69).
 Reserved Notation "'⟦' σ '⟧s' Θ '⍮' Ξ '⍮' ρ '↘' ρσ" (at level 70, σ at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ρσ at level 69).
 
@@ -38,6 +39,16 @@ Generalizable All Variables.
     [Π]s ([d_shfam], [d_ihfam]): their codomains are computed by the
     families, so no term is built. *)
 Definition fam_cod : exp := a_app (a_var 1) (a_var 0).
+
+(** The group an eliminator eliminates by: the one written, or else that
+    of the value, a constructor or a neutral of a member. *)
+Definition elim_grp_of (oq : option qname) (m : domain) : option qname :=
+  match oq, m with
+  | Some p, _ => Some p
+  | None, d_con p _ _ _ => Some p
+  | None, d_neut (d_ind p _ _) _ => Some p
+  | None, _ => None
+  end.
 
 (** * The Kinds of Members of Module Values
 
@@ -271,17 +282,31 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ b m ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑ b m ↘ a ->
      ⟦ efq M return A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (efqᵈ m under ρ return A) )
-(** The type former and a constructor of an inductive type are values,
-    with no argument yet. *)
+(** The type former and a constructor of a member of a group of inductive
+    types are values, with no argument yet. *)
 | eval_exp_indty :
-  `( ⟦ a_ind p ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ind p nil )
+  `( ⟦ a_ind p k ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ind p k nil )
 | eval_exp_con :
-  `( ⟦ a_con p c ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_con p c nil )
-(** The eliminator evaluates its scrutinee, then eliminates the value. *)
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D k = Some Mk ->
+     im_starts D Mk = true ->
+     ⟦ a_con p k c ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_con p k c nil )
+(** A constructor of a view of a group with no uniform parameters is at
+    once the container's, at the view's arguments. *)
+| eval_exp_con_view :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_view qc k Is vm ->
+     ind_nu D = 0 ->
+     ⟦ Is ⟧* Θ ⍮ Ξ ⍮ env_args nil nil ↘ cups ->
+     ⟦ a_con p j c ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_con qc k c cups )
+(** The eliminator evaluates its scrutinee, then eliminates the value, by
+    the blocks of its group: the one written, or the group of the value. *)
 | eval_exp_elim :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ a_elim nm A Bs M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+     elim_grp_of oq m = Some p ->
+     ⟦elim m at j of p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+     ⟦ a_elim oq j Bks M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A [Π] evaluates its domain and closes over its codomain. *)
 | eval_exp_pi :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
@@ -317,72 +342,109 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      $*| f & ns | Θ ⍮ Ξ ↘ r ->
      ⟦ a_mem H x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 where "'⟦' e '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_exp Θ Ξ e ρ r)
-(** The eliminator of an inductive type, on a value.  On a constructor at
-    all its parameters and arguments, the branch of the constructor, with its
-    non-uniform parameters, its arguments and the recursive results.  On a
-    neutral of the type, a neutral at the motive's instance; the neutral
-    records the inductive type and its parameters, which readback needs. *)
-with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> domain -> domain -> Prop :=
+(** The eliminator of the group at [p] at its member [j], on a value.  The
+    member is the declared member [k] of the group at [q] ([im_ref]): the
+    group itself at a declared member, the container's at a view.  On a
+    constructor of it at all its parameters and arguments, the branch of
+    the constructor in the member's block, with its non-uniform parameters,
+    its arguments and the recursive results, each by the eliminator at the
+    member of the group its argument is recursive in, as the group
+    classifies the member's arguments.  On a neutral of the member, a
+    neutral at the motive's instance; the neutral records the parameters of
+    its type, which readback needs. *)
+with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list eblock -> nat -> domain -> domain -> Prop :=
 | eval_elim_con :
   `( ind_lookup Θ Ξ p = Some D ->
-     ind_con D c = Some gs ->
-     List.length vs = (ind_np D + List.length gs)%nat ->
-     brs_lookup Bs c = Some (n, B) ->
-     n = (ind_nn D + List.length gs + cargs_nrec gs)%nat ->
-     ⟦ihs skipn (ind_np D) vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu D) (firstn (ind_np D) vs) ++ skipn (ind_np D) vs ++ ihs) ↘ r ->
-     ⟦elim d_con p c vs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+     ind_member D j = Some Mj ->
+     im_ref p j Mj = (pc, k) ->
+     ind_lookup Θ Ξ pc = Some Dq ->
+     ind_member Dq k = Some Mk ->
+     ind_con Mj c = Some gs ->
+     List.length vs = (im_np Dq Mk + List.length gs)%nat ->
+     List.nth_error Bks j = Some b ->
+     brs_lookup (eb_brs b) c = Some (n, B) ->
+     n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat ->
+     ⟦ihs skipn (im_np Dq Mk) vs of gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs) ++ skipn (im_np Dq Mk) vs ++ ihs) ↘ r ->
+     ⟦elim d_con pc k c vs at j of p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 | eval_elim_neut :
   `( ind_lookup Θ Ξ p = Some D ->
-     List.length as' = ind_np D ->
-     nm = S (ind_nn D) ->
-     ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu D) as' ++ ⇑ (d_ind p as') m :: nil) ↘ a ->
-     ⟦elim ⇑ (d_ind p as') m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_elim ρ nm A Bs p as' m) )
-where "'⟦elim' m 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_elim Θ Ξ ρ nm A Bs m r)
+     ind_member D j = Some Mj ->
+     im_ref p j Mj = (pc, k) ->
+     ind_lookup Θ Ξ pc = Some Dq ->
+     ind_member Dq k = Some Mk ->
+     List.length as' = im_np Dq Mk ->
+     List.nth_error Bks j = Some b ->
+     eb_nm b = S (im_nn Mk) ->
+     ⟦ eb_motive b ⟧ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu Dq) as' ++ ⇑ (d_ind pc k as') m :: nil) ↘ a ->
+     ⟦elim ⇑ (d_ind pc k as') m at j of p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_elim ρ Bks p j as' m) )
+where "'⟦elim' m 'at' j 'of' p Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_elim Θ Ξ ρ p Bks j m r)
 (** The recursive results of the arguments [vs], one per recursive argument. *)
-with eval_ihs (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> list carg -> list domain -> list domain -> Prop :=
+with eval_ihs (Θ : gdeps) (Ξ : gstack) : env -> qname -> list eblock -> list carg -> list domain -> list domain -> Prop :=
 | eval_ihs_nil :
-  `( ⟦ihs nil of nil under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ nil )
+  `( ⟦ihs nil of nil under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ nil )
 | eval_ihs_arg :
-  `( ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-     ⟦ihs v :: vs of ca_arg T :: gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs )
+  `( ⟦ihs vs of gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ihs v :: vs of ca_arg T :: gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs )
 | eval_ihs_rec :
-  `( ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih ->
-     ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-     ⟦ihs v :: vs of ca_rec t :: gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih :: ihs )
-where "'⟦ihs' vs 'of' gs 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihs Θ Ξ ρ nm A Bs gs vs r)
+  `( ⟦ih v of t under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih ->
+     ⟦ihs vs of gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ihs v :: vs of ca_rec t :: gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih :: ihs )
+where "'⟦ihs' vs 'of' gs 'under' p Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihs Θ Ξ ρ p Bks gs vs r)
 (** The recursive result of an argument [v] of shape [t]: the eliminator
-    at [v], or, at a function shape, the family of the eliminator at [v]'s
-    values. *)
-with eval_ih (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> ptyp -> domain -> domain -> Prop :=
+    at [v], at the member the shape ends in, or, at a function shape, the
+    family of the eliminator at [v]'s values. *)
+with eval_ih (Θ : gdeps) (Ξ : gstack) : env -> qname -> list eblock -> ptyp -> domain -> domain -> Prop :=
 | eval_ih_self :
-  `( ⟦elim v under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ih v of pt_self k Ps under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+  `( ⟦elim v at j of p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+     ⟦ih v of pt_self j Ps under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 | eval_ih_pi :
-  `( ⟦ih v of pt_pi B t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ihfn ρ nm A Bs t v )
-where "'⟦ih' v 'of' t 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ih Θ Ξ ρ nm A Bs t v r)
+  `( ⟦ih v of pt_pi B t under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ihfn ρ Bks p t v )
+where "'⟦ih' v 'of' t 'under' p Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ih Θ Ξ ρ p Bks t v r)
+(** The member [j] of the group at [p] at the uniform parameters [ups]:
+    the declared member [k] of the group at [q] at the uniform parameters
+    [pre] ([im_ref], [im_pre]), the group itself and [ups] at a declared
+    member, the container's and the view's arguments at [ups] at a view. *)
+with eval_mref (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> nat -> (qname * nat * list domain) -> Prop :=
+| eval_mref_decl :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_decl pm ->
+     ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ (p, j, ups) )
+| eval_mref_view :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_view qc k Is vm ->
+     ⟦ Is ⟧* Θ ⍮ Ξ ⍮ env_args nil ups ↘ cups ->
+     ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ (qc, k, cups) )
+where "'⟦mref' j 'of' p ups '⟧' Θ '⍮' Ξ '↘' r" := (eval_mref Θ Ξ p ups j r)
 (** The type of an argument of shape [t] in [ρ], at the uniform parameters
-    [ups] of [p]. *)
+    [ups] of the group at [p]: at the end, the member the shape ends in at
+    the shape's non-uniform parameters: the container's type at a view, as
+    every value and every neutral of a view is of the container's member.
+    Readback reads an argument of a shape at the group's own member instead
+    ([read_shape]). *)
 with eval_shty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> domain -> Prop :=
 | eval_shty_self :
   `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
-     ⟦shty pt_self k Ps of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ind p (ups ++ bs) )
+     ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ (pc, k, pre) ->
+     ⟦shty pt_self j Ps of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ind pc k (pre ++ bs) )
 | eval_shty_pi :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
      ⟦shty pt_pi B t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_shfam p ups ρ t) fam_cod )
 where "'⟦shty' t 'of' p ups '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_shty Θ Ξ p ups ρ t r)
 (** The type of the recursive result of an argument [v] of shape [t], its
-    components in [ρ]: the motive [A] in [ρm] at the shape's non-uniform
-    parameters and [v]. *)
-with eval_ihty (Θ : gdeps) (Ξ : gstack) : env -> exp -> env -> ptyp -> domain -> domain -> Prop :=
+    components in [ρ]: the motive of the member the shape ends in, among
+    [As] in [ρm], at the shape's non-uniform parameters and [v]. *)
+with eval_ihty (Θ : gdeps) (Ξ : gstack) : env -> list exp -> env -> ptyp -> domain -> domain -> Prop :=
 | eval_ihty_self :
   `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
-     ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρm (bs ++ v :: nil) ↘ a ->
-     ⟦ihty v of pt_self k Ps under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a )
+     ⟦ List.nth j As a_True ⟧ Θ ⍮ Ξ ⍮ env_args ρm (bs ++ v :: nil) ↘ a ->
+     ⟦ihty v of pt_self j Ps under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a )
 | eval_ihty_pi :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
-     ⟦ihty v of pt_pi B t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_ihfam ρm A ρ t v) fam_cod )
-where "'⟦ihty' v 'of' t 'under' ρm A '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihty Θ Ξ ρm A ρ t v r)
+     ⟦ihty v of pt_pi B t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_ihfam ρm As ρ t v) fam_cod )
+where "'⟦ihty' v 'of' t 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihty Θ Ξ ρm As ρ t v r)
 with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 (** A function's body, at the argument. *)
 | eval_app_fn :
@@ -395,19 +457,37 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 (** The type former takes a parameter it still lacks. *)
 | eval_app_indty :
   `( ind_lookup Θ Ξ p = Some D ->
-     List.length as' < ind_np D ->
-     $| d_ind p as' & n | Θ ⍮ Ξ ↘ d_ind p (as' ++ n :: nil) )
+     ind_member D k = Some Mk ->
+     List.length as' < im_np D Mk ->
+     $| d_ind p k as' & n | Θ ⍮ Ξ ↘ d_ind p k (as' ++ n :: nil) )
 (** So does a constructor, a parameter or an argument. *)
 | eval_app_con :
   `( ind_lookup Θ Ξ p = Some D ->
-     ind_con D c = Some gs ->
-     List.length vs < (ind_np D + List.length gs)%nat ->
-     $| d_con p c vs & n | Θ ⍮ Ξ ↘ d_con p c (vs ++ n :: nil) )
+     ind_member D k = Some Mk ->
+     im_head Mk = mh_decl pm ->
+     ind_con Mk c = Some gs ->
+     List.length vs < (im_np D Mk + List.length gs)%nat ->
+     $| d_con p k c vs & n | Θ ⍮ Ξ ↘ d_con p k c (vs ++ n :: nil) )
+(** A constructor of a view takes the group's uniform parameters; at the
+    last of them it is the container's, at the view's arguments there. *)
+| eval_app_con_view :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_view qc k Is vm ->
+     S (List.length vs) < ind_nu D ->
+     $| d_con p j c vs & n | Θ ⍮ Ξ ↘ d_con p j c (vs ++ n :: nil) )
+| eval_app_con_view_ups :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_view qc k Is vm ->
+     S (List.length vs) = ind_nu D ->
+     ⟦ Is ⟧* Θ ⍮ Ξ ⍮ env_args nil (vs ++ n :: nil) ↘ cups ->
+     $| d_con p j c vs & n | Θ ⍮ Ξ ↘ d_con qc k c cups )
 (** The recursive result of a function shape, at the argument's value. *)
 | eval_app_ihfn :
   `( $| f & n | Θ ⍮ Ξ ↘ fn ->
-     ⟦ih fn of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     $| d_ihfn ρ nm A Bs t f & n | Θ ⍮ Ξ ↘ r )
+     ⟦ih fn of t under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+     $| d_ihfn ρ Bks p t f & n | Θ ⍮ Ξ ↘ r )
 (** The families of the types of an argument of a function shape and of its
     recursive result. *)
 | eval_app_shfam :
@@ -415,8 +495,8 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
      $| d_shfam p ups ρ t & n | Θ ⍮ Ξ ↘ a )
 | eval_app_ihfam :
   `( $| f & n | Θ ⍮ Ξ ↘ fn ->
-     ⟦ihty fn of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ a ->
-     $| d_ihfam ρm A ρ t f & n | Θ ⍮ Ξ ↘ a )
+     ⟦ihty fn of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ a ->
+     $| d_ihfam ρm As ρ t f & n | Θ ⍮ Ξ ↘ a )
 (** A member closure takes the next argument of its module, and selects again. *)
 | eval_app_member :
   `( $ᵐ| h & n | Θ ⍮ Ξ ↘ h' ->
@@ -524,19 +604,19 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a ->
      $*| ⇑ a (d_glob (qname_app p (x :: nil))) & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
-(** The module of an inductive type, as a term: the type former, applied to
-    the module's arguments. *)
+(** The module of a member of a group of inductive types, as a term: the
+    member's type former, applied to the module's arguments. *)
 | eval_sel_global_ind :
   `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
-     ind_lookup Θ Ξ (qname_app p (x :: nil)) = Some D ->
-     $*| d_ind (qname_app p (x :: nil)) nil & args | Θ ⍮ Ξ ↘ r ->
+     ind_mlookup Θ Ξ (qname_app p (x :: nil)) = Some (pq, k, D) ->
+     $*| d_ind pq k nil & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
 (** An inductive alias, as a term: the type former at its arguments, over
     its telescope. *)
 | eval_sel_global_ind_alias :
   `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
-     ind_alias_lookup Θ Ξ (qname_app p (x :: nil)) = Some (Δ, pt, Ns) ->
-     ⟦ ctx_fn Δ (apps (a_ind pt) Ns) ⟧ Θ ⍮ Ξ ⍮ nil ↘ f ->
+     ind_alias_lookup Θ Ξ (qname_app p (x :: nil)) = Some (Δ, pm, pt, k, Ns) ->
+     ⟦ ctx_fn Δ (apps (a_ind pt k) Ns) ⟧ Θ ⍮ Ξ ⍮ nil ↘ f ->
      $*| f & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
 (** A member of a closure lacking a parameter is a member closure. *)
@@ -644,6 +724,7 @@ with eval_benv_mut_ind := Induction for eval_benv Sort Prop
 with eval_elim_mut_ind := Induction for eval_elim Sort Prop
 with eval_ihs_mut_ind := Induction for eval_ihs Sort Prop
 with eval_ih_mut_ind := Induction for eval_ih Sort Prop
+with eval_mref_mut_ind := Induction for eval_mref Sort Prop
 with eval_shty_mut_ind := Induction for eval_shty Sort Prop
 with eval_ihty_mut_ind := Induction for eval_ihty Sort Prop.
 Combined Scheme eval_mut_ind from
@@ -663,11 +744,12 @@ Combined Scheme eval_mut_ind from
   eval_elim_mut_ind,
   eval_ihs_mut_ind,
   eval_ih_mut_ind,
+  eval_mref_mut_ind,
   eval_shty_mut_ind,
   eval_ihty_mut_ind.
 
 #[export]
-Hint Constructors eval_exp eval_elim eval_ihs eval_ih eval_shty eval_ihty eval_app eval_exps eval_apps eval_modexp eval_close eval_appm eval_appms eval_sel eval_selm
+Hint Constructors eval_exp eval_elim eval_ihs eval_ih eval_mref eval_shty eval_ihty eval_app eval_exps eval_apps eval_modexp eval_close eval_appm eval_appms eval_sel eval_selm
   eval_selc eval_selmc eval_benv : mctt.
 
 (** [eval_exp_var] with the value as a premise.  The value [ρ x] is a flexible

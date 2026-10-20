@@ -146,7 +146,6 @@
 ./Core/Syntactic/System/Lemmas.v
 ./Core/Syntactic/System/Global/MemberLemmas.v
 ./Core/Syntactic/System/Inductives/Syntax.v
-./Core/Syntactic/System/Inductives/Classify.v
 ./Core/Syntactic/System/Global/LookupSound.v
 ./Core/Syntactic/System/Inductives/Typing.v
 ./Core/Syntactic/System/Inductives/Views.v

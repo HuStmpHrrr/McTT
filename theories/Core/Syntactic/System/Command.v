@@ -20,7 +20,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Command Members Builtin.
 From Mctt.Core.Syntactic.System Require Import Definitions Lemmas Structural.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
-From Mctt.Core.Syntactic.System.Inductives Require Export Classify.
+From Mctt.Core.Syntactic.Inductives Require Export Inductives.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Syntactic.System.Global Require Import MemberWf Modules.
 From Mctt.Core.Syntactic.System Require Export Privacy.
@@ -88,89 +88,93 @@ Inductive gens_run (Θ : gdeps) : gstack -> list igen -> gstack -> Prop :=
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E -> gs_fresh d Ξ ->
     gens_run Θ (gs_add d (ge_mod pv (gu_mk (gs_tele Ξ) (md_alias E))) Ξ) gs Ξ' ->
     gens_run Θ Ξ (ig_alias d pv E :: gs) Ξ'
-| gr_ind_alias : forall Ξ d pv Δ p Ns gs Ξ',
-    Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) d ⊢ᵉ ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns -> gs_fresh d Ξ ->
-    gens_run Θ (gs_add d (ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns) Ξ) gs Ξ' ->
-    gens_run Θ Ξ (ig_ind_alias d pv Δ p Ns :: gs) Ξ'.
+| gr_ind_alias : forall Ξ d pv Δ pm p k Ns gs Ξ',
+    Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) d ⊢ᵉ ge_ind_alias pv (Δ ++ gs_tele Ξ) pm p k Ns -> gs_fresh d Ξ ->
+    gens_run Θ (gs_add d (ge_ind_alias pv (Δ ++ gs_tele Ξ) pm p k Ns) Ξ) gs Ξ' ->
+    gens_run Θ Ξ (ig_ind_alias d pv Δ pm p k Ns :: gs) Ξ'.
 
-(** ** Inductive Declarations
+(** ** Groups of Inductive Declarations
 
-    A declaration [x] is filed as the entry [x] of the frame
-    ([ge_ind]): the declaration, with the parameters of the frames as its
-    outermost uniform parameters ([gs_ind]), and the body of its module,
-    whose members are generated ([gen_body]): the constructors, each the
-    constructor applied to the uniform parameters, and the recursor, all
-    closed over the uniform parameters, which are the module's.  The entry
-    is checked member by member ([wf_gentry_ind_ext]).  As a term, the
-    path of the entry is the type former ([wf_mem_glob_ind]). *)
+    A group is filed as one entry per declared member, in order
+    ([ge_ind]): the group, with the parameters of the frames as its
+    outermost uniform parameters, and the body of the member's module,
+    whose members are generated ([gen_body]): the member's constructors,
+    each the constructor applied to the uniform parameters, and, for a
+    group of one member and no view, the recursor, all closed over the
+    uniform parameters, which are the module's.  Each entry is checked
+    member by member ([wf_gentry_ind_ext]).  As a term, the path of a
+    member's entry is its type former ([wf_mem_glob_ind]); the group is
+    named by the path of its first member. *)
 
-Definition gs_ind (Ξ : gstack) (D : ind_decl) : ind_decl :=
-  mk_ind (ind_nu D + List.length (gs_tele Ξ)) (ind_params D ++ gs_tele Ξ) (ind_sort D) (ind_cons D).
-
-(** The path of the inductive type [x] a declaration makes. *)
+(** The path of the declared type [x] a declaration makes. *)
 Definition ind_qname (Ξ : gstack) (x : string) : qname := qname_in (gs_path Ξ) x.
 
-(** The recursor of the filed declaration [D], over the module's
-    parameters [Γ0] (the uniform ones): at a finite level [u], a motive
-    [P : Π Δn. Π (z : X us ns). Type⟨u⟩], one branch per constructor, of
-    the type the eliminator gives a branch at the motive [P], then
-    [Π Δn. Π (z : X us ns). P ns z].  It is the eliminator, at that motive,
-    of branches that are the branch arguments applied to what they bind.
-    Below [k] binders past [P], the motive is [P] under [Δn] and [z], and
-    the uniform parameters are the module's. *)
-Definition rec_motive (D : ind_decl) (k : nat) : exp :=
-  apps (a_var (S (ind_nn D) + k)) (vars_from 0 (S (ind_nn D))).
+(** The recursor of the only member [M] of the filed group [D] at [pq],
+    over the module's parameters (the uniform ones): at a finite level
+    [u], a motive [P : Π Δn. Π (z : X us ns). Type⟨u⟩], one branch per
+    constructor, of the type the eliminator gives a branch at the motive
+    [P], then [Π Δn. Π (z : X us ns). P ns z].  It is the eliminator, at
+    that motive, of branches that are the branch arguments applied to what
+    they bind.  Below [k] binders past [P], the motive is [P] under [Δn]
+    and [z], and the uniform parameters are the module's. *)
+Definition rec_motive (M : imember) (k : nat) : exp :=
+  apps (a_var (S (im_nn M) + k)) (vars_from 0 (S (im_nn M))).
 
 Definition rec_uvars (D : ind_decl) (k : nat) : list exp := vars_from (2 + k) (ind_nu D).
 
 (** The branch types, outermost first, the [k]-th under [k] before it. *)
-Fixpoint rec_btys (p : qname) (D : ind_decl) (k : nat) (cs : list (string * list carg)) : list centry :=
+Fixpoint rec_btys (pq : qname) (D : ind_decl) (M : imember) (k : nat) (cs : list (string * list carg)) : list centry :=
   match cs with
   | nil => nil
   | (c, gs) :: cs' =>
-      ce_ass (ctx_pi (elim_bctx p D gs (rec_motive D k) (rec_uvars D k))
-                (elim_bty p D c gs (rec_motive D k) (rec_uvars D k)))
-      :: rec_btys p D (S k) cs'
+      ce_ass (ctx_pi (elim_bctx pq D M gs (rec_motive M k :: nil) (rec_uvars D k))
+                (elim_bty pq 0 M c gs (rec_motive M k) (rec_uvars D k)))
+      :: rec_btys pq D M (S k) cs'
   end.
 
 (** The level, the motive and the branches, innermost first. *)
-Definition rec_tele (p : qname) (D : ind_decl) : ctx :=
-  List.rev (rec_btys p D 0 (ind_cons D)) ++
-  ce_ass (ctx_pi (elim_mctx p D (vars_from 1 (ind_nu D))) (a_univ (a_var (S (ind_nn D))))) ::
+Definition rec_tele (pq : qname) (D : ind_decl) (M : imember) : ctx :=
+  List.rev (rec_btys pq D M 0 (im_cons M)) ++
+  ce_ass (ctx_pi (elim_mctx pq D 0 M (vars_from 1 (ind_nu D))) (a_univ (a_var (S (im_nn M))))) ::
   ce_ass (a_level 0) :: nil.
 
-Definition rec_ty (p : qname) (D : ind_decl) : typ :=
-  let K := List.length (ind_cons D) in
-  ctx_pi (rec_tele p D) (ctx_pi (elim_mctx p D (rec_uvars D K)) (rec_motive D K)).
+Definition rec_ty (pq : qname) (D : ind_decl) (M : imember) : typ :=
+  let K := List.length (im_cons M) in
+  ctx_pi (rec_tele pq D M) (ctx_pi (elim_mctx pq D 0 M (rec_uvars D K)) (rec_motive M K)).
 
 (** The branches of the eliminator, each the [j]-th branch argument applied
     to the variables the branch binds. *)
-Fixpoint rec_brs (D : ind_decl) (K j : nat) (cs : list (string * list carg)) : list (string * nat * exp) :=
+Fixpoint rec_brs (M : imember) (K j : nat) (cs : list (string * list carg)) : list (string * nat * exp) :=
   match cs with
   | nil => nil
   | (c, gs) :: cs' =>
-      let n := (ind_nn D + List.length gs + cargs_nrec gs)%nat in
-      (c, n, apps (a_var (n + S (ind_nn D) + (K - 1 - j))) (vars_from 0 n)) :: rec_brs D K (S j) cs'
+      let n := (im_nn M + List.length gs + cargs_nrec gs)%nat in
+      (c, n, apps (a_var (n + S (im_nn M) + (K - 1 - j))) (vars_from 0 n)) :: rec_brs M K (S j) cs'
   end.
 
-Definition rec_fn (p : qname) (D : ind_decl) : exp :=
-  let K := List.length (ind_cons D) in
-  ctx_fn (rec_tele p D)
-    (ctx_fn (elim_mctx p D (rec_uvars D K))
-       (a_elim (S (ind_nn D)) (rec_motive D (K + S (ind_nn D))) (rec_brs D K 0 (ind_cons D)) (a_var 0))).
+Definition rec_fn (pq : qname) (D : ind_decl) (M : imember) : exp :=
+  let K := List.length (im_cons M) in
+  ctx_fn (rec_tele pq D M)
+    (ctx_fn (elim_mctx pq D 0 M (rec_uvars D K))
+       (a_elim None 0 (eb_mk (S (im_nn M)) None (rec_motive M (K + S (im_nn M))) (rec_brs M K 0 (im_cons M)) :: nil)
+          (a_var 0))).
 
-(** The constructors of the filed declaration [D], over the module's
-    parameters: [D]'s uniform ones, then its recursor.  They are public
-    members of the module, as the declaration is: the module's own privacy
-    is the declaration's. *)
-Definition ind_gens (p : qname) (D : ind_decl) : list igen :=
+(** A group has a recursor when it is one member, and no view. *)
+Definition ind_has_rec (D : ind_decl) : bool := Nat.eqb (List.length (ind_members D)) 1.
+
+(** The constructors of the member [k], [M], of the filed group [D] at
+    [pq], over the module's parameters: [D]'s uniform ones, then the
+    recursor, if the group has one.  They are public members of the
+    module, as the declaration is: the module's own privacy is the
+    declaration's. *)
+Definition ind_gens (pq : qname) (D : ind_decl) (k : nat) (M : imember) : list igen :=
   List.map (fun cg =>
               ig_def (fst cg) false
-                (ctx_pi (ind_nparams D)
-                   (ctx_pi (cargs_ctx p D (snd cg)) (apps (a_ind p) (ind_pvars D (List.length (snd cg))))))
-                (apps (a_con p (fst cg)) (vars_from 0 (ind_nu D))))
-    (ind_cons D)
-  ++ ig_def "rec" false (rec_ty p D) (rec_fn p D) :: nil.
+                (ctx_pi (im_nparams M)
+                   (ctx_pi (cargs_ctx pq D M (snd cg)) (apps (a_ind pq k) (ind_pvars D M (List.length (snd cg))))))
+                (apps (a_con pq k (fst cg)) (vars_from 0 (ind_nu D))))
+    (im_cons M)
+  ++ (if ind_has_rec D then ig_def "rec" false (rec_ty pq D M) (rec_fn pq D M) :: nil else nil).
 
 (** The body the generated definitions make after [Φ], each closed over the
     telescope [T]; an alias generates nothing here. *)
@@ -178,83 +182,329 @@ Fixpoint gens_body (Φ : gmod) (T : ctx) (gs : list igen) : gmod :=
   match gs with
   | nil => Φ
   | ig_def d pv A M :: gs' => gens_body (Φ ⊳ d ↦ ge_def true pv (ctx_pi T A) (Some (ctx_fn T M))) T gs'
-  | ig_alias _ _ _ :: gs' | ig_ind_alias _ _ _ _ _ :: gs' => gens_body Φ T gs'
+  | ig_alias _ _ _ :: gs' | ig_ind_alias _ _ _ _ _ _ _ :: gs' => gens_body Φ T gs'
   end.
 
-(** The body of the module of the inductive type [D] at [p]: its
-    constructors and its recursor, over the uniform parameters. *)
-Definition gen_body (p : qname) (D : ind_decl) : gmod := gens_body ⋄ (ind_uparams D) (ind_gens p D).
-
-(** ** Classifying the Arguments on Normal Forms
-
-    An argument the syntactic classification ([cls_arg]) does not accept is
-    read as its normal form: it is a type in the context it is written in
-    ([rarg_ctx]: the arguments before it, the declaration's own parameters,
-    [Self], the frames' parameters), and its normal form is classified.  So
-    [Arr Ord], with [Arr X := ℕ → X], is classified as [ℕ → Ord] is, and
-    [(λ X. ℕ) (Ord → ℕ)] as [ℕ].  The syntactic path comes first, so the
-    classification is a function of the argument. *)
-
-(** The type of [Self]: the declared type's, over the declaration's own
+(** The body of the module of the member [k], [M], of the group [D] at
+    [pq]: its constructors (and the recursor), over the uniform
     parameters. *)
-Definition rd_self_ty (R : raw_decl) : typ :=
-  ctx_pi (rd_params R) (rd_sort R)[wk_shiftn (List.length (rd_params R) - rd_nu R)]ʷ.
+Definition gen_body (pq : qname) (D : ind_decl) (k : nat) (M : imember) : gmod :=
+  gens_body ⋄ (ind_uparams D) (ind_gens pq D k M).
+
+(** ** Classifying the Arguments
+
+    Each argument of each constructor of each declared member is a type in
+    the context it is written in: the arguments before it, the member's
+    parameters, the variables [Self_0], …, [Self_(n-1)] of the declared
+    members ([rd_selfs], [Self_0] outermost), the frames' parameters.  It
+    is classified ([cls_arg]) as written when that finds it free or
+    recursive in a declared member, and as its normal form otherwise: so
+    [Arr Ord], with [Arr X := ℕ → X], is classified as [ℕ → Ord] is, and a
+    nested occurrence is found on normal forms only, where two instances
+    are the same view exactly when they are equal.  The classification is
+    a function of the argument. *)
+
+Definition rd_n (R : raw_decl) : nat := List.length (rd_members R).
+Definition rd_nu (R : raw_decl) : nat := List.length (rd_uparams R).
+
+(** The type of [Self_j]: the declared member's, over its own parameters,
+    the group's uniform ones outermost. *)
+Definition rd_self_ty (R : raw_decl) (Mr : raw_member) : typ :=
+  ctx_pi (rm_nparams Mr ++ rd_uparams R) (rm_sort Mr)[wk_shiftn (List.length (rm_nparams Mr))]ʷ.
+
+(** The [Self]s, innermost first, each over those before it. *)
+Fixpoint rd_selfs_from (R : raw_decl) (j : nat) (ms : list raw_member) : ctx :=
+  match ms with
+  | nil => nil
+  | Mr :: ms' => rd_selfs_from R (S j) ms' ++ ce_ass (rd_self_ty R Mr)[wk_shiftn j]ʷ :: nil
+  end.
+
+Definition rd_selfs (R : raw_decl) : ctx := rd_selfs_from R 0 (rd_members R).
 
 (** The parameters' types are written over the frames' parameters, so
-    under [Self] they are weakened past it. *)
-Definition rarg_ctx (Ξ : gstack) (R : raw_decl) (args1 : list (string * exp)) : ctx :=
-  rtele args1 ++ tele_wk (rd_params R) wk_shift ++ ce_ass (rd_self_ty R) :: gs_tele Ξ.
+    under the [Self]s they are weakened past them: the group's uniform
+    parameters, and a declared member's parameters. *)
+Definition rd_uctx (Ξ : gstack) (R : raw_decl) : ctx :=
+  tele_wk (rd_uparams R) (wk_shiftn (rd_n R)) ++ rd_selfs R ++ gs_tele Ξ.
 
-Inductive cls_arg_in (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (args1 : list (string * exp)) (gs1 : list carg)
-    (T : exp) : carg -> Prop :=
+Definition rm_pctx (Ξ : gstack) (R : raw_decl) (Mr : raw_member) : ctx :=
+  tele_wk (rm_nparams Mr ++ rd_uparams R) (wk_shiftn (rd_n R)) ++ rd_selfs R ++ gs_tele Ξ.
+
+(** The number of uniform parameters of the filed group at [qc], if [k] is
+    one of its declared members. *)
+Definition grp_info (Θ : gdeps) (Ξ : gstack) (qc : qname) (k : nat) : option nat :=
+  match ind_lookup Θ Ξ qc with
+  | Some D' => if k <? ind_ndecl D' then Some (ind_nu D') else None
+  | None => None
+  end.
+
+(** The arguments as written, as a telescope, innermost first. *)
+Definition rtele (args : list (string * exp)) : ctx := List.rev (List.map (fun a => ce_ass (snd a)) args).
+
+(** An argument [T] in the context [Γ], the arguments before it recursive
+    as [pat] says. *)
+Inductive cls_arg_in (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (nu np n : nat) (pat : list bool) (T : exp) : rcarg -> Prop :=
 (** As written. *)
 | cls_in_syn : forall g,
-    cls_arg (rd_nu R) (List.length (rd_params R)) gs1 T g -> cls_arg_in Θ Ξ R args1 gs1 T g
+    cls_arg grp_none nu np n pat T = Some g ->
+    cls_arg_in Θ Ξ Γ nu np n pat T g
 (** As its normal form, when not as written. *)
 | cls_in_nf : forall i W g,
-    (forall g', ~ cls_arg (rd_nu R) (List.length (rd_params R)) gs1 T g') ->
-    Θ ⍮ Ξ ⍮ rarg_ctx Ξ R args1 ⊢ T : Typeω@i ->
-    nbe_ty Θ Ξ (rarg_ctx Ξ R args1) T W ->
-    cls_arg (rd_nu R) (List.length (rd_params R)) gs1 (nf_to_exp W) g ->
-    cls_arg_in Θ Ξ R args1 gs1 T g.
+    cls_arg grp_none nu np n pat T = None ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ T : Typeω@i ->
+    nbe_ty Θ Ξ Γ T W ->
+    cls_arg (grp_info Θ Ξ) nu np n pat (nf_to_exp W) = Some g ->
+    cls_arg_in Θ Ξ Γ nu np n pat T g.
 
-Inductive cls_args_in (Θ : gdeps) (Ξ : gstack) (R : raw_decl) :
-    list (string * exp) -> list carg -> list (string * exp) -> list carg -> Prop :=
-| cls_args_in_nil : forall args1 gs1, cls_args_in Θ Ξ R args1 gs1 nil nil
-| cls_args_in_cons : forall args1 gs1 y T args g gs,
-    cls_arg_in Θ Ξ R args1 gs1 T g ->
-    cls_args_in Θ Ξ R (args1 ++ (y, T) :: nil) (gs1 ++ g :: nil) args gs ->
-    cls_args_in Θ Ξ R args1 gs1 ((y, T) :: args) (g :: gs).
+Inductive cls_args_in (Θ : gdeps) (Ξ : gstack) (Γp : ctx) (nu np n : nat) :
+    list bool -> list (string * exp) -> list (string * exp) -> list rcarg -> Prop :=
+| cls_args_in_nil : forall pat args1, cls_args_in Θ Ξ Γp nu np n pat args1 nil nil
+| cls_args_in_cons : forall pat args1 y T args g gs,
+    cls_arg_in Θ Ξ (rtele args1 ++ Γp) nu np n pat T g ->
+    cls_args_in Θ Ξ Γp nu np n (rcarg_bit g :: pat) (args1 ++ (y, T) :: nil) args gs ->
+    cls_args_in Θ Ξ Γp nu np n pat args1 ((y, T) :: args) (g :: gs).
 
-Definition cls_cons_in (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (cs : list (string * list carg)) : Prop :=
-  Forall2 (fun rc c => fst rc = fst c /\ cls_args_in Θ Ξ R nil nil (snd rc) (snd c)) (rd_cons R) cs.
+Definition cls_cons_in (Θ : gdeps) (Ξ : gstack) (Γp : ctx) (nu np n : nat)
+    (rcs : list (string * list (string * exp))) (cs : list (string * list rcarg)) : Prop :=
+  Forall2 (fun rc c => fst rc = fst c /\ cls_args_in Θ Ξ Γp nu np n nil nil (snd rc) (snd c)) rcs cs.
 
-Lemma cls_arg_in_functional : forall Θ Ξ R args1 gs1 T g g',
-    cls_arg_in Θ Ξ R args1 gs1 T g -> cls_arg_in Θ Ξ R args1 gs1 T g' -> g = g'.
+(** The constructors of a declared member. *)
+Definition rm_cls (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (Mr : raw_member) (cs : list (string * list rcarg)) : Prop :=
+  cls_cons_in Θ Ξ (rm_pctx Ξ R Mr) (rd_nu R) (List.length (rm_nparams Mr) + rd_nu R) (rd_n R) (rm_cons Mr) cs.
+
+Lemma cls_arg_in_functional : forall Θ Ξ Γ nu np n pat T g g',
+    cls_arg_in Θ Ξ Γ nu np n pat T g -> cls_arg_in Θ Ξ Γ nu np n pat T g' -> g = g'.
 Proof.
   intros * H H'; destruct H as [g Hg | i W g Hn _ HW Hg]; inversion H' as [g'' Hg' | i' W' g'' Hn' _ HW' Hg']; subst.
-  - eapply cls_arg_functional; eassumption.
-  - exfalso; exact (Hn' _ Hg).
-  - exfalso; exact (Hn _ Hg').
-  - pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-; eapply cls_arg_functional; eassumption.
+  - congruence.
+  - congruence.
+  - congruence.
+  - pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-; congruence.
 Qed.
 
-Lemma cls_args_in_functional : forall Θ Ξ R args1 gs1 args gs gs',
-    cls_args_in Θ Ξ R args1 gs1 args gs -> cls_args_in Θ Ξ R args1 gs1 args gs' -> gs = gs'.
+Lemma cls_args_in_functional : forall Θ Ξ Γp nu np n pat args1 args gs gs',
+    cls_args_in Θ Ξ Γp nu np n pat args1 args gs -> cls_args_in Θ Ξ Γp nu np n pat args1 args gs' -> gs = gs'.
 Proof.
-  intros * H; revert gs'; induction H as [| args1 gs1 y T args g gs Hg Hgs IH]; intros gs' H'; inversion H'; subst;
+  intros * H; revert gs'; induction H as [| pat args1 y T args g gs Hg Hgs IH]; intros gs' H'; inversion H'; subst;
     [ reflexivity |].
-  match goal with Hg' : cls_arg_in _ _ _ _ _ _ ?g' |- _ => pose proof (cls_arg_in_functional _ _ _ _ _ _ _ _ Hg Hg') as <- end.
+  match goal with Hg' : cls_arg_in _ _ _ _ _ _ _ _ ?g' |- _ =>
+    pose proof (cls_arg_in_functional _ _ _ _ _ _ _ _ _ _ Hg Hg') as <- end.
   f_equal; apply IH; assumption.
 Qed.
 
-Lemma cls_cons_in_functional : forall Θ Ξ R cs cs', cls_cons_in Θ Ξ R cs -> cls_cons_in Θ Ξ R cs' -> cs = cs'.
+Lemma cls_cons_in_functional : forall Θ Ξ Γp nu np n rcs cs cs',
+    cls_cons_in Θ Ξ Γp nu np n rcs cs -> cls_cons_in Θ Ξ Γp nu np n rcs cs' -> cs = cs'.
 Proof.
-  unfold cls_cons_in; intros Θ Ξ R; generalize (rd_cons R); intros rcs.
+  unfold cls_cons_in; intros Θ Ξ Γp nu np n rcs.
   induction rcs as [| rc rcs IH]; intros * H H'; inversion H; inversion H'; subst; [ reflexivity |].
   destruct y as [c gs], y0 as [c' gs']; cbn in *; destruct_conjs; subst.
   f_equal; [ f_equal; eapply cls_args_in_functional; eassumption | apply IH; assumption ].
 Qed.
+
+(** ** The Views
+
+    A view is an instance [(qc, k, Cs)] met: the declared member [k] of the
+    filed group at [qc] at the uniform arguments [Cs], normal, over the
+    group's own uniform parameters, the [Self]s and the frames'.  Its
+    non-uniform parameters are the container's member's at [Cs], and its
+    constructors the container's member's, each argument the container's
+    type at [Cs], classified as a declared member's is ([view_cls]).  Its
+    siblings are the members of the container's group at [Cs]
+    ([sibs_from]): a declared one at [Cs], a view of it at its own uniform
+    arguments at [Cs], normalized. *)
+
+Definition centry_ty (e : centry) : typ :=
+  match e with ce_ass A => A | ce_def A _ => A | ce_mod _ => a_True end.
+
+(** A telescope, innermost first, as arguments, outermost first. *)
+Definition ctx_args (Δ : ctx) : list (string * exp) := List.rev (List.map (fun e => (""%string, centry_ty e)) Δ).
+
+Inductive view_cls (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : rview -> list (string * list rcarg) -> Prop :=
+| view_cls_intro : forall qc k Cs D' Mk' cs,
+    ind_lookup Θ Ξ qc = Some D' ->
+    ind_member D' k = Some Mk' ->
+    cls_cons_in Θ Ξ (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs) ++ rd_uctx Ξ R) (rd_nu R) (im_nn Mk' + rd_nu R) (rd_n R)
+      (List.map (fun cg => (fst cg, ctx_args (tele_sub (cargs_ctx qc D' Mk' (snd cg)) (sb_qn (im_nn Mk') (sb_of_list sb_id Cs)))))
+         (im_cons Mk'))
+      cs ->
+    view_cls Θ Ξ R (qc, k, Cs) cs.
+
+Inductive nbes (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : list exp -> list typ -> list nf -> Prop :=
+| nbes_nil : nbes Θ Ξ Γ nil nil nil
+| nbes_cons : forall M Ms A As W Ws,
+    nbe Θ Ξ Γ M A W -> nbes Θ Ξ Γ Ms As Ws -> nbes Θ Ξ Γ (M :: Ms) (A :: As) (W :: Ws).
+
+Inductive sibs_from (Θ : gdeps) (Ξ : gstack) (Γc : ctx) (qc : qname) (Cs : list exp) :
+    nat -> list imember -> list rview -> Prop :=
+| sibs_from_nil : forall i, sibs_from Θ Ξ Γc qc Cs i nil nil
+| sibs_from_decl : forall i M ms ss pm,
+    im_head M = mh_decl pm ->
+    sibs_from Θ Ξ Γc qc Cs (S i) ms ss ->
+    sibs_from Θ Ξ Γc qc Cs i (M :: ms) ((qc, i, Cs) :: ss)
+| sibs_from_view : forall i M ms ss qv kv Iv vmv Dv Ws,
+    im_head M = mh_view qv kv Iv vmv ->
+    ind_lookup Θ Ξ qv = Some Dv ->
+    nbes Θ Ξ Γc (List.map (fun I => I[sb_of_list sb_id Cs]) Iv)
+      (List.map (fun T => T[sb_of_list sb_id Cs]) (tele_insts (ind_uparams Dv) sb_id Iv)) Ws ->
+    sibs_from Θ Ξ Γc qc Cs (S i) ms ss ->
+    sibs_from Θ Ξ Γc qc Cs i (M :: ms) ((qv, kv, List.map nf_to_exp Ws) :: ss).
+
+Inductive view_sibs (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : rview -> list rview -> Prop :=
+| view_sibs_intro : forall qc k Cs D' ss,
+    ind_lookup Θ Ξ qc = Some D' ->
+    sibs_from Θ Ξ (rd_uctx Ξ R) qc Cs 0 (ind_members D') ss ->
+    view_sibs Θ Ξ R (qc, k, Cs) ss.
+
+(** ** Filing the Group
+
+    The declared members, then the views, numbered in the order found; a
+    view's uniform arguments with the [Self]s instantiated ([sb_selfs]:
+    [Self_j] is the type former of the member [j] at the frames'
+    parameters), so that they are over the filed group's uniform
+    parameters, the group's own and the frames'. *)
+
+Definition sb_selfs (pq : qname) (nu n t : nat) : sub :=
+  sb_qn nu (sb_of_list sb_id (List.map (fun j => apps (a_ind pq j) (vars_from 0 t)) (List.seq 0 n))).
+
+Fixpoint rms_filed (Ξ : gstack) (n : nat) (Vs : list rview) (ms : list raw_member)
+    (css : list (list (string * list rcarg))) : option (list imember) :=
+  match ms, css with
+  | nil, nil => Some nil
+  | Mr :: ms', cs :: css' =>
+      match rcons_num n Vs cs, rms_filed Ξ n Vs ms' css' with
+      | Some cs', Some Ms => Some (mk_imember (mh_decl (ind_qname Ξ (rm_name Mr))) (rm_nparams Mr) cs' :: Ms)
+      | _, _ => None
+      end
+  | _, _ => None
+  end.
+
+Definition rv_filed (Θ : gdeps) (Ξ : gstack) (σ : sub) (n : nat) (Vs : list rview) (x : rview) (ss : list rview)
+    (cs : list (string * list rcarg)) : option imember :=
+  let '(qc, k, Cs) := x in
+  let Is := List.map (fun C => C[σ]) Cs in
+  match ind_lookup Θ Ξ qc with
+  | Some D' =>
+      match ind_member D' k, rcons_num n Vs cs with
+      | Some Mk', Some cs' =>
+          Some (mk_imember
+                  (mh_view qc k Is (List.map (fun s => n + match rview_index s Vs with Some v => v | None => 0 end) ss))
+                  (tele_sub (im_nparams Mk') (sb_of_list sb_id Is)) cs')
+      | _, _ => None
+      end
+  | None => None
+  end.
+
+Fixpoint rvs_filed (Θ : gdeps) (Ξ : gstack) (σ : sub) (n : nat) (Vs xs : list rview) (Ss : list (list rview))
+    (css : list (list (string * list rcarg))) : option (list imember) :=
+  match xs, Ss, css with
+  | nil, nil, nil => Some nil
+  | x :: xs', ss :: Ss', cs :: css' =>
+      match rv_filed Θ Ξ σ n Vs x ss cs, rvs_filed Θ Ξ σ n Vs xs' Ss' css' with
+      | Some M, Some Ms => Some (M :: Ms)
+      | _, _ => None
+      end
+  | _, _, _ => None
+  end.
+
+Definition rd_filed (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (Vs : list rview) (Ss : list (list rview))
+    (csD csV : list (list (string * list rcarg))) : option ind_decl :=
+  match rd_members R with
+  | Mr0 :: _ =>
+      let σ := sb_selfs (ind_qname Ξ (rm_name Mr0)) (rd_nu R) (rd_n R) (List.length (gs_tele Ξ)) in
+      match rms_filed Ξ (rd_n R) Vs (rd_members R) csD, rvs_filed Θ Ξ σ (rd_n R) Vs Vs Ss csV with
+      | Some Ms, Some Mv => Some (mk_ind (rd_uparams R ++ gs_tele Ξ) (rm_sort Mr0) (Ms ++ Mv))
+      | _, _ => None
+      end
+  | nil => None
+  end.
+
+(** The entries of the declared members, in order, each checked where it
+    is filed, after those before it. *)
+Inductive ind_entries_run (Θ : gdeps) (pv : bool) (pq : qname) (D : ind_decl) :
+    nat -> list string -> gstack -> gstack -> Prop :=
+| ind_entries_nil : forall k Ξ, ind_entries_run Θ pv pq D k nil Ξ Ξ
+| ind_entries_cons : forall k x xs M Ξ Ξ',
+    ind_member D k = Some M ->
+    gs_fresh x Ξ ->
+    Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_ind pv pq k D (gen_body pq D k M) ->
+    ind_entries_run Θ pv pq D (S k) xs (gs_add x (ge_ind pv pq k D (gen_body pq D k M)) Ξ) Ξ' ->
+    ind_entries_run Θ pv pq D k (x :: xs) Ξ Ξ'.
+
+(** ** Mutual Definitions
+
+    [mutual def (Δ) f (ys) (z : Z) : A | … with … end]: one function per
+    member of a group, in any order, each matched to its member by the
+    normal form of its scrutinee's type.  The group and its uniform
+    parameters [Us], over [Δ] and the frames, are read off the first
+    function's, a declared member.  A function's member is the first one
+    whose type at [Us] and at the function's non-uniform parameters has
+    the scrutinee's normal form; every member has exactly one function.
+    Each is filed as the definition [λ Δ ys z. a_elim (Some pq) m Bks z]:
+    a block per member, the function's of that member, its scrutinee's
+    type the annotation, its result type the motive, its clauses the
+    branches, moved under [ys] and [z]. *)
+
+(** The first position of [W] among [Ws], of [m] among [ms]. *)
+Fixpoint nf_index (W : nf) (Ws : list nf) : option nat :=
+  match Ws with
+  | nil => None
+  | W' :: Ws' => if exp_eq_dec (nf_to_exp W) (nf_to_exp W') then Some 0 else option_map S (nf_index W Ws')
+  end.
+
+Fixpoint nat_index (m : nat) (ms : list nat) : option nat :=
+  match ms with
+  | nil => None
+  | m' :: ms' => if Nat.eqb m m' then Some 0 else option_map S (nat_index m ms')
+  end.
+
+(** The block a function makes, under [k] more binders of the function it
+    is the eliminator of. *)
+Definition rf_block (k : nat) (f : raw_fun) : eblock :=
+  let nn := List.length (rf_nparams f) in
+  eb_mk (S nn) (Some (rf_scrut f)[wk_qn nn (wk_shiftn k)]ʷ) (rf_res f)[wk_qn (S nn) (wk_shiftn k)]ʷ
+    (List.map (fun b => (fst (fst b), snd (fst b), (snd b)[wk_qn (snd (fst b)) (wk_shiftn k)]ʷ)) (rf_clauses f)).
+
+(** The blocks, one per member [j < nm], of the function of member [j]. *)
+Definition mdef_blocks (k nm : nat) (fs : list raw_fun) (ms : list nat) : list eblock :=
+  List.map (fun j => match nat_index j ms with
+                     | Some i => match List.nth_error fs i with Some g => rf_block k g | None => eb_mk 0 None a_True nil end
+                     | None => eb_mk 0 None a_True nil
+                     end)
+    (List.seq 0 nm).
+
+(** The definitions filed: each function's name, type and term. *)
+Definition mdef_defs (pq : qname) (nm : nat) (Δ : ctx) (fs : list raw_fun) (ms : list nat) : list (string * typ * exp) :=
+  List.map (fun fm =>
+              let f := fst fm in
+              (rf_name f, ctx_pi Δ (ctx_pi (rf_nparams f) (a_pi (rf_scrut f) (rf_res f))),
+               ctx_fn Δ (ctx_fn (rf_nparams f)
+                           (a_fn (rf_scrut f)
+                              (a_elim (Some pq) (snd fm) (mdef_blocks (S (List.length (rf_nparams f))) nm fs ms) (a_var 0))))))
+    (List.combine fs ms).
+
+(** The member [m] of a function: its scrutinee's normal form is first
+    that of [m]'s type at [Us] and at the function's non-uniform
+    parameters. *)
+Inductive mdef_member (Θ : gdeps) (Ξ : gstack) (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) :
+    raw_fun -> nat -> Prop :=
+| mdef_member_intro : forall f W Ws m Mm,
+    nbe_ty Θ Ξ (rf_nparams f ++ Δ ++ gs_tele Ξ) (rf_scrut f) W ->
+    Forall2 (fun jM Wj => nbe_ty Θ Ξ (rf_nparams f ++ Δ ++ gs_tele Ξ)
+                            (im_ty_at pq (fst jM) (snd jM) (List.map (fun U => U[wk_shiftn (List.length (rf_nparams f))]ʷ) Us)
+                               (vars_from 0 (List.length (rf_nparams f)))) Wj)
+      (List.combine (List.seq 0 (List.length (ind_members D))) (ind_members D)) Ws ->
+    nf_index W Ws = Some m ->
+    ind_member D m = Some Mm ->
+    im_nn Mm = List.length (rf_nparams f) ->
+    mdef_member Θ Ξ pq D Us Δ f m.
+
+Inductive mdefs_run (Θ : gdeps) (b pv : bool) : list (string * typ * exp) -> gstack -> gstack -> Prop :=
+| mdefs_nil : forall Ξ, mdefs_run Θ b pv nil Ξ Ξ
+| mdefs_cons : forall x A M ds Ξ Ξ',
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
+    gs_fresh x Ξ ->
+    mdefs_run Θ b pv ds (gs_add x (gs_def b pv Ξ A M) Ξ) Ξ' ->
+    mdefs_run Θ b pv ((x, A, M) :: ds) Ξ Ξ'.
 
 (** ** Merging Filed Units
 
@@ -385,23 +635,45 @@ Section Semantics.
       open_gens Θ Ξ true (gs_tele Ξ) E its gs ->
       gens_run Θ Ξ gs Ξ' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_open E its ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
-  (** A declaration as written: its arguments classified ([cls_cons_in]);
-      the entry it is filed as, the declaration with its module's generated
-      body, checked where it is declared. *)
-  | rc_ind : forall ch B Rb Θ Ξ x pv R cs,
-      cls_cons_in Θ Ξ R cs ->
-      gs_fresh x Ξ ->
-      Θ ⍮ Ξ ⍮ ind_qname Ξ x
-        ⊢ᵉ ge_ind pv (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) (gen_body (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs))) ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_ind x pv R ⇝
-        Θ ⍮ gs_add x (ge_ind pv (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) (gen_body (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)))) Ξ ⍮ B ⍮ Rb
+  (** A group as written, its members of one sort: the arguments of the
+      declared members classified ([rm_cls]); the views, found from the
+      instances met ([views_bfs]), each with its siblings and its
+      constructors classified; the group filed ([rd_filed]), and an entry
+      per declared member, each with its module's generated body, checked
+      where it is filed. *)
+  | rc_ind : forall ch B Rb Θ Ξ pv R Mr0 Mrs csD Vs Ss csV D Ξ',
+      rd_members R = Mr0 :: Mrs ->
+      Forall (fun Mr => rm_sort Mr = rm_sort Mr0) Mrs ->
+      Forall2 (rm_cls Θ Ξ R) (rd_members R) csD ->
+      Forall2 (view_sibs Θ Ξ R) Vs Ss ->
+      Forall2 (view_cls Θ Ξ R) Vs csV ->
+      views_bfs (sibs_tbl Vs Ss) (meets_tbl Vs csV) nil (List.concat (List.map rcons_views csD)) Vs ->
+      rd_filed Θ Ξ R Vs Ss csD csV = Some D ->
+      ind_entries_run Θ pv (ind_qname Ξ (rm_name Mr0)) D 0 (List.map rm_name (rd_members R)) Ξ Ξ' ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_ind pv R ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
+  (** A mutual definition: the group and its uniform parameters read off
+      the first function's scrutinee, each function's member, one function
+      per member, and the definitions filed in order, each checked as a
+      definition is. *)
+  | rc_mdef : forall ch B Rb Θ Ξ b pv Δ f0 fs pq m0 Ps D Us ms Ξ',
+      tele_ass Δ ->
+      ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
+      nbe_ty Θ Ξ (rf_nparams f0 ++ Δ ++ gs_tele Ξ) (rf_scrut f0) (nf_indty pq m0 Ps) ->
+      ind_lookup Θ Ξ pq = Some D ->
+      m0 < ind_ndecl D ->
+      img_pats (List.repeat true (List.length (rf_nparams f0))) (List.firstn (ind_nu D) (nfs_to_exps Ps)) = Some Us ->
+      Forall2 (mdef_member Θ Ξ pq D Us Δ) (f0 :: fs) ms ->
+      List.length ms = List.length (ind_members D) ->
+      List.NoDup ms ->
+      mdefs_run Θ b pv (mdef_defs pq (List.length (ind_members D)) Δ (f0 :: fs) ms) Ξ Ξ' ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_mdef b pv Δ (f0 :: fs) ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
   (** [builtin natural := X]: [X], a module expression, denotes an inductive type at no argument
       and over no parameter, with the shape of the natural numbers, in
       [Type@0]; its binding is merged in ([bt_bind_nat]), so it is bound
       unless another type is. *)
   | rc_builtin : forall ch B Rb B' Θ Ξ H p D z s,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ H ≈ H ->
-      mdenote Θ Ξ (gs_tele Ξ) H (ds_ind nil p nil) ->
+      mdenote Θ Ξ (gs_tele Ξ) H (ds_ind nil p 0 nil) ->
       ind_lookup Θ Ξ p = Some D ->
       nat_shape D = Some (z, s) ->
       ind_sort D = nat_sort ->
@@ -411,13 +683,15 @@ Section Semantics.
       type at arguments [Ns], over the parameters [Θ'] it is still
       abstracted over; the alias stores the canonical path and the
       arguments, over [Θ'] and [Δ], checked as its entry. *)
-  | rc_ind_alias : forall ch B Rb Θ Ξ x pv Δ H Θ' p Ns,
+  | rc_ind_alias : forall ch B Rb Θ Ξ x pv Δ H Θ' p k Ns D pm,
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ H ≈ H ->
-      mdenote Θ Ξ (Δ ++ gs_tele Ξ) H (ds_ind Θ' p Ns) ->
-      Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_ind_alias pv (Θ' ++ Δ ++ gs_tele Ξ) p Ns ->
+      mdenote Θ Ξ (Δ ++ gs_tele Ξ) H (ds_ind Θ' p k Ns) ->
+      ind_lookup Θ Ξ p = Some D ->
+      ind_mpath D k = Some pm ->
+      Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_ind_alias pv (Θ' ++ Δ ++ gs_tele Ξ) pm p k Ns ->
       gs_fresh x Ξ ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_ind_alias x pv Δ H ⇝
-        Θ ⍮ gs_add x (ge_ind_alias pv (Θ' ++ Δ ++ gs_tele Ξ) p Ns) Ξ ⍮ B ⍮ Rb
+        Θ ⍮ gs_add x (ge_ind_alias pv (Θ' ++ Δ ++ gs_tele Ξ) pm p k Ns) Ξ ⍮ B ⍮ Rb
   (** An [eval] changes nothing, but must type-check where it stands. *)
   | rc_eval_check : forall ch B Rb Θ Ξ M A,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
@@ -500,6 +774,114 @@ Qed.
 Lemma gens_run_functional : forall Θ Ξ gs Ξ1, gens_run Θ Ξ gs Ξ1 -> forall Ξ2, gens_run Θ Ξ gs Ξ2 -> Ξ1 = Ξ2.
 Proof. induction 1; intros * H2; inversion H2; subst; auto. Qed.
 
+Lemma Forall2_functional : forall {X Y} (P : X -> Y -> Prop), (forall x y y', P x y -> P x y' -> y = y') ->
+    forall xs ys ys', Forall2 P xs ys -> Forall2 P xs ys' -> ys = ys'.
+Proof.
+  intros X Y P HP xs ys ys' H; revert ys'; induction H as [| x y xs ys Hxy _ IH]; intros ys' H'; inversion H'; subst;
+    [ reflexivity | f_equal; eauto ].
+Qed.
+
+Lemma Forall2_index : forall {Y} (P : rview -> Y -> Prop) Vs Ys x v d, Forall2 P Vs Ys -> rview_index x Vs = Some v ->
+    P x (List.nth v Ys d).
+Proof.
+  intros * H Hv; apply rview_index_in in Hv; revert v Hv; induction H as [| y0 y Vs Ys Hy _ IH]; intros [| v] Hv;
+    cbn in Hv; try discriminate; [ injection Hv as <-; exact Hy | apply IH; exact Hv ].
+Qed.
+
+Lemma rview_index_in_some : forall x Vs, In x Vs -> exists v, rview_index x Vs = Some v.
+Proof.
+  intros x Vs H; apply rview_mem_spec in H; unfold rview_mem in H.
+  destruct (rview_index x Vs); [ eauto | discriminate ].
+Qed.
+
+Lemma nbes_functional : forall Θ Ξ Γ Ms As Ws Ws', nbes Θ Ξ Γ Ms As Ws -> nbes Θ Ξ Γ Ms As Ws' -> Ws = Ws'.
+Proof.
+  intros * H; revert Ws'; induction H; intros Ws' H'; inversion H'; subst; [ reflexivity |].
+  f_equal; [ eapply functional_nbe; eassumption | auto ].
+Qed.
+
+Lemma sibs_from_functional : forall Θ Ξ Γc qc Cs i ms ss ss',
+    sibs_from Θ Ξ Γc qc Cs i ms ss -> sibs_from Θ Ξ Γc qc Cs i ms ss' -> ss = ss'.
+Proof.
+  intros * H; revert ss'; induction H; intros ss' H'; inversion H'; subst; try congruence; f_equal; auto.
+  match goal with H1 : im_head ?M = _, H2 : im_head ?M = _ |- _ => rewrite H1 in H2; injection H2 as <- <- <- <- end.
+  match goal with H1 : ind_lookup _ _ ?qn = _, H2 : ind_lookup _ _ ?qn = _ |- _ => rewrite H1 in H2; injection H2 as <- end.
+  f_equal; f_equal; eapply nbes_functional; eassumption.
+Qed.
+
+Lemma view_sibs_functional : forall Θ Ξ R x ss ss', view_sibs Θ Ξ R x ss -> view_sibs Θ Ξ R x ss' -> ss = ss'.
+Proof.
+  intros * H H'; destruct H; inversion H'; subst.
+  match goal with H1 : ind_lookup _ _ ?qn = _, H2 : ind_lookup _ _ ?qn = _ |- _ => rewrite H1 in H2; injection H2 as <- end.
+  eapply sibs_from_functional; eassumption.
+Qed.
+
+Lemma view_cls_functional : forall Θ Ξ R x cs cs', view_cls Θ Ξ R x cs -> view_cls Θ Ξ R x cs' -> cs = cs'.
+Proof.
+  intros * H H'; destruct H; inversion H'; subst.
+  match goal with H1 : ind_lookup _ _ ?qn = _, H2 : ind_lookup _ _ ?qn = _ |- _ => rewrite H1 in H2; injection H2 as <- end.
+  match goal with H1 : ind_member ?D ?k = _, H2 : ind_member ?D ?k = _ |- _ => rewrite H1 in H2; injection H2 as <- end.
+  eapply cls_cons_in_functional; eassumption.
+Qed.
+
+Lemma ind_entries_run_functional : forall Θ pv pq D k xs Ξ Ξ1, ind_entries_run Θ pv pq D k xs Ξ Ξ1 ->
+    forall Ξ2, ind_entries_run Θ pv pq D k xs Ξ Ξ2 -> Ξ1 = Ξ2.
+Proof.
+  induction 1; intros Ξ2 HE; inversion HE; subst; [ reflexivity |].
+  match goal with H1 : ind_member ?D ?k = _, H2 : ind_member ?D ?k = _ |- _ => rewrite H1 in H2; injection H2 as <- end.
+  auto.
+Qed.
+
+(** A group is classified, its views found and it is filed in one way. *)
+Lemma rc_ind_functional : forall Θ Ξ pv R Mr0 csD Vs Ss csV D Ξ1 Mr0' csD' Vs' Ss' csV' D' Ξ2,
+    ind_entries_run Θ pv (ind_qname Ξ (rm_name Mr0)) D 0 (List.map rm_name (rd_members R)) Ξ Ξ1 ->
+    rd_filed Θ Ξ R Vs Ss csD csV = Some D ->
+    Forall2 (rm_cls Θ Ξ R) (rd_members R) csD ->
+    Forall2 (view_sibs Θ Ξ R) Vs Ss ->
+    Forall2 (view_cls Θ Ξ R) Vs csV ->
+    views_bfs (sibs_tbl Vs Ss) (meets_tbl Vs csV) nil (List.concat (List.map rcons_views csD)) Vs ->
+    ind_entries_run Θ pv (ind_qname Ξ (rm_name Mr0')) D' 0 (List.map rm_name (rd_members R)) Ξ Ξ2 ->
+    rd_filed Θ Ξ R Vs' Ss' csD' csV' = Some D' ->
+    Forall2 (rm_cls Θ Ξ R) (rd_members R) csD' ->
+    Forall2 (view_sibs Θ Ξ R) Vs' Ss' ->
+    Forall2 (view_cls Θ Ξ R) Vs' csV' ->
+    views_bfs (sibs_tbl Vs' Ss') (meets_tbl Vs' csV') nil (List.concat (List.map rcons_views csD')) Vs' ->
+    forall Mrs Mrs', rd_members R = Mr0 :: Mrs -> rd_members R = Mr0' :: Mrs' ->
+    Ξ1 = Ξ2.
+Proof.
+  intros * He Hf Hc Hs Hv Hb He' Hf' Hc' Hs' Hv' Hb' Mrs Mrs' HM HM'.
+  rewrite HM in HM'; injection HM' as <- <-.
+  assert (Ecs : csD = csD') by (eapply Forall2_functional; [| exact Hc | exact Hc' ];
+                                intros; unfold rm_cls in *; eapply cls_cons_in_functional; eassumption).
+  subst csD'.
+  assert (Agree : forall x, In x Vs -> In x Vs' -> sibs_tbl Vs Ss x = sibs_tbl Vs' Ss' x /\ meets_tbl Vs csV x = meets_tbl Vs' csV' x).
+  { intros x Hx Hx'.
+    destruct (rview_index_in_some _ _ Hx) as [v Hvi]; destruct (rview_index_in_some _ _ Hx') as [v' Hvi'].
+    unfold sibs_tbl, meets_tbl; rewrite Hvi, Hvi'; split.
+    - eapply view_sibs_functional; eapply Forall2_index; eassumption.
+    - f_equal; eapply view_cls_functional; eapply Forall2_index; eassumption. }
+  pose proof (views_bfs_functional _ _ _ _ _ Hb _ _ _ Hb' Agree) as <-.
+  assert (ESs : Ss = Ss') by (eapply Forall2_functional; [ exact (view_sibs_functional Θ Ξ R) | exact Hs | exact Hs' ]).
+  assert (EcsV : csV = csV') by (eapply Forall2_functional; [ exact (view_cls_functional Θ Ξ R) | exact Hv | exact Hv' ]).
+  subst Ss' csV'; rewrite Hf in Hf'; injection Hf' as <-.
+  eapply ind_entries_run_functional; eassumption.
+Qed.
+
+Lemma mdef_member_functional : forall Θ Ξ pq D Us Δ f m m',
+    mdef_member Θ Ξ pq D Us Δ f m -> mdef_member Θ Ξ pq D Us Δ f m' -> m = m'.
+Proof.
+  intros * H H'; destruct H as [f W Ws m Mm HW HWs Hi _ _];
+    inversion H' as [f' W' Ws' m'' Mm' HW' HWs' Hi' _ _]; subst.
+  pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-.
+  assert (Ws = Ws') as <-.
+  { eapply Forall2_functional; [| exact HWs | exact HWs' ].
+    intros ? ? ? H1 H2; cbv beta in H1, H2; exact (functional_nbe_ty _ _ _ _ H1 H2). }
+  congruence.
+Qed.
+
+Lemma mdefs_run_functional : forall Θ b pv ds Ξ Ξ1, mdefs_run Θ b pv ds Ξ Ξ1 -> forall Ξ2, mdefs_run Θ b pv ds Ξ Ξ2 -> Ξ1 = Ξ2.
+Proof. induction 1; intros Ξ2 H2; inversion H2; subst; auto. Qed.
+
 Scheme run_cmd_mind := Minimality for run_cmd Sort Prop
 with run_cmds_mind := Minimality for run_cmds Sort Prop
 with run_unit_mind := Minimality for run_unit Sort Prop.
@@ -575,11 +957,23 @@ Section Determinism.
       | H1 : gens_run _ _ ?gs _, H2 : gens_run _ _ ?gs _ |- _ =>
           rewrite (gens_run_functional _ _ _ _ H1 _ H2)
       end; repeat split; auto.
-    - (* a declaration: its classification *)
-      match goal with
-      | H1 : cls_cons_in ?a ?b ?r ?c1, H2 : cls_cons_in ?a ?b ?r ?c2 |- _ =>
-          assert_fails constr_eq c1 c2; pose proof (cls_cons_in_functional _ _ _ _ _ H1 H2); subst c2
-      end; repeat split; auto.
+    - (* a group: its classification, its views and its filing *)
+      repeat split; auto; eapply rc_ind_functional; eassumption.
+    - (* a mutual definition: the group, each function's member *)
+      try match goal with
+      | H1 : nbe_ty _ _ _ ?T (nf_indty ?p1 _ _), H2 : nbe_ty _ _ _ ?T (nf_indty ?p2 _ _) |- _ =>
+          assert_fails constr_eq H1 H2;
+          pose proof (functional_nbe_ty _ _ _ _ H1 H2) as E; injection E as <- <- <-
+      end.
+      try match goal with H1 : ind_lookup _ _ ?qn = _, H2 : ind_lookup _ _ ?qn = _ |- _ =>
+        assert_fails constr_eq H1 H2; rewrite H1 in H2; injection H2 as <- end.
+      try match goal with H1 : img_pats _ _ = Some ?U1, H2 : img_pats _ _ = Some ?U2 |- _ =>
+        assert_fails constr_eq U1 U2; rewrite H1 in H2; injection H2 as <- end.
+      match goal with H1 : Forall2 _ ?fs ?m1, H2 : Forall2 _ ?fs ?m2 |- _ =>
+        assert_fails constr_eq m1 m2;
+        assert (m1 = m2) as <- by (eapply Forall2_functional; [ intros; eapply mdef_member_functional; eassumption
+                                                              | exact H1 | exact H2 ]) end.
+      repeat split; auto; eapply mdefs_run_functional; eassumption.
     - (* a sequence: its head, then its tail from the same state *)
       match goal with
       | IH1 : forall _ _ _ _ _, run_cmd _ _ _ _ _ ?c _ _ _ _ -> _, H1 : run_cmd _ _ _ _ _ ?c _ _ _ _ |- _ =>
@@ -698,9 +1092,9 @@ Proof.
   cbn; econstructor; [ eassumption | exact HE | exact Hfr ].
 Qed.
 
-Lemma add_ind_wf : forall Θ Ξ x pv D Φ,
-    ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) x ⊢ᵉ ge_ind pv (qname_in (gs_path Ξ) x) D Φ -> gs_fresh x Ξ ->
-    ⊢ᵍ Θ ⍮ gs_add x (ge_ind pv (qname_in (gs_path Ξ) x) D Φ) Ξ.
+Lemma add_ind_wf : forall Θ Ξ x pv pq k D Φ,
+    ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) x ⊢ᵉ ge_ind pv pq k D Φ -> gs_fresh x Ξ ->
+    ⊢ᵍ Θ ⍮ gs_add x (ge_ind pv pq k D Φ) Ξ.
 Proof. intros; apply add_entry_wf; assumption. Qed.
 
 (** The name of an entry of a frame is fresh in the body before it. *)
@@ -723,25 +1117,62 @@ Section GrowDeps.
   Proof.
     apply global_wf_mut_ind; intros; subst.
     all: try assert (Hb : ⊢ Θ' ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
-    all: try pose proof (deps_grow _ _ _ Hsub Hb) as (Hc & He & _ & _ & Hx & _ & Hm).
+    all: try pose proof (deps_grow _ _ _ Hsub Hb) as (Hc & He & Hq & Hst & Hx & _ & Hm).
     - econstructor; [ apply He; eassumption | intros; apply He; eauto ].
     - econstructor; auto.
     - econstructor; [ assumption | apply Hx; assumption | apply Hm; assumption ].
-    - (* an inductive type, before its members *)
-      econstructor; try eassumption; intros; first [ apply Hc | apply He ]; eauto.
+    - (* a group, before the members of its first member's module: a
+         container found at [Θ'] is the one found at [Θ] *)
+      assert (Hs : gc_sub Θ Ξ Θ' Ξ) by (apply gc_sub_deps; exact Hsub).
+      match goal with |- _ ⍮ _ ⍮ _ ⊢ᵉ ge_ind _ _ _ ?D0 _ => assert (HD : decl_typed Θ Ξ D0) by build_decl_typed end.
+      pose proof (decl_typed_container _ _ _ _ _ Hs HD) as Hcont.
+      econstructor; try eassumption.
+      all: intros;
+        repeat match goal with
+        | Hk : ind_member ?D0 ?k = Some ?Mk, Hh : im_head ?Mk = mh_view ?qc _ _ _, Hl : ind_lookup _ _ ?qc = Some _ |- _ =>
+            apply (Hcont _ _ _ _ _ _ _ Hk Hh) in Hl
+        end.
+      all: try solve [ first [ apply Hc | apply He | apply Hq | apply Hst | apply Hx ]; eauto ].
+      all: try solve [ match goal with Hp : _ |- _ => eapply Hp; eassumption end ].
+      (* the rank, at the containers found at [Θ'] *)
+      all: try solve [ match goal with
+        | Hrk : exists rk, view_rank_ok _ _ ?D0 rk |- exists rk, view_rank_ok _ _ ?D0 rk =>
+            destruct Hrk as [rk [Hr0 Hr1]]; exists rk; constructor; [ exact Hr0 |];
+            intros * Hk Hh Hl; pose proof (Hcont _ _ _ _ _ _ _ Hk Hh Hl); intros; eapply Hr1; eassumption
+        end ].
+      (* the views' members, at the containers found at [Θ'] *)
+      all: try solve [ match goal with
+        | Hvw : forall k Mk qc k' Is vm, ind_member ?D0 k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+                  exists D', ind_lookup _ _ qc = Some D' /\ vwrap_ok ?D0 D' vm,
+          Hk : ind_member ?D0 _ = Some _, Hh : im_head _ = mh_view _ _ _ _ |- exists D', _ /\ vwrap_ok _ _ _ =>
+            destruct (Hvw _ _ _ _ _ _ Hk Hh) as (D' & Hl & Hw);
+            exists D'; split; [ exact (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hl) | exact Hw ]
+        end ].
+      (* the container of a view *)
+      match goal with
+      | Hv : forall k Mk qc k' Is vm, ind_member ?D0 k = Some Mk -> im_head Mk = mh_view qc k' Is vm -> exists D' Mk', _,
+        Hk : ind_member ?D0 _ = Some _, Hh : im_head _ = mh_view _ _ _ _ |- _ =>
+          destruct (Hv _ _ _ _ _ _ Hk Hh) as (D' & Mk' & Hl & Hrest);
+          exists D', Mk'; split; [ exact (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hl) | exact Hrest ]
+      end.
+    - (* a later declared member of a group *)
+      match goal with Hg : ⊢ᵍ Θ' ⍮ ?X |- _ => pose proof (deps_grow _ _ _ Hsub (wf_ctx_empty _ _ Hg)) as (Hc' & _) end.
+      eapply wf_gentry_ind_mem_nil; try eassumption;
+        first [ apply Hc'; eassumption | eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ] ].
     - (* one more member, checked with the entry so far declared *)
       rename H0 into IH, H1 into HM.
       pose proof (IH eq_refl ltac:(assumption) ltac:(assumption)) as HE'.
       pose proof (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) as Hg0.
-      assert (Hg' : ⊢ᵍ Θ' ⍮ (mq, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv (qname_in mq y) D Φ)) :: Ξ).
-      { refine (add_ind_wf _ ((mq, gu_body Δ Φ0) :: Ξ) y pv D Φ _ HE' _); [ assumption |].
+      assert (Hg' : ⊢ᵍ Θ' ⍮ (mq, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv pq k D Φ)) :: Ξ).
+      { refine (add_ind_wf _ ((mq, gu_body Δ Φ0) :: Ξ) y pv pq k D Φ _ HE' _); [ assumption |].
         cbn; exact (wf_gstack_ext_fresh _ _ _ _ _ _ _ Hg0). }
       pose proof (deps_grow _ _ _ Hsub (wf_ctx_empty _ _ Hg')) as (_ & He' & _).
       econstructor; [ exact HE' | apply He'; exact HM | assumption ].
     - (* an inductive alias *)
-      econstructor; [ assumption | apply Hx; assumption
-                    | eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ]
-                    | assumption | apply He; assumption | apply Hm; assumption ].
+      eapply wf_gentry_ind_alias; try eassumption;
+        first [ apply Hx; assumption | apply He; assumption | apply Hm; assumption
+              | eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ]
+              | eapply ind_mlookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ] ].
     - econstructor; [ assumption | apply Hc; assumption ].
     - match goal with HE : Θ ⍮ _ ⍮ qname_in _ _ ⊢ᵉ _ |- _ => pose proof (wf_gentry_gctx _ _ _ _ HE) as Hg0 end.
       destruct (wf_gstack_cons_inv _ _ _ _ Hg0) as (_ & _ & Hff).
@@ -912,6 +1343,49 @@ Proof.
   - apply add_entry_wf; assumption.
 Qed.
 
+(** The entries of a group's declared members and the definitions of a
+    mutual definition, filed in order, likewise. *)
+Lemma ind_entries_run_wf : forall Θ pv pq D k xs Ξ Ξ', ind_entries_run Θ pv pq D k xs Ξ Ξ' -> ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ Θ ⍮ Ξ'.
+Proof. induction 1; intros HΞ; [ exact HΞ | apply IHind_entries_run; apply add_entry_wf; assumption ]. Qed.
+
+Lemma ind_entries_run_shape : forall Θ pv pq D k xs Ξ Ξ', ind_entries_run Θ pv pq D k xs Ξ Ξ' -> gs_shape Ξ' = gs_shape Ξ.
+Proof. induction 1; rewrite ?IHind_entries_run, ?gs_add_params; reflexivity. Qed.
+
+Lemma ind_entries_run_tl : forall Θ pv pq D k xs Ξ Ξ', ind_entries_run Θ pv pq D k xs Ξ Ξ' ->
+    tl Ξ' = tl Ξ /\ List.length Ξ' = List.length Ξ.
+Proof.
+  assert (Hadd : forall x E Ξ, tl (gs_add x E Ξ) = tl Ξ /\ List.length (gs_add x E Ξ) = List.length Ξ)
+    by (intros ? ? [| [? ?] ?]; split; reflexivity).
+  induction 1; [ auto | .. ]; destruct IHind_entries_run as [Ht Hl]; rewrite Ht, Hl; apply Hadd.
+Qed.
+
+Lemma ind_entries_run_ind_lookup : forall Θ pv pq D k xs Ξ Ξ', ind_entries_run Θ pv pq D k xs Ξ Ξ' -> ⊢ᵍ Θ ⍮ Ξ ->
+    forall p D0, ind_lookup Θ Ξ p = Some D0 -> ind_lookup Θ Ξ' p = Some D0.
+Proof.
+  induction 1; intros HΞ p0 D0 Hl; [ exact Hl |]; apply IHind_entries_run; [ apply add_entry_wf; assumption |].
+  apply ind_lookup_add; assumption.
+Qed.
+
+Lemma mdefs_run_wf : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ Θ ⍮ Ξ'.
+Proof. induction 1; intros HΞ; [ exact HΞ | apply IHmdefs_run; apply add_def_wf; assumption ]. Qed.
+
+Lemma mdefs_run_shape : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> gs_shape Ξ' = gs_shape Ξ.
+Proof. induction 1; rewrite ?IHmdefs_run, ?gs_add_params; reflexivity. Qed.
+
+Lemma mdefs_run_tl : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> tl Ξ' = tl Ξ /\ List.length Ξ' = List.length Ξ.
+Proof.
+  assert (Hadd : forall x E Ξ, tl (gs_add x E Ξ) = tl Ξ /\ List.length (gs_add x E Ξ) = List.length Ξ)
+    by (intros ? ? [| [? ?] ?]; split; reflexivity).
+  induction 1; [ auto | .. ]; destruct IHmdefs_run as [Ht Hl]; rewrite Ht, Hl; apply Hadd.
+Qed.
+
+Lemma mdefs_run_ind_lookup : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> ⊢ᵍ Θ ⍮ Ξ ->
+    forall p D0, ind_lookup Θ Ξ p = Some D0 -> ind_lookup Θ Ξ' p = Some D0.
+Proof.
+  induction 1; intros HΞ p0 D0 Hl; [ exact Hl |]; apply IHmdefs_run; [ apply add_def_wf; assumption |].
+  apply ind_lookup_add; assumption.
+Qed.
+
 (** A module frame, closed: what was read in it is read in the member it
     becomes. *)
 Lemma ind_lookup_close : forall Θ Ξ x pv Δ Φ p D,
@@ -920,15 +1394,15 @@ Lemma ind_lookup_close : forall Θ Ξ x pv Δ Φ p D,
     ind_lookup Θ (gs_add x (ge_body pv Δ Φ) Ξ) p = Some D.
 Proof.
   intros * HΞ Hfr Hl.
-  destruct (ind_lookup_module _ _ _ _ Hl) as [T Hm].
+  destruct (ind_lookup_module _ _ _ _ Hl) as (T & pq & Hm).
   apply gc_module_frame in Hm as [(y & ip & -> & Hm) | Hm].
   - destruct Ξ as [| [mq U] Ξ0]; [ contradiction |].
     destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & [P Ψ -> _] & _).
     cbn [gs_path gs_add gu_params gu_mod gs_tele] in Hm |- *.
     assert (Hp : qname_app (qname_in mq x) (y :: ip) = qname_app mq (x :: y :: ip))
       by (unfold qname_app, qname_in; cbn; rewrite <- List.app_assoc; reflexivity).
-    rewrite Hp; rewrite ind_lookup_unfold, gc_module_frame_here; cbn [gu_params gu_mod].
-    assert (Hm' : ge_submodule (P ++ gs_tele Ξ0) (ge_body pv Δ Φ) y ip = Some (mr_body T (Some D))) by (cbn; exact Hm).
+    rewrite Hp; rewrite ind_lookup_unfold, ind_mlookup_unfold, gc_module_frame_here; cbn [gu_params gu_mod].
+    assert (Hm' : ge_submodule (P ++ gs_tele Ξ0) (ge_body pv Δ Φ) y ip = Some (mr_body T (Some (pq, 0, D)))) by (cbn; exact Hm).
     rewrite (gm_submodule_ext_here _ Ψ x _ _ _ _ Hm'); reflexivity.
   - apply ind_lookup_add; [ exact HΞ | exact Hfr | exact (ind_lookup_body _ _ _ _ _ Hm) ].
 Qed.
@@ -939,7 +1413,7 @@ Lemma ind_lookup_below : forall Θ Ξ p D,
     ind_lookup Θ nil p = Some D -> ind_lookup Θ Ξ p = Some D.
 Proof.
   intros * Hfr Hl.
-  unfold ind_lookup, ind_lookup_u, gc_module, gc_module_u in *; cbn [gs_find_tele] in Hl.
+  unfold ind_lookup, ind_lookup_u, ind_mlookup_u, gc_module, gc_module_u in *; cbn [gs_find_tele] in Hl.
   destruct (gs_find_tele Ξ p) as [[[U ip] T] |] eqn:Hf; [| exact Hl ].
   exfalso.
   assert (Hg : gs_find Ξ p = Some (U, ip)) by (rewrite gs_find_tele_find, Hf; reflexivity).
@@ -1002,6 +1476,7 @@ Section WellFormed.
   Proof.
     apply run_mut_ind; intros; rewrite ?gs_add_params;
       solve [ congruence | exact I | eapply gens_run_shape; eassumption
+            | eapply ind_entries_run_shape; eassumption | eapply mdefs_run_shape; eassumption
             | erewrite gens_run_shape by eassumption; apply gs_add_params ].
   Qed.
 
@@ -1147,14 +1622,19 @@ Section WellFormed.
     - (* an import: what its generated commands make *)
       intros * _ _ Hg HΞ Hc Hst.
       repeat split; [ exact (gens_run_wf _ _ _ _ Hg HΞ) | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
-    - (* a declaration: its entry, checked where it is declared *)
-      intros ch B Rb Θ Ξ x pv R cs _ Hfr HE HΞ Hc Hst.
-      repeat split; [ apply add_ind_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
+    - (* a group: its entries, each checked where it is filed *)
+      intros * _ _ _ _ _ _ _ He HΞ Hc Hst.
+      repeat split; [ exact (ind_entries_run_wf _ _ _ _ _ _ _ _ He HΞ) | exact (proj1 Hc) | exact (proj2 Hc)
+                    | apply gds_sub_refl | apply bt_le_refl ].
+    - (* a mutual definition: its definitions, each checked as a definition is *)
+      intros * _ _ _ _ _ _ _ _ _ Hd HΞ Hc Hst.
+      repeat split; [ exact (mdefs_run_wf _ _ _ _ _ _ Hd HΞ) | exact (proj1 Hc) | exact (proj2 Hc)
+                    | apply gds_sub_refl | apply bt_le_refl ].
     - (* a builtin binding: nothing filed, and its binding merged in *)
       intros * _ _ _ _ _ Hb HΞ Hc Hst.
       repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | exact (bt_bind_nat_le _ _ _ Hb) ].
     - (* an inductive alias: its entry, checked where it is declared *)
-      intros * _ _ HE Hfr HΞ Hc Hst.
+      intros * _ _ _ _ HE Hfr HΞ Hc Hst.
       repeat split; [ apply add_entry_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
     - intros * _ HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
     - intros * _ HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
@@ -1297,12 +1777,15 @@ Section WellFormed.
         eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub' | eassumption ] | exact HbU ].
     - intros * _ _ Hg HΞ _ _ Hb HR; split; [| exact HR ].
       revert Hb; apply builtins_wf_mono; intros; eapply gens_run_ind_lookup; eassumption.
-    - intros * _ Hfr _ HΞ _ _ Hb HR; split; [ apply Hadd; assumption | exact HR ].
+    - intros * _ _ _ _ _ _ _ He HΞ _ _ Hb HR; split; [| exact HR ].
+      revert Hb; apply builtins_wf_mono; intros; eapply ind_entries_run_ind_lookup; eassumption.
+    - intros * _ _ _ _ _ _ _ _ _ Hd HΞ _ _ Hb HR; split; [| exact HR ].
+      revert Hb; apply builtins_wf_mono; intros; eapply mdefs_run_ind_lookup; eassumption.
     - (* a binding: of a type read here *)
       intros ch B Rb B' Θ Ξ H p D z0 s0 _ Hl Hs Ho Hso Hbd _ _ _ Hb HR; split; [| exact HR ].
       eapply bt_merge_wf; [ exact Hb | | exact Hbd ].
       intros p1 Hq; cbn in Hq; injection Hq as <-; exact (mk_nat_binding_ok _ _ _ D z0 s0 Hs Ho Hso).
-    - intros * _ _ _ Hfr HΞ _ _ Hb HR; split; [ apply Hadd; assumption | exact HR ].
+    - intros * _ _ _ _ _ Hfr HΞ _ _ Hb HR; split; [ apply Hadd; assumption | exact HR ].
     - intros; split; assumption.
     - intros; split; assumption.
     - intros; split; assumption.
@@ -1543,6 +2026,7 @@ Section Runs.
           cbn in Hf; destruct (path_beq x fp); [ discriminate | exact Hf ].
     - intros; econstructor; eauto.
     - intros; eapply rc_ind; eassumption.
+    - intros; eapply rc_mdef; eassumption.
     - intros; eapply rc_builtin; eassumption.
     - intros; eapply rc_ind_alias; eassumption.
     - intros; apply rc_eval_check; assumption.
@@ -1564,7 +2048,8 @@ Section Runs.
     apply run_mut_ind; intros; auto;
       try (match goal with Hg : gens_run _ (gs_add _ _ _) _ _ |- _ =>
              destruct (gens_run_tl _ _ _ _ Hg) as [-> ->]; apply Hadd end);
-      try (eapply gens_run_tl; eassumption); intuition congruence.
+      try (eapply gens_run_tl; eassumption); try (eapply ind_entries_run_tl; eassumption);
+      try (eapply mdefs_run_tl; eassumption); intuition congruence.
   Qed.
 
   (** Commands keep the stack below the frame they run in, and an empty stack
@@ -1590,10 +2075,10 @@ End Runs.
     declaration and its constructors. *)
 
 Lemma ind_lookup_added : forall Θ Ξ x pv D Φ,
-    Ξ <> nil -> ind_lookup Θ (gs_add x (ge_ind pv (qname_in (gs_path Ξ) x) D Φ) Ξ) (qname_in (gs_path Ξ) x) = Some D.
+    Ξ <> nil -> ind_lookup Θ (gs_add x (ge_ind pv (qname_in (gs_path Ξ) x) 0 D Φ) Ξ) (qname_in (gs_path Ξ) x) = Some D.
 Proof.
   intros * Hn; destruct Ξ as [| [mp U] Ξ0]; [ contradiction |].
-  rewrite ind_lookup_unfold; cbn [gs_add gs_path].
+  rewrite ind_lookup_unfold, ind_mlookup_unfold; cbn [gs_add gs_path].
   change (qname_in mp x) with (qname_app mp (x :: nil)).
   rewrite gc_module_frame_here; cbn; rewrite String.eqb_refl; reflexivity.
 Qed.
@@ -1613,4 +2098,166 @@ Proof.
   - inversion Hnd as [| ? ? Hn Hnd']; subst.
     destruct (String.eqb_spec c c') as [<- |]; [| apply IH; assumption ].
     exfalso; apply Hn, (in_map fst _ (c, gs)), Hin.
+Qed.
+
+(** ** Deciding the Rank and the Views' Members
+
+    A group's checker computes a rank of its views ([grp_rank]) and checks
+    it ([rank_check]): a declared member is of rank [0], a view one more
+    than the members its blocks nest through, after as many rounds as the
+    group has members.  A group accepted by the check has a rank
+    ([rank_check_sound]); a group with a cycle of nest edges has none, and
+    is rejected.  The members a view's [vm] lists are checked likewise
+    ([vwrap_check_sound]). *)
+
+(** The members the positions of a view's block nest through. *)
+Fixpoint cargs_nest_targets (gs' gs : list carg) : list nat :=
+  match gs', gs with
+  | ca_arg _ :: gs1', ca_rec t :: gs1 => ptyp_mem t :: cargs_nest_targets gs1' gs1
+  | _ :: gs1', _ :: gs1 => cargs_nest_targets gs1' gs1
+  | _, _ => nil
+  end.
+
+Lemma cargs_nest_ok_of_targets : forall rk r gs' gs,
+    (forall j, In j (cargs_nest_targets gs' gs) -> rk j < r) -> cargs_nest_ok rk r gs' gs.
+Proof.
+  induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] H; cbn in H |- *; auto.
+Qed.
+
+(** The nest edges of the member [k] of [D]: those of the blocks of the
+    members of its container's group, at a view. *)
+Definition member_nest_targets (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (M : imember) : list nat :=
+  match im_head M with
+  | mh_decl _ => nil
+  | mh_view qc _ _ vm =>
+      match ind_lookup Θ Ξ qc with
+      | Some D' =>
+          List.concat
+            (List.map (fun iM =>
+               match List.nth_error vm (fst iM) with
+               | Some v =>
+                   match ind_member D v with
+                   | Some Mv =>
+                       List.concat (List.map (fun cg =>
+                         match ind_con Mv (fst cg) with
+                         | Some gs => cargs_nest_targets (snd cg) gs
+                         | None => nil
+                         end) (im_cons (snd iM)))
+                   | None => nil
+                   end
+               | None => nil
+               end) (List.combine (List.seq 0 (List.length (ind_members D'))) (ind_members D')))
+      | None => nil
+      end
+  end.
+
+(** The rank after [m] rounds. *)
+Fixpoint grp_rank_iter (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (m : nat) (k : nat) : nat :=
+  match m with
+  | 0 => 0
+  | S m' =>
+      match ind_member D k with
+      | Some M =>
+          match im_head M with
+          | mh_decl _ => 0
+          | mh_view _ _ _ _ => S (List.fold_right Nat.max 0 (List.map (grp_rank_iter Θ Ξ D m') (member_nest_targets Θ Ξ D M)))
+          end
+      | None => 0
+      end
+  end.
+
+Definition grp_rank (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : nat -> nat :=
+  grp_rank_iter Θ Ξ D (List.length (ind_members D)).
+
+Definition rank_check (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : bool :=
+  let rk := grp_rank Θ Ξ D in
+  List.forallb (fun kM =>
+    match im_head (snd kM) with
+    | mh_decl _ => Nat.eqb (rk (fst kM)) 0
+    | mh_view _ _ _ _ => List.forallb (fun j => Nat.ltb (rk j) (rk (fst kM))) (member_nest_targets Θ Ξ D (snd kM))
+    end) (List.combine (List.seq 0 (List.length (ind_members D))) (ind_members D)).
+
+Lemma in_combine_seq : forall {X} (l : list X) k M, List.nth_error l k = Some M ->
+    In (k, M) (List.combine (List.seq 0 (List.length l)) l).
+Proof.
+  intros X l; enough (H : forall s k M, List.nth_error l k = Some M -> In (s + k, M) (List.combine (List.seq s (List.length l)) l))
+    by (intros k M Hk; exact (H 0 k M Hk)).
+  induction l as [| x l IH]; intros s [| k] M Hk; cbn in Hk |- *; try discriminate.
+  - injection Hk as <-; left; f_equal; lia.
+  - right; replace (s + S k) with (S s + k) by lia; exact (IH _ _ _ Hk).
+Qed.
+
+Lemma in_concat_map : forall {X Y} (f : X -> list Y) l x y, In x l -> In y (f x) -> In y (List.concat (List.map f l)).
+Proof. intros * Hx Hy; apply List.in_concat; exists (f x); split; [ apply List.in_map; exact Hx | exact Hy ]. Qed.
+
+(** A group the check accepts has a rank. *)
+Theorem rank_check_sound : forall Θ Ξ D, rank_check Θ Ξ D = true -> view_rank_ok Θ Ξ D (grp_rank Θ Ξ D).
+Proof.
+  intros * Hc; unfold rank_check in Hc; rewrite List.forallb_forall in Hc.
+  constructor.
+  - intros k Mk pm HMk Hh.
+    specialize (Hc _ (in_combine_seq _ _ _ HMk)); cbn in Hc; rewrite Hh in Hc; apply Nat.eqb_eq; exact Hc.
+  - intros k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs HMk Hh Hl HMi' Hvm HMv Hc' Hcv.
+    specialize (Hc _ (in_combine_seq _ _ _ HMk)); cbn in Hc; rewrite Hh in Hc; rewrite List.forallb_forall in Hc.
+    apply cargs_nest_ok_of_targets; intros j Hj; apply Nat.ltb_lt, Hc.
+    unfold member_nest_targets; rewrite Hh, Hl.
+    eapply in_concat_map; [ exact (in_combine_seq _ _ _ HMi') |]; cbn [fst snd]; rewrite Hvm, HMv.
+    eapply in_concat_map; [ exact (cons_lookup_in _ _ _ Hc') |]; cbn [fst snd]; unfold ind_con in Hcv |- *; rewrite Hcv; exact Hj.
+Qed.
+
+(** The members a view's [vm] lists, checked. *)
+Fixpoint cargs_corrb (vm : list nat) (gs' gs : list carg) : bool :=
+  match gs', gs with
+  | nil, nil => true
+  | ca_rec t' :: gs1', ca_rec t :: gs1 =>
+      match List.nth_error vm (ptyp_mem t') with
+      | Some j => Nat.eqb j (ptyp_mem t) && Nat.eqb (ptyp_depth t') (ptyp_depth t) && cargs_corrb vm gs1' gs1
+      | None => false
+      end
+  | ca_arg _ :: gs1', ca_arg _ :: gs1 => cargs_corrb vm gs1' gs1
+  | ca_arg _ :: gs1', ca_rec _ :: gs1 => cargs_corrb vm gs1' gs1
+  | _, _ => false
+  end.
+
+Lemma cargs_corrb_sound : forall vm gs' gs, cargs_corrb vm gs' gs = true -> cargs_corr vm gs' gs.
+Proof.
+  induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] H; cbn in H |- *; try discriminate; auto.
+  destruct (List.nth_error vm (ptyp_mem t')) as [j |] eqn:Hj; [| discriminate ].
+  apply andb_true_iff in H as [H H3]; apply andb_true_iff in H as [H1 H2].
+  apply Nat.eqb_eq in H1, H2; subst; auto.
+Qed.
+
+Definition vwrap_check (D D' : ind_decl) (vm : list nat) : bool :=
+  Nat.eqb (List.length vm) (List.length (ind_members D')) &&
+  List.forallb (fun iM =>
+    match List.nth_error vm (fst iM) with
+    | Some v =>
+        match ind_member D v with
+        | Some Mv =>
+            Nat.eqb (im_nn Mv) (im_nn (snd iM)) &&
+            (if list_eq_dec string_dec (List.map fst (im_cons Mv)) (List.map fst (im_cons (snd iM))) then true else false) &&
+            List.forallb (fun cg =>
+              match ind_con Mv (fst cg) with
+              | Some gs => cargs_corrb vm (snd cg) gs
+              | None => true
+              end) (im_cons (snd iM))
+        | None => false
+        end
+    | None => true
+    end) (List.combine (List.seq 0 (List.length (ind_members D'))) (ind_members D')).
+
+(** A view's members the check accepts are the container group's members
+    at the view's arguments. *)
+Theorem vwrap_check_sound : forall D D' vm, vwrap_check D D' vm = true -> vwrap_ok D D' vm.
+Proof.
+  intros * H; unfold vwrap_check in H; apply andb_true_iff in H as [Hl H].
+  rewrite List.forallb_forall in H; constructor; [ apply Nat.eqb_eq; exact Hl |].
+  intros i' Mi' v HMi' Hv.
+  specialize (H _ (in_combine_seq _ _ _ HMi')); cbn [fst snd] in H; rewrite Hv in H.
+  destruct (ind_member D v) as [Mv |] eqn:HMv; [| discriminate ].
+  apply andb_true_iff in H as [H H3]; apply andb_true_iff in H as [H1 H2].
+  exists Mv; split; [ reflexivity | split; [ apply Nat.eqb_eq; exact H1 | split ] ].
+  - destruct (list_eq_dec string_dec _ _) as [E |]; [ exact E | discriminate ].
+  - intros c gs' gs Hin Hc; rewrite List.forallb_forall in H3; specialize (H3 _ Hin); cbn [fst snd] in H3.
+    rewrite Hc in H3; exact (cargs_corrb_sound _ _ _ H3).
 Qed.

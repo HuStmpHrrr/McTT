@@ -41,8 +41,8 @@ Fixpoint ge_unseal (E : gentry) : gentry :=
   | ge_def b pv A B => ge_def (flag_unseal b B) pv A B
   | ge_mod pv (gu_mk Δ (md_body sm Φ)) => ge_mod pv (gu_mk Δ (md_body sm (gm_unseal Φ)))
   | ge_mod pv U => ge_mod pv U
-  | ge_ind pv p D Φ => ge_ind pv p D (gm_unseal Φ)
-  | ge_ind_alias pv Δ p Ns => ge_ind_alias pv Δ p Ns
+  | ge_ind pv p k D Φ => ge_ind pv p k D (gm_unseal Φ)
+  | ge_ind_alias pv Δ pm p k Ns => ge_ind_alias pv Δ pm p k Ns
   end
 with gm_unseal (Φ : gmod) : gmod :=
   match Φ with
@@ -98,6 +98,16 @@ Proof.
   destruct ip as [| x ip']; [ reflexivity |].
   destruct (String.eqb x y); [| apply IH ].
   destruct ip' as [| z ip''], E as [b pv A B | ? [Δ' [? Φ' | E']] | ? ? ? ? | ? ? ? ?]; cbn; try reflexivity;
+    apply IH.
+Qed.
+
+Lemma gm_entry_unseal : forall Φ ip,
+    gm_entry (gm_unseal Φ) ip = option_map ge_unseal (gm_entry Φ ip).
+Proof.
+  fix IH 1; intros [| Φ y E | Φ c] ip; cbn; [ reflexivity | | apply IH ].
+  destruct ip as [| x ip']; [ reflexivity |].
+  destruct (String.eqb x y); [| apply IH ].
+  destruct ip' as [| z ip''], E as [b pv A B | ? [Δ' [? Φ' | E']] | ? ? ? ? ? | ? ? ? ? ? ?]; cbn; try reflexivity;
     apply IH.
 Qed.
 
@@ -168,8 +178,11 @@ Proof.
     rewrite gu_params_unseal, gu_mod_unseal; apply gm_module_unseal.
 Qed.
 
+Lemma ind_mlookup_unseal : forall Θ Ξ p, ind_mlookup (gds_unseal Θ) (gs_unseal Ξ) p = ind_mlookup Θ Ξ p.
+Proof. intros; rewrite !ind_mlookup_unfold, gc_module_unseal; reflexivity. Qed.
+
 Lemma ind_lookup_unseal : forall Θ Ξ p, ind_lookup (gds_unseal Θ) (gs_unseal Ξ) p = ind_lookup Θ Ξ p.
-Proof. intros; rewrite ind_lookup_unfold, gc_module_unseal; reflexivity. Qed.
+Proof. intros; rewrite !ind_lookup_unfold, ind_mlookup_unseal; reflexivity. Qed.
 
 (** ** Freshness *)
 
@@ -267,7 +280,7 @@ Proof. induction Φ; cbn; tauto. Qed.
 Lemma ge_read_unseal : forall T E, ge_read T (ge_unseal E) = ge_unseal (ge_read T E).
 Proof. intros T [| ? [? [[] ?| ?]] | |]; reflexivity. Qed.
 
-Lemma entry_term_unseal_ind : forall pv pq D Φ, entry_term (ge_unseal (ge_ind pv pq D Φ)) = entry_term (ge_ind pv pq D Φ).
+Lemma entry_term_unseal_ind : forall pv pq k D Φ, entry_term (ge_unseal (ge_ind pv pq k D Φ)) = entry_term (ge_ind pv pq k D Φ).
 Proof. reflexivity. Qed.
 
 Lemma entry_is_body_unseal : forall E, entry_is_body E -> entry_is_body (ge_unseal E).
@@ -284,7 +297,7 @@ Inductive dle : mdesc -> mdesc -> Prop :=
 | dl_term : forall A om om', dle (ds_term A om) (ds_term A om')
 | dl_open : forall Δ Φ Φx, dle (ds_open Δ Φ Φx) (ds_open Δ Φ Φx)
 | dl_closed : forall Θ p T Φ Ns, dle (ds_closed Θ p T Φ Ns) (ds_closed Θ p T (gm_unseal Φ) Ns)
-| dl_ind : forall Θ p Ns, dle (ds_ind Θ p Ns) (ds_ind Θ p Ns).
+| dl_ind : forall Θ p k Ns, dle (ds_ind Θ p k Ns) (ds_ind Θ p k Ns).
 
 #[local] Hint Constructors dle : core.
 
@@ -292,7 +305,9 @@ Lemma dle_mod : forall Θ Ξ R R' Rm, dle R R' -> ds_mod Θ Ξ R = Some Rm ->
     exists Rm', ds_mod (gds_unseal Θ) (gs_unseal Ξ) R' = Some Rm' /\ dle Rm Rm'.
 Proof.
   intros * Hd Hm; destruct Hd; cbn in Hm |- *; try discriminate; try (injection Hm as <-; eauto).
-  rewrite gc_body_unseal; destruct (gc_body Θ Ξ p) as [[T Φ] |]; cbn in Hm |- *; [ injection Hm as <- | discriminate ].
+  rewrite ind_lookup_unseal; destruct (ind_lookup Θ Ξ p) as [D |]; [| discriminate ].
+  destruct (ind_mpath D k) as [pm |]; [| discriminate ].
+  rewrite gc_body_unseal; destruct (gc_body Θ Ξ pm) as [[T Φ] |]; cbn in Hm |- *; [ injection Hm as <- | discriminate ].
   eauto.
 Qed.
 
@@ -341,7 +356,7 @@ Qed.
 
 Lemma ds_at_not_term : forall R N R1, (forall A om, R <> ds_term A om) -> ds_at R N = Some R1 -> forall A om, R1 <> ds_term A om.
 Proof.
-  intros [| Δ Φ | Θ p T Φ Ns | Θ p Ns] * Hn Ha; [ exfalso; eapply Hn; reflexivity | | |]; cbn in Ha.
+  intros [| Δ Φ | Θ p T Φ Ns | Θ p k Ns] * Hn Ha; [ exfalso; eapply Hn; reflexivity | | |]; cbn in Ha.
   - destruct (tele_split (rev Δ)) as [[[? ?] ?] |]; [ injection Ha as <-; discriminate | discriminate ].
   - destruct (tele_split (rev Θ)) as [[[? ?] ?] | ?]; injection Ha as <-; discriminate.
   - destruct (tele_split (rev Θ)) as [[[? ?] ?] | ?]; injection Ha as <-; discriminate.
@@ -553,8 +568,8 @@ Proof.
     exists R'; split; [| exact Hd ].
     destruct o; cbn [entry_at]; [| constructor; exact Hu' ].
     destruct U as [Δ [sm Φ | E]]; cbn in Hu' |- *; constructor; exact Hu'.
-  - intros Γ o pv p D Φ _; exists (ds_ind nil p nil); split; [ destruct o; constructor | constructor ].
-  - intros Γ o pv Δ pq Ns _; exists (ds_ind Δ pq Ns); split; [ destruct o; constructor | constructor ].
+  - intros Γ o pv p k D Φ _; exists (ds_ind nil p k nil); split; [ destruct o; constructor | constructor ].
+  - intros Γ o pv Δ pm pq k Ns _; exists (ds_ind Δ pq k Ns); split; [ destruct o; constructor | constructor ].
   - intros; constructor.
   - intros Γ Φ Φx x E Hx IHx Hpre; constructor; apply IHx; intros k Ψ H Hk; apply (Hpre k); exact Hk.
   - (* an open: what it generates is read alike *)
@@ -572,9 +587,10 @@ Proof.
   - intros g Γ H n d pv R its gs Hm IHm Hism Hig IHig HH.
     destruct (IHm (or_intror (ex_intro _ H (ex_intro _ n (conj eq_refl HH))))) as (R' & Hm' & Hd).
     econstructor; [ exact Hm' | exact (dle_is_mod _ _ Hd Hism) | exact (IHig HH) ].
-  - intros Γ H n d pv Θ' p Ns its gs Hm IHm Hig IHig HH.
+  - intros Γ H n d pv Θ' p k D pm Ns its gs Hm IHm Hl Hmp Hml Hig IHig HH.
     destruct (IHm (or_intror (ex_intro _ H (ex_intro _ n (conj eq_refl HH))))) as (R' & Hm' & Hd).
-    inversion Hd; subst; econstructor; [ exact Hm' | exact (IHig HH) ].
+    inversion Hd; subst; econstructor; [ exact Hm' | rewrite ind_lookup_unseal; exact Hl | exact Hmp
+                                     | rewrite ind_mlookup_unseal; exact Hml | exact (IHig HH) ].
 Qed.
 
 
@@ -666,6 +682,13 @@ Proof.
         rewrite ds_named_fix in Hr by reflexivity; cbn in Hr; discriminate.
     + left; apply Hsame; cbn in Hed |- *; inversion Hed; subst; constructor.
     + left; apply Hsame; cbn in Hed |- *; inversion Hed; subst; constructor.
+Qed.
+
+(** The rank of a group's views does not see seals. *)
+Lemma view_rank_ok_unseal : forall Θ Ξ D rk, view_rank_ok Θ Ξ D rk -> view_rank_ok (gds_unseal Θ) (gs_unseal Ξ) D rk.
+Proof.
+  intros * [Hr0 Hr1]; constructor; [ exact Hr0 |].
+  intros * Hk Hh Hl; rewrite ind_lookup_unseal in Hl; eapply Hr1; eassumption.
 Qed.
 
 (** ** Unsealing Preserves Every Judgment *)
@@ -761,6 +784,23 @@ Proof.
         eapply wf_unit_eq_body;
           [ exact (body_xp_unseal _ _ _ _ _ Hg Hx Ho) | exact (body_xp_unseal _ _ _ _ _ Hg Hx' Ho') | unseal_prem .. ]
     end.
+  (* a group: the containers of its views found unsealed alike *)
+  all: try match goal with |- gds_unseal _ ⍮ gs_unseal _ ⍮ _ ⊢ᵉ _ => idtac end.
+  all: first [ eapply wf_gentry_ind_nil; try eassumption
+             | match goal with He : gm_entry ?Φ0 (?y0 :: nil) = Some (ge_ind ?pv0 ?pq0 0 ?D0 ?Φm) |- _ =>
+                 eapply wf_gentry_ind_mem_nil with (pv0 := pv0) (Φm := gm_unseal Φm);
+                 try eassumption; try (rewrite gm_entry_unseal, He; reflexivity) end
+             | eapply wf_gentry_ind_alias; try eassumption ].
+  all: try (match goal with Hrk : view_rank_ok _ _ _ ?rk |- exists rk, view_rank_ok _ _ _ rk =>
+              exists rk; exact (view_rank_ok_unseal _ _ _ _ Hrk) end).
+  all: try (match goal with Hq : ind_lookup ?Θ ((?mq, gu_body ?Δ ?Φ0) :: ?Ξ) ?p = Some ?D
+                |- ind_lookup (gds_unseal ?Θ) ((?mq, gu_body ?Δ (gm_unseal ?Φ0)) :: gs_unseal ?Ξ) ?p = Some ?D =>
+              exact (eq_trans (ind_lookup_unseal Θ ((mq, gu_body Δ Φ0) :: Ξ) p) Hq) end).
+  all: cbn [gs_tele]; rewrite ?gu_params_unseal, ?gs_tele_unseal.
+  all: intros; repeat match goal with Hq : ind_lookup (gds_unseal _) (gs_unseal _) _ = Some _ |- _ =>
+                       rewrite ind_lookup_unseal in Hq end.
+  all: try rewrite !ind_lookup_unseal; try rewrite !ind_mlookup_unseal.
+  all: try solve [ first [ eapply proj2; eauto | eauto ] ].
 Qed.
 
 Theorem unseal_preserves_wf :
@@ -804,8 +844,8 @@ Fixpoint ge_no_axioms (E : gentry) : Prop :=
   | ge_def _ _ _ B => B <> None
   | ge_mod _ (gu_mk _ (md_body sm Φ)) => gm_no_axioms Φ
   | ge_mod _ (gu_mk _ (md_alias _)) => True
-  | ge_ind _ _ _ Φ => gm_no_axioms Φ
-  | ge_ind_alias _ _ _ _ => True
+  | ge_ind _ _ _ _ Φ => gm_no_axioms Φ
+  | ge_ind_alias _ _ _ _ _ _ => True
   end
 with gm_no_axioms (Φ : gmod) : Prop :=
   match Φ with
@@ -914,7 +954,7 @@ Qed.
     commands get theirs when they run. *)
 Lemma cmd_lits_no_axioms : forall nv c c', cmd_lits nv c = lok c' -> cmd_no_axioms c -> cmd_no_axioms c'.
 Proof.
-  intros nv [x b pv A [M |] | x pv Δ cs | | | | | | |] c' E Hc; cbn [cmd_lits] in E;
+  intros nv [x b pv A [M |] | x pv Δ cs | | | | | | | |] c' E Hc; cbn [cmd_lits] in E;
     repeat match goal with
       | H : lbind _ _ = lok _ |- _ =>
           let E := fresh "E" in let a := fresh "a" in apply lbind_lok_inv in H as (a & E & H)
@@ -975,6 +1015,16 @@ Proof.
   apply IH; cbn; split; [ exact HΦ | discriminate ].
 Qed.
 
+Lemma ind_entries_run_no_axioms : forall Θ pv pq D k xs Ξ Ξ', ind_entries_run Θ pv pq D k xs Ξ Ξ' ->
+    gs_no_axioms Ξ -> gs_no_axioms Ξ'.
+Proof.
+  induction 1; intros HΞ; [ exact HΞ |].
+  apply IHind_entries_run, gs_no_axioms_add; [ apply gens_body_no_axioms; exact I | exact HΞ ].
+Qed.
+
+Lemma mdefs_run_no_axioms : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> gs_no_axioms Ξ -> gs_no_axioms Ξ'.
+Proof. induction 1; intros HΞ; [ exact HΞ |]; apply IHmdefs_run, gs_no_axioms_add; cbn; [ discriminate | exact HΞ ]. Qed.
+
 Section Run.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
@@ -1007,10 +1057,11 @@ Section Run.
       split; eauto with mctt.
     (* an open declares what it generates *)
     - destruct_all; split; [ assumption | eapply gens_run_no_axioms; eassumption ].
-    (* a declaration files no axiom in its module, and generates
-       definitions there; the module becomes a member *)
-    - destruct_all; split; [ assumption |].
-      apply gs_no_axioms_add; [ apply gens_body_no_axioms; exact I | assumption ].
+    (* a declaration files an entry per declared member, with no axiom
+       in its module: the definitions it generates there *)
+    - destruct_all; split; [ assumption | eapply ind_entries_run_no_axioms; eassumption ].
+    (* a mutual definition files definitions *)
+    - destruct_all; split; [ assumption | eapply mdefs_run_no_axioms; eassumption ].
     (* a builtin binding files nothing *)
     - assumption.
     (* an inductive alias declares no definition *)
