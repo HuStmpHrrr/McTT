@@ -355,6 +355,56 @@ Section ViewArgs.
         * rewrite cargs_nonrec_app, nonrec_arg_vals_app by lia; cbn [cargs_nonrec nonrec_arg_vals].
           rewrite !List.app_nil_r; exact Ha0.
   Qed.
+
+  (** ** An Argument the View Nests Through
+
+      Non-recursive in the container, of a shape [t] in the group: the
+      container's canonical relation of the argument is the group's
+      relation of the shape, given the relation of the type of the member
+      the shape ends in ([view_end_rel]). *)
+  Lemma view_nest_rel : forall gs1' A' gs2' gs1 t gs2 vp, gs' = gs1' ++ ca_arg A' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 ->
+      cargs_corr vm gs1' gs1 -> List.length vp = List.length gs1 ->
+      tele_prefix_rel (canon_args_rel Dq cups i' ms c) (List.length (cargs_nonrec gs1'))
+        (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp) ->
+      tele_rel (canon_nparams_rel D ups v) (List.rev (im_nparams Mv)) ms ms ->
+      view_end_rel p D ups ups (ptyp_mem t) ->
+      (canon_args_rel Dq cups i' ms c (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp)
+         <~> rec_arg_rel p D (okr_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups)
+               (canon_doms_rel ups) v ups ups (ms ++ nonrec_arg_vals gs1 vp) (ms ++ nonrec_arg_vals gs1 vp) t).
+  Proof.
+    intros * Heq' Heq Hc Hlp Hpre Hnsd Hend.
+    pose proof view_nn as Hnn.
+    pose proof (cargs_corr_len _ _ _ Hc) as Hl1.
+    destruct (view_args_complete gs1 gs1' (ca_arg A' :: gs2') (ca_rec t :: gs2) vp Heq' Heq Hc Hlp Hpre)
+      as (vs & [Hl Hn Hng Hg1 Hcn Ha]).
+    pose proof (cargs_ctx_snoc qc Dq Mi' gs1' (ca_arg A')) as ECc; pose proof (cargs_ctx_snoc p D Mv gs1 (ca_rec t)) as ECg.
+    cbn [cargs_ctx_aux List.app] in ECc, ECg.
+    destruct (view_arg_link gs1' _ gs2' gs1 _ gs2 _ _ vs Heq' Heq ltac:(lia) Hl ECc ECg Hg1 Hcn)
+      as (EL & (ig & Rg & bg & Ebg & HRg) & (ic & Rc & ac & Eac & HRc)).
+    destruct (vg_arg_head qc Dq HgQ HcvQ i' Mi' c gs' gs1' A' gs2' cups ms vs HMi' Hcon' Heq' length_cups ltac:(lia) ltac:(lia) Hcn)
+      as (i1 & R1 & a1 & Ea1 & HR1 & E1).
+    pose proof (functional_eval_exp _ _ _ _ Ea1 Eac) as <-.
+    (** The group's side: the shape's relation, by [shape_char]. *)
+    pose proof (vg_cargs_sem p D Hg Hcv v Mv c gs HMv Hcon) as HΨ.
+    destruct (vg_cargs_sem_all p D Hg Hcv v Mv c gs HMv Hcon gs1 (ca_rec t :: gs2) Heq) as [HW1 _].
+    assert (HpreR : forall R, EF cargs_ctx p D Mv gs1 ++ im_params D Mv ≈ cargs_ctx p D Mv gs1 ++ im_params D Mv ∈ per_ctx_env ↘ R ->
+                      R (env_args nil (ups ++ ms ++ vs)) (env_args nil (ups ++ ms ++ vs))).
+    { intros R HR; apply (gargs_env_rel _ _ _ _ _ _ HR HW1); [| exact Hg1 ].
+      rewrite !List.length_app, length_cargs_ctx, length_im_params; unfold im_np, ind_nu in *; lia. }
+    assert (Hy0 : tele_prefix_rel (shape_doms_rel (canon_doms_rel ups v) ms (nonrec_arg_vals gs1 vs) (ptyp_doms t)) 0 nil nil)
+      by (rewrite tele_prefix_rel_iff; split; [ reflexivity | split; [ reflexivity |] ]; intros [|] ? ? H; discriminate).
+    assert (Hgy0 : per_gargs (List.rev (sh_ctx (cargs_pat gs1) (List.firstn 0 (ptyp_doms t))))
+                     (env_args nil (ups ++ ms ++ vs)) (env_args nil (ups ++ ms ++ vs)) nil nil) by (cbn; constructor).
+    assert (Ebg0 : ⟦ ptyp_ty p D (im_nn Mv) (List.repeat false 0 ++ cargs_pat gs1) (ptyp_skip 0 t) ⟧
+                     env_args nil (ups ++ ms ++ vs ++ nil) ↘ bg) by (rewrite List.app_nil_r; exact Ebg).
+    pose proof (shape_char p D Hg Hcv v Mv c gs HMv Hcon HΨ gs1 t gs2 Heq ups ms vs Hu Hlms Hl Hgu Hnsd Ha HpreR Hend
+                  (List.length (ptyp_doms t)) 0 nil bg ig Rg eq_refl Hy0 Hgy0 Ebg0 HRg) as Hsh.
+    rewrite List.app_nil_r in Hsh; cbn [ptyp_skip] in Hsh.
+    rewrite <- Hn, <- Hng.
+    intros x y; split; intro Hxy.
+    - apply Hsh, (per_head_left Ebg Ebg HRg), EL, (per_head_left Ea1 Ea1 HR1), E1; exact Hxy.
+    - apply E1, (per_head_left Ea1 Ea1 HR1), EL, (per_head_left Ebg Ebg HRg), Hsh; exact Hxy.
+  Qed.
 End ViewArgs.
 
 End Fixed_GCtx.
