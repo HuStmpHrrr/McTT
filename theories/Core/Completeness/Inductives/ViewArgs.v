@@ -1005,7 +1005,6 @@ Section ViewMemberParams.
   Variables (i' : nat) (Mi' : imember) (v : nat) (Mv : imember).
   Hypotheses (HMi' : ind_member Dq i' = Some Mi') (Hv : List.nth_error vm i' = Some v) (HMv : ind_member D v = Some Mv).
 
-  #[warnings="-cannot-define-projection"]
   Record view_member_params (ms : list domain) : Prop := mk_view_member_params
     { params_length : List.length ms = im_nn Mv
     ; params_group_related : tele_rel (canon_nparams_rel D ups v) (List.rev (im_nparams Mv)) ms ms
