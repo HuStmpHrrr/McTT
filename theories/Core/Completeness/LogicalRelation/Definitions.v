@@ -479,45 +479,49 @@ Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_file
 Definition valid_filed_mods : Prop :=
   forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) -> valid_filed_mod p T Φ.
 
-(** A declaration is semantically valid at its core: its telescopes and
-    types, read in the PER model.  [nparams_prefix D k] is the context of the first
-    [k] non-uniform parameters, [nonrec_args_prefix gs k] that of the first [k]
-    non-recursive arguments of a constructor. *)
-Definition nparams_prefix (D : ind_decl) (k : nat) : ctx := List.rev (List.firstn k (List.rev (ind_nparams D))).
+(** A group is semantically valid at its core: the telescopes and types
+    of each of its members, read in the PER model.  These are the group's
+    own, which never mention it, a view's too.  [nparams_prefix M k] is
+    the context of the first [k] non-uniform parameters of a member [M],
+    [nonrec_args_prefix gs k] that of the first [k] non-recursive
+    arguments of a constructor. *)
+Definition nparams_prefix (M : imember) (k : nat) : ctx := List.rev (List.firstn k (List.rev (im_nparams M))).
 Definition nonrec_args_prefix (gs : list carg) (k : nat) : ctx := List.rev (List.firstn k (List.map ce_ass (cargs_nonrec gs))).
 
 Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
-{ vid_params : ⊨ ind_params D
+{ vid_uparams : ⊨ ind_uparams D
 ; vid_sort : exists i, ind_uparams D ⊨ ind_sort D : Typeω@i
-; vid_ty : exists i, ⋅ ⊨ ind_ty D : Typeω@i
-; vid_npar : forall k A, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
-    nparams_prefix D k ++ ind_uparams D ⊨ A : (ind_sort D)[wk_shiftn k]ʷ /\
-    exists j, nparams_prefix D k ++ ind_uparams D ⊨ A : Typeω@j
-; vid_strat : forall c gs k, ind_con D c = Some gs -> k <= List.length (cargs_nonrec gs) ->
-    ⊨ nonrec_args_prefix gs k ++ ind_params D
-; vid_arg : forall c gs k A, ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
-    nonrec_args_prefix gs k ++ ind_params D ⊨ A : (ind_sort D)[wk_shiftn (k + ind_nn D)]ʷ /\
-    exists j, nonrec_args_prefix gs k ++ ind_params D ⊨ A : Typeω@j
-; vid_nodup : List.NoDup (List.map fst (ind_cons D))
-; vid_rec : forall c gs gs1 t gs2 m P T, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+; vid_params : forall k Mk, ind_member D k = Some Mk -> ⊨ im_params D Mk
+; vid_ty : forall k Mk, ind_member D k = Some Mk -> exists i, ⋅ ⊨ ind_ty D Mk : Typeω@i
+; vid_npar : forall k Mk j A, ind_member D k = Some Mk -> List.nth_error (List.rev (im_nparams Mk)) j = Some (ce_ass A) ->
+    nparams_prefix Mk j ++ ind_uparams D ⊨ A : (ind_sort D)[wk_shiftn j]ʷ /\
+    exists i, nparams_prefix Mk j ++ ind_uparams D ⊨ A : Typeω@i
+; vid_strat : forall k Mk c gs j, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> j <= List.length (cargs_nonrec gs) ->
+    ⊨ nonrec_args_prefix gs j ++ im_params D Mk
+; vid_arg : forall k Mk c gs j A, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+    List.nth_error (cargs_nonrec gs) j = Some A ->
+    nonrec_args_prefix gs j ++ im_params D Mk ⊨ A : (ind_sort D)[wk_shiftn (j + im_nn Mk)]ʷ /\
+    exists i, nonrec_args_prefix gs j ++ im_params D Mk ⊨ A : Typeω@i
+; vid_nodup : forall k Mk, ind_member D k = Some Mk -> List.NoDup (List.map fst (im_cons Mk))
+; vid_rec : forall k Mk c gs gs1 t gs2 Mj m P T, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+    gs = gs1 ++ ca_rec t :: gs2 -> ind_member D (ptyp_mem t) = Some Mj ->
     List.nth_error (ptyp_ps t) m = Some P ->
-    List.nth_error (tele_insts (ind_nparams D)
-                      (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_nonrec gs1) + ind_nn D))) (ptyp_ps t)) m
+    List.nth_error (tele_insts (im_nparams Mj)
+                      (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_nonrec gs1) + im_nn Mk))) (ptyp_ps t)) m
       = Some T ->
-    ptyp_tele t ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ ind_params D ⊨ P : T
+    ptyp_tele t ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk ⊨ P : T
 (** The domains of a recursive argument's shape, each over those before
     it, are types of the sort. *)
-; vid_dom : forall c gs gs1 t gs2 k B, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-    List.nth_error (ptyp_doms t) k = Some B ->
-    doms_ctx (List.firstn k (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ ind_params D
-      ⊨ B : (ind_sort D)[wk_shiftn (k + List.length (cargs_nonrec gs1) + ind_nn D)]ʷ /\
-    exists j, doms_ctx (List.firstn k (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ ind_params D
-      ⊨ B : Typeω@j
-; vid_simple : forall c gs gs1 t gs2, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 -> ptyp_simple t = true
-; vid_plen : forall c gs gs1 t gs2, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 -> List.length (ptyp_ps t) = ind_nn D
-; vid_dctx : forall c gs gs1 t gs2 k, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
-    k <= List.length (ptyp_doms t) ->
-    ⊨ doms_ctx (List.firstn k (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ ind_params D
+; vid_dom : forall k Mk c gs gs1 t gs2 j B, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+    gs = gs1 ++ ca_rec t :: gs2 -> List.nth_error (ptyp_doms t) j = Some B ->
+    doms_ctx (List.firstn j (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk
+      ⊨ B : (ind_sort D)[wk_shiftn (j + List.length (cargs_nonrec gs1) + im_nn Mk)]ʷ /\
+    exists i, doms_ctx (List.firstn j (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk
+      ⊨ B : Typeω@i
+; vid_plen : forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> cargs_plen D gs
+; vid_dctx : forall k Mk c gs gs1 t gs2 j, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+    gs = gs1 ++ ca_rec t :: gs2 -> j <= List.length (ptyp_doms t) ->
+    ⊨ doms_ctx (List.firstn j (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk
 }.
 
 End Filed.

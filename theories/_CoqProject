@@ -79,6 +79,7 @@
 ./Core/Semantic/Inductives/IndPER.v
 ./Core/Semantic/Inductives/IndCanon.v
 ./Core/Semantic/Inductives/IndElim.v
+./Core/Semantic/Inductives/ViewCoherence.v
 ./Core/Semantic/Stuck.v
 ./Core/Semantic/Transparency.v
 ./Core/Semantic/Avoid.v

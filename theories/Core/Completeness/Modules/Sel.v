@@ -386,7 +386,7 @@ Proof.
     destruct (loc_closed _ _ Hgm _ _ _ Hl) as [_ HΦc].
     pose proof (body_closed_prefix _ _ _ _ HΦc Hp) as HΦ0; cbn in HΦ0; destruct HΦ0 as [_ HE0].
     destruct (gm_prefix_entry _ _ _ Hp) as (Φ0' & E0' & [= <- <-] & Hent).
-    destruct E0 as [b pv A0 oM | pv [Δy [sm Φy | Ea]] | pv pq D ΦD | pv Δa pq Nsa]; cbn [ge_read] in Hed, HE0.
+    destruct E0 as [b pv A0 oM | pv [Δy [sm Φy | Ea]] | pv pq k ΦD Φm | pv Δa pm pq k Nsa]; cbn [ge_read] in Hed, HE0.
     + (* a definition is no module *)
       exfalso; inversion Hed; subst; cbn [ds_read] in Hr.
       destruct (ds_ats _ Ns) as [R3 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
@@ -413,33 +413,39 @@ Proof.
       rewrite (ds_named_fix _ _ _ _ Es), ds_up_nil in Hmd.
       exists Φ0, (ge_mod pv (gu_mk Δy (md_alias Ea))), (gu_mk Δy (md_alias Ea)), R3.
       split; [ reflexivity | split; [ reflexivity | split; [ exact (mdenote_apps _ _ _ _ _ _ _ HmU Ha) | exact Hmd ] ] ].
-    + (* an inductive type: filed at its own path *)
+    + (* a member of a group: its module is filed at the member's path *)
       left.
       inversion Hed; subst.
       cbn [ds_read] in Hr; rewrite ds_ats_ind_nil in Hr; cbn in Hr; injection Hr as <-.
-      pose proof (gc_entry_selfpath _ _ Hgm _ _ _ _ _ (proj2 (loc_entry _ _ Hgm _ _ _ Hl _ _) Hent)) as ->.
+      pose proof (proj2 (loc_entry _ _ Hgm _ _ _ Hl _ _) Hent) as Hge.
+      pose proof (isp_path _ _ _ _ (gc_entry_selfpath _ _ Hgm _ _ _ _ _ _ Hge)) as Hsp.
+      pose proof (ind_mlookup_group _ _ Hgm _ _ _ _ (proj2 (gc_entry_ind _ _ _ _ _ _ _ _ Hge))) as Hlq.
       rewrite ds_named_fix in Hmd by reflexivity.
-      cbn in Hmd; destruct (gc_body Θm Ξm (qname_in p y)) as [[Tb Φb] |] eqn:Hb; [ injection Hmd as <- | discriminate ].
+      destruct (ds_mod_ind_inv _ _ _ _ _ _ _ Hmd) as (D1 & pm1 & Tb & Φb & Hl1 & Hpm & Hb & ->).
+      rewrite Hlq in Hl1; injection Hl1 as <-; rewrite Hsp in Hpm; injection Hpm as <-.
       exists Tb, Φb; split; [ exact (gc_loc_of_loc _ _ Hgm _ _ _ (or_intror Hb)) | reflexivity ].
-    + (* an inductive alias: the alias of the inductive type's module, at the arguments *)
+    + (* an inductive alias: the alias of the module of the member it names, at the arguments *)
       right.
       inversion Hed; subst.
-      cbn [ds_read] in Hr; destruct (ds_ats (ds_ind Δa pq Nsa) Ns) as [R3 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
-      destruct (ds_ats_ind _ _ _ _ _ Ha) as (Θ'' & Ns'' & ->); rewrite ds_named_fix in Hmd by reflexivity.
+      cbn [ds_read] in Hr; destruct (ds_ats (ds_ind Δa pq k Nsa) Ns) as [R3 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
+      destruct (ds_ats_ind _ _ _ _ _ _ Ha) as (Θ'' & Ns'' & ->); rewrite ds_named_fix in Hmd by reflexivity.
       cbn [ds_up] in Hmd; rewrite app_nil_r in Hmd.
-      assert (Hb : exists Tb Φb, gc_body Θm Ξm pq = Some (Tb, Φb))
-        by (cbn in Hmd; destruct (gc_body Θm Ξm pq) as [[Tb Φb] |]; [ eauto | discriminate ]).
+      pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ (proj2 (loc_valid _ _ _ _ _ (gctx_valid_syn _ _ Hgm) Hl)) Hp)
+        as [_ [D1 M1 Hl1 _ _ Hpm1 _ _ _ _]].
+      assert (Hb : exists Tb Φb, gc_body Θm Ξm pm = Some (Tb, Φb))
+        by (cbn in Hmd; rewrite Hl1, Hpm1 in Hmd; destruct (gc_body Θm Ξm pm) as [[Tb Φb] |]; [ eauto | discriminate ]).
       destruct Hb as (Tb & Φb & Hb).
       pose proof (gc_loc_of_loc _ _ Hgm _ _ _ (or_intror Hb)) as Hglq.
       destruct (filed_denote _ _ Hgm _ _ _ (Δa ++ Γ) Nsa Hglq) as (RE & HmE & HmodE).
-      assert (HmU : mdenote Θm Ξm Γ (me_lit (gu_mk Δa (md_alias (me_apps (qname_mod pq) Nsa)))) (ds_closed Δa pq Tb Φb Nsa))
+      assert (HmU : mdenote Θm Ξm Γ (me_lit (gu_mk Δa (md_alias (me_apps (qname_mod pm) Nsa)))) (ds_closed Δa pm Tb Φb Nsa))
         by (apply dn_lit; exact (un_alias _ _ _ _ _ _ _ _ HmE HmodE)).
-      assert (Hmi : ds_mod Θm Ξm (ds_ind Δa pq Nsa) = Some (ds_closed Δa pq Tb Φb Nsa)) by (cbn; rewrite Hb; reflexivity).
+      assert (Hmi : ds_mod Θm Ξm (ds_ind Δa pq k Nsa) = Some (ds_closed Δa pm Tb Φb Nsa))
+        by (cbn; rewrite Hl1, Hpm1, Hb; reflexivity).
       destruct (ds_mod_ats _ _ _ _ _ _ Hmi Ha) as (Rm' & Ha' & Hmd').
       rewrite Hmd in Hmd'; injection Hmd' as <-.
-      exists Φ0, (ge_ind_alias pv Δa pq Nsa), (gu_mk Δa (md_alias (me_apps (qname_mod pq) Nsa))), Rm.
+      exists Φ0, (ge_ind_alias pv Δa pm pq k Nsa), (gu_mk Δa (md_alias (me_apps (qname_mod pm) Nsa))), Rm.
       split; [ reflexivity | split; [ reflexivity | split; [ exact (mdenote_apps _ _ _ _ _ _ _ HmU Ha') |] ] ].
-      apply ds_is_mod_mod; exact (ds_ats_is_mod _ (ds_closed Δa pq Tb Φb Nsa) _ I Ha').
+      apply ds_is_mod_mod; exact (ds_ats_is_mod _ (ds_closed Δa pm Tb Φb Nsa) _ I Ha').
 Qed.
 
 (** ** Modules of a Body *)
