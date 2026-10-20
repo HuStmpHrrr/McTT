@@ -645,6 +645,50 @@ Proof.
   exact (per_head_right Em Em' HRm).
 Qed.
 
+(** The type of a domain of a recursive argument's shape, after [d] of
+    them, at arguments related at the context of those before: its relation
+    is the canonical one of the domain at the non-recursive values. *)
+Lemma vg_dom_head : forall pq G, valid_group pq G -> containers_valid G ->
+    forall k Mk c gs gs1 t gs2 d B U ms vs ys, ind_member G k = Some Mk -> ind_con Mk c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+    List.nth_error (ptyp_doms t) d = Some B ->
+    List.length U = ind_nu G -> List.length ms = im_nn Mk -> List.length vs = List.length gs1 -> List.length ys = d ->
+    per_gargs (List.rev (sh_ctx (cargs_pat gs1) (List.firstn d (ptyp_doms t)) ++ cargs_ctx pq G Mk gs1 ++ im_params G Mk)) nil nil
+      (U ++ ms ++ vs ++ ys) (U ++ ms ++ vs ++ ys) ->
+    exists (i : nat) R b, ⟦ B[wk_pat (List.repeat false d ++ cargs_pat gs1)]ʷ ⟧ env_args nil (U ++ ms ++ vs ++ ys) ↘ b /\
+      DF b ≈ b ∈ per_univ_elem i ↘ R /\ (R <~> canon_doms_rel U k (ms ++ nonrec_arg_vals gs1 vs ++ ys) B).
+Proof.
+  intros pq G Hg Hcv k Mk c gs gs1 t gs2 d B U ms vs ys HM Hcon Heq HB HlU Hlm Hlv Hly Hgp.
+  pose proof (vgr_valid _ _ Hg) as HD.
+  assert (Hd : d <= List.length (ptyp_doms t)) by (assert (d < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia).
+  destruct (vg_cargs_sem_all pq G Hg Hcv k Mk c gs HM Hcon gs1 (ca_rec t :: gs2) Heq) as [HW0 Hw0].
+  pose proof (sh_wk_gen G pq k Mk c gs HD HM Hcon gs1 t gs2 Heq Hw0 d Hd) as Hw.
+  pose proof (sh_sem_gen G pq k Mk c gs HD HM Hcon gs1 t gs2 Heq HW0 Hw0 d Hd) as HW.
+  destruct (vid_dom _ HD _ _ _ _ _ _ _ _ _ HM Hcon Heq HB) as (_ & j & HBv).
+  rewrite Heq, <- nonrec_args_prefix_cargs_strat in HBv.
+  destruct (rel_exp_under_ctx_wk_simple Hw HBv) as (RΓ & HΓ & i0 & Hwk).
+  assert (Hρ : RΓ (env_args nil (U ++ ms ++ vs ++ ys)) (env_args nil (U ++ ms ++ vs ++ ys))).
+  { apply (gargs_env_rel _ _ _ _ _ _ HΓ HW); [| exact Hgp ].
+    rewrite !List.length_app, length_sh_ctx, List.length_firstn, length_cargs_ctx, length_im_params; unfold im_np, ind_nu in *; lia. }
+  destruct (Hwk _ _ Hρ) as (y & y' & Ry & Ey & Ey' & HRy & m & m' & Em & Em' & Hmm).
+  assert (Hy1 : y = d_univ j) by (cbn in Ey; inversion Ey; reflexivity).
+  rewrite Hy1 in HRy; clear Hy1 Ey Ey'.
+  destruct (per_univ_elem_univ _ _ _ _ HRy (or_introl (ex_intro _ _ eq_refl))) as [_ ERy].
+  apply ERy in Hmm; destruct Hmm as [Rm HRm].
+  assert (HwE : ⟪wk_pat (List.repeat false d ++ cargs_pat gs1)⟫ (env_args nil (U ++ ms ++ vs ++ ys))
+                = env_args nil (U ++ ms ++ nonrec_arg_vals gs1 vs ++ ys)).
+  { replace (U ++ ms ++ vs ++ ys) with ((U ++ ms ++ vs) ++ ys) by (rewrite <- !List.app_assoc; reflexivity).
+    rewrite env_args_app, eval_wk_pat_falses by exact Hly.
+    replace (U ++ ms ++ vs) with ((U ++ ms) ++ vs) by (rewrite <- List.app_assoc; reflexivity).
+    rewrite env_args_app, eval_wk_pat_args by exact Hlv.
+    rewrite <- !env_args_app, <- !List.app_assoc; reflexivity. }
+  rewrite HwE in Em'.
+  pose proof (per_univ_trans _ _ _ _ _ _ HRm (per_univ_sym _ _ _ _ HRm)) as HRmm.
+  change (per_univ_elem j Rm m m) in HRmm.
+  exists j, Rm, m; split; [ exact Em | split; [ exact HRmm |] ].
+  unfold canon_doms_rel.
+  exact (per_head_right Em Em' HRm).
+Qed.
+
 (** ** Coherence of a View, and the Relation of its Type
 
     [view_agreement_canonical p D ups ups' j]: the elements of the view [j] of [D] at
