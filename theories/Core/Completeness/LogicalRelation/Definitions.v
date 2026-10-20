@@ -492,7 +492,6 @@ Definition nonrec_args_prefix (gs : list carg) (k : nat) : ctx := List.rev (List
     read in the PER model: [views_self_typed], each judgment semantic.  The
     instances [IsS] are the views' arguments before the group is filed;
     the filed ones are their images by [grp_sb] ([vsv_link]). *)
-#[warnings="-cannot-define-projection"]
 Record views_self_valid (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_views_self_valid
   { vsv_link : forall mp, ind_mpath D 0 = Some mp ->
       forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->

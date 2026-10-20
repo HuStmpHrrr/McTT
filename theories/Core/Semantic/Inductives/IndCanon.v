@@ -32,7 +32,6 @@ Section Fixed_GCtx.
   Qed.
 
   (** The conditions of the clause on the canonical relations. *)
-  #[warnings="-cannot-define-projection"]
   Record ind_canon_props (D : ind_decl) (ups : list domain) : Prop := mk_ind_canon_props
     { icp_np_per : nparams_per D (canon_nparams_rel D ups)
     ; icp_np_iff : nparams_inv D (canon_nparams_rel D ups)
@@ -43,7 +42,6 @@ Section Fixed_GCtx.
 
   (** Two families of relations agree where both are defined, as the
       section [FamChange] of [Core.Semantic.PER.Tele] needs. *)
-  #[warnings="-cannot-define-projection"]
   Record ind_fam_agree (D : ind_decl) (nr1 nr2 : nat -> nat -> list domain -> relation domain)
       (ar1 ar2 : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
       (dr1 dr2 : nat -> list domain -> exp -> relation domain) : Prop := mk_ind_fam_agree
@@ -99,7 +97,6 @@ Section Fixed_GCtx.
 
   (** A related pair of types of a member of a group: its clause at the
       canonical relations at the left uniform parameters. *)
-  #[warnings="-cannot-define-projection"]
   Record ind_canon_clause (p : qname) (D : ind_decl) (k : nat) (ups ups' ns ns' : list domain) (R : relation domain) : Prop :=
     mk_ind_canon_clause
     { icc_ass : grp_tele_ass D

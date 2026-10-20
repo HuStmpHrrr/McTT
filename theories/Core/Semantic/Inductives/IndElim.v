@@ -491,7 +491,6 @@ Section Fixed_GCtx.
         them, and the uniform parameters of the member's container (its own
         group's at a declared member) reading back alike, as the read
         eliminator carries them. *)
-    #[warnings="-cannot-define-projection"]
     Record elim_ups_ok (ua ub : list domain) : Prop := mk_elim_ups_ok
       { euo_len_a : List.length ua = ind_nu D
       ; euo_len_b : List.length ub = ind_nu D

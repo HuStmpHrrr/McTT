@@ -1328,7 +1328,6 @@ End Sort.
     found there, valid, closed, of a universe as its sort, with the
     conditions of the universe clause, typed, and filed at the path of its
     first member. *)
-#[warnings="-cannot-define-projection"]
 Record valid_group (p : qname) (D : ind_decl) : Prop := mk_valid_group
   { vgr_lookup : ind_lookup gc_deps gc_stack p = Some D
   ; vgr_valid : valid_ind_decl D

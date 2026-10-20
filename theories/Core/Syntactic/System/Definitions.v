@@ -113,7 +113,6 @@ Definition let_ann (oA : option typ) (A : typ) : Prop := oA = None \/ oA = Some 
     The readback of a stuck eliminator at a view reads its branches with
     the eliminator at those members applied to fresh variables; the rank
     makes that recursion well founded. *)
-#[warnings="-cannot-define-projection"]
 Record view_rank_ok (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (rk : nat -> nat) : Prop := mk_view_rank_ok
   { vro_decl : forall k Mk pm, ind_member D k = Some Mk -> im_head Mk = mh_decl pm -> rk k = 0
   ; vro_nest : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs, ind_member D k = Some Mk ->

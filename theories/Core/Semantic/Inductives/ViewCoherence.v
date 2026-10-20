@@ -79,7 +79,6 @@ Section Fixed_GCtx.
     (** The member [v] of the group the container's member [i'] is taken
         to: of the same head, as many parameters, its constructors the
         container's, each argument corresponding. *)
-    #[warnings="-cannot-define-projection"]
     Record view_member (i' : nat) (Mi' : imember) (v : nat) (Mv : imember) : Prop := mk_view_member
       { vmb_v : List.nth_error vm i' = Some v
       ; vmb_mem : ind_member D v = Some Mv
@@ -102,7 +101,6 @@ Section Fixed_GCtx.
 
     (** The view maps each member of the container's group, and the two
         telescopes agree position by position. *)
-    #[warnings="-cannot-define-projection"]
     Record view_agreement : Prop := mk_view_agreement
     { agree_members : forall i' Mi', ind_member Dq i' = Some Mi' -> exists v Mv, view_member i' Mi' v Mv
     (** A recursive argument of the container's ends in a member of its group. *)

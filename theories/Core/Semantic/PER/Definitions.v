@@ -323,7 +323,6 @@ Definition mref_at (p : qname) (X : list domain) : nat -> qname -> nat -> list d
     one at [ups].  A stuck eliminator is read back under these variables
     at its own uniform parameters; the universe clause's admissibility
     gives them ([adm_fresh_of_uparams]). *)
-#[warnings="-cannot-define-projection"]
 Record adm_fresh (p : qname) (D : ind_decl) (ups : list domain)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
@@ -506,7 +505,6 @@ Record view_member_image (D : ind_decl) (qc : qname) (Is : list exp) (vm : list 
                | mh_view qv kv Is'' _ => exists Is' vm', im_head image_member = mh_view qv kv Is' vm' /\ List.length Is' = List.length Is''
                end }.
 
-#[warnings="-cannot-define-projection"]
 Record grp_tele_ass (D : ind_decl) : Prop := mk_grp_tele_ass
   { gta_uparams : tele_ass (ind_uparams D)
   ; gta_nparams : forall k Mk, ind_member D k = Some Mk -> tele_ass (im_nparams Mk)

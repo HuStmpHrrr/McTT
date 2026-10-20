@@ -99,7 +99,6 @@ Section ViewArgs.
       At arguments [vs] before a position related at both telescopes, the
       types there have the same head PER, the container's at [cups] and the
       group's at [ups]; both are types, related to each other. *)
-  #[warnings="-cannot-define-projection"]
   Record arg_type_link (C G : typ) (Ec Eg : env) : Prop := mk_arg_type_link
     { heads_agree : per_head C C Ec Ec <~> per_head G G Eg Eg
     ; group_type_value : exists (i : nat) R b, ⟦ G ⟧ Eg ↘ b /\ DF b ≈ b ∈ per_univ_elem i ↘ R
@@ -246,7 +245,6 @@ Section ViewArgs.
   Hypotheses (Hms_g : per_gargs (List.rev (im_params D Mv)) nil nil (ups ++ ms) (ups ++ ms))
     (Hms_c : per_gargs (List.rev (im_params Dq Mi')) nil nil (cups ++ ms) (cups ++ ms)).
 
-  #[warnings="-cannot-define-projection"]
   Record view_args_inv (gsA' gsA : list carg) (vp vs : list domain) : Prop := mk_view_args_inv
     { vai_len : List.length vs = List.length gsA
     ; vai_nonrec_c : nonrec_arg_vals gsA' vs = nonrec_arg_vals gsA' vp
@@ -467,7 +465,6 @@ Section ViewArgs.
       Through the domains of the two shapes: after [kk] domains [ys]
       related at both telescopes of domains, the types of the rests of the
       shapes are related to each other. *)
-  #[warnings="-cannot-define-projection"]
   Record shape_walk_state (gs1' gs1 : list carg) (t' t : ptyp) (vs : list domain) (kk : nat) (ys : list domain) : Prop :=
     mk_shape_walk_state
     { walk_group_doms : per_gargs (List.rev (sh_ctx (cargs_pat gs1) (List.firstn kk (ptyp_doms t))))
