@@ -494,16 +494,16 @@ Hint Constructors ind_rel con_args_rel rec_arg_rel rec_arg_app_rel : mctt.
     same instance at a declared member [i'], a view at the same container
     member at a view [i']. *)
 #[warnings="-cannot-define-projection"]
-Record view_cmember_ok (D : ind_decl) (qc : qname) (Is : list exp) (vm : list nat) (i' : nat) (Mi' : imember) : Prop :=
-  mk_view_cmember_ok
-  { vco_j : nat
-  ; vco_Mj : imember
-  ; vco_at : List.nth_error vm i' = Some vco_j
-  ; vco_member : ind_member D vco_j = Some vco_Mj
-  ; vco_nn : im_nn vco_Mj = im_nn Mi'
-  ; vco_head : match im_head Mi' with
-               | mh_decl _ => exists vm', im_head vco_Mj = mh_view qc i' Is vm'
-               | mh_view qv kv Is'' _ => exists Is' vm', im_head vco_Mj = mh_view qv kv Is' vm' /\ List.length Is' = List.length Is''
+Record view_member_image (D : ind_decl) (qc : qname) (Is : list exp) (vm : list nat) (i' : nat) (Mi' : imember) : Prop :=
+  mk_view_member_image
+  { image_index : nat
+  ; image_member : imember
+  ; image_in_view_map : List.nth_error vm i' = Some image_index
+  ; image_is_member : ind_member D image_index = Some image_member
+  ; image_same_nparams_count : im_nn image_member = im_nn Mi'
+  ; image_head_matches : match im_head Mi' with
+               | mh_decl _ => exists vm', im_head image_member = mh_view qc i' Is vm'
+               | mh_view qv kv Is'' _ => exists Is' vm', im_head image_member = mh_view qv kv Is' vm' /\ List.length Is' = List.length Is''
                end }.
 
 #[warnings="-cannot-define-projection"]
@@ -517,7 +517,7 @@ Record grp_tele_ass (D : ind_decl) : Prop := mk_grp_tele_ass
   ; gta_vwrap : forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       exists D', ind_lookup gc_deps gc_stack qc = Some D' /\ vwrap_ok D D' vm
   ; gta_vm : forall v Mv qc kc Is vm Dq i' Mi', ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
-      ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' -> view_cmember_ok D qc Is vm i' Mi'
+      ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' -> view_member_image D qc Is vm i' Mi'
   ; gta_plen : forall k Mk c gs, ind_member D k = Some Mk -> List.In (c, gs) (im_cons Mk) -> cargs_plen D gs
   ; gta_cplen : forall v Mv qc kc Is vm Dq i' Mi' c gs', ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' -> List.In (c, gs') (im_cons Mi') ->

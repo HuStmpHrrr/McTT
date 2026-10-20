@@ -320,7 +320,7 @@ Proof.
       by (rewrite (vwo_length _ _ _ Hvw); apply List.nth_error_Some; unfold ind_member in HMi'; congruence).
     destruct (nth_error_lt_some' _ _ Hi') as [w Hw].
     destruct (vwo_members _ _ _ Hvw _ _ _ HMi' Hw) as (Mw & HMw & Hnn & _).
-    refine (mk_view_cmember_ok _ _ _ _ _ _ w Mw Hw HMw Hnn _).
+    refine (mk_view_member_image _ _ _ _ _ _ w Mw Hw HMw Hnn _).
     destruct (im_head Mi') as [pm' | q'' k'' Is'' vm''] eqn:Hh'.
     + destruct (dt_view_decl _ _ _ HD _ _ _ _ _ _ _ _ _ _ _ HMv Hh HDq HMi' Hh' Hw) as (Mw' & vm' & HMw' & Hhw).
       rewrite HMw in HMw'; injection HMw' as <-; exists vm'; exact Hhw.
