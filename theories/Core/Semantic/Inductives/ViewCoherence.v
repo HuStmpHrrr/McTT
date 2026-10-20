@@ -7,7 +7,7 @@
     relation at the view, whose telescopes are the group's own, filed
     free of the group (model P).  Coherence: an element of the container's
     member [i'] is one of the group's member [vm i'] the view takes it to,
-    when the two telescopes agree position by position ([view_coh_to]).
+    when the two telescopes agree position by position ([view_container_to_group]).
     The agreement is stated over the two relations' families, at prefixes
     the container relates: what the view equations give, read in the PER
     model once the group is a type of it. *)
@@ -103,17 +103,17 @@ Section Fixed_GCtx.
     (** The view maps each member of the container's group, and the two
         telescopes agree position by position. *)
     #[warnings="-cannot-define-projection"]
-    Record view_coh_ok : Prop := mk_view_coh_ok
-    { vco_mem : forall i' Mi', ind_member Dq i' = Some Mi' -> exists v Mv, view_member i' Mi' v Mv
+    Record view_agreement : Prop := mk_view_agreement
+    { agree_members : forall i' Mi', ind_member Dq i' = Some Mi' -> exists v Mv, view_member i' Mi' v Mv
     (** A recursive argument of the container's ends in a member of its group. *)
-    ; vco_rec_mem : forall i' Mi' c gs1' t' gs2', ind_member Dq i' = Some Mi' -> ind_con Mi' c = Some (gs1' ++ ca_rec t' :: gs2') ->
+    ; agree_recursive_targets : forall i' Mi' c gs1' t' gs2', ind_member Dq i' = Some Mi' -> ind_con Mi' c = Some (gs1' ++ ca_rec t' :: gs2') ->
       exists Mj', ind_member Dq (ptyp_mem t') = Some Mj'
     (** The non-uniform parameters. *)
-    ; vco_N : forall i' Mi' v Mv k vs vs', ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
+    ; agree_nparams_rel : forall i' Mi' v Mv k vs vs', ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
       k < im_nn Mi' -> tele_prefix_rel (nr' i') k vs vs' -> (nr' i' k vs <~> nr v k vs)
     (** An argument non-recursive in both, after the arguments [vp] before
         it, [gs1'] and [gs1] as the container and the group have them. *)
-    ; vco_A : forall i' Mi' v Mv c gs1' A' gs2' gs1 A gs2 ms ms' vp vp' x y,
+    ; agree_args_rel : forall i' Mi' v Mv c gs1' A' gs2' gs1 A gs2 ms ms' vp vp' x y,
       ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
       ind_con Mi' c = Some (gs1' ++ ca_arg A' :: gs2') -> ind_con Mv c = Some (gs1 ++ ca_arg A :: gs2) ->
       cargs_corr vm gs1' gs1 -> List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
@@ -123,7 +123,7 @@ Section Fixed_GCtx.
        ar v ms c (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 vp) x y)
     (** An argument the view nests through: non-recursive in the
         container, recursive of a shape in the group. *)
-    ; vco_R : forall i' Mi' v Mv c gs1' A' gs2' gs1 t gs2 ms ms' vp vp' x y,
+    ; agree_nested_arg_rel : forall i' Mi' v Mv c gs1' A' gs2' gs1 t gs2 ms ms' vp vp' x y,
       ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
       ind_con Mi' c = Some (gs1' ++ ca_arg A' :: gs2') -> ind_con Mv c = Some (gs1 ++ ca_rec t :: gs2) ->
       cargs_corr vm gs1' gs1 -> List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
@@ -133,7 +133,7 @@ Section Fixed_GCtx.
        GR v ups ups' (ms ++ nonrec_arg_vals gs1 vp) (ms' ++ nonrec_arg_vals gs1 vp') t x y)
     (** An argument recursive in both: the domains of the shapes, after
         [ys] of them. *)
-    ; vco_D : forall i' Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d B' B ys ys',
+    ; agree_shape_doms_rel : forall i' Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d B' B ys ys',
       ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
       ind_con Mi' c = Some (gs1' ++ ca_rec t' :: gs2') -> ind_con Mv c = Some (gs1 ++ ca_rec t :: gs2) ->
       cargs_corr vm gs1' gs1 -> List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
@@ -143,7 +143,7 @@ Section Fixed_GCtx.
       tele_prefix_rel (shape_doms_rel (dr' i') ms (nonrec_arg_vals gs1' vp) (ptyp_doms t')) d ys ys' ->
       (dr' i' (ms ++ nonrec_arg_vals gs1' vp ++ ys) B' <~> dr v (ms ++ nonrec_arg_vals gs1 vp ++ ys) B)
     (** An argument recursive in both: the parameters the shapes end in. *)
-    ; vco_P : forall i' Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' ys ys',
+    ; agree_shape_params : forall i' Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' ys ys',
       ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
       ind_con Mi' c = Some (gs1' ++ ca_rec t' :: gs2') -> ind_con Mv c = Some (gs1 ++ ca_rec t :: gs2) ->
       cargs_corr vm gs1' gs1 -> List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
@@ -157,14 +157,14 @@ Section Fixed_GCtx.
       ps_link (ptyp_ps t') (ptyp_ps t) (ptyp_mem t)
         (env_args nil (cups ++ ms' ++ nonrec_arg_vals gs1' vp' ++ ys')) (env_args nil (ups ++ ms' ++ nonrec_arg_vals gs1 vp' ++ ys')) }.
 
-    Hypothesis (Hvc : view_coh_ok).
-    #[local] Abbreviation Hmem := (vco_mem Hvc).
-    #[local] Abbreviation HN := (vco_N Hvc).
-    #[local] Abbreviation HA := (vco_A Hvc).
-    #[local] Abbreviation HR := (vco_R Hvc).
-    #[local] Abbreviation HD := (vco_D Hvc).
-    #[local] Abbreviation HP := (vco_P Hvc).
-    #[local] Abbreviation Hrm := (vco_rec_mem Hvc).
+    Hypothesis (Hvc : view_agreement).
+    #[local] Abbreviation Hmem := (agree_members Hvc).
+    #[local] Abbreviation HN := (agree_nparams_rel Hvc).
+    #[local] Abbreviation HA := (agree_args_rel Hvc).
+    #[local] Abbreviation HR := (agree_nested_arg_rel Hvc).
+    #[local] Abbreviation HD := (agree_shape_doms_rel Hvc).
+    #[local] Abbreviation HP := (agree_shape_params Hvc).
+    #[local] Abbreviation Hrm := (agree_recursive_targets Hvc).
 
     (** ** The Non-Uniform Parameters *)
 
@@ -263,7 +263,7 @@ Section Fixed_GCtx.
     Lemma app_assoc_3 : forall (a b c : list domain) x, (a ++ b ++ c) ++ x :: nil = a ++ b ++ (c ++ x :: nil).
     Proof. intros; rewrite <- !List.app_assoc; reflexivity. Qed.
 
-    Theorem view_coh_to_all :
+    Theorem view_container_to_group_all :
       (forall i' u u' ns ns' x y, C i' u u' ns ns' x y -> u = cups -> u' = cups' ->
          forall v, List.nth_error vm i' = Some v -> G v ups ups' ns ns' x y) /\
       (forall i' u u' pre pre' gs' vs vs', CA i' u u' pre pre' gs' vs vs' -> u = cups -> u' = cups' ->
@@ -470,9 +470,9 @@ Section Fixed_GCtx.
         eapply IH; eassumption.
     Qed.
 
-    Corollary view_coh_to : forall i' Mi' v Mv ns ns' x y, ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
+    Corollary view_container_to_group : forall i' Mi' v Mv ns ns' x y, ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
         C i' cups cups' ns ns' x y -> G v ups ups' ns ns' x y.
-    Proof. intros * _ Hv H; exact (proj1 view_coh_to_all _ _ _ _ _ _ _ H eq_refl eq_refl _ (vmb_v _ _ _ _ Hv)). Qed.
+    Proof. intros * _ Hv H; exact (proj1 view_container_to_group_all _ _ _ _ _ _ _ H eq_refl eq_refl _ (vmb_v _ _ _ _ Hv)). Qed.
 
     (** ** From the Group's to the Container's
 
@@ -481,7 +481,7 @@ Section Fixed_GCtx.
         annotation (model P). *)
     Section From.
 
-      Theorem view_coh_from_all :
+      Theorem view_group_to_container_all :
         (forall w u u' ns ns' x y, G w u u' ns ns' x y -> u = ups -> u' = ups' ->
            forall i' Mi' Mw, ind_member Dq i' = Some Mi' -> view_member i' Mi' w Mw -> C i' cups cups' ns ns' x y) /\
         (forall w u u' pre pre' gs vs vs', GA w u u' pre pre' gs vs vs' -> u = ups -> u' = ups' ->
@@ -687,9 +687,9 @@ Section Fixed_GCtx.
           eapply IH; eassumption.
       Qed.
 
-      Corollary view_coh_from : forall i' Mi' v Mv ns ns' x y, ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
+      Corollary view_group_to_container : forall i' Mi' v Mv ns ns' x y, ind_member Dq i' = Some Mi' -> view_member i' Mi' v Mv ->
           G v ups ups' ns ns' x y -> C i' cups cups' ns ns' x y.
-      Proof. intros * HM Hv H; exact (proj1 view_coh_from_all _ _ _ _ _ _ _ H eq_refl eq_refl _ _ _ HM Hv). Qed.
+      Proof. intros * HM Hv H; exact (proj1 view_group_to_container_all _ _ _ _ _ _ _ H eq_refl eq_refl _ _ _ HM Hv). Qed.
     End From.
   End ViewCoh.
 End Fixed_GCtx.

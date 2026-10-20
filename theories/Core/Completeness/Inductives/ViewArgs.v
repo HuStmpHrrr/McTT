@@ -15,7 +15,7 @@
     ([view_args_complete]); and at a position the container has as
     non-recursive and the group as recursive (the view nests through it),
     the container's canonical relation of the argument is the group's
-    relation of the shape ([view_nest_rel]). *)
+    relation of the shape ([nested_arg_rel_agree]). *)
 
 From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasses.
 
@@ -362,7 +362,7 @@ Section ViewArgs.
       container's canonical relation of the argument is the group's
       relation of the shape, given the relation of the type of the member
       the shape ends in ([view_end_rel]). *)
-  Lemma view_nest_rel : forall gs1' A' gs2' gs1 t gs2 vp, gs' = gs1' ++ ca_arg A' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 ->
+  Lemma nested_arg_rel_agree : forall gs1' A' gs2' gs1 t gs2 vp, gs' = gs1' ++ ca_arg A' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 ->
       cargs_corr vm gs1' gs1 -> List.length vp = List.length gs1 ->
       tele_prefix_rel (canon_args_rel Dq cups i' ms c) (List.length (cargs_nonrec gs1'))
         (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp) ->
@@ -438,7 +438,7 @@ Section ViewArgs.
 
       The container's canonical relation of a non-uniform parameter at
       [cups] is the group's at [ups] of the member the view takes the
-      container's to ([vco_N] at the canonical relations). *)
+      container's to ([agree_nparams_rel] at the canonical relations). *)
   Lemma view_nparams_rel : forall j vs vs', j < im_nn Mi' -> tele_prefix_rel (canon_nparams_rel Dq cups i') j vs vs' ->
       (canon_nparams_rel Dq cups i' j vs <~> canon_nparams_rel D ups v j vs).
   Proof.

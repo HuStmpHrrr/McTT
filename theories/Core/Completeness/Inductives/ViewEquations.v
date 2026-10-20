@@ -15,7 +15,7 @@
     substitutions ([tele_link], [tele_link_gargs]), the change of base of a
     closed telescope ([tele_base_change]), the reading of canonical
     relations as arguments ([canon_prefix_gargs]) and, from them, the
-    non-uniform parameters' field of [view_coh_ok] at the canonical
+    non-uniform parameters' field of [view_agreement] at the canonical
     relations ([view_nparams_canon]), under the hypothesis that [ρS] is
     related to itself at [grp_sctx D]. *)
 
@@ -360,7 +360,7 @@ Section ViewNparams.
     exact (gargs_env_rel_gen _ _ _ _ _ _ _ _ per_ctx_env_nil_true HRQ0 HWQ0 I Hlcups Hg').
   Qed.
 
-  (** The field [vco_N] of [view_coh_ok] at the canonical relations of the
+  (** The field [agree_nparams_rel] of [view_agreement] at the canonical relations of the
       group at [ups] and of the container at [cups]. *)
   Theorem view_nparams_canon : forall j vs vs', j < im_nn Mi' ->
       tele_prefix_rel (canon_nparams_rel Dq cups i') j vs vs' ->
@@ -430,9 +430,9 @@ End ViewNparams.
 
 (** ** The Members a View Takes the Container's To
 
-    The field [vco_mem] of [view_coh_ok]: syntactic, from the group's
+    The field [agree_members] of [view_agreement]: syntactic, from the group's
     conditions ([gta_vwrap], [gta_vm], [gta_views]). *)
-Lemma view_coh_mem : forall p D k Mk qc k' Is vm Dq, grp_tele_ass D ->
+Lemma view_agree_members : forall p D k Mk qc k' Is vm Dq, grp_tele_ass D ->
     ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq ->
     forall i' Mi', ind_member Dq i' = Some Mi' -> exists v Mv, view_member p D qc Dq vm i' Mi' v Mv.
 Proof.
@@ -463,9 +463,9 @@ Proof.
     exists gs'; split; [ exact HCi | exact (Hcorr c gs' gs (cons_lookup_in _ _ _ HCi) Hc) ].
 Qed.
 
-(** The field [vco_rec_mem]: a recursive argument of the container's
+(** The field [agree_recursive_targets]: a recursive argument of the container's
     ends in a member of its group ([gta_plen] of the container). *)
-Lemma view_coh_rec_mem : forall Dq, grp_tele_ass Dq ->
+Lemma view_agree_recursive_targets : forall Dq, grp_tele_ass Dq ->
     forall i' Mi' c gs1' t' gs2', ind_member Dq i' = Some Mi' -> ind_con Mi' c = Some (gs1' ++ ca_rec t' :: gs2') ->
       exists Mj', ind_member Dq (ptyp_mem t') = Some Mj'.
 Proof.

@@ -647,17 +647,17 @@ Qed.
 
 (** ** Coherence of a View, and the Relation of its Type
 
-    [view_coh_at p D ups ups' j]: the elements of the view [j] of [D] at
+    [view_agreement_canonical p D ups ups' j]: the elements of the view [j] of [D] at
     the canonical relations at [ups] and [ups'] cohere with those of its
-    container's member at the view's instance there ([view_coh_ok]).
+    container's member at the view's instance there ([view_agreement]).
     [view_end_rel]: the relation of the view's type, the container's at
     any uniform parameters related to the instance, is the group's at the
     view. *)
-Definition view_coh_at (p : qname) (D : ind_decl) (ups ups' : list domain) (j : nat) : Prop :=
+Definition view_agreement_canonical (p : qname) (D : ind_decl) (ups ups' : list domain) (j : nat) : Prop :=
   forall Mj qc kc Is vm Dq cups cups', ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm ->
     ind_lookup gc_deps gc_stack qc = Some Dq ->
     ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups -> ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups' ↘ cups' ->
-    view_coh_ok p D ups ups' (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups)
+    view_agreement p D ups ups' (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups)
       qc Dq cups cups' (canon_nparams_rel Dq cups) (canon_args_rel Dq cups) (canon_doms_rel cups) vm.
 
 Definition view_end_rel (p : qname) (D : ind_decl) (ups ups' : list domain) (j : nat) : Prop :=
@@ -669,9 +669,9 @@ Definition view_end_rel (p : qname) (D : ind_decl) (ups ups' : list domain) (j :
       DF d_ind qc kc (cs ++ ns) ≈ d_ind qc kc (cs' ++ ns') ∈ per_univ_elem i ↘ R ->
       (R <~> grp_rel p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) j ups ups' ns ns').
 
-Lemma view_end_rel_of_coh : forall p D, valid_group p D -> containers_valid D ->
+Lemma view_end_rel_of_agreement : forall p D, valid_group p D -> containers_valid D ->
     forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
-    forall j, view_coh_at p D ups ups' j -> view_end_rel p D ups ups' j.
+    forall j, view_agreement_canonical p D ups ups' j -> view_end_rel p D ups ups' j.
 Proof.
   intros p D Hg Hcv ups ups' Hgu Hu j Hcoh Mj qc kc Is vm Dq cups cups' HMj Hh Hq Ec Ec' cs cs' ns ns' i R Hcs Hcs' HR.
   pose proof (Hcv _ _ _ _ _ _ _ HMj Hh Hq) as HgQ.
@@ -687,7 +687,7 @@ Proof.
   assert (Hlc : List.length c0 = ind_nu Dq) by (rewrite (eval_exps_length _ _ _ E0); exact HIl).
   destruct (vg_type_rel_base qc Dq HgQ _ _ _ _ _ _ _ _ _ _ _ HMk' Hhd Hcu Hlc Hcs Hcs' HR) as [Hbase _].
   pose proof (Hcoh _ _ _ _ _ _ _ _ HMj Hh Hq E0 E0') as Hvc.
-  destruct (vco_mem _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hvc _ _ HMk') as (v & Mv & Hvmb).
+  destruct (agree_members _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hvc _ _ HMk') as (v & Mv & Hvmb).
   assert (v = j) as -> by (pose proof (vmb_v _ _ _ _ _ _ _ _ _ Hvmb) as Hv; rewrite Hvm in Hv; congruence).
   assert (Mv = Mj) as -> by (pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMv; rewrite HMj in HMv; congruence).
   pose proof (vg_canon p D Hg ups (uparams_refl_l D (vgr_valid _ _ Hg) (vgr_closed _ _ Hg) _ _ Hgu) Hu) as Hcp.
@@ -695,10 +695,10 @@ Proof.
   destruct Hcp as [HnP HnI HaP HaI HdP HdI]; destruct HcpQ as [HnP' HnI' HaP' HaI' HdP' HdI'].
   intros x y; split; intro Hxy.
   - apply Hbase in Hxy.
-    exact (view_coh_to p D ups ups' _ _ _ (vgr_ass _ _ Hg) HnP HnI HaP HaI HdP HdI qc Dq c0 c0' _ _ _ (vgr_ass _ _ HgQ)
+    exact (view_container_to_group p D ups ups' _ _ _ (vgr_ass _ _ Hg) HnP HnI HaP HaI HdP HdI qc Dq c0 c0' _ _ _ (vgr_ass _ _ HgQ)
              HnP' HnI' HaP' HaI' HdP' HdI' vm Hvc kc Mk' j Mj ns ns' x y HMk' Hvmb Hxy).
   - apply Hbase.
-    exact (view_coh_from p D ups ups' _ _ _ (vgr_ass _ _ Hg) HnP HnI HaP HaI HdP HdI qc Dq c0 c0' _ _ _ (vgr_ass _ _ HgQ)
+    exact (view_group_to_container p D ups ups' _ _ _ (vgr_ass _ _ Hg) HnP HnI HaP HaI HdP HdI qc Dq c0 c0' _ _ _ (vgr_ass _ _ HgQ)
              HnP' HnI' HaP' HaI' HdP' HdI' vm Hvc kc Mk' j Mj ns ns' x y HMk' Hvmb Hxy).
 Qed.
 
