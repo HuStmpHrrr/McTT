@@ -485,136 +485,155 @@ Section Tele.
                                | exact (IH _ _ _ _ _ _ _ _ H) ].
   Defined.
 
-  (** The ends of the positions of a view's blocks, with the motives [Pa]
-      and [Pv] at the inner admissibilities ([fresh_mut_ind]). *)
-  Inductive end_with (p : qname) (D : ind_decl) (ups : list domain)
-      (nr : nat -> nat -> list domain -> relation domain)
-      (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-      (dr : nat -> list domain -> exp -> relation domain)
-      (Pa : list domain -> Prop) (Pv : qname -> list exp -> list domain -> Prop) :
-      nat -> qname -> nat -> list domain -> Prop :=
-  | end_with_decl : forall j Mj pm py, ind_member D j = Some Mj -> im_head Mj = mh_decl pm -> List.length py = ind_nu D ->
-      adm_fresh p D ups nr ar dr py -> Pa py -> end_with p D ups nr ar dr Pa Pv j p j py
-  | end_with_view : forall j Mj qv kv Is' vm' py, ind_member D j = Some Mj -> im_head Mj = mh_view qv kv Is' vm' ->
-      List.length py = List.length Is' ->
-      view_fresh p D ups nr ar dr qv Is' py -> Pv qv Is' py -> end_with p D ups nr ar dr Pa Pv j qv kv py.
+  (** ** The Admissibilities as a Greatest Fixed Point
 
-  Inductive rec_end_with (p : qname) (D : ind_decl) (ups : list domain)
-      (nr : nat -> nat -> list domain -> relation domain)
-      (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-      (dr : nat -> list domain -> exp -> relation domain)
-      (Pv : qname -> list exp -> list domain -> Prop) (qc : qname) (Is : list exp) (Y : list domain) :
-      nat -> qname -> nat -> list domain -> Prop :=
-  | rec_end_with_same : forall j Mj kc vm', ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm' ->
-      rec_end_with p D ups nr ar dr Pv qc Is Y j qc kc Y
-  | rec_end_with_inner : forall j Mj qc' kc' Is' vm' py, ind_member D j = Some Mj -> im_head Mj = mh_view qc' kc' Is' vm' ->
-      List.length py = List.length Is' ->
-      view_fresh p D ups nr ar dr qc' Is' py -> Pv qc' Is' py ->
-      rec_end_with p D ups nr ar dr Pv qc Is Y j qc' kc' py.
-
-  (** The induction principle of [adm_fresh] and [view_fresh]: at every
-      inner admissibility (a view member's container, a position nested
-      through, a position recursive in a container's own view, a
-      container's own view as a member) the motive holds. *)
-  Section FreshInd.
+      The clauses are monotone in the inner admissibilities; an invariant
+      pair gives membership ([adm_fresh_coind], [view_fresh_coind]); the
+      greatest fixed point is itself an invariant pair ([fresh_unfold]),
+      so each admissibility satisfies its clause ([adm_fresh_unfold],
+      [view_fresh_unfold]) and is closed under it ([adm_fresh_fold],
+      [view_fresh_fold]). *)
+  Section FreshGfp.
     Variable (p : qname) (D : ind_decl) (ups : list domain).
     Variable (nr : nat -> nat -> list domain -> relation domain).
     Variable (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain).
     Variable (dr : nat -> list domain -> exp -> relation domain).
-    Variable (Pa : list domain -> Prop) (Pv : qname -> list exp -> list domain -> Prop).
-    Hypothesis (Ha : forall ua,
-        (forall m Mm s, ind_member D m = Some Mm ->
-           fresh_tele_rel (nr m) ups ua 0 nil nil s (List.rev (im_nparams Mm))) ->
-        (forall m Mm c gs s ns ns', ind_member D m = Some Mm -> ind_con Mm c = Some gs ->
-           Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ups ⍮ s ↘ ns ->
-           Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ ns' ->
-           fresh_cargs_rel D ups ua nr (ar m ns c) (dr m) ns ns' 0 nil nil (s + im_nn Mm) gs) ->
-        (forall v Mv qc kc Is vm, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
-           exists Y, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ua ↘ Y) ->
-        (forall v Mv qc kc Is vm Y, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
-           ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ua ↘ Y ->
-           view_fresh p D ups nr ar dr qc Is Y /\ Pv qc Is Y) ->
-        Pa ua).
-    Hypothesis (Hv : forall qc Is Y,
-        view_instance D ups qc Is ->
-        (forall Dq i' Mi' j Mj cups s, view_cmember D qc Is Dq i' Mi' j Mj ->
-           ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
-           fresh_tele_rel (nr j) cups Y 0 nil nil s (List.rev (im_nparams Mi'))) ->
-        (forall Dq i' Mi' j Mj cups s c gs' gs nsu nsy, view_cmember D qc Is Dq i' Mi' j Mj ->
-           ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
-           ind_con Mi' c = Some gs' -> ind_con Mj c = Some gs ->
-           Ftele List.rev (im_nparams Mi') in gc_deps ⍮ gc_stack ⍮ env_args nil cups ⍮ s ↘ nsu ->
-           Ftele List.rev (im_nparams Mi') in gc_deps ⍮ gc_stack ⍮ env_args nil Y ⍮ s ↘ nsy ->
-           vfresh_cargs p D ups nr qc cups Y (ar j nsu c) (dr j) (end_with p D ups nr ar dr Pa Pv)
-             (rec_end_with p D ups nr ar dr Pv qc Is Y) nsu nsy 0 nil nil nil nil (s + im_nn Mi') gs' gs) ->
-        (forall Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm', view_cmember D qc Is Dq i' Mi' j Mj ->
-           im_head Mi' = mh_view qv kv Is'' vm'' -> im_head Mj = mh_view qv kv Is' vm' ->
-           exists py, ⟦mref i' of qc Y ⟧ gc_deps ⍮ gc_stack ↘ (qv, kv, py)) ->
-        (forall Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm' py, view_cmember D qc Is Dq i' Mi' j Mj ->
-           im_head Mi' = mh_view qv kv Is'' vm'' -> im_head Mj = mh_view qv kv Is' vm' ->
-           ⟦mref i' of qc Y ⟧ gc_deps ⍮ gc_stack ↘ (qv, kv, py) ->
-           view_fresh p D ups nr ar dr qv Is' py /\ Pv qv Is' py) ->
-        Pv qc Is Y).
 
-    Fixpoint adm_fresh_mut_ind (ua : list domain) (H : adm_fresh p D ups nr ar dr ua) {struct H} : Pa ua :=
-      match H in adm_fresh _ _ _ _ _ _ ua0 return Pa ua0 with
-      | mk_adm_fresh _ _ _ _ _ _ ua0 Hn Hg He Hw =>
-          Ha ua0 Hn Hg He
-            (fun v Mv qc kc Is vm Y HM Hh E =>
-               conj (Hw v Mv qc kc Is vm Y HM Hh E) (view_fresh_mut_ind qc Is Y (Hw v Mv qc kc Is vm Y HM Hh E)))
-      end
-    with view_fresh_mut_ind (qc : qname) (Is : list exp) (Y : list domain)
-        (H : view_fresh p D ups nr ar dr qc Is Y) {struct H} : Pv qc Is Y :=
-      match H in view_fresh _ _ _ _ _ _ qc0 Is0 Y0 return Pv qc0 Is0 Y0 with
-      | mk_view_fresh _ _ _ _ _ _ qc0 Is0 Y0 Hi Hn Hg He Hw =>
-          Hv qc0 Is0 Y0 Hi Hn
-            (fun Dq i' Mi' j Mj cups s c gs' gs nsu nsy Hcm E Hc' Hc F Fy =>
-               vfresh_cargs_mono p D ups nr qc0 cups Y0 (ar j nsu c) (dr j) _ _ _ _ nsu nsy
-                 (fun j0 hd k py (Hr : end_ok p D ups nr ar dr j0 hd k py) =>
-                    match Hr in end_ok _ _ _ _ _ _ j1 hd1 k1 py1 return end_with p D ups nr ar dr Pa Pv j1 hd1 k1 py1 with
-                    | end_ok_decl _ _ _ _ _ _ j1 Mj1 pm py1 HM Hh L Hadm =>
-                        end_with_decl p D ups nr ar dr Pa Pv j1 Mj1 pm py1 HM Hh L Hadm (adm_fresh_mut_ind py1 Hadm)
-                    | end_ok_view _ _ _ _ _ _ j1 Mj1 qv kv Is' vm' py1 HM Hh L Hw1 =>
-                        end_with_view p D ups nr ar dr Pa Pv j1 Mj1 qv kv Is' vm' py1 HM Hh L Hw1
-                          (view_fresh_mut_ind qv Is' py1 Hw1)
-                    end)
-                 (fun j0 hd k py (Hr : view_rec_end p D ups nr ar dr qc0 Is0 Y0 j0 hd k py) =>
-                    match Hr in view_rec_end _ _ _ _ _ _ qc1 Is1 Y1 j1 hd1 k1 py1
-                          return qc1 = qc0 -> Is1 = Is0 -> Y1 = Y0 -> rec_end_with p D ups nr ar dr Pv qc0 Is0 Y0 j1 hd1 k1 py1 with
-                    | view_rec_end_same _ _ _ _ _ _ qc1 Is1 Y1 j1 Mj1 kc vm' HM Hh =>
-                        fun e1 e2 e3 => match e1, e2, e3 with eq_refl, eq_refl, eq_refl =>
-                          rec_end_with_same p D ups nr ar dr Pv qc1 Is1 Y1 j1 Mj1 kc vm' HM Hh end
-                    | view_rec_end_inner _ _ _ _ _ _ qc1 Is1 Y1 j1 Mj1 qc' kc' Is' vm' py1 HM Hh L Hw1 =>
-                        fun e1 e2 e3 => match e1, e2, e3 with eq_refl, eq_refl, eq_refl =>
-                          rec_end_with_inner p D ups nr ar dr Pv qc1 Is1 Y1 j1 Mj1 qc' kc' Is' vm' py1 HM Hh L Hw1
-                            (view_fresh_mut_ind qc' Is' py1 Hw1) end
-                    end eq_refl eq_refl eq_refl)
-                 0 nil nil nil nil (s + im_nn Mi') gs' gs (Hg Dq i' Mi' j Mj cups s c gs' gs nsu nsy Hcm E Hc' Hc F Fy))
-            He
-            (fun Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm' py Hcm Hh Hh' Em =>
-               conj (Hw Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm' py Hcm Hh Hh' Em)
-                 (view_fresh_mut_ind qv Is' py (Hw Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm' py Hcm Hh Hh' Em)))
-      end.
-  End FreshInd.
+    Lemma end_ok_in_mono : forall (Sa Sa' : list domain -> Prop) (Sv Sv' : qname -> list exp -> list domain -> Prop),
+        (forall u, Sa u -> Sa' u) -> (forall qn Js Z, Sv qn Js Z -> Sv' qn Js Z) ->
+        forall j hd k py, end_ok_in p D Sa Sv j hd k py -> end_ok_in p D Sa' Sv' j hd k py.
+    Proof.
+      intros * Ha Hv j hd k py H; destruct H as [j Mj pm py HM Hh L H | j Mj qv kv Is' vm' py HM Hh L H].
+      - exact (end_ok_in_decl _ _ _ _ j Mj pm py HM Hh L (Ha _ H)).
+      - exact (end_ok_in_view _ _ _ _ j Mj qv kv Is' vm' py HM Hh L (Hv _ _ _ H)).
+    Qed.
+
+    Lemma view_rec_end_in_mono : forall (Sv Sv' : qname -> list exp -> list domain -> Prop),
+        (forall qn Js Z, Sv qn Js Z -> Sv' qn Js Z) ->
+        forall qc Is Y j hd k py, view_rec_end_in D Sv qc Is Y j hd k py -> view_rec_end_in D Sv' qc Is Y j hd k py.
+    Proof.
+      intros * Hv qc Is Y j hd k py H; destruct H as [qc Is Y j Mj kc vm' HM Hh | qc Is Y j Mj qc' kc' Is' vm' py HM Hh L H].
+      - exact (view_rec_end_in_same _ _ qc Is Y j Mj kc vm' HM Hh).
+      - exact (view_rec_end_in_inner _ _ qc Is Y j Mj qc' kc' Is' vm' py HM Hh L (Hv _ _ _ H)).
+    Qed.
+
+    Lemma adm_fresh_step_mono : forall (Sv Sv' : qname -> list exp -> list domain -> Prop),
+        (forall qn Js Z, Sv qn Js Z -> Sv' qn Js Z) ->
+        forall ua, adm_fresh_step p D ups nr ar dr Sv ua -> adm_fresh_step p D ups nr ar dr Sv' ua.
+    Proof.
+      intros * Hv ua [Hn Ha He Hw]; constructor; [ exact Hn | exact Ha | exact He |].
+      intros; apply Hv; eapply Hw; eassumption.
+    Qed.
+
+    Lemma view_fresh_step_mono : forall (Sa Sa' : list domain -> Prop) (Sv Sv' : qname -> list exp -> list domain -> Prop),
+        (forall u, Sa u -> Sa' u) -> (forall qn Js Z, Sv qn Js Z -> Sv' qn Js Z) ->
+        forall qc Is Y, view_fresh_step p D ups nr ar dr Sa Sv qc Is Y -> view_fresh_step p D ups nr ar dr Sa' Sv' qc Is Y.
+    Proof.
+      intros * Ha Hv qc Is Y [Hi Hn Hg He Hw]; constructor; [ exact Hi | exact Hn | | exact He |].
+      - intros; eapply vfresh_cargs_mono;
+          [ exact (end_ok_in_mono _ _ _ _ Ha Hv) | exact (view_rec_end_in_mono _ _ Hv qc Is Y) | eapply Hg; eassumption ].
+      - intros; apply Hv; eapply Hw; eassumption.
+    Qed.
+
+    Lemma adm_fresh_coind : forall Sa Sv, fresh_inv p D ups nr ar dr Sa Sv ->
+        forall ua, Sa ua -> adm_fresh p D ups nr ar dr ua.
+    Proof. intros Sa Sv HI ua H; exact (mk_adm_fresh _ _ _ _ _ _ _ Sa Sv HI H). Qed.
+
+    Lemma view_fresh_coind : forall Sa Sv, fresh_inv p D ups nr ar dr Sa Sv ->
+        forall qc Is Y, Sv qc Is Y -> view_fresh p D ups nr ar dr qc Is Y.
+    Proof. intros Sa Sv HI qc Is Y H; exact (mk_view_fresh _ _ _ _ _ _ _ _ _ Sa Sv HI H). Qed.
+
+    Lemma fresh_unfold : fresh_inv p D ups nr ar dr (adm_fresh p D ups nr ar dr) (view_fresh p D ups nr ar dr).
+    Proof.
+      constructor.
+      - intros ua [Sa Sv HI H].
+        eapply adm_fresh_step_mono; [| exact (fi_adm _ _ _ _ _ _ _ _ HI ua H) ].
+        intros qn Js Z HZ; exact (view_fresh_coind _ _ HI qn Js Z HZ).
+      - intros qc Is Y [Sa Sv HI H].
+        eapply view_fresh_step_mono; [ | | exact (fi_view _ _ _ _ _ _ _ _ HI qc Is Y H) ].
+        + intros u Hu; exact (adm_fresh_coind _ _ HI u Hu).
+        + intros qn Js Z HZ; exact (view_fresh_coind _ _ HI qn Js Z HZ).
+    Qed.
+
+    Lemma adm_fresh_unfold : forall ua, adm_fresh p D ups nr ar dr ua ->
+        adm_fresh_step p D ups nr ar dr (view_fresh p D ups nr ar dr) ua.
+    Proof. exact (fi_adm _ _ _ _ _ _ _ _ fresh_unfold). Qed.
+
+    Lemma view_fresh_unfold : forall qc Is Y, view_fresh p D ups nr ar dr qc Is Y ->
+        view_fresh_step p D ups nr ar dr (adm_fresh p D ups nr ar dr) (view_fresh p D ups nr ar dr) qc Is Y.
+    Proof. exact (fi_view _ _ _ _ _ _ _ _ fresh_unfold). Qed.
+
+    Lemma adm_fresh_fold : forall ua, adm_fresh_step p D ups nr ar dr (view_fresh p D ups nr ar dr) ua ->
+        adm_fresh p D ups nr ar dr ua.
+    Proof.
+      intros ua H.
+      apply (adm_fresh_coind (fun u => u = ua \/ adm_fresh p D ups nr ar dr u) (view_fresh p D ups nr ar dr));
+        [| left; reflexivity ].
+      constructor.
+      - intros u [-> | Hu]; [ exact H | exact (adm_fresh_unfold u Hu) ].
+      - intros qc Is Y Hv.
+        eapply view_fresh_step_mono; [ | | exact (view_fresh_unfold _ _ _ Hv) ].
+        + intros u Hu; right; exact Hu.
+        + intros qn Js Z HZ; exact HZ.
+    Qed.
+
+    Lemma view_fresh_fold : forall qc Is Y,
+        view_fresh_step p D ups nr ar dr (adm_fresh p D ups nr ar dr) (view_fresh p D ups nr ar dr) qc Is Y ->
+        view_fresh p D ups nr ar dr qc Is Y.
+    Proof.
+      intros qc Is Y H.
+      apply (view_fresh_coind (adm_fresh p D ups nr ar dr)
+               (fun qn Js Z => (qn = qc /\ Js = Is /\ Z = Y) \/ view_fresh p D ups nr ar dr qn Js Z));
+        [| left; split; [| split ]; reflexivity ].
+      constructor.
+      - intros u Hu.
+        eapply adm_fresh_step_mono; [| exact (adm_fresh_unfold u Hu) ].
+        intros qn Js Z HZ; right; exact HZ.
+      - intros qn Js Z [(-> & -> & ->) | Hv].
+        + eapply view_fresh_step_mono; [ | | exact H ]; [ intros u Hu; exact Hu | intros qn Js Z HZ; right; exact HZ ].
+        + eapply view_fresh_step_mono; [ | | exact (view_fresh_unfold _ _ _ Hv) ];
+            [ intros u Hu; exact Hu | intros q0 Js0 Z0 HZ; right; exact HZ ].
+    Qed.
+
+    (** The ends at the greatest fixed point, by their forms. *)
+    Lemma end_ok_decl : forall j Mj pm py, ind_member D j = Some Mj -> im_head Mj = mh_decl pm -> List.length py = ind_nu D ->
+        adm_fresh p D ups nr ar dr py -> end_ok p D ups nr ar dr j p j py.
+    Proof. intros; eapply end_ok_in_decl; eassumption. Qed.
+
+    Lemma end_ok_view : forall j Mj qv kv Is' vm' py, ind_member D j = Some Mj -> im_head Mj = mh_view qv kv Is' vm' ->
+        List.length py = List.length Is' ->
+        view_fresh p D ups nr ar dr qv Is' py -> end_ok p D ups nr ar dr j qv kv py.
+    Proof. intros; eapply end_ok_in_view; eassumption. Qed.
+
+    Lemma view_rec_end_same : forall qc Is Y j Mj kc vm', ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm' ->
+        view_rec_end p D ups nr ar dr qc Is Y j qc kc Y.
+    Proof. intros; eapply view_rec_end_in_same; eassumption. Qed.
+
+    Lemma view_rec_end_inner : forall qc Is Y j Mj qc' kc' Is' vm' py, ind_member D j = Some Mj ->
+        im_head Mj = mh_view qc' kc' Is' vm' -> List.length py = List.length Is' ->
+        view_fresh p D ups nr ar dr qc' Is' py -> view_rec_end p D ups nr ar dr qc Is Y j qc' kc' py.
+    Proof. intros; eapply view_rec_end_in_inner; eassumption. Qed.
+  End FreshGfp.
 
   (** The fields of [adm_fresh]. *)
   Lemma afr_nparams : forall p D ups nr ar dr ua, adm_fresh p D ups nr ar dr ua ->
       forall m Mm s, ind_member D m = Some Mm -> fresh_tele_rel (nr m) ups ua 0 nil nil s (List.rev (im_nparams Mm)).
-  Proof. intros * H; destruct H as [ua Hn _ _ _]; exact Hn. Qed.
+  Proof. intros * H; exact (afs_nparams _ _ _ _ _ _ _ _ (adm_fresh_unfold _ _ _ _ _ _ _ H)). Qed.
 
   Lemma afr_args : forall p D ups nr ar dr ua, adm_fresh p D ups nr ar dr ua ->
       forall m Mm c gs s ns ns', ind_member D m = Some Mm -> ind_con Mm c = Some gs ->
         Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ups ⍮ s ↘ ns ->
         Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ ns' ->
         fresh_cargs_rel D ups ua nr (ar m ns c) (dr m) ns ns' 0 nil nil (s + im_nn Mm) gs.
-  Proof. intros * H; destruct H as [ua _ Ha _ _]; exact Ha. Qed.
+  Proof. intros * H; exact (afs_args _ _ _ _ _ _ _ _ (adm_fresh_unfold _ _ _ _ _ _ _ H)). Qed.
 
   Lemma afr_views : forall p D ups nr ar dr ua, adm_fresh p D ups nr ar dr ua -> views_fresh p D ups nr ar dr ua.
   Proof.
-    intros * H; destruct H as [ua _ _ He Hw]; constructor.
+    intros * H; destruct (adm_fresh_unfold _ _ _ _ _ _ _ H) as [_ _ He Hw]; constructor.
     - intros v Mv qc kc Is vm HM Hh.
       destruct (He v Mv qc kc Is vm HM Hh) as [Y EY].
-      assert (Hi : view_instance D ups qc Is) by (destruct (Hw v Mv qc kc Is vm Y HM Hh EY); assumption).
+      assert (Hi : view_instance D ups qc Is)
+        by exact (vfs_instance _ _ _ _ _ _ _ _ _ _ _ (view_fresh_unfold _ _ _ _ _ _ _ _ _ (Hw v Mv qc kc Is vm Y HM Hh EY))).
       destruct Hi as [_ _ _ _ cups _ _ Ec].
       exists cups, Y; split; assumption.
     - exact Hw.
@@ -628,7 +647,7 @@ Section Tele.
          fresh_cargs_rel D ups ua nr (ar m ns c) (dr m) ns ns' 0 nil nil (s + im_nn Mm) gs) ->
       views_fresh p D ups nr ar dr ua -> adm_fresh p D ups nr ar dr ua.
   Proof.
-    intros * Hn Ha Hv; constructor; [ exact Hn | exact Ha | | exact (vfr_views _ _ _ _ _ _ _ Hv) ].
+    intros * Hn Ha Hv; apply adm_fresh_fold; constructor; [ exact Hn | exact Ha | | exact (vfr_views _ _ _ _ _ _ _ Hv) ].
     intros v Mv qc kc Is vm HM Hh; destruct (vfr_evals _ _ _ _ _ _ _ Hv v Mv qc kc Is vm HM Hh) as (cups & Y & _ & EY).
     exists Y; exact EY.
   Qed.
@@ -636,13 +655,13 @@ Section Tele.
   (** The fields of [view_fresh]. *)
   Lemma view_fresh_instance : forall p D ups nr ar dr qc Is Y, view_fresh p D ups nr ar dr qc Is Y ->
       view_instance D ups qc Is.
-  Proof. intros * H; destruct H as [qc Is Y Hi _ _ _ _]; exact Hi. Qed.
+  Proof. intros * H; exact (vfs_instance _ _ _ _ _ _ _ _ _ _ _ (view_fresh_unfold _ _ _ _ _ _ _ _ _ H)). Qed.
 
   Lemma view_fresh_nparams : forall p D ups nr ar dr qc Is Y, view_fresh p D ups nr ar dr qc Is Y ->
       forall Dq i' Mi' j Mj cups s, view_cmember D qc Is Dq i' Mi' j Mj ->
         ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
         fresh_tele_rel (nr j) cups Y 0 nil nil s (List.rev (im_nparams Mi')).
-  Proof. intros * H; destruct H as [qc Is Y _ Hn _ _ _]; exact Hn. Qed.
+  Proof. intros * H; exact (vfs_nparams _ _ _ _ _ _ _ _ _ _ _ (view_fresh_unfold _ _ _ _ _ _ _ _ _ H)). Qed.
 
   Lemma view_fresh_args : forall p D ups nr ar dr qc Is Y, view_fresh p D ups nr ar dr qc Is Y ->
       forall Dq i' Mi' j Mj cups s c gs' gs nsu nsy, view_cmember D qc Is Dq i' Mi' j Mj ->
@@ -652,20 +671,20 @@ Section Tele.
         Ftele List.rev (im_nparams Mi') in gc_deps ⍮ gc_stack ⍮ env_args nil Y ⍮ s ↘ nsy ->
         vfresh_cargs p D ups nr qc cups Y (ar j nsu c) (dr j) (end_ok p D ups nr ar dr) (view_rec_end p D ups nr ar dr qc Is Y)
           nsu nsy 0 nil nil nil nil (s + im_nn Mi') gs' gs.
-  Proof. intros * H; destruct H as [qc Is Y _ _ Ha _ _]; exact Ha. Qed.
+  Proof. intros * H; exact (vfs_args _ _ _ _ _ _ _ _ _ _ _ (view_fresh_unfold _ _ _ _ _ _ _ _ _ H)). Qed.
 
   Lemma view_fresh_inner_ex : forall p D ups nr ar dr qc Is Y, view_fresh p D ups nr ar dr qc Is Y ->
       forall Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm', view_cmember D qc Is Dq i' Mi' j Mj ->
         im_head Mi' = mh_view qv kv Is'' vm'' -> im_head Mj = mh_view qv kv Is' vm' ->
         exists py, ⟦mref i' of qc Y ⟧ gc_deps ⍮ gc_stack ↘ (qv, kv, py).
-  Proof. intros * H; destruct H as [qc Is Y _ _ _ He _]; exact He. Qed.
+  Proof. intros * H; exact (vfs_inner_ex _ _ _ _ _ _ _ _ _ _ _ (view_fresh_unfold _ _ _ _ _ _ _ _ _ H)). Qed.
 
   Lemma view_fresh_inner : forall p D ups nr ar dr qc Is Y, view_fresh p D ups nr ar dr qc Is Y ->
       forall Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm' py, view_cmember D qc Is Dq i' Mi' j Mj ->
         im_head Mi' = mh_view qv kv Is'' vm'' -> im_head Mj = mh_view qv kv Is' vm' ->
         ⟦mref i' of qc Y ⟧ gc_deps ⍮ gc_stack ↘ (qv, kv, py) ->
         view_fresh p D ups nr ar dr qv Is' py.
-  Proof. intros * H; destruct H as [qc Is Y _ _ _ _ Hv]; exact Hv. Qed.
+  Proof. intros * H; exact (vfs_inner _ _ _ _ _ _ _ _ _ _ _ (view_fresh_unfold _ _ _ _ _ _ _ _ _ H)). Qed.
 
   Lemma view_cmember_dmember : forall D qc Is Dq i' Mi' j Mj, view_cmember D qc Is Dq i' Mi' j Mj -> ind_member D j = Some Mj.
   Proof. intros * [? ? ? ? _ _ _ _ _ HMj]; exact HMj. Qed.
@@ -1712,36 +1731,18 @@ Section Tele.
             + apply tele_prefix_rel_nil.
         Qed.
 
-        (** The view clause at another base. *)
+        (** The view clause at another base, the inner admissibilities
+            those at [ups]. *)
         Lemma view_fresh_clause_base : forall qc Is Y,
-            view_instance D ups qc Is ->
-            (forall Dq i' Mi' j Mj cups s, view_cmember D qc Is Dq i' Mi' j Mj ->
-               ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
-               fresh_tele_rel (nparams_rel j) cups Y 0 nil nil s (List.rev (im_nparams Mi'))) ->
-            (forall Dq i' Mi' j Mj cups s c gs' gs nsu nsy, view_cmember D qc Is Dq i' Mi' j Mj ->
-               ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
-               ind_con Mi' c = Some gs' -> ind_con Mj c = Some gs ->
-               Ftele List.rev (im_nparams Mi') in gc_deps ⍮ gc_stack ⍮ env_args nil cups ⍮ s ↘ nsu ->
-               Ftele List.rev (im_nparams Mi') in gc_deps ⍮ gc_stack ⍮ env_args nil Y ⍮ s ↘ nsy ->
-               vfresh_cargs p D ups nparams_rel qc cups Y (args_rel j nsu c) (doms_rel j)
-                 (end_with p D ups nparams_rel args_rel doms_rel
-                    (adm_fresh p D ups' nparams_rel args_rel doms_rel) (view_fresh p D ups' nparams_rel args_rel doms_rel))
-                 (rec_end_with p D ups nparams_rel args_rel doms_rel (view_fresh p D ups' nparams_rel args_rel doms_rel) qc Is Y)
-                 nsu nsy 0 nil nil nil nil (s + im_nn Mi') gs' gs) ->
-            (forall Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm', view_cmember D qc Is Dq i' Mi' j Mj ->
-               im_head Mi' = mh_view qv kv Is'' vm'' -> im_head Mj = mh_view qv kv Is' vm' ->
-               exists py, ⟦mref i' of qc Y ⟧ gc_deps ⍮ gc_stack ↘ (qv, kv, py)) ->
-            (forall Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm' py, view_cmember D qc Is Dq i' Mi' j Mj ->
-               im_head Mi' = mh_view qv kv Is'' vm'' -> im_head Mj = mh_view qv kv Is' vm' ->
-               ⟦mref i' of qc Y ⟧ gc_deps ⍮ gc_stack ↘ (qv, kv, py) ->
-               view_fresh p D ups nparams_rel args_rel doms_rel qv Is' py /\
-               view_fresh p D ups' nparams_rel args_rel doms_rel qv Is' py) ->
-            view_fresh p D ups' nparams_rel args_rel doms_rel qc Is Y.
+            view_fresh_step p D ups nparams_rel args_rel doms_rel
+              (adm_fresh p D ups nparams_rel args_rel doms_rel) (view_fresh p D ups nparams_rel args_rel doms_rel) qc Is Y ->
+            view_fresh_step p D ups' nparams_rel args_rel doms_rel
+              (adm_fresh p D ups nparams_rel args_rel doms_rel) (view_fresh p D ups nparams_rel args_rel doms_rel) qc Is Y.
         Proof.
-          intros qc Is Y Hi Hn Ha He Hv.
+          intros qc Is Y [Hi Hn Ha He Hv].
           destruct (views_fresh_pair qc Is Hi) as (cups' & Hi' & E' & HV).
           pose proof Hi as Hi0; destruct Hi0 as [v0 Mv0 kc0 vm0 cups HM0 Hh0 E].
-          constructor; [ exact Hi' | | | exact He |].
+          constructor; [ exact Hi' | | | exact He | exact Hv ].
           - intros Dq i' Mi' j Mj cups0' s Hcm E0'.
             pose proof (functional_eval_exps' _ _ _ _ E0' E') as ->.
             pose proof (view_cmember_nn _ _ _ _ _ _ _ _ Hass Hcm) as Hnn.
@@ -1767,36 +1768,28 @@ Section Tele.
             refine (vfresh_cargs_base j Mj qc c gs nil gs' gs _ cups' Y nsu nsu0 nsy _ _ _ _ _ _
                       0 nil nil nil nil nil nil (s + im_nn Mi') HMj Hc eq_refl eq_refl Hnu (tele_prefix_rel_nil _) _ _
                       (Ha Dq i' Mi' j Mj _ s c gs' gs nsu nsy Hcm E Hc' Hc G Gy)
-                      (view_fresh_args _ _ _ _ _ _ _ _ _ HV Dq i' Mi' j Mj _ s c gs' gs nsu nsu0 Hcm E Hc' Hc G F0)).
-            + intros j' hd kk py Hre; destruct Hre as [j' Mj' pm py HMj' Hhj L _ HP | j' Mj' qv kv Is' vm' py HMj' Hhj L _ HP].
-              * exact (end_ok_decl _ _ _ _ _ _ _ _ _ _ HMj' Hhj L HP).
-              * exact (end_ok_view _ _ _ _ _ _ _ _ _ _ _ _ _ HMj' Hhj L HP).
-            + intros j' hd kk py Hre; destruct Hre as [j' Mj' kc vm' HMj' Hhj | j' Mj' qc' kc' Is' vm' py HMj' Hhj Hlen _ HP].
-              * exact (view_rec_end_same _ _ _ _ _ _ _ _ _ _ _ _ _ HMj' Hhj).
-              * exact (view_rec_end_inner _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMj' Hhj Hlen HP).
-          - intros Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm' py Hcm Hh Hh' Em.
-            exact (proj2 (Hv Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm' py Hcm Hh Hh' Em)).
+                      (view_fresh_args _ _ _ _ _ _ _ _ _ HV Dq i' Mi' j Mj _ s c gs' gs nsu nsu0 Hcm E Hc' Hc G F0));
+              intros j' hd kk py Hre; exact Hre.
+        Qed.
+
+        (** The admissibilities at [ups] are an invariant pair at [ups']. *)
+        Lemma fresh_inv_base : fresh_inv p D ups' nparams_rel args_rel doms_rel
+            (adm_fresh p D ups nparams_rel args_rel doms_rel) (view_fresh p D ups nparams_rel args_rel doms_rel).
+        Proof.
+          constructor.
+          - intros u Hu; destruct (adm_fresh_unfold _ _ _ _ _ _ _ Hu) as [Hn Ha He Hw].
+            destruct (adm_fresh_fields_base u Hn Ha) as [Hn' Ha'].
+            constructor; [ exact Hn' | exact Ha' | exact He | exact Hw ].
+          - intros qc Is Y Hv; exact (view_fresh_clause_base qc Is Y (view_fresh_unfold _ _ _ _ _ _ _ _ _ Hv)).
         Qed.
 
         Lemma adm_fresh_base : forall u, adm_fresh p D ups nparams_rel args_rel doms_rel u ->
             adm_fresh p D ups' nparams_rel args_rel doms_rel u.
-        Proof.
-          apply (adm_fresh_mut_ind p D ups nparams_rel args_rel doms_rel
-                   (adm_fresh p D ups' nparams_rel args_rel doms_rel) (view_fresh p D ups' nparams_rel args_rel doms_rel)).
-          - intros u Hn Ha He Hw; destruct (adm_fresh_fields_base u Hn Ha) as [Hn' Ha'].
-            constructor; [ exact Hn' | exact Ha' | exact He | intros; eapply proj2, Hw; eassumption ].
-          - exact view_fresh_clause_base.
-        Qed.
+        Proof. exact (adm_fresh_coind _ _ _ _ _ _ _ _ fresh_inv_base). Qed.
 
         Lemma view_fresh_base : forall qc Is Y, view_fresh p D ups nparams_rel args_rel doms_rel qc Is Y ->
             view_fresh p D ups' nparams_rel args_rel doms_rel qc Is Y.
-        Proof.
-          apply (view_fresh_mut_ind p D ups nparams_rel args_rel doms_rel
-                   (adm_fresh p D ups' nparams_rel args_rel doms_rel) (view_fresh p D ups' nparams_rel args_rel doms_rel)).
-          - intros u Hn Ha He Hw; destruct (adm_fresh_fields_base u Hn Ha) as [Hn' Ha'].
-            constructor; [ exact Hn' | exact Ha' | exact He | intros; eapply proj2, Hw; eassumption ].
-          - exact view_fresh_clause_base.
-        Qed.
+        Proof. exact (view_fresh_coind _ _ _ _ _ _ _ _ fresh_inv_base). Qed.
 
         Lemma views_fresh_base : forall X, views_fresh p D ups nparams_rel args_rel doms_rel X ->
             views_fresh p D ups' nparams_rel args_rel doms_rel X.
@@ -2379,32 +2372,15 @@ Section Tele.
           + apply tele_prefix_rel_nil.
       Qed.
 
+      (** The view clause at the second relations, the inner
+          admissibilities those at the first. *)
       Lemma view_fresh_clause_change : forall qc Is Y,
-          view_instance D ups qc Is ->
-          (forall Dq i' Mi' j Mj cups s, view_cmember D qc Is Dq i' Mi' j Mj ->
-             ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
-             fresh_tele_rel (nparams_rel1 j) cups Y 0 nil nil s (List.rev (im_nparams Mi'))) ->
-          (forall Dq i' Mi' j Mj cups s c gs' gs nsu nsy, view_cmember D qc Is Dq i' Mi' j Mj ->
-             ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
-             ind_con Mi' c = Some gs' -> ind_con Mj c = Some gs ->
-             Ftele List.rev (im_nparams Mi') in gc_deps ⍮ gc_stack ⍮ env_args nil cups ⍮ s ↘ nsu ->
-             Ftele List.rev (im_nparams Mi') in gc_deps ⍮ gc_stack ⍮ env_args nil Y ⍮ s ↘ nsy ->
-             vfresh_cargs p D ups nparams_rel1 qc cups Y (args_rel1 j nsu c) (doms_rel1 j)
-               (end_with p D ups nparams_rel1 args_rel1 doms_rel1
-                  (adm_fresh p D ups nparams_rel2 args_rel2 doms_rel2) (view_fresh p D ups nparams_rel2 args_rel2 doms_rel2))
-               (rec_end_with p D ups nparams_rel1 args_rel1 doms_rel1 (view_fresh p D ups nparams_rel2 args_rel2 doms_rel2) qc Is Y)
-               nsu nsy 0 nil nil nil nil (s + im_nn Mi') gs' gs) ->
-          (forall Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm', view_cmember D qc Is Dq i' Mi' j Mj ->
-             im_head Mi' = mh_view qv kv Is'' vm'' -> im_head Mj = mh_view qv kv Is' vm' ->
-             exists py, ⟦mref i' of qc Y ⟧ gc_deps ⍮ gc_stack ↘ (qv, kv, py)) ->
-          (forall Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm' py, view_cmember D qc Is Dq i' Mi' j Mj ->
-             im_head Mi' = mh_view qv kv Is'' vm'' -> im_head Mj = mh_view qv kv Is' vm' ->
-             ⟦mref i' of qc Y ⟧ gc_deps ⍮ gc_stack ↘ (qv, kv, py) ->
-             view_fresh p D ups nparams_rel1 args_rel1 doms_rel1 qv Is' py /\
-             view_fresh p D ups nparams_rel2 args_rel2 doms_rel2 qv Is' py) ->
-          view_fresh p D ups nparams_rel2 args_rel2 doms_rel2 qc Is Y.
+          view_fresh_step p D ups nparams_rel1 args_rel1 doms_rel1
+            (adm_fresh p D ups nparams_rel1 args_rel1 doms_rel1) (view_fresh p D ups nparams_rel1 args_rel1 doms_rel1) qc Is Y ->
+          view_fresh_step p D ups nparams_rel2 args_rel2 doms_rel2
+            (adm_fresh p D ups nparams_rel1 args_rel1 doms_rel1) (view_fresh p D ups nparams_rel1 args_rel1 doms_rel1) qc Is Y.
       Proof.
-        intros qc Is Y Hi Hnf Haf Hef Hvf; constructor; [ exact Hi | | | exact Hef |].
+        intros qc Is Y [Hi Hnf Haf Hef Hvf]; constructor; [ exact Hi | | | exact Hef | exact Hvf ].
         - intros Dq i' Mi' j Mj cups s Hcm E.
           pose proof (view_cmember_nn _ _ _ _ _ _ _ _ Hass Hcm) as Hnn.
           apply (fresh_tele_rel_change j Mj nil (List.rev (im_nparams Mi')) cups Y 0 nil nil s (view_cmember_dmember _ _ _ _ _ _ _ _ Hcm));
@@ -2424,36 +2400,29 @@ Section Tele.
           refine (vfresh_cargs_change j Mj qc c gs nil gs' gs cups Y ws ws' _ _ _ _ 0 nil nil nil nil (s + im_nn Mi')
                     HMj Hc eq_refl eq_refl Hn1 Hn2 _ _
                     (Haf Dq i' Mi' j Mj cups s c gs' gs ws ws' Hcm E Hc' Hc G G')
-                    (tele_prefix_rel_nil _) (tele_prefix_rel_nil _)).
-          + intros j' hd kk py Hre; destruct Hre as [j' Mj' pm py HMj' Hhj L _ HP | j' Mj' qv kv Is' vm' py HMj' Hhj L _ HP].
-            * exact (end_ok_decl _ _ _ _ _ _ _ _ _ _ HMj' Hhj L HP).
-            * exact (end_ok_view _ _ _ _ _ _ _ _ _ _ _ _ _ HMj' Hhj L HP).
-          + intros j' hd kk py Hre; destruct Hre as [j' Mj' kc vm' HMj' Hhj | j' Mj' qc' kc' Is' vm' py HMj' Hhj Hlen _ HP].
-            * exact (view_rec_end_same _ _ _ _ _ _ _ _ _ _ _ _ _ HMj' Hhj).
-            * exact (view_rec_end_inner _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMj' Hhj Hlen HP).
-        - intros Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm' py Hcm Hh Hh' Em.
-          exact (proj2 (Hvf Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm' py Hcm Hh Hh' Em)).
+                    (tele_prefix_rel_nil _) (tele_prefix_rel_nil _));
+            intros j' hd kk py Hre; exact Hre.
+      Qed.
+
+      (** The admissibilities at the first relations are an invariant pair
+          at the second. *)
+      Lemma fresh_inv_change : fresh_inv p D ups nparams_rel2 args_rel2 doms_rel2
+          (adm_fresh p D ups nparams_rel1 args_rel1 doms_rel1) (view_fresh p D ups nparams_rel1 args_rel1 doms_rel1).
+      Proof.
+        constructor.
+        - intros u Hu; destruct (adm_fresh_unfold _ _ _ _ _ _ _ Hu) as [Hn0 Ha0 He Hw].
+          destruct (adm_fresh_fields_change u Hn0 Ha0) as [Hn' Ha'].
+          constructor; [ exact Hn' | exact Ha' | exact He | exact Hw ].
+        - intros qc Is Y Hv; exact (view_fresh_clause_change qc Is Y (view_fresh_unfold _ _ _ _ _ _ _ _ _ Hv)).
       Qed.
 
       Lemma adm_fresh_change : forall ua, adm_fresh p D ups nparams_rel1 args_rel1 doms_rel1 ua ->
           adm_fresh p D ups nparams_rel2 args_rel2 doms_rel2 ua.
-      Proof.
-        apply (adm_fresh_mut_ind p D ups nparams_rel1 args_rel1 doms_rel1
-                 (adm_fresh p D ups nparams_rel2 args_rel2 doms_rel2) (view_fresh p D ups nparams_rel2 args_rel2 doms_rel2)).
-        - intros u Hn0 Ha0 He Hw; destruct (adm_fresh_fields_change u Hn0 Ha0) as [Hn' Ha'].
-          constructor; [ exact Hn' | exact Ha' | exact He | intros; eapply proj2, Hw; eassumption ].
-        - exact view_fresh_clause_change.
-      Qed.
+      Proof. exact (adm_fresh_coind _ _ _ _ _ _ _ _ fresh_inv_change). Qed.
 
       Lemma view_fresh_change : forall qc Is Y, view_fresh p D ups nparams_rel1 args_rel1 doms_rel1 qc Is Y ->
           view_fresh p D ups nparams_rel2 args_rel2 doms_rel2 qc Is Y.
-      Proof.
-        apply (view_fresh_mut_ind p D ups nparams_rel1 args_rel1 doms_rel1
-                 (adm_fresh p D ups nparams_rel2 args_rel2 doms_rel2) (view_fresh p D ups nparams_rel2 args_rel2 doms_rel2)).
-        - intros u Hn0 Ha0 He Hw; destruct (adm_fresh_fields_change u Hn0 Ha0) as [Hn' Ha'].
-          constructor; [ exact Hn' | exact Ha' | exact He | intros; eapply proj2, Hw; eassumption ].
-        - exact view_fresh_clause_change.
-      Qed.
+      Proof. exact (view_fresh_coind _ _ _ _ _ _ _ _ fresh_inv_change). Qed.
 
       Lemma views_fresh_change : forall X, views_fresh p D ups nparams_rel1 args_rel1 doms_rel1 X ->
           views_fresh p D ups nparams_rel2 args_rel2 doms_rel2 X.

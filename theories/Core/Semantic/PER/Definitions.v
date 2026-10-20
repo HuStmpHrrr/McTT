@@ -443,85 +443,146 @@ Record view_instance (D : ind_decl) (ups : list domain) (qc : qname) (Is : list 
     parameters' types ([fresh_tele_rel]) and, after them, of its
     constructors' arguments' types ([fresh_cargs_rel]), each related to the
     one at [ups]; and each view member's container at the fresh variables
-    at [⟦Is⟧ua] ([view_fresh]).  The four relations are one inductive: a
-    position a view nests through ends in a member of the group at its own
-    uniform parameters, admissible as that member's neutrals are
-    ([end_ok]), as the container's own relation has it. *)
-Inductive adm_fresh (p : qname) (D : ind_decl) (ups : list domain)
-    (nparams_rel : nat -> nat -> list domain -> relation domain)
-    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain) : list domain -> Prop :=
-| mk_adm_fresh : forall ua,
-    (forall m Mm s, ind_member D m = Some Mm ->
-       fresh_tele_rel (nparams_rel m) ups ua 0 nil nil s (List.rev (im_nparams Mm))) ->
-    (forall m Mm c gs s ns ns', ind_member D m = Some Mm -> ind_con Mm c = Some gs ->
-       Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ups ⍮ s ↘ ns ->
-       Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ ns' ->
-       fresh_cargs_rel D ups ua nparams_rel (args_rel m ns c) (doms_rel m) ns ns' 0 nil nil (s + im_nn Mm) gs) ->
-    (forall v Mv qc kc Is vm, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
-       exists Y, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ua ↘ Y) ->
-    (forall v Mv qc kc Is vm Y, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
-       ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ua ↘ Y ->
-       view_fresh p D ups nparams_rel args_rel doms_rel qc Is Y) ->
-    adm_fresh p D ups nparams_rel args_rel doms_rel ua
-with view_fresh (p : qname) (D : ind_decl) (ups : list domain)
-    (nparams_rel : nat -> nat -> list domain -> relation domain)
-    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain) : qname -> list exp -> list domain -> Prop :=
-| mk_view_fresh : forall qc Is Y,
-    view_instance D ups qc Is ->
-    (forall Dq i' Mi' j Mj cups s, view_cmember D qc Is Dq i' Mi' j Mj ->
-       ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
-       fresh_tele_rel (nparams_rel j) cups Y 0 nil nil s (List.rev (im_nparams Mi'))) ->
-    (forall Dq i' Mi' j Mj cups s c gs' gs nsu nsy, view_cmember D qc Is Dq i' Mi' j Mj ->
-       ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
-       ind_con Mi' c = Some gs' -> ind_con Mj c = Some gs ->
-       Ftele List.rev (im_nparams Mi') in gc_deps ⍮ gc_stack ⍮ env_args nil cups ⍮ s ↘ nsu ->
-       Ftele List.rev (im_nparams Mi') in gc_deps ⍮ gc_stack ⍮ env_args nil Y ⍮ s ↘ nsy ->
-       vfresh_cargs p D ups nparams_rel qc cups Y (args_rel j nsu c) (doms_rel j)
-         (end_ok p D ups nparams_rel args_rel doms_rel)
-         (view_rec_end p D ups nparams_rel args_rel doms_rel qc Is Y)
-         nsu nsy 0 nil nil nil nil (s + im_nn Mi') gs' gs) ->
-    (forall Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm', view_cmember D qc Is Dq i' Mi' j Mj ->
-       im_head Mi' = mh_view qv kv Is'' vm'' -> im_head Mj = mh_view qv kv Is' vm' ->
-       exists py, ⟦mref i' of qc Y ⟧ gc_deps ⍮ gc_stack ↘ (qv, kv, py)) ->
-    (forall Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm' py, view_cmember D qc Is Dq i' Mi' j Mj ->
-       im_head Mi' = mh_view qv kv Is'' vm'' -> im_head Mj = mh_view qv kv Is' vm' ->
-       ⟦mref i' of qc Y ⟧ gc_deps ⍮ gc_stack ↘ (qv, kv, py) ->
-       view_fresh p D ups nparams_rel args_rel doms_rel qv Is' py) ->
-    view_fresh p D ups nparams_rel args_rel doms_rel qc Is Y
+    at [⟦Is⟧ua] ([view_fresh]).  A position a view nests through ends in a
+    member of the group at its own uniform parameters, admissible as that
+    member's neutrals are ([end_ok]), as the container's own relation has
+    it.
+
+    The admissibilities refer to each other in cycles: a view's container
+    may have a view of its own whose positions nest through the first view
+    again, at the same parameters.  For [inductive C (B) := mk : Sigma (C
+    B) (λ _. B) → C B] and [inductive T := t : C T → T], the view [C[T]]
+    at [Y] asks the view [Sigma[C T, λ _. T]] at [⟦[C B, λ _. B]⟧Y] (the
+    container's own view), whose first argument nests through [C[T]] at [Y]
+    again.  So the four admissibilities are the greatest predicates closed
+    under their clauses: [adm_fresh] and [view_fresh] hold of what lies in
+    some pair of predicates [Sa] and [Sv] each of whose members satisfies
+    its clause, the inner admissibilities read in [Sa] and [Sv]
+    ([fresh_inv]).
+
+    *** The Clauses, at Given Inner Admissibilities
+
+    The end of a position a view nests through, at the member [j] of this
+    group the shape ends in, its type the declared member [k] of the group
+    at [hd] at the uniform parameters [py]: admissible as a neutral of [j]
+    is ([Sa] at a declared member, [Sv] its container at a view). *)
+Inductive end_ok_in (p : qname) (D : ind_decl) (Sa : list domain -> Prop)
+    (Sv : qname -> list exp -> list domain -> Prop) : nat -> qname -> nat -> list domain -> Prop :=
+| end_ok_in_decl : forall j Mj pm py, ind_member D j = Some Mj -> im_head Mj = mh_decl pm -> List.length py = ind_nu D ->
+    Sa py -> end_ok_in p D Sa Sv j p j py
+| end_ok_in_view : forall j Mj qv kv Is' vm' py, ind_member D j = Some Mj -> im_head Mj = mh_view qv kv Is' vm' ->
+    List.length py = List.length Is' ->
+    Sv qv Is' py -> end_ok_in p D Sa Sv j qv kv py.
+
 (** The end of a position recursive in the container, at the member [j]
     of this group the shape ends in, a view at the container's member
     [kc] of [qc'] and [Is'], at the container's uniform parameters [py] the
     container's evaluation gives: of the same instance, at [Y] itself; of
-    another, by [view_fresh] there. *)
-with view_rec_end (p : qname) (D : ind_decl) (ups : list domain)
+    another, by [Sv] there. *)
+Inductive view_rec_end_in (D : ind_decl) (Sv : qname -> list exp -> list domain -> Prop) :
+    qname -> list exp -> list domain -> nat -> qname -> nat -> list domain -> Prop :=
+| view_rec_end_in_same : forall qc Is Y j Mj kc vm', ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm' ->
+    view_rec_end_in D Sv qc Is Y j qc kc Y
+| view_rec_end_in_inner : forall qc Is Y j Mj qc' kc' Is' vm' py, ind_member D j = Some Mj ->
+    im_head Mj = mh_view qc' kc' Is' vm' -> List.length py = List.length Is' ->
+    Sv qc' Is' py -> view_rec_end_in D Sv qc Is Y j qc' kc' py.
+
+(** The clause of [adm_fresh] at [ua], the views' containers read in [Sv]. *)
+#[warnings="-cannot-define-projection"]
+Record adm_fresh_step (p : qname) (D : ind_decl) (ups : list domain)
+    (nparams_rel : nat -> nat -> list domain -> relation domain)
+    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
+    (doms_rel : nat -> list domain -> exp -> relation domain)
+    (Sv : qname -> list exp -> list domain -> Prop) (ua : list domain) : Prop := mk_adm_fresh_step
+  { afs_nparams : forall m Mm s, ind_member D m = Some Mm ->
+      fresh_tele_rel (nparams_rel m) ups ua 0 nil nil s (List.rev (im_nparams Mm))
+  ; afs_args : forall m Mm c gs s ns ns', ind_member D m = Some Mm -> ind_con Mm c = Some gs ->
+      Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ups ⍮ s ↘ ns ->
+      Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ ns' ->
+      fresh_cargs_rel D ups ua nparams_rel (args_rel m ns c) (doms_rel m) ns ns' 0 nil nil (s + im_nn Mm) gs
+  ; afs_evals : forall v Mv qc kc Is vm, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
+      exists Y, ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ua ↘ Y
+  ; afs_views : forall v Mv qc kc Is vm Y, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
+      ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ua ↘ Y -> Sv qc Is Y }.
+
+(** The clause of [view_fresh] at [qc], [Is] and [Y], the inner
+    admissibilities read in [Sa] and [Sv]. *)
+#[warnings="-cannot-define-projection"]
+Record view_fresh_step (p : qname) (D : ind_decl) (ups : list domain)
+    (nparams_rel : nat -> nat -> list domain -> relation domain)
+    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
+    (doms_rel : nat -> list domain -> exp -> relation domain)
+    (Sa : list domain -> Prop) (Sv : qname -> list exp -> list domain -> Prop)
+    (qc : qname) (Is : list exp) (Y : list domain) : Prop := mk_view_fresh_step
+  { vfs_instance : view_instance D ups qc Is
+  ; vfs_nparams : forall Dq i' Mi' j Mj cups s, view_cmember D qc Is Dq i' Mi' j Mj ->
+      ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
+      fresh_tele_rel (nparams_rel j) cups Y 0 nil nil s (List.rev (im_nparams Mi'))
+  ; vfs_args : forall Dq i' Mi' j Mj cups s c gs' gs nsu nsy, view_cmember D qc Is Dq i' Mi' j Mj ->
+      ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
+      ind_con Mi' c = Some gs' -> ind_con Mj c = Some gs ->
+      Ftele List.rev (im_nparams Mi') in gc_deps ⍮ gc_stack ⍮ env_args nil cups ⍮ s ↘ nsu ->
+      Ftele List.rev (im_nparams Mi') in gc_deps ⍮ gc_stack ⍮ env_args nil Y ⍮ s ↘ nsy ->
+      vfresh_cargs p D ups nparams_rel qc cups Y (args_rel j nsu c) (doms_rel j)
+        (end_ok_in p D Sa Sv) (view_rec_end_in D Sv qc Is Y)
+        nsu nsy 0 nil nil nil nil (s + im_nn Mi') gs' gs
+  ; vfs_inner_ex : forall Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm', view_cmember D qc Is Dq i' Mi' j Mj ->
+      im_head Mi' = mh_view qv kv Is'' vm'' -> im_head Mj = mh_view qv kv Is' vm' ->
+      exists py, ⟦mref i' of qc Y ⟧ gc_deps ⍮ gc_stack ↘ (qv, kv, py)
+  ; vfs_inner : forall Dq i' Mi' j Mj qv kv Is'' vm'' Is' vm' py, view_cmember D qc Is Dq i' Mi' j Mj ->
+      im_head Mi' = mh_view qv kv Is'' vm'' -> im_head Mj = mh_view qv kv Is' vm' ->
+      ⟦mref i' of qc Y ⟧ gc_deps ⍮ gc_stack ↘ (qv, kv, py) -> Sv qv Is' py }.
+
+(** *** The Greatest Fixed Point
+
+    A pair of predicates closed under the clauses: each member of [Sa]
+    satisfies [adm_fresh]'s clause, each member of [Sv] [view_fresh]'s,
+    the inner admissibilities read in [Sa] and [Sv]. *)
+#[warnings="-cannot-define-projection"]
+Record fresh_inv (p : qname) (D : ind_decl) (ups : list domain)
+    (nparams_rel : nat -> nat -> list domain -> relation domain)
+    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
+    (doms_rel : nat -> list domain -> exp -> relation domain)
+    (Sa : list domain -> Prop) (Sv : qname -> list exp -> list domain -> Prop) : Prop := mk_fresh_inv
+  { fi_adm : forall ua, Sa ua -> adm_fresh_step p D ups nparams_rel args_rel doms_rel Sv ua
+  ; fi_view : forall qc Is Y, Sv qc Is Y -> view_fresh_step p D ups nparams_rel args_rel doms_rel Sa Sv qc Is Y }.
+
+(** [ua] lies in an invariant pair. *)
+#[warnings="-cannot-define-projection"]
+Record adm_fresh (p : qname) (D : ind_decl) (ups : list domain)
+    (nparams_rel : nat -> nat -> list domain -> relation domain)
+    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
+    (doms_rel : nat -> list domain -> exp -> relation domain) (ua : list domain) : Prop := mk_adm_fresh
+  { afr_set : list domain -> Prop
+  ; afr_vset : qname -> list exp -> list domain -> Prop
+  ; afr_inv : fresh_inv p D ups nparams_rel args_rel doms_rel afr_set afr_vset
+  ; afr_in : afr_set ua }.
+
+(** [(qc, Is, Y)] lies in an invariant pair. *)
+#[warnings="-cannot-define-projection"]
+Record view_fresh (p : qname) (D : ind_decl) (ups : list domain)
+    (nparams_rel : nat -> nat -> list domain -> relation domain)
+    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
+    (doms_rel : nat -> list domain -> exp -> relation domain)
+    (qc : qname) (Is : list exp) (Y : list domain) : Prop := mk_view_fresh
+  { vfr_aset : list domain -> Prop
+  ; vfr_set : qname -> list exp -> list domain -> Prop
+  ; vfr_inv : fresh_inv p D ups nparams_rel args_rel doms_rel vfr_aset vfr_set
+  ; vfr_in : vfr_set qc Is Y }.
+
+(** The ends, at the greatest fixed point. *)
+Definition end_ok (p : qname) (D : ind_decl) (ups : list domain)
+    (nparams_rel : nat -> nat -> list domain -> relation domain)
+    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
+    (doms_rel : nat -> list domain -> exp -> relation domain) : nat -> qname -> nat -> list domain -> Prop :=
+  end_ok_in p D (adm_fresh p D ups nparams_rel args_rel doms_rel) (view_fresh p D ups nparams_rel args_rel doms_rel).
+
+Definition view_rec_end (p : qname) (D : ind_decl) (ups : list domain)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (doms_rel : nat -> list domain -> exp -> relation domain) :
     qname -> list exp -> list domain -> nat -> qname -> nat -> list domain -> Prop :=
-| view_rec_end_same : forall qc Is Y j Mj kc vm', ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm' ->
-    view_rec_end p D ups nparams_rel args_rel doms_rel qc Is Y j qc kc Y
-| view_rec_end_inner : forall qc Is Y j Mj qc' kc' Is' vm' py, ind_member D j = Some Mj ->
-    im_head Mj = mh_view qc' kc' Is' vm' -> List.length py = List.length Is' ->
-    view_fresh p D ups nparams_rel args_rel doms_rel qc' Is' py ->
-    view_rec_end p D ups nparams_rel args_rel doms_rel qc Is Y j qc' kc' py
-(** The end of a position a view nests through, at the member [j] of this
-    group the shape ends in, its type the declared member [k] of the group
-    at [hd] at the uniform parameters [py]: admissible as a neutral of [j]
-    is, at a declared member at the fresh variables, at a view its
-    container there. *)
-with end_ok (p : qname) (D : ind_decl) (ups : list domain)
-    (nparams_rel : nat -> nat -> list domain -> relation domain)
-    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain) : nat -> qname -> nat -> list domain -> Prop :=
-| end_ok_decl : forall j Mj pm py, ind_member D j = Some Mj -> im_head Mj = mh_decl pm -> List.length py = ind_nu D ->
-    adm_fresh p D ups nparams_rel args_rel doms_rel py ->
-    end_ok p D ups nparams_rel args_rel doms_rel j p j py
-| end_ok_view : forall j Mj qv kv Is' vm' py, ind_member D j = Some Mj -> im_head Mj = mh_view qv kv Is' vm' ->
-    List.length py = List.length Is' ->
-    view_fresh p D ups nparams_rel args_rel doms_rel qv Is' py ->
-    end_ok p D ups nparams_rel args_rel doms_rel j qv kv py.
+  view_rec_end_in D (view_fresh p D ups nparams_rel args_rel doms_rel).
 
 (** Each view member of the group at uniform parameters [X]: its instance
     defined at [ups] and at [X], and its container at the fresh variables
