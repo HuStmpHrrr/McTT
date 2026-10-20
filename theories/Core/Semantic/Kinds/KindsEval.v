@@ -333,9 +333,9 @@ Section KindsEval.
     (forall h ch r, h ·ₜ* ch Θ ⍮ Ξ ↘ r -> True) /\
     (forall h ch0 r, h ·ₘ* ch0 Θ ⍮ Ξ ↘ r -> forall ch k, dkind Θ Ξ r ch k <-> dkind Θ Ξ h (ch0 ++ ch) k) /\
     (forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' -> forall σ, kshape ρ σ -> exists σ', kenv Θ Ξ σ Φ σ' /\ kshape ρ' σ') /\
-    (forall ρ p Bks j m r, ⟦elim m at j of p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> True) /\
-    (forall ρ p Bks gs vs r, ⟦ihs vs of gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> True) /\
-    (forall ρ p Bks t v r, ⟦ih v of t under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> True) /\
+    (forall ρ p oups Bks j m r, ⟦elim m at j of p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> True) /\
+    (forall ρ p oups Bks gs vs r, ⟦ihs vs of gs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> True) /\
+    (forall ρ p oups Bks t v r, ⟦ih v of t under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> True) /\
     (forall p ups j r, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r -> True) /\
     (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> True) /\
     (forall ρm As ρ t v a, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> True).

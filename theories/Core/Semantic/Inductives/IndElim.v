@@ -1208,10 +1208,10 @@ Section Fixed_GCtx.
         unfold elim_oups in RB1, RB2 |- *; rewrite Hv in RB1, RB2 |- *.
         exists (ne_elim p None j NBks M); split.
         - eapply read_ne_elim; [ exact Hl | exact HM | unfold im_ref; rewrite Hh; reflexivity | exact Hl | exact HM
-                               | unfold im_np; lia | intros i0 Mi b HMi Hb0; rewrite Hsel in Hb0; exact (HnmA _ _ _ HMi Hb0)
+                               | unfold im_np; lia | intros i0 Mi b HMi Hb0; exact (HnmA _ _ _ HMi Hb0)
                                | rewrite Hsel; exact RB1 | exact RM1 ].
         - eapply read_ne_elim; [ exact Hl | exact HM | unfold im_ref; rewrite Hh; reflexivity | exact Hl | exact HM
-                               | unfold im_np; lia | intros i0 Mi b HMi Hb0; rewrite Hsel in Hb0; exact (HnmB _ _ _ HMi Hb0)
+                               | unfold im_np; lia | intros i0 Mi b HMi Hb0; exact (HnmB _ _ _ HMi Hb0)
                                | rewrite Hsel; exact RB2 | exact RM2 ].
       Qed.
 
@@ -1265,10 +1265,7 @@ Section Fixed_GCtx.
                    | exact (vro_nest _ _ _ _ Hrk j Mj qc kc Is vm Dq n Mi v Mv c gs' gs HM Hh Hq Hn0 Hvm HMv Hc' Hc) ]. }
         assert (Hnm : forall Bks, (forall j1 Mj1 b, ind_member D j1 = Some Mj1 -> List.nth_error Bks j1 = Some b ->
                                      eb_nm b = S (im_nn Mj1)) ->
-                   blocks_nm_at Dq (im_sel Mj) Bks).
-        { intros Bks HB i0 Mi b HMi Hb0.
-          destruct (HMP 0 i0 Mi HMi) as [Mv HMv Hnn' _ _ _ _ _ _ _ _ _ _ _ _ _ _ _].
-          rewrite (HB _ _ _ HMv Hb0), Hnn'; reflexivity. }
+                   blocks_nm_at D None Bks) by (intros Bks HB i0 Mi b HMi Hb0; exact (HB _ _ _ HMi Hb0)).
         assert (Lq : List.length as1 = im_np Dq Mk /\ List.length as2 = im_np Dq Mk) by (unfold im_np; split; lia).
         intros s; destruct (He s) as (M & RM1 & RM2).
         destruct (read_blocks_rel s ua ub (im_sel Mj) (ind_members Dq) 0) as (NBks & RB1 & RB2).

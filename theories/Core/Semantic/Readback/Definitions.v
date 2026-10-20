@@ -206,8 +206,9 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
     eliminator of the group the member is at, [pc] (E1′: the container's,
     at a view): one block per member of that group, each block that of the
     member of [p]'s group [im_sel] gives, read under fresh variables of the
-    telescopes of that member of [p]'s group at uniform parameters [ups].
-    For a group without views ([read_ne_elim]), [pc] is [p] and [ups] are
+    telescopes of that member of [p]'s group at uniform parameters [ups],
+    each block's motive binding its own member's non-uniform parameters
+    and the scrutinee ([blocks_nm_at D None]).  For a group without views ([read_ne_elim]), [pc] is [p] and [ups] are
     those of the scrutinee's type.  For a group with views, they are the
     eliminator's own ([read_ne_elim_ups]), and the container's uniform
     parameters at them are read too when the container has views
@@ -219,7 +220,7 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
      ind_lookup Θ Ξ pc = Some Dq ->
      ind_member Dq k = Some Mk ->
      List.length as' = im_np Dq Mk ->
-     blocks_nm_at Dq (im_sel Mj) Bks ->
+     blocks_nm_at D None Bks ->
      Rblks 0 (ind_members Dq) from p None (List.firstn (ind_nu Dq) as') Bks (im_sel Mj) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
      Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rne d_elim ρ Bks p None j as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim pc None k NBks M )
@@ -230,7 +231,7 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
      ind_lookup Θ Ξ pc = Some Dq ->
      ind_member Dq k = Some Mk ->
      List.length as' = im_np Dq Mk ->
-     blocks_nm_at Dq (im_sel Mj) Bks ->
+     blocks_nm_at D None Bks ->
      ind_has_views Dq = false ->
      Rblks 0 (ind_members Dq) from p (Some ups) ups Bks (im_sel Mj) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
      Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
@@ -242,7 +243,7 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
      ind_lookup Θ Ξ pc = Some Dq ->
      ind_member Dq k = Some Mk ->
      List.length as' = im_np Dq Mk ->
-     blocks_nm_at Dq (im_sel Mj) Bks ->
+     blocks_nm_at D None Bks ->
      ind_has_views Dq = true ->
      ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ (pc, k, pre) ->
      Rps pre at List.rev (ind_uparams Dq) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Us ->
