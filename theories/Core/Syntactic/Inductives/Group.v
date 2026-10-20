@@ -208,6 +208,20 @@ Definition ind_ndecl (D : ind_decl) : nat := List.length (List.filter im_is_decl
     then carries the group's uniform parameters. *)
 Definition ind_has_views (D : ind_decl) : bool := negb (List.forallb im_is_decl (ind_members D)).
 
+Lemma no_views_decl : forall D j Mj, ind_has_views D = false -> ind_member D j = Some Mj -> im_is_decl Mj = true.
+Proof.
+  intros * Hv Hj; unfold ind_has_views in Hv; apply Bool.negb_false_iff in Hv.
+  rewrite List.forallb_forall in Hv; exact (Hv _ (List.nth_error_In _ _ Hj)).
+Qed.
+
+(** A group with a view member has views. *)
+Lemma view_has_views : forall D j Mj qc k Is vm, ind_member D j = Some Mj -> im_head Mj = mh_view qc k Is vm ->
+    ind_has_views D = true.
+Proof.
+  intros * Hj Hh; destruct (ind_has_views D) eqn:Hv; [ reflexivity |].
+  pose proof (no_views_decl _ _ _ Hv Hj) as Hd; unfold im_is_decl in Hd; rewrite Hh in Hd; discriminate.
+Qed.
+
 Definition ind_order_ok (D : ind_decl) : Prop :=
   forall k M, ind_member D k = Some M -> (im_is_decl M = true <-> k < ind_ndecl D).
 

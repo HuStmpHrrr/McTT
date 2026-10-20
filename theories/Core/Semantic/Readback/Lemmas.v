@@ -25,16 +25,16 @@ Import Domain_Notations.
       functional_eval_rewrite_clear; f_equal; auto.
   Qed.
 
-  Lemma functional_fresh_ihs : forall {Θ Ξ} ρ As ρa gs vs s ihs1, Fihs vs at gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs1 ->
-      forall ihs2, Fihs vs at gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs2 -> ihs1 = ihs2.
+  Lemma functional_fresh_ihs : forall {Θ Ξ} ρ As ρa gs' gs vs s ihs1, Fihs vs at gs' gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs1 ->
+      forall ihs2, Fihs vs at gs' gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs2 -> ihs1 = ihs2.
   Proof.
     induction 1; intros * H2; inversion H2; subst; auto.
     functional_eval_rewrite_clear; f_equal; auto.
   Qed.
 
-  Lemma functional_wrap_ihs_eval : forall {Θ Ξ} ρ p Bks gs' gs vs ihs r1,
-      ⟦wihs vs of gs' gs with ihs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-      forall r2, ⟦wihs vs of gs' gs with ihs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
+  Lemma functional_wrap_ihs_eval : forall {Θ Ξ} ρ p oups Bks gs' gs vs ihs r1,
+      ⟦wihs vs of gs' gs with ihs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+      forall r2, ⟦wihs vs of gs' gs with ihs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
   Proof.
     induction 1; intros * H2; inversion H2; subst; auto.
     all: functional_eval_rewrite_clear; f_equal; auto.
@@ -46,10 +46,10 @@ Import Domain_Notations.
           pose proof (functional_fresh_tele _ _ _ _ H1 _ H2); subst; clear H2
       | H1 : fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v1, H2 : fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v2 |- _ =>
           pose proof (functional_fresh_cargs _ _ _ _ _ _ H1 _ H2); subst; clear H2
-      | H1 : fresh_ihs ?T ?X ?ρ ?A ?ρa ?gs ?vs ?s ?i1, H2 : fresh_ihs ?T ?X ?ρ ?A ?ρa ?gs ?vs ?s ?i2 |- _ =>
-          pose proof (functional_fresh_ihs _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
-      | H1 : wrap_ihs_eval ?T ?X ?ρ ?p ?Bks ?g' ?g ?vs ?ih ?r1, H2 : wrap_ihs_eval ?T ?X ?ρ ?p ?Bks ?g' ?g ?vs ?ih ?r2 |- _ =>
-          pose proof (functional_wrap_ihs_eval _ _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : fresh_ihs ?T ?X ?ρ ?A ?ρa ?gs' ?gs ?vs ?s ?i1, H2 : fresh_ihs ?T ?X ?ρ ?A ?ρa ?gs' ?gs ?vs ?s ?i2 |- _ =>
+          pose proof (functional_fresh_ihs _ _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : wrap_ihs_eval ?T ?X ?ρ ?p ?o ?Bks ?g' ?g ?vs ?ih ?r1, H2 : wrap_ihs_eval ?T ?X ?ρ ?p ?o ?Bks ?g' ?g ?vs ?ih ?r2 |- _ =>
+          pose proof (functional_wrap_ihs_eval _ _ _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
       | H1 : ⟦ ?Ps ⟧* ?T ⍮ ?X ⍮ ?ρ ↘ ?b1, H2 : ⟦ ?Ps ⟧* ?T ⍮ ?X ⍮ ?ρ ↘ ?b2 |- _ =>
           pose proof (functional_eval_exps _ _ _ _ H1 H2); subst; clear H2
       | H1 : eval_mref ?T ?X ?p ?ups ?j ?r1, H2 : eval_mref ?T ?X ?p ?ups ?j ?r2 |- _ =>
@@ -96,10 +96,10 @@ Import Domain_Notations.
          forall Vs2, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs2 -> Vs1 = Vs2) /\
       (forall s p ups ρ t v V1, Rsh v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V1 ->
          forall V2, Rsh v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V2 -> V1 = V2) /\
-      (forall s ρ p Bks sel pc X i Ms NBks1, Rblks i Ms of pc X from p Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks1 ->
-         forall NBks2, Rblks i Ms of pc X from p Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks2 -> NBks1 = NBks2) /\
-      (forall s ρ p Bks sel Mv A pc X Mi r cs Bs Bs1, Rbrs Bs at cs of Mi r pc X from p Bks sel Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs1 ->
-         forall Bs2, Rbrs Bs at cs of Mi r pc X from p Bks sel Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs2 -> Bs1 = Bs2).
+      (forall s ρ p oups ups Bks sel i Ms NBks1, Rblks i Ms from p oups ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks1 ->
+         forall NBks2, Rblks i Ms from p oups ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks2 -> NBks1 = NBks2) /\
+      (forall s ρ p oups ups Bks Mv A Mi r cs Bs Bs1, Rbrs Bs at cs of Mi r from p oups ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs1 ->
+         forall Bs2, Rbrs Bs at cs of Mi r from p oups ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs2 -> Bs1 = Bs2).
   Proof.
     intros Θ Ξ; apply read_mut_ind; intros; progressive_inversion; functional_eval_rewrite_clear;
       functional_fresh_rewrite_clear; functional_eval_rewrite_clear.
@@ -109,9 +109,14 @@ Import Domain_Notations.
         [nf_lvl_of (lvl_canon …)]: [repeat f_equal] reaches the atoms. *)
     all: try solve [ apply nf_univ_of_cong; eauto | repeat f_equal; solve [eauto] ].
     (** A constructor at an inductive type, read by one of two rules (a
-        declared member, or a view): the other side is inverted here, the
-        two rules excluding each other by the member's head. *)
-    all: match goal with H : read_nf _ _ _ _ _ |- _ = _ => inversion H; subst; clear H end;
+        declared member, or a view), and a stuck eliminator of a group with
+        views, by one of two (whether the container has views): the other
+        side is inverted here, the rules excluding each other by the
+        member's head, and by the container. *)
+    all: match goal with
+         | H : read_nf _ _ _ _ _ |- _ = _ => inversion H; subst; clear H
+         | H : read_ne _ _ _ _ _ |- _ = _ => inversion H; subst; clear H
+         end;
       functional_fresh_rewrite_clear; functional_eval_rewrite_clear; try congruence;
       repeat match goal with
         | H1 : List.length ?v = (?a + ?g)%nat, H2 : List.length ?v = (?b + ?g)%nat |- _ =>
@@ -213,6 +218,6 @@ Lemma fresh_cargs_length : forall {Θ Ξ} p ups ρ gs s vs,
     Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> List.length vs = List.length gs.
 Proof. induction 1; cbn; congruence. Qed.
 
-Lemma fresh_ihs_length : forall {Θ Ξ} ρ As ρa gs vs s ihs,
-    Fihs vs at gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> List.length ihs = cargs_nrec gs.
+Lemma fresh_ihs_length : forall {Θ Ξ} ρ As ρa gs' gs vs s ihs,
+    Fihs vs at gs' gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> List.length ihs = cargs_nrec gs'.
 Proof. induction 1; cbn; congruence. Qed.

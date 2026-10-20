@@ -27,8 +27,12 @@ From Mctt.Core.Syntactic Require Export Syntax.
 
     [d_member m ch] is the term member at the chain [ch] of such a module: the
     semantic [λ] of a member of a module that is not yet applied to all its
-    parameters. *)
+    parameters.
 
+    The uniform parameters of a stuck eliminator are an [option] of values,
+    for which no [All] scheme is registered: [domain_ind] carries no
+    hypothesis about them. *)
+#[warning="-register-all"]
 Inductive domain : Set :=
 (** [d_pi a ρ B]: a [Π] with domain [a], its codomain [B] a closure in [ρ] *)
 | d_pi : domain -> list dentry -> exp -> domain
@@ -72,11 +76,12 @@ Inductive domain : Set :=
     only until it has the group's uniform parameters, then the container's
     at the view's arguments there. *)
 | d_con : qname -> nat -> string -> list domain -> domain
-(** [d_ihfn ρ Bks p t f]: the recursive result of an argument [f] of a
+(** [d_ihfn ρ Bks p oups t f]: the recursive result of an argument [f] of a
     function shape, whose shape after the first domain is [t]: applied to
     [c], the recursive result of shape [t] at [f c], by the eliminator of
-    the group at [p] with the blocks [Bks] in [ρ]. *)
-| d_ihfn : list dentry -> list eblock -> qname -> ptyp -> domain -> domain
+    the group at [p] with the blocks [Bks] in [ρ], and the group's uniform
+    parameters [oups] when it has views. *)
+| d_ihfn : list dentry -> list eblock -> qname -> option (list domain) -> ptyp -> domain -> domain
 (** [d_shfam p ups ρ t]: the codomain of the type of an argument of a
     function shape, whose shape after the first domain is [t]: applied to
     [c], the type of shape [t] in [ρ] extended by [c], at the uniform
@@ -100,11 +105,12 @@ with domain_ne : Set :=
 | d_exfalso : list dentry -> typ -> domain_ne -> domain_ne
 (** An opaque definition or an axiom. *)
 | d_glob : qname -> domain_ne
-(** [d_elim ρ Bks p m as m']: the eliminator of the group at [p] at its
-    member [m], the blocks [Bks] closures in [ρ], on a neutral [m'] of the
-    member's type, the declared member it is at the parameters [as] (at a
-    view, the container's member). *)
-| d_elim : list dentry -> list eblock -> qname -> nat -> list domain -> domain_ne -> domain_ne
+(** [d_elim ρ Bks p oups m as m']: the eliminator of the group at [p] at
+    its member [m], the blocks [Bks] closures in [ρ], on a neutral [m'] of
+    the member's type, the declared member it is at the parameters [as] (at
+    a view, the container's member).  [oups] are the group's uniform
+    parameters, which its eliminator carries when the group has views. *)
+| d_elim : list dentry -> list eblock -> qname -> option (list domain) -> nat -> list domain -> domain_ne -> domain_ne
 with domain_nf : Set :=
 (** [d_dom a m]: the value [m] at the type [a], to be read back *)
 | d_dom : domain -> domain -> domain_nf

@@ -10,9 +10,9 @@ Import Wk_Notations GlobalCtx_Notations.
 
 Reserved Notation "'⟦' M '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, M at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'$|' m '&' n '|' Θ '⍮' Ξ '↘' r" (at level 70, m at level 69, n at level 69, Θ at level 69, Ξ at level 69, r at level 69).
-Reserved Notation "'⟦elim' m 'at' j 'of' p Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, j at level 0, p at level 0, Bks at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
-Reserved Notation "'⟦ihs' vs 'of' gs 'under' p Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs at level 69, p at level 0, Bks at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
-Reserved Notation "'⟦ih' v 'of' t 'under' p Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, v at level 69, t at level 69, p at level 0, Bks at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦elim' m 'at' j 'of' p oups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, j at level 0, p at level 0, oups at level 0, Bks at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦ihs' vs 'of' gs 'under' p oups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs at level 69, p at level 0, oups at level 0, Bks at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦ih' v 'of' t 'under' p oups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, v at level 69, t at level 69, p at level 0, oups at level 0, Bks at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦shty' t 'of' p ups '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, t at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦ihty' v 'of' t 'under' ρm As '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, v at level 69, t at level 69, ρm at level 0, As at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦mref' j 'of' p ups '⟧' Θ '⍮' Ξ '↘' r" (at level 70, j at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, r at level 69).
@@ -39,6 +39,12 @@ Generalizable All Variables.
     [Π]s ([d_shfam], [d_ihfam]): their codomains are computed by the
     families, so no term is built. *)
 Definition fam_cod : exp := a_app (a_var 1) (a_var 0).
+
+(** The uniform parameters the eliminator of the group [D] carries, as
+    values ([elim_ups] evaluated): [ups] for a group with views, none
+    otherwise. *)
+Definition elim_oups (D : ind_decl) (ups : list domain) : option (list domain) :=
+  if ind_has_views D then Some ups else None.
 
 (** The group an eliminator eliminates by: the one written, or else that
     of the value, a constructor or a neutral of a member. *)
@@ -301,12 +307,20 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      ⟦ Is ⟧* Θ ⍮ Ξ ⍮ env_args nil nil ↘ cups ->
      ⟦ a_con p j c ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_con qc k c cups )
 (** The eliminator evaluates its scrutinee, then eliminates the value, by
-    the blocks of its group: the one written, or the group of the value. *)
+    the blocks of its group: the one written, or the group of the value.
+    The eliminator of a group with views also evaluates the group's uniform
+    parameters it carries. *)
 | eval_exp_elim :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      elim_grp_of oq m = Some p ->
-     ⟦elim m at j of p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ a_elim oq j Bks M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+     ⟦elim m at j of p None Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+     ⟦ a_elim oq None j Bks M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+| eval_exp_elim_ups :
+  `( ⟦ Us ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ups ->
+     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+     elim_grp_of oq m = Some p ->
+     ⟦elim m at j of p (Some ups) Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+     ⟦ a_elim oq (Some Us) j Bks M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A [Π] evaluates its domain and closes over its codomain. *)
 | eval_exp_pi :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
@@ -351,8 +365,9 @@ where "'⟦' e '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_exp Θ Ξ e ρ r)
     member of the group its argument is recursive in, as the group
     classifies the member's arguments.  On a neutral of the member, a
     neutral at the motive's instance; the neutral records the parameters of
-    its type, which readback needs. *)
-with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list eblock -> nat -> domain -> domain -> Prop :=
+    its type, which readback needs, and the group's uniform parameters
+    [oups] the eliminator carries. *)
+with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> option (list domain) -> list eblock -> nat -> domain -> domain -> Prop :=
 | eval_elim_con :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -364,9 +379,9 @@ with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list eblock -> nat -
      List.nth_error Bks j = Some b ->
      brs_lookup (eb_brs b) c = Some (n, B) ->
      n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat ->
-     ⟦ihs skipn (im_np Dq Mk) vs of gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ihs skipn (im_np Dq Mk) vs of gs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs) ++ skipn (im_np Dq Mk) vs ++ ihs) ↘ r ->
-     ⟦elim d_con pc k c vs at j of p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+     ⟦elim d_con pc k c vs at j of p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 | eval_elim_neut :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -377,30 +392,30 @@ with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list eblock -> nat -
      List.nth_error Bks j = Some b ->
      eb_nm b = S (im_nn Mk) ->
      ⟦ eb_motive b ⟧ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu Dq) as' ++ ⇑ (d_ind pc k as') m :: nil) ↘ a ->
-     ⟦elim ⇑ (d_ind pc k as') m at j of p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_elim ρ Bks p j as' m) )
-where "'⟦elim' m 'at' j 'of' p Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_elim Θ Ξ ρ p Bks j m r)
+     ⟦elim ⇑ (d_ind pc k as') m at j of p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_elim ρ Bks p oups j as' m) )
+where "'⟦elim' m 'at' j 'of' p oups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_elim Θ Ξ ρ p oups Bks j m r)
 (** The recursive results of the arguments [vs], one per recursive argument. *)
-with eval_ihs (Θ : gdeps) (Ξ : gstack) : env -> qname -> list eblock -> list carg -> list domain -> list domain -> Prop :=
+with eval_ihs (Θ : gdeps) (Ξ : gstack) : env -> qname -> option (list domain) -> list eblock -> list carg -> list domain -> list domain -> Prop :=
 | eval_ihs_nil :
-  `( ⟦ihs nil of nil under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ nil )
+  `( ⟦ihs nil of nil under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ nil )
 | eval_ihs_arg :
-  `( ⟦ihs vs of gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-     ⟦ihs v :: vs of ca_arg T :: gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs )
+  `( ⟦ihs vs of gs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ihs v :: vs of ca_arg T :: gs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs )
 | eval_ihs_rec :
-  `( ⟦ih v of t under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih ->
-     ⟦ihs vs of gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-     ⟦ihs v :: vs of ca_rec t :: gs under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih :: ihs )
-where "'⟦ihs' vs 'of' gs 'under' p Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihs Θ Ξ ρ p Bks gs vs r)
+  `( ⟦ih v of t under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih ->
+     ⟦ihs vs of gs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ihs v :: vs of ca_rec t :: gs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih :: ihs )
+where "'⟦ihs' vs 'of' gs 'under' p oups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihs Θ Ξ ρ p oups Bks gs vs r)
 (** The recursive result of an argument [v] of shape [t]: the eliminator
     at [v], at the member the shape ends in, or, at a function shape, the
     family of the eliminator at [v]'s values. *)
-with eval_ih (Θ : gdeps) (Ξ : gstack) : env -> qname -> list eblock -> ptyp -> domain -> domain -> Prop :=
+with eval_ih (Θ : gdeps) (Ξ : gstack) : env -> qname -> option (list domain) -> list eblock -> ptyp -> domain -> domain -> Prop :=
 | eval_ih_self :
-  `( ⟦elim v at j of p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ih v of pt_self j Ps under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+  `( ⟦elim v at j of p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+     ⟦ih v of pt_self j Ps under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 | eval_ih_pi :
-  `( ⟦ih v of pt_pi B t under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ihfn ρ Bks p t v )
-where "'⟦ih' v 'of' t 'under' p Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ih Θ Ξ ρ p Bks t v r)
+  `( ⟦ih v of pt_pi B t under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ihfn ρ Bks p oups t v )
+where "'⟦ih' v 'of' t 'under' p oups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ih Θ Ξ ρ p oups Bks t v r)
 (** The member [j] of the group at [p] at the uniform parameters [ups]:
     the declared member [k] of the group at [q] at the uniform parameters
     [pre] ([im_ref], [im_pre]), the group itself and [ups] at a declared
@@ -486,8 +501,8 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 (** The recursive result of a function shape, at the argument's value. *)
 | eval_app_ihfn :
   `( $| f & n | Θ ⍮ Ξ ↘ fn ->
-     ⟦ih fn of t under p Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     $| d_ihfn ρ Bks p t f & n | Θ ⍮ Ξ ↘ r )
+     ⟦ih fn of t under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+     $| d_ihfn ρ Bks p oups t f & n | Θ ⍮ Ξ ↘ r )
 (** The families of the types of an argument of a function shape and of its
     recursive result. *)
 | eval_app_shfam :

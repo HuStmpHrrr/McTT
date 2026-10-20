@@ -1599,12 +1599,6 @@ Proof.
 Qed.
 
 (** In a group without views every member is declared. *)
-Lemma no_views_decl : forall D j Mj, ind_has_views D = false -> ind_member D j = Some Mj -> im_is_decl Mj = true.
-Proof.
-  intros * Hv Hj; unfold ind_has_views in Hv; apply Bool.negb_false_iff in Hv.
-  rewrite List.forallb_forall in Hv; exact (Hv _ (List.nth_error_In _ _ Hj)).
-Qed.
-
 (** The eliminator at uniform parameters [Us] and non-uniform ones [Ns]. *)
 Lemma wf_elim_blocks : forall Θ Ξ Γ p D oq m Mm Bks bm Us Ns M i,
     ind_lookup Θ Ξ p = Some D -> elim_grp D oq p m -> ind_member D m = Some Mm -> List.nth_error Bks m = Some bm ->
