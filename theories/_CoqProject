@@ -46,6 +46,8 @@
 ./Core/Completeness/Inductives/Decl.v
 ./Core/Completeness/LogicalRelation/Telescope.v
 ./Core/Completeness/Inductives/Model.v
+./Core/Completeness/Inductives/FiledViews.v
+./Core/Completeness/Inductives/ArgTypes.v
 ./Core/Completeness/Inductives/ViewEquations.v
 ./Core/Completeness/Inductives/Con.v
 ./Core/Completeness/Inductives/Elim.v

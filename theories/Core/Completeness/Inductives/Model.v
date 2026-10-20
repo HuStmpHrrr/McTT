@@ -19,8 +19,8 @@ From Mctt.Core.Syntactic Require Import Substitution Members.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Syntactic.System Require Import Definitions Scoping.
 From Mctt.Core.Syntactic.System.Inductives Require Import Syntax Typing.
-From Mctt.Core.Syntactic.System.Global Require Import Presup.
-From Mctt.Core.Completeness Require Import LogicalRelation ContextCases UniverseCases.
+From Mctt.Core.Syntactic.System.Global Require Import Presup MemberLemmas DescTyping.
+From Mctt.Core.Completeness Require Import LogicalRelation ContextCases UniverseCases VariableCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Substitution.
 From Mctt.Core.Completeness Require Import LetCases UnitCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Instance Telescope.
@@ -184,6 +184,111 @@ Proof.
       rewrite Hsk, <- Hts'; reflexivity. }
   split; [ exact Hl |].
   exact (Hgen _ _ _ _ _ Hg 0 nil eq_refl eq_refl eq_refl).
+Qed.
+
+(** ** Equal Extensions, Entry by Entry
+
+    Two extensions equal in the PER model are equal entry by entry: the
+    outer parts are, and the two last entries are types related over the
+    first's outer part.  A substitution built from valid parts moves such
+    an equation along it ([rel_ext_under_ctx_gsub]). *)
+
+Lemma rel_ext_under_ctx_ass_inv : forall Γ Ψ Ψ' A A', Γ ⊨ˣ Ψ ▹ A ≈ Ψ' ▹ A' ->
+    Γ ⊨ˣ Ψ ≈ Ψ' /\
+    exists i : nat, Ψ ++ Γ ⊨ A : Typeω@i /\ Ψ ++ Γ ⊨ A ≈ A' : Typeω@i /\ Ψ' ++ Γ ⊨ A' : Typeω@i.
+Proof.
+  intros * [HL HR [R HRR]]; cbn [List.app] in HL, HR, HRR.
+  inversion HRR as [| ? ? i0 ? ? tail_rel head_rel ? HT _ Hhead _ | |]; subst.
+  pose proof (rel_ctx_wf_tail HL) as HL0; pose proof (rel_ctx_wf_tail HR) as HR0.
+  destruct (rel_ctx_wf_ass_inv HL) as [i1 HA]; destruct (rel_ctx_wf_ass_inv HR) as [i2 HA'].
+  split; [ constructor; [ exact HL0 | exact HR0 | exists tail_rel; exact HT ] |].
+  destruct (rel_ctx_wf_per_ctx_env HL0) as [RL HRL]; destruct (rel_ctx_wf_per_ctx_env HR0) as [RR HRR0].
+  assert (EL : tail_rel <~> RL) by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (ER : tail_rel <~> RR) by (eapply per_ctx_env_left_irrel; eassumption).
+  set (i := max (max i1 i2) i0).
+  assert (HAi : Ψ ++ Γ ⊨ A : Typeω@i) by (eapply rel_exp_cumu_ge; [| exact HA ]; lia).
+  assert (HA'i : Ψ' ++ Γ ⊨ A' : Typeω@i) by (eapply rel_exp_cumu_ge; [| exact HA' ]; lia).
+  assert (HA'L : Ψ ++ Γ ⊨ A' : Typeω@i).
+  { eapply (rel_exp_under_ctx_restrict HRL HRR0); [| exact HA'i ].
+    intros ρ ρ' Hρ; apply ER, EL; exact Hρ. }
+  exists i; split; [ exact HAi | split; [| exact HA'i ] ].
+  apply (rel_exp_under_ctx_of_simple HRL HAi HA'L).
+  intros ρ ρ' Hρ.
+  destruct (Hhead _ _ (proj2 (EL _ _) Hρ)) as [a a' Ea Ea' Haa].
+  exists a, a'; split; [ exact Ea | split; [ exact Ea' |] ].
+  intros j R0 b b' Eb Eb' HRb.
+  inversion Eb; subst; inversion Eb'; subst.
+  destruct (per_univ_elem_univ _ _ _ _ HRb (or_introl (ex_intro _ _ eq_refl))) as [_ ER0].
+  apply ER0; cbn [univ_idx].
+  eexists; eapply per_univ_elem_cumu_ge; [| exact Haa ]; lia.
+Qed.
+
+Lemma rel_ext_under_ctx_gsub : forall Γ τ Δ Ψ Ψ', gsub Γ τ Δ -> tele_ass Ψ -> tele_ass Ψ' ->
+    Δ ⊨ˣ Ψ ≈ Ψ' -> Γ ⊨ˣ tele_sub Ψ τ ≈ tele_sub Ψ' τ.
+Proof.
+  intros Γ τ Δ Ψ; induction Ψ as [| e Ψ IH]; intros Ψ' Hg Ha Ha' HΨ.
+  - pose proof (per_ctx_respects_length (rxu_eq _ _ _ HΨ)) as Hl; rewrite !List.length_app in Hl.
+    destruct Ψ' as [| e' Ψ']; cbn in Hl; [| lia ].
+    destruct (gsub_sem Hg) as [HΓ _].
+    constructor; [ exact HΓ | exact HΓ | exact (rel_ctx_wf_per_ctx HΓ) ].
+  - pose proof (per_ctx_respects_length (rxu_eq _ _ _ HΨ)) as Hl; rewrite !List.length_app in Hl.
+    destruct Ψ' as [| e' Ψ']; cbn in Hl; [ lia |].
+    assert (He : exists A, e = ce_ass A) by (inversion Ha as [| ? ? He _]; exact He).
+    assert (He' : exists A', e' = ce_ass A') by (inversion Ha' as [| ? ? He' _]; exact He').
+    destruct He as [A ->]; destruct He' as [A' ->].
+    assert (Hsa : tele_ass Ψ) by (inversion Ha; assumption).
+    assert (Hsa' : tele_ass Ψ') by (inversion Ha'; assumption).
+    destruct (rel_ext_under_ctx_ass_inv _ _ _ _ _ HΨ) as [HΨ0 (i & HA & HAA & HA')].
+    pose proof (IH _ Hg Hsa Hsa' HΨ0) as IH0.
+    assert (Hl0 : List.length Ψ = List.length Ψ') by lia.
+    pose proof (gsub_qn _ _ _ _ Hg Hsa (rxu_left _ _ _ HΨ0)) as Hq.
+    pose proof (gsub_qn _ _ _ _ Hg Hsa' (rxu_right _ _ _ HΨ0)) as Hq'.
+    pose proof (rel_exp_under_ctx_gsub Hq HA) as HAτ.
+    pose proof (rel_exp_under_ctx_gsub Hq HAA) as HAAτ.
+    pose proof (rel_exp_under_ctx_gsub Hq' HA') as HA'τ.
+    cbn [exp_sub] in HAτ, HAAτ, HA'τ; rewrite <- Hl0 in HA'τ.
+    cbn [tele_sub centry_sub]; rewrite <- Hl0.
+    destruct IH0 as [H1 H2 H3].
+    constructor; cbn [List.app].
+    + exact (rel_ctx_wf_extend H1 HAτ).
+    + exact (rel_ctx_wf_extend H2 HA'τ).
+    + exact (per_ctx_extend H3 HAAτ).
+Qed.
+
+(** The variables of a closed telescope, each of the type its telescope
+    gives it at the variables before. *)
+Lemma valid_vars_tele : forall Φ Δ,
+    tele_ass Δ -> ctx_scoped 0 Δ -> ctx_mvc Δ -> ⊨ Φ ++ Δ ->
+    forall k N T, List.nth_error (vars_from (List.length Φ) (List.length Δ)) k = Some N ->
+      List.nth_error (tele_insts Δ Id (vars_from (List.length Φ) (List.length Δ))) k = Some T ->
+      Φ ++ Δ ⊨ N : T.
+Proof.
+  intros * Hass Hs Hmv HΔ k N T HN HT.
+  apply vars_from_nth_error in HN as [Hk ->].
+  apply tele_insts_nth in HT as (A & HA & ->).
+  destruct (List.nth_error_split _ _ HA) as (l1 & l2 & Hrev & Hl1).
+  assert (HΔeq : Δ = List.rev l2 ++ ce_ass A :: List.rev l1)
+    by (rewrite <- (List.rev_involutive Δ), Hrev, List.rev_app_distr; cbn [List.rev]; rewrite <- List.app_assoc; reflexivity).
+  assert (Hlen : List.length Δ = List.length l2 + S k)
+    by (rewrite HΔeq, List.length_app; cbn [List.length]; rewrite !List.length_rev; lia).
+  assert (HsA : exp_scoped k A).
+  { rewrite HΔeq in Hs; apply ctx_scoped_app in Hs as [_ Hs]; cbn in Hs; destruct Hs as [HsA _].
+    rewrite List.length_rev, Nat.add_0_r in HsA; congruence. }
+  assert (HmA : exp_mvc 0 A).
+  { unfold ctx_mvc in Hmv; rewrite HΔeq in Hmv; apply List.Forall_app in Hmv as [_ Hmv].
+    apply List.Forall_cons_iff in Hmv as [HmA _]; exact HmA. }
+  replace (A[sb_of_list Id (List.firstn k (vars_from (List.length Φ) (List.length Δ)))])
+    with (A[wk_shiftn (List.length Φ + List.length l2 + 1)]ʷ).
+  - apply valid_exp_under_ctx_vlookup; [| exact HΔ ].
+    replace (List.length Φ + (List.length Δ - 1 - k)) with (0 + List.length (Φ ++ List.rev l2))
+      by (rewrite List.length_app, List.length_rev; lia).
+    replace (A[wk_shiftn (List.length Φ + List.length l2 + 1)]ʷ)
+      with (A[wk_shift]ʷ[wk_shiftn (List.length (Φ ++ List.rev l2))]ʷ)
+      by (rewrite exp_wk_wk; apply exp_wk_wk_eq; intros x; cbn; rewrite List.length_app, List.length_rev; lia).
+    rewrite HΔeq, List.app_assoc.
+    apply ctx_lookup_app_r; constructor.
+  - rewrite <- exp_sub_of_wk; eapply exp_scoped_mvc_agree; [ exact HsA | exact HmA |].
+    intros x Hx; rewrite sb_of_list_firstn_vars by lia; cbn; f_equal; lia.
 Qed.
 
 (** ** The Group's Conditions, from its Typing
@@ -1066,6 +1171,85 @@ Section Sort.
       - unfold grp_sctx, grp_selfs; rewrite List.rev_app_distr.
         apply per_gargs_app_intro; [ rewrite List.length_rev; exact Hu | exact Hg |].
         exact (selfs_gargs _ (le_n _) _ _ Hg Hu).
+    Qed.
+
+    (** ** The Substitution of the Members for their Variables
+
+        [grp_sb p D] is a substitution from the uniform parameters into
+        the members as variables, built from valid parts: each declared
+        member's type former at the uniform parameters is of its type with
+        the members as variables. *)
+    Hypothesis (Hmv : decl_mvc D).
+
+    Lemma valid_self_apps : forall j Mj, ind_member D j = Some Mj -> j < ind_ndecl D ->
+        ind_uparams D ⊨ apps (a_ind p j) (vars_from 0 (ind_nu D)) : self_ty D Mj.
+    Proof.
+      intros * HMj Hj.
+      assert (Hd : im_is_decl Mj = true) by (apply (proj2 (Hord _ _ HMj)); exact Hj).
+      assert (Hh : exists pm, im_head Mj = mh_decl pm)
+        by (unfold im_is_decl in Hd; destruct (im_head Mj); [ eauto | discriminate ]).
+      destruct Hh as [pm Hh].
+      pose proof (closed_weaken_valid _ _ _ _ uparams_sem (valid_exp_under_ctx_ind _ _ _ HMj Hh)) as HI.
+      unfold ind_ty, im_params in HI; rewrite ctx_pi_app in HI; fold (self_ty D Mj) in HI.
+      destruct (self_ty_sem _ _ HMj) as [i Hi].
+      destruct (closed_app_sem _ _ uparams_ass uparams_sem uparams_sem) as [HUU _].
+      pose proof (closed_app_valid _ _ _ _ _ uparams_ass uparams_sem uparams_sem Hi) as HiU.
+      pose proof (rel_exp_apps_ctx_pi_n _ (ind_uparams D) (ind_uparams D) _ i (a_ind p j) (vars_from 0 (ind_nu D)) eq_refl
+                    uparams_ass HUU HiU HI ltac:(rewrite length_vars_from; reflexivity)) as H.
+      rewrite (exp_at_vars _ _ _ (self_ty_scoped _ _ _ Hc HMj) (self_ty_mvc _ _ _ Hc Hmv HMj)) in H.
+      rewrite (exp_wk_id_ext (self_ty D Mj) _ wk_shiftn_zero) in H.
+      apply H.
+      intros k N T HN HT.
+      pose proof (valid_vars_tele nil (ind_uparams D) uparams_ass (dc_uparams _ Hc) (dmv_uparams _ Hmv) uparams_sem k N T) as Hv.
+      cbn [List.length List.app] in Hv; exact (Hv HN HT).
+    Qed.
+
+    Lemma nth_rev_grp_selfs : forall n k, n <= ind_ndecl D -> k < n ->
+        exists Mk, ind_member D k = Some Mk /\
+          List.nth_error (List.rev (grp_selfs_from D 0 (List.firstn n (ind_members D)))) k
+            = Some (ce_ass (self_ty D Mk)[wk_shiftn k]ʷ).
+    Proof.
+      induction n as [| n IH]; intros k Hn Hk; [ lia |].
+      pose proof (ind_ndecl_le D) as Hle.
+      destruct (List.nth_error (ind_members D) n) as [Mn |] eqn:HMn; [| apply List.nth_error_None in HMn; lia ].
+      rewrite (firstn_S_nth_error _ _ _ HMn), grp_selfs_from_snoc; cbn [Nat.add List.rev].
+      assert (HlΨ : List.length (List.rev (grp_selfs_from D 0 (List.firstn n (ind_members D)))) = n)
+        by (rewrite List.length_rev, length_grp_selfs_from, List.length_firstn; lia).
+      destruct (Nat.lt_ge_cases k n) as [Hkn | Hkn].
+      - rewrite List.nth_error_app1 by lia; exact (IH _ ltac:(lia) Hkn).
+      - assert (k = n) as -> by lia.
+        exists Mn; split; [ exact HMn |].
+        rewrite List.nth_error_app2, HlΨ, Nat.sub_diag by lia; cbn.
+        rewrite List.length_firstn, Nat.min_l by lia; reflexivity.
+    Qed.
+
+    Lemma grp_sb_gsub : gsub (ind_uparams D) (grp_sb p D) (grp_sctx D).
+    Proof.
+      unfold grp_sb, grp_sctx.
+      apply gsub_of_list; [ exact (gsub_id _ uparams_sem) | | exact grp_sctx_sem | |].
+      - unfold grp_selfs; generalize 0; induction (List.firstn (ind_ndecl D) (ind_members D)) as [| M ms IH]; intros j;
+          cbn [grp_selfs_from]; [ constructor |].
+        apply List.Forall_app; split; [ apply IH | constructor; [ eexists; reflexivity | constructor ] ].
+      - unfold grp_selfs; rewrite length_grp_sb_list, length_grp_selfs_from, List.length_firstn.
+        pose proof (ind_ndecl_le D); lia.
+      - intros k N T HN HT.
+        rewrite List.nth_error_map in HN.
+        destruct (List.nth_error (List.seq 0 (ind_ndecl D)) k) as [j |] eqn:Hj; cbn in HN; [| discriminate ].
+        injection HN as <-.
+        assert (Hk : k < ind_ndecl D)
+          by (rewrite <- (List.length_seq (ind_ndecl D) 0); apply List.nth_error_Some; congruence).
+        assert (j = k) as -> by (rewrite (List.nth_error_nth' _ 0 (n := k)) in Hj by (rewrite List.length_seq; exact Hk);
+                                 injection Hj as <-; rewrite List.seq_nth by exact Hk; reflexivity).
+        apply tele_insts_nth in HT as (A & HA & ->).
+        destruct (nth_rev_grp_selfs (ind_ndecl D) k (le_n _) Hk) as (Mk & HMk & HAk).
+        unfold grp_selfs in HA; rewrite HAk in HA; injection HA as <-.
+        rewrite exp_sub_wk, (exp_sub_sb_eq _ _ Id), exp_sub_id; [ exact (valid_self_apps _ _ HMk Hk) |].
+        intros x; cbn [sb_compose sb_of_wk sentry_sub wk_shiftn].
+        set (L := List.firstn k (List.map (fun j => apps (a_ind p j) (vars_from 0 (ind_nu D))) (List.seq 0 (ind_ndecl D)))).
+        assert (HL : List.length L = k)
+          by (unfold L; rewrite List.length_firstn, length_grp_sb_list; lia).
+        replace (x + k) with (List.length L + x) by lia.
+        apply sb_of_list_ge.
     Qed.
   End Selfs.
 End Sort.
