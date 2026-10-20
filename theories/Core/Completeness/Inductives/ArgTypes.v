@@ -802,12 +802,19 @@ Qed.
     [view_end_rel]: the relation of the view's type, the container's at
     any uniform parameters related to the instance, is the group's at the
     view. *)
-(** Every filed group is valid; then so are the containers of each. *)
-Definition groups_valid : Prop :=
-  forall qn G, ind_lookup gc_deps gc_stack qn = Some G -> valid_group qn G.
+(** A family [P] of filed groups, each valid, closed under the containers
+    of their views (e.g. the groups filed in the source of a sound
+    embedding); then the containers of each are valid. *)
+Record valid_groups (P : qname -> ind_decl -> Prop) : Prop := mk_valid_groups
+  { valid_groups_valid : forall qn G, P qn G -> valid_group qn G
+  ; valid_groups_containers : forall qn G k Mk qc kc Is vm Dq, P qn G -> ind_member G k = Some Mk ->
+      im_head Mk = mh_view qc kc Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq -> P qc Dq }.
 
-Lemma containers_valid_of_groups : groups_valid -> forall D, containers_valid D.
-Proof. intros Hgv D k Mk qc k' Is vm Dq _ _ Hq; exact (Hgv _ _ Hq). Qed.
+Lemma containers_valid_of_groups : forall P, valid_groups P -> forall qn D, P qn D -> containers_valid D.
+Proof.
+  intros P HP qn D HD k Mk qc k' Is vm Dq HM Hh Hq.
+  exact (valid_groups_valid _ HP _ _ (valid_groups_containers _ HP _ _ _ _ _ _ _ _ _ HD HM Hh Hq)).
+Qed.
 
 Definition view_agreement_canonical (p : qname) (D : ind_decl) (ups ups' : list domain) (j : nat) : Prop :=
   forall Mj qc kc Is vm Dq cups cups', ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm ->

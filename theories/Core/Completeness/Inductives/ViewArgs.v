@@ -1040,13 +1040,14 @@ End ViewMemberParams.
     along related bases and prefixes. *)
 Section ViewAgreementCanonical.
   Variables (p : qname) (D : ind_decl).
-  Hypotheses (Hg : valid_group p D) (Hgv : groups_valid).
-  Let Hcv := containers_valid_of_groups Hgv D.
+  Variable (P : qname -> ind_decl -> Prop).
+  Hypotheses (Hg : valid_group p D) (HP : valid_groups P) (HPD : P p D).
+  Let Hcv := containers_valid_of_groups P HP p D HPD.
   Variables (k : nat) (Mk : imember) (qc : qname) (kc : nat) (Is : list exp) (vm : list nat) (Dq : ind_decl).
   Hypotheses (HMk : ind_member D k = Some Mk) (Hh : im_head Mk = mh_view qc kc Is vm)
     (Hq : ind_lookup gc_deps gc_stack qc = Some Dq).
   Let HgQ := Hcv _ _ _ _ _ _ _ HMk Hh Hq.
-  Let HcvQ := containers_valid_of_groups Hgv Dq.
+  Let HcvQ := containers_valid_of_groups P HP qc Dq (valid_groups_containers P HP p D k Mk qc kc Is vm Dq HPD HMk Hh Hq).
   Variables (ups ups' cups cups' : list domain).
   Hypotheses (Hgu : per_gargs (List.rev (ind_uparams D)) nil nil ups ups') (Hu : List.length ups = ind_nu D)
     (Ec : ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups)
@@ -1239,7 +1240,7 @@ End ViewAgreementCanonical.
 
 (** A view's agreement at the canonical relations, given the relations of
     the types of the members the shapes it nests through end in. *)
-Lemma view_agreement_canonical_of_ends : forall p D, valid_group p D -> groups_valid ->
+Lemma view_agreement_canonical_of_ends : forall P p D, valid_groups P -> P p D ->
     forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
     forall k, (forall Mk qc kc Is vm Dq i' Mi' v Mv c gs1' A' gs2' gs1 t gs2, ind_member D k = Some Mk ->
                  im_head Mk = mh_view qc kc Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' ->
@@ -1248,23 +1249,24 @@ Lemma view_agreement_canonical_of_ends : forall p D, valid_group p D -> groups_v
                  cargs_corr vm gs1' gs1 -> view_end_rel p D ups ups (ptyp_mem t)) ->
       view_agreement_canonical p D ups ups' k.
 Proof.
-  intros p D Hg Hgv ups ups' Hgu Hu k Hend Mk qc kc Is vm Dq cups cups' HMk Hh Hq Ec Ec'.
-  pose proof (containers_valid_of_groups Hgv D) as Hcv.
+  intros P p D HP HPD ups ups' Hgu Hu k Hend Mk qc kc Is vm Dq cups cups' HMk Hh Hq Ec Ec'.
+  pose proof (valid_groups_valid P HP p D HPD) as Hg.
+  pose proof (containers_valid_of_groups P HP p D HPD) as Hcv.
   constructor.
   - exact (view_agree_members p D k Mk qc kc Is vm Dq (vgr_ass _ _ Hg) HMk Hh Hq).
   - exact (view_agree_recursive_targets Dq (vgr_ass _ _ (Hcv _ _ _ _ _ _ _ HMk Hh Hq))).
   - intros * HMi' Hvm Hj Hp.
-    eapply (agree_nparams_canonical p D Hg Hgv k Mk qc kc Is vm Dq HMk Hh Hq); eassumption.
+    eapply (agree_nparams_canonical p D P Hg HP HPD k Mk qc kc Is vm Dq HMk Hh Hq); eassumption.
   - intros * HMi' Hvm Hc' Hc Hc1 Hlp Hlp' Hms Hpre.
-    eapply (agree_args_canonical p D Hg Hgv k Mk qc kc Is vm Dq HMk Hh Hq); eassumption.
+    eapply (agree_args_canonical p D P Hg HP HPD k Mk qc kc Is vm Dq HMk Hh Hq); eassumption.
   - intros * HMi' Hvm Hc' Hc Hc1 Hlp Hlp' Hms Hpre.
     pose proof (Hend _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hh Hq HMi' (vmb_v _ _ _ _ _ _ _ _ _ Hvm)
                   (vmb_mem _ _ _ _ _ _ _ _ _ Hvm) Hc' Hc Hc1) as He.
-    eapply (agree_nested_canonical p D Hg Hgv k Mk qc kc Is vm Dq HMk Hh Hq); eassumption.
+    eapply (agree_nested_canonical p D P Hg HP HPD k Mk qc kc Is vm Dq HMk Hh Hq); eassumption.
   - intros * HMi' Hvm Hc' Hc Hc1 Hlp Hlp' HB' HB Hms Hpre Hys.
-    eapply (agree_doms_canonical p D Hg Hgv k Mk qc kc Is vm Dq HMk Hh Hq); eassumption.
+    eapply (agree_doms_canonical p D P Hg HP HPD k Mk qc kc Is vm Dq HMk Hh Hq); eassumption.
   - intros * HMi' Hvm Hc' Hc Hc1 Hlp Hlp' Hms Hpre Hys.
-    eapply (agree_params_canonical p D Hg Hgv k Mk qc kc Is vm Dq HMk Hh Hq); eassumption.
+    eapply (agree_params_canonical p D P Hg HP HPD k Mk qc kc Is vm Dq HMk Hh Hq); eassumption.
 Qed.
 
 (** The rank of a view bounds the ranks of the members the shapes it nests
@@ -1284,18 +1286,19 @@ Qed.
     By induction on the views' ranks: the members a view nests through are
     of lower rank, so their types' relations are the group's
     ([view_end_rel_of_agreement]). *)
-Theorem view_agreement_canonical_all : forall p D, valid_group p D -> groups_valid ->
+Theorem view_agreement_canonical_all : forall P p D, valid_groups P -> P p D ->
     forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
     forall k, view_agreement_canonical p D ups ups' k.
 Proof.
-  intros p D Hg Hgv ups ups' Hgu Hu k.
-  pose proof (containers_valid_of_groups Hgv D) as Hcv.
+  intros P p D HP HPD ups ups' Hgu Hu k.
+  pose proof (valid_groups_valid P HP p D HPD) as Hg.
+  pose proof (containers_valid_of_groups P HP p D HPD) as Hcv.
   pose proof (uparams_refl_l D (vgr_valid _ _ Hg) (vgr_closed _ _ Hg) _ _ Hgu) as Hgd.
   destruct (dt_rank _ _ _ (vgr_typed _ _ Hg)) as [rk Hrk].
   assert (Hall : forall n j u', rk j < n -> per_gargs (List.rev (ind_uparams D)) nil nil ups u' ->
                    view_agreement_canonical p D ups u' j).
   { induction n as [| n IH]; intros j u' Hj Hgu'; [ lia |].
-    apply (view_agreement_canonical_of_ends p D Hg Hgv ups u' Hgu' Hu j).
+    apply (view_agreement_canonical_of_ends P p D HP HPD ups u' Hgu' Hu j).
     intros * HMj Hh Hq HMi' Hv HMv Hc' Hc Hc1.
     pose proof (vro_nest _ _ _ _ Hrk _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMj Hh Hq HMi' Hv HMv Hc' Hc) as Hn.
     pose proof (cargs_nest_ok_at _ _ _ _ _ _ _ _ (cargs_corr_len _ _ _ Hc1) Hn) as Hlt.
