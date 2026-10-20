@@ -488,6 +488,67 @@ Definition valid_filed_mods : Prop :=
 Definition nparams_prefix (M : imember) (k : nat) : ctx := List.rev (List.firstn k (List.rev (im_nparams M))).
 Definition nonrec_args_prefix (gs : list carg) (k : nat) : ctx := List.rev (List.firstn k (List.map ce_ass (cargs_nonrec gs))).
 
+(** The views of a group with its members as variables ([grp_sctx]),
+    read in the PER model: [views_self_typed], each judgment semantic.  The
+    instances [IsS] are the views' arguments before the group is filed;
+    the filed ones are their images by [grp_sb] ([vsv_link]). *)
+#[warnings="-cannot-define-projection"]
+Record views_self_valid (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_views_self_valid
+  { vsv_link : forall mp, ind_mpath D 0 = Some mp ->
+      forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+        Is = List.map (fun I => I[grp_sb mp D]) (IsS k)
+  ; vsv_is : forall k Mk qc k' Is vm D' j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some D' -> nth_error (IsS k) j = Some I ->
+      nth_error (tele_insts (ind_uparams D') Id (IsS k)) j = Some T ->
+      grp_sctx D ⊨ I : T
+  ; vsv_view_is : forall k Mk qc k' Is vm D' i' Mi' v q'' k'' Is'' vm'' D'' Mv X vm' j' C C' T,
+      ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_view q'' k'' Is'' vm'' ->
+      ind_lookup gc_deps gc_stack q'' = Some D'' ->
+      nth_error vm i' = Some v -> ind_member D v = Some Mv -> im_head Mv = mh_view q'' k'' X vm' ->
+      nth_error (IsS v) j' = Some C ->
+      nth_error (List.map (fun I => I[sb_of_list Id (IsS k)]) Is'') j' = Some C' ->
+      nth_error (tele_insts (ind_uparams D'') Id Is'') j' = Some T ->
+      grp_sctx D ⊨ C ≈ C' : T[sb_of_list Id (IsS k)]
+  ; vsv_nparams : forall k Mk qc k' Is vm D' i' Mi' v Mv, ind_member D k = Some Mk ->
+      im_head Mk = mh_view qc k' Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
+      ind_member D v = Some Mv ->
+      grp_sctx D ⊨ˣ tele_wk (im_nparams Mv) (self_wk D 0) ≈ tele_sub (im_nparams Mi') (sb_of_list Id (IsS k))
+  ; vsv_args : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs, ind_member D k = Some Mk ->
+      im_head Mk = mh_view qc k' Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
+      ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
+      tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+        ⊨ˣ tele_sub (cargs_ctx qc D' Mi' gs') (sb_qn (im_nn Mv) (sb_of_list Id (IsS k))) ≈ scargs_ctx D IsS Mv gs
+  ; vsv_doms : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 d,
+      ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
+      ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
+      gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 -> List.length gs1' = List.length gs1 ->
+      d < ptyp_depth t ->
+      exists i : nat, tele_wk (sh_ctx (cargs_pat gs1) (List.firstn d (ptyp_doms t))) (self_wk D (List.length gs1 + im_nn Mv))
+                  ++ scargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+        ⊨ (ptyp_dom_at (cargs_pat gs1') d t')[sb_qn (d + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
+        ≈ (ptyp_dom_at (cargs_pat gs1) d t)[self_wk D (d + List.length gs1 + im_nn Mv)]ʷ : Typeω@i
+  ; vsv_ps : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 Mj j P' P T,
+      ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
+      ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
+      gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 -> List.length gs1' = List.length gs1 ->
+      ind_member D (ptyp_mem t) = Some Mj ->
+      nth_error (ptyp_ps_at (cargs_pat gs1') t') j = Some P' -> nth_error (ptyp_ps_at (cargs_pat gs1) t) j = Some P ->
+      nth_error (tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D (im_nn Mv) (ptyp_depth t + List.length gs1)))
+                   (ptyp_ps_at (cargs_pat gs1) t)) j = Some T ->
+      tele_wk (sh_ctx (cargs_pat gs1) (ptyp_doms t)) (self_wk D (List.length gs1 + im_nn Mv))
+                ++ scargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+        ⊨ P'[sb_qn (ptyp_depth t + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
+        ≈ P[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ
+        : T[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ
+  ; vsv_sort : forall k Mk qc k' Is vm D', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some D' ->
+      grp_sctx D ⊨ (ind_sort D')[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ }.
+
 Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
 { vid_uparams : ⊨ ind_uparams D
 ; vid_sort : exists i, ind_uparams D ⊨ ind_sort D : Typeω@i
@@ -522,6 +583,8 @@ Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
 ; vid_dctx : forall k Mk c gs gs1 t gs2 j, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     gs = gs1 ++ ca_rec t :: gs2 -> j <= List.length (ptyp_doms t) ->
     ⊨ doms_ctx (List.firstn j (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk
+(** The views, with the group's members as variables. *)
+; vid_views : exists IsS, views_self_valid D IsS
 }.
 
 End Filed.
