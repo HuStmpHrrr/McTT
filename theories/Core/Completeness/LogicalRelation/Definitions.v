@@ -552,6 +552,9 @@ Record views_self_valid (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_view
 Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
 { vid_uparams : ⊨ ind_uparams D
 ; vid_sort : exists i, ind_uparams D ⊨ ind_sort D : Typeω@i
+(** The level of the sort, a level ([dt_sort_lvl]): a small sort is below
+    the large universes. *)
+; vid_sort_lvl : exists n, ind_uparams D ⊨ ind_sort_lvl (ind_sort D) : Level@n
 ; vid_params : forall k Mk, ind_member D k = Some Mk -> ⊨ im_params D Mk
 ; vid_ty : forall k Mk, ind_member D k = Some Mk -> exists i, ⋅ ⊨ ind_ty D Mk : Typeω@i
 ; vid_npar : forall k Mk j A, ind_member D k = Some Mk -> List.nth_error (List.rev (im_nparams Mk)) j = Some (ce_ass A) ->
