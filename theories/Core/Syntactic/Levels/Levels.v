@@ -161,9 +161,12 @@ with ne_code (m : ne) (t : ltree) : ltree :=
   | ne_glob p => lt_node 1 (strs_code (q_unit p) (strs_code (q_chain p) lt_nil)) t
   | ne_app m' N => lt_node 2 (ne_code m' (nf_code N lt_nil)) t
   | ne_exfalso A m' => lt_node 4 (nf_code A (ne_code m' lt_nil)) t
-  | ne_elim p m Bks m' =>
+  | ne_elim p oUs m Bks m' =>
       lt_node 5 (lt_node m (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
-                   (nblocks_code Bks (ne_code m' lt_nil))) t
+                   (nblocks_code Bks (ne_code m' (match oUs with
+                                                  | None => lt_node 0 lt_nil lt_nil
+                                                  | Some Us => lt_node 1 (nfs_code Us lt_nil) lt_nil
+                                                  end)))) t
   end
 with la_code (xs : lvl_atoms) (t : ltree) : ltree :=
   match xs with
@@ -195,6 +198,7 @@ with nblocks_code_inj : forall Bks Cks t t', nblocks_code Bks t = nblocks_code C
 Proof.
   all: [> destruct M, N | destruct m, m' | destruct xs, ys | destruct Ms, Ns | destruct Bs, Cs | destruct Bks, Cks ].
   all: repeat match goal with p : o2 |- _ => destruct p end.
+  all: repeat match goal with o : option nfs |- _ => destruct o end.
   all: intros t t' H; cbn in H; injection H as; subst; try discriminate.
   all: repeat match goal with
          | H : nf_code _ _ = nf_code _ _ |- _ => apply nf_code_inj in H as [-> H]
@@ -205,7 +209,9 @@ Proof.
          | H : nblocks_code _ _ = nblocks_code _ _ |- _ => apply nblocks_code_inj in H as [-> H]
          | H : str_code _ _ = str_code _ _ |- _ => apply str_code_inj in H as [-> H]
          | H : strs_code _ _ = strs_code _ _ |- _ => apply qname_code_inj in H as ->
+         | H : lt_node _ _ _ = lt_node _ _ _ |- _ => injection H as; subst
        end.
+  all: try discriminate.
   all: split; first [ reflexivity | assumption ].
 Qed.
 

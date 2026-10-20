@@ -689,10 +689,18 @@ Definition eblock_sub (b : eblock) (τ : sub) : eblock :=
 
 Definition blocks_sub (Bks : list eblock) (τ : sub) : list eblock := List.map (fun b => eblock_sub b τ) Bks.
 
-Lemma exp_sub_elim : forall oq m Bks M τ, (a_elim oq m Bks M)[τ] = a_elim oq m (blocks_sub Bks τ) M[τ].
+(** The uniform parameters an eliminator carries, moved. *)
+Definition ups_sub (oUs : option (list exp)) (τ : sub) : option (list exp) :=
+  option_map (List.map (fun U => U[τ])) oUs.
+
+Lemma exp_sub_elim : forall oq oUs m Bks M τ,
+    (a_elim oq oUs m Bks M)[τ] = a_elim oq (ups_sub oUs τ) m (blocks_sub Bks τ) M[τ].
 Proof.
   intros; cbn [exp_sub]; f_equal; unfold blocks_sub; apply map_ext; intros [nm oZ A Bs]; reflexivity.
 Qed.
+
+Lemma elim_ups_sub : forall D Us τ, ups_sub (elim_ups D Us) τ = elim_ups D (List.map (fun U => U[τ]) Us).
+Proof. intros; unfold elim_ups; destruct (ind_has_views D); reflexivity. Qed.
 
 Lemma nth_error_blocks_sub : forall Bks τ k,
     List.nth_error (blocks_sub Bks τ) k = option_map (fun b => eblock_sub b τ) (List.nth_error Bks k).
@@ -750,30 +758,8 @@ Proof.
   unfold brs_sub; apply map_ext; intros [[c k] B]; cbn; f_equal; apply exp_sub_sb_eq, sb_qn_cong, H.
 Qed.
 
-(** The blocks with the first one annotated, moved. *)
-Lemma blocks_ann0_sub : forall pq D Us Bks τ,
-    decl_closed D -> List.length Us = ind_nu D -> blocks_nm_ok D Bks ->
-    blocks_sub (blocks_ann0 pq D Us Bks) τ = blocks_ann0 pq D (List.map (fun U => U[τ]) Us) (blocks_sub Bks τ).
-Proof.
-  intros * HD Hl Hnm; unfold blocks_ann0.
-  destruct Bks as [| [nm oZ A Bs] Bks]; [ reflexivity |].
-  destruct (ind_member D 0) as [M0 |] eqn:HM0; [| reflexivity ].
-  pose proof (Hnm _ _ _ HM0 eq_refl) as E; cbn in E; subst nm.
-  unfold blocks_sub; cbn [List.map eblock_sub option_map]; do 3 f_equal.
-  replace (S (im_nn M0) - 1) with (im_nn M0) by lia.
-  apply ind_mty_shift_sub; assumption.
-Qed.
-
 Lemma hd_error_blocks_sub : forall Bks τ, List.hd_error (blocks_sub Bks τ) = option_map (fun b => eblock_sub b τ) (List.hd_error Bks).
 Proof. intros [| b Bks] τ; reflexivity. Qed.
-
-(** An eliminator at a view keeps its first block annotated. *)
-Lemma elim_view_ann_sub : forall D m Bks τ, elim_view_ann D m Bks -> elim_view_ann D m (blocks_sub Bks τ).
-Proof.
-  intros * [Hm | (b & Z & Hb & HZ)]; [ left; exact Hm | right ].
-  exists (eblock_sub b τ); destruct b as [nm oZ A Bs]; cbn in HZ; subst oZ.
-  eexists; split; [ rewrite hd_error_blocks_sub, Hb; reflexivity | reflexivity ].
-Qed.
 
 (** The motive of the block at the member [m], moved, at the non-uniform
     parameters and the scrutinee moved. *)
@@ -792,8 +778,7 @@ Lemma elim_at_sub : forall pq D oq Us Bks j M τ,
     decl_closed D -> List.length Us = ind_nu D -> blocks_nm_ok D Bks ->
     (elim_at pq D oq Us Bks j M)[τ] = elim_at pq D oq (List.map (fun U => U[τ]) Us) (blocks_sub Bks τ) j M[τ].
 Proof.
-  intros * HD Hl Hnm; unfold elim_at; destruct (j <? ind_ndecl D); rewrite exp_sub_elim; [ reflexivity |].
-  rewrite blocks_ann0_sub by assumption; reflexivity.
+  intros * HD Hl Hnm; unfold elim_at; destruct (ind_has_views D); rewrite exp_sub_elim; reflexivity.
 Qed.
 
 Lemma ptyp_ih_sb_eq : forall pq D oq t Us Bks σ σ' M, sb_eq σ σ' ->

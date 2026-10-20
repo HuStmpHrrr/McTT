@@ -263,7 +263,16 @@ Fixpoint exp_refs (S : list ptab) (M : exp) : list (ptab * string)%type :=
   | a_maxl M N => exp_refs S M ++ exp_refs S N
   | a_exfalso A M => exp_refs (pt_none :: S) A ++ exp_refs S M
   | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => nil
-  | a_elim _ _ Bks M =>
+  | a_elim _ oUs _ Bks M =>
+      match oUs with
+      | Some Us =>
+          (fix ups_refs (Us : list exp) : list (ptab * string)%type :=
+             match Us with
+             | nil => nil
+             | U :: Us' => exp_refs S U ++ ups_refs Us'
+             end) Us
+      | None => nil
+      end ++
       (fix blks_refs (Bks : list eblock) : list (ptab * string)%type :=
          match Bks with
          | nil => nil

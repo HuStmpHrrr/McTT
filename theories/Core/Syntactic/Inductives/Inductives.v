@@ -224,6 +224,68 @@ Fixpoint cargs_ctx_aux (pq : qname) (D : ind_decl) (nn : nat) (pat : list bool) 
 Definition cargs_ctx (pq : qname) (D : ind_decl) (M : imember) (gs : list carg) : ctx :=
   cargs_ctx_aux pq D (im_nn M) nil gs.
 
+(** ** The Group's Members as Variables
+
+    The equations of a group's views mention the group itself: a view's
+    instance is at the group's own types.  Before the group is filed they
+    are checked with its declared members as variables, [Self_j] for the
+    declared member [j], each of the member's type over the group's
+    uniform parameters, the [Self]s inside the uniform parameters
+    ([grp_sctx]); [IsS] gives each view's instance there.  Once the group
+    is filed at [pq], [grp_sb pq D] instantiates [Self_j] by the type former
+    [a_ind pq j] at the uniform parameters, and the checked forms become
+    the filed ones. *)
+Definition self_ty (D : ind_decl) (M : imember) : typ := ctx_pi (im_nparams M) (ind_sort D)[wk_shiftn (im_nn M)]ʷ.
+
+Fixpoint grp_selfs_from (D : ind_decl) (j : nat) (ms : list imember) : ctx :=
+  match ms with
+  | nil => nil
+  | M :: ms' => grp_selfs_from D (S j) ms' ++ ce_ass (self_ty D M)[wk_shiftn j]ʷ :: nil
+  end.
+
+Definition grp_selfs (D : ind_decl) : ctx := grp_selfs_from D 0 (List.firstn (ind_ndecl D) (ind_members D)).
+
+Definition grp_sctx (D : ind_decl) : ctx := grp_selfs D ++ ind_uparams D.
+
+Definition grp_sb (pq : qname) (D : ind_decl) : sub :=
+  sb_of_list sb_id (List.map (fun j => apps (a_ind pq j) (vars_from 0 (ind_nu D))) (List.seq 0 (ind_ndecl D))).
+
+(** The group's own data, which never mentions the group, moved under the
+    [Self]s: [k] binders above the uniform parameters. *)
+Definition self_wk (D : ind_decl) (k : nat) : wk := wk_qn k (wk_shiftn (ind_ndecl D)).
+
+(** The type of the member [j] with the members as variables, [d] binders
+    above the [Self]s, at the non-uniform parameters [Ns]: [Self_j] at a
+    declared member, the container's at the view's instance [IsS j] at a
+    view. *)
+Definition self_mty (D : ind_decl) (IsS : nat -> list exp) (j d : nat) (Ns : list exp) : typ :=
+  match ind_member D j with
+  | Some Mj =>
+      match im_head Mj with
+      | mh_decl _ => apps_exp (a_var (d + (ind_ndecl D - 1 - j))) Ns
+      | mh_view qc kc _ _ => apps_exp (a_ind qc kc) (List.map (fun I => I[wk_shiftn d]ʷ) (IsS j) ++ Ns)
+      end
+  | None => a_True
+  end.
+
+(** [ptyp_ty] and [cargs_ctx] with the members as variables. *)
+Fixpoint sptyp_ty (D : ind_decl) (IsS : nat -> list exp) (nn : nat) (pat : list bool) (t : ptyp) : typ :=
+  match t with
+  | pt_pi A t => a_pi A[wk_pat pat]ʷ[self_wk D (List.length pat + nn)]ʷ (sptyp_ty D IsS nn (false :: pat) t)
+  | pt_self j Ps => self_mty D IsS j (List.length pat + nn)
+                      (List.map (fun P => P[wk_pat pat]ʷ[self_wk D (List.length pat + nn)]ʷ) Ps)
+  end.
+
+Fixpoint scargs_ctx_aux (D : ind_decl) (IsS : nat -> list exp) (nn : nat) (pat : list bool) (gs : list carg) : ctx :=
+  match gs with
+  | nil => nil
+  | ca_arg A :: gs' => scargs_ctx_aux D IsS nn (false :: pat) gs' ++ ce_ass A[wk_pat pat]ʷ[self_wk D (List.length pat + nn)]ʷ :: nil
+  | ca_rec t :: gs' => scargs_ctx_aux D IsS nn (true :: pat) gs' ++ ce_ass (sptyp_ty D IsS nn pat t) :: nil
+  end.
+
+Definition scargs_ctx (D : ind_decl) (IsS : nat -> list exp) (M : imember) (gs : list carg) : ctx :=
+  scargs_ctx_aux D IsS (im_nn M) nil gs.
+
 (** The type of a constructor of the member [k]: a [Π] over the
     parameters and the arguments of the member at the parameters.  (For a
     view, this is the type of the container's constructor at the view's
@@ -332,7 +394,8 @@ Definition blocks_wk (Bks : list eblock) (φ : wk) : list eblock :=
           (List.map (fun br => (fst br, exp_wk (snd br) (wk_qn (snd (fst br)) φ))) Bs)
     end) Bks.
 
-Lemma exp_wk_elim : forall oq m Bks M φ, (a_elim oq m Bks M)[φ]ʷ = a_elim oq m (blocks_wk Bks φ) M[φ]ʷ.
+Lemma exp_wk_elim : forall oq oUs m Bks M φ,
+    (a_elim oq oUs m Bks M)[φ]ʷ = a_elim oq (option_map (List.map (fun U => U[φ]ʷ)) oUs) m (blocks_wk Bks φ) M[φ]ʷ.
 Proof. reflexivity. Qed.
 
 (** The motives of the blocks, in order. *)
@@ -370,23 +433,16 @@ Definition motives_sel (sel : option (list nat)) (As : list exp) : list exp :=
 Definition blocks_nm_at (Dq : ind_decl) (sel : option (list nat)) (Bks : list eblock) : Prop :=
   forall i Mi b, ind_member Dq i = Some Mi -> List.nth_error Bks (elim_src sel i) = Some b -> eb_nm b = S (im_nn Mi).
 
-(** The blocks with the first one annotated by the type of the first
-    member at the uniform parameters [Us]: the eliminator at a view must
-    have its first block annotated, so that its uniform parameters can be
-    read off it ([wf_elim]); the recursive results at a view are formed so. *)
-Definition blocks_ann0 (pq : qname) (D : ind_decl) (Us : list exp) (Bks : list eblock) : list eblock :=
-  match Bks, ind_member D 0 with
-  | eb_mk nm _ A Bs :: Bks', Some M0 =>
-      eb_mk nm (Some (ind_mty pq D 0 (List.map (fun U => U[wk_shiftn (im_nn M0)]ʷ) Us) (vars_from 0 (im_nn M0)))) A Bs
-        :: Bks'
-  | _, _ => Bks
-  end.
+(** The uniform parameters an eliminator of the group carries: [Us] for a
+    group with views, none otherwise. *)
+Definition elim_ups (D : ind_decl) (Us : list exp) : option (list exp) :=
+  if ind_has_views D then Some Us else None.
 
-(** The eliminator a recursive result at the member [j] is: at a declared
-    member the eliminator itself, at a view the eliminator of the group,
-    its first block annotated. *)
+(** The eliminator a recursive result at the member [j] is: for a group
+    with views the group's, at its uniform parameters [Us]; for one
+    without, the eliminator itself. *)
 Definition elim_at (pq : qname) (D : ind_decl) (oq : option qname) (Us : list exp) (Bks : list eblock) (j : nat) (M : exp) : exp :=
-  if j <? ind_ndecl D then a_elim oq j Bks M else a_elim (Some pq) j (blocks_ann0 pq D Us Bks) M.
+  if ind_has_views D then a_elim (Some pq) (Some Us) j Bks M else a_elim oq None j Bks M.
 
 (** The recursive result of an argument [M] of shape [t], as an
     elimination: under the shape's domains, moved by [σ], the eliminator at
@@ -419,11 +475,6 @@ Definition brs_names (cs : list (string * list carg)) (Bs : list (string * nat *
     at a declared member. *)
 Definition elim_grp (D : ind_decl) (oq : option qname) (pq : qname) (m : nat) : Prop :=
   oq = Some pq \/ (oq = None /\ m < ind_ndecl D).
-
-(** An eliminator at a view has its first block annotated: the uniform
-    parameters are read off the annotation. *)
-Definition elim_view_ann (D : ind_decl) (m : nat) (Bks : list eblock) : Prop :=
-  m < ind_ndecl D \/ (exists b Z, List.hd_error Bks = Some b /\ eb_ann b = Some Z).
 
 (** The components of a recursive argument's shape as the type of the
     argument has them: the domain [d], under the arguments before it ([pat])
@@ -572,7 +623,8 @@ Fixpoint exp_mvc (n : nat) (M : exp) : Prop :=
   | a_maxl M N => exp_mvc n M /\ exp_mvc n N
   | a_exfalso A M => exp_mvc (S n) A /\ exp_mvc n M
   | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => True
-  | a_elim _ _ Bks M =>
+  | a_elim _ oUs _ Bks M =>
+      opt_all (all_list (exp_mvc n)) oUs /\
       all_blocks (fun nm oZ A Bs => opt_all (exp_mvc (nm - 1 + n)) oZ /\ exp_mvc (nm + n) A /\
                                     all_brs (fun k B => exp_mvc (k + n) B) Bs) Bks /\ exp_mvc n M
   | a_pi A B | a_fn A B => exp_mvc n A /\ exp_mvc (S n) B

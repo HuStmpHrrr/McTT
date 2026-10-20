@@ -114,7 +114,8 @@ Proof.
     first [ apply Nat.eq_dec | apply string_dec | apply qname_eq_dec | apply bool_dec
           | apply list_eq_dec, string_dec | apply o2_eq_dec | apply (list_eq_dec exp_eq_dec)
           | apply (list_eq_dec centry_eq_dec) | apply (eblocks_eq_dec_g exp_eq_dec)
-          | apply (ind_decl_eq_dec_g exp_eq_dec centry_eq_dec) | idtac ].
+          | apply (ind_decl_eq_dec_g exp_eq_dec centry_eq_dec)
+          | (decide equality; apply (list_eq_dec exp_eq_dec)) | idtac ].
   all: try (decide equality; fail).
   all: try (decide equality; apply qname_eq_dec).
   (* the items of an open *)

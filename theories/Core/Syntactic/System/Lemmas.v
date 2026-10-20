@@ -427,7 +427,7 @@ Qed.
     contexts, which the induction hypotheses of the telescope premises
     give; the annotations of the second side by the equations of the
     annotated contexts. *)
-Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D oq m Mm Bks bm Ps M i,
+Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D oq oUs m Mm Bks bm Ps M i,
     ind_lookup Θ Ξ p = Some D ->
     elim_grp D oq p m ->
     ind_member D m = Some Mm ->
@@ -436,9 +436,11 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D oq m Mm Bks bm Ps M i,
     List.length Ps = im_np D Mm ->
     (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
        Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
+    (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
+       forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ P[τ] ≈ P[τ'] : T[τ]) ->
     (forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ ->
        Θ ⍮ Ξ ⍮ Δ0 ⊢ M[τ] ≈ M[τ'] : (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps))[τ]) ->
-    elim_view_ann D m Bks ->
+    oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
@@ -514,10 +516,10 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D oq m Mm Bks bm Ps M i,
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ->
        Θ ⍮ Ξ ⍮ Δ0 ⊢ B[τ] ≈ B[τ'] : (elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[τ]) ->
     Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ ≈ σ' : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq m Bks M)[σ] ≈ (a_elim oq m Bks M)[σ']
+    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq oUs m Bks M)[σ] ≈ (a_elim oq oUs m Bks M)[σ']
       : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
 Proof.
-  intros * Hl Hg HMm Hbm HlB HlP HPs IHM Hann Hnm HZ IHZ HA IHA HΨ IHΨ Hn HΨB IHΨB Hk HB IHB Hσ.
+  intros * Hl Hg HMm Hbm HlB HlP HPs IHPs IHM Hann Hnm HZ IHZ HA IHA HΨ IHΨ Hn HΨB IHΨB Hk HB IHB Hσ.
   pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hs'.
   assert (HD : decl_closed D) by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hs) | exact Hl ]).
   assert (HUl : List.length (List.firstn (ind_nu D) Ps) = ind_nu D) by (rewrite List.length_firstn; unfold im_np in HlP; lia).
@@ -554,9 +556,14 @@ Proof.
     [ exact Hl | exact Hg | exact Hg | exact HMm | rewrite nth_error_blocks_sub, Hbm; reflexivity
     | rewrite length_blocks_sub; exact HlB | rewrite length_blocks_sub; exact HlB | rewrite List.length_map; exact HlP | .. ].
   - eapply mv_elim_params with (R := sub_as_sub Θ Ξ); eassumption.
+  - rewrite List.length_map; exact HlP.
+  - intros j0 P0 P0' T0 HP HP' HT; erewrite <- params_insts_sub in HT by eassumption.
+    apply nth_error_map_inv in HP as (P & HP & ->); apply nth_error_map_inv in HP' as (P2 & HP' & ->).
+    rewrite HP in HP'; injection HP' as <-; apply nth_error_map_inv in HT as (T & HT & ->).
+    exact (IHPs _ _ _ HP HT _ _ _ Hσ).
   - rewrite <- ind_mty_split_sub by (try assumption; unfold im_np in HlP; lia); exact (IHM _ _ _ Hσ).
-  - apply elim_view_ann_sub; exact Hann.
-  - apply elim_view_ann_sub; exact Hann.
+  - apply mv_elim_ups; exact Hann.
+  - apply mv_elim_ups; exact Hann.
   - apply blocks_nm_ok_sub; exact Hnm.
   - apply blocks_nm_ok_sub; exact Hnm.
   - rewrite List.firstn_map; eapply mv_blocks_ann with (R := sub_as_sub Θ Ξ); eassumption.

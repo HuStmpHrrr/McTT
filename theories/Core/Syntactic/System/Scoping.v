@@ -31,7 +31,8 @@ Fixpoint exp_scoped (n : nat) (M : exp) : Prop :=
   | a_maxl M N => exp_scoped n M /\ exp_scoped n N
   | a_exfalso A M => exp_scoped (S n) A /\ exp_scoped n M
   | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => True
-  | a_elim _ _ Bks M =>
+  | a_elim _ oUs _ Bks M =>
+      opt_all (all_list (exp_scoped n)) oUs /\
       all_blocks (fun nm oZ A Bs => opt_all (exp_scoped (nm - 1 + n)) oZ /\ exp_scoped (nm + n) A /\
                                     all_brs (fun k B => exp_scoped (k + n) B) Bs) Bks /\ exp_scoped n M
   | a_pi A B | a_fn A B => exp_scoped n A /\ exp_scoped (S n) B
@@ -194,6 +195,7 @@ Proof.
            | B : option exp |- _ => destruct B
            end; cbn in *; destruct_all;
     repeat split; try lia; eauto with arith.
+  all: try ups_case ltac:(fun H => eapply H; [| eassumption ]; lia).
   1: blocks_case ltac:(fun H => eapply H; [| eassumption ]; lia).
   clear - H H1 H2; induction H; cbn in *; destruct_all; [ auto |].
   split; [ eapply H; [| eassumption ]; lia | auto ].
@@ -252,6 +254,7 @@ Lemma syn_scoped_wk :
 Proof.
   pose proof wk_q_bound as lift1; pose proof wk_qn_bound as lift.
   syn_mut_ind; scoped_law_case lift1 lift.
+  all: try ups_case ltac:(fun H => eapply H; eassumption).
   all: blocks_case ltac:(fun H => eapply H; [ eassumption | eapply lift; eassumption ]).
 Qed.
 
@@ -315,6 +318,7 @@ Lemma syn_scoped_sub :
 Proof.
   pose proof sb_q_bound as lift1; pose proof sb_qn_bound as lift.
   syn_mut_ind; scoped_law_case lift1 lift.
+  all: try ups_case ltac:(fun H => eapply H; eassumption).
   all: blocks_case ltac:(fun H => eapply H; [ eassumption | eapply lift; eassumption ]).
 Qed.
 
@@ -370,6 +374,7 @@ Lemma syn_scoped_wk_id :
 Proof.
   pose proof wk_q_fix as lift1; pose proof wk_qn_fix as lift.
   syn_mut_ind; scoped_id_case lift1 lift tele_wk_id_gen.
+  all: try ups_eq_case ltac:(fun H => eapply H; eassumption).
   all: blocks_eq_case ltac:(fun H => eapply H; [ eassumption | eapply lift; eassumption ]).
 Qed.
 
@@ -385,6 +390,7 @@ Lemma syn_scoped_sub_id :
 Proof.
   pose proof sb_q_fix as lift1; pose proof sb_qn_fix as lift.
   syn_mut_ind; scoped_id_case lift1 lift tele_sub_id_gen.
+  all: try ups_eq_case ltac:(fun H => eapply H; eassumption).
   all: blocks_eq_case ltac:(fun H => eapply H; [ eassumption | eapply lift; eassumption ]).
 Qed.
 
@@ -439,6 +445,7 @@ Lemma syn_scoped_sub_agree :
 Proof.
   pose proof sb_q_agree as lift1; pose proof sb_qn_agree as lift.
   syn_mut_ind; scoped_agree_case lift1 lift tele_sub_agree_gen.
+  all: try ups_eq_case ltac:(fun H => eapply H; eassumption).
   all: blocks_eq_case ltac:(fun H => eapply H; [ eassumption | eapply lift; eassumption ]).
 Qed.
 
@@ -491,6 +498,7 @@ Proof.
            | B : option exp |- _ => destruct B
            end; cbn in *; destruct_all;
     repeat split; try lia; eauto with arith.
+  all: try ups_case ltac:(fun H => eapply H; [| eassumption ]; lia).
   - blocks_case ltac:(fun H => eapply H; [| eassumption ]; lia).
   - clear - H H1 H2; induction H; cbn in *; destruct_all; [ auto |].
     split; [ eapply H; [| eassumption ]; lia | auto ].
@@ -581,6 +589,7 @@ Lemma syn_mvc_sub_agree :
 Proof.
   syn_mut_ind; mvc_case.
   all: try solve [ eauto 8 using sb_q_agree, sb_q_exp_agree ].
+  all: try ups_eq_case ltac:(fun H => eapply H; eassumption).
   all: blocks_eq_case ltac:(fun H => eapply H; eauto using sb_qn_agree, sb_qn_exp_agree).
 Qed.
 
@@ -640,6 +649,7 @@ Lemma syn_mvc_wk :
 Proof.
   syn_mut_ind; mvc_wk_case.
   all: try solve [ eapply tele_wk_mvc_gen; eassumption ].
+  all: try ups_case ltac:(fun H => eapply H; eassumption).
   all: blocks_case ltac:(fun H => eapply H; [ eassumption | eapply wk_qn_bound; eassumption ]).
 Qed.
 
@@ -983,6 +993,33 @@ Qed.
 Lemma sb_id_bound : forall n x, x < n -> sentry_scoped n (Id x).
 Proof. intros; cbn; assumption. Qed.
 
+(** The members as variables: the context of the [Self]s has one entry per
+    declared member, and [grp_sb] sends it into the uniform parameters. *)
+Lemma ind_ndecl_le : forall D, ind_ndecl D <= List.length (ind_members D).
+Proof.
+  intros D; unfold ind_ndecl; induction (ind_members D) as [| M ms IH]; cbn; [ lia |].
+  destruct (im_is_decl M); cbn; lia.
+Qed.
+
+Lemma length_grp_selfs_from : forall D j ms, List.length (grp_selfs_from D j ms) = List.length ms.
+Proof. intros D j ms; revert j; induction ms as [| M ms IH]; intros; cbn; [ reflexivity | rewrite length_app, IH; cbn; lia ]. Qed.
+
+Lemma length_grp_sctx : forall D, List.length (grp_sctx D) = ind_ndecl D + ind_nu D.
+Proof.
+  intros; unfold grp_sctx, grp_selfs, ind_nu; rewrite length_app, length_grp_selfs_from, List.length_firstn.
+  pose proof (ind_ndecl_le D); lia.
+Qed.
+
+Lemma grp_sb_bound : forall pq D x, x < List.length (grp_sctx D) -> sentry_scoped (ind_nu D) (grp_sb pq D x).
+Proof.
+  intros * Hx; rewrite length_grp_sctx in Hx; unfold grp_sb.
+  apply (sb_of_list_bound _ _ (ind_nu D)).
+  - intros; apply sb_id_bound; assumption.
+  - apply List.Forall_map, List.Forall_forall; intros j _.
+    apply exp_scoped_apps; split; [ exact I | apply vars_from_scoped; lia ].
+  - rewrite length_map, List.length_seq; lia.
+Qed.
+
 Lemma exp_scoped_sb_of_list : forall A Ms n,
     exp_scoped (List.length Ms + n) A -> List.Forall (exp_scoped n) Ms -> exp_scoped n A[sb_of_list Id Ms].
 Proof. intros; eapply exp_scoped_sub; [ eassumption |]; apply sb_of_list_bound; [ exact (sb_id_bound n) | assumption ]. Qed.
@@ -1134,6 +1171,32 @@ Proof.
   apply List.nth_error_None in HT; assert (Hk' : nth_error Ms k <> None) by congruence; apply List.nth_error_Some in Hk'; lia.
 Qed.
 
+(** The same for the right sides of pointwise equations. *)
+Lemma nth_typed_scoped_r : forall (Ms Ms' Ts : list typ) n,
+    List.length Ms' = List.length Ms -> List.length Ts = List.length Ms ->
+    (forall k M M' T, nth_error Ms k = Some M -> nth_error Ms' k = Some M' -> nth_error Ts k = Some T -> exp_scoped n M') ->
+    List.Forall (exp_scoped n) Ms'.
+Proof.
+  intros * Hl' Hl H; apply List.Forall_forall; intros M' HM'.
+  destruct (List.In_nth_error _ _ HM') as [k Hk].
+  assert (Hk' : k < List.length Ms') by (apply List.nth_error_Some; congruence).
+  destruct (nth_error Ms k) as [M |] eqn:HM; [| apply List.nth_error_None in HM; lia ].
+  destruct (nth_error Ts k) as [T |] eqn:HT; [ eauto | apply List.nth_error_None in HT; lia ].
+Qed.
+
+(** A view's uniform arguments, read from their form with the members as
+    variables, are over the uniform parameters. *)
+Lemma view_is_scoped : forall pq D (IsS : nat -> list exp) k Is (Ts : list typ),
+    Is = List.map (fun I => I[grp_sb pq D]) (IsS k) ->
+    List.length Ts = List.length (IsS k) ->
+    (forall j I T, nth_error (IsS k) j = Some I -> nth_error Ts j = Some T -> exp_scoped (List.length (grp_sctx D)) I) ->
+    List.Forall (exp_scoped (ind_nu D)) Is.
+Proof.
+  intros * -> Hl H; apply List.Forall_map.
+  eapply List.Forall_impl; [| exact (nth_typed_scoped _ _ _ Hl H) ].
+  intros I HI; eapply exp_scoped_sub; [ exact HI | apply grp_sb_bound ].
+Qed.
+
 Lemma length_im_params : forall D M, List.length (im_params D M) = im_np D M.
 Proof. intros; unfold im_params, im_np, im_nn, ind_nu; rewrite length_app; reflexivity. Qed.
 
@@ -1200,8 +1263,19 @@ Definition blocks_scoped (m : nat) (Bks : list eblock) : Prop :=
   all_blocks (fun nm oZ A Bs => opt_all (exp_scoped (nm - 1 + m)) oZ /\ exp_scoped (nm + m) A /\
                                 all_brs (fun k B => exp_scoped (k + m) B) Bs) Bks.
 
-Lemma exp_scoped_elim : forall n oq k Bks M, exp_scoped n (a_elim oq k Bks M) <-> blocks_scoped n Bks /\ exp_scoped n M.
+(** The uniform parameters an eliminator carries, scoped. *)
+Definition ups_scoped (n : nat) (oUs : option (list exp)) : Prop :=
+  opt_all (all_list (exp_scoped n)) oUs.
+
+Lemma exp_scoped_elim : forall n oq oUs k Bks M,
+    exp_scoped n (a_elim oq oUs k Bks M) <-> ups_scoped n oUs /\ blocks_scoped n Bks /\ exp_scoped n M.
 Proof. reflexivity. Qed.
+
+Lemma ups_scoped_some : forall n Us, ups_scoped n (Some Us) <-> List.Forall (exp_scoped n) Us.
+Proof. intros; apply all_list_Forall. Qed.
+
+Lemma elim_ups_scoped : forall n D Us, List.Forall (exp_scoped n) Us -> ups_scoped n (elim_ups D Us).
+Proof. intros * H; unfold elim_ups; destruct (ind_has_views D); [ apply ups_scoped_some; exact H | exact I ]. Qed.
 
 Lemma blocks_wk_scoped : forall Bks m n φ, blocks_scoped m Bks ->
     (forall x, x < m -> φ x < n) -> blocks_scoped n (blocks_wk Bks φ).
@@ -1212,26 +1286,6 @@ Proof.
   - destruct oZ; cbn in *; [| exact I ]; eapply exp_scoped_wk; [ exact HZ |]; apply wk_qn_bound; exact Hφ.
   - eapply exp_scoped_wk; [ exact HA |]; apply wk_qn_bound; exact Hφ.
   - exact (brs_wk_scoped _ _ _ _ HBs Hφ).
-Qed.
-
-(** The blocks with the first annotated, at uniform parameters as scoped as
-    the blocks, the first block binding the first member's non-uniform
-    parameters and the scrutinee. *)
-Lemma blocks_ann0_scoped : forall pq D Us Bks m,
-    decl_closed D -> List.length Us = ind_nu D -> List.Forall (exp_scoped m) Us ->
-    (forall M0 b, ind_member D 0 = Some M0 -> List.nth_error Bks 0 = Some b -> eb_nm b = S (im_nn M0)) ->
-    blocks_scoped m Bks -> blocks_scoped m (blocks_ann0 pq D Us Bks).
-Proof.
-  intros * HD Hl HUs Hnm HB; unfold blocks_ann0.
-  destruct Bks as [| [nm oZ A Bs] Bks]; [ exact HB |].
-  destruct (ind_member D 0) as [M0 |] eqn:HM0; [| exact HB ].
-  destruct HB as [(_ & HA & HBs) HBks]; specialize (Hnm _ _ eq_refl eq_refl); cbn in Hnm; subst nm.
-  split; [| exact HBks ]; split; [| split; assumption ]; cbn.
-  replace (S (im_nn M0) - 1 + m) with (im_nn M0 + m) by lia.
-  apply ind_mty_scoped; [ exact HD | rewrite length_map; exact Hl | |].
-  - apply List.Forall_map; eapply List.Forall_impl; [| exact HUs ]; intros U HU.
-    eapply exp_scoped_wk; [ exact HU |]; intros; unfold wk_shiftn; lia.
-  - apply vars_from_scoped; lia.
 Qed.
 
 Lemma sb_ext_bound : forall σ N n m,
@@ -1265,9 +1319,8 @@ Lemma elim_at_scoped : forall pq D oq Us Bks j M m,
     exp_scoped m (elim_at pq D oq Us Bks j M).
 Proof.
   intros * HD Hl HUs Hnm HB HM; unfold elim_at.
-  destruct (j <? ind_ndecl D); (split; [| exact HM ]); [ exact HB |].
-  apply blocks_ann0_scoped; [ assumption | assumption | assumption | | exact HB ].
-  intros M0 b H0 Hb; exact (Hnm _ _ _ H0 Hb).
+  destruct (ind_has_views D); (split; [| split; [ exact HB | exact HM ] ]); [| exact I ].
+  apply ups_scoped_some; exact HUs.
 Qed.
 
 Lemma blocks_nm_ok_wk : forall D Bks φ, blocks_nm_ok D Bks -> blocks_nm_ok D (blocks_wk Bks φ).

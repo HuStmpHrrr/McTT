@@ -352,11 +352,13 @@ Proof.
     econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
 Qed.
 
-(** What the eliminator [a_elim oq m Bks M] is typed by: the premises of
-    [wf_elim], and the type it gives below [T]. *)
+(** What the eliminator [a_elim oq oUs m Bks M] is typed by: the premises of
+    [wf_elim], and the type it gives below [T].  The stored uniform
+    parameters are exactly those of the derivation ([ei_ups]): convertible
+    ones are reached only through the congruence rule. *)
 #[warnings="-cannot-define-projection"]
-Record elim_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (oq : option qname) (m : nat) (Bks : list eblock) (M T : typ)
-    : Prop := mk_elim_inv
+Record elim_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (oq : option qname) (oUs : option (list exp)) (m : nat)
+    (Bks : list eblock) (M T : typ) : Prop := mk_elim_inv
   { ei_grp : qname
   ; ei_decl : ind_decl
   ; ei_mem : imember
@@ -372,15 +374,16 @@ Record elim_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (oq : option qname) (m : n
       List.nth_error (tele_insts (im_params ei_decl ei_mem) Id ei_params) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ P : T
   ; ei_scrut : Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty ei_grp ei_decl m (List.firstn (ind_nu ei_decl) ei_params)
                                  (List.skipn (ind_nu ei_decl) ei_params)
-  ; ei_ann : elim_view_ann ei_decl m Bks
+  ; ei_ups : oUs = elim_ups ei_decl (List.firstn (ind_nu ei_decl) ei_params)
   ; ei_blocks : blocks_typed Θ Ξ Γ ei_grp ei_decl (List.firstn (ind_nu ei_decl) ei_params) Bks ei_lvl
   ; ei_sub : Θ ⍮ Ξ ⍮ Γ ⊢ (eb_motive ei_block)[sb_of_list Id (List.skipn (ind_nu ei_decl) ei_params ++ M :: nil)] ⊆ T }.
 
-Lemma wf_elim_inversion : forall {Θ Ξ Γ oq m Bks M T}, Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq m Bks M : T -> elim_inv Θ Ξ Γ oq m Bks M T.
+Lemma wf_elim_inversion : forall {Θ Ξ Γ oq oUs m Bks M T}, Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq oUs m Bks M : T ->
+    elim_inv Θ Ξ Γ oq oUs m Bks M T.
 Proof.
   intros * H; dependent induction H.
-  - econstructor; try eassumption; [ constructor; eassumption |].
-    eapply wf_subtyp_of_typed; eapply wf_elim; eassumption.
-  - destruct (IHwf_exp1 _ _ _ _ eq_refl) as [p D Mm bm Ps i0 Hl Hg Hm Hb HPl HPs HM Hann HBt Hs].
+  - econstructor; try eassumption; try reflexivity; [ constructor; eassumption |].
+    eapply wf_subtyp_of_typed; eapply wf_elim; try eassumption; reflexivity.
+  - destruct (IHwf_exp1 _ _ _ _ _ eq_refl) as [p D Mm bm Ps i0 Hl Hg Hm Hb HPl HPs HM HUs HBt Hs].
     econstructor; try eassumption; eapply wf_subtyp_trans; eassumption.
 Qed.

@@ -229,7 +229,9 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
     parameters, the constructor's arguments and the recursive results, the
     result of an argument recursive in the member [j] being at the motive
     of [j].  The parameters are typed one by one, at the instances of their
-    telescope.  At a view the first block is annotated. *)
+    telescope.  A group with views has the uniform parameters on the
+    eliminator ([elim_ups]): the scrutinee and each annotated block are at
+    the members' types at them. *)
 | wf_elim :
   `( ind_lookup Θ Ξ p = Some D ->
      elim_grp D oq p m ->
@@ -240,7 +242,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
-     elim_view_ann D m Bks ->
+     oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
      (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
@@ -260,7 +262,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq oUs m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 (** A [Π] is in a universe its domain and codomain are in, small or large.
     The codomain's universe is the weakening of the domain's: a universe that
     mentions the bound variable has no name here. *)
@@ -428,9 +430,12 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      List.length Ps = im_np D Mm ->
      (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
+     List.length Ps' = im_np D Mm ->
+     (forall k P P' T, nth_error Ps k = Some P -> nth_error Ps' k = Some P' ->
+        nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ P ≈ P' : T) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
-     elim_view_ann D m Bks ->
-     elim_view_ann D m Bks' ->
+     oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
+     oUs' = elim_ups D (List.firstn (ind_nu D) Ps') ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_nm b = S (im_nn Mk)) ->
      (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
@@ -460,7 +465,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         ind_con Mk c = Some gs ->
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B ≈ B'
           : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq m Bks M ≈ a_elim oq' m Bks' M' : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq oUs m Bks M ≈ a_elim oq' oUs' m Bks' M' : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 | wf_exp_eq_pi_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A : U ->
@@ -536,7 +541,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      List.length As = List.length gs ->
      (forall k N T, nth_error As k = Some N -> nth_error (tele_insts (cargs_ctx p D Mm gs) (sb_of_list Id Ps) As) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ N : T) ->
-     elim_view_ann D m Bks ->
+     oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
      (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
@@ -557,7 +562,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      brs_lookup (eb_brs bm) c = Some (n, B) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq oUs m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                                     (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As))
        ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++
                           elim_ihs p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) gs As)]
@@ -568,7 +573,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
     the container's member, its blocks those of the members of this group
     that are the container's group's members at the view's arguments
     ([vwrap], E1′): a stuck eliminator at a view is a stuck one of the
-    container. *)
+    container, at the container's uniform parameters (the view's
+    arguments) when the container's group has views too. *)
 | wf_exp_eq_elim_view :
   `( ind_lookup Θ Ξ p = Some D ->
      elim_grp D oq p m ->
@@ -582,7 +588,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
-     elim_view_ann D m Bks ->
+     oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
      (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
@@ -602,7 +608,9 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq m Bks M ≈ a_elim (Some qc) k' (vwrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq oUs m Bks M
+       ≈ a_elim (Some qc) (elim_ups D' (im_pre Mm (List.firstn (ind_nu D) Ps))) k'
+           (vwrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
        : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 (** A constructor of a view at the group's uniform parameters [Us] is the
     container's constructor at the view's arguments there, both sides at
@@ -1058,10 +1066,15 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
           List.nth_error vm k' = Some k /\
           List.map fst (im_cons Mk) = List.map fst (im_cons Mk') /\
           (forall c gs' gs, ind_con Mk' c = Some gs' -> ind_con Mk c = Some gs -> cargs_corr vm gs' gs)) ->
+     (** each view's instance [Is] is [IsS] with the members as variables
+         ([grp_sctx]); the instance and the view equations are checked
+         there, as the group is not filed yet *)
+     (forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+        Is = List.map (fun I => I[grp_sb mp D]) (IsS k)) ->
      (forall k Mk qc k' Is vm D' j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
-        ind_lookup Θ Ξ qc = Some D' -> nth_error Is j = Some I ->
-        nth_error (tele_insts (ind_uparams D') Id Is) j = Some T ->
-        Θ ⍮ Ξ ⍮ ind_uparams D ⊢ I : T) ->
+        ind_lookup Θ Ξ qc = Some D' -> nth_error (IsS k) j = Some I ->
+        nth_error (tele_insts (ind_uparams D') Id (IsS k)) j = Some T ->
+        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T) ->
      (forall k Mk qc k' Is vm D' i' Mi' v pm', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_decl pm' ->
         nth_error vm i' = Some v ->
@@ -1076,10 +1089,10 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
         ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_view q'' k'' Is'' vm'' ->
         ind_lookup Θ Ξ q'' = Some D'' ->
         nth_error vm i' = Some v -> ind_member D v = Some Mv -> im_head Mv = mh_view q'' k'' X vm' ->
-        nth_error X j' = Some C ->
-        nth_error (List.map (fun I => I[sb_of_list Id Is]) Is'') j' = Some C' ->
+        nth_error (IsS v) j' = Some C ->
+        nth_error (List.map (fun I => I[sb_of_list Id (IsS k)]) Is'') j' = Some C' ->
         nth_error (tele_insts (ind_uparams D'') Id Is'') j' = Some T ->
-        Θ ⍮ Ξ ⍮ ind_uparams D ⊢ C ≈ C' : T[sb_of_list Id Is]) ->
+        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)]) ->
      (** the view equations, for each member [i'] of the container's group
          and the member [v] of this group the view takes it to: the
          non-uniform parameters, the arguments of each constructor, and, of an
@@ -1091,21 +1104,22 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      (forall k Mk qc k' Is vm D' i' Mi' v Mv, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
         ind_member D v = Some Mv ->
-        Θ ⍮ Ξ ⍮ ind_uparams D ⊢ˣ im_nparams Mv ≈ tele_sub (im_nparams Mi') (sb_of_list Id Is)) ->
+        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ˣ tele_wk (im_nparams Mv) (self_wk D 0) ≈ tele_sub (im_nparams Mi') (sb_of_list Id (IsS k))) ->
      (forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
         ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
-        Θ ⍮ Ξ ⍮ im_params D Mv
-          ⊢ˣ tele_sub (cargs_ctx qc D' Mi' gs') (sb_qn (im_nn Mv) (sb_of_list Id Is)) ≈ cargs_ctx mp D Mv gs) ->
+        Θ ⍮ Ξ ⍮ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+          ⊢ˣ tele_sub (cargs_ctx qc D' Mi' gs') (sb_qn (im_nn Mv) (sb_of_list Id (IsS k))) ≈ scargs_ctx D IsS Mv gs) ->
      (forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 d,
         ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
         ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
         gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 -> List.length gs1' = List.length gs1 ->
         d < ptyp_depth t ->
-        Θ ⍮ Ξ ⍮ sh_ctx (cargs_pat gs1) (List.firstn d (ptyp_doms t)) ++ cargs_ctx mp D Mv gs1 ++ im_params D Mv
-          ⊢ (ptyp_dom_at (cargs_pat gs1') d t')[sb_qn (d + List.length gs1 + im_nn Mv) (sb_of_list Id Is)]
-          ≈ ptyp_dom_at (cargs_pat gs1) d t : Typeω@i) ->
+        Θ ⍮ Ξ ⍮ tele_wk (sh_ctx (cargs_pat gs1) (List.firstn d (ptyp_doms t))) (self_wk D (List.length gs1 + im_nn Mv))
+                  ++ scargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+          ⊢ (ptyp_dom_at (cargs_pat gs1') d t')[sb_qn (d + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
+          ≈ (ptyp_dom_at (cargs_pat gs1) d t)[self_wk D (d + List.length gs1 + im_nn Mv)]ʷ : Typeω@i) ->
      (forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 Mj j P' P T,
         ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
@@ -1115,8 +1129,10 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
         nth_error (ptyp_ps_at (cargs_pat gs1') t') j = Some P' -> nth_error (ptyp_ps_at (cargs_pat gs1) t) j = Some P ->
         nth_error (tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D (im_nn Mv) (ptyp_depth t + List.length gs1)))
                      (ptyp_ps_at (cargs_pat gs1) t)) j = Some T ->
-        Θ ⍮ Ξ ⍮ sh_ctx (cargs_pat gs1) (ptyp_doms t) ++ cargs_ctx mp D Mv gs1 ++ im_params D Mv
-          ⊢ P'[sb_qn (ptyp_depth t + List.length gs1 + im_nn Mv) (sb_of_list Id Is)] : T) ->
+        Θ ⍮ Ξ ⍮ tele_wk (sh_ctx (cargs_pat gs1) (ptyp_doms t)) (self_wk D (List.length gs1 + im_nn Mv))
+                  ++ scargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+          ⊢ P'[sb_qn (ptyp_depth t + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
+          : T[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ) ->
      (forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 Mj j P' P T,
         ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
@@ -1126,11 +1142,14 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
         nth_error (ptyp_ps_at (cargs_pat gs1') t') j = Some P' -> nth_error (ptyp_ps_at (cargs_pat gs1) t) j = Some P ->
         nth_error (tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D (im_nn Mv) (ptyp_depth t + List.length gs1)))
                      (ptyp_ps_at (cargs_pat gs1) t)) j = Some T ->
-        Θ ⍮ Ξ ⍮ sh_ctx (cargs_pat gs1) (ptyp_doms t) ++ cargs_ctx mp D Mv gs1 ++ im_params D Mv
-          ⊢ P'[sb_qn (ptyp_depth t + List.length gs1 + im_nn Mv) (sb_of_list Id Is)] ≈ P : T) ->
+        Θ ⍮ Ξ ⍮ tele_wk (sh_ctx (cargs_pat gs1) (ptyp_doms t)) (self_wk D (List.length gs1 + im_nn Mv))
+                  ++ scargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+          ⊢ P'[sb_qn (ptyp_depth t + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
+          ≈ P[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ
+          : T[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ) ->
      (forall k Mk qc k' Is vm D', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         ind_lookup Θ Ξ qc = Some D' ->
-        Θ ⍮ Ξ ⍮ ind_uparams D ⊢ (ind_sort D')[sb_of_list Id Is] ⊆ ind_sort D) ->
+        Θ ⍮ Ξ ⍮ grp_sctx D ⊢ (ind_sort D')[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ) ->
      (** the views' nesting is well founded *)
      (exists rk, view_rank_ok Θ Ξ D rk) ->
      (** each view's members are those of the container's group, as the

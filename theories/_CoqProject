@@ -149,6 +149,7 @@
 ./Core/Syntactic/System/Global/LookupSound.v
 ./Core/Syntactic/System/Inductives/Typing.v
 ./Core/Syntactic/System/Inductives/Views.v
+./Core/Syntactic/System/Inductives/UniformParams.v
 ./Core/Syntactic/System/Inductives/Rec.v
 ./Core/Syntactic/System/Privacy.v
 ./Core/Syntactic/System/Scoping.v

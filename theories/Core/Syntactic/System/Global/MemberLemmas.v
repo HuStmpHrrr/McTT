@@ -1185,8 +1185,11 @@ Ltac ind_decl_scoped :=
     HP : forall k Mk c gs gs1 t gs2 Mj j P T, ind_member _ k = Some Mk -> In _ _ -> gs = _ -> ind_member _ _ = Some Mj ->
            nth_error _ j = Some P -> nth_error _ j = Some T -> (_ /\ _) /\ exp_scoped _ P /\ _,
     HX : forall k Mk qc k' Is vm, ind_member _ k = Some Mk -> im_head Mk = mh_view qc k' Is vm -> exists D', _,
+    HS : forall k Mk qc k' Is vm, ind_member _ k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+           Is = List.map _ _,
     HI : forall k Mk qc k' Is vm D' j I T, ind_member _ k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
-           ind_lookup _ _ qc = Some D' -> nth_error Is j = Some I -> nth_error _ j = Some T -> (_ /\ _) /\ exp_scoped _ I /\ _
+           ind_lookup _ _ qc = Some D' -> nth_error _ j = Some I -> nth_error _ j = Some T ->
+           (_ /\ _) /\ exp_scoped _ I /\ _
     |- decl_closed _ =>
       apply decl_closed_intro; [ assumption | assumption | assumption |];
       let HMk := fresh "HMk" in
@@ -1194,10 +1197,14 @@ Ltac ind_decl_scoped :=
       [ let E := fresh "E" in let HT := fresh "HT" in
         intros * E; edestruct HN as (_ & HT & _); [ exact HMk | exact E | exact HT ]
       | let Hh := fresh "Hh" in let D' := fresh "D'" in let HD' := fresh "HD'" in let HlIs := fresh "HlIs" in
+        let HSk := fresh "HSk" in
         intros * Hh; destruct (HX _ _ _ _ _ _ HMk Hh) as (D' & ? & HD' & _ & _ & HlIs & _);
-        lazymatch type of Hh with _ = mh_view _ _ ?Is _ =>
-          eapply (nth_typed_scoped Is (tele_insts (ind_uparams D') Id Is)) end;
-        [ rewrite length_tele_insts by exact (dc_ass _ (gctx_closed_ind _ _ _ _ Hc HD')); unfold ind_nu in HlIs; lia
+        pose proof (HS _ _ _ _ _ _ HMk Hh) as HSk;
+        lazymatch type of HSk with _ = List.map _ ?L =>
+          eapply (view_is_scoped _ _ _ _ _ (tele_insts (ind_uparams D') Id L)) end;
+        [ exact HSk
+        | rewrite length_tele_insts by exact (dc_ass _ (gctx_closed_ind _ _ _ _ Hc HD'));
+          rewrite HSk, length_map in HlIs; unfold ind_nu in HlIs; lia
         | let HI0 := fresh "HI0" in let HT0 := fresh "HT0" in let HIs := fresh "HIs" in
           intros ? ? ? HI0 HT0; edestruct HI as (_ & HIs & _); [ exact HMk | exact Hh | exact HD' | exact HI0 | exact HT0 | exact HIs ] ]
       | let Hin := fresh "Hin" in let E := fresh "E" in let HA0 := fresh "HA0" in
@@ -1238,6 +1245,14 @@ Ltac ind_list_scoped :=
              intros ? ? ? Hk HT; edestruct IH as (_ & ? & _); [ exact Hk | exact HT | eassumption ] ];
           first [ apply length_tele_insts_params; [ eapply decl_closed_params_ass; eassumption | assumption ]
                 | apply length_tele_insts_cargs; assumption ]
+      end
+    | match goal with IH : forall k P P' T, nth_error ?L0 k = Some P -> nth_error ?L k = Some P' -> _ -> _ /\ _ /\ exp_scoped _ P' /\ _
+                       |- List.Forall _ ?L =>
+        eapply (nth_typed_scoped_r L0);
+          [ congruence
+          | apply length_tele_insts_params; [ eapply decl_closed_params_ass; eassumption | assumption ]
+          | let Hk := fresh "Hk" in let Hk' := fresh "Hk'" in let HT := fresh "HT" in
+            intros ? ? ? ? Hk Hk' HT; edestruct IH as (_ & _ & ? & _); [ exact Hk | exact Hk' | exact HT | eassumption ] ]
       end
     | eapply im_pre_scoped; [ eassumption | eassumption | rewrite List.length_firstn; unfold im_np in *; lia |]
     | eapply elim_ihs_scoped_at; [ eassumption | eassumption | eassumption | assumption | eassumption | ind_blocks_scoped | |] ].
@@ -1400,6 +1415,12 @@ Proof.
     apply gunit_scoped_mk in HU; destruct HU as [HU1 HU2]; rewrite gunit_scoped_mk;
     first [ cbn [moddef_scoped modexp_scoped]; split; [ assumption | rewrite gunit_scoped_mk; split; assumption ]
           | rewrite ctx_scoped_app, length_app; split; [ split; assumption | rewrite <- Nat.add_assoc; exact HU2 ] ] end ].
+  (* the uniform parameters an eliminator carries *)
+  all: try solve [ try match goal with Heq : ?o = elim_ups _ _ |- opt_all _ ?o => subst o end;
+                   apply elim_ups_scoped;
+                   first [ eapply im_pre_scoped; [ eassumption | eassumption | rewrite List.length_firstn; unfold im_np in *; lia |];
+                           ind_list_scoped
+                         | ind_list_scoped ] ].
 Qed.
 
 (** ** Consequences *)
