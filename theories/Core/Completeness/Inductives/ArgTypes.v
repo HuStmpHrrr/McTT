@@ -275,6 +275,94 @@ Section GroupFacts.
     destruct (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ _ W1 Hl Hlc Hlx) as [_ _ _ [Hn0 Ha0 Hd0] _ _ _ _].
     exact (tele_rel_nr_change p D cs _ _ _ _ _ _ Hn0 Ha0 Hd0 k Mk HM a b Hab).
   Qed.
+
+  (** The canonical relations at two related uniform parameters agree, at
+      every member. *)
+  Lemma vg_fam_agree : forall ups ups2, per_gargs (List.rev (ind_uparams D)) nil nil ups ups2 -> List.length ups = ind_nu D ->
+      ind_fam_agree D (canon_nparams_rel D ups) (canon_nparams_rel D ups2) (canon_args_rel D ups) (canon_args_rel D ups2)
+        (canon_doms_rel ups) (canon_doms_rel ups2).
+  Proof.
+    intros ups ups2 Hg2 Hu.
+    pose proof (uparams_refl_l D HD Hc _ _ Hg2) as Hgd.
+    destruct (sort_value D HD ups Hgd Hu) as [a Ha].
+    destruct (vg_canon ups Hgd Hu) as [CnP CnI CaP CaI CdP CdI].
+    constructor.
+    - intros m Mm k vs vs1 vs2 HM Hk Hp _.
+      destruct (nparams_lt_ass D m Mm k Hass HM Hk) as [A HA].
+      pose proof (nparams_prefix_rel_refl_l p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI m Mm HM k vs vs1 ltac:(lia) Hp) as Hpp.
+      destruct (canon_hn D HD Hc Hsu ups a Hu Ha ups2 Hg2 m Mm k A vs vs HM HA Hpp) as (b & b' & Eb & Eb' & [R HR]).
+      unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HM HA).
+      etransitivity; [ symmetry; exact (per_head_left Eb Eb' HR) | exact (per_head_right Eb Eb' HR) ].
+    - intros m Mm ms ms1 ms2 c gs k vs vs1 vs2 HM Hm _ Hcon Hk Hp _.
+      destruct (nth_error_lt_some' _ _ Hk) as [A HA].
+      pose proof (nparams_rel_refl_l p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI m Mm HM _ _ Hm) as Hmm.
+      pose proof (args_rel_pre_refl_l p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI m Mm HM ms c gs Hmm Hcon k vs vs1 ltac:(lia) Hp)
+        as Hpp.
+      destruct (canon_ha D HD Hc Hsu ups a Hu Ha ups2 Hg2 m Mm ms ms c gs k A vs vs HM Hmm Hcon HA Hpp) as (b & b' & Eb & Eb' & [R HR]).
+      unfold canon_args_rel; rewrite (nth_atyp_eq _ _ _ _ _ _ _ HM Hcon HA).
+      etransitivity; [ symmetry; exact (per_head_left Eb Eb' HR) | exact (per_head_right Eb Eb' HR) ].
+    - intros m Mm ms ms1 ms2 c gs gs1 t gs2 ws ws1 ws2 k ys ys1 ys2 HM Hm _ Hcon Heq Hw _ Hk Hy _.
+      destruct (nth_error_lt_some' _ _ Hk) as [B HB].
+      pose proof (nparams_rel_refl_l p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI m Mm HM _ _ Hm) as Hmm.
+      assert (HK : List.length (cargs_nonrec gs1) <= List.length (cargs_nonrec gs))
+        by (rewrite Heq, cargs_nonrec_app, List.length_app; lia).
+      pose proof (args_rel_pre_refl_l p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI m Mm HM ms c gs Hmm Hcon _ ws ws1 HK Hw) as Hww.
+      pose proof (doms_rel_refl_l p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI m Mm HM ms c gs gs1 t gs2 ws Hmm Hcon Heq Hww
+                    k ys ys1 ltac:(lia) Hy) as Hyy.
+      destruct (canon_hd D HD Hc Hsu ups a Hu Ha ups2 Hg2 m Mm ms ms c gs gs1 t gs2 ws ws k B ys ys HM Hmm Hcon Heq Hww HB Hyy)
+        as (b & b' & Eb & Eb' & [R HR]).
+      unfold shape_doms_rel, canon_doms_rel; rewrite (List.nth_error_nth _ _ _ HB).
+      etransitivity; [ symmetry; exact (per_head_left Eb Eb' HR) | exact (per_head_right Eb Eb' HR) ].
+  Qed.
+
+  (** A recursive argument at the canonical relations, its right side
+      moved from the left base and prefix to related ones, and back
+      ([ind_rel_base_r], [ind_rel_pre_r]). *)
+  Lemma vg_rec_arg_move_right : forall k Mk c gs1 t gs2 ups ups' ms ms' ws ws' x y, ind_member D k = Some Mk ->
+      ind_con Mk c = Some (gs1 ++ ca_rec t :: gs2) ->
+      per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
+      tele_rel (canon_nparams_rel D ups k) (List.rev (im_nparams Mk)) ms ms' ->
+      tele_prefix_rel (canon_args_rel D ups k ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+      (rec_arg_rel p D (okr_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups)
+         k ups ups (ms ++ ws) (ms ++ ws) t x y <->
+       rec_arg_rel p D (okr_at D ups (canon_nparams_rel D ups)) (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups)
+         k ups ups' (ms ++ ws) (ms' ++ ws') t x y).
+  Proof.
+    intros * HM Hcon Hgu Hu Hm Hw.
+    pose proof (uparams_refl_l D HD Hc _ _ Hgu) as Hgd.
+    destruct (vg_canon ups Hgd Hu) as [CnP CnI CaP CaI CdP CdI].
+    pose proof (vg_adm ups ups Hgd Hu Hgd) as Add.
+    pose proof (vg_adm ups ups' Hgd Hu Hgu) as Ad'.
+    assert (HK : List.length (cargs_nonrec gs1) <= List.length (cargs_nonrec (gs1 ++ ca_rec t :: gs2)))
+      by (rewrite cargs_nonrec_app, List.length_app; lia).
+    pose proof (nparams_rel_refl_l p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI k Mk HM _ _ Hm) as Hmm.
+    pose proof (nparams_rel_sym p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI k Mk HM _ _ Hm) as Hm'm.
+    pose proof (args_rel_pre_refl_l p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI k Mk HM ms c _ Hmm Hcon _ _ _ HK Hw) as Hww.
+    assert (Hw'w : tele_prefix_rel (canon_args_rel D ups k ms' c) (List.length (cargs_nonrec gs1)) ws' ws).
+    { pose proof (args_prefix_rel_sym p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI k Mk HM ms c _ _ _ _ Hmm Hcon HK Hw) as H.
+      exact (args_prefix_rel_inst p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI k Mk HM ms ms' c _ _ _ _ Hm Hcon HK H). }
+    assert (Hy0 : forall ma wa, tele_prefix_rel (shape_doms_rel (canon_doms_rel ups k) ma wa (ptyp_doms t)) 0 nil nil)
+      by (intros; apply tele_prefix_rel_nil).
+    split; intro H.
+    - pose proof (proj1 (proj2 (proj2 (ind_rel_base_r p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI ups' Ad' ups Add)))
+                    _ _ _ _ _ _ _ _ H Mk ms ms c gs1 t gs2 ws ws 0 nil nil eq_refl HM
+                    ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity)
+                    Hmm Hcon Hww eq_refl (Nat.le_0_l _) (Hy0 _ _)) as H1.
+      pose proof (proj1 (proj2 (proj2 (ind_rel_pre_r p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI ups' Ad' Add)))
+                    _ _ _ _ _ _ _ _ H1 Mk ms ms ms' c gs1 t gs2 ws ws ws' 0 nil nil nil eq_refl HM
+                    ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity)
+                    Hmm Hm Hcon Hww Hw eq_refl (Nat.le_0_l _) (Hy0 _ _) (Hy0 _ _)) as H2.
+      rewrite List.app_nil_r in H2; exact H2.
+    - pose proof (proj1 (proj2 (proj2 (ind_rel_pre_r p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI ups' Ad' Add)))
+                    _ _ _ _ _ _ _ _ H Mk ms ms' ms c gs1 t gs2 ws ws' ws 0 nil nil nil eq_refl HM
+                    ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity)
+                    Hm Hm'm Hcon Hw Hw'w eq_refl (Nat.le_0_l _) (Hy0 _ _) (Hy0 _ _)) as H1.
+      rewrite List.app_nil_r in H1.
+      exact (proj1 (proj2 (proj2 (ind_rel_base_r p D ups _ _ _ Hass CnP CnI CaP CaI CdP CdI ups Add ups' Ad')))
+               _ _ _ _ _ _ _ _ H1 Mk ms ms c gs1 t gs2 ws ws 0 nil nil eq_refl HM
+               ltac:(rewrite List.app_nil_r; reflexivity) ltac:(rewrite List.app_nil_r; reflexivity)
+               Hmm Hcon Hww eq_refl (Nat.le_0_l _) (Hy0 _ _)).
+  Qed.
 End GroupFacts.
 
 (** ** Types in a Universe
@@ -714,6 +802,13 @@ Qed.
     [view_end_rel]: the relation of the view's type, the container's at
     any uniform parameters related to the instance, is the group's at the
     view. *)
+(** Every filed group is valid; then so are the containers of each. *)
+Definition groups_valid : Prop :=
+  forall qn G, ind_lookup gc_deps gc_stack qn = Some G -> valid_group qn G.
+
+Lemma containers_valid_of_groups : groups_valid -> forall D, containers_valid D.
+Proof. intros Hgv D k Mk qc k' Is vm Dq _ _ Hq; exact (Hgv _ _ Hq). Qed.
+
 Definition view_agreement_canonical (p : qname) (D : ind_decl) (ups ups' : list domain) (j : nat) : Prop :=
   forall Mj qc kc Is vm Dq cups cups', ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm ->
     ind_lookup gc_deps gc_stack qc = Some Dq ->
