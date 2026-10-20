@@ -608,6 +608,43 @@ Corollary vg_cargs_sem : forall p D, valid_group p D -> containers_valid D ->
     forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> ⊨ cargs_ctx p D Mk gs ++ im_params D Mk.
 Proof. intros * Hg Hcv * HM Hcon; exact (proj1 (vg_cargs_sem_all p D Hg Hcv k Mk c gs HM Hcon gs nil (eq_sym (List.app_nil_r gs)))). Qed.
 
+(** The type of a non-recursive argument, at arguments related at the
+    context of those before it: its relation is the canonical one of the
+    argument at their non-recursive values. *)
+Lemma vg_arg_head : forall pq G, valid_group pq G -> containers_valid G ->
+    forall k Mk c gs gs1 A gs2 U ms vs, ind_member G k = Some Mk -> ind_con Mk c = Some gs -> gs = gs1 ++ ca_arg A :: gs2 ->
+    List.length U = ind_nu G -> List.length ms = im_nn Mk -> List.length vs = List.length gs1 ->
+    per_gargs (List.rev (cargs_ctx pq G Mk gs1 ++ im_params G Mk)) nil nil (U ++ ms ++ vs) (U ++ ms ++ vs) ->
+    exists (i : nat) R a, ⟦ A[wk_pat (cargs_pat gs1)]ʷ ⟧ env_args nil (U ++ ms ++ vs) ↘ a /\ DF a ≈ a ∈ per_univ_elem i ↘ R /\
+      (R <~> canon_args_rel G U k ms c (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 vs)).
+Proof.
+  intros pq G Hg Hcv k Mk c gs gs1 A gs2 U ms vs HM Hcon Heq HlU Hlm Hlv Hgp.
+  pose proof (vgr_valid _ _ Hg) as HD.
+  destruct (vg_cargs_sem_all pq G Hg Hcv k Mk c gs HM Hcon gs1 (ca_arg A :: gs2) Heq) as [HW Hw].
+  assert (HA : List.nth_error (cargs_nonrec gs) (List.length (cargs_nonrec gs1)) = Some A)
+    by (rewrite Heq, cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
+  destruct (vid_arg _ HD _ _ _ _ _ _ HM Hcon HA) as (_ & j & HAv).
+  rewrite Heq, <- nonrec_args_prefix_cargs_strat in HAv.
+  destruct (rel_exp_under_ctx_wk_simple Hw HAv) as (RΓ & HΓ & i0 & Hwk).
+  assert (Hρ : RΓ (env_args nil (U ++ ms ++ vs)) (env_args nil (U ++ ms ++ vs))).
+  { apply (gargs_env_rel _ _ _ _ _ _ HΓ HW); [| exact Hgp ].
+    rewrite !List.length_app, length_cargs_ctx, length_im_params; unfold im_np, ind_nu in *; lia. }
+  destruct (Hwk _ _ Hρ) as (y & y' & Ry & Ey & Ey' & HRy & m & m' & Em & Em' & Hmm).
+  assert (Hy1 : y = d_univ j) by (cbn in Ey; inversion Ey; reflexivity).
+  rewrite Hy1 in HRy; clear Hy1 Ey Ey'.
+  destruct (per_univ_elem_univ _ _ _ _ HRy (or_introl (ex_intro _ _ eq_refl))) as [_ ERy].
+  apply ERy in Hmm; destruct Hmm as [Rm HRm].
+  assert (HwE : ⟪wk_pat (cargs_pat gs1)⟫ (env_args nil (U ++ ms ++ vs)) = env_args nil (U ++ ms ++ nonrec_arg_vals gs1 vs)).
+  { replace (U ++ ms ++ vs) with ((U ++ ms) ++ vs) by (rewrite <- List.app_assoc; reflexivity).
+    rewrite env_args_app, eval_wk_pat_args by exact Hlv; rewrite <- env_args_app, <- List.app_assoc; reflexivity. }
+  rewrite HwE in Em'.
+  pose proof (per_univ_trans _ _ _ _ _ _ HRm (per_univ_sym _ _ _ _ HRm)) as HRmm.
+  change (per_univ_elem j Rm m m) in HRmm.
+  exists j, Rm, m; split; [ exact Em | split; [ exact HRmm |] ].
+  unfold canon_args_rel, nth_atyp; rewrite HM, Hcon, (List.nth_error_nth _ _ _ HA).
+  exact (per_head_right Em Em' HRm).
+Qed.
+
 (** ** Coherence of a View, and the Relation of its Type
 
     [view_coh_at p D ups ups' j]: the elements of the view [j] of [D] at
