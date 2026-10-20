@@ -45,10 +45,11 @@
 ./Core/Completeness/Global/Embedding.v
 ./Core/Completeness/Inductives/Decl.v
 ./Core/Completeness/LogicalRelation/Telescope.v
+./Core/Completeness/Inductives/Model.v
+./Core/Completeness/Inductives/ViewEquations.v
 ./Core/Completeness/Inductives/Con.v
 ./Core/Completeness/Inductives/Elim.v
 ./Core/Completeness/Inductives/Iota.v
-./Core/Completeness/Inductives/ViewEquations.v
 ./Core/Completeness/IndCases.v
 ./Core/Completeness/ElimCases.v
 ./Core/Completeness/IotaCases.v
