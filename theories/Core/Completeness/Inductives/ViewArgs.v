@@ -405,6 +405,109 @@ Section ViewArgs.
     - apply Hsh, (per_head_left Ebg Ebg HRg), EL, (per_head_left Ea1 Ea1 HR1), E1; exact Hxy.
     - apply E1, (per_head_left Ea1 Ea1 HR1), EL, (per_head_left Ebg Ebg HRg), Hsh; exact Hxy.
   Qed.
+
+  (** ** An Argument Non-Recursive in Both
+
+      The container's canonical relation of the argument is the group's. *)
+  Lemma view_arg_rel : forall gs1' A' gs2' gs1 A gs2 vp, gs' = gs1' ++ ca_arg A' :: gs2' -> gs = gs1 ++ ca_arg A :: gs2 ->
+      cargs_corr vm gs1' gs1 -> List.length vp = List.length gs1 ->
+      tele_prefix_rel (canon_args_rel Dq cups i' ms c) (List.length (cargs_nonrec gs1'))
+        (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp) ->
+      (canon_args_rel Dq cups i' ms c (List.length (cargs_nonrec gs1')) (nonrec_arg_vals gs1' vp)
+         <~> canon_args_rel D ups v ms c (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 vp)).
+  Proof.
+    intros * Heq' Heq Hc Hlp Hpre.
+    pose proof view_nn as Hnn.
+    pose proof (cargs_corr_len _ _ _ Hc) as Hl1.
+    destruct (view_args_complete gs1 gs1' (ca_arg A' :: gs2') (ca_arg A :: gs2) vp Heq' Heq Hc Hlp Hpre)
+      as (vs & [Hl Hn Hng Hg1 Hcn Ha]).
+    pose proof (cargs_ctx_snoc qc Dq Mi' gs1' (ca_arg A')) as ECc; pose proof (cargs_ctx_snoc p D Mv gs1 (ca_arg A)) as ECg.
+    cbn [cargs_ctx_aux List.app] in ECc, ECg.
+    destruct (view_arg_link gs1' _ gs2' gs1 _ gs2 _ _ vs Heq' Heq ltac:(lia) Hl ECc ECg Hg1 Hcn) as (EL & _ & _).
+    destruct (vg_arg_head qc Dq HgQ HcvQ i' Mi' c gs' gs1' A' gs2' cups ms vs HMi' Hcon' Heq' length_cups ltac:(lia) ltac:(lia) Hcn)
+      as (i1 & R1 & a1 & Ea1 & HR1 & E1).
+    destruct (vg_arg_head p D Hg Hcv v Mv c gs gs1 A gs2 ups ms vs HMv Hcon Heq Hu Hlms Hl Hg1)
+      as (i2 & R2 & a2 & Ea2 & HR2 & E2).
+    rewrite <- Hn, <- Hng.
+    intros x y; split; intro Hxy.
+    - apply E2, (per_head_left Ea2 Ea2 HR2), EL, (per_head_left Ea1 Ea1 HR1), E1; exact Hxy.
+    - apply E1, (per_head_left Ea1 Ea1 HR1), EL, (per_head_left Ea2 Ea2 HR2), E2; exact Hxy.
+  Qed.
+
+  (** ** The Non-Uniform Parameters
+
+      The container's canonical relation of a non-uniform parameter at
+      [cups] is the group's at [ups] of the member the view takes the
+      container's to ([vco_N] at the canonical relations). *)
+  Lemma view_nparams_rel : forall j vs vs', j < im_nn Mi' -> tele_prefix_rel (canon_nparams_rel Dq cups i') j vs vs' ->
+      (canon_nparams_rel Dq cups i' j vs <~> canon_nparams_rel D ups v j vs).
+  Proof.
+    intros j vs vs' Hj Hp.
+    pose proof view_nn as Hnn.
+    pose proof (vgr_valid _ _ Hg) as HD; pose proof (vgr_closed _ _ Hg) as Hc.
+    pose proof (vgr_valid _ _ HgQ) as HDQ; pose proof (vgr_closed _ _ HgQ) as HcQ; pose proof (vgr_sort _ _ HgQ) as HsuQ.
+    destruct (vg_canon qc Dq HgQ cups view_cups_rel length_cups) as [CnP CnI CaP CaI CdP CdI].
+    set (tc := List.rev (im_nparams Mi')); set (tg := List.rev (im_nparams Mv)).
+    assert (Hlr : j <= List.length tc) by (unfold tc; rewrite List.length_rev, length_im_nparams; lia).
+    assert (Hlv : List.length vs = j) by (rewrite tele_prefix_rel_iff in Hp; tauto).
+    pose proof (tele_prefix_rel_refl_l (List.length tc) _
+                  (fun k0 a b Hk Ha => nparams_rel_per qc Dq cups _ _ _ (vgr_ass _ _ HgQ) CnP CnI CaP CaI CdP CdI i' Mi' HMi' k0 a b Hk Ha)
+                  (fun k0 a b Hk Ha => nparams_rel_invariant qc Dq cups _ _ _ (vgr_ass _ _ HgQ) CnP CnI CaP CaI CdP CdI i' Mi' HMi' k0 a b Hk Ha)
+                  j vs vs' Hlr Hp) as Hpp.
+    destruct (sort_value Dq HDQ cups view_cups_rel length_cups) as [aQ EaQ].
+    pose proof (nr_gargs Dq HDQ HcQ HsuQ i' Mi' HMi' cups cups aQ view_cups_rel length_cups EaQ j vs vs ltac:(lia) Hpp) as Hg0.
+    (** The container's telescope, from no base to the instance's. *)
+    pose proof (vid_uparams _ HDQ) as HUQ.
+    destruct (rel_ctx_wf_per_ctx_env HUQ) as [RQ HRQ].
+    assert (Hlc : List.length cups = List.length (ind_uparams Dq)) by (rewrite length_cups; reflexivity).
+    assert (HQ0 : RQ (env_args nil cups) (env_args nil cups)).
+    { assert (HUQ' : ⊨ List.rev (List.rev (ind_uparams Dq)) ++ ⋅) by (rewrite List.rev_involutive, List.app_nil_r; exact HUQ).
+      apply (gargs_env_rel _ _ _ _ _ _ HRQ HUQ Hlc view_cups_rel). }
+    assert (HQ1 : RQ (env_args nil cups) (env_args (env_args nil ups) cups))
+      by exact (closed_env_base _ _ _ _ _ _ _ _ (dc_ass _ HcQ) HUQ HRQ Hlc Hlc HQ0).
+    assert (Hac : tele_ass tc) by exact (List.Forall_rev (member_nparams_ass Dq HcQ _ _ HMi')).
+    assert (Hag : tele_ass tg) by exact (List.Forall_rev (member_nparams_ass D Hc _ _ HMv)).
+    assert (HWc0 : ⊨ List.rev tc ++ ind_uparams Dq) by (unfold tc; rewrite List.rev_involutive; exact (vid_params _ HDQ _ _ HMi')).
+    assert (HTc0 : forall j0 A, List.nth_error tc j0 = Some (ce_ass A) ->
+                     exists i : nat, List.rev (List.firstn j0 tc) ++ ind_uparams Dq ⊨ A : Typeω@i)
+      by (intros j0 A HA; exact (proj2 (vid_npar _ HDQ _ _ _ _ HMi' HA))).
+    destruct (tele_base_change tc (ind_uparams Dq) RQ (env_args nil cups) (env_args (env_args nil ups) cups)
+                Hac HWc0 HTc0 HRQ HQ1 j vs Hlv Hlr Hg0) as [Hg1 Hhd].
+    (** The two telescopes, equal under the view's instance. *)
+    pose proof (vid_uparams _ HD) as HUD.
+    destruct (rel_ctx_wf_per_ctx_env HUD) as [RU HRU].
+    pose proof (uparams_rel_env D HD _ _ Hgu Hu _ HRU) as HρU.
+    assert (HaC0 : tele_ass (List.rev tc ++ ind_uparams Dq)) by (apply List.Forall_app; split; [ apply List.Forall_rev; exact Hac | exact (dc_ass _ HcQ) ]).
+    assert (HWc : ⊨ List.rev tc ++ ind_uparams Dq ++ ind_uparams D)
+      by (rewrite List.app_assoc; exact (proj1 (closed_app_sem _ _ HaC0 HWc0 HUD))).
+    assert (HTc : forall j0 A, List.nth_error tc j0 = Some (ce_ass A) ->
+                    exists i : nat, List.rev (List.firstn j0 tc) ++ ind_uparams Dq ++ ind_uparams D ⊨ A : Typeω@i).
+    { intros j0 A HA; destruct (HTc0 _ _ HA) as [i HAv].
+      assert (Ha0 : tele_ass (List.rev (List.firstn j0 tc) ++ ind_uparams Dq))
+        by (apply List.Forall_app; split; [ exact (tele_ass_firstn _ _ Hac) | exact (dc_ass _ HcQ) ]).
+      exists i; rewrite List.app_assoc; exact (closed_app_valid _ _ _ _ _ Ha0 (rel_ctx_wf_firstn _ _ j0 HWc0) HUD HAv). }
+    assert (HWg : ⊨ List.rev tg ++ ind_uparams D) by (unfold tg; rewrite List.rev_involutive; exact (vid_params _ HD _ _ HMv)).
+    assert (HTg : forall j0 A, List.nth_error tg j0 = Some (ce_ass A) ->
+                    exists i : nat, List.rev (List.firstn j0 tg) ++ ind_uparams D ⊨ A : Typeω@i)
+      by (intros j0 A HA; exact (proj2 (vid_npar _ HD _ _ _ _ HMv HA))).
+    assert (Heq : ind_uparams D ⊨ˣ tele_sub (List.rev tg) Id ≈ tele_sub (List.rev tc) (sb_of_list Id Is)).
+    { unfold tg, tc; rewrite !List.rev_involutive, tele_sub_id.
+      exact (vg_view_nparams p D Hg Hcv _ _ _ _ _ _ _ _ _ _ _ HMk Hh Hq HMi' Hv HMv). }
+    assert (Hlen : List.length tg = List.length tc) by (unfold tg, tc; rewrite !List.length_rev, !length_im_nparams; exact Hnn).
+    destruct (gsub_props (vg_view_args_gsub p D Hg Hcv _ _ _ _ _ _ _ HMk Hh Hq)) as [Hτ _].
+    pose proof (eval_sb_of_list _ _ _ _ _ (eval_sub_id (env_args nil ups)) Ecups) as Eτ.
+    destruct (nth_error_lt_some' tc j ltac:(unfold tc in *; rewrite List.length_rev, length_im_nparams; lia)) as [eC HeC].
+    destruct (proj1 (List.Forall_forall _ _) Hac eC (List.nth_error_In _ _ HeC)) as [C ->].
+    destruct (nth_error_lt_some' tg j ltac:(unfold tg in *; rewrite List.length_rev, length_im_nparams; lia)) as [eG HeG].
+    destruct (proj1 (List.Forall_forall _ _) Hag eG (List.nth_error_In _ _ HeG)) as [G ->].
+    pose proof (tele_link (ind_uparams D) RU (env_args nil ups) HRU HρU (ind_uparams D) (ind_uparams Dq ++ ind_uparams D)
+                  Id (sb_of_list Id Is) (env_args nil ups) (env_args (env_args nil ups) cups)
+                  (rel_sub_id (ex_intro _ _ HRU)) Hτ (eval_sub_id _) Eτ tg tc Hag Hac Hlen HWg HWc HTg HTc Heq
+                  j vs G C Hlv HeG HeC Hg1) as EL.
+    unfold canon_nparams_rel, member_nparams; rewrite HMi', HMv; fold tc tg; unfold nth_ctyp; rewrite HeC, HeG.
+    rewrite !env_args_app.
+    etransitivity; [ exact (Hhd _ HeC) | exact EL ].
+  Qed.
 End ViewArgs.
 
 End Fixed_GCtx.
