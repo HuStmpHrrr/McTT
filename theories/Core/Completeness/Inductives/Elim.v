@@ -2579,6 +2579,92 @@ Section GroupElim.
             assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
             exists Xq, b; split; [ exact Htf | split; [ exact Eb | exact Hab ] ].
           Qed.
+
+          (** The type of the recursive result after [kd] domains at a side,
+              against its canonical value: the motive of the end in [B] at
+              the shape's parameters, the domains at the canonical values of
+              the components. *)
+          Lemma ihty_link : forall n kd B X fa v aft ihp w ys f a (i : nat) R, kd + n = L ->
+              List.length X = im_nn Mk -> List.length fa = List.length gs1 ->
+              List.length aft = List.length gs2 -> List.length ihp = jr -> List.length ys = kd -> RΓ B C1 ->
+              RS (env_args B (X ++ fa ++ v :: aft ++ ihp)) (env_args B (X ++ fa ++ v :: aft ++ ihp)) ->
+              ⟦ List.map (fun U => U[wk_shiftn m]ʷ) Us ⟧* gc_deps ⍮ gc_stack ⍮ env_args B (X ++ fa ++ v :: aft ++ ihp) ↘ w ->
+              RU (env_args nil w) (env_args nil u0) -> List.length w = ind_nu D ->
+              tele_rel (nr k) T X X -> tele_prefix_rel (ar k X c) K (nonrec_arg_vals gs1 fa) (nonrec_arg_vals gs1 fa) ->
+              tele_prefix_rel (shape_doms_rel (dr k) X (nonrec_arg_vals gs1 fa) (ptyp_doms t)) kd ys ys ->
+              $*| v & ys | gc_deps ⍮ gc_stack ↘ f ->
+              rec_arg_rel p D (okr_at D u0 nr) nr ar dr k u0 u0 (X ++ nonrec_arg_vals gs1 fa ++ ys) (X ++ nonrec_arg_vals gs1 fa ++ ys)
+                (ptyp_skip kd t) f f ->
+              ⟦ ptyp_ihty As (sb_shift_iter kd β) (sb_qn kd σ) (apps_vars_iter kd (a_var idx)) (ptyp_skip kd t) ⟧
+                env_args (env_args B (X ++ fa ++ v :: aft ++ ihp)) ys ↘ a ->
+              DF a ≈ a ∈ per_univ_elem i ↘ R ->
+              exists b, ⟦ihty f of ptyp_skip kd t under B As ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (u0 ++ X ++ nonrec_arg_vals gs1 fa ++ ys) ↘ b /\
+                Dom a ≈ b ∈ per_univ i.
+          Proof.
+            induction n as [| n IH]; intros * Hkn LX Lfa Laft Lihp Lys HBC HE Hw HwU Lw HX Hnv Hys Ef Hsh Ea HR.
+            - assert (Hk : kd = L) by lia; rewrite Hk in Lys, Hys, Hsh, Ea |- *; clear Hk Hkn.
+              pose proof (ptyp_skip_end t) as HsL; change (List.length (ptyp_doms t)) with L in HsL.
+              rewrite HsL in Hsh, Ea |- *.
+              cbn [ptyp_ihty] in Ea.
+              unfold As in Ea; rewrite (blocks_motives_nth _ _ _ Hbj) in Ea.
+              destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh) as (bs & bs0 & Ebs & Ebs0 & _ & _ & Hir).
+              pose proof (functional_eval_exps' _ _ _ _ Ebs0 Ebs) as ->.
+              destruct (leaf_link X (nonrec_arg_vals gs1 fa) ys bs B X fa v aft ihp w ys f a LX Lfa Laft Lihp Lys HE Hw HwU Lw HX Hnv Hys
+                          Ebs Ef Ea) as (Xq & b' & Htf & Eb' & Hab').
+              destruct (rel_ctx_wf_per_ctx_env (HMall _ _ HMj)) as [RM HRM].
+              pose proof (iidx _ _ _ _ _ _ _ _ _ _ HMj Hir Htf (trefl_l _ _ HMj _ _ Htf)) as Hir'.
+              pose proof (mctx_at _ _ HMj B B HBC HBC RM HRM _ _ _ _ _ _ Hir') as HEM.
+              destruct (rel_exp_of_typ_inversion_simple_at HRM (HAv _ _ _ HMj Hbj) _ _ HEM) as (b1 & b2 & Eb1 & Eb2 & Hb12).
+              assert (b1 = b') as -> by (eapply functional_eval_exp; eassumption).
+              exists b2; split; [ econstructor; [ exact Ebs | unfold As; rewrite (blocks_motives_nth _ _ _ Hbj); exact Eb2 ] |].
+              eapply per_univ_trans'; [ eexists; exact HR | eapply per_univ_trans'; [ exact Hab' | exact Hb12 ] ].
+            - assert (Hk : kd < L) by lia.
+              destruct (ptyp_skip_lt kd t Hk) as (Bk & HBk & Hs).
+              rewrite Hs in Hsh, Ea |- *.
+              set (t' := ptyp_skip (S kd) t) in *.
+              cbn [ptyp_ihty] in Ea.
+              inversion Ea; subst a.
+              match goal with E : ⟦ Bk[sb_qn kd σ] ⟧ _ ↘ ?x |- _ => rename x into a1; rename E into Ea1 end.
+              basic_invert_per_univ_elem HR.
+              match goal with H : forall (c c' : domain) (_ : ?ir c c'), rel_mod_eval _ _ _ _ _ _ |- _ => rename H into Hcod end.
+              destruct (dom_link kd Bk HBk B X fa v aft ihp w ys a1 LX Lfa Laft Lihp Lys HE Hw HwU Lw HX Hnv Hys Ea1) as (b1 & i1 & Eb1 & Hab).
+              destruct (per_univ_trans' _ _ _ _ _ (ltac:(eexists; exact equiv_a_a')) Hab) as [Rab HRab].
+              assert (Ein : in_rel <~> Rab) by (eapply per_univ_elem_right_irrel; [ exact equiv_a_a' | exact HRab ]).
+              eexists; split; [ econstructor; exact Eb1 |].
+              eexists; eapply per_univ_elem_pi_canonical; [ exact HRab |].
+              intros c0 c0' Hcc.
+              assert (Hcc0 : in_rel c0 c0') by (apply Ein; exact Hcc).
+              assert (Hc'c' : in_rel c0' c0') by (etransitivity; [ symmetry; exact Hcc0 | exact Hcc0 ]).
+              assert (Hdr : dr k (X ++ nonrec_arg_vals gs1 fa ++ ys) Bk c0' c0').
+              { unfold dr, canon_doms_rel; intros i2 R1 b2 b2' Eb2 Eb2' HR1.
+                assert (b2 = b1) as -> by (eapply functional_eval_exp; eassumption).
+                assert (b2' = b1) as -> by (eapply functional_eval_exp; eassumption).
+                pose proof (per_univ_sym _ _ _ _ HRab) as HRba.
+                assert (E1 : Rab <~> R1) by (eapply per_univ_elem_right_irrel; [ exact HRba | exact HR1 ]).
+                apply E1, Ein; exact Hc'c'. }
+              assert (Hys' : tele_prefix_rel (shape_doms_rel (dr k) X (nonrec_arg_vals gs1 fa) (ptyp_doms t)) (S kd)
+                               (ys ++ c0' :: nil) (ys ++ c0' :: nil)).
+              { apply tele_prefix_rel_snoc; [ exact Hys |]; unfold shape_doms_rel; rewrite (List.nth_error_nth _ _ _ HBk); exact Hdr. }
+              destruct (rec_arg_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh c0' c0' Hdr) as (fc & fc' & Efc & Efc' & Hsh').
+              assert (fc' = fc) as -> by (eapply functional_eval_app; eassumption).
+              destruct (Hcod _ _ Hcc0) as [a2 a2' Ea2 Ea2' Ha22].
+              destruct (Hcod _ _ Hc'c') as [a3 a3' Ea3 Ea3' Ha33].
+              assert (a3 = a2') as -> by (eapply functional_eval_exp; eassumption).
+              assert (a3' = a2') as -> by (eapply functional_eval_exp; eassumption).
+              assert (Ef' : $*| v & ys ++ c0' :: nil | gc_deps ⍮ gc_stack ↘ fc)
+                by (apply eval_apps_app; exists f; split; [ exact Ef | econstructor; [ exact Efc | constructor ] ]).
+              rewrite <- !List.app_assoc in Hsh'; cbn [List.app] in Hsh'.
+              rewrite <- env_args_snoc in Ea2'.
+              destruct (IH (S kd) B X fa v aft ihp w (ys ++ c0' :: nil) fc a2' i _ ltac:(lia) LX Lfa Laft Lihp
+                          ltac:(rewrite List.length_app, Lys; cbn; lia) HBC HE Hw HwU Lw HX Hnv Hys' Ef'
+                          Hsh' Ea2' Ha33) as (b2 & Eb2 & Ha2b).
+              destruct (per_univ_trans' _ _ _ _ _ (ltac:(eexists; exact Ha22)) Ha2b) as [R2 HR2].
+              exists a2, b2, R2; split; [ exact Ea2 | split; [| exact HR2 ] ].
+              apply (eval_fam_cod_ihfam _ _ _ _ _ _ fc); [ exact Efc |].
+              replace (u0 ++ X ++ nonrec_arg_vals gs1 fa ++ ys ++ c0' :: nil) with ((u0 ++ X ++ nonrec_arg_vals gs1 fa ++ ys) ++ c0' :: nil) in Eb2
+                by (rewrite <- !List.app_assoc; reflexivity).
+              rewrite env_args_snoc in Eb2; exact Eb2.
+          Qed.
         End Entry.
       End Branch.
     End Motives.
