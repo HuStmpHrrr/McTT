@@ -10,11 +10,9 @@
     recursive argument's index is admissible at the element's own prefix
     ([okr_at]).  A stuck eliminator reads back its motives and branches
     under fresh variables of the telescopes of the group's own members at
-    some uniform parameters: for a group without views (model L) those of
-    the scrutinee's type, admissible at the fresh variables ([adm_fresh],
-    the neutral's admissibility); for a group with views (model P) those
-    the eliminator carries ([elim_ups_ok]), whose neutrals need no
-    admissibility.  The fresh variables at two admissible bases are related
+    the uniform parameters the eliminator carries ([elim_ups_ok]; model
+    P), admissible at the fresh variables ([adm_fresh]); a neutral needs
+    no admissibility.  The fresh variables at two admissible bases are related
     through those at the type's base [ups], and the indices of recursive
     arguments made of them are admissible by the recursive-index field of
     [adm_fresh] and the type-level admissibility [Hcd].  A view's stuck
@@ -199,20 +197,16 @@ Section Fixed_GCtx.
       { ea_Mj : imember
       ; ea_member : ind_member D j = Some ea_Mj
       ; ea_ref : im_ref p j ea_Mj = (hd, k)
-      ; ea_adm : grp_adm p D ups nr ar dr j py
       ; ea_len : List.length py = im_unu D ea_Mj }.
 
-    Lemma mref_at_end_adm : forall X, adm_fresh p D ups nr ar dr X -> List.length X = ind_nu D ->
+    Lemma mref_at_end_adm : forall X, List.length X = ind_nu D ->
         forall j hd k py, mref_at p X j hd k py -> end_adm j hd k py.
     Proof.
-      intros X HX LX j hd k py Hm; inversion Hm as [p0 D0 j0 Mj pm X0 Hl0 HMj Hh | p0 D0 j0 Mj qc kc Is vm X0 cups Hl0 HMj Hh E]; subst.
+      intros X LX j hd k py Hm; inversion Hm as [p0 D0 j0 Mj pm X0 Hl0 HMj Hh | p0 D0 j0 Mj qc kc Is vm X0 cups Hl0 HMj Hh E]; subst.
+      - rewrite Hl in Hl0; injection Hl0 as <-.
+        exists Mj; [ exact HMj | unfold im_ref; rewrite Hh; reflexivity | unfold im_unu; rewrite Hh; exact LX ].
       - rewrite Hl in Hl0; injection Hl0 as <-.
         exists Mj; [ exact HMj | unfold im_ref; rewrite Hh; reflexivity
-                   | unfold grp_adm; destruct (ind_has_views D); [ exact I | rewrite HMj, Hh; exact HX ]
-                   | unfold im_unu; rewrite Hh; exact LX ].
-      - rewrite Hl in Hl0; injection Hl0 as <-.
-        exists Mj; [ exact HMj | unfold im_ref; rewrite Hh; reflexivity
-                   | unfold grp_adm; rewrite (view_has_views _ _ _ _ _ _ _ HMj Hh); exact I
                    | unfold im_unu; rewrite Hh; exact (eval_exps_length _ _ _ E) ].
     Qed.
 
@@ -282,7 +276,7 @@ Section Fixed_GCtx.
           ⟦shty ptyp_skip k t0 of p ua1 ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ua1 ++ ns1 ++ ws1 ++ ys1) ↘ a1 ->
           ⟦shty ptyp_skip k t0 of p ua2 ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ua2 ++ ns2 ++ ws2 ++ ys2) ↘ a2 ->
           Dom e ≈ e' ∈ per_bot ->
-          rec_arg_rel p D (grp_adm p D ups nr ar dr) (okr_at D ups nr) nr ar dr m ua1 ua2
+          rec_arg_rel p D (okr_at D ups nr) nr ar dr m ua1 ua2
             (ns1 ++ ws1 ++ ys1) (ns2 ++ ws2 ++ ys2) (ptyp_skip k t0) (⇑ a1 e) (⇑ a2 e').
     Proof.
       intros ua1 ua2 m Mm c gs1 t0 gs2 nsu ns1 ns2 wsu ws1 ws2 Ha1 Ha2 L1 L2 HM Hc Hme1 Hme2
@@ -322,8 +316,8 @@ Section Fixed_GCtx.
           destruct (ptyp_skip_self _ _ _ _ Hs) as (Hkd & Hj & HPs).
           inversion E1 as [Ps0 ρ0 bs1 j0 pc1 k1 pre1 ? ? Ebs1 Em1 | ]; subst.
           inversion E2 as [Ps0 ρ0 bs2 j0 pc2 k2 pre2 ? ? Ebs2 Em2 | ]; subst.
-          destruct (mref_at_end_adm ua1 Ha1 L1 _ _ _ _ Em1) as [Mj HMj Href1 Hadm1 Hlen1].
-          destruct (mref_at_end_adm ua2 Ha2 L2 _ _ _ _ Em2) as [Mj' HMj' Href2 Hadm2 Hlen2].
+          destruct (mref_at_end_adm ua1 L1 _ _ _ _ Em1) as [Mj HMj Href1 Hlen1].
+          destruct (mref_at_end_adm ua2 L2 _ _ _ _ Em2) as [Mj' HMj' Href2 Hlen2].
           rewrite HMj in HMj'; injection HMj' as <-; rewrite Href1 in Href2; injection Href2 as <- <-.
           assert (Hyf1 : tele_rel (shape_doms_rel (dr m) nsu wsu (ptyp_doms t0)) (ptyp_doms t0) ysu ys1)
             by (destruct Hy1 as [Hyl Hya]; split; [ lia | exact Hya ]).
@@ -354,11 +348,9 @@ Section Fixed_GCtx.
           pose proof H12 as Hl12; rewrite tele_rel_iff in Hl12; destruct Hl12 as (Lb1 & Lb2 & _).
           rewrite List.length_rev in Lb1, Lb2.
           econstructor; [ exact Ebs1 | exact Ebs2 | exact (Hokr _ _ _ _ Hn1 Hw1 Hy1 R1) | exact (Hokr _ _ _ _ Hn2 Hw2 Hy2 R2) |].
-          eapply ind_rel_neut; [ exact HMj | exact Href1 | exact H12 | | | | | | | exact He ].
+          eapply ind_rel_neut; [ exact HMj | exact Href1 | exact H12 | | | | | exact He ].
           * rewrite List.length_app, Hlen1; unfold im_np, im_nn; lia.
           * rewrite List.length_app, Hlen2; unfold im_np, im_nn; lia.
-          * rewrite firstn_app_exact by exact Hlen1; exact Hadm1.
-          * rewrite firstn_app_exact by exact Hlen2; exact Hadm2.
           * rewrite skipn_app_exact by exact Hlen1; exact (trefl _ _ HMj _ _ H12).
           * rewrite skipn_app_exact by exact Hlen2; exact (trefl_r _ _ HMj _ _ H12).
         + destruct (ptyp_skip_pi _ _ _ _ Hs) as [HB _].
@@ -405,13 +397,6 @@ Section Fixed_GCtx.
         [X]. *)
     Definition mrefs_ok (X : list domain) : Prop :=
       forall j Mj, ind_member D j = Some Mj -> exists r, ⟦mref j of p X ⟧ gc_deps ⍮ gc_stack ↘ r.
-
-    Lemma mrefs_ok_no_views : ind_has_views D = false -> forall X, mrefs_ok X.
-    Proof.
-      intros Hv X j Mj HMj; pose proof (no_views_decl _ _ _ Hv HMj) as Hd; unfold im_is_decl in Hd.
-      destruct (im_head Mj) as [pm | qc kc Is vm] eqn:Hh; [| discriminate ].
-      eexists; eapply eval_mref_decl; eassumption.
-    Qed.
 
     (** The domains of two types of the same shape [t] of the member [k],
         after [pre]: at related arguments, read back alike, at every
@@ -497,16 +482,14 @@ Section Fixed_GCtx.
 
         Two eliminators of the group, their blocks [Bksa] and [Bksb]
         closures in [ρa] and [ρb], the family [Rel j] of each member's
-        motives, the uniform parameters [ua] and [ub] they carry when the
-        group has views ([elim_oups]).  Their motives are related at related
-        elements, and their branches at related constructors and related
-        recursive results.
+        motives, the uniform parameters [ua] and [ub] they carry.  Their
+        motives are related at related elements, and their branches at
+        related constructors and related recursive results.
 
-        The uniform parameters of the eliminators of a group with views
-        (model P), as the blocks are read at them: admissible beside [ups],
-        each member's type defined at them, and the uniform parameters of
-        the member's container (its own group's at a declared member)
-        reading back alike when the container has views, as the read
+        The uniform parameters of the eliminators, as the blocks are read
+        at them: admissible beside [ups], each member's type defined at
+        them, and the uniform parameters of the member's container (its own
+        group's at a declared member) reading back alike, as the read
         eliminator carries them. *)
     #[warnings="-cannot-define-projection"]
     Record elim_ups_ok (ua ub : list domain) : Prop := mk_elim_ups_ok
@@ -518,12 +501,12 @@ Section Fixed_GCtx.
       ; euo_mref_b : mrefs_ok ub
       ; euo_cups : forall j Mj hd k pa pb Dq, ind_member D j = Some Mj ->
           ⟦mref j of p ua ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, pa) -> ⟦mref j of p ub ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, pb) ->
-          ind_lookup gc_deps gc_stack hd = Some Dq -> ind_has_views Dq = true ->
+          ind_lookup gc_deps gc_stack hd = Some Dq ->
           per_top_ps (List.rev (ind_uparams Dq)) pa pb }.
 
     Section ElimRel.
       Variable (i : uidx) (ρa ρb : env) (Bksa Bksb : list eblock) (ua ub : list domain).
-      Hypothesis (Hups : ind_has_views D = true -> elim_ups_ok ua ub).
+      Hypothesis (Hups : elim_ups_ok ua ub).
       Variable (Rel : nat -> list domain -> domain -> list domain -> domain -> relation domain).
       Hypothesis (HbA : forall j Mj, ind_member D j = Some Mj -> exists b, List.nth_error Bksa j = Some b)
         (HbB : forall j Mj, ind_member D j = Some Mj -> exists b, List.nth_error Bksb j = Some b).
@@ -628,8 +611,8 @@ Section Fixed_GCtx.
       Proof.
         intros * HM Hm H1 H1'.
         pose proof (nparams_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ HM _ _ H1) as H0.
-        pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ HM Hm H0 H1') as Hmid.
-        pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ HM Hm H1 H1') as Hm1.
+        pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hm H0 H1') as Hmid.
+        pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hm H1 H1') as Hm1.
         etransitivity; [ exact (motive_rel_right _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hmid)
                        | exact (motive_rel_left _ _ _ _ _ _ _ _ _ _ _ _ HM Hmid Hm1) ].
       Qed.
@@ -650,20 +633,20 @@ Section Fixed_GCtx.
           eliminators read back alike: related at the motive. *)
       Lemma neut_elim_rel : forall j Mj u u' ns ns' hd k' as1 as2 e e', ind_member D j = Some Mj ->
           grp_rel p D ups nr ar dr j u u' ns ns' (⇑ (d_ind hd k' as1) e) (⇑ (d_ind hd k' as2) e') ->
-          Dom d_elim ρa Bksa p (elim_oups D ua) j as1 e ≈ d_elim ρb Bksb p (elim_oups D ub) j as2 e' ∈ per_bot ->
-          exists r r', ⟦elim ⇑ (d_ind hd k' as1) e at j of p (elim_oups D ua) Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ r /\
-            ⟦elim ⇑ (d_ind hd k' as2) e' at j of p (elim_oups D ub) Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ r' /\
+          Dom d_elim ρa Bksa p ua j as1 e ≈ d_elim ρb Bksb p ub j as2 e' ∈ per_bot ->
+          exists r r', ⟦elim ⇑ (d_ind hd k' as1) e at j of p ua Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ r /\
+            ⟦elim ⇑ (d_ind hd k' as2) e' at j of p ub Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ r' /\
             Rel j ns (⇑ (d_ind hd k' as1) e) ns' (⇑ (d_ind hd k' as2) e') r r'.
       Proof.
         intros * HM Hm Hb.
         pose proof Hm as Hm0.
-        inversion Hm0 as [| j0 Mj0 hd0 k0 ns0 ns0' as1' as2' e0 e0' u0 u0' HM0 Hr Hn L1 L2 O1 O2 Hs1 Hs2 He]; subst.
+        inversion Hm0 as [| j0 Mj0 hd0 k0 ns0 ns0' as1' as2' e0 e0' u0 u0' HM0 Hr Hn L1 L2 Hs1 Hs2 He]; subst.
         rewrite HM in HM0; injection HM0 as <-.
         destruct (im_ref_target _ _ _ _ HM Hr) as (Dq & Mk & Hq & HMk & Hnn & Hnu).
         destruct (HbA _ _ HM) as [ba Ha]; destruct (HbB _ _ HM) as [bb Hb'].
-        pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hs1 Hs2) as Hm1.
+        pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hm Hs1 Hs2) as Hm1.
         destruct (Hmot _ _ _ _ _ _ _ _ _ _ HM Ha Hb' Hm1) as (a & a' & Ea & Ea' & HR).
-        exists (⇑ a (d_elim ρa Bksa p (elim_oups D ua) j as1 e)), (⇑ a' (d_elim ρb Bksb p (elim_oups D ub) j as2 e'));
+        exists (⇑ a (d_elim ρa Bksa p ua j as1 e)), (⇑ a' (d_elim ρb Bksb p ub j as2 e'));
           split; [| split ].
         - eapply eval_elim_neut; [ exact Hl | exact HM | exact Hr | exact Hq | exact HMk | | exact Ha
                                  | rewrite (HnmA _ _ _ HM Ha), Hnn; reflexivity | rewrite Hnu; exact Ea ].
@@ -684,7 +667,7 @@ Section Fixed_GCtx.
           blocks read are defined, and neutrals of them are related as
           recursive results, by the motive of the member [t] ends in. *)
       Lemma ih_fresh : forall t t' k u u' pre pre' pc1 X1 pc2 X2 ρ1 ρ2 a1 a2 e e' As1 As2,
-          rec_arg_rel p D (grp_adm p D ups nr ar dr) (okr_at D ups nr) nr ar dr k u u' pre pre' t (⇑ a1 e) (⇑ a2 e') ->
+          rec_arg_rel p D (okr_at D ups nr) nr ar dr k u u' pre pre' t (⇑ a1 e) (⇑ a2 e') ->
           shape_tops k pre t a1 a2 -> ptyp_depth t' = ptyp_depth t ->
           ⟦shty t' of pc1 X1 ⟧ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ a1 -> ⟦shty t' of pc2 X2 ⟧ gc_deps ⍮ gc_stack ⍮ ρ2 ↘ a2 ->
           (forall Mj, ind_member D (ptyp_mem t) = Some Mj -> List.length (ptyp_ps t') = im_nn Mj) ->
@@ -701,16 +684,16 @@ Section Fixed_GCtx.
               indices. *)
           inversion E1 as [Ps0 ρ0 bs1 j0 hd1 k1 pre1 ? ? Ebs1 Em1 |]; subst.
           inversion E2 as [Ps0 ρ0 bs2 j0 hd2 k2 pre2 ? ? Ebs2 Em2 |]; subst.
-          destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H) as (bs & bs' & Eb & Eb' & _ & _ & Hr).
+          destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H) as (bs & bs' & Eb & Eb' & _ & _ & Hr).
           pose proof Hr as Hr0.
-          inversion Hr0 as [| jx Mj hdx kx nsx nsx' as1 as2 ex ex' ux ux' HM Href Hn L1 L2 O1 O2 Hs1 Hs2 He]; subst.
+          inversion Hr0 as [| jx Mj hdx kx nsx nsx' as1 as2 ex ex' ux ux' HM Href Hn L1 L2 Hs1 Hs2 He]; subst.
           cbn in Hpl, HA1, HA2.
           assert (Lb1 : List.length bs1 = im_nn Mj) by (rewrite (eval_exps_length _ _ _ Ebs1); exact (Hpl _ HM)).
           assert (Lb2 : List.length bs2 = im_nn Mj) by (rewrite (eval_exps_length _ _ _ Ebs2); exact (Hpl _ HM)).
           rewrite List.length_app in L1, L2.
           rewrite skipn_app_exact in Hs1 by lia; rewrite skipn_app_exact in Hs2 by lia.
           destruct (HbA _ _ HM) as [ba Ha]; destruct (HbB _ _ HM) as [bb Hb].
-          pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ HM Hr Hs1 Hs2) as Hm1.
+          pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hr Hs1 Hs2) as Hm1.
           destruct (Hmot _ _ _ _ _ _ _ _ _ _ HM Ha Hb Hm1) as (h1 & h2 & Eh1 & Eh2 & HR).
           exists h1, h2; split; [| split ].
           + econstructor; [ exact Ebs1 | rewrite (HA1 _ Ha); exact Eh1 ].
@@ -726,7 +709,7 @@ Section Fixed_GCtx.
             (Πᵈ b2 (nil ↦ d_ihfam ρb As2 ρ2 t' (⇑ (Πᵈ b2 (nil ↦ d_shfam pc2 X2 ρ2 t') fam_cod) e')) fam_cod).
           split; [ econstructor; exact Eb1 | split; [ econstructor; exact Eb2 |] ].
           intros e2 e2' He2; constructor; intros c c' Hcc.
-          destruct (rec_arg_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H c c' Hcc) as (r & r' & Ea & Ea' & Hr).
+          destruct (rec_arg_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H c c' Hcc) as (r & r' & Ea & Ea' & Hr).
           inversion Ea; subst.
           match goal with Ex0 : ⟦ fam_cod ⟧ _ ⍮ _ ⍮ _ ↦ c ↘ _ |- _ => rename Ex0 into Ex end.
           inversion Ea'; subst.
@@ -746,26 +729,26 @@ Section Fixed_GCtx.
           defined and related, when the stuck eliminators at the member [t]
           ends in read back alike. *)
       Lemma ih_neut_rel : forall t k u u' pre pre' a1 a2 e e',
-          rec_arg_rel p D (grp_adm p D ups nr ar dr) (okr_at D ups nr) nr ar dr k u u' pre pre' t (⇑ a1 e) (⇑ a2 e') ->
+          rec_arg_rel p D (okr_at D ups nr) nr ar dr k u u' pre pre' t (⇑ a1 e) (⇑ a2 e') ->
           (forall Mj hd k' as1 as2 e1 e1' w w' ns ns', ind_member D (ptyp_mem t) = Some Mj ->
              grp_rel p D ups nr ar dr (ptyp_mem t) w w' ns ns' (⇑ (d_ind hd k' as1) e1) (⇑ (d_ind hd k' as2) e1') ->
-             Dom d_elim ρa Bksa p (elim_oups D ua) (ptyp_mem t) as1 e1 ≈ d_elim ρb Bksb p (elim_oups D ub) (ptyp_mem t) as2 e1'
+             Dom d_elim ρa Bksa p ua (ptyp_mem t) as1 e1 ≈ d_elim ρb Bksb p ub (ptyp_mem t) as2 e1'
                ∈ per_bot) ->
-          exists ih ih', ⟦ih ⇑ a1 e of t under p (elim_oups D ua) Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ ih /\
-            ⟦ih ⇑ a2 e' of t under p (elim_oups D ub) Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ih' /\
+          exists ih ih', ⟦ih ⇑ a1 e of t under p ua Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ ih /\
+            ⟦ih ⇑ a2 e' of t under p ub Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ih' /\
             rec_result_rel k u u' pre pre' t (⇑ a1 e) (⇑ a2 e') ih ih'.
       Proof.
         induction t as [j Ps | B t IH]; intros * H Hbot.
-        - destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H) as (bs & bs' & Eb & Eb' & _ & _ & Hr).
+        - destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H) as (bs & bs' & Eb & Eb' & _ & _ & Hr).
           pose proof Hr as Hr0.
-          inversion Hr0 as [| jx Mj hdx kx nsx nsx' as1 as2 ex ex' ux ux' HM Href Hn L1 L2 O1 O2 Hs1 Hs2 He]; subst.
+          inversion Hr0 as [| jx Mj hdx kx nsx nsx' as1 as2 ex ex' ux ux' HM Href Hn L1 L2 Hs1 Hs2 He]; subst.
           destruct (neut_elim_rel _ _ _ _ _ _ _ _ _ _ _ _ HM Hr (Hbot _ _ _ _ _ _ _ _ _ _ _ HM Hr)) as (r & r' & Er & Er' & HR).
           exists r, r'; split; [ constructor; exact Er | split; [ constructor; exact Er' |] ].
           econstructor; [ exact Eb | exact Eb' | exact HR ].
-        - exists (d_ihfn ρa Bksa p (elim_oups D ua) t (⇑ a1 e)), (d_ihfn ρb Bksb p (elim_oups D ub) t (⇑ a2 e')).
+        - exists (d_ihfn ρa Bksa p ua t (⇑ a1 e)), (d_ihfn ρb Bksb p ub t (⇑ a2 e')).
           split; [ constructor | split; [ constructor |] ].
           constructor; intros c c' Hcc.
-          destruct (rec_arg_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H c c' Hcc) as (r & r' & Ea & Ea' & Hr).
+          destruct (rec_arg_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H c c' Hcc) as (r & r' & Ea & Ea' & Hr).
           inversion Ea; subst; inversion Ea'; subst.
           destruct (IH _ _ _ _ _ _ _ _ _ Hr Hbot) as (ih & ih' & I1 & I2 & HI).
           econstructor; [ exact Ea | exact Ea' | econstructor; [ exact Ea | exact I1 ] | econstructor; [ exact Ea' | exact I2 ] | exact HI ].
@@ -777,11 +760,11 @@ Section Fixed_GCtx.
           the constructor [c] of the member [Mi] of the group read (kinds
           [gs']), the branch's member [v] of this group (kinds [gs]), its
           fresh arguments of [v]'s telescopes at the uniform parameters
-          [Ua] and [Ub], and its recursive results, on each side, the
+          [ua] and [ub], and its recursive results, on each side, the
           constructor at them related at [v], with related recursive
           results. *)
       #[warnings="-cannot-define-projection"]
-      Record brs_pair (s : nat) (Ua Ub : list domain) (v : nat) (Mv Mi : imember)
+      Record brs_pair (s : nat) (v : nat) (Mv Mi : imember)
           (hd : qname) (k : nat) (prea preb nsa nsb : list domain) (c : String.string) (gs' gs : list carg) : Prop :=
         mk_brs_pair
         { bp_vsa : list domain
@@ -790,37 +773,37 @@ Section Fixed_GCtx.
         ; bp_ihsb : list domain
         ; bp_wa : list domain
         ; bp_wb : list domain
-        ; bp_Fa : Fcargs gs of p Ua in gc_deps ⍮ gc_stack ⍮ env_args nil (Ua ++ nsa) ⍮ (s + im_nn Mi)%nat ↘ bp_vsa
-        ; bp_Fb : Fcargs gs of p Ub in gc_deps ⍮ gc_stack ⍮ env_args nil (Ub ++ nsb) ⍮ (s + im_nn Mi)%nat ↘ bp_vsb
+        ; bp_Fa : Fcargs gs of p ua in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ nsa) ⍮ (s + im_nn Mi)%nat ↘ bp_vsa
+        ; bp_Fb : Fcargs gs of p ub in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsb) ⍮ (s + im_nn Mi)%nat ↘ bp_vsb
         ; bp_Ia : Fihs bp_vsa at gs' gs under ρa (blocks_motives Bksa)
-            in gc_deps ⍮ gc_stack ⍮ env_args nil (Ua ++ nsa) ⍮ (s + im_nn Mi + List.length gs')%nat ↘ bp_ihsa
+            in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ nsa) ⍮ (s + im_nn Mi + List.length gs')%nat ↘ bp_ihsa
         ; bp_Ib : Fihs bp_vsb at gs' gs under ρb (blocks_motives Bksb)
-            in gc_deps ⍮ gc_stack ⍮ env_args nil (Ub ++ nsb) ⍮ (s + im_nn Mi + List.length gs')%nat ↘ bp_ihsb
-        ; bp_Wa : ⟦wihs bp_vsa of gs' gs with bp_ihsa under p (elim_oups D ua) Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ bp_wa
-        ; bp_Wb : ⟦wihs bp_vsb of gs' gs with bp_ihsb under p (elim_oups D ub) Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ bp_wb
-        ; bp_rel : grp_rel p D ups nr ar dr v Ua Ub nsa nsb (d_con hd k c (prea ++ nsa ++ bp_vsa)) (d_con hd k c (preb ++ nsb ++ bp_vsb))
-        ; bp_recs : rec_results_rel v Ua Ub nsa nsb gs
+            in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsb) ⍮ (s + im_nn Mi + List.length gs')%nat ↘ bp_ihsb
+        ; bp_Wa : ⟦wihs bp_vsa of gs' gs with bp_ihsa under p ua Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ bp_wa
+        ; bp_Wb : ⟦wihs bp_vsb of gs' gs with bp_ihsb under p ub Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ bp_wb
+        ; bp_rel : grp_rel p D ups nr ar dr v ua ub nsa nsb (d_con hd k c (prea ++ nsa ++ bp_vsa)) (d_con hd k c (preb ++ nsb ++ bp_vsb))
+        ; bp_recs : rec_results_rel v ua ub nsa nsb gs
             bp_vsa bp_vsb bp_wa bp_wb }.
 
-      Lemma read_brs_rel : forall s Ua Ub v Mv Mi hd k prea preb nsa nsb ba bb,
+      Lemma read_brs_rel : forall s v Mv Mi hd k prea preb nsa nsb ba bb,
           ind_member D v = Some Mv ->
           List.nth_error Bksa v = Some ba -> List.nth_error Bksb v = Some bb -> im_nn Mv = im_nn Mi ->
           List.length prea = im_unu D Mv -> List.length preb = im_unu D Mv ->
-          Ftele List.rev (im_nparams Mv) in gc_deps ⍮ gc_stack ⍮ env_args nil Ua ⍮ s ↘ nsa ->
-          Ftele List.rev (im_nparams Mv) in gc_deps ⍮ gc_stack ⍮ env_args nil Ub ⍮ s ↘ nsb ->
+          Ftele List.rev (im_nparams Mv) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ nsa ->
+          Ftele List.rev (im_nparams Mv) in gc_deps ⍮ gc_stack ⍮ env_args nil ub ⍮ s ↘ nsb ->
           forall cs Bs1 Bs2,
           (forall c gs', List.In (c, gs') cs ->
              exists gs, ind_con Mv c = Some gs /\ cargs_plen D gs /\ List.length gs = List.length gs' /\
-               brs_pair s Ua Ub v Mv Mi hd k prea preb nsa nsb c gs' gs) ->
+               brs_pair s v Mv Mi hd k prea preb nsa nsb c gs' gs) ->
           (forall c n B, List.In (c, n, B) Bs1 -> brs_lookup (eb_brs ba) c = Some (n, B) /\ List.In (c, n, B) (eb_brs ba)) ->
           (forall c n B, List.In (c, n, B) Bs2 -> brs_lookup (eb_brs bb) c = Some (n, B) /\ List.In (c, n, B) (eb_brs bb)) ->
           brs_names cs Bs1 -> brs_names cs Bs2 ->
-          exists Bs', Rbrs Bs1 at cs of Mi (hd, k, prea) from p (elim_oups D ua) Ua Bksa Mv (eb_motive ba)
+          exists Bs', Rbrs Bs1 at cs of Mi (hd, k, prea) from p ua Bksa Mv (eb_motive ba)
                         in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ Bs' /\
-            Rbrs Bs2 at cs of Mi (hd, k, preb) from p (elim_oups D ub) Ub Bksb Mv (eb_motive bb)
+            Rbrs Bs2 at cs of Mi (hd, k, preb) from p ub Bksb Mv (eb_motive bb)
               in gc_deps ⍮ gc_stack ⍮ ρb ⍮ s ↘ Bs'.
       Proof.
-        intros s Ua Ub v Mv Mi hd k prea preb nsa nsb ba bb HM Ha Hb Hnn La Lb Fa Fb.
+        intros s v Mv Mi hd k prea preb nsa nsb ba bb HM Ha Hb Hnn La Lb Fa Fb.
         induction cs as [| [c gs'] cs IH]; intros [| [[c1 n1] B1] Bs1] [| [[c2 n2] B2] Bs2] Hcs HB1 HB2 Hn1 Hn2;
           cbn in Hn1, Hn2; try discriminate.
         - exists nbrs_nil; split; constructor.
@@ -832,7 +815,7 @@ Section Fixed_GCtx.
           assert (n2 = n1) as -> by lia.
           destruct BP as [vsa vsb ihsa ihsb wa wb Ca Cb Ia Ib Wa Wb Rel0 Recs].
           pose proof Rel0 as Rel1; rewrite !List.app_assoc in Rel1.
-          pose proof (Hbr v Mv ba bb c gs n1 B1 B2 Ua Ub (prea ++ nsa) (preb ++ nsb) vsa vsb wa wb hd k HM Ha Hb Hc HL1 HL2)
+          pose proof (Hbr v Mv ba bb c gs n1 B1 B2 ua ub (prea ++ nsa) (preb ++ nsb) vsa vsb wa wb hd k HM Ha Hb Hc HL1 HL2)
             as HB.
           rewrite !skipn_app_exact in HB by assumption.
           destruct (HB Rel1 Recs) as (r1 & r2 & Er1 & Er2 & Hrr).
@@ -854,11 +837,11 @@ Section Fixed_GCtx.
 
       (** What the two readbacks need of a block: the one of the member
           [Mi] of the group read, the block of the member [elim_src sel i]
-          of this group: its type at the uniform parameters [Ua] and [Ub],
+          of this group: its type at the uniform parameters [ua] and [ub],
           the fresh variables of its non-uniform parameters, the neutral at
           them related at the block's member, and each branch. *)
       #[warnings="-cannot-define-projection"]
-      Record member_pair (s : nat) (Ua Ub : list domain) (sel : option (list nat)) (i : nat) (Mi : imember) : Prop :=
+      Record member_pair (s : nat) (sel : option (list nat)) (i : nat) (Mi : imember) : Prop :=
         mk_member_pair
         { mp_Mv : imember
         ; mp_member : ind_member D (elim_src sel i) = Some mp_Mv
@@ -867,28 +850,28 @@ Section Fixed_GCtx.
         ; mp_k : nat
         ; mp_prea : list domain
         ; mp_preb : list domain
-        ; mp_refa : ⟦mref elim_src sel i of p Ua ⟧ gc_deps ⍮ gc_stack ↘ (mp_hd, mp_k, mp_prea)
-        ; mp_refb : ⟦mref elim_src sel i of p Ub ⟧ gc_deps ⍮ gc_stack ↘ (mp_hd, mp_k, mp_preb)
+        ; mp_refa : ⟦mref elim_src sel i of p ua ⟧ gc_deps ⍮ gc_stack ↘ (mp_hd, mp_k, mp_prea)
+        ; mp_refb : ⟦mref elim_src sel i of p ub ⟧ gc_deps ⍮ gc_stack ↘ (mp_hd, mp_k, mp_preb)
         ; mp_lena : List.length mp_prea = im_unu D mp_Mv
         ; mp_lenb : List.length mp_preb = im_unu D mp_Mv
         ; mp_nsa : list domain
         ; mp_nsb : list domain
-        ; mp_Fa : Ftele List.rev (im_nparams mp_Mv) in gc_deps ⍮ gc_stack ⍮ env_args nil Ua ⍮ s ↘ mp_nsa
-        ; mp_Fb : Ftele List.rev (im_nparams mp_Mv) in gc_deps ⍮ gc_stack ⍮ env_args nil Ub ⍮ s ↘ mp_nsb
-        ; mp_neut : grp_rel p D ups nr ar dr (elim_src sel i) Ua Ub mp_nsa mp_nsb
+        ; mp_Fa : Ftele List.rev (im_nparams mp_Mv) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ mp_nsa
+        ; mp_Fb : Ftele List.rev (im_nparams mp_Mv) in gc_deps ⍮ gc_stack ⍮ env_args nil ub ⍮ s ↘ mp_nsb
+        ; mp_neut : grp_rel p D ups nr ar dr (elim_src sel i) ua ub mp_nsa mp_nsb
             (⇑! (d_ind mp_hd mp_k (mp_prea ++ mp_nsa)) ((s + im_nn Mi)%nat))
             (⇑! (d_ind mp_hd mp_k (mp_preb ++ mp_nsb)) ((s + im_nn Mi)%nat))
         ; mp_names : List.map fst (im_cons Mi) = List.map fst (im_cons mp_Mv)
         ; mp_brs : forall c gs', List.In (c, gs') (im_cons Mi) ->
             exists gs, ind_con mp_Mv c = Some gs /\ cargs_plen D gs /\ List.length gs = List.length gs' /\
-              brs_pair s Ua Ub (elim_src sel i) mp_Mv Mi mp_hd mp_k mp_prea mp_preb mp_nsa mp_nsb c gs' gs }.
+              brs_pair s (elim_src sel i) mp_Mv Mi mp_hd mp_k mp_prea mp_preb mp_nsa mp_nsb c gs' gs }.
 
-      Lemma read_blocks_rel : forall s Ua Ub sel Ms i,
-          (forall n Mi, List.nth_error Ms n = Some Mi -> member_pair s Ua Ub sel (i + n) Mi) ->
-          exists NBks, Rblks i Ms from p (elim_oups D ua) Ua Bksa sel in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ NBks /\
-            Rblks i Ms from p (elim_oups D ub) Ub Bksb sel in gc_deps ⍮ gc_stack ⍮ ρb ⍮ s ↘ NBks.
+      Lemma read_blocks_rel : forall s sel Ms i,
+          (forall n Mi, List.nth_error Ms n = Some Mi -> member_pair s sel (i + n) Mi) ->
+          exists NBks, Rblks i Ms from p ua Bksa sel in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ NBks /\
+            Rblks i Ms from p ub Bksb sel in gc_deps ⍮ gc_stack ⍮ ρb ⍮ s ↘ NBks.
       Proof.
-        intros s Ua Ub sel Ms; induction Ms as [| Mi Ms IH]; intros i0 HMs.
+        intros s sel Ms; induction Ms as [| Mi Ms IH]; intros i0 HMs.
         - exists nblocks_nil; split; constructor.
         - destruct (HMs 0 Mi eq_refl) as [Mv HM Hnn hd k prea preb Ra Rb La Lb nsa nsb Fa Fb Hne Hnames Hbrs].
           rewrite Nat.add_0_r in *.
@@ -899,7 +882,7 @@ Section Fixed_GCtx.
             by (rewrite <- (HnaA _ _ _ HM Ha); exact (Hnd _ _ HM)).
           assert (Hnd'' : List.NoDup (List.map (fun b0 => fst (fst b0)) (eb_brs bb)))
             by (rewrite <- (HnaB _ _ _ HM Hb); exact (Hnd _ _ HM)).
-          destruct (read_brs_rel s Ua Ub _ Mv Mi hd k prea preb nsa nsb ba bb HM Ha Hb Hnn La Lb Fa Fb
+          destruct (read_brs_rel s _ Mv Mi hd k prea preb nsa nsb ba bb HM Ha Hb Hnn La Lb Fa Fb
                       (im_cons Mi) (eb_brs ba) (eb_brs bb) Hbrs) as (Bs' & RB1 & RB2).
           { intros c n B Hin; split; [ apply brs_lookup_nodup_in; assumption | exact Hin ]. }
           { intros c n B Hin; split; [ apply brs_lookup_nodup_in; assumption | exact Hin ]. }
@@ -917,7 +900,7 @@ Section Fixed_GCtx.
       (** *** The Fresh Arguments of a Branch
 
           A stuck eliminator reads a branch under fresh arguments of its
-          member's constructor at the uniform parameters [Ua] and [Ub], the
+          member's constructor at the uniform parameters [ua] and [ub], the
           fresh variables of each telescope at them related to those at
           [ups], and fresh recursive results where the group read has the
           argument recursive.  An argument the view nests through has the
@@ -926,7 +909,7 @@ Section Fixed_GCtx.
       Definition elim_bot (j : nat) : Prop :=
         forall Mj hd k' as1 as2 e1 e1' w w' ns ns', ind_member D j = Some Mj ->
           grp_rel p D ups nr ar dr j w w' ns ns' (⇑ (d_ind hd k' as1) e1) (⇑ (d_ind hd k' as2) e1') ->
-          Dom d_elim ρa Bksa p (elim_oups D ua) j as1 e1 ≈ d_elim ρb Bksb p (elim_oups D ub) j as2 e1' ∈ per_bot.
+          Dom d_elim ρa Bksa p ua j as1 e1 ≈ d_elim ρb Bksb p ub j as2 e1' ∈ per_bot.
 
       (** What the readbacks need of the arguments [gs] (kinds [gs'] in the
           group read) after the fresh non-uniform parameters [nsa] and
@@ -936,7 +919,7 @@ Section Fixed_GCtx.
           the arguments related by the shapes, with related recursive
           results. *)
       #[warnings="-cannot-define-projection"]
-      Record args_pair (Ua Ub : list domain) (v : nat) (nsu : list domain) (c : String.string) (gsf : list carg)
+      Record args_pair (v : nat) (nsu : list domain) (c : String.string) (gsf : list carg)
           (nsa nsb wsa wsb : list domain) (gs' gs : list carg) (s s2 : nat) : Prop := mk_args_pair
         { ap_vsa : list domain
         ; ap_vsb : list domain
@@ -945,39 +928,39 @@ Section Fixed_GCtx.
         ; ap_wa : list domain
         ; ap_wb : list domain
         ; ap_wfu : list domain
-        ; ap_Fa : Fcargs gs of p Ua in gc_deps ⍮ gc_stack ⍮ env_args nil (Ua ++ nsa ++ wsa) ⍮ s ↘ ap_vsa
-        ; ap_Fb : Fcargs gs of p Ub in gc_deps ⍮ gc_stack ⍮ env_args nil (Ub ++ nsb ++ wsb) ⍮ s ↘ ap_vsb
+        ; ap_Fa : Fcargs gs of p ua in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ nsa ++ wsa) ⍮ s ↘ ap_vsa
+        ; ap_Fb : Fcargs gs of p ub in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsb ++ wsb) ⍮ s ↘ ap_vsb
         ; ap_Ia : Fihs ap_vsa at gs' gs under ρa (blocks_motives Bksa)
-            in gc_deps ⍮ gc_stack ⍮ env_args nil (Ua ++ nsa ++ wsa) ⍮ s2 ↘ ap_ihsa
+            in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ nsa ++ wsa) ⍮ s2 ↘ ap_ihsa
         ; ap_Ib : Fihs ap_vsb at gs' gs under ρb (blocks_motives Bksb)
-            in gc_deps ⍮ gc_stack ⍮ env_args nil (Ub ++ nsb ++ wsb) ⍮ s2 ↘ ap_ihsb
-        ; ap_Wa : ⟦wihs ap_vsa of gs' gs with ap_ihsa under p (elim_oups D ua) Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ ap_wa
-        ; ap_Wb : ⟦wihs ap_vsb of gs' gs with ap_ihsb under p (elim_oups D ub) Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ap_wb
+            in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsb ++ wsb) ⍮ s2 ↘ ap_ihsb
+        ; ap_Wa : ⟦wihs ap_vsa of gs' gs with ap_ihsa under p ua Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ ap_wa
+        ; ap_Wb : ⟦wihs ap_vsb of gs' gs with ap_ihsb under p ub Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ap_wb
         ; ap_Pa : tele_prefix_rel (ar v nsu c) (List.length (cargs_nonrec gsf)) ap_wfu (wsa ++ nonrec_arg_vals gs ap_vsa)
         ; ap_Pb : tele_prefix_rel (ar v nsu c) (List.length (cargs_nonrec gsf)) ap_wfu (wsb ++ nonrec_arg_vals gs ap_vsb)
-        ; ap_args : con_args_rel p D (grp_adm p D ups nr ar dr) (okr_at D ups nr) nr ar dr v Ua Ub
+        ; ap_args : con_args_rel p D (okr_at D ups nr) nr ar dr v ua ub
             (nsa ++ wsa) (nsb ++ wsb) gs ap_vsa ap_vsb
-        ; ap_recs : rec_results_rel v Ua Ub (nsa ++ wsa) (nsb ++ wsb) gs ap_vsa ap_vsb ap_wa ap_wb }.
+        ; ap_recs : rec_results_rel v ua ub (nsa ++ wsa) (nsb ++ wsb) gs ap_vsa ap_vsb ap_wa ap_wb }.
 
-      Lemma fresh_args : forall Ua Ub v Mv c gsf nsu nsa nsb (rk : nat -> nat) r,
-          adm_fresh p D ups nr ar dr Ua -> adm_fresh p D ups nr ar dr Ub ->
-          List.length Ua = ind_nu D -> List.length Ub = ind_nu D -> mrefs_ok Ua -> mrefs_ok Ub ->
+      Lemma fresh_args : forall v Mv c gsf nsu nsa nsb (rk : nat -> nat) r,
+          adm_fresh p D ups nr ar dr ua -> adm_fresh p D ups nr ar dr ub ->
+          List.length ua = ind_nu D -> List.length ub = ind_nu D -> mrefs_ok ua -> mrefs_ok ub ->
           ind_member D v = Some Mv -> ind_con Mv c = Some gsf -> cargs_plen D gsf ->
           tele_rel (nr v) (List.rev (im_nparams Mv)) nsu nsa -> tele_rel (nr v) (List.rev (im_nparams Mv)) nsu nsb ->
           (forall j, rk j < r -> elim_bot j) ->
           forall gs' gs gs1 wsu wsa wsb s s2, gsf = gs1 ++ gs ->
           cargs_kinds gs' gs -> cargs_nest_ok rk r gs' gs ->
-          fresh_cargs_rel D ups Ua nr (ar v nsu c) (dr v) nsu nsa (List.length (cargs_nonrec gs1)) wsu wsa s gs ->
-          fresh_cargs_rel D ups Ub nr (ar v nsu c) (dr v) nsu nsb (List.length (cargs_nonrec gs1)) wsu wsb s gs ->
+          fresh_cargs_rel D ups ua nr (ar v nsu c) (dr v) nsu nsa (List.length (cargs_nonrec gs1)) wsu wsa s gs ->
+          fresh_cargs_rel D ups ub nr (ar v nsu c) (dr v) nsu nsb (List.length (cargs_nonrec gs1)) wsu wsb s gs ->
           tele_prefix_rel (ar v nsu c) (List.length (cargs_nonrec gs1)) wsu wsa ->
           tele_prefix_rel (ar v nsu c) (List.length (cargs_nonrec gs1)) wsu wsb ->
-          args_pair Ua Ub v nsu c gsf nsa nsb wsa wsb gs' gs s s2.
+          args_pair v nsu c gsf nsa nsb wsa wsb gs' gs s s2.
       Proof.
-        intros Ua Ub v Mv c gsf nsu nsa nsb rk r Ha Hb La Lb Hma Hmb HM Hc Hpl Hn1 Hn2 HIH.
+        intros v Mv c gsf nsu nsa nsb rk r Ha Hb La Lb Hma Hmb HM Hc Hpl Hn1 Hn2 HIH.
         induction gs' as [| g' gs' IH]; intros [| g gs] gs1 wsu wsa wsb s s2 Heq Hk Hno C1 C2 Hw1 Hw2;
           cbn in Hk; try contradiction; try (destruct g' as [? | ?]; cbn in Hk; contradiction).
         - rewrite Heq, List.app_nil_r.
-          refine (mk_args_pair _ _ _ _ _ _ _ _ _ _ _ _ _ _ nil nil nil nil nil nil wsu _ _ _ _ _ _ _ _ _ _);
+          refine (mk_args_pair _ _ _ _ _ _ _ _ _ _ _ _ nil nil nil nil nil nil wsu _ _ _ _ _ _ _ _ _ _);
             cbn [nonrec_arg_vals]; rewrite ?List.app_nil_r; first [ exact Hw1 | exact Hw2 | constructor ].
         - destruct g' as [A' | t']; destruct g as [A | t]; cbn in Hk; try contradiction.
           + (** Non-recursive in both. *)
@@ -996,7 +979,7 @@ Section Fixed_GCtx.
             { rewrite Hk1; apply tele_prefix_rel_snoc; assumption. }
             { rewrite Hk1; apply tele_prefix_rel_snoc; assumption. }
             rewrite <- !List.app_assoc in P1, P2; cbn in P1, P2.
-            refine (mk_args_pair _ _ _ _ _ _ _ _ _ _ _ _ _ _ (⇑! a1 s :: vsa) (⇑! a2 s :: vsb) ihsa ihsb wa wb wfu
+            refine (mk_args_pair _ _ _ _ _ _ _ _ _ _ _ _ (⇑! a1 s :: vsa) (⇑! a2 s :: vsb) ihsa ihsb wa wb wfu
                       _ _ _ _ _ _ _ _ _ _).
             * econstructor; [ exact E1 |]; rewrite <- env_args_snoc, <- !List.app_assoc; exact F1.
             * econstructor; [ exact E2 |]; rewrite <- env_args_snoc, <- !List.app_assoc; exact F2.
@@ -1016,16 +999,16 @@ Section Fixed_GCtx.
             assert (Hc' : ind_con Mv c = Some (gs1 ++ ca_rec t :: gs)) by exact Hc.
             destruct (Hpl gs1 t gs eq_refl) as (Mj & HMj & HPj).
             pose proof (Hma _ _ HMj) as Me1; pose proof (Hmb _ _ HMj) as Me2.
-            destruct (shape_type_exists Ua v Mv c gs1 t gs nsu nsa wsu wsa HM Hc' Me1 HR1 HD1 0 nil nil ltac:(lia)
+            destruct (shape_type_exists ua v Mv c gs1 t gs nsu nsa wsu wsa HM Hc' Me1 HR1 HD1 0 nil nil ltac:(lia)
                         (tele_prefix_rel_nil _)) as [a1 Ea1].
-            destruct (shape_type_exists Ub v Mv c gs1 t gs nsu nsb wsu wsb HM Hc' Me2 HR2 HD2 0 nil nil ltac:(lia)
+            destruct (shape_type_exists ub v Mv c gs1 t gs nsu nsb wsu wsb HM Hc' Me2 HR2 HD2 0 nil nil ltac:(lia)
                         (tele_prefix_rel_nil _)) as [a2 Ea2].
-            pose proof (shape_neut Ua Ub v Mv c gs1 t gs nsu nsa nsb wsu wsa wsb Ha Hb La Lb HM Hc' Me1 Me2 Hn1 Hn2 Hw1 Hw2
+            pose proof (shape_neut ua ub v Mv c gs1 t gs nsu nsa nsb wsu wsa wsb Ha Hb La Lb HM Hc' Me1 Me2 Hn1 Hn2 Hw1 Hw2
                           HR1 HR2 HD1 HD2 (List.length (ptyp_doms t)) 0 nil nil nil a1 a2 (d_var s) (d_var s) eq_refl
                           (tele_prefix_rel_nil _) (tele_prefix_rel_nil _) Ea1 Ea2 var_per_bot) as Hsh.
             cbn [ptyp_skip] in Ea1, Ea2, Hsh.
             rewrite !List.app_nil_r in Ea1, Ea2; repeat rewrite List.app_nil_r in Hsh.
-            destruct (ih_neut_rel t v Ua Ub (nsa ++ wsa) (nsb ++ wsb) a1 a2 (d_var s) (d_var s) Hsh (HIH _ Hlt))
+            destruct (ih_neut_rel t v ua ub (nsa ++ wsa) (nsb ++ wsb) a1 a2 (d_var s) (d_var s) Hsh (HIH _ Hlt))
               as (ih & ih' & J1 & J2 & Hres).
             destruct (IH gs (gs1 ++ ca_rec t :: nil) wsu wsa wsb (S s) s2)
               as [vsa vsb ihsa ihsb wa wb wfu F1 F2 I1 I2 W1 W2 P1 P2 Hia Hir].
@@ -1036,7 +1019,7 @@ Section Fixed_GCtx.
             { rewrite cargs_nonrec_app, List.length_app; cbn; rewrite Nat.add_0_r; exact C2'. }
             { rewrite cargs_nonrec_app, List.length_app; cbn; rewrite Nat.add_0_r; exact Hw1. }
             { rewrite cargs_nonrec_app, List.length_app; cbn; rewrite Nat.add_0_r; exact Hw2. }
-            refine (mk_args_pair _ _ _ _ _ _ _ _ _ _ _ _ _ _ (⇑! a1 s :: vsa) (⇑! a2 s :: vsb) ihsa ihsb (ih :: wa) (ih' :: wb) wfu
+            refine (mk_args_pair _ _ _ _ _ _ _ _ _ _ _ _ (⇑! a1 s :: vsa) (⇑! a2 s :: vsb) ihsa ihsb (ih :: wa) (ih' :: wb) wfu
                       _ _ _ _ _ _ _ _ _ _).
             * econstructor; eassumption.
             * econstructor; eassumption.
@@ -1054,18 +1037,18 @@ Section Fixed_GCtx.
             assert (Hc' : ind_con Mv c = Some (gs1 ++ ca_rec t :: gs)) by exact Hc.
             destruct (Hpl gs1 t gs eq_refl) as (Mj & HMj & HPj).
             pose proof (Hma _ _ HMj) as Me1; pose proof (Hmb _ _ HMj) as Me2.
-            destruct (shape_type_exists Ua v Mv c gs1 t gs nsu nsa wsu wsa HM Hc' Me1 HR1 HD1 0 nil nil ltac:(lia)
+            destruct (shape_type_exists ua v Mv c gs1 t gs nsu nsa wsu wsa HM Hc' Me1 HR1 HD1 0 nil nil ltac:(lia)
                         (tele_prefix_rel_nil _)) as [a1 Ea1].
-            destruct (shape_type_exists Ub v Mv c gs1 t gs nsu nsb wsu wsb HM Hc' Me2 HR2 HD2 0 nil nil ltac:(lia)
+            destruct (shape_type_exists ub v Mv c gs1 t gs nsu nsb wsu wsb HM Hc' Me2 HR2 HD2 0 nil nil ltac:(lia)
                         (tele_prefix_rel_nil _)) as [a2 Ea2].
-            pose proof (shape_neut Ua Ub v Mv c gs1 t gs nsu nsa nsb wsu wsa wsb Ha Hb La Lb HM Hc' Me1 Me2 Hn1 Hn2 Hw1 Hw2
+            pose proof (shape_neut ua ub v Mv c gs1 t gs nsu nsa nsb wsu wsa wsb Ha Hb La Lb HM Hc' Me1 Me2 Hn1 Hn2 Hw1 Hw2
                           HR1 HR2 HD1 HD2 (List.length (ptyp_doms t)) 0 nil nil nil a1 a2 (d_var s) (d_var s) eq_refl
                           (tele_prefix_rel_nil _) (tele_prefix_rel_nil _) Ea1 Ea2 var_per_bot) as Hsh.
-            pose proof (shape_tops_fresh Ua Ub v Mv c gs1 t gs nsu nsa nsb wsu wsa wsb HM Hc' Me1 Me2 Hn1 Hn2 Hw1 Hw2
+            pose proof (shape_tops_fresh ua ub v Mv c gs1 t gs nsu nsa nsb wsu wsa wsb HM Hc' Me1 Me2 Hn1 Hn2 Hw1 Hw2
                           HR1 HR2 HD1 HD2 (List.length (ptyp_doms t)) 0 nil nil nil a1 a2 eq_refl
                           (tele_prefix_rel_nil _) (tele_prefix_rel_nil _) Ea1 Ea2) as Hts.
             cbn [ptyp_skip] in Ea1, Ea2, Hsh, Hts.
-            destruct (ih_fresh t t v Ua Ub (nsa ++ wsa ++ nil) (nsb ++ wsb ++ nil) p Ua p Ub _ _ a1 a2 (d_var s) (d_var s)
+            destruct (ih_fresh t t v ua ub (nsa ++ wsa ++ nil) (nsb ++ wsb ++ nil) p ua p ub _ _ a1 a2 (d_var s) (d_var s)
                         (blocks_motives Bksa) (blocks_motives Bksb) Hsh Hts eq_refl Ea1 Ea2)
               as (h1 & h2 & G1 & G2 & Hih).
             { intros Mj' HMj'; rewrite HMj in HMj'; injection HMj' as <-; exact HPj. }
@@ -1082,7 +1065,7 @@ Section Fixed_GCtx.
             { rewrite cargs_nonrec_app, List.length_app; cbn; rewrite Nat.add_0_r; exact C2'. }
             { rewrite cargs_nonrec_app, List.length_app; cbn; rewrite Nat.add_0_r; exact Hw1. }
             { rewrite cargs_nonrec_app, List.length_app; cbn; rewrite Nat.add_0_r; exact Hw2. }
-            refine (mk_args_pair _ _ _ _ _ _ _ _ _ _ _ _ _ _ (⇑! a1 s :: vsa) (⇑! a2 s :: vsb) (⇑! h1 s2 :: ihsa) (⇑! h2 s2 :: ihsb)
+            refine (mk_args_pair _ _ _ _ _ _ _ _ _ _ _ _ (⇑! a1 s :: vsa) (⇑! a2 s :: vsb) (⇑! h1 s2 :: ihsa) (⇑! h2 s2 :: ihsb)
                       (⇑! h1 s2 :: wa) (⇑! h2 s2 :: wb) wfu _ _ _ _ _ _ _ _ _ _).
             * econstructor; eassumption.
             * econstructor; eassumption.
@@ -1100,30 +1083,30 @@ Section Fixed_GCtx.
 
           Each block of a stuck eliminator: the one of the member [Mi] of
           the group read, the block of the member [Mv] of this group
-          [elim_src sel i0] gives, at admissible uniform parameters [Ua] and
-          [Ub], when [Mv]'s constructors are [Mi]'s and their arguments of
+          [elim_src sel i0] gives, at admissible uniform parameters [ua] and
+          [ub], when [Mv]'s constructors are [Mi]'s and their arguments of
           compatible kinds, and the eliminator's results at the members
           the arguments nested through end in are related. *)
-      Lemma member_pair_of : forall s Ua Ub sel i0 Mi Mv (rk : nat -> nat) r,
-          adm_fresh p D ups nr ar dr Ua -> adm_fresh p D ups nr ar dr Ub ->
-          List.length Ua = ind_nu D -> List.length Ub = ind_nu D -> mrefs_ok Ua -> mrefs_ok Ub ->
+      Lemma member_pair_of : forall s sel i0 Mi Mv (rk : nat -> nat) r,
+          adm_fresh p D ups nr ar dr ua -> adm_fresh p D ups nr ar dr ub ->
+          List.length ua = ind_nu D -> List.length ub = ind_nu D -> mrefs_ok ua -> mrefs_ok ub ->
           ind_member D (elim_src sel i0) = Some Mv -> im_nn Mv = im_nn Mi ->
           List.map fst (im_cons Mi) = List.map fst (im_cons Mv) ->
           (forall c gs' gs, List.In (c, gs') (im_cons Mi) -> ind_con Mv c = Some gs ->
              cargs_kinds gs' gs /\ cargs_nest_ok rk r gs' gs) ->
           (forall j, rk j < r -> elim_bot j) ->
-          member_pair s Ua Ub sel i0 Mi.
+          member_pair s sel i0 Mi.
       Proof.
-        intros s Ua Ub sel i0 Mi Mv rk r Ha Hb La Lb Hma Hmb HM Hnn Hnames Hcs HIH.
+        intros s sel i0 Mi Mv rk r Ha Hb La Lb Hma Hmb HM Hnn Hnames Hcs HIH.
         pose proof (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as tsym.
         pose proof (nparams_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as ttrans.
         pose proof (nparams_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as trefl.
         pose proof (nparams_rel_refl_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as trefl_r.
         destruct (Hma _ _ HM) as [[[hd1 k1] pre1] R1].
         destruct (Hmb _ _ HM) as [[[hd2 k2] pre2] R2].
-        destruct (mref_at_end_adm _ Ha La _ _ _ _ R1) as [Mj HMj Href1 Hadm1 Hlen1].
+        destruct (mref_at_end_adm _ La _ _ _ _ R1) as [Mj HMj Href1 Hlen1].
         rewrite HM in HMj; injection HMj as <-.
-        destruct (mref_at_end_adm _ Hb Lb _ _ _ _ R2) as [Mj HMj Href2 Hadm2 Hlen2].
+        destruct (mref_at_end_adm _ Lb _ _ _ _ R2) as [Mj HMj Href2 Hlen2].
         rewrite HM in HMj; injection HMj as <-.
         rewrite Href1 in Href2; injection Href2 as <- <-.
         destruct (fresh_tele_rel_ftele _ _ _ _ _ _ _ _ (afr_nparams _ _ _ _ _ _ _ Ha _ Mv s HM)) as (nsu & nsa & Fu & Fa & Lu & Hua).
@@ -1135,12 +1118,10 @@ Section Fixed_GCtx.
         pose proof (ttrans _ _ HM _ _ _ (tsym _ _ HM _ _ Hn1) Hn2) as Hab.
         pose proof Hab as Lab; rewrite tele_rel_iff in Lab; destruct Lab as (Lna & Lnb & _).
         rewrite List.length_rev in Lna, Lnb.
-        refine (mk_member_pair s Ua Ub sel i0 Mi Mv HM Hnn hd1 k1 pre1 pre2 R1 R2 Hlen1 Hlen2 nsa nsb Fa Fb _ Hnames _).
-        - eapply ind_rel_neut; [ exact HM | exact Href1 | exact Hab | | | | | | | exact var_per_bot ].
+        refine (mk_member_pair s sel i0 Mi Mv HM Hnn hd1 k1 pre1 pre2 R1 R2 Hlen1 Hlen2 nsa nsb Fa Fb _ Hnames _).
+        - eapply ind_rel_neut; [ exact HM | exact Href1 | exact Hab | | | | | exact var_per_bot ].
           + rewrite List.length_app, Hlen1; unfold im_nn in *; lia.
           + rewrite List.length_app, Hlen2; unfold im_nn in *; lia.
-          + rewrite firstn_app_exact by exact Hlen1; exact Hadm1.
-          + rewrite firstn_app_exact by exact Hlen2; exact Hadm2.
           + rewrite skipn_app_exact by exact Hlen1; exact (trefl _ _ HM _ _ Hab).
           + rewrite skipn_app_exact by exact Hlen2; exact (trefl_r _ _ HM _ _ Hab).
         - intros c gs' Hin.
@@ -1152,7 +1133,7 @@ Section Fixed_GCtx.
           exists gs; split; [ exact Hc | split; [ exact Hpl | split; [ symmetry; exact (cargs_kinds_length _ _ Hk) |] ] ].
           pose proof (afr_args _ _ _ _ _ _ _ Ha _ Mv c gs s nsu nsa HM Hc Fu Fa) as C1.
           pose proof (afr_args _ _ _ _ _ _ _ Hb _ Mv c gs s nsu nsb HM Hc Fu Fb) as C2.
-          destruct (fresh_args Ua Ub _ Mv c gs nsu nsa nsb rk r Ha Hb La Lb Hma Hmb HM Hc Hpl Hn1 Hn2 HIH
+          destruct (fresh_args _ Mv c gs nsu nsa nsb rk r Ha Hb La Lb Hma Hmb HM Hc Hpl Hn1 Hn2 HIH
                       gs' gs nil nil nil nil (s + im_nn Mv) (s + im_nn Mv + List.length gs') eq_refl Hk Hno C1 C2
                       (tele_prefix_rel_nil _) (tele_prefix_rel_nil _))
             as [vsa vsb ihsa ihsb wa wb wfu F1 F2 I1 I2 W1 W2 P1 P2 Hia Hir].
@@ -1160,7 +1141,7 @@ Section Fixed_GCtx.
           repeat rewrite List.app_nil_r in Hia; repeat rewrite List.app_nil_r in Hir.
           cbn [List.app] in P1, P2.
           rewrite Hnn in F1, F2, I1, I2.
-          refine (mk_brs_pair s Ua Ub _ Mv Mi hd1 k1 pre1 pre2 nsa nsb c gs' gs vsa vsb ihsa ihsb wa wb F1 F2 I1 I2 W1 W2 _ Hir).
+          refine (mk_brs_pair s _ Mv Mi hd1 k1 pre1 pre2 nsa nsb c gs' gs vsa vsb ihsa ihsb wa wb F1 F2 I1 I2 W1 W2 _ Hir).
           rewrite !List.app_assoc; eapply ind_rel_con; [ exact HM | exact Href1 | exact Hab | exact Hc | | | | | |].
           + rewrite List.length_app, Hlen1; unfold im_nn in *; lia.
           + rewrite List.length_app, Hlen2; unfold im_nn in *; lia.
@@ -1177,73 +1158,34 @@ Section Fixed_GCtx.
           + rewrite !skipn_app_exact by assumption; exact Hia.
       Qed.
 
-      (** *** The Stuck Eliminator of a Group Without Views
-
-          Read as its own group's, at the uniform parameters of the
-          scrutinee's types, admissible at the fresh variables (model L). *)
-      Lemma per_bot_elim_nov : ind_has_views D = false -> forall j, elim_bot j.
-      Proof.
-        intros Hv j Mj hd k' as1 as2 e e' u u' ns ns' HM Hm.
-        inversion Hm as [| j0 Mj0 hd0 k0 ns0 ns0' as1' as2' e0 e0' u0 u0' HM0 Hr Hn L1 L2 O1 O2 Hs1 Hs2 He]; subst.
-        rewrite HM in HM0; injection HM0 as <-.
-        pose proof (no_views_decl _ _ _ Hv HM) as Hd; unfold im_is_decl in Hd.
-        destruct (im_head Mj) as [pm | qc kc Is vm] eqn:Hh; [| discriminate ].
-        unfold im_ref in Hr; rewrite Hh in Hr; injection Hr as <- <-.
-        unfold grp_adm in O1, O2; rewrite Hv, HM, Hh in O1, O2.
-        unfold im_unu in *; rewrite Hh in *.
-        assert (La : List.length (List.firstn (ind_nu D) as1) = ind_nu D) by (rewrite List.length_firstn; lia).
-        assert (Lb : List.length (List.firstn (ind_nu D) as2) = ind_nu D) by (rewrite List.length_firstn; lia).
-        intros s; destruct (He s) as (M & RM1 & RM2).
-        destruct (read_blocks_rel s (List.firstn (ind_nu D) as1) (List.firstn (ind_nu D) as2) None (ind_members D) 0)
-          as (NBks & RB1 & RB2).
-        { intros n Mi Hn0.
-          apply (member_pair_of s _ _ None n Mi Mi (fun _ => 0) 0 O1 O2 La Lb (mrefs_ok_no_views Hv _) (mrefs_ok_no_views Hv _)
-                   Hn0 eq_refl eq_refl).
-          - intros c gs' gs Hin Hc.
-            assert (gs = gs') as ->
-              by (pose proof (cons_lookup_nodup_in _ _ _ (Hnd _ _ Hn0) Hin) as Hc0; unfold ind_con in Hc; congruence).
-            split; [ apply cargs_kinds_refl | apply cargs_nest_ok_refl ].
-          - intros j' Hj'; lia. }
-        assert (Hsel : im_sel Mj = None) by (unfold im_sel; rewrite Hh; reflexivity).
-        unfold elim_oups in RB1, RB2 |- *; rewrite Hv in RB1, RB2 |- *.
-        exists (ne_elim p None j NBks M); split.
-        - eapply read_ne_elim; [ exact Hl | exact HM | unfold im_ref; rewrite Hh; reflexivity | exact Hl | exact HM
-                               | unfold im_np; lia | intros i0 Mi b HMi Hb0; exact (HnmA _ _ _ HMi Hb0)
-                               | rewrite Hsel; exact RB1 | exact RM1 ].
-        - eapply read_ne_elim; [ exact Hl | exact HM | unfold im_ref; rewrite Hh; reflexivity | exact Hl | exact HM
-                               | unfold im_np; lia | intros i0 Mi b HMi Hb0; exact (HnmB _ _ _ HMi Hb0)
-                               | rewrite Hsel; exact RB2 | exact RM2 ].
-      Qed.
-
-      (** *** The Stuck Eliminator of a Group With Views
+      (** *** The Stuck Eliminator at a Member
 
           Read as the eliminator of the group its member is at (E1′: the
           container's, at a view), under fresh variables of this group's
           members' telescopes at the uniform parameters it carries (model
           P), when the stuck eliminators at the members of lower rank read
-          back alike; with the container's uniform parameters at them when
-          the container has views. *)
-      Lemma per_bot_elim_views : ind_has_views D = true ->
+          back alike; with the container's uniform parameters at them. *)
+      Lemma per_bot_elim_rank :
           forall j Mj rk u u' ns ns' hd k' as1 as2 e e', ind_member D j = Some Mj ->
           view_rank_ok gc_deps gc_stack D rk -> (forall j', rk j' < rk j -> elim_bot j') ->
           grp_rel p D ups nr ar dr j u u' ns ns' (⇑ (d_ind hd k' as1) e) (⇑ (d_ind hd k' as2) e') ->
-          Dom d_elim ρa Bksa p (elim_oups D ua) j as1 e ≈ d_elim ρb Bksb p (elim_oups D ub) j as2 e' ∈ per_bot.
+          Dom d_elim ρa Bksa p ua j as1 e ≈ d_elim ρb Bksb p ub j as2 e' ∈ per_bot.
       Proof.
-        intros Hv * HM Hrk HIH Hm.
-        destruct (Hups Hv) as [La Lb Ca Cb Ma Mb Hcu].
+        intros * HM Hrk HIH Hm.
+        destruct Hups as [La Lb Ca Cb Ma Mb Hcu].
         pose proof (adm_fresh_of_uparams p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ua Ca) as Ha.
         pose proof (adm_fresh_of_uparams p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ub Cb) as Hb.
-        inversion Hm as [| j0 Mj0 hd0 k0 ns0 ns0' as1' as2' e0 e0' u0 u0' HM0 Hr Hn L1 L2 O1 O2 Hs1 Hs2 He]; subst.
+        inversion Hm as [| j0 Mj0 hd0 k0 ns0 ns0' as1' as2' e0 e0' u0 u0' HM0 Hr Hn L1 L2 Hs1 Hs2 He]; subst.
         rewrite HM in HM0; injection HM0 as <-.
         destruct (im_ref_target _ _ _ _ HM Hr) as (Dq & Mk & Hq & HMk & Hnnq & Hnuq).
         (** The blocks: one per member of the group read, the block of the
             member of this group the view takes it to. *)
-        assert (HMP : forall s n Mi, ind_member Dq n = Some Mi -> member_pair s ua ub (im_sel Mj) n Mi).
+        assert (HMP : forall s n Mi, ind_member Dq n = Some Mi -> member_pair s (im_sel Mj) n Mi).
         { intros s n Mi Hn0; destruct (im_head Mj) as [pm | qc kc Is vm] eqn:Hh.
           - unfold im_ref in Hr; rewrite Hh in Hr; injection Hr as <- <-.
             rewrite Hl in Hq; injection Hq as <-.
             assert (Hsel : im_sel Mj = None) by (unfold im_sel; rewrite Hh; reflexivity); rewrite Hsel.
-            apply (member_pair_of s ua ub None n Mi Mi rk (rk j) Ha Hb La Lb Ma Mb Hn0 eq_refl eq_refl); [| exact HIH ].
+            apply (member_pair_of s None n Mi Mi rk (rk j) Ha Hb La Lb Ma Mb Hn0 eq_refl eq_refl); [| exact HIH ].
             intros c gs' gs Hin Hc.
             assert (gs = gs') as ->
               by (pose proof (cons_lookup_nodup_in _ _ _ (Hnd _ _ Hn0) Hin) as Hc0; unfold ind_con in Hc; congruence).
@@ -1256,7 +1198,7 @@ Section Fixed_GCtx.
             destruct (vwo_members _ _ _ Hvw n Mi v Hn0 Hvm) as (Mv' & HMv' & _ & Hnames & Hcorr).
             rewrite HMv in HMv'; injection HMv' as <-.
             assert (Hsrc : elim_src (Some vm) n = v) by (cbn; apply List.nth_error_nth; exact Hvm).
-            apply (member_pair_of s ua ub (Some vm) n Mi Mv rk (rk j) Ha Hb La Lb Ma Mb
+            apply (member_pair_of s (Some vm) n Mi Mv rk (rk j) Ha Hb La Lb Ma Mb
                      ltac:(rewrite Hsrc; exact HMv) Hnn (eq_sym Hnames)); [| exact HIH ].
             intros c gs' gs Hin Hc.
             assert (Hc' : ind_con Mi c = Some gs')
@@ -1268,48 +1210,39 @@ Section Fixed_GCtx.
                    blocks_nm_at D None Bks) by (intros Bks HB i0 Mi b HMi Hb0; exact (HB _ _ _ HMi Hb0)).
         assert (Lq : List.length as1 = im_np Dq Mk /\ List.length as2 = im_np Dq Mk) by (unfold im_np; split; lia).
         intros s; destruct (He s) as (M & RM1 & RM2).
-        destruct (read_blocks_rel s ua ub (im_sel Mj) (ind_members Dq) 0) as (NBks & RB1 & RB2).
+        destruct (read_blocks_rel s (im_sel Mj) (ind_members Dq) 0) as (NBks & RB1 & RB2).
         { intros n Mi Hn0; exact (HMP s (0 + n) Mi Hn0). }
-        unfold elim_oups in RB1, RB2 |- *; rewrite Hv in RB1, RB2 |- *.
-        destruct (ind_has_views Dq) eqn:Hqv.
-        - destruct (Ma _ _ HM) as [[[hd1 k1] pa] Ra]; destruct (Mb _ _ HM) as [[[hd2 k2] pb] Rb].
-          destruct (mref_at_end_adm _ Ha La _ _ _ _ Ra) as [Mj1 HMj1 Hr1 _ _].
-          rewrite HM in HMj1; injection HMj1 as <-; rewrite Hr in Hr1; injection Hr1 as <- <-.
-          destruct (mref_at_end_adm _ Hb Lb _ _ _ _ Rb) as [Mj1 HMj1 Hr1 _ _].
-          rewrite HM in HMj1; injection HMj1 as <-; rewrite Hr in Hr1; injection Hr1 as <- <-.
-          destruct (Hcu j Mj hd k' pa pb Dq HM Ra Rb Hq Hqv s) as (Us & RU1 & RU2).
-          exists (ne_elim hd (Some Us) k' NBks M); split.
-          + eapply read_ne_elim_ups_views; [ exact Hl | exact HM | exact Hr | exact Hq | exact HMk | exact (proj1 Lq)
-                                           | exact (Hnm _ HnmA) | exact Hqv | exact Ra | exact RU1 | exact RB1 | exact RM1 ].
-          + eapply read_ne_elim_ups_views; [ exact Hl | exact HM | exact Hr | exact Hq | exact HMk | exact (proj2 Lq)
-                                           | exact (Hnm _ HnmB) | exact Hqv | exact Rb | exact RU2 | exact RB2 | exact RM2 ].
-        - exists (ne_elim hd None k' NBks M); split.
-          + eapply read_ne_elim_ups; [ exact Hl | exact HM | exact Hr | exact Hq | exact HMk | exact (proj1 Lq)
-                                     | exact (Hnm _ HnmA) | exact Hqv | exact RB1 | exact RM1 ].
-          + eapply read_ne_elim_ups; [ exact Hl | exact HM | exact Hr | exact Hq | exact HMk | exact (proj2 Lq)
-                                     | exact (Hnm _ HnmB) | exact Hqv | exact RB2 | exact RM2 ].
+        destruct (Ma _ _ HM) as [[[hd1 k1] pa] Ra]; destruct (Mb _ _ HM) as [[[hd2 k2] pb] Rb].
+        destruct (mref_at_end_adm _ La _ _ _ _ Ra) as [Mj1 HMj1 Hr1 _].
+        rewrite HM in HMj1; injection HMj1 as <-; rewrite Hr in Hr1; injection Hr1 as <- <-.
+        destruct (mref_at_end_adm _ Lb _ _ _ _ Rb) as [Mj1 HMj1 Hr1 _].
+        rewrite HM in HMj1; injection HMj1 as <-; rewrite Hr in Hr1; injection Hr1 as <- <-.
+        destruct (Hcu j Mj hd k' pa pb Dq HM Ra Rb Hq s) as (Us & RU1 & RU2).
+        exists (ne_elim hd Us k' NBks M); split.
+        - eapply read_ne_elim; [ exact Hl | exact HM | exact Hr | exact Hq | exact HMk | exact (proj1 Lq)
+                               | exact (Hnm _ HnmA) | exact Ra | exact RU1 | exact RB1 | exact RM1 ].
+        - eapply read_ne_elim; [ exact Hl | exact HM | exact Hr | exact Hq | exact HMk | exact (proj2 Lq)
+                               | exact (Hnm _ HnmB) | exact Rb | exact RU2 | exact RB2 | exact RM2 ].
       Qed.
 
       (** ** The Stuck Eliminator
 
-          For a group without views, at once; for one with views, by strong
-          induction on the rank: a view's readback reads the eliminator at
-          members of lower rank at the positions it nests through. *)
+          By strong induction on the rank: a view's readback reads the
+          eliminator at members of lower rank at the positions it nests
+          through. *)
       Theorem per_bot_elim : forall j, elim_bot j.
       Proof.
-        assert (Hv : ind_has_views D = true \/ ind_has_views D = false) by (destruct (ind_has_views D); auto).
-        destruct Hv as [Hv | Hv]; [| exact (per_bot_elim_nov Hv) ].
         destruct (gta_rank _ Hass) as [rk Hrk].
         assert (H : forall r j, rk j < r -> elim_bot j).
         { induction r as [| r IH]; intros j Hj; [ lia |].
           intros Mj hd k' as1 as2 e1 e1' w w' ns ns' HM Hm.
-          apply (per_bot_elim_views Hv j Mj rk w w' ns ns' hd k' as1 as2 e1 e1' HM Hrk); [| exact Hm ].
+          apply (per_bot_elim_rank j Mj rk w w' ns ns' hd k' as1 as2 e1 e1' HM Hrk); [| exact Hm ].
           intros j' Hj'; apply IH; lia. }
         intros j; exact (H (S (rk j)) j ltac:(lia)).
       Qed.
 
-      Lemma con_args_rel_length : forall adm okr k u u' pre pre' gs vs vs',
-          con_args_rel p D adm okr nr ar dr k u u' pre pre' gs vs vs' ->
+      Lemma con_args_rel_length : forall okr k u u' pre pre' gs vs vs',
+          con_args_rel p D okr nr ar dr k u u' pre pre' gs vs vs' ->
           List.length vs = List.length gs /\ List.length vs' = List.length gs.
       Proof.
         intros * H; induction H; cbn; try (destruct IHcon_args_rel; split; f_equal; assumption); split; reflexivity.
@@ -1318,23 +1251,23 @@ Section Fixed_GCtx.
       (** ** Related Elements Eliminate to Related Values *)
       Theorem per_ind_elim_all :
         (forall j u u' ns ns' m m', grp_rel p D ups nr ar dr j u u' ns ns' m m' ->
-           exists r r', ⟦elim m at j of p (elim_oups D ua) Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ r /\
-             ⟦elim m' at j of p (elim_oups D ub) Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ r' /\ Rel j ns m ns' m' r r') /\
+           exists r r', ⟦elim m at j of p ua Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ r /\
+             ⟦elim m' at j of p ub Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ r' /\ Rel j ns m ns' m' r r') /\
         (forall k u u' pre pre' gs vs vs',
-           con_args_rel p D (grp_adm p D ups nr ar dr) (okr_at D ups nr) nr ar dr k u u' pre pre' gs vs vs' ->
-           exists ihs ihs', ⟦ihs vs of gs under p (elim_oups D ua) Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ ihs /\
-             ⟦ihs vs' of gs under p (elim_oups D ub) Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ihs' /\
+           con_args_rel p D (okr_at D ups nr) nr ar dr k u u' pre pre' gs vs vs' ->
+           exists ihs ihs', ⟦ihs vs of gs under p ua Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ ihs /\
+             ⟦ihs vs' of gs under p ub Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ihs' /\
              rec_results_rel k u u' pre pre' gs vs vs' ihs ihs') /\
         (forall k u u' pre pre' t v v',
-           rec_arg_rel p D (grp_adm p D ups nr ar dr) (okr_at D ups nr) nr ar dr k u u' pre pre' t v v' ->
-           exists ih ih', ⟦ih v of t under p (elim_oups D ua) Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ ih /\
-             ⟦ih v' of t under p (elim_oups D ub) Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ih' /\
+           rec_arg_rel p D (okr_at D ups nr) nr ar dr k u u' pre pre' t v v' ->
+           exists ih ih', ⟦ih v of t under p ua Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ ih /\
+             ⟦ih v' of t under p ub Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ih' /\
              rec_result_rel k u u' pre pre' t v v' ih ih') /\
         (forall k u u' pre pre' t f c f' c',
-           rec_arg_app_rel p D (grp_adm p D ups nr ar dr) (okr_at D ups nr) nr ar dr k u u' pre pre' t f c f' c' ->
+           rec_arg_app_rel p D (okr_at D ups nr) nr ar dr k u u' pre pre' t f c f' c' ->
            exists fc fc' r r', $| f & c | gc_deps ⍮ gc_stack ↘ fc /\ $| f' & c' | gc_deps ⍮ gc_stack ↘ fc' /\
-             ⟦ih fc of t under p (elim_oups D ua) Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ r /\
-             ⟦ih fc' of t under p (elim_oups D ub) Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ r' /\
+             ⟦ih fc of t under p ua Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ r /\
+             ⟦ih fc' of t under p ub Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ r' /\
              rec_result_rel k u u' pre pre' t fc fc' r r').
       Proof.
         pose proof (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI) as tsym.
@@ -1349,13 +1282,13 @@ Section Fixed_GCtx.
           pose proof (HarA _ _ _ _ _ _ _ HM HBka Hc HinA) as Hn0; pose proof (HarB _ _ _ _ _ _ _ HM HBkb Hc HinB) as Hn0'.
           assert (n' = n) as -> by lia.
           destruct (im_ref_target _ _ _ _ HM Href) as (Dq & Mq & Hq & HMq & Hnnq & Hnuq).
-          destruct (con_args_rel_length _ _ _ _ _ _ _ _ _ _ Hia) as [Lv Lv'].
+          destruct (con_args_rel_length _ _ _ _ _ _ _ _ _ Hia) as [Lv Lv'].
           match goal with |- exists r r', ⟦elim d_con _ _ _ (?bs ++ ?vs) at _ of _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ r /\
                                            ⟦elim d_con _ _ _ (?bs' ++ ?vs') at _ of _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ r' /\ _ =>
             assert (Hcur : grp_rel p D ups nr ar dr _ _ _ _ _ (d_con _ _ _ (bs ++ vs)) (d_con _ _ _ (bs' ++ vs')))
               by (eapply ind_rel_con; [ exact HM | exact Href | exact Hn | exact Hc | exact Lb | exact Lb' | exact Hs | exact Hs'
                                      | exact Ha | exact Hia ]) end.
-          pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ HM Hcur Hs Hs') as Hm.
+          pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hcur Hs Hs') as Hm.
           destruct (Hbr _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM HBka HBkb Hc HBa HBb Hm Hir) as (r & r' & Er & Er' & Hrr).
           exists r, r'; split; [| split ].
           + eapply eval_elim_con; [ exact Hl | exact HM | exact Href | exact Hq | exact HMq | exact Hc
@@ -1368,9 +1301,9 @@ Section Fixed_GCtx.
             * rewrite firstn_app_exact, skipn_app_exact, Hnuq by (unfold im_np; lia); exact Er'.
           + apply (motive_rel_move _ _ _ _ _ _ _ _ _ _ HM Hm (tsym _ _ HM _ _ Hs) (tsym _ _ HM _ _ Hs')); exact Hrr.
         - (** A neutral: stuck, its readbacks agree. *)
-          intros * u0 u0' HM Href Hn L1 L2 O1 O2 Hs1 Hs2 He.
+          intros * u0 u0' HM Href Hn L1 L2 Hs1 Hs2 He.
           eapply (neut_elim_rel _ _ u0 u0'); [ exact HM | | eapply (per_bot_elim _ _ _ _ _ _ _ _ u0 u0'); [ exact HM |] ];
-            (eapply ind_rel_neut; [ exact HM | exact Href | exact Hn | exact L1 | exact L2 | exact O1 | exact O2 | exact Hs1
+            (eapply ind_rel_neut; [ exact HM | exact Href | exact Hn | exact L1 | exact L2 | exact Hs1
                                   | exact Hs2 | exact He ]).
         - intros; exists nil, nil; split; [ constructor | split; [ constructor | constructor ] ].
         - intros * Hia (ihs & ihs' & Ei & Ei' & Hir).
@@ -1384,7 +1317,7 @@ Section Fixed_GCtx.
         - intros * Hf IH.
           match goal with |- exists ih ih', ⟦ih ?f of pt_pi _ ?t under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ ih /\
                                             ⟦ih ?f' of _ under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ ih' /\ _ =>
-            exists (d_ihfn ρa Bksa p (elim_oups D ua) t f), (d_ihfn ρb Bksb p (elim_oups D ub) t f') end.
+            exists (d_ihfn ρa Bksa p ua t f), (d_ihfn ρb Bksb p ub t f') end.
           split; [ constructor | split; [ constructor |] ].
           constructor; intros c c' Hcc.
           destruct (IH c c' Hcc) as (fc & fc' & r & r' & Ef & Ef' & Er & Er' & Hrr).

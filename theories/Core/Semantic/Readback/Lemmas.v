@@ -32,9 +32,9 @@ Import Domain_Notations.
     functional_eval_rewrite_clear; f_equal; auto.
   Qed.
 
-  Lemma functional_wrap_ihs_eval : forall {Θ Ξ} ρ p oups Bks gs' gs vs ihs r1,
-      ⟦wihs vs of gs' gs with ihs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-      forall r2, ⟦wihs vs of gs' gs with ihs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
+  Lemma functional_wrap_ihs_eval : forall {Θ Ξ} ρ p ups Bks gs' gs vs ihs r1,
+      ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+      forall r2, ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
   Proof.
     induction 1; intros * H2; inversion H2; subst; auto.
     all: functional_eval_rewrite_clear; f_equal; auto.
@@ -96,10 +96,10 @@ Import Domain_Notations.
          forall Vs2, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs2 -> Vs1 = Vs2) /\
       (forall s p ups ρ t v V1, Rsh v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V1 ->
          forall V2, Rsh v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V2 -> V1 = V2) /\
-      (forall s ρ p oups ups Bks sel i Ms NBks1, Rblks i Ms from p oups ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks1 ->
-         forall NBks2, Rblks i Ms from p oups ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks2 -> NBks1 = NBks2) /\
-      (forall s ρ p oups ups Bks Mv A Mi r cs Bs Bs1, Rbrs Bs at cs of Mi r from p oups ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs1 ->
-         forall Bs2, Rbrs Bs at cs of Mi r from p oups ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs2 -> Bs1 = Bs2).
+      (forall s ρ p ups Bks sel i Ms NBks1, Rblks i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks1 ->
+         forall NBks2, Rblks i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks2 -> NBks1 = NBks2) /\
+      (forall s ρ p ups Bks Mv A Mi r cs Bs Bs1, Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs1 ->
+         forall Bs2, Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs2 -> Bs1 = Bs2).
   Proof.
     intros Θ Ξ; apply read_mut_ind; intros; progressive_inversion; functional_eval_rewrite_clear;
       functional_fresh_rewrite_clear; functional_eval_rewrite_clear.
@@ -109,10 +109,8 @@ Import Domain_Notations.
         [nf_lvl_of (lvl_canon …)]: [repeat f_equal] reaches the atoms. *)
     all: try solve [ apply nf_univ_of_cong; eauto | repeat f_equal; solve [eauto] ].
     (** A constructor at an inductive type, read by one of two rules (a
-        declared member, or a view), and a stuck eliminator of a group with
-        views, by one of two (whether the container has views): the other
-        side is inverted here, the rules excluding each other by the
-        member's head, and by the container. *)
+        declared member, or a view): the other side is inverted here, the
+        rules excluding each other by the member's head. *)
     all: match goal with
          | H : read_nf _ _ _ _ _ |- _ = _ => inversion H; subst; clear H
          | H : read_ne _ _ _ _ _ |- _ = _ => inversion H; subst; clear H

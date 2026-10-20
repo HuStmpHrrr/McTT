@@ -227,15 +227,13 @@ Ltac syn_ext_brs lift liftn :=
       f_equal; [ f_equal; autorewrite with syn_ops; solve [ eauto using lift, liftn ] | assumption ]
   end.
 
-(** The uniform parameters an eliminator of a group with views carries:
-    a list mapped elementwise, under no binder. *)
+(** The uniform parameters an eliminator carries: a list mapped
+    elementwise, under no binder. *)
 Ltac syn_ext_us lift liftn :=
   match goal with
-  | HU : List.Forall _ (match ?o with Some _ => _ | None => nil end) |- _ =>
-      lazymatch goal with |- context [option_map _ o] => idtac end;
-      destruct o; cbn [option_map] in *;
-      [ f_equal; induction HU; cbn [List.map]; f_equal; autorewrite with syn_ops; solve [ eauto using lift, liftn ]
-      | reflexivity ]
+  | HU : @List.Forall exp _ ?Us |- _ =>
+      lazymatch goal with |- context [Us] => idtac end;
+      induction HU; cbn [List.map]; f_equal; autorewrite with syn_ops; solve [ eauto using lift, liftn ]
   end.
 
 (** The blocks of an eliminator: each its annotation (under one binder
@@ -289,11 +287,9 @@ Ltac blocks_case one :=
     so that [blocks_case] does not take it for the branches'. *)
 Ltac ups_case one :=
   match goal with
-  | HU : List.Forall _ (match ?o with Some _ => _ | None => nil end) |- _ =>
+  | HU : @List.Forall exp _ ?Us |- _ =>
       first
-        [ lazymatch goal with |- context [o] => idtac end;
-          let Us := fresh "Us" in
-          destruct o as [Us |]; cbn [option_map opt_all] in *; [| solve [ auto ] ];
+        [ lazymatch goal with |- context [Us] => idtac end;
           repeat match goal with H : context [Us] |- _ => lazymatch H with HU => fail | _ => revert H end end;
           let HU1 := fresh "HU1" in
           induction HU as [| ? ? HU1 ? ?]; intros; cbn [List.map all_list] in *; destruct_all;
@@ -304,12 +300,9 @@ Ltac ups_case one :=
 (** The same for an equation between two lists of uniform parameters. *)
 Ltac ups_eq_case one :=
   match goal with
-  | HU : List.Forall _ (match ?o with Some _ => _ | None => nil end) |- _ =>
+  | HU : @List.Forall exp _ ?Us |- _ =>
       first
-        [ lazymatch goal with |- context [o] => idtac end;
-          let Us := fresh "Us" in
-          destruct o as [Us |]; cbn [option_map opt_all] in *; [| reflexivity ];
-          f_equal;
+        [ lazymatch goal with |- context [Us] => idtac end;
           repeat match goal with H : context [Us] |- _ => lazymatch H with HU => fail | _ => revert H end end;
           let HU1 := fresh "HU1" in
           induction HU as [| ? ? HU1 ? ?]; intros; cbn [List.map all_list] in *; destruct_all;

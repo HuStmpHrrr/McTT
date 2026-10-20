@@ -75,10 +75,10 @@ Section GlobalExt.
     (forall h ch r, h ·ₜ* ch Θ1 ⍮ Ξ1 ↘ r -> h ·ₜ* ch Θ2 ⍮ Ξ2 ↘ r) /\
     (forall h ch r, h ·ₘ* ch Θ1 ⍮ Ξ1 ↘ r -> h ·ₘ* ch Θ2 ⍮ Ξ2 ↘ r) /\
     (forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ1 ⍮ Ξ1 ⍮ ρ ↘ ρ' -> ⟦ Φ ⟧ᵇ Θ2 ⍮ Ξ2 ⍮ ρ ↘ ρ') /\
-    (forall ρ p oups Bks j m r, ⟦elim m at j of p oups Bks ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ r -> ⟦elim m at j of p oups Bks ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ r) /\
-    (forall ρ p oups Bks gs vs ihs, ⟦ihs vs of gs under p oups Bks ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ ihs ->
-       ⟦ihs vs of gs under p oups Bks ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ ihs) /\
-    (forall ρ p oups Bks t v r, ⟦ih v of t under p oups Bks ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ r -> ⟦ih v of t under p oups Bks ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ r) /\
+    (forall ρ p ups Bks j m r, ⟦elim m at j of p ups Bks ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ r -> ⟦elim m at j of p ups Bks ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ r) /\
+    (forall ρ p ups Bks gs vs ihs, ⟦ihs vs of gs under p ups Bks ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ ihs ->
+       ⟦ihs vs of gs under p ups Bks ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ ihs) /\
+    (forall ρ p ups Bks t v r, ⟦ih v of t under p ups Bks ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ r -> ⟦ih v of t under p ups Bks ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ r) /\
     (forall p ups j r, ⟦mref j of p ups ⟧ Θ1 ⍮ Ξ1 ↘ r -> ⟦mref j of p ups ⟧ Θ2 ⍮ Ξ2 ↘ r) /\
     (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a -> ⟦shty t of p ups ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a) /\
     (forall ρm As ρ t v a, ⟦ihty v of t under ρm As ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a -> ⟦ihty v of t under ρm As ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a).
@@ -97,9 +97,9 @@ Section GlobalExt.
              (fun h ch r _ => eval_selc Θ2 Ξ2 h ch r)
              (fun h ch r _ => eval_selmc Θ2 Ξ2 h ch r)
              (fun ρ Φ ρ' _ => eval_benv Θ2 Ξ2 ρ Φ ρ')
-             (fun ρ p oups Bks j m r _ => eval_elim Θ2 Ξ2 ρ p oups Bks j m r)
-             (fun ρ p oups Bks gs vs ihs _ => eval_ihs Θ2 Ξ2 ρ p oups Bks gs vs ihs)
-             (fun ρ p oups Bks t v r _ => eval_ih Θ2 Ξ2 ρ p oups Bks t v r)
+             (fun ρ p ups Bks j m r _ => eval_elim Θ2 Ξ2 ρ p ups Bks j m r)
+             (fun ρ p ups Bks gs vs ihs _ => eval_ihs Θ2 Ξ2 ρ p ups Bks gs vs ihs)
+             (fun ρ p ups Bks t v r _ => eval_ih Θ2 Ξ2 ρ p ups Bks t v r)
              (fun p ups j r _ => eval_mref Θ2 Ξ2 p ups j r)
              (fun p ups ρ t a _ => eval_shty Θ2 Ξ2 p ups ρ t a)
              (fun ρm As ρ t v a _ => eval_ihty Θ2 Ξ2 ρm As ρ t v a)).
@@ -123,9 +123,9 @@ Section GlobalExt.
       Fihs vs at gs' gs under ρ As in Θ1 ⍮ Ξ1 ⍮ ρa ⍮ s ↘ ihs -> Fihs vs at gs' gs under ρ As in Θ2 ⍮ Ξ2 ⍮ ρa ⍮ s ↘ ihs.
   Proof. pose proof eval_ext; destruct_all; induction 1; econstructor; eauto. Qed.
 
-  Lemma wrap_ihs_eval_ext : forall ρ p oups Bks gs' gs vs ihs r,
-      ⟦wihs vs of gs' gs with ihs under p oups Bks ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ r ->
-      ⟦wihs vs of gs' gs with ihs under p oups Bks ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ r.
+  Lemma wrap_ihs_eval_ext : forall ρ p ups Bks gs' gs vs ihs r,
+      ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ r ->
+      ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ r.
   Proof. pose proof eval_ext; destruct_all; induction 1; econstructor; eauto. Qed.
 
   Lemma read_ext :
@@ -136,10 +136,10 @@ Section GlobalExt.
     (forall s ρ T vs Ms, Rps vs at T in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Ms -> Rps vs at T in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Ms) /\
     (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Ms -> Rcargs vs at gs of p ups in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Ms) /\
     (forall s p ups ρ t v V, Rsh v at t of p ups in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ V -> Rsh v at t of p ups in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ V) /\
-    (forall s ρ p oups ups Bks sel i Ms NBks, Rblks i Ms from p oups ups Bks sel in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ NBks ->
-       Rblks i Ms from p oups ups Bks sel in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ NBks) /\
-    (forall s ρ p oups ups Bks Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r from p oups ups Bks Mv A in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Bs' ->
-       Rbrs Bs at cs of Mi r from p oups ups Bks Mv A in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Bs').
+    (forall s ρ p ups Bks sel i Ms NBks, Rblks i Ms from p ups Bks sel in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ NBks ->
+       Rblks i Ms from p ups Bks sel in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ NBks) /\
+    (forall s ρ p ups Bks Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Bs' ->
+       Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Bs').
   Proof.
     pose proof eval_ext as He; destruct_all.
     apply (read_mut_ind Θ1 Ξ1
@@ -150,8 +150,8 @@ Section GlobalExt.
              (fun s ρ T vs Ms _ => read_ps Θ2 Ξ2 s ρ T vs Ms)
              (fun s p ups ρ gs vs Ms _ => read_cargs Θ2 Ξ2 s p ups ρ gs vs Ms)
              (fun s p ups ρ t v V _ => read_shape Θ2 Ξ2 s p ups ρ t v V)
-             (fun s ρ p oups ups Bks sel i Ms NBks _ => read_blocks Θ2 Ξ2 s ρ p oups ups Bks sel i Ms NBks)
-             (fun s ρ p oups ups Bks Mv A Mi r cs Bs Bs' _ => read_brs Θ2 Ξ2 s ρ p oups ups Bks Mv A Mi r cs Bs Bs')).
+             (fun s ρ p ups Bks sel i Ms NBks _ => read_blocks Θ2 Ξ2 s ρ p ups Bks sel i Ms NBks)
+             (fun s ρ p ups Bks Mv A Mi r cs Bs Bs' _ => read_brs Θ2 Ξ2 s ρ p ups Bks Mv A Mi r cs Bs Bs')).
     all: intros; econstructor;
       repeat match goal with
           | H : ind_lookup Θ1 Ξ1 _ = _ |- _ => rewrite ind_lookup_ext in H

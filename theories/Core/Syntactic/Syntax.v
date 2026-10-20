@@ -702,15 +702,14 @@ Inductive exp : Set :=
     literal generation ([Builtin]) replaces it by the chain of constructors of the
     inductive type bound as the natural numbers ([builtin natural]). *)
 | a_nlit : nat -> exp
-(** [a_elim oq oUs m Bks M] eliminates [M], of the member [m] of a group of
+(** [a_elim oq Us m Bks M] eliminates [M], of the member [m] of a group of
     inductive types, by the blocks [Bks], one per member of the group in
     its order ([eblock_g]); the result is the motive of block [m].  The
     group is [pq] when [oq = Some pq]; when [oq = None] it is that of the
-    scrutinee's type, the member [m] a declared one.  A group with views
-    has its uniform parameters on the eliminator ([oUs = Some Us], and
-    [oq = Some pq]); a group without views has [oUs = None], its uniform
-    parameters those of the scrutinee's type. *)
-| a_elim : option qname -> option (list exp) -> nat -> list (eblock_g exp) -> exp -> exp
+    scrutinee's type, the member [m] a declared one.  The eliminator
+    carries the group's uniform parameters [Us]: a stuck one is read at
+    them. *)
+| a_elim : option qname -> list exp -> nat -> list (eblock_g exp) -> exp -> exp
 (** Functions: [a_pi A B], [B] binding the argument *)
 | a_pi : exp -> exp -> exp
 (** [a_fn A M], [M] binding the argument *)
@@ -868,11 +867,11 @@ Section syn_mut_ind.
     (case_ind : forall p k, Pe (a_ind p k))
     (case_con : forall p k c, Pe (a_con p k c))
     (case_nlit : forall n, Pe (a_nlit n))
-    (case_elim : forall oq oUs m Bks M,
-        List.Forall Pe (match oUs with Some Us => Us | None => nil end) ->
+    (case_elim : forall oq Us m Bks M,
+        List.Forall Pe Us ->
         List.Forall (fun b => (forall Z, eb_ann b = Some Z -> Pe Z) /\ Pe (eb_motive b) /\
                               List.Forall (fun br => Pe (snd br)) (eb_brs b)) Bks ->
-        Pe M -> Pe (a_elim oq oUs m Bks M))
+        Pe M -> Pe (a_elim oq Us m Bks M))
     (case_pi : forall A B, Pe A -> Pe B -> Pe (a_pi A B))
     (case_fn : forall A M, Pe A -> Pe M -> Pe (a_fn A M))
     (case_app : forall M N, Pe M -> Pe N -> Pe (a_app M N))
@@ -916,17 +915,13 @@ Section syn_mut_ind.
     | a_ind p k => case_ind p k
     | a_con p k c => case_con p k c
     | a_nlit n => case_nlit n
-    | a_elim oq oUs m Bks M =>
-        case_elim oq oUs m Bks M
-          (match oUs as o return List.Forall Pe (match o with Some Us => Us | None => nil end) with
-           | Some Us0 =>
-               (fix us_mut (Us : list exp) : List.Forall Pe Us :=
-                  match Us with
-                  | nil => List.Forall_nil _
-                  | cons U Us' => List.Forall_cons U (exp_mut U) (us_mut Us')
-                  end) Us0
-           | None => List.Forall_nil _
-           end)
+    | a_elim oq Us0 m Bks M =>
+        case_elim oq Us0 m Bks M
+          ((fix us_mut (Us : list exp) : List.Forall Pe Us :=
+              match Us with
+              | nil => List.Forall_nil _
+              | cons U Us' => List.Forall_cons U (exp_mut U) (us_mut Us')
+              end) Us0)
           ((fix blocks_mut (Bks : list eblock) :
               List.Forall (fun b => (forall Z, eb_ann b = Some Z -> Pe Z) /\ Pe (eb_motive b) /\
                                     List.Forall (fun br => Pe (snd br)) (eb_brs b)) Bks :=
@@ -1438,10 +1433,10 @@ with ne : Set :=
 (** The [⊥]-eliminator, always stuck *)
 | ne_exfalso : nf -> ne -> ne
 (** The eliminator of the group [pq], at its declared member [m], stuck
-    on a neutral; its blocks carry no annotation, and the group's uniform
-    parameters when the group has views ([oUs]).  (An eliminator at a view
-    is stuck as the eliminator of the view's container's group.) *)
-| ne_elim : qname -> option nfs -> nat -> nblocks -> ne -> ne
+    on a neutral, at the group's uniform parameters; its blocks carry no
+    annotation.  (An eliminator at a view is stuck as the eliminator of the
+    view's container's group.) *)
+| ne_elim : qname -> nfs -> nat -> nblocks -> ne -> ne
 (** A neutral applied *)
 | ne_app : ne -> nf -> ne
 (** A variable *)
@@ -1498,7 +1493,7 @@ Fixpoint nf_to_exp (M : nf) : exp :=
 with ne_to_exp (M : ne) : exp :=
   match M with
   | ne_exfalso A M => a_exfalso (nf_to_exp A) (ne_to_exp M)
-  | ne_elim p oUs m Bks M => a_elim (Some p) (option_map nfs_to_exps oUs) m (nblocks_to_blocks Bks) (ne_to_exp M)
+  | ne_elim p Us m Bks M => a_elim (Some p) (nfs_to_exps Us) m (nblocks_to_blocks Bks) (ne_to_exp M)
   | ne_app M N => a_app (ne_to_exp M) (nf_to_exp N)
   | ne_var x => a_var x
   | ne_glob p => qname_term p
@@ -1618,7 +1613,7 @@ Fixpoint nf_clean (W : nf) : Prop :=
 with ne_clean (M : ne) : Prop :=
   match M with
   | ne_exfalso A M => nf_clean A /\ ne_clean M
-  | ne_elim _ oUs _ Bks M => match oUs with Some Us => nfs_clean Us | None => True end /\ nblocks_clean Bks /\ ne_clean M
+  | ne_elim _ Us _ Bks M => nfs_clean Us /\ nblocks_clean Bks /\ ne_clean M
   | ne_app M N => ne_clean M /\ nf_clean N
   | ne_var _ => True
   | ne_glob _ => False
@@ -1750,8 +1745,8 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_ind p k => a_ind p k
   | a_con p k c => a_con p k c
   | a_nlit n => a_nlit n
-  | a_elim oq oUs m Bks M =>
-      a_elim oq (option_map (List.map (fun U => exp_wk U φ)) oUs) m
+  | a_elim oq Us m Bks M =>
+      a_elim oq (List.map (fun U => exp_wk U φ) Us) m
         (List.map (fun b =>
            match b with
            | eb_mk nm oZ A Bs =>
@@ -1929,8 +1924,8 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_ind p k => a_ind p k
   | a_con p k c => a_con p k c
   | a_nlit n => a_nlit n
-  | a_elim oq oUs m Bks M =>
-      a_elim oq (option_map (List.map (fun U => exp_sub U σ)) oUs) m
+  | a_elim oq Us m Bks M =>
+      a_elim oq (List.map (fun U => exp_sub U σ) Us) m
         (List.map (fun b =>
            match b with
            | eb_mk nm oZ A Bs =>

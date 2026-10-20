@@ -689,18 +689,11 @@ Definition eblock_sub (b : eblock) (τ : sub) : eblock :=
 
 Definition blocks_sub (Bks : list eblock) (τ : sub) : list eblock := List.map (fun b => eblock_sub b τ) Bks.
 
-(** The uniform parameters an eliminator carries, moved. *)
-Definition ups_sub (oUs : option (list exp)) (τ : sub) : option (list exp) :=
-  option_map (List.map (fun U => U[τ])) oUs.
-
-Lemma exp_sub_elim : forall oq oUs m Bks M τ,
-    (a_elim oq oUs m Bks M)[τ] = a_elim oq (ups_sub oUs τ) m (blocks_sub Bks τ) M[τ].
+Lemma exp_sub_elim : forall oq Us m Bks M τ,
+    (a_elim oq Us m Bks M)[τ] = a_elim oq (List.map (fun U => U[τ]) Us) m (blocks_sub Bks τ) M[τ].
 Proof.
   intros; cbn [exp_sub]; f_equal; unfold blocks_sub; apply map_ext; intros [nm oZ A Bs]; reflexivity.
 Qed.
-
-Lemma elim_ups_sub : forall D Us τ, ups_sub (elim_ups D Us) τ = elim_ups D (List.map (fun U => U[τ]) Us).
-Proof. intros; unfold elim_ups; destruct (ind_has_views D); reflexivity. Qed.
 
 Lemma nth_error_blocks_sub : forall Bks τ k,
     List.nth_error (blocks_sub Bks τ) k = option_map (fun b => eblock_sub b τ) (List.nth_error Bks k).

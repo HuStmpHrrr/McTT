@@ -2014,7 +2014,7 @@ Lemma wf_elim_view_rhs : forall Θ Ξ Γ p D oq m Mm qc k' Is vm D' Bks bm Ps M 
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
        Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
          : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim (Some qc) (elim_ups D' (im_pre Mm (List.firstn (ind_nu D) Ps))) k'
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
                   (vwrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
       : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.

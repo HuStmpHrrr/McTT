@@ -394,8 +394,8 @@ Definition blocks_wk (Bks : list eblock) (φ : wk) : list eblock :=
           (List.map (fun br => (fst br, exp_wk (snd br) (wk_qn (snd (fst br)) φ))) Bs)
     end) Bks.
 
-Lemma exp_wk_elim : forall oq oUs m Bks M φ,
-    (a_elim oq oUs m Bks M)[φ]ʷ = a_elim oq (option_map (List.map (fun U => U[φ]ʷ)) oUs) m (blocks_wk Bks φ) M[φ]ʷ.
+Lemma exp_wk_elim : forall oq Us m Bks M φ,
+    (a_elim oq Us m Bks M)[φ]ʷ = a_elim oq (List.map (fun U => U[φ]ʷ) Us) m (blocks_wk Bks φ) M[φ]ʷ.
 Proof. reflexivity. Qed.
 
 (** The motives of the blocks, in order. *)
@@ -433,16 +433,11 @@ Definition motives_sel (sel : option (list nat)) (As : list exp) : list exp :=
 Definition blocks_nm_at (Dq : ind_decl) (sel : option (list nat)) (Bks : list eblock) : Prop :=
   forall i Mi b, ind_member Dq i = Some Mi -> List.nth_error Bks (elim_src sel i) = Some b -> eb_nm b = S (im_nn Mi).
 
-(** The uniform parameters an eliminator of the group carries: [Us] for a
-    group with views, none otherwise. *)
-Definition elim_ups (D : ind_decl) (Us : list exp) : option (list exp) :=
-  if ind_has_views D then Some Us else None.
-
-(** The eliminator a recursive result at the member [j] is: for a group
-    with views the group's, at its uniform parameters [Us]; for one
-    without, the eliminator itself. *)
+(** The eliminator a recursive result at the member [j] is, at the
+    group's uniform parameters [Us]: for a group with views the group's,
+    named; for one without, the eliminator itself. *)
 Definition elim_at (pq : qname) (D : ind_decl) (oq : option qname) (Us : list exp) (Bks : list eblock) (j : nat) (M : exp) : exp :=
-  if ind_has_views D then a_elim (Some pq) (Some Us) j Bks M else a_elim oq None j Bks M.
+  a_elim (if ind_has_views D then Some pq else oq) Us j Bks M.
 
 (** The recursive result of an argument [M] of shape [t], as an
     elimination: under the shape's domains, moved by [σ], the eliminator at
@@ -623,8 +618,8 @@ Fixpoint exp_mvc (n : nat) (M : exp) : Prop :=
   | a_maxl M N => exp_mvc n M /\ exp_mvc n N
   | a_exfalso A M => exp_mvc (S n) A /\ exp_mvc n M
   | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => True
-  | a_elim _ oUs _ Bks M =>
-      opt_all (all_list (exp_mvc n)) oUs /\
+  | a_elim _ Us _ Bks M =>
+      all_list (exp_mvc n) Us /\
       all_blocks (fun nm oZ A Bs => opt_all (exp_mvc (nm - 1 + n)) oZ /\ exp_mvc (nm + n) A /\
                                     all_brs (fun k B => exp_mvc (k + n) B) Bs) Bks /\ exp_mvc n M
   | a_pi A B | a_fn A B => exp_mvc n A /\ exp_mvc (S n) B

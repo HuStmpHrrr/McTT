@@ -316,12 +316,13 @@ Inductive fresh_cargs_rel (D : ind_decl) (ups ua : list domain)
 Definition mref_at (p : qname) (X : list domain) : nat -> qname -> nat -> list domain -> Prop :=
   fun j hd k py => ⟦mref j of p X ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, py).
 
-(** The uniform parameters [ua] of a group without views admissible at the
-    fresh variables (model L): for each member, fresh variables of its
-    non-uniform parameters' types ([fresh_tele_rel]) and, after them, of
-    its constructors' arguments' types ([fresh_cargs_rel]), each related
-    to the one at [ups].  (A group with views is read back at its
-    eliminator's uniform parameters, model P, and needs no admissibility.) *)
+(** The uniform parameters [ua] of a group admissible at the fresh
+    variables: for each member, fresh variables of its non-uniform
+    parameters' types ([fresh_tele_rel]) and, after them, of its
+    constructors' arguments' types ([fresh_cargs_rel]), each related to the
+    one at [ups].  A stuck eliminator is read back under these variables
+    at its own uniform parameters; the universe clause's admissibility
+    gives them ([adm_fresh_of_uparams]). *)
 #[warnings="-cannot-define-projection"]
 Record adm_fresh (p : qname) (D : ind_decl) (ups : list domain)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
@@ -333,25 +334,6 @@ Record adm_fresh (p : qname) (D : ind_decl) (ups : list domain)
       Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ups ⍮ s ↘ ns ->
       Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ ns' ->
       fresh_cargs_rel D ups ua nparams_rel (args_rel m ns c) (doms_rel m) ns ns' 0 nil nil (s + im_nn Mm) gs }.
-
-(** The admissibility of a neutral's uniform parameters, by its member.
-    The eliminator of a group with views carries the group's uniform
-    parameters, and a stuck one is read back at them (model P): its
-    neutrals need no condition.  For a group without views (model L) a
-    stuck eliminator is read at its scrutinee's annotation: a member's
-    neutrals have their parameters admissible at the fresh variables. *)
-Definition grp_adm (p : qname) (D : ind_decl) (ups : list domain)
-    (nparams_rel : nat -> nat -> list domain -> relation domain)
-    (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
-    (doms_rel : nat -> list domain -> exp -> relation domain) : nat -> list domain -> Prop :=
-  fun k Y => if ind_has_views D then True
-          else match ind_member D k with
-               | Some Mk => match im_head Mk with
-                           | mh_decl _ => adm_fresh p D ups nparams_rel args_rel doms_rel Y
-                           | mh_view _ _ _ _ => False
-                           end
-               | None => False
-               end.
 
 (** ** Admissible Indices
 
@@ -391,14 +373,15 @@ Definition im_unu (D : ind_decl) (M : imember) : nat :=
     shapes, each side evaluated at its type's base and its own
     arguments, and each recursive argument's index admissible ([okr]).
     And neutrals of a member that read back equally, of the type at
-    parameters that are so too (the container's member at a view), whose
-    uniform parameters are admissible ([adm], by the member).  Two relations are read at the left
+    parameters that are so too (the container's member at a view): the
+    eliminator carries its own uniform parameters, so a neutral's
+    annotation needs no condition (model P).  Two relations are read at the left
     element's prefix only: the non-recursive arguments' [args_rel] at its
     non-uniform parameters, and a function shape's domain [doms_rel] at its
     [pre].  This is harmless: the universe clause asks both to be
     invariant along related prefixes, so the right element's prefix gives
     the same relation. *)
-Inductive ind_rel (p : qname) (D : ind_decl) (adm : nat -> list domain -> Prop)
+Inductive ind_rel (p : qname) (D : ind_decl)
     (okr : nat -> list domain -> list exp -> list domain -> Prop)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
@@ -414,40 +397,38 @@ Inductive ind_rel (p : qname) (D : ind_decl) (adm : nat -> list domain -> Prop)
      tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ns (List.skipn (im_unu D Mk) bs) ->
      tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ns' (List.skipn (im_unu D Mk) bs') ->
      tele_rel (args_rel k (List.skipn (im_unu D Mk) bs) c) (cargs_nonrec gs) (nonrec_arg_vals gs vs) (nonrec_arg_vals gs vs') ->
-     con_args_rel p D adm okr nparams_rel args_rel doms_rel k u u'
+     con_args_rel p D okr nparams_rel args_rel doms_rel k u u'
        (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs') gs vs vs' ->
-     ind_rel p D adm okr nparams_rel args_rel doms_rel k u u' ns ns' (d_con hd k' c (bs ++ vs)) (d_con hd k' c (bs' ++ vs')) }
+     ind_rel p D okr nparams_rel args_rel doms_rel k u u' ns ns' (d_con hd k' c (bs ++ vs)) (d_con hd k' c (bs' ++ vs')) }
 | ind_rel_neut :
   `{ ind_member D k = Some Mk ->
      im_ref p k Mk = (hd, k') ->
      tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ns ns' ->
      List.length as1 = (im_unu D Mk + im_nn Mk)%nat ->
      List.length as2 = (im_unu D Mk + im_nn Mk)%nat ->
-     adm k (List.firstn (im_unu D Mk) as1) ->
-     adm k (List.firstn (im_unu D Mk) as2) ->
      tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ns (List.skipn (im_unu D Mk) as1) ->
      tele_rel (nparams_rel k) (List.rev (im_nparams Mk)) ns' (List.skipn (im_unu D Mk) as2) ->
      Dom m ≈ m' ∈ per_bot ->
-     ind_rel p D adm okr nparams_rel args_rel doms_rel k u u' ns ns' (⇑ (d_ind hd k' as1) m) (⇑ (d_ind hd k' as2) m') }
+     ind_rel p D okr nparams_rel args_rel doms_rel k u u' ns ns' (⇑ (d_ind hd k' as1) m) (⇑ (d_ind hd k' as2) m') }
 (** The arguments of two constructors of the member [k] at the bases [u]
     and [u'], after the values [pre] and [pre'] of their non-uniform
     parameters and the non-recursive arguments before them: a recursive
     one by its shape. *)
-with con_args_rel (p : qname) (D : ind_decl) (adm : nat -> list domain -> Prop)
+with con_args_rel (p : qname) (D : ind_decl)
     (okr : nat -> list domain -> list exp -> list domain -> Prop)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (doms_rel : nat -> list domain -> exp -> relation domain)
   : nat -> list domain -> list domain -> list domain -> list domain -> list carg -> list domain -> list domain -> Prop :=
 | con_args_nil :
-  `{ con_args_rel p D adm okr nparams_rel args_rel doms_rel k u u' pre pre' nil nil nil }
+  `{ con_args_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' nil nil nil }
 | con_args_arg :
-  `{ con_args_rel p D adm okr nparams_rel args_rel doms_rel k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) gs vs vs' ->
-     con_args_rel p D adm okr nparams_rel args_rel doms_rel k u u' pre pre' (ca_arg A :: gs) (v :: vs) (v' :: vs') }
+  `{ con_args_rel p D okr nparams_rel args_rel doms_rel k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) gs vs vs' ->
+     con_args_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' (ca_arg A :: gs) (v :: vs) (v' :: vs') }
 | con_args_rec :
-  `{ rec_arg_rel p D adm okr nparams_rel args_rel doms_rel k u u' pre pre' t v v' ->
-     con_args_rel p D adm okr nparams_rel args_rel doms_rel k u u' pre pre' gs vs vs' ->
-     con_args_rel p D adm okr nparams_rel args_rel doms_rel k u u' pre pre' (ca_rec t :: gs) (v :: vs) (v' :: vs') }
+  `{ rec_arg_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' t v v' ->
+     con_args_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' gs vs vs' ->
+     con_args_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' (ca_rec t :: gs) (v :: vs) (v' :: vs') }
 (** A recursive argument of a shape of the member [k], after the values
     [pre] and [pre'] of its components on each side (the bases [u] and [u']
     apart): at the end elements of the member [j] the shape ends in, at
@@ -455,7 +436,7 @@ with con_args_rel (p : qname) (D : ind_decl) (adm : nat -> list domain -> Prop)
     and at a domain pointwise: related arguments of the domain give related
     results, of the rest of the shape, after [pre], [pre'] and the
     arguments. *)
-with rec_arg_rel (p : qname) (D : ind_decl) (adm : nat -> list domain -> Prop)
+with rec_arg_rel (p : qname) (D : ind_decl)
     (okr : nat -> list domain -> list exp -> list domain -> Prop)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
@@ -466,13 +447,13 @@ with rec_arg_rel (p : qname) (D : ind_decl) (adm : nat -> list domain -> Prop)
      ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u' ++ pre') ↘ bs' ->
      okr j pre Ps bs ->
      okr j pre' Ps bs' ->
-     ind_rel p D adm okr nparams_rel args_rel doms_rel j u u' bs bs' v v' ->
-     rec_arg_rel p D adm okr nparams_rel args_rel doms_rel k u u' pre pre' (pt_self j Ps) v v' }
+     ind_rel p D okr nparams_rel args_rel doms_rel j u u' bs bs' v v' ->
+     rec_arg_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' (pt_self j Ps) v v' }
 | rec_arg_pi :
   `{ (forall c c', doms_rel k pre B c c' ->
-        rec_arg_app_rel p D adm okr nparams_rel args_rel doms_rel k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) t f c f' c') ->
-     rec_arg_rel p D adm okr nparams_rel args_rel doms_rel k u u' pre pre' (pt_pi B t) f f' }
-with rec_arg_app_rel (p : qname) (D : ind_decl) (adm : nat -> list domain -> Prop)
+        rec_arg_app_rel p D okr nparams_rel args_rel doms_rel k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) t f c f' c') ->
+     rec_arg_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' (pt_pi B t) f f' }
+with rec_arg_app_rel (p : qname) (D : ind_decl)
     (okr : nat -> list domain -> list exp -> list domain -> Prop)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
@@ -481,8 +462,8 @@ with rec_arg_app_rel (p : qname) (D : ind_decl) (adm : nat -> list domain -> Pro
 | rec_arg_app_mk :
   `{ $| f & c |↘ r ->
      $| f' & c' |↘ r' ->
-     rec_arg_rel p D adm okr nparams_rel args_rel doms_rel k u u' pre pre' t r r' ->
-     rec_arg_app_rel p D adm okr nparams_rel args_rel doms_rel k u u' pre pre' t f c f' c' }
+     rec_arg_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' t r r' ->
+     rec_arg_app_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' t f c f' c' }
 .
 
 Scheme ind_rel_mut_ind := Induction for ind_rel Sort Prop
@@ -616,14 +597,13 @@ Definition doms_evals (R : relation domain -> domain -> domain -> Prop) (D : ind
       (dr m (ms ++ ws ++ ys) B).
 
 (** The elements of the member [k] of a group whose type is at the
-    uniform parameters [ups]: a neutral's uniform parameters admissible by
-    its member ([grp_adm]), the recursive indices admissible at [ups]. *)
+    uniform parameters [ups]: the recursive indices admissible at [ups]. *)
 Definition grp_rel (p : qname) (D : ind_decl) (ups : list domain)
     (nr : nat -> nat -> list domain -> relation domain)
     (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (dr : nat -> list domain -> exp -> relation domain) :
     nat -> list domain -> list domain -> list domain -> list domain -> relation domain :=
-  ind_rel p D (grp_adm p D ups nr ar dr) (okr_at D ups nr) nr ar dr.
+  ind_rel p D (okr_at D ups nr) nr ar dr.
 
 (** * Universe/Element PER *)
 (** ** Universe/Element PER Definition *)

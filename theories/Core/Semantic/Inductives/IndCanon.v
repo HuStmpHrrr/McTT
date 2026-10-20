@@ -266,10 +266,9 @@ Section Fixed_GCtx.
     - exact (adm_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0 _ Hcd).
     - unfold member_nparams; rewrite HM; exact (F1 _ _ HM _ _ Hns).
     - rewrite HE; intros a b; split.
-      + apply (proj1 (ind_rel_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0 _ _ _ _ (grp_adm_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0)
+      + apply (proj1 (ind_rel_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0 _ _
                         (okr_at_change p D ups _ _ _ _ _ _ Hn0 Ha0 Hd0) (fun m Mm a b HM0 H => RnR m Mm HM0 a b H))).
-      + apply (proj1 (ind_rel_change p D ups _ _ _ _ _ _ Hn0' Ha0' Hd0' _ _ _ _
-                        (grp_adm_change p D ups _ _ _ _ _ _ Hn0' Ha0' Hd0')
+      + apply (proj1 (ind_rel_change p D ups _ _ _ _ _ _ Hn0' Ha0' Hd0' _ _
                         (okr_at_change p D ups _ _ _ _ _ _ Hn0' Ha0' Hd0')
                         (fun m Mm a b HM0 H => F1 _ _ HM0 _ _ (RnR _ _ HM0 _ _ (F2 _ _ HM0 _ _ H))))).
   Qed.

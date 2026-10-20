@@ -331,18 +331,18 @@ Section Fixed_GCtx.
   End Canon.
 
   (** Inverting the relation of a recursive argument by its shape. *)
-  Lemma rec_arg_self_inv : forall p D adm okr nr ar dr k u u' pre pre' j Ps v v',
-      rec_arg_rel p D adm okr nr ar dr k u u' pre pre' (pt_self j Ps) v v' ->
+  Lemma rec_arg_self_inv : forall p D okr nr ar dr k u u' pre pre' j Ps v v',
+      rec_arg_rel p D okr nr ar dr k u u' pre pre' (pt_self j Ps) v v' ->
       exists bs bs', ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u ++ pre) ↘ bs /\
         ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u' ++ pre') ↘ bs' /\ okr j pre Ps bs /\ okr j pre' Ps bs' /\
-        ind_rel p D adm okr nr ar dr j u u' bs bs' v v'.
+        ind_rel p D okr nr ar dr j u u' bs bs' v v'.
   Proof. intros * H; inversion H; subst; eauto 8. Qed.
 
-  Lemma rec_arg_pi_inv : forall p D adm okr nr ar dr k u u' pre pre' B t f f',
-      rec_arg_rel p D adm okr nr ar dr k u u' pre pre' (pt_pi B t) f f' ->
+  Lemma rec_arg_pi_inv : forall p D okr nr ar dr k u u' pre pre' B t f f',
+      rec_arg_rel p D okr nr ar dr k u u' pre pre' (pt_pi B t) f f' ->
       forall c c', dr k pre B c c' ->
         exists r r', $| f & c | gc_deps ⍮ gc_stack ↘ r /\ $| f' & c' | gc_deps ⍮ gc_stack ↘ r' /\
-          rec_arg_rel p D adm okr nr ar dr k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) t r r'.
+          rec_arg_rel p D okr nr ar dr k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) t r r'.
   Proof.
     intros * H c c' Hc; inversion H; subst.
     match goal with Hf : forall c c', dr _ _ _ c c' -> _ |- _ => pose proof (Hf c c' Hc) as Happ end.

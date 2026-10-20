@@ -15,13 +15,13 @@ Reserved Notation "'Rla' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" (at level 70, xs at
 Reserved Notation "'Rps' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" (at level 70, vs at level 69, T at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Ms at level 69).
 Reserved Notation "'Rcargs' vs 'at' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" (at level 70, vs at level 69, gs at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Ms at level 69).
 Reserved Notation "'Rsh' v 'at' t 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ V" (at level 70, v at level 69, t at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, V at level 69).
-Reserved Notation "'Rbrs' Bs 'at' cs 'of' Mi r 'from' p oups ups Bks Mv A 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Bs'" (at level 70, Bs at level 69, cs at level 69, Mi at level 0, r at level 0, p at level 0, oups at level 0, ups at level 0, Bks at level 0, Mv at level 0, A at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Bs' at level 69).
-Reserved Notation "'Rblks' i Ms 'from' p oups ups Bks sel 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ NBks" (at level 70, i at level 0, Ms at level 0, p at level 0, oups at level 0, ups at level 0, Bks at level 0, sel at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, NBks at level 69).
+Reserved Notation "'Rbrs' Bs 'at' cs 'of' Mi r 'from' p ups Bks Mv A 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Bs'" (at level 70, Bs at level 69, cs at level 69, Mi at level 0, r at level 0, p at level 0, ups at level 0, Bks at level 0, Mv at level 0, A at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Bs' at level 69).
+Reserved Notation "'Rblks' i Ms 'from' p ups Bks sel 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ NBks" (at level 70, i at level 0, Ms at level 0, p at level 0, ups at level 0, Bks at level 0, sel at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, NBks at level 69).
 
 Reserved Notation "'Ftele' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" (at level 70, T at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, vs at level 69).
 Reserved Notation "'Fcargs' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" (at level 70, gs at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, vs at level 69).
 Reserved Notation "'Fihs' vs 'at' gs' gs 'under' ρm As 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ ihs" (at level 70, vs at level 69, gs' at level 0, gs at level 0, ρm at level 0, As at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, ihs at level 69).
-Reserved Notation "'⟦wihs' vs 'of' gs' gs 'with' ihs 'under' p oups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs' at level 0, gs at level 0, ihs at level 0, p at level 0, oups at level 0, Bks at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦wihs' vs 'of' gs' gs 'with' ihs 'under' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs' at level 0, gs at level 0, ihs at level 0, p at level 0, ups at level 0, Bks at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 
 Generalizable All Variables.
 
@@ -94,21 +94,21 @@ where "'Fihs' vs 'at' gs' gs 'under' ρm As 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s �
     gives (a fresh variable); one recursive for the branch's group only,
     the eliminator of that group at the argument.  For an eliminator read
     as its own group's, [gs'] is [gs] and the results are [ihs]. *)
-Inductive wrap_ihs_eval (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (oups : option (list domain)) (Bks : list eblock) :
+Inductive wrap_ihs_eval (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (ups : list domain) (Bks : list eblock) :
   list carg -> list carg -> list domain -> list domain -> list domain -> Prop :=
 | wrap_ihs_eval_nil :
-  `( ⟦wihs nil of nil nil with nil under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ nil )
+  `( ⟦wihs nil of nil nil with nil under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ nil )
 | wrap_ihs_eval_rec :
-  `( ⟦wihs vs of gs' gs with ihs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦wihs v :: vs of (ca_rec t' :: gs') (ca_rec t :: gs) with (ih :: ihs) under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih :: r )
+  `( ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+     ⟦wihs v :: vs of (ca_rec t' :: gs') (ca_rec t :: gs) with (ih :: ihs) under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih :: r )
 | wrap_ihs_eval_nest :
-  `( ⟦ih v of t under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih ->
-     ⟦wihs vs of gs' gs with ihs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦wihs v :: vs of (ca_arg T' :: gs') (ca_rec t :: gs) with ihs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih :: r )
+  `( ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih ->
+     ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+     ⟦wihs v :: vs of (ca_arg T' :: gs') (ca_rec t :: gs) with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih :: r )
 | wrap_ihs_eval_arg :
-  `( ⟦wihs vs of gs' gs with ihs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦wihs v :: vs of (ca_arg T' :: gs') (ca_arg T :: gs) with ihs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
-where "'⟦wihs' vs 'of' gs' gs 'with' ihs 'under' p oups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (wrap_ihs_eval Θ Ξ ρ p oups Bks gs' gs vs ihs r) : type_scope.
+  `( ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+     ⟦wihs v :: vs of (ca_arg T' :: gs') (ca_arg T :: gs) with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+where "'⟦wihs' vs 'of' gs' gs 'with' ihs 'under' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (wrap_ihs_eval Θ Ξ ρ p ups Bks gs' gs vs ihs r) : type_scope.
 
 #[export]
 Hint Constructors fresh_tele fresh_cargs fresh_ihs wrap_ihs_eval : mctt.
@@ -208,11 +208,10 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
     member of [p]'s group [im_sel] gives, read under fresh variables of the
     telescopes of that member of [p]'s group at uniform parameters [ups],
     each block's motive binding its own member's non-uniform parameters
-    and the scrutinee ([blocks_nm_at D None]).  For a group without views ([read_ne_elim]), [pc] is [p] and [ups] are
-    those of the scrutinee's type.  For a group with views, they are the
-    eliminator's own ([read_ne_elim_ups]), and the container's uniform
-    parameters at them are read too when the container has views
-    ([read_ne_elim_ups_views]), as its eliminator carries them. *)
+    and the scrutinee ([blocks_nm_at D None]).  The uniform parameters
+    [ups] are the eliminator's own; the stuck eliminator carries the
+    container's at them, read back ([mref], [Rps]), as the eliminator of
+    the container's group does. *)
 | read_ne_elim :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -221,35 +220,11 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
      ind_member Dq k = Some Mk ->
      List.length as' = im_np Dq Mk ->
      blocks_nm_at D None Bks ->
-     Rblks 0 (ind_members Dq) from p None (List.firstn (ind_nu Dq) as') Bks (im_sel Mj) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
-     Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rne d_elim ρ Bks p None j as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim pc None k NBks M )
-| read_ne_elim_ups :
-  `( ind_lookup Θ Ξ p = Some D ->
-     ind_member D j = Some Mj ->
-     im_ref p j Mj = (pc, k) ->
-     ind_lookup Θ Ξ pc = Some Dq ->
-     ind_member Dq k = Some Mk ->
-     List.length as' = im_np Dq Mk ->
-     blocks_nm_at D None Bks ->
-     ind_has_views Dq = false ->
-     Rblks 0 (ind_members Dq) from p (Some ups) ups Bks (im_sel Mj) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
-     Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rne d_elim ρ Bks p (Some ups) j as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim pc None k NBks M )
-| read_ne_elim_ups_views :
-  `( ind_lookup Θ Ξ p = Some D ->
-     ind_member D j = Some Mj ->
-     im_ref p j Mj = (pc, k) ->
-     ind_lookup Θ Ξ pc = Some Dq ->
-     ind_member Dq k = Some Mk ->
-     List.length as' = im_np Dq Mk ->
-     blocks_nm_at D None Bks ->
-     ind_has_views Dq = true ->
      ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ (pc, k, pre) ->
      Rps pre at List.rev (ind_uparams Dq) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Us ->
-     Rblks 0 (ind_members Dq) from p (Some ups) ups Bks (im_sel Mj) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
+     Rblks 0 (ind_members Dq) from p ups Bks (im_sel Mj) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
      Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rne d_elim ρ Bks p (Some ups) j as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim pc (Some Us) k NBks M )
+     Rne d_elim ρ Bks p ups j as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim pc Us k NBks M )
 where "'Rne' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_ne Θ Ξ s m M) : type_scope
 with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | read_typ_univ :
@@ -348,12 +323,12 @@ where "'Rsh' v 'at' t 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ V" := (re
     [i]-th on, the block of the member [Mv] of [p]'s group [elim_src sel i]
     gives: its motive under fresh variables of [Mv]'s non-uniform
     parameters at the uniform parameters [ups] and of the scrutinee, its
-    branches under their own variables.  [oups] are the eliminator's
-    uniform parameters, for the recursive results it computes. *)
-with read_blocks (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> option (list domain) -> list domain -> list eblock ->
+    branches under their own variables.  The recursive results are
+    computed by the eliminator at [ups] too. *)
+with read_blocks (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -> list eblock ->
                                       option (list nat) -> nat -> list imember -> nblocks -> Prop :=
 | read_blocks_nil :
-  `( Rblks i nil from p oups ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nblocks_nil )
+  `( Rblks i nil from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nblocks_nil )
 | read_blocks_cons :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D (elim_src sel i) = Some Mv ->
@@ -363,10 +338,10 @@ with read_blocks (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> option (lis
      Ftele List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
      ⟦ eb_motive b ⟧ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ ⇑! (d_ind hd k (pre ++ ns)) ((s + im_nn Mi)%nat) :: nil) ↘ a ->
      Rtyp a in Θ ⍮ Ξ ⍮ S (s + im_nn Mi)%nat ↘ A' ->
-     Rbrs eb_brs b at im_cons Mi of Mi (hd, k, pre) from p oups ups Bks Mv (eb_motive b) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-     Rblks (S i) Ms from p oups ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
-     Rblks i (Mi :: Ms) from p oups ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nblocks_cons (S (im_nn Mi)) A' Bs' NBks )
-where "'Rblks' i Ms 'from' p oups ups Bks sel 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ NBks" := (read_blocks Θ Ξ s ρ p oups ups Bks sel i Ms NBks) : type_scope
+     Rbrs eb_brs b at im_cons Mi of Mi (hd, k, pre) from p ups Bks Mv (eb_motive b) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
+     Rblks (S i) Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
+     Rblks i (Mi :: Ms) from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nblocks_cons (S (im_nn Mi)) A' Bs' NBks )
+where "'Rblks' i Ms 'from' p ups Bks sel 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ NBks" := (read_blocks Θ Ξ s ρ p ups Bks sel i Ms NBks) : type_scope
 (** The branches of a block, one per constructor [cs] of the member [Mi]
     of the group read in order, of kinds [gs'], the block's motive [A] and
     branches [Bs], those of the member [Mv] of the group at [p], which has
@@ -376,11 +351,11 @@ where "'Rblks' i Ms 'from' p oups ups Bks sel 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s 
     the motive's instance at the constructor, the member [Mi] being the
     declared member [k] of the group at [hd] at the uniform parameters
     [pre]. *)
-with read_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> option (list domain) -> list domain -> list eblock ->
+with read_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -> list eblock ->
                                     imember -> exp -> imember -> (qname * nat * list domain) ->
                                     list (string * list carg) -> list (string * nat * exp) -> nbrs -> Prop :=
 | read_brs_nil :
-  `( Rbrs nil at nil of Mi r from p oups ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_nil )
+  `( Rbrs nil at nil of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_nil )
 | read_brs_cons :
   `( ind_con Mv c = Some gs ->
      n0 = (im_nn Mi + List.length gs' + cargs_nrec gs)%nat ->
@@ -390,13 +365,13 @@ with read_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> option (list d
      Ftele List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
      Fcargs gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi)%nat ↘ vs ->
      Fihs vs at gs' gs under ρ (blocks_motives Bks) in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi + List.length gs')%nat ↘ ihs ->
-     ⟦wihs vs of gs' gs with ihs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ wihs ->
+     ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ wihs ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ vs ++ wihs) ↘ b ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ d_con hd k c (pre ++ ns ++ vs) :: nil) ↘ t ->
      Rnf ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
-     Rbrs Bs at cs of Mi (hd, k, pre) from p oups ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-     Rbrs (c, n0, B) :: Bs at (c, gs') :: cs of Mi (hd, k, pre) from p oups ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_cons c n B' Bs' )
-where "'Rbrs' Bs 'at' cs 'of' Mi r 'from' p oups ups Bks Mv A 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Bs'" := (read_brs Θ Ξ s ρ p oups ups Bks Mv A Mi r cs Bs Bs') : type_scope
+     Rbrs Bs at cs of Mi (hd, k, pre) from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
+     Rbrs (c, n0, B) :: Bs at (c, gs') :: cs of Mi (hd, k, pre) from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_cons c n B' Bs' )
+where "'Rbrs' Bs 'at' cs 'of' Mi r 'from' p ups Bks Mv A 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Bs'" := (read_brs Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs Bs') : type_scope
 .
 
 Scheme read_nf_mut_ind := Induction for read_nf Sort Prop

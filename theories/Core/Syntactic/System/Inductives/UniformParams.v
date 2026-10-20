@@ -873,7 +873,7 @@ End Fixed_GCtx.
     moved to the equation's, at the left parameters and scrutinee.  The
     lemma takes the rule's premises, the right parameters typed at the
     instances at the left ones. *)
-Lemma wf_elim_cong_rhs : forall Θ Ξ Γ p D oq' oUs' m Mm (Bks Bks' : list eblock) bm Ps Ps' M M' i,
+Lemma wf_elim_cong_rhs : forall Θ Ξ Γ p D oq' Us' m Mm (Bks Bks' : list eblock) bm Ps Ps' M M' i,
     ind_lookup Θ Ξ p = Some D ->
     elim_grp D oq' p m ->
     ind_member D m = Some Mm ->
@@ -891,7 +891,7 @@ Lemma wf_elim_cong_rhs : forall Θ Ξ Γ p D oq' oUs' m Mm (Bks Bks' : list eblo
     Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M' : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
-    oUs' = elim_ups D (List.firstn (ind_nu D) Ps') ->
+    Us' = List.firstn (ind_nu D) Ps' ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_nm b = S (im_nn Mk)) ->
     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_ann b = Some Z ->
@@ -917,10 +917,10 @@ Lemma wf_elim_cong_rhs : forall Θ Ξ Γ p D oq' oUs' m Mm (Bks Bks' : list eblo
        ind_con Mk c = Some gs ->
        Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B'
          : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq' oUs' m Bks' M' : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq' Us' m Bks' M' : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.
   intros * Hl Hgr Hm Hbm HlB HlB' HPl HPs HPl' HPs'' HPP HM HM' HMM Hann' Hnm Hnm' HZ' HA HA'' HAA HΨ Hn Hf Hk HB.
-  subst oUs'.
+  subst Us'.
   pose proof (presup_exp_ctx HM) as HΓ.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
   pose proof (wf_elim_cong_rhs_blocks _ _ _ _ _ _ _ _ _ _ _ HΓ Hl Hm HlB HlB' HPl HPs Hnm Hnm' HZ' HA HA'' HAA HΨ Hn Hf Hk HB)

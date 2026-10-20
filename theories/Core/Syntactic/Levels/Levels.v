@@ -161,12 +161,9 @@ with ne_code (m : ne) (t : ltree) : ltree :=
   | ne_glob p => lt_node 1 (strs_code (q_unit p) (strs_code (q_chain p) lt_nil)) t
   | ne_app m' N => lt_node 2 (ne_code m' (nf_code N lt_nil)) t
   | ne_exfalso A m' => lt_node 4 (nf_code A (ne_code m' lt_nil)) t
-  | ne_elim p oUs m Bks m' =>
+  | ne_elim p Us m Bks m' =>
       lt_node 5 (lt_node m (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
-                   (nblocks_code Bks (ne_code m' (match oUs with
-                                                  | None => lt_node 0 lt_nil lt_nil
-                                                  | Some Us => lt_node 1 (nfs_code Us lt_nil) lt_nil
-                                                  end)))) t
+                   (nblocks_code Bks (ne_code m' (nfs_code Us lt_nil)))) t
   end
 with la_code (xs : lvl_atoms) (t : ltree) : ltree :=
   match xs with

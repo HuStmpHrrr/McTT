@@ -370,7 +370,7 @@ Section RecTyped.
       context at the module's uniform parameters. *)
   Lemma rec_elim_typed :
       Θ ⍮ Ξ ⍮ elim_mctx p D 0 M (rec_uvars D K) ++ EK ++ Lm
-        ⊢ a_elim None None 0 (eb_mk (S nn) None (rec_motive M (K + S nn)) (rec_brs M K 0 (im_cons M)) :: nil) (a_var 0)
+        ⊢ a_elim None (rec_uvars D (K + S nn)) 0 (eb_mk (S nn) None (rec_motive M (K + S nn)) (rec_brs M K 0 (im_cons M)) :: nil) (a_var 0)
         : rec_motive M K.
   Proof.
     destruct (motive_at _ EK_wf) as [HM2 HA2]; rewrite length_EK in HM2, HA2.
@@ -394,7 +394,7 @@ Section RecTyped.
     rewrite <- (rec_motive_inst M K), <- HS.
     eapply wf_elim with (i := 0) (Ps := Ps) (bm := eb_mk (S nn) None (rec_motive M (S nn + K)) (rec_brs M K 0 (im_cons M)));
       [ exact Hl | right; split; [ reflexivity | exact ndecl_pos ] | exact HM | reflexivity
-      | rewrite Hone; reflexivity | | | | unfold elim_ups, ind_has_views; rewrite Hone; cbn; unfold im_is_decl; rewrite Hh; reflexivity | | | | | | | | ].
+      | rewrite Hone; reflexivity | | | | rewrite HF; reflexivity | | | | | | | | ].
     - (* the number of parameters *)
       unfold Ps, im_np; rewrite List.length_app, HUl', HNl; lia.
     - (* the parameters, at their types: the uniform ones the module's,

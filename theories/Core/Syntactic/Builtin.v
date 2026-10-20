@@ -149,17 +149,12 @@ Section Literals.
     | a_succl M => let% M' := exp_lits M in lok (a_succl M')
     | a_maxl M N => let% M' := exp_lits M in let% N' := exp_lits N in lok (a_maxl M' N')
     | a_exfalso A M => let% A' := exp_lits A in let% M' := exp_lits M in lok (a_exfalso A' M')
-    | a_elim oq oUs m Bks M =>
-        let% oUs' := (match oUs with
-                      | Some Us =>
-                          let% Us' := (fix ups_lits (Us : list exp) : lres (list exp) :=
-                                         match Us with
-                                         | nil => lok nil
-                                         | U :: Us0 => let% U' := exp_lits U in let% Us0' := ups_lits Us0 in lok (U' :: Us0')
-                                         end) Us in
-                          lok (Some Us')
-                      | None => lok None
-                      end) in
+    | a_elim oq Us m Bks M =>
+        let% Us' := (fix ups_lits (Us : list exp) : lres (list exp) :=
+                       match Us with
+                       | nil => lok nil
+                       | U :: Us0 => let% U' := exp_lits U in let% Us0' := ups_lits Us0 in lok (U' :: Us0')
+                       end) Us in
         let% Bks' := (fix blocks_lits (Bks : list eblock) : lres (list eblock) :=
                         match Bks with
                         | nil => lok nil
@@ -181,7 +176,7 @@ Section Literals.
                             lok (eb_mk nm oZ' A' Bs' :: Bks0')
                         end) Bks in
         let% M' := exp_lits M in
-        lok (a_elim oq oUs' m Bks' M')
+        lok (a_elim oq Us' m Bks' M')
     | a_pi A B => let% A' := exp_lits A in let% B' := exp_lits B in lok (a_pi A' B')
     | a_fn A M => let% A' := exp_lits A in let% M' := exp_lits M in lok (a_fn A' M')
     | a_app M N => let% M' := exp_lits M in let% N' := exp_lits N in lok (a_app M' N')

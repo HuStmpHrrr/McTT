@@ -1609,7 +1609,7 @@ Lemma wf_elim_blocks : forall Θ Ξ Γ p D oq m Mm Bks bm Us Ns M i,
     (forall k N T, nth_error Ns k = Some N -> nth_error (tele_insts (im_nparams Mm) (sb_of_list Id Us) Ns) k = Some T ->
        Θ ⍮ Ξ ⍮ Γ ⊢ N : T) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty p D m Us Ns ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq (elim_ups D Us) m Bks M : (eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)].
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks M : (eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)].
 Proof.
   intros * Hl Hg Hm Hbm [HlB Hnm HZ HA HΨ Hn HΨB Hk HB] HUl HUs HNl HNs HM.
   assert (Hc : decl_closed D)
@@ -1633,7 +1633,7 @@ Lemma wf_elim_at_inst : forall Θ Ξ Γ Ψ β p D oq m Mm Bks bm Us Ns M i,
     List.length Ns = im_nn Mm ->
     Θ ⍮ Ξ ⍮ Ψ ⊢ˢ β : Γ ->
     Θ ⍮ Ξ ⍮ Ψ ⊢ˢ sb_of_list β (Ns ++ M :: nil) : elim_mctx p D m Mm Us ++ Γ ->
-    Θ ⍮ Ξ ⍮ Ψ ⊢ a_elim oq (elim_ups D (List.map (fun U => U[β]) Us)) m (blocks_sub Bks β) M
+    Θ ⍮ Ξ ⍮ Ψ ⊢ a_elim oq (List.map (fun U => U[β]) Us) m (blocks_sub Bks β) M
       : (eb_motive bm)[sb_of_list β (Ns ++ M :: nil)].
 Proof.
   intros * Hl Hg Hm Hbm HBt HUl HUs HNl Hβ Hδ.
@@ -1707,12 +1707,8 @@ Proof.
   destruct (blocks_nth _ _ _ _ (bt_len _ _ _ _ _ _ _ _ HBt) Hj) as [b Hb].
   rewrite (blocks_motives_nth _ _ _ Hb).
   unfold elim_at; destruct (ind_has_views D) eqn:Hv.
-  - replace (Some (List.map (fun U => U[β]) Us)) with (elim_ups D (List.map (fun U => U[β]) Us))
-      by (unfold elim_ups; rewrite Hv; reflexivity).
-    eapply wf_elim_at_inst; try eassumption; left; reflexivity.
-  - replace (@None (list exp)) with (elim_ups D (List.map (fun U => U[β]) Us))
-      by (unfold elim_ups; rewrite Hv; reflexivity).
-    eapply wf_elim_at_inst; try eassumption.
+  - eapply wf_elim_at_inst; try eassumption; left; reflexivity.
+  - eapply wf_elim_at_inst; try eassumption.
     destruct Hoq as [-> | ->]; [ left; reflexivity | right; split; [ reflexivity |] ].
     apply (dt_order _ _ _ HD _ _ Hj); exact (no_views_decl _ _ _ Hv Hj).
 Qed.
@@ -2062,7 +2058,7 @@ Qed.
 Lemma elim_grp_oq : forall D oq p m, elim_grp D oq p m -> oq = Some p \/ oq = None.
 Proof. intros * [-> | [-> _]]; auto. Qed.
 
-Lemma wf_iota_lhs : forall Θ Ξ Γ p D oq oUs m Mm Bks bm c gs Ps As i,
+Lemma wf_iota_lhs : forall Θ Ξ Γ p D oq Us m Mm Bks bm c gs Ps As i,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     ind_lookup Θ Ξ p = Some D ->
     elim_grp D oq p m ->
@@ -2076,7 +2072,7 @@ Lemma wf_iota_lhs : forall Θ Ξ Γ p D oq oUs m Mm Bks bm c gs Ps As i,
     List.length As = List.length gs ->
     (forall k N T, nth_error As k = Some N -> nth_error (tele_insts (cargs_ctx p D Mm gs) (sb_of_list Id Ps) As) k = Some T ->
        Θ ⍮ Ξ ⍮ Γ ⊢ N : T) ->
-    oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
+    Us = List.firstn (ind_nu D) Ps ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
@@ -2096,7 +2092,7 @@ Lemma wf_iota_lhs : forall Θ Ξ Γ p D oq oUs m Mm Bks bm c gs Ps As i,
        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
        Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
          : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq oUs m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                                    (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As))
       : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++
                          apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
@@ -2113,7 +2109,7 @@ Proof.
   rewrite List.firstn_skipn; exact HAs.
 Qed.
 
-Lemma wf_iota_rhs : forall Θ Ξ Γ p D oq oUs m Mm Bks bm c gs Ps As i n B,
+Lemma wf_iota_rhs : forall Θ Ξ Γ p D oq Us m Mm Bks bm c gs Ps As i n B,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     ind_lookup Θ Ξ p = Some D ->
     elim_grp D oq p m ->
@@ -2127,7 +2123,7 @@ Lemma wf_iota_rhs : forall Θ Ξ Γ p D oq oUs m Mm Bks bm c gs Ps As i n B,
     List.length As = List.length gs ->
     (forall k N T, nth_error As k = Some N -> nth_error (tele_insts (cargs_ctx p D Mm gs) (sb_of_list Id Ps) As) k = Some T ->
        Θ ⍮ Ξ ⍮ Γ ⊢ N : T) ->
-    oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
+    Us = List.firstn (ind_nu D) Ps ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
@@ -2214,7 +2210,7 @@ Proof.
   destruct (brs_nth_same _ _ _ _ _ _ Hm Hk) as [B' HB']; eauto.
 Qed.
 
-Lemma wf_elim_cong_lhs : forall Θ Ξ Γ p D oq oUs m Mm (Bks Bks' : list eblock) bm Ps M i,
+Lemma wf_elim_cong_lhs : forall Θ Ξ Γ p D oq Us m Mm (Bks Bks' : list eblock) bm Ps M i,
     ind_lookup Θ Ξ p = Some D ->
     elim_grp D oq p m ->
     ind_member D m = Some Mm ->
@@ -2225,7 +2221,7 @@ Lemma wf_elim_cong_lhs : forall Θ Ξ Γ p D oq oUs m Mm (Bks Bks' : list eblock
     (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
        Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
-    oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
+    Us = List.firstn (ind_nu D) Ps ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
@@ -2249,7 +2245,7 @@ Lemma wf_elim_cong_lhs : forall Θ Ξ Γ p D oq oUs m Mm (Bks Bks' : list eblock
        ind_con Mk c = Some gs ->
        Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
          : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq oUs m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.
   intros * Hl Hgr Hm Hbm HlB HlB' HPl HPs HM Hann Hnm HZ HA HΨ Hn Hf HΨB Hk HB.
   eapply wf_elim; try eassumption.

@@ -229,8 +229,8 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
     parameters, the constructor's arguments and the recursive results, the
     result of an argument recursive in the member [j] being at the motive
     of [j].  The parameters are typed one by one, at the instances of their
-    telescope.  A group with views has the uniform parameters on the
-    eliminator ([elim_ups]): the scrutinee and each annotated block are at
+    telescope.  The eliminator carries the uniform parameters [Us], those
+    of the scrutinee's type: the scrutinee and each annotated block are at
     the members' types at them. *)
 | wf_elim :
   `( ind_lookup Θ Ξ p = Some D ->
@@ -242,7 +242,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
-     oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
+     Us = List.firstn (ind_nu D) Ps ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
      (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
@@ -262,7 +262,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq oUs m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks M : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 (** A [Π] is in a universe its domain and codomain are in, small or large.
     The codomain's universe is the weakening of the domain's: a universe that
     mentions the bound variable has no name here. *)
@@ -434,8 +434,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      (forall k P P' T, nth_error Ps k = Some P -> nth_error Ps' k = Some P' ->
         nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ P ≈ P' : T) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
-     oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
-     oUs' = elim_ups D (List.firstn (ind_nu D) Ps') ->
+     Us = List.firstn (ind_nu D) Ps ->
+     Us' = List.firstn (ind_nu D) Ps' ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_nm b = S (im_nn Mk)) ->
      (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
@@ -465,7 +465,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         ind_con Mk c = Some gs ->
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B ≈ B'
           : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq oUs m Bks M ≈ a_elim oq' oUs' m Bks' M' : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks M ≈ a_elim oq' Us' m Bks' M' : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 | wf_exp_eq_pi_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A : U ->
@@ -541,7 +541,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      List.length As = List.length gs ->
      (forall k N T, nth_error As k = Some N -> nth_error (tele_insts (cargs_ctx p D Mm gs) (sb_of_list Id Ps) As) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ N : T) ->
-     oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
+     Us = List.firstn (ind_nu D) Ps ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
      (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
@@ -562,7 +562,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
      brs_lookup (eb_brs bm) c = Some (n, B) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq oUs m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                                     (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As))
        ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++
                           elim_ihs p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) gs As)]
@@ -588,7 +588,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
-     oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
+     Us = List.firstn (ind_nu D) Ps ->
      (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
      (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
         Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
@@ -608,8 +608,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
         Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq oUs m Bks M
-       ≈ a_elim (Some qc) (elim_ups D' (im_pre Mm (List.firstn (ind_nu D) Ps))) k'
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks M
+       ≈ a_elim (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
            (vwrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
        : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 (** A constructor of a view at the group's uniform parameters [Us] is the

@@ -156,7 +156,7 @@ Definition rec_fn (pq : qname) (D : ind_decl) (M : imember) : exp :=
   let K := List.length (im_cons M) in
   ctx_fn (rec_tele pq D M)
     (ctx_fn (elim_mctx pq D 0 M (rec_uvars D K))
-       (a_elim None None 0 (eb_mk (S (im_nn M)) None (rec_motive M (K + S (im_nn M))) (rec_brs M K 0 (im_cons M)) :: nil)
+       (a_elim None (rec_uvars D (K + S (im_nn M))) 0 (eb_mk (S (im_nn M)) None (rec_motive M (K + S (im_nn M))) (rec_brs M K 0 (im_cons M)) :: nil)
           (a_var 0))).
 
 (** A group has a recursor when it is one member, and no view. *)
@@ -510,8 +510,8 @@ Definition mdef_blocks (k nm : nat) (fs : list raw_fun) (ms : list nat) : list e
 
 (** The definitions filed: each function's name, type and term.  The
     eliminator of the group [D] at [pq] carries the uniform parameters
-    [Us] when [D] has views ([elim_ups]), moved under the function's
-    non-uniform parameters and its scrutinee. *)
+    [Us], moved under the function's non-uniform parameters and its
+    scrutinee. *)
 Definition mdef_defs (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (fs : list raw_fun) (ms : list nat) :
     list (string * typ * exp) :=
   List.map (fun fm =>
@@ -520,7 +520,7 @@ Definition mdef_defs (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (fs 
               (rf_name f, ctx_pi Δ (ctx_pi (rf_nparams f) (a_pi (rf_scrut f) (rf_res f))),
                ctx_fn Δ (ctx_fn (rf_nparams f)
                            (a_fn (rf_scrut f)
-                              (a_elim (Some pq) (elim_ups D (List.map (fun U => U[wk_shiftn k]ʷ) Us)) (snd fm)
+                              (a_elim (Some pq) (List.map (fun U => U[wk_shiftn k]ʷ) Us) (snd fm)
                                  (mdef_blocks k (List.length (ind_members D)) fs ms) (a_var 0))))))
     (List.combine fs ms).
 

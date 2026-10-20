@@ -624,22 +624,20 @@ Proof.
     pose proof (tele_rel_nr_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr _ _ HM _ _ Hns) as Hns'.
     pose proof (tele_rel_nr_change' p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr _ _ HM _ _ Hns0) as Hns0'.
     unfold grp_rel; intros m m'; split; intro Hm.
-    - eapply (proj1 (ind_rel_base_r p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 ups'0 H35 _ ups'
+    - eapply (proj1 (ind_rel_base_r p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 ups'0 H35 ups'
                        (adm_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr ups' H15))); [| reflexivity ].
-      eapply (ind_rel_idx p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 _ _ _ _ _ _ ns ns' _ _ _ _ HM);
-        [ eapply (proj1 (ind_rel_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr _ _ _ _
-                           (grp_adm_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr)
+      eapply (ind_rel_idx p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 _ _ _ _ _ ns ns' _ _ _ _ HM);
+        [ eapply (proj1 (ind_rel_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr _ _
                            (okr_at_change p D ups nr nr0 ar ar0 dr dr0 Hnr Har Hdr)
                            (fun m Mm a b Hm H => nparams_rel_refl_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI m Mm Hm a b H)));
           exact Hm
         | exact (nparams_rel_refl_l p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 _ _ HM _ _ Hns0)
         | exact (nparams_rel_trans p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 _ _ HM _ _ _
                    (nparams_rel_sym p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 _ _ HM _ _ Hns') Hns0) ].
-    - eapply (proj1 (ind_rel_base_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' H15 _ ups'0
+    - eapply (proj1 (ind_rel_base_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' H15 ups'0
                        (adm_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB ups'0 H35))); [| reflexivity ].
-      eapply (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ ns ns'0 _ _ _ _ HM);
-        [ eapply (proj1 (ind_rel_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB _ _ _ _
-                           (grp_adm_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB)
+      eapply (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ ns ns'0 _ _ _ _ HM);
+        [ eapply (proj1 (ind_rel_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB _ _
                            (okr_at_change p D ups nr0 nr ar0 ar dr0 dr HnB HaB HdB)
                            (fun m Mm a b Hm H => nparams_rel_refl_r p D ups nr0 ar0 dr0 Hass HnP0 HnI0 HaP0 HaI0 HdP0 HdI0 m Mm Hm a b H)));
           exact Hm
@@ -784,29 +782,25 @@ Proof.
         econstructor; [ exact Ea' | exact Ea |].
         eapply per_univ_elem_resp_iff; [ exact Hsym |]; symmetry; exact (HdI _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Heq Hp HB Hy).
       * (** The elements: at the bases admissible beside [ups'], which are
-            those beside [ups] ([adm_fresh_base], [ind_rel_okr_base]), at
-            the exchanged indices. *)
+            those beside [ups] ([ind_rel_okr_base]), at the exchanged
+            indices. *)
         unfold grp_rel; intros m m'; split; intro Hm0.
         -- apply HE in Hm0; unfold grp_rel in Hm0.
-           eapply (ind_rel_idx p D ups' nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ ns ns' _ _ _ _ HM); [| exact Hns | exact Hsn ].
-           apply (proj1 (ind_rel_okr_base p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl _)).
-           apply (ind_rel_bases p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ ups ups' _ _ _ _ _ _ Hcd Hcl Hcl Hcd).
-           apply (proj1 (ind_rel_ok p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _
-                           (grp_adm_base p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl) (fun _ _ _ _ H => H))).
+           eapply (ind_rel_idx p D ups' nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ ns ns' _ _ _ _ HM); [| exact Hns | exact Hsn ].
+           apply (proj1 (ind_rel_okr_base p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl)).
+           apply (ind_rel_bases p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ ups ups' _ _ _ _ _ _ Hcd Hcl Hcl Hcd).
            exact Hm0.
         -- apply HE; unfold grp_rel.
-           eapply (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ ns' ns _ _ _ _ HM); [| exact Hsn | exact Hns ].
-           apply (proj1 (ind_rel_okr_base p D ups' nr ar dr Hass HnP HnI HaP HaI HdP HdI ups Hfl _)).
-           apply (ind_rel_bases p D ups' nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ ups' ups _ _ _ _ _ _
+           eapply (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ ns' ns _ _ _ _ HM); [| exact Hsn | exact Hns ].
+           apply (proj1 (ind_rel_okr_base p D ups' nr ar dr Hass HnP HnI HaP HaI HdP HdI ups Hfl)).
+           apply (ind_rel_bases p D ups' nr ar dr Hass HnP HnI HaP HaI HdP HdI _ ups' ups _ _ _ _ _ _
                     (adm_diag_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl) Hfl Hfl
                     (adm_diag_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl)).
-           apply (proj1 (ind_rel_ok p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _
-                           (grp_adm_base p D ups' nr ar dr Hass HnP HnI HaP HaI HdP HdI ups Hfl) (fun _ _ _ _ H => H))).
            exact Hm0.
     + intros m m' Hm0; apply HE in Hm0; apply HE; unfold grp_rel in *.
-      pose proof (proj1 (ind_rel_sym_all p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _) _ _ _ _ _ _ _ Hm0) as Hm1.
-      apply (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ ns' ns _ _ _ _ HM); [| exact Hsn | exact Hns ].
-      exact (ind_rel_bases p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ ups' ups _ _ _ _ _ _ Hcl Hcd Hcd Hcl Hm1).
+      pose proof (proj1 (ind_rel_sym_all p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _) _ _ _ _ _ _ _ Hm0) as Hm1.
+      apply (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ ns' ns _ _ _ _ HM); [| exact Hsn | exact Hns ].
+      exact (ind_rel_bases p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ ups' ups _ _ _ _ _ _ Hcl Hcd Hcd Hcl Hm1).
 Qed.
 
 Corollary per_univ_sym : forall i R a b,
@@ -1133,16 +1127,16 @@ Proof.
                     (adm_change p D ups' nr0 nr ar0 ar dr0 dr HnC HaC HdC _ Hcl2)) as Hc3.
       pose proof (nparams_rel_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ HM _ _ Hns) as Hnn.
       unfold grp_rel in *; intros m m'; split; intro Hm; [ apply HE in Hm | apply HE ].
-      * eapply (proj1 (ind_rel_base_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups'0 Hc3 _ ups' Hcl)); [| reflexivity ].
-        exact (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hnn Hns3).
-      * eapply (proj1 (ind_rel_base_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl _ ups'0 Hc3)); [| reflexivity ].
-        exact (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hnn
+      * eapply (proj1 (ind_rel_base_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups'0 Hc3 ups' Hcl)); [| reflexivity ].
+        exact (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hm Hnn Hns3).
+      * eapply (proj1 (ind_rel_base_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI ups' Hcl ups'0 Hc3)); [| reflexivity ].
+        exact (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hm Hnn
                  (nparams_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ HM _ _ Hns3)).
   - (** Its elements: the second's left base moved to the first's
         right one ([ind_rel_bases]). *)
     unfold grp_rel in *.
-    eapply (proj1 (ind_rel_trans_all p D ups nr ar dr H0 H6 H8 H9 H11 H12 H14 _ _)); [ exact HTR1 |].
-    exact (ind_rel_bases p D ups nr ar dr H0 H6 H8 H9 H11 H12 H14 _ _ ups ups' _ _ _ _ _ _ H16 H15 H15 H15 HTR2).
+    eapply (proj1 (ind_rel_trans_all p D ups nr ar dr H0 H6 H8 H9 H11 H12 H14 _)); [ exact HTR1 |].
+    exact (ind_rel_bases p D ups nr ar dr H0 H6 H8 H9 H11 H12 H14 _ ups ups' _ _ _ _ _ _ H16 H15 H15 H15 HTR2).
 Qed.
 
 Corollary per_univ_trans : forall i j R a1 a2 a3,

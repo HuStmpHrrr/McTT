@@ -46,8 +46,8 @@ Fixpoint exp_fresh (k : nat) (M : exp) {struct M} : Prop :=
   | a_maxl M N | a_app M N => exp_fresh k M /\ exp_fresh k N
   | a_exfalso A M => exp_fresh (S k) A /\ exp_fresh k M
   | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => True
-  | a_elim _ oUs _ Bks M =>
-      opt_all (all_list (exp_fresh k)) oUs /\
+  | a_elim _ Us _ Bks M =>
+      all_list (exp_fresh k) Us /\
       all_blocks (fun nm oZ A Bs => opt_all (exp_fresh (nm - 1 + k)) oZ /\ exp_fresh (nm + k) A /\
                                     all_brs (fun n B => exp_fresh (n + k) B) Bs) Bks /\ exp_fresh k M
   | a_pi A B | a_fn A B => exp_fresh k A /\ exp_fresh (S k) B
@@ -296,10 +296,7 @@ Proof. intros; exact (exp_wk_fresh 0 M). Qed.
     normal form; it does **not** preserve canonicity of a level, since
     dropping a variable changes the order of the atoms.  The checker therefore
     re-canonicalises ([lvl_canon]) after un-weakening a level. *)
-(** The induction principle on normal forms, written by hand: the uniform
-    parameters of a stuck eliminator are an [option nfs], which a generated
-    scheme gives no hypothesis for.  It is the generated one otherwise, with
-    [opt_all P2 o] for them. *)
+(** The induction principle on normal forms, the six types at once. *)
 Section Nf_Induction.
   Variables (P : nf -> Prop) (P0 : ne -> Prop) (P1 : lvl_atoms -> Prop) (P2 : nfs -> Prop)
     (P3 : nbrs -> Prop) (P4 : nblocks -> Prop).
@@ -317,7 +314,7 @@ Section Nf_Induction.
     (f_con : forall p k c Ms, P2 Ms -> P (nf_con p k c Ms))
     (f_neut : forall u, P0 u -> P (nf_neut u))
     (f_exfalso : forall A, P A -> forall u, P0 u -> P0 (ne_exfalso A u))
-    (f_elim : forall p o, opt_all P2 o -> forall m Bks, P4 Bks -> forall u, P0 u -> P0 (ne_elim p o m Bks u))
+    (f_elim : forall p Us, P2 Us -> forall m Bks, P4 Bks -> forall u, P0 u -> P0 (ne_elim p Us m Bks u))
     (f_app : forall u, P0 u -> forall W, P W -> P0 (ne_app u W))
     (f_var : forall x, P0 (ne_var x))
     (f_glob : forall p, P0 (ne_glob p))
@@ -348,9 +345,7 @@ Section Nf_Induction.
   with ne_mind (u : ne) : P0 u :=
     match u with
     | ne_exfalso A u => f_exfalso A (nf_mind A) u (ne_mind u)
-    | ne_elim p o m Bks u =>
-        f_elim p o (match o as o' return opt_all P2 o' with Some Us => nfs_mind Us | None => I end)
-          m Bks (nblocks_mind Bks) u (ne_mind u)
+    | ne_elim p Us m Bks u => f_elim p Us (nfs_mind Us) m Bks (nblocks_mind Bks) u (ne_mind u)
     | ne_app u W => f_app u (ne_mind u) W (nf_mind W)
     | ne_var x => f_var x
     | ne_glob p => f_glob p
@@ -382,16 +377,11 @@ Section Nf_Induction.
   Proof. repeat split; [ exact nf_mind | exact ne_mind | exact la_mind | exact nfs_mind | exact nbrs_mind | exact nblocks_mind ]. Qed.
 End Nf_Induction.
 
-(** The uniform parameters of a stuck eliminator, after [nf_mut_ind]: split
-    the option, so that its hypothesis is the one on the list. *)
-Ltac nf_ups_split :=
-  repeat match goal with o : option nfs |- _ => destruct o; cbn [opt_all option_map] in * end.
-
 (** Freshness of an eliminator: of its uniform parameters, its blocks and
     its scrutinee. *)
-Lemma exp_fresh_elim : forall k oq oUs m Bks M,
-    exp_fresh k (a_elim oq oUs m Bks M) <->
-      opt_all (all_list (exp_fresh k)) oUs /\ blocks_fresh k Bks /\ exp_fresh k M.
+Lemma exp_fresh_elim : forall k oq Us m Bks M,
+    exp_fresh k (a_elim oq Us m Bks M) <->
+      all_list (exp_fresh k) Us /\ blocks_fresh k Bks /\ exp_fresh k M.
 Proof. reflexivity. Qed.
 
 Lemma apps_exp_fresh : forall Ms M k,
@@ -409,8 +399,7 @@ Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
 with ne_fresh (k : nat) (u : ne) {struct u} : Prop :=
   match u with
   | ne_exfalso A u => nf_fresh (S k) A /\ ne_fresh k u
-  | ne_elim _ oUs _ Bks u =>
-      match oUs with Some Us => nfs_fresh k Us | None => True end /\ nblocks_fresh k Bks /\ ne_fresh k u
+  | ne_elim _ Us _ Bks u => nfs_fresh k Us /\ nblocks_fresh k Bks /\ ne_fresh k u
   | ne_app u W => ne_fresh k u /\ nf_fresh k W
   | ne_var x => x <> k
   | ne_glob _ => True
@@ -454,8 +443,7 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
 with ne_unwk (k : nat) (u : ne) {struct u} : ne :=
   match u with
   | ne_exfalso A u => ne_exfalso (nf_unwk (S k) A) (ne_unwk k u)
-  | ne_elim p oUs m Bks u =>
-      ne_elim p (match oUs with Some Us => Some (nfs_unwk k Us) | None => None end) m (nblocks_unwk k Bks) (ne_unwk k u)
+  | ne_elim p Us m Bks u => ne_elim p (nfs_unwk k Us) m (nblocks_unwk k Bks) (ne_unwk k u)
   | ne_app u W => ne_app (ne_unwk k u) (nf_unwk k W)
   | ne_var x => ne_var (unwk k x)
   | ne_glob p => ne_glob p
@@ -575,7 +563,7 @@ Lemma nf_fresh_to_exp :
   (forall Bs k, nbrs_fresh k Bs -> all_brs (fun n B => exp_fresh (n + k) B) (nbrs_to_brs Bs)) /\
   (forall Bks k, nblocks_fresh k Bks -> blocks_fresh k (nblocks_to_blocks Bks)).
 Proof.
-  apply nf_mut_ind; intros; nf_ups_split;
+  apply nf_mut_ind; intros;
     cbn [nf_to_exp ne_to_exp la_to_list nfs_to_exps nbrs_to_brs nblocks_to_blocks nf_fresh ne_fresh la_fresh nfs_fresh
          nbrs_fresh nblocks_fresh blocks_fresh all_blocks all_brs opt_all option_map fst snd] in *;
     unfold blocks_fresh in *; destruct_conjs;
@@ -606,7 +594,7 @@ Lemma nf_unwk_to_exp :
                                             (List.map (fun br => (fst br, (snd br)[wk_qn (snd (fst br)) (unwk k)]ʷ)) Bs)
                                       end) (nblocks_to_blocks Bks)).
 Proof.
-  apply nf_mut_ind; intros; nf_ups_split; cbn; rewrite ?apps_exp_wk;
+  apply nf_mut_ind; intros; cbn; rewrite ?apps_exp_wk;
     try reflexivity;
     try solve [ (** A small universe and a level carry the same atom list, so
                     both go through [lvl_exp_of_wk]. *)
@@ -645,8 +633,7 @@ Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
 with ne_freshb (k : nat) (u : ne) {struct u} : bool :=
   match u with
   | ne_exfalso A u => nf_freshb (S k) A && ne_freshb k u
-  | ne_elim _ oUs _ Bks u =>
-      match oUs with Some Us => nfs_freshb k Us | None => true end && nblocks_freshb k Bks && ne_freshb k u
+  | ne_elim _ Us _ Bks u => nfs_freshb k Us && nblocks_freshb k Bks && ne_freshb k u
   | ne_app u W => ne_freshb k u && nf_freshb k W
   | ne_var x => negb (Nat.eqb x k)
   | ne_glob _ => true
@@ -680,7 +667,7 @@ Lemma nf_freshb_iff :
   (forall Bs k, nbrs_freshb k Bs = true <-> nbrs_fresh k Bs) /\
   (forall Bks k, nblocks_freshb k Bks = true <-> nblocks_fresh k Bks).
 Proof.
-  apply nf_mut_ind; intros; nf_ups_split; cbn;
+  apply nf_mut_ind; intros; cbn;
     repeat rewrite Bool.andb_true_iff;
     try solve [ split; [ intros _; exact I | reflexivity ]
               | rewrite Bool.negb_true_iff, Nat.eqb_neq; reflexivity

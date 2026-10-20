@@ -427,7 +427,7 @@ Qed.
     contexts, which the induction hypotheses of the telescope premises
     give; the annotations of the second side by the equations of the
     annotated contexts. *)
-Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D oq oUs m Mm Bks bm Ps M i,
+Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D oq Us m Mm Bks bm Ps M i,
     ind_lookup Θ Ξ p = Some D ->
     elim_grp D oq p m ->
     ind_member D m = Some Mm ->
@@ -440,7 +440,7 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D oq oUs m Mm Bks bm Ps M i
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ P[τ] ≈ P[τ'] : T[τ]) ->
     (forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : Γ ->
        Θ ⍮ Ξ ⍮ Δ0 ⊢ M[τ] ≈ M[τ'] : (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps))[τ]) ->
-    oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
+    Us = List.firstn (ind_nu D) Ps ->
     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
        Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
@@ -516,7 +516,7 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D oq oUs m Mm Bks bm Ps M i
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ τ ≈ τ' : elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ->
        Θ ⍮ Ξ ⍮ Δ0 ⊢ B[τ] ≈ B[τ'] : (elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[τ]) ->
     Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ ≈ σ' : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq oUs m Bks M)[σ] ≈ (a_elim oq oUs m Bks M)[σ']
+    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq Us m Bks M)[σ] ≈ (a_elim oq Us m Bks M)[σ']
       : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
 Proof.
   intros * Hl Hg HMm Hbm HlB HlP HPs IHPs IHM Hann Hnm HZ IHZ HA IHA HΨ IHΨ Hn HΨB IHΨB Hk HB IHB Hσ.

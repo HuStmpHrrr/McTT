@@ -40,8 +40,7 @@ Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
 with ne_wk (φ : wk) (u : ne) {struct u} : ne :=
   match u with
   | ne_exfalso A u => ne_exfalso (nf_wk (wk_q φ) A) (ne_wk φ u)
-  | ne_elim p oUs m Bks u =>
-      ne_elim p (match oUs with Some Us => Some (nfs_wk φ Us) | None => None end) m (nblocks_wk φ Bks) (ne_wk φ u)
+  | ne_elim p Us m Bks u => ne_elim p (nfs_wk φ Us) m (nblocks_wk φ Bks) (ne_wk φ u)
   | ne_app u W => ne_app (ne_wk φ u) (nf_wk φ W)
   | ne_var x => ne_var (φ x)
   | ne_glob p => ne_glob p
@@ -92,7 +91,7 @@ Lemma nf_wk_to_exp :
                                             (List.map (fun br => (fst br, (snd br)[wk_qn (snd (fst br)) φ]ʷ)) Bs)
                                       end) (nblocks_to_blocks Bks)).
 Proof.
-  apply nf_mut_ind; intros; nf_ups_split; cbn; rewrite ?apps_exp_wk;
+  apply nf_mut_ind; intros; cbn; rewrite ?apps_exp_wk;
     try reflexivity;
     try solve [ f_equal; rewrite lvl_exp_of_wk; f_equal; eauto
               | rewrite lvl_exp_of_wk; f_equal; eauto
@@ -235,7 +234,7 @@ Proof.
     | |- nblocks_cmp _ (nblocks_wk _ ?N) = _ => destruct N
     end;
     repeat match goal with p : o2 |- _ => destruct p end;
-    nf_ups_split; cmp_norm; try reflexivity.
+    cmp_norm; try reflexivity.
   all: repeat match goal with
          | IH : forall φ N, wk_mono φ -> ?cmp (?wk φ ?M) (?wk φ N) = _ |- context [ ?cmp (?wk ?ψ ?M) (?wk ?ψ ?N') ] =>
              rewrite (IH ψ N') by (repeat apply wk_mono_q; try apply wk_mono_qn; assumption)
@@ -301,7 +300,7 @@ Lemma nf_wk_fresh :
   (forall Bs k φ, wk_avoids k φ -> nbrs_fresh k (nbrs_wk φ Bs)) /\
   (forall Bks k φ, wk_avoids k φ -> nblocks_fresh k (nblocks_wk φ Bks)).
 Proof.
-  apply nf_mut_ind; intros; nf_ups_split; cbn; repeat split; eauto 6 using wk_avoids_q, wk_avoids_qn.
+  apply nf_mut_ind; intros; cbn; repeat split; eauto 6 using wk_avoids_q, wk_avoids_qn.
 Qed.
 
 (** ** Injectivity
@@ -329,11 +328,11 @@ Proof.
   apply nf_mut_ind; intros;
     match goal with
     | H : nf_wk _ _ = nf_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
-    | H : ne_wk _ _ = ne_wk _ ?W' |- _ => destruct W'; nf_ups_split; cbn in H; inversion H; subst
+    | H : ne_wk _ _ = ne_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
     | H : la_wk _ _ = la_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
     | H : nfs_wk _ _ = nfs_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
     | H : nbrs_wk _ _ = nbrs_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
     | H : nblocks_wk _ _ = nblocks_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
     end;
-    f_equal; try match goal with |- Some _ = Some _ => f_equal end; eauto using wk_inj_q, wk_inj_qn.
+    f_equal; eauto using wk_inj_q, wk_inj_qn.
 Qed.

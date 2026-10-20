@@ -81,14 +81,14 @@ Import Domain_Notations.
       (forall h ch r1, h ·ₜ* ch Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₜ* ch Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall h ch r1, h ·ₘ* ch Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₘ* ch Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall ρ Φ ρ1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> forall ρ2, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ2 -> ρ1 = ρ2) /\
-      (forall ρ p oups Bks j m r1,
-          ⟦elim m at j of p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-          forall r2, ⟦elim m at j of p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
-      (forall ρ p oups Bks gs vs r1,
-          ⟦ihs vs of gs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-          forall r2, ⟦ihs vs of gs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
-      (forall ρ p oups Bks t v r1,
-          ⟦ih v of t under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 -> forall r2, ⟦ih v of t under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
+      (forall ρ p ups Bks j m r1,
+          ⟦elim m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+          forall r2, ⟦elim m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
+      (forall ρ p ups Bks gs vs r1,
+          ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+          forall r2, ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
+      (forall ρ p ups Bks t v r1,
+          ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 -> forall r2, ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
       (forall p ups j r1, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r1 -> forall r2, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall p ups ρ t a1, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> forall a2, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2) /\
       (forall ρm As ρ t v a1, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> forall a2, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2).
@@ -169,24 +169,24 @@ Import Domain_Notations.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ); intuition.
   Qed.
 
-  Corollary functional_eval_elim : forall {Θ Ξ} ρ p oups Bks j m r1 r2,
-      ⟦elim m at j of p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-      ⟦elim m at j of p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
+  Corollary functional_eval_elim : forall {Θ Ξ} ρ p ups Bks j m r1 r2,
+      ⟦elim m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+      ⟦elim m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
       r1 = r2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
 
-  Corollary functional_eval_ihs : forall {Θ Ξ} ρ p oups Bks gs vs r1 r2,
-      ⟦ihs vs of gs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-      ⟦ihs vs of gs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
+  Corollary functional_eval_ihs : forall {Θ Ξ} ρ p ups Bks gs vs r1 r2,
+      ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+      ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
       r1 = r2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
 
-  Corollary functional_eval_ih : forall {Θ Ξ} ρ p oups Bks t v r1 r2,
-      ⟦ih v of t under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 -> ⟦ih v of t under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
+  Corollary functional_eval_ih : forall {Θ Ξ} ρ p ups Bks t v r1 r2,
+      ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 -> ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
@@ -277,7 +277,7 @@ Proof. intros ? ? [] ?; cbn; repeat econstructor. Qed.
 Hint Resolve eval_ulvl_tm : mctt.
 
 (** One recursive result per recursive argument. *)
-Lemma eval_ihs_length : forall {Θ Ξ} ρ p oups Bks gs vs ihs,
-    ⟦ihs vs of gs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+Lemma eval_ihs_length : forall {Θ Ξ} ρ p ups Bks gs vs ihs,
+    ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
     List.length vs = List.length gs /\ List.length ihs = cargs_nrec gs.
 Proof. induction 1; cbn; intuition congruence. Qed.

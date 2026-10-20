@@ -38,8 +38,8 @@ Section Fixed_GCtx.
     - f_equal; exact (IH _ (proj2 (proj2 H))).
   Qed.
 
-  Lemma con_args_rel_len : forall p D adm okr nr ar dr k u u' pre pre' gs vs vs',
-      con_args_rel p D adm okr nr ar dr k u u' pre pre' gs vs vs' -> List.length vs = List.length gs /\ List.length vs' = List.length gs.
+  Lemma con_args_rel_len : forall p D okr nr ar dr k u u' pre pre' gs vs vs',
+      con_args_rel p D okr nr ar dr k u u' pre pre' gs vs vs' -> List.length vs = List.length gs /\ List.length vs' = List.length gs.
   Proof. induction 1; cbn; lia. Qed.
 
   Section ViewCoh.
@@ -52,8 +52,6 @@ Section Fixed_GCtx.
     Hypothesis (HnP : nparams_per D nr) (HnI : nparams_inv D nr).
     Hypothesis (HaP : args_per D nr ar) (HaI : args_inv D nr ar).
     Hypothesis (HdP : doms_per D nr ar dr) (HdI : doms_inv D nr ar dr).
-    Variable (adm : nat -> list domain -> Prop).
-    Hypothesis (Hadm : forall k Y, adm k Y).
 
     (** The container, and its relations. *)
     Variables (qc : qname) (Dq : ind_decl) (cups cups' : list domain).
@@ -64,20 +62,19 @@ Section Fixed_GCtx.
     Hypothesis (HnP' : nparams_per Dq nr') (HnI' : nparams_inv Dq nr').
     Hypothesis (HaP' : args_per Dq nr' ar') (HaI' : args_inv Dq nr' ar').
     Hypothesis (HdP' : doms_per Dq nr' ar' dr') (HdI' : doms_inv Dq nr' ar' dr').
-    Variable (adm' : nat -> list domain -> Prop).
 
     (** The members of the container's group the view takes to members of
         the group. *)
     Variable (vm : list nat).
 
-    #[local] Abbreviation G := (ind_rel p D adm (okr_at D ups nr) nr ar dr).
-    #[local] Abbreviation C := (ind_rel qc Dq adm' (okr_at Dq cups nr') nr' ar' dr').
-    #[local] Abbreviation CA := (con_args_rel qc Dq adm' (okr_at Dq cups nr') nr' ar' dr').
-    #[local] Abbreviation GA := (con_args_rel p D adm (okr_at D ups nr) nr ar dr).
-    #[local] Abbreviation CR := (rec_arg_rel qc Dq adm' (okr_at Dq cups nr') nr' ar' dr').
-    #[local] Abbreviation GR := (rec_arg_rel p D adm (okr_at D ups nr) nr ar dr).
-    #[local] Abbreviation CP := (rec_arg_app_rel qc Dq adm' (okr_at Dq cups nr') nr' ar' dr').
-    #[local] Abbreviation GP := (rec_arg_app_rel p D adm (okr_at D ups nr) nr ar dr).
+    #[local] Abbreviation G := (ind_rel p D (okr_at D ups nr) nr ar dr).
+    #[local] Abbreviation C := (ind_rel qc Dq (okr_at Dq cups nr') nr' ar' dr').
+    #[local] Abbreviation CA := (con_args_rel qc Dq (okr_at Dq cups nr') nr' ar' dr').
+    #[local] Abbreviation GA := (con_args_rel p D (okr_at D ups nr) nr ar dr).
+    #[local] Abbreviation CR := (rec_arg_rel qc Dq (okr_at Dq cups nr') nr' ar' dr').
+    #[local] Abbreviation GR := (rec_arg_rel p D (okr_at D ups nr) nr ar dr).
+    #[local] Abbreviation CP := (rec_arg_app_rel qc Dq (okr_at Dq cups nr') nr' ar' dr').
+    #[local] Abbreviation GP := (rec_arg_app_rel p D (okr_at D ups nr) nr ar dr).
 
     (** The member [v] of the group the container's member [i'] is taken
         to: of the same head, as many parameters, its constructors the
@@ -312,7 +309,7 @@ Section Fixed_GCtx.
         destruct (Hmem _ _ HMk) as (v0 & Mv & Hv).
         assert (v0 = v) as -> by (rewrite (vmb_v _ _ _ _ Hv) in Hvm; congruence).
         destruct (vmb_cons _ _ _ _ Hv c gs' Hcon) as (gs & Hc & Hcorr).
-        pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hlv Hlv'].
+        pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hlv Hlv'].
         pose proof (cargs_corr_len _ _ _ Hcorr) as Hlg.
         assert (Hms : tele_rel (nr' k) (List.rev (im_nparams Mk)) (List.skipn (im_unu Dq Mk) bs) (List.skipn (im_unu Dq Mk) bs')).
         { eapply (nparams_rel_trans qc Dq cups nr' ar' dr' Hass' HnP' HnI' HaP' HaI' HdP' HdI' k Mk HMk);
@@ -333,13 +330,13 @@ Section Fixed_GCtx.
                         ltac:(cbn; rewrite List.app_nil_r; reflexivity) Hms (tele_prefix_rel_nil _) (proj2 Hnr)) as H.
           cbn [nonrec_arg_vals] in H; rewrite !List.app_nil_r in H; exact H.
       - (* a neutral *)
-        intros k Mk hd k' ns ns' as1 as2 m m' u u' HMk Href Hns Hl1 Hl2 _ _ Hs Hs' Hm Hu Hu' v Hvm.
+        intros k Mk hd k' ns ns' as1 as2 m m' u u' HMk Href Hns Hl1 Hl2 Hs Hs' Hm Hu Hu' v Hvm.
         destruct (Hmem _ _ HMk) as (v0 & Mv & Hv).
         assert (v0 = v) as -> by (rewrite (vmb_v _ _ _ _ Hv) in Hvm; congruence).
         rewrite <- (vmb_unu _ _ _ _ Hv) in Hl1, Hl2, Hs, Hs'; rewrite <- (vmb_nn _ _ _ _ Hv) in Hl1, Hl2.
         eapply ind_rel_neut with (Mk := Mv);
           [ exact (vmb_mem _ _ _ _ Hv) | rewrite (vmb_ref _ _ _ _ Hv); exact Href | exact (nr_to _ _ _ _ _ _ HMk Hv Hns)
-          | exact Hl1 | exact Hl2 | apply Hadm | apply Hadm | exact (nr_to _ _ _ _ _ _ HMk Hv Hs) | exact (nr_to _ _ _ _ _ _ HMk Hv Hs')
+          | exact Hl1 | exact Hl2 | exact (nr_to _ _ _ _ _ _ HMk Hv Hs) | exact (nr_to _ _ _ _ _ _ HMk Hv Hs')
           | exact Hm ].
       - (* no argument *)
         intros k u u' pre pre' Hu Hu' * _ _ _ _ _ Hcorr _ _ _ _ _ _ _.
@@ -448,7 +445,7 @@ Section Fixed_GCtx.
             [ exact (ntele_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ He2) |].
           eapply (ntele_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [| exact Hbg' ].
           exact (ntele_rel_of p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ (vmb_mem _ _ _ _ Hv') Hidx).
-        + exact (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ HMj Hg Hbgt Hbgt').
+        + exact (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HMj Hg Hbgt Hbgt').
       - (* a domain of a shape *)
         intros k pre B' u u' pre' t3 f f' Hr IH Hu Hu' Mi' v Mv c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys'
           HM Hv Hc' Hc Hcorr1 Hm Hdep Hlp Hlp' Hsk Hly Hly' Hd Hpre Hpre' Hms Hpw Hpy.
@@ -479,11 +476,10 @@ Section Fixed_GCtx.
 
     (** ** From the Group's to the Container's
 
-        Conversely, when the container's neutrals need no condition (a
-        container with views, model P): an element of the group at a view
-        is one of the container. *)
+        Conversely, an element of the group at a view is one of the
+        container: neither relation puts a condition on a neutral's
+        annotation (model P). *)
     Section From.
-      Hypothesis (Hadm' : forall k Y, adm' k Y).
 
       Theorem view_coh_from_all :
         (forall w u u' ns ns' x y, G w u u' ns ns' x y -> u = ups -> u' = ups' ->
@@ -532,7 +528,7 @@ Section Fixed_GCtx.
           intros k Mk hd k' ns ns' c gs bs bs' vs vs' u u' HMk Href Hns Hcon Hlb Hlb' Hs Hs' Hnr Hca IH Hu Hu' i' Mi' Mw HMi Hv.
           rewrite (vmb_mem _ _ _ _ Hv) in HMk; injection HMk as <-.
           destruct (vmb_cons' _ _ _ _ Hv c gs Hcon) as (gs' & Hc' & Hcorr).
-          pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hlv Hlv'].
+          pose proof (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hlv Hlv'].
           pose proof (cargs_corr_len _ _ _ Hcorr) as Hlg.
           assert (Hms : tele_rel (nr k) (List.rev (im_nparams Mw)) (List.skipn (im_unu D Mw) bs) (List.skipn (im_unu D Mw) bs')).
           { eapply (nparams_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI k Mw (vmb_mem _ _ _ _ Hv));
@@ -552,13 +548,13 @@ Section Fixed_GCtx.
             | exact (nr_from _ _ _ _ _ _ HMi Hv Hs) | exact (nr_from _ _ _ _ _ _ HMi Hv Hs') | | exact Hca' ].
           split; [ rewrite length_nonrec_arg_vals by lia; reflexivity | exact Hnr' ].
         - (* a neutral *)
-          intros k Mk hd k' ns ns' as1 as2 m m' u u' HMk Href Hns Hl1 Hl2 _ _ Hs Hs' Hm Hu Hu' i' Mi' Mw HMi Hv.
+          intros k Mk hd k' ns ns' as1 as2 m m' u u' HMk Href Hns Hl1 Hl2 Hs Hs' Hm Hu Hu' i' Mi' Mw HMi Hv.
           rewrite (vmb_mem _ _ _ _ Hv) in HMk; injection HMk as <-.
           rewrite (vmb_unu _ _ _ _ Hv) in Hl1, Hl2, Hs, Hs'; rewrite (vmb_nn _ _ _ _ Hv) in Hl1, Hl2.
           rewrite (vmb_ref _ _ _ _ Hv) in Href.
           eapply ind_rel_neut with (Mk := Mi');
             [ exact HMi | exact Href | exact (nr_from _ _ _ _ _ _ HMi Hv Hns)
-            | exact Hl1 | exact Hl2 | apply Hadm' | apply Hadm' | exact (nr_from _ _ _ _ _ _ HMi Hv Hs) | exact (nr_from _ _ _ _ _ _ HMi Hv Hs')
+            | exact Hl1 | exact Hl2 | exact (nr_from _ _ _ _ _ _ HMi Hv Hs) | exact (nr_from _ _ _ _ _ _ HMi Hv Hs')
             | exact Hm ].
         - (* no argument *)
           intros k u u' pre pre' Hu Hu' * _ _ _ _ _ Hcorr _ _ _ _ _ _ _.
@@ -665,7 +661,7 @@ Section Fixed_GCtx.
             eapply (ntele_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [ exact Hbg' |].
             eapply (ntele_rel_trans p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI); [ exact (ntele_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ Hidx) |].
             exact (ntele_rel_sym p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ He2).
-          + exact (ind_rel_idx qc Dq cups nr' ar' dr' Hass' HnP' HnI' HaP' HaI' HdP' HdI' _ _ _ _ _ _ _ _ _ _ _ _ HMj' Hg
+          + exact (ind_rel_idx qc Dq cups nr' ar' dr' Hass' HnP' HnI' HaP' HaI' HdP' HdI' _ _ _ _ _ _ _ _ _ _ _ HMj' Hg
                      (Hsym _ _ Hbg) (Hsym _ _ Hbg')).
         - (* a domain of a shape *)
           intros k pre B u u' pre' t3 f f' Hr IH Hu Hu' i' Mi' Mw c gs1' t' gs2' gs1 t gs2 ms ms' vp vp' d ys ys'

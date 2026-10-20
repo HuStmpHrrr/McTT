@@ -27,8 +27,7 @@ Fixpoint nf_stuck (G : qname -> Prop) (W : nf) : Prop :=
 with ne_stuck (G : qname -> Prop) (M : ne) : Prop :=
   match M with
   | ne_exfalso A M => nf_stuck G A /\ ne_stuck G M
-  | ne_elim _ oUs _ Bks M =>
-      match oUs with Some Us => nfs_stuck G Us | None => True end /\ nblocks_stuck G Bks /\ ne_stuck G M
+  | ne_elim _ Us _ Bks M => nfs_stuck G Us /\ nblocks_stuck G Bks /\ ne_stuck G M
   | ne_app M N => ne_stuck G M /\ nf_stuck G N
   | ne_var _ => True
   | ne_glob p => G p
@@ -97,8 +96,8 @@ Inductive dstuck : domain -> Prop :=
 | dstuck_member : forall h ch, dmstuck h -> dstuck (d_member h ch)
 | dstuck_indty : forall p k args, (forall a, In a args -> dstuck a) -> dstuck (d_ind p k args)
 | dstuck_con : forall p k c args, (forall a, In a args -> dstuck a) -> dstuck (d_con p k c args)
-| dstuck_ihfn : forall (ρ : env) Bks p oups t f, (forall x, destuck (env_entry ρ x)) ->
-    (forall ups, oups = Some ups -> forall a, In a ups -> dstuck a) -> dstuck f -> dstuck (d_ihfn ρ Bks p oups t f)
+| dstuck_ihfn : forall (ρ : env) Bks p ups t f, (forall x, destuck (env_entry ρ x)) ->
+    (forall a, In a ups -> dstuck a) -> dstuck f -> dstuck (d_ihfn ρ Bks p ups t f)
 | dstuck_shfam : forall p ups (ρ : env) t, (forall a, In a ups -> dstuck a) -> (forall x, destuck (env_entry ρ x)) ->
     dstuck (d_shfam p ups ρ t)
 | dstuck_ihfam : forall (ρm : env) As (ρ : env) t f, (forall x, destuck (env_entry ρm x)) -> (forall x, destuck (env_entry ρ x)) ->
@@ -110,10 +109,10 @@ with dstuck_ne : domain_ne -> Prop :=
 | dstuck_exfalso : forall (ρ : env) A m,
     (forall x, destuck (env_entry ρ x)) -> dstuck_ne m ->
     dstuck_ne (efqᵈ m under ρ return A)
-| dstuck_elim : forall (ρ : env) Bks p oups j args m,
-    (forall x, destuck (env_entry ρ x)) -> (forall ups, oups = Some ups -> forall a, In a ups -> dstuck a) ->
+| dstuck_elim : forall (ρ : env) Bks p ups j args m,
+    (forall x, destuck (env_entry ρ x)) -> (forall a, In a ups -> dstuck a) ->
     (forall a, In a args -> dstuck a) -> dstuck_ne m ->
-    dstuck_ne (d_elim ρ Bks p oups j args m)
+    dstuck_ne (d_elim ρ Bks p ups j args m)
 with dstuck_nf : domain_nf -> Prop :=
 | dstuck_dom : forall a m, dstuck a -> dstuck m -> dstuck_nf (⇓ a m)
 with dmstuck : dmod -> Prop :=
@@ -130,19 +129,9 @@ with destuck : dentry -> Prop :=
 
 Definition env_stuck (ρ : env) : Prop := forall x, destuck (env_entry ρ x).
 
-(** The uniform parameters an eliminator carries, stuck when it carries
-    them.  A definition, so that the search does not use it as a lemma
-    about every value. *)
-Definition oups_stuck (oups : option (list domain)) : Prop :=
-  forall ups, oups = Some ups -> forall a, In a ups -> dstuck a.
-
-Lemma oups_stuck_none : oups_stuck None.
-Proof. intros ? [=]. Qed.
-
-Lemma oups_stuck_some : forall ups, (forall a, In a ups -> dstuck a) -> oups_stuck (Some ups).
-Proof. intros * H ? [= <-]; exact H. Qed.
-
-#[local] Hint Resolve oups_stuck_none : mctt.
+(** The uniform parameters an eliminator carries, stuck.  A definition, so
+    that the search does not use it as a lemma about every value. *)
+Definition ups_stuck (ups : list domain) : Prop := forall a, In a ups -> dstuck a.
 
 #[local] Hint Constructors dstuck dstuck_ne dstuck_nf dstuck_la dmstuck destuck : mctt.
 
@@ -233,12 +222,12 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
     (forall h ch r, h ·ₜ* ch Θ ⍮ Ξ ↘ r -> dmstuck h -> dstuck r) /\
     (forall h ch r, h ·ₘ* ch Θ ⍮ Ξ ↘ r -> dmstuck h -> dmstuck r) /\
     (forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' -> env_stuck ρ -> env_stuck ρ') /\
-    (forall ρ p oups Bks j m r, ⟦elim m at j of p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_stuck ρ ->
-       oups_stuck oups -> dstuck m -> dstuck r) /\
-    (forall ρ p oups Bks gs vs ihs, ⟦ihs vs of gs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-       env_stuck ρ -> oups_stuck oups -> (forall a, In a vs -> dstuck a) -> forall a, In a ihs -> dstuck a) /\
-    (forall ρ p oups Bks t v r, ⟦ih v of t under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_stuck ρ ->
-       oups_stuck oups -> dstuck v -> dstuck r) /\
+    (forall ρ p ups Bks j m r, ⟦elim m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_stuck ρ ->
+       ups_stuck ups -> dstuck m -> dstuck r) /\
+    (forall ρ p ups Bks gs vs ihs, ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+       env_stuck ρ -> ups_stuck ups -> (forall a, In a vs -> dstuck a) -> forall a, In a ihs -> dstuck a) /\
+    (forall ρ p ups Bks t v r, ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_stuck ρ ->
+       ups_stuck ups -> dstuck v -> dstuck r) /\
     (forall p ups j r, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r -> (forall u, In u ups -> dstuck u) -> forall a, In a (snd r) -> dstuck a) /\
     (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> (forall u, In u ups -> dstuck u) -> env_stuck ρ -> dstuck a) /\
     (forall ρm As ρ t v a, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> env_stuck ρm -> env_stuck ρ -> dstuck v -> dstuck a).
@@ -257,10 +246,10 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
              (fun h ch r _ => dmstuck h -> dstuck r)
              (fun h ch r _ => dmstuck h -> dmstuck r)
              (fun ρ Φ ρ' _ => env_stuck ρ -> env_stuck ρ')
-             (fun ρ p oups Bks j m r _ => env_stuck ρ -> oups_stuck oups -> dstuck m -> dstuck r)
-             (fun ρ p oups Bks gs vs ihs _ => env_stuck ρ -> oups_stuck oups ->
+             (fun ρ p ups Bks j m r _ => env_stuck ρ -> ups_stuck ups -> dstuck m -> dstuck r)
+             (fun ρ p ups Bks gs vs ihs _ => env_stuck ρ -> ups_stuck ups ->
                 (forall a, In a vs -> dstuck a) -> forall a, In a ihs -> dstuck a)
-             (fun ρ p oups Bks t v r _ => env_stuck ρ -> oups_stuck oups -> dstuck v -> dstuck r)
+             (fun ρ p ups Bks t v r _ => env_stuck ρ -> ups_stuck ups -> dstuck v -> dstuck r)
              (fun p ups j r _ => (forall u, In u ups -> dstuck u) -> forall a, In a (snd r) -> dstuck a)
              (fun p ups ρ t a _ => (forall u, In u ups -> dstuck u) -> env_stuck ρ -> dstuck a)
              (fun ρm As ρ t v a _ => env_stuck ρm -> env_stuck ρ -> dstuck v -> dstuck a));
@@ -306,17 +295,17 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
            | IH2 : env_stuck ?ρm -> env_stuck (?ρ ↦ ?n) -> dstuck ?fn -> dstuck ?a,
              IH1 : dstuck ?f -> dstuck ?n -> dstuck ?fn |- dstuck ?a =>
                apply IH2; [ assumption | apply env_stuck_extend; assumption | apply IH1; assumption ]
-           | IH2 : env_stuck ?ρ -> oups_stuck ?o -> dstuck ?fn -> dstuck ?r,
+           | IH2 : env_stuck ?ρ -> ups_stuck ?o -> dstuck ?fn -> dstuck ?r,
              IH1 : dstuck ?f -> dstuck ?n -> dstuck ?fn |- dstuck ?r =>
                apply IH2; [ assumption | assumption | apply IH1; assumption ]
            end ].
-    (* the eliminator of a group with views: its uniform parameters,
-       evaluated in a stuck environment *)
+    (* the eliminator: its uniform parameters, evaluated in a stuck
+       environment *)
     all: try solve [ match goal with
-           | IH : env_stuck ?ρ -> oups_stuck (Some ?u) -> dstuck ?m -> dstuck ?r,
+           | IH : env_stuck ?ρ -> ups_stuck ?u -> dstuck ?m -> dstuck ?r,
              IHu : env_stuck ?ρ -> forall a, In a ?u -> dstuck a, IHm : env_stuck ?ρ -> dstuck ?m,
              Hρ : env_stuck ?ρ |- dstuck ?r =>
-               exact (IH Hρ (oups_stuck_some _ (IHu Hρ)) (IHm Hρ))
+               exact (IH Hρ (IHu Hρ) (IHm Hρ))
            end ].
     (* inductive types: the values are lists, of which evaluation takes
        segments *)
@@ -325,8 +314,8 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
     (* the branch of a constructor, in the environment of its parameters,
        arguments and recursive results *)
     all: try solve [ match goal with
-      | IH : env_stuck ?ρ -> oups_stuck ?o -> (forall x1, In x1 ?vs -> dstuck x1) -> forall x2, In x2 ?ihs -> dstuck x2,
-        Hρ : env_stuck ?ρ, Ho : oups_stuck ?o, IHB : env_stuck (env_args ?ρ _) -> dstuck ?r |- dstuck ?r =>
+      | IH : env_stuck ?ρ -> ups_stuck ?o -> (forall x1, In x1 ?vs -> dstuck x1) -> forall x2, In x2 ?ihs -> dstuck x2,
+        Hρ : env_stuck ?ρ, Ho : ups_stuck ?o, IHB : env_stuck (env_args ?ρ _) -> dstuck ?r |- dstuck ?r =>
           pose proof (IH Hρ Ho ltac:(all_in_with assumption));
           apply IHB, env_stuck_args; [ exact Hρ | all_in_with assumption ]
       end ].
@@ -340,12 +329,12 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
       end ].
     (* the recursive results *)
     all: try solve [ match goal with
-      | IH : env_stuck ?ρ -> oups_stuck ?o -> (forall x1, In x1 ?vs -> dstuck x1) -> forall x2, In x2 ?ihs -> dstuck x2,
-        Hρ : env_stuck ?ρ, Ho : oups_stuck ?o, Hv : forall x3, In x3 (_ :: ?vs) -> dstuck x3, Ha : In ?d ?ihs |- dstuck ?d =>
+      | IH : env_stuck ?ρ -> ups_stuck ?o -> (forall x1, In x1 ?vs -> dstuck x1) -> forall x2, In x2 ?ihs -> dstuck x2,
+        Hρ : env_stuck ?ρ, Ho : ups_stuck ?o, Hv : forall x3, In x3 (_ :: ?vs) -> dstuck x3, Ha : In ?d ?ihs |- dstuck ?d =>
           exact (IH Hρ Ho (all_in_tail _ _ _ Hv) _ Ha)
-      | IH : env_stuck ?ρ -> oups_stuck ?o -> (forall x1, In x1 ?vs -> dstuck x1) -> forall x2, In x2 ?ihs -> dstuck x2,
-        IHv : env_stuck ?ρ -> oups_stuck ?o -> dstuck ?v -> dstuck ?ih,
-        Hρ : env_stuck ?ρ, Ho : oups_stuck ?o, Hv : forall x3, In x3 (?v :: ?vs) -> dstuck x3, Ha : In ?d (?ih :: ?ihs) |- dstuck ?d =>
+      | IH : env_stuck ?ρ -> ups_stuck ?o -> (forall x1, In x1 ?vs -> dstuck x1) -> forall x2, In x2 ?ihs -> dstuck x2,
+        IHv : env_stuck ?ρ -> ups_stuck ?o -> dstuck ?v -> dstuck ?ih,
+        Hρ : env_stuck ?ρ, Ho : ups_stuck ?o, Hv : forall x3, In x3 (?v :: ?vs) -> dstuck x3, Ha : In ?d (?ih :: ?ihs) |- dstuck ?d =>
           destruct Ha as [<- | Ha];
             [ exact (IHv Hρ Ho (all_in_head _ _ _ Hv)) | exact (IH Hρ Ho (all_in_tail _ _ _ Hv) _ Ha) ]
       end ].
@@ -448,8 +437,8 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
     - apply IHfresh_ihs; [ assumption | assumption | all_in_with assumption ].
   Qed.
 
-  Lemma wrap_ihs_eval_stuck : forall ρ p oups Bks gs' gs vs ihs r,
-      ⟦wihs vs of gs' gs with ihs under p oups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_stuck ρ -> oups_stuck oups ->
+  Lemma wrap_ihs_eval_stuck : forall ρ p ups Bks gs' gs vs ihs r,
+      ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_stuck ρ -> ups_stuck ups ->
       (forall a, In a vs -> dstuck a) -> (forall a, In a ihs -> dstuck a) -> forall a, In a r -> dstuck a.
   Proof.
     destruct eval_stuck as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hih & _).
@@ -511,10 +500,10 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
        nfs_stuck (gstuck Θ Ξ) Ms) /\
     (forall s p ups ρ t x X, Rsh x at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ X ->
        env_stuck ρ -> (forall a, In a ups -> dstuck a) -> dstuck x -> nf_stuck (gstuck Θ Ξ) X) /\
-    (forall s ρ p oups ups Bks sel i Ms NBks, Rblks i Ms from p oups ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
-       env_stuck ρ -> oups_stuck oups -> (forall a, In a ups -> dstuck a) -> nblocks_stuck (gstuck Θ Ξ) NBks) /\
-    (forall s ρ p oups ups Bks Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r from p oups ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-       env_stuck ρ -> oups_stuck oups -> (forall a, In a ups -> dstuck a) -> (forall a, In a (snd r) -> dstuck a) ->
+    (forall s ρ p ups Bks sel i Ms NBks, Rblks i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
+       env_stuck ρ -> ups_stuck ups -> nblocks_stuck (gstuck Θ Ξ) NBks) /\
+    (forall s ρ p ups Bks Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
+       env_stuck ρ -> ups_stuck ups -> (forall a, In a (snd r) -> dstuck a) ->
        nbrs_stuck (gstuck Θ Ξ) Bs').
   Proof.
     destruct eval_stuck as (He & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hm & Hsh & _).
@@ -528,10 +517,9 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
                                         (forall a, In a vs -> dstuck a) -> nfs_stuck (gstuck Θ Ξ) Ms)
              (fun s p ups ρ t x X _ => env_stuck ρ -> (forall a, In a ups -> dstuck a) -> dstuck x ->
                                      nf_stuck (gstuck Θ Ξ) X)
-             (fun s ρ p oups ups Bks sel i Ms NBks _ => env_stuck ρ -> oups_stuck oups -> (forall a, In a ups -> dstuck a) ->
+             (fun s ρ p ups Bks sel i Ms NBks _ => env_stuck ρ -> ups_stuck ups ->
                                                       nblocks_stuck (gstuck Θ Ξ) NBks)
-             (fun s ρ p oups ups Bks Mv A Mi r cs Bs Bs' _ => env_stuck ρ -> oups_stuck oups ->
-                                                            (forall a, In a ups -> dstuck a) ->
+             (fun s ρ p ups Bks Mv A Mi r cs Bs Bs' _ => env_stuck ρ -> ups_stuck ups ->
                                                             (forall a, In a (snd r) -> dstuck a) -> nbrs_stuck (gstuck Θ Ξ) Bs'));
       intros; cbn [snd] in *; cbn;
       repeat match goal with
@@ -545,14 +533,6 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
         | H : dstuck_ne (_ _ _ _ _ _ _) |- _ => inversion_clear H
         end;
       repeat split; auto.
-    (** The uniform parameters a stuck eliminator carries, and the container's
-        at them, are stuck. *)
-    all: try match goal with
-         | Ho : oups_stuck (Some ?u) |- _ =>
-             let h := fresh "Hu" in assert (h : forall a, In a u -> dstuck a) by (exact (Ho _ eq_refl))
-         | Ho : forall ups, Some ?u = Some ups -> forall a, In a ups -> dstuck a |- _ =>
-             let h := fresh "Hu" in assert (h : forall a, In a u -> dstuck a) by (exact (Ho _ eq_refl))
-         end.
     (** Inductive types: each component is read back at a type, in an
         environment, of stuck values. *)
     all: try solve [

@@ -31,8 +31,8 @@ Fixpoint exp_scoped (n : nat) (M : exp) : Prop :=
   | a_maxl M N => exp_scoped n M /\ exp_scoped n N
   | a_exfalso A M => exp_scoped (S n) A /\ exp_scoped n M
   | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => True
-  | a_elim _ oUs _ Bks M =>
-      opt_all (all_list (exp_scoped n)) oUs /\
+  | a_elim _ Us _ Bks M =>
+      all_list (exp_scoped n) Us /\
       all_blocks (fun nm oZ A Bs => opt_all (exp_scoped (nm - 1 + n)) oZ /\ exp_scoped (nm + n) A /\
                                     all_brs (fun k B => exp_scoped (k + n) B) Bs) Bks /\ exp_scoped n M
   | a_pi A B | a_fn A B => exp_scoped n A /\ exp_scoped (S n) B
@@ -1263,19 +1263,9 @@ Definition blocks_scoped (m : nat) (Bks : list eblock) : Prop :=
   all_blocks (fun nm oZ A Bs => opt_all (exp_scoped (nm - 1 + m)) oZ /\ exp_scoped (nm + m) A /\
                                 all_brs (fun k B => exp_scoped (k + m) B) Bs) Bks.
 
-(** The uniform parameters an eliminator carries, scoped. *)
-Definition ups_scoped (n : nat) (oUs : option (list exp)) : Prop :=
-  opt_all (all_list (exp_scoped n)) oUs.
-
-Lemma exp_scoped_elim : forall n oq oUs k Bks M,
-    exp_scoped n (a_elim oq oUs k Bks M) <-> ups_scoped n oUs /\ blocks_scoped n Bks /\ exp_scoped n M.
-Proof. reflexivity. Qed.
-
-Lemma ups_scoped_some : forall n Us, ups_scoped n (Some Us) <-> List.Forall (exp_scoped n) Us.
-Proof. intros; apply all_list_Forall. Qed.
-
-Lemma elim_ups_scoped : forall n D Us, List.Forall (exp_scoped n) Us -> ups_scoped n (elim_ups D Us).
-Proof. intros * H; unfold elim_ups; destruct (ind_has_views D); [ apply ups_scoped_some; exact H | exact I ]. Qed.
+Lemma exp_scoped_elim : forall n oq Us k Bks M,
+    exp_scoped n (a_elim oq Us k Bks M) <-> List.Forall (exp_scoped n) Us /\ blocks_scoped n Bks /\ exp_scoped n M.
+Proof. intros; cbn [exp_scoped]; rewrite all_list_Forall; reflexivity. Qed.
 
 Lemma blocks_wk_scoped : forall Bks m n φ, blocks_scoped m Bks ->
     (forall x, x < m -> φ x < n) -> blocks_scoped n (blocks_wk Bks φ).
@@ -1319,8 +1309,7 @@ Lemma elim_at_scoped : forall pq D oq Us Bks j M m,
     exp_scoped m (elim_at pq D oq Us Bks j M).
 Proof.
   intros * HD Hl HUs Hnm HB HM; unfold elim_at.
-  destruct (ind_has_views D); (split; [| split; [ exact HB | exact HM ] ]); [| exact I ].
-  apply ups_scoped_some; exact HUs.
+  apply (proj2 (exp_scoped_elim _ _ _ _ _ _)); split; [ exact HUs | split; [ exact HB | exact HM ] ].
 Qed.
 
 Lemma blocks_nm_ok_wk : forall D Bks φ, blocks_nm_ok D Bks -> blocks_nm_ok D (blocks_wk Bks φ).
@@ -1337,7 +1326,7 @@ Lemma ptyp_ih_scoped : forall pq D oq t Us Bks σ M m k,
     exp_scoped m (ptyp_ih pq D oq Us Bks σ M t).
 Proof.
   intros pq D oq t; induction t as [k0 Ps | B t IH]; intros * HD Hl HUs Hnm HBs Hσ Ht HM; cbn in *;
-    [ apply elim_at_scoped; assumption |].
+    [ split; [ apply all_list_Forall; exact HUs | split; assumption ] |].
   destruct Ht as [HB Ht]; split; [ eapply exp_scoped_sub; eassumption |].
   eapply IH; [ exact HD | rewrite length_map; exact Hl | | apply blocks_nm_ok_wk; exact Hnm | | apply sb_q_bound; exact Hσ | exact Ht | ].
   - apply List.Forall_map; eapply List.Forall_impl; [| exact HUs ]; intros U HU; apply exp_scoped_shift; exact HU.

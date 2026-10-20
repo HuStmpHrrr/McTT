@@ -674,9 +674,9 @@ Section ElimMove.
   Qed.
 
   (** The uniform parameters an eliminator carries, moved. *)
-  Lemma mv_elim_ups : forall D Ps oUs σ, oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
-      ups_sub oUs σ = elim_ups D (List.firstn (ind_nu D) (List.map (fun P => P[σ]) Ps)).
-  Proof. intros * ->; rewrite elim_ups_sub, List.firstn_map; reflexivity. Qed.
+  Lemma mv_elim_ups : forall D Ps Us σ, Us = List.firstn (ind_nu D) Ps ->
+      List.map (fun U => U[σ]) Us = List.firstn (ind_nu D) (List.map (fun P => P[σ]) Ps).
+  Proof. intros * ->; rewrite List.firstn_map; reflexivity. Qed.
 
   Lemma mv_elim_cargs : forall Γ Δ σ p D k M c gs Ps As,
       decl_closed D -> ind_member D k = Some M -> ind_con M c = Some gs -> List.length Ps = im_np D M ->
@@ -913,7 +913,7 @@ Section ElimMove.
   Qed.
 
   (** The four rules of the eliminator. *)
-  Lemma mv_elim_case : forall p D oq oUs m Mm Bks bm Ps Γ M i Δ σ,
+  Lemma mv_elim_case : forall p D oq Us m Mm Bks bm Ps Γ M i Δ σ,
       ind_lookup Θ Ξ p = Some D ->
       elim_grp D oq p m ->
       ind_member D m = Some Mm ->
@@ -924,7 +924,7 @@ Section ElimMove.
          forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ P[σ0] : T[σ0]) ->
       (forall Δ0 σ0, R Δ0 σ0 Γ ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σ0] : (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps))[σ0]) ->
-      oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
+      Us = List.firstn (ind_nu D) Ps ->
       (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
       (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
          forall Δ0 σ0, R Δ0 σ0 Γ ->
@@ -953,7 +953,7 @@ Section ElimMove.
          forall Δ0 σ0, R Δ0 σ0 (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0]) ->
       R Δ σ Γ ->
-      Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq oUs m Bks M)[σ] : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
+      Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq Us m Bks M)[σ] : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
   Proof.
     intros * Hl Hg HMm Hbm HlB HlP IHPs IHM Hann Hnm IHZ IHA HΨ IHΨ Hn HΨB IHΨB Hk IHB HR.
     pose proof (mv_decl_closed _ _ _ _ _ HR Hl) as HD.
@@ -974,7 +974,7 @@ Section ElimMove.
     - rewrite List.firstn_map; eapply mv_blocks_brs; eassumption.
   Qed.
 
-  Lemma mv_elim_cong_case : forall p D oq oq' oUs oUs' m Mm Bks Bks' bm Ps Ps' Γ M M' i Δ σ,
+  Lemma mv_elim_cong_case : forall p D oq oq' Us Us' m Mm Bks Bks' bm Ps Ps' Γ M M' i Δ σ,
       ind_lookup Θ Ξ p = Some D ->
       elim_grp D oq p m ->
       elim_grp D oq' p m ->
@@ -991,8 +991,8 @@ Section ElimMove.
          forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ P[σ0] ≈ P'[σ0] : T[σ0]) ->
       (forall Δ0 σ0, R Δ0 σ0 Γ ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σ0] ≈ M'[σ0] : (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps))[σ0]) ->
-      oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
-      oUs' = elim_ups D (List.firstn (ind_nu D) Ps') ->
+      Us = List.firstn (ind_nu D) Ps ->
+      Us' = List.firstn (ind_nu D) Ps' ->
       (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
       (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks' k = Some b -> eb_nm b = S (im_nn Mk)) ->
       (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
@@ -1033,7 +1033,7 @@ Section ElimMove.
          forall Δ0 σ0, R Δ0 σ0 (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] ≈ B'[σ0] : (elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0]) ->
       R Δ σ Γ ->
-      Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq oUs m Bks M)[σ] ≈ (a_elim oq' oUs' m Bks' M')[σ]
+      Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq Us m Bks M)[σ] ≈ (a_elim oq' Us' m Bks' M')[σ]
         : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
   Proof.
     intros * Hl Hg Hg' HMm Hbm HlB HlB' HlP IHPs HlP' IHPs' IHM Hann Hann' Hnm Hnm' IHZ IHZ' IHA IHAA HΨ IHΨ Hn Hf HΨB IHΨB Hk IHB HR.
@@ -1063,7 +1063,7 @@ Section ElimMove.
     - rewrite List.firstn_map; eapply mv_blocks_brs_eq; eassumption.
   Qed.
 
-  Lemma mv_elim_iota_case : forall p D oq oUs m Mm Bks bm c gs Ps As Γ i n B Δ σ,
+  Lemma mv_elim_iota_case : forall p D oq Us m Mm Bks bm c gs Ps As Γ i n B Δ σ,
       ind_lookup Θ Ξ p = Some D ->
       elim_grp D oq p m ->
       ind_member D m = Some Mm ->
@@ -1076,7 +1076,7 @@ Section ElimMove.
       List.length As = List.length gs ->
       (forall k N T, List.nth_error As k = Some N -> List.nth_error (tele_insts (cargs_ctx p D Mm gs) (sb_of_list Id Ps) As) k = Some T ->
          forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ N[σ0] : T[σ0]) ->
-      oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
+      Us = List.firstn (ind_nu D) Ps ->
       (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
       (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
          forall Δ0 σ0, R Δ0 σ0 Γ ->
@@ -1106,7 +1106,7 @@ Section ElimMove.
          Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0]) ->
       brs_lookup (eb_brs bm) c = Some (n, B) ->
       R Δ σ Γ ->
-      Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq oUs m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+      Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
                                       (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As)))[σ]
         ≈ (B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++
                             elim_ihs p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) gs As)])[σ]
@@ -1143,7 +1143,7 @@ Section ElimMove.
     - destruct bm as [nm oZ A Bs]; cbn in HlkB |- *; rewrite brs_lookup_sub, HlkB; reflexivity.
   Qed.
 
-  Lemma mv_elim_view_case : forall p D oq oUs m Mm qc k' Is vm D' Bks bm Ps Γ M i Δ σ,
+  Lemma mv_elim_view_case : forall p D oq Us m Mm qc k' Is vm D' Bks bm Ps Γ M i Δ σ,
       ind_lookup Θ Ξ p = Some D ->
       elim_grp D oq p m ->
       ind_member D m = Some Mm ->
@@ -1157,7 +1157,7 @@ Section ElimMove.
          forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ P[σ0] : T[σ0]) ->
       (forall Δ0 σ0, R Δ0 σ0 Γ ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σ0] : (ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps))[σ0]) ->
-      oUs = elim_ups D (List.firstn (ind_nu D) Ps) ->
+      Us = List.firstn (ind_nu D) Ps ->
       (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
       (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
          forall Δ0 σ0, R Δ0 σ0 Γ ->
@@ -1186,8 +1186,8 @@ Section ElimMove.
          forall Δ0 σ0, R Δ0 σ0 (elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ) ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps))[σ0]) ->
       R Δ σ Γ ->
-      Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq oUs m Bks M)[σ]
-        ≈ (a_elim (Some qc) (elim_ups D' (im_pre Mm (List.firstn (ind_nu D) Ps))) k'
+      Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim oq Us m Bks M)[σ]
+        ≈ (a_elim (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
              (vwrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M)[σ]
         : ((eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
   Proof.
@@ -1195,7 +1195,7 @@ Section ElimMove.
     pose proof (mv_decl_closed _ _ _ _ _ HR Hl) as HD.
     assert (HUl : List.length (List.firstn (ind_nu D) Ps) = ind_nu D) by (rewrite List.length_firstn; unfold im_np in HlP; lia).
     rewrite !exp_sub_elim, (elim_type_sub D Mm bm) by eauto.
-    rewrite elim_ups_sub, (im_pre_sub D m Mm) by assumption.
+    rewrite (im_pre_sub D m Mm) by assumption.
     rewrite vwrap_sub, <- List.firstn_map by assumption.
     eapply wf_exp_eq_elim_view;
       [ exact Hl | exact Hg | exact HMm | exact Hh | exact HD' | exact Hvw | rewrite nth_error_blocks_sub, Hbm; reflexivity
