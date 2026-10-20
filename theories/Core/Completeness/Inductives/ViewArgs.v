@@ -86,17 +86,22 @@ Section ViewArgs.
 
       At arguments [vs] before a position related at both telescopes, the
       types there have the same head PER, the container's at [cups] and the
-      group's at [ups]. *)
+      group's at [ups]; both are types, related to each other. *)
+  #[warnings="-cannot-define-projection"]
+  Record arg_type_link (C G : typ) (Ec Eg : env) : Prop := mk_arg_type_link
+    { heads_agree : per_head C C Ec Ec <~> per_head G G Eg Eg
+    ; group_type_value : exists (i : nat) R b, ⟦ G ⟧ Eg ↘ b /\ DF b ≈ b ∈ per_univ_elem i ↘ R
+    ; container_type_value : exists (i : nat) R a, ⟦ C ⟧ Ec ↘ a /\ DF a ≈ a ∈ per_univ_elem i ↘ R
+    ; group_container_types_related : exists (i : nat) R b a, ⟦ G ⟧ Eg ↘ b /\ ⟦ C ⟧ Ec ↘ a /\
+        DF b ≈ a ∈ per_univ_elem i ↘ R }.
+
   Lemma view_arg_link : forall gsA' g' gsB' gsA g gsB C G vs, gs' = gsA' ++ g' :: gsB' -> gs = gsA ++ g :: gsB ->
       List.length gsA = List.length gsA' -> List.length vs = List.length gsA ->
       cargs_ctx qc Dq Mi' (gsA' ++ g' :: nil) = ce_ass C :: cargs_ctx qc Dq Mi' gsA' ->
       cargs_ctx p D Mv (gsA ++ g :: nil) = ce_ass G :: cargs_ctx p D Mv gsA ->
       per_gargs (List.rev (cargs_ctx p D Mv gsA ++ im_params D Mv)) nil nil (ups ++ ms ++ vs) (ups ++ ms ++ vs) ->
       per_gargs (List.rev (cargs_ctx qc Dq Mi' gsA' ++ im_params Dq Mi')) nil nil (cups ++ ms ++ vs) (cups ++ ms ++ vs) ->
-      (per_head C C (env_args nil (cups ++ ms ++ vs)) (env_args nil (cups ++ ms ++ vs))
-         <~> per_head G G (env_args nil (ups ++ ms ++ vs)) (env_args nil (ups ++ ms ++ vs))) /\
-      (exists (i : nat) R b, ⟦ G ⟧ env_args nil (ups ++ ms ++ vs) ↘ b /\ DF b ≈ b ∈ per_univ_elem i ↘ R) /\
-      (exists (i : nat) R a, ⟦ C ⟧ env_args nil (cups ++ ms ++ vs) ↘ a /\ DF a ≈ a ∈ per_univ_elem i ↘ R).
+      arg_type_link C G (env_args nil (cups ++ ms ++ vs)) (env_args nil (ups ++ ms ++ vs)).
   Proof.
     intros * Heq' Heq Hlen Hlv HC HG Hg1 Hg2.
     pose proof (vgr_valid _ _ Hg) as HD; pose proof (vgr_closed _ _ HgQ) as HcQ.
@@ -196,16 +201,27 @@ Section ViewArgs.
       in Eb2 by (rewrite env_args_app; reflexivity).
     clear HRx Ec Eg Hlt HRT HRT0 Hty HRG HρG E0 Hgc0 Hgc1 HWcU HCvU HQ0 HQ1 Ea2.
     pose proof (functional_eval_exp _ _ _ _ Eb2 Ec1) as ->.
-    split.
+    constructor.
     - etransitivity; [ symmetry; exact (per_head_right Ec1 Ec2 HRk) |].
       etransitivity; [ symmetry; exact (per_univ_elem_chain_iff _ _ _ _ _ _ _ HR2 HRk) |].
       etransitivity; [ eapply per_univ_elem_right_irrel; [ exact HR2 | exact HR0 ] |].
       exact (per_head_right Ea1 Eb HR0).
-    - split.
-      + exists i0, R0, b; split; [ exact Eb |].
-        exact (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HR0) HR0).
-      + exists ic, Rk, c2; split; [ exact Ec2 |].
-        exact (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HRk) HRk).
+    - exists i0, R0, b; split; [ exact Eb |].
+      exact (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HR0) HR0).
+    - exists ic, Rk, c2; split; [ exact Ec2 |].
+      exact (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HRk) HRk).
+    - (** One relation, at a common level, from the group's type to the
+          container's. *)
+        pose proof (per_univ_elem_cumu_max_left i0 ic _ _ _ HR0) as HR0n.
+        pose proof (per_univ_elem_cumu_max_right i0 ic _ _ _ HR2) as HR2n.
+        pose proof (per_univ_elem_cumu_max_right i0 ic _ _ _ HRk) as HRkn.
+        assert (E20 : R2 <~> R0) by (eapply per_univ_elem_right_irrel; [ exact HR2 | exact HR0 ]).
+        assert (E2k : R2 <~> Rk) by exact (per_univ_elem_chain_iff _ _ _ _ _ _ _ HR2 HRk).
+        pose proof (per_univ_elem_resp_iff HR2n E20) as H2.
+        assert (Ek0 : Rk <~> R0) by (etransitivity; [ symmetry; exact E2k | exact E20 ]).
+        pose proof (per_univ_elem_resp_iff HRkn Ek0) as H3.
+        exists (max i0 ic), R0, b, c2; split; [ exact Eb | split; [ exact Ec2 |] ].
+        exact (per_univ_trans _ _ _ _ _ _ (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HR0n) H2) H3).
   Qed.
 
   (** ** Arguments Related at Both Telescopes
@@ -284,8 +300,11 @@ Section ViewArgs.
         by (rewrite List.length_rev, !List.length_app, length_cargs_ctx, length_im_params, length_cups; unfold im_np, ind_nu in *; lia).
       destruct g' as [A' | t'], g as [A | t]; cbn in Hc1; try contradiction; cbn [cargs_ctx_aux List.app] in ECc, ECg.
       + (** Non-recursive in both. *)
-        destruct (view_arg_link gsA0' _ gsB' gsA _ gsB _ _ vs0 Heq' Heq ltac:(lia) Hl0 ECc ECg Hg0 Hcn0)
-          as (EL & (ig & Rg & bg & Ebg & HRg) & (ic & Rc & ac & Eac & HRc)).
+        pose proof (view_arg_link gsA0' _ gsB' gsA _ gsB _ _ vs0 Heq' Heq ltac:(lia) Hl0 ECc ECg Hg0 Hcn0)
+          as HL;
+          pose proof (heads_agree _ _ _ _ HL) as EL;
+          destruct (group_type_value _ _ _ _ HL) as (ig & Rg & bg & Ebg & HRg);
+          destruct (container_type_value _ _ _ _ HL) as (ic & Rc & ac & Eac & HRc).
         destruct (vg_arg_head qc Dq HgQ HcvQ i' Mi' c gs' gsA0' A' gsB' cups ms vs0 HMi' Hcon' Heq' length_cups ltac:(lia) Hl0' Hcn0)
           as (i1 & R1 & a1 & Ea1 & HR1 & E1).
         destruct (vg_arg_head p D Hg Hcv v Mv c gs gsA A gsB ups ms vs0 HMv Hcon Heq Hu Hlms Hl0 Hg0)
@@ -315,8 +334,11 @@ Section ViewArgs.
           apply E2; apply (per_head_left Ea2 Ea2 HR2); exact Hxg.
       + (** Non-recursive in the container, recursive in the group: the
             view nests through it. *)
-        destruct (view_arg_link gsA0' _ gsB' gsA _ gsB _ _ vs0 Heq' Heq ltac:(lia) Hl0 ECc ECg Hg0 Hcn0)
-          as (EL & (ig & Rg & bg & Ebg & HRg) & (ic & Rc & ac & Eac & HRc)).
+        pose proof (view_arg_link gsA0' _ gsB' gsA _ gsB _ _ vs0 Heq' Heq ltac:(lia) Hl0 ECc ECg Hg0 Hcn0)
+          as HL;
+          pose proof (heads_agree _ _ _ _ HL) as EL;
+          destruct (group_type_value _ _ _ _ HL) as (ig & Rg & bg & Ebg & HRg);
+          destruct (container_type_value _ _ _ _ HL) as (ic & Rc & ac & Eac & HRc).
         destruct (vg_arg_head qc Dq HgQ HcvQ i' Mi' c gs' gsA0' A' gsB' cups ms vs0 HMi' Hcon' Heq' length_cups ltac:(lia) Hl0' Hcn0)
           as (i1 & R1 & a1 & Ea1 & HR1 & E1).
         pose proof (functional_eval_exp _ _ _ _ Ea1 Eac) as <-.
@@ -339,8 +361,11 @@ Section ViewArgs.
         * rewrite cargs_nonrec_app, nonrec_arg_vals_app by lia; cbn [cargs_nonrec nonrec_arg_vals].
           rewrite !List.app_nil_r; exact Ha0.
       + (** Recursive in both: a fresh variable. *)
-        destruct (view_arg_link gsA0' _ gsB' gsA _ gsB _ _ vs0 Heq' Heq ltac:(lia) Hl0 ECc ECg Hg0 Hcn0)
-          as (EL & (ig & Rg & bg & Ebg & HRg) & (ic & Rc & ac & Eac & HRc)).
+        pose proof (view_arg_link gsA0' _ gsB' gsA _ gsB _ _ vs0 Heq' Heq ltac:(lia) Hl0 ECc ECg Hg0 Hcn0)
+          as HL;
+          pose proof (heads_agree _ _ _ _ HL) as EL;
+          destruct (group_type_value _ _ _ _ HL) as (ig & Rg & bg & Ebg & HRg);
+          destruct (container_type_value _ _ _ _ HL) as (ic & Rc & ac & Eac & HRc).
         set (y := ⇑! bg 0).
         assert (Hyg : Rg y y) by exact (var_per_elem 0 HRg).
         assert (Hyc : Rc y y) by (apply (per_head_left Eac Eac HRc), EL, (per_head_left Ebg Ebg HRg); exact Hyg).
@@ -379,8 +404,11 @@ Section ViewArgs.
       as (vs & [Hl Hn Hng Hg1 Hcn Ha]).
     pose proof (cargs_ctx_snoc qc Dq Mi' gs1' (ca_arg A')) as ECc; pose proof (cargs_ctx_snoc p D Mv gs1 (ca_rec t)) as ECg.
     cbn [cargs_ctx_aux List.app] in ECc, ECg.
-    destruct (view_arg_link gs1' _ gs2' gs1 _ gs2 _ _ vs Heq' Heq ltac:(lia) Hl ECc ECg Hg1 Hcn)
-      as (EL & (ig & Rg & bg & Ebg & HRg) & (ic & Rc & ac & Eac & HRc)).
+    pose proof (view_arg_link gs1' _ gs2' gs1 _ gs2 _ _ vs Heq' Heq ltac:(lia) Hl ECc ECg Hg1 Hcn)
+      as HL;
+          pose proof (heads_agree _ _ _ _ HL) as EL;
+          destruct (group_type_value _ _ _ _ HL) as (ig & Rg & bg & Ebg & HRg);
+          destruct (container_type_value _ _ _ _ HL) as (ic & Rc & ac & Eac & HRc).
     destruct (vg_arg_head qc Dq HgQ HcvQ i' Mi' c gs' gs1' A' gs2' cups ms vs HMi' Hcon' Heq' length_cups ltac:(lia) ltac:(lia) Hcn)
       as (i1 & R1 & a1 & Ea1 & HR1 & E1).
     pose proof (functional_eval_exp _ _ _ _ Ea1 Eac) as <-.
@@ -423,7 +451,7 @@ Section ViewArgs.
       as (vs & [Hl Hn Hng Hg1 Hcn Ha]).
     pose proof (cargs_ctx_snoc qc Dq Mi' gs1' (ca_arg A')) as ECc; pose proof (cargs_ctx_snoc p D Mv gs1 (ca_arg A)) as ECg.
     cbn [cargs_ctx_aux List.app] in ECc, ECg.
-    destruct (view_arg_link gs1' _ gs2' gs1 _ gs2 _ _ vs Heq' Heq ltac:(lia) Hl ECc ECg Hg1 Hcn) as (EL & _ & _).
+    pose proof (view_arg_link gs1' _ gs2' gs1 _ gs2 _ _ vs Heq' Heq ltac:(lia) Hl ECc ECg Hg1 Hcn) as HL; pose proof (heads_agree _ _ _ _ HL) as EL.
     destruct (vg_arg_head qc Dq HgQ HcvQ i' Mi' c gs' gs1' A' gs2' cups ms vs HMi' Hcon' Heq' length_cups ltac:(lia) ltac:(lia) Hcn)
       as (i1 & R1 & a1 & Ea1 & HR1 & E1).
     destruct (vg_arg_head p D Hg Hcv v Mv c gs gs1 A gs2 ups ms vs HMv Hcon Heq Hu Hlms Hl Hg1)
