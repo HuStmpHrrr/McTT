@@ -110,6 +110,45 @@ Qed.
 Section ArgsCtx.
   Variables (D : ind_decl) (p : qname) (k : nat) (Mk : imember) (c : String.string) (gs : list carg).
   Hypotheses (HD : valid_ind_decl D) (HM : ind_member D k = Some Mk) (Hcon : ind_con Mk c = Some gs).
+
+  (** The weakening of the context of a recursive argument's domains to
+      that of their types, and the context, from those of the arguments
+      before it. *)
+  Lemma sh_wk_gen : forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
+      cargs_ctx p D Mk gs1 ++ im_params D Mk ⊨ʷ (wk_pat (cargs_pat gs1)) : cargs_strat gs1 ++ im_params D Mk ->
+      forall j, j <= List.length (ptyp_doms t) ->
+        sh_ctx (cargs_pat gs1) (List.firstn j (ptyp_doms t)) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk
+          ⊨ʷ (wk_pat (List.repeat false j ++ cargs_pat gs1))
+          : doms_ctx (List.firstn j (ptyp_doms t)) ++ cargs_strat gs1 ++ im_params D Mk.
+  Proof.
+    intros * Heq Hw0; induction j as [| j IH]; intros Hj.
+    - exact Hw0.
+    - destruct (nth_error_lt_some' (ptyp_doms t) j ltac:(lia)) as [B HB].
+      rewrite (firstn_S_snoc _ _ _ HB), sh_ctx_snoc, doms_ctx_snoc, List.length_firstn, Nat.min_l by lia.
+      cbn [List.repeat List.app wk_pat].
+      destruct (vid_dom _ HD _ _ _ _ _ _ _ _ _ HM Hcon Heq HB) as (_ & i & HBv).
+      rewrite Heq, <- nonrec_args_prefix_cargs_strat in HBv.
+      exact (rel_wk_under_ctx_q (IH ltac:(lia)) HBv).
+  Qed.
+
+  Lemma sh_sem_gen : forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
+      ⊨ cargs_ctx p D Mk gs1 ++ im_params D Mk ->
+      cargs_ctx p D Mk gs1 ++ im_params D Mk ⊨ʷ (wk_pat (cargs_pat gs1)) : cargs_strat gs1 ++ im_params D Mk ->
+      forall j, j <= List.length (ptyp_doms t) ->
+        ⊨ sh_ctx (cargs_pat gs1) (List.firstn j (ptyp_doms t)) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk.
+  Proof.
+    intros * Heq HC0 Hw0; induction j as [| j IH]; intros Hj.
+    - exact HC0.
+    - destruct (nth_error_lt_some' (ptyp_doms t) j ltac:(lia)) as [B HB].
+      pose proof (sh_wk_gen _ _ _ Heq Hw0 j ltac:(lia)) as Hw.
+      destruct (vid_dom _ HD _ _ _ _ _ _ _ _ _ HM Hcon Heq HB) as (_ & i & HBv).
+      rewrite Heq, <- nonrec_args_prefix_cargs_strat in HBv.
+      pose proof (rel_exp_under_ctx_wk Hw HBv) as HBw; cbn [exp_wk] in HBw.
+      rewrite (firstn_S_snoc _ _ _ HB), sh_ctx_snoc, List.length_firstn, Nat.min_l by lia.
+      cbn [List.app].
+      exact (rel_ctx_wf_ext_typ _ _ _ (IH ltac:(lia)) HBw).
+  Qed.
+
   Hypothesis (HΨ : ⊨ cargs_ctx p D Mk gs ++ im_params D Mk).
 
   Lemma cargs_prefix_sem : forall gs1 gs2, gs = gs1 ++ gs2 -> ⊨ cargs_ctx p D Mk gs1 ++ im_params D Mk.
@@ -143,39 +182,17 @@ Section ArgsCtx.
         exact (rel_wk_under_ctx_compose _ _ _ _ _ (rel_wk_under_ctx_shift HC) IHw).
   Qed.
 
-  (** The weakening of the context of a recursive argument's domains to
-      that of their types, from the one of the arguments before it. *)
   Lemma sh_wk : forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
       forall j, j <= List.length (ptyp_doms t) ->
         sh_ctx (cargs_pat gs1) (List.firstn j (ptyp_doms t)) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk
           ⊨ʷ (wk_pat (List.repeat false j ++ cargs_pat gs1))
           : doms_ctx (List.firstn j (ptyp_doms t)) ++ cargs_strat gs1 ++ im_params D Mk.
-  Proof.
-    intros * Heq; induction j as [| j IH]; intros Hj.
-    - exact (cargs_wk _ _ Heq).
-    - destruct (nth_error_lt_some' (ptyp_doms t) j ltac:(lia)) as [B HB].
-      rewrite (firstn_S_snoc _ _ _ HB), sh_ctx_snoc, doms_ctx_snoc, List.length_firstn, Nat.min_l by lia.
-      cbn [List.repeat List.app wk_pat].
-      destruct (vid_dom _ HD _ _ _ _ _ _ _ _ _ HM Hcon Heq HB) as (_ & i & HBv).
-      rewrite Heq, <- nonrec_args_prefix_cargs_strat in HBv.
-      exact (rel_wk_under_ctx_q (IH ltac:(lia)) HBv).
-  Qed.
+  Proof. intros * Heq; exact (sh_wk_gen _ _ _ Heq (cargs_wk _ _ Heq)). Qed.
 
   Lemma sh_sem : forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
       forall j, j <= List.length (ptyp_doms t) ->
         ⊨ sh_ctx (cargs_pat gs1) (List.firstn j (ptyp_doms t)) ++ cargs_ctx p D Mk gs1 ++ im_params D Mk.
-  Proof.
-    intros * Heq; induction j as [| j IH]; intros Hj.
-    - exact (cargs_prefix_sem _ _ Heq).
-    - destruct (nth_error_lt_some' (ptyp_doms t) j ltac:(lia)) as [B HB].
-      pose proof (sh_wk _ _ _ Heq j ltac:(lia)) as Hw.
-      destruct (vid_dom _ HD _ _ _ _ _ _ _ _ _ HM Hcon Heq HB) as (_ & i & HBv).
-      rewrite Heq, <- nonrec_args_prefix_cargs_strat in HBv.
-      pose proof (rel_exp_under_ctx_wk Hw HBv) as HBw; cbn [exp_wk] in HBw.
-      rewrite (firstn_S_snoc _ _ _ HB), sh_ctx_snoc, List.length_firstn, Nat.min_l by lia.
-      cbn [List.app].
-      exact (rel_ctx_wf_ext_typ _ _ _ (IH ltac:(lia)) HBw).
-  Qed.
+  Proof. intros * Heq; exact (sh_sem_gen _ _ _ Heq (cargs_prefix_sem _ _ Heq) (cargs_wk _ _ Heq)). Qed.
 End ArgsCtx.
 
 (** ** The Canonical Model of a Valid Group *)
@@ -494,6 +511,102 @@ Proof.
                ltac:(rewrite !length_tele_sub, !length_im_nparams; lia) ltac:(rewrite length_tele_sub, length_im_nparams; lia)
                HMsτ _ _ _ HN HT).
 Qed.
+
+(** ** The Contexts of the Arguments of a Valid Group's Members
+
+    Each prefix of the arguments of a constructor of a member is a context
+    over the member's parameters, weakened to its non-recursive arguments
+    by [wk_pat]: a recursive argument's type is the [Π] over its shape's
+    domains of the type of the member it ends in. *)
+Lemma vg_cargs_sem_all : forall p D, valid_group p D -> containers_valid D ->
+    forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> forall gs1 gs2, gs = gs1 ++ gs2 ->
+      ⊨ cargs_ctx p D Mk gs1 ++ im_params D Mk /\
+      cargs_ctx p D Mk gs1 ++ im_params D Mk ⊨ʷ (wk_pat (cargs_pat gs1)) : cargs_strat gs1 ++ im_params D Mk.
+Proof.
+  intros p D Hg Hcv k Mk c gs HM Hcon.
+  pose proof (vgr_valid _ _ Hg) as HD; pose proof (vgr_closed _ _ Hg) as Hc.
+  pose proof (dt_mvc _ _ _ (vgr_typed _ _ Hg)) as Hmv.
+  induction gs1 as [| g gs1 IH] using List.rev_ind; intros gs2 Heq.
+  - cbn [cargs_ctx cargs_ctx_aux cargs_strat cargs_pat List.rev List.map List.app].
+    destruct (rel_ctx_wf_per_ctx_env (vid_params _ HD _ _ HM)) as [R HR].
+    split; [ exact (vid_params _ HD _ _ HM) |].
+    eapply rel_wk_under_ctx_intro; [ exact HR | exact HR | exact (rel_wk_id R) ].
+  - rewrite <- List.app_assoc in Heq; cbn [List.app] in Heq.
+    destruct (IH _ Heq) as [HΨ IHw].
+    rewrite cargs_ctx_snoc, cargs_pat_snoc.
+    destruct g as [A | t]; cbn [cargs_ctx_aux List.app wk_pat].
+    + rewrite cargs_strat_snoc_arg.
+      assert (HA : List.nth_error (cargs_nonrec gs) (List.length (cargs_nonrec gs1)) = Some A)
+        by (rewrite Heq, cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
+      destruct (vid_arg _ HD _ _ _ _ _ _ HM Hcon HA) as (_ & j & HAv).
+      rewrite Heq, <- nonrec_args_prefix_cargs_strat in HAv.
+      pose proof (rel_exp_under_ctx_wk IHw HAv) as HAw; cbn [exp_wk] in HAw.
+      split; [ exact (rel_ctx_wf_ext_typ _ _ _ HΨ HAw) | exact (rel_wk_under_ctx_q IHw HAv) ].
+    + rewrite cargs_strat_snoc_rec.
+      assert (Hj : exists j : nat, cargs_ctx p D Mk gs1 ++ im_params D Mk ⊨ ptyp_ty p D (im_nn Mk) (cargs_pat gs1) t : Typeω@j).
+      { set (pat := cargs_pat gs1).
+        set (L := List.length (ptyp_doms t)).
+        set (pat' := List.repeat false L ++ pat).
+        rewrite (ptyp_ty_ctx_pi p D (im_nn Mk) t pat); fold L pat'.
+        set (Φ := sh_ctx pat (ptyp_doms t)).
+        assert (HlΦ : List.length Φ = L) by (unfold Φ; apply length_sh_ctx).
+        assert (HΦa : tele_ass Φ) by apply sh_ctx_ass.
+        assert (HΦ : ⊨ Φ ++ cargs_ctx p D Mk gs1 ++ im_params D Mk).
+        { pose proof (sh_sem_gen D p k Mk c gs HD HM Hcon gs1 t gs2 Heq HΨ IHw L (le_n _)) as H.
+          unfold L in H; rewrite List.firstn_all in H; exact H. }
+        assert (HwΦ : Φ ++ cargs_ctx p D Mk gs1 ++ im_params D Mk ⊨ʷ (wk_pat pat')
+                        : doms_ctx (ptyp_doms t) ++ cargs_strat gs1 ++ im_params D Mk).
+        { pose proof (sh_wk_gen D p k Mk c gs HD HM Hcon gs1 t gs2 Heq IHw L (le_n _)) as H.
+          unfold L in H; rewrite List.firstn_all in H; exact H. }
+        destruct (length_rec_ps D HD k Mk HM c gs gs1 t gs2 Hcon Heq) as (Mj & HMj & HlPs).
+        assert (Hleaf : exists j : nat, Φ ++ cargs_ctx p D Mk gs1 ++ im_params D Mk
+                          ⊨ ptyp_ty p D (im_nn Mk) pat' (pt_self (ptyp_mem t) (ptyp_ps t)) : Typeω@j).
+        { cbn [ptyp_ty].
+          assert (HE : ⊨ (Φ ++ cargs_ctx p D Mk gs1 ++ im_nparams Mk) ++ ind_uparams D)
+            by (unfold im_params in HΦ; rewrite <- !List.app_assoc; exact HΦ).
+          assert (Hpat : List.length pat = List.length gs1) by apply length_cargs_pat.
+          assert (Hpat' : List.length pat' = L + List.length gs1) by (unfold pat'; rewrite List.length_app, List.repeat_length; lia).
+          assert (Hnargs : pat_nargs pat' = L + List.length (cargs_strat gs1)).
+          { unfold pat', pat; rewrite pat_nargs_app, pat_nargs_cargs_pat; f_equal.
+            clear; induction L as [| L IH]; cbn; lia. }
+          destruct (vg_mty_valid p D Hg Hcv (ptyp_mem t) Mj (Φ ++ cargs_ctx p D Mk gs1 ++ im_nparams Mk) (im_nn Mk) (List.length pat')
+                      (List.map (fun P => P[wk_pat pat']ʷ) (ptyp_ps t)) HMj HE) as [j0 Hv].
+          - rewrite !List.length_app, length_cargs_ctx, length_im_nparams; lia.
+          - rewrite List.length_map; exact HlPs.
+          - intros m N T HN HT.
+            apply nth_error_map_inv in HN as (P & HPm & ->).
+            set (s := L + List.length (cargs_strat gs1) + im_nn Mk).
+            assert (Hti : tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D (im_nn Mk) (List.length pat')))
+                            (List.map (fun P => P[wk_pat pat']ʷ) (ptyp_ps t))
+                          = List.map (fun T => T[wk_pat pat']ʷ) (tele_insts (im_nparams Mj) (sb_of_wk (wk_shiftn s)) (ptyp_ps t))).
+            { rewrite <- !map_sub_of_wk; symmetry.
+              eapply (tele_insts_sub_mvc _ (ind_nu D));
+                [ exact (member_nparams_ass D Hc _ _ HMj) | exact (proj1 (dmv_members _ Hmv _ _ HMj))
+                | exact (decl_closed_nparams_scoped _ Hc _ _ HMj) |].
+              intros x Hx; unfold ind_uvars; rewrite sb_of_list_vars by exact Hx; cbn.
+              unfold s, wk_shiftn; rewrite <- Hnargs.
+              replace (x + (pat_nargs pat' + im_nn Mk)) with (pat_nargs pat' + (im_nn Mk + x)) by lia.
+              rewrite wk_pat_ge; f_equal; lia. }
+            rewrite Hti in HT; apply nth_error_map_inv in HT as (T0 & HT0 & ->).
+            assert (Hσ : s = ptyp_depth t + List.length (cargs_nonrec gs1) + im_nn Mk)
+              by (unfold s, ptyp_depth; fold L; rewrite cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
+            rewrite Hσ in HT0.
+            pose proof (vid_rec _ HD _ _ _ _ _ _ _ _ _ _ _ HM Hcon Heq HMj HPm HT0) as HP0.
+            rewrite Heq, <- nonrec_args_prefix_cargs_strat in HP0.
+            pose proof (rel_exp_under_ctx_wk HwΦ HP0) as H.
+            unfold im_params in H; rewrite <- !List.app_assoc; exact H.
+          - exists j0; unfold im_params; rewrite <- !List.app_assoc in Hv; exact Hv. }
+        destruct Hleaf as [j0 Hleaf].
+        exact (rel_exp_ctx_pi _ _ _ _ HΦa HΦ Hleaf). }
+      destruct Hj as [j Hj].
+      pose proof (rel_ctx_wf_ext_typ _ _ _ HΨ Hj) as HC.
+      split; [ exact HC |].
+      exact (rel_wk_under_ctx_compose _ _ _ _ _ (rel_wk_under_ctx_shift HC) IHw).
+Qed.
+
+Corollary vg_cargs_sem : forall p D, valid_group p D -> containers_valid D ->
+    forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs -> ⊨ cargs_ctx p D Mk gs ++ im_params D Mk.
+Proof. intros * Hg Hcv * HM Hcon; exact (proj1 (vg_cargs_sem_all p D Hg Hcv k Mk c gs HM Hcon gs nil (eq_sym (List.app_nil_r gs)))). Qed.
 
 (** ** Coherence of a View, and the Relation of its Type
 
