@@ -124,4 +124,126 @@ Section ArgsCtx.
   Qed.
 End ArgsCtx.
 
+(** ** The Canonical Model of a Valid Group *)
+
+Section GroupFacts.
+  Variables (p : qname) (D : ind_decl).
+  Hypothesis (Hg : valid_group p D).
+  Let HD := vgr_valid _ _ Hg.
+  Let Hc := vgr_closed _ _ Hg.
+  Let Hsu := vgr_sort _ _ Hg.
+  Let Hl := vgr_lookup _ _ Hg.
+  Let Hass := vgr_ass _ _ Hg.
+
+  Lemma vg_canon : forall ups, per_gargs (List.rev (ind_uparams D)) nil nil ups ups -> List.length ups = ind_nu D ->
+      ind_canon_props D ups.
+  Proof.
+    intros ups Hgd Hu; destruct (sort_value D HD ups Hgd Hu) as [a Ha].
+    exact (canon_props_at D HD Hc Hsu ups a Hgd Hu Ha Hass).
+  Qed.
+
+  Lemma vg_adm : forall ups ups2, per_gargs (List.rev (ind_uparams D)) nil nil ups ups -> List.length ups = ind_nu D ->
+      per_gargs (List.rev (ind_uparams D)) nil nil ups ups2 ->
+      adm_uparams D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) ups2.
+  Proof.
+    intros ups ups2 Hgd Hu Hg2; destruct (sort_value D HD ups Hgd Hu) as [a Ha].
+    exact (canon_adm_at D HD Hc Hsu ups a Hu Ha ups2 Hg2).
+  Qed.
+
+  Lemma vg_relate : forall k Mk pm ups ups' ns ns', ind_member D k = Some Mk -> im_head Mk = mh_decl pm ->
+      per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
+      tele_rel (canon_nparams_rel D ups k) (List.rev (im_nparams Mk)) ns ns' ->
+      exists i, DF d_ind p k (ups ++ ns) ≈ d_ind p k (ups' ++ ns') ∈ per_univ_elem i
+        ↘ grp_rel p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) k ups ups' ns ns'.
+  Proof.
+    intros * HM Hh Hgu Hu Hns.
+    destruct (sort_value D HD ups (uparams_refl_l D HD Hc _ _ Hgu) Hu) as [a Ha].
+    exists (univ_idx a); exact (ind_relate D HD Hc Hsu p Hl Hass k Mk pm ups ups' ns ns' a HM Hh Hgu Hu Ha Hns).
+  Qed.
+
+  (** A declared member at uniform parameters related to [cups] and
+      [cups']: its relation is the canonical one at [cups] and [cups'],
+      whatever the related bases. *)
+  Lemma vg_type_rel_base : forall k Mk pm cups cups' cs cs' ns ns' i R, ind_member D k = Some Mk -> im_head Mk = mh_decl pm ->
+      per_gargs (List.rev (ind_uparams D)) nil nil cups cups' -> List.length cups = ind_nu D ->
+      per_gargs (List.rev (ind_uparams D)) nil nil cups cs -> per_gargs (List.rev (ind_uparams D)) nil nil cups' cs' ->
+      DF d_ind p k (cs ++ ns) ≈ d_ind p k (cs' ++ ns') ∈ per_univ_elem i ↘ R ->
+      (R <~> grp_rel p D cups (canon_nparams_rel D cups) (canon_args_rel D cups) (canon_doms_rel cups) k cups cups' ns ns') /\
+      tele_rel (canon_nparams_rel D cups k) (List.rev (im_nparams Mk)) ns ns'.
+  Proof.
+    intros * HM Hh Hgu Hu Hcs Hcs' HR.
+    pose proof (length_ups_gargs D _ _ Hgu Hu) as Hu'.
+    pose proof (length_ups_gargs D _ _ Hcs Hu) as Hlc.
+    pose proof (length_ups_gargs D _ _ Hcs' Hu') as Hlc'.
+    destruct (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ _ HR Hl Hlc Hlc') as [_ _ Hcp _ _ _ Hns _].
+    unfold member_nparams in Hns; rewrite HM in Hns.
+    pose proof (uparams_sym D HD Hc _ _ Hcs Hu) as Hcsc.
+    pose proof (canon_nparams_rel_refl_l' p D cs Hass Hcp k Mk ns ns' HM Hns) as Hnsns.
+    destruct (vg_relate k Mk pm cs cups ns ns HM Hh Hcsc Hlc Hnsns) as [i1 W1].
+    destruct (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ _ W1 Hl Hlc Hu) as [_ _ _ [Hn0 Ha0 Hd0] _ _ _ _].
+    pose proof (tele_rel_nr_change p D cs _ _ _ _ _ _ Hn0 Ha0 Hd0 k Mk HM ns ns' Hns) as Hns2.
+    destruct (vg_relate k Mk pm cups cups' ns ns' HM Hh Hgu Hu Hns2) as [i2 T].
+    split; [| exact Hns2 ].
+    etransitivity; [ eapply per_univ_elem_right_irrel; [ exact HR | exact W1 ] |].
+    eapply per_univ_elem_right_irrel; [ exact (per_univ_sym _ _ _ _ W1) | exact T ].
+  Qed.
+End GroupFacts.
+
+(** ** Coherence of a View, and the Relation of its Type
+
+    [view_coh_at p D ups ups' j]: the elements of the view [j] of [D] at
+    the canonical relations at [ups] and [ups'] cohere with those of its
+    container's member at the view's instance there ([view_coh_ok]).
+    [view_end_rel]: the relation of the view's type, the container's at
+    any uniform parameters related to the instance, is the group's at the
+    view. *)
+Definition view_coh_at (p : qname) (D : ind_decl) (ups ups' : list domain) (j : nat) : Prop :=
+  forall Mj qc kc Is vm Dq cups cups', ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm ->
+    ind_lookup gc_deps gc_stack qc = Some Dq ->
+    ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups -> ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups' ↘ cups' ->
+    view_coh_ok p D ups ups' (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups)
+      qc Dq cups cups' (canon_nparams_rel Dq cups) (canon_args_rel Dq cups) (canon_doms_rel cups) vm.
+
+Definition view_end_rel (p : qname) (D : ind_decl) (ups ups' : list domain) (j : nat) : Prop :=
+  forall Mj qc kc Is vm Dq cups cups', ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm ->
+    ind_lookup gc_deps gc_stack qc = Some Dq ->
+    ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups -> ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups' ↘ cups' ->
+    forall cs cs' ns ns' (i : uidx) R,
+      per_gargs (List.rev (ind_uparams Dq)) nil nil cups cs -> per_gargs (List.rev (ind_uparams Dq)) nil nil cups' cs' ->
+      DF d_ind qc kc (cs ++ ns) ≈ d_ind qc kc (cs' ++ ns') ∈ per_univ_elem i ↘ R ->
+      (R <~> grp_rel p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) j ups ups' ns ns').
+
+Lemma view_end_rel_of_coh : forall p D, valid_group p D -> containers_valid D ->
+    forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
+    forall j, view_coh_at p D ups ups' j -> view_end_rel p D ups ups' j.
+Proof.
+  intros p D Hg Hcv ups ups' Hgu Hu j Hcoh Mj qc kc Is vm Dq cups cups' HMj Hh Hq Ec Ec' cs cs' ns ns' i R Hcs Hcs' HR.
+  pose proof (Hcv _ _ _ _ _ _ _ HMj Hh Hq) as HgQ.
+  pose proof (vgr_typed _ _ Hg) as Hdt.
+  destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HMj Hh) as (D2 & Mk' & Hl2 & HMk' & Hkd & HIl & _ & Hvm & _).
+  rewrite Hq in Hl2; injection Hl2 as <-.
+  assert (Hhd : exists pm, im_head Mk' = mh_decl pm).
+  { pose proof (proj2 (dt_order _ _ _ (vgr_typed _ _ HgQ) _ _ HMk') Hkd) as Hd.
+    unfold im_is_decl in Hd; destruct (im_head Mk'); [ eauto | discriminate ]. }
+  destruct Hhd as [pm Hhd].
+  destruct (vg_view_args_values p D Hg Hcv _ _ _ _ _ _ _ HMj Hh Hq _ _ Hgu Hu) as (c0 & c0' & E0 & E0' & Hcu).
+  pose proof (functional_eval_exps' _ _ _ _ E0 Ec) as <-; pose proof (functional_eval_exps' _ _ _ _ E0' Ec') as <-.
+  assert (Hlc : List.length c0 = ind_nu Dq) by (rewrite (eval_exps_length _ _ _ E0); exact HIl).
+  destruct (vg_type_rel_base qc Dq HgQ _ _ _ _ _ _ _ _ _ _ _ HMk' Hhd Hcu Hlc Hcs Hcs' HR) as [Hbase _].
+  pose proof (Hcoh _ _ _ _ _ _ _ _ HMj Hh Hq E0 E0') as Hvc.
+  destruct (vco_mem _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hvc _ _ HMk') as (v & Mv & Hvmb).
+  assert (v = j) as -> by (pose proof (vmb_v _ _ _ _ _ _ _ _ _ Hvmb) as Hv; rewrite Hvm in Hv; congruence).
+  assert (Mv = Mj) as -> by (pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMv; rewrite HMj in HMv; congruence).
+  pose proof (vg_canon p D Hg ups (uparams_refl_l D (vgr_valid _ _ Hg) (vgr_closed _ _ Hg) _ _ Hgu) Hu) as Hcp.
+  pose proof (vg_canon qc Dq HgQ c0 (uparams_refl_l Dq (vgr_valid _ _ HgQ) (vgr_closed _ _ HgQ) _ _ Hcu) Hlc) as HcpQ.
+  destruct Hcp as [HnP HnI HaP HaI HdP HdI]; destruct HcpQ as [HnP' HnI' HaP' HaI' HdP' HdI'].
+  intros x y; split; intro Hxy.
+  - apply Hbase in Hxy.
+    exact (view_coh_to p D ups ups' _ _ _ (vgr_ass _ _ Hg) HnP HnI HaP HaI HdP HdI qc Dq c0 c0' _ _ _ (vgr_ass _ _ HgQ)
+             HnP' HnI' HaP' HaI' HdP' HdI' vm Hvc kc Mk' j Mj ns ns' x y HMk' Hvmb Hxy).
+  - apply Hbase.
+    exact (view_coh_from p D ups ups' _ _ _ (vgr_ass _ _ Hg) HnP HnI HaP HaI HdP HdI qc Dq c0 c0' _ _ _ (vgr_ass _ _ HgQ)
+             HnP' HnI' HaP' HaI' HdP' HdI' vm Hvc kc Mk' j Mj ns ns' x y HMk' Hvmb Hxy).
+Qed.
+
 End Fixed_GCtx.

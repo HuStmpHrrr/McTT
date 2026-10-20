@@ -880,7 +880,75 @@ Section Sort.
       - intros j A pre HA; unfold canon_nparams_rel; rewrite (nth_ctyp_eq _ _ _ _ _ HMj HA), env_args_app; reflexivity.
       - rewrite (eval_exps_length _ _ _ Ebs), List.length_rev, length_im_nparams; exact HPl.
     Qed.
+
+    (** The conditions of the clause at the canonical relations at [ups],
+        and the bases admissible beside [ups]. *)
+    Lemma canon_props_at : grp_tele_ass D -> ind_canon_props D ups.
+    Proof.
+      intros Hass0; constructor;
+        [ exact (canon_nparams_per _ D ups ups (canon_hn ups Hgd))
+        | exact (canon_nparams_invariant _ D ups ups Hass0 Hu Hu (canon_hn ups Hgd))
+        | exact (canon_args_per _ D ups ups (canon_ha ups Hgd))
+        | exact (canon_args_invariant _ D ups ups Hass0 Hu Hu (canon_hn ups Hgd) (canon_ha ups Hgd))
+        | exact (canon_doms_per _ D ups ups (canon_hd ups Hgd))
+        | exact (canon_doms_invariant _ D ups ups Hass0 Hu Hu (canon_hn ups Hgd) (canon_ha ups Hgd) (canon_hd ups Hgd)) ].
+    Qed.
+
+    Lemma canon_adm_at : forall ups2, per_gargs (List.rev (ind_uparams D)) nil nil ups ups2 ->
+        adm_uparams D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) ups2.
+    Proof.
+      intros ups2 Hg2; exact (canon_adm (univ_idx a) D ups ups2 (canon_hn _ Hg2) (canon_ha _ Hg2) (canon_hc _ Hg2) (canon_hd _ Hg2)).
+    Qed.
   End Canon.
+
+  (** The sort at uniform parameters related to themselves has a value. *)
+  Lemma sort_value : forall ups, per_gargs (List.rev (ind_uparams D)) nil nil ups ups -> List.length ups = ind_nu D ->
+      exists a, ⟦ ind_sort D ⟧ env_args nil ups ↘ a.
+  Proof.
+    intros ups Hg Hu.
+    destruct (vid_sort _ HD) as [i HS].
+    destruct (rel_ctx_wf_per_ctx_env uparams_sem) as [RU HRU].
+    assert (HRU0 : RU (env_args nil ups) (env_args nil ups))
+      by (apply (gargs_env_rel _ _ _ _ _ _ HRU uparams_sem); [ exact Hu | exact Hg ]).
+    destruct (rel_exp_of_typ_inversion_simple_at HRU HS _ _ HRU0) as (a & _ & Ea & _ & _); eauto.
+  Qed.
+
+  (** Uniform parameters related at their telescope: a PER. *)
+  Lemma uparams_rel_env : forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
+      forall RU, EF ind_uparams D ≈ ind_uparams D ∈ per_ctx_env ↘ RU -> RU (env_args nil ups) (env_args nil ups').
+  Proof. intros * Hg Hu RU HRU; apply (gargs_env_rel _ _ _ _ _ _ HRU uparams_sem); [ exact Hu | exact Hg ]. Qed.
+
+  Lemma uparams_of_env : forall ups ups' RU, EF ind_uparams D ≈ ind_uparams D ∈ per_ctx_env ↘ RU ->
+      List.length ups = ind_nu D -> List.length ups' = ind_nu D ->
+      RU (env_args nil ups) (env_args nil ups') -> per_gargs (List.rev (ind_uparams D)) nil nil ups ups'.
+  Proof.
+    intros * HRU Hu Hu' H.
+    assert (HRU' : EF List.rev (List.rev (ind_uparams D)) ++ ⋅ ≈ List.rev (List.rev (ind_uparams D)) ++ ⋅ ∈ per_ctx_env ↘ RU)
+      by (rewrite List.rev_involutive, List.app_nil_r; exact HRU).
+    exact (proj2 (rel_gargs _ _ _ _ per_ctx_env_nil_true rev_uparams_sem rev_uparams_ass HRU' nil nil ups ups'
+                    ltac:(rewrite List.length_rev; exact Hu) ltac:(rewrite List.length_rev; exact Hu') H)).
+  Qed.
+
+  Lemma uparams_sym : forall ups ups', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
+      per_gargs (List.rev (ind_uparams D)) nil nil ups' ups.
+  Proof.
+    intros * Hg Hu.
+    pose proof (length_ups_gargs _ _ Hg Hu) as Hu'.
+    destruct (rel_ctx_wf_per_ctx_env uparams_sem) as [RU HRU].
+    assert (HPU : PER RU) by (eapply per_env_PER; exact HRU).
+    apply (uparams_of_env _ _ RU HRU Hu' Hu); symmetry; exact (uparams_rel_env _ _ Hg Hu _ HRU).
+  Qed.
+
+  Lemma uparams_trans : forall ups ups' ups'', per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
+      per_gargs (List.rev (ind_uparams D)) nil nil ups' ups'' -> per_gargs (List.rev (ind_uparams D)) nil nil ups ups''.
+  Proof.
+    intros * Hg Hu Hg'.
+    pose proof (length_ups_gargs _ _ Hg Hu) as Hu'; pose proof (length_ups_gargs _ _ Hg' Hu') as Hu''.
+    destruct (rel_ctx_wf_per_ctx_env uparams_sem) as [RU HRU].
+    assert (HPU : PER RU) by (eapply per_env_PER; exact HRU).
+    apply (uparams_of_env _ _ RU HRU Hu Hu'').
+    etransitivity; [ exact (uparams_rel_env _ _ Hg Hu _ HRU) | exact (uparams_rel_env _ _ Hg' Hu' _ HRU) ].
+  Qed.
 
   (** ** The Canonical Model
 
@@ -1253,5 +1321,26 @@ Section Sort.
     Qed.
   End Selfs.
 End Sort.
+
+(** ** Valid Filed Groups
+
+    What the semantic lemmas about a group filed at [p] ask of it: it is
+    found there, valid, closed, of a universe as its sort, with the
+    conditions of the universe clause, typed, and filed at the path of its
+    first member. *)
+#[warnings="-cannot-define-projection"]
+Record valid_group (p : qname) (D : ind_decl) : Prop := mk_valid_group
+  { vgr_lookup : ind_lookup gc_deps gc_stack p = Some D
+  ; vgr_valid : valid_ind_decl D
+  ; vgr_closed : decl_closed D
+  ; vgr_sort : ind_sort_univ (ind_sort D)
+  ; vgr_ass : grp_tele_ass D
+  ; vgr_typed : decl_typed gc_deps gc_stack D
+  ; vgr_mpath : ind_mpath D 0 = Some p }.
+
+(** The groups the views of a group nest through are valid. *)
+Definition containers_valid (D : ind_decl) : Prop :=
+  forall k Mk qc k' Is vm Dq, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+    ind_lookup gc_deps gc_stack qc = Some Dq -> valid_group qc Dq.
 
 End Fixed_GCtx.
