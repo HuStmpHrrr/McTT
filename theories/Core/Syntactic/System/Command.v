@@ -156,7 +156,7 @@ Definition rec_fn (pq : qname) (D : ind_decl) (M : imember) : exp :=
   let K := List.length (im_cons M) in
   ctx_fn (rec_tele pq D M)
     (ctx_fn (elim_mctx pq D 0 M (rec_uvars D K))
-       (a_elim None 0 (eb_mk (S (im_nn M)) None (rec_motive M (K + S (im_nn M))) (rec_brs M K 0 (im_cons M)) :: nil)
+       (a_elim None None 0 (eb_mk (S (im_nn M)) None (rec_motive M (K + S (im_nn M))) (rec_brs M K 0 (im_cons M)) :: nil)
           (a_var 0))).
 
 (** A group has a recursor when it is one member, and no view. *)
@@ -306,8 +306,11 @@ Qed.
     A view is an instance [(qc, k, Cs)] met: the declared member [k] of the
     filed group at [qc] at the uniform arguments [Cs], normal, over the
     group's own uniform parameters, the [Self]s and the frames'.  Its
-    non-uniform parameters are the container's member's at [Cs], and its
-    constructors the container's member's, each argument the container's
+    non-uniform parameters are the container's member's at [Cs],
+    normalized, and filed when they are free of the [Self]s, without them
+    ([view_nps]): the group checks them against the container's at its
+    [Self]s, so they cannot mention the group.  Its
+    constructors are the container's member's, each argument the container's
     type at [Cs], classified as a declared member's is ([view_cls]).  Its
     siblings are the members of the container's group at [Cs]
     ([sibs_from]): a declared one at [Cs], a view of it at its own uniform
@@ -328,6 +331,39 @@ Inductive view_cls (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : rview -> list (st
          (im_cons Mk'))
       cs ->
     view_cls Θ Ξ R (qc, k, Cs) cs.
+
+(** A telescope of assumptions, innermost first, each normalized in the
+    ones before it, over [Γ]. *)
+Inductive nbe_tele (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : ctx -> ctx -> Prop :=
+| nbe_tele_nil : nbe_tele Θ Ξ Γ nil nil
+| nbe_tele_cons : forall A Δ W Δ',
+    nbe_ty Θ Ξ (Δ ++ Γ) A W ->
+    nbe_tele Θ Ξ Γ Δ Δ' ->
+    nbe_tele Θ Ξ Γ (ce_ass A :: Δ) (ce_ass (nf_to_exp W) :: Δ').
+
+(** The preimage of a telescope of assumptions under the pattern
+    weakening [pat], each entry under those before it, if it has one. *)
+Fixpoint img_tele (pat : list bool) (Δ : ctx) : option ctx :=
+  match Δ with
+  | nil => Some nil
+  | ce_ass A :: Δ' =>
+      match img_pat (List.repeat false (List.length Δ') ++ pat) A, img_tele pat Δ' with
+      | Some A0, Some Δ0 => Some (ce_ass A0 :: Δ0)
+      | _, _ => None
+      end
+  | _ :: _ => None
+  end.
+
+(** The non-uniform parameters of a view, filed: the container's member's
+    at [Cs], normalized over the group's own uniform parameters, the
+    [Self]s and the frames', free of the [Self]s and without them. *)
+Inductive view_nps (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : rview -> ctx -> Prop :=
+| view_nps_intro : forall qc k Cs D' Mk' Ws Nv,
+    ind_lookup Θ Ξ qc = Some D' ->
+    ind_member D' k = Some Mk' ->
+    nbe_tele Θ Ξ (rd_uctx Ξ R) (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs)) Ws ->
+    img_tele (List.repeat false (rd_nu R) ++ List.repeat true (rd_n R)) Ws = Some Nv ->
+    view_nps Θ Ξ R (qc, k, Cs) Nv.
 
 Inductive nbes (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : list exp -> list typ -> list nf -> Prop :=
 | nbes_nil : nbes Θ Ξ Γ nil nil nil
@@ -379,39 +415,39 @@ Fixpoint rms_filed (Ξ : gstack) (n : nat) (Vs : list rview) (ms : list raw_memb
   end.
 
 Definition rv_filed (Θ : gdeps) (Ξ : gstack) (σ : sub) (n : nat) (Vs : list rview) (x : rview) (ss : list rview)
-    (cs : list (string * list rcarg)) : option imember :=
+    (cs : list (string * list rcarg)) (Nv : ctx) : option imember :=
   let '(qc, k, Cs) := x in
   let Is := List.map (fun C => C[σ]) Cs in
   match ind_lookup Θ Ξ qc with
   | Some D' =>
       match ind_member D' k, rcons_num n Vs cs with
-      | Some Mk', Some cs' =>
+      | Some _, Some cs' =>
           Some (mk_imember
                   (mh_view qc k Is (List.map (fun s => n + match rview_index s Vs with Some v => v | None => 0 end) ss))
-                  (tele_sub (im_nparams Mk') (sb_of_list sb_id Is)) cs')
+                  Nv cs')
       | _, _ => None
       end
   | None => None
   end.
 
 Fixpoint rvs_filed (Θ : gdeps) (Ξ : gstack) (σ : sub) (n : nat) (Vs xs : list rview) (Ss : list (list rview))
-    (css : list (list (string * list rcarg))) : option (list imember) :=
-  match xs, Ss, css with
-  | nil, nil, nil => Some nil
-  | x :: xs', ss :: Ss', cs :: css' =>
-      match rv_filed Θ Ξ σ n Vs x ss cs, rvs_filed Θ Ξ σ n Vs xs' Ss' css' with
+    (css : list (list (string * list rcarg))) (Nvs : list ctx) : option (list imember) :=
+  match xs, Ss, css, Nvs with
+  | nil, nil, nil, nil => Some nil
+  | x :: xs', ss :: Ss', cs :: css', Nv :: Nvs' =>
+      match rv_filed Θ Ξ σ n Vs x ss cs Nv, rvs_filed Θ Ξ σ n Vs xs' Ss' css' Nvs' with
       | Some M, Some Ms => Some (M :: Ms)
       | _, _ => None
       end
-  | _, _, _ => None
+  | _, _, _, _ => None
   end.
 
 Definition rd_filed (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (Vs : list rview) (Ss : list (list rview))
-    (csD csV : list (list (string * list rcarg))) : option ind_decl :=
+    (csD csV : list (list (string * list rcarg))) (Nvs : list ctx) : option ind_decl :=
   match rd_members R with
   | Mr0 :: _ =>
       let σ := sb_selfs (ind_qname Ξ (rm_name Mr0)) (rd_nu R) (rd_n R) (List.length (gs_tele Ξ)) in
-      match rms_filed Ξ (rd_n R) Vs (rd_members R) csD, rvs_filed Θ Ξ σ (rd_n R) Vs Vs Ss csV with
+      match rms_filed Ξ (rd_n R) Vs (rd_members R) csD, rvs_filed Θ Ξ σ (rd_n R) Vs Vs Ss csV Nvs with
       | Some Ms, Some Mv => Some (mk_ind (rd_uparams R ++ gs_tele Ξ) (rm_sort Mr0) (Ms ++ Mv))
       | _, _ => None
       end
@@ -472,14 +508,20 @@ Definition mdef_blocks (k nm : nat) (fs : list raw_fun) (ms : list nat) : list e
                      end)
     (List.seq 0 nm).
 
-(** The definitions filed: each function's name, type and term. *)
-Definition mdef_defs (pq : qname) (nm : nat) (Δ : ctx) (fs : list raw_fun) (ms : list nat) : list (string * typ * exp) :=
+(** The definitions filed: each function's name, type and term.  The
+    eliminator of the group [D] at [pq] carries the uniform parameters
+    [Us] when [D] has views ([elim_ups]), moved under the function's
+    non-uniform parameters and its scrutinee. *)
+Definition mdef_defs (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (fs : list raw_fun) (ms : list nat) :
+    list (string * typ * exp) :=
   List.map (fun fm =>
               let f := fst fm in
+              let k := S (List.length (rf_nparams f)) in
               (rf_name f, ctx_pi Δ (ctx_pi (rf_nparams f) (a_pi (rf_scrut f) (rf_res f))),
                ctx_fn Δ (ctx_fn (rf_nparams f)
                            (a_fn (rf_scrut f)
-                              (a_elim (Some pq) (snd fm) (mdef_blocks (S (List.length (rf_nparams f))) nm fs ms) (a_var 0))))))
+                              (a_elim (Some pq) (elim_ups D (List.map (fun U => U[wk_shiftn k]ʷ) Us)) (snd fm)
+                                 (mdef_blocks k (List.length (ind_members D)) fs ms) (a_var 0))))))
     (List.combine fs ms).
 
 (** The member [m] of a function: its scrutinee's normal form is first
@@ -637,18 +679,20 @@ Section Semantics.
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_open E its ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
   (** A group as written, its members of one sort: the arguments of the
       declared members classified ([rm_cls]); the views, found from the
-      instances met ([views_bfs]), each with its siblings and its
-      constructors classified; the group filed ([rd_filed]), and an entry
+      instances met ([views_bfs]), each with its siblings, its
+      constructors classified and its non-uniform parameters filed
+      ([view_nps]); the group filed ([rd_filed]), and an entry
       per declared member, each with its module's generated body, checked
       where it is filed. *)
-  | rc_ind : forall ch B Rb Θ Ξ pv R Mr0 Mrs csD Vs Ss csV D Ξ',
+  | rc_ind : forall ch B Rb Θ Ξ pv R Mr0 Mrs csD Vs Ss csV Nvs D Ξ',
       rd_members R = Mr0 :: Mrs ->
       Forall (fun Mr => rm_sort Mr = rm_sort Mr0) Mrs ->
       Forall2 (rm_cls Θ Ξ R) (rd_members R) csD ->
       Forall2 (view_sibs Θ Ξ R) Vs Ss ->
       Forall2 (view_cls Θ Ξ R) Vs csV ->
+      Forall2 (view_nps Θ Ξ R) Vs Nvs ->
       views_bfs (sibs_tbl Vs Ss) (meets_tbl Vs csV) nil (List.concat (List.map rcons_views csD)) Vs ->
-      rd_filed Θ Ξ R Vs Ss csD csV = Some D ->
+      rd_filed Θ Ξ R Vs Ss csD csV Nvs = Some D ->
       ind_entries_run Θ pv (ind_qname Ξ (rm_name Mr0)) D 0 (List.map rm_name (rd_members R)) Ξ Ξ' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_ind pv R ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
   (** A mutual definition: the group and its uniform parameters read off
@@ -665,7 +709,7 @@ Section Semantics.
       Forall2 (mdef_member Θ Ξ pq D Us Δ) (f0 :: fs) ms ->
       List.length ms = List.length (ind_members D) ->
       List.NoDup ms ->
-      mdefs_run Θ b pv (mdef_defs pq (List.length (ind_members D)) Δ (f0 :: fs) ms) Ξ Ξ' ->
+      mdefs_run Θ b pv (mdef_defs pq D Us Δ (f0 :: fs) ms) Ξ Ξ' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_mdef b pv Δ (f0 :: fs) ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
   (** [builtin natural := X]: [X], a module expression, denotes an inductive type at no argument
       and over no parameter, with the shape of the natural numbers, in
@@ -824,6 +868,23 @@ Proof.
   eapply cls_cons_in_functional; eassumption.
 Qed.
 
+Lemma nbe_tele_functional : forall Θ Ξ Γ Δ Ws Ws', nbe_tele Θ Ξ Γ Δ Ws -> nbe_tele Θ Ξ Γ Δ Ws' -> Ws = Ws'.
+Proof.
+  intros * H; revert Ws'; induction H as [| A Δ W Δ' HW _ IH]; intros Ws' H'; inversion H'; subst; [ reflexivity |].
+  match goal with HW' : nbe_ty _ _ _ A ?W' |- _ => pose proof (functional_nbe_ty _ _ _ _ HW HW') as <- end.
+  f_equal; apply IH; assumption.
+Qed.
+
+Lemma view_nps_functional : forall Θ Ξ R x Nv Nv', view_nps Θ Ξ R x Nv -> view_nps Θ Ξ R x Nv' -> Nv = Nv'.
+Proof.
+  intros * H H'; destruct H; inversion H'; subst.
+  match goal with H1 : ind_lookup _ _ ?qn = _, H2 : ind_lookup _ _ ?qn = _ |- _ => rewrite H1 in H2; injection H2 as <- end.
+  match goal with H1 : ind_member ?D ?k = _, H2 : ind_member ?D ?k = _ |- _ => rewrite H1 in H2; injection H2 as <- end.
+  match goal with H1 : nbe_tele _ _ _ _ ?W1, H2 : nbe_tele _ _ _ _ ?W2 |- _ =>
+    pose proof (nbe_tele_functional _ _ _ _ _ _ H1 H2) as <- end.
+  congruence.
+Qed.
+
 Lemma ind_entries_run_functional : forall Θ pv pq D k xs Ξ Ξ1, ind_entries_run Θ pv pq D k xs Ξ Ξ1 ->
     forall Ξ2, ind_entries_run Θ pv pq D k xs Ξ Ξ2 -> Ξ1 = Ξ2.
 Proof.
@@ -833,23 +894,25 @@ Proof.
 Qed.
 
 (** A group is classified, its views found and it is filed in one way. *)
-Lemma rc_ind_functional : forall Θ Ξ pv R Mr0 csD Vs Ss csV D Ξ1 Mr0' csD' Vs' Ss' csV' D' Ξ2,
+Lemma rc_ind_functional : forall Θ Ξ pv R Mr0 csD Vs Ss csV Nvs D Ξ1 Mr0' csD' Vs' Ss' csV' Nvs' D' Ξ2,
     ind_entries_run Θ pv (ind_qname Ξ (rm_name Mr0)) D 0 (List.map rm_name (rd_members R)) Ξ Ξ1 ->
-    rd_filed Θ Ξ R Vs Ss csD csV = Some D ->
+    rd_filed Θ Ξ R Vs Ss csD csV Nvs = Some D ->
     Forall2 (rm_cls Θ Ξ R) (rd_members R) csD ->
     Forall2 (view_sibs Θ Ξ R) Vs Ss ->
     Forall2 (view_cls Θ Ξ R) Vs csV ->
+    Forall2 (view_nps Θ Ξ R) Vs Nvs ->
     views_bfs (sibs_tbl Vs Ss) (meets_tbl Vs csV) nil (List.concat (List.map rcons_views csD)) Vs ->
     ind_entries_run Θ pv (ind_qname Ξ (rm_name Mr0')) D' 0 (List.map rm_name (rd_members R)) Ξ Ξ2 ->
-    rd_filed Θ Ξ R Vs' Ss' csD' csV' = Some D' ->
+    rd_filed Θ Ξ R Vs' Ss' csD' csV' Nvs' = Some D' ->
     Forall2 (rm_cls Θ Ξ R) (rd_members R) csD' ->
     Forall2 (view_sibs Θ Ξ R) Vs' Ss' ->
     Forall2 (view_cls Θ Ξ R) Vs' csV' ->
+    Forall2 (view_nps Θ Ξ R) Vs' Nvs' ->
     views_bfs (sibs_tbl Vs' Ss') (meets_tbl Vs' csV') nil (List.concat (List.map rcons_views csD')) Vs' ->
     forall Mrs Mrs', rd_members R = Mr0 :: Mrs -> rd_members R = Mr0' :: Mrs' ->
     Ξ1 = Ξ2.
 Proof.
-  intros * He Hf Hc Hs Hv Hb He' Hf' Hc' Hs' Hv' Hb' Mrs Mrs' HM HM'.
+  intros * He Hf Hc Hs Hv Hn Hb He' Hf' Hc' Hs' Hv' Hn' Hb' Mrs Mrs' HM HM'.
   rewrite HM in HM'; injection HM' as <- <-.
   assert (Ecs : csD = csD') by (eapply Forall2_functional; [| exact Hc | exact Hc' ];
                                 intros; unfold rm_cls in *; eapply cls_cons_in_functional; eassumption).
@@ -863,7 +926,8 @@ Proof.
   pose proof (views_bfs_functional _ _ _ _ _ Hb _ _ _ Hb' Agree) as <-.
   assert (ESs : Ss = Ss') by (eapply Forall2_functional; [ exact (view_sibs_functional Θ Ξ R) | exact Hs | exact Hs' ]).
   assert (EcsV : csV = csV') by (eapply Forall2_functional; [ exact (view_cls_functional Θ Ξ R) | exact Hv | exact Hv' ]).
-  subst Ss' csV'; rewrite Hf in Hf'; injection Hf' as <-.
+  assert (ENv : Nvs = Nvs') by (eapply Forall2_functional; [ exact (view_nps_functional Θ Ξ R) | exact Hn | exact Hn' ]).
+  subst Ss' csV' Nvs'; rewrite Hf in Hf'; injection Hf' as <-.
   eapply ind_entries_run_functional; eassumption.
 Qed.
 
@@ -1623,7 +1687,7 @@ Section WellFormed.
       intros * _ _ Hg HΞ Hc Hst.
       repeat split; [ exact (gens_run_wf _ _ _ _ Hg HΞ) | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
     - (* a group: its entries, each checked where it is filed *)
-      intros * _ _ _ _ _ _ _ He HΞ Hc Hst.
+      intros * _ _ _ _ _ _ _ _ He HΞ Hc Hst.
       repeat split; [ exact (ind_entries_run_wf _ _ _ _ _ _ _ _ He HΞ) | exact (proj1 Hc) | exact (proj2 Hc)
                     | apply gds_sub_refl | apply bt_le_refl ].
     - (* a mutual definition: its definitions, each checked as a definition is *)
@@ -1777,7 +1841,7 @@ Section WellFormed.
         eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub' | eassumption ] | exact HbU ].
     - intros * _ _ Hg HΞ _ _ Hb HR; split; [| exact HR ].
       revert Hb; apply builtins_wf_mono; intros; eapply gens_run_ind_lookup; eassumption.
-    - intros * _ _ _ _ _ _ _ He HΞ _ _ Hb HR; split; [| exact HR ].
+    - intros * _ _ _ _ _ _ _ _ He HΞ _ _ Hb HR; split; [| exact HR ].
       revert Hb; apply builtins_wf_mono; intros; eapply ind_entries_run_ind_lookup; eassumption.
     - intros * _ _ _ _ _ _ _ _ _ Hd HΞ _ _ Hb HR; split; [| exact HR ].
       revert Hb; apply builtins_wf_mono; intros; eapply mdefs_run_ind_lookup; eassumption.

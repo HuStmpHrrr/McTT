@@ -370,7 +370,7 @@ Section RecTyped.
       context at the module's uniform parameters. *)
   Lemma rec_elim_typed :
       Θ ⍮ Ξ ⍮ elim_mctx p D 0 M (rec_uvars D K) ++ EK ++ Lm
-        ⊢ a_elim None 0 (eb_mk (S nn) None (rec_motive M (K + S nn)) (rec_brs M K 0 (im_cons M)) :: nil) (a_var 0)
+        ⊢ a_elim None None 0 (eb_mk (S nn) None (rec_motive M (K + S nn)) (rec_brs M K 0 (im_cons M)) :: nil) (a_var 0)
         : rec_motive M K.
   Proof.
     destruct (motive_at _ EK_wf) as [HM2 HA2]; rewrite length_EK in HM2, HA2.
@@ -394,7 +394,7 @@ Section RecTyped.
     rewrite <- (rec_motive_inst M K), <- HS.
     eapply wf_elim with (i := 0) (Ps := Ps) (bm := eb_mk (S nn) None (rec_motive M (S nn + K)) (rec_brs M K 0 (im_cons M)));
       [ exact Hl | right; split; [ reflexivity | exact ndecl_pos ] | exact HM | reflexivity
-      | rewrite Hone; reflexivity | | | | left; exact ndecl_pos | | | | | | | | ].
+      | rewrite Hone; reflexivity | | | | unfold elim_ups, ind_has_views; rewrite Hone; cbn; unfold im_is_decl; rewrite Hh; reflexivity | | | | | | | | ].
     - (* the number of parameters *)
       unfold Ps, im_np; rewrite List.length_app, HUl', HNl; lia.
     - (* the parameters, at their types: the uniform ones the module's,
@@ -652,14 +652,14 @@ Proof.
     intros [| i] M HM; cbn in HM; [ injection HM as <-; exists Mr; split; reflexivity | exact (Hh _ _ HM) ].
 Qed.
 
-Lemma rvs_filed_views : forall Θ Ξ σ n Vs xs Ss css Ms, rvs_filed Θ Ξ σ n Vs xs Ss css = Some Ms ->
+Lemma rvs_filed_views : forall Θ Ξ σ n Vs xs Ss css Nvs Ms, rvs_filed Θ Ξ σ n Vs xs Ss css Nvs = Some Ms ->
     forall M, In M Ms -> im_is_decl M = false.
 Proof.
-  induction xs as [| x xs IH]; intros [| ss Ss] [| cs css] Ms H; cbn in H; try discriminate.
+  induction xs as [| x xs IH]; intros [| ss Ss] [| cs css] [| Nv Nvs] Ms H; cbn in H; try discriminate.
   - injection H as <-; intros M [].
-  - destruct (rv_filed Θ Ξ σ n Vs x ss cs) as [M0 |] eqn:E0; [| discriminate ].
-    destruct (rvs_filed Θ Ξ σ n Vs xs Ss css) as [Ms' |] eqn:E; [| discriminate ].
-    injection H as <-; intros M [<- | HM]; [| exact (IH _ _ _ E _ HM) ].
+  - destruct (rv_filed Θ Ξ σ n Vs x ss cs Nv) as [M0 |] eqn:E0; [| discriminate ].
+    destruct (rvs_filed Θ Ξ σ n Vs xs Ss css Nvs) as [Ms' |] eqn:E; [| discriminate ].
+    injection H as <-; intros M [<- | HM]; [| exact (IH _ _ _ _ E _ HM) ].
     unfold rv_filed in E0; destruct x as [[qc k] Cs].
     destruct (ind_lookup Θ Ξ qc) as [D' |]; [| discriminate ].
     destruct (ind_member D' k), (rcons_num n Vs cs); try discriminate.
@@ -673,16 +673,16 @@ Proof. induction l as [| x l IH]; intros H; cbn; [ reflexivity |]; rewrite (H x 
 Lemma filter_all_false : forall {X} (f : X -> bool) l, (forall x, In x l -> f x = false) -> List.filter f l = nil.
 Proof. induction l as [| x l IH]; intros H; cbn; [ reflexivity |]; rewrite (H x (or_introl eq_refl)), IH; auto with datatypes. Qed.
 
-Lemma rd_filed_decl : forall Θ Ξ R Vs Ss csD csV D, rd_filed Θ Ξ R Vs Ss csD csV = Some D ->
+Lemma rd_filed_decl : forall Θ Ξ R Vs Ss csD csV Nvs D, rd_filed Θ Ξ R Vs Ss csD csV Nvs = Some D ->
     ind_ndecl D = List.length (rd_members R) /\
     forall i Mr, List.nth_error (rd_members R) i = Some Mr ->
       exists M, ind_member D i = Some M /\ im_head M = mh_decl (ind_qname Ξ (rm_name Mr)).
 Proof.
   intros * H; unfold rd_filed in H; destruct (rd_members R) as [| Mr0 Mrs] eqn:HR; [ discriminate |].
   destruct (rms_filed _ _ _ _ _) as [Ms |] eqn:E1; [| discriminate ].
-  destruct (rvs_filed _ _ _ _ _ _ _ _) as [Mv |] eqn:E2; [| discriminate ].
+  destruct (rvs_filed _ _ _ _ _ _ _ _ _) as [Mv |] eqn:E2; [| discriminate ].
   injection H as <-; destruct (rms_filed_heads _ _ _ _ _ _ E1) as [Hl Hh].
-  pose proof (rvs_filed_views _ _ _ _ _ _ _ _ _ E2) as Hv.
+  pose proof (rvs_filed_views _ _ _ _ _ _ _ _ _ _ E2) as Hv.
   split.
   - unfold ind_ndecl; cbn [ind_members]; rewrite List.filter_app, (filter_all_false _ Mv Hv), List.app_nil_r.
     rewrite filter_all_true; [ exact Hl |].
@@ -749,23 +749,24 @@ End EntriesRun.
     filed after the ones before it.  The generated names are the
     constructors' and [rec], which the declaration's own names must leave
     free. *)
-Corollary rc_ind_runs : forall load_path read to_core ch B Rb Θ Ξ pv R Mr0 Mrs csD Vs Ss csV D,
+Corollary rc_ind_runs : forall load_path read to_core ch B Rb Θ Ξ pv R Mr0 Mrs csD Vs Ss csV Nvs D,
     ⊢ᵍ Θ ⍮ Ξ ->
     rd_members R = Mr0 :: Mrs ->
     Forall (fun Mr => rm_sort Mr = rm_sort Mr0) Mrs ->
     Forall2 (rm_cls Θ Ξ R) (rd_members R) csD ->
     Forall2 (view_sibs Θ Ξ R) Vs Ss ->
     Forall2 (view_cls Θ Ξ R) Vs csV ->
+    Forall2 (view_nps Θ Ξ R) Vs Nvs ->
     views_bfs (sibs_tbl Vs Ss) (meets_tbl Vs csV) nil (List.concat (List.map rcons_views csD)) Vs ->
-    rd_filed Θ Ξ R Vs Ss csD csV = Some D ->
+    rd_filed Θ Ξ R Vs Ss csD csV Nvs = Some D ->
     List.NoDup (List.map rm_name (rd_members R)) ->
     Forall (fun Mr => gs_fresh (rm_name Mr) Ξ) (rd_members R) ->
     Θ ⍮ Ξ ⍮ ind_qname Ξ (rm_name Mr0) ⊢ᵉ ge_ind pv (ind_qname Ξ (rm_name Mr0)) 0 D ⋄ ->
     (forall M, ind_member D 0 = Some M -> ind_has_rec D = true -> ~ In "rec"%string (List.map fst (im_cons M))) ->
     exists Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_ind pv R ⇝ Θ' ⍮ Ξ' ⍮ B ⍮ Rb.
 Proof.
-  intros * HΞ HR Hsort Hcls Hsibs Hvcls Hbfs Hfil Hnd Hfr HE Hrec.
-  destruct (rd_filed_decl _ _ _ _ _ _ _ _ Hfil) as [Hnde Hheads].
+  intros * HΞ HR Hsort Hcls Hsibs Hvcls Hvnps Hbfs Hfil Hnd Hfr HE Hrec.
+  destruct (rd_filed_decl _ _ _ _ _ _ _ _ _ Hfil) as [Hnde Hheads].
   destruct (Hheads 0 Mr0 ltac:(rewrite HR; reflexivity)) as (M0 & HM0 & Hh0).
   assert (Hfx0 : gs_fresh (rm_name Mr0) Ξ) by (rewrite HR in Hfr; inversion Hfr; assumption).
   destruct Ξ as [| [mq [Δ [sm Φ0 | E0]]] Ξ0]; [ cbn in Hfx0; contradiction | |].
@@ -800,7 +801,7 @@ Proof.
     destruct (Hheads (S i) Mr ltac:(rewrite HR; exact HMr)) as (Mi & HMi & Hhi).
     exists Mi; split; [ exact HMi | exact Hhi ].
   - rewrite Hnde, HR, List.length_map; cbn; lia.
-  - do 2 eexists; eapply rc_ind; [ exact HR | exact Hsort | exact Hcls | exact Hsibs | exact Hvcls | exact Hbfs | exact Hfil |].
+  - do 2 eexists; eapply rc_ind; [ exact HR | exact Hsort | exact Hcls | exact Hsibs | exact Hvcls | exact Hvnps | exact Hbfs | exact Hfil |].
     rewrite HR; cbn [List.map]; unfold ind_qname; cbn [gs_path].
     econstructor; [ exact HM0 | exact Hf0 | exact HE0 | exact Hrun ].
 Qed.
