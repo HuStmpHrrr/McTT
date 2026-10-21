@@ -683,6 +683,32 @@ Section ToGroup.
   Lemma length_cups : List.length cups = ind_nu Dq.
   Proof. rewrite (eval_exps_length _ _ _ Ecups); exact (view_is_length VP p D HVP HPD k Mk qc kc Is vm Dq HMk Hh Hq). Qed.
 
+  (** *** At a Neutral of a Member of the Container *)
+
+  Section AtNeut.
+    Variables (i' : nat) (Mi' : imember) (v : nat) (Mv : imember).
+    Hypotheses (HMi' : ind_member Dq i' = Some Mi') (HVM : view_member p D qc Dq vm i' Mi' v Mv).
+    Let Hv := vmb_v _ _ _ _ _ _ _ _ _ HVM.
+    Let HMv := vmb_mem _ _ _ _ _ _ _ _ _ HVM.
+    Variables (Γ : ctx) (Us Ns : list exp).
+    Hypotheses (HΓ : ⊢ Γ) (HUl : List.length Us = ind_nu D) (HNl : List.length Ns = im_nn Mv)
+      (HPs : forall j X T, List.nth_error (Us ++ Ns) j = Some X ->
+               List.nth_error (tele_insts (im_params D Mv) Id (Us ++ Ns)) j = Some T -> Γ ⊢ X : T).
+
+    Lemma at_neut : forall hd k' as' m M, im_ref qc i' Mi' = (hd, k') -> per_bot m m ->
+        (forall Δ φ M', Δ ⊢ᵏ φ : Γ -> Rne m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M' ->
+           Δ ⊢ M[φ]ʷ ≈ M' : (im_ty_at qc i' Mi' (view_args Us) Ns)[φ]ʷ) ->
+        ind_glu_elem p D ups NEl AEl DP DEl v Γ Us Ns M (⇑ (d_ind hd k' as') m).
+    Proof.
+      intros * Href Hm HM.
+      destruct (vh_ty_eq p D Hdt Hl Hc k Mk qc kc Is vm Dq HMk Hh Hq i' Mi' v Mv HMi' Hv HMv Γ Us Ns HΓ HUl HNl HPs) as [i Hi].
+      eapply ind_glu_elem_neut; [ exact HMv | rewrite (vmb_ref _ _ _ _ _ _ _ _ _ HVM); exact Href | exact Hm |].
+      intros Δ φ M' Hφ HR.
+      pose proof (kripke_preserves_typ_eq _ _ _ _ _ _ Hi Hφ) as Hiφ.
+      eapply wf_exp_eq_conv; [ exact (HM Δ φ M' Hφ HR) | gen_presups; eassumption | exact Hiφ ].
+    Qed.
+  End AtNeut.
+
   (** *** At a Constructor of a Member of the Container *)
 
   Section AtCon.
@@ -957,6 +983,42 @@ Section ToGroup.
       pose proof (cargs_rec_type_sh p D Mv gs gs1 t gs2 (Us ++ Ns) As A Heq Hc ltac:(rewrite List.length_app; unfold im_np; lia) HA) as ETs.
       rewrite firstn_app_exact, <- List.app_assoc in ETs by exact HUl.
       rewrite ETs; exact Hfinal.
+    Qed.
+
+    (** The container's constructor is the group's, given its recursive
+        arguments recursive in both as the group's. *)
+    Lemma at_con : forall hd k' bs M, im_ref qc i' Mi' = (hd, k') -> List.length bs = (im_unu Dq Mi' + im_nn Mi')%nat ->
+        List.skipn (im_unu Dq Mi') bs = ns ->
+        Γ ⊢ M ≈ apps (a_con qc i' c) (view_args Us ++ Ns ++ As) : im_ty_at qc i' Mi' (view_args Us) Ns ->
+        (forall gs1 t gs2 gs1' t' gs2' N A x, gs = gs1 ++ ca_rec t :: gs2 -> gs' = gs1' ++ ca_rec t' :: gs2' ->
+           List.length gs1' = List.length gs1 -> List.nth_error As (List.length gs1) = Some N ->
+           List.nth_error (tele_insts (cargs_ctx p D Mv gs) (sb_of_list Id (Us ++ Ns)) As) (List.length gs1) = Some A ->
+           List.nth_error vs (List.length gs1) = Some x ->
+           glu_rec p D ups NEl AEl DP DEl v Γ Us (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) t A N x) ->
+        ind_glu_elem p D ups NEl AEl DP DEl v Γ Us Ns M (d_con hd k' c (bs ++ vs)).
+    Proof.
+      intros hd k' bs M Href Hbl Hns HM Hboth.
+      destruct at_lengths as (HUl & HNl & Hnl).
+      pose proof at_gs_length as Hlg.
+      pose proof (vmb_unu _ _ _ _ _ _ _ _ _ HVM) as Hunu.
+      pose proof (vmb_nn _ _ _ _ _ _ _ _ _ HVM) as Hnn.
+      eapply ind_glu_elem_con with (Mk := Mv) (gs := gs) (As := As);
+        [ exact HMv | rewrite (vmb_ref _ _ _ _ _ _ _ _ _ HVM); exact Href | exact Hcon | exact HUl | exact HNl | lia | lia | lia
+        | exact (vh_con_eq p D Hdt Hl Hc k Mk qc kc Is vm Dq HMk Hh Hq i' Mi' v Mv HMi' Hv HMv Γ Us Ns HΓ HUl HNl at_ps_typed
+                   As c gs' gs M Hcon' Hcon Hcorr HAl HAty' HM)
+        | | | | exact at_args_typed | | ].
+      all: rewrite ?Hunu, ?Hns.
+      - exact at_ns_g.
+      - exact at_args_g.
+      - exact at_nparams.
+      - exact at_nonrec.
+      - intros gs1 t gs2 N A x Heq HN HA Hx.
+        assert (Hlgs1 : List.length gs1 < List.length gs) by (rewrite Heq, List.length_app; cbn; lia).
+        destruct (nth_error_lt_some' gs' (List.length gs1) ltac:(lia)) as [g' Hg'].
+        destruct (List.nth_error_split _ _ Hg') as (gs1' & gs2' & Heq' & Hl1).
+        destruct g' as [A0' | t'].
+        + exact (at_nested gs1 t gs2 gs1' A0' gs2' N A x Heq Heq' Hl1 HN HA Hx).
+        + exact (Hboth gs1 t gs2 gs1' t' gs2' N A x Heq Heq' Hl1 HN HA Hx).
     Qed.
   End AtCon.
 End ToGroup.
