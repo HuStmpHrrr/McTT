@@ -3369,7 +3369,134 @@ Section GroupElim.
           rewrite bty_eq; unfold Rel; rewrite (blocks_motives_nth _ _ _ Hb).
           etransitivity; [ exact ER1 | etransitivity; [ exact ER2 | exact ER3 ] ].
         Qed.
+
+        (** The environments of the branch's context at a related
+            constructor's components and recursive results, at any bases. *)
+        Lemma cv_bctx_elem : forall B1 B2, RΓ B1 C1 -> RΓ B2 C1 ->
+            forall u u' hd k' bs bs' vs vs' ihs ihs',
+            G k u u' (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs')
+              (d_con hd k' c (bs ++ vs)) (d_con hd k' c (bs' ++ vs')) ->
+            rec_results_rel dr Rel k u u' (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs') gs vs vs' ihs ihs' ->
+            forall RB, EF elim_bctx p D Mk gs As Us ++ Γ ≈ elim_bctx p D Mk gs As Us ++ Γ ∈ per_ctx_env ↘ RB ->
+            RB (env_args B1 (List.skipn (im_unu D Mk) bs ++ vs ++ ihs)) (env_args B2 (List.skipn (im_unu D Mk) bs' ++ vs' ++ ihs')).
+        Proof.
+          intros B1 B2 HB1 HB2 * Hm Hir RB HRB.
+          destruct (rec_results_rel_vs_len _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Lv Lv'].
+          destruct (ind_rel_con_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm HMk Hcon Lv Lv') as [Lbs Lbs'].
+          pose proof (ind_rel_rebase p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ u0 u0 _ _ _ _ Had Had Had Hm) as Hm0.
+          destruct (ind_rel_con_inv p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ _ Hm HMk Lbs)
+            as (gs0 & bs1 & vs1 & Ez & _ & HX & Hcon0 & Lbs1 & _ & _ & Har & Hia).
+          rewrite Hcon in Hcon0; injection Hcon0 as <-.
+          injection Ez as Ez.
+          destruct (app_split_eq _ _ _ _ Ez ltac:(congruence)) as [<- <-].
+          pose proof (rec_results_rebase _ _ _ _ _ _ _ _ _ _ Hia Hir) as Hir0.
+          destruct (ind_rel_con_inv p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ _ Hm0 HMk Lbs)
+            as (gs0 & bs2 & vs2 & Ez0 & _ & _ & Hcon0 & Lbs2 & _ & _ & Har0 & Hia0).
+          rewrite Hcon in Hcon0; injection Hcon0 as <-.
+          injection Ez0 as Ez0.
+          destruct (app_split_eq _ _ _ _ Ez0 ltac:(congruence)) as [<- <-].
+          exact (cv_bctx B1 B2 HB1 HB2 _ _ vs vs' ihs ihs' HX Har0 Hia0 Hir0 RB HRB).
+        Qed.
       End Branch.
+
+      (** ** The Branches at the Links of an Elimination *)
+      Section Links.
+        Hypothesis (HBc : forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs ->
+                      ⊨ elim_bctx p D Mj gs (blocks_motives Bks) Us ++ Γ).
+
+        (** The middle link: the blocks [Bks] at [C1] against blocks [Bks']
+            at [C2] whose branches are equal to theirs. *)
+        Lemma br_mid : forall Bks',
+            (forall j Mj b b' c gs n B B', ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+               List.nth_error Bks' j = Some b' -> ind_con Mj c = Some gs ->
+               brs_lookup (eb_brs b) c = Some (n, B) -> brs_lookup (eb_brs b') c = Some (n, B') ->
+               elim_bctx p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B ≈ B' : elim_bty p j Mj c gs (eb_motive b) Us) ->
+            forall j Mj ba bb c gs n Ba Bb u u' bs bs' vs vs' ihs ihs' hd k', ind_member D j = Some Mj ->
+            List.nth_error Bks j = Some ba -> List.nth_error Bks' j = Some bb -> ind_con Mj c = Some gs ->
+            brs_lookup (eb_brs ba) c = Some (n, Ba) -> brs_lookup (eb_brs bb) c = Some (n, Bb) ->
+            G j u u' (List.skipn (im_unu D Mj) bs) (List.skipn (im_unu D Mj) bs') (d_con hd k' c (bs ++ vs)) (d_con hd k' c (bs' ++ vs')) ->
+            rec_results_rel dr Rel j u u' (List.skipn (im_unu D Mj) bs) (List.skipn (im_unu D Mj) bs') gs vs vs' ihs ihs' ->
+            exists r r', ⟦ Ba ⟧ env_args C1 (List.skipn (im_unu D Mj) bs ++ vs ++ ihs) ↘ r /\
+              ⟦ Bb ⟧ env_args C2 (List.skipn (im_unu D Mj) bs' ++ vs' ++ ihs') ↘ r' /\
+              Rel j (List.skipn (im_unu D Mj) bs) (d_con hd k' c (bs ++ vs)) (List.skipn (im_unu D Mj) bs') (d_con hd k' c (bs' ++ vs')) r r'.
+        Proof.
+          intros Bks' HBB * HMj Hba Hbb Hcon HlBa HlBb Hm Hir.
+          assert (HC21 : RΓ C2 C1) by (symmetry; exact HC12).
+          pose proof (HBc j Mj c gs HMj Hcon) as HB.
+          destruct (rel_ctx_wf_per_ctx_env HB) as [RB HRB].
+          pose proof (cv_bctx_elem j Mj c gs HMj Hcon HB C1 C2 HC11 HC21 _ _ _ _ _ _ _ _ _ _ Hm Hir RB HRB) as HE.
+          destruct (rel_exp_under_ctx_simple_at HRB (HBB _ _ _ _ _ _ _ _ _ HMj Hba Hbb Hcon HlBa HlBb) _ _ HE) as (r & r' & Er & Er' & Hrr).
+          exists r, r'; split; [ exact Er | split; [ exact Er' |] ].
+          exact (proj1 (bty_rel j Mj c gs HMj Hcon HB ba Hba C1 C2 HC11 HC21 _ _ _ _ _ _ _ _ _ _ Hm Hir r r') Hrr).
+        Qed.
+
+        (** An outer link: blocks [Bks0] moved by a semantic substitution
+            [σ0] at [ρ0], against [Bks0] at the value [ρ0σ0] of [σ0], of the
+            class of [C1]; their branches are of the types of [Bks]'s. *)
+        Lemma br_out : forall Bks0,
+            (forall j Mj b b0 c gs n B0, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+               List.nth_error Bks0 j = Some b0 -> ind_con Mj c = Some gs -> brs_lookup (eb_brs b0) c = Some (n, B0) ->
+               n = (im_nn Mj + List.length gs + cargs_nrec gs)%nat /\
+               elim_bctx p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B0 : elim_bty p j Mj c gs (eb_motive b) Us) ->
+            forall Γ' RΓ' σ0 ρ0 ρ0σ0, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ0 ≈ σ0 : Γ ->
+            RΓ' ρ0 ρ0 -> ⟦ σ0 ⟧s ρ0 ↘ ρ0σ0 -> RΓ ρ0σ0 C1 ->
+            forall j Mj ba bb c gs n Ba Bb u u' bs bs' vs vs' ihs ihs' hd k', ind_member D j = Some Mj ->
+            List.nth_error (blocks_sub Bks0 σ0) j = Some ba -> List.nth_error Bks0 j = Some bb -> ind_con Mj c = Some gs ->
+            brs_lookup (eb_brs ba) c = Some (n, Ba) -> brs_lookup (eb_brs bb) c = Some (n, Bb) ->
+            G j u u' (List.skipn (im_unu D Mj) bs) (List.skipn (im_unu D Mj) bs') (d_con hd k' c (bs ++ vs)) (d_con hd k' c (bs' ++ vs')) ->
+            rec_results_rel dr Rel j u u' (List.skipn (im_unu D Mj) bs) (List.skipn (im_unu D Mj) bs') gs vs vs' ihs ihs' ->
+            exists r r', ⟦ Ba ⟧ env_args ρ0 (List.skipn (im_unu D Mj) bs ++ vs ++ ihs) ↘ r /\
+              ⟦ Bb ⟧ env_args ρ0σ0 (List.skipn (im_unu D Mj) bs' ++ vs' ++ ihs') ↘ r' /\
+              Rel j (List.skipn (im_unu D Mj) bs) (d_con hd k' c (bs ++ vs)) (List.skipn (im_unu D Mj) bs') (d_con hd k' c (bs' ++ vs')) r r'.
+        Proof.
+          intros Bks0 HB0s * HRΓ' Hσ0 Hρ0 Hev0 HρC * HMj Hba Hbb Hcon HlBa HlBb Hm Hir.
+          assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
+          destruct (nth_error_blocks_sub_inv _ _ _ _ Hba) as (b0 & Hb0 & ->).
+          rewrite Hbb in Hb0; injection Hb0 as <-.
+          rewrite eb_brs_sub in HlBa.
+          destruct (brs_lookup_sub_inv _ _ _ _ _ HlBa) as (B0 & HlB0 & ->).
+          rewrite HlBb in HlB0; injection HlB0 as <-.
+          destruct (HBks _ _ HMj) as [b Hb].
+          destruct (HB0s _ _ _ _ _ _ _ _ HMj Hb Hbb Hcon HlBb) as [-> HBv].
+          pose proof (HBc j Mj c gs HMj Hcon) as HB.
+          destruct (rel_ctx_wf_per_ctx_env HB) as [RB HRB].
+          assert (HPB : PER RB) by (eapply per_env_PER; exact HRB).
+          destruct (rec_results_rel_vs_len _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Lv _].
+          destruct (rec_results_rel_len _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Li _].
+          destruct (ind_rel_con_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm HMj Hcon Lv ltac:(destruct (rec_results_rel_vs_len _ _ _ _ _ _ _ _ _ _ _ _ Hir); assumption)) as [Lbs _].
+          set (X := List.skipn (im_unu D Mj) bs) in *; set (X' := List.skipn (im_unu D Mj) bs') in *.
+          assert (LX : List.length X = im_nn Mj) by (unfold X; rewrite List.length_skipn; lia).
+          pose proof (cv_bctx_elem j Mj c gs HMj Hcon HB ρ0σ0 ρ0σ0 HρC HρC _ _ _ _ _ _ _ _ _ _ Hm Hir RB HRB) as HE.
+          assert (HEl : RB (env_args ρ0σ0 (X ++ vs ++ ihs)) (env_args ρ0σ0 (X ++ vs ++ ihs))) by (etransitivity; [ exact HE | symmetry; exact HE ]).
+          set (Bc := elim_bctx p D Mj gs (blocks_motives Bks) Us) in *.
+          assert (Ll : List.length (X ++ vs ++ ihs) = List.length (List.rev Bc))
+            by (unfold Bc; rewrite List.length_rev, length_elim_bctx, !List.length_app; lia).
+          assert (HBa : tele_ass Bc) by (unfold Bc; exact (elim_bctx_ass p D j Mj gs _ Us Hc HMj)).
+          assert (HBr : ⊨ List.rev (List.rev Bc) ++ Γ) by (rewrite List.rev_involutive; exact HB).
+          assert (HRBr : EF List.rev (List.rev Bc) ++ Γ ≈ List.rev (List.rev Bc) ++ Γ ∈ per_ctx_env ↘ RB)
+            by (rewrite List.rev_involutive; exact HRB).
+          pose proof (proj2 (rel_gargs _ _ _ _ HRΓ HBr (List.Forall_rev HBa) HRBr _ _ _ _ Ll Ll HEl)) as Hg.
+          destruct (outer_exp_link Bc Γ Γ' RΓ' σ0 ρ0 ρ0σ0 _ Bb Bb HBa HB HBv HRΓ' Hσ0 Hρ0 Hev0 _ Hg
+                      ltac:(rewrite List.length_rev in Ll; exact Ll))
+            as (RΔ & F & m & n0 & HRΔ & HF & Em & En0 & Hmn).
+          assert (ERB : RΔ <~> RB) by (eapply per_ctx_env_right_irrel; eassumption).
+          apply ERB in HF.
+          destruct (rel_exp_under_ctx_simple_at HRB HBv _ _ HE) as (n1 & r' & En1 & Er' & Hnr).
+          assert (n1 = n0) as -> by (eapply functional_eval_exp; eassumption).
+          destruct (presup_rel_exp_under_ctx HBv) as [iT HT].
+          assert (ER : per_head (elim_bty p j Mj c gs (eb_motive b) Us) (elim_bty p j Mj c gs (eb_motive b) Us) F (env_args ρ0σ0 (X ++ vs ++ ihs))
+                       <~> per_head (elim_bty p j Mj c gs (eb_motive b) Us) (elim_bty p j Mj c gs (eb_motive b) Us)
+                             (env_args ρ0σ0 (X ++ vs ++ ihs)) (env_args ρ0σ0 (X' ++ vs' ++ ihs'))).
+          { apply (per_head_of_typ_resp HRB HT).
+            apply rel_chain_cons; [ exact HF |]. apply rel_chain_cons; [ exact HEl |]. apply rel_chain_of_pair; exact HE. }
+          exists m, r'; split.
+          { unfold Bc in Em; rewrite length_elim_bctx in Em.
+            replace (im_nn Mj + List.length gs + cargs_nrec gs) with (cargs_nrec gs + List.length gs + im_nn Mj) by lia; exact Em. }
+          split; [ exact Er' |].
+          apply (proj1 (bty_rel j Mj c gs HMj Hcon HB b Hb ρ0σ0 ρ0σ0 HρC HρC _ _ _ _ _ _ _ _ _ _ Hm Hir m r')).
+          eapply (per_head_trans _ _ _ _ _ _ HRB HT HE); [ apply ER; exact Hmn | exact Hnr ].
+        Qed.
+      End Links.
     End Motives.
   End Base.
 End GroupElim.
