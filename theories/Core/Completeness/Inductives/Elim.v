@@ -4057,3 +4057,43 @@ Proof.
 Qed.
 
 End Fixed_GCtx.
+
+(** ** The Groups along an Embedding
+
+    A group looked up in a well-formed [Θ ⍮ Ξ] is typed and closed; along a
+    sound embedding the groups of [Θ ⍮ Ξ] are valid groups of the
+    target. *)
+
+Lemma decl_of_glookup : forall Θ Ξ p D,
+    ⊢ᵍ Θ ⍮ Ξ -> ind_lookup Θ Ξ p = Some D -> decl_typed Θ Ξ D /\ decl_closed D.
+Proof.
+  intros * Hg Hl; split.
+  - exact (gv_decls _ _ _ _ _ _ (gctx_rwf _ _ Hg) _ _ Hl).
+  - exact (gctx_closed_ind _ _ _ _ (wf_gstack_closed _ _ Hg) Hl).
+Qed.
+
+Lemma valid_groups_of_emb : forall Θ Ξ Θ2 Ξ2, valid_emb Θ Ξ Θ2 Ξ2 ->
+    @valid_groups (gc_mk Θ2 Ξ2) (fun qn G => ind_lookup Θ Ξ qn = Some G).
+Proof.
+  intros * He.
+  pose proof (vem_wf _ _ _ _ He) as Hg.
+  pose proof (em_res _ _ _ _ (vem_emb _ _ _ _ He)) as Hs.
+  constructor.
+  - intros qn G Hlq.
+    destruct (decl_of_glookup _ _ _ _ Hg Hlq) as [Hdt Hc].
+    pose proof (decl_typed_emb _ _ _ _ _ (vem_emb _ _ _ _ He) Hdt) as Hdt2.
+    pose proof (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hlq) as Hl2.
+    constructor; [ exact Hl2 | exact (vem_ind _ _ _ _ He _ _ Hlq) | exact Hc | exact (dt_sort_univ _ _ _ Hdt) | |
+                 exact Hdt2 | exact (ind_lookup_mpath _ _ _ _ Hg Hlq) ].
+    apply (@grp_tele_ass_of_typed (gc_mk Θ2 Ξ2) G Hdt2).
+    intros * HM Hh Hq2.
+    destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HM Hh) as (D' & Mk' & Hq & _).
+    pose proof (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hq) as Hq'.
+    cbn in Hq2; rewrite Hq' in Hq2; injection Hq2 as <-.
+    exact (decl_typed_emb _ _ _ _ _ (vem_emb _ _ _ _ He) (proj1 (decl_of_glookup _ _ _ _ Hg Hq))).
+  - intros * Hlq HM Hh Hq2; cbn in Hq2 |- *.
+    destruct (decl_of_glookup _ _ _ _ Hg Hlq) as [Hdt _].
+    destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HM Hh) as (D' & Mk' & Hq & _).
+    pose proof (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hq) as Hq'.
+    rewrite Hq' in Hq2; injection Hq2 as <-; exact Hq.
+Qed.
