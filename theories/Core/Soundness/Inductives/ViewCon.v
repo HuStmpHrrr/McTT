@@ -25,6 +25,7 @@ From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic.Inductives Require Import IndCong.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Presup DescTyping.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
+From Mctt.Core.Syntactic.System.Inductives Require Views.
 From Mctt.Core.Soundness Require Import
   ContextCases
   FunctionCases
@@ -305,6 +306,35 @@ Proof.
   rewrite (List.map_nth (fun I : typ => I[τ])); reflexivity.
 Qed.
 
+(** The entry of a constructor's argument, last in a prefix. *)
+Lemma cargs_ctx_last : forall p D M gs gsA g gsB, gs = gsA ++ g :: gsB ->
+    exists G, cargs_ctx p D M (gsA ++ g :: nil) = ce_ass G :: cargs_ctx p D M gsA /\
+      List.nth_error (List.rev (cargs_ctx p D M gs)) (List.length gsA) = Some (ce_ass G).
+Proof.
+  intros * Heq; destruct g as [B | t];
+    [ exists B[wk_pat (cargs_pat gsA)]ʷ | exists (ptyp_ty p D (im_nn M) (cargs_pat gsA) t) ];
+    (split; [ unfold cargs_ctx; rewrite cargs_ctx_aux_app, List.app_nil_r; reflexivity |]);
+    [ exact (cargs_rev_nth_arg p D M gs gsA B gsB Heq) | exact (cargs_rev_nth_rec p D M gs gsA t gsB Heq) ].
+Qed.
+
+(** The list instance [q^n] of a substitution, then a list instance of
+    [Us ++ Ns] with [n] the length of [Ns], is the list instance of the
+    substituted list and [Ns], below the lengths. *)
+Lemma sb_qn_list_agree : forall Is Us Ns x, x < List.length Ns + List.length Is ->
+    (sb_qn (List.length Ns) (sb_of_list Id Is) ⨟ (sb_of_list Id (Us ++ Ns) ⨟ Id)) x
+    = sb_of_list Id (List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns) x.
+Proof.
+  intros * Hx.
+  transitivity ((sb_qn (List.length Ns) (sb_of_list Id Is) ⨟ sb_of_list Id (Us ++ Ns)) x);
+    [ cbn [sb_compose]; apply sentry_sub_sb_eq, sb_compose_id_right |].
+  rewrite (sb_of_list_app Us Ns Id), (sb_of_list_app _ Ns Id).
+  rewrite (sb_qn_of_list Ns (sb_of_list Id Is) (sb_of_list Id Us) x).
+  destruct (Nat.lt_ge_cases x (List.length Ns)) as [Hlt | Hge].
+  - rewrite !(sb_of_list_nth Ns _ x (a_var 0) Hlt); reflexivity.
+  - replace x with (List.length Ns + (x - List.length Ns)) by lia; rewrite !sb_of_list_ge.
+    apply sb_of_list_map_nth; lia.
+Qed.
+
 (** ** A View's Parameters and Arguments, at its Container's Telescopes *)
 
 Section ViewConArgs.
@@ -479,6 +509,104 @@ Section ViewConArgs.
                 ltac:(rewrite length_tele_sub; exact HNl)); [| exact HT | exact HT' ].
       intros j N T0 HN HT0; rewrite EV in HT0.
       eapply glu_args_typed; [ exact HaV | exact HNs | eassumption | eassumption ].
+  Qed.
+
+  Let HPq := valid_groups_containers VP HVP p D k Mk qc kc Is vm Dq HPD HMk Hh Hq.
+  Let HcvQ := containers_valid_of_groups VP HVP qc Dq HPq.
+
+  (** The arguments of a constructor of the group's member the view takes a
+      container's member to, glued along their telescope at the view's
+      parameters, are glued along the container's at the view's instance. *)
+  Lemma view_args_glu : forall Δ Us Ns As ups ns ws cs i' Mi' v Mv c gs' gs, ⊢ Δ -> List.length ups = ind_nu D ->
+      ind_member Dq i' = Some Mi' -> List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
+      ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs -> cargs_corr vm gs' gs -> List.length Us = ind_nu D ->
+      glu_args Δ (im_params D Mv) Id nil (Us ++ Ns) (ups ++ ns) ->
+      glu_args Δ (cargs_ctx p D Mv gs) (sb_of_list Id (Us ++ Ns)) (env_args nil (ups ++ ns)) As ws ->
+      ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cs ->
+      glu_args Δ (im_params Dq Mi') Id nil (List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns) (cs ++ ns) ->
+      glu_args Δ (cargs_ctx qc Dq Mi' gs') (sb_of_list Id (List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns))
+        (env_args nil (cs ++ ns)) As ws.
+  Proof.
+    intros * HΔ Hu HMi' Hv HMv Hcon' Hcon Hcorr HUl HgP HgA Ecs HgPc.
+    pose proof (decl_closed_params_ass D v Mv Hc HMv) as HassP.
+    pose proof (decl_closed_params_ass Dq i' Mi' HcQ HMi') as HassPc.
+    pose proof (glu_args_per_gargs _ _ _ _ _ _ HassP HgP) as HgPd.
+    pose proof (glu_args_per_gargs _ _ _ _ _ _ HassPc HgPc) as HgPcd.
+    destruct (glu_args_length _ _ _ _ _ _ HgP) as [LP LV]; rewrite length_im_params in LP, LV.
+    destruct (glu_args_length _ _ _ _ _ _ HgA) as [LA LW]; rewrite length_cargs_ctx in LA, LW.
+    assert (Hlns : List.length ns = im_nn Mv) by (rewrite List.length_app in LV; unfold im_np in LV; lia).
+    assert (HlNs : List.length Ns = im_nn Mv) by (rewrite List.length_app in LP; unfold im_np in LP; lia).
+    pose proof (cargs_corr_length _ _ _ Hcorr) as Hlg.
+    assert (Hgu : per_gargs (List.rev (ind_uparams D)) nil nil ups ups).
+    { pose proof HgPd as H; rewrite rev_im_params in H.
+      assert (L : List.length ups = List.length (List.rev (ind_uparams D))) by (rewrite List.length_rev; exact Hu).
+      exact (proj1 (Decl.per_gargs_app (List.rev (ind_uparams D)) (List.rev (im_nparams Mv)) nil nil ups ups ns ns L H L)). }
+    pose proof (glu_args_per_gargs _ _ _ _ _ _ (cargs_ctx_aux_ass _ _ _ _ _) HgA) as HgAd.
+    apply (glu_args_transfer Δ (cargs_ctx p D Mv gs) (cargs_ctx qc Dq Mi' gs') (sb_of_list Id (Us ++ Ns)) _
+             (env_args nil (ups ++ ns)) (env_args nil (cs ++ ns)) As ws (cargs_ctx_aux_ass _ _ _ _ _) (cargs_ctx_aux_ass _ _ _ _ _)
+             ltac:(rewrite !length_cargs_ctx; lia) HgA).
+    - intros kk A A' a HA HA' Hk Ea Hpc.
+      destruct (nth_error_lt_some' gs kk ltac:(lia)) as [g Hgk].
+      destruct (List.nth_error_split _ _ Hgk) as (gsA & gsB & Egs & HlA).
+      destruct (nth_error_lt_some' gs' kk ltac:(lia)) as [g' Hgk'].
+      destruct (List.nth_error_split _ _ Hgk') as (gsA' & gsB' & Egs' & HlA').
+      destruct (cargs_ctx_last p D Mv gs gsA g gsB Egs) as (G & HG1 & HG2).
+      destruct (cargs_ctx_last qc Dq Mi' gs' gsA' g' gsB' Egs') as (Cc & HC1 & HC2).
+      rewrite HlA in HG2; rewrite HG2 in HA; injection HA as <-.
+      rewrite HlA' in HC2; rewrite HC2 in HA'; injection HA' as <-.
+      set (vs := List.firstn kk ws) in *.
+      assert (Hlvs : List.length vs = kk) by (unfold vs; rewrite List.length_firstn; lia).
+      (** The arguments before, related at both telescopes. *)
+      assert (Hg1 : per_gargs (List.rev (cargs_ctx p D Mv gsA ++ im_params D Mv)) nil nil (ups ++ ns ++ vs) (ups ++ ns ++ vs)).
+      { pose proof HgAd as H.
+        change (cargs_ctx_aux p D (im_nn Mv) nil gs) with (cargs_ctx p D Mv gs) in H.
+        rewrite (cargs_split_aux p D Mv gs gsA g gsB Egs), List.rev_app_distr, <- (List.firstn_skipn kk ws) in H.
+        assert (L1 : List.length vs = List.length (List.rev (cargs_ctx p D Mv gsA)))
+          by (rewrite List.length_rev, length_cargs_ctx; lia).
+        destruct (Decl.per_gargs_app _ _ _ _ _ _ _ _ L1 H L1) as [H1 _].
+        rewrite List.rev_app_distr, List.app_assoc.
+        apply Decl.per_gargs_app_intro; [ rewrite List.length_rev, length_im_params, List.length_app; unfold im_np in *; lia
+                                        | exact HgPd | exact H1 ]. }
+      assert (Hg2 : per_gargs (List.rev (cargs_ctx qc Dq Mi' gsA' ++ im_params Dq Mi')) nil nil (cs ++ ns ++ vs) (cs ++ ns ++ vs)).
+      { assert (Ef : List.firstn kk (List.rev (cargs_ctx qc Dq Mi' gs')) = List.rev (cargs_ctx qc Dq Mi' gsA')).
+        { rewrite (cargs_split_aux qc Dq Mi' gs' gsA' g' gsB' Egs'), List.rev_app_distr.
+          apply firstn_app_exact; rewrite List.length_rev, length_cargs_ctx; lia. }
+        rewrite Ef in Hpc.
+        rewrite List.rev_app_distr, List.app_assoc.
+        apply Decl.per_gargs_app_intro; [| exact HgPcd | exact Hpc ].
+        destruct (glu_args_length _ _ _ _ _ _ HgPc) as [_ L]; rewrite List.length_rev; exact L. }
+      destruct (view_arg_link p D Hg Hcv k Mk qc kc Is vm Dq HMk Hh Hq HcvQ ups cs Hgu Hu Ecs i' Mi' v Mv HMi' Hv HMv c gs' gs
+                  Hcon' Hcon Hcorr ns Hlns gsA' g' gsB' gsA g gsB Cc G vs Egs' Egs ltac:(lia) ltac:(lia) HC1 HG1 Hg1 Hg2)
+        as [_ _ _ (i & R & b & a0 & Eb & Ea0 & Hba)].
+      rewrite List.app_assoc, env_args_app in Eb, Ea0.
+      assert (b = a) as -> by (eapply functional_eval_exp; eassumption).
+      exists a0, i; split; [ exact Ea0 | exists R; exact Hba ].
+    - intros kk T T' HT HT'.
+      pose proof (dt_view_args _ _ _ _ (ctx_wf_gctx _ _ _ HΔ) Hdt Hl _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hh Hq HMi' Hv HMv Hcon' Hcon) as Hext.
+      assert (Hσ0 : Δ ⊢ˢ sb_of_list Id (Us ++ Ns) : im_params D Mv).
+      { rewrite <- (List.app_nil_r (im_params D Mv)).
+        eapply wf_sub_of_list; [ exact HassP | rewrite List.app_nil_r; exact (member_params_wf _ _ _ _ _ Hdt HMv)
+                               | exact (wf_sub_to_nil _ _ _ HΔ) | rewrite List.length_app, length_im_params; unfold im_np in *; lia |].
+        intros; eapply glu_args_typed; [ exact HassP | exact HgP | eassumption | eassumption ]. }
+      pose proof (sub_preserves_ext _ _ _ _ _ _ _ Hext Hσ0) as He.
+      apply Views.ext_eq_sym_ass in He; [| apply tele_ass_sub, tele_ass_sub, cargs_ctx_aux_ass ].
+      assert (EV : tele_insts (tele_sub (cargs_ctx p D Mv gs) (sb_of_list Id (Us ++ Ns))) Id As
+                   = tele_insts (cargs_ctx p D Mv gs) (sb_of_list Id (Us ++ Ns)) As)
+        by (rewrite tele_insts_tele_sub; apply tele_insts_sb_eq, sb_compose_id_right).
+      assert (EC : tele_insts (tele_sub (tele_sub (cargs_ctx qc Dq Mi' gs') (sb_qn (im_nn Mv) (sb_of_list Id Is)))
+                                 (sb_of_list Id (Us ++ Ns))) Id As
+                   = tele_insts (cargs_ctx qc Dq Mi' gs') (sb_of_list Id (List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns)) As).
+      { rewrite !tele_insts_tele_sub.
+        apply (tele_insts_agree _ (im_np Dq Mi')); [ apply cargs_ctx_aux_ass
+                                                   | exact (decl_closed_cargs_scoped Dq HcQ qc _ _ c gs' HMi' (cons_lookup_in _ _ _ Hcon')) |].
+        intros x Hx; rewrite <- HlNs.
+        apply sb_qn_list_agree; rewrite view_is_length; unfold im_np in Hx; rewrite HlNs; pose proof (vmb_nn_eq := view_nn p D Hg k Mk qc kc Is vm Dq HMk Hh Hq i' Mi' v Mv HMi' Hv HMv); lia. }
+      rewrite <- EV in HT; rewrite <- EC in HT'.
+      eapply (tele_insts_ext_eq Δ _ _ As He (tele_ass_sub _ _ (cargs_ctx_aux_ass _ _ _ _ _))
+                (tele_ass_sub _ _ (tele_ass_sub _ _ (cargs_ctx_aux_ass _ _ _ _ _)))
+                ltac:(rewrite length_tele_sub, length_cargs_ctx; exact LA)); [| exact HT | exact HT' ].
+      intros j N T0 HN HT0; rewrite EV in HT0.
+      eapply glu_args_typed; [ apply cargs_ctx_aux_ass | exact HgA | eassumption | eassumption ].
   Qed.
 End ViewConArgs.
 
