@@ -152,6 +152,44 @@ Section TeleLink.
       exact (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HRg) HRg).
   Qed.
 
+  (** The two types at a position are related to each other. *)
+  Lemma tele_link_types : forall j vs G C, List.length vs = j ->
+      List.nth_error tg j = Some (ce_ass G) -> List.nth_error tc j = Some (ce_ass C) ->
+      per_gargs (List.firstn j tg) Eg Eg vs vs -> per_gargs (List.firstn j tc) Ec Ec vs vs ->
+      exists (i : nat) R b a, ⟦ G ⟧ env_args Eg vs ↘ b /\ ⟦ C ⟧ env_args Ec vs ↘ a /\ DF b ≈ a ∈ per_univ_elem i ↘ R.
+  Proof.
+    intros j vs G C Hl HG HC Hgg Hgc.
+    assert (Hj : j < List.length tg) by (apply List.nth_error_Some; congruence).
+    assert (Hfg : List.length (List.firstn j tg) = j) by (rewrite List.length_firstn; lia).
+    assert (Hfc : List.length (List.firstn j tc) = j) by (rewrite List.length_firstn; lia).
+    destruct Heq as [_ _ [R HR]].
+    rewrite (tele_sub_rev_split _ _ _ _ HG), (tele_sub_rev_split _ _ _ _ HC), <- !List.app_assoc in HR.
+    cbn [List.app] in HR.
+    assert (Hlt : List.length (tele_sub (List.rev (List.skipn (S j) tg)) (sb_qn (S j) σg)) =
+                  List.length (tele_sub (List.rev (List.skipn (S j) tc)) (sb_qn (S j) σc)))
+      by (rewrite !length_tele_sub, !List.length_rev, !List.length_skipn; lia).
+    destruct (per_ctx_env_app_tail _ _ _ _ _ Hlt HR) as (RT & HRT).
+    destruct (per_ctx_env_ass_inv _ _ _ _ _ HRT) as (RT0 & HRT0 & _ & Hty).
+    pose proof (tele_ass_firstn _ j Hag) as Hag'; pose proof (tele_ass_firstn _ j Hac) as Hac'.
+    pose proof (rel_ctx_wf_firstn _ _ j HWg) as HWg'; pose proof (rel_ctx_wf_firstn _ _ j HWc) as HWc'.
+    rewrite <- (List.rev_involutive (List.firstn j tg)) in Hgg; rewrite <- (List.rev_involutive (List.firstn j tc)) in Hgc.
+    assert (Hlg : List.length vs = List.length (List.rev (List.firstn j tg))) by (rewrite List.length_rev; lia).
+    assert (Hlc : List.length vs = List.length (List.rev (List.firstn j tc))) by (rewrite List.length_rev; lia).
+    destruct (outer_base _ _ _ _ _ _ _ Hag' HWg' HRΓ Hσg HρS HEg _ Hgg Hlg) as (RSg & _ & _ & HRSg & HEg' & _).
+    assert (E : RT0 <~> RSg) by (eapply per_ctx_env_right_irrel; eassumption).
+    destruct (Hty _ _ (proj2 (E _ _) HEg')) as (i0 & R0 & Ht0).
+    destruct (HTg _ _ HG) as [ig HGv]; destruct (HTc _ _ HC) as [ic HCv].
+    destruct (outer_typ_link _ _ _ _ _ _ _ _ _ _ Hag' HWg' HGv HRΓ Hσg HρS HEg _ Hgg Hlg) as (ag & bg & Eag & Ebg & [Rg HRg]).
+    destruct (outer_typ_link _ _ _ _ _ _ _ _ _ _ Hac' HWc' HCv HRΓ Hσc HρS HEc _ Hgc Hlc) as (ac & bc & Eac & Ebc & [Rc HRc]).
+    rewrite List.length_rev, Hfg in Eag; rewrite List.length_rev, Hfc in Eac.
+    destruct Ht0 as [a1 a2 Ea1 Ea2 HR0].
+    assert (a1 = ag) as -> by (eapply functional_eval_exp; eassumption).
+    assert (a2 = ac) as -> by (eapply functional_eval_exp; eassumption).
+    destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ (per_univ_sym _ _ _ _ HRg) HR0) as (R1 & H1 & _).
+    destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ H1 HRc) as (R2 & H2 & _).
+    exists ig, R2, bg, bc; split; [ exact Ebg | split; [ exact Ebc | exact H2 ] ].
+  Qed.
+
   (** Arguments related at a prefix of the container's telescope are
       related at the group's. *)
   Lemma tele_link_gargs : forall j, j <= List.length tg -> forall vs, List.length vs = j ->

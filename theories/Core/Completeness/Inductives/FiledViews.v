@@ -91,6 +91,45 @@ Section FiledViews.
     exact (rel_exp_under_ctx_gsub grp_sb_valid (vsv_is _ _ Hvsv _ _ _ _ _ _ _ _ _ _ Hk Hh Hq HI0 HT0)).
   Qed.
 
+  (** A view of the container of a view's container's member that is a view
+      too: the instance of the group's member the view takes it to is the
+      container's member's at the view's instance ([dt_view_view_is]). *)
+  Lemma filed_view_view_is : forall k Mk qc k' Is vm D' i' Mi' v q'' k'' Is'' vm'' D'' Mv X vm' j' C C' T,
+      ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_view q'' k'' Is'' vm'' ->
+      ind_lookup gc_deps gc_stack q'' = Some D'' -> decl_closed D'' ->
+      List.nth_error vm i' = Some v -> ind_member D v = Some Mv -> im_head Mv = mh_view q'' k'' X vm' ->
+      List.nth_error X j' = Some C ->
+      List.nth_error (List.map (fun I => I[sb_of_list Id Is]) Is'') j' = Some C' ->
+      List.nth_error (tele_insts (ind_uparams D'') Id Is'') j' = Some T ->
+      ind_uparams D ⊨ C ≈ C' : T[sb_of_list Id Is].
+  Proof.
+    intros * Hk Hh Hq Hi' Hh' Hq'' Hc'' Hv HMv HhMv HC HC' HT.
+    destruct (filed_shared _ _ _ _ _ _ _ _ _ _ _ Hk Hh Hq Hi' Hv HMv) as (Hc' & HIl & _).
+    pose proof (decl_closed_head_scoped _ Hc' _ _ _ _ _ _ Hi' Hh') as HsIs''.
+    rewrite (filed_link _ _ _ _ _ _ HMv HhMv) in HC; apply nth_error_map_inv in HC as (C0 & HC0 & ->).
+    apply nth_error_map_inv in HC' as (I'' & HI'' & ->).
+    assert (HC0' : List.nth_error (List.map (fun I => I[sb_of_list Id (IsS k)]) Is'') j' = Some I''[sb_of_list Id (IsS k)])
+      by (rewrite List.nth_error_map, HI''; reflexivity).
+    pose proof (vsv_view_is _ _ Hvsv k Mk qc k' Is vm D' i' Mi' v q'' k'' Is'' vm'' D'' Mv X vm' j' _ _ T
+                  Hk Hh Hq Hi' Hh' Hq'' Hv HMv HhMv HC0 HC0' HT) as H.
+    pose proof (rel_exp_under_ctx_gsub grp_sb_valid H) as H'; cbn [exp_sub] in H'.
+    assert (HsI : exp_scoped (List.length (IsS k)) I'')
+      by (rewrite HIl; rewrite List.Forall_forall in HsIs''; exact (HsIs'' _ (List.nth_error_In _ _ HI''))).
+    rewrite (exp_list_grp_sb0 _ _ I'') in H' by exact HsI.
+    assert (HTT : T[sb_of_list Id (IsS k)][grp_sb p D] = T[sb_of_list Id (List.map (fun I => I[grp_sb p D]) (IsS k))]).
+    { pose proof (tele_insts_closed_sub _ _ (sb_of_list Id (IsS k)) _ _ (dc_ass _ Hc'') (dc_uparams _ Hc'') HT) as H1.
+      pose proof (tele_insts_closed_sub _ _ (grp_sb p D) _ _ (dc_ass _ Hc'') (dc_uparams _ Hc'') H1) as H2.
+      pose proof (tele_insts_closed_sub _ _ (sb_of_list Id (List.map (fun I => I[grp_sb p D]) (IsS k))) _ _
+                    (dc_ass _ Hc'') (dc_uparams _ Hc'') HT) as H3.
+      rewrite List.map_map in H2.
+      rewrite (List.map_ext_in _ (fun I => I[sb_of_list Id (List.map (fun I => I[grp_sb p D]) (IsS k))])) in H2.
+      - rewrite H2 in H3; injection H3 as E; exact E.
+      - intros I HI; apply exp_list_grp_sb0; rewrite HIl.
+        rewrite List.Forall_forall in HsIs''; exact (HsIs'' _ HI). }
+    rewrite HTT, <- (filed_link _ _ _ _ _ _ Hk Hh) in H'; exact H'.
+  Qed.
+
   (** A view's non-uniform parameters are its container's at the view's
       instance. *)
   Lemma filed_view_nparams : forall k Mk qc k' Is vm Dq i' Mi' v Mv, ind_member D k = Some Mk ->
@@ -283,6 +322,17 @@ Section ValidGroupViews.
       List.nth_error (tele_insts (ind_uparams Dq) Id Is) j = Some T ->
       ind_uparams D ⊨ I : T.
   Proof. destruct (vid_views _ (vgr_valid _ _ Hg)) as [IsS Hvsv]; exact (filed_view_is p D IsS Hg Hcv Hvsv). Qed.
+
+  Lemma vg_view_view_is : forall k Mk qc k' Is vm D' i' Mi' v q'' k'' Is'' vm'' D'' Mv X vm' j' C C' T,
+      ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_view q'' k'' Is'' vm'' ->
+      ind_lookup gc_deps gc_stack q'' = Some D'' -> decl_closed D'' ->
+      List.nth_error vm i' = Some v -> ind_member D v = Some Mv -> im_head Mv = mh_view q'' k'' X vm' ->
+      List.nth_error X j' = Some C ->
+      List.nth_error (List.map (fun I => I[sb_of_list Id Is]) Is'') j' = Some C' ->
+      List.nth_error (tele_insts (ind_uparams D'') Id Is'') j' = Some T ->
+      ind_uparams D ⊨ C ≈ C' : T[sb_of_list Id Is].
+  Proof. destruct (vid_views _ (vgr_valid _ _ Hg)) as [IsS Hvsv]; exact (filed_view_view_is p D IsS Hg Hcv Hvsv). Qed.
 
   Lemma vg_view_nparams : forall k Mk qc k' Is vm Dq i' Mi' v Mv, ind_member D k = Some Mk ->
       im_head Mk = mh_view qc k' Is vm ->
