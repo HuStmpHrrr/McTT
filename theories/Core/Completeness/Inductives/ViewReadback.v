@@ -91,12 +91,16 @@ Qed.
 
 Section CrossFresh.
   #[local] Set Default Proof Using "All".
-  Variables (p : qname) (D : ind_decl).
-  Hypotheses (Hg : valid_group p D) (Hcv : containers_valid D).
+  Variable (VP : qname -> ind_decl -> Prop) (p : qname) (D : ind_decl).
+  Hypotheses (HP : valid_groups VP) (HPD : VP p D).
+  Let Hg := valid_groups_valid VP HP p D HPD.
+  Let Hcv := containers_valid_of_groups VP HP p D HPD.
   Variables (m : nat) (Mm : imember) (qc : qname) (k' : nat) (Is : list exp) (vm : list nat) (D' : ind_decl).
   Hypotheses (HMm : ind_member D m = Some Mm) (Hh : im_head Mm = mh_view qc k' Is vm)
     (Hq : ind_lookup gc_deps gc_stack qc = Some D').
-  Let HgQ := Hcv _ _ _ _ _ _ _ HMm Hh Hq.
+  Let HVQ := valid_groups_containers VP HP p D m Mm qc k' Is vm D' HPD HMm Hh Hq.
+  Let HgQ := valid_groups_valid VP HP qc D' HVQ.
+  Let HcvQ := containers_valid_of_groups VP HP qc D' HVQ.
   Variables (u0 cups ub : list domain).
   Hypotheses (Hgu : per_gargs (List.rev (ind_uparams D)) nil nil u0 u0) (Hu : List.length u0 = ind_nu D)
     (Ecups : ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil u0 ↘ cups)
@@ -107,10 +111,16 @@ Section CrossFresh.
 
   (** The fresh non-uniform parameters of the container's member at [ub]
       and of the group's at [u0] are related at the group's relation. *)
+  Record cross_params (nsA nsB : list domain) : Prop := mk_cross_params
+    { cp_rel : tele_rel (nr v) (List.rev (im_nparams Mv)) nsA nsB
+    ; cp_container : per_gargs (List.rev (im_params D' Mi')) nil nil (ub ++ nsA) (cups ++ nsB)
+    ; cp_container_right : per_gargs (List.rev (im_params D' Mi')) nil nil (cups ++ nsB) (cups ++ nsB)
+    ; cp_group_right : per_gargs (List.rev (im_params D Mv)) nil nil (u0 ++ nsB) (u0 ++ nsB) }.
+
   Lemma cross_fresh_nparams : forall s nsA nsB,
       Ftele List.rev (im_nparams Mi') in gc_deps ⍮ gc_stack ⍮ env_args nil ub ⍮ s ↘ nsA ->
       Ftele List.rev (im_nparams Mv) in gc_deps ⍮ gc_stack ⍮ env_args nil u0 ⍮ s ↘ nsB ->
-      tele_rel (nr v) (List.rev (im_nparams Mv)) nsA nsB.
+      cross_params nsA nsB.
   Proof.
     pose proof (view_nn p D Hg m Mm qc k' Is vm D' HMm Hh Hq i' Mi' v Mv HMi' Hv HMv) as Hnn.
     pose proof (vgr_valid _ _ Hg) as HD; pose proof (vgr_closed _ _ Hg) as Hc.
@@ -174,11 +184,18 @@ Section CrossFresh.
                tele_prefix_rel (nr v) j preA preB ->
                forall s rA rB, Ftele List.skipn j tc in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ preA) ⍮ s ↘ rA ->
                  Ftele List.skipn j tg in gc_deps ⍮ gc_stack ⍮ env_args nil (u0 ++ preB) ⍮ s ↘ rB ->
-                 tele_prefix_rel (nr v) (List.length tg) (preA ++ rA) (preB ++ rB)).
+                 tele_prefix_rel (nr v) (List.length tg) (preA ++ rA) (preB ++ rB) /\
+                 per_gargs tc (env_args nil ub) Ec (preA ++ rA) (preB ++ rB) /\
+                 per_gargs tc Ec Ec (preB ++ rB) (preB ++ rB) /\
+                 per_gargs tg Eg Eg (preB ++ rB) (preB ++ rB)).
     { induction n as [| n IH]; intros j preA preB Hjn LA LB G1 G2 G3 G4 Hpre s rA rB FA FB.
       - rewrite List.skipn_all2 in FA by (rewrite <- Hlen; lia).
         rewrite List.skipn_all2 in FB by lia.
-        inversion FA; inversion FB; subst; rewrite !List.app_nil_r; rewrite Nat.add_0_r in Hjn; rewrite <- Hjn; exact Hpre.
+        rewrite Nat.add_0_r in Hjn.
+        rewrite List.firstn_all2 in G1, G2 by (rewrite <- Hlen; lia).
+        rewrite List.firstn_all2 in G4 by lia.
+        inversion FA; inversion FB; subst; rewrite !List.app_nil_r.
+        split; [ exact Hpre | split; [ exact G1 | split; [ exact G2 | exact G4 ] ] ].
       - destruct (List.nth_error tc j) as [ec |] eqn:HC; [| apply List.nth_error_None in HC; lia ].
         destruct (List.nth_error tg j) as [eg |] eqn:HG; [| apply List.nth_error_None in HG; lia ].
         destruct (proj1 (List.Forall_forall _ _) Hac ec (List.nth_error_In _ _ HC)) as [C ->].
@@ -244,11 +261,21 @@ Section CrossFresh.
         + rewrite List.app_assoc, env_args_snoc; exact FB'.
     }
     intros s nsA nsB FA FB.
-    apply tele_rel_of_pre.
     pose proof (Main (List.length tg) 0 nil nil eq_refl eq_refl eq_refl ltac:(constructor) ltac:(constructor) ltac:(constructor)
                   ltac:(constructor) (tele_prefix_rel_nil _) s nsA nsB) as H.
     cbn [List.skipn List.app] in H; rewrite !List.app_nil_r in H.
-    exact (H FA FB).
+    destruct (H FA FB) as (Hpre & G1 & G2 & G4).
+    assert (HWt : ⊨ List.rev tc ++ ind_uparams D') by exact HWc0.
+    assert (HQcb : RQ Ec (env_args nil cups)) by (symmetry; exact HQc).
+    assert (HQbb : RQ (env_args nil ub) (env_args nil ub)) by (etransitivity; [ exact HQb | symmetry; exact HQb ]).
+    pose proof (per_gargs_base _ _ _ HRQ HWt Hac _ _ _ _ _ _ HQbE HQbb HQcb G1) as G1'.
+    pose proof (per_gargs_base _ _ _ HRQ HWt Hac _ _ _ _ _ _ HQEE HQcb HQcb G2) as G2'.
+    assert (Hub' : per_gargs (List.rev (ind_uparams D')) nil nil ub cups) by exact Hub.
+    constructor; unfold im_params; rewrite ?List.rev_app_distr.
+    - apply tele_rel_of_pre; exact Hpre.
+    - apply per_gargs_app_intro; [ rewrite List.length_rev; exact Hlb | exact Hub' | exact G1' ].
+    - apply per_gargs_app_intro; [ rewrite List.length_rev; exact Hlc | exact Hcc | exact G2' ].
+    - apply per_gargs_app_intro; [ rewrite List.length_rev; exact Hu | exact Hgu | exact G4 ].
   Qed.
 End CrossFresh.
 
