@@ -999,12 +999,12 @@ Qed.
 Record mty_params_link (Γ : ctx) (p : qname) (D : ind_decl) (m : nat) (Mm : imember) (Us Ns : list exp)
     (pc : qname) (k : nat) (Rs : list exp) : Prop := mk_mty_params_link
   { (** As many as the member has *)
-    mpl_len : List.length Ns = im_nn Mm
+    link_nparams_length : List.length Ns = im_nn Mm
     (** Each at the member's non-uniform telescope at [Us] *)
-  ; mpl_typed : forall j N T, List.nth_error Ns j = Some N ->
+  ; link_nparams_typed : forall j N T, List.nth_error Ns j = Some N ->
       List.nth_error (tele_insts (im_nparams Mm) (sb_of_list Id Us) Ns) j = Some T -> Γ ⊢ N : T
     (** The type former at [Rs] is the member's type at [Us] and [Ns] *)
-  ; mpl_eq : exists i, Γ ⊢ apps (a_ind pc k) Rs ≈ ind_mty p D m Us Ns : Typeω@i }.
+  ; link_types_equal : exists i, Γ ⊢ apps (a_ind pc k) Rs ≈ ind_mty p D m Us Ns : Typeω@i }.
 
 (** The uniform arguments of a member's type at typed uniform parameters
     are typed at its type former's uniform telescope. *)
