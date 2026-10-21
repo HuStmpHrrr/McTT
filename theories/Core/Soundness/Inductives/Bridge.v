@@ -1907,6 +1907,29 @@ Section Root.
                      Hend Mj qc kc Is vm Dq i' Mi' v Mv c gs1' A' gs2' gs1 t gs2 HMj Hh Hq HMi' Hv HMv Hc' Hc0 Hcr)) as [TG _].
     exact (TG kc Δ' _ Q' N[φ]ʷ x Hgi Mkc k Mj Us' HMkc HVMk eq_refl HΔ' HUs' ltac:(unfold ind_nu in *; lia) HPs').
   Qed.
+
+  (** By induction on the ranks of the views: the members a view nests
+      through are of lower rank. *)
+  Lemma glu_view_end_all : glu_view_end_ok p D ups NEl AEl DP DEl.
+  Proof.
+    destruct (dt_rank _ _ _ Hdt) as [rk Hrk].
+    assert (Hall : forall n j, rk j < n -> glu_view_end_at p D ups NEl AEl DP DEl j).
+    { induction n as [| n IH]; intros j Hj; [ lia |].
+      apply glu_view_end_root.
+      intros * HMj Hh Hq HMi' Hv HMv Hc' Hc0 Hcr.
+      pose proof (vro_nest _ _ _ _ Hrk _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMj Hh Hq HMi' Hv HMv Hc' Hc0) as Hn.
+      pose proof (cargs_nest_ok_at _ _ _ _ _ _ _ _ (cargs_corr_len _ _ _ Hcr) Hn) as Hlt.
+      exact (IH (ptyp_mem t) ltac:(lia)). }
+    intros j; exact (Hall (S (rk j)) j ltac:(lia)).
+  Qed.
 End Root.
+
+(** Every view of a group whose declaration is glued agrees with its
+    container. *)
+Theorem glu_views_ok_all : forall VP p D, valid_groups VP -> VP p D -> glu_ind_decl D -> glu_views_ok p D.
+Proof.
+  intros VP p D HVP HPD HG ups bu u NP NEl AP AEl DP DEl Hu Hgu Hbu Hule Hf.
+  exact (glu_view_end_all VP p D HVP HPD HG ups bu u NP NEl AP AEl DP DEl Hu Hgu Hbu Hule Hf).
+Qed.
 
 End Fixed_GCtx.
