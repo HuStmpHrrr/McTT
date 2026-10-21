@@ -134,7 +134,7 @@ Section Comps.
       rewrite Hidx; split; [ exact Hpa | exact HP ].
   Qed.
 
-  Lemma nparams_prefix_ass' : forall m Mm k, ind_member D m = Some Mm -> tele_ass (nparams_prefix Mm k ++ ind_uparams D).
+  Lemma nparams_prefix_ass_member : forall m Mm k, ind_member D m = Some Mm -> tele_ass (nparams_prefix Mm k ++ ind_uparams D).
   Proof.
     intros * HM; destruct (nparams_prefix_suffix D Mm k) as [Δ HΔ].
     pose proof (decl_closed_params_ass D m Mm Hc HM) as H; rewrite HΔ in H.
@@ -147,7 +147,7 @@ Section Comps.
     pose proof (member_params_wf _ _ _ _ _ Hdt HM) as H; rewrite HΔ in H; eapply ctx_app_wf_tail; exact H.
   Qed.
 
-  Lemma nparams_nparams_prefix_split' : forall Mm k, exists Δ, im_nparams Mm = Δ ++ nparams_prefix Mm k.
+  Lemma nparams_prefix_split_member : forall Mm k, exists Δ, im_nparams Mm = Δ ++ nparams_prefix Mm k.
   Proof.
     intros; exists (List.rev (List.skipn k (List.rev (im_nparams Mm)))).
     unfold nparams_prefix; rewrite <- List.rev_app_distr, List.firstn_skipn, List.rev_involutive; reflexivity.
@@ -168,9 +168,9 @@ Section Comps.
     destruct (nparams_lt_ass D m Mm k Hass HM Hk') as [A HA].
     pose proof (gid_npar _ HG m Mm k A HM HA) as HV.
     pose proof HV as [SbC HSbC _ _].
-    pose proof (nparams_prefix_ass' m Mm k HM) as HassC.
+    pose proof (nparams_prefix_ass_member m Mm k HM) as HassC.
     pose proof (length_nparams_prefix Mm k ltac:(lia)) as Hlpre.
-    destruct (nparams_nparams_prefix_split' Mm k) as [Δy HΔy].
+    destruct (nparams_prefix_split_member Mm k) as [Δy HΔy].
     assert (HassN : tele_ass (nparams_prefix Mm k)) by (unfold tele_ass in HassC; apply List.Forall_app in HassC as [H _]; exact H).
     assert (HlNs : k < List.length Ns).
     { assert (Hs : List.nth_error (tele_insts (im_nparams Mm) (sb_of_list Id Us) Ns) k <> None) by congruence.
@@ -546,5 +546,342 @@ Section Comps.
   Qed.
 
 End Comps.
+
+(** ** A Declared Member's Type at Glued Parameters *)
+
+(** The gluing of a declared member's type in the PER model: its families,
+    and the type and element predicates at them. *)
+#[warnings="-cannot-define-projection"]
+Record ind_glu_of_type (p : qname) (D : ind_decl) (ups ns : list domain) (u : uidx) (k : nat) (Mk : imember)
+    (R : relation domain) : Prop := mk_ind_glu_of_type
+  { igt_NP : nat -> nat -> list domain -> glu_typ_pred
+  ; igt_NEl : nat -> nat -> list domain -> glu_exp_pred
+  ; igt_AP : nat -> list domain -> String.string -> nat -> list domain -> glu_typ_pred
+  ; igt_AEl : nat -> list domain -> String.string -> nat -> list domain -> glu_exp_pred
+  ; igt_DP : nat -> list domain -> exp -> glu_typ_pred
+  ; igt_DEl : nat -> list domain -> exp -> glu_exp_pred
+  ; igt_P : glu_typ_pred
+  ; igt_El : glu_exp_pred
+  ; igt_R : relation domain
+  ; igt_glu : DG d_ind p k (ups ++ ns) ∈ glu_univ_elem u ↘ igt_P ↘ igt_El
+  ; igt_typ : igt_P <∙> ind_glu_typ_pred p D ups ns igt_NP igt_NEl igt_AP igt_AEl igt_DP igt_DEl k Mk Typeω@(ulvl u)
+  ; igt_exp : igt_El <∙> ind_glu_exp_pred p D ups ns igt_NP igt_NEl igt_AP igt_AEl igt_DP igt_DEl k Mk igt_R Typeω@(ulvl u)
+  ; igt_rel : R <~> igt_R
+  ; igt_fams : ind_fams_glu D ups u igt_NP igt_NEl igt_AP igt_AEl igt_DP igt_DEl }.
+
+(** The type former of a member applied to its parameters, value by value. *)
+Lemma eval_apps_indty : forall p D k Mk ys xs, ind_lookup gc_deps gc_stack p = Some D -> ind_member D k = Some Mk ->
+    List.length xs + List.length ys <= im_np D Mk ->
+    $*| d_ind p k xs & ys | gc_deps ⍮ gc_stack ↘ d_ind p k (xs ++ ys).
+Proof.
+  intros p D k Mk; induction ys as [| y ys IH]; intros xs Hl HM Hlen; [ rewrite List.app_nil_r; constructor |].
+  econstructor; [ eapply eval_app_indty; [ exact Hl | exact HM | cbn in *; lia ] |].
+  replace (xs ++ y :: ys) with ((xs ++ y :: nil) ++ ys) by (rewrite <- List.app_assoc; reflexivity).
+  apply IH; [ exact Hl | exact HM | rewrite List.length_app; cbn in *; lia ].
+Qed.
+
+Section Former.
+  Variable (p : qname) (D : ind_decl).
+  Hypothesis (Hl : ind_lookup gc_deps gc_stack p = Some D) (HG : glu_ind_decl D) (Hc : decl_closed D)
+    (Hdt : decl_typed gc_deps gc_stack D) (Hsu : ind_sort_univ (ind_sort D)) (Hass : grp_tele_ass D).
+
+  Lemma ind_sort_le : forall k Mk Δ Ms bu ups, ind_member D k = Some Mk -> ⊢ Δ -> List.length Ms = im_np D Mk ->
+      (forall j M T, List.nth_error Ms j = Some M -> List.nth_error (tele_insts (im_params D Mk) Id Ms) j = Some T -> Δ ⊢ M : T) ->
+      ⟦ ind_sort D ⟧ env_args nil ups ↘ bu ->
+      Δ ⊢ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ms] ⊆ Typeω@(ulvl (Completeness.Inductives.Decl.univ_idx bu)).
+  Proof.
+    intros * HM HΔ HMl HMs Hbu.
+    assert (HUl : List.length (List.firstn (ind_nu D) Ms) = ind_nu D) by (rewrite List.length_firstn; unfold im_np in *; lia).
+    destruct (params_typed_split _ _ D Hc k Mk Δ Ms HM HMl HMs) as [HU _].
+    pose proof (wf_sub_uparams _ _ D Hdt Hc Δ _ HΔ HUl HU) as Hσ.
+    destruct (sort_lvl_at _ _ D Hdt Hc _ _ HΔ Hσ) as [n Hn].
+    rewrite <- (List.firstn_skipn (ind_nu D) Ms) at 1.
+    replace (im_nn Mk) with (List.length (List.skipn (ind_nu D) Ms)) by (rewrite List.length_skipn; unfold im_np in *; lia).
+    rewrite exp_shift_past.
+    destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq in Hbu, Hn |- *; inversion Hbu; subst; cbn [Completeness.Inductives.Decl.univ_idx ulvl exp_sub].
+    - eapply wf_subtyp_refl'; apply wf_exp_eq_refl; mauto 3.
+    - cbn in Hn; eapply wf_subtyp_small_large; eassumption.
+  Qed.
+
+  Lemma glu_args_uparams_of_params : forall Mk Δ Ms vs, glu_args Δ (im_params D Mk) Id nil Ms vs ->
+      glu_args Δ (ind_uparams D) Id nil (List.firstn (ind_nu D) Ms) (List.firstn (ind_nu D) vs).
+  Proof.
+    intros * Hg.
+    destruct (glu_args_length _ _ _ _ _ _ Hg) as [L1 L2].
+    rewrite length_im_params in L1, L2.
+    rewrite <- (List.firstn_skipn (ind_nu D) Ms), <- (List.firstn_skipn (ind_nu D) vs) in Hg; unfold im_params in Hg.
+    apply glu_args_app in Hg; [ exact (proj1 Hg) | exact (dc_ass _ Hc) | |];
+      rewrite List.length_firstn; unfold im_np, ind_nu in *; lia.
+  Qed.
+
+  (** A declared member's type at parameters glued to [ups ++ ns], at
+      gluings of the clause at [ups]. *)
+  Lemma ind_typ_at_of_args : forall k Mk Δ Ms ups ns bu (u : uidx) NP NEl AP AEl DP DEl,
+      ind_member D k = Some Mk -> k < ind_ndecl D -> ⊢ Δ ->
+      glu_args Δ (im_params D Mk) Id nil Ms (ups ++ ns) -> List.length ups = ind_nu D ->
+      ⟦ ind_sort D ⟧ env_args nil ups ↘ bu -> uidx_le (Completeness.Inductives.Decl.univ_idx bu) u ->
+      ind_fams_glu D ups u NP NEl AP AEl DP DEl ->
+      ind_typ_at p D ups ns NP NEl AP AEl DP DEl k Mk Typeω@(ulvl u) Δ (apps (a_ind p k) Ms) Ms.
+  Proof.
+    intros * HM Hlt HΔ Hg Hu Hbu Hule Hf.
+    assert (Hsub : forall Δ' Ms', ⊢ Δ' -> List.length Ms' = im_np D Mk ->
+              (forall j M T, List.nth_error Ms' j = Some M -> List.nth_error (tele_insts (im_params D Mk) Id Ms') j = Some T -> Δ' ⊢ M : T) ->
+              Δ' ⊢ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ms'] ⊆ Typeω@(ulvl u)).
+    { intros Δ' Ms' HΔ'0 HMl' HMs'.
+      eapply wf_subtyp_trans; [ eapply ind_sort_le; eassumption |].
+      pose proof (uidx_le_ulvl_le _ _ Hule) as Hlv.
+      destruct (Nat.eq_dec (ulvl (Completeness.Inductives.Decl.univ_idx bu)) (ulvl u)) as [-> | Hne].
+      - eapply wf_subtyp_refl'; apply wf_exp_eq_refl; mauto 3.
+      - apply wf_subtyp_univ; [ exact HΔ'0 | lia ]. }
+    pose proof (decl_closed_params_ass D k Mk Hc HM) as HassP.
+    pose proof (decl_closed_params D k Mk Hc HM) as Hs.
+    destruct (glu_args_params_top _ _ _ _ _ HassP Hs Hg) as [HMl HMs _].
+    split.
+    - eapply wf_exp_eq_subtyp'; [| eapply Hsub; eassumption ].
+      eapply wf_exp_eq_ind_apps; [ exact Hl | exact HM | exact Hlt | exact HΔ | exact HMl | exact HMl |].
+      intros j N N' T HN HN' HT; rewrite HN in HN'; injection HN' as <-; apply wf_exp_eq_refl; eapply HMs; eassumption.
+    - intros Δ' φ Hφ.
+      assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
+      pose proof (glu_args_wk _ _ _ _ _ _ _ HassP Hs Hφ Hg) as Hg'.
+      pose proof (glu_args_params_top _ _ _ _ _ HassP Hs Hg') as Htop.
+      split; [ exact Htop | split ].
+      + destruct Htop as [HMl' HMs' _]; eapply Hsub; eassumption.
+      + intros Ps' HPs'.
+        pose proof (glu_args_resp_eq _ _ _ _ _ _ HassP (member_params_wf _ _ _ _ _ Hdt HM) HΔ' HPs' Hg') as Hg''.
+        pose proof (glu_args_uparams_of_params _ _ _ _ Hg'') as HUs.
+        rewrite firstn_app_exact in HUs by exact Hu.
+        eapply comps_of_uparams; eassumption.
+  Qed.
+
+  (** The gluing of a declared member's type in the PER model. *)
+  Lemma ind_glu_of_per : forall (u : uidx) R k Mk pm ups ns, ind_member D k = Some Mk -> im_head Mk = mh_decl pm ->
+      DF d_ind p k (ups ++ ns) ≈ d_ind p k (ups ++ ns) ∈ per_univ_elem u ↘ R -> List.length ups = ind_nu D ->
+      ind_glu_of_type p D ups ns u k Mk R.
+  Proof.
+    intros * HM Hh HR Hu.
+    destruct (per_univ_glu_univ_elem u _ (ex_intro _ R HR)) as (P & El & Hglu).
+    pose proof Hglu as Hglu'.
+    invert_glu_univ_elem Hglu'.
+    match goal with H : ind_lookup _ _ p = Some ?D0 |- _ => assert (D0 = D) as -> by congruence end.
+    match goal with H : ind_member D k = Some ?M0 |- _ => assert (M0 = Mk) as -> by congruence end.
+    match goal with H : ?w ++ ?x = ups ++ ns, H' : List.length ?w = ind_nu D |- _ =>
+      destruct (app_split_eq _ _ _ _ H ltac:(congruence)) as [-> ->] end.
+    handle_per_univ_elem_irrel.
+    econstructor; [ exact Hglu | eassumption | eassumption | eassumption |].
+    constructor; eassumption.
+  Qed.
+
+  Lemma glu_sub_params : forall k Mk Δ Ms vs Sb, ind_member D k = Some Mk -> ⊢ Δ -> EG im_params D Mk ∈ glu_ctx_env ↘ Sb ->
+      glu_args Δ (im_params D Mk) Id nil Ms vs -> Δ ⊢ˢ sb_of_list Id Ms ® env_args nil vs ∈ Sb.
+  Proof.
+    intros * HM HΔ HSb Hg.
+    eapply glu_sub_of_list with (C := im_params D Mk) (Γ0 := ⋅) (Sb0 := nil_glu_sub_pred);
+      [ exact (decl_closed_params_ass D k Mk Hc HM) | rewrite List.app_nil_r; exact HSb
+      | econstructor; [ reflexivity | eapply ctx_wf_gctx; exact HΔ ] | cbn; apply wf_sub_nil'; exact HΔ | exact Hg ].
+  Qed.
+
+  Lemma glu_sub_uparams : forall Δ Us ups Sb, ⊢ Δ -> EG ind_uparams D ∈ glu_ctx_env ↘ Sb ->
+      glu_args Δ (ind_uparams D) Id nil Us ups -> Δ ⊢ˢ sb_of_list Id Us ® env_args nil ups ∈ Sb.
+  Proof.
+    intros * HΔ HSb Hg.
+    eapply glu_sub_of_list with (C := ind_uparams D) (Γ0 := ⋅) (Sb0 := nil_glu_sub_pred);
+      [ exact (dc_ass _ Hc) | rewrite List.app_nil_r; exact HSb | econstructor; [ reflexivity | eapply ctx_wf_gctx; exact HΔ ]
+      | cbn; apply wf_sub_nil'; exact HΔ | exact Hg ].
+  Qed.
+
+  (** The universe of the sort at the parameters' values is the one at the
+      uniform ones. *)
+  Lemma sort_idx_params : forall k Mk Δ Ms vs b, ind_member D k = Some Mk -> ⊢ Δ -> glu_args Δ (im_params D Mk) Id nil Ms vs ->
+      ⟦ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ ⟧ env_args nil vs ↘ b ->
+      exists bu, ⟦ ind_sort D ⟧ env_args nil (List.firstn (ind_nu D) vs) ↘ bu /\
+        Completeness.Inductives.Decl.univ_idx bu = Completeness.Inductives.Decl.univ_idx b.
+  Proof.
+    intros * HM HΔ Hg Hb.
+    destruct (glu_args_length _ _ _ _ _ _ Hg) as [_ Hvl]; rewrite length_im_params in Hvl.
+    pose proof (member_params_wf _ _ _ _ _ Hdt HM) as HΔP; pose proof (dt_sort _ _ _ Hdt) as [iS HS].
+    destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq in Hb, HS |- *; cbn [exp_wk] in Hb.
+    - inversion Hb; subst; exists (d_univ i0); split; [ constructor | reflexivity ].
+    - inversion Hb; subst.
+      match goal with Hlv : ⟦ t[wk_shiftn _]ʷ ⟧ _ ↘ ?l |- _ => rename l into lv; rename Hlv into Hlv0 end.
+      destruct (gid_lvl _ HG) as [n HLu]; rewrite Heq in HLu; cbn [ind_sort_lvl] in HLu.
+      pose proof HLu as [SbU HSbU _ _].
+      pose proof (glu_sub_uparams _ _ _ _ HΔ HSbU (glu_args_uparams_of_params _ _ _ _ Hg)) as Hσu.
+      destruct (glu_rel_exp_level_elim HSbU HLu _ _ _ Hσu) as (l' & Hl' & _).
+      exists (d_suniv l'); split; [ econstructor; exact Hl' |].
+      pose proof (gid_params _ HG _ _ HM) as [SbP HSbP].
+      pose proof (glu_sub_params _ _ _ _ _ _ HM HΔ HSbP Hg) as Hσ.
+      assert (HCs : ⊨ im_nparams Mk ++ ind_uparams D) by (apply completeness_fundamental_ctx; exact HΔP).
+      assert (HSs : ind_uparams D ⊨ Type⟨t⟩ : Typeω@iS) by (apply completeness_fundamental_exp; exact HS).
+      destruct (rel_ctx_wf_per_ctx_env HCs) as [R HR].
+      pose proof (glu_ctx_env_per_env HSbP HR Hσ) as HE.
+      assert (Eb : ⟦ Type⟨t⟩[wk_shiftn (List.length (im_nparams Mk))]ʷ ⟧ env_args nil vs ↘ d_suniv lv)
+        by (rewrite length_im_nparams; cbn [exp_wk]; econstructor; exact Hlv0).
+      assert (Ea : ⟦ Type⟨t⟩ ⟧ ⟪wk_shiftn (List.length (im_nparams Mk))⟫ (env_args nil vs) ↘ d_suniv l').
+      { replace (env_args nil vs) with (env_args (env_args nil (List.firstn (ind_nu D) vs)) (List.skipn (ind_nu D) vs))
+          by (rewrite <- env_args_app, List.firstn_skipn; reflexivity).
+        replace (List.length (im_nparams Mk)) with (List.length (List.skipn (ind_nu D) vs))
+          by (rewrite List.length_skipn, length_im_nparams; unfold im_np in *; lia).
+        rewrite Completeness.UnitCases.eval_wk_shiftn_args; econstructor; exact Hl'. }
+      exact (Completeness.Inductives.Decl.univ_idx_wk _ _ _ _ _ _ _ _ _ HCs HSs HR HE Eb Ea ltac:(right; eauto)).
+  Qed.
+
+  Lemma sort_shift_scoped : forall Mk, exp_scoped (im_np D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ.
+  Proof.
+    intros; eapply exp_scoped_wk; [ exact (dc_sort _ Hc) |]; intros x Hx.
+    unfold wk_shiftn, im_np; lia.
+  Qed.
+
+  Lemma scoped_inst_wk : forall n M Ms φ, exp_scoped n M -> List.length Ms = n ->
+      M[sb_of_list Id Ms][φ]ʷ = M[sb_of_list Id (List.map (fun N => N[φ]ʷ) Ms)].
+  Proof.
+    intros * Hs Hlen.
+    rewrite <- exp_sub_of_wk, exp_sub_sub.
+    rewrite <- (List.map_ext _ _ (fun N => exp_sub_of_wk N φ)).
+    eapply exp_scoped_sub_agree; [ exact Hs |]; intros x Hx; cbn [sb_compose].
+    apply sb_of_list_lt_compose; lia.
+  Qed.
+
+  (** The type former of a declared member applied to glued parameters is
+      glued at the sort's universe. *)
+  Lemma ind_former_base : forall k Mk pm Δ Ms vs (i : nat) b P El, ind_member D k = Some Mk -> im_head Mk = mh_decl pm -> ⊢ Δ ->
+      glu_args Δ (im_params D Mk) Id nil Ms vs ->
+      ⟦ (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ ⟧ env_args nil vs ↘ b -> DG b ∈ glu_univ_elem i ↘ P ↘ El ->
+      (forall R, DF b ≈ b ∈ per_univ_elem i ↘ R -> R (d_ind p k vs) (d_ind p k vs)) ->
+      Δ ⊢ apps (a_ind p k) Ms : (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ms] ® d_ind p k vs ∈ El.
+  Proof.
+    intros * HM Hh HΔ Hg Hb Hglu HPER.
+    assert (Hlt : k < ind_ndecl D) by (eapply decl_member_lt; eassumption).
+    pose proof (decl_closed_params_ass D k Mk Hc HM) as HassP.
+    pose proof (decl_closed_params D k Mk Hc HM) as Hs.
+    pose proof (glu_args_params_top _ _ _ _ _ HassP Hs Hg) as Htop.
+    pose proof Htop as [HMl HMs HMr].
+    destruct (glu_args_length _ _ _ _ _ _ Hg) as [_ Hvl]; rewrite length_im_params in Hvl.
+    destruct (sort_idx_params _ _ _ _ _ _ HM HΔ Hg Hb) as (bu & Hbu & Hidx).
+    assert (Hvs : vs = List.firstn (ind_nu D) vs ++ List.skipn (ind_nu D) vs) by (symmetry; apply List.firstn_skipn).
+    set (ups := List.firstn (ind_nu D) vs) in *; set (ns := List.skipn (ind_nu D) vs) in *.
+    assert (Hu : List.length ups = ind_nu D) by (unfold ups; rewrite List.length_firstn; unfold im_np in *; lia).
+    assert (HAeq : Δ ⊢ apps (a_ind p k) Ms ≈ apps (a_ind p k) Ms : (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ms]).
+    { eapply wf_exp_eq_ind_apps; [ exact Hl | exact HM | exact Hlt | exact HΔ | exact HMl | exact HMl |].
+      intros j N N' T HN HN' HT; rewrite HN in HN'; injection HN' as <-; apply wf_exp_eq_refl; eapply HMs; eassumption. }
+    assert (HAt : Δ ⊢ apps (a_ind p k) Ms : (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ms]) by (gen_presups; assumption).
+    destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [Rb HRb].
+    pose proof (HPER _ HRb) as Hdind.
+    assert (Hub : Completeness.Inductives.Decl.is_univ b)
+      by (destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq in Hb; cbn in Hb; inversion Hb; [ left | right ]; eauto).
+    destruct (Completeness.Inductives.Decl.per_univ_elem_univ _ _ _ _ HRb Hub) as [_ HRb'].
+    apply HRb' in Hdind; destruct Hdind as [R' HR'].
+    rewrite <- Hidx in HR'; rewrite Hvs in HR', Hg.
+    destruct (ind_glu_of_per _ R' k Mk pm ups ns HM Hh HR' Hu) as [NP NEl AP AEl DP DEl Pd Eld R'' Hglud HPd HEd HRR Hf].
+    pose proof (ind_typ_at_of_args k Mk Δ Ms ups ns bu _ NP NEl AP AEl DP DEl HM Hlt HΔ Hg Hu Hbu (uidx_le_refl _) Hf) as Hit.
+    assert (Hgd : glu_univ_typ (Completeness.Inductives.Decl.univ_idx bu) (d_ind p k vs) Δ (apps (a_ind p k) Ms))
+      by (rewrite Hvs; apply (mk_glu_typ_at _ _ _ _ Pd Eld); [ exact Hglud | apply HPd; exists Ms; exact Hit ]).
+    clear HPER.
+    destruct Hsu as [[i0 Heq] | [t Heq]]; rewrite Heq in Hb, HAt |- *; cbn [exp_wk exp_sub] in Hb, HAt |- *; inversion Hb; subst b.
+    - invert_glu_univ_elem Hglu.
+      apply_predicate_equivalence.
+      cbn [Completeness.Inductives.Decl.univ_idx] in Hidx; rewrite Hidx in Hgd.
+      econstructor; [ exact HAt | apply wf_exp_eq_refl; mauto 3 | exact Hgd ].
+    - invert_glu_univ_elem Hglu.
+      apply_predicate_equivalence.
+      cbn [Completeness.Inductives.Decl.univ_idx] in Hidx; rewrite Hidx in Hgd.
+      destruct (gid_lvlP _ HG _ _ HM) as [n HLv]; rewrite Heq in HLv; cbn [ind_sort_lvl exp_wk] in HLv.
+      pose proof HLv as [SbP HSbP _ _].
+      rewrite <- Hvs in Hg.
+      pose proof (glu_sub_params _ _ _ _ _ _ HM HΔ HSbP Hg) as Hσ.
+      destruct (glu_rel_exp_level_elim HSbP HLv _ _ _ Hσ) as (m & Hm & _ & Hglul).
+      assert (m = l) as -> by (eapply functional_eval_exp; eassumption).
+      assert (Htl : Δ ⊢ t[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ms] : Level@n)
+        by (eapply glu_lvl_escape; [ eassumption | exact Hglul | exact HΔ ]).
+      econstructor; [ exact HAt | | exact Hgd |].
+      + apply (mk_suniv_glu_typ _ _ _ _ (t[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ms]) n); [ exact Hglul |].
+        apply wf_exp_eq_refl; mauto 3.
+      + intros Δ' φ W Hφ HW.
+        inversion HW.
+        match goal with H : ind_lookup _ _ p = Some ?D1 |- _ => assert (D1 = D) as -> by congruence end.
+        match goal with H : ind_member D k = Some ?M1 |- _ => assert (M1 = Mk) as -> by congruence end.
+        match goal with HR : Rps vs at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Rs |- _ => pose proof (HMr _ _ _ Hφ HR) as [HRl HRs] end.
+        cbn [nf_to_exp].
+        rewrite apps_wk; cbn [exp_wk].
+        assert (HS' : exp_scoped (im_np D Mk) (Type⟨t[wk_shiftn (im_nn Mk)]ʷ⟩))
+          by (pose proof (sort_shift_scoped Mk) as Hss; rewrite Heq in Hss; exact Hss).
+        change (Type⟨t[wk_shiftn (im_nn Mk)]ʷ[sb_of_list Id Ms][φ]ʷ⟩) with ((Type⟨t[wk_shiftn (im_nn Mk)]ʷ⟩)[sb_of_list Id Ms][φ]ʷ).
+        rewrite (scoped_inst_wk _ _ _ _ HS' HMl).
+        assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
+        assert (Hl1 : List.length (List.map (fun N => N[φ]ʷ) Ms) = im_np D Mk) by (rewrite List.length_map; exact HMl).
+        pose proof (wf_exp_eq_ind_apps _ _ _ _ _ _ _ Hl HM Hlt HΔ' Hl1 ltac:(rewrite <- HRl; exact Hl1) HRs) as Heqn.
+        rewrite Heq in Heqn; exact Heqn.
+  Qed.
+
+  Lemma sb_of_list_scoped_base : forall M Ms σ τ, exp_scoped (List.length Ms) M ->
+      M[sb_of_list σ Ms] = M[sb_of_list τ Ms].
+  Proof.
+    intros * Hs; eapply exp_scoped_sub_agree; [ exact Hs |]; intros x Hx.
+    rewrite !(sb_of_list_nth _ _ _ (a_var 0)) by exact Hx; reflexivity.
+  Qed.
+
+  (** The PER of the closed constant [a_ind p k] at its type. *)
+  Lemma ind_former_per : forall k Mk (i : nat) R a, ind_member D k = Some Mk -> k < ind_ndecl D ->
+      ⟦ ind_ty D Mk ⟧ nil ↘ a -> DF a ≈ a ∈ per_univ_elem i ↘ R -> R (d_ind p k nil) (d_ind p k nil).
+  Proof.
+    intros * HM Hlt Ha HR.
+    assert (HΔ0 : ⊢ ⋅) by (constructor; eapply ctx_wf_gctx; exact (member_params_wf _ _ _ _ _ Hdt HM)).
+    assert (Hty : ⋅ ⊢ a_ind p k : ind_ty D Mk) by (eapply wf_ind; eassumption).
+    destruct (rel_exp_under_ctx_simple (completeness_fundamental_exp _ _ _ Hty)) as (env_rel & Henv & j & Hsimp).
+    assert (Hnil : env_rel nil nil) by (inversion Henv; subst; match goal with H : _ <~> _ |- _ => apply H; exact I end).
+    destruct (Hsimp _ _ Hnil) as (a1 & a2 & R1 & Ha1 & Ha2 & HR1 & m1 & m2 & Hm1 & Hm2 & Hmm).
+    assert (a1 = a) as -> by (eapply functional_eval_exp; eassumption).
+    assert (a2 = a) as -> by (eapply functional_eval_exp; eassumption).
+    inversion Hm1; subst; inversion Hm2; subst.
+    apply (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR1 HR); exact Hmm.
+  Qed.
+
+  (** The type former of a declared member is glued at its type. *)
+  Lemma glu_rel_exp_ind0 : forall k Mk pm, ind_member D k = Some Mk -> im_head Mk = mh_decl pm -> ⋅ ⊩ a_ind p k : ind_ty D Mk.
+  Proof.
+    intros k Mk pm HM Hh.
+    assert (Hg0 : ⊢ᵍ gc_deps ⍮ gc_stack) by (eapply ctx_wf_gctx; exact (member_params_wf _ _ _ _ _ Hdt HM)).
+    assert (HΔ0 : ⊢ ⋅) by (constructor; exact Hg0).
+    assert (Hlt : k < ind_ndecl D) by (eapply decl_member_lt; [ exact HΔ0 | eassumption | eassumption | eassumption ]).
+    pose proof (decl_closed_params_ass D k Mk Hc HM) as HassP.
+    pose proof (decl_closed_params D k Mk Hc HM) as Hs.
+    destruct (ind_ty_typed0 _ _ _ _ _ Hdt HM) as [j Hj].
+    destruct (gid_params _ HG _ _ HM) as [SbP HSbP].
+    assert (HSbP0 : EG im_params D Mk ++ ⋅ ∈ glu_ctx_env ↘ SbP) by (rewrite List.app_nil_r; exact HSbP).
+    destruct (glu_ctx_env_entries_valid _ _ _ HassP HSbP0 j) as (i & Hji & HAents).
+    assert (Hi : ⋅ ⊢ ind_ty D Mk : Typeω@i) by (eapply lift_exp_ge; [ exact Hji | exact Hj ]).
+    eapply (glu_closed_const _ _ i (d_ind p k nil)); [ reflexivity | intros; eapply ind_ty_sub; eassumption | exact Hi | intros; constructor |].
+    intros Δ σ Hσ a P El Ha Hglu.
+    assert (HΔ : ⊢ Δ) by exact (wf_sub_dom _ _ _ _ _ Hσ).
+    pose proof Hi as Hi'; unfold ind_ty in Hi'.
+    destruct (ctx_pi_split_typed _ _ _ _ HassP Hi') as [HCs _].
+    unfold ind_ty in Ha |- *.
+    replace (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ)
+      with ((ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ)[σ])
+      by (change (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) with (ind_ty D Mk); eapply ind_ty_sub; eassumption).
+    change (a_ind p k) with (apps (a_ind p k) nil).
+    eapply (ctx_pi_glu_elem_by (fun xs w => w = d_ind p k xs) (a_ind p k) (im_params D Mk ++ ⋅))
+      with (Γb := ⋅) (Sb_b := nil_glu_sub_pred) (Sb := SbP) (xs := nil);
+      [ reflexivity | | exact HassP | eapply glu_ctx_env_nil; [ reflexivity | exact Hg0 ] | exact HSbP0
+      | exists nil; reflexivity
+      | intros; eapply HAents; eassumption
+      | intros; eapply HCs; eassumption
+      | exact Hσ | reflexivity | reflexivity | | | | exact Ha | exact Hglu ].
+    - intros Δ1 Γ' Sb' Δ' σ' xs x w HT _ _ HlΓ ->.
+      exists (d_ind p k (xs ++ x :: nil)); split; [| reflexivity ].
+      eapply eval_app_indty; [ exact Hl | exact HM |].
+      assert (List.length Γ' <= List.length (im_params D Mk ++ ⋅)) by (rewrite HT, List.length_app; lia).
+      rewrite List.app_nil_r, length_im_params in *; lia.
+    - cbn [apps_exp]; change (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) with (ind_ty D Mk).
+      erewrite ind_ty_sub by eassumption; eapply wf_ind; eassumption.
+    - intros R a' Ha' HR; exact (ind_former_per _ _ _ _ _ HM Hlt Ha' HR).
+    - intros Δ' φ Ms vs w' Hφ Hg -> b P' El' Hb Hglub HPb; cbn [List.map List.app] in *.
+      assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
+      apply (glu_args_closed_base _ _ _ Id _ _ _ HassP Hs) in Hg.
+      destruct (glu_args_length _ _ _ _ _ _ Hg) as [HMl _].
+      rewrite (sb_of_list_scoped_base _ _ _ Id) by (rewrite HMl, length_im_params; exact (sort_shift_scoped Mk)).
+      exact (ind_former_base _ _ _ _ _ _ _ _ _ _ HM Hh HΔ' Hg Hb Hglub HPb).
+  Qed.
+
+End Former.
 
 End Fixed_GCtx.
