@@ -3063,6 +3063,79 @@ Section ElimGlu.
       rewrite Eσ, vbr_EUs, vbr_EB.
       exact (glu_elem_retype _ _ _ _ _ _ _ _ _ _ _ _ Hg' Hg HTP' HMg' HTP).
     Qed.
+
+    (** The substitution of the wrapped branch, glued at the environment the
+        readback evaluates the view's branch in: the parameters and the
+        arguments are the fresh variables, the recursive results the
+        container's variables or the eliminator at the argument
+        ([vbr_nested]). *)
+    Lemma vbr_glu_sub : forall SbB, EG C ++ Γ ∈ glu_ctx_env ↘ SbB ->
+        Δc ⊢ˢ sb_of_list σw Ms ® env_args ρ (ns ++ vs ++ wihs) ∈ SbB.
+    Proof.
+      intros SbB HSbB.
+      pose proof (fresh_tele_length _ _ _ _ Fn) as Ln; rewrite List.length_rev, length_im_nparams in Ln.
+      pose proof (fresh_cargs_length _ _ _ _ _ _ Fc) as Lv.
+      destruct (Completeness.Inductives.Elim.rec_results_rel_len _ _ _ _ _ _ _ _ _ _ _ _ Hir) as [Li _].
+      pose proof vbr_na as Xna.
+      pose proof vbr_lenc as Xlc.
+      eapply glu_sub_of_list_by; [ exact (elim_bctx_ass p D v Mv gs (blocks_motives Bks) Us Hc HMv) | exact HSbB | exact HSbΓ | exact vbr_σw
+                                 | exact vbr_len | rewrite length_elim_bctx, !List.length_app; lia |].
+      intros kk M T w A a i P El HMk HT Hw HA Ea Hg HTP.
+      pose proof (vbr_typed kk M T HMk HT) as HMt.
+      destruct (bctx_link_gen v Mv c gs HMv Hcon (length Δ) ns vs wihs hd k0 pre Fn Fc Lpre HGm Hir kk A a HA Ea)
+        as [(Hk & b' & n0 & Hw' & Hab) | (gs1 & t & gs2 & v' & b' & n0 & Heq & -> & Hv' & Eb & Hab & i0 & R & x & Hx & HR & Hxx)].
+      - (** A parameter or an argument: a variable. *)
+        rewrite Hw in Hw'; injection Hw' as ->.
+        assert (EM : M = a_var (n' - 1 - kk)).
+        { destruct (Nat.lt_ge_cases kk (im_nn Mv)) as [Hlt | Hge].
+          - rewrite List.nth_error_app1 in HMk by (rewrite length_vars_from; lia).
+            apply vars_from_nth_error in HMk as [_ ->]; f_equal; lia.
+          - rewrite List.nth_error_app2, List.nth_error_app1 in HMk by (rewrite !length_vars_from; lia).
+            apply vars_from_nth_error in HMk as [_ ->]; rewrite length_vars_from; f_equal; lia. }
+        subst M.
+        pose proof (var_glu_elem_per i a b' n0 P El Δc T _ Hg HTP HMt ltac:(rewrite Xlc; lia) Hab) as H.
+        replace (length Δc - 1 - (n' - 1 - kk)) with (length Δ + kk) in H by (rewrite Xlc; lia).
+        exact H.
+      - (** A recursive result. *)
+        assert (Lg1 : List.length gs1 < List.length gs') by (rewrite Xna, Heq, List.length_app; cbn; lia).
+        rewrite List.app_assoc, List.nth_error_app2 in Hw by (rewrite List.length_app; lia).
+        rewrite List.length_app, Ln, Lv in Hw.
+        replace (im_nn Mv + List.length gs + cargs_nrec gs1 - (im_nn Mv + List.length gs)) with (cargs_nrec gs1) in Hw by lia.
+        rewrite Hx in Hw; injection Hw as <-.
+        rewrite List.app_assoc, List.nth_error_app2 in HMk by (rewrite List.length_app, !length_vars_from; lia).
+        rewrite List.length_app, !length_vars_from in HMk.
+        replace (im_nn Mv + List.length gs + cargs_nrec gs1 - (im_nn Mv + List.length gs')) with (cargs_nrec gs1) in HMk by lia.
+        destruct (nth_error_lt_some gs' (List.length gs1) Lg1) as [g' Hg'].
+        destruct (List.nth_error_split gs' (List.length gs1) Hg') as (gs1' & gs2' & Egs' & Hl1).
+        assert (Hcorr' : cargs_corr vm (gs1' ++ g' :: gs2') (gs1 ++ ca_rec t :: gs2)) by (rewrite <- Egs', <- Heq; exact Hcorr).
+        pose proof (wrap_ihs_at gs1' g' gs2' gs1 t gs2 Ihs 0 (cargs_nrec gs') vm Hl1 Hcorr') as EW.
+        rewrite <- Egs', <- Heq in EW.
+        rewrite EW in HMk; injection HMk as <-.
+        assert (Wi' : ⟦wihs vs of (gs1' ++ g' :: gs2') (gs1 ++ ca_rec t :: gs2) with ihs under p ups Bks ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ wihs)
+          by (rewrite <- Egs', <- Heq; exact Wi).
+        destruct (wrap_ihs_eval_at ρ p ups Bks gs1' g' gs2' gs1 t gs2 vs ihs wihs Hl1 Wi') as (v'' & x' & Hv'' & Hx' & Hm').
+        rewrite Hv' in Hv''; injection Hv'' as <-.
+        rewrite Hx in Hx'; injection Hx' as <-.
+        destruct g' as [A' | t'].
+        + (** Recursive in the view only: the eliminator at the argument. *)
+          assert (HN : List.nth_error avars (List.length gs1) = Some (a_var (cargs_nrec gs' + (List.length gs' - 1 - List.length gs1)))).
+          { rewrite <- (vars_from_nth (cargs_nrec gs') (List.length gs') (List.length gs' - 1 - List.length gs1) (a_var 0)) by lia.
+            replace (List.length gs' - 1 - (List.length gs' - 1 - List.length gs1)) with (List.length gs1) by lia.
+            apply List.nth_error_nth'; rewrite length_vars_from; lia. }
+          rewrite (List.nth_error_nth _ _ _ (elim_ihs_nth _ _ _ _ _ gs1 _ gs t gs2 avars _ Heq ltac:(rewrite length_vars_from; exact Xna) HN)).
+          exact (vbr_nested gs1' A' gs2' gs1 t gs2 v' x b' n0 a i0 R i P El T Egs' Heq Hl1 Hv' Hm' Eb Hab HR Hxx Hg HTP).
+        + (** Recursive in the container: its variable. *)
+          destruct (fresh_ihs_at _ _ _ gs1' t' gs2' gs1 t gs2 vs _ ihs Hl1 ltac:(rewrite <- Egs', <- Heq; exact Fi)) as (v0 & a0 & Hv0 & Ea0 & Hi0).
+          rewrite Hv' in Hv0; injection Hv0 as <-.
+          rewrite <- env_args_app, <- List.app_assoc in Ea0.
+          pose proof (functional_eval_ihty _ _ _ _ _ _ _ Eb Ea0) as <-.
+          rewrite Hm' in Hi0; injection Hi0 as ->.
+          assert (Hr1 : cargs_nrec gs1' < cargs_nrec gs') by (rewrite Egs', Views.cargs_nrec_app; cbn; lia).
+          pose proof (var_glu_elem_per i a b' n0 P El Δc T _ Hg HTP HMt ltac:(rewrite Xlc; lia) Hab) as H.
+          replace (length Δc - 1 - (cargs_nrec gs' - 1 - cargs_nrec gs1'))
+            with (length Δ + im_nn Mv + List.length gs' + cargs_nrec gs1') in H by (rewrite Xlc; lia).
+          exact H.
+    Qed.
   End ViewBranch.
 
   (** ** On a Neutral
