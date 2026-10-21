@@ -764,6 +764,48 @@ Section Iota.
       rewrite (skipn_app_exact cs ns _ Lcs) in Har, Hia.
       split; assumption.
     Qed.
+
+    Lemma s_args : tele_rel (ar m ns c) (cargs_nonrec gs) (nonrec_arg_vals gs avs) (nonrec_arg_vals gs avs) /\
+        con_args_rel p D (okr_at D u0 nr) nr ar dr m u0 u0 ns ns gs avs avs.
+    Proof. destruct s_Mc as (cs & Lcs & Emc); exact (proj2 (s_self cs Lcs Emc)). Qed.
+
+    Lemma s_Hns : tele_rel (nr m) (List.rev (im_nparams Mm)) ns ns.
+    Proof.
+      destruct s_Mc as (cs & Lcs & Emc).
+      exact (ind_rel_ns p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI (okr_at D u0 nr) _ _ _ _ _ _ _ _ HMm (proj1 (s_self cs Lcs Emc))).
+    Qed.
+
+    (** The shape's relation, after related values of the domains. *)
+    Lemma s_unfold : forall t ms ws kd, kd <= List.length (ptyp_doms t) -> forall u u' pre' x x' ys ys',
+        rec_arg_rel p D (okr_at D u0 nr) nr ar dr m u u' (ms ++ ws) pre' t x x' ->
+        tele_prefix_rel (shape_doms_rel (dr m) ms ws (ptyp_doms t)) kd ys ys' ->
+        exists f f', $*| x & ys | gc_deps ⍮ gc_stack ↘ f /\ $*| x' & ys' | gc_deps ⍮ gc_stack ↘ f' /\
+          rec_arg_rel p D (okr_at D u0 nr) nr ar dr m u u' (ms ++ ws ++ ys) (pre' ++ ys') (ptyp_skip kd t) f f'.
+    Proof.
+      intros t ms ws; induction kd as [| kd IH]; intros Hk * Hsh Hys.
+      - pose proof Hys as Hys0; rewrite tele_prefix_rel_iff in Hys0; destruct Hys0 as (L1 & L2 & _).
+        destruct ys; [| discriminate ]; destruct ys'; [| discriminate ].
+        exists x, x'; split; [ constructor | split; [ constructor |] ].
+        rewrite !List.app_nil_r; exact Hsh.
+      - pose proof Hys as Hys0; rewrite tele_prefix_rel_iff in Hys0; destruct Hys0 as (L1 & L2 & Hr).
+        destruct (List.exists_last (l := ys) ltac:(intros ->; discriminate)) as (ys0 & y & ->).
+        destruct (List.exists_last (l := ys') ltac:(intros ->; discriminate)) as (ys0' & y' & ->).
+        rewrite List.length_app in L1, L2; cbn in L1, L2.
+        pose proof (tele_prefix_rel_of_pre _ _ _ _ kd Hys ltac:(lia)) as Hys1.
+        rewrite !firstn_app_exact in Hys1 by lia.
+        pose proof (Hr kd y y' ltac:(rewrite List.nth_error_app2 by lia; replace (kd - List.length ys0) with 0 by lia; reflexivity)
+                      ltac:(rewrite List.nth_error_app2 by lia; replace (kd - List.length ys0') with 0 by lia; reflexivity)) as Hyy.
+        rewrite firstn_app_exact in Hyy by lia.
+        destruct (IH ltac:(lia) _ _ _ _ _ _ _ Hsh Hys1) as (g & g' & Eg & Eg' & Hsh0).
+        destruct (ptyp_skip_lt kd t ltac:(lia)) as (Bk & HBk & Hs).
+        rewrite Hs in Hsh0.
+        unfold shape_doms_rel in Hyy; rewrite (List.nth_error_nth _ _ _ HBk) in Hyy.
+        destruct (rec_arg_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh0 y y' Hyy) as (r & r' & Er & Er' & Hsh1).
+        exists r, r'; split; [| split ].
+        + apply eval_apps_app; exists g; split; [ exact Eg | econstructor; [ exact Er | constructor ] ].
+        + apply eval_apps_app; exists g'; split; [ exact Eg' | econstructor; [ exact Er' | constructor ] ].
+        + rewrite <- !List.app_assoc in Hsh1; exact Hsh1.
+    Qed.
   End IotaSem.
 End Iota.
 
