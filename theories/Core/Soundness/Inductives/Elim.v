@@ -209,6 +209,71 @@ Proof.
     apply wf_exp_eq_sym; exact Heq.
 Qed.
 
+(** ** The Arguments a View Nests Through, Position by Position *)
+
+Lemma cargs_nest_ok_zero : forall gs' gs, cargs_nest_ok (fun _ => 0) 1 gs' gs.
+Proof.
+  induction gs' as [| g' gs' IH]; intros gs; [ destruct gs; cbn; auto |].
+  destruct gs as [| g gs]; [ destruct g'; cbn; auto |].
+  destruct g', g; cbn; auto.
+Qed.
+
+Lemma cargs_nest_ok_at : forall rk r gs1' A' gs2' gs1 t gs2, List.length gs1' = List.length gs1 ->
+    cargs_nest_ok rk r (gs1' ++ ca_arg A' :: gs2') (gs1 ++ ca_rec t :: gs2) -> rk (ptyp_mem t) < r.
+Proof.
+  intros rk r gs1'; induction gs1' as [| g' gs1' IH]; intros A' gs2' [| g gs1] t gs2 Hl H; cbn in Hl; try discriminate; cbn in H.
+  - exact (proj1 H).
+  - injection Hl as Hl; destruct g', g; cbn in H; first [ exact (IH _ _ _ _ _ Hl H) | exact (IH _ _ _ _ _ Hl (proj2 H)) ].
+Qed.
+
+(** The recursive result of a view's branch at a recursive argument: the
+    container's variable where the container has it recursive, the
+    eliminator's otherwise. *)
+Lemma wrap_ihs_at : forall gs1' g' gs2' gs1 t gs2 ihs r' nr' vm, List.length gs1' = List.length gs1 ->
+    cargs_corr vm (gs1' ++ g' :: gs2') (gs1 ++ ca_rec t :: gs2) ->
+    List.nth_error (wrap_ihs (gs1' ++ g' :: gs2') (gs1 ++ ca_rec t :: gs2) ihs r' nr') (cargs_nrec gs1)
+      = Some (match g' with ca_rec _ => a_var (nr' - 1 - (r' + cargs_nrec gs1')) | ca_arg _ => List.nth (cargs_nrec gs1) ihs a_True end).
+Proof.
+  induction gs1' as [| h' gs1' IH]; intros g' gs2' [| h gs1] t gs2 ihs r' nr' vm Hl Hc; cbn in Hl; try discriminate.
+  - destruct g'; cbn in Hc |- *; [ destruct ihs; reflexivity | rewrite Nat.add_0_r; reflexivity ].
+  - injection Hl as Hl; destruct h', h; cbn in Hc |- *; try contradiction.
+    + rewrite (IH _ _ _ _ _ _ _ _ _ Hl Hc); reflexivity.
+    + rewrite (IH _ _ _ _ _ _ _ _ _ Hl Hc); destruct g'; [| reflexivity ].
+      destruct ihs; cbn; [ destruct (cargs_nrec gs1); reflexivity | reflexivity ].
+    + rewrite (IH _ _ _ _ _ _ _ _ _ Hl (proj2 (proj2 Hc))); destruct g'; [| f_equal; f_equal; lia ].
+      destruct ihs; cbn; [ destruct (cargs_nrec gs1); reflexivity | reflexivity ].
+Qed.
+
+Lemma wrap_ihs_eval_at : forall ρ0 p0 ups0 Bks0 gs1' g' gs2' gs1 t gs2 vs ihs r, List.length gs1' = List.length gs1 ->
+    ⟦wihs vs of (gs1' ++ g' :: gs2') (gs1 ++ ca_rec t :: gs2) with ihs under p0 ups0 Bks0 ⟧ gc_deps ⍮ gc_stack ⍮ ρ0 ↘ r ->
+    exists v' x, List.nth_error vs (List.length gs1) = Some v' /\ List.nth_error r (cargs_nrec gs1) = Some x /\
+      match g' with
+      | ca_rec _ => List.nth_error ihs (cargs_nrec gs1') = Some x
+      | ca_arg _ => ⟦ih v' of t under p0 ups0 Bks0 ⟧ gc_deps ⍮ gc_stack ⍮ ρ0 ↘ x
+      end.
+Proof.
+  intros ρ0 p0 ups0 Bks0 gs1'; induction gs1' as [| h' gs1' IH]; intros g' gs2' [| h gs1] t gs2 vs ihs r Hl H; cbn in Hl; try discriminate.
+  - cbn in H; inversion H; subst; cbn; eauto 6.
+  - injection Hl as Hl; cbn in H; inversion H; subst;
+      match goal with H1 : ⟦wihs _ of _ _ with _ under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ =>
+        destruct (IH _ _ _ _ _ _ _ _ Hl H1) as (v' & x & Hv & Hx & Hg) end;
+      exists v', x; cbn; repeat split; auto.
+Qed.
+
+(** The fresh recursive result of an argument recursive in both kinds. *)
+Lemma fresh_ihs_at : forall ρm As ρa gs1' t' gs2' gs1 t gs2 vs s ihs, List.length gs1' = List.length gs1 ->
+    Fihs vs at (gs1' ++ ca_rec t' :: gs2') (gs1 ++ ca_rec t :: gs2) under ρm As in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ ihs ->
+    exists v a, List.nth_error vs (List.length gs1) = Some v /\
+      ⟦ihty v of t under ρm As ⟧ gc_deps ⍮ gc_stack ⍮ env_args ρa (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
+      List.nth_error ihs (cargs_nrec gs1') = Some (⇑! a (s + cargs_nrec gs1')).
+Proof.
+  intros ρm As ρa gs1'; revert ρa; induction gs1' as [| h' gs1' IH]; intros ρa t' gs2' [| h gs1] t gs2 vs s ihs Hl H; cbn in Hl; try discriminate.
+  - cbn in H; inversion H; subst; cbn; rewrite Nat.add_0_r; eauto 10.
+  - injection Hl as Hl; destruct h', h; cbn in H; inversion H; subst.
+    all: match goal with H1 : fresh_ihs _ _ _ _ _ _ _ _ _ _ |- _ => destruct (IH _ _ _ _ _ _ _ _ _ Hl H1) as (v0 & a0 & Hv & Ea & Hi) end.
+    all: exists v0, a0; cbn; repeat split; auto; rewrite Hi; do 3 f_equal; lia.
+Qed.
+
 (** The readback of the branches of a block, entry by entry. *)
 Lemma read_brs_nth : forall p D ups Bks ρ s Mi r Mv A cs Bs Bs', ind_lookup gc_deps gc_stack p = Some D ->
     Rbrs Bs at cs of Mi r from p ups Bks Mv A in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Bs' ->
