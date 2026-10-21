@@ -2119,6 +2119,242 @@ Section ElimGlu.
     econstructor; [ exact Hty | exact Hg1 | exact HT | exact Hper | exact Hrd ].
   Qed.
 
+  (** The recursive result of a neutral argument of a shape, the shape's
+      components glued ([shape_typ_glu]'s substitution): glued at every
+      gluing of the value of its type.  At the end of the shape by
+      [rec_neut_self], the motive's instance glued by [motive_glu] at the
+      shape's parameters glued ([Con.rec_params_args]); at a domain, a
+      function of the domain, by the shape's rest at the neutral applied. *)
+  Lemma rec_neut_glu : forall k Mk c gs gs1 t0 gs2 ns nv, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+      gs = gs1 ++ ca_rec t0 :: gs2 ->
+      tele_rel (nr k) (List.rev (im_nparams Mk)) ns ns ->
+      tele_prefix_rel (ar k ns c) (List.length (cargs_nonrec gs1)) nv nv ->
+      List.length ns = im_nn Mk -> List.length nv = List.length (cargs_nonrec gs1) ->
+      elim_rb_ok (ptyp_mem t0) ->
+      forall t d ys Δ' σ' oq' τ Ys SbC N a_sh e r a (i : nat) R P El,
+        ptyp_skip d t0 = t -> d <= List.length (ptyp_doms t0) ->
+        tele_prefix_rel (shape_doms_rel (dr k) ns nv (ptyp_doms t0)) d ys ys ->
+        (oq' = Some p \/ oq' = None) -> Δ' ⊢ˢ σ' ® ρ ∈ SbΓ ->
+        List.length Ys = d + List.length (cargs_nonrec gs1) + im_nn Mk ->
+        EG doms_ctx (List.firstn d (ptyp_doms t0)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk
+          ∈ glu_ctx_env ↘ SbC ->
+        Δ' ⊢ˢ sb_of_list τ (List.map (fun U => U[σ']) Us ++ Ys) ® env_args nil (ups ++ ns ++ nv ++ ys) ∈ SbC ->
+        ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ns ++ nv ++ ys) ↘ a_sh ->
+        (forall Δ φ M0, Δ ⊢ᵏ φ : Δ' -> Rne e in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
+           Δ ⊢ N[φ]ʷ ≈ M0 : (ptyp_ty_at p D (List.map (fun U => U[σ']) Us) (sb_of_list τ (List.map (fun U => U[σ']) Us ++ Ys)) t)[φ]ʷ) ->
+        rec_arg_rel p D (okr_at D ups nr) nr ar dr k ups ups (ns ++ nv ++ ys) (ns ++ nv ++ ys) t (⇑ a_sh e) (⇑ a_sh e) ->
+        ⟦ih ⇑ a_sh e of t under p ups Bks ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r ->
+        ⟦ihty ⇑ a_sh e of t under ρ (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ns ++ nv ++ ys) ↘ a ->
+        DF a ≈ a ∈ per_univ_elem i ↘ R -> R r r -> uidx_le u (ul i) -> iA <= i -> DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+        Δ' ⊢ ptyp_ihty (blocks_motives (blocks_sub Bks σ')) Id (sb_of_list τ (List.map (fun U => U[σ']) Us ++ Ys)) N t : Typeω@i ->
+        Δ' ⊢ ptyp_ih p D oq' (List.map (fun U => U[σ']) Us) (blocks_sub Bks σ') (sb_of_list τ (List.map (fun U => U[σ']) Us ++ Ys)) N t
+            : ptyp_ihty (blocks_motives (blocks_sub Bks σ')) Id (sb_of_list τ (List.map (fun U => U[σ']) Us ++ Ys)) N t ® r ∈ El.
+  Proof.
+    intros k Mk c gs gs1 t0 gs2 ns nv HMk Hcon Heq Hns Hnv Hnsl Hnvl Hok t.
+    induction t as [j0 Ps | B t IH];
+      intros d ys Δ' σ' oq' τ Ys SbC N a_sh e r a i R P El Hsk Hd Hy Hoq Hσ' HYl HSbC Hσs Esh Hn Hsh Er Ea HR Hr Hui HiA Hg HIT.
+    - (** The end of the shape. *)
+      destruct (ptyp_skip_self _ _ _ _ Hsk) as (Hdd & Hm0 & Hp0).
+      assert (Hdeq : d = List.length (ptyp_doms t0)) by lia; subst d.
+      rewrite Hm0 in Hok.
+      destruct (rec_shape_facts k Mk c gs1 t0 gs2 0 HMk ltac:(rewrite <- Heq; exact Hcon)) as ((Mj & HMj & HPl) & _ & _).
+      cbn [ptyp_skip] in HMj, HPl; rewrite Hm0 in HMj; rewrite Hp0 in HPl.
+      inversion Esh; subst.
+      destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh) as (bs1 & bs1' & Ebs1 & Ebs1' & _ & _ & Hir).
+      match goal with H : ⟦mref _ of _ _ ⟧ _ ⍮ _ ↘ _ |- _ => rename H into Er0 end.
+      match goal with H : ⟦ _ ⟧* _ ⍮ _ ⍮ _ ↘ ?bs0, H' : ⟦shty _ of _ _ ⟧ _ ⍮ _ ⍮ _ ↘ d_ind _ _ (_ ++ ?bs0) |- _ => rename H into Ebs end.
+      assert (bs1 = bs) as -> by (eapply functional_eval_exps'; eassumption).
+      assert (bs1' = bs) as -> by (eapply functional_eval_exps'; eassumption).
+      assert (HΔ' : ⊢ Δ') by (pose proof (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ'); gen_presups; assumption).
+      assert (HUl' : List.length (List.map (fun U => U[σ']) Us) = ind_nu D) by (rewrite List.length_map; exact HUl).
+      assert (Hysl : List.length ys = ptyp_depth t0) by (destruct Hy as [Hyl _]; unfold ptyp_depth; lia).
+      assert (HSbC' : EG ptyp_tele t0 ++ nonrec_args_prefix (gs1 ++ ca_rec t0 :: gs2) (List.length (cargs_nonrec gs1)) ++ im_params D Mk
+                        ∈ glu_ctx_env ↘ SbC) by (rewrite List.firstn_all in HSbC; exact HSbC).
+      pose proof (Con.rec_params_args VP p D HVP HPD HG k Mk c _ HMk Hcon ups ups_len Δ' gs1 t0 gs2 Mj τ _ Ys ns nv ys SbC bs eq_refl
+                    HMj HUl' ltac:(unfold ptyp_depth; lia) Hnsl Hnvl Hysl HSbC' Hσs Ebs) as HQg.
+      pose proof (glu_args_typed _ _ _ _ _ _ (decl_closed_nparams_ass D Hc _ _ HMj) HQg) as HQ.
+      pose proof Hir as Hir'; unfold grp_rel in Hir'; inversion Hir'; subst.
+      match goal with H1 : tele_rel _ _ bs bs |- _ => rename H1 into Hbs end.
+      match goal with H1 : per_bot e e |- _ => rename H1 into He end.
+      pose proof (comps_of_uparams p D HG Hc Hdt Hsu Hass ups bu u NP NEl AP AEl DP DEl ups_len Hbu Hule Hf Δ' _ HΔ'
+                    (us_glu_args Δ' σ' Hσ')) as HIGC.
+      match goal with H1 : ind_member D (ptyp_mem t0) = Some ?M1 |- _ => rewrite HMj in H1; injection H1 as <- end.
+      pose proof (nparams_of_glu_args p D Hass ups u NP NEl AP AEl DP DEl ups_len Hf _ Mj Δ' _ _ bs HMj HIGC HQg Hbs) as Hgn.
+      set (Us' := List.map (fun U => U[σ']) Us) in *.
+      set (Q := List.map (fun P0 => P0[sb_of_list τ (Us' ++ Ys)]) (ptyp_ps t0)) in *.
+      assert (HAQ : ptyp_ty_at p D Us' (sb_of_list τ (Us' ++ Ys)) (pt_self (ptyp_mem t0) (ptyp_ps t0)) = im_ty_at p (ptyp_mem t0) Mj Us' Q)
+        by (cbn [ptyp_ty_at]; unfold ind_mty; rewrite HMj; reflexivity).
+      (** The scrutinee, glued at every gluing of its type's value. *)
+      assert (Hgl : forall (i' : nat) P' El', nb <= i' -> DG d_ind pc k0 (pre ++ bs) ∈ glu_univ_elem i' ↘ P' ↘ El' ->
+                Δ' ⊢ im_ty_at p (ptyp_mem t0) Mj Us' Q ® P' ->
+                Δ' ⊢ N : im_ty_at p (ptyp_mem t0) Mj Us' Q ® ⇑ (d_ind pc k0 (pre ++ bs)) e ∈ El').
+      { intros i' P' El' _ Hglu HTP.
+        destruct (He (length Δ')) as (L0 & HL0 & _).
+        pose proof (Hn Δ' wk_id L0 (kripke_id _ HΔ') HL0) as Hid; rewrite HAQ, !exp_wk_id in Hid.
+        destruct (presup_exp_eq Hid) as (_ & HNt & _).
+        eapply realize_glu_elem_bot; [ exact Hglu |].
+        econstructor; [ exact HNt | exact Hglu | exact HTP | exact He |].
+        intros Δ φ M0 Hφ HR0; rewrite <- HAQ; exact (Hn Δ φ M0 Hφ HR0). }
+      destruct (motive_glu (ptyp_mem t0) Mj Δ' σ' Q bs N _ pc k0 pre HMj Hσ' Hgn Hbs Er0 Hgl) as (a0 & Ea0 & Hpa0 & HPa0).
+      inversion Ea; subst.
+      match goal with H : ⟦ _ ⟧* _ ⍮ _ ⍮ _ ↘ ?bs2, H' : ⟦ List.nth _ _ _ ⟧ _ ⍮ _ ⍮ env_args _ (?bs2 ++ _) ↘ a |- _ =>
+        assert (bs2 = bs) as -> by (eapply functional_eval_exps'; eassumption) end.
+      assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
+      destruct (per_univ_glu_univ_elem _ _ Hpa0) as (Pa & Ela & Hga).
+      pose proof (HPa0 Pa Ela Hga) as HTa.
+      assert (HT : Δ' ⊢ ptyp_ihty (blocks_motives (blocks_sub Bks σ')) Id (sb_of_list τ (Us' ++ Ys)) N (pt_self (ptyp_mem t0) (ptyp_ps t0)) ® P).
+      { cbn [ptyp_ihty]; rewrite (blocks_motives_sub D Bks σ' _ Mj Hnm HMj).
+        eapply glu_univ_elem_typ_cumu_ge; [ exact HiA | exact Hga | exact Hg | exact HTa ]. }
+      exact (rec_neut_self (ptyp_mem t0) (ptyp_ps t0) Mj (ns ++ nv ++ ys) bs Δ' σ' oq' _ N pc k0 (pre ++ bs) e r a i P El
+               Hok HMj HPl Hoq Hσ' HQ Hn Ebs Hir Er Ea Hg HT).
+    - (** A domain of the shape. *)
+      assert (HΔ' : ⊢ Δ') by (pose proof (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ'); gen_presups; assumption).
+      assert (HUl' : List.length (List.map (fun U => U[σ']) Us) = ind_nu D) by (rewrite List.length_map; exact HUl).
+      pose proof (shape_typ_glu p D HG Hc Hdt Hsu ups bu u NP NEl AP AEl DP DEl ups_len Hbu Hule Hf k Mk c gs gs1 t0 gs2 ns nv
+                    HMk Hcon Heq Hns Hnv Hnsl Hnvl (pt_pi B t) d ys Δ' τ _ Ys SbC Hsk Hd Hy HΔ' HUl' HYl HSbC Hσs) as Hshg.
+      destruct (ptyp_skip_pi _ _ _ _ Hsk) as [HB Hsk'].
+      assert (Hkl : d < List.length (ptyp_doms t0)) by (apply List.nth_error_Some; congruence).
+      destruct (rec_shape_facts k Mk c gs1 t0 gs2 (S d) HMk ltac:(rewrite <- Heq; exact Hcon)) as ((Mj & HMj & HPl) & Hmd & Hmp).
+      rewrite Hsk' in HMj, HPl, Hmd, Hmp.
+      set (Us' := List.map (fun U => U[σ']) Us) in *.
+      set (σs := sb_of_list τ (Us' ++ Ys)) in *.
+      cbn [ptyp_ty_at ptyp_ih ptyp_ihty glu_shape_typ] in Hn, HIT, Hshg |- *.
+      destruct (Hshg _ _ eq_refl) as [Hq1 _].
+      pose proof (eval_ih_pi_inv _ _ _ _ _ _ _ _ Er) as ->.
+      destruct (eval_ihty_pi_inv _ _ _ _ _ _ _ Ea) as (b1 & Eb1 & ->).
+      inversion Esh; subst.
+      match goal with H : ⟦ B ⟧ _ ⍮ _ ⍮ _ ↘ ?b2 |- _ => assert (b2 = b1) as -> by (eapply functional_eval_exp; eassumption) end.
+      set (t := ptyp_skip (S d) t0) in *.
+      pose proof HR as HRsave.
+      basic_invert_per_univ_elem HR.
+      match goal with H : forall (c c' : domain) (_ : ?ir c c'), rel_mod_eval _ _ _ _ _ _ |- _ => rename H into Hcod end.
+      match goal with H : _ <~> (fun _ _ => forall _ _ _, rel_mod_app _ _ _ _ _) |- _ => rename H into HRE end.
+      destruct (glu_univ_elem_pi_clean_inversion1 equiv_a_a' Hg) as (IP & IEl & OP & OEl & erel & Hgb1 & Hcodg & Hper & HPeq & HEleq).
+      pose proof (ifg_dom_glu _ _ _ _ _ _ _ _ _ Hf _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hns Hcon eq_refl Hnv HB Hy Eb1) as HgD.
+      destruct (wf_pi_inversion' HIT) as [HITt HOTt].
+      set (IT := B[σs]) in *.
+      set (OTy := ptyp_ty_at p D (List.map (fun U => U[↑]ʷ) Us') (q σs) t) in *.
+      assert (HIT' : forall Δ φ, Δ ⊢ᵏ φ : Δ' -> Δ ⊢ IT[φ]ʷ ® IP).
+      { intros Δ φ Hφ.
+        eapply (glu_typ_transfer u (ul i) (ul i)); [ exact Hui | apply uidx_le_refl | eexists; exact equiv_a_a' | exact HgD
+                                                   | exact Hgb1 | exact (Hq1 _ _ Hφ) ]. }
+      assert (HDEl : forall Δ φ b c, Δ ⊢ᵏ φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ® c ∈ IEl ->
+                       Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl k (ns ++ nv ++ ys) B).
+      { intros * Hφ Hb.
+        eapply glu_elem_retype; [ exact Hgb1 | exact HgD | exact (glu_univ_elem_trm_typ _ _ _ _ Hgb1 _ _ _ _ Hb) | exact Hb
+                                | exact (Hq1 _ _ Hφ) ]. }
+      set (body := ptyp_ih p D oq' (List.map (fun U => U[↑]ʷ) Us') (blocks_wk (blocks_sub Bks σ') ↑) (q σs) (a_app N[↑]ʷ (a_var 0)) t).
+      set (OTi := ptyp_ihty (blocks_motives (blocks_sub Bks σ')) (Id ⨟ sb_of_wk ↑) (q σs) (a_app N[↑]ʷ (a_var 0)) t) in *.
+      assert (EUs : forall φ, List.map (fun U0 => U0[φ]ʷ) Us' = List.map (fun U => U[sb_wk σ' φ]) Us)
+        by (intros φ; unfold Us'; rewrite List.map_map; apply List.map_ext; intros; apply exp_wk_sub).
+      assert (Esb : forall φ b, sb_eq (q σs ⨟ ((ι φ),,b))
+                      (sb_of_list (sb_wk τ φ) (List.map (fun U => U[sb_wk σ' φ]) Us ++ (List.map (fun Y => Y[φ]ʷ) Ys ++ b :: nil)))).
+      { intros φ b0; etransitivity; [ apply sb_q_extend_wk |].
+        rewrite List.app_assoc, sb_of_list_app; cbn [sb_of_list].
+        apply sb_extend_cong; unfold σs; etransitivity; [ apply sb_wk_sb_of_list |].
+        rewrite List.map_app, EUs; reflexivity. }
+      assert (Happ : forall Δ φ b cc (equiv_c : in_rel cc cc), Δ ⊢ᵏ φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ® cc ∈ IEl ->
+                       exists rc a2, $| d_ihfn ρ Bks p ups t (⇑ (Πᵈ b1 (nil ↦ d_shfam p ups (env_args nil (ups ++ ns ++ nv ++ ys)) t) fam_cod) e)
+                                         & cc | gc_deps ⍮ gc_stack ↘ rc /\
+                         ⟦ fam_cod ⟧ (nil ↦ d_ihfam ρ (blocks_motives Bks) (env_args nil (ups ++ ns ++ nv ++ ys)) t
+                                        (⇑ (Πᵈ b1 (nil ↦ d_shfam p ups (env_args nil (ups ++ ns ++ nv ++ ys)) t) fam_cod) e)) ↦ cc ↘ a2 /\
+                         Δ ⊢ body[(ι φ),,b] : OTi[(ι φ),,b] ® rc ∈ OEl cc equiv_c).
+      { intros Δ φ b cc equiv_c Hφ Hb.
+        pose proof (rel_dr ups k (ns ++ nv ++ ys) B b1 i in_rel cc Eb1 equiv_a_a' equiv_c) as Hdc.
+        pose proof (HDEl _ _ _ _ Hφ Hb) as HbD.
+        destruct (rec_arg_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh cc cc Hdc) as (fc & fc' & Efc & Efc' & Hsh').
+        assert (fc' = fc) as -> by (eapply functional_eval_app; eassumption).
+        destruct (Hcod _ _ equiv_c) as [a2 a2' Ea2 Ea2' Ha22].
+        assert (a2' = a2) as -> by (eapply functional_eval_exp; eassumption).
+        destruct (proj1 (HRE _ _) Hr _ _ equiv_c) as [rc rc' Erc Erc' Hrc].
+        assert (rc' = rc) as -> by (eapply functional_eval_app; eassumption).
+        destruct (eval_fam_cod_ihfam_inv _ _ _ _ _ _ _ Ea2) as (fx & Efx & Ea2i).
+        assert (fx = fc) as -> by (eapply functional_eval_app; eassumption).
+        destruct (eval_app_ihfn_inv _ _ _ _ _ _ _ _ Erc) as (y & Ey & Erc0).
+        assert (y = fc) as -> by (eapply functional_eval_app; eassumption).
+        inversion Efc; subst.
+        pose proof (eval_fam_cod_shfam_inv p ups (env_args nil (ups ++ ns ++ nv ++ ys)) t cc _ ltac:(eassumption)) as Esh'.
+        exists rc, a2; split; [ exact Erc | split; [ exact Ea2 |] ].
+        assert (HΔ : ⊢ Δ) by (eapply kripke_dom; exact Hφ).
+        pose proof (glu_univ_elem_trm_escape _ _ _ _ Hgb1 _ _ _ _ Hb) as Hbt.
+        destruct (gid_dctx _ HG _ _ _ _ _ _ _ (S d) HMk Hcon eq_refl ltac:(lia)) as [SbC' HSbC'].
+        pose proof (shape_sub_step D ups u DP DEl k Mk c _ gs1 t0 gs2 d B ns nv ys Δ' τ Us' Ys SbC SbC' Δ φ b b1 cc
+                      HMk Hcon eq_refl HB HSbC HSbC' Hσs Hφ Eb1 HgD (Hq1 _ _ Hφ) HbD) as Hσs'.
+        rewrite EUs in Hσs'.
+        assert (ETy : ptyp_ty_at p D (List.map (fun U => U[sb_wk σ' φ]) Us)
+                        (sb_of_list (sb_wk τ φ) (List.map (fun U => U[sb_wk σ' φ]) Us ++ (List.map (fun Y => Y[φ]ʷ) Ys ++ b :: nil))) t
+                      = OTy[(ι φ),,b]).
+        { unfold OTy; rewrite (shape_ty_step VP HVP p D HPD t Us' σs φ b HUl'), EUs.
+          apply ptyp_ty_at_sb_eq; symmetry; apply Esb. }
+        (** The neutral applied, read back. *)
+        assert (Hn' : forall Δ1 φ1 M1, Δ1 ⊢ᵏ φ1 : Δ -> Rne (e $ᵈ ⇓ b1 cc) in gc_deps ⍮ gc_stack ⍮ length Δ1 ↘ M1 ->
+                  Δ1 ⊢ (a_app N[φ]ʷ b)[φ1]ʷ ≈ M1
+                    : (ptyp_ty_at p D (List.map (fun U => U[sb_wk σ' φ]) Us)
+                        (sb_of_list (sb_wk τ φ) (List.map (fun U => U[sb_wk σ' φ]) Us ++ (List.map (fun Y => Y[φ]ʷ) Ys ++ b :: nil))) t)[φ1]ʷ).
+        { intros Δ1 φ1 M1 Hφ1 HR1; rewrite ETy.
+          inversion HR1; subst.
+          match goal with H1 : Rne e in _ ⍮ _ ⍮ _ ↘ _ |- _ => rename H1 into HRe end.
+          match goal with H1 : Rnf ⇓ b1 cc in _ ⍮ _ ⍮ _ ↘ _ |- _ => rename H1 into HRc end.
+          pose proof (kripke_compose _ _ _ _ _ Hφ1 Hφ) as Hφφ.
+          pose proof (Hn _ _ _ Hφφ HRe) as HNe.
+          destruct (realize_glu_elem_top _ _ _ _ Hgb1 _ _ _ _ Hb) as [_ _ _ _ _ _ Hbr].
+          pose proof (Hbr _ _ _ Hφ1 HRc) as Hbe.
+          rewrite (exp_wk_wk_ext IT φ φ1 (φ ⊙ φ1)) in Hbe by (intros ?; reflexivity).
+          cbn [exp_wk ne_to_exp] in HNe |- *.
+          rewrite (exp_wk_wk_ext N φ φ1 (φ ⊙ φ1)) by (intros ?; reflexivity).
+          destruct (presup_exp_eq HNe) as (_ & _ & _ & [jn Hjn]).
+          destruct (wf_pi_inversion' Hjn) as [HA HB'].
+          assert (ET2 : (OTy[(ι φ),,b])[φ1]ʷ = OTy[wk_q (φ ⊙ φ1)]ʷ[Id,,b[φ1]ʷ]).
+          { rewrite exp_sub_wk_q_extend, exp_wk_sub; apply exp_sub_sb_eq.
+            etransitivity; [ apply sb_wk_extend |]; apply sb_extend_cong; intros ?; reflexivity. }
+          rewrite ET2.
+          eapply wf_exp_eq_app_cong; [ exact HA | exact HB' | exact HNe | exact Hbe ]. }
+        unfold body, OTi, Us'.
+        rewrite ih_body_inst, (ih_cod_inst _ _ _ _ _ _ Mj HMj HPl); cbn [sentry_exp].
+        rewrite (ptyp_ih_sb_eq p D oq' t _ _ _ _ _ (Esb φ b)), (ptyp_ihty_sb_eq t _ Id Id _ _ _ (fun z => eq_refl) (Esb φ b)).
+        pose proof (glu_ctx_env_sub_monotone _ _ HSbΓ _ _ _ _ _ Hσ' Hφ) as Hσw.
+        pose proof (sub_typ_extend _ _ _ _ _ _ _ HITt HOTt Hφ Hbt) as HOTb.
+        unfold OTi in HOTb; rewrite (ih_cod_inst _ _ _ _ _ _ Mj HMj HPl) in HOTb; cbn [sentry_exp] in HOTb.
+        rewrite (ptyp_ihty_sb_eq t _ Id Id _ _ _ (fun z => eq_refl) (Esb φ b)) in HOTb.
+        replace (env_args nil (ups ++ ns ++ nv ++ ys) ↦ cc) with (env_args nil (ups ++ ns ++ nv ++ ys ++ cc :: nil)) in Esh', Ea2i
+          by (replace (ups ++ ns ++ nv ++ ys ++ cc :: nil) with ((ups ++ ns ++ nv ++ ys) ++ cc :: nil)
+                by (rewrite <- !List.app_assoc; reflexivity); rewrite env_args_snoc; reflexivity).
+        rewrite <- !List.app_assoc in Hsh'.
+        eapply (IH (S d) (ys ++ cc :: nil) Δ (sb_wk σ' φ) oq' (sb_wk τ φ) (List.map (fun Y => Y[φ]ʷ) Ys ++ b :: nil) SbC'
+                  (a_app N[φ]ʷ b) _ _ rc a2 i (out_rel cc cc equiv_c) (OP cc equiv_c) (OEl cc equiv_c));
+          [ reflexivity | lia | | exact Hoq | exact Hσw | rewrite List.length_app, List.length_map; cbn; lia | exact HSbC' | exact Hσs'
+          | exact Esh' | exact Hn' | exact Hsh' | exact Erc0 | exact Ea2i | exact Ha22 | exact Hrc | exact Hui | exact HiA
+          | exact (Hcodg _ equiv_c _ Ea2) | exact HOTb ].
+        apply tele_prefix_rel_snoc; [ exact Hy |]; unfold shape_doms_rel; rewrite (List.nth_error_nth _ _ _ HB); exact Hdc. }
+      (** The body's type, at the generic variable. *)
+      assert (HITid : Δ' ⊢ IT ® IP) by (pose proof (HIT' Δ' wk_id (kripke_id _ HΔ')) as Hx0; rewrite exp_wk_id in Hx0; exact Hx0).
+      assert (HΔIT : ⊢ Δ' ▹ IT) by mauto 3.
+      pose proof (var0_glu_elem Hgb1 HITid) as Hvar.
+      pose proof (var_per_elem (length Δ') equiv_a_a') as Heqv.
+      destruct (Happ _ _ _ _ Heqv (kripke_shift _ _ HΔIT) Hvar) as (rc0 & a0 & _ & Ea0 & Hg0).
+      pose proof (glu_univ_elem_trm_escape _ _ _ _ (Hcodg _ Heqv _ Ea0) _ _ _ _ Hg0) as Hbodyt.
+      assert (Ebv : body[(ι ↑),,#0] = body).
+      { transitivity (body[sb_extend (ι ↑) (se_var 0)]); [| apply exp_sub_of_shift_extend_zero ].
+        unfold body, Us'; rewrite !ih_body_inst; cbn [sentry_exp].
+        apply ptyp_ih_exp_agree; [ exact Hmd | apply sb_exp_agree_var0 ]. }
+      assert (Eov : OTi[(ι ↑),,#0] = OTi).
+      { transitivity (OTi[sb_extend (ι ↑) (se_var 0)]); [| apply exp_sub_of_shift_extend_zero ].
+        unfold OTi; rewrite !(ih_cod_inst σ' σs N t ↑ _ Mj HMj HPl); cbn [sentry_exp].
+        apply ptyp_ihty_agree_exp; [ exact Hmd | exact Hmp | reflexivity | apply sb_exp_agree_var0 ]. }
+      rewrite Ebv, Eov in Hbodyt.
+      apply HEleq; eapply mk_pi_glu_exp_pred with (IT := IT) (OT := OTi);
+        [ apply wf_fn with (i := i); [ exact HITt | exact Hbodyt ]
+        | apply (per_univ_elem_right_irrel _ _ _ _ _ _ _ HRsave Hper); exact Hr
+        | apply wf_exp_eq_refl; exact HIT | exact HITt | exact HOTt | exact HIT' |].
+      intros Δ φ N0 n0 Hφ HN0 equiv_n.
+      destruct (Happ _ _ _ _ equiv_n Hφ HN0) as (rc & a2 & Erc & Ea2 & Hgl).
+      exists rc; split; [ exact Erc |].
+      pose proof (Hcodg _ equiv_n _ Ea2) as Hga2.
+      eapply glu_univ_elem_trm_resp_exp_eq; [ exact Hga2 | exact Hgl |].
+      apply wf_exp_eq_sym; eapply fn_wk_beta; [ exact HITt | exact HOTt | exact Hbodyt | exact Hφ
+                                            | exact (glu_univ_elem_trm_escape _ _ _ _ Hgb1 _ _ _ _ HN0) ].
+  Qed.
+
   (** ** On a Neutral
 
       A neutral of the member [j], glued in the group, at a substitution
