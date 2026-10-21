@@ -413,6 +413,129 @@ Section Iota.
       - unfold σt; rewrite <- (cargs_sub_firstn gs1 σP As); fold As1.
         apply cargs_sub_pat; exact LAs1.
     Qed.
+
+    Lemma r_tele : ptyp_tele t = doms_ctx (List.firstn L (ptyp_doms t)).
+    Proof. unfold ptyp_tele, L; rewrite List.firstn_all; reflexivity. Qed.
+
+    Lemma r_plen : List.length (ptyp_ps t) = im_nn Mj.
+    Proof.
+      destruct (length_rec_ps D HD m Mm HMm c gs gs1 t gs2 Hcon Heq) as (Mj' & HMj' & H).
+      rewrite HMj in HMj'; injection HMj' as <-; exact H.
+    Qed.
+
+    Lemma r_Ps_valid : forall kk P T0, List.nth_error (ptyp_ps t) kk = Some P ->
+        List.nth_error (tele_insts (im_nparams Mj) (sb_of_wk (wk_shiftn (ptyp_depth t + K + im_nn Mm))) (ptyp_ps t)) kk = Some T0 ->
+        ptyp_tele t ++ Tg ⊨ P : T0.
+    Proof.
+      intros kk P0 T0 HP0 HT; pose proof (vid_rec _ HD m Mm c gs gs1 t gs2 Mj kk P0 T0 HMm Hcon Heq HMj HP0 HT) as H.
+      rewrite <- r_strat in H.
+      pose proof (r_dass L) as Ha; pose proof (r_dctx L (le_n _)) as Hs; rewrite <- r_tele in Ha, Hs.
+      pose proof (closed_app_valid _ _ _ _ _ Ha Hs HΓ H) as H'; unfold Tg; rewrite <- !List.app_assoc in H'; exact H'.
+    Qed.
+
+    (** The leaf's parameters, at instances agreeing with the shape's
+        substitution on the uniform parameters. *)
+    Lemma r_Ps_gen : forall σ', (forall y, y < ind_nu D -> sentry_exp ((sb_of_list Id Us ⨟ sb_shift_iter L Id) y) = sentry_exp (σ' y)) ->
+        forall kk N T0, List.nth_error Ps' kk = Some N -> List.nth_error (tele_insts (im_nparams Mj) σ' Ps') kk = Some T0 -> Ψ L ⊨ N : T0.
+    Proof.
+      intros σ' Hσ' kk N T0 HN HT.
+      unfold Ps' in HN, HT; apply nth_error_map_inv in HN as (P0 & HPk & ->).
+      set (σ0 := sb_of_wk (wk_shiftn (ptyp_depth t + K + im_nn Mm))).
+      assert (HT1 : exists T1, List.nth_error (tele_insts (im_nparams Mj) σ0 (ptyp_ps t)) kk = Some T1).
+      { assert (Hm : kk < List.length (ptyp_ps t)) by (apply List.nth_error_Some; congruence).
+        apply nth_error_lt_some'; rewrite length_tele_insts by exact (decl_closed_nparams_ass D Hc _ _ HMj).
+        rewrite length_im_nparams, <- r_plen; lia. }
+      destruct HT1 as [T1 HT1].
+      pose proof (r_Ps_valid _ _ _ HPk HT1) as HP1.
+      pose proof (r_gsub L (le_n _)) as Hg.
+      replace (doms_ctx (List.firstn L (ptyp_doms t)) ++ Tg) with (ptyp_tele t ++ Tg) in Hg by (rewrite r_tele; reflexivity).
+      pose proof (rel_exp_under_ctx_gsub Hg HP1) as HP2.
+      replace T0 with T1[sb_qn L σt]; [ exact HP2 |].
+      rewrite <- (tele_insts_sub_mvc (im_nparams Mj) (ind_nu D) σ0 σ' (sb_qn L σt) (ptyp_ps t)) in HT.
+      + apply nth_error_map_inv in HT as (T2 & HT2 & ->); rewrite HT1 in HT2; injection HT2 as ->; reflexivity.
+      + exact (decl_closed_nparams_ass D Hc _ _ HMj).
+      + exact (decl_nparams_mvc _ _ _ Hdt _ _ HMj).
+      + exact (decl_closed_nparams_scoped D Hc _ _ HMj).
+      + intros y Hy; unfold σ0; cbn [sb_of_wk sentry_sub wk_shiftn].
+        pose proof (r_ucK L (le_n _) y Hy) as H; rewrite <- Hσ' by exact Hy.
+        etransitivity; [| exact H ]; f_equal; f_equal.
+        rewrite !List.length_app, (r_dlen L (le_n _)), cargs_strat_nonrec, List.length_rev, List.length_map, length_im_params;
+          unfold ptyp_depth, K, im_np; fold L; lia.
+    Qed.
+
+    Lemma r_UsL : List.map (fun U => U[wk_shiftn L]ʷ) Us = List.map (fun U => U[sb_shift_iter L Id]) Us.
+    Proof.
+      apply List.map_ext; intros U; rewrite <- exp_sub_of_wk; apply exp_sub_sb_eq.
+      rewrite sb_shift_iter_eq, sb_compose_id_left; reflexivity.
+    Qed.
+
+    Lemma r_nsub : gsub (Ψ L) (sb_of_list (sb_shift_iter L Id) Ps') (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ).
+    Proof.
+      apply gsub_of_list; [ exact (r_base L (le_n _)) | apply tele_ass_sub, (decl_closed_nparams_ass D Hc _ _ HMj)
+                          | exact (rel_ctx_wf_tail (HMall _ _ HMj))
+                          | unfold Ps'; rewrite List.length_map, length_tele_sub, length_im_nparams; exact r_plen |].
+      intros kk N T0 HN HT; rewrite tele_insts_tele_sub in HT.
+      exact (r_Ps_gen _ (fun y _ => eq_refl) kk N T0 HN HT).
+    Qed.
+
+    Lemma r_x_typed : Ψ L ⊨ xL : ind_mty p D (ptyp_mem t) (List.map (fun U => U[sb_shift_iter L Id]) Us) Ps'.
+    Proof.
+      pose proof r_Mt as HMt.
+      rewrite ptyp_ty_at_ctx_pi in HMt; unfold ptyp_depth in HMt; fold L in HMt.
+      pose proof (HMall _ _ HMj) as HM'; unfold elim_mctx in HM'; cbn [List.app] in HM'.
+      destruct (rel_ctx_wf_ass_inv HM') as [jI HIT].
+      pose proof (rel_exp_under_ctx_gsub r_nsub HIT) as HIT'.
+      rewrite ind_head_inst in HIT' by (try exact Hc; try exact i_HUl; unfold Ps'; rewrite List.length_map; exact r_plen).
+      rewrite <- r_UsL in HIT' |- *.
+      unfold xL; rewrite apps_vars_iter_eq.
+      unfold Ψ in HIT' |- *; rewrite <- r_tele in HIT' |- *.
+      apply (valid_apps_vars L (tele_sub (ptyp_tele t) σt) Γ _ jI Mt);
+        [ rewrite length_tele_sub, r_tele; exact (r_dlen L (le_n _))
+        | apply tele_ass_sub; unfold ptyp_tele, doms_ctx; apply List.Forall_rev, tele_ass_map_ass
+        | pose proof (r_HΨ L (le_n _)) as H; unfold Ψ in H; rewrite <- r_tele in H; exact H
+        | exact HIT' | exact HMt ].
+    Qed.
+
+    (** The end: the eliminator at its blocks moved past the domains, at the
+        argument applied to them. *)
+    Lemma r_leaf : Ψ L ⊨ elim_at p D oq (List.map (fun U => U[sb_shift_iter L Id]) Us) (blocks_sub Bks (sb_shift_iter L Id)) (ptyp_mem t) xL
+        : (List.nth (ptyp_mem t) (blocks_motives Bks) a_True)[sb_of_list (sb_shift_iter L Id) (Ps' ++ xL :: nil)].
+    Proof.
+      apply (elim_at_valid VP p D HP HPD Γ oq Us Bks i Hoq i_HUl i_HUs HBks HnmA HMall HAv HnaA HBc HarA HBv
+               (Ψ L) (sb_shift_iter L Id) (ptyp_mem t) Mj Ps' xL (r_base L (le_n _)) HMj).
+      - unfold Ps'; rewrite List.length_map; exact r_plen.
+      - apply r_Ps_gen; intros y Hy; cbn [sb_compose].
+        rewrite sb_of_list_map by (rewrite i_HUl; lia); rewrite <- sentry_exp_sub; reflexivity.
+      - exact r_x_typed.
+    Qed.
+
+    (** The recursive result after [kd] domains. *)
+    Lemma r_tm : forall n kd, kd + n = L -> forall Us0 Bks0,
+        Us0 = List.map (fun U => U[sb_shift_iter kd Id]) Us -> Bks0 = blocks_sub Bks (sb_shift_iter kd Id) ->
+        Ψ kd ⊨ ptyp_ih p D oq Us0 Bks0 (sb_qn kd σt) (apps_vars_iter kd Mt) (ptyp_skip kd t)
+          : ptyp_ihty (blocks_motives Bks) (sb_shift_iter kd Id) (sb_qn kd σt) (apps_vars_iter kd Mt) (ptyp_skip kd t).
+    Proof.
+      induction n as [| n IH]; intros kd Hkn * HU0 HB0; subst Us0 Bks0.
+      - assert (Hk : kd = L) by lia; rewrite Hk.
+        pose proof (ptyp_skip_end t) as HsL; change (List.length (ptyp_doms t)) with L in HsL; rewrite HsL.
+        cbn [ptyp_ih ptyp_ihty]; exact r_leaf.
+      - assert (Hk : kd < L) by lia.
+        destruct (ptyp_skip_lt kd t Hk) as (Bk & HBk & Hs); rewrite Hs.
+        cbn [ptyp_ih ptyp_ihty].
+        destruct (vid_dom _ HD m Mm c gs gs1 t gs2 kd Bk HMm Hcon Heq HBk) as (_ & j & HBv0); rewrite <- r_strat in HBv0.
+        pose proof (closed_app_valid _ _ _ _ _ (r_dass kd) (r_dctx kd ltac:(lia)) HΓ HBv0) as HBv1.
+        rewrite <- !List.app_assoc in HBv1; fold Tg in HBv1.
+        pose proof (rel_exp_under_ctx_gsub (r_gsub kd ltac:(lia)) HBv1) as HBk'; cbn [exp_sub] in HBk'.
+        assert (HUs1 : List.map (fun U => U[↑]ʷ) (List.map (fun U => U[sb_shift_iter kd Id]) Us)
+                       = List.map (fun U => U[sb_shift_iter (S kd) Id]) Us)
+          by (rewrite List.map_map; apply List.map_ext; intros; rewrite <- exp_sub_of_wk, exp_sub_sub; reflexivity).
+        assert (HBs1 : blocks_wk (blocks_sub Bks (sb_shift_iter kd Id)) ↑ = blocks_sub Bks (sb_shift_iter (S kd) Id))
+          by (rewrite <- blocks_sub_of_wk, blocks_sub_sub; reflexivity).
+        pose proof (IH (S kd) ltac:(lia) _ _ HUs1 HBs1) as H.
+        unfold Ψ in H; rewrite (firstn_S_snoc _ _ _ HBk), doms_ctx_snoc in H; cbn [tele_sub List.app centry_sub] in H.
+        rewrite (r_dlen kd ltac:(lia)) in H.
+        exact (rel_exp_under_ctx_fn_cong HBk' H).
+    Qed.
   End RecArg.
 End Iota.
 
