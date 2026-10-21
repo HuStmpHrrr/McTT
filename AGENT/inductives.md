@@ -207,12 +207,16 @@ judgment, outside the mutual block; NbE builds no syntax.
   global state is equivalent to the checker's, so the normal forms agree
   (`nbe_ty_ext`, `Core/Semantic/GlobalExt.v`).
 
-`rc_ind_con_types` (`Core/IndCommand.v`) states that after a run each filed
-constructor type is `≈` at `⋅` to the user's (`user_con_ty`, `Self := a_ind p`
-at the frames' parameters): an argument classified as written is filed as
-its weakening (`cls_con_ty`); one classified as its normal form is equal to
-it by `soundness_ty'`, and the equality moves through the substitution of
-`Self` (`base_sub`, `self_typed`) and the `Π`s before it (`conv_tail`).
+`rc_ind_con_types` (`Core/IndCommand.v`) states that after a run of a group
+each constructor of each declared member `j` is filed (`filed_con_ty`) at a
+type `≈` at `⋅` to the user's (`user_con_ty`, every `Self_i := a_ind p i` at
+the frames' parameters, `sb_selfs`): an argument classified is filed as its
+image under that instantiation (`cls_arg_filed`; a nested occurrence, found
+on a normal form, as its view, the container's member at the instance); one
+classified as its normal form is equal to it by `soundness_ty'`, and the
+equality moves through the instantiation of the `Self`s (`base_sub`,
+`selfs_sub_typed`, `self_frames_typed`) and the `Π`s before it
+(`conv_tail`).  Views have no constructors of their own as written.
 
 The filed (normal-form) types are what the constructors' members carry and
 what is printed (question G5): the user's term would need the constructor
