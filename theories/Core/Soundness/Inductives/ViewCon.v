@@ -511,6 +511,58 @@ Section ViewConArgs.
       eapply glu_args_typed; [ exact HaV | exact HNs | eassumption | eassumption ].
   Qed.
 
+  (** Conversely, from the container's telescope at the view's instance to
+      the group's member's at the view's uniform parameters. *)
+  Lemma view_nparams_glu_rev : forall Δ Us Ns ups ns cs i' Mi' v Mv, ⊢ Δ -> List.length ups = ind_nu D ->
+      glu_args Δ (ind_uparams D) Id nil Us ups ->
+      ind_member Dq i' = Some Mi' -> List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
+      glu_args Δ (im_nparams Mi') (sb_of_list Id (List.map (fun I => I[sb_of_list Id Us]) Is)) (env_args nil cs) Ns ns ->
+      ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cs ->
+      glu_args Δ (im_nparams Mv) (sb_of_list Id Us) (env_args nil ups) Ns ns.
+  Proof.
+    intros * HΔ Hu HUs HMi' Hv HMv HNs Ecs.
+    pose proof (glu_args_per_gargs _ _ _ _ _ _ (dc_ass _ Hc) HUs) as Hgu.
+    pose proof (view_nn p D Hg k Mk qc kc Is vm Dq HMk Hh Hq i' Mi' v Mv HMi' Hv HMv) as Hnn.
+    pose proof (decl_closed_nparams_ass D Hc _ _ HMv) as HaV.
+    pose proof (decl_closed_nparams_ass Dq HcQ _ _ HMi') as HaC.
+    pose proof (glu_args_per_gargs _ _ _ _ _ _ HaC HNs) as Hgn.
+    destruct (glu_args_length _ _ _ _ _ _ HUs) as [HUl _].
+    destruct (glu_args_length _ _ _ _ _ _ HNs) as [HNl Hnl].
+    apply (glu_args_transfer Δ (im_nparams Mi') (im_nparams Mv) _ (sb_of_list Id Us) (env_args nil cs) (env_args nil ups) Ns ns HaC HaV
+             ltac:(rewrite !length_im_nparams; lia) HNs).
+    - intros kk A' A a HA' HA Hk Ea Hpg.
+      assert (Hpc : per_gargs (List.firstn kk (List.rev (im_nparams Mi'))) (env_args nil cs) (env_args nil cs)
+                      (List.firstn kk ns) (List.firstn kk ns)).
+      { rewrite <- (List.firstn_skipn kk (List.rev (im_nparams Mi'))), <- (List.firstn_skipn kk ns) in Hgn.
+        assert (Hl1 : List.length (List.firstn kk ns) = List.length (List.firstn kk (List.rev (im_nparams Mi'))))
+          by (rewrite !List.length_firstn, List.length_rev; lia).
+        exact (proj1 (Decl.per_gargs_app _ _ _ _ _ _ _ _ Hl1 Hgn Hl1)). }
+      destruct (view_nparam_types ups cs i' Mi' v Mv Hgu Hu Ecs HMi' Hv HMv kk (List.firstn kk ns) A A'
+                  ltac:(rewrite List.length_firstn; lia) HA HA' Hpg Hpc) as (b & a0 & i & Eb & Ea0 & Hba).
+      assert (a0 = a) as -> by (eapply functional_eval_exp; eassumption).
+      exists b, i; split; [ exact Eb | exact (per_univ_sym' _ _ _ Hba) ].
+    - intros kk T' T HT' HT.
+      pose proof (dt_view_nparams _ _ _ _ (ctx_wf_gctx _ _ _ HΔ) Hdt Hl _ _ _ _ _ _ _ _ _ _ _ HMk Hh Hq HMi' Hv HMv) as Hext.
+      assert (HσU : Δ ⊢ˢ sb_of_list Id Us : ind_uparams D).
+      { apply (wf_uparams_sub _ _ _ _ _ Hdt HΔ HUl).
+        intros; eapply glu_args_typed; [ exact (dc_ass _ Hc) | exact HUs | eassumption | eassumption ]. }
+      pose proof (sub_preserves_ext _ _ _ _ _ _ _ Hext HσU) as He.
+      apply Views.ext_eq_sym_ass in He; [| apply tele_ass_sub; exact HaV ].
+      assert (EV : forall X, tele_insts (tele_sub X (sb_of_list Id Us)) Id Ns = tele_insts X (sb_of_list Id Us) Ns)
+        by (intros; rewrite tele_insts_tele_sub; apply tele_insts_sb_eq, sb_compose_id_right).
+      assert (EC : tele_insts (tele_sub (tele_sub (im_nparams Mi') (sb_of_list Id Is)) (sb_of_list Id Us)) Id Ns
+                   = tele_insts (im_nparams Mi') (sb_of_list Id (List.map (fun I => I[sb_of_list Id Us]) Is)) Ns).
+      { rewrite EV, tele_insts_tele_sub.
+        apply (tele_insts_agree _ (ind_nu Dq)); [ exact HaC | exact (decl_closed_nparams_scoped Dq HcQ _ _ HMi') |].
+        intros x Hx; rewrite <- view_is_length in Hx.
+        exact (sb_of_list_map_nth Is (sb_of_list Id Us) x Hx). }
+      rewrite <- EV in HT; rewrite <- EC in HT'.
+      eapply (tele_insts_ext_eq Δ _ _ Ns He (tele_ass_sub _ _ (tele_ass_sub _ _ HaC)) (tele_ass_sub _ _ HaV)
+                ltac:(rewrite !length_tele_sub, length_im_nparams; rewrite length_im_nparams in HNl; lia)); [| exact HT' | exact HT ].
+      intros j N T0 HN HT0; rewrite EC in HT0.
+      eapply glu_args_typed; [ exact HaC | exact HNs | eassumption | eassumption ].
+  Qed.
+
   Let HPq := valid_groups_containers VP HVP p D k Mk qc kc Is vm Dq HPD HMk Hh Hq.
   Let HcvQ := containers_valid_of_groups VP HVP qc Dq HPq.
 

@@ -107,6 +107,7 @@
 ./Core/Soundness/Inductives/Comps.v
 ./Core/Soundness/Inductives/Con.v
 ./Core/Soundness/Inductives/ViewCon.v
+./Core/Soundness/Inductives/Bridge.v
 ./Core/Soundness/Inductives/Elim.v
 ./Core/Soundness/IndCases.v
 ./Core/Soundness/ElimCases.v
