@@ -234,6 +234,22 @@ Proof.
   exists nsu; split; [ exact Fu | split; assumption ].
 Qed.
 
+(** A member's type at uniform parameters related to themselves is
+    defined. *)
+Lemma mref_exists : forall VP, valid_groups VP -> forall pq G, VP pq G ->
+    forall X, per_gargs (List.rev (ind_uparams G)) nil nil X X -> List.length X = ind_nu G ->
+    forall j Mj, ind_member G j = Some Mj -> exists r, ⟦mref j of pq X ⟧ gc_deps ⍮ gc_stack ↘ r.
+Proof.
+  intros VP HP pq G HPG X Hgx Hx j Mj HM.
+  pose proof (valid_groups_valid VP HP pq G HPG) as Hg.
+  pose proof (containers_valid_of_groups VP HP pq G HPG) as Hcv.
+  destruct (im_head Mj) as [pm | qc kc Is vm] eqn:Hh.
+  - eexists; eapply eval_mref_decl; [ exact (vgr_lookup _ _ Hg) | exact HM | exact Hh ].
+  - destruct (gta_views _ (vgr_ass _ _ Hg) _ _ _ _ _ _ HM Hh) as (Dq & Mc & Hq & _).
+    destruct (vg_view_args_values pq G Hg Hcv _ _ _ _ _ _ _ HM Hh Hq X X Hgx Hx) as (cs & _ & Ecs & _).
+    eexists; eapply eval_mref_view; [ exact (vgr_lookup _ _ Hg) | exact HM | exact Hh | exact Ecs ].
+Qed.
+
 (** ** Values of Instances of a Closed Telescope *)
 
 (** Terms [Vs] of a closed telescope [C] over [Γ0], as an instance that
@@ -1471,6 +1487,77 @@ Section CrossBot.
       + exact Ta.
       + exact Tb.
       + rewrite <- !List.app_assoc in Hrr, HT; exact (per_elem_then_per_top HT Hrr).
+  Qed.
+
+  (** *** The References of the Two Sides
+
+      A container's member [a] and the group's member [b] the view takes it
+      to: their types at [ub] and at [u0] are at a common reference. *)
+  #[warnings="-cannot-define-projection"]
+  Record cross_ref_pair (a b : nat) : Prop := mk_cross_ref_pair
+    { crp_hd : qname
+    ; crp_k : nat
+    ; crp_prea : list domain
+    ; crp_preb : list domain
+    ; crp_ref_a : ⟦mref a of qc ub ⟧ gc_deps ⍮ gc_stack ↘ (crp_hd, crp_k, crp_prea)
+    ; crp_ref_b : ⟦mref b of p u0 ⟧ gc_deps ⍮ gc_stack ↘ (crp_hd, crp_k, crp_preb) }.
+
+  Lemma cross_refs : forall a Ma b Mb, List.nth_error vm a = Some b -> ind_member D' a = Some Ma -> ind_member D b = Some Mb ->
+      cross_ref_pair a b.
+  Proof.
+    intros a Ma b Mb Hvab HMa HMb.
+    pose proof (valid_groups_containers VP HP p D m Mm qc k' Is vm D' HPD HMm Hh Hq) as HVQ.
+    pose proof (valid_groups_valid VP HP qc D' HVQ) as HgQ.
+    pose proof (length_cups p D Hvg m Mm qc k' Is vm D' HMm Hh Hq u0 cups Ecups) as Hlc.
+    assert (Hlb : List.length ub = ind_nu D') by (destruct (per_gargs_length _ _ _ _ _ Hub) as [H1 _]; lia).
+    pose proof (uparams_refl_l D' (vgr_valid _ _ HgQ) (vgr_closed _ _ HgQ) _ _ Hub) as Hubub.
+    destruct (XE cross_member a b Hvab) as (Ma0 & Mb0 & HMa0 & Hvmb).
+    rewrite HMa in HMa0; injection HMa0 as <-.
+    pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMb0; rewrite HMb in HMb0; injection HMb0 as <-.
+    destruct (mref_exists VP HP qc D' HVQ ub Hubub Hlb a Ma HMa) as [[[hda ka] prea] Ra].
+    destruct (mref_exists VP HP p D HPD u0 u0_gargs' u0_len' b Mb HMb) as [[[hdb kb] preb] Rb].
+    destruct (mref_ref_len qc D' a Ma ub hda ka prea Hq HMa Hlb Ra) as [Hra _].
+    destruct (mref_ref_len p D b Mb u0 hdb kb preb Hl HMb u0_len' Rb) as [Hrb _].
+    pose proof (vmb_ref _ _ _ _ _ _ _ _ _ Hvmb) as Href.
+    rewrite Hra, Hrb in Href; injection Href as <- <-.
+    exact (mk_cross_ref_pair a b hdb kb prea preb Ra Rb).
+  Qed.
+
+  (** *** The Uniform Parameters the Two Sides Read
+
+      At a declared member of the container, its own [ub] and [k]'s
+      instance [cups]; at a view of the container's, its instance at [ub]
+      and the group's view's at [u0], which the view equations relate. *)
+  Lemma cross_uparams_read : forall i' Mi' j Mj hd k prea preb Dq, List.nth_error vm i' = Some j ->
+      ind_member D' i' = Some Mi' -> ind_member D j = Some Mj ->
+      ⟦mref i' of qc ub ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, prea) -> ⟦mref j of p u0 ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, preb) ->
+      ind_lookup gc_deps gc_stack hd = Some Dq ->
+      per_top_ps (List.rev (ind_uparams Dq)) prea preb.
+  Proof.
+    intros i' Mi' j Mj hd k prea preb Dq Hvi HMi' HMj Ra Rb HDq.
+    pose proof (length_cups p D Hvg m Mm qc k' Is vm D' HMm Hh Hq u0 cups Ecups) as Hlc.
+    assert (Hlb : List.length ub = ind_nu D') by (destruct (per_gargs_length _ _ _ _ _ Hub) as [H1 _]; lia).
+    destruct (gta_vm _ Hass _ _ _ _ _ _ _ _ _ HMm Hh Hq HMi') as [jj Mjj Hvj HMjj _ Hhm].
+    rewrite Hvi in Hvj; injection Hvj as <-; rewrite HMj in HMjj; injection HMjj as <-.
+    destruct (im_head Mi') as [pm | qv kv Iv vmv] eqn:Hh'.
+    - destruct Hhm as [vm' Hhj].
+      pose proof (mref_decl_inv _ _ _ _ _ _ _ Hq HMi' Hh' Ra) as Heq; injection Heq as -> -> ->.
+      destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMj Hhj Rb) as (py & Heq & Epy); injection Heq as ->.
+      pose proof (functional_eval_exps' _ _ _ _ Epy Ecups) as ->.
+      rewrite Hq in HDq; injection HDq as <-.
+      intros s; exact (per_gargs_top _ _ _ _ _ Hub ltac:(rewrite List.length_rev; unfold ind_nu in Hlb; exact Hlb) s).
+    - destruct Hhm as (Is' & vm' & Hhj & _).
+      destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hq HMi' Hh' Ra) as (pa & Heq & Epa); injection Heq as -> -> ->.
+      destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMj Hhj Rb) as (pb & Heq & Epb); injection Heq as ->.
+      destruct (view_view_values VP HP p D HPD m Mm qc k' Is vm D' i' Mi' j qv kv Iv vmv Dq Mj Is' vm'
+                  HMm Hh Hq HMi' Hh' HDq Hvi HMj Hhj u0 cups ub u0_gargs' u0_len' Ecups Hub) as (pa' & pb' & Epa' & Epb' & Hgp).
+      pose proof (functional_eval_exps' _ _ _ _ Epa' Epa) as ->; pose proof (functional_eval_exps' _ _ _ _ Epb' Epb) as ->.
+      pose proof (valid_groups_containers VP HP p D m Mm qc k' Is vm D' HPD HMm Hh Hq) as HVQ.
+      destruct (gta_views _ (vgr_ass _ _ (valid_groups_valid VP HP qc D' HVQ)) _ _ _ _ _ _ HMi' Hh') as (D3 & Mc3 & Hq3 & _ & _ & HlIv).
+      rewrite HDq in Hq3; injection Hq3 as <-.
+      assert (Lp : List.length pa = List.length (List.rev (ind_uparams Dq)))
+        by (rewrite List.length_rev, (eval_exps_length _ _ _ Epa); exact HlIv).
+      intros s; exact (per_gargs_top _ _ _ _ _ Hgp Lp s).
   Qed.
 End CrossBot.
 
