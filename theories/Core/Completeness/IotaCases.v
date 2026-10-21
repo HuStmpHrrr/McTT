@@ -1,8 +1,9 @@
-(** * The [ι] Rule of an Inductive Type
+(** * The [ι] Rule of a Group of Inductive Types
 
-    The semantic rule of [ι]: the eliminator at a constructor is its branch
-    at the arguments and the recursive results.  It holds because the two
-    sides are related at the target of a sound embedding
+    The semantic rule of [ι]: the eliminator at a constructor of a member
+    is the constructor's branch at the arguments and the recursive
+    results.  It holds because the group is valid at the target of a sound
+    embedding ([valid_groups_of_emb]), where the two sides are related
     ([Inductives/Iota.v]). *)
 
 From Stdlib Require Import Lia List PeanoNat Relation_Definitions RelationClasses.
@@ -40,26 +41,55 @@ Import Domain_Notations Fixed_Notations.
 Lemma sem_exp_eq_elim_iota :
   `( ⊨ Θ ⍮ Ξ ⍮ Γ ->
      ind_lookup Θ Ξ p = Some D ->
-     ind_con D c = Some gs ->
-     List.length Ps = ind_np D ->
-     (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
+     elim_grp D oq p m ->
+     ind_member D m = Some Mm ->
+     List.nth_error Bks m = Some bm ->
+     ind_con Mm c = Some gs ->
+     List.length Bks = List.length (ind_members D) ->
+     List.length Ps = im_np D Mm ->
+     (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊨ P : T) ->
      List.length As = List.length gs ->
-     (forall k N T, nth_error As k = Some N -> nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id Ps) As) k = Some T ->
+     (forall k N T, nth_error As k = Some N -> nth_error (tele_insts (cargs_ctx p D Mm gs) (sb_of_list Id Ps) As) k = Some T ->
         Θ ⍮ Ξ ⍮ Γ ⊨ N : T) ->
-     nm = S (ind_nn D) ->
-     Θ ⍮ Ξ ⍮ elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ ⊨ A : Typeω@i ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ˣ elim_mctx p D (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D (List.firstn (ind_nu D) Ps) ->
-     brs_names (ind_cons D) Bs ->
-     (forall c gs, ind_con D c = Some gs ->
-        Θ ⍮ Ξ ⍮ Γ ⊨ˣ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ≈ elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) ->
-     (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs ->
-        n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
-     (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs ->
-        Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊨ B
-          : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
-     brs_lookup Bs c = Some (n, B) ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ a_elim nm A Bs (apps (a_con p c) (Ps ++ As))
-       ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs nm A Bs (sb_of_list Id Ps) gs As)]
-       : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ apps (a_con p c) (Ps ++ As) :: nil)] ).
-Proof. intros; sem_intro; [ assumption | eapply rel_exp_under_ctx_elim_iota_of_emb; eassumption ]. Qed.
+     Us = List.firstn (ind_nu D) Ps ->
+     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
+     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
+        Θ ⍮ Ξ ⍮ Γ ⊨ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
+                     ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊨ eb_motive b : Typeω@i) ->
+     (forall k Mk, ind_member D k = Some Mk ->
+        Θ ⍮ Ξ ⍮ Γ ⊨ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
+     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
+     (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
+        Θ ⍮ Ξ ⍮ Γ ⊨ˣ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
+                     ≈ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
+     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
+        n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
+     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
+        Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊨ B
+          : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
+     brs_lookup (eb_brs bm) c = Some (n, B) ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ a_elim oq Us m Bks (apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+                                    (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As))
+       ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++
+                          elim_ihs p D oq (List.firstn (ind_nu D) Ps) Bks (sb_of_list Id Ps) gs As)]
+       : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++
+                          apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c)
+                            (im_pre Mm (List.firstn (ind_nu D) Ps) ++ List.skipn (ind_nu D) Ps ++ As) :: nil)] ).
+Proof.
+  intros * HΓ Hl Hgr HMm Hbm Hcon HLb HPl HPs HAl HAs -> Hnm _ HA HMx HBn HBc Har HB Hlk; sem_intro; [ assumption |].
+  match goal with He : valid_emb _ _ _ _ |- _ => rename He into Hμ end.
+  refine (rel_exp_under_ctx_elim_iota_at _ _ _ (valid_groups_of_emb _ _ _ _ Hμ) Hl Γ oq m Mm bm Bks c gs Ps As i
+            ltac:(assumption) Hgr HMm Hbm Hcon HPl _ HAl _ _ Hnm _ _ HBn _ Har _ n B Hlk).
+  - intros * HP HT; exact (sea_rel (HPs _ _ _ HP HT _ _ Hμ)).
+  - intros * HN HT; exact (sea_rel (HAs _ _ _ HN HT _ _ Hμ)).
+  - intros * HMj; apply nth_error_lt_some'; rewrite HLb; apply List.nth_error_Some; unfold ind_member in HMj; congruence.
+  - intros * HMk; exact (valid_ctx_rel_ctx_wf (sxa_ext (HMx _ _ HMk _ _ Hμ))).
+  - intros * HMk Hb; exact (sea_rel (HA _ _ _ HMk Hb _ _ Hμ)).
+  - intros * HMk Hc0; exact (valid_ctx_rel_ctx_wf (sxa_ext (HBc _ _ _ _ HMk Hc0 _ _ Hμ))).
+  - intros * HMk Hb Hc0 Hin; exact (sea_rel (HB _ _ _ _ _ _ _ HMk Hb Hc0 Hin _ _ Hμ)).
+Qed.
