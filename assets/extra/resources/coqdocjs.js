@@ -85,7 +85,7 @@ function isProofEnd(s){
 // Whether a block of the page has a proof start among its own children.
 function hasProofStart(block){
   return toArray(block.childNodes).some(function(child){
-    return child.nodeType === Node.ELEMENT_NODE && isVernacStart(["Proof"], child.textContent);
+    return child.nodeType === Node.ELEMENT_NODE && isVernacStart(["Proof", "Next"], child.textContent);
   });
 }
 
