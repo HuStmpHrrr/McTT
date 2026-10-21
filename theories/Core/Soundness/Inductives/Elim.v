@@ -3916,3 +3916,35 @@ Proof.
 Qed.
 
 End Fixed_GCtx.
+
+(** ** The Groups along a Sound Embedding
+
+    The groups of a well-formed source are valid groups of the target of
+    a sound embedding: as along a semantic embedding
+    ([valid_groups_of_emb]), each read at the target, valid there since
+    the target is well formed. *)
+Lemma valid_groups_of_glu_emb : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    @valid_groups (gc_mk Θ2 Ξ2) (fun qn G => ind_lookup Θ Ξ qn = Some G).
+Proof.
+  intros * Hg He.
+  pose proof (em_res _ _ _ _ He) as Hs.
+  pose proof (valid_emb_refl _ _ (em_wf _ _ _ _ He)) as He2.
+  constructor.
+  - intros qn G Hlq.
+    destruct (Completeness.Inductives.Elim.decl_of_glookup _ _ _ _ Hg Hlq) as [Hdt Hc].
+    pose proof (decl_typed_emb _ _ _ _ _ He Hdt) as Hdt2.
+    pose proof (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hlq) as Hl2.
+    constructor; [ exact Hl2 | exact (vem_ind _ _ _ _ He2 _ _ Hl2) | exact Hc | exact (dt_sort_univ _ _ _ Hdt) | |
+                 exact Hdt2 | exact (ind_lookup_mpath _ _ _ _ Hg Hlq) ].
+    apply (@grp_tele_ass_of_typed (gc_mk Θ2 Ξ2) G Hdt2).
+    intros * HM Hh Hq2.
+    destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HM Hh) as (D' & Mk' & Hq & _).
+    pose proof (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hq) as Hq'.
+    cbn in Hq2; rewrite Hq' in Hq2; injection Hq2 as <-.
+    exact (decl_typed_emb _ _ _ _ _ He (proj1 (Completeness.Inductives.Elim.decl_of_glookup _ _ _ _ Hg Hq))).
+  - intros * Hlq HM Hh Hq2; cbn in Hq2 |- *.
+    destruct (Completeness.Inductives.Elim.decl_of_glookup _ _ _ _ Hg Hlq) as [Hdt _].
+    destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HM Hh) as (D' & Mk' & Hq & _).
+    pose proof (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hq) as Hq'.
+    rewrite Hq' in Hq2; injection Hq2 as <-; exact Hq.
+Qed.
