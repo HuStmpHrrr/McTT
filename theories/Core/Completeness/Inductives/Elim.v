@@ -1365,6 +1365,52 @@ Section GroupElim.
     eapply closed_env_base; [ exact Ua | exact Usem | exact HRU | rewrite L1; exact HVl | rewrite L2; exact HVl | exact H12' ].
   Qed.
 
+  (** The instances of a member's non-uniform parameters and of its
+      motive's context at terms of their types. *)
+  Lemma gsub_ns : forall m Mm, ind_member D m = Some Mm -> ⊨ elim_mctx p D m Mm Us ++ Γ ->
+      forall Ns, List.length Ns = im_nn Mm ->
+      (forall j N T0, List.nth_error Ns j = Some N -> List.nth_error (tele_insts (im_nparams Mm) τU Ns) j = Some T0 -> Γ ⊨ N : T0) ->
+      gsub Γ (sb_of_list Id Ns) (tele_sub (im_nparams Mm) τU ++ Γ).
+  Proof.
+    intros * HMm HMa * HNl HNs.
+    apply gsub_of_list; [ constructor; exact HΓ | apply tele_ass_sub, (decl_closed_nparams_ass D Hc _ _ HMm)
+                        | exact (rel_ctx_wf_tail HMa) | rewrite length_tele_sub; exact HNl |].
+    intros j N T0 HN HT; rewrite tele_insts_tele_sub in HT.
+    rewrite (tele_insts_sb_eq _ _ τU) in HT by (intros x; cbn; apply sentry_sub_id).
+    exact (HNs _ _ _ HN HT).
+  Qed.
+
+  Lemma gsub_tau : forall m Mm, ind_member D m = Some Mm -> ⊨ elim_mctx p D m Mm Us ++ Γ ->
+      forall Ns M, List.length Ns = im_nn Mm ->
+      (forall j N T0, List.nth_error Ns j = Some N -> List.nth_error (tele_insts (im_nparams Mm) τU Ns) j = Some T0 -> Γ ⊨ N : T0) ->
+      Γ ⊨ M : ind_mty p D m Us Ns ->
+      gsub Γ (sb_of_list Id (Ns ++ M :: nil)) (elim_mctx p D m Mm Us ++ Γ).
+  Proof.
+    intros * HMm HMa * HNl HNs HMv.
+    assert (Hrass : tele_ass (tele_sub (im_nparams Mm) τU)) by (apply tele_ass_sub, (decl_closed_nparams_ass D Hc _ _ HMm)).
+    apply gsub_of_list; [ constructor; exact HΓ | exact (elim_mctx_ass p D m Mm Us Hc HMm) | exact HMa
+                        | rewrite List.length_app, length_elim_mctx; cbn; lia |].
+    intros j N T0 HN HT.
+    unfold elim_mctx in HT; change (ce_ass ?H0 :: ?R) with ((ce_ass H0 :: nil) ++ R) in HT.
+    rewrite tele_insts_app in HT by (try exact Hrass; rewrite length_tele_sub; exact HNl).
+    assert (Hl2 : List.length (tele_insts (tele_sub (im_nparams Mm) τU) Id Ns) = im_nn Mm)
+      by (rewrite length_tele_insts by exact Hrass; rewrite length_tele_sub, length_im_nparams; lia).
+    destruct (Nat.lt_ge_cases j (im_nn Mm)) as [Hk | Hk].
+    - rewrite List.nth_error_app1 in HN by lia.
+      rewrite List.nth_error_app1 in HT by (rewrite length_tele_insts by exact Hrass; rewrite length_tele_sub, length_im_nparams; lia).
+      rewrite tele_insts_tele_sub in HT.
+      rewrite (tele_insts_sb_eq _ _ τU) in HT by (intros x; cbn; apply sentry_sub_id).
+      exact (HNs _ _ _ HN HT).
+    - rewrite List.nth_error_app2 in HN by lia.
+      rewrite List.nth_error_app2 in HT by (rewrite length_tele_insts by exact Hrass; rewrite length_tele_sub, length_im_nparams; lia).
+      rewrite HNl in HN; rewrite length_tele_insts, length_tele_sub, length_im_nparams, HNl, Nat.min_id in HT by exact Hrass.
+      destruct (j - im_nn Mm) as [| j'] eqn:Hk'; cbn in HN, HT; [| destruct j'; discriminate ].
+      injection HN as <-; unfold tele_insts in HT; cbn in HT; injection HT as <-.
+      rewrite ind_head_inst by (try exact Hc; try exact HUl; exact HNl).
+      rewrite (List.map_ext (fun U => U[Id]) (fun U => U)), List.map_id by (intros; apply exp_sub_id).
+      exact HMv.
+  Qed.
+
   (** The uniform parameters' values, as arguments of their telescope. *)
   Lemma U_gargs : forall a b, RU (env_args nil a) (env_args nil b) -> List.length a = ind_nu D -> List.length b = ind_nu D ->
       per_gargs (List.rev (ind_uparams D)) nil nil a b.
