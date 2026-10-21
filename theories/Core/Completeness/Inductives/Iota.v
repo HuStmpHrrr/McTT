@@ -982,7 +982,96 @@ Section Iota.
           apply (proj1 (EP rel_resp _ _ HMj _ _ _ _ _ _ _ _ _ _ _ _ _ _ HmLf (itrans _ _ _ _ _ _ _ Hff _ _ _ _ (isym _ _ _ _ _ _ _ Hff)) Hff r2 r1)).
           symmetry; exact Hr12.
       Qed.
+
+      (** After [kd] domains: the eliminator's own recursive result
+          against the value of [ptyp_ih] in the environment extended by the
+          domains' values. *)
+      Lemma s_clo : forall a, List.nth_error avs (List.length gs1) = Some a ->
+          forall n kd, kd + n = L -> forall ys ys' f f',
+          tele_prefix_rel (shape_doms_rel (dr m) ns nv (ptyp_doms t)) kd ys ys' ->
+          $*| a & ys | gc_deps ⍮ gc_stack ↘ f -> $*| a & ys' | gc_deps ⍮ gc_stack ↘ f' ->
+          rec_arg_rel p D (okr_at D u0 nr) nr ar dr m u0 u0 (ns ++ nv ++ ys) (ns ++ nv ++ ys') (ptyp_skip kd t) f f' ->
+          forall Us0 Bks0, Us0 = List.map (fun U => U[sb_shift_iter kd Id]) Us -> Bks0 = blocks_sub Bks (sb_shift_iter kd Id) ->
+          exists re rc, ⟦ih f of ptyp_skip kd t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C ↘ re /\
+            ⟦ ptyp_ih p D oq Us0 Bks0 (sb_qn kd σt) (apps_vars_iter kd Mt) (ptyp_skip kd t) ⟧ env_args C ys' ↘ rc /\
+            rec_result_rel dr Rel m u0 u0 (ns ++ nv ++ ys) (ns ++ nv ++ ys') (ptyp_skip kd t) f f' re rc.
+      Proof.
+        intros a Ha; induction n as [| n IH]; intros kd Hkn * Hys Ef Ef' Hsh * HU0 HB0; subst Us0 Bks0.
+        - assert (Hk : kd = L) by lia; rewrite Hk in Hys, Hsh |- *.
+          pose proof (ptyp_skip_end t) as HsL; change (List.length (ptyp_doms t)) with L in HsL; rewrite HsL in Hsh |- *.
+          cbn [ptyp_ih].
+          destruct (s_leaf a Ha ys ys' f f' Hys Ef Ef' Hsh) as (re & rc & Ere & Erc & Hr).
+          exists re, rc; split; [ constructor; exact Ere | split; [ exact Erc | exact Hr ] ].
+        - assert (Hk : kd < L) by lia.
+          destruct (ptyp_skip_lt kd t Hk) as (Bk & HBk & Hs).
+          rewrite Hs in Hsh |- *.
+          assert (HUs1 : List.map (fun U => U[↑]ʷ) (List.map (fun U => U[sb_shift_iter kd Id]) Us)
+                         = List.map (fun U => U[sb_shift_iter (S kd) Id]) Us)
+            by (rewrite List.map_map; apply List.map_ext; intros; rewrite <- exp_sub_of_wk, exp_sub_sub; reflexivity).
+          assert (HBs1 : blocks_wk (blocks_sub Bks (sb_shift_iter kd Id)) ↑ = blocks_sub Bks (sb_shift_iter (S kd) Id))
+            by (rewrite <- blocks_sub_of_wk, blocks_sub_sub; reflexivity).
+          do 2 eexists; split; [ constructor | split; [ cbn [ptyp_ih]; constructor |] ].
+          apply rec_result_pi; intros c0 c0' Hcc.
+          destruct (rec_arg_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh c0 c0' Hcc) as (fc & fc' & Efc & Efc' & Hsh').
+          assert (Hys1 : tele_prefix_rel (shape_doms_rel (dr m) ns nv (ptyp_doms t)) (S kd) (ys ++ c0 :: nil) (ys' ++ c0' :: nil))
+            by (apply tele_prefix_rel_snoc; [ exact Hys |]; unfold shape_doms_rel; rewrite (List.nth_error_nth _ _ _ HBk); exact Hcc).
+          assert (Efa : $*| a & ys ++ c0 :: nil | gc_deps ⍮ gc_stack ↘ fc)
+            by (apply eval_apps_app; exists f; split; [ exact Ef | econstructor; [ exact Efc | constructor ] ]).
+          assert (Efa' : $*| a & ys' ++ c0' :: nil | gc_deps ⍮ gc_stack ↘ fc')
+            by (apply eval_apps_app; exists f'; split; [ exact Ef' | econstructor; [ exact Efc' | constructor ] ]).
+          rewrite <- !List.app_assoc in Hsh'.
+          destruct (IH (S kd) ltac:(lia) _ _ _ _ Hys1 Efa Efa' Hsh' _ _ HUs1 HBs1) as (re & rc & Ere & Erc & Hih).
+          econstructor; [ exact Efc | exact Efc' | econstructor; [ exact Efc | exact Ere ] | constructor; rewrite env_args_snoc in Erc; exact Erc |].
+          rewrite <- !List.app_assoc; exact Hih.
+      Qed.
     End RecSem.
+
+    (** The recursive results of the arguments after [gs1]. *)
+    Lemma s_ihs : forall rest gs1, gs = gs1 ++ rest ->
+        exists ihe ihc, ⟦ihs List.skipn (List.length gs1) avs of rest under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C ↘ ihe /\
+          ⟦ elim_ihs p D oq Us Bks (cargs_sub σP gs1 As) rest (List.skipn (List.length gs1) As) ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ ihc /\
+          rec_results_rel dr Rel m u0 u0 (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) avs))
+            (ns ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) avs)) rest
+            (List.skipn (List.length gs1) avs) (List.skipn (List.length gs1) avs) ihe ihc.
+    Proof.
+      induction rest as [| g rest IH]; intros gs1 Heq.
+      - assert (E : List.skipn (List.length gs1) avs = nil)
+          by (apply List.skipn_all2; rewrite s_La, Heq, List.app_nil_r; lia).
+        rewrite E; exists nil, nil; split; [ constructor | split; [ cbn; constructor | constructor ] ].
+      - assert (Hlt : List.length gs1 < List.length avs) by (rewrite s_La, Heq, List.length_app; cbn; lia).
+        destruct (nth_error_lt_some avs _ Hlt) as [v Hv].
+        assert (HltA : List.length gs1 < List.length As) by (rewrite HAl, Heq, List.length_app; cbn; lia).
+        destruct (nth_error_lt_some As _ HltA) as [M0 HM0].
+        assert (Lf : List.length (List.firstn (List.length gs1) avs) = List.length gs1) by (rewrite List.length_firstn; lia).
+        assert (Heq' : gs = (gs1 ++ g :: nil) ++ rest) by (rewrite <- List.app_assoc; exact Heq).
+        destruct (IH _ Heq') as (ihe & ihc & Ee & Ec & Hr).
+        rewrite List.length_app in Ee, Ec, Hr; cbn [List.length] in Ee, Ec, Hr; rewrite Nat.add_1_r in Ee, Ec, Hr.
+        rewrite (firstn_S_nth _ _ _ Hv), nonrec_arg_vals_app in Hr by exact Lf.
+        rewrite (skipn_nth_cons _ _ _ Hv), (skipn_nth_cons _ _ _ HM0).
+        destruct g as [B0 | t].
+        + assert (Hcs : cargs_sub σP (gs1 ++ ca_arg B0 :: nil) As = (cargs_sub σP gs1 As ,, M0)).
+          { rewrite <- cargs_sub_firstn, <- (cargs_sub_firstn gs1), List.length_app, Nat.add_1_r, (firstn_S_nth _ _ _ HM0).
+            apply cargs_sub_snoc_arg; rewrite List.length_firstn; lia. }
+          rewrite Hcs in Ec; cbn [nonrec_arg_vals] in Hr; rewrite List.app_assoc in Hr.
+          exists ihe, ihc; split; [ constructor; exact Ee | split; [ cbn [elim_ihs]; exact Ec | constructor; exact Hr ] ].
+        + assert (Hcs : cargs_sub σP (gs1 ++ ca_rec t :: nil) As = cargs_sub σP gs1 As).
+          { rewrite <- cargs_sub_firstn, <- (cargs_sub_firstn gs1), List.length_app, Nat.add_1_r, (firstn_S_nth _ _ _ HM0).
+            apply cargs_sub_snoc_rec; rewrite List.length_firstn; lia. }
+          rewrite Hcs in Ec; cbn [nonrec_arg_vals] in Hr; rewrite List.app_nil_r in Hr.
+          destruct (length_rec_ps D HD m Mm HMm c gs gs1 t rest Hcon Heq) as (Mj & HMj & _).
+          destruct (s_a gs1 t rest Heq Mj HMj) as (a & Ha & Hsh).
+          rewrite Hv in Ha; injection Ha as <-.
+          destruct (s_clo gs1 t rest Heq Mj HMj v Hv _ 0 eq_refl nil nil v v (tele_prefix_rel_nil _) ltac:(constructor) ltac:(constructor)
+                      ltac:(cbn [ptyp_skip]; rewrite List.app_nil_r; exact Hsh) Us Bks
+                      ltac:(cbn [sb_shift_iter]; rewrite (List.map_ext _ (fun U => U) exp_sub_id), List.map_id; reflexivity)
+                      ltac:(cbn [sb_shift_iter]; rewrite blocks_sub_id; reflexivity)) as (re & rc & Ere & Erc & Hih).
+          cbn [apps_vars_iter sb_qn ptyp_skip env_args List.fold_left] in Ere, Erc, Hih.
+          rewrite List.app_nil_r in Hih.
+          rewrite (List.nth_error_nth _ _ _ HM0) in Erc.
+          exists (re :: ihe), (rc :: ihc); split; [ constructor; [ exact Ere | exact Ee ] | split ].
+          * cbn [elim_ihs]; constructor; [ exact Erc | exact Ec ].
+          * constructor; [ exact Hih | exact Hr ].
+    Qed.
   End IotaSem.
 End Iota.
 
