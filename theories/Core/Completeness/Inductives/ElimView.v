@@ -173,6 +173,28 @@ Proof.
   exists gs0; split; [ rewrite <- Hc0; exact Hin | symmetry; exact Hn0 ].
 Qed.
 
+(** The context of a wrapped branch is a telescope of assumptions, of
+    as many entries as the branch's arity. *)
+Lemma wrap_ihs_ctx_ass : forall nn As Us na gs' gs gs0 r, tele_ass (wrap_ihs_ctx nn As Us na gs0 r gs' gs).
+Proof.
+  induction gs' as [| [] gs' IH]; intros [| [] gs] *; cbn [wrap_ihs_ctx]; try constructor; try apply IH.
+  apply List.Forall_app; split; [ apply IH | constructor; eauto ].
+Qed.
+
+Lemma wrap_bctx_ass : forall pq D k M gs' gs As Us, decl_closed D -> ind_member D k = Some M ->
+    tele_ass (wrap_bctx pq D M gs' gs As Us).
+Proof.
+  intros * HD HM; unfold wrap_bctx; apply List.Forall_app; split; [ apply wrap_ihs_ctx_ass |].
+  apply List.Forall_app; split; apply tele_ass_sub; [ apply cargs_ctx_aux_ass | eapply decl_closed_nparams_ass; eassumption ].
+Qed.
+
+Lemma length_wrap_bctx : forall pq D M gs' gs As Us, cargs_kinds gs' gs ->
+    List.length (wrap_bctx pq D M gs' gs As Us) = (cargs_nrec gs' + List.length gs + im_nn M)%nat.
+Proof.
+  intros * Hk; unfold wrap_bctx; rewrite !List.length_app, length_wrap_ihs_ctx by exact Hk.
+  rewrite !length_tele_sub, length_cargs_ctx; unfold im_nn; lia.
+Qed.
+
 (** A list substitution evaluated: the values of its terms after its
     base's. *)
 Lemma eval_sb_of_list_inv : forall Ms σ ρ E E0, ⟦ sb_of_list σ Ms ⟧s gc_deps ⍮ gc_stack ⍮ ρ ↘ E ->
@@ -1376,10 +1398,10 @@ Section WrapBr.
       exists r r', ⟦ Ba[ViewBranch.wrap_br_sub p D Us Bks Mv gs' gs] ⟧ env_args C1 (List.skipn (im_unu D Mv) bs ++ vs ++ w) ↘ r /\
         ⟦ Ba ⟧ env_args C1 (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ↘ r' /\
         Rel v (List.skipn (im_unu D Mv) bs) (d_con hd k c (bs ++ vs)) (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs' ++ vs')) r r' /\
-        (forall m0, per_head (elim_bty p v Mv c gs (eb_motive bv) Us)[ViewBranch.wrap_br_sub p D Us Bks Mv gs' gs]
-                       (elim_bty p v Mv c gs (eb_motive bv) Us)[ViewBranch.wrap_br_sub p D Us Bks Mv gs' gs]
-                       (env_args C1 (List.skipn (im_unu D Mv) bs ++ vs ++ w)) (env_args C1 (List.skipn (im_unu D Mv) bs ++ vs ++ w)) m0 r ->
-           Rel v (List.skipn (im_unu D Mv) bs) (d_con hd k c (bs ++ vs)) (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs' ++ vs')) m0 r').
+        (forall Γ' RΓ' σ0 ρ0, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ0 ≈ σ0 : Γ -> RΓ' ρ0 ρ0 -> ⟦ σ0 ⟧s ρ0 ↘ C1 ->
+           exists r0, ⟦ Ba[ViewBranch.wrap_br_sub p D Us Bks Mv gs' gs][sb_qn (im_nn Mv + List.length gs' + cargs_nrec gs') σ0] ⟧
+                        env_args ρ0 (List.skipn (im_unu D Mv) bs ++ vs ++ w) ↘ r0 /\
+             Rel v (List.skipn (im_unu D Mv) bs) (d_con hd k c (bs ++ vs)) (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs' ++ vs')) r0 r').
   Proof.
     intros na0 Ba HBa * Hm Hcr.
     assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
@@ -1462,9 +1484,40 @@ Section WrapBr.
                (proj1 (ER _ _) (per_head_trans _ _ _ _ _ _ HRB HT HEτ _ _ _ Hm0 Hmn)) Hnr). }
     exists m, r'; split; [ exact Em | split; [ exact Er' | split ] ].
     - apply Hfin; exact (per_head_trans _ _ _ _ _ _ HRB HT HEτ _ _ _ Hmn (per_head_sym _ _ _ _ _ _ HRB HT HEτ _ _ Hmn)).
-    - intros m0 Hm0; apply Hfin.
-      exact (proj1 (per_head_inst _ _ _ _ _ _ _ _ _ _ HT HRW (gsub_valid (WB gsub_wrap_br v Mv c gs' gs HMv Hcon Hk)) HEb Hτe Hτe m0 m)
-               Hm0).
+    - (** The wrapped branch moved by a semantic substitution, by an outer
+          link in its context. *)
+      intros Γ' RΓ' σ0 ρ0 HRΓ' Hσ0 Hρ0 Hev0.
+      set (Δ := wrap_bctx p D Mv gs' gs (blocks_motives Bks) Us) in *.
+      assert (HΔa : tele_ass Δ) by exact (wrap_bctx_ass p D v Mv gs' gs _ Us Hc HMv).
+      assert (LΔ : List.length (X ++ vs ++ w) = List.length Δ)
+        by (unfold Δ; rewrite length_wrap_bctx by exact Hk; rewrite LXvw; unfold n; rewrite LEw; unfold na, nn; lia).
+      assert (Ll : List.length (X ++ vs ++ w) = List.length (List.rev Δ)) by (rewrite List.length_rev; exact LΔ).
+      assert (HΔr : ⊨ List.rev (List.rev Δ) ++ Γ) by (rewrite List.rev_involutive; exact HWE).
+      assert (HRWr : EF List.rev (List.rev Δ) ++ Γ ≈ List.rev (List.rev Δ) ++ Γ ∈ per_ctx_env ↘ RW)
+        by (rewrite List.rev_involutive; exact HRW).
+      pose proof (proj2 (rel_gargs _ _ _ _ HRΓ HΔr (List.Forall_rev HΔa) HRWr _ _ _ _ Ll Ll HEb)) as Hg.
+      pose proof (WB valid_wrap_br v Mv c gs' gs HMv Hcon Hk bv na0 Ba Hbv HBa) as HBw.
+      rewrite (wrap_br_snd _ _ _ _ _ _ _ _ _ _ _ Hcon HBa) in HBw.
+      destruct (outer_exp_link Δ Γ Γ' RΓ' σ0 ρ0 C1 _ _ _ HΔa HWE HBw HRΓ' Hσ0 Hρ0 Hev0 _ Hg LΔ)
+        as (RΔ & F & m1 & n1 & HRΔ & HF & Em1 & Eo1 & Hmn1).
+      assert (n1 = m) as -> by (eapply functional_eval_exp; eassumption).
+      assert (ERW : RΔ <~> RW) by (eapply per_ctx_env_right_irrel; eassumption).
+      apply ERW in HF.
+      destruct (presup_rel_exp_under_ctx HBw) as [iW HTw].
+      assert (EW : per_head (elim_bty p v Mv c gs (eb_motive bv) Us)[ViewBranch.wrap_br_sub p D Us Bks Mv gs' gs]
+                     (elim_bty p v Mv c gs (eb_motive bv) Us)[ViewBranch.wrap_br_sub p D Us Bks Mv gs' gs] F Eb
+                   <~> per_head (elim_bty p v Mv c gs (eb_motive bv) Us)[ViewBranch.wrap_br_sub p D Us Bks Mv gs' gs]
+                     (elim_bty p v Mv c gs (eb_motive bv) Us)[ViewBranch.wrap_br_sub p D Us Bks Mv gs' gs] Eb Eb).
+      { apply (per_head_of_typ_resp HRW HTw).
+        apply rel_chain_cons; [ exact HF |]. apply rel_chain_cons; [ exact HEb |]. apply rel_chain_of_pair; exact HEb. }
+      exists m1; split.
+      + unfold Δ in Em1; rewrite length_wrap_bctx in Em1 by exact Hk.
+        replace (im_nn Mv + List.length gs' + cargs_nrec gs') with (cargs_nrec gs' + List.length gs + im_nn Mv)
+          by (rewrite (cargs_kinds_length _ _ Hk); lia).
+        exact Em1.
+      + apply Hfin.
+        exact (proj1 (per_head_inst _ _ _ _ _ _ _ _ _ _ HT HRW (gsub_valid (WB gsub_wrap_br v Mv c gs' gs HMv Hcon Hk)) HEb Hτe Hτe m1 m)
+                 (proj1 (EW _ _) Hmn1)).
   Qed.
 End WrapBr.
 
@@ -1614,6 +1667,88 @@ Section WrappedBlocks.
     destruct (WR wrap_branch_rel v Mv c gs' gs bv HMv Hcn Hk Hbv na Ba HBa u u' bs bs' vs vs' w ihs hd k Hm Hcr) as (r & r' & Er & Er' & Hrr & _).
     exists r, r'; split; [ exact Er | split; [ exact Er' | exact Hrr ] ].
   Qed.
+
+  (** *** Moved by a Semantic Substitution
+
+      The wrapped blocks moved by a semantic substitution [σ0] from [Γ'] at
+      [ρ0], of value [C1] there. *)
+  Section Moved.
+    Variable (Γ' : ctx) (RΓ' : relation env) (σ0 : sub) (ρ0 : env).
+    Hypotheses (HRΓ' : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ') (Hσ0 : Γ' ⊨ˢ σ0 ≈ σ0 : Γ) (Hρ0 : RΓ' ρ0 ρ0)
+      (Hev0 : ⟦ σ0 ⟧s ρ0 ↘ C1).
+    Let VBs := blocks_sub VB σ0.
+
+    Lemma moved_at_has : forall i' Mi', ind_member D' i' = Some Mi' -> exists b, List.nth_error VBs i' = Some b.
+    Proof.
+      intros * HMi'; destruct (wrapped_at_has _ _ HMi') as [b Hb].
+      exists (eblock_sub b σ0); unfold VBs; rewrite nth_error_blocks_sub, Hb; reflexivity.
+    Qed.
+
+    Lemma moved_at_nm : forall i' Mi' b, ind_member D' i' = Some Mi' -> List.nth_error VBs i' = Some b -> eb_nm b = S (im_nn Mi').
+    Proof.
+      intros * HMi' Hb; destruct (nth_error_blocks_sub_inv _ _ _ _ Hb) as (b0 & Hb0 & ->).
+      rewrite eb_nm_sub; exact (wrapped_at_nm _ _ _ HMi' Hb0).
+    Qed.
+
+    Lemma moved_at_names : forall i' Mi' b, ind_member D' i' = Some Mi' -> List.nth_error VBs i' = Some b ->
+        brs_names (im_cons Mi') (eb_brs b).
+    Proof.
+      intros * HMi' Hb; destruct (nth_error_blocks_sub_inv _ _ _ _ Hb) as (b0 & Hb0 & ->).
+      rewrite eb_brs_sub; apply brs_names_sub; exact (wrapped_at_names _ _ _ HMi' Hb0).
+    Qed.
+
+    Lemma moved_at_arity : forall i' Mi' b c gs' n B, ind_member D' i' = Some Mi' -> List.nth_error VBs i' = Some b ->
+        ind_con Mi' c = Some gs' -> In (c, n, B) (eb_brs b) -> n = (im_nn Mi' + List.length gs' + cargs_nrec gs')%nat.
+    Proof.
+      intros * HMi' Hb Hc' Hin; destruct (nth_error_blocks_sub_inv _ _ _ _ Hb) as (b0 & Hb0 & ->).
+      rewrite eb_brs_sub in Hin; destruct (brs_in_sub _ _ _ _ _ Hin) as [B0 Hin0].
+      exact (wrapped_at_arity _ _ _ _ _ _ _ HMi' Hb0 Hc' Hin0).
+    Qed.
+
+    Lemma moved_at_motive : forall i' Mi' v bb ba u u' ns ns' x x', ind_member D' i' = Some Mi' -> List.nth_error vm i' = Some v ->
+        List.nth_error VBs i' = Some bb -> List.nth_error Bks v = Some ba -> G v u u' ns ns' x x' ->
+        exists a a', ⟦ eb_motive bb ⟧ env_args ρ0 (ns ++ x :: nil) ↘ a /\
+          ⟦ eb_motive ba ⟧ env_args C1 (ns' ++ x' :: nil) ↘ a' /\
+          DF a ≈ a' ∈ per_univ_elem iA ↘ Rel v ns x ns' x'.
+    Proof.
+      intros * HMi' Hv Hb Hba Hm.
+      destruct (nth_error_blocks_sub_inv _ _ _ _ Hb) as (b0 & Hb0 & ->).
+      destruct (wrapped_block _ _ HMi') as [v0 Mv bv Hv0 HMv Hbv Hnn _ Hvb].
+      rewrite Hv in Hv0; injection Hv0 as <-; rewrite Hbv in Hba; injection Hba as <-.
+      rewrite Hvb in Hb0; injection Hb0 as <-.
+      rewrite eb_motive_sub; cbn [eb_motive eb_nm].
+      rewrite (vbs_nm _ _ _ _ _ _ HBk _ _ _ HMv Hbv).
+      exact (EB mot_out C1 HC11 Bks iA HMall HAv v Mv bv HMv Hbv Γ' RΓ' σ0 ρ0 C1 (eb_motive bv) HRΓ' Hσ0 Hρ0 Hev0 HC11
+               (HAv _ _ _ HMv Hbv) u u' ns ns' x x' Hm).
+    Qed.
+
+    Lemma moved_at_branch : forall i' Mi' v Mv bb ba c gs' gs nb na Bb Ba u u' bs bs' vs vs' w ihs hd k,
+        ind_member D' i' = Some Mi' -> List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
+        List.nth_error VBs i' = Some bb -> List.nth_error Bks v = Some ba ->
+        ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
+        brs_lookup (eb_brs bb) c = Some (nb, Bb) -> brs_lookup (eb_brs ba) c = Some (na, Ba) ->
+        G v u u' (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs ++ vs)) (d_con hd k c (bs' ++ vs')) ->
+        cross_results_rel dr Rel v u u' C1 p u0 Bks (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') gs' gs vs vs' w ihs ->
+        exists r r', ⟦ Bb ⟧ env_args ρ0 (List.skipn (im_unu D Mv) bs ++ vs ++ w) ↘ r /\
+          ⟦ Ba ⟧ env_args C1 (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ↘ r' /\
+          Rel v (List.skipn (im_unu D Mv) bs) (d_con hd k c (bs ++ vs)) (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs' ++ vs')) r r'.
+    Proof.
+      intros * HMi' Hv HMv Hb Hba Hc' Hcn HBb HBa Hm Hcr.
+      destruct (nth_error_blocks_sub_inv _ _ _ _ Hb) as (b0 & Hb0 & ->).
+      destruct (wrapped_block _ _ HMi') as [v0 Mv0 bv Hv0 HMv0 Hbv Hnn Hcorr Hvb].
+      rewrite Hv in Hv0; injection Hv0 as <-; rewrite HMv in HMv0; injection HMv0 as <-; rewrite Hbv in Hba; injection Hba as <-.
+      rewrite Hvb in Hb0; injection Hb0 as <-.
+      rewrite eb_brs_sub in HBb; destruct (brs_lookup_sub_inv _ _ _ _ _ HBb) as (B0 & HlB0 & ->).
+      cbn [eb_brs] in HlB0; rewrite brs_lookup_wrap in HlB0; unfold ind_con in Hc'; rewrite Hc' in HlB0; cbn [option_map] in HlB0.
+      rewrite (wrap_br_snd _ _ _ _ _ _ _ _ _ _ _ Hcn HBa) in HlB0.
+      injection HlB0 as <- <-.
+      pose proof (cargs_kinds_of_corr _ _ _ (Hcorr _ _ _ (cons_lookup_in _ _ _ Hc') Hcn)) as Hk.
+      destruct (WR wrap_branch_rel v Mv c gs' gs bv HMv Hcn Hk Hbv na Ba HBa u u' bs bs' vs vs' w ihs hd k Hm Hcr)
+        as (r & r' & _ & Er' & _ & Hout).
+      destruct (Hout Γ' RΓ' σ0 ρ0 HRΓ' Hσ0 Hρ0 Hev0) as (r0 & Er0 & Hrr).
+      exists r0, r'; split; [ exact Er0 | split; [ exact Er' | exact Hrr ] ].
+    Qed.
+  End Moved.
 End WrappedBlocks.
 
 End Fixed_GCtx.
