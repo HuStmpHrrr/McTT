@@ -414,6 +414,77 @@ Section ViewSyn.
       exact (ptyp_scoped_dom _ _ _ _ Hst HB').
   Qed.
 
+  (** The parameters the two shapes end in, at the two instances: equal at
+      the telescope of the group's member the group's shape ends in. *)
+  Lemma vs_ps_eq : forall Γ c gs' gs gs1' t' gs2' gs1 t gs2 Mj τ Us Ns As1 Ds,
+      ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs -> gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 ->
+      List.length gs1' = List.length gs1 -> ptyp_depth t' = ptyp_depth t -> ind_member D (ptyp_mem t) = Some Mj ->
+      List.length Us = ind_nu D -> List.length Ns = im_nn Mv -> List.length As1 = List.length gs1 -> List.length Ds = ptyp_depth t -> ⊢ Γ ->
+      Γ ⊢ˢ sb_of_list τ (Us ++ Ns ++ As1 ++ Ds) : sh_ctx (cargs_pat gs1) (ptyp_doms t) ++ cargs_ctx p D Mv gs1 ++ im_params D Mv ->
+      forall j X Y T,
+        List.nth_error (List.map (fun P => P[sb_of_list τ (List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns ++ nonrec_exps gs1' As1 ++ Ds)])
+                          (ptyp_ps t')) j = Some X ->
+        List.nth_error (List.map (fun P => P[sb_of_list τ (Us ++ Ns ++ nonrec_exps gs1 As1 ++ Ds)]) (ptyp_ps t)) j = Some Y ->
+        List.nth_error (tele_insts (im_nparams Mj) (sb_of_list Id Us)
+                          (List.map (fun P => P[sb_of_list τ (Us ++ Ns ++ nonrec_exps gs1 As1 ++ Ds)]) (ptyp_ps t))) j = Some T ->
+        Γ ⊢ X ≈ Y : T.
+  Proof.
+    intros * Hcon' Hcon Heq' Heq Hl1 Hdp HMj HUl HNl HAl HDl HΓ Hσ j X Y T HX HY HT.
+    apply nth_error_map_inv in HX as (P0' & HP0' & ->).
+    apply nth_error_map_inv in HY as (P0 & HP0 & ->).
+    set (wp := wk_pat (List.repeat false (ptyp_depth t) ++ cargs_pat gs1)).
+    set (Pg := List.map (fun P => P[wp]ʷ) (ptyp_ps t)).
+    assert (HPg : List.nth_error Pg j = Some P0[wp]ʷ) by (unfold Pg; rewrite List.nth_error_map, HP0; reflexivity).
+    assert (HPc : List.nth_error (ptyp_ps_at (cargs_pat gs1') t') j = Some P0'[wk_pat (List.repeat false (ptyp_depth t) ++ cargs_pat gs1')]ʷ)
+      by (unfold ptyp_ps_at; rewrite List.nth_error_map, HP0', Hdp; reflexivity).
+    assert (HassN : tele_ass (im_nparams Mj)) by exact (decl_closed_nparams_ass D Hc _ _ HMj).
+    destruct (nth_error_lt_some (tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D (im_nn Mv) (ptyp_depth t + List.length gs1))) Pg) j)
+      as [T0 HT0].
+    { assert (Hj : j < List.length (tele_insts (im_nparams Mj) (sb_of_list Id Us)
+                                      (List.map (fun P => P[sb_of_list τ (Us ++ Ns ++ nonrec_exps gs1 As1 ++ Ds)]) (ptyp_ps t))))
+        by (apply List.nth_error_Some; congruence).
+      rewrite length_tele_insts, List.length_map in Hj by exact HassN.
+      rewrite length_tele_insts by exact HassN; unfold Pg; rewrite List.length_map; exact Hj. }
+    destruct (dt_view_ps _ _ _ _ (ctx_wf_gctx _ _ _ HΓ) Hdt Hl k Mk qc kc Is vm Dq i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 Mj j
+                _ _ T0 HMk Hh Hq HMi' Hv HMv Hcon' Hcon Heq' Heq Hl1 HMj HPc HPg HT0) as [_ H].
+    pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ H Hσ) as H'.
+    rewrite <- Hl1, (vs_wk_inst P0' c gs' gs1' t' gs2' (ptyp_depth t) τ Us Ns As1 Ds Hcon' Heq' HUl HNl ltac:(lia) HDl) in H'.
+    - unfold wp in H'.
+      replace (Us ++ Ns ++ As1 ++ Ds) with ((Us ++ Ns) ++ (As1 ++ Ds)) in H' by (rewrite <- !List.app_assoc; reflexivity).
+      rewrite (sb_of_list_app (Us ++ Ns) (As1 ++ Ds) τ), <- HDl, exp_wk_pat_falses_sb_of_list in H' by exact HAl.
+      rewrite <- (sb_of_list_app (Us ++ Ns) (nonrec_exps gs1 As1 ++ Ds) τ), <- !List.app_assoc in H'.
+      rewrite <- (sb_of_list_app (Us ++ Ns) (As1 ++ Ds) τ), <- !List.app_assoc in H'.
+      (** The type: the telescope's at the instance. *)
+      set (Θ := sb_of_list τ (Us ++ Ns ++ As1 ++ Ds)) in *.
+      set (uv := ind_uvars D (im_nn Mv) (ptyp_depth t + List.length gs1)) in *.
+      assert (Hluv : List.length uv = ind_nu D) by (unfold uv, ind_uvars; apply length_vars_from).
+      assert (Euv : List.map (fun M => M[Θ]) uv = Us).
+      { unfold uv, ind_uvars, Θ.
+        replace (ptyp_depth t + List.length gs1 + im_nn Mv) with (List.length (Ns ++ As1 ++ Ds)) by (rewrite !List.length_app; lia).
+        rewrite <- HUl; exact (vars_from_sb_of_list_app Us (Ns ++ As1 ++ Ds) τ). }
+      assert (Hag : forall x, x < ind_nu D -> sentry_sub (sb_of_list Id uv x) Θ = sb_of_list Id Us x).
+      { intros x Hx.
+        rewrite (sb_of_list_nth uv Id x (a_var 0)) by lia.
+        rewrite <- Euv, (sb_of_list_nth (List.map (fun M => M[Θ]) uv) Id x (a_var 0)) by (rewrite List.length_map; lia).
+        cbn [sentry_sub]; rewrite List.length_map.
+        rewrite (List.nth_indep (List.map (fun M => M[Θ]) uv) (a_var 0) ((a_var 0)[Θ])) by (rewrite List.length_map; lia).
+        rewrite (List.map_nth (fun M => M[Θ])); reflexivity. }
+      pose proof (tele_insts_sub (im_nparams Mj) (ind_nu D) (sb_of_list Id uv) (sb_of_list Id Us) Θ Pg HassN
+                    (decl_closed_nparams_scoped D Hc _ _ HMj) Hag) as Etel.
+      assert (EPg : List.map (fun M => M[Θ]) Pg = List.map (fun P => P[sb_of_list τ (Us ++ Ns ++ nonrec_exps gs1 As1 ++ Ds)]) (ptyp_ps t)).
+      { unfold Pg; rewrite List.map_map; apply List.map_ext; intros P.
+        unfold wp, Θ.
+        replace (Us ++ Ns ++ As1 ++ Ds) with ((Us ++ Ns) ++ (As1 ++ Ds)) by (rewrite <- !List.app_assoc; reflexivity).
+        rewrite (sb_of_list_app (Us ++ Ns) (As1 ++ Ds) τ), <- HDl, exp_wk_pat_falses_sb_of_list by exact HAl.
+        rewrite <- (sb_of_list_app (Us ++ Ns) (nonrec_exps gs1 As1 ++ Ds) τ), <- !List.app_assoc; reflexivity. }
+      rewrite EPg in Etel.
+      rewrite <- Etel, List.nth_error_map, HT0 in HT; cbn in HT; injection HT as <-.
+      exact H'.
+    - pose proof (mc_recs _ _ (dc_members _ HcQ _ _ HMi') c gs' gs1' t' gs2' (cons_lookup_in _ _ _ Hcon') Heq') as Hst.
+      pose proof (ptyp_scoped_ps _ _ Hst) as Hps; rewrite List.Forall_forall in Hps.
+      rewrite <- Hdp; apply Hps, (List.nth_error_In _ _ HP0').
+  Qed.
+
   (** Parameters equal at the group's member are equal at the container's
       at the view's instance. *)
   Lemma vs_params_eq_transfer : forall Γ Us1 Us2 X Y, ⊢ Γ -> List.length Us1 = ind_nu D -> List.length X = im_nn Mv ->
