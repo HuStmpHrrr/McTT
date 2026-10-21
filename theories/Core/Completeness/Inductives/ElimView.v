@@ -1052,6 +1052,48 @@ Section WrapClo.
     all: rewrite <- exp_sub_of_wk, (exp_sub_sb_eq _ _ _ Hσw); rewrite EMt in Ea0 |- *; inversion Ea0; subst;
       eapply eval_sub_var; exact HevL.
   Qed.
+
+  (** After [kd] domains: the value of [ptyp_ih] in the environment
+      extended by the domains' values against the group's recursive result
+      at [C1]. *)
+  Lemma wc_clo : forall a, List.nth_error vs (List.length gs1) = Some a ->
+      forall a' k0 kd, kd + k0 = L -> forall ys ys' f f',
+      tele_prefix_rel (shape_doms_rel (dr v) X nvb (ptyp_doms t)) kd ys ys' ->
+      $*| a & ys | gc_deps ⍮ gc_stack ↘ f -> $*| a' & ys' | gc_deps ⍮ gc_stack ↘ f' ->
+      rec_arg_rel p D (okr_at D u0 nr) nr ar dr v u u' (X ++ nvb ++ ys) (X' ++ nva ++ ys') (ptyp_skip kd t) f f' ->
+      forall Us0 Bks0, Us0 = List.map (fun U => U[sb_shift_iter kd Id]) Uw -> Bks0 = blocks_sub Bw (sb_shift_iter kd Id) ->
+      exists rb ra, ⟦ ptyp_ih p D (Some p) Us0 Bks0 (sb_qn kd σt) (apps_vars_iter kd Mt) (ptyp_skip kd t) ⟧ env_args Eb ys ↘ rb /\
+        ⟦ih f' of ptyp_skip kd t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ra /\
+        rec_result_rel dr Rel v u u' (X ++ nvb ++ ys) (X' ++ nva ++ ys') (ptyp_skip kd t) f f' rb ra.
+  Proof.
+    intros a Ha a'; induction k0 as [| k0 IH]; intros kd Hkn * Hys Ef Ef' Hsh * HU0 HB0; subst Us0 Bks0.
+    - assert (Hkk : kd = L) by lia; rewrite Hkk in Hys, Hsh |- *.
+      pose proof (ptyp_skip_end t) as HsL; change (List.length (ptyp_doms t)) with L in HsL; rewrite HsL in Hsh |- *.
+      cbn [ptyp_ih].
+      destruct (wc_leaf a Ha a' ys ys' f f' Hys Ef Ef' Hsh) as (rb & ra & Erb & Era & Hr).
+      exists rb, ra; split; [ exact Erb | split; [ constructor; exact Era | exact Hr ] ].
+    - assert (Hkk : kd < L) by lia.
+      destruct (ptyp_skip_lt kd t Hkk) as (Bk & HBd & Hs).
+      rewrite Hs in Hsh |- *.
+      assert (HUs1 : List.map (fun U => U[↑]ʷ) (List.map (fun U => U[sb_shift_iter kd Id]) Uw)
+                     = List.map (fun U => U[sb_shift_iter (S kd) Id]) Uw)
+        by (rewrite List.map_map; apply List.map_ext; intros; rewrite <- exp_sub_of_wk, exp_sub_sub; reflexivity).
+      assert (HBs1 : blocks_wk (blocks_sub Bw (sb_shift_iter kd Id)) ↑ = blocks_sub Bw (sb_shift_iter (S kd) Id))
+        by (rewrite <- blocks_sub_of_wk, blocks_sub_sub; reflexivity).
+      do 2 eexists; split; [ cbn [ptyp_ih]; constructor | split; [ constructor |] ].
+      apply rec_result_pi; intros c0 c0' Hcc.
+      destruct (rec_arg_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hsh c0 c0' Hcc) as (fc & fc' & Efc & Efc' & Hsh').
+      assert (Hys1 : tele_prefix_rel (shape_doms_rel (dr v) X nvb (ptyp_doms t)) (S kd) (ys ++ c0 :: nil) (ys' ++ c0' :: nil))
+        by (apply tele_prefix_rel_snoc; [ exact Hys |]; unfold shape_doms_rel; rewrite (List.nth_error_nth _ _ _ HBd); exact Hcc).
+      assert (Efa : $*| a & ys ++ c0 :: nil | gc_deps ⍮ gc_stack ↘ fc)
+        by (apply eval_apps_app; exists f; split; [ exact Ef | econstructor; [ exact Efc | constructor ] ]).
+      assert (Efa' : $*| a' & ys' ++ c0' :: nil | gc_deps ⍮ gc_stack ↘ fc')
+        by (apply eval_apps_app; exists f'; split; [ exact Ef' | econstructor; [ exact Efc' | constructor ] ]).
+      rewrite <- !List.app_assoc in Hsh'.
+      destruct (IH (S kd) ltac:(lia) _ _ _ _ Hys1 Efa Efa' Hsh' _ _ HUs1 HBs1) as (rb & ra & Erb & Era & Hih).
+      econstructor; [ exact Efc | exact Efc' | constructor; rewrite env_args_snoc in Erb; exact Erb | econstructor; [ exact Efc' | exact Era ] |].
+      rewrite <- !List.app_assoc; exact Hih.
+  Qed.
 End WrapClo.
 
 End Fixed_GCtx.
