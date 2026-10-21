@@ -1162,6 +1162,22 @@ Proof.
     + exact (sub_link_ass_cross Hr Hlk HAv (rel_exp_under_ctx_refl_right HMM)).
 Qed.
 
+(** The group an eliminator reads off its scrutinee: an element of a
+    member it eliminates at is of the group. *)
+Lemma elim_grp_of_elem : forall p D okr nr ar dr k u u' ns ns' x y Mk, ind_member D k = Some Mk ->
+    ind_rel p D okr nr ar dr k u u' ns ns' x y -> ind_order_ok D ->
+    forall oq, elim_grp D oq p k -> elim_grp_of oq x = Some p /\ elim_grp_of oq y = Some p.
+Proof.
+  intros * HM H Hord oq Hg.
+  destruct Hg as [-> | [-> Hk]]; [ split; reflexivity |].
+  pose proof (proj2 (Hord _ _ HM) Hk) as Hd.
+  unfold im_is_decl in Hd; destruct (im_head Mk) as [pm | ? ? ? ?] eqn:Hh; [| discriminate ].
+  inversion H; subst;
+    match goal with H1 : ind_member D k = Some ?M1 |- _ => rewrite HM in H1; injection H1 as <- end;
+    match goal with H1 : im_ref p k Mk = _ |- _ => unfold im_ref in H1; rewrite Hh in H1; injection H1 as <- <- end;
+    cbn; split; reflexivity.
+Qed.
+
 Lemma eval_apps_functional : forall f ys r1 r2, $*| f & ys | gc_deps ⍮ gc_stack ↘ r1 -> $*| f & ys | gc_deps ⍮ gc_stack ↘ r2 -> r1 = r2.
 Proof.
   intros f ys; revert f; induction ys as [| y ys IH]; intros f r1 r2 H1 H2; inversion H1; subst; inversion H2; subst; [ reflexivity |].
