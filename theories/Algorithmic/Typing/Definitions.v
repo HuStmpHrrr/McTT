@@ -16,6 +16,25 @@ Generalizable All Variables.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
+(** [nfs_agree Γ Ms Rs Ts]: the terms [Ms] and [Rs] have, position by
+    position, the same normal form at the types [Ts].  The eliminator's
+    rule compares by it the uniform parameters its member's type has at
+    the eliminator's uniform parameters with those of the type its
+    scrutinee infers. *)
+Inductive nfs_agree (Γ : ctx) : list exp -> list exp -> list typ -> Prop :=
+(** No term *)
+| nfs_agree_nil : nfs_agree Γ nil nil nil
+(** The first terms have the normal form [W] at the first type, then the
+    rest agree *)
+| nfs_agree_cons : forall M R T W Ms Rs Ts,
+    nbe_f Γ M T W ->
+    nbe_f Γ R T W ->
+    nfs_agree Γ Ms Rs Ts ->
+    nfs_agree Γ (M :: Ms) (R :: Rs) (T :: Ts).
+
+(** [alg_ty_conv Γ A B]: the types [A] and [B] have one normal form. *)
+Definition alg_ty_conv (Γ : ctx) (A B : typ) : Prop := exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ B W.
+
 Inductive alg_type_check : ctx -> typ -> exp -> Prop :=
 | atc_ati :
   `( Γ ⊢a M ⟹ A ->
@@ -61,35 +80,65 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      Γ ⊢a M ⟸ ⊥ ->
      nbe_ty_f Γ A[Id,,M] B ->
      Γ ⊢a efq M return A ⟹ B )
-(** The type former and a constructor infer the normal forms of their
-    closed types. *)
+(** The type former of a declared member and a constructor of any member
+    infer the normal forms of their closed types. *)
 | ati_ind :
   `( ind_lookup gc_deps gc_stack p = Some D ->
-     nbe_ty_f Γ (ind_ty D) W ->
-     Γ ⊢a a_ind p ⟹ W )
+     ind_member D k = Some Mk ->
+     k < ind_ndecl D ->
+     nbe_ty_f Γ (ind_ty D Mk) W ->
+     Γ ⊢a a_ind p k ⟹ W )
 | ati_con :
   `( ind_lookup gc_deps gc_stack p = Some D ->
-     ind_con D c = Some gs ->
-     nbe_ty_f Γ (con_ty p D gs) W ->
-     Γ ⊢a a_con p c ⟹ W )
-(** The eliminator: the scrutinee infers an inductive type, at whose
-    parameters' normal forms the motive and the branches are checked; the
-    type is the normal form of the motive's instance. *)
+     ind_member D k = Some Mk ->
+     ind_con Mk c = Some gs ->
+     nbe_ty_f Γ (con_ty p D k Mk gs) W ->
+     Γ ⊢a a_con p k c ⟹ W )
+(** The eliminator of the group at [p] at its member [m], at the uniform
+    parameters [Us] it carries.  The scrutinee infers the type of the
+    member's type former, the declared member [k] of the group at [pc]
+    ([im_ref]: the group itself at a declared member, the container's at a
+    view).  The uniform parameters are checked at the group's telescope,
+    and the uniform arguments of the member's type at them ([im_pre]) have
+    the normal forms of the inferred type's; its other parameters [Ns] are
+    the member's non-uniform ones.  The blocks are checked at [Us]: the
+    annotations and the motives at one universe [Typeω@i], an annotation
+    of the member's type there, the branches at their types.  The type is
+    the normal form of the motive's instance. *)
 | ati_elim :
-  `( Γ ⊢a M ⟹ nf_indty p Rs ->
+  `( Γ ⊢a M ⟹ nf_indty pc k Rs ->
      ind_lookup gc_deps gc_stack p = Some D ->
-     List.length (nfs_to_exps Rs) = ind_np D ->
-     nm = S (ind_nn D) ->
-     elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ ⊢a A ⟹ UA ->
-     is_univ_nf UA u ->
-     brs_names (ind_cons D) Bs ->
-     (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs ->
-        n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
-     (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs ->
-        elim_bctx p D gs A (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ
-          ⊢a B ⟸ elim_bty p D c gs A (List.firstn (ind_nu D) (nfs_to_exps Rs))) ->
-     nbe_ty_f Γ A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)] T ->
-     Γ ⊢a a_elim nm A Bs M ⟹ T )
+     elim_grp D oq p m ->
+     ind_member D m = Some Mm ->
+     im_ref p m Mm = (pc, k) ->
+     ind_lookup gc_deps gc_stack pc = Some Dq ->
+     ind_member Dq k = Some Mk ->
+     List.length (nfs_to_exps Rs) = im_np Dq Mk ->
+     List.nth_error Bks m = Some bm ->
+     List.length Bks = List.length (ind_members D) ->
+     List.length Us = ind_nu D ->
+     (forall j U T, List.nth_error Us j = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) j = Some T ->
+        Γ ⊢a U ⟸ T) ->
+     nfs_agree Γ (im_pre Mm Us) (List.firstn (ind_nu Dq) (nfs_to_exps Rs))
+       (tele_insts (ind_uparams Dq) Id (im_pre Mm Us)) ->
+     Ns = List.skipn (ind_nu Dq) (nfs_to_exps Rs) ->
+     (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_nm b = S (im_nn Mj)) ->
+     (forall j Mj b Z, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_ann b = Some Z ->
+        tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ ⊢a Z ⟸ Typeω@i) ->
+     (forall j Mj b Z, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_ann b = Some Z ->
+        alg_ty_conv (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ) Z
+          (ind_mty p D j (List.map (fun U => U[wk_shiftn (im_nn Mj)]ʷ) Us) (vars_from 0 (im_nn Mj)))) ->
+     (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+        elim_mctx p D j Mj Us ++ Γ ⊢a eb_motive b ⟸ Typeω@i) ->
+     (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b)) ->
+     (forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+        ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
+        n = (im_nn Mj + List.length gs + cargs_nrec gs)%nat) ->
+     (forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+        ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
+        elim_bctx p D Mj gs (blocks_motives Bks) Us ++ Γ ⊢a B ⟸ elim_bty p j Mj c gs (eb_motive b) Us) ->
+     nbe_ty_f Γ (eb_motive bm)[sb_of_list Id (Ns ++ M :: nil)] T ->
+     Γ ⊢a a_elim oq Us m Bks M ⟹ T )
 (** A [Π] is at the join of the universes of its parts ([unf_pi_tm]): a
     large universe absorbs a small one, and two small ones join on levels,
     the codomain's bounded under the binder ([lvl_bound]): an atom that
@@ -356,18 +405,22 @@ Inductive user_exp : exp -> Prop :=
      user_exp M ->
      user_exp (a_exfalso A M) )
 | user_exp_indty :
-  `( user_exp (a_ind p) )
+  `( user_exp (a_ind p k) )
 | user_exp_con :
-  `( user_exp (a_con p c) )
+  `( user_exp (a_con p k c) )
 | user_exp_nlit :
   `( user_exp (a_nlit n) )
 | user_exp_ntok :
   `( user_exp a_ntok )
+(** An eliminator: its uniform parameters, the annotations, motives and
+    branches of its blocks, and its scrutinee. *)
 | user_exp_elim :
-  `( user_exp A ->
-     (forall b, List.In b Bs -> user_exp (snd b)) ->
+  `( (forall U, List.In U Us -> user_exp U) ->
+     (forall b Z, List.In b Bks -> eb_ann b = Some Z -> user_exp Z) ->
+     (forall b, List.In b Bks -> user_exp (eb_motive b)) ->
+     (forall b br, List.In b Bks -> List.In br (eb_brs b) -> user_exp (snd br)) ->
      user_exp M ->
-     user_exp (a_elim nm A Bs M) )
+     user_exp (a_elim oq Us m Bks M) )
 | user_exp_pi :
   `( user_exp A ->
      user_exp B ->
@@ -406,7 +459,15 @@ Proof.
     (fun b => match b with b_def oA M => (forall A, oA = Some A -> user_exp A) /\ user_exp M | b_mod _ => True end)
     (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True));
     intros; try destruct_conjs; try match goal with b : bnd |- _ => destruct b as [[] |]; destruct_conjs end;
-    try (constructor; [ assumption | apply List.Forall_forall; assumption | assumption ]);
+    try lazymatch goal with
+      | HU : List.Forall user_exp ?Us, HB : List.Forall _ ?Bks |- user_exp (a_elim _ ?Us _ ?Bks _) =>
+          rewrite List.Forall_forall in HU, HB;
+          constructor; [ exact HU
+                       | intros b Z Hb HZ; exact (proj1 (HB b Hb) Z HZ)
+                       | intros b Hb; exact (proj1 (proj2 (HB b Hb)))
+                       | intros b br Hb Hbr; exact (proj1 (List.Forall_forall _ _) (proj2 (proj2 (HB b Hb))) br Hbr)
+                       | assumption ]
+      end;
     mauto 3.
 Qed.
 
