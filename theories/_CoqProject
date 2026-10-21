@@ -112,6 +112,7 @@
 ./Core/Soundness/Inductives/ElimBase.v
 ./Core/Soundness/Inductives/AtType.v
 ./Core/Soundness/Inductives/Elim.v
+./Core/Soundness/Inductives/Regressions.v
 ./Core/Soundness/IndCases.v
 ./Core/Soundness/ElimCases.v
 ./Core/Soundness/IotaCases.v

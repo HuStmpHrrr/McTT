@@ -325,6 +325,124 @@ Section RoseViews.
 
 End RoseViews.
 
+(** ** [T] Nested Through a Phantom Parameter
+
+    [Phantom (A : TA) (B : TB) := mk (a : A)];
+    [T (f : TF) := node (p : Phantom (T f) (f Z))], whose group has the
+    view [Phantom (T f) (f Z)], its second argument a phantom one.  [T] at
+    two uniform parameters whose readbacks agree is one type of the
+    model; the gluing of soundness moves along it
+    ([Soundness.Inductives.Regressions]). *)
+
+Section PhantomViews.
+  Context {GC : GCtx}.
+  Variables (pP pT pmP pmT : qname) (TA TB TF SP ST Z : exp).
+
+  Definition phantom_group : ind_decl :=
+    mk_ind (ce_ass TB :: ce_ass TA :: nil) SP
+      (mk_imember (mh_decl pmP) nil (("mk", ca_arg (a_var 1) :: nil) :: nil) :: nil).
+
+  Definition t_over_phantom_group : ind_decl :=
+    mk_ind (ce_ass TF :: nil) ST
+      (mk_imember (mh_decl pmT) nil (("node", ca_rec (pt_self 1 nil) :: nil) :: nil)
+       :: mk_imember (mh_view pP 0 (a_app (a_ind pT 0) (a_var 0) :: a_app (a_var 0) Z :: nil) (1 :: nil)) nil
+            (("mk", ca_rec (pt_self 0 nil) :: nil) :: nil)
+       :: nil).
+
+  Hypothesis HlP : ind_lookup gc_deps gc_stack pP = Some phantom_group.
+  Hypothesis HlT : ind_lookup gc_deps gc_stack pT = Some t_over_phantom_group.
+
+  Lemma t_over_phantom_rank : view_rank_ok gc_deps gc_stack t_over_phantom_group (fun k => k).
+  Proof.
+    constructor.
+    - intros k Mk pm Hk Hh; grp_cases; reflexivity.
+    - intros * Hk Hh Hl Hi' Hv HMv Hc' Hc; grp_cases.
+      all: cbn; repeat split; lia.
+  Qed.
+
+  Lemma t_over_phantom_vwrap : forall k Mk qc k' Is vm, ind_member t_over_phantom_group k = Some Mk ->
+      im_head Mk = mh_view qc k' Is vm ->
+      exists D', ind_lookup gc_deps gc_stack qc = Some D' /\ vwrap_ok t_over_phantom_group D' vm.
+  Proof.
+    intros * Hk Hh; grp_cases.
+    all: eexists; split; [ eassumption |].
+    all: constructor; [ reflexivity |].
+    all: intros i' Mi' v Hi' Hv; grp_cases.
+    all: eexists; split; [ reflexivity | split; [ reflexivity | split; [ reflexivity |] ] ].
+    all: intros c gs' gs Hin Hc; cbn in Hin; repeat destruct Hin as [Hin | Hin]; try contradiction;
+      injection Hin; intros; subst; grp_cases.
+    all: cbn; repeat split.
+  Qed.
+
+  Lemma t_over_phantom_coherent : view_maps_coherent gc_deps gc_stack t_over_phantom_group.
+  Proof. unfold view_maps_coherent; intros * Hk Hh Hl Hi' Hv HMv HMh; grp_cases; cbn; reflexivity. Qed.
+
+  Lemma t_over_phantom_images : forall v Mv qc kc Is vm Dq i' Mi', ind_member t_over_phantom_group v = Some Mv ->
+      im_head Mv = mh_view qc kc Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' ->
+      view_member_image t_over_phantom_group qc Is vm i' Mi'.
+  Proof.
+    intros * Hv Hh Hl Hi'; grp_cases.
+    all: eapply mk_view_member_image; [ reflexivity | reflexivity | reflexivity | cbn; eauto ].
+  Qed.
+
+  Lemma t_over_phantom_plen : forall k Mk c gs, ind_member t_over_phantom_group k = Some Mk -> In (c, gs) (im_cons Mk) ->
+      cargs_plen t_over_phantom_group gs.
+  Proof.
+    intros * Hk Hin; grp_cases; cbn in Hin; repeat destruct Hin as [Hin | Hin]; try contradiction;
+      injection Hin; intros; subst.
+    all: intros gs1 t0 gs2 Heq; destruct gs1 as [| g1 [| g2 gs1]]; cbn in Heq; try discriminate; injection Heq; intros; subst;
+      try (destruct gs1; discriminate).
+    all: try discriminate.
+    all: eexists; split; reflexivity.
+  Qed.
+
+  Lemma t_over_phantom_container_plen : forall v Mv qc kc Is vm Dq i' Mi' c gs', ind_member t_over_phantom_group v = Some Mv ->
+      im_head Mv = mh_view qc kc Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' ->
+      In (c, gs') (im_cons Mi') -> cargs_plen Dq gs'.
+  Proof.
+    intros * Hv Hh Hl Hi' Hin; grp_cases; cbn in Hin; repeat destruct Hin as [Hin | Hin]; try contradiction;
+      injection Hin; intros; subst.
+    all: intros gs1 t0 gs2 Heq; destruct gs1 as [| g1 [| g2 gs1]]; cbn in Heq; try discriminate; injection Heq; intros; subst;
+      try (destruct gs1; discriminate).
+    all: try discriminate.
+    all: eexists; split; reflexivity.
+  Qed.
+
+  Lemma t_over_phantom_tele_ass : grp_tele_ass t_over_phantom_group.
+  Proof.
+    constructor.
+    - constructor; [ eexists; reflexivity | constructor ].
+    - intros * Hk; grp_cases; constructor.
+    - intros * Hv Hh; grp_cases.
+      all: do 2 eexists; split; [ eassumption | split; [ reflexivity | split; reflexivity ] ].
+    - exists (fun k => k); exact t_over_phantom_rank.
+    - exact t_over_phantom_vwrap.
+    - exact t_over_phantom_coherent.
+    - exact t_over_phantom_images.
+    - exact t_over_phantom_plen.
+    - exact t_over_phantom_container_plen.
+  Qed.
+
+  (** [T] at uniform parameters [g] and [g'] whose readbacks agree: related
+      types of the model. *)
+  Theorem t_over_phantom_related : forall i g g', per_top_ps (ce_ass TF :: nil) (g :: nil) (g' :: nil) ->
+      DF d_ind pT 0 (g :: nil) ≈ d_ind pT 0 (g' :: nil) ∈ per_univ_elem i ↘
+        grp_rel pT t_over_phantom_group (g :: nil) no_nparams_rel no_args_rel no_doms_rel 0 (g :: nil) (g' :: nil) nil nil.
+  Proof.
+    intros * Hg.
+    change (d_ind pT 0 (g :: nil)) with (d_ind pT 0 ((g :: nil) ++ nil)).
+    change (d_ind pT 0 (g' :: nil)) with (d_ind pT 0 ((g' :: nil) ++ nil)).
+    basic_per_univ_elem_econstructor;
+      try exact HlT; try exact t_over_phantom_tele_ass; try exact Hg; try reflexivity;
+      try (red; intros; grp_vacuous; fail);
+      try (cbn; split; [ reflexivity | exact I ]);
+      try (constructor; intros; grp_vacuous;
+           (econstructor; [ cbn; constructor | cbn; constructor
+                          | unfold ntele_rel, ind_member, t_over_phantom_group; cbn; split; [ reflexivity | exact I ] ])).
+  Qed.
+
+End PhantomViews.
+
 (** ** A Container Whose Non-Uniform Parameter Is of Its Uniform One
 
     [C (A : Typeω@iU) : A → Type] ([im_nparams = [ce_ass #0]]) and
