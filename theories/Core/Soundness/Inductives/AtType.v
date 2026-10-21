@@ -148,6 +148,48 @@ Section AtType.
                          | rewrite skipn_app_exact by exact Lpre; exact Hns | exact Hs2 | exact He ].
   Qed.
 
+  (** ** The Value of a Member's Type over a Closed Telescope
+
+      The member [j]'s type at the uniform parameters as variables, after
+      values [X ++ ws] of a closed telescope [Z] over them related to
+      themselves ([X] its non-uniform parameters): related to the type's
+      value at the uniform parameters [pre] [mref] gives and non-uniform
+      parameters related to [X]. *)
+  Lemma mty_val_rel : forall j Mj hd k' pre Z RZ X ws L b ns, ind_member D j = Some Mj ->
+      ⟦mref j of p ups ⟧ gc_deps ⍮ gc_stack ↘ (hd, k', pre) ->
+      ⊨ Z ++ ind_uparams D -> EF Z ++ ind_uparams D ≈ Z ++ ind_uparams D ∈ per_ctx_env ↘ RZ ->
+      List.length (X ++ ws) = List.length Z -> List.length X = im_nn Mj -> List.length ws = L ->
+      RZ (env_args nil (ups ++ X ++ ws)) (env_args nil (ups ++ X ++ ws)) ->
+      ⟦ ind_mty p D j (ind_uvars D (im_nn Mj) L) (vars_from L (im_nn Mj)) ⟧ env_args nil (ups ++ X ++ ws) ↘ b ->
+      tele_rel (nr j) (List.rev (im_nparams Mj)) ns X ->
+      exists (i0 : uidx) R0, DF d_ind hd k' (pre ++ ns) ≈ b ∈ per_univ_elem i0 ↘ R0.
+  Proof.
+    intros * HMj Hr HZ HRZ Lz LX Lw HE Eb Hns.
+    destruct (ViewReadback.mref_ref_len p D j Mj ups hd k' pre Hl HMj Hu Hr) as [Href _].
+    destruct (eval_mty_inv _ _ _ _ _ _ _ _ HMj Eb) as (cs & xs & Ecs & Exs & ->).
+    rewrite Href; cbn [fst snd].
+    assert (EX : ⟦ vars_from L (im_nn Mj) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ X ++ ws) ↘ X).
+    { rewrite env_args_app, <- LX, <- Lw; apply Decl.eval_vars_from_args. }
+    pose proof (functional_eval_exps' _ _ _ _ Exs EX) as ->.
+    destruct (im_head Mj) as [pm | qc kc Is vm] eqn:Hh.
+    - pose proof (mref_decl_inv _ _ _ _ _ _ _ Hl HMj Hh Hr) as E; injection E as -> -> ->.
+      assert (cs = ups) as ->.
+      { unfold im_pre in Ecs; rewrite Hh in Ecs.
+        assert (HU : ⟦ ind_uvars D (im_nn Mj) L ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ X ++ ws) ↘ ups).
+        { unfold ind_uvars.
+          replace (L + im_nn Mj) with (List.length (X ++ ws)) by (rewrite List.length_app; lia).
+          rewrite <- Hu; apply Decl.eval_vars_from_args. }
+        exact (functional_eval_exps' _ _ _ _ Ecs HU). }
+      destruct (vg_relate p D Hvg j Mj pm ups ups ns X HMj Hh Hgu Hu Hns) as [i0 Hi0]; eauto.
+    - destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMj Hh Hr) as (py & E & Epy); injection E as -> -> <-.
+      destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HMj Hh) as (Dq & Mkc & Hq & _).
+      destruct (view_pre_values p D Hvg Hcv j Mj qc kc Is vm Dq ups Z RZ (X ++ ws) (im_nn Mj) L cs HMj Hh Hq Hu Hgu
+                  HZ HRZ ltac:(lia) ltac:(rewrite List.length_app; lia) HE Ecs) as (cups & Ecups & Hgc).
+      pose proof (functional_eval_exps' _ _ _ _ Ecups Epy) as ->.
+      destruct (ViewReadback.view_end_type VP HVP p D HPD ups Hgu Hu j Mj qc kc Is vm Dq pre cs ns X HMj Hh Hq Epy Hgc
+                  ltac:(unfold ntele_rel; rewrite HMj; exact Hns)) as (i0 & R0 & H0); eauto.
+  Qed.
+
   (** ** Types of Members at Glued Parameters
 
       A level [nb] above the clause's index and the sorts of the
@@ -728,12 +770,6 @@ Section AtType.
       destruct (rel_exp_of_typ_inversion_simple_at HRΨ Hjb _ _ HE) as (b & b' & Eb & Eb' & [Rb HRb]).
       assert (b' = b) as -> by (eapply functional_eval_exp; eassumption).
       rewrite <- List.app_assoc in Eb.
-      destruct (eval_mty_inv _ _ _ _ _ _ _ _ HMk Eb) as (cs & xs & Ecs & Exs & Eb0).
-      rewrite Href in Eb0; cbn [fst snd] in Eb0.
-      assert (EX : ⟦ vars_from (List.length gs) (im_nn Mk) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ X ++ vs) ↘ X).
-      { rewrite env_args_app, <- LX, <- Hvl; apply Decl.eval_vars_from_args. }
-      pose proof (functional_eval_exps' _ _ _ _ Exs EX) as ->.
-      subst b.
       (** The scrutinee's parameters, related to the stored ones. *)
       assert (Hns' : tele_rel (nr k) (List.rev (im_nparams Mk)) ns X).
       { unfold grp_rel in HGm; inversion HGm; subst.
@@ -741,31 +777,14 @@ Section AtType.
         match goal with E : (?a ++ ?b = bs ++ vs)%list |- _ => apply app_split_eq in E; [| lia ]; destruct E as [-> ->] end.
         assumption. }
       (** The type's value, related to the codomain's. *)
-      assert (Hab : exists (i0 : uidx) R0, DF d_ind hd k' (pre ++ ns) ≈ d_ind hd k' (cs ++ X) ∈ per_univ_elem i0 ↘ R0).
-      { destruct (im_head Mk) as [pm | qc kc Is vm] eqn:Hh.
-        - pose proof (mref_decl_inv _ _ _ _ _ _ _ Hl HMk Hh Hr) as E; injection E as -> -> ->.
-          assert (cs = ups) as ->.
-          { unfold im_pre in Ecs; rewrite Hh in Ecs.
-            assert (HU : ⟦ ind_uvars D (im_nn Mk) (List.length gs) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ X ++ vs) ↘ ups).
-            { unfold ind_uvars.
-              replace (List.length gs + im_nn Mk) with (List.length (X ++ vs)) by (rewrite List.length_app; lia).
-              rewrite <- Hu; apply Decl.eval_vars_from_args. }
-            exact (functional_eval_exps' _ _ _ _ Ecs HU). }
-          destruct (vg_relate p D Hvg k Mk pm ups ups ns X HMk Hh Hgu Hu Hns') as [i0 Hi0]; eauto.
-        - destruct (mref_view_inv _ _ _ _ _ _ _ _ _ _ Hl HMk Hh Hr) as (py & E & Epy); injection E as -> -> <-.
-          destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HMk Hh) as (Dq & Mkc & Hq & _).
-          assert (HZ : ⊨ (cargs_ctx p D Mk gs ++ im_nparams Mk) ++ ind_uparams D) by (rewrite <- List.app_assoc; exact ac_HΨ).
-          assert (HRZ : EF (cargs_ctx p D Mk gs ++ im_nparams Mk) ++ ind_uparams D
-                          ≈ (cargs_ctx p D Mk gs ++ im_nparams Mk) ++ ind_uparams D ∈ per_ctx_env ↘ RΨ)
-            by (rewrite <- List.app_assoc; exact HRΨ).
-          rewrite <- List.app_assoc in HE.
-          destruct (view_pre_values p D Hvg Hcv k Mk qc kc Is vm Dq ups _ RΨ (X ++ vs) (im_nn Mk) (List.length gs) cs HMk Hh Hq Hu Hgu
-                      HZ HRZ ltac:(rewrite !List.length_app, length_cargs_ctx, length_im_nparams; lia)
-                      ltac:(rewrite List.length_app; lia) HE Ecs) as (cups & Ecups & Hgc).
-          pose proof (functional_eval_exps' _ _ _ _ Ecups Epy) as ->.
-          destruct (ViewReadback.view_end_type VP HVP p D HPD ups Hgu Hu k Mk qc kc Is vm Dq pre cs ns X HMk Hh Hq Epy Hgc
-                      ltac:(unfold ntele_rel; rewrite HMk; exact Hns')) as (i0 & R0 & H0); eauto. }
-      destruct Hab as (i0 & R0 & Hab).
+      assert (HZ : ⊨ (cargs_ctx p D Mk gs ++ im_nparams Mk) ++ ind_uparams D) by (rewrite <- List.app_assoc; exact ac_HΨ).
+      assert (HRZ : EF (cargs_ctx p D Mk gs ++ im_nparams Mk) ++ ind_uparams D
+                      ≈ (cargs_ctx p D Mk gs ++ im_nparams Mk) ++ ind_uparams D ∈ per_ctx_env ↘ RΨ)
+        by (rewrite <- List.app_assoc; exact HRΨ).
+      pose proof HE as HE0; rewrite <- List.app_assoc in HE0.
+      destruct (mty_val_rel k Mk hd k' pre _ RΨ X vs (List.length gs) b ns HMk Hr HZ HRZ
+                  ltac:(rewrite !List.length_app, length_cargs_ctx, length_im_nparams; lia) LX Hvl HE0 Eb Hns')
+        as (i0 & R0 & Hab).
       pose proof (per_univ_elem_cumu_uidx _ _ _ _ Hab (ul (ulvl i0)) ltac:(apply uidx_le_ul_max; lia)) as Hab'.
       (** The constructor's value, related to the scrutinee. *)
       destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R HR].
@@ -788,7 +807,7 @@ Section AtType.
       set (ib := Nat.max (Nat.max jb nb) n0).
       pose proof (per_univ_elem_cumu_ge jb ib _ _ _ ltac:(unfold ib; lia) HRb) as HRbL.
       destruct (per_univ_glu_univ_elem ib _ (ex_intro _ Rb HRbL)) as (Pb & Elb & Hgb).
-      assert (Hper : forall R', DF d_ind hd k' (cs ++ X) ≈ d_ind hd k' (cs ++ X) ∈ per_univ_elem ib ↘ R' ->
+      assert (Hper : forall R', DF b ≈ b ∈ per_univ_elem ib ↘ R' ->
                        R' (d_con hd k' c (pre ++ X ++ vs)) (d_con hd k' c (pre ++ X ++ vs))).
       { intros R' HR'; apply (per_univ_elem_right_irrel _ _ _ _ _ _ _ HRbL HR'); exact HRw. }
       assert (Hcb : Δ' ⊢ apps (a_con p k c) ((Us' ++ Ns') ++ As)
@@ -866,5 +885,42 @@ Section AtType.
   Qed.
 
 End AtType.
+
+(** ** A Level Above the Containers' Sorts
+
+    A group of a valid family has finitely many views, each of a valid
+    container, whose sort is bounded ([sort_bound]): a level above all of
+    them and a given index, as [AtType]'s [nb] needs. *)
+Lemma views_sort_bound : forall VP p D, valid_groups VP -> VP p D ->
+    forall l, (forall Mj, In Mj l -> exists j, ind_member D j = Some Mj) ->
+    exists n, forall Mj qc kc Is vm Dq, In Mj l -> im_head Mj = mh_view qc kc Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq ->
+      forall ρ bq, ⟦ ind_sort Dq ⟧ ρ ↘ bq -> uidx_le (Completeness.Inductives.Decl.univ_idx bq) (ul n).
+Proof.
+  intros VP p D HVP HPD; induction l as [| M l IH]; intros Hin.
+  - exists 0; intros * [].
+  - destruct (IH (fun Mj H => Hin Mj (or_intror H))) as [n Hn].
+    destruct (im_head M) as [pm | qc kc Is vm] eqn:Hh.
+    + exists n; intros * [<- | H] Hh' Hq; [ rewrite Hh in Hh'; discriminate | exact (Hn _ _ _ _ _ _ H Hh' Hq) ].
+    + destruct (Hin M (or_introl eq_refl)) as [j Hj].
+      destruct (dt_view _ _ _ (vgr_typed _ _ (valid_groups_valid VP HVP p D HPD)) _ _ _ _ _ _ Hj Hh) as (Dq0 & _ & Hq0 & _).
+      destruct (sort_bound VP qc Dq0 HVP (valid_groups_containers VP HVP p D j M qc kc Is vm Dq0 HPD Hj Hh Hq0)) as [m Hm].
+      exists (Nat.max n m); intros * [<- | H] Hh' Hq ρ bq Eb.
+      * rewrite Hh in Hh'; injection Hh' as <- <- <- <-; rewrite Hq0 in Hq; injection Hq as <-.
+        exact (Hm _ _ Eb (Nat.max n m) ltac:(lia)).
+      * eapply uidx_le_trans; [ exact (Hn _ _ _ _ _ _ H Hh' Hq _ _ Eb) | apply uidx_le_ul_max; cbn; lia ].
+Qed.
+
+Lemma nb_exists : forall VP p D, valid_groups VP -> VP p D -> forall u : uidx,
+    exists nb : nat, uidx_le u (ul nb) /\
+      forall j Mj qc kc Is vm Dq, ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm ->
+        ind_lookup gc_deps gc_stack qc = Some Dq -> forall ρ bq, ⟦ ind_sort Dq ⟧ ρ ↘ bq ->
+        uidx_le (Completeness.Inductives.Decl.univ_idx bq) (ul nb).
+Proof.
+  intros VP p D HVP HPD u.
+  destruct (views_sort_bound VP p D HVP HPD (ind_members D) (fun Mj H => List.In_nth_error _ _ H)) as [n Hn].
+  exists (Nat.max n (ulvl u)); split; [ apply uidx_le_ul_max; lia |].
+  intros * HMj Hh Hq ρ bq Eb.
+  eapply uidx_le_trans; [ exact (Hn _ _ _ _ _ _ (List.nth_error_In _ _ HMj) Hh Hq _ _ Eb) | apply uidx_le_ul_max; cbn; lia ].
+Qed.
 
 End Fixed_GCtx.
