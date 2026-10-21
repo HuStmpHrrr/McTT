@@ -1317,6 +1317,38 @@ Section GroupElim.
     eapply closed_env_base; [ exact Ua | exact Usem | exact HRU | rewrite L1; exact HUl | rewrite L2; exact HUl | exact H12' ].
   Qed.
 
+  (** Terms [Vs] of the uniform parameters' types, as an instance that
+      commutes with substitutions: their values moved by [σ] at [ρ], against
+      their values at the value of [σ]. *)
+  Lemma vals_sub_link : forall Vs, List.length Vs = ind_nu D ->
+      (forall j V, List.nth_error Vs j = Some V -> exists T, Γ ⊨ V : T) ->
+      sub_link Γ (ind_uparams D ++ Γ) (sb_of_list Id Vs) ->
+      forall Γ' RΓ' σ ρ C u, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ ≈ σ : Γ -> RΓ' ρ ρ -> ⟦ σ ⟧s ρ ↘ C ->
+      ⟦ Vs ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ u ->
+      exists w, ⟦ List.map (fun V => V[σ]) Vs ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ w /\ RU (env_args nil w) (env_args nil u).
+  Proof.
+    intros * HVl HVt Hlk * HRΓ' Hσ Hρ Hev Hu.
+    assert (Hev' : forall j N, List.nth_error (List.map (fun V => V[σ]) Vs) j = Some N -> exists v, ⟦ N ⟧ ρ ↘ v).
+    { intros j N HN; apply nth_error_map_inv in HN as (V & HV & ->).
+      destruct (HVt _ _ HV) as [T [R0 HR0 i0 Hgen]].
+      destruct (Hgen _ _ HRΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev) as (Re & _ & [v1 _ _ _ Ev1 _ _ _ _]); eauto. }
+    destruct (eval_exps_each _ _ Hev') as [w Hw].
+    exists w; split; [ exact Hw |].
+    destruct (closed_app_sem _ _ Ua Usem HΓ) as [HUΓ Hres].
+    destruct (rel_ctx_wf_per_ctx_env HUΓ) as [RUΓ HRUΓ].
+    destruct (Hlk _ _ HRΓ' _ _ Hσ _ HRUΓ _ _ Hρ Hev) as (e1 & Ee1 & He1).
+    pose proof (He1 _ (eval_sb_of_list _ _ _ _ _ (eval_sub_id C) Hu)) as H12.
+    assert (Ee1' : ⟦ sb_of_list Id Vs ⨟ σ ⟧s ρ ↘ env_args C w).
+    { eapply eval_sub_sb_eq; [| exact (eval_sb_of_list _ _ _ _ _ Hev Hw) ].
+      etransitivity; [ apply sb_of_list_cong; intros x; reflexivity | symmetry; apply sb_of_list_compose_gen ]. }
+    pose proof (functional_eval_sub _ _ _ _ Ee1 Ee1') as E1.
+    pose proof (per_ctx_env_resp_env_eq HRUΓ _ _ _ _ E1 ltac:(reflexivity) H12) as H12'.
+    apply (Hres _ _ HRU HRUΓ) in H12'.
+    pose proof (eval_exps_length _ _ _ Hw) as L1; pose proof (eval_exps_length _ _ _ Hu) as L2.
+    rewrite List.length_map in L1.
+    eapply closed_env_base; [ exact Ua | exact Usem | exact HRU | rewrite L1; exact HVl | rewrite L2; exact HVl | exact H12' ].
+  Qed.
+
   (** The uniform parameters' values, as arguments of their telescope. *)
   Lemma U_gargs : forall a b, RU (env_args nil a) (env_args nil b) -> List.length a = ind_nu D -> List.length b = ind_nu D ->
       per_gargs (List.rev (ind_uparams D)) nil nil a b.
