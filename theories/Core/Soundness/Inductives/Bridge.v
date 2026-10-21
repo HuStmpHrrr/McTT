@@ -1755,4 +1755,158 @@ Section ToGroup.
   Qed.
 End ToGroup.
 
+(** ** A View Agrees with its Container
+
+    An element of the view's type, glued at the type's container member at
+    uniform parameters related to the view's instance and non-uniform ones
+    related to the group's, is an element of the container's member at the
+    instance's values and the families of its clause there, hence one of
+    the group's member. *)
+Section Root.
+  Variable (VP : qname -> ind_decl -> Prop).
+  Variables (p : qname) (D : ind_decl).
+  Hypotheses (HVP : valid_groups VP) (HPD : VP p D) (HG : glu_ind_decl D).
+  Let Hg := valid_groups_valid VP HVP p D HPD.
+  Let Hcv := containers_valid_of_groups VP HVP p D HPD.
+  Let Hl := vgr_lookup _ _ Hg.
+  Let Hc := vgr_closed _ _ Hg.
+  Let Hass := vgr_ass _ _ Hg.
+  Let Hdt := vgr_typed _ _ Hg.
+  Variables (ups : list domain) (bu : domain) (u : uidx)
+    (NP : nat -> nat -> list domain -> glu_typ_pred) (NEl : nat -> nat -> list domain -> glu_exp_pred)
+    (AP : nat -> list domain -> String.string -> nat -> list domain -> glu_typ_pred)
+    (AEl : nat -> list domain -> String.string -> nat -> list domain -> glu_exp_pred)
+    (DP : nat -> list domain -> exp -> glu_typ_pred) (DEl : nat -> list domain -> exp -> glu_exp_pred).
+  Hypothesis (Hu : List.length ups = ind_nu D) (Hgu : per_gargs (List.rev (ind_uparams D)) nil nil ups ups)
+    (Hbu : ⟦ ind_sort D ⟧ env_args nil ups ↘ bu)
+    (Hule : uidx_le (Completeness.Inductives.Decl.univ_idx bu) u)
+    (Hf : ind_fams_glu D ups u NP NEl AP AEl DP DEl).
+
+  (** Non-uniform parameters related at the group's member are related at
+      the container's member it views. *)
+  Lemma nparams_rel_to_container : forall k Mk qc kc Is vm Dq cups i' Mi' v Mv, ind_member D k = Some Mk ->
+      im_head Mk = mh_view qc kc Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq ->
+      ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
+      ind_member Dq i' = Some Mi' -> List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
+      forall a b, tele_rel (canon_nparams_rel D ups v) (List.rev (im_nparams Mv)) a b ->
+        tele_rel (canon_nparams_rel Dq cups i') (List.rev (im_nparams Mi')) a b.
+  Proof.
+    intros * HMk Hh Hq Ecups HMi' Hv HMv a b Hab.
+    pose proof (vs_nn D Hdt k Mk qc kc Is vm Dq HMk Hh Hq i' Mi' v Mv HMi' Hv HMv) as Hnn.
+    assert (Hab' : tele_rel (canon_nparams_rel D ups v) (List.rev (im_nparams Mi')) a b)
+      by (destruct Hab as [Hla Hab]; split; [ rewrite Hla, !List.length_rev, !length_im_nparams; lia | exact Hab ]).
+    apply (tele_rel_map _ (canon_nparams_rel D ups v)); [| exact Hab' ].
+    intros j pa pb x y Hj _ Hp2 Hxy.
+    rewrite List.length_rev, length_im_nparams in Hj.
+    apply (view_nparams_rel p D Hg Hcv k Mk qc kc Is vm Dq HMk Hh Hq ups cups Hgu Hu Ecups i' Mi' v Mv HMi' Hv HMv
+             j pa pb ltac:(lia) Hp2); exact Hxy.
+  Qed.
+
+  Lemma glu_view_end_root : forall k,
+      (forall Mk qc kc Is vm Dq i' Mi' v Mv c gs1' A' gs2' gs1 t gs2, ind_member D k = Some Mk ->
+         im_head Mk = mh_view qc kc Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' ->
+         List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
+         ind_con Mi' c = Some (gs1' ++ ca_arg A' :: gs2') -> ind_con Mv c = Some (gs1 ++ ca_rec t :: gs2) ->
+         cargs_corr vm gs1' gs1 -> glu_view_end_at p D ups NEl AEl DP DEl (ptyp_mem t)) ->
+      glu_view_end_at p D ups NEl AEl DP DEl k.
+  Proof.
+    intros k Hend Mj qc kc Is vm Dq cups cs bs bs1 Δ Us Q W N x i P El HMj Hh Hq Ecups Hgc Hrel Hgl HN _ HQp Δ' φ Us' Q' Hφ HUl' HE.
+    pose proof (Hcv _ _ _ _ _ _ _ HMj Hh Hq) as HgQ.
+    pose proof (vgr_closed _ _ HgQ) as HcQ; pose proof (vgr_valid _ _ HgQ) as HDQ; pose proof (vgr_sort _ _ HgQ) as HsuQ.
+    pose proof (vgr_lookup _ _ HgQ) as HlQ; pose proof (vgr_ass _ _ HgQ) as HassQ.
+    pose proof (valid_groups_containers VP HVP p D k Mj qc kc Is vm Dq HPD HMj Hh Hq) as HPq.
+    pose proof (containers_valid_of_groups VP HVP qc Dq HPq) as HcvQ.
+    destruct (dt_view _ _ _ Hdt _ _ _ _ _ _ HMj Hh) as (Dq' & Mkc & Hq' & HMkc & Hlt & HIl & _ & Hvk & _).
+    rewrite Hq in Hq'; injection Hq' as <-.
+    assert (Hdecl : im_is_decl Mkc = true) by (apply (dt_order _ _ _ (vgr_typed _ _ HgQ) _ _ HMkc); exact Hlt).
+    destruct (im_head Mkc) as [pmc | ? ? ? ?] eqn:Hhc; [| unfold im_is_decl in Hdecl; rewrite Hhc in Hdecl; discriminate ].
+    (** The view's member of the container, and its image. *)
+    destruct (view_agree_members p D k Mj qc kc Is vm Dq Hass HMj Hh Hq kc Mkc HMkc) as (v0 & Mv0 & HVMk).
+    pose proof (vmb_v _ _ _ _ _ _ _ _ _ HVMk) as Hv0; rewrite Hvk in Hv0; injection Hv0 as <-.
+    pose proof (vmb_mem _ _ _ _ _ _ _ _ _ HVMk) as HMv0; rewrite HMj in HMv0; injection HMv0 as <-.
+    pose proof (vmb_nn _ _ _ _ _ _ _ _ _ HVMk) as Hnn.
+    assert (Hlc : List.length cups = ind_nu Dq) by (rewrite (eval_exps_length _ _ _ Ecups); exact HIl).
+    pose proof (view_cups_rel p D Hg Hcv k Mj qc kc Is vm Dq HMj Hh Hq ups cups Hgu Hu Ecups) as Hgcups.
+    (** The parameters of the element's type, split at the uniform ones. *)
+    destruct (glu_args_length _ _ _ _ _ _ HQp) as [HlP Hlp].
+    rewrite length_im_params in HlP, Hlp.
+    set (Us0 := List.firstn (ind_nu D) (Us ++ Q)) in *; set (Q0 := List.skipn (ind_nu D) (Us ++ Q)) in *.
+    assert (EP : Us ++ Q = Us0 ++ Q0) by (symmetry; apply List.firstn_skipn).
+    assert (HUl0 : List.length Us0 = ind_nu D) by (unfold Us0; rewrite List.length_firstn; unfold im_np in HlP; lia).
+    assert (HQl0 : List.length Q0 = im_nn Mj) by (unfold Q0; rewrite List.length_skipn; unfold im_np in HlP; lia).
+    assert (Hlbs : List.length bs = im_nn Mj) by (rewrite List.length_app in Hlp; unfold im_np, ind_nu in *; lia).
+    rewrite EP in HQp, HE; clearbody Us0 Q0; clear EP HlP Hlp.
+    (** The container's relations of the values. *)
+    pose proof (nparams_rel_to_container k Mj qc kc Is vm Dq cups kc Mkc k Mj HMj Hh Hq Ecups HMkc Hvk HMj bs bs1 Hrel) as Hrel'.
+    pose proof (Con.con_canon VP qc Dq HVP HPq cups Hlc Hgcups) as HcpQ.
+    assert (Hbb' : tele_rel (canon_nparams_rel Dq cups kc) (List.rev (im_nparams Mkc)) bs bs)
+      by exact (canon_nparams_rel_trans qc Dq cups HassQ HcpQ _ _ _ _ _ HMkc Hrel'
+                  (canon_nparams_rel_sym qc Dq cups HassQ HcpQ _ _ _ _ HMkc Hrel')).
+    destruct (sort_value Dq HDQ cups Hgcups Hlc) as [bq Ebq].
+    pose proof (ind_relate Dq HDQ HcQ HsuQ qc HlQ HassQ kc Mkc pmc cups cs bs bs1 bq HMkc Hhc Hgc Hlc Ebq Hrel') as HR0.
+    pose proof (ind_relate Dq HDQ HcQ HsuQ qc HlQ HassQ kc Mkc pmc cups cups bs bs bq HMkc Hhc Hgcups Hlc Ebq Hbb') as HRq0.
+    (** At a universe above both. *)
+    set (n := ul (Nat.max (ulvl i) (ulvl (Completeness.Inductives.Decl.univ_idx bq)))).
+    assert (Hin : uidx_le i n) by (apply uidx_le_ul_max; unfold n; lia).
+    assert (Hbn : uidx_le (Completeness.Inductives.Decl.univ_idx bq) n) by (apply uidx_le_ul_max; unfold n; lia).
+    destruct (glu_univ_elem_cumu_ge_uidx Hin Hgl) as (Pn & Eln & Hgn).
+    pose proof (glu_univ_elem_exp_cumu_ge_uidx Hin Hgl Hgn HN) as HNn.
+    pose proof (per_univ_elem_cumu_uidx _ _ _ _ HR0 _ Hbn) as HR0n.
+    pose proof (glu_univ_elem_resp_per_univ _ _ _ _ _ (per_univ_sym' _ _ _ (per_univ_of_elem _ _ _ _ HR0n)) Hgn) as Hgn'.
+    pose proof (per_univ_elem_cumu_uidx _ _ _ _ HRq0 _ Hbn) as HRqn.
+    destruct (ind_glu_of_per qc Dq HlQ n _ kc Mkc pmc cups bs HMkc Hhc HRqn Hlc)
+      as [NP2 NEl2 AP2 AEl2 DP2 DEl2 P2 El2 R2 Hg2 HP2 HEl2 HR2 Hf2].
+    destruct (functional_glu_univ_elem _ _ _ _ _ _ Hgn' Hg2) as [_ EEl].
+    apply EEl, HEl2 in HNn; destruct HNn as [HNty _ Ps2 HPs2 Hk2].
+    assert (HΔ : ⊢ Δ) by (gen_presups; assumption).
+    assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
+    (** The view's parameters, at the container's member. *)
+    pose proof HQp as HQp'; unfold im_params in HQp'.
+    apply glu_args_app in HQp' as [HUs HNs]; [| exact (dc_ass _ Hc) | exact HUl0 | exact Hu ].
+    pose proof (view_uparams_glu VP p D HVP HPD HG k Mj qc kc Is vm Dq HMj Hh Hq Δ Us0 ups cups HΔ HUs Ecups) as HUc.
+    pose proof (view_nparams_glu VP p D HVP HPD k Mj qc kc Is vm Dq HMj Hh Hq Δ Us0 Q0 ups bs cups kc Mkc k Mj HΔ Hu HUs
+                  HMkc Hvk HMj HNs Ecups) as HNc.
+    assert (HQpc : glu_args Δ (im_params Dq Mkc) Id nil (List.map (fun I => I[sb_of_list Id Us0]) Is ++ Q0) (cups ++ bs)).
+    { unfold im_params; apply glu_args_app;
+        [ exact (dc_ass _ HcQ) | rewrite List.length_map; exact HIl | exact Hlc |].
+      split; [ exact HUc | exact HNc ]. }
+    pose proof (decl_closed_params_ass Dq kc Mkc HcQ HMkc) as HassPc.
+    pose proof (decl_closed_params Dq kc Mkc HcQ HMkc) as HsPc.
+    pose proof (glu_args_params_top _ _ _ _ _ HassPc HsPc (glu_args_wk _ _ _ _ _ _ _ HassPc HsPc Hφ HQpc)) as Ht.
+    destruct (proj2 HPs2 _ _ Hφ) as (HPt2 & _ & _).
+    pose proof (glu_params_top_eq qc Dq kc Mkc Δ' _ _ _ HlQ HMkc HΔ' (ind_rps_of_per _ _ _ _ _ _ _ _ HRqn HlQ HMkc _) HPt2 Ht) as Heqq.
+    (** The group's parameters there are the container's at the view's
+        instance. *)
+    assert (HsIs : List.Forall (exp_scoped (List.length Us0)) Is) by (rewrite HUl0; exact (decl_closed_head_scoped D Hc _ _ _ _ _ _ HMj Hh)).
+    assert (HlE : List.length Us' + List.length Q' = ind_nu D + im_nn Mj)
+      by (destruct HE as [HlE _]; rewrite List.length_map, !List.length_app in HlE; lia).
+    pose proof (vs_params_eq_transfer p D Hdt Hl Hc k Mj qc kc Is vm Dq HMj Hh Hq HcQ kc Mkc k Mj HMkc Hvk HMj
+                  Δ' (List.map (fun P => P[φ]ʷ) Us0) Us' (List.map (fun P => P[φ]ʷ) Q0) Q' HΔ'
+                  ltac:(rewrite List.length_map; exact HUl0) ltac:(rewrite List.length_map; exact HQl0) HUl'
+                  ltac:(rewrite <- List.map_app; exact HE)) as HEc.
+    rewrite <- (view_args_wk Is Us0 φ HsIs), <- List.map_app in HEc.
+    assert (Heqq' : exps_eq_at Δ' (im_params Dq Mkc) (List.map (fun P => P[φ]ʷ) Ps2)
+                      (List.map (fun I => I[sb_of_list Id Us']) Is ++ Q')).
+    { destruct Heqq as [HlE1 HE1]; destruct HEc as [HlE2 HE2]; split; [ rewrite ?List.length_map in *; lia |].
+      destruct HPt2 as [HPl2 _ _]; destruct Ht as [HQl2 _ _].
+      eapply (params_eq_trans _ qc Dq kc Mkc _ _ _ HlQ HMkc HΔ' HPl2 HQl2); [| exact HE1 | exact HE2 ].
+      rewrite List.length_app, List.length_map, HIl; unfold im_np, ind_nu in *; lia. }
+    pose proof (Hk2 Δ' φ _ Hφ Heqq') as Hgi.
+    rewrite firstn_app_exact, skipn_app_exact in Hgi by (rewrite List.length_map; exact HIl).
+    (** The container's element is the group's. *)
+    pose proof (exps_eq_at_uparams_of_params D Mj Δ' (List.map (fun P => P[φ]ʷ) (Us0 ++ Q0)) (Us' ++ Q') Hc
+                  ltac:(rewrite List.length_map, List.length_app; unfold im_np, ind_nu in *; lia) HE) as HU'.
+    rewrite List.map_app, !firstn_app_exact in HU' by (rewrite ?List.length_map; unfold ind_nu in *; lia).
+    pose proof (glu_args_resp_eq Δ' (ind_uparams D) nil _ Us' ups (dc_ass _ Hc) (dt_uparams _ _ _ Hdt) HΔ' HU'
+                  (glu_args_wk _ _ _ _ _ _ _ (dc_ass _ Hc) (dc_uparams _ Hc) Hφ HUs)) as HUs'.
+    pose proof (exps_eq_at_typed_r p D k Mj Δ' (List.map (fun P => P[φ]ʷ) (Us0 ++ Q0)) (Us' ++ Q') Hl HMj HΔ'
+                  ltac:(rewrite List.length_map, List.length_app; unfold im_np, ind_nu in *; lia) HE) as HPs'.
+    pose proof (to_group_all VP p D HVP HPD HG ups bu u NP NEl AP AEl DP DEl Hu Hgu Hbu Hule Hf k Mj qc kc Is vm Dq HMj Hh Hq
+                  cups Ecups n NP2 NEl2 AP2 AEl2 DP2 DEl2 Hf2
+                  (fun i' Mi' v Mv c gs1' A' gs2' gs1 t gs2 HMi' Hv HMv Hc' Hc0 Hcr =>
+                     Hend Mj qc kc Is vm Dq i' Mi' v Mv c gs1' A' gs2' gs1 t gs2 HMj Hh Hq HMi' Hv HMv Hc' Hc0 Hcr)) as [TG _].
+    exact (TG kc Δ' _ Q' N[φ]ʷ x Hgi Mkc k Mj Us' HMkc HVMk eq_refl HΔ' HUs' ltac:(unfold ind_nu in *; lia) HPs').
+  Qed.
+End Root.
+
 End Fixed_GCtx.
