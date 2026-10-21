@@ -82,6 +82,20 @@ function isProofEnd(s){
   return isVernacStart(["Qed", "Admitted", "Defined", "Abort"], s);
 }
 
+// Whether a block of the page has a proof start among its own children.
+function hasProofStart(block){
+  return toArray(block.childNodes).some(function(child){
+    return child.nodeType === Node.ELEMENT_NODE && isVernacStart(["Proof"], child.textContent);
+  });
+}
+
+// Whether a block of the page has a proof end among its own children.
+function hasProofEnd(block){
+  return toArray(block.childNodes).some(function(child){
+    return child.nodeType === Node.ELEMENT_NODE && isProofEnd(child.textContent);
+  });
+}
+
 function proofStatus(){
   var proofs = toArray(document.getElementsByClassName("proof"));
   if(proofs.length) {
@@ -121,8 +135,35 @@ function foldProofs() {
         proof.appendChild(node);
         node = proof.nextSibling;
       }
-      if (proof.nextSibling) proof.appendChild(proof.nextSibling); // the Qed
-      if (!hasCommands && proof.nextSibling) proof.appendChild(proof.nextSibling); // the dot after the Qed
+      // A documentation comment inside the proof ends coqdoc's code block, so
+      // the proof continues in the blocks after it: take the comment blocks
+      // and code blocks that follow, up to the block holding the Qed, and the
+      // part of that block before the Qed.
+      while(!node) {
+        var block = proof.parentNode.nextSibling;
+        while(block && block.nodeType !== Node.ELEMENT_NODE) {
+          var gap = block;
+          block = block.nextSibling;
+          proof.appendChild(gap);
+        }
+        // Stop at the end of the page, or at a block that starts another
+        // proof before this one ends: the end was not found.
+        if(!block || (!hasProofEnd(block) && hasProofStart(block))) break;
+        if(!hasProofEnd(block)) {
+          proof.appendChild(block);
+          continue;
+        }
+        node = block.firstChild;
+        while(node && !isProofEnd(node.textContent)) {
+          proof.appendChild(node);
+          node = block.firstChild;
+        }
+      }
+      if (node) {
+        var after = node.nextSibling;
+        proof.appendChild(node); // the Qed
+        if (!hasCommands && after) proof.appendChild(after); // the dot after the Qed
+      }
 
       proof.addEventListener("click", function(proof){return function(e){
         if (e.target.parentNode.tagName.toLowerCase() === "a")

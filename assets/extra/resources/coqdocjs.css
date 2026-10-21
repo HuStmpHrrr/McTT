@@ -246,3 +246,39 @@ div.doc {
 span.command:hover {
   background-color: inherit;
 }
+
+/* phones and small screens */
+
+/* Phone browsers enlarge prose but not code; keep both at the page's size. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* A lone "monospace" family makes browsers shrink the text; naming it twice
+   keeps code at the size of the text around it. */
+.inlinecode, .code, #main pre {
+  font-family: monospace, monospace;
+}
+
+/* A documentation comment folded into a proof keeps the prose font. */
+.proof .doc {
+  font-family: 'Open Sans', sans-serif;
+}
+
+@media (max-width: 700px) {
+  #main {
+    padding: 8px;
+  }
+  /* Code lines do not wrap: a wide block scrolls on its own. */
+  div.code {
+    overflow-x: auto;
+  }
+  #header {
+    flex-wrap: wrap;
+  }
+  #header * {
+    margin-left: 6px;
+    margin-right: 6px;
+  }
+}
