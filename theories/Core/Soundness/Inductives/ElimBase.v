@@ -390,4 +390,38 @@ Proof.
   exact (sub_preserves_exp _ _ _ _ _ _ _ H Hs).
 Qed.
 
+(** ** Glued Arguments along Related Types *)
+
+Lemma tele_insts_base_agree : forall Δ k σ σ' Ms, tele_ass Δ -> ctx_scoped k Δ ->
+    (forall x, x < k -> σ x = σ' x) -> tele_insts Δ σ Ms = tele_insts Δ σ' Ms.
+Proof.
+  intros * Hass Hs Hσ.
+  pose proof (tele_insts_sub Δ k σ σ' Id Ms Hass Hs ltac:(intros x Hx; rewrite sentry_sub_id; apply Hσ; exact Hx)) as H.
+  rewrite (List.map_ext _ (fun T => T) (fun T => exp_sub_id T)), List.map_id in H.
+  rewrite (List.map_ext _ (fun M => M) (fun M => exp_sub_id M)), List.map_id in H.
+  exact H.
+Qed.
+
+(** Glued arguments of a telescope are glued arguments of another one
+    whose types, at the same arguments, have values related to its own. *)
+Lemma glu_args_link : forall Δ C C' τ τ' ρ1 ρ2 Ms vs, List.length C = List.length C' ->
+    tele_insts C τ Ms = tele_insts C' τ' Ms -> glu_args Δ C τ ρ1 Ms vs ->
+    (forall k A A' a, List.nth_error (List.rev C) k = Some (ce_ass A) -> List.nth_error (List.rev C') k = Some (ce_ass A') ->
+       k < List.length vs -> ⟦ A ⟧ env_args ρ1 (List.firstn k vs) ↘ a ->
+       exists a' (i : nat), ⟦ A' ⟧ env_args ρ2 (List.firstn k vs) ↘ a' /\ Dom a' ≈ a ∈ per_univ i) ->
+    (forall k e', List.nth_error (List.rev C') k = Some e' -> exists A, List.nth_error (List.rev C) k = Some (ce_ass A) /\ exists A', e' = ce_ass A') ->
+    glu_args Δ C' τ' ρ2 Ms vs.
+Proof.
+  intros * HlC HT [L1 L2 H] Hlink Hass.
+  constructor; [ congruence | congruence |].
+  intros k M T v A' HM HT' Hv HA'.
+  destruct (Hass _ _ HA') as (A & HA & A'' & E); injection E as <-.
+  rewrite <- HT in HT'.
+  destruct (H _ _ _ _ _ HM HT' Hv HA) as [j a P El Ea Hg HP HMg].
+  assert (Hk : k < List.length vs) by (apply List.nth_error_Some; congruence).
+  destruct (Hlink _ _ _ _ HA HA' Hk Ea) as (a' & i & Ea' & Hr).
+  destruct (glu_transfer_per_elem j i a a' P El Δ T M v Hg (per_univ_sym' _ _ _ Hr) HP HMg) as (k' & P' & El' & Hg' & HP' & HM').
+  exact (mk_glu_arg _ _ _ _ _ _ k' a' P' El' Ea' Hg' HP' HM').
+Qed.
+
 End Fixed_GCtx.
