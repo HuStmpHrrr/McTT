@@ -1980,6 +1980,145 @@ Section ElimGlu.
     exact E.
   Qed.
 
+  (** The readback of a stuck eliminator at the member [j] is the
+      elimination's at every substitution glued to [ρ]: at a declared
+      member by [elim_rb_decl], at a view by the readback at the members
+      of lower rank. *)
+  Definition elim_rb_ok (j : nat) : Prop :=
+    forall Mj as' e Δ σ'' Ns M oq (M0 : ne), ind_member D j = Some Mj -> elim_grp D oq p j -> Δ ⊢ˢ σ'' ® ρ ∈ SbΓ ->
+      List.length Ns = im_nn Mj ->
+      (forall i P T, List.nth_error (List.map (fun U => U[σ'']) Us ++ Ns) i = Some P ->
+         List.nth_error (tele_insts (im_params D Mj) Id (List.map (fun U => U[σ'']) Us ++ Ns)) i = Some T -> Δ ⊢ P : T) ->
+      (forall Mr, Rne e in gc_deps ⍮ gc_stack ⍮ length Δ ↘ Mr -> Δ ⊢ M ≈ Mr : im_ty_at p j Mj (List.map (fun U => U[σ'']) Us) Ns) ->
+      Rne d_elim ρ Bks p ups j as' e in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
+      Δ ⊢ a_elim oq (List.map (fun U => U[σ'']) Us) j (blocks_sub Bks σ'') M ≈ M0
+        : (List.nth j (blocks_motives Bks) a_True)[sb_qn (S (im_nn Mj)) σ''][sb_of_list Id (Ns ++ M :: nil)].
+
+  Lemma elim_rb_decl_ok : forall j Mj pm, ind_member D j = Some Mj -> im_head Mj = mh_decl pm -> elim_rb_ok j.
+  Proof.
+    intros j Mj pm HMj Hh Mj' as' e Δ σ'' Ns M oq M0 HMj'; rewrite HMj in HMj'; injection HMj' as <-.
+    exact (elim_rb_decl j Mj pm HMj Hh as' e Δ σ'' Ns M oq M0).
+  Qed.
+
+  Lemma motive_inst_wk : forall X n σ' L φ, List.length L = n ->
+      (X[sb_qn n σ'][sb_of_list Id L])[φ]ʷ = X[sb_qn n (sb_wk σ' φ)][sb_of_list Id (List.map (fun N => N[φ]ʷ) L)].
+  Proof.
+    intros * <-.
+    rewrite exp_sub_qn_of_list, <- (List.length_map (fun N => N[φ]ʷ) L), exp_sub_qn_of_list.
+    rewrite <- exp_sub_of_wk, exp_sub_sub; apply exp_sub_sb_eq.
+    etransitivity; [ apply sb_of_list_compose_gen |].
+    rewrite (List.map_ext (fun M => M[ι φ]) (fun N => N[φ]ʷ)) by (intros; apply exp_sub_of_wk).
+    apply sb_of_list_cong; symmetry; apply sb_wk_compose.
+  Qed.
+
+  (** The readback, at every weakening of a substitution glued to [ρ]. *)
+  Lemma elim_rb_wk : forall j, elim_rb_ok j ->
+      forall Mj as' e Δ' σ' oq' Ns' M', ind_member D j = Some Mj -> elim_grp D oq' p j -> Δ' ⊢ˢ σ' ® ρ ∈ SbΓ ->
+      List.length Ns' = im_nn Mj ->
+      (forall i P T, List.nth_error (List.map (fun U => U[σ']) Us ++ Ns') i = Some P ->
+         List.nth_error (tele_insts (im_params D Mj) Id (List.map (fun U => U[σ']) Us ++ Ns')) i = Some T -> Δ' ⊢ P : T) ->
+      (forall Δ φ M0, Δ ⊢ᵏ φ : Δ' -> Rne e in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
+         Δ ⊢ M'[φ]ʷ ≈ M0 : (im_ty_at p j Mj (List.map (fun U => U[σ']) Us) Ns')[φ]ʷ) ->
+      forall Δ φ M0, Δ ⊢ᵏ φ : Δ' -> Rne d_elim ρ Bks p ups j as' e in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
+        Δ ⊢ (a_elim oq' (List.map (fun U => U[σ']) Us) j (blocks_sub Bks σ') M')[φ]ʷ ≈ M0
+          : ((List.nth j (blocks_motives Bks) a_True)[sb_qn (S (im_nn Mj)) σ'][sb_of_list Id (Ns' ++ M' :: nil)])[φ]ʷ.
+  Proof.
+    intros j Hok Mj as' e Δ' σ' oq' Ns' M' HMj Hg Hσ' HNl HPs HMr Δ φ M0 Hφ HR.
+    pose proof (glu_ctx_env_sub_monotone _ _ HSbΓ _ _ _ _ _ Hσ' Hφ) as Hσ2.
+    assert (EU : List.map (fun U0 => U0[φ]ʷ) (List.map (fun U => U[σ']) Us) = List.map (fun U => U[sb_wk σ' φ]) Us)
+      by (rewrite List.map_map; apply List.map_ext; intros; apply exp_wk_sub).
+    assert (EB : blocks_wk (blocks_sub Bks σ') φ = blocks_sub Bks (sb_wk σ' φ))
+      by (rewrite <- blocks_sub_of_wk, blocks_sub_sub; apply blocks_sub_sb_eq; symmetry; apply sb_wk_compose).
+    rewrite exp_wk_elim, EU, EB.
+    rewrite (motive_inst_wk _ (S (im_nn Mj)) σ' (Ns' ++ M' :: nil) φ) by (rewrite List.length_app, HNl; cbn; lia).
+    rewrite List.map_app; cbn [List.map].
+    apply (Hok Mj as' e Δ (sb_wk σ' φ) (List.map (fun N => N[φ]ʷ) Ns') M'[φ]ʷ oq' M0 HMj Hg Hσ2);
+      [ rewrite List.length_map; exact HNl | | | exact HR ].
+    - intros i P T HP HT.
+      rewrite <- EU, <- List.map_app in HP, HT.
+      rewrite <- (params_insts_wk D j Mj _ φ Hc HMj) in HT.
+      apply nth_error_map_inv in HP as (P0 & HP0 & ->).
+      apply nth_error_map_inv in HT as (T0 & HT0 & ->).
+      exact (kripke_preserves_exp _ _ _ _ _ (HPs _ _ _ HP0 HT0) Hφ).
+    - intros Mr HMr0.
+      pose proof (HMr Δ φ Mr Hφ HMr0) as H.
+      assert (Emt : forall Us0 Ns0, im_ty_at p j Mj Us0 Ns0 = ind_mty p D j Us0 Ns0) by (intros; unfold ind_mty; rewrite HMj; reflexivity).
+      rewrite Emt, ind_mty_wk in H by (try exact Hc; rewrite List.length_map; exact HUl).
+      rewrite EU, <- Emt in H; exact H.
+  Qed.
+
+  (** At the end of a shape, the recursive result of a neutral argument is
+      glued: it is a stuck eliminator, whose readback is the elimination's
+      ([elim_rb_ok] at the member the shape ends in). *)
+  Lemma rec_neut_self : forall j0 Ps Mj pre bs Δ' σ' oq' σs N pc k' as' e r a (i : nat) P El,
+      elim_rb_ok j0 -> ind_member D j0 = Some Mj -> List.length Ps = im_nn Mj ->
+      (oq' = Some p \/ oq' = None) -> Δ' ⊢ˢ σ' ® ρ ∈ SbΓ ->
+      (forall k P0 T, List.nth_error (List.map (fun P1 => P1[σs]) Ps) k = Some P0 ->
+         List.nth_error (tele_insts (im_nparams Mj) (sb_of_list Id (List.map (fun U => U[σ']) Us)) (List.map (fun P1 => P1[σs]) Ps)) k
+           = Some T -> Δ' ⊢ P0 : T) ->
+      (forall Δ φ M0, Δ ⊢ᵏ φ : Δ' -> Rne e in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M0 ->
+         Δ ⊢ N[φ]ʷ ≈ M0 : (ptyp_ty_at p D (List.map (fun U => U[σ']) Us) σs (pt_self j0 Ps))[φ]ʷ) ->
+      ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ bs ->
+      G j0 ups ups bs bs (⇑ (d_ind pc k' as') e) (⇑ (d_ind pc k' as') e) ->
+      ⟦ih ⇑ (d_ind pc k' as') e of pt_self j0 Ps under p ups Bks ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r ->
+      ⟦ihty ⇑ (d_ind pc k' as') e of pt_self j0 Ps under ρ (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ a ->
+      DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+      Δ' ⊢ ptyp_ihty (blocks_motives (blocks_sub Bks σ')) Id σs N (pt_self j0 Ps) ® P ->
+      Δ' ⊢ ptyp_ih p D oq' (List.map (fun U => U[σ']) Us) (blocks_sub Bks σ') σs N (pt_self j0 Ps)
+          : ptyp_ihty (blocks_motives (blocks_sub Bks σ')) Id σs N (pt_self j0 Ps) ® r ∈ El.
+  Proof.
+    intros * Hok HMj HPl Hoq Hσ' HQ Hn Ebs Hm Er Ea Hg HT.
+    set (Us' := List.map (fun U => U[σ']) Us) in *.
+    set (Q := List.map (fun P1 => P1[σs]) Ps) in *.
+    assert (HAQ : ptyp_ty_at p D Us' σs (pt_self j0 Ps) = im_ty_at p j0 Mj Us' Q)
+      by (cbn [ptyp_ty_at]; unfold ind_mty; rewrite HMj; reflexivity).
+    rewrite HAQ in Hn.
+    inversion Er; subst.
+    match goal with H : ⟦elim _ at j0 of _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H; subst end.
+    match goal with H1 : ind_lookup gc_deps gc_stack p = Some _ |- _ => rewrite Hl in H1; injection H1 as <- end.
+    match goal with H1 : ind_member D j0 = Some ?M1 |- _ => rewrite HMj in H1; injection H1 as <- end.
+    match goal with H1 : im_ref p j0 Mj = (pc, k') |- _ => rename H1 into Href end.
+    match goal with H1 : ind_lookup gc_deps gc_stack pc = Some _ |- _ => rename H1 into Hq0 end.
+    match goal with H1 : ind_member _ k' = Some _ |- _ => rename H1 into HMk0 end.
+    match goal with H1 : List.nth_error Bks j0 = Some _ |- _ => rename H1 into Hb end.
+    match goal with H1 : ⟦ eb_motive _ ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => rename H1 into Ea0 end.
+    destruct (ER im_ref_target j0 Mj pc k' HMj Href) as (Dq' & Mq & Hq & HMq & Hnnq & Hnuq).
+    rewrite Hq0 in Hq; injection Hq as <-; rewrite HMk0 in HMq; injection HMq as <-.
+    pose proof Hm as Hm'; unfold grp_rel in Hm'; inversion Hm'; subst.
+    match goal with H1 : ind_member D j0 = Some ?M1 |- _ => rewrite HMj in H1; injection H1 as <- end.
+    match goal with H1 : tele_rel _ _ bs (List.skipn _ _) |- _ => rename H1 into Hsn end.
+    match goal with H1 : tele_rel _ _ bs bs |- _ => rename H1 into Hbs end.
+    pose proof (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ j0 Mj _ _ _ _ _ _ _ _ HMj Hm Hsn Hbs) as HG2.
+    destruct (mot_rel j0 Mj _ _ ups ups _ bs _ _ HMj Hb Hb HG2) as (a1 & a2 & Ea1 & Ea2 & Hr12).
+    rewrite Hnuq in Ea0.
+    assert (a1 = a0) as -> by (eapply functional_eval_exp; eassumption).
+    inversion Ea; subst.
+    match goal with H : ⟦ Ps ⟧* _ ⍮ _ ⍮ _ ↘ ?bs1 |- _ => assert (bs1 = bs) as -> by (eapply functional_eval_exps'; eassumption) end.
+    match goal with H : ⟦ List.nth j0 _ _ ⟧ _ ⍮ _ ⍮ _ ↘ a |- _ => rewrite (blocks_motives_nth _ _ _ Hb) in H; rename H into Ea' end.
+    assert (a2 = a) as -> by (eapply functional_eval_exp; eassumption).
+    destruct (glu_univ_elem_per_univ _ _ _ _ Hg) as [Ra HRa].
+    destruct (per_univ_elem_sym _ _ _ _ Hr12) as [Hr21 _].
+    destruct (Instance.per_univ_elem_trans_any _ _ _ _ _ _ _ HRa Hr21) as (R2 & HR2 & _).
+    pose proof (glu_univ_elem_resp_per_univ _ _ _ _ _ (ex_intro _ R2 HR2) Hg) as Hg1.
+    cbn [ptyp_ih ptyp_ihty] in HT |- *; unfold elim_at.
+    rewrite (blocks_motives_sub D Bks σ' j0 Mj Hnm HMj) in HT |- *.
+    assert (HΔ' : ⊢ Δ') by (pose proof (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ'); gen_presups; assumption).
+    assert (HUl' : List.length Us' = ind_nu D) by (unfold Us'; rewrite List.length_map; exact HUl).
+    assert (HPs : forall i0 P0 T, List.nth_error (Us' ++ Q) i0 = Some P0 ->
+                    List.nth_error (tele_insts (im_params D Mj) Id (Us' ++ Q)) i0 = Some T -> Δ' ⊢ P0 : T)
+      by exact (params_typed_join gc_deps gc_stack D Hc j0 Mj Δ' Us' Q HMj HUl'
+                  (glu_args_typed _ _ _ _ _ _ Ua (us_glu_args Δ' σ' Hσ')) HQ).
+    assert (HQl : List.length Q = im_nn Mj) by (unfold Q; rewrite List.length_map; exact HPl).
+    pose proof (elim_rb_wk j0 Hok Mj as' e Δ' σ' _ Q N HMj (elim_at_grp' oq' j0 Mj Hoq HMj) Hσ' HQl HPs Hn) as Hrd.
+    pose proof (ER per_bot_elim j0 Mj pc k' as' as' e e ups ups bs bs HMj Hm) as Hper.
+    destruct (Hper (length Δ')) as (L0 & HL0 & _).
+    pose proof (Hrd Δ' wk_id L0 (kripke_id _ HΔ') HL0) as Hid.
+    rewrite !exp_wk_id in Hid.
+    destruct (presup_exp_eq Hid) as (_ & Hty & _).
+    eapply realize_glu_elem_bot; [ exact Hg1 |].
+    econstructor; [ exact Hty | exact Hg1 | exact HT | exact Hper | exact Hrd ].
+  Qed.
+
   (** ** On a Neutral
 
       A neutral of the member [j], glued in the group, at a substitution
