@@ -99,10 +99,10 @@ Proof.
       pose proof (ds_ats_is_mod _ _ _ Hmm Hats) as Hm1.
       destruct R1; cbn in Hm1; try contradiction; rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
     + exfalso; cbn [ge_read] in Hed; inversion Hed; subst.
-      destruct (ds_ats_ind _ _ _ _ _ Hats) as (? & ? & ->).
+      destruct (ds_ats_ind _ _ _ _ _ _ Hats) as (? & ? & ->).
       rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
     + exfalso; cbn [ge_read] in Hed; inversion Hed; subst.
-      destruct (ds_ats_ind _ _ _ _ _ Hats) as (? & ? & ->).
+      destruct (ds_ats_ind _ _ _ _ _ _ Hats) as (? & ? & ->).
       rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
 Qed.
 
