@@ -57,8 +57,8 @@ Ltac destruct_glu_records := repeat destruct_glu_record1.
     the scripts ask for it: its components are read by name elsewhere. *)
 Ltac destruct_ind_glu_exp :=
   repeat match goal with
-    | H : ind_glu_exp_pred _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => destruct H
-    | H : ind_glu_exp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => destruct H
+    | H : ind_glu_exp_pred _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => destruct H
+    | H : ind_glu_exp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => destruct H
     end.
 
 Ltac invert_glu_rel1 :=

@@ -392,8 +392,12 @@ Section GluInd.
       values [pre] of the shape's components (the uniform parameters left
       out).  At the end of the shape, the member [j] it ends in at the
       values [bsr] of the shape's parameters: [A] is the member's type at
-      [Us] and parameters [Q], which are glued to [bsr], and the type's
-      head's parameters are glued to the head's values ([eval_mref]). *)
+      [Us] and parameters [Q], which are glued to [bsr], and all the
+      parameters [Us ++ Q] are glued to [ups ++ bsr] at the telescope of the
+      group's own member [j], as readback reads them ([read_shape_self],
+      [read_nf_con_view]): at a view, not at the container's, whose uniform
+      parameters [Is] evaluated at two readback-equal [ups] need not read
+      back alike. *)
   with glu_rec : nat -> ctx -> list exp -> list domain -> ptyp -> typ -> exp -> domain -> Prop :=
   | glu_rec_self :
     `{ ind_member D j = Some Mj ->
@@ -402,10 +406,8 @@ Section GluInd.
           List.length Q = im_nn Mj /\ tele_rel (canon_nparams_rel D ups j) (List.rev (im_nparams Mj)) bsr bsr /\
           (forall bsr', tele_rel (canon_nparams_rel D ups j) (List.rev (im_nparams Mj)) bsr bsr' ->
              glu_nparams j Mj NEl Γ Us Q bsr' /\
-             forall hd k' cpre Dh Mh, ⟦mref j of p ups ⟧ gc_deps ⍮ gc_stack ↘ (hd, k', cpre) ->
-               ind_lookup gc_deps gc_stack hd = Some Dh -> ind_member Dh k' = Some Mh ->
-               forall Δ φ, Δ ⊢ᵏ φ : Γ ->
-                 glu_params_top Dh Mh Δ (List.map (fun P => P[φ]ʷ) (im_pre Mj Us ++ Q)) (cpre ++ bsr'))) ->
+             forall Δ φ, Δ ⊢ᵏ φ : Γ ->
+               glu_params_top D Mj Δ (List.map (fun P => P[φ]ʷ) (Us ++ Q)) (ups ++ bsr'))) ->
        (forall bsr Q, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ bsr ->
           A = im_ty_at p j Mj Us Q ->
           forall Δ φ Us' Q', Δ ⊢ᵏ φ : Γ -> List.length Us' = ind_nu D ->
@@ -1191,6 +1193,12 @@ Record glu_ind_decl (D : ind_decl) : Prop := mk_glu_ind_decl
 ; gid_dctx : forall k Mk c gs gs1 t gs2 j, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
     gs = gs1 ++ ca_rec t :: gs2 -> j <= List.length (ptyp_doms t) ->
     ⊩ doms_ctx (List.firstn j (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk
+(** The uniform arguments of a view's container, each at the instance of
+    the container's telescope, over the group's uniform parameters. *)
+; gid_view_is : forall k Mk qc k' Is vm Dq j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+    ind_lookup gc_deps gc_stack qc = Some Dq -> List.nth_error Is j = Some I ->
+    List.nth_error (tele_insts (ind_uparams Dq) Id Is) j = Some T ->
+    ind_uparams D ⊩ I : T
 }.
 
 End Fixed_GCtx.
