@@ -515,13 +515,19 @@ Qed.
     equations hold, there.  Once the group is filed, [grp_sb] sends them to
     the group's uniform parameters (the [dt_view_*] lemmas below). *)
 Record views_self_typed (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_views_self_typed
-  { vst_link : forall mp, ind_mpath D 0 = Some mp ->
+  { (** Each view's uniform arguments are its [IsS] instance with the
+        members sent to the group's own type formers ([grp_sb]) *)
+    vst_link : forall mp, ind_mpath D 0 = Some mp ->
       forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         Is = List.map (fun I => I[grp_sb mp D]) (IsS k)
+    (** Each instance argument is typed at the container's uniform
+        telescope, over the members as variables *)
   ; vst_is : forall k Mk qc k' Is vm D' j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup Θ Ξ qc = Some D' -> nth_error (IsS k) j = Some I ->
       nth_error (tele_insts (ind_uparams D') Id (IsS k)) j = Some T ->
       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T
+    (** The view a view maps a container view to has, as instance, the
+        container view's arguments at this view's instance *)
   ; vst_view_is : forall k Mk qc k' Is vm D' i' Mi' v q'' k'' Is'' vm'' D'' Mv X vm' j' C C' T,
       ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_view q'' k'' Is'' vm'' ->
@@ -531,17 +537,23 @@ Record views_self_typed (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (IsS : nat -> 
       nth_error (List.map (fun I => I[sb_of_list Id (IsS k)]) Is'') j' = Some C' ->
       nth_error (tele_insts (ind_uparams D'') Id Is'') j' = Some T ->
       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)]
+    (** A mapped member's non-uniform parameters are the container
+        member's at the instance *)
   ; vst_nparams : forall k Mk qc k' Is vm D' i' Mi' v Mv, ind_member D k = Some Mk ->
       im_head Mk = mh_view qc k' Is vm ->
       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
       ind_member D v = Some Mv ->
       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ˣ tele_wk (im_nparams Mv) (self_wk D 0) ≈ tele_sub (im_nparams Mi') (sb_of_list Id (IsS k))
+    (** A mapped member's constructor arguments are the container
+        member's at the instance *)
   ; vst_args : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs, ind_member D k = Some Mk ->
       im_head Mk = mh_view qc k' Is vm ->
       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
       ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
       Θ ⍮ Ξ ⍮ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
         ⊢ˣ tele_sub (cargs_ctx qc D' Mi' gs') (sb_qn (im_nn Mv) (sb_of_list Id (IsS k))) ≈ scargs_ctx D IsS Mv gs
+    (** The shapes' domains of corresponding recursive arguments agree at
+        the instance *)
   ; vst_doms : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 d,
       ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
@@ -552,6 +564,8 @@ Record views_self_typed (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (IsS : nat -> 
                   ++ scargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
         ⊢ (ptyp_dom_at (cargs_pat gs1') d t')[sb_qn (d + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
         ≈ (ptyp_dom_at (cargs_pat gs1) d t)[self_wk D (d + List.length gs1 + im_nn Mv)]ʷ : Typeω@i
+    (** The parameters of corresponding recursive arguments are typed and
+        agree at the instance *)
   ; vst_ps : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 Mj j P' P T,
       ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
@@ -570,6 +584,7 @@ Record views_self_typed (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (IsS : nat -> 
         ⊢ P'[sb_qn (ptyp_depth t + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
         ≈ P[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ
         : T[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ
+    (** The container's sort at the instance is below the group's *)
   ; vst_sort : forall k Mk qc k' Is vm D', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup Θ Ξ qc = Some D' ->
       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ (ind_sort D')[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ }.
@@ -583,25 +598,43 @@ Record views_self_typed (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (IsS : nat -> 
     (the view equations), with the group's members as variables
     ([dt_selfs]). *)
 Record decl_typed (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : Prop := mk_decl_typed
-  { dt_ass : tele_ass (ind_uparams D)
+  { (** The uniform parameters are assumptions *)
+    dt_ass : tele_ass (ind_uparams D)
+    (** No free module variable occurs in the declaration *)
   ; dt_mvc : decl_mvc D
+    (** The uniform parameters are a well-formed context *)
   ; dt_uparams : ⊢ Θ ⍮ Ξ ⍮ ind_uparams D
+    (** The declared members come first, then the views *)
   ; dt_order : ind_order_ok D
+    (** The sort is a universe *)
   ; dt_sort_univ : ind_sort_univ (ind_sort D)
+    (** The sort is a type over the uniform parameters *)
   ; dt_sort : exists i, Θ ⍮ Ξ ⍮ ind_uparams D ⊢ ind_sort D : Typeω@i
+    (** The sort's level is a level over the uniform parameters *)
   ; dt_sort_lvl : exists n, Θ ⍮ Ξ ⍮ ind_uparams D ⊢ ind_sort_lvl (ind_sort D) : Level@n
+    (** Each member's non-uniform parameters are assumptions *)
   ; dt_nparams_ass : forall k Mk, ind_member D k = Some Mk -> tele_ass (im_nparams Mk)
+    (** Each member's constructor names are distinct *)
   ; dt_nodup : forall k Mk, ind_member D k = Some Mk -> List.NoDup (List.map fst (im_cons Mk))
+    (** Each non-uniform parameter is in the sort, under those before it *)
   ; dt_nparams : forall k Mk Δ1 T Δ2, ind_member D k = Some Mk -> im_nparams Mk = Δ1 ++ ce_ass T :: Δ2 ->
       Θ ⍮ Ξ ⍮ Δ2 ++ ind_uparams D ⊢ T : (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ
+    (** Each non-recursive constructor argument is in the sort, under the
+        arguments before it *)
   ; dt_args : forall k Mk c gs gs1 A gs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_arg A :: gs2 ->
       Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ im_params D Mk
         ⊢ A : (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ
+    (** Each domain of a recursive argument's shape is in the sort, under
+        the domains before it *)
   ; dt_doms : forall k Mk c gs gs1 t gs2 Bs1 B Bs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) ->
       gs = gs1 ++ ca_rec t :: gs2 -> ptyp_doms t = Bs1 ++ B :: Bs2 ->
       Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ im_params D Mk
         ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + im_nn Mk)]ʷ
+    (** Each recursive argument gives its member as many parameters as it
+        has *)
   ; dt_plen : forall k Mk c gs, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> cargs_plen D gs
+    (** Each parameter of a recursive argument is typed at its member's
+        non-uniform telescope *)
   ; dt_rec_ps : forall k Mk c gs gs1 t gs2 Mj j P T, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) ->
       gs = gs1 ++ ca_rec t :: gs2 -> ind_member D (ptyp_mem t) = Some Mj ->
       nth_error (ptyp_ps t) j = Some P ->
@@ -609,26 +642,39 @@ Record decl_typed (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : Prop := mk_decl_ty
                    (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + im_nn Mk))) (ptyp_ps t)) j
         = Some T ->
       Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ im_params D Mk ⊢ P : T
+    (** Each view is of a declared member of a filed group, at as many
+        uniform arguments as it has, with a map of one entry per container
+        member taking the viewed member to the view itself, and the viewed
+        member's constructors, their arguments corresponding *)
   ; dt_view : forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       exists D' Mk', ind_lookup Θ Ξ qc = Some D' /\ ind_member D' k' = Some Mk' /\ k' < ind_ndecl D' /\
         List.length Is = ind_nu D' /\ List.length vm = List.length (ind_members D') /\
         List.nth_error vm k' = Some k /\
         List.map fst (im_cons Mk) = List.map fst (im_cons Mk') /\
         (forall c gs' gs, ind_con Mk' c = Some gs' -> ind_con Mk c = Some gs -> cargs_corr vm gs' gs)
+    (** The members have a rank *)
   ; dt_rank : exists rk, view_rank_ok Θ Ξ D rk
+    (** Each view's map takes the container's members to members of the
+        same shapes *)
   ; dt_vwrap : forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       exists D', ind_lookup Θ Ξ qc = Some D' /\ vwrap_ok D D' vm
+    (** The views agree on their maps *)
   ; dt_view_maps_coherent : view_maps_coherent Θ Ξ D
+    (** A view maps a declared container member to a view of that member
+        at its own uniform arguments *)
   ; dt_view_decl : forall k Mk qc k' Is vm D' i' Mi' v pm', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_decl pm' ->
       nth_error vm i' = Some v ->
       exists Mv vm', ind_member D v = Some Mv /\ im_head Mv = mh_view qc i' Is vm'
+    (** A view maps a container view to a view of the same member, at as
+        many uniform arguments *)
   ; dt_view_view : forall k Mk qc k' Is vm D' i' Mi' v q'' k'' Is'' vm'', ind_member D k = Some Mk ->
       im_head Mk = mh_view qc k' Is vm ->
       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_view q'' k'' Is'' vm'' ->
       nth_error vm i' = Some v ->
       exists Mv X vm', ind_member D v = Some Mv /\ im_head Mv = mh_view q'' k'' X vm' /\
         List.length X = List.length Is''
+    (** The view equations hold with the members as variables *)
   ; dt_selfs : exists IsS, views_self_typed Θ Ξ D IsS }.
 
 (** The container of a view found at a context the group's embeds into is
@@ -711,6 +757,7 @@ Ltac build_decl_typed :=
     argument, at a group [decl_typed] says is well formed, the groups found
     being typed too ([decls_typed]): a view is a member of another group. *)
 
+(** Every group filed in the global context is typed. *)
 Definition decls_typed (Θ : gdeps) (Ξ : gstack) : Prop :=
   forall pq D, ind_lookup Θ Ξ pq = Some D -> decl_typed Θ Ξ D.
 
@@ -2087,16 +2134,27 @@ Section Induction.
       for, and the alias is valid as the definition it δ-unfolds to. *)
   #[warnings="-cannot-define-projection"]
   Record alias_ok (Θ2 : gdeps) (Ξ2 : gstack) (Δ : ctx) (p : qname) (k : nat) (Ns : list exp) : Prop := mk_alias_ok
-    { ak_decl : ind_decl
+    { (** The group named *)
+      ak_decl : ind_decl
+      (** The member named *)
     ; ak_mem : imember
+      (** The group is found at the canonical path *)
     ; ak_lookup : ind_lookup Θ2 Ξ2 p = Some ak_decl
+      (** The member is the group's [k]-th *)
     ; ak_member : ind_member ak_decl k = Some ak_mem
+      (** The arguments are for the uniform parameters *)
     ; ak_nu : List.length Ns <= ind_nu ak_decl
+      (** The alias is valid as the definition it δ-unfolds to *)
     ; ak_valid : V Θ2 Ξ2 (alias_def Δ p k Ns ak_decl ak_mem) }.
 
+  (** [GV Θ1 Ξ1 Θ2 Ξ2]: everything resolving at [Θ1 ⍮ Ξ1] is valid at
+      [Θ2 ⍮ Ξ2]. *)
   Record GV (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop := mk_GV
-    { gv_entries : forall p E, gc_resolve Θ1 Ξ1 p = Some E -> V Θ2 Ξ2 E
+    { (** Every resolving entry *)
+      gv_entries : forall p E, gc_resolve Θ1 Ξ1 p = Some E -> V Θ2 Ξ2 E
+      (** Every filed group *)
     ; gv_decls : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> VD Θ2 Ξ2 D
+      (** Every inductive alias *)
     ; gv_aliases : forall pq Δ pm p k Ns, ind_alias_lookup Θ1 Ξ1 pq = Some (Δ, pm, p, k, Ns) -> alias_ok Θ2 Ξ2 Δ p k Ns }.
 
   (** Everything resolving at [Θ ⍮ Ξ] is valid wherever [Θ ⍮ Ξ] embeds. *)
@@ -2122,10 +2180,14 @@ Section Induction.
       in embeds and the entry's contributions are found. *)
   (** What an entry checked over [T] contributes is valid at [Θ2 ⍮ Ξ2]. *)
   Record entry_good (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (E : gentry) : Prop := mk_entry_good
-    { eg_entries : forall (ip : list String.string) E0, ge_entries E ip = Some E0 -> V Θ2 Ξ2 E0
+    { (** Every entry inside it *)
+      eg_entries : forall (ip : list String.string) E0, ge_entries E ip = Some E0 -> V Θ2 Ξ2 E0
+      (** The group, if it is a group's first member *)
     ; eg_module : forall T' pq D, ge_module T E = Some (mr_body T' (Some (pq, 0, D))) -> VD Θ2 Ξ2 D
+      (** Every group whose first member is inside it *)
     ; eg_submodule : forall x (ip : list String.string) T' pq D,
         ge_submodule T E x ip = Some (mr_body T' (Some (pq, 0, D))) -> VD Θ2 Ξ2 D
+      (** Every inductive alias inside it *)
     ; eg_targets : forall (ip : list String.string) Δ pm p k Ns, ge_ind_targets E ip = Some (Δ, pm, p, k, Ns) ->
         alias_ok Θ2 Ξ2 Δ p k Ns }.
 
@@ -2134,8 +2196,11 @@ Section Induction.
 
   (** What a body checked over [T] contributes is valid at [Θ2 ⍮ Ξ2]. *)
   Record body_good (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (Φ : gmod) : Prop := mk_body_good
-    { bg_entries : forall ip E0, gm_resolve Φ ip = Some E0 -> V Θ2 Ξ2 E0
+    { (** Every entry resolving in it *)
+      bg_entries : forall ip E0, gm_resolve Φ ip = Some E0 -> V Θ2 Ξ2 E0
+      (** Every group whose first member is in it *)
     ; bg_submodule : forall x ip T' pq D, gm_submodule T Φ x ip = Some (mr_body T' (Some (pq, 0, D))) -> VD Θ2 Ξ2 D
+      (** Every inductive alias in it *)
     ; bg_targets : forall ip Δa pm p k Ns, gm_ind_target Φ ip = Some (Δa, pm, p, k, Ns) -> alias_ok Θ2 Ξ2 Δa p k Ns }.
 
   Definition GoodM (Θ : gdeps) (Ξ : gstack) (mp : qname) (Δ : ctx) (Φ : gmod) : Prop :=
@@ -2345,6 +2410,8 @@ Section ModInduction.
     | gm_ext Φ0 _ E => gm_valid Θs Ξs Θ2 Ξ2 T Φ0 /\ V Θs Ξs Θ2 Ξ2 T E
     end.
 
+  (** What the entry [E], filed over [T], contributes is valid: as
+      [gm_valid] does for one entry of a body. *)
   Definition ge_valid (Θs : gdeps) (Ξs : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (E : gentry) : Prop :=
     match E with
     | ge_mod _ (gu_mk Δ (md_body sm Φ')) => F Θ2 Ξ2 (Δ ++ T) /\ gm_valid Θs Ξs Θ2 Ξ2 (Δ ++ T) Φ'
@@ -2695,17 +2762,31 @@ Definition syn_VD : gdeps -> gstack -> ind_decl -> Prop := decl_typed.
 #[warnings="-cannot-define-projection"]
 Record ind_alias_typed (Θ : gdeps) (Ξ : gstack) (Δa : ctx) (pm pq : qname) (k : nat) (Ns : list exp) : Prop :=
   mk_ind_alias_typed
-  { iat_decl : ind_decl
+  { (** The group named *)
+    iat_decl : ind_decl
+    (** The member named *)
   ; iat_mem : imember
+    (** The group is found at [pq] *)
   ; iat_lookup : ind_lookup Θ Ξ pq = Some iat_decl
+    (** The member is the group's [k]-th *)
   ; iat_member : ind_member iat_decl k = Some iat_mem
+    (** It is a declared member *)
   ; iat_lt : k < ind_ndecl iat_decl
+    (** Its module is at [pm] *)
   ; iat_mpath : ind_mpath iat_decl k = Some pm
+    (** The member is found at [pm] *)
   ; iat_mlookup : ind_mlookup Θ Ξ pm = Some (pq, k, iat_decl)
+    (** The alias's telescope is a well-formed context *)
   ; iat_ctx : ⊢ Θ ⍮ Ξ ⍮ Δa
+    (** The arguments are typed at the uniform parameters *)
   ; iat_args : args_ok Θ Ξ Δa (ind_uparams iat_decl) Ns
+    (** The member's module at the arguments is well formed *)
   ; iat_mod : Θ ⍮ Ξ ⍮ Δa ⊢ᵐ me_apps (qname_mod pm) Ns ≈ me_apps (qname_mod pm) Ns }.
 
+(** The syntactic validity of a stored entry, filed over [T]: a definition
+    is closed over [T] from a typed body under it; a module alias's target
+    is well formed and denotes typed module descriptions; an inductive
+    alias is [ind_alias_typed]. *)
 Definition syn_V (Θ : gdeps) (Ξ : gstack) (T : ctx) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A oM =>
@@ -3753,6 +3834,8 @@ Qed.
 
 (** ** What Resolution Hands Back is Well Typed *)
 
+(** A resolved entry is typed: a definition's type is a closed type, and
+    its body, if any, of that type; other entries ask nothing. *)
 Definition entry_typed (Θ : gdeps) (Ξ : gstack) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B =>

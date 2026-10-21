@@ -42,36 +42,65 @@ Section Fixed_GCtx.
     Record branch_read_pair (s : nat) (Mi : imember) (hd : qname) (k : nat) (prea preb : list domain)
         (Mva Mvb : imember) (Aa Ab : exp) (nsa nsb : list domain) (c : String.string) (gs' : list carg)
         (na nb : nat) (Ba Bb : exp) : Prop := mk_branch_read_pair
-      { brp_gsa : list carg
+      { (** The constructor's argument kinds at [Mva] *)
+        brp_gsa : list carg
+        (** The constructor's argument kinds at [Mvb] *)
       ; brp_gsb : list carg
+        (** The fresh arguments, left *)
       ; brp_vsa : list domain
+        (** The fresh arguments, right *)
       ; brp_vsb : list domain
+        (** The fresh recursive results, left *)
       ; brp_ihsa : list domain
+        (** The fresh recursive results, right *)
       ; brp_ihsb : list domain
+        (** The recursive results the branch is read under, left *)
       ; brp_wa : list domain
+        (** The recursive results the branch is read under, right *)
       ; brp_wb : list domain
+        (** The left branch's value *)
       ; brp_ra : domain
+        (** The right branch's value *)
       ; brp_rb : domain
+        (** The left motive at the constructor *)
       ; brp_ta : domain
+        (** The right motive at the constructor *)
       ; brp_tb : domain
+        (** [c] is a constructor of [Mva] *)
       ; brp_con_a : ind_con Mva c = Some brp_gsa
+        (** [c] is a constructor of [Mvb] *)
       ; brp_con_b : ind_con Mvb c = Some brp_gsb
+        (** The left branch binds what it should *)
       ; brp_arity_a : na = (im_nn Mi + List.length gs' + cargs_nrec brp_gsa)%nat
+        (** The right branch binds what it should *)
       ; brp_arity_b : nb = (im_nn Mi + List.length gs' + cargs_nrec brp_gsb)%nat
+        (** The left recursive arguments' parameter counts *)
       ; brp_plen_a : cargs_plen Da brp_gsa
+        (** The right recursive arguments' parameter counts *)
       ; brp_plen_b : cargs_plen Db brp_gsb
+        (** The left arguments are fresh at [ua] *)
       ; brp_args_a : Fcargs brp_gsa of pa ua in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ nsa) ⍮ (s + im_nn Mi)%nat ↘ brp_vsa
+        (** The right arguments are fresh at [ub] *)
       ; brp_args_b : Fcargs brp_gsb of pb ub in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsb) ⍮ (s + im_nn Mi)%nat ↘ brp_vsb
+        (** The left fresh recursive results *)
       ; brp_ihs_a : Fihs brp_vsa at gs' brp_gsa under ρa (blocks_motives Bksa)
           in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ nsa) ⍮ (s + im_nn Mi + List.length gs')%nat ↘ brp_ihsa
+        (** The right fresh recursive results *)
       ; brp_ihs_b : Fihs brp_vsb at gs' brp_gsb under ρb (blocks_motives Bksb)
           in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsb) ⍮ (s + im_nn Mi + List.length gs')%nat ↘ brp_ihsb
+        (** The left results, the nested-through ones by the eliminator *)
       ; brp_wrap_a : ⟦wihs brp_vsa of gs' brp_gsa with brp_ihsa under pa ua Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ brp_wa
+        (** The right results, likewise *)
       ; brp_wrap_b : ⟦wihs brp_vsb of gs' brp_gsb with brp_ihsb under pb ub Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ brp_wb
+        (** The left branch evaluated there *)
       ; brp_branch_a : ⟦ Ba ⟧ env_args ρa (nsa ++ brp_vsa ++ brp_wa) ↘ brp_ra
+        (** The right branch evaluated there *)
       ; brp_branch_b : ⟦ Bb ⟧ env_args ρb (nsb ++ brp_vsb ++ brp_wb) ↘ brp_rb
+        (** The left motive at the constructor *)
       ; brp_type_a : ⟦ Aa ⟧ env_args ρa (nsa ++ d_con hd k c (prea ++ nsa ++ brp_vsa) :: nil) ↘ brp_ta
+        (** The right motive at the constructor *)
       ; brp_type_b : ⟦ Ab ⟧ env_args ρb (nsb ++ d_con hd k c (preb ++ nsb ++ brp_vsb) :: nil) ↘ brp_tb
+        (** The two branches read back alike at their types *)
       ; brp_read : per_top (⇓ brp_ta brp_ra) (⇓ brp_tb brp_rb) }.
 
     Lemma read_brs_pair : forall s Mi hd k prea preb Mva Mvb Aa Ab nsa nsb,
@@ -111,35 +140,63 @@ Section Fixed_GCtx.
     #[warnings="-cannot-define-projection"]
     Record block_read_pair (s : nat) (sela selb : option (list nat)) (i : nat) (Mi : imember) : Prop :=
       mk_block_read_pair
-      { blp_Mva : imember
+      { (** The left block's member of [Da] *)
+        blp_Mva : imember
+        (** The right block's member of [Db] *)
       ; blp_Mvb : imember
+        (** The left block *)
       ; blp_ba : eblock
+        (** The right block *)
       ; blp_bb : eblock
+        (** The group of the scrutinee type's declared member *)
       ; blp_hd : qname
+        (** That declared member *)
       ; blp_k : nat
+        (** The scrutinee type's uniform parameters, left *)
       ; blp_prea : list domain
+        (** The scrutinee type's uniform parameters, right *)
       ; blp_preb : list domain
+        (** The fresh non-uniform parameters, left *)
       ; blp_nsa : list domain
+        (** The fresh non-uniform parameters, right *)
       ; blp_nsb : list domain
+        (** The left motive's value *)
       ; blp_aa : domain
+        (** The right motive's value *)
       ; blp_ab : domain
+        (** The left member is [sela]'s choice *)
       ; blp_member_a : ind_member Da (elim_src sela i) = Some blp_Mva
+        (** The right member is [selb]'s choice *)
       ; blp_member_b : ind_member Db (elim_src selb i) = Some blp_Mvb
+        (** The left block is that member's *)
       ; blp_block_a : List.nth_error Bksa (elim_src sela i) = Some blp_ba
+        (** The right block is that member's *)
       ; blp_block_b : List.nth_error Bksb (elim_src selb i) = Some blp_bb
+        (** The left motive binds [Mi]'s parameters and the scrutinee *)
       ; blp_nm_a : eb_nm blp_ba = S (im_nn Mi)
+        (** So does the right one *)
       ; blp_nm_b : eb_nm blp_bb = S (im_nn Mi)
+        (** The left member's type at [ua] *)
       ; blp_ref_a : ⟦mref elim_src sela i of pa ua ⟧ gc_deps ⍮ gc_stack ↘ (blp_hd, blp_k, blp_prea)
+        (** The right member's type at [ub] *)
       ; blp_ref_b : ⟦mref elim_src selb i of pb ub ⟧ gc_deps ⍮ gc_stack ↘ (blp_hd, blp_k, blp_preb)
+        (** The left fresh non-uniform parameters *)
       ; blp_params_a : Ftele List.rev (im_nparams blp_Mva) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ blp_nsa
+        (** The right fresh non-uniform parameters *)
       ; blp_params_b : Ftele List.rev (im_nparams blp_Mvb) in gc_deps ⍮ gc_stack ⍮ env_args nil ub ⍮ s ↘ blp_nsb
+        (** The left motive at a fresh scrutinee *)
       ; blp_motive_a : ⟦ eb_motive blp_ba ⟧
           env_args ρa (blp_nsa ++ ⇑! (d_ind blp_hd blp_k (blp_prea ++ blp_nsa)) ((s + im_nn Mi)%nat) :: nil) ↘ blp_aa
+        (** The right motive at a fresh scrutinee *)
       ; blp_motive_b : ⟦ eb_motive blp_bb ⟧
           env_args ρb (blp_nsb ++ ⇑! (d_ind blp_hd blp_k (blp_preb ++ blp_nsb)) ((s + im_nn Mi)%nat) :: nil) ↘ blp_ab
+        (** The two motives read back alike *)
       ; blp_motive_read : per_top_typ blp_aa blp_ab
+        (** The left block has one branch per constructor of [Mi] *)
       ; blp_names_a : brs_names (im_cons Mi) (eb_brs blp_ba)
+        (** So has the right one *)
       ; blp_names_b : brs_names (im_cons Mi) (eb_brs blp_bb)
+        (** Each pair of branches is a [branch_read_pair] *)
       ; blp_branches : forall c gs' na Ba nb Bb, In (c, gs') (im_cons Mi) ->
           In (c, na, Ba) (eb_brs blp_ba) -> In (c, nb, Bb) (eb_brs blp_bb) ->
           branch_read_pair s Mi blp_hd blp_k blp_prea blp_preb blp_Mva blp_Mvb (eb_motive blp_ba) (eb_motive blp_bb)

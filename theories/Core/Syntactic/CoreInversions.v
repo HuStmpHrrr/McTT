@@ -317,11 +317,17 @@ Qed.
 (** What the type former [a_ind p k] is typed by. *)
 #[warnings="-cannot-define-projection"]
 Record ind_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (p : qname) (k : nat) (T : typ) : Prop := mk_ind_inv
-  { ii_decl : ind_decl
+  { (** The group *)
+    ii_decl : ind_decl
+    (** The member *)
   ; ii_mem : imember
+    (** The group is found at [p] *)
   ; ii_lookup : ind_lookup Θ Ξ p = Some ii_decl
+    (** The member is the group's [k]-th *)
   ; ii_member : ind_member ii_decl k = Some ii_mem
+    (** It is a declared member *)
   ; ii_lt : k < ind_ndecl ii_decl
+    (** The type former's type is below [T] *)
   ; ii_sub : Θ ⍮ Ξ ⍮ Γ ⊢ ind_ty ii_decl ii_mem ⊆ T }.
 
 Lemma wf_ind_inversion : forall {Θ Ξ Γ p k T}, Θ ⍮ Ξ ⍮ Γ ⊢ a_ind p k : T -> ind_inv Θ Ξ Γ p k T.
@@ -336,12 +342,19 @@ Qed.
 #[warnings="-cannot-define-projection"]
 Record con_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (p : qname) (k : nat) (c : String.string) (T : typ) : Prop :=
   mk_con_inv
-  { ci_decl : ind_decl
+  { (** The group *)
+    ci_decl : ind_decl
+    (** The member *)
   ; ci_mem : imember
+    (** The constructor's arguments *)
   ; ci_args : list carg
+    (** The group is found at [p] *)
   ; ci_lookup : ind_lookup Θ Ξ p = Some ci_decl
+    (** The member is the group's [k]-th *)
   ; ci_member : ind_member ci_decl k = Some ci_mem
+    (** [c] is one of its constructors *)
   ; ci_con : ind_con ci_mem c = Some ci_args
+    (** The constructor's type is below [T] *)
   ; ci_sub : Θ ⍮ Ξ ⍮ Γ ⊢ con_ty p ci_decl k ci_mem ci_args ⊆ T }.
 
 Lemma wf_con_inversion : forall {Θ Ξ Γ p k c T}, Θ ⍮ Ξ ⍮ Γ ⊢ a_con p k c : T -> con_inv Θ Ξ Γ p k c T.
@@ -359,23 +372,40 @@ Qed.
 #[warnings="-cannot-define-projection"]
 Record elim_inv (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (oq : option qname) (Us : list exp) (m : nat)
     (Bks : list eblock) (M T : typ) : Prop := mk_elim_inv
-  { ei_grp : qname
+  { (** The group's path *)
+    ei_grp : qname
+    (** The group *)
   ; ei_decl : ind_decl
+    (** The scrutinee's member *)
   ; ei_mem : imember
+    (** That member's block *)
   ; ei_block : eblock
+    (** The scrutinee type's parameters, uniform then non-uniform *)
   ; ei_params : list exp
+    (** The motives' level *)
   ; ei_lvl : nat
+    (** The group is found at its path *)
   ; ei_lookup : ind_lookup Θ Ξ ei_grp = Some ei_decl
+    (** The eliminator's group annotation names it *)
   ; ei_elim_grp : elim_grp ei_decl oq ei_grp m
+    (** The member is the group's [m]-th *)
   ; ei_member : ind_member ei_decl m = Some ei_mem
+    (** Its block is the [m]-th *)
   ; ei_nth : List.nth_error Bks m = Some ei_block
+    (** There are as many parameters as the member has *)
   ; ei_plen : List.length ei_params = im_np ei_decl ei_mem
+    (** Each parameter is typed at the member's telescope *)
   ; ei_ps : forall k P T, List.nth_error ei_params k = Some P ->
       List.nth_error (tele_insts (im_params ei_decl ei_mem) Id ei_params) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ P : T
+    (** The scrutinee is of the member's type at the parameters *)
   ; ei_scrut : Θ ⍮ Ξ ⍮ Γ ⊢ M : ind_mty ei_grp ei_decl m (List.firstn (ind_nu ei_decl) ei_params)
                                  (List.skipn (ind_nu ei_decl) ei_params)
+    (** The stored uniform parameters are the derivation's *)
   ; ei_ups : Us = List.firstn (ind_nu ei_decl) ei_params
+    (** The blocks are typed *)
   ; ei_blocks : blocks_typed Θ Ξ Γ ei_grp ei_decl (List.firstn (ind_nu ei_decl) ei_params) Bks ei_lvl
+    (** The block's motive at the non-uniform parameters and the scrutinee
+        is below [T] *)
   ; ei_sub : Θ ⍮ Ξ ⍮ Γ ⊢ (eb_motive ei_block)[sb_of_list Id (List.skipn (ind_nu ei_decl) ei_params ++ M :: nil)] ⊆ T }.
 
 Lemma wf_elim_inversion : forall {Θ Ξ Γ oq Us m Bks M T}, Θ ⍮ Ξ ⍮ Γ ⊢ a_elim oq Us m Bks M : T ->

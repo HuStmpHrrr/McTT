@@ -49,20 +49,25 @@ Record ind_fams_glu (D : ind_decl) (ups : list domain) (u : uidx)
     (AEl : nat -> list domain -> String.string -> nat -> list domain -> glu_exp_pred)
     (DP : nat -> list domain -> exp -> glu_typ_pred) (DEl : nat -> list domain -> exp -> glu_exp_pred) : Prop :=
   mk_ind_fams_glu
-  { ifg_npar_eval : forall m Mm j A vs, ind_member D m = Some Mm -> List.nth_error (List.rev (im_nparams Mm)) j = Some (ce_ass A) ->
+  { (** Each non-uniform parameter's type evaluates *)
+    ifg_npar_eval : forall m Mm j A vs, ind_member D m = Some Mm -> List.nth_error (List.rev (im_nparams Mm)) j = Some (ce_ass A) ->
       tele_prefix_rel (canon_nparams_rel D ups m) j vs vs -> exists b, ⟦ A ⟧ env_args nil (ups ++ vs) ↘ b
+    (** and its value is glued at [NP] and [NEl] *)
   ; ifg_npar_glu : forall m Mm j A vs b, ind_member D m = Some Mm -> List.nth_error (List.rev (im_nparams Mm)) j = Some (ce_ass A) ->
       tele_prefix_rel (canon_nparams_rel D ups m) j vs vs -> ⟦ A ⟧ env_args nil (ups ++ vs) ↘ b ->
       DG b ∈ glu_univ_elem u ↘ NP m j vs ↘ NEl m j vs
+    (** Each non-recursive argument's type evaluates *)
   ; ifg_arg_eval : forall m Mm ms c gs j A vs, ind_member D m = Some Mm ->
       tele_rel (canon_nparams_rel D ups m) (List.rev (im_nparams Mm)) ms ms ->
       ind_con Mm c = Some gs -> List.nth_error (cargs_nonrec gs) j = Some A ->
       tele_prefix_rel (canon_args_rel D ups m ms c) j vs vs -> exists b, ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ b
+    (** and its value is glued at [AP] and [AEl] *)
   ; ifg_arg_glu : forall m Mm ms c gs j A vs b, ind_member D m = Some Mm ->
       tele_rel (canon_nparams_rel D ups m) (List.rev (im_nparams Mm)) ms ms ->
       ind_con Mm c = Some gs -> List.nth_error (cargs_nonrec gs) j = Some A ->
       tele_prefix_rel (canon_args_rel D ups m ms c) j vs vs -> ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ b ->
       DG b ∈ glu_univ_elem u ↘ AP m ms c j vs ↘ AEl m ms c j vs
+    (** Each shape domain evaluates *)
   ; ifg_dom_eval : forall m Mm ms c gs gs1 t gs2 ws j B ys, ind_member D m = Some Mm ->
       tele_rel (canon_nparams_rel D ups m) (List.rev (im_nparams Mm)) ms ms ->
       ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
@@ -70,6 +75,7 @@ Record ind_fams_glu (D : ind_decl) (ups : list domain) (u : uidx)
       List.nth_error (ptyp_doms t) j = Some B ->
       tele_prefix_rel (shape_doms_rel (canon_doms_rel ups m) ms ws (ptyp_doms t)) j ys ys ->
       exists b, ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b
+    (** and its value is glued at [DP] and [DEl] *)
   ; ifg_dom_glu : forall m Mm ms c gs gs1 t gs2 ws j B ys b, ind_member D m = Some Mm ->
       tele_rel (canon_nparams_rel D ups m) (List.rev (im_nparams Mm)) ms ms ->
       ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
@@ -554,19 +560,33 @@ End Comps.
 #[warnings="-cannot-define-projection"]
 Record ind_glu_of_type (p : qname) (D : ind_decl) (ups ns : list domain) (u : uidx) (k : nat) (Mk : imember)
     (R : relation domain) : Prop := mk_ind_glu_of_type
-  { igt_NP : nat -> nat -> list domain -> glu_typ_pred
+  { (** The non-uniform parameters' type predicates *)
+    igt_NP : nat -> nat -> list domain -> glu_typ_pred
+    (** The non-uniform parameters' element predicates *)
   ; igt_NEl : nat -> nat -> list domain -> glu_exp_pred
+    (** The non-recursive arguments' type predicates *)
   ; igt_AP : nat -> list domain -> String.string -> nat -> list domain -> glu_typ_pred
+    (** The non-recursive arguments' element predicates *)
   ; igt_AEl : nat -> list domain -> String.string -> nat -> list domain -> glu_exp_pred
+    (** The shape domains' type predicates *)
   ; igt_DP : nat -> list domain -> exp -> glu_typ_pred
+    (** The shape domains' element predicates *)
   ; igt_DEl : nat -> list domain -> exp -> glu_exp_pred
+    (** The type's type predicate *)
   ; igt_P : glu_typ_pred
+    (** The type's element predicate *)
   ; igt_El : glu_exp_pred
+    (** The element relation of the type's clause *)
   ; igt_R : relation domain
+    (** The type is glued at them *)
   ; igt_glu : DG d_ind p k (ups ++ ns) ∈ glu_univ_elem u ↘ igt_P ↘ igt_El
+    (** The type predicate is the inductive one *)
   ; igt_typ : igt_P <∙> ind_glu_typ_pred p D ups ns igt_NP igt_NEl igt_AP igt_AEl igt_DP igt_DEl k Mk Typeω@(ulvl u)
+    (** The element predicate is the inductive one *)
   ; igt_exp : igt_El <∙> ind_glu_exp_pred p D ups ns igt_NP igt_NEl igt_AP igt_AEl igt_DP igt_DEl k Mk igt_R Typeω@(ulvl u)
+    (** [R] is the clause's relation *)
   ; igt_rel : R <~> igt_R
+    (** The families are glued *)
   ; igt_fams : ind_fams_glu D ups u igt_NP igt_NEl igt_AP igt_AEl igt_DP igt_DEl }.
 
 (** The type former of a member applied to its parameters, value by value. *)

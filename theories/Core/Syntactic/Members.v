@@ -86,8 +86,12 @@ Proof. induction Φ; cbn; auto. Qed.
     alias. *)
 Definition indref : Set := (qname * nat * ind_decl)%type.
 
+(** What a module path resolves to: a body, or an alias. *)
 Inductive modres : Set :=
+(** A module body, with its full telescope, and the member of a group of
+    inductive types whose module it is, if it is one. *)
 | mr_body : ctx -> option indref -> modres
+(** A module alias, as the unit it stands for. *)
 | mr_alias : gunit -> modres.
 
 (** The submodule [x :: ip] of [Φ], whose enclosing telescope is [T]. *)
@@ -306,6 +310,7 @@ Definition ind_mlookup_u (uf : path -> option gunit) (Ξ : gstack) (p : qname) :
   | _ => None
   end.
 
+(** [ind_mlookup_u] at the filed units of [Θ]. *)
 Definition ind_mlookup (Θ : gdeps) (Ξ : gstack) (p : qname) : option indref := ind_mlookup_u (gds_lookup Θ) Ξ p.
 
 (** The declaration of the group at [p]: the group of the member whose
@@ -316,6 +321,8 @@ Definition ind_of_ref (r : option indref) : option ind_decl :=
   | _ => None
   end.
 
+(** The group whose path is [p]: the group of the member at [p], when it
+    is the group's first member. *)
 Definition ind_lookup_u (uf : path -> option gunit) (Ξ : gstack) (p : qname) : option ind_decl :=
   ind_of_ref (ind_mlookup_u uf Ξ p).
 
@@ -469,6 +476,7 @@ Qed.
     inductive alias at the path [q]. *)
 Definition ind_alias_view : Type := (list centry * qname * qname * nat * list exp)%type.
 
+(** The member an entry names, if it is an inductive alias. *)
 Definition ge_ind_target (E : gentry) : option ind_alias_view :=
   match E with
   | ge_ind_alias _ Δ pm pq k Ns => Some (Δ, pm, pq, k, Ns)
@@ -503,6 +511,7 @@ Definition ind_target_u (uf : path -> option gunit) (Ξ : gstack) (p : qname) : 
   | None => ind_alias_lookup_u uf Ξ p
   end.
 
+(** [ind_target_u] at the filed units of [Θ]. *)
 Definition ind_target (Θ : gdeps) (Ξ : gstack) (p : qname) : option ind_alias_view := ind_target_u (gds_lookup Θ) Ξ p.
 
 Lemma ind_target_unfold : forall Θ Ξ p,
@@ -1150,6 +1159,10 @@ Qed.
     neutral, which is what canonicity and consistency need.  Parameters, being
     λ-variables, impose nothing. *)
 
+(** [ge_transparent E]: every definition in the entry [E], down through its
+    module and inductive bodies, is transparent and has a body; aliases
+    impose nothing.  [gm_transparent Φ] is the same for every entry of a
+    module body. *)
 Fixpoint ge_transparent (E : gentry) : Prop :=
   match E with
   | ge_def b _ _ B => b = true /\ B <> None
@@ -1390,10 +1403,19 @@ Inductive mkind : Set :=
 (** A module *)
 | mk_mod.
 
+(** A member description: what a module expression or an entry denotes
+    (see the section header above). *)
 Inductive mdesc : Set :=
+(** A term of the type, with its δ-reduct if it is transparent *)
 | ds_term : typ -> option exp -> mdesc
+(** An open body module: its parameters, its written body and its
+    expansion *)
 | ds_open : ctx -> gmod -> gmod -> mdesc
+(** A closed module, at its canonical path, over its full telescope, given
+    the arguments so far, abstracted over the outer parameters *)
 | ds_closed : ctx -> qname -> ctx -> gmod -> list exp -> mdesc
+(** Member [k] of the inductive group declared at the path, given the
+    arguments so far, abstracted over the outer parameters *)
 | ds_ind : ctx -> qname -> nat -> list exp -> mdesc.
 
 (** A description of a module, of either storage. *)
@@ -1855,6 +1877,7 @@ Definition igen_wk (g : igen) (φ : wk) : igen :=
   | ig_ind_alias _ _ _ _ _ _ _ => g
   end.
 
+(** The substitution counterpart of [igen_wk]. *)
 Definition igen_sub (g : igen) (σ : sub) : igen :=
   match g with
   | ig_def d pv A M => ig_def d pv A[σ] M[σ]
@@ -1936,21 +1959,27 @@ Qed.
     inductive type is its type former with no argument; an inductive alias,
     the type former at its arguments, over its telescope. *)
 Inductive mdenote (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> mdesc -> Prop :=
+(** A loaded unit or open frame: its stored closed unit, at its path *)
 | dn_unit : forall Γ H p T Φ,
     mod_qname H = Some p ->
     gc_unit Θ Ξ H = Some (T, Φ) ->
     mdenote Θ Ξ Γ H (ds_closed nil p T Φ nil)
+(** A module slot: what its unit denotes *)
 | dn_slot : forall Γ x U R,
     Γ ∋ #x ≔ₘ U ->
     udenote Θ Ξ Γ None U R ->
     mdenote Θ Ξ Γ (me_var x) R
+(** A module literal: what its unit denotes *)
 | dn_lit : forall Γ U R,
     udenote Θ Ξ Γ None U R ->
     mdenote Θ Ξ Γ (me_lit U) R
+(** An application: the head's description given the next argument *)
 | dn_app : forall Γ H N R R',
     mdenote Θ Ξ Γ H R ->
     ds_at R N = Some R' ->
     mdenote Θ Ξ Γ (me_app H N) R'
+(** A selection: the entry found in the module part of the selected
+    module's description, denoted and read there *)
 | dn_mem : forall Γ H y R0 R0m Γy E rd R R',
     mdenote Θ Ξ Γ H R0 ->
     ds_mod Θ Ξ R0 = Some R0m ->
@@ -1959,22 +1988,32 @@ Inductive mdenote (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> mdesc -> Prop :=
     ds_read rd R = Some R' ->
     mdenote Θ Ξ Γ (me_mem H y) R'
 with udenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gunit -> mdesc -> Prop :=
+(** A body, read through the entries its local opens generate, by its
+    storage *)
 | un_body : forall Γ o Δ sm Φ Φx R,
     body_xp Θ Ξ (Δ ++ Γ) Φ Φx ->
     ds_body o sm Δ Φ Φx = Some R ->
     udenote Θ Ξ Γ o (gu_mk Δ (md_body sm Φ)) R
+(** An alias: the module part of what its target denotes, abstracted over
+    the alias's parameters *)
 | un_alias : forall Γ o Δ E R R',
     mdenote Θ Ξ (Δ ++ Γ) E R ->
     ds_mod Θ Ξ R = Some R' ->
     udenote Θ Ξ Γ o (gu_mk Δ (md_alias E)) (ds_up Δ R')
 with edenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gentry -> mdesc -> Prop :=
+(** A definition: a term of its type, with its body as δ-reduct when it is
+    transparent *)
 | en_def : forall Γ o b pv A oM,
     edenote Θ Ξ Γ o (ge_def b pv A oM) (ds_term A (if b then oM else None))
+(** A module: what its unit denotes *)
 | en_mod : forall Γ o pv U R,
     udenote Θ Ξ Γ o U R ->
     edenote Θ Ξ Γ o (ge_mod pv U) R
+(** An inductive member: its type former with no argument *)
 | en_ind : forall Γ o pv p k D Φ,
     edenote Θ Ξ Γ o (ge_ind pv p k D Φ) (ds_ind nil p k nil)
+(** An inductive alias: the type former at its arguments, over its
+    telescope *)
 | en_ind_alias : forall Γ o pv Δ pm pq k Ns,
     edenote Θ Ξ Γ o (ge_ind_alias pv Δ pm pq k Ns) (ds_ind Δ pq k Ns)
 (** [body_xp Θ Ξ Γ Φ Φx]: the body [Φ], read in [Γ], is [Φx] with every
@@ -1982,10 +2021,14 @@ with edenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gentry -> mdesc
     context its own expanded prefix makes.  The entries themselves are not
     looked into. *)
 with body_xp (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> gmod -> Prop :=
+(** The empty body expands to itself *)
 | bx_nil : forall Γ, body_xp Θ Ξ Γ gm_nil gm_nil
+(** An entry is kept as it is *)
 | bx_ext : forall Γ Φ Φx x E,
     body_xp Θ Ξ Γ Φ Φx ->
     body_xp Θ Ξ Γ (gm_ext Φ x E) (gm_ext Φx x E)
+(** A local open of a module is replaced by the entries its items
+    generate *)
 | bx_open : forall Γ Φ Φx H its R Rm gs,
     body_xp Θ Ξ Γ Φ Φx ->
     mdenote Θ Ξ (body_ctx Φx ++ Γ) H R ->
@@ -2001,19 +2044,26 @@ with body_xp (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> gmod -> Prop :=
     the alias of [H] itself.  A local open ([g = false]) has no case for an
     inductive type: a local open of one is rejected. *)
 with items_gen (Θ : gdeps) (Ξ : gstack) : bool -> ctx -> modexp -> list iitem -> list igen -> Prop :=
+(** No item generates nothing *)
 | ign_nil : forall g Γ H, items_gen Θ Ξ g Γ H nil nil
+(** An item naming no member: the alias of [H] itself *)
 | ign_self : forall g Γ H d pv its gs,
     items_gen Θ Ξ g Γ H its gs ->
     items_gen Θ Ξ g Γ H ((None, d, pv) :: its) (ig_alias d pv H :: gs)
+(** An item naming a term: a definition of its type, by selection *)
 | ign_def : forall g Γ H n d pv A om its gs,
     mdenote Θ Ξ Γ (me_mem H n) (ds_term A om) ->
     items_gen Θ Ξ g Γ H its gs ->
     items_gen Θ Ξ g Γ H ((Some n, d, pv) :: its) (ig_def d pv A (a_mem H n) :: gs)
+(** An item naming a module: an alias of the selection *)
 | ign_mod : forall g Γ H n d pv R its gs,
     mdenote Θ Ξ Γ (me_mem H n) R ->
     ds_is_mod R ->
     items_gen Θ Ξ g Γ H its gs ->
     items_gen Θ Ξ g Γ H ((Some n, d, pv) :: its) (ig_alias d pv (me_mem H n) :: gs)
+(** At the global level only, an item naming an inductive member: an
+    inductive alias of it over the parameters it is still abstracted
+    over *)
 | ign_ind : forall Γ H n d pv Θ' p k D pm Ns its gs,
     mdenote Θ Ξ Γ (me_mem H n) (ds_ind Θ' p k Ns) ->
     ind_lookup Θ Ξ p = Some D ->

@@ -78,16 +78,23 @@ Definition gs_axiom (b pv : bool) (Ξ : gstack) (A : exp) : gentry :=
     the import references is checked once, as written ([rcs_cons]), and a
     generated type is not written, so nothing here checks privacy. *)
 
+(** [gens_run Θ Ξ gs Ξ']: declaring the generated items [gs] in order in
+    the frame [Ξ] gives [Ξ']. *)
 Inductive gens_run (Θ : gdeps) : gstack -> list igen -> gstack -> Prop :=
+(** No item leaves the frame as it is *)
 | gr_nil : forall Ξ, gens_run Θ Ξ nil Ξ
+(** A generated definition, checked at its type as [rc_def] does *)
 | gr_def : forall Ξ d pv A M gs Ξ',
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> gs_fresh d Ξ ->
     gens_run Θ (gs_add d (gs_def true pv Ξ A M) Ξ) gs Ξ' ->
     gens_run Θ Ξ (ig_def d pv A M :: gs) Ξ'
+(** A generated module alias, its target checked as [rc_alias] does *)
 | gr_alias : forall Ξ d pv E gs Ξ',
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E -> gs_fresh d Ξ ->
     gens_run Θ (gs_add d (ge_mod pv (gu_mk (gs_tele Ξ) (md_alias E))) Ξ) gs Ξ' ->
     gens_run Θ Ξ (ig_alias d pv E :: gs) Ξ'
+(** A generated inductive alias, closed over the frame's parameters and
+    checked as an entry *)
 | gr_ind_alias : forall Ξ d pv Δ pm p k Ns gs Ξ',
     Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) d ⊢ᵉ ge_ind_alias pv (Δ ++ gs_tele Ξ) pm p k Ns -> gs_fresh d Ξ ->
     gens_run Θ (gs_add d (ge_ind_alias pv (Δ ++ gs_tele Ξ) pm p k Ns) Ξ) gs Ξ' ->
@@ -138,6 +145,8 @@ Definition rec_tele (pq : qname) (D : ind_decl) (M : imember) : ctx :=
   ce_ass (ctx_pi (elim_mctx pq D 0 M (vars_from 1 (ind_nu D))) (a_univ (a_var (S (im_nn M))))) ::
   ce_ass (a_level 0) :: nil.
 
+(** The type of the recursor: over its level, motive and branches, a
+    function from the member's parameters and a scrutinee to the motive. *)
 Definition rec_ty (pq : qname) (D : ind_decl) (M : imember) : typ :=
   let K := List.length (im_cons M) in
   ctx_pi (rec_tele pq D M) (ctx_pi (elim_mctx pq D 0 M (rec_uvars D K)) (rec_motive M K)).
@@ -152,6 +161,8 @@ Fixpoint rec_brs (M : imember) (K j : nat) (cs : list (string * list carg)) : li
       (c, n, apps (a_var (n + S (im_nn M) + (K - 1 - j))) (vars_from 0 n)) :: rec_brs M K (S j) cs'
   end.
 
+(** The recursor itself, of type [rec_ty]: the eliminator at the motive
+    argument, of the branches [rec_brs], on the scrutinee. *)
 Definition rec_fn (pq : qname) (D : ind_decl) (M : imember) : exp :=
   let K := List.length (im_cons M) in
   ctx_fn (rec_tele pq D M)
@@ -204,7 +215,9 @@ Definition gen_body (pq : qname) (D : ind_decl) (k : nat) (M : imember) : gmod :
     are the same view exactly when they are equal.  The classification is
     a function of the argument. *)
 
+(** The number of declared members of a raw declaration. *)
 Definition rd_n (R : raw_decl) : nat := List.length (rd_members R).
+(** The number of uniform parameters of a raw declaration. *)
 Definition rd_nu (R : raw_decl) : nat := List.length (rd_uparams R).
 
 (** The type of [Self_j]: the declared member's, over its own parameters,
@@ -219,6 +232,8 @@ Fixpoint rd_selfs_from (R : raw_decl) (j : nat) (ms : list raw_member) : ctx :=
   | Mr :: ms' => rd_selfs_from R (S j) ms' ++ ce_ass (rd_self_ty R Mr)[wk_shiftn j]ʷ :: nil
   end.
 
+(** The context of the [Self]s of all declared members, [Self_0]
+    outermost. *)
 Definition rd_selfs (R : raw_decl) : ctx := rd_selfs_from R 0 (rd_members R).
 
 (** The parameters' types are written over the frames' parameters, so
@@ -227,6 +242,9 @@ Definition rd_selfs (R : raw_decl) : ctx := rd_selfs_from R 0 (rd_members R).
 Definition rd_uctx (Ξ : gstack) (R : raw_decl) : ctx :=
   tele_wk (rd_uparams R) (wk_shiftn (rd_n R)) ++ rd_selfs R ++ gs_tele Ξ.
 
+(** The context a declared member's constructor arguments are written in:
+    its own parameters and the uniform ones, under the [Self]s and the
+    frames' parameters. *)
 Definition rm_pctx (Ξ : gstack) (R : raw_decl) (Mr : raw_member) : ctx :=
   tele_wk (rm_nparams Mr ++ rd_uparams R) (wk_shiftn (rd_n R)) ++ rd_selfs R ++ gs_tele Ξ.
 
@@ -256,14 +274,21 @@ Inductive cls_arg_in (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (nu np n : nat) (pat 
     cls_arg (grp_info Θ Ξ) nu np n pat (nf_to_exp W) = Some g ->
     cls_arg_in Θ Ξ Γ nu np n pat T g.
 
+(** [cls_args_in Θ Ξ Γp nu np n pat args1 args gs]: the arguments [args],
+    after [args1] (recursive as [pat] says), classify as [gs], each in the
+    context of those before it over [Γp]. *)
 Inductive cls_args_in (Θ : gdeps) (Ξ : gstack) (Γp : ctx) (nu np n : nat) :
     list bool -> list (string * exp) -> list (string * exp) -> list rcarg -> Prop :=
+(** No argument left *)
 | cls_args_in_nil : forall pat args1, cls_args_in Θ Ξ Γp nu np n pat args1 nil nil
+(** The next argument, classified, then the rest after it *)
 | cls_args_in_cons : forall pat args1 y T args g gs,
     cls_arg_in Θ Ξ (rtele args1 ++ Γp) nu np n pat T g ->
     cls_args_in Θ Ξ Γp nu np n (rcarg_bit g :: pat) (args1 ++ (y, T) :: nil) args gs ->
     cls_args_in Θ Ξ Γp nu np n pat args1 ((y, T) :: args) (g :: gs).
 
+(** The raw constructors [rcs] classify as [cs], pointwise, keeping their
+    names. *)
 Definition cls_cons_in (Θ : gdeps) (Ξ : gstack) (Γp : ctx) (nu np n : nat)
     (rcs : list (string * list (string * exp))) (cs : list (string * list rcarg)) : Prop :=
   Forall2 (fun rc c => fst rc = fst c /\ cls_args_in Θ Ξ Γp nu np n nil nil (snd rc) (snd c)) rcs cs.
@@ -316,13 +341,18 @@ Qed.
     ([sibs_from]): a declared one at [Cs], a view of it at its own uniform
     arguments at [Cs], normalized. *)
 
+(** The type of a context entry; a module slot counts as [True]. *)
 Definition centry_ty (e : centry) : typ :=
   match e with ce_ass A => A | ce_def A _ => A | ce_mod _ => a_True end.
 
 (** A telescope, innermost first, as arguments, outermost first. *)
 Definition ctx_args (Δ : ctx) : list (string * exp) := List.rev (List.map (fun e => (""%string, centry_ty e)) Δ).
 
+(** The constructors of a view [(qc, k, Cs)], classified: the container's
+    member's, each argument its type at [Cs], classified as a declared
+    member's is. *)
 Inductive view_cls (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : rview -> list (string * list rcarg) -> Prop :=
+(** The only rule *)
 | view_cls_intro : forall qc k Cs D' Mk' cs,
     ind_lookup Θ Ξ qc = Some D' ->
     ind_member D' k = Some Mk' ->
@@ -335,7 +365,9 @@ Inductive view_cls (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : rview -> list (st
 (** A telescope of assumptions, innermost first, each normalized in the
     ones before it, over [Γ]. *)
 Inductive nbe_tele (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : ctx -> ctx -> Prop :=
+(** The empty telescope *)
 | nbe_tele_nil : nbe_tele Θ Ξ Γ nil nil
+(** The innermost assumption, normalized in the ones before it *)
 | nbe_tele_cons : forall A Δ W Δ',
     nbe_ty Θ Ξ (Δ ++ Γ) A W ->
     nbe_tele Θ Ξ Γ Δ Δ' ->
@@ -358,6 +390,7 @@ Fixpoint img_tele (pat : list bool) (Δ : ctx) : option ctx :=
     at [Cs], normalized over the group's own uniform parameters, the
     [Self]s and the frames', free of the [Self]s and without them. *)
 Inductive view_nps (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : rview -> ctx -> Prop :=
+(** The only rule *)
 | view_nps_intro : forall qc k Cs D' Mk' Ws Nv,
     ind_lookup Θ Ξ qc = Some D' ->
     ind_member D' k = Some Mk' ->
@@ -365,18 +398,29 @@ Inductive view_nps (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : rview -> ctx -> P
     img_tele (List.repeat false (rd_nu R) ++ List.repeat true (rd_n R)) Ws = Some Nv ->
     view_nps Θ Ξ R (qc, k, Cs) Nv.
 
+(** [nbes Θ Ξ Γ Ms As Ws]: the terms [Ms] normalize pointwise at the
+    types [As] to [Ws], all in [Γ]. *)
 Inductive nbes (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : list exp -> list typ -> list nf -> Prop :=
+(** No term *)
 | nbes_nil : nbes Θ Ξ Γ nil nil nil
+(** The first term, then the rest *)
 | nbes_cons : forall M Ms A As W Ws,
     nbe Θ Ξ Γ M A W -> nbes Θ Ξ Γ Ms As Ws -> nbes Θ Ξ Γ (M :: Ms) (A :: As) (W :: Ws).
 
+(** [sibs_from Θ Ξ Γc qc Cs i ms ss]: the members [ms] of the container's
+    group at [qc], from position [i], at the uniform arguments [Cs], are
+    the views [ss]. *)
 Inductive sibs_from (Θ : gdeps) (Ξ : gstack) (Γc : ctx) (qc : qname) (Cs : list exp) :
     nat -> list imember -> list rview -> Prop :=
+(** No member left *)
 | sibs_from_nil : forall i, sibs_from Θ Ξ Γc qc Cs i nil nil
+(** A declared member: itself at [Cs] *)
 | sibs_from_decl : forall i M ms ss pm,
     im_head M = mh_decl pm ->
     sibs_from Θ Ξ Γc qc Cs (S i) ms ss ->
     sibs_from Θ Ξ Γc qc Cs i (M :: ms) ((qc, i, Cs) :: ss)
+(** A view of the container: the member it views, at its own uniform
+    arguments at [Cs], normalized *)
 | sibs_from_view : forall i M ms ss qv kv Iv vmv Dv Ws,
     im_head M = mh_view qv kv Iv vmv ->
     ind_lookup Θ Ξ qv = Some Dv ->
@@ -385,7 +429,10 @@ Inductive sibs_from (Θ : gdeps) (Ξ : gstack) (Γc : ctx) (qc : qname) (Cs : li
     sibs_from Θ Ξ Γc qc Cs (S i) ms ss ->
     sibs_from Θ Ξ Γc qc Cs i (M :: ms) ((qv, kv, List.map nf_to_exp Ws) :: ss).
 
+(** The siblings of a view [(qc, k, Cs)]: the members of the container's
+    group at [Cs], over the group's own context. *)
 Inductive view_sibs (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : rview -> list rview -> Prop :=
+(** The only rule *)
 | view_sibs_intro : forall qc k Cs D' ss,
     ind_lookup Θ Ξ qc = Some D' ->
     sibs_from Θ Ξ (rd_uctx Ξ R) qc Cs 0 (ind_members D') ss ->
@@ -399,9 +446,14 @@ Inductive view_sibs (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : rview -> list rv
     parameters), so that they are over the filed group's uniform
     parameters, the group's own and the frames'. *)
 
+(** Under [nu] uniform parameters, [Self_j] for [j < n] becomes the type
+    former of member [j] of the group at [pq] applied to the [t] frames'
+    parameters. *)
 Definition sb_selfs (pq : qname) (nu n t : nat) : sub :=
   sb_qn nu (sb_of_list sb_id (List.map (fun j => apps (a_ind pq j) (vars_from 0 t)) (List.seq 0 n))).
 
+(** The declared members filed, each with its classified constructors
+    numbered against the views [Vs], if they all are. *)
 Fixpoint rms_filed (Ξ : gstack) (n : nat) (Vs : list rview) (ms : list raw_member)
     (css : list (list (string * list rcarg))) : option (list imember) :=
   match ms, css with
@@ -414,6 +466,9 @@ Fixpoint rms_filed (Ξ : gstack) (n : nat) (Vs : list rview) (ms : list raw_memb
   | _, _ => None
   end.
 
+(** A view [x] filed: its head with the uniform arguments instantiated by
+    [σ] and its siblings numbered after the [n] declared members, its
+    filed non-uniform parameters [Nv] and its numbered constructors. *)
 Definition rv_filed (Θ : gdeps) (Ξ : gstack) (σ : sub) (n : nat) (Vs : list rview) (x : rview) (ss : list rview)
     (cs : list (string * list rcarg)) (Nv : ctx) : option imember :=
   let '(qc, k, Cs) := x in
@@ -430,6 +485,7 @@ Definition rv_filed (Θ : gdeps) (Ξ : gstack) (σ : sub) (n : nat) (Vs : list r
   | None => None
   end.
 
+(** The views [xs] filed pointwise with [rv_filed], if they all are. *)
 Fixpoint rvs_filed (Θ : gdeps) (Ξ : gstack) (σ : sub) (n : nat) (Vs xs : list rview) (Ss : list (list rview))
     (css : list (list (string * list rcarg))) (Nvs : list ctx) : option (list imember) :=
   match xs, Ss, css, Nvs with
@@ -442,6 +498,9 @@ Fixpoint rvs_filed (Θ : gdeps) (Ξ : gstack) (σ : sub) (n : nat) (Vs xs : list
   | _, _, _, _ => None
   end.
 
+(** The filed group: the declared members then the views, over the
+    group's uniform parameters and the frames', at the first member's
+    sort, the [Self]s instantiated at the first member's path. *)
 Definition rd_filed (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (Vs : list rview) (Ss : list (list rview))
     (csD csV : list (list (string * list rcarg))) (Nvs : list ctx) : option ind_decl :=
   match rd_members R with
@@ -458,7 +517,10 @@ Definition rd_filed (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (Vs : list rview) 
     is filed, after those before it. *)
 Inductive ind_entries_run (Θ : gdeps) (pv : bool) (pq : qname) (D : ind_decl) :
     nat -> list string -> gstack -> gstack -> Prop :=
+(** No member left *)
 | ind_entries_nil : forall k Ξ, ind_entries_run Θ pv pq D k nil Ξ Ξ
+(** The entry of member [k], checked and filed under the name [x], then
+    the rest *)
 | ind_entries_cons : forall k x xs M Ξ Ξ',
     ind_member D k = Some M ->
     gs_fresh x Ξ ->
@@ -487,6 +549,7 @@ Fixpoint nf_index (W : nf) (Ws : list nf) : option nat :=
   | W' :: Ws' => if exp_eq_dec (nf_to_exp W) (nf_to_exp W') then Some 0 else option_map S (nf_index W Ws')
   end.
 
+(** The first position of [m] among [ms]. *)
 Fixpoint nat_index (m : nat) (ms : list nat) : option nat :=
   match ms with
   | nil => None
@@ -529,6 +592,7 @@ Definition mdef_defs (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (fs 
     parameters. *)
 Inductive mdef_member (Θ : gdeps) (Ξ : gstack) (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) :
     raw_fun -> nat -> Prop :=
+(** The only rule *)
 | mdef_member_intro : forall f W Ws m Mm,
     nbe_ty Θ Ξ (rf_nparams f ++ Δ ++ gs_tele Ξ) (rf_scrut f) W ->
     Forall2 (fun jM Wj => nbe_ty Θ Ξ (rf_nparams f ++ Δ ++ gs_tele Ξ)
@@ -540,8 +604,12 @@ Inductive mdef_member (Θ : gdeps) (Ξ : gstack) (pq : qname) (D : ind_decl) (Us
     im_nn Mm = List.length (rf_nparams f) ->
     mdef_member Θ Ξ pq D Us Δ f m.
 
+(** [mdefs_run Θ b pv ds Ξ Ξ']: filing the definitions [ds] in order in
+    [Ξ], each checked at its type as [rc_def] does, gives [Ξ']. *)
 Inductive mdefs_run (Θ : gdeps) (b pv : bool) : list (string * typ * exp) -> gstack -> gstack -> Prop :=
+(** No definition left *)
 | mdefs_nil : forall Ξ, mdefs_run Θ b pv nil Ξ Ξ
+(** The next definition, checked and filed, then the rest *)
 | mdefs_cons : forall x A M ds Ξ Ξ',
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
     gs_fresh x Ξ ->
@@ -623,7 +691,9 @@ Section Semantics.
       sees the bindings it makes and those of the units it imports, never
       those of the unit importing it. *)
 
+  (** Running one command; mutually, a list of them and a unit. *)
   Inductive run_cmd : list path -> builtins -> bmap -> gdeps -> gstack -> ccmd -> builtins -> bmap -> gdeps -> gstack -> Prop :=
+  (** A definition: its body is checked at its type. *)
   | rc_def : forall ch B Rb Θ Ξ x b pv A M,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
       gs_fresh x Ξ ->
@@ -740,6 +810,7 @@ Section Semantics.
   | rc_eval_check : forall ch B Rb Θ Ξ M A,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_eval M (Some A) ⇝ Θ ⍮ Ξ ⍮ B ⍮ Rb
+  (** An [eval] with no type given: it must have some type. *)
   | rc_eval_infer : forall ch B Rb Θ Ξ M A,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_eval M None ⇝ Θ ⍮ Ξ ⍮ B ⍮ Rb
@@ -2232,9 +2303,13 @@ Fixpoint grp_rank_iter (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (m : nat) (k : 
       end
   end.
 
+(** The candidate rank of each member: [grp_rank_iter] after as many
+    rounds as the group has members. *)
 Definition grp_rank (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : nat -> nat :=
   grp_rank_iter Θ Ξ D (List.length (ind_members D)).
 
+(** The check that [grp_rank] is a rank ([view_rank_ok]): every declared
+    member at rank 0, every view above each member it nests. *)
 Definition rank_check (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : bool :=
   let rk := grp_rank Θ Ξ D in
   List.forallb (fun kM =>
@@ -2293,6 +2368,10 @@ Proof.
   apply Nat.eqb_eq in H1, H2; subst; auto.
 Qed.
 
+(** The check of [vwrap_ok D D' vm]: [vm] has one entry per member of the
+    container group [D'], and each listed member of [D] has the
+    container member's parameter count, constructor names and argument
+    shapes. *)
 Definition vwrap_check (D D' : ind_decl) (vm : list nat) : bool :=
   Nat.eqb (List.length vm) (List.length (ind_members D')) &&
   List.forallb (fun iM =>
@@ -2332,6 +2411,7 @@ Qed.
 Definition option_nat_eq_dec : forall x y : option nat, {x = y} + {x <> y}.
 Proof. decide equality; apply Nat.eq_dec. Defined.
 
+(** The check of [view_map_at vm M vmv]. *)
 Definition view_map_at_check (vm : list nat) (M : imember) (vmv : list nat) : bool :=
   match im_head M with
   | mh_decl _ => if list_eq_dec Nat.eq_dec vmv vm then true else false
@@ -2345,6 +2425,8 @@ Proof.
   destruct (im_head M); destruct (list_eq_dec _ _ _) as [E |]; first [ exact E | discriminate ].
 Qed.
 
+(** The check of [view_maps_coherent]: for each view, and each member of
+    its container that it maps, [view_map_at_check] at that member. *)
 Definition view_maps_check (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : bool :=
   List.forallb (fun Mk =>
     match im_head Mk with

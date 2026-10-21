@@ -133,16 +133,25 @@ Section Fixed_GCtx.
     context. *)
 Record valid_blocks (p : qname) (D : ind_decl) (Γ : ctx) (Us : list exp) (Bks : list eblock) (i : nat) : Prop :=
   mk_valid_blocks
-  { vbs_has : forall j Mj, ind_member D j = Some Mj -> exists b, List.nth_error Bks j = Some b
+  { (** A block per member *)
+    vbs_has : forall j Mj, ind_member D j = Some Mj -> exists b, List.nth_error Bks j = Some b
+    (** Each block binds as many variables as its member's motive *)
   ; vbs_nm : blocks_nm_ok D Bks
+    (** Each motive context is valid *)
   ; vbs_mctx : forall j Mj, ind_member D j = Some Mj -> ⊨ elim_mctx p D j Mj Us ++ Γ
+    (** Each motive is a valid type in its context *)
   ; vbs_motive : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
       elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b : Typeω@i
+    (** Each block has one branch per constructor, in order *)
   ; vbs_names : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b)
+    (** Each branch context is valid *)
   ; vbs_bctx : forall j Mj c gs, ind_member D j = Some Mj -> ind_con Mj c = Some gs ->
       ⊨ elim_bctx p D Mj gs (blocks_motives Bks) Us ++ Γ
+    (** Each branch binds the parameters, the arguments and the recursive
+        results *)
   ; vbs_arity : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
       In (c, n, B) (eb_brs b) -> n = (im_nn Mj + List.length gs + cargs_nrec gs)%nat
+    (** Each branch is valid at its branch type *)
   ; vbs_branch : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> ind_con Mj c = Some gs ->
       In (c, n, B) (eb_brs b) ->
       elim_bctx p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B : elim_bty p j Mj c gs (eb_motive b) Us }.

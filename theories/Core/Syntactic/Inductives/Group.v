@@ -25,6 +25,7 @@ Import Syntax_Notations Sub_Notations Wk_Notations.
 Section GenericDec.
   Context {E C : Set} (de : forall x y : E, {x = y} + {x <> y}) (dc : forall x y : C, {x = y} + {x <> y}).
 
+  (** Equality of shapes is decidable. *)
   Fixpoint ptyp_eq_dec_g (t t' : ptyp_g E) {struct t} : {t = t'} + {t <> t'}.
   Proof.
     destruct t as [k Ps | A t], t' as [k' Ps' | A' t']; try (right; discriminate).
@@ -34,6 +35,7 @@ Section GenericDec.
       destruct (ptyp_eq_dec_g t t') as [<- |]; [ left; reflexivity | right; congruence ].
   Defined.
 
+  (** Equality of constructor arguments is decidable. *)
   Definition carg_eq_dec_g (g g' : carg_g E) : {g = g'} + {g <> g'}.
   Proof.
     destruct g as [A | t], g' as [A' | t']; try (right; discriminate).
@@ -41,6 +43,7 @@ Section GenericDec.
     - destruct (ptyp_eq_dec_g t t') as [<- |]; [ left; reflexivity | right; congruence ].
   Defined.
 
+  (** Equality of lists of constructors is decidable. *)
   Definition cons_eq_dec_g (cs cs' : list (string * list (carg_g E))) : {cs = cs'} + {cs <> cs'}.
   Proof.
     revert cs'; induction cs as [| [c gs] cs IH]; intros [| [c' gs'] cs']; try (right; discriminate);
@@ -50,6 +53,7 @@ Section GenericDec.
     destruct (IH cs') as [<- |]; [ left; reflexivity | right; congruence ].
   Defined.
 
+  (** Equality of member heads is decidable. *)
   Definition mhead_eq_dec_g (h h' : mhead_g E) : {h = h'} + {h <> h'}.
   Proof.
     destruct h as [p | qc k Is vm], h' as [p' | qc' k' Is' vm']; try (right; discriminate).
@@ -60,6 +64,7 @@ Section GenericDec.
       destruct (list_eq_dec Nat.eq_dec vm vm') as [<- |]; [ left; reflexivity | right; congruence ].
   Defined.
 
+  (** Equality of members is decidable. *)
   Definition imember_eq_dec_g (M M' : imember_g E C) : {M = M'} + {M <> M'}.
   Proof.
     destruct M as [h ps cs], M' as [h' ps' cs'].
@@ -68,6 +73,7 @@ Section GenericDec.
     destruct (cons_eq_dec_g cs cs') as [<- |]; [ left; reflexivity | right; congruence ].
   Defined.
 
+  (** Equality of groups is decidable. *)
   Definition ind_decl_eq_dec_g (D D' : ind_decl_g E C) : {D = D'} + {D <> D'}.
   Proof.
     destruct D as [us S ms], D' as [us' S' ms'].
@@ -76,6 +82,7 @@ Section GenericDec.
     destruct (list_eq_dec imember_eq_dec_g ms ms') as [<- |]; [ left; reflexivity | right; congruence ].
   Defined.
 
+  (** Equality of lists of branches is decidable. *)
   Definition brs_eq_dec_g (Bs Bs' : list (string * nat * E)) : {Bs = Bs'} + {Bs <> Bs'}.
   Proof.
     revert Bs'; induction Bs as [| [[c n] B] Bs IH]; intros [| [[c' n'] B'] Bs']; try (right; discriminate);
@@ -86,6 +93,7 @@ Section GenericDec.
     destruct (IH Bs') as [<- |]; [ left; reflexivity | right; congruence ].
   Defined.
 
+  (** Equality of lists of eliminator blocks is decidable. *)
   Definition eblocks_eq_dec_g (Bks Bks' : list (eblock_g E)) : {Bks = Bks'} + {Bks <> Bks'}.
   Proof.
     revert Bks'; induction Bks as [| [nm oZ A Bs] Bks IH]; intros [| [nm' oZ' A' Bs'] Bks']; try (right; discriminate);
@@ -101,6 +109,8 @@ Section GenericDec.
   Defined.
 End GenericDec.
 
+(** Equality of terms, and of the module syntax nested in them, is
+    decidable. *)
 Fixpoint exp_eq_dec (M N : exp) {struct M} : {M = N} + {M <> N}
 with modexp_eq_dec (M N : modexp) {struct M} : {M = N} + {M <> N}
 with bnd_eq_dec (M N : bnd) {struct M} : {M = N} + {M <> N}
@@ -175,23 +185,32 @@ Fixpoint cons_lookup (cs : list (string * list carg)) (c : string) : option (lis
     declared member [k'] of the group at [q] at [Is] is [a_ind q k'] at
     [Is] instantiated by [Us]. *)
 
+(** The type former a member's type is headed by: its own at a declared
+    member, its container's member at a view. *)
 Definition im_ref (pq : qname) (k : nat) (M : imember) : (qname * nat)%type :=
   match im_head M with
   | mh_decl _ => (pq, k)
   | mh_view qc k' _ _ => (qc, k')
   end.
 
+(** The uniform arguments of a member's type at the group's uniform
+    parameters [Us]: [Us] at a declared member, the view's instance [Is]
+    at [Us] at a view. *)
 Definition im_pre (M : imember) (Us : list exp) : list exp :=
   match im_head M with
   | mh_decl _ => Us
   | mh_view _ _ Is _ => List.map (fun I => I[sb_of_list sb_id Us]) Is
   end.
 
+(** A member's type at the uniform parameters [Us] and the non-uniform
+    ones [Ns]. *)
 Definition im_ty_at (pq : qname) (k : nat) (M : imember) (Us Ns : list exp) : typ :=
   apps_exp (a_ind (fst (im_ref pq k M)) (snd (im_ref pq k M))) (im_pre M Us ++ Ns).
 
+(** The arguments of a member's constructor [c], if it has one. *)
 Definition im_con (M : imember) (c : string) : option (list carg) := cons_lookup (im_cons M) c.
 
+(** Whether a member is a declared type (rather than a view). *)
 Definition im_is_decl (M : imember) : bool :=
   match im_head M with mh_decl _ => true | mh_view _ _ _ _ => false end.
 
@@ -222,6 +241,8 @@ Proof.
   pose proof (no_views_decl _ _ _ Hv Hj) as Hd; unfold im_is_decl in Hd; rewrite Hh in Hd; discriminate.
 Qed.
 
+(** The declared members come before the views: a member is declared
+    exactly when its position is below [ind_ndecl D]. *)
 Definition ind_order_ok (D : ind_decl) : Prop :=
   forall k M, ind_member D k = Some M -> (im_is_decl M = true <-> k < ind_ndecl D).
 
@@ -257,6 +278,10 @@ Definition ind_order_ok (D : ind_decl) : Prop :=
 (** A view during classification. *)
 Definition rview : Set := (qname * nat * list exp)%type.
 
+(** The pattern of the weakening from the context of an argument's
+    [Self]-free parts into the context the argument is written in: [d]
+    domains, the arguments before ([pat]), [np] parameters, then the [n]
+    [Self]s, which the image avoids. *)
 Definition cls_pat (d np n : nat) (pat : list bool) : list bool :=
   List.repeat false d ++ pat ++ List.repeat false np ++ List.repeat true n.
 
@@ -264,6 +289,7 @@ Definition cls_pat (d np n : nat) (pat : list bool) : list bool :=
 Definition img_pat (pat : list bool) (T : exp) : option exp :=
   if exp_eq_dec T T[unwk_pat pat]ʷ[wk_pat pat]ʷ then Some T[unwk_pat pat]ʷ else None.
 
+(** The preimages of a list of terms, if each has one. *)
 Fixpoint img_pats (pat : list bool) (Ts : list exp) : option (list exp) :=
   match Ts with
   | nil => Some nil
@@ -281,6 +307,7 @@ Fixpoint app_head (M : exp) : exp :=
   | _ => M
   end.
 
+(** The arguments of an application spine, outermost first. *)
 Fixpoint app_args (M : exp) : list exp :=
   match M with
   | a_app M N => app_args M ++ N :: nil
@@ -294,20 +321,30 @@ Fixpoint rview_index (x : rview) (Vs : list rview) : option nat :=
   | y :: Vs' => if rview_eq_dec x y then Some 0 else option_map S (rview_index x Vs')
   end.
 
+(** Whether an instance is among the views. *)
 Definition rview_mem (x : rview) (Vs : list rview) : bool :=
   match rview_index x Vs with Some _ => true | None => false end.
 
 (** A shape as classified, a nested occurrence at its instance; an
     argument as classified. *)
 Inductive rptyp : Set :=
+(** The declared member [j] at the non-uniform parameters [Ps]. *)
 | rp_self : nat -> list exp -> rptyp
+(** A nested occurrence: the view of the instance [x], not yet numbered,
+    at the non-uniform parameters [Ns]. *)
 | rp_nest : rview -> list exp -> rptyp
+(** A function from a [Self]-free domain into a shape. *)
 | rp_pi : exp -> rptyp -> rptyp.
 
+(** An argument as classified, its views not yet numbered. *)
 Inductive rcarg : Set :=
+(** A non-recursive argument, of a [Self]-free type. *)
 | rc_arg : exp -> rcarg
+(** A recursive argument, of a shape. *)
 | rc_rec : rptyp -> rcarg.
 
+(** Whether a classified argument is recursive: its bit in the pattern of
+    the arguments before the next one. *)
 Definition rcarg_bit (g : rcarg) : bool := match g with rc_rec _ => true | rc_arg _ => false end.
 
 (** The views numbered: the view [v] is the member [n + v]. *)
@@ -318,12 +355,14 @@ Fixpoint rptyp_num (n : nat) (Vs : list rview) (t : rptyp) : option ptyp :=
   | rp_pi B t' => option_map (pt_pi B) (rptyp_num n Vs t')
   end.
 
+(** A classified argument with its views numbered. *)
 Definition rcarg_num (n : nat) (Vs : list rview) (g : rcarg) : option carg :=
   match g with
   | rc_arg A => Some (ca_arg A)
   | rc_rec t => option_map ca_rec (rptyp_num n Vs t)
   end.
 
+(** A constructor's classified arguments with their views numbered. *)
 Fixpoint rcargs_num (n : nat) (Vs : list rview) (gs : list rcarg) : option (list carg) :=
   match gs with
   | nil => Some nil
@@ -334,6 +373,7 @@ Fixpoint rcargs_num (n : nat) (Vs : list rview) (gs : list rcarg) : option (list
       end
   end.
 
+(** A member's classified constructors with their views numbered. *)
 Fixpoint rcons_num (n : nat) (Vs : list rview) (cs : list (string * list rcarg)) : option (list (string * list carg)) :=
   match cs with
   | nil => Some nil
@@ -425,6 +465,8 @@ Fixpoint rptyp_view (t : rptyp) : list rview :=
   | rp_self _ _ => nil
   end.
 
+(** The instance a classified argument meets, if it is a nested
+    occurrence. *)
 Definition rcarg_view (g : rcarg) : list rview :=
   match g with rc_rec t => rptyp_view t | rc_arg _ => nil end.
 
@@ -462,8 +504,13 @@ Fixpoint views_new (acc ss : list rview) : list rview :=
 Definition views_met (sibs : rview -> list rview) (acc : list rview) (x : rview) : list rview :=
   if rview_mem x acc then nil else views_new acc (sibs x ++ x :: nil).
 
+(** The views of a group, found breadth-first from the instances still to
+    meet. *)
 Inductive views_bfs (sibs meets : rview -> list rview) : list rview -> list rview -> list rview -> Prop :=
+(** No instance left to meet: the views are those found. *)
 | views_bfs_done : forall acc, views_bfs sibs meets acc nil acc
+(** The next instance adds its new views, and their instances are queued
+    after the others. *)
 | views_bfs_step : forall acc x tr Vs,
     views_bfs sibs meets (acc ++ views_met sibs acc x)
       (tr ++ List.concat (List.map meets (views_met sibs acc x))) Vs ->
@@ -529,5 +576,7 @@ Qed.
 Definition sibs_tbl (Vs : list rview) (Ss : list (list rview)) (x : rview) : list rview :=
   match rview_index x Vs with Some v => List.nth v Ss (x :: nil) | None => x :: nil end.
 
+(** The instances the constructors of a view meet, read off a table
+    aligned with the views. *)
 Definition meets_tbl (Vs : list rview) (Cs : list (list (string * list rcarg))) (x : rview) : list rview :=
   match rview_index x Vs with Some v => rcons_views (List.nth v Cs nil) | None => nil end.

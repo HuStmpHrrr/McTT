@@ -33,11 +33,17 @@ Section Fixed_GCtx.
 
   (** The conditions of the clause on the canonical relations. *)
   Record ind_canon_props (D : ind_decl) (ups : list domain) : Prop := mk_ind_canon_props
-    { icp_np_per : nparams_per D (canon_nparams_rel D ups)
+    { (** The non-uniform parameters' relations are PERs *)
+      icp_np_per : nparams_per D (canon_nparams_rel D ups)
+      (** and invariant along related prefixes *)
     ; icp_np_iff : nparams_inv D (canon_nparams_rel D ups)
+      (** The non-recursive arguments' relations are PERs *)
     ; icp_arg_per : args_per D (canon_nparams_rel D ups) (canon_args_rel D ups)
+      (** and invariant along related prefixes *)
     ; icp_arg_iff : args_inv D (canon_nparams_rel D ups) (canon_args_rel D ups)
+      (** The shapes' domains' relations are PERs *)
     ; icp_dom_per : doms_per D (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups)
+      (** and invariant along related prefixes *)
     ; icp_dom_iff : doms_inv D (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) }.
 
   (** Two families of relations agree where both are defined, as the
@@ -45,13 +51,16 @@ Section Fixed_GCtx.
   Record ind_fam_agree (D : ind_decl) (nr1 nr2 : nat -> nat -> list domain -> relation domain)
       (ar1 ar2 : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
       (dr1 dr2 : nat -> list domain -> exp -> relation domain) : Prop := mk_ind_fam_agree
-    { ifa_np : forall m Mm k vs vs1 vs2, ind_member D m = Some Mm -> k < List.length (List.rev (im_nparams Mm)) ->
+    { (** The non-uniform parameters' relations agree *)
+      ifa_np : forall m Mm k vs vs1 vs2, ind_member D m = Some Mm -> k < List.length (List.rev (im_nparams Mm)) ->
         tele_prefix_rel (nr1 m) k vs vs1 -> tele_prefix_rel (nr2 m) k vs vs2 -> (nr1 m k vs <~> nr2 m k vs)
+      (** The non-recursive arguments' relations agree *)
     ; ifa_arg : forall m Mm ms ms1 ms2 c gs k vs vs1 vs2, ind_member D m = Some Mm ->
         tele_rel (nr1 m) (List.rev (im_nparams Mm)) ms ms1 -> tele_rel (nr2 m) (List.rev (im_nparams Mm)) ms ms2 ->
         ind_con Mm c = Some gs -> k < List.length (cargs_nonrec gs) ->
         tele_prefix_rel (ar1 m ms c) k vs vs1 -> tele_prefix_rel (ar2 m ms c) k vs vs2 ->
         (ar1 m ms c k vs <~> ar2 m ms c k vs)
+      (** The shapes' domains' relations agree *)
     ; ifa_dom : forall m Mm ms ms1 ms2 c gs gs1 t gs2 ws ws1 ws2 k ys ys1 ys2, ind_member D m = Some Mm ->
         tele_rel (nr1 m) (List.rev (im_nparams Mm)) ms ms1 -> tele_rel (nr2 m) (List.rev (im_nparams Mm)) ms ms2 ->
         ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
@@ -99,14 +108,23 @@ Section Fixed_GCtx.
       canonical relations at the left uniform parameters. *)
   Record ind_canon_clause (p : qname) (D : ind_decl) (k : nat) (ups ups' ns ns' : list domain) (R : relation domain) : Prop :=
     mk_ind_canon_clause
-    { icc_ass : grp_tele_ass D
+    { (** The group's structural facts *)
+      icc_ass : grp_tele_ass D
+      (** The uniform parameters read back alike *)
     ; icc_ups : per_top_ps (List.rev (ind_uparams D)) ups ups'
+      (** The canonical relations at [ups] are PERs, invariant along
+          prefixes *)
     ; icc_props : ind_canon_props D ups
+      (** They agree with those at [ups'] *)
     ; icc_agree : ind_fam_agree D (canon_nparams_rel D ups) (canon_nparams_rel D ups') (canon_args_rel D ups)
         (canon_args_rel D ups') (canon_doms_rel ups) (canon_doms_rel ups')
+      (** [ups'] is admissible beside [ups] *)
     ; icc_adm : adm_uparams D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) ups'
+      (** So is [ups] itself *)
     ; icc_adm_diag : adm_uparams D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) ups
+      (** The non-uniform parameters are related *)
     ; icc_ns : tele_rel (canon_nparams_rel D ups k) (List.rev (member_nparams D k)) ns ns'
+      (** The element relation is the group's at the canonical relations *)
     ; icc_elems : R <~> grp_rel p D ups (canon_nparams_rel D ups) (canon_args_rel D ups) (canon_doms_rel ups) k ups ups' ns ns' }.
 
   Lemma per_univ_elem_ind_canon : forall i R p D k ups ups' ns ns',

@@ -123,6 +123,8 @@ Qed.
     Over the uniform parameters [Γ0]: the level, the motive at it, then the
     branch arguments, the [k]-th under the [k] before it. *)
 
+(** The type of the recursor's motive: over the member's non-uniform
+    parameters and a scrutinee, the universe at the level argument. *)
 Definition rec_mty (p : qname) (D : ind_decl) (M : imember) : typ :=
   ctx_pi (elim_mctx p D 0 M (vars_from 1 (ind_nu D))) (a_univ (a_var (S (im_nn M)))).
 
@@ -543,6 +545,8 @@ Section GensRun.
 
   #[local] Abbreviation fr Φ := ((mq, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv pq k D Φ)) :: Ξ0).
 
+  (** The invariant of generating the member's body: the entry with body
+      [Φ] is well formed where it is filed. *)
   Definition gens_inv (Φ : gmod) : Prop := Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0 ⍮ qname_in mq y ⊢ᵉ ge_ind pv pq k D Φ.
 
   Lemma inv_typed : forall Φ, gens_inv Φ ->

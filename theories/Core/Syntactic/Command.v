@@ -27,13 +27,21 @@ Import Syntax_Notations.
     forms of their types, and so finds the group's views, into the
     structural declaration it files. *)
 Record raw_member : Set := mk_rmem
-  { rm_name : string
+  { (** The member's name *)
+    rm_name : string
+    (** Its non-uniform parameters, innermost first *)
   ; rm_nparams : ctx
+    (** Its sort, over the uniform parameters *)
   ; rm_sort : exp
+    (** Its constructors, each with its named arguments, outermost
+        first *)
   ; rm_cons : list (string * list (string * exp)) }.
 
+(** A group as written: see [raw_member]. *)
 Record raw_decl : Set := mk_raw
-  { rd_uparams : ctx
+  { (** The group's own uniform parameters, innermost first *)
+    rd_uparams : ctx
+    (** The declared members, in order *)
   ; rd_members : list raw_member }.
 
 (** A function of a [mutual def] as written ([cc_mdef]): its name, its
@@ -43,13 +51,19 @@ Record raw_decl : Set := mk_raw
     its member in order, each binding the non-uniform parameters, the
     arguments and the recursive results (over [Δ]). *)
 Record raw_fun : Set := mk_rfun
-  { rf_name : string
+  { (** The function's name *)
+    rf_name : string
+    (** Its non-uniform parameters [ys], innermost first *)
   ; rf_nparams : ctx
+    (** The scrutinee's type, over [ys] *)
   ; rf_scrut : exp
+    (** The result type, over the scrutinee and [ys] *)
   ; rf_res : exp
+    (** The clauses: constructor name, number of binders, body *)
   ; rf_clauses : list (string * nat * exp) }.
 
 
+(** The core commands. *)
 Inductive ccmd : Set :=
 (** [def x : A := M] and [axiom x : A]: transparency, privacy, type and
     body.  An axiom has no body; an [abstract] [def] is opaque, not

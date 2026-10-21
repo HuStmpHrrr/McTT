@@ -146,6 +146,10 @@ Proof.
   destruct E; try contradiction; destruct (String.eqb y z); auto.
 Qed.
 
+(** [gm_coh T Φ]: the body [Φ], filed over the telescope [T], is coherent
+    with it: every definition's type is closed over [T], every module's and
+    alias's parameters extend [T], and every inductive member's uniform
+    parameters extend [T], its own body made of definitions only. *)
 Fixpoint gm_coh (T : ctx) (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
@@ -1640,10 +1644,15 @@ End Grow.
 (** A member of a group is stored at the path its declaration gives it,
     and the group at its first member. *)
 Record ind_selfpath (pq : qname) (k : nat) (D : ind_decl) (p : qname) : Prop := mk_ind_selfpath
-  { isp_path : ind_mpath D k = Some p
+  { (** The member's path is [p] *)
+    isp_path : ind_mpath D k = Some p
+    (** The group is named by its first member's path *)
   ; isp_group : k = 0 -> pq = p
+    (** The member is a declared one *)
   ; isp_decl : k < ind_ndecl D }.
 
+(** [gm_selfpath p Φ]: every inductive member filed in the body [Φ],
+    stored at [p], is stored at its own path. *)
 Definition gm_selfpath (p : qname) (Φ : gmod) : Prop :=
   forall ip pv pq k D Φ', gm_entry Φ ip = Some (ge_ind pv pq k D Φ') -> ind_selfpath pq k D (qname_app p ip).
 
@@ -1807,6 +1816,8 @@ Qed.
     group's first member is filed in ([wf_gentry_ind_mem_nil]), so the group
     a member names is found wherever the member is. *)
 
+(** [gm_grouped p Φ]: every inductive member filed in [Φ], stored at [p],
+    has its group's first member filed in the same module. *)
 Definition gm_grouped (p : qname) (Φ : gmod) : Prop :=
   forall pre y pv pq k D Φ', gm_entry Φ (pre ++ y :: nil) = Some (ge_ind pv pq k D Φ') ->
     exists y0 pv0 Φ0, pq = qname_app p (pre ++ y0 :: nil) /\ gm_entry Φ (pre ++ y0 :: nil) = Some (ge_ind pv0 pq 0 D Φ0).

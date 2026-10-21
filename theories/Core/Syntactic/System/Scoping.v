@@ -24,6 +24,7 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
     [exp_scoped n M]: every free variable of [M] is below [n], at either sort.
     A telescope's entry is scoped by the entries below it. *)
 
+(** [exp_scoped n M], with its mutual parts for the subterms' sorts. *)
 Fixpoint exp_scoped (n : nat) (M : exp) : Prop :=
   match M with
   | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False => True
@@ -916,6 +917,8 @@ Qed.
     non-recursive arguments before them; the components of a shape too,
     each under the domains before it. *)
 
+(** A shape is scoped at [n]: each domain under those before it, and the
+    leaf's parameters under all of them. *)
 Fixpoint ptyp_scoped (n : nat) (t : ptyp) : Prop :=
   match t with
   | pt_pi B t => exp_scoped n B /\ ptyp_scoped (S n) t
@@ -929,19 +932,32 @@ Fixpoint ptyp_scoped (n : nat) (t : ptyp) : Prop :=
     non-recursive arguments before them; a shape ends in a member of the
     group, at its number of non-uniform parameters. *)
 Record member_closed (D : ind_decl) (M : imember) : Prop := mk_member_closed
-  { mc_ass : tele_ass (im_nparams M)
+  { (** The non-uniform parameters are assumptions *)
+    mc_ass : tele_ass (im_nparams M)
+    (** They are over the uniform ones *)
   ; mc_nparams : ctx_scoped (ind_nu D) (im_nparams M)
+    (** A view's uniform arguments are over the uniform parameters *)
   ; mc_head : forall qc k' Is vm, im_head M = mh_view qc k' Is vm -> List.Forall (exp_scoped (ind_nu D)) Is
+    (** A non-recursive argument is over the parameters and the
+        non-recursive arguments before it *)
   ; mc_args : forall c gs gs1 A gs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_arg A :: gs2 ->
       exp_scoped (List.length (cargs_strat gs1) + im_np D M) A
+    (** So is a recursive argument's shape *)
   ; mc_recs : forall c gs gs1 t gs2, In (c, gs) (im_cons M) -> gs = gs1 ++ ca_rec t :: gs2 ->
       ptyp_scoped (List.length (cargs_strat gs1) + im_np D M) t
+    (** A shape ends in a member, at its number of non-uniform
+        parameters *)
   ; mc_rec_len : forall c gs, In (c, gs) (im_cons M) -> cargs_plen D gs }.
 
+(** A closed group: see the section header. *)
 Record decl_closed (D : ind_decl) : Prop := mk_decl_closed
-  { dc_ass : tele_ass (ind_uparams D)
+  { (** The uniform parameters are assumptions *)
+    dc_ass : tele_ass (ind_uparams D)
+    (** They are a closed telescope *)
   ; dc_uparams : ctx_scoped 0 (ind_uparams D)
+    (** The sort is over the uniform parameters *)
   ; dc_sort : exp_scoped (ind_nu D) (ind_sort D)
+    (** Every member is closed *)
   ; dc_members : forall k M, ind_member D k = Some M -> member_closed D M }.
 
 Lemma ptyp_scoped_mono : forall t n m, n <= m -> ptyp_scoped n t -> ptyp_scoped m t.
@@ -1720,6 +1736,8 @@ Proof. intros; rewrite ctx_scoped_app, Nat.add_0_r; reflexivity. Qed.
     What resolution hands back is closed: a definition's type and body, a body
     module's full telescope, and an alias. *)
 
+(** A closed entry: see the section header; an inductive member's group is
+    [decl_closed]. *)
 Definition entry_closed (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B => exp_scoped 0 A /\ opt_scoped 0 B

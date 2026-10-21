@@ -242,13 +242,18 @@ Record adm_uparams (D : ind_decl) (ups : list domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (doms_rel : nat -> list domain -> exp -> relation domain)
     (ua : list domain) : Prop := mk_adm_uparams
-  { adm_nparam_vars : forall m Mm k A vs vs' s, ind_member D m = Some Mm ->
+  { (** A fresh variable of a non-uniform parameter's type at [ua] is
+        related to one at [ups] *)
+    adm_nparam_vars : forall m Mm k A vs vs' s, ind_member D m = Some Mm ->
       List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass A) -> tele_prefix_rel (nparams_rel m) k vs vs' ->
       rel_fresh_vars A (env_args nil (ups ++ vs)) (env_args nil (ua ++ vs')) (nparams_rel m k vs) s
+    (** So is one of a non-recursive argument's type *)
   ; adm_arg_vars : forall m Mm ms ms' c gs k A vs vs' s, ind_member D m = Some Mm ->
       tele_rel (nparams_rel m) (List.rev (im_nparams Mm)) ms ms' -> ind_con Mm c = Some gs ->
       List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (args_rel m ms c) k vs vs' ->
       rel_fresh_vars A (env_args nil (ups ++ ms ++ vs)) (env_args nil (ua ++ ms' ++ vs')) (args_rel m ms c k vs) s
+    (** A recursive argument's parameters at [ua] are related to those at
+        [ups], at the member its shape ends in *)
   ; adm_rec_params : forall m Mm ms ms' c gs gs1 t gs2 ws ws' ys ys', ind_member D m = Some Mm ->
       tele_rel (nparams_rel m) (List.rev (im_nparams Mm)) ms ms' ->
       ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
@@ -256,6 +261,8 @@ Record adm_uparams (D : ind_decl) (ups : list domain)
       tele_rel (shape_doms_rel (doms_rel m) ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
       rel_evals (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) (env_args nil (ua ++ ms' ++ ws' ++ ys'))
         (ntele_rel D nparams_rel (ptyp_mem t))
+    (** An element of a function shape's domain at [ups] reads back alike
+        at the domain at [ua] *)
   ; adm_shape_doms : forall m Mm ms ms' c gs gs1 t gs2 ws ws' k B ys ys', ind_member D m = Some Mm ->
       tele_rel (nparams_rel m) (List.rev (im_nparams Mm)) ms ms' ->
       ind_con Mm c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
@@ -278,7 +285,10 @@ Record adm_uparams (D : ind_decl) (ups : list domain)
     argument relations occur only in conclusions (model L). *)
 Inductive fresh_tele_rel (tr : nat -> list domain -> relation domain) (ups ua : list domain) :
     nat -> list domain -> list domain -> nat -> list centry -> Prop :=
+(** The empty telescope *)
 | fresh_tele_rel_nil : forall k pre pre' s, fresh_tele_rel tr ups ua k pre pre' s nil
+(** The next entry's fresh variables on each side are related, then the
+    rest after them *)
 | fresh_tele_rel_cons : forall k pre pre' s A T a a',
     ⟦ A ⟧ env_args nil (ups ++ pre) ↘ a ->
     ⟦ A ⟧ env_args nil (ua ++ pre') ↘ a' ->
@@ -293,13 +303,18 @@ Inductive fresh_cargs_rel (D : ind_decl) (ups ua : list domain)
     (args_rel : nat -> list domain -> relation domain)
     (doms_rel : list domain -> exp -> relation domain) (ns ns' : list domain) :
     nat -> list domain -> list domain -> nat -> list carg -> Prop :=
+(** No argument left *)
 | fresh_cargs_rel_nil : forall k ws ws' s, fresh_cargs_rel D ups ua nparams_rel args_rel doms_rel ns ns' k ws ws' s nil
+(** A non-recursive argument: its fresh variables are related, then the
+    rest after them *)
 | fresh_cargs_rel_arg : forall k ws ws' s A gs a a',
     ⟦ A ⟧ env_args nil (ups ++ ns ++ ws) ↘ a ->
     ⟦ A ⟧ env_args nil (ua ++ ns' ++ ws') ↘ a' ->
     args_rel k ws (⇑! a s) (⇑! a' s) ->
     fresh_cargs_rel D ups ua nparams_rel args_rel doms_rel ns ns' (S k) (ws ++ ⇑! a s :: nil) (ws' ++ ⇑! a' s :: nil) (S s) gs ->
     fresh_cargs_rel D ups ua nparams_rel args_rel doms_rel ns ns' k ws ws' s (ca_arg A :: gs)
+(** A recursive argument: its shape's parameters related, its domains read
+    back alike, then the rest *)
 | fresh_cargs_rel_rec : forall k ws ws' s t gs,
     (forall ys ys', tele_rel (shape_doms_rel doms_rel ns ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
        rel_evals (ptyp_ps t) (env_args nil (ups ++ ns ++ ws ++ ys)) (env_args nil (ua ++ ns' ++ ws' ++ ys'))
@@ -327,8 +342,10 @@ Record adm_fresh (p : qname) (D : ind_decl) (ups : list domain)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (doms_rel : nat -> list domain -> exp -> relation domain) (ua : list domain) : Prop := mk_adm_fresh
-  { afr_nparams : forall m Mm s, ind_member D m = Some Mm ->
+  { (** The fresh variables of each member's non-uniform parameters *)
+    afr_nparams : forall m Mm s, ind_member D m = Some Mm ->
       fresh_tele_rel (nparams_rel m) ups ua 0 nil nil s (List.rev (im_nparams Mm))
+    (** The fresh variables of each constructor's arguments, after them *)
   ; afr_args : forall m Mm c gs s ns ns', ind_member D m = Some Mm -> ind_con Mm c = Some gs ->
       Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ups ⍮ s ↘ ns ->
       Ftele List.rev (im_nparams Mm) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ ns' ->
@@ -344,8 +361,11 @@ Record adm_fresh (p : qname) (D : ind_decl) (ups : list domain)
 #[warnings="-cannot-define-projection"]
 Record okr_at (D : ind_decl) (ups : list domain) (nparams_rel : nat -> nat -> list domain -> relation domain)
     (j : nat) (pre : list domain) (Ps : list exp) (bs : list domain) : Prop := mk_okr_at
-  { okr_idx : list domain
+  { (** The index at the type's base *)
+    okr_idx : list domain
+    (** It is what [Ps] evaluate to at [ups] and [pre] *)
   ; okr_eval : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ pre) ↘ okr_idx
+    (** It is related to [bs] at the member [j] *)
   ; okr_rel : ntele_rel D nparams_rel j okr_idx bs }.
 
 (** A member's own uniform parameters: the group's for a declared one, the
@@ -386,6 +406,7 @@ Inductive ind_rel (p : qname) (D : ind_decl)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (doms_rel : nat -> list domain -> exp -> relation domain)
   : nat -> list domain -> list domain -> list domain -> list domain -> relation domain :=
+(** Two saturated constructors of the member *)
 | ind_rel_con :
   `{ ind_member D k = Some Mk ->
      im_ref p k Mk = (hd, k') ->
@@ -399,6 +420,7 @@ Inductive ind_rel (p : qname) (D : ind_decl)
      con_args_rel p D okr nparams_rel args_rel doms_rel k u u'
        (List.skipn (im_unu D Mk) bs) (List.skipn (im_unu D Mk) bs') gs vs vs' ->
      ind_rel p D okr nparams_rel args_rel doms_rel k u u' ns ns' (d_con hd k' c (bs ++ vs)) (d_con hd k' c (bs' ++ vs')) }
+(** Two neutrals of the member that read back equally *)
 | ind_rel_neut :
   `{ ind_member D k = Some Mk ->
      im_ref p k Mk = (hd, k') ->
@@ -419,11 +441,15 @@ with con_args_rel (p : qname) (D : ind_decl)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (doms_rel : nat -> list domain -> exp -> relation domain)
   : nat -> list domain -> list domain -> list domain -> list domain -> list carg -> list domain -> list domain -> Prop :=
+(** No argument left *)
 | con_args_nil :
   `{ con_args_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' nil nil nil }
+(** A non-recursive argument: it joins the prefixes (it is related by
+    [ind_rel_con]) *)
 | con_args_arg :
   `{ con_args_rel p D okr nparams_rel args_rel doms_rel k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) gs vs vs' ->
      con_args_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' (ca_arg A :: gs) (v :: vs) (v' :: vs') }
+(** A recursive argument, by its shape *)
 | con_args_rec :
   `{ rec_arg_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' t v v' ->
      con_args_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' gs vs vs' ->
@@ -441,6 +467,7 @@ with rec_arg_rel (p : qname) (D : ind_decl)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (doms_rel : nat -> list domain -> exp -> relation domain)
   : nat -> list domain -> list domain -> list domain -> list domain -> ptyp -> domain -> domain -> Prop :=
+(** At the end: elements of the member [j] at admissible parameters *)
 | rec_arg_self :
   `{ ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u ++ pre) ↘ bs ->
      ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u' ++ pre') ↘ bs' ->
@@ -448,16 +475,20 @@ with rec_arg_rel (p : qname) (D : ind_decl)
      okr j pre' Ps bs' ->
      ind_rel p D okr nparams_rel args_rel doms_rel j u u' bs bs' v v' ->
      rec_arg_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' (pt_self j Ps) v v' }
+(** At a domain: related arguments give related results *)
 | rec_arg_pi :
   `{ (forall c c', doms_rel k pre B c c' ->
         rec_arg_app_rel p D okr nparams_rel args_rel doms_rel k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) t f c f' c') ->
      rec_arg_rel p D okr nparams_rel args_rel doms_rel k u u' pre pre' (pt_pi B t) f f' }
+(** Two functions at two arguments: their results are related at the rest
+    of the shape *)
 with rec_arg_app_rel (p : qname) (D : ind_decl)
     (okr : nat -> list domain -> list exp -> list domain -> Prop)
     (nparams_rel : nat -> nat -> list domain -> relation domain)
     (args_rel : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (doms_rel : nat -> list domain -> exp -> relation domain)
   : nat -> list domain -> list domain -> list domain -> list domain -> ptyp -> domain -> domain -> domain -> domain -> Prop :=
+(** The only rule *)
 | rec_arg_app_mk :
   `{ $| f & c |↘ r ->
      $| f' & c' |↘ r' ->
@@ -495,49 +526,79 @@ Hint Constructors ind_rel con_args_rel rec_arg_rel rec_arg_app_rel : mctt.
 #[warnings="-cannot-define-projection"]
 Record view_member_image (D : ind_decl) (qc : qname) (Is : list exp) (vm : list nat) (i' : nat) (Mi' : imember) : Prop :=
   mk_view_member_image
-  { image_index : nat
+  { (** The member [j] *)
+    image_index : nat
+    (** That member *)
   ; image_member : imember
+    (** [vm] takes [i'] to [j] *)
   ; image_in_view_map : List.nth_error vm i' = Some image_index
+    (** [j] is a member of the group *)
   ; image_is_member : ind_member D image_index = Some image_member
+    (** It has as many non-uniform parameters as [Mi'] *)
   ; image_same_nparams_count : im_nn image_member = im_nn Mi'
+    (** It is the view of [i'] at the same instance when [Mi'] is
+        declared, and a view of the same container member, at as many
+        arguments, when [Mi'] is a view *)
   ; image_head_matches : match im_head Mi' with
                | mh_decl _ => exists vm', im_head image_member = mh_view qc i' Is vm'
                | mh_view qv kv Is'' _ => exists Is' vm', im_head image_member = mh_view qv kv Is' vm' /\ List.length Is' = List.length Is''
                end }.
 
+(** The structural facts about a group the universe clause asks for (see
+    the section header). *)
 Record grp_tele_ass (D : ind_decl) : Prop := mk_grp_tele_ass
-  { gta_uparams : tele_ass (ind_uparams D)
+  { (** The uniform parameters are assumptions *)
+    gta_uparams : tele_ass (ind_uparams D)
+    (** Each member's non-uniform parameters are assumptions *)
   ; gta_nparams : forall k Mk, ind_member D k = Some Mk -> tele_ass (im_nparams Mk)
+    (** A view's container member exists, with as many non-uniform
+        parameters as the view, at as many uniform arguments as the
+        container has *)
   ; gta_views : forall v Mv qc kc Is vm, ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       exists Dq Mc, ind_lookup gc_deps gc_stack qc = Some Dq /\ ind_member Dq kc = Some Mc /\ im_nn Mc = im_nn Mv /\
         List.length Is = ind_nu Dq
+    (** The members have a rank *)
   ; gta_rank : exists rk, view_rank_ok gc_deps gc_stack D rk
+    (** Each view's map takes the container's members to members of the
+        same shapes *)
   ; gta_vwrap : forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       exists D', ind_lookup gc_deps gc_stack qc = Some D' /\ vwrap_ok D D' vm
+    (** The views agree on their maps *)
   ; gta_view_maps_coherent : view_maps_coherent gc_deps gc_stack D
+    (** Each container member has its image under a view's map *)
   ; gta_vm : forall v Mv qc kc Is vm Dq i' Mi', ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' -> view_member_image D qc Is vm i' Mi'
+    (** Each recursive argument of the group's constructors gives its
+        member as many parameters as it has *)
   ; gta_plen : forall k Mk c gs, ind_member D k = Some Mk -> List.In (c, gs) (im_cons Mk) -> cargs_plen D gs
+    (** So does each of the views' containers' constructors *)
   ; gta_cplen : forall v Mv qc kc Is vm Dq i' Mi' c gs', ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' -> List.In (c, gs') (im_cons Mi') ->
       cargs_plen Dq gs' }.
 
+(** The non-uniform parameters' relations are PERs at related prefixes. *)
 Definition nparams_per (D : ind_decl) (nr : nat -> nat -> list domain -> relation domain) : Prop :=
   forall m Mm k A vs vs', ind_member D m = Some Mm ->
     List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass A) -> tele_prefix_rel (nr m) k vs vs' ->
     PER (nr m k vs).
 
+(** They do not depend on which of two related prefixes they are read
+    at. *)
 Definition nparams_inv (D : ind_decl) (nr : nat -> nat -> list domain -> relation domain) : Prop :=
   forall m Mm k A vs vs', ind_member D m = Some Mm ->
     List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass A) -> tele_prefix_rel (nr m) k vs vs' ->
     (nr m k vs <~> nr m k vs').
 
+(** Each is [R] of its type at the two sides' parameters [ups] and
+    [ups']. *)
 Definition nparams_evals (R : relation domain -> domain -> domain -> Prop) (D : ind_decl) (ups ups' : list domain)
     (nr : nat -> nat -> list domain -> relation domain) : Prop :=
   forall m Mm k A vs vs', ind_member D m = Some Mm ->
     List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass A) -> tele_prefix_rel (nr m) k vs vs' ->
     rel_mod_eval R A (env_args nil (ups ++ vs)) A (env_args nil (ups' ++ vs')) (nr m k vs).
 
+(** The non-recursive arguments' relations are PERs at related
+    prefixes. *)
 Definition args_per (D : ind_decl) (nr : nat -> nat -> list domain -> relation domain)
     (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain) : Prop :=
   forall m Mm ms ms' c gs k A vs vs', ind_member D m = Some Mm ->
@@ -545,6 +606,8 @@ Definition args_per (D : ind_decl) (nr : nat -> nat -> list domain -> relation d
     List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar m ms c) k vs vs' ->
     PER (ar m ms c k vs).
 
+(** They do not depend on which of two related non-uniform parameters they
+    are read at. *)
 Definition args_inv (D : ind_decl) (nr : nat -> nat -> list domain -> relation domain)
     (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain) : Prop :=
   forall m Mm ms ms' c gs k A vs vs', ind_member D m = Some Mm ->
@@ -552,6 +615,7 @@ Definition args_inv (D : ind_decl) (nr : nat -> nat -> list domain -> relation d
     List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar m ms c) k vs vs' ->
     (ar m ms c k vs <~> ar m ms' c k vs').
 
+(** Each is [R] of its type at the two sides' parameters. *)
 Definition args_evals (R : relation domain -> domain -> domain -> Prop) (D : ind_decl) (ups ups' : list domain)
     (nr : nat -> nat -> list domain -> relation domain)
     (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain) : Prop :=
@@ -560,6 +624,7 @@ Definition args_evals (R : relation domain -> domain -> domain -> Prop) (D : ind
     List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar m ms c) k vs vs' ->
     rel_mod_eval R A (env_args nil (ups ++ ms ++ vs)) A (env_args nil (ups' ++ ms' ++ vs')) (ar m ms c k vs).
 
+(** The shapes' domains' relations are PERs at related prefixes. *)
 Definition doms_per (D : ind_decl) (nr : nat -> nat -> list domain -> relation domain)
     (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (dr : nat -> list domain -> exp -> relation domain) : Prop :=
@@ -571,6 +636,8 @@ Definition doms_per (D : ind_decl) (nr : nat -> nat -> list domain -> relation d
     tele_prefix_rel (shape_doms_rel (dr m) ms ws (ptyp_doms t)) k ys ys' ->
     PER (dr m (ms ++ ws ++ ys) B).
 
+(** They do not depend on which of two related prefixes they are read
+    at. *)
 Definition doms_inv (D : ind_decl) (nr : nat -> nat -> list domain -> relation domain)
     (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
     (dr : nat -> list domain -> exp -> relation domain) : Prop :=
@@ -582,6 +649,7 @@ Definition doms_inv (D : ind_decl) (nr : nat -> nat -> list domain -> relation d
     tele_prefix_rel (shape_doms_rel (dr m) ms ws (ptyp_doms t)) k ys ys' ->
     (dr m (ms ++ ws ++ ys) B <~> dr m (ms' ++ ws' ++ ys') B).
 
+(** Each is [R] of its domain at the two sides' parameters. *)
 Definition doms_evals (R : relation domain -> domain -> domain -> Prop) (D : ind_decl) (ups ups' : list domain)
     (nr : nat -> nat -> list domain -> relation domain)
     (ar : nat -> list domain -> String.string -> nat -> list domain -> relation domain)
@@ -612,6 +680,9 @@ Section Per_univ_elem_core_def.
     (i : uidx)
       (per_univ_rec : uidx -> relation domain).
 
+  (** [per_univ_elem_core R a a']: [a] and [a'] are related types of the
+      universe at [i], and [R] is the relation of their elements; the
+      smaller universes are [per_univ_rec]. *)
   Inductive per_univ_elem_core : relation domain -> domain -> domain -> Prop :=
   (** A smaller large universe, its elements the types of that universe. *)
   | per_univ_elem_core_univ :
@@ -1036,6 +1107,8 @@ End Per_univ_elem_ind_def.
 
 (** * Universe Subtyping *)
 
+(** [per_subtyp i a b]: the type [a] is below [b], both types of the
+    universe at [i]. *)
 Inductive per_subtyp : uidx -> domain -> domain -> Prop :=
 (** Equal neutral types. *)
 | per_subtyp_neut :

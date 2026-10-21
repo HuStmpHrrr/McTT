@@ -40,12 +40,19 @@ Section Fixed_GCtx.
 #[warnings="-cannot-define-projection"]
 Record elim_exp_value (oq : option qname) (Us : list exp) (j : nat) (Bks : list eblock) (M : exp) (ρ : env) (r : domain) : Prop :=
   mk_elim_exp_value
-  { eev_ups : list domain
+  { (** The uniform parameters' values *)
+    eev_ups : list domain
+    (** The scrutinee's value *)
   ; eev_scrut : domain
+    (** The group eliminated *)
   ; eev_grp : qname
+    (** [Us] evaluate to [eev_ups] *)
   ; eev_ups_eval : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ eev_ups
+    (** [M] evaluates to [eev_scrut] *)
   ; eev_scrut_eval : ⟦ M ⟧ ρ ↘ eev_scrut
+    (** The group is the annotation's, or the scrutinee's *)
   ; eev_grp_of : elim_grp_of oq eev_scrut = Some eev_grp
+    (** The eliminator on the scrutinee's value gives [r] *)
   ; eev_elim : ⟦elim eev_scrut at j of eev_grp eev_ups Bks ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r }.
 
 Lemma elim_exp_value_of : forall oq Us j Bks M ρ r, ⟦ a_elim oq Us j Bks M ⟧ ρ ↘ r -> elim_exp_value oq Us j Bks M ρ r.

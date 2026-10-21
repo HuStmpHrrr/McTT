@@ -22,6 +22,8 @@ From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Semantic Require Import Domain.
 Import Syntax_Notations.
 
+(** A normal form renamed by the weakening [φ]; mutually, for its other
+    sorts. *)
 Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   match W with
   | nf_typ i => nf_typ i
@@ -113,10 +115,15 @@ Qed.
 Definition cmp_then (c c' : comparison) : comparison :=
   match c with Eq => c' | _ => c end.
 
+(** The order on normal forms: of their codings. *)
 Definition nf_cmp (M N : nf) : comparison := lt_cmp (nf_code M lt_nil) (nf_code N lt_nil).
+(** The order on lists of level atoms: of their codings. *)
 Definition la_cmp (xs ys : lvl_atoms) : comparison := lt_cmp (la_code xs lt_nil) (la_code ys lt_nil).
+(** The order on lists of normal forms: of their codings. *)
 Definition nfs_cmp (Ms Ns : nfs) : comparison := lt_cmp (nfs_code Ms lt_nil) (nfs_code Ns lt_nil).
+(** The order on lists of normal branches: of their codings. *)
 Definition nbrs_cmp (Bs Cs : nbrs) : comparison := lt_cmp (nbrs_code Bs lt_nil) (nbrs_code Cs lt_nil).
+(** The order on lists of normal blocks: of their codings. *)
 Definition nblocks_cmp (Bks Cks : nblocks) : comparison := lt_cmp (nblocks_code Bks lt_nil) (nblocks_code Cks lt_nil).
 
 Lemma cmp_then_eq : forall c, cmp_then c Eq = c.

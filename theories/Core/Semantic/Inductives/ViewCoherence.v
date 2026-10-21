@@ -80,12 +80,20 @@ Section Fixed_GCtx.
         to: of the same head, as many parameters, its constructors the
         container's, each argument corresponding. *)
     Record view_member (i' : nat) (Mi' : imember) (v : nat) (Mv : imember) : Prop := mk_view_member
-      { vmb_v : List.nth_error vm i' = Some v
+      { (** [vm] takes [i'] to [v] *)
+        vmb_v : List.nth_error vm i' = Some v
+        (** [v] is a member of the group *)
       ; vmb_mem : ind_member D v = Some Mv
+        (** It has the same head: both are the same declared member *)
       ; vmb_ref : im_ref p v Mv = im_ref qc i' Mi'
+        (** As many own uniform parameters *)
       ; vmb_unu : im_unu D Mv = im_unu Dq Mi'
+        (** As many non-uniform parameters *)
       ; vmb_nn : im_nn Mv = im_nn Mi'
+        (** Each container constructor is one of [Mv]'s, its arguments
+            corresponding *)
       ; vmb_cons : forall c gs', ind_con Mi' c = Some gs' -> exists gs, ind_con Mv c = Some gs /\ cargs_corr vm gs' gs
+        (** And conversely *)
       ; vmb_cons' : forall c gs, ind_con Mv c = Some gs -> exists gs', ind_con Mi' c = Some gs' /\ cargs_corr vm gs' gs }.
 
     (** The parameters a shape ends in, at a base and a prefix on each
@@ -93,16 +101,23 @@ Section Fixed_GCtx.
         in. *)
     #[warnings="-cannot-define-projection"]
     Record ps_link (Ps' Ps : list exp) (j : nat) (ρc ρg : env) : Prop := mk_ps_link
-      { psl_c : list domain
+      { (** The container side's parameters *)
+        psl_c : list domain
+        (** The group side's parameters *)
       ; psl_g : list domain
+        (** The container's shape's [Ps'] evaluate to them *)
       ; psl_eval_c : ⟦ Ps' ⟧* gc_deps ⍮ gc_stack ⍮ ρc ↘ psl_c
+        (** The group's shape's [Ps] evaluate to them *)
       ; psl_eval_g : ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ ρg ↘ psl_g
+        (** They are related at the member [j] *)
       ; psl_rel : ntele_rel D nr j psl_c psl_g }.
 
     (** The view maps each member of the container's group, and the two
         telescopes agree position by position. *)
     Record view_agreement : Prop := mk_view_agreement
-    { agree_members : forall i' Mi', ind_member Dq i' = Some Mi' -> exists v Mv, view_member i' Mi' v Mv
+    { (** Each member of the container's group is taken to a member of the
+          group ([view_member]). *)
+      agree_members : forall i' Mi', ind_member Dq i' = Some Mi' -> exists v Mv, view_member i' Mi' v Mv
     (** A recursive argument of the container's ends in a member of its group. *)
     ; agree_recursive_targets : forall i' Mi' c gs1' t' gs2', ind_member Dq i' = Some Mi' -> ind_con Mi' c = Some (gs1' ++ ca_rec t' :: gs2') ->
       exists Mj', ind_member Dq (ptyp_mem t') = Some Mj'

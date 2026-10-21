@@ -46,13 +46,17 @@ Section Fixed_GCtx.
 Inductive wrap_results_rel (dr : nat -> list domain -> exp -> relation domain)
     (Rel : nat -> list domain -> domain -> list domain -> domain -> relation domain) (k : nat) (u u' : list domain) :
     list domain -> list domain -> list carg -> list carg -> list domain -> list domain -> list domain -> list domain -> Prop :=
+(** No argument *)
 | wrap_results_nil : forall pre pre', wrap_results_rel dr Rel k u u' pre pre' nil nil nil nil nil nil
+(** Non-recursive in both: no result, the argument joins the prefixes *)
 | wrap_results_arg : forall pre pre' A' A gs' gs v v' vs vs' ihs ihs',
     wrap_results_rel dr Rel k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) gs' gs vs vs' ihs ihs' ->
     wrap_results_rel dr Rel k u u' pre pre' (ca_arg A' :: gs') (ca_arg A :: gs) (v :: vs) (v' :: vs') ihs ihs'
+(** Non-recursive in the container, recursive in the group: no result *)
 | wrap_results_nest : forall pre pre' A' t gs' gs v v' vs vs' ihs ihs',
     wrap_results_rel dr Rel k u u' pre pre' gs' gs vs vs' ihs ihs' ->
     wrap_results_rel dr Rel k u u' pre pre' (ca_arg A' :: gs') (ca_rec t :: gs) (v :: vs) (v' :: vs') ihs ihs'
+(** Recursive in both: related recursive results *)
 | wrap_results_rec : forall pre pre' t' t gs' gs v v' vs vs' ih ih' ihs ihs',
     rec_result_rel dr Rel k u u' pre pre' t v v' ih ih' ->
     wrap_results_rel dr Rel k u u' pre pre' gs' gs vs vs' ihs ihs' ->
@@ -113,14 +117,18 @@ Inductive cross_results_rel (dr : nat -> list domain -> exp -> relation domain)
     (Rel : nat -> list domain -> domain -> list domain -> domain -> relation domain) (k : nat) (u u' : list domain)
     (ρa : env) (pq : qname) (ua : list domain) (Bksa : list eblock) :
     list domain -> list domain -> list carg -> list carg -> list domain -> list domain -> list domain -> list domain -> Prop :=
+(** No argument *)
 | cross_results_nil : forall pre pre', cross_results_rel dr Rel k u u' ρa pq ua Bksa pre pre' nil nil nil nil nil nil
+(** Non-recursive in both: no result, the argument joins the prefixes *)
 | cross_results_arg : forall pre pre' A' A gs' gs v v' vs vs' w ihs,
     cross_results_rel dr Rel k u u' ρa pq ua Bksa (pre ++ v :: nil) (pre' ++ v' :: nil) gs' gs vs vs' w ihs ->
     cross_results_rel dr Rel k u u' ρa pq ua Bksa pre pre' (ca_arg A' :: gs') (ca_arg A :: gs) (v :: vs) (v' :: vs') w ihs
+(** Nested through: the view's result is the group's eliminator's *)
 | cross_results_nest : forall pre pre' A' t gs' gs v v' vs vs' w ih ihs,
     ⟦ih v' of t under pq ua Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ ih ->
     cross_results_rel dr Rel k u u' ρa pq ua Bksa pre pre' gs' gs vs vs' w ihs ->
     cross_results_rel dr Rel k u u' ρa pq ua Bksa pre pre' (ca_arg A' :: gs') (ca_rec t :: gs) (v :: vs) (v' :: vs') w (ih :: ihs)
+(** Recursive in both: related recursive results *)
 | cross_results_rec : forall pre pre' t' t gs' gs v v' vs vs' ihb iha w ihs,
     rec_result_rel dr Rel k u u' pre pre' t v v' ihb iha ->
     cross_results_rel dr Rel k u u' ρa pq ua Bksa pre pre' gs' gs vs vs' w ihs ->
@@ -1598,14 +1606,23 @@ Section WrappedBlocks.
       member [vm] gives, its branches wrapped. *)
   #[warnings="-cannot-define-projection"]
   Record wrapped_block_at (i' : nat) (Mi' : imember) : Prop := mk_wrapped_block_at
-    { wb_index : nat
+    { (** The member of the group [vm] takes [i'] to *)
+      wb_index : nat
+      (** That member *)
     ; wb_member : imember
+      (** Its block *)
     ; wb_block : eblock
+      (** [vm] takes [i'] to it *)
     ; wb_in_view_map : List.nth_error vm i' = Some wb_index
+      (** It is a member of the group *)
     ; wb_is_member : ind_member D wb_index = Some wb_member
+      (** It has its block *)
     ; wb_has_block : List.nth_error Bks wb_index = Some wb_block
+      (** It has as many non-uniform parameters as [Mi'] *)
     ; wb_same_nparams_count : im_nn wb_member = im_nn Mi'
+      (** The constructors' arguments correspond *)
     ; wb_args_corr : forall c gs' gs, In (c, gs') (im_cons Mi') -> ind_con wb_member c = Some gs -> cargs_corr vm gs' gs
+      (** The wrapped block of [i'] is its block, its branches wrapped *)
     ; wb_wrapped : List.nth_error VB i'
         = Some (eb_mk (eb_nm wb_block) None (eb_motive wb_block)
                   (List.map (fun cg => wrap_br p D Us Bks wb_member (eb_brs wb_block) (fst cg) (snd cg)) (im_cons Mi'))) }.

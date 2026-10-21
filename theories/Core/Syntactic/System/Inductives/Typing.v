@@ -403,6 +403,8 @@ Section Cargs.
   Hypothesis (HUl : List.length Us = ind_nu D).
   Hypothesis (Hσ : Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_of_list Id Us : ind_uparams D ++ Γ).
 
+  (** The context of a constructor's arguments [gs1] at the uniform
+      arguments [Us], over its non-uniform parameters there and [Γ]. *)
   Definition cinst (gs1 : list carg) : ctx :=
     tele_sub (cargs_ctx p D Mk gs1) (sb_qn (im_nn Mk) (sb_of_list Id Us)) ++ tele_sub (im_nparams Mk) (sb_of_list Id Us) ++ Γ.
 
@@ -540,10 +542,14 @@ Qed.
     non-recursive arguments; what remains of the shape has its domains and
     its leaf, at the member [Mj] it ends in, typed there. *)
 
+(** The remaining domains of the shape [t] are types, each under the
+    domains before it. *)
 Definition shape_doms_typed (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (Mk : imember) (Bs1 : list exp) (Tb : ctx) (t : ptyp) : Prop :=
   forall Bs1' B Bs2, ptyp_doms t = Bs1' ++ B :: Bs2 ->
     exists j, Θ ⍮ Ξ ⍮ doms_ctx (Bs1 ++ Bs1') ++ Tb ++ im_params D Mk ⊢ B : Typeω@j.
 
+(** The leaf's parameters of the shape [t] are typed at the non-uniform
+    telescope of the member [Mj] it ends in, under all its domains. *)
 Definition shape_leaf_typed (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (Mk Mj : imember) (Bs1 : list exp) (Tb : ctx) (t : ptyp) : Prop :=
   forall k P T, List.nth_error (ptyp_ps t) k = Some P ->
     List.nth_error (tele_insts (im_nparams Mj)
@@ -673,6 +679,8 @@ Qed.
 Definition motives_typed (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (p : qname) (D : ind_decl) (Us As : list exp) (i : nat) : Prop :=
   forall j Mj, ind_member D j = Some Mj -> Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ ⊢ List.nth j As a_True : Typeω@i.
 
+(** The motives [As] and [As'] are equal, member by member, in their
+    contexts. *)
 Definition motives_eq (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (p : qname) (D : ind_decl) (Us As As' : list exp) (i : nat) : Prop :=
   forall j Mj, ind_member D j = Some Mj ->
     Θ ⍮ Ξ ⍮ elim_mctx p D j Mj Us ++ Γ ⊢ List.nth j As a_True ≈ List.nth j As' a_True : Typeω@i.
@@ -1108,18 +1116,31 @@ Qed.
 #[warnings="-cannot-define-projection"]
 Record view_con_inst (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (qc : qname) (k' : nat) (Is : list exp) (c : String.string)
     (Us Ns As : list exp) : Prop := mk_view_con_inst
-  { vci_decl : ind_decl
+  { (** The container group *)
+    vci_decl : ind_decl
+    (** The container's member viewed *)
   ; vci_mem : imember
+    (** The container constructor's arguments *)
   ; vci_args : list carg
+    (** The container is found at [qc] *)
   ; vci_lookup : ind_lookup Θ Ξ qc = Some vci_decl
+    (** The viewed member is the container's [k']-th *)
   ; vci_member : ind_member vci_decl k' = Some vci_mem
+    (** It is a declared member *)
   ; vci_lt : k' < ind_ndecl vci_decl
+    (** The constructor [c] is the viewed member's *)
   ; vci_con : ind_con vci_mem c = Some vci_args
+    (** The view's instance and the parameters [Ns] are all the viewed
+        member's parameters *)
   ; vci_plen : List.length (List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns) = im_np vci_decl vci_mem
+    (** One argument per constructor argument *)
   ; vci_alen : List.length As = List.length vci_args
+    (** The parameters are typed at the viewed member's telescope *)
   ; vci_params : forall k P T, nth_error (List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns) k = Some P ->
       nth_error (tele_insts (im_params vci_decl vci_mem) Id (List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns)) k = Some T ->
       Θ ⍮ Ξ ⍮ Γ ⊢ P : T
+    (** The arguments are typed at the container constructor's argument
+        telescope, at the parameters *)
   ; vci_cargs : forall k N T, nth_error As k = Some N ->
       nth_error (tele_insts (cargs_ctx qc vci_decl vci_mem vci_args)
                    (sb_of_list Id (List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns)) As) k = Some T ->
@@ -1406,6 +1427,8 @@ Qed.
 
 (** ** The Motives Varying *)
 
+(** [cinst] without the outer context: the constructor's arguments and the
+    member's non-uniform parameters at [Us]. *)
 Definition ctel (p : qname) (D : ind_decl) (Mk : imember) (Us : list typ) (gs : list carg) : ctx :=
   tele_sub (cargs_ctx p D Mk gs) (sb_qn (im_nn Mk) (sb_of_list Id Us)) ++ tele_sub (im_nparams Mk) (sb_of_list Id Us).
 
@@ -1494,20 +1517,32 @@ Qed.
     The premises of the eliminator's rules about its blocks, at the uniform
     parameters [Us]. *)
 
+(** [blocks_typed Θ Ξ Γ p D Us Bks i]: the blocks [Bks] are typed as the
+    eliminator of the group [D] at [p] asks, at the level [i]. *)
 Record blocks_typed (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (p : qname) (D : ind_decl) (Us : list exp)
     (Bks : list eblock) (i : nat) : Prop := mk_blocks_typed
-  { bt_len : List.length Bks = List.length (ind_members D)
+  { (** One block per member *)
+    bt_len : List.length Bks = List.length (ind_members D)
+    (** Each block binds as many variables as its member's motive *)
   ; bt_nm : blocks_nm_ok D Bks
+    (** An annotation is the member's type at [Us] *)
   ; bt_ann : forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
       Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub (im_nparams Mk) (sb_of_list Id Us) ▹ Z ≈ elim_mctx p D k Mk Us
+    (** Each motive is a type in its member's motive context *)
   ; bt_motive : forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
       Θ ⍮ Ξ ⍮ elim_mctx p D k Mk Us ++ Γ ⊢ eb_motive b : Typeω@i
+    (** Each motive context is well formed *)
   ; bt_mctx : forall k Mk, ind_member D k = Some Mk -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D k Mk Us ≈ elim_mctx p D k Mk Us
+    (** Each block has one branch per constructor, in order *)
   ; bt_names : forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)
+    (** Each branch context is well formed *)
   ; bt_bctx : forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
       Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D Mk gs (blocks_motives Bks) Us ≈ elim_bctx p D Mk gs (blocks_motives Bks) Us
+    (** Each branch binds the non-uniform parameters, the arguments and the
+        recursive results *)
   ; bt_counts : forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) -> n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat
+    (** Each branch is of the branch type at its block's motive *)
   ; bt_brs : forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
       Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) Us ++ Γ ⊢ B : elim_bty p k Mk c gs (eb_motive b) Us }.

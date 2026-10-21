@@ -552,6 +552,7 @@ Qed.
     stored unit is closed ([unit_closed]), and its arguments and an
     inductive type's are terms over the outside parameters. *)
 
+(** [ds_scoped n R]: the description [R] is scoped at [n]. *)
 Definition ds_scoped (n : nat) (R : mdesc) : Prop :=
   match R with
   | ds_term A om => exp_scoped n A /\ opt_scoped n om

@@ -41,6 +41,8 @@ Import Domain_Notations Syntax_Notations Wk_Notations.
 Section Rename.
   Variable f : nat -> nat.
 
+  (** A value with every de Bruijn level renamed by [f], closures'
+      environments included; mutually, for the other sorts of values. *)
   Fixpoint drn (d : domain) : domain :=
     match d with
     | d_pi a ρ B => d_pi (drn a) (List.map dern ρ) B

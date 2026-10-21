@@ -327,6 +327,7 @@ Section Nf_Induction.
     (f_nblocks_nil : P4 nblocks_nil)
     (f_nblocks_cons : forall nm A, P A -> forall Bs, P3 Bs -> forall Bks, P4 Bks -> P4 (nblocks_cons nm A Bs Bks)).
 
+  (** The mutual induction principle over normal forms and their sorts. *)
   Fixpoint nf_mind (W : nf) : P W :=
     match W with
     | nf_typ i => f_typ i
@@ -388,6 +389,8 @@ Lemma apps_exp_fresh : forall Ms M k,
     exp_fresh k M -> List.Forall (exp_fresh k) Ms -> exp_fresh k (apps_exp M Ms).
 Proof. induction Ms; intros * HM HF; inversion HF; subst; cbn; [ assumption | apply IHMs; [ split |]; assumption ]. Qed.
 
+(** [nf_fresh k W]: the variable [k] does not occur in the normal form
+    [W]; mutually, for its other sorts. *)
 Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
   match W with
   | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => True
@@ -425,6 +428,9 @@ with nblocks_fresh (k : nat) (Bks : nblocks) {struct Bks} : Prop :=
   | nblocks_cons nm A Bs Bks => nf_fresh (nm + k) A /\ nbrs_fresh k Bs /\ nblocks_fresh k Bks
   end.
 
+(** The normal form [W] with the variable [k] removed: the variables above
+    it moved down by one; the inverse of the weakening at [k] when [k] is
+    fresh in [W]. *)
 Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
   match W with
   | nf_typ i => nf_typ i

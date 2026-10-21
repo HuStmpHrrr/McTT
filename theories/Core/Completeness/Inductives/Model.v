@@ -1330,12 +1330,19 @@ End Sort.
     conditions of the universe clause, typed, and filed at the path of its
     first member. *)
 Record valid_group (p : qname) (D : ind_decl) : Prop := mk_valid_group
-  { vgr_lookup : ind_lookup gc_deps gc_stack p = Some D
+  { (** It is found at [p] *)
+    vgr_lookup : ind_lookup gc_deps gc_stack p = Some D
+    (** It is semantically valid *)
   ; vgr_valid : valid_ind_decl D
+    (** It is closed *)
   ; vgr_closed : decl_closed D
+    (** Its sort is a universe *)
   ; vgr_sort : ind_sort_univ (ind_sort D)
+    (** The structural conditions of the universe clause *)
   ; vgr_ass : grp_tele_ass D
+    (** It is typed *)
   ; vgr_typed : decl_typed gc_deps gc_stack D
+    (** It is filed at its first member's path *)
   ; vgr_mpath : ind_mpath D 0 = Some p }.
 
 (** The groups the views of a group nest through are valid. *)

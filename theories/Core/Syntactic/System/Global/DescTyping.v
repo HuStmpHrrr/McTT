@@ -1466,10 +1466,13 @@ Section DescOk.
       typed arguments: so a description stays typed as the global context
       grows. *)
   Inductive desc_ok : ctx -> mdesc -> Prop :=
+  (** A term: its type is a type, its δ-reduct of that type *)
   | dok_term : forall Γ A om,
       (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) ->
       (forall M, om = Some M -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A) ->
       desc_ok Γ (ds_term A om)
+  (** A declared member of a filed group, stored at its path, given typed
+      uniform arguments *)
   | dok_ind : forall Γ Θ' pq k Ns D Mk pm,
       ind_lookup Θ Ξ pq = Some D ->
       ind_member D k = Some Mk ->
@@ -1481,6 +1484,8 @@ Section DescOk.
       args_ok (Θ' ++ Γ) (ind_uparams D) Ns ->
       tele_ass Θ' ->
       desc_ok Γ (ds_ind Θ' pq k Ns)
+  (** An open module: a well-formed expanded body whose module entries
+      denote typed descriptions, and a well-formed written body *)
   | dok_open : forall Γ Δ Φw Φ,
       ⊢ Θ ⍮ Ξ ⍮ body_ctx Φ ++ Δ ++ Γ ->
       gm_noopen Φ ->
@@ -1489,6 +1494,8 @@ Section DescOk.
       tele_ass Δ -> body_shape Φ Φ -> List.NoDup (gm_names Φ) ->
       Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵘ gu_open nil Φw ≈ gu_open nil Φw ->
       desc_ok Γ (ds_open Δ Φw Φ)
+  (** A closed module: stored at a location of a past global context, given
+      typed arguments *)
   | dok_closed : forall Γ Θ' T Φ Ns Θ0 Ξ0 p,
       ⊢ᵍ Θ0 ⍮ Ξ0 -> gc_sub Θ0 Ξ0 Θ Ξ -> loc Θ0 Ξ0 p T Φ ->
       tele_ass T -> ctx_scoped 0 T -> ⊢ Θ ⍮ Ξ ⍮ T ->

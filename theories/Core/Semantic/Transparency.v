@@ -17,32 +17,57 @@ Proof. induction Ms; cbn; intuition. Qed.
 
 (** ** Values Without Global Neutrals *)
 
+(** [dclean d]: the value [d], its closures' environments included, has no
+    global neutral; mutually, for the other sorts of values. *)
 Inductive dclean : domain -> Prop :=
+(** A [Π]: its domain and its closure's environment *)
 | dclean_pi : forall a (ρ : env) B, dclean a -> (forall x, declean (env_entry ρ x)) -> dclean (Πᵈ a ρ B)
+(** A large universe *)
 | dclean_univ : forall i, dclean 𝕌ω@i
+(** A small universe: its level *)
 | dclean_suniv : forall l, dclean l -> dclean 𝕌@l
+(** A type of levels *)
 | dclean_level : forall n, dclean (Levelᵈ@n)
+(** A level: its atoms *)
 | dclean_lvl : forall c xs, dclean_la xs -> dclean (lvᵈ c xs)
+(** The unit type *)
 | dclean_True : dclean ⊤ᵈ
+(** The unit's element *)
 | dclean_true : dclean ⋆ᵈ
+(** The empty type *)
 | dclean_False : dclean ⊥ᵈ
+(** A λ: its closure's environment *)
 | dclean_fn : forall (ρ : env) M, (forall x, declean (env_entry ρ x)) -> dclean (λᵈ ρ M)
+(** A neutral: its type and itself *)
 | dclean_neut : forall a m, dclean a -> dclean_ne m -> dclean (⇑ a m)
+(** A member of a module value: the module value *)
 | dclean_member : forall h ch, dmclean h -> dclean (d_member h ch)
+(** A type former: its arguments *)
 | dclean_indty : forall p k args, (forall a, In a args -> dclean a) -> dclean (d_ind p k args)
+(** A constructor: its arguments *)
 | dclean_con : forall p k c args, (forall a, In a args -> dclean a) -> dclean (d_con p k c args)
+(** A recursive result at a function shape: the eliminator's environment,
+    its uniform parameters and the argument *)
 | dclean_ihfn : forall (ρ : env) Bks p ups t f, (forall x, declean (env_entry ρ x)) ->
     (forall a, In a ups -> dclean a) -> dclean f -> dclean (d_ihfn ρ Bks p ups t f)
+(** A shape family: its uniform parameters and its environment *)
 | dclean_shfam : forall p ups (ρ : env) t, (forall a, In a ups -> dclean a) -> (forall x, declean (env_entry ρ x)) ->
     dclean (d_shfam p ups ρ t)
+(** A recursive result's family: the motive's and the shape's
+    environments, and the argument *)
 | dclean_ihfam : forall (ρm : env) As (ρ : env) t f, (forall x, declean (env_entry ρm x)) -> (forall x, declean (env_entry ρ x)) ->
     dclean f -> dclean (d_ihfam ρm As ρ t f)
 with dclean_ne : domain_ne -> Prop :=
+(** A variable; a global never is clean *)
 | dclean_var : forall x, dclean_ne (#ᵈ x)
+(** An application: its head and its argument *)
 | dclean_app : forall m n, dclean_ne m -> dclean_nf n -> dclean_ne (m $ᵈ n)
+(** A stuck [efq]: its environment and its scrutinee *)
 | dclean_exfalso : forall (ρ : env) A m,
     (forall x, declean (env_entry ρ x)) -> dclean_ne m ->
     dclean_ne (efqᵈ m under ρ return A)
+(** A stuck eliminator: its environment, its uniform parameters, its
+    parameters and its scrutinee *)
 | dclean_elim : forall (ρ : env) Bks p ups j args m,
     (forall x, declean (env_entry ρ x)) -> (forall a, In a ups -> dclean a) ->
     (forall a, In a args -> dclean a) -> dclean_ne m ->

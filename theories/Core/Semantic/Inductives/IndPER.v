@@ -26,19 +26,28 @@ Section Fixed_GCtx.
   Definition nth_ctyp (T : list centry) (k : nat) : typ :=
     match List.nth_error T k with Some (ce_ass A) => A | _ => a_True end.
 
+  (** The non-uniform parameters of the member [m], none if there is no
+      such member. *)
   Definition member_nparams (D : ind_decl) (m : nat) : list centry :=
     match ind_member D m with Some Mm => im_nparams Mm | None => nil end.
 
+  (** The type of the [k]-th non-recursive argument of the constructor [c]
+      of the member [m]. *)
   Definition nth_atyp (D : ind_decl) (m : nat) (c : String.string) (k : nat) : typ :=
     match ind_member D m with
     | Some Mm => match ind_con Mm c with Some gs => List.nth k (cargs_nonrec gs) a_True | None => a_True end
     | None => a_True
     end.
 
+  (** The relation of a non-uniform parameter, after the values [vs] of
+      those before it: the head PER of its type there. *)
   Definition canon_nparams_rel (D : ind_decl) (ups : list domain) : nat -> nat -> list domain -> relation domain :=
     fun m k vs => per_head (nth_ctyp (List.rev (member_nparams D m)) k) (nth_ctyp (List.rev (member_nparams D m)) k)
                     (env_args nil (ups ++ vs)) (env_args nil (ups ++ vs)).
 
+  (** The relation of a non-recursive argument, after the non-uniform
+      parameters [ms] and the arguments [vs] before it: the head PER of its
+      type there. *)
   Definition canon_args_rel (D : ind_decl) (ups : list domain) : nat -> list domain -> String.string -> nat -> list domain -> relation domain :=
     fun m ms c k vs => per_head (nth_atyp D m c k) (nth_atyp D m c k)
                          (env_args nil (ups ++ ms ++ vs)) (env_args nil (ups ++ ms ++ vs)).
@@ -82,12 +91,14 @@ Section Fixed_GCtx.
       forall m Mm k A vs vs', ind_member D m = Some Mm ->
         List.nth_error (List.rev (im_nparams Mm)) k = Some (ce_ass A) -> tele_prefix_rel (nr m) k vs vs' ->
         exists a a', ⟦ A ⟧ env_args nil (ups ++ vs) ↘ a /\ ⟦ A ⟧ env_args nil (u2 ++ vs') ↘ a' /\ Dom a ≈ a' ∈ per_univ u.
+    (** The same for the non-recursive arguments' types. *)
     Definition args_related (u2 : list domain) : Prop :=
       forall m Mm ms ms' c gs k A vs vs', ind_member D m = Some Mm ->
         tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms' -> ind_con Mm c = Some gs ->
         List.nth_error (cargs_nonrec gs) k = Some A -> tele_prefix_rel (ar m ms c) k vs vs' ->
         exists a a', ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ a /\ ⟦ A ⟧ env_args nil (u2 ++ ms' ++ vs') ↘ a' /\
           Dom a ≈ a' ∈ per_univ u.
+    (** The same for the shapes' domains. *)
     Definition doms_related (u2 : list domain) : Prop :=
       forall m Mm ms ms' c gs gs1 t gs2 ws ws' k B ys ys', ind_member D m = Some Mm ->
         tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms' ->
@@ -96,6 +107,8 @@ Section Fixed_GCtx.
         List.nth_error (ptyp_doms t) k = Some B -> tele_prefix_rel (shape_doms_rel (dr m) ms ws (ptyp_doms t)) k ys ys' ->
         exists a a', ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ a /\
           ⟦ B ⟧ env_args nil (u2 ++ ms' ++ ws' ++ ys') ↘ a' /\ Dom a ≈ a' ∈ per_univ u.
+    (** The recursive arguments' parameters at [ups] and at [u2] are
+        related at the member each shape ends in. *)
     Definition recs_related (u2 : list domain) : Prop :=
       forall m Mm ms ms' c gs gs1 t gs2 ws ws' ys ys', ind_member D m = Some Mm ->
         tele_rel (nr m) (List.rev (im_nparams Mm)) ms ms' ->

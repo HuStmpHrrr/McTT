@@ -42,18 +42,30 @@ Section Fixed_GCtx.
     and the term [M] at its instance [T] to the value [v]. *)
 #[warnings="-cannot-define-projection"]
 Record glu_arg (Δ : ctx) (ρ : env) (A T M : exp) (v : domain) : Prop := mk_glu_arg
-  { ga_lvl : uidx
+  { (** The universe index *)
+    ga_lvl : uidx
+    (** The type's value *)
   ; ga_val : domain
+    (** Its type predicate *)
   ; ga_typ : glu_typ_pred
+    (** Its element predicate *)
   ; ga_exp : glu_exp_pred
+    (** [A] evaluates in [ρ] to it *)
   ; ga_eval : ⟦ A ⟧ ρ ↘ ga_val
+    (** It is glued at the universe *)
   ; ga_elem : DG ga_val ∈ glu_univ_elem ga_lvl ↘ ga_typ ↘ ga_exp
+    (** [T] is glued to it *)
   ; ga_glu_typ : Δ ⊢ T ® ga_typ
+    (** [M] at [T] is glued to [v] *)
   ; ga_glu : Δ ⊢ M : T ® v ∈ ga_exp }.
 
+(** The terms [Ms] glued to the values [vs] along [C], positionwise. *)
 Record glu_args (Δ : ctx) (C : ctx) (τ : sub) (ρ : env) (Ms : list exp) (vs : list domain) : Prop := mk_glu_args
-  { gas_len : List.length Ms = List.length C
+  { (** One term per entry *)
+    gas_len : List.length Ms = List.length C
+    (** One value per entry *)
   ; gas_vals_len : List.length vs = List.length C
+    (** Each term glued to its value at its type, after those before *)
   ; gas_glu : forall k M T v A, List.nth_error Ms k = Some M -> List.nth_error (tele_insts C τ Ms) k = Some T ->
       List.nth_error vs k = Some v -> List.nth_error (List.rev C) k = Some (ce_ass A) ->
       glu_arg Δ (env_args ρ (List.firstn k vs)) A T M v }.
@@ -556,6 +568,7 @@ Qed.
 
 (** ** The Non-Recursive Arguments, Syntactically *)
 
+(** The terms among [As] at the non-recursive positions of [gs]. *)
 Fixpoint nonrec_exps (gs : list carg) (As : list exp) : list exp :=
   match gs, As with
   | ca_arg _ :: gs, A :: As => A :: nonrec_exps gs As

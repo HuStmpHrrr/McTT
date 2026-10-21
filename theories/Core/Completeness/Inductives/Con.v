@@ -199,9 +199,13 @@ Qed.
     container's constructor at the view's instance at the uniform
     parameters, and the rest. *)
 Inductive con_value (p : qname) (D : ind_decl) (k : nat) (Mk : imember) (c : String.string) : list domain -> domain -> Prop :=
+(** A declared member: the constructor at the arguments *)
 | con_value_decl : forall pm xs, im_head Mk = mh_decl pm -> con_value p D k Mk c xs (d_con p k c xs)
+(** A view, before its last uniform parameter: the view's constructor *)
 | con_value_view_uparams : forall qc kc Is vm xs, im_head Mk = mh_view qc kc Is vm -> List.length xs < ind_nu D ->
     con_value p D k Mk c xs (d_con p k c xs)
+(** A view, after its uniform parameters: the container's constructor at
+    the instance, then the rest *)
 | con_value_view : forall qc kc Is vm xs cs, im_head Mk = mh_view qc kc Is vm -> ind_nu D <= List.length xs ->
     ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (List.firstn (ind_nu D) xs) ↘ cs ->
     con_value p D k Mk c xs (d_con qc kc c (cs ++ List.skipn (ind_nu D) xs)).

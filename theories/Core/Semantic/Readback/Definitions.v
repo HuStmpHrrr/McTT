@@ -72,15 +72,20 @@ where "'Fcargs' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ vs" := (fres
     has no variable; its result is the eliminator's ([wrap_ihs_eval]). *)
 Inductive fresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) :
   env -> list carg -> list carg -> list domain -> nat -> list domain -> Prop :=
+(** No argument, no result *)
 | fresh_ihs_nil :
   `( Fihs nil at nil nil under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ nil )
+(** A non-recursive argument: none, the argument entering [ρa] *)
 | fresh_ihs_arg :
   `( Fihs vs at gs' gs under ρ As in Θ ⍮ Ξ ⍮ ρa ↦ v ⍮ s ↘ ihs ->
      Fihs v :: vs at (ca_arg T' :: gs') (ca_arg T :: gs) under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs )
+(** An argument recursive in both: a fresh variable at its recursive
+    result's type *)
 | fresh_ihs_rec :
   `( ⟦ihty v of t under ρ As ⟧ Θ ⍮ Ξ ⍮ ρa ↘ a ->
      Fihs vs at gs' gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ S s ↘ ihs ->
      Fihs v :: vs at (ca_rec t' :: gs') (ca_rec t :: gs) under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ⇑! a s :: ihs )
+(** An argument recursive in [gs] only (nested through): no variable *)
 | fresh_ihs_nest :
   `( Fihs vs at gs' gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs ->
      Fihs v :: vs at (ca_arg T' :: gs') (ca_rec t :: gs) under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs )
@@ -96,15 +101,20 @@ where "'Fihs' vs 'at' gs' gs 'under' ρm As 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s �
     as its own group's, [gs'] is [gs] and the results are [ihs]. *)
 Inductive wrap_ihs_eval (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (ups : list domain) (Bks : list eblock) :
   list carg -> list carg -> list domain -> list domain -> list domain -> Prop :=
+(** No argument, no result *)
 | wrap_ihs_eval_nil :
   `( ⟦wihs nil of nil nil with nil under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ nil )
+(** Recursive in both: the next of [ihs] *)
 | wrap_ihs_eval_rec :
   `( ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
      ⟦wihs v :: vs of (ca_rec t' :: gs') (ca_rec t :: gs) with (ih :: ihs) under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih :: r )
+(** Recursive for the branch's group only: the eliminator at the
+    argument *)
 | wrap_ihs_eval_nest :
   `( ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih ->
      ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
      ⟦wihs v :: vs of (ca_arg T' :: gs') (ca_rec t :: gs) with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih :: r )
+(** Non-recursive: no result *)
 | wrap_ihs_eval_arg :
   `( ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
      ⟦wihs v :: vs of (ca_arg T' :: gs') (ca_arg T :: gs) with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
@@ -265,8 +275,10 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 where "'Rtyp' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_typ Θ Ξ s m M) : type_scope
 (** The atoms of a level, read one by one. *)
 with read_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> lvl_atoms -> Prop :=
+(** No atom *)
 | read_la_nil :
   `( Rla nil in Θ ⍮ Ξ ⍮ s ↘ la_nil )
+(** The first atom's neutral, then the rest *)
 | read_la_cons :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
@@ -275,8 +287,11 @@ where "'Rla' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" := (read_la Θ Ξ s xs ys) : ty
 (** Values at a telescope, outermost first, each at its type in the
     environment of the values before it. *)
 with read_ps (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list domain -> nfs -> Prop :=
+(** No value *)
 | read_ps_nil :
   `( Rps nil at nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_nil )
+(** The first value at its type, then the rest with it in the
+    environment *)
 | read_ps_cons :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
@@ -287,13 +302,16 @@ where "'Rps' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (read_ps Θ 
     each at its type: a non-recursive one at the type its declaration gives,
     a recursive one at the type itself. *)
 with read_cargs (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> list carg -> list domain -> nfs -> Prop :=
+(** No argument *)
 | read_cargs_nil :
   `( Rcargs nil at nil of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_nil )
+(** A non-recursive argument, at its declared type *)
 | read_cargs_arg :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
      Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ v ⍮ s ↘ Vs ->
      Rcargs v :: vs at ca_arg A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons V Vs )
+(** A recursive argument, along its shape *)
 | read_cargs_rec :
   `( Rsh v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V ->
      Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs ->
@@ -306,10 +324,12 @@ where "'Rcargs' vs 'at' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" 
     parameters.  Its value is of the container's type at a view
     ([eval_shty]); it is read at the group's own member. *)
 with read_shape (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> ptyp -> domain -> nf -> Prop :=
+(** At the end: at the group's own member at the shape's parameters *)
 | read_shape_self :
   `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
      Rnf ⇓ (d_ind p j (ups ++ bs)) v in Θ ⍮ Ξ ⍮ s ↘ V ->
      Rsh v at pt_self j Ps of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V )
+(** At a domain: a λ, the rest read under a fresh variable of it *)
 | read_shape_pi :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
      Rtyp b in Θ ⍮ Ξ ⍮ s ↘ A ->
@@ -327,8 +347,11 @@ where "'Rsh' v 'at' t 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ V" := (re
     computed by the eliminator at [ups] too. *)
 with read_blocks (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -> list eblock ->
                                       option (list nat) -> nat -> list imember -> nblocks -> Prop :=
+(** No member left *)
 | read_blocks_nil :
   `( Rblks i nil from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nblocks_nil )
+(** The block for the member [Mi]: the motive, then the branches, then
+    the rest *)
 | read_blocks_cons :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D (elim_src sel i) = Some Mv ->
@@ -354,8 +377,11 @@ where "'Rblks' i Ms 'from' p ups Bks sel 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ N
 with read_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -> list eblock ->
                                     imember -> exp -> imember -> (qname * nat * list domain) ->
                                     list (string * list carg) -> list (string * nat * exp) -> nbrs -> Prop :=
+(** No constructor left *)
 | read_brs_nil :
   `( Rbrs nil at nil of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_nil )
+(** The branch of the next constructor, under its fresh variables, at
+    the motive's instance, then the rest *)
 | read_brs_cons :
   `( ind_con Mv c = Some gs ->
      n0 = (im_nn Mi + List.length gs' + cargs_nrec gs)%nat ->

@@ -36,6 +36,8 @@ Definition flag_unseal (b : bool) (B : option exp) : bool :=
   | None => b
   end.
 
+(** An entry unsealed: every definition with a body made transparent, at
+    every depth of nesting; mutually, for module bodies. *)
 Fixpoint ge_unseal (E : gentry) : gentry :=
   match E with
   | ge_def b pv A B => ge_def (flag_unseal b B) pv A B
@@ -294,9 +296,13 @@ Proof. intros [| ? [? [[] ?| ?]] | |]; reflexivity. Qed.
     [dle R R']: [R'] is [R] read in the unsealed context: a definition may
     have gained its body as its δ-reduct, and a stored body is unsealed. *)
 Inductive dle : mdesc -> mdesc -> Prop :=
+(** A term may gain a δ-reduct *)
 | dl_term : forall A om om', dle (ds_term A om) (ds_term A om')
+(** An open module is unchanged *)
 | dl_open : forall Δ Φ Φx, dle (ds_open Δ Φ Φx) (ds_open Δ Φ Φx)
+(** A closed module's stored body is unsealed *)
 | dl_closed : forall Θ p T Φ Ns, dle (ds_closed Θ p T Φ Ns) (ds_closed Θ p T (gm_unseal Φ) Ns)
+(** An inductive member is unchanged *)
 | dl_ind : forall Θ p k Ns, dle (ds_ind Θ p k Ns) (ds_ind Θ p k Ns).
 
 #[local] Hint Constructors dle : core.
@@ -845,6 +851,8 @@ Proof. apply unseal_preserves_wf. Qed.
     Every definition has a body, at every depth of nesting; an alias declares
     no definition of its own.  Transparency is not asked for. *)
 
+(** [ge_no_axioms E]: every definition in [E] has a body; mutually,
+    [gm_no_axioms] for module bodies. *)
 Fixpoint ge_no_axioms (E : gentry) : Prop :=
   match E with
   | ge_def _ _ _ B => B <> None

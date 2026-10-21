@@ -90,7 +90,9 @@ Ltac grp_in_model Hl Hta G :=
 (** No non-uniform parameter, no non-recursive argument, no domain of a
     shape: the components' relations are never asked. *)
 Definition no_nparams_rel : nat -> nat -> list domain -> relation domain := fun _ _ _ _ _ => False.
+(** The empty relation of non-recursive arguments. *)
 Definition no_args_rel : nat -> list domain -> string -> nat -> list domain -> relation domain := fun _ _ _ _ _ _ _ => False.
+(** The empty relation of shape domains. *)
 Definition no_doms_rel : nat -> list domain -> exp -> relation domain := fun _ _ _ _ _ => False.
 
 (** ** [T] Nested Through a Container with a View
@@ -105,12 +107,17 @@ Section ChainedViews.
   Context {GC : GCtx}.
   Variables (pS pC pT pmS pmC pmT : qname) (TA TP TB SS SC ST : exp).
 
+  (** The filed group of [Sigma]: one declared member, no view. *)
   Definition sigma_group : ind_decl :=
     mk_ind (ce_ass TP :: ce_ass TA :: nil) SS
       (mk_imember (mh_decl pmS) nil (("pair", ca_arg (a_var 1) :: ca_arg (a_app (a_var 1) (a_var 0)) :: nil) :: nil) :: nil).
 
+  (** The instance [Sigma (C B) (λ_. B')] of [Sigma]'s uniform
+      parameters. *)
   Definition sigma_inst (B B' : exp) : list exp := a_app (a_ind pC 0) B :: a_fn (a_app (a_ind pC 0) B) B' :: nil.
 
+  (** The filed group of [C]: [C] itself, and the view
+      [Sigma (C B) (λ_. B)]. *)
   Definition c_group : ind_decl :=
     mk_ind (ce_ass TB :: nil) SC
       (mk_imember (mh_decl pmC) nil (("mk", ca_rec (pt_self 1 nil) :: nil) :: nil)
@@ -118,6 +125,8 @@ Section ChainedViews.
             (("pair", ca_rec (pt_self 0 nil) :: ca_arg (a_var 0) :: nil) :: nil)
        :: nil).
 
+  (** The filed group of [T]: [T], the view [C T], and the inherited view
+      [Sigma (C T) (λ_. T)]. *)
   Definition t_over_c_group : ind_decl :=
     mk_ind nil ST
       (mk_imember (mh_decl pmT) nil (("t", ca_rec (pt_self 1 nil) :: nil) :: nil)
@@ -219,11 +228,13 @@ Section RoseViews.
   Context {GC : GCtx}.
   Variables (pL pR pT pmL pmR pmT : qname) (TL TR SL SR ST : exp).
 
+  (** The filed group of [List]: one declared member, no view. *)
   Definition list_group : ind_decl :=
     mk_ind (ce_ass TL :: nil) SL
       (mk_imember (mh_decl pmL) nil (("nil", nil) :: ("cons", ca_arg (a_var 0) :: ca_rec (pt_self 0 nil) :: nil) :: nil)
        :: nil).
 
+  (** The filed group of [Rose]: [Rose], and the view [List (Rose A)]. *)
   Definition rose_group : ind_decl :=
     mk_ind (ce_ass TR :: nil) SR
       (mk_imember (mh_decl pmR) nil (("node", ca_arg (a_var 0) :: ca_rec (pt_self 1 nil) :: nil) :: nil)
@@ -231,6 +242,8 @@ Section RoseViews.
             (("nil", nil) :: ("cons", ca_rec (pt_self 0 nil) :: ca_rec (pt_self 1 nil) :: nil) :: nil)
        :: nil).
 
+  (** The filed group of [T]: [T], the view [Rose T], and the inherited
+      view [List (Rose T)]. *)
   Definition t_over_rose_group : ind_decl :=
     mk_ind nil ST
       (mk_imember (mh_decl pmT) nil (("t", ca_rec (pt_self 1 nil) :: nil) :: nil)
@@ -338,10 +351,12 @@ Section PhantomViews.
   Context {GC : GCtx}.
   Variables (pP pT pmP pmT : qname) (TA TB TF SP ST Z : exp).
 
+  (** The filed group of [Phantom]: one declared member, no view. *)
   Definition phantom_group : ind_decl :=
     mk_ind (ce_ass TB :: ce_ass TA :: nil) SP
       (mk_imember (mh_decl pmP) nil (("mk", ca_arg (a_var 1) :: nil) :: nil) :: nil).
 
+  (** The filed group of [T]: [T], and the view [Phantom (T f) (f Z)]. *)
   Definition t_over_phantom_group : ind_decl :=
     mk_ind (ce_ass TF :: nil) ST
       (mk_imember (mh_decl pmT) nil (("node", ca_rec (pt_self 1 nil) :: nil) :: nil)

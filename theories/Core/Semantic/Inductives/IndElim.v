@@ -194,9 +194,13 @@ Section Fixed_GCtx.
         group, its uniform parameters admissible for the member. *)
     #[warnings="-cannot-define-projection"]
     Record end_adm (j : nat) (hd : qname) (k : nat) (py : list domain) : Prop := mk_end_adm
-      { ea_Mj : imember
+      { (** The member the shape ends in *)
+        ea_Mj : imember
+        (** It is the group's [j]-th *)
       ; ea_member : ind_member D j = Some ea_Mj
+        (** It is the declared member [k] of the group at [hd] *)
       ; ea_ref : im_ref p j ea_Mj = (hd, k)
+        (** [py] has as many entries as its own uniform parameters *)
       ; ea_len : List.length py = im_unu D ea_Mj }.
 
     Lemma mref_at_end_adm : forall X, List.length X = ind_nu D ->
@@ -402,7 +406,10 @@ Section Fixed_GCtx.
         after [pre]: at related arguments, read back alike, at every
         domain. *)
     Inductive shape_tops (k : nat) : list domain -> ptyp -> domain -> domain -> Prop :=
+    (** At the end, nothing *)
     | shape_tops_self : forall pre j Ps a a', shape_tops k pre (pt_self j Ps) a a'
+    (** At a domain: related arguments read back alike, and the rest after
+        them *)
     | shape_tops_pi : forall pre B t b ρ F b' ρ' F',
         (forall c c', dr k pre B c c' -> Dom ⇓ b c ≈ ⇓ b' c' ∈ per_top) ->
         (forall c c' x x', dr k pre B c c' ->
@@ -492,12 +499,20 @@ Section Fixed_GCtx.
         group's at a declared member) reading back alike, as the read
         eliminator carries them. *)
     Record elim_ups_ok (ua ub : list domain) : Prop := mk_elim_ups_ok
-      { euo_len_a : List.length ua = ind_nu D
+      { (** [ua] has one entry per uniform parameter *)
+        euo_len_a : List.length ua = ind_nu D
+        (** So has [ub] *)
       ; euo_len_b : List.length ub = ind_nu D
+        (** [ua] is admissible beside [ups] *)
       ; euo_adm_a : adm_uparams D ups nr ar dr ua
+        (** So is [ub] *)
       ; euo_adm_b : adm_uparams D ups nr ar dr ub
+        (** Each member's type is defined at [ua] *)
       ; euo_mref_a : mrefs_ok ua
+        (** And at [ub] *)
       ; euo_mref_b : mrefs_ok ub
+        (** The containers' uniform parameters at [ua] and [ub] read back
+            alike *)
       ; euo_cups : forall j Mj hd k pa pb Dq, ind_member D j = Some Mj ->
           ⟦mref j of p ua ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, pa) -> ⟦mref j of p ub ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, pb) ->
           ind_lookup gc_deps gc_stack hd = Some Dq ->
@@ -533,16 +548,19 @@ Section Fixed_GCtx.
           on each side, and at a domain, pointwise. *)
       Inductive rec_result_rel (k : nat) (u u' : list domain) :
           list domain -> list domain -> ptyp -> domain -> domain -> domain -> domain -> Prop :=
+      (** At the end: related at [Rel] of the member [j] *)
       | rec_result_self : forall pre pre' j Ps bs bs' v v' ih ih',
           ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u ++ pre) ↘ bs ->
           ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u' ++ pre') ↘ bs' ->
           Rel j bs v bs' v' ih ih' ->
           rec_result_rel k u u' pre pre' (pt_self j Ps) v v' ih ih'
+      (** At a domain: pointwise at related arguments *)
       | rec_result_pi : forall pre pre' B t v v' ih ih',
           (forall c c', dr k pre B c c' -> rec_result_app_rel k u u' (pre ++ c :: nil) (pre' ++ c' :: nil) t v c v' c' ih ih') ->
           rec_result_rel k u u' pre pre' (pt_pi B t) v v' ih ih'
       with rec_result_app_rel (k : nat) (u u' : list domain) :
           list domain -> list domain -> ptyp -> domain -> domain -> domain -> domain -> domain -> domain -> Prop :=
+      (** The arguments and the results applied, related at the rest *)
       | rec_result_app_mk : forall pre pre' t v c v' c' ih ih' fc fc' r r',
           $| v & c | gc_deps ⍮ gc_stack ↘ fc -> $| v' & c' | gc_deps ⍮ gc_stack ↘ fc' ->
           $| ih & c | gc_deps ⍮ gc_stack ↘ r -> $| ih' & c' | gc_deps ⍮ gc_stack ↘ r' ->
@@ -554,10 +572,13 @@ Section Fixed_GCtx.
           non-recursive arguments before them on each side. *)
       Inductive rec_results_rel (k : nat) (u u' : list domain) :
           list domain -> list domain -> list carg -> list domain -> list domain -> list domain -> list domain -> Prop :=
+      (** No argument *)
       | rec_results_nil : forall pre pre', rec_results_rel k u u' pre pre' nil nil nil nil nil
+      (** A non-recursive argument joins the prefixes *)
       | rec_results_arg : forall pre pre' A gs v v' vs vs' ihs ihs',
           rec_results_rel k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) gs vs vs' ihs ihs' ->
           rec_results_rel k u u' pre pre' (ca_arg A :: gs) (v :: vs) (v' :: vs') ihs ihs'
+      (** A recursive argument's results are related *)
       | rec_results_rec : forall pre pre' t gs v v' vs vs' ih ih' ihs ihs',
           rec_result_rel k u u' pre pre' t v v' ih ih' ->
           rec_results_rel k u u' pre pre' gs vs vs' ihs ihs' ->
@@ -766,21 +787,35 @@ Section Fixed_GCtx.
       Record brs_pair (s : nat) (v : nat) (Mv Mi : imember)
           (hd : qname) (k : nat) (prea preb nsa nsb : list domain) (c : String.string) (gs' gs : list carg) : Prop :=
         mk_brs_pair
-        { bp_vsa : list domain
+        { (** The fresh arguments, left *)
+          bp_vsa : list domain
+          (** The fresh arguments, right *)
         ; bp_vsb : list domain
+          (** The fresh recursive results, left *)
         ; bp_ihsa : list domain
+          (** The fresh recursive results, right *)
         ; bp_ihsb : list domain
+          (** The recursive results the branch is read under, left *)
         ; bp_wa : list domain
+          (** The recursive results the branch is read under, right *)
         ; bp_wb : list domain
+          (** The left arguments are the fresh ones at [ua] *)
         ; bp_Fa : Fcargs gs of p ua in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ nsa) ⍮ (s + im_nn Mi)%nat ↘ bp_vsa
+          (** The right arguments are the fresh ones at [ub] *)
         ; bp_Fb : Fcargs gs of p ub in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsb) ⍮ (s + im_nn Mi)%nat ↘ bp_vsb
+          (** The left fresh recursive results *)
         ; bp_Ia : Fihs bp_vsa at gs' gs under ρa (blocks_motives Bksa)
             in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ nsa) ⍮ (s + im_nn Mi + List.length gs')%nat ↘ bp_ihsa
+          (** The right fresh recursive results *)
         ; bp_Ib : Fihs bp_vsb at gs' gs under ρb (blocks_motives Bksb)
             in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsb) ⍮ (s + im_nn Mi + List.length gs')%nat ↘ bp_ihsb
+          (** The left results, the nested-through ones by the eliminator *)
         ; bp_Wa : ⟦wihs bp_vsa of gs' gs with bp_ihsa under p ua Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ bp_wa
+          (** The right results, likewise *)
         ; bp_Wb : ⟦wihs bp_vsb of gs' gs with bp_ihsb under p ub Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ bp_wb
+          (** The constructors at the fresh arguments are related at [v] *)
         ; bp_rel : grp_rel p D ups nr ar dr v ua ub nsa nsb (d_con hd k c (prea ++ nsa ++ bp_vsa)) (d_con hd k c (preb ++ nsb ++ bp_vsb))
+          (** The recursive results are related *)
         ; bp_recs : rec_results_rel v ua ub nsa nsb gs
             bp_vsa bp_vsb bp_wa bp_wb }.
 
@@ -842,25 +877,43 @@ Section Fixed_GCtx.
       #[warnings="-cannot-define-projection"]
       Record member_pair (s : nat) (sel : option (list nat)) (i : nat) (Mi : imember) : Prop :=
         mk_member_pair
-        { mp_Mv : imember
+        { (** The block's member of this group *)
+          mp_Mv : imember
+          (** It is the member [elim_src sel i] *)
         ; mp_member : ind_member D (elim_src sel i) = Some mp_Mv
+          (** It has as many non-uniform parameters as [Mi] *)
         ; mp_nn : im_nn mp_Mv = im_nn Mi
+          (** The group of its type's declared member *)
         ; mp_hd : qname
+          (** That declared member *)
         ; mp_k : nat
+          (** Its type's uniform parameters at [ua] *)
         ; mp_prea : list domain
+          (** Its type's uniform parameters at [ub] *)
         ; mp_preb : list domain
+          (** Its type at [ua] *)
         ; mp_refa : ⟦mref elim_src sel i of p ua ⟧ gc_deps ⍮ gc_stack ↘ (mp_hd, mp_k, mp_prea)
+          (** Its type at [ub] *)
         ; mp_refb : ⟦mref elim_src sel i of p ub ⟧ gc_deps ⍮ gc_stack ↘ (mp_hd, mp_k, mp_preb)
+          (** [mp_prea] has the member's own uniform parameter count *)
         ; mp_lena : List.length mp_prea = im_unu D mp_Mv
+          (** So has [mp_preb] *)
         ; mp_lenb : List.length mp_preb = im_unu D mp_Mv
+          (** The fresh non-uniform parameters, left *)
         ; mp_nsa : list domain
+          (** The fresh non-uniform parameters, right *)
         ; mp_nsb : list domain
+          (** The left ones are fresh at [ua] *)
         ; mp_Fa : Ftele List.rev (im_nparams mp_Mv) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ mp_nsa
+          (** The right ones are fresh at [ub] *)
         ; mp_Fb : Ftele List.rev (im_nparams mp_Mv) in gc_deps ⍮ gc_stack ⍮ env_args nil ub ⍮ s ↘ mp_nsb
+          (** The fresh scrutinees are related at the block's member *)
         ; mp_neut : grp_rel p D ups nr ar dr (elim_src sel i) ua ub mp_nsa mp_nsb
             (⇑! (d_ind mp_hd mp_k (mp_prea ++ mp_nsa)) ((s + im_nn Mi)%nat))
             (⇑! (d_ind mp_hd mp_k (mp_preb ++ mp_nsb)) ((s + im_nn Mi)%nat))
+          (** [Mi] and the block's member have the same constructor names *)
         ; mp_names : List.map fst (im_cons Mi) = List.map fst (im_cons mp_Mv)
+          (** Each branch is a [brs_pair] *)
         ; mp_brs : forall c gs', List.In (c, gs') (im_cons Mi) ->
             exists gs, ind_con mp_Mv c = Some gs /\ cargs_plen D gs /\ List.length gs = List.length gs' /\
               brs_pair s (elim_src sel i) mp_Mv Mi mp_hd mp_k mp_prea mp_preb mp_nsa mp_nsb c gs' gs }.
@@ -920,25 +973,44 @@ Section Fixed_GCtx.
       #[warnings="-cannot-define-projection"]
       Record args_pair (v : nat) (nsu : list domain) (c : String.string) (gsf : list carg)
           (nsa nsb wsa wsb : list domain) (gs' gs : list carg) (s s2 : nat) : Prop := mk_args_pair
-        { ap_vsa : list domain
+        { (** The fresh arguments, left *)
+          ap_vsa : list domain
+          (** The fresh arguments, right *)
         ; ap_vsb : list domain
+          (** The fresh recursive results, left *)
         ; ap_ihsa : list domain
+          (** The fresh recursive results, right *)
         ; ap_ihsb : list domain
+          (** The recursive results the branch is read under, left *)
         ; ap_wa : list domain
+          (** The recursive results the branch is read under, right *)
         ; ap_wb : list domain
+          (** The reference non-recursive arguments both sides are related
+              to *)
         ; ap_wfu : list domain
+          (** The left arguments are the fresh ones at [ua] *)
         ; ap_Fa : Fcargs gs of p ua in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ nsa ++ wsa) ⍮ s ↘ ap_vsa
+          (** The right arguments are the fresh ones at [ub] *)
         ; ap_Fb : Fcargs gs of p ub in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsb ++ wsb) ⍮ s ↘ ap_vsb
+          (** The left fresh recursive results *)
         ; ap_Ia : Fihs ap_vsa at gs' gs under ρa (blocks_motives Bksa)
             in gc_deps ⍮ gc_stack ⍮ env_args nil (ua ++ nsa ++ wsa) ⍮ s2 ↘ ap_ihsa
+          (** The right fresh recursive results *)
         ; ap_Ib : Fihs ap_vsb at gs' gs under ρb (blocks_motives Bksb)
             in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsb ++ wsb) ⍮ s2 ↘ ap_ihsb
+          (** The left results, the nested-through ones by the eliminator *)
         ; ap_Wa : ⟦wihs ap_vsa of gs' gs with ap_ihsa under p ua Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ ap_wa
+          (** The right results, likewise *)
         ; ap_Wb : ⟦wihs ap_vsb of gs' gs with ap_ihsb under p ub Bksb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ap_wb
+          (** The left non-recursive arguments are related to the
+              reference *)
         ; ap_Pa : tele_prefix_rel (ar v nsu c) (List.length (cargs_nonrec gsf)) ap_wfu (wsa ++ nonrec_arg_vals gs ap_vsa)
+          (** So are the right ones *)
         ; ap_Pb : tele_prefix_rel (ar v nsu c) (List.length (cargs_nonrec gsf)) ap_wfu (wsb ++ nonrec_arg_vals gs ap_vsb)
+          (** The arguments are related by the shapes *)
         ; ap_args : con_args_rel p D (okr_at D ups nr) nr ar dr v ua ub
             (nsa ++ wsa) (nsb ++ wsb) gs ap_vsa ap_vsb
+          (** The recursive results are related *)
         ; ap_recs : rec_results_rel v ua ub (nsa ++ wsa) (nsb ++ wsb) gs ap_vsa ap_vsb ap_wa ap_wb }.
 
       Lemma fresh_args : forall v Mv c gsf nsu nsa nsb (rk : nat -> nat) r,

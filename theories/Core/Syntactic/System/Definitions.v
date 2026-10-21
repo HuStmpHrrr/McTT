@@ -114,7 +114,10 @@ Definition let_ann (oA : option typ) (A : typ) : Prop := oA = None \/ oA = Some 
     the eliminator at those members applied to fresh variables; the rank
     makes that recursion well founded. *)
 Record view_rank_ok (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (rk : nat -> nat) : Prop := mk_view_rank_ok
-  { vro_decl : forall k Mk pm, ind_member D k = Some Mk -> im_head Mk = mh_decl pm -> rk k = 0
+  { (** A declared member has rank [0] *)
+    vro_decl : forall k Mk pm, ind_member D k = Some Mk -> im_head Mk = mh_decl pm -> rk k = 0
+    (** A view's rank is above that of every member it nests through, in
+        every block the eliminator at the view reads *)
   ; vro_nest : forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs, ind_member D k = Some Mk ->
       im_head Mk = mh_view qc k' Is vm -> ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' ->
       List.nth_error vm i' = Some v -> ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
@@ -173,6 +176,7 @@ Inductive wf_ctx : gdeps -> gstack -> ctx -> Prop :=
 where "⊢ Θ ⍮ Ξ ⍮ Γ" := (wf_ctx Θ Ξ Γ) : type_scope
 
 with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
+(** A large universe is in the next one. *)
 | wf_typ :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Typeω@i : Typeω@(S i) )
@@ -193,22 +197,28 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
   `( fst o <= n ->
      ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ o : Level@n )
+(** The successor of a level. *)
 | wf_succl :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊢ succl M : Level@n )
+(** The join of two levels. *)
 | wf_maxl :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊢ maxl M N : Level@n )
+(** The unit type is small, at the least level. *)
 | wf_True :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Type@0 )
+(** The unit's only element. *)
 | wf_true :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ⋆ : ⊤ )
+(** The empty type is small, at the least level. *)
 | wf_False :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Type@0 )
+(** Elimination of the empty type, at a motive over it. *)
 | wf_exfalso :
   `( Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊥ ->
@@ -293,10 +303,12 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ A : U ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : U[↑]ʷ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : U )
+(** A λ-abstraction, over a type. *)
 | wf_fn :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M : B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ λ A M : Π A B )
+(** An application, at the codomain instantiated by the argument. *)
 | wf_app :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i ->
@@ -333,10 +345,12 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      (forall M, ds_red R = Some M -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : A )
+(** A variable, at the type the context gives it. *)
 | wf_vlookup :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Γ ∋ #x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ #x : A )
+(** Subsumption: a term is at every type above its type. *)
 | wf_exp_subtyp :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      (** This premise is needed for soundness.  It is asymmetric: only [A'] is

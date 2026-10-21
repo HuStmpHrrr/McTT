@@ -504,8 +504,10 @@ Qed.
     its type in its context. *)
 #[warnings="-cannot-define-projection"]
 Record glu_blocks (Γ : ctx) (p : qname) (D : ind_decl) (Us : list exp) (Bks : list eblock) (i : nat) : Prop := mk_glu_blocks
-  { gbk_motive : forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
+  { (** Each motive is valid in its member's motive context *)
+    gbk_motive : forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
       elim_mctx p D k Mk Us ++ Γ ⊩ eb_motive b : Typeω@i
+    (** Each branch is valid at its branch type in its context *)
   ; gbk_branch : forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
       ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
       elim_bctx p D Mk gs (blocks_motives Bks) Us ++ Γ ⊩ B : elim_bty p k Mk c gs (eb_motive b) Us }.
@@ -592,11 +594,19 @@ Section ElimGlu.
   #[warnings="-cannot-define-projection"]
   Record elim_out (k : nat) (Mk : imember) (Δ' : ctx) (σ' : sub) (oq' : option qname) (Ns' : list exp) (M' : exp)
       (mv : domain) (ns : list domain) : Prop := mk_elim_out
-    { eo_val : domain
+    { (** The eliminator's value at [mv] *)
+      eo_val : domain
+      (** The motive's value at [mv] *)
     ; eo_motive : domain
+      (** The eliminator at [mv] evaluates to [eo_val] *)
     ; eo_eval : ⟦elim mv at k of p ups Bks ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ eo_val
+      (** The motive of [k]'s block at [ns] and [mv] evaluates to
+          [eo_motive] *)
     ; eo_eval_motive : ⟦ List.nth k (blocks_motives Bks) a_True ⟧ env_args ρ (ns ++ mv :: nil) ↘ eo_motive
+      (** The motive's value is a type of the universe *)
     ; eo_per : Dom eo_motive ≈ eo_motive ∈ per_univ iA
+      (** At any gluing of the motive's value, the elimination of [M'] is
+          glued to [eo_val] *)
     ; eo_glu : forall P El, DG eo_motive ∈ glu_univ_elem iA ↘ P ↘ El ->
         Δ' ⊢ a_elim oq' (List.map (fun U => U[σ']) Us) k (blocks_sub Bks σ') M'
           : (List.nth k (blocks_motives Bks) a_True)[sb_qn (S (im_nn Mk)) σ'][sb_of_list Id (Ns' ++ M' :: nil)] ® eo_val ∈ El }.

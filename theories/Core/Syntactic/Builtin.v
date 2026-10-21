@@ -37,6 +37,8 @@ Definition nat_cons_shape (cs : list (string * list carg)) : option (string * st
   | _ => None
   end.
 
+(** The names of the zero and successor constructors of a group of the
+    shape of the natural numbers, if [D] is one. *)
 Definition nat_shape (D : ind_decl) : option (string * string) :=
   match ind_uparams D, ind_members D with
   | nil, mk_imember (mh_decl _) nil cs :: nil => nat_cons_shape cs
@@ -132,6 +134,9 @@ Section Literals.
   (** The bound type and its constructors, if any. *)
   Variable nv : option (qname * string * string).
 
+  (** A term with the natural-number type token and its numeric literals
+      replaced by the bound type and its constructors, or an error if one
+      appears and nothing is bound; mutually, for its other sorts. *)
   Fixpoint exp_lits (M : exp) {struct M} : lres exp :=
     match M with
     | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False | a_var _ | a_ind _ _ | a_con _ _ _ => lok M
@@ -240,6 +245,7 @@ Section Literals.
                                 lok (fst cg, args)) (rm_cons Rm) in
     lok (mk_rmem (rm_name Rm) Δ' A' cs').
 
+  (** A group declaration as written, its literals replaced throughout. *)
   Definition decl_lits (R : raw_decl) : lres raw_decl :=
     let% Δ' := tele_lits (rd_uparams R) in
     let% ms' := lmap member_lits (rd_members R) in

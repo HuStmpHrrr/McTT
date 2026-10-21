@@ -16,6 +16,8 @@ Import Domain_Notations.
 
 (** ** Normal Forms Whose Global Heads Satisfy [G] *)
 
+(** [nf_stuck G W]: every global heading a neutral in [W] satisfies [G];
+    mutually, for the other sorts of normal forms. *)
 Fixpoint nf_stuck (G : qname -> Prop) (W : nf) : Prop :=
   match W with
   | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => True
@@ -82,33 +84,60 @@ Section Stuck.
 
 (** ** Values Whose Global Neutrals Are Stuck *)
 
+(** [dstuck d]: every global neutral in the value [d], its closures'
+    environments included, is stuck ([gstuck]); mutually, for the other
+    sorts of values. *)
 Inductive dstuck : domain -> Prop :=
+(** A [Π]: its domain and its closure's environment *)
 | dstuck_pi : forall a (ρ : env) B, dstuck a -> (forall x, destuck (env_entry ρ x)) -> dstuck (Πᵈ a ρ B)
+(** A large universe *)
 | dstuck_univ : forall i, dstuck 𝕌ω@i
+(** A small universe: its level *)
 | dstuck_suniv : forall l, dstuck l -> dstuck 𝕌@l
+(** A type of levels *)
 | dstuck_level : forall n, dstuck (Levelᵈ@n)
+(** A level: its atoms *)
 | dstuck_lvl : forall c xs, dstuck_la xs -> dstuck (lvᵈ c xs)
+(** The unit type *)
 | dstuck_True : dstuck ⊤ᵈ
+(** The unit's element *)
 | dstuck_true : dstuck ⋆ᵈ
+(** The empty type *)
 | dstuck_False : dstuck ⊥ᵈ
+(** A λ: its closure's environment *)
 | dstuck_fn : forall (ρ : env) M, (forall x, destuck (env_entry ρ x)) -> dstuck (λᵈ ρ M)
+(** A neutral: its type and itself *)
 | dstuck_neut : forall a m, dstuck a -> dstuck_ne m -> dstuck (⇑ a m)
+(** A member of a module value: the module value *)
 | dstuck_member : forall h ch, dmstuck h -> dstuck (d_member h ch)
+(** A type former: its arguments *)
 | dstuck_indty : forall p k args, (forall a, In a args -> dstuck a) -> dstuck (d_ind p k args)
+(** A constructor: its arguments *)
 | dstuck_con : forall p k c args, (forall a, In a args -> dstuck a) -> dstuck (d_con p k c args)
+(** A recursive result at a function shape: the eliminator's environment,
+    its uniform parameters and the argument *)
 | dstuck_ihfn : forall (ρ : env) Bks p ups t f, (forall x, destuck (env_entry ρ x)) ->
     (forall a, In a ups -> dstuck a) -> dstuck f -> dstuck (d_ihfn ρ Bks p ups t f)
+(** A shape family: its uniform parameters and its environment *)
 | dstuck_shfam : forall p ups (ρ : env) t, (forall a, In a ups -> dstuck a) -> (forall x, destuck (env_entry ρ x)) ->
     dstuck (d_shfam p ups ρ t)
+(** A recursive result's family: the motive's and the shape's
+    environments, and the argument *)
 | dstuck_ihfam : forall (ρm : env) As (ρ : env) t f, (forall x, destuck (env_entry ρm x)) -> (forall x, destuck (env_entry ρ x)) ->
     dstuck f -> dstuck (d_ihfam ρm As ρ t f)
 with dstuck_ne : domain_ne -> Prop :=
+(** A variable *)
 | dstuck_var : forall x, dstuck_ne (#ᵈ x)
+(** A global, only if it is stuck *)
 | dstuck_glob : forall p, gstuck Θ Ξ p -> dstuck_ne (d_glob p)
+(** An application: its head and its argument *)
 | dstuck_app : forall m n, dstuck_ne m -> dstuck_nf n -> dstuck_ne (m $ᵈ n)
+(** A stuck [efq]: its environment and its scrutinee *)
 | dstuck_exfalso : forall (ρ : env) A m,
     (forall x, destuck (env_entry ρ x)) -> dstuck_ne m ->
     dstuck_ne (efqᵈ m under ρ return A)
+(** A stuck eliminator: its environment, its uniform parameters, its
+    parameters and its scrutinee *)
 | dstuck_elim : forall (ρ : env) Bks p ups j args m,
     (forall x, destuck (env_entry ρ x)) -> (forall a, In a ups -> dstuck a) ->
     (forall a, In a args -> dstuck a) -> dstuck_ne m ->

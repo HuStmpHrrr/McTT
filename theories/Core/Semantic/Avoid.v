@@ -77,26 +77,43 @@ Proof. intros Bks b _; split; [ exact I | intros; exact I ]. Qed.
 Section Avoid.
   Variables (v b : nat).
 
+  (** [dav d]: the value [d] mentions no level [v], and only levels below
+      [b] (see the file header); mutually, for neutrals, normal values,
+      module values, level atoms and environment entries. *)
   Inductive dav : domain -> Prop :=
+  (** A [Π]: its domain avoids, and its closure avoids but at [K], where
+      the codomain is fresh *)
   | dav_pi : forall a (ρ : env) B K,
       dav a ->
       (forall x, K <> Some x -> deav (env_entry ρ x)) ->
       ofresh (oshift 1 K) B ->
       dav (Πᵈ a ρ B)
+  (** A large universe *)
   | dav_univ : forall i, dav 𝕌ω@i
+  (** A small universe at an avoiding level *)
   | dav_suniv : forall l, dav l -> dav 𝕌@l
+  (** A type of levels *)
   | dav_level : forall n, dav (Levelᵈ@n)
+  (** A level of avoiding atoms *)
   | dav_lvl : forall c xs, dav_la xs -> dav (lvᵈ c xs)
+  (** The unit type *)
   | dav_True : dav ⊤ᵈ
+  (** The unit's element *)
   | dav_true : dav ⋆ᵈ
+  (** The empty type *)
   | dav_False : dav ⊥ᵈ
+  (** A λ: its closure avoids but at [K], where the body is fresh *)
   | dav_fn : forall (ρ : env) M K,
       (forall x, K <> Some x -> deav (env_entry ρ x)) ->
       ofresh (oshift 1 K) M ->
       dav (λᵈ ρ M)
+  (** A neutral at an avoiding type *)
   | dav_neut : forall a m, dav a -> dav_ne m -> dav (⇑ a m)
+  (** A member of an avoiding module value *)
   | dav_member : forall h ch, dmav h -> dav (d_member h ch)
+  (** A type former at avoiding arguments *)
   | dav_indty : forall p k args, (forall a, In a args -> dav a) -> dav (d_ind p k args)
+  (** A constructor at avoiding arguments *)
   | dav_con : forall p k c args, (forall a, In a args -> dav a) -> dav (d_con p k c args)
   (** The recursive result of a function shape: the eliminator's closure,
       as [dav_elim], and the argument. *)
@@ -114,6 +131,9 @@ Section Avoid.
       (forall x, K <> Some x -> deav (env_entry ρ x)) ->
       ptfresh (oshift 1 K) t ->
       dav (d_shfam p ups ρ t)
+  (** The family of a recursive result at a function shape: the motive
+      fresh under its closure's binders, the shape's rest fresh, the
+      argument avoiding *)
   | dav_ihfam : forall (ρm : env) As (ρ : env) t f Km K,
       (forall x, Km <> Some x -> deav (env_entry ρm x)) ->
       ofresh (oshift (S (List.length (ptyp_ps t))) Km) (List.nth (ptyp_mem t) As a_True) ->
@@ -122,13 +142,18 @@ Section Avoid.
       dav f ->
       dav (d_ihfam ρm As ρ t f)
   with dav_ne : domain_ne -> Prop :=
+  (** A variable other than [v], below [b] *)
   | dav_var : forall x, x <> v -> x < b -> dav_ne (#ᵈ x)
+  (** An application of an avoiding neutral to an avoiding normal value *)
   | dav_app : forall m n, dav_ne m -> dav_nf n -> dav_ne (m $ᵈ n)
+  (** A stuck [efq]: its motive fresh under its closure, its scrutinee
+      avoiding *)
   | dav_exfalso : forall (ρ : env) A m K,
       (forall x, K <> Some x -> deav (env_entry ρ x)) ->
       ofresh (oshift 1 K) A ->
       dav_ne m ->
       dav_ne (efqᵈ m under ρ return A)
+  (** A global *)
   | dav_glob : forall p, dav_ne (d_glob p)
   (** A stuck eliminator: the motives are fresh under their binders, and so
       is each branch under its own. *)
@@ -155,6 +180,7 @@ Section Avoid.
   | deav_term : forall d, dav d -> deav (de_term d)
   | deav_mod : forall h, dmav h -> deav (de_mod h).
 
+  (** An environment that avoids at every position but [K]. *)
   Definition env_av (K : option nat) (ρ : env) : Prop :=
     forall x, K <> Some x -> deav (env_entry ρ x).
 

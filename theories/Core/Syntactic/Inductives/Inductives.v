@@ -142,6 +142,8 @@ Definition ind_mty (pq : qname) (D : ind_decl) (j : nat) (Us Ns : list exp) : ty
 (** The parameters of the member [M], and the uniform ones, as variables,
     under [k] more binders. *)
 Definition ind_pvars (D : ind_decl) (M : imember) (k : nat) : list exp := vars_from k (im_np D M).
+(** The uniform parameters as variables, under [k] binders and the [nn]
+    non-uniform parameters of a member. *)
 Definition ind_uvars (D : ind_decl) (nn k : nat) : list exp := vars_from (k + nn) (ind_nu D).
 
 (** The type of the type former of a member: a [Π] over its parameters
@@ -221,6 +223,8 @@ Fixpoint cargs_ctx_aux (pq : qname) (D : ind_decl) (nn : nat) (pat : list bool) 
   | ca_rec t :: gs' => cargs_ctx_aux pq D nn (true :: pat) gs' ++ ce_ass (ptyp_ty pq D nn pat t) :: nil
   end.
 
+(** The arguments of a constructor of the member [M] as a context over its
+    parameters, from no argument before. *)
 Definition cargs_ctx (pq : qname) (D : ind_decl) (M : imember) (gs : list carg) : ctx :=
   cargs_ctx_aux pq D (im_nn M) nil gs.
 
@@ -237,16 +241,23 @@ Definition cargs_ctx (pq : qname) (D : ind_decl) (M : imember) (gs : list carg) 
     the filed ones. *)
 Definition self_ty (D : ind_decl) (M : imember) : typ := ctx_pi (im_nparams M) (ind_sort D)[wk_shiftn (im_nn M)]ʷ.
 
+(** The variables [Self_j], [Self_(j+1)], … of the members [ms], innermost
+    first, each of its member's type over the [Self]s before it. *)
 Fixpoint grp_selfs_from (D : ind_decl) (j : nat) (ms : list imember) : ctx :=
   match ms with
   | nil => nil
   | M :: ms' => grp_selfs_from D (S j) ms' ++ ce_ass (self_ty D M)[wk_shiftn j]ʷ :: nil
   end.
 
+(** The variables of the declared members, [Self_0] outermost. *)
 Definition grp_selfs (D : ind_decl) : ctx := grp_selfs_from D 0 (List.firstn (ind_ndecl D) (ind_members D)).
 
+(** The context a group's views are checked in: the [Self]s inside the
+    uniform parameters. *)
 Definition grp_sctx (D : ind_decl) : ctx := grp_selfs D ++ ind_uparams D.
 
+(** The [Self]s instantiated by the type formers of the filed group at
+    [pq], at the uniform parameters. *)
 Definition grp_sb (pq : qname) (D : ind_decl) : sub :=
   sb_of_list sb_id (List.map (fun j => apps (a_ind pq j) (vars_from 0 (ind_nu D))) (List.seq 0 (ind_ndecl D))).
 
@@ -276,6 +287,7 @@ Fixpoint sptyp_ty (D : ind_decl) (IsS : nat -> list exp) (nn : nat) (pat : list 
                       (List.map (fun P => P[wk_pat pat]ʷ[self_wk D (List.length pat + nn)]ʷ) Ps)
   end.
 
+(** [cargs_ctx_aux] with the members as variables. *)
 Fixpoint scargs_ctx_aux (D : ind_decl) (IsS : nat -> list exp) (nn : nat) (pat : list bool) (gs : list carg) : ctx :=
   match gs with
   | nil => nil
@@ -283,6 +295,7 @@ Fixpoint scargs_ctx_aux (D : ind_decl) (IsS : nat -> list exp) (nn : nat) (pat :
   | ca_rec t :: gs' => scargs_ctx_aux D IsS nn (true :: pat) gs' ++ ce_ass (sptyp_ty D IsS nn pat t) :: nil
   end.
 
+(** [cargs_ctx] with the members as variables. *)
 Definition scargs_ctx (D : ind_decl) (IsS : nat -> list exp) (M : imember) (gs : list carg) : ctx :=
   scargs_ctx_aux D IsS (im_nn M) nil gs.
 
@@ -348,6 +361,8 @@ Definition ihs_sub (nn : nat) (Us : list exp) (na : nat) (pat : list bool) (j : 
   (sb_of_wk (wk_pat pat) ⨟ sb_qn (List.length pat + nn) (sb_of_list Id Us))
     ⨟ sb_of_wk (wk_shiftn (na - List.length pat + j)).
 
+(** The recursive results of a branch, after [j] of them, as a context:
+    one per recursive argument, of its motive's type ([ihty]). *)
 Fixpoint ihs_ctx_aux (nn : nat) (As : list exp) (Us : list exp) (na : nat)
     (pat : list bool) (j : nat) (gs : list carg) : ctx :=
   match gs with
@@ -415,6 +430,8 @@ Definition im_sel (M : imember) : option (list nat) :=
   | mh_view _ _ _ vm => Some vm
   end.
 
+(** The member of this group whose block the eliminator reads for the
+    member [i] of the group it is read as. *)
 Definition elim_src (sel : option (list nat)) (i : nat) : nat :=
   match sel with
   | None => i
@@ -478,6 +495,8 @@ Definition elim_grp (D : ind_decl) (oq : option qname) (pq : qname) (m : nat) : 
 Definition ptyp_dom_at (pat : list bool) (d : nat) (t : ptyp) : typ :=
   (List.nth d (ptyp_doms t) a_True)[wk_pat (List.repeat false d ++ pat)]ʷ.
 
+(** The non-uniform parameters a shape ends in, under the arguments
+    before ([pat]) and all its domains. *)
 Definition ptyp_ps_at (pat : list bool) (t : ptyp) : list exp :=
   List.map (fun P => P[wk_pat (List.repeat false (ptyp_depth t) ++ pat)]ʷ) (ptyp_ps t).
 
@@ -552,7 +571,11 @@ Definition wrap_br (pq : qname) (D : ind_decl) (Us : list exp) (Bks : list ebloc
     constructors, and the arguments of each as the container's, classified
     for [D]. *)
 Record vwrap_ok (D D' : ind_decl) (vm : list nat) : Prop := mk_vwrap_ok
-  { vwo_length : List.length vm = List.length (ind_members D')
+  { (** [vm] lists one member of [D] per member of the container's group. *)
+    vwo_length : List.length vm = List.length (ind_members D')
+  (** Each member [vm] lists is a member of [D] with as many non-uniform
+      parameters as the container's, the same constructors, and arguments
+      corresponding to the container's ([cargs_corr]). *)
   ; vwo_members : forall i' Mi' v, ind_member D' i' = Some Mi' -> List.nth_error vm i' = Some v ->
       exists Mv, ind_member D v = Some Mv /\ im_nn Mv = im_nn Mi' /\
         List.map fst (im_cons Mv) = List.map fst (im_cons Mi') /\
@@ -568,6 +591,7 @@ Definition vwrap_block (pq : qname) (D : ind_decl) (vm : list nat) (Us : list ex
   | _, _ => eb_mk 0 None a_True nil
   end.
 
+(** The container's blocks for its members [ms], from the member [i'] on. *)
 Fixpoint vwrap_from (pq : qname) (D : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock)
     (i' : nat) (ms : list imember) : list eblock :=
   match ms with
@@ -575,6 +599,8 @@ Fixpoint vwrap_from (pq : qname) (D : ind_decl) (vm : list nat) (Us : list exp) 
   | Mi' :: ms' => vwrap_block pq D vm Us Bks i' Mi' :: vwrap_from pq D vm Us Bks (S i') ms'
   end.
 
+(** The blocks of the container's eliminator that the eliminator at a view
+    reads as: one per member of the container's group [D']. *)
 Definition vwrap (pq : qname) (D D' : ind_decl) (vm : list nat) (Us : list exp) (Bks : list eblock) : list eblock :=
   vwrap_from pq D vm Us Bks 0 (ind_members D').
 
@@ -611,6 +637,8 @@ Definition ind_sort_lvl (S : typ) : exp :=
     module variable; the typing rule of a declaration says so, which is what
     lets their instances at variables and at terms of variables coincide. *)
 
+(** Every module variable of a term is bound by one of the [n] binders
+    above it. *)
 Fixpoint exp_mvc (n : nat) (M : exp) : Prop :=
   match M with
   | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False => True
@@ -689,15 +717,21 @@ Definition carg_mvc (g : carg) : Prop :=
   | ca_rec t => List.Forall (exp_mvc 0) (ptyp_doms t) /\ List.Forall (exp_mvc 0) (ptyp_ps t)
   end.
 
+(** A view's uniform arguments have no free module variable. *)
 Definition mhead_mvc (h : mhead) : Prop :=
   match h with
   | mh_decl _ => True
   | mh_view _ _ Is _ => List.Forall (exp_mvc 0) Is
   end.
 
+(** No free module variable anywhere in a group. *)
 Record decl_mvc (D : ind_decl) : Prop := mk_decl_mvc
-  { dmv_uparams : ctx_mvc (ind_uparams D)
+  { (** In the uniform parameters' types. *)
+    dmv_uparams : ctx_mvc (ind_uparams D)
+  (** In the sort. *)
   ; dmv_sort : exp_mvc 0 (ind_sort D)
+  (** In each member's non-uniform parameters, view arguments and
+      constructor arguments. *)
   ; dmv_members : forall k M, ind_member D k = Some M ->
       ctx_mvc (im_nparams M) /\ mhead_mvc (im_head M) /\
       (forall c gs, In (c, gs) (im_cons M) -> List.Forall carg_mvc gs) }.

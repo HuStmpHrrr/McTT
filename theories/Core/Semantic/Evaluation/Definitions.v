@@ -261,6 +261,7 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 | eval_exp_succl :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦ succl M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ dlvl_suc m )
+(** The join of two levels: the flat join of their values. *)
 | eval_exp_maxl :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
@@ -286,6 +287,8 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
     types are values, with no argument yet. *)
 | eval_exp_indty :
   `( ⟦ a_ind p k ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ind p k nil )
+(** A constructor, with no argument yet, when it is a value of its own
+    before any argument ([im_starts]). *)
 | eval_exp_con :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D k = Some Mk ->
@@ -356,6 +359,8 @@ where "'⟦' e '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_exp Θ Ξ e ρ r)
     its type, which readback needs, and the group's uniform parameters
     [ups] the eliminator carries. *)
 with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> nat -> domain -> domain -> Prop :=
+(** On a saturated constructor: its branch, at the non-uniform parameters,
+    the arguments and the recursive results *)
 | eval_elim_con :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -370,6 +375,7 @@ with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list 
      ⟦ihs skipn (im_np Dq Mk) vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs) ++ skipn (im_np Dq Mk) vs ++ ihs) ↘ r ->
      ⟦elim d_con pc k c vs at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+(** On a neutral: a stuck eliminator, at the motive's instance *)
 | eval_elim_neut :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -384,11 +390,14 @@ with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list 
 where "'⟦elim' m 'at' j 'of' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_elim Θ Ξ ρ p ups Bks j m r)
 (** The recursive results of the arguments [vs], one per recursive argument. *)
 with eval_ihs (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> list carg -> list domain -> list domain -> Prop :=
+(** No argument, no result *)
 | eval_ihs_nil :
   `( ⟦ihs nil of nil under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ nil )
+(** A non-recursive argument has none *)
 | eval_ihs_arg :
   `( ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
      ⟦ihs v :: vs of ca_arg T :: gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs )
+(** A recursive argument has its recursive result *)
 | eval_ihs_rec :
   `( ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih ->
      ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
@@ -398,9 +407,11 @@ where "'⟦ihs' vs 'of' gs 'under' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r"
     at [v], at the member the shape ends in, or, at a function shape, the
     family of the eliminator at [v]'s values. *)
 with eval_ih (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> ptyp -> domain -> domain -> Prop :=
+(** At the end of a shape: the eliminator at the member [j] *)
 | eval_ih_self :
   `( ⟦elim v at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
      ⟦ih v of pt_self j Ps under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+(** At a function shape: the family of the eliminator at [v]'s values *)
 | eval_ih_pi :
   `( ⟦ih v of pt_pi B t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ihfn ρ Bks p ups t v )
 where "'⟦ih' v 'of' t 'under' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ih Θ Ξ ρ p ups Bks t v r)
@@ -409,11 +420,13 @@ where "'⟦ih' v 'of' t 'under' p ups Bks '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" :=
     [pre] ([im_ref], [im_pre]), the group itself and [ups] at a declared
     member, the container's and the view's arguments at [ups] at a view. *)
 with eval_mref (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> nat -> (qname * nat * list domain) -> Prop :=
+(** A declared member: itself, at [ups] *)
 | eval_mref_decl :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
      im_head Mj = mh_decl pm ->
      ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ (p, j, ups) )
+(** A view: the container's member, at the view's arguments at [ups] *)
 | eval_mref_view :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -428,10 +441,12 @@ where "'⟦mref' j 'of' p ups '⟧' Θ '⍮' Ξ '↘' r" := (eval_mref Θ Ξ p u
     Readback reads an argument of a shape at the group's own member instead
     ([read_shape]). *)
 with eval_shty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> domain -> Prop :=
+(** At the end: the member's type former at the shape's parameters *)
 | eval_shty_self :
   `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
      ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ (pc, k, pre) ->
      ⟦shty pt_self j Ps of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ind pc k (pre ++ bs) )
+(** At a domain: a [Π] over it, of the shape family *)
 | eval_shty_pi :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
      ⟦shty pt_pi B t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_shfam p ups ρ t) fam_cod )
@@ -440,10 +455,12 @@ where "'⟦shty' t 'of' p ups '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_shty 
     components in [ρ]: the motive of the member the shape ends in, among
     [As] in [ρm], at the shape's non-uniform parameters and [v]. *)
 with eval_ihty (Θ : gdeps) (Ξ : gstack) : env -> list exp -> env -> ptyp -> domain -> domain -> Prop :=
+(** At the end: the member's motive at the shape's parameters and [v] *)
 | eval_ihty_self :
   `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
      ⟦ List.nth j As a_True ⟧ Θ ⍮ Ξ ⍮ env_args ρm (bs ++ v :: nil) ↘ a ->
      ⟦ihty v of pt_self j Ps under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a )
+(** At a domain: a [Π] over it, of the recursive result's family *)
 | eval_ihty_pi :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
      ⟦ihty v of pt_pi B t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ b (nil ↦ d_ihfam ρm As ρ t v) fam_cod )
@@ -479,6 +496,8 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
      im_head Mj = mh_view qc k Is vm ->
      S (List.length vs) < ind_nu D ->
      $| d_con p j c vs & n | Θ ⍮ Ξ ↘ d_con p j c (vs ++ n :: nil) )
+(** At the last uniform parameter, the container's constructor at the
+    view's arguments *)
 | eval_app_con_view_ups :
   `( ind_lookup Θ Ξ p = Some D ->
      ind_member D j = Some Mj ->
@@ -496,6 +515,7 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 | eval_app_shfam :
   `( ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ a ->
      $| d_shfam p ups ρ t & n | Θ ⍮ Ξ ↘ a )
+(** The recursive result's family, at the argument's value *)
 | eval_app_ihfam :
   `( $| f & n | Θ ⍮ Ξ ↘ fn ->
      ⟦ihty fn of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ a ->
@@ -555,11 +575,14 @@ where "'⟦' H '⟧ᵐ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_modexp Θ Ξ H ρ
     alias lacking none is its target's value.  So no value is a saturated
     alias. *)
 with eval_close (Θ : gdeps) (Ξ : gstack) : ctx -> moddef -> env -> dmod -> Prop :=
+(** A body: its closure *)
 | eval_close_body :
   `( ⟦ Δ ⊢ md_body sm Φ ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ dm_local Δ (md_body sm Φ) ρ )
+(** An alias still lacking a parameter: its closure *)
 | eval_close_alias :
   `( 0 < List.length Δ ->
      ⟦ Δ ⊢ md_alias E ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ dm_local Δ (md_alias E) ρ )
+(** An alias lacking none: its target's value *)
 | eval_close_alias0 :
   `( ⟦ E ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
      ⟦ nil ⊢ md_alias E ⟧ᶜ Θ ⍮ Ξ ⍮ ρ ↘ h )
@@ -582,8 +605,10 @@ with eval_appm (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> dmod -> Prop :=
 where "'$ᵐ|' h '&' n '|' Θ '⍮' Ξ '↘' r" := (eval_appm Θ Ξ h n r)
 (** Applying a module value to arguments, outermost first. *)
 with eval_appms (Θ : gdeps) (Ξ : gstack) : dmod -> list domain -> dmod -> Prop :=
+(** No argument *)
 | eval_appms_nil :
   `( $ᵐ*| h & nil | Θ ⍮ Ξ ↘ h )
+(** The first argument, then the rest *)
 | eval_appms_cons :
   `( $ᵐ| h & n | Θ ⍮ Ξ ↘ h1 ->
      $ᵐ*| h1 & ns | Θ ⍮ Ξ ↘ r ->

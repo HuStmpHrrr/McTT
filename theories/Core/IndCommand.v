@@ -432,12 +432,19 @@ Definition user_con_ty (p : qname) (R : raw_decl) (Mr : raw_member) (j : nat) (T
     a type equal to [U]. *)
 #[warnings="-cannot-define-projection"]
 Record filed_con_ty (Θ : gdeps) (Ξ : gstack) (p : qname) (j : nat) (c : string) (U : typ) : Prop := mk_filed_con_ty
-  { fct_decl : ind_decl
+  { (** The filed group *)
+    fct_decl : ind_decl
+    (** The member [j] *)
   ; fct_member : imember
+    (** The constructor's filed argument kinds *)
   ; fct_args : list carg
+    (** The group is found at [p] *)
   ; fct_lookup : ind_lookup Θ Ξ p = Some fct_decl
+    (** The member is the group's [j]-th *)
   ; fct_member_at : ind_member fct_decl j = Some fct_member
+    (** [c] is one of its constructors *)
   ; fct_con : ind_con fct_member c = Some fct_args
+    (** The constructor's type is equal to [U] *)
   ; fct_ty : exists i, Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p fct_decl j fct_member fct_args ≈ U : Typeω@i }.
 
 (** ** The Constructor Types of a Run

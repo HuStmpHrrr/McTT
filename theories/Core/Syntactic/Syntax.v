@@ -535,7 +535,9 @@ Definition qname_strip (mp p : qname) : option (list string) :=
     non-uniform parameters [Ps] ([pt_self k Ps]), or a function from [A] to
     a shape ([pt_pi A t]). *)
 Inductive ptyp_g (E : Set) : Set :=
+(** The member [k] of the group at the non-uniform parameters [Ps]. *)
 | pt_self : nat -> list E -> ptyp_g E
+(** A function from the domain [A] into a shape, under one more binder. *)
 | pt_pi : E -> ptyp_g E -> ptyp_g E.
 Arguments pt_self {E}.
 Arguments pt_pi {E}.
@@ -576,7 +578,11 @@ Arguments ca_rec {E}.
     [k]-th is the view itself).  The eliminator at a view reads back as
     [q]'s group's eliminator, whose blocks are those of these members. *)
 Inductive mhead_g (E : Set) : Set :=
+(** A declared type, named by the canonical path of its own entry. *)
 | mh_decl : qname -> mhead_g E
+(** A view: the declared member [k] of the group at [q] at the uniform
+    arguments [Is], and the members [vm] of this group its group's members
+    are at [Is]. *)
 | mh_view : qname -> nat -> list E -> list nat -> mhead_g E.
 Arguments mh_decl {E}.
 Arguments mh_view {E}.
@@ -587,17 +593,29 @@ Arguments mh_view {E}.
     member of [q]'s group at [Is], classified for this group: a recursive
     argument is one of a member of this group. *)
 Record imember_g (E C : Set) : Set := mk_imember
-  { im_head : mhead_g E
+  { (** Whether the member is a declared type or a view, and of what. *)
+    im_head : mhead_g E
+  (** The non-uniform parameters, over the group's uniform ones,
+      innermost first. *)
   ; im_nparams : list C
+  (** The constructors in order, each with its arguments, outermost
+      first. *)
   ; im_cons : list (string * list (carg_g E)) }.
 Arguments mk_imember {E C}.
 Arguments im_head {E C}.
 Arguments im_nparams {E C}.
 Arguments im_cons {E C}.
 
+(** A group of inductive types: the uniform parameters all its members
+    share, the one sort they are all of, and the members, the declared
+    types in order, then the views. *)
 Record ind_decl_g (E C : Set) : Set := mk_ind
-  { ind_uparams : list C
+  { (** The uniform parameters, innermost first: the group's own, then
+        those of the enclosing frames. *)
+    ind_uparams : list C
+  (** The sort of every member, over the uniform parameters. *)
   ; ind_sort : E
+  (** The members: the declared types, then the views. *)
   ; ind_members : list (imember_g E C) }.
 Arguments mk_ind {E C}.
 Arguments ind_uparams {E C}.
@@ -613,12 +631,18 @@ Arguments ind_members {E C}.
     parameters, the arguments, and one recursive result per recursive
     argument. *)
 Inductive eblock_g (E : Set) : Set :=
+(** The block of [nm] motive binders, the written scrutinee type [oZ], the
+    motive [A] and the branches [Bs]. *)
 | eb_mk : nat -> option E -> E -> list (string * nat * E) -> eblock_g E.
 Arguments eb_mk {E}.
 
+(** The number of variables a block's motive binds. *)
 Definition eb_nm {E : Set} (b : eblock_g E) : nat := match b with eb_mk nm _ _ _ => nm end.
+(** A block's scrutinee type as written, if it is written. *)
 Definition eb_ann {E : Set} (b : eblock_g E) : option E := match b with eb_mk _ oZ _ _ => oZ end.
+(** A block's motive. *)
 Definition eb_motive {E : Set} (b : eblock_g E) : E := match b with eb_mk _ _ A _ => A end.
+(** A block's branches, one per constructor of its member, in order. *)
 Definition eb_brs {E : Set} (b : eblock_g E) : list (string * nat * E) := match b with eb_mk _ _ _ Bs => Bs end.
 
 (** * Terms, Module Expressions and Units
@@ -899,6 +923,8 @@ Section syn_mut_ind.
     (case_ce_def : forall A M, Pe A -> Pe M -> Pc (ce_def A M))
     (case_ce_mod : forall U, Pu U -> Pc (ce_mod U)).
 
+  (** The mutual induction principle on terms, written by hand: the
+      branches of an eliminator's blocks are nested through pairs. *)
   Fixpoint exp_mut (M : exp) : Pe M :=
     match M with
     | a_typ i => case_typ i
@@ -1089,7 +1115,9 @@ Definition ind_member (D : ind_decl) (k : nat) : option imember := List.nth_erro
 (** The parameters of a member, innermost first: its non-uniform ones
     inside the group's uniform ones; their numbers. *)
 Definition im_params (D : ind_decl) (M : imember) : list centry := im_nparams M ++ ind_uparams D.
+(** The number of a member's non-uniform parameters. *)
 Definition im_nn (M : imember) : nat := List.length (im_nparams M).
+(** The number of all a member's parameters, uniform and non-uniform. *)
 Definition im_np (D : ind_decl) (M : imember) : nat := im_nn M + ind_nu D.
 
 (** A declared member, and the path of its entry. *)
@@ -1448,23 +1476,33 @@ with ne : Set :=
     their own sort rather than a [list (nat * nat * ne)] so that the family
     stays mutual and [Scheme] generates the induction principle. *)
 with lvl_atoms : Set :=
+(** No atom. *)
 | la_nil : lvl_atoms
+(** An atom: its offset, its sort and the neutral level, before the rest. *)
 | la_cons : nat -> nat -> ne -> lvl_atoms -> lvl_atoms
 (** A list of normal forms: the parameters and arguments of an inductive
     type or a constructor, outermost first.  Its own sort, like [lvl_atoms],
     so that [Scheme] generates the induction principle. *)
 with nfs : Set :=
+(** The empty list. *)
 | nfs_nil : nfs
+(** A normal form before the rest. *)
 | nfs_cons : nf -> nfs -> nfs
 (** The branches of a stuck eliminator: the constructor, the number of
     variables bound, the body. *)
 with nbrs : Set :=
+(** No branch. *)
 | nbrs_nil : nbrs
+(** The branch of a constructor, binding a number of variables, before
+    the rest. *)
 | nbrs_cons : string -> nat -> nf -> nbrs -> nbrs
 (** The blocks of a stuck eliminator: the number of variables the motive
     binds, the motive, the branches. *)
 with nblocks : Set :=
+(** No block. *)
 | nblocks_nil : nblocks
+(** A block: its motive's number of binders, its motive and its branches,
+    before the rest. *)
 | nblocks_cons : nat -> nf -> nbrs -> nblocks -> nblocks
 .
 
@@ -1475,6 +1513,8 @@ Fixpoint apps_exp (M : exp) (args : list exp) : exp :=
   | N :: args' => apps_exp (a_app M N) args'
   end.
 
+(** The term a normal form stands for (normal forms are a subset of
+    terms). *)
 Fixpoint nf_to_exp (M : nf) : exp :=
   match M with
   | nf_typ i => a_typ i
@@ -1601,7 +1641,6 @@ Lemma is_univ_nf_functional : forall W u v, is_univ_nf W u -> is_univ_nf W v -> 
 Proof. intros ? ? ? H H'; destruct H; inversion H'; reflexivity. Qed.
 
 (** A normal form with no global at the head of a neutral. *)
-
 Fixpoint nf_clean (W : nf) : Prop :=
   match W with
   | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => True

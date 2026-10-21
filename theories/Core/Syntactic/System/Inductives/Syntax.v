@@ -687,6 +687,7 @@ Definition eblock_sub (b : eblock) (τ : sub) : eblock :=
   | eb_mk nm oZ A Bs => eb_mk nm (option_map (fun Z => Z[sb_qn (nm - 1) τ]) oZ) A[sb_qn nm τ] (brs_sub Bs τ)
   end.
 
+(** The blocks of an eliminator moved, each by [eblock_sub]. *)
 Definition blocks_sub (Bks : list eblock) (τ : sub) : list eblock := List.map (fun b => eblock_sub b τ) Bks.
 
 Lemma exp_sub_elim : forall oq Us m Bks M τ,

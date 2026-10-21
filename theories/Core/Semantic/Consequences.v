@@ -545,10 +545,15 @@ End Fixed_GCtx.
     atom: such a universe is in no small universe at a literal level, since an
     atom is unbounded under some assignment. *)
 Inductive small_typ_nf (n : nat) : nf -> Prop :=
+(** The unit type *)
 | small_typ_nf_True : small_typ_nf n ⊤ⁿ
+(** The empty type *)
 | small_typ_nf_False : small_typ_nf n ⊥ⁿ
+(** A type of levels *)
 | small_typ_nf_level : forall m, small_typ_nf n Levelⁿ@m
+(** A [Π] *)
 | small_typ_nf_pi : forall A B, small_typ_nf n (Πⁿ A B)
+(** A small universe at a literal level below [n] *)
 | small_typ_nf_univ : forall m, m < n -> small_typ_nf n Typeⁿ@m
 (** An inductive type applied to its parameters.  Its sort is not
     recorded: the shape says only that it is an inductive type. *)
@@ -565,14 +570,21 @@ Hint Constructors small_typ_nf : mctt.
     universe's instance is [small_typ_nf] ([typ_nf_below_lit]); a large one's
     gives the type constructors ([typ_nf_below_large]). *)
 Inductive typ_nf_below : unf -> nf -> Prop :=
+(** The unit type *)
 | typ_nf_below_True : forall u, typ_nf_below u ⊤ⁿ
+(** The empty type *)
 | typ_nf_below_False : forall u, typ_nf_below u ⊥ⁿ
+(** A type of levels *)
 | typ_nf_below_level : forall u m, typ_nf_below u Levelⁿ@m
+(** A [Π] *)
 | typ_nf_below_pi : forall u A B, typ_nf_below u (Πⁿ A B)
+(** A small universe whose successor level is below [u] *)
 | typ_nf_below_univ : forall u c xs,
     unf_le (uns (lvl_suc (c, xs))) u ->
     typ_nf_below u (univⁿ c xs)
+(** A large universe below [u] *)
 | typ_nf_below_typ : forall i j, j < i -> typ_nf_below (unl i) Typeωⁿ@j
+(** An inductive type at its parameters *)
 | typ_nf_below_indty : forall u p k Ms, typ_nf_below u (nf_indty p k Ms).
 #[export]
 Hint Constructors typ_nf_below : mctt.
@@ -996,8 +1008,12 @@ Qed.
     non-uniform parameters, and with the constructors [z], without
     arguments, and [s], with one recursive argument of the member itself. *)
 Record nat_member_shape (z s : String.string) (Mn : imember) : Prop := mk_nat_member_shape
-  { nms_decl : im_is_decl Mn = true
+  { (** The member is declared *)
+    nms_decl : im_is_decl Mn = true
+    (** It has no non-uniform parameter *)
   ; nms_nparams : im_nparams Mn = nil
+    (** Its constructors are [z], without arguments, and [s], with one
+        recursive argument of itself *)
   ; nms_cons : forall c gs, ind_con Mn c = Some gs -> (c = z /\ gs = nil) \/ (c = s /\ gs = ca_rec (pt_self 0 nil) :: nil) }.
 
 Lemma nat_shape_inv : forall D z s, nat_shape D = Some (z, s) ->
@@ -1034,9 +1050,13 @@ Qed.
     ([nat_shape]), its constructors [z] and [s]: chains of [s] ending in
     [z]. *)
 Inductive nat_chain_nf (p : qname) (z s : String.string) : nf -> Prop :=
+(** The constructor [z] *)
 | ncn_zero : nat_chain_nf p z s (nf_con p 0 z nfs_nil)
+(** The constructor [s] at a chain *)
 | ncn_succ : forall W, nat_chain_nf p z s W -> nat_chain_nf p z s (nf_con p 0 s (nfs_cons W nfs_nil)).
 
+(** The number of constructors of one argument heading a normal form: the
+    number a chain of [s] ending in [z] stands for. *)
 Definition nf_succ_depth (W : nf) : nat :=
   (fix go (W : nf) : nat :=
      match W with
@@ -1048,9 +1068,12 @@ Definition nf_succ_depth (W : nf) : nat :=
     at that type, one step: the constructor [z], the constructor [s] at the
     readback of a value of the same type, or a neutral. *)
 Inductive nat_read_step (p : qname) (z s : String.string) : nf -> Prop :=
+(** The constructor [z] *)
 | nrs_zero : nat_read_step p z s (nf_con p 0 z nfs_nil)
+(** The constructor [s] at the readback of a value of the same type *)
 | nrs_succ : forall v V, Rnf ⇓ (d_ind p 0 nil) v in gc_deps ⍮ gc_stack ⍮ 0 ↘ V ->
     nat_read_step p z s (nf_con p 0 s (nfs_cons V nfs_nil))
+(** A neutral *)
 | nrs_neut : forall M, nat_read_step p z s ⇑ⁿ M.
 
 Lemma nat_read_step_of_read : forall p D z s W v, ind_lookup gc_deps gc_stack p = Some D -> nat_shape D = Some (z, s) ->
@@ -1259,8 +1282,11 @@ Qed.
 (** A chain of the constructors [z] and [s] of [p], possibly around a
     neutral whose globals satisfy [G], headed by one. *)
 Inductive nat_chain_stuck (G : qname -> Prop) (p : qname) (z s : String.string) : nf -> Prop :=
+(** The constructor [z] *)
 | ncs_zero : nat_chain_stuck G p z s (nf_con p 0 z nfs_nil)
+(** The constructor [s] at a chain *)
 | ncs_succ : forall W, nat_chain_stuck G p z s W -> nat_chain_stuck G p z s (nf_con p 0 s (nfs_cons W nfs_nil))
+(** A neutral headed by a global, its globals satisfying [G] *)
 | ncs_neut : forall W h, ne_head W = Some h -> ne_stuck G W -> nat_chain_stuck G p z s ⇑ⁿ W.
 #[export]
 Hint Constructors nat_chain_stuck : mctt.

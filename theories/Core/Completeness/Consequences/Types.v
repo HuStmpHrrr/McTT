@@ -85,15 +85,22 @@ Qed.
 
 Hint Resolve exp_eq_univ_implies_eq_level : mctt.
 
+(** A type headed by a type constructor, or a variable. *)
 Inductive is_typ_constr : typ -> Prop :=
+(** A large universe *)
 | typ_is_typ_constr : forall i, is_typ_constr Typeω@i
 (** A small universe at any level term: in a context with an axiom of type
     [Level] a closed type may be the universe at that axiom. *)
 | univ_is_typ_constr : forall t, is_typ_constr Type⟨t⟩
+(** A type of levels *)
 | level_is_typ_constr : forall n, is_typ_constr Level@n
+(** The unit type *)
 | True_is_typ_constr : is_typ_constr ⊤
+(** The empty type *)
 | False_is_typ_constr : is_typ_constr ⊥
+(** A [Π] *)
 | pi_is_typ_constr : forall A B, is_typ_constr Π A B
+(** A variable *)
 | var_is_typ_constr : forall x, is_typ_constr #x
 (** An inductive type at its parameters. *)
 | ind_is_typ_constr : forall p k Ms, is_typ_constr (apps_exp (a_ind p k) Ms)
@@ -104,13 +111,21 @@ Hint Constructors is_typ_constr : mctt.
     by an assumption.  A variable bound by a definition is not rigid, since it
     is equal to its body. *)
 Inductive rigid_typ (Γ : ctx) : typ -> Prop :=
+(** A large universe *)
 | typ_is_rigid : forall i, rigid_typ Γ Typeω@i
+(** A small universe at a literal level *)
 | univ_is_rigid : forall n, rigid_typ Γ Type⟨𝕃ᵒ n⟩
+(** A type of levels *)
 | level_is_rigid : forall n, rigid_typ Γ Level@n
+(** The unit type *)
 | True_is_rigid : rigid_typ Γ ⊤
+(** The empty type *)
 | False_is_rigid : rigid_typ Γ ⊥
+(** A [Π] *)
 | pi_is_rigid : forall A B, rigid_typ Γ (Π A B)
+(** A variable bound by an assumption *)
 | var_is_rigid : forall x, ctx_ass Γ x -> rigid_typ Γ #x
+(** An inductive type at its parameters *)
 | ind_is_rigid : forall p k Ms, rigid_typ Γ (apps_exp (a_ind p k) Ms)
 .
 Hint Constructors rigid_typ : mctt.

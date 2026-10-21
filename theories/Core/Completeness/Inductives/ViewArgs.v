@@ -100,9 +100,13 @@ Section ViewArgs.
       types there have the same head PER, the container's at [cups] and the
       group's at [ups]; both are types, related to each other. *)
   Record arg_type_link (C G : typ) (Ec Eg : env) : Prop := mk_arg_type_link
-    { heads_agree : per_head C C Ec Ec <~> per_head G G Eg Eg
+    { (** The two head PERs agree *)
+      heads_agree : per_head C C Ec Ec <~> per_head G G Eg Eg
+      (** The group's type evaluates to a type *)
     ; group_type_value : exists (i : nat) R b, ⟦ G ⟧ Eg ↘ b /\ DF b ≈ b ∈ per_univ_elem i ↘ R
+      (** The container's type evaluates to a type *)
     ; container_type_value : exists (i : nat) R a, ⟦ C ⟧ Ec ↘ a /\ DF a ≈ a ∈ per_univ_elem i ↘ R
+      (** The two values are related types *)
     ; group_container_types_related : exists (i : nat) R b a, ⟦ G ⟧ Eg ↘ b /\ ⟦ C ⟧ Ec ↘ a /\
         DF b ≈ a ∈ per_univ_elem i ↘ R }.
 
@@ -245,12 +249,20 @@ Section ViewArgs.
   Hypotheses (Hms_g : per_gargs (List.rev (im_params D Mv)) nil nil (ups ++ ms) (ups ++ ms))
     (Hms_c : per_gargs (List.rev (im_params Dq Mi')) nil nil (cups ++ ms) (cups ++ ms)).
 
+  (** The invariant of the walk through the arguments: after the prefixes
+      [gsA'] and [gsA], the arguments [vs] built from [vp]. *)
   Record view_args_inv (gsA' gsA : list carg) (vp vs : list domain) : Prop := mk_view_args_inv
-    { vai_len : List.length vs = List.length gsA
+    { (** One value per argument *)
+      vai_len : List.length vs = List.length gsA
+      (** [vs] is [vp] at the container's non-recursive positions *)
     ; vai_nonrec_c : nonrec_arg_vals gsA' vs = nonrec_arg_vals gsA' vp
+      (** and at the group's *)
     ; vai_nonrec_g : nonrec_arg_vals gsA vs = nonrec_arg_vals gsA vp
+      (** [vs] is related at the group's telescope over [ups] *)
     ; vai_grp : per_gargs (List.rev (cargs_ctx p D Mv gsA ++ im_params D Mv)) nil nil (ups ++ ms ++ vs) (ups ++ ms ++ vs)
+      (** and at the container's over [cups] *)
     ; vai_cnt : per_gargs (List.rev (cargs_ctx qc Dq Mi' gsA' ++ im_params Dq Mi')) nil nil (cups ++ ms ++ vs) (cups ++ ms ++ vs)
+      (** Its non-recursive values are related canonically *)
     ; vai_args : tele_prefix_rel (canon_args_rel D ups v ms c) (List.length (cargs_nonrec gsA))
         (nonrec_arg_vals gsA vs) (nonrec_arg_vals gsA vs) }.
 
@@ -467,10 +479,13 @@ Section ViewArgs.
       shapes are related to each other. *)
   Record shape_walk_state (gs1' gs1 : list carg) (t' t : ptyp) (vs : list domain) (kk : nat) (ys : list domain) : Prop :=
     mk_shape_walk_state
-    { walk_group_doms : per_gargs (List.rev (sh_ctx (cargs_pat gs1) (List.firstn kk (ptyp_doms t))))
+    { (** [ys] is related at the group shape's first [kk] domains *)
+      walk_group_doms : per_gargs (List.rev (sh_ctx (cargs_pat gs1) (List.firstn kk (ptyp_doms t))))
         (env_args nil (ups ++ ms ++ vs)) (env_args nil (ups ++ ms ++ vs)) ys ys
+      (** and at the container shape's *)
     ; walk_container_doms : per_gargs (List.rev (sh_ctx (cargs_pat gs1') (List.firstn kk (ptyp_doms t'))))
         (env_args nil (cups ++ ms ++ vs)) (env_args nil (cups ++ ms ++ vs)) ys ys
+      (** The types of the rests of the two shapes are related *)
     ; walk_types_related : exists (i : nat) R ag ac,
         ⟦ ptyp_ty p D (im_nn Mv) (List.repeat false kk ++ cargs_pat gs1) (ptyp_skip kk t) ⟧ env_args nil (ups ++ ms ++ vs ++ ys) ↘ ag /\
         ⟦ ptyp_ty qc Dq (im_nn Mi') (List.repeat false kk ++ cargs_pat gs1') (ptyp_skip kk t') ⟧ env_args nil (cups ++ ms ++ vs ++ ys) ↘ ac /\
@@ -1002,11 +1017,18 @@ Section ViewMemberParams.
   Variables (i' : nat) (Mi' : imember) (v : nat) (Mv : imember).
   Hypotheses (HMi' : ind_member Dq i' = Some Mi') (Hv : List.nth_error vm i' = Some v) (HMv : ind_member D v = Some Mv).
 
+  (** Non-uniform parameters [ms] good for both the group's member [Mv] and
+      the container's [Mi']. *)
   Record view_member_params (ms : list domain) : Prop := mk_view_member_params
-    { params_length : List.length ms = im_nn Mv
+    { (** One per non-uniform parameter of [Mv] *)
+      params_length : List.length ms = im_nn Mv
+      (** Related canonically at [Mv] over [ups] *)
     ; params_group_related : tele_rel (canon_nparams_rel D ups v) (List.rev (im_nparams Mv)) ms ms
+      (** Related canonically at [Mi'] over [cups] *)
     ; params_container_related : tele_rel (canon_nparams_rel Dq cups i') (List.rev (im_nparams Mi')) ms ms
+      (** Related at [Mv]'s full telescope over [ups] *)
     ; params_group_values : per_gargs (List.rev (im_params D Mv)) nil nil (ups ++ ms) (ups ++ ms)
+      (** Related at [Mi']'s full telescope over [cups] *)
     ; params_container_values : per_gargs (List.rev (im_params Dq Mi')) nil nil (cups ++ ms) (cups ++ ms) }.
 
   Lemma view_member_params_of : forall ms ms', tele_rel (canon_nparams_rel Dq cups i') (List.rev (im_nparams Mi')) ms ms' ->

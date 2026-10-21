@@ -164,13 +164,18 @@ Qed.
     read back alike. *)
 Inductive cross_tops (dr : nat -> list domain -> exp -> relation domain) (k : nat) :
     list domain -> list carg -> list carg -> list domain -> list domain -> Prop :=
+(** No argument *)
 | cross_tops_nil : forall pre, cross_tops dr k pre nil nil nil nil
+(** Non-recursive in both: the container's argument joins the prefix *)
 | cross_tops_arg : forall pre A' A gsA gsB vA vB vsA vsB,
     cross_tops dr k (pre ++ vA :: nil) gsA gsB vsA vsB ->
     cross_tops dr k pre (ca_arg A' :: gsA) (ca_arg A :: gsB) (vA :: vsA) (vB :: vsB)
+(** Nested through: nothing asked *)
 | cross_tops_nest : forall pre A' t gsA gsB vA vB vsA vsB,
     cross_tops dr k pre gsA gsB vsA vsB ->
     cross_tops dr k pre (ca_arg A' :: gsA) (ca_rec t :: gsB) (vA :: vsA) (vB :: vsB)
+(** Recursive in both: fresh variables whose types' domains read back
+    alike *)
 | cross_tops_rec : forall pre t' t gsA gsB aA aB sA sB vsA vsB,
     shape_tops dr k pre t aA aB ->
     cross_tops dr k pre gsA gsB vsA vsB ->
@@ -437,9 +442,13 @@ Section CrossFresh.
   (** The fresh non-uniform parameters of the container's member at [ub]
       and of the group's at [u0] are related at the group's relation. *)
   Record cross_params (nsA nsB : list domain) : Prop := mk_cross_params
-    { cp_rel : tele_rel (nr v) (List.rev (im_nparams Mv)) nsA nsB
+    { (** Related at the group's member *)
+      cp_rel : tele_rel (nr v) (List.rev (im_nparams Mv)) nsA nsB
+      (** Related across at the container's member's telescope *)
     ; cp_container : per_gargs (List.rev (im_params D' Mi')) nil nil (ub ++ nsA) (cups ++ nsB)
+      (** The group's side related to itself at the container's *)
     ; cp_container_right : per_gargs (List.rev (im_params D' Mi')) nil nil (cups ++ nsB) (cups ++ nsB)
+      (** The group's side related to itself at the group's *)
     ; cp_group_right : per_gargs (List.rev (im_params D Mv)) nil nil (u0 ++ nsB) (u0 ++ nsB) }.
 
   Lemma cross_fresh_nparams : forall s nsA nsB,
@@ -627,13 +636,19 @@ Section CrossFresh.
         side, the two variables related at [CG], and their types related. *)
     Record cross_position_step (gA1 : list carg) (gA : carg) (gB1 : list carg) (gB : carg) (vA1 vB1 : list domain)
         (CG : exp) (aA aB : domain) (s : nat) : Prop := mk_cross_position_step
-      { container_prefix_rel : per_gargs (List.rev (cargs_ctx qc D' Mi' (gA1 ++ gA :: nil) ++ im_params D' Mi')) nil nil
+      { (** The container's prefixes related across *)
+        container_prefix_rel : per_gargs (List.rev (cargs_ctx qc D' Mi' (gA1 ++ gA :: nil) ++ im_params D' Mi')) nil nil
           (ub ++ nsA ++ vA1 ++ ⇑! aA s :: nil) (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil)
+        (** The group's side related to itself at the container's
+            telescope *)
       ; container_right_prefix : per_gargs (List.rev (cargs_ctx qc D' Mi' (gA1 ++ gA :: nil) ++ im_params D' Mi')) nil nil
           (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil) (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil)
+        (** The group's side related to itself at the group's telescope *)
       ; group_right_prefix : per_gargs (List.rev (cargs_ctx p D Mv (gB1 ++ gB :: nil) ++ im_params D Mv)) nil nil
           (u0 ++ nsB ++ vB1 ++ ⇑! aB s :: nil) (u0 ++ nsB ++ vB1 ++ ⇑! aB s :: nil)
+        (** The two variables related at [CG] *)
       ; fresh_heads_agree : per_head CG CG (env_args nil (u0 ++ nsB ++ vB1)) (env_args nil (u0 ++ nsB ++ vB1)) (⇑! aA s) (⇑! aB s)
+        (** Their types related *)
       ; fresh_types_related : exists (i : uidx) R, DF aA ≈ aB ∈ per_univ_elem i ↘ R }.
 
     (** One position:the container's type there [CA], the group's [CG],
@@ -755,14 +770,22 @@ Section CrossFresh.
         alike at their domains. *)
     #[warnings="-cannot-define-projection"]
     Record cross_fresh_tail (gA1 gB1 gA2 gB2 : list carg) (vA1 vB1 : list domain) (s : nat) : Prop := mk_cross_fresh_tail
-      { cft_vsA : list domain
+      { (** The container's fresh arguments *)
+        cft_vsA : list domain
+        (** The group's fresh arguments *)
       ; cft_vsB : list domain
+        (** The container's are fresh at [ub] *)
       ; cft_args_a : Fcargs gA2 of qc ub in gc_deps ⍮ gc_stack ⍮ env_args nil (ub ++ nsA ++ nonrec_arg_vals gA1 vA1) ⍮ s ↘ cft_vsA
+        (** The group's are fresh at [u0] *)
       ; cft_args_b : Fcargs gB2 of p u0 in gc_deps ⍮ gc_stack ⍮ env_args nil (u0 ++ nsB ++ nonrec_arg_vals gB1 vB1) ⍮ s ↘ cft_vsB
+        (** They are related at the group's relation *)
       ; cft_related : con_args_rel p D (okr_at D u0 nr) nr ar dr v u0 u0 (nsA ++ nonrec_arg_vals gB1 vA1)
           (nsB ++ nonrec_arg_vals gB1 vB1) gB2 cft_vsA cft_vsB
+        (** The non-recursive ones are related at their types *)
       ; cft_nonrec : tele_rel_from (ar v nsA c) (List.length (cargs_nonrec gB1)) (nonrec_arg_vals gB1 vA1)
           (nonrec_arg_vals gB2 cft_vsA) (nonrec_arg_vals gB2 cft_vsB)
+        (** The types of the ones recursive in both read alike at their
+            domains *)
       ; cft_tops : cross_tops dr v (nsA ++ nonrec_arg_vals gB1 vA1) gA2 gB2 cft_vsA cft_vsB }.
 
     Lemma cross_fresh_cargs : forall gA2 gB2 gA1 gB1 vA1 vB1, gsA = gA1 ++ gA2 -> gsB = gB1 ++ gB2 -> cargs_corr vm gA1 gB1 ->
@@ -1114,10 +1137,15 @@ Section CrossBot.
   #[warnings="-cannot-define-projection"]
   Record cross_ih_pair (t t' : ptyp) (k : nat) (u u' pre pre' : list domain) (x x' : domain) : Prop :=
     mk_cross_ih_pair
-    { cip_container : domain
+    { (** The container's recursive result *)
+      cip_container : domain
+      (** The group's recursive result *)
     ; cip_group : domain
+      (** The container's, under its eliminator *)
     ; cip_container_eval : ⟦ih x of t' under qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ cip_container
+      (** The group's, under its own *)
     ; cip_group_eval : ⟦ih x' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ cip_group
+      (** They are related as recursive results *)
     ; cip_related : rec_result_rel dr Rel k u u' pre pre' t x x' cip_container cip_group }.
 
   Lemma cross_ih_neut : forall t t' k u u' pre pre' a1 a2 e e', shape_corr vm t' t ->
@@ -1156,10 +1184,15 @@ Section CrossBot.
   #[warnings="-cannot-define-projection"]
   Record cross_ih_types (t t' : ptyp) (k : nat) (u u' pre pre' : list domain) (ρ1 ρ2 : env) (x x' : domain) : Prop :=
     mk_cross_ih_types
-    { cit_container : domain
+    { (** The container's recursive result type *)
+      cit_container : domain
+      (** The group's recursive result type *)
     ; cit_group : domain
+      (** The container's, under its motives *)
     ; cit_container_eval : ⟦ihty x of t' under ρb (blocks_motives VBb) ⟧ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ cit_container
+      (** The group's, under its own *)
     ; cit_group_eval : ⟦ihty x' of t under C1 (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack ⍮ ρ2 ↘ cit_group
+      (** Their related neutrals are related as recursive results *)
     ; cit_related : forall e2 e2', Dom e2 ≈ e2' ∈ per_bot ->
         rec_result_rel dr Rel k u u' pre pre' t x x' (⇑ cit_container e2) (⇑ cit_group e2') }.
 
@@ -1228,14 +1261,23 @@ Section CrossBot.
   #[warnings="-cannot-define-projection"]
   Record cross_wrapped (k : nat) (pre pre' : list domain) (gq gA gB : list carg) (vA vB : list domain) (ρA ρB : env)
       (s2 : nat) : Prop := mk_cross_wrapped
-    { cw_ihsA : list domain
+    { (** The container's fresh recursive results *)
+      cw_ihsA : list domain
+      (** The group's fresh recursive results *)
     ; cw_ihsB : list domain
+      (** The container's wrapped results *)
     ; cw_wA : list domain
+      (** The group's wrapped results *)
     ; cw_wB : list domain
+      (** The container's fresh results *)
     ; cw_fresh_a : Fihs vA at gq gA under ρb (blocks_motives VBb) in gc_deps ⍮ gc_stack ⍮ ρA ⍮ s2 ↘ cw_ihsA
+      (** The group's fresh results *)
     ; cw_fresh_b : Fihs vB at gq gB under C1 (blocks_motives Bks) in gc_deps ⍮ gc_stack ⍮ ρB ⍮ s2 ↘ cw_ihsB
+      (** The container's wrapped results, from them *)
     ; cw_wrap_a : ⟦wihs vA of gq gA with cw_ihsA under qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ cw_wA
+      (** The group's wrapped results, from them *)
     ; cw_wrap_b : ⟦wihs vB of gq gB with cw_ihsB under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ cw_wB
+      (** The wrapped results are related *)
     ; cw_related : cross_results_rel dr Rel k u0 u0 C1 p u0 Bks pre pre' gA gB vA vB cw_wA cw_wB }.
 
   Lemma cross_wrapped_results : forall (rk : nat -> nat) r, (forall j', rk j' < r -> cross_bot j') ->
@@ -1340,24 +1382,43 @@ Section CrossBot.
   #[warnings="-cannot-define-projection"]
   Record cross_block_site (rk : nat -> nat) (r : nat) (sela selb : option (list nat)) (n : nat) (Mn : imember) : Prop :=
     mk_cross_block_site
-    { cbs_a : nat
+    { (** The container's member index *)
+      cbs_a : nat
+      (** The container's member *)
     ; cbs_Ma : imember
+      (** The group's member index *)
     ; cbs_b : nat
+      (** The group's member *)
     ; cbs_Mb : imember
+      (** The common reference's group *)
     ; cbs_hd : qname
+      (** The common reference's member *)
     ; cbs_k : nat
+      (** The container side's uniform parameters at the reference *)
     ; cbs_prea : list domain
+      (** The group side's uniform parameters at the reference *)
     ; cbs_preb : list domain
+      (** [sela] gives [a] *)
     ; cbs_src_a : elim_src sela n = cbs_a
+      (** [selb] gives [b] *)
     ; cbs_src_b : elim_src selb n = cbs_b
+      (** The view takes [a] to [b] *)
     ; cbs_in_view_map : List.nth_error vm cbs_a = Some cbs_b
+      (** [a] is a member of the container *)
     ; cbs_member_a : ind_member D' cbs_a = Some cbs_Ma
+      (** [b] is a member of the group *)
     ; cbs_member_b : ind_member D cbs_b = Some cbs_Mb
+      (** [Mn] has [a]'s non-uniform parameter count *)
     ; cbs_nn : im_nn Mn = im_nn cbs_Ma
+      (** [Mn]'s constructors are [a]'s *)
     ; cbs_names : List.map fst (im_cons Mn) = List.map fst (im_cons cbs_Ma)
+      (** Their argument kinds are compatible with [a]'s *)
     ; cbs_kinds : forall c gq gA, In (c, gq) (im_cons Mn) -> ind_con cbs_Ma c = Some gA -> cargs_kinds gq gA
+      (** [b] nests through only at members of rank below [r] *)
     ; cbs_nest : forall c gq gB, In (c, gq) (im_cons Mn) -> ind_con cbs_Mb c = Some gB -> cargs_nest_ok rk r gq gB
+      (** [a]'s type at [ub] is at the reference *)
     ; cbs_ref_a : ⟦mref cbs_a of qc ub ⟧ gc_deps ⍮ gc_stack ↘ (cbs_hd, cbs_k, cbs_prea)
+      (** [b]'s type at [u0] is at the reference *)
     ; cbs_ref_b : ⟦mref cbs_b of p u0 ⟧ gc_deps ⍮ gc_stack ↘ (cbs_hd, cbs_k, cbs_preb) }.
 
   Lemma cross_block_read : forall (rk : nat -> nat) r, (forall j', rk j' < r -> cross_bot j') ->
@@ -1495,11 +1556,17 @@ Section CrossBot.
       to: their types at [ub] and at [u0] are at a common reference. *)
   #[warnings="-cannot-define-projection"]
   Record cross_ref_pair (a b : nat) : Prop := mk_cross_ref_pair
-    { crp_hd : qname
+    { (** The common reference's group *)
+      crp_hd : qname
+      (** The common reference's member *)
     ; crp_k : nat
+      (** [a]'s uniform parameters at the reference *)
     ; crp_prea : list domain
+      (** [b]'s uniform parameters at the reference *)
     ; crp_preb : list domain
+      (** [a]'s type at [ub] is at the reference *)
     ; crp_ref_a : ⟦mref a of qc ub ⟧ gc_deps ⍮ gc_stack ↘ (crp_hd, crp_k, crp_prea)
+      (** [b]'s type at [u0] is at the reference *)
     ; crp_ref_b : ⟦mref b of p u0 ⟧ gc_deps ⍮ gc_stack ↘ (crp_hd, crp_k, crp_preb) }.
 
   Lemma cross_refs : forall a Ma b Mb, List.nth_error vm a = Some b -> ind_member D' a = Some Ma -> ind_member D b = Some Mb ->

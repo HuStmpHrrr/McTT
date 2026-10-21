@@ -202,6 +202,8 @@ Definition item_refs (t : ptab) (its : list iitem) : list (ptab * string)%type :
                       | (None, _, _) => nil
                       end) its.
 
+(** The privacy table of the module a module expression names, the
+    tables of the module variables in scope being [S]. *)
 Fixpoint mtab (S : list ptab) (H : modexp) : ptab :=
   match H with
   | me_unit fp => pt_glob (me_unit fp)
@@ -350,11 +352,16 @@ Fixpoint rargs_refs (S : list ptab) (args : list (string * exp)) : list (ptab * 
   | (_, T) :: args' => exp_refs S T ++ rargs_refs (pt_none :: S) args'
   end.
 
+(** The references a declared member makes as written: its non-uniform
+    parameters, its sort and its constructors' arguments, under the [nu]
+    uniform parameters and the [nself] [Self]s. *)
 Definition rmem_refs (nu nself : nat) (Mr : raw_member) : list (ptab * string)%type :=
   tele_refs (repeat pt_none nu) (rm_nparams Mr) ++
   exp_refs (repeat pt_none nu) (rm_sort Mr) ++
   flat_map (fun cg => rargs_refs (repeat pt_none (List.length (rm_nparams Mr) + nu + nself)) (snd cg)) (rm_cons Mr).
 
+(** The references a group declaration makes as written: its uniform
+    parameters, then each member's. *)
 Definition decl_refs (R : raw_decl) : list (ptab * string)%type :=
   tele_refs nil (rd_uparams R) ++
   flat_map (rmem_refs (List.length (rd_uparams R)) (List.length (rd_members R))) (rd_members R).
