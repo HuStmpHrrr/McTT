@@ -537,6 +537,131 @@ Section Iota.
         exact (rel_exp_under_ctx_fn_cong HBk' H).
     Qed.
   End RecArg.
+
+  (** *** The Instance of the Branch's Context *)
+  Lemma gsub_args : gsub Γ (sb_of_list Id (Ns ++ As)) (cinst Γ p D Mm Us gs).
+  Proof.
+    pose proof (gsub_ns VP p D HP HPD Γ HΓ Us m Mm HMm (HMall _ _ HMm) Ns i_HNl i_HNs) as HgN.
+    pose proof (HBc _ _ _ _ HMm Hcon) as HB; unfold elim_bctx in HB.
+    assert (HC : ⊨ cinst Γ p D Mm Us gs)
+      by (unfold cinst; rewrite <- !List.app_assoc in HB; exact (rel_ctx_wf_app_r _ _ HB)).
+    rewrite sb_of_list_app; unfold cinst in HC |- *.
+    apply gsub_of_list; [ exact HgN | apply tele_ass_sub, cargs_ctx_aux_ass | exact HC
+                        | rewrite length_tele_sub, length_cargs_ctx; exact HAl |].
+    intros k N T HN HT; rewrite tele_insts_tele_sub in HT.
+    rewrite (tele_insts_sb_eq _ _ σP) in HT; [ exact (HAs _ _ _ HN HT) |].
+    rewrite <- i_HNl; etransitivity; [ apply sb_qn_of_list |].
+    etransitivity; [ apply sb_of_list_cong; intros x; cbn; apply sentry_sub_id |].
+    unfold σP; rewrite i_Ps, <- sb_of_list_app; reflexivity.
+  Qed.
+
+  Lemma ihs_pre : forall gs1 gs2, gs = gs1 ++ gs2 ->
+      ⊨ ihs_ctx_aux (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1 ++ cinst Γ p D Mm Us gs.
+  Proof.
+    intros * Heq; pose proof (HBc _ _ _ _ HMm Hcon) as H; unfold elim_bctx in H.
+    replace (ihs_ctx_aux (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs)
+      with (ihs_ctx_aux (im_nn Mm) (blocks_motives Bks) Us (List.length gs) (cargs_pat gs1 ++ nil) (0 + cargs_nrec gs1) gs2
+              ++ ihs_ctx_aux (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1) in H
+      by (rewrite <- ihs_ctx_aux_app, <- Heq; reflexivity).
+    unfold cinst; rewrite <- !List.app_assoc in H; exact (rel_ctx_wf_app_r _ _ H).
+  Qed.
+
+  Lemma gsub_iota_ihs : forall rest gs1 L0, gs = gs1 ++ rest -> List.length L0 = cargs_nrec gs1 ->
+      gsub Γ (sb_of_list Id (Ns ++ As ++ L0))
+        (ihs_ctx_aux (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1 ++ cinst Γ p D Mm Us gs) ->
+      gsub Γ (sb_of_list Id (Ns ++ As ++ L0 ++ elim_ihs p D oq Us Bks (cargs_sub σP gs1 As) rest (List.skipn (List.length gs1) As)))
+        (ihs_ctx_aux (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 (gs1 ++ rest) ++ cinst Γ p D Mm Us gs).
+  Proof.
+    induction rest as [| [B0 | t] rest IH]; intros gs1 L0 Heq HL Hδ.
+    - cbn [elim_ihs]; rewrite !List.app_nil_r; exact Hδ.
+    - assert (Hlt : List.length gs1 < List.length As) by (rewrite HAl, Heq, List.length_app; cbn; lia).
+      destruct (nth_error_lt_some As _ Hlt) as [a Ha].
+      rewrite (skipn_nth_cons _ _ _ Ha); cbn [elim_ihs].
+      assert (Hcs : cargs_sub σP (gs1 ++ ca_arg B0 :: nil) As = (cargs_sub σP gs1 As ,, a)).
+      { rewrite <- cargs_sub_firstn, <- (cargs_sub_firstn gs1), List.length_app, Nat.add_1_r, (firstn_S_nth _ _ _ Ha).
+        apply cargs_sub_snoc_arg; rewrite List.length_firstn; lia. }
+      replace (S (List.length gs1)) with (List.length (gs1 ++ ca_arg B0 :: nil)) by (rewrite List.length_app; cbn; lia).
+      rewrite <- Hcs.
+      replace (gs1 ++ ca_arg B0 :: rest) with ((gs1 ++ ca_arg B0 :: nil) ++ rest) by (rewrite <- List.app_assoc; reflexivity).
+      apply IH; [ rewrite Heq, <- List.app_assoc; reflexivity | rewrite cargs_nrec_app; cbn; lia |].
+      rewrite ihs_ctx_aux_app, List.app_nil_r; cbn [ihs_ctx_aux List.app]; exact Hδ.
+    - assert (Hlt : List.length gs1 < List.length As) by (rewrite HAl, Heq, List.length_app; cbn; lia).
+      destruct (nth_error_lt_some As _ Hlt) as [a Ha].
+      rewrite (skipn_nth_cons _ _ _ Ha); cbn [elim_ihs].
+      set (σg := cargs_sub σP gs1 As).
+      assert (Hcs : cargs_sub σP (gs1 ++ ca_rec t :: nil) As = σg).
+      { unfold σg; rewrite <- cargs_sub_firstn, <- (cargs_sub_firstn gs1), List.length_app, Nat.add_1_r, (firstn_S_nth _ _ _ Ha).
+        apply cargs_sub_snoc_rec; rewrite List.length_firstn; lia. }
+      assert (Heq0 : gs = gs1 ++ ca_rec t :: rest) by exact Heq.
+      destruct (length_rec_ps D HD m Mm HMm c gs gs1 t rest Hcon Heq0) as (Mj & HMj & _).
+      set (E := ihs_ctx_aux (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 gs1) in *.
+      set (θ := ihs_sub (im_nn Mm) Us (List.length gs) (cargs_pat gs1) (cargs_nrec gs1)).
+      set (b := cargs_nrec gs1 + List.length gs + im_nn Mm).
+      set (x := cargs_nrec gs1 + List.length gs - 1 - List.length (cargs_pat gs1)).
+      assert (Hent : ihs_ctx_aux (im_nn Mm) (blocks_motives Bks) Us (List.length gs) nil 0 (gs1 ++ ca_rec t :: nil)
+                     = ce_ass (ptyp_ihty (blocks_motives Bks) (sb_of_wk (wk_shiftn b)) θ (a_var x) t) :: E)
+        by (unfold E, θ, b, x; rewrite ihs_ctx_aux_app, List.app_nil_r; cbn [ihs_ctx_aux List.app Nat.add]; reflexivity).
+      pose proof (ihs_pre (gs1 ++ ca_rec t :: nil) rest ltac:(rewrite <- List.app_assoc; exact Heq)) as HCT.
+      rewrite Hent in HCT; cbn [List.app] in HCT.
+      destruct (rel_ctx_wf_ass_inv HCT) as [j HTj].
+      set (δ := sb_of_list Id (Ns ++ As ++ L0)) in *.
+      assert (Hθδ : sb_eq (θ ⨟ δ) σg).
+      { unfold θ, δ, σg; rewrite <- HL.
+        exact (ihs_sub_iota D Mm Ps As L0 gs1 gs HPl HAl ltac:(rewrite Heq, List.length_app; lia)). }
+      assert (Hbδ : sb_eq (sb_of_wk (wk_shiftn b) ⨟ δ) Id).
+      { intros z; unfold b, δ; cbn [sb_compose sb_of_wk sentry_sub wk_shiftn].
+        replace (z + (cargs_nrec gs1 + List.length gs + im_nn Mm)) with (List.length (Ns ++ As ++ L0) + z)
+          by (rewrite !List.length_app, i_HNl, HAl, HL; lia).
+        rewrite sb_of_list_ge; reflexivity. }
+      assert (Hidx : (a_var x)[δ] = a).
+      { change (exp_sub (a_var ?y) ?s) with (sentry_exp (s y)); unfold δ, x.
+        rewrite (sb_of_list_nth _ _ _ a) by (rewrite !List.length_app, i_HNl, HAl, HL, Heq, List.length_app, length_cargs_pat; cbn; lia).
+        rewrite !List.length_app, i_HNl, HAl, HL, length_cargs_pat.
+        replace (im_nn Mm + (List.length gs + cargs_nrec gs1) - 1 - (cargs_nrec gs1 + List.length gs - 1 - List.length gs1))
+          with (im_nn Mm + List.length gs1) by (rewrite Heq, List.length_app; cbn; lia).
+        cbn [sentry_exp]; rewrite List.app_nth2 by (rewrite i_HNl; lia); rewrite i_HNl.
+        replace (im_nn Mm + List.length gs1 - im_nn Mm) with (List.length gs1) by lia.
+        rewrite List.app_nth1 by exact Hlt; apply List.nth_error_nth; exact Ha. }
+      pose proof (r_tm gs1 t rest Heq0 Mj HMj _ 0 eq_refl Us Bks
+                    ltac:(cbn [sb_shift_iter]; rewrite (List.map_ext _ (fun U => U) exp_sub_id), List.map_id; reflexivity)
+                    ltac:(cbn [sb_shift_iter]; rewrite blocks_sub_id; reflexivity)) as Hih.
+      cbn [sb_shift_iter apps_vars_iter sb_qn ptyp_skip List.firstn doms_ctx List.map List.rev tele_sub List.app] in Hih.
+      rewrite (List.nth_error_nth _ _ _ Ha) in Hih; fold σg in Hih.
+      replace (Ns ++ As ++ L0 ++ ptyp_ih p D oq Us Bks σg a t :: elim_ihs p D oq Us Bks σg rest (List.skipn (S (List.length gs1)) As))
+        with (Ns ++ As ++ (L0 ++ ptyp_ih p D oq Us Bks σg a t :: nil) ++ elim_ihs p D oq Us Bks σg rest (List.skipn (S (List.length gs1)) As))
+        by (rewrite <- !List.app_assoc; reflexivity).
+      replace (S (List.length gs1)) with (List.length (gs1 ++ ca_rec t :: nil)) by (rewrite List.length_app; cbn; lia).
+      rewrite <- Hcs.
+      replace (gs1 ++ ca_rec t :: rest) with ((gs1 ++ ca_rec t :: nil) ++ rest) by (rewrite <- List.app_assoc; reflexivity).
+      apply IH; [ rewrite Heq, <- List.app_assoc; reflexivity | rewrite List.length_app, cargs_nrec_app, HL; cbn; lia |].
+      rewrite Hent, Hcs.
+      replace (Ns ++ As ++ L0 ++ ptyp_ih p D oq Us Bks σg a t :: nil) with ((Ns ++ As ++ L0) ++ ptyp_ih p D oq Us Bks σg a t :: nil)
+        by (rewrite <- !List.app_assoc; reflexivity).
+      rewrite (sb_of_list_app (Ns ++ As ++ L0) (ptyp_ih p D oq Us Bks σg a t :: nil) Id).
+      change (sb_of_list (sb_of_list Id (Ns ++ As ++ L0)) (ptyp_ih p D oq Us Bks σg a t :: nil))
+        with (sb_of_list Id (Ns ++ As ++ L0) ,, ptyp_ih p D oq Us Bks σg a t).
+      cbn [List.app]; eapply gsub_ass; [ exact Hδ | exact HTj |].
+      fold δ; rewrite ptyp_ihty_sub, Hidx.
+      rewrite (ptyp_ihty_sb_eq t _ (sb_of_wk (wk_shiftn b) ⨟ δ) Id (θ ⨟ δ) σg a); [ exact Hih | exact Hbδ | exact Hθδ ].
+  Qed.
+
+  Lemma gsub_iota : gsub Γ (sb_of_list Id (Ns ++ As ++ elim_ihs p D oq Us Bks σP gs As))
+      (elim_bctx p D Mm gs (blocks_motives Bks) Us ++ Γ).
+  Proof.
+    pose proof gsub_args as Hδ.
+    rewrite <- (List.app_nil_r As) in Hδ at 1.
+    pose proof (gsub_iota_ihs gs nil nil eq_refl eq_refl ltac:(cbn [ihs_ctx_aux List.app]; exact Hδ)) as H.
+    cbn [List.app List.skipn List.length cargs_sub] in H.
+    unfold elim_bctx; unfold cinst in H; rewrite <- !List.app_assoc; exact H.
+  Qed.
+
+  (** The constructor applied, the scrutinee. *)
+  Lemma iota_Mc_valid : Γ ⊨ apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c) (im_pre Mm Us ++ Ns ++ As)
+      : ind_mty p D m Us Ns.
+  Proof.
+    apply (con_apps_ref_valid VP p D HP HPD Γ m Mm c gs Us Ns As HΓ HMm Hcon i_HUl i_HUs i_HNl i_HNs HAl).
+    intros * HN HT; apply (HAs _ _ _ HN); unfold σP; rewrite i_Ps; exact HT.
+  Qed.
 End Iota.
 
 End Fixed_GCtx.
