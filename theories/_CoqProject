@@ -104,6 +104,7 @@
 ./Core/Soundness/ContextCases.v
 ./Core/Soundness/FunctionCases.v
 ./Core/Soundness/Inductives/Args.v
+./Core/Soundness/Inductives/Comps.v
 ./Core/Soundness/Inductives/Con.v
 ./Core/Soundness/Inductives/Elim.v
 ./Core/Soundness/IndCases.v
