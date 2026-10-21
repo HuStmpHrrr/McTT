@@ -79,6 +79,11 @@ Proof.
     exists x, x', y, y'; cbn; repeat split; assumption.
 Qed.
 
+Lemma wrap_results_rel_len : forall dr Rel k u u' pre pre' gs' gs vs vs' ihs ihs',
+    wrap_results_rel dr Rel k u u' pre pre' gs' gs vs vs' ihs ihs' ->
+    List.length ihs = cargs_nrec gs' /\ List.length ihs' = cargs_nrec gs'.
+Proof. induction 1; cbn; lia. Qed.
+
 (** A list substitution evaluated: the values of its terms after its
     base's. *)
 Lemma eval_sb_of_list_inv : forall Ms σ ρ E E0, ⟦ sb_of_list σ Ms ⟧s gc_deps ⍮ gc_stack ⍮ ρ ↘ E ->
@@ -368,6 +373,53 @@ Section CrossBase.
                HXX HX Hpk HB1 HB2 (List.length (ptyp_doms t)) 0 nil nil x x' ih ih' b1 b2 jG R');
         [ lia | reflexivity | reflexivity | apply tele_prefix_rel_nil | apply eval_apps_nil | apply eval_apps_nil
         | repeat rewrite List.app_nil_r; exact Hra | repeat rewrite List.app_nil_r; exact Hrr | exact Eb1 | exact Eb2 | exact HR' ].
+    Qed.
+
+    (** The environments of the wrapped branch's context at such arguments
+        and results. *)
+    Lemma cv_wrap : forall B1 B2, RΓ B1 C1 -> RΓ B2 C1 ->
+        forall X X' vs vs' w w',
+        tele_rel (nr v) T X X' ->
+        tele_rel (ar v X c) (cargs_nonrec gs) (nonrec_arg_vals gs vs) (nonrec_arg_vals gs vs') ->
+        con_args_rel p D (okr_at D u0 nr) nr ar dr v u0 u0 X X' gs vs vs' ->
+        wrap_results_rel dr Rel v u0 u0 X X' gs' gs vs vs' w w' ->
+        forall RB, EF wrap_bctx p D Mv gs' gs As Us ++ Γ ≈ wrap_bctx p D Mv gs' gs As Us ++ Γ ∈ per_ctx_env ↘ RB ->
+        RB (env_args B1 (X ++ vs ++ w)) (env_args B2 (X' ++ vs' ++ w')).
+    Proof.
+      intros B1 B2 HB1 HB2 * HX Har Hia Hwr RB HRB.
+      assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
+      assert (HB12 : RΓ B1 B2) by (etransitivity; [ exact HB1 | symmetry; exact HB2 ]).
+      destruct (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia) as [Lv Lv'].
+      destruct (wrap_results_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ Hwr) as [Lw Lw'].
+      pose proof HX as HX0; rewrite tele_rel_iff in HX0; destruct HX0 as (LX & LX' & _).
+      unfold T in LX, LX'; rewrite List.length_rev, length_im_nparams in LX, LX'.
+      destruct (us_class VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HUC B1 HB1) as (u1 & Hu1 & H10).
+      destruct (us_class VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HUC B2 HB2) as (u2 & Hu2 & H20).
+      pose proof (EB closed_args_gargs v Mv c gs HMv Hcon X X' vs vs' HX Har Hia (List.length gs) (le_n _)) as Hcg.
+      rewrite List.firstn_all, !List.firstn_all2 in Hcg by lia.
+      assert (HKa : tele_ass ((cargs_ctx p D Mv gs ++ im_nparams Mv) ++ ind_uparams D))
+        by (rewrite <- List.app_assoc; fold (im_params D Mv); apply List.Forall_app; split;
+            [ apply cargs_ctx_aux_ass | exact (member_params_ass D Hc v Mv HMv) ]).
+      assert (HK : ⊨ (cargs_ctx p D Mv gs ++ im_nparams Mv) ++ ind_uparams D)
+        by (rewrite <- List.app_assoc; fold (im_params D Mv); exact (vg_cargs_sem p D Hvg Hcv v Mv c gs HMv Hcon)).
+      pose proof (ihs_pre_sem p D Γ Us Bks Mv gs HB nil gs eq_refl) as HC0; cbn [ihs_ctx_aux List.app] in HC0; rewrite cinst_eq in HC0.
+      pose proof (EB cv_gen _ HKa HK HC0 B1 B2 u1 u2 HB12 Hu1 Hu2 H10 H20 _ _ Hcg
+                    ltac:(rewrite !List.length_app, length_cargs_ctx, length_im_nparams; lia)) as Hci.
+      rewrite tele_sub_app, length_im_nparams in Hci; fold τU nn Cs Ns in Hci.
+      pose proof (cv_wrap_ihs B1 B2 HB1 HB2 _ _ _ _ _ _ HX Har Hia Hwr Hci na (le_n _)) as Hih.
+      unfold na in Hih; rewrite (List.firstn_all gs), List.firstn_all2, !List.firstn_all2 in Hih by (try rewrite (cargs_kinds_length _ _ Hk); lia).
+      pose proof (WB valid_wrap_bctx v Mv c gs' gs HMv Hcon Hk) as HW.
+      unfold As in HRB; rewrite (WB w_ctx_eq v Mv c gs' gs HMv Hcon Hk) in HW, HRB.
+      fold nn na As τU Cs Ns in HW, HRB.
+      set (Wc := wrap_ihs_ctx nn As Us na nil 0 gs' gs) in HW, HRB, Hih.
+      replace (Wc ++ Cs ++ Ns ++ Γ) with ((Wc ++ Cs ++ Ns) ++ Γ) in HW, HRB by (rewrite <- !List.app_assoc; reflexivity).
+      rewrite (List.app_assoc X), (List.app_assoc X').
+      eapply (gargs_env_rel_gen _ _ _ _ _ _ _ _ HRΓ HRB HW HB12).
+      - unfold Wc; rewrite !List.length_app, length_wrap_ihs_ctx by exact Hk.
+        unfold Cs, Ns; rewrite !length_tele_sub, length_cargs_ctx, length_im_nparams; unfold nn, na, im_nn in *; lia.
+      - rewrite List.rev_app_distr; apply per_gargs_app_intro;
+          [ unfold Cs, Ns; rewrite List.length_rev, !List.length_app, !length_tele_sub, length_cargs_ctx, length_im_nparams;
+            unfold nn, im_nn in *; lia | exact Hci | exact Hih ].
     Qed.
   End WrapCv.
 End CrossBase.
