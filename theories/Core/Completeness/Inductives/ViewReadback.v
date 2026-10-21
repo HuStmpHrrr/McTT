@@ -176,6 +176,34 @@ Inductive cross_tops (dr : nat -> list domain -> exp -> relation domain) (k : na
     cross_tops dr k pre gsA gsB vsA vsB ->
     cross_tops dr k pre (ca_rec t' :: gsA) (ca_rec t :: gsB) (⇑! aA sA :: vsA) (⇑! aB sB :: vsB).
 
+Lemma cross_tops_arg_inv : forall dr k pre A' A gsA gsB vA vB vsA vsB,
+    cross_tops dr k pre (ca_arg A' :: gsA) (ca_arg A :: gsB) (vA :: vsA) (vB :: vsB) ->
+    cross_tops dr k (pre ++ vA :: nil) gsA gsB vsA vsB.
+Proof. intros * H; inversion H; subst; assumption. Qed.
+
+Lemma cross_tops_nest_inv : forall dr k pre A' t gsA gsB vA vB vsA vsB,
+    cross_tops dr k pre (ca_arg A' :: gsA) (ca_rec t :: gsB) (vA :: vsA) (vB :: vsB) ->
+    cross_tops dr k pre gsA gsB vsA vsB.
+Proof. intros * H; inversion H; subst; assumption. Qed.
+
+Lemma cross_tops_rec_inv : forall dr k pre t' t gsA gsB aA aB sA sB vsA vsB,
+    cross_tops dr k pre (ca_rec t' :: gsA) (ca_rec t :: gsB) (⇑! aA sA :: vsA) (⇑! aB sB :: vsB) ->
+    shape_tops dr k pre t aA aB /\ cross_tops dr k pre gsA gsB vsA vsB.
+Proof. intros * H; inversion H; subst; split; assumption. Qed.
+
+Lemma con_args_arg_inv : forall p D okr nr ar dr k u u' pre pre' A gs v v' vs vs',
+    con_args_rel p D okr nr ar dr k u u' pre pre' (ca_arg A :: gs) (v :: vs) (v' :: vs') ->
+    con_args_rel p D okr nr ar dr k u u' (pre ++ v :: nil) (pre' ++ v' :: nil) gs vs vs'.
+Proof. intros * H; inversion H; subst; assumption. Qed.
+
+Lemma con_args_rec_inv : forall p D okr nr ar dr k u u' pre pre' t gs v v' vs vs',
+    con_args_rel p D okr nr ar dr k u u' pre pre' (ca_rec t :: gs) (v :: vs) (v' :: vs') ->
+    rec_arg_rel p D okr nr ar dr k u u' pre pre' t v v' /\ con_args_rel p D okr nr ar dr k u u' pre pre' gs vs vs'.
+Proof. intros * H; inversion H; subst; split; assumption. Qed.
+
+Lemma cargs_plen_tail : forall D g gs, cargs_plen D (g :: gs) -> cargs_plen D gs.
+Proof. intros D g gs H gs1 t gs2 E; apply (H (g :: gs1) t gs2); rewrite E; reflexivity. Qed.
+
 Section CrossFresh.
   #[local] Set Default Proof Using "All".
   Variable (VP : qname -> ind_decl -> Prop) (p : qname) (D : ind_decl).
@@ -729,7 +757,7 @@ Section CrossFresh.
             -- cbn [nonrec_arg_vals]; exact IHf.
             -- apply cross_tops_nest; exact IHt.
         + (** Recursive in both. *)
-          destruct Hco as (Hmt & Hdt & Hco).
+          destruct Hco as (Hmt & Hdp & Hco).
           (** The container's type at its side, against its variable's. *)
           destruct (vg_cargs_sem_all qc D' HgQ HcvQ i' Mi' c gsA HMi' HconA (gA1 ++ ca_rec t' :: nil) gA2 HeA'') as [HWA1 _].
           rewrite ECc in HWA1; destruct (rel_ctx_wf_ass_inv HWA1) as [iC HCv].
@@ -978,6 +1006,116 @@ Section CrossBot.
                     | eapply eval_app_neut, eval_fam_cod_ihfam; [ exact Ea | exact I1 ]
                     | eapply eval_app_neut, eval_fam_cod_ihfam; [ exact Ea' | exact I2 ] |].
       apply HI, per_bot_app; [ exact He2 | exact (Htop _ _ Hcc) ].
+  Qed.
+
+  (** *** The Recursive Results of a Branch
+
+      The arguments [vA] of a container's constructor (kinds [gA]) and [vB]
+      of the group's (kinds [gB]), of kinds [gq] in the group read: the
+      fresh recursive results on each side where [gq] has the argument
+      recursive, the wrapped results the branches are read under, and those
+      related as [cross_results_rel] has them. *)
+  #[warnings="-cannot-define-projection"]
+  Record cross_wrapped (k : nat) (pre pre' : list domain) (gq gA gB : list carg) (vA vB : list domain) (ρA ρB : env)
+      (s2 : nat) : Prop := mk_cross_wrapped
+    { cw_ihsA : list domain
+    ; cw_ihsB : list domain
+    ; cw_wA : list domain
+    ; cw_wB : list domain
+    ; cw_fresh_a : Fihs vA at gq gA under ρb (blocks_motives VBb) in gc_deps ⍮ gc_stack ⍮ ρA ⍮ s2 ↘ cw_ihsA
+    ; cw_fresh_b : Fihs vB at gq gB under C1 (blocks_motives Bks) in gc_deps ⍮ gc_stack ⍮ ρB ⍮ s2 ↘ cw_ihsB
+    ; cw_wrap_a : ⟦wihs vA of gq gA with cw_ihsA under qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ cw_wA
+    ; cw_wrap_b : ⟦wihs vB of gq gB with cw_ihsB under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ cw_wB
+    ; cw_related : cross_results_rel dr Rel k u0 u0 C1 p u0 Bks pre pre' gA gB vA vB cw_wA cw_wB }.
+
+  Lemma cross_wrapped_results : forall (rk : nat -> nat) r, (forall j', rk j' < r -> cross_bot j') ->
+      forall k gq gA gB vA vB pre pre' ρA ρB s s2,
+        cargs_kinds gq gA -> cargs_corr vm gA gB -> cargs_nest_ok rk r gq gB -> cargs_plen D' gA -> cargs_plen D gB ->
+        con_args_rel p D (okr_at D u0 nr) nr ar dr k u0 u0 pre pre' gB vA vB ->
+        cross_tops dr k pre gA gB vA vB ->
+        Fcargs gA of qc ub in gc_deps ⍮ gc_stack ⍮ ρA ⍮ s ↘ vA -> Fcargs gB of p u0 in gc_deps ⍮ gc_stack ⍮ ρB ⍮ s ↘ vB ->
+        cross_wrapped k pre pre' gq gA gB vA vB ρA ρB s2.
+  Proof.
+    intros rk r HIH k.
+    induction gq as [| g' gq IH]; intros [| gA0 gA] [| gB0 gB] vA vB pre pre' ρA ρB s s2 Hk Hco Hno PA PB Hca Ht FA FB;
+      cbn in Hk, Hco; try contradiction;
+      try (destruct g'; cbn in Hk; contradiction); try (destruct gA0; cbn in Hk, Hco; contradiction).
+    - inversion FA; inversion FB; subst.
+      apply (mk_cross_wrapped _ _ _ _ _ _ _ _ _ _ _ nil nil nil nil); constructor.
+    - pose proof (cargs_plen_tail _ _ _ PA) as PA'; pose proof (cargs_plen_tail _ _ _ PB) as PB'.
+      destruct g' as [T' | t''], gA0 as [A' | t'], gB0 as [A | t]; cbn in Hk, Hco, Hno; try contradiction.
+      + (** Non-recursive throughout. *)
+        destruct (fresh_cargs_arg_inv _ _ _ _ _ _ _ FA) as (aA & vA' & -> & EaA & FA').
+        destruct (fresh_cargs_arg_inv _ _ _ _ _ _ _ FB) as (aB & vB' & -> & EaB & FB').
+        destruct (IH gA gB vA' vB' (pre ++ ⇑! aA s :: nil) (pre' ++ ⇑! aB s :: nil) _ _ (S s) s2 Hk Hco Hno PA' PB'
+                    (con_args_arg_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) (cross_tops_arg_inv _ _ _ _ _ _ _ _ _ _ _ Ht) FA' FB')
+          as [ihsA ihsB wA wB IA IB WA WB HR].
+        apply (mk_cross_wrapped _ _ _ _ _ _ _ _ _ _ _ ihsA ihsB wA wB).
+        * apply fresh_ihs_arg; exact IA.
+        * apply fresh_ihs_arg; exact IB.
+        * apply wrap_ihs_eval_arg; exact WA.
+        * apply wrap_ihs_eval_arg; exact WB.
+        * apply cross_results_arg; exact HR.
+      + (** Nested through by the group only: the group's eliminator at
+            its argument. *)
+        destruct (fresh_cargs_arg_inv _ _ _ _ _ _ _ FA) as (aA & vA' & -> & EaA & FA').
+        destruct (fresh_cargs_rec_inv _ _ _ _ _ _ _ FB) as (aB & vB' & -> & EaB & FB').
+        destruct (con_args_rec_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hrr Hc'].
+        destruct (proj1 (proj2 (proj2 (XE self_elim_all))) _ _ _ _ _ _ _ _ Hrr) as (ih0 & ih & _ & Ih & _).
+        destruct Hno as [_ Hno].
+        destruct (IH gA gB vA' vB' pre pre' _ _ (S s) s2 Hk Hco Hno PA' PB' Hc' (cross_tops_nest_inv _ _ _ _ _ _ _ _ _ _ _ Ht) FA' FB')
+          as [ihsA ihsB wA wB IA IB WA WB HR].
+        apply (mk_cross_wrapped _ _ _ _ _ _ _ _ _ _ _ ihsA ihsB wA (ih :: wB)).
+        * apply fresh_ihs_arg; exact IA.
+        * apply fresh_ihs_nest; exact IB.
+        * apply wrap_ihs_eval_arg; exact WA.
+        * eapply wrap_ihs_eval_nest; [ exact Ih | exact WB ].
+        * eapply cross_results_nest; [ exact Ih | exact HR ].
+      + (** Nested through by both: the eliminators at a member of lower
+            rank. *)
+        destruct (fresh_cargs_rec_inv _ _ _ _ _ _ _ FA) as (aA & vA' & -> & EaA & FA').
+        destruct (fresh_cargs_rec_inv _ _ _ _ _ _ _ FB) as (aB & vB' & -> & EaB & FB').
+        destruct (con_args_rec_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hrr Hc'].
+        destruct (cross_tops_rec_inv _ _ _ _ _ _ _ _ _ _ _ _ _ Ht) as [_ Ht'].
+        destruct Hco as (Hmt & Hdp & Hco); destruct Hno as [Hlt Hno].
+        pose proof (shape_corr_of _ _ _ Hmt Hdp) as Hsc.
+        destruct (cross_ih_neut t t' k u0 u0 pre pre' aA aB (d_var s) (d_var s) Hsc Hrr (HIH _ Hlt)) as [ih ih' I1 I2 HI].
+        destruct (IH gA gB vA' vB' pre pre' _ _ (S s) s2 Hk Hco Hno PA' PB' Hc' Ht' FA' FB')
+          as [ihsA ihsB wA wB IA IB WA WB HR].
+        apply (mk_cross_wrapped _ _ _ _ _ _ _ _ _ _ _ ihsA ihsB (ih :: wA) (ih' :: wB)).
+        * apply fresh_ihs_nest; exact IA.
+        * apply fresh_ihs_nest; exact IB.
+        * eapply wrap_ihs_eval_nest; [ exact I1 | exact WA ].
+        * eapply wrap_ihs_eval_nest; [ exact I2 | exact WB ].
+        * eapply cross_results_rec; [ exact HI | exact HR ].
+      + (** Recursive throughout: the fresh recursive results. *)
+        destruct (fresh_cargs_rec_inv _ _ _ _ _ _ _ FA) as (aA & vA' & -> & EaA & FA').
+        destruct (fresh_cargs_rec_inv _ _ _ _ _ _ _ FB) as (aB & vB' & -> & EaB & FB').
+        destruct (con_args_rec_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hca) as [Hrr Hc'].
+        destruct (cross_tops_rec_inv _ _ _ _ _ _ _ _ _ _ _ _ _ Ht) as [Hts Ht'].
+        destruct Hco as (Hmt & Hdp & Hco).
+        pose proof (shape_corr_of _ _ _ Hmt Hdp) as Hsc.
+        assert (Hpl : forall Mj, ind_member D (ptyp_mem t) = Some Mj ->
+                   List.length (ptyp_ps t') = im_nn Mj /\ List.length (ptyp_ps t) = im_nn Mj).
+        { intros Mj HMj.
+          destruct (PA nil t' gA eq_refl) as (Mj' & HMj' & Hl').
+          destruct (PB nil t gB eq_refl) as (Mj0 & HMj0 & Hl0).
+          rewrite HMj in HMj0; injection HMj0 as <-.
+          destruct (XE cross_member _ _ Hmt) as (Mi2 & Mj2 & HMi2 & Hvmb).
+          rewrite HMj' in HMi2; injection HMi2 as <-.
+          pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMj2; rewrite HMj in HMj2; injection HMj2 as <-.
+          pose proof (vmb_nn _ _ _ _ _ _ _ _ _ Hvmb) as Hnn.
+          split; lia. }
+        destruct (cross_ih_fresh t t' k u0 u0 pre pre' ρA ρB aA aB (d_var s) (d_var s) Hsc Hrr Hts EaA EaB Hpl)
+          as [h1 h2 G1 G2 HG].
+        destruct (IH gA gB vA' vB' pre pre' _ _ (S s) (S s2) Hk Hco Hno PA' PB' Hc' Ht' FA' FB')
+          as [ihsA ihsB wA wB IA IB WA WB HR].
+        apply (mk_cross_wrapped _ _ _ _ _ _ _ _ _ _ _ (⇑! h1 s2 :: ihsA) (⇑! h2 s2 :: ihsB) (⇑! h1 s2 :: wA) (⇑! h2 s2 :: wB)).
+        * econstructor; [ exact G1 | exact IA ].
+        * econstructor; [ exact G2 | exact IB ].
+        * apply wrap_ihs_eval_rec; exact WA.
+        * apply wrap_ihs_eval_rec; exact WB.
+        * eapply cross_results_rec; [ exact (HG _ _ var_per_bot) | exact HR ].
   Qed.
 End CrossBot.
 
