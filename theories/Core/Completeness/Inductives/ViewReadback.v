@@ -317,7 +317,22 @@ Section CrossFresh.
     Let ar := canon_args_rel D u0.
     Let dr := canon_doms_rel u0.
 
-    (** One position: the container's type there [CA], the group's [CG],
+    (** The invariant past one position, the container's variable [aA] and
+        the group's [aB] there, at the group's type [CG]: the container's
+        prefixes related across and at the group's side, the group's at its
+        side, the two variables related at [CG], and their types related. *)
+    Record cross_position_step (gA1 : list carg) (gA : carg) (gB1 : list carg) (gB : carg) (vA1 vB1 : list domain)
+        (CG : exp) (aA aB : domain) (s : nat) : Prop := mk_cross_position_step
+      { container_prefix_rel : per_gargs (List.rev (cargs_ctx qc D' Mi' (gA1 ++ gA :: nil) ++ im_params D' Mi')) nil nil
+          (ub ++ nsA ++ vA1 ++ ⇑! aA s :: nil) (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil)
+      ; container_right_prefix : per_gargs (List.rev (cargs_ctx qc D' Mi' (gA1 ++ gA :: nil) ++ im_params D' Mi')) nil nil
+          (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil) (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil)
+      ; group_right_prefix : per_gargs (List.rev (cargs_ctx p D Mv (gB1 ++ gB :: nil) ++ im_params D Mv)) nil nil
+          (u0 ++ nsB ++ vB1 ++ ⇑! aB s :: nil) (u0 ++ nsB ++ vB1 ++ ⇑! aB s :: nil)
+      ; fresh_heads_agree : per_head CG CG (env_args nil (u0 ++ nsB ++ vB1)) (env_args nil (u0 ++ nsB ++ vB1)) (⇑! aA s) (⇑! aB s)
+      ; fresh_types_related : exists (i : uidx) R, DF aA ≈ aB ∈ per_univ_elem i ↘ R }.
+
+    (** One position:the container's type there [CA], the group's [CG],
         the container's variable's type [aA] related to [CA] at its side,
         the group's [aB] to [CG] at its: the invariant extends, and the
         variables are related at the group's type. *)
@@ -331,14 +346,7 @@ Section CrossFresh.
         cargs_ctx p D Mv (gB1 ++ gB :: nil) = ce_ass CG :: cargs_ctx p D Mv gB1 ->
         (exists (i : nat) R cA, ⟦ CA ⟧ env_args nil (ub ++ nsA ++ vA1) ↘ cA /\ DF cA ≈ aA ∈ per_univ_elem i ↘ R) ->
         (exists (i : nat) R gB0, ⟦ CG ⟧ env_args nil (u0 ++ nsB ++ vB1) ↘ gB0 /\ DF gB0 ≈ aB ∈ per_univ_elem i ↘ R) ->
-        per_gargs (List.rev (cargs_ctx qc D' Mi' (gA1 ++ gA :: nil) ++ im_params D' Mi')) nil nil
-          (ub ++ nsA ++ vA1 ++ ⇑! aA s :: nil) (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil) /\
-        per_gargs (List.rev (cargs_ctx qc D' Mi' (gA1 ++ gA :: nil) ++ im_params D' Mi')) nil nil
-          (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil) (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil) /\
-        per_gargs (List.rev (cargs_ctx p D Mv (gB1 ++ gB :: nil) ++ im_params D Mv)) nil nil
-          (u0 ++ nsB ++ vB1 ++ ⇑! aB s :: nil) (u0 ++ nsB ++ vB1 ++ ⇑! aB s :: nil) /\
-        per_head CG CG (env_args nil (u0 ++ nsB ++ vB1)) (env_args nil (u0 ++ nsB ++ vB1)) (⇑! aA s) (⇑! aB s) /\
-        (exists (i : uidx) R, DF aA ≈ aB ∈ per_univ_elem i ↘ R).
+        cross_position_step gA1 gA gB1 gB vA1 vB1 CG aA aB s.
     Proof.
       intros * HeA HeB Hc1 LA LB K1 K2 K3 ECc ECg [iA [RA [cA' [EcA' HcaA]]]] [iB [RB [gB' [EgB' HgaB]]]].
       destruct Hcp as [Hns HpA HpC HpG].
@@ -382,18 +390,23 @@ Section CrossFresh.
       assert (HGGx : RL (⇑! aB s) (⇑! aB s)) by (apply (rel_link _ _ _ _ _ _ _ _ _ _ HGG HgaB Hbb); exact Hxb).
       assert (HGAx : RL (⇑! aA s) (⇑! aB s))
         by (apply (rel_link _ _ _ _ _ _ _ _ _ _ HGG (per_univ_sym _ _ _ _ H2) Hx); exact Hxx).
-      rewrite ECc, ECg.
-      cbn [List.app List.rev].
-      replace (ub ++ nsA ++ vA1 ++ ⇑! aA s :: nil) with ((ub ++ nsA ++ vA1) ++ ⇑! aA s :: nil) by (rewrite <- !List.app_assoc; reflexivity).
-      replace (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil) with ((cups ++ nsB ++ vB1) ++ ⇑! aB s :: nil) by (rewrite <- !List.app_assoc; reflexivity).
-      replace (u0 ++ nsB ++ vB1 ++ ⇑! aB s :: nil) with ((u0 ++ nsB ++ vB1) ++ ⇑! aB s :: nil) by (rewrite <- !List.app_assoc; reflexivity).
       assert (LW' : List.length (ub ++ nsA ++ vA1) = List.length (List.rev (cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi')))
         by (rewrite List.length_rev; exact LW).
       assert (LW2 : List.length (cups ++ nsB ++ vB1) = List.length (List.rev (cargs_ctx qc D' Mi' gA1 ++ im_params D' Mi')))
         by (rewrite List.length_rev, !List.length_app, length_cargs_ctx, length_im_params; unfold im_np, ind_nu in *; lia).
       assert (LW3 : List.length (u0 ++ nsB ++ vB1) = List.length (List.rev (cargs_ctx p D Mv gB1 ++ im_params D Mv)))
         by (rewrite List.length_rev, !List.length_app, length_cargs_ctx, length_im_params; unfold im_np, ind_nu in *; lia).
-      split; [| split; [| split; [| split ] ] ].
+      constructor; [ rewrite ECc | rewrite ECc | rewrite ECg | idtac | idtac ];
+        cbn [List.app List.rev];
+        [ replace (ub ++ nsA ++ vA1 ++ ⇑! aA s :: nil) with ((ub ++ nsA ++ vA1) ++ ⇑! aA s :: nil)
+            by (rewrite <- !List.app_assoc; reflexivity);
+          replace (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil) with ((cups ++ nsB ++ vB1) ++ ⇑! aB s :: nil)
+            by (rewrite <- !List.app_assoc; reflexivity)
+        | replace (cups ++ nsB ++ vB1 ++ ⇑! aB s :: nil) with ((cups ++ nsB ++ vB1) ++ ⇑! aB s :: nil)
+            by (rewrite <- !List.app_assoc; reflexivity)
+        | replace (u0 ++ nsB ++ vB1 ++ ⇑! aB s :: nil) with ((u0 ++ nsB ++ vB1) ++ ⇑! aB s :: nil)
+            by (rewrite <- !List.app_assoc; reflexivity)
+        | idtac | idtac ].
       - apply (per_gargs_snoc _ CA _ _ _ _ _ _ ic RC LW' K1); [ econstructor; [ exact EcA | exact EcB | exact HRC ] | exact HRCx ].
       - apply (per_gargs_snoc _ CA _ _ _ _ _ _ ic RC LW2 K2); [ econstructor; [ exact EcB | exact EcB | exact HCC ] | exact HCCx ].
       - apply (per_gargs_snoc _ CG _ _ _ _ _ _ iL RL LW3 K3); [ econstructor; [ exact EgB | exact EgB | exact HGG ] | exact HGGx ].
@@ -548,7 +561,7 @@ Section CrossFresh.
           destruct (cross_position gA1 (ca_arg A') gA2 gB1 (ca_arg A) gB2 vA1 vB1 _ _ aA aB s HeA HeB Hc1 LA LB K1 K2 K3 ECc ECg
                       ltac:(exists iA, RA, cA; split; [ exact EcA | exact HcaA ])
                       ltac:(exists iB, RB, gB0; split; [ exact EgB | exact HgaB ]))
-            as (K1' & K2' & K3' & Hrel & ix & Rx & Hx).
+            as [K1' K2' K3' Hrel [ix [Rx Hx]]].
           (** The non-recursive relations at the position. *)
           assert (HnthB : List.nth_error (cargs_nonrec gsB) (List.length (cargs_nonrec gB1)) = Some A)
             by (rewrite HeB, cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
@@ -605,7 +618,7 @@ Section CrossFresh.
           destruct (cross_position gA1 (ca_arg A') gA2 gB1 (ca_rec t) gB2 vA1 vB1 _ _ aA aB s HeA HeB Hc1 LA LB K1 K2 K3 ECc ECg
                       ltac:(exists iA, RA, cA; split; [ exact EcA | exact HcaA ])
                       ltac:(exists iB, RB, gB0; split; [ exact EgB | exact HgaB ]))
-            as (K1' & K2' & K3' & Hrel & ix & Rx & Hx).
+            as [K1' K2' K3' Hrel [ix [Rx Hx]]].
           assert (Hrr : rec_arg_rel p D (okr_at D u0 nr) nr ar dr v u0 u0 (nsB ++ nonrec_arg_vals gB1 vB1)
                           (nsB ++ nonrec_arg_vals gB1 vB1) t (⇑! aA s) (⇑! aB s))
             by (apply ERG, (per_head_left EgB EgB HGG); exact Hrel).
@@ -659,7 +672,7 @@ Section CrossFresh.
           destruct (cross_position gA1 (ca_rec t') gA2 gB1 (ca_rec t) gB2 vA1 vB1 _ _ aA aB s HeA HeB Hc1 LA LB K1 K2 K3 ECc ECg
                       ltac:(exists iC, RA, cA; split; [ exact EcA | exact HcaA ])
                       ltac:(exists iB, RB, gB0; split; [ exact EgB | exact HgaB ]))
-            as (K1' & K2' & K3' & Hrel & ix & Rx & Hx).
+            as [K1' K2' K3' Hrel [ix [Rx Hx]]].
           assert (Hrr : rec_arg_rel p D (okr_at D u0 nr) nr ar dr v u0 u0 (nsB ++ nonrec_arg_vals gB1 vB1)
                           (nsB ++ nonrec_arg_vals gB1 vB1) t (⇑! aA s) (⇑! aB s))
             by (apply ERG, (per_head_left EgB EgB HGG); exact Hrel).
@@ -771,12 +784,24 @@ Section CrossBot.
 
       An argument both nest through but the group read does not: the two
       eliminators at it, stuck at the members its shapes end in. *)
+
+  (** The recursive results at the arguments [x] and [x'] of the shapes
+      [t'] (the container's) and [t] (the group's): the container's under
+      its eliminator, the group's under its own, related as recursive
+      results. *)
+  #[warnings="-cannot-define-projection"]
+  Record cross_ih_pair (t t' : ptyp) (k : nat) (u u' pre pre' : list domain) (x x' : domain) : Prop :=
+    mk_cross_ih_pair
+    { cip_container : domain
+    ; cip_group : domain
+    ; cip_container_eval : ⟦ih x of t' under qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ cip_container
+    ; cip_group_eval : ⟦ih x' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ cip_group
+    ; cip_related : rec_result_rel dr Rel k u u' pre pre' t x x' cip_container cip_group }.
+
   Lemma cross_ih_neut : forall t t' k u u' pre pre' a1 a2 e e', shape_corr vm t' t ->
       rec_arg_rel p D (okr_at D u0 nr) nr ar dr k u u' pre pre' t (⇑ a1 e) (⇑ a2 e') ->
       cross_bot (ptyp_mem t) ->
-      exists ih ih', ⟦ih ⇑ a1 e of t' under qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ih /\
-        ⟦ih ⇑ a2 e' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ih' /\
-        rec_result_rel dr Rel k u u' pre pre' t (⇑ a1 e) (⇑ a2 e') ih ih'.
+      cross_ih_pair t t' k u u' pre pre' (⇑ a1 e) (⇑ a2 e').
   Proof.
     induction t as [j Ps | B t IH]; intros [j' Ps' | B' t'] * Hsc H Hbot; cbn in Hsc; try contradiction.
     - destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H) as (bs & bs' & Eb & Eb' & _ & _ & Hr).
@@ -784,14 +809,14 @@ Section CrossBot.
       inversion Hr0 as [| jx Mj hdx kx nsx nsx' as1 as2 ex ex' ux ux' HM Href Hn L1 L2 Hs1 Hs2 He]; subst.
       destruct (XE cross_neut_elim j' j Mj hdx kx as1 as2 e e' u u' bs bs' Hsc HM Hr
                   (Hbot j' Mj hdx kx as1 as2 e e' u u' bs bs' Hsc HM Hr)) as (r & r' & Er & Er' & HR).
-      exists r, r'; split; [ constructor; exact Er | split; [ constructor; exact Er' |] ].
+      apply (mk_cross_ih_pair _ _ _ _ _ _ _ _ _ r r'); [ constructor; exact Er | constructor; exact Er' |].
       econstructor; [ exact Eb | exact Eb' | exact HR ].
-    - exists (d_ihfn ρb VBb qc ub t' (⇑ a1 e)), (d_ihfn C1 Bks p u0 t (⇑ a2 e')).
-      split; [ constructor | split; [ constructor |] ].
+    - apply (mk_cross_ih_pair _ _ _ _ _ _ _ _ _ (d_ihfn ρb VBb qc ub t' (⇑ a1 e)) (d_ihfn C1 Bks p u0 t (⇑ a2 e')));
+        [ constructor | constructor |].
       constructor; intros c c' Hcc.
       destruct (rec_arg_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H c c' Hcc) as (r & r' & Ea & Ea' & Hr).
       inversion Ea; subst; inversion Ea'; subst.
-      destruct (IH t' _ _ _ _ _ _ _ _ _ Hsc Hr Hbot) as (ih & ih' & I1 & I2 & HI).
+      destruct (IH t' _ _ _ _ _ _ _ _ _ Hsc Hr Hbot) as [ih ih' I1 I2 HI].
       econstructor; [ exact Ea | exact Ea' | econstructor; [ exact Ea | exact I1 ] | econstructor; [ exact Ea' | exact I2 ] | exact HI ].
   Qed.
 
@@ -801,15 +826,27 @@ Section CrossBot.
       fresh variables of the types of its recursive results, the
       container's by its shape [t'] under its motives, the group's by [t]
       under its own, related as recursive results. *)
+
+  (** The types of the recursive results at the arguments [x] and [x'] of
+      the shapes [t'] and [t], in [ρ1] and [ρ2]: the container's under its
+      motives, the group's under its own, their fresh variables related as
+      recursive results. *)
+  #[warnings="-cannot-define-projection"]
+  Record cross_ih_types (t t' : ptyp) (k : nat) (u u' pre pre' : list domain) (ρ1 ρ2 : env) (x x' : domain) : Prop :=
+    mk_cross_ih_types
+    { cit_container : domain
+    ; cit_group : domain
+    ; cit_container_eval : ⟦ihty x of t' under ρb (blocks_motives VBb) ⟧ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ cit_container
+    ; cit_group_eval : ⟦ihty x' of t under C1 (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack ⍮ ρ2 ↘ cit_group
+    ; cit_related : forall e2 e2', Dom e2 ≈ e2' ∈ per_bot ->
+        rec_result_rel dr Rel k u u' pre pre' t x x' (⇑ cit_container e2) (⇑ cit_group e2') }.
+
   Lemma cross_ih_fresh : forall t t' k u u' pre pre' ρ1 ρ2 a1 a2 e e', shape_corr vm t' t ->
       rec_arg_rel p D (okr_at D u0 nr) nr ar dr k u u' pre pre' t (⇑ a1 e) (⇑ a2 e') ->
       shape_tops dr k pre t a1 a2 ->
       ⟦shty t' of qc ub ⟧ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ a1 -> ⟦shty t of p u0 ⟧ gc_deps ⍮ gc_stack ⍮ ρ2 ↘ a2 ->
       (forall Mj, ind_member D (ptyp_mem t) = Some Mj -> List.length (ptyp_ps t') = im_nn Mj /\ List.length (ptyp_ps t) = im_nn Mj) ->
-      exists h1 h2, ⟦ihty ⇑ a1 e of t' under ρb (blocks_motives VBb) ⟧ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ h1 /\
-        ⟦ihty ⇑ a2 e' of t under C1 (blocks_motives Bks) ⟧ gc_deps ⍮ gc_stack ⍮ ρ2 ↘ h2 /\
-        forall e2 e2', Dom e2 ≈ e2' ∈ per_bot ->
-          rec_result_rel dr Rel k u u' pre pre' t (⇑ a1 e) (⇑ a2 e') (⇑ h1 e2) (⇑ h2 e2').
+      cross_ih_types t t' k u u' pre pre' ρ1 ρ2 (⇑ a1 e) (⇑ a2 e').
   Proof.
     destruct (vg_canon p D Hvg u0 u0_gargs' u0_len') as [CnP CnI CaP CaI CdP CdI].
     pose proof (nparams_rel_sym p D u0 _ _ _ Hass CnP CnI CaP CaI CdP CdI) as tsym.
@@ -830,7 +867,7 @@ Section CrossBot.
       pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMj0; rewrite HM in HMj0; injection HMj0 as <-.
       destruct (HbB _ _ HMj') as [bb Hbb]; destruct (HBks _ _ HM) as [ba Hba].
       destruct (Hmot_x j' Mj' j bb ba u u' bs1 bs2 _ _ HMj' Hsc Hbb Hba Hm1) as (h1 & h2 & Eh1 & Eh2 & HR).
-      exists h1, h2; split; [| split ].
+      apply (mk_cross_ih_types _ _ _ _ _ _ _ _ _ _ _ h1 h2).
       + econstructor; [ exact Ebs1 | rewrite (nth_blocks_motives _ _ _ Hbb); exact Eh1 ].
       + econstructor; [ exact Ebs2 | rewrite (nth_blocks_motives _ _ _ Hba); exact Eh2 ].
       + intros e2 e2' He2; econstructor; [ exact Eb | exact Eb' |].
@@ -839,9 +876,10 @@ Section CrossBot.
     - inversion E1 as [| B0 ρ0 b1 t0 ? ? Eb1]; subst.
       inversion E2 as [| B0 ρ0 b2 t0 ? ? Eb2]; subst.
       inversion Ht as [| pre0 B0 t0 b0 ρ0 F0 b0' ρ0' F0' Htop Hnext]; subst.
-      exists (Πᵈ b1 (nil ↦ d_ihfam ρb (blocks_motives VBb) ρ1 t' (⇑ (Πᵈ b1 (nil ↦ d_shfam qc ub ρ1 t') fam_cod) e)) fam_cod),
-        (Πᵈ b2 (nil ↦ d_ihfam C1 (blocks_motives Bks) ρ2 t (⇑ (Πᵈ b2 (nil ↦ d_shfam p u0 ρ2 t) fam_cod) e')) fam_cod).
-      split; [ econstructor; exact Eb1 | split; [ econstructor; exact Eb2 |] ].
+      apply (mk_cross_ih_types _ _ _ _ _ _ _ _ _ _ _
+               (Πᵈ b1 (nil ↦ d_ihfam ρb (blocks_motives VBb) ρ1 t' (⇑ (Πᵈ b1 (nil ↦ d_shfam qc ub ρ1 t') fam_cod) e)) fam_cod)
+               (Πᵈ b2 (nil ↦ d_ihfam C1 (blocks_motives Bks) ρ2 t (⇑ (Πᵈ b2 (nil ↦ d_shfam p u0 ρ2 t) fam_cod) e')) fam_cod));
+        [ econstructor; exact Eb1 | econstructor; exact Eb2 |].
       intros e2 e2' He2; constructor; intros c c' Hcc.
       destruct (rec_arg_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H c c' Hcc) as (r & r' & Ea & Ea' & Hr).
       inversion Ea; subst.
@@ -851,7 +889,7 @@ Section CrossBot.
       pose proof (fam_cod_shfam_inv _ _ _ _ _ _ Ex) as Sx.
       pose proof (fam_cod_shfam_inv _ _ _ _ _ _ Ex') as Sx'.
       cbn in Hpl.
-      destruct (IH t' _ _ _ _ _ _ _ _ _ _ _ Hsc Hr (Hnext _ _ _ _ Hcc Ex Ex') Sx Sx' Hpl) as (h1 & h2 & I1 & I2 & HI).
+      destruct (IH t' _ _ _ _ _ _ _ _ _ _ _ Hsc Hr (Hnext _ _ _ _ Hcc Ex Ex') Sx Sx' Hpl) as [h1 h2 I1 I2 HI].
       econstructor; [ exact Ea | exact Ea'
                     | eapply eval_app_neut, eval_fam_cod_ihfam; [ exact Ea | exact I1 ]
                     | eapply eval_app_neut, eval_fam_cod_ihfam; [ exact Ea' | exact I2 ] |].
