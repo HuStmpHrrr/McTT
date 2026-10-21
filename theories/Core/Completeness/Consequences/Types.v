@@ -96,7 +96,7 @@ Inductive is_typ_constr : typ -> Prop :=
 | pi_is_typ_constr : forall A B, is_typ_constr Π A B
 | var_is_typ_constr : forall x, is_typ_constr #x
 (** An inductive type at its parameters. *)
-| ind_is_typ_constr : forall p Ms, is_typ_constr (apps_exp (a_ind p) Ms)
+| ind_is_typ_constr : forall p k Ms, is_typ_constr (apps_exp (a_ind p k) Ms)
 .
 Hint Constructors is_typ_constr : mctt.
 
@@ -111,21 +111,21 @@ Inductive rigid_typ (Γ : ctx) : typ -> Prop :=
 | False_is_rigid : rigid_typ Γ ⊥
 | pi_is_rigid : forall A B, rigid_typ Γ (Π A B)
 | var_is_rigid : forall x, ctx_ass Γ x -> rigid_typ Γ #x
-| ind_is_rigid : forall p Ms, rigid_typ Γ (apps_exp (a_ind p) Ms)
+| ind_is_rigid : forall p k Ms, rigid_typ Γ (apps_exp (a_ind p k) Ms)
 .
 Hint Constructors rigid_typ : mctt.
 
 (** An inductive type evaluates to an inductive type value. *)
-Lemma eval_apps_ind_inv : forall p xs ys r, $*| d_ind p xs & ys | gc_deps ⍮ gc_stack ↘ r -> r = d_ind p (xs ++ ys).
+Lemma eval_apps_ind_inv : forall p k xs ys r, $*| d_ind p k xs & ys | gc_deps ⍮ gc_stack ↘ r -> r = d_ind p k (xs ++ ys).
 Proof.
-  intros p xs ys; revert xs; induction ys as [| y ys IH]; intros xs r H; inversion H; subst.
+  intros p k xs ys; revert xs; induction ys as [| y ys IH]; intros xs r H; inversion H; subst.
   - rewrite List.app_nil_r; reflexivity.
-  - match goal with H1 : $| d_ind _ _ & _ | _ ⍮ _ ↘ _ |- _ => inversion H1; subst end.
+  - match goal with H1 : $| d_ind _ _ _ & _ | _ ⍮ _ ↘ _ |- _ => inversion H1; subst end.
     match goal with H2 : $*| _ & ys | _ ⍮ _ ↘ _ |- _ => apply IH in H2 end.
     subst; rewrite <- List.app_assoc; reflexivity.
 Qed.
 
-Lemma eval_ind_value : forall p Ms ρ a, ⟦ apps_exp (a_ind p) Ms ⟧ ρ ↘ a -> exists ms, a = d_ind p ms.
+Lemma eval_ind_value : forall p k Ms ρ a, ⟦ apps_exp (a_ind p k) Ms ⟧ ρ ↘ a -> exists ms, a = d_ind p k ms.
 Proof.
   intros * H; apply eval_apps_exp in H as (f & ms & Hf & _ & Hap).
   inversion Hf; subst; apply eval_apps_ind_inv in Hap; eauto.
@@ -165,7 +165,7 @@ Proof.
     | idtac
     | match goal with Hc : ctx_ass _ _ |- _ =>
         destruct (eval_var_at_initial_env Hc Hρ Ha ltac:(eassumption)) as [? [? ->]] end
-    | destruct (eval_ind_value _ _ _ _ Ha) as [? ->] ];
+    | destruct (eval_ind_value _ _ _ _ _ Ha) as [? ->] ];
     invert_per_univ_elem HR.
   - (** [Π A B] evaluates to a [Π]-value once its domain does. *)
     match_by_head eval_exp ltac:(fun H => directed dependent destruction H).
@@ -205,7 +205,7 @@ Proof.
     | idtac
     | match goal with Hc : ctx_ass _ _ |- _ =>
         destruct (eval_var_at_initial_env Hc Hρ Ha ltac:(eassumption)) as [? [? ->]] end
-    | destruct (eval_ind_value _ _ _ _ Ha) as [? ->] ];
+    | destruct (eval_ind_value _ _ _ _ _ Ha) as [? ->] ];
     invert_per_univ_elem HR.
   - congruence.
   - match_by_head eval_exp ltac:(fun H => directed dependent destruction H).
@@ -238,7 +238,7 @@ Proof.
     | idtac
     | match goal with Hc : ctx_ass _ _ |- _ =>
         destruct (eval_var_at_initial_env Hc Hρ Ha ltac:(eassumption)) as [? [? ->]] end
-    | destruct (eval_ind_value _ _ _ _ Ha) as [? ->] ];
+    | destruct (eval_ind_value _ _ _ _ _ Ha) as [? ->] ];
     invert_per_univ_elem HR.
   - (** The two levels are related, so the two literals are the same
         realiser. *)
@@ -286,7 +286,7 @@ Proof.
     | idtac
     | match goal with Hc : ctx_ass _ _ |- _ =>
         destruct (eval_var_at_initial_env Hc Hρ Ha ltac:(eassumption)) as [? [? ->]] end
-    | destruct (eval_ind_value _ _ _ _ Ha) as [? ->] ];
+    | destruct (eval_ind_value _ _ _ _ _ Ha) as [? ->] ];
     invert_per_univ_elem HR.
   match_by_head eval_exp ltac:(fun H => directed dependent destruction H).
 Qed.

@@ -134,9 +134,9 @@ Section Fixed_GCtx.
       ; blp_params_a : Ftele List.rev (im_nparams blp_Mva) in gc_deps ⍮ gc_stack ⍮ env_args nil ua ⍮ s ↘ blp_nsa
       ; blp_params_b : Ftele List.rev (im_nparams blp_Mvb) in gc_deps ⍮ gc_stack ⍮ env_args nil ub ⍮ s ↘ blp_nsb
       ; blp_motive_a : ⟦ eb_motive blp_ba ⟧
-          env_args ρa (blp_nsa ++ ⇑! (d_ind blp_hd blp_k (blp_prea ++ blp_nsa)) (s + im_nn Mi)%nat :: nil) ↘ blp_aa
+          env_args ρa (blp_nsa ++ ⇑! (d_ind blp_hd blp_k (blp_prea ++ blp_nsa)) ((s + im_nn Mi)%nat) :: nil) ↘ blp_aa
       ; blp_motive_b : ⟦ eb_motive blp_bb ⟧
-          env_args ρb (blp_nsb ++ ⇑! (d_ind blp_hd blp_k (blp_preb ++ blp_nsb)) (s + im_nn Mi)%nat :: nil) ↘ blp_ab
+          env_args ρb (blp_nsb ++ ⇑! (d_ind blp_hd blp_k (blp_preb ++ blp_nsb)) ((s + im_nn Mi)%nat) :: nil) ↘ blp_ab
       ; blp_motive_read : per_top_typ blp_aa blp_ab
       ; blp_names_a : brs_names (im_cons Mi) (eb_brs blp_ba)
       ; blp_names_b : brs_names (im_cons Mi) (eb_brs blp_bb)

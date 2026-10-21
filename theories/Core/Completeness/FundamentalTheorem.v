@@ -42,48 +42,6 @@ From Mctt.Core.Semantic Require Import Realizability.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 
-(** The semantic rule of [wf_exp_eq_elim_view] (E1′) is not proved yet:
-    the theorem is stated relative to it. *)
-Section ElimView.
-Hypothesis elim_view_complete :
-  forall Θ Ξ p D oq m Mm qc k' Is vm D' Bks bm Ps Γ M Us (i : nat),
-     ind_lookup Θ Ξ p = Some D ->
-     elim_grp D oq p m ->
-     ind_member D m = Some Mm ->
-     im_head Mm = mh_view qc k' Is vm ->
-     ind_lookup Θ Ξ qc = Some D' ->
-     vwrap_ok D D' vm ->
-     List.nth_error Bks m = Some bm ->
-     List.length Bks = List.length (ind_members D) ->
-     List.length Ps = im_np D Mm ->
-     (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (im_params D Mm) Id Ps) k = Some T ->
-        Θ ⍮ Ξ ⍮ Γ ⊨ P : T) ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ M : ind_mty p D m (List.firstn (ind_nu D) Ps) (List.skipn (ind_nu D) Ps) ->
-     Us = List.firstn (ind_nu D) Ps ->
-     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_nm b = S (im_nn Mk)) ->
-     (forall k Mk b Z, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> eb_ann b = Some Z ->
-        Θ ⍮ Ξ ⍮ Γ ⊨ˣ tele_sub (im_nparams Mk) (sb_of_list Id (List.firstn (ind_nu D) Ps)) ▹ Z
-                     ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
-     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-        Θ ⍮ Ξ ⍮ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ++ Γ ⊨ eb_motive b : Typeω@i) ->
-     (forall k Mk, ind_member D k = Some Mk ->
-        Θ ⍮ Ξ ⍮ Γ ⊨ˣ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D k Mk (List.firstn (ind_nu D) Ps)) ->
-     (forall k Mk b, ind_member D k = Some Mk -> List.nth_error Bks k = Some b -> brs_names (im_cons Mk) (eb_brs b)) ->
-     (forall k Mk c gs, ind_member D k = Some Mk -> ind_con Mk c = Some gs ->
-        Θ ⍮ Ξ ⍮ Γ ⊨ˣ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)
-                     ≈ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps)) ->
-     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-        n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat) ->
-     (forall k Mk b c gs n B, ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-        ind_con Mk c = Some gs -> In (c, n, B) (eb_brs b) ->
-        Θ ⍮ Ξ ⍮ elim_bctx p D Mk gs (blocks_motives Bks) (List.firstn (ind_nu D) Ps) ++ Γ ⊨ B
-          : elim_bty p k Mk c gs (eb_motive b) (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊨ a_elim oq Us m Bks M
-       ≈ a_elim (Some qc) (im_pre Mm (List.firstn (ind_nu D) Ps)) k'
-           (vwrap p D D' vm (List.firstn (ind_nu D) Ps) Bks) M
-       : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
-
 Theorem completeness_fundamental :
   (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊨ Θ ⍮ Ξ ⍮ Γ) /\
   (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ ⍮ Ξ ⍮ Γ ⊨ M : A) /\
@@ -113,7 +71,7 @@ Proof.
     | eapply sem_exp_eq_elim_cong | eapply sem_exp_eq_pi_cong | eapply sem_exp_eq_fn_cong
     | eapply sem_exp_eq_app_cong | eapply sem_exp_eq_let_cong | eapply sem_exp_eq_let_mod_cong
     | eapply sem_exp_eq_mem_cong | eapply sem_exp_eq_var | eapply sem_exp_eq_pi_beta
-    | eapply sem_exp_eq_elim_iota | eapply elim_view_complete | eapply sem_exp_eq_con_view
+    | eapply sem_exp_eq_elim_iota | eapply sem_exp_eq_elim_view | eapply sem_exp_eq_con_view
     | eapply sem_exp_eq_let_zeta | eapply sem_exp_eq_let_mod_zeta
     | eapply sem_exp_eq_mem_delta | eapply sem_exp_eq_var_delta | eapply sem_exp_eq_fn_eta
     | eapply sem_exp_eq_true_eta | eapply sem_exp_eq_subtyp | eapply sem_exp_eq_sym | eapply sem_exp_eq_trans
@@ -510,7 +468,6 @@ Proof.
 Qed.
 
 End Corollaries.
-End ElimView.
 
 #[export]
 Hint Resolve completeness_fundamental_ctx completeness_fundamental_exp
