@@ -52,6 +52,43 @@ Lemma fresh_tele_cons_inv : forall A T ρ s vs, Ftele ce_ass A :: T in gc_deps �
     exists a vs', vs = ⇑! a s :: vs' /\ ⟦ A ⟧ ρ ↘ a /\ Ftele T in gc_deps ⍮ gc_stack ⍮ ρ ↦ ⇑! a s ⍮ S s ↘ vs'.
 Proof. intros * H; inversion H; subst; eauto. Qed.
 
+(** The type of a view [j] of a group at uniform parameters [ups]: the
+    container's member's at the view's instance [cups], against it at
+    uniform parameters [cs] related to [cups], at non-uniform parameters
+    related at the view: related types (the view's relation is the
+    container's, [nr_from]).  The premise [Hend] of [shty_link]. *)
+Lemma view_end_type : forall VP, valid_groups VP -> forall pq G, VP pq G ->
+    forall ups, per_gargs (List.rev (ind_uparams G)) nil nil ups ups -> List.length ups = ind_nu G ->
+    forall j Mj qc kc Is vm Dq cups cs bs bs', ind_member G j = Some Mj -> im_head Mj = mh_view qc kc Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some Dq -> ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups ->
+      per_gargs (List.rev (ind_uparams Dq)) nil nil cups cs ->
+      ntele_rel G (canon_nparams_rel G ups) j bs bs' ->
+      exists (i : uidx) R, DF d_ind qc kc (cups ++ bs) ≈ d_ind qc kc (cs ++ bs') ∈ per_univ_elem i ↘ R.
+Proof.
+  intros VP HP pq G HPG ups Hgu Hu j Mj qc kc Is vm Dq cups cs bs bs' HMj Hh Hq Ecups Hcs Hbs.
+  pose proof (valid_groups_valid VP HP pq G HPG) as Hg.
+  pose proof (containers_valid_of_groups VP HP pq G HPG) as Hcv.
+  pose proof (Hcv _ _ _ _ _ _ _ HMj Hh Hq) as HgQ.
+  destruct (dt_view _ _ _ (vgr_typed _ _ Hg) _ _ _ _ _ _ HMj Hh) as (D2 & Mk' & Hl2 & HMk' & Hkd & HIl & _ & Hvm & _).
+  rewrite Hq in Hl2; injection Hl2 as <-.
+  assert (Hhd : exists pm, im_head Mk' = mh_decl pm).
+  { pose proof (proj2 (dt_order _ _ _ (vgr_typed _ _ HgQ) _ _ HMk') Hkd) as Hd.
+    unfold im_is_decl in Hd; destruct (im_head Mk'); [ eauto | discriminate ]. }
+  destruct Hhd as [pm Hhd].
+  destruct (vg_view_args_values pq G Hg Hcv _ _ _ _ _ _ _ HMj Hh Hq _ _ Hgu Hu) as (c0 & c0' & E0 & E0' & Hcu).
+  pose proof (functional_eval_exps' _ _ _ _ E0 Ecups) as ->.
+  pose proof (functional_eval_exps' _ _ _ _ E0' Ecups) as ->.
+  assert (Hlc : List.length cups = ind_nu Dq) by (rewrite (eval_exps_length _ _ _ Ecups); exact HIl).
+  pose proof (view_agreement_canonical_all VP pq G HP HPG ups ups Hgu Hu j _ _ _ _ _ _ _ _ HMj Hh Hq Ecups Ecups) as Hvc.
+  destruct (agree_members _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hvc _ _ HMk') as (v & Mv & Hvmb).
+  assert (v = j) as -> by (pose proof (vmb_v _ _ _ _ _ _ _ _ _ Hvmb) as Hv; rewrite Hvm in Hv; congruence).
+  assert (Mv = Mj) as -> by (pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMv; rewrite HMj in HMv; congruence).
+  unfold ntele_rel in Hbs; rewrite HMj in Hbs.
+  pose proof (nr_from pq G ups ups _ _ _ qc Dq cups cups _ _ _ vm Hvc kc Mk' j Mj bs bs' HMk' Hvmb Hbs) as Hbs'.
+  destruct (vg_relate qc Dq HgQ kc Mk' pm cups cs bs bs' HMk' Hhd Hcs Hlc Hbs') as [i W].
+  exists i; eexists; exact W.
+Qed.
+
 Section CrossFresh.
   #[local] Set Default Proof Using "All".
   Variables (p : qname) (D : ind_decl).
