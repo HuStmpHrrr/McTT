@@ -53,6 +53,7 @@
 ./Core/Completeness/Inductives/Con.v
 ./Core/Completeness/Inductives/Elim.v
 ./Core/Completeness/Inductives/Iota.v
+./Core/Completeness/Inductives/ViewRules.v
 ./Core/Completeness/IndCases.v
 ./Core/Completeness/ElimCases.v
 ./Core/Completeness/IotaCases.v
