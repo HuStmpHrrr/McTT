@@ -662,6 +662,109 @@ Section Iota.
     apply (con_apps_ref_valid VP p D HP HPD Γ m Mm c gs Us Ns As HΓ HMm Hcon i_HUl i_HUs i_HNl i_HNs HAl).
     intros * HN HT; apply (HAs _ _ _ HN); unfold σP; rewrite i_Ps; exact HT.
   Qed.
+
+  (** The member the constructor's value is of, as the group reads it. *)
+  Lemma ref_target : exists Dq Mk, ind_lookup gc_deps gc_stack (fst (im_ref p m Mm)) = Some Dq /\
+      ind_member Dq (snd (im_ref p m Mm)) = Some Mk /\ im_unu D Mm = ind_nu Dq /\ im_nn Mk = im_nn Mm.
+  Proof.
+    unfold im_ref, im_unu; destruct (im_head Mm) as [pm | qc kc Is vm] eqn:Hh; cbn [fst snd].
+    - exists D, Mm; repeat split; [ exact Hl | exact HMm ].
+    - destruct (view_target_decl VP p D HP HPD m Mm HMm qc kc Is vm Hh) as (Dq & Mk' & pm & Hq & HMk' & _ & HIl).
+      destruct (gta_views _ (vgr_ass _ _ Hvg) m Mm qc kc Is vm HMm Hh) as (Dq0 & Mc & Hq0 & HMc & Hnn & _).
+      rewrite Hq in Hq0; injection Hq0 as <-; rewrite HMk' in HMc; injection HMc as <-.
+      exists Dq, Mk'; repeat split; [ exact Hq | exact HMk' | exact HIl | exact Hnn ].
+  Qed.
+
+  (** *** The Values at an Environment
+
+      At an environment [C] of [Γ]: the recursive results of the
+      eliminator's own evaluation are related, by [rec_results_rel], to
+      the values of the recursive results [elim_ihs] in the branch's
+      instance. *)
+  Section IotaSem.
+    Variable (RΓ RU : relation env).
+    Hypotheses (HRΓ : EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ) (HRU : EF ind_uparams D ≈ ind_uparams D ∈ per_ctx_env ↘ RU).
+    Variable (C : env) (u0 ns avs : list domain).
+    Hypotheses (HCC : RΓ C C) (HUC : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ u0)
+      (HNC : ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ ns) (HAC : ⟦ As ⟧* gc_deps ⍮ gc_stack ⍮ C ↘ avs).
+    Let nr := canon_nparams_rel D u0.
+    Let ar := canon_args_rel D u0.
+    Let dr := canon_doms_rel u0.
+    Let G := grp_rel p D u0 nr ar dr.
+    Let Rel := fun j ns m ns' m' =>
+      per_head (List.nth j (blocks_motives Bks) a_True) (List.nth j (blocks_motives Bks) a_True)
+        (env_args C (ns ++ m :: nil)) (env_args C (ns' ++ m' :: nil)).
+    #[local] Abbreviation u0_len' := (u0_len D Us i_HUl C u0 HUC).
+    #[local] Abbreviation u0_env' := (u0_env VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us i_HUl i_HUs C u0 HCC HUC).
+    #[local] Abbreviation u0_gargs' := (u0_gargs VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us i_HUl i_HUs C u0 HCC HUC).
+    #[local] Abbreviation Hcp := (vg_canon p D Hvg u0 u0_gargs' u0_len').
+    #[local] Abbreviation HnP := (icp_np_per _ _ Hcp).
+    #[local] Abbreviation HnI := (icp_np_iff _ _ Hcp).
+    #[local] Abbreviation HaP := (icp_arg_per _ _ Hcp).
+    #[local] Abbreviation HaI := (icp_arg_iff _ _ Hcp).
+    #[local] Abbreviation HdP := (icp_dom_per _ _ Hcp).
+    #[local] Abbreviation HdI := (icp_dom_iff _ _ Hcp).
+    #[local] Abbreviation Had := (vg_adm p D Hvg u0 u0 u0_gargs' u0_len' u0_gargs').
+    #[local] Abbreviation Hass := (vgr_ass _ _ Hvg).
+    #[local] Abbreviation isym := (proj1 (ind_rel_sym_all p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI (okr_at D u0 nr))).
+    #[local] Abbreviation itrans := (proj1 (ind_rel_trans_all p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI (okr_at D u0 nr))).
+
+    Lemma s_Ln : List.length ns = im_nn Mm.
+    Proof. rewrite (eval_exps_length _ _ _ HNC); exact i_HNl. Qed.
+
+    Lemma s_La : List.length avs = List.length gs.
+    Proof. rewrite (eval_exps_length _ _ _ HAC); exact HAl. Qed.
+
+    Lemma s_Mc : exists cs, List.length cs = im_unu D Mm /\
+        ⟦ apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c) (im_pre Mm Us ++ Ns ++ As) ⟧ C
+          ↘ d_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c (cs ++ ns ++ avs).
+    Proof.
+      destruct (rel_exp_under_ctx_simple_at HRΓ iota_Mc_valid _ _ HCC) as (mv & _ & Emv & _ & _).
+      assert (LNA : List.length (Ns ++ As) = (im_nn Mm + List.length gs)%nat) by (rewrite List.length_app, i_HNl, HAl; reflexivity).
+      destruct (con_ref_apps_value VP p D HP HPD m Mm c gs C Us (Ns ++ As) (ns ++ avs) mv HMm Hcon i_HUl
+                  ltac:(apply eval_exps_app; assumption) LNA Emv) as (cs & Lcs & ->).
+      exists cs; split; assumption.
+    Qed.
+
+    Lemma s_HgN : gsub Γ (sb_of_list Id Ns) (tele_sub (im_nparams Mm) (sb_of_list Id Us) ++ Γ).
+    Proof. exact (gsub_ns VP p D HP HPD Γ HΓ Us m Mm HMm (HMall _ _ HMm) Ns i_HNl i_HNs). Qed.
+
+    (** The scrutinee's relation at [C], and its value there. *)
+    Lemma s_scrut : forall x y, per_head (ind_mty p D m Us Ns) (ind_mty p D m Us Ns) C C x y -> G m u0 u0 ns ns x y.
+    Proof.
+      intros x y Hxy.
+      destruct (presup_rel_exp_under_ctx iota_Mc_valid) as [iT HIT].
+      destruct (rel_exp_of_typ_inversion_simple_at HRΓ HIT _ _ HCC) as (t1 & t2 & Et1 & Et2 & [R HR]).
+      destruct (scrut_rel VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us i_HUl i_HUs C u0 HCC HUC m Mm HMm (HMall _ _ HMm) Ns i_HNl
+                  s_HgN C HCC ns ns HNC HNC t1 t2 _ R Et1 Et2 HR) as [_ ERM].
+      apply ERM, (per_head_iff Et1 Et2 HR); exact Hxy.
+    Qed.
+
+    Lemma s_self : forall cs, List.length cs = im_unu D Mm ->
+        ⟦ apps (a_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c) (im_pre Mm Us ++ Ns ++ As) ⟧ C
+          ↘ d_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c (cs ++ ns ++ avs) ->
+        G m u0 u0 ns ns (d_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c (cs ++ ns ++ avs))
+          (d_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c (cs ++ ns ++ avs)) /\
+        tele_rel (ar m ns c) (cargs_nonrec gs) (nonrec_arg_vals gs avs) (nonrec_arg_vals gs avs) /\
+        con_args_rel p D (okr_at D u0 nr) nr ar dr m u0 u0 ns ns gs avs avs.
+    Proof.
+      intros cs Lcs Emc.
+      destruct (rel_exp_under_ctx_simple_at HRΓ iota_Mc_valid _ _ HCC) as (m1 & m2 & Em1 & Em2 & Hm12).
+      assert (m1 = d_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c (cs ++ ns ++ avs)) as -> by (eapply functional_eval_exp; eassumption).
+      assert (m2 = d_con (fst (im_ref p m Mm)) (snd (im_ref p m Mm)) c (cs ++ ns ++ avs)) as -> by (eapply functional_eval_exp; eassumption).
+      pose proof (s_scrut _ _ Hm12) as Hm.
+      split; [ exact Hm |].
+      assert (Lb : List.length (cs ++ ns) = (im_unu D Mm + im_nn Mm)%nat) by (rewrite List.length_app, Lcs, s_Ln; reflexivity).
+      rewrite List.app_assoc in Hm.
+      destruct (ind_rel_con_inv p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ _ _ Hm HMm Lb)
+        as (gs0 & bs' & vs' & Ez & _ & _ & Hcon0 & Lbs' & _ & _ & Har & Hia).
+      rewrite Hcon in Hcon0; injection Hcon0 as <-.
+      injection Ez as Ez.
+      destruct (app_split_eq _ _ _ _ Ez ltac:(congruence)) as [<- <-].
+      rewrite (skipn_app_exact cs ns _ Lcs) in Har, Hia.
+      split; assumption.
+    Qed.
+  End IotaSem.
 End Iota.
 
 End Fixed_GCtx.
