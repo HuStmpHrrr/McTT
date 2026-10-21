@@ -353,6 +353,71 @@ Proof.
   exact (kripke_preserves_exp _ _ _ _ _ Hx Hφ).
 Qed.
 
+(** ** The Families of a Group, at its Sort
+
+    The types of the telescopes of a valid group at uniform parameters
+    [ups] are glued at the index of the sort at [ups], at the canonical
+    gluings of their values: those [per_univ_glu_univ_elem] gives, read
+    through the values the types evaluate to. *)
+Lemma group_fams_glu : forall D, valid_ind_decl D -> decl_closed D -> ind_sort_univ (ind_sort D) ->
+    forall ups bu, per_gargs (List.rev (ind_uparams D)) nil nil ups ups -> List.length ups = ind_nu D ->
+    ⟦ ind_sort D ⟧ env_args nil ups ↘ bu ->
+    exists NP NEl AP AEl DP DEl, ind_fams_glu D ups (Completeness.Inductives.Decl.univ_idx bu) NP NEl AP AEl DP DEl.
+Proof.
+  intros D HD Hc Hsu ups bu Hgd Hu Hbu.
+  set (i := Completeness.Inductives.Decl.univ_idx bu).
+  pose proof (Completeness.Inductives.Model.canon_hn D HD Hc Hsu ups bu Hu Hbu ups Hgd) as Hn.
+  pose proof (Completeness.Inductives.Model.canon_ha D HD Hc Hsu ups bu Hu Hbu ups Hgd) as Ha.
+  pose proof (Completeness.Inductives.Model.canon_hd D HD Hc Hsu ups bu Hu Hbu ups Hgd) as Hd.
+  assert (Hcan : forall b P El (E : domain -> Prop), (forall b', E b' -> b' = b) -> E b -> glu_univ_elem i P El b ->
+             glu_univ_elem i (fun Γ T => forall b' P' El', E b' -> glu_univ_elem i P' El' b' -> P' Γ T)
+                             (fun Γ T M m => forall b' P' El', E b' -> glu_univ_elem i P' El' b' -> El' Γ T M m) b).
+  { intros * HE Eb Hg.
+    eapply simple_glu_univ_elem_morphism_iff; [ | | reflexivity | exact Hg ].
+    - intros Γ T; split; [ intros HP; exact (HP _ _ _ Eb Hg) |].
+      intros HP b' P' El' Eb' Hg'; pose proof (HE _ Eb') as ->.
+      destruct (functional_glu_univ_elem _ _ _ _ _ _ Hg Hg') as [HPP _]; apply HPP; exact HP.
+    - intros Γ T M' m; split; [ intros HP; exact (HP _ _ _ Eb Hg) |].
+      intros HP b' P' El' Eb' Hg'; pose proof (HE _ Eb') as ->.
+      destruct (functional_glu_univ_elem _ _ _ _ _ _ Hg Hg') as [_ HEE]; apply HEE; exact HP. }
+  exists (fun m j vs Γ T => forall b P El, ⟦ nth_ctyp (List.rev (member_nparams D m)) j ⟧ env_args nil (ups ++ vs) ↘ b ->
+                       glu_univ_elem i P El b -> P Γ T),
+    (fun m j vs Γ T M m0 => forall b P El, ⟦ nth_ctyp (List.rev (member_nparams D m)) j ⟧ env_args nil (ups ++ vs) ↘ b ->
+                       glu_univ_elem i P El b -> El Γ T M m0),
+    (fun m ms c j vs Γ T => forall b P El, ⟦ nth_atyp D m c j ⟧ env_args nil (ups ++ ms ++ vs) ↘ b ->
+                       glu_univ_elem i P El b -> P Γ T),
+    (fun m ms c j vs Γ T M m0 => forall b P El, ⟦ nth_atyp D m c j ⟧ env_args nil (ups ++ ms ++ vs) ↘ b ->
+                       glu_univ_elem i P El b -> El Γ T M m0),
+    (fun (m : nat) pre B Γ T => forall b P El, ⟦ B ⟧ env_args nil (ups ++ pre) ↘ b -> glu_univ_elem i P El b -> P Γ T),
+    (fun (m : nat) pre B Γ T M m0 => forall b P El, ⟦ B ⟧ env_args nil (ups ++ pre) ↘ b ->
+                       glu_univ_elem i P El b -> El Γ T M m0).
+  constructor.
+  - intros m Mm j A vs HM HA Hp; destruct (Hn _ _ _ _ _ _ HM HA Hp) as (a & a' & Ea & _); eauto.
+  - intros m Mm j A vs b HM HA Hp Eb.
+    destruct (Hn _ _ _ _ _ _ HM HA Hp) as (a & a' & Ea & Ea' & Hpa).
+    assert (a = b) as -> by (eapply functional_eval_exp; eassumption).
+    assert (a' = b) as -> by (eapply functional_eval_exp; eassumption).
+    destruct (per_univ_glu_univ_elem _ _ Hpa) as (Pb & Elb & Hgb).
+    rewrite (nth_ctyp_eq _ _ _ _ _ HM HA).
+    eapply Hcan; [ intros; eapply functional_eval_exp; eassumption | exact Eb | exact Hgb ].
+  - intros m Mm ms c gs j A vs HM Hm Hcn HA Hp; destruct (Ha _ _ _ _ _ _ _ _ _ _ HM Hm Hcn HA Hp) as (a & a' & Ea & _); eauto.
+  - intros m Mm ms c gs j A vs b HM Hm Hcn HA Hp Eb.
+    destruct (Ha _ _ _ _ _ _ _ _ _ _ HM Hm Hcn HA Hp) as (a & a' & Ea & Ea' & Hpa).
+    assert (a = b) as -> by (eapply functional_eval_exp; eassumption).
+    assert (a' = b) as -> by (eapply functional_eval_exp; eassumption).
+    destruct (per_univ_glu_univ_elem _ _ Hpa) as (Pb & Elb & Hgb).
+    rewrite (nth_atyp_eq _ _ _ _ _ _ _ HM Hcn HA).
+    eapply Hcan; [ intros; eapply functional_eval_exp; eassumption | exact Eb | exact Hgb ].
+  - intros m Mm ms c gs gs1 t gs2 ws j B ys HM Hm Hcn Heq Hw HB Hy.
+    destruct (Hd _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hcn Heq Hw HB Hy) as (a & a' & Ea & _); eauto.
+  - intros m Mm ms c gs gs1 t gs2 ws j B ys b HM Hm Hcn Heq Hw HB Hy Eb.
+    destruct (Hd _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HM Hm Hcn Heq Hw HB Hy) as (a & a' & Ea & Ea' & Hpa).
+    assert (a = b) as -> by (eapply functional_eval_exp; eassumption).
+    assert (a' = b) as -> by (eapply functional_eval_exp; eassumption).
+    destruct (per_univ_glu_univ_elem _ _ Hpa) as (Pb & Elb & Hgb).
+    eapply Hcan; [ intros; eapply functional_eval_exp; eassumption | exact Eb | exact Hgb ].
+Qed.
+
 (** A branch at a position, looked up by its name, the names distinct. *)
 Lemma brs_lookup_of_nth : forall (Bs : list (String.string * nat * exp)) idx c n B,
     List.NoDup (List.map (fun b => fst (fst b)) Bs) -> List.nth_error Bs idx = Some (c, n, B) -> brs_lookup Bs c = Some (n, B).
