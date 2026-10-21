@@ -282,6 +282,83 @@ Section ViewSyn.
       | exact (Views.view_is_typed _ _ _ _ _ _ _ _ _ _ _ _ _ (ctx_wf_gctx _ _ _ HΓ) Hl Hdt HcQ HMk Hh Hq HΓ HUl HUs)
       | exact (vs_nparams_typed_c Γ Us Ns HΓ HUl HNl HUs HNs) ].
   Qed.
+
+  (** Parameters equal at the group's member are equal at the container's
+      at the view's instance. *)
+  Lemma vs_params_eq_transfer : forall Γ Us1 Us2 X Y, ⊢ Γ -> List.length Us1 = ind_nu D -> List.length X = im_nn Mv ->
+      List.length Us2 = ind_nu D -> exps_eq_at Γ (im_params D Mv) (Us1 ++ X) (Us2 ++ Y) ->
+      exps_eq_at Γ (im_params Dq Mi') (List.map (fun I => I[sb_of_list Id Us1]) Is ++ X) (List.map (fun I => I[sb_of_list Id Us2]) Is ++ Y).
+  Proof.
+    intros * HΓ HU1 HXl HU2 [HlE HE].
+    rewrite !List.length_app in HlE.
+    assert (HYl : List.length Y = im_nn Mv) by lia.
+    pose proof (decl_closed_nparams_ass D Hc _ _ HMv) as HaV.
+    assert (HtiG : forall Ws Zs, List.length Ws = ind_nu D ->
+               tele_insts (im_params D Mv) Id (Ws ++ Zs) = tele_insts (ind_uparams D) Id Ws ++ tele_insts (im_nparams Mv) (sb_of_list Id Ws) Zs)
+      by (intros; unfold im_params; apply tele_insts_app; [ exact (dc_ass _ Hc) | assumption ]).
+    assert (HlU : forall Ws, List.length Ws = ind_nu D -> List.length (tele_insts (ind_uparams D) Id Ws) = ind_nu D)
+      by (intros; rewrite length_tele_insts by exact (dc_ass _ Hc); unfold ind_nu in *; lia).
+    (** Both sides typed. *)
+    assert (HPs1 : forall j Z T, List.nth_error (Us1 ++ X) j = Some Z -> List.nth_error (tele_insts (im_params D Mv) Id (Us1 ++ X)) j = Some T ->
+                     Γ ⊢ Z : T).
+    { intros j Z T HZ HT.
+      destruct (nth_error_lt_some (Us2 ++ Y) j) as [W HW];
+        [ assert (j < List.length (Us1 ++ X)) by (apply List.nth_error_Some; congruence); rewrite List.length_app in *; lia |].
+      pose proof (HE _ _ _ _ HZ HW HT) as H; gen_presups; eassumption. }
+    destruct (params_typed_split _ _ D Hc v Mv Γ (Us1 ++ X) HMv ltac:(rewrite List.length_app; unfold im_np; lia) HPs1) as [HUs1 HXs].
+    rewrite firstn_app_exact in HUs1, HXs by exact HU1; rewrite skipn_app_exact in HXs by exact HU1.
+    assert (HEq : exps_eq_at Γ (im_params D Mv) (Us1 ++ X) (Us2 ++ Y)) by (split; [ rewrite !List.length_app; lia | exact HE ]).
+    pose proof (exps_eq_at_typed_r p D v Mv Γ (Us1 ++ X) (Us2 ++ Y) Hl HMv HΓ ltac:(rewrite List.length_app; unfold im_np; lia) HEq)
+      as HPs2.
+    destruct (params_typed_split _ _ D Hc v Mv Γ (Us2 ++ Y) HMv ltac:(rewrite List.length_app; unfold im_np; lia) HPs2) as [HUs2 _].
+    rewrite firstn_app_exact in HUs2 by exact HU2.
+    (** The uniform parameters: an equal instance. *)
+    assert (Hσ : Γ ⊢ˢ sb_of_list Id Us1 ≈ sb_of_list Id Us2 : ind_uparams D).
+    { rewrite <- (List.app_nil_r (ind_uparams D)).
+      apply Views.wf_sub_eq_of_list_conv;
+        [ exact (dc_ass _ Hc) | rewrite List.app_nil_r; exact (dt_uparams _ _ _ Hdt) | apply wf_sub_eq_refl, wf_sub_to_nil, HΓ
+        | exact HU1 | exact HU2 | exact HUs1 | exact HUs2 |].
+      intros j Z W T HZ HW HT.
+      assert (Hj1 : j < List.length Us1) by (apply List.nth_error_Some; congruence).
+      apply (HE j); [ rewrite List.nth_error_app1 by lia; exact HZ | rewrite List.nth_error_app1 by lia; exact HW |].
+      rewrite (HtiG Us1 X HU1), List.nth_error_app1 by (rewrite HlU by exact HU1; lia).
+      exact HT. }
+    pose proof (vs_is_length) as HIl.
+    split; [ rewrite !List.length_app, !List.length_map; lia |].
+    intros j Z W T HZ HW HT.
+    unfold im_params in HT; rewrite tele_insts_app in HT by (first [ exact (dc_ass _ HcQ) | rewrite List.length_map, HIl; reflexivity ]).
+    destruct (Nat.lt_ge_cases j (ind_nu Dq)) as [Hj | Hj].
+    - rewrite List.nth_error_app1 in HZ, HW by (rewrite List.length_map; lia).
+      rewrite List.nth_error_app1 in HT by (rewrite length_tele_insts by exact (dc_ass _ HcQ); rewrite List.length_map; unfold ind_nu in *; lia).
+      apply nth_error_map_inv in HZ as (I & HI & ->).
+      rewrite List.nth_error_map, HI in HW; injection HW as <-.
+      rewrite <- (tele_insts_sub (ind_uparams Dq) 0 Id Id (sb_of_list Id Us1) Is (dc_ass _ HcQ) (dc_uparams _ HcQ) ltac:(intros; lia)) in HT.
+      apply nth_error_map_inv in HT as (T0 & HT0 & ->).
+      exact (sub_eq_preserves_exp _ _ _ _ _ (dt_view_is _ _ _ _ (ctx_wf_gctx _ _ _ HΓ) Hdt Hl _ _ _ _ _ _ _ _ _ _ HMk Hh Hq HI HT0) _ _ _ Hσ).
+    - rewrite List.nth_error_app2 in HZ, HW by (rewrite List.length_map; lia).
+      rewrite List.length_map, HIl in HZ, HW.
+      rewrite List.nth_error_app2 in HT by (rewrite length_tele_insts by exact (dc_ass _ HcQ); rewrite List.length_map; unfold ind_nu in *; lia).
+      rewrite length_tele_insts, List.length_map, HIl in HT by exact (dc_ass _ HcQ).
+      replace (Nat.min (List.length (ind_uparams Dq)) (ind_nu Dq)) with (ind_nu Dq) in HT by (unfold ind_nu; lia).
+      set (j' := j - ind_nu Dq) in *.
+      destruct (nth_error_lt_some (tele_insts (im_nparams Mv) (sb_of_list Id Us1) X) j') as [T' HT'];
+        [ rewrite length_tele_insts by exact HaV; rewrite length_im_nparams;
+          assert (j' < List.length X) by (apply List.nth_error_Some; congruence); lia |].
+      assert (HZW : Γ ⊢ Z ≈ W : T').
+      { apply (HE (ind_nu D + j')).
+        - rewrite List.nth_error_app2 by lia; rewrite HU1; replace (ind_nu D + j' - ind_nu D) with j' by lia; exact HZ.
+        - rewrite List.nth_error_app2 by lia; rewrite HU2; replace (ind_nu D + j' - ind_nu D) with j' by lia; exact HW.
+        - rewrite (HtiG Us1 X HU1), List.nth_error_app2 by (rewrite HlU by exact HU1; lia).
+          rewrite HlU by exact HU1; replace (ind_nu D + j' - ind_nu D) with j' by lia; exact HT'. }
+      pose proof (vs_nparams_ext Γ Us1 HΓ HU1 HUs1) as He.
+      rewrite <- vs_insts_sub in HT'; rewrite <- (vs_nparams_insts Us1 X HU1) in HT.
+      destruct (tele_insts_ext_eq Γ _ _ X He (tele_ass_sub _ _ HaV) (tele_ass_sub _ _ (tele_ass_sub _ _ (decl_closed_nparams_ass Dq HcQ _ _ HMi')))
+                  ltac:(rewrite length_tele_sub, length_im_nparams; lia)
+                  ltac:(intros j0 N0 T1 HN0 HT1; rewrite vs_insts_sub in HT1; exact (HXs _ _ _ HN0 HT1))
+                  j' T' T HT' HT) as [i Hi].
+      eapply wf_exp_eq_conv; [ exact HZW | | exact Hi ].
+      gen_presups; eassumption.
+  Qed.
 End ViewSyn.
 
 (** A constructor of a view, applied to typed parameters and arguments, is
