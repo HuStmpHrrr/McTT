@@ -3600,6 +3600,31 @@ Section ElimGlu.
     exact (elim_rb_wk j (elim_rb_all j) Mj as' e Δ' σ' oq' Ns' M' HMj Hgrp Hσ' (gnp_len _ _ _ _ _ _ _ Hgn) HPs Hrb Δ φ M0 Hφ HR).
   Qed.
 
+  (** ** The Eliminator, Glued
+
+      By induction on the gluing of the group: a constructor by its branch
+      ([cc_main]), a neutral by the readback of the stuck eliminator
+      ([neut_ok_all]), the recursive arguments by the shapes. *)
+  Theorem elim_glu_all :
+    (forall k Γ' Us' Ns' M' mv, ind_glu_elem p D ups NEl AEl DP DEl k Γ' Us' Ns' M' mv -> elim_prop k Γ' Us' Ns' M' mv) /\
+    (forall k Γ' Us' pre t A N v, glu_rec p D ups NEl AEl DP DEl k Γ' Us' pre t A N v -> rec_prop k Γ' Us' pre t A N v).
+  Proof.
+    apply (ind_glu_elem_mut_ind_all p D ups NEl AEl DP DEl
+             (fun k Γ' Us' Ns' M' mv _ => elim_prop k Γ' Us' Ns' M' mv)
+             (fun k Γ' Us' pre t A N v _ => rec_prop k Γ' Us' pre t A N v)).
+    - intros k Mk hd k' c gs Us' Ns' bs vs As Δ' M' HMk Href Hcon HUl' HNl' Hbl Hvl HAl HMeq Hb Hv Hnp HAs Harg Hrec IH.
+      intros Mk0 σ' oq' ns HMk0 Hgrp Hσ' HUs' HMt Hgn Hns HGm.
+      rewrite HMk in HMk0; injection HMk0 as <-.
+      exact (cc_main k Mk hd k' c gs Us' Ns' bs vs As Δ' M' HMk Href Hcon HUl' HNl' Hbl Hvl HAl HMeq Hb Hv Hnp HAs Harg Hrec IH
+               σ' oq' ns Hgrp Hσ' HUs' HMt Hgn Hns HGm).
+    - intros k Mk hd k' m Γ' Us' Ns' M' as' HMk Href Hm Hrb.
+      exact (neut_ok_all k Mk hd k' as' m Γ' Us' Ns' M' HMk Href Hm Hrb).
+    - intros j Mj Ps pre A Us' Γ' N v k HMj Hs1 _ IH.
+      exact (rec_self_case k Γ' Us' pre j Mj Ps A N v HMj Hs1 IH).
+    - intros A Γ' k pre B v Us' t N Hq1 Hq2 _ IH.
+      exact (rec_pi_case k Γ' Us' pre B t A N v Hq1 Hq2 IH).
+  Qed.
+
 End ElimGlu.
 
 End Fixed_GCtx.
