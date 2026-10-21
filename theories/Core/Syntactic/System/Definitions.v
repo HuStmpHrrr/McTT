@@ -120,6 +120,29 @@ Record view_rank_ok (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (rk : nat -> nat) 
       List.nth_error vm i' = Some v -> ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
       cargs_nest_ok rk (rk k) gs' gs }.
 
+(** [vmv] is the map of the view of [D] that a view with map [vm] takes
+    the container's member [M] to: [vm] itself at a declared [M]; at a
+    view [M] with map [vm''], [vm''] followed by [vm], each of its members
+    one [vm] maps. *)
+Definition view_map_at (vm : list nat) (M : imember) (vmv : list nat) : Prop :=
+  match im_head M with
+  | mh_decl _ => vmv = vm
+  | mh_view _ _ _ vm'' => List.map (List.nth_error vm) vm'' = List.map Some vmv
+  end.
+
+(** The views of a group agree on their maps: of a view [k] with map [vm]
+    and a member [i'] of its container, the member [v] of [D] [vm] takes
+    [i'] to is a view of map [view_map_at vm Mi'].  The core command
+    collects one view per instance, with its siblings, so the groups it
+    builds have it; the eliminator at a view and the one at its container
+    read a neutral alike only with it. *)
+Definition view_maps_coherent (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : Prop :=
+  forall k Mk qc k' Is vm D' i' Mi' v Mv qv kv Iv vmv,
+    ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+    ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' ->
+    List.nth_error vm i' = Some v -> ind_member D v = Some Mv -> im_head Mv = mh_view qv kv Iv vmv ->
+    view_map_at vm Mi' vmv.
+
 (** ** The Mutually Defined Judgments
 
     Four about terms, three about units, extensions and module expressions,
@@ -1155,6 +1178,8 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
          eliminator at the view reads them *)
      (forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
         exists D', ind_lookup Θ Ξ qc = Some D' /\ vwrap_ok D D' vm) ->
+     (** the views agree on their maps *)
+     view_maps_coherent Θ Ξ D ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp 0 D ⋄ )
 (** A later declared member of a group, before the members of its module:
     the group is filed at its first member, [y0], an entry of the same

@@ -313,6 +313,7 @@ Proof.
     exists Dq, Mc; repeat split; [ exact HDq | exact HMc | exact (eq_sym Hnn) | exact HlIs ].
   - exact (dt_rank _ _ _ HD).
   - exact (dt_vwrap _ _ _ HD).
+  - exact (dt_view_maps_coherent _ _ _ HD).
   - intros v Mv qc kc Is vm Dq i' Mi' HMv Hh HDq HMi'.
     destruct (dt_vwrap _ _ _ HD _ _ _ _ _ _ HMv Hh) as (D' & HD' & Hvw).
     rewrite HDq in HD'; injection HD' as <-.

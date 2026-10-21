@@ -1190,7 +1190,8 @@ Section GrowDeps.
       assert (Hs : gc_sub Θ Ξ Θ' Ξ) by (apply gc_sub_deps; exact Hsub).
       match goal with |- _ ⍮ _ ⍮ _ ⊢ᵉ ge_ind _ _ _ ?D0 _ => assert (HD : decl_typed Θ Ξ D0) by build_decl_typed end.
       pose proof (decl_typed_container _ _ _ _ _ Hs HD) as Hcont.
-      econstructor; try eassumption.
+      econstructor; try eassumption;
+        [ .. | exact (view_maps_coherent_gc_sub _ _ _ _ _ Hcont (dt_view_maps_coherent _ _ _ HD)) ].
       all: intros;
         repeat match goal with
         | Hk : ind_member ?D0 ?k = Some ?Mk, Hh : im_head ?Mk = mh_view ?qc _ _ _, Hl : ind_lookup _ _ ?qc = Some _ |- _ =>
@@ -2172,7 +2173,8 @@ Qed.
     group has members.  A group accepted by the check has a rank
     ([rank_check_sound]); a group with a cycle of nest edges has none, and
     is rejected.  The members a view's [vm] lists are checked likewise
-    ([vwrap_check_sound]). *)
+    ([vwrap_check_sound]), and so is the agreement of the views' maps
+    ([view_maps_check_sound]). *)
 
 (** The members the positions of a view's block nest through. *)
 Fixpoint cargs_nest_targets (gs' gs : list carg) : list nat :=
@@ -2324,4 +2326,55 @@ Proof.
   - destruct (list_eq_dec string_dec _ _) as [E |]; [ exact E | discriminate ].
   - intros c gs' gs Hin Hc; rewrite List.forallb_forall in H3; specialize (H3 _ Hin); cbn [fst snd] in H3.
     rewrite Hc in H3; exact (cargs_corrb_sound _ _ _ H3).
+Qed.
+
+(** The agreement of the views' maps, checked. *)
+Definition option_nat_eq_dec : forall x y : option nat, {x = y} + {x <> y}.
+Proof. decide equality; apply Nat.eq_dec. Defined.
+
+Definition view_map_at_check (vm : list nat) (M : imember) (vmv : list nat) : bool :=
+  match im_head M with
+  | mh_decl _ => if list_eq_dec Nat.eq_dec vmv vm then true else false
+  | mh_view _ _ _ vm'' =>
+      if list_eq_dec option_nat_eq_dec (List.map (List.nth_error vm) vm'') (List.map Some vmv) then true else false
+  end.
+
+Lemma view_map_at_check_sound : forall vm M vmv, view_map_at_check vm M vmv = true -> view_map_at vm M vmv.
+Proof.
+  intros * H; unfold view_map_at_check in H; unfold view_map_at.
+  destruct (im_head M); destruct (list_eq_dec _ _ _) as [E |]; first [ exact E | discriminate ].
+Qed.
+
+Definition view_maps_check (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : bool :=
+  List.forallb (fun Mk =>
+    match im_head Mk with
+    | mh_decl _ => true
+    | mh_view qc _ _ vm =>
+        match ind_lookup Θ Ξ qc with
+        | Some D' =>
+            List.forallb (fun iM =>
+              match List.nth_error vm (fst iM) with
+              | Some v =>
+                  match ind_member D v with
+                  | Some Mv =>
+                      match im_head Mv with
+                      | mh_decl _ => true
+                      | mh_view _ _ _ vmv => view_map_at_check vm (snd iM) vmv
+                      end
+                  | None => true
+                  end
+              | None => true
+              end) (List.combine (List.seq 0 (List.length (ind_members D'))) (ind_members D'))
+        | None => true
+        end
+    end) (ind_members D).
+
+(** A group the check accepts has views whose maps agree. *)
+Theorem view_maps_check_sound : forall Θ Ξ D, view_maps_check Θ Ξ D = true -> view_maps_coherent Θ Ξ D.
+Proof.
+  intros * H; unfold view_maps_check in H; rewrite List.forallb_forall in H.
+  intros k Mk qc k' Is vm D' i' Mi' v Mv qv kv Iv vmv HMk Hh Hl HMi' Hv HMv HhMv.
+  specialize (H _ (List.nth_error_In _ _ HMk)); rewrite Hh, Hl, List.forallb_forall in H.
+  specialize (H _ (in_combine_seq _ _ _ HMi')); cbn [fst snd] in H; rewrite Hv, HMv, HhMv in H.
+  exact (view_map_at_check_sound _ _ _ H).
 Qed.

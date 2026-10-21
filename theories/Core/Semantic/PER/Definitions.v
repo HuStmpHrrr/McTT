@@ -482,8 +482,8 @@ Hint Constructors ind_rel con_args_rel rec_arg_rel rec_arg_app_rel : mctt.
     [R] being the universe relation (or, in an induction, it with the
     motive).  [grp_tele_ass]: the parameters are assumptions, and a view's
     container member is declared, with as many non-uniform parameters as
-    the view; the rank and the views' members as the declaration checks
-    them; and the parameters of every recursive argument's shape, of the
+    the view; the rank, the views' members and the agreement of the
+    views' maps as the declaration checks them; and the parameters of every recursive argument's shape, of the
     group's constructors and of its views' containers', as many as the
     member's the shape ends in ([cargs_plen], which readback asks of the
     blocks it reads). *)
@@ -514,6 +514,7 @@ Record grp_tele_ass (D : ind_decl) : Prop := mk_grp_tele_ass
   ; gta_rank : exists rk, view_rank_ok gc_deps gc_stack D rk
   ; gta_vwrap : forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       exists D', ind_lookup gc_deps gc_stack qc = Some D' /\ vwrap_ok D D' vm
+  ; gta_view_maps_coherent : view_maps_coherent gc_deps gc_stack D
   ; gta_vm : forall v Mv qc kc Is vm Dq i' Mi', ind_member D v = Some Mv -> im_head Mv = mh_view qc kc Is vm ->
       ind_lookup gc_deps gc_stack qc = Some Dq -> ind_member Dq i' = Some Mi' -> view_member_image D qc Is vm i' Mi'
   ; gta_plen : forall k Mk c gs, ind_member D k = Some Mk -> List.In (c, gs) (im_cons Mk) -> cargs_plen D gs

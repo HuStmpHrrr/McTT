@@ -691,6 +691,10 @@ Proof.
   intros * Hk Hh Hl; rewrite ind_lookup_unseal in Hl; eapply Hr1; eassumption.
 Qed.
 
+(** Nor does the agreement of its views' maps. *)
+Lemma view_maps_coherent_unseal : forall Θ Ξ D, view_maps_coherent Θ Ξ D -> view_maps_coherent (gds_unseal Θ) (gs_unseal Ξ) D.
+Proof. unfold view_maps_coherent; intros * Hc * Hk Hh Hl; rewrite ind_lookup_unseal in Hl; eapply Hc; eassumption. Qed.
+
 (** ** Unsealing Preserves Every Judgment *)
 
 Ltac seal_prem := first [ eassumption | solve [ intros; eapply proj1; eauto ] | solve [ eauto ] ].
@@ -793,6 +797,8 @@ Proof.
              | eapply wf_gentry_ind_alias; try eassumption ].
   all: try (match goal with Hrk : view_rank_ok _ _ _ ?rk |- exists rk, view_rank_ok _ _ _ rk =>
               exists rk; exact (view_rank_ok_unseal _ _ _ _ Hrk) end).
+  all: try (match goal with Hvc : view_maps_coherent _ _ ?D |- view_maps_coherent _ _ ?D =>
+              exact (view_maps_coherent_unseal _ _ _ Hvc) end).
   all: try (match goal with Hq : ind_lookup ?Θ ((?mq, gu_body ?Δ ?Φ0) :: ?Ξ) ?p = Some ?D
                 |- ind_lookup (gds_unseal ?Θ) ((?mq, gu_body ?Δ (gm_unseal ?Φ0)) :: gs_unseal ?Ξ) ?p = Some ?D =>
               exact (eq_trans (ind_lookup_unseal Θ ((mq, gu_body Δ Φ0) :: Ξ) p) Hq) end).

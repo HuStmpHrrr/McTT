@@ -618,6 +618,7 @@ Record decl_typed (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : Prop := mk_decl_ty
   ; dt_rank : exists rk, view_rank_ok Θ Ξ D rk
   ; dt_vwrap : forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       exists D', ind_lookup Θ Ξ qc = Some D' /\ vwrap_ok D D' vm
+  ; dt_view_maps_coherent : view_maps_coherent Θ Ξ D
   ; dt_view_decl : forall k Mk qc k' Is vm D' i' Mi' v pm', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_decl pm' ->
       nth_error vm i' = Some v ->
@@ -640,12 +641,22 @@ Proof.
   rewrite (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hl) in Hl2; injection Hl2 as <-; exact Hl.
 Qed.
 
+(** The views' maps agree at a context the group's embeds into, its views'
+    containers being the ones found at the group's. *)
+Lemma view_maps_coherent_gc_sub : forall Θ Ξ Θ2 Ξ2 D,
+    (forall k Mk qc k' Is vm D2, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       ind_lookup Θ2 Ξ2 qc = Some D2 -> ind_lookup Θ Ξ qc = Some D2) ->
+    view_maps_coherent Θ Ξ D -> view_maps_coherent Θ2 Ξ2 D.
+Proof.
+  unfold view_maps_coherent; intros * Hcont Hc * Hk Hh Hl; pose proof (Hcont _ _ _ _ _ _ _ Hk Hh Hl); eapply Hc; eassumption.
+Qed.
+
 Lemma decl_typed_emb : forall Θ Ξ Θ2 Ξ2 D, Emb Θ Ξ Θ2 Ξ2 -> decl_typed Θ Ξ D -> decl_typed Θ2 Ξ2 D.
 Proof.
   intros * He HD; pose proof (em_res _ _ _ _ He) as Hs.
   pose proof (decl_typed_container _ _ _ _ _ Hs HD) as Hcont.
   destruct (emb_preserves_wf _ _ _ _ He) as (Hc & Ht & Hq & Hst & Hx & _).
-  destruct HD as [Ha Hmv HU Ho Hsu [i Hi] [n Hn] Hna Hnd HN HA HB Hpl HP Hv Hrk Hvw Hvd Hvv [IsS Hself]].
+  destruct HD as [Ha Hmv HU Ho Hsu [i Hi] [n Hn] Hna Hnd HN HA HB Hpl HP Hv Hrk Hvw Hvc Hvd Hvv [IsS Hself]].
   constructor; try assumption.
   - exact (Hc _ HU).
   - exists i; exact (Ht _ _ _ Hi).
@@ -660,6 +671,7 @@ Proof.
     intros * Hk Hh Hl; pose proof (Hcont _ _ _ _ _ _ _ Hk Hh Hl); intros; eapply Hr1; eassumption.
   - intros * Hk Hh; destruct (Hvw _ _ _ _ _ _ Hk Hh) as (D' & Hl & Hw).
     exists D'; split; [ exact (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hl) | exact Hw ].
+  - exact (view_maps_coherent_gc_sub _ _ _ _ _ Hcont Hvc).
   - intros * Hk Hh Hl; pose proof (Hcont _ _ _ _ _ _ _ Hk Hh Hl); intros; eapply Hvd; eassumption.
   - intros * Hk Hh Hl; pose proof (Hcont _ _ _ _ _ _ _ Hk Hh Hl); intros; eapply Hvv; eassumption.
   - destruct Hself as [Hlk Hvi Hvvi Hvn Hva Hvdm Hvp Hvs]; exists IsS; constructor; [ exact Hlk | .. ].
