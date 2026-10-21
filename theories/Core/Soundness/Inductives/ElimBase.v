@@ -210,4 +210,184 @@ Proof.
   rewrite List.length_rev, length_tele_sub, Nat.sub_diag; reflexivity.
 Qed.
 
+(** ** The Recursive Results, Position by Position *)
+
+Lemma ihs_rev_nth : forall nn As Us na gs k e,
+    List.nth_error (List.rev (ihs_ctx_aux nn As Us na nil 0 gs)) k = Some e ->
+    exists gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 /\ cargs_nrec gs1 = k /\
+      e = ce_ass (ptyp_ihty As (sb_of_wk (wk_shiftn (k + na + nn))) (ihs_sub nn Us na (cargs_pat gs1) k)
+                    (a_var (k + na - 1 - List.length (cargs_pat gs1))) t).
+Proof.
+  intros nn As Us na gs; induction gs as [| g gs IH] using List.rev_ind; intros k e H; [ cbn in H; destruct k; discriminate |].
+  pose proof (Views.ihs_ctx_aux_app nn As Us na gs (g :: nil) nil 0) as E.
+  rewrite List.app_nil_r in E; cbn [Nat.add] in E; rewrite E in H; clear E.
+  destruct g as [B | t]; cbn [ihs_ctx_aux List.app] in H.
+  - destruct (IH k e H) as (gs1 & t & gs2 & -> & Hk & ->).
+    exists gs1, t, (gs2 ++ ca_arg B :: nil); split; [ rewrite <- List.app_assoc; reflexivity | split; [ exact Hk | reflexivity ] ].
+  - cbn [List.rev] in H.
+    destruct (Nat.lt_ge_cases k (List.length (ihs_ctx_aux nn As Us na nil 0 gs))) as [Hlt | Hge].
+    + rewrite List.nth_error_app1 in H by (rewrite List.length_rev; exact Hlt).
+      destruct (IH k e H) as (gs1 & t' & gs2 & -> & Hk & ->).
+      exists gs1, t', (gs2 ++ ca_rec t :: nil); split; [ rewrite <- List.app_assoc; reflexivity | split; [ exact Hk | reflexivity ] ].
+    + rewrite List.nth_error_app2 in H by (rewrite List.length_rev; exact Hge).
+      rewrite List.length_rev in H; rewrite length_ihs_ctx_aux in H, Hge.
+      destruct (k - cargs_nrec gs) as [| k'] eqn:Ek; cbn in H; [| destruct k'; discriminate ].
+      injection H as <-.
+      assert (k = cargs_nrec gs) as -> by (pose proof (proj1 (Nat.sub_0_le k (cargs_nrec gs)) Ek); lia).
+      exists gs, t, nil; split; [ reflexivity | split; [ reflexivity |] ].
+      try rewrite List.app_nil_r; reflexivity.
+Qed.
+
+Lemma ihs_ctx_nth : forall nn As Us na gs gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
+    List.nth_error (List.rev (ihs_ctx_aux nn As Us na nil 0 gs)) (cargs_nrec gs1)
+    = Some (ce_ass (ptyp_ihty As (sb_of_wk (wk_shiftn (cargs_nrec gs1 + na + nn))) (ihs_sub nn Us na (cargs_pat gs1) (cargs_nrec gs1))
+                      (a_var (cargs_nrec gs1 + na - 1 - List.length (cargs_pat gs1))) t)).
+Proof.
+  intros * ->.
+  rewrite Views.ihs_ctx_aux_app, List.app_nil_r; cbn [ihs_ctx_aux Nat.add].
+  rewrite !List.rev_app_distr; cbn [List.rev List.app].
+  rewrite List.nth_error_app2 by (rewrite List.length_rev, length_ihs_ctx_aux; lia).
+  rewrite List.length_rev, length_ihs_ctx_aux, Nat.sub_diag; reflexivity.
+Qed.
+
+Lemma elim_ihs_nth : forall pq D oq Us Bks gs1 σ gs t gs2 As N, gs = gs1 ++ ca_rec t :: gs2 -> List.length As = List.length gs ->
+    List.nth_error As (List.length gs1) = Some N ->
+    List.nth_error (elim_ihs pq D oq Us Bks σ gs As) (cargs_nrec gs1) = Some (ptyp_ih pq D oq Us Bks (cargs_sub σ gs1 As) N t).
+Proof.
+  intros pq D oq Us Bks gs1; induction gs1 as [| g gs1 IH]; intros σ gs t gs2 As N -> Hl HN;
+    destruct As as [| N0 As]; cbn in *; try discriminate; [ injection HN as ->; reflexivity |].
+  destruct g; cbn; [ apply (IH _ _ t gs2); auto | apply (IH _ _ t gs2); auto ].
+Qed.
+
+Lemma eval_ihs_nth : forall ρ p ups Bks gs1 gs vs ihs, ⟦ihs vs of gs under p ups Bks ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ ihs ->
+    forall t gs2 v, gs = gs1 ++ ca_rec t :: gs2 -> List.nth_error vs (List.length gs1) = Some v ->
+    exists r, List.nth_error ihs (cargs_nrec gs1) = Some r /\ ⟦ih v of t under p ups Bks ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r.
+Proof.
+  intros ρ p ups Bks gs1; induction gs1 as [| g gs1 IH]; intros gs vs ihs H t gs2 v -> Hv; inversion H; subst; cbn in *.
+  - injection Hv as ->; eauto.
+  - eapply IH; eauto.
+  - edestruct (IH _ _ _ ltac:(eassumption) _ _ _ eq_refl Hv) as (r & Hr & Er); exists r; split; [ exact Hr | exact Er ].
+Qed.
+
+(** ** Fresh Variables of Readback, Position by Position *)
+
+Lemma fresh_tele_nth : forall E T s vs, Ftele T in gc_deps ⍮ gc_stack ⍮ E ⍮ s ↘ vs ->
+    forall k A, List.nth_error T k = Some (ce_ass A) ->
+      exists b, ⟦ A ⟧ env_args E (List.firstn k vs) ↘ b /\ List.nth_error vs k = Some (⇑! b (s + k)).
+Proof.
+  induction 1 as [| ? ? ? ? ? ? Ea Hr IH]; intros k A0 Hk; [ destruct k; discriminate |].
+  destruct k as [| k]; cbn in Hk |- *.
+  - injection Hk as <-; exists a; rewrite Nat.add_0_r; split; [ exact Ea | reflexivity ].
+  - destruct (IH k A0 Hk) as (b & Eb & Hb); exists b; split; [ exact Eb |].
+    rewrite Hb; do 3 f_equal; lia.
+Qed.
+
+Lemma fresh_cargs_nth : forall p ups E gs s vs, Fcargs gs of p ups in gc_deps ⍮ gc_stack ⍮ E ⍮ s ↘ vs ->
+    forall gs1 g gs2, gs = gs1 ++ g :: gs2 ->
+    (forall A, g = ca_arg A -> exists a, ⟦ A ⟧ env_args E (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
+       List.nth_error vs (List.length gs1) = Some (⇑! a (s + List.length gs1))) /\
+    (forall t, g = ca_rec t -> exists a, ⟦shty t of p ups ⟧ gc_deps ⍮ gc_stack ⍮ env_args E (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
+       List.nth_error vs (List.length gs1) = Some (⇑! a (s + List.length gs1))).
+Proof.
+  intros p ups E gs s vs H gs1; revert E gs s vs H; induction gs1 as [| g1 gs1 IH]; intros * H g gs2 Heq; cbn in Heq.
+  - subst; split; intros * ->; inversion H; subst; cbn; rewrite Nat.add_0_r; eauto.
+  - subst; inversion H; subst;
+      lazymatch goal with Hr1 : fresh_cargs _ _ _ _ _ (gs1 ++ _) _ _ |- _ => destruct (IH _ _ _ _ Hr1 g gs2 eq_refl) as [IHa IHr] end.
+    + split.
+      * intros A0 ->; destruct (IHa A0 eq_refl) as (a0 & Ea & Hv); exists a0; cbn; split; [ exact Ea |].
+        rewrite Hv; do 3 f_equal; lia.
+      * intros t0 ->; destruct (IHr t0 eq_refl) as (a0 & Ea & Hv); exists a0; cbn; split; [ exact Ea |].
+        rewrite Hv; do 3 f_equal; lia.
+    + split.
+      * intros A0 ->; destruct (IHa A0 eq_refl) as (a0 & Ea & Hv); exists a0; cbn; split; [ exact Ea |].
+        rewrite Hv; do 3 f_equal; lia.
+      * intros t0 ->; destruct (IHr t0 eq_refl) as (a0 & Ea & Hv); exists a0; cbn; split; [ exact Ea |].
+        rewrite Hv; do 3 f_equal; lia.
+Qed.
+
+(** The fresh recursive results of arguments recursive in both kinds:
+    one per such argument, after those before. *)
+Lemma fresh_ihs_nth : forall ρm As ρa gs vs s ihs, Fihs vs at gs gs under ρm As in gc_deps ⍮ gc_stack ⍮ ρa ⍮ s ↘ ihs ->
+    forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 ->
+    exists v a, List.nth_error vs (List.length gs1) = Some v /\
+      ⟦ihty v of t under ρm As ⟧ gc_deps ⍮ gc_stack ⍮ env_args ρa (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
+      List.nth_error ihs (cargs_nrec gs1) = Some (⇑! a (s + cargs_nrec gs1)).
+Proof.
+  intros ρm As ρa gs vs s ihs H gs1; revert ρa gs vs s ihs H; induction gs1 as [| g1 gs1 IH]; intros * H t gs2 Heq; cbn in Heq.
+  - subst; inversion H; subst; cbn; rewrite Nat.add_0_r; eauto 10.
+  - subst; inversion H; subst;
+      lazymatch goal with Hr1 : fresh_ihs _ _ _ _ _ (gs1 ++ _) (gs1 ++ _) _ _ _ |- _ =>
+        destruct (IH _ _ _ _ _ Hr1 t gs2 eq_refl) as (v0 & a0 & Hv & Ea & Hi) end.
+    + exists v0, a0; cbn; auto.
+    + exists v0, a0; cbn.
+      split; [ exact Hv | split; [ exact Ea |] ].
+      rewrite Hi; do 3 f_equal; lia.
+Qed.
+
+(** ** Function Shapes: Values *)
+
+Lemma eval_fam_cod_ihfam_inv : forall ρm As ρ0 t f x a,
+    ⟦ fam_cod ⟧ nil ↦ d_ihfam ρm As ρ0 t f ↦ x ↘ a ->
+    exists fx, $| f & x | gc_deps ⍮ gc_stack ↘ fx /\ ⟦ihty fx of t under ρm As ⟧ gc_deps ⍮ gc_stack ⍮ ρ0 ↦ x ↘ a.
+Proof.
+  intros * H; unfold fam_cod in H; inversion H; subst.
+  match goal with H1 : ⟦ #1 ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H1; subst end.
+  match goal with H0 : ⟦ #0 ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H0; subst end.
+  match goal with Ha : $| _ & _ | _ ⍮ _ ↘ _ |- _ => cbn in Ha; inversion Ha; subst; eauto end.
+Qed.
+
+Lemma eval_ih_pi_inv : forall ρ0 p ups Bks0 B t v r, ⟦ih v of pt_pi B t under p ups Bks0 ⟧ gc_deps ⍮ gc_stack ⍮ ρ0 ↘ r ->
+    r = d_ihfn ρ0 Bks0 p ups t v.
+Proof. intros * H; inversion H; reflexivity. Qed.
+
+Lemma eval_ihty_pi_inv : forall ρm As ρ0 B t v a, ⟦ihty v of pt_pi B t under ρm As ⟧ gc_deps ⍮ gc_stack ⍮ ρ0 ↘ a ->
+    exists b, ⟦ B ⟧ ρ0 ↘ b /\ a = Πᵈ b (nil ↦ d_ihfam ρm As ρ0 t v) fam_cod.
+Proof. intros * H; inversion H; subst; eauto. Qed.
+
+Lemma eval_app_ihfn_inv : forall ρ0 Bks0 p ups t f c r, $| d_ihfn ρ0 Bks0 p ups t f & c | gc_deps ⍮ gc_stack ↘ r ->
+    exists fc, $| f & c | gc_deps ⍮ gc_stack ↘ fc /\ ⟦ih fc of t under p ups Bks0 ⟧ gc_deps ⍮ gc_stack ⍮ ρ0 ↘ r.
+Proof. intros * H; inversion H; subst; eauto. Qed.
+
+Lemma per_gargs_nth_el : forall ts ρ ρ' xs xs' k A, per_gargs ts ρ ρ' xs xs' ->
+    List.nth_error ts k = Some (ce_ass A) -> k < List.length xs ->
+    exists (i : nat) R a a' x x', ⟦ A ⟧ env_args ρ (List.firstn k xs) ↘ a /\ ⟦ A ⟧ env_args ρ' (List.firstn k xs') ↘ a' /\
+      DF a ≈ a' ∈ per_univ_elem i ↘ R /\ List.nth_error xs k = Some x /\ List.nth_error xs' k = Some x' /\ R x x'.
+Proof.
+  intros * H; revert k; induction H as [| ? ? ? ? ? ? ? ? ? ? HA Ha Hr IH]; intros k Hk Hl; [ cbn in Hl; lia |].
+  destruct k as [| k]; cbn in Hk, Hl |- *.
+  - injection Hk as <-; destruct HA as [a0 a0' E E' HR]; eauto 15.
+  - exact (IH k Hk ltac:(lia)).
+Qed.
+
+(** ** Function Shapes: Syntax *)
+
+(** [β] after a Kripke weakening. *)
+Lemma fn_wk_beta : forall Δ' Δ IT OT M b φ (i : nat),
+    Δ' ⊢ IT : Typeω@i -> Δ' ▹ IT ⊢ OT : Typeω@i -> Δ' ▹ IT ⊢ M : OT -> Δ ⊢ᵏ φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ->
+    Δ ⊢ (λ IT M)[φ]ʷ $ b ≈ M[(ι φ),,b] : OT[(ι φ),,b].
+Proof.
+  intros * HIT HOT HM Hφ Hb; cbn [exp_wk].
+  rewrite <- (exp_sub_wk_q_extend M), <- (exp_sub_wk_q_extend OT).
+  eapply wf_exp_eq_pi_beta;
+    [ exact (kripke_preserves_typ _ _ _ _ _ HIT Hφ) | exact (kripke_preserves_typ_q _ _ _ _ _ _ _ HOT HIT Hφ)
+    | exact (kripke_preserves_exp_q _ _ _ _ _ _ _ HM HIT Hφ) | exact Hb ].
+Qed.
+
+Lemma app_wk_typed : forall Δ' Δ IT OT N b φ, Δ' ⊢ N : Π IT OT -> Δ ⊢ᵏ φ : Δ' -> Δ ⊢ b : IT[φ]ʷ ->
+    Δ ⊢ N[φ]ʷ $ b : OT[(ι φ),,b].
+Proof.
+  intros * HN Hφ Hb; rewrite <- exp_sub_wk_q_extend.
+  eapply wf_app'; [ exact (kripke_preserves_exp _ _ _ _ _ HN Hφ) | exact Hb ].
+Qed.
+
+Lemma sub_typ_extend : forall Δ' Δ IT OT φ b (j : nat), Δ' ⊢ IT : Typeω@j -> Δ' ▹ IT ⊢ OT : Typeω@j -> Δ ⊢ᵏ φ : Δ' ->
+    Δ ⊢ b : IT[φ]ʷ -> Δ ⊢ OT[(ι φ),,b] : Typeω@j.
+Proof.
+  intros * HIT HOT Hφ Hb; rewrite <- exp_sub_wk_q_extend.
+  pose proof (kripke_preserves_typ_q _ _ _ _ _ _ _ HOT HIT Hφ) as H.
+  pose proof (kripke_preserves_typ _ _ _ _ _ HIT Hφ) as HIT'.
+  assert (Hs : Δ ⊢ˢ Id,,b : Δ ▹ IT[φ]ʷ) by mauto 3.
+  exact (sub_preserves_exp _ _ _ _ _ _ _ H Hs).
+Qed.
+
 End Fixed_GCtx.
