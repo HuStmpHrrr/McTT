@@ -221,6 +221,15 @@ Section GroupFacts.
     exact (canon_adm_at D HD Hc Hsu ups a Hu Ha ups2 Hg2).
   Qed.
 
+  (** The domains of the shapes at related prefixes, at [ups] and at
+      uniform parameters [ups2] related to it: their values related. *)
+  Lemma vg_doms_related : forall ups ups2, per_gargs (List.rev (ind_uparams D)) nil nil ups ups -> List.length ups = ind_nu D ->
+      per_gargs (List.rev (ind_uparams D)) nil nil ups ups2 -> exists u : uidx, doms_related u D ups ups2.
+  Proof.
+    intros ups ups2 Hgd Hu Hg2; destruct (sort_value D HD ups Hgd Hu) as [a Ha].
+    exists (univ_idx a); exact (canon_hd D HD Hc Hsu ups a Hu Ha ups2 Hg2).
+  Qed.
+
   Lemma vg_relate : forall k Mk pm ups ups' ns ns', ind_member D k = Some Mk -> im_head Mk = mh_decl pm ->
       per_gargs (List.rev (ind_uparams D)) nil nil ups ups' -> List.length ups = ind_nu D ->
       tele_rel (canon_nparams_rel D ups k) (List.rev (im_nparams Mk)) ns ns' ->
