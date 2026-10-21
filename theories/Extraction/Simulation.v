@@ -35,77 +35,113 @@ Import Domain_Notations.
 Fixpoint pt_fresh (k : nat) (t : ptyp) : Prop :=
   match t with
   | pt_pi B t => exp_fresh k B /\ pt_fresh (S k) t
-  | pt_self _ Ps | pt_aux _ Ps => Forall (exp_fresh k) Ps
+  | pt_self _ Ps => Forall (exp_fresh k) Ps
   end.
 
+(** [dsim a a']: the reference value [a] and the fast value [a'] are equal
+    up to the entries of closures' environments that the closures' bodies
+    do not read; mutually, for neutrals, normal values, module values, level
+    atoms, lists of values and environment entries. *)
 Inductive dsim : domain -> domain -> Prop :=
+(** A [Π]: related domains, environments agreeing where the codomain reads *)
 | ds_pi : forall a a' (ρ ρ' : env) B,
     dsim a a' ->
     (forall x, ~ exp_fresh (S x) B -> desim (env_entry ρ x) (env_entry ρ' x)) ->
     dsim (Πᵈ a ρ B) (Πᵈ a' ρ' B)
+(** A large universe *)
 | ds_univ : forall i, dsim 𝕌ω@i 𝕌ω@i
+(** A small universe at related levels *)
 | ds_suniv : forall l l', dsim l l' -> dsim 𝕌@l 𝕌@l'
+(** A type of levels *)
 | ds_level : forall n, dsim (Levelᵈ@n) (Levelᵈ@n)
+(** A level of related atoms *)
 | ds_lvl : forall c xs xs', dsim_la xs xs' -> dsim (lvᵈ c xs) (lvᵈ c xs')
+(** The unit type *)
 | ds_True : dsim ⊤ᵈ ⊤ᵈ
+(** The unit's element *)
 | ds_true : dsim ⋆ᵈ ⋆ᵈ
+(** The empty type *)
 | ds_False : dsim ⊥ᵈ ⊥ᵈ
+(** A λ: environments agreeing where the body reads *)
 | ds_fn : forall (ρ ρ' : env) M,
     (forall x, ~ exp_fresh (S x) M -> desim (env_entry ρ x) (env_entry ρ' x)) ->
     dsim (λᵈ ρ M) (λᵈ ρ' M)
+(** A neutral at related types *)
 | ds_neut : forall a a' m m', dsim a a' -> dsim_ne m m' -> dsim (⇑ a m) (⇑ a' m')
+(** A member of related module values *)
 | ds_member : forall h h' ch, dmsim h h' -> dsim (d_member h ch) (d_member h' ch)
-| ds_indty : forall p args args', dsim_list args args' -> dsim (d_ind p args) (d_ind p args')
-| ds_con : forall p c args args', dsim_list args args' -> dsim (d_con p c args) (d_con p c args')
+(** A type former at related arguments *)
+| ds_indty : forall p k args args', dsim_list args args' -> dsim (d_ind p k args) (d_ind p k args')
+(** A constructor at related arguments *)
+| ds_con : forall p k c args args', dsim_list args args' -> dsim (d_con p k c args) (d_con p k c args')
 (** The recursive result of a function shape: the environments agree where
-    the motive and the branches may read, as [dsn_elim]; the families of a
-    function shape: where the rest of the shape may read under the domain
-    the family binds, and where the motive may read under the shape's
-    parameters and the argument. *)
-| ds_ihfn : forall (ρ ρ' : env) nm A Bs t f f',
-    (forall x, ~ exp_fresh (nm + x) A -> desim (env_entry ρ x) (env_entry ρ' x)) ->
-    (forall c n B, In (c, n, B) Bs -> forall x, ~ exp_fresh (n + x) B -> desim (env_entry ρ x) (env_entry ρ' x)) ->
-    dsim f f' -> dsim (d_ihfn ρ nm A Bs t f) (d_ihfn ρ' nm A Bs t f')
+    the blocks' motives and branches may read, as [dsn_elim] *)
+| ds_ihfn : forall (ρ ρ' : env) Bks p ups ups' t f f',
+    (forall b, In b Bks ->
+       (forall x, ~ exp_fresh (eb_nm b + x) (eb_motive b) -> desim (env_entry ρ x) (env_entry ρ' x)) /\
+       (forall c n B, In (c, n, B) (eb_brs b) -> forall x, ~ exp_fresh (n + x) B -> desim (env_entry ρ x) (env_entry ρ' x))) ->
+    dsim_list ups ups' ->
+    dsim f f' -> dsim (d_ihfn ρ Bks p ups t f) (d_ihfn ρ' Bks p ups' t f')
+(** The family of the type of an argument of a function shape: where the
+    rest of the shape may read under the domain the family binds *)
 | ds_shfam : forall p ups ups' (ρ ρ' : env) t,
     dsim_list ups ups' ->
     (forall x, ~ pt_fresh (S x) t -> desim (env_entry ρ x) (env_entry ρ' x)) ->
     dsim (d_shfam p ups ρ t) (d_shfam p ups' ρ' t)
-| ds_ihfam : forall (ρm ρm' : env) A (ρ ρ' : env) t f f',
-    (forall x, ~ exp_fresh (S (List.length (ptyp_ps t)) + x) A -> desim (env_entry ρm x) (env_entry ρm' x)) ->
+(** The family of the type of a recursive result: where the motive of the
+    member the shape ends in may read under the shape's parameters and the
+    argument, and where the rest of the shape may read *)
+| ds_ihfam : forall (ρm ρm' : env) As (ρ ρ' : env) t f f',
+    (forall x, ~ exp_fresh (S (List.length (ptyp_ps t)) + x) (List.nth (ptyp_mem t) As a_True) ->
+       desim (env_entry ρm x) (env_entry ρm' x)) ->
     (forall x, ~ pt_fresh (S x) t -> desim (env_entry ρ x) (env_entry ρ' x)) ->
-    dsim f f' -> dsim (d_ihfam ρm A ρ t f) (d_ihfam ρm' A ρ' t f')
+    dsim f f' -> dsim (d_ihfam ρm As ρ t f) (d_ihfam ρm' As ρ' t f')
 with dsim_ne : domain_ne -> domain_ne -> Prop :=
+(** A variable *)
 | dsn_var : forall x, dsim_ne (#ᵈ x) (#ᵈ x)
+(** An application *)
 | dsn_app : forall m m' n n', dsim_ne m m' -> dsim_nf n n' -> dsim_ne (m $ᵈ n) (m' $ᵈ n')
+(** A stuck [efq]: environments agreeing where its motive reads *)
 | dsn_exfalso : forall (ρ ρ' : env) A m m',
     (forall x, ~ exp_fresh (S x) A -> desim (env_entry ρ x) (env_entry ρ' x)) ->
     dsim_ne m m' ->
     dsim_ne (efqᵈ m under ρ return A) (efqᵈ m' under ρ' return A)
+(** A global *)
 | dsn_glob : forall p, dsim_ne (d_glob p) (d_glob p)
-(** A stuck eliminator: the environments agree where the motive and the
-    branches may read, under their binders. *)
-| dsn_elim : forall (ρ ρ' : env) nm A Bs p args args' m m',
-    (forall x, ~ exp_fresh (nm + x) A -> desim (env_entry ρ x) (env_entry ρ' x)) ->
-    (forall c n B, In (c, n, B) Bs -> forall x, ~ exp_fresh (n + x) B -> desim (env_entry ρ x) (env_entry ρ' x)) ->
-    dsim_list args args' -> dsim_ne m m' ->
-    dsim_ne (d_elim ρ nm A Bs p args m) (d_elim ρ' nm A Bs p args' m')
+(** A stuck eliminator: the environments agree where the blocks' motives
+    and branches may read, under their binders. *)
+| dsn_elim : forall (ρ ρ' : env) Bks p ups ups' j args args' m m',
+    (forall b, In b Bks ->
+       (forall x, ~ exp_fresh (eb_nm b + x) (eb_motive b) -> desim (env_entry ρ x) (env_entry ρ' x)) /\
+       (forall c n B, In (c, n, B) (eb_brs b) -> forall x, ~ exp_fresh (n + x) B -> desim (env_entry ρ x) (env_entry ρ' x))) ->
+    dsim_list ups ups' -> dsim_list args args' -> dsim_ne m m' ->
+    dsim_ne (d_elim ρ Bks p ups j args m) (d_elim ρ' Bks p ups' j args' m')
 with dsim_nf : domain_nf -> domain_nf -> Prop :=
+(** A value at a type, both related *)
 | dsf_dom : forall a a' m m', dsim a a' -> dsim m m' -> dsim_nf (⇓ a m) (⇓ a' m')
 with dmsim : dmod -> dmod -> Prop :=
+(** A global module at related arguments *)
 | dms_global : forall p args args', dsim_list args args' -> dmsim (dm_global p args) (dm_global p args')
 (** A closure: the environments agree where the unit may read. *)
 | dms_local : forall Δ D (ρ ρ' : env),
     (forall x, ~ gunit_fresh x (gu_mk Δ D) -> desim (env_entry ρ x) (env_entry ρ' x)) ->
     dmsim (dm_local Δ D ρ) (dm_local Δ D ρ')
+(** A member closure of related module values *)
 | dms_member : forall h h' ch, dmsim h h' -> dmsim (dm_member h ch) (dm_member h' ch)
 with dsim_la : list (nat * nat * domain_ne) -> list (nat * nat * domain_ne) -> Prop :=
+(** No atom *)
 | dsl_nil : dsim_la nil nil
+(** Related first atoms, then the rest *)
 | dsl_cons : forall k n m m' xs xs', dsim_ne m m' -> dsim_la xs xs' -> dsim_la ((k, n, m) :: xs) ((k, n, m') :: xs')
 with dsim_list : list domain -> list domain -> Prop :=
+(** No value *)
 | dsa_nil : dsim_list nil nil
+(** Related first values, then the rest *)
 | dsa_cons : forall a a' args args', dsim a a' -> dsim_list args args' -> dsim_list (a :: args) (a' :: args')
 with desim : dentry -> dentry -> Prop :=
+(** Related terms *)
 | des_term : forall d d', dsim d d' -> desim (de_term d) (de_term d')
+(** Related modules *)
 | des_mod : forall h h', dmsim h h' -> desim (de_mod h) (de_mod h').
 
 #[export]
@@ -114,6 +150,15 @@ Hint Constructors dsim dsim_ne dsim_nf dmsim dsim_la dsim_list desim : mctt.
 (** Agreement of two environments at the entries [P] selects. *)
 Definition env_agree (P : nat -> Prop) (ρ ρ' : env) : Prop :=
   forall x, P x -> desim (env_entry ρ x) (env_entry ρ' x).
+
+(** Agreement of two environments where the blocks of an eliminator may
+    read: each motive under its binders, and each branch under its own.
+    (The annotations are never evaluated.)  It is the premise of [dsn_elim]
+    and [ds_ihfn]. *)
+Definition blocks_agree (Bks : list eblock) (ρ ρ' : env) : Prop :=
+  forall b, In b Bks ->
+    env_agree (fun x => ~ exp_fresh (eb_nm b + x) (eb_motive b)) ρ ρ' /\
+    (forall c n B, In (c, n, B) (eb_brs b) -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ').
 
 (** ** Environments *)
 
@@ -209,6 +254,13 @@ Lemma env_agree_all_cons : forall ρ ρ' d d',
     env_agree (fun _ => True) ρ ρ' -> dsim d d' -> env_agree (fun _ => True) (ρ ↦ d) (ρ' ↦ d').
 Proof. intros * Hρ Hd; eapply env_agree_cons; [ exact Hρ | constructor; exact Hd | intros; exact I ]. Qed.
 
+(** An environment of closed terms' values only: it agrees wherever. *)
+Lemma env_agree_nil_args : forall P args args', dsim_list args args' ->
+    env_agree P (env_args nil args) (env_args nil args').
+Proof.
+  intros * Ha; eapply env_agree_mono; [ apply env_agree_all_args; [ apply env_agree_nil | exact Ha ] | intros; exact I ].
+Qed.
+
 (** The environment of a closure under its [n] binders: the [n] entries are
     related, and the rest agree where the body may read. *)
 Lemma env_agree_binders : forall n B args args' ρ ρ',
@@ -220,7 +272,9 @@ Proof. intros * Hρ Ha Hl; eapply env_agree_args; [ exact Hρ | exact Ha |]; int
     extend an environment: the entry of [a] in [env_args ρ (a :: l)] is
     [List.length l]. *)
 Inductive dsim_list_at (P : nat -> Prop) : list domain -> list domain -> Prop :=
+(** No value *)
 | dsat_nil : dsim_list_at P nil nil
+(** The first values related if [P] selects their entry, then the rest *)
 | dsat_cons : forall a a' l l', (P (List.length l) -> dsim a a') -> dsim_list_at P l l' ->
     dsim_list_at P (a :: l) (a' :: l').
 
@@ -230,6 +284,9 @@ Hint Constructors dsim_list_at : mctt.
 Lemma dsim_list_at_app : forall P l1 l1' l2 l2', dsim_list l1 l1' -> dsim_list_at P l2 l2' ->
     dsim_list_at P (l1 ++ l2) (l1' ++ l2').
 Proof. induction 1; intros; cbn; [ assumption | constructor; auto ]. Qed.
+
+Lemma dsim_list_at_length : forall P l l', dsim_list_at P l l' -> List.length l = List.length l'.
+Proof. induction 1; cbn; congruence. Qed.
 
 Lemma env_agree_args_at : forall P Q args args' ρ ρ',
     env_agree P ρ ρ' -> dsim_list_at Q args args' ->
@@ -261,17 +318,39 @@ Proof.
   intros [| x] _; cbn; [ constructor; exact Hd | apply env_agree_nil with (P := fun _ => True); exact I ].
 Qed.
 
-(** The parts of an eliminator may read only what the eliminator may. *)
-Lemma agree_elim_A : forall nm A Bs M ρ ρ',
-    env_agree (fun x => ~ exp_fresh x (a_elim nm A Bs M)) ρ ρ' -> env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ'.
-Proof. intros * H x Hx; apply H; intros Hf; apply Hx; apply exp_fresh_elim in Hf; tauto. Qed.
-
-Lemma agree_elim_B : forall nm A Bs M ρ ρ',
-    env_agree (fun x => ~ exp_fresh x (a_elim nm A Bs M)) ρ ρ' ->
-    forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ'.
+(** The parts of an eliminator may read only what the eliminator may: its
+    blocks, under their binders. *)
+Lemma agree_elim_blocks : forall oq Us j Bks M ρ ρ',
+    env_agree (fun x => ~ exp_fresh x (a_elim oq Us j Bks M)) ρ ρ' -> blocks_agree Bks ρ ρ'.
 Proof.
-  intros * H c n B Hin x Hx; apply H; intros Hf; apply Hx.
-  apply exp_fresh_elim in Hf as (_ & HF & _); exact (proj1 (Forall_forall _ _) HF _ Hin).
+  intros * H b Hb; split.
+  - intros x Hx; apply H; intros Hf; apply Hx.
+    pose proof (ofresh_elim_blocks (Some x) oq Us j Bks M Hf b Hb) as [Hm _]; exact Hm.
+  - intros c n B Hin x Hx; apply H; intros Hf; apply Hx.
+    pose proof (ofresh_elim_blocks (Some x) oq Us j Bks M Hf b Hb) as [_ Hbr]; exact (Hbr _ _ _ Hin).
+Qed.
+
+(** The group an eliminator eliminates by is read off related values
+    alike. *)
+Lemma elim_grp_of_sim : forall oq m m', dsim m m' -> elim_grp_of oq m' = elim_grp_of oq m.
+Proof.
+  intros * H; destruct oq; [ reflexivity |].
+  destruct H; cbn; try reflexivity.
+  match goal with H : dsim _ _ |- _ => destruct H; reflexivity end.
+Qed.
+
+(** The motive of each recursive argument's member, among the blocks'
+    motives, read where the blocks may: through the member each shape ends
+    in, whose block binds its non-uniform parameters and the argument. *)
+Lemma ihs_motives_agree : forall D Bks ρ ρ' gs, cargs_plen D gs -> blocks_nm_at D None Bks -> blocks_agree Bks ρ ρ' ->
+    forall t, In (ca_rec t) gs ->
+      env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) (List.nth (ptyp_mem t) (blocks_motives Bks) a_True)) ρ ρ'.
+Proof.
+  intros * Hpl Hnm HB t Ht; pose proof (plen_forall _ _ Hpl) as Hf.
+  destruct (proj1 (Forall_forall _ _) Hf _ Ht) as (Mj & HMj & Hl).
+  pose proof (nth_motives_sel None Bks (ptyp_mem t)) as Hm; cbn [motives_sel elim_src] in Hm.
+  destruct Hm as [-> | (b & Hb & ->)]; [ intros x Hx; exfalso; apply Hx; exact I |].
+  rewrite Hl, <- (Hnm _ _ _ HMj Hb); exact (proj1 (HB _ (List.nth_error_In _ _ Hb))).
 Qed.
 
 #[export]
@@ -319,7 +398,8 @@ Hint Resolve nil_agree : mctt.
 
 (** The parts of a term may read only what the term may. *)
 Ltac nf_sub := let x := fresh "x" in let Hx := fresh "Hx" in let Hf := fresh "Hf" in
-  intros x Hx Hf; apply Hx; cbn in Hf |- *; rewrite ?Forall_cons_iff in Hf; tauto.
+  intros x Hx Hf; apply Hx; cbn in Hf |- *; rewrite ?Forall_cons_iff in Hf;
+  rewrite ?all_list_Forall in Hf; tauto.
 
 (** Inversion of the relation on a value whose head is known. *)
 Ltac sim_inv :=
@@ -327,6 +407,8 @@ Ltac sim_inv :=
   | H : dsim (_ _) _ |- _ => inversion H; subst; clear H
   | H : dsim (_ _ _) _ |- _ => inversion H; subst; clear H
   | H : dsim (_ _ _ _) _ |- _ => inversion H; subst; clear H
+  | H : dsim (_ _ _ _ _) _ |- _ => inversion H; subst; clear H
+  | H : dsim (_ _ _ _ _ _) _ |- _ => inversion H; subst; clear H
   | H : dsim ⊤ᵈ _ |- _ => inversion H; subst; clear H
   | H : dsim ⋆ᵈ _ |- _ => inversion H; subst; clear H
   | H : dsim ⊥ᵈ _ |- _ => inversion H; subst; clear H
@@ -338,6 +420,8 @@ Ltac sim_inv :=
       destruct (agree_spine _ _ _ _ _ _ _ Hs Hρ); clear Hρ
   | H : forall x, ~ @?F x -> desim (env_entry ?ρ x) (env_entry ?ρ' x) |- _ =>
       change (env_agree (fun x => ~ F x) ρ ρ') in H; cbv beta in H
+  | H : forall b, In b ?Bks -> (forall x, _ -> desim (env_entry ?ρ x) (env_entry ?ρ' x)) /\ _ |- _ =>
+      change (blocks_agree Bks ρ ρ') in H
   end.
 
 (** A related entry: a related value, or the closure of a unit over
@@ -349,11 +433,14 @@ Ltac ent_tac :=
           eapply env_agree_mono; [ eassumption | nf_sub ] ].
 
 (** An environment that agrees where a term may read, for one of its parts:
-    the same environment, or one extended by related entries. *)
+    the same environment, or one extended by related entries, or one of
+    values of closed terms. *)
 Ltac agree_tac :=
   first [ eassumption
         | match goal with Hρ : env_agree _ ?ρ _ |- env_agree _ ?ρ _ =>
             eapply env_agree_mono; [ exact Hρ | nf_sub ] end
+        | match goal with |- env_agree _ (env_args nil ?args) _ =>
+            apply env_agree_nil_args; solve [ eauto with mctt ] end
         | match goal with
           | |- env_agree _ (_ :: ?ρ) _ => idtac
           | |- env_agree _ (extend_env ?ρ _) _ => unfold extend_env
@@ -384,13 +471,6 @@ Ltac sim_fwd :=
       let H' := fresh "Ha" in
       eassert (H' : env_agree P ρ _) by agree_tac;
       destruct (IH _ H') as (? & ? & ?); clear IH H'
-  | IH : forall ρ0 m0, env_agree ?P1 ?ρ ρ0 -> env_agree ?P2 ?ρ ρ0 -> env_agree ?P3 ?ρ ρ0 -> dsim ?m m0 -> exists _, _ /\ _,
-    Hm : dsim ?m ?m' |- _ =>
-      let H1 := fresh "Ha" in let H2 := fresh "Ha" in let H3 := fresh "Ha" in
-      eassert (H1 : env_agree P1 ρ _) by agree_tac;
-      eassert (H2 : env_agree P2 ρ _) by agree_tac;
-      eassert (H3 : env_agree P3 ρ _) by agree_tac;
-      destruct (IH _ _ H1 H2 H3 Hm) as (? & ? & ?); clear IH H1 H2 H3
   | IH : forall m0 n0, dsim ?m m0 -> dsim ?n n0 -> exists _, _ /\ _, Hm : dsim ?m ?m', Hn : dsim ?n ?n' |- _ =>
       destruct (IH _ _ Hm Hn) as (? & ? & ?); clear IH
   | IH : forall m0 n0, dsim ?m m0 -> dsim_list ?n n0 -> exists _, _ /\ _, Hm : dsim ?m ?m', Hn : dsim_list ?n ?n' |- _ =>
@@ -409,13 +489,17 @@ Ltac sim_fwd :=
       let Hm := fresh "Hm" in
       eassert (Hm : dmsim m _) by (eauto with mctt);
       destruct (IH _ Hm) as (? & ? & ?); clear IH
+  (** The member a view stands for, at related uniform parameters *)
+  | IH : forall u0, dsim_list ?u u0 -> exists _, _ /\ _, Hu : dsim_list ?u ?u' |- _ =>
+      destruct (IH _ Hu) as (? & ? & ?); clear IH
   end.
 
 (** The goal: the fast rule, and the relation between the results, whose
     closures agree where the reference ones may read. *)
 Ltac sim_fin :=
   eexists; split;
-  [ econstructor; solve [ eassumption | len_tac ]
+  [ econstructor; solve [ eassumption | len_tac
+                        | rewrite <- (dsim_list_length _ _ ltac:(eassumption)); eassumption ]
   | repeat first [ eassumption
                  | eapply env_agree_var; [ eassumption | cbn; intros Hne; apply Hne; reflexivity ]
                  | eapply env_agree_mod; [ eassumption | cbn; intros Hne; apply Hne; reflexivity ]
@@ -552,7 +636,7 @@ Section KindSim.
       destruct (IH ρ' P) as (ρ1' & Hk1 & Hρ1); [ intros x Hx; apply HP; cbn; tauto | exact Hρ |].
       exists (kbentry ρ1' E :: ρ1'); split; [ constructor; exact Hk1 |].
       cbn [gm_binders]; apply env_agree_above_cons; [ exact Hρ1 |].
-      destruct E as [? ? ? ? | pm U | ? ? ? | ? ? ? ?]; cbn [kbentry]; try (repeat constructor; fail).
+      destruct E as [? ? ? ? | pm U | ? ? ? ? ? | ? ? ? ? ? ?]; cbn [kbentry]; try (repeat constructor; fail).
       destruct U as [Δu Du]; cbn [dm_clo]; constructor; constructor.
       eapply env_agree_mono; [ exact Hρ1 | apply above_of ].
       intros y0 Hy; apply HP; intros Hf; apply Hy; cbn [gmod_fresh gentry_fresh] in Hf; destruct Hf as [_ Hf]; exact Hf.
@@ -615,26 +699,25 @@ Section Eval.
     (forall ρ Φ ρ1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> forall ρ' (P : nat -> Prop),
        (forall x, ~ gmod_fresh x Φ -> P x) -> env_agree P ρ ρ' ->
        exists ρ1', ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ρ1' /\ env_agree (above (gm_binders Φ) P) ρ1 ρ1') /\
-    (forall ρ nm A Bs m r, ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> forall ρ' m',
-       env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ' ->
-       (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-       dsim m m' -> exists r', ⟦elimᶠ m' under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r') /\
-    (forall ρ nm A Bs gs vs ihs, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs -> forall ρ' vs' B,
-       env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ' ->
-       (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-       dsim_list vs vs' -> exists ihs', ⟦ihsᶠ vs' of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ihs' /\
+    (forall ρ p ups Bks j m r, ⟦elim m at j of p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> forall ρ' ups' m',
+       blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim m m' ->
+       exists r', ⟦elimᶠ m' at j of p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r') /\
+    (forall ρ p ups Bks gs vs ihs, ⟦ihs vs of gs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs -> forall ρ' ups' vs' B,
+       blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim_list vs vs' ->
+       exists ihs', ⟦ihsᶠ vs' of gs under p ups' Bks for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ihs' /\
        dsim_list_at (fun x => ~ exp_fresh x B) ihs ihs') /\
-    (forall ρ nm A Bs t m r, ⟦ih m of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> forall ρ' m',
-       env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ' ->
-       (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-       dsim m m' -> exists r', ⟦ihᶠ m' of t under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r') /\
+    (forall ρ p ups Bks t m r, ⟦ih m of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> forall ρ' ups' m',
+       blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim m m' ->
+       exists r', ⟦ihᶠ m' of t under p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r') /\
+    (forall p ups j r, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r -> forall ups', dsim_list ups ups' ->
+       exists pre', ⟦mrefᶠ j of p ups' ⟧ᶠ Θ ⍮ Ξ ↘ (fst r, pre') /\ dsim_list (snd r) pre') /\
     (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ups' ρ',
        dsim_list ups ups' -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' ->
        exists a', ⟦shtyᶠ t of p ups' ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a') /\
-    (forall ρm A ρ t m a, ⟦ihty m of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ρm' ρ' m',
-       env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) A) ρm ρm' ->
+    (forall ρm As ρ t m a, ⟦ihty m of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ρm' ρ' m',
+       env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) (List.nth (ptyp_mem t) As a_True)) ρm ρm' ->
        env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> dsim m m' ->
-       exists a', ⟦ihtyᶠ m' of t under ρm' A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a').
+       exists a', ⟦ihtyᶠ m' of t under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a').
   Proof.
     apply (eval_mut_ind Θ Ξ
       (fun M ρ m _ => forall ρ', env_agree (fun x => ~ exp_fresh x M) ρ ρ' ->
@@ -657,57 +740,59 @@ Section Eval.
       (fun ρ Φ ρ1 _ => forall ρ' (P : nat -> Prop),
          (forall x, ~ gmod_fresh x Φ -> P x) -> env_agree P ρ ρ' ->
          exists ρ1', ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ρ1' /\ env_agree (above (gm_binders Φ) P) ρ1 ρ1')
-      (fun ρ nm A Bs m r _ => forall ρ' m',
-         env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ' ->
-         (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-         dsim m m' -> exists r', ⟦elimᶠ m' under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r')
-      (fun ρ nm A Bs gs vs ihs _ => forall ρ' vs' B,
-         env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ' ->
-         (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-         dsim_list vs vs' -> exists ihs', ⟦ihsᶠ vs' of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ihs' /\
+      (fun ρ p ups Bks j m r _ => forall ρ' ups' m',
+         blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim m m' ->
+         exists r', ⟦elimᶠ m' at j of p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r')
+      (fun ρ p ups Bks gs vs ihs _ => forall ρ' ups' vs' B,
+         blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim_list vs vs' ->
+         exists ihs', ⟦ihsᶠ vs' of gs under p ups' Bks for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ihs' /\
          dsim_list_at (fun x => ~ exp_fresh x B) ihs ihs')
-      (fun ρ nm A Bs t m r _ => forall ρ' m',
-         env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ' ->
-         (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-         dsim m m' -> exists r', ⟦ihᶠ m' of t under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r')
+      (fun ρ p ups Bks t m r _ => forall ρ' ups' m',
+         blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim m m' ->
+         exists r', ⟦ihᶠ m' of t under p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r')
+      (fun p ups j r _ => forall ups', dsim_list ups ups' ->
+         exists pre', ⟦mrefᶠ j of p ups' ⟧ᶠ Θ ⍮ Ξ ↘ (fst r, pre') /\ dsim_list (snd r) pre')
       (fun p ups ρ t a _ => forall ups' ρ',
          dsim_list ups ups' -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' ->
          exists a', ⟦shtyᶠ t of p ups' ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a')
-      (fun ρm A ρ t m a _ => forall ρm' ρ' m',
-         env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) A) ρm ρm' ->
+      (fun ρm As ρ t m a _ => forall ρm' ρ' m',
+         env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) (List.nth (ptyp_mem t) As a_True)) ρm ρm' ->
          env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> dsim m m' ->
-         exists a', ⟦ihtyᶠ m' of t under ρm' A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a'));
-      intros.
+         exists a', ⟦ihtyᶠ m' of t under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a'));
+      intros; cbn [fst snd ptyp_ps ptyp_mem] in *.
     all: repeat first [ sim_inv | sim_fwd ].
     all: try solve [ sim_fin ].
-    (** Inductive types.  The eliminator: its parts agree where it does. *)
+    (** The eliminator: its blocks agree where it does; the group it
+        eliminates by is read off related values alike. *)
     all: try solve [ match goal with
-      | IH : forall ρ0 m0, env_agree _ ?ρ ρ0 -> _ -> dsim ?m m0 -> exists _, _ /\ _,
-        Hm : dsim ?m ?m', Hρ : env_agree (fun x => ~ exp_fresh x (a_elim ?nm ?A ?Bs ?M)) ?ρ ?ρ' |- _ =>
+      | IH : forall ρ0 ups0 m0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim ?m m0 -> exists _, _ /\ _,
+        Hm : dsim ?m ?m', Hu : dsim_list ?ups ?ups', He : elim_grp_of _ ?m = Some _,
+        Hρ : env_agree (fun x => ~ exp_fresh x (a_elim _ _ _ ?Bks _)) ?ρ ?ρ' |- _ =>
           let r' := fresh "r'" in
-          destruct (IH ρ' m' (agree_elim_A _ _ _ _ _ _ Hρ) (agree_elim_B _ _ _ _ _ _ Hρ) Hm) as (r' & ? & ?);
-          exists r'; split; [ econstructor; eassumption | assumption ]
+          destruct (IH ρ' ups' m' (agree_elim_blocks _ _ _ _ _ _ _ Hρ) Hu Hm) as (r' & ? & ?);
+          exists r'; split;
+            [ eapply feval_exp_elim; [ eassumption | eassumption | rewrite (elim_grp_of_sim _ _ _ Hm); exact He | eassumption ]
+            | assumption ]
       end ].
     (** On a constructor: the recursive results, then the branch, in the
         environment of the parameters, the arguments and the results. *)
     all: try solve [ match goal with
-      | IHi : forall ρ0 vs0 B0, env_agree _ ?ρ ρ0 -> _ -> dsim_list (skipn _ ?vs) vs0 -> exists _, _ /\ _,
+      | IHi : forall ρ0 ups0 vs0 B0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim_list (skipn _ ?vs) vs0 -> exists _, _ /\ _,
         IHB : forall ρ0, env_agree (fun x => ~ exp_fresh x ?B) (env_args ?ρ _) ρ0 -> exists _, _ /\ _,
-        HA : env_agree (fun x => ~ exp_fresh (?nm + x) ?A) ?ρ ?ρ',
-        HBs : forall c n B, In (c, n, B) ?Bs -> env_agree _ ?ρ ?ρ',
-        Hvs : dsim_list ?vs ?vs', e : brs_lookup ?Bs ?c = Some (_, ?B),
-        Hl : List.length ?vs = (ind_np ?D + List.length ?gs)%nat,
+        HBk : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups',
+        Hvs : dsim_list ?vs ?vs', Hb : nth_error ?Bks _ = Some ?bk, e : brs_lookup (eb_brs ?bk) ?c = Some (_, ?B),
+        Hl : List.length ?vs = (im_np ?Dq ?Mk + List.length ?gs)%nat,
         Hih : ⟦ihs _ of ?gs under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ ?ihs |- _ =>
           let ihs' := fresh "ihs'" in let Hihs' := fresh "Hihs'" in let Hsi := fresh "Hsi" in
           let r' := fresh "r'" in
-          destruct (IHi ρ' (skipn (ind_np D) vs') B HA HBs (dsim_list_skipn _ _ _ Hvs)) as (ihs' & Hihs' & Hsi);
-          destruct (IHB (env_args ρ' (skipn (ind_nu D) (firstn (ind_np D) vs') ++ skipn (ind_np D) vs' ++ ihs')))
+          destruct (IHi ρ' ups' (skipn (im_np Dq Mk) vs') B HBk Hu (dsim_list_skipn _ _ _ Hvs)) as (ihs' & Hihs' & Hsi);
+          destruct (IHB (env_args ρ' (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs') ++ skipn (im_np Dq Mk) vs' ++ ihs')))
             as (r' & ? & ?);
             [ eapply env_agree_binders_at;
-                [ exact (HBs _ _ _ (brs_lookup_in _ _ _ _ e))
+                [ exact (proj2 (HBk _ (nth_error_In _ _ Hb)) _ _ _ (brs_lookup_in _ _ _ _ e))
                 | apply dsim_list_at_app; [ apply dsim_list_skipn, dsim_list_firstn, Hvs
                                           | apply dsim_list_at_app; [ apply dsim_list_skipn, Hvs | exact Hsi ] ]
-                | rewrite (ind_branch_args_length _ _ _ _ Hl), (proj2 (eval_ihs_length _ _ _ _ _ _ _ Hih));
+                | rewrite (ind_branch_args_length _ _ _ _ _ Hl), (proj2 (eval_ihs_length _ _ _ _ _ _ _ Hih));
                   first [ reflexivity | lia ] ]
             |];
           exists r'; split;
@@ -715,38 +800,37 @@ Section Eval.
             | assumption ]
       end ].
     (** On a neutral: the motive's instance, and a neutral eliminator over
-        environments that agree where the motive and the branches read. *)
+        environments that agree where the blocks read. *)
     all: try solve [ match goal with
-      | IH : forall ρ0, env_agree (fun x => ~ exp_fresh x ?A) (env_args ?ρ _) ρ0 -> exists _, _ /\ _,
-        HA : env_agree (fun x => ~ exp_fresh (?nm + x) ?A) ?ρ ?ρ',
-        HBs : forall c n B, In (c, n, B) ?Bs -> env_agree _ ?ρ ?ρ',
-        Has : dsim_list ?as' ?as'', Hm : dsim_ne ?m ?m',
-        Hl : List.length ?as' = ind_np ?D |- exists _, ⟦elimᶠ ⇑ (d_ind ?p ?as'') ?m' under _ _ _ ⟧ᶠ _ ⍮ _ ⍮ _ ↘ _ /\ _ =>
+      | IH : forall ρ0, env_agree (fun x => ~ exp_fresh x (eb_motive ?bk)) (env_args ?ρ _) ρ0 -> exists _, _ /\ _,
+        HBk : blocks_agree ?Bks ?ρ ?ρ', Hb : nth_error ?Bks _ = Some ?bk, Hn : eb_nm ?bk = S (im_nn ?Mk),
+        Has : dsim_list ?as' ?as'', Hm : dsim_ne ?m ?m', Hu : dsim_list ?ups ?ups',
+        Hl : List.length ?as' = im_np ?Dq ?Mk
+        |- exists _, ⟦elimᶠ ⇑ (d_ind ?pc ?k ?as'') ?m' at _ of _ _ _ ⟧ᶠ _ ⍮ _ ⍮ _ ↘ _ /\ _ =>
           let a' := fresh "a'" in
-          destruct (IH (env_args ρ' (skipn (ind_nu D) as'' ++ ⇑ (d_ind p as'') m' :: nil))) as (a' & ? & ?);
+          destruct (IH (env_args ρ' (skipn (ind_nu Dq) as'' ++ ⇑ (d_ind pc k as'') m' :: nil))) as (a' & ? & ?);
             [ eapply env_agree_binders;
-                [ exact HA
+                [ exact (proj1 (HBk _ (nth_error_In _ _ Hb)))
                 | apply dsim_list_app; [ apply dsim_list_skipn, Has | repeat constructor; assumption ]
-                | rewrite (ind_motive_args_length _ _ _ Hl); first [ reflexivity | lia ] ]
+                | rewrite (ind_motive_args_length _ _ _ _ Hl), Hn; reflexivity ]
             |];
           eexists; split;
-            [ eapply feval_elim_neut; try eassumption; try reflexivity; rewrite <- (dsim_list_length _ _ Has); exact Hl
-            | constructor; [ assumption | constructor; [ exact HA | exact HBs | assumption | assumption ] ] ]
+            [ eapply feval_elim_neut; try eassumption; rewrite <- (dsim_list_length _ _ Has); exact Hl
+            | constructor; [ assumption | apply dsn_elim; [ exact HBk | exact Hu | exact Has | exact Hm ] ] ]
       end ].
     (** The recursive results: each is computed when the branch reads it,
         and skipped when it does not, as the fast rule decides. *)
     all: try solve [ eexists; split; [ constructor | constructor ] ].
     all: try solve [ match goal with
-      | IH : forall ρ0 vs0 B0, env_agree _ ?ρ ρ0 -> _ -> dsim_list ?vs vs0 -> exists _, _ /\ _,
-        HA : env_agree (fun x => ~ exp_fresh (?nm + x) ?A) ?ρ ?ρ',
-        HBs : forall c n B, In (c, n, B) ?Bs -> env_agree _ ?ρ ?ρ', Hvs : dsim_list ?vs ?vs'
+      | IH : forall ρ0 ups0 vs0 B0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim_list ?vs vs0 -> exists _, _ /\ _,
+        HBk : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups', Hvs : dsim_list ?vs ?vs'
         |- exists _, ⟦ihsᶠ _ of ?gs0 under _ _ _ for ?B ⟧ᶠ _ ⍮ _ ⍮ _ ↘ _ /\ _ =>
           let ihs' := fresh "ihs'" in
-          destruct (IH ρ' vs' B HA HBs Hvs) as (ihs' & ? & ?);
+          destruct (IH ρ' ups' vs' B HBk Hu Hvs) as (ihs' & ? & ?);
           first [ exists ihs'; split; [ constructor; eassumption | assumption ]
                 | match goal with
-                  | IHe : forall ρ0 m0, env_agree _ ?ρ ρ0 -> _ -> dsim ?v m0 -> exists _, _ /\ _, Hv : dsim ?v ?v',
-                    Hih : ⟦ihs ?vs of ?gs under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ ?ihs |- _ =>
+                  | IHe : forall ρ0 ups0 m0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim ?v m0 -> exists _, _ /\ _,
+                    Hv : dsim ?v ?v', Hih : ⟦ihs ?vs of ?gs under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ ?ihs |- _ =>
                       let Hf := fresh "Hf" in
                       destruct (exp_freshb (cargs_nrec gs) B) eqn:Hf;
                       [ exists (𝕌ω@0 :: ihs'); split;
@@ -755,7 +839,7 @@ Section Eval.
                             rewrite (proj2 (eval_ihs_length _ _ _ _ _ _ _ Hih));
                             intros Hn; exfalso; exact (Hn (exp_freshb_sound _ _ Hf)) ]
                       | let ih' := fresh "ih'" in
-                        destruct (IHe ρ' v' HA HBs Hv) as (ih' & ? & ?);
+                        destruct (IHe ρ' ups' v' HBk Hu Hv) as (ih' & ? & ?);
                         exists (ih' :: ihs'); split;
                           [ eapply feval_ihs_rec; eassumption | constructor; [ intros; assumption | assumption ] ] ]
                   end ]
@@ -764,11 +848,11 @@ Section Eval.
         families of its types, applied; the recursive result at a leaf; and
         the types, a [Π] over the family. *)
     all: try solve [ match goal with
-      | IH : forall ρ0 m0, env_agree _ ?ρ ρ0 -> _ -> dsim ?fn m0 -> exists _, feval_ih _ _ _ _ _ _ _ _ _ /\ _,
-        HA : env_agree (fun x => ~ exp_fresh (_ + x) _) ?ρ ?ρ', HB : forall c n B, In (c, n, B) _ -> forall x, _ -> _,
+      | IH : forall ρ0 ups0 m0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim ?fn m0 -> exists _, feval_ih _ _ _ _ _ _ _ _ _ /\ _,
+        HB : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups',
         Hf : dsim ?fn ?x, Ha : $ᶠ| _ & _ | _ ⍮ _ ↘ ?x |- exists _, $ᶠ| d_ihfn _ _ _ _ _ _ & _ | _ ⍮ _ ↘ _ /\ _ =>
           let r' := fresh "r'" in
-          destruct (IH _ _ HA HB Hf) as (r' & ? & ?); exists r'; split; [ econstructor; eassumption | assumption ]
+          destruct (IH _ _ _ HB Hu Hf) as (r' & ? & ?); exists r'; split; [ econstructor; eassumption | assumption ]
       | IH : forall ups0 ρ0, dsim_list ?ups ups0 -> env_agree _ (?ρ ↦ ?n) ρ0 -> exists _, _ /\ _,
         Hu : dsim_list ?ups ?ups', Hρ : env_agree (fun x => ~ pt_fresh (S x) ?t) ?ρ ?ρ', Hn : dsim ?n ?n'
         |- exists _, $ᶠ| d_shfam _ _ _ _ & _ | _ ⍮ _ ↘ _ /\ _ =>
@@ -784,11 +868,11 @@ Section Eval.
             [ unfold extend_env; eapply env_agree_cons; [ exact Hρ | constructor; exact Hn | intros y Hy; exact Hy ]
             | exact Hf |];
           exists a'; split; [ econstructor; eassumption | assumption ]
-      | IH : forall ρ0 m0, env_agree _ ?ρ ρ0 -> _ -> dsim ?v m0 -> exists _, _ /\ _,
-        HA : env_agree _ ?ρ ?ρ', HB : forall c n B, In (c, n, B) _ -> env_agree _ ?ρ ?ρ', Hv : dsim ?v ?v'
+      | IH : forall ρ0 ups0 m0, blocks_agree ?Bks ?ρ ρ0 -> dsim_list ?ups ups0 -> dsim ?v m0 -> exists _, _ /\ _,
+        HB : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups', Hv : dsim ?v ?v'
         |- exists _, feval_ih _ _ _ _ _ _ (pt_self _ _) _ _ /\ _ =>
           let r' := fresh "r'" in
-          destruct (IH ρ' v' HA HB Hv) as (r' & ? & ?); exists r'; split; [ constructor; assumption | assumption ]
+          destruct (IH ρ' ups' v' HB Hu Hv) as (r' & ? & ?); exists r'; split; [ constructor; assumption | assumption ]
       | Hu : dsim_list ?ups ?ups', Hρ : env_agree (fun x => ~ pt_fresh x (pt_pi _ _)) _ _,
         He : ⟦ _ ⟧ᶠ _ ⍮ _ ⍮ _ ↘ ?b', Hb : dsim _ ?b' |- exists _, feval_shty _ _ _ _ _ _ _ /\ _ =>
           eexists; split; [ constructor; exact He | apply dsim_fam_pi; [ exact Hb | constructor; [ exact Hu |] ] ];
@@ -904,6 +988,10 @@ Section Read.
       exists r', $ᶠ| m' & n' | Θ ⍮ Ξ ↘ r' /\ dsim r r'.
   Proof. exact (proj1 (proj2 (feval_sim Θ Ξ))). Qed.
 
+  Lemma feval_exps_sim : forall Ms ρ ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> forall ρ', env_agree (fun x => ~ Forall (exp_fresh x) Ms) ρ ρ' ->
+      exists ms', ⟦ Ms ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ms' /\ dsim_list ms ms'.
+  Proof. exact (proj1 (proj2 (proj2 (feval_sim Θ Ξ)))). Qed.
+
   Lemma feval_modexp_sim : forall H ρ h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h -> forall ρ', env_agree (fun x => ~ modexp_fresh x H) ρ ρ' ->
       exists h', ⟦ H ⟧ᵐᶠ Θ ⍮ Ξ ⍮ ρ' ↘ h' /\ dmsim h h'.
   Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (feval_sim Θ Ξ)))))). Qed.
@@ -948,20 +1036,35 @@ Section Read.
     exists (⇑! a' s :: ns'); split; constructor; try eassumption; repeat constructor; assumption.
   Qed.
 
+  Lemma feval_ih_sim : forall ρ p ups Bks t m r, ⟦ih m of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> forall ρ' ups' m',
+      blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim m m' ->
+      exists r', ⟦ihᶠ m' of t under p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r'.
+  Proof.
+    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hi & _).
+    exact (Hi _ _ _ _ _ _ _ H).
+  Qed.
+
+  Lemma feval_mref_sim : forall p ups j r, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r -> forall ups', dsim_list ups ups' ->
+      exists pre', ⟦mrefᶠ j of p ups' ⟧ᶠ Θ ⍮ Ξ ↘ (fst r, pre') /\ dsim_list (snd r) pre'.
+  Proof.
+    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hm & _).
+    exact (Hm _ _ _ _ H).
+  Qed.
+
   Lemma feval_shty_sim : forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ups' ρ',
       dsim_list ups ups' -> env_agree (fun x => ~ pt_fresh x t) ρ ρ' ->
       exists a', ⟦shtyᶠ t of p ups' ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a'.
   Proof.
-    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
+    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hs & _).
     exact (Hs _ _ _ _ _ H).
   Qed.
 
-  Lemma feval_ihty_sim : forall ρm A ρ t m a, ⟦ihty m of t under ρm A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ρm' ρ' m',
-      env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) A) ρm ρm' ->
+  Lemma feval_ihty_sim : forall ρm As ρ t m a, ⟦ihty m of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ρm' ρ' m',
+      env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) (List.nth (ptyp_mem t) As a_True)) ρm ρm' ->
       env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> dsim m m' ->
-      exists a', ⟦ihtyᶠ m' of t under ρm' A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a'.
+      exists a', ⟦ihtyᶠ m' of t under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a'.
   Proof.
-    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
+    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
     exact (Hy _ _ _ _ _ _ H).
   Qed.
 
@@ -981,35 +1084,54 @@ Section Read.
       exists (⇑! a' s :: vs'); split; [ constructor; assumption | repeat constructor; assumption ].
   Qed.
 
-  (** The recursive results of a branch [B]: related where [B] reads them,
-      the head of [ihs] being the entry [List.length] of its tail. *)
-  Lemma ffresh_ihs_sim : forall ρ A ρa gs vs s ihs, Fihs vs at gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs ->
-      forall B nn ρ' ρa' vs', env_agree (fun x => ~ exp_fresh (S nn + x) A) ρ ρ' ->
-      env_agree (fun _ => True) ρa ρa' ->
-      Forall (fun g => match g with ca_rec t => List.length (ptyp_ps t) = nn | ca_arg _ => True end) gs ->
-      dsim_list vs vs' ->
-      exists ihs', Fihsᶠ vs' at gs under ρ' A for B in Θ ⍮ Ξ ⍮ ρa' ⍮ s ↘ ihs' /\ dsim_list_at (fun x => ~ exp_fresh x B) ihs ihs'.
+  (** The recursive results a branch [B] is read under, fresh and wrapped:
+      related where [B] reads them, the head of the wrapped results being
+      the entry [List.length] of their tail.  One the branch does not read
+      is a variable of type [𝕌ω@0] in the fast readback. *)
+  Lemma ffresh_wrap_sim : forall ρ As ρa gs' gs vs s ihs, Fihs vs at gs' gs under ρ As in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs ->
+      forall p ups Bks wihs, ⟦wihs vs of gs' gs with ihs under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ wihs ->
+      forall B ρ' ρa' ups' vs',
+      (forall t, In (ca_rec t) gs ->
+         env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) (List.nth (ptyp_mem t) As a_True)) ρ ρ') ->
+      env_agree (fun _ => True) ρa ρa' -> blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim_list vs vs' ->
+      exists ihs' wihs', Fihsᶠ vs' at gs' gs under ρ' As for B in Θ ⍮ Ξ ⍮ ρa' ⍮ s ↘ ihs' /\
+        ⟦wihsᶠ vs' of gs' gs with ihs' under p ups' Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ wihs' /\
+        dsim_list_at (fun x => ~ exp_fresh x B) wihs wihs'.
   Proof.
-    induction 1; intros B nn ρ' ρa' vs' HA Hρa Hl Hv.
-    - inversion Hv; subst; exists nil; split; constructor.
-    - inversion Hv; inversion Hl; subst.
-      match goal with Hv1 : dsim v ?v1, Hv2 : dsim_list vs ?vs1, Hl2 : Forall _ gs |- _ =>
-        destruct (IHfresh_ihs B nn ρ' (ρa' ↦ v1) vs1 HA ltac:(apply env_agree_all_cons; assumption) Hl2 Hv2)
-          as (ihs' & ? & ?) end.
-      exists ihs'; split; [ constructor; assumption | assumption ].
-    - inversion_clear Hl as [| ? ? Hl1 Hl2]; cbn beta iota in Hl1; subst nn.
-      inversion Hv; subst.
-      pose proof (fresh_ihs_length _ _ _ _ _ _ _ H0) as Hlen.
-      match goal with Hv1 : dsim v ?v1, Hv2 : dsim_list vs ?vs1 |- _ =>
-        let a' := fresh "a'" in let ihs' := fresh "ihs'" in
-        destruct (IHfresh_ihs B _ ρ' ρa' vs1 HA Hρa Hl2 Hv2) as (ihs' & ? & ?);
+    induction 1; intros p ups Bks wihs Hw B ρ' ρa' ups' vs' HA Hρa HB Hu Hv; inversion Hw; subst; clear Hw.
+    - inversion Hv; subst; exists nil, nil; repeat constructor.
+    - inversion Hv; subst.
+      match goal with Hv1 : dsim v ?v1, Hv2 : dsim_list vs ?vs1, Hw1 : wrap_ihs_eval _ _ _ _ _ _ _ _ _ _ _ |- _ =>
+        destruct (IHfresh_ihs _ _ _ _ Hw1 B ρ' (ρa' ↦ v1) ups' vs1
+                    ltac:(intros; apply HA; right; assumption) ltac:(apply env_agree_all_cons; assumption) HB Hu Hv2)
+          as (ihs' & wihs' & ? & ? & ?) end.
+      exists ihs', wihs'; repeat split; [ constructor; assumption | constructor; assumption | assumption ].
+    - inversion Hv; subst.
+      match goal with Hv1 : dsim v ?v1, Hv2 : dsim_list vs ?vs1, Hw1 : wrap_ihs_eval _ _ _ _ _ _ _ _ _ _ ?r |- _ =>
+        let ihs' := fresh "ihs'" in let wihs' := fresh "wihs'" in let Ef := fresh "Ef" in
+        let a' := fresh "a'" in let Hl := fresh "Hl" in
+        destruct (IHfresh_ihs _ _ _ _ Hw1 B ρ' ρa' ups' vs1
+                    ltac:(intros; apply HA; right; assumption) Hρa HB Hu Hv2) as (ihs' & wihs' & ? & ? & ?);
+        pose proof (proj1 (wrap_ihs_eval_length _ _ _ _ _ _ _ _ _ _ _ Hw1)) as Hl;
         destruct (exp_freshb (cargs_nrec gs) B) eqn:Ef;
-        [ exists (⇑! 𝕌ω@0 s :: ihs'); split;
-            [ apply ffresh_ihs_skip; assumption
-            | constructor; [ intros Hr; exfalso; apply Hr; rewrite Hlen; apply exp_freshb_sound; exact Ef | assumption ] ]
+        [ exists (⇑! 𝕌ω@0 s :: ihs'), (⇑! 𝕌ω@0 s :: wihs'); repeat split;
+            [ apply ffresh_ihs_skip; assumption | constructor; assumption
+            | constructor; [ intros Hr; exfalso; apply Hr; rewrite Hl; apply exp_freshb_sound; exact Ef | assumption ] ]
         | destruct (feval_ihty_sim _ _ _ _ _ _ H ρ' ρa' v1) as (a' & ? & ?);
-            [ exact HA | eapply env_agree_mono; [ exact Hρa | intros; exact I ] | exact Hv1 |];
-          exists (⇑! a' s :: ihs'); split; [ apply ffresh_ihs_rec; assumption | constructor; [ intros _; repeat constructor; assumption | assumption ] ] ]
+            [ apply HA; left; reflexivity | eapply env_agree_mono; [ exact Hρa | intros; exact I ] | exact Hv1 |];
+          exists (⇑! a' s :: ihs'), (⇑! a' s :: wihs'); repeat split;
+            [ apply ffresh_ihs_rec; assumption | constructor; assumption
+            | constructor; [ intros _; repeat constructor; assumption | assumption ] ] ]
+      end.
+    - inversion Hv; subst.
+      match goal with Hv1 : dsim v ?v1, Hv2 : dsim_list vs ?vs1, Hw1 : wrap_ihs_eval _ _ _ _ _ _ _ _ _ _ _,
+                      Hi : eval_ih _ _ _ _ _ _ _ _ _ |- _ =>
+        let ih' := fresh "ih'" in
+        destruct (feval_ih_sim _ _ _ _ _ _ _ Hi ρ' ups' v1 HB Hu Hv1) as (ih' & ? & ?);
+        destruct (IHfresh_ihs _ _ _ _ Hw1 B ρ' ρa' ups' vs1
+                    ltac:(intros; apply HA; right; assumption) Hρa HB Hu Hv2) as (ihs' & wihs' & ? & ? & ?);
+        exists ihs', (ih' :: wihs'); repeat split;
+          [ constructor; assumption | econstructor; eassumption | constructor; [ intros _; assumption | assumption ] ]
       end.
   Qed.
 
@@ -1023,10 +1145,18 @@ Section Read.
        env_agree (fun _ => True) ρ ρ' -> dsim_list vs vs' -> Rpsᶠ vs' at T in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Ms) /\
     (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms -> forall ups' ρ' vs',
        dsim_list ups ups' -> env_agree (fun _ => True) ρ ρ' -> dsim_list vs vs' -> Rcargsᶠ vs' at gs of p ups' in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Ms) /\
-    (forall s ρ A p D ups cs Bs Bs', Rbrs Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' -> forall ρ' ups',
-       env_agree (fun x => ~ exp_fresh (S (ind_nn D) + x) A) ρ ρ' ->
+    (forall s p ups ρ t v V, Rsh v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V -> forall ups' ρ' v',
+       dsim_list ups ups' -> env_agree (fun _ => True) ρ ρ' -> dsim v v' -> Rshᶠ v' at t of p ups' in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ V) /\
+    (forall s ρ p ups Bks sel i Ms NBks, Rblks i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks -> forall ρ' ups' D,
+       blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks ->
+       Rblksᶠ i Ms from p ups' Bks sel in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ NBks) /\
+    (forall s ρ p ups Bks Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
+       forall ρ' ups' pre' D,
+       blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim_list (snd r) pre' ->
+       ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> im_nn Mv = im_nn Mi ->
+       env_agree (fun x => ~ exp_fresh (S (im_nn Mi) + x) A) ρ ρ' ->
        (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-       dsim_list ups ups' -> Rbrsᶠ Bs at cs of p D ups' under A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs').
+       Rbrsᶠ Bs at cs of Mi (fst r, pre') from p ups' Bks Mv A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs').
   Proof.
     apply (read_mut_ind Θ Ξ
       (fun s n W _ => forall n', dsim_nf n n' -> Rnfᶠ n' in Θ ⍮ Ξ ⍮ s ↘ W)
@@ -1037,47 +1167,75 @@ Section Read.
          env_agree (fun _ => True) ρ ρ' -> dsim_list vs vs' -> Rpsᶠ vs' at T in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Ms)
       (fun s p ups ρ gs vs Ms _ => forall ups' ρ' vs',
          dsim_list ups ups' -> env_agree (fun _ => True) ρ ρ' -> dsim_list vs vs' -> Rcargsᶠ vs' at gs of p ups' in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Ms)
-      (fun s ρ A p D ups cs Bs Bs' _ => forall ρ' ups',
-         env_agree (fun x => ~ exp_fresh (S (ind_nn D) + x) A) ρ ρ' ->
+      (fun s p ups ρ t v V _ => forall ups' ρ' v',
+         dsim_list ups ups' -> env_agree (fun _ => True) ρ ρ' -> dsim v v' -> Rshᶠ v' at t of p ups' in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ V)
+      (fun s ρ p ups Bks sel i Ms NBks _ => forall ρ' ups' D,
+         blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks ->
+         Rblksᶠ i Ms from p ups' Bks sel in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ NBks)
+      (fun s ρ p ups Bks Mv A Mi r cs Bs Bs' _ => forall ρ' ups' pre' D,
+         blocks_agree Bks ρ ρ' -> dsim_list ups ups' -> dsim_list (snd r) pre' ->
+         ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> im_nn Mv = im_nn Mi ->
+         env_agree (fun x => ~ exp_fresh (S (im_nn Mi) + x) A) ρ ρ' ->
          (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-         dsim_list ups ups' -> Rbrsᶠ Bs at cs of p D ups' under A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs'));
-      intros;
+         Rbrsᶠ Bs at cs of Mi (fst r, pre') from p ups' Bks Mv A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs'));
+      intros; cbn [fst snd] in *;
       repeat match goal with
         | H : dsim_nf _ _ |- _ => inversion H; subst; clear H
         | H : dsim_ne (_ _) _ |- _ => inversion H; subst; clear H
         | H : dsim_ne (_ _ _) _ |- _ => inversion H; subst; clear H
-        | H : dsim_ne (_ _ _ _ _ _) _ |- _ => inversion H; subst; clear H
+        | H : dsim_ne (_ _ _ _ _ _ _ _) _ |- _ => inversion H; subst; clear H
         | H : dsim_la (_ :: _) _ |- _ => inversion H; subst; clear H
         | H : dsim_la nil _ |- _ => inversion H; subst; clear H
         | H : dsim (_ _) _ |- _ => inversion H; subst; clear H
         | H : dsim (_ _ _) _ |- _ => inversion H; subst; clear H
         | H : dsim (_ _ _ _) _ |- _ => inversion H; subst; clear H
+        | H : dsim (_ _ _ _ _) _ |- _ => inversion H; subst; clear H
         | H : dsim ⊤ᵈ _ |- _ => inversion H; subst; clear H
         | H : dsim ⊥ᵈ _ |- _ => inversion H; subst; clear H
         | H : dsim_list (_ :: _) _ |- _ => inversion H; subst; clear H
         | H : dsim_list nil _ |- _ => inversion H; subst; clear H
+        | H : forall b, In b ?Bks -> (forall x, _ -> desim (env_entry ?ρ x) (env_entry ?ρ' x)) /\ _ |- _ =>
+            change (blocks_agree Bks ρ ρ') in H
         end.
     (** Inductive types.  A constructor, a type, and the parameters and
         arguments of each, at their types: the types are evaluated in
         environments related everywhere. *)
     all: try solve [ match goal with
       | IH1 : forall ρ0 vs0, env_agree _ nil ρ0 -> dsim_list ?as' vs0 -> Rpsᶠ vs0 at _ in _ ⍮ _ ⍮ ρ0 ⍮ _ ↘ ?Ps,
-        IH2 : forall ups0 ρ0 vs0, dsim_list _ ups0 -> env_agree _ (env_args nil ?as') ρ0 -> dsim_list _ vs0 -> fread_cargs _ _ _ _ ups0 ρ0 _ vs0 ?Args,
-        Ha : dsim_list ?as' ?as'', Hv : dsim_list ?vs ?vs' |- Rnfᶠ ⇓ (d_ind _ ?as'') (d_con _ _ ?vs') in _ ⍮ _ ⍮ _ ↘ nf_con _ _ (nfs_app ?Ps ?Args) =>
+        IH2 : forall ups0 ρ0 vs0, dsim_list _ ups0 -> env_agree _ (env_args nil ?as') ρ0 -> dsim_list _ vs0 ->
+              fread_cargs _ _ _ _ ups0 ρ0 _ vs0 ?Args,
+        Ha : dsim_list ?as' ?as'', Hv : dsim_list ?vs ?vs'
+        |- Rnfᶠ ⇓ (d_ind _ _ ?as'') (d_con _ _ _ ?vs') in _ ⍮ _ ⍮ _ ↘ nf_con _ _ _ (nfs_app ?Ps ?Args) =>
           econstructor; try eassumption;
             [ rewrite <- (dsim_list_length _ _ Ha); assumption
             | rewrite <- (dsim_list_length _ _ Hv); assumption
             | apply IH1; [ apply env_agree_nil | exact Ha ]
-            | apply IH2; [ apply dsim_list_firstn, Ha | apply env_agree_all_args; [ apply env_agree_nil | exact Ha ] | apply dsim_list_skipn, Hv ] ]
+            | apply IH2; [ apply dsim_list_firstn, Ha | apply env_agree_all_args; [ apply env_agree_nil | exact Ha ]
+                         | apply dsim_list_skipn, Hv ] ]
+      end ].
+    (** A constructor at a view, read as the view's: its arguments are the
+        last ones. *)
+    all: try solve [ match goal with
+      | IH1 : forall ρ0 vs0, env_agree _ nil ρ0 -> dsim_list ?as' vs0 -> Rpsᶠ vs0 at _ in _ ⍮ _ ⍮ ρ0 ⍮ _ ↘ ?Ps,
+        IH2 : forall ups0 ρ0 vs0, dsim_list _ ups0 -> env_agree _ (env_args nil ?as') ρ0 -> dsim_list (skipn ?n ?vs) vs0 ->
+              fread_cargs _ _ _ _ ups0 ρ0 _ vs0 ?Args,
+        Ha : dsim_list ?as' ?as'', Hv : dsim_list ?vs ?vs'
+        |- Rnfᶠ ⇓ (d_ind _ _ ?as'') (d_con _ _ _ ?vs') in _ ⍮ _ ⍮ _ ↘ nf_con _ _ _ (nfs_app ?Ps ?Args) =>
+          eapply fread_nf_con_view with (n := n); try eassumption;
+            [ rewrite <- (dsim_list_length _ _ Ha); assumption
+            | rewrite <- (dsim_list_length _ _ Hv); assumption
+            | apply IH1; [ apply env_agree_nil | exact Ha ]
+            | apply IH2; [ apply dsim_list_firstn, Ha | apply env_agree_all_args; [ apply env_agree_nil | exact Ha ]
+                         | apply dsim_list_skipn, Hv ] ]
       end ].
     all: try solve [ match goal with
       | IH : forall ρ0 vs0, env_agree _ nil ρ0 -> dsim_list ?as' vs0 -> Rpsᶠ vs0 at _ in _ ⍮ _ ⍮ ρ0 ⍮ _ ↘ ?Ps,
         Hps : Rps ?as' at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Ps,
-        Ha : dsim_list ?as' ?as'' |- Rtypᶠ d_ind _ ?as'' in _ ⍮ _ ⍮ _ ↘ nf_indty _ ?Ps =>
+        Ha : dsim_list ?as' ?as'' |- Rtypᶠ d_ind _ _ ?as'' in _ ⍮ _ ⍮ _ ↘ nf_indty _ _ ?Ps =>
           destruct as'' as [| a0 as0];
           [ (** without arguments, by the rule that reads no declaration *)
             inversion Ha; subst; inversion Hps; subst; apply fread_typ_indty_nil
-          | eapply fread_typ_indty; [ eassumption | |];
+          | eapply fread_typ_indty; [ eassumption | eassumption | |];
             [ rewrite <- (dsim_list_length _ _ Ha); assumption | apply IH; [ apply env_agree_nil | exact Ha ] ] ]
       end ].
     all: try solve [ match goal with
@@ -1089,88 +1247,137 @@ Section Read.
           econstructor; [ eassumption | apply IHV; constructor; assumption |];
           match goal with IH : forall ρ0, _ |- _ => eapply IH; eauto with mctt end
       end ].
+    (** A recursive argument, along its shape. *)
     all: try solve [ match goal with
-      | e : eval_shty Θ Ξ _ ?ups ?ρ ?t ?a, Hρ : env_agree (fun _ => True) ?ρ ?ρ', Hu : dsim_list ?ups ?ups',
-        IHV : forall n0, dsim_nf (⇓ ?a ?v) n0 -> _, Hv : dsim ?v ?v' |- _ =>
-          let a' := fresh "a'" in
-          destruct (feval_shty_sim _ _ _ _ _ e ups' ρ' Hu) as (a' & ? & ?);
-            [ eapply env_agree_mono; [ exact Hρ | intros; exact I ] |];
-          econstructor; [ eassumption | apply IHV; constructor; assumption |];
-          match goal with IH : forall ups0 ρ0, _ |- _ => eapply IH; eauto with mctt end
+      | IHS : forall ups0 ρ0 v0, dsim_list ?ups ups0 -> env_agree _ ?ρ ρ0 -> dsim ?v v0 -> fread_shape _ _ _ _ ups0 ρ0 _ v0 _,
+        IHR : forall ups0 ρ0 vs0, dsim_list ?ups ups0 -> env_agree _ ?ρ ρ0 -> dsim_list ?vs vs0 -> fread_cargs _ _ _ _ ups0 ρ0 _ vs0 _,
+        Hu : dsim_list ?ups ?ups', Hρ : env_agree _ ?ρ ?ρ', Hv : dsim ?v ?v', Hvs : dsim_list ?vs ?vs' |- _ =>
+          constructor; [ apply IHS; assumption | apply IHR; assumption ]
       end ].
-    (** A stuck eliminator: the motive under the fresh non-uniform
-        parameters and scrutinee, and the branches. *)
+    (** The end of a shape: the member at the uniform parameters and the
+        shape's own; a function shape, under a fresh variable of its domain. *)
     all: try solve [ match goal with
-      | f : fresh_tele _ _ (env_args nil (firstn (ind_nu ?D) ?as')) _ ?s ?ns,
-        e2 : ⟦ ?A ⟧ Θ ⍮ Ξ ⍮ env_args ?ρ (?ns ++ ⇑! (d_ind ?p _) _ :: nil) ↘ ?a,
-        IHA : forall a0, dsim ?a a0 -> Rtypᶠ a0 in _ ⍮ _ ⍮ _ ↘ ?A',
-        IHB : forall ρ0 ups0, _ -> _ -> dsim_list _ ups0 -> fread_brs _ _ _ ρ0 _ _ _ ups0 _ _ ?Bs',
-        IHM : forall m0, dsim_ne ?m m0 -> Rneᶠ m0 in _ ⍮ _ ⍮ _ ↘ ?M,
-        HA : forall x, ~ exp_fresh (?nm + x) ?A -> desim (env_entry ?ρ x) (env_entry ?ρ' x),
-        HBs : forall c n B, In (c, n, B) ?Bs -> forall x, _ -> desim (env_entry ?ρ x) (env_entry ?ρ' x),
-        Ha : dsim_list ?as' ?as'', Hm : dsim_ne ?m ?m'
-        |- Rneᶠ d_elim ?ρ' ?nm ?A ?Bs ?p ?as'' ?m' in _ ⍮ _ ⍮ ?s ↘ ne_elim ?nm ?A' ?Bs' ?M =>
-          let ns' := fresh "ns'" in let Hsn := fresh "Hsn" in let a' := fresh "a'" in let Hlen := fresh "Hlen" in
-          pose proof (fresh_tele_length _ _ _ _ f) as Hlen; rewrite ind_nn_tele_length in Hlen;
-          destruct (ffresh_tele_sim _ _ _ _ f (env_args nil (firstn (ind_nu D) as''))) as (ns' & ? & Hsn);
-            [ apply env_agree_all_args; [ apply env_agree_nil | apply dsim_list_firstn, Ha ] |];
-          destruct (feval_exp_sim _ _ _ e2 (env_args ρ' (ns' ++ ⇑! (d_ind p (firstn (ind_nu D) as'' ++ ns')) (s + ind_nn D) :: nil)))
-            as (a' & ? & ?);
+      | e : ⟦ ?Ps ⟧* Θ ⍮ Ξ ⍮ ?ρ ↘ ?bs, Hρ : env_agree (fun _ => True) ?ρ ?ρ', Hu : dsim_list ?ups ?ups', Hv : dsim ?v ?v',
+        IH : forall n0, dsim_nf (⇓ (d_ind ?p ?j (?ups ++ ?bs)) ?v) n0 -> _ |- _ =>
+          let bs' := fresh "bs'" in let Hbs := fresh "Hbs" in
+          destruct (feval_exps_sim _ _ _ e ρ') as (bs' & ? & Hbs);
+            [ eapply env_agree_mono; [ exact Hρ | intros; exact I ] |];
+          econstructor; [ eassumption | apply IH; constructor; [ constructor; apply dsim_list_app; assumption | exact Hv ] ]
+      | e : ⟦ ?B ⟧ Θ ⍮ Ξ ⍮ ?ρ ↘ ?b, ea : $| ?v & ⇑! ?b ?s | Θ ⍮ Ξ ↘ ?r,
+        Hρ : env_agree (fun _ => True) ?ρ ?ρ', Hu : dsim_list ?ups ?ups', Hv : dsim ?v ?v',
+        IHA : forall a0, dsim ?b a0 -> Rtypᶠ a0 in _ ⍮ _ ⍮ _ ↘ _,
+        IHV : forall ups0 ρ0 v0, dsim_list ?ups ups0 -> env_agree _ (?ρ ↦ _) ρ0 -> dsim ?r v0 -> _ |- _ =>
+          let b' := fresh "b'" in let Hb := fresh "Hb" in let r' := fresh "r'" in let Hr := fresh "Hr" in
+          destruct (feval_exp_sim _ _ _ e ρ') as (b' & ? & Hb);
+            [ eapply env_agree_mono; [ exact Hρ | intros; exact I ] |];
+          destruct (feval_app_sim _ _ _ ea v' (⇑! b' s) Hv ltac:(repeat constructor; exact Hb)) as (r' & ? & Hr);
+          econstructor; [ eassumption | apply IHA; exact Hb | eassumption
+                        | apply IHV; [ exact Hu | apply env_agree_all_cons; [ exact Hρ | repeat constructor; exact Hb ] | exact Hr ] ]
+      end ].
+    (** A stuck eliminator: the container's uniform parameters read at
+        their telescope; the blocks at the eliminator's uniform
+        parameters. *)
+    all: try solve [ match goal with
+      | em : eval_mref _ _ ?p ?ups ?j (_, _, ?pre),
+        IHU : forall ρ0 vs0, env_agree _ nil ρ0 -> dsim_list ?pre vs0 -> _,
+        IHB : forall ρ0 ups0 D0, blocks_agree ?Bks ?ρ ρ0 -> _,
+        IHM : forall m0, dsim_ne ?m m0 -> _,
+        HBk : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups', Ha : dsim_list ?as' ?as'', Hm : dsim_ne ?m ?m'
+        |- Rneᶠ d_elim _ _ _ _ _ _ _ in _ ⍮ _ ⍮ _ ↘ _ =>
+          let pre' := fresh "pre'" in let Hem := fresh "Hem" in let Hpre := fresh "Hpre" in
+          destruct (feval_mref_sim _ _ _ _ em ups' Hu) as (pre' & Hem & Hpre); cbn [fst snd] in Hem, Hpre;
+          eapply fread_ne_elim; try eassumption;
+            try solve [ rewrite <- (dsim_list_length _ _ Ha); assumption
+                      | apply IHU; [ apply env_agree_nil | exact Hpre ]
+                      | eapply IHB; eassumption
+                      | apply IHM; exact Hm ]
+      end ].
+    (** A block: its motive under the fresh non-uniform parameters of its
+        member and the scrutinee; its branches; and the blocks after it.
+        The block's member has as many non-uniform parameters as the member
+        read, both being the motive's binders. *)
+    all: try solve [ constructor ].
+    all: try solve [ match goal with
+      | f : fresh_tele _ _ (env_args nil ?ups) (List.rev (im_nparams ?Mv)) ?s ?ns,
+        Hnth : List.nth_error ?Bks ?ix = Some ?bk, Hnmb : eb_nm ?bk = S (im_nn ?Mi), HMv : ind_member ?D0 ?ix = Some ?Mv,
+        em : eval_mref _ _ ?p ?ups _ (?pk, ?k, ?pre),
+        e2 : ⟦ eb_motive ?bk ⟧ Θ ⍮ Ξ ⍮ env_args ?ρ (?ns ++ _) ↘ ?a,
+        IHA : forall a0, dsim ?a a0 -> Rtypᶠ a0 in _ ⍮ _ ⍮ _ ↘ _,
+        IHS : forall ρ0 ups0 pre0 D1, blocks_agree ?Bks ?ρ ρ0 -> _,
+        IHR : forall ρ0 ups0 D1, blocks_agree ?Bks ?ρ ρ0 -> _,
+        HD0 : ind_lookup Θ Ξ ?p = Some ?D0, Hl : ind_lookup Θ Ξ ?p = Some ?D, Hnm : blocks_nm_at ?D None ?Bks,
+        HBk : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups' |- _ =>
+          let pre' := fresh "pre'" in let Hem := fresh "Hem" in let Hpre := fresh "Hpre" in
+          let ns' := fresh "ns'" in let Hsn := fresh "Hsn" in let a' := fresh "a'" in let Hsa := fresh "Hsa" in
+          let Hnn := fresh "Hnn" in let Hln := fresh "Hln" in
+          rewrite HD0 in Hl; injection Hl as <-;
+          assert (Hnn : im_nn Mv = im_nn Mi) by (pose proof (Hnm _ _ _ HMv Hnth) as Hx; cbn [elim_src] in Hx; congruence);
+          pose proof (fresh_tele_length _ _ _ _ f) as Hln; rewrite length_rev in Hln;
+          change (List.length (im_nparams Mv)) with (im_nn Mv) in Hln;
+          destruct (feval_mref_sim _ _ _ _ em ups' Hu) as (pre' & Hem & Hpre); cbn [fst snd] in Hem, Hpre;
+          destruct (ffresh_tele_sim _ _ _ _ f (env_args nil ups')) as (ns' & ? & Hsn);
+            [ apply env_agree_all_args; [ apply env_agree_nil | exact Hu ] |];
+          destruct (feval_exp_sim _ _ _ e2 (env_args ρ' (ns' ++ ⇑! (d_ind pk k (pre' ++ ns')) (s + im_nn Mi) :: nil)))
+            as (a' & ? & Hsa);
             [ eapply env_agree_binders;
-                [ exact HA
-                | apply dsim_list_app; [ exact Hsn | repeat constructor; apply dsim_list_app; [ apply dsim_list_firstn, Ha | exact Hsn ] ]
-                | rewrite length_app, Hlen; cbn; lia ]
+                [ exact (proj1 (HBk _ (List.nth_error_In _ _ Hnth)))
+                | apply dsim_list_app; [ exact Hsn | repeat constructor; apply dsim_list_app; assumption ]
+                | rewrite length_app, Hln, Hnn, Hnmb; cbn; lia ]
             |];
-          econstructor; try eassumption; try reflexivity;
-            [ rewrite <- (dsim_list_length _ _ Ha); assumption
-            | apply IHA; assumption
-            | apply IHB; [ exact HA | exact HBs | apply dsim_list_firstn, Ha ]
-            | apply IHM; assumption ]
+          eapply fread_blocks_cons; try eassumption;
+            [ apply IHA; exact Hsa
+            | eapply IHS; try eassumption;
+                [ rewrite <- Hnmb; exact (proj1 (HBk _ (List.nth_error_In _ _ Hnth)))
+                | exact (proj2 (HBk _ (List.nth_error_In _ _ Hnth))) ]
+            | eapply IHR; eassumption ]
       end ].
     (** A branch: under the fresh non-uniform parameters, arguments and
-        recursive results. *)
+        recursive results; the motive at the constructor. *)
     all: try solve [ match goal with
-      | e : ?n = (ind_nn ?D + List.length ?gs + cargs_nrec ?gs)%nat,
-        f : fresh_tele _ _ (env_args nil ?ups) _ ?s ?ns,
+      | f : fresh_tele _ _ (env_args nil ?ups) (List.rev (im_nparams ?Mv)) ?s ?ns,
         f0 : fresh_cargs _ _ ?p ?ups (env_args nil (?ups ++ ?ns)) ?gs _ ?vs,
-        Hpl : cargs_plen (ind_nn ?D) ?gs,
-        f2 : fresh_ihs _ _ ?ρ ?A _ ?gs ?vs _ ?ihs,
-        e0 : ⟦ ?B ⟧ Θ ⍮ Ξ ⍮ env_args ?ρ (?ns ++ ?vs ++ ?ihs) ↘ ?b,
-        e1 : ⟦ ?A ⟧ Θ ⍮ Ξ ⍮ env_args ?ρ (?ns ++ d_con ?p ?c _ :: nil) ↘ ?t,
+        f2 : fresh_ihs _ _ ?ρ _ _ ?gs' ?gs ?vs _ ?ihs,
+        fw : wrap_ihs_eval _ _ ?ρ _ _ _ ?gs' ?gs ?vs ?ihs ?wihs,
+        e0 : ⟦ ?B ⟧ Θ ⍮ Ξ ⍮ env_args ?ρ (?ns ++ ?vs ++ ?wihs) ↘ ?b,
+        e1 : ⟦ ?A ⟧ Θ ⍮ Ξ ⍮ env_args ?ρ (?ns ++ d_con ?pk ?k ?c (?pre ++ _) :: nil) ↘ ?t,
+        Hn0 : ?n0 = _, Hpl : cargs_plen ?D0 ?gs, HD0 : ind_lookup Θ Ξ ?p = Some ?D0,
+        Hl : ind_lookup Θ Ξ ?p = Some ?D, Hnm : blocks_nm_at ?D None ?Bks, Hnn : im_nn ?Mv = im_nn ?Mi,
         IHV : forall n0, dsim_nf (⇓ ?t ?b) n0 -> _,
-        IHT : forall ρ0 ups0, _ -> _ -> dsim_list ?ups ups0 -> fread_brs _ _ _ ρ0 _ _ _ ups0 _ _ _,
-        HA : env_agree (fun x => ~ exp_fresh (S (ind_nn ?D) + x) ?A) ?ρ ?ρ',
-        HBs : forall c n B, In (c, n, B) (_ :: _) -> env_agree _ ?ρ ?ρ',
-        Hu : dsim_list ?ups ?ups' |- _ =>
-          let ns' := fresh "ns'" in let vs' := fresh "vs'" in let ihs' := fresh "ihs'" in
+        IHT : forall ρ0 ups0 pre0 D1, blocks_agree ?Bks ?ρ ρ0 -> _,
+        HBk : blocks_agree ?Bks ?ρ ?ρ', Hu : dsim_list ?ups ?ups', Hpre : dsim_list ?pre ?pre',
+        HA : env_agree (fun x => ~ exp_fresh (S (im_nn ?Mi) + x) ?A) ?ρ ?ρ',
+        HBs : forall c n B, In (c, n, B) (_ :: _) -> env_agree _ ?ρ ?ρ' |- _ =>
+          let ns' := fresh "ns'" in let vs' := fresh "vs'" in let ihs' := fresh "ihs'" in let wihs' := fresh "wihs'" in
           let Hsn := fresh "Hsn" in let Hsv := fresh "Hsv" in let Hsi := fresh "Hsi" in
           let b' := fresh "b'" in let t' := fresh "t'" in
           let Hl1 := fresh "Hl" in let Hl2 := fresh "Hl" in let Hl3 := fresh "Hl" in
-          pose proof (fresh_tele_length _ _ _ _ f) as Hl1; rewrite ind_nn_tele_length in Hl1;
-          pose proof (fresh_cargs_length _ _ _ _ _ _ f0) as Hl2;
-          pose proof (fresh_ihs_length _ _ _ _ _ _ _ f2) as Hl3;
+          rewrite HD0 in Hl; injection Hl as <-;
+          pose proof (fresh_tele_length _ _ _ _ f) as Hl1; rewrite length_rev in Hl1;
+          change (List.length (im_nparams Mv)) with (im_nn Mv) in Hl1;
+          pose proof (wrap_ihs_eval_length _ _ _ _ _ _ _ _ _ _ _ fw) as [Hl2 Hl3];
           destruct (ffresh_tele_sim _ _ _ _ f (env_args nil ups')) as (ns' & ? & Hsn);
             [ apply env_agree_all_args; [ apply env_agree_nil | exact Hu ] |];
           destruct (ffresh_cargs_sim _ _ _ _ _ _ f0 ups' (env_args nil (ups' ++ ns'))) as (vs' & ? & Hsv);
             [ exact Hu | apply env_agree_all_args; [ apply env_agree_nil | apply dsim_list_app; assumption ] |];
-          destruct (ffresh_ihs_sim _ _ _ _ _ _ _ f2 B (ind_nn D) ρ' (env_args nil (ups' ++ ns')) vs' HA
+          destruct (ffresh_wrap_sim _ _ _ _ _ _ _ _ f2 _ _ _ _ fw B ρ' (env_args nil (ups' ++ ns')) ups' vs'
+                      (ihs_motives_agree _ _ _ _ _ Hpl Hnm HBk)
                       ltac:(apply env_agree_all_args; [ apply env_agree_nil | apply dsim_list_app; assumption ])
-                      (plen_forall _ _ Hpl) Hsv) as (ihs' & ? & Hsi);
-          destruct (feval_exp_sim _ _ _ e0 (env_args ρ' (ns' ++ vs' ++ ihs'))) as (b' & ? & ?);
+                      HBk Hu Hsv) as (ihs' & wihs' & ? & ? & Hsi);
+          destruct (feval_exp_sim _ _ _ e0 (env_args ρ' (ns' ++ vs' ++ wihs'))) as (b' & ? & ?);
             [ eapply env_agree_binders_at;
                 [ exact (HBs _ _ _ (or_introl eq_refl))
                 | apply dsim_list_at_app; [ exact Hsn | apply dsim_list_at_app; assumption ]
-                | rewrite !length_app, Hl1, Hl2, Hl3; lia ]
+                | rewrite !length_app, Hl1, Hl2, Hl3, Hn0, Hnn; lia ]
             |];
-          destruct (feval_exp_sim _ _ _ e1 (env_args ρ' (ns' ++ d_con p c (ups' ++ ns' ++ vs') :: nil))) as (t' & ? & ?);
+          destruct (feval_exp_sim _ _ _ e1 (env_args ρ' (ns' ++ d_con pk k c (pre' ++ ns' ++ vs') :: nil))) as (t' & ? & ?);
             [ eapply env_agree_binders;
                 [ exact HA
-                | apply dsim_list_app; [ exact Hsn | repeat constructor; apply dsim_list_app; [ exact Hu | apply dsim_list_app; assumption ] ]
-                | rewrite length_app, Hl1; cbn; lia ]
+                | apply dsim_list_app; [ exact Hsn | repeat constructor; apply dsim_list_app; [ exact Hpre | apply dsim_list_app; assumption ] ]
+                | rewrite length_app, Hl1, Hnn; cbn; lia ]
             |];
-          econstructor; try eassumption;
+          eapply fread_brs_cons; try eassumption;
             [ apply IHV; constructor; assumption
-            | apply IHT; [ exact HA | intros c1 n1 B1 Hin; exact (HBs c1 n1 B1 (or_intror Hin)) | exact Hu ] ]
+            | eapply IHT; try eassumption; intros c1 n1 B1 Hin; exact (HBs c1 n1 B1 (or_intror Hin)) ]
       end ].
     (** The closures are evaluated at related arguments, then read back. *)
     all: repeat match goal with
