@@ -3572,6 +3572,34 @@ Section ElimGlu.
     Qed.
   End NeutCase.
 
+  (** ** The Readback of the Stuck Eliminator, at Every Member
+
+      By strong induction on the rank: at a declared member directly, at a
+      view by the readbacks at the members of lower rank. *)
+  Lemma elim_rb_all : forall j, elim_rb_ok j.
+  Proof.
+    destruct (gta_rank _ Hass) as [rk Hrk].
+    assert (H : forall r j, rk j < r -> elim_rb_ok j).
+    { induction r as [| r IH]; intros j Hj; [ lia |].
+      intros Mj as' e Δ σ'' Ns M oq M0 HMj.
+      destruct (im_head Mj) as [pm | qc kc Is vm] eqn:Hh.
+      - exact (elim_rb_decl j Mj pm HMj Hh as' e Δ σ'' Ns M oq M0).
+      - exact (elim_rb_view j Mj qc kc Is vm HMj Hh rk Hrk (fun j' Hj' => IH j' ltac:(lia)) Mj as' e Δ σ'' Ns M oq M0 HMj). }
+    intros j; exact (H (S (rk j)) j ltac:(lia)).
+  Qed.
+
+  (** The neutral case, at every member. *)
+  Lemma neut_ok_all : forall j, neut_ok j.
+  Proof.
+    intros j Mj hd k' as' e Δ' Us' Ns' M' HMj Href He Hrb Mk σ' oq' ns HMk Hgrp Hσ' HUs' HMt Hgn Hns HGm.
+    rewrite HMj in HMk; injection HMk as <-.
+    apply (nc_out j Mj hd k' as' e Δ' Us' Ns' M' HMj Href He Hrb σ' oq' ns Hgrp Hσ' HUs' HMt Hgn Hns HGm).
+    intros Δ φ M0 Hφ HR.
+    pose proof (nc_Ps_typed j Mj Δ' Us' Ns' HMj σ' ns Hσ' HUs' Hgn Hns) as HPs.
+    subst Us'.
+    exact (elim_rb_wk j (elim_rb_all j) Mj as' e Δ' σ' oq' Ns' M' HMj Hgrp Hσ' (gnp_len _ _ _ _ _ _ _ Hgn) HPs Hrb Δ φ M0 Hφ HR).
+  Qed.
+
 End ElimGlu.
 
 End Fixed_GCtx.
