@@ -79,6 +79,73 @@ Proof.
   reflexivity.
 Qed.
 
+(** The non-recursive arguments of moved terms. *)
+Lemma nonrec_exps_map : forall gs As f, nonrec_exps gs (List.map f As) = List.map f (nonrec_exps gs As).
+Proof. induction gs as [| [] gs IH]; intros [| A As] f; cbn; rewrite ?IH; reflexivity. Qed.
+
+(** [wk_pat] after domains picks the non-recursive arguments out of an
+    instance of all of them followed by the domains. *)
+Lemma wk_pat_falses_sb_of_list : forall Ds gs1 σ As, List.length As = List.length gs1 ->
+    sb_eq ((ι (wk_pat (List.repeat false (List.length Ds) ++ cargs_pat gs1))) ⨟ sb_of_list σ (As ++ Ds))
+      (sb_of_list σ (nonrec_exps gs1 As ++ Ds)).
+Proof.
+  induction Ds as [| Y Ds IH] using List.rev_ind; intros gs1 σ As Hl.
+  - rewrite !List.app_nil_r; exact (wk_pat_sb_of_list gs1 σ As Hl).
+  - rewrite List.length_app, Nat.add_1_r; cbn [List.repeat List.app wk_pat].
+    rewrite !List.app_assoc, !sb_of_list_app; cbn [sb_of_list].
+    intros [| x]; [ reflexivity |].
+    specialize (IH gs1 σ As Hl x); rewrite !sb_of_list_app in IH.
+    cbn [sb_compose sb_of_wk sentry_sub wk_q sb_extend] in IH |- *; exact IH.
+Qed.
+
+Corollary exp_wk_pat_falses_sb_of_list : forall B Ds gs1 σ As, List.length As = List.length gs1 ->
+    B[wk_pat (List.repeat false (List.length Ds) ++ cargs_pat gs1)]ʷ[sb_of_list σ (As ++ Ds)]
+    = B[sb_of_list σ (nonrec_exps gs1 As ++ Ds)].
+Proof.
+  intros; rewrite <- exp_sub_of_wk, exp_sub_sub; apply exp_sub_sb_eq, wk_pat_falses_sb_of_list; assumption.
+Qed.
+
+(** The view's instance in a list instance, below the instance's
+    variables. *)
+Lemma sb_qn_view_agree : forall Is Us Ms τ x, List.Forall (exp_scoped (List.length Us)) Is ->
+    x < List.length Ms + List.length Is ->
+    (sb_qn (List.length Ms) (sb_of_list Id Is) ⨟ sb_of_list τ (Us ++ Ms)) x
+    = sb_of_list τ (List.map (fun I => I[sb_of_list Id Us]) Is ++ Ms) x.
+Proof.
+  intros * Hs Hx.
+  rewrite (sb_of_list_app Us Ms τ), (sb_of_list_app _ Ms τ).
+  rewrite (sb_qn_of_list Ms (sb_of_list Id Is) (sb_of_list τ Us) x).
+  destruct (Nat.lt_ge_cases x (List.length Ms)) as [Hlt | Hge].
+  - rewrite !(sb_of_list_nth Ms _ x (a_var 0) Hlt); reflexivity.
+  - replace x with (List.length Ms + (x - List.length Ms)) by lia; rewrite !sb_of_list_ge.
+    set (y := x - List.length Ms).
+    assert (Hy : y < List.length Is) by (unfold y; lia).
+    cbn [sb_compose].
+    rewrite (sb_of_list_nth Is Id y (a_var 0) Hy), (sb_of_list_nth _ τ y (a_var 0)) by (rewrite List.length_map; exact Hy).
+    cbn [sentry_sub]; rewrite List.length_map.
+    rewrite (List.nth_indep (List.map (fun I : typ => I[sb_of_list Id Us]) Is) (a_var 0) ((a_var 0)[sb_of_list Id Us]))
+      by (rewrite List.length_map; lia).
+    rewrite (List.map_nth (fun I : typ => I[sb_of_list Id Us])); f_equal.
+    rewrite List.Forall_forall in Hs.
+    apply (exp_scoped_sub_agree _ (List.length Us)); [ apply Hs, List.nth_In; lia |].
+    intros z Hz; apply Views.sb_of_list_agree; exact Hz.
+Qed.
+
+(** The domains and the parameters of a scoped shape are scoped. *)
+Lemma ptyp_scoped_dom : forall t n d B, ptyp_scoped n t -> List.nth_error (ptyp_doms t) d = Some B -> exp_scoped (d + n) B.
+Proof.
+  induction t as [j Ps | B0 t IH]; intros n d B Hs HB; cbn in *; [ destruct d; discriminate |].
+  destruct Hs as [HB0 Hs]; destruct d as [| d]; cbn in HB; [ injection HB as <-; exact HB0 |].
+  replace (S d + n) with (d + S n) by lia; exact (IH _ _ _ Hs HB).
+Qed.
+
+Lemma ptyp_scoped_ps : forall t n, ptyp_scoped n t -> List.Forall (exp_scoped (ptyp_depth t + n)) (ptyp_ps t).
+Proof.
+  induction t as [j Ps | B0 t IH]; intros n Hs; cbn in *; [ exact Hs |].
+  destruct Hs as [_ Hs]; unfold ptyp_depth in *; cbn.
+  refine (List.Forall_impl _ _ (IH _ Hs)); intros; eapply exp_scoped_mono; [| eassumption ]; lia.
+Qed.
+
 (** ** A View's Telescopes, Syntactically
 
     For a view [k] of a group [D], with the container's member [i'] taken
@@ -281,6 +348,70 @@ Section ViewSyn.
       [ exact (dc_ass _ HcQ) | rewrite List.length_map, vs_is_length; reflexivity
       | exact (Views.view_is_typed _ _ _ _ _ _ _ _ _ _ _ _ _ (ctx_wf_gctx _ _ _ HΓ) Hl Hdt HcQ HMk Hh Hq HΓ HUl HUs)
       | exact (vs_nparams_typed_c Γ Us Ns HΓ HUl HNl HUs HNs) ].
+  Qed.
+
+  (** *** The Shapes of Recursive Arguments *)
+
+  (** A term of the container's telescope of the shape, under its
+      weakening, followed by the view's instance and an instance of the
+      group's, is the term at the container's instance of its own
+      context. *)
+  Lemma vs_wk_inst : forall X c gs' gs1' t' gs2' kk τ Us Ns As1 Ds, ind_con Mi' c = Some gs' -> gs' = gs1' ++ ca_rec t' :: gs2' ->
+      List.length Us = ind_nu D -> List.length Ns = im_nn Mv -> List.length As1 = List.length gs1' -> List.length Ds = kk ->
+      exp_scoped (kk + (List.length (cargs_strat gs1') + im_np Dq Mi')) X ->
+      X[wk_pat (List.repeat false kk ++ cargs_pat gs1')]ʷ[sb_qn (kk + List.length gs1' + im_nn Mv) (sb_of_list Id Is)]
+        [sb_of_list τ (Us ++ Ns ++ As1 ++ Ds)]
+      = X[sb_of_list τ (List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns ++ nonrec_exps gs1' As1 ++ Ds)].
+  Proof.
+    intros * Hcon' Heq' HUl HNl HAl HDl Hs.
+    pose proof vs_nn as Hnn.
+    rewrite exp_sub_sub.
+    rewrite (exp_scoped_sub_agree _ (kk + List.length gs1' + im_nn Mv + ind_nu Dq) _
+               (sb_of_list τ (List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns ++ As1 ++ Ds))).
+    - replace (List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns ++ As1 ++ Ds)
+        with ((List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns) ++ (As1 ++ Ds)) by (rewrite <- !List.app_assoc; reflexivity).
+      rewrite sb_of_list_app, <- HDl, exp_wk_pat_falses_sb_of_list by exact HAl.
+      rewrite <- sb_of_list_app, <- !List.app_assoc; reflexivity.
+    - eapply exp_scoped_wk; [ exact Hs |].
+      intros x Hx.
+      pose proof (wk_pat_bound (List.repeat false kk ++ cargs_pat gs1') (im_np Dq Mi') x) as Hb.
+      rewrite pat_nargs_falses, pat_nargs_cargs_pat, List.length_app, List.repeat_length, length_cargs_pat in Hb.
+      unfold im_np, ind_nu in *; specialize (Hb ltac:(lia)); lia.
+    - intros x Hx.
+      replace (kk + List.length gs1' + im_nn Mv) with (List.length (Ns ++ As1 ++ Ds)) by (rewrite !List.length_app; lia).
+      apply sb_qn_view_agree; [ rewrite HUl; exact (decl_closed_head_scoped D Hc _ _ _ _ _ _ HMk Hh) |].
+      rewrite !List.length_app, vs_is_length; lia.
+  Qed.
+
+  (** The domains of the two shapes of an argument recursive in both, at
+      the two instances: equal. *)
+  Lemma vs_dom_eq : forall Γ c gs' gs gs1' t' gs2' gs1 t gs2 kk B' B τ Us Ns As1 Ds,
+      ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs -> gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 ->
+      List.length gs1' = List.length gs1 ->
+      List.nth_error (ptyp_doms t') kk = Some B' -> List.nth_error (ptyp_doms t) kk = Some B ->
+      List.length Us = ind_nu D -> List.length Ns = im_nn Mv -> List.length As1 = List.length gs1 -> List.length Ds = kk -> ⊢ Γ ->
+      Γ ⊢ˢ sb_of_list τ (Us ++ Ns ++ As1 ++ Ds) : sh_ctx (cargs_pat gs1) (List.firstn kk (ptyp_doms t)) ++ cargs_ctx p D Mv gs1 ++ im_params D Mv ->
+      exists i, Γ ⊢ B'[sb_of_list τ (List.map (fun I => I[sb_of_list Id Us]) Is ++ Ns ++ nonrec_exps gs1' As1 ++ Ds)]
+                ≈ B[sb_of_list τ (Us ++ Ns ++ nonrec_exps gs1 As1 ++ Ds)] : Typeω@i.
+  Proof.
+    intros * Hcon' Hcon Heq' Heq Hl1 HB' HB HUl HNl HAl HDl HΓ Hσ.
+    assert (Hkk : kk < ptyp_depth t) by (unfold ptyp_depth; apply List.nth_error_Some; congruence).
+    destruct (dt_view_doms _ _ _ _ (ctx_wf_gctx _ _ _ HΓ) Hdt Hl k Mk qc kc Is vm Dq i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 kk
+                HMk Hh Hq HMi' Hv HMv Hcon' Hcon Heq' Heq Hl1 Hkk) as [i H].
+    pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ H Hσ) as H'.
+    exists i; cbn [exp_sub] in H'.
+    unfold ptyp_dom_at in H'.
+    assert (EB : List.nth kk (ptyp_doms t) a_True = B) by (apply List.nth_error_nth; exact HB).
+    assert (EB' : List.nth kk (ptyp_doms t') a_True = B') by (apply List.nth_error_nth; exact HB').
+    rewrite EB, EB' in H'.
+    rewrite <- Hl1 in H'.
+    rewrite (vs_wk_inst B' c gs' gs1' t' gs2' kk τ Us Ns As1 Ds Hcon' Heq' HUl HNl ltac:(lia) HDl) in H'.
+    - replace (Us ++ Ns ++ As1 ++ Ds) with ((Us ++ Ns) ++ (As1 ++ Ds)) in H' by (rewrite <- !List.app_assoc; reflexivity).
+      rewrite (sb_of_list_app (Us ++ Ns) (As1 ++ Ds) τ), <- HDl, exp_wk_pat_falses_sb_of_list in H' by exact HAl.
+      rewrite <- (sb_of_list_app (Us ++ Ns) (nonrec_exps gs1 As1 ++ Ds) τ), <- !List.app_assoc in H'.
+      exact H'.
+    - pose proof (mc_recs _ _ (dc_members _ HcQ _ _ HMi') c gs' gs1' t' gs2' (cons_lookup_in _ _ _ Hcon') Heq') as Hst.
+      exact (ptyp_scoped_dom _ _ _ _ Hst HB').
   Qed.
 
   (** Parameters equal at the group's member are equal at the container's
