@@ -169,7 +169,7 @@ Qed.
 
 (** A term glued at a type of one of two related values is glued at that
     type of the other, at some universe. *)
-Lemma glu_transfer_per' : forall (j : uidx) (i : nat) a b P El Γ T M m, DG a ∈ glu_univ_elem j ↘ P ↘ El ->
+Lemma glu_transfer_per_elem : forall (j : uidx) (i : nat) a b P El Γ T M m, DG a ∈ glu_univ_elem j ↘ P ↘ El ->
     Dom a ≈ b ∈ per_univ i -> Γ ⊢ T ® P -> Γ ⊢ M : T ® m ∈ El ->
     exists (k : uidx) P' El', DG b ∈ glu_univ_elem k ↘ P' ↘ El' /\ Γ ⊢ T ® P' /\ Γ ⊢ M : T ® m ∈ El'.
 Proof.
@@ -276,7 +276,7 @@ Proof.
   assert (a' = a) as -> by (eapply functional_eval_exp; eassumption).
   assert (b' = a1) as -> by (eapply functional_eval_exp; eassumption).
   assert (Hlink : Dom a ≈ a2 ∈ per_univ j) by (eapply per_univ_trans'; [ exact Hab | exists R; exact HR ]).
-  destruct (glu_transfer_per' i j a a2 P El Δ T0[σ] N[σ] v0 Hgl Hlink ltac:(eapply glu_univ_elem_trm_typ; eassumption) HNg)
+  destruct (glu_transfer_per_elem i j a a2 P El Δ T0[σ] N[σ] v0 Hgl Hlink ltac:(eapply glu_univ_elem_trm_typ; eassumption) HNg)
     as (k' & P' & El' & Hg' & HP' & HM').
   apply (mk_glu_arg _ _ _ _ _ _ k' a2 P' El'); assumption.
 Qed.

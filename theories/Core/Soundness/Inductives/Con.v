@@ -197,11 +197,11 @@ End RecParams.
     coherence of the view with its container.  The element may be glued at
     any type of the container's value: an argument after some of its
     shape's domains is glued at the type its [Π]'s gluing gives. *)
-Definition glu_view_end_ok (p : qname) (D : ind_decl) (ups : list domain)
+Definition glu_view_end_at (p : qname) (D : ind_decl) (ups : list domain)
     (NEl : nat -> nat -> list domain -> glu_exp_pred)
     (AEl : nat -> list domain -> String.string -> nat -> list domain -> glu_exp_pred)
-    (DP : nat -> list domain -> exp -> glu_typ_pred) (DEl : nat -> list domain -> exp -> glu_exp_pred) : Prop :=
-  forall j Mj qc kc Is vm Dq cups cs bs bs1 Δ Us Q W N v (i : uidx) P El,
+    (DP : nat -> list domain -> exp -> glu_typ_pred) (DEl : nat -> list domain -> exp -> glu_exp_pred) (j : nat) : Prop :=
+  forall Mj qc kc Is vm Dq cups cs bs bs1 Δ Us Q W N v (i : uidx) P El,
     ind_member D j = Some Mj -> im_head Mj = mh_view qc kc Is vm -> ind_lookup gc_deps gc_stack qc = Some Dq ->
     ⟦ Is ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil ups ↘ cups -> per_gargs (List.rev (ind_uparams Dq)) nil nil cups cs ->
     tele_rel (canon_nparams_rel D ups j) (List.rev (im_nparams Mj)) bs bs1 ->
@@ -212,6 +212,13 @@ Definition glu_view_end_ok (p : qname) (D : ind_decl) (ups : list domain)
     forall Δ' φ Us' Q', Δ' ⊢ᵏ φ : Δ -> List.length Us' = ind_nu D ->
       exps_eq_at Δ' (im_params D Mj) (List.map (fun P => P[φ]ʷ) (Us ++ Q)) (Us' ++ Q') ->
       ind_glu_elem p D ups NEl AEl DP DEl j Δ' Us' Q' N[φ]ʷ v.
+
+(** At every member. *)
+Definition glu_view_end_ok (p : qname) (D : ind_decl) (ups : list domain)
+    (NEl : nat -> nat -> list domain -> glu_exp_pred)
+    (AEl : nat -> list domain -> String.string -> nat -> list domain -> glu_exp_pred)
+    (DP : nat -> list domain -> exp -> glu_typ_pred) (DEl : nat -> list domain -> exp -> glu_exp_pred) : Prop :=
+  forall j, glu_view_end_at p D ups NEl AEl DP DEl j.
 
 (** ** A Constructor at Glued Parameters and Arguments *)
 
@@ -523,6 +530,7 @@ Section ConGlu.
       tele_prefix_rel (canon_args_rel D ups k ns c) (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 fa) (nonrec_arg_vals gs1 fa) ->
       (forall R, EF cargs_ctx p D Mk gs1 ++ im_params D Mk ≈ cargs_ctx p D Mk gs1 ++ im_params D Mk ∈ per_ctx_env ↘ R ->
          R (env_args nil (ups ++ ns ++ fa)) (env_args nil (ups ++ ns ++ fa))) ->
+      glu_view_end_at p D ups NEl AEl DP DEl (ptyp_mem t) ->
       forall t' kk ys Δ τ Us Ys SbC W N v a (i : uidx) P El,
         ptyp_skip kk t = t' -> kk <= List.length (ptyp_doms t) ->
         tele_prefix_rel (shape_doms_rel (canon_doms_rel ups k) ns (nonrec_arg_vals gs1 fa) (ptyp_doms t)) kk ys ys ->
@@ -538,7 +546,7 @@ Section ConGlu.
         Δ ⊢ N : W ® v ∈ El ->
         glu_rec p D ups NEl AEl DP DEl k Δ Us (ns ++ nonrec_arg_vals gs1 fa ++ ys) t' (ptyp_ty_at p D Us (sb_of_list τ (Us ++ Ys)) t') N v.
   Proof.
-    intros gs1 t gs2 ns fa Heq Hlns Hlfa Hnsd Hp INV.
+    intros gs1 t gs2 ns fa Heq Hlns Hlfa Hnsd Hp INV Hvt.
     pose proof con_canon as Hcp.
     pose proof (decl_closed_params_ass D k Mk Hc HMk) as HassP.
     destruct (vg_cargs_sem_all p D Hg Hcv k Mk c gs HMk Hcon gs1 (ca_rec t :: gs2) Heq) as [HC1 Hw1].
@@ -744,7 +752,7 @@ Section ConGlu.
         apply ERa in Hva; rewrite Hsk in Hva.
         destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hva) as (bs2 & bs3 & Ebs2 & Ebs3 & _ & _ & Hgv).
         pose proof (functional_eval_exps' _ _ _ _ Ebs2 Ebs) as ->; pose proof (functional_eval_exps' _ _ _ _ Ebs3 Ebs) as ->.
-        exact (Hview (ptyp_mem t) Mj qc kc Is vm Dq cups cs bs bs1 Δ Us Qn W N v i P El HMj Hh Hq Ecups Hgc Hrel Hgl HN Hgv HQp
+        exact (Hvt Mj qc kc Is vm Dq cups cs bs bs1 Δ Us Qn W N v i P El HMj Hh Hq Ecups Hgc Hrel Hgl HN Hgv HQp
                  Δ' φ Us' Q' Hφ HUl' HQ').
   Qed.
 
@@ -873,7 +881,7 @@ Section ConGlu.
         by (rewrite List.length_app, length_nonrec_exps by exact HlAs1; lia).
       assert (Hfinal : glu_rec p D ups NEl AEl DP DEl k Δ Us (ns ++ nonrec_arg_vals gs1 fa ++ nil) t
                          (ptyp_ty_at p D Us (sb_of_list Id (Us ++ (Ns ++ nonrec_exps gs1 As1))) t) N v).
-      { eapply (con_rec_glu gs1 t gs2 ns fa Heq Lns Hlfa Hnsr Hp1 INV t 0 nil Δ Id Us (Ns ++ nonrec_exps gs1 As1)
+      { eapply (con_rec_glu gs1 t gs2 ns fa Heq Lns Hlfa Hnsr Hp1 INV (Hview (ptyp_mem t)) t 0 nil Δ Id Us (Ns ++ nonrec_exps gs1 As1)
                   SbC0 A N v a1 i' P1 El1);
           [ reflexivity | lia | apply tele_prefix_rel_nil | constructor | exact HΔ | exact HUs | exact HlNs'
           | cbn [List.firstn doms_ctx List.map List.rev List.app]; exact HSbC0
