@@ -3018,43 +3018,89 @@ Section GroupElim.
         Lemma bty_eq : forall A0, elim_bty p k Mk c gs A0 Us = A0[τb].
         Proof. reflexivity. Qed.
 
-        Lemma gsub_bty : gsub (elim_bctx p D Mk gs As Us ++ Γ) τb (elim_mctx p D k Mk Us ++ Γ).
+        Lemma bty_HB : ⊨ elim_bctx p D Mk gs As Us ++ Γ.
+        Proof. exact HB. Qed.
+
+        Lemma bty_wk : elim_bctx p D Mk gs As Us ++ Γ ⊨ʷ (wk_shiftn nb) : Γ.
+        Proof.
+          replace nb with (List.length (elim_bctx p D Mk gs As Us)) by (rewrite length_elim_bctx; unfold nb; lia).
+          apply rel_wk_under_ctx_shiftn; exact bty_HB.
+        Qed.
+
+        Lemma bty_us : forall j U T0, List.nth_error Ub j = Some U ->
+            List.nth_error (tele_insts (ind_uparams D) Id Ub) j = Some T0 -> elim_bctx p D Mk gs As Us ++ Γ ⊨ U : T0.
+        Proof.
+          intros j U' T' HU HT; unfold Ub in *.
+          rewrite <- tele_insts_closed_wk in HT by (first [ exact Ua | exact (decl_uparams_closed D Hc) ]).
+          apply nth_error_map_inv in HU as (U & HU & ->); apply nth_error_map_inv in HT as (T0 & HT & ->).
+          exact (rel_exp_under_ctx_wk bty_wk (HUs _ _ _ HU HT)).
+        Qed.
+
+        Lemma bty_vars : forall τ, (forall y, y < ind_nu D -> sentry_exp (τ y) = (sentry_exp (τU y))[wk_shiftn nb]ʷ) ->
+            forall j N T0, List.nth_error Nb j = Some N ->
+              List.nth_error (tele_insts (im_nparams Mk) τ Nb) j = Some T0 ->
+              elim_bctx p D Mk gs As Us ++ Γ ⊨ N : T0.
+        Proof.
+          set (IHs := ihs_ctx_aux (im_nn Mk) As Us (List.length gs) nil 0 gs).
+          set (Cs := tele_sub (cargs_ctx p D Mk gs) (sb_qn (im_nn Mk) τU)).
+          set (Ns := tele_sub (im_nparams Mk) τU).
+          assert (HBeq : elim_bctx p D Mk gs As Us ++ Γ = (IHs ++ Cs) ++ Ns ++ Γ) by (unfold elim_bctx; rewrite <- !List.app_assoc; reflexivity).
+          assert (HlI : List.length IHs = cargs_nrec gs) by (unfold IHs; apply length_ihs_ctx_aux).
+          assert (HlC : List.length Cs = List.length gs) by (unfold Cs; rewrite length_tele_sub, length_cargs_ctx; reflexivity).
+          intros τ Hτ j N T0 HN HT.
+          unfold Nb in HN, HT.
+          replace (vars_from (cargs_nrec gs + List.length gs) (im_nn Mk))
+            with (vars_from (List.length (IHs ++ Cs)) (List.length (im_nparams Mk))) in HN, HT
+            by (rewrite List.length_app, HlI, HlC, length_im_nparams; reflexivity).
+          destruct (vars_tele_lookup (IHs ++ Cs) (im_nparams Mk) τU τ Γ (ind_nu D)
+                      (decl_closed_nparams_ass D Hc _ _ HMk) (decl_nparams_mvc _ _ _ Hdt _ _ HMk) (decl_closed_nparams_scoped D Hc _ _ HMk)
+                      ltac:(intros y Hy; rewrite Hτ by exact Hy; rewrite List.length_app, HlI, HlC, length_im_nparams; unfold nb;
+                            f_equal; f_equal; lia)
+                      _ _ _ HN HT) as (x & -> & Hx).
+          rewrite HBeq; apply valid_exp_under_ctx_vlookup; [ exact Hx | rewrite <- HBeq; exact bty_HB ].
+        Qed.
+
+        (** The constructor of the branch's type, in the branch's context. *)
+        Lemma bty_con_valid : elim_bctx p D Mk gs As Us ++ Γ
+            ⊨ apps (a_con (fst (im_ref p k Mk)) (snd (im_ref p k Mk)) c) (im_pre Mk Ub ++ Nb ++ Ab) : ind_mty p D k Ub Nb.
         Proof.
           pose proof (cons_lookup_in _ _ _ Hcon) as Hin.
           set (IHs := ihs_ctx_aux (im_nn Mk) As Us (List.length gs) nil 0 gs).
           set (Cs := tele_sub (cargs_ctx p D Mk gs) (sb_qn (im_nn Mk) τU)).
           set (Ns := tele_sub (im_nparams Mk) τU).
-          pose proof HB as HB0; fold As in HB0.
           assert (HBeq : elim_bctx p D Mk gs As Us ++ Γ = (IHs ++ Cs) ++ Ns ++ Γ) by (unfold elim_bctx; rewrite <- !List.app_assoc; reflexivity).
           assert (HlI : List.length IHs = cargs_nrec gs) by (unfold IHs; apply length_ihs_ctx_aux).
-          assert (HlC : List.length Cs = List.length gs) by (unfold Cs; rewrite length_tele_sub, length_cargs_ctx; reflexivity).
+          apply (con_apps_ref_valid P p D HP HPD _ k Mk c gs Ub Nb Ab bty_HB HMk Hcon).
+          + unfold Ub; rewrite List.length_map; exact HUl.
+          + exact bty_us.
+          + unfold Nb; apply length_vars_from.
+          + apply (bty_vars (sb_of_list Id Ub)).
+            intros y Hy; unfold Ub; rewrite sb_of_list_map by lia; reflexivity.
+          + unfold Ab; apply length_vars_from.
+          + intros j N T0 HN HT.
+            unfold Ab in HN, HT.
+            replace (vars_from (cargs_nrec gs) (List.length gs)) with (vars_from (List.length IHs) (List.length (cargs_ctx p D Mk gs))) in HN, HT
+              by (rewrite HlI, length_cargs_ctx; reflexivity).
+            destruct (vars_tele_lookup IHs (cargs_ctx p D Mk gs) (sb_qn (im_nn Mk) τU) (sb_of_list Id (Ub ++ Nb)) (Ns ++ Γ) (im_np D Mk)
+                        (cargs_ctx_aux_ass _ _ _ _ _) (cargs_ctx_mvc _ _ _ _ _ _ _ _ Hdt Hc HMk Hin)
+                        (decl_closed_cargs_scoped D Hc _ _ _ _ _ HMk Hin)) with (k := j) (N := N) (T := T0)
+              as (x & -> & Hx).
+            * intros y Hy; rewrite length_cargs_ctx, HlI.
+              destruct (Nat.lt_ge_cases y (im_nn Mk)) as [Hy1 | Hy1].
+              -- unfold Nb; rewrite sb_of_list_app, sb_of_list_vars by lia; rewrite sb_qn_lt by exact Hy1; cbn; f_equal; lia.
+              -- replace y with (List.length Nb + (y - im_nn Mk)) at 1 by (unfold Nb; rewrite length_vars_from; lia).
+                 rewrite sb_of_list_app, sb_of_list_ge; unfold Ub; rewrite sb_of_list_map by (rewrite HUl; unfold im_np in *; lia).
+                 rewrite sb_qn_ge by exact Hy1; rewrite <- sentry_exp_wk, exp_wk_wk; apply exp_wk_wk_eq; intros z; cbn; unfold nb; lia.
+            * exact HN.
+            * exact HT.
+            * rewrite HBeq, <- List.app_assoc; apply valid_exp_under_ctx_vlookup; [ exact Hx | rewrite List.app_assoc, <- HBeq; exact bty_HB ].
+        Qed.
+
+        Lemma gsub_bty : gsub (elim_bctx p D Mk gs As Us ++ Γ) τb (elim_mctx p D k Mk Us ++ Γ).
+        Proof.
+          set (Ns := tele_sub (im_nparams Mk) τU).
           assert (HlN : List.length Ns = im_nn Mk) by (unfold Ns; rewrite length_tele_sub, length_im_nparams; reflexivity).
-          assert (Hwj : elim_bctx p D Mk gs As Us ++ Γ ⊨ʷ (wk_shiftn nb) : Γ).
-          { replace nb with (List.length (elim_bctx p D Mk gs As Us))
-              by (rewrite length_elim_bctx; unfold nb; lia).
-            apply rel_wk_under_ctx_shiftn; exact HB0. }
-          pose proof (gsub_wk _ _ _ Hwj HB0 HΓ) as Hg0.
-          assert (HUs' : forall j U T0, List.nth_error Ub j = Some U ->
-                     List.nth_error (tele_insts (ind_uparams D) Id Ub) j = Some T0 -> elim_bctx p D Mk gs As Us ++ Γ ⊨ U : T0).
-          { intros j U' T' HU HT; unfold Ub in *.
-            rewrite <- tele_insts_closed_wk in HT by (first [ exact Ua | exact (decl_uparams_closed D Hc) ]).
-            apply nth_error_map_inv in HU as (U & HU & ->); apply nth_error_map_inv in HT as (T0 & HT & ->).
-            exact (rel_exp_under_ctx_wk Hwj (HUs _ _ _ HU HT)). }
-          assert (Hvars : forall τ, (forall y, y < ind_nu D -> sentry_exp (τ y) = (sentry_exp (τU y))[wk_shiftn nb]ʷ) ->
-                     forall j N T0, List.nth_error Nb j = Some N ->
-                       List.nth_error (tele_insts (im_nparams Mk) τ Nb) j = Some T0 ->
-                       elim_bctx p D Mk gs As Us ++ Γ ⊨ N : T0).
-          { intros τ Hτ j N T0 HN HT.
-            unfold Nb in HN, HT.
-            replace (vars_from (cargs_nrec gs + List.length gs) (im_nn Mk))
-              with (vars_from (List.length (IHs ++ Cs)) (List.length (im_nparams Mk))) in HN, HT
-              by (rewrite List.length_app, HlI, HlC, length_im_nparams; reflexivity).
-            destruct (vars_tele_lookup (IHs ++ Cs) (im_nparams Mk) τU τ Γ (ind_nu D)
-                        (decl_closed_nparams_ass D Hc _ _ HMk) (decl_nparams_mvc _ _ _ Hdt _ _ HMk) (decl_closed_nparams_scoped D Hc _ _ HMk)
-                        ltac:(intros y Hy; rewrite Hτ by exact Hy; rewrite List.length_app, HlI, HlC, length_im_nparams; unfold nb;
-                              f_equal; f_equal; lia)
-                        _ _ _ HN HT) as (x & -> & Hx).
-            rewrite HBeq; apply valid_exp_under_ctx_vlookup; [ exact Hx | rewrite <- HBeq; exact HB0 ]. }
+          pose proof (gsub_wk _ _ _ bty_wk bty_HB HΓ) as Hg0.
           apply gsub_of_list; [ exact Hg0 | apply elim_mctx_ass; [ exact Hc | exact HMk ] | exact (HMall _ _ HMk)
                               | unfold Nb; rewrite List.length_app, length_vars_from, length_elim_mctx; cbn; lia |].
           intros j N T0 HN HT.
@@ -3068,7 +3114,7 @@ Section GroupElim.
           destruct (Nat.lt_ge_cases j (im_nn Mk)) as [Hk | Hk].
           - rewrite List.nth_error_app1 in HN by (unfold Nb; rewrite length_vars_from; lia); rewrite List.nth_error_app1 in HT by lia.
             unfold Ns in HT; rewrite tele_insts_tele_sub in HT.
-            apply (Hvars _ ltac:(intros y Hy; cbn [sb_compose]; rewrite <- sentry_exp_sub, exp_sub_of_wk; reflexivity) j); assumption.
+            apply (bty_vars _ ltac:(intros y Hy; cbn [sb_compose]; rewrite <- sentry_exp_sub, exp_sub_of_wk; reflexivity) j); assumption.
           - rewrite List.nth_error_app2 in HN, HT by (rewrite ?Hl2; unfold Nb; rewrite ?length_vars_from; lia).
             unfold Nb in HN; rewrite length_vars_from in HN; rewrite Hl2 in HT.
             destruct (j - im_nn Mk) as [| j'] eqn:Hk'; cbn in HN, HT; [| destruct j'; discriminate ].
@@ -3076,31 +3122,7 @@ Section GroupElim.
             rewrite ind_head_inst by (try exact Hc; try exact HUl; unfold Nb; apply length_vars_from).
             rewrite (List.map_ext (fun U => U[sb_of_wk (wk_shiftn nb)]) (fun U => U[wk_shiftn nb]ʷ)) by (intros; apply exp_sub_of_wk);
               fold Ub.
-            clear Hk' Hk Hl2 j.
-            apply (con_apps_ref_valid P p D HP HPD _ k Mk c gs Ub Nb Ab HB0 HMk Hcon).
-            + unfold Ub; rewrite List.length_map; exact HUl.
-            + exact HUs'.
-            + unfold Nb; apply length_vars_from.
-            + apply (Hvars (sb_of_list Id Ub)).
-              intros y Hy; unfold Ub; rewrite sb_of_list_map by lia; reflexivity.
-            + unfold Ab; apply length_vars_from.
-            + intros j N T0 HN HT.
-              unfold Ab in HN, HT.
-              replace (vars_from (cargs_nrec gs) (List.length gs)) with (vars_from (List.length IHs) (List.length (cargs_ctx p D Mk gs))) in HN, HT
-                by (rewrite HlI, length_cargs_ctx; reflexivity).
-              destruct (vars_tele_lookup IHs (cargs_ctx p D Mk gs) (sb_qn (im_nn Mk) τU) (sb_of_list Id (Ub ++ Nb)) (Ns ++ Γ) (im_np D Mk)
-                          (cargs_ctx_aux_ass _ _ _ _ _) (cargs_ctx_mvc _ _ _ _ _ _ _ _ Hdt Hc HMk Hin)
-                          (decl_closed_cargs_scoped D Hc _ _ _ _ _ HMk Hin)) with (k := j) (N := N) (T := T0)
-                as (x & -> & Hx).
-              * intros y Hy; rewrite length_cargs_ctx, HlI.
-                destruct (Nat.lt_ge_cases y (im_nn Mk)) as [Hy1 | Hy1].
-                -- unfold Nb; rewrite sb_of_list_app, sb_of_list_vars by lia; rewrite sb_qn_lt by exact Hy1; cbn; f_equal; lia.
-                -- replace y with (List.length Nb + (y - im_nn Mk)) at 1 by (unfold Nb; rewrite length_vars_from; lia).
-                   rewrite sb_of_list_app, sb_of_list_ge; unfold Ub; rewrite sb_of_list_map by (rewrite HUl; unfold im_np in *; lia).
-                   rewrite sb_qn_ge by exact Hy1; rewrite <- sentry_exp_wk, exp_wk_wk; apply exp_wk_wk_eq; intros z; cbn; unfold nb; lia.
-              * exact HN.
-              * exact HT.
-              * rewrite HBeq, <- List.app_assoc; apply valid_exp_under_ctx_vlookup; [ exact Hx | rewrite List.app_assoc, <- HBeq; exact HB0 ].
+            exact bty_con_valid.
         Qed.
       End Branch.
     End Motives.
