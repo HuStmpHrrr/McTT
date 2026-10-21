@@ -390,6 +390,54 @@ Proof.
   exact (sub_preserves_exp _ _ _ _ _ _ _ H Hs).
 Qed.
 
+(** ** Weakening Then Extending
+
+    A substitution weakened past one variable, then extended by a term at
+    a weakening: the substitution at the weakening. *)
+Lemma sb_wk_shift_extend : forall σ φ e, sb_eq (sb_wk σ ↑ ⨟ sb_extend (ι φ) e) (sb_wk σ φ).
+Proof.
+  intros σ φ e x; unfold sb_wk; cbn [sb_compose].
+  rewrite sentry_sub_wk, (sentry_sub_sb_eq _ _ (ι φ)) by (intros y; reflexivity).
+  apply sentry_sub_of_wk.
+Qed.
+
+Lemma exp_shift_extend_wk_e : forall U φ e, U[↑]ʷ[sb_extend (ι φ) e] = U[φ]ʷ.
+Proof. intros; rewrite exp_sub_shift; apply exp_sub_of_wk_ext; intros [|?]; reflexivity. Qed.
+
+Lemma blocks_step : forall Bks σ φ e,
+    blocks_sub (blocks_wk (blocks_sub Bks σ) ↑) (sb_extend (ι φ) e) = blocks_sub Bks (sb_wk σ φ).
+Proof.
+  intros; rewrite <- blocks_sub_of_wk, !blocks_sub_sub; apply blocks_sub_sb_eq.
+  etransitivity; [ apply sb_compose_cong_r; intros x; reflexivity | symmetry; apply sb_wk_compose ].
+Qed.
+
+(** Substitutions with the same terms at every variable act alike on the
+    terms of a shape, which have no free module variable. *)
+Definition sb_exp_agree (σ τ : sub) : Prop := forall x, sentry_exp (σ x) = sentry_exp (τ x).
+
+Lemma sb_exp_agree_q : forall σ τ, sb_exp_agree σ τ -> sb_exp_agree (q σ) (q τ).
+Proof. intros σ τ H; exact (sb_q_exp_agree σ τ H). Qed.
+
+Lemma ptyp_ihty_agree_exp : forall t As β β' σ σ' x, List.Forall (exp_mvc 0) (ptyp_doms t) ->
+    List.Forall (exp_mvc 0) (ptyp_ps t) -> sb_eq β β' -> sb_exp_agree σ σ' ->
+    ptyp_ihty As β σ x t = ptyp_ihty As β' σ' x t.
+Proof.
+  induction t as [j Ps | B t IH]; intros * Hd Hp Hβ Hσ; cbn in *.
+  - apply exp_sub_sb_eq; etransitivity; [ apply sb_of_list_cong, Hβ |].
+    rewrite (List.map_ext_in (fun P => P[σ]) (fun P => P[σ']));
+      [ reflexivity | intros P HP; apply exp_mvc_sub_agree; [ exact (proj1 (List.Forall_forall _ _) Hp P HP) | exact Hσ ] ].
+  - inversion Hd; subst; f_equal; [ apply exp_mvc_sub_agree; assumption |].
+    apply IH; [ assumption | exact Hp | | apply sb_exp_agree_q; exact Hσ ].
+    intros z; cbn [sb_compose]; rewrite (Hβ z); reflexivity.
+Qed.
+
+Lemma sb_exp_agree_var0 : forall σ, sb_exp_agree (q σ ⨟ ((ι ↑),,#0)) (q σ ⨟ sb_extend (ι ↑) (se_var 0)).
+Proof.
+  intros σ [| y]; cbn [sb_compose]; [ reflexivity |].
+  f_equal; change ((q σ) (S y)) with (sentry_wk (σ y) ↑).
+  rewrite !sentry_sub_wk; apply sentry_sub_sb_eq; intros z; reflexivity.
+Qed.
+
 (** ** Glued Arguments along Related Types *)
 
 Lemma tele_insts_base_agree : forall Δ k σ σ' Ms, tele_ass Δ -> ctx_scoped k Δ ->
