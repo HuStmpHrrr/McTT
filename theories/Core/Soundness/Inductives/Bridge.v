@@ -1223,6 +1223,103 @@ Section ToGroup.
         + exact (Hboth gs1 t gs2 gs1' t' gs2' N A x Heq Heq' Hl1 HN HA Hx).
     Qed.
   End AtCon.
+
+  (** *** Along an Argument Recursive in Both *)
+
+  Section WalkCtx.
+    Variables (i' : nat) (Mi' : imember) (v : nat) (Mv : imember) (c : String.string) (gs' gs : list carg).
+    Hypotheses (HMi' : ind_member Dq i' = Some Mi') (HVM : view_member p D qc Dq vm i' Mi' v Mv)
+      (Hcon' : ind_con Mi' c = Some gs') (Hcon : ind_con Mv c = Some gs) (Hcorr : cargs_corr vm gs' gs).
+    Let Hv := vmb_v _ _ _ _ _ _ _ _ _ HVM.
+    Let HMv := vmb_mem _ _ _ _ _ _ _ _ _ HVM.
+    Variables (gs1' : list carg) (t' : ptyp) (gs2' gs1 : list carg) (t : ptyp) (gs2 : list carg).
+    Hypotheses (Heq' : gs' = gs1' ++ ca_rec t' :: gs2') (Heq : gs = gs1 ++ ca_rec t :: gs2) (Hl1 : List.length gs1' = List.length gs1).
+    Variables (ns vp : list domain).
+    Hypotheses (Hns' : tele_rel (canon_nparams_rel Dq cups i') (List.rev (im_nparams Mi')) ns ns) (Hlvp : List.length vp = List.length gs1)
+      (Hpc : tele_prefix_rel (canon_args_rel Dq cups i' ns c) (List.length (cargs_nonrec gs1'))
+               (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp)).
+    Let VMP := view_member_params_of p D Hg Hcv k Mk qc kc Is vm Dq HMk Hh Hq ups cups Hgu Hu Ecups i' Mi' v Mv HMi' Hv HMv ns ns Hns'.
+
+    Lemma wk_corr : cargs_corr vm gs1' gs1 /\ List.nth_error vm (ptyp_mem t') = Some (ptyp_mem t) /\ ptyp_depth t' = ptyp_depth t.
+    Proof.
+      destruct (cargs_corr_split vm gs1' (ca_rec t' :: gs2') gs1 (ca_rec t :: gs2) ltac:(rewrite <- Heq', <- Heq; exact Hcorr) Hl1)
+        as [Hc1 Hc2].
+      cbn in Hc2; destruct Hc2 as (Hm & Hd & _); exact (conj Hc1 (conj Hm Hd)).
+    Qed.
+
+    Lemma wk_lms : List.length ns = im_nn Mv.
+    Proof. exact (params_length _ _ _ _ _ _ _ _ _ VMP). Qed.
+
+    Lemma wk_inv : exists vsX, view_args_inv p D qc Dq ups cups Mi' v Mv c ns gs1' gs1 vp vsX.
+    Proof.
+      exact (view_args_complete p D Hg Hcv k Mk qc kc Is vm Dq HMk Hh Hq HcvQ ups cups Hgu Hu Ecups i' Mi' v Mv HMi' Hv HMv
+               c gs' gs Hcon' Hcon Hcorr ns wk_lms (params_group_values _ _ _ _ _ _ _ _ _ VMP)
+               (params_container_values _ _ _ _ _ _ _ _ _ VMP) gs1 gs1' (ca_rec t' :: gs2') (ca_rec t :: gs2) vp
+               Heq' Heq (proj1 wk_corr) Hlvp Hpc).
+    Qed.
+
+    Lemma wk_ns_g : tele_rel (canon_nparams_rel D ups v) (List.rev (im_nparams Mv)) ns ns.
+    Proof. exact (view_nparams_transfer p D Hg Hcv k Mk qc kc Is vm Dq HMk Hh Hq ups cups Hgu Hu Ecups i' Mi' v Mv HMi' Hv HMv _ _ Hns'). Qed.
+
+    Lemma wk_pg : tele_prefix_rel (canon_args_rel D ups v ns c) (List.length (cargs_nonrec gs1)) (nonrec_arg_vals gs1 vp) (nonrec_arg_vals gs1 vp).
+    Proof. destruct wk_inv as (vsX & [_ _ HnXg _ _ HaX]); rewrite HnXg in HaX; exact HaX. Qed.
+
+    Lemma wk_doms_agree : forall kk B' B ys, List.nth_error (ptyp_doms t') kk = Some B' -> List.nth_error (ptyp_doms t) kk = Some B ->
+        tele_prefix_rel (shape_doms_rel (canon_doms_rel cups i') ns (nonrec_arg_vals gs1' vp) (ptyp_doms t')) kk ys ys ->
+        (canon_doms_rel cups i' (ns ++ nonrec_arg_vals gs1' vp ++ ys) B' <~> canon_doms_rel ups v (ns ++ nonrec_arg_vals gs1 vp ++ ys) B).
+    Proof.
+      intros kk B' B ys HB' HB Hy'.
+      exact (shape_doms_rel_agree p D Hg Hcv k Mk qc kc Is vm Dq HMk Hh Hq HcvQ ups cups Hgu Hu Ecups i' Mi' v Mv HMi' Hv HMv
+               c gs' gs Hcon' Hcon Hcorr ns wk_lms (params_group_values _ _ _ _ _ _ _ _ _ VMP)
+               (params_container_values _ _ _ _ _ _ _ _ _ VMP) gs1' t' gs2' gs1 t gs2 vp kk B' B ys
+               Heq' Heq (proj1 wk_corr) Hlvp Hpc HB' HB Hy').
+    Qed.
+
+    (** The values of the two domains of the two shapes, after domains
+        related at the container's: related. *)
+    Lemma wk_dom_rel : forall kk ys B' B b0' b0, List.nth_error (ptyp_doms t') kk = Some B' -> List.nth_error (ptyp_doms t) kk = Some B ->
+        tele_prefix_rel (shape_doms_rel (canon_doms_rel cups i') ns (nonrec_arg_vals gs1' vp) (ptyp_doms t')) kk ys ys ->
+        ⟦ B' ⟧ env_args nil (cups ++ ns ++ nonrec_arg_vals gs1' vp ++ ys) ↘ b0' ->
+        ⟦ B ⟧ env_args nil (ups ++ ns ++ nonrec_arg_vals gs1 vp ++ ys) ↘ b0 ->
+        exists i, Dom b0' ≈ b0 ∈ per_univ i.
+    Proof.
+      intros kk ys B' B b0' b0 HB' HB Hy' Eb0' Eb0.
+      destruct wk_corr as (Hc1 & _ & Hdp).
+      pose proof wk_lms as Hlms.
+      pose proof (vmb_nn _ _ _ _ _ _ _ _ _ HVM) as Hnn.
+      destruct wk_inv as (vsX & Hinv); pose proof Hinv as [HlX HnX HnXg HgX HcX _].
+      assert (Hd : kk < List.length (ptyp_doms t)) by (unfold ptyp_depth in Hdp; rewrite <- Hdp; apply List.nth_error_Some; congruence).
+      assert (Hd' : kk < List.length (ptyp_doms t')) by (apply List.nth_error_Some; congruence).
+      destruct (view_shape_walk p D Hg Hcv k Mk qc kc Is vm Dq HMk Hh Hq HcvQ ups cups Hgu Hu Ecups i' Mi' v Mv HMi' Hv HMv
+                  c gs' gs Hcon' Hcon Hcorr ns Hlms gs1' t' gs2' gs1 t gs2 vp vsX Heq' Heq Hc1 Hinv kk ys ltac:(lia) Hy')
+        as [Hgd Hcd (i & R & ag & ac & Eag & Eac & HR)].
+      pose proof Hy' as Hyl; rewrite tele_prefix_rel_iff in Hyl; destruct Hyl as (Hly & _ & _).
+      destruct (vg_dom_types p D Hg Hcv v Mv c gs gs1 t gs2 kk B ups ns vsX ys HMv Hcon Heq HB Hu Hlms HlX Hly
+                  (walk_group_prefix p D ups Hu Mv ns Hlms gs1 t vsX kk ys HlX HgX Hgd)) as (ig & Rg & bg & bg' & Ebg & Ebg' & HRg).
+      destruct (vg_dom_types qc Dq HgQ HcvQ i' Mi' c gs' gs1' t' gs2' kk B' cups ns vsX ys HMi' Hcon' Heq' HB' length_cups
+                  ltac:(lia) ltac:(lia) Hly
+                  (walk_container_prefix p D Hg k Mk qc kc Is vm Dq HMk Hh Hq ups cups Hu Ecups i' Mi' v Mv HMi' Hv HMv ns Hlms
+                     gs1' t' vsX kk ys ltac:(lia) HcX Hcd)) as (ic & Rc & bc & bc' & Ebc & Ebc' & HRc).
+      rewrite HnXg in Ebg'; rewrite HnX in Ebc'.
+      pose proof (functional_eval_exp _ _ _ _ Ebg' Eb0) as ->.
+      pose proof (functional_eval_exp _ _ _ _ Ebc' Eb0') as ->.
+      destruct (Tele.ptyp_skip_lt kk t Hd) as (B0 & HB0 & Hs); rewrite HB in HB0; injection HB0 as <-.
+      destruct (Tele.ptyp_skip_lt kk t' Hd') as (B0' & HB0' & Hs'); rewrite HB' in HB0'; injection HB0' as <-.
+      rewrite Hs in Eag; rewrite Hs' in Eac; cbn [ptyp_ty] in Eag, Eac.
+      assert (Ag : ag = Πᵈ bg (env_args nil (ups ++ ns ++ vsX ++ ys))
+                          (ptyp_ty p D (im_nn Mv) (false :: List.repeat false kk ++ cargs_pat gs1) (ptyp_skip (S kk) t)))
+        by (eapply functional_eval_exp; [ exact Eag | econstructor; exact Ebg ]).
+      assert (Ac : ac = Πᵈ bc (env_args nil (cups ++ ns ++ vsX ++ ys))
+                          (ptyp_ty qc Dq (im_nn Mi') (false :: List.repeat false kk ++ cargs_pat gs1') (ptyp_skip (S kk) t')))
+        by (eapply functional_eval_exp; [ exact Eac | econstructor; exact Ebc ]).
+      subst ag ac; clear Eag Eac.
+      basic_invert_per_univ_elem HR.
+      match goal with H : per_univ_elem _ ?r bg bc |- _ => rename H into Hin end.
+      exists ic.
+      eapply per_univ_trans'; [ exact (per_univ_sym' _ _ _ (ex_intro _ Rc HRc)) |].
+      eapply per_univ_trans'; [ exact (per_univ_sym' _ _ _ (ex_intro (fun R => per_univ_elem _ R bg bc) _ Hin)) | exact (ex_intro _ Rg HRg) ].
+    Qed.
+  End WalkCtx.
 End ToGroup.
 
 End Fixed_GCtx.
