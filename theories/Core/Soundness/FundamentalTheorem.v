@@ -73,7 +73,8 @@ Proof.
     | eapply glu_exp_eq_elim_cong | eapply glu_exp_eq_pi_cong | eapply glu_exp_eq_fn_cong
     | eapply glu_exp_eq_app_cong | eapply glu_exp_eq_let_cong | eapply glu_exp_eq_let_mod_cong
     | eapply glu_exp_eq_mem_cong with (R := R) (A := A) | eapply glu_exp_eq_var | eapply glu_exp_eq_pi_beta
-    | eapply glu_exp_eq_elim_iota | eapply glu_exp_eq_let_zeta | eapply glu_exp_eq_let_mod_zeta
+    | eapply glu_exp_eq_elim_iota | eapply glu_exp_eq_elim_view | eapply glu_exp_eq_con_view
+    | eapply glu_exp_eq_let_zeta | eapply glu_exp_eq_let_mod_zeta
     | eapply glu_exp_eq_mem_delta | eapply glu_exp_eq_var_delta | eapply glu_exp_eq_fn_eta
     | eapply glu_exp_eq_true_eta | eapply glu_exp_eq_subtyp | eapply glu_exp_eq_sym | eapply glu_exp_eq_trans
     | (** subtyping *)
@@ -132,12 +133,14 @@ Lemma glu_entry_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 Θs Ξs,
     glu_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof. intros; exact I. Qed.
 
-Lemma glu_entry_indalias : forall Θ Ξ pv Δ p Ns D Θ2 Ξ2 Θs Ξs,
-    tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> ind_lookup Θ Ξ p = Some D -> List.length Ns <= ind_nu D ->
-    Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ apps (a_ind p) Ns : ind_ty_at D Ns ->
-    Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ me_apps (qname_mod p) Ns ≈ me_apps (qname_mod p) Ns ->
+Lemma glu_entry_indalias : forall Θ Ξ pv Δ pm p k Ns D Mk Θ2 Ξ2 Θs Ξs,
+    tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> ind_lookup Θ Ξ p = Some D -> ind_member D k = Some Mk ->
+    k < ind_ndecl D -> ind_mpath D k = Some pm -> ind_mlookup Θ Ξ pm = Some (p, k, D) ->
+    List.length Ns <= ind_nu D ->
+    Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ apps (a_ind p k) Ns : ind_ty_at D Mk Ns ->
+    Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ me_apps (qname_mod pm) Ns ≈ me_apps (qname_mod pm) Ns ->
     GoodV glu_entry glu_mod_tele glu_ind_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
-    glu_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_ind_alias pv (Δ ++ gs_tele Ξ) p Ns).
+    glu_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_ind_alias pv (Δ ++ gs_tele Ξ) pm p k Ns).
 Proof. intros; exact I. Qed.
 
 Lemma glu_mod_tele_nil : forall Θ Ξ Δ Θ2 Ξ2,
@@ -152,53 +155,62 @@ Lemma glu_entry_ind : forall Θ Ξ D Θ2 Ξ2,
     glu_ind_decl_entry Θ2 Ξ2 D /\ glu_mod_tele Θ2 Ξ2 (ind_uparams D).
 Proof.
   intros * Hdt HG He; split; [| exact I ]; unfold glu_ind_decl_entry.
-  pose proof Hdt as [Hass _ Hle HΔ Hsu [i HS] [n Hn] HA HPl HP HN Hnd Hsh].
-  pose proof (glu_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ HΔ) HG He) as Hμ.
+  destruct (decl_typed_uparams _ _ _ Hdt) as [HUw _].
+  pose proof (ctx_wf_gctx _ _ _ HUw) as Hg.
+  pose proof (glu_emb_good _ _ _ _ Hg HG He) as Hμ.
+  pose proof (em_res _ _ _ _ (Embx_emb _ _ _ _ He)) as Hs.
   destruct soundness_fundamental as (Kc & Ke & _).
+  destruct (dt_sort_lvl _ _ _ Hdt) as [n Hn].
   constructor.
-  - exact (Kc _ _ _ HΔ _ _ Hμ).
+  - intros * HMk; exact (Kc _ _ _ (member_params_wf _ _ _ _ _ Hdt HMk) _ _ Hμ).
   - exists n; exact (Ke _ _ _ _ _ Hn _ _ Hμ).
-  - exists n.
-    assert (Hn' : Θ ⍮ Ξ ⍮ ind_params D ⊢ (ind_sort_lvl (ind_sort D))[wk_shiftn (ind_nn D)]ʷ : Level@n).
-    { pose proof HΔ as HΔ'; rewrite params_split in HΔ'.
-      pose proof (wf_wk_shiftn_app' _ _ _ _ HΔ') as Hw.
-      rewrite length_nparams in Hw; rewrite params_split.
+  - intros * HMk; exists n.
+    assert (Hn' : Θ ⍮ Ξ ⍮ im_params D Mk ⊢ (ind_sort_lvl (ind_sort D))[wk_shiftn (im_nn Mk)]ʷ : Level@n).
+    { pose proof (member_params_wf _ _ _ _ _ Hdt HMk) as HΔ; unfold im_params in HΔ |- *.
+      pose proof (wf_wk_shiftn_app' _ _ _ _ HΔ) as Hw.
+      rewrite length_im_nparams in Hw.
       exact (wk_preserves_exp _ _ _ _ _ _ _ Hn Hw). }
     exact (Ke _ _ _ _ _ Hn' _ _ Hμ).
-  - intros k A HA0.
-    destruct (Completeness.Inductives.Con.nparams_nth_split _ _ _ HA0) as [Δ1 HΔ1].
-    assert (Hk : k < ind_nn D)
-      by (rewrite <- (length_nparams D), <- List.length_rev; apply List.nth_error_Some; congruence).
-    pose proof (HN _ _ _ HΔ1) as HT; rewrite Completeness.Inductives.Con.length_nparams_prefix in HT by lia.
+  - intros * HMk HA0.
+    destruct (Completeness.Inductives.Model.nparams_nth_split _ _ _ HA0) as [Δ1 HΔ1].
+    assert (Hk : j < im_nn Mk) by (unfold im_nn; rewrite <- List.length_rev; apply List.nth_error_Some; congruence).
+    pose proof (dt_nparams _ _ _ Hdt _ _ _ _ _ HMk HΔ1) as HT.
+    rewrite Completeness.Inductives.Model.length_nparams_prefix in HT by lia.
     exact (Ke _ _ _ _ _ HT _ _ Hμ).
-  - intros * Hcon HA0.
-    destruct (Completeness.Inductives.Con.nonrec_nth_split _ _ _ HA0) as (gs1 & gs2 & Heq & Hk).
-    pose proof (HA _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq) as HT.
-    assert (Hls : List.length (cargs_strat gs1) = k)
-      by (rewrite Completeness.Inductives.Con.cargs_strat_nonrec, List.length_rev, List.length_map; exact Hk).
-    rewrite Hls, (Completeness.Inductives.Con.nonrec_args_prefix_cargs_strat gs1 (ca_arg A :: gs2)), Hk, <- Heq in HT.
+  - intros * HMk Hcon HA0.
+    destruct (Completeness.Inductives.Model.nonrec_nth_split _ _ _ HA0) as (gs1 & gs2 & Heq & Hk).
+    pose proof (dt_args _ _ _ Hdt _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq) as HT.
+    assert (Hls : List.length (cargs_strat gs1) = j)
+      by (rewrite Completeness.Inductives.Model.cargs_strat_nonrec, List.length_rev, List.length_map; exact Hk).
+    rewrite Hls, (Completeness.Inductives.Model.nonrec_args_prefix_cargs_strat gs1 (ca_arg A :: gs2)), Hk, <- Heq in HT.
     exact (Ke _ _ _ _ _ HT _ _ Hμ).
-  - intros * Hcon Heq HPk HT.
+  - intros * HMk Hcon Heq HMj HPk HT.
     assert (Hls : List.length (cargs_nonrec gs1) = List.length (cargs_strat gs1))
-      by (rewrite Completeness.Inductives.Con.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
+      by (rewrite Completeness.Inductives.Model.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
     rewrite Hls in HT.
-    pose proof (HP _ _ _ _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq HPk HT) as H.
-    rewrite (Completeness.Inductives.Con.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
+    pose proof (dt_rec_ps _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq HMj HPk HT) as H.
+    rewrite (Completeness.Inductives.Model.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
     exact (Ke _ _ _ _ _ H _ _ Hμ).
-  - intros * Hcon Heq HB.
-    destruct (Hsh _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq) as [_ Hs2].
-    destruct (doms_split_nth _ _ _ HB) as [Hsplit _].
-    pose proof (Hs2 _ _ _ Hsplit) as HT.
-    assert (Hk : List.length (List.firstn k (ptyp_doms t)) = k)
-      by (rewrite List.length_firstn; assert (k < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia).
+  - intros * HMk Hcon Heq HB.
+    assert (Hsplit : ptyp_doms t = List.firstn j (ptyp_doms t) ++ B :: List.skipn (S j) (ptyp_doms t))
+      by (rewrite <- (skipn_nth_cons' _ _ _ HB), List.firstn_skipn; reflexivity).
+    pose proof (dt_doms _ _ _ Hdt _ _ _ _ _ _ _ _ _ _ HMk (cons_lookup_in _ _ _ Hcon) Heq Hsplit) as HT.
+    assert (Hk : List.length (List.firstn j (ptyp_doms t)) = j)
+      by (rewrite List.length_firstn; assert (j < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia).
     assert (Hls : List.length (cargs_strat gs1) = List.length (cargs_nonrec gs1))
-      by (rewrite Completeness.Inductives.Con.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
-    rewrite Hk, Hls, (Completeness.Inductives.Con.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in HT.
+      by (rewrite Completeness.Inductives.Model.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
+    rewrite Hk, Hls, (Completeness.Inductives.Model.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in HT.
     exact (Ke _ _ _ _ _ HT _ _ Hμ).
-  - intros * Hcon Heq Hk.
-    pose proof (doms_prefix_wf _ _ _ _ _ Hdt (cons_lookup_in _ _ _ Hcon) _ _ _ Heq _ Hk) as H.
-    rewrite (Completeness.Inductives.Con.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
+  - intros * HMk Hcon Heq Hk.
+    pose proof (doms_prefix_wf _ _ _ _ _ _ _ Hdt HMk (cons_lookup_in _ _ _ Hcon) _ _ _ Heq _ Hk) as H.
+    rewrite (Completeness.Inductives.Model.nonrec_args_prefix_cargs_strat gs1 (ca_rec t :: gs2)), <- Heq in H.
     exact (Kc _ _ _ H _ _ Hμ).
+  - destruct (dt_selfs _ _ _ Hdt) as [IsS HV]; exists IsS; constructor.
+    + exact (vst_link _ _ _ _ HV).
+    + intros * HMk Hh Hq HI HT.
+      pose proof (decl_typed_container _ _ _ _ D Hs Hdt _ _ _ _ _ _ _ HMk Hh Hq) as HqS.
+      eapply Ke; [| exact Hμ ].
+      eapply (vst_is _ _ _ _ HV); [ exact HMk | exact Hh | exact HqS | exact HI | exact HT ].
 Qed.
 
 (** ** Every well-formed global context glues

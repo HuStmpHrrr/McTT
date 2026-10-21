@@ -1167,6 +1167,20 @@ Ltac glu_univ_elem_induction1 :=
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
+(** The views of a group with its members as variables ([grp_sctx]), as
+    [views_self_valid] reads them in the PER model: each view's instance is
+    [IsS] there, read at the group's own path, and is glued there.  Once
+    the group is filed, a glued [grp_sb] sends the instances to the group's
+    uniform parameters ([filed_view_is_glu]). *)
+Record glu_views_self (D : ind_decl) (IsS : nat -> list exp) : Prop := mk_glu_views_self
+  { gvs_link : forall mp, ind_mpath D 0 = Some mp ->
+      forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+        Is = List.map (fun I => I[grp_sb mp D]) (IsS k)
+  ; gvs_is : forall k Mk qc k' Is vm Dq j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+      ind_lookup gc_deps gc_stack qc = Some Dq -> List.nth_error (IsS k) j = Some I ->
+      List.nth_error (tele_insts (ind_uparams Dq) Id (IsS k)) j = Some T ->
+      grp_sctx D ⊩ I : T }.
+
 Record glu_ind_decl (D : ind_decl) : Prop := mk_glu_ind_decl
 { gid_params : forall k Mk, ind_member D k = Some Mk -> ⊩ im_params D Mk
 ; gid_lvl : exists n, ind_uparams D ⊩ ind_sort_lvl (ind_sort D) : Level@n
@@ -1194,11 +1208,8 @@ Record glu_ind_decl (D : ind_decl) : Prop := mk_glu_ind_decl
     gs = gs1 ++ ca_rec t :: gs2 -> j <= List.length (ptyp_doms t) ->
     ⊩ doms_ctx (List.firstn j (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mk
 (** The uniform arguments of a view's container, each at the instance of
-    the container's telescope, over the group's uniform parameters. *)
-; gid_view_is : forall k Mk qc k' Is vm Dq j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
-    ind_lookup gc_deps gc_stack qc = Some Dq -> List.nth_error Is j = Some I ->
-    List.nth_error (tele_insts (ind_uparams Dq) Id Is) j = Some T ->
-    ind_uparams D ⊩ I : T
+    the container's telescope, over the group's members as variables. *)
+; gid_view_self : exists IsS, glu_views_self D IsS
 }.
 
 End Fixed_GCtx.

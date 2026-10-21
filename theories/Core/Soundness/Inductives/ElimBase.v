@@ -144,44 +144,6 @@ Proof.
   apply (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR' HR); exact (var_per_elem _ HR').
 Qed.
 
-(** A substitution of a list of terms past a telescope [C] is glued when
-    each term is glued at its instance's type, at any gluing of the
-    type's value at which the instance is glued: the substitution of the
-    terms before it is glued, so the type is. *)
-Lemma glu_sub_of_list_by : forall C Γ0 Sb Sb0 Δ σ0 ρ0 Ms vs,
-    tele_ass C -> EG C ++ Γ0 ∈ glu_ctx_env ↘ Sb -> EG Γ0 ∈ glu_ctx_env ↘ Sb0 ->
-    Δ ⊢ˢ σ0 ® ρ0 ∈ Sb0 -> List.length Ms = List.length C -> List.length vs = List.length C ->
-    (forall k M T v A a (i : nat) P El, List.nth_error Ms k = Some M -> List.nth_error (tele_insts C σ0 Ms) k = Some T ->
-       List.nth_error vs k = Some v -> List.nth_error (List.rev C) k = Some (ce_ass A) ->
-       ⟦ A ⟧ env_args ρ0 (List.firstn k vs) ↘ a -> DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ T ® P ->
-       Δ ⊢ M : T ® v ∈ El) ->
-    Δ ⊢ˢ sb_of_list σ0 Ms ® env_args ρ0 vs ∈ Sb.
-Proof.
-  induction C as [| e C IH] using List.rev_ind; intros * Hass HC H0 Hσ L1 L2 Hby.
-  - destruct Ms; [| discriminate ]; destruct vs; [| discriminate ]; cbn.
-    apply (functional_glu_ctx_env H0 HC); exact Hσ.
-  - unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [[A ->] _].
-    rewrite List.length_app in L1, L2; cbn in L1, L2.
-    destruct Ms as [| M0 Ms]; [ cbn in L1; lia |]; destruct vs as [| v0 vs]; [ cbn in L2; lia |].
-    rewrite <- List.app_assoc in HC; cbn [List.app] in HC.
-    destruct (glu_ctx_env_suffix _ _ _ Hass HC) as [Sb1 HC1].
-    destruct (glu_ctx_env_cons_clean_inversion H0 HC1) as (i' & HA & HT & HSb1).
-    destruct (HT _ _ _ Hσ) as [a' P' El' Ha' Hglu' HP'].
-    assert (HM0 : Δ ⊢ M0 : A[σ0] ® v0 ∈ El').
-    { apply (Hby 0 M0 A[σ0] v0 A a' i' P' El'); try reflexivity; try assumption.
-      - rewrite tele_insts_snoc; reflexivity.
-      - rewrite List.rev_app_distr; reflexivity. }
-    assert (Hσ1 : Δ ⊢ˢ σ0,,M0 ® ρ0 ↦ v0 ∈ Sb1)
-      by (apply HSb1; eapply cons_glu_sub_pred_helper; eassumption).
-    cbn [sb_of_list env_args List.fold_left].
-    cbn [List.length] in L1, L2.
-    refine (IH _ _ _ _ _ _ Ms vs Hass HC HC1 Hσ1 ltac:(lia) ltac:(lia) _).
-    intros k M T v A0 a i P El HM HT0 Hv HA0 Ea Hg HTP.
-    apply (Hby (S k) M T v A0 a i P El); try assumption.
-    + rewrite tele_insts_snoc; exact HT0.
-    + rewrite List.rev_app_distr; exact HA0.
-Qed.
-
 (** A variable of a context, at a type glued at the gluing of a type's
     value, is glued at it to the fresh variable of its level. *)
 Lemma var_glu_elem_at : forall (i : uidx) a P El Δ T x, DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ T ® P ->
