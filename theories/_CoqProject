@@ -57,6 +57,7 @@
 ./Core/Completeness/Inductives/ViewBranch.v
 ./Core/Completeness/Inductives/ElimView.v
 ./Core/Completeness/Inductives/ViewReadback.v
+./Core/Completeness/Inductives/ElimViewRule.v
 ./Core/Completeness/IndCases.v
 ./Core/Completeness/ElimCases.v
 ./Core/Completeness/IotaCases.v
