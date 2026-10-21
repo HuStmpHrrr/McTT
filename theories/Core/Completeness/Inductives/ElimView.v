@@ -1349,7 +1349,11 @@ Section WrapBr.
       cross_results_rel dr Rel v u u' C1 p u0 Bks (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') gs' gs vs vs' w ihs ->
       exists r r', ⟦ Ba[ViewBranch.wrap_br_sub p D Us Bks Mv gs' gs] ⟧ env_args C1 (List.skipn (im_unu D Mv) bs ++ vs ++ w) ↘ r /\
         ⟦ Ba ⟧ env_args C1 (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ↘ r' /\
-        Rel v (List.skipn (im_unu D Mv) bs) (d_con hd k c (bs ++ vs)) (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs' ++ vs')) r r'.
+        Rel v (List.skipn (im_unu D Mv) bs) (d_con hd k c (bs ++ vs)) (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs' ++ vs')) r r' /\
+        (forall m0, per_head (elim_bty p v Mv c gs (eb_motive bv) Us)[ViewBranch.wrap_br_sub p D Us Bks Mv gs' gs]
+                       (elim_bty p v Mv c gs (eb_motive bv) Us)[ViewBranch.wrap_br_sub p D Us Bks Mv gs' gs]
+                       (env_args C1 (List.skipn (im_unu D Mv) bs ++ vs ++ w)) (env_args C1 (List.skipn (im_unu D Mv) bs ++ vs ++ w)) m0 r ->
+           Rel v (List.skipn (im_unu D Mv) bs) (d_con hd k c (bs ++ vs)) (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs' ++ vs')) m0 r').
   Proof.
     intros na0 Ba HBa * Hm Hcr.
     assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
@@ -1423,9 +1427,18 @@ Section WrapBr.
                    (env_args C1 (X ++ vs ++ ihsT)) (env_args C1 (X' ++ vs' ++ ihs))).
     { apply (per_head_of_typ_resp HRB HT).
       apply rel_chain_cons; [ exact HEτ |]. apply rel_chain_cons; [ exact HEτ |]. apply rel_chain_of_pair; exact HE. }
-    exists m, r'; split; [ exact Em | split; [ exact Er' |] ].
-    apply (proj1 (EM bty_rel v Mv c gs HMv Hcon HB bv Hbv C1 C1 HC11 HC11 u u' hd k bs bs' vs vs' ihsT ihs Hm Hrr m r')).
-    exact (per_head_trans _ _ _ _ _ _ HRB HT HE _ _ _ (proj1 (ER _ _) Hmn) Hnr).
+    assert (Hfin : forall m0, per_head (elim_bty p v Mv c gs (eb_motive bv) Us) (elim_bty p v Mv c gs (eb_motive bv) Us)
+                                (env_args C1 (X ++ vs ++ ihsT)) (env_args C1 (X ++ vs ++ ihsT)) m0 m ->
+                     Rel v X (d_con hd k c (bs ++ vs)) X' (d_con hd k c (bs' ++ vs')) m0 r').
+    { intros m0 Hm0.
+      apply (proj1 (EM bty_rel v Mv c gs HMv Hcon HB bv Hbv C1 C1 HC11 HC11 u u' hd k bs bs' vs vs' ihsT ihs Hm Hrr m0 r')).
+      exact (per_head_trans _ _ _ _ _ _ HRB HT HE _ _ _
+               (proj1 (ER _ _) (per_head_trans _ _ _ _ _ _ HRB HT HEτ _ _ _ Hm0 Hmn)) Hnr). }
+    exists m, r'; split; [ exact Em | split; [ exact Er' | split ] ].
+    - apply Hfin; exact (per_head_trans _ _ _ _ _ _ HRB HT HEτ _ _ _ Hmn (per_head_sym _ _ _ _ _ _ HRB HT HEτ _ _ Hmn)).
+    - intros m0 Hm0; apply Hfin.
+      exact (proj1 (per_head_inst _ _ _ _ _ _ _ _ _ _ HT HRW (gsub_valid (WB gsub_wrap_br v Mv c gs' gs HMv Hcon Hk)) HEb Hτe Hτe m0 m)
+               Hm0).
   Qed.
 End WrapBr.
 
