@@ -1678,6 +1678,54 @@ Section GroupElim.
     #[local] Abbreviation iidx := (ind_rel_idx p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI (okr_at D u0 nr)).
     #[local] Abbreviation ins := (ind_rel_ns p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI (okr_at D u0 nr)).
 
+    (** The type of a scrutinee of the member [m] at [C1] and an
+        environment related to it: its relation is the group's at [m], at
+        the canonical bases, the values of the non-uniform parameters
+        related canonically. *)
+    Lemma scrut_rel : forall m Mm, ind_member D m = Some Mm -> ⊨ elim_mctx p D m Mm Us ++ Γ ->
+        forall Ns, List.length Ns = im_nn Mm -> gsub Γ (sb_of_list Id Ns) (tele_sub (im_nparams Mm) τU ++ Γ) ->
+        forall C2', RΓ C1 C2' -> forall ns ns', ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ C1 ↘ ns -> ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ C2' ↘ ns' ->
+        forall t t' (i : uidx) R, ⟦ ind_mty p D m Us Ns ⟧ C1 ↘ t -> ⟦ ind_mty p D m Us Ns ⟧ C2' ↘ t' ->
+        DF t ≈ t' ∈ per_univ_elem i ↘ R ->
+        tele_rel (nr m) (List.rev (im_nparams Mm)) ns ns' /\ (R <~> G m u0 u0 ns ns').
+    Proof.
+      intros * HMm HMa * HNl HgN * HC2 * Ens Ens' * Et Et' HR.
+      assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HRΓ).
+      assert (HC22 : RΓ C2' C2') by (etransitivity; [ symmetry; exact HC2 | exact HC2 ]).
+      pose proof HMa as HM'; rewrite (mctx_split m Mm) in HM'.
+      destruct (rel_ctx_wf_ass_inv HM') as [jI HIT].
+      pose proof (rel_ctx_wf_tail HMa) as HNt.
+      destruct (rel_ctx_wf_per_ctx_env HNt) as [RS HRS].
+      assert (HPS : PER RS) by (eapply per_env_PER; exact HRS).
+      assert (Eτ1 : ⟦ sb_of_list Id Ns ⟧s C1 ↘ env_args C1 ns) by (apply eval_sb_of_list; [ apply eval_sub_id | exact Ens ]).
+      assert (Eτ2 : ⟦ sb_of_list Id Ns ⟧s C2' ↘ env_args C2' ns') by (apply eval_sb_of_list; [ apply eval_sub_id | exact Ens' ]).
+      pose proof (rel_sub_under_ctx_at' (gsub_valid HgN) HRΓ HRS _ _ _ _ HC2 Eτ1 Eτ2) as HE.
+      assert (HE11 : RS (env_args C1 ns) (env_args C1 ns)) by (etransitivity; [ exact HE | symmetry; exact HE ]).
+      assert (Ln : List.length ns = im_nn Mm) by (rewrite (eval_exps_length _ _ _ Ens); exact HNl).
+      assert (Ln' : List.length ns' = im_nn Mm) by (rewrite (eval_exps_length _ _ _ Ens'); exact HNl).
+      assert (Hta : tele_ass (tele_sub (im_nparams Mm) τU))
+        by (apply tele_ass_sub, (decl_closed_nparams_ass D Hc _ _ HMm)).
+      assert (HNr : ⊨ List.rev (List.rev (tele_sub (im_nparams Mm) τU)) ++ Γ) by (rewrite List.rev_involutive; exact HNt).
+      assert (HRSr : EF List.rev (List.rev (tele_sub (im_nparams Mm) τU)) ++ Γ ≈ List.rev (List.rev (tele_sub (im_nparams Mm) τU)) ++ Γ
+                       ∈ per_ctx_env ↘ RS) by (rewrite List.rev_involutive; exact HRS).
+      assert (Lt : List.length (List.rev (tele_sub (im_nparams Mm) τU)) = im_nn Mm)
+        by (rewrite List.length_rev, length_tele_sub; reflexivity).
+      destruct (rel_gargs _ _ _ _ HRΓ HNr (List.Forall_rev Hta) HRSr _ _ _ _ ltac:(rewrite Lt; exact Ln) ltac:(rewrite Lt; exact Ln') HE)
+        as [_ Hg].
+      pose proof (cv_nparams_rev m Mm HMm HMa C1 C2' u0 HC2 HUC u0_env ns ns' Ln Hg) as Hns.
+      destruct (rel_exp_of_typ_inversion_simple_at HRS HIT _ _ HE) as (b1 & b2 & Eb1 & Eb2 & [R12 HR12]).
+      pose proof (mctx_head_rel m Mm HMm C1 C2' u0 HC2 HUC u0_env RS HRS ns ns' Hns HE11 b1 b2 _ R12 Eb1 Eb2 HR12) as HG.
+      destruct (typ_inst_link _ _ _ _ _ _ _ _ _ HIT HRΓ (gsub_valid HgN) HC22 Eτ2) as (a & b & Ea & Eb & [R2 HR2]).
+      rewrite ind_head_inst in Ea by (try exact Hc; try exact HUl; exact HNl).
+      rewrite (List.map_ext (fun U => U[Id]) (fun U => U)), List.map_id in Ea by (intros; apply exp_sub_id).
+      assert (a = t') as -> by (eapply functional_eval_exp; eassumption).
+      assert (b = b2) as -> by (eapply functional_eval_exp; eassumption).
+      destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HR HR2) as (R'' & HR'' & ER).
+      assert (E2 : R'' <~> R12) by (eapply per_univ_elem_left_irrel; [ exact HR'' | exact HR12 ]).
+      split; [ exact Hns |].
+      etransitivity; [ exact ER | etransitivity; [ exact E2 | exact HG ] ].
+    Qed.
+
     (** ** A Constructor's Arguments, Canonically
 
         Arguments related canonically at the bases [u0], after the stored
@@ -3497,6 +3545,30 @@ Section GroupElim.
           eapply (per_head_trans _ _ _ _ _ _ HRB HT HE); [ apply ER; exact Hmn | exact Hnr ].
         Qed.
       End Links.
+
+      (** ** The Motives at the Links of an Elimination
+
+          An outer link: the motives of blocks [Bks0] equal to [Bks]'s,
+          moved by [σ0] at [ρ0], against them at [ρ0σ0]. *)
+      Lemma mot_link : forall Bks0,
+          (forall j Mj b0, ind_member D j = Some Mj -> List.nth_error Bks0 j = Some b0 -> eb_nm b0 = S (im_nn Mj)) ->
+          (forall j Mj b b0, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> List.nth_error Bks0 j = Some b0 ->
+             elim_mctx p D j Mj Us ++ Γ ⊨ eb_motive b ≈ eb_motive b0 : Typeω@iA) ->
+          forall Γ' RΓ' σ0 ρ0 ρ0σ0, EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨ˢ σ0 ≈ σ0 : Γ ->
+          RΓ' ρ0 ρ0 -> ⟦ σ0 ⟧s ρ0 ↘ ρ0σ0 -> RΓ ρ0σ0 C1 ->
+          forall j Mj ba bb u u' ns ns' m m', ind_member D j = Some Mj ->
+          List.nth_error (blocks_sub Bks0 σ0) j = Some ba -> List.nth_error Bks0 j = Some bb ->
+          G j u u' ns ns' m m' ->
+          exists a a', ⟦ eb_motive ba ⟧ env_args ρ0 (ns ++ m :: nil) ↘ a /\ ⟦ eb_motive bb ⟧ env_args ρ0σ0 (ns' ++ m' :: nil) ↘ a' /\
+            DF a ≈ a' ∈ per_univ_elem iA ↘ Rel j ns m ns' m'.
+      Proof.
+        intros Bks0 Hnm0 HA0s * HRΓ' Hσ0 Hρ0 Hev0 HρC * HMj Hba Hbb Hm.
+        destruct (nth_error_blocks_sub_inv _ _ _ _ Hba) as (b0 & Hb0 & ->).
+        rewrite Hbb in Hb0; injection Hb0 as <-.
+        rewrite eb_motive_sub, (Hnm0 _ _ _ HMj Hbb).
+        destruct (HBks _ _ HMj) as [b Hb].
+        exact (mot_out j Mj b HMj Hb Γ' RΓ' σ0 ρ0 ρ0σ0 (eb_motive bb) HRΓ' Hσ0 Hρ0 Hev0 HρC (HA0s _ _ _ _ HMj Hb Hbb) _ _ _ _ _ _ Hm).
+      Qed.
     End Motives.
   End Base.
 End GroupElim.
