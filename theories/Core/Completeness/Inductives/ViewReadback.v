@@ -1559,6 +1559,138 @@ Section CrossBot.
         by (rewrite List.length_rev, (eval_exps_length _ _ _ Epa); exact HlIv).
       intros s; exact (per_gargs_top _ _ _ _ _ Hgp Lp s).
   Qed.
+
+  (** *** The Stuck Eliminators at a Member
+
+      The group's member [j] the view takes the container's [i'] to is a
+      view, of [i']'s container, at the map the agreement of the views'
+      maps gives ([view_maps_coherent]): the blocks the two read for each
+      member of the group read are the container's at its member and the
+      group's at the member the view takes it to.  Its recursive results
+      at the arguments it nests through are at members of lower rank. *)
+  Lemma cross_bot_rank : forall rk, view_rank_ok gc_deps gc_stack D rk ->
+      forall j, (forall j', rk j' < rk j -> cross_bot j') -> cross_bot j.
+  Proof.
+    intros rk Hrk j HIH i' Mj hd k as1 as2 e e' w w' ns ns' Hvi HM Hg0.
+    pose proof (valid_groups_containers VP HP p D m Mm qc k' Is vm D' HPD HMm Hh Hq) as HVQ.
+    pose proof (valid_groups_valid VP HP qc D' HVQ) as HgQ.
+    pose proof (containers_valid_of_groups VP HP qc D' HVQ) as HcvQ.
+    pose proof (length_cups p D Hvg m Mm qc k' Is vm D' HMm Hh Hq u0 cups Ecups) as Hlc.
+    assert (Hlb : List.length ub = ind_nu D') by (destruct (per_gargs_length _ _ _ _ _ Hub) as [H1 _]; lia).
+    pose proof Hg0 as Hg1.
+    inversion Hg1 as [| j0 Mj0 hd0 k0 ns0 ns0' as1' as2' e0 e0' w0 w0' HM0 Hr Hn L1 L2 Hs1 Hs2 He]; subst.
+    rewrite HM in HM0; injection HM0 as <-.
+    destruct (XE cross_member i' j Hvi) as (Mi' & Mj1 & HMi' & Hvmb).
+    pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMj1; rewrite HM in HMj1; injection HMj1 as <-.
+    pose proof (vmb_ref _ _ _ _ _ _ _ _ _ Hvmb) as Href; rewrite Hr in Href; symmetry in Href.
+    destruct (XE self_ref_target j Mj hd k HM Hr) as (Dq & Mk & HDq & HMk & Hnnq & Hnuq).
+    destruct (cross_refs i' Mi' j Mj Hvi HMi' HM) as [hd1 k1 prea preb Ra Rb].
+    destruct (mref_ref_len qc D' i' Mi' ub hd1 k1 prea Hq HMi' Hlb Ra) as [Hra _].
+    rewrite Href in Hra; injection Hra as <- <-.
+    apply (per_bot_elim_pair qc D' ub VBb ρb p D u0 Bks C1 Hq Hl i' Mi' j Mj hd k Dq Mk as1 as2 e e' prea preb
+             HMi' HM Href Hr HDq HMk).
+    - unfold im_np; lia.
+    - unfold im_np; lia.
+    - intros i0 Mi0 b HMi0 Hb; exact (HnmB _ _ _ HMi0 Hb).
+    - intros i0 Mi0 b HMi0 Hb; exact (vbs_nm _ _ _ _ _ _ HBk _ _ _ HMi0 Hb).
+    - exact Ra.
+    - exact Rb.
+    - exact (cross_uparams_read i' Mi' j Mj hd k prea preb Dq Hvi HMi' HM Ra Rb HDq).
+    - exact He.
+    - (** The blocks. *)
+      intros s n Mn HMn.
+      apply (cross_block_read rk (rk j) HIH s).
+      destruct (gta_vm _ Hass _ _ _ _ _ _ _ _ _ HMm Hh Hq HMi') as [jj Mjj Hvj HMjj _ Hhm].
+      rewrite Hvi in Hvj; injection Hvj as <-; rewrite HM in HMjj; injection HMjj as <-.
+      pose proof (gta_view_maps_coherent _ Hass) as Hcoh.
+      destruct (im_head Mi') as [pm | qv kv Iv vmv] eqn:Hh'.
+      + (** A declared member of the container: the view's own map. *)
+        destruct Hhm as [vm' Hhj].
+        pose proof (Hcoh m Mm qc k' Is vm D' i' Mi' j Mj qc i' Is vm' HMm Hh Hq HMi' Hvi HM Hhj) as Hvma.
+        unfold view_map_at in Hvma; rewrite Hh' in Hvma; subst vm'.
+        assert (Hsa : im_sel Mi' = None) by (unfold im_sel; rewrite Hh'; reflexivity).
+        assert (Hsb : im_sel Mj = Some vm) by (unfold im_sel; rewrite Hhj; reflexivity).
+        rewrite Hsa, Hsb.
+        unfold im_ref in Href; rewrite Hh' in Href; injection Href as <- <-.
+        rewrite Hq in HDq; injection HDq as <-.
+        destruct (gta_vwrap _ Hass _ _ _ _ _ _ HMm Hh) as (D2 & Hq2 & Hvw); rewrite Hq in Hq2; injection Hq2 as <-.
+        assert (Hnl : n < List.length vm)
+          by (rewrite (vwo_length _ _ _ Hvw); apply List.nth_error_Some; unfold ind_member in HMn; congruence).
+        destruct (nth_error_lt_some' _ _ Hnl) as [b Hvb].
+        destruct (XE cross_member n b Hvb) as (Mn0 & Mb & HMn0 & Hvmb2).
+        rewrite HMn in HMn0; injection HMn0 as <-.
+        pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb2) as HMb.
+        destruct (cross_refs n Mn b Mb Hvb HMn HMb) as [hdn kn pran prbn Ran Rbn].
+        pose proof (dt_nodup _ _ _ (vgr_typed _ _ HgQ) _ _ HMn) as Hnd.
+        apply (mk_cross_block_site rk (rk j) None (Some vm) n Mn n Mn b Mb hdn kn pran prbn).
+        * reflexivity.
+        * cbn; exact (List.nth_error_nth _ _ _ Hvb).
+        * exact Hvb.
+        * exact HMn.
+        * exact HMb.
+        * reflexivity.
+        * reflexivity.
+        * intros c gq gA Hin HcA.
+          pose proof (cons_lookup_nodup_in _ _ _ Hnd Hin) as Hc0; unfold ind_con in HcA; rewrite Hc0 in HcA; injection HcA as <-.
+          apply cargs_kinds_refl.
+        * intros c gq gB Hin HcB.
+          exact (vro_nest _ _ _ _ Hrk j Mj qc i' Is vm D' n Mn b Mb c gq gB HM Hhj Hq HMn Hvb HMb
+                   (cons_lookup_nodup_in _ _ _ Hnd Hin) HcB).
+        * exact Ran.
+        * exact Rbn.
+      + (** A view of the container's: its map, then the view's. *)
+        destruct Hhm as (Is' & vm' & Hhj & _).
+        pose proof (Hcoh m Mm qc k' Is vm D' i' Mi' j Mj qv kv Is' vm' HMm Hh Hq HMi' Hvi HM Hhj) as Hvma.
+        unfold view_map_at in Hvma; rewrite Hh' in Hvma.
+        assert (Hsa : im_sel Mi' = Some vmv) by (unfold im_sel; rewrite Hh'; reflexivity).
+        assert (Hsb : im_sel Mj = Some vm') by (unfold im_sel; rewrite Hhj; reflexivity).
+        rewrite Hsa, Hsb.
+        unfold im_ref in Href; rewrite Hh' in Href; injection Href as <- <-.
+        destruct (gta_vwrap _ (vgr_ass _ _ HgQ) _ _ _ _ _ _ HMi' Hh') as (D2 & Hq2 & Hvw2).
+        rewrite HDq in Hq2; injection Hq2 as <-.
+        assert (Hnl : n < List.length vmv)
+          by (rewrite (vwo_length _ _ _ Hvw2); apply List.nth_error_Some; unfold ind_member in HMn; congruence).
+        destruct (nth_error_lt_some' _ _ Hnl) as [a Hva].
+        destruct (vwo_members _ _ _ Hvw2 n Mn a HMn Hva) as (Ma & HMa & Hnna & Hnamesa & Hcorra).
+        assert (Hb : exists b, List.nth_error vm' n = Some b /\ List.nth_error vm a = Some b).
+        { pose proof (f_equal (fun l => List.nth_error l n) Hvma) as E; cbn beta in E.
+          rewrite !List.nth_error_map, Hva in E; cbn in E.
+          destruct (List.nth_error vm' n) as [b |] eqn:Hb0; cbn in E; [| discriminate ].
+          injection E as E; exists b; split; [ reflexivity | exact E ]. }
+        destruct Hb as (b & Hvb' & Hvab).
+        destruct (XE cross_member a b Hvab) as (Ma0 & Mb & HMa0 & Hvmb2).
+        rewrite HMa in HMa0; injection HMa0 as <-.
+        pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb2) as HMb.
+        destruct (cross_refs a Ma b Mb Hvab HMa HMb) as [hdn kn pran prbn Ran Rbn].
+        pose proof (HcvQ _ _ _ _ _ _ _ HMi' Hh' HDq) as HgD.
+        pose proof (dt_nodup _ _ _ (vgr_typed _ _ HgD) _ _ HMn) as Hnd.
+        apply (mk_cross_block_site rk (rk j) (Some vmv) (Some vm') n Mn a Ma b Mb hdn kn pran prbn).
+        * cbn; exact (List.nth_error_nth _ _ _ Hva).
+        * cbn; exact (List.nth_error_nth _ _ _ Hvb').
+        * exact Hvab.
+        * exact HMa.
+        * exact HMb.
+        * symmetry; exact Hnna.
+        * symmetry; exact Hnamesa.
+        * intros c gq gA Hin HcA; exact (cargs_kinds_of_corr _ _ _ (Hcorra c gq gA Hin HcA)).
+        * intros c gq gB Hin HcB.
+          exact (vro_nest _ _ _ _ Hrk j Mj qv kv Is' vm' Dq n Mn b Mb c gq gB HM Hhj HDq HMn Hvb' HMb
+                   (cons_lookup_nodup_in _ _ _ Hnd Hin) HcB).
+        * exact Ran.
+        * exact Rbn.
+  Qed.
+
+  (** ** The Stuck Eliminators
+
+      By strong induction on the rank. *)
+  Theorem cross_bot_all : forall j, cross_bot j.
+  Proof.
+    destruct (gta_rank _ Hass) as [rk Hrk].
+    assert (H : forall r j, rk j < r -> cross_bot j).
+    { induction r as [| r IH]; intros j Hj; [ lia |].
+      apply (cross_bot_rank rk Hrk j); intros j' Hj'; apply IH; lia. }
+    intros j; exact (H (S (rk j)) j ltac:(lia)).
+  Qed.
 End CrossBot.
 
 End Fixed_GCtx.
