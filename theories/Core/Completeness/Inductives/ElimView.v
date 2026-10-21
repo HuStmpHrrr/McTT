@@ -84,6 +84,69 @@ Lemma wrap_results_rel_len : forall dr Rel k u u' pre pre' gs' gs vs vs' ihs ihs
     List.length ihs = cargs_nrec gs' /\ List.length ihs' = cargs_nrec gs'.
 Proof. induction 1; cbn; lia. Qed.
 
+(** ** The Shapes and Recursive Results of a View against its Container's
+
+    A shape [t'] of the container's against the view's [t]: as many
+    domains, ending in a member the view's map takes to [t]'s ([cargs_corr]
+    at a recursive argument). *)
+Fixpoint shape_corr (vm : list nat) (t' t : ptyp) : Prop :=
+  match t', t with
+  | pt_self j' _, pt_self j _ => List.nth_error vm j' = Some j
+  | pt_pi _ t1', pt_pi _ t1 => shape_corr vm t1' t1
+  | _, _ => False
+  end.
+
+Lemma shape_corr_of : forall vm t' t, List.nth_error vm (ptyp_mem t') = Some (ptyp_mem t) -> ptyp_depth t' = ptyp_depth t ->
+    shape_corr vm t' t.
+Proof.
+  intros vm t'; induction t' as [j' Ps' | B' t' IH]; intros [j Ps | B t] Hm Hd; unfold ptyp_depth in Hd; cbn in *;
+    try discriminate; [ exact Hm | apply IH; [ exact Hm | unfold ptyp_depth; lia ] ].
+Qed.
+
+(** The recursive results of two constructors' arguments: [vs] of the
+    container's kinds [gs'] with the container's recursive results [w], and
+    [vs'] of the view's kinds [gs] with the view's [ihs].  At an argument
+    recursive in both, related as recursive results; at one the view nests
+    through, the view's result is the group's eliminator's at the argument
+    (at [ρa], [pq], [ua], [Bksa]). *)
+Inductive cross_results_rel (dr : nat -> list domain -> exp -> relation domain)
+    (Rel : nat -> list domain -> domain -> list domain -> domain -> relation domain) (k : nat) (u u' : list domain)
+    (ρa : env) (pq : qname) (ua : list domain) (Bksa : list eblock) :
+    list domain -> list domain -> list carg -> list carg -> list domain -> list domain -> list domain -> list domain -> Prop :=
+| cross_results_nil : forall pre pre', cross_results_rel dr Rel k u u' ρa pq ua Bksa pre pre' nil nil nil nil nil nil
+| cross_results_arg : forall pre pre' A' A gs' gs v v' vs vs' w ihs,
+    cross_results_rel dr Rel k u u' ρa pq ua Bksa (pre ++ v :: nil) (pre' ++ v' :: nil) gs' gs vs vs' w ihs ->
+    cross_results_rel dr Rel k u u' ρa pq ua Bksa pre pre' (ca_arg A' :: gs') (ca_arg A :: gs) (v :: vs) (v' :: vs') w ihs
+| cross_results_nest : forall pre pre' A' t gs' gs v v' vs vs' w ih ihs,
+    ⟦ih v' of t under pq ua Bksa ⟧ gc_deps ⍮ gc_stack ⍮ ρa ↘ ih ->
+    cross_results_rel dr Rel k u u' ρa pq ua Bksa pre pre' gs' gs vs vs' w ihs ->
+    cross_results_rel dr Rel k u u' ρa pq ua Bksa pre pre' (ca_arg A' :: gs') (ca_rec t :: gs) (v :: vs) (v' :: vs') w (ih :: ihs)
+| cross_results_rec : forall pre pre' t' t gs' gs v v' vs vs' ihb iha w ihs,
+    rec_result_rel dr Rel k u u' pre pre' t v v' ihb iha ->
+    cross_results_rel dr Rel k u u' ρa pq ua Bksa pre pre' gs' gs vs vs' w ihs ->
+    cross_results_rel dr Rel k u u' ρa pq ua Bksa pre pre' (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) (v' :: vs')
+      (ihb :: w) (iha :: ihs).
+
+(** The view's recursive results at the arguments recursive in both. *)
+Fixpoint wsel (gs' gs : list carg) (ihs : list domain) : list domain :=
+  match gs', gs, ihs with
+  | ca_rec _ :: gs1', ca_rec _ :: gs1, ih :: ihs1 => ih :: wsel gs1' gs1 ihs1
+  | ca_arg _ :: gs1', ca_rec _ :: gs1, _ :: ihs1 => wsel gs1' gs1 ihs1
+  | _ :: gs1', ca_arg _ :: gs1, _ => wsel gs1' gs1 ihs
+  | _, _, _ => nil
+  end.
+
+Lemma cross_to_wrap : forall dr Rel k u u' ρa pq ua Bksa pre pre' gs' gs vs vs' w ihs,
+    cross_results_rel dr Rel k u u' ρa pq ua Bksa pre pre' gs' gs vs vs' w ihs ->
+    wrap_results_rel dr Rel k u u' pre pre' gs' gs vs vs' w (wsel gs' gs ihs).
+Proof. induction 1; cbn [wsel]; econstructor; eassumption. Qed.
+
+Lemma cross_results_rel_len : forall dr Rel k u u' ρa pq ua Bksa pre pre' gs' gs vs vs' w ihs,
+    cross_results_rel dr Rel k u u' ρa pq ua Bksa pre pre' gs' gs vs vs' w ihs ->
+    List.length vs = List.length gs /\ List.length vs' = List.length gs /\ List.length w = cargs_nrec gs' /\
+    List.length ihs = cargs_nrec gs.
+Proof. induction 1; cbn; lia. Qed.
+
 (** A list substitution evaluated: the values of its terms after its
     base's. *)
 Lemma eval_sb_of_list_inv : forall Ms σ ρ E E0, ⟦ sb_of_list σ Ms ⟧s gc_deps ⍮ gc_stack ⍮ ρ ↘ E ->
@@ -423,5 +486,292 @@ Section CrossBase.
     Qed.
   End WrapCv.
 End CrossBase.
+
+(** ** The Container's Eliminator against the Group's
+
+    The eliminator of the container's group [D'] at [qc], at the blocks
+    [VBb] at [ρb] and the uniform parameters [ub], against the group's at
+    [Bks] at [C1]: at related elements of the group's member [j] the view's
+    map [vm] takes the container's [i'] to, related values, when the blocks
+    are related member by member ([Hmot_x], [Hbr_x]) and so are the stuck
+    eliminators ([Hbot_x]).  The container's side is on the left. *)
+Section CrossElim.
+  #[local] Set Default Proof Using "All".
+  Variable (VP : qname -> ind_decl -> Prop) (p : qname) (D : ind_decl).
+  Hypotheses (HP : valid_groups VP) (HPD : VP p D).
+  Let Hvg := valid_groups_valid VP HP p D HPD.
+  Let Hcv := containers_valid_of_groups VP HP p D HPD.
+  Let HD := vgr_valid _ _ Hvg.
+  Let Hc := vgr_closed _ _ Hvg.
+  Let Hl := vgr_lookup _ _ Hvg.
+  Let Hdt := vgr_typed _ _ Hvg.
+  Let Hass := vgr_ass _ _ Hvg.
+  Variable (Γ : ctx) (RΓ : relation env).
+  Hypotheses (HRΓ : EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ) (HΓ : ⊨ Γ).
+  Variable (RU : relation env).
+  Hypothesis (HRU : EF ind_uparams D ≈ ind_uparams D ∈ per_ctx_env ↘ RU).
+  Variable (Us : list exp).
+  Hypotheses (HUl : List.length Us = ind_nu D)
+    (HUs : forall k N T, List.nth_error Us k = Some N -> List.nth_error (tele_insts (ind_uparams D) Id Us) k = Some T ->
+             Γ ⊨ N : T).
+  Variable (C1 : env) (u0 : list domain).
+  Hypotheses (HC11 : RΓ C1 C1) (HUC : ⟦ Us ⟧* gc_deps ⍮ gc_stack ⍮ C1 ↘ u0).
+  Variable (Bks : list eblock) (iA : nat).
+  Hypothesis (HBk : valid_blocks p D Γ Us Bks iA).
+  Let HBks := vbs_has _ _ _ _ _ _ HBk.
+  Let HMall := vbs_mctx _ _ _ _ _ _ HBk.
+  Let HAv := vbs_motive _ _ _ _ _ _ HBk.
+  Let nr := canon_nparams_rel D u0.
+  Let ar := canon_args_rel D u0.
+  Let dr := canon_doms_rel u0.
+  Let G := grp_rel p D u0 nr ar dr.
+  Let Rel := fun j ns m ns' m' =>
+    per_head (List.nth j (blocks_motives Bks) a_True) (List.nth j (blocks_motives Bks) a_True)
+      (env_args C1 (ns ++ m :: nil)) (env_args C1 (ns' ++ m' :: nil)).
+  #[local] Abbreviation EB f := (f VP p D HP HPD Γ RΓ HRΓ HΓ RU HRU Us HUl HUs C1 u0 HC11 HUC).
+  #[local] Abbreviation EM f := (EB f C1 HC11 Bks iA HBks HMall HAv).
+  #[local] Abbreviation u0_len' := (u0_len D Us HUl C1 u0 HUC).
+  #[local] Abbreviation u0_gargs' := (EB u0_gargs).
+  #[local] Abbreviation Hcp := (vg_canon p D Hvg u0 u0_gargs' u0_len').
+  #[local] Abbreviation HnP := (icp_np_per _ _ Hcp).
+  #[local] Abbreviation HnI := (icp_np_iff _ _ Hcp).
+  #[local] Abbreviation HaP := (icp_arg_per _ _ Hcp).
+  #[local] Abbreviation HaI := (icp_arg_iff _ _ Hcp).
+  #[local] Abbreviation HdP := (icp_dom_per _ _ Hcp).
+  #[local] Abbreviation HdI := (icp_dom_iff _ _ Hcp).
+
+  (** The view [m] of the container's member [k'], its map [vm]. *)
+  Variable (qc : qname) (D' : ind_decl) (m : nat) (Mm : imember) (k' : nat) (Is : list exp) (vm : list nat).
+  Hypotheses (Hq : ind_lookup gc_deps gc_stack qc = Some D') (HMm : ind_member D m = Some Mm)
+    (Hh : im_head Mm = mh_view qc k' Is vm).
+
+  (** The container's eliminator. *)
+  Variable (ρb : env) (VBb : list eblock) (ub : list domain).
+  Hypotheses (HbB : forall i' Mi', ind_member D' i' = Some Mi' -> exists b, List.nth_error VBb i' = Some b)
+    (HnmB : forall i' Mi' b, ind_member D' i' = Some Mi' -> List.nth_error VBb i' = Some b -> eb_nm b = S (im_nn Mi'))
+    (HnaB : forall i' Mi' b, ind_member D' i' = Some Mi' -> List.nth_error VBb i' = Some b -> brs_names (im_cons Mi') (eb_brs b))
+    (HarB : forall i' Mi' b c gs' n B, ind_member D' i' = Some Mi' -> List.nth_error VBb i' = Some b ->
+              ind_con Mi' c = Some gs' -> In (c, n, B) (eb_brs b) -> n = (im_nn Mi' + List.length gs' + cargs_nrec gs')%nat).
+  Hypothesis (Hmot_x : forall i' Mi' v bb ba u u' ns ns' x x', ind_member D' i' = Some Mi' -> List.nth_error vm i' = Some v ->
+                List.nth_error VBb i' = Some bb -> List.nth_error Bks v = Some ba -> G v u u' ns ns' x x' ->
+                exists a a', ⟦ eb_motive bb ⟧ env_args ρb (ns ++ x :: nil) ↘ a /\
+                  ⟦ eb_motive ba ⟧ env_args C1 (ns' ++ x' :: nil) ↘ a' /\
+                  DF a ≈ a' ∈ per_univ_elem iA ↘ Rel v ns x ns' x').
+  Hypothesis (Hbr_x : forall i' Mi' v Mv bb ba c gs' gs nb na Bb Ba u u' bs bs' vs vs' w ihs hd k,
+                ind_member D' i' = Some Mi' -> List.nth_error vm i' = Some v -> ind_member D v = Some Mv ->
+                List.nth_error VBb i' = Some bb -> List.nth_error Bks v = Some ba ->
+                ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
+                brs_lookup (eb_brs bb) c = Some (nb, Bb) -> brs_lookup (eb_brs ba) c = Some (na, Ba) ->
+                G v u u' (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs')
+                  (d_con hd k c (bs ++ vs)) (d_con hd k c (bs' ++ vs')) ->
+                cross_results_rel dr Rel v u u' C1 p u0 Bks
+                  (List.skipn (im_unu D Mv) bs) (List.skipn (im_unu D Mv) bs') gs' gs vs vs' w ihs ->
+                exists r r', ⟦ Bb ⟧ env_args ρb (List.skipn (im_unu D Mv) bs ++ vs ++ w) ↘ r /\
+                  ⟦ Ba ⟧ env_args C1 (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ↘ r' /\
+                  Rel v (List.skipn (im_unu D Mv) bs) (d_con hd k c (bs ++ vs))
+                    (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs' ++ vs')) r r').
+  Hypothesis (Hbot_x : forall i' j Mj hd k as1 as2 e e' w w' ns ns', List.nth_error vm i' = Some j ->
+                ind_member D j = Some Mj ->
+                G j w w' ns ns' (⇑ (d_ind hd k as1) e) (⇑ (d_ind hd k as2) e') ->
+                Dom d_elim ρb VBb qc ub i' as1 e ≈ d_elim C1 Bks p u0 j as2 e' ∈ per_bot).
+
+  (** The members of the container's group and those of the group the
+      view's map takes them to. *)
+  Lemma x_member : forall i' j, List.nth_error vm i' = Some j ->
+      exists Mi' Mj, ind_member D' i' = Some Mi' /\ view_member p D qc D' vm i' Mi' j Mj.
+  Proof.
+    intros i' j Hv.
+    destruct (gta_vwrap _ Hass _ _ _ _ _ _ HMm Hh) as (D2 & Hq2 & Hvw).
+    rewrite Hq in Hq2; injection Hq2 as <-.
+    assert (Hi : i' < List.length (ind_members D')) by (rewrite <- (vwo_length _ _ _ Hvw); apply List.nth_error_Some; congruence).
+    destruct (nth_error_lt_some' _ _ Hi) as [Mi' HMi'].
+    destruct (view_agree_members p D m Mm qc k' Is vm D' Hass HMm Hh Hq i' Mi' HMi') as (v & Mv & Hvm).
+    pose proof (vmb_v _ _ _ _ _ _ _ _ _ Hvm) as Hv'; rewrite Hv in Hv'; injection Hv' as <-.
+    exists Mi', Mv; split; [ exact HMi' | exact Hvm ].
+  Qed.
+
+  (** *** The Group's Eliminator against Itself at [C1] *)
+  Lemma x_ok : elim_ups_ok p D u0 nr ar dr u0 u0.
+  Proof. exact (EB ups_ok u0 u0 (EB u0_env) (EB u0_env) u0_len' u0_len'). Qed.
+
+  Lemma x_mot0 : forall j Mj ba bb u u' ns ns' x x', ind_member D j = Some Mj ->
+      List.nth_error Bks j = Some ba -> List.nth_error Bks j = Some bb -> G j u u' ns ns' x x' ->
+      exists a a', ⟦ eb_motive ba ⟧ env_args C1 (ns ++ x :: nil) ↘ a /\ ⟦ eb_motive bb ⟧ env_args C1 (ns' ++ x' :: nil) ↘ a' /\
+        DF a ≈ a' ∈ per_univ_elem iA ↘ Rel j ns x ns' x'.
+  Proof.
+    intros * HMj Hba Hbb Hm; rewrite Hba in Hbb; injection Hbb as <-.
+    exact (EB mot_mid C1 HC11 Bks iA HMall j Mj ba (eb_motive ba) HMj Hba (HAv _ _ _ HMj Hba) u u' ns ns' x x' Hm).
+  Qed.
+
+  Lemma x_br0 : forall j Mj ba bb c gs n Ba Bb u u' bs bs' vs vs' ihs ihs' hd k', ind_member D j = Some Mj ->
+      List.nth_error Bks j = Some ba -> List.nth_error Bks j = Some bb -> ind_con Mj c = Some gs ->
+      brs_lookup (eb_brs ba) c = Some (n, Ba) -> brs_lookup (eb_brs bb) c = Some (n, Bb) ->
+      G j u u' (List.skipn (im_unu D Mj) bs) (List.skipn (im_unu D Mj) bs') (d_con hd k' c (bs ++ vs)) (d_con hd k' c (bs' ++ vs')) ->
+      rec_results_rel dr Rel j u u' (List.skipn (im_unu D Mj) bs) (List.skipn (im_unu D Mj) bs') gs vs vs' ihs ihs' ->
+      exists r r', ⟦ Ba ⟧ env_args C1 (List.skipn (im_unu D Mj) bs ++ vs ++ ihs) ↘ r /\
+        ⟦ Bb ⟧ env_args C1 (List.skipn (im_unu D Mj) bs' ++ vs' ++ ihs') ↘ r' /\
+        Rel j (List.skipn (im_unu D Mj) bs) (d_con hd k' c (bs ++ vs)) (List.skipn (im_unu D Mj) bs') (d_con hd k' c (bs' ++ vs')) r r'.
+  Proof.
+    assert (HBB : forall j Mj b b' c gs n B B', ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+               List.nth_error Bks j = Some b' -> ind_con Mj c = Some gs ->
+               brs_lookup (eb_brs b) c = Some (n, B) -> brs_lookup (eb_brs b') c = Some (n, B') ->
+               elim_bctx p D Mj gs (blocks_motives Bks) Us ++ Γ ⊨ B ≈ B' : elim_bty p j Mj c gs (eb_motive b) Us).
+    { intros * HMj Hb Hb' Hcon Hlb Hlb'; rewrite Hb in Hb'; injection Hb' as <-.
+      rewrite Hlb in Hlb'; injection Hlb' as <-.
+      exact (vbs_branch _ _ _ _ _ _ HBk _ _ _ _ _ _ _ HMj Hb Hcon (brs_lookup_in _ _ _ _ Hlb)). }
+    exact (EM br_mid (vbs_bctx _ _ _ _ _ _ HBk) Bks HBB).
+  Qed.
+
+  #[local] Abbreviation XS f := (f p D u0 nr ar dr Hl Hass HnP HnI HaP HaI HdP HdI (vg_adm p D Hvg u0 u0 u0_gargs' u0_len' u0_gargs')
+     iA C1 C1 Bks Bks u0 u0 x_ok Rel HBks HBks (vbs_nm _ _ _ _ _ _ HBk) (vbs_nm _ _ _ _ _ _ HBk)
+     (vbs_names _ _ _ _ _ _ HBk) (vbs_names _ _ _ _ _ _ HBk) (vbs_arity _ _ _ _ _ _ HBk) (vbs_arity _ _ _ _ _ _ HBk)
+     (dt_nodup _ _ _ Hdt) x_mot0 x_br0).
+
+  Lemma x_self : (forall j u u' ns ns' x x', G j u u' ns ns' x x' ->
+        exists r r', ⟦elim x at j of p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ r /\
+          ⟦elim x' at j of p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ r' /\ Rel j ns x ns' x' r r') /\
+      (forall k u u' pre pre' gs vs vs',
+        con_args_rel p D (okr_at D u0 nr) nr ar dr k u u' pre pre' gs vs vs' ->
+        exists ihs ihs', ⟦ihs vs of gs under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ihs /\
+          ⟦ihs vs' of gs under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ihs' /\
+          rec_results_rel dr Rel k u u' pre pre' gs vs vs' ihs ihs') /\
+      (forall k u u' pre pre' t x x',
+        rec_arg_rel p D (okr_at D u0 nr) nr ar dr k u u' pre pre' t x x' ->
+        exists ih ih', ⟦ih x of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ih /\
+          ⟦ih x' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ih' /\
+          rec_result_rel dr Rel k u u' pre pre' t x x' ih ih') /\
+      (forall k u u' pre pre' t f c f' c',
+        rec_arg_app_rel p D (okr_at D u0 nr) nr ar dr k u u' pre pre' t f c f' c' ->
+        exists fc fc' r r', $| f & c | gc_deps ⍮ gc_stack ↘ fc /\ $| f' & c' | gc_deps ⍮ gc_stack ↘ fc' /\
+          ⟦ih fc of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ r /\
+          ⟦ih fc' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ r' /\
+          rec_result_rel dr Rel k u u' pre pre' t fc fc' r r').
+  Proof. exact (XS per_ind_elim_all). Qed.
+
+  Lemma x_move : forall j Mj u u' ns ns' x x' ns1 ns1', ind_member D j = Some Mj -> G j u u' ns ns' x x' ->
+      tele_rel (nr j) (List.rev (im_nparams Mj)) ns ns1 -> tele_rel (nr j) (List.rev (im_nparams Mj)) ns' ns1' ->
+      (Rel j ns x ns' x' <~> Rel j ns1 x ns1' x').
+  Proof. exact (XS motive_rel_move). Qed.
+
+  Lemma x_ref_target : forall j Mj hd k, ind_member D j = Some Mj -> im_ref p j Mj = (hd, k) ->
+      exists Dq Mk, ind_lookup gc_deps gc_stack hd = Some Dq /\ ind_member Dq k = Some Mk /\
+        im_nn Mk = im_nn Mj /\ ind_nu Dq = im_unu D Mj.
+  Proof. exact (XS im_ref_target). Qed.
+
+  (** *** Related Elements Eliminate to Related Values *)
+  Theorem cross_elim_all :
+    (forall j u u' ns ns' x x', G j u u' ns ns' x x' ->
+       forall i', List.nth_error vm i' = Some j ->
+       exists r r', ⟦elim x at i' of qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ r /\
+         ⟦elim x' at j of p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ r' /\ Rel j ns x ns' x' r r') /\
+    (forall k u u' pre pre' gs vs vs',
+       con_args_rel p D (okr_at D u0 nr) nr ar dr k u u' pre pre' gs vs vs' ->
+       forall gs', cargs_corr vm gs' gs ->
+       exists w ihs, ⟦ihs vs of gs' under qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ w /\
+         ⟦ihs vs' of gs under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ihs /\
+         cross_results_rel dr Rel k u u' C1 p u0 Bks pre pre' gs' gs vs vs' w ihs) /\
+    (forall k u u' pre pre' t x x',
+       rec_arg_rel p D (okr_at D u0 nr) nr ar dr k u u' pre pre' t x x' ->
+       forall t', shape_corr vm t' t ->
+       exists ih ih', ⟦ih x of t' under qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ ih /\
+         ⟦ih x' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ ih' /\
+         rec_result_rel dr Rel k u u' pre pre' t x x' ih ih') /\
+    (forall k u u' pre pre' t f c f' c',
+       rec_arg_app_rel p D (okr_at D u0 nr) nr ar dr k u u' pre pre' t f c f' c' ->
+       forall t', shape_corr vm t' t ->
+       exists fc fc' r r', $| f & c | gc_deps ⍮ gc_stack ↘ fc /\ $| f' & c' | gc_deps ⍮ gc_stack ↘ fc' /\
+         ⟦ih fc of t' under qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ r /\
+         ⟦ih fc' of t under p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ r' /\
+         rec_result_rel dr Rel k u u' pre pre' t fc fc' r r').
+  Proof.
+    pose proof (nparams_rel_sym p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI) as tsym.
+    apply ind_rel_mut_ind_all.
+    - (** A constructor: the container's wrapped branch against the
+          group's, moved to the indices. *)
+      intros * HM Href Hn Hcn Lb Lb' Hs Hs' Ha Hia IH i' Hvi.
+      destruct (x_member i' k Hvi) as (Mi' & Mk0 & HMi' & Hvmb).
+      pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMk0; rewrite HM in HMk0; injection HMk0 as <-.
+      destruct (vmb_cons' _ _ _ _ _ _ _ _ _ Hvmb c gs Hcn) as (gs' & Hc' & Hcorr).
+      destruct (IH gs' Hcorr) as (w & ihs & Ew & Ei & Hcr).
+      destruct (HbB _ _ HMi') as [bb Hbb]; destruct (HBks _ _ HM) as [ba Hba].
+      destruct (brs_names_lookup _ _ _ _ (HnaB _ _ _ HMi' Hbb) Hc') as (nb & Bb & HBb & HinB).
+      destruct (brs_names_lookup _ _ _ _ (vbs_names _ _ _ _ _ _ HBk _ _ _ HM Hba) Hcn) as (na & Ba & HBa & HinA).
+      pose proof (HarB _ _ _ _ _ _ _ HMi' Hbb Hc' HinB) as Hnb.
+      pose proof (vbs_arity _ _ _ _ _ _ HBk _ _ _ _ _ _ _ HM Hba Hcn HinA) as Hna.
+      destruct (x_ref_target _ _ _ _ HM Href) as (Dq & Mq & Hq' & HMq & Hnnq & Hnuq).
+      destruct (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia) as [Lv Lv'].
+      pose proof (cargs_corr_len _ _ _ Hcorr) as Lgs.
+      pose proof (vmb_nn _ _ _ _ _ _ _ _ _ Hvmb) as Hnn'.
+      match goal with |- exists r r', ⟦elim d_con _ _ _ (?bs ++ ?vs) at _ of _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ r /\
+                                       ⟦elim d_con _ _ _ (?bs' ++ ?vs') at _ of _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ r' /\ _ =>
+        assert (Hcur : G _ _ _ _ _ (d_con _ _ _ (bs ++ vs)) (d_con _ _ _ (bs' ++ vs')))
+          by (eapply ind_rel_con; [ exact HM | exact Href | exact Hn | exact Hcn | exact Lb | exact Lb' | exact Hs | exact Hs'
+                                 | exact Ha | exact Hia ]) end.
+      pose proof (ind_rel_idx p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hcur Hs Hs') as Hm.
+      destruct (Hbr_x i' Mi' k Mk bb ba c gs' gs nb na Bb Ba u u' bs bs' vs vs' w ihs hd k'0 HMi' Hvi HM Hbb Hba Hc' Hcn HBb HBa
+                  Hm Hcr) as (r & r' & Er & Er' & Hrr).
+      exists r, r'; split; [| split ].
+      + eapply eval_elim_con; [ exact Hq | exact HMi' | rewrite <- (vmb_ref _ _ _ _ _ _ _ _ _ Hvmb); exact Href | exact Hq'
+                              | exact HMq | exact Hc' | rewrite List.length_app; unfold im_np; lia | exact Hbb | exact HBb
+                              | rewrite Hnnq, Hnn'; exact Hnb | |].
+        * rewrite skipn_app_exact by (unfold im_np; lia); exact Ew.
+        * rewrite firstn_app_exact, skipn_app_exact, Hnuq by (unfold im_np; lia); exact Er.
+      + eapply eval_elim_con; [ exact Hl | exact HM | exact Href | exact Hq' | exact HMq | exact Hcn
+                              | rewrite List.length_app; unfold im_np; lia | exact Hba | exact HBa | rewrite Hnnq; exact Hna | |].
+        * rewrite skipn_app_exact by (unfold im_np; lia); exact Ei.
+        * rewrite firstn_app_exact, skipn_app_exact, Hnuq by (unfold im_np; lia); exact Er'.
+      + apply (x_move _ _ _ _ _ _ _ _ _ _ HM Hm (tsym _ _ HM _ _ Hs) (tsym _ _ HM _ _ Hs')); exact Hrr.
+    - (** A neutral: both stuck, their readbacks agree. *)
+      intros * uu uu' HM Href Hn L1 L2 Hs1 Hs2 He i' Hvi.
+      destruct (x_member i' k Hvi) as (Mi' & Mk0 & HMi' & Hvmb).
+      pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMk0; rewrite HM in HMk0; injection HMk0 as <-.
+      pose proof (vmb_nn _ _ _ _ _ _ _ _ _ Hvmb) as Hnn'.
+      assert (Hcur : G k uu uu' ns ns' (⇑ (d_ind hd k'0 as1) m0) (⇑ (d_ind hd k'0 as2) m'))
+        by (eapply ind_rel_neut; [ exact HM | exact Href | exact Hn | exact L1 | exact L2 | exact Hs1 | exact Hs2 | exact He ]).
+      pose proof (ind_rel_idx p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hcur Hs1 Hs2) as Hm.
+      destruct (x_ref_target _ _ _ _ HM Href) as (Dq & Mq & Hq' & HMq & Hnnq & Hnuq).
+      destruct (HbB _ _ HMi') as [bb Hbb]; destruct (HBks _ _ HM) as [ba Hba].
+      destruct (Hmot_x i' Mi' k bb ba uu uu' _ _ _ _ HMi' Hvi Hbb Hba Hm) as (a & a' & Ea & Ea' & HR).
+      pose proof (Hbot_x i' k Mk hd k'0 as1 as2 m0 m' uu uu' ns ns' Hvi HM Hcur) as Hb.
+      exists (⇑ a (d_elim ρb VBb qc ub i' as1 m0)), (⇑ a' (d_elim C1 Bks p u0 k as2 m')); split; [| split ].
+      + eapply eval_elim_neut; [ exact Hq | exact HMi' | rewrite <- (vmb_ref _ _ _ _ _ _ _ _ _ Hvmb); exact Href | exact Hq'
+                               | exact HMq | unfold im_np; lia | exact Hbb | rewrite (HnmB _ _ _ HMi' Hbb), Hnnq, Hnn'; reflexivity
+                               | rewrite Hnuq; exact Ea ].
+      + eapply eval_elim_neut; [ exact Hl | exact HM | exact Href | exact Hq' | exact HMq | unfold im_np; lia | exact Hba
+                               | rewrite (vbs_nm _ _ _ _ _ _ HBk _ _ _ HM Hba), Hnnq; reflexivity | rewrite Hnuq; exact Ea' ].
+      + apply (x_move _ _ _ _ _ _ _ _ _ _ HM Hm (tsym _ _ HM _ _ Hs1) (tsym _ _ HM _ _ Hs2)).
+        exact (per_bot_then_per_elem HR Hb).
+    - intros k0 u u' pre pre' [| [A' | t'] gs'] Hco; cbn in Hco; try contradiction.
+      exists nil, nil; split; [ constructor | split; [ constructor | constructor ] ].
+    - intros * Hia IH [| [A' | t'] gs'] Hco; cbn in Hco; try contradiction.
+      destruct (IH gs' Hco) as (w & ihs & Ew & Ei & Hcr).
+      exists w, ihs; split; [ constructor; exact Ew | split; [ constructor; exact Ei | constructor; exact Hcr ] ].
+    - intros * Hsh IHsh Hia IHia [| [A' | t'] gs'] Hco; cbn in Hco; try contradiction.
+      + (** Nested through: the group's own result. *)
+        destruct (IHia gs' Hco) as (w & ihs & Ew & Ei & Hcr).
+        destruct (proj1 (proj2 (proj2 x_self)) _ _ _ _ _ _ _ _ Hsh) as (ih0 & ih & _ & Eh & _).
+        exists w, (ih :: ihs); split; [ constructor; exact Ew |].
+        split; [ econstructor; [ exact Eh | exact Ei ] | econstructor; [ exact Eh | exact Hcr ] ].
+      + destruct Hco as (Hm & Hd & Hco).
+        destruct (IHia gs' Hco) as (w & ihs & Ew & Ei & Hcr).
+        destruct (IHsh t' (shape_corr_of _ _ _ Hm Hd)) as (ih & ih' & Eh & Eh' & Hhh).
+        exists (ih :: w), (ih' :: ihs); split; [ econstructor; [ exact Eh | exact Ew ] |].
+        split; [ econstructor; [ exact Eh' | exact Ei ] | econstructor; [ exact Hhh | exact Hcr ] ].
+    - intros * Hb Hb' Ok Ok' Hr IHr [j' Ps' | B' t'] Hsc; cbn in Hsc; try contradiction.
+      destruct (IHr j' Hsc) as (r & r' & Er & Er' & Hrr).
+      exists r, r'; split; [ constructor; exact Er | split; [ constructor; exact Er' | econstructor; [ exact Hb | exact Hb' | exact Hrr ] ] ].
+    - intros * Hf IH [j' Ps' | B' t'] Hsc; cbn in Hsc; try contradiction.
+      match goal with |- exists ih ih', ⟦ih ?f of _ under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ ih /\
+                                         ⟦ih ?f' of pt_pi _ ?t under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ ih' /\ _ =>
+        exists (d_ihfn ρb VBb qc ub t' f), (d_ihfn C1 Bks p u0 t f') end.
+      split; [ constructor | split; [ constructor |] ].
+      constructor; intros c c' Hcc.
+      destruct (IH c c' Hcc t' Hsc) as (fc & fc' & r & r' & Ef & Ef' & Er & Er' & Hrr).
+      econstructor; [ exact Ef | exact Ef' | econstructor; eassumption | econstructor; eassumption | exact Hrr ].
+    - intros * Ef Ef' Hsh IHsh t' Hsc.
+      destruct (IHsh t' Hsc) as (ih & ih' & Eh & Eh' & Hhh).
+      do 4 eexists; split; [ exact Ef | split; [ exact Ef' | split; [ exact Eh | split; [ exact Eh' | exact Hhh ] ] ] ].
+  Qed.
+End CrossElim.
 
 End Fixed_GCtx.
