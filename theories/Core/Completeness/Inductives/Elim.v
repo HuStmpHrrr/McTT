@@ -1072,6 +1072,96 @@ Proof.
              ltac:(rewrite List.length_app, HNl, HAl; reflexivity) H).
 Qed.
 
+(** ** Instances of a Closed Telescope at Equal Terms
+
+    An extension of a substitution [τ'] by a term of the entry's type at a
+    substitution [τ] related to [τ']: its head commutes with the
+    substitutions too ([sub_link_ass] at [τ = τ']). *)
+Lemma sub_link_ass_cross : forall {Γ Δ τ τ' B} {i : nat} {N},
+    Γ ⊨ˢ τ ≈ τ' : Δ -> sub_link Γ Δ τ' ->
+    Δ ⊨ B : Typeω@i -> Γ ⊨ N : B[τ] ->
+    sub_link Γ (Δ ▹ B) (τ' ,, N).
+Proof.
+  intros * Hτj Hl HB HN Γ' R' HΓ' σ σ' Hσ RΔB HΔB ρ ρσ Hρ Hev.
+  pose proof Hτj as [RΓ HΓ RΔ HΔ _].
+  pose proof (per_ctx_env_of_typ HΔ HB) as HΔB'.
+  assert (E : RΔB <~> per_env_extend B B RΔ) by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
+  assert (Hρσ : RΓ ρσ ρσ)
+    by (eapply (rel_sub_under_ctx_at' (rel_sub_under_ctx_refl_left Hσ) HΓ' HΓ); eassumption).
+  destruct (Hl _ _ HΓ' _ _ Hσ _ HΔ _ _ Hρ Hev) as [e1 [He1 L]].
+  pose proof HN as [RΓ2 HΓ2 j HNgen].
+  destruct (HNgen _ _ HΓ' _ _ (rel_sub_under_ctx_refl_left Hσ) _ _ _ _ Hρ Hev Hev)
+    as [R1 [[b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbc] [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnc]]].
+  exists (e1 ↦ n1); split.
+  - rewrite sb_extend_compose; apply eval_sub_extend; assumption.
+  - intros e2 He2.
+    destruct (eval_sub_extend_inv _ _ _ _ He2) as [Ht2 [m2 [Hm2e Hm2]]].
+    apply E.
+    pose proof (L _ Ht2) as Ht.
+    pose proof (rel_exp_of_typ_inversion HB) as [R0 [HΔ0 HBgen]].
+    assert (Hm : m2 = n2) by (eapply functional_eval_exp; eassumption).
+    subst m2.
+    split; [ exact Ht |].
+    destruct (rel_sub_under_ctx_simple Hτj) as (RΓ0 & HRΓ0 & RΔ0 & HRΔ0 & Hs).
+    assert (EΓ : RΓ0 <~> RΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+    destruct (Hs ρσ ρσ ltac:(apply EΓ; exact Hρσ)) as (eτ & eτ' & Eτ & _ & _).
+    destruct (HBgen _ _ HΓ _ _ Hτj _ _ _ _ Hρσ Eτ Ht2) as [x1 c x3 x4 Hx1 Hc Hx3 Hx4 [[Rx Hxc] [[Rcx Hcx3] _]]].
+    destruct (HBgen _ _ HΔ _ _ (rel_sub_id (ex_intro _ _ HΔ)) _ _ _ _ Ht (eval_sub_id _) (eval_sub_id _))
+      as [y1 a c' y4 Hy1 Ha Hc' Hy4 [_ [[Rac HRac] _]]].
+    assert (c' = x3) as -> by (eapply functional_eval_exp; eassumption).
+    assert (b2 = x1) as -> by (eapply functional_eval_exp; eassumption).
+    destruct Hbc as [_ [Hb23 _]].
+    assert (Hn12 : R1 n1 n2) by (destruct Hnc as [? _]; assumption).
+    pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ Hb23 Hxc) as E1.
+    destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ Hxc Hcx3) as (R13 & H13 & E13).
+    pose proof (per_univ_elem_left_irrel _ _ _ _ _ _ _ HRac H13) as E2.
+    eapply per_head_of; [ exact Ha | exact Hx3 | exact HRac |].
+    cbn; unfold env_var; rewrite Hm2e; apply E2, E13, E1; exact Hn12.
+Qed.
+
+(** Two instances of a closed telescope [C] at terms equal at the left
+    one's types: related, and the right one commutes with substitutions. *)
+Lemma closed_inst_cross : forall C Γ Ms Ms', tele_ass C -> ⊨ C -> ⊨ Γ ->
+    List.length Ms = List.length C -> List.length Ms' = List.length C ->
+    (forall k N N' T, List.nth_error Ms k = Some N -> List.nth_error Ms' k = Some N' ->
+       List.nth_error (tele_insts C Id Ms) k = Some T -> Γ ⊨ N ≈ N' : T) ->
+    Γ ⊨ˢ sb_of_list Id Ms ≈ sb_of_list Id Ms' : C ++ Γ /\ sub_link Γ (C ++ Γ) (sb_of_list Id Ms').
+Proof.
+  induction C as [| e C IH]; intros Γ Ms Ms' HCa HC HΓ Hl Hl' HMs.
+  - destruct Ms, Ms'; cbn in Hl, Hl'; try discriminate; cbn.
+    destruct (rel_ctx_wf_per_ctx_env HΓ) as [R HR].
+    split; [ exact (rel_sub_id (ex_intro _ _ HR)) | exact sub_link_id ].
+  - assert (He : exists A, e = ce_ass A) by (inversion HCa as [| ? ? He _]; exact He).
+    destruct He as [A ->].
+    assert (HCa' : tele_ass C) by (inversion HCa; assumption).
+    destruct (rel_ctx_wf_ass_inv HC) as [i HA].
+    pose proof (rel_ctx_wf_tail HC) as HC'.
+    destruct (List.exists_last (l := Ms) ltac:(intros ->; cbn in Hl; discriminate)) as (Ms0 & M & ->).
+    destruct (List.exists_last (l := Ms') ltac:(intros ->; cbn in Hl'; discriminate)) as (Ms0' & M' & ->).
+    rewrite List.length_app in Hl, Hl'; cbn in Hl, Hl'.
+    assert (Hl0 : List.length Ms0 = List.length C) by lia.
+    assert (Hl0' : List.length Ms0' = List.length C) by lia.
+    assert (Hti : tele_insts (ce_ass A :: C) Id (Ms0 ++ M :: nil) = tele_insts C Id Ms0 ++ A[sb_of_list Id Ms0] :: nil).
+    { change (ce_ass A :: C) with ((ce_ass A :: nil) ++ C).
+      rewrite tele_insts_app by (try exact HCa'; lia); reflexivity. }
+    assert (HlT : List.length (tele_insts C Id Ms0) = List.length C) by (rewrite length_tele_insts by exact HCa'; lia).
+    destruct (IH Γ Ms0 Ms0' HCa' HC' HΓ Hl0 Hl0') as [Hr Hlk].
+    { intros k N N' T HN HN' HT.
+      assert (Hk : k < List.length C) by (rewrite <- HlT; apply List.nth_error_Some; congruence).
+      apply (HMs k); [ rewrite List.nth_error_app1 by lia; exact HN | rewrite List.nth_error_app1 by lia; exact HN'
+                     | rewrite Hti, List.nth_error_app1 by lia; exact HT ]. }
+    assert (HMM : Γ ⊨ M ≈ M' : A[sb_of_list Id Ms0]).
+    { apply (HMs (List.length C)); [ rewrite List.nth_error_app2, Hl0, Nat.sub_diag by lia; reflexivity
+                                   | rewrite List.nth_error_app2, Hl0', Nat.sub_diag by lia; reflexivity |].
+      rewrite Hti, List.nth_error_app2, HlT, Nat.sub_diag by lia; reflexivity. }
+    pose proof (closed_app_valid _ _ _ _ _ HCa' HC' HΓ HA) as HAv.
+    rewrite !sb_of_list_app; cbn [sb_of_list List.app].
+    split.
+    + exact (rel_sub_under_ctx_extend Hr HAv HMM).
+    + exact (sub_link_ass_cross Hr Hlk HAv (rel_exp_under_ctx_refl_right HMM)).
+Qed.
+
 Lemma eval_apps_functional : forall f ys r1 r2, $*| f & ys | gc_deps ⍮ gc_stack ↘ r1 -> $*| f & ys | gc_deps ⍮ gc_stack ↘ r2 -> r1 = r2.
 Proof.
   intros f ys; revert f; induction ys as [| y ys IH]; intros f r1 r2 H1 H2; inversion H1; subst; inversion H2; subst; [ reflexivity |].
