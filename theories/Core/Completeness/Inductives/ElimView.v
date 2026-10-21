@@ -904,6 +904,7 @@ Section WrapClo.
     (Hia : con_args_rel p D (okr_at D u0 nr) nr ar dr v u u' X X' gs vs vs').
 
   (** The recursive argument after [gs1], of shape [t] ending in [Mj]. *)
+  Section WcAt.
   Variable (gs1 : list carg) (t : ptyp) (gs2 : list carg).
   Hypothesis (Heq : gs = gs1 ++ ca_rec t :: gs2).
   Variable (Mj : imember).
@@ -1093,6 +1094,150 @@ Section WrapClo.
       destruct (IH (S kd) ltac:(lia) _ _ _ _ Hys1 Efa Efa' Hsh' _ _ HUs1 HBs1) as (rb & ra & Erb & Era & Hih).
       econstructor; [ exact Efc | exact Efc' | constructor; rewrite env_args_snoc in Erb; exact Erb | econstructor; [ exact Efc' | exact Era ] |].
       rewrite <- !List.app_assoc; exact Hih.
+  Qed.
+  End WcAt.
+
+  (** *** The Recursive Results of the Group's Branch at the Wrapped
+      Branch's Instance
+
+      At the arguments after [gs1] (the container's [gs1']): the values of
+      the instance's recursive results ([wrap_ihs] of [elim_ihs]) against
+      the group's recursive results at [C1], as recursive results. *)
+  Let R := List.length Ew.
+  Let base := sb_of_list (sb_of_wk (wk_shiftn n)) Ps.
+
+  Lemma wc_ihs : forall rest gs1 rest' gs1' ihs, gs = gs1 ++ rest -> gs' = gs1' ++ rest' -> List.length gs1' = List.length gs1 ->
+      cross_results_rel dr Rel v u u' C1 p u0 Bks
+        (X ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) (X' ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs'))
+        rest' rest (List.skipn (List.length gs1) vs) (List.skipn (List.length gs1) vs')
+        (List.skipn (cargs_nrec gs1') w) (List.skipn (cargs_nrec gs1) ihs) ->
+      exists ihsT, ⟦ wrap_ihs rest' rest (elim_ihs p D (Some p) Uw Bw (cargs_sub base gs1 Aw) rest (List.skipn (List.length gs1) Aw))
+                     (cargs_nrec gs1') R ⟧* gc_deps ⍮ gc_stack ⍮ Eb ↘ ihsT /\
+        rec_results_rel dr Rel v u u'
+          (X ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) (X' ++ nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs'))
+          rest (List.skipn (List.length gs1) vs) (List.skipn (List.length gs1) vs') ihsT (List.skipn (cargs_nrec gs1) ihs).
+  Proof.
+    destruct (con_args_rel_len _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia) as [Lv0 Lv0'].
+    pose proof (cargs_kinds_length _ _ Hk) as Lgs.
+    induction rest as [| g rest IH]; intros gs1 rest' gs1' ihs Heq Heq' Lg1 Hcr.
+    - assert (rest' = nil) as -> by (destruct rest'; [ reflexivity |]; exfalso; rewrite Heq, Heq', !List.length_app in Lgs; cbn in Lgs; lia).
+      inversion Hcr as [pre0 pre0' E1 E2 E3 E4 E5 E6 E7 E8 | | |].
+      exists nil; split; [ cbn; constructor | constructor ].
+    - destruct rest' as [| g' rest'].
+      { exfalso; rewrite Heq, Heq', !List.length_app in Lgs; cbn in Lgs; lia. }
+      assert (Hlt : List.length gs1 < List.length vs) by (rewrite Lv0, Heq, List.length_app; cbn; lia).
+      destruct (nth_error_lt_some vs _ Hlt) as [x Hx].
+      destruct (nth_error_lt_some vs' (List.length gs1) ltac:(rewrite Lv0'; rewrite Heq, List.length_app; cbn; lia)) as [x' Hx'].
+      assert (HltA : List.length gs1 < List.length Aw)
+        by (unfold Aw; rewrite length_vars_from; unfold na; rewrite Heq, List.length_app; cbn; lia).
+      destruct (nth_error_lt_some Aw _ HltA) as [M0 HM0].
+      assert (Lf : List.length (List.firstn (List.length gs1) vs) = List.length gs1) by (rewrite List.length_firstn; lia).
+      assert (Lf' : List.length (List.firstn (List.length gs1) vs') = List.length gs1) by (rewrite List.length_firstn; lia).
+      assert (Heq1 : gs = (gs1 ++ g :: nil) ++ rest) by (rewrite <- List.app_assoc; exact Heq).
+      assert (Heq1' : gs' = (gs1' ++ g' :: nil) ++ rest') by (rewrite <- List.app_assoc; exact Heq').
+      assert (Hkr : cargs_kinds (g' :: rest') (g :: rest)).
+      { rewrite Heq, Heq' in Hk; exact (proj2 (cargs_kinds_app_inv _ _ _ _ Lg1 Hk)). }
+      rewrite (skipn_nth_cons _ _ _ Hx), (skipn_nth_cons _ _ _ Hx') in Hcr |- *.
+      rewrite (skipn_nth_cons _ _ _ HM0).
+      destruct g as [B0 | t], g' as [A' | t']; cbn in Hkr; try contradiction.
+      + (** Non-recursive in both. *)
+        inversion Hcr as [| pre0 pre0' A1' A1 gs1x' gs1x v1 v1' vs1 vs1' w1 ihs1 Hcr1 | |].
+        destruct (IH (gs1 ++ ca_arg B0 :: nil) rest' (gs1' ++ ca_arg A' :: nil) ihs Heq1 Heq1' ltac:(rewrite !List.length_app; cbn; lia))
+          as (ihsT & Ei & Hr).
+        { rewrite List.length_app, Nat.add_1_r, (firstn_S_snoc _ _ _ Hx), (firstn_S_snoc _ _ _ Hx').
+          rewrite !nonrec_arg_vals_app by (rewrite List.length_firstn; lia).
+          rewrite !cargs_nrec_app'; cbn [nonrec_arg_vals cargs_nrec]; rewrite !Nat.add_0_r, !List.app_assoc.
+          exact Hcr1. }
+        rewrite List.length_app, Nat.add_1_r, (firstn_S_snoc _ _ _ Hx), (firstn_S_snoc _ _ _ Hx') in Hr.
+        rewrite !nonrec_arg_vals_app in Hr by (rewrite List.length_firstn; lia).
+        rewrite !cargs_nrec_app' in Ei, Hr; cbn [nonrec_arg_vals cargs_nrec] in Ei, Hr; rewrite !Nat.add_0_r in Ei, Hr.
+        rewrite List.length_app, Nat.add_1_r in Ei.
+        assert (Hcs : cargs_sub base (gs1 ++ ca_arg B0 :: nil) Aw = (cargs_sub base gs1 Aw ,, M0)).
+        { rewrite <- cargs_sub_firstn, <- (cargs_sub_firstn gs1), List.length_app, Nat.add_1_r, (firstn_S_nth _ _ _ HM0).
+          apply cargs_sub_snoc_arg; rewrite List.length_firstn; lia. }
+        rewrite Hcs in Ei; rewrite List.app_assoc in Hr.
+        exists ihsT; split; [ cbn [wrap_ihs elim_ihs]; exact Ei |].
+        apply rec_results_arg; rewrite <- !List.app_assoc; rewrite <- !List.app_assoc in Hr; exact Hr.
+      + (** Nested through: the value of the group's eliminator in the
+            wrapped context ([wc_clo]). *)
+        inversion Hcr as [| | pre0 pre0' A1' t1 gs1x' gs1x v1 v1' vs1 vs1' w1 ih ihs1 Eih Hcr1 | ].
+        match goal with E : _ :: _ = List.skipn (cargs_nrec gs1) ihs |- _ => rename E into Eihs end.
+        destruct (length_rec_ps D HD v Mv HMv c gs gs1 t rest Hcon Heq) as (Mj & HMj & _).
+        destruct (con_args_rel_at _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hia gs1 t rest Heq) as (y & y' & Hy & Hy' & Hsh).
+        rewrite Hx in Hy; injection Hy as <-; rewrite Hx' in Hy'; injection Hy' as <-.
+        destruct (wc_clo gs1 t rest Heq Mj HMj x Hx x' (List.length (ptyp_doms t)) 0 eq_refl nil nil x x' (tele_prefix_rel_nil _)
+                    ltac:(constructor) ltac:(constructor) ltac:(cbn [ptyp_skip]; rewrite !List.app_nil_r; exact Hsh) Uw Bw
+                    ltac:(cbn [sb_shift_iter]; rewrite (List.map_ext _ (fun U => U) exp_sub_id), List.map_id; reflexivity)
+                    ltac:(cbn [sb_shift_iter]; rewrite blocks_sub_id; reflexivity)) as (rb & ra & Erb & Era & Hr).
+        cbn [sb_qn apps_vars_iter ptyp_skip env_args List.fold_left] in Erb, Era, Hr.
+        rewrite (List.nth_error_nth _ _ _ HM0) in Erb.
+        pose proof (functional_eval_ih _ _ _ _ _ _ _ _ Era Eih) as ->.
+        clear Era Hcr.
+        assert (Hst : ptyp_scoped (List.length (cargs_nonrec gs1) + im_np D Mv) t).
+        { pose proof (mc_recs _ _ (dc_members _ Hc _ _ HMv) _ _ _ _ _ (WB w_Hin v Mv c gs' gs HMv Hcon Hk) Heq) as Hs.
+          rewrite cargs_strat_nonrec, List.length_rev, List.length_map in Hs; exact Hs. }
+        assert (Hag : forall y, y < List.length (cargs_nonrec gs1) + im_np D Mv ->
+                   cargs_sub (sb_of_list Id Ps) gs1 Aw y = cargs_sub base gs1 Aw y).
+        { apply cargs_sub_lt_base; [ unfold Aw; rewrite length_vars_from; unfold na; rewrite Heq, List.length_app; cbn; lia |].
+          intros z Hz; unfold base; apply sb_of_list_lt_base; unfold Ps; rewrite List.length_app, wc_LUw; unfold Nw;
+            rewrite length_vars_from; unfold im_np, nn in *; lia. }
+        rewrite (ptyp_ih_agree _ _ _ _ _ _ _ _ _ _ Hst Hag) in Erb.
+        assert (Hs1 : List.skipn (S (cargs_nrec gs1)) ihs = ihs1)
+          by (change (S (cargs_nrec gs1)) with (1 + cargs_nrec gs1); rewrite <- List.skipn_skipn, <- Eihs; reflexivity).
+        destruct (IH (gs1 ++ ca_rec t :: nil) rest' (gs1' ++ ca_arg A' :: nil) ihs Heq1 Heq1' ltac:(rewrite !List.length_app; cbn; lia))
+          as (ihsT & Ei & Hr2).
+        { rewrite List.length_app, Nat.add_1_r, (firstn_S_snoc _ _ _ Hx), (firstn_S_snoc _ _ _ Hx').
+          rewrite !nonrec_arg_vals_app by (rewrite List.length_firstn; lia).
+          rewrite !cargs_nrec_app'; cbn [nonrec_arg_vals cargs_nrec]; rewrite !Nat.add_0_r, !List.app_nil_r, Nat.add_1_r, Hs1.
+          exact Hcr1. }
+        rewrite List.length_app, Nat.add_1_r, (firstn_S_snoc _ _ _ Hx), (firstn_S_snoc _ _ _ Hx') in Hr2.
+        rewrite !nonrec_arg_vals_app in Hr2 by (rewrite List.length_firstn; lia).
+        rewrite !cargs_nrec_app' in Ei, Hr2; cbn [nonrec_arg_vals cargs_nrec] in Ei, Hr2.
+        rewrite ?Nat.add_0_r in Ei; rewrite ?List.app_nil_r in Hr2; rewrite Nat.add_1_r, Hs1 in Hr2.
+        rewrite List.length_app, Nat.add_1_r in Ei.
+        assert (Hcs : cargs_sub base (gs1 ++ ca_rec t :: nil) Aw = cargs_sub base gs1 Aw).
+        { rewrite <- cargs_sub_firstn, <- (cargs_sub_firstn gs1), List.length_app, Nat.add_1_r, (firstn_S_nth _ _ _ HM0).
+          apply cargs_sub_snoc_rec; rewrite List.length_firstn; lia. }
+        rewrite Hcs in Ei; rewrite !List.app_nil_r in Hr.
+        exists (rb :: ihsT); split; [ cbn [wrap_ihs elim_ihs List.hd List.tl]; constructor; [ exact Erb | exact Ei ] |].
+        apply rec_results_rec; [ exact Hr | exact Hr2 ].
+      + (** Recursive in both: the container's recursive result, a
+            variable of the wrapped context. *)
+        inversion Hcr as [| | | pre0 pre0' t1' t1 gs1x' gs1x v1 v1' vs1 vs1' ihb iha w1 ihs1 Hrr Hcr1].
+        match goal with E : _ :: _ = List.skipn (cargs_nrec gs1') w |- _ => rename E into Ews end.
+        match goal with E : _ :: _ = List.skipn (cargs_nrec gs1) ihs |- _ => rename E into Eihs end.
+        clear Hcr.
+        assert (Hs1 : List.skipn (S (cargs_nrec gs1)) ihs = ihs1)
+          by (change (S (cargs_nrec gs1)) with (1 + cargs_nrec gs1); rewrite <- List.skipn_skipn, <- Eihs; reflexivity).
+        assert (Hs1' : List.skipn (S (cargs_nrec gs1')) w = w1)
+          by (change (S (cargs_nrec gs1')) with (1 + cargs_nrec gs1'); rewrite <- List.skipn_skipn, <- Ews; reflexivity).
+        assert (Hw : List.nth_error w (cargs_nrec gs1') = Some ihb)
+          by (rewrite <- (Nat.add_0_r (cargs_nrec gs1')), <- List.nth_error_skipn, <- Ews; reflexivity).
+        assert (HR1 : cargs_nrec gs1' < R) by (unfold R; rewrite <- Lw; apply List.nth_error_Some; congruence).
+        destruct (IH (gs1 ++ ca_rec t :: nil) rest' (gs1' ++ ca_rec t' :: nil) ihs Heq1 Heq1' ltac:(rewrite !List.length_app; cbn; lia))
+          as (ihsT & Ei & Hr2).
+        { rewrite List.length_app, Nat.add_1_r, (firstn_S_snoc _ _ _ Hx), (firstn_S_snoc _ _ _ Hx').
+          rewrite !nonrec_arg_vals_app by (rewrite List.length_firstn; lia).
+          rewrite !cargs_nrec_app'; cbn [nonrec_arg_vals cargs_nrec]; rewrite !List.app_nil_r, !Nat.add_1_r, Hs1, Hs1'.
+          exact Hcr1. }
+        rewrite List.length_app, Nat.add_1_r, (firstn_S_snoc _ _ _ Hx), (firstn_S_snoc _ _ _ Hx') in Hr2.
+        rewrite !nonrec_arg_vals_app in Hr2 by (rewrite List.length_firstn; lia).
+        rewrite !cargs_nrec_app' in Ei, Hr2; cbn [nonrec_arg_vals cargs_nrec] in Ei, Hr2.
+        rewrite ?List.app_nil_r in Hr2; rewrite Nat.add_1_r, Hs1 in Hr2.
+        rewrite List.length_app, !Nat.add_1_r in Ei.
+        assert (Hcs : cargs_sub base (gs1 ++ ca_rec t :: nil) Aw = cargs_sub base gs1 Aw).
+        { rewrite <- cargs_sub_firstn, <- (cargs_sub_firstn gs1), List.length_app, Nat.add_1_r, (firstn_S_nth _ _ _ HM0).
+          apply cargs_sub_snoc_rec; rewrite List.length_firstn; lia. }
+        rewrite Hcs in Ei.
+        exists (ihb :: ihsT); split; [ cbn [wrap_ihs elim_ihs List.tl]; constructor; [| exact Ei ] |].
+        * pose proof (eval_var_args C1 (X ++ vs ++ w) (R - 1 - cargs_nrec gs1') ltac:(rewrite !List.length_app, Lw; unfold R in *; lia))
+            as HV.
+          replace (List.nth (List.length (X ++ vs ++ w) - 1 - (R - 1 - cargs_nrec gs1')) (X ++ vs ++ w) ⋆ᵈ) with ihb in HV; [ exact HV |].
+          symmetry; apply List.nth_error_nth; rewrite List.app_assoc, List.nth_error_app2 by (rewrite !List.length_app, Lw; unfold R in *; lia).
+          rewrite !List.length_app, Lw; unfold R in *.
+          replace (List.length X + List.length vs + List.length Ew - 1 - (List.length Ew - 1 - cargs_nrec gs1') - (List.length X + List.length vs))
+            with (cargs_nrec gs1') by lia; exact Hw.
+        * apply rec_results_rec; [ exact Hrr | exact Hr2 ].
   Qed.
 End WrapClo.
 
