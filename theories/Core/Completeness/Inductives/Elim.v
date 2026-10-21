@@ -1854,6 +1854,40 @@ Section GroupElim.
         eapply per_elem_PER; exact H.
       Qed.
 
+      (** Recursive results related at any bases are related at [u0]: the
+          end's parameters at [u0] are related to the ones at the bases
+          ([okr_at]), and the family does not depend on them. *)
+      Lemma rec_result_rebase : forall kr t u u' pre pre' v v' ih ih',
+          rec_arg_rel p D (okr_at D u0 nr) nr ar dr kr u u' pre pre' t v v' ->
+          rec_result_rel dr Rel kr u u' pre pre' t v v' ih ih' ->
+          rec_result_rel dr Rel kr u0 u0 pre pre' t v v' ih ih'.
+      Proof.
+        intros kr t; induction t as [j Ps | B t IH]; intros * Ha Hr.
+        - destruct (rec_arg_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ha) as (bs & bs' & Ebs & Ebs' & [o Eo Ho] & [o' Eo' Ho'] & Hir).
+          destruct (rec_result_self_inv _ _ _ _ _ _ _ _ _ _ _ _ _ Hr) as (cs & cs' & Ecs & Ecs' & Hrr).
+          pose proof (functional_eval_exps' _ _ _ _ Ecs Ebs) as ->; pose proof (functional_eval_exps' _ _ _ _ Ecs' Ebs') as ->.
+          unfold ntele_rel in Ho, Ho'; destruct (ind_member D j) as [Mj |] eqn:HMj; [| contradiction ].
+          eapply rec_result_self; [ exact Eo | exact Eo' |].
+          exact (proj1 (rel_move j Mj HMj _ _ _ _ _ _ _ _ Hir (tsym _ _ HMj _ _ Ho) (tsym _ _ HMj _ _ Ho') ih ih') Hrr).
+        - constructor; intros c0 c0' Hc0.
+          destruct (rec_result_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ Hr c0 c0' Hc0) as (fc & fc' & r & r' & Efc & Efc' & Er & Er' & Hr').
+          destruct (rec_arg_pi_inv _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ha c0 c0' Hc0) as (g & g' & Eg & Eg' & Ha').
+          assert (g = fc) as -> by (eapply functional_eval_app; eassumption).
+          assert (g' = fc') as -> by (eapply functional_eval_app; eassumption).
+          econstructor; [ exact Efc | exact Efc' | exact Er | exact Er' | exact (IH _ _ _ _ _ _ _ _ Ha' Hr') ].
+      Qed.
+
+      Lemma rec_results_rebase : forall kr u u' pre pre' gs vs vs' ihs ihs',
+          con_args_rel p D (okr_at D u0 nr) nr ar dr kr u u' pre pre' gs vs vs' ->
+          rec_results_rel dr Rel kr u u' pre pre' gs vs vs' ihs ihs' ->
+          rec_results_rel dr Rel kr u0 u0 pre pre' gs vs vs' ihs ihs'.
+      Proof.
+        intros * Ha Hr; revert Ha; induction Hr; intros Ha; inversion Ha; subst.
+        - constructor.
+        - apply rec_results_arg; apply IHHr; assumption.
+        - apply rec_results_rec; [ eapply rec_result_rebase; eassumption | apply IHHr; assumption ].
+      Qed.
+
       (** ** The Branches' Contexts
 
           The branch of a constructor [c] of the member [k], with arguments
