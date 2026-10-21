@@ -367,6 +367,22 @@ Proof.
   destruct (brs_lookup Bs c) as [[n0 B0] |]; cbn in H; [ injection H as <- <-; eauto | discriminate ].
 Qed.
 
+Lemma eb_brs_sub : forall b τ, eb_brs (eblock_sub b τ) = brs_sub (eb_brs b) τ.
+Proof. intros [] ?; reflexivity. Qed.
+
+Lemma eb_motive_sub : forall b τ, eb_motive (eblock_sub b τ) = (eb_motive b)[sb_qn (eb_nm b) τ].
+Proof. intros [] ?; reflexivity. Qed.
+
+Lemma eb_nm_sub : forall b τ, eb_nm (eblock_sub b τ) = eb_nm b.
+Proof. intros [] ?; reflexivity. Qed.
+
+Lemma nth_error_blocks_sub_inv : forall Bks τ j ba, List.nth_error (blocks_sub Bks τ) j = Some ba ->
+    exists b, List.nth_error Bks j = Some b /\ ba = eblock_sub b τ.
+Proof.
+  intros * H; rewrite nth_error_blocks_sub in H.
+  destruct (List.nth_error Bks j) as [b |]; cbn in H; [ injection H as <-; eauto | discriminate ].
+Qed.
+
 Lemma brs_names_sub : forall cs Bs σ, brs_names cs Bs -> brs_names cs (brs_sub Bs σ).
 Proof. unfold brs_names, brs_sub; intros * H; rewrite List.map_map; exact H. Qed.
 
@@ -1301,6 +1317,46 @@ Section GroupElim.
       intros w H Lw.
       assert (HPU : PER RU) by (eapply per_env_PER; exact HRU).
       exact (vg_adm p D Hvg u0 w u0_gargs u0_len (U_gargs _ _ (symmetry H) u0_len Lw)).
+    Qed.
+
+    (** The uniform parameters an eliminator carries, of the class of
+        [u0]: as the model reads them. *)
+    Lemma mrefs_of_ru : forall w, RU (env_args nil w) (env_args nil u0) -> List.length w = ind_nu D -> mrefs_ok p D w.
+    Proof.
+      intros w Hw Lw j Mj HMj.
+      assert (HPU : PER RU) by (eapply per_env_PER; exact HRU).
+      assert (Hww : RU (env_args nil w) (env_args nil w)) by (etransitivity; [ exact Hw | symmetry; exact Hw ]).
+      destruct (im_head Mj) as [pm | qc kc Is vm] eqn:Hh.
+      - exists (p, j, w); eapply eval_mref_decl; [ exact Hl | exact HMj | exact Hh ].
+      - destruct (view_target_decl P p D HP HPD j Mj HMj qc kc Is vm Hh) as (Dq & Mk' & pm & Hq & _ & _ & _).
+        destruct (vg_view_args_values p D Hvg Hcv _ _ _ _ _ _ _ HMj Hh Hq w w (U_gargs _ _ Hww Lw Lw) Lw)
+          as (cs & _ & Ecs & _ & _).
+        exists (qc, kc, cs); eapply eval_mref_view; [ exact Hl | exact HMj | exact Hh | exact Ecs ].
+    Qed.
+
+    Lemma ups_ok : forall w1 w2, RU (env_args nil w1) (env_args nil u0) -> RU (env_args nil w2) (env_args nil u0) ->
+        List.length w1 = ind_nu D -> List.length w2 = ind_nu D ->
+        elim_ups_ok p D u0 (canon_nparams_rel D u0) (canon_args_rel D u0) (canon_doms_rel u0) w1 w2.
+    Proof.
+      intros * H1 H2 L1 L2.
+      assert (HPU : PER RU) by (eapply per_env_PER; exact HRU).
+      assert (H12 : RU (env_args nil w1) (env_args nil w2)) by (etransitivity; [ exact H1 | symmetry; exact H2 ]).
+      pose proof (U_gargs _ _ H12 L1 L2) as Hg12.
+      constructor; [ exact L1 | exact L2 | exact (adm_of_ru w1 H1 L1) | exact (adm_of_ru w2 H2 L2)
+                   | exact (mrefs_of_ru w1 H1 L1) | exact (mrefs_of_ru w2 H2 L2) |].
+      intros * HMj Ea Eb Hq.
+      inversion Ea as [? ? ? D1 M1 pm1 Hl1 HM1 Hh1 | ? ? ? D1 M1 qc1 k1 Is1 vm1 cs1 Hl1 HM1 Hh1 Ec1]; subst;
+        rewrite Hl in Hl1; injection Hl1 as <-; rewrite HMj in HM1; injection HM1 as <-;
+        inversion Eb as [? ? ? D2 M2 pm2 Hl2 HM2 Hh2 | ? ? ? D2 M2 qc2 k2 Is2 vm2 cs2 Hl2 HM2 Hh2 Ec2]; subst;
+        rewrite Hl in Hl2; injection Hl2 as <-; rewrite HMj in HM2; injection HM2 as <-; try congruence.
+      - rewrite Hl in Hq; injection Hq as <-.
+        intros s; exact (per_gargs_top _ _ _ _ _ Hg12 ltac:(rewrite List.length_rev; exact L1) s).
+      - rewrite Hh1 in Hh2; injection Hh2; intros; subst.
+        destruct (vg_view_args_values p D Hvg Hcv _ _ _ _ _ _ _ HMj Hh1 Hq w1 w2 Hg12 L1) as (c0 & c0' & E0 & E0' & Hc0).
+        pose proof (functional_eval_exps' _ _ _ _ E0 Ec1) as ->; pose proof (functional_eval_exps' _ _ _ _ E0' Ec2) as ->.
+        destruct (view_target_decl P p D HP HPD j Mj HMj _ _ _ _ Hh1) as (Dq' & Mk' & pm & Hq' & _ & _ & HIl).
+        rewrite Hq in Hq'; injection Hq' as <-.
+        intros s; exact (per_gargs_top _ _ _ _ _ Hc0 ltac:(rewrite List.length_rev, (eval_exps_length _ _ _ Ec1), HIl; reflexivity) s).
     Qed.
 
     (** A closed telescope's environment over the values of the uniform
