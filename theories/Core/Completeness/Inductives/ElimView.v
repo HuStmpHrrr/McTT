@@ -618,10 +618,6 @@ Section CrossElim.
                   ⟦ Ba ⟧ env_args C1 (List.skipn (im_unu D Mv) bs' ++ vs' ++ ihs) ↘ r' /\
                   Rel v (List.skipn (im_unu D Mv) bs) (d_con hd k c (bs ++ vs))
                     (List.skipn (im_unu D Mv) bs') (d_con hd k c (bs' ++ vs')) r r').
-  Hypothesis (Hbot_x : forall i' j Mj hd k as1 as2 e e' w w' ns ns', List.nth_error vm i' = Some j ->
-                ind_member D j = Some Mj ->
-                G j w w' ns ns' (⇑ (d_ind hd k as1) e) (⇑ (d_ind hd k as2) e') ->
-                Dom d_elim ρb VBb qc ub i' as1 e ≈ d_elim C1 Bks p u0 j as2 e' ∈ per_bot).
 
   (** The members of the container's group and those of the group the
       view's map takes them to. *)
@@ -706,6 +702,43 @@ Section CrossElim.
         im_nn Mk = im_nn Mj /\ ind_nu Dq = im_unu D Mj.
   Proof. exact (XS im_ref_target). Qed.
 
+  (** A stuck eliminator of each side at related neutrals, when the two
+      read back alike: related at the family. *)
+  Lemma cross_neut_elim : forall i' j Mj hd k as1 as2 e e' w w' ns ns', List.nth_error vm i' = Some j ->
+      ind_member D j = Some Mj ->
+      G j w w' ns ns' (⇑ (d_ind hd k as1) e) (⇑ (d_ind hd k as2) e') ->
+      Dom d_elim ρb VBb qc ub i' as1 e ≈ d_elim C1 Bks p u0 j as2 e' ∈ per_bot ->
+      exists r r', ⟦elim ⇑ (d_ind hd k as1) e at i' of qc ub VBb ⟧ gc_deps ⍮ gc_stack ⍮ ρb ↘ r /\
+        ⟦elim ⇑ (d_ind hd k as2) e' at j of p u0 Bks ⟧ gc_deps ⍮ gc_stack ⍮ C1 ↘ r' /\
+        Rel j ns (⇑ (d_ind hd k as1) e) ns' (⇑ (d_ind hd k as2) e') r r'.
+  Proof.
+    pose proof (nparams_rel_sym p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI) as tsym.
+    intros * Hvi HM Hcur Hb.
+    pose proof Hcur as Hcur0.
+    inversion Hcur0 as [| j0 Mj0 hd0 k0 ns0 ns0' as1' as2' e0 e0' w0 w0' HM0 Href Hn L1 L2 Hs1 Hs2 He]; subst.
+    rewrite HM in HM0; injection HM0 as <-.
+    destruct (cross_member i' j Hvi) as (Mi' & Mk0 & HMi' & Hvmb).
+    pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMk0; rewrite HM in HMk0; injection HMk0 as <-.
+    pose proof (vmb_nn _ _ _ _ _ _ _ _ _ Hvmb) as Hnn'.
+    pose proof (ind_rel_idx p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hcur Hs1 Hs2) as Hm.
+    destruct (self_ref_target _ _ _ _ HM Href) as (Dq & Mq & Hq' & HMq & Hnnq & Hnuq).
+    destruct (HbB _ _ HMi') as [bb Hbb]; destruct (HBks _ _ HM) as [ba Hba].
+    destruct (Hmot_x i' Mi' j bb ba w w' _ _ _ _ HMi' Hvi Hbb Hba Hm) as (a & a' & Ea & Ea' & HR).
+    exists (⇑ a (d_elim ρb VBb qc ub i' as1 e)), (⇑ a' (d_elim C1 Bks p u0 j as2 e')); split; [| split ].
+    - eapply eval_elim_neut; [ exact Hq | exact HMi' | rewrite <- (vmb_ref _ _ _ _ _ _ _ _ _ Hvmb); exact Href | exact Hq'
+                             | exact HMq | unfold im_np; lia | exact Hbb | rewrite (HnmB _ _ _ HMi' Hbb), Hnnq, Hnn'; reflexivity
+                             | rewrite Hnuq; exact Ea ].
+    - eapply eval_elim_neut; [ exact Hl | exact HM | exact Href | exact Hq' | exact HMq | unfold im_np; lia | exact Hba
+                             | rewrite (vbs_nm _ _ _ _ _ _ HBk _ _ _ HM Hba), Hnnq; reflexivity | rewrite Hnuq; exact Ea' ].
+    - apply (self_motive_move _ _ _ _ _ _ _ _ _ _ HM Hm (tsym _ _ HM _ _ Hs1) (tsym _ _ HM _ _ Hs2)).
+      exact (per_bot_then_per_elem HR Hb).
+  Qed.
+
+  Hypothesis (Hbot_x : forall i' j Mj hd k as1 as2 e e' w w' ns ns', List.nth_error vm i' = Some j ->
+                ind_member D j = Some Mj ->
+                G j w w' ns ns' (⇑ (d_ind hd k as1) e) (⇑ (d_ind hd k as2) e') ->
+                Dom d_elim ρb VBb qc ub i' as1 e ≈ d_elim C1 Bks p u0 j as2 e' ∈ per_bot).
+
   (** *** Related Elements Eliminate to Related Values *)
   Theorem cross_elim_all :
     (forall j u u' ns ns' x x', G j u u' ns ns' x x' ->
@@ -771,24 +804,10 @@ Section CrossElim.
       + apply (self_motive_move _ _ _ _ _ _ _ _ _ _ HM Hm (tsym _ _ HM _ _ Hs) (tsym _ _ HM _ _ Hs')); exact Hrr.
     - (** A neutral: both stuck, their readbacks agree. *)
       intros * uu uu' HM Href Hn L1 L2 Hs1 Hs2 He i' Hvi.
-      destruct (cross_member i' k Hvi) as (Mi' & Mk0 & HMi' & Hvmb).
-      pose proof (vmb_mem _ _ _ _ _ _ _ _ _ Hvmb) as HMk0; rewrite HM in HMk0; injection HMk0 as <-.
-      pose proof (vmb_nn _ _ _ _ _ _ _ _ _ Hvmb) as Hnn'.
       assert (Hcur : G k uu uu' ns ns' (⇑ (d_ind hd k'0 as1) m0) (⇑ (d_ind hd k'0 as2) m'))
         by (eapply ind_rel_neut; [ exact HM | exact Href | exact Hn | exact L1 | exact L2 | exact Hs1 | exact Hs2 | exact He ]).
-      pose proof (ind_rel_idx p D u0 nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ _ _ _ _ _ _ HM Hcur Hs1 Hs2) as Hm.
-      destruct (self_ref_target _ _ _ _ HM Href) as (Dq & Mq & Hq' & HMq & Hnnq & Hnuq).
-      destruct (HbB _ _ HMi') as [bb Hbb]; destruct (HBks _ _ HM) as [ba Hba].
-      destruct (Hmot_x i' Mi' k bb ba uu uu' _ _ _ _ HMi' Hvi Hbb Hba Hm) as (a & a' & Ea & Ea' & HR).
-      pose proof (Hbot_x i' k Mk hd k'0 as1 as2 m0 m' uu uu' ns ns' Hvi HM Hcur) as Hb.
-      exists (⇑ a (d_elim ρb VBb qc ub i' as1 m0)), (⇑ a' (d_elim C1 Bks p u0 k as2 m')); split; [| split ].
-      + eapply eval_elim_neut; [ exact Hq | exact HMi' | rewrite <- (vmb_ref _ _ _ _ _ _ _ _ _ Hvmb); exact Href | exact Hq'
-                               | exact HMq | unfold im_np; lia | exact Hbb | rewrite (HnmB _ _ _ HMi' Hbb), Hnnq, Hnn'; reflexivity
-                               | rewrite Hnuq; exact Ea ].
-      + eapply eval_elim_neut; [ exact Hl | exact HM | exact Href | exact Hq' | exact HMq | unfold im_np; lia | exact Hba
-                               | rewrite (vbs_nm _ _ _ _ _ _ HBk _ _ _ HM Hba), Hnnq; reflexivity | rewrite Hnuq; exact Ea' ].
-      + apply (self_motive_move _ _ _ _ _ _ _ _ _ _ HM Hm (tsym _ _ HM _ _ Hs1) (tsym _ _ HM _ _ Hs2)).
-        exact (per_bot_then_per_elem HR Hb).
+      exact (cross_neut_elim i' k Mk hd k'0 as1 as2 m0 m' uu uu' ns ns' Hvi HM Hcur
+               (Hbot_x i' k Mk hd k'0 as1 as2 m0 m' uu uu' ns ns' Hvi HM Hcur)).
     - intros k0 u u' pre pre' [| [A' | t'] gs'] Hco; cbn in Hco; try contradiction.
       exists nil, nil; split; [ constructor | split; [ constructor | constructor ] ].
     - intros * Hia IH [| [A' | t'] gs'] Hco; cbn in Hco; try contradiction.
