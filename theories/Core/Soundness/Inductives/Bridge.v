@@ -79,6 +79,24 @@ Proof.
   reflexivity.
 Qed.
 
+(** An instance of a context, moved along a weakening and extended by a
+    term of a type over the context. *)
+Lemma theta_step : forall Γ Δ Ψ A Ms τ φ b (i : nat), Γ ⊢ˢ sb_of_list τ Ms : Ψ -> Δ ⊢ᵏ φ : Γ -> Ψ ⊢ A : Typeω@i ->
+    Δ ⊢ b : A[sb_of_list τ Ms][φ]ʷ ->
+    Δ ⊢ˢ sb_of_list (sb_wk τ φ) (List.map (fun M => M[φ]ʷ) Ms ++ b :: nil) : ce_ass A :: Ψ.
+Proof.
+  intros * HΘ Hφ HA Hb.
+  pose proof (wf_sub_compose _ _ _ _ _ _ _ HΘ (kripke_escape _ _ _ Hφ)) as H1.
+  assert (Hb' : Δ ⊢ b : A[sb_of_list τ Ms ⨟ ι φ]) by (rewrite <- exp_sub_sub, exp_sub_of_wk; exact Hb).
+  pose proof (wf_sub_extend _ _ _ _ _ _ _ _ H1 HA Hb') as H2.
+  assert (E : sb_eq ((sb_of_list τ Ms ⨟ ι φ),,b) (sb_of_list (sb_wk τ φ) (List.map (fun M => M[φ]ʷ) Ms ++ b :: nil))).
+  { rewrite sb_of_list_app; cbn [sb_of_list].
+    apply sb_extend_cong; intros x; cbn [sb_compose]; rewrite sentry_sub_of_wk.
+    exact (sb_wk_sb_of_list Ms τ φ x). }
+  pose proof (wf_sub_eq_of_sb_eq _ _ _ _ _ _ H2 E) as H3.
+  gen_presups; eassumption.
+Qed.
+
 (** The non-recursive arguments of moved terms. *)
 Lemma nonrec_exps_map : forall gs As f, nonrec_exps gs (List.map f As) = List.map f (nonrec_exps gs As).
 Proof. induction gs as [| [] gs IH]; intros [| A As] f; cbn; rewrite ?IH; reflexivity. Qed.
@@ -1281,7 +1299,7 @@ Section ToGroup.
         tele_prefix_rel (shape_doms_rel (canon_doms_rel cups i') ns (nonrec_arg_vals gs1' vp) (ptyp_doms t')) kk ys ys ->
         ⟦ B' ⟧ env_args nil (cups ++ ns ++ nonrec_arg_vals gs1' vp ++ ys) ↘ b0' ->
         ⟦ B ⟧ env_args nil (ups ++ ns ++ nonrec_arg_vals gs1 vp ++ ys) ↘ b0 ->
-        exists i, Dom b0' ≈ b0 ∈ per_univ i.
+        exists i : nat, Dom b0' ≈ b0 ∈ per_univ i.
     Proof.
       intros kk ys B' B b0' b0 HB' HB Hy' Eb0' Eb0.
       destruct wk_corr as (Hc1 & _ & Hdp).
@@ -1320,6 +1338,153 @@ Section ToGroup.
       eapply per_univ_trans'; [ exact (per_univ_sym' _ _ _ (ex_intro (fun R => per_univ_elem _ R bg bc) _ Hin)) | exact (ex_intro _ Rg HRg) ].
     Qed.
   End WalkCtx.
+
+  (** A recursive argument of the container's member [i'], after domains
+      of its shape: at an argument of a constructor recursive in both, a
+      recursive argument of the group's member the view takes [i'] to, at
+      the instance of the shape's context on the group's side. *)
+  Definition rec_to_group (i' : nat) (Γ : ctx) (Us0 : list exp) (pre : list domain) (t0 : ptyp) (A' : typ) (N : exp) (x : domain)
+    : Prop :=
+    forall Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 ns vp kk ys τ Us Ns As1 Ds SbC,
+      ind_member Dq i' = Some Mi' -> view_member p D qc Dq vm i' Mi' v Mv ->
+      ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs -> cargs_corr vm gs' gs ->
+      gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 -> List.length gs1' = List.length gs1 ->
+      tele_rel (canon_nparams_rel Dq cups i') (List.rev (im_nparams Mi')) ns ns -> List.length vp = List.length gs1 ->
+      tele_prefix_rel (canon_args_rel Dq cups i' ns c) (List.length (cargs_nonrec gs1'))
+        (nonrec_arg_vals gs1' vp) (nonrec_arg_vals gs1' vp) ->
+      kk <= List.length (ptyp_doms t) -> t0 = ptyp_skip kk t' ->
+      tele_prefix_rel (shape_doms_rel (canon_doms_rel cups i') ns (nonrec_arg_vals gs1' vp) (ptyp_doms t')) kk ys ys ->
+      tele_prefix_rel (shape_doms_rel (canon_doms_rel ups v) ns (nonrec_arg_vals gs1 vp) (ptyp_doms t)) kk ys ys ->
+      Us0 = view_args Us -> pre = ns ++ nonrec_arg_vals gs1' vp ++ ys ->
+      List.length Ns = im_nn Mv -> List.length As1 = List.length gs1 -> List.length Ds = kk ->
+      A' = ptyp_ty_at qc Dq (view_args Us) (sb_of_list τ (view_args Us ++ Ns ++ nonrec_exps gs1' As1 ++ Ds)) t0 ->
+      ⊢ Γ -> glu_args Γ (ind_uparams D) Id nil Us ups ->
+      Γ ⊢ˢ sb_of_list τ (Us ++ Ns ++ As1 ++ Ds) : sh_ctx (cargs_pat gs1) (List.firstn kk (ptyp_doms t)) ++ cargs_ctx p D Mv gs1 ++ im_params D Mv ->
+      EG doms_ctx (List.firstn kk (ptyp_doms t)) ++ nonrec_args_prefix gs (List.length (cargs_nonrec gs1)) ++ im_params D Mv
+        ∈ glu_ctx_env ↘ SbC ->
+      Γ ⊢ˢ sb_of_list τ (Us ++ Ns ++ nonrec_exps gs1 As1 ++ Ds) ® env_args nil (ups ++ ns ++ nonrec_arg_vals gs1 vp ++ ys) ∈ SbC ->
+      glu_rec p D ups NEl AEl DP DEl v Γ Us (ns ++ nonrec_arg_vals gs1 vp ++ ys) (ptyp_skip kk t)
+        (ptyp_ty_at p D Us (sb_of_list τ (Us ++ Ns ++ nonrec_exps gs1 As1 ++ Ds)) (ptyp_skip kk t)) N x.
+
+  (** A domain: an element of the group's gluing of the domain is one of
+      the container's, the two domains being equal and their values
+      related; applied to it, the argument is a recursive argument of the
+      rest of the shape. *)
+  Lemma walk_pi : forall i' Γ Us0 pre B' t0 A' N x,
+      (forall IT OT, A' = a_pi IT OT -> forall Δ φ, Δ ⊢ᵏ φ : Γ -> Δ ⊢ IT[φ]ʷ ® DP' i' pre B') ->
+      (forall IT OT, A' = a_pi IT OT -> forall Δ φ b c, Δ ⊢ᵏ φ : Γ -> canon_doms_rel cups i' pre B' c c ->
+         Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl' i' pre B' -> exists fc, $| x & c | gc_deps ⍮ gc_stack ↘ fc) ->
+      (forall IT OT, A' = a_pi IT OT -> forall Δ φ b c fc, Δ ⊢ᵏ φ : Γ -> canon_doms_rel cups i' pre B' c c ->
+         Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl' i' pre B' -> $| x & c | gc_deps ⍮ gc_stack ↘ fc ->
+         rec_to_group i' Δ (List.map (fun U => U[φ]ʷ) Us0) (pre ++ c :: nil) t0 OT[(ι φ),,b] (a_app N[φ]ʷ b) fc) ->
+      rec_to_group i' Γ Us0 pre (pt_pi B' t0) A' N x.
+  Proof.
+    intros i' Γ Us0 pre B' t0 A' N x HP1' HP2' IH3.
+    intros Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 ns vp kk ys τ Us Ns As1 Ds SbC
+      HMi' HVM Hcon' Hcon Hcorr Heq' Heq Hl1 Hns' Hlvp Hpc Hkk Hsk Hy' Hy HUs0 Hpre HNl HAl HDl HA' HΓ HUs HΘ HSbC Hσ.
+    pose proof (vmb_v _ _ _ _ _ _ _ _ _ HVM) as Hv; pose proof (vmb_mem _ _ _ _ _ _ _ _ _ HVM) as HMv.
+    pose proof (vmb_nn _ _ _ _ _ _ _ _ _ HVM) as Hnn.
+    destruct (glu_args_length _ _ _ _ _ _ HUs) as [HUl _].
+    destruct (wk_corr gs' gs Hcorr gs1' t' gs2' gs1 t gs2 Heq' Heq Hl1) as (Hc1 & Hmem & Hdp).
+    pose proof (wk_lms i' Mi' v Mv HMi' HVM ns Hns') as Hlms.
+    pose proof (wk_ns_g i' Mi' v Mv HMi' HVM ns Hns') as Hnsd.
+    pose proof (wk_pg i' Mi' v Mv c gs' gs HMi' HVM Hcon' Hcon Hcorr gs1' t' gs2' gs1 t gs2 Heq' Heq Hl1 ns vp Hns' Hlvp Hpc) as Hpg.
+    symmetry in Hsk; destruct (Tele.ptyp_skip_pi _ _ _ _ Hsk) as [HB' Hs'].
+    assert (Hd : kk < List.length (ptyp_doms t))
+      by (unfold ptyp_depth in Hdp; rewrite <- Hdp; apply List.nth_error_Some; congruence).
+    destruct (Tele.ptyp_skip_lt kk t Hd) as (B & HB & Hs).
+    rewrite Hs; cbn [ptyp_ty_at].
+    rewrite HA' in HP1', HP2', IH3; cbn [ptyp_ty_at] in HP1', HP2', IH3; clear A' HA'.
+    subst pre.
+    assert (Hlnv : List.length (nonrec_arg_vals gs1 vp) = List.length (cargs_nonrec gs1)) by (apply length_nonrec_arg_vals; exact Hlvp).
+    (** The two domains' values, glued, related, and equal. *)
+    destruct (ifg_dom_eval _ _ _ _ _ _ _ _ _ Hf v Mv ns c gs gs1 t gs2 _ kk B ys HMv Hnsd Hcon Heq Hpg HB Hy) as [b0 Eb0].
+    pose proof (ifg_dom_glu _ _ _ _ _ _ _ _ _ Hf v Mv ns c gs gs1 t gs2 _ kk B ys b0 HMv Hnsd Hcon Heq Hpg HB Hy Eb0) as Hgb0.
+    destruct (ifg_dom_eval _ _ _ _ _ _ _ _ _ Hf' i' Mi' ns c gs' gs1' t' gs2' _ kk B' ys HMi' Hns' Hcon' Heq' Hpc HB' Hy') as [b0' Eb0'].
+    pose proof (ifg_dom_glu _ _ _ _ _ _ _ _ _ Hf' i' Mi' ns c gs' gs1' t' gs2' _ kk B' ys b0' HMi' Hns' Hcon' Heq' Hpc HB' Hy' Eb0')
+      as Hgb0'.
+    destruct (wk_dom_rel i' Mi' v Mv c gs' gs HMi' HVM Hcon' Hcon Hcorr gs1' t' gs2' gs1 t gs2 Heq' Heq Hl1 ns vp Hns' Hlvp Hpc
+                kk ys B' B b0' b0 HB' HB Hy' Eb0' Eb0) as [n Hrel].
+    pose proof (wk_doms_agree i' Mi' v Mv c gs' gs HMi' HVM Hcon' Hcon Hcorr gs1' t' gs2' gs1 t gs2 Heq' Heq Hl1 ns vp Hns' Hlvp Hpc
+                  kk B' B ys HB' HB Hy') as Hag.
+    destruct (vs_dom_eq p D Hdt Hl Hc k Mk qc kc Is vm Dq HMk Hh Hq HcQ i' Mi' v Mv HMi' Hv HMv Γ c gs' gs gs1' t' gs2' gs1 t gs2
+                kk B' B τ Us Ns As1 Ds Hcon' Hcon Heq' Heq Hl1 HB' HB HUl HNl HAl HDl HΓ HΘ) as [l HBB].
+    (** The group's type, glued at the domains' gluings. *)
+    pose proof (shape_typ_glu p D HG Hc Hdt Hsu ups bu u NP NEl AP AEl DP DEl Hu Hbu Hule Hf v Mv c gs gs1 t gs2 ns _ HMv Hcon Heq
+                  Hnsd Hpg Hlms Hlnv (ptyp_skip kk t) kk ys Γ τ Us (Ns ++ nonrec_exps gs1 As1 ++ Ds) SbC eq_refl Hkk Hy HΓ HUl
+                  ltac:(rewrite !List.length_app, length_nonrec_exps by exact HAl; lia) HSbC Hσ) as Hsh.
+    rewrite Hs in Hsh; cbn [glu_shape_typ ptyp_ty_at] in Hsh.
+    destruct (Hsh _ _ eq_refl) as [HshD _].
+    (** An element of the group's domain is one of the container's. *)
+    assert (Hconv : forall Δ φ b c', Δ ⊢ᵏ φ : Γ -> canon_doms_rel ups v (ns ++ nonrec_arg_vals gs1 vp ++ ys) B c' c' ->
+              Δ ⊢ b : B[sb_of_list τ (Us ++ Ns ++ nonrec_exps gs1 As1 ++ Ds)][φ]ʷ ® c' ∈ DEl v (ns ++ nonrec_arg_vals gs1 vp ++ ys) B ->
+              canon_doms_rel cups i' (ns ++ nonrec_arg_vals gs1' vp ++ ys) B' c' c' /\
+              Δ ⊢ b : B'[sb_of_list τ (view_args Us ++ Ns ++ nonrec_exps gs1' As1 ++ Ds)][φ]ʷ ® c'
+                ∈ DEl' i' (ns ++ nonrec_arg_vals gs1' vp ++ ys) B').
+    { intros Δ φ b c' Hφ Hc' Hb.
+      split; [ apply Hag; exact Hc' |].
+      pose proof (kripke_preserves_typ_eq _ _ _ _ _ _ HBB Hφ) as HBBφ.
+      exact (glu_elem_conv u u' n l b0' b0 _ _ _ _ Δ _ _ b c' Hgb0 Hgb0' (per_univ_sym' _ _ _ Hrel)
+               (wf_exp_eq_sym _ _ _ _ _ _ HBBφ) (HP1' _ _ eq_refl Δ φ Hφ) Hb). }
+    apply glu_rec_pi.
+    - intros IT OT HA0 Δ φ Hφ; injection HA0 as <- <-; exact (HshD Δ φ Hφ).
+    - intros IT OT HA0 Δ φ b c' Hφ Hc' Hb; injection HA0 as <- <-.
+      destruct (Hconv Δ φ b c' Hφ Hc' Hb) as [Hc'c Hb'].
+      exact (HP2' _ _ eq_refl Δ φ b c' Hφ Hc'c Hb').
+    - intros IT OT HA0 Δ φ b c' fc Hφ Hc' Hb Hfc; injection HA0 as <- <-.
+      destruct (Hconv Δ φ b c' Hφ Hc' Hb) as [Hc'c Hb'].
+      pose proof (IH3 _ _ eq_refl Δ φ b c' fc Hφ Hc'c Hb' Hfc) as IHc.
+      assert (HΔ : ⊢ Δ) by (eapply kripke_dom; eassumption).
+      assert (Hd'' : kk < ptyp_depth t) by (unfold ptyp_depth; exact Hd).
+      assert (HsIs : List.Forall (exp_scoped (List.length Us)) Is) by (rewrite HUl; exact (decl_closed_head_scoped D Hc _ _ _ _ _ _ HMk Hh)).
+      (** The rest of the container's type. *)
+      assert (EA : (ptyp_ty_at qc Dq (List.map (fun U => U[↑]ʷ) (view_args Us))
+                      (q (sb_of_list τ (view_args Us ++ Ns ++ nonrec_exps gs1' As1 ++ Ds))) t0)[(ι φ),,b]
+                   = ptyp_ty_at qc Dq (view_args (List.map (fun U => U[φ]ʷ) Us))
+                     (sb_of_list (sb_wk τ φ) (view_args (List.map (fun U => U[φ]ʷ) Us) ++ List.map (fun U => U[φ]ʷ) Ns
+                                               ++ nonrec_exps gs1' (List.map (fun U => U[φ]ʷ) As1) ++ (List.map (fun U => U[φ]ʷ) Ds ++ b :: nil))) t0).
+      { rewrite (ptyp_ty_at_shape_step qc Dq t0 τ (view_args Us) (Ns ++ nonrec_exps gs1' As1 ++ Ds) φ b HcQ (length_view_args Us)).
+        unfold view_args; rewrite (view_args_wk Is Us φ HsIs).
+        rewrite !List.map_app, <- !List.app_assoc, <- nonrec_exps_map; reflexivity. }
+      (** The instances, moved and extended by the argument. *)
+      destruct (dt_view_doms _ _ _ _ (ctx_wf_gctx _ _ _ HΓ) Hdt Hl k Mk qc kc Is vm Dq i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 kk
+                  HMk Hh Hq HMi' Hv HMv Hcon' Hcon Heq' Heq Hl1 Hd'') as [i0 Hdom].
+      assert (HdomTy : sh_ctx (cargs_pat gs1) (List.firstn kk (ptyp_doms t)) ++ cargs_ctx p D Mv gs1 ++ im_params D Mv
+                         ⊢ ptyp_dom_at (cargs_pat gs1) kk t : Typeω@i0) by (gen_presups; eassumption).
+      assert (Edom : (ptyp_dom_at (cargs_pat gs1) kk t)[sb_of_list τ (Us ++ Ns ++ As1 ++ Ds)]
+                     = B[sb_of_list τ (Us ++ Ns ++ nonrec_exps gs1 As1 ++ Ds)]).
+      { unfold ptyp_dom_at; rewrite (List.nth_error_nth _ _ _ HB).
+        replace (Us ++ Ns ++ As1 ++ Ds) with ((Us ++ Ns) ++ (As1 ++ Ds)) by (rewrite <- !List.app_assoc; reflexivity).
+        rewrite (sb_of_list_app (Us ++ Ns) (As1 ++ Ds) τ), <- HDl, exp_wk_pat_falses_sb_of_list by exact HAl.
+        rewrite <- (sb_of_list_app (Us ++ Ns) (nonrec_exps gs1 As1 ++ Ds) τ), <- !List.app_assoc; reflexivity. }
+      assert (Hbty : Δ ⊢ b : (ptyp_dom_at (cargs_pat gs1) kk t)[sb_of_list τ (Us ++ Ns ++ As1 ++ Ds)][φ]ʷ)
+        by (rewrite Edom; exact (glu_univ_elem_trm_escape _ _ _ _ Hgb0 _ _ _ _ Hb)).
+      pose proof (theta_step _ _ _ _ _ _ _ _ _ HΘ Hφ HdomTy Hbty) as HΘ'.
+      replace (ce_ass (ptyp_dom_at (cargs_pat gs1) kk t) :: sh_ctx (cargs_pat gs1) (List.firstn kk (ptyp_doms t))
+                 ++ cargs_ctx p D Mv gs1 ++ im_params D Mv)
+        with (sh_ctx (cargs_pat gs1) (List.firstn (S kk) (ptyp_doms t)) ++ cargs_ctx p D Mv gs1 ++ im_params D Mv) in HΘ'
+        by (rewrite (Views.sh_ctx_firstn_S _ _ _ Hd''); reflexivity).
+      rewrite !List.map_app, <- !List.app_assoc in HΘ'.
+      destruct (gid_dctx _ HG _ _ _ _ _ _ _ (S kk) HMv Hcon Heq ltac:(lia)) as [SbC' HSbC'].
+      pose proof (shape_sub_step D ups u DP DEl v Mv c gs gs1 t gs2 kk B ns (nonrec_arg_vals gs1 vp) ys Γ τ Us
+                    (Ns ++ nonrec_exps gs1 As1 ++ Ds) SbC SbC' Δ φ b b0 c' HMv Hcon Heq HB HSbC HSbC' Hσ Hφ Eb0 Hgb0
+                    (HshD Δ φ Hφ) Hb) as Hσ'.
+      rewrite !List.map_app, <- !List.app_assoc, <- nonrec_exps_map in Hσ'.
+      (** The group's type after the domain. *)
+      change (match t with | pt_self _ _ => t | pt_pi _ t1 => ptyp_skip kk t1 end) with (ptyp_skip (S kk) t).
+      rewrite (ptyp_ty_at_shape_step p D (ptyp_skip (S kk) t) τ Us (Ns ++ nonrec_exps gs1 As1 ++ Ds) φ b Hc HUl).
+      rewrite !List.map_app, <- !List.app_assoc, <- nonrec_exps_map.
+      exact (IHc Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 ns vp (S kk) (ys ++ c' :: nil) (sb_wk τ φ) (List.map (fun U => U[φ]ʷ) Us)
+               (List.map (fun U => U[φ]ʷ) Ns) (List.map (fun U => U[φ]ʷ) As1) (List.map (fun U => U[φ]ʷ) Ds ++ b :: nil) SbC'
+               HMi' HVM Hcon' Hcon Hcorr Heq' Heq Hl1 Hns' Hlvp Hpc ltac:(lia) (eq_sym Hs')
+               ltac:(apply tele_prefix_rel_snoc; [ exact Hy' | unfold shape_doms_rel; rewrite (List.nth_error_nth _ _ _ HB'); exact Hc'c ])
+               ltac:(apply tele_prefix_rel_snoc; [ exact Hy | unfold shape_doms_rel; rewrite (List.nth_error_nth _ _ _ HB); exact Hc' ])
+               ltac:(rewrite HUs0; unfold view_args; exact (view_args_wk Is Us φ HsIs))
+               ltac:(rewrite <- !List.app_assoc; reflexivity)
+               ltac:(rewrite List.length_map; exact HNl) ltac:(rewrite List.length_map; exact HAl)
+               ltac:(rewrite List.length_app, List.length_map; cbn; lia)
+               EA HΔ (glu_args_wk _ _ _ _ _ _ _ (dc_ass _ Hc) (dc_uparams _ Hc) Hφ HUs) HΘ' HSbC' Hσ').
+  Qed.
 End ToGroup.
 
 End Fixed_GCtx.
