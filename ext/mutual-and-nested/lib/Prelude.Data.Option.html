@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prelude›Data›Option</title><link rel="stylesheet" href="mctt.css"></head><body class="unit-page">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">Prelude›Data›Option</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><details open><summary><span class="kw">inductive</span> <a class="mod" href="#Option">Option</a></summary><ul><li><span class="kw">|</span> <a class="def" href="#Option.none">none</a></li><li><span class="kw">|</span> <a class="def" href="#Option.some">some</a></li></ul></details></li><li><details open><summary><span class="kw">module</span> <a class="mod" href="#Ops">Ops</a></summary><ul><li><span class="kw">def</span> <a class="def" href="#Ops.map">map</a></li><li><span class="kw">def</span> <a class="def" href="#Ops.bind">bind</a></li><li><span class="kw">def</span> <a class="def" href="#Ops.getOr">getOr</a></li><li><span class="kw">def</span> <a class="def" href="#Ops.isSome">isSome</a></li><li><span class="kw">def</span> <a class="def" href="#Ops.orElse">orElse</a></li></ul></details></li></ul></nav>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Prelude›Data›Option</h1>
+<div class="doc"><p>Optional values: <code>Option u A</code> has the constructors <code>none</code> and <code>some x</code> for <code>x : A</code>, at every level <code>u</code>.  The type takes the level and the element type as uniform parameters, so the constructors do too: <code>Option.some 0l ℕ 3 : Option 0l ℕ</code>.</p>
+<p>The operations on options over a fixed <code>A</code> are in the module <code>Ops u A</code>: the functor <code>map</code>, the monad <code>bind</code>, the default <code>getOr</code>, <code>isSome</code> and the first defined of two options, <code>orElse</code>.  The laws are in <code>Prelude›Data›Option›Properties</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Data</span><span class="sym">›</span><span class="unit bind">Option</span> <span class="kw">where</span>
+
+<span class="kw">import</span> <a class="unit" href="Prelude.Data.Bool.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Bool.html">Data</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Bool.html">Bool</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="Bool" href="Prelude.Data.Bool.html#Bool">Bool</a><span class="sym">;</span> <a class="def bind" id="tt" href="Prelude.Data.Bool.html#Bool.tt">tt</a><span class="sym">;</span> <a class="def bind" id="ff" href="Prelude.Data.Bool.html#Bool.ff">ff</a><span class="sym">)</span>
+
+<span class="kw">inductive</span> <span class="mod bind" id="Option">Option</span> <span class="sym">(</span><span class="var bind" id="l10">u</span> <span class="sym">:</span> <span class="ty">Level</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l11">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l10">u</a><span class="sym">}</span><span class="sym">)</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l10">u</a><span class="sym">}</span> <span class="kw">where</span>
+<span class="sym">|</span> <span class="def bind" id="Option.none">none</span>
+<span class="sym">|</span> <span class="def bind" id="Option.some">some</span> <span class="sym">(</span><span class="var bind" id="l16">x</span> <span class="sym">:</span> <a class="var" href="#l11">A</a><span class="sym">)</span>
+<span class="kw">end</span>
+
+<span class="kw">open</span> <a class="mod" href="#Option">Option</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="none" href="#Option.none">none</a><span class="sym">;</span> <a class="def bind" id="some" href="#Option.some">some</a><span class="sym">)</span>
+
+<span class="kw">module</span> <span class="mod bind" id="Ops">Ops</span> <span class="sym">(</span><span class="var bind" id="l22">u</span> <span class="sym">:</span> <span class="ty">Level</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l23">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l22">u</a><span class="sym">}</span><span class="sym">)</span> <span class="kw">where</span>
+</pre>
+<div class="doc"><p>Applies <code>f</code> under <code>some</code>.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="Ops.map">map</span> <span class="sym">(</span><span class="var bind" id="l26">B</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l22">u</a><span class="sym">}</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l28">f</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l29">x</span> <span class="sym">:</span> <a class="var" href="#l23">A</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l26">B</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l32">o</span> <span class="sym">:</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l23">A</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l26">B</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l32">o</a> <span class="kw">at</span> <span class="sym">(</span><span class="var bind" id="l40">z</span> <span class="sym">:</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l23">A</a><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l26">B</a>
+  <span class="sym">|</span> <span class="free">none</span> <span class="sym">⇒</span> <a class="def" href="#Option.none">none</a> <a class="var" href="#l22">u</a> <a class="var" href="#l26">B</a>
+  <span class="sym">|</span> <span class="free">some</span> <span class="var bind" id="l52">x</span> <span class="sym">⇒</span> <a class="def" href="#Option.some">some</a> <a class="var" href="#l22">u</a> <a class="var" href="#l26">B</a> <span class="sym">(</span><a class="var" href="#l28">f</a> <a class="var" href="#l52">x</a><span class="sym">)</span>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>Continues with <code>f</code> on a defined value; <code>none</code> stays <code>none</code>.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="Ops.bind">bind</span> <span class="sym">(</span><span class="var bind" id="l59">B</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l22">u</a><span class="sym">}</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l61">f</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l62">x</span> <span class="sym">:</span> <a class="var" href="#l23">A</a><span class="sym">)</span> <span class="sym">→</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l59">B</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l67">o</span> <span class="sym">:</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l23">A</a><span class="sym">)</span> <span class="sym">:</span>
+    <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l59">B</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l67">o</a> <span class="kw">at</span> <span class="sym">(</span><span class="var bind" id="l75">z</span> <span class="sym">:</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l23">A</a><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l59">B</a>
+  <span class="sym">|</span> <span class="free">none</span> <span class="sym">⇒</span> <a class="def" href="#Option.none">none</a> <a class="var" href="#l22">u</a> <a class="var" href="#l59">B</a>
+  <span class="sym">|</span> <span class="free">some</span> <span class="var bind" id="l87">x</span> <span class="sym">⇒</span> <a class="var" href="#l61">f</a> <a class="var" href="#l87">x</a>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>The value of <code>o</code>, or the default <code>d</code> when there is none.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="Ops.getOr">getOr</span> <span class="sym">(</span><span class="var bind" id="l91">d</span> <span class="sym">:</span> <a class="var" href="#l23">A</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l93">o</span> <span class="sym">:</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l23">A</a><span class="sym">)</span> <span class="sym">:</span> <a class="var" href="#l23">A</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l93">o</a> <span class="kw">at</span> <span class="sym">(</span><span class="var bind" id="l99">z</span> <span class="sym">:</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l23">A</a><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="var" href="#l23">A</a>
+  <span class="sym">|</span> <span class="free">none</span> <span class="sym">⇒</span> <a class="var" href="#l91">d</a>
+  <span class="sym">|</span> <span class="free">some</span> <span class="var bind" id="l107">x</span> <span class="sym">⇒</span> <a class="var" href="#l107">x</a>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">def</span> <span class="def bind" id="Ops.isSome">isSome</span> <span class="sym">(</span><span class="var bind" id="l110">o</span> <span class="sym">:</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l23">A</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="Prelude.Data.Bool.html#Bool">Bool</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l110">o</a> <span class="kw">at</span> <span class="sym">(</span><span class="var bind" id="l116">z</span> <span class="sym">:</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l23">A</a><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="mod" href="Prelude.Data.Bool.html#Bool">Bool</a>
+  <span class="sym">|</span> <span class="free">none</span> <span class="sym">⇒</span> <a class="def" href="Prelude.Data.Bool.html#Bool.ff">ff</a>
+  <span class="sym">|</span> <span class="free">some</span> <span class="var bind" id="l124">x</span> <span class="sym">⇒</span> <a class="def" href="Prelude.Data.Bool.html#Bool.tt">tt</a>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p><code>o</code> if it is defined, else <code>p</code>.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="Ops.orElse">orElse</span> <span class="sym">(</span><span class="var bind" id="l127">o</span> <span class="sym">:</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l23">A</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l131">p</span> <span class="sym">:</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l23">A</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l23">A</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l127">o</a> <span class="kw">at</span> <span class="sym">(</span><span class="var bind" id="l139">z</span> <span class="sym">:</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l23">A</a><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="mod" href="#Option">Option</a> <a class="var" href="#l22">u</a> <a class="var" href="#l23">A</a>
+  <span class="sym">|</span> <span class="free">none</span> <span class="sym">⇒</span> <a class="var" href="#l131">p</a>
+  <span class="sym">|</span> <span class="free">some</span> <span class="var bind" id="l149">x</span> <span class="sym">⇒</span> <a class="def" href="#Option.some">some</a> <a class="var" href="#l22">u</a> <a class="var" href="#l23">A</a> <a class="var" href="#l149">x</a>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">end</span>
+
+<span class="kw">end</span></pre>
+</body></html>

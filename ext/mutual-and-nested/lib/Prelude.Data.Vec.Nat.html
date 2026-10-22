@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prelude›Data›Vec›Nat</title><link rel="stylesheet" href="mctt.css"></head><body class="unit-page">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">Prelude›Data›Vec›Nat</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><span class="kw">def</span> <a class="def" href="#sumVec">sumVec</a></li></ul></nav>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Prelude›Data›Vec›Nat</h1>
+<div class="doc"><p>Vectors of numbers, <code>Prelude›Data›Vec 0l ℕ</code>: their sum <code>sumVec</code>.  Its laws are in <code>Prelude›Data›Vec›Properties.Sums</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Data</span><span class="sym">›</span><span class="unit bind">Vec</span><span class="sym">›</span><span class="unit bind">Nat</span> <span class="kw">where</span>
+
+<span class="kw">import</span> <a class="unit" href="Prelude.Builtin.Nat.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Builtin</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Nat</a>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Plus.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Plus.html">Arith</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Plus.html">Plus</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="plus" href="Prelude.Arith.Plus.html#plus">plus</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Data.Vec.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Vec.html">Data</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Vec.html">Vec</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="kw">as</span> <span class="mod bind" id="NV">NV</span>
+</pre>
+<div class="doc"><p>The sum of a vector of numbers.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="sumVec">sumVec</span> <span class="sym">(</span><span class="var bind" id="l16">n</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l17">v</span> <span class="sym">:</span> <a class="mod" href="#NV">NV</a><span class="sym">.</span><a class="def" href="Prelude.Data.Vec.html#Vec">Vec</a> <a class="var" href="#l16">n</a><span class="sym">)</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">≔</span>
+  <a class="mod" href="#NV">NV</a><span class="sym">.</span><a class="def" href="Prelude.Data.Vec.html#foldr">foldr</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l23">a</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l24">b</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <a class="var" href="#l23">a</a> <a class="var" href="#l24">b</a><span class="sym">)</span> <span class="num">0</span> <a class="var" href="#l16">n</a> <a class="var" href="#l17">v</a>
+<span class="kw">end</span>
+
+<span class="kw">end</span></pre>
+</body></html>

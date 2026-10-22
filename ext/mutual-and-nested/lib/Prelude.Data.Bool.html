@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prelude›Data›Bool</title><link rel="stylesheet" href="mctt.css"></head><body class="unit-page">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">Prelude›Data›Bool</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><details open><summary><span class="kw">inductive</span> <a class="mod" href="#Bool">Bool</a></summary><ul><li><span class="kw">|</span> <a class="def" href="#Bool.tt">tt</a></li><li><span class="kw">|</span> <a class="def" href="#Bool.ff">ff</a></li></ul></details></li><li><span class="kw">export</span> <a class="def" href="#tt">tt</a></li><li><span class="kw">export</span> <a class="def" href="#ff">ff</a></li><li><span class="kw">def</span> <a class="def" href="#not">not</a></li><li><span class="kw">def</span> <a class="def" href="#and">and</a></li><li><span class="kw">def</span> <a class="def" href="#or">or</a></li><li><span class="kw">def</span> <a class="def" href="#xor">xor</a></li><li><span class="kw">def</span> <a class="def" href="#eqb">eqb</a></li><li><span class="kw">def</span> <a class="def" href="#IsTrue">IsTrue</a></li><li><span class="kw">def</span> <a class="def" href="#IsFalse">IsFalse</a></li><li><details open><summary><span class="kw">module</span> <a class="mod" href="#Cond">Cond</a></summary><ul><li><span class="kw">def</span> <a class="def" href="#Cond.if">if</a></li><li><span class="kw">def</span> <a class="def" href="#Cond.cond">cond</a></li></ul></details></li><li><span class="kw">export</span> <a class="def" href="#if">if</a></li><li><span class="kw">export</span> <a class="def" href="#cond">cond</a></li></ul></nav>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Prelude›Data›Bool</h1>
+<div class="doc"><p>The booleans, an inductive type with the constructors <code>tt</code> and <code>ff</code>, and their connectives.  The names <code>true</code> and <code>True</code> are taken: they are the tokens of <code>⋆</code> and <code>⊤</code>.</p>
+<p>Each connective is defined by cases on its first argument, so it computes as soon as that argument is a constructor: <code>and tt b</code> is <code>b</code>, <code>or ff b</code> is <code>b</code>.  The laws are in <code>Prelude›Data›Bool›Properties</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Data</span><span class="sym">›</span><span class="unit bind">Bool</span> <span class="kw">where</span>
+
+<span class="kw">inductive</span> <span class="mod bind" id="Bool">Bool</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="kw">where</span>
+<span class="sym">|</span> <span class="def bind" id="Bool.tt">tt</span>
+<span class="sym">|</span> <span class="def bind" id="Bool.ff">ff</span>
+<span class="kw">end</span>
+
+<span class="kw">open</span> <a class="mod" href="#Bool">Bool</a> <span class="kw">export</span> <span class="sym">(</span><a class="def bind" id="tt" href="#Bool.tt">tt</a><span class="sym">;</span> <a class="def bind" id="ff" href="#Bool.ff">ff</a><span class="sym">)</span>
+
+<span class="kw">def</span> <span class="def bind" id="not">not</span> <span class="sym">(</span><span class="var bind" id="l10">b</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l10">b</a> <span class="kw">at</span> <span class="var bind" id="l14">z</span> <span class="sym">-&gt;</span> <a class="mod" href="#Bool">Bool</a> <span class="sym">|</span> <span class="free">tt</span> <span class="sym">⇒</span> <a class="def" href="#Bool.ff">ff</a> <span class="sym">|</span> <span class="free">ff</span> <span class="sym">⇒</span> <a class="def" href="#Bool.tt">tt</a> <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">def</span> <span class="def bind" id="and">and</span> <span class="sym">(</span><span class="var bind" id="l21">a</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l23">b</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l21">a</a> <span class="kw">at</span> <span class="var bind" id="l27">z</span> <span class="sym">-&gt;</span> <a class="mod" href="#Bool">Bool</a> <span class="sym">|</span> <span class="free">tt</span> <span class="sym">⇒</span> <a class="var" href="#l23">b</a> <span class="sym">|</span> <span class="free">ff</span> <span class="sym">⇒</span> <a class="def" href="#Bool.ff">ff</a> <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">def</span> <span class="def bind" id="or">or</span> <span class="sym">(</span><span class="var bind" id="l34">a</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l36">b</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l34">a</a> <span class="kw">at</span> <span class="var bind" id="l40">z</span> <span class="sym">-&gt;</span> <a class="mod" href="#Bool">Bool</a> <span class="sym">|</span> <span class="free">tt</span> <span class="sym">⇒</span> <a class="def" href="#Bool.tt">tt</a> <span class="sym">|</span> <span class="free">ff</span> <span class="sym">⇒</span> <a class="var" href="#l36">b</a> <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>Exclusive or: <code>xor a b</code> is <code>tt</code> when exactly one of <code>a</code> and <code>b</code> is.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="xor">xor</span> <span class="sym">(</span><span class="var bind" id="l47">a</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l49">b</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l47">a</a> <span class="kw">at</span> <span class="var bind" id="l53">z</span> <span class="sym">-&gt;</span> <a class="mod" href="#Bool">Bool</a> <span class="sym">|</span> <span class="free">tt</span> <span class="sym">⇒</span> <a class="def" href="#not">not</a> <a class="var" href="#l49">b</a> <span class="sym">|</span> <span class="free">ff</span> <span class="sym">⇒</span> <a class="var" href="#l49">b</a> <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>Boolean equality: <code>eqb a b</code> is <code>tt</code> when <code>a</code> and <code>b</code> are the same constructor.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="eqb">eqb</span> <span class="sym">(</span><span class="var bind" id="l61">a</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l63">b</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l61">a</a> <span class="kw">at</span> <span class="var bind" id="l67">z</span> <span class="sym">-&gt;</span> <a class="mod" href="#Bool">Bool</a> <span class="sym">|</span> <span class="free">tt</span> <span class="sym">⇒</span> <a class="var" href="#l63">b</a> <span class="sym">|</span> <span class="free">ff</span> <span class="sym">⇒</span> <a class="def" href="#not">not</a> <a class="var" href="#l63">b</a> <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>The proposition that a boolean is <code>tt</code>: <code>IsTrue tt</code> is <code>⊤</code> and <code>IsTrue ff</code> is <code>⊥</code>.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="IsTrue">IsTrue</span> <span class="sym">(</span><span class="var bind" id="l75">b</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a><span class="sym">)</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l75">b</a> <span class="kw">at</span> <span class="var bind" id="l78">z</span> <span class="sym">-&gt;</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="sym">|</span> <span class="free">tt</span> <span class="sym">⇒</span> <span class="ty">⊤</span> <span class="sym">|</span> <span class="free">ff</span> <span class="sym">⇒</span> <span class="ty">⊥</span> <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>The proposition that a boolean is <code>ff</code>.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="IsFalse">IsFalse</span> <span class="sym">(</span><span class="var bind" id="l82">b</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a><span class="sym">)</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l82">b</a> <span class="kw">at</span> <span class="var bind" id="l85">z</span> <span class="sym">-&gt;</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="sym">|</span> <span class="free">tt</span> <span class="sym">⇒</span> <span class="ty">⊥</span> <span class="sym">|</span> <span class="free">ff</span> <span class="sym">⇒</span> <span class="ty">⊤</span> <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>The conditional, into a type of any level <code>u</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="mod bind" id="Cond">Cond</span> <span class="sym">(</span><span class="var bind" id="l89">u</span> <span class="sym">:</span> <span class="ty">Level</span><span class="sym">)</span> <span class="kw">where</span>
+</pre>
+<div class="doc"><p><code>if A b t e</code> is <code>t</code> when <code>b</code> is <code>tt</code>, and <code>e</code> when it is <code>ff</code>.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="Cond.if">if</span> <span class="sym">(</span><span class="var bind" id="l91">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l89">u</a><span class="sym">}</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l93">b</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l95">t</span> <span class="sym">:</span> <a class="var" href="#l91">A</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l97">e</span> <span class="sym">:</span> <a class="var" href="#l91">A</a><span class="sym">)</span> <span class="sym">:</span> <a class="var" href="#l91">A</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l93">b</a> <span class="kw">at</span> <span class="var bind" id="l101">z</span> <span class="sym">-&gt;</span> <a class="var" href="#l91">A</a> <span class="sym">|</span> <span class="free">tt</span> <span class="sym">⇒</span> <a class="var" href="#l95">t</a> <span class="sym">|</span> <span class="free">ff</span> <span class="sym">⇒</span> <a class="var" href="#l97">e</a> <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>The conditional with delayed branches: <code>cond A b t e</code> is <code>t ⋆</code> when <code>b</code> is <code>tt</code>, and <code>e ⋆</code> when it is <code>ff</code>.  The branches are functions of <code>⊤</code>, so only the chosen one is computed; a recursive program branches with <code>cond</code>, since <code>if</code> would compute the recursive call in both cases.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="Cond.cond">cond</span> <span class="sym">(</span><span class="var bind" id="l108">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l89">u</a><span class="sym">}</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l110">b</span> <span class="sym">:</span> <a class="mod" href="#Bool">Bool</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l112">t</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l113">x</span> <span class="sym">:</span> <span class="ty">⊤</span><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l108">A</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l115">e</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l116">x</span> <span class="sym">:</span> <span class="ty">⊤</span><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l108">A</a><span class="sym">)</span> <span class="sym">:</span>
+    <a class="var" href="#l108">A</a> <span class="sym">≔</span>
+  <span class="sym">(</span><span class="kw">elim</span> <a class="var" href="#l110">b</a> <span class="kw">at</span> <span class="var bind" id="l120">z</span> <span class="sym">-&gt;</span> <span class="sym">(</span><span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l121">x</span> <span class="sym">:</span> <span class="ty">⊤</span><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l108">A</a><span class="sym">)</span> <span class="sym">|</span> <span class="free">tt</span> <span class="sym">⇒</span> <a class="var" href="#l112">t</a> <span class="sym">|</span> <span class="free">ff</span> <span class="sym">⇒</span> <a class="var" href="#l115">e</a> <span class="kw">end</span><span class="sym">)</span> <span class="kw">⋆</span>
+<span class="kw">end</span>
+
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>The conditionals into <code>Type@0</code>.</p>
+</div>
+<pre class="code"><span class="kw">open</span> <a class="mod" href="#Cond">Cond</a> <span class="num">0l</span> <span class="kw">export</span> <span class="sym">(</span><a class="def bind" id="if" href="#Cond.if">if</a><span class="sym">;</span> <a class="def bind" id="cond" href="#Cond.cond">cond</a><span class="sym">)</span>
+
+<span class="kw">end</span></pre>
+</body></html>

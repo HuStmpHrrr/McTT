@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prelude›Builtin›Nat</title><link rel="stylesheet" href="mctt.css"></head><body class="unit-page">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">Prelude›Builtin›Nat</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><details open><summary><span class="kw">inductive</span> <a class="mod" href="#Nat">Nat</a></summary><ul><li><span class="kw">|</span> <a class="def" href="#Nat.zero">zero</a></li><li><span class="kw">|</span> <a class="def" href="#Nat.succ">succ</a></li></ul></details></li><li><span class="kw">export</span> <a class="def" href="#zero">zero</a></li><li><span class="kw">export</span> <a class="def" href="#succ">succ</a></li></ul></nav>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Prelude›Builtin›Nat</h1>
+<div class="doc"><p>The natural numbers, as an inductive type bound as the builtin natural numbers: once this unit is imported, directly or not, the numerals denote chains of its constructors, <code>2</code> is <code>succ (succ zero)</code>, and the token <code>ℕ</code> denotes <code>Nat</code>.  The unit exports the constructors, so a client imports them with the type: <code>import Prelude›Builtin›Nat use (Nat; zero; succ)</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Builtin</span><span class="sym">›</span><span class="unit bind">Nat</span> <span class="kw">where</span>
+
+<span class="kw">inductive</span> <span class="mod bind" id="Nat">Nat</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="kw">where</span>
+<span class="sym">|</span> <span class="def bind" id="Nat.zero">zero</span>
+<span class="sym">|</span> <span class="def bind" id="Nat.succ">succ</span> <span class="sym">(</span><span class="var bind" id="l6">n</span> <span class="sym">:</span> <a class="mod" href="#Nat">Nat</a><span class="sym">)</span>
+<span class="kw">end</span>
+
+<span class="kw">builtin</span> <a class="mod" href="#Nat">natural</a> <span class="sym">≔</span> <a class="mod" href="#Nat">Nat</a>
+
+<span class="kw">open</span> <a class="mod" href="#Nat">Nat</a> <span class="kw">export</span> <span class="sym">(</span><a class="def bind" id="zero" href="#Nat.zero">zero</a><span class="sym">;</span> <a class="def bind" id="succ" href="#Nat.succ">succ</a><span class="sym">)</span>
+
+<span class="kw">end</span></pre>
+</body></html>

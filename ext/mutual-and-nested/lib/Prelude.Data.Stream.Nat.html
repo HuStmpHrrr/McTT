@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prelude›Data›Stream›Nat</title><link rel="stylesheet" href="mctt.css"></head><body class="unit-page">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">Prelude›Data›Stream›Nat</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><span class="kw">def</span> <a class="def" href="#nats">nats</a></li></ul></nav>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Prelude›Data›Stream›Nat</h1>
+<div class="doc"><p>Streams of numbers, <code>Prelude›Data›Stream 0l ℕ</code>: the stream <code>nats</code> of all numbers.  Its laws are in <code>Prelude›Data›Stream›Properties.Nats</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Data</span><span class="sym">›</span><span class="unit bind">Stream</span><span class="sym">›</span><span class="unit bind">Nat</span> <span class="kw">where</span>
+
+<span class="kw">import</span> <a class="unit" href="Prelude.Builtin.Nat.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Builtin</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Nat</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="succ" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Data.Stream.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Stream.html">Data</a><span class="sym">›</span><a class="unit" href="Prelude.Data.Stream.html">Stream</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="kw">as</span> <span class="mod bind" id="S">S</span>
+</pre>
+<div class="doc"><p>The natural numbers <code>0, 1, 2, ...</code>, iterating the successor from <code>0</code>.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="nats">nats</span> <span class="sym">:</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#Stream">Stream</a> <span class="sym">≔</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#iterate">iterate</a> <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l17">x</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <a class="var" href="#l17">x</a><span class="sym">)</span> <span class="num">0</span> <span class="kw">end</span>
+
+<span class="kw">end</span></pre>
+</body></html>

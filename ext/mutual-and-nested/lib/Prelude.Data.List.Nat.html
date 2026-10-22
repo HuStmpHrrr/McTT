@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prelude›Data›List›Nat</title><link rel="stylesheet" href="mctt.css"></head><body class="unit-page">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">Prelude›Data›List›Nat</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><span class="kw">def</span> <a class="def" href="#sum">sum</a></li></ul></nav>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Prelude›Data›List›Nat</h1>
+<div class="doc"><p>Lists of numbers, <code>List 0l ℕ</code> of <code>Prelude›Data›List</code>: their <code>sum</code>.  The laws are in <code>Prelude›Data›List›Nat›Properties</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Data</span><span class="sym">›</span><span class="unit bind">List</span><span class="sym">›</span><span class="unit bind">Nat</span> <span class="kw">where</span>
+
+<span class="kw">import</span> <a class="unit" href="Prelude.Builtin.Nat.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Builtin</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Nat</a>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Plus.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Plus.html">Arith</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Plus.html">Plus</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="plus" href="Prelude.Arith.Plus.html#plus">plus</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Data.List.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Data.List.html">Data</a><span class="sym">›</span><a class="unit" href="Prelude.Data.List.html">List</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="List" href="Prelude.Data.List.html#List">List</a><span class="sym">)</span>
+</pre>
+<div class="doc"><p>The sum of a list of numbers.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="sum">sum</span> <span class="sym">(</span><span class="var bind" id="l16">l</span> <span class="sym">:</span> <a class="mod" href="Prelude.Data.List.html#List">List</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l16">l</a> <span class="kw">at</span> <span class="sym">(</span><span class="var bind" id="l19">z</span> <span class="sym">:</span> <a class="mod" href="Prelude.Data.List.html#List">List</a> <span class="num">0l</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a>
+  <span class="sym">|</span> <span class="free">nil</span> <span class="sym">⇒</span> <span class="num">0</span>
+  <span class="sym">|</span> <span class="free">cons</span> <span class="var bind" id="l23">x</span> <span class="var bind" id="l24">xs</span><span class="sym">,</span> <span class="var bind" id="l25">r</span> <span class="sym">⇒</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <a class="var" href="#l23">x</a> <a class="var" href="#l25">r</a>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">end</span></pre>
+</body></html>

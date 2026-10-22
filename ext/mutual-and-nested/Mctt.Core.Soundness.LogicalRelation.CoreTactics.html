@@ -1,0 +1,182 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+      <a href="./lib/index.html"> Library </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<h1 class="libtitle">Mctt.Core.Soundness.LogicalRelation.CoreTactics</h1>
+
+<div class="code">
+<span class="id" title="keyword">From</span> <span class="id" title="keyword">Equations</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">Equations</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Stdlib</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">Lia</span>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.LibTactics.html#"><span class="id" title="library">LibTactics</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic.System.Global</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#"><span class="id" title="library">Presup</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Soundness.LogicalRelation</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#"><span class="id" title="library">Definitions</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+State the universes below a level, <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_below"><span class="id" title="definition">glu_univ_below</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>, by
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_below_spec"><span class="id" title="lemma">glu_univ_below_spec</span></a></span>, wherever <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#uidx_lt"><span class="id" title="definition">uidx_lt</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a></span> is known. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">rewrite_glu_univ_below</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">H</span> : <span class="id" title="keyword">context</span> [<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_below"><span class="id" title="definition">glu_univ_below</span></a> ?<span class="id" title="var">i</span> ?<span class="id" title="var">j</span>] |- <span class="id" title="var">_</span> =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_below_spec"><span class="id" title="lemma">glu_univ_below_spec</span></a> <span class="id" title="var">i</span> <span class="id" title="var">j</span>) <span class="id" title="tactic">in</span> <span class="id" title="var">H</span> <span class="id" title="tactic">by</span> <span class="id" title="var">solve_uidx</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| |- <span class="id" title="keyword">context</span> [<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_below"><span class="id" title="definition">glu_univ_below</span></a> ?<span class="id" title="var">i</span> ?<span class="id" title="var">j</span>] =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_below_spec"><span class="id" title="lemma">glu_univ_below_spec</span></a> <span class="id" title="var">i</span> <span class="id" title="var">j</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">solve_uidx</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">basic_invert_glu_univ_elem</span> <span class="id" title="var">H</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">progress</span> <span class="id" title="var">simp</span> <span class="id" title="var">glu_univ_elem</span> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>;<br/>
+&nbsp;&nbsp;<span class="id" title="var">unmark_vars</span>;<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">dependent</span> <span class="id" title="tactic">destruction</span> <span class="id" title="var">H</span>;<br/>
+&nbsp;&nbsp;<span class="id" title="var">rewrite_glu_univ_below</span>;<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">try</span> <span class="id" title="tactic">rewrite</span> &lt;- <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_elem_equation_1"><span class="id" title="lemma">glu_univ_elem_equation_1</span></a> <span class="id" title="tactic">in</span> *.<br/>
+
+<br/>
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">basic_glu_univ_elem_econstructor</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">progress</span> <span class="id" title="var">simp</span> <span class="id" title="var">glu_univ_elem</span>;<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">econstructor</span>;<br/>
+&nbsp;&nbsp;<span class="id" title="var">rewrite_glu_univ_below</span>;<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">try</span> <span class="id" title="tactic">rewrite</span> &lt;- <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_elem_equation_1"><span class="id" title="lemma">glu_univ_elem_equation_1</span></a> <span class="id" title="tactic">in</span> *.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Two witnesses and the two facts about them: an existential, or a record
+    of that shape (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#suniv_glu_typ"><span class="id" title="record">suniv_glu_typ</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_typ_at"><span class="id" title="record">glu_typ_at</span></a></span>). 
+</div>
+<div class="code">
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">glu_witness2</span> := <span class="id" title="tactic">first</span> [ <span class="id" title="tactic">do</span> 2 <span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span> | <span class="id" title="tactic">econstructor</span> ].<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Take apart one hypothesis that is a record-shaped gluing predicate, as
+    <span class="inlinecode"><span class="id" title="var">destruct_all</span></span> does a conjunction. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">destruct_glu_record1</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#level_glu_exp_pred"><span class="id" title="definition">level_glu_exp_pred</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#level_glu_exp"><span class="id" title="record">level_glu_exp</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#suniv_glu_typ_pred"><span class="id" title="definition">suniv_glu_typ_pred</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#suniv_glu_typ"><span class="id" title="record">suniv_glu_typ</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#univ_glu_exp_pred'"><span class="id" title="definition">univ_glu_exp_pred'</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#univ_glu_exp"><span class="id" title="record">univ_glu_exp</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#suniv_glu_exp_pred'"><span class="id" title="definition">suniv_glu_exp_pred'</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#suniv_glu_exp"><span class="id" title="record">suniv_glu_exp</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#univ_glu_exp_pred"><span class="id" title="definition">univ_glu_exp_pred</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#suniv_glu_exp_pred"><span class="id" title="definition">suniv_glu_exp_pred</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_typ_at"><span class="id" title="record">glu_typ_at</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_typ"><span class="id" title="definition">glu_univ_typ</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">destruct_glu_records</span> := <span class="id" title="tactic">repeat</span> <span class="id" title="var">destruct_glu_record1</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The gluing of an element of an inductive type, taken apart only where
+    the scripts ask for it: its components are read by name elsewhere. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">destruct_ind_glu_exp</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#ind_glu_exp_pred"><span class="id" title="definition">ind_glu_exp_pred</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#ind_glu_exp"><span class="id" title="record">ind_glu_exp</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">invert_glu_rel1</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#pi_glu_typ_pred"><span class="id" title="inductive">pi_glu_typ_pred</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">progressive_invert</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#pi_glu_exp_pred"><span class="id" title="inductive">pi_glu_exp_pred</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">progressive_invert</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#neut_glu_typ_pred"><span class="id" title="definition">neut_glu_typ_pred</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">progressive_invert</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#neut_glu_exp_pred"><span class="id" title="inductive">neut_glu_exp_pred</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">progressive_invert</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">_</span> =&gt; <span class="id" title="var">destruct_glu_record1</span><br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab670"></a><h2 class="section">The Gluing Judgments</h2>
+
+<div class="paragraph"> </div>
+
+ Open the case of a rule: fix a sound embedding, read every premise at
+    its target, take the universes apart, and state a universe at the
+    target by its two parts. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">glu_intro</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_ctx"><span class="id" title="definition">glu_ctx</span></a>, <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_exp"><span class="id" title="definition">glu_exp</span></a>, <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_is_univ"><span class="id" title="definition">glu_is_univ</span></a> <span class="id" title="tactic">in</span> *; <span class="id" title="tactic">intros</span>;<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">IH</span> : <span class="id" title="keyword">forall</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span>, <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_emb"><span class="id" title="record">glu_emb</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="var">_</span>, <span class="id" title="var">Hμ</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_emb"><span class="id" title="record">glu_emb</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">specialize</span> (<span class="id" title="var">IH</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hμ</span>) <span class="id" title="keyword">end</span>;<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_is_univ_at"><span class="id" title="record">glu_is_univ_at</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span> <span class="id" title="keyword">end</span>;<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">try</span> <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> |- <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_is_univ_at"><span class="id" title="record">glu_is_univ_at</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">constructor</span> <span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The syntactic judgments of the source, moved along the sound embedding
+    to its target (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#emb_preserves_wf"><span class="id" title="lemma">emb_preserves_wf</span></a></span>). 
+</div>
+<div class="code">
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">glu_emb_wf</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">Hμ</span> : <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_emb"><span class="id" title="record">glu_emb</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> <span class="id" title="var">Hem</span> := <span class="id" title="tactic">fresh</span> "Hem" <span class="id" title="tactic">in</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#gem_emb"><span class="id" title="projection">gem_emb</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hμ</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">Hem</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> <span class="id" title="var">Hwc</span> := <span class="id" title="tactic">fresh</span> "Hwc" <span class="id" title="tactic">in</span> <span class="id" title="keyword">let</span> <span class="id" title="var">Hwe</span> := <span class="id" title="tactic">fresh</span> "Hwe" <span class="id" title="tactic">in</span> <span class="id" title="keyword">let</span> <span class="id" title="var">Hweq</span> := <span class="id" title="tactic">fresh</span> "Hweq" <span class="id" title="tactic">in</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> <span class="id" title="var">Hwst</span> := <span class="id" title="tactic">fresh</span> "Hwst" <span class="id" title="tactic">in</span> <span class="id" title="keyword">let</span> <span class="id" title="var">Hwx</span> := <span class="id" title="tactic">fresh</span> "Hwx" <span class="id" title="tactic">in</span> <span class="id" title="keyword">let</span> <span class="id" title="var">Hwu</span> := <span class="id" title="tactic">fresh</span> "Hwu" <span class="id" title="tactic">in</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> <span class="id" title="var">Hwm</span> := <span class="id" title="tactic">fresh</span> "Hwm" <span class="id" title="tactic">in</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#emb_preserves_wf"><span class="id" title="lemma">emb_preserves_wf</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hem</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">Hwc</span> &amp; <span class="id" title="var">Hwe</span> &amp; <span class="id" title="var">Hweq</span> &amp; <span class="id" title="var">Hwst</span> &amp; <span class="id" title="var">Hwx</span> &amp; <span class="id" title="var">Hwu</span> &amp; <span class="id" title="var">Hwm</span>) <span class="id" title="keyword">end</span>.<br/>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>

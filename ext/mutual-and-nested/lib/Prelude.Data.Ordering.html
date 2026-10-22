@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prelude›Data›Ordering</title><link rel="stylesheet" href="mctt.css"></head><body class="unit-page">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">Prelude›Data›Ordering</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><details open><summary><span class="kw">inductive</span> <a class="mod" href="#Ordering">Ordering</a></summary><ul><li><span class="kw">|</span> <a class="def" href="#Ordering.less">less</a></li><li><span class="kw">|</span> <a class="def" href="#Ordering.equal">equal</a></li><li><span class="kw">|</span> <a class="def" href="#Ordering.greater">greater</a></li></ul></details></li><li><span class="kw">def</span> <a class="def" href="#flip">flip</a></li><li><span class="kw">def</span> <a class="def" href="#compare">compare</a></li><li><span class="kw">def</span> <a class="def" href="#Spec">Spec</a></li><li><span class="kw">def</span> <a class="def" href="#thenCmp">thenCmp</a></li></ul></nav>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Prelude›Data›Ordering</h1>
+<div class="doc"><p>The result of a comparison: <code>less</code>, <code>equal</code> or <code>greater</code>.  The type carries no evidence; the proposition <code>Spec m n o</code> states what an outcome <code>o</code> of comparing <code>m</code> and <code>n</code> means.</p>
+<p><code>compare m n</code> compares two numbers, <code>flip</code> exchanges <code>less</code> and <code>greater</code>, and <code>thenCmp o p</code> is the lexicographic combination: <code>o</code>, unless it is <code>equal</code>, then <code>p</code>.  The laws, among them that <code>compare</code> meets <code>Spec</code>, are in <code>Prelude›Data›Ordering›Properties</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Data</span><span class="sym">›</span><span class="unit bind">Ordering</span> <span class="kw">where</span>
+
+<span class="kw">import</span> <a class="unit" href="Prelude.Builtin.Nat.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Builtin</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Nat</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="succ" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Equality.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Equality.html">Arith</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Equality.html">Equality</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="Eq" href="Prelude.Arith.Equality.html#Eq">Eq</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Order.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Order.html">Arith</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Order.html">Order</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="Lt" href="Prelude.Arith.Order.html#Lt">Lt</a><span class="sym">)</span>
+
+<span class="kw">inductive</span> <span class="mod bind" id="Ordering">Ordering</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="kw">where</span>
+<span class="sym">|</span> <span class="def bind" id="Ordering.less">less</span>
+<span class="sym">|</span> <span class="def bind" id="Ordering.equal">equal</span>
+<span class="sym">|</span> <span class="def bind" id="Ordering.greater">greater</span>
+<span class="kw">end</span>
+
+<span class="kw">open</span> <a class="mod" href="#Ordering">Ordering</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="less" href="#Ordering.less">less</a><span class="sym">;</span> <a class="def bind" id="equal" href="#Ordering.equal">equal</a><span class="sym">;</span> <a class="def bind" id="greater" href="#Ordering.greater">greater</a><span class="sym">)</span>
+
+<span class="kw">def</span> <span class="def bind" id="flip">flip</span> <span class="sym">(</span><span class="var bind" id="l24">o</span> <span class="sym">:</span> <a class="mod" href="#Ordering">Ordering</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Ordering">Ordering</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l24">o</a> <span class="kw">at</span> <span class="var bind" id="l28">z</span> <span class="sym">-&gt;</span> <a class="mod" href="#Ordering">Ordering</a>
+  <span class="sym">|</span> <span class="free">less</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.greater">greater</a>
+  <span class="sym">|</span> <span class="free">equal</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.equal">equal</a>
+  <span class="sym">|</span> <span class="free">greater</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.less">less</a>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>By recursion on <code>m</code>, then cases on <code>n</code>: two successors compare as their predecessors.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="compare">compare</span> <span class="sym">(</span><span class="var bind" id="l37">m</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l38">n</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="mod" href="#Ordering">Ordering</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l37">m</a> <span class="kw">at</span> <span class="var bind" id="l41">x</span> <span class="sym">-&gt;</span> <span class="sym">(</span><span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l42">n</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="mod" href="#Ordering">Ordering</a><span class="sym">)</span>
+  <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l45">n</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span>
+      <span class="kw">elim</span> <a class="var" href="#l45">n</a> <span class="kw">at</span> <span class="var bind" id="l47">y</span> <span class="sym">-&gt;</span> <a class="mod" href="#Ordering">Ordering</a> <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.equal">equal</a> <span class="sym">|</span> <span class="free">succ</span> <span class="var bind" id="l52">q</span><span class="sym">,</span> <span class="var bind" id="l53">s</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.less">less</a> <span class="kw">end</span>
+  <span class="sym">|</span> <span class="free">succ</span> <span class="var bind" id="l56">p</span><span class="sym">,</span> <span class="var bind" id="l57">r</span> <span class="sym">⇒</span> <span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l58">n</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span>
+      <span class="kw">elim</span> <a class="var" href="#l58">n</a> <span class="kw">at</span> <span class="var bind" id="l60">y</span> <span class="sym">-&gt;</span> <a class="mod" href="#Ordering">Ordering</a> <span class="sym">|</span> <span class="free">zero</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.greater">greater</a> <span class="sym">|</span> <span class="free">succ</span> <span class="var bind" id="l65">q</span><span class="sym">,</span> <span class="var bind" id="l66">s</span> <span class="sym">⇒</span> <a class="var" href="#l57">r</a> <a class="var" href="#l65">q</a> <span class="kw">end</span>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>What an outcome of comparing <code>m</code> and <code>n</code> means: <code>Lt m n</code> for <code>less</code>, <code>Eq m n</code> for <code>equal</code> and <code>Lt n m</code> for <code>greater</code>.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="Spec">Spec</span> <span class="sym">(</span><span class="var bind" id="l70">m</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l71">n</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l72">o</span> <span class="sym">:</span> <a class="mod" href="#Ordering">Ordering</a><span class="sym">)</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l72">o</a> <span class="kw">at</span> <span class="var bind" id="l75">z</span> <span class="sym">-&gt;</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span>
+  <span class="sym">|</span> <span class="free">less</span> <span class="sym">⇒</span> <a class="def" href="Prelude.Arith.Order.html#Lt">Lt</a> <a class="var" href="#l70">m</a> <a class="var" href="#l71">n</a>
+  <span class="sym">|</span> <span class="free">equal</span> <span class="sym">⇒</span> <a class="def" href="Prelude.Arith.Equality.html#Eq">Eq</a> <a class="var" href="#l70">m</a> <a class="var" href="#l71">n</a>
+  <span class="sym">|</span> <span class="free">greater</span> <span class="sym">⇒</span> <a class="def" href="Prelude.Arith.Order.html#Lt">Lt</a> <a class="var" href="#l71">n</a> <a class="var" href="#l70">m</a>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">def</span> <span class="def bind" id="thenCmp">thenCmp</span> <span class="sym">(</span><span class="var bind" id="l89">o</span> <span class="sym">:</span> <a class="mod" href="#Ordering">Ordering</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l91">p</span> <span class="sym">:</span> <a class="mod" href="#Ordering">Ordering</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Ordering">Ordering</a> <span class="sym">≔</span>
+  <span class="kw">elim</span> <a class="var" href="#l89">o</a> <span class="kw">at</span> <span class="var bind" id="l95">z</span> <span class="sym">-&gt;</span> <a class="mod" href="#Ordering">Ordering</a>
+  <span class="sym">|</span> <span class="free">less</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.less">less</a>
+  <span class="sym">|</span> <span class="free">equal</span> <span class="sym">⇒</span> <a class="var" href="#l91">p</a>
+  <span class="sym">|</span> <span class="free">greater</span> <span class="sym">⇒</span> <a class="def" href="#Ordering.greater">greater</a>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">end</span></pre>
+</body></html>
