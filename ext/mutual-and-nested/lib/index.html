@@ -136,9 +136,13 @@
 </li>
 <li><a class="unit" href="Prelude.Data.Tree.Binary.html">Prelude›Data›Tree›Binary</a> <p>Binary trees: <code>Tree u N L</code> has leaves <code>leaf x</code> labelled by <code>x : L</code> and nodes <code>node l m r</code> labelled by <code>m : N</code>, with two subtrees, at every level <code>u</code>.</p>
 </li>
-<li><a class="unit" href="Prelude.Data.Tree.Rose.Properties.html">Prelude›Data›Tree›Rose›Properties</a> <p>Laws of <code>Prelude›Data›Tree›Rose</code> over labels <code>A</code> of <code>Type@{u}</code>: <code>map</code> keeps the size and is a functor; the preorder list of labels has the size as its length and commutes with <code>map</code>; the size and the preorder list are folds, by conversion; and <code>toList</code> and <code>fromList</code> are inverse.</p>
+<li><a class="unit" href="Prelude.Data.Tree.Forest.Properties.html">Prelude›Data›Tree›Forest›Properties</a> <p>Laws of <code>Prelude›Data›Tree›Forest</code> over labels <code>A</code> of <code>Type@{u}</code>: <code>map</code> keeps the size and is a functor; the preorder list of labels has the size as its length and commutes with <code>map</code>; the size and the preorder list are folds, by conversion; and <code>toList</code> and <code>fromList</code> are inverse.</p>
 </li>
-<li><a class="unit" href="Prelude.Data.Tree.Rose.html">Prelude›Data›Tree›Rose</a> <p>Rose trees and forests, a mutual group: a tree <code>node x ts</code> has a label <code>x : A</code> and a forest <code>ts</code> of children, and a forest is <code>nil</code> or <code>cons t ts</code>, a tree followed by a forest.</p>
+<li><a class="unit" href="Prelude.Data.Tree.Forest.html">Prelude›Data›Tree›Forest</a> <p>Trees and forests, a mutual group: a tree <code>node x ts</code> has a label <code>x : A</code> and a forest <code>ts</code> of children, and a forest is <code>nil</code> or <code>cons t ts</code>, a tree followed by a forest.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Tree.Rose.Properties.html">Prelude›Data›Tree›Rose›Properties</a> <p>Laws of <code>Prelude›Data›Tree›Rose</code> over labels <code>A</code> of <code>Type@{u}</code>: <code>map</code> keeps the size, is a functor, and is <code>List</code>'s <code>map</code> on forests; the preorder list of labels has the size as its length and commutes with <code>map</code>.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Tree.Rose.html">Prelude›Data›Tree›Rose</a> <p>Rose trees, a nested inductive type: a tree <code>node x ts</code> has a label <code>x : A</code> and a list <code>ts : List u (Rose u A)</code> of children, the lists of <code>Prelude›Data›List</code>.</p>
 </li>
 <li><a class="unit" href="Prelude.Data.Vec.Nat.html">Prelude›Data›Vec›Nat</a> <p>Vectors of numbers, <code>Prelude›Data›Vec 0l ℕ</code>: their sum <code>sumVec</code>.</p>
 </li>
@@ -174,7 +178,7 @@
 </li>
 <li><a class="unit" href="Division.html">Division</a> <p>A client of <code>Prelude›Arith›Div</code> and <code>Prelude›Arith›Divides</code>: computed quotients and remainders, and closed instances of their theorems.</p>
 </li>
-<li><a class="unit" href="Forests.html">Forests</a> <p>A client of the rose trees of <code>Prelude›Data›Tree›Rose</code>: the operations on a closed tree of numbers, a function written with the group's eliminator and one with its recursor module, and closed instances of the laws.</p>
+<li><a class="unit" href="Forests.html">Forests</a> <p>A client of the trees and forests of <code>Prelude›Data›Tree›Forest</code>: the operations on a closed tree of numbers, a function written with the group's eliminator and one with its recursor module, and closed instances of the laws.</p>
 </li>
 <li><a class="unit" href="Groups.html">Groups</a> <p>A client of <code>Prelude›Algebra›Group</code>, read in the group of integers of <code>Prelude›Algebra›Integers</code>.</p>
 </li>
@@ -195,6 +199,8 @@
 <li><a class="unit" href="Powers.html">Powers</a> <p>A client of <code>Prelude›Arith›Pow</code>, <code>Prelude›Arith›Sum</code> and <code>Prelude›Arith›Factorial</code>: a few computations, and closed instances of their theorems, which normalize to <code>⋆</code>.</p>
 </li>
 <li><a class="unit" href="Programs.html">Programs</a> <p>A client of the programs in the <code>Prelude</code> library: subtraction, minimum and maximum, generic combinators, and the Ackermann function, run on closed instances.</p>
+</li>
+<li><a class="unit" href="Roses.html">Roses</a> <p>A client of the rose trees of <code>Prelude›Data›Tree›Rose</code>: the operations on a closed tree of numbers, whose children are a <code>List</code> of trees, a function written with the eliminator's two blocks, and closed instances of the laws.</p>
 </li>
 <li><a class="unit" href="Streams.html">Streams</a> <p>A client of <code>Prelude›Data›Stream</code> and its laws: the natural numbers, the even and odd numbers, the squares and two Fibonacci-like streams are read with <code>nth</code> and summed through <code>take</code>, and closed instances of the laws normalize to <code>⋆</code>.</p>
 </li>
