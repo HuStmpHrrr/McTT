@@ -34,7 +34,7 @@ USER root
 
 RUN apt-get update -y -q \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
-         pandoc python3 pkg-config curl ca-certificates \
+         pandoc python3 time pkg-config curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSLO https://gitlab.com/api/v4/projects/4207231/packages/generic/graphviz-releases/12.1.1/graphviz-12.1.1.tar.gz \
