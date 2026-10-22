@@ -136,6 +136,10 @@
 </li>
 <li><a class="unit" href="Prelude.Data.Tree.Binary.html">Prelude›Data›Tree›Binary</a> <p>Binary trees: <code>Tree u N L</code> has leaves <code>leaf x</code> labelled by <code>x : L</code> and nodes <code>node l m r</code> labelled by <code>m : N</code>, with two subtrees, at every level <code>u</code>.</p>
 </li>
+<li><a class="unit" href="Prelude.Data.Tree.Rose.Properties.html">Prelude›Data›Tree›Rose›Properties</a> <p>Laws of <code>Prelude›Data›Tree›Rose</code> over labels <code>A</code> of <code>Type@{u}</code>: <code>map</code> keeps the size and is a functor; the preorder list of labels has the size as its length and commutes with <code>map</code>; the size and the preorder list are folds, by conversion; and <code>toList</code> and <code>fromList</code> are inverse.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Tree.Rose.html">Prelude›Data›Tree›Rose</a> <p>Rose trees and forests, a mutual group: a tree <code>node x ts</code> has a label <code>x : A</code> and a forest <code>ts</code> of children, and a forest is <code>nil</code> or <code>cons t ts</code>, a tree followed by a forest.</p>
+</li>
 <li><a class="unit" href="Prelude.Data.Vec.Nat.html">Prelude›Data›Vec›Nat</a> <p>Vectors of numbers, <code>Prelude›Data›Vec 0l ℕ</code>: their sum <code>sumVec</code>.</p>
 </li>
 <li><a class="unit" href="Prelude.Data.Vec.Properties.html">Prelude›Data›Vec›Properties</a> <p>Laws of <code>Prelude›Data›Vec</code>, stated with <code>Prelude›Arith›Equality</code> on number-valued observations: elements read with <code>nth</code>, sums of vectors of numbers (<code>sumVec</code> of <code>Prelude›Data›Vec›Nat</code>), and with <code>IsTrue</code> on the answers of the boolean tests <code>allb</code> and <code>anyb</code>.</p>
@@ -169,6 +173,8 @@
 <li><a class="unit" href="DataTypes.html">DataTypes</a> <p>A client of the inductive types of <code>Prelude›Data</code>: comparisons, inclusive unions, non-empty lists, binary trees, signs and parities, integers, binary numbers and well-founded trees, computed on closed values, and closed instances of their laws.</p>
 </li>
 <li><a class="unit" href="Division.html">Division</a> <p>A client of <code>Prelude›Arith›Div</code> and <code>Prelude›Arith›Divides</code>: computed quotients and remainders, and closed instances of their theorems.</p>
+</li>
+<li><a class="unit" href="Forests.html">Forests</a> <p>A client of the rose trees of <code>Prelude›Data›Tree›Rose</code>: the operations on a closed tree of numbers, a function written with the group's eliminator and one with its recursor module, and closed instances of the laws.</p>
 </li>
 <li><a class="unit" href="Groups.html">Groups</a> <p>A client of <code>Prelude›Algebra›Group</code>, read in the group of integers of <code>Prelude›Algebra›Integers</code>.</p>
 </li>
