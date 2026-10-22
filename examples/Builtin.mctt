@@ -13,14 +13,14 @@ builtin natural ≔ Num
 open Num use (Z; S)
 
 def plus (n : Num) (m : Num) : Num ≔
-  elim n return x . Num
+  elim n at x -> Num
   | Z ⇒ m
   | S p, r ⇒ S r
   end
 end
 
 def mult (n : Num) (m : Num) : Num ≔
-  elim n return x . Num
+  elim n at x -> Num
   | Z ⇒ 0
   | S p, r ⇒ plus m r
   end

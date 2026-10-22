@@ -129,7 +129,7 @@ eval Sums.pow 6 3
    congruence laws of the instance. *)
 theorem maxPowSucc : ∀ (x : ℕ) (n : ℕ) → Eq (Maximum.pow x (succ n)) x ≔
   λ (x : ℕ) (n : ℕ) →
-    elim n return k . Eq (Maximum.pow x (succ k)) x
+    elim n at k -> Eq (Maximum.pow x (succ k)) x
     | zero ⇒ maxIdentityRight x
     | succ p, ih ⇒
         let power ≔ Maximum.pow x (succ p);

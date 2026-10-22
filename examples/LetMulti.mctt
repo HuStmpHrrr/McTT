@@ -7,7 +7,7 @@ import Prelude›Builtin›Nat use (zero; succ)
 eval let A : Type@0 ≔ ℕ;
          n : A ≔ 2;
          double : ∀ (x : A) → A ≔
-           λ (x : A) → elim x return y . A | zero ⇒ n | succ m, r ⇒ succ r end
+           λ (x : A) → elim x at y -> A | zero ⇒ n | succ m, r ⇒ succ r end
      in
        double n
      end : ℕ

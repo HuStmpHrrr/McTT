@@ -25,7 +25,7 @@ module Numerals where
 
 theorem toNatFromNat : ∀ (n : ℕ) → Eq (C.toNat (C.fromNat n)) n ≔
   λ (n : ℕ) →
-    elim n return x . Eq (C.toNat (C.fromNat x)) x
+    elim n at x -> Eq (C.toNat (C.fromNat x)) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -34,7 +34,7 @@ end
 (* The numeral of [m], iterating the successor from [y], adds [m]. *)
 theorem fromNatAdds : ∀ (m : ℕ) (y : ℕ) → Eq (C.fromNat m ℕ S y) (plus m y) ≔
   λ (m : ℕ) (y : ℕ) →
-    elim m return x . Eq (C.fromNat x ℕ S y) (plus x y)
+    elim m at x -> Eq (C.fromNat x ℕ S y) (plus x y)
     | zero ⇒ refl y
     | succ p, ih ⇒ ih
     end
@@ -47,7 +47,7 @@ theorem fromNatAddsMult : ∀ (c : ℕ) (g : ∀ (k : ℕ) → ℕ)
     Eq (C.fromNat m ℕ g y) (plus (mult m c) y) ≔
   λ (c : ℕ) (g : ∀ (k : ℕ) → ℕ) (hg : ∀ (k : ℕ) → Eq (g k) (plus c k))
     (m : ℕ) (y : ℕ) →
-    elim m return x . Eq (C.fromNat x ℕ g y) (plus (mult x c) y)
+    elim m at x -> Eq (C.fromNat x ℕ g y) (plus (mult x c) y)
     | zero ⇒ refl y
     | succ p, ih ⇒
         let r ≔ C.fromNat p ℕ g y
@@ -103,7 +103,7 @@ end
 theorem lengthReplicate : ∀ (A : Type@{u}) (n : ℕ) (a : A) →
     Eq (C.length A (C.replicate A n a)) n ≔
   λ (A : Type@{u}) (n : ℕ) (a : A) →
-    elim n return x . Eq (C.length A (C.replicate A x a)) x
+    elim n at x -> Eq (C.length A (C.replicate A x a)) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -115,7 +115,7 @@ theorem lengthAppendReplicate : ∀ (A : Type@{u}) (n : ℕ) (a : A)
     Eq (C.length A (C.append A (C.replicate A n a) l))
        (plus n (C.length A l)) ≔
   λ (A : Type@{u}) (n : ℕ) (a : A) (l : C.List A) →
-    elim n return x . Eq (C.length A (C.append A (C.replicate A x a) l))
+    elim n at x -> Eq (C.length A (C.append A (C.replicate A x a) l))
                          (plus x (C.length A l))
     | zero ⇒ refl (C.length A l)
     | succ p, ih ⇒ ih
@@ -125,7 +125,7 @@ end
 theorem sumReplicate : ∀ (n : ℕ) (c : ℕ) →
     Eq (C.sum (C.replicate ℕ n c)) (mult n c) ≔
   λ (n : ℕ) (c : ℕ) →
-    elim n return x . Eq (C.sum (C.replicate ℕ x c)) (mult x c)
+    elim n at x -> Eq (C.sum (C.replicate ℕ x c)) (mult x c)
     | zero ⇒ ⋆
     | succ p, ih ⇒
         cong (λ (k : ℕ) → plus c k) (C.sum (C.replicate ℕ p c)) (mult p c)

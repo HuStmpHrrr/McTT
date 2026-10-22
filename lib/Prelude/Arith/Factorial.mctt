@@ -14,7 +14,7 @@ import Prelude›Arith›Pow use (pow)
 (* [factorial 0] is [1] and [factorial (succ p)] is
    [mult (succ p) (factorial p)]. *)
 def factorial (n : ℕ) : ℕ ≔
-  elim n return y . ℕ
+  elim n at y -> ℕ
   | zero ⇒ 1
   | succ p, r ⇒ mult (succ p) r
   end
@@ -40,7 +40,7 @@ module Bounds where
    [factorial p]. *)
 theorem factPos : ∀ (n : ℕ) → Lt 0 (factorial n) ≔
   λ (n : ℕ) →
-    elim n return x . Lt 0 (factorial x)
+    elim n at x -> Lt 0 (factorial x)
     | zero ⇒ ⋆
     | succ p, ih ⇒
         leTrans 1 (factorial p) (factorial (succ p)) ih
@@ -59,7 +59,7 @@ end
    [lePlusMono] on the hypothesis [P <= F] conclude. *)
 theorem lePowFact : ∀ (n : ℕ) → Le (pow 2 n) (factorial (succ n)) ≔
   λ (n : ℕ) →
-    elim n return x . Le (pow 2 x) (factorial (succ x))
+    elim n at x -> Le (pow 2 x) (factorial (succ x))
     | zero ⇒ ⋆
     | succ p, ih ⇒
         let P ≔ pow 2 p;

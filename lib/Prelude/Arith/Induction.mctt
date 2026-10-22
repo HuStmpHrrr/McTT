@@ -22,7 +22,7 @@ open Prelude›Arith›Order.LtLaws.Cases u use (leCases)
 def caseNat (P : ∀ (n : ℕ) → Type@{u}) (pz : P 0)
     (ps : ∀ (n : ℕ) → P (succ n)) : ∀ (n : ℕ) → P n ≔
   λ (n : ℕ) →
-    elim n return x . P x
+    elim n at x -> P x
     | zero ⇒ pz
     | succ p, ih ⇒ ps p
     end
@@ -36,7 +36,7 @@ def twoStepInd (P : ∀ (n : ℕ) → Type@{u}) (pz : P 0) (po : P 1)
     (step : ∀ (n : ℕ) (h : P n) → P (succ (succ n))) : ∀ (n : ℕ) → P n ≔
   λ (n : ℕ) →
     andFst (P n) (P (succ n))
-      (elim n return x . And (P x) (P (succ x))
+      (elim n at x -> And (P x) (P (succ x))
        | zero ⇒ andIntro (P 0) (P 1) pz po
        | succ p, ih ⇒
            andIntro (P (succ p)) (P (succ (succ p)))
@@ -55,7 +55,7 @@ def strongInd (P : ∀ (n : ℕ) → Type@{u})
     : ∀ (n : ℕ) → P n ≔
   λ (n : ℕ) →
     step n
-      (elim n return x . (∀ (m : ℕ) (lt : Lt m x) → P m)
+      (elim n at x -> (∀ (m : ℕ) (lt : Lt m x) → P m)
        | zero ⇒ λ (m : ℕ) (lt : ⊥) → absurd (P m) lt
        | succ p, ih ⇒ λ (m : ℕ) (lt : Le m p) →
            orElim (Lt m p) (Eq m p) (P m) (leCases m p lt)

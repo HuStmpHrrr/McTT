@@ -25,35 +25,35 @@ private inductive N ≔ NonEmpty u A
 
 private inductive LA ≔ List u A
 
-def head (l : N) : A ≔ elim l return z . A | cons x xs ⇒ x end end
+def head (l : N) : A ≔ elim l at (z : N) -> A | cons x xs ⇒ x end end
 
-def tail (l : N) : LA ≔ elim l return z . LA | cons x xs ⇒ xs end end
+def tail (l : N) : LA ≔ elim l at (z : N) -> LA | cons x xs ⇒ xs end end
 
 def toList (l : N) : LA ≔
-  elim l return z . LA | cons x xs ⇒ LA.cons x xs end
+  elim l at (z : N) -> LA | cons x xs ⇒ LA.cons x xs end
 end
 
 (* [some] of the non-empty list, or [none] on the empty list. *)
 def fromList (l : LA) : Option u N ≔
-  elim l return z . Option u N
+  elim l at (z : LA) -> Option u N
   | nil ⇒ Option.none u N
   | cons x xs, r ⇒ Option.some u N (N.cons x xs)
   end
 end
 
 def length (l : N) : ℕ ≔
-  elim l return z . ℕ | cons x xs ⇒ succ (L.length u A xs) end
+  elim l at (z : N) -> ℕ | cons x xs ⇒ succ (L.length u A xs) end
 end
 
 def map (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) : NonEmpty u B ≔
-  elim l return z . NonEmpty u B
+  elim l at (z : N) -> NonEmpty u B
   | cons x xs ⇒ NonEmpty.cons u B (f x) (L.map u A B f xs)
   end
 end
 
 (* A non-empty list followed by a list. *)
 def appendList (l : N) (m : LA) : N ≔
-  elim l return z . N | cons x xs ⇒ N.cons x (L.append u A xs m) end
+  elim l at (z : N) -> N | cons x xs ⇒ N.cons x (L.append u A xs m) end
 end
 
 (* Two non-empty lists, one after the other. *)
@@ -61,7 +61,7 @@ def append (l : N) (m : N) : N ≔ appendList l (toList m) end
 
 (* A list followed by a non-empty list, by recursion on the list. *)
 def prependList (l : LA) (m : N) : N ≔
-  elim l return z . N
+  elim l at (z : LA) -> N
   | nil ⇒ m
   | cons x xs, r ⇒ N.cons x (toList r)
   end
@@ -69,27 +69,27 @@ end
 
 (* The reversed tail before the head. *)
 def reverse (l : N) : N ≔
-  elim l return z . N
+  elim l at (z : N) -> N
   | cons x xs ⇒ prependList (L.reverse u A xs) (N.cons x LA.nil)
   end
 end
 
 (* The last element of [d] followed by [xs]. *)
 private def lastFrom (xs : LA) : ∀ (d : A) → A ≔
-  elim xs return z . (∀ (d : A) → A)
+  elim xs at (z : LA) -> (∀ (d : A) → A)
   | nil ⇒ λ (d : A) → d
   | cons y ys, r ⇒ λ (d : A) → r y
   end
 end
 
 def last (l : N) : A ≔
-  elim l return z . A | cons x xs ⇒ lastFrom xs x end
+  elim l at (z : N) -> A | cons x xs ⇒ lastFrom xs x end
 end
 
 (* The fold of [d] followed by [xs], [g] on the last element. *)
 private def foldrFrom (B : Type@{u}) (f : ∀ (x : A) (b : B) → B)
     (g : ∀ (x : A) → B) (xs : LA) : ∀ (d : A) → B ≔
-  elim xs return z . (∀ (d : A) → B)
+  elim xs at (z : LA) -> (∀ (d : A) → B)
   | nil ⇒ λ (d : A) → g d
   | cons y ys, r ⇒ λ (d : A) → f d (r y)
   end
@@ -99,7 +99,7 @@ end
    [foldr B f g [x1, …, xn]] is [f x1 (… (f x(n-1) (g xn)))]. *)
 def foldr (B : Type@{u}) (f : ∀ (x : A) (b : B) → B) (g : ∀ (x : A) → B)
     (l : N) : B ≔
-  elim l return z . B | cons x xs ⇒ foldrFrom B f g xs x end
+  elim l at (z : N) -> B | cons x xs ⇒ foldrFrom B f g xs x end
 end
 
 end

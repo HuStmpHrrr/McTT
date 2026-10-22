@@ -65,7 +65,7 @@ eval all (List.cons 0l Bool tt (List.cons 0l Bool (not ff) (List.nil 0l Bool)))
 
 (* Options: the first element of a list, if any. *)
 def head (l : NatList) : Option 0l ℕ ≔
-  elim l return z . Option 0l ℕ
+  elim l at (z : NatList) -> Option 0l ℕ
   | nil ⇒ Option.none 0l ℕ
   | cons x xs, r ⇒ Option.some 0l ℕ x
   end

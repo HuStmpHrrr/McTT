@@ -25,12 +25,12 @@ def Coeffs : Type@0 ≔ ∀ (i : ℕ) → ℕ end
 (* The coefficients [a, b, c, d], then zeros. *)
 def cubic (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) : Coeffs ≔
   λ (i : ℕ) →
-    elim i return y . ℕ
+    elim i at y -> ℕ
     | zero ⇒ a
     | succ j, r ⇒
-        elim j return z . ℕ
+        elim j at z -> ℕ
         | zero ⇒ b
-        | succ k, s ⇒ elim k return w . ℕ | zero ⇒ c | succ l, t ⇒ d end
+        | succ k, s ⇒ elim k at w -> ℕ | zero ⇒ c | succ l, t ⇒ d end
         end
     end
 end
@@ -52,7 +52,7 @@ def term (c : Coeffs) (i : ℕ) : ℕ ≔ mult (c i) (pow x i) end
 (* Horner's scheme, [c 0 + x * (c 1 + x * (...))], by recursion on the
    length, generalized over the coefficients. *)
 def hornerFrom (n : ℕ) : ∀ (c : Coeffs) → ℕ ≔
-  elim n return k . (∀ (c : Coeffs) → ℕ)
+  elim n at k -> (∀ (c : Coeffs) → ℕ)
   | zero ⇒ λ (c : Coeffs) → 0
   | succ p, r ⇒ λ (c : Coeffs) → plus (c 0) (mult x (r (shift c)))
   end
@@ -74,7 +74,7 @@ end
    ([multLeftComm]), and the first monomial is split off ([sumToShift]). *)
 theorem hornerNaive : ∀ (c : Coeffs) (n : ℕ) → Eq (horner c n) (naive c n) ≔
   λ (c : Coeffs) (n : ℕ) →
-    (elim n return k . (∀ (d : Coeffs) → Eq (hornerFrom k d) (sumTo (term d) k))
+    (elim n at k -> (∀ (d : Coeffs) → Eq (hornerFrom k d) (sumTo (term d) k))
      | zero ⇒ λ (d : Coeffs) → ⋆
      | succ p, ih ⇒ λ (d : Coeffs) →
          let rest ≔ hornerFrom p (shift d);
@@ -139,7 +139,7 @@ eval let module Table (c : Coeffs) where
        def value (x : ℕ) : ℕ ≔ At.horner x c 4 end
        def total (k : ℕ) : ℕ ≔ sumTo value k end
        def peak (k : ℕ) : ℕ ≔
-         elim k return y . ℕ | zero ⇒ 0 | succ p, r ⇒ max (value p) r end
+         elim k at y -> ℕ | zero ⇒ 0 | succ p, r ⇒ max (value p) r end
        end
      end
      in plus (Table.total (cubic 1 1 0 0) 4) (Table.peak (cubic 0 0 1 0) 5)

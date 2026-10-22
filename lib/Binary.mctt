@@ -43,9 +43,9 @@ eval bitCount 256
 (* Digits given by hand: [1, 0, 1, 1], then zeros, write [1 + 4 + 8]. *)
 def oneZeroOneOne : Bits ≔
   λ (i : ℕ) →
-    elim i return y . ℕ
+    elim i at y -> ℕ
     | zero ⇒ 1
-    | succ j, r ⇒ elim j return z . ℕ | zero ⇒ 0 | succ k, s ⇒ 1 end
+    | succ j, r ⇒ elim j at z -> ℕ | zero ⇒ 0 | succ k, s ⇒ 1 end
     end
 end
 

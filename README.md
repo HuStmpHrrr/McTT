@@ -194,9 +194,9 @@ term = ( '∀' | 'Π' | 'forall' ) , {parameter} , ( '→' | '->' ) , term
      | 'maxl' , atomic term , atomic term
      (* eliminator of the empty type *)
      | 'exfalso' , term , 'return' , motive
-     (* eliminator of an inductive type: the motive binds the
-        non-uniform parameters, then the scrutinee *)
-     | 'elim' , term , 'return' , {id} , motive , {elim branch} , 'end';
+     (* eliminator of a group of inductive types: one block per member,
+        in member order, the scrutinee's marked 'at' *)
+     | 'elim' , term , elim block , {elim block} , 'end';
 
             (* universe at the level nat, short for Type@{<nat>l} *)
 atomic term = 'Type', '@' , nat
@@ -242,9 +242,11 @@ let definition = id , ':' , type , ( '≔' | ':=' ) , term
                (* local module *)
                | 'module' , id , ( '≔' | ':=' ) , term;
 
-(* This describes the return type of the eliminator
-   when id is bound to the scrutinee *)
+(* the motive of the eliminator, as a binder: the names of the non-uniform
+   parameters, then the scrutinee, which alone may carry its type, then the
+   motive's type under them *)
 motive = id , '.' , type;
+elim block = ( 'at' | 'with' ) , {id} , ( id | parameter ) , ( '→' | '->' ) , type , {elim branch};
 
 (* the names of the non-uniform parameters and the constructor's
    arguments, then those of the induction hypotheses *)
@@ -262,12 +264,21 @@ definitionally equal to its definition.
 A module declares an inductive type with a command:
 
 ```EBNF
-(* the parameters left of ':' are uniform; the ones the type binds
-   before its sort are not *)
-inductive = ['private'] , 'inductive' , id , {parameter} , ':' ,
-            [ ( '∀' | 'Π' | 'forall' ) , {parameter} , ( '→' | '->' ) ] , type ,
-            'where' , {constructor} , 'end';
+(* the parameters left of ':' are uniform, shared by the members of the
+   group; the ones a member's type binds before its sort are not *)
+inductive = ['private'] , 'inductive' , id , {parameter} , ':' , member type ,
+            'where' , {constructor} , { 'with' , id , ':' , member type , 'where' , {constructor} } ,
+            'end';
+member type = [ ( '∀' | 'Π' | 'forall' ) , {parameter} , ( '→' | '->' ) ] , type;
 constructor = '|' , id , {parameter};
+(* a group in its own module T: members T.x, T.y, … *)
+mutual = ['private'] , 'mutual' , id , {parameter} , 'where' ,
+         'inductive' , id , ':' , member type , 'where' , {constructor} ,
+         { 'with' , id , ':' , member type , 'where' , {constructor} } , 'end' , 'end';
+(* one function per member of a group, in any order *)
+mutual def = ['private'] , ['abstract'] , 'mutual' , 'def' , {parameter} ,
+             function , { 'with' , function } , 'end';
+function = id , parameter , {parameter} , ':' , type , ( '≔' | ':=' ) , {elim branch};
 ```
 
 Where a parameter stands decides what it is: written left of `:` it is
@@ -285,7 +296,7 @@ its recursive arguments.
 * **Right of `:`, a non-uniform parameter** (later, with constructor
   results, an index), bound by the type in front of its sort.  A recursive
   occurrence may give it a new value: `step (r : Climb (succ n))`.  The
-  motive binds it, then the scrutinee (`return m z . T`); a branch binds
+  motive binds it, then the scrutinee (`at m z -> T`); a branch binds
   the constructor's value of it, then the constructor's arguments, then,
   after an optional comma, one hypothesis per recursive argument, which is
   the motive at that argument's own values (`| step m r, h ⇒ …`, `h` at
@@ -305,9 +316,32 @@ that is neither as written is read as its normal form, so definitions,
 occurrence in the domain of a function (`Neg N` with `Neg X := X → ⊥`,
 or `(N → Type@0) → Type@0`) is not strictly positive and is rejected, and
 so is one under a head that does not compute: an `abstract` definition, an
-axiom or a module parameter.  An occurrence inside another inductive type
-(`(xs : List R)`) is strictly positive but not supported yet.  The type of
-a non-uniform parameter must be in the type's sort.  The constructor's type is shown with the normal form of
+axiom or a module parameter.  An occurrence inside a declared type of a
+filed group, at its uniform parameters (`(ts : List (Rose A))`), is
+nested: the instance becomes a member of the group, a **view**, found from
+the arguments and named by the instance; an occurrence in a non-uniform
+argument of such a type is rejected.  The type of a non-uniform parameter
+must be in the type's sort.
+
+The members of a group, `inductive Tm : Type@0 where … with Sp : Type@0
+where … end`, share the uniform parameters and the sort, and each is in
+scope in every constructor's arguments.  `mutual T where inductive … end
+end` declares the group in its own module `T`.  An eliminator has one block
+per member of its group, declared members then views, in that order:
+
+```
+elim t at (z : Tm) -> ℕ | var n ⇒ 1 | app f s, hf hs ⇒ succ (add hf hs)
+       with (z : Sp) -> ℕ | snil ⇒ 0 | scons t s, ht hs ⇒ add ht hs
+end
+```
+
+The block marked `at` is the scrutinee's.  The group and its uniform
+parameters are read off a block's scrutinee binder type, the first
+block's, or else the `at` block's, which must be written when the type has uniform
+parameters: `elim l at (z : List A) -> P | …`.  Only that binder may carry
+a type.  `mutual def (Δ) f (ys) (z : M) : A := | … with g … end` defines
+one function per member, matched to its member by its scrutinee's type,
+each the group's eliminator at its member.  The constructor's type is shown with the normal form of
 such an argument.  The parameters
 of an enclosing module are not written: they are the type's outermost
 uniform parameters, as for every member.
@@ -323,8 +357,9 @@ List B`, names the type at some of its uniform parameters, under its own
 parameters: as a term `LN` is `List ℕ`, and `L ℕ` is too; as a module
 `LN.cons` is `(List ℕ).cons`.  It may name an inductive alias in turn, and
 may be `private`.  `open … use (X)` declares an inductive alias where `X`
-is an inductive type or an inductive alias.  `elim M return … end`
-eliminates `M : X …`: the type, and its parameters, are the scrutinee's.
+is an inductive type or an inductive alias.  `elim M at … end`
+eliminates `M : X …`: the type and its uniform parameters are those of
+the scrutinee's binder type.
 The module also has the recursor `X.rec`, the eliminator as a function
 into a small universe:
 

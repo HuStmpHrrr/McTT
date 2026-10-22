@@ -32,7 +32,7 @@ def LLe (u : Level) (v : Level) : Type@1 ≔ LEq (maxl u v) v end
 
 (* The [n]-th level: [ofNat 3] is [3l]. *)
 def ofNat (n : ℕ) : Level ≔
-  elim n return x . Level | zero ⇒ 0l | succ p, r ⇒ succl r end
+  elim n at x -> Level | zero ⇒ 0l | succ p, r ⇒ succl r end
 end
 
 (* [plusl n u] is [u] raised by [n] levels: [succl] iterated [n] times. *)
@@ -167,7 +167,7 @@ module Embedding where
 theorem ofNatPlus : ∀ (m : ℕ) (n : ℕ) →
     LEq (ofNat (plus m n)) (plusl m (ofNat n)) ≔
   λ (m : ℕ) (n : ℕ) →
-    elim m return x . LEq (ofNat (plus x n)) (plusl x (ofNat n))
+    elim m at x -> LEq (ofNat (plus x n)) (plusl x (ofNat n))
     | zero ⇒ lrefl (ofNat n)
     | succ p, ih ⇒
         lcong (λ (l : Level) → succl l)
@@ -180,11 +180,11 @@ end
 theorem ofNatMax : ∀ (m : ℕ) (n : ℕ) →
     LEq (ofNat (max m n)) (maxl (ofNat m) (ofNat n)) ≔
   λ (m : ℕ) →
-    elim m return x . (∀ (n : ℕ) →
+    elim m at x -> (∀ (n : ℕ) →
                          LEq (ofNat (max x n)) (maxl (ofNat x) (ofNat n)))
     | zero ⇒ λ (n : ℕ) → lrefl (ofNat n)
     | succ p, ih ⇒ λ (n : ℕ) →
-        elim n return y . LEq (ofNat (max (succ p) y))
+        elim n at y -> LEq (ofNat (max (succ p) y))
                               (maxl (succl (ofNat p)) (ofNat y))
         | zero ⇒ lrefl (succl (ofNat p))
         | succ q, s ⇒
@@ -198,10 +198,10 @@ end
    level [1l], where [LLe] lives. *)
 theorem ofNatLe : ∀ (m : ℕ) (n : ℕ) (h : Le m n) → LLe (ofNat m) (ofNat n) ≔
   λ (m : ℕ) →
-    elim m return x . (∀ (n : ℕ) (h : Le x n) → LLe (ofNat x) (ofNat n))
+    elim m at x -> (∀ (n : ℕ) (h : Le x n) → LLe (ofNat x) (ofNat n))
     | zero ⇒ λ (n : ℕ) (h : ⊤) → lrefl (ofNat n)
     | succ p, ih ⇒ λ (n : ℕ) →
-        elim n return y . (∀ (h : Le (succ p) y) →
+        elim n at y -> (∀ (h : Le (succ p) y) →
                              LLe (succl (ofNat p)) (ofNat y))
         | zero ⇒ λ (h : ⊥) → Neg.absurd 1l (LLe (succl (ofNat p)) 0l) h
         | succ q, s ⇒ λ (h : Le p q) → lleSucclCong (ofNat p) (ofNat q) (ih q h)
@@ -212,7 +212,7 @@ end
 (* Raising by [n] levels gives an upper bound. *)
 theorem llePlusl : ∀ (n : ℕ) (u : Level) → LLe u (plusl n u) ≔
   λ (n : ℕ) (u : Level) →
-    elim n return x . LLe u (plusl x u)
+    elim n at x -> LLe u (plusl x u)
     | zero ⇒ lrefl u
     | succ p, ih ⇒
         lleTrans u (plusl p u) (succl (plusl p u)) ih (lleSuccl (plusl p u))

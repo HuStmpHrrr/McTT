@@ -101,7 +101,7 @@ def wsucc (w : WNat) : WNat ≔ WNat.sup tt (λ (p : ⊤) → w) end
 def wToNat (w : WNat) : ℕ ≔
   WO.foldr 0l Bool Arity ℕ
     (λ (b : Bool) →
-       elim b return z . (∀ (r : ∀ (p : Arity z) → ℕ) → ℕ)
+       elim b at z -> (∀ (r : ∀ (p : Arity z) → ℕ) → ℕ)
        | tt ⇒ λ (r : ∀ (p : ⊤) → ℕ) → succ (r ⋆)
        | ff ⇒ λ (r : ∀ (p : ⊥) → ℕ) → 0
        end)

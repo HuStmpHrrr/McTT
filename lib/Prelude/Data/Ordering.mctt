@@ -21,7 +21,7 @@ end
 open Ordering use (less; equal; greater)
 
 def flip (o : Ordering) : Ordering ≔
-  elim o return z . Ordering
+  elim o at z -> Ordering
   | less ⇒ greater
   | equal ⇒ equal
   | greater ⇒ less
@@ -31,18 +31,18 @@ end
 (* By recursion on [m], then cases on [n]: two successors compare as their
    predecessors. *)
 def compare (m : ℕ) : ∀ (n : ℕ) → Ordering ≔
-  elim m return x . (∀ (n : ℕ) → Ordering)
+  elim m at x -> (∀ (n : ℕ) → Ordering)
   | zero ⇒ λ (n : ℕ) →
-      elim n return y . Ordering | zero ⇒ equal | succ q, s ⇒ less end
+      elim n at y -> Ordering | zero ⇒ equal | succ q, s ⇒ less end
   | succ p, r ⇒ λ (n : ℕ) →
-      elim n return y . Ordering | zero ⇒ greater | succ q, s ⇒ r q end
+      elim n at y -> Ordering | zero ⇒ greater | succ q, s ⇒ r q end
   end
 end
 
 (* What an outcome of comparing [m] and [n] means: [Lt m n] for [less],
    [Eq m n] for [equal] and [Lt n m] for [greater]. *)
 def Spec (m : ℕ) (n : ℕ) (o : Ordering) : Type@0 ≔
-  elim o return z . Type@0
+  elim o at z -> Type@0
   | less ⇒ Lt m n
   | equal ⇒ Eq m n
   | greater ⇒ Lt n m
@@ -50,7 +50,7 @@ def Spec (m : ℕ) (n : ℕ) (o : Ordering) : Type@0 ≔
 end
 
 def thenCmp (o : Ordering) (p : Ordering) : Ordering ≔
-  elim o return z . Ordering
+  elim o at z -> Ordering
   | less ⇒ less
   | equal ⇒ p
   | greater ⇒ greater

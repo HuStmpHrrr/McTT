@@ -10,7 +10,7 @@ open Prelude›Arith›Plus.Algebra use (plusComm)
 
 (* The predecessor; [pred 0] is [0]. *)
 def pred (n : ℕ) : ℕ ≔
-  elim n return y . ℕ
+  elim n at y -> ℕ
   | zero ⇒ 0
   | succ p, r ⇒ p
   end
@@ -20,10 +20,10 @@ end
    recurses on [b] and then on [a], so [sub (succ a) (succ b)] is [sub a b]
    by computation. *)
 def sub (a : ℕ) (b : ℕ) : ℕ ≔
-  (elim b return y . (∀ (x : ℕ) → ℕ)
+  (elim b at y -> (∀ (x : ℕ) → ℕ)
    | zero ⇒ λ (x : ℕ) → x
    | succ q, r ⇒ λ (x : ℕ) →
-       elim x return z . ℕ
+       elim x at z -> ℕ
        | zero ⇒ 0
        | succ p, s ⇒ r p
        end
@@ -49,7 +49,7 @@ end
 
 theorem subZeroLeft : ∀ (n : ℕ) → Eq (sub 0 n) 0 ≔
   λ (n : ℕ) →
-    elim n return x . Eq (sub 0 x) 0
+    elim n at x -> Eq (sub 0 x) 0
     | zero ⇒ ⋆
     | succ p, ih ⇒ ⋆
     end
@@ -57,7 +57,7 @@ end
 
 theorem subSelf : ∀ (n : ℕ) → Eq (sub n n) 0 ≔
   λ (n : ℕ) →
-    elim n return x . Eq (sub x x) 0
+    elim n at x -> Eq (sub x x) 0
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -72,12 +72,12 @@ end
 theorem subSuccRight : ∀ (a : ℕ) (b : ℕ) →
     Eq (sub a (succ b)) (pred (sub a b)) ≔
   λ (a : ℕ) →
-    elim a return x . (∀ (b : ℕ) → Eq (sub x (succ b)) (pred (sub x b)))
+    elim a at x -> (∀ (b : ℕ) → Eq (sub x (succ b)) (pred (sub x b)))
     | zero ⇒ λ (b : ℕ) →
         transport (λ (m : ℕ) → Eq 0 (pred m)) 0 (sub 0 b)
           (sym (sub 0 b) 0 (subZeroLeft b)) ⋆
     | succ p, ih ⇒ λ (b : ℕ) →
-        elim b return y . Eq (sub (succ p) (succ y)) (pred (sub (succ p) y))
+        elim b at y -> Eq (sub (succ p) (succ y)) (pred (sub (succ p) y))
         | zero ⇒ refl p
         | succ q, s ⇒ ih q
         end
@@ -92,7 +92,7 @@ module PlusSub where
 (* Adding [b] on the left and subtracting it again gives back [a]. *)
 theorem plusSubLeft : ∀ (b : ℕ) (a : ℕ) → Eq (sub (plus b a) b) a ≔
   λ (b : ℕ) (a : ℕ) →
-    elim b return x . Eq (sub (plus x a) x) a
+    elim b at x -> Eq (sub (plus x a) x) a
     | zero ⇒ refl a
     | succ p, ih ⇒ ih
     end

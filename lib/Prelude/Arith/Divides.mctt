@@ -37,7 +37,7 @@ end
 
 theorem dividesRefl : ∀ (n : ℕ) → Divides n n ≔
   λ (n : ℕ) →
-    elim n return x . Divides x x
+    elim n at x -> Divides x x
     | zero ⇒ ⋆
     | succ d, ih ⇒ modSelf d
     end
@@ -66,7 +66,7 @@ theorem dividesPlus : ∀ (k : ℕ) (a : ℕ) (b : ℕ)
     (ha : Divides k a) (hb : Divides k b) →
     Divides k (plus a b) ≔
   λ (k : ℕ) (a : ℕ) (b : ℕ) →
-    elim k return x . (∀ (ha : Divides x a) (hb : Divides x b) →
+    elim k at x -> (∀ (ha : Divides x a) (hb : Divides x b) →
                          Divides x (plus a b))
     | zero ⇒ λ (ha : Eq a 0) (hb : Eq b 0) →
         transport (λ (y : ℕ) → Eq (plus y b) 0) 0 a (sym a 0 ha) hb
@@ -90,7 +90,7 @@ end
 (* Every multiple of [k] is divisible by [k]. *)
 theorem dividesMult : ∀ (k : ℕ) (m : ℕ) → Divides k (mult m k) ≔
   λ (k : ℕ) (m : ℕ) →
-    elim m return x . Divides k (mult x k)
+    elim m at x -> Divides k (mult x k)
     | zero ⇒ dividesZero k
     | succ p, ih ⇒ dividesPlus k k (mult p k) (dividesRefl k) ih
     end
@@ -115,7 +115,7 @@ end
 theorem dividesMultLeft : ∀ (k : ℕ) (b : ℕ) (m : ℕ) (h : Divides k b) →
     Divides k (mult m b) ≔
   λ (k : ℕ) (b : ℕ) (m : ℕ) →
-    elim k return x . (∀ (h : Divides x b) → Divides x (mult m b))
+    elim k at x -> (∀ (h : Divides x b) → Divides x (mult m b))
     | zero ⇒ λ (h : Eq b 0) →
         transport (λ (y : ℕ) → Eq (mult m y) 0) 0 b (sym b 0 h) (multZeroRight m)
     | succ d, ih ⇒ λ (h : Divides (succ d) b) →
@@ -135,7 +135,7 @@ end
 theorem dividesPlusCancel : ∀ (k : ℕ) (x : ℕ) (y : ℕ)
     (hx : Divides k x) (hxy : Divides k (plus x y)) → Divides k y ≔
   λ (k : ℕ) (x : ℕ) (y : ℕ) →
-    elim k return w . (∀ (hx : Divides w x) (hxy : Divides w (plus x y)) →
+    elim k at w -> (∀ (hx : Divides w x) (hxy : Divides w (plus x y)) →
                          Divides w y)
     | zero ⇒ λ (hx : Eq x 0) (hxy : Eq (plus x y) 0) → plusEqZeroRight x y hxy
     | succ d, ih ⇒ λ (hx : Divides (succ d) x)
@@ -162,7 +162,7 @@ module Two where
 let modTwoParity : ∀ (n : ℕ) →
     And (∀ (h : Even n) → Eq (mod n 2) 0) (∀ (h : Odd n) → Eq (mod n 2) 1) ≔
   λ (n : ℕ) →
-    elim n return x . And (∀ (h : Even x) → Eq (mod x 2) 0)
+    elim n at x -> And (∀ (h : Even x) → Eq (mod x 2) 0)
                           (∀ (h : Odd x) → Eq (mod x 2) 1)
     | zero ⇒ andIntro (∀ (h : ⊤) → ⊤) (∀ (h : ⊥) → ⊥)
                 (λ (h : ⊤) → ⋆) (λ (h : ⊥) → h)

@@ -12,7 +12,7 @@ open Sign use (negative; positive)
 
 (* The proposition that a sign is [positive]. *)
 private def IsPositive (s : Sign) : Type@0 ≔
-  elim s return z . Type@0 | negative ⇒ ⊥ | positive ⇒ ⊤ end
+  elim s at z -> Type@0 | negative ⇒ ⊥ | positive ⇒ ⊤ end
 end
 
 (* [opposite]. *)
@@ -20,7 +20,7 @@ module Opposite where
 
 theorem oppositeOpposite : ∀ (s : Sign) → Id Sign (opposite (opposite s)) s ≔
   λ (s : Sign) →
-    elim s return z . Id Sign (opposite (opposite z)) z
+    elim s at z -> Id Sign (opposite (opposite z)) z
     | negative ⇒ idRefl Sign negative
     | positive ⇒ idRefl Sign positive
     end
@@ -39,7 +39,7 @@ end
 (* No sign is its own opposite. *)
 theorem signNeOpposite : ∀ (s : Sign) → Not (Id Sign s (opposite s)) ≔
   λ (s : Sign) →
-    elim s return z . Not (Id Sign z (opposite z))
+    elim s at z -> Not (Id Sign z (opposite z))
     | negative ⇒ λ (h : Id Sign negative positive) →
         h (λ (z : Sign) → IsPositive (opposite z)) ⋆
     | positive ⇒ λ (h : Id Sign positive negative) → h IsPositive ⋆
@@ -57,7 +57,7 @@ end
 
 theorem mulIdentityRight : ∀ (s : Sign) → Id Sign (mul s positive) s ≔
   λ (s : Sign) →
-    elim s return z . Id Sign (mul z positive) z
+    elim s at z -> Id Sign (mul z positive) z
     | negative ⇒ idRefl Sign negative
     | positive ⇒ idRefl Sign positive
     end
@@ -66,7 +66,7 @@ end
 (* Every sign is its own inverse: [mul s s] is [positive]. *)
 theorem mulSelf : ∀ (s : Sign) → Id Sign (mul s s) positive ≔
   λ (s : Sign) →
-    elim s return z . Id Sign (mul z z) positive
+    elim s at z -> Id Sign (mul z z) positive
     | negative ⇒ idRefl Sign positive
     | positive ⇒ idRefl Sign positive
     end
@@ -75,7 +75,7 @@ end
 (* A sign times its opposite is [negative]. *)
 theorem mulOpposite : ∀ (s : Sign) → Id Sign (mul s (opposite s)) negative ≔
   λ (s : Sign) →
-    elim s return z . Id Sign (mul z (opposite z)) negative
+    elim s at z -> Id Sign (mul z (opposite z)) negative
     | negative ⇒ idRefl Sign negative
     | positive ⇒ idRefl Sign negative
     end
@@ -83,12 +83,12 @@ end
 
 theorem mulComm : ∀ (s : Sign) (t : Sign) → Id Sign (mul s t) (mul t s) ≔
   λ (s : Sign) (t : Sign) →
-    elim s return x . Id Sign (mul x t) (mul t x)
-    | negative ⇒ elim t return y . Id Sign (opposite y) (mul y negative)
+    elim s at x -> Id Sign (mul x t) (mul t x)
+    | negative ⇒ elim t at y -> Id Sign (opposite y) (mul y negative)
                  | negative ⇒ idRefl Sign positive
                  | positive ⇒ idRefl Sign negative
                  end
-    | positive ⇒ elim t return y . Id Sign y (mul y positive)
+    | positive ⇒ elim t at y -> Id Sign y (mul y positive)
                  | negative ⇒ idRefl Sign negative
                  | positive ⇒ idRefl Sign positive
                  end
@@ -98,8 +98,8 @@ end
 theorem mulAssoc : ∀ (s : Sign) (t : Sign) (r : Sign) →
     Id Sign (mul (mul s t) r) (mul s (mul t r)) ≔
   λ (s : Sign) (t : Sign) (r : Sign) →
-    elim s return x . Id Sign (mul (mul x t) r) (mul x (mul t r))
-    | negative ⇒ elim t return y . Id Sign (mul (opposite y) r)
+    elim s at x -> Id Sign (mul (mul x t) r) (mul x (mul t r))
+    | negative ⇒ elim t at y -> Id Sign (mul (opposite y) r)
                                     (opposite (mul y r))
                  | negative ⇒ idSym Sign (opposite (opposite r)) r
                                 (Opposite.oppositeOpposite r)
@@ -113,7 +113,7 @@ end
 theorem mulCancelLeft : ∀ (s : Sign) (t : Sign) (r : Sign)
     (h : Id Sign (mul s t) (mul s r)) → Id Sign t r ≔
   λ (s : Sign) →
-    elim s return x .
+    elim s at x ->
       (∀ (t : Sign) (r : Sign) (h : Id Sign (mul x t) (mul x r)) →
                          Id Sign t r)
     | negative ⇒

@@ -19,7 +19,7 @@ import Prelude›Data›Bool use (Bool; tt; ff; not; IsTrue)
    [Even] and [Odd] below unfold to it; it stays private. *)
 private def HasParity : ∀ (n : ℕ) (b : Bool) → Type@0 ≔
   λ (n : ℕ) →
-    elim n return y . (∀ (b : Bool) → Type@0)
+    elim n at y -> (∀ (b : Bool) → Type@0)
     | zero ⇒ λ (b : Bool) → IsTrue b
     | succ p, r ⇒ λ (b : Bool) → r (not b)
     end
@@ -30,7 +30,7 @@ def Even (n : ℕ) : Type@0 ≔ HasParity n tt end
 def Odd (n : ℕ) : Type@0 ≔ HasParity n ff end
 
 def double (n : ℕ) : ℕ ≔
-  elim n return y . ℕ
+  elim n at y -> ℕ
   | zero ⇒ 0
   | succ p, r ⇒ succ (succ r)
   end
@@ -41,7 +41,7 @@ module Laws where
 
 theorem evenDouble : ∀ (n : ℕ) → Even (double n) ≔
   λ (n : ℕ) →
-    elim n return x . Even (double x)
+    elim n at x -> Even (double x)
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -58,7 +58,7 @@ end
 (* Every number is even or odd: the step swaps the two sides. *)
 def evenOrOdd : ∀ (n : ℕ) → Or (Even n) (Odd n) ≔
   λ (n : ℕ) →
-    elim n return x . Or (Even x) (Odd x)
+    elim n at x -> Or (Even x) (Odd x)
     | zero ⇒ orInl (Even 0) (Odd 0) ⋆
     | succ p, ih ⇒ orSwap (Even p) (Odd p) ih
     end
@@ -68,7 +68,7 @@ end
    negation is the one at level [1l]. *)
 theorem notEvenAndOdd : ∀ (n : ℕ) → Neg.Not 1l (And (Even n) (Odd n)) ≔
   λ (n : ℕ) →
-    elim n return x . (∀ (h : And (Even x) (Odd x)) → ⊥)
+    elim n at x -> (∀ (h : And (Even x) (Odd x)) → ⊥)
     | zero ⇒ λ (h : And ⊤ ⊥) → h ⊥ (λ (a : ⊤) (b : ⊥) → b)
     | succ p, ih ⇒ λ (h : And (Odd p) (Even p)) →
         ih (andSwap (Odd p) (Even p) h)
@@ -83,7 +83,7 @@ theorem evenPlus : ∀ (a : ℕ) (b : ℕ) (ha : Even a) (hb : Even b) →
   λ (a : ℕ) (b : ℕ) (ha : Even a) (hb : Even b) →
     let both : And (∀ (h : Even a) → Even (plus a b))
                    (∀ (h : Odd a) → Odd (plus a b)) ≔
-          elim a return x . And (∀ (h : Even x) → Even (plus x b))
+          elim a at x -> And (∀ (h : Even x) → Even (plus x b))
                                 (∀ (h : Odd x) → Odd (plus x b))
           | zero ⇒ andIntro (∀ (h : ⊤) → Even b) (∀ (h : ⊥) → Odd b)
                       (λ (h : ⊤) → hb)
@@ -99,7 +99,7 @@ end
 (* [double n] is [n + n]. *)
 theorem doublePlus : ∀ (n : ℕ) → Eq (double n) (plus n n) ≔
   λ (n : ℕ) →
-    elim n return x . Eq (double x) (plus x x)
+    elim n at x -> Eq (double x) (plus x x)
     | zero ⇒ ⋆
     | succ p, ih ⇒
         trans (succ (double p)) (succ (plus p p)) (plus p (succ p)) ih
@@ -111,7 +111,7 @@ end
 theorem doubleDistrib : ∀ (a : ℕ) (b : ℕ) →
     Eq (double (plus a b)) (plus (double a) (double b)) ≔
   λ (a : ℕ) (b : ℕ) →
-    elim a return x . Eq (double (plus x b)) (plus (double x) (double b))
+    elim a at x -> Eq (double (plus x b)) (plus (double x) (double b))
     | zero ⇒ refl (double b)
     | succ p, ih ⇒ ih
     end

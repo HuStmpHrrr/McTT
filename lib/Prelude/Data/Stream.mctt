@@ -22,7 +22,7 @@ def tail (s : Stream) : Stream ≔ λ (n : ℕ) → s (succ n) end
 (* [cons a s] puts [a] in front of [s], by cases on the index. *)
 def cons (a : A) (s : Stream) : Stream ≔
   λ (n : ℕ) →
-    elim n return y . A
+    elim n at y -> A
     | zero ⇒ a
     | succ p, r ⇒ s p
     end
@@ -56,7 +56,7 @@ end
 (* [drop k s] removes the first [k] elements.  It takes the tail first,
    so [drop (succ k) s] is [drop k (tail s)]. *)
 def drop (k : ℕ) (s : Stream) : Stream ≔
-  (elim k return y . (∀ (x : Stream) → Stream)
+  (elim k at y -> (∀ (x : Stream) → Stream)
    | zero ⇒ λ (x : Stream) → x
    | succ p, r ⇒ λ (x : Stream) → r (tail x)
    end) s
@@ -67,7 +67,7 @@ end
    [interleave t (tail s)]. *)
 def interleave (s : Stream) (t : Stream) : Stream ≔
   λ (n : ℕ) →
-    (elim n return y . (∀ (x : Stream) (z : Stream) → A)
+    (elim n at y -> (∀ (x : Stream) (z : Stream) → A)
      | zero ⇒ λ (x : Stream) (z : Stream) → x 0
      | succ p, r ⇒ λ (x : Stream) (z : Stream) → r z (tail x)
      end) s t
@@ -79,7 +79,7 @@ end
 def scan (B : Type@{u}) (f : ∀ (b : B) (a : A) → B) (z : B) (s : Stream)
     : ∀ (n : ℕ) → B ≔
   λ (n : ℕ) →
-    elim n return y . B
+    elim n at y -> B
     | zero ⇒ z
     | succ p, r ⇒ f r (s p)
     end

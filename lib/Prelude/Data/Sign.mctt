@@ -11,13 +11,13 @@ end
 open Sign use (negative; positive)
 
 def opposite (s : Sign) : Sign ≔
-  elim s return z . Sign | negative ⇒ positive | positive ⇒ negative end
+  elim s at z -> Sign | negative ⇒ positive | positive ⇒ negative end
 end
 
 (* The sign of a product: [mul positive t] is [t], [mul negative t] is
    [opposite t]. *)
 def mul (s : Sign) (t : Sign) : Sign ≔
-  elim s return z . Sign | negative ⇒ opposite t | positive ⇒ t end
+  elim s at z -> Sign | negative ⇒ opposite t | positive ⇒ t end
 end
 
 end

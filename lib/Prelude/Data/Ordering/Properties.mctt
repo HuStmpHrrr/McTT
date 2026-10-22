@@ -20,7 +20,7 @@ module Flip where
 
 theorem flipFlip : ∀ (o : Ordering) → Id Ordering (flip (flip o)) o ≔
   λ (o : Ordering) →
-    elim o return z . Id Ordering (flip (flip z)) z
+    elim o at z -> Id Ordering (flip (flip z)) z
     | less ⇒ idRefl Ordering less
     | equal ⇒ idRefl Ordering equal
     | greater ⇒ idRefl Ordering greater
@@ -31,15 +31,15 @@ end
 theorem compareFlip : ∀ (m : ℕ) (n : ℕ) →
     Id Ordering (compare n m) (flip (compare m n)) ≔
   λ (m : ℕ) →
-    elim m return x .
+    elim m at x ->
       (∀ (n : ℕ) → Id Ordering (compare n x) (flip (compare x n)))
     | zero ⇒ λ (n : ℕ) →
-        elim n return y . Id Ordering (compare y 0) (flip (compare 0 y))
+        elim n at y -> Id Ordering (compare y 0) (flip (compare 0 y))
         | zero ⇒ idRefl Ordering equal
         | succ q, s ⇒ idRefl Ordering greater
         end
     | succ p, ih ⇒ λ (n : ℕ) →
-        elim n return y . Id Ordering (compare y (succ p))
+        elim n at y -> Id Ordering (compare y (succ p))
                             (flip (compare (succ p) y))
         | zero ⇒ idRefl Ordering less
         | succ q, s ⇒ ih q
@@ -54,7 +54,7 @@ module Compare where
 
 theorem compareRefl : ∀ (n : ℕ) → Id Ordering (compare n n) equal ≔
   λ (n : ℕ) →
-    elim n return x . Id Ordering (compare x x) equal
+    elim n at x -> Id Ordering (compare x x) equal
     | zero ⇒ idRefl Ordering equal
     | succ p, ih ⇒ ih
     end
@@ -63,14 +63,14 @@ end
 (* Correctness: the outcome of [compare] comes with its evidence. *)
 theorem compareSpec : ∀ (m : ℕ) (n : ℕ) → Spec m n (compare m n) ≔
   λ (m : ℕ) →
-    elim m return x . (∀ (n : ℕ) → Spec x n (compare x n))
+    elim m at x -> (∀ (n : ℕ) → Spec x n (compare x n))
     | zero ⇒ λ (n : ℕ) →
-        elim n return y . Spec 0 y (compare 0 y)
+        elim n at y -> Spec 0 y (compare 0 y)
         | zero ⇒ ⋆
         | succ q, s ⇒ ⋆
         end
     | succ p, ih ⇒ λ (n : ℕ) →
-        elim n return y . Spec (succ p) y (compare (succ p) y)
+        elim n at y -> Spec (succ p) y (compare (succ p) y)
         | zero ⇒ ⋆
         | succ q, s ⇒ ih q
         end
@@ -82,14 +82,14 @@ end
 theorem compareLt : ∀ (m : ℕ) (n : ℕ) (h : Lt m n) →
     Id Ordering (compare m n) less ≔
   λ (m : ℕ) →
-    elim m return x . (∀ (n : ℕ) (h : Lt x n) → Id Ordering (compare x n) less)
+    elim m at x -> (∀ (n : ℕ) (h : Lt x n) → Id Ordering (compare x n) less)
     | zero ⇒ λ (n : ℕ) →
-        elim n return y . (∀ (h : Lt 0 y) → Id Ordering (compare 0 y) less)
+        elim n at y -> (∀ (h : Lt 0 y) → Id Ordering (compare 0 y) less)
         | zero ⇒ λ (h : ⊥) → exfalso h return w . Id Ordering equal less
         | succ q, s ⇒ λ (h : ⊤) → idRefl Ordering less
         end
     | succ p, ih ⇒ λ (n : ℕ) →
-        elim n return y . (∀ (h : Lt (succ p) y) →
+        elim n at y -> (∀ (h : Lt (succ p) y) →
                              Id Ordering (compare (succ p) y) less)
         | zero ⇒ λ (h : ⊥) → exfalso h return w . Id Ordering greater less
         | succ q, s ⇒ λ (h : Lt p q) → ih q h
@@ -101,14 +101,14 @@ end
 theorem compareEq : ∀ (m : ℕ) (n : ℕ) (h : Eq m n) →
     Id Ordering (compare m n) equal ≔
   λ (m : ℕ) →
-    elim m return x . (∀ (n : ℕ) (h : Eq x n) → Id Ordering (compare x n) equal)
+    elim m at x -> (∀ (n : ℕ) (h : Eq x n) → Id Ordering (compare x n) equal)
     | zero ⇒ λ (n : ℕ) →
-        elim n return y . (∀ (h : Eq 0 y) → Id Ordering (compare 0 y) equal)
+        elim n at y -> (∀ (h : Eq 0 y) → Id Ordering (compare 0 y) equal)
         | zero ⇒ λ (h : ⊤) → idRefl Ordering equal
         | succ q, s ⇒ λ (h : ⊥) → exfalso h return w . Id Ordering less equal
         end
     | succ p, ih ⇒ λ (n : ℕ) →
-        elim n return y . (∀ (h : Eq (succ p) y) →
+        elim n at y -> (∀ (h : Eq (succ p) y) →
                              Id Ordering (compare (succ p) y) equal)
         | zero ⇒ λ (h : ⊥) → exfalso h return w . Id Ordering greater equal
         | succ q, s ⇒ λ (h : Eq p q) → ih q h
@@ -132,7 +132,7 @@ module Then where
 
 theorem thenEqualRight : ∀ (o : Ordering) → Id Ordering (thenCmp o equal) o ≔
   λ (o : Ordering) →
-    elim o return z . Id Ordering (thenCmp z equal) z
+    elim o at z -> Id Ordering (thenCmp z equal) z
     | less ⇒ idRefl Ordering less
     | equal ⇒ idRefl Ordering equal
     | greater ⇒ idRefl Ordering greater
@@ -142,7 +142,7 @@ end
 theorem thenAssoc : ∀ (o : Ordering) (p : Ordering) (q : Ordering) →
     Id Ordering (thenCmp (thenCmp o p) q) (thenCmp o (thenCmp p q)) ≔
   λ (o : Ordering) (p : Ordering) (q : Ordering) →
-    elim o return z . Id Ordering (thenCmp (thenCmp z p) q)
+    elim o at z -> Id Ordering (thenCmp (thenCmp z p) q)
                         (thenCmp z (thenCmp p q))
     | less ⇒ idRefl Ordering less
     | equal ⇒ idRefl Ordering (thenCmp p q)
@@ -154,7 +154,7 @@ end
 theorem flipThen : ∀ (o : Ordering) (p : Ordering) →
     Id Ordering (flip (thenCmp o p)) (thenCmp (flip o) (flip p)) ≔
   λ (o : Ordering) (p : Ordering) →
-    elim o return z . Id Ordering (flip (thenCmp z p))
+    elim o at z -> Id Ordering (flip (thenCmp z p))
                         (thenCmp (flip z) (flip p))
     | less ⇒ idRefl Ordering greater
     | equal ⇒ idRefl Ordering (flip p)

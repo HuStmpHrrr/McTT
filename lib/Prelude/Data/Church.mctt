@@ -36,7 +36,7 @@ end
 
 (* The numeral of a number, by recursion. *)
 def fromNat (n : ℕ) : Numeral ≔
-  elim n return y . Numeral | zero ⇒ czero | succ p, r ⇒ csucc r end
+  elim n at y -> Numeral | zero ⇒ czero | succ p, r ⇒ csucc r end
 end
 
 (* The number of a numeral: [ℕ] is in [Type@0], hence in every [Type@{u}]. *)
@@ -98,7 +98,7 @@ end
 
 (* The list of [n] copies of [a]. *)
 def replicate (A : Type@{u}) (n : ℕ) (a : A) : List A ≔
-  elim n return y . List A | zero ⇒ nil A | succ p, r ⇒ cons A a r end
+  elim n at y -> List A | zero ⇒ nil A | succ p, r ⇒ cons A a r end
 end
 
 (* The sum of a list of numbers. *)

@@ -25,7 +25,7 @@ import Prelude›Algebra›Group as Group
 def Int : Type@0 ≔ ∀ (i : ℕ) → ℕ end
 
 def pair (a : ℕ) (b : ℕ) : Int ≔
-  λ (i : ℕ) → elim i return y . ℕ | zero ⇒ a | succ j, r ⇒ b end
+  λ (i : ℕ) → elim i at y -> ℕ | zero ⇒ a | succ j, r ⇒ b end
 end
 
 (* [x] and [y] stand for the same difference. *)

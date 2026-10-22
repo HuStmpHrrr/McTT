@@ -39,7 +39,7 @@ def nil : Vec 0 ≔ λ (i : ℕ) (h : Lt i 0) → absurd A h end
 (* [cons n a v] puts [a] in front of [v], by cases on the index. *)
 def cons (n : ℕ) (a : A) (v : Vec n) : Vec (succ n) ≔
   λ (i : ℕ) →
-    elim i return x . (∀ (h : Lt x (succ n)) → A)
+    elim i at x -> (∀ (h : Lt x (succ n)) → A)
     | zero ⇒ λ (h : Lt 0 (succ n)) → a
     | succ p, r ⇒ λ (h : Lt p n) → v p h
     end
@@ -67,7 +67,7 @@ end
 (* Right fold: [foldr B f z n v] is [f v0 (f v1 (... (f v(n-1) z)))]. *)
 def foldr (B : Type@{u}) (f : ∀ (a : A) (b : B) → B) (z : B) (n : ℕ)
     (v : Vec n) : B ≔
-  (elim n return k . (∀ (w : Vec k) → B)
+  (elim n at k -> (∀ (w : Vec k) → B)
    | zero ⇒ λ (w : Vec 0) → z
    | succ p, r ⇒ λ (w : Vec (succ p)) → f (head p w) (r (tail p w))
    end) v
@@ -77,7 +77,7 @@ end
    length [plus m n] computes: [append 0 n s v] is [v], and
    [append (succ m) n s v] is [cons (head s) (append m n (tail s) v)]. *)
 def append (m : ℕ) (n : ℕ) (s : Vec m) (v : Vec n) : Vec (plus m n) ≔
-  (elim m return k . (∀ (w : Vec k) → Vec (plus k n))
+  (elim m at k -> (∀ (w : Vec k) → Vec (plus k n))
    | zero ⇒ λ (w : Vec 0) → v
    | succ p, r ⇒ λ (w : Vec (succ p)) →
        cons (plus p n) (head p w) (r (tail p w))
@@ -100,7 +100,7 @@ end
    accumulator is threaded through the recursion on the length. *)
 def foldl (B : Type@{u}) (f : ∀ (b : B) (a : A) → B) (z : B) (n : ℕ)
     (v : Vec n) : B ≔
-  (elim n return k . (∀ (w : Vec k) (acc : B) → B)
+  (elim n at k -> (∀ (w : Vec k) (acc : B) → B)
    | zero ⇒ λ (w : Vec 0) (acc : B) → acc
    | succ p, r ⇒ λ (w : Vec (succ p)) (acc : B) →
        r (tail p w) (f acc (head p w))
@@ -118,7 +118,7 @@ end
 (* [snoc n v a] puts [a] after the end of [v].  Like [append], it recurses on
    the length: [snoc (succ p) v a] is [cons (head v) (snoc p (tail v) a)]. *)
 def snoc (n : ℕ) (v : Vec n) (a : A) : Vec (succ n) ≔
-  (elim n return k . (∀ (w : Vec k) → Vec (succ k))
+  (elim n at k -> (∀ (w : Vec k) → Vec (succ k))
    | zero ⇒ λ (w : Vec 0) → cons 0 a nil
    | succ p, r ⇒ λ (w : Vec (succ p)) → cons (succ p) (head p w) (r (tail p w))
    end) v
@@ -127,7 +127,7 @@ end
 (* Reversal: element [i] of [reverse (succ p) v] is element [sub p i] of [v],
    which is in bounds by [subLe]. *)
 def reverse (n : ℕ) (v : Vec n) : Vec n ≔
-  (elim n return k . (∀ (w : Vec k) → Vec k)
+  (elim n at k -> (∀ (w : Vec k) → Vec k)
    | zero ⇒ λ (w : Vec 0) → w
    | succ p, r ⇒ λ (w : Vec (succ p)) (i : ℕ) (h : Lt i (succ p)) →
        w (sub p i) (subLe p i)

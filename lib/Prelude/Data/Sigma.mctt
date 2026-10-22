@@ -16,13 +16,13 @@ end
 open Sigma use (pair)
 
 def fst (p : Sigma) : A ≔
-  elim p return z . A | pair a b ⇒ a end
+  elim p at (z : Sigma) -> A | pair a b ⇒ a end
 end
 
 (* The second component; the branch's type, [B (fst (pair a b))], computes
    to [B a]. *)
 def snd (p : Sigma) : B (fst p) ≔
-  elim p return z . B (fst z) | pair a b ⇒ b end
+  elim p at (z : Sigma) -> B (fst z) | pair a b ⇒ b end
 end
 
 end

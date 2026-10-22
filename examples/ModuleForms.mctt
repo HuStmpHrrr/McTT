@@ -16,7 +16,7 @@ eval NatIter.twice (λ (x : ℕ) → succ x) 0
 (* A dotted declaration: [Num] holds [Ops] *)
 module Num.Ops (k : ℕ) where
   def add (n : ℕ) : ℕ ≔
-    elim n return y . ℕ | zero ⇒ k | succ p, r ⇒ succ r end
+    elim n at y -> ℕ | zero ⇒ k | succ p, r ⇒ succ r end
   end
 end
 

@@ -48,15 +48,15 @@ eval (λ (A : Type@0) (x : A) → x) ℕ 4
 
 eval λ (A : Type@0) (x : A) → x
 
-(* 4. Recursion. [elim n return y . T | zero ⇒ z | succ p, r ⇒ s end] is
-   primitive recursion on n, the eliminator of Nat: T is the motive, p the
-   predecessor and r the result for p. The branches are named by the
-   constructors. *)
+(* 4. Recursion. [elim n at y -> T | zero ⇒ z | succ p, r ⇒ s end] is
+   primitive recursion on n, the eliminator of Nat: T is the motive, which
+   binds y, p the predecessor and r the result for p. The branches are named
+   by the constructors. *)
 
-eval elim 3 return y . ℕ | zero ⇒ 0 | succ p, r ⇒ succ (succ r) end
+eval elim 3 at y -> ℕ | zero ⇒ 0 | succ p, r ⇒ succ (succ r) end
 
 (* The motive may compute a type: here, the type of n-ary functions on ℕ. *)
-eval elim 2 return y . Type@0
+eval elim 2 at y -> Type@0
      | zero ⇒ ℕ
      | succ p, r ⇒ ∀ (x : ℕ) → r
      end
@@ -85,7 +85,7 @@ eval let n : ℕ ≔ 2;
    transparent: it unfolds wherever it is used. *)
 
 def double (n : ℕ) : ℕ ≔
-  elim n return y . ℕ | zero ⇒ 0 | succ p, r ⇒ succ (succ r) end
+  elim n at y -> ℕ | zero ⇒ 0 | succ p, r ⇒ succ (succ r) end
 end
 
 eval double 3
@@ -267,13 +267,13 @@ eval let module Doubler (n : ℕ) where
 
 module Adder (m : ℕ) where
   def add (n : ℕ) : ℕ ≔
-    elim n return y . ℕ | zero ⇒ m | succ p, r ⇒ succ r end
+    elim n at y -> ℕ | zero ⇒ m | succ p, r ⇒ succ r end
   end
 
   (* Adding n is iterating succ n times. *)
   theorem addIter (n : ℕ) :
       Eq (add n) (Iter.iter 0l ℕ (λ (x : ℕ) → succ x) n m) ≔
-    elim n return y . Eq (add y) (Iter.iter 0l ℕ (λ (x : ℕ) → succ x) y m)
+    elim n at y -> Eq (add y) (Iter.iter 0l ℕ (λ (x : ℕ) → succ x) y m)
     | zero ⇒ refl m
     | succ p, ih ⇒ ih
     end
@@ -350,8 +350,11 @@ eval (∀ (u : Level@1) → Type@{u}) : Type@{ω·2}
 
 (* 15. Inductive types. [inductive T (ps) : Type@n where | c (x : A) … end]
    declares a type and its constructors, and [T.c] reaches a constructor.
-   [elim t return z . P | c x ⇒ … end] eliminates [t]; a recursive
-   argument also gives an induction hypothesis, named after a comma. *)
+   [elim t at z -> P | c x ⇒ … end] eliminates [t]; a recursive
+   argument also gives an induction hypothesis, named after a comma.  A
+   type with parameters, as [List A], is eliminated with the scrutinee's
+   binder typed, [elim l at (z : List A) -> P | …], since the eliminator
+   reads the type's parameters off that type. *)
 
 inductive Shape : Type@0 where
 | dot
@@ -360,7 +363,7 @@ inductive Shape : Type@0 where
 end
 
 def size (s : Shape) : ℕ ≔
-  elim s return z . ℕ | dot ⇒ 0 | line n ⇒ n | stack t, r ⇒ succ r end
+  elim s at z -> ℕ | dot ⇒ 0 | line n ⇒ n | stack t, r ⇒ succ r end
 end
 
 eval size (Shape.stack (Shape.line 3))

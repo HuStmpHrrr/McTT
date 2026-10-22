@@ -9,7 +9,7 @@ import Prelude›Arith›Plus use (plus)
    [fibFrom (succ n) a b] is [fibFrom n b (plus a b)].  The pair [a], [b]
    holds two consecutive terms. *)
 def fibFrom (n : ℕ) (a : ℕ) (b : ℕ) : ℕ ≔
-  (elim n return y . (∀ (x : ℕ) (z : ℕ) → ℕ)
+  (elim n at y -> (∀ (x : ℕ) (z : ℕ) → ℕ)
    | zero ⇒ λ (x : ℕ) (z : ℕ) → x
    | succ p, r ⇒ λ (x : ℕ) (z : ℕ) → r z (plus x z)
    end) a b

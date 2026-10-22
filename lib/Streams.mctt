@@ -48,7 +48,7 @@ def Pair : Type@0 ≔ ∀ (i : ℕ) → ℕ end
 (* One Fibonacci step [(x, y)] to [(y, x + y)]. *)
 def fibStep (p : Pair) : Pair ≔
   λ (i : ℕ) →
-    elim i return y . ℕ
+    elim i at y -> ℕ
     | zero ⇒ p 1
     | succ q, r ⇒ plus (p 0) (p 1)
     end
@@ -56,7 +56,7 @@ end
 
 (* The seeds, as a pair. *)
 def seed : Pair ≔
-  λ (i : ℕ) → elim i return y . ℕ | zero ⇒ a | succ q, r ⇒ b end
+  λ (i : ℕ) → elim i at y -> ℕ | zero ⇒ a | succ q, r ⇒ b end
 end
 
 end

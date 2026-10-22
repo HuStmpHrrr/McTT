@@ -14,7 +14,7 @@ import Prelude›Function›Iter as Iter
 def iterSucc : ∀ (n : ℕ) (m : ℕ) →
     Eq (Iter.iter 0l ℕ (λ (x : ℕ) → succ x) n m) (plus n m) ≔
   λ (n : ℕ) (m : ℕ) →
-    elim n return x . Eq (Iter.iter 0l ℕ (λ (y : ℕ) → succ y) x m) (plus x m)
+    elim n at x -> Eq (Iter.iter 0l ℕ (λ (y : ℕ) → succ y) x m) (plus x m)
     | zero ⇒ refl m
     | succ p, ih ⇒ ih
     end

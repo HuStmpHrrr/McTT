@@ -28,7 +28,7 @@ private module TrialDivision where
    branch, and not the recursive call, is computed. *)
 def trialDivision (A : Type@0) (n : ℕ) (none : A) (found : ∀ (d : ℕ) → A)
     (fuel : ℕ) : ∀ (d : ℕ) → A ≔
-  elim fuel return y . (∀ (d : ℕ) → A)
+  elim fuel at y -> (∀ (d : ℕ) → A)
   | zero ⇒ λ (d : ℕ) → none
   | succ f, r ⇒ λ (d : ℕ) →
       cond A (leb (mult d d) n)
@@ -49,13 +49,13 @@ end
 lemma trialDivisionDivides : ∀ (n : ℕ) (fuel : ℕ) (d : ℕ) →
     Divides (trialDivision ℕ n n (λ (x : ℕ) → x) fuel d) n ≔
   λ (n : ℕ) (fuel : ℕ) →
-    elim fuel return x . (∀ (d : ℕ) →
+    elim fuel at x -> (∀ (d : ℕ) →
                             Divides (trialDivision ℕ n n (λ (y : ℕ) → y) x d) n)
     | zero ⇒ λ (d : ℕ) → dividesRefl n
     | succ f, ih ⇒ λ (d : ℕ) →
         let next ≔ trialDivision ℕ n n (λ (y : ℕ) → y) f (succ d);
             inner ≔ cond ℕ (eqb (mod n d) 0) (λ (v : ⊤) → d) (λ (v : ⊤) → next)
-        in elim leb (mult d d) n return c .
+        in elim leb (mult d d) n at c ->
              Divides (cond ℕ c (λ (u : ⊤) → inner) (λ (u : ⊤) → n)) n
            | tt ⇒
                eqbCases (mod n d) 0
@@ -75,14 +75,14 @@ lemma trialDivisionNone : ∀ (n : ℕ) (fuel : ℕ) (d : ℕ)
     (h : IsTrue (trialDivision Bool n tt (λ (x : ℕ) → ff) fuel d)) →
     Eq (trialDivision ℕ n n (λ (x : ℕ) → x) fuel d) n ≔
   λ (n : ℕ) (fuel : ℕ) →
-    elim fuel return x .
+    elim fuel at x ->
       (∀ (d : ℕ) (h : IsTrue (trialDivision Bool n tt (λ (y : ℕ) → ff) x d)) →
          Eq (trialDivision ℕ n n (λ (y : ℕ) → y) x d) n)
     | zero ⇒ λ (d : ℕ) (h : ⊤) → refl n
     | succ f, ih ⇒ λ (d : ℕ) →
         let flagNext ≔ trialDivision Bool n tt (λ (y : ℕ) → ff) f (succ d);
             next ≔ trialDivision ℕ n n (λ (y : ℕ) → y) f (succ d)
-        in elim leb (mult d d) n return c .
+        in elim leb (mult d d) n at c ->
              (∀ (h : IsTrue (cond Bool c
                                (λ (u : ⊤) →
                                   cond Bool (eqb (mod n d) 0) (λ (v : ⊤) → ff)
@@ -94,7 +94,7 @@ lemma trialDivisionNone : ∀ (n : ℕ) (fuel : ℕ) (d : ℕ)
                            (λ (v : ⊤) → next))
                       (λ (u : ⊤) → n)) n)
            | tt ⇒
-               elim eqb (mod n d) 0 return e .
+               elim eqb (mod n d) 0 at e ->
                  (∀ (h : IsTrue (cond Bool e (λ (v : ⊤) → ff)
                                    (λ (v : ⊤) → flagNext))) →
                     Eq (cond ℕ e (λ (v : ⊤) → d) (λ (v : ⊤) → next)) n)
@@ -140,10 +140,10 @@ end
 (* Every prime is at least 2: below 2, [isPrime] answers [ff]. *)
 theorem primeGeTwo : ∀ (n : ℕ) (h : Prime n) → Le 2 n ≔
   λ (n : ℕ) →
-    elim n return x . (∀ (h : Prime x) → Le 2 x)
+    elim n at x -> (∀ (h : Prime x) → Le 2 x)
     | zero ⇒ λ (h : ⊥) → h
     | succ p, ih ⇒
-        elim p return y . (∀ (h : Prime (succ y)) → Le 2 (succ y))
+        elim p at y -> (∀ (h : Prime (succ y)) → Le 2 (succ y))
         | zero ⇒ λ (h : ⊥) → h
         | succ q, s ⇒ λ (h : Prime (succ (succ q))) → ⋆
         end
@@ -154,10 +154,10 @@ end
 theorem primeSmallestDivisor : ∀ (n : ℕ) (h : Prime n) →
     Eq (smallestDivisor n) n ≔
   λ (n : ℕ) →
-    elim n return x . (∀ (h : Prime x) → Eq (smallestDivisor x) x)
+    elim n at x -> (∀ (h : Prime x) → Eq (smallestDivisor x) x)
     | zero ⇒ λ (h : ⊥) → absurd (Eq (smallestDivisor 0) 0) h
     | succ p, ih ⇒
-        elim p return y . (∀ (h : Prime (succ y)) →
+        elim p at y -> (∀ (h : Prime (succ y)) →
                              Eq (smallestDivisor (succ y)) (succ y))
         | zero ⇒ λ (h : ⊥) → absurd (Eq (smallestDivisor 1) 1) h
         | succ q, s ⇒ λ (h : IsTrue (noSmallDivisor (succ (succ q)))) →

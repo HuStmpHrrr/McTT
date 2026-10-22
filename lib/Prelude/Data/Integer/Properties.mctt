@@ -38,9 +38,9 @@ module Neg where
 
 theorem negNeg : ∀ (i : Int) → Id Int (neg (neg i)) i ≔
   λ (i : Int) →
-    elim i return z . Id Int (neg (neg z)) z
+    elim i at z -> Id Int (neg (neg z)) z
     | pos n ⇒
-        elim n return y . Id Int (neg (neg (pos y))) (pos y)
+        elim n at y -> Id Int (neg (neg (pos y))) (pos y)
         | zero ⇒ idRefl Int (pos 0)
         | succ k, r ⇒ idRefl Int (pos (succ k))
         end
@@ -66,7 +66,7 @@ module Diff where
 (* The difference of a number and itself is [0]. *)
 theorem diffSelf : ∀ (n : ℕ) → Id Int (diff n n) (pos 0) ≔
   λ (n : ℕ) →
-    elim n return x . Id Int (diff x x) (pos 0)
+    elim n at x -> Id Int (diff x x) (pos 0)
     | zero ⇒ idRefl Int (pos 0)
     | succ p, ih ⇒ ih
     end
@@ -74,7 +74,7 @@ end
 
 theorem diffZeroRight : ∀ (n : ℕ) → Id Int (pos n) (diff n 0) ≔
   λ (n : ℕ) →
-    elim n return x . Id Int (pos x) (diff x 0)
+    elim n at x -> Id Int (pos x) (diff x 0)
     | zero ⇒ idRefl Int (pos 0)
     | succ p, ih ⇒ idRefl Int (pos (succ p))
     end
@@ -83,14 +83,14 @@ end
 (* Negating a difference swaps its numbers. *)
 theorem negDiff : ∀ (m : ℕ) (n : ℕ) → Id Int (neg (diff m n)) (diff n m) ≔
   λ (m : ℕ) →
-    elim m return x . (∀ (n : ℕ) → Id Int (neg (diff x n)) (diff n x))
+    elim m at x -> (∀ (n : ℕ) → Id Int (neg (diff x n)) (diff n x))
     | zero ⇒ λ (n : ℕ) →
-        elim n return y . Id Int (neg (diff 0 y)) (diff y 0)
+        elim n at y -> Id Int (neg (diff 0 y)) (diff y 0)
         | zero ⇒ idRefl Int (pos 0)
         | succ q, s ⇒ idRefl Int (pos (succ q))
         end
     | succ p, ih ⇒ λ (n : ℕ) →
-        elim n return y . Id Int (neg (diff (succ p) y)) (diff y (succ p))
+        elim n at y -> Id Int (neg (diff (succ p) y)) (diff y (succ p))
         | zero ⇒ idRefl Int (negsuc p)
         | succ q, s ⇒ ih q
         end
@@ -113,7 +113,7 @@ open Diff use (diffSelf; diffZeroRight; diffCong)
 
 theorem addIdentityLeft : ∀ (i : Int) → Id Int (add (pos 0) i) i ≔
   λ (i : Int) →
-    elim i return z . Id Int (add (pos 0) z) z
+    elim i at z -> Id Int (add (pos 0) z) z
     | pos n ⇒ idRefl Int (pos n)
     | negsuc n ⇒ idRefl Int (negsuc n)
     end
@@ -121,7 +121,7 @@ end
 
 theorem addIdentityRight : ∀ (i : Int) → Id Int (add i (pos 0)) i ≔
   λ (i : Int) →
-    elim i return z . Id Int (add z (pos 0)) z
+    elim i at z -> Id Int (add z (pos 0)) z
     | pos m ⇒ idCong ℕ Int pos (plus m 0) m (eqToId (plus m 0) m (plusIdentityRight m))
     | negsuc m ⇒ idRefl Int (negsuc m)
     end
@@ -129,16 +129,16 @@ end
 
 theorem addComm : ∀ (i : Int) (j : Int) → Id Int (add i j) (add j i) ≔
   λ (i : Int) (j : Int) →
-    elim i return z . Id Int (add z j) (add j z)
+    elim i at z -> Id Int (add z j) (add j z)
     | pos m ⇒
-        elim j return w . Id Int (add (pos m) w) (add w (pos m))
+        elim j at w -> Id Int (add (pos m) w) (add w (pos m))
         | pos n ⇒
             idCong ℕ Int pos (plus m n) (plus n m)
               (eqToId (plus m n) (plus n m) (plusComm m n))
         | negsuc n ⇒ idRefl Int (diff m (succ n))
         end
     | negsuc m ⇒
-        elim j return w . Id Int (add (negsuc m) w) (add w (negsuc m))
+        elim j at w -> Id Int (add (negsuc m) w) (add w (negsuc m))
         | pos n ⇒ idRefl Int (diff n (succ m))
         | negsuc n ⇒
             idCong ℕ Int (λ (k : ℕ) → negsuc (succ k)) (plus m n) (plus n m)
@@ -150,9 +150,9 @@ end
 (* [neg i] is a right inverse of [i] for [add]. *)
 theorem addInverseRight : ∀ (i : Int) → Id Int (add i (neg i)) (pos 0) ≔
   λ (i : Int) →
-    elim i return z . Id Int (add z (neg z)) (pos 0)
+    elim i at z -> Id Int (add z (neg z)) (pos 0)
     | pos n ⇒
-        elim n return y . Id Int (add (pos y) (neg (pos y))) (pos 0)
+        elim n at y -> Id Int (add (pos y) (neg (pos y))) (pos 0)
         | zero ⇒ idRefl Int (pos 0)
         | succ k, r ⇒ diffSelf k
         end
@@ -171,15 +171,15 @@ end
 private theorem addDiffPos : ∀ (m : ℕ) (n : ℕ) (p : ℕ) →
     Id Int (add (diff m n) (pos p)) (diff (plus m p) n) ≔
   λ (m : ℕ) →
-    elim m return x . (∀ (n : ℕ) (p : ℕ) →
+    elim m at x -> (∀ (n : ℕ) (p : ℕ) →
                          Id Int (add (diff x n) (pos p)) (diff (plus x p) n))
     | zero ⇒ λ (n : ℕ) (p : ℕ) →
-        elim n return y . Id Int (add (diff 0 y) (pos p)) (diff p y)
+        elim n at y -> Id Int (add (diff 0 y) (pos p)) (diff p y)
         | zero ⇒ diffZeroRight p
         | succ q, s ⇒ idRefl Int (diff p (succ q))
         end
     | succ k, ih ⇒ λ (n : ℕ) (p : ℕ) →
-        elim n return y . Id Int (add (diff (succ k) y) (pos p))
+        elim n at y -> Id Int (add (diff (succ k) y) (pos p))
                             (diff (succ (plus k p)) y)
         | zero ⇒ idRefl Int (pos (succ (plus k p)))
         | succ q, s ⇒ ih q p
@@ -192,11 +192,11 @@ end
 private theorem addDiffNegsuc : ∀ (m : ℕ) (n : ℕ) (q : ℕ) →
     Id Int (add (diff m n) (negsuc q)) (diff m (plus n (succ q))) ≔
   λ (m : ℕ) →
-    elim m return x . (∀ (n : ℕ) (q : ℕ) →
+    elim m at x -> (∀ (n : ℕ) (q : ℕ) →
                          Id Int (add (diff x n) (negsuc q))
                            (diff x (plus n (succ q))))
     | zero ⇒ λ (n : ℕ) (q : ℕ) →
-        elim n return y . Id Int (add (diff 0 y) (negsuc q))
+        elim n at y -> Id Int (add (diff 0 y) (negsuc q))
                             (diff 0 (plus y (succ q)))
         | zero ⇒ idRefl Int (negsuc q)
         | succ k, s ⇒
@@ -205,7 +205,7 @@ private theorem addDiffNegsuc : ∀ (m : ℕ) (n : ℕ) (q : ℕ) →
                  (sym (plus k (succ q)) (succ (plus k q)) (plusSucc k q)))
         end
     | succ p, ih ⇒ λ (n : ℕ) (q : ℕ) →
-        elim n return y . Id Int (add (diff (succ p) y) (negsuc q))
+        elim n at y -> Id Int (add (diff (succ p) y) (negsuc q))
                             (diff (succ p) (plus y (succ q)))
         | zero ⇒ idRefl Int (diff p q)
         | succ k, s ⇒ ih k q
@@ -218,11 +218,11 @@ end
 theorem diffAdd : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) →
     Id Int (add (diff a b) (diff c d)) (diff (plus a c) (plus b d)) ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) →
-    elim c return x . (∀ (d : ℕ) →
+    elim c at x -> (∀ (d : ℕ) →
                          Id Int (add (diff a b) (diff x d))
                            (diff (plus a x) (plus b d)))
     | zero ⇒ λ (d : ℕ) →
-        elim d return y . Id Int (add (diff a b) (diff 0 y))
+        elim d at y -> Id Int (add (diff a b) (diff 0 y))
                             (diff (plus a 0) (plus b y))
         | zero ⇒
             idTrans Int (add (diff a b) (pos 0)) (diff (plus a 0) b)
@@ -238,7 +238,7 @@ theorem diffAdd : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) →
                  (sym (plus a 0) a (plusIdentityRight a)) (refl (plus b (succ k))))
         end
     | succ p, ih ⇒ λ (d : ℕ) →
-        elim d return y . Id Int (add (diff a b) (diff (succ p) y))
+        elim d at y -> Id Int (add (diff a b) (diff (succ p) y))
                             (diff (plus a (succ p)) (plus b y))
         | zero ⇒
             idTrans Int (add (diff a b) (pos (succ p)))
@@ -261,17 +261,17 @@ end
 
 (* The positive and negative parts of an integer. *)
 private def posPart (i : Int) : ℕ ≔
-  elim i return z . ℕ | pos n ⇒ n | negsuc n ⇒ 0 end
+  elim i at z -> ℕ | pos n ⇒ n | negsuc n ⇒ 0 end
 end
 
 private def negPart (i : Int) : ℕ ≔
-  elim i return z . ℕ | pos n ⇒ 0 | negsuc n ⇒ succ n end
+  elim i at z -> ℕ | pos n ⇒ 0 | negsuc n ⇒ succ n end
 end
 
 (* Every integer is the difference of its parts. *)
 private theorem diffParts : ∀ (i : Int) → Id Int (diff (posPart i) (negPart i)) i ≔
   λ (i : Int) →
-    elim i return z . Id Int (diff (posPart z) (negPart z)) z
+    elim i at z -> Id Int (diff (posPart z) (negPart z)) z
     | pos n ⇒ idSym Int (pos n) (diff n 0) (diffZeroRight n)
     | negsuc n ⇒ idRefl Int (negsuc n)
     end
@@ -369,10 +369,10 @@ module Mul where
 
 theorem absSigned : ∀ (s : Sign) (n : ℕ) → Eq (abs (signed s n)) n ≔
   λ (s : Sign) (n : ℕ) →
-    elim n return x . Eq (abs (signed s x)) x
+    elim n at x -> Eq (abs (signed s x)) x
     | zero ⇒ ⋆
     | succ k, r ⇒
-        elim s return w . Eq (abs (signed w (succ k))) (succ k)
+        elim s at w -> Eq (abs (signed w (succ k))) (succ k)
         | negative ⇒ refl k
         | positive ⇒ refl k
         end
@@ -382,9 +382,9 @@ end
 (* An integer is determined by its sign and its absolute value. *)
 theorem signedAbs : ∀ (i : Int) → Id Int (signed (sign i) (abs i)) i ≔
   λ (i : Int) →
-    elim i return z . Id Int (signed (sign z) (abs z)) z
+    elim i at z -> Id Int (signed (sign z) (abs z)) z
     | pos n ⇒
-        elim n return y . Id Int (signed positive y) (pos y)
+        elim n at y -> Id Int (signed positive y) (pos y)
         | zero ⇒ idRefl Int (pos 0)
         | succ k, r ⇒ idRefl Int (pos (succ k))
         end
@@ -447,11 +447,11 @@ theorem signedSignLeft : ∀ (s : Sign) (t : Sign) (n : ℕ) (m : ℕ) →
     Id Int (signed (S.mul (sign (signed s n)) t) (mult n m))
       (signed (S.mul s t) (mult n m)) ≔
   λ (s : Sign) (t : Sign) (n : ℕ) (m : ℕ) →
-    elim n return x . Id Int (signed (S.mul (sign (signed s x)) t) (mult x m))
+    elim n at x -> Id Int (signed (S.mul (sign (signed s x)) t) (mult x m))
                         (signed (S.mul s t) (mult x m))
     | zero ⇒ idRefl Int (pos 0)
     | succ k, r ⇒
-        elim s return w . Id Int (signed (S.mul (sign (signed w (succ k))) t)
+        elim s at w -> Id Int (signed (S.mul (sign (signed w (succ k))) t)
                                     (mult (succ k) m))
                             (signed (S.mul w t) (mult (succ k) m))
         | negative ⇒ idRefl Int (signed (S.mul negative t) (mult (succ k) m))
@@ -466,7 +466,7 @@ theorem signedSignRight : ∀ (s : Sign) (t : Sign) (n : ℕ) (m : ℕ) →
     Id Int (signed (S.mul s (sign (signed t m))) (mult n m))
       (signed (S.mul s t) (mult n m)) ≔
   λ (s : Sign) (t : Sign) (n : ℕ) (m : ℕ) →
-    elim m return x . Id Int (signed (S.mul s (sign (signed t x))) (mult n x))
+    elim m at x -> Id Int (signed (S.mul s (sign (signed t x))) (mult n x))
                         (signed (S.mul s t) (mult n x))
     | zero ⇒
         idTrans Int (signed (S.mul s positive) (mult n 0)) (pos 0)
@@ -477,7 +477,7 @@ theorem signedSignRight : ∀ (s : Sign) (t : Sign) (n : ℕ) (m : ℕ) →
              (signedCong (S.mul s t) (S.mul s t) (mult n 0) 0
                 (idRefl Sign (S.mul s t)) (multZeroRight n)))
     | succ k, r ⇒
-        elim t return w . Id Int (signed (S.mul s (sign (signed w (succ k))))
+        elim t at w -> Id Int (signed (S.mul s (sign (signed w (succ k))))
                                     (mult n (succ k)))
                             (signed (S.mul s w) (mult n (succ k)))
         | negative ⇒ idRefl Int (signed (S.mul s negative) (mult n (succ k)))

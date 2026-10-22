@@ -36,7 +36,7 @@ theorem nodesMap : ∀ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M)
     Eq (TO.nodes u M K (Op.map M K f g t)) (Op.nodes t) ≔
   λ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M) (g : ∀ (x : L) → K)
     (t : T) →
-    elim t return z . Eq (TO.nodes u M K (Op.map M K f g z)) (Op.nodes z)
+    elim t at (z : T) -> Eq (TO.nodes u M K (Op.map M K f g z)) (Op.nodes z)
     | leaf x ⇒ ⋆
     | node l m r, hl hr ⇒
         plusCongBoth (TO.nodes u M K (Op.map M K f g l))
@@ -50,7 +50,7 @@ theorem leavesMap : ∀ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M)
     Eq (TO.leaves u M K (Op.map M K f g t)) (Op.leaves t) ≔
   λ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M) (g : ∀ (x : L) → K)
     (t : T) →
-    elim t return z . Eq (TO.leaves u M K (Op.map M K f g z)) (Op.leaves z)
+    elim t at (z : T) -> Eq (TO.leaves u M K (Op.map M K f g z)) (Op.leaves z)
     | leaf x ⇒ ⋆
     | node l m r, hl hr ⇒
         plusCongBoth (TO.leaves u M K (Op.map M K f g l))
@@ -62,7 +62,7 @@ end
 theorem mapId : ∀ (t : T) →
     Id T (Op.map N L (λ (m : N) → m) (λ (x : L) → x) t) t ≔
   λ (t : T) →
-    elim t return z . Id T (Op.map N L (λ (m : N) → m) (λ (x : L) → x) z) z
+    elim t at (z : T) -> Id T (Op.map N L (λ (m : N) → m) (λ (x : L) → x) z) z
     | leaf x ⇒ idRefl T (T.leaf x)
     | node l m r, hl hr ⇒
         idCongTwo T T T (λ (a : T) (b : T) → T.node a m b)
@@ -80,7 +80,7 @@ theorem mapComp : ∀ (M : Type@{u}) (K : Type@{u}) (P : Type@{u})
   λ (M : Type@{u}) (K : Type@{u}) (P : Type@{u}) (Q : Type@{u})
     (f : ∀ (m : N) → M) (g : ∀ (x : L) → K) (h : ∀ (m : M) → P)
     (k : ∀ (x : K) → Q) (t : T) →
-    elim t return z . Id (Tree u P Q) (TO.map u M K P Q h k (Op.map M K f g z))
+    elim t at (z : T) -> Id (Tree u P Q) (TO.map u M K P Q h k (Op.map M K f g z))
                         (Op.map P Q (λ (m : N) → h (f m))
                            (λ (x : L) → k (g x)) z)
     | leaf x ⇒ idRefl (Tree u P Q) (Tree.leaf u P Q (k (g x)))
@@ -105,7 +105,7 @@ theorem mapCong : ∀ (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M)
     (g : ∀ (x : L) → K) (g2 : ∀ (x : L) → K)
     (hf : ∀ (m : N) → Id M (f m) (f2 m)) (hg : ∀ (x : L) → Id K (g x) (g2 x))
     (t : T) →
-    elim t return z . Id (Tree u M K) (Op.map M K f g z) (Op.map M K f2 g2 z)
+    elim t at (z : T) -> Id (Tree u M K) (Op.map M K f g z) (Op.map M K f2 g2 z)
     | leaf x ⇒ idCong K (Tree u M K) (Tree.leaf u M K) (g x) (g2 x) (hg x)
     | node l m r, hl hr ⇒
         idTrans (Tree u M K)
@@ -132,7 +132,7 @@ module Counts where
    (succ b)] is [succ (plus a (succ b))] by unfolding. *)
 theorem leavesNodes : ∀ (t : T) → Eq (Op.leaves t) (succ (Op.nodes t)) ≔
   λ (t : T) →
-    elim t return z . Eq (Op.leaves z) (succ (Op.nodes z))
+    elim t at (z : T) -> Eq (Op.leaves z) (succ (Op.nodes z))
     | leaf x ⇒ ⋆
     | node l m r, hl hr ⇒
         plusCongBoth (Op.leaves l) (Op.leaves r) (succ (Op.nodes l))
@@ -143,7 +143,7 @@ end
 theorem lengthInfix : ∀ (t : T) →
     Eq (LO.length u N (Op.toListInfix t)) (Op.nodes t) ≔
   λ (t : T) →
-    elim t return z . Eq (LO.length u N (Op.toListInfix z)) (Op.nodes z)
+    elim t at (z : T) -> Eq (LO.length u N (Op.toListInfix z)) (Op.nodes z)
     | leaf x ⇒ ⋆
     | node l m r, hl hr ⇒
         trans (LO.length u N (LO.append u N (Op.toListInfix l)
@@ -162,7 +162,7 @@ end
 theorem lengthLeaves : ∀ (t : T) →
     Eq (LO.length u L (Op.toListLeaves t)) (Op.leaves t) ≔
   λ (t : T) →
-    elim t return z . Eq (LO.length u L (Op.toListLeaves z)) (Op.leaves z)
+    elim t at (z : T) -> Eq (LO.length u L (Op.toListLeaves z)) (Op.leaves z)
     | leaf x ⇒ ⋆
     | node l m r, hl hr ⇒
         trans (LO.length u L
@@ -184,7 +184,7 @@ module Mirror where
 
 theorem mirrorMirror : ∀ (t : T) → Id T (Op.mirror (Op.mirror t)) t ≔
   λ (t : T) →
-    elim t return z . Id T (Op.mirror (Op.mirror z)) z
+    elim t at (z : T) -> Id T (Op.mirror (Op.mirror z)) z
     | leaf x ⇒ idRefl T (T.leaf x)
     | node l m r, hl hr ⇒
         idCongTwo T T T (λ (a : T) (b : T) → T.node a m b)
@@ -194,7 +194,7 @@ end
 
 theorem leavesMirror : ∀ (t : T) → Eq (Op.leaves (Op.mirror t)) (Op.leaves t) ≔
   λ (t : T) →
-    elim t return z . Eq (Op.leaves (Op.mirror z)) (Op.leaves z)
+    elim t at (z : T) -> Eq (Op.leaves (Op.mirror z)) (Op.leaves z)
     | leaf x ⇒ ⋆
     | node l m r, hl hr ⇒
         trans (plus (Op.leaves (Op.mirror r)) (Op.leaves (Op.mirror l)))
@@ -210,7 +210,7 @@ end
    subtrees, in the two orders. *)
 theorem nodesMirror : ∀ (t : T) → Eq (Op.nodes (Op.mirror t)) (Op.nodes t) ≔
   λ (t : T) →
-    elim t return z . Eq (Op.nodes (Op.mirror z)) (Op.nodes z)
+    elim t at (z : T) -> Eq (Op.nodes (Op.mirror z)) (Op.nodes z)
     | leaf x ⇒ ⋆
     | node l m r, hl hr ⇒
         let a : ℕ ≔ Op.nodes l; b : ℕ ≔ Op.nodes r in
@@ -235,7 +235,7 @@ theorem infixMirror : ∀ (t : T) →
     Id (List u N) (Op.toListInfix (Op.mirror t))
       (LO.reverse u N (Op.toListInfix t)) ≔
   λ (t : T) →
-    elim t return z . Id (List u N) (Op.toListInfix (Op.mirror z))
+    elim t at (z : T) -> Id (List u N) (Op.toListInfix (Op.mirror z))
                         (LO.reverse u N (Op.toListInfix z))
     | leaf x ⇒ idRefl (List u N) (List.nil u N)
     | node l m r, hl hr ⇒

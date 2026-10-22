@@ -13,7 +13,7 @@ open Prelude›Arith›Mult.Algebra use (multAssoc; multSwapMiddle)
 (* [pow a n] is [a] to the power [n]: [pow a 0] is [1] and
    [pow a (succ p)] is [mult a (pow a p)]. *)
 def pow (a : ℕ) (n : ℕ) : ℕ ≔
-  elim n return y . ℕ
+  elim n at y -> ℕ
   | zero ⇒ 1
   | succ p, r ⇒ mult a r
   end
@@ -37,7 +37,7 @@ end
 (* [pow 1 (succ p)] computes to [plus (pow 1 p) 0]. *)
 theorem onePow : ∀ (n : ℕ) → Eq (pow 1 n) 1 ≔
   λ (n : ℕ) →
-    elim n return x . Eq (pow 1 x) 1
+    elim n at x -> Eq (pow 1 x) 1
     | zero ⇒ ⋆
     | succ p, ih ⇒ trans (plus (pow 1 p) 0) (pow 1 p) 1 (plusIdentityRight (pow 1 p)) ih
     end
@@ -55,7 +55,7 @@ module Exp where
 theorem powPlus : ∀ (a : ℕ) (m : ℕ) (n : ℕ) →
     Eq (pow a (plus m n)) (mult (pow a m) (pow a n)) ≔
   λ (a : ℕ) (m : ℕ) (n : ℕ) →
-    elim m return x . Eq (pow a (plus x n)) (mult (pow a x) (pow a n))
+    elim m at x -> Eq (pow a (plus x n)) (mult (pow a x) (pow a n))
     | zero ⇒ sym (mult 1 (pow a n)) (pow a n) (multIdentityLeft (pow a n))
     | succ p, ih ⇒
         let lhs ≔ mult a (pow a (plus p n));
@@ -74,7 +74,7 @@ end
 theorem powMultBase : ∀ (a : ℕ) (b : ℕ) (n : ℕ) →
     Eq (pow (mult a b) n) (mult (pow a n) (pow b n)) ≔
   λ (a : ℕ) (b : ℕ) (n : ℕ) →
-    elim n return x . Eq (pow (mult a b) x) (mult (pow a x) (pow b x))
+    elim n at x -> Eq (pow (mult a b) x) (mult (pow a x) (pow b x))
     | zero ⇒ ⋆
     | succ p, ih ⇒
         let lhs ≔ mult (mult a b) (pow (mult a b) p);
@@ -94,7 +94,7 @@ end
 theorem powMult : ∀ (a : ℕ) (m : ℕ) (n : ℕ) →
     Eq (pow a (mult m n)) (pow (pow a m) n) ≔
   λ (a : ℕ) (m : ℕ) (n : ℕ) →
-    elim m return x . Eq (pow a (mult x n)) (pow (pow a x) n)
+    elim m at x -> Eq (pow a (mult x n)) (pow (pow a x) n)
     | zero ⇒ sym (pow 1 n) 1 (onePow n)
     | succ p, ih ⇒
         let lhs ≔ pow a (plus n (mult p n));

@@ -46,7 +46,7 @@ eval Dom
 (* A function into [Level] may be used in a universe: levels are computed by
    the same evaluator as everything else. *)
 def depth (n : ℕ) : Level ≔
-  elim n return x . Level | zero ⇒ 0l | succ y, r ⇒ succl r end
+  elim n at x -> Level | zero ⇒ 0l | succ y, r ⇒ succl r end
 end
 
 eval Type@{depth 3}

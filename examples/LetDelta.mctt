@@ -5,7 +5,7 @@ module LetDelta where
 import Prelude›Builtin›Nat use (zero; succ)
 
 def Nary (n : ℕ) : Type@0 ≔
-  elim n return y . Type@0
+  elim n at y -> Type@0
   | zero ⇒ ℕ
   | succ m, r ⇒ ∀ (a : ℕ) → r
   end

@@ -10,7 +10,7 @@ module Prelude›Function›Iter
 import Prelude›Builtin›Nat
 
 def iter (n : ℕ) (a : A) : A ≔
-  elim n return y . A
+  elim n at y -> A
   | zero ⇒ a
   | succ p, r ⇒ f r
   end

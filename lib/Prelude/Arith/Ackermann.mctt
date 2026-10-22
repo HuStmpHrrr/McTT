@@ -13,7 +13,7 @@ import Prelude›Function›Combinators use (Generic)
    [ack (succ m) 0] is [ack m 1] and [ack (succ m) (succ n)] is
    [ack m (ack (succ m) n)]. *)
 def ack (m : ℕ) (n : ℕ) : ℕ ≔
-  (elim m return y . (∀ (x : ℕ) → ℕ)
+  (elim m at y -> (∀ (x : ℕ) → ℕ)
    | zero ⇒ λ (x : ℕ) → succ x
    | succ p, r ⇒ λ (x : ℕ) → Generic.iterate 0l ℕ r (succ x) 1
    end) n
@@ -42,7 +42,7 @@ module Rows where
 
 theorem ackOne : ∀ (n : ℕ) → Eq (ack 1 n) (succ (succ n)) ≔
   λ (n : ℕ) →
-    elim n return x . Eq (ack 1 x) (succ (succ x))
+    elim n at x -> Eq (ack 1 x) (succ (succ x))
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -52,7 +52,7 @@ end
    successor past [plusSucc]. *)
 theorem ackTwo : ∀ (n : ℕ) → Eq (ack 2 n) (succ (succ (succ (plus n n)))) ≔
   λ (n : ℕ) →
-    elim n return x . Eq (ack 2 x) (succ (succ (succ (plus x x))))
+    elim n at x -> Eq (ack 2 x) (succ (succ (succ (plus x x))))
     | zero ⇒ ⋆
     | succ p, ih ⇒
         let prev ≔ ack 2 p;

@@ -6,7 +6,7 @@ import Prelude›Logic use (absurd)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 
 def plus (n : ℕ) (m : ℕ) : ℕ ≔
-  elim n return y . ℕ
+  elim n at y -> ℕ
   | zero ⇒ m
   | succ p, r ⇒ succ r
   end
@@ -17,7 +17,7 @@ module Basic where
 
 theorem plusIdentityRight : ∀ (n : ℕ) → Eq (plus n 0) n ≔
   λ (n : ℕ) →
-    elim n return x . Eq (plus x 0) x
+    elim n at x -> Eq (plus x 0) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end
@@ -25,7 +25,7 @@ end
 
 theorem plusSucc : ∀ (n : ℕ) (m : ℕ) → Eq (plus n (succ m)) (succ (plus n m)) ≔
   λ (n : ℕ) (m : ℕ) →
-    elim n return x . Eq (plus x (succ m)) (succ (plus x m))
+    elim n at x -> Eq (plus x (succ m)) (succ (plus x m))
     | zero ⇒ refl m
     | succ p, ih ⇒ ih
     end
@@ -40,7 +40,7 @@ module Algebra where
 
 theorem plusComm : ∀ (a : ℕ) (b : ℕ) → Eq (plus a b) (plus b a) ≔
   λ (a : ℕ) (b : ℕ) →
-    elim a return x . Eq (plus x b) (plus b x)
+    elim a at x -> Eq (plus x b) (plus b x)
     | zero ⇒ sym (plus b 0) b (plusIdentityRight b)
     | succ p, ih ⇒
         let back : Eq (succ (plus b p)) (plus b (succ p)) ≔
@@ -53,7 +53,7 @@ end
 theorem plusAssoc : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
     Eq (plus (plus a b) c) (plus a (plus b c)) ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) →
-    elim a return x . Eq (plus (plus x b) c) (plus x (plus b c))
+    elim a at x -> Eq (plus (plus x b) c) (plus x (plus b c))
     | zero ⇒ refl (plus b c)
     | succ p, ih ⇒ ih
     end
@@ -63,7 +63,7 @@ end
 theorem plusLeftComm : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
     Eq (plus a (plus b c)) (plus b (plus a c)) ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) →
-    elim a return x . Eq (plus x (plus b c)) (plus b (plus x c))
+    elim a at x -> Eq (plus x (plus b c)) (plus b (plus x c))
     | zero ⇒ refl (plus b c)
     | succ p, ih ⇒
         let back : Eq (succ (plus b (plus p c))) (plus b (succ (plus p c))) ≔
@@ -128,7 +128,7 @@ end
 theorem plusCancelLeft : ∀ (a : ℕ) (b : ℕ) (c : ℕ)
     (h : Eq (plus a b) (plus a c)) → Eq b c ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) →
-    elim a return x . (∀ (h : Eq (plus x b) (plus x c)) → Eq b c)
+    elim a at x -> (∀ (h : Eq (plus x b) (plus x c)) → Eq b c)
     | zero ⇒ λ (h : Eq b c) → h
     | succ p, ih ⇒ λ (h : Eq (plus p b) (plus p c)) → ih h
     end
@@ -149,7 +149,7 @@ end
 (* If a sum is zero, so is its first summand. *)
 theorem plusEqZero : ∀ (a : ℕ) (b : ℕ) (h : Eq (plus a b) 0) → Eq a 0 ≔
   λ (a : ℕ) (b : ℕ) →
-    elim a return x . (∀ (h : Eq (plus x b) 0) → Eq x 0)
+    elim a at x -> (∀ (h : Eq (plus x b) 0) → Eq x 0)
     | zero ⇒ λ (h : Eq b 0) → ⋆
     | succ p, ih ⇒ λ (h : ⊥) → h
     end
@@ -158,7 +158,7 @@ end
 (* If a sum is zero, so is its second summand. *)
 theorem plusEqZeroRight : ∀ (a : ℕ) (b : ℕ) (h : Eq (plus a b) 0) → Eq b 0 ≔
   λ (a : ℕ) (b : ℕ) →
-    elim a return x . (∀ (h : Eq (plus x b) 0) → Eq b 0)
+    elim a at x -> (∀ (h : Eq (plus x b) 0) → Eq b 0)
     | zero ⇒ λ (h : Eq b 0) → h
     | succ p, ih ⇒ λ (h : ⊥) → absurd (Eq b 0) h
     end

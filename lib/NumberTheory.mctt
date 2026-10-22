@@ -34,7 +34,7 @@ module Primes where
 (* The least prime above [n], searched among the numbers from [n + 1] to
    [2 n + 2], which contain one by Bertrand's postulate. *)
 let nextPrime (n : ℕ) : ℕ ≔
-  (elim n return y . (∀ (c : ℕ) → ℕ)
+  (elim n at y -> (∀ (c : ℕ) → ℕ)
    | zero ⇒ λ (c : ℕ) → cond ℕ (isPrime c) (λ (u : ⊤) → c) (λ (u : ⊤) → succ c)
    | succ p, r ⇒ λ (c : ℕ) →
        cond ℕ (isPrime c) (λ (u : ⊤) → c) (λ (u : ⊤) → r (succ c))

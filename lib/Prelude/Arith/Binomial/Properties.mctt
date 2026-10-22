@@ -21,7 +21,7 @@ module Basic where
 
 theorem chooseZero : ∀ (n : ℕ) → Eq (choose n 0) 1 ≔
   λ (n : ℕ) →
-    elim n return x . Eq (choose x 0) 1
+    elim n at x -> Eq (choose x 0) 1
     | zero ⇒ ⋆
     | succ p, ih ⇒ ⋆
     end
@@ -38,14 +38,14 @@ end
    of Pascal's rule. *)
 theorem chooseOver : ∀ (n : ℕ) (k : ℕ) (h : Lt n k) → Eq (choose n k) 0 ≔
   λ (n : ℕ) →
-    elim n return x . (∀ (k : ℕ) (h : Lt x k) → Eq (choose x k) 0)
+    elim n at x -> (∀ (k : ℕ) (h : Lt x k) → Eq (choose x k) 0)
     | zero ⇒ λ (k : ℕ) →
-        elim k return z . (∀ (h : Lt 0 z) → Eq (choose 0 z) 0)
+        elim k at z -> (∀ (h : Lt 0 z) → Eq (choose 0 z) 0)
         | zero ⇒ λ (h : ⊥) → h
         | succ q, s ⇒ λ (h : ⊤) → ⋆
         end
     | succ p, ih ⇒ λ (k : ℕ) →
-        elim k return z . (∀ (h : Lt (succ p) z) → Eq (choose (succ p) z) 0)
+        elim k at z -> (∀ (h : Lt (succ p) z) → Eq (choose (succ p) z) 0)
         | zero ⇒ λ (h : ⊥) → h
         | succ q, s ⇒ λ (h : Lt p q) →
             plusCongBoth (choose p q) (choose p (succ q)) 0 0
@@ -57,7 +57,7 @@ end
 (* The diagonal: [choose n n] is [1], since [choose p (succ p)] vanishes. *)
 theorem chooseSelf : ∀ (n : ℕ) → Eq (choose n n) 1 ≔
   λ (n : ℕ) →
-    elim n return x . Eq (choose x x) 1
+    elim n at x -> Eq (choose x x) 1
     | zero ⇒ ⋆
     | succ p, ih ⇒
         plusCongBoth (choose p p) (choose p (succ p)) 1 0
@@ -67,7 +67,7 @@ end
 
 theorem chooseOne : ∀ (n : ℕ) → Eq (choose n 1) n ≔
   λ (n : ℕ) →
-    elim n return x . Eq (choose x 1) x
+    elim n at x -> Eq (choose x 1) x
     | zero ⇒ ⋆
     | succ p, ih ⇒
         plusCongBoth (choose p 0) (choose p 1) 1 p (chooseZero p) ih
@@ -113,12 +113,12 @@ end
    rule [succSucc], which is symmetric up to the order of the summands. *)
 lemma symm : ∀ (a : ℕ) (b : ℕ) → Eq (split a b) (split b a) ≔
   λ (a : ℕ) →
-    elim a return x . (∀ (b : ℕ) → Eq (split x b) (split b x))
+    elim a at x -> (∀ (b : ℕ) → Eq (split x b) (split b x))
     | zero ⇒ λ (b : ℕ) →
         trans (split 0 b) 1 (split b 0) (zeroLeft b)
           (sym (split b 0) 1 (zeroRight b))
     | succ p, ih ⇒ λ (b : ℕ) →
-        elim b return y . Eq (split (succ p) y) (split y (succ p))
+        elim b at y -> Eq (split (succ p) y) (split y (succ p))
         | zero ⇒
             trans (split (succ p) 0) 1 (split 0 (succ p)) (zeroRight (succ p))
               (sym (split 0 (succ p)) 1 (zeroLeft (succ p)))
@@ -181,7 +181,7 @@ fact rowPrefixSucc : ∀ (p : ℕ) (m : ℕ) →
     Eq (sumTo (choose (succ p)) (succ m))
        (plus (sumTo (choose p) (succ m)) (sumTo (choose p) m)) ≔
   λ (p : ℕ) (m : ℕ) →
-    elim m return x . Eq (sumTo (choose (succ p)) (succ x))
+    elim m at x -> Eq (sumTo (choose (succ p)) (succ x))
                          (plus (sumTo (choose p) (succ x)) (sumTo (choose p) x))
     | zero ⇒
         (* The goal computes to [Eq 1 (plus (plus (choose p 0) 0) 0)]. *)
@@ -216,7 +216,7 @@ end
    [pow 2 (succ p)] computes to [plus P (plus P 0)]. *)
 theorem rowSum : ∀ (n : ℕ) → Eq (sumTo (choose n) (succ n)) (pow 2 n) ≔
   λ (n : ℕ) →
-    elim n return x . Eq (sumTo (choose x) (succ x)) (pow 2 x)
+    elim n at x -> Eq (sumTo (choose x) (succ x)) (pow 2 x)
     | zero ⇒ ⋆
     | succ p, ih ⇒
         let s ≔ sumTo (choose p) (succ p);

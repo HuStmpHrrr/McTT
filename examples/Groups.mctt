@@ -1,0 +1,171 @@
+(* Groups of inductive types: mutual declarations, nested occurrences
+   through views, eliminators with one block per member, and mutual
+   definitions. *)
+import Prelude›Builtin›Nat use (Nat; succ)
+
+module Groups where
+
+def add (n : ℕ) (m : ℕ) : ℕ :=
+  elim n at z -> ℕ | zero ⇒ m | succ k, r ⇒ succ r end
+end
+
+inductive List (A : Type@0) : Type@0 where
+| nil
+| cons (x : A) (xs : List A)
+end
+
+(* Terms and spines, declared together: each is in scope in the other's
+   arguments. *)
+mutual Syntax where
+  inductive Tm : Type@0 where
+  | var (n : ℕ)
+  | app (f : Tm) (s : Sp)
+  with Sp : Type@0 where
+  | snil
+  | scons (t : Tm) (s : Sp)
+  end
+end
+
+(* An eliminator has a block per member, in member order; the block marked
+   [at] is the scrutinee's. *)
+def size (t : Syntax.Tm) : ℕ :=
+  elim t at (z : Syntax.Tm) -> ℕ
+    | var n ⇒ 1
+    | app f s, hf hs ⇒ succ (add hf hs)
+  with (z : Syntax.Sp) -> ℕ
+    | snil ⇒ 0
+    | scons t s, ht hs ⇒ add ht hs
+  end
+end
+
+def example : Syntax.Tm :=
+  Syntax.Tm.app (Syntax.Tm.var 0) (Syntax.Sp.scons (Syntax.Tm.var 1) (Syntax.Sp.scons (Syntax.Tm.var 2) Syntax.Sp.snil))
+end
+
+eval size example
+
+(* The same, as a mutual definition: one function per member, in any
+   order, each with its induction hypotheses. *)
+mutual def
+  spineLength (z : Syntax.Sp) : ℕ :=
+    | snil ⇒ 0
+    | scons t s, ht hs ⇒ succ hs
+  with heads (z : Syntax.Tm) : ℕ :=
+    | var n ⇒ 0
+    | app f s, hf hs ⇒ succ hf
+end
+
+eval spineLength (Syntax.Sp.scons (Syntax.Tm.var 1) (Syntax.Sp.scons (Syntax.Tm.var 2) Syntax.Sp.snil))
+eval heads (Syntax.Tm.app (Syntax.Tm.app (Syntax.Tm.var 0) Syntax.Sp.snil) Syntax.Sp.snil)
+
+(* Rose trees with forests: [List (Rose A)] is a view of the group, the
+   container [List] at the instance; its block comes after [Rose]'s. *)
+inductive Rose (A : Type@0) : Type@0 where
+| node (x : A) (ts : List (Rose A))
+end
+
+def leaf (n : ℕ) : Rose ℕ := Rose.node ℕ n (List.nil (Rose ℕ)) end
+
+def forest : Rose ℕ :=
+  Rose.node ℕ 0
+    (List.cons (Rose ℕ) (leaf 1)
+      (List.cons (Rose ℕ) (Rose.node ℕ 2 (List.cons (Rose ℕ) (leaf 3) (List.nil (Rose ℕ))))
+        (List.nil (Rose ℕ))))
+end
+
+(* The number of nodes, and the sum of the labels. *)
+def nodes (r : Rose ℕ) : ℕ :=
+  elim r at (z : Rose ℕ) -> ℕ
+    | node x ts, h ⇒ succ h
+  with (z : List (Rose ℕ)) -> ℕ
+    | nil ⇒ 0
+    | cons t ts, ht hts ⇒ add ht hts
+  end
+end
+
+def total (r : Rose ℕ) : ℕ :=
+  elim r at (z : Rose ℕ) -> ℕ
+    | node x ts, h ⇒ add x h
+  with (z : List (Rose ℕ)) -> ℕ
+    | nil ⇒ 0
+    | cons t ts, ht hts ⇒ add ht hts
+  end
+end
+
+eval nodes forest
+eval total forest
+
+(* A forest is eliminated at its own block: the scrutinee is the view's. *)
+def forestNodes (f : List (Rose ℕ)) : ℕ :=
+  elim f with (z : Rose ℕ) -> ℕ
+    | node x ts, h ⇒ succ h
+  at (z : List (Rose ℕ)) -> ℕ
+    | nil ⇒ 0
+    | cons t ts, ht hts ⇒ add ht hts
+  end
+end
+
+eval forestNodes (List.cons (Rose ℕ) (leaf 1) (List.cons (Rose ℕ) (leaf 2) (List.nil (Rose ℕ))))
+
+(* Terms with argument lists: the mutual group, nested through [List] at
+   both members. *)
+mutual Lam where
+  inductive Term : Type@0 where
+  | var (n : ℕ)
+  | call (f : ℕ) (args : List Term)
+  | block (bs : List Bind) (body : Term)
+  with Bind : Type@0 where
+  | bind (n : ℕ) (t : Term)
+  end
+end
+
+def termSize (t : Lam.Term) : ℕ :=
+  elim t at (z : Lam.Term) -> ℕ
+    | var n ⇒ 1
+    | call f args, h ⇒ succ h
+    | block bs body, hb hbody ⇒ succ (add hb hbody)
+  with (z : Lam.Bind) -> ℕ
+    | bind n t, h ⇒ succ h
+  with (z : List Lam.Term) -> ℕ
+    | nil ⇒ 0
+    | cons t ts, ht hts ⇒ add ht hts
+  with (z : List Lam.Bind) -> ℕ
+    | nil ⇒ 0
+    | cons b bs, hb hbs ⇒ add hb hbs
+  end
+end
+
+eval termSize (Lam.Term.block (List.cons Lam.Bind (Lam.Bind.bind 0 (Lam.Term.var 1)) (List.nil Lam.Bind))
+                 (Lam.Term.call 0 (List.cons Lam.Term (Lam.Term.var 0) (List.nil Lam.Term))))
+
+(* The C/T regression: [C B] nests in a dependent pair at a function of the
+   uniform parameter, and [T] nests in [C], whose view meets the pair at
+   [C T] and [λ _. T]. *)
+inductive Sigma (A : Type@0) (B : ∀ (a : A) → Type@0) : Type@0 where
+| pair (a : A) (b : B a)
+end
+
+inductive C (B : Type@0) : Type@0 where
+| mk (s : Sigma (C B) (λ (c : C B) → B))
+end
+
+inductive T : Type@0 where
+| t (c : C T)
+| stop
+end
+
+(* The depth of a [T]: [stop] is 0, and [t] goes through its [C], whose
+   pair holds a [C] and a [T]. *)
+def depth (x : T) : ℕ :=
+  elim x at (z : T) -> ℕ
+    | t c, h ⇒ succ h
+    | stop ⇒ 0
+  with (z : C T) -> ℕ
+    | mk s, h ⇒ h
+  with (z : Sigma (C T) (λ (c : C T) → T)) -> ℕ
+    | pair a b, ha hb ⇒ add ha hb
+  end
+end
+
+eval depth T.stop
+end

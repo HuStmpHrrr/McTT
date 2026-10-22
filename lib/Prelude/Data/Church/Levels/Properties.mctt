@@ -28,7 +28,7 @@ module Power where
 private theorem cpowAdds : ∀ (m : ℕ) (k : ℕ) (y : ℕ) →
     Eq (cpow (C.fromNat m) (Up.fromNat k) ℕ S y) (plus (pow m k) y) ≔
   λ (m : ℕ) (k : ℕ) →
-    elim k return x . (∀ (y : ℕ) →
+    elim k at x -> (∀ (y : ℕ) →
                          Eq (cpow (C.fromNat m) (Up.fromNat x) ℕ S y)
                             (plus (pow m x) y))
     | zero ⇒ λ (y : ℕ) → refl (succ y)
@@ -52,7 +52,7 @@ module Moves where
 
 theorem toNatLower : ∀ (n : ℕ) → Eq (C.toNat (lower (Up.fromNat n))) n ≔
   λ (n : ℕ) →
-    elim n return x . Eq (C.toNat (lower (Up.fromNat x))) x
+    elim n at x -> Eq (C.toNat (lower (Up.fromNat x))) x
     | zero ⇒ ⋆
     | succ p, ih ⇒ ih
     end

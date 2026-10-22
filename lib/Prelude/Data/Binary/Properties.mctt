@@ -36,7 +36,7 @@ module ToNat where
 (* [toNat] takes the binary successor to [succ]. *)
 theorem toNatSuc : ∀ (x : Bin) → Eq (toNat (suc x)) (succ (toNat x)) ≔
   λ (x : Bin) →
-    elim x return z . Eq (toNat (suc z)) (succ (toNat z))
+    elim x at z -> Eq (toNat (suc z)) (succ (toNat z))
     | zero ⇒ refl 1
     | doubleSucc y, ih ⇒
         cong (λ (n : ℕ) → double n) (toNat (suc y)) (succ (toNat y)) ih
@@ -47,7 +47,7 @@ end
 (* [toNat] takes the binary doubling to the unary one. *)
 theorem toNatDouble : ∀ (x : Bin) → Eq (toNat (B.double x)) (double (toNat x)) ≔
   λ (x : Bin) →
-    elim x return z . Eq (toNat (B.double z)) (double (toNat z))
+    elim x at z -> Eq (toNat (B.double z)) (double (toNat z))
     | zero ⇒ ⋆
     | doubleSucc y, ih ⇒ refl (toNat (B.double (doubleSucc y)))
     | succDouble y, ih ⇒
@@ -59,7 +59,7 @@ end
 (* Converting a number to binary and back gives the number. *)
 theorem toNatFromNat : ∀ (n : ℕ) → Eq (toNat (fromNat n)) n ≔
   λ (n : ℕ) →
-    elim n return x . Eq (toNat (fromNat x)) x
+    elim n at x -> Eq (toNat (fromNat x)) x
     | zero ⇒ ⋆
     | succ p, ih ⇒
         trans (toNat (suc (fromNat p))) (succ (toNat (fromNat p))) (succ p)
@@ -109,11 +109,11 @@ end
 theorem toNatAdd : ∀ (x : Bin) (y : Bin) →
     Eq (toNat (add x y)) (plus (toNat x) (toNat y)) ≔
   λ (x : Bin) →
-    elim x return z .
+    elim x at z ->
       (∀ (y : Bin) → Eq (toNat (add z y)) (plus (toNat z) (toNat y)))
     | zero ⇒ λ (y : Bin) → refl (toNat y)
     | doubleSucc a, ih ⇒ λ (y : Bin) →
-        elim y return w . Eq (toNat (add (doubleSucc a) w))
+        elim y at w -> Eq (toNat (add (doubleSucc a) w))
                             (plus (toNat (doubleSucc a)) (toNat w))
         | zero ⇒
             sym (plus (toNat (doubleSucc a)) 0) (toNat (doubleSucc a))
@@ -122,7 +122,7 @@ theorem toNatAdd : ∀ (x : Bin) (y : Bin) →
         | succDouble b, s ⇒ carryOdd (add a b) (toNat a) (toNat b) (ih b)
         end
     | succDouble a, ih ⇒ λ (y : Bin) →
-        elim y return w . Eq (toNat (add (succDouble a) w))
+        elim y at w -> Eq (toNat (add (succDouble a) w))
                             (plus (toNat (succDouble a)) (toNat w))
         | zero ⇒
             sym (plus (toNat (succDouble a)) 0) (toNat (succDouble a))
@@ -147,7 +147,7 @@ module FromNat where
 
 theorem sucDouble : ∀ (x : Bin) → Id Bin (suc (B.double x)) (succDouble x) ≔
   λ (x : Bin) →
-    elim x return z . Id Bin (suc (B.double z)) (succDouble z)
+    elim x at z -> Id Bin (suc (B.double z)) (succDouble z)
     | zero ⇒ idRefl Bin (succDouble Bin.zero)
     | doubleSucc y, ih ⇒ idRefl Bin (succDouble (doubleSucc y))
     | succDouble y, ih ⇒
@@ -157,7 +157,7 @@ end
 
 theorem doubleSuc : ∀ (x : Bin) → Id Bin (B.double (suc x)) (doubleSucc x) ≔
   λ (x : Bin) →
-    elim x return z . Id Bin (B.double (suc z)) (doubleSucc z)
+    elim x at z -> Id Bin (B.double (suc z)) (doubleSucc z)
     | zero ⇒ idRefl Bin (doubleSucc Bin.zero)
     | doubleSucc y, ih ⇒
         idCong Bin Bin doubleSucc (B.double (suc y)) (doubleSucc y) ih
@@ -169,7 +169,7 @@ end
 theorem fromNatDouble : ∀ (n : ℕ) →
     Id Bin (fromNat (double n)) (B.double (fromNat n)) ≔
   λ (n : ℕ) →
-    elim n return x . Id Bin (fromNat (double x)) (B.double (fromNat x))
+    elim n at x -> Id Bin (fromNat (double x)) (B.double (fromNat x))
     | zero ⇒ idRefl Bin Bin.zero
     | succ p, ih ⇒
         idTrans Bin (suc (suc (fromNat (double p))))
@@ -189,7 +189,7 @@ end
    each has exactly one form. *)
 theorem fromNatToNat : ∀ (x : Bin) → Id Bin (fromNat (toNat x)) x ≔
   λ (x : Bin) →
-    elim x return z . Id Bin (fromNat (toNat z)) z
+    elim x at z -> Id Bin (fromNat (toNat z)) z
     | zero ⇒ idRefl Bin Bin.zero
     | doubleSucc y, ih ⇒
         idTrans Bin (fromNat (double (succ (toNat y))))

@@ -24,7 +24,7 @@ open Parity use (even; odd)
 
 (* The proposition that a parity is [even]. *)
 private def IsEven (p : Parity) : Type@0 ≔
-  elim p return z . Type@0 | even ⇒ ⊤ | odd ⇒ ⊥ end
+  elim p at z -> Type@0 | even ⇒ ⊤ | odd ⇒ ⊥ end
 end
 
 (* [inv]. *)
@@ -32,7 +32,7 @@ module Inv where
 
 theorem invInv : ∀ (p : Parity) → Id Parity (inv (inv p)) p ≔
   λ (p : Parity) →
-    elim p return z . Id Parity (inv (inv z)) z
+    elim p at z -> Id Parity (inv (inv z)) z
     | even ⇒ idRefl Parity even
     | odd ⇒ idRefl Parity odd
     end
@@ -51,7 +51,7 @@ end
 (* No parity is its own opposite. *)
 theorem parityNeInv : ∀ (p : Parity) → Not (Id Parity p (inv p)) ≔
   λ (p : Parity) →
-    elim p return z . Not (Id Parity z (inv z))
+    elim p at z -> Not (Id Parity z (inv z))
     | even ⇒ λ (h : Id Parity even odd) → h IsEven ⋆
     | odd ⇒ λ (h : Id Parity odd even) →
         h (λ (z : Parity) → IsEven (inv z)) ⋆
@@ -71,7 +71,7 @@ end
 
 theorem addIdentityRight : ∀ (p : Parity) → Id Parity (add p even) p ≔
   λ (p : Parity) →
-    elim p return z . Id Parity (add z even) z
+    elim p at z -> Id Parity (add z even) z
     | even ⇒ idRefl Parity even
     | odd ⇒ idRefl Parity odd
     end
@@ -80,7 +80,7 @@ end
 (* Every parity is its own inverse: [add p p] is [even]. *)
 theorem addSelf : ∀ (p : Parity) → Id Parity (add p p) even ≔
   λ (p : Parity) →
-    elim p return z . Id Parity (add z z) even
+    elim p at z -> Id Parity (add z z) even
     | even ⇒ idRefl Parity even
     | odd ⇒ idRefl Parity even
     end
@@ -89,7 +89,7 @@ end
 (* A parity plus its opposite is [odd]. *)
 theorem addInv : ∀ (p : Parity) → Id Parity (add p (inv p)) odd ≔
   λ (p : Parity) →
-    elim p return z . Id Parity (add z (inv z)) odd
+    elim p at z -> Id Parity (add z (inv z)) odd
     | even ⇒ idRefl Parity odd
     | odd ⇒ idRefl Parity odd
     end
@@ -99,7 +99,7 @@ end
 theorem addInvLeft : ∀ (p : Parity) (q : Parity) →
     Id Parity (add (inv p) q) (inv (add p q)) ≔
   λ (p : Parity) (q : Parity) →
-    elim p return z . Id Parity (add (inv z) q) (inv (add z q))
+    elim p at z -> Id Parity (add (inv z) q) (inv (add z q))
     | even ⇒ idRefl Parity (inv q)
     | odd ⇒ idSym Parity (inv (inv q)) q (invInv q)
     end
@@ -107,9 +107,9 @@ end
 
 theorem addComm : ∀ (p : Parity) (q : Parity) → Id Parity (add p q) (add q p) ≔
   λ (p : Parity) (q : Parity) →
-    elim p return x . Id Parity (add x q) (add q x)
+    elim p at x -> Id Parity (add x q) (add q x)
     | even ⇒ idSym Parity (add q even) q (addIdentityRight q)
-    | odd ⇒ elim q return y . Id Parity (inv y) (add y odd)
+    | odd ⇒ elim q at y -> Id Parity (inv y) (add y odd)
             | even ⇒ idRefl Parity odd
             | odd ⇒ idRefl Parity even
             end
@@ -119,7 +119,7 @@ end
 theorem addAssoc : ∀ (p : Parity) (q : Parity) (r : Parity) →
     Id Parity (add (add p q) r) (add p (add q r)) ≔
   λ (p : Parity) (q : Parity) (r : Parity) →
-    elim p return x . Id Parity (add (add x q) r) (add x (add q r))
+    elim p at x -> Id Parity (add (add x q) r) (add x (add q r))
     | even ⇒ idRefl Parity (add q r)
     | odd ⇒ addInvLeft q r
     end
@@ -129,7 +129,7 @@ end
 theorem addCancelLeft : ∀ (p : Parity) (q : Parity) (r : Parity)
     (h : Id Parity (add p q) (add p r)) → Id Parity q r ≔
   λ (p : Parity) →
-    elim p return x . (∀ (q : Parity) (r : Parity)
+    elim p at x -> (∀ (q : Parity) (r : Parity)
                          (h : Id Parity (add x q) (add x r)) → Id Parity q r)
     | even ⇒ λ (q : Parity) (r : Parity) (h : Id Parity q r) → h
     | odd ⇒ λ (q : Parity) (r : Parity) (h : Id Parity (inv q) (inv r)) →
@@ -150,7 +150,7 @@ end
 
 theorem mulZeroRight : ∀ (p : Parity) → Id Parity (mul p even) even ≔
   λ (p : Parity) →
-    elim p return z . Id Parity (mul z even) even
+    elim p at z -> Id Parity (mul z even) even
     | even ⇒ idRefl Parity even
     | odd ⇒ idRefl Parity even
     end
@@ -162,7 +162,7 @@ end
 
 theorem mulIdentityRight : ∀ (p : Parity) → Id Parity (mul p odd) p ≔
   λ (p : Parity) →
-    elim p return z . Id Parity (mul z odd) z
+    elim p at z -> Id Parity (mul z odd) z
     | even ⇒ idRefl Parity even
     | odd ⇒ idRefl Parity odd
     end
@@ -170,7 +170,7 @@ end
 
 theorem mulIdem : ∀ (p : Parity) → Id Parity (mul p p) p ≔
   λ (p : Parity) →
-    elim p return z . Id Parity (mul z z) z
+    elim p at z -> Id Parity (mul z z) z
     | even ⇒ idRefl Parity even
     | odd ⇒ idRefl Parity odd
     end
@@ -178,7 +178,7 @@ end
 
 theorem mulComm : ∀ (p : Parity) (q : Parity) → Id Parity (mul p q) (mul q p) ≔
   λ (p : Parity) (q : Parity) →
-    elim p return x . Id Parity (mul x q) (mul q x)
+    elim p at x -> Id Parity (mul x q) (mul q x)
     | even ⇒ idSym Parity (mul q even) even (mulZeroRight q)
     | odd ⇒ idSym Parity (mul q odd) q (mulIdentityRight q)
     end
@@ -187,7 +187,7 @@ end
 theorem mulAssoc : ∀ (p : Parity) (q : Parity) (r : Parity) →
     Id Parity (mul (mul p q) r) (mul p (mul q r)) ≔
   λ (p : Parity) (q : Parity) (r : Parity) →
-    elim p return x . Id Parity (mul (mul x q) r) (mul x (mul q r))
+    elim p at x -> Id Parity (mul (mul x q) r) (mul x (mul q r))
     | even ⇒ idRefl Parity even
     | odd ⇒ idRefl Parity (mul q r)
     end
@@ -197,7 +197,7 @@ end
 theorem mulDistribLeft : ∀ (p : Parity) (q : Parity) (r : Parity) →
     Id Parity (mul p (add q r)) (add (mul p q) (mul p r)) ≔
   λ (p : Parity) (q : Parity) (r : Parity) →
-    elim p return x . Id Parity (mul x (add q r)) (add (mul x q) (mul x r))
+    elim p at x -> Id Parity (mul x (add q r)) (add (mul x q) (mul x r))
     | even ⇒ idRefl Parity even
     | odd ⇒ idRefl Parity (add q r)
     end
@@ -207,7 +207,7 @@ end
 theorem mulInvLeft : ∀ (p : Parity) (q : Parity) →
     Id Parity (mul (inv p) q) (add q (mul p q)) ≔
   λ (p : Parity) (q : Parity) →
-    elim p return x . Id Parity (mul (inv x) q) (add q (mul x q))
+    elim p at x -> Id Parity (mul (inv x) q) (add q (mul x q))
     | even ⇒ idSym Parity (add q even) q (addIdentityRight q)
     | odd ⇒ idSym Parity (add q q) even (addSelf q)
     end
@@ -217,7 +217,7 @@ end
 theorem mulDistribRight : ∀ (p : Parity) (q : Parity) (r : Parity) →
     Id Parity (mul (add p q) r) (add (mul p r) (mul q r)) ≔
   λ (p : Parity) (q : Parity) (r : Parity) →
-    elim p return x . Id Parity (mul (add x q) r) (add (mul x r) (mul q r))
+    elim p at x -> Id Parity (mul (add x q) r) (add (mul x r) (mul q r))
     | even ⇒ idRefl Parity (mul q r)
     | odd ⇒ mulInvLeft q r
     end
@@ -230,7 +230,7 @@ module Signs where
 
 theorem toSignFromSign : ∀ (s : Sign) → Id Sign (toSign (fromSign s)) s ≔
   λ (s : Sign) →
-    elim s return z . Id Sign (toSign (fromSign z)) z
+    elim s at z -> Id Sign (toSign (fromSign z)) z
     | negative ⇒ idRefl Sign negative
     | positive ⇒ idRefl Sign positive
     end
@@ -238,7 +238,7 @@ end
 
 theorem fromSignToSign : ∀ (p : Parity) → Id Parity (fromSign (toSign p)) p ≔
   λ (p : Parity) →
-    elim p return z . Id Parity (fromSign (toSign z)) z
+    elim p at z -> Id Parity (fromSign (toSign z)) z
     | even ⇒ idRefl Parity even
     | odd ⇒ idRefl Parity odd
     end
@@ -248,7 +248,7 @@ end
 theorem invHomoOpposite : ∀ (p : Parity) →
     Id Sign (toSign (inv p)) (opposite (toSign p)) ≔
   λ (p : Parity) →
-    elim p return z . Id Sign (toSign (inv z)) (opposite (toSign z))
+    elim p at z -> Id Sign (toSign (inv z)) (opposite (toSign z))
     | even ⇒ idRefl Sign negative
     | odd ⇒ idRefl Sign positive
     end
@@ -258,7 +258,7 @@ end
 theorem addHomoMul : ∀ (p : Parity) (q : Parity) →
     Id Sign (toSign (add p q)) (S.mul (toSign p) (toSign q)) ≔
   λ (p : Parity) (q : Parity) →
-    elim p return x . Id Sign (toSign (add x q)) (S.mul (toSign x) (toSign q))
+    elim p at x -> Id Sign (toSign (add x q)) (S.mul (toSign x) (toSign q))
     | even ⇒ idRefl Sign (toSign q)
     | odd ⇒ invHomoOpposite q
     end
@@ -280,7 +280,7 @@ end
 theorem plusHomoAdd : ∀ (m : ℕ) (n : ℕ) →
     Id Parity (parity (plus m n)) (add (parity m) (parity n)) ≔
   λ (m : ℕ) (n : ℕ) →
-    elim m return x . Id Parity (parity (plus x n)) (add (parity x) (parity n))
+    elim m at x -> Id Parity (parity (plus x n)) (add (parity x) (parity n))
     | zero ⇒ idRefl Parity (parity n)
     | succ p, ih ⇒
         idTrans Parity (inv (parity (plus p n)))
@@ -299,7 +299,7 @@ end
 theorem multHomoMul : ∀ (m : ℕ) (n : ℕ) →
     Id Parity (parity (mult m n)) (mul (parity m) (parity n)) ≔
   λ (m : ℕ) (n : ℕ) →
-    elim m return x . Id Parity (parity (mult x n)) (mul (parity x) (parity n))
+    elim m at x -> Id Parity (parity (mult x n)) (mul (parity x) (parity n))
     | zero ⇒ idRefl Parity even
     | succ p, ih ⇒
         idTrans Parity (parity (plus n (mult p n)))

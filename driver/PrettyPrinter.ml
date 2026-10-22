@@ -812,6 +812,57 @@ let format_eval (f : Format.formatter) (r : Command1.eval_entry) : unit =
   Format.fprintf f "@[<hov 2>Evaluate %a@ --> %a@ : %a@]" format_exp r.ev_exp
     format_nf r.ev_nf format_exp r.ev_typ
 
+(* An eliminator in [m] with no binder type, whose scrutinee is of a member
+   of a group with uniform parameters: the core gets the group and its
+   uniform parameters from a block's binder type only, so the eliminator is
+   rejected.  The scrutinee and its type, in the binders [delta] of [m]
+   crossed to reach it.  Only the binders whose types are written are
+   crossed: a motive's and a branch's are not. *)
+let unannotated_elim (m : exp) : (centry list * exp * exp) option =
+  let deps, xi = !current_state in
+  let gc = { gc_deps = deps; gc_stack = xi } in
+  let fc = McttExtracted.Lookup.fctx_none deps xi in
+  let tele = McttExtracted.Syntax.gs_tele xi in
+  let uniform t =
+    match McttExtracted.Group.app_head t with
+    | Coq_a_ind (p, _) ->
+       (match McttExtracted.Members.ind_lookup deps xi p with
+        | Some d -> McttExtracted.Syntax.ind_nu d > 0
+        | None -> false)
+    | _ -> false
+  in
+  let rec go delta e =
+    match e with
+    | Coq_a_elim (None, [], _, bks, scr) ->
+       let typed = List.exists (fun (Coq_eb_mk (_, oz, _, _)) -> oz <> None) bks in
+       let here =
+         if typed then None
+         else match McttExtracted.TypeCheck.type_infer_at gc fc (delta @ tele) scr with
+           | Some w -> let t = McttExtracted.Syntax.nf_to_exp w in if uniform t then Some (delta, scr, t) else None
+           | None -> None
+       in
+       (match here with Some r -> Some r | None -> go delta scr)
+    | Coq_a_elim (_, _, _, _, scr) -> go delta scr
+    | Coq_a_fn (a, b) | Coq_a_pi (a, b) ->
+       (match go delta a with Some r -> Some r | None -> go (Coq_ce_ass a :: delta) b)
+    | Coq_a_app (e1, e2) | Coq_a_maxl (e1, e2) ->
+       (match go delta e1 with Some r -> Some r | None -> go delta e2)
+    | Coq_a_exfalso (_, e1) | Coq_a_succl e1 | Coq_a_univ e1 -> go delta e1
+    | Coq_a_let (Coq_b_def (Some a, n), b) ->
+       (match go delta n with Some r -> Some r | None -> go (Coq_ce_def (a, n) :: delta) b)
+    | Coq_a_let (Coq_b_def (None, n), _) -> go delta n
+    | _ -> None
+  in
+  go [] m
+
+(* The hint for [unannotated_elim], after an error. *)
+let format_elim_hint (f : Format.formatter) (m : exp) : unit =
+  match unannotated_elim m with
+  | Some (delta, scr, t) ->
+     Format.fprintf f "@\n@[<hov 2>Hint: the eliminator of@ %a@ has no binder type,@ and its type has uniform parameters:@ write it on the scrutinee's binder,@ as in @[elim … at (z :@ %a)@ %s …@]@]"
+       (format_exp_in delta) scr (format_exp_in delta) t s_arrow
+  | None -> ()
+
 let rec format_run_error (f : Format.formatter) (e : Command1.run_error) : unit =
   match e with
   (* The natural numbers bound where the error occurred: the innermost
@@ -838,7 +889,8 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_re_msg msg -> fprintf f "@[<hov 2>Error: %s@]" msg
   | Coq_re_def (x, _, typ, exp) ->
      fprintf f "@[<hov 2>Error: the body of %s,@ %a,@ is not of type@ %a@]" x
-       format_exp exp format_exp typ
+       format_exp exp format_exp typ;
+     format_elim_hint f exp
   | Coq_re_def_typ (x, _, typ) ->
      fprintf f "@[<hov 2>Error: the type of %s,@ %a,@ is not a type@]" x
        format_exp typ
@@ -847,7 +899,8 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
        format_exp exp format_exp typ
   | Coq_re_eval_check (_, exp, typ) ->
      fprintf f "@[<hov 2>Error:@ %a@ is not of type@ %a@]" format_exp exp
-       format_exp typ
+       format_exp typ;
+     format_elim_hint f exp
   (* The level of a universe that is no level, in the binders crossed to
      reach it; a numeral there is a natural number, not the level. *)
   | Coq_re_level (_, delta, t) ->
@@ -858,7 +911,8 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
      fprintf f "@[<hov 2>Error:@ %a@ is not of type Level@@n for any n@ (the level of@ %a)%a@]"
        (format_exp_in delta) t (format_exp_in delta) (Coq_a_univ t) hint ()
   | Coq_re_eval_infer (_, exp) ->
-     fprintf f "@[<hov 2>Error:@ %a@ has no inferable type@]" format_exp exp
+     fprintf f "@[<hov 2>Error:@ %a@ has no inferable type@]" format_exp exp;
+     format_elim_hint f exp
   | Coq_re_cycle ch ->
      fprintf f "@[<hov 2>Error: cyclic import:@ %a@]"
        pp_u (String.concat (" " ^ s_arrow ^ " ") (List.map string_of_upath ch))

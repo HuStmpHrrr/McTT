@@ -15,37 +15,37 @@ end
 open Bool export (tt; ff)
 
 def not (b : Bool) : Bool ≔
-  elim b return z . Bool | tt ⇒ ff | ff ⇒ tt end
+  elim b at z -> Bool | tt ⇒ ff | ff ⇒ tt end
 end
 
 def and (a : Bool) (b : Bool) : Bool ≔
-  elim a return z . Bool | tt ⇒ b | ff ⇒ ff end
+  elim a at z -> Bool | tt ⇒ b | ff ⇒ ff end
 end
 
 def or (a : Bool) (b : Bool) : Bool ≔
-  elim a return z . Bool | tt ⇒ tt | ff ⇒ b end
+  elim a at z -> Bool | tt ⇒ tt | ff ⇒ b end
 end
 
 (* Exclusive or: [xor a b] is [tt] when exactly one of [a] and [b] is. *)
 def xor (a : Bool) (b : Bool) : Bool ≔
-  elim a return z . Bool | tt ⇒ not b | ff ⇒ b end
+  elim a at z -> Bool | tt ⇒ not b | ff ⇒ b end
 end
 
 (* Boolean equality: [eqb a b] is [tt] when [a] and [b] are the same
    constructor. *)
 def eqb (a : Bool) (b : Bool) : Bool ≔
-  elim a return z . Bool | tt ⇒ b | ff ⇒ not b end
+  elim a at z -> Bool | tt ⇒ b | ff ⇒ not b end
 end
 
 (* The proposition that a boolean is [tt]: [IsTrue tt] is [⊤] and
    [IsTrue ff] is [⊥]. *)
 def IsTrue (b : Bool) : Type@0 ≔
-  elim b return z . Type@0 | tt ⇒ ⊤ | ff ⇒ ⊥ end
+  elim b at z -> Type@0 | tt ⇒ ⊤ | ff ⇒ ⊥ end
 end
 
 (* The proposition that a boolean is [ff]. *)
 def IsFalse (b : Bool) : Type@0 ≔
-  elim b return z . Type@0 | tt ⇒ ⊥ | ff ⇒ ⊤ end
+  elim b at z -> Type@0 | tt ⇒ ⊥ | ff ⇒ ⊤ end
 end
 
 (* The conditional, into a type of any level [u]. *)
@@ -53,7 +53,7 @@ module Cond (u : Level) where
 
 (* [if A b t e] is [t] when [b] is [tt], and [e] when it is [ff]. *)
 def if (A : Type@{u}) (b : Bool) (t : A) (e : A) : A ≔
-  elim b return z . A | tt ⇒ t | ff ⇒ e end
+  elim b at z -> A | tt ⇒ t | ff ⇒ e end
 end
 
 (* The conditional with delayed branches: [cond A b t e] is [t ⋆] when [b]
@@ -62,7 +62,7 @@ end
    [cond], since [if] would compute the recursive call in both cases. *)
 def cond (A : Type@{u}) (b : Bool) (t : ∀ (x : ⊤) → A) (e : ∀ (x : ⊤) → A) :
     A ≔
-  (elim b return z . (∀ (x : ⊤) → A) | tt ⇒ t | ff ⇒ e end) ⋆
+  (elim b at z -> (∀ (x : ⊤) → A) | tt ⇒ t | ff ⇒ e end) ⋆
 end
 
 end

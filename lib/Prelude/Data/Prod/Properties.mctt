@@ -32,7 +32,7 @@ end
 (* Surjective pairing: a pair is the pair of its projections. *)
 theorem pairEta : ∀ (p : AB) → Id AB (AB.pair (Op.fst p) (Op.snd p)) p ≔
   λ (p : AB) →
-    elim p return z . Id AB (AB.pair (Op.fst z) (Op.snd z)) z
+    elim p at (z : AB) -> Id AB (AB.pair (Op.fst z) (Op.snd z)) z
     | pair a b ⇒ idRefl AB (AB.pair a b)
     end
 end
@@ -44,14 +44,14 @@ module Swap where
 
 theorem swapSwap : ∀ (p : AB) → Id AB (P.swap u B A (Op.swap p)) p ≔
   λ (p : AB) →
-    elim p return z . Id AB (P.swap u B A (Op.swap z)) z
+    elim p at (z : AB) -> Id AB (P.swap u B A (Op.swap z)) z
     | pair a b ⇒ idRefl AB (AB.pair a b)
     end
 end
 
 theorem fstSwap : ∀ (p : AB) → Id B (P.fst u B A (Op.swap p)) (Op.snd p) ≔
   λ (p : AB) →
-    elim p return z . Id B (P.fst u B A (Op.swap z)) (Op.snd z)
+    elim p at (z : AB) -> Id B (P.fst u B A (Op.swap z)) (Op.snd z)
     | pair a b ⇒ idRefl B b
     end
 end
@@ -66,9 +66,9 @@ module Assoc where
 theorem unassocAssoc : ∀ (C : Type@{u}) (p : Prod u AB C) →
     Id (Prod u AB C) (Op.unassoc C (Op.assoc C p)) p ≔
   λ (C : Type@{u}) (p : Prod u AB C) →
-    elim p return z . Id (Prod u AB C) (Op.unassoc C (Op.assoc C z)) z
+    elim p at (z : Prod u AB C) -> Id (Prod u AB C) (Op.unassoc C (Op.assoc C z)) z
     | pair ab c ⇒
-        elim ab return y . Id (Prod u AB C)
+        elim ab at (y : AB) -> Id (Prod u AB C)
                              (Op.unassoc C (Op.assoc C (pair u AB C y c)))
                              (pair u AB C y c)
         | pair a b ⇒ idRefl (Prod u AB C) (pair u AB C (AB.pair a b) c)
@@ -79,10 +79,10 @@ end
 theorem assocUnassoc : ∀ (C : Type@{u}) (p : Prod u A (Prod u B C)) →
     Id (Prod u A (Prod u B C)) (Op.assoc C (Op.unassoc C p)) p ≔
   λ (C : Type@{u}) (p : Prod u A (Prod u B C)) →
-    elim p return z . Id (Prod u A (Prod u B C))
+    elim p at (z : Prod u A (Prod u B C)) -> Id (Prod u A (Prod u B C))
                         (Op.assoc C (Op.unassoc C z)) z
     | pair a bc ⇒
-        elim bc return y . Id (Prod u A (Prod u B C))
+        elim bc at (y : Prod u B C) -> Id (Prod u A (Prod u B C))
                              (Op.assoc C
                                 (Op.unassoc C (pair u A (Prod u B C) a y)))
                              (pair u A (Prod u B C) a y)
@@ -101,7 +101,7 @@ module Maps where
 theorem mapId : ∀ (p : AB) →
     Id AB (Op.map A B (λ (a : A) → a) (λ (b : B) → b) p) p ≔
   λ (p : AB) →
-    elim p return z . Id AB (Op.map A B (λ (a : A) → a) (λ (b : B) → b) z) z
+    elim p at (z : AB) -> Id AB (Op.map A B (λ (a : A) → a) (λ (b : B) → b) z) z
     | pair a b ⇒ idRefl AB (AB.pair a b)
     end
 end
@@ -114,7 +114,7 @@ theorem mapComp : ∀ (C : Type@{u}) (D : Type@{u}) (E : Type@{u})
   λ (C : Type@{u}) (D : Type@{u}) (E : Type@{u}) (F : Type@{u})
     (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
     (h : ∀ (c : C) → E) (k : ∀ (d : D) → F) (p : AB) →
-    elim p return z . Id (Prod u E F)
+    elim p at (z : AB) -> Id (Prod u E F)
                         (P.map u C D E F h k (Op.map C D f g z))
                         (Op.map E F (λ (a : A) → h (f a))
                            (λ (b : B) → k (g b)) z)
@@ -130,7 +130,7 @@ module Currying where
 theorem uncurryCurry : ∀ (C : Type@{u}) (f : ∀ (p : AB) → C) (p : AB) →
     Id C (Op.uncurry C (Op.curry C f) p) (f p) ≔
   λ (C : Type@{u}) (f : ∀ (p : AB) → C) (p : AB) →
-    elim p return z . Id C (Op.uncurry C (Op.curry C f) z) (f z)
+    elim p at (z : AB) -> Id C (Op.uncurry C (Op.curry C f) z) (f z)
     | pair a b ⇒ idRefl C (f (AB.pair a b))
     end
 end

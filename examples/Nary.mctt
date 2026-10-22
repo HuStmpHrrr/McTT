@@ -8,7 +8,7 @@ module Arity (A : Type@0) where
 
   (* [Fn n] takes [n] arguments of type [A] and returns an [A]. *)
   def Fn (n : ℕ) : Type@0 ≔
-    elim n return y . Type@0
+    elim n at y -> Type@0
     | zero ⇒ A
     | succ m, r ⇒ ∀ (a : A) → r
     end
@@ -16,7 +16,7 @@ module Arity (A : Type@0) where
 
   (* [fold op n acc] takes [n] more arguments, combining each into [acc]. *)
   def fold (op : ∀ (a : A) (b : A) → A) (n : ℕ) : ∀ (acc : A) → Fn n ≔
-    elim n return y . (∀ (acc : A) → Fn y)
+    elim n at y -> (∀ (acc : A) → Fn y)
     | zero ⇒ λ (acc : A) → acc
     | succ m, r ⇒ λ (acc : A) (a : A) → r (op acc a)
     end
@@ -25,7 +25,7 @@ module Arity (A : Type@0) where
 end
 
 def add (a : ℕ) (b : ℕ) : ℕ ≔
-  elim a return y . ℕ
+  elim a at y -> ℕ
   | zero ⇒ b
   | succ p, r ⇒ succ r
   end

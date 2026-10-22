@@ -41,7 +41,7 @@ end
 
 (* The quotient of [n] by [succ d]. *)
 def divSucc (n : ℕ) (d : ℕ) : ℕ ≔
-  elim n return y . ℕ
+  elim n at y -> ℕ
   | zero ⇒ 0
   | succ p, q ⇒ carry (modSucc p d) d q
   end
@@ -49,7 +49,7 @@ end
 
 (* The quotient of [n] by [k], which is [0] when [k] is [0]. *)
 def div (n : ℕ) (k : ℕ) : ℕ ≔
-  elim k return y . ℕ
+  elim k at y -> ℕ
   | zero ⇒ 0
   | succ d, r ⇒ divSucc n d
   end
@@ -57,7 +57,7 @@ end
 
 (* The remainder of [n] by [k], which is [n] when [k] is [0]. *)
 def mod (n : ℕ) (k : ℕ) : ℕ ≔
-  elim k return y . ℕ
+  elim k at y -> ℕ
   | zero ⇒ n
   | succ d, r ⇒ modSucc n d
   end
@@ -77,7 +77,7 @@ end
 (* Zero divided by any divisor, zero included, has quotient [0]. *)
 abstract def divZero : ∀ (k : ℕ) → Eq (div 0 k) 0 ≔
   λ (k : ℕ) →
-    elim k return x . Eq (div 0 x) 0
+    elim k at x -> Eq (div 0 x) 0
     | zero ⇒ ⋆
     | succ d, ih ⇒ ⋆
     end
@@ -86,7 +86,7 @@ end
 (* Zero divided by any divisor, zero included, has remainder [0]. *)
 abstract def modZero : ∀ (k : ℕ) → Eq (mod 0 k) 0 ≔
   λ (k : ℕ) →
-    elim k return x . Eq (mod 0 x) 0
+    elim k at x -> Eq (mod 0 x) 0
     | zero ⇒ ⋆
     | succ d, ih ⇒ ⋆
     end
@@ -104,7 +104,7 @@ module Bounds where
 abstract def divModSpec : ∀ (n : ℕ) (d : ℕ) →
     Eq (plus (mult (div n (succ d)) (succ d)) (mod n (succ d))) n ≔
   λ (n : ℕ) (d : ℕ) →
-    elim n return x .
+    elim n at x ->
       Eq (plus (mult (div x (succ d)) (succ d)) (mod x (succ d))) x
     | zero ⇒ ⋆
     | succ p, ih ⇒
@@ -138,7 +138,7 @@ end
    computes to [Le (mod n (succ d)) d]. *)
 abstract def modLt : ∀ (n : ℕ) (d : ℕ) → Lt (mod n (succ d)) (succ d) ≔
   λ (n : ℕ) (d : ℕ) →
-    elim n return x . Lt (mod x (succ d)) (succ d)
+    elim n at x -> Lt (mod x (succ d)) (succ d)
     | zero ⇒ ⋆
     | succ p, ih ⇒
         let r ≔ mod p (succ d)
@@ -154,7 +154,7 @@ end
 abstract def modSmall : ∀ (n : ℕ) (d : ℕ) (h : Lt n (succ d)) →
     Eq (mod n (succ d)) n ≔
   λ (n : ℕ) (d : ℕ) →
-    elim n return x . (∀ (h : Lt x (succ d)) → Eq (mod x (succ d)) x)
+    elim n at x -> (∀ (h : Lt x (succ d)) → Eq (mod x (succ d)) x)
     | zero ⇒ λ (h : ⊤) → ⋆
     | succ p, ih ⇒ λ (h : Le (succ p) d) →
         let hp : Eq (mod p (succ d)) p ≔
@@ -174,7 +174,7 @@ end
 abstract def divSmall : ∀ (n : ℕ) (d : ℕ) (h : Lt n (succ d)) →
     Eq (div n (succ d)) 0 ≔
   λ (n : ℕ) (d : ℕ) →
-    elim n return x . (∀ (h : Lt x (succ d)) → Eq (div x (succ d)) 0)
+    elim n at x -> (∀ (h : Lt x (succ d)) → Eq (div x (succ d)) 0)
     | zero ⇒ λ (h : ⊤) → ⋆
     | succ p, ih ⇒ λ (h : Le (succ p) d) →
         let hp : Le p d ≔ leTrans p (succ p) d (leSucc p) h;
@@ -256,7 +256,7 @@ end
 abstract def modPlusMult : ∀ (d : ℕ) (t : ℕ) (y : ℕ) →
     Eq (mod (plus (mult t (succ d)) y) (succ d)) (mod y (succ d)) ≔
   λ (d : ℕ) (t : ℕ) (y : ℕ) →
-    elim t return x .
+    elim t at x ->
       Eq (mod (plus (mult x (succ d)) y) (succ d)) (mod y (succ d))
     | zero ⇒ refl (mod y (succ d))
     | succ p, ih ⇒
@@ -282,7 +282,7 @@ module One where
 (* Division by one: the remainder is [0]. *)
 abstract def modOne : ∀ (n : ℕ) → Eq (mod n 1) 0 ≔
   λ (n : ℕ) →
-    elim n return x . Eq (mod x 1) 0
+    elim n at x -> Eq (mod x 1) 0
     | zero ⇒ ⋆
     | succ p, ih ⇒
         transport (λ (x : ℕ) → Eq (wrap x 0) 0) 0 (mod p 1)

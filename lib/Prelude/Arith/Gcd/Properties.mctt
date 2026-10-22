@@ -36,14 +36,14 @@ private module Fuel where
 def divides : ∀ (f : ℕ) (a : ℕ) (b : ℕ) (h : Lt b f) →
     And (Divides (gcdFuel f a b) a) (Divides (gcdFuel f a b) b) ≔
   λ (f : ℕ) →
-    elim f return x . (∀ (a : ℕ) (b : ℕ) (h : Lt b x) →
+    elim f at x -> (∀ (a : ℕ) (b : ℕ) (h : Lt b x) →
                          And (Divides (gcdFuel x a b) a)
                              (Divides (gcdFuel x a b) b))
     | zero ⇒ λ (a : ℕ) (b : ℕ) (h : ⊥) →
         Neg.absurd 1l
           (And (Divides (gcdFuel 0 a b) a) (Divides (gcdFuel 0 a b) b)) h
     | succ p, ih ⇒ λ (a : ℕ) (b : ℕ) →
-        elim b return z . (∀ (h : Lt z (succ p)) →
+        elim b at z -> (∀ (h : Lt z (succ p)) →
                              And (Divides (gcdFuel (succ p) a z) a)
                                  (Divides (gcdFuel (succ p) a z) z))
         | zero ⇒ λ (h : ⊤) →
@@ -73,13 +73,13 @@ end
 abstract def greatest : ∀ (k : ℕ) (f : ℕ) (a : ℕ) (b : ℕ) (h : Lt b f)
     (ha : Divides k a) (hb : Divides k b) → Divides k (gcdFuel f a b) ≔
   λ (k : ℕ) (f : ℕ) →
-    elim f return x . (∀ (a : ℕ) (b : ℕ) (h : Lt b x)
+    elim f at x -> (∀ (a : ℕ) (b : ℕ) (h : Lt b x)
                          (ha : Divides k a) (hb : Divides k b) →
                          Divides k (gcdFuel x a b))
     | zero ⇒ λ (a : ℕ) (b : ℕ) (h : ⊥) (ha : Divides k a) (hb : Divides k b) →
         absurd (Divides k (gcdFuel 0 a b)) h
     | succ p, ih ⇒ λ (a : ℕ) (b : ℕ) →
-        elim b return z . (∀ (h : Lt z (succ p)) (ha : Divides k a)
+        elim b at z -> (∀ (h : Lt z (succ p)) (ha : Divides k a)
                              (hb : Divides k z) →
                              Divides k (gcdFuel (succ p) a z))
         | zero ⇒ λ (h : ⊤) (ha : Divides k a) (hb : Divides k 0) → ha
@@ -135,19 +135,19 @@ end
 abstract def gcdFuelEnough : ∀ (f : ℕ) (g : ℕ) (a : ℕ) (b : ℕ)
     (hf : Lt b f) (hg : Lt b g) → Eq (gcdFuel f a b) (gcdFuel g a b) ≔
   λ (f : ℕ) →
-    elim f return x . (∀ (g : ℕ) (a : ℕ) (b : ℕ) (hf : Lt b x)
+    elim f at x -> (∀ (g : ℕ) (a : ℕ) (b : ℕ) (hf : Lt b x)
                          (hg : Lt b g) →
                          Eq (gcdFuel x a b) (gcdFuel g a b))
     | zero ⇒ λ (g : ℕ) (a : ℕ) (b : ℕ) (hf : ⊥) (hg : Lt b g) →
         absurd (Eq (gcdFuel 0 a b) (gcdFuel g a b)) hf
     | succ p, ih ⇒ λ (g : ℕ) →
-        elim g return y . (∀ (a : ℕ) (b : ℕ) (hf : Lt b (succ p))
+        elim g at y -> (∀ (a : ℕ) (b : ℕ) (hf : Lt b (succ p))
                              (hg : Lt b y) →
                              Eq (gcdFuel (succ p) a b) (gcdFuel y a b))
         | zero ⇒ λ (a : ℕ) (b : ℕ) (hf : Lt b (succ p)) (hg : ⊥) →
             absurd (Eq (gcdFuel (succ p) a b) (gcdFuel 0 a b)) hg
         | succ q, t ⇒ λ (a : ℕ) (b : ℕ) →
-            elim b return z . (∀ (hf : Lt z (succ p)) (hg : Lt z (succ q)) →
+            elim b at z -> (∀ (hf : Lt z (succ p)) (hg : Lt z (succ q)) →
                                  Eq (gcdFuel (succ p) a z)
                                     (gcdFuel (succ q) a z))
             | zero ⇒ λ (hf : ⊤) (hg : ⊤) → refl a
@@ -168,7 +168,7 @@ end
 private abstract def gcdSwapSmall : ∀ (a : ℕ) (b : ℕ) (h : Lt a b) →
     Eq (gcd a b) (gcd b a) ≔
   λ (a : ℕ) (b : ℕ) →
-    elim b return x . (∀ (h : Lt a x) → Eq (gcd a x) (gcd x a))
+    elim b at x -> (∀ (h : Lt a x) → Eq (gcd a x) (gcd x a))
     | zero ⇒ λ (h : Lt a 0) → absurd (Eq (gcd a 0) (gcd 0 a)) h
     | succ d, ih ⇒ λ (h : Lt a (succ d)) →
         let e ≔ succ d;
@@ -187,7 +187,7 @@ module Values where
 (* The gcd with [0] on the left is the other number. *)
 abstract def gcdZeroLeft : ∀ (b : ℕ) → Eq (gcd 0 b) b ≔
   λ (b : ℕ) →
-    elim b return x . Eq (gcd 0 x) x
+    elim b at x -> Eq (gcd 0 x) x
     | zero ⇒ ⋆
     | succ d, ih ⇒ refl (succ d)
     end
@@ -201,7 +201,7 @@ end
    [mod n n], which is [0]. *)
 abstract def gcdSelf : ∀ (n : ℕ) → Eq (gcd n n) n ≔
   λ (n : ℕ) →
-    elim n return x . Eq (gcd x x) x
+    elim n at x -> Eq (gcd x x) x
     | zero ⇒ ⋆
     | succ d, ih ⇒
         cong (λ (y : ℕ) → gcdFuel (succ d) (succ d) y)

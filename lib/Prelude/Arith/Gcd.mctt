@@ -14,10 +14,10 @@ import Prelude›Arith›Div use (mod)
    positive fuel.  Without fuel it answers [a]; fuel above [b] is enough, see
    [Prelude›Arith›Gcd›Properties.gcdFuelEnough]. *)
 def gcdFuel (fuel : ℕ) : ∀ (a : ℕ) (b : ℕ) → ℕ ≔
-  elim fuel return y . (∀ (a : ℕ) (b : ℕ) → ℕ)
+  elim fuel at y -> (∀ (a : ℕ) (b : ℕ) → ℕ)
   | zero ⇒ λ (a : ℕ) (b : ℕ) → a
   | succ f, r ⇒ λ (a : ℕ) (b : ℕ) →
-      elim b return z . ℕ
+      elim b at z -> ℕ
       | zero ⇒ a
       | succ d, s ⇒ r (succ d) (mod a (succ d))
       end

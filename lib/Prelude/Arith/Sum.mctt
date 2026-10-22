@@ -16,7 +16,7 @@ import Prelude›Function›Combinators use (Generic)
 (* [sumTo f n] is [f (n - 1) + ... + f 0]: [sumTo f 0] is [0] and
    [sumTo f (succ p)] is [plus (f p) (sumTo f p)]. *)
 def sumTo (f : ∀ (i : ℕ) → ℕ) (n : ℕ) : ℕ ≔
-  elim n return y . ℕ
+  elim n at y -> ℕ
   | zero ⇒ 0
   | succ p, r ⇒ plus (f p) r
   end
@@ -39,7 +39,7 @@ theorem sumToExt : ∀ (f : ∀ (i : ℕ) → ℕ) (g : ∀ (i : ℕ) → ℕ)
     (h : ∀ (i : ℕ) → Eq (f i) (g i)) (n : ℕ) → Eq (sumTo f n) (sumTo g n) ≔
   λ (f : ∀ (i : ℕ) → ℕ) (g : ∀ (i : ℕ) → ℕ)
     (h : ∀ (i : ℕ) → Eq (f i) (g i)) (n : ℕ) →
-    elim n return x . Eq (sumTo f x) (sumTo g x)
+    elim n at x -> Eq (sumTo f x) (sumTo g x)
     | zero ⇒ ⋆
     | succ p, ih ⇒
         let sf ≔ sumTo f p;
@@ -56,7 +56,7 @@ end
 theorem sumToShift : ∀ (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
     Eq (sumTo f (succ n)) (plus (f 0) (sumTo (λ (i : ℕ) → f (succ i)) n)) ≔
   λ (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
-    elim n return x . Eq (sumTo f (succ x))
+    elim n at x -> Eq (sumTo f (succ x))
                          (plus (f 0) (sumTo (λ (i : ℕ) → f (succ i)) x))
     | zero ⇒ refl (plus (f 0) 0)
     | succ p, ih ⇒
@@ -79,7 +79,7 @@ module Linear where
 theorem sumToPlus : ∀ (f : ∀ (i : ℕ) → ℕ) (g : ∀ (i : ℕ) → ℕ) (n : ℕ) →
     Eq (sumTo (λ (i : ℕ) → plus (f i) (g i)) n) (plus (sumTo f n) (sumTo g n)) ≔
   λ (f : ∀ (i : ℕ) → ℕ) (g : ∀ (i : ℕ) → ℕ) (n : ℕ) →
-    elim n return x . Eq (sumTo (λ (i : ℕ) → plus (f i) (g i)) x)
+    elim n at x -> Eq (sumTo (λ (i : ℕ) → plus (f i) (g i)) x)
                          (plus (sumTo f x) (sumTo g x))
     | zero ⇒ ⋆
     | succ p, ih ⇒
@@ -100,7 +100,7 @@ end
 theorem sumToScale : ∀ (c : ℕ) (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
     Eq (sumTo (λ (i : ℕ) → mult c (f i)) n) (mult c (sumTo f n)) ≔
   λ (c : ℕ) (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
-    elim n return x . Eq (sumTo (λ (i : ℕ) → mult c (f i)) x)
+    elim n at x -> Eq (sumTo (λ (i : ℕ) → mult c (f i)) x)
                          (mult c (sumTo f x))
     | zero ⇒ sym (mult c 0) 0 (multZeroRight c)
     | succ p, ih ⇒
@@ -120,7 +120,7 @@ end
 theorem sumToConst : ∀ (c : ℕ) (n : ℕ) →
     Eq (sumTo (Generic.const 0l ℕ ℕ c) n) (mult n c) ≔
   λ (c : ℕ) (n : ℕ) →
-    elim n return x . Eq (sumTo (Generic.const 0l ℕ ℕ c) x) (mult x c)
+    elim n at x -> Eq (sumTo (Generic.const 0l ℕ ℕ c) x) (mult x c)
     | zero ⇒ ⋆
     | succ p, ih ⇒
         cong (λ (y : ℕ) → plus c y)
@@ -139,7 +139,7 @@ module Closed where
 theorem gauss : ∀ (n : ℕ) →
     Eq (mult 2 (sumTo (Generic.id 0l ℕ) (succ n))) (mult n (succ n)) ≔
   λ (n : ℕ) →
-    elim n return x . Eq (mult 2 (sumTo (Generic.id 0l ℕ) (succ x)))
+    elim n at x -> Eq (mult 2 (sumTo (Generic.id 0l ℕ) (succ x)))
                          (mult x (succ x))
     | zero ⇒ ⋆
     | succ p, ih ⇒
@@ -167,7 +167,7 @@ end
 theorem sumOdd : ∀ (n : ℕ) →
     Eq (sumTo (λ (i : ℕ) → succ (mult 2 i)) n) (mult n n) ≔
   λ (n : ℕ) →
-    elim n return x . Eq (sumTo (λ (i : ℕ) → succ (mult 2 i)) x) (mult x x)
+    elim n at x -> Eq (sumTo (λ (i : ℕ) → succ (mult 2 i)) x) (mult x x)
     | zero ⇒ ⋆
     | succ p, ih ⇒
         let s ≔ sumTo (λ (i : ℕ) → succ (mult 2 i)) p;

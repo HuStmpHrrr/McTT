@@ -5,7 +5,7 @@ import Prelude›Builtin›Nat use (zero; succ)
 
 eval let Nary : ∀ (n : ℕ) → Type@0 ≔
        λ (n : ℕ)
-         → elim n return y . Type@0
+         → elim n at y -> Type@0
            | zero ⇒ ℕ
            | succ m, r ⇒ ∀ (a : ℕ) → r
            end;
@@ -15,7 +15,7 @@ eval let Nary : ∀ (n : ℕ) → Type@0 ≔
 
      appNary : ∀ (n : ℕ) (f : Nary (succ n)) (arg : ℕ) → Nary n ≔
        λ (n : ℕ)
-         (f : elim succ n return y . Type@0
+         (f : elim succ n at y -> Type@0
               | zero ⇒ ℕ
               | succ m, r ⇒ ∀ (a : ℕ) → r
               end)
@@ -28,7 +28,7 @@ eval let Nary : ∀ (n : ℕ) → Type@0 ≔
        let add : ∀ (a : ℕ) (b : ℕ) → ℕ ≔
              λ (a : ℕ)
                (b : ℕ)
-               → elim a return y . ℕ
+               → elim a at y -> ℕ
                  | zero ⇒ b
                  | succ m, r ⇒ succ r
                  end
@@ -37,7 +37,7 @@ eval let Nary : ∀ (n : ℕ) → Type@0 ≔
        end
 
   in
-    ((elim n return y . (∀ (g : Nary y) → ℕ)
+    ((elim n at y -> (∀ (g : Nary y) → ℕ)
          | zero ⇒ toNat
          | succ m, r ⇒ λ (g : Nary (succ m)) → r (appNary m g (succ m))
          end) f)

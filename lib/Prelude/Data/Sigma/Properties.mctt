@@ -24,7 +24,7 @@ end
 (* Surjective pairing: a pair is the pair of its projections. *)
 theorem pairEta : ∀ (p : Sigma) → Id Sigma (pair (fst p) (snd p)) p ≔
   λ (p : Sigma) →
-    elim p return z . Id Sigma (pair (fst z) (snd z)) z
+    elim p at (z : Sigma) -> Id Sigma (pair (fst z) (snd z)) z
     | pair a b ⇒ idRefl Sigma (pair a b)
     end
 end

@@ -11,7 +11,7 @@ end
 builtin natural ≔ U
 
 def plus (n : U) (m : U) : U ≔
-  elim n return x . U
+  elim n at x -> U
   | z ⇒ m
   | s p, r ⇒ U.s r
   end

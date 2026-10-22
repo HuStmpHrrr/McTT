@@ -55,7 +55,7 @@ theorem iteratePlus : ∀ (m : ℕ) (n : ℕ) (a : ℕ) →
     Eq (Generic.iterate 0l ℕ f (plus m n) a)
        (Generic.iterate 0l ℕ f m (Generic.iterate 0l ℕ f n a)) ≔
   λ (m : ℕ) (n : ℕ) (a : ℕ) →
-    elim m return x . Eq (Generic.iterate 0l ℕ f (plus x n) a)
+    elim m at x -> Eq (Generic.iterate 0l ℕ f (plus x n) a)
                          (Generic.iterate 0l ℕ f x (Generic.iterate 0l ℕ f n a))
     | zero ⇒ refl (Generic.iterate 0l ℕ f n a)
     | succ p, ih ⇒
@@ -68,7 +68,7 @@ end
 theorem iterateSucc : ∀ (n : ℕ) (a : ℕ) →
     Eq (Generic.iterate 0l ℕ f (succ n) a) (Generic.iterate 0l ℕ f n (f a)) ≔
   λ (n : ℕ) (a : ℕ) →
-    elim n return x . Eq (Generic.iterate 0l ℕ f (succ x) a)
+    elim n at x -> Eq (Generic.iterate 0l ℕ f (succ x) a)
                          (Generic.iterate 0l ℕ f x (f a))
     | zero ⇒ refl (f a)
     | succ p, ih ⇒

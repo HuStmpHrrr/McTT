@@ -26,31 +26,31 @@ end
 open Int use (pos; negsuc)
 
 def neg (i : Int) : Int ≔
-  elim i return z . Int
-  | pos n ⇒ elim n return y . Int | zero ⇒ pos 0 | succ k, r ⇒ negsuc k end
+  elim i at z -> Int
+  | pos n ⇒ elim n at y -> Int | zero ⇒ pos 0 | succ k, r ⇒ negsuc k end
   | negsuc n ⇒ pos (succ n)
   end
 end
 
 (* The integer [m - n]. *)
 def diff (m : ℕ) : ∀ (n : ℕ) → Int ≔
-  elim m return x . (∀ (n : ℕ) → Int)
+  elim m at x -> (∀ (n : ℕ) → Int)
   | zero ⇒ λ (n : ℕ) →
-      elim n return y . Int | zero ⇒ pos 0 | succ q, s ⇒ negsuc q end
+      elim n at y -> Int | zero ⇒ pos 0 | succ q, s ⇒ negsuc q end
   | succ p, r ⇒ λ (n : ℕ) →
-      elim n return y . Int | zero ⇒ pos (succ p) | succ q, s ⇒ r q end
+      elim n at y -> Int | zero ⇒ pos (succ p) | succ q, s ⇒ r q end
   end
 end
 
 def add (i : Int) (j : Int) : Int ≔
-  elim i return z . Int
+  elim i at z -> Int
   | pos m ⇒
-      elim j return w . Int
+      elim j at w -> Int
       | pos n ⇒ pos (plus m n)
       | negsuc n ⇒ diff m (succ n)
       end
   | negsuc m ⇒
-      elim j return w . Int
+      elim j at w -> Int
       | pos n ⇒ diff n (succ m)
       | negsuc n ⇒ negsuc (succ (plus m n))
       end
@@ -64,20 +64,20 @@ def succInt (i : Int) : Int ≔ add (pos 1) i end
 def predInt (i : Int) : Int ≔ add (negsuc 0) i end
 
 def abs (i : Int) : ℕ ≔
-  elim i return z . ℕ | pos n ⇒ n | negsuc n ⇒ succ n end
+  elim i at z -> ℕ | pos n ⇒ n | negsuc n ⇒ succ n end
 end
 
 (* The sign; [0] counts as [positive]. *)
 def sign (i : Int) : Sign ≔
-  elim i return z . Sign | pos n ⇒ positive | negsuc n ⇒ negative end
+  elim i at z -> Sign | pos n ⇒ positive | negsuc n ⇒ negative end
 end
 
 (* The integer of sign [s] and absolute value [n]; [0] has both signs. *)
 def signed (s : Sign) (n : ℕ) : Int ≔
-  elim n return y . Int
+  elim n at y -> Int
   | zero ⇒ pos 0
   | succ k, r ⇒
-      elim s return z . Int | negative ⇒ negsuc k | positive ⇒ pos (succ k) end
+      elim s at z -> Int | negative ⇒ negsuc k | positive ⇒ pos (succ k) end
   end
 end
 
