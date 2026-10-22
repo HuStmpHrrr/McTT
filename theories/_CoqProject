@@ -188,6 +188,10 @@
 ./Extraction/IndDecl.v
 ./Extraction/MemberType.v
 ./Extraction/MemberOrder.v
+./Extraction/ViewsSearch.v
+./Extraction/ViewsReach.v
+./Extraction/ViewsCluster.v
+./Extraction/ViewsFound.v
 ./Extraction/Privacy.v
 ./Extraction/NbE.v
 ./Extraction/PseudoMonadic.v
