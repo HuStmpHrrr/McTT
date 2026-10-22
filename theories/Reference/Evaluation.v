@@ -67,13 +67,31 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
   `( eval_exp_order Θ Ξ A p ->
      eval_exp_order Θ Ξ (Π A B) p )
 | eeo_indty :
-  `( eval_exp_order Θ Ξ (a_ind pq) p )
+  `( eval_exp_order Θ Ξ (a_ind pq k) p )
+(** A constructor that is a value of its own before any argument *)
 | eeo_con :
-  `( eval_exp_order Θ Ξ (a_con pq c) p )
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D k = Some Mk ->
+     im_starts D Mk = true ->
+     eval_exp_order Θ Ξ (a_con pq k c) p )
+(** A constructor of a view of a group with no uniform parameters: the
+    view's arguments are evaluated *)
+| eeo_con_view :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_view qc k Is vm ->
+     ind_nu D = 0 ->
+     eval_exps_order Θ Ξ Is (env_args nil nil) ->
+     eval_exp_order Θ Ξ (a_con pq j c) p )
+(** The eliminator: its uniform parameters, its scrutinee, whose value
+    names the group it eliminates by, and the elimination. *)
 | eeo_elim :
-  `( eval_exp_order Θ Ξ M p ->
-     (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> eval_elim_order Θ Ξ p nm A Bs m) ->
-     eval_exp_order Θ Ξ (a_elim nm A Bs M) p )
+  `( eval_exps_order Θ Ξ Us p ->
+     eval_exp_order Θ Ξ M p ->
+     (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> exists pq, elim_grp_of oq m = Some pq) ->
+     (forall ups m pq, ⟦ Us ⟧* Θ ⍮ Ξ ⍮ p ↘ ups -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> elim_grp_of oq m = Some pq ->
+        eval_elim_order Θ Ξ p pq ups Bks j m) ->
+     eval_exp_order Θ Ξ (a_elim oq Us j Bks M) p )
 | eeo_fn :
   `( eval_exp_order Θ Ξ (λ A M) p )
 | eeo_app :
@@ -98,58 +116,102 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
         ⟦ args ⟧* Θ ⍮ Ξ ⍮ p ↘ ns -> eval_apps_order Θ Ξ f ns) ->
      eval_exp_order Θ Ξ (a_mem H x) p )
 
-with eval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> domain -> Prop :=
+(** The eliminator of the group at [pq] at its member [j], on a value, as
+    [eval_elim] reads it. *)
+with eval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> nat -> domain -> Prop :=
+(** On a saturated constructor: the recursive results, then the branch *)
 | eelo_con :
   `( ind_lookup Θ Ξ pq = Some D ->
-     ind_con D c = Some gs ->
-     List.length vs = (ind_np D + List.length gs)%nat ->
-     brs_lookup Bs c = Some (n, B) ->
-     n = (ind_nn D + List.length gs + cargs_nrec gs)%nat ->
-     eval_ihs_order Θ Ξ p nm A Bs gs (skipn (ind_np D) vs) ->
-     (forall ihs, ⟦ihs skipn (ind_np D) vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ ihs ->
-        eval_exp_order Θ Ξ B (env_args p (skipn (ind_nu D) (firstn (ind_np D) vs) ++ skipn (ind_np D) vs ++ ihs))) ->
-     eval_elim_order Θ Ξ p nm A Bs (d_con pq c vs) )
+     ind_member D j = Some Mj ->
+     im_ref pq j Mj = (pc, k) ->
+     ind_lookup Θ Ξ pc = Some Dq ->
+     ind_member Dq k = Some Mk ->
+     ind_con Mj c = Some gs ->
+     List.length vs = (im_np Dq Mk + List.length gs)%nat ->
+     List.nth_error Bks j = Some b ->
+     brs_lookup (eb_brs b) c = Some (n, B) ->
+     n = (im_nn Mk + List.length gs + cargs_nrec gs)%nat ->
+     eval_ihs_order Θ Ξ p pq ups Bks gs (skipn (im_np Dq Mk) vs) ->
+     (forall ihs, ⟦ihs skipn (im_np Dq Mk) vs of gs under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ ihs ->
+        eval_exp_order Θ Ξ B (env_args p (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs) ++ skipn (im_np Dq Mk) vs ++ ihs))) ->
+     eval_elim_order Θ Ξ p pq ups Bks j (d_con pc k c vs) )
+(** On a neutral: the motive's instance *)
 | eelo_neut :
   `( ind_lookup Θ Ξ pq = Some D ->
-     List.length as' = ind_np D ->
-     nm = S (ind_nn D) ->
-     eval_exp_order Θ Ξ A (env_args p (skipn (ind_nu D) as' ++ ⇑ (d_ind pq as') m :: nil)) ->
-     eval_elim_order Θ Ξ p nm A Bs (⇑ (d_ind pq as') m) )
+     ind_member D j = Some Mj ->
+     im_ref pq j Mj = (pc, k) ->
+     ind_lookup Θ Ξ pc = Some Dq ->
+     ind_member Dq k = Some Mk ->
+     List.length as' = im_np Dq Mk ->
+     List.nth_error Bks j = Some b ->
+     eb_nm b = S (im_nn Mk) ->
+     eval_exp_order Θ Ξ (eb_motive b) (env_args p (skipn (ind_nu Dq) as' ++ ⇑ (d_ind pc k as') m :: nil)) ->
+     eval_elim_order Θ Ξ p pq ups Bks j (⇑ (d_ind pc k as') m) )
 
-with eval_ihs_order (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> list carg -> list domain -> Prop :=
+(** The recursive results of the arguments [vs] of kinds [gs] *)
+with eval_ihs_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> list carg -> list domain -> Prop :=
+(** No argument *)
 | eiho_nil :
-  `( eval_ihs_order Θ Ξ p nm A Bs nil nil )
+  `( eval_ihs_order Θ Ξ p pq ups Bks nil nil )
+(** A non-recursive argument *)
 | eiho_arg :
-  `( eval_ihs_order Θ Ξ p nm A Bs gs vs ->
-     eval_ihs_order Θ Ξ p nm A Bs (ca_arg T :: gs) (v :: vs) )
+  `( eval_ihs_order Θ Ξ p pq ups Bks gs vs ->
+     eval_ihs_order Θ Ξ p pq ups Bks (ca_arg T :: gs) (v :: vs) )
+(** A recursive argument: its result, then the rest *)
 | eiho_rec :
-  `( eval_ih_order Θ Ξ p nm A Bs t v ->
-     eval_ihs_order Θ Ξ p nm A Bs gs vs ->
-     eval_ihs_order Θ Ξ p nm A Bs (ca_rec t :: gs) (v :: vs) )
+  `( eval_ih_order Θ Ξ p pq ups Bks t v ->
+     eval_ihs_order Θ Ξ p pq ups Bks gs vs ->
+     eval_ihs_order Θ Ξ p pq ups Bks (ca_rec t :: gs) (v :: vs) )
 
-with eval_ih_order (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> ptyp -> domain -> Prop :=
+(** The recursive result of an argument of a shape *)
+with eval_ih_order (Θ : gdeps) (Ξ : gstack) : env -> qname -> list domain -> list eblock -> ptyp -> domain -> Prop :=
+(** At the end: the eliminator at the member *)
 | eio_self :
-  `( eval_elim_order Θ Ξ p nm A Bs v ->
-     eval_ih_order Θ Ξ p nm A Bs (pt_self k Ps) v )
+  `( eval_elim_order Θ Ξ p pq ups Bks j v ->
+     eval_ih_order Θ Ξ p pq ups Bks (pt_self j Ps) v )
+(** At a function shape: a closure *)
 | eio_pi :
-  `( eval_ih_order Θ Ξ p nm A Bs (pt_pi B t) v )
+  `( eval_ih_order Θ Ξ p pq ups Bks (pt_pi B t) v )
 
+(** The member a member of a group stands for, as [eval_mref] reads it *)
+with eval_mref_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> nat -> Prop :=
+(** A declared member *)
+| emro_decl :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_decl pm ->
+     eval_mref_order Θ Ξ pq ups j )
+(** A view: the view's arguments at the uniform parameters *)
+| emro_view :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_view qc k Is vm ->
+     eval_exps_order Θ Ξ Is (env_args nil ups) ->
+     eval_mref_order Θ Ξ pq ups j )
+
+(** The type of an argument of a shape *)
 with eval_shty_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> Prop :=
+(** At the end: the parameters, and the member stood for *)
 | esto_self :
   `( eval_exps_order Θ Ξ Ps p ->
-     eval_shty_order Θ Ξ pq ups p (pt_self k Ps) )
+     eval_mref_order Θ Ξ pq ups j ->
+     eval_shty_order Θ Ξ pq ups p (pt_self j Ps) )
+(** At a domain *)
 | esto_pi :
   `( eval_exp_order Θ Ξ B p ->
      eval_shty_order Θ Ξ pq ups p (pt_pi B t) )
 
-with eval_ihty_order (Θ : gdeps) (Ξ : gstack) : env -> exp -> env -> ptyp -> domain -> Prop :=
+(** The type of the recursive result of an argument of a shape *)
+with eval_ihty_order (Θ : gdeps) (Ξ : gstack) : env -> list exp -> env -> ptyp -> domain -> Prop :=
+(** At the end: the parameters, then the member's motive *)
 | eityo_self :
   `( eval_exps_order Θ Ξ Ps p ->
-     (forall bs, ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ p ↘ bs -> eval_exp_order Θ Ξ A (env_args pm (bs ++ v :: nil))) ->
-     eval_ihty_order Θ Ξ pm A p (pt_self k Ps) v )
+     (forall bs, ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ p ↘ bs -> eval_exp_order Θ Ξ (List.nth j As a_True) (env_args pm (bs ++ v :: nil))) ->
+     eval_ihty_order Θ Ξ pm As p (pt_self j Ps) v )
+(** At a domain *)
 | eityo_pi :
   `( eval_exp_order Θ Ξ B p ->
-     eval_ihty_order Θ Ξ pm A p (pt_pi B t) v )
+     eval_ihty_order Θ Ξ pm As p (pt_pi B t) v )
 
 with eval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
 | eao_fn :
@@ -160,24 +222,43 @@ with eval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
      eval_app_order Θ Ξ ⇑ (Πᵈ a p B) m n )
 | eao_indty :
   `( ind_lookup Θ Ξ pq = Some D ->
-     List.length as' < ind_np D ->
-     eval_app_order Θ Ξ (d_ind pq as') n )
+     ind_member D k = Some Mk ->
+     List.length as' < im_np D Mk ->
+     eval_app_order Θ Ξ (d_ind pq k as') n )
+(** A constructor of a declared member *)
 | eao_con :
   `( ind_lookup Θ Ξ pq = Some D ->
-     ind_con D c = Some gs ->
-     List.length vs < (ind_np D + List.length gs)%nat ->
-     eval_app_order Θ Ξ (d_con pq c vs) n )
+     ind_member D k = Some Mk ->
+     im_head Mk = mh_decl pm ->
+     ind_con Mk c = Some gs ->
+     List.length vs < (im_np D Mk + List.length gs)%nat ->
+     eval_app_order Θ Ξ (d_con pq k c vs) n )
+(** A constructor of a view, before its last uniform parameter *)
+| eao_con_view :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_view qc k Is vm ->
+     S (List.length vs) < ind_nu D ->
+     eval_app_order Θ Ξ (d_con pq j c vs) n )
+(** At its last uniform parameter: the view's arguments are evaluated *)
+| eao_con_view_ups :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_view qc k Is vm ->
+     S (List.length vs) = ind_nu D ->
+     eval_exps_order Θ Ξ Is (env_args nil (vs ++ n :: nil)) ->
+     eval_app_order Θ Ξ (d_con pq j c vs) n )
 | eao_ihfn :
   `( eval_app_order Θ Ξ f n ->
-     (forall fn, $| f & n | Θ ⍮ Ξ ↘ fn -> eval_ih_order Θ Ξ p nm A Bs t fn) ->
-     eval_app_order Θ Ξ (d_ihfn p nm A Bs t f) n )
+     (forall fn, $| f & n | Θ ⍮ Ξ ↘ fn -> eval_ih_order Θ Ξ p pq ups Bks t fn) ->
+     eval_app_order Θ Ξ (d_ihfn p Bks pq ups t f) n )
 | eao_shfam :
   `( eval_shty_order Θ Ξ pq ups (p ↦ n) t ->
      eval_app_order Θ Ξ (d_shfam pq ups p t) n )
 | eao_ihfam :
   `( eval_app_order Θ Ξ f n ->
-     (forall fn, $| f & n | Θ ⍮ Ξ ↘ fn -> eval_ihty_order Θ Ξ pm A (p ↦ n) t fn) ->
-     eval_app_order Θ Ξ (d_ihfam pm A p t f) n )
+     (forall fn, $| f & n | Θ ⍮ Ξ ↘ fn -> eval_ihty_order Θ Ξ pm As (p ↦ n) t fn) ->
+     eval_app_order Θ Ξ (d_ihfam pm As p t f) n )
 | eao_member :
   `( eval_appm_order Θ Ξ h n ->
      (forall h', $ᵐ| h & n | Θ ⍮ Ξ ↘ h' -> eval_selc_order Θ Ξ h' ch) ->
@@ -263,14 +344,14 @@ with eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
      eval_sel_order Θ Ξ (dm_global pq args) x )
 | eslo_global_ind :
   `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
-     ind_lookup Θ Ξ (qname_app pq (x :: nil)) = Some D ->
-     eval_apps_order Θ Ξ (d_ind (qname_app pq (x :: nil)) nil) args ->
+     ind_mlookup Θ Ξ (qname_app pq (x :: nil)) = Some (pg, k, D) ->
+     eval_apps_order Θ Ξ (d_ind pg k nil) args ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
 | eslo_global_ind_alias :
   `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
-     ind_alias_lookup Θ Ξ (qname_app pq (x :: nil)) = Some (Δ, pt, Ns) ->
-     eval_exp_order Θ Ξ (ctx_fn Δ (apps (a_ind pt) Ns)) nil ->
-     (forall f, ⟦ ctx_fn Δ (apps (a_ind pt) Ns) ⟧ Θ ⍮ Ξ ⍮ nil ↘ f -> eval_apps_order Θ Ξ f args) ->
+     ind_alias_lookup Θ Ξ (qname_app pq (x :: nil)) = Some (Δ, pm, pt, k, Ns) ->
+     eval_exp_order Θ Ξ (ctx_fn Δ (apps (a_ind pt k) Ns)) nil ->
+     (forall f, ⟦ ctx_fn Δ (apps (a_ind pt k) Ns) ⟧ Θ ⍮ Ξ ⍮ nil ↘ f -> eval_apps_order Θ Ξ f args) ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
 | eslo_unsat :
   `( eval_sel_order Θ Ξ (dm_local (e :: Δ) D p) x )
@@ -333,7 +414,7 @@ with eval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
      eval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm (gu_mk Δy Dy))) ).
 
 #[local]
-Hint Constructors eval_exp_order eval_elim_order eval_ihs_order eval_ih_order eval_shty_order eval_ihty_order eval_app_order eval_exps_order eval_apps_order
+Hint Constructors eval_exp_order eval_elim_order eval_ihs_order eval_ih_order eval_mref_order eval_shty_order eval_ihty_order eval_app_order eval_exps_order eval_apps_order
   eval_modexp_order eval_close_order eval_appm_order eval_appms_order eval_sel_order eval_selm_order eval_selc_order eval_selmc_order
   eval_benv_order : mctt.
 
@@ -382,15 +463,19 @@ Ltac functional_eval_all :=
     | H1 : eval_benv ?T ?X ?m ?n ?r1, H2 : eval_benv ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_eval_benv _ _ _ _ H1 H2); subst; clear H2
-    | H1 : eval_elim ?T ?X ?p ?nm ?A ?Bs ?m ?r1, H2 : eval_elim ?T ?X ?p ?nm ?A ?Bs ?m ?r2 |- _ =>
+    | H1 : eval_elim ?T ?X ?p ?pg ?u ?Bs ?j ?m ?r1, H2 : eval_elim ?T ?X ?p ?pg ?u ?Bs ?j ?m ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (functional_eval_elim _ _ _ _ _ _ _ H1 H2); subst; clear H2
-    | H1 : eval_ihs ?T ?X ?p ?nm ?A ?Bs ?gs ?vs ?r1, H2 : eval_ihs ?T ?X ?p ?nm ?A ?Bs ?gs ?vs ?r2 |- _ =>
+        pose proof (functional_eval_elim _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H1 : eval_ihs ?T ?X ?p ?pg ?u ?Bs ?gs ?vs ?r1, H2 : eval_ihs ?T ?X ?p ?pg ?u ?Bs ?gs ?vs ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_eval_ihs _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
-    | H1 : eval_ih ?T ?X ?p ?nm ?A ?Bs ?t ?v ?r1, H2 : eval_ih ?T ?X ?p ?nm ?A ?Bs ?t ?v ?r2 |- _ =>
+    | H1 : eval_ih ?T ?X ?p ?pg ?u ?Bs ?t ?v ?r1, H2 : eval_ih ?T ?X ?p ?pg ?u ?Bs ?t ?v ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_eval_ih _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H1 : eval_mref ?T ?X ?pg ?u ?j ?r1, H2 : eval_mref ?T ?X ?pg ?u ?j ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_eval_mref _ _ _ _ _ H1 H2); subst; clear H2
+    | H : (_, _) = (_, _) |- _ => injection H; clear H; intros; subst
     | H1 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r1, H2 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_eval_shty _ _ _ _ _ _ H1 H2); subst; clear H2
@@ -417,11 +502,12 @@ Lemma eval_order_sound : forall Θ Ξ,
     (forall h ch r, h ·ₜ* ch Θ ⍮ Ξ ↘ r -> eval_selc_order Θ Ξ h ch) /\
     (forall h ch r, h ·ₘ* ch Θ ⍮ Ξ ↘ r -> eval_selmc_order Θ Ξ h ch) /\
     (forall p Φ p', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' -> eval_benv_order Θ Ξ p Φ) /\
-    (forall p nm A Bs m r, ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ r -> eval_elim_order Θ Ξ p nm A Bs m) /\
-    (forall p nm A Bs gs vs ihs, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ ihs -> eval_ihs_order Θ Ξ p nm A Bs gs vs) /\
-    (forall p nm A Bs t v r, ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ r -> eval_ih_order Θ Ξ p nm A Bs t v) /\
+    (forall p pq ups Bks j m r, ⟦elim m at j of pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ r -> eval_elim_order Θ Ξ p pq ups Bks j m) /\
+    (forall p pq ups Bks gs vs ihs, ⟦ihs vs of gs under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ ihs -> eval_ihs_order Θ Ξ p pq ups Bks gs vs) /\
+    (forall p pq ups Bks t v r, ⟦ih v of t under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ r -> eval_ih_order Θ Ξ p pq ups Bks t v) /\
+    (forall pq ups j r, ⟦mref j of pq ups ⟧ Θ ⍮ Ξ ↘ r -> eval_mref_order Θ Ξ pq ups j) /\
     (forall pq ups p t a, ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_shty_order Θ Ξ pq ups p t) /\
-    (forall pm A p t v a, ⟦ihty v of t under pm A ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_ihty_order Θ Ξ pm A p t v).
+    (forall pm As p t v a, ⟦ihty v of t under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_ihty_order Θ Ξ pm As p t v).
 Proof.
   intros Θ Ξ; apply eval_mut_ind; intros;
     (** A closure lacking a parameter lacks a first one, and a chain of one
@@ -430,7 +516,12 @@ Proof.
     try match goal with H : eval_selc _ _ _ ?c _ |- eval_selc_order _ _ _ (_ :: ?c) =>
           destruct c; [ inversion H |] end;
     solve [ eapply eslo_global_neut; eauto; intros; functional_eval_all; eauto
-          | econstructor; try eassumption; intros; functional_eval_all; eauto using kgens_order_sound, tele_snoc_app ].
+          | econstructor; try eassumption; intros; functional_eval_all; eauto using kgens_order_sound, tele_snoc_app
+          (** The eliminator: the group the scrutinee's value names, once. *)
+          | econstructor; try eassumption; intros; functional_eval_all;
+            first [ eexists; eassumption
+                  | match goal with H1 : elim_grp_of ?o ?m = Some _, H2 : elim_grp_of ?o ?m = Some _ |- _ =>
+                      rewrite H1 in H2; injection H2 as <-; assumption end ] ].
 Qed.
 
 Lemma eval_exp_order_sound : forall Θ Ξ m p a, ⟦ m ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_exp_order Θ Ξ m p.
@@ -448,12 +539,35 @@ Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (proj2 (proj2 (eval_order_sound 
 Lemma eval_shty_order_sound : forall Θ Ξ pq ups p t a, ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_shty_order Θ Ξ pq ups p t.
 Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
-Lemma eval_ihty_order_sound : forall Θ Ξ pm A p t v a, ⟦ihty v of t under pm A ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_ihty_order Θ Ξ pm A p t v.
+Lemma eval_ihty_order_sound : forall Θ Ξ pm As p t v a, ⟦ihty v of t under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_ihty_order Θ Ξ pm As p t v.
 Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
 #[export]
 Hint Resolve eval_exp_order_sound eval_app_order_sound eval_exps_order_sound eval_modexp_order_sound
   eval_shty_order_sound eval_ihty_order_sound : mctt.
+
+Lemma eval_ih_order_sound : forall Θ Ξ p pq ups Bks t v r, ⟦ih v of t under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ r ->
+    eval_ih_order Θ Ξ p pq ups Bks t v.
+Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Qed.
+
+Lemma eval_mref_order_sound : forall Θ Ξ pq ups j r, ⟦mref j of pq ups ⟧ Θ ⍮ Ξ ↘ r -> eval_mref_order Θ Ξ pq ups j.
+Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Qed.
+
+#[export]
+Hint Resolve eval_ih_order_sound eval_mref_order_sound : mctt.
+
+(** The member a member stands for is the one [im_ref] names. *)
+Lemma eval_mref_im_ref : forall Θ Ξ p ups j pc k pre D Mj,
+    ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ (pc, k, pre) ->
+    ind_lookup Θ Ξ p = Some D -> ind_member D j = Some Mj -> im_ref p j Mj = (pc, k).
+Proof.
+  intros * Hm Hl Hj; inversion Hm; subst;
+    match goal with H1 : ind_lookup _ _ ?p = Some _, H2 : ind_lookup _ _ ?p = Some _ |- _ =>
+      rewrite H1 in H2; injection H2 as <- end;
+    match goal with H1 : ind_member ?D ?j = Some _, H2 : ind_member ?D ?j = Some _ |- _ =>
+      rewrite H1 in H2; injection H2 as <- end;
+    unfold im_ref; match goal with H : im_head _ = _ |- _ => rewrite H end; reflexivity.
+Qed.
 
 Definition inspect {A} (a : A) : { b | a = b } := exist _ a eq_refl.
 
@@ -492,7 +606,8 @@ Section EvalImpl.
     | H : eval_selc_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_selmc_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_benv_order _ _ _ _ |- _ => progressive_invert H
-    | H : eval_elim_order _ _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : eval_elim_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : eval_mref_order _ _ _ _ _ |- _ => progressive_invert H
     | H : eval_ihs_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : eval_ih_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : eval_shty_order _ _ _ _ _ _ |- _ => progressive_invert H
@@ -552,6 +667,36 @@ Section EvalImpl.
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = None |- _ =>
           rewrite H1 in H2; discriminate H2
+      (** The members of a group, their heads, their references and the
+          blocks of an eliminator, looked up once. *)
+      | H1 : ind_member ?D ?k = Some _, H2 : ind_member ?D ?k = Some _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : ind_member ?D ?k = Some _, H2 : ind_member ?D ?k = None |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H1 : im_head ?M = _, H2 : im_head ?M = _ |- _ =>
+          rewrite H1 in H2; first [ discriminate H2 | injection H2; clear H2; intros; subst ]
+      | H1 : im_ref ?p ?j ?M = _, H2 : im_ref ?p ?j ?M = _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : List.nth_error ?Bks ?j = Some _, H2 : List.nth_error ?Bks ?j = Some _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : List.nth_error ?Bks ?j = Some _, H2 : List.nth_error ?Bks ?j = None |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H1 : elim_grp_of ?o ?m = Some _, H2 : elim_grp_of ?o ?m = Some _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : elim_grp_of ?o ?m = Some _, H2 : elim_grp_of ?o ?m = None |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H1 : im_starts ?D ?M = true, H2 : im_starts ?D ?M = false |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H1 : im_starts _ ?M = true, H2 : im_head ?M = mh_view _ _ _ _, H3 : ind_nu _ = 0 |- _ =>
+          unfold im_starts, im_is_decl in H1; rewrite H2, H3 in H1; discriminate H1
+      | H1 : ind_mlookup _ _ ?p = Some _, H2 : ind_mlookup _ _ ?p = Some _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : ind_mlookup _ _ ?p = Some _, H2 : ind_mlookup _ _ ?p = None |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H1 : ind_mlookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = Some _ |- _ =>
+          exfalso; rewrite (ind_mlookup_not_ind_alias _ _ _ _ H1) in H2; discriminate H2
+      | H : (_ <? _) = true |- _ => apply Nat.ltb_lt in H
+      | H : (_ <? _) = false |- _ => apply Nat.ltb_ge in H
       | H1 : brs_lookup ?Bs ?c = Some _, H2 : brs_lookup ?Bs ?c = Some _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : brs_lookup ?Bs ?c = Some _, H2 : brs_lookup ?Bs ?c = None |- _ =>
@@ -565,6 +710,9 @@ Section EvalImpl.
     repeat match goal with
       | H : forall m, eval_exp _ _ ?M ?p m -> exists _ _, m = ⇑ _ _, Hm : eval_exp _ _ ?M ?p _ |- _ =>
           destruct (H _ Hm) as (? & ? & ?); clear H
+      (** The eliminator's scrutinee names a group. *)
+      | H : forall m, eval_exp _ _ ?M ?p m -> exists _, elim_grp_of _ m = Some _, Hm : eval_exp _ _ ?M ?p _ |- _ =>
+          destruct (H _ Hm) as (? & ?); clear H
       end.
 
   #[local]
@@ -580,7 +728,8 @@ Section EvalImpl.
     | H : eval_selm_order _ _ _ _ |- _ => dependent destruction H
     | H : eval_selc_order _ _ _ _ |- _ => dependent destruction H
     | H : eval_benv_order _ _ _ _ |- _ => dependent destruction H
-    | H : eval_elim_order _ _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : eval_elim_order _ _ _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : eval_mref_order _ _ _ _ _ |- _ => dependent destruction H
     | H : eval_ihs_order _ _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : eval_ih_order _ _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : eval_shty_order _ _ _ _ _ _ |- _ => dependent destruction H
@@ -629,7 +778,8 @@ Section EvalImpl.
     | |- eval_selc_order _ _ _ _ => ev_obl
     | |- eval_selmc_order _ _ _ _ => ev_obl
     | |- eval_benv_order _ _ _ _ => ev_obl
-    | |- eval_elim_order _ _ _ _ _ _ _ => ev_obl
+    | |- eval_elim_order _ _ _ _ _ _ _ _ => ev_obl
+    | |- eval_mref_order _ _ _ _ _ => ev_obl
     | |- eval_ihs_order _ _ _ _ _ _ _ _ => ev_obl
     | |- eval_ih_order _ _ _ _ _ _ _ _ => ev_obl
     | |- eval_shty_order _ _ _ _ _ _ => ev_obl
@@ -665,15 +815,28 @@ Section EvalImpl.
       let (r , Hr) := eval_exp_impl A p _ in
       exist _ Πᵈ r p B _
   | λ A M , p, H => exist _ λᵈ p M _
-  | a_ind pq, p, H => exist _ (d_ind pq nil) _
-  | a_con pq c, p, H => exist _ (d_con pq c nil) _
+  | a_ind pq k, p, H => exist _ (d_ind pq k nil) _
+  | a_con pq k c, p, H with inspect (ind_lookup Θ Ξ pq) := {
+    | exist _ (Some D) Ed with inspect (ind_member D k) := {
+      | exist _ (Some Mk) Em with inspect (im_starts D Mk) := {
+        | exist _ true Es => exist _ (d_con pq k c nil) _
+        | exist _ false Es with inspect (im_head Mk) := {
+          | exist _ (mh_view qc k' Is vm) Eh =>
+              let (cups, Hc) := eval_exps_impl Is (env_args nil nil) _ in
+              exist _ (d_con qc k' c cups) _
+          | exist _ (mh_decl _) Eh => False_rect _ _ } }
+      | exist _ None Em => False_rect _ _ }
+    | exist _ None Ed => False_rect _ _ }
   (** A literal is generated before it is ever evaluated. *)
   | a_ntok, p, H => False_rect _ _
   | a_nlit _, p, H => False_rect _ _
-  | a_elim nm A Bs M, p, H =>
-      let (m, Hm) := eval_exp_impl M p _ in
-      let (r, Hr) := eval_elim_impl p nm A Bs m _ in
-      exist _ r _
+  | a_elim oq Us j Bks M, p, H with eval_exps_impl Us p _ := {
+    | exist _ ups Hups with eval_exp_impl M p _ := {
+      | exist _ m Hm with inspect (elim_grp_of oq m) := {
+        | exist _ (Some pq) Eg =>
+            let (r, Hr) := eval_elim_impl p pq ups Bks j m _ in
+            exist _ r _
+        | exist _ None Eg => False_rect _ _ } } }
   | M $ N   , p, H =>
       let (m , Hm) := eval_exp_impl M p _ in
       let (n , Hn) := eval_exp_impl N p _ in
@@ -695,60 +858,82 @@ Section EvalImpl.
         let (r, Hr) := eval_apps_impl f ns _ in
         exist _ r _ }
 
-  with eval_elim_impl p nm A Bs m (H : eval_elim_order Θ Ξ p nm A Bs m) : { r | ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
-  | p, nm, A, Bs, d_con pq c vs, H with inspect (ind_lookup Θ Ξ pq) := {
-    | exist _ (Some D) Ed with inspect (ind_con D c) := {
-      | exist _ (Some gs) Ec with inspect (brs_lookup Bs c) := {
-        | exist _ (Some (n, B)) Eb =>
-            let (ihs, Hihs) := eval_ihs_impl p nm A Bs gs (skipn (ind_np D) vs) _ in
-            let (r, Hr) := eval_exp_impl B (env_args p (skipn (ind_nu D) (firstn (ind_np D) vs) ++ skipn (ind_np D) vs ++ ihs)) _ in
-            exist _ r _
-        | exist _ None Eb => False_rect _ _ }
-      | exist _ None Ec => False_rect _ _ }
+  with eval_elim_impl p pq ups Bks j m (H : eval_elim_order Θ Ξ p pq ups Bks j m) :
+      { r | ⟦elim m at j of pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
+  | p, pq, ups, Bks, j, d_con pc k c vs, H with inspect (ind_lookup Θ Ξ pq) := {
+    | exist _ (Some D) Ed with inspect (ind_member D j) := {
+      | exist _ (Some Mj) Em with inspect (ind_lookup Θ Ξ pc) := {
+        | exist _ (Some Dq) Edq with inspect (ind_member Dq k) := {
+          | exist _ (Some Mk) Emk with inspect (ind_con Mj c) := {
+            | exist _ (Some gs) Ec with inspect (List.nth_error Bks j) := {
+              | exist _ (Some b) Eb with inspect (brs_lookup (eb_brs b) c) := {
+                | exist _ (Some (n, B)) Ebr =>
+                    let (ihs, Hihs) := eval_ihs_impl p pq ups Bks gs (skipn (im_np Dq Mk) vs) _ in
+                    let (r, Hr) := eval_exp_impl B (env_args p (skipn (ind_nu Dq) (firstn (im_np Dq Mk) vs) ++
+                                                                 skipn (im_np Dq Mk) vs ++ ihs)) _ in
+                    exist _ r _
+                | exist _ None Ebr => False_rect _ _ }
+              | exist _ None Eb => False_rect _ _ }
+            | exist _ None Ec => False_rect _ _ }
+          | exist _ None Emk => False_rect _ _ }
+        | exist _ None Edq => False_rect _ _ }
+      | exist _ None Em => False_rect _ _ }
     | exist _ None Ed => False_rect _ _ }
-  | p, nm, A, Bs, ⇑ (d_ind pq as') m, H with inspect (ind_lookup Θ Ξ pq) := {
-    | exist _ (Some D) Ed =>
-        let (a, Ha) := eval_exp_impl A (env_args p (skipn (ind_nu D) as' ++ ⇑ (d_ind pq as') m :: nil)) _ in
-        exist _ (⇑ a (d_elim p nm A Bs pq as' m)) _
-    | exist _ None Ed => False_rect _ _ }
-  | p, nm, A, Bs, _, H => False_rect _ _
+  | p, pq, ups, Bks, j, ⇑ (d_ind pc k as') m, H with inspect (ind_lookup Θ Ξ pc) := {
+    | exist _ (Some Dq) Edq with inspect (List.nth_error Bks j) := {
+      | exist _ (Some b) Eb =>
+          let (a, Ha) := eval_exp_impl (eb_motive b) (env_args p (skipn (ind_nu Dq) as' ++ ⇑ (d_ind pc k as') m :: nil)) _ in
+          exist _ (⇑ a (d_elim p Bks pq ups j as' m)) _
+      | exist _ None Eb => False_rect _ _ }
+    | exist _ None Edq => False_rect _ _ }
+  | p, pq, ups, Bks, j, _, H => False_rect _ _
 
-  with eval_ihs_impl p nm A Bs gs vs (H : eval_ihs_order Θ Ξ p nm A Bs gs vs) : { ihs | ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ ihs } by struct H :=
-  | p, nm, A, Bs, nil, nil, H => exist _ nil _
-  | p, nm, A, Bs, ca_arg T :: gs, v :: vs, H =>
-      let (ihs, Hihs) := eval_ihs_impl p nm A Bs gs vs _ in
+  with eval_ihs_impl p pq ups Bks gs vs (H : eval_ihs_order Θ Ξ p pq ups Bks gs vs) :
+      { ihs | ⟦ihs vs of gs under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ ihs } by struct H :=
+  | p, pq, ups, Bks, nil, nil, H => exist _ nil _
+  | p, pq, ups, Bks, ca_arg T :: gs, v :: vs, H =>
+      let (ihs, Hihs) := eval_ihs_impl p pq ups Bks gs vs _ in
       exist _ ihs _
-  | p, nm, A, Bs, ca_rec t :: gs, v :: vs, H =>
-      let (ih, Hih) := eval_ih_impl p nm A Bs t v _ in
-      let (ihs, Hihs) := eval_ihs_impl p nm A Bs gs vs _ in
+  | p, pq, ups, Bks, ca_rec t :: gs, v :: vs, H =>
+      let (ih, Hih) := eval_ih_impl p pq ups Bks t v _ in
+      let (ihs, Hihs) := eval_ihs_impl p pq ups Bks gs vs _ in
       exist _ (ih :: ihs) _
-  | p, nm, A, Bs, _, _, H => False_rect _ _
+  | p, pq, ups, Bks, _, _, H => False_rect _ _
 
-  with eval_ih_impl p nm A Bs t v (H : eval_ih_order Θ Ξ p nm A Bs t v) : { r | ⟦ih v of t under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
-  | p, nm, A, Bs, pt_self k Ps, v, H =>
-      let (r, Hr) := eval_elim_impl p nm A Bs v _ in
+  with eval_ih_impl p pq ups Bks t v (H : eval_ih_order Θ Ξ p pq ups Bks t v) :
+      { r | ⟦ih v of t under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
+  | p, pq, ups, Bks, pt_self j Ps, v, H =>
+      let (r, Hr) := eval_elim_impl p pq ups Bks j v _ in
       exist _ r _
-  | p, nm, A, Bs, pt_pi B t, v, H => exist _ (d_ihfn p nm A Bs t v) _
-  | p, nm, A, Bs, pt_aux k Ps, v, H => False_rect _ _
+  | p, pq, ups, Bks, pt_pi B t, v, H => exist _ (d_ihfn p Bks pq ups t v) _
+
+  with eval_mref_impl pq ups j (H : eval_mref_order Θ Ξ pq ups j) : { r | ⟦mref j of pq ups ⟧ Θ ⍮ Ξ ↘ r } by struct H :=
+  | pq, ups, j, H with inspect (ind_lookup Θ Ξ pq) := {
+    | exist _ (Some D) Ed with inspect (ind_member D j) := {
+      | exist _ (Some Mj) Em with inspect (im_head Mj) := {
+        | exist _ (mh_decl _) Eh => exist _ (pq, j, ups) _
+        | exist _ (mh_view qc k Is vm) Eh =>
+            let (cups, Hc) := eval_exps_impl Is (env_args nil ups) _ in
+            exist _ (qc, k, cups) _ }
+      | exist _ None Em => False_rect _ _ }
+    | exist _ None Ed => False_rect _ _ }
 
   with eval_shty_impl pq ups p t (H : eval_shty_order Θ Ξ pq ups p t) : { a | ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a } by struct H :=
-  | pq, ups, p, pt_self k Ps, H =>
-      let (bs, Hbs) := eval_exps_impl Ps p _ in
-      exist _ (d_ind pq (ups ++ bs)) _
+  | pq, ups, p, pt_self j Ps, H with eval_exps_impl Ps p _ := {
+    | exist _ bs Hbs with eval_mref_impl pq ups j _ := {
+      | exist _ (pc, k, pre) Hm => exist _ (d_ind pc k (pre ++ bs)) _ } }
   | pq, ups, p, pt_pi B t, H =>
       let (b, Hb) := eval_exp_impl B p _ in
       exist _ (Πᵈ b (nil ↦ d_shfam pq ups p t) fam_cod) _
-  | pq, ups, p, pt_aux k Ps, H => False_rect _ _
 
-  with eval_ihty_impl pm A p t v (H : eval_ihty_order Θ Ξ pm A p t v) : { a | ⟦ihty v of t under pm A ⟧ Θ ⍮ Ξ ⍮ p ↘ a } by struct H :=
-  | pm, A, p, pt_self k Ps, v, H =>
+  with eval_ihty_impl pm As p t v (H : eval_ihty_order Θ Ξ pm As p t v) : { a | ⟦ihty v of t under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ a } by struct H :=
+  | pm, As, p, pt_self j Ps, v, H =>
       let (bs, Hbs) := eval_exps_impl Ps p _ in
-      let (a, Ha) := eval_exp_impl A (env_args pm (bs ++ v :: nil)) _ in
+      let (a, Ha) := eval_exp_impl (List.nth j As a_True) (env_args pm (bs ++ v :: nil)) _ in
       exist _ a _
-  | pm, A, p, pt_pi B t, v, H =>
+  | pm, As, p, pt_pi B t, v, H =>
       let (b, Hb) := eval_exp_impl B p _ in
-      exist _ (Πᵈ b (nil ↦ d_ihfam pm A p t v) fam_cod) _
-  | pm, A, p, pt_aux k Ps, v, H => False_rect _ _
+      exist _ (Πᵈ b (nil ↦ d_ihfam pm As p t v) fam_cod) _
 
   with eval_app_impl m n (H : eval_app_order Θ Ξ m n) : { d | $| m & n | Θ ⍮ Ξ ↘ d } by struct H :=
   | λᵈ p M        , n, H =>
@@ -761,18 +946,28 @@ Section EvalImpl.
       let (h', Hh') := eval_appm_impl h n _ in
       let (r, Hr) := eval_selc_impl h' ch _ in
       exist _ r _
-  | d_ind pq as', n, H => exist _ (d_ind pq (as' ++ n :: nil)) _
-  | d_con pq c vs, n, H => exist _ (d_con pq c (vs ++ n :: nil)) _
-  | d_ihfn p nm A Bs t f, n, H =>
+  | d_ind pq k as', n, H => exist _ (d_ind pq k (as' ++ n :: nil)) _
+  | d_con pq k c vs, n, H with inspect (ind_lookup Θ Ξ pq) := {
+    | exist _ (Some D) Ed with inspect (ind_member D k) := {
+      | exist _ (Some Mk) Em with inspect (im_head Mk) := {
+        | exist _ (mh_decl _) Eh => exist _ (d_con pq k c (vs ++ n :: nil)) _
+        | exist _ (mh_view qc k' Is vm) Eh with inspect (S (List.length vs) <? ind_nu D) := {
+          | exist _ true El => exist _ (d_con pq k c (vs ++ n :: nil)) _
+          | exist _ false El =>
+              let (cups, Hc) := eval_exps_impl Is (env_args nil (vs ++ n :: nil)) _ in
+              exist _ (d_con qc k' c cups) _ } }
+      | exist _ None Em => False_rect _ _ }
+    | exist _ None Ed => False_rect _ _ }
+  | d_ihfn p Bks pq ups t f, n, H =>
       let (fn, Hfn) := eval_app_impl f n _ in
-      let (r, Hr) := eval_ih_impl p nm A Bs t fn _ in
+      let (r, Hr) := eval_ih_impl p pq ups Bks t fn _ in
       exist _ r _
   | d_shfam pq ups p t, n, H =>
       let (a, Ha) := eval_shty_impl pq ups (p ↦ n) t _ in
       exist _ a _
-  | d_ihfam pm A p t f, n, H =>
+  | d_ihfam pm As p t f, n, H =>
       let (fn, Hfn) := eval_app_impl f n _ in
-      let (a, Ha) := eval_ihty_impl pm A (p ↦ n) t fn _ in
+      let (a, Ha) := eval_ihty_impl pm As (p ↦ n) t fn _ in
       exist _ a _
   | _, n, H => False_rect _ _
 
@@ -847,15 +1042,15 @@ Section EvalImpl.
         let (r, Hr) := eval_apps_impl (⇑ a (d_glob (qname_app pq (x :: nil)))) args _ in
         exist _ r _
     | exist _ (Some (ge_mod _ _)) E => False_rect _ _
-    | exist _ (Some (ge_ind _ _ _ _)) E => False_rect _ _
-    | exist _ (Some (ge_ind_alias _ _ _ _)) E => False_rect _ _
-    | exist _ None E with inspect (ind_lookup Θ Ξ (qname_app pq (x :: nil))) := {
-      | exist _ (Some D) Ed =>
-          let (r, Hr) := eval_apps_impl (d_ind (qname_app pq (x :: nil)) nil) args _ in
+    | exist _ (Some (ge_ind _ _ _ _ _)) E => False_rect _ _
+    | exist _ (Some (ge_ind_alias _ _ _ _ _ _)) E => False_rect _ _
+    | exist _ None E with inspect (ind_mlookup Θ Ξ (qname_app pq (x :: nil))) := {
+      | exist _ (Some (pg, k, D)) Ed =>
+          let (r, Hr) := eval_apps_impl (d_ind pg k nil) args _ in
           exist _ r _
       | exist _ None Ed with inspect (ind_alias_lookup Θ Ξ (qname_app pq (x :: nil))) := {
-        | exist _ (Some (Δ, pt, Ns)) Ea =>
-            let (f, Hf) := eval_exp_impl (ctx_fn Δ (apps (a_ind pt) Ns)) nil _ in
+        | exist _ (Some (Δ, pm, pt, k, Ns)) Ea =>
+            let (f, Hf) := eval_exp_impl (ctx_fn Δ (apps (a_ind pt k) Ns)) nil _ in
             let (r, Hr) := eval_apps_impl f args _ in
             exist _ r _
         | exist _ None Ea => False_rect _ _ } } }

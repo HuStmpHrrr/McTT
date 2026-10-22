@@ -36,45 +36,80 @@ Proof.
   rewrite <- (fread_nf_level_lvl_of_nf _ _ _ _ _ H); exact H.
 Qed.
 
-(** ** The Fresh Variables of the Telescopes of an Inductive Type
+(** ** The Fresh Variables of the Telescopes of a Group
 
     Their orders, and the functions that compute them. *)
 
+(** The variables of a telescope *)
 Inductive ffresh_tele_order (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> Prop :=
+(** No entry *)
 | fftelo_nil :
   `( ffresh_tele_order Θ Ξ ρ nil s )
+(** The first entry's type, then the rest under its variable *)
 | fftelo_cons :
   `( feval_exp_order Θ Ξ A ρ ->
      (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> ffresh_tele_order Θ Ξ (ρ ↦ ⇑! a s) T (S s)) ->
      ffresh_tele_order Θ Ξ ρ (ce_ass A :: T) s ).
 
+(** The variables of the arguments of a constructor *)
 Inductive ffresh_cargs_order (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain) :
   env -> list carg -> nat -> Prop :=
+(** No argument *)
 | ffcargo_nil :
   `( ffresh_cargs_order Θ Ξ p ups ρ nil s )
+(** A non-recursive argument's type, then the rest *)
 | ffcargo_arg :
   `( feval_exp_order Θ Ξ A ρ ->
      (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> ffresh_cargs_order Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s)) ->
      ffresh_cargs_order Θ Ξ p ups ρ (ca_arg A :: gs) s )
+(** A recursive argument's type, then the rest *)
 | ffcargo_rec :
   `( feval_shty_order Θ Ξ p ups ρ t ->
      ffresh_cargs_order Θ Ξ p ups ρ gs (S s) ->
      ffresh_cargs_order Θ Ξ p ups ρ (ca_rec t :: gs) s ).
 
-Inductive ffresh_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (A : exp) (B : exp) :
-  env -> list carg -> list domain -> nat -> Prop :=
+(** The variables of the recursive results of a branch [B] *)
+Inductive ffresh_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (As : list exp) (B : exp) :
+  env -> list carg -> list carg -> list domain -> nat -> Prop :=
+(** No argument *)
 | ffihso_nil :
-  `( ffresh_ihs_order Θ Ξ ρ A B ρa nil nil s )
+  `( ffresh_ihs_order Θ Ξ ρ As B ρa nil nil nil s )
+(** A non-recursive argument, entering the environment *)
 | ffihso_arg :
-  `( ffresh_ihs_order Θ Ξ ρ A B (ρa ↦ v) gs vs s ->
-     ffresh_ihs_order Θ Ξ ρ A B ρa (ca_arg T :: gs) (v :: vs) s )
+  `( ffresh_ihs_order Θ Ξ ρ As B (ρa ↦ v) gs' gs vs s ->
+     ffresh_ihs_order Θ Ξ ρ As B ρa (ca_arg T' :: gs') (ca_arg T :: gs) (v :: vs) s )
+(** Recursive in both: its type when the branch reads it, then the rest *)
 | ffihso_rec :
-  `( (exp_freshb (cargs_nrec gs) B = false -> feval_ihty_order Θ Ξ ρ A ρa t v) ->
-     ffresh_ihs_order Θ Ξ ρ A B ρa gs vs (S s) ->
-     ffresh_ihs_order Θ Ξ ρ A B ρa (ca_rec t :: gs) (v :: vs) s ).
+  `( (exp_freshb (cargs_nrec gs) B = false -> feval_ihty_order Θ Ξ ρ As ρa t v) ->
+     ffresh_ihs_order Θ Ξ ρ As B ρa gs' gs vs (S s) ->
+     ffresh_ihs_order Θ Ξ ρ As B ρa (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) s )
+(** Nested through: the rest *)
+| ffihso_nest :
+  `( ffresh_ihs_order Θ Ξ ρ As B ρa gs' gs vs s ->
+     ffresh_ihs_order Θ Ξ ρ As B ρa (ca_arg T' :: gs') (ca_rec t :: gs) (v :: vs) s ).
+
+(** The recursive results a branch is read under, wrapped *)
+Inductive fwrap_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (p : qname) (ups : list domain) (Bks : list eblock) :
+  list carg -> list carg -> list domain -> list domain -> Prop :=
+(** No argument *)
+| fwrapo_nil :
+  `( fwrap_ihs_order Θ Ξ ρ p ups Bks nil nil nil nil )
+(** Recursive in both: the rest *)
+| fwrapo_rec :
+  `( fwrap_ihs_order Θ Ξ ρ p ups Bks gs' gs vs ihs ->
+     fwrap_ihs_order Θ Ξ ρ p ups Bks (ca_rec t' :: gs') (ca_rec t :: gs) (v :: vs) (ih :: ihs) )
+(** Nested through: the eliminator at the argument, then the rest *)
+| fwrapo_nest :
+  `( feval_ih_order Θ Ξ ρ p ups Bks t v ->
+     fwrap_ihs_order Θ Ξ ρ p ups Bks gs' gs vs ihs ->
+     fwrap_ihs_order Θ Ξ ρ p ups Bks (ca_arg T' :: gs') (ca_rec t :: gs) (v :: vs) ihs )
+(** Non-recursive: the rest *)
+| fwrapo_arg :
+  `( fwrap_ihs_order Θ Ξ ρ p ups Bks gs' gs vs ihs ->
+     fwrap_ihs_order Θ Ξ ρ p ups Bks (ca_arg T' :: gs') (ca_arg T :: gs) (v :: vs) ihs ).
 
 #[local]
-Hint Constructors ffresh_tele_order ffresh_cargs_order ffresh_ihs_order : mctt.
+Hint Constructors ffresh_tele_order ffresh_cargs_order ffresh_ihs_order fwrap_ihs_order : mctt.
 
 Lemma ffresh_tele_order_sound : forall Θ Ξ ρ T s vs, Fteleᶠ T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> ffresh_tele_order Θ Ξ ρ T s.
 Proof. induction 1; econstructor; intros; functional_feval_rewrite_clear; mauto. Qed.
@@ -83,12 +118,18 @@ Lemma ffresh_cargs_order_sound : forall Θ Ξ p ups ρ gs s vs,
     Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs -> ffresh_cargs_order Θ Ξ p ups ρ gs s.
 Proof. induction 1; econstructor; intros; functional_feval_rewrite_clear; mauto. Qed.
 
-Lemma ffresh_ihs_order_sound : forall Θ Ξ ρ A B ρa gs vs s ihs,
-    Fihsᶠ vs at gs under ρ A for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> ffresh_ihs_order Θ Ξ ρ A B ρa gs vs s.
+Lemma ffresh_ihs_order_sound : forall Θ Ξ ρ As B ρa gs' gs vs s ihs,
+    Fihsᶠ vs at gs' gs under ρ As for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> ffresh_ihs_order Θ Ξ ρ As B ρa gs' gs vs s.
 Proof. induction 1; econstructor; intros; try congruence; functional_feval_rewrite_clear; mauto. Qed.
 
+Lemma fwrap_ihs_order_sound : forall Θ Ξ ρ p ups Bks gs' gs vs ihs r,
+    ⟦wihsᶠ vs of gs' gs with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r -> fwrap_ihs_order Θ Ξ ρ p ups Bks gs' gs vs ihs.
+Proof.
+  induction 1; econstructor; try eassumption; mauto.
+Qed.
+
 #[export]
-Hint Resolve ffresh_tele_order_sound ffresh_cargs_order_sound ffresh_ihs_order_sound : mctt.
+Hint Resolve ffresh_tele_order_sound ffresh_cargs_order_sound ffresh_ihs_order_sound fwrap_ihs_order_sound : mctt.
 
 Section FreshImpl.
   Variables (Θ : gdeps) (Ξ : gstack).
@@ -100,7 +141,8 @@ Section FreshImpl.
     repeat match goal with
       | H : ffresh_tele_order _ _ _ _ _ |- _ => progressive_invert H
       | H : ffresh_cargs_order _ _ _ _ _ _ _ |- _ => progressive_invert H
-      | H : ffresh_ihs_order _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+      | H : ffresh_ihs_order _ _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+      | H : fwrap_ihs_order _ _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
       end;
     first [ eassumption | solve [ eauto 2 ] | econstructor; eassumption
           | match goal with H : _ = false -> _ |- _ => apply H; assumption end ].
@@ -124,27 +166,47 @@ Section FreshImpl.
       let (vs, Hvs) := ffresh_cargs_impl p ups (ρ ↦ ⇑! a s) gs (S s) _ in
       exist _ (⇑! a s :: vs) _
   | p, ups, ρ, ca_rec t :: gs, s, H =>
-      let (a, Ha) := feval_shty_fast Θ Ξ p ups ρ t _ in
+      let (a, Ha) := feval_shty_impl Θ Ξ p ups ρ t _ in
       let (vs, Hvs) := ffresh_cargs_impl p ups ρ gs (S s) _ in
       exist _ (⇑! a s :: vs) _.
   Solve All Obligations with fr_obl.
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations ffresh_ihs_impl ρ A B ρa gs vs s (H : ffresh_ihs_order Θ Ξ ρ A B ρa gs vs s) :
-    { ihs | Fihsᶠ vs at gs under ρ A for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs } by struct H :=
-  | ρ, A, B, ρa, nil, nil, s, H => exist _ nil _
-  | ρ, A, B, ρa, ca_arg T :: gs, v :: vs, s, H =>
-      let (ihs, Hihs) := ffresh_ihs_impl ρ A B (ρa ↦ v) gs vs s _ in
+  Equations ffresh_ihs_impl ρ As B ρa gs' gs vs s (H : ffresh_ihs_order Θ Ξ ρ As B ρa gs' gs vs s) :
+    { ihs | Fihsᶠ vs at gs' gs under ρ As for B in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs } by struct H :=
+  | ρ, As, B, ρa, nil, nil, nil, s, H => exist _ nil _
+  | ρ, As, B, ρa, ca_arg _ :: gs', ca_arg _ :: gs, v :: vs, s, H =>
+      let (ihs, Hihs) := ffresh_ihs_impl ρ As B (ρa ↦ v) gs' gs vs s _ in
       exist _ ihs _
-  | ρ, A, B, ρa, ca_rec t :: gs, v :: vs, s, H with inspect (exp_freshb (cargs_nrec gs) B) := {
+  | ρ, As, B, ρa, ca_rec _ :: gs', ca_rec t :: gs, v :: vs, s, H with inspect (exp_freshb (cargs_nrec gs) B) := {
     | exist _ true E =>
-        let (ihs, Hihs) := ffresh_ihs_impl ρ A B ρa gs vs (S s) _ in
+        let (ihs, Hihs) := ffresh_ihs_impl ρ As B ρa gs' gs vs (S s) _ in
         exist _ (⇑! 𝕌ω@0 s :: ihs) _
     | exist _ false E =>
-        let (a, Ha) := feval_ihty_fast Θ Ξ ρ A ρa t v _ in
-        let (ihs, Hihs) := ffresh_ihs_impl ρ A B ρa gs vs (S s) _ in
+        let (a, Ha) := feval_ihty_impl Θ Ξ ρ As ρa t v _ in
+        let (ihs, Hihs) := ffresh_ihs_impl ρ As B ρa gs' gs vs (S s) _ in
         exist _ (⇑! a s :: ihs) _ }
-  | ρ, A, B, ρa, _, _, s, H => False_rect _ _.
+  | ρ, As, B, ρa, ca_arg _ :: gs', ca_rec t :: gs, v :: vs, s, H =>
+      let (ihs, Hihs) := ffresh_ihs_impl ρ As B ρa gs' gs vs s _ in
+      exist _ ihs _
+  | ρ, As, B, ρa, _, _, _, s, H => False_rect _ _.
+  Solve All Obligations with fr_obl.
+
+  #[tactic="idtac",derive(equations=no,eliminator=no)]
+  Equations fwrap_ihs_impl ρ p ups Bks gs' gs vs ihs (H : fwrap_ihs_order Θ Ξ ρ p ups Bks gs' gs vs ihs) :
+    { r | ⟦wihsᶠ vs of gs' gs with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r } by struct H :=
+  | ρ, p, ups, Bks, nil, nil, nil, nil, H => exist _ nil _
+  | ρ, p, ups, Bks, ca_rec _ :: gs', ca_rec _ :: gs, _ :: vs, ih :: ihs, H =>
+      let (r, Hr) := fwrap_ihs_impl ρ p ups Bks gs' gs vs ihs _ in
+      exist _ (ih :: r) _
+  | ρ, p, ups, Bks, ca_arg _ :: gs', ca_rec t :: gs, v :: vs, ihs, H =>
+      let (ih, Hih) := feval_ih_impl Θ Ξ ρ p ups Bks t v (@fc_seed Θ Ξ F) _ in
+      let (r, Hr) := fwrap_ihs_impl ρ p ups Bks gs' gs vs ihs _ in
+      exist _ (ih :: r) _
+  | ρ, p, ups, Bks, ca_arg _ :: gs', ca_arg _ :: gs, _ :: vs, ihs, H =>
+      let (r, Hr) := fwrap_ihs_impl ρ p ups Bks gs' gs vs ihs _ in
+      exist _ r _
+  | ρ, p, ups, Bks, _, _, _, _, H => False_rect _ _.
   Solve All Obligations with fr_obl.
 End FreshImpl.
 
@@ -180,17 +242,32 @@ Inductive fread_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :
 | frnf_neut :
   `( fread_ne_order Θ Ξ s m ->
      fread_nf_order Θ Ξ s ⇓ (⇑ a b) (⇑ c m) )
+(** A constructor of a declared member *)
 | frnf_con :
   `( ind_lookup Θ Ξ p = Some D ->
-     ind_con D c = Some gs ->
-     List.length as' = ind_np D ->
-     List.length vs = (ind_np D + List.length gs)%nat ->
-     fread_ps_order Θ Ξ s nil (List.rev (ind_params D)) as' ->
-     fread_cargs_order Θ Ξ s p (List.firstn (ind_nu D) as') (env_args nil as') gs (List.skipn (ind_np D) vs) ->
-     fread_nf_order Θ Ξ s ⇓ (d_ind p as') (d_con p c vs) )
+     ind_member D k = Some Mk ->
+     im_head Mk = mh_decl pm ->
+     ind_con Mk c = Some gs ->
+     List.length as' = im_np D Mk ->
+     List.length vs = (im_np D Mk + List.length gs)%nat ->
+     fread_ps_order Θ Ξ s nil (List.rev (im_params D Mk)) as' ->
+     fread_cargs_order Θ Ξ s p (List.firstn (ind_nu D) as') (env_args nil as') gs (List.skipn (im_np D Mk) vs) ->
+     fread_nf_order Θ Ξ s ⇓ (d_ind p k as') (d_con p k c vs) )
+(** A constructor at a view: its arguments are the last values *)
+| frnf_con_view :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D j = Some Mj ->
+     im_head Mj = mh_view qc k Is vm ->
+     ind_con Mj c = Some gs ->
+     List.length as' = im_np D Mj ->
+     List.length gs <= List.length vs ->
+     fread_ps_order Θ Ξ s nil (List.rev (im_params D Mj)) as' ->
+     fread_cargs_order Θ Ξ s p (List.firstn (ind_nu D) as') (env_args nil as') gs
+       (List.skipn (List.length vs - List.length gs) vs) ->
+     fread_nf_order Θ Ξ s ⇓ (d_ind p j as') (d_con qc k c vs) )
 | frnf_ind_neut :
   `( fread_ne_order Θ Ξ s m ->
-     fread_nf_order Θ Ξ s ⇓ (d_ind p as') (⇑ a m) )
+     fread_nf_order Θ Ξ s ⇓ (d_ind p k as') (⇑ a m) )
 
 with fread_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
 | frne_var :
@@ -208,21 +285,21 @@ with fread_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
      fread_ne_order Θ Ξ s efqᵈ m under p return B )
 | frne_glob :
   `( fread_ne_order Θ Ξ s (d_glob p) )
+(** A stuck eliminator: the container's uniform parameters, the blocks
+    read as the container's group's, and the scrutinee *)
 | frne_elim :
   `( ind_lookup Θ Ξ p = Some D ->
-     List.length as' = ind_np D ->
-     Nat.eqb nm (S (ind_nn D)) = true ->
-     ffresh_tele_order Θ Ξ (env_args nil (List.firstn (ind_nu D) as')) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ->
-     (forall ns,
-         Fteleᶠ List.rev (List.firstn (ind_nn D) (ind_params D)) in Θ ⍮ Ξ ⍮ env_args nil (List.firstn (ind_nu D) as') ⍮ s ↘ ns ->
-         feval_exp_order Θ Ξ A (env_args ρ (ns ++ ⇑! (d_ind p (List.firstn (ind_nu D) as' ++ ns)) ((s + ind_nn D)%nat) :: nil))) ->
-     (forall ns a,
-         Fteleᶠ List.rev (List.firstn (ind_nn D) (ind_params D)) in Θ ⍮ Ξ ⍮ env_args nil (List.firstn (ind_nu D) as') ⍮ s ↘ ns ->
-         ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ ⇑! (d_ind p (List.firstn (ind_nu D) as' ++ ns)) ((s + ind_nn D)%nat) :: nil) ↘ a ->
-         fread_typ_order Θ Ξ (S (s + ind_nn D)) a) ->
-     fread_brs_order Θ Ξ s ρ A p D (List.firstn (ind_nu D) as') (ind_cons D) Bs ->
+     ind_member D j = Some Mj ->
+     im_ref p j Mj = (pc, k) ->
+     ind_lookup Θ Ξ pc = Some Dq ->
+     ind_member Dq k = Some Mk ->
+     List.length as' = im_np Dq Mk ->
+     blocks_nm_at D None Bks ->
+     feval_mref_order Θ Ξ p ups j ->
+     (forall pre, ⟦mrefᶠ j of p ups ⟧ᶠ Θ ⍮ Ξ ↘ (pc, k, pre) -> fread_ps_order Θ Ξ s nil (List.rev (ind_uparams Dq)) pre) ->
+     fread_blocks_order Θ Ξ s ρ p ups Bks (im_sel Mj) 0 (ind_members Dq) ->
      fread_ne_order Θ Ξ s m ->
-     fread_ne_order Θ Ξ s (d_elim ρ nm A Bs p as' m) )
+     fread_ne_order Θ Ξ s (d_elim ρ Bks p ups j as' m) )
 
 with fread_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
 | frtyp_univ :
@@ -247,13 +324,16 @@ with fread_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
 | frtyp_neut :
   `( fread_ne_order Θ Ξ s b ->
     fread_typ_order Θ Ξ s ⇑ a b )
+(** A type former without arguments: no lookup *)
 | frtyp_indty_nil :
-  `( fread_typ_order Θ Ξ s (d_ind p nil) )
+  `( fread_typ_order Θ Ξ s (d_ind p k nil) )
+(** At one argument or more *)
 | frtyp_indty :
   `( ind_lookup Θ Ξ p = Some D ->
-     List.length (a :: as') = ind_np D ->
-     fread_ps_order Θ Ξ s nil (List.rev (ind_params D)) (a :: as') ->
-     fread_typ_order Θ Ξ s (d_ind p (a :: as')) )
+     ind_member D k = Some Mk ->
+     List.length (a :: as') = im_np D Mk ->
+     fread_ps_order Θ Ξ s nil (List.rev (im_params D Mk)) (a :: as') ->
+     fread_typ_order Θ Ξ s (d_ind p k (a :: as')) )
 
 with fread_la_order (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> Prop :=
 | frla_nil :
@@ -280,84 +360,182 @@ with fread_cargs_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain 
      (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> fread_nf_order Θ Ξ s ⇓ a v) ->
      fread_cargs_order Θ Ξ s p ups (ρ ↦ v) gs vs ->
      fread_cargs_order Θ Ξ s p ups ρ (ca_arg A :: gs) (v :: vs) )
+(** A recursive argument, along its shape *)
 | frcargs_rec :
-  `( feval_shty_order Θ Ξ p ups ρ t ->
-     (forall a, ⟦shtyᶠ t of p ups ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> fread_nf_order Θ Ξ s ⇓ a v) ->
+  `( fread_shape_order Θ Ξ s p ups ρ t v ->
      fread_cargs_order Θ Ξ s p ups ρ gs vs ->
      fread_cargs_order Θ Ξ s p ups ρ (ca_rec t :: gs) (v :: vs) )
 
-with fread_brs_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> exp -> qname -> ind_decl -> list domain ->
-                                            list (string * list carg) -> list (string * nat * exp) -> Prop :=
+(** A recursive argument of a shape *)
+with fread_shape_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> ptyp -> domain -> Prop :=
+(** At the end: the parameters, then the value at the member *)
+| frsh_self :
+  `( feval_exps_order Θ Ξ Ps ρ ->
+     (forall bs, ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs -> fread_nf_order Θ Ξ s ⇓ (d_ind p j (ups ++ bs)) v) ->
+     fread_shape_order Θ Ξ s p ups ρ (pt_self j Ps) v )
+(** At a domain: under a fresh variable of it *)
+| frsh_pi :
+  `( feval_exp_order Θ Ξ B ρ ->
+     (forall b, ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ b -> fread_typ_order Θ Ξ s b) ->
+     (forall b, ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ b -> feval_app_order Θ Ξ v (⇑! b s)) ->
+     (forall b r, ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ b -> $ᶠ| v & ⇑! b s | Θ ⍮ Ξ ↘ r ->
+        fread_shape_order Θ Ξ (S s) p ups (ρ ↦ ⇑! b s) t r) ->
+     fread_shape_order Θ Ξ s p ups ρ (pt_pi B t) v )
+
+(** The blocks of a stuck eliminator *)
+with fread_blocks_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -> list eblock ->
+                                                  option (list nat) -> nat -> list imember -> Prop :=
+(** No member left *)
+| frblks_nil :
+  `( fread_blocks_order Θ Ξ s ρ p ups Bks sel i nil )
+(** The block of the member [Mi]: its motive, its branches, then the rest *)
+| frblks_cons :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_member D (elim_src sel i) = Some Mv ->
+     List.nth_error Bks (elim_src sel i) = Some b ->
+     Nat.eqb (eb_nm b) (S (im_nn Mi)) = true ->
+     feval_mref_order Θ Ξ p ups (elim_src sel i) ->
+     ffresh_tele_order Θ Ξ (env_args nil ups) (List.rev (im_nparams Mv)) s ->
+     (forall pk k pre ns, ⟦mrefᶠ elim_src sel i of p ups ⟧ᶠ Θ ⍮ Ξ ↘ (pk, k, pre) ->
+        Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
+        feval_exp_order Θ Ξ (eb_motive b) (env_args ρ (ns ++ ⇑! (d_ind pk k (pre ++ ns)) ((s + im_nn Mi)%nat) :: nil))) ->
+     (forall pk k pre ns a, ⟦mrefᶠ elim_src sel i of p ups ⟧ᶠ Θ ⍮ Ξ ↘ (pk, k, pre) ->
+        Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
+        ⟦ eb_motive b ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ ⇑! (d_ind pk k (pre ++ ns)) ((s + im_nn Mi)%nat) :: nil) ↘ a ->
+        fread_typ_order Θ Ξ (S (s + im_nn Mi)) a) ->
+     (forall pk k pre, ⟦mrefᶠ elim_src sel i of p ups ⟧ᶠ Θ ⍮ Ξ ↘ (pk, k, pre) ->
+        fread_brs_order Θ Ξ s ρ p ups Bks Mv (eb_motive b) Mi (pk, k, pre) (im_cons Mi) (eb_brs b)) ->
+     fread_blocks_order Θ Ξ s ρ p ups Bks sel (S i) Ms ->
+     fread_blocks_order Θ Ξ s ρ p ups Bks sel i (Mi :: Ms) )
+
+(** The branches of a block *)
+with fread_brs_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -> list eblock ->
+                                               imember -> exp -> imember -> (qname * nat * list domain) ->
+                                               list (string * list carg) -> list (string * nat * exp) -> Prop :=
+(** No constructor left *)
 | frbrs_nil :
-  `( fread_brs_order Θ Ξ s ρ A p D ups nil nil )
+  `( fread_brs_order Θ Ξ s ρ p ups Bks Mv A Mi r nil nil )
+(** The branch of the next constructor, then the rest *)
 | frbrs_cons :
-  `( Nat.eqb n (ind_nn D + List.length gs + cargs_nrec gs)%nat = true ->
-     cargs_plen (ind_nn D) gs ->
-     ffresh_tele_order Θ Ξ (env_args nil ups) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ->
+  `( ind_con Mv c = Some gs ->
+     Nat.eqb n0 (im_nn Mi + List.length gs' + cargs_nrec gs)%nat = true ->
+     ind_lookup Θ Ξ p = Some D ->
+     cargs_plen D gs ->
+     ffresh_tele_order Θ Ξ (env_args nil ups) (List.rev (im_nparams Mv)) s ->
      (forall ns,
-         Fteleᶠ List.rev (List.firstn (ind_nn D) (ind_params D)) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
-         ffresh_cargs_order Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D)) ->
+         Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
+         ffresh_cargs_order Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + im_nn Mi)) ->
      (forall ns vs,
-         Fteleᶠ List.rev (List.firstn (ind_nn D) (ind_params D)) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
-         Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + ind_nn D) ↘ vs ->
-         ffresh_ihs_order Θ Ξ ρ A B (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs)) ->
-     (forall ns vs,
-         Fteleᶠ List.rev (List.firstn (ind_nn D) (ind_params D)) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
-         Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + ind_nn D) ↘ vs ->
-         feval_exp_order Θ Ξ A (env_args ρ (ns ++ d_con p c (ups ++ ns ++ vs) :: nil))) ->
+         Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
+         Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi) ↘ vs ->
+         ffresh_ihs_order Θ Ξ ρ (blocks_motives Bks) B (env_args nil (ups ++ ns)) gs' gs vs (s + im_nn Mi + List.length gs')) ->
      (forall ns vs ihs,
-         Fteleᶠ List.rev (List.firstn (ind_nn D) (ind_params D)) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
-         Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + ind_nn D) ↘ vs ->
-         Fihsᶠ vs at gs under ρ A for B in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + ind_nn D + List.length gs) ↘ ihs ->
-         feval_exp_order Θ Ξ B (env_args ρ (ns ++ vs ++ ihs))) ->
-     (forall ns vs ihs b t,
-         Fteleᶠ List.rev (List.firstn (ind_nn D) (ind_params D)) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
-         Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + ind_nn D) ↘ vs ->
-         Fihsᶠ vs at gs under ρ A for B in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + ind_nn D + List.length gs) ↘ ihs ->
-         ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ vs ++ ihs) ↘ b ->
-         ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ d_con p c (ups ++ ns ++ vs) :: nil) ↘ t ->
-         fread_nf_order Θ Ξ (s + n) ⇓ t b) ->
-     fread_brs_order Θ Ξ s ρ A p D ups cs Bs ->
-     fread_brs_order Θ Ξ s ρ A p D ups ((c, gs) :: cs) ((c, n, B) :: Bs) ).
+         Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
+         Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi) ↘ vs ->
+         Fihsᶠ vs at gs' gs under ρ (blocks_motives Bks) for B in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi + List.length gs') ↘ ihs ->
+         fwrap_ihs_order Θ Ξ ρ p ups Bks gs' gs vs ihs) ->
+     (forall ns vs ihs wihs,
+         Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
+         Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi) ↘ vs ->
+         Fihsᶠ vs at gs' gs under ρ (blocks_motives Bks) for B in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi + List.length gs') ↘ ihs ->
+         ⟦wihsᶠ vs of gs' gs with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ wihs ->
+         feval_exp_order Θ Ξ B (env_args ρ (ns ++ vs ++ wihs))) ->
+     (forall ns vs,
+         Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
+         Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi) ↘ vs ->
+         feval_exp_order Θ Ξ A (env_args ρ (ns ++ d_con pk k c (pre ++ ns ++ vs) :: nil))) ->
+     (forall ns vs ihs wihs b t,
+         Fteleᶠ List.rev (im_nparams Mv) in Θ ⍮ Ξ ⍮ env_args nil ups ⍮ s ↘ ns ->
+         Fcargsᶠ gs of p ups in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi) ↘ vs ->
+         Fihsᶠ vs at gs' gs under ρ (blocks_motives Bks) for B in Θ ⍮ Ξ ⍮ env_args nil (ups ++ ns) ⍮ (s + im_nn Mi + List.length gs') ↘ ihs ->
+         ⟦wihsᶠ vs of gs' gs with ihs under p ups Bks ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ wihs ->
+         ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ vs ++ wihs) ↘ b ->
+         ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ d_con pk k c (pre ++ ns ++ vs) :: nil) ↘ t ->
+         fread_nf_order Θ Ξ (s + (im_nn Mi + List.length gs' + cargs_nrec gs')) ⇓ t b) ->
+     fread_brs_order Θ Ξ s ρ p ups Bks Mv A Mi (pk, k, pre) cs Bs ->
+     fread_brs_order Θ Ξ s ρ p ups Bks Mv A Mi (pk, k, pre) ((c, gs') :: cs) ((c, n0, B) :: Bs) ).
 
 #[local]
 Hint Constructors fread_nf_order fread_ne_order fread_typ_order fread_la_order
-  fread_ps_order fread_cargs_order fread_brs_order : mctt.
+  fread_ps_order fread_cargs_order fread_shape_order fread_blocks_order fread_brs_order : mctt.
 
-Lemma fread_nf_order_sound : forall Θ Ξ s d m,
-    Rnfᶠ d in Θ ⍮ Ξ ⍮ s ↘ m ->
-    fread_nf_order Θ Ξ s d
-with fread_ne_order_sound : forall Θ Ξ s d m,
-    Rneᶠ d in Θ ⍮ Ξ ⍮ s ↘ m ->
-    fread_ne_order Θ Ξ s d
-with fread_typ_order_sound : forall Θ Ξ s d m,
-    Rtypᶠ d in Θ ⍮ Ξ ⍮ s ↘ m ->
-    fread_typ_order Θ Ξ s d
-with fread_la_order_sound : forall Θ Ξ s xs ys,
-    Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-    fread_la_order Θ Ξ s xs
-with fread_ps_order_sound : forall Θ Ξ s ρ T vs Ms,
-    Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
-    fread_ps_order Θ Ξ s ρ T vs
-with fread_cargs_order_sound : forall Θ Ξ s p ups ρ gs vs Ms,
-    Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
-    fread_cargs_order Θ Ξ s p ups ρ gs vs
-with fread_brs_order_sound : forall Θ Ξ s ρ A p D ups cs Bs Bs',
-    Rbrsᶠ Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-    fread_brs_order Θ Ξ s ρ A p D ups cs Bs.
+(** Every readback derivation is within its order: by the mutual induction
+    on readback, the evaluations the orders quantify over being the ones
+    the derivation makes ([functional_feval]). *)
+Lemma fread_order_sound : forall Θ Ξ,
+    (forall s d m, Rnfᶠ d in Θ ⍮ Ξ ⍮ s ↘ m -> fread_nf_order Θ Ξ s d) /\
+    (forall s d m, Rneᶠ d in Θ ⍮ Ξ ⍮ s ↘ m -> fread_ne_order Θ Ξ s d) /\
+    (forall s d m, Rtypᶠ d in Θ ⍮ Ξ ⍮ s ↘ m -> fread_typ_order Θ Ξ s d) /\
+    (forall s xs ys, Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys -> fread_la_order Θ Ξ s xs) /\
+    (forall s ρ T vs Ms, Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms -> fread_ps_order Θ Ξ s ρ T vs) /\
+    (forall s p ups ρ gs vs Ms, Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms -> fread_cargs_order Θ Ξ s p ups ρ gs vs) /\
+    (forall s p ups ρ t v V, Rshᶠ v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V -> fread_shape_order Θ Ξ s p ups ρ t v) /\
+    (forall s ρ p ups Bks sel i Ms NBks, Rblksᶠ i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
+       fread_blocks_order Θ Ξ s ρ p ups Bks sel i Ms) /\
+    (forall s ρ p ups Bks Mv A Mi r cs Bs Bs', Rbrsᶠ Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
+       fread_brs_order Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs).
 Proof.
-  all: [> clear fread_nf_order_sound | clear fread_ne_order_sound | clear fread_typ_order_sound
-       | clear fread_la_order_sound | clear fread_ps_order_sound | clear fread_cargs_order_sound
-       | clear fread_brs_order_sound ];
-    induction 1;
-    (econstructor; try eassumption; try (apply Nat.eqb_eq; assumption);
+  intros Θ Ξ; apply fread_mut_ind; intros;
+    (** A constructor at a view: its arguments are the last values, as
+        many as the constructor takes. *)
+    try match goal with Hh : im_head _ = mh_view _ _ _ _, Hl : List.length ?vs = (?n + List.length ?gs)%nat
+                        |- fread_nf_order _ _ _ (⇓ _ (d_con _ _ _ ?vs)) =>
+          replace n with (List.length vs - List.length gs) in * by lia end;
+    (econstructor; try eassumption; try lia; try (apply Nat.eqb_eq; first [ assumption | subst; reflexivity ]);
      intros; functional_feval_rewrite_clear; functional_ffresh_rewrite_clear;
-     functional_feval_rewrite_clear; mauto).
+     functional_feval_rewrite_clear; subst; mauto).
 Qed.
+
+Lemma fread_nf_order_sound : forall Θ Ξ s d m, Rnfᶠ d in Θ ⍮ Ξ ⍮ s ↘ m -> fread_nf_order Θ Ξ s d.
+Proof. intros Θ Ξ; exact (proj1 (fread_order_sound Θ Ξ)). Qed.
+
+Lemma fread_ne_order_sound : forall Θ Ξ s d m, Rneᶠ d in Θ ⍮ Ξ ⍮ s ↘ m -> fread_ne_order Θ Ξ s d.
+Proof. intros Θ Ξ; exact (proj1 (proj2 (fread_order_sound Θ Ξ))). Qed.
+
+Lemma fread_typ_order_sound : forall Θ Ξ s d m, Rtypᶠ d in Θ ⍮ Ξ ⍮ s ↘ m -> fread_typ_order Θ Ξ s d.
+Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (fread_order_sound Θ Ξ)))). Qed.
+
+Lemma fread_la_order_sound : forall Θ Ξ s xs ys, Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys -> fread_la_order Θ Ξ s xs.
+Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (proj2 (fread_order_sound Θ Ξ))))). Qed.
+
+Lemma fread_ps_order_sound : forall Θ Ξ s ρ T vs Ms, Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms -> fread_ps_order Θ Ξ s ρ T vs.
+Proof. intros Θ Ξ; pose proof (fread_order_sound Θ Ξ); destruct_all; eauto. Qed.
+
+Lemma fread_cargs_order_sound : forall Θ Ξ s p ups ρ gs vs Ms,
+    Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms -> fread_cargs_order Θ Ξ s p ups ρ gs vs.
+Proof. intros Θ Ξ; pose proof (fread_order_sound Θ Ξ); destruct_all; eauto. Qed.
+
+Lemma fread_shape_order_sound : forall Θ Ξ s p ups ρ t v V,
+    Rshᶠ v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V -> fread_shape_order Θ Ξ s p ups ρ t v.
+Proof. intros Θ Ξ; pose proof (fread_order_sound Θ Ξ); destruct_all; eauto. Qed.
+
+Lemma fread_blocks_order_sound : forall Θ Ξ s ρ p ups Bks sel i Ms NBks,
+    Rblksᶠ i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks -> fread_blocks_order Θ Ξ s ρ p ups Bks sel i Ms.
+Proof. intros Θ Ξ; pose proof (fread_order_sound Θ Ξ); destruct_all; eauto. Qed.
+
+Lemma fread_brs_order_sound : forall Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs Bs',
+    Rbrsᶠ Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' -> fread_brs_order Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs.
+Proof. intros Θ Ξ; pose proof (fread_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
 #[export]
 Hint Resolve fread_nf_order_sound fread_ne_order_sound fread_typ_order_sound fread_la_order_sound
-  fread_ps_order_sound fread_cargs_order_sound fread_brs_order_sound : mctt.
+  fread_ps_order_sound fread_cargs_order_sound fread_shape_order_sound fread_blocks_order_sound
+  fread_brs_order_sound : mctt.
+
+(** A constructor at a view, its arguments the last values, as many as the
+    constructor takes ([fread_nf_con_view]). *)
+Lemma fread_nf_con_view_last : forall Θ Ξ s p D j Mj qc k Is vm c gs as' vs Ps Args,
+    ind_lookup Θ Ξ p = Some D ->
+    ind_member D j = Some Mj ->
+    im_head Mj = mh_view qc k Is vm ->
+    ind_con Mj c = Some gs ->
+    List.length as' = im_np D Mj ->
+    List.length gs <= List.length vs ->
+    Rpsᶠ as' at List.rev (im_params D Mj) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
+    Rcargsᶠ List.skipn (List.length vs - List.length gs) vs at gs of p (List.firstn (ind_nu D) as') in Θ ⍮ Ξ
+      ⍮ env_args nil as' ⍮ s ↘ Args ->
+    Rnfᶠ ⇓ (d_ind p j as') (d_con qc k c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p j c (nfs_app Ps Args).
+Proof. intros; eapply fread_nf_con_view; try eassumption; lia. Qed.
 
 #[local]
 Ltac impl_obl_tac1 :=
@@ -368,96 +546,13 @@ Ltac impl_obl_tac1 :=
   | H : fread_la_order _ _ _ _ |- _ => progressive_invert H
   | H : fread_ps_order _ _ _ _ _ _ |- _ => progressive_invert H
   | H : fread_cargs_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
-  | H : fread_brs_order _ _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+  | H : fread_shape_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+  | H : fread_blocks_order _ _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+  | H : fread_brs_order _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+  (** A constructor, at a declared member or at a view: both cases, the
+      lookups then excluding one *)
+  | H : fread_nf_order _ _ _ (⇓ (d_ind _ _ _) (d_con _ _ _ _)) |- _ => inversion H; subst; clear H
   end.
-
-#[local]
-Ltac impl_obl_tac :=
-  repeat impl_obl_tac1; try econstructor; mauto.
-
-#[local]
-Hint Resolve feval_shty_self_nil : mctt.
-
-(** The readback of the constructors of the shape of [zero] and [succ]. *)
-Lemma fread_nf_con_zero : forall Θ Ξ s p D c,
-    ind_lookup Θ Ξ p = Some D -> ind_con D c = Some nil -> ind_params D = nil -> ind_nu D = 0 ->
-    Rnfᶠ ⇓ (d_ind p nil) (d_con p c nil) in Θ ⍮ Ξ ⍮ s ↘ nf_con p c nfs_nil.
-Proof.
-  intros * Hl Hc Hp Hu.
-  change nfs_nil with (nfs_app nfs_nil nfs_nil).
-  assert (ind_np D = 0) by (unfold ind_np; rewrite Hp; reflexivity).
-  econstructor; try eassumption; try (rewrite Hp; constructor);
-    rewrite ?H, ?Hu; cbn; try constructor; reflexivity.
-Qed.
-
-Lemma fread_nf_con_succ : forall Θ Ξ s p D c k v V,
-    ind_lookup Θ Ξ p = Some D -> ind_con D c = Some (ca_rec (pt_self k nil) :: nil) -> ind_params D = nil -> ind_nu D = 0 ->
-    Rnfᶠ ⇓ (d_ind p nil) v in Θ ⍮ Ξ ⍮ s ↘ V ->
-    Rnfᶠ ⇓ (d_ind p nil) (d_con p c (v :: nil)) in Θ ⍮ Ξ ⍮ s ↘ nf_con p c (nfs_cons V nfs_nil).
-Proof.
-  intros * Hl Hc Hp Hu HV.
-  change (nfs_cons V nfs_nil) with (nfs_app nfs_nil (nfs_cons V nfs_nil)).
-  assert (ind_np D = 0) by (unfold ind_np; rewrite Hp; reflexivity).
-  econstructor; try eassumption; try (rewrite Hp; constructor); rewrite ?H, ?Hu; cbn; try reflexivity.
-  econstructor; [ apply feval_shty_self_nil | exact HV | constructor ].
-Qed.
-
-#[local]
-Hint Resolve fread_nf_con_zero fread_nf_con_succ : mctt.
-
-(** The readback of the branches of the constructors of the shape of [zero]
-    and [succ], at the environments [fread_brs] gives them. *)
-Lemma fread_brs_nat_zero : forall Θ Ξ s ρ A p D ups c n B cs Bs b t B' Bs',
-    ind_params D = nil ->
-    n = (ind_nn D + 0 + 0)%nat ->
-    cargs_plen (ind_nn D) nil ->
-    ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (nil ++ nil ++ nil) ↘ b ->
-    ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (nil ++ d_con p c (ups ++ nil ++ nil) :: nil) ↘ t ->
-    Rnfᶠ ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
-    Rbrsᶠ Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-    Rbrsᶠ (c, n, B) :: Bs at (c, nil) :: cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_cons c n B' Bs'.
-Proof.
-  intros * Hp Hn Hl Hb Ht HB HBs.
-  econstructor; try eassumption; [ | constructor | constructor ].
-  rewrite Hp, firstn_nil; constructor.
-Qed.
-
-Lemma fread_brs_nat_skip : forall Θ Ξ s ρ A p D ups c k n B cs Bs b t B' Bs',
-    ind_params D = nil ->
-    n = (ind_nn D + 1 + 1)%nat ->
-    cargs_plen (ind_nn D) (ca_rec (pt_self k nil) :: nil) ->
-    exp_freshb 0 B = true ->
-    ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (nil ++ (⇑! (d_ind p ups) (s + ind_nn D) :: nil) ++ ⇑! 𝕌ω@0 (s + ind_nn D + 1) :: nil) ↘ b ->
-    ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (nil ++ d_con p c (ups ++ nil ++ ⇑! (d_ind p ups) (s + ind_nn D) :: nil) :: nil) ↘ t ->
-    Rnfᶠ ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
-    Rbrsᶠ Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-    Rbrsᶠ (c, n, B) :: Bs at (c, ca_rec (pt_self k nil) :: nil) :: cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_cons c n B' Bs'.
-Proof.
-  intros * Hp Hn Hl Hf Hb Ht HB HBs.
-  eapply fread_brs_cons with (ns := nil) (vs := _ :: nil) (ihs := _ :: nil); try eassumption.
-  - rewrite Hp, firstn_nil; constructor.
-  - econstructor; [ apply feval_shty_self_nil | constructor ].
-  - eapply ffresh_ihs_skip; [ exact Hf | constructor ].
-Qed.
-
-Lemma fread_brs_nat_rec : forall Θ Ξ s ρ A p D ups c k n B cs Bs a b t B' Bs',
-    ind_params D = nil ->
-    n = (ind_nn D + 1 + 1)%nat ->
-    cargs_plen (ind_nn D) (ca_rec (pt_self k nil) :: nil) ->
-    exp_freshb 0 B = false ->
-    ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (nil ++ ⇑! (d_ind p ups) (s + ind_nn D) :: nil) ↘ a ->
-    ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (nil ++ (⇑! (d_ind p ups) (s + ind_nn D) :: nil) ++ ⇑! a (s + ind_nn D + 1) :: nil) ↘ b ->
-    ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (nil ++ d_con p c (ups ++ nil ++ ⇑! (d_ind p ups) (s + ind_nn D) :: nil) :: nil) ↘ t ->
-    Rnfᶠ ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
-    Rbrsᶠ Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-    Rbrsᶠ (c, n, B) :: Bs at (c, ca_rec (pt_self k nil) :: nil) :: cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_cons c n B' Bs'.
-Proof.
-  intros * Hp Hn Hl Hf Ha Hb Ht HB HBs.
-  eapply fread_brs_cons with (ns := nil) (vs := _ :: nil) (ihs := _ :: nil); try eassumption.
-  - rewrite Hp, firstn_nil; constructor.
-  - econstructor; [ apply feval_shty_self_nil | constructor ].
-  - eapply ffresh_ihs_rec; [ exact Hf | econstructor; [ constructor | exact Ha ] | constructor ].
-Qed.
 
 Section ReadbackImpl.
 Variables (Θ : gdeps) (Ξ : gstack).
@@ -490,22 +585,27 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
 | s, ⇓ (⇑ a b) (⇑ c m), ck, H =>
     let (M, HM) := fread_ne_impl_c s m ck _ in
     exist _ ⇑ⁿ M _
-| s, ⇓ (d_ind p as') (d_con p' c vs), ck, H with cache_lookup Θ Ξ ck p := {
-  | exist _ (Some D) Ed with inspect (con_view D c vs) := {
-    (** Of the shape of [zero] or [succ v] ([con_view]): no parameter, and
-        [v] at the type itself. *)
-    | exist _ (Some None) Ev => exist _ (nf_con p c nfs_nil) _
-    | exist _ (Some (Some v)) Ev =>
-        let (V, HV) := fread_nf_impl_c s ⇓ (d_ind p nil) v (Some (exist _ (p, D) Ed)) _ in
-        exist _ (nf_con p c (nfs_cons V nfs_nil)) _
-    | exist _ None Ev with inspect (ind_con D c) := {
-      | exist _ (Some gs) Ec =>
-          let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (ind_params D)) as' ck _ in
-          let (Args, HArgs) := fread_cargs_impl_c s p (List.firstn (ind_nu D) as') (env_args nil as') gs (List.skipn (ind_np D) vs) (Some (exist _ (p, D) Ed)) _ in
-          exist _ (nf_con p c (nfs_app Ps Args)) _
-      | exist _ None Ec => False_rect _ _ } }
+| s, ⇓ (d_ind p j as') (d_con _ _ c vs), ck, H with cache_lookup Θ Ξ ck p := {
+  | exist _ (Some D) Ed with inspect (ind_member D j) := {
+    | exist _ (Some Mj) Em with inspect (ind_con Mj c) := {
+      | exist _ (Some gs) Ec with inspect (im_head Mj) := {
+        (** A constructor of a declared member: its arguments after its
+            parameters *)
+        | exist _ (mh_decl _) Eh =>
+            let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (im_params D Mj)) as' ck _ in
+            let (Args, HArgs) := fread_cargs_impl_c s p (List.firstn (ind_nu D) as') (env_args nil as') gs
+                                   (List.skipn (im_np D Mj) vs) (Some (exist _ (p, D) Ed)) _ in
+            exist _ (nf_con p j c (nfs_app Ps Args)) _
+        (** At a view: its arguments are the last values *)
+        | exist _ (mh_view _ _ _ _) Eh =>
+            let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (im_params D Mj)) as' ck _ in
+            let (Args, HArgs) := fread_cargs_impl_c s p (List.firstn (ind_nu D) as') (env_args nil as') gs
+                                   (List.skipn (List.length vs - List.length gs) vs) (Some (exist _ (p, D) Ed)) _ in
+            exist _ (nf_con p j c (nfs_app Ps Args)) _ }
+      | exist _ None Ec => False_rect _ _ }
+    | exist _ None Em => False_rect _ _ }
   | exist _ None Ed => False_rect _ _ }
-| s, ⇓ (d_ind p as') (⇑ a m), ck, H =>
+| s, ⇓ (d_ind p k as') (⇑ a m), ck, H =>
     let (M, HM) := fread_ne_impl_c s m ck _ in
     exist _ ⇑ⁿ M _
 
@@ -521,17 +621,21 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
     let (B', HB') := fread_typ_impl_c (S s) b ck _ in
     let (M, HM) := fread_ne_impl_c s m ck _ in
     exist _ (efqⁿ M return B') _
-| s, d_elim ρ nm A Bs p as' m, ck, H with cache_lookup Θ Ξ ck p := {
-  | exist _ (Some D) Ed =>
-      let (ns, Hns) := ffresh_tele_impl Θ Ξ (env_args nil (List.firstn (ind_nu D) as')) (List.rev (List.firstn (ind_nn D) (ind_params D))) s _ in
-      let (a, Ha) := feval_exp_impl Θ Ξ A (env_args ρ (ns ++ ⇑! (d_ind p (List.firstn (ind_nu D) as' ++ ns)) ((s + ind_nn D)%nat) :: nil)) _ in
-      let (A', HA') := fread_typ_impl_c (S (s + ind_nn D)) a ck _ in
-      let (Bs', HBs') := fread_brs_impl_c s ρ A p D (List.firstn (ind_nu D) as') (ind_cons D) Bs (Some (exist _ (p, D) Ed)) _ in
-      let (M, HM) := fread_ne_impl_c s m ck _ in
-      exist _ (ne_elim nm A' Bs' M) _
+| s, d_elim ρ Bks p ups j as' m, ck, H with cache_lookup Θ Ξ ck p := {
+  | exist _ (Some D) Ed with inspect (ind_member D j) := {
+    | exist _ (Some Mj) Em with inspect (im_ref p j Mj) := {
+      | exist _ (pc, k) Er with cache_lookup Θ Ξ (Some (exist _ (p, D) Ed)) pc := {
+        | exist _ (Some Dq) Edq with feval_mref_impl Θ Ξ p ups j _ := {
+          | exist _ (_, _, pre) Hm =>
+              let (Us, HUs) := fread_ps_impl_c s nil (List.rev (ind_uparams Dq)) pre ck _ in
+              let (NBks, HNBks) := fread_blocks_impl_c s ρ p ups Bks (im_sel Mj) 0 (ind_members Dq) (Some (exist _ (p, D) Ed)) _ in
+              let (M, HM) := fread_ne_impl_c s m ck _ in
+              exist _ (ne_elim pc Us k NBks M) _ }
+        | exist _ None Edq => False_rect _ _ } }
+    | exist _ None Em => False_rect _ _ }
   | exist _ None Ed => False_rect _ _ }
 
-      with fread_typ_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_typ_order Θ Ξ s d) : { m | Rtypᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
+  with fread_typ_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_typ_order Θ Ξ s d) : { m | Rtypᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
 | s, 𝕌ω@i, ck, H => exist _ Typeωⁿ@i _
 | s, 𝕌@l, ck, H =>
     let (W, HW) := fread_nf_impl_c s ⇓ Levelᵈ l ck _ in
@@ -547,11 +651,13 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
 | s, ⇑ a b, ck, H =>
     let (B, HB) := fread_ne_impl_c s b ck _ in
     exist _ ⇑ⁿ B _
-| s, d_ind p nil, ck, H => exist _ (nf_indty p nfs_nil) _
-| s, d_ind p as', ck, H with cache_lookup Θ Ξ ck p := {
-  | exist _ (Some D) Ed =>
-      let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (ind_params D)) as' ck _ in
-      exist _ (nf_indty p Ps) _
+| s, d_ind p k nil, ck, H => exist _ (nf_indty p k nfs_nil) _
+| s, d_ind p k as', ck, H with cache_lookup Θ Ξ ck p := {
+  | exist _ (Some D) Ed with inspect (ind_member D k) := {
+    | exist _ (Some Mk) Em =>
+        let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (im_params D Mk)) as' ck _ in
+        exist _ (nf_indty p k Ps) _
+    | exist _ None Em => False_rect _ _ }
   | exist _ None Ed => False_rect _ _ }
 
   with fread_la_impl_c s xs (ck : lk_cache Θ Ξ) (H : fread_la_order Θ Ξ s xs) : { ys | Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys } by struct H :=
@@ -579,53 +685,61 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
     let (Vs, HVs) := fread_cargs_impl_c s p ups (ρ ↦ v) gs vs ck _ in
     exist _ (nfs_cons V Vs) _
 | s, p, ups, ρ, ca_rec t :: gs, v :: vs, ck, H =>
-    let (a, Ha) := feval_shty_fast Θ Ξ p ups ρ t _ in
-    let (V, HV) := fread_nf_impl_c s ⇓ a v ck _ in
+    let (V, HV) := fread_shape_impl_c s p ups ρ t v ck _ in
     let (Vs, HVs) := fread_cargs_impl_c s p ups ρ gs vs ck _ in
     exist _ (nfs_cons V Vs) _
 | s, p, ups, ρ, _, _, ck, H => False_rect _ _
 
-  with fread_brs_impl_c s ρ A p D ups cs Bs (ck : lk_cache Θ Ξ) (H : fread_brs_order Θ Ξ s ρ A p D ups cs Bs) :
-    { Bs' | Rbrsᶠ Bs at cs of p D ups under A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' } by struct H :=
-| s, ρ, A, p, D, ups, nil, nil, ck, H => exist _ nbrs_nil _
-| s, ρ, A, p, D, ups, (c, gs) :: cs, (c', n, B) :: Bs, ck, H with inspect (nat_cargs D gs) := {
-  (** The branch of a constructor of the shape of [zero] ([nat_cargs]):
-      it binds nothing. *)
-  | exist _ (Some false) Eg =>
-      let (b, Hb) := feval_exp_impl Θ Ξ B (env_args ρ (nil ++ nil ++ nil)) _ in
-      let (t, Ht) := feval_exp_impl Θ Ξ A (env_args ρ (nil ++ d_con p c (ups ++ nil ++ nil) :: nil)) _ in
-      let (B', HB') := fread_nf_impl_c (s + n) ⇓ t b ck _ in
-      let (Bs', HBs') := fread_brs_impl_c s ρ A p D ups cs Bs ck _ in
-      exist _ (nbrs_cons c n B' Bs') _
-  (** Of the shape of [succ]: the argument, a variable of the type itself,
-      and its recursive result, of the type the motive gives the argument
-      unless the branch does not read it. *)
-  | exist _ (Some true) Eg with inspect (exp_freshb 0 B) := {
-    | exist _ true Ef =>
-        let v := ⇑! (d_ind p ups) (s + ind_nn D) in
-        let (b, Hb) := feval_exp_impl Θ Ξ B (env_args ρ (nil ++ (v :: nil) ++ ⇑! 𝕌ω@0 (s + ind_nn D + 1) :: nil)) _ in
-        let (t, Ht) := feval_exp_impl Θ Ξ A (env_args ρ (nil ++ d_con p c (ups ++ nil ++ v :: nil) :: nil)) _ in
-        let (B', HB') := fread_nf_impl_c (s + n) ⇓ t b ck _ in
-        let (Bs', HBs') := fread_brs_impl_c s ρ A p D ups cs Bs ck _ in
-        exist _ (nbrs_cons c n B' Bs') _
-    | exist _ false Ef =>
-        let v := ⇑! (d_ind p ups) (s + ind_nn D) in
-        let (a, Ha) := feval_exp_impl Θ Ξ A (env_args ρ (nil ++ v :: nil)) _ in
-        let (b, Hb) := feval_exp_impl Θ Ξ B (env_args ρ (nil ++ (v :: nil) ++ ⇑! a (s + ind_nn D + 1) :: nil)) _ in
-        let (t, Ht) := feval_exp_impl Θ Ξ A (env_args ρ (nil ++ d_con p c (ups ++ nil ++ v :: nil) :: nil)) _ in
-        let (B', HB') := fread_nf_impl_c (s + n) ⇓ t b ck _ in
-        let (Bs', HBs') := fread_brs_impl_c s ρ A p D ups cs Bs ck _ in
-        exist _ (nbrs_cons c n B' Bs') _ }
-  | exist _ None Eg =>
-    let (ns, Hns) := ffresh_tele_impl Θ Ξ (env_args nil ups) (List.rev (List.firstn (ind_nn D) (ind_params D))) s _ in
-    let (vs, Hvs) := ffresh_cargs_impl Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D) _ in
-    let (ihs, Hihs) := ffresh_ihs_impl Θ Ξ ρ A B (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs) _ in
-    let (b, Hb) := feval_exp_impl Θ Ξ B (env_args ρ (ns ++ vs ++ ihs)) _ in
-    let (t, Ht) := feval_exp_impl Θ Ξ A (env_args ρ (ns ++ d_con p c (ups ++ ns ++ vs) :: nil)) _ in
-    let (B', HB') := fread_nf_impl_c (s + n) ⇓ t b ck _ in
-    let (Bs', HBs') := fread_brs_impl_c s ρ A p D ups cs Bs ck _ in
-    exist _ (nbrs_cons c n B' Bs') _ }
-| s, ρ, A, p, D, ups, _, _, ck, H => False_rect _ _.
+  with fread_shape_impl_c s p ups ρ t v (ck : lk_cache Θ Ξ) (H : fread_shape_order Θ Ξ s p ups ρ t v) :
+    { V | Rshᶠ v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V } by struct H :=
+| s, p, ups, ρ, pt_self j Ps, v, ck, H =>
+    let (bs, Hbs) := feval_exps_impl Θ Ξ Ps ρ _ in
+    let (V, HV) := fread_nf_impl_c s ⇓ (d_ind p j (ups ++ bs)) v ck _ in
+    exist _ V _
+| s, p, ups, ρ, pt_pi B t, v, ck, H =>
+    let (b, Hb) := feval_exp_impl Θ Ξ B ρ _ in
+    let (A, HA) := fread_typ_impl_c s b ck _ in
+    let (r, Hr) := feval_app_impl Θ Ξ v (⇑! b s) _ in
+    let (V, HV) := fread_shape_impl_c (S s) p ups (ρ ↦ ⇑! b s) t r ck _ in
+    exist _ (λⁿ A V) _
+
+  with fread_blocks_impl_c s ρ p ups Bks sel i Ms (ck : lk_cache Θ Ξ) (H : fread_blocks_order Θ Ξ s ρ p ups Bks sel i Ms) :
+    { NBks | Rblksᶠ i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks } by struct H :=
+| s, ρ, p, ups, Bks, sel, i, nil, ck, H => exist _ nblocks_nil _
+| s, ρ, p, ups, Bks, sel, i, Mi :: Ms, ck, H with cache_lookup Θ Ξ ck p := {
+  | exist _ (Some D) Ed with inspect (ind_member D (elim_src sel i)) := {
+    | exist _ (Some Mv) Em with inspect (List.nth_error Bks (elim_src sel i)) := {
+      | exist _ (Some b) Eb with feval_mref_impl Θ Ξ p ups (elim_src sel i) _ := {
+        | exist _ (pk, k, pre) Hm =>
+            let (ns, Hns) := ffresh_tele_impl Θ Ξ (env_args nil ups) (List.rev (im_nparams Mv)) s _ in
+            let (a, Ha) := feval_exp_impl Θ Ξ (eb_motive b)
+                             (env_args ρ (ns ++ ⇑! (d_ind pk k (pre ++ ns)) ((s + im_nn Mi)%nat) :: nil)) _ in
+            let (A', HA') := fread_typ_impl_c (S (s + im_nn Mi)) a ck _ in
+            let (Bs', HBs') := fread_brs_impl_c s ρ p ups Bks Mv (eb_motive b) Mi (pk, k, pre) (im_cons Mi) (eb_brs b) ck _ in
+            let (NBks, HNBks) := fread_blocks_impl_c s ρ p ups Bks sel (S i) Ms ck _ in
+            exist _ (nblocks_cons (S (im_nn Mi)) A' Bs' NBks) _ }
+      | exist _ None Eb => False_rect _ _ }
+    | exist _ None Em => False_rect _ _ }
+  | exist _ None Ed => False_rect _ _ }
+
+  with fread_brs_impl_c s ρ p ups Bks Mv A Mi r cs Bs (ck : lk_cache Θ Ξ)
+         (H : fread_brs_order Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs) :
+    { Bs' | Rbrsᶠ Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' } by struct H :=
+| s, ρ, p, ups, Bks, Mv, A, Mi, r, nil, nil, ck, H => exist _ nbrs_nil _
+| s, ρ, p, ups, Bks, Mv, A, Mi, (pk, k, pre), (c, gs') :: cs, (_, _, B) :: Bs, ck, H with inspect (ind_con Mv c) := {
+  | exist _ (Some gs) Ec =>
+      let (ns, Hns) := ffresh_tele_impl Θ Ξ (env_args nil ups) (List.rev (im_nparams Mv)) s _ in
+      let (vs, Hvs) := ffresh_cargs_impl Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + im_nn Mi) _ in
+      let (ihs, Hihs) := ffresh_ihs_impl Θ Ξ ρ (blocks_motives Bks) B (env_args nil (ups ++ ns)) gs' gs vs
+                           (s + im_nn Mi + List.length gs') _ in
+      let (wihs, Hw) := fwrap_ihs_impl Θ Ξ ρ p ups Bks gs' gs vs ihs _ in
+      let (b, Hb) := feval_exp_impl Θ Ξ B (env_args ρ (ns ++ vs ++ wihs)) _ in
+      let (t, Ht) := feval_exp_impl Θ Ξ A (env_args ρ (ns ++ d_con pk k c (pre ++ ns ++ vs) :: nil)) _ in
+      let (B', HB') := fread_nf_impl_c (s + (im_nn Mi + List.length gs' + cargs_nrec gs')) ⇓ t b ck _ in
+      let (Bs', HBs') := fread_brs_impl_c s ρ p ups Bks Mv A Mi (pk, k, pre) cs Bs ck _ in
+      exist _ (nbrs_cons c (im_nn Mi + List.length gs' + cargs_nrec gs') B' Bs') _
+  | exist _ None Ec => False_rect _ _ }
+| s, ρ, p, ups, Bks, Mv, A, Mi, r, _, _, ck, H => False_rect _ _.
 
 (** Each hole is either a readback order of a subterm, read off the order of
     the whole by inversion, or the readback itself, by its rule. *)
@@ -650,6 +764,23 @@ Ltac rb_glob :=
     | H1 : ind_con ?D ?c = Some ?x, H2 : ind_con ?D ?c = Some ?y |- _ =>
         assert_fails (constr_eq x y);
         rewrite H1 in H2; injection H2; clear H2; rb_unify x y
+    | H1 : ind_member ?D ?k = Some ?x, H2 : ind_member ?D ?k = Some ?y |- _ =>
+        assert_fails (constr_eq x y);
+        rewrite H1 in H2; injection H2; clear H2; rb_unify x y
+    | H1 : List.nth_error ?Bks ?j = Some ?x, H2 : List.nth_error ?Bks ?j = Some ?y |- _ =>
+        assert_fails (constr_eq x y);
+        rewrite H1 in H2; injection H2; clear H2; rb_unify x y
+    | H1 : im_head ?M = _, H2 : im_head ?M = _ |- _ =>
+        rewrite H1 in H2; first [ discriminate H2 | injection H2; clear H2; intros; subst ]
+    | H1 : im_ref ?p ?j ?M = _, H2 : im_ref ?p ?j ?M = _ |- _ =>
+        rewrite H1 in H2; injection H2; clear H2; intros; subst
+    (** The member a member stands for, at the reference the order records *)
+    | Hm : feval_mref _ _ ?p _ ?j (?a, ?b, _), Hl : ind_lookup _ _ ?p = Some _, Hj : ind_member _ ?j = Some _,
+      Hr : im_ref ?p ?j _ = (?c, ?d) |- _ =>
+        assert_fails (constr_eq a c);
+        let E := fresh "Er" in
+        pose proof (feval_mref_im_ref _ _ _ _ _ _ _ _ _ _ Hm Hl Hj) as E;
+        rewrite E in Hr; injection Hr; clear Hr; intros; subst
     end.
 
 #[local]
@@ -669,62 +800,15 @@ Ltac rb_run := repeat impl_obl_tac1; rb_glob; rb_eqb; econstructor; eassumption.
 (** The rules of inductive types have premises the order records under
     quantifiers, and lookups the order rules out when they fail. *)
 #[local]
-Ltac rb_ind := repeat impl_obl_tac1; rb_glob; rb_eqb; first [ congruence | econstructor; try eassumption; eauto 3 ].
-
-(** The constructors of the shape of the natural numbers ([con_view],
-    [nat_cargs]): the general rules at no parameter, and at the lists the
-    view fixes. *)
-#[local]
-Ltac rb_nat :=
-  match goal with
-  | Ev : con_view _ _ _ = Some None |- _ => destruct (con_view_zero _ _ _ Ev) as (? & ? & ? & ? & ?); subst
-  | Ev : con_view _ _ _ = Some (Some _) |- _ => destruct (con_view_succ _ _ _ _ Ev) as (? & ? & ? & ? & ? & ?); subst
-  | Eg : nat_cargs _ _ = Some false |- _ => destruct (nat_cargs_zero _ _ Eg) as (? & ? & ?); subst
-  | Eg : nat_cargs _ _ = Some true |- _ => destruct (nat_cargs_succ _ _ Eg) as (? & ? & ? & ?); subst
-  end;
+Ltac rb_ind :=
   repeat impl_obl_tac1; rb_glob; rb_eqb;
-  first [ solve [ eapply fread_brs_nat_zero; eassumption ]
-        | solve [ eapply fread_brs_nat_skip; eassumption ]
-        | solve [ eapply fread_brs_nat_rec; eassumption ]
-        | idtac ];
-  match goal with Hp : ind_params ?D = nil, Hu : ind_nu ?D = 0 |- _ =>
-    let Hnp := fresh "Hnp" in let Hnn := fresh "Hnn" in
-    assert (Hnp : ind_np D = 0) by (unfold ind_np; rewrite Hp; reflexivity);
-    assert (Hnn : ind_nn D = 0) by (unfold ind_nn; rewrite Hnp, Hu; reflexivity);
-    rewrite ?Hnn, ?Hnp, ?Hu in *; rewrite ?Hp in *;
-    cbn [skipn firstn rev app env_args fold_left extend_env cargs_nrec List.length] in * |-;
-    repeat impl_obl_tac1; rb_glob; rb_eqb;
-    try match goal with Hl : List.length ?l = 0 |- _ => destruct l; [| discriminate ] end;
-    repeat impl_obl_tac1;
-    first [ eassumption
-          | solve [ eauto 8 with mctt ]
-          | match goal with Hb : forall _, _ |- _ =>
-              first [ solve [ eapply (Hb nil nil nil); eauto 8 with mctt ]
-                    | solve [ eapply (Hb nil (_ :: nil) (_ :: nil)); eauto 8 with mctt ]
-                    | solve [ eapply (Hb nil nil); eauto 8 with mctt ]
-                    | solve [ eapply (Hb nil (_ :: nil)); eauto 8 with mctt ]
-                    | solve [ eapply Hb; eauto 8 with mctt ] ] end
-          (** The type of the recursive result: the order of the motive
-              under the order of the recursive results. *)
-          | match goal with Ho : forall ns vs, _ -> _ -> ffresh_ihs_order _ _ _ _ _ _ _ _ _ |- feval_exp_order _ _ _ _ =>
-              let Hi := fresh "Hi" in
-              pose proof (Ho nil (_ :: nil) ltac:(eauto 8 with mctt) ltac:(eauto 8 with mctt)) as Hi;
-              dependent destruction Hi; cbn [cargs_nrec] in * |-; try congruence;
-              match goal with Hf : ?P -> feval_ihty_order _ _ _ _ _ _ _, Ef : ?P |- _ => specialize (Hf Ef) end;
-              match goal with Ht : feval_ihty_order _ _ _ _ _ _ _ |- _ => progressive_invert Ht end;
-              match goal with Hq : forall bs, _ -> feval_exp_order _ _ _ _ |- _ => solve [ eapply (Hq nil); eauto 8 with mctt ] end
-            end
-          | solve [ econstructor; rewrite ?Hnn, ?Hnp, ?Hu, ?Hp; cbn; eauto 8 with mctt ] ]
-  end.
+  first [ congruence
+        | solve [ eapply fread_nf_con_view_last; eassumption ]
+        | econstructor; try eassumption; eauto 3 ].
 
 #[local]
 Ltac rb_obl_auto :=
   intros; cbv beta in *;
-  first [ lazymatch goal with
-          | E : con_view _ _ _ = Some _ |- _ => solve [ rb_nat ]
-          | E : nat_cargs _ _ = Some _ |- _ => solve [ rb_nat ]
-          end
-        | idtac ];
   lazymatch goal with
   | |- fread_nf_order _ _ _ _ => first [ rb_ord | rb_run ]
   | |- fread_ne_order _ _ _ _ => first [ rb_ord | rb_run ]
@@ -733,135 +817,25 @@ Ltac rb_obl_auto :=
   (** The parameters of a type former with arguments: read off its order
       before inversion takes the arguments apart. *)
   | |- fread_ps_order _ _ _ _ _ _ =>
-      first [ solve [ match goal with H : fread_typ_order _ _ _ (d_ind _ (_ :: _)) |- _ =>
+      first [ solve [ match goal with H : fread_typ_order _ _ _ (d_ind _ _ (_ :: _)) |- _ =>
                         inversion H; subst; rb_glob; assumption end ]
             | rb_ord | rb_run ]
   | |- fread_cargs_order _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fread_brs_order _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
+  | |- fread_shape_order _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
+  | |- fread_blocks_order _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
+  | |- fread_brs_order _ _ _ _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- ffresh_tele_order _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- ffresh_cargs_order _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- ffresh_ihs_order _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
+  | |- ffresh_ihs_order _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
+  | |- fwrap_ihs_order _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- feval_exp_order _ _ _ _ => first [ rb_ord | rb_run ]
   | |- feval_exps_order _ _ _ _ => first [ rb_ord | rb_run ]
   | |- feval_app_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- feval_shty_order _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- feval_ihty_order _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
+  | |- feval_mref_order _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- _ => abstract (first [ rb_ord | rb_run | eapply fread_typ_suniv_of_nf; eassumption | rb_ind ])
   end.
 
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-Next Obligation. rb_obl_auto. Defined.
-
+Solve All Obligations with rb_obl_auto.
 
 (** The [fread_*_impl] functions are sound by construction.  Completeness
     follows from the soundness of the readback orders and the functionality
@@ -929,4 +903,6 @@ Extraction Inline fread_nf_impl_c_functional
   fread_la_impl_c_functional
   fread_ps_impl_c_functional
   fread_cargs_impl_c_functional
+  fread_shape_impl_c_functional
+  fread_blocks_impl_c_functional
   fread_brs_impl_c_functional.
