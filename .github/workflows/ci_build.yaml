@@ -33,7 +33,7 @@ jobs:
       # The CI image lives in whichever repository is running the workflow, so a
       # fork uses its own package instead of one it has no read access to.  The
       # tag is published by docker.yaml; keep the two in sync.
-      IMAGE_TAG: "rocq-9.2"
+      IMAGE_TAG: "rocq-9.2-ocaml-5.4"
       # Only deploy if the build follows from pushing to one of main branches
       DOC_DEPLOY: ${{ (github.ref_name == 'main' || startsWith(github.ref_name, 'ext/')) && 'true' || 'false' }}
       DOC_DEPLOY_DEST: ${{ (startsWith(github.ref_name, 'ext/') && github.ref_name) || '' }}

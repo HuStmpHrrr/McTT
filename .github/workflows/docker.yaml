@@ -46,7 +46,7 @@ jobs:
         # A single stable tag, named after the toolchain rather than after the
         # branch: ci_build.yaml pulls it by name, and every branch that shares
         # the Dockerfile shares the image.  Keep in sync with IMAGE_TAG there.
-        tags: type=raw,value=rocq-9.2
+        tags: type=raw,value=rocq-9.2-ocaml-5.4
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v6
