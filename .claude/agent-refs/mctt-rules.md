@@ -42,7 +42,9 @@ brief says so explicitly.
 - **Edit files with the Edit tool** (Write for new files). Never edit `.v`
   files (or any source) through `python3`, `sed -i`, `awk` or heredoc
   rewrites in the shell; read-only shell (`grep`, `sed -n`, `git show`) is
-  fine.
+  fine. Exception: McTT-language sources (`lib/**/*.mctt`, `examples/*.mctt`)
+  have no MCP, so any tool (sed, scripts, …) may edit them; re-run the
+  programs and diff their outputs afterwards.
 - **Print Assumptions,** after a full build: use `rocq_query` in *preamble*
   mode, e.g. `preamble="From Mctt Require Import Entrypoint."`,
   `command="Print Assumptions Mctt.Entrypoint.main_sound."`.
@@ -125,3 +127,7 @@ brief says so explicitly.
   summaries.
 - **Feature misbehaviour:** report a minimal reproducer; never work around it
   silently.
+
+## Documentation (user, 2026-10-21)
+- Every new or changed Record, Inductive, Definition and Fixpoint gets a doc comment saying what it is and what it is for.
+- Every Record field and every Inductive constructor gets its own short `(** … *)` comment above it, saying in plain words what it states (style: `view_agreement` in Core/Semantic/Inductives/ViewCoherence.v).
