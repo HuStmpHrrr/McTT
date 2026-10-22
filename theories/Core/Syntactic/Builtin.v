@@ -299,8 +299,14 @@ Definition tele_lits_ok (Θ : gdeps) (Ξ : gstack) (B : builtins) (Δ Δ' : ctx)
     computed from their results in order ([exp_fill]), and only the results
     come from a relation: the fill is functional as [mdenote] is.  An
     eliminator with no annotated binder keeps no uniform parameters; its
-    typing then asks for none.  Terms inside module literals are not
-    visited. *)
+    typing then asks for none.
+
+    Every term of the command is visited, those inside module expressions
+    and module literals included: the arguments of an application, and the
+    telescope and the entries of a literal, each entry in its body's
+    context as written ([body_ctx]).  There a local open binds one hole per
+    item: the elaborator reaches what an open generates through the opened
+    module, not through these slots. *)
 
 (** The annotation an eliminator's group and uniform parameters are read
     off, block [0]'s, else block [m]'s, with the number of binders it is
@@ -344,7 +350,7 @@ Fixpoint exp_sites (Γ : ctx) (M : exp) {struct M} : list fill_site :=
   | a_pi A B | a_fn A B => exp_sites Γ A ++ exp_sites (ce_hole :: Γ) B
   | a_let (b_def oA M1) B =>
       match oA with Some A => exp_sites Γ A | None => nil end ++ exp_sites Γ M1 ++ exp_sites (ce_hole :: Γ) B
-  | a_let (b_mod U) B => exp_sites (ce_mod U :: Γ) B
+  | a_let (b_mod U) B => unit_sites Γ U ++ exp_sites (ce_mod U :: Γ) B
   | a_elim oq Us m Bks M1 =>
       match elim_site oq Us m Bks with Some (d, Z) => (Γ, d, Z) :: nil | None => nil end ++
       (fix us_sites (Us : list exp) : list fill_site :=
@@ -360,7 +366,54 @@ Fixpoint exp_sites (Γ : ctx) (M : exp) {struct M} : list fill_site :=
              blocks_sites Bks'
          end) Bks ++
       exp_sites Γ M1
+  | a_mem H _ => modexp_sites Γ H
   | _ => nil
+  end
+(** The sites of a module expression: the arguments it is applied to, and
+    the literals in it. *)
+with modexp_sites (Γ : ctx) (H : modexp) {struct H} : list fill_site :=
+  match H with
+  | me_mem H' _ => modexp_sites Γ H'
+  | me_app H' N => modexp_sites Γ H' ++ exp_sites Γ N
+  | me_lit U => unit_sites Γ U
+  | me_unit _ | me_var _ => nil
+  end
+(** The sites of a unit: its telescope, each entry over those after it,
+    then its definition under the telescope. *)
+with unit_sites (Γ : ctx) (U : gunit) {struct U} : list fill_site :=
+  match U with
+  | gu_mk Δ D =>
+      (fix tele_sites (Δ : list centry) : list fill_site :=
+         match Δ with
+         | nil => nil
+         | e :: Δ' =>
+             match e with
+             | ce_ass A => exp_sites (Δ' ++ Γ) A
+             | ce_def A M => exp_sites (Δ' ++ Γ) A ++ exp_sites (Δ' ++ Γ) M
+             | ce_mod U' => unit_sites (Δ' ++ Γ) U'
+             end ++ tele_sites Δ'
+         end) Δ ++
+      match D with
+      | md_body _ Φ => body_sites (Δ ++ Γ) Φ
+      | md_alias E => modexp_sites (Δ ++ Γ) E
+      end
+  end
+(** The sites of a body, its entries in order, each in the context of the
+    entries before it ([body_ctx]): a definition's type and body, a
+    submodule's unit, an open's target.  A local body declares no inductive
+    type, and an inductive alias carries no term as written. *)
+with body_sites (Γ : ctx) (Φ : gmod) {struct Φ} : list fill_site :=
+  match Φ with
+  | gm_nil => nil
+  | gm_ext Φ' _ E =>
+      body_sites Γ Φ' ++
+      match E with
+      | ge_def _ _ A oM =>
+          exp_sites (body_ctx Φ' ++ Γ) A ++ match oM with Some M => exp_sites (body_ctx Φ' ++ Γ) M | None => nil end
+      | ge_mod _ U => unit_sites (body_ctx Φ' ++ Γ) U
+      | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ => nil
+      end
+  | gm_open Φ' H _ => body_sites Γ Φ' ++ modexp_sites (body_ctx Φ' ++ Γ) H
   end.
 
 (** The result of a site: the group, and the uniform parameters. *)
@@ -382,7 +435,8 @@ Fixpoint exp_fill (rs : list fill_result) (M : exp) {struct M} : (exp * list fil
       let r1 := exp_fill (snd rA) M1 in
       let r2 := exp_fill (snd r1) B in
       (a_let (b_def (fst rA) (fst r1)) (fst r2), snd r2)
-  | a_let (b_mod U) B => let r := exp_fill rs B in (a_let (b_mod U) (fst r), snd r)
+  | a_let (b_mod U) B =>
+      let rU := unit_fill rs U in let r := exp_fill (snd rU) B in (a_let (b_mod (fst rU)) (fst r), snd r)
   | a_elim oq Us m Bks M1 =>
       let '(oq', Us', rs0) :=
         match elim_site oq Us m Bks, rs with
@@ -413,7 +467,60 @@ Fixpoint exp_fill (rs : list fill_result) (M : exp) {struct M} : (exp * list fil
                    end) (snd rU) Bks in
       let rM := exp_fill (snd rB) M1 in
       (a_elim oq' (match elim_site oq Us m Bks with Some _ => Us' | None => fst rU end) m (fst rB) (fst rM), snd rM)
+  | a_mem H x => let r := modexp_fill rs H in (a_mem (fst r) x, snd r)
   | _ => (M, rs)
+  end
+(** A module expression filled, in the order [modexp_sites] lists its
+    sites. *)
+with modexp_fill (rs : list fill_result) (H : modexp) {struct H} : (modexp * list fill_result)%type :=
+  match H with
+  | me_mem H' y => let r := modexp_fill rs H' in (me_mem (fst r) y, snd r)
+  | me_app H' N => let r1 := modexp_fill rs H' in let r2 := exp_fill (snd r1) N in (me_app (fst r1) (fst r2), snd r2)
+  | me_lit U => let r := unit_fill rs U in (me_lit (fst r), snd r)
+  | me_unit _ | me_var _ => (H, rs)
+  end
+(** A unit filled, in the order [unit_sites] lists its sites. *)
+with unit_fill (rs : list fill_result) (U : gunit) {struct U} : (gunit * list fill_result)%type :=
+  match U with
+  | gu_mk Δ D =>
+      let rΔ := (fix tele_fill (rs : list fill_result) (Δ : list centry) : (list centry * list fill_result)%type :=
+                   match Δ with
+                   | nil => (nil, rs)
+                   | e :: Δ' =>
+                       let re := match e with
+                                 | ce_ass A => let r := exp_fill rs A in (ce_ass (fst r), snd r)
+                                 | ce_def A M => let r1 := exp_fill rs A in let r2 := exp_fill (snd r1) M in
+                                                 (ce_def (fst r1) (fst r2), snd r2)
+                                 | ce_mod U' => let r := unit_fill rs U' in (ce_mod (fst r), snd r)
+                                 end in
+                       let r := tele_fill (snd re) Δ' in
+                       (fst re :: fst r, snd r)
+                   end) rs Δ in
+      let rD := match D with
+                | md_body sm Φ => let r := body_fill (snd rΔ) Φ in (md_body sm (fst r), snd r)
+                | md_alias E => let r := modexp_fill (snd rΔ) E in (md_alias (fst r), snd r)
+                end in
+      (gu_mk (fst rΔ) (fst rD), snd rD)
+  end
+(** A body filled, in the order [body_sites] lists its sites. *)
+with body_fill (rs : list fill_result) (Φ : gmod) {struct Φ} : (gmod * list fill_result)%type :=
+  match Φ with
+  | gm_nil => (gm_nil, rs)
+  | gm_ext Φ' x E =>
+      let r := body_fill rs Φ' in
+      let rE := match E with
+                | ge_def b pv A oM =>
+                    let rA := exp_fill (snd r) A in
+                    match oM with
+                    | Some M => let rM := exp_fill (snd rA) M in (ge_def b pv (fst rA) (Some (fst rM)), snd rM)
+                    | None => (ge_def b pv (fst rA) None, snd rA)
+                    end
+                | ge_mod pv U => let rU := unit_fill (snd r) U in (ge_mod pv (fst rU), snd rU)
+                | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ => (E, snd r)
+                end in
+      (gm_ext (fst r) x (fst rE), snd rE)
+  | gm_open Φ' H its =>
+      let r := body_fill rs Φ' in let rH := modexp_fill (snd r) H in (gm_open (fst r) (fst rH) its, snd rH)
   end.
 
 (** The sites of a telescope, each entry in the context of those after it
@@ -425,7 +532,7 @@ Fixpoint tele_sites (Γ : ctx) (Δ : ctx) : list fill_site :=
       match e with
       | ce_ass A => exp_sites (Δ' ++ Γ) A
       | ce_def A M => exp_sites (Δ' ++ Γ) A ++ exp_sites (Δ' ++ Γ) M
-      | ce_mod _ => nil
+      | ce_mod U => unit_sites (Δ' ++ Γ) U
       end ++ tele_sites Γ Δ'
   end.
 
@@ -437,7 +544,7 @@ Fixpoint tele_fill (rs : list fill_result) (Δ : ctx) : (ctx * list fill_result)
       let re := match e with
                 | ce_ass A => let r := exp_fill rs A in (ce_ass (fst r), snd r)
                 | ce_def A M => let r1 := exp_fill rs A in let r2 := exp_fill (snd r1) M in (ce_def (fst r1) (fst r2), snd r2)
-                | ce_mod U => (ce_mod U, rs)
+                | ce_mod U => let r := unit_fill rs U in (ce_mod (fst r), snd r)
                 end in
       let r := tele_fill (snd re) Δ' in
       (fst re :: fst r, snd r)
@@ -512,11 +619,13 @@ Definition fun_fill (rs : list fill_result) (f : raw_fun) : (raw_fun * list fill
 Definition cmd_sites (Ξ : gstack) (c : ccmd) : list fill_site :=
   match c with
   | cc_def _ _ _ A oM => exp_sites (gs_tele Ξ) A ++ match oM with Some M => exp_sites (gs_tele Ξ) M | None => nil end
-  | cc_mod _ _ Δ _ | cc_alias _ _ Δ _ | cc_ind_alias _ _ Δ _ => tele_sites (gs_tele Ξ) Δ
+  | cc_mod _ _ Δ _ => tele_sites (gs_tele Ξ) Δ
+  | cc_alias _ _ Δ E | cc_ind_alias _ _ Δ E => tele_sites (gs_tele Ξ) Δ ++ modexp_sites (Δ ++ gs_tele Ξ) E
   | cc_eval M oA => exp_sites (gs_tele Ξ) M ++ match oA with Some A => exp_sites (gs_tele Ξ) A | None => nil end
   | cc_ind _ R => tele_sites (gs_tele Ξ) (rd_uparams R) ++ List.concat (List.map (member_sites Ξ R) (rd_members R))
   | cc_mdef _ _ Δ fs => tele_sites (gs_tele Ξ) Δ ++ List.concat (List.map (fun_sites Ξ Δ) fs)
-  | cc_load _ | cc_open _ _ | cc_builtin _ _ => nil
+  | cc_open E _ | cc_builtin _ E => modexp_sites (gs_tele Ξ) E
+  | cc_load _ => nil
   end.
 
 (** A command filled from the results of its sites. *)
@@ -526,8 +635,10 @@ Definition cmd_fill (rs : list fill_result) (c : ccmd) : ccmd :=
       let rA := exp_fill rs A in
       cc_def x b pv (fst rA) match oM with Some M => Some (fst (exp_fill (snd rA) M)) | None => None end
   | cc_mod x pv Δ cs => cc_mod x pv (fst (tele_fill rs Δ)) cs
-  | cc_alias x pv Δ E => cc_alias x pv (fst (tele_fill rs Δ)) E
-  | cc_ind_alias x pv Δ H => cc_ind_alias x pv (fst (tele_fill rs Δ)) H
+  | cc_alias x pv Δ E => let rΔ := tele_fill rs Δ in cc_alias x pv (fst rΔ) (fst (modexp_fill (snd rΔ) E))
+  | cc_ind_alias x pv Δ H => let rΔ := tele_fill rs Δ in cc_ind_alias x pv (fst rΔ) (fst (modexp_fill (snd rΔ) H))
+  | cc_open E its => cc_open (fst (modexp_fill rs E)) its
+  | cc_builtin kd H => cc_builtin kd (fst (modexp_fill rs H))
   | cc_eval M oA =>
       let rM := exp_fill rs M in
       cc_eval (fst rM) match oA with Some A => Some (fst (exp_fill (snd rM) A)) | None => None end
@@ -547,7 +658,7 @@ Definition cmd_fill (rs : list fill_result) (c : ccmd) : ccmd :=
                     | f :: fs' => let r := fun_fill rs f in fst r :: fs_fill (snd r) fs'
                     end) (snd rD) fs in
       cc_mdef b pv (fst rD) rFs
-  | cc_load _ | cc_open _ _ | cc_builtin _ _ => c
+  | cc_load _ => c
   end.
 
 (** The arguments a member's type former gets from a head that denotes
@@ -583,7 +694,7 @@ Definition elim_fill_ok (Θ : gdeps) (Ξ : gstack) (c c' : ccmd) : Prop :=
 (** Whether a command has terms of its own, which may have sites. *)
 Definition cmd_terms (c : ccmd) : bool :=
   match c with
-  | cc_load _ | cc_open _ _ | cc_builtin _ _ => false
+  | cc_load _ => false
   | _ => true
   end.
 
