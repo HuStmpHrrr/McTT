@@ -20,6 +20,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Members.
 From Mctt.Core.Syntactic.System Require Import Definitions Structural.
 From Mctt.Core.Syntactic.System.Global Require Import MemberLemmas Paths DescTyping Presup.
+From Mctt.Core.Syntactic.Inductives Require Import Group.
 Import Syntax_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -57,8 +58,8 @@ with en_order (Θ : gdeps) (Ξ : gstack) : ctx -> gentry -> Prop :=
 | eno_mod : forall Γ pv U,
     un_order Θ Ξ Γ U ->
     en_order Θ Ξ Γ (ge_mod pv U)
-| eno_ind : forall Γ pv p D Φ, en_order Θ Ξ Γ (ge_ind pv p D Φ)
-| eno_ind_alias : forall Γ pv Δ pq Ns, en_order Θ Ξ Γ (ge_ind_alias pv Δ pq Ns)
+| eno_ind : forall Γ pv p k D Φ, en_order Θ Ξ Γ (ge_ind pv p k D Φ)
+| eno_ind_alias : forall Γ pv Δ pm pq k Ns, en_order Θ Ξ Γ (ge_ind_alias pv Δ pm pq k Ns)
 with bx_order (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> Prop :=
 | bxo_nil : forall Γ, bx_order Θ Ξ Γ gm_nil
 | bxo_ext : forall Γ Φ x E,
@@ -93,6 +94,15 @@ Proof.
   unfold items_ok.
   destruct (both_dup its) as [n |]; [ right; intros [H _]; discriminate |].
   destruct (name_dup (List.map iitem_name its)) as [n |]; [ right; intros [_ H]; discriminate | left; split; reflexivity ].
+Defined.
+
+(** Equality of references to members of groups, decided. *)
+Definition indref_eq_dec (x y : (qname * nat * ind_decl)%type) : {x = y} + {x <> y}.
+Proof.
+  destruct x as [[p1 k1] D1], y as [[p2 k2] D2].
+  destruct (ind_decl_eq_dec_g exp_eq_dec centry_eq_dec D1 D2) as [<- | HD]; [| right; congruence ].
+  destruct (Nat.eq_dec k1 k2) as [<- | Hk]; [| right; congruence ].
+  destruct (qname_eq_dec p1 p2) as [<- | Hp]; [ left; reflexivity | right; congruence ].
 Defined.
 
 Lemma gc_unit_var : forall Θ Ξ x, gc_unit Θ Ξ (me_var x) = None.
@@ -172,6 +182,8 @@ Section DenoteImpl.
       | H : ig_order _ _ _ _ _ |- _ => progressive_invert H
       | Ho : dn_order _ _ _ (me_mem _ _), Eu : gc_unit _ _ (me_mem _ _) = None |- _ =>
           inversion Ho; subst; clear Ho; [ congruence |]
+      (** The reference a member's path names, decided equal *)
+      | Hr : ?r = (_, _, _) |- _ => is_var r; subst r
       end;
     rewrite ?gc_unit_var, ?gc_unit_lit, ?gc_unit_app in *;
     try solve [ congruence | eauto ];
@@ -237,8 +249,8 @@ Section DenoteImpl.
   | Γ, o, ge_mod pv U, Ho with udenote_impl Γ o U _ := {
     | inleft (exist _ R HR) => inleft (exist _ R _)
     | inright HN => inright _ }
-  | Γ, o, ge_ind pv p D Φ, Ho => inleft (exist _ (ds_ind nil p nil) _)
-  | Γ, o, ge_ind_alias pv Δ pq Ns, Ho => inleft (exist _ (ds_ind Δ pq Ns) _)
+  | Γ, o, ge_ind pv p k D Φ, Ho => inleft (exist _ (ds_ind nil p k nil) _)
+  | Γ, o, ge_ind_alias pv Δ pm pq k Ns, Ho => inleft (exist _ (ds_ind Δ pq k Ns) _)
 
   with body_xp_impl Γ Φ (Ho : bx_order Θ Ξ Γ Φ) :
       { Φx | body_xp Θ Ξ Γ Φ Φx } + { forall Φx, ~ body_xp Θ Ξ Γ Φ Φx } by struct Ho :=
@@ -275,11 +287,21 @@ Section DenoteImpl.
     | inleft (exist _ (ds_closed Θ' pc T Φ Ns) HR) with items_gen_impl g Γ H its _ := {
       | inleft (exist _ gs Hgs) => inleft (exist _ (ig_alias d pv (me_mem H n) :: gs) _)
       | inright HN => inright _ }
-    | inleft (exist _ (ds_ind Θ' p Ns) HR) with g := {
+    | inleft (exist _ (ds_ind Θ' p k Ns) HR) with g := {
       | false => inright _
-      | true with items_gen_impl true Γ H its _ := {
-        | inleft (exist _ gs Hgs) => inleft (exist _ (ig_ind_alias d pv Θ' p Ns :: gs) _)
-        | inright HN => inright _ } } }.
+      (** An inductive alias of the member [k] of the group at [p]: its
+          module is the one the member's path names *)
+      | true with inspect (ind_lookup Θ Ξ p) := {
+        | exist _ None El => inright _
+        | exist _ (Some D) El with inspect (ind_mpath D k) := {
+          | exist _ None Ep => inright _
+          | exist _ (Some pm) Ep with inspect (ind_mlookup Θ Ξ pm) := {
+            | exist _ None Eml => inright _
+            | exist _ (Some r) Eml with indref_eq_dec r (p, k, D) := {
+              | right Hne => inright _
+              | left Heq with items_gen_impl true Γ H its _ := {
+                | inleft (exist _ gs Hgs) => inleft (exist _ (ig_ind_alias d pv Θ' pm p k Ns :: gs) _)
+                | inright HN => inright _ } } } } } } }.
 End DenoteImpl.
 
 (** ** What Denotes Has an Order *)
@@ -339,11 +361,11 @@ Section Orders.
       desc_ok Θ Ξ Γ Rm -> ds_entry Rm y = Some (Γy, E, rd) -> en_order Θ Ξ (Γy ++ Γ) E.
   Proof.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.
-    intros * Hok He; destruct Rm as [A om | Δ Φw Φ | Θ' pc T Φ Ns | Θ' p Ns]; cbn in He; try discriminate.
+    intros * Hok He; destruct Rm as [A om | Δ Φw Φ | Θ' pc T Φ Ns | Θ' p k Ns]; cbn in He; try discriminate.
     - (* an open module: a slot of its extended context *)
       inversion Hok as [| | ? ? ? ? HΓ Hno Hsub |]; subst.
       destruct (gm_prefix_upto Φ y) as [[| Φ' x E0 | ? ? ?] |] eqn:Hp; try discriminate.
-      destruct E0 as [[|] pv A [M |] | pv U | ? ? ? ? | ? ? ? ?]; try discriminate; injection He as <- <- <-;
+      destruct E0 as [[|] pv A [M |] | pv U | ? ? ? ? ? | ? ? ? ? ? ?]; try discriminate; injection He as <- <- <-;
         [ constructor |].
       constructor.
       destruct (gm_prefix_body_ctx _ _ _ Hno Hp) as (Ψ & HΨ); rewrite HΨ in HΓ; cbn [body_ctx] in HΓ.
@@ -357,7 +379,7 @@ Section Orders.
       injection He as <- <- <-; cbn [List.app].
       pose proof (loc_closed _ _ Hg0 _ _ _ Hloc) as [_ HcΦ].
       pose proof (body_closed_prefix _ _ _ _ HcΦ Hp) as HcE; cbn in HcE; destruct HcE as [_ HcE].
-      destruct E0 as [b pv A oM | pv [Δ [sm Φy | E']] | ? ? ? ? | ? ? ? ?]; cbn [ge_read];
+      destruct E0 as [b pv A oM | pv [Δ [sm Φy | E']] | ? ? ? ? ? | ? ? ? ? ? ?]; cbn [ge_read];
         try solve [ constructor ].
       + (* a closed submodule: its body has no open *)
         destruct HcE as (-> & HsΔ & HcΦy); cbn [ge_read].

@@ -20,11 +20,12 @@ Import Syntax_Notations.
 (** ** Where a Module Is Stored, and What It Denotes
 
     A module expression stored at [pq] ([msite]) denotes a module read off
-    what is stored there: a closed module stored at [pq], or the inductive
-    type at [pq] ([site_desc]). *)
+    what is stored there: a closed module stored at [pq], or the member of
+    an inductive group stored at [pq] ([site_desc]). *)
 
 Definition site_desc (Θ : gdeps) (Ξ : gstack) (pq : qname) (R : mdesc) : Prop :=
-  (exists Θ' T Φ Ns, R = ds_closed Θ' pq T Φ Ns /\ loc Θ Ξ pq T Φ) \/ (exists Θ' Ns, R = ds_ind Θ' pq Ns).
+  (exists Θ' T Φ Ns, R = ds_closed Θ' pq T Φ Ns /\ loc Θ Ξ pq T Φ) \/
+  (exists Θ' pg k D Ns, R = ds_ind Θ' pg k Ns /\ ind_mlookup Θ Ξ pq = Some (pg, k, D)).
 
 Section SiteDesc.
   Variables (Θ : gdeps) (Ξ : gstack).
@@ -32,9 +33,9 @@ Section SiteDesc.
 
   Lemma site_desc_at : forall pq R N R', site_desc Θ Ξ pq R -> ds_at R N = Some R' -> site_desc Θ Ξ pq R'.
   Proof.
-    intros * [(Θ' & T & Φ & Ns & -> & Hl) | (Θ' & Ns & ->)] Ha; cbn in Ha.
+    intros * [(Θ' & T & Φ & Ns & -> & Hl) | (Θ' & pg & k & D & Ns & -> & Hl)] Ha; cbn in Ha.
     - left; destruct (tele_split (rev Θ')) as [[[? ?] ?] | ?]; injection Ha as <-; do 4 eexists; (split; [ reflexivity | exact Hl ]).
-    - right; destruct (tele_split (rev Θ')) as [[[? ?] ?] | ?]; injection Ha as <-; do 2 eexists; reflexivity.
+    - right; destruct (tele_split (rev Θ')) as [[[? ?] ?] | ?]; injection Ha as <-; do 5 eexists; (split; [ reflexivity | exact Hl ]).
   Qed.
 
   Lemma site_desc_ats : forall Ns pq R R', site_desc Θ Ξ pq R -> ds_ats R Ns = Some R' -> site_desc Θ Ξ pq R'.
@@ -46,8 +47,8 @@ Section SiteDesc.
 
   Lemma site_desc_up : forall pq Θ' R, site_desc Θ Ξ pq R -> site_desc Θ Ξ pq (ds_up Θ' R).
   Proof.
-    intros * [(Θ0 & T & Φ & Ns & -> & Hl) | (Θ0 & Ns & ->)]; cbn [ds_up];
-      [ left; do 4 eexists; split; [ reflexivity | exact Hl ] | right; do 2 eexists; reflexivity ].
+    intros * [(Θ0 & T & Φ & Ns & -> & Hl) | (Θ0 & pg & k & D & Ns & -> & Hl)]; cbn [ds_up];
+      [ left; do 4 eexists | right; do 5 eexists ]; (split; [ reflexivity | exact Hl ]).
   Qed.
 
   Lemma site_desc_read : forall pq rd R R', site_desc Θ Ξ pq R -> ds_read rd R = Some R' -> site_desc Θ Ξ pq R'.
@@ -55,22 +56,23 @@ Section SiteDesc.
     intros * Hs Hr; destruct rd as [Θ' Φ' | Θ' Ns]; cbn in Hr.
     - destruct (gm_fill Φ') as [σ |]; cbn in Hr; [ injection Hr as <- | discriminate ].
       apply site_desc_up.
-      destruct Hs as [(Θ0 & T & Φ & Ns & -> & Hl) | (Θ0 & Ns & ->)]; cbn [ds_sub];
-        [ left; do 4 eexists; split; [ reflexivity | exact Hl ] | right; do 2 eexists; reflexivity ].
+      destruct Hs as [(Θ0 & T & Φ & Ns & -> & Hl) | (Θ0 & pg & k & D & Ns & -> & Hl)]; cbn [ds_sub];
+        [ left; do 4 eexists | right; do 5 eexists ]; (split; [ reflexivity | exact Hl ]).
     - destruct (ds_ats R Ns) as [R1 |] eqn:E; cbn in Hr; [| discriminate ]; injection Hr as <-.
       apply site_desc_up; pose proof (site_desc_ats _ _ _ _ Hs E) as Hs1.
       apply (ds_named_cases (site_desc Θ Ξ pq)); [ exact Hs1 |].
-      destruct Hs1 as [(Θ0 & T & Φ & Ns0 & -> & Hl) | (Θ0 & Ns0 & ->)]; cbn [ds_self];
-        [ left; do 4 eexists; split; [ reflexivity | exact Hl ] | right; do 2 eexists; reflexivity ].
+      destruct Hs1 as [(Θ0 & T & Φ & Ns0 & -> & Hl) | (Θ0 & pg & k & D & Ns0 & -> & Hl)]; cbn [ds_self];
+        [ left; do 4 eexists | right; do 5 eexists ]; (split; [ reflexivity | exact Hl ]).
   Qed.
 
   (** The module part of a description read off storage is stored there. *)
   Lemma site_desc_mod : forall pq R Rm, site_desc Θ Ξ pq R -> ds_mod Θ Ξ R = Some Rm ->
       exists Θ' T Φ Ns, Rm = ds_closed Θ' pq T Φ Ns /\ loc Θ Ξ pq T Φ.
   Proof.
-    intros * [(Θ' & T & Φ & Ns & -> & Hl) | (Θ' & Ns & ->)] Hm; cbn in Hm.
+    intros * [(Θ' & T & Φ & Ns & -> & Hl) | (Θ' & pg & k & D & Ns & -> & Hl)] Hm; cbn in Hm.
     - injection Hm as <-; do 4 eexists; split; [ reflexivity | exact Hl ].
-    - destruct (gc_body Θ Ξ pq) as [[T Φ] |] eqn:Hb; [| discriminate ]; injection Hm as <-.
+    - rewrite (ind_mlookup_group _ _ Hg _ _ _ _ Hl), (isp_path _ _ _ _ (ind_mlookup_selfpath _ _ Hg _ _ _ _ Hl)) in Hm.
+      destruct (gc_body Θ Ξ pq) as [[T Φ] |] eqn:Hb; [| discriminate ]; injection Hm as <-.
       do 4 eexists; split; [ reflexivity | right; exact Hb ].
   Qed.
 
@@ -81,11 +83,12 @@ Section SiteDesc.
     apply (IH _ _ R1); [ eapply dn_app; eassumption | exact Ha ].
   Qed.
 
-  (** An inductive type at its canonical path denotes it. *)
-  Lemma mdenote_ind_canon : forall p D Γ, ind_lookup Θ Ξ p = Some D -> mdenote Θ Ξ Γ (qname_mod p) (ds_ind nil p nil).
+  (** A member of an inductive group at its path denotes it. *)
+  Lemma mdenote_ind_canon : forall pm pq k D Γ, ind_mlookup Θ Ξ pm = Some (pq, k, D) ->
+      mdenote Θ Ξ Γ (qname_mod pm) (ds_ind nil pq k nil).
   Proof.
     intros * Hl.
-    destruct (ind_parent _ _ Hg _ _ Hl) as (mq & y & Tq & Φq & pv & Φ' & -> & Hlm & He).
+    destruct (ind_mparent _ _ Hg _ _ _ _ Hl) as (mq & y & Tq & Φq & pv & Φ' & -> & Hlm & He).
     rewrite qname_mod_in.
     pose proof (mdenote_of_loc _ _ Hg _ _ _ _ Γ (mod_qname_qname_mod mq) Hlm) as Hm.
     pose proof (loc_closed _ _ Hg _ _ _ (loc_mod_loc _ _ _ _ _ Hlm)) as [_ HcΦ].
@@ -117,7 +120,7 @@ Section SiteDesc.
         eapply site_desc_read; [| exact Hr ].
         pose proof (loc_closed _ _ Hg _ _ _ Hl) as [_ HcΦ].
         pose proof (body_closed_prefix _ _ _ _ HcΦ Hp) as HcE; cbn in HcE; destruct HcE as [_ HcE].
-        destruct E as [| pv [Δ [sm Φy | ?]] | pv pq1 D Φi | ]; cbn in Hb; try contradiction.
+        destruct E as [| pv [Δ [sm Φy | ?]] | pv pq1 k D Φi | ]; cbn in Hb; try contradiction.
         * destruct HcE as (-> & HsΔ & HcΦy); cbn [ge_read] in Hed.
           inversion Hed; subst.
           match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
@@ -128,8 +131,7 @@ Section SiteDesc.
           left; do 4 eexists; split; [ reflexivity |].
           right; exact (proj1 (loc_child_mod _ _ Hg _ _ _ Hl _ _ _ _ _ Hent)).
         * cbn [ge_read] in Hed; inversion Hed; subst.
-          rewrite (gc_entry_selfpath _ _ Hg _ _ _ _ _ He).
-          right; do 2 eexists; reflexivity.
+          right; do 5 eexists; split; [ reflexivity | exact (proj2 (gc_entry_ind _ _ _ _ _ _ _ _ He)) ].
     - (* an alias: where its target is *)
       inversion Hm as [? ? ? ? ? ? Hu | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst.
       + destruct (gc_unit_loc _ _ _ _ _ Hu) as (mp & Hq & Hl).
@@ -143,22 +145,22 @@ Section SiteDesc.
         destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & Hent).
         pose proof (proj2 (loc_entry _ _ Hg _ _ _ Hl _ _) Hent) as He1; rewrite He in He1; injection He1 as <-.
         eapply site_desc_read; [| exact Hr ].
-        destruct E as [| pv [Δ [sm Φy | E'']] | pv pq1 D Φi | pv Δ p Ns' ]; cbn in Ha; try discriminate; injection Ha as <-.
+        destruct E as [| pv [Δ [sm Φy | E'']] | pv pq1 k D Φi | pv Δ pm p k Ns' ]; cbn in Ha; try discriminate; injection Ha as <-.
         * cbn [ge_read] in Hed; inversion Hed; subst.
           match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
           apply site_desc_up.
           match goal with Hm1 : mdenote _ _ _ E'' ?R2, Hd : ds_mod _ _ ?R2 = Some _ |- _ =>
             destruct (site_desc_mod _ _ _ (IH' _ _ Hm1) Hd) as (Θ2 & T2 & Φ2 & Ns2 & -> & Hl2) end.
           left; do 4 eexists; split; [ reflexivity | exact Hl2 ].
-        * (* an inductive alias: the inductive type at its canonical path *)
+        * (* an inductive alias: the member at its path *)
           cbn [ge_read] in Hed; inversion Hed; subst.
           destruct (loc_valid _ _ _ _ _ (gctx_valid_syn _ _ Hg) Hl) as [_ HvΦ].
           pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ HvΦ Hp) as HE0; cbn [ge_valid] in HE0.
-          destruct HE0 as [_ HE0]; cbn [syn_V] in HE0; destruct HE0 as (D & HD & _).
-          pose proof (mdenote_apps Ns' Γ _ _ _ (mdenote_ind_canon _ _ Γ HD) (ds_ats_ind_nil Ns' p nil)) as Hm2.
-          destruct (IH' _ _ Hm2) as [(? & ? & ? & ? & Heq & _) | (? & ? & Heq)]; [ discriminate Heq |].
-          injection Heq as _ Hpq _; subst pq'.
-          right; do 2 eexists; reflexivity.
+          destruct HE0 as [_ HE0]; cbn [syn_V] in HE0; destruct HE0 as [D Mk _ _ _ _ HD].
+          pose proof (mdenote_apps Ns' Γ _ _ _ (mdenote_ind_canon _ _ _ _ Γ HD) (ds_ats_ind_nil Ns' p k nil)) as Hm2.
+          destruct (IH' _ _ Hm2) as [(? & ? & ? & ? & Heq & _) | (? & ? & ? & ? & ? & Heq & Hml)]; [ discriminate Heq |].
+          injection Heq as _ <- <- _.
+          right; do 5 eexists; split; [ reflexivity | exact Hml ].
     - (* an application *)
       inversion Hm as [? ? ? ? ? ? Hu | | | ? ? ? R0 ? Hm0 Ha0 |]; subst; [ cbn in Hu; discriminate |].
       exact (site_desc_at _ _ _ _ (IH _ _ Hm0) Ha0).
@@ -177,13 +179,13 @@ Proof. intros * Hq; cbn; rewrite Hq; reflexivity. Qed.
 
 Lemma entry_grows_body : forall E1 E2, entry_grows E1 E2 -> entry_is_body E2 -> entry_is_body E1.
 Proof.
-  intros [| ? [? [? ?| ?]] | ? ? ? ? | ? ? ? ?] [| ? [? [? ?| ?]] | ? ? ? ? | ? ? ? ?] Hgr Hb; cbn in *;
+  intros [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ?] [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ?] Hgr Hb; cbn in *;
     try contradiction; try discriminate; auto.
 Qed.
 
 Lemma entry_grows_alias : forall E1 E2 E', entry_grows E1 E2 -> entry_alias E2 = Some E' -> E1 = E2.
 Proof.
-  intros [| ? [? [? ?| ?]] | ? ? ? ? | ? ? ? ?] [| ? [? [? ?| ?]] | ? ? ? ? | ? ? ? ?] E' Hgr Ha; cbn in *;
+  intros [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ?] [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ?] E' Hgr Ha; cbn in *;
     try discriminate; auto.
 Qed.
 
@@ -204,7 +206,7 @@ Section Below.
   Proof.
     intros * Hm Hsi Hu; inversion Hm as [? ? ? ? ? ? Hu' | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst;
       [ congruence |].
-    destruct (site_desc_mod _ _ _ _ _ (msite_desc _ _ Hg1 _ _ Hsi _ _ Hm0) Hd0) as (Θ' & T & Φ & Ns & -> & Hl).
+    destruct (site_desc_mod _ _ Hg1 _ _ _ (msite_desc _ _ Hg1 _ _ Hsi _ _ Hm0) Hd0) as (Θ' & T & Φ & Ns & -> & Hl).
     cbn in He0; destruct (gm_prefix_upto Φ z) as [[| Φ0 x E1 | ? ? ?] |] eqn:Hp; try discriminate.
     destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & Hent).
     exists E1; exact (proj2 (loc_entry _ _ Hg1 _ _ _ Hl _ _) Hent).
@@ -280,19 +282,19 @@ Section Below.
         pose proof (entry_grows_alias _ _ _ Hgr Ha) as <-.
         eapply ms_alias; [ exact Hs1 | exact HE1 | exact Ha |].
         (* the target denotes there: it is what the entry denotes *)
-        destruct (site_desc_mod _ _ _ _ _ (msite_desc _ _ Hg1 _ _ Hs1 _ _ Hm0) Hd0) as (Θ' & T & Φ & Ns & -> & Hl).
+        destruct (site_desc_mod _ _ Hg1 _ _ _ (msite_desc _ _ Hg1 _ _ Hs1 _ _ Hm0) Hd0) as (Θ' & T & Φ & Ns & -> & Hl).
         cbn in He0; destruct (gm_prefix_upto Φ z) as [[| Φ0 x E0' | ? ? ?] |] eqn:Hp; try discriminate.
         injection He0 as <- <- <-.
         destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & Hent).
         pose proof (proj2 (loc_entry _ _ Hg1 _ _ _ Hl _ _) Hent) as He1; rewrite HE1 in He1; injection He1 as <-.
-        destruct E1 as [| pv [Δ [sm Φy | E'']] | pv pq1 D Φi | pv Δ p Ns' ]; cbn in Ha; try discriminate; injection Ha as <-.
+        destruct E1 as [| pv [Δ [sm Φy | E'']] | pv pq1 k D Φi | pv Δ pm p k Ns' ]; cbn in Ha; try discriminate; injection Ha as <-.
         * cbn [ge_read] in Hed; inversion Hed; subst.
           match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
           match goal with Hm1 : mdenote _ _ _ E'' _ |- _ => exact (IH' _ _ Hm1) end.
         * destruct (loc_valid _ _ _ _ _ (gctx_valid_syn _ _ Hg1) Hl) as [_ HvΦ].
           pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ HvΦ Hp) as HE0; cbn [ge_valid] in HE0.
-          destruct HE0 as [_ HE0]; cbn [syn_V] in HE0; destruct HE0 as (D & HD & _).
-          exact (IH' _ _ (mdenote_apps _ _ Ns' Γ _ _ _ (mdenote_ind_canon _ _ Hg1 _ _ Γ HD) (ds_ats_ind_nil Ns' p nil))).
+          destruct HE0 as [_ HE0]; cbn [syn_V] in HE0; destruct HE0 as [D Mk _ _ _ _ HD].
+          exact (IH' _ _ (mdenote_apps _ _ Ns' Γ _ _ _ (mdenote_ind_canon _ _ Hg1 _ _ _ _ Γ HD) (ds_ats_ind_nil Ns' p k nil))).
     - inversion Hm as [? ? ? ? ? ? Hu | | | ? ? ? R0 ? Hm0 Ha0 |]; subst; [ cbn in Hu; discriminate |].
       exact (ms_app _ _ _ _ _ (IH _ _ Hm0)).
   Qed.
@@ -327,9 +329,9 @@ Proof.
   fix IH 1; intros [| Φ0 y E0 | Φ0 c its] T x ip E E' He Ha; cbn in He |- *; [ discriminate | | exact (IH _ _ _ _ _ _ He Ha) ].
   destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ He Ha) ].
   destruct ip as [| z ip'].
-  - injection He as <-; destruct E0 as [| ? [? [? ?| ?]] | ? ? ? ? | ? ? ? ?]; cbn in Ha; try discriminate;
+  - injection He as <-; destruct E0 as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ?]; cbn in Ha; try discriminate;
       injection Ha as <-; eexists; reflexivity.
-  - destruct E0 as [| ? [Δ [? Φ'| ?]] | ? ? D Φ' | ? ? ? ?]; try discriminate; eapply IH; eassumption.
+  - destruct E0 as [| ? [Δ [? Φ'| ?]] | ? ? ? D Φ' | ? ? ? ? ? ?]; try discriminate; eapply IH; eassumption.
 Qed.
 
 Lemma gc_entry_alias_module : forall Θ Ξ p E E', gc_entry Θ Ξ p = Some E -> entry_alias E = Some E' ->
@@ -443,12 +445,12 @@ Section PrivacyImpl.
 
   Definition entry_is_body_b (E : gentry) : bool :=
     match E with
-    | ge_mod _ (gu_mk _ (md_body _ _)) | ge_ind _ _ _ _ => true
+    | ge_mod _ (gu_mk _ (md_body _ _)) | ge_ind _ _ _ _ _ => true
     | _ => false
     end.
 
   Lemma entry_is_body_b_spec : forall E, entry_is_body_b E = true <-> entry_is_body E.
-  Proof. intros [| ? [? [? ?| ?]] | ? ? ? ? | ? ? ? ?]; cbn; split; intros; auto; try discriminate; contradiction. Qed.
+  Proof. intros [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ?]; cbn; split; intros; auto; try discriminate; contradiction. Qed.
 
   Lemma gc_unit_qname : forall H T Φ, gc_unit Θ Ξ H = Some (T, Φ) -> mod_qname H = None -> False.
   Proof. intros * Hu Hq; unfold gc_unit in Hu; rewrite Hq in Hu; discriminate. Qed.
@@ -482,7 +484,7 @@ Section PrivacyImpl.
               | match goal with Hb : entry_is_body ?E, Hf : entry_is_body_b ?E = false |- _ =>
                   apply entry_is_body_b_spec in Hb; congruence end
               | match goal with Hb : entry_is_body ?E, Ha : entry_alias ?E = Some _ |- _ =>
-                  destruct E as [| ? [? [? ?| ?]] | ? ? ? ? | ? ? ? ?]; cbn in Hb, Ha; try contradiction; discriminate end
+                  destruct E as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ?]; cbn in Hb, Ha; try contradiction; discriminate end
               | match goal with Hb : entry_is_body ?E, Ha : entry_alias ?E = None |- _ => fail end
               | cbn in *; congruence ]
     end.
@@ -647,14 +649,14 @@ Proof.
   destruct ch as [| x ip]; [ discriminate |].
   destruct (String.eqb_spec x z) as [-> | Hne].
   - destruct ip as [| w ip']; [ destruct pre as [| ? [| ? ?]]; cbn in Hch; injection Hch; intros; subst; try contradiction; discriminate |].
-    destruct E1 as [| pv [Δ [sm Φ' | ?]] | pv pq D Φ' | ? ? ? ?]; try discriminate.
+    destruct E1 as [| pv [Δ [sm Φ' | ?]] | pv pq k D Φ' | ? ? ? ? ? ?]; try discriminate.
     + destruct pre as [| x' pre']; cbn in Hch; injection Hch as <- Hip.
       * exists (ge_mod pv (gu_mk Δ (md_body sm Φ'))); cbn; rewrite String.eqb_refl; split; [ reflexivity | exact I ].
       * destruct (IH _ _ _ Hr _ _ _ Hip Hsuf) as (E0 & HE0 & Hb).
         exists E0; cbn; rewrite String.eqb_refl.
         destruct (pre' ++ y :: nil) as [| ? ?] eqn:Ep; [ destruct pre'; discriminate | exact (conj HE0 Hb) ].
     + destruct pre as [| x' pre']; cbn in Hch; injection Hch as <- Hip.
-      * exists (ge_ind pv pq D Φ'); cbn; rewrite String.eqb_refl; split; [ reflexivity | exact I ].
+      * exists (ge_ind pv pq k D Φ'); cbn; rewrite String.eqb_refl; split; [ reflexivity | exact I ].
       * destruct (IH _ _ _ Hr _ _ _ Hip Hsuf) as (E0 & HE0 & Hb).
         exists E0; cbn; rewrite String.eqb_refl.
         destruct (pre' ++ y :: nil) as [| ? ?] eqn:Ep; [ destruct pre'; discriminate | exact (conj HE0 Hb) ].

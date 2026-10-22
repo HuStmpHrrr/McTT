@@ -81,6 +81,40 @@ Section Gen.
     Variables (Γ : ctx) (H : modexp) (H' : modexp).
     Hypothesis HH : Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'.
 
+    (** The inductive alias an item [n] of an open declares, as [d], of
+        the member [k] of the group at [p], over [Θ'] at [Ns]: its module
+        is the one the member's path names, which must name the member
+        back ([ign_ind]). *)
+    Definition ind_alias_gen (d : string) (pv : bool) (n : string) (Θ' : ctx) (p : qname) (k : nat) (Ns : list exp) :
+        xres igen :=
+      match ind_lookup Θ Ξ p with
+      | Some D =>
+          match ind_mpath D k with
+          | Some pm =>
+              match ind_mlookup Θ Ξ pm with
+              | Some r => if indref_eq_dec r (p, k, D) then xok (ig_ind_alias d pv Θ' pm p k Ns) else xfail (xe_member H n)
+              | None => xfail (xe_member H n)
+              end
+          | None => xfail (xe_member H n)
+          end
+      | None => xfail (xe_member H n)
+      end.
+
+    Lemma ind_alias_gen_spec : forall d pv n Θ' p k Ns g,
+        ind_alias_gen d pv n Θ' p k Ns = xok g <->
+          exists D pm, ind_lookup Θ Ξ p = Some D /\ ind_mpath D k = Some pm /\ ind_mlookup Θ Ξ pm = Some (p, k, D) /\
+                       g = ig_ind_alias d pv Θ' pm p k Ns.
+    Proof.
+      intros; unfold ind_alias_gen; split.
+      - destruct (ind_lookup Θ Ξ p) as [D |] eqn:El; [| discriminate ].
+        destruct (ind_mpath D k) as [pm |] eqn:Ep; [| discriminate ].
+        destruct (ind_mlookup Θ Ξ pm) as [r |] eqn:Em; [| discriminate ].
+        destruct (indref_eq_dec r (p, k, D)) as [-> | ]; [| discriminate ].
+        intros [= <-]; exists D, pm; auto.
+      - intros (D & pm & El & Ep & Em & ->); rewrite El, Ep, Em.
+        destruct (indref_eq_dec (p, k, D) (p, k, D)) as [_ | Hn]; [ reflexivity | contradiction ].
+    Qed.
+
     (** The item [it] of an open of [H], by what the member it names
         denotes: a term gives a definition, a module an alias, an inductive
         type at the global level ([g = true]) an inductive alias; or the
@@ -92,7 +126,7 @@ Section Gen.
           match denote_of Γ (me_mem H n) (dn_order_mem_of_wf _ _ Hg _ _ _ n HH) with
           | Some (ds_term A _) => xok (ig_def d pv A (a_mem H n))
           | Some (ds_open _ _ _) | Some (ds_closed _ _ _ _ _) => xok (ig_alias d pv (me_mem H n))
-          | Some (ds_ind Θ' p Ns) => if g then xok (ig_ind_alias d pv Θ' p Ns) else xfail (xe_ind n)
+          | Some (ds_ind Θ' p k Ns) => if g then ind_alias_gen d pv n Θ' p k Ns else xfail (xe_ind n)
           | None => xfail (xe_member H n)
           end
       end.
@@ -122,7 +156,7 @@ Section Gen.
     Proof.
       intros g; induction its as [| [[[n |] d] pv] its IH]; intros gs Hx; cbn in Hx.
       - injection Hx as <-; constructor.
-      - destruct (denote_of Γ (me_mem H n) _) as [[A om | Δ Φ | Θ' ? T Φ Ns | Θ' p Ns] |] eqn:E; cbn in Hx;
+      - destruct (denote_of Γ (me_mem H n) _) as [[A om | Δ Φ | Θ' ? T Φ Ns | Θ' p k Ns] |] eqn:E; cbn in Hx;
           [| | | | discriminate ]; apply denote_of_spec in E.
         + destruct (xmap (item_gen g) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
           injection Hx as <-; eapply ign_def; [ exact E | apply IH; reflexivity ].
@@ -131,8 +165,10 @@ Section Gen.
         + destruct (xmap (item_gen g) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
           injection Hx as <-; eapply ign_mod; [ exact E | exact I | apply IH; reflexivity ].
         + destruct g; cbn in Hx; [| discriminate ].
+          destruct (ind_alias_gen d pv n Θ' p k Ns) as [g0 |] eqn:Eg; cbn in Hx; [| discriminate ].
+          apply ind_alias_gen_spec in Eg as (D & pm & El & Ep & Em & ->).
           destruct (xmap (item_gen true) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
-          injection Hx as <-; eapply ign_ind; [ exact E | apply IH; reflexivity ].
+          injection Hx as <-; eapply ign_ind; [ exact E | exact El | exact Ep | exact Em | apply IH; reflexivity ].
       - destruct (xmap (item_gen g) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
         injection Hx as <-; constructor; apply IH; reflexivity.
     Qed.
@@ -146,7 +182,9 @@ Section Gen.
       - match goal with Hm : mdenote _ _ _ _ ?R, Hk : ds_is_mod ?R |- _ =>
           rewrite (proj2 (denote_of_spec _ _ _ _) Hm), (IH _ ltac:(eassumption));
           destruct R; cbn in Hk; try contradiction; reflexivity end.
-      - rewrite (proj2 (denote_of_spec _ _ _ _) ltac:(eassumption)), (IH _ ltac:(eassumption)); reflexivity.
+      - rewrite (proj2 (denote_of_spec _ _ _ _) ltac:(eassumption)).
+        rewrite (proj2 (ind_alias_gen_spec _ _ _ _ _ _ _ _) ltac:(eexists _, _; repeat split; eassumption)).
+        rewrite (IH _ ltac:(eassumption)); reflexivity.
       - rewrite (IH _ ltac:(eassumption)); reflexivity.
     Qed.
 
@@ -244,19 +282,37 @@ Section OpenError.
         let+ M' := oe_exp S M in
         xok (a_exfalso A' M')
     (** The literals are generated before expansion ([Builtin]). *)
-    | a_ind _ | a_con _ _ | a_nlit _ | a_ntok => xok M
-    | a_elim nm A Bs M =>
-        let+ A' := oe_exp (List.repeat None nm ++ S) A in
-        let+ Bs' := (fix oe_brs (Bs : list (String.string * nat * exp)) : xres (list (String.string * nat * exp)) :=
-                       match Bs with
+    | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => xok M
+    (** An eliminator: its uniform parameters, each block's annotation,
+        motive and branches under their binders, its scrutinee *)
+    | a_elim oq Us m Bks M =>
+        let+ Us' := (fix oe_us (Us : list exp) : xres (list exp) :=
+                       match Us with
                        | nil => xok nil
-                       | b :: Bs0 =>
-                           let+ B' := oe_exp (List.repeat None (snd (fst b)) ++ S) (snd b) in
-                           let+ Bs0' := oe_brs Bs0 in
-                           xok ((fst b, B') :: Bs0')
-                       end) Bs in
+                       | U :: Us0 => let+ U' := oe_exp S U in let+ Us0' := oe_us Us0 in xok (U' :: Us0')
+                       end) Us in
+        let+ Bks' := (fix oe_blocks (Bks : list eblock) : xres (list eblock) :=
+                        match Bks with
+                        | nil => xok nil
+                        | eb_mk nm oZ A Bs :: Bks0 =>
+                            let+ oZ' := match oZ with
+                                        | Some Z => let+ Z' := oe_exp (List.repeat None (nm - 1) ++ S) Z in xok (Some Z')
+                                        | None => xok None
+                                        end in
+                            let+ A' := oe_exp (List.repeat None nm ++ S) A in
+                            let+ Bs' := (fix oe_brs (Bs : list (String.string * nat * exp)) : xres (list (String.string * nat * exp)) :=
+                                           match Bs with
+                                           | nil => xok nil
+                                           | b :: Bs0 =>
+                                               let+ B' := oe_exp (List.repeat None (snd (fst b)) ++ S) (snd b) in
+                                               let+ Bs0' := oe_brs Bs0 in
+                                               xok ((fst b, B') :: Bs0')
+                                           end) Bs in
+                            let+ Bks0' := oe_blocks Bks0 in
+                            xok (eb_mk nm oZ' A' Bs' :: Bks0')
+                        end) Bks in
         let+ M' := oe_exp S M in
-        xok (a_elim nm A' Bs' M')
+        xok (a_elim oq Us' m Bks' M')
     | a_pi A B =>
         let+ A' := oe_exp S A in
         let+ B' := oe_exp (None :: S) B in
@@ -342,7 +398,7 @@ Section OpenError.
                    end in
         xok (ge_def b pv A' B')
     | ge_mod pv U => let+ U' := oe_unit S U in xok (ge_mod pv U')
-    | ge_ind _ _ _ _ | ge_ind_alias _ _ _ _ => xok E
+    | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ => xok E
     end
   with oe_centry (S : skel) (e : centry) {struct e} : xres centry :=
     match e with
@@ -375,15 +431,37 @@ Section OpenError.
         xok ((y, T') :: args'')
     end.
 
-  (** A declaration as written: its parameters as a telescope, its sort over
-      the uniform ones, its constructors' arguments over the declared type
-      and all the parameters. *)
+  (** A member of a group as written, its uniform parameters [Su] and the
+      number [n] of the group's declared types: its non-uniform parameters
+      as a telescope over the uniform ones, its sort over the uniform ones,
+      its constructors' arguments over the member's parameters and the
+      declared types ([raw_member]). *)
+  Definition oe_member (Su : skel) (S : skel) (Δu : ctx) (n : nat) (M : raw_member) : xres raw_member :=
+    let+ Δn := oe_tele Su (rm_nparams M) in
+    let+ A' := oe_exp Su (rm_sort M) in
+    let Sm := map centry_skel Δn ++ map centry_skel Δu ++ List.repeat None n ++ S in
+    let+ cs' := xmap (fun cg => let+ args := oe_rargs Sm (snd cg) in xok (fst cg, args)) (rm_cons M) in
+    xok (mk_rmem (rm_name M) Δn A' cs').
+
+  (** A group as written: its uniform parameters as a telescope, then each
+      member. *)
   Definition oe_decl (S : skel) (R : raw_decl) : xres raw_decl :=
-    let+ Δ' := oe_tele S (rd_params R) in
-    let S' := map centry_skel Δ' ++ S in
-    let+ A' := oe_exp (skipn (List.length (rd_params R) - rd_nu R) S') (rd_sort R) in
-    let+ cs' := xmap (fun cg => let+ args := oe_rargs (None :: S') (snd cg) in xok (fst cg, args)) (rd_cons R) in
-    xok (mk_raw (rd_nu R) Δ' A' cs').
+    let+ Δ' := oe_tele S (rd_uparams R) in
+    let+ ms' := xmap (oe_member (map centry_skel Δ' ++ S) S Δ' (List.length (rd_members R))) (rd_members R) in
+    xok (mk_raw Δ' ms').
+
+  (** A function of a [mutual def] as written, over the block's parameters'
+      skeleton [Sd]: its non-uniform parameters as a telescope, its
+      scrutinee's type over them, its result type over them and the
+      scrutinee, and its clauses under their binders. *)
+  Definition oe_fun (Sd : skel) (f : raw_fun) : xres raw_fun :=
+    let+ ys := oe_tele Sd (rf_nparams f) in
+    let Sy := map centry_skel ys ++ Sd in
+    let+ Z := oe_exp Sy (rf_scrut f) in
+    let+ A := oe_exp (None :: Sy) (rf_res f) in
+    let+ cls := xmap (fun cl => let+ B := oe_exp (List.repeat None (snd (fst cl)) ++ Sd) (snd cl) in xok (fst cl, B))
+                  (rf_clauses f) in
+    xok (mk_rfun (rf_name f) ys Z A cls).
 
   (** A command's own terms: the nested commands of a module are expanded
       when they run. *)
@@ -414,9 +492,13 @@ Section OpenError.
                     | None => xok None
                     end in
         xok (cc_eval M' oA')
-    | cc_ind x pv D =>
+    | cc_ind pv D =>
         let+ D' := oe_decl S D in
-        xok (cc_ind x pv D')
+        xok (cc_ind pv D')
+    | cc_mdef b pv Δ fs =>
+        let+ Δ' := oe_tele S Δ in
+        let+ fs' := xmap (oe_fun (map centry_skel Δ' ++ S)) fs in
+        xok (cc_mdef b pv Δ' fs')
     | cc_builtin k H =>
         let+ H' := oe_modexp S H in
         xok (cc_builtin k H')
