@@ -1985,6 +1985,14 @@ Proof. intros * He; rewrite !ind_lookup_unfold, !ind_mlookup_unfold, (gds_equiv_
 Lemma gds_equiv_ind_alias : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> ind_alias_lookup Θ Ξ p = ind_alias_lookup Θ' Ξ p.
 Proof. intros * He; unfold ind_alias_lookup, ind_alias_lookup_u; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
 
+(** The module a description denotes reads the dependencies through their
+    lookups alone. *)
+Lemma gds_equiv_ds_mod : forall Θ Θ' Ξ R, gds_equiv Θ Θ' -> ds_mod Θ Ξ R = ds_mod Θ' Ξ R.
+Proof.
+  intros * He; destruct R; cbn [ds_mod]; try reflexivity; rewrite (gds_equiv_ind_lookup _ _ _ _ He).
+  destruct (ind_lookup Θ' Ξ _); [ destruct (ind_mpath _ _); [ rewrite (gds_equiv_body _ _ _ _ He) |] |]; reflexivity.
+Qed.
+
 (** What module expressions denote reads the dependencies through their
     lookups alone ([gc_unit], [ds_mod]). *)
 Lemma gds_equiv_mdenote_all : forall Θ Θ' Ξ, gds_equiv Θ Θ' ->
@@ -1998,9 +2006,7 @@ Proof.
   assert (Hu : forall H, gc_unit Θ Ξ H = gc_unit Θ' Ξ H).
   { intros H; unfold gc_unit; destruct (mod_qname H) as [mp |]; [| reflexivity ].
     rewrite (gds_equiv_lookup _ _ (q_unit mp) He); reflexivity. }
-  assert (Hd : forall R, ds_mod Θ Ξ R = ds_mod Θ' Ξ R)
-    by (intros [] ; cbn [ds_mod]; try reflexivity; rewrite (gds_equiv_ind_lookup _ _ _ _ He);
-        destruct (ind_lookup Θ' Ξ _); [ destruct (ind_mpath _ _); [ rewrite (gds_equiv_body _ _ _ _ He) |] |]; reflexivity).
+  assert (Hd : forall R, ds_mod Θ Ξ R = ds_mod Θ' Ξ R) by (intros R; exact (gds_equiv_ds_mod _ _ _ R He)).
   apply mdenote_all_ind; intros; rewrite ?Hu, ?Hd in *; econstructor; eauto.
   - rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); assumption.
   - rewrite !ind_mlookup_unfold, <- (gds_equiv_module _ _ _ _ He); assumption.
