@@ -3071,7 +3071,11 @@ let%expect_test "mctt-doc: a mutual group's recursor module and its functions ha
     [ ([ "Forests" ], "Rec", 1); ([ "Forests" ], "rec_Tree", 1);
       ([ "Prelude"; "Data"; "Tree"; "Rose" ], "rec_Forest", 1) ];
   (* A view's function of [Rec] is at the group's name too. *)
-  let dir = Filename.temp_dir "mctt-doc" "" in
+  (* A fresh directory, made from a fresh file name: [Filename.temp_dir] is
+     OCaml 5.1, and CI builds with 4.14. *)
+  let dir = Filename.temp_file "mctt-doc" "" in
+  Sys.remove dir;
+  Sys.mkdir dir 0o700;
   Out_channel.with_open_bin (Filename.concat dir "T.mctt") (fun oc -> output_string oc
     "module T where\n\
      inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end\n\
