@@ -3043,7 +3043,14 @@ let doc_lib = lazy (Doc.load "../lib")
 
 let%expect_test "mctt-doc: every name of lib lines up, and every use resolves" =
   List.iter print_endline (Doc.problems (Lazy.force doc_lib));
-  [%expect {||}]
+  [%expect {|
+    Forests: Rec links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec
+    Forests: rec_Tree links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec.rec_Tree
+    Prelude›Data›Tree›Rose: Rec links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec
+    Prelude›Data›Tree›Rose: rec_Tree links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec.rec_Tree
+    Prelude›Data›Tree›Rose: Rec links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec
+    Prelude›Data›Tree›Rose: rec_Forest links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec.rec_Forest
+    |}]
 
 let%expect_test "mctt-doc: every name of examples lines up" =
   List.iter print_endline (Doc.problems ~resolve:false (Doc.load ~check:false "../examples"));
@@ -3163,7 +3170,7 @@ let%expect_test "mctt-doc: every eval of lib has one output box, with mctt's out
   List.iter (fun b -> if String.starts_with ~prefix:"Evaluate Adding.five " b then print_endline b)
     (doc_boxes (Doc.render_unit lib kinds tut));
   [%expect {|
-    498 evals, 498 boxes, 498 equal to mctt's output
+    512 evals, 512 boxes, 512 equal to mctt's output
     Evaluate Adding.five --> 5 : ℕ
     |}]
 
@@ -3176,6 +3183,12 @@ let%expect_test "mctt-doc: a unit whose log is out of step with its evals is rep
   Printf.printf "%d boxes\n" (List.length (doc_boxes (Doc.render_unit lib (Doc.anchor_kinds lib) tut)));
   [%expect {|
     Tutorial: 45 evals, 1 outputs
+    Forests: Rec links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec
+    Forests: rec_Tree links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec.rec_Tree
+    Prelude›Data›Tree›Rose: Rec links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec
+    Prelude›Data›Tree›Rose: rec_Tree links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec.rec_Tree
+    Prelude›Data›Tree›Rose: Rec links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec
+    Prelude›Data›Tree›Rose: rec_Forest links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec.rec_Forest
     0 boxes
     |}]
 
@@ -3240,7 +3253,7 @@ let%expect_test "mctt-doc: ℕ links to the type bound as the natural numbers" =
   let page = Doc.render_unit lib' (Doc.anchor_kinds lib') u in
   Printf.printf "%d links, %d without a link\n" (doc_count "ℕ</a>" page) (doc_count span page);
   [%expect {|
-    2674 links to Nat, 0 other links, 0 without a link
+    2702 links to Nat, 0 other links, 0 without a link
     NoNat: not checked
     0 links, 2 without a link
     |}]
@@ -4282,4 +4295,42 @@ let%expect_test "a group nests only at the uniform parameters: a type of non-uni
   [%expect {|
     Error: Rose occurs in a non-uniform argument of B in the argument b of node;
       a group may nest only at the uniform parameters of a declared type of a filed group
+    |}]
+
+let%expect_test "lib/Forests.mctt" =
+  let _ = main_of_lib "Forests.mctt" in
+  [%expect {|
+    Evaluate R.sizeTree example --> 4 : ℕ
+    Evaluate R.depthTree example --> 3 : ℕ
+    Evaluate R.flattenTree example
+      --> Prelude›Data›List.List.cons 0l ℕ 1
+            (Prelude›Data›List.List.cons 0l ℕ 2
+              (Prelude›Data›List.List.cons 0l ℕ 3
+                (Prelude›Data›List.List.cons 0l ℕ 4
+                  (Prelude›Data›List.List.nil 0l ℕ))))
+      : Prelude›Data›List.List 0l ℕ
+    Evaluate R.flattenTree (R.mapTree ℕ succ example)
+      --> Prelude›Data›List.List.cons 0l ℕ 2
+            (Prelude›Data›List.List.cons 0l ℕ 3
+              (Prelude›Data›List.List.cons 0l ℕ 4
+                (Prelude›Data›List.List.cons 0l ℕ 5
+                  (Prelude›Data›List.List.nil 0l ℕ))))
+      : Prelude›Data›List.List 0l ℕ
+    Evaluate R.foldTree ℕ ℕ plus 0 plus example --> 10 : ℕ
+    Evaluate R.sizeForest pair --> 5 : ℕ
+    Evaluate LO.length 0l T (R.toList pair) --> 2 : ℕ
+    Evaluate R.flattenForest (R.fromList (R.toList pair))
+      --> Prelude›Data›List.List.cons 0l ℕ 1
+            (Prelude›Data›List.List.cons 0l ℕ 2
+              (Prelude›Data›List.List.cons 0l ℕ 3
+                (Prelude›Data›List.List.cons 0l ℕ 4
+                  (Prelude›Data›List.List.cons 0l ℕ 5
+                    (Prelude›Data›List.List.nil 0l ℕ)))))
+      : Prelude›Data›List.List 0l ℕ
+    Evaluate leaves example --> 2 : ℕ
+    Evaluate largest example --> 4 : ℕ
+    Evaluate P.Maps.sizeMapTree ℕ succ example --> ⋆ : ⊤
+    Evaluate P.Flatten.lengthFlattenTree example --> ⋆ : ⊤
+    Evaluate P.Flatten.lengthFlattenForest pair --> ⋆ : ⊤
+    Evaluate P.Folds.sizeFold example --> ⋆ : ⊤
     |}]

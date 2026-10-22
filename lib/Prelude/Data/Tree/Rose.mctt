@@ -1,0 +1,132 @@
+(* Rose trees and forests, a mutual group: a tree [node x ts] has a label
+   [x : A] and a forest [ts] of children, and a forest is [nil] or
+   [cons t ts], a tree followed by a forest.  The group is the module
+   [Rose], over the level [u] and the label type [A]; [Tree u A] and
+   [Forest u A] name its members, and [Rose.Rec] is its recursor module,
+   with [rec_Tree] and [rec_Forest].
+
+   The operations over a fixed [A] are in the module [Ops u A], each a pair
+   of functions, one per member: the number of nodes [sizeTree] and
+   [sizeForest], the depth [depthTree] and [depthForest], [mapTree] and
+   [mapForest], the preorder lists of labels [flattenTree] and
+   [flattenForest], and the folds [foldTree] and [foldForest].  A forest is
+   a list of trees: [toList] and [fromList] convert between the two.  The
+   laws are in [Prelude›Data›Tree›Rose›Properties]. *)
+module Prelude›Data›Tree›Rose where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Arith›MinMax use (max)
+import Prelude›Data›List use (List)
+open Prelude›Data›List.Ops as LO
+
+(* Each member is in scope in the other's constructors, applied to the
+   uniform parameters [u] and [A]. *)
+mutual Rose (u : Level) (A : Type@{u}) where
+  inductive Tree : Type@{u} where
+  | node (x : A) (ts : Forest u A)
+  with Forest : Type@{u} where
+  | nil
+  | cons (t : Tree u A) (ts : Forest u A)
+  end
+end
+
+inductive Tree ≔ Rose.Tree
+
+inductive Forest ≔ Rose.Forest
+
+module Ops (u : Level) (A : Type@{u}) where
+
+private inductive T ≔ Tree u A
+
+private inductive F ≔ Forest u A
+
+(* A tree without children. *)
+def leaf (x : A) : T ≔ T.node x F.nil end
+
+(* The number of nodes.  Each function of a mutual definition has one
+   branch per constructor of its member, with a hypothesis per recursive
+   argument: [h] is [sizeForest ts]. *)
+mutual def
+  sizeTree (t : T) : ℕ ≔
+  | node x ts, h ⇒ succ h
+  with sizeForest (ts : F) : ℕ ≔
+  | nil ⇒ 0
+  | cons t ts, ht hts ⇒ plus ht hts
+end
+
+(* The depth: the number of nodes on a longest path from the root, so a
+   leaf has depth 1 and the empty forest depth 0. *)
+mutual def
+  depthTree (t : T) : ℕ ≔
+  | node x ts, h ⇒ succ h
+  with depthForest (ts : F) : ℕ ≔
+  | nil ⇒ 0
+  | cons t ts, ht hts ⇒ max ht hts
+end
+
+(* The labels changed by [f], the shape kept.  The parameters [B] and [f]
+   are shared by both functions. *)
+mutual def (B : Type@{u}) (f : ∀ (x : A) → B)
+  mapTree (t : T) : Tree u B ≔
+  | node x ts, h ⇒ Tree.node u B (f x) h
+  with mapForest (ts : F) : Forest u B ≔
+  | nil ⇒ Forest.nil u B
+  | cons t ts, ht hts ⇒ Forest.cons u B ht hts
+end
+
+(* The labels in preorder: a node's label, then those of its children,
+   left to right. *)
+mutual def
+  flattenTree (t : T) : List u A ≔
+  | node x ts, h ⇒ List.cons u A x h
+  with flattenForest (ts : F) : List u A ≔
+  | nil ⇒ List.nil u A
+  | cons t ts, ht hts ⇒ LO.append u A ht hts
+end
+
+(* The fold of the group, into [R] at trees and [S] at forests: [node]
+   combines a label with the result of its children, [cons] the results of
+   a tree and of the forest after it.  It is the recursor [Rose.Rec] at
+   constant motives. *)
+def foldTree (R : Type@{u}) (S : Type@{u}) (node : ∀ (x : A) (s : S) → R)
+    (nil : S) (cons : ∀ (r : R) (s : S) → S) (t : T) : R ≔
+  Rose.Rec.rec_Tree u A u (λ (z : T) → R) (λ (z : F) → S)
+    (λ (x : A) (ts : F) (s : S) → node x s)
+    nil
+    (λ (t : T) (ts : F) (r : R) (s : S) → cons r s)
+    t
+end
+
+def foldForest (R : Type@{u}) (S : Type@{u}) (node : ∀ (x : A) (s : S) → R)
+    (nil : S) (cons : ∀ (r : R) (s : S) → S) (ts : F) : S ≔
+  Rose.Rec.rec_Forest u A u (λ (z : T) → R) (λ (z : F) → S)
+    (λ (x : A) (ts : F) (s : S) → node x s)
+    nil
+    (λ (t : T) (ts : F) (r : R) (s : S) → cons r s)
+    ts
+end
+
+(* The trees of a forest, as a list.  The eliminator is at the forest's
+   block, marked [at]; the tree block comes first, as [Tree] is the first
+   member, and its motive is unused. *)
+def toList (ts : F) : List u T ≔
+  elim ts with (z : T) -> ⊤
+  | node x us, h ⇒ ⋆
+  at (z : F) -> List u T
+  | nil ⇒ List.nil u T
+  | cons t us, ht hus ⇒ List.cons u T t hus
+  end
+end
+
+(* The forest of a list of trees. *)
+def fromList (l : List u T) : F ≔
+  elim l at (z : List u T) -> F
+  | nil ⇒ F.nil
+  | cons t us, r ⇒ F.cons t r
+  end
+end
+
+end
+
+end

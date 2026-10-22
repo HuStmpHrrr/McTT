@@ -1,0 +1,84 @@
+(* A client of the rose trees of [Prelude›Data›Tree›Rose]: the operations
+   on a closed tree of numbers, a function written with the group's
+   eliminator and one with its recursor module, and closed instances of
+   the laws. *)
+module Forests where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Arith›MinMax use (max)
+import Prelude›Data›List
+open Prelude›Data›List.Ops as LO
+import Prelude›Data›Tree›Rose use (Rose; Tree; Forest)
+open Prelude›Data›Tree›Rose.Ops 0l ℕ as R
+import Prelude›Data›Tree›Rose›Properties 0l ℕ as P
+
+inductive T ≔ Tree 0l ℕ
+
+inductive F ≔ Forest 0l ℕ
+
+(* The tree
+       1
+      / \
+     2   3
+         |
+         4      *)
+def example : T ≔
+  T.node 1 (F.cons (R.leaf 2) (F.cons (T.node 3 (F.cons (R.leaf 4) F.nil))
+                                 F.nil))
+end
+
+eval R.sizeTree example
+eval R.depthTree example
+eval R.flattenTree example
+eval R.flattenTree (R.mapTree ℕ succ example)
+
+(* The sum of the labels, as a fold. *)
+eval R.foldTree ℕ ℕ plus 0 plus example
+
+(* A forest of two trees, and its list of trees. *)
+def pair : F ≔ F.cons example (F.cons (R.leaf 5) F.nil) end
+
+eval R.sizeForest pair
+eval LO.length 0l T (R.toList pair)
+eval R.flattenForest (R.fromList (R.toList pair))
+
+(* The number of leaves, by the group's eliminator, here at the tree's
+   block: a node is a leaf when its forest is [nil].  The motive at
+   forests says how many leaves a forest has, and whether it is empty. *)
+def leaves (t : T) : ℕ ≔
+  elim t at (z : T) -> ℕ
+  | node x ts, h ⇒
+      elim ts with (z : T) -> ℕ
+      | node y us, k ⇒ 0
+      at (z : F) -> ℕ
+      | nil ⇒ 1
+      | cons s us, ks kus ⇒ h
+      end
+  with (z : F) -> ℕ
+  | nil ⇒ 0
+  | cons s us, hs hus ⇒ plus hs hus
+  end
+end
+
+eval leaves example
+
+(* The largest label, by the recursor module of the group: one motive per
+   member, then one case per constructor. *)
+def largest (t : T) : ℕ ≔
+  Rose.Rec.rec_Tree 0l ℕ 0l (λ (z : T) → ℕ) (λ (z : F) → ℕ)
+    (λ (x : ℕ) (ts : F) (m : ℕ) → max x m)
+    0
+    (λ (s : T) (ts : F) (m : ℕ) (n : ℕ) → max m n)
+    t
+end
+
+eval largest example
+
+(* Closed instances of the laws: each normalizes to [⋆]. *)
+eval P.Maps.sizeMapTree ℕ succ example
+eval P.Flatten.lengthFlattenTree example
+eval P.Flatten.lengthFlattenForest pair
+eval P.Folds.sizeFold example
+
+end
