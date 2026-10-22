@@ -490,7 +490,7 @@ Proof.
   rewrite Hnp in Hnbe; cbn in Hnbe.
   destruct R as [Us [| Mr [| ? ?]]]; cbn in Hu, Hn; try discriminate; subst Us.
   unfold rd_uctx, rd_selfs in Hnbe; cbn in Hnbe.
-  inversion Hnbe as [| A Δ W Δ' HW Hrest]; subst.
+  inversion Hnbe as [| A Δ W Δ' _ HW Hrest]; subst.
   inversion Hrest; subst.
   (** The parameter's type normalizes to [Self], which is not in the
       image of the weakening past the [Self]s. *)

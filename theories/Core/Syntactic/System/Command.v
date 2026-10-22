@@ -367,8 +367,10 @@ Inductive view_cls (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : rview -> list (st
 Inductive nbe_tele (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : ctx -> ctx -> Prop :=
 (** The empty telescope *)
 | nbe_tele_nil : nbe_tele Θ Ξ Γ nil nil
-(** The innermost assumption, normalized in the ones before it *)
+(** The innermost assumption, normalized in the ones before it; it is a
+    type there first, as normalizing an untyped term need not terminate *)
 | nbe_tele_cons : forall A Δ W Δ',
+    (exists i, Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : Typeω@i) ->
     nbe_ty Θ Ξ (Δ ++ Γ) A W ->
     nbe_tele Θ Ξ Γ Δ Δ' ->
     nbe_tele Θ Ξ Γ (ce_ass A :: Δ) (ce_ass (nf_to_exp W) :: Δ').
@@ -403,9 +405,10 @@ Inductive view_nps (Θ : gdeps) (Ξ : gstack) (R : raw_decl) : rview -> ctx -> P
 Inductive nbes (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : list exp -> list typ -> list nf -> Prop :=
 (** No term *)
 | nbes_nil : nbes Θ Ξ Γ nil nil nil
-(** The first term, then the rest *)
+(** The first term, typed at its type first, as normalizing an untyped
+    term need not terminate, then the rest *)
 | nbes_cons : forall M Ms A As W Ws,
-    nbe Θ Ξ Γ M A W -> nbes Θ Ξ Γ Ms As Ws -> nbes Θ Ξ Γ (M :: Ms) (A :: As) (W :: Ws).
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> nbe Θ Ξ Γ M A W -> nbes Θ Ξ Γ Ms As Ws -> nbes Θ Ξ Γ (M :: Ms) (A :: As) (W :: Ws).
 
 (** [sibs_from Θ Ξ Γc qc Cs i ms ss]: the members [ms] of the container's
     group at [qc], from position [i], at the uniform arguments [Cs], are
@@ -809,12 +812,19 @@ Definition mdef_defs (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) (fs 
     parameters. *)
 Inductive mdef_member (Θ : gdeps) (Ξ : gstack) (pq : qname) (D : ind_decl) (Us : list exp) (Δ : ctx) :
     raw_fun -> nat -> Prop :=
-(** The only rule *)
+(** The only rule: the scrutinee's type and the members' types are types
+    before they are normalized, as normalizing an untyped term need not
+    terminate *)
 | mdef_member_intro : forall f W Ws m Mm,
+    (exists i, Θ ⍮ Ξ ⍮ rf_nparams f ++ Δ ++ gs_tele Ξ ⊢ rf_scrut f : Typeω@i) ->
     nbe_ty Θ Ξ (rf_nparams f ++ Δ ++ gs_tele Ξ) (rf_scrut f) W ->
-    Forall2 (fun jM Wj => nbe_ty Θ Ξ (rf_nparams f ++ Δ ++ gs_tele Ξ)
-                            (im_ty_at pq (fst jM) (snd jM) (List.map (fun U => U[wk_shiftn (List.length (rf_nparams f))]ʷ) Us)
-                               (vars_from 0 (List.length (rf_nparams f)))) Wj)
+    Forall2 (fun jM Wj =>
+               (exists i, Θ ⍮ Ξ ⍮ rf_nparams f ++ Δ ++ gs_tele Ξ
+                  ⊢ im_ty_at pq (fst jM) (snd jM) (List.map (fun U => U[wk_shiftn (List.length (rf_nparams f))]ʷ) Us)
+                      (vars_from 0 (List.length (rf_nparams f))) : Typeω@i) /\
+               nbe_ty Θ Ξ (rf_nparams f ++ Δ ++ gs_tele Ξ)
+                 (im_ty_at pq (fst jM) (snd jM) (List.map (fun U => U[wk_shiftn (List.length (rf_nparams f))]ʷ) Us)
+                    (vars_from 0 (List.length (rf_nparams f)))) Wj)
       (List.combine (List.seq 0 (List.length (ind_members D))) (ind_members D)) Ws ->
     nf_index W Ws = Some m ->
     ind_member D m = Some Mm ->
@@ -985,12 +995,14 @@ Section Semantics.
       ind_entries_run Θ pv (ind_qname Ξ (rm_name Mr0)) D 0 (List.map rm_name (rd_members R)) Ξ Ξ' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_ind pv R ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
   (** A mutual definition: the group and its uniform parameters read off
-      the first function's scrutinee, each function's member, one function
-      per member, and the definitions filed in order, each checked as a
-      definition is. *)
+      the first function's scrutinee, a type before it is normalized, as
+      normalizing an untyped term need not terminate; each function's
+      member, one function per member, and the definitions filed in order,
+      each checked as a definition is. *)
   | rc_mdef : forall ch B Rb Θ Ξ b pv Δ f0 fs pq m0 Ps D Us ms Ξ',
       tele_ass Δ ->
       ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
+      (exists i, Θ ⍮ Ξ ⍮ rf_nparams f0 ++ Δ ++ gs_tele Ξ ⊢ rf_scrut f0 : Typeω@i) ->
       nbe_ty Θ Ξ (rf_nparams f0 ++ Δ ++ gs_tele Ξ) (rf_scrut f0) (nf_indty pq m0 Ps) ->
       ind_lookup Θ Ξ pq = Some D ->
       m0 < ind_ndecl D ->
@@ -1160,7 +1172,7 @@ Qed.
 
 Lemma nbe_tele_functional : forall Θ Ξ Γ Δ Ws Ws', nbe_tele Θ Ξ Γ Δ Ws -> nbe_tele Θ Ξ Γ Δ Ws' -> Ws = Ws'.
 Proof.
-  intros * H; revert Ws'; induction H as [| A Δ W Δ' HW _ IH]; intros Ws' H'; inversion H'; subst; [ reflexivity |].
+  intros * H; revert Ws'; induction H as [| A Δ W Δ' _ HW _ IH]; intros Ws' H'; inversion H'; subst; [ reflexivity |].
   match goal with HW' : nbe_ty _ _ _ A ?W' |- _ => pose proof (functional_nbe_ty _ _ _ _ HW HW') as <- end.
   f_equal; apply IH; assumption.
 Qed.
@@ -1224,12 +1236,12 @@ Qed.
 Lemma mdef_member_functional : forall Θ Ξ pq D Us Δ f m m',
     mdef_member Θ Ξ pq D Us Δ f m -> mdef_member Θ Ξ pq D Us Δ f m' -> m = m'.
 Proof.
-  intros * H H'; destruct H as [f W Ws m Mm HW HWs Hi _ _];
-    inversion H' as [f' W' Ws' m'' Mm' HW' HWs' Hi' _ _]; subst.
+  intros * H H'; destruct H as [f W Ws m Mm _ HW HWs Hi _ _];
+    inversion H' as [f' W' Ws' m'' Mm' _ HW' HWs' Hi' _ _]; subst.
   pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-.
   assert (Ws = Ws') as <-.
   { eapply Forall2_functional; [| exact HWs | exact HWs' ].
-    intros ? ? ? H1 H2; cbv beta in H1, H2; exact (functional_nbe_ty _ _ _ _ H1 H2). }
+    intros ? ? ? [_ H1] [_ H2]; cbv beta in H1, H2; exact (functional_nbe_ty _ _ _ _ H1 H2). }
   congruence.
 Qed.
 
@@ -1982,7 +1994,7 @@ Section WellFormed.
       repeat split; [ exact (ind_entries_run_wf _ _ _ _ _ _ _ _ He HΞ) | exact (proj1 Hc) | exact (proj2 Hc)
                     | apply gds_sub_refl | apply bt_le_refl ].
     - (* a mutual definition: its definitions, each checked as a definition is *)
-      intros * _ _ _ _ _ _ _ _ _ Hd HΞ Hc Hst.
+      intros * _ _ _ _ _ _ _ _ _ _ Hd HΞ Hc Hst.
       repeat split; [ exact (mdefs_run_wf _ _ _ _ _ _ Hd HΞ) | exact (proj1 Hc) | exact (proj2 Hc)
                     | apply gds_sub_refl | apply bt_le_refl ].
     - (* a builtin binding: nothing filed, and its binding merged in *)
@@ -2134,7 +2146,7 @@ Section WellFormed.
       revert Hb; apply builtins_wf_mono; intros; eapply gens_run_ind_lookup; eassumption.
     - intros * _ _ _ _ _ _ _ _ _ He HΞ _ _ Hb HR; split; [| exact HR ].
       revert Hb; apply builtins_wf_mono; intros; eapply ind_entries_run_ind_lookup; eassumption.
-    - intros * _ _ _ _ _ _ _ _ _ Hd HΞ _ _ Hb HR; split; [| exact HR ].
+    - intros * _ _ _ _ _ _ _ _ _ _ Hd HΞ _ _ Hb HR; split; [| exact HR ].
       revert Hb; apply builtins_wf_mono; intros; eapply mdefs_run_ind_lookup; eassumption.
     - (* a binding: of a type read here *)
       intros ch B Rb B' Θ Ξ H p D z0 s0 _ Hl Hs Ho Hso Hbd _ _ _ Hb HR; split; [| exact HR ].
