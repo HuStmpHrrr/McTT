@@ -241,7 +241,8 @@ Fixpoint elab_body (S : list ent) (Φ : gmod) (cs : list Cst.cmd) : eres gmod :=
   | Cst.c_import _ :: _ => eerr "import is not allowed in a local module; use open"
   | Cst.c_error e :: _ => eerr e
   | Cst.c_eval _ _ :: _ => eerr "eval is not allowed in a local module"
-  | Cst.c_ind _ _ _ _ _ :: _ => eerr "an inductive type is not allowed in a local module"
+  | Cst.c_ind _ _ _ :: _ => eerr "an inductive type is not allowed in a local module"
+  | Cst.c_mdef _ _ _ :: _ => eerr "a mutual definition is not allowed in a local module"
   | Cst.c_builtin _ _ :: _ => eerr "builtin is not allowed in a local module"
   | Cst.c_ind_alias _ _ _ _ :: _ => eerr "an inductive alias is not allowed in a local module"
   end.
@@ -336,6 +337,44 @@ Proof.
       rewrite (proj2 (IH _ _)) by eassumption. reflexivity.
 Qed.
 
+(** The binders of a block, as [elab_binders_with] reads them. *)
+Lemma binders_iff : forall xs, Forall (fun x => match snd x with Some A => Pterm A /\ Pmod A | None => True end) xs ->
+    forall S pre oZ, elab_binders_with elab S pre xs = eok oZ <-> sbinders S pre xs oZ.
+Proof.
+  induction 1 as [| [x oo] xs Hx Hxs IH]; intros S pre oZ; cbn [elab_binders_with].
+  - split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
+  - cbn [snd] in Hx; destruct xs as [| y xs'], oo as [o |].
+    + destruct Hx as [Ho _]; unfold Pterm in Ho; split.
+      * intros H; dest_eok; constructor; apply Ho; assumption.
+      * intros H; inversion H; subst; rewrite (proj2 (Ho _ _)) by eassumption; reflexivity.
+    + split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
+    + split; [ discriminate | intros H; inversion H ].
+    + rewrite IH; split; [ intros H; constructor; exact H | intros H; inversion H; subst; assumption ].
+Qed.
+
+Lemma blocks_iff : forall bks,
+    Forall (fun bk => Forall (fun x => match snd x with Some A => Pterm A /\ Pmod A | None => True end) (snd (fst (fst bk))) /\
+                      (Pterm (snd (fst bk)) /\ Pmod (snd (fst bk))) /\
+                      Forall (fun b => Pterm (snd b) /\ Pmod (snd b)) (snd bk)) bks ->
+    forall S Bks, elab_blocks_with elab S bks = eok Bks <-> sblocks S bks Bks.
+Proof.
+  induction 1 as [| [[[k xs] oA] bs] bks [Hxs [[HA _] Hbs]] _ IH]; intros S Bks; cbn [elab_blocks_with].
+  - split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
+  - cbn [fst snd] in *.
+    pose proof (binders_iff _ Hxs) as Hxi.
+    assert (Hb : forall S Bs, elab_brs_with elab S bs = eok Bs <-> sbrs S bs Bs)
+      by (apply brs_iff; eapply Forall_impl; [| exact Hbs ]; intros ? []; assumption).
+    unfold Pterm in HA; split.
+    + intros H; apply ebind_eok in H as (oZ & HZ & H); apply ebind_eok in H as (A & HA' & H).
+      apply ebind_eok in H as (Bs & HBs & H); apply ebind_eok in H as (Bks' & HBks & H); inv_eok.
+      constructor; [ apply Hxi; exact HZ | apply HA; exact HA' | apply Hb; exact HBs | apply IH; exact HBks ].
+    + intros H; inversion H; subst.
+      rewrite (proj2 (Hxi _ _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (HA _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (Hb _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (IH _ _)) by eassumption; reflexivity.
+Qed.
+
 Lemma Pterm_params : forall ps : list (string * Cst.obj),
     Forall (fun p => Pterm (snd p) /\ Pmod (snd p)) ps -> Forall (fun p => Pterm (snd p)) ps.
 Proof. intros ps; apply Forall_impl; intros ? []; assumption. Qed.
@@ -380,15 +419,17 @@ Proof.
     intros d o IHd [IH _]; split; [ apply IHd, IH |].
     intros S M; destruct d; cbn [elab_mod]; split; intros H; try discriminate; inversion H.
   - (* elim *)
-    intros om xs oA bs [IHm _] [IHa _] Hbs.
-    assert (Hb : forall S Bs, elab_brs_with elab S bs = eok Bs <-> sbrs S bs Bs)
-      by (apply brs_iff; eapply Forall_impl; [| exact Hbs ]; intros ? []; assumption).
+    intros om bks [IHm _] Hbks.
+    pose proof (blocks_iff _ Hbks) as Hb.
     split; intros S M; cbn [elab elab_mod].
     + split; intros Hg.
-      * dest_eok. to_spec.
-        match goal with Hx : elab_brs_with _ _ _ = eok _ |- _ => apply Hb in Hx end.
-        econstructor; eassumption.
-      * inversion Hg; subst. to_elab. rewrite (proj2 (Hb _ _)) by eassumption. reflexivity.
+      * apply ebind_eok in Hg as (M' & HM & Hg); apply ebind_eok in Hg as (Bks & HB & Hg).
+        destruct (elim_at _) as [m |] eqn:Ea; [ inv_eok | discriminate ].
+        econstructor; [ apply IHm; exact HM | apply Hb; exact HB | exact Ea ].
+      * inversion Hg; subst.
+        rewrite (proj2 (IHm _ _)) by eassumption; cbn [ebind].
+        rewrite (proj2 (Hb _ _)) by eassumption; cbn [ebind].
+        match goal with Ea : elim_at _ = Some _ |- _ => rewrite Ea end; reflexivity.
     + split; [ discriminate | intros Hg; inversion Hg ].
   - (* d_def *)
     intros x [o1 |] o2 HA [IH2 _] ob IHb S M; [ destruct HA as [IH1 _] |]; cbn [elab]; iff_case.
@@ -441,7 +482,9 @@ Proof.
   - (* c_eval *)
     intros o oA _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
   - (* c_ind *)
-    intros pv x ps oT cs' _ _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
+    intros pv ps ms _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
+  - (* c_mdef *)
+    intros m ps fs _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
   - (* c_builtin *)
     intros k o _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
   - (* c_ind_alias *)
@@ -468,6 +511,9 @@ Qed.
 Lemma elab_args_iff : forall S os Ns, elab_args_with elab S os = eok Ns <-> Forall2 (sel S) os Ns.
 Proof. intros; apply args_iff, Forall_forall; intros ? _ ? ?; apply elab_iff. Qed.
 
+Lemma elab_brs_iff : forall S bs Bs, elab_brs_with elab S bs = eok Bs <-> sbrs S bs Bs.
+Proof. intros; apply brs_iff, Forall_forall; intros ? _ ? ?; apply elab_iff. Qed.
+
 Lemma elab_rargs_iff : forall args S args', elab_rargs S args = eok args' <-> srargs S args args'.
 Proof.
   induction args as [| [y oA] args IH]; intros S args'; cbn [elab_rargs].
@@ -490,6 +536,53 @@ Proof.
     + intros H; inversion H; subst.
       rewrite (proj2 (elab_rargs_iff _ _ _)) by eassumption; cbn [ebind].
       rewrite (proj2 (IH _)) by eassumption. reflexivity.
+Qed.
+
+Lemma elab_members_iff : forall ms S ups xs rms, elab_members S ups xs ms = eok rms <-> smembers S ups xs ms rms.
+Proof.
+  induction ms as [| [[x oT] cs] ms IH]; intros S ups xs rms; cbn [elab_members].
+  - split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
+  - destruct (split_pis oT) as [nps oS] eqn:Es; split.
+    + intros H; apply ebind_eok in H as ([] & Hp & H); apply ebind_eok in H as (ntys & Hn & H).
+      apply ebind_eok in H as (A & HA & H); apply ebind_eok in H as (cs' & Hc & H).
+      apply ebind_eok in H as (rms' & Hr & H); inv_eok.
+      econstructor; [ exact Es | apply (check_params_ok _ tt); exact Hp | apply elab_params_iff; exact Hn
+                    | apply elab_iff; exact HA | apply elab_rcons_iff; exact Hc | apply IH; exact Hr ].
+    + intros H; inversion H; subst.
+      match goal with H : split_pis oT = _ |- _ => rewrite Es in H; injection H as <- <- end.
+      rewrite (proj2 (check_params_ok _ tt)) by assumption; cbn [ebind].
+      rewrite (proj2 (elab_params_iff _ _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (elab_iff _ _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (elab_rcons_iff _ _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (IH _ _ _ _)) by eassumption; reflexivity.
+Qed.
+
+Lemma elab_funs_iff : forall fs S rfs, elab_funs S fs = eok rfs <-> sfuns S fs rfs.
+Proof.
+  induction fs as [| [[[f ps] oA] bs] fs IH]; intros S rfs; cbn [elab_funs].
+  - split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
+  - split.
+    + destruct (rev ps) as [| [z oZ] rys] eqn:Er; [ discriminate |].
+      assert (Eps : ps = rev rys ++ (z, oZ) :: nil) by (rewrite <- (rev_involutive ps), Er; reflexivity).
+      intros H; apply ebind_eok in H as ([] & Hp & H); apply ebind_eok in H as (ytys & Hy & H).
+      apply ebind_eok in H as (Z & HZ & H); apply ebind_eok in H as (A & HA & H).
+      apply ebind_eok in H as (Bs & HBs & H); apply ebind_eok in H as (rfs' & Hr & H); inv_eok.
+      econstructor; [ apply (check_params_ok _ tt); exact Hp | apply elab_params_iff; exact Hy
+                    | apply elab_iff; exact HZ | apply elab_iff; exact HA | apply elab_brs_iff; exact HBs | apply IH; exact Hr ].
+    + intros H; inversion H; subst.
+      rewrite rev_unit, rev_involutive; cbn [ebind].
+      rewrite (proj2 (check_params_ok _ tt)) by assumption; cbn [ebind].
+      rewrite (proj2 (elab_params_iff _ _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (elab_iff _ _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (elab_iff _ _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (elab_brs_iff _ _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (IH _ _)) by eassumption; reflexivity.
+Qed.
+
+Lemma check_distinct_ok : forall w xs u, check_distinct w xs = eok u <-> NoDup xs.
+Proof.
+  intros w xs []; unfold check_distinct; rewrite <- first_dup_none.
+  destruct (first_dup xs); split; congruence.
 Qed.
 
 (** ** Commands *)
@@ -563,21 +656,29 @@ Section Commands.
         rewrite (proj2 (check_fresh_all_ok _ _ tt)) by assumption. reflexivity.
     - intros o [oA |] _ _ ch O F F' c'; cbn [elab_cmd].
       all: split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].
-    - intros pv x ups oT cs _ _ _ ch O F F' c'; cbn [elab_cmd].
-      destruct (split_pis oT) as [nps oS] eqn:Es; split.
-      + intros Hg; apply ebind_eok in Hg as ([] & Hx & Hg).
-        apply ebind_eok in Hg as ([] & Hp & Hg); apply ebind_eok in Hg as (tys & Ht & Hg).
-        apply ebind_eok in Hg as (A & HA & Hg); apply ebind_eok in Hg as (cs' & Hc & Hg); inv_eok.
-        econstructor; [ apply (check_fresh_ok _ _ tt); exact Hx
-                      | exact Es | apply (check_params_ok _ tt); exact Hp | apply elab_params_iff; exact Ht
-                      | apply elab_iff; exact HA | apply elab_rcons_iff; exact Hc ].
+    - intros pv ups ms _ _ ch O F F' c'; cbn [elab_cmd]; split.
+      + intros Hg; apply ebind_eok in Hg as ([] & Hd & Hg); apply ebind_eok in Hg as ([] & Hf & Hg).
+        apply ebind_eok in Hg as (tys & Ht & Hg); apply ebind_eok in Hg as (rms & Hm & Hg); inv_eok.
+        econstructor; [ exact (proj1 (check_distinct_ok _ _ tt) Hd) | apply (check_fresh_all_ok _ _ tt); exact Hf
+                      | apply elab_params_iff; exact Ht | apply elab_members_iff; exact Hm ].
       + intros Hg; inversion Hg; subst.
-        match goal with H : split_pis oT = _ |- _ => rewrite Es in H; injection H as <- <- end.
-        rewrite (proj2 (check_fresh_ok _ _ tt)) by assumption; cbn [ebind].
-        rewrite (proj2 (check_params_ok _ tt)) by assumption; cbn [ebind].
+        rewrite (proj2 (check_distinct_ok "a group" _ tt)) by assumption; cbn [ebind].
+        rewrite (proj2 (check_fresh_all_ok _ _ tt)) by assumption; cbn [ebind].
         rewrite (proj2 (elab_params_iff _ _ _)) by eassumption; cbn [ebind].
-        rewrite (proj2 (elab_iff _ _ _)) by eassumption; cbn [ebind].
-        rewrite (proj2 (elab_rcons_iff _ _ _)) by eassumption. reflexivity.
+        rewrite (proj2 (elab_members_iff _ _ _ _ _)) by eassumption; reflexivity.
+    - intros m ps fs _ _ ch O F F' c'; cbn [elab_cmd]; split.
+      + intros Hg; apply ebind_eok in Hg as ([] & Hp & Hg); apply ebind_eok in Hg as ([] & Hd & Hg).
+        apply ebind_eok in Hg as ([] & Hf & Hg); apply ebind_eok in Hg as (tys & Ht & Hg).
+        apply ebind_eok in Hg as (rfs & Hr & Hg); inv_eok.
+        econstructor; [ apply (check_params_ok _ tt); exact Hp | exact (proj1 (check_distinct_ok _ _ tt) Hd)
+                      | apply (check_fresh_all_ok _ _ tt); exact Hf | apply elab_params_iff; exact Ht
+                      | apply elab_funs_iff; exact Hr ].
+      + intros Hg; inversion Hg; subst.
+        rewrite (proj2 (check_params_ok _ tt)) by assumption; cbn [ebind].
+        rewrite (proj2 (check_distinct_ok "a mutual definition" _ tt)) by assumption; cbn [ebind].
+        rewrite (proj2 (check_fresh_all_ok _ _ tt)) by assumption; cbn [ebind].
+        rewrite (proj2 (elab_params_iff _ _ _)) by eassumption; cbn [ebind].
+        rewrite (proj2 (elab_funs_iff _ _ _)) by eassumption; reflexivity.
     - intros k o _ ch O F F' c'; cbn [elab_cmd]. split.
       + intros Hg; apply ebind_eok in Hg as (H & HH & Hg); inv_eok.
         econstructor; apply elab_mod_iff; exact HH.

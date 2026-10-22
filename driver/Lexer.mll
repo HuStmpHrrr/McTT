@@ -94,6 +94,9 @@
     | INDUCTIVE _ -> "inductive"
     | BUILTIN _ -> "builtin"
     | ELIM _ -> "elim"
+    | MUTUAL _ -> "mutual"
+    | WITH _ -> "with"
+    | BLOCK_AT _ -> "at"
     | SEMI _ -> ";"
 
   let get_range_of_token : token -> (position * position) =
@@ -154,6 +157,9 @@
     | INDUCTIVE r
     | BUILTIN r
     | ELIM r
+    | MUTUAL r
+    | WITH r
+    | BLOCK_AT r
     | SEMI r
     | VAR (r, _) -> r
 
@@ -252,6 +258,9 @@ rule read =
   | "inductive" { INDUCTIVE (get_range lexbuf) }
   | "builtin" { BUILTIN (get_range lexbuf) }
   | "elim" { ELIM (get_range lexbuf) }
+  | "mutual" { MUTUAL (get_range lexbuf) }
+  | "with" { WITH (get_range lexbuf) }
+  | "at" { BLOCK_AT (get_range lexbuf) }
   | "where" { WHERE (get_range lexbuf) }
   | "def" { DEF (get_range lexbuf) }
   | "import" { IMPORT (get_range lexbuf) }

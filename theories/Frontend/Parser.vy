@@ -28,6 +28,7 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %token <loc> TRUE_TY TRUE FALSE_TY EXFALSO (* unit and empty type keywords *)
 %token <loc> MODULE WHERE DEF IMPORT OPEN AS USE EXPORT PRIVATE ABSTRACT EVAL (* module keywords *)
 %token <loc> INDUCTIVE ELIM BUILTIN (* inductive types *)
+%token <loc> MUTUAL WITH BLOCK_AT (* groups: [mutual], [with], and [at], which marks the scrutinee's block *)
 %token <loc> THEOREM LEMMA FACT REMARK GIVEN AXIOM (* definition keywords; [let] is [LET] *)
 %token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COLONCOLON "::" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" LBRACE "{" RBRACE "}" PLUS "+" STAR "*" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
 
@@ -55,6 +56,15 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %type <list (string * list (string * Cst.obj))> ctors
 %type <list string> vars vars_opt ihs_opt
 %type <list (string * list string * Cst.obj)> brs
+%type <string * Cst.obj * list (string * list (string * Cst.obj))> imember
+%type <list (string * Cst.obj * list (string * list (string * Cst.obj)))> imembers
+%type <string * option Cst.obj> ebinder
+%type <list (string * option Cst.obj)> ebinders
+%type <bool> block_kw
+%type <bool * list (string * option Cst.obj) * Cst.obj * list (string * list string * Cst.obj)> eblock
+%type <list (bool * list (string * option Cst.obj) * Cst.obj * list (string * list string * Cst.obj))> eblocks
+%type <string * list (string * Cst.obj) * Cst.obj * list (string * list string * Cst.obj)> mfun
+%type <list (string * list (string * Cst.obj) * Cst.obj * list (string * list string * Cst.obj))> mfuns
 
 %on_error_reduce obj params params_opt app_obj atomic_obj cmds leads mods path fpath
 
@@ -97,12 +107,22 @@ let cmd :=
   | ~ = open_cmd; <>
   | EVAL; ~ = obj; { [Cst.c_eval obj None] }
   | EVAL; e = obj; ":"; t = obj; { [Cst.c_eval e (Some t)] }
-  (* [inductive x (ps) : forall (n : A) -> S where | c (args) … end]: the
-     uniform parameters, then the type, which binds the non-uniform ones. *)
-  | INDUCTIVE; x = VAR; ps = params_opt; ":"; t = obj; WHERE; cs = ctors; END;
-      { [Cst.c_ind false (snd x) (List.rev ps) t (List.rev cs)] }
-  | PRIVATE; INDUCTIVE; x = VAR; ps = params_opt; ":"; t = obj; WHERE; cs = ctors; END;
-      { [Cst.c_ind true (snd x) (List.rev ps) t (List.rev cs)] }
+  (* [inductive x (ps) : forall (n : A) -> S where | c (args) … with y : U
+     where … end]: the group's uniform parameters, then its members, each
+     with its type, which binds its non-uniform parameters. *)
+  | INDUCTIVE; x = VAR; ps = params_opt; ":"; t = obj; WHERE; cs = ctors; ms = imembers; END;
+      { [Cst.c_ind false (List.rev ps) ((snd x, t, List.rev cs) :: List.rev ms)] }
+  | PRIVATE; INDUCTIVE; x = VAR; ps = params_opt; ":"; t = obj; WHERE; cs = ctors; ms = imembers; END;
+      { [Cst.c_ind true (List.rev ps) ((snd x, t, List.rev cs) :: List.rev ms)] }
+  (* [mutual T (ps) where inductive x : S where … with y : U where … end
+     end]: the group in the module [T], its members [T.x], [T.y]. *)
+  | m = mods; MUTUAL; g = VAR; ps = params_opt; WHERE; INDUCTIVE; x = VAR; ":"; t = obj; WHERE; cs = ctors; ms = imembers; END; END;
+      { [Cst.mutual_cmd m (snd g) (List.rev ps) ((snd x, t, List.rev cs) :: List.rev ms)] }
+  (* [mutual def (Δ) f (ys) (z : Z) : A := | c xs ⇒ B … with g … end]: the
+     common parameters, then the functions, with the modifiers of a
+     definition. *)
+  | m = mods; MUTUAL; DEF; ps = params_opt; fs = mfuns; END;
+      { [Cst.c_mdef m (List.rev ps) (List.rev fs)] }
   (* [inductive x (ps) := X Ms]: an inductive alias, the inductive type [X]
      at the arguments [Ms], under the parameters. *)
   | INDUCTIVE; x = VAR; ps = params_opt; ":="; e = obj;
@@ -116,6 +136,24 @@ let cmd :=
 let ctors :=
   | { @nil (string * list (string * Cst.obj)) }
   | ~ = ctors; "|"; x = VAR; ps = params_opt; { (snd x, List.rev ps) :: ctors }
+
+(* A member after the first: [with y : U where | c (args) …] *)
+let imember :=
+  | WITH; x = VAR; ":"; t = obj; WHERE; cs = ctors; { (snd x, t, List.rev cs) }
+
+(* Reversed list of the members after the first, possibly empty *)
+let imembers :=
+  | { @nil (string * Cst.obj * list (string * list (string * Cst.obj))) }
+  | ~ = imembers; ~ = imember; { imember :: imembers }
+
+(* A function of a [mutual def]: [f (ys) (z : Z) : A := | c xs ⇒ B …] *)
+let mfun :=
+  | f = VAR; ps = params; ":"; a = obj; ":="; bs = brs; { (snd f, List.rev ps, a, List.rev bs) }
+
+(* Reversed nonempty list of the functions, separated by [with] *)
+let mfuns :=
+  | ~ = mfun; { [mfun] }
+  | ~ = mfuns; WITH; ~ = mfun; { mfun :: mfuns }
 
 (* A module declaration, at the top level or in a [let]: its parameters, and
    a body or an alias. *)
@@ -231,12 +269,14 @@ let obj :=
   | EXFALSO; escr = obj; RETURN; mx = VAR; "."; em = obj;
     { Cst.exfalso escr (snd mx) em }
 
-  (* [elim M return ys z . A | c xs, hs => B … end]: the inductive type is
-     the scrutinee's; the motive binds the non-uniform parameters and the
-     scrutinee; a branch, the non-uniform parameters and the constructor's
-     arguments, then after a comma its induction hypotheses. *)
-  | ELIM; escr = obj; RETURN; xs = vars; "."; em = obj; bs = brs; END;
-    { Cst.elim escr (List.rev xs) em (List.rev bs) }
+  (* [elim M at ys (z : Z) -> A | c xs, hs ⇒ B … with … end]: one block
+     per member of the group, in member order, the one marked [at] the
+     scrutinee's; a block's binders, the non-uniform parameters and the
+     scrutinee, then its motive; a branch, the non-uniform parameters and
+     the constructor's arguments, then after a comma its induction
+     hypotheses. *)
+  | ELIM; escr = obj; bks = eblocks; END;
+    { Cst.elim escr (List.rev bks) }
 
   (* [let x : A := a; y := b in body end].  The bindings fold into nested
      [letb]s, so each one sees the earlier ones. *)
@@ -311,6 +351,30 @@ let vars_opt :=
 let ihs_opt :=
   | { @nil string }
   | ","; ~ = vars; { List.rev vars }
+
+(* A binder of a block: a name, or a name and its type *)
+let ebinder :=
+  | x = VAR; { (snd x, None) }
+  | "("; x = VAR; ":"; ~ = obj; ")"; { (snd x, Some obj) }
+
+(* Reversed nonempty list of the binders of a block *)
+let ebinders :=
+  | ~ = ebinder; { [ebinder] }
+  | ~ = ebinders; ~ = ebinder; { ebinder :: ebinders }
+
+(* [at] marks the scrutinee's block, [with] any other *)
+let block_kw :=
+  | BLOCK_AT; { true }
+  | WITH; { false }
+
+(* A block of an eliminator: [at ys (z : Z) -> A | c xs ⇒ B …] *)
+let eblock :=
+  | k = block_kw; xs = ebinders; "->"; a = obj; bs = brs; { (k, List.rev xs, a, List.rev bs) }
+
+(* Reversed nonempty list of the blocks of an eliminator *)
+let eblocks :=
+  | ~ = eblock; { [eblock] }
+  | ~ = eblocks; ~ = eblock; { eblock :: eblocks }
 
 (* Reversed list of the branches of an eliminator, possibly empty *)
 let brs :=

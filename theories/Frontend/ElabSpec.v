@@ -189,6 +189,23 @@ Definition ihead (fq ip : path) : option Cst.obj :=
 Definition itarget (fq ip : path) (args : list Cst.obj) : option Cst.obj :=
   option_map (fold_left Cst.app args) (ihead fq ip).
 
+(** ** Eliminators
+
+    An eliminator's blocks come in member order, the one marked [at] the
+    scrutinee's ([elim_at]); which member each block is for, and the
+    group, are the core's to find ([Core.Syntactic.Builtin]).  A block's
+    binders bind the non-uniform parameters, then the scrutinee; only the
+    scrutinee's may carry a type, which the core reads the group and its
+    uniform parameters off. *)
+
+(** The position of the one block marked [at], if exactly one is. *)
+Fixpoint elim_at (ks : list bool) : option nat :=
+  match ks with
+  | nil => None
+  | true :: ks' => if List.existsb (fun k => k) ks' then None else Some 0
+  | false :: ks' => option_map S (elim_at ks')
+  end.
+
 (** ** Objects
 
     [sel S o M] holds when the surface object [o] denotes the term [M] in the
@@ -237,12 +254,13 @@ Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
 | sel_let_mod : forall S x ps md ob U B,
     sunit S ps md U -> sel (en_var x :: S) ob B ->
     sel S (Cst.letb (Cst.d_mod x ps md) ob) (ℓₘ U in B)
-(** An eliminator: its motive binds its names, and so does each branch.
-    How many there must be, and which constructor a branch is for, is the
-    core's to check. *)
-| sel_elim : forall S om xs oA bs M A Bs,
-    sel S om M -> sel (vents xs ++ S) oA A -> sbrs S bs Bs ->
-    sel S (Cst.elim om xs oA bs) (a_elim (List.length xs) A Bs M)
+(** An eliminator: its blocks, the one marked [at] the scrutinee's.  It
+    carries no group and no uniform parameters: the core fills them from
+    the annotations.  How many binders and branches there must be, and
+    which constructor a branch is for, is the core's to check. *)
+| sel_elim : forall S om bks M Bks m,
+    sel S om M -> sblocks S bks Bks -> elim_at (List.map (fun bk => fst (fst (fst bk))) bks) = Some m ->
+    sel S (Cst.elim om bks) (a_elim None nil m Bks M)
 
 with selm : list ent -> Cst.obj -> modexp -> Prop :=
 | selm_var : forall S x k e n H,
@@ -263,6 +281,28 @@ with sbrs : list ent -> list (string * list string * Cst.obj) -> list (string * 
 | sbr_cons : forall S c ys oB bs B Bs,
     sel (vents ys ++ S) oB B -> sbrs S bs Bs ->
     sbrs S ((c, ys, oB) :: bs) ((c, List.length ys, B) :: Bs)
+
+(** The blocks of an eliminator: each its binders, the scrutinee's type
+    under the binders before it, its motive under all of them, and its
+    branches. *)
+with sblocks : list ent -> list (bool * list (string * option Cst.obj) * Cst.obj * list (string * list string * Cst.obj)) ->
+    list eblock -> Prop :=
+| sbk_nil : forall S, sblocks S nil nil
+| sbk_cons : forall S k xs oA bs bks oZ A Bs Bks,
+    sbinders S nil xs oZ ->
+    sel (vents (List.map fst xs) ++ S) oA A -> sbrs S bs Bs -> sblocks S bks Bks ->
+    sblocks S ((k, xs, oA, bs) :: bks) (eb_mk (List.length xs) oZ A Bs :: Bks)
+
+(** [sbinders S pre xs oZ]: the binders [xs] of a block, after the binders
+    [pre], carry no type but the last, whose type, if written, is [oZ],
+    read under the binders before it. *)
+with sbinders : list ent -> list string -> list (string * option Cst.obj) -> option exp -> Prop :=
+| sbd_nil : forall S pre, sbinders S pre nil None
+| sbd_last_bare : forall S pre x, sbinders S pre ((x, None) :: nil) None
+| sbd_last_typed : forall S pre x o Z,
+    sel (vents pre ++ S) o Z -> sbinders S pre ((x, Some o) :: nil) (Some Z)
+| sbd_cons : forall S pre x y xs oZ,
+    sbinders S (pre ++ x :: nil) (y :: xs) oZ -> sbinders S pre ((x, None) :: y :: xs) oZ
 
 (** Each parameter's type sees the earlier parameters. *)
 with sparams : list ent -> list (string * Cst.obj) -> list (string * typ) -> Prop :=
@@ -335,6 +375,54 @@ Inductive srcons (S : list ent) :
     srargs S args args' -> srcons S cs cs' ->
     srcons S ((c, args) :: cs) ((c, args') :: cs').
 
+(** The names of the members of a group. *)
+Definition member_names (ms : list (string * Cst.obj * list (string * list (string * Cst.obj)))) : list string :=
+  List.map (fun m => fst (fst m)) ms.
+
+(** The members of a group, under its uniform parameters [ups] in the
+    scope [S], the members' names [xs] in scope in every argument outside
+    the parameters: each its non-uniform parameters, its sort and its
+    constructors. *)
+Inductive smembers (S : list ent) (ups : list (string * Cst.obj)) (xs : list string) :
+    list (string * Cst.obj * list (string * list (string * Cst.obj))) -> list raw_member -> Prop :=
+| sm_nil : smembers S ups xs nil nil
+| sm_cons : forall x oT cs ms nps oS ntys A cs' rms,
+    split_pis oT = (nps, oS) ->
+    NoDup (map fst (ups ++ nps)) ->
+    sparams (pents ups ++ S) nps ntys ->
+    sel (pents ups ++ S) oS A ->
+    srcons (pents (ups ++ nps) ++ vents xs ++ S) cs cs' ->
+    smembers S ups xs ms rms ->
+    smembers S ups xs ((x, oT, cs) :: ms) (mk_rmem x (ptele ntys) A cs' :: rms).
+
+(** ** Mutual Definitions
+
+    A function's parameters are its non-uniform ones, then its scrutinee,
+    last; its result type sees all of them, its clauses only the common
+    parameters, as an eliminator's branches see only what is outside it. *)
+
+(** The names of the functions. *)
+Definition fun_names (fs : list (string * list (string * Cst.obj) * Cst.obj * list (string * list string * Cst.obj))) :
+    list string :=
+  List.map (fun f => fst (fst (fst f))) fs.
+
+Inductive sfuns (S : list ent) :
+    list (string * list (string * Cst.obj) * Cst.obj * list (string * list string * Cst.obj)) -> list raw_fun -> Prop :=
+| sf_nil : sfuns S nil nil
+| sf_cons : forall f ys z oZ oA bs fs ytys Z A Bs rfs,
+    NoDup (map fst (ys ++ (z, oZ) :: nil)) ->
+    sparams S ys ytys ->
+    sel (pents ys ++ S) oZ Z ->
+    sel (en_tvar z :: pents ys ++ S) oA A ->
+    sbrs S bs Bs ->
+    sfuns S fs rfs ->
+    sfuns S ((f, ys ++ (z, oZ) :: nil, oA, bs) :: fs) (mk_rfun f (ptele ytys) Z A Bs :: rfs).
+
+(** The entries of names filed in order in the open frame at member chain
+    [ch] of the unit [fp], innermost first. *)
+Definition filed_mems (fp : path) (ch : list string) (xs : list string) : list ent :=
+  rev (map (fun x => en_mem x (q_abs fp (ch ++ x :: nil))) xs).
+
 (** ** Commands
 
     [scmd fp ch O F c F' c']: the command [c], in the open frame at member
@@ -390,19 +478,28 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
     sel (F ++ O) oM M ->
     sel (F ++ O) oA A ->
     scmd fp ch O F (Cst.c_eval oM (Some oA)) F (cc_eval M (Some A) :: nil)
-(** [inductive x (ups) : T where cs end]: the parameters, uniform then
-    non-uniform, are read in [F], the sort under the uniform ones, the
-    constructors' arguments under all.  It declares [x], a module whose
-    members are the constructors. *)
-| sc_ind : forall ch O F pv x ups oT cs nps oS tys A cs',
-    fresh x F ->
-    split_pis oT = (nps, oS) ->
-    NoDup (map fst (ups ++ nps)) ->
-    sparams (F ++ O) (ups ++ nps) tys ->
-    sel (pents ups ++ F ++ O) oS A ->
-    srcons (pents (ups ++ nps) ++ en_tvar x :: F ++ O) cs cs' ->
-    scmd fp ch O F (Cst.c_ind pv x ups oT cs) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
-      (cc_ind x pv (mk_raw (List.length ups) (ptele tys) A cs') :: nil)
+(** [inductive x (ups) : T where cs with y : U where … end]: the uniform
+    parameters are read in [F], each member's non-uniform ones and sort
+    under them, the constructors' arguments under all, with the members'
+    names in scope.  It declares each member, a module whose members are
+    the constructors. *)
+| sc_ind : forall ch O F pv ups ms tys rms,
+    NoDup (member_names ms) ->
+    Forall (fun x => fresh x F) (member_names ms) ->
+    sparams (F ++ O) ups tys ->
+    smembers (F ++ O) ups (member_names ms) ms rms ->
+    scmd fp ch O F (Cst.c_ind pv ups ms) (filed_mems fp ch (member_names ms) ++ F)
+      (cc_ind pv (mk_raw (ptele tys) rms) :: nil)
+(** [mutual def (ps) f … with g … end]: the common parameters are read in
+    [F], the functions under them.  It declares each function. *)
+| sc_mdef : forall ch O F m ps fs tys rfs,
+    NoDup (map fst ps) ->
+    NoDup (fun_names fs) ->
+    Forall (fun x => fresh x F) (fun_names fs) ->
+    sparams (F ++ O) ps tys ->
+    sfuns (pents ps ++ F ++ O) fs rfs ->
+    scmd fp ch O F (Cst.c_mdef m ps fs) (filed_mems fp ch (fun_names fs) ++ F)
+      (cc_mdef (negb (Cst.md_abstract m)) (Cst.md_private m) (ptele tys) rfs :: nil)
 (** [inductive x (ps) := E]: [E] is read under the parameters, as an
     alias's target is; whether it names an inductive type, and its
     arguments the type's, is the core's to check. *)

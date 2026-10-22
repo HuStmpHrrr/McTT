@@ -36,6 +36,13 @@ Section Main.
   Variable load_path : list string -> option string.
   Variable read : string -> option Cst.prog.
   Hypothesis Hwf : well_founded (load_step load_path).
+  (** How the views of a group are found, and that they are whenever
+      there are some; and how a site of an eliminator is resolved
+      ([Extraction.Command]).  Parameters until their proofs land. *)
+  Variable views_search : forall Θ Ξ (HΞ : ⊢ᵍ Θ ⍮ Ξ) R csD, rres (views_found Θ Ξ R csD).
+  Hypothesis views_search_complete : forall Θ Ξ HΞ R csD Vs Ss csV Nvs,
+      views_ok Θ Ξ R csD Vs Ss csV Nvs -> exists v, views_search Θ Ξ HΞ R csD = rok v.
+  Variable site_search : forall Θ Ξ (HΞ : ⊢ᵍ Θ ⍮ Ξ) s, {r | site_resolves Θ Ξ s r} + {forall r, ~ site_resolves Θ Ξ s r}.
 
   (** The program is elaborated here only to report the error message, since
       the interpreter's [to_core] returns an option. *)
@@ -45,7 +52,7 @@ Section Main.
         match elaborate_core prg with
         | eerr msg => ElaborationFailure prg msg
         | eok _ =>
-            match prog_impl load_path read to_core prg (Hwf _) with
+            match prog_impl load_path read to_core views_search site_search prg (Hwf _) with
             | rok (B, Θ, U, log) => AllGood prg B Θ U log
             | rerr e => RunFailure prg e
             end
@@ -70,9 +77,10 @@ Section Main.
     intros * H; unfold main in H.
     destruct (Parser.prog log_fuel buf); try discriminate.
     destruct (elaborate_core _); try discriminate.
-    destruct (prog_impl load_path read to_core _ _) as [[[[B' Θ'] U'] log'] |] eqn:Hr; try discriminate.
+    destruct (prog_impl load_path read to_core views_search site_search _ _) as [[[[B' Θ'] U'] log'] |] eqn:Hr;
+      try discriminate.
     injection H as <- <- <- <- <-.
-    destruct (prog_impl_sound _ _ _ _ _ _ _ _ _ Hr) as [(ΘR & Hsem & Heq) Hlog].
+    destruct (prog_impl_sound _ _ _ _ _ _ _ _ _ _ _ Hr) as [(ΘR & Hsem & Heq) Hlog].
     split; [| exact Hlog ].
     destruct (prog_sem_wf _ _ _ _ _ _ _ Hsem) as [HΘ HU].
     exists ΘR; tauto.
@@ -87,7 +95,7 @@ Section Main.
   Proof.
     intros * Hp Hsem Hel; unfold main; rewrite Hp.
     destruct (elaborate_core prg) eqn:He; [| exfalso; eapply Hel; reflexivity ].
-    destruct (prog_impl_complete _ _ _ _ _ _ _ Hsem (Hwf _)) as (Θ & log & Hr & Heq).
+    destruct (prog_impl_complete _ _ _ _ views_search_complete site_search _ _ _ _ Hsem (Hwf _)) as (Θ & log & Hr & Heq).
     rewrite Hr; eauto.
   Qed.
 End Main.

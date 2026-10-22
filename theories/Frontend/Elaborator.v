@@ -167,6 +167,38 @@ Definition elab_brs_with (f : list ent -> Cst.obj -> eres exp) (S : list ent) :=
         eok ((c, List.length ys, B) :: Bs)
     end.
 
+(** The rejection of a type on a binder before the last. *)
+Definition blk_ann_msg : string := "only the last binder of a block (the scrutinee) may carry a type".
+
+(** The rejection of an eliminator with no block, or more than one,
+    marked [at]. *)
+Definition elim_at_msg : string := "exactly one block of an eliminator is marked at, the scrutinee's".
+
+(** The type written on the last binder of a block ([sbinders]), under the
+    binders [pre] before it; a type on any other binder is rejected. *)
+Definition elab_binders_with (f : list ent -> Cst.obj -> eres exp) (S : list ent) :=
+  fix go (pre : list string) (xs : list (string * option Cst.obj)) : eres (option exp) :=
+    match xs with
+    | nil => eok None
+    | (_, None) :: nil => eok None
+    | (_, Some o) :: nil => let* Z := f (vents pre ++ S)%list o in eok (Some Z)
+    | (_, Some _) :: _ :: _ => eerr blk_ann_msg
+    | (x, None) :: ((_ :: _) as xs') => go (pre ++ x :: nil)%list xs'
+    end.
+
+Definition elab_blocks_with (f : list ent -> Cst.obj -> eres exp) (S : list ent) :=
+  fix go (bks : list (bool * list (string * option Cst.obj) * Cst.obj * list (string * list string * Cst.obj)))
+      : eres (list eblock) :=
+    match bks with
+    | nil => eok nil
+    | (k, xs, oA, bs) :: bks' =>
+        let* oZ := elab_binders_with f S nil xs in
+        let* A := f (vents (List.map fst xs) ++ S)%list oA in
+        let* Bs := elab_brs_with f S bs in
+        let* Bks := go bks' in
+        eok (eb_mk (List.length xs) oZ A Bs :: Bks)
+    end.
+
 Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
   match o with
   | Cst.typ n => eok (Typeω@n)
@@ -227,11 +259,13 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
       let* D := elab_mdef (pents ps ++ S) md in
       let* B := elab (en_var x :: S) ob in
       eok (ℓₘ (gu_mk (ptele tys) D) in B)
-  | Cst.elim om xs oA bs =>
+  | Cst.elim om bks =>
       let* M := elab S om in
-      let* A := elab (vents xs ++ S)%list oA in
-      let* Bs := elab_brs_with elab S bs in
-      eok (a_elim (List.length xs) A Bs M)
+      let* Bks := elab_blocks_with elab S bks in
+      match elim_at (List.map (fun bk => fst (fst (fst bk))) bks) with
+      | Some m => eok (a_elim None nil m Bks M)
+      | None => eerr elim_at_msg
+      end
   end
 
 with elab_mod (S : list ent) (o : Cst.obj) {struct o} : eres modexp :=
@@ -280,7 +314,8 @@ with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
            | Cst.c_import _ :: _ => eerr "import is not allowed in a local module; use open"
            | Cst.c_error e :: _ => eerr e
            | Cst.c_eval _ _ :: _ => eerr "eval is not allowed in a local module"
-           | Cst.c_ind _ _ _ _ _ :: _ => eerr "an inductive type is not allowed in a local module"
+           | Cst.c_ind _ _ _ :: _ => eerr "an inductive type is not allowed in a local module"
+           | Cst.c_mdef _ _ _ :: _ => eerr "a mutual definition is not allowed in a local module"
            | Cst.c_builtin _ _ :: _ => eerr "builtin is not allowed in a local module"
            | Cst.c_ind_alias _ _ _ _ :: _ => eerr "an inductive alias is not allowed in a local module"
            end) S gm_nil cs in
@@ -308,6 +343,51 @@ Fixpoint elab_rcons (S : list ent) (cs : list (string * list (string * Cst.obj))
       let* args' := elab_rargs S args in
       let* cs'' := elab_rcons S cs' in
       eok ((c, args') :: cs'')
+  end.
+
+(** The members of a group, under its uniform parameters [ups], the
+    members' names [xs] in scope in the arguments ([smembers]). *)
+Fixpoint elab_members (S : list ent) (ups : list (string * Cst.obj)) (xs : list string)
+    (ms : list (string * Cst.obj * list (string * list (string * Cst.obj)))) : eres (list raw_member) :=
+  match ms with
+  | nil => eok nil
+  | (x, oT, cs) :: ms' =>
+      let '(nps, oS) := split_pis oT in
+      let* _ := check_params (ups ++ nps)%list in
+      let* ntys := elab_params (pents ups ++ S)%list nps in
+      let* A := elab (pents ups ++ S)%list oS in
+      let* cs' := elab_rcons (pents (ups ++ nps) ++ vents xs ++ S)%list cs in
+      let* rms := elab_members S ups xs ms' in
+      eok (mk_rmem x (ptele ntys) A cs' :: rms)
+  end.
+
+(** The functions of a mutual definition ([sfuns]): each its parameters,
+    the last its scrutinee. *)
+Fixpoint elab_funs (S : list ent)
+    (fs : list (string * list (string * Cst.obj) * Cst.obj * list (string * list string * Cst.obj))) :
+    eres (list raw_fun) :=
+  match fs with
+  | nil => eok nil
+  | (f, ps, oA, bs) :: fs' =>
+      match List.rev ps with
+      | nil => eerr ("the function " ++ f ++ " of a mutual definition has no scrutinee")
+      | (z, oZ) :: rys =>
+          let ys := List.rev rys in
+          let* _ := check_params ps in
+          let* ytys := elab_params S ys in
+          let* Z := elab (pents ys ++ S)%list oZ in
+          let* A := elab (en_tvar z :: pents ys ++ S)%list oA in
+          let* Bs := elab_brs_with elab S bs in
+          let* rfs := elab_funs S fs' in
+          eok (mk_rfun f (ptele ytys) Z A Bs :: rfs)
+      end
+  end.
+
+(** Names declared together twice. *)
+Definition check_distinct (what : string) (xs : list string) : eres unit :=
+  match first_dup xs with
+  | None => eok tt
+  | Some x => eerr (x ++ " is declared twice in " ++ what)
   end.
 
 (** ** Commands
@@ -365,14 +445,20 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) 
       let* M := elab (F ++ O) oM in
       let* A := elab (F ++ O) oA in
       eok (F, cc_eval M (Some A) :: nil)
-  | Cst.c_ind pv x ups oT cs =>
-      let* _ := check_fresh x F in
-      let '(nps, oS) := split_pis oT in
-      let* _ := check_params (ups ++ nps)%list in
-      let* tys := elab_params (F ++ O)%list (ups ++ nps)%list in
-      let* A := elab (pents ups ++ F ++ O)%list oS in
-      let* cs' := elab_rcons (pents (ups ++ nps) ++ en_tvar x :: F ++ O)%list cs in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_ind x pv (mk_raw (List.length ups) (ptele tys) A cs') :: nil)
+  | Cst.c_ind pv ups ms =>
+      let* _ := check_distinct "a group" (member_names ms) in
+      let* _ := check_fresh_all (member_names ms) F in
+      let* tys := elab_params (F ++ O) ups in
+      let* rms := elab_members (F ++ O) ups (member_names ms) ms in
+      eok (filed_mems fp ch (member_names ms) ++ F, cc_ind pv (mk_raw (ptele tys) rms) :: nil)%list
+  | Cst.c_mdef m ps fs =>
+      let* _ := check_params ps in
+      let* _ := check_distinct "a mutual definition" (fun_names fs) in
+      let* _ := check_fresh_all (fun_names fs) F in
+      let* tys := elab_params (F ++ O) ps in
+      let* rfs := elab_funs (pents ps ++ F ++ O) fs in
+      eok (filed_mems fp ch (fun_names fs) ++ F,
+           cc_mdef (negb (Cst.md_abstract m)) (Cst.md_private m) (ptele tys) rfs :: nil)%list
   (** The type is a module, as written; the command declares nothing. *)
   | Cst.c_builtin k oX =>
       let* H := elab_mod (F ++ O) oX in
