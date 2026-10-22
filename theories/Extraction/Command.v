@@ -823,14 +823,14 @@ Qed.
 Section Impl.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
-  (** How the views of a group are found.  An interface until the
-      search's termination is settled. *)
+  (** How the views of a group are found: [ViewsFound.views_search], which
+      [Entrypoint] supplies (it is defined over this file's [views_found]). *)
   Variable views_search : forall Θ Ξ (HΞ : ⊢ᵍ Θ ⍮ Ξ) R csD, rres (views_found Θ Ξ R csD).
   (** The search finds the views whenever there are some. *)
   Hypothesis views_search_complete : forall Θ Ξ HΞ R csD Vs Ss csV Nvs,
       views_ok Θ Ξ R csD Vs Ss csV Nvs -> exists v, views_search Θ Ξ HΞ R csD = rok v.
-  (** How a site of an eliminator is resolved.  An interface until the
-      resolution's termination is settled. *)
+  (** How a site of an eliminator is resolved: [MemberOrder.site_search],
+      which [Entrypoint] supplies. *)
   Variable site_search : forall Θ Ξ (HΞ : ⊢ᵍ Θ ⍮ Ξ) s, {r | site_resolves Θ Ξ s r} + {forall r, ~ site_resolves Θ Ξ s r}.
   #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
   #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).

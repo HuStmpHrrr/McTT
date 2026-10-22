@@ -608,8 +608,7 @@ type lib = {
    bound is rejected. *)
 let check_units ?(extra_roots = []) root (us : unit_info list) thetas outputs nats =
   List.iter (fun u ->
-      let r = Ep.main (Main.load_path_in (root :: extra_roots)) Main.read_unit
-                Interim.views_search Interim.site_search Main.parser_log_fuel (buf_of u.u_toks 0) in
+      let r = Ep.main (Main.load_path_in (root :: extra_roots)) Main.read_unit Main.parser_log_fuel (buf_of u.u_toks 0) in
       match r, PrettyPrinter.eval_outputs r with
       | Ep.AllGood (_, bt, th, gu, _), Some out ->
           Hashtbl.replace thetas u.u_path ((u.u_path, gu) :: th);
