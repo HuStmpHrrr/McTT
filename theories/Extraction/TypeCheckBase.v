@@ -352,13 +352,19 @@ Section type_check.
   | ti_true : type_infer_order ⋆
   | ti_False : type_infer_order ⊥
   | ti_exfalso : forall {A M}, type_check_order M -> type_infer_order A -> type_infer_order (efq M return A)
-  | ti_indty : forall {p}, type_infer_order (a_ind p)
-  | ti_con : forall {p c}, type_infer_order (a_con p c)
+  | ti_indty : forall {p k}, type_infer_order (a_ind p k)
+  | ti_con : forall {p k c}, type_infer_order (a_con p k c)
   (** A numeral is expanded before it is checked; it has no type. *)
   | ti_nlit : forall {n}, type_infer_order (a_nlit n)
   | ti_ntok : type_infer_order a_ntok
-  | ti_elim : forall {nm A Bs M}, type_infer_order M -> type_infer_order A ->
-      (forall b, List.In b Bs -> type_check_order (snd b)) -> type_infer_order (a_elim nm A Bs M)
+  (** An eliminator: its scrutinee and the annotations and motives of its
+      blocks infer, its uniform parameters and the branches are checked. *)
+  | ti_elim : forall {oq Us m Bks M}, type_infer_order M ->
+      (forall U, List.In U Us -> type_check_order U) ->
+      (forall b Z, List.In b Bks -> eb_ann b = Some Z -> type_infer_order Z) ->
+      (forall b, List.In b Bks -> type_infer_order (eb_motive b)) ->
+      (forall b br, List.In b Bks -> List.In br (eb_brs b) -> type_check_order (snd br)) ->
+      type_infer_order (a_elim oq Us m Bks M)
   | ti_pi : forall {A B}, type_infer_order A -> type_infer_order B -> type_infer_order Π A B
   | ti_fn : forall {A M}, type_infer_order A -> type_infer_order M -> type_infer_order λ A M
   | ti_app : forall {M N}, app_order M N -> type_infer_order (M $ N)
@@ -388,8 +394,8 @@ Section type_check.
       body_order (gm_ext Φ x (ge_def b pv A (Some M)))
   | bo_mod : forall {Φ x pm U}, body_order Φ -> unit_order U -> body_order (gm_ext Φ x (ge_mod pm U))
   | bo_axiom : forall {Φ x b pv A}, body_order Φ -> body_order (gm_ext Φ x (ge_def b pv A None))
-  | bo_ind : forall {Φ x pv p D Φi}, body_order Φ -> body_order (gm_ext Φ x (ge_ind pv p D Φi))
-  | bo_ind_alias : forall {Φ x pv Δ p Ns}, body_order Φ -> body_order (gm_ext Φ x (ge_ind_alias pv Δ p Ns))
+  | bo_ind : forall {Φ x pv p k D Φi}, body_order Φ -> body_order (gm_ext Φ x (ge_ind pv p k D Φi))
+  | bo_ind_alias : forall {Φ x pv Δ pm p k Ns}, body_order Φ -> body_order (gm_ext Φ x (ge_ind_alias pv Δ pm p k Ns))
   | bo_open : forall {Φ H its}, body_order Φ -> modexp_order H -> body_order (gm_open Φ H its)
   with modexp_order : modexp -> Prop :=
   | mo_unit : forall {fp}, modexp_order (me_unit fp)
@@ -435,7 +441,7 @@ Section type_check.
     (forall E, match E with
            | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
            | ge_mod _ U => unit_order U
-           | ge_ind _ _ _ _ | ge_ind_alias _ _ _ _ => True
+           | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ => True
            end) /\
     (forall e, centry_order e).
   Proof.
@@ -453,20 +459,27 @@ Section type_check.
       (fun E => match E with
              | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
              | ge_mod _ U => unit_order U
-             | ge_ind _ _ _ _ | ge_ind_alias _ _ _ _ => True
+             | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ => True
              end)
       centry_order); intros; cbn in *; destruct_conjs; eauto 6 with mctt.
-    - (* an eliminator: its branches are checked *)
-      constructor; [ assumption | assumption |].
-      match goal with HF : List.Forall _ _ |- _ => rewrite List.Forall_forall in HF end.
-      intros b Hb; apply tc_ti; auto.
+    - (* an eliminator: its uniform parameters and branches are checked *)
+      match goal with
+      | HU : List.Forall _ ?Us, HB : List.Forall _ ?Bks |- type_infer_order (a_elim _ ?Us _ ?Bks _) =>
+          rewrite List.Forall_forall in HU, HB
+      end.
+      constructor; [ assumption | intros U HU'; apply tc_ti; auto
+                   | intros b Z Hb HZ; match goal with HB : forall x, List.In x _ -> _ |- _ => exact (proj1 (HB b Hb) Z HZ) end
+                   | intros b Hb; match goal with HB : forall x, List.In x _ -> _ /\ _ |- _ => exact (proj1 (proj2 (HB b Hb))) end
+                   | intros b br Hb Hbr; apply tc_ti;
+                     match goal with HB : forall x, List.In x _ -> _ /\ _ |- _ =>
+                       exact (proj1 (List.Forall_forall _ _) (proj2 (proj2 (HB b Hb))) br Hbr) end ].
     - (* a local binding *)
       destruct b as [[A |] M | U]; destruct_conjs;
         [ apply ti_let; [ eauto | constructor; assumption | assumption ]
         | apply ti_let_infer; assumption
         | apply ti_let_mod; assumption ].
     - destruct D; destruct_conjs; constructor; auto using ext_order_of_forall.
-    - destruct E as [b pv A [M |] | pm U | pvi Di Φi | ? ? ? ?]; destruct_conjs;
+    - destruct E as [b pv A [M |] | pm U | pvi pk ki Di Φi | ? ? ? ? ? ?]; destruct_conjs;
         first [ apply bo_def; eauto with mctt | apply bo_mod; assumption
               | apply bo_axiom; assumption | apply bo_ind; assumption | apply bo_ind_alias; assumption ].
   Qed.
@@ -759,17 +772,14 @@ Ltac ob_ord :=
             | repeat match goal with H : type_check_order _ |- _ => progressive_invert H end;
               eassumption ] ] ].
 
-(** The orders of the scrutinee, the motive and a branch of an
-    eliminator. *)
+(** The orders of the parts of an eliminator: its scrutinee, a uniform
+    parameter, and an annotation, a motive or a branch of a block. *)
 Ltac ob_ord_elim :=
   clear_defs;
-  match goal with H : type_infer_order (a_elim _ _ _ _) |- _ => progressive_invert H end;
+  match goal with H : type_infer_order (a_elim _ _ _ _ _) |- _ => progressive_invert H end;
   first
     [ eassumption
-    | match goal with
-      | Hall : forall b, List.In b _ -> type_check_order (snd b), Hb : List.In ?b _ |- type_check_order (snd ?b) =>
-          exact (Hall b Hb)
-      end ].
+    | match goal with Hall : forall _ : _, _ |- _ => solve [ eapply Hall; eassumption ] end ].
 
 (** A context premise. *)
 Ltac ob_ctx := clear_defs; destruct_conjs; solve [ ctx_wf_tac ].

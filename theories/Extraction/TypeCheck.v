@@ -428,15 +428,17 @@ Section type_check.
         pureo (exist _ W _)
     (** The forms of inductive types ([Extraction.IndCheck]); the
         eliminator's recursive calls are passed on. *)
-    | a_ind r => ind_infer G HG P r
-    | a_con r c => con_infer G HG P r c
+    | a_ind r k => ind_infer G HG P r k
+    | a_con r k c => con_infer G HG P r k c
     | a_nlit n => inright (fun A HA => alg_nlit_no_infer G n A HA)
     | a_ntok => inright (fun A HA => alg_ntok_no_infer G A HA)
-    | a_elim nm A' Bs M' =>
-        elim_infer G HG P nm A' Bs M'
+    | a_elim oq Us m Bks M' =>
+        elim_infer G HG P oq Us m Bks M'
           (type_infer_in G HG P M' ltac:(ob_ord_elim))
-          (fun G' HG' P' => type_infer_in G' HG' P' A' ltac:(ob_ord_elim))
-          (fun b Hb G' A'' HA'' P' => type_check_in G' A'' HA'' P' (snd b) ltac:(ob_ord_elim))
+          (fun U HU G' A'' HA'' P' => type_check_in G' A'' HA'' P' U ltac:(ob_ord_elim))
+          (fun b Z Hb HZ G' HG' P' => type_infer_in G' HG' P' Z ltac:(ob_ord_elim))
+          (fun b Hb G' HG' P' => type_infer_in G' HG' P' (eb_motive b) ltac:(ob_ord_elim))
+          (fun b br Hb Hbr G' A'' HA'' P' => type_check_in G' A'' HA'' P' (snd br) ltac:(ob_ord_elim))
     | λ A' M' =>
         let*o (exist _ UA' _) := type_infer_in G _ P A' _ while _ in
         let*o (exist _ u _) :=  univ_nf_idx_dec UA' while _ in
