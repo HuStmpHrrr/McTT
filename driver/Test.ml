@@ -2817,19 +2817,39 @@ let%expect_test "an import is rejected in a local body" =
 
 (** Leading imports and opens *)
 
+let%expect_test "a name imported into a unit with parameters prints as written" =
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "module Prelude›X (A : Type@0) where import Prelude›Arith›Equality use (Eq) \
+       def bad : Eq 1 1 ≔ 0 end end"
+  in
+  [%expect {| Error: the body of bad, 0, is not of type Eq 1 1 |}];
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "module Prelude›Y (A : Type@0) where def foo : ⊤ ≔ ⋆ end \
+       module N (B : Type@0) where def bar : ⊤ ≔ foo end def bad : ⊥ ≔ bar end end end"
+  in
+  [%expect {| Error: the body of bad, bar, is not of type ⊥ |}];
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "module Prelude›Z (A : Type@0) where module S where def y : ⊤ ≔ ⋆ end end \
+       def bad : ⊥ ≔ S.y end end"
+  in
+  [%expect {| Error: the body of bad, S.y, is not of type ⊥ |}]
+
 let%expect_test "a leading open in a parameter type" =
   let _ =
     main_of_program_string ~search_root:"../lib"
       "import Prelude›Builtin›Nat import Prelude::Arith::Equality open Prelude::Arith::Equality use (Eq) \
        module ScratchP (p : Eq 1 1) where def q : Eq 1 1 := p end eval q end"
   in
-  [%expect {| Evaluate q $0 --> ⋆ : ⊤ |}];
+  [%expect {| Evaluate q --> ⋆ : ⊤ |}];
   let _ =
     main_of_program_string ~search_root:"../lib"
       "import Prelude›Builtin›Nat import Prelude::Arith::Equality as E use (Eq) \
        module ScratchP (p : Eq 1 1) (q : E.Eq 2 2) where def r : Eq 2 2 := q end eval r end"
   in
-  [%expect {| Evaluate r $1 $0 --> ⋆ : ⊤ |}]
+  [%expect {| Evaluate r --> ⋆ : ⊤ |}]
 
 let%expect_test "an error names the parameters of the modules around it" =
   let _ =
@@ -2896,7 +2916,7 @@ let%expect_test "an axiom is a member with no body" =
   [%expect {|
     Evaluate q --> p : P 0
     Evaluate p --> p : P 0
-    Evaluate succ N.k --> succ N.k : ℕ
+    Evaluate succ k --> succ k : ℕ
     |}]
 
 let%expect_test "an axiom of another unit" =
@@ -3043,13 +3063,31 @@ let doc_lib = lazy (Doc.load "../lib")
 
 let%expect_test "mctt-doc: every name of lib lines up, and every use resolves" =
   List.iter print_endline (Doc.problems (Lazy.force doc_lib));
+  [%expect {| |}]
+
+let%expect_test "mctt-doc: a mutual group's recursor module and its functions have anchors" =
+  let lib = Lazy.force doc_lib in
+  List.iter (fun (u, x, n) -> Printf.printf "%s %d: %s\n" x n (Doc.link_of lib u x n))
+    [ ([ "Forests" ], "Rec", 1); ([ "Forests" ], "rec_Tree", 1);
+      ([ "Prelude"; "Data"; "Tree"; "Rose" ], "rec_Forest", 1) ];
+  (* A view's function of [Rec] is at the group's name too. *)
+  let dir = Filename.temp_dir "mctt-doc" "" in
+  Out_channel.with_open_bin (Filename.concat dir "T.mctt") (fun oc -> output_string oc
+    "module T where\n\
+     inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end\n\
+     mutual R where inductive Rose : Type@0 where | node (ts : List Rose) end end\n\
+     def f : ⊤ ≔ R.Rec.rec_List_Rose 0l (fun (z : R.Rose) -> ⊤) (fun (z : List R.Rose) -> ⊤)\n\
+     \  (fun (ts : List R.Rose) (h : ⊤) -> h) ⋆\n\
+     \  (fun (t : R.Rose) (ts : List R.Rose) (ht : ⊤) (hts : ⊤) -> hts) (List.nil R.Rose) end\n\
+     end\n");
+  let t = Doc.load dir in
+  List.iter print_endline (Doc.problems t);
+  print_endline (Doc.link_of t [ "T" ] "rec_List_Rose" 1);
   [%expect {|
-    Forests: Rec links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec
-    Forests: rec_Tree links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec.rec_Tree
-    Prelude›Data›Tree›Rose: Rec links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec
-    Prelude›Data›Tree›Rose: rec_Tree links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec.rec_Tree
-    Prelude›Data›Tree›Rose: Rec links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec
-    Prelude›Data›Tree›Rose: rec_Forest links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec.rec_Forest
+    Rec 1: line 69: Prelude›Data›Tree›Rose#Rose.Rec
+    rec_Tree 1: line 69: Prelude›Data›Tree›Rose#Rose.Rec.rec_Tree
+    rec_Forest 1: line 103: Prelude›Data›Tree›Rose#Rose.Rec.rec_Forest
+    line 4: T#R.Rec.rec_List_Rose
     |}]
 
 let%expect_test "mctt-doc: every name of examples lines up" =
@@ -3183,12 +3221,6 @@ let%expect_test "mctt-doc: a unit whose log is out of step with its evals is rep
   Printf.printf "%d boxes\n" (List.length (doc_boxes (Doc.render_unit lib (Doc.anchor_kinds lib) tut)));
   [%expect {|
     Tutorial: 45 evals, 1 outputs
-    Forests: Rec links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec
-    Forests: rec_Tree links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec.rec_Tree
-    Prelude›Data›Tree›Rose: Rec links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec
-    Prelude›Data›Tree›Rose: rec_Tree links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec.rec_Tree
-    Prelude›Data›Tree›Rose: Rec links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec
-    Prelude›Data›Tree›Rose: rec_Forest links to a missing anchor Prelude›Data›Tree›Rose#Rose.Rec.rec_Forest
     0 boxes
     |}]
 
@@ -3705,8 +3737,8 @@ let%expect_test "an inductive type imported into a unit with parameters" =
                                 eval fun (n : Lib›Unary.U) -> elim n at x -> Lib›Unary.U \
                                   | z => two | s p, r => r end end" in
   [%expect {|
-    Evaluate Lib›Unary.plus (two $0) (two $0) --> 4 : ℕ
-    Evaluate λ (x1 : ℕ) → elim x1 at x2 → ℕ | z ⇒ two $0 | s x3, x4 ⇒ x4 end
+    Evaluate Lib›Unary.plus two two --> 4 : ℕ
+    Evaluate λ (x1 : ℕ) → elim x1 at x2 → ℕ | z ⇒ two | s x3, x4 ⇒ x4 end
       --> λ (x1 : ℕ) → elim x1 at x2 → ℕ | z ⇒ 2 | s x3, x4 ⇒ x4 end
       : ∀ (x1 : ℕ) → ℕ
     |}]
@@ -4169,11 +4201,131 @@ let%expect_test "a block for a member the group does not have is rejected" =
   let _ = main_of_body (group_tm_sp ^
     "eval fun (t : S.Tm) -> elim t at (z : S.Tm) -> Nat | var n => 1 | app f s, hf hs => hs end") in
   [%expect {|
-    Error:
-      λ (x1 : S.Tm)
-        → elim x1 at (x2 : S.Tm) → ℕ | var x3 ⇒ 1 | app x4 x5, x6 x7 ⇒ x7 end
-      has no inferable type
+    Error: an eliminator has one block per member of its group, in member order:
+      Tm, Sp; the block for Sp is missing.
+      The eliminator should read:
+      elim x1 at (z : S.Tm) → …
+      | var n ⇒ …
+      | app f s, hf hs ⇒ …
+      with (z : S.Sp) → …
+      | snil ⇒ …
+      | scons t s, ht hs ⇒ …
+      end
     |}]
+
+let group_tree_forest =
+  "mutual G (A : Type@0) where inductive Tree : Type@0 where | node (x : A) (ts : Forest A) \
+   with Forest : Type@0 where | nil | cons (t : Tree A) (ts : Forest A) end end "
+
+let%expect_test "an eliminator missing a block gets the eliminator it needs" =
+  let _ = main_of_bare_body (group_tree_forest ^
+    "def f (z : G.Forest ⊤) : ⊤ := elim z at (z : G.Forest ⊤) -> ⊤ \
+       | nil => ⋆ | cons t us, ht hus => ⋆ end end") in
+  [%expect {|
+    Error: an eliminator has one block per member of its group, in member order:
+      Tree, Forest; the block for Tree is missing.
+      The eliminator should read:
+      elim x1 with (z : G.Tree ⊤) → …
+      | node x ts, h ⇒ …
+      at (z : G.Forest ⊤) → …
+      | nil ⇒ …
+      | cons t ts, ht hts ⇒ …
+      end
+    |}]
+
+let%expect_test "an eliminator with a block too many gets the eliminator it needs" =
+  let _ = main_of_bare_body
+    "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
+     inductive Rose : Type@0 where | node (ts : List Rose) end \
+     def f (t : Rose) : ⊤ := elim t at (z : Rose) -> ⊤ | node ts, h => ⋆ \
+       with (z : List Rose) -> ⊤ | nil => ⋆ | cons t ts, ht hts => ⋆ \
+       with (z : List Rose) -> ⊤ | nil => ⋆ | cons t ts, ht hts => ⋆ end end" in
+  [%expect {|
+    Error: an eliminator has one block per member of its group, in member order:
+      Rose, List Rose; block 3 (branches nil, cons) is for no member left.
+      The eliminator should read:
+      elim x1 at (z : Rose) → …
+      | node ts, h ⇒ …
+      with (z : List Rose) → …
+      | nil ⇒ …
+      | cons x xs, hx hxs ⇒ …
+      end
+    |}]
+
+let%expect_test "an eliminator's blocks follow the order of the members" =
+  let _ = main_of_bare_body (group_tree_forest ^
+    "def f (z : G.Forest ⊤) : ⊤ := elim z at (z : G.Forest ⊤) -> ⊤ \
+       | nil => ⋆ | cons t us, ht hus => ⋆ \
+       with (z : G.Tree ⊤) -> ⊤ | node x ts, h => ⋆ end end") in
+  [%expect {|
+    Error: an eliminator has one block per member of its group, in member order:
+      Tree, Forest; the blocks are not in member order.
+      The eliminator should read:
+      elim x1 with (z : G.Tree ⊤) → …
+      | node x ts, h ⇒ …
+      at (z : G.Forest ⊤) → …
+      | nil ⇒ …
+      | cons t ts, ht hts ⇒ …
+      end
+    |}]
+
+let%expect_test "an eliminator of an imported group missing a block" =
+  let _ = main_of_body
+    "import Prelude›Data›Tree›Rose use (Tree) \
+     def f (t : Tree 0l Nat) : Nat := elim t at (z : Tree 0l Nat) -> Nat | node x ts, h => h end end" in
+  [%expect {|
+    Error: an eliminator has one block per member of its group, in member order:
+      Tree, Forest; the block for Forest is missing.
+      The eliminator should read:
+      elim x1 at (z : Prelude›Data›Tree›Rose.Rose.Tree 0l ℕ) → …
+      | node x ts, h ⇒ …
+      with (z : Prelude›Data›Tree›Rose.Rose.Forest 0l ℕ) → …
+      | nil ⇒ …
+      | cons t ts, ht hts ⇒ …
+      end
+    |}]
+
+let%expect_test "an eliminator with no binder type missing a block" =
+  let _ = main_of_bare_body
+    "mutual G where inductive Tree : Type@0 where | node (ts : Forest) \
+     with Forest : Type@0 where | nil | cons (t : Tree) (ts : Forest) end end \
+     def f (z : G.Forest) : ⊤ := elim z at z -> ⊤ | nil => ⋆ | cons t us, ht hus => ⋆ end end" in
+  [%expect {|
+    Error: an eliminator has one block per member of its group, in member order:
+      Tree, Forest; the block for Tree is missing.
+      The eliminator should read:
+      elim x1 with (z : G.Tree) → …
+      | node ts, h ⇒ …
+      at (z : G.Forest) → …
+      | nil ⇒ …
+      | cons t ts, ht hts ⇒ …
+      end
+    |}]
+
+let%expect_test "a block for no member at its place prints its induction hypotheses after a comma" =
+  (* Two groups have the block's constructors: the group is not known, and
+     the term is printed as it is. *)
+  let _ = main_of_bare_body
+    "mutual G where inductive Tree : Type@0 where | node (ts : Forest) \
+     with Forest : Type@0 where | nil | cons (t : Tree) (ts : Forest) end end \
+     mutual H where inductive Tree : Type@0 where | node (ts : Forest) \
+     with Forest : Type@0 where | nil | cons (t : Tree) (ts : Forest) end end \
+     def f (z : G.Forest) : ⊤ := elim z at z -> ⊤ | nil => ⋆ | cons t us, ht hus => ⋆ end end" in
+  [%expect {|
+    Error: the body of f,
+      λ (x1 : G.Forest) → elim x1 at x2 → ⊤ | nil ⇒ ⋆ | cons x3 x4, x5 x6 ⇒ ⋆ end,
+      is not of type ∀ (x1 : G.Forest) → ⊤
+    |}]
+
+let%expect_test "the member written unapplied is the one named" =
+  let _ = main_of_bare_body
+    "mutual G (A : Type@0) where inductive Tree : Type@0 where | node (x : A) (ts : Forest) \
+     with Forest : Type@0 where | nil | cons (t : Tree A) (ts : Forest A) end end" in
+  [%expect {| Error: Forest is not applied to its uniform parameters as declared in the argument ts of node |}];
+  let _ = main_of_bare_body
+    "mutual G (A : Type@0) where inductive Tree : Type@0 where | node (x : A) (ts : Forest A) \
+     with Forest : Type@0 where | nil | cons (t : Tree) (ts : Forest A) end end" in
+  [%expect {| Error: Tree is not applied to its uniform parameters as declared in the argument t of cons |}]
 
 let%expect_test "two members of a group have two names" =
   let _ = main_of_body

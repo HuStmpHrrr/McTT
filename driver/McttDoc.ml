@@ -31,6 +31,8 @@ let () =
       let lib = D.load root in
       let fq = List.filter (( <> ) "") (String.split_on_char ':' u) in
       let rec go n = match D.link_of lib fq x n with
-        | "no occurrence" -> () | l -> print_endline l; go (n + 1) in
+        | "no occurrence" -> ()
+        | "no unit" as l -> print_endline l
+        | l -> print_endline l; go (n + 1) in
       go 1
   | _ -> prerr_endline "usage: mctt-doc (ROOT OUTDIR | --check ROOT | --links ROOT UNIT NAME)"; exit 2

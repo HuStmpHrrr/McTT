@@ -52,6 +52,8 @@ let read_unit src =
 let load_path_in roots fp = List.find_map (fun r -> load_path r fp) roots
 
 let main_of_lexbuf ?(search_root = ".") ?(extra_roots = []) lexbuf =
+  (* The printer reads the declarations of imported units for their names. *)
+  PrettyPrinter.unit_cst := (fun fp -> Option.bind (load_path_in (search_root :: extra_roots) fp) read_unit);
   match
     Lexer.lexbuf_to_token_buffer lexbuf
     |> Entrypoint.main (load_path_in (search_root :: extra_roots)) read_unit parser_log_fuel

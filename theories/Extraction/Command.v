@@ -250,6 +250,14 @@ Inductive run_error : Set :=
     is applied to too few arguments for the group's uniform parameters,
     or whose uniform arguments depend on the block's binders. *)
 | re_elim_ann : gstack -> ctx -> exp -> run_error
+(** An eliminator of a group whose blocks are not one per member in the
+    member order, in its context under the stack's telescope:
+    [re_elim_blocks Ξ Γ E ks is j], [E] the eliminator, [ks] the members
+    with no block, [is] the positions of the written blocks that are for
+    no member left ([elim_blocks_blame]), and [j] the member of the block
+    marked [at], for the printer's skeleton of the eliminator.  Both lists
+    are empty when every member has its block, out of order. *)
+| re_elim_blocks : gstack -> ctx -> exp -> list nat -> list nat -> nat -> run_error
 (** A view of the group being declared, an instance of a container met in
     the arguments, rejected: the group's first member, the instance, and
     why ([view_why]). *)
@@ -463,11 +471,166 @@ Section BranchBlame.
     end.
 End BranchBlame.
 
+(** Where a term is rejected, an eliminator of a group, its group known
+    (filled, [Builtin.exp_fill]), that does not have one block per member
+    of the group in the member order.  A written block is matched to a
+    member by its branches, which name the member's constructors in order
+    ([block_fits]); the blocks are matched in the order written, each to
+    a member not matched yet, the first after the last one matched if
+    there is one ([block_member]).  This only chooses the message. *)
+Section BlocksBlame.
+  Variables (Θ : gdeps) (Ξ : gstack).
+
+  (** Whether the block [b] is for the member [Mk]: its branches are for
+      [Mk]'s constructors, in order. *)
+  Definition block_fits (Mk : imember) (b : eblock) : bool :=
+    strs_eqb (List.map (fun br => fst (fst br)) (eb_brs b)) (List.map fst (im_cons Mk)).
+
+  (** The member of [Ms] the block [b] is for, among those not [taken]:
+      the first after the [last] one matched that it fits, else the first
+      it fits. *)
+  Definition block_member (Ms : list imember) (taken : list nat) (last : option nat) (b : eblock) : option nat :=
+    let cands := List.filter (fun j => andb (negb (existsb (Nat.eqb j) taken))
+                                   (match List.nth_error Ms j with Some Mk => block_fits Mk b | None => false end))
+                   (List.seq 0 (List.length Ms)) in
+    match List.filter (fun j => match last with Some l => Nat.ltb l j | None => true end) cands with
+    | j :: _ => Some j
+    | nil => List.hd_error cands
+    end.
+
+  (** The member each written block is for, in the order written. *)
+  Fixpoint blocks_members (Ms : list imember) (taken : list nat) (last : option nat) (Bks : list eblock) : list (option nat) :=
+    match Bks with
+    | nil => nil
+    | b :: Bks' =>
+        match block_member Ms taken last b with
+        | Some j => Some j :: blocks_members Ms (j :: taken) (Some j) Bks'
+        | None => None :: blocks_members Ms taken last Bks'
+        end
+    end.
+
+  (** The groups filed in a module, its submodules' included, each with
+      its path, once per entry of a declared member. *)
+  Fixpoint gmod_groups (Φ : gmod) : list qname :=
+    match Φ with
+    | gm_nil => nil
+    | gm_ext Φ _ E =>
+        match E with
+        | ge_ind _ p _ _ Φi => p :: gmod_groups Φi
+        | ge_mod _ (gu_mk _ (md_body sm Φi)) => gmod_groups Φi
+        | _ => nil
+        end ++ gmod_groups Φ
+    | gm_open Φ _ _ => gmod_groups Φ
+    end.
+
+  (** The group of an eliminator: its own once filled; with none, the one
+      group without uniform parameters, among those of the filed units and
+      the stack, a member of which its block [m] is for.  That second case
+      is a guess, a hint for the message only: it reads the branches'
+      names, not the scrutinee's type, and is asked of a term already
+      rejected, so it decides nothing about typing. *)
+  Definition elim_group (oq : option qname) (m : nat) (Bks : list eblock) : option qname :=
+    match oq with
+    | Some p => Some p
+    | None =>
+        match List.nth_error Bks m with
+        | None => None
+        | Some b =>
+            let ps := List.filter (fun p => match ind_lookup Θ Ξ p with
+                                            | Some D => andb (Nat.eqb (ind_nu D) 0) (existsb (fun Mk => block_fits Mk b) (ind_members D))
+                                            | None => false
+                                            end)
+                        (flat_map (fun e => gmod_groups (gu_mod (snd e))) Θ ++ flat_map (fun e => gmod_groups (gu_mod (snd e))) Ξ) in
+            match ps with
+            | p :: ps' => if forallb (fun p' => if qname_eq_dec p p' then true else false) ps' then Some p else None
+            | nil => None
+            end
+        end
+    end.
+
+  (** The eliminator [E], in the context [Γ], if its blocks are too few or
+      too many for its group, or one per member but out of order; the
+      eliminator in the error has its group.  With as many blocks as
+      members of which some match no member, the branches are to blame
+      ([brs_blame]), not the blocks. *)
+  Definition elim_blocks_check (Γ : ctx) (E : exp) : option run_error :=
+    match E with
+    | a_elim oq Us m Bks M0 =>
+        match match elim_group oq m Bks with
+              | Some p => option_map (fun D => (p, D)) (ind_lookup Θ Ξ p)
+              | None => None
+              end with
+        | None => None
+        | Some (p, D) =>
+            let E := a_elim (Some p) Us m Bks M0 in
+            let Ms := ind_members D in
+            let a := blocks_members Ms nil None Bks in
+            let missing :=
+              List.filter (fun j => negb (existsb (fun o => match o with Some j' => Nat.eqb j j' | None => false end) a))
+                (List.seq 0 (List.length Ms)) in
+            let extra :=
+              List.map snd (List.filter (fun x => match fst x with None => true | Some _ => false end)
+                              (List.combine a (List.seq 0 (List.length Bks)))) in
+            let j := match List.nth_error a m with Some (Some j) => j | _ => m end in
+            let ordered :=
+              forallb (fun x => match fst x with Some j' => Nat.eqb j' (snd x) | None => false end)
+                (List.combine a (List.seq 0 (List.length Bks))) in
+            if Nat.eqb (List.length Bks) (List.length Ms) then
+              match missing, extra with
+              | nil, nil => if ordered then None else Some (re_elim_blocks Ξ Γ E nil nil j)
+              | _, _ => None
+              end
+            else Some (re_elim_blocks Ξ Γ E missing extra j)
+        end
+    | _ => None
+    end.
+
+  (** The first eliminator in a term, in the context [Γ] of its binders,
+      whose blocks do not match its group: its parts first, then itself. *)
+  Fixpoint blocks_blame (Γ : ctx) (M : exp) : option run_error :=
+    match M with
+    | a_succl M | a_univ M => blocks_blame Γ M
+    | a_maxl M N | a_app M N => first_some (blocks_blame Γ M) (fun _ => blocks_blame Γ N)
+    | a_pi A B | a_fn A B => first_some (blocks_blame Γ A) (fun _ => blocks_blame (ce_ass A :: Γ) B)
+    | a_exfalso A M => first_some (blocks_blame Γ M) (fun _ => blocks_blame (ce_hole :: Γ) A)
+    | a_elim oq Us m Bks M0 =>
+        first_some (blocks_blame Γ M0) (fun _ => first_some
+          ((fix exps (Us : list exp) : option run_error :=
+              match Us with
+              | nil => None
+              | U :: Us' => first_some (blocks_blame Γ U) (fun _ => exps Us')
+              end) Us)
+          (fun _ => first_some
+            ((fix blocks (Bks : list eblock) : option run_error :=
+                match Bks with
+                | nil => None
+                | eb_mk nm oZ A Bs :: Bks' =>
+                    first_some (match oZ with Some Z => blocks_blame (ctx_holes (nm - 1) ++ Γ) Z | None => None end)
+                      (fun _ => first_some (blocks_blame (ctx_holes nm ++ Γ) A) (fun _ => first_some
+                        ((fix brs (Bs : list (string * nat * exp)) : option run_error :=
+                            match Bs with
+                            | nil => None
+                            | b :: Bs' => first_some (blocks_blame (ctx_holes (snd (fst b)) ++ Γ) (snd b)) (fun _ => brs Bs')
+                            end) Bs)
+                        (fun _ => blocks Bks')))
+                end) Bks)
+            (fun _ => elim_blocks_check Γ M)))
+    | a_let (b_def oA N) B =>
+        first_some (match oA with Some A => blocks_blame Γ A | None => None end)
+          (fun _ => first_some (blocks_blame Γ N)
+            (fun _ => blocks_blame (match oA with Some A => ce_def A N | None => ce_hole end :: Γ) B))
+    | a_let (b_mod U) B => blocks_blame (ce_mod U :: Γ) B
+    | _ => None
+    end.
+End BlocksBlame.
+
 (** The error for a rejected term: a module where a term stands, if there
-    is one, then an eliminator whose branches do not match its type,
-    otherwise the given error. *)
+    is one, then an eliminator whose blocks do not match its group, then
+    one whose branches do not match its type, otherwise the given
+    error. *)
 Definition mod_error {Θ Ξ} (Hg : ⊢ᵍ Θ ⍮ Ξ) (it : qname -> option ind_alias_view) (Ms : list exp) (e : run_error) : run_error :=
-  match List.fold_right (fun M r => first_some (first_some (mod_blame Θ Ξ it M) (fun _ => brs_blame Θ Ξ M)) (fun _ => r)) None Ms with
+  match List.fold_right (fun M r => first_some (first_some (mod_blame Θ Ξ it M)
+                                      (fun _ => first_some (blocks_blame Θ Ξ nil M) (fun _ => brs_blame Θ Ξ M))) (fun _ => r)) None Ms with
   | Some e' => e'
   | None => e
   end.
@@ -2431,6 +2594,8 @@ Section Impl.
       | right _ => rerr (re_msg ("the types declared with " ++ rm_name Mr0 ++ " are not all of its sort"))
       | left Hsort with rms_cls_dec (gds_restrict D Θ) Ξ (pre_gctx H) R (rd_members R) => {
         | inr (exist _ (x, c, y, cw_code sf) _) => rerr (re_msg (cls_msg x c y sf))
+        | inr (exist _ (x, c, y, cw_unapplied k) _) =>
+            rerr (re_msg (cls_msg (List.nth k (List.map rm_name (rd_members R)) x) c y 3))
         | inr (exist _ (x, c, y, cw_nested h) _) => rerr (re_nested x c y h)
         | inl (exist _ csD Hcls) with views_search (gds_restrict D Θ) Ξ (pre_gctx H) R csD => {
           | rerr e => rerr e

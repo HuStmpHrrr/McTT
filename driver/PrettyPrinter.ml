@@ -439,6 +439,37 @@ let frame_param_names () : string option list =
       | _ -> List.init n (fun _ -> None))
     xi
 
+(* A member of a frame of the stack printed, as the elaborator writes a use
+   of it from inside the frame: the member [x] of the frame's module, applied
+   first to the parameters of that frame and of the frames enclosing it, as
+   variables, outermost first ([vars_desc]).  Those parameters are not
+   written in the source, so the use prints as [x] alone, then the other
+   arguments [args] are applied to it, which this returns.  [nloc] is the
+   number of local binders around the use, inside the frames' parameters.
+   [None] where the module [(fp, ms)] is no frame or the arguments do not
+   start with those variables. *)
+let frame_member (nloc : int) ((fp, ms) : string list * string list) (args : exp list) : exp list option =
+  let _, xi = !current_state in
+  let rec find inner = function
+    | [] -> None
+    | ((q : qname), u) :: xi' ->
+       if q.q_unit = fp && q.q_chain = ms then
+         Some (inner, List.length (McttExtracted.Syntax.gs_tele xi))
+       else find (inner + List.length (McttExtracted.Syntax.gu_params u)) xi'
+  in
+  match find 0 xi with
+  | None -> None
+  | Some (inner, total) ->
+     let n = total - inner and k = nloc + inner in
+     let expected = List.init n (fun i -> Coq_a_var (k + n - 1 - i)) in
+     let rec strip es args =
+       match es, args with
+       | [], rest -> Some rest
+       | e :: es', a :: args' when e = a -> strip es' args'
+       | _ -> None
+     in
+     strip expected args
+
 (* A path naming the bound type: the type, or an inductive alias of it
    without arguments, as an [import … use (Nat)] declares one. *)
 let names_bound_nat (q : qname) : bool =
@@ -568,10 +599,33 @@ let elim_groups (bks : exp eblock_g list) : (exp, centry) ind_decl_g list =
 
 (* The members the block [j] of an eliminator can be for: the member [j]
    of its group, or of every group it can be of. *)
+(* With the group known, the member [j] if the block's branches are for its
+   constructors, otherwise every member they are for (a block out of
+   place), and the member [j] if none is. *)
 let block_members (oq : qname option) (bks : exp eblock_g list) (j : int) : (exp, centry) imember_g list =
   match oq with
-  | Some p -> Option.to_list (group_member p j)
-  | None -> List.filter_map (fun d -> McttExtracted.Syntax.ind_member d j) (elim_groups bks)
+  | Some p ->
+     let names = match List.nth_opt bks j with
+       | Some (Coq_eb_mk (_, _, _, bs)) -> List.map (fun ((c, _), _) -> c) bs
+       | None -> [] in
+     let fits (mk : (exp, centry) imember_g) = List.map fst mk.im_cons = names in
+     (match group_member p j with
+      | Some mk when fits mk -> [ mk ]
+      | o ->
+         let deps, xi = !current_state in
+         let all = match McttExtracted.Members.ind_lookup deps xi p with Some d -> d.ind_members | None -> [] in
+         (match List.filter fits all with [] -> Option.to_list o | l -> l))
+  | None ->
+     (match elim_groups bks with
+      | [] ->
+         (* No group has these blocks: every member the block's branches
+            are for. *)
+         let names = match List.nth_opt bks j with
+           | Some (Coq_eb_mk (_, _, _, bs)) -> List.map (fun ((c, _), _) -> c) bs
+           | None -> [] in
+         List.filter (fun (mk : (exp, centry) imember_g) -> List.map fst mk.im_cons = names)
+           (List.concat_map (fun d -> d.ind_members) !ind_decls)
+      | gs -> List.filter_map (fun d -> McttExtracted.Syntax.ind_member d j) gs)
 
 let ihs_count (mk : (exp, centry) imember_g option) (c : string) (n : int) : int =
   match mk with
@@ -626,6 +680,8 @@ let exp_to_obj =
   and impl_seen (ctx : string list) : exp -> Cst.obj = function
     | (Coq_a_con _ | Coq_a_mem _ | Coq_a_app (Coq_a_con _, _) | Coq_a_app (Coq_a_mem _, _)) as e when nat_of_chain e <> None ->
        Cst.Coq_num (Option.get (nat_of_chain e))
+    (* A member of a frame, applied to the frames' parameters as written. *)
+    | (Coq_a_mem _ | Coq_a_app _) as e when frame_use ctx e <> None -> apply_rest ctx (Option.get (frame_use ctx e))
     | Coq_a_nlit n -> Cst.Coq_num n
     | Coq_a_ntok -> Cst.Coq_nat
     | Coq_a_level n -> Cst.Coq_level n
@@ -719,6 +775,39 @@ let exp_to_obj =
          (((j = m, binders), em'), bs')
        in
        Cst.Coq_elim (escr', List.mapi block bks)
+  (* A use of a member of a frame from inside it ([frame_member]): its name,
+     and the arguments past the frames' parameters, not yet printed (the
+     guards that ask for it print nothing, so binders are named once). *)
+  and frame_use (ctx : string list) (e : exp) : (Cst.obj * exp list) option =
+    match McttExtracted.Group.app_head e with
+    | Coq_a_mem (h, x) ->
+       (match chain_of h with
+        | Some (fp, ms) ->
+           (match frame_member (List.length ctx) (fp, ms) (McttExtracted.Group.app_args e) with
+            | Some rest ->
+               let head = if names_bound_nat { q_unit = fp; q_chain = ms @ [ x ] } then Cst.Coq_nat else Cst.Coq_var x in
+               Some (head, rest)
+            | None -> None)
+        | None -> None)
+    | _ -> None
+  (* The same for a module: a submodule of a frame applied to the frames'
+     parameters, then to the arguments returned. *)
+  and frame_mod_use (ctx : string list) (m : modexp) : (Cst.obj * exp list) option =
+    let rec spine m args = match m with
+      | Coq_me_app (h, e) -> spine h (e :: args)
+      | _ -> (m, args) in
+    match spine m [] with
+    | Coq_me_mem (h, y), args ->
+       (match chain_of h with
+        | Some (fp, ms) ->
+           (match frame_member (List.length ctx) (fp, ms) args with
+            | Some rest -> Some (Cst.Coq_var y, rest)
+            | None -> None)
+        | None -> None)
+    | _ -> None
+  (* A head applied to arguments, printed. *)
+  and apply_rest (ctx : string list) ((head, rest) : Cst.obj * exp list) : Cst.obj =
+    List.fold_left (fun f a -> Cst.Coq_app (f, impl ctx a)) head rest
   (* A chain of selections from a unit, as the unit and the chain. *)
   and chain_of : modexp -> (string list * string list) option = function
     | Coq_me_unit fp -> Some (fp, [])
@@ -754,6 +843,7 @@ let exp_to_obj =
        (match chain_of h with
         | Some (fp, ms) -> path_to_obj fp (ms @ [y])
         | None -> Cst.Coq_proj (impl_mod ctx h, y))
+    | Coq_me_app _ as m when frame_mod_use ctx m <> None -> apply_rest ctx (Option.get (frame_mod_use ctx m))
     | Coq_me_app (h, e) -> Cst.Coq_app (impl_mod ctx h, impl ctx e)
     (* A literal module, which only substitution produces, prints as a local
        module naming itself. *)
@@ -899,6 +989,122 @@ let format_elim_hint (f : Format.formatter) (m : exp) : unit =
        (format_exp_in delta) scr (format_exp_in delta) t s_arrow
   | None -> ()
 
+(* The source of a unit other than the program run, parsed, for the names
+   its declarations give ([decl_names]); the driver sets it to its loader. *)
+let unit_cst : (string list -> Cst.prog option) ref = ref (fun _ -> None)
+
+(* The names a declared member gives, as written in the declaration at its
+   path [pm], in the program run or the unit it is in: those of its
+   non-uniform parameters, the binders of its type, and of each
+   constructor's arguments. *)
+let decl_names (pm : qname) : (string list * (string * string list) list) option =
+  let prog =
+    match !current_prog with
+    | Some ((_, ((path, _), _)) as prg) when path = pm.q_unit -> Some prg
+    | _ -> !unit_cst pm.q_unit
+  in
+  let rec find (cs : Cst.cmd list) (ch : string list) =
+    match ch with
+    | [] -> None
+    | [ x ] ->
+       List.find_map
+         (function
+          | Cst.Coq_c_ind (_, _, _, ms) ->
+             List.find_map
+               (fun ((y, t), cons) ->
+                 if y = x then
+                   Some (List.map fst (fst (get_pi_params_of_obj t)), List.map (fun (c, args) -> (c, List.map fst args)) cons)
+                 else None)
+               ms
+          | _ -> None)
+         cs
+    | y :: ch' ->
+       List.find_map
+         (function
+          | Cst.Coq_c_mod (_, z, _, Cst.Coq_md_where cs') when z = y -> find cs' ch'
+          | _ -> None)
+         cs
+  in
+  match prog with
+  | Some (_, (_, cs)) -> find cs pm.q_chain
+  | None -> None
+
+(* The names of the binders of a member [mk] of the group at [p], for a
+   skeleton of its block: the declaration's where it is found (for a view,
+   its container's), otherwise names made from the constructor. *)
+let member_names (p : qname) (k : int) (mk : (exp, centry) imember_g) : string list * (string * string list) list =
+  let names =
+    match mk.im_head with
+    | Coq_mh_decl _ -> decl_names (member_path p k)
+    | Coq_mh_view (qc, kc, _, _) -> decl_names (member_path qc kc)
+  in
+  let nn = McttExtracted.Syntax.im_nn mk in
+  let ps = match names with
+    | Some (ps, _) when List.length ps = nn -> ps
+    | _ -> List.init nn (fun i -> "p" ^ string_of_int (i + 1)) in
+  let cons =
+    List.map
+      (fun (c, gs) ->
+        let n = List.length gs in
+        match Option.bind names (fun (_, cs) -> List.assoc_opt c cs) with
+        | Some ys when List.length ys = n -> (c, ys)
+        | _ -> (c, List.init n (fun i -> c ^ string_of_int (i + 1))))
+      mk.im_cons
+  in
+  (ps, cons)
+
+(* The induction hypotheses of a branch: one per recursive argument, [h]
+   alone for one, else [h] then the argument's name. *)
+let ih_names (gs : exp carg_g list) (ys : string list) : string list =
+  let recs = List.filteri (fun i _ -> match List.nth_opt gs i with Some (Coq_ca_rec _) -> true | _ -> false) ys in
+  match recs with
+  | [ _ ] -> [ "h" ]
+  | _ -> List.map (fun y -> "h" ^ y) recs
+
+(* The name of a member in a message: a declared one's, a view's type. *)
+let member_label (delta : centry list) (p : qname) (us : exp list) (k : int) (mk : (exp, centry) imember_g) : string =
+  match mk.im_head with
+  | Coq_mh_decl _ -> (match List.rev (member_path p k).q_chain with x :: _ -> x | [] -> "?")
+  | Coq_mh_view _ ->
+     Format.asprintf "%a" (format_exp_in delta) (McttExtracted.Syntax.apps_exp (Coq_a_ind (p, k)) us)
+
+(* The eliminator [elim scr] of the group at [p] at the uniform parameters
+   [us], as it should be written, one line per block head and per branch:
+   every member's block in member order, [at] on the member [j]'s, each
+   with its binders, the scrutinee's typed, and each branch with its
+   arguments and its induction hypotheses, the bodies left out. *)
+let format_elim_skeleton (delta : centry list) (f : Format.formatter) (p, us, j, scr) : unit =
+  let open Format in
+  let deps, xi = !current_state in
+  let ms = match McttExtracted.Members.ind_lookup deps xi p with Some d -> d.ind_members | None -> [] in
+  let j = if j < List.length ms then j else 0 in
+  let str obj = asprintf "%a" format_obj obj in
+  pp_open_vbox f 0;
+  fprintf f "elim %s" (str (exp_to_obj ~delta scr));
+  List.iteri
+    (fun k mk ->
+      let ps, cons = member_names p k mk in
+      let ty = List.fold_left (fun t y -> Cst.Coq_app (t, Cst.Coq_var y))
+                 (exp_to_obj ~delta (McttExtracted.Syntax.apps_exp (Coq_a_ind (p, k)) us)) ps in
+      let binders = String.concat "" (List.map (fun y -> y ^ " ") ps) ^ "(z : " ^ str ty ^ ")" in
+      if k > 0 then pp_print_cut f () else pp_print_string f " ";
+      pp_u f (Printf.sprintf "%s %s %s \u{2026}" (if k = j then "at" else "with") binders s_arrow);
+      List.iter
+        (fun (c, ys) ->
+          let gs = match McttExtracted.Inductives.ind_con mk c with Some gs -> gs | None -> [] in
+          let hs = ih_names gs ys in
+          pp_print_cut f ();
+          fprintf f "%a" pp_u
+            (Printf.sprintf "| %s%s%s %s \u{2026}" c
+               (String.concat "" (List.map (fun y -> " " ^ y) (ps @ ys)))
+               (if hs = [] then "" else "," ^ String.concat "" (List.map (fun h -> " " ^ h) hs))
+               s_darrow))
+        cons)
+    ms;
+  pp_print_cut f ();
+  pp_print_string f "end";
+  pp_close_box f ()
+
 let rec format_run_error (f : Format.formatter) (e : Command1.run_error) : unit =
   match e with
   (* The natural numbers bound where the error occurred: the innermost
@@ -913,7 +1119,8 @@ let rec format_run_error (f : Format.formatter) (e : Command1.run_error) : unit 
      it imports are not at hand. *)
   (match e with
    | Coq_re_def (_, xi, _, _) | Coq_re_def_typ (_, xi, _) | Coq_re_eval_typ (xi, _, _)
-   | Coq_re_eval_check (xi, _, _) | Coq_re_eval_infer (xi, _) | Coq_re_level (xi, _, _) ->
+   | Coq_re_eval_check (xi, _, _) | Coq_re_eval_infer (xi, _) | Coq_re_level (xi, _, _)
+   | Coq_re_elim_blocks (xi, _, _, _, _, _) ->
       set_ind_decls (fst !current_state) xi;
       current_state := (fst !current_state, xi)
    | _ -> ());
@@ -978,6 +1185,32 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_re_elim_ann (_, delta, z) ->
      fprintf f "@[<hov 2>Error: the binder type@ %a@ of an eliminator's block is no member of a group of inductive types@ applied to its uniform parameters,@ or its uniform arguments depend on the block's binders@]"
        (format_exp_in delta) z
+  (* An eliminator whose blocks are not those of its group: what is
+     missing, extra or out of order, then the eliminator as it should be. *)
+  | Coq_re_elim_blocks (_, delta, Coq_a_elim (Some p, us, _, bks, scr), missing, extra, j) ->
+     let deps, xi = !current_state in
+     let ms = match McttExtracted.Members.ind_lookup deps xi p with Some d -> d.ind_members | None -> [] in
+     let labels = List.mapi (fun k mk -> member_label delta p us k mk) ms in
+     let label k = Option.value (List.nth_opt labels k) ~default:"?" in
+     let block i =
+       match List.nth_opt bks i with
+       | Some (Coq_eb_mk (_, _, _, [])) -> Printf.sprintf "block %d (no branches)" (i + 1)
+       | Some (Coq_eb_mk (_, _, _, bs)) ->
+          Printf.sprintf "block %d (branches %s)" (i + 1) (String.concat ", " (List.map (fun ((c, _), _) -> c) bs))
+       | None -> Printf.sprintf "block %d" (i + 1) in
+     let why =
+       (match missing with
+        | [] -> []
+        | [ k ] -> [ "the block for " ^ label k ^ " is missing" ]
+        | ks -> [ "the blocks for " ^ String.concat ", " (List.map label ks) ^ " are missing" ])
+       @ (match extra with
+          | [] -> []
+          | [ i ] -> [ block i ^ " is for no member left" ]
+          | is -> [ String.concat ", " (List.map block is) ^ " are for no member left" ])
+       @ (if missing = [] && extra = [] then [ "the blocks are not in member order" ] else []) in
+     fprintf f "@[<v 2>@[<hov 2>Error: an eliminator has one block per member of its group,@ in member order:@ %a;@ %a.@]@,The eliminator should read:@,%a@]"
+       pp_u (String.concat ", " labels) pp_u (String.concat "; " why) (format_elim_skeleton delta) (p, us, j, scr)
+  | Coq_re_elim_blocks _ -> fprintf f "@[<hov 2>Error: the blocks of an eliminator are not those of its group@]"
   | Coq_re_view (x, ((qc, k), cs), why) ->
      let open McttExtracted.IndDecl in
      let inst = McttExtracted.Syntax.apps_exp (Coq_a_ind (qc, k)) cs in

@@ -88,9 +88,18 @@ type link =
   | Member of string list * S.modexp * string list
 
 (* [bare]: a name that names nothing by itself, the constructor of an
-   eliminator's branch, which is the scrutinee's type's. *)
+   eliminator's branch, which is the scrutinee's type's.  [extra]: the
+   anchors of what the declaration of the name generates besides it, each
+   with its kind: the recursor module [Rec] of a [mutual] group at the
+   group's name, and its function [rec_x] at the member [x]'s. *)
 type occ = { mutable link : link option; mutable anchor : string option; mutable kind : kind option;
-             mutable bare : bool }
+             mutable bare : bool; mutable extra : (string * kind) list }
+
+(* Every anchor a name declares, with its kind: its own, then the extra
+   ones. *)
+let occ_anchors (o : occ) : (string * kind) list =
+  (match o.anchor, o.kind with Some a, Some k -> [ (a, k) ] | Some a, None -> [ (a, Def) ] | None, _ -> [])
+  @ o.extra
 
 exception Misaligned of string
 
@@ -127,7 +136,14 @@ type st = {
   mutable toc : toc_entry list;  (* the unit's declarations at every depth, last first *)
   mutable notes : string list;
   mutable evals : (C.obj * C.obj option) list;  (* the evals walked, last first *)
+  mutable recs : rec_site list;  (* the [mutual] groups walked, last first *)
 }
+
+(* A group declared by [mutual T (ps) where …], which files a recursor
+   module [T.Rec]: the member chain of [T], the VAR of its name, and its
+   declared members' names, in order.  The views' functions of [Rec] are
+   known only once the group is filed ([rec_view_anchors]). *)
+and rec_site = { r_chain : string list; r_name : int; r_members : string list }
 
 let next st x =
   let i = st.cur in
@@ -398,6 +414,8 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
     let declm x =
       let i = next st x in
       declare st i (anchor_of ch x) Mod;
+      (* A member of a [mutual] group: its function of [Rec] too. *)
+      if ps_first then st.occ.(i).extra <- [ (anchor_of (ch @ [ "Rec" ]) ("rec_" ^ x), Def) ];
       st.toc <- { te_depth = List.length ch; te_name = x; te_anchor = anchor_of ch x; te_kw = "inductive"; te_kind = Mod }
                 :: st.toc
     in
@@ -433,7 +451,10 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
       group in its frame, its parameters first. *)
    | C.Coq_c_mod (_, x, [], C.Coq_md_where [ C.Coq_c_ind (_, _, ps, ms) ])
      when (match st.toks.(st.vars.(st.cur) - 1).t with P.MUTUAL _ -> true | _ -> false) ->
-       ignore (decl (Some "mutual") x Mod);
+       let i = decl (Some "mutual") x Mod in
+       (* The recursor module the group files, at the group's name. *)
+       st.occ.(i).extra <- [ (anchor_of (ch @ [ x ]) "Rec", Mod) ];
+       st.recs <- { r_chain = ch @ [ x ]; r_name = i; r_members = List.map (fun ((y, _), _) -> y) ms } :: st.recs;
        group (ch @ [ x ]) env true ps ms
    | C.Coq_c_mod (_, x, ps, md) ->
        ignore (decl (Some "module") x Mod);
@@ -513,6 +534,7 @@ type unit_info = {
   u_toc : toc_entry list;      (* the declarations of the body at every depth, in order *)
   u_notes : string list;
   u_evals : (int * int) list;  (* each eval's first and last token, in order *)
+  u_recs : rec_site list;      (* the [mutual] groups declared, in order *)
 }
 
 let read_file p = In_channel.with_open_bin p In_channel.input_all
@@ -561,8 +583,8 @@ let walk (file : string list) (src : string) (items : (string list * string list
       (List.mapi (fun i t -> match t.t with
            | P.VAR _ -> Some i
            | _ -> None) (Array.to_list toks))) in
-  let occ = Array.init (Array.length vars) (fun _ -> { link = None; anchor = None; kind = None; bare = false }) in
-  let st = { unit = fp; toks; vars; occ; cur = 0; items; toc = []; notes = []; evals = [] } in
+  let occ = Array.init (Array.length vars) (fun _ -> { link = None; anchor = None; kind = None; bare = false; extra = [] }) in
+  let st = { unit = fp; toks; vars; occ; cur = 0; items; toc = []; notes = []; evals = []; recs = [] } in
   let l = List.fold_left (lead st fp) [] leads in
   List.iter (fun x -> let i = next st x in declare st i "" Unit) fp;
   let env, vbs = params st { sc = l; vs = [] } ps in
@@ -574,7 +596,7 @@ let walk (file : string list) (src : string) (items : (string list * string list
     raise (Misaligned (Printf.sprintf "%d of %d names paired" st.cur (Array.length vars)));
   { u_file = file; u_path = fp; u_src = src; u_toks = toks; u_comments = comments src toks;
     u_vars = vars; u_occ = occ; u_toc = List.rev st.toc; u_notes = List.rev st.notes;
-    u_evals = eval_spans toks (List.rev st.evals) }
+    u_evals = eval_spans toks (List.rev st.evals); u_recs = List.rev st.recs }
 
 let rec find_units root dir acc =
   let a = Sys.readdir (Filename.concat root dir) in
@@ -618,6 +640,29 @@ let check_units ?(extra_roots = []) root (us : unit_info list) thetas outputs na
           Option.iter (Hashtbl.replace nats u.u_path) (bt : S.qname option)
       | _ -> ()) us
 
+(* The functions of [Rec] for the views of each [mutual] group of a checked
+   unit, at the group's name: the core names them ([grec_names]) after the
+   declared members' [rec_x], in member order, from the group as filed at
+   the path of its first member. *)
+let rec_view_anchors (us : unit_info list) thetas =
+  List.iter (fun u ->
+      match Hashtbl.find_opt thetas u.u_path with
+      | None -> ()
+      | Some th ->
+          List.iter (fun r ->
+              match r.r_members with
+              | [] -> ()
+              | m0 :: _ ->
+                  let p = { S.q_unit = u.u_path; S.q_chain = r.r_chain @ [ m0 ] } in
+                  match McttExtracted.Members.ind_lookup th [] p with
+                  | None -> ()
+                  | Some d ->
+                      let views = List.filteri (fun i _ -> i >= List.length r.r_members)
+                          (McttExtracted.Command0.grec_names th [] d) in
+                      let o = u.u_occ.(r.r_name) in
+                      o.extra <- o.extra @ List.map (fun x -> (anchor_of (r.r_chain @ [ "Rec" ]) x, Def)) views)
+            u.u_recs) us
+
 let load ?(check = true) ?(extra_roots = []) root : lib =
   let items = Hashtbl.create 64 in
   let files = List.rev (find_units root "" []) in
@@ -633,6 +678,7 @@ let load ?(check = true) ?(extra_roots = []) root : lib =
   let units = List.rev units and failed = List.rev failed in
   let thetas = Hashtbl.create 64 and outputs = Hashtbl.create 64 and nats = Hashtbl.create 64 in
   if check then check_units ~extra_roots root units thetas outputs nats;
+  rec_view_anchors units thetas;
   { root; units; failed; thetas; outputs; nats; items }
 
 (* ------------------------------------------------------------------ *)
@@ -671,7 +717,7 @@ type stats = { names : int; linked : int; binders : int; unresolved : (string li
    resolved; and every link to an anchor that does not exist. *)
 let stats lib : stats =
   let anchors = Hashtbl.create 1024 in
-  List.iter (fun u -> Array.iter (fun o -> Option.iter (fun a -> Hashtbl.replace anchors (u.u_path, a) ()) o.anchor) u.u_occ) lib.units;
+  List.iter (fun u -> Array.iter (fun o -> List.iter (fun (a, _) -> Hashtbl.replace anchors (u.u_path, a) ()) (occ_anchors o)) u.u_occ) lib.units;
   let names = ref 0 and linked = ref 0 and binders = ref 0 and unres = ref [] and dang = ref [] in
   List.iter (fun u ->
       let checked = Hashtbl.mem lib.thetas u.u_path in
@@ -701,9 +747,8 @@ let unit_name fq = String.concat "\u{203A}" fq
    and each entry links to [#] its anchor ([render_unit]). *)
 let toc_problems (u : unit_info) : string list =
   let n = Hashtbl.create 256 in
-  Array.iter (fun o -> match o.anchor with
-      | Some a when a <> "" -> Hashtbl.replace n a (1 + Option.value (Hashtbl.find_opt n a) ~default:0)
-      | _ -> ()) u.u_occ;
+  Array.iter (fun o -> List.iter (fun (a, _) ->
+      if a <> "" then Hashtbl.replace n a (1 + Option.value (Hashtbl.find_opt n a) ~default:0)) (occ_anchors o)) u.u_occ;
   let name = unit_name u.u_path in
   List.filter_map (fun e ->
       if Hashtbl.mem n e.te_anchor then None
@@ -852,9 +897,7 @@ let nav = "<nav><a href=\"index.html\">McTT library</a> &middot; <a href=\"../in
 let anchor_kinds lib =
   let t = Hashtbl.create 1024 in
   List.iter (fun u -> Array.iter (fun o ->
-      match o.anchor, o.kind with
-      | Some a, Some k -> Hashtbl.replace t (u.u_path, a) k
-      | _ -> ()) u.u_occ) lib.units;
+      List.iter (fun (a, k) -> Hashtbl.replace t (u.u_path, a) k) (occ_anchors o)) u.u_occ) lib.units;
   t
 
 (* An eval's output, folded: [<details>] opens and closes it without
@@ -981,9 +1024,12 @@ let render_unit lib kinds (u : unit_info) : string =
                  | None, None -> "free" in
                let cls = if o.anchor <> None then cls ^ " bind" else cls in
                let id = match o.anchor with Some a when a <> "" -> Printf.sprintf " id=\"%s\"" (esc a) | _ -> "" in
+               (* The extra anchors wrap the name, so a link to one shows it. *)
+               List.iter (fun (a, _) -> Printf.bprintf b "<span id=\"%s\">" (esc a)) o.extra;
                (match target with
                 | Some s -> Printf.bprintf b "<a class=\"%s\"%s href=\"%s\">%s</a>" cls id (esc (href u.u_path s)) txt
-                | None -> Printf.bprintf b "<span class=\"%s\"%s>%s</span>" cls id txt)
+                | None -> Printf.bprintf b "<span class=\"%s\"%s>%s</span>" cls id txt);
+               List.iter (fun _ -> Buffer.add_string b "</span>") o.extra
            | P.NAT _ when nat <> None ->
                Printf.bprintf b "<a class=\"ty\" href=\"%s\">%s</a>" (esc (href u.u_path (Option.get nat))) txt
            | tk when is_num tk -> Printf.bprintf b "<span class=\"num\">%s</span>" txt

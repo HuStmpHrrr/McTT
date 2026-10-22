@@ -1742,16 +1742,20 @@ End NilDecide.
     - [0]: it depends on a recursive argument before it;
     - [1]: a [Self] occurs elsewhere;
     - [2]: a [Self] occurs in a domain, so not strictly positively;
-    - [3]: a [Self] is not applied to the uniform parameters as declared;
     - [4]: a [Self] is an argument of a head that does not compute (an
       opaque definition, an axiom or a parameter), so its occurrence
       cannot be seen to be positive;
+    - [cw_unapplied k]: [Self_k], the declared member [k], is the head
+      and is not applied to the uniform parameters as declared;
     - [cw_nested H]: a [Self] occurs in an argument of the type former [H]
       that is not one of its uniform arguments, or [H] is no declared
       member of a filed group. *)
 Inductive cls_why : Set :=
 (** One of the reasons above, by its code *)
 | cw_code : nat -> cls_why
+(** The declared member [k], written as the head, not applied to the
+    uniform parameters as declared *)
+| cw_unapplied : nat -> cls_why
 (** A [Self] in a non-uniform argument of a nested occurrence, or one under
     a type former of no declared member: the head *)
 | cw_nested : exp -> cls_why.
@@ -1766,7 +1770,9 @@ Fixpoint sh_reason (np n : nat) (pat : list bool) (d : nat) (T : exp) : cls_why 
   | a_pi A B => if selfs_free np n pat d A then sh_reason np n pat (S d) B else cw_code 2
   | _ =>
       match app_head T with
-      | a_var j => let b := d + List.length pat + np in if (b <=? j) && (j <? b + n) then cw_code 3 else cw_code 4
+      (* [Self_0] is outermost: the variable [b + i] is [Self_(n-1-i)]. *)
+      | a_var j => let b := d + List.length pat + np in
+                   if (b <=? j) && (j <? b + n) then cw_unapplied (n - 1 - (j - b)) else cw_code 4
       | a_mem _ _ => cw_code 4
       | a_ind qc k => cw_nested (a_ind qc k)
       | _ => cw_code 1
