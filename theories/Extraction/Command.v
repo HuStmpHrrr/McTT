@@ -250,6 +250,10 @@ Inductive run_error : Set :=
     is applied to too few arguments for the group's uniform parameters,
     or whose uniform arguments depend on the block's binders. *)
 | re_elim_ann : gstack -> ctx -> exp -> run_error
+(** A view of the group being declared, an instance of a container met in
+    the arguments, rejected: the group's first member, the instance, and
+    why ([view_why]). *)
+| re_view : string -> rview -> view_why -> run_error
 (** An error, with the state it occurred in, for the printer: the units
     imported, the stack, and the natural numbers bound there, their type
     and constructors as [nat_view] gives them. *)

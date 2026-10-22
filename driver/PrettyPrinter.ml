@@ -156,16 +156,25 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
      pp_close_box f ()
   | Cst.Coq_nat -> pp_sym f s_nat
   | Cst.Coq_num n -> fprintf f "%d" n
-  | Cst.Coq_elim (escr, xs, em, bs) ->
+  | Cst.Coq_elim (escr, bks) ->
+     let binder f (x, oa) =
+       match oa with
+       | None -> pp_print_string f x
+       | Some a -> fprintf f "(%s :@ %a)" x format_obj a
+     in
      let impl f () =
-       fprintf f "@[<hv 0>@[<hov 2>elim %a@ return %s .@ %a@]" format_obj escr
-         (String.concat " " xs) format_obj em;
+       fprintf f "@[<hv 0>@[<hov 2>elim %a@]" format_obj escr;
        List.iter
-         (fun ((c, ys), eb) ->
-           fprintf f "@ @[<hov 2>| %s%s @<1>%s@ %a@]" c
-             (String.concat "" (List.map (fun y -> if y = "," then "," else " " ^ y) ys))
-             s_darrow format_obj eb)
-         bs;
+         (fun (((at, xs), em), bs) ->
+           fprintf f "@ @[<hov 2>%s %a@ @<1>%s@ %a@]" (if at then "at" else "with")
+             (pp_print_list ~pp_sep:pp_print_space binder) xs s_arrow format_obj em;
+           List.iter
+             (fun ((c, ys), eb) ->
+               fprintf f "@ @[<hov 2>| %s%s @<1>%s@ %a@]" c
+                 (String.concat "" (List.map (fun y -> if y = "," then "," else " " ^ y) ys))
+                 s_darrow format_obj eb)
+             bs)
+         bks;
        fprintf f "@ end@]"
      in
      pp_print_paren_if (p >= 1) impl f ()
@@ -281,15 +290,39 @@ and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      List.iter (fun a -> fprintf f "@ %a" (format_obj_prec 2) a) args;
      fprintf f "%a@]" format_items its
   | Cst.Coq_c_error msg -> fprintf f "(* %s *)" msg
-  | Cst.Coq_c_ind (priv, x, ps, t, cs) ->
-     fprintf f "@[<v 2>%sinductive %s" (if priv then "private " else "") x;
+  | Cst.Coq_c_ind (priv, ps, ms) ->
+     fprintf f "@[<v 2>%sinductive" (if priv then "private " else "");
+     List.iteri
+       (fun i ((x, t), cs) ->
+         if i = 0 then begin
+           fprintf f " %s" x;
+           List.iter (fun p -> fprintf f " %a" format_obj_param p) ps
+         end else fprintf f "@;<1 -2>with %s" x;
+         fprintf f " : %a where" format_obj t;
+         List.iter
+           (fun (c, args) ->
+             fprintf f "@ | %s" c;
+             List.iter (fun p -> fprintf f " %a" format_obj_param p) args)
+           cs)
+       ms;
+     fprintf f "@;<1 -2>end";
+     pp_close_box f ()
+  | Cst.Coq_c_mdef (m, ps, fs) ->
+     fprintf f "@[<v 2>%amutual def" format_mods m;
      List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
-     fprintf f " : %a where" format_obj t;
-     List.iter
-       (fun (c, args) ->
-         fprintf f "@ | %s" c;
-         List.iter (fun p -> fprintf f " %a" format_obj_param p) args)
-       cs;
+     List.iteri
+       (fun i (((g, gps), ea), bs) ->
+         if i > 0 then fprintf f "@;<1 -2>with";
+         fprintf f " %s" g;
+         List.iter (fun p -> fprintf f " %a" format_obj_param p) gps;
+         fprintf f " : %a @<1>%s" format_obj ea s_eq;
+         List.iter
+           (fun ((c, ys), eb) ->
+             fprintf f "@ @[<hov 2>| %s%s @<1>%s@ %a@]" c
+               (String.concat "" (List.map (fun y -> " " ^ y) ys))
+               s_darrow format_obj eb)
+           bs)
+       fs;
      fprintf f "@;<1 -2>end";
      pp_close_box f ()
   | Cst.Coq_c_builtin (k, x) -> fprintf f "@[<hov 2>builtin %s @<1>%s@ %a@]" k s_eq format_obj x
@@ -401,7 +434,7 @@ let names_bound_nat (q : qname) : bool =
   is_bound_nat q ||
   (let deps, xi = !current_state in
    match McttExtracted.Members.ind_target deps xi q with
-   | Some ((_, p), []) -> is_bound_nat p
+   | Some ((((_, _), p), 0), []) -> is_bound_nat p
    | _ -> false)
 
 (* A constructor, written as such, as a member of its type's module from a
@@ -413,7 +446,8 @@ let con_of : exp -> (qname * string) option =
     | _ -> None
   in
   let rec go k = function
-    | Coq_a_con (p, c) -> Some (p, c)
+    | Coq_a_con (p, 0, c) -> Some (p, c)
+    | Coq_a_con _ -> None
     | Coq_a_mem (h, c) ->
        (match chain h with
         | None -> None
@@ -425,7 +459,7 @@ let con_of : exp -> (qname * string) option =
             | Some (Coq_ge_def (_, _, _, Some (Coq_a_mem (_, c') as body))) when k > 0 && c' = c -> go (k - 1) body
             (* The member of an inductive type's module that is its
                constructor. *)
-            | Some (Coq_ge_def (_, _, _, Some (Coq_a_con (p, c'))))
+            | Some (Coq_ge_def (_, _, _, Some (Coq_a_con (p, 0, c'))))
               when c' = c && p.q_unit = fp && p.q_chain = ms -> Some (p, c)
             | Some (Coq_ge_def _) -> None
             | _ -> Some ({ q_unit = fp; q_chain = ms }, c)))
@@ -455,7 +489,7 @@ let rec gmod_decls : gmod -> (exp, centry) ind_decl_g list = function
   | Coq_gm_ext (phi, _, e) ->
      let here =
        match e with
-       | Coq_ge_ind (_, _, d, phi') -> d :: gmod_decls phi'
+       | Coq_ge_ind (_, _, _, d, phi') -> d :: gmod_decls phi'
        | Coq_ge_mod (_, Coq_gu_mk (_, Coq_md_body (_, phi'))) -> gmod_decls phi'
        | _ -> []
      in
@@ -467,43 +501,66 @@ let unit_decls (Coq_gu_mk (_, md) : gunit) =
 let set_ind_decls (deps : gdeps) (xi : gstack) : unit =
   ind_decls := List.concat_map (fun (_, u) -> unit_decls u) deps @ List.concat_map (fun (_, u) -> unit_decls u) xi
 
-(* The declarations an eliminator's branches can be for: those whose
-   constructors they name, in order. *)
-let elim_decls (cs : string list) : (exp, centry) ind_decl_g list =
-  List.filter (fun d -> List.map fst d.ind_cons = cs) !ind_decls
+(* The member [m] of the group at [p], where the state printed has it. *)
+let group_member (p : qname) (m : int) : (exp, centry) imember_g option =
+  let deps, xi = !current_state in
+  match McttExtracted.Members.ind_lookup deps xi p with
+  | Some d -> McttExtracted.Syntax.ind_member d m
+  | None -> None
 
-(* The names a branch of an eliminator binds, its induction hypotheses
-   after a comma, the marker [","], at a declaration it can be for, where
-   the branch binds as many names as it should there. *)
-let mark_ihs_at (d : (exp, centry) ind_decl_g) (c : string) (ys : string list) : string list =
-  match McttExtracted.Inductives.ind_con d c with
-  | None -> ys
-  | Some gs ->
-     let k = McttExtracted.Inductives.cargs_nrec gs in
-     let n = List.length ys in
-     if k = 0 || n <> McttExtracted.Syntax.ind_nn d + List.length gs + k then ys
-     else List.filteri (fun i _ -> i < n - k) ys @ ("," :: List.filteri (fun i _ -> i >= n - k) ys)
+(* The path of the module of the declared member [k] of the group at [p]:
+   the group's own for its first member. *)
+let member_path (p : qname) (k : int) : qname =
+  let deps, xi = !current_state in
+  match McttExtracted.Members.ind_lookup deps xi p with
+  | Some d -> (match McttExtracted.Members.ind_mpath d k with Some pm -> pm | None -> p)
+  | None -> p
 
-(* The number of induction hypotheses a branch of [n] binders for [c] binds,
-   where every declaration the branches can be for agrees on it. *)
-let ihs_count (ds : (exp, centry) ind_decl_g list) (c : string) (n : int) : int =
-  let at d =
-    match McttExtracted.Inductives.ind_con d c with
-    | None -> 0
-    | Some gs ->
-       let k = McttExtracted.Inductives.cargs_nrec gs in
-       if n <> McttExtracted.Syntax.ind_nn d + List.length gs + k then 0 else k
-  in
-  match List.sort_uniq compare (List.map at ds) with
-  | [ k ] -> k
-  | _ -> 0
+(* A view's type former or constructor at its arguments is the
+   container's, at the view's instance of the container's uniform
+   parameters: the same term, written as the container's.  [None] where
+   the head is no view. *)
+let unview (e : exp) : exp option =
+  match McttExtracted.Group.app_head e with
+  | (Coq_a_ind (p, j) | Coq_a_con (p, j, _)) as h ->
+     let deps, xi = !current_state in
+     (match McttExtracted.Members.ind_lookup deps xi p with
+      | Some d ->
+         (match McttExtracted.Syntax.ind_member d j with
+          | Some mj ->
+             (match mj.im_head with
+              | Coq_mh_view (qc, k, _, _) ->
+                 let args = McttExtracted.Group.app_args e in
+                 let nu = McttExtracted.Syntax.ind_nu d in
+                 let us = List.filteri (fun i _ -> i < nu) args in
+                 let rest = List.filteri (fun i _ -> i >= nu) args in
+                 let h' = match h with Coq_a_con (_, _, c) -> Coq_a_con (qc, k, c) | _ -> Coq_a_ind (qc, k) in
+                 Some (McttExtracted.Syntax.apps_exp h' (McttExtracted.Group.im_pre mj us @ rest))
+              | Coq_mh_decl _ -> None)
+          | None -> None)
+      | None -> None)
+  | _ -> None
 
-(* The names marked so where every declaration the branches can be for
-   marks them the same way, and as they are otherwise. *)
-let mark_ihs (ds : (exp, centry) ind_decl_g list) (c : string) (ys : string list) : string list =
-  match List.sort_uniq compare (List.map (fun d -> mark_ihs_at d c ys) ds) with
-  | [ zs ] -> zs
-  | _ -> ys
+(* The number of induction hypotheses a branch of [n] binders for the
+   constructor [c] of the member [mk] binds, where it binds as many names
+   as it should. *)
+let ihs_count (mk : (exp, centry) imember_g option) (c : string) (n : int) : int =
+  match mk with
+  | None -> 0
+  | Some mk ->
+     (match McttExtracted.Inductives.ind_con mk c with
+      | None -> 0
+      | Some gs ->
+         let k = McttExtracted.Inductives.cargs_nrec gs in
+         if n <> McttExtracted.Syntax.im_nn mk + List.length gs + k then 0 else k)
+
+(* The names a branch binds, its induction hypotheses after a comma, the
+   marker [","]. *)
+let mark_ihs (mk : (exp, centry) imember_g option) (c : string) (ys : string list) : string list =
+  let n = List.length ys in
+  let k = ihs_count mk c n in
+  if k = 0 then ys
+  else List.filteri (fun i _ -> i < n - k) ys @ ("," :: List.filteri (fun i _ -> i >= n - k) ys)
 
 let exp_to_obj =
   let new_var, reset_var_suffix =
@@ -527,7 +584,11 @@ let exp_to_obj =
         "A" ^ string_of_int !suffix),
       fun () -> suffix := 0 )
   in
-  let rec impl (ctx : string list) : exp -> Cst.obj = function
+  let rec impl (ctx : string list) (e : exp) : Cst.obj =
+    match unview e with
+    | Some e' -> impl ctx e'
+    | None -> impl_seen ctx e
+  and impl_seen (ctx : string list) : exp -> Cst.obj = function
     | (Coq_a_con _ | Coq_a_mem _ | Coq_a_app (Coq_a_con _, _) | Coq_a_app (Coq_a_mem _, _)) as e when nat_of_chain e <> None ->
        Cst.Coq_num (Option.get (nat_of_chain e))
     | Coq_a_nlit n -> Cst.Coq_num n
@@ -588,34 +649,40 @@ let exp_to_obj =
         | None -> Cst.Coq_proj (impl_mod ctx h, x))
     (* The type bound as the natural numbers is [ℕ], and its constructors
        are named by their own names. *)
-    | Coq_a_ind p when is_bound_nat p -> Cst.Coq_nat
-    | Coq_a_con (p, c) when is_bound_nat p -> Cst.Coq_var c
-    (* An inductive type is named by its path, which is its module's; a
-       constructor is a member of that module. *)
-    | Coq_a_ind p -> path_to_obj p.q_unit p.q_chain
-    | Coq_a_con (p, c) -> path_to_obj p.q_unit (p.q_chain @ [c])
+    | Coq_a_ind (p, 0) when is_bound_nat p -> Cst.Coq_nat
+    | Coq_a_con (p, 0, c) when is_bound_nat p -> Cst.Coq_var c
+    (* An inductive type is named by its member's path, which is its
+       module's; a constructor is a member of that module. *)
+    | Coq_a_ind (p, k) -> let q = member_path p k in path_to_obj q.q_unit q.q_chain
+    | Coq_a_con (p, k, c) -> let q = member_path p k in path_to_obj q.q_unit (q.q_chain @ [c])
     (* An eliminator: fresh names for what its motive and its branches
        bind. *)
-    | Coq_a_elim (nm, em, bs, escr) ->
+    | Coq_a_elim (oq, _, m, bks, escr) ->
        let rec fresh k = if k = 0 then [] else let x = new_var () in x :: fresh (k - 1) in
-       let xs = fresh nm in
        let escr' = impl ctx escr in
-       let em' = impl (List.rev xs @ ctx) em in
-       let ds = elim_decls (List.map (fun ((c, _), _) -> c) bs) in
-       (* The induction hypotheses are of the motive's sort: named as types
-          when the motive is a type, as other binders of a universe are. *)
-       let is_univ = match em with Coq_a_typ _ | Coq_a_univ _ -> true | _ -> false in
-       let bs' =
-         List.map
-           (fun ((c, n), eb) ->
-             let k = if is_univ then ihs_count ds c n else 0 in
-             let ys = fresh (n - k) in
-             let hs = List.init k (fun _ -> new_tyvar ()) in
-             let ys = ys @ hs in
-             ((c, ys), impl (List.rev ys @ ctx) eb))
-           bs
+       let block j (Coq_eb_mk (nm, oz, em, bs)) =
+         let mk = match oq with Some p -> group_member p j | None -> None in
+         let xs = fresh nm in
+         let ys0 = List.filteri (fun i _ -> i < nm - 1) xs in
+         let oz' = Option.map (impl (List.rev ys0 @ ctx)) oz in
+         let binders = List.mapi (fun i x -> (x, if i = nm - 1 then oz' else None)) xs in
+         let em' = impl (List.rev xs @ ctx) em in
+         (* The induction hypotheses are of the motive's sort: named as types
+            when the motive is a type, as other binders of a universe are. *)
+         let is_univ = match em with Coq_a_typ _ | Coq_a_univ _ -> true | _ -> false in
+         let bs' =
+           List.map
+             (fun ((c, n), eb) ->
+               let k = if is_univ then ihs_count mk c n else 0 in
+               let ys = fresh (n - k) in
+               let hs = List.init k (fun _ -> new_tyvar ()) in
+               let ys = ys @ hs in
+               ((c, mark_ihs mk c ys), impl (List.rev ys @ ctx) eb))
+             bs
+         in
+         (((j = m, binders), em'), bs')
        in
-       Cst.Coq_elim (escr', xs, em', List.map (fun ((c, ys), eb) -> ((c, mark_ihs ds c ys), eb)) bs')
+       Cst.Coq_elim (escr', List.mapi block bks)
   (* A chain of selections from a unit, as the unit and the chain. *)
   and chain_of : modexp -> (string list * string list) option = function
     | Coq_me_unit fp -> Some (fp, [])
@@ -693,8 +760,8 @@ let exp_to_obj =
             let params, md = impl_unit ctx' u in
             Cst.Coq_c_mod (priv, x, params, md)
          (* A declaration is filed in a unit, never in a local body. *)
-         | Coq_ge_ind (_, _, _, _) -> Cst.Coq_c_error "inductive declaration"
-         | Coq_ge_ind_alias (_, _, _, _) -> Cst.Coq_c_error "inductive alias"
+         | Coq_ge_ind (_, _, _, _, _) -> Cst.Coq_c_error "inductive declaration"
+         | Coq_ge_ind_alias (_, _, _, _, _, _) -> Cst.Coq_c_error "inductive alias"
        in
        (cs @ [c], x :: ctx')
     | Coq_gm_open (phi, h, its) ->
@@ -810,8 +877,30 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_re_private_local (ch, x) ->
      fprintf f "@[<hov 2>Error: %s is private in a local module, but it is used outside it@]" (String.concat "." (ch @ [x]))
   | Coq_re_nested (x, c, y, h) ->
-     fprintf f "@[<hov 2>Error: %s occurs nested inside@ %a@ in the argument %s of %s;@ nested inductive types are not supported yet@]"
+     fprintf f "@[<hov 2>Error: %s occurs in a non-uniform argument of@ %a@ in the argument %s of %s;@ a group may nest only at the uniform parameters of a declared type of a filed group@]"
        x format_exp h y c
+  | Coq_re_mdef_count (n, m) ->
+     fprintf f "@[<hov 2>Error: a mutual definition has one function per member of its group:@ the group has %d %s,@ the definition %d %s@]"
+       n (if n = 1 then "member" else "members") m (if m = 1 then "function" else "functions")
+  | Coq_re_mdef_nparams (g, m, n) ->
+     fprintf f "@[<hov 2>Error: %s has %d non-uniform %s,@ its member %d@]"
+       g m (if m = 1 then "parameter" else "parameters") n
+  | Coq_re_elim_ann (_, delta, z) ->
+     fprintf f "@[<hov 2>Error: the binder type@ %a@ of an eliminator's block is no member of a group of inductive types@ applied to its uniform parameters,@ or its uniform arguments depend on the block's binders@]"
+       (format_exp_in delta) z
+  | Coq_re_view (x, ((qc, k), cs), why) ->
+     let open McttExtracted.IndDecl in
+     let inst = McttExtracted.Syntax.apps_exp (Coq_a_ind (qc, k)) cs in
+     (match why with
+      | Coq_vw_container ->
+         fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ which is no declared type of a filed group@]" x format_exp inst
+      | Coq_vw_cls (c, y, _) ->
+         fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ whose constructor %s's argument %s is not positive in %s there@]"
+           x format_exp inst c y x
+      | Coq_vw_untyped ->
+         fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ at which a parameter or a sibling of the container is not typed@]" x format_exp inst
+      | Coq_vw_mentions_group ->
+         fprintf f "@[<hov 2>Error: %s nests inside@ %a,@ a non-uniform parameter of which mentions the group@]" x format_exp inst)
   | Coq_re_ind_npar (x, k, delta, t, s) ->
      fprintf f "@[<hov 2>Error: the type of the non-uniform parameter %d of %s,@ %a,@ is not in the sort of %s,@ %a@]"
        (k + 1) x (format_exp_in delta) t x (format_exp_in delta) s

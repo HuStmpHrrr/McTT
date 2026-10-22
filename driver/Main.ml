@@ -54,7 +54,8 @@ let load_path_in roots fp = List.find_map (fun r -> load_path r fp) roots
 let main_of_lexbuf ?(search_root = ".") ?(extra_roots = []) lexbuf =
   match
     Lexer.lexbuf_to_token_buffer lexbuf
-    |> Entrypoint.main (load_path_in (search_root :: extra_roots)) read_unit parser_log_fuel
+    |> Entrypoint.main (load_path_in (search_root :: extra_roots)) read_unit
+         Interim.views_search Interim.site_search parser_log_fuel
   with
   | r -> Format.printf "%a@." PrettyPrinter.format_main_result r; get_exit_code r
   | exception Lexer.Error msg -> Format.printf "Error: %s@." msg; lexing_error_code

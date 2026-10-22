@@ -257,13 +257,17 @@ let rec term st env (o : C.obj) : unit =
       let env' = fst (params st env ps) in
       let m = mdef st env' md in
       term st (push x { v with v_mod = m } env) b
-  (* An eliminator: the names of its motive, then each branch's
-     constructor, which names no global here, and its names. *)
-  | C.Coq_elim (m, xs, a, bs) ->
+  (* An eliminator: each block's binders, the scrutinee's type after its
+     name, then its motive, then each branch's constructor, which names no
+     global here, and its names. *)
+  | C.Coq_elim (m, bks) ->
       term st env m;
       let binds env ys = List.fold_left (fun env y -> let v = bind st y in push y v env) env ys in
-      term st (binds env xs) a;
-      List.iter (fun ((c, ys), b) -> st.occ.(next st c).bare <- true; term st (binds env ys) b) bs
+      List.iter (fun (((_, xs), a), bs) ->
+          let envx = List.fold_left (fun env' (x, oz) ->
+              let v = bind st x in Option.iter (term st env') oz; push x v env') env xs in
+          term st envx a;
+          List.iter (fun ((c, ys), b) -> st.occ.(next st c).bare <- true; term st (binds env ys) b) bs) bks
 
 (* Module position: [Elaborator.elab_mod]. *)
 and modv st env (o : C.obj) : mden =
@@ -381,9 +385,56 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
     entry ch x (match kw with Some kw -> kw | None -> def_kw st i) k;
     i
   in
+  (* A group of inductive types in the frame [ch]: its members' names, each
+     a module, and, when [ps_first] (the group of a [mutual T (ps)]), its
+     uniform parameters before them, otherwise after the first member's
+     name; each member's type, binding its non-uniform parameters before its
+     sort, then its constructors, members of its module, and their
+     arguments, in which every member's name is a variable linked to its
+     declaration, and each argument binds its name for the next. *)
+  let group ch env ps_first ps ms =
+    let self x = { v_link = Site { s_unit = st.unit; s_anchor = anchor_of ch x }; v_mod = MNone } in
+    let base = List.fold_left (fun env ((x, _), _) -> push x (self x) env) env ms in
+    let declm x =
+      let i = next st x in
+      declare st i (anchor_of ch x) Mod;
+      st.toc <- { te_depth = List.length ch; te_name = x; te_anchor = anchor_of ch x; te_kw = "inductive"; te_kind = Mod }
+                :: st.toc
+    in
+    let envu =
+      if ps_first then fst (params st env ps)
+      else (match ms with ((x, _), _) :: _ -> declm x; fst (params st env ps) | [] -> env)
+    in
+    (match ms with
+     | [ ((x, _), _) ] -> Hashtbl.replace st.items (fp, ch @ [ x; "rec" ]) (self x).v_link
+     | _ -> ());
+    List.iteri (fun j ((x, t), cs) ->
+        if ps_first || j > 0 then declm x;
+        let rec pis env t =
+          match t with
+          | C.Coq_pi (y, a, b) -> let v = bind st y in term st env a; pis (push y v env) b
+          | _ -> term st envu t; env
+        in
+        let enva = pis envu t in
+        let k = List.length enva.sc - List.length env.sc in
+        let take n l = List.filteri (fun i _ -> i < n) l in
+        let envs = { sc = take k enva.sc @ base.sc; vs = take k enva.vs @ base.vs } in
+        List.iter (fun (c, args) ->
+            declare st (next st c) (anchor_of (ch @ [ x ]) c) Def;
+            st.toc <- { te_depth = List.length ch + 1; te_name = c; te_anchor = anchor_of (ch @ [ x ]) c;
+                        te_kw = "|"; te_kind = Def } :: st.toc;
+            ignore (List.fold_left (fun env (y, a) ->
+                let v = bind st y in term st env a; push y v env) envs args)) cs) ms
+  in
   (match c with
    | C.Coq_c_def (_, x, a, b) -> let i = decl None x Def in def_parts st env i a b
    | C.Coq_c_axiom (x, a) -> ignore (decl (Some "axiom") x Def); term st env a
+   (* [mutual T (ps) where inductive … end end]: the module [T], then the
+      group in its frame, its parameters first. *)
+   | C.Coq_c_mod (_, x, [], C.Coq_md_where [ C.Coq_c_ind (_, ps, ms) ])
+     when (match st.toks.(st.vars.(st.cur) - 1).t with P.MUTUAL _ -> true | _ -> false) ->
+       ignore (decl (Some "mutual") x Mod);
+       group (ch @ [ x ]) env true ps ms
    | C.Coq_c_mod (_, x, ps, md) ->
        ignore (decl (Some "module") x Mod);
        let env', vbs = params st env ps in
@@ -415,35 +466,21 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
        let i = next st k in
        ignore (modv st env x);
        st.occ.(i).link <- st.occ.(st.cur - 1).link
-   (* A declaration: its name, a module, its uniform parameters, its type,
-      binding the non-uniform ones before its sort, then each constructor,
-      a member of the module, and its arguments, in which the declared name
-      is a variable linked to the declaration, and each argument binds its
-      name for the next. *)
-   | C.Coq_c_ind (_, x, ps, t, cs) ->
-       ignore (decl (Some "inductive") x Mod);
-       let envu, _ = params st env ps in
-       let rec pis env t =
-         match t with
-         | C.Coq_pi (y, a, b) -> let v = bind st y in term st env a; pis (push y v env) b
-         | _ -> term st envu t; env
-       in
-       let enva = pis envu t in
-       (* [Self] lies outside the declaration's own parameters: the entries
-          [enva] added to [env] go on top of it. *)
-       let self = { v_link = Site { s_unit = st.unit; s_anchor = anchor_of ch x }; v_mod = MNone } in
-       (* The recursor the declaration generates has no name of its own in
-          the source: a use of [x.rec] links to the declaration. *)
-       Hashtbl.replace st.items (fp, ch @ [ x; "rec" ]) self.v_link;
-       let base = push x self env in
-       let k = List.length enva.sc - List.length env.sc in
-       let take n l = List.filteri (fun i _ -> i < n) l in
-       let envs = { sc = take k enva.sc @ base.sc; vs = take k enva.vs @ base.vs } in
-       List.iter (fun (c, args) ->
-           declare st (next st c) (anchor_of (ch @ [ x ]) c) Def;
-           entry (ch @ [ x ]) c "|" Def;
-           ignore (List.fold_left (fun env (y, a) ->
-               let v = bind st y in term st env a; push y v env) envs args)) cs);
+   (* A group: its first member's name, its uniform parameters, then its
+      members ([group]). *)
+   | C.Coq_c_ind (_, ps, ms) -> group ch env false ps ms
+   (* A mutual definition: its common parameters, then each function, a
+      definition of the frame: its name, its parameters, the last its
+      scrutinee, its result type under them, then its clauses, each its
+      constructor and its names, seeing only the common parameters. *)
+   | C.Coq_c_mdef (_, ps, fs) ->
+       let envd, _ = params st env ps in
+       let binds env ys = List.fold_left (fun env y -> let v = bind st y in push y v env) env ys in
+       List.iter (fun (((g, gps), a), bs) ->
+           ignore (decl (Some "mutual def") g Def);
+           let envg, _ = params st envd gps in
+           term st envg a;
+           List.iter (fun ((c, ys), b) -> st.occ.(next st c).bare <- true; term st (binds envd ys) b) bs) fs);
   next_frame st fp ch o f c
 
 and next_frame st fp ch o f c =
@@ -571,7 +608,8 @@ type lib = {
    bound is rejected. *)
 let check_units ?(extra_roots = []) root (us : unit_info list) thetas outputs nats =
   List.iter (fun u ->
-      let r = Ep.main (Main.load_path_in (root :: extra_roots)) Main.read_unit Main.parser_log_fuel (buf_of u.u_toks 0) in
+      let r = Ep.main (Main.load_path_in (root :: extra_roots)) Main.read_unit
+                Interim.views_search Interim.site_search Main.parser_log_fuel (buf_of u.u_toks 0) in
       match r, PrettyPrinter.eval_outputs r with
       | Ep.AllGood (_, bt, th, gu, _), Some out ->
           Hashtbl.replace thetas u.u_path ((u.u_path, gu) :: th);

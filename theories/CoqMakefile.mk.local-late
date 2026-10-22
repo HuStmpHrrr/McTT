@@ -23,7 +23,7 @@ COQDOCFLAGS := \
 export COQDOCFLAGS
 
 post-all:: $(COQPARSERFILE) $(PARSERMESSAGEEXTRACTIONFILE) check_parserMessages
-	@echo "Separate Extraction main Mctt.Extraction.Privacy.def_site." | $(COQTOP) $(COQFLAGS) $(COQLIBS) -topfile Entrypoint.v -l Entrypoint.v
+	@echo "Separate Extraction main Mctt.Extraction.Privacy.def_site Mctt.Extraction.IndDecl.view_sibs_dec Mctt.Extraction.IndDecl.view_cls_dec Mctt.Extraction.IndDecl.view_nps_dec Mctt.Core.Syntactic.Inductives.Group.views_met Mctt.Core.Syntactic.Inductives.Group.rcons_views Mctt.Core.Syntactic.Builtin.head_args." | $(COQTOP) $(COQFLAGS) $(COQLIBS) -topfile Entrypoint.v -l Entrypoint.v
 
 # Menhir (as of 20260209, with --coq or --rocq alike) still emits pre-9.0
 # syntax: "From Coq" (deprecated-from-Coq) and "Proof term." for the
