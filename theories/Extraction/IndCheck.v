@@ -157,55 +157,55 @@ Record elim_alg_ok (G : ctx) (oq : option qname) (Us : list exp) (m : nat) (Bks 
     (pc : qname) (k : nat) (Rs : nfs) (p : qname) (D : ind_decl) (Mm : imember) (Dq : ind_decl) (Mk : imember)
     (bm : eblock) (i : nat) (T : nf) : Prop := mk_elim_alg_ok
   { (** The group is found at [p] *)
-    eao_lookup : ind_lookup gc_deps gc_stack p = Some D
+    elim_ok_lookup : ind_lookup gc_deps gc_stack p = Some D
     (** It is the group the eliminator names, or the scrutinee's at a
         declared member *)
-  ; eao_grp : elim_grp D oq p m
+  ; elim_ok_group : elim_grp D oq p m
     (** The member eliminated *)
-  ; eao_member : ind_member D m = Some Mm
+  ; elim_ok_member : ind_member D m = Some Mm
     (** Its type is headed by the declared member [k] of the group at [pc] *)
-  ; eao_ref : im_ref p m Mm = (pc, k)
+  ; elim_ok_ref : im_ref p m Mm = (pc, k)
     (** That group is found *)
-  ; eao_ref_lookup : ind_lookup gc_deps gc_stack pc = Some Dq
+  ; elim_ok_ref_lookup : ind_lookup gc_deps gc_stack pc = Some Dq
     (** And that member *)
-  ; eao_ref_member : ind_member Dq k = Some Mk
+  ; elim_ok_ref_member : ind_member Dq k = Some Mk
     (** The scrutinee's type has all its parameters *)
-  ; eao_nparams : List.length (nfs_to_exps Rs) = im_np Dq Mk
+  ; elim_ok_nparams : List.length (nfs_to_exps Rs) = im_np Dq Mk
     (** The member's block *)
-  ; eao_block : List.nth_error Bks m = Some bm
+  ; elim_ok_block : List.nth_error Bks m = Some bm
     (** One block per member *)
-  ; eao_nblocks : List.length Bks = List.length (ind_members D)
+  ; elim_ok_nblocks : List.length Bks = List.length (ind_members D)
     (** One uniform parameter per uniform parameter of the group *)
-  ; eao_nuparams : List.length Us = ind_nu D
+  ; elim_ok_nuparams : List.length Us = ind_nu D
     (** The uniform parameters are checked at the group's telescope *)
-  ; eao_uparams : forall j U T', List.nth_error Us j = Some U ->
+  ; elim_ok_uparams : forall j U T', List.nth_error Us j = Some U ->
       List.nth_error (tele_insts (ind_uparams D) Id Us) j = Some T' -> G ⊢a U ⟸ T'
     (** The member's uniform arguments agree with the scrutinee type's *)
-  ; eao_agree : nfs_agree G (im_pre Mm Us) (List.firstn (ind_nu Dq) (nfs_to_exps Rs))
+  ; elim_ok_agree : nfs_agree G (im_pre Mm Us) (List.firstn (ind_nu Dq) (nfs_to_exps Rs))
       (tele_insts (ind_uparams Dq) Id (im_pre Mm Us))
     (** Each block binds the non-uniform parameters and the scrutinee *)
-  ; eao_nm : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_nm b = S (im_nn Mj)
+  ; elim_ok_binders : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_nm b = S (im_nn Mj)
     (** The annotations are checked at the universe *)
-  ; eao_ann_typ : forall j Mj b Z, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_ann b = Some Z ->
+  ; elim_ok_annotation_typed : forall j Mj b Z, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_ann b = Some Z ->
       tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ G ⊢a Z ⟸ Typeω@i
     (** Each annotation is its member's type *)
-  ; eao_ann_conv : forall j Mj b Z, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_ann b = Some Z ->
+  ; elim_ok_annotation_conv : forall j Mj b Z, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_ann b = Some Z ->
       alg_ty_conv (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ G) Z
         (ind_mty p D j (List.map (fun U => U[wk_shiftn (im_nn Mj)]ʷ) Us) (vars_from 0 (im_nn Mj)))
     (** The motives are checked at the universe *)
-  ; eao_motive : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+  ; elim_ok_motive : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
       elim_mctx p D j Mj Us ++ G ⊢a eb_motive b ⟸ Typeω@i
     (** Each block has one branch per constructor, in order *)
-  ; eao_names : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b)
+  ; elim_ok_names : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> brs_names (im_cons Mj) (eb_brs b)
     (** Each branch binds its constructor's arguments and recursive results *)
-  ; eao_counts : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+  ; elim_ok_counts : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
       ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) -> n = (im_nn Mj + List.length gs + cargs_nrec gs)%nat
     (** The branches are checked at their types *)
-  ; eao_branches : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
+  ; elim_ok_branches : forall j Mj b c gs n B, ind_member D j = Some Mj -> List.nth_error Bks j = Some b ->
       ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
       elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a B ⟸ elim_bty p j Mj c gs (eb_motive b) Us
     (** The type is the normal form of the motive's instance *)
-  ; eao_nbe : nbe_ty_f G (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu Dq) (nfs_to_exps Rs) ++ M :: nil)] T }.
+  ; elim_ok_nbe : nbe_ty_f G (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu Dq) (nfs_to_exps Rs) ++ M :: nil)] T }.
 
 (** The inversion of [ati_elim], at the scrutinee's inferred type. *)
 Lemma ati_elim_inv : forall G oq Us m Bks M T pc k Rs, ⊢ᵍ gc_deps ⍮ gc_stack ->
