@@ -340,8 +340,13 @@ Fixpoint uint_string (d : Decimal.uint) : string :=
   end%string.
 
 (** The names [xs], each met again after [seen] given the first suffix
-    [_2], [_3], … that makes it new.  The suffixes tried are bounded by the
-    number of names met, one more than which is always new. *)
+    [_2], [_3], … that makes it new.  The candidates [x], [x_2], …,
+    [x_(|seen|+1)] are [|seen| + 1] distinct names, so by pigeonhole one of
+    them is not in [seen]: trying them in order, the last is returned
+    unchecked, and it is new when all before it are taken.  The bound is
+    structural, not fuel: the search never runs out, and a name that were
+    not new would only make the module's [rc_def] reject it as not
+    fresh. *)
 Fixpoint grec_fresh_names (seen : list string) (xs : list string) : list string :=
   match xs with
   | nil => nil

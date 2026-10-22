@@ -2197,6 +2197,17 @@ Section Impl.
           | inleft _ => rerr (alias_target_error x E)
           | inright _ => rerr (alias_target_error x E) } } } }.
 
+  (** Distinct members, decided by a computation: [ListDec.NoDup_dec] is
+      opaque, so extraction would bypass it. *)
+  Definition members_distinct_dec : forall l : list nat, { NoDup l } + { ~ NoDup l }.
+  Proof.
+    induction l as [| x l IH].
+    - left; constructor.
+    - destruct (in_dec PeanoNat.Nat.eq_dec x l) as [Hin | Hn].
+      + right; intros Hnd; inversion Hnd; contradiction.
+      + destruct IH as [H | H]; [ left; constructor; assumption | right; intros Hnd; inversion Hnd; contradiction ].
+  Defined.
+
   (** The message of a function with no member. *)
   Definition mdef_why_error (f : string) (e : mdef_why) : run_error :=
     match e with
@@ -2244,7 +2255,7 @@ Section Impl.
                   | inr (exist _ (f, e) _) => rerr (mdef_why_error f e)
                   | inl (exist _ ms Hms) with PeanoNat.Nat.eq_dec (List.length ms) (List.length (ind_members Dd)) => {
                     | right _ => rerr (re_mdef_count (List.length (ind_members Dd)) (List.length ms))
-                    | left Hlen with ListDec.NoDup_dec PeanoNat.Nat.eq_dec ms => {
+                    | left Hlen with members_distinct_dec ms => {
                       | right _ => rerr (re_msg "two functions of a mutual definition are for the same member")
                       | left Hnd with mdefs_dec (gds_restrict D Θ) b pv (mdef_defs pq Dd Us Δ (f0 :: fs) ms) Ξ (pre_gctx H) => {
                         | inr (exist _ e _) => rerr (mdefs_why_error e)
@@ -2930,7 +2941,7 @@ Section Impl.
       by (eapply Forall2_functional; [| exact Hms' | exact HmsR ]; intros; eapply mdef_member_functional; eassumption).
     simp mdef_step.
     destruct (PeanoNat.Nat.eq_dec _ _) as [Hlen' | Hlen']; [| contradiction ]; simp mdef_step.
-    destruct (ListDec.NoDup_dec _ ms) as [Hnd' | Hnd']; [| contradiction ]; simp mdef_step.
+    destruct (members_distinct_dec ms) as [Hnd' | Hnd']; [| contradiction ]; simp mdef_step.
     destruct (mdefs_dec _ _ _ _ _ _) as [Hr' | [e Hn]].
     - simp mdef_step; eexists; reflexivity.
     - exfalso; exact (Hn _ (equiv_mdefs_run _ _ _ _ _ _ _ He Hgr Hrun)).
