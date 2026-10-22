@@ -1,4 +1,4 @@
-From Stdlib Require Import List ListDec String PeanoNat Bool.
+From Stdlib Require Import Arith List ListDec String PeanoNat Bool Lia.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
@@ -12,12 +12,15 @@ Import Syntax_Notations GlobalCtx_Notations.
 
 (** * Deciding a Declaration
 
-    The well-formedness of an inductive declaration as an entry of a frame
-    ([wf_gentry_indty]), decided premise by premise: the syntactic ones by
-    computation, the judgments by [Extraction.GlobalCheck].  The premises
-    quantifying over the arguments of the constructors and over the
-    non-uniform parameters are decided along the lists, at each way of
-    splitting them ([forall_split_dec]). *)
+    The well-formedness of a group of inductive declarations as entries of
+    a frame ([wf_gentry_ind_nil], [wf_gentry_ind_mem_nil],
+    [wf_gentry_ind_ext]), decided premise by premise: the syntactic ones
+    by computation, the judgments by [Extraction.GlobalCheck].  The
+    premises quantifying over the members, the arguments of the
+    constructors and the non-uniform parameters are decided along the
+    lists, at each way of splitting them ([forall_split_dec]).  The checks
+    of the views' rank, maps and members ([rank_check], [vwrap_check],
+    [view_maps_check]) are complete as well as sound. *)
 
 (** ** Module Variables
 
@@ -29,14 +32,26 @@ Fixpoint exp_mvcb (n : nat) (M : exp) {struct M} : bool :=
   | a_succl M | a_univ M => exp_mvcb n M
   | a_maxl M N => exp_mvcb n M && exp_mvcb n N
   | a_exfalso A M => exp_mvcb (S n) A && exp_mvcb n M
-  | a_ind _ | a_con _ _ | a_nlit _ | a_ntok => true
-  | a_elim nm A Bs M =>
-      exp_mvcb (nm + n) A &&
-      (fix brs_mvcb (Bs : list (string * nat * exp)) : bool :=
-         match Bs with
+  | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_ntok => true
+  | a_elim _ Us _ Bks M =>
+      (fix us_mvcb (Us : list exp) : bool :=
+         match Us with
          | nil => true
-         | b :: Bs' => exp_mvcb (snd (fst b) + n) (snd b) && brs_mvcb Bs'
-         end) Bs &&
+         | U :: Us' => exp_mvcb n U && us_mvcb Us'
+         end) Us &&
+      (fix blocks_mvcb (Bks : list eblock) : bool :=
+         match Bks with
+         | nil => true
+         | eb_mk nm oZ A Bs :: Bks' =>
+             match oZ with Some Z => exp_mvcb (nm - 1 + n) Z | None => true end &&
+             exp_mvcb (nm + n) A &&
+             (fix brs_mvcb (Bs : list (string * nat * exp)) : bool :=
+                match Bs with
+                | nil => true
+                | b :: Bs' => exp_mvcb (snd (fst b) + n) (snd b) && brs_mvcb Bs'
+                end) Bs &&
+             blocks_mvcb Bks'
+         end) Bks &&
       exp_mvcb n M
   | a_pi A B | a_fn A B => exp_mvcb n A && exp_mvcb (S n) B
   | a_app M N => exp_mvcb n M && exp_mvcb n N
@@ -82,8 +97,8 @@ with gentry_mvcb (n : nat) (E : gentry) {struct E} : bool :=
   match E with
   | ge_def _ _ A B => exp_mvcb n A && match B with Some M => exp_mvcb n M | None => true end
   | ge_mod _ U => gunit_mvcb n U
-  | ge_ind _ _ D Φ => gmod_mvcb (ind_nu D + n) Φ
-  | ge_ind_alias _ _ _ _ => true
+  | ge_ind _ _ _ D Φ => gmod_mvcb (ind_nu D + n) Φ
+  | ge_ind_alias _ _ _ _ _ _ => true
   end
 with centry_mvcb (n : nat) (e : centry) {struct e} : bool :=
   match e with
@@ -91,6 +106,60 @@ with centry_mvcb (n : nat) (e : centry) {struct e} : bool :=
   | ce_def A M => exp_mvcb n A && exp_mvcb n M
   | ce_mod U => gunit_mvcb n U
   end.
+
+(** The uniform parameters of an eliminator, decided by the inner
+    fixpoint of [exp_mvcb]. *)
+Lemma us_mvcb_spec : forall n (Us : list exp),
+    List.Forall (fun U => forall n, exp_mvcb n U = true <-> exp_mvc n U) Us ->
+    (fix us_mvcb (Us : list exp) : bool :=
+       match Us with
+       | nil => true
+       | U :: Us' => exp_mvcb n U && us_mvcb Us'
+       end) Us = true <-> all_list (exp_mvc n) Us.
+Proof.
+  intros n Us HU; induction HU as [| U Us HU _ IH]; cbn; [ split; auto |].
+  rewrite andb_true_iff, HU, IH; reflexivity.
+Qed.
+
+(** The branches of a block, decided by the inner fixpoint of [exp_mvcb]. *)
+Lemma brs_mvcb_spec : forall n (Bs : list (string * nat * exp)),
+    List.Forall (fun br => forall n, exp_mvcb n (snd br) = true <-> exp_mvc n (snd br)) Bs ->
+    (fix brs_mvcb (Bs : list (string * nat * exp)) : bool :=
+       match Bs with
+       | nil => true
+       | b :: Bs' => exp_mvcb (snd (fst b) + n) (snd b) && brs_mvcb Bs'
+       end) Bs = true <-> all_brs (fun k B => exp_mvc (k + n) B) Bs.
+Proof.
+  intros n Bs HB; induction HB as [| b Bs Hb _ IH]; cbn; [ split; auto |].
+  rewrite andb_true_iff, Hb, IH; reflexivity.
+Qed.
+
+(** The blocks of an eliminator, decided by the inner fixpoint of
+    [exp_mvcb]. *)
+Lemma blocks_mvcb_spec : forall n (Bks : list eblock),
+    List.Forall (fun b => (forall Z, eb_ann b = Some Z -> forall n, exp_mvcb n Z = true <-> exp_mvc n Z) /\
+                          (forall n, exp_mvcb n (eb_motive b) = true <-> exp_mvc n (eb_motive b)) /\
+                          List.Forall (fun br => forall n, exp_mvcb n (snd br) = true <-> exp_mvc n (snd br)) (eb_brs b)) Bks ->
+    (fix blocks_mvcb (Bks : list eblock) : bool :=
+       match Bks with
+       | nil => true
+       | eb_mk nm oZ A Bs :: Bks' =>
+           match oZ with Some Z => exp_mvcb (nm - 1 + n) Z | None => true end &&
+           exp_mvcb (nm + n) A &&
+           (fix brs_mvcb (Bs : list (string * nat * exp)) : bool :=
+              match Bs with
+              | nil => true
+              | b :: Bs' => exp_mvcb (snd (fst b) + n) (snd b) && brs_mvcb Bs'
+              end) Bs &&
+           blocks_mvcb Bks'
+       end) Bks = true <->
+    all_blocks (fun nm oZ A Bs => opt_all (exp_mvc (nm - 1 + n)) oZ /\ exp_mvc (nm + n) A /\
+                                  all_brs (fun k B => exp_mvc (k + n) B) Bs) Bks.
+Proof.
+  intros n Bks HB; induction HB as [| [nm oZ A Bs] Bks (HZ & HA & HBs) _ IH]; cbn in *; [ split; auto |].
+  rewrite !andb_true_iff, HA, IH, (brs_mvcb_spec n Bs HBs).
+  destruct oZ as [Z |]; cbn; [ rewrite (HZ Z eq_refl) | ]; tauto.
+Qed.
 
 Lemma mvcb_spec :
   (forall M n, exp_mvcb n M = true <-> exp_mvc n M) /\
@@ -104,14 +173,17 @@ Lemma mvcb_spec :
 Proof.
   apply syn_mut_ind; intros;
     cbn [exp_mvcb modexp_mvcb bnd_mvcb gunit_mvcb moddef_mvcb gmod_mvcb gentry_mvcb centry_mvcb
-         exp_mvc modexp_mvc bnd_mvc gunit_mvc moddef_mvc gmod_mvc gentry_mvc centry_mvc];
-    rewrite ?andb_true_iff.
+         exp_mvc modexp_mvc bnd_mvc gunit_mvc moddef_mvc gmod_mvc gentry_mvc centry_mvc].
+  (** An eliminator: its uniform parameters and blocks, by the inner
+      fixpoints. *)
+  all: try lazymatch goal with
+    | HU : List.Forall _ ?Us, HB : List.Forall _ ?Bks, HM : forall n, exp_mvcb n ?M = true <-> _
+      |- _ <-> all_list _ ?Us /\ all_blocks _ ?Bks /\ exp_mvc _ ?M =>
+        rewrite !andb_true_iff, (us_mvcb_spec _ _ HU), (blocks_mvcb_spec _ _ HB), HM; tauto
+    end.
+  all: rewrite ?andb_true_iff.
   all: repeat match goal with IH : forall n : nat, _ <-> _ |- _ => setoid_rewrite IH; clear IH end.
   all: try (split; auto; fail).
-  - (* an eliminator: its branches *)
-    match goal with |- (_ /\ ?l = true) /\ _ <-> _ /\ ?r /\ _ => enough (Hb : l = true <-> r) by (rewrite Hb; tauto) end.
-    match goal with HF : List.Forall _ Bs |- _ => clear - HF; induction HF as [| b Bs Hb _ IH] end; cbn; [ split; auto |].
-    rewrite andb_true_iff, Hb, IH; reflexivity.
   - apply Nat.ltb_lt.
   - destruct oA as [A |]; [ rewrite (H A eq_refl) | split; intros [_ ?]; split; auto ]; reflexivity.
   - (* a unit: its telescope *)
@@ -121,15 +193,28 @@ Proof.
   - destruct B as [M |]; [ rewrite (H0 M eq_refl) | split; intros [? _]; split; auto ]; reflexivity.
 Qed.
 
+(** A constructor argument without free module variables, computed. *)
 Definition carg_mvcb (g : carg) : bool :=
   match g with
   | ca_arg A => exp_mvcb 0 A
   | ca_rec t => forallb (exp_mvcb 0) (ptyp_doms t) && forallb (exp_mvcb 0) (ptyp_ps t)
   end.
 
+(** A member's head without free module variables, computed. *)
+Definition mhead_mvcb (h : mhead) : bool :=
+  match h with
+  | mh_decl _ => true
+  | mh_view _ _ Is _ => forallb (exp_mvcb 0) Is
+  end.
+
+(** A member without free module variables, computed. *)
+Definition member_mvcb (M : imember) : bool :=
+  forallb (centry_mvcb 0) (im_nparams M) && mhead_mvcb (im_head M) &&
+  forallb (fun cg => forallb carg_mvcb (snd cg)) (im_cons M).
+
+(** A group without free module variables, computed. *)
 Definition decl_mvcb (D : ind_decl) : bool :=
-  forallb (centry_mvcb 0) (ind_params D) && exp_mvcb 0 (ind_sort D) &&
-  forallb (fun cg => forallb carg_mvcb (snd cg)) (ind_cons D).
+  forallb (centry_mvcb 0) (ind_uparams D) && exp_mvcb 0 (ind_sort D) && forallb member_mvcb (ind_members D).
 
 Lemma forallb_Forall : forall {X} (f : X -> bool) (P : X -> Prop) l,
     (forall x, f x = true <-> P x) -> forallb f l = true <-> List.Forall P l.
@@ -144,18 +229,36 @@ Proof.
   rewrite andb_true_iff, !(forallb_Forall _ _ _ (fun M => He M 0)); reflexivity.
 Qed.
 
+Lemma mhead_mvcb_spec : forall h, mhead_mvcb h = true <-> mhead_mvc h.
+Proof.
+  destruct mvcb_spec as (He & _).
+  intros [pm | qc k Is vm]; cbn; [ split; auto | apply (forallb_Forall _ _ _ (fun M => He M 0)) ].
+Qed.
+
+Lemma member_mvcb_spec : forall M, member_mvcb M = true <->
+    ctx_mvc (im_nparams M) /\ mhead_mvc (im_head M) /\ (forall c gs, In (c, gs) (im_cons M) -> List.Forall carg_mvc gs).
+Proof.
+  destruct mvcb_spec as (_ & _ & _ & _ & _ & _ & _ & Hc).
+  intros M; unfold member_mvcb, ctx_mvc; rewrite !andb_true_iff.
+  rewrite (forallb_Forall _ _ _ (fun e => Hc e 0)), mhead_mvcb_spec.
+  rewrite (forallb_Forall _ (fun cg => List.Forall carg_mvc (snd cg))) by (intros; apply forallb_Forall, carg_mvcb_spec).
+  split.
+  - intros [[H1 H2] H3]; split; [ exact H1 | split; [ exact H2 |] ].
+    intros c gs Hin; exact (proj1 (List.Forall_forall _ _) H3 (c, gs) Hin).
+  - intros (H1 & H2 & H3); split; [ split; assumption |].
+    apply List.Forall_forall; intros [c gs] Hin; exact (H3 c gs Hin).
+Qed.
+
 Lemma decl_mvcb_spec : forall D, decl_mvcb D = true <-> decl_mvc D.
 Proof.
   destruct mvcb_spec as (He & _ & _ & _ & _ & _ & _ & Hc).
-  intros D; unfold decl_mvcb, ctx_mvc; rewrite !andb_true_iff.
-  rewrite (forallb_Forall _ _ _ (fun e => Hc e 0)), He.
-  rewrite (forallb_Forall _ (fun cg => List.Forall carg_mvc (snd cg)))
-    by (intros; apply forallb_Forall, carg_mvcb_spec).
-  rewrite List.Forall_forall.
-  split; [ intros [[H1 H2] HF]; constructor; [ unfold ctx_mvc; apply List.Forall_forall; exact H1 | exact H2 |];
-           intros c gs Hin; exact (proj1 (List.Forall_forall _ _) HF (c, gs) Hin)
-         | intros [H1 H2 HF]; unfold ctx_mvc in H1; rewrite List.Forall_forall in H1; repeat split; auto;
-           apply List.Forall_forall; intros [c gs] Hin; exact (HF c gs Hin) ].
+  intros D; unfold decl_mvcb; rewrite !andb_true_iff.
+  rewrite (forallb_Forall _ _ _ (fun e => Hc e 0)), He, (forallb_Forall _ _ _ member_mvcb_spec).
+  split.
+  - intros [[H1 H2] H3]; constructor; [ exact H1 | exact H2 |].
+    intros k M Hk; exact (proj1 (List.Forall_forall _ _) H3 M (List.nth_error_In _ _ Hk)).
+  - intros [H1 H2 H3]; split; [ split; assumption |].
+    apply List.Forall_forall; intros M HM; apply List.In_nth_error in HM as [k Hk]; exact (H3 k M Hk).
 Qed.
 
 Definition decl_mvc_dec (D : ind_decl) : {decl_mvc D} + {~ decl_mvc D} :=
@@ -194,8 +297,9 @@ Definition nodup_dec (l : list string) : {List.NoDup l} + {~ List.NoDup l} :=
   | false => fun E => right (fun H => diff_false_true (eq_trans (eq_sym E) (proj2 (nodupb_spec l) H)))
   end eq_refl.
 
-(** ** Quantifying over the Splits of a List *)
+(** ** Quantifying over Lists *)
 
+(** A property at each way of splitting a list around one element. *)
 Definition forall_split_dec {X : Type} :
   forall (L : list X) (P : list X -> X -> list X -> Prop),
     (forall l1 x l2, L = l1 ++ x :: l2 -> {P l1 x l2} + {~ P l1 x l2}) ->
@@ -227,528 +331,212 @@ Proof.
     + intros H; apply HL; intros k; apply (H (S k)).
 Defined.
 
-(** ** The Entry *)
-
-Lemma wf_gentry_ind_iff : forall Θ Ξ mp pv D,
-    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄ <->
-    (exists Δ, ind_params D = Δ ++ gs_tele Ξ) /\ List.length (gs_tele Ξ) <= ind_nu D /\ decl_typed Θ Ξ D.
+(** A property of every member of a group, decided at each. *)
+Definition members_dec (D : ind_decl) (Q : nat -> imember -> Prop)
+    (f : forall k M, ind_member D k = Some M -> {Q k M} + {~ Q k M}) :
+  { forall k M, ind_member D k = Some M -> Q k M } + { ~ forall k M, ind_member D k = Some M -> Q k M }.
 Proof.
-  intros; split.
-  - intros H; inversion H; subst.
-    split; [ eexists; eassumption |]; split; [ assumption |].
-    constructor; eauto.
-  - intros ([Δ HΔ] & Hle & [Hass Hmvc Hnp HP HS [i Hi] [n Hn] HA HPl HPt HN Hnd Hsh]).
-    econstructor; try eassumption.
-    + intros * Hin E; exact (proj1 (Hsh _ _ _ _ _ Hin E)).
-    + intros * Hin E Ed; exact (proj2 (Hsh _ _ _ _ _ Hin E) _ _ _ Ed).
+  pose (Q' := fun k => forall M, ind_member D k = Some M -> Q k M).
+  assert (f' : forall k, k < List.length (ind_members D) -> (forall k', k' < k -> Q' k') -> {Q' k} + {~ Q' k}).
+  { intros k _ _; unfold Q'.
+    destruct (ind_member D k) as [M |] eqn:Hk; [| left; intros; discriminate ].
+    destruct (f k M Hk) as [HQ | HQ]; [ left; intros M' [= <-]; exact HQ | right; intros H; exact (HQ (H M eq_refl)) ]. }
+  destruct (forall_lt_dec Q' (List.length (ind_members D)) f') as [HQ | HQ]; [ left | right ].
+  - intros k M Hk; apply (HQ k); [ apply List.nth_error_Some; unfold ind_member in Hk; congruence | exact Hk ].
+  - intros H; apply HQ; intros k _; exact (H k).
+Defined.
+
+(** ** The Checks of a Group's Views Are Complete
+
+    [rank_check], [vwrap_check] and [view_maps_check] accept every group
+    that has a rank, whose views' members are the container's, and whose
+    views agree on their maps: the checker rejects no group the
+    declarative rule accepts. *)
+
+Lemma in_combine_seq_nth : forall {X} (l : list X) s k M, In (k, M) (List.combine (List.seq s (List.length l)) l) ->
+    s <= k /\ List.nth_error l (k - s) = Some M.
+Proof.
+  intros X l; induction l as [| x l IH]; intros s k M H; cbn in H; [ contradiction |].
+  destruct H as [[= <- <-] | H]; [ split; [ lia | rewrite Nat.sub_diag; reflexivity ] |].
+  destruct (IH (S s) k M H) as [Hle Hk]; split; [ lia |].
+  replace (k - s) with (S (k - S s)) by lia; exact Hk.
 Qed.
 
-(** The entry of an inductive type with its members, checked member by
-    member ([wf_gentry_ind_ext]), holds of its declaration alone; and the
-    recursor, generated last, has a name fresh among the constructors. *)
-Lemma wf_gentry_ind_base : forall Θ Ξ mp pv D Φ,
-    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D Φ -> Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄.
+(** A pair of [combine (seq 0 _)] is an index and its element. *)
+Corollary in_combine_seq0 : forall {X} (l : list X) k M,
+    In (k, M) (List.combine (List.seq 0 (List.length l)) l) -> List.nth_error l k = Some M.
+Proof. intros * H; destruct (in_combine_seq_nth l 0 k M H) as [_ Hk]; rewrite Nat.sub_0_r in Hk; exact Hk. Qed.
+
+Lemma cargs_corrb_complete : forall vm gs' gs, cargs_corr vm gs' gs -> cargs_corrb vm gs' gs = true.
 Proof.
-  intros Θ Ξ mp pv D Φ; revert Ξ mp; induction Φ as [| Φ IH x E | Φ IH H its]; intros * HE;
-    [ exact HE | inversion HE; subst; eauto | inversion HE ].
+  induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] H; cbn in H |- *; try contradiction; auto.
+  destruct H as (Hj & Hd & H); rewrite Hj, Nat.eqb_refl, Hd, Nat.eqb_refl; cbn; auto.
 Qed.
 
-Lemma gens_body_app : forall gs1 gs2 Φ T, gens_body Φ T (gs1 ++ gs2) = gens_body (gens_body Φ T gs1) T gs2.
-Proof. induction gs1 as [| [d pv A M | d pv E | d pv Δ p Ns] gs1 IH]; intros; cbn; auto. Qed.
-
-Lemma gens_body_cons_names : forall p D T (l : list (string * list carg)) Φ x,
-    In x (gm_names Φ) \/ In x (List.map fst l) ->
-    In x (gm_names (gens_body Φ T
-      (List.map (fun cg =>
-                   ig_def (fst cg) false
-                     (ctx_pi (ind_nparams D)
-                        (ctx_pi (cargs_ctx p D (snd cg)) (apps (a_ind p) (ind_pvars D (List.length (snd cg))))))
-                     (apps (a_con p (fst cg)) (vars_from 0 (ind_nu D)))) l))).
+(** A view's members that are the container's members pass the check. *)
+Theorem vwrap_check_complete : forall D D' vm, vwrap_ok D D' vm -> vwrap_check D D' vm = true.
 Proof.
-  intros p D T l; induction l as [| cg l IH]; intros Φ x Hx; cbn in Hx |- *; [ destruct Hx as [Hx | []]; exact Hx |].
-  apply IH; cbn; tauto.
+  intros * [Hl Hm]; unfold vwrap_check; apply andb_true_iff; split; [ apply Nat.eqb_eq; exact Hl |].
+  apply List.forallb_forall; intros [i' Mi'] Hin; cbn [fst snd].
+  pose proof (in_combine_seq0 _ _ _ Hin) as HMi'.
+  destruct (List.nth_error vm i') as [v |] eqn:Hv; [| reflexivity ].
+  destruct (Hm _ _ _ HMi' Hv) as (Mv & HMv & Hnn & Hnames & Hcorr).
+  rewrite HMv, Hnn, Nat.eqb_refl; cbn.
+  destruct (list_eq_dec string_dec _ _) as [_ | Hne]; [| contradiction ]; cbn.
+  apply List.forallb_forall; intros [c gs'] Hcg; cbn [fst snd].
+  destruct (ind_con Mv c) as [gs |] eqn:Hc; [| reflexivity ].
+  exact (cargs_corrb_complete _ _ _ (Hcorr _ _ _ Hcg Hc)).
 Qed.
 
-Lemma wf_gentry_ind_rec_fresh : forall Θ Ξ mp pv p D,
-    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D (gen_body p D) -> ~ In "rec"%string (List.map fst (ind_cons D)).
+Lemma view_map_at_check_complete : forall vm M vmv, view_map_at vm M vmv -> view_map_at_check vm M vmv = true.
 Proof.
-  intros * HE Hin; unfold gen_body, ind_gens in HE; rewrite gens_body_app in HE; cbn [gens_body] in HE.
-  inversion HE; subst.
-  match goal with Hf : gm_fresh "rec"%string _ |- _ => apply Hf end.
-  apply gens_body_cons_names; right; exact Hin.
+  intros * H; unfold view_map_at in H; unfold view_map_at_check.
+  destruct (im_head M); destruct (list_eq_dec _ _ _) as [_ | Hne]; first [ reflexivity | contradiction ].
 Qed.
 
-(** A declaration filed where it is declared: its parameters are over the
-    frames', which are its outermost uniform ones. *)
-Lemma ind_decl_shape : forall Ξ R cs,
-    (exists Δ, ind_params (gs_ind Ξ (rd_filed R cs)) = Δ ++ gs_tele Ξ) /\
-    List.length (gs_tele Ξ) <= ind_nu (gs_ind Ξ (rd_filed R cs)).
+(** Views that agree on their maps pass the check. *)
+Theorem view_maps_check_complete : forall Θ Ξ D, view_maps_coherent Θ Ξ D -> view_maps_check Θ Ξ D = true.
 Proof.
-  intros; unfold gs_ind; cbn; split; [ eexists; reflexivity | lia ].
+  intros * H; unfold view_maps_check; apply List.forallb_forall; intros Mk HMk.
+  apply List.In_nth_error in HMk as [k HMk].
+  destruct (im_head Mk) as [pm | qc k' Is vm] eqn:Hh; [ reflexivity |].
+  destruct (ind_lookup Θ Ξ qc) as [D' |] eqn:Hl; [| reflexivity ].
+  apply List.forallb_forall; intros [i' Mi'] Hin; cbn [fst snd].
+  pose proof (in_combine_seq0 _ _ _ Hin) as HMi'.
+  destruct (List.nth_error vm i') as [v |] eqn:Hv; [| reflexivity ].
+  destruct (ind_member D v) as [Mv |] eqn:HMv; [| reflexivity ].
+  destruct (im_head Mv) as [pm' | qv kv Iv vmv] eqn:HhMv; [ reflexivity |].
+  exact (view_map_at_check_complete _ _ _ (H _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hh Hl HMi' Hv HMv HhMv)).
 Qed.
 
-Section Decide.
-  Variables (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ).
+(** The largest of a list is at least each of its elements. *)
+Lemma fold_max_ge : forall l x, In x l -> x <= List.fold_right Nat.max 0 l.
+Proof. induction l as [| y l IH]; intros x Hx; cbn in *; [ contradiction | destruct Hx as [<- | Hx]; [ lia | specialize (IH _ Hx); lia ] ]. Qed.
 
-  (** A term of a type in a context, which is checked first. *)
-  Definition check_exp_at (Γ : ctx) (A M : exp) : {Θ ⍮ Ξ ⍮ Γ ⊢ M : A} + {~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A} :=
-    match check_ctx fctx_none Θ Ξ HΞ Γ with
-    | left HΓ => check_exp fctx_none Θ Ξ Γ HΓ A M
-    | right HnΓ => right (fun H => HnΓ (presup_exp_ctx H))
-    end.
+(** Filtering by a weaker test keeps no fewer elements, and one more when
+    some element passes only the weaker. *)
+Lemma filter_length_le : forall {X} (p pw : X -> bool) l, (forall y, p y = true -> pw y = true) ->
+    List.length (List.filter p l) <= List.length (List.filter pw l).
+Proof.
+  intros X p pw l Hpw; induction l as [| y l IH]; cbn; [ lia |].
+  destruct (p y) eqn:Ep; [ rewrite (Hpw _ Ep); cbn; lia |]; destruct (pw y); cbn; lia.
+Qed.
 
-  Definition args_dec (D : ind_decl) :
-    {forall c gs gs1 A gs2, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_arg A :: gs2 ->
-       Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D
-         ⊢ A : (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + ind_nn D)]ʷ}
-    + {~ forall c gs gs1 A gs2, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_arg A :: gs2 ->
-       Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D
-         ⊢ A : (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + ind_nn D)]ʷ}.
+Lemma filter_length_lt : forall {X} (p pw : X -> bool) l x, (forall y, p y = true -> pw y = true) ->
+    In x l -> p x = false -> pw x = true -> List.length (List.filter p l) < List.length (List.filter pw l).
+Proof.
+  intros X p pw l x Hpw; induction l as [| y l IH]; intros Hin Hp Hw; cbn in Hin; [ contradiction |].
+  cbn; destruct Hin as [-> | Hin].
+  - rewrite Hp, Hw; cbn; pose proof (filter_length_le p pw l Hpw); lia.
+  - specialize (IH Hin Hp Hw); destruct (p y) eqn:Ep; [ rewrite (Hpw _ Ep); cbn; lia |]; destruct (pw y); cbn; lia.
+Qed.
+
+Section RankComplete.
+  Variables (Θ : gdeps) (Ξ : gstack) (D : ind_decl) (rk : nat -> nat).
+  Hypothesis HDs : decls_typed Θ Ξ.
+  Hypothesis Hrk : view_rank_ok Θ Ξ D rk.
+
+  Lemma cargs_nest_targets_lt : forall r gs' gs j, cargs_nest_ok rk r gs' gs -> In j (cargs_nest_targets gs' gs) -> rk j < r.
   Proof.
-    assert (f : forall cg, List.In cg (ind_cons D) ->
-      {forall gs1 g gs2, snd cg = gs1 ++ g :: gs2 -> forall A, g = ca_arg A ->
-         Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D
-           ⊢ A : (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + ind_nn D)]ʷ}
-      + {~ forall gs1 g gs2, snd cg = gs1 ++ g :: gs2 -> forall A, g = ca_arg A ->
-         Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D
-           ⊢ A : (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + ind_nn D)]ʷ}).
-    { intros cg _; apply forall_split_dec; intros gs1 [A | Ps] gs2 _.
-      - destruct (check_exp_at (cargs_strat gs1 ++ ind_params D)
-                    (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + ind_nn D)]ʷ A) as [HA | HA].
-        + left; intros ? [= <-]; exact HA.
-        + right; intros H; exact (HA (H A eq_refl)).
-      - left; intros ? [=]. }
-    destruct (forall_in_dec _ _ f) as [H | H]; [ left | right ].
-    - intros c gs gs1 A gs2 Hin E; exact (H (c, gs) Hin gs1 _ gs2 E A eq_refl).
-    - intros H'; apply H; intros [c gs] Hin gs1 g gs2 E A ->; exact (H' c gs gs1 A gs2 Hin E).
-  Defined.
+    intros r; induction gs' as [| [A' | t'] gs' IH]; intros [| [A | t] gs] j Hok Hj; cbn in Hok, Hj; try contradiction;
+      first [ destruct Hok as [Hlt Hok]; destruct Hj as [<- | Hj]; [ exact Hlt | exact (IH _ _ Hok Hj) ]
+            | exact (IH _ _ Hok Hj) ].
+  Qed.
 
-  Definition recs_dec (D : ind_decl) :
-    {(forall c gs gs1 t gs2, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
-        List.length (ptyp_ps t) = ind_nn D) /\
-     (forall c gs gs1 t gs2 k P T, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
-        List.nth_error (ptyp_ps t) k = Some P ->
-        List.nth_error (tele_insts (ind_nparams D)
-                          (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps t)) k
-          = Some T ->
-        Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ ind_params D ⊢ P : T)}
-    + {~ ((forall c gs gs1 t gs2, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
-        List.length (ptyp_ps t) = ind_nn D) /\
-     (forall c gs gs1 t gs2 k P T, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
-        List.nth_error (ptyp_ps t) k = Some P ->
-        List.nth_error (tele_insts (ind_nparams D)
-                          (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps t)) k
-          = Some T ->
-        Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ ind_params D ⊢ P : T))}.
+  (** A view's rank is above that of every member it nests through. *)
+  Lemma member_nest_targets_lt : forall k Mk j, ind_member D k = Some Mk -> In j (member_nest_targets Θ Ξ D Mk) -> rk j < rk k.
   Proof.
-    assert (f : forall cg, List.In cg (ind_cons D) ->
-      {forall gs1 g gs2, snd cg = gs1 ++ g :: gs2 -> forall t, g = ca_rec t ->
-         List.length (ptyp_ps t) = ind_nn D /\
-         forall k P T, List.nth_error (ptyp_ps t) k = Some P ->
-           List.nth_error (tele_insts (ind_nparams D)
-                             (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps t)) k
-             = Some T ->
-           Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ ind_params D ⊢ P : T}
-      + {~ forall gs1 g gs2, snd cg = gs1 ++ g :: gs2 -> forall t, g = ca_rec t ->
-         List.length (ptyp_ps t) = ind_nn D /\
-         forall k P T, List.nth_error (ptyp_ps t) k = Some P ->
-           List.nth_error (tele_insts (ind_nparams D)
-                             (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps t)) k
-             = Some T ->
-           Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ ind_params D ⊢ P : T}).
-    { intros cg _; apply forall_split_dec; intros gs1 [A | t] gs2 _; [ left; intros ? [=] |].
-      destruct (Nat.eq_dec (List.length (ptyp_ps t)) (ind_nn D)) as [Hl | Hl];
-        [| right; intros H; exact (Hl (proj1 (H t eq_refl))) ].
-      destruct (forall_nth2_dec (fun P T => Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ ind_params D ⊢ P : T)
-                  (fun P T => check_exp_at (ptyp_tele t ++ cargs_strat gs1 ++ ind_params D) T P) (ptyp_ps t)
-                  (tele_insts (ind_nparams D)
-                     (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps t)))
-        as [HP | HP].
-      - left; intros ? [= <-]; split; [ exact Hl | exact HP ].
-      - right; intros H; exact (HP (proj2 (H t eq_refl))). }
-    destruct (forall_in_dec _ _ f) as [H | H]; [ left; split | right ].
-    - intros c gs gs1 t gs2 Hin E; exact (proj1 (H (c, gs) Hin gs1 _ gs2 E t eq_refl)).
-    - intros c gs gs1 t gs2 k P T Hin E; exact (proj2 (H (c, gs) Hin gs1 _ gs2 E t eq_refl) k P T).
-    - intros [H1 H2]; apply H; intros [c gs] Hin gs1 g gs2 E t ->.
-      split; [ exact (H1 c gs gs1 t gs2 Hin E) | exact (fun k P T => H2 c gs gs1 t gs2 k P T Hin E) ].
-  Defined.
+    intros * HMk Hj; unfold member_nest_targets in Hj.
+    destruct (im_head Mk) as [pm | qc k' Is vm] eqn:Hh; [ contradiction |].
+    destruct (ind_lookup Θ Ξ qc) as [D' |] eqn:Hl; [| contradiction ].
+    apply List.in_concat in Hj as (l1 & Hl1 & Hj); apply List.in_map_iff in Hl1 as ([i' Mi'] & <- & Hin); cbn [fst snd] in Hj.
+    pose proof (in_combine_seq0 _ _ _ Hin) as HMi'.
+    destruct (List.nth_error vm i') as [v |] eqn:Hv; [| contradiction ].
+    destruct (ind_member D v) as [Mv |] eqn:HMv; [| contradiction ].
+    apply List.in_concat in Hj as (l2 & Hl2 & Hj); apply List.in_map_iff in Hl2 as ([c gs'] & <- & Hcg); cbn [fst snd] in Hj.
+    destruct (ind_con Mv c) as [gs |] eqn:Hc; [| contradiction ].
+    assert (Hc' : ind_con Mi' c = Some gs').
+    { unfold ind_con; apply cons_lookup_nodup; [| exact Hcg ].
+      exact (dt_nodup _ _ _ (HDs _ _ Hl) _ _ HMi'). }
+    exact (cargs_nest_targets_lt _ _ _ _ (vro_nest _ _ _ _ Hrk _ _ _ _ _ _ _ _ _ _ _ _ _ _ HMk Hh Hl HMi' Hv HMv Hc' Hc) Hj).
+  Qed.
 
-  (** The shapes of the recursive arguments: [Π]s ending at the type, each
-      domain a type of the sort over the domains before it. *)
-  Definition shapes_dec (D : ind_decl) :
-    {forall c gs gs1 t gs2, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
-       ptyp_simple t = true /\
-       forall Bs1 B Bs2, ptyp_doms t = Bs1 ++ B :: Bs2 ->
-         Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ ind_params D
-           ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + ind_nn D)]ʷ}
-    + {~ forall c gs gs1 t gs2, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
-       ptyp_simple t = true /\
-       forall Bs1 B Bs2, ptyp_doms t = Bs1 ++ B :: Bs2 ->
-         Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ ind_params D
-           ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + ind_nn D)]ʷ}.
+  (** The members of rank below [k]'s. *)
+  Definition rank_below (k : nat) : nat :=
+    List.length (List.filter (fun j => rk j <? rk k) (List.seq 0 (List.length (ind_members D)))).
+
+  Lemma rank_below_lt : forall k j, j < List.length (ind_members D) -> rk j < rk k -> rank_below j < rank_below k.
   Proof.
-    assert (f : forall cg, List.In cg (ind_cons D) ->
-      {forall gs1 g gs2, snd cg = gs1 ++ g :: gs2 -> forall t, g = ca_rec t ->
-         ptyp_simple t = true /\
-         forall Bs1 B Bs2, ptyp_doms t = Bs1 ++ B :: Bs2 ->
-           Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ ind_params D
-             ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + ind_nn D)]ʷ}
-      + {~ forall gs1 g gs2, snd cg = gs1 ++ g :: gs2 -> forall t, g = ca_rec t ->
-         ptyp_simple t = true /\
-         forall Bs1 B Bs2, ptyp_doms t = Bs1 ++ B :: Bs2 ->
-           Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ ind_params D
-             ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + ind_nn D)]ʷ}).
-    { intros cg _; apply forall_split_dec; intros gs1 [A | t] gs2 _; [ left; intros ? [=] |].
-      destruct (bool_dec (ptyp_simple t) true) as [Hs | Hs]; [| right; intros H; exact (Hs (proj1 (H t eq_refl))) ].
-      destruct (forall_split_dec (ptyp_doms t)
-                  (fun Bs1 B Bs2 => Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ ind_params D
-                     ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + ind_nn D)]ʷ))
-        as [HB | HB].
-      - intros Bs1 B Bs2 _.
-        exact (check_exp_at (doms_ctx Bs1 ++ cargs_strat gs1 ++ ind_params D)
-                 (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + ind_nn D)]ʷ B).
-      - left; intros ? [= <-]; split; [ exact Hs | exact HB ].
-      - right; intros H; exact (HB (proj2 (H t eq_refl))). }
-    destruct (forall_in_dec _ _ f) as [H | H]; [ left | right ].
-    - intros c gs gs1 t gs2 Hin E; exact (H (c, gs) Hin gs1 _ gs2 E t eq_refl).
-    - intros H'; apply H; intros [c gs] Hin gs1 g gs2 E t ->; exact (H' c gs gs1 t gs2 Hin E).
-  Defined.
+    intros * Hj Hlt; unfold rank_below; apply filter_length_lt with (x := j).
+    - intros y Hy; apply Nat.ltb_lt in Hy; apply Nat.ltb_lt; lia.
+    - apply List.in_seq; lia.
+    - apply Nat.ltb_ge; lia.
+    - apply Nat.ltb_lt; exact Hlt.
+  Qed.
 
-  Definition nparams_dec (D : ind_decl) :
-    {forall Δ1 T Δ2, ind_nparams D = Δ1 ++ ce_ass T :: Δ2 ->
-       Θ ⍮ Ξ ⍮ Δ2 ++ ind_uparams D ⊢ T : (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ}
-    + {~ forall Δ1 T Δ2, ind_nparams D = Δ1 ++ ce_ass T :: Δ2 ->
-       Θ ⍮ Ξ ⍮ Δ2 ++ ind_uparams D ⊢ T : (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ}.
+  Lemma rank_below_bound : forall k, k < List.length (ind_members D) -> rank_below k < List.length (ind_members D).
   Proof.
-    destruct (forall_split_dec (ind_nparams D)
-                (fun Δ1 e Δ2 => forall T, e = ce_ass T ->
-                   Θ ⍮ Ξ ⍮ Δ2 ++ ind_uparams D ⊢ T : (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ))
-      as [H | H].
-    - intros Δ1 [T | T M | U] Δ2 _; [| left; intros ? [=] .. ].
-      destruct (check_exp_at (Δ2 ++ ind_uparams D) (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ T) as [HT | HT].
-      + left; intros ? [= <-]; exact HT.
-      + right; intros H; exact (HT (H T eq_refl)).
-    - left; intros Δ1 T Δ2 E; exact (H Δ1 _ Δ2 E T eq_refl).
-    - right; intros H'; apply H; intros Δ1 e Δ2 E T ->; exact (H' Δ1 T Δ2 E).
-  Defined.
+    intros * Hk; unfold rank_below.
+    assert (Hall : forall l : list nat, List.filter (fun _ => true) l = l) by (induction l; cbn; congruence).
+    pose proof (filter_length_lt (fun j => rk j <? rk k) (fun _ => true) (List.seq 0 (List.length (ind_members D))) k
+                  (fun _ _ => eq_refl) ltac:(apply List.in_seq; lia) (Nat.ltb_irrefl _) eq_refl) as H.
+    rewrite Hall, List.length_seq in H; exact H.
+  Qed.
 
-  Definition decl_typed_dec (D : ind_decl) : {decl_typed Θ Ξ D} + {~ decl_typed Θ Ξ D}.
+  Lemma iter_nonmember : forall m j, ind_member D j = None -> grp_rank_iter Θ Ξ D m j = 0.
+  Proof. intros [| m] j Hj; cbn; [ reflexivity | rewrite Hj; reflexivity ]. Qed.
+
+  Lemma iter_view : forall m k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+      grp_rank_iter Θ Ξ D (S m) k =
+        S (List.fold_right Nat.max 0 (List.map (grp_rank_iter Θ Ξ D m) (member_nest_targets Θ Ξ D Mk))).
+  Proof. intros * Hk Hh; cbn [grp_rank_iter]; rewrite Hk, Hh; reflexivity. Qed.
+
+  (** The candidate rank of a member is stable after as many rounds as
+      there are members below it. *)
+  Lemma iter_stable : forall r k m, rk k = r -> rank_below k < m ->
+      grp_rank_iter Θ Ξ D m k = grp_rank_iter Θ Ξ D (S m) k.
   Proof.
-    destruct (tele_ass_dec (ind_params D)) as [Hass | Hn]; [| right; intros H; exact (Hn (dt_ass _ _ _ H)) ].
-    destruct (decl_mvc_dec D) as [Hmv | Hn]; [| right; intros H; exact (Hn (dt_mvc _ _ _ H)) ].
-    destruct (Compare_dec.le_dec (ind_nu D) (ind_np D)) as [Hle | Hn]; [| right; intros H; exact (Hn (dt_nu _ _ _ H)) ].
-    destruct (check_ctx fctx_none Θ Ξ HΞ (ind_params D)) as [HP | Hn]; [| right; intros H; exact (Hn (dt_params _ _ _ H)) ].
-    destruct (ind_sort_univ_dec (ind_sort D)) as [HS | Hn]; [| right; intros H; exact (Hn (dt_sort_univ _ _ _ H)) ].
-    destruct (check_ctx fctx_none Θ Ξ HΞ (ind_uparams D)) as [HU | Hn];
-      [| right; intros H; destruct (dt_sort _ _ _ H) as [i Hi]; exact (Hn (presup_exp_ctx Hi)) ].
-    destruct (check_typ fctx_none Θ Ξ (ind_uparams D) HU (ind_sort D)) as [[i Hi] | Hn];
-      [| right; intros H; destruct (dt_sort _ _ _ H) as [i Hi]; exact (Hn i Hi) ].
-    destruct (check_level fctx_none Θ Ξ (ind_uparams D) HU (ind_sort_lvl (ind_sort D))) as [[n Hl] | Hn];
-      [| right; intros H; destruct (dt_sort_lvl _ _ _ H) as [n Hl]; exact (Hn n Hl) ].
-    destruct (args_dec D) as [HA | Hn]; [| right; intros H; exact (Hn (dt_args _ _ _ H)) ].
-    destruct (recs_dec D) as [[HPl HPt] | Hn];
-      [| right; intros H; exact (Hn (conj (dt_rec_len _ _ _ H) (dt_rec_ps _ _ _ H))) ].
-    destruct (nparams_dec D) as [HN | Hn]; [| right; intros H; exact (Hn (dt_nparams _ _ _ H)) ].
-    destruct (nodup_dec (List.map fst (ind_cons D))) as [Hnd | Hn]; [| right; intros H; exact (Hn (dt_nodup _ _ _ H)) ].
-    destruct (shapes_dec D) as [Hsh | Hn]; [| right; intros H; exact (Hn (dt_recs _ _ _ H)) ].
-    left; exact (mk_decl_typed _ _ _ Hass Hmv Hle HP HS (ex_intro _ i Hi) (ex_intro _ n Hl) HA HPl HPt HN Hnd Hsh).
-  Defined.
+    induction r as [r IH] using lt_wf_ind; intros k m Hr Hm.
+    destruct m as [| m]; [ lia |].
+    destruct (ind_member D k) as [Mk |] eqn:Hk; [| rewrite !iter_nonmember by exact Hk; reflexivity ].
+    destruct (im_head Mk) as [pm | qc k' Is vm] eqn:Hh; [ cbn [grp_rank_iter]; rewrite Hk, Hh; reflexivity |].
+    rewrite (iter_view m _ _ _ _ _ _ Hk Hh), (iter_view (S m) _ _ _ _ _ _ Hk Hh).
+    f_equal; f_equal; apply List.map_ext_in; intros j Hj.
+    pose proof (member_nest_targets_lt _ _ _ Hk Hj) as Hlt.
+    assert (Hcase : (exists Mj, ind_member D j = Some Mj) \/ ind_member D j = None)
+      by (destruct (ind_member D j); eauto).
+    destruct Hcase as [[Mj Hjm] | Hjm].
+    - assert (Hjn : j < List.length (ind_members D)) by (apply List.nth_error_Some; unfold ind_member in Hjm; congruence).
+      pose proof (rank_below_lt k j Hjn Hlt).
+      apply (IH (rk j)); [ lia | reflexivity | lia ].
+    - rewrite !iter_nonmember by exact Hjm; reflexivity.
+  Qed.
 
-  (** Which non-uniform parameter, if any, has a type not in the sort, for
-      the checker's message: its position, outermost [0], the context its
-      type is in, its type and the sort there. *)
-  Fixpoint npar_blame (U : ctx) (S : typ) (l : ctx) : option (nat * ctx * typ * typ) :=
-    match l with
-    | nil => None
-    | ce_ass T :: Δ2 =>
-        match npar_blame U S Δ2 with
-        | Some r => Some r
-        | None =>
-            if check_exp_at (Δ2 ++ U) S[wk_shiftn (List.length Δ2)]ʷ T then None
-            else Some (List.length Δ2, Δ2 ++ U, T, S[wk_shiftn (List.length Δ2)]ʷ)
-        end
-    | _ :: Δ2 => npar_blame U S Δ2
-    end.
+  (** A group with a rank passes the check. *)
+  Theorem rank_check_complete_at : rank_check Θ Ξ D = true.
+  Proof.
+    unfold rank_check, grp_rank; apply List.forallb_forall; intros [k Mk] Hin; cbn [fst snd].
+    pose proof (in_combine_seq0 _ _ _ Hin) as HMk.
+    assert (Hkn : k < List.length (ind_members D)) by (apply List.nth_error_Some; congruence).
+    pose proof (rank_below_bound k Hkn) as Hb.
+    destruct (List.length (ind_members D)) as [| n'] eqn:En; [ lia |].
+    destruct (im_head Mk) as [pm | qc k' Is vm] eqn:Hh.
+    - cbn [grp_rank_iter]; unfold ind_member; rewrite HMk, Hh; reflexivity.
+    - apply List.forallb_forall; intros j Hj; apply Nat.ltb_lt.
+      assert (Hjk : rk j < rk k) by exact (member_nest_targets_lt _ _ _ HMk Hj).
+      assert (Hj' : grp_rank_iter Θ Ξ D n' j = grp_rank_iter Θ Ξ D (S n') j).
+      { assert (Hcase : (exists Mj, ind_member D j = Some Mj) \/ ind_member D j = None)
+          by (destruct (ind_member D j); eauto).
+        destruct Hcase as [[Mj Hjm] | Hjm].
+        - assert (Hjn : j < S n') by (rewrite <- En; apply List.nth_error_Some; unfold ind_member in Hjm; congruence).
+          pose proof (rank_below_lt k j ltac:(rewrite En; exact Hjn) Hjk).
+          apply (iter_stable (rk j)); [ reflexivity | lia ].
+        - rewrite !iter_nonmember by exact Hjm; reflexivity. }
+      rewrite <- Hj', (iter_view n' _ _ _ _ _ _ HMk Hh).
+      pose proof (fold_max_ge _ _ (List.in_map (grp_rank_iter Θ Ξ D n') _ _ Hj)); lia.
+  Qed.
+End RankComplete.
 
-  (** The entry a declaration is filed as, its parameters over the
-      frames'. *)
-  Definition ind_entry_dec (mp : qname) (pv : bool) (D : ind_decl)
-    (Hsh : (exists Δ, ind_params D = Δ ++ gs_tele Ξ) /\ List.length (gs_tele Ξ) <= ind_nu D) :
-    {Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄} + {~ Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄} :=
-    match decl_typed_dec D with
-    | left H => left (proj2 (wf_gentry_ind_iff _ _ _ _ _) (conj (proj1 Hsh) (conj (proj2 Hsh) H)))
-    | right Hn => right (fun H => Hn (proj2 (proj2 (proj1 (wf_gentry_ind_iff _ _ _ _ _) H))))
-    end.
-End Decide.
-
-(** The entry crosses [gds_equiv] as the term judgments do. *)
-Lemma equiv_gentry_ind : forall Θ Θ' Ξ mp pv D,
-    gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ -> Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄ -> Θ' ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄.
-Proof.
-  intros * [Hs _] HΞ H; apply wf_gentry_ind_iff in H as (HΔ & Hle & HD).
-  apply wf_gentry_ind_iff; split; [ exact HΔ | split; [ exact Hle |] ].
-  eapply decl_typed_emb; [| exact HD ].
-  constructor; [ exact HΞ | apply gc_sub_deps; exact Hs ].
-Qed.
-
-(** ** Classifying the Arguments as Written *)
-
-Lemma apps_head_args : forall T, T = apps (app_head T) (app_args T).
-Proof.
-  induction T; cbn; try reflexivity.
-  rewrite apps_exp_app; cbn; f_equal; exact IHT1.
-Qed.
-
-Definition imgs_dec (pat : list bool) :
-  forall (Ts : list exp), {Ps | Ts = List.map (fun P => P[wk_pat pat]ʷ) Ps} + {forall Ps, Ts <> List.map (fun P => P[wk_pat pat]ʷ) Ps}.
-Proof.
-  fix go 1; intros [| T Ts].
-  - left; exists nil; reflexivity.
-  - destruct (img_dec pat T) as [[P HP] | HP]; [| right; intros [| P Ps] E; [ discriminate | injection E as E _; exact (HP P E) ] ].
-    destruct (go Ts) as [[Ps HPs] | HPs]; [ left; exists (P :: Ps); cbn; f_equal; assumption |].
-    right; intros [| P' Ps'] E; [ discriminate | injection E as _ E; exact (HPs Ps' E) ].
-Defined.
-
-(** Whether [Self] occurs under [d] domains, the reason a non-recursive
-    argument is not one: otherwise it is a recursive argument before it
-    that does. *)
-Definition self_free_dec (np : nat) (gs1 : list carg) (d : nat) (T : exp) : bool :=
-  match img_dec (List.repeat false d ++ List.map (fun _ => false) gs1 ++ List.repeat false np ++ true :: nil) T with
-  | inleft _ => true
-  | inright _ => false
-  end.
-
-(** Why an argument is rejected, along the [Π]s of its type while their
-    domains do not mention [Self]: [0] it depends on a recursive argument
-    before it; [2] [Self] occurs in a domain, so not strictly positively;
-    [3] [Self] is not applied to the uniform parameters as declared; [4]
-    [Self] is an argument of a head that does not compute (an opaque
-    definition, an axiom or a parameter), so its occurrence cannot be seen
-    to be positive; [1] [Self] occurs elsewhere; or [Self] occurs in an
-    argument of another inductive type ([cw_nested]). *)
-Inductive cls_why : Set :=
-| cw_code : nat -> cls_why
-(** [Self] occurs in an argument of another inductive type, the head:
-    strictly positive, but nested types are a later stage. *)
-| cw_nested : exp -> cls_why.
-
-Fixpoint sh_reason (np : nat) (gs1 : list carg) (d : nat) (T : exp) : cls_why :=
-  match T with
-  | a_pi A B => if self_free_dec np gs1 d A then sh_reason np gs1 (S d) B else cw_code 2
-  | _ =>
-      match app_head T with
-      | a_var j => if Nat.eqb j (d + List.length gs1 + np) then cw_code 3 else cw_code 4
-      | a_mem _ _ => cw_code 4
-      | a_ind pq => cw_nested (a_ind pq)
-      | _ => cw_code 1
-      end
-  end.
-
-Definition cls_reason (np : nat) (gs1 : list carg) (T : exp) : cls_why :=
-  if self_free_dec np gs1 0 T then cw_code 0 else sh_reason np gs1 0 T.
-
-(** The leaf of a shape: [Self] at the uniform parameters, then at terms
-    in which it does not occur. *)
-Definition cls_leaf_dec (nu np : nat) (gs1 : list carg) (d : nat) (T : exp)
-    (HnP : forall B T', T <> a_pi B T') :
-  {t | cls_sh nu np gs1 d T t} + {forall t, ~ cls_sh nu np gs1 d T t}.
-Proof.
-  destruct (exp_eq_dec (app_head T) (a_var (d + List.length gs1 + np))) as [Eh | Eh].
-  - destruct (list_eq_dec exp_eq_dec (List.firstn nu (app_args T)) (vars_from (d + List.length gs1 + (np - nu)) nu))
-      as [Eu | Eu].
-    + destruct (imgs_dec (List.repeat false d ++ cargs_pat gs1 ++ List.repeat false np ++ true :: nil)
-                  (List.skipn nu (app_args T))) as [[Ps HPs] | HPs].
-      * left; exists (pt_self 0 Ps).
-        rewrite (apps_head_args T), Eh, <- (List.firstn_skipn nu (app_args T)), Eu, HPs.
-        exact (cls_sh_self nu np gs1 d Ps).
-      * right; intros t Ht; inversion Ht as [d' Ps E | d' B T' t' _ E]; subst; [| exact (HnP _ _ eq_refl) ].
-        rewrite app_args_apps_var, List.skipn_app, length_vars_from, Nat.sub_diag, List.skipn_all2 in HPs
-          by (rewrite length_vars_from; lia).
-        exact (HPs Ps eq_refl).
-    + right; intros t Ht; inversion Ht as [d' Ps E | d' B T' t' _ E]; subst; [| exact (HnP _ _ eq_refl) ].
-      rewrite app_args_apps_var, List.firstn_app, length_vars_from, Nat.sub_diag, List.firstn_all2 in Eu
-        by (rewrite length_vars_from; lia).
-      apply Eu; rewrite List.app_nil_r; reflexivity.
-  - right; intros t Ht; inversion Ht as [d' Ps E | d' B T' t' _ E]; subst; [| exact (HnP _ _ eq_refl) ].
-    rewrite app_head_apps_var in Eh; exact (Eh eq_refl).
-Defined.
-
-(** A shape: [Π]s over domains in which [Self] does not occur, into a
-    leaf. *)
-Definition cls_sh_dec (nu np : nat) (gs1 : list carg) :
-  forall (T : exp) (d : nat), {t | cls_sh nu np gs1 d T t} + {forall t, ~ cls_sh nu np gs1 d T t}.
-Proof.
-  fix go 1; intros T d; destruct T; try (apply cls_leaf_dec; intros ? ? [=]; fail).
-  destruct (img_dec (List.repeat false d ++ cargs_pat gs1 ++ List.repeat false np ++ true :: nil) T1) as [[B HB] | HB].
-  - destruct (go T2 (S d)) as [[t Ht] | Ht].
-    + left; exists (pt_pi B t); rewrite HB; exact (cls_sh_pi nu np gs1 d B T2 t Ht).
-    + right; intros t' Ht'; inversion Ht'; subst;
-        [ match goal with E : apps _ _ = _ |- _ => apply (f_equal app_head) in E; rewrite app_head_apps_var in E;
-            discriminate end
-        | match goal with Hs : cls_sh _ _ _ (S d) T2 _ |- _ => exact (Ht _ Hs) end ].
-  - right; intros t' Ht'; inversion Ht'; subst;
-      [ match goal with E : apps _ _ = _ |- _ => apply (f_equal app_head) in E; rewrite app_head_apps_var in E;
-          discriminate end
-      | exact (HB _ eq_refl) ].
-Defined.
-
-Definition cls_arg_dec (nu np : nat) (gs1 : list carg) (T : exp) :
-  {g | cls_arg nu np gs1 T g} + {forall g, ~ cls_arg nu np gs1 T g}.
-Proof.
-  destruct (img_dec (cargs_pat gs1 ++ List.repeat false np ++ true :: nil) T) as [[A HA] | HA].
-  - left; exists (ca_arg A); rewrite HA; constructor.
-  - destruct (cls_sh_dec nu np gs1 T 0) as [[t Ht] | Ht].
-    + left; exists (ca_rec t); constructor; exact Ht.
-    + right; intros g Hg; inversion Hg as [A E | T' t Hs E]; subst; [ exact (HA A eq_refl) | exact (Ht _ Hs) ].
-Defined.
-
-(** The arity of the recursive arguments: the non-uniform parameters. *)
-Definition rec_arity_ok (D : ind_decl) : bool :=
-  forallb (fun cg => forallb (fun g => match g with
-                                       | ca_rec t => Nat.eqb (List.length (ptyp_ps t)) (ind_nn D)
-                                       | ca_arg _ => true
-                                       end) (snd cg)) (ind_cons D).
-
-Lemma rec_arity_of_entry : forall Θ Ξ mp pv D, Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp D ⋄ -> rec_arity_ok D = true.
-Proof.
-  intros * H; apply wf_gentry_ind_iff in H as (_ & _ & HD).
-  pose proof (dt_rec_len _ _ _ HD) as HPl.
-  unfold rec_arity_ok; apply forallb_forall; intros [c gs] Hin; apply forallb_forall; cbn [snd].
-  intros [A | t] Hg; [ reflexivity |].
-  apply in_split in Hg as (gs1 & gs2 & Hgs); subst gs; apply Nat.eqb_eq; exact (HPl _ _ _ _ _ Hin eq_refl).
-Qed.
-
-Lemma rec_arity_gs_ind : forall Ξ D, rec_arity_ok (gs_ind Ξ D) = rec_arity_ok D.
-Proof.
-  intros; unfold rec_arity_ok, gs_ind; cbn [ind_cons].
-  replace (ind_nn (mk_ind (ind_nu D + List.length (gs_tele Ξ)) (ind_params D ++ gs_tele Ξ) (ind_sort D) (ind_cons D)))
-    with (ind_nn D) by (unfold ind_nn, ind_np; cbn; rewrite List.length_app; lia).
-  reflexivity.
-Qed.
-
-(** ** Classifying on Normal Forms
-
-    An argument the syntactic classification rejects is checked to be a
-    type in the context it is written in, normalized, and its normal form
-    classified ([cls_arg_in]).  A rejection gives the reason on the normal
-    form when there is one, on the argument as written otherwise. *)
-
-Lemma typ_nbe_ty_order : forall Θ Ξ Γ A i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> nbe_ty_order Θ Ξ Γ A.
-Proof.
-  intros * HA; destruct (@soundness_ty (gc_mk Θ Ξ) _ _ _ HA) as [W [HW _]]; exact (nbe_ty_order_sound _ _ _ _ _ HW).
-Qed.
-
-Definition cls_arg_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (R : raw_decl)
-    (args1 : list (string * exp)) (gs1 : list carg) (T : exp) :
-  ({g | cls_arg_in Θ Ξ R args1 gs1 T g} + {r : cls_why | forall g, ~ cls_arg_in Θ Ξ R args1 gs1 T g})%type.
-Proof.
-  destruct (cls_arg_dec (rd_nu R) (List.length (rd_params R)) gs1 T) as [[g Hg] | Hn];
-    [ left; exists g; apply cls_in_syn; exact Hg |].
-  destruct (check_ctx fctx_none Θ Ξ HΞ (rarg_ctx Ξ R args1)) as [HΓ | HnΓ].
-  2:{ right; exists (cls_reason (List.length (rd_params R)) gs1 T).
-      intros g H; inversion H as [g' Hg' | i W g' _ HT _ _]; subst; [ exact (Hn _ Hg') |].
-      exact (HnΓ (presup_exp_ctx HT)). }
-  destruct (check_typ fctx_none Θ Ξ _ HΓ T) as [[i HT] | HnT].
-  2:{ right; exists (cls_reason (List.length (rd_params R)) gs1 T).
-      intros g H; inversion H as [g' Hg' | i W g' _ HT _ _]; subst; [ exact (Hn _ Hg') |].
-      exact (HnT _ HT). }
-  destruct (nbe_ty_impl Θ Ξ _ T (typ_nbe_ty_order _ _ _ _ _ HT)) as [W HW].
-  destruct (cls_arg_dec (rd_nu R) (List.length (rd_params R)) gs1 (nf_to_exp W)) as [[g Hg] | HnW].
-  - left; exists g; eapply cls_in_nf; eassumption.
-  - right; exists (cls_reason (List.length (rd_params R)) gs1 (nf_to_exp W)).
-    intros g H; inversion H as [g' Hg' | i' W' g' _ _ HW' Hg']; subst; [ exact (Hn _ Hg') |].
-    pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-; exact (HnW _ Hg').
-Defined.
-
-Definition cls_args_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (R : raw_decl) :
-  forall (args : list (string * exp)) (args1 : list (string * exp)) (gs1 : list carg),
-    ({gs | cls_args_in Θ Ξ R args1 gs1 args gs} + {e : (string * cls_why) | forall gs, ~ cls_args_in Θ Ξ R args1 gs1 args gs})%type.
-Proof.
-  fix go 1; intros [| [y T] args] args1 gs1.
-  - left; exists nil; constructor.
-  - destruct (cls_arg_in_dec Θ Ξ HΞ R args1 gs1 T) as [[g Hg] | [r Hg]].
-    + destruct (go args (args1 ++ (y, T) :: nil) (gs1 ++ g :: nil)) as [[gs Hgs] | [e He]].
-      * left; exists (g :: gs); constructor; assumption.
-      * right; exists e; intros gs' H; inversion H; subst.
-        match goal with Hg' : cls_arg_in _ _ _ _ _ _ ?g' |- _ => pose proof (cls_arg_in_functional _ _ _ _ _ _ _ _ Hg Hg') as <- end.
-        eapply He; eassumption.
-    + right; exists (y, r); intros gs' H; inversion H; subst; eapply Hg; eassumption.
-Defined.
-
-Definition cls_cons_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (R : raw_decl) :
-  ({cs | cls_cons_in Θ Ξ R cs} + {e : (string * string * cls_why) | forall cs, ~ cls_cons_in Θ Ξ R cs})%type.
-Proof.
-  unfold cls_cons_in; generalize (rd_cons R); fix go 1; intros [| [c args] rcs].
-  - left; exists nil; constructor.
-  - destruct (cls_args_in_dec Θ Ξ HΞ R args nil nil) as [[gs Hgs] | [[y sf] He]].
-    + destruct (go rcs) as [[cs Hcs] | [e He]].
-      * left; exists ((c, gs) :: cs); constructor; [ split; [ reflexivity | exact Hgs ] | exact Hcs ].
-      * right; exists e; intros cs' H; inversion H; subst; eapply He; eassumption.
-    + right; exists (c, y, sf); intros cs' H; inversion H as [| ? [c' gs'] ? ? [_ Hc]]; subst; eapply He; exact Hc.
-Defined.
-
-(** ** The Classification Crosses [gds_equiv] *)
-
-Lemma gds_equiv_lookup : forall Θ Θ' fp, gds_equiv Θ Θ' -> gds_lookup Θ fp = gds_lookup Θ' fp.
-Proof.
-  intros * [H1 H2]; destruct (gds_lookup Θ fp) as [U |] eqn:E.
-  - symmetry; exact (H1 _ _ E).
-  - destruct (gds_lookup Θ' fp) as [U |] eqn:E'; [| reflexivity ].
-    rewrite (H2 _ _ E') in E; discriminate.
-Qed.
-
-Lemma gds_equiv_resolve : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> gc_resolve Θ Ξ p = gc_resolve Θ' Ξ p.
-Proof. intros * He; unfold gc_resolve, gc_resolve_u; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
-
-Lemma gds_equiv_module : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> gc_module Θ Ξ p = gc_module Θ' Ξ p.
-Proof. intros * He; unfold gc_module, gc_module_u; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
-
-Lemma gds_equiv_body : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> gc_body Θ Ξ p = gc_body Θ' Ξ p.
-Proof. intros * He; unfold gc_body; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
-
-(** What module expressions denote reads the dependencies through their
-    lookups alone ([gc_unit], [ds_mod]). *)
-Lemma gds_equiv_mdenote_all : forall Θ Θ' Ξ, gds_equiv Θ Θ' ->
-    (forall Γ H R, mdenote Θ Ξ Γ H R -> mdenote Θ' Ξ Γ H R) /\
-    (forall Γ o U R, udenote Θ Ξ Γ o U R -> udenote Θ' Ξ Γ o U R) /\
-    (forall Γ o E R, edenote Θ Ξ Γ o E R -> edenote Θ' Ξ Γ o E R) /\
-    (forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> body_xp Θ' Ξ Γ Φ Φx) /\
-    (forall g Γ H its gs, items_gen Θ Ξ g Γ H its gs -> items_gen Θ' Ξ g Γ H its gs).
-Proof.
-  intros * He.
-  assert (Hu : forall H, gc_unit Θ Ξ H = gc_unit Θ' Ξ H).
-  { intros H; unfold gc_unit; destruct (mod_qname H) as [mp |]; [| reflexivity ].
-    rewrite (gds_equiv_lookup _ _ (q_unit mp) He); reflexivity. }
-  assert (Hd : forall R, ds_mod Θ Ξ R = ds_mod Θ' Ξ R)
-    by (intros [] ; cbn [ds_mod]; try reflexivity; rewrite (gds_equiv_body _ _ _ _ He); reflexivity).
-  apply mdenote_all_ind; intros; rewrite ?Hu, ?Hd in *; econstructor; eauto.
-Qed.
-
-Corollary gds_equiv_mdenote : forall Θ Θ' Ξ Γ H R, gds_equiv Θ Θ' -> mdenote Θ Ξ Γ H R -> mdenote Θ' Ξ Γ H R.
-Proof. intros * He; exact (proj1 (gds_equiv_mdenote_all _ _ _ He) _ _ _). Qed.
-
-Lemma gds_equiv_ind_alias : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> ind_alias_lookup Θ Ξ p = ind_alias_lookup Θ' Ξ p.
-Proof. intros * He; unfold ind_alias_lookup, ind_alias_lookup_u; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
-
-Lemma gds_equiv_ind_target : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> ind_target Θ Ξ p = ind_target Θ' Ξ p.
-Proof.
-  intros * He; rewrite ind_target_unfold, ind_lookup_unfold, (gds_equiv_module _ _ _ _ He), (gds_equiv_ind_alias _ _ _ _ He); reflexivity.
-Qed.
-
-Lemma equiv_cls_arg_in : forall Θ Θ' Ξ R args1 gs1 T g,
-    gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ -> cls_arg_in Θ Ξ R args1 gs1 T g -> cls_arg_in Θ' Ξ R args1 gs1 T g.
-Proof.
-  intros * He HΞ H; destruct H as [g Hg | i W g Hn HT HW Hg]; [ apply cls_in_syn; exact Hg |].
-  eapply cls_in_nf; [ exact Hn | exact (equiv_exp _ _ _ _ _ _ He HΞ HT) | | exact Hg ].
-  eapply nbe_ty_ext; [ | | | | | | exact HW ]; intros;
-    [ apply gds_equiv_resolve | apply gds_equiv_module | rewrite ind_lookup_unfold, (gds_equiv_module _ _ _ _ He); reflexivity
-    | apply gds_equiv_ind_alias | reflexivity | apply gds_equiv_body ]; exact He.
-Qed.
-
-Lemma equiv_cls_cons_in : forall Θ Θ' Ξ R cs,
-    gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ -> cls_cons_in Θ Ξ R cs -> cls_cons_in Θ' Ξ R cs.
-Proof.
-  intros * He HΞ; unfold cls_cons_in; apply Forall2_impl; intros rc c [Hf Hc]; split; [ exact Hf |].
-  revert Hc; generalize (@nil (string * exp)) at 1 2 as args1; generalize (@nil carg) at 1 2 as gs1.
-  intros gs1 args1 Hc; induction Hc; constructor; [ eapply equiv_cls_arg_in; eassumption | assumption ].
-Qed.
+(** A group with some rank passes the check. *)
+Theorem rank_check_complete : forall Θ Ξ D, decls_typed Θ Ξ -> (exists rk, view_rank_ok Θ Ξ D rk) -> rank_check Θ Ξ D = true.
+Proof. intros * HDs [rk Hrk]; exact (rank_check_complete_at Θ Ξ D rk HDs Hrk). Qed.

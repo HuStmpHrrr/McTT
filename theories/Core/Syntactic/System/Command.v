@@ -528,6 +528,223 @@ Inductive ind_entries_run (Θ : gdeps) (pv : bool) (pq : qname) (D : ind_decl) :
     ind_entries_run Θ pv pq D (S k) xs (gs_add x (ge_ind pv pq k D (gen_body pq D k M)) Ξ) Ξ' ->
     ind_entries_run Θ pv pq D k (x :: xs) Ξ Ξ'.
 
+(** ** The Views' Instances with the Members as Variables
+
+    [wf_gentry_ind_nil] checks a group's views at their instances with the
+    members as variables, [IsS], linked to the filed instances [Is] by
+    [Is = map (fun I => I[grp_sb mp D]) (IsS k)].  The link does not
+    determine [IsS]: [grp_sb] is not injective ([Self_0] and the type
+    former of the member [0] at the uniform parameters have one image), and
+    no lemma rules out a typed [IsS] that mentions the group being
+    declared, which is not filed yet.  So the command fixes [IsS]: the
+    filed instances with each type former of a declared member at the
+    uniform parameters read back as that member's variable
+    ([exp_self_form]), and checks the group at it ([ind_nil_at]), which
+    gives the entry ([ind_nil_at_entry]). *)
+
+(** [self_var pq D d M]: the variable [Self_j], [d] binders above the
+    [Self]s, if [M] is the type former of the declared member [j] of the
+    group at [pq] at the uniform parameters, [d] binders above them. *)
+Definition self_var (pq : qname) (D : ind_decl) (d : nat) (M : exp) : option nat :=
+  match app_head M with
+  | a_ind pq' j =>
+      if qname_eq_dec pq' pq then
+        if (j <? ind_ndecl D) && (if list_eq_dec exp_eq_dec (app_args M) (vars_from d (ind_nu D)) then true else false)
+        then Some (d + (ind_ndecl D - 1 - j))
+        else None
+      else None
+  | _ => None
+  end.
+
+(** [exp_self_form pq D d M]: [M], [d] binders above the uniform
+    parameters of the group [D] at [pq], with each type former of a
+    declared member at the uniform parameters the member's variable
+    ([self_var]), and every other variable of the uniform parameters moved
+    past the [Self]s, which [grp_sctx D] puts inside them.  The instances
+    are normal forms, which have no [let] and no module literal; those are
+    left as they are. *)
+Fixpoint exp_self_form (pq : qname) (D : ind_decl) (d : nat) (M : exp) {struct M} : exp :=
+  match self_var pq D d M with
+  | Some x => a_var x
+  | None =>
+      match M with
+      | a_univ M' => a_univ (exp_self_form pq D d M')
+      | a_succl M' => a_succl (exp_self_form pq D d M')
+      | a_maxl M1 M2 => a_maxl (exp_self_form pq D d M1) (exp_self_form pq D d M2)
+      | a_exfalso A M' => a_exfalso (exp_self_form pq D (S d) A) (exp_self_form pq D d M')
+      | a_elim oq Us m Bks M' =>
+          a_elim oq (List.map (exp_self_form pq D d) Us) m
+            ((fix blocks_self_form (Bks : list eblock) : list eblock :=
+                match Bks with
+                | nil => nil
+                | eb_mk nm oZ A Bs :: Bks' =>
+                    eb_mk nm (match oZ with Some Z => Some (exp_self_form pq D (nm - 1 + d) Z) | None => None end)
+                      (exp_self_form pq D (nm + d) A)
+                      (List.map (fun b => (fst b, exp_self_form pq D (snd (fst b) + d) (snd b))) Bs)
+                    :: blocks_self_form Bks'
+                end) Bks)
+            (exp_self_form pq D d M')
+      | a_pi A B => a_pi (exp_self_form pq D d A) (exp_self_form pq D (S d) B)
+      | a_fn A M' => a_fn (exp_self_form pq D d A) (exp_self_form pq D (S d) M')
+      | a_app M1 M2 => a_app (exp_self_form pq D d M1) (exp_self_form pq D d M2)
+      | a_var x => a_var (if x <? d then x else x + ind_ndecl D)
+      | a_mem H x => a_mem (modexp_self_form pq D d H) x
+      | _ => M
+      end
+  end
+(** [exp_self_form] on module expressions: the module variables moved past
+    the [Self]s, the arguments read back. *)
+with modexp_self_form (pq : qname) (D : ind_decl) (d : nat) (H : modexp) {struct H} : modexp :=
+  match H with
+  | me_var x => me_var (if x <? d then x else x + ind_ndecl D)
+  | me_mem H' y => me_mem (modexp_self_form pq D d H') y
+  | me_app H' N => me_app (modexp_self_form pq D d H') (exp_self_form pq D d N)
+  | _ => H
+  end.
+
+(** The views' instances with the members as variables: at a view, its
+    filed instance read back ([exp_self_form]). *)
+Definition grp_self_insts (pq : qname) (D : ind_decl) (k : nat) : list exp :=
+  match ind_member D k with
+  | Some Mk =>
+      match im_head Mk with
+      | mh_view _ _ Is _ => List.map (exp_self_form pq D 0) Is
+      | mh_decl _ => nil
+      end
+  | None => nil
+  end.
+
+(** The premises of [wf_gentry_ind_nil], at the views' instances with the
+    members as variables [IsS] given, rather than any: the command checks
+    the group at the instances it reads back ([grp_self_insts]). *)
+Inductive ind_nil_at (Θ : gdeps) (Ξ : gstack) (mp : qname) (D : ind_decl) (IsS : nat -> list exp) : Prop :=
+(** The only rule: the premises of [wf_gentry_ind_nil], [IsS] fixed *)
+| mk_ind_nil_at : forall Δ M0 i n,
+    ind_uparams D = Δ ++ gs_tele Ξ ->
+    tele_ass (ind_uparams D) ->
+    decl_mvc D ->
+    List.length (gs_tele Ξ) <= ind_nu D ->
+    ⊢ Θ ⍮ Ξ ⍮ ind_uparams D ->
+    ind_order_ok D ->
+    ind_member D 0 = Some M0 ->
+    im_head M0 = mh_decl mp ->
+    ind_sort_univ (ind_sort D) ->
+    Θ ⍮ Ξ ⍮ ind_uparams D ⊢ ind_sort D : Typeω@i ->
+    Θ ⍮ Ξ ⍮ ind_uparams D ⊢ ind_sort_lvl (ind_sort D) : Level@n ->
+    (forall k Mk, ind_member D k = Some Mk -> tele_ass (im_nparams Mk)) ->
+    (forall k Mk, ind_member D k = Some Mk -> List.NoDup (List.map fst (im_cons Mk))) ->
+    (forall k Mk Δ1 T Δ2, ind_member D k = Some Mk -> im_nparams Mk = Δ1 ++ ce_ass T :: Δ2 ->
+       Θ ⍮ Ξ ⍮ Δ2 ++ ind_uparams D ⊢ T : (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ) ->
+    (forall k Mk c gs gs1 A gs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> gs = gs1 ++ ca_arg A :: gs2 ->
+       Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ im_params D Mk
+         ⊢ A : (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + im_nn Mk)]ʷ) ->
+    (forall k Mk c gs gs1 t gs2 Bs1 B Bs2, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) ->
+       gs = gs1 ++ ca_rec t :: gs2 -> ptyp_doms t = Bs1 ++ B :: Bs2 ->
+       Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ im_params D Mk
+         ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + im_nn Mk)]ʷ) ->
+    (forall k Mk c gs, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) -> cargs_plen D gs) ->
+    (forall k Mk c gs gs1 t gs2 Mj j P T, ind_member D k = Some Mk -> In (c, gs) (im_cons Mk) ->
+       gs = gs1 ++ ca_rec t :: gs2 -> ind_member D (ptyp_mem t) = Some Mj ->
+       nth_error (ptyp_ps t) j = Some P ->
+       nth_error (tele_insts (im_nparams Mj)
+                    (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + im_nn Mk))) (ptyp_ps t)) j
+         = Some T ->
+       Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ im_params D Mk ⊢ P : T) ->
+    (** the views *)
+    (forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       exists D' Mk', ind_lookup Θ Ξ qc = Some D' /\ ind_member D' k' = Some Mk' /\ k' < ind_ndecl D' /\
+         List.length Is = ind_nu D' /\ List.length vm = List.length (ind_members D') /\
+         List.nth_error vm k' = Some k /\
+         List.map fst (im_cons Mk) = List.map fst (im_cons Mk') /\
+         (forall c gs' gs, ind_con Mk' c = Some gs' -> ind_con Mk c = Some gs -> cargs_corr vm gs' gs)) ->
+    (** each view's instance [Is] is [IsS] with the members as variables *)
+    (forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       Is = List.map (fun I => I[grp_sb mp D]) (IsS k)) ->
+    (forall k Mk qc k' Is vm D' j I T, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       ind_lookup Θ Ξ qc = Some D' -> nth_error (IsS k) j = Some I ->
+       nth_error (tele_insts (ind_uparams D') Id (IsS k)) j = Some T ->
+       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ I : T) ->
+    (forall k Mk qc k' Is vm D' i' Mi' v pm', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_decl pm' ->
+       nth_error vm i' = Some v ->
+       exists Mv vm', ind_member D v = Some Mv /\ im_head Mv = mh_view qc i' Is vm') ->
+    (forall k Mk qc k' Is vm D' i' Mi' v q'' k'' Is'' vm'', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_view q'' k'' Is'' vm'' ->
+       nth_error vm i' = Some v ->
+       exists Mv X vm', ind_member D v = Some Mv /\ im_head Mv = mh_view q'' k'' X vm' /\
+         List.length X = List.length Is'') ->
+    (forall k Mk qc k' Is vm D' i' Mi' v q'' k'' Is'' vm'' D'' Mv X vm' j' C C' T,
+       ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> im_head Mi' = mh_view q'' k'' Is'' vm'' ->
+       ind_lookup Θ Ξ q'' = Some D'' ->
+       nth_error vm i' = Some v -> ind_member D v = Some Mv -> im_head Mv = mh_view q'' k'' X vm' ->
+       nth_error (IsS v) j' = Some C ->
+       nth_error (List.map (fun I => I[sb_of_list Id (IsS k)]) Is'') j' = Some C' ->
+       nth_error (tele_insts (ind_uparams D'') Id Is'') j' = Some T ->
+       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ C ≈ C' : T[sb_of_list Id (IsS k)]) ->
+    (** the view equations *)
+    (forall k Mk qc k' Is vm D' i' Mi' v Mv, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
+       ind_member D v = Some Mv ->
+       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ˣ tele_wk (im_nparams Mv) (self_wk D 0) ≈ tele_sub (im_nparams Mi') (sb_of_list Id (IsS k))) ->
+    (forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
+       ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
+       Θ ⍮ Ξ ⍮ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+         ⊢ˣ tele_sub (cargs_ctx qc D' Mi' gs') (sb_qn (im_nn Mv) (sb_of_list Id (IsS k))) ≈ scargs_ctx D IsS Mv gs) ->
+    (forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 d,
+       ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
+       ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
+       gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 -> List.length gs1' = List.length gs1 ->
+       d < ptyp_depth t ->
+       Θ ⍮ Ξ ⍮ tele_wk (sh_ctx (cargs_pat gs1) (List.firstn d (ptyp_doms t))) (self_wk D (List.length gs1 + im_nn Mv))
+                 ++ scargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+         ⊢ (ptyp_dom_at (cargs_pat gs1') d t')[sb_qn (d + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
+         ≈ (ptyp_dom_at (cargs_pat gs1) d t)[self_wk D (d + List.length gs1 + im_nn Mv)]ʷ : Typeω@i) ->
+    (forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 Mj j P' P T,
+       ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
+       ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
+       gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 -> List.length gs1' = List.length gs1 ->
+       ind_member D (ptyp_mem t) = Some Mj ->
+       nth_error (ptyp_ps_at (cargs_pat gs1') t') j = Some P' -> nth_error (ptyp_ps_at (cargs_pat gs1) t) j = Some P ->
+       nth_error (tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D (im_nn Mv) (ptyp_depth t + List.length gs1)))
+                    (ptyp_ps_at (cargs_pat gs1) t)) j = Some T ->
+       Θ ⍮ Ξ ⍮ tele_wk (sh_ctx (cargs_pat gs1) (ptyp_doms t)) (self_wk D (List.length gs1 + im_nn Mv))
+                 ++ scargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+         ⊢ P'[sb_qn (ptyp_depth t + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
+         : T[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ) ->
+    (forall k Mk qc k' Is vm D' i' Mi' v Mv c gs' gs gs1' t' gs2' gs1 t gs2 Mj j P' P T,
+       ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       ind_lookup Θ Ξ qc = Some D' -> ind_member D' i' = Some Mi' -> nth_error vm i' = Some v ->
+       ind_member D v = Some Mv -> ind_con Mi' c = Some gs' -> ind_con Mv c = Some gs ->
+       gs' = gs1' ++ ca_rec t' :: gs2' -> gs = gs1 ++ ca_rec t :: gs2 -> List.length gs1' = List.length gs1 ->
+       ind_member D (ptyp_mem t) = Some Mj ->
+       nth_error (ptyp_ps_at (cargs_pat gs1') t') j = Some P' -> nth_error (ptyp_ps_at (cargs_pat gs1) t) j = Some P ->
+       nth_error (tele_insts (im_nparams Mj) (sb_of_list Id (ind_uvars D (im_nn Mv) (ptyp_depth t + List.length gs1)))
+                    (ptyp_ps_at (cargs_pat gs1) t)) j = Some T ->
+       Θ ⍮ Ξ ⍮ tele_wk (sh_ctx (cargs_pat gs1) (ptyp_doms t)) (self_wk D (List.length gs1 + im_nn Mv))
+                 ++ scargs_ctx D IsS Mv gs1 ++ tele_wk (im_nparams Mv) (self_wk D 0) ++ grp_sctx D
+         ⊢ P'[sb_qn (ptyp_depth t + List.length gs1 + im_nn Mv) (sb_of_list Id (IsS k))]
+         ≈ P[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ
+         : T[self_wk D (ptyp_depth t + List.length gs1 + im_nn Mv)]ʷ) ->
+    (forall k Mk qc k' Is vm D', ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       ind_lookup Θ Ξ qc = Some D' ->
+       Θ ⍮ Ξ ⍮ grp_sctx D ⊢ (ind_sort D')[sb_of_list Id (IsS k)] ⊆ (ind_sort D)[self_wk D 0]ʷ) ->
+    (** the views' nesting is well founded *)
+    (exists rk, view_rank_ok Θ Ξ D rk) ->
+    (** each view's members are those of the container's group *)
+    (forall k Mk qc k' Is vm, ind_member D k = Some Mk -> im_head Mk = mh_view qc k' Is vm ->
+       exists D', ind_lookup Θ Ξ qc = Some D' /\ vwrap_ok D D' vm) ->
+    (** the views agree on their maps *)
+    view_maps_coherent Θ Ξ D ->
+    ind_nil_at Θ Ξ mp D IsS.
+
+(** The group checked at the instances [IsS] is a well-formed entry. *)
+Lemma ind_nil_at_entry : forall Θ Ξ mp D IsS, ind_nil_at Θ Ξ mp D IsS -> forall pv, Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv mp 0 D ⋄.
+Proof. intros * [] pv; eapply wf_gentry_ind_nil; eassumption. Qed.
+
 (** ** Mutual Definitions
 
     [mutual def (Δ) f (ys) (z : Z) : A | … with … end]: one function per
@@ -751,9 +968,10 @@ Section Semantics.
       declared members classified ([rm_cls]); the views, found from the
       instances met ([views_bfs]), each with its siblings, its
       constructors classified and its non-uniform parameters filed
-      ([view_nps]); the group filed ([rd_filed]), and an entry
-      per declared member, each with its module's generated body, checked
-      where it is filed. *)
+      ([view_nps]); the group filed ([rd_filed]) and checked at its
+      views' instances read back ([ind_nil_at], [grp_self_insts]), and an
+      entry per declared member, each with its module's generated body,
+      checked where it is filed. *)
   | rc_ind : forall ch B Rb Θ Ξ pv R Mr0 Mrs csD Vs Ss csV Nvs D Ξ',
       rd_members R = Mr0 :: Mrs ->
       Forall (fun Mr => rm_sort Mr = rm_sort Mr0) Mrs ->
@@ -763,6 +981,7 @@ Section Semantics.
       Forall2 (view_nps Θ Ξ R) Vs Nvs ->
       views_bfs (sibs_tbl Vs Ss) (meets_tbl Vs csV) nil (List.concat (List.map rcons_views csD)) Vs ->
       rd_filed Θ Ξ R Vs Ss csD csV Nvs = Some D ->
+      ind_nil_at Θ Ξ (ind_qname Ξ (rm_name Mr0)) D (grp_self_insts (ind_qname Ξ (rm_name Mr0)) D) ->
       ind_entries_run Θ pv (ind_qname Ξ (rm_name Mr0)) D 0 (List.map rm_name (rd_members R)) Ξ Ξ' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_ind pv R ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
   (** A mutual definition: the group and its uniform parameters read off
@@ -1759,7 +1978,7 @@ Section WellFormed.
       intros * _ _ Hg HΞ Hc Hst.
       repeat split; [ exact (gens_run_wf _ _ _ _ Hg HΞ) | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
     - (* a group: its entries, each checked where it is filed *)
-      intros * _ _ _ _ _ _ _ _ He HΞ Hc Hst.
+      intros * _ _ _ _ _ _ _ _ _ He HΞ Hc Hst.
       repeat split; [ exact (ind_entries_run_wf _ _ _ _ _ _ _ _ He HΞ) | exact (proj1 Hc) | exact (proj2 Hc)
                     | apply gds_sub_refl | apply bt_le_refl ].
     - (* a mutual definition: its definitions, each checked as a definition is *)
@@ -1913,7 +2132,7 @@ Section WellFormed.
         eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub' | eassumption ] | exact HbU ].
     - intros * _ _ Hg HΞ _ _ Hb HR; split; [| exact HR ].
       revert Hb; apply builtins_wf_mono; intros; eapply gens_run_ind_lookup; eassumption.
-    - intros * _ _ _ _ _ _ _ _ He HΞ _ _ Hb HR; split; [| exact HR ].
+    - intros * _ _ _ _ _ _ _ _ _ He HΞ _ _ Hb HR; split; [| exact HR ].
       revert Hb; apply builtins_wf_mono; intros; eapply ind_entries_run_ind_lookup; eassumption.
     - intros * _ _ _ _ _ _ _ _ _ Hd HΞ _ _ Hb HR; split; [| exact HR ].
       revert Hb; apply builtins_wf_mono; intros; eapply mdefs_run_ind_lookup; eassumption.

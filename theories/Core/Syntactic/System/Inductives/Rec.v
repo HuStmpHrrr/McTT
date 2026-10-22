@@ -748,7 +748,8 @@ Section EntriesRun.
 End EntriesRun.
 
 (** So a declaration whose members classify, whose views are found and
-    classified, and whose group is well formed where it is declared, is
+    classified, and whose group is well formed where it is declared, at
+    its views' instances read back ([ind_nil_at]), is
     run: each declared member's entry, with its generated members, is
     filed after the ones before it.  The generated names are the
     constructors' and [rec], which the declaration's own names must leave
@@ -765,11 +766,12 @@ Corollary rc_ind_runs : forall load_path read to_core ch B Rb Θ Ξ pv R Mr0 Mrs
     rd_filed Θ Ξ R Vs Ss csD csV Nvs = Some D ->
     List.NoDup (List.map rm_name (rd_members R)) ->
     Forall (fun Mr => gs_fresh (rm_name Mr) Ξ) (rd_members R) ->
-    Θ ⍮ Ξ ⍮ ind_qname Ξ (rm_name Mr0) ⊢ᵉ ge_ind pv (ind_qname Ξ (rm_name Mr0)) 0 D ⋄ ->
+    ind_nil_at Θ Ξ (ind_qname Ξ (rm_name Mr0)) D (grp_self_insts (ind_qname Ξ (rm_name Mr0)) D) ->
     (forall M, ind_member D 0 = Some M -> ind_has_rec D = true -> ~ In "rec"%string (List.map fst (im_cons M))) ->
     exists Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_ind pv R ⇝ Θ' ⍮ Ξ' ⍮ B ⍮ Rb.
 Proof.
-  intros * HΞ HR Hsort Hcls Hsibs Hvcls Hvnps Hbfs Hfil Hnd Hfr HE Hrec.
+  intros * HΞ HR Hsort Hcls Hsibs Hvcls Hvnps Hbfs Hfil Hnd Hfr Hnil Hrec.
+  pose proof (ind_nil_at_entry _ _ _ _ _ Hnil pv) as HE.
   destruct (rd_filed_decl _ _ _ _ _ _ _ _ _ Hfil) as [Hnde Hheads].
   destruct (Hheads 0 Mr0 ltac:(rewrite HR; reflexivity)) as (M0 & HM0 & Hh0).
   assert (Hfx0 : gs_fresh (rm_name Mr0) Ξ) by (rewrite HR in Hfr; inversion Hfr; assumption).
@@ -805,7 +807,8 @@ Proof.
     destruct (Hheads (S i) Mr ltac:(rewrite HR; exact HMr)) as (Mi & HMi & Hhi).
     exists Mi; split; [ exact HMi | exact Hhi ].
   - rewrite Hnde, HR, List.length_map; cbn; lia.
-  - do 2 eexists; eapply rc_ind; [ exact HR | exact Hsort | exact Hcls | exact Hsibs | exact Hvcls | exact Hvnps | exact Hbfs | exact Hfil |].
+  - do 2 eexists; eapply rc_ind; [ exact HR | exact Hsort | exact Hcls | exact Hsibs | exact Hvcls | exact Hvnps | exact Hbfs | exact Hfil
+                                 | exact Hnil |].
     rewrite HR; cbn [List.map]; unfold ind_qname; cbn [gs_path].
     econstructor; [ exact HM0 | exact Hf0 | exact HE0 | exact Hrun ].
 Qed.
