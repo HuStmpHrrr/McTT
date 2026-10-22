@@ -65,6 +65,23 @@ jobs:
           docker pull "${{ steps.image.outputs.ref }}" \
             || docker build -f .github/Dockerfile -t "${{ steps.image.outputs.ref }}" .
 
+      - name: Restore the Rocq build
+        # The Rocq build depends only on what is under theories/ and on the
+        # toolchain image, so it is cached under a key hashing exactly those.
+        # The key is computed here, on the fresh checkout, where theories/
+        # holds the tracked sources only.  On an exact hit the whole directory
+        # comes back as the run that saved it left it, sources and outputs
+        # with their timestamps, so make finds every target up to date and
+        # only the driver, the documentation and the tests run.  On a miss
+        # nothing is restored (no partial keys: older outputs could look newer
+        # than changed sources), and the full build saves the new entry.
+        uses: actions/cache@v4
+        with:
+          path: |
+            theories
+            driver/extracted
+          key: rocq-build-${{ env.IMAGE_TAG }}-${{ hashFiles('theories/**', '.github/Dockerfile') }}
+
       - name: Process main steps
         uses: coq-community/docker-coq-action@v1
         with:
