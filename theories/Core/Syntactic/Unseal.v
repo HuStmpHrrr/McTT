@@ -978,6 +978,13 @@ Proof.
   - cbn in Hc; congruence.
 Qed.
 
+(** The fill keeps a command's body, if it has one: a module's nested
+    commands are filled when they run. *)
+Lemma elim_fill_no_axioms : forall Θ Ξ c c', elim_fill_ok Θ Ξ c c' -> cmd_no_axioms c -> cmd_no_axioms c'.
+Proof.
+  intros Θ Ξ [x b pv A [M |] | x pv Δ cs | | | | | | | |] c' (rs & _ & <-) Hc; cbn in *; first [ exact I | exact Hc | discriminate ].
+Qed.
+
 Lemma in_gds_merge : forall Θ Θ' x,
     List.In x (gds_merge Θ Θ') -> List.In x Θ \/ List.In x Θ'.
 Proof.
@@ -1083,10 +1090,12 @@ Section Run.
     - assumption.
     - assumption.
     - assumption.
-    (* a command runs with its literals, which keeps it free of axioms *)
+    (* a command runs with its literals and its fill, which keep it free
+       of axioms *)
     - match goal with
-      | Hl : cmd_lits_ok _ _ _ _ _, Hc : cmds_no_axioms (_ :: _) |- _ =>
-          inversion Hc; subst; pose proof (cmd_lits_no_axioms _ _ _ Hl ltac:(assumption))
+      | Hl : cmd_lits_ok _ _ _ _ _, Hf : elim_fill_ok _ _ _ _, Hc : cmds_no_axioms (_ :: _) |- _ =>
+          inversion Hc; subst;
+          pose proof (elim_fill_no_axioms _ _ _ _ Hf (cmd_lits_no_axioms _ _ _ Hl ltac:(assumption)))
       end; eauto.
     (* a unit: its loads from nothing, then its body in its own frame *)
     - cbn in *; destruct_all.

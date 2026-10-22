@@ -283,6 +283,325 @@ Definition cmd_lits_ok (Θ : gdeps) (Ξ : gstack) (B : builtins) (c c' : ccmd) :
 Definition tele_lits_ok (Θ : gdeps) (Ξ : gstack) (B : builtins) (Δ Δ' : ctx) : Prop :=
   tele_lits (nat_view Θ Ξ B) Δ = lok Δ'.
 
+(** ** The Uniform Parameters of an Eliminator
+
+    An eliminator as written carries no group and no uniform parameters
+    ([a_elim None nil m Bks M]).  When a command runs, after its literals,
+    each such eliminator with an annotated binder gets them from the
+    annotation: block [0]'s, else block [m]'s ([elim_ann]).  The
+    annotation's head is resolved by what it denotes ([mdenote]), as any
+    member is: a member of a group of inductive types [ds_ind Θ' p k Ns],
+    or the type former [a_ind p k] itself.  The uniform parameters are the
+    first [ind_nu] of the arguments the head carries and the annotation
+    applies, strengthened past the block's binders ([site_resolves]).
+
+    The sites are found by a function ([exp_sites]), the filled term is
+    computed from their results in order ([exp_fill]), and only the results
+    come from a relation: the fill is functional as [mdenote] is.  An
+    eliminator with no annotated binder keeps no uniform parameters; its
+    typing then asks for none.  Terms inside module literals are not
+    visited. *)
+
+(** The annotation an eliminator's group and uniform parameters are read
+    off, block [0]'s, else block [m]'s, with the number of binders it is
+    under. *)
+Definition elim_ann (m : nat) (Bks : list eblock) : option (nat * exp) :=
+  match Bks with
+  | eb_mk nm (Some Z) _ _ :: _ => Some (nm - 1, Z)
+  | _ =>
+      match List.nth_error Bks m with
+      | Some (eb_mk nm (Some Z) _ _) => Some (nm - 1, Z)
+      | _ => None
+      end
+  end.
+
+(** Whether an eliminator is to be filled: as written, with an annotation. *)
+Definition elim_site (oq : option qname) (Us : list exp) (m : nat) (Bks : list eblock) : option (nat * exp) :=
+  match oq, Us with
+  | None, nil => elim_ann m Bks
+  | _, _ => None
+  end.
+
+(** A term binder in the context a site is resolved in.  The fill reads a
+    context only through [mdenote], which needs its module entries and the
+    depth of its binders: a term binder is a hole, whatever its type. *)
+Definition ce_hole : centry := ce_ass a_True.
+
+(** [n] term binders, as holes. *)
+Definition ctx_holes (n : nat) : ctx := List.repeat ce_hole n.
+
+(** A site: the context of the eliminator, the binders its annotation is
+    under, and the annotation. *)
+Definition fill_site : Set := (ctx * nat * exp)%type.
+
+(** The sites of a term in the context [Γ], in order: an eliminator's own
+    site, then those of its parts. *)
+Fixpoint exp_sites (Γ : ctx) (M : exp) {struct M} : list fill_site :=
+  match M with
+  | a_univ M1 | a_succl M1 => exp_sites Γ M1
+  | a_maxl M1 M2 | a_app M1 M2 => exp_sites Γ M1 ++ exp_sites Γ M2
+  | a_exfalso A M1 => exp_sites (ce_hole :: Γ) A ++ exp_sites Γ M1
+  | a_pi A B | a_fn A B => exp_sites Γ A ++ exp_sites (ce_hole :: Γ) B
+  | a_let (b_def oA M1) B =>
+      match oA with Some A => exp_sites Γ A | None => nil end ++ exp_sites Γ M1 ++ exp_sites (ce_hole :: Γ) B
+  | a_let (b_mod U) B => exp_sites (ce_mod U :: Γ) B
+  | a_elim oq Us m Bks M1 =>
+      match elim_site oq Us m Bks with Some (d, Z) => (Γ, d, Z) :: nil | None => nil end ++
+      (fix us_sites (Us : list exp) : list fill_site :=
+         match Us with nil => nil | U :: Us' => exp_sites Γ U ++ us_sites Us' end) Us ++
+      (fix blocks_sites (Bks : list eblock) : list fill_site :=
+         match Bks with
+         | nil => nil
+         | eb_mk nm oZ A Bs :: Bks' =>
+             match oZ with Some Z => exp_sites (ctx_holes (nm - 1) ++ Γ) Z | None => nil end ++
+             exp_sites (ctx_holes nm ++ Γ) A ++
+             (fix brs_sites (Bs : list (string * nat * exp)) : list fill_site :=
+                match Bs with nil => nil | b :: Bs' => exp_sites (ctx_holes (snd (fst b)) ++ Γ) (snd b) ++ brs_sites Bs' end) Bs ++
+             blocks_sites Bks'
+         end) Bks ++
+      exp_sites Γ M1
+  | _ => nil
+  end.
+
+(** The result of a site: the group, and the uniform parameters. *)
+Definition fill_result : Set := (qname * list exp)%type.
+
+(** A term filled from the results [rs] of its sites, in the order
+    [exp_sites] lists them, and the results left over. *)
+Fixpoint exp_fill (rs : list fill_result) (M : exp) {struct M} : (exp * list fill_result)%type :=
+  match M with
+  | a_univ M1 => let r := exp_fill rs M1 in (a_univ (fst r), snd r)
+  | a_succl M1 => let r := exp_fill rs M1 in (a_succl (fst r), snd r)
+  | a_maxl M1 M2 => let r1 := exp_fill rs M1 in let r2 := exp_fill (snd r1) M2 in (a_maxl (fst r1) (fst r2), snd r2)
+  | a_app M1 M2 => let r1 := exp_fill rs M1 in let r2 := exp_fill (snd r1) M2 in (a_app (fst r1) (fst r2), snd r2)
+  | a_exfalso A M1 => let r1 := exp_fill rs A in let r2 := exp_fill (snd r1) M1 in (a_exfalso (fst r1) (fst r2), snd r2)
+  | a_pi A B => let r1 := exp_fill rs A in let r2 := exp_fill (snd r1) B in (a_pi (fst r1) (fst r2), snd r2)
+  | a_fn A B => let r1 := exp_fill rs A in let r2 := exp_fill (snd r1) B in (a_fn (fst r1) (fst r2), snd r2)
+  | a_let (b_def oA M1) B =>
+      let rA := match oA with Some A => let r := exp_fill rs A in (Some (fst r), snd r) | None => (None, rs) end in
+      let r1 := exp_fill (snd rA) M1 in
+      let r2 := exp_fill (snd r1) B in
+      (a_let (b_def (fst rA) (fst r1)) (fst r2), snd r2)
+  | a_let (b_mod U) B => let r := exp_fill rs B in (a_let (b_mod U) (fst r), snd r)
+  | a_elim oq Us m Bks M1 =>
+      let '(oq', Us', rs0) :=
+        match elim_site oq Us m Bks, rs with
+        | Some _, (p, Us1) :: rs' => (Some p, Us1, rs')
+        | _, _ =>
+            (oq, Us, rs)
+        end in
+      let rU := (fix us_fill (rs : list fill_result) (Us : list exp) : (list exp * list fill_result)%type :=
+                   match Us with
+                   | nil => (nil, rs)
+                   | U :: Us0 => let r := exp_fill rs U in let r0 := us_fill (snd r) Us0 in (fst r :: fst r0, snd r0)
+                   end) rs0 Us in
+      let rB := (fix blocks_fill (rs : list fill_result) (Bks : list eblock) : (list eblock * list fill_result)%type :=
+                   match Bks with
+                   | nil => (nil, rs)
+                   | eb_mk nm oZ A Bs :: Bks0 =>
+                       let rZ := match oZ with Some Z => let r := exp_fill rs Z in (Some (fst r), snd r) | None => (None, rs) end in
+                       let rA := exp_fill (snd rZ) A in
+                       let rBs := (fix brs_fill (rs : list fill_result) (Bs : list (string * nat * exp)) :
+                                     (list (string * nat * exp) * list fill_result)%type :=
+                                     match Bs with
+                                     | nil => (nil, rs)
+                                     | b :: Bs0 => let r := exp_fill rs (snd b) in let r0 := brs_fill (snd r) Bs0 in
+                                                   ((fst b, fst r) :: fst r0, snd r0)
+                                     end) (snd rA) Bs in
+                       let r0 := blocks_fill (snd rBs) Bks0 in
+                       (eb_mk nm (fst rZ) (fst rA) (fst rBs) :: fst r0, snd r0)
+                   end) (snd rU) Bks in
+      let rM := exp_fill (snd rB) M1 in
+      (a_elim oq' (match elim_site oq Us m Bks with Some _ => Us' | None => fst rU end) m (fst rB) (fst rM), snd rM)
+  | _ => (M, rs)
+  end.
+
+(** The sites of a telescope, each entry in the context of those after it
+    over [Γ], innermost entry first. *)
+Fixpoint tele_sites (Γ : ctx) (Δ : ctx) : list fill_site :=
+  match Δ with
+  | nil => nil
+  | e :: Δ' =>
+      match e with
+      | ce_ass A => exp_sites (Δ' ++ Γ) A
+      | ce_def A M => exp_sites (Δ' ++ Γ) A ++ exp_sites (Δ' ++ Γ) M
+      | ce_mod _ => nil
+      end ++ tele_sites Γ Δ'
+  end.
+
+(** A telescope filled, in the order [tele_sites] lists its sites. *)
+Fixpoint tele_fill (rs : list fill_result) (Δ : ctx) : (ctx * list fill_result)%type :=
+  match Δ with
+  | nil => (nil, rs)
+  | e :: Δ' =>
+      let re := match e with
+                | ce_ass A => let r := exp_fill rs A in (ce_ass (fst r), snd r)
+                | ce_def A M => let r1 := exp_fill rs A in let r2 := exp_fill (snd r1) M in (ce_def (fst r1) (fst r2), snd r2)
+                | ce_mod U => (ce_mod U, rs)
+                end in
+      let r := tele_fill (snd re) Δ' in
+      (fst re :: fst r, snd r)
+  end.
+
+(** A list of terms, each in its own context ([Γs]), and its fill. *)
+Fixpoint list_sites (Γs : list ctx) (Ms : list exp) : list fill_site :=
+  match Γs, Ms with
+  | Γ :: Γs', M :: Ms' => exp_sites Γ M ++ list_sites Γs' Ms'
+  | _, _ => nil
+  end.
+
+(** A list of terms filled, in order, threading the results. *)
+Fixpoint list_fill (rs : list fill_result) (Ms : list exp) : (list exp * list fill_result)%type :=
+  match Ms with
+  | nil => (nil, rs)
+  | M :: Ms' => let r := exp_fill rs M in let r' := list_fill (snd r) Ms' in (fst r :: fst r', snd r')
+  end.
+
+(** The sites of a declared member as written: its non-uniform
+    parameters, over the uniform ones and the frames'; its sort, over
+    them; each constructor argument, over those before it, the member's
+    parameters and the [Self]s, then the frames' (as term binders: a
+    declaration's telescopes have no module slot). *)
+Definition member_sites (Ξ : gstack) (R : raw_decl) (Mr : raw_member) : list fill_site :=
+  tele_sites (rd_uparams R ++ gs_tele Ξ) (rm_nparams Mr) ++
+  exp_sites (rm_nparams Mr ++ rd_uparams R ++ gs_tele Ξ) (rm_sort Mr) ++
+  List.concat (List.map (fun cg =>
+    list_sites (List.map (fun j => ctx_holes (j + List.length (rm_nparams Mr) + List.length (rd_uparams R)
+                                              + List.length (rd_members R)) ++ gs_tele Ξ) (List.seq 0 (List.length (snd cg))))
+      (List.map snd (snd cg))) (rm_cons Mr)).
+
+(** A declared member filled. *)
+Definition member_fill (rs : list fill_result) (Mr : raw_member) : (raw_member * list fill_result)%type :=
+  let rN := tele_fill rs (rm_nparams Mr) in
+  let rS := exp_fill (snd rN) (rm_sort Mr) in
+  let rC := (fix cons_fill (rs : list fill_result) (cs : list (string * list (string * exp))) :
+               (list (string * list (string * exp)) * list fill_result)%type :=
+               match cs with
+               | nil => (nil, rs)
+               | cg :: cs' =>
+                   let ra := list_fill rs (List.map snd (snd cg)) in
+                   let r' := cons_fill (snd ra) cs' in
+                   ((fst cg, List.combine (List.map fst (snd cg)) (fst ra)) :: fst r', snd r')
+               end) (snd rS) (rm_cons Mr) in
+  (mk_rmem (rm_name Mr) (fst rN) (fst rS) (fst rC), snd rC).
+
+(** The sites of a function of a [mutual def] as written: its non-uniform
+    parameters over [Δ] and the frames', its scrutinee's type over them,
+    its result type over the scrutinee, and each clause over the variables
+    it binds. *)
+Definition fun_sites (Ξ : gstack) (Δ : ctx) (f : raw_fun) : list fill_site :=
+  tele_sites (Δ ++ gs_tele Ξ) (rf_nparams f) ++
+  exp_sites (rf_nparams f ++ Δ ++ gs_tele Ξ) (rf_scrut f) ++
+  exp_sites (ce_hole :: rf_nparams f ++ Δ ++ gs_tele Ξ) (rf_res f) ++
+  List.concat (List.map (fun b => exp_sites (ctx_holes (snd (fst b)) ++ Δ ++ gs_tele Ξ) (snd b)) (rf_clauses f)).
+
+(** A function filled. *)
+Definition fun_fill (rs : list fill_result) (f : raw_fun) : (raw_fun * list fill_result)%type :=
+  let rN := tele_fill rs (rf_nparams f) in
+  let rZ := exp_fill (snd rN) (rf_scrut f) in
+  let rA := exp_fill (snd rZ) (rf_res f) in
+  let rC := (fix cl_fill (rs : list fill_result) (cl : list (string * nat * exp)) : (list (string * nat * exp) * list fill_result)%type :=
+               match cl with
+               | nil => (nil, rs)
+               | b :: cl' => let r := exp_fill rs (snd b) in let r' := cl_fill (snd r) cl' in ((fst b, fst r) :: fst r', snd r')
+               end) (snd rA) (rf_clauses f) in
+  (mk_rfun (rf_name f) (fst rN) (fst rZ) (fst rA) (fst rC), snd rC).
+
+(** The sites of a command's own terms, at the stack [Ξ]; a module's
+    nested commands are filled when they run. *)
+Definition cmd_sites (Ξ : gstack) (c : ccmd) : list fill_site :=
+  match c with
+  | cc_def _ _ _ A oM => exp_sites (gs_tele Ξ) A ++ match oM with Some M => exp_sites (gs_tele Ξ) M | None => nil end
+  | cc_mod _ _ Δ _ | cc_alias _ _ Δ _ | cc_ind_alias _ _ Δ _ => tele_sites (gs_tele Ξ) Δ
+  | cc_eval M oA => exp_sites (gs_tele Ξ) M ++ match oA with Some A => exp_sites (gs_tele Ξ) A | None => nil end
+  | cc_ind _ R => tele_sites (gs_tele Ξ) (rd_uparams R) ++ List.concat (List.map (member_sites Ξ R) (rd_members R))
+  | cc_mdef _ _ Δ fs => tele_sites (gs_tele Ξ) Δ ++ List.concat (List.map (fun_sites Ξ Δ) fs)
+  | cc_load _ | cc_open _ _ | cc_builtin _ _ => nil
+  end.
+
+(** A command filled from the results of its sites. *)
+Definition cmd_fill (rs : list fill_result) (c : ccmd) : ccmd :=
+  match c with
+  | cc_def x b pv A oM =>
+      let rA := exp_fill rs A in
+      cc_def x b pv (fst rA) match oM with Some M => Some (fst (exp_fill (snd rA) M)) | None => None end
+  | cc_mod x pv Δ cs => cc_mod x pv (fst (tele_fill rs Δ)) cs
+  | cc_alias x pv Δ E => cc_alias x pv (fst (tele_fill rs Δ)) E
+  | cc_ind_alias x pv Δ H => cc_ind_alias x pv (fst (tele_fill rs Δ)) H
+  | cc_eval M oA =>
+      let rM := exp_fill rs M in
+      cc_eval (fst rM) match oA with Some A => Some (fst (exp_fill (snd rM) A)) | None => None end
+  | cc_ind pv R =>
+      let rU := tele_fill rs (rd_uparams R) in
+      let rMs := (fix ms_fill (rs : list fill_result) (ms : list raw_member) : list raw_member :=
+                    match ms with
+                    | nil => nil
+                    | Mr :: ms' => let r := member_fill rs Mr in fst r :: ms_fill (snd r) ms'
+                    end) (snd rU) (rd_members R) in
+      cc_ind pv (mk_raw (fst rU) rMs)
+  | cc_mdef b pv Δ fs =>
+      let rD := tele_fill rs Δ in
+      let rFs := (fix fs_fill (rs : list fill_result) (fs : list raw_fun) : list raw_fun :=
+                    match fs with
+                    | nil => nil
+                    | f :: fs' => let r := fun_fill rs f in fst r :: fs_fill (snd r) fs'
+                    end) (snd rD) fs in
+      cc_mdef b pv (fst rD) rFs
+  | cc_load _ | cc_open _ _ | cc_builtin _ _ => c
+  end.
+
+(** The arguments a member's type former gets from a head that denotes
+    [ds_ind Θ' p k Ns] applied to [args]: [Ns] at the first [|Θ'|] of
+    them, then the rest. *)
+Definition head_args (Θ' : ctx) (Ns args : list exp) : list exp :=
+  List.map (fun N => N[sb_of_list Id (List.firstn (List.length Θ') args)]) Ns ++ List.skipn (List.length Θ') args.
+
+(** The result of a site: its annotation's head denotes a member of the
+    group at [p], or is the type former of one; the uniform parameters are
+    the first [ind_nu] arguments, strengthened past the [d] binders the
+    annotation is under. *)
+Inductive site_resolves (Θ : gdeps) (Ξ : gstack) : fill_site -> fill_result -> Prop :=
+(** A member, resolved as any member is *)
+| site_resolves_member : forall Γ d Z H x Θ' p k Ns D Us,
+    app_head Z = a_mem H x ->
+    mdenote Θ Ξ (ctx_holes d ++ Γ) (me_mem H x) (ds_ind Θ' p k Ns) ->
+    ind_lookup Θ Ξ p = Some D ->
+    img_pats (List.repeat true d) (List.firstn (ind_nu D) (head_args Θ' Ns (app_args Z))) = Some Us ->
+    site_resolves Θ Ξ (Γ, d, Z) (p, Us)
+(** The type former itself *)
+| site_resolves_former : forall Γ d Z p k D Us,
+    app_head Z = a_ind p k ->
+    ind_lookup Θ Ξ p = Some D ->
+    img_pats (List.repeat true d) (List.firstn (ind_nu D) (app_args Z)) = Some Us ->
+    site_resolves Θ Ξ (Γ, d, Z) (p, Us).
+
+(** A command filled: every site resolved, and the command computed from
+    the results. *)
+Definition elim_fill_ok (Θ : gdeps) (Ξ : gstack) (c c' : ccmd) : Prop :=
+  exists rs, Forall2 (site_resolves Θ Ξ) (cmd_sites Ξ c) rs /\ cmd_fill rs c = c'.
+
+(** Whether a command has terms of its own, which may have sites. *)
+Definition cmd_terms (c : ccmd) : bool :=
+  match c with
+  | cc_load _ | cc_open _ _ | cc_builtin _ _ => false
+  | _ => true
+  end.
+
+(** A command without terms of its own has no sites. *)
+Lemma cmd_sites_terms : forall Ξ c, cmd_terms c = false -> cmd_sites Ξ c = nil.
+Proof. intros Ξ [] H; cbn in H |- *; first [ reflexivity | discriminate ]. Qed.
+
+(** Filling keeps whether a command has terms of its own. *)
+Lemma cmd_fill_terms : forall rs c, cmd_terms (cmd_fill rs c) = cmd_terms c.
+Proof. intros rs []; reflexivity. Qed.
+
+(** A command without terms of its own is filled as it is. *)
+Lemma elim_fill_no_terms : forall Θ Ξ c c', cmd_terms c = false -> elim_fill_ok Θ Ξ c c' -> c' = c.
+Proof.
+  intros * Ht (rs & Hrs & <-); rewrite (cmd_sites_terms _ _ Ht) in Hrs; inversion Hrs; subst.
+  destruct c; cbn in Ht |- *; first [ reflexivity | discriminate ].
+Qed.
+
 (** ** Merging
 
     Two records merge field by field: a field bound on one side only keeps

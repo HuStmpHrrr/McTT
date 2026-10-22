@@ -1049,12 +1049,15 @@ Section Semantics.
 
   with run_cmds : list path -> builtins -> bmap -> gdeps -> gstack -> list ccmd -> builtins -> bmap -> gdeps -> gstack -> Prop :=
   | rcs_nil : forall ch B Rb Θ Ξ, Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] nil ⇝* Θ ⍮ Ξ ⍮ B ⍮ Rb
-  (** Each command is checked for privacy as written, and its literals are
-      generated from the builtin bindings ([Builtin]) before it runs. *)
-  | rcs_cons : forall ch B Rb Θ Ξ c c1 cs B1 Rb1 Θ1 Ξ1 B2 Rb2 Θ2 Ξ2,
+  (** Each command is checked for privacy as written, its literals are
+      generated from the builtin bindings ([Builtin]), and its eliminators
+      get their groups and uniform parameters from their annotations
+      ([elim_fill_ok]), before it runs. *)
+  | rcs_cons : forall ch B Rb Θ Ξ c c1 c2 cs B1 Rb1 Θ1 Ξ1 B2 Rb2 Θ2 Ξ2,
       acc_ok Θ Ξ (cmd_refs c) ->
       cmd_lits_ok Θ Ξ B c c1 ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] c1 ⇝ Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
+      elim_fill_ok Θ Ξ c1 c2 ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] c2 ⇝ Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
       Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ⊢[ch] cs ⇝* Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2 ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] c :: cs ⇝* Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2
   where "Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ] cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'" := (run_cmds ch B Rb Θ Ξ cs B' Rb' Θ' Ξ')
@@ -1253,12 +1256,58 @@ with run_cmds_mind := Minimality for run_cmds Sort Prop
 with run_unit_mind := Minimality for run_unit Sort Prop.
 Combined Scheme run_mut_ind from run_cmd_mind, run_cmds_mind, run_unit_mind.
 
+(** The fill of a site is a function of what its head denotes. *)
+Lemma site_resolves_functional : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall s r1 r2, site_resolves Θ Ξ s r1 -> site_resolves Θ Ξ s r2 -> r1 = r2.
+Proof.
+  intros * Hg * H1 H2; destruct H1 as [Γ d Z H x Θ' p k Ns D Us Hh Hm Hl Hi | Γ d Z p k D Us Hh Hl Hi];
+    inversion H2 as [Γ2 d2 Z2 H2' x2 Θ2' p2 k2 Ns2 D2 Us2 Hh2 Hm2 Hl2 Hi2 | Γ2 d2 Z2 p2 k2 D2 Us2 Hh2 Hl2 Hi2]; subst;
+    rewrite Hh in Hh2; try discriminate; injection Hh2 as <- <-.
+  - pose proof (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm _ Hm2) as E; injection E as <- <- <- <-.
+    rewrite Hl in Hl2; injection Hl2 as <-; rewrite Hi in Hi2; injection Hi2 as <-; reflexivity.
+  - rewrite Hl in Hl2; injection Hl2 as <-; rewrite Hi in Hi2; injection Hi2 as <-; reflexivity.
+Qed.
+
+(** The fill of a command is unique where the global context is well
+    formed. *)
+Lemma elim_fill_functional : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall c c1 c2, elim_fill_ok Θ Ξ c c1 -> elim_fill_ok Θ Ξ c c2 -> c1 = c2.
+Proof.
+  intros * Hg * (rs1 & H1 & <-) (rs2 & H2 & <-); f_equal.
+  revert rs2 H2; induction H1 as [| s r1 ss rs1 Hs _ IH]; intros rs2 H2; inversion H2 as [| ? r2 ? rs2' Hs2 Hss2]; subst;
+    [ reflexivity |].
+  rewrite (site_resolves_functional _ _ Hg _ _ _ Hs Hs2), (IH _ Hss2); reflexivity.
+Qed.
+
 Section Determinism.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
   #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
   #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
   #[local] Abbreviation run_unit := (run_unit load_path read to_core).
+
+  (** A command with terms of its own checks a judgment where it runs, so
+      its global context is well formed. *)
+  Lemma run_cmd_gctx : forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ',
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> cmd_terms c = true -> ⊢ᵍ Θ ⍮ Ξ.
+  Proof.
+    intros * H Ht; inversion H; subst; cbn in Ht; try discriminate;
+      first [ eapply ctx_wf_gctx, presup_exp_ctx; eassumption
+            | eapply ctx_wf_gctx; eassumption
+            | eapply ctx_wf_gctx, presup_ext_eq_ctx; eassumption
+            | eapply ctx_wf_gctx, presup_modexp_eq_ctx; eassumption
+            | match goal with Hn : ind_nil_at _ _ _ _ _ |- _ => destruct Hn; eapply ctx_wf_gctx; eassumption end ].
+  Qed.
+
+  (** Two fills of a command agree when one of them runs. *)
+  Lemma elim_fill_unique_run : forall ch B Rb Θ Ξ c c1 c2 B' Rb' Θ' Ξ',
+      elim_fill_ok Θ Ξ c c1 -> elim_fill_ok Θ Ξ c c2 ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c2 ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> c1 = c2.
+  Proof.
+    intros * H1 H2 Hr.
+    destruct (cmd_terms c) eqn:Ht.
+    - assert (Ht2 : cmd_terms c2 = true) by (destruct H2 as (rs & _ & <-); rewrite cmd_fill_terms; exact Ht).
+      exact (elim_fill_functional _ _ (run_cmd_gctx _ _ _ _ _ _ _ _ _ _ Hr Ht2) _ _ _ H1 H2).
+    - rewrite (elim_fill_no_terms _ _ _ _ Ht H1), (elim_fill_no_terms _ _ _ _ Ht H2); reflexivity.
+  Qed.
 
   (** A unit runs in a frame named by the head of its chain, from no
       binding, so two runs of it agree when their chains have the same
@@ -1283,6 +1332,9 @@ Section Determinism.
           assert_fails constr_eq c1 c2; assert (c1 = c2) by (unfold cmd_lits_ok in *; congruence); subst c2
       | H1 : tele_lits_ok ?a ?b ?B ?c ?c1, H2 : tele_lits_ok ?a ?b ?B ?c ?c2 |- _ =>
           assert_fails constr_eq c1 c2; assert (c1 = c2) by (unfold tele_lits_ok in *; congruence); subst c2
+      | H1 : elim_fill_ok ?a ?b ?c ?c1, H2 : elim_fill_ok ?a ?b ?c ?c2,
+        Hr : run_cmd _ _ _ ?a ?b ?c2 _ _ _ _ |- _ =>
+          assert_fails constr_eq c1 c2; pose proof (elim_fill_unique_run _ _ _ _ _ _ _ _ _ _ _ _ H1 H2 Hr); subst c2
       | H1 : open_gens ?a ?b ?o ?G ?E ?is ?g1, H2 : open_gens ?a ?b ?o ?G ?E ?is ?g2,
         HE : _ ⍮ _ ⍮ _ ⊢ᵐ _ ≈ _ |- _ =>
           assert_fails constr_eq g1 g2;
@@ -2006,7 +2058,7 @@ Section WellFormed.
     - intros * _ HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
     - intros * _ HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
     - intros * HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
-    - intros * _ _ Hr1 IH1 Hr2 IH2 HΞ Hc Hst.
+    - intros * _ _ _ Hr1 IH1 Hr2 IH2 HΞ Hc Hst.
       destruct (IH1 HΞ Hc Hst) as (H1 & Hc1 & Hs1 & Hl1).
       pose proof (stack_in_shape _ _ _ (proj1 run_params _ _ _ _ _ _ _ _ _ _ Hr1) Hst) as Hst1.
       destruct (IH2 H1 Hc1 Hst1) as (H2 & Hc2 & Hs2 & Hl2).
@@ -2156,7 +2208,7 @@ Section WellFormed.
     - intros; split; assumption.
     - intros; split; assumption.
     - intros; split; assumption.
-    - intros * _ _ Hr1 IH1 _ IH2 HΞ Hc Hst Hb HR.
+    - intros * _ _ _ Hr1 IH1 _ IH2 HΞ Hc Hst Hb HR.
       destruct (proj1 run_wf _ _ _ _ _ _ _ _ _ _ Hr1 HΞ Hc Hst) as (H1 & Hc1 & _).
       pose proof (stack_in_shape _ _ _ (proj1 run_params _ _ _ _ _ _ _ _ _ _ Hr1) Hst) as Hst1.
       destruct (IH1 HΞ Hc Hst Hb HR) as [Hb1 HR1].
@@ -2399,8 +2451,8 @@ Section Runs.
     - intros; apply rc_eval_check; assumption.
     - intros; eapply rc_eval_infer; eassumption.
     - intros; constructor.
-    - intros * Ha Hl Hr1 IH1 Hr2 IH2 ch' Hch.
-      econstructor; [ exact Ha | exact Hl | apply IH1; eapply Hpre; eassumption | auto ].
+    - intros * Ha Hl Hf Hr1 IH1 Hr2 IH2 ch' Hch.
+      econstructor; [ exact Ha | exact Hl | exact Hf | apply IH1; eapply Hpre; eassumption | auto ].
     - intros fp ch B1 Rb1 B2 Rb2 imps P P1 cs Θ1 Θ2 mp U Hi IHi Hl Htel HP Ha Hb IHb ch' Hch.
       cbn [hd] in *; econstructor; [ apply IHi; eapply Hpre; eassumption | eassumption | assumption | assumption | assumption | auto ].
   Qed.
