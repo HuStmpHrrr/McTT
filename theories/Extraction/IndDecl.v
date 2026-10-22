@@ -1734,3 +1734,408 @@ Section NilDecide.
     - exact (view_maps_check_sound _ _ _ Hvm).
   Defined.
 End NilDecide.
+
+(** ** Classifying the Arguments as Written
+
+    Why an argument is rejected, for the checker's message, along the
+    [Π]s of its type while their domains are free of the [Self]s:
+    - [0]: it depends on a recursive argument before it;
+    - [1]: a [Self] occurs elsewhere;
+    - [2]: a [Self] occurs in a domain, so not strictly positively;
+    - [3]: a [Self] is not applied to the uniform parameters as declared;
+    - [4]: a [Self] is an argument of a head that does not compute (an
+      opaque definition, an axiom or a parameter), so its occurrence
+      cannot be seen to be positive;
+    - [cw_nested H]: a [Self] occurs in an argument of the type former [H]
+      that is not one of its uniform arguments, or [H] is no declared
+      member of a filed group. *)
+Inductive cls_why : Set :=
+(** One of the reasons above, by its code *)
+| cw_code : nat -> cls_why
+(** A [Self] in a non-uniform argument of a nested occurrence, or one under
+    a type former of no declared member: the head *)
+| cw_nested : exp -> cls_why.
+
+(** Whether no [Self] occurs in [T], [d] domains down, past the arguments
+    before ([pat]) and [np] parameters. *)
+Definition selfs_free (np n : nat) (pat : list bool) (d : nat) (T : exp) : bool :=
+  match img_pat (cls_pat d np n (List.repeat false (List.length pat))) T with Some _ => true | None => false end.
+
+Fixpoint sh_reason (np n : nat) (pat : list bool) (d : nat) (T : exp) : cls_why :=
+  match T with
+  | a_pi A B => if selfs_free np n pat d A then sh_reason np n pat (S d) B else cw_code 2
+  | _ =>
+      match app_head T with
+      | a_var j => let b := d + List.length pat + np in if (b <=? j) && (j <? b + n) then cw_code 3 else cw_code 4
+      | a_mem _ _ => cw_code 4
+      | a_ind qc k => cw_nested (a_ind qc k)
+      | _ => cw_code 1
+      end
+  end.
+
+(** The reason an argument [T] is rejected. *)
+Definition cls_reason (np n : nat) (pat : list bool) (T : exp) : cls_why :=
+  if selfs_free np n pat 0 T then cw_code 0 else sh_reason np n pat 0 T.
+
+Section Classify.
+  Variables (Θ : gdeps) (Ξ : gstack).
+  Hypothesis HΞ : ⊢ᵍ Θ ⍮ Ξ.
+
+  (** An argument as written, or, failing that, as its normal form. *)
+  Definition cls_arg_in_dec (Γ : ctx) (nu np n : nat) (pat : list bool) (T : exp) :
+    ({g | cls_arg_in Θ Ξ Γ nu np n pat T g} + {r : cls_why | forall g, ~ cls_arg_in Θ Ξ Γ nu np n pat T g})%type.
+  Proof.
+    destruct (cls_arg grp_none nu np n pat T) as [g |] eqn:Hs; [ left; exists g; apply cls_in_syn; exact Hs |].
+    destruct (typ_least_dec Θ Ξ HΞ Γ T) as [[i [HT _]] | HnT].
+    2:{ right; exists (cls_reason np n pat T); intros g H; inversion H as [g' Hg' | i W g' _ HT _ _]; subst;
+        [ congruence | exact (HnT _ HT) ]. }
+    destruct (@nbe_ty_impl Θ Ξ (fctx_none Θ Ξ) Γ T (typ_nbe_ty_order Θ Ξ _ _ _ HT)) as [W HW].
+    destruct (cls_arg (grp_info Θ Ξ) nu np n pat (nf_to_exp W)) as [g |] eqn:Hn.
+    - left; exists g; eapply cls_in_nf; eassumption.
+    - right; exists (cls_reason np n pat (nf_to_exp W)).
+      intros g H; inversion H as [g' Hg' | i' W' g' _ _ HW' Hg']; subst; [ congruence |].
+      pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-; congruence.
+  Defined.
+
+  (** The arguments of a constructor, each in the context of those before
+      it; a rejection names the argument and why. *)
+  Definition cls_args_in_dec (Γp : ctx) (nu np n : nat) :
+    forall (args : list (string * exp)) (pat : list bool) (args1 : list (string * exp)),
+      ({gs | cls_args_in Θ Ξ Γp nu np n pat args1 args gs}
+       + {e : (string * cls_why) | forall gs, ~ cls_args_in Θ Ξ Γp nu np n pat args1 args gs})%type.
+  Proof.
+    fix go 1; intros [| [y T] args] pat args1.
+    - left; exists nil; constructor.
+    - destruct (cls_arg_in_dec (rtele args1 ++ Γp) nu np n pat T) as [[g Hg] | [r Hg]].
+      + destruct (go args (rcarg_bit g :: pat) (args1 ++ (y, T) :: nil)) as [[gs Hgs] | [e He]].
+        * left; exists (g :: gs); constructor; assumption.
+        * right; exists e; intros gs' H; inversion H; subst.
+          match goal with Hg' : cls_arg_in _ _ _ _ _ _ _ _ ?g' |- _ =>
+            pose proof (cls_arg_in_functional _ _ _ _ _ _ _ _ _ _ Hg Hg') as <- end.
+          eapply He; eassumption.
+      + right; exists (y, r); intros gs' H; inversion H; subst; eapply Hg; eassumption.
+  Defined.
+
+  (** The constructors of a member; a rejection names the constructor, the
+      argument and why. *)
+  Definition cls_cons_in_dec (Γp : ctx) (nu np n : nat) :
+    forall (rcs : list (string * list (string * exp))),
+      ({cs | cls_cons_in Θ Ξ Γp nu np n rcs cs}
+       + {e : (string * string * cls_why) | forall cs, ~ cls_cons_in Θ Ξ Γp nu np n rcs cs})%type.
+  Proof.
+    unfold cls_cons_in; fix go 1; intros [| [c args] rcs].
+    - left; exists nil; constructor.
+    - destruct (cls_args_in_dec Γp nu np n args nil nil) as [[gs Hgs] | [[y r] He]].
+      + destruct (go rcs) as [[cs Hcs] | [e He]].
+        * left; exists ((c, gs) :: cs); constructor; [ split; [ reflexivity | exact Hgs ] | exact Hcs ].
+        * right; exists e; intros cs' H; inversion H; subst; eapply He; eassumption.
+      + right; exists (c, y, r); intros cs' H; inversion H as [| ? [c' gs'] ? ? [_ Hc]]; subst; eapply He; exact Hc.
+  Defined.
+
+  (** The constructors of a declared member. *)
+  Definition rm_cls_dec (R : raw_decl) (Mr : raw_member) :
+    ({cs | rm_cls Θ Ξ R Mr cs} + {e : (string * string * cls_why) | forall cs, ~ rm_cls Θ Ξ R Mr cs})%type :=
+    cls_cons_in_dec (rm_pctx Ξ R Mr) (rd_nu R) (List.length (rm_nparams Mr) + rd_nu R) (rd_n R) (rm_cons Mr).
+
+  (** The declared members' constructors, member by member; a rejection
+      names the member too. *)
+  Fixpoint rms_cls_dec (R : raw_decl) (ms : list raw_member) :
+    ({css | Forall2 (rm_cls Θ Ξ R) ms css}
+     + {e : (string * string * string * cls_why) | forall css, ~ Forall2 (rm_cls Θ Ξ R) ms css})%type.
+  Proof.
+    destruct ms as [| Mr ms'].
+    - left; exists nil; constructor.
+    - destruct (rm_cls_dec R Mr) as [[cs Hcs] | [[[c y] r] He]].
+      + destruct (rms_cls_dec R ms') as [[css Hcss] | [e He']].
+        * left; exists (cs :: css); constructor; assumption.
+        * right; exists e; intros css H; inversion H; subst; eapply He'; eassumption.
+      + right; exists (rm_name Mr, c, y, r); intros css H; inversion H; subst; eapply He; eassumption.
+  Defined.
+
+  (** ** The Views' Relations, at a View *)
+
+  (** Why a view is rejected, for the checker's message. *)
+  Inductive view_why : Set :=
+  (** The instance is no declared member of a filed group *)
+  | vw_container : view_why
+  (** A container's argument at the instance is rejected: the constructor,
+      the argument and why *)
+  | vw_cls : string -> string -> cls_why -> view_why
+  (** A non-uniform parameter or a sibling's instance at the instance is
+      not a type, or not typed *)
+  | vw_untyped : view_why
+  (** A non-uniform parameter at the instance mentions the group *)
+  | vw_mentions_group : view_why.
+
+  (** The constructors of a view, classified. *)
+  Definition view_cls_dec (R : raw_decl) (x : rview) :
+    ({cs | view_cls Θ Ξ R x cs} + {e : view_why | forall cs, ~ view_cls Θ Ξ R x cs})%type.
+  Proof.
+    destruct x as [[qc k] Cs].
+    destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| right; exists vw_container; intros cs H; inversion H; congruence ].
+    destruct (ind_member D' k) as [Mk' |] eqn:Hk; [| right; exists vw_container; intros cs H; inversion H; subst; unify_found; congruence ].
+    destruct (cls_cons_in_dec (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs) ++ rd_uctx Ξ R) (rd_nu R) (im_nn Mk' + rd_nu R) (rd_n R)
+                (List.map (fun cg => (fst cg, ctx_args (tele_sub (cargs_ctx qc D' Mk' (snd cg)) (sb_qn (im_nn Mk') (sb_of_list sb_id Cs)))))
+                   (im_cons Mk'))) as [[cs Hcs] | [[[c y] r] He]].
+    - left; exists cs; econstructor; eassumption.
+    - right; exists (vw_cls c y r); intros cs H; inversion H; subst; unify_found; eapply He; eassumption.
+  Defined.
+
+  (** A telescope of assumptions normalized entry by entry, each a type
+      first. *)
+  Fixpoint nbe_tele_dec (Γ : ctx) (Δ : ctx) {struct Δ} : {Δ' | nbe_tele Θ Ξ Γ Δ Δ'} + {forall Δ', ~ nbe_tele Θ Ξ Γ Δ Δ'}.
+  Proof.
+    destruct Δ as [| [A | A M | U] Δ0].
+    - left; exists nil; constructor.
+    - destruct (nbe_tele_dec Γ Δ0) as [[Δ0' H0] | H0]; [| right; intros Δ' H; inversion H; subst; eapply H0; eassumption ].
+      destruct (typ_least_dec Θ Ξ HΞ (Δ0 ++ Γ) A) as [[i [HA _]] | HnA];
+        [| right; intros Δ' H; inversion H as [| ? ? ? ? [i HA] _ _]; subst; exact (HnA _ HA) ].
+      destruct (@nbe_ty_impl Θ Ξ (fctx_none Θ Ξ) (Δ0 ++ Γ) A (typ_nbe_ty_order Θ Ξ _ _ _ HA)) as [W HW].
+      left; exists (ce_ass (nf_to_exp W) :: Δ0'); constructor; [ exists i; exact HA | exact HW | exact H0 ].
+    - right; intros Δ' H; inversion H.
+    - right; intros Δ' H; inversion H.
+  Defined.
+
+  (** The non-uniform parameters of a view, filed. *)
+  Definition view_nps_dec (R : raw_decl) (x : rview) :
+    ({Nv | view_nps Θ Ξ R x Nv} + {e : view_why | forall Nv, ~ view_nps Θ Ξ R x Nv})%type.
+  Proof.
+    destruct x as [[qc k] Cs].
+    destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| right; exists vw_container; intros Nv H; inversion H; congruence ].
+    destruct (ind_member D' k) as [Mk' |] eqn:Hk; [| right; exists vw_container; intros Nv H; inversion H; subst; unify_found; congruence ].
+    destruct (nbe_tele_dec (rd_uctx Ξ R) (tele_sub (im_nparams Mk') (sb_of_list sb_id Cs))) as [[Ws HWs] | HnWs].
+    2:{ right; exists vw_untyped; intros Nv H; inversion H; subst; unify_found; eapply HnWs; eassumption. }
+    destruct (img_tele (List.repeat false (rd_nu R) ++ List.repeat true (rd_n R)) Ws) as [Nv |] eqn:Hi.
+    - left; exists Nv; econstructor; eassumption.
+    - right; exists vw_mentions_group; intros Nv H; inversion H; subst; unify_found.
+      match goal with H1 : nbe_tele _ _ _ _ ?W1 |- _ => pose proof (nbe_tele_functional _ _ _ _ _ _ HWs H1) as <- end.
+      congruence.
+  Defined.
+
+  (** Terms normalized pointwise at types, each typed first. *)
+  Fixpoint nbes_dec (Γ : ctx) (Ms : list exp) (As : list typ) {struct Ms} :
+    {Ws | nbes Θ Ξ Γ Ms As Ws} + {forall Ws, ~ nbes Θ Ξ Γ Ms As Ws}.
+  Proof.
+    destruct Ms as [| M Ms'], As as [| A As']; try (right; intros Ws H; inversion H; fail).
+    - left; exists nil; constructor.
+    - destruct (nbes_dec Γ Ms' As') as [[Ws' HWs'] | HnWs']; [| right; intros Ws H; inversion H; subst; eapply HnWs'; eassumption ].
+      destruct (check_exp_at Θ Ξ HΞ Γ A M) as [HM | HnM]; [| right; intros Ws H; inversion H; subst; contradiction ].
+      destruct (@nbe_impl Θ Ξ (fctx_none Θ Ξ) Γ M A (typed_nbe_order' Θ Ξ _ _ _ HM)) as [W HW].
+      left; exists (W :: Ws'); constructor; assumption.
+  Defined.
+
+  (** The members of a container's group from position [i], at [Cs]. *)
+  Fixpoint sibs_from_dec (Γc : ctx) (qc : qname) (Cs : list exp) (i : nat) (ms : list imember) {struct ms} :
+    {ss | sibs_from Θ Ξ Γc qc Cs i ms ss} + {forall ss, ~ sibs_from Θ Ξ Γc qc Cs i ms ss}.
+  Proof.
+    destruct ms as [| M ms'].
+    - left; exists nil; constructor.
+    - destruct (sibs_from_dec Γc qc Cs (S i) ms') as [[ss Hss] | Hnss];
+        [| right; intros ss H; inversion H; subst; eapply Hnss; eassumption ].
+      destruct (im_head M) as [pm | qv kv Iv vmv] eqn:Hh.
+      + left; exists ((qc, i, Cs) :: ss); eapply sibs_from_decl; eassumption.
+      + destruct (ind_lookup_f Θ Ξ qv) as [[Dv |] Hlv]; [| right; intros ss' H; inversion H; subst; unify_found; congruence ].
+        destruct (nbes_dec Γc (List.map (fun I => I[sb_of_list sb_id Cs]) Iv)
+                    (List.map (fun T => T[sb_of_list sb_id Cs]) (tele_insts (ind_uparams Dv) sb_id Iv))) as [[Ws HWs] | HnWs].
+        * left; exists ((qv, kv, List.map nf_to_exp Ws) :: ss); eapply sibs_from_view; eassumption.
+        * right; intros ss' H; inversion H; subst; unify_found; [ congruence |].
+          match goal with Hh' : im_head M = mh_view _ _ _ _ |- _ => rewrite Hh in Hh'; injection Hh'; intros; subst end.
+          unify_found; eapply HnWs; eassumption.
+  Defined.
+
+  (** The siblings of a view. *)
+  Definition view_sibs_dec (R : raw_decl) (x : rview) :
+    ({ss | view_sibs Θ Ξ R x ss} + {e : view_why | forall ss, ~ view_sibs Θ Ξ R x ss})%type.
+  Proof.
+    destruct x as [[qc k] Cs].
+    destruct (ind_lookup_f Θ Ξ qc) as [[D' |] Hl]; [| right; exists vw_container; intros ss H; inversion H; congruence ].
+    destruct (sibs_from_dec (rd_uctx Ξ R) qc Cs 0 (ind_members D')) as [[ss Hss] | Hnss].
+    - left; exists ss; econstructor; eassumption.
+    - right; exists vw_untyped; intros ss H; inversion H; subst; unify_found; eapply Hnss; eassumption.
+  Defined.
+End Classify.
+
+(** ** The Declaration's Relations Cross [gds_equiv]
+
+    The checker decides a declaration at the units the unit imported, the
+    judgment holds at the units filed: the two have the same lookups, so
+    the same normal forms ([GlobalExt]), and the same judgments
+    ([deps_grow]). *)
+
+Lemma gds_equiv_lookup : forall Θ Θ' fp, gds_equiv Θ Θ' -> gds_lookup Θ fp = gds_lookup Θ' fp.
+Proof.
+  intros * [H1 H2]; destruct (gds_lookup Θ fp) as [U |] eqn:E.
+  - symmetry; exact (H1 _ _ E).
+  - destruct (gds_lookup Θ' fp) as [U |] eqn:E'; [| reflexivity ].
+    rewrite (H2 _ _ E') in E; discriminate.
+Qed.
+
+Lemma gds_equiv_resolve : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> gc_resolve Θ Ξ p = gc_resolve Θ' Ξ p.
+Proof. intros * He; unfold gc_resolve, gc_resolve_u; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
+
+Lemma gds_equiv_module : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> gc_module Θ Ξ p = gc_module Θ' Ξ p.
+Proof. intros * He; unfold gc_module, gc_module_u; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
+
+Lemma gds_equiv_body : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> gc_body Θ Ξ p = gc_body Θ' Ξ p.
+Proof. intros * He; unfold gc_body; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
+
+Lemma gds_equiv_ind_lookup : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> ind_lookup Θ Ξ p = ind_lookup Θ' Ξ p.
+Proof. intros * He; rewrite !ind_lookup_unfold, !ind_mlookup_unfold, (gds_equiv_module _ _ _ _ He); reflexivity. Qed.
+
+Lemma gds_equiv_ind_alias : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> ind_alias_lookup Θ Ξ p = ind_alias_lookup Θ' Ξ p.
+Proof. intros * He; unfold ind_alias_lookup, ind_alias_lookup_u; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
+
+(** What module expressions denote reads the dependencies through their
+    lookups alone ([gc_unit], [ds_mod]). *)
+Lemma gds_equiv_mdenote_all : forall Θ Θ' Ξ, gds_equiv Θ Θ' ->
+    (forall Γ H R, mdenote Θ Ξ Γ H R -> mdenote Θ' Ξ Γ H R) /\
+    (forall Γ o U R, udenote Θ Ξ Γ o U R -> udenote Θ' Ξ Γ o U R) /\
+    (forall Γ o E R, edenote Θ Ξ Γ o E R -> edenote Θ' Ξ Γ o E R) /\
+    (forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> body_xp Θ' Ξ Γ Φ Φx) /\
+    (forall g Γ H its gs, items_gen Θ Ξ g Γ H its gs -> items_gen Θ' Ξ g Γ H its gs).
+Proof.
+  intros * He.
+  assert (Hu : forall H, gc_unit Θ Ξ H = gc_unit Θ' Ξ H).
+  { intros H; unfold gc_unit; destruct (mod_qname H) as [mp |]; [| reflexivity ].
+    rewrite (gds_equiv_lookup _ _ (q_unit mp) He); reflexivity. }
+  assert (Hd : forall R, ds_mod Θ Ξ R = ds_mod Θ' Ξ R)
+    by (intros [] ; cbn [ds_mod]; try reflexivity; rewrite (gds_equiv_ind_lookup _ _ _ _ He);
+        destruct (ind_lookup Θ' Ξ _); [ destruct (ind_mpath _ _); [ rewrite (gds_equiv_body _ _ _ _ He) |] |]; reflexivity).
+  apply mdenote_all_ind; intros; rewrite ?Hu, ?Hd in *; econstructor; eauto.
+  - rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); assumption.
+  - rewrite !ind_mlookup_unfold, <- (gds_equiv_module _ _ _ _ He); assumption.
+Qed.
+
+Corollary gds_equiv_mdenote : forall Θ Θ' Ξ Γ H R, gds_equiv Θ Θ' -> mdenote Θ Ξ Γ H R -> mdenote Θ' Ξ Γ H R.
+Proof. intros * He; exact (proj1 (gds_equiv_mdenote_all _ _ _ He) _ _ _). Qed.
+
+Section Equiv.
+  Variables (Θ Θ' : gdeps) (Ξ : gstack).
+  Hypothesis He : gds_equiv Θ Θ'.
+  Hypothesis HΞ' : ⊢ᵍ Θ' ⍮ Ξ.
+
+  Let Hb : ⊢ Θ' ⍮ Ξ ⍮ ⋅ := wf_ctx_empty _ _ HΞ'.
+
+  Lemma equiv_nbe_ty : forall Γ A W, nbe_ty Θ Ξ Γ A W -> nbe_ty Θ' Ξ Γ A W.
+  Proof.
+    apply nbe_ty_ext; intros; [ apply gds_equiv_resolve | apply gds_equiv_module | apply gds_equiv_ind_lookup
+                               | apply gds_equiv_ind_alias | reflexivity | apply gds_equiv_body ]; exact He.
+  Qed.
+
+  Lemma equiv_nbe : forall Γ M A W, nbe Θ Ξ Γ M A W -> nbe Θ' Ξ Γ M A W.
+  Proof.
+    assert (Hs : (forall p, gc_resolve Θ Ξ p = gc_resolve Θ' Ξ p) /\ (forall p, gc_module Θ Ξ p = gc_module Θ' Ξ p) /\
+                 (forall p, ind_lookup Θ Ξ p = ind_lookup Θ' Ξ p) /\ (forall p, ind_alias_lookup Θ Ξ p = ind_alias_lookup Θ' Ξ p) /\
+                 (forall p, gc_frame Ξ p = gc_frame Ξ p) /\ (forall p, gc_body Θ Ξ p = gc_body Θ' Ξ p))
+      by (repeat split; intros; first [ reflexivity | apply gds_equiv_resolve | apply gds_equiv_module
+                                       | apply gds_equiv_ind_lookup | apply gds_equiv_ind_alias | apply gds_equiv_body ];
+          exact He).
+    destruct Hs as (Hres & Hmod & Hind & Hia & Hfr & Hbody).
+    pose proof (eval_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hbody) as Hev; pose proof (read_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hbody) as Hrd.
+    pose proof (initial_env_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hbody) as Hie.
+    destruct_all.
+    intros * []; econstructor; eauto.
+  Qed.
+
+  (** The classification reads the filed groups through [grp_info] alone. *)
+  Lemma cls_sh_ext : forall (g1 g2 : qname -> nat -> option nat) nu np n pat, (forall q0 k, g1 q0 k = g2 q0 k) ->
+      forall T d, cls_sh g1 nu np n pat d T = cls_sh g2 nu np n pat d T.
+  Proof.
+    intros * Hg T; induction T; intros d; cbn [cls_sh]; try reflexivity;
+      try (destruct (app_head _) eqn:?; try reflexivity; unfold cls_nest; rewrite Hg; reflexivity).
+    destruct (img_pat _ _); [ rewrite IHT2; reflexivity | reflexivity ].
+  Qed.
+
+  Lemma cls_arg_ext : forall (g1 g2 : qname -> nat -> option nat) nu np n pat, (forall q0 k, g1 q0 k = g2 q0 k) ->
+      forall T, cls_arg g1 nu np n pat T = cls_arg g2 nu np n pat T.
+  Proof. intros * Hg T; unfold cls_arg; rewrite (cls_sh_ext g1 g2 _ _ _ _ Hg); reflexivity. Qed.
+
+  Lemma equiv_typ : forall Γ A i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ' ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
+  Proof. intros; eapply equiv_exp; eassumption. Qed.
+
+  Lemma equiv_cls_arg_in : forall Γ nu np n pat T g,
+      cls_arg_in Θ Ξ Γ nu np n pat T g -> cls_arg_in Θ' Ξ Γ nu np n pat T g.
+  Proof.
+    intros * H; destruct H as [g Hg | i W g Hn HT HW Hg]; [ apply cls_in_syn; exact Hg |].
+    eapply cls_in_nf; [ exact Hn | exact (equiv_exp _ _ _ _ _ _ He HΞ' HT) | exact (equiv_nbe_ty _ _ _ HW) |].
+    rewrite <- (cls_arg_ext (grp_info Θ Ξ)); [ exact Hg |].
+    intros; unfold grp_info; rewrite (gds_equiv_ind_lookup _ _ _ _ He); reflexivity.
+  Qed.
+
+  Lemma equiv_cls_args_in : forall Γp nu np n pat args1 args gs,
+      cls_args_in Θ Ξ Γp nu np n pat args1 args gs -> cls_args_in Θ' Ξ Γp nu np n pat args1 args gs.
+  Proof. induction 1; constructor; [ apply equiv_cls_arg_in | ]; assumption. Qed.
+
+  Lemma equiv_cls_cons_in : forall Γp nu np n rcs cs,
+      cls_cons_in Θ Ξ Γp nu np n rcs cs -> cls_cons_in Θ' Ξ Γp nu np n rcs cs.
+  Proof.
+    intros *; unfold cls_cons_in; apply Forall2_impl; intros rc c [Hf Hc]; split; [ exact Hf | exact (equiv_cls_args_in _ _ _ _ _ _ _ _ Hc) ].
+  Qed.
+
+  Lemma equiv_rm_cls : forall R ms css, Forall2 (rm_cls Θ Ξ R) ms css -> Forall2 (rm_cls Θ' Ξ R) ms css.
+  Proof. intros *; apply Forall2_impl; intros; apply equiv_cls_cons_in; assumption. Qed.
+
+  Lemma equiv_view_cls : forall R x cs, view_cls Θ Ξ R x cs -> view_cls Θ' Ξ R x cs.
+  Proof.
+    intros * []; econstructor; [ rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); eassumption | eassumption |].
+    apply equiv_cls_cons_in; assumption.
+  Qed.
+
+  Lemma equiv_nbe_tele : forall Γ Δ Δ', nbe_tele Θ Ξ Γ Δ Δ' -> nbe_tele Θ' Ξ Γ Δ Δ'.
+  Proof.
+    induction 1 as [| A Δ W Δ' [i HA] HW _ IH]; constructor; [ exists i; exact (equiv_typ _ _ _ HA) | exact (equiv_nbe_ty _ _ _ HW) | exact IH ].
+  Qed.
+
+  Lemma equiv_view_nps : forall R x Nv, view_nps Θ Ξ R x Nv -> view_nps Θ' Ξ R x Nv.
+  Proof.
+    intros * []; econstructor; [ rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); eassumption | eassumption | | eassumption ].
+    apply equiv_nbe_tele; assumption.
+  Qed.
+
+  Lemma equiv_nbes : forall Γ Ms As Ws, nbes Θ Ξ Γ Ms As Ws -> nbes Θ' Ξ Γ Ms As Ws.
+  Proof.
+    induction 1; constructor; [ exact (equiv_exp _ _ _ _ _ _ He HΞ' ltac:(eassumption)) | exact (equiv_nbe _ _ _ _ ltac:(eassumption)) | assumption ].
+  Qed.
+
+  Lemma equiv_sibs_from : forall Γc qc Cs i ms ss, sibs_from Θ Ξ Γc qc Cs i ms ss -> sibs_from Θ' Ξ Γc qc Cs i ms ss.
+  Proof.
+    induction 1; [ constructor | eapply sibs_from_decl; eassumption |].
+    eapply sibs_from_view; [ eassumption | rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); eassumption | apply equiv_nbes; eassumption | assumption ].
+  Qed.
+
+  Lemma equiv_view_sibs : forall R x ss, view_sibs Θ Ξ R x ss -> view_sibs Θ' Ξ R x ss.
+  Proof.
+    intros * []; econstructor; [ rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); eassumption | apply equiv_sibs_from; assumption ].
+  Qed.
+
+  Lemma equiv_rd_filed : forall R Vs Ss csD csV Nvs, rd_filed Θ Ξ R Vs Ss csD csV Nvs = rd_filed Θ' Ξ R Vs Ss csD csV Nvs.
+  Proof.
+    intros; unfold rd_filed; destruct (rd_members R) as [| Mr0 Mrs]; [ reflexivity |].
+    assert (Hrv : forall σ n Vs0 xs Ss0 css Nvs0, rvs_filed Θ Ξ σ n Vs0 xs Ss0 css Nvs0 = rvs_filed Θ' Ξ σ n Vs0 xs Ss0 css Nvs0).
+    { intros σ n Vs0 xs; induction xs as [| x xs IH]; intros [| ss Ss0] [| cs css] [| Nv Nvs0]; cbn; try reflexivity.
+      rewrite IH; unfold rv_filed; destruct x as [[qc k] Cs]; rewrite (gds_equiv_ind_lookup _ _ _ _ He); reflexivity. }
+    rewrite Hrv; reflexivity.
+  Qed.
+
+  Lemma equiv_view_rank_ok : forall D rk, view_rank_ok Θ Ξ D rk -> view_rank_ok Θ' Ξ D rk.
+  Proof.
+    intros * [Hd Hn]; constructor; [ exact Hd |].
+    intros *; rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); eapply Hn.
+  Qed.
+
+  Lemma equiv_view_maps_coherent : forall D, view_maps_coherent Θ Ξ D -> view_maps_coherent Θ' Ξ D.
+  Proof. intros D H; unfold view_maps_coherent in *; intros *; rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); eapply H. Qed.
+
+  (** The group, checked at the instances [IsS], at the units filed. *)
+  Lemma equiv_ind_nil_at : forall mp D IsS, ind_nil_at Θ Ξ mp D IsS -> ind_nil_at Θ' Ξ mp D IsS.
+  Proof.
+    destruct (deps_grow Θ Θ' Ξ (proj1 He) Hb) as (Hc & Hx & Hq & Hs & Hext & _ & _).
+    assert (Hl : forall p, ind_lookup Θ Ξ p = ind_lookup Θ' Ξ p) by (intros; apply gds_equiv_ind_lookup, He).
+    intros * [Δ M0 i n H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H16 H17 H18 H19 H20 H21 H22 H23 H24 H25 H26 H27 H28
+                H29 H30 [rk Hrk] H32 H33].
+    apply (mk_ind_nil_at Θ' Ξ mp D IsS Δ M0 i n); auto.
+    all: try (intros; rewrite <- ?Hl in *; eauto; fail).
+    - exists rk; apply equiv_view_rank_ok, Hrk.
+    - apply equiv_view_maps_coherent, H33.
+  Qed.
+End Equiv.
