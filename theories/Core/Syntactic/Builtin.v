@@ -691,6 +691,11 @@ Inductive site_resolves (Θ : gdeps) (Ξ : gstack) : fill_site -> fill_result ->
 Definition elim_fill_ok (Θ : gdeps) (Ξ : gstack) (c c' : ccmd) : Prop :=
   exists rs, Forall2 (site_resolves Θ Ξ) (cmd_sites Ξ c) rs /\ cmd_fill rs c = c'.
 
+(** A telescope over the stack's filled: every site resolved, and the
+    telescope computed from the results (a unit's parameters). *)
+Definition tele_fill_ok (Θ : gdeps) (Ξ : gstack) (Δ Δ' : ctx) : Prop :=
+  exists rs, Forall2 (site_resolves Θ Ξ) (tele_sites (gs_tele Ξ) Δ) rs /\ fst (tele_fill rs Δ) = Δ'.
+
 (** Whether a command has terms of its own, which may have sites. *)
 Definition cmd_terms (c : ccmd) : bool :=
   match c with

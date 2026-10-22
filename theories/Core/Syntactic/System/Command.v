@@ -1064,18 +1064,20 @@ Section Semantics.
 
   (** [run_unit (fp :: ch) u B Rb Θ U]: the unit [fp], at the head of the
       chain, runs from nothing filed and no binding.  Its leading loads run
-      on the empty stack, then its parameters get their literals and are
-      checked against what they filed, then its body runs in
-      its own frame, named [fp]; [Θ] is what it filed, [Rb] their records,
-      [U] the unit, [B] its own record. *)
+      on the empty stack, then its parameters get their literals, their
+      eliminators are filled ([tele_fill_ok]), and they are checked
+      against what they filed, then its body runs in its own frame, named
+      [fp]; [Θ] is what it filed, [Rb] their records, [U] the unit, [B] its
+      own record. *)
   with run_unit : list path -> cunit -> builtins -> bmap -> gdeps -> gunit -> Prop :=
-  | ru_intro : forall fp ch B1 Rb1 B2 Rb2 imps P P1 cs Θ1 Θ2 mp U,
+  | ru_intro : forall fp ch B1 Rb1 B2 Rb2 imps P P1 P2 cs Θ1 Θ2 mp U,
       nil ⍮ nil ⍮ bt_empty ⍮ nil ⊢[fp :: ch] imps ⇝* Θ1 ⍮ nil ⍮ B1 ⍮ Rb1 ->
       tele_lits_ok Θ1 nil B1 P P1 ->
-      tele_ass P1 ->
-      ⊢ Θ1 ⍮ nil ⍮ P1 ->
+      tele_fill_ok Θ1 nil P1 P2 ->
+      tele_ass P2 ->
+      ⊢ Θ1 ⍮ nil ⍮ P2 ->
       acc_ok Θ1 nil (tele_refs nil P) ->
-      Θ1 ⍮ gs_push (q_abs fp nil) P1 nil ⍮ B1 ⍮ Rb1 ⊢[fp :: ch] cs ⇝* Θ2 ⍮ (mp, U) :: nil ⍮ B2 ⍮ Rb2 ->
+      Θ1 ⍮ gs_push (q_abs fp nil) P2 nil ⍮ B1 ⍮ Rb1 ⊢[fp :: ch] cs ⇝* Θ2 ⍮ (mp, U) :: nil ⍮ B2 ⍮ Rb2 ->
       run_unit (fp :: ch) (imps, P, cs) B2 Rb2 Θ2 U.
 
   (** The unit given on the command line: run like an imported one, with
@@ -1277,6 +1279,22 @@ Proof.
   rewrite (site_resolves_functional _ _ Hg _ _ _ Hs Hs2), (IH _ Hss2); reflexivity.
 Qed.
 
+(** The results of the sites are unique where the global context is well
+    formed. *)
+Lemma sites_functional : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall ss rs1 rs2,
+    Forall2 (site_resolves Θ Ξ) ss rs1 -> Forall2 (site_resolves Θ Ξ) ss rs2 -> rs1 = rs2.
+Proof.
+  intros * Hg ss rs1 rs2 H1; revert rs2; induction H1 as [| s r1 ss rs1 Hs _ IH]; intros rs2 H2;
+    inversion H2 as [| ? r2 ? rs2' Hs2 Hss2]; subst; [ reflexivity |].
+  rewrite (site_resolves_functional _ _ Hg _ _ _ Hs Hs2), (IH _ Hss2); reflexivity.
+Qed.
+
+(** So is the fill of a telescope. *)
+Lemma tele_fill_functional : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Δ Δ1 Δ2, tele_fill_ok Θ Ξ Δ Δ1 -> tele_fill_ok Θ Ξ Δ Δ2 -> Δ1 = Δ2.
+Proof.
+  intros * Hg * (rs1 & H1 & <-) (rs2 & H2 & <-); rewrite (sites_functional _ _ Hg _ _ _ H1 H2); reflexivity.
+Qed.
+
 Section Determinism.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
@@ -1411,6 +1429,10 @@ Section Determinism.
       repeat match goal with
       | H1 : tele_lits_ok ?a ?b ?B ?c ?c1, H2 : tele_lits_ok ?a ?b ?B ?c ?c2 |- _ =>
           assert_fails constr_eq c1 c2; assert (c1 = c2) by (unfold tele_lits_ok in *; congruence); subst c2
+      end.
+      repeat match goal with
+      | H1 : tele_fill_ok ?a ?b ?c ?c1, H2 : tele_fill_ok ?a ?b ?c ?c2, HP : ⊢ ?a ⍮ ?b ⍮ ?c1 |- _ =>
+          assert_fails constr_eq c1 c2; pose proof (tele_fill_functional _ _ (ctx_wf_gctx _ _ _ HP) _ _ _ H1 H2); subst c2
       end.
       match goal with
       | IH2 : forall _ _ _ _ _, run_cmds _ _ _ ?T (gs_push ?mp ?P nil) ?cs _ _ _ _ -> _,
@@ -2065,7 +2087,7 @@ Section WellFormed.
       split; [ exact H2 | split; [ exact Hc2 | split; eauto using gds_sub_trans, bt_le_trans ] ].
     - (* a unit: its imports from nothing, its parameters, then its body in
          the frame named by its path, which nothing it imported filed *)
-      intros fp ch B1 Rb1 B2 Rb2 imps P0 P cs Θ1 Θ2 mp U Hi IHi _ Htel HP _ Hb IHb.
+      intros fp ch B1 Rb1 B2 Rb2 imps P0 P1 P cs Θ1 Θ2 mp U Hi IHi _ _ Htel HP _ Hb IHb.
       destruct (IHi ltac:(constructor; constructor) canon_nil ltac:(intros ? ? [])) as (H1 & Hc1 & _ & _).
       assert (Hn1 : gds_lookup Θ1 fp = None)
         by exact (proj1 (proj2 run_chain_fresh) _ _ _ _ _ _ _ _ _ _ Hi fp (or_introl eq_refl) eq_refl).
@@ -2214,7 +2236,7 @@ Section WellFormed.
       destruct (IH1 HΞ Hc Hst Hb HR) as [Hb1 HR1].
       exact (IH2 H1 Hc1 Hst1 Hb1 HR1).
     - (* a unit: its imports, its frame pushed, then filed *)
-      intros fp ch B1 Rb1 B2 Rb2 imps P0 P cs Θ1 Θ2 mp U Hi IHi _ Htel HP _ Hbd IHb.
+      intros fp ch B1 Rb1 B2 Rb2 imps P0 P1 P cs Θ1 Θ2 mp U Hi IHi _ _ Htel HP _ Hbd IHb.
       assert (Hnil : ⊢ᵍ nil ⍮ nil) by (constructor; constructor).
       destruct (proj1 (proj2 run_wf) _ _ _ _ _ _ _ _ _ _ Hi Hnil canon_nil ltac:(intros ? ? [])) as (H1 & Hc1 & _).
       assert (Hn1 : gds_lookup Θ1 fp = None)
@@ -2453,8 +2475,9 @@ Section Runs.
     - intros; constructor.
     - intros * Ha Hl Hf Hr1 IH1 Hr2 IH2 ch' Hch.
       econstructor; [ exact Ha | exact Hl | exact Hf | apply IH1; eapply Hpre; eassumption | auto ].
-    - intros fp ch B1 Rb1 B2 Rb2 imps P P1 cs Θ1 Θ2 mp U Hi IHi Hl Htel HP Ha Hb IHb ch' Hch.
-      cbn [hd] in *; econstructor; [ apply IHi; eapply Hpre; eassumption | eassumption | assumption | assumption | assumption | auto ].
+    - intros fp ch B1 Rb1 B2 Rb2 imps P P1 P2 cs Θ1 Θ2 mp U Hi IHi Hl Hf Htel HP Ha Hb IHb ch' Hch.
+      cbn [hd] in *; econstructor;
+        [ apply IHi; eapply Hpre; eassumption | eassumption | eassumption | assumption | assumption | assumption | auto ].
   Qed.
 
   Lemma run_tl :

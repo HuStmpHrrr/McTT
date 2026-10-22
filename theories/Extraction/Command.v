@@ -63,21 +63,21 @@ Record ind_alias_parts (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (pm p : qname) (k :
     (D : ind_decl) (Mk : imember) : Prop :=
   mk_ind_alias_parts
   { (** the group is filed at [p] *)
-    iap_lookup : ind_lookup Θ Ξ p = Some D;
+    alias_group_filed : ind_lookup Θ Ξ p = Some D;
     (** [k] is one of its members *)
-    iap_member_at : ind_member D k = Some Mk;
+    alias_member : ind_member D k = Some Mk;
     (** a declared one *)
-    iap_declared : k < ind_ndecl D;
+    alias_member_declared : k < ind_ndecl D;
     (** whose module is at [pm] *)
-    iap_mpath : ind_mpath D k = Some pm;
+    alias_member_path : ind_mpath D k = Some pm;
     (** which resolves back to it *)
-    iap_mlookup : ind_mlookup Θ Ξ pm = Some (p, k, D);
+    alias_member_resolves : ind_mlookup Θ Ξ pm = Some (p, k, D);
     (** the arguments are for uniform parameters *)
-    iap_args : List.length Ns <= ind_nu D;
+    alias_args_uniform : List.length Ns <= ind_nu D;
     (** the type former at the arguments is typed *)
-    iap_typed : Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ apps (a_ind p k) Ns : ind_ty_at D Mk Ns;
+    alias_former_typed : Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ apps (a_ind p k) Ns : ind_ty_at D Mk Ns;
     (** and so is the member's module at them *)
-    iap_module : Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ me_apps (qname_mod pm) Ns ≈ me_apps (qname_mod pm) Ns }.
+    alias_module_typed : Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ me_apps (qname_mod pm) Ns ≈ me_apps (qname_mod pm) Ns }.
 
 (** An inductive alias entry: its premises, the telescope as written. *)
 Lemma wf_gentry_ind_alias_inv : forall Θ Ξ mp pv Δ pm p k Ns,
@@ -572,6 +572,13 @@ Qed.
 
 (** The fill alike along an equivalence. *)
 Lemma equiv_elim_fill : forall Θ Θ' Ξ c c', gds_equiv Θ Θ' -> elim_fill_ok Θ Ξ c c' -> elim_fill_ok Θ' Ξ c c'.
+Proof.
+  intros * He (rs & Hrs & Hc); exists rs; split; [| exact Hc ].
+  eapply Forall2_impl; [ intros s r; apply (equiv_site_resolves _ _ _ _ _ He) | exact Hrs ].
+Qed.
+
+(** The fill of a telescope alike along an equivalence. *)
+Lemma equiv_tele_fill : forall Θ Θ' Ξ Δ Δ', gds_equiv Θ Θ' -> tele_fill_ok Θ Ξ Δ Δ' -> tele_fill_ok Θ' Ξ Δ Δ'.
 Proof.
   intros * He (rs & Hrs & Hc); exists rs; split; [| exact Hc ].
   eapply Forall2_impl; [ intros s r; apply (equiv_site_resolves _ _ _ _ _ He) | exact Hrs ].
@@ -1846,9 +1853,10 @@ Section Impl.
     exists ΘR1; exact (proj2 (linv_push_unit Hli1 Htel HP)).
   Qed.
 
-  Lemma unit_ok {fp ch Θ K imps P0 P cs r1 r2 mp U Ξ2} :
+  Lemma unit_ok {fp ch Θ K imps P0 P1 P cs r1 r2 mp U Ξ2} :
     post_cmds (fp :: ch) Θ K nil bt_empty nil imps r1 ->
-    tele_lits (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1)) P0 = lok P ->
+    tele_lits (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1)) P0 = lok P1 ->
+    tele_fill_ok (gds_restrict (cs_dom r1) (cs_deps r1)) nil P1 P ->
     tele_ass P ->
     ⊢ gds_restrict (cs_dom r1) (cs_deps r1) ⍮ nil ⍮ P ->
     acc_ok (gds_restrict (cs_dom r1) (cs_deps r1)) nil (tele_refs nil P0) ->
@@ -1856,16 +1864,17 @@ Section Impl.
     cs_stack r2 = (mp, U) :: Ξ2 ->
     post_unit (fp :: ch) Θ K (imps, P0, cs) (ust (cs_deps r2) (cs_k r2) (cs_dom r2) (cs_bt r2) U).
   Proof.
-    intros Hp1 El Htel HP Hac Hp2 HΞ G; cbn [us_deps us_k us_dom us_bt us_unit].
+    intros Hp1 El Hf Htel HP Hac Hp2 HΞ G; cbn [us_deps us_k us_dom us_bt us_unit].
     destruct (unit_imports G Hp1) as (ΘR1 & RbR1 & Hr1 & _ & Hli1 & Hrb1 & He1 & Hg1).
     pose proof (equiv_acc _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli1)) Hac) as Hac'.
+    pose proof (equiv_tele_fill _ _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli1)) Hf) as Hf'.
     destruct (linv_push_unit Hli1 Htel HP) as [HP' Hli1'].
     destruct (Hp2 _ _ Hli1' Hrb1) as [ΘR2 RbR2 Hr2 Hli2 Hrb2 He2 Hg2]; cbn beta in Hr2.
     rewrite HΞ in Hr2, Hli2.
     destruct (run_cmds_tail _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hr2) as [F HF]; injection HF as <- ->.
     destruct Hli2 as [G2 Hs2 Hd2 Hc2 _ _].
     apply (mk_unit_post _ _ _ _ _ RbR2 ΘR2);
-      [ eapply ru_intro; [ exact Hr1 | exact (unit_lits G Hp1 El _ Hli1) | exact Htel | exact HP' | exact Hac' | exact Hr2 ]
+      [ eapply ru_intro; [ exact Hr1 | exact (unit_lits G Hp1 El _ Hli1) | exact Hf' | exact Htel | exact HP' | exact Hac' | exact Hr2 ]
       | exact G2 | exact Hs2 | exact Hd2 | exact Hc2 | exact (proj2 Hrb2) | eapply ext_trans; eassumption |].
     intros x Hx; destruct (Hg2 _ Hx) as [Hx1 | Hx1]; [| right; exact Hx1 ].
     destruct (Hg1 _ Hx1) as [Hx0 | Hx0]; [ left; exact Hx0 | right ].
@@ -2338,6 +2347,14 @@ Section Impl.
         end
     end.
 
+  (** A telescope over the stack filled: its own sites. *)
+  Definition tele_fill_dec (Θ0 : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ0 ⍮ Ξ) (Δ : ctx) :
+      ({Δ' | tele_fill_ok Θ0 Ξ Δ Δ'} + {s | In s (tele_sites (gs_tele Ξ) Δ) /\ forall r, ~ site_resolves Θ0 Ξ s r})%type :=
+    match sites_dec Θ0 Ξ (site_search _ _ HΞ) (tele_sites (gs_tele Ξ) Δ) with
+    | inl (exist _ rs Hrs) => inl (exist _ (fst (tele_fill rs Δ)) (ex_intro _ rs (conj Hrs eq_refl)))
+    | inr Hn => inr Hn
+    end.
+
   (** A module's parameters filled: the module's own sites. *)
   Definition mod_fill_dec (Θ0 : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ0 ⍮ Ξ) (x : string) (pv : bool) (Δ : ctx) (cs : list ccmd) :
       ({Δ' | elim_fill_ok Θ0 Ξ (cc_mod x pv Δ cs) (cc_mod x pv Δ' cs)}
@@ -2396,7 +2413,12 @@ Section Impl.
         | rok (exist _ r1 Hr1, l1) =>
             match inspect (tele_lits (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1)) P0) with
             | exist _ (lfail e) _ => rerr (re_nat (gds_restrict (cs_dom r1) (cs_deps r1)) nil (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1)) (re_lit e))
-            | exist _ (lok P) El =>
+            | exist _ (lok P1) El =>
+            match tele_fill_dec (gds_restrict (cs_dom r1) (cs_deps r1)) nil (unit_gctx H Hr1) P1 with
+            | inr (exist _ s _) =>
+                rerr (re_nat (gds_restrict (cs_dom r1) (cs_deps r1)) nil (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1))
+                        (site_error nil s))
+            | inl (exist _ P Hf) =>
             match tele_ass_dec P with
             | right _ => rerr (re_nat (gds_restrict (cs_dom r1) (cs_deps r1)) nil (nat_view (gds_restrict (cs_dom r1) (cs_deps r1)) nil (cs_bt r1))
                                 (tele_error (unit_gctx H Hr1) nil P (re_msg "unit parameters that are not assumptions")))
@@ -2416,10 +2438,11 @@ Section Impl.
                 | rok (exist _ r2 Hr2, l2) =>
                     match list_case (cs_stack r2) with
                     | inleft (existT _ (mp, U) (exist _ _ HΞ)) =>
-                        rok (exist _ _ (unit_ok Hr1 El Htel HP Hac Hr2 HΞ), log_app l1 l2)
+                        rok (exist _ _ (unit_ok Hr1 El Hf Htel HP Hac Hr2 HΞ), log_app l1 l2)
                     | inright _ => rerr (re_msg "internal error: a unit body lost its frame")
                     end
                 end
+            end
             end
             end
             end
@@ -2785,6 +2808,20 @@ Section Impl.
     - exfalso; destruct Hf' as (rs & Hrs & _); destruct (Forall2_in_left _ _ _ _ Hrs Hin) as [r [_ Hr]]; exact (Hn r Hr).
   Qed.
 
+  (** A telescope the executable fills is filled as the judgment's. *)
+  Lemma tele_fill_found {ch Θ K D ΘR Ξ Δ1 Δ} (Hg : ⊢ᵍ gds_restrict D Θ ⍮ Ξ) :
+    linv ch Θ K D ΘR Ξ -> tele_fill_ok ΘR Ξ Δ1 Δ ->
+    exists Hf, tele_fill_dec (gds_restrict D Θ) Ξ Hg Δ1 = inl (exist _ Δ Hf).
+  Proof.
+    intros Hli Hf; pose proof (equiv_tele_fill _ _ _ _ _ (linv_equiv Hli) Hf) as Hf'.
+    unfold tele_fill_dec.
+    destruct (sites_dec _ _ (site_search _ _ Hg) (tele_sites (gs_tele Ξ) Δ1)) as [[rs Hrs] | [s [Hin Hn]]].
+    - assert (Hf0 : tele_fill_ok (gds_restrict D Θ) Ξ Δ1 (fst (tele_fill rs Δ1))) by (exists rs; split; [ exact Hrs | reflexivity ]).
+      pose proof (tele_fill_functional _ _ (linv_restrict_gctx Hli) _ _ _ Hf0 Hf') as E.
+      subst Δ; eexists; reflexivity.
+    - exfalso; destruct Hf' as (rs & Hrs & _); destruct (Forall2_in_left _ _ _ _ Hrs Hin) as [r [_ Hr]]; exact (Hn r Hr).
+  Qed.
+
   Lemma lits_simple_complete {ch L Θ K D B ΘR Ξ c c1 c2} (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ) :
     linv ch Θ K D ΘR Ξ -> cmd_lits_ok ΘR Ξ B c c1 -> elim_fill_ok ΘR Ξ c1 c2 ->
     (exists r, simple_step ch L Θ K D B Ξ c2 H = rok r) ->
@@ -2981,7 +3018,7 @@ Section Impl.
       destruct (IHcs Hacc _ _ _ (cons_pre H Hp1) Hli1 Hrb1) as [[[r2 Hp2] l2] E2]; unfold run_cmds_impl in E2; simp cmds_step in E2; rewrite E2.
       simp cmds_step; eexists; reflexivity.
     - (* a unit *)
-      intros fp ch B1 Rb1 B2 Rb2 imps P0 P cs ΘR1 ΘR2 mp U Hi IHi HPl Htel HP Hac Hb IHb Hacc Θ K H.
+      intros fp ch B1 Rb1 B2 Rb2 imps P0 P1 P cs ΘR1 ΘR2 mp U Hi IHi HPl HPf Htel HP Hac Hb IHb Hacc Θ K H.
       rewrite run_unit_impl_unfold; cbn [run_unit_step].
       destruct (IHi Hacc Θ K nil (unit_pre H) (nil_linv H) (rb_ok_nil K)) as [[[r1 Hp1] l1] E1]; rewrite E1; cbv beta iota.
       destruct (Hp1 _ _ (nil_linv H) (rb_ok_nil K)) as [ΘR1' RbR1' Hr1 Hli1 Hrb1 _ _]; cbn beta in Hr1.
@@ -2989,8 +3026,9 @@ Section Impl.
         rewrite <- HΞ in Hli1.
       subst B1 Rb1.
       pose proof HPl as HPl'; unfold tele_lits_ok in HPl'; rewrite (linv_nat_view Hli1) in HPl'.
-      destruct (inspect (tele_lits _ P0)) as [[P1' | e] El]; [ assert (P1' = P) as -> by congruence | exfalso; congruence ].
+      destruct (inspect (tele_lits _ P0)) as [[P1' | e] El]; [ assert (P1' = P1) as -> by congruence | exfalso; congruence ].
       cbv beta iota.
+      destruct (tele_fill_found (unit_gctx H Hp1) Hli1 HPf) as [Hf0 EHf]; rewrite EHf; cbv beta iota.
       destruct (tele_ass_dec P) as [Htel' | Htel']; [| contradiction ]; cbv beta iota.
       match goal with |- context [check_ctx ?f ?a ?b ?c ?d] => destruct (check_ctx f a b c d) as [HP' | HP'] end;
         [| exfalso; apply HP'; exact (equiv_ctx _ _ _ _ (linv_equiv Hli1) (linv_restrict_gctx Hli1) HP) ].
