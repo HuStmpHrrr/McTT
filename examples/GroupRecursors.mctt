@@ -1,0 +1,109 @@
+(* The recursor module of a group: [mutual T where … end] files, after the
+   members, the module [T.Rec], over the group's uniform parameters, a
+   level [u], one motive per member, in member order, then one case per
+   constructor of each member, in order; its functions [rec_<member>] are
+   the group's eliminator at each member.  A view is named by its
+   instance: [List (Rose A)] gives [rec_List_Rose]. *)
+import Prelude›Builtin›Nat use (Nat; succ)
+
+module GroupRecursors where
+
+def add (n : ℕ) (m : ℕ) : ℕ :=
+  elim n at z -> ℕ | zero ⇒ m | succ k, r ⇒ succ r end
+end
+
+inductive List (A : Type@0) : Type@0 where
+| nil
+| cons (x : A) (xs : List A)
+end
+
+(* Terms and spines: [Syntax.Rec.rec_Tm] and [Syntax.Rec.rec_Sp]. *)
+mutual Syntax where
+  inductive Tm : Type@0 where
+  | var (n : ℕ)
+  | app (f : Tm) (s : Sp)
+  with Sp : Type@0 where
+  | snil
+  | scons (t : Tm) (s : Sp)
+  end
+end
+
+def size (t : Syntax.Tm) : ℕ :=
+  Syntax.Rec.rec_Tm 0l (λ (z : Syntax.Tm) → ℕ) (λ (z : Syntax.Sp) → ℕ)
+    (λ (n : ℕ) → 1)
+    (λ (f : Syntax.Tm) (s : Syntax.Sp) (hf : ℕ) (hs : ℕ) → succ (add hf hs))
+    0
+    (λ (t : Syntax.Tm) (s : Syntax.Sp) (ht : ℕ) (hs : ℕ) → add ht hs)
+    t
+end
+
+def spineLength (s : Syntax.Sp) : ℕ :=
+  Syntax.Rec.rec_Sp 0l (λ (z : Syntax.Tm) → ℕ) (λ (z : Syntax.Sp) → ℕ)
+    (λ (n : ℕ) → 0)
+    (λ (f : Syntax.Tm) (s : Syntax.Sp) (hf : ℕ) (hs : ℕ) → 0)
+    0
+    (λ (t : Syntax.Tm) (s : Syntax.Sp) (ht : ℕ) (hs : ℕ) → succ hs)
+    s
+end
+
+eval size (Syntax.Tm.app (Syntax.Tm.var 0) (Syntax.Sp.scons (Syntax.Tm.var 1) Syntax.Sp.snil))
+eval spineLength (Syntax.Sp.scons (Syntax.Tm.var 1) (Syntax.Sp.scons (Syntax.Tm.var 2) Syntax.Sp.snil))
+
+(* Rose trees as a group of one type: the module [R.Rec] has [rec_Rose]
+   and, for the view [List (Rose A)], [rec_List_Rose]. *)
+mutual R (A : Type@0) where
+  inductive Rose : Type@0 where
+  | node (x : A) (ts : List (Rose A))
+  end
+end
+
+def nodes (r : R.Rose ℕ) : ℕ :=
+  R.Rec.rec_Rose ℕ 0l (λ (z : R.Rose ℕ) → ℕ) (λ (z : List (R.Rose ℕ)) → ℕ)
+    (λ (x : ℕ) (ts : List (R.Rose ℕ)) (h : ℕ) → succ h)
+    0
+    (λ (t : R.Rose ℕ) (ts : List (R.Rose ℕ)) (ht : ℕ) (hts : ℕ) → add ht hts)
+    r
+end
+
+def forestNodes (f : List (R.Rose ℕ)) : ℕ :=
+  R.Rec.rec_List_Rose ℕ 0l (λ (z : R.Rose ℕ) → ℕ) (λ (z : List (R.Rose ℕ)) → ℕ)
+    (λ (x : ℕ) (ts : List (R.Rose ℕ)) (h : ℕ) → succ h)
+    0
+    (λ (t : R.Rose ℕ) (ts : List (R.Rose ℕ)) (ht : ℕ) (hts : ℕ) → add ht hts)
+    f
+end
+
+def leaf (n : ℕ) : R.Rose ℕ := R.Rose.node ℕ n (List.nil (R.Rose ℕ)) end
+
+eval nodes (R.Rose.node ℕ 0 (List.cons (R.Rose ℕ) (leaf 1) (List.cons (R.Rose ℕ) (leaf 2) (List.nil (R.Rose ℕ)))))
+eval forestNodes (List.cons (R.Rose ℕ) (leaf 1) (List.nil (R.Rose ℕ)))
+
+(* Terms with argument lists and bindings, nested through [List] at both
+   members: [rec_Term], [rec_Bind], [rec_List_Term], [rec_List_Bind]. *)
+mutual Lam where
+  inductive Term : Type@0 where
+  | var (n : ℕ)
+  | call (f : ℕ) (args : List Term)
+  | block (bs : List Bind) (body : Term)
+  with Bind : Type@0 where
+  | bind (n : ℕ) (t : Term)
+  end
+end
+
+def termSize (t : Lam.Term) : ℕ :=
+  Lam.Rec.rec_Term 0l
+    (λ (z : Lam.Term) → ℕ) (λ (z : Lam.Bind) → ℕ) (λ (z : List Lam.Term) → ℕ) (λ (z : List Lam.Bind) → ℕ)
+    (λ (n : ℕ) → 1)
+    (λ (f : ℕ) (args : List Lam.Term) (h : ℕ) → succ h)
+    (λ (bs : List Lam.Bind) (body : Lam.Term) (hb : ℕ) (h : ℕ) → succ (add hb h))
+    (λ (n : ℕ) (t : Lam.Term) (h : ℕ) → h)
+    0
+    (λ (x : Lam.Term) (xs : List Lam.Term) (h : ℕ) (hs : ℕ) → add h hs)
+    0
+    (λ (x : Lam.Bind) (xs : List Lam.Bind) (h : ℕ) (hs : ℕ) → add h hs)
+    t
+end
+
+eval termSize (Lam.Term.block (List.cons Lam.Bind (Lam.Bind.bind 0 (Lam.Term.var 0)) (List.nil Lam.Bind))
+                 (Lam.Term.call 1 (List.cons Lam.Term (Lam.Term.var 1) (List.nil Lam.Term))))
+end

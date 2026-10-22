@@ -431,7 +431,7 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
    | C.Coq_c_axiom (x, a) -> ignore (decl (Some "axiom") x Def); term st env a
    (* [mutual T (ps) where inductive … end end]: the module [T], then the
       group in its frame, its parameters first. *)
-   | C.Coq_c_mod (_, x, [], C.Coq_md_where [ C.Coq_c_ind (_, ps, ms) ])
+   | C.Coq_c_mod (_, x, [], C.Coq_md_where [ C.Coq_c_ind (_, _, ps, ms) ])
      when (match st.toks.(st.vars.(st.cur) - 1).t with P.MUTUAL _ -> true | _ -> false) ->
        ignore (decl (Some "mutual") x Mod);
        group (ch @ [ x ]) env true ps ms
@@ -468,7 +468,7 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
        st.occ.(i).link <- st.occ.(st.cur - 1).link
    (* A group: its first member's name, its uniform parameters, then its
       members ([group]). *)
-   | C.Coq_c_ind (_, ps, ms) -> group ch env false ps ms
+   | C.Coq_c_ind (_, _, ps, ms) -> group ch env false ps ms
    (* A mutual definition: its common parameters, then each function, a
       definition of the frame: its name, its parameters, the last its
       scrutinee, its result type under them, then its clauses, each its
@@ -528,7 +528,7 @@ let eval_spans (toks : tok array) (evals : (C.obj * C.obj option) list) : (int *
   let follows = function
     | P.MODULE _ | P.PRIVATE _ | P.ABSTRACT _ | P.DEF _ | P.THEOREM _ | P.LEMMA _ | P.FACT _
     | P.REMARK _ | P.LET _ | P.GIVEN _ | P.AXIOM _ | P.IMPORT _ | P.OPEN _ | P.EVAL _ | P.INDUCTIVE _
-    | P.BUILTIN _ | P.END _ | P.EOF _ -> true
+    | P.BUILTIN _ | P.MUTUAL _ | P.END _ | P.EOF _ -> true
     | _ -> false in
   let parses i j (e, t) =
     let body = Array.to_list (Array.map (fun k -> k.t) (Array.sub toks i (j - i))) in

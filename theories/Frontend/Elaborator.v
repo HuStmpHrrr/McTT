@@ -314,7 +314,7 @@ with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
            | Cst.c_import _ :: _ => eerr "import is not allowed in a local module; use open"
            | Cst.c_error e :: _ => eerr e
            | Cst.c_eval _ _ :: _ => eerr "eval is not allowed in a local module"
-           | Cst.c_ind _ _ _ :: _ => eerr "an inductive type is not allowed in a local module"
+           | Cst.c_ind _ _ _ _ :: _ => eerr "an inductive type is not allowed in a local module"
            | Cst.c_mdef _ _ _ :: _ => eerr "a mutual definition is not allowed in a local module"
            | Cst.c_builtin _ _ :: _ => eerr "builtin is not allowed in a local module"
            | Cst.c_ind_alias _ _ _ _ :: _ => eerr "an inductive alias is not allowed in a local module"
@@ -445,12 +445,12 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) 
       let* M := elab (F ++ O) oM in
       let* A := elab (F ++ O) oA in
       eok (F, cc_eval M (Some A) :: nil)
-  | Cst.c_ind pv ups ms =>
+  | Cst.c_ind pv wr ups ms =>
       let* _ := check_distinct "a group" (member_names ms) in
       let* _ := check_fresh_all (member_names ms) F in
       let* tys := elab_params (F ++ O) ups in
       let* rms := elab_members (F ++ O) ups (member_names ms) ms in
-      eok (filed_mems fp ch (member_names ms) ++ F, cc_ind pv (mk_raw (ptele tys) rms) :: nil)%list
+      eok (filed_mems fp ch (member_names ms) ++ F, cc_ind pv (mk_raw (ptele tys) rms wr) :: nil)%list
   | Cst.c_mdef m ps fs =>
       let* _ := check_params ps in
       let* _ := check_distinct "a mutual definition" (fun_names fs) in

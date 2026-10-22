@@ -1046,6 +1046,15 @@ Qed.
 Lemma mdefs_run_no_axioms : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> gs_no_axioms Ξ -> gs_no_axioms Ξ'.
 Proof. induction 1; intros HΞ; [ exact HΞ |]; apply IHmdefs_run, gs_no_axioms_add; cbn; [ discriminate | exact HΞ ]. Qed.
 
+(** The recursor module of a group is a module of definitions. *)
+Lemma rec_cmds_no_axioms : forall Θ Ξ R pq D, cmds_no_axioms (rec_cmds Θ Ξ R pq D).
+Proof.
+  intros; unfold rec_cmds; destruct (rd_rec R); [| constructor ].
+  constructor; [| constructor ].
+  apply cmd_no_axioms_mod, List.Forall_forall; intros c Hin.
+  apply List.in_map_iff in Hin as ([[j Mj] x] & <- & _); cbn; discriminate.
+Qed.
+
 Section Run.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
@@ -1079,8 +1088,11 @@ Section Run.
     (* an open declares what it generates *)
     - destruct_all; split; [ assumption | eapply gens_run_no_axioms; eassumption ].
     (* a declaration files an entry per declared member, with no axiom
-       in its module: the definitions it generates there *)
-    - destruct_all; split; [ assumption | eapply ind_entries_run_no_axioms; eassumption ].
+       in its module: the definitions it generates there; then its
+       recursor module, of definitions *)
+    - destruct_all.
+      match goal with IH : cmds_no_axioms _ -> _ |- _ =>
+        apply (IH (rec_cmds_no_axioms _ _ _ _ _)); split; [ assumption | eapply ind_entries_run_no_axioms; eassumption ] end.
     (* a mutual definition files definitions *)
     - destruct_all; split; [ assumption | eapply mdefs_run_no_axioms; eassumption ].
     (* a builtin binding files nothing *)

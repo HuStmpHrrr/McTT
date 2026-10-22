@@ -1230,8 +1230,7 @@ prog: OPEN VAR LPAREN ELIM FALSE_TY STAR
 ## In state 78, spurious reduction of production obj -> app_obj
 ##
 
-An eliminator "elim M" is expected to be followed by its blocks, one per member of the group
-in member order, the scrutinee's marked "at", the others "with":
+An eliminator "elim M" is expected to be followed by its blocks, one per member of the group in member order, the scrutinee's marked "at", the others "with":
 "elim M at (z : T) -> ?motive | c xs ⇒ ?body … end".
 
 
@@ -1318,8 +1317,7 @@ prog: MODULE VAR WHERE PRIVATE INDUCTIVE VAR COLON FALSE_TY WHERE LPAREN
 ## PRIVATE INDUCTIVE VAR params_opt COLON obj WHERE ctors
 ##
 
-The constructors of an inductive type are "| c (x : A) …", followed by the next member of its
-group "with y : ?type where …", or ended by "end".
+The constructors of an inductive type are "| c (x : A) …", followed by the next member of its group "with y : ?type where …", or ended by "end".
 
 prog: MODULE VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE BAR TRUE
 ##
@@ -1407,8 +1405,7 @@ prog: MODULE VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE LPAREN
 ## INDUCTIVE VAR params_opt COLON obj WHERE ctors
 ##
 
-The constructors of an inductive type are "| c (x : A) …", followed by the next member of its
-group "with y : ?type where …", or ended by "end".
+The constructors of an inductive type are "| c (x : A) …", followed by the next member of its group "with y : ?type where …", or ended by "end".
 
 prog: MODULE VAR WHERE BUILTIN TRUE
 ##
@@ -1525,8 +1522,7 @@ prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT WITH
 ## block_kw
 ##
 
-A block of an eliminator is expected to bind, after "at" or "with", the non-uniform parameters
-and then the scrutinee, as in "at ys (z : T) -> ?motive".
+A block of an eliminator is expected to bind, after "at" or "with", the non-uniform parameters and then the scrutinee, as in "at ys (z : T) -> ?motive".
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT LPAREN WITH
 ##
@@ -1627,8 +1623,7 @@ prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT VAR ARROW FALSE_TY STAR
 ## In state 87, spurious reduction of production brs ->
 ##
 
-After a block's motive, expected its branches "| c xs ⇒ ?body", then the next block, marked
-"at" or "with", or "end".
+After a block's motive, expected its branches "| c xs ⇒ ?body", then the next block, marked "at" or "with", or "end".
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT VAR ARROW FALSE_TY BAR WITH
 ##
@@ -1702,8 +1697,7 @@ prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT VAR ARROW FALSE_TY BAR VAR VAR WI
 ## vars
 ##
 
-The names a branch binds are expected to be followed by "⇒" and its body, or by "," and its
-induction hypotheses.
+The names a branch binds are expected to be followed by "⇒" and its body, or by "," and its induction hypotheses.
 
 prog: MODULE VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE WITH WITH
 ##
@@ -1771,8 +1765,7 @@ prog: MODULE VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE WITH VAR COLON FALSE_T
 ## WITH VAR COLON obj WHERE ctors
 ##
 
-After the constructors of a member of a group, expected another constructor "| c (args)",
-the next member "with y : ?type where …", or "end".
+After the constructors of a member of a group, expected another constructor "| c (args)", the next member "with y : ?type where …", or "end".
 
 prog: MODULE VAR WHERE MUTUAL WITH
 ##
@@ -1785,8 +1778,7 @@ prog: MODULE VAR WHERE MUTUAL WITH
 ## mods MUTUAL
 ##
 
-"mutual" is expected to be followed by the name of a group, "mutual T where inductive …",
-or by "def", "mutual def (Δ) f … with g … end".
+"mutual" is expected to be followed by the name of a group, "mutual T where inductive …", or by "def", "mutual def (Δ) f … with g … end".
 
 prog: MODULE VAR WHERE MUTUAL VAR WITH
 ##
@@ -1840,8 +1832,7 @@ prog: MODULE VAR WHERE MUTUAL VAR WHERE INDUCTIVE VAR WITH
 ## mods MUTUAL VAR params_opt WHERE INDUCTIVE VAR
 ##
 
-A member of a group should have ": ?type" after its name; the group's parameters are those of
-"mutual T (ps)".
+A member of a group should have ": ?type" after its name; the group's parameters are those of "mutual T (ps)".
 
 prog: MODULE VAR WHERE MUTUAL VAR WHERE INDUCTIVE VAR COLON WITH
 ##
@@ -1885,8 +1876,7 @@ prog: MODULE VAR WHERE MUTUAL VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE LPARE
 ## mods MUTUAL VAR params_opt WHERE INDUCTIVE VAR COLON obj WHERE ctors
 ##
 
-After the constructors of a member of a group, expected another constructor "| c (args)",
-the next member "with y : ?type where …", or "end".
+After the constructors of a member of a group, expected another constructor "| c (args)", the next member "with y : ?type where …", or "end".
 
 prog: MODULE VAR WHERE MUTUAL VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE END WITH
 ##
@@ -1916,8 +1906,7 @@ prog: MODULE VAR WHERE MUTUAL DEF WITH
 ## In state 215, spurious reduction of production params_opt ->
 ##
 
-"mutual def" and its common parameters are expected to be followed by the first function:
-"f (ys) (z : ?type) : ?result := | c xs ⇒ ?body …".
+"mutual def" and its common parameters are expected to be followed by the first function: "f (ys) (z : ?type) : ?result := | c xs ⇒ ?body …".
 
 prog: MODULE VAR WHERE MUTUAL DEF VAR WITH
 ##
@@ -1929,8 +1918,7 @@ prog: MODULE VAR WHERE MUTUAL DEF VAR WITH
 ## VAR
 ##
 
-A function of a mutual definition takes its parameters, the last its scrutinee, each written
-"(x : ?type)".
+A function of a mutual definition takes its parameters, the last its scrutinee, each written "(x : ?type)".
 
 prog: MODULE VAR WHERE MUTUAL DEF VAR LPAREN VAR COLON FALSE_TY RPAREN WITH
 ##
@@ -1943,8 +1931,7 @@ prog: MODULE VAR WHERE MUTUAL DEF VAR LPAREN VAR COLON FALSE_TY RPAREN WITH
 ## VAR params
 ##
 
-The parameters of a function of a mutual definition are expected to be followed by
-": ?result" and its clauses after ":=".
+The parameters of a function of a mutual definition are expected to be followed by ": ?result" and its clauses after ":=".
 
 prog: MODULE VAR WHERE MUTUAL DEF VAR LPAREN VAR COLON FALSE_TY RPAREN COLON WITH
 ##
@@ -1975,8 +1962,7 @@ prog: MODULE VAR WHERE MUTUAL DEF VAR LPAREN VAR COLON FALSE_TY RPAREN COLON FAL
 ## In state 78, spurious reduction of production obj -> app_obj
 ##
 
-The result type of a function of a mutual definition is expected to be followed by ":=" and
-its clauses.
+The result type of a function of a mutual definition is expected to be followed by ":=" and its clauses.
 
 prog: MODULE VAR WHERE MUTUAL DEF VAR LPAREN VAR COLON FALSE_TY RPAREN COLON FALSE_TY EQ STAR
 ##
@@ -1989,8 +1975,7 @@ prog: MODULE VAR WHERE MUTUAL DEF VAR LPAREN VAR COLON FALSE_TY RPAREN COLON FAL
 ## VAR params COLON obj EQ brs
 ##
 
-After the clauses of a function, expected another clause "| c xs ⇒ ?body", the next function
-after "with", or "end".
+After the clauses of a function, expected another clause "| c xs ⇒ ?body", the next function after "with", or "end".
 
 prog: MODULE VAR WHERE MUTUAL DEF VAR LPAREN VAR COLON FALSE_TY RPAREN COLON FALSE_TY EQ WITH WITH
 ##

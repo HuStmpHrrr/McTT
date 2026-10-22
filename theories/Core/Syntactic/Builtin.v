@@ -249,7 +249,7 @@ Section Literals.
   Definition decl_lits (R : raw_decl) : lres raw_decl :=
     let% Δ' := tele_lits (rd_uparams R) in
     let% ms' := lmap member_lits (rd_members R) in
-    lok (mk_raw Δ' ms').
+    lok (mk_raw Δ' ms' (rd_rec R)).
 
   (** A function of a [mutual def] as written. *)
   Definition fun_lits (F : raw_fun) : lres raw_fun :=
@@ -649,7 +649,7 @@ Definition cmd_fill (rs : list fill_result) (c : ccmd) : ccmd :=
                     | nil => nil
                     | Mr :: ms' => let r := member_fill rs Mr in fst r :: ms_fill (snd r) ms'
                     end) (snd rU) (rd_members R) in
-      cc_ind pv (mk_raw (fst rU) rMs)
+      cc_ind pv (mk_raw (fst rU) rMs (rd_rec R))
   | cc_mdef b pv Δ fs =>
       let rD := tele_fill rs Δ in
       let rFs := (fix fs_fill (rs : list fill_result) (fs : list raw_fun) : list raw_fun :=

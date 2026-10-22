@@ -74,11 +74,10 @@ let%expect_test "the ASCII spellings parse and print in Unicode" =
   let _ = main_of_body
     "def t : True := true end \
      def f : forall (b : False) -> Nat := fun (b : False) -> exfalso b return y . Nat end \
-     eval elim 2 return y . Nat | zero => 0 | succ n, r => succ r end \
+     eval elim 2 at y -> Nat | zero => 0 | succ n, r => succ r end \
      eval t eval f" in
   [%expect {|
-    Evaluate elim 2 return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ x3 end --> 2
-      : ℕ
+    Evaluate elim 2 at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ x3 end --> 2 : ℕ
     Evaluate t --> ⋆ : ⊤
     Evaluate f --> λ (x1 : ⊥) → exfalso x1 return x2 . ℕ : ∀ (x1 : ⊥) → ℕ
     |}]
@@ -89,11 +88,10 @@ let%expect_test "each Unicode spelling parses" =
      def f : ∀ (b : ⊥) → ℕ ≔ λ (b : ⊥) → exfalso b return y . ℕ end \
      def g : Π (x : ℕ) → ℕ ≔ λ (x : ℕ) → x end \
      def u : Type@ω ≔ Type@0 end \
-     eval elim 2 return y . ℕ | zero ⇒ 0 | succ n, r ⇒ succ r end \
+     eval elim 2 at y -> ℕ | zero ⇒ 0 | succ n, r ⇒ succ r end \
      eval t eval f eval g" in
   [%expect {|
-    Evaluate elim 2 return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ x3 end --> 2
-      : ℕ
+    Evaluate elim 2 at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ x3 end --> 2 : ℕ
     Evaluate t --> ⋆ : ⊤
     Evaluate f --> λ (x1 : ⊥) → exfalso x1 return x2 . ℕ : ∀ (x1 : ⊥) → ℕ
     Evaluate g --> λ (x1 : ℕ) → x1 : ∀ (x1 : ℕ) → ℕ
@@ -158,8 +156,8 @@ let%expect_test "identity function of Nat is of forall (x : Nat) -> Nat" =
 let%expect_test "recursion on a natural number that always returns zero is of \
                  Nat" =
   let _ = main_of_body
-    "eval elim 3 return y . Nat | zero => 0 | succ n, r => 0 end : Nat" in
-  [%expect {| Evaluate elim 3 return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ 0 end --> 0 : ℕ |}]
+    "eval elim 3 at y -> Nat | zero => 0 | succ n, r => 0 end : Nat" in
+  [%expect {| Evaluate elim 3 at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ 0 end --> 0 : ℕ |}]
 
 let%expect_test "SimpleNat.mctt works" =
   let _ = main_of_example "SimpleNat.mctt" in
@@ -169,9 +167,8 @@ let%expect_test "SimpleRec.mctt works" =
   let _ = main_of_example "SimpleRec.mctt" in
   [%expect {|
     Evaluate λ (x1 : ℕ)
-               → elim x1 return x2 . ℕ | zero ⇒ 1 | succ x3, x4 ⇒ succ x4 end
-      --> λ (x1 : ℕ)
-            → elim x1 return x2 . ℕ | zero ⇒ 1 | succ x3, x4 ⇒ succ x4 end
+               → elim x1 at x2 → ℕ | zero ⇒ 1 | succ x3, x4 ⇒ succ x4 end
+      --> λ (x1 : ℕ) → elim x1 at x2 → ℕ | zero ⇒ 1 | succ x3, x4 ⇒ succ x4 end
       : ∀ (x1 : ℕ) → ℕ
     |}]
 
@@ -314,14 +311,16 @@ let%expect_test "Vector.mctt works" =
                       (x25 : x1 A6 (succ x24))
                      → x8 A6 (succ x24) x25
                          (λ (x26 : ℕ)
-                           → elim x26 return x27 . Type@0
+                           → elim x26
+                             at x27 → Type@0
                              | zero ⇒ ℕ
                              | succ x28, A7 ⇒ A6
                              end)
                          0
                          (λ (x29 : ℕ)
                             (x30 : A6)
-                            (x31 : elim x29 return x32 . Type@0
+                            (x31 : elim x29
+                                   at x32 → Type@0
                                    | zero ⇒ ℕ
                                    | succ x33, A8 ⇒ A6
                                    end)
@@ -436,7 +435,8 @@ let%expect_test "LetNary.mctt works" =
   [%expect {|
     Evaluate let x1 : ∀ (x2 : ℕ) → Type@0 ≔
                    λ (x3 : ℕ)
-                     → elim x3 return x4 . Type@0
+                     → elim x3
+                       at x4 → Type@0
                        | zero ⇒ ℕ
                        | succ x5, A1 ⇒ ∀ (x6 : ℕ) → A1
                        end;
@@ -446,7 +446,8 @@ let%expect_test "LetNary.mctt works" =
                          (x13 : ℕ)
                          → x1 x11 ≔
                    λ (x14 : ℕ)
-                     (x15 : elim succ x14 return x16 . Type@0
+                     (x15 : elim succ x14
+                            at x16 → Type@0
                             | zero ⇒ ℕ
                             | succ x17, A2 ⇒ ∀ (x18 : ℕ) → A2
                             end)
@@ -459,7 +460,8 @@ let%expect_test "LetNary.mctt works" =
                                → ℕ ≔
                          λ (x25 : ℕ)
                            (x26 : ℕ)
-                           → elim x25 return x27 . ℕ
+                           → elim x25
+                             at x27 → ℕ
                              | zero ⇒ x26
                              | succ x28, x29 ⇒ succ x29
                              end
@@ -468,7 +470,8 @@ let%expect_test "LetNary.mctt works" =
                         (x32 : ℕ)
                         → x22 x30 (x22 x31 x32)
                    end
-             in (elim x20 return x33 . ∀ (x34 : x1 x33) → ℕ
+             in (elim x20
+                 at x33 → ∀ (x34 : x1 x33) → ℕ
                  | zero ⇒ x7
                  | succ x35, x36 ⇒
                    λ (x37 : x1 (succ x35)) → x36 (x10 x35 x37 (succ x35))
@@ -558,14 +561,16 @@ let%expect_test "LetVector.mctt works" =
                      (x70 : x1 A10 (succ x69))
                      → x40 A10 (succ x69) x70
                          (λ (x71 : ℕ)
-                           → elim x71 return x72 . Type@0
+                           → elim x71
+                             at x72 → Type@0
                              | zero ⇒ ℕ
                              | succ x73, A11 ⇒ A10
                              end)
                          0
                          (λ (x74 : ℕ)
                             (x75 : A10)
-                            (x76 : elim x74 return x77 . Type@0
+                            (x76 : elim x74
+                                   at x77 → Type@0
                                    | zero ⇒ ℕ
                                    | succ x78, A12 ⇒ A10
                                    end)
@@ -583,11 +588,9 @@ let%expect_test "DefAbstract.mctt works" =
   let _ = main_of_example "DefAbstract.mctt" in
   [%expect {|
     Evaluate double four
-      --> elim four return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
-      : ℕ
+      --> elim four at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end : ℕ
     Evaluate double four
-      --> elim four return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
-      : ℕ
+      --> elim four at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end : ℕ
     |}]
 
 let%expect_test "ModuleNested.mctt works" =
@@ -1096,10 +1099,7 @@ let%expect_test "LetMulti.mctt works" =
                  x1 : A1 ≔ 2;
                  x2 : ∀ (x3 : A1) → A1 ≔
                    λ (x4 : A1)
-                     → elim x4 return x5 . A1
-                       | zero ⇒ x1
-                       | succ x6, x7 ⇒ succ x7
-                       end
+                     → elim x4 at x5 → A1 | zero ⇒ x1 | succ x6, x7 ⇒ succ x7 end
              in x2 x1
              end --> 4 : ℕ
     |}]
@@ -2509,7 +2509,8 @@ let%expect_test "lib/Polynomials.mctt" =
                    end
                    def peak : ∀ (x6 : ℕ) → ℕ ≔
                      λ (x7 : ℕ)
-                       → elim x7 return x8 . ℕ
+                       → elim x7
+                         at x8 → ℕ
                          | zero ⇒ 0
                          | succ x9, x10 ⇒ max (value x9) x10
                          end
@@ -2957,14 +2958,12 @@ let%expect_test "lib/Tutorial.mctt" =
                           → x1 : ∀ (A1 : Type@0)
                                    (x1 : A1)
                                    → A1
-    Evaluate elim 3 return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
-      --> 6 : ℕ
-    Evaluate elim 2 return x1 . Type@0
-             | zero ⇒ ℕ
-             | succ x2, A1 ⇒ ∀ (x3 : ℕ) → A1
-             end --> ∀ (x1 : ℕ)
-                       (x2 : ℕ)
-                       → ℕ : Type@0
+    Evaluate elim 3 at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end --> 6
+      : ℕ
+    Evaluate elim 2 at x1 → Type@0 | zero ⇒ ℕ | succ x2, A1 ⇒ ∀ (x3 : ℕ) → A1 end
+      --> ∀ (x1 : ℕ)
+            (x2 : ℕ)
+            → ℕ : Type@0
     Evaluate ⋆ --> ⋆ : ⊤
     Evaluate λ (x1 : ⊥) → exfalso x1 return x2 . ℕ
       --> λ (x1 : ⊥) → exfalso x1 return x2 . ℕ : ∀ (x1 : ⊥) → ℕ
@@ -2973,14 +2972,13 @@ let%expect_test "lib/Tutorial.mctt" =
              end --> 4 : ℕ
     Evaluate double 3 --> 6 : ℕ
     Evaluate double four
-      --> elim four return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end
-      : ℕ
+      --> elim four at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end : ℕ
     Evaluate succ helper --> 2 : ℕ
     Evaluate double two --> 4 : ℕ
     Evaluate double (succ k)
       --> succ
             (succ
-              (elim k return x1 . ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end))
+              (elim k at x1 → ℕ | zero ⇒ 0 | succ x2, x3 ⇒ succ (succ x3) end))
       : ℕ
     Evaluate Outer.Inner.next --> 11 : ℕ
     Evaluate Twice.twice ℕ double 1 --> 4 : ℕ
@@ -3050,7 +3048,7 @@ let%expect_test "mctt-doc: every name of lib lines up, and every use resolves" =
 let%expect_test "mctt-doc: every name of examples lines up" =
   List.iter print_endline (Doc.problems ~resolve:false (Doc.load ~check:false "../examples"));
   List.iter print_endline (Doc.problems ~resolve:false (Doc.load ~check:false "../examples/multi"));
-  [%expect {||}]
+  [%expect {| |}]
 
 let%expect_test "mctt-doc: the units the checker rejects are reported" =
   List.iter print_endline (Doc.problems (Doc.load ~extra_roots:lib_root "../examples/multi"));
@@ -3242,7 +3240,7 @@ let%expect_test "mctt-doc: ℕ links to the type bound as the natural numbers" =
   let page = Doc.render_unit lib' (Doc.anchor_kinds lib') u in
   Printf.printf "%d links, %d without a link\n" (doc_count "ℕ</a>" page) (doc_count span page);
   [%expect {|
-    2673 links to Nat, 0 other links, 0 without a link
+    2674 links to Nat, 0 other links, 0 without a link
     NoNat: not checked
     0 links, 2 without a link
     |}]
@@ -3431,8 +3429,7 @@ let%expect_test "Inductives.mctt works" =
     Evaluate count ℕ (List.cons ℕ 1 (List.cons ℕ 2 (List.nil ℕ))) --> 2 : ℕ
     Evaluate λ (x1 : List ℕ) → length ℕ (List.cons ℕ 0 x1)
       --> λ (x1 : List ℕ)
-            → succ
-                (elim x1 return x2 . ℕ | nil ⇒ 0 | cons x3 x4, x5 ⇒ succ x5 end)
+            → succ (elim x1 at x2 → ℕ | nil ⇒ 0 | cons x3 x4, x5 ⇒ succ x5 end)
       : ∀ (x1 : List ℕ) → ℕ
     Evaluate (List ℕ).cons 0 (List ℕ).nil --> List.cons ℕ 0 (List.nil ℕ) : List ℕ
     Evaluate cons ℕ 1 (nil ℕ) --> List.cons ℕ 1 (List.nil ℕ) : List ℕ
@@ -3448,7 +3445,8 @@ let%expect_test "Inductives.mctt works" =
     Evaluate approx (Ord.next omg) 2 --> 3 : ℕ
     Evaluate λ (x1 : ∀ (x2 : ℕ) → Ord) → approx (Ord.lim x1) 1
       --> λ (x1 : ∀ (x2 : ℕ) → Ord)
-            → elim x1 1 return x3 . ℕ
+            → elim x1 1
+              at x3 → ℕ
               | base ⇒ 0
               | next x4, x5 ⇒ succ x5
               | lim x6, x7 ⇒ x7 1
@@ -3533,21 +3531,15 @@ let%expect_test "a non-uniform parameter outside the sort is named" =
       is not in the sort of L, Type@0
     |}]
 
-let%expect_test "a nested occurrence is not supported yet" =
+let%expect_test "a nested occurrence is a view of the container" =
   let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
                         inductive R : Type@0 where | mk (xs : List R) end" in
-  [%expect {|
-    Error: R occurs nested inside List in the argument xs of mk;
-      nested inductive types are not supported yet
-    |}]
+  [%expect {| |}]
 
-let%expect_test "a nested occurrence under a function is not supported yet" =
+let%expect_test "a nested occurrence under a function is a view of the container" =
   let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
                         inductive R : Type@0 where | mk (f : forall (n : Nat) -> List R) end" in
-  [%expect {|
-    Error: R occurs nested inside List in the argument f of mk;
-      nested inductive types are not supported yet
-    |}]
+  [%expect {| |}]
 
 (* An eliminator at an application prints its scrutinee in parentheses, and
    an eliminator applied is parenthesised: both print back as they were
@@ -3555,32 +3547,36 @@ let%expect_test "a nested occurrence under a function is not supported yet" =
 let%expect_test "an eliminator at an application, and applied, round-trip" =
   let _ = main_of_body "inductive Ord : Type@0 where | base | next (o : Ord) | lim (f : forall (n : Nat) -> Ord) end \
                         eval fun (g : forall (n : Nat) -> Ord) -> \
-                          elim (g 1) return z . Nat | base => 0 | next p, r => succ r | lim f, h => h 1 end \
+                          elim (g 1) at z -> Nat | base => 0 | next p, r => succ r | lim f, h => h 1 end \
                         eval fun (o : Ord) -> \
-                          (elim o return z . forall (n : Nat) -> Nat \
+                          (elim o at z -> forall (n : Nat) -> Nat \
                            | base => fun (n : Nat) -> n | next p, r => r | lim f, h => fun (n : Nat) -> h n n end) 1" in
   [%expect {|
     Evaluate λ (x1 : ∀ (x2 : ℕ) → Ord)
-               → elim x1 1 return x3 . ℕ
+               → elim x1 1
+                 at x3 → ℕ
                  | base ⇒ 0
                  | next x4, x5 ⇒ succ x5
                  | lim x6, x7 ⇒ x7 1
                  end
       --> λ (x1 : ∀ (x2 : ℕ) → Ord)
-            → elim x1 1 return x3 . ℕ
+            → elim x1 1
+              at x3 → ℕ
               | base ⇒ 0
               | next x4, x5 ⇒ succ x5
               | lim x6, x7 ⇒ x7 1
               end : ∀ (x1 : ∀ (x2 : ℕ) → Ord) → ℕ
     Evaluate λ (x1 : Ord)
-               → (elim x1 return x2 . ∀ (x3 : ℕ) → ℕ
+               → (elim x1
+                  at x2 → ∀ (x3 : ℕ) → ℕ
                   | base ⇒ λ (x4 : ℕ) → x4
                   | next x5, x6 ⇒ x6
                   | lim x7, x8 ⇒ λ (x9 : ℕ) → x8 x9 x9
                   end)
                    1
       --> λ (x1 : Ord)
-            → (elim x1 return x2 . ∀ (x3 : ℕ) → ℕ
+            → (elim x1
+               at x2 → ∀ (x3 : ℕ) → ℕ
                | base ⇒ λ (x4 : ℕ) → x4
                | next x5, x6 ⇒ λ (x7 : ℕ) → x6 x7
                | lim x8, x9 ⇒ λ (x10 : ℕ) → x9 x10 x10
@@ -3600,28 +3596,28 @@ let%expect_test "a function argument in which the type does not occur is not rec
 
 let%expect_test "a branch with the wrong number of names is rejected" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
-                        def f (n : N) : N := elim n return k . N | z => N.z | s m => m end end" in
+                        def f (n : N) : N := elim n at k -> N | z => N.z | s m => m end end" in
   [%expect {| Error: the branch s binds 1 name but needs 2 (1 argument, 1 induction hypothesis) |}]
 
 let%expect_test "a branch missing the induction hypothesis names what it needs" =
   let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
                         def len (l : List Nat) : Nat := \
-                          elim l return k . Nat | nil => 0 | cons x xs => 0 end end" in
+                          elim l at k -> Nat | nil => 0 | cons x xs => 0 end end" in
   [%expect {| Error: the branch cons binds 2 names but needs 3 (2 arguments, 1 induction hypothesis) |}]
 
 let%expect_test "a branch for a name that is not a constructor is rejected" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
-                        def f (n : N) : N := elim n return k . N | z => N.z | t m, h => m end end" in
+                        def f (n : N) : N := elim n at k -> N | z => N.z | t m, h => m end end" in
   [%expect {| Error: t is not a constructor of the eliminated type |}]
 
 let%expect_test "an eliminator missing a branch is rejected" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
-                        def f (n : N) : N := elim n return k . N | z => N.z end end" in
+                        def f (n : N) : N := elim n at k -> N | z => N.z end end" in
   [%expect {| Error: the eliminator has no branch for s |}]
 
 let%expect_test "an eliminator with two branches for a constructor is rejected" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
-                        def f (n : N) : N := elim n return k . N | z => N.z | z => N.z | s m, h => m end end" in
+                        def f (n : N) : N := elim n at k -> N | z => N.z | z => N.z | s m, h => m end end" in
   [%expect {| Error: the eliminator has two branches for z |}]
 
 let%expect_test "a term variable shadowing a module is not a module" =
@@ -3631,7 +3627,7 @@ let%expect_test "a term variable shadowing a module is not a module" =
 
 let%expect_test "the branches must follow the constructors' order" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
-                        def f (n : N) : N := elim n return k . N | s m, h => m | z => N.z end end" in
+                        def f (n : N) : N := elim n at k -> N | s m, h => m | z => N.z end end" in
   [%expect {| Error: the branches must follow the order of the constructors: z, s |}]
 
 let%expect_test "an inductive type's name is a member of its frame" =
@@ -3641,7 +3637,7 @@ let%expect_test "an inductive type's name is a member of its frame" =
 let%expect_test "an inductive type is declared under the parameters of its module" =
   let _ = main_of_body "module L (A : Type@0) where \
                           inductive List : Type@0 where | nil | cons (x : A) (xs : List) end \
-                          def len (l : List) : Nat := elim l return z . Nat | nil => 0 | cons x xs, r => succ r end end \
+                          def len (l : List) : Nat := elim l at (z : List) -> Nat | nil => 0 | cons x xs, r => succ r end end \
                         end \
                         eval L.len Nat (L.List.cons Nat 1 (L.List.nil Nat))" in
   [%expect {| Evaluate L.len ℕ (L.List.cons ℕ 1 (L.List.nil ℕ)) --> 1 : ℕ |}]
@@ -3683,23 +3679,22 @@ let%expect_test "an inductive type opened from a module is the type and its modu
 let%expect_test "an inductive type opened under another name has its constructors and eliminator" =
   let _ = main_of_body "module A where inductive N : Type@0 where | z | s (n : N) end end \
                         open A use (N as K) eval K.s K.z : A.N \
-                        eval elim (K.s K.z) return k . Nat | z => 0 | s m, h => succ h end" in
+                        eval elim (K.s K.z) at k -> Nat | z => 0 | s m, h => succ h end" in
   [%expect {|
     Evaluate K.s K.z --> A.N.s A.N.z : A.N
-    Evaluate elim K.s K.z return x1 . ℕ | z ⇒ 0 | s x2, x3 ⇒ succ x3 end --> 1
-      : ℕ
+    Evaluate elim K.s K.z at x1 → ℕ | z ⇒ 0 | s x2, x3 ⇒ succ x3 end --> 1 : ℕ
     |}]
 
 let%expect_test "an inductive type imported into a unit with parameters" =
   let _ = main_of_multi_string "import Lib›Unary module Test (A : Type@0) where \
                                 def two : Lib›Unary.U := Lib›Unary.U.s (Lib›Unary.U.s Lib›Unary.U.z) end \
                                 eval Lib›Unary.plus two two \
-                                eval fun (n : Lib›Unary.U) -> elim n return x . Lib›Unary.U \
+                                eval fun (n : Lib›Unary.U) -> elim n at x -> Lib›Unary.U \
                                   | z => two | s p, r => r end end" in
   [%expect {|
     Evaluate Lib›Unary.plus (two $0) (two $0) --> 4 : ℕ
-    Evaluate λ (x1 : ℕ) → elim x1 return x2 . ℕ | z ⇒ two $0 | s x3, x4 ⇒ x4 end
-      --> λ (x1 : ℕ) → elim x1 return x2 . ℕ | z ⇒ 2 | s x3, x4 ⇒ x4 end
+    Evaluate λ (x1 : ℕ) → elim x1 at x2 → ℕ | z ⇒ two $0 | s x3, x4 ⇒ x4 end
+      --> λ (x1 : ℕ) → elim x1 at x2 → ℕ | z ⇒ 2 | s x3, x4 ⇒ x4 end
       : ∀ (x1 : ℕ) → ℕ
     |}]
 
@@ -3720,7 +3715,7 @@ let%expect_test "an inductive alias is the type at its arguments, as a term and 
                         eval L Nat \
                         eval LN.cons 1 LN.nil : LN2 \
                         eval L.cons Nat 1 (L.nil Nat) : List Nat \
-                        eval fun (l : LN2) -> elim l return z . Nat | nil => 0 | cons x xs, r => succ r end \
+                        eval fun (l : LN2) -> elim l at (z : LN2) -> Nat | nil => 0 | cons x xs, r => succ r end \
                         eval L.rec Nat 0l (fun (l : List Nat) -> Nat) 0 \
                           (fun (x : Nat) (xs : List Nat) (r : Nat) -> succ r) (LN.cons 1 LN.nil)" in
   [%expect {|
@@ -3729,9 +3724,13 @@ let%expect_test "an inductive alias is the type at its arguments, as a term and 
     Evaluate LN.cons 1 LN.nil --> List.cons ℕ 1 (List.nil ℕ) : LN2
     Evaluate L.cons ℕ 1 (L.nil ℕ) --> List.cons ℕ 1 (List.nil ℕ) : List ℕ
     Evaluate λ (x1 : LN2)
-               → elim x1 return x2 . ℕ | nil ⇒ 0 | cons x3 x4, x5 ⇒ succ x5 end
+               → elim x1
+                 at (x2 : LN2) → ℕ
+                 | nil ⇒ 0
+                 | cons x3 x4, x5 ⇒ succ x5
+                 end
       --> λ (x1 : List ℕ)
-            → elim x1 return x2 . ℕ | nil ⇒ 0 | cons x3 x4, x5 ⇒ succ x5 end
+            → elim x1 at x2 → ℕ | nil ⇒ 0 | cons x3 x4, x5 ⇒ succ x5 end
       : ∀ (x1 : List ℕ) → ℕ
     Evaluate L.rec ℕ 0l (λ (x1 : List ℕ) → ℕ) 0
                (λ (x2 : ℕ)
@@ -3763,19 +3762,16 @@ let%expect_test "a private inductive alias is out of reach outside its module" =
 
 let%expect_test "an eliminator takes its type from its scrutinee" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
-                        eval elim (N.s N.z) return k . Nat | z => 0 | s m, h => succ h end" in
-  [%expect {|
-    Evaluate elim N.s N.z return x1 . ℕ | z ⇒ 0 | s x2, x3 ⇒ succ x3 end --> 1
-      : ℕ
-    |}]
+                        eval elim (N.s N.z) at k -> Nat | z => 0 | s m, h => succ h end" in
+  [%expect {| Evaluate elim N.s N.z at x1 → ℕ | z ⇒ 0 | s x2, x3 ⇒ succ x3 end --> 1 : ℕ |}]
 
 let%expect_test "an eliminator of a scrutinee of no inductive type is rejected" =
-  let _ = main_of_body "eval fun (n : Nat) -> elim n return k . Nat end" in
-  [%expect {| Error: λ (x1 : ℕ) → elim x1 return x2 . ℕ end has no inferable type |}]
+  let _ = main_of_body "eval fun (n : Nat) -> elim n at k -> Nat end" in
+  [%expect {| Error: λ (x1 : ℕ) → elim x1 at x2 → ℕ end has no inferable type |}]
 
 let%expect_test "an eliminator is no member of its type" =
   let _ = main_of_body "inductive N : Type@0 where | z end \
-                        eval fun (n : N) -> N.elim n return k . Nat | z => 0 end" in
+                        eval fun (n : N) -> N.elim n at k -> Nat | z => 0 end" in
   [%expect {|
     Error: on "elim" (at line 2, column 76 - line 2, column 80): Expected a
       member name or "rec" after ".".
@@ -3801,7 +3797,7 @@ let%expect_test "the recursor of the empty type" =
                         eval fun (e : E) -> E.rec 0l (fun (z : E) -> False) e" in
   [%expect {|
     Evaluate λ (x1 : E) → E.rec 0l (λ (x2 : E) → ⊥) x1
-      --> λ (x1 : E) → elim x1 return x2 . ⊥ end : ∀ (x1 : E) → ⊥
+      --> λ (x1 : E) → elim x1 at x2 → ⊥ end : ∀ (x1 : E) → ⊥
     |}]
 
 let%expect_test "an argument is classified as its normal form" =
@@ -3854,7 +3850,9 @@ let%expect_test "an eliminator needs a motive" =
   let _ = main_of_body "eval fun (x : Nat) -> elim x | zero => zero end" in
   [%expect {|
     Error: on "|" (at line 2, column 48 - line 2, column 49): An eliminator "elim
-      M" is expected to be followed by "return" and its motive.
+      M" is expected to be followed by its blocks, one per member of the group in
+      member order, the scrutinee's marked "at", the others "with":
+      "elim M at (z : T) -> ?motive | c xs ⇒ ?body … end".
     |}]
 
 let%expect_test "an inductive type needs its type" =
@@ -3968,10 +3966,10 @@ let%expect_test "a binding may be made in a module, and holds after it" =
 let%expect_test "a bound type with its own constructor names" =
   let _ = main_of_bare_body "inductive Num : Type@0 where | Z | S (n : Num) end builtin natural := Num \
                              open Num use (Z; S) \
-                             eval elim 3 return x . Num | Z => Z | S k, r => S (S r) end \
+                             eval elim 3 at x -> Num | Z => Z | S k, r => S (S r) end \
                              eval fun (n : Num) -> S (S n) eval S Z : Num" in
   [%expect {|
-    Evaluate elim 3 return x1 . ℕ | Z ⇒ 0 | S x2, x3 ⇒ S (S x3) end --> 6 : ℕ
+    Evaluate elim 3 at x1 → ℕ | Z ⇒ 0 | S x2, x3 ⇒ S (S x3) end --> 6 : ℕ
     Evaluate λ (x1 : ℕ) → S (S x1) --> λ (x1 : ℕ) → S (S x1) : ∀ (x1 : ℕ) → ℕ
     Evaluate 1 --> 1 : ℕ
     |}]
@@ -4026,19 +4024,19 @@ let%expect_test "a bare underscore is reserved" =
    comma, so that the printed term reads back as itself. *)
 let%expect_test "a printed eliminator separates the induction hypotheses by a comma" =
   let _ = main_of_body "inductive N : Type@0 where | Z | S (n : N) end \
-                        eval fun (n : N) -> elim n return k . N | Z => N.Z | S m, h => N.S h end" in
+                        eval fun (n : N) -> elim n at k -> N | Z => N.Z | S m, h => N.S h end" in
   [%expect {|
-    Evaluate λ (x1 : N) → elim x1 return x2 . N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
-      --> λ (x1 : N) → elim x1 return x2 . N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
+    Evaluate λ (x1 : N) → elim x1 at x2 → N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
+      --> λ (x1 : N) → elim x1 at x2 → N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
       : ∀ (x1 : N) → N
     |}]
 
 let%expect_test "a printed eliminator reads back as itself" =
   let _ = main_of_body "inductive N : Type@0 where | Z | S (n : N) end \
-                        eval λ (x1 : N) → elim x1 return x2 . N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end" in
+                        eval λ (x1 : N) → elim x1 at x2 -> N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end" in
   [%expect {|
-    Evaluate λ (x1 : N) → elim x1 return x2 . N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
-      --> λ (x1 : N) → elim x1 return x2 . N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
+    Evaluate λ (x1 : N) → elim x1 at x2 → N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
+      --> λ (x1 : N) → elim x1 at x2 → N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
       : ∀ (x1 : N) → N
     |}]
 
@@ -4110,3 +4108,178 @@ let%expect_test "an alias of an inductive type's module is a module, not a term"
        module L := List eval L 0l Nat end"
   in
   [%expect {| Error: X.L is a module, not a term |}]
+
+(** Groups: mutual declarations, nested occurrences, eliminator blocks,
+    mutual definitions and the recursor module of a group *)
+
+let group_tm_sp =
+  "mutual S where inductive Tm : Type@0 where | var (n : Nat) | app (f : Tm) (s : Sp) \
+   with Sp : Type@0 where | snil | scons (t : Tm) (s : Sp) end end "
+
+let%expect_test "a mutual group is eliminated with one block per member" =
+  let _ = main_of_body (group_tm_sp ^
+    "eval elim (S.Tm.app (S.Tm.var 0) (S.Sp.scons (S.Tm.var 1) S.Sp.snil)) \
+       at (z : S.Tm) -> Nat | var n => 1 | app f s, hf hs => succ hs \
+       with (z : S.Sp) -> Nat | snil => 0 | scons t s, ht hs => succ hs end") in
+  [%expect {|
+    Evaluate elim S.Tm.app (S.Tm.var 0) (S.Sp.scons (S.Tm.var 1) S.Sp.snil)
+             at (x1 : S.Tm) → ℕ
+             | var x2 ⇒ 1
+             | app x3 x4, x5 x6 ⇒ succ x6
+             with (x7 : S.Sp) → ℕ
+             | snil ⇒ 0
+             | scons x8 x9, x10 x11 ⇒ succ x11
+             end --> 2 : ℕ
+    |}]
+
+let%expect_test "an eliminator marks exactly one block at" =
+  let _ = main_of_body (group_tm_sp ^
+    "eval fun (t : S.Tm) -> elim t \
+       at (z : S.Tm) -> Nat | var n => 1 | app f s, hf hs => hs \
+       at (z : S.Sp) -> Nat | snil => 0 | scons t s, ht hs => hs end") in
+  [%expect {| Error: exactly one block of an eliminator is marked at, the scrutinee's |}]
+
+let%expect_test "an eliminator needs a block marked at" =
+  let _ = main_of_body (group_tm_sp ^
+    "eval fun (t : S.Tm) -> elim t \
+       with (z : S.Tm) -> Nat | var n => 1 | app f s, hf hs => hs \
+       with (z : S.Sp) -> Nat | snil => 0 | scons t s, ht hs => hs end") in
+  [%expect {| Error: exactly one block of an eliminator is marked at, the scrutinee's |}]
+
+let%expect_test "only the scrutinee's binder of a block may carry a type" =
+  let _ = main_of_body
+    "inductive V : forall (n : Nat) -> Type@0 where | vnil end \
+     eval fun (v : V 0) -> elim v at (n : Nat) (z : V n) -> Nat | vnil => 0 end" in
+  [%expect {| Error: only the last binder of a block (the scrutinee) may carry a type |}]
+
+let%expect_test "a block for a member the group does not have is rejected" =
+  let _ = main_of_body (group_tm_sp ^
+    "eval fun (t : S.Tm) -> elim t at (z : S.Tm) -> Nat | var n => 1 | app f s, hf hs => hs end") in
+  [%expect {|
+    Error:
+      λ (x1 : S.Tm)
+        → elim x1 at (x2 : S.Tm) → ℕ | var x3 ⇒ 1 | app x4 x5, x6 x7 ⇒ x7 end
+      has no inferable type
+    |}]
+
+let%expect_test "two members of a group have two names" =
+  let _ = main_of_body
+    "mutual S where inductive A : Type@0 where | a with A : Type@0 where | b end end" in
+  [%expect {| Error: A is declared twice in a group |}]
+
+let%expect_test "a group of inductive types takes no abstract" =
+  let _ = main_of_body "abstract mutual S where inductive A : Type@0 where | a end end" in
+  [%expect {| Error: a group of inductive types takes no abstract |}]
+
+let%expect_test "a mutual definition has one function per member, in any order" =
+  let _ = main_of_body (group_tm_sp ^
+    "mutual def spine (z : S.Sp) : Nat := | snil => 0 | scons t s, ht hs => succ hs \
+     with heads (z : S.Tm) : Nat := | var n => 0 | app f s, hf hs => succ hf end \
+     eval spine (S.Sp.scons (S.Tm.var 1) (S.Sp.scons (S.Tm.var 2) S.Sp.snil)) \
+     eval heads (S.Tm.app (S.Tm.var 0) S.Sp.snil)") in
+  [%expect {|
+    Evaluate spine (S.Sp.scons (S.Tm.var 1) (S.Sp.scons (S.Tm.var 2) S.Sp.snil))
+      --> 2 : ℕ
+    Evaluate heads (S.Tm.app (S.Tm.var 0) S.Sp.snil) --> 1 : ℕ
+    |}]
+
+let%expect_test "a mutual definition misses a member" =
+  let _ = main_of_body (group_tm_sp ^
+    "mutual def spine (z : S.Sp) : Nat := | snil => 0 | scons t s, ht hs => succ hs end") in
+  [%expect {|
+    Error: a mutual definition has one function per member of its group:
+      the group has 2 members, the definition 1 function
+    |}]
+
+let%expect_test "a nested occurrence is eliminated at its view's block" =
+  let _ = main_of_body
+    "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
+     inductive Rose : Type@0 where | node (ts : List Rose) end \
+     eval elim (Rose.node (List.cons Rose (Rose.node (List.nil Rose)) (List.nil Rose))) \
+       at (z : Rose) -> Nat | node ts, h => succ h \
+       with (z : List Rose) -> Nat | nil => 0 | cons t ts, ht hts => succ hts end" in
+  [%expect {|
+    Evaluate elim Rose.node
+                    (List.cons Rose (Rose.node (List.nil Rose)) (List.nil Rose))
+             at (x1 : Rose) → ℕ
+             | node x2, x3 ⇒ succ x3
+             with (x4 : List Rose) → ℕ
+             | nil ⇒ 0
+             | cons x5 x6, x7 x8 ⇒ succ x8
+             end --> 2 : ℕ
+    |}]
+
+let%expect_test "a group nests only at the uniform parameters of a container" =
+  let _ = main_of_body
+    "inductive Pair (A : Type@0) : forall (B : Type@0) -> Type@1 where | pair (x : A) (y : B) end \
+     inductive Rose : Type@0 where | node (p : Pair Nat Rose) end" in
+  [%expect {|
+    Error: Rose occurs in a non-uniform argument of Pair
+      in the argument p of node;
+      a group may nest only at the uniform parameters of a declared type of a filed group
+    |}]
+
+let%expect_test "a mutual group files its recursor module" =
+  let _ = main_of_body (group_tm_sp ^
+    "eval S.Rec.rec_Tm 0l (fun (z : S.Tm) -> Nat) (fun (z : S.Sp) -> Nat) \
+       (fun (n : Nat) -> 1) (fun (f : S.Tm) (s : S.Sp) (hf : Nat) (hs : Nat) -> succ hs) \
+       0 (fun (t : S.Tm) (s : S.Sp) (ht : Nat) (hs : Nat) -> succ hs) \
+       (S.Tm.app (S.Tm.var 0) (S.Sp.scons (S.Tm.var 1) S.Sp.snil))") in
+  [%expect {|
+    Evaluate S.Rec.rec_Tm 0l (λ (x1 : S.Tm) → ℕ) (λ (x2 : S.Sp) → ℕ)
+               (λ (x3 : ℕ) → 1)
+               (λ (x4 : S.Tm)
+                  (x5 : S.Sp)
+                  (x6 : ℕ)
+                  (x7 : ℕ)
+                 → succ x7)
+               0
+               (λ (x8 : S.Tm)
+                  (x9 : S.Sp)
+                  (x10 : ℕ)
+                  (x11 : ℕ)
+                 → succ x11)
+               (S.Tm.app (S.Tm.var 0) (S.Sp.scons (S.Tm.var 1) S.Sp.snil)) --> 2
+      : ℕ
+    |}]
+
+let%expect_test "the recursor module names a view by its instance" =
+  let _ = main_of_body
+    "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
+     mutual R where inductive Rose : Type@0 where | node (ts : List Rose) end end \
+     eval R.Rec.rec_List_Rose 0l (fun (z : R.Rose) -> Nat) (fun (z : List R.Rose) -> Nat) \
+       (fun (ts : List R.Rose) (h : Nat) -> succ h) 0 \
+       (fun (t : R.Rose) (ts : List R.Rose) (ht : Nat) (hts : Nat) -> succ hts) \
+       (List.cons R.Rose (R.Rose.node (List.nil R.Rose)) (List.nil R.Rose))" in
+  [%expect {|
+    Evaluate R.Rec.rec_List_Rose 0l (λ (x1 : R.Rose) → ℕ)
+               (λ (x2 : List R.Rose) → ℕ)
+               (λ (x3 : List R.Rose)
+                  (x4 : ℕ)
+                 → succ x4)
+               0
+               (λ (x5 : R.Rose)
+                  (x6 : List R.Rose)
+                  (x7 : ℕ)
+                  (x8 : ℕ)
+                 → succ x8)
+               (List.cons R.Rose (R.Rose.node (List.nil R.Rose))
+                 (List.nil R.Rose)) --> 1 : ℕ
+    |}]
+
+let%expect_test "a single inductive type has no recursor module" =
+  let _ = main_of_body "inductive E : Type@0 where | e end eval E.Rec" in
+  [%expect {| Error: E.Rec has no inferable type |}]
+
+let%expect_test "a mutual group prints back as written" =
+  let _ = main_of_body (group_tm_sp ^ "eval S.Tm.var 0") in
+  [%expect {| Evaluate S.Tm.var 0 --> S.Tm.var 0 : S.Tm |}]
+
+let%expect_test "a group nests only at the uniform parameters: a type of non-uniform parameters only" =
+  let _ = main_of_body
+    "inductive B : forall (T : Type@0) -> Type@1 where | mk (x : T) end \
+     inductive Rose : Type@0 where | node (b : B Rose) end" in
+  [%expect {|
+    Error: Rose occurs in a non-uniform argument of B in the argument b of node;
+      a group may nest only at the uniform parameters of a declared type of a filed group
+    |}]

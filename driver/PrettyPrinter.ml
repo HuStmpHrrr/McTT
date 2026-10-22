@@ -272,9 +272,36 @@ and format_module (f : Format.formatter) (x : string) params (md : Cst.mdef) : u
      List.iter (fun p -> fprintf f " %a" format_obj_param p) params;
      fprintf f " @<1>%s@ %a@]" s_eq format_obj e
 
+(* [inductive x (ps) : T where | c … with y : U where … end]: a group,
+   its uniform parameters after its first member's name. *)
+and format_group priv ps (f : Format.formatter) ms : unit =
+  let open Format in
+  fprintf f "@[<v 2>%sinductive" (if priv then "private " else "");
+  List.iteri
+    (fun i ((x, t), cs) ->
+      if i = 0 then begin
+        fprintf f " %s" x;
+        List.iter (fun p -> fprintf f " %a" format_obj_param p) ps
+      end else fprintf f "@;<1 -2>with %s" x;
+      fprintf f " : %a where" format_obj t;
+      List.iter
+        (fun (c, args) ->
+          fprintf f "@ | %s" c;
+          List.iter (fun p -> fprintf f " %a" format_obj_param p) args)
+        cs)
+    ms;
+  fprintf f "@;<1 -2>end";
+  pp_close_box f ()
+
 and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
   let open Format in
   function
+  (* [mutual T (ps) where inductive … end end]: the group, with its
+     recursor module, in the module [T]. *)
+  | Cst.Coq_c_mod (priv, g, [], Cst.Coq_md_where [ Cst.Coq_c_ind (false, true, ps, ms) ]) ->
+     fprintf f "@[<v 2>%smutual %s" (if priv then "private " else "") g;
+     List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
+     fprintf f " where@ %a@;<1 -2>end@]" (format_group false []) ms
   | Cst.Coq_c_mod (priv, x, params, md) ->
      if priv then Format.pp_print_string f "private ";
      format_module f x params md
@@ -290,23 +317,7 @@ and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      List.iter (fun a -> fprintf f "@ %a" (format_obj_prec 2) a) args;
      fprintf f "%a@]" format_items its
   | Cst.Coq_c_error msg -> fprintf f "(* %s *)" msg
-  | Cst.Coq_c_ind (priv, ps, ms) ->
-     fprintf f "@[<v 2>%sinductive" (if priv then "private " else "");
-     List.iteri
-       (fun i ((x, t), cs) ->
-         if i = 0 then begin
-           fprintf f " %s" x;
-           List.iter (fun p -> fprintf f " %a" format_obj_param p) ps
-         end else fprintf f "@;<1 -2>with %s" x;
-         fprintf f " : %a where" format_obj t;
-         List.iter
-           (fun (c, args) ->
-             fprintf f "@ | %s" c;
-             List.iter (fun p -> fprintf f " %a" format_obj_param p) args)
-           cs)
-       ms;
-     fprintf f "@;<1 -2>end";
-     pp_close_box f ()
+  | Cst.Coq_c_ind (priv, _, ps, ms) -> format_group priv ps f ms
   | Cst.Coq_c_mdef (m, ps, fs) ->
      fprintf f "@[<v 2>%amutual def" format_mods m;
      List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
@@ -544,6 +555,24 @@ let unview (e : exp) : exp option =
 (* The number of induction hypotheses a branch of [n] binders for the
    constructor [c] of the member [mk] binds, where it binds as many names
    as it should. *)
+(* The groups an eliminator as written, with no group, can be of: those
+   whose members' constructors its blocks' branches name, block by block. *)
+let elim_groups (bks : exp eblock_g list) : (exp, centry) ind_decl_g list =
+  List.filter
+    (fun d ->
+      List.length d.ind_members = List.length bks
+      && List.for_all2
+           (fun mk (Coq_eb_mk (_, _, _, bs)) -> List.map fst mk.im_cons = List.map (fun ((c, _), _) -> c) bs)
+           d.ind_members bks)
+    !ind_decls
+
+(* The members the block [j] of an eliminator can be for: the member [j]
+   of its group, or of every group it can be of. *)
+let block_members (oq : qname option) (bks : exp eblock_g list) (j : int) : (exp, centry) imember_g list =
+  match oq with
+  | Some p -> Option.to_list (group_member p j)
+  | None -> List.filter_map (fun d -> McttExtracted.Syntax.ind_member d j) (elim_groups bks)
+
 let ihs_count (mk : (exp, centry) imember_g option) (c : string) (n : int) : int =
   match mk with
   | None -> 0
@@ -554,11 +583,17 @@ let ihs_count (mk : (exp, centry) imember_g option) (c : string) (n : int) : int
          let k = McttExtracted.Inductives.cargs_nrec gs in
          if n <> McttExtracted.Syntax.im_nn mk + List.length gs + k then 0 else k)
 
+(* The number of induction hypotheses a branch of [n] binders for [c] binds,
+   where every member its block can be for agrees on it. *)
+let ihs_agreed (mks : (exp, centry) imember_g list) (c : string) (n : int) : int =
+  match List.map (fun mk -> ihs_count (Some mk) c n) mks with
+  | k :: ks when List.for_all (( = ) k) ks -> k
+  | _ -> 0
+
 (* The names a branch binds, its induction hypotheses after a comma, the
    marker [","]. *)
-let mark_ihs (mk : (exp, centry) imember_g option) (c : string) (ys : string list) : string list =
+let mark_ihs (k : int) (ys : string list) : string list =
   let n = List.length ys in
-  let k = ihs_count mk c n in
   if k = 0 then ys
   else List.filteri (fun i _ -> i < n - k) ys @ ("," :: List.filteri (fun i _ -> i >= n - k) ys)
 
@@ -661,7 +696,7 @@ let exp_to_obj =
        let rec fresh k = if k = 0 then [] else let x = new_var () in x :: fresh (k - 1) in
        let escr' = impl ctx escr in
        let block j (Coq_eb_mk (nm, oz, em, bs)) =
-         let mk = match oq with Some p -> group_member p j | None -> None in
+         let mks = block_members oq bks j in
          let xs = fresh nm in
          let ys0 = List.filteri (fun i _ -> i < nm - 1) xs in
          let oz' = Option.map (impl (List.rev ys0 @ ctx)) oz in
@@ -673,11 +708,12 @@ let exp_to_obj =
          let bs' =
            List.map
              (fun ((c, n), eb) ->
-               let k = if is_univ then ihs_count mk c n else 0 in
-               let ys = fresh (n - k) in
-               let hs = List.init k (fun _ -> new_tyvar ()) in
+               let k = ihs_agreed mks c n in
+               let kt = if is_univ then k else 0 in
+               let ys = fresh (n - kt) in
+               let hs = List.init kt (fun _ -> new_tyvar ()) in
                let ys = ys @ hs in
-               ((c, mark_ihs mk c ys), impl (List.rev ys @ ctx) eb))
+               ((c, mark_ihs k ys), impl (List.rev ys @ ctx) eb))
              bs
          in
          (((j = m, binders), em'), bs')

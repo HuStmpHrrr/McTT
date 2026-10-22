@@ -42,7 +42,10 @@ Record raw_decl : Set := mk_raw
   { (** The group's own uniform parameters, innermost first *)
     rd_uparams : ctx
     (** The declared members, in order *)
-  ; rd_members : list raw_member }.
+  ; rd_members : list raw_member
+    (** Whether the group files the recursor module [Rec] in its frame, as
+        a group declared by [mutual T where] does *)
+  ; rd_rec : bool }.
 
 (** A function of a [mutual def] as written ([cc_mdef]): its name, its
     non-uniform parameters [ys] (innermost first, over the block's

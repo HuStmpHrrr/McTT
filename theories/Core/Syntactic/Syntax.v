@@ -175,8 +175,10 @@ with cmd : Set :=
     end]: the group's uniform parameters [ps], shared, and its members, in
     order: each its name, its type, which binds its non-uniform parameters
     in front of the sort, [forall (n : A) -> S], and its constructors with
-    their arguments.  The members' names are in scope in every argument. *)
-| c_ind : bool -> list (string * obj) -> list (string * obj * list (string * list (string * obj))) -> cmd
+    their arguments.  The members' names are in scope in every argument.
+    The second flag says whether the group files its recursor module
+    [Rec], as one declared by [mutual T where] does. *)
+| c_ind : bool -> bool -> list (string * obj) -> list (string * obj * list (string * list (string * obj))) -> cmd
 (** [private abstract mutual def (Δ) f (ys) (z : Z) : A := | c xs ⇒ B …
     with g … end], with its modifiers: the common parameters [Δ], and the
     functions, each its name, its parameters (the non-uniform ones, then
@@ -230,9 +232,9 @@ Section cst_mut_ind.
     (case_c_open : forall fq ip args its, List.Forall Po args -> Pc (c_open fq ip args its))
     (case_c_error : forall e, Pc (c_error e))
     (case_c_eval : forall o oA, Po o -> match oA with Some A => Po A | None => True end -> Pc (c_eval o oA))
-    (case_c_ind : forall pv ps ms, List.Forall (fun p => Po (snd p)) ps ->
+    (case_c_ind : forall pv wr ps ms, List.Forall (fun p => Po (snd p)) ps ->
         List.Forall (fun m => Po (snd (fst m)) /\ List.Forall (fun c => List.Forall (fun p => Po (snd p)) (snd c)) (snd m)) ms ->
-        Pc (c_ind pv ps ms))
+        Pc (c_ind pv wr ps ms))
     (case_c_mdef : forall m ps fs, List.Forall (fun p => Po (snd p)) ps ->
         List.Forall (fun f => List.Forall (fun p => Po (snd p)) (snd (fst (fst f))) /\ Po (snd (fst f)) /\
                               List.Forall (fun b => Po (snd b)) (snd f)) fs ->
@@ -346,8 +348,8 @@ Section cst_mut_ind.
            | Some A' => obj_mut A'
            | None => I
            end)
-    | c_ind pv ps ms =>
-        case_c_ind pv ps ms
+    | c_ind pv wr ps ms =>
+        case_c_ind pv wr ps ms
           ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
               match ps with
               | nil => List.Forall_nil _
@@ -439,12 +441,12 @@ Definition axiom_cmd (m : mods) (x : string) (A : obj) : cmd :=
   if orb (md_private m) (md_abstract m) then c_error "axiom takes no modifiers" else c_axiom x A.
 
 (** [mutual T (ps) where inductive … end end] with the modifiers [m]: the
-    module [T], private with [m], holding the group, or the rejection of
-    [abstract]. *)
+    module [T], private with [m], holding the group and its recursor module
+    [T.Rec], or the rejection of [abstract]. *)
 Definition mutual_cmd (m : mods) (g : string) (ps : list (string * obj))
     (ms : list (string * obj * list (string * list (string * obj)))) : cmd :=
   if md_abstract m then c_error "a group of inductive types takes no abstract"
-  else c_mod (md_private m) g nil (md_where (c_ind false ps ms :: nil)).
+  else c_mod (md_private m) g nil (md_where (c_ind false true ps ms :: nil)).
 
 (** [open E as W its] is [open E as W] then [open W its]: the items refer
     to the alias, and an open declares either the module or its members. *)

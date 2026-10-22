@@ -447,6 +447,16 @@ Record filed_con_ty (Θ : gdeps) (Ξ : gstack) (p : qname) (j : nat) (c : string
     (** The constructor's type is equal to [U] *)
   ; fct_ty : exists i, Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p fct_decl j fct_member fct_args ≈ U : Typeω@i }.
 
+(** A filed constructor stays filed, at its type, along an embedding. *)
+Lemma filed_con_ty_emb : forall Θ Ξ Θ2 Ξ2 p j c U,
+    Emb Θ Ξ Θ2 Ξ2 -> filed_con_ty Θ Ξ p j c U -> filed_con_ty Θ2 Ξ2 p j c U.
+Proof.
+  intros * He [D M gs Hl Hm Hc (i & Hty)].
+  apply (mk_filed_con_ty _ _ _ _ _ _ D M gs);
+    [ exact (ind_lookup_gc_sub _ _ _ _ _ _ (em_res _ _ _ _ He) Hl) | exact Hm | exact Hc
+    | exists i; exact (proj1 (proj2 (proj2 (emb_preserves_wf _ _ _ _ He))) _ _ _ _ Hty) ].
+Qed.
+
 (** ** The Constructor Types of a Run
 
     The premises of [rc_ind], the group filed as [D] at [p] in the stack
@@ -897,6 +907,13 @@ Proof.
       destruct (rms_filed _ _ _ _ _) as [Ms |] eqn:Hms; [| discriminate ];
       destruct (rvs_filed _ _ _ _ _ _ _ _ _) as [Mvs |] eqn:Hmvs; [| discriminate ];
       injection Hfiled as <-; rewrite <- HMr in Hms
+  end.
+  (** The recursor module, if any, is filed after the members. *)
+  match goal with
+  | Hent : ind_entries_run _ _ _ _ _ _ _ ?Ξf, Hrec : run_cmds _ _ _ _ _ _ _ _ (rec_cmds _ _ _ _ _) _ _ _ _ |- _ =>
+      destruct (rec_cmds_run_wf _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hrec (ind_entries_run_wf _ _ _ _ _ _ _ _ Hent HΞ))
+        as (-> & Hwf & Hsub);
+      apply (filed_con_ty_emb Θ Ξf); [ constructor; assumption |]
   end.
   eapply member_con_ty; eassumption.
 Qed.

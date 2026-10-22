@@ -554,7 +554,7 @@ Qed.
 
 (** [T := t (x : T) (c : C T x) : T], of the sort [ST]. *)
 Definition self_param_decl (pC : qname) (x : string) (ST : exp) : raw_decl :=
-  mk_raw nil (mk_rmem x nil ST (("t", ("x", a_var 0) :: ("c", a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0)) :: nil) :: nil) :: nil).
+  mk_raw nil (mk_rmem x nil ST (("t", ("x", a_var 0) :: ("c", a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0)) :: nil) :: nil) :: nil) false.
 
 Theorem rc_ind_self_param_rejected : forall lp rd tc ch B Rb Θ Ξ pv B' Rb' Θ' Ξ' pC DC MC iU x ST,
     ind_lookup Θ Ξ pC = Some DC -> ind_uparams DC = ce_ass (a_typ iU) :: nil -> ind_member DC 0 = Some MC ->

@@ -808,7 +808,8 @@ Qed.
     run: each declared member's entry, with its generated members, is
     filed after the ones before it.  The generated names are the
     constructors' and [rec], which the declaration's own names must leave
-    free. *)
+    free.  The recursor module of a [mutual T] group ([rec_cmds]), if it
+    runs after the entries, completes the run. *)
 Corollary rc_ind_runs : forall load_path read to_core ch B Rb Θ Ξ pv R Mr0 Mrs csD Vs Ss csV Nvs D,
     ⊢ᵍ Θ ⍮ Ξ ->
     rd_members R = Mr0 :: Mrs ->
@@ -823,9 +824,13 @@ Corollary rc_ind_runs : forall load_path read to_core ch B Rb Θ Ξ pv R Mr0 Mrs
     Forall (fun Mr => gs_fresh (rm_name Mr) Ξ) (rd_members R) ->
     ind_nil_at Θ Ξ (ind_qname Ξ (rm_name Mr0)) D (grp_self_insts (ind_qname Ξ (rm_name Mr0)) D) ->
     (forall M, ind_member D 0 = Some M -> ind_has_rec D = true -> ~ In "rec"%string (List.map fst (im_cons M))) ->
-    exists Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_ind pv R ⇝ Θ' ⍮ Ξ' ⍮ B ⍮ Rb.
+    (forall Ξ', ind_entries_run Θ pv (ind_qname Ξ (rm_name Mr0)) D 0 (List.map rm_name (rd_members R)) Ξ Ξ' ->
+       exists B' Rb' Θ' Ξ'',
+         Θ ⍮ Ξ' ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ rec_cmds Θ Ξ' R (ind_qname Ξ (rm_name Mr0)) D ⇝* Θ' ⍮ Ξ'' ⍮ B' ⍮ Rb') ->
+    exists B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_ind pv R ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'.
 Proof.
-  intros * HΞ HR Hsort Hcls Hsibs Hvcls Hvnps Hbfs Hfil Hnd Hfr Hnil Hrec.
+  intros * HΞ HR Hsort Hcls Hsibs Hvcls Hvnps Hbfs Hfil Hnd Hfr Hnil Hrec Hrc.
   destruct (ind_entries_exist Θ Ξ pv R Mr0 Mrs csD Vs Ss csV Nvs D HΞ HR Hfil Hnd Hfr Hnil Hrec) as [Ξ' Hrun].
-  do 2 eexists; eapply rc_ind; eassumption.
+  destruct (Hrc _ Hrun) as (B' & Rb' & Θ' & Ξ'' & Hr).
+  do 4 eexists; eapply rc_ind; eassumption.
 Qed.

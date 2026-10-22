@@ -448,7 +448,7 @@ Section OpenError.
   Definition oe_decl (S : skel) (R : raw_decl) : xres raw_decl :=
     let+ Δ' := oe_tele S (rd_uparams R) in
     let+ ms' := xmap (oe_member (map centry_skel Δ' ++ S) S Δ' (List.length (rd_members R))) (rd_members R) in
-    xok (mk_raw Δ' ms').
+    xok (mk_raw Δ' ms' (rd_rec R)).
 
   (** A function of a [mutual def] as written, over the block's parameters'
       skeleton [Sd]: its non-uniform parameters as a telescope, its

@@ -1051,7 +1051,7 @@ end
 Definition list_member : (string * Cst.obj * list (string * list (string * Cst.obj)))%type :=
   ("List", typ 0, ("nil", nil) :: ("cons", ("x", var "A") :: ("xs", app (var "List") (var "A")) :: nil) :: nil).
 
-Definition list_decl : Cst.cmd := c_ind false (("A", typ 0) :: nil) (list_member :: nil).
+Definition list_decl : Cst.cmd := c_ind false false (("A", typ 0) :: nil) (list_member :: nil).
 
 Definition list_len : Cst.prog :=
   (nil, ("U" :: nil, nil,
@@ -1069,7 +1069,7 @@ Example list_len_spec :
     (nil, ⋅,
      cc_ind false
        (mk_raw (⋅ ▹ Typeω@0)
-          (mk_rmem "List" ⋅ Typeω@0 (("nil", nil) :: ("cons", ("x", #0) :: ("xs", #2 $ #1) :: nil) :: nil) :: nil)) ::
+          (mk_rmem "List" ⋅ Typeω@0 (("nil", nil) :: ("cons", ("x", #0) :: ("xs", #2 $ #1) :: nil) :: nil) :: nil) false) ::
      cc_def "len" true false (Π (U_List $ ℕ) ℕ)
        (Some (λ (U_List $ ℕ)
                 (a_elim None nil 0 (eb_mk 1 (Some (U_List $ ℕ)) ℕ (("nil", 0, a_nlit 0) :: ("cons", 3, #0) :: nil) :: nil)
@@ -1097,20 +1097,29 @@ Proof. elab_err. Qed.
     [#1] and [Sp] [#1] once [f] is bound. *)
 Example group_spec :
   elab_spec (unit_of
-    (c_ind false nil
+    (c_ind false false nil
        (("Tm", typ 0, ("app", ("f", var "Tm") :: ("s", var "Sp") :: nil) :: nil) ::
         ("Sp", typ 0, ("nil", nil) :: ("cons", ("t", var "Tm") :: ("s", var "Sp") :: nil) :: nil) :: nil) :: nil))
     (nil, ⋅,
      cc_ind false
        (mk_raw ⋅
           (mk_rmem "Tm" ⋅ Typeω@0 (("app", ("f", #1) :: ("s", #1) :: nil) :: nil) ::
-           mk_rmem "Sp" ⋅ Typeω@0 (("nil", nil) :: ("cons", ("t", #1) :: ("s", #1) :: nil) :: nil) :: nil)) :: nil).
+           mk_rmem "Sp" ⋅ Typeω@0 (("nil", nil) :: ("cons", ("t", #1) :: ("s", #1) :: nil) :: nil) :: nil) false) :: nil).
+Proof. elab_ok. Qed.
+
+(** [mutual S where inductive E : Type@0 where | e end end]: the module
+    [S], holding the group, which files its recursor module. *)
+Example mutual_spec :
+  elab_spec (unit_of (mutual_cmd md_pub "S" nil (("E", typ 0, ("e", nil) :: nil) :: nil) :: nil))
+    (nil, ⋅,
+     cc_mod "S" false ⋅
+       (cc_ind false (mk_raw ⋅ (mk_rmem "E" ⋅ Typeω@0 (("e", nil) :: nil) :: nil) true) :: nil) :: nil).
 Proof. elab_ok. Qed.
 
 (** Two members of a group may not share a name. *)
 Example group_dup :
   elaborate_core (unit_of
-    (c_ind false nil (("Tm", typ 0, nil) :: ("Tm", typ 0, nil) :: nil) :: nil))
+    (c_ind false false nil (("Tm", typ 0, nil) :: ("Tm", typ 0, nil) :: nil) :: nil))
   = eerr "Tm is declared twice in a group".
 Proof. elab_err. Qed.
 
@@ -1126,7 +1135,7 @@ Example mdef_spec :
     (nil, ⋅,
      cc_ind false
        (mk_raw (⋅ ▹ Typeω@0)
-          (mk_rmem "List" ⋅ Typeω@0 (("nil", nil) :: ("cons", ("x", #0) :: ("xs", #2 $ #1) :: nil) :: nil) :: nil)) ::
+          (mk_rmem "List" ⋅ Typeω@0 (("nil", nil) :: ("cons", ("x", #0) :: ("xs", #2 $ #1) :: nil) :: nil) :: nil) false) ::
      cc_mdef true false (⋅ ▹ Typeω@0)
        (mk_rfun "len" ⋅ (qname_term (q_abs ("T" :: nil) ("List" :: nil)) $ #0) ℕ
           (("nil", 0, a_nlit 0) :: ("cons", 3, #0) :: nil) :: nil) :: nil).
@@ -1152,29 +1161,29 @@ end
 *)
 Example climb_spec :
   elab_spec (nil, ("U" :: nil, nil,
-                   c_ind false nil
+                   c_ind false false nil
                      (("Climb", pi "n" nat (typ 0),
                        ("stop", nil) :: ("step", ("r", app (var "Climb") (var "n")) :: nil) :: nil) :: nil) :: nil))
     (nil, ⋅,
      cc_ind false
-       (mk_raw ⋅ (mk_rmem "Climb" (⋅ ▹ ℕ) Typeω@0 (("stop", nil) :: ("step", ("r", #1 $ #0) :: nil) :: nil) :: nil)) :: nil).
+       (mk_raw ⋅ (mk_rmem "Climb" (⋅ ▹ ℕ) Typeω@0 (("stop", nil) :: ("step", ("r", #1 $ #0) :: nil) :: nil) :: nil) false) :: nil).
 Proof. elab_ok. Qed.
 
 (** The elaborator classifies nothing: [List] without its parameter is
     [Self] alone, which the core rejects. *)
 Example list_self_app :
   elab_spec (nil, ("U" :: nil, nil,
-                   c_ind false (("A", typ 0) :: nil)
+                   c_ind false false (("A", typ 0) :: nil)
                      (("List", typ 0, ("cons", ("x", var "A") :: ("xs", var "List") :: nil) :: nil) :: nil) :: nil))
     (nil, ⋅,
      cc_ind false
-       (mk_raw (⋅ ▹ Typeω@0) (mk_rmem "List" ⋅ Typeω@0 (("cons", ("x", #0) :: ("xs", #2) :: nil) :: nil) :: nil)) :: nil).
+       (mk_raw (⋅ ▹ Typeω@0) (mk_rmem "List" ⋅ Typeω@0 (("cons", ("x", #0) :: ("xs", #2) :: nil) :: nil) :: nil) false) :: nil).
 Proof. elab_ok. Qed.
 
 (** A declaration in a local body is rejected. *)
 Example local_ind :
   forall u, ~ elab_spec (unit_of
-                (c_eval (letb (d_mod "M" nil (md_where (c_ind false nil (("E", typ 0, nil) :: nil) :: nil))) (num 0))
+                (c_eval (letb (d_mod "M" nil (md_where (c_ind false false nil (("E", typ 0, nil) :: nil) :: nil))) (num 0))
                    None :: nil)) u.
 Proof. elab_fails. Qed.
 
@@ -1192,11 +1201,11 @@ end
 *)
 Example ind_alias_spec :
   elab_spec (unit_of
-    (c_ind false (("A", typ 0) :: nil) (("List", typ 0, ("nil", nil) :: nil) :: nil) ::
+    (c_ind false false (("A", typ 0) :: nil) (("List", typ 0, ("nil", nil) :: nil) :: nil) ::
      c_ind_alias false "L" (("B", typ 0) :: nil) (app (var "List") (var "B")) ::
      c_ind_alias true "LN" nil (app (var "L") nat) :: nil))
     (nil, ⋅,
-     cc_ind false (mk_raw (⋅ ▹ Typeω@0) (mk_rmem "List" ⋅ Typeω@0 (("nil", nil) :: nil) :: nil)) ::
+     cc_ind false (mk_raw (⋅ ▹ Typeω@0) (mk_rmem "List" ⋅ Typeω@0 (("nil", nil) :: nil) :: nil) false) ::
      cc_ind_alias "L" false (⋅ ▹ Typeω@0) (me_app (T_ ("List" :: nil)) #0) ::
      cc_ind_alias "LN" true ⋅ (me_app (T_ ("L" :: nil)) ℕ) :: nil).
 Proof. elab_ok. Qed.
@@ -1224,11 +1233,11 @@ end
 *)
 Example builtin_spec :
   elab_spec (nil, ("U" :: nil, nil,
-                   c_ind false nil (("Nat", typ 0, ("z", nil) :: ("s", ("n", var "Nat") :: nil) :: nil) :: nil) ::
+                   c_ind false false nil (("Nat", typ 0, ("z", nil) :: ("s", ("n", var "Nat") :: nil) :: nil) :: nil) ::
                    c_builtin "natural" (var "Nat") ::
                    c_eval (num 2) None :: nil))
     (nil, ⋅,
-     cc_ind false (mk_raw ⋅ (mk_rmem "Nat" ⋅ Typeω@0 (("z", nil) :: ("s", ("n", #0) :: nil) :: nil) :: nil)) ::
+     cc_ind false (mk_raw ⋅ (mk_rmem "Nat" ⋅ Typeω@0 (("z", nil) :: ("s", ("n", #0) :: nil) :: nil) :: nil) false) ::
      cc_builtin "natural" (qname_mod (q_abs ("U" :: nil) ("Nat" :: nil))) ::
      cc_eval (a_nlit 2) None :: nil).
 Proof. elab_ok. Qed.

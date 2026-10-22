@@ -482,14 +482,15 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
     parameters are read in [F], each member's non-uniform ones and sort
     under them, the constructors' arguments under all, with the members'
     names in scope.  It declares each member, a module whose members are
-    the constructors. *)
-| sc_ind : forall ch O F pv ups ms tys rms,
+    the constructors.  The group files its recursor module as written
+    ([wr]). *)
+| sc_ind : forall ch O F pv wr ups ms tys rms,
     NoDup (member_names ms) ->
     Forall (fun x => fresh x F) (member_names ms) ->
     sparams (F ++ O) ups tys ->
     smembers (F ++ O) ups (member_names ms) ms rms ->
-    scmd fp ch O F (Cst.c_ind pv ups ms) (filed_mems fp ch (member_names ms) ++ F)
-      (cc_ind pv (mk_raw (ptele tys) rms) :: nil)
+    scmd fp ch O F (Cst.c_ind pv wr ups ms) (filed_mems fp ch (member_names ms) ++ F)
+      (cc_ind pv (mk_raw (ptele tys) rms wr) :: nil)
 (** [mutual def (ps) f … with g … end]: the common parameters are read in
     [F], the functions under them.  It declares each function. *)
 | sc_mdef : forall ch O F m ps fs tys rfs,

@@ -111,9 +111,9 @@ let cmd :=
      where … end]: the group's uniform parameters, then its members, each
      with its type, which binds its non-uniform parameters. *)
   | INDUCTIVE; x = VAR; ps = params_opt; ":"; t = obj; WHERE; cs = ctors; ms = imembers; END;
-      { [Cst.c_ind false (List.rev ps) ((snd x, t, List.rev cs) :: List.rev ms)] }
+      { [Cst.c_ind false false (List.rev ps) ((snd x, t, List.rev cs) :: List.rev ms)] }
   | PRIVATE; INDUCTIVE; x = VAR; ps = params_opt; ":"; t = obj; WHERE; cs = ctors; ms = imembers; END;
-      { [Cst.c_ind true (List.rev ps) ((snd x, t, List.rev cs) :: List.rev ms)] }
+      { [Cst.c_ind true false (List.rev ps) ((snd x, t, List.rev cs) :: List.rev ms)] }
   (* [mutual T (ps) where inductive x : S where … with y : U where … end
      end]: the group in the module [T], its members [T.x], [T.y]. *)
   | m = mods; MUTUAL; g = VAR; ps = params_opt; WHERE; INDUCTIVE; x = VAR; ":"; t = obj; WHERE; cs = ctors; ms = imembers; END; END;

@@ -241,7 +241,7 @@ Fixpoint elab_body (S : list ent) (Φ : gmod) (cs : list Cst.cmd) : eres gmod :=
   | Cst.c_import _ :: _ => eerr "import is not allowed in a local module; use open"
   | Cst.c_error e :: _ => eerr e
   | Cst.c_eval _ _ :: _ => eerr "eval is not allowed in a local module"
-  | Cst.c_ind _ _ _ :: _ => eerr "an inductive type is not allowed in a local module"
+  | Cst.c_ind _ _ _ _ :: _ => eerr "an inductive type is not allowed in a local module"
   | Cst.c_mdef _ _ _ :: _ => eerr "a mutual definition is not allowed in a local module"
   | Cst.c_builtin _ _ :: _ => eerr "builtin is not allowed in a local module"
   | Cst.c_ind_alias _ _ _ _ :: _ => eerr "an inductive alias is not allowed in a local module"
@@ -482,7 +482,7 @@ Proof.
   - (* c_eval *)
     intros o oA _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
   - (* c_ind *)
-    intros pv ps ms _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
+    intros pv wr ps ms _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
   - (* c_mdef *)
     intros m ps fs _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
   - (* c_builtin *)
@@ -656,7 +656,7 @@ Section Commands.
         rewrite (proj2 (check_fresh_all_ok _ _ tt)) by assumption. reflexivity.
     - intros o [oA |] _ _ ch O F F' c'; cbn [elab_cmd].
       all: split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].
-    - intros pv ups ms _ _ ch O F F' c'; cbn [elab_cmd]; split.
+    - intros pv wr ups ms _ _ ch O F F' c'; cbn [elab_cmd]; split.
       + intros Hg; apply ebind_eok in Hg as ([] & Hd & Hg); apply ebind_eok in Hg as ([] & Hf & Hg).
         apply ebind_eok in Hg as (tys & Ht & Hg); apply ebind_eok in Hg as (rms & Hm & Hg); inv_eok.
         econstructor; [ exact (proj1 (check_distinct_ok _ _ tt) Hd) | apply (check_fresh_all_ok _ _ tt); exact Hf
