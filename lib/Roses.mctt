@@ -1,0 +1,79 @@
+(* A client of the rose trees of [Prelude›Data›Tree›Rose]: the operations
+   on a closed tree of numbers, whose children are a [List] of trees, a
+   function written with the eliminator's two blocks, and closed instances
+   of the laws. *)
+module Roses where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Data›List use (List)
+open Prelude›Data›List.Ops as LO
+import Prelude›Data›Tree›Rose use (Rose)
+open Prelude›Data›Tree›Rose.Ops 0l ℕ as R
+import Prelude›Data›Tree›Rose›Properties 0l ℕ as P
+
+inductive T ≔ Rose 0l ℕ
+
+inductive F ≔ List 0l T
+
+(* The tree
+       1
+     / | \
+    2  3  5
+       |
+       4         *)
+def example : T ≔
+  T.node 1 (F.cons (R.leaf 2)
+             (F.cons (T.node 3 (F.cons (R.leaf 4) F.nil))
+               (F.cons (R.leaf 5) F.nil)))
+end
+
+eval R.size example
+eval R.depth example
+eval R.flatten example
+eval R.flatten (R.map ℕ succ example)
+
+(* The sum of the labels, as a fold. *)
+eval R.fold ℕ ℕ plus 0 plus example
+
+(* The children of a node, a list of trees: [List]'s operations apply to
+   them, and so do the forest functions.  The eliminator of [Rose] has a
+   block for the view too, unused here. *)
+def children (t : T) : F ≔
+  elim t at (z : T) -> F
+  | node x ts, h ⇒ ts
+  with (z : F) -> F
+  | nil ⇒ F.nil
+  | cons t ts, ht hts ⇒ F.nil
+  end
+end
+
+eval LO.length 0l T (children example)
+eval R.sizeForest (children example)
+eval R.flattenForest (LO.reverse 0l T (children example))
+
+(* The number of leaves, by the eliminator at the tree's block: a node is
+   a leaf when its children are [nil].  The motive at forests says how
+   many leaves a forest has.  The inner eliminator, whose only block is at
+   [F], is [List]'s own: the group is read off the first block. *)
+def leaves (t : T) : ℕ ≔
+  elim t at (z : T) -> ℕ
+  | node x ts, h ⇒
+      elim ts at (z : F) -> ℕ
+      | nil ⇒ 1
+      | cons s us, r ⇒ h
+      end
+  with (z : F) -> ℕ
+  | nil ⇒ 0
+  | cons s us, hs hus ⇒ plus hs hus
+  end
+end
+
+eval leaves example
+
+(* Closed instances of the laws: each normalizes to [⋆]. *)
+eval P.Maps.sizeMap ℕ succ example
+eval P.Flatten.lengthFlatten example
+eval P.Flatten.lengthFlattenForest (children example)
+
+end

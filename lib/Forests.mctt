@@ -1,7 +1,7 @@
-(* A client of the rose trees of [Prelude›Data›Tree›Rose]: the operations
-   on a closed tree of numbers, a function written with the group's
-   eliminator and one with its recursor module, and closed instances of
-   the laws. *)
+(* A client of the trees and forests of [Prelude›Data›Tree›Forest]: the
+   operations on a closed tree of numbers, a function written with the
+   group's eliminator and one with its recursor module, and closed
+   instances of the laws. *)
 module Forests where
 
 import Prelude›Builtin›Nat use (succ)
@@ -9,9 +9,9 @@ import Prelude›Arith›Plus use (plus)
 import Prelude›Arith›MinMax use (max)
 import Prelude›Data›List
 open Prelude›Data›List.Ops as LO
-import Prelude›Data›Tree›Rose use (Rose; Tree; Forest)
-open Prelude›Data›Tree›Rose.Ops 0l ℕ as R
-import Prelude›Data›Tree›Rose›Properties 0l ℕ as P
+import Prelude›Data›Tree›Forest use (TreeForest; Tree; Forest)
+open Prelude›Data›Tree›Forest.Ops 0l ℕ as R
+import Prelude›Data›Tree›Forest›Properties 0l ℕ as P
 
 inductive T ≔ Tree 0l ℕ
 
@@ -66,7 +66,7 @@ eval leaves example
 (* The largest label, by the recursor module of the group: one motive per
    member, then one case per constructor. *)
 def largest (t : T) : ℕ ≔
-  Rose.Rec.rec_Tree 0l ℕ 0l (λ (z : T) → ℕ) (λ (z : F) → ℕ)
+  TreeForest.Rec.rec_Tree 0l ℕ 0l (λ (z : T) → ℕ) (λ (z : F) → ℕ)
     (λ (x : ℕ) (ts : F) (m : ℕ) → max x m)
     0
     (λ (s : T) (ts : F) (m : ℕ) (n : ℕ) → max m n)

@@ -1,83 +1,104 @@
 (* Laws of [Prelude›Data›Tree›Rose] over labels [A] of [Type@{u}]: [map]
-   keeps the size and is a functor; the preorder list of labels has the
-   size as its length and commutes with [map]; the size and the preorder
-   list are folds, by conversion; and [toList] and [fromList] are inverse.
+   keeps the size, is a functor, and is [List]'s [map] on forests; the
+   preorder list of labels has the size as its length and commutes with
+   [map].
 
-   Each law about both members is a mutual definition, one theorem per
-   member, proved together: the hypothesis of a tree's branch is the law at
-   its forest, and those of a forest's [cons] branch the laws at its tree
-   and at the rest.  Equalities of trees, forests and lists are the Leibniz
-   equality of [Prelude›Logic›Leibniz], equalities of numbers
-   [Prelude›Arith›Equality]. *)
+   Each law about trees and forests is a mutual definition, one theorem on
+   trees and one at the view [List u (Rose u A)], proved together: the
+   hypothesis of a node's branch is the law at its children, and those of
+   a forest's [cons] branch the laws at its first tree and at the rest.
+   Equalities of trees and lists are the Leibniz equality of
+   [Prelude›Logic›Leibniz], equalities of numbers [Prelude›Arith›Equality]. *)
 module Prelude›Data›Tree›Rose›Properties (u : Level) (A : Type@{u}) where
 
-import Prelude›Builtin›Nat use (succ)
 import Prelude›Logic›Leibniz u use (Id; idRefl; idSym; idTrans; idCong;
   idCongTwo)
-import Prelude›Arith›Equality use (Eq; refl; trans)
+import Prelude›Arith›Equality use (Eq; trans)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Algebra use (plusCongBoth)
 import Prelude›Data›List use (List)
 open Prelude›Data›List.Ops as LO
 import Prelude›Data›List›Properties.Append u A use (lengthAppend)
 import Prelude›Data›List›Properties.Maps u A use (mapAppend)
-import Prelude›Data›Tree›Rose use (Tree; Forest)
+import Prelude›Data›Tree›Rose use (Rose)
 open Prelude›Data›Tree›Rose.Ops as RO
 
-private inductive T ≔ Tree u A
+private inductive T ≔ Rose u A
 
-private inductive F ≔ Forest u A
+private inductive F ≔ List u T
+
+(* The forests over other labels [B]. *)
+private inductive Forest (B : Type@{u}) ≔ List u (Rose u B)
 
 private module Op ≔ RO u A
 
-(* [map]: the size and the functor laws. *)
+(* [map]: the size and the functor laws, and [mapForest] as a map of
+   lists. *)
 module Maps where
 
+(* On forests, [mapForest] is the [map] of [Prelude›Data›List] by [map]:
+   by induction at the view's block of the eliminator, where the tree
+   block proves nothing. *)
+theorem mapForestList : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (ts : F) →
+    Id (Forest B) (Op.mapForest B f ts)
+      (LO.map u T (Rose u B) (Op.map B f) ts) ≔
+  λ (B : Type@{u}) (f : ∀ (x : A) → B) (ts : F) →
+    elim ts with (z : T) -> ⊤
+    | node x us, h ⇒ ⋆
+    at (z : F) -> Id (Forest B) (Op.mapForest B f z)
+                    (LO.map u T (Rose u B) (Op.map B f) z)
+    | nil ⇒ idRefl (Forest B) (List.nil u (Rose u B))
+    | cons t us, ht hus ⇒
+        idCong (Forest B) (Forest B) (List.cons u (Rose u B) (Op.map B f t))
+          (Op.mapForest B f us) (LO.map u T (Rose u B) (Op.map B f) us) hus
+    end
+end
+
 abstract mutual def (B : Type@{u}) (f : ∀ (x : A) → B)
-  sizeMapTree (t : T) :
-      Eq (RO.sizeTree u B (Op.mapTree B f t)) (Op.sizeTree t) ≔
+  sizeMap (t : T) :
+      Eq (RO.size u B (Op.map B f t)) (Op.size t) ≔
   | node x ts, h ⇒ h
   with sizeMapForest (ts : F) :
       Eq (RO.sizeForest u B (Op.mapForest B f ts)) (Op.sizeForest ts) ≔
   | nil ⇒ ⋆
   | cons t ts, ht hts ⇒
-      plusCongBoth (RO.sizeTree u B (Op.mapTree B f t))
+      plusCongBoth (RO.size u B (Op.map B f t))
         (RO.sizeForest u B (Op.mapForest B f ts))
-        (Op.sizeTree t) (Op.sizeForest ts) ht hts
+        (Op.size t) (Op.sizeForest ts) ht hts
 end
 
 (* Mapping the identity changes nothing: by congruence through [node x]
    and [cons]. *)
 abstract mutual def
-  mapIdTree (t : T) : Id T (Op.mapTree A (λ (x : A) → x) t) t ≔
+  mapId (t : T) : Id T (Op.map A (λ (x : A) → x) t) t ≔
   | node x ts, h ⇒
       idCong F T (T.node x) (Op.mapForest A (λ (y : A) → y) ts) ts h
   with mapIdForest (ts : F) : Id F (Op.mapForest A (λ (x : A) → x) ts) ts ≔
   | nil ⇒ idRefl F F.nil
   | cons t ts, ht hts ⇒
       idCongTwo T F F F.cons
-        (Op.mapTree A (λ (x : A) → x) t) t
+        (Op.map A (λ (x : A) → x) t) t
         (Op.mapForest A (λ (x : A) → x) ts) ts ht hts
 end
 
 (* Mapping twice is mapping the composite. *)
 abstract mutual def (B : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → B)
     (g : ∀ (y : B) → C)
-  mapCompTree (t : T) :
-      Id (Tree u C) (RO.mapTree u B C g (Op.mapTree B f t))
-        (Op.mapTree C (λ (x : A) → g (f x)) t) ≔
+  mapComp (t : T) :
+      Id (Rose u C) (RO.map u B C g (Op.map B f t))
+        (Op.map C (λ (x : A) → g (f x)) t) ≔
   | node x ts, h ⇒
-      idCong (Forest u C) (Tree u C) (Tree.node u C (g (f x)))
+      idCong (Forest C) (Rose u C) (Rose.node u C (g (f x)))
         (RO.mapForest u B C g (Op.mapForest B f ts))
         (Op.mapForest C (λ (y : A) → g (f y)) ts) h
   with mapCompForest (ts : F) :
-      Id (Forest u C) (RO.mapForest u B C g (Op.mapForest B f ts))
+      Id (Forest C) (RO.mapForest u B C g (Op.mapForest B f ts))
         (Op.mapForest C (λ (x : A) → g (f x)) ts) ≔
-  | nil ⇒ idRefl (Forest u C) (Forest.nil u C)
+  | nil ⇒ idRefl (Forest C) (List.nil u (Rose u C))
   | cons t ts, ht hts ⇒
-      idCongTwo (Tree u C) (Forest u C) (Forest u C) (Forest.cons u C)
-        (RO.mapTree u B C g (Op.mapTree B f t))
-        (Op.mapTree C (λ (x : A) → g (f x)) t)
+      idCongTwo (Rose u C) (Forest C) (Forest C) (List.cons u (Rose u C))
+        (RO.map u B C g (Op.map B f t))
+        (Op.map C (λ (x : A) → g (f x)) t)
         (RO.mapForest u B C g (Op.mapForest B f ts))
         (Op.mapForest C (λ (x : A) → g (f x)) ts) ht hts
 end
@@ -91,31 +112,31 @@ module Flatten where
    length is [succ] of the rest's by conversion; a forest's is an
    [append], whose length is the sum by [lengthAppend]. *)
 abstract mutual def
-  lengthFlattenTree (t : T) :
-      Eq (LO.length u A (Op.flattenTree t)) (Op.sizeTree t) ≔
+  lengthFlatten (t : T) :
+      Eq (LO.length u A (Op.flatten t)) (Op.size t) ≔
   | node x ts, h ⇒ h
   with lengthFlattenForest (ts : F) :
       Eq (LO.length u A (Op.flattenForest ts)) (Op.sizeForest ts) ≔
   | nil ⇒ ⋆
   | cons t ts, ht hts ⇒
-      trans (LO.length u A (LO.append u A (Op.flattenTree t)
+      trans (LO.length u A (LO.append u A (Op.flatten t)
                               (Op.flattenForest ts)))
-        (plus (LO.length u A (Op.flattenTree t))
+        (plus (LO.length u A (Op.flatten t))
            (LO.length u A (Op.flattenForest ts)))
-        (plus (Op.sizeTree t) (Op.sizeForest ts))
-        (lengthAppend (Op.flattenTree t) (Op.flattenForest ts))
-        (plusCongBoth (LO.length u A (Op.flattenTree t))
+        (plus (Op.size t) (Op.sizeForest ts))
+        (lengthAppend (Op.flatten t) (Op.flattenForest ts))
+        (plusCongBoth (LO.length u A (Op.flatten t))
            (LO.length u A (Op.flattenForest ts))
-           (Op.sizeTree t) (Op.sizeForest ts) ht hts)
+           (Op.size t) (Op.sizeForest ts) ht hts)
 end
 
 (* Flattening commutes with [map]: in a forest's step, the appended lists
    are rewritten by the hypotheses, then [map] is pulled out of the
    [append] by [mapAppend]. *)
 abstract mutual def (B : Type@{u}) (f : ∀ (x : A) → B)
-  flattenMapTree (t : T) :
-      Id (List u B) (RO.flattenTree u B (Op.mapTree B f t))
-        (LO.map u A B f (Op.flattenTree t)) ≔
+  flattenMap (t : T) :
+      Id (List u B) (RO.flatten u B (Op.map B f t))
+        (LO.map u A B f (Op.flatten t)) ≔
   | node x ts, h ⇒
       idCong (List u B) (List u B) (List.cons u B (f x))
         (RO.flattenForest u B (Op.mapForest B f ts))
@@ -126,73 +147,26 @@ abstract mutual def (B : Type@{u}) (f : ∀ (x : A) → B)
   | nil ⇒ idRefl (List u B) (List.nil u B)
   | cons t ts, ht hts ⇒
       idTrans (List u B)
-        (LO.append u B (RO.flattenTree u B (Op.mapTree B f t))
+        (LO.append u B (RO.flatten u B (Op.map B f t))
            (RO.flattenForest u B (Op.mapForest B f ts)))
-        (LO.append u B (LO.map u A B f (Op.flattenTree t))
+        (LO.append u B (LO.map u A B f (Op.flatten t))
            (LO.map u A B f (Op.flattenForest ts)))
-        (LO.map u A B f (LO.append u A (Op.flattenTree t)
+        (LO.map u A B f (LO.append u A (Op.flatten t)
                            (Op.flattenForest ts)))
         (idCongTwo (List u B) (List u B) (List u B) (LO.append u B)
-           (RO.flattenTree u B (Op.mapTree B f t))
-           (LO.map u A B f (Op.flattenTree t))
+           (RO.flatten u B (Op.map B f t))
+           (LO.map u A B f (Op.flatten t))
            (RO.flattenForest u B (Op.mapForest B f ts))
            (LO.map u A B f (Op.flattenForest ts)) ht hts)
         (idSym (List u B)
-           (LO.map u A B f (LO.append u A (Op.flattenTree t)
+           (LO.map u A B f (LO.append u A (Op.flatten t)
                               (Op.flattenForest ts)))
-           (LO.append u B (LO.map u A B f (Op.flattenTree t))
+           (LO.append u B (LO.map u A B f (Op.flatten t))
               (LO.map u A B f (Op.flattenForest ts)))
-           (mapAppend B f (Op.flattenTree t) (Op.flattenForest ts)))
+           (mapAppend B f (Op.flatten t) (Op.flattenForest ts)))
 end
 
 end
 
-(* The size and the preorder list are folds.  Both sides normalize to the
-   same eliminator, so the proofs are reflexivity, with no induction. *)
-module Folds where
-
-theorem sizeFold : ∀ (t : T) →
-    Eq (Op.sizeTree t)
-      (Op.foldTree ℕ ℕ (λ (x : A) (s : ℕ) → succ s) 0 plus t) ≔
-  λ (t : T) → refl (Op.sizeTree t)
-end
-
-theorem flattenFold : ∀ (t : T) →
-    Id (List u A) (Op.flattenTree t)
-      (Op.foldTree (List u A) (List u A) (List.cons u A) (List.nil u A)
-         (LO.append u A) t) ≔
-  λ (t : T) → idRefl (List u A) (Op.flattenTree t)
-end
-
-end
-
-(* A forest is a list of trees. *)
-module Lists where
-
-(* By induction on the forest, at its block of the eliminator; the tree
-   block proves nothing. *)
-theorem fromToList : ∀ (ts : F) → Id F (Op.fromList (Op.toList ts)) ts ≔
-  λ (ts : F) →
-    elim ts with (z : T) -> ⊤
-    | node x us, h ⇒ ⋆
-    at (z : F) -> Id F (Op.fromList (Op.toList z)) z
-    | nil ⇒ idRefl F F.nil
-    | cons t us, ht hus ⇒
-        idCong F F (F.cons t) (Op.fromList (Op.toList us)) us hus
-    end
-end
-
-theorem toFromList : ∀ (l : List u T) →
-    Id (List u T) (Op.toList (Op.fromList l)) l ≔
-  λ (l : List u T) →
-    elim l at (z : List u T) -> Id (List u T) (Op.toList (Op.fromList z)) z
-    | nil ⇒ idRefl (List u T) (List.nil u T)
-    | cons t us, r ⇒
-        idCong (List u T) (List u T) (List.cons u T t)
-          (Op.toList (Op.fromList us)) us r
-    end
-end
-
-end
 
 end
