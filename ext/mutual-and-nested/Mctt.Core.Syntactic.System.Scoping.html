@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1043"></a><h1 class="section">Scoping</h1>
+<a id="lab1057"></a><h1 class="section">Scoping</h1>
 
 
 <div class="paragraph"> </div>
@@ -67,16 +67,16 @@
 </div>
 
 <div class="doc">
-<a id="lab1044"></a><h2 class="section">Definitions</h2>
+<a id="lab1058"></a><h2 class="section">Definitions</h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#exp_scoped"><span class="id" title="definition">exp_scoped</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>: every free variable of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> is below <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>, at either sort.
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#exp_scoped"><span class="id" title="definition">exp_scoped</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>: every free variable of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> is below <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>, at either sort.
     A telescope's entry is scoped by the entries below it. 
 <div class="paragraph"> </div>
 
- <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#exp_scoped"><span class="id" title="definition">exp_scoped</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, with its mutual parts for the subterms' sorts. 
+ <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#exp_scoped"><span class="id" title="definition">exp_scoped</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, with its mutual parts for the subterms' sorts. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="exp_scoped" class="idref" href="#exp_scoped"><span class="id" title="definition">exp_scoped</span></a> (<a id="n:1" class="idref" href="#n:1"><span class="id" title="binder">n</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="M:2" class="idref" href="#M:2"><span class="id" title="binder">M</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>) : <span class="id" title="keyword">Prop</span> :=<br/>
@@ -204,7 +204,7 @@ Each binding is scoped by the bindings below it, and the bottom one by <span cla
 </div>
 
 <div class="doc">
-<a id="lab1045"></a><h2 class="section">Syntactic Facts</h2>
+<a id="lab1059"></a><h2 class="section">Syntactic Facts</h2>
 
 </div>
 <div class="code">
@@ -596,7 +596,7 @@ One case of a scoping law: the induction hypotheses, with the bound lifted
 </div>
 
 <div class="doc">
-<a id="lab1046"></a><h2 class="section">Module Variables</h2>
+<a id="lab1060"></a><h2 class="section">Module Variables</h2>
 
 
 <div class="paragraph"> </div>
@@ -911,7 +911,7 @@ A term with no free variable is fixed by every weakening and every
 </div>
 
 <div class="doc">
-<a id="lab1047"></a><h2 class="section">Telescopes</h2>
+<a id="lab1061"></a><h2 class="section">Telescopes</h2>
 
 </div>
 <div class="code">
@@ -1176,7 +1176,7 @@ The opens of two bodies of the same shape correspond.
 </div>
 
 <div class="doc">
-<a id="lab1048"></a><h2 class="section">Inductive Types</h2>
+<a id="lab1062"></a><h2 class="section">Inductive Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -2048,7 +2048,7 @@ The uniform arguments of a member's type at uniform parameters as
 </div>
 
 <div class="doc">
-<a id="lab1049"></a><h2 class="section">The Container's Blocks at a View</h2>
+<a id="lab1063"></a><h2 class="section">The Container's Blocks at a View</h2>
 
 </div>
 <div class="code">
@@ -2262,7 +2262,7 @@ A module applied to arguments is as scoped as the module and the
 </div>
 
 <div class="doc">
-<a id="lab1050"></a><h2 class="section">Closed Entries</h2>
+<a id="lab1064"></a><h2 class="section">Closed Entries</h2>
 
 
 <div class="paragraph"> </div>

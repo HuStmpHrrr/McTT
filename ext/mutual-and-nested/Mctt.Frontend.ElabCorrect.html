@@ -46,7 +46,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1212"></a><h1 class="section">The Elaborator Meets Its Specification</h1>
+<a id="lab1226"></a><h1 class="section">The Elaborator Meets Its Specification</h1>
 
 
 <div class="paragraph"> </div>
@@ -59,7 +59,7 @@
     its innermost entry. 
 <div class="paragraph"> </div>
 
-<a id="lab1213"></a><h2 class="section">Results</h2>
+<a id="lab1227"></a><h2 class="section">Results</h2>
 
 </div>
 <div class="code">
@@ -100,7 +100,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1214"></a><h2 class="section">Names</h2>
+<a id="lab1228"></a><h2 class="section">Names</h2>
 
 </div>
 <div class="code">
@@ -228,7 +228,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1215"></a><h2 class="section">Open Targets</h2>
+<a id="lab1229"></a><h2 class="section">Open Targets</h2>
 
 <div class="paragraph"> </div>
 
@@ -314,7 +314,7 @@ A name in module position, as <span class="inlinecode"><a class="idref" href="Mc
 </div>
 
 <div class="doc">
-<a id="lab1216"></a><h2 class="section">Objects</h2>
+<a id="lab1230"></a><h2 class="section">Objects</h2>
 
 <div class="paragraph"> </div>
 
@@ -733,7 +733,7 @@ A local module, as <span class="inlinecode"><a class="idref" href="Mctt.Frontend
 </div>
 
 <div class="doc">
-<a id="lab1217"></a><h2 class="section">Commands</h2>
+<a id="lab1231"></a><h2 class="section">Commands</h2>
 
 </div>
 <div class="code">
@@ -854,7 +854,7 @@ A local module, as <span class="inlinecode"><a class="idref" href="Mctt.Frontend
 </div>
 
 <div class="doc">
-<a id="lab1218"></a><h2 class="section">Units</h2>
+<a id="lab1232"></a><h2 class="section">Units</h2>
 
 </div>
 <div class="code">
@@ -934,6 +934,20 @@ The elaborator fails exactly on the programs the specification relates
 &nbsp;&nbsp;- <span class="id" title="tactic">intros</span> (<span class="id" title="var">e</span> &amp; <span class="id" title="var">He</span>) <span class="id" title="var">u</span> <span class="id" title="var">Hs</span>. <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#elaborate_core_complete"><span class="id" title="lemma">elaborate_core_complete</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hs</span>. <span class="id" title="tactic">congruence</span>.<br/>
 &nbsp;&nbsp;- <span class="id" title="tactic">intros</span> <span class="id" title="var">Hn</span>. <span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Frontend.Elaborator.html#elaborate_core"><span class="id" title="definition">elaborate_core</span></a> <span class="id" title="var">prg</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">u</span> | <span class="id" title="var">e</span>] <span class="id" title="var">eqn</span>:<span class="id" title="var">E</span>; [| <span class="id" title="tactic">eauto</span> ].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">exfalso</span>; <span class="id" title="tactic">apply</span> (<span class="id" title="var">Hn</span> <span class="id" title="var">u</span>), <a class="idref" href="Mctt.Frontend.ElabCorrect.html#elaborate_core_sound"><span class="id" title="lemma">elaborate_core_sound</span></a>, <span class="id" title="var">E</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The elaborator's units are written: no generated command in them
+    (<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#elab_spec_written"><span class="id" title="lemma">elab_spec_written</span></a></span>). 
+</div>
+<div class="code">
+<span class="id" title="keyword">Corollary</span> <a id="to_core_written" class="idref" href="#to_core_written"><span class="id" title="lemma">to_core_written</span></a> : <span class="id" title="keyword">forall</span> <a id="prg:282" class="idref" href="#prg:282"><span class="id" title="binder">prg</span></a> <a id="u:283" class="idref" href="#u:283"><span class="id" title="binder">u</span></a>, <a class="idref" href="Mctt.Frontend.Elaborator.html#to_core"><span class="id" title="definition">to_core</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#prg:282"><span class="id" title="variable">prg</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#u:283"><span class="id" title="variable">u</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#unit_written"><span class="id" title="definition">unit_written</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#u:283"><span class="id" title="variable">u</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">H</span>; <span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Frontend.Elaborator.html#to_core"><span class="id" title="definition">to_core</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>; <span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Frontend.Elaborator.html#elaborate_core"><span class="id" title="definition">elaborate_core</span></a> <span class="id" title="var">prg</span>) <span class="id" title="var">eqn</span>:<span class="id" title="var">E</span>; [| <span class="id" title="tactic">discriminate</span> ].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">injection</span> <span class="id" title="var">H</span> <span class="id" title="keyword">as</span> &lt;-; <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#elab_spec_written"><span class="id" title="lemma">elab_spec_written</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Frontend.ElabCorrect.html#elaborate_core_sound"><span class="id" title="lemma">elaborate_core_sound</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">E</span>)).<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
 </div>
 </div>

@@ -39,7 +39,7 @@
 <div class="paragraph"> </div>
 
     The Π gluing predicates quantify over Kripke weakenings, so a codomain
-    obligation has the form <span class="inlinecode"><span class="id" title="var">OT</span>[(<span class="id" title="var">ι</span></span> <span class="inlinecode">φ),,<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>]</span>. <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_q_extend_wk"><span class="id" title="lemma">exp_sub_q_extend_wk</span></a></span> relates it
+    obligation has the form <span class="inlinecode"><span class="id" title="var">OT</span>[(<span class="id" title="var">ι</span></span> <span class="inlinecode">φ),,<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a>]</span>. <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_q_extend_wk"><span class="id" title="lemma">exp_sub_q_extend_wk</span></a></span> relates it
     to the <span class="inlinecode"><span class="id" title="var">q</span></span>-form, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_wk"><span class="id" title="definition">sb_wk</span></a></span> <span class="inlinecode">σ</span> <span class="inlinecode">φ</span> is a substitution followed by a Kripke
     weakening.
 
@@ -631,8 +631,8 @@ The <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalR
 
 <div class="doc">
 The type of an application is an instantiated codomain, which the gluing
-      model cannot evaluate: <span class="inlinecode">⟦<span class="id" title="definition">B</span>[<span class="id" title="var">Id</span>,,<a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>]⟧ρ</span> is stuck, and it is not
-      <span class="inlinecode">⟦<span class="id" title="definition">B</span>⟧(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>⟧ρ)</span>. <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Substitution.html#per_univ_of_instance"><span class="id" title="lemma">per_univ_of_instance</span></a></span> relates the two, and
+      model cannot evaluate: <span class="inlinecode">⟦<span class="id" title="definition">B</span>[<span class="id" title="var">Id</span>,,<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a>]⟧ρ</span> is stuck, and it is not
+      <span class="inlinecode">⟦<span class="id" title="definition">B</span>⟧(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a>⟧ρ)</span>. <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Substitution.html#per_univ_of_instance"><span class="id" title="lemma">per_univ_of_instance</span></a></span> relates the two, and
       <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#glu_univ_elem_resp_per_univ"><span class="id" title="lemma">glu_univ_elem_resp_per_univ</span></a></span> transports the predicate. 
 </div>
 <div class="code">

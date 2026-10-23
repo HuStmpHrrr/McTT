@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1038"></a><h1 class="section">Privacy</h1>
+<a id="lab1052"></a><h1 class="section">Privacy</h1>
 
 
 <div class="paragraph"> </div>
@@ -67,7 +67,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1039"></a><h2 class="section">Entries</h2>
+<a id="lab1053"></a><h2 class="section">Entries</h2>
 
 
 <div class="paragraph"> </div>
@@ -278,7 +278,7 @@ The module <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.M
 </div>
 
 <div class="doc">
-<a id="lab1040"></a><h2 class="section">Module Tables</h2>
+<a id="lab1054"></a><h2 class="section">Module Tables</h2>
 
 
 <div class="paragraph"> </div>
@@ -454,7 +454,7 @@ The table a local binding gives its index.
 </div>
 
 <div class="doc">
-<a id="lab1041"></a><h2 class="section">Member References</h2>
+<a id="lab1055"></a><h2 class="section">Member References</h2>
 
 <div class="paragraph"> </div>
 
@@ -583,7 +583,7 @@ The references of a group as written: its uniform parameters, and of
 
 <div class="doc">
 The references a declared member makes as written: its non-uniform
-    parameters, its sort and its constructors' arguments, under the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#Classify.nu"><span class="id" title="variable">nu</span></a></span>
+    parameters, its sort and its constructors' arguments, under the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#nu"><span class="id" title="abbreviation">nu</span></a></span>
     uniform parameters and the <span class="inlinecode"><span class="id" title="var">nself</span></span> <span class="inlinecode"><span class="id" title="var">Self</span></span>s. 
 </div>
 <div class="code">
@@ -625,11 +625,13 @@ The references of a function of a <span class="inlinecode"><span class="id" titl
 <div class="doc">
 The references a command makes, as written: its own terms, and for an
     import, its target and each member its items name.  A module's nested
-    commands are checked when they run. 
+    commands are checked when they run.  A generated command makes none:
+    it is not written (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_gen"><span class="id" title="constructor">cc_gen</span></a></span>). 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="cmd_refs" class="idref" href="#cmd_refs"><span class="id" title="definition">cmd_refs</span></a> (<a id="c:210" class="idref" href="#c:210"><span class="id" title="binder">c</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Command.html#ccmd"><span class="id" title="inductive">ccmd</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#ptab"><span class="id" title="inductive">ptab</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <span class="id" title="inductive">string</span>)%<span class="id" title="keyword">type</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#c:210"><span class="id" title="variable">c</span></a> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_gen"><span class="id" title="constructor">cc_gen</span></a> <span class="id" title="var">_</span> =&gt; <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><br/>
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_def"><span class="id" title="constructor">cc_def</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">A</span> <span class="id" title="var">oM</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#exp_refs"><span class="id" title="definition">exp_refs</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> <span class="id" title="var">A</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <span class="id" title="keyword">match</span> <span class="id" title="var">oM</span> <span class="id" title="keyword">with</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <span class="id" title="var">M</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#exp_refs"><span class="id" title="definition">exp_refs</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> <span class="id" title="var">M</span> | <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a> =&gt; <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> <span class="id" title="keyword">end</span><br/>
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_mod"><span class="id" title="constructor">cc_mod</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Δ</span> <span class="id" title="var">_</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#tele_refs"><span class="id" title="definition">tele_refs</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> <span class="id" title="var">Δ</span><br/>
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_alias"><span class="id" title="constructor">cc_alias</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Δ</span> <span class="id" title="var">E</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#tele_refs"><span class="id" title="definition">tele_refs</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> <span class="id" title="var">Δ</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#modexp_refs"><span class="id" title="definition">modexp_refs</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> <span class="id" title="var">E</span><br/>
@@ -646,7 +648,7 @@ The references a command makes, as written: its own terms, and for an
 </div>
 
 <div class="doc">
-<a id="lab1042"></a><h2 class="section">Accessibility</h2>
+<a id="lab1056"></a><h2 class="section">Accessibility</h2>
 
 <div class="paragraph"> </div>
 

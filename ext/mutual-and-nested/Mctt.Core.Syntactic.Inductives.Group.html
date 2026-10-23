@@ -329,7 +329,7 @@ The arguments of the constructor <span class="inlinecode"><a class="idref" href=
 
 <div class="paragraph"> </div>
 
-    The member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> at position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the group at path <span class="inlinecode"><span class="id" title="var">pq</span></span>: its type
+    The member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> at position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the group at path <span class="inlinecode"><span class="id" title="var">pq</span></span>: its type
     former, the uniform arguments of its type at the group's uniform
     parameters <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span>, and its type at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span> and its non-uniform parameters
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.AtCon.Ns"><span class="id" title="variable">Ns</span></a></span>.  A declared member is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_ind"><span class="id" title="constructor">a_ind</span></a></span> <span class="inlinecode"><span class="id" title="var">pq</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span>; a view of the
@@ -396,7 +396,7 @@ Whether a member is a declared type (rather than a view).
 </div>
 
 <div class="doc">
-A constructor of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> is a value of its own before any
+A constructor of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> is a value of its own before any
     argument: always at a declared member, and at a view when the group has
     uniform parameters (with none, it is at once the container's). 
 </div>
@@ -467,7 +467,7 @@ The declared members come before the views: a member is declared
     The command classifies each argument of each constructor of each
     member, declared or view, as the normal form <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> of its type, in the
     context of the arguments before it (all of them binders), the member's
-    parameters (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#Classify.np"><span class="id" title="variable">np</span></a></span> of them, the group's own <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#Classify.nu"><span class="id" title="variable">nu</span></a></span> uniform ones outermost),
+    parameters (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#Classify.np"><span class="id" title="variable">np</span></a></span> of them, the group's own <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#nu"><span class="id" title="abbreviation">nu</span></a></span> uniform ones outermost),
     the variables <span class="inlinecode"><span class="id" title="var">Self_0</span></span>, …, <span class="inlinecode"><span class="id" title="var">Self_</span>(<a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>-1)</span> of the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> declared members
     (bound outside the parameters, <span class="inlinecode"><span class="id" title="var">Self_0</span></span> outermost, of type
     <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode">(<span class="id" title="var">params</span>).</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span>), and the frames' parameters.  Under <span class="inlinecode"><span class="id" title="var">d</span></span> domains of a
@@ -723,7 +723,7 @@ A member's classified constructors with their views numbered.
 
 <div class="doc">
 A <span class="inlinecode"><span class="id" title="var">Self</span></span> occurs in the uniform arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.WrapBr.Cs"><span class="id" title="variable">Cs</span></a></span> of a nested occurrence,
-    terms over the group's <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#Classify.nu"><span class="id" title="variable">nu</span></a></span> own uniform parameters, the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode"><span class="id" title="var">Self</span></span>s and
+    terms over the group's <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#nu"><span class="id" title="abbreviation">nu</span></a></span> own uniform parameters, the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode"><span class="id" title="var">Self</span></span>s and
     the frames' parameters: they are not in the image of the weakening past
     the <span class="inlinecode"><span class="id" title="var">Self</span></span>s. 
 </div>

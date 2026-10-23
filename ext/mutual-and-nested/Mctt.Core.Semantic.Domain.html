@@ -157,7 +157,7 @@ Its element
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#d_fn"><span class="id" title="constructor">d_fn</span></a></span> <span class="inlinecode">ρ</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>: a function, its body a closure in <span class="inlinecode">ρ</span> 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#d_fn"><span class="id" title="constructor">d_fn</span></a></span> <span class="inlinecode">ρ</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>: a function, its body a closure in <span class="inlinecode">ρ</span> 
 </div>
 <div class="code">
 | <a id="d_fn" class="idref" href="#d_fn"><span class="id" title="constructor">d_fn</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#dentry:5"><span class="id" title="inductive">dentry</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a><br/>
@@ -440,7 +440,7 @@ The environment extended by arguments, outermost first, as a unit's
 </div>
 
 <div class="doc">
-Declared first so that level 1 is left associative, as for <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]</span> in
+Declared first so that level 1 is left associative, as for <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a>[σ]</span> in
       <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations"><span class="id" title="module">Syntax_Notations</span></a></span>. 
 </div>
 <div class="code">
@@ -662,7 +662,7 @@ The two projections of an extended environment.
     Two environments are equal when they agree at every index, entry by entry.  Evaluating a
     substitution determines its result only up to this equality, since a list
     can end in any number of <span class="inlinecode">⋆ᵈ</span>s.  Evaluation does not respect it, because
-    <span class="inlinecode"><span class="id" title="var">λ</span>ᵈ</span> <span class="inlinecode">ρ</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> carries its environment; values from pointwise-equal environments
+    <span class="inlinecode"><span class="id" title="var">λ</span>ᵈ</span> <span class="inlinecode">ρ</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> carries its environment; values from pointwise-equal environments
     are related by the PER model instead. 
 </div>
 <div class="code">
