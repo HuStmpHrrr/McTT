@@ -412,9 +412,11 @@ Definition rfun_refs (np : nat) (f : raw_fun) : list (ptab * string)%type :=
 
 (** The references a command makes, as written: its own terms, and for an
     import, its target and each member its items name.  A module's nested
-    commands are checked when they run. *)
+    commands are checked when they run.  A generated command makes none:
+    it is not written ([cc_gen]). *)
 Definition cmd_refs (c : ccmd) : list (ptab * string)%type :=
   match c with
+  | cc_gen _ => nil
   | cc_def _ _ _ A oM => exp_refs nil A ++ match oM with Some M => exp_refs nil M | None => nil end
   | cc_mod _ _ Δ _ => tele_refs nil Δ
   | cc_alias _ _ Δ E => tele_refs nil Δ ++ modexp_refs nil E

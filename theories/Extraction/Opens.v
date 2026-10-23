@@ -465,7 +465,7 @@ Section OpenError.
 
   (** A command's own terms: the nested commands of a module are expanded
       when they run. *)
-  Definition oe_cmd (S : skel) (c : ccmd) : xres ccmd :=
+  Fixpoint oe_cmd (S : skel) (c : ccmd) : xres ccmd :=
     match c with
     | cc_def x b pv A (Some M) =>
         let+ A' := oe_exp S A in
@@ -506,6 +506,9 @@ Section OpenError.
         let+ Δ' := oe_tele S Δ in
         let+ H' := oe_modexp (map centry_skel Δ' ++ S) H in
         xok (cc_ind_alias x pv Δ' H')
+    | cc_gen c0 =>
+        let+ c0' := oe_cmd S c0 in
+        xok (cc_gen c0')
     end.
   (** The first open of a command's own terms that generates nothing, if
       any, read as the checker reads the command. *)

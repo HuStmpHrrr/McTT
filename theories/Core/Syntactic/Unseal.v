@@ -978,6 +978,7 @@ Fixpoint cmd_no_axioms (c : ccmd) : Prop :=
   match c with
   | cc_def _ _ _ _ oM => oM <> None
   | cc_mod _ _ _ cs => List.fold_right (fun c P => cmd_no_axioms c /\ P) True cs
+  | cc_gen c0 => cmd_no_axioms c0
   | _ => True
   end.
 
@@ -997,7 +998,9 @@ Qed.
     commands get theirs when they run. *)
 Lemma cmd_lits_no_axioms : forall nv c c', cmd_lits nv c = lok c' -> cmd_no_axioms c -> cmd_no_axioms c'.
 Proof.
-  intros nv [x b pv A [M |] | x pv Δ cs | | | | | | | |] c' E Hc; cbn [cmd_lits] in E;
+  intros nv c; induction c as [x b pv A oM | x pv Δ cs | | | | | | | | | c0 IH]; intros c' E Hc.
+  1: destruct oM as [M |].
+  all: cbn [cmd_lits] in E;
     repeat match goal with
       | H : lbind _ _ = lok _ |- _ =>
           let E := fresh "E" in let a := fresh "a" in apply lbind_lok_inv in H as (a & E & H)
@@ -1011,7 +1014,8 @@ Qed.
     commands are filled when they run. *)
 Lemma elim_fill_no_axioms : forall Θ Ξ c c', elim_fill_ok Θ Ξ c c' -> cmd_no_axioms c -> cmd_no_axioms c'.
 Proof.
-  intros Θ Ξ [x b pv A [M |] | x pv Δ cs | | | | | | | |] c' (rs & _ & <-) Hc; cbn in *; first [ exact I | exact Hc | discriminate ].
+  intros Θ Ξ c c' (rs & _ & <-); induction c as [x b pv A oM | x pv Δ cs | | | | | | | | | c0 IH]; intros Hc;
+    [ destruct oM | .. ]; cbn in *; first [ exact I | exact Hc | discriminate | exact (IH Hc) ].
 Qed.
 
 Lemma in_gds_merge : forall Θ Θ' x,
@@ -1068,7 +1072,8 @@ Lemma rec_cmds_no_axioms : forall Θ Ξ R pq D, cmds_no_axioms (rec_cmds Θ Ξ R
 Proof.
   intros; unfold rec_cmds; destruct (rd_rec R); [| constructor ].
   constructor; [| constructor ].
-  apply cmd_no_axioms_mod, List.Forall_forall; intros c Hin.
+  unfold grec_mod_cmd; change (cmd_no_axioms (cc_gen ?c0)) with (cmd_no_axioms c0);
+    apply cmd_no_axioms_mod, List.Forall_forall; intros c Hin.
   apply List.in_map_iff in Hin as ([[j Mj] x] & <- & _); cbn; discriminate.
 Qed.
 
@@ -1082,6 +1087,7 @@ Proof.
   - destruct (ind_has_rec D); [ constructor; [ cbn; discriminate | constructor ] | constructor ].
   - destruct (Nat.eqb k 0 && negb (rd_rec R))%bool; [| constructor ].
     constructor; [| constructor ].
+    unfold grec_mod_cmd; change (cmd_no_axioms (cc_gen ?c0)) with (cmd_no_axioms c0);
     apply cmd_no_axioms_mod, List.Forall_forall; intros c Hin.
     apply List.in_map_iff in Hin as ([[j Mj] x] & <- & _); cbn; discriminate.
 Qed.
@@ -1134,6 +1140,14 @@ Section Run.
     - destruct_all; split; [ assumption | apply gs_no_axioms_add; cbn; auto ].
     - assumption.
     - assumption.
+    (* a generated definition has a body *)
+    - destruct_all; split; [ assumption | apply gs_no_axioms_add; cbn; auto; congruence ].
+    (* a generated module: as a module *)
+    - change (cmd_no_axioms (cc_gen ?c)) with (cmd_no_axioms c) in *.
+      rewrite cmd_no_axioms_mod in *; destruct_all.
+      match goal with IH : cmds_no_axioms _ -> _ |- _ =>
+        destruct (IH ltac:(assumption) ltac:(split; auto with mctt)) as [HΘ HΞ] end.
+      split; [ exact HΘ | apply gs_no_axioms_add; cbn; eauto with mctt ].
     - assumption.
     (* a command runs with its literals and its fill, which keep it free
        of axioms *)

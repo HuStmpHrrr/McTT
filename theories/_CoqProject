@@ -169,6 +169,9 @@
 ./Core/Syntactic/System/Inductives/Syntax.v
 ./Core/Syntactic/System/Global/LookupSound.v
 ./Core/Syntactic/System/Inductives/Typing.v
+./Core/Syntactic/System/Inductives/Runs.v
+./Core/Syntactic/System/Inductives/GrecTyped.v
+./Core/Syntactic/System/Inductives/IndRuns.v
 ./Core/Syntactic/System/Inductives/Views.v
 ./Core/Syntactic/System/Inductives/UniformParams.v
 ./Core/Syntactic/System/Privacy.v

@@ -744,3 +744,11 @@ Proof.
   - intros Hn. destruct (elaborate_core prg) as [u | e] eqn:E; [| eauto ].
     exfalso; apply (Hn u), elaborate_core_sound, E.
 Qed.
+
+(** The elaborator's units are written: no generated command in them
+    ([elab_spec_written]). *)
+Corollary to_core_written : forall prg u, to_core prg = Some u -> unit_written u.
+Proof.
+  intros * H; unfold to_core in H; destruct (elaborate_core prg) eqn:E; [| discriminate ].
+  injection H as <-; exact (elab_spec_written _ _ (elaborate_core_sound _ _ E)).
+Qed.

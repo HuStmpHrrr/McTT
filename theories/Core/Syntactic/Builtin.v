@@ -260,9 +260,11 @@ Section Literals.
     lok (mk_rfun (rf_name F) ys' Z' A' cl').
 
   (** A command's own terms: the nested commands of a module get their
-      literals when they run. *)
+      literals when they run; a generated command is taken as it is
+      ([cc_gen]). *)
   Definition cmd_lits (c : ccmd) : lres ccmd :=
     match c with
+    | cc_gen c0 => lok (cc_gen c0)
     | cc_def x b pv A M => let% A' := exp_lits A in let% M' := lopt exp_lits M in lok (cc_def x b pv A' M')
     | cc_mod x pv Δ cs => let% Δ' := tele_lits Δ in lok (cc_mod x pv Δ' cs)
     | cc_alias x pv Δ E => let% Δ' := tele_lits Δ in let% E' := modexp_lits E in lok (cc_alias x pv Δ' E')
@@ -615,9 +617,11 @@ Definition fun_fill (rs : list fill_result) (f : raw_fun) : (raw_fun * list fill
   (mk_rfun (rf_name f) (fst rN) (fst rZ) (fst rA) (fst rC), snd rC).
 
 (** The sites of a command's own terms, at the stack [Ξ]; a module's
-    nested commands are filled when they run. *)
+    nested commands are filled when they run, and a generated command has
+    none ([cc_gen]). *)
 Definition cmd_sites (Ξ : gstack) (c : ccmd) : list fill_site :=
   match c with
+  | cc_gen _ => nil
   | cc_def _ _ _ A oM => exp_sites (gs_tele Ξ) A ++ match oM with Some M => exp_sites (gs_tele Ξ) M | None => nil end
   | cc_mod _ _ Δ _ => tele_sites (gs_tele Ξ) Δ
   | cc_alias _ _ Δ E | cc_ind_alias _ _ Δ E => tele_sites (gs_tele Ξ) Δ ++ modexp_sites (Δ ++ gs_tele Ξ) E
@@ -631,6 +635,7 @@ Definition cmd_sites (Ξ : gstack) (c : ccmd) : list fill_site :=
 (** A command filled from the results of its sites. *)
 Definition cmd_fill (rs : list fill_result) (c : ccmd) : ccmd :=
   match c with
+  | cc_gen c0 => cc_gen c0
   | cc_def x b pv A oM =>
       let rA := exp_fill rs A in
       cc_def x b pv (fst rA) match oM with Some M => Some (fst (exp_fill (snd rA) M)) | None => None end
@@ -697,25 +702,26 @@ Definition tele_fill_ok (Θ : gdeps) (Ξ : gstack) (Δ Δ' : ctx) : Prop :=
   exists rs, Forall2 (site_resolves Θ Ξ) (tele_sites (gs_tele Ξ) Δ) rs /\ fst (tele_fill rs Δ) = Δ'.
 
 (** Whether a command has terms of its own, which may have sites. *)
-Definition cmd_terms (c : ccmd) : bool :=
+Fixpoint cmd_terms (c : ccmd) : bool :=
   match c with
   | cc_load _ => false
+  | cc_gen c0 => cmd_terms c0
   | _ => true
   end.
 
 (** A command without terms of its own has no sites. *)
 Lemma cmd_sites_terms : forall Ξ c, cmd_terms c = false -> cmd_sites Ξ c = nil.
-Proof. intros Ξ [] H; cbn in H |- *; first [ reflexivity | discriminate ]. Qed.
+Proof. intros Ξ c; induction c; intros Hterm; cbn in Hterm |- *; first [ reflexivity | discriminate | auto ]. Qed.
 
 (** Filling keeps whether a command has terms of its own. *)
 Lemma cmd_fill_terms : forall rs c, cmd_terms (cmd_fill rs c) = cmd_terms c.
-Proof. intros rs []; reflexivity. Qed.
+Proof. intros rs c; induction c; cbn; auto. Qed.
 
 (** A command without terms of its own is filled as it is. *)
 Lemma elim_fill_no_terms : forall Θ Ξ c c', cmd_terms c = false -> elim_fill_ok Θ Ξ c c' -> c' = c.
 Proof.
   intros * Ht (rs & Hrs & <-); rewrite (cmd_sites_terms _ _ Ht) in Hrs; inversion Hrs; subst.
-  destruct c; cbn in Ht |- *; first [ reflexivity | discriminate ].
+  induction c; cbn in Ht |- *; first [ reflexivity | discriminate | f_equal; auto ].
 Qed.
 
 (** ** Merging

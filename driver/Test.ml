@@ -4500,6 +4500,42 @@ let%expect_test "a later member of a group written with [with] has no recursor m
     "inductive A : Type@0 where | a0 | a1 (b : B) with B : Type@0 where | b0 (a : A) end eval B.Rec" in
   [%expect {| Error: B.Rec has no inferable type |}]
 
+let%expect_test "a constructor named Rec is rejected" =
+  let _ = main_of_body "inductive Tag : Type@0 where | Rec | Val end" in
+  [%expect {| Error: Rec is the recursor module of Tag, not a constructor |}]
+
+let%expect_test "a constructor named rec is rejected" =
+  let _ = main_of_body "inductive Tag : Type@0 where | rec | val end" in
+  [%expect {| Error: rec is the recursor of Tag, not a constructor |}]
+
+let%expect_test "a member of a mutual group named Rec is rejected" =
+  let _ = main_of_body "mutual M where inductive Rec : Type@0 where | a end end" in
+  [%expect {| Error: Rec is the recursor module of M, not a member |}]
+
+(* The constructor's type is generated from the argument's normal form,
+   which names the private [M.Q]: privacy checks what is written, so the
+   generated definitions are not checked. *)
+let%expect_test "a constructor whose argument normalizes to a private name" =
+  let _ = main_of_body
+    "module M where axiom Q0 : Type@0 private abstract def Q : Type@0 := Q0 end \
+       def F (X : Type@0) : Type@0 := forall (q : Q) -> X end end \
+     inductive T : Type@0 where | leaf | mk (f : M.F T) end \
+     eval T.leaf" in
+  [%expect {| Evaluate T.leaf --> T.leaf : T |}]
+
+let%expect_test "a type named Rec has its own recursor module" =
+  let _ = main_of_body
+    "inductive Rec : Type@0 where | a (r : Rec) | b end \
+     eval Rec.Rec.rec_Rec 0l (fun (z : Rec) -> Nat) (fun (r : Rec) (h : Nat) -> succ h) 0 (Rec.a (Rec.a Rec.b))" in
+  [%expect {|
+    Evaluate Rec.Rec.rec_Rec 0l (λ (x1 : Rec) → ℕ)
+               (λ (x2 : Rec)
+                  (x3 : ℕ)
+                 → succ x3)
+               0
+               (Rec.a (Rec.a Rec.b)) --> 2 : ℕ
+    |}]
+
 let%expect_test "a mutual group prints back as written" =
   let _ = main_of_body (group_tm_sp ^ "eval S.Tm.var 0") in
   [%expect {| Evaluate S.Tm.var 0 --> S.Tm.var 0 : S.Tm |}]

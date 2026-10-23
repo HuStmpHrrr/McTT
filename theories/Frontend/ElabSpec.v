@@ -554,3 +554,28 @@ Inductive elab_spec : Cst.prog -> cunit -> Prop :=
     sparams L ps tys ->
     scmds fp nil L (pents ps) (leads ++ cs) ccs ->
     elab_spec (leads, (fp, ps, cs)) (lds, ptele tys, ccs).
+
+(** ** Elaborated Commands Are Written
+
+    No rule emits a generated command ([cc_gen]): the privacy check the
+    core skips for those is never skipped for what the user writes. *)
+
+Scheme scmd_mind := Minimality for scmd Sort Prop
+with scmds_mind := Minimality for scmds Sort Prop.
+
+Lemma scmds_written : forall fp ch O F cs ccs, scmds fp ch O F cs ccs -> cmds_written ccs.
+Proof.
+  intros fp.
+  apply (scmds_mind fp (fun _ _ _ _ _ c' => cmds_written c') (fun _ _ _ _ ccs => cmds_written ccs));
+    intros; unfold cmds_written in *; repeat constructor; try assumption.
+  - apply cmd_written_mod; assumption.
+  - apply List.Forall_app; split; assumption.
+Qed.
+
+Lemma slead_written : forall L cs L' lds, slead L cs L' lds -> cmds_written lds.
+Proof. induction 1; unfold cmds_written in *; repeat constructor; assumption. Qed.
+
+Lemma elab_spec_written : forall prg u, elab_spec prg u -> unit_written u.
+Proof.
+  intros * []; cbn; split; [ eapply slead_written | eapply scmds_written ]; eassumption.
+Qed.
