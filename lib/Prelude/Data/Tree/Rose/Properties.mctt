@@ -36,30 +36,12 @@ private module Op ≔ RO u A
    lists. *)
 module Maps where
 
-(* On forests, [mapForest] is the [map] of [Prelude›Data›List] by [map]:
-   by induction at the view's block of the eliminator, where the tree
-   block proves nothing. *)
+(* On forests, [mapForest] is the [map] of [Prelude›Data›List] by [map],
+   by reflexivity, on any forest [ts], a variable here: an eliminator at
+   the view [List (Rose A)] IS the eliminator of [List], each element's
+   induction hypothesis the eliminator of [Rose] applied to it.  So the
+   equation holds definitionally, and no induction is needed. *)
 theorem mapForestList : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (ts : F) →
-    Id (Forest B) (Op.mapForest B f ts)
-      (LO.map u T (Rose u B) (Op.map B f) ts) ≔
-  λ (B : Type@{u}) (f : ∀ (x : A) → B) (ts : F) →
-    elim ts with (z : T) -> ⊤
-    | node x us, h ⇒ ⋆
-    at (z : F) -> Id (Forest B) (Op.mapForest B f z)
-                    (LO.map u T (Rose u B) (Op.map B f) z)
-    | nil ⇒ idRefl (Forest B) (List.nil u (Rose u B))
-    | cons t us, ht hus ⇒
-        idCong (Forest B) (Forest B) (List.cons u (Rose u B) (Op.map B f t))
-          (Op.mapForest B f us) (LO.map u T (Rose u B) (Op.map B f) us) hus
-    end
-end
-
-(* The same equation by reflexivity, on any forest [ts], a variable here:
-   an eliminator at the view [List (Rose A)] IS the eliminator of [List],
-   each element's induction hypothesis the eliminator of [Rose] applied to
-   it.  So [mapForest] is [List]'s [map] by [map], definitionally, and no
-   induction is needed. *)
-theorem sameMap : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (ts : F) →
     Id (Forest B) (Op.mapForest B f ts)
       (LO.map u T (Rose u B) (Op.map B f) ts) ≔
   λ (B : Type@{u}) (f : ∀ (x : A) → B) (ts : F) → idRefl (Forest B) (Op.mapForest B f ts)
