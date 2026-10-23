@@ -10,7 +10,8 @@ error_out () {
 
 cd "${dir}"
 
-for f in `find -name '*.v'`; do
+# CheckAssumptions.v is checked by `make check-assumptions`, not built.
+for f in `find -name '*.v' ! -path './CheckAssumptions.v'`; do
     grep -q -F "${f}" _CoqProject || error_out "${f}"
 done
 

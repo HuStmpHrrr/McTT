@@ -1,3 +1,14 @@
+(** * The Assumptions of the Main Theorems
+
+    Every theorem below must be closed under the global context: it uses
+    no axiom, no parameter and no section variable left open.  The only
+    exceptions, with the axioms they may use, are listed in
+    [CheckAssumptions.expected].
+
+    Run [make check-assumptions] after a build.  This file is not part of
+    the build ([_CoqProject]): printing the assumptions of every theorem
+    takes minutes.  Add a theorem here when it becomes a main result. *)
+
 From Mctt Require Import Entrypoint.
 From Mctt Require Import Core.Completeness Core.Soundness Core.Semantic.Consequences Extraction.Command Frontend.ElabCorrect Algorithmic.Typing.Lemmas Algorithmic.Strengthening Core.Semantic.Avoid Core.NbEWeakening.
 From Mctt Require Import Reference.Refinement Extraction.Simulation Extraction.GlobalCheck.

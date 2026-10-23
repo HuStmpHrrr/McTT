@@ -1,4 +1,4 @@
-.PHONY: all pretty-timed test coqdoc clean depgraphdoc homepage
+.PHONY: all pretty-timed test coqdoc clean depgraphdoc homepage check-assumptions
 
 all:
 	@$(MAKE) -C theories
@@ -7,6 +7,12 @@ all:
 pretty-timed:
 	@$(MAKE) pretty-timed -C theories
 	@dune build --root .
+
+# Every main theorem in theories/CheckAssumptions.v is closed under the
+# global context, but for the axioms theories/CheckAssumptions.expected
+# allows it.  Needs a built theories/.
+check-assumptions:
+	@python3 scripts/check_assumptions.py
 
 coqdoc:
 	@${MAKE} coqdoc -C theories

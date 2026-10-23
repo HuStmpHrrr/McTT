@@ -1,0 +1,6 @@
+# The theorems of CheckAssumptions.v that may use axioms, one per line:
+#   <full name>: <axiom> <axiom> ...
+# Every other theorem must be "Closed under the global context".
+# Parser.loc is the parser's abstract type of source positions, instantiated by the driver.
+Mctt.Entrypoint.main_sound: Mctt.Frontend.Parser.loc
+Mctt.Entrypoint.main_complete: Mctt.Frontend.Parser.loc

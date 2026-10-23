@@ -51,9 +51,10 @@ brief says so explicitly.
   - File mode (`rocq_assumptions`, or `file=`) re-runs the file
     interactively. It can then report `abstract` subproofs as axioms, and its
     output gets truncated by "Fetching opaque proofs" messages.
-  - The theorem list is
-    `/local/home/zhonhu/workspace/McTT/.claude/agent-refs/mctt-assump/Assumptions.v`,
-    plus whatever new top-level theorems you add.
+  - The theorem list is `theories/CheckAssumptions.v` (in the repository,
+    not built), checked by `make check-assumptions` at the repository root
+    after a build; allowed exceptions are in
+    `theories/CheckAssumptions.expected`. Add new main theorems to the list.
 - **Baseline:** no axioms anywhere, except `Parser.loc : Type` for
   `main_sound` / `main_complete`. Menhir generates it; leave it.
 - **Driver build:** `dune build --root .` and `dune test --root .` at the

@@ -14,9 +14,9 @@ You verify McTT, a verified NbE type checker for MLTT with ML-style modules, in 
    - list every file outside the scope the brief states.
 2. **Rocq build:** `make -f CoqMakefile.mk clean`, then `real-all` and `post-all` in `theories/`, with the log saved to a temp file. Report the number of files compiled and the warning count, which must be 0.
 3. **Admits:** none in `theories/`; search for `admit`, `Admitted` and `Axiom`/`Parameter` other than `Parser.loc`.
-4. **Print Assumptions,** through the rocq MCP in preamble mode:
-   - every theorem in `.claude/agent-refs/mctt-assump/Assumptions.v`;
-   - the theorems named in the brief.
+4. **Print Assumptions:**
+   - `make check-assumptions` at the repository root, after the build: every theorem in `theories/CheckAssumptions.v`, against `theories/CheckAssumptions.expected`;
+   - the theorems named in the brief, through the rocq MCP in preamble mode.
 
    Expected: "Closed under the global context", except `Parser.loc` for `main_*`.
 5. **Statements:** scan the changed statements for raw judgment applications (`wf_exp …`, `wf_exp_eq …`) where a notation exists.
