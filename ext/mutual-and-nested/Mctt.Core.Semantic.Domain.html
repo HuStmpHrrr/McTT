@@ -41,7 +41,7 @@
 </div>
 
 <div class="doc">
-<a id="lab400"></a><h1 class="section">The Semantic Domain</h1>
+<a id="lab420"></a><h1 class="section">The Semantic Domain</h1>
 
 
 <div class="paragraph"> </div>
@@ -233,6 +233,22 @@ A term member of a module still lacking arguments (see above)
 </div>
 <div class="code">
 | <a id="d_ihfam" class="idref" href="#d_ihfam"><span class="id" title="constructor">d_ihfam</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#dentry:5"><span class="id" title="inductive">dentry</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#dentry:5"><span class="id" title="inductive">dentry</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ptyp"><span class="id" title="abbreviation">ptyp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#d_record"><span class="id" title="constructor">d_record</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Realizability.html#Fixed_GCtx.RecordRealize.ns"><span class="id" title="variable">ns</span></a></span>: the type former of the record at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> applied to
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Realizability.html#Fixed_GCtx.RecordRealize.ns"><span class="id" title="variable">ns</span></a></span>; a type once <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Realizability.html#Fixed_GCtx.RecordRealize.ns"><span class="id" title="variable">ns</span></a></span> holds all its parameters, a function before 
+</div>
+<div class="code">
+| <a id="d_record" class="idref" href="#d_record"><span class="id" title="constructor">d_record</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a><br/>
+</div>
+
+<div class="doc">
+A record value: its fields' values, by name.  It carries no
+    parameters. 
+</div>
+<div class="code">
+| <a id="d_tuple" class="idref" href="#d_tuple"><span class="id" title="constructor">d_tuple</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a><br/>
 <span class="id" title="keyword">with</span> <a id="domain_ne" class="idref" href="#domain_ne"><span class="id" title="definition, inductive"><span id="domain_ne_rect" class="id"><span id="domain_ne_ind" class="id"><span id="domain_ne_rec" class="id"><span id="domain_ne_sind" class="id">domain_ne</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
 </div>
 
@@ -274,6 +290,13 @@ An opaque definition or an axiom.
 </div>
 <div class="code">
 | <a id="d_elim" class="idref" href="#d_elim"><span class="id" title="constructor">d_elim</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#dentry:5"><span class="id" title="inductive">dentry</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#eblock"><span class="id" title="abbreviation">eblock</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_ne:2"><span class="id" title="inductive">domain_ne</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_ne:2"><span class="id" title="inductive">domain_ne</span></a><br/>
+</div>
+
+<div class="doc">
+The field <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Rename.html#Read.f"><span class="id" title="variable">f</span></a></span> of a neutral of a record type 
+</div>
+<div class="code">
+| <a id="d_proj" class="idref" href="#d_proj"><span class="id" title="constructor">d_proj</span></a> : <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_ne:2"><span class="id" title="inductive">domain_ne</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_ne:2"><span class="id" title="inductive">domain_ne</span></a><br/>
 <span class="id" title="keyword">with</span> <a id="domain_nf" class="idref" href="#domain_nf"><span class="id" title="definition, inductive"><span id="domain_nf_rect" class="id"><span id="domain_nf_ind" class="id"><span id="domain_nf_rec" class="id"><span id="domain_nf_sind" class="id">domain_nf</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
 </div>
 
@@ -342,7 +365,7 @@ The evaluators of <span class="inlinecode"><span class="id" title="var">Referenc
 <div class="doc">
 The entry of the variable <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>, or the term <span class="inlinecode">⋆ᵈ</span> past the end of the
     list.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#env_entry"><span class="id" title="definition">env_entry</span></a></span> is <span class="inlinecode"><span class="id" title="abbreviation">nth</span></span>, but defined by recursion on the index so that
-    <span class="inlinecode">ρ↯</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> is <span class="inlinecode">ρ</span> <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a>)</span> by conversion. 
+    <span class="inlinecode">ρ↯</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> is <span class="inlinecode">ρ</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a>)</span> by conversion. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="env_entry" class="idref" href="#env_entry"><span class="id" title="definition">env_entry</span></a> (<a id="e024d34e0c5146c8d00101c83855eeda" class="idref" href="#e024d34e0c5146c8d00101c83855eeda"><span class="id" title="binder">ρ</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a>) (<a id="x:13" class="idref" href="#x:13"><span class="id" title="binder">x</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) : <a class="idref" href="Mctt.Core.Semantic.Domain.html#dentry"><span class="id" title="inductive">dentry</span></a> :=<br/>
@@ -422,13 +445,13 @@ The environment extended by arguments, outermost first, as a unit's
 </div>
 
 <div class="doc">
-<a id="lab401"></a><h2 class="section">Semantic Notations</h2>
+<a id="lab421"></a><h2 class="section">Semantic Notations</h2>
 
 
 <div class="paragraph"> </div>
 
     Value notations share <span class="inlinecode"><span class="id" title="keyword">constr</span></span> with expression notations, so the
-    spellings the two would otherwise share (<span class="inlinecode"><span class="id" title="var">ℕ</span></span>, <span class="inlinecode"><span class="id" title="var">zero</span></span>, <span class="inlinecode"><span class="id" title="var">succ</span></span>, <span class="inlinecode">⊤</span>, <span class="inlinecode">⋆</span>,
+    spellings the two would otherwise share (<span class="inlinecode"><span class="id" title="var">ℕ</span></span>, <span class="inlinecode"><span class="id" title="var">zero</span></span>, <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Nat.html#succ"><span class="id" title="definition">succ</span></a></span>, <span class="inlinecode">⊤</span>, <span class="inlinecode">⋆</span>,
     <span class="inlinecode">⊥</span>, <span class="inlinecode"><span class="id" title="var">Π</span></span> and the closure's <span class="inlinecode"><span class="id" title="var">λ</span></span>) carry a superscript <span class="inlinecode">ᵈ</span>.  Notations specific to values
     (<span class="inlinecode">↦</span>, <span class="inlinecode">↯</span>, <span class="inlinecode">𝕌ω@<a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>, <span class="inlinecode">⇑</span>, <span class="inlinecode">⇓</span>, <span class="inlinecode">⇑!</span>, <span class="inlinecode">#ᵈ</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>) follow the paper. 
 </div>
@@ -481,7 +504,7 @@ The value of the universe at an index, at either tier.
 </div>
 
 <div class="doc">
-<a id="lab402"></a><h2 class="section">Level Values</h2>
+<a id="lab422"></a><h2 class="section">Level Values</h2>
 
 
 <div class="paragraph"> </div>
@@ -535,7 +558,7 @@ The successor and the join of levels: both only flatten.
 </div>
 
 <div class="doc">
-<a id="lab403"></a><h2 class="section">The Realiser of a Level Value</h2>
+<a id="lab423"></a><h2 class="section">The Realiser of a Level Value</h2>
 
 
 <div class="paragraph"> </div>
@@ -654,7 +677,7 @@ The two projections of an extended environment.
 </div>
 
 <div class="doc">
-<a id="lab404"></a><h2 class="section">Pointwise Equality</h2>
+<a id="lab424"></a><h2 class="section">Pointwise Equality</h2>
 
 
 <div class="paragraph"> </div>
@@ -703,7 +726,7 @@ The two projections of an extended environment.
 </div>
 
 <div class="doc">
-<a id="lab405"></a><h2 class="section">Weakening an Environment</h2>
+<a id="lab425"></a><h2 class="section">Weakening an Environment</h2>
 
 
 <div class="paragraph"> </div>

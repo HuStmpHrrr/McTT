@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab683"></a><h1 class="section">Variables and Presuppositions</h1>
+<a id="lab723"></a><h1 class="section">Variables and Presuppositions</h1>
 
 
 <div class="paragraph"> </div>
@@ -95,12 +95,12 @@
 </div>
 
 <div class="doc">
-The variable case. Syntactically it is direct: <span class="inlinecode">#(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>)[σ]</span> is
-    <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>[<span class="id" title="var">Wk</span>⨟σ]</span> and <span class="inlinecode">ρ</span> <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>)</span> is <span class="inlinecode">ρ↯</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>, so one <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_shift"><span class="id" title="lemma">exp_sub_shift</span></a></span> suffices. The
+The variable case. Syntactically it is direct: <span class="inlinecode">#(<a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>)[σ]</span> is
+    <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>[<span class="id" title="var">Wk</span>⨟σ]</span> and <span class="inlinecode">ρ</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>)</span> is <span class="inlinecode">ρ↯</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>, so one <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_shift"><span class="id" title="lemma">exp_sub_shift</span></a></span> suffices. The
     type value needs more work: <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#cons_glu_sub_pred"><span class="id" title="inductive">cons_glu_sub_pred</span></a></span> supplies <span class="inlinecode">⟦<a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a>⟧(ρ↯)</span> while
     the goal mentions <span class="inlinecode">⟦<a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a>[↑]ʷ⟧(ρ)</span>, and the two are not equal.
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.FundamentalTheorem.html#completeness_fundamental_typ_shift"><span class="id" title="lemma">completeness_fundamental_typ_shift</span></a></span> relates them, and
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#glu_univ_elem_resp_per_univ"><span class="id" title="lemma">glu_univ_elem_resp_per_univ</span></a></span> moves <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Realizability.html#Fixed_GCtx.IndRealize.El"><span class="id" title="variable">El</span></a></span> across. 
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#glu_univ_elem_resp_per_univ"><span class="id" title="lemma">glu_univ_elem_resp_per_univ</span></a></span> moves <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Realizability.html#Fixed_GCtx.RecordRealize.El"><span class="id" title="variable">El</span></a></span> across. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="glu_rel_exp_vlookup" class="idref" href="#glu_rel_exp_vlookup"><span class="id" title="lemma">glu_rel_exp_vlookup</span></a> : <span class="id" title="keyword">forall</span> {<a id="a57704a48aaf9a67d8a3df75d6eea365" class="idref" href="#a57704a48aaf9a67d8a3df75d6eea365"><span class="id" title="binder">Γ</span></a> <a id="x:14" class="idref" href="#x:14"><span class="id" title="binder">x</span></a> <a id="A:15" class="idref" href="#A:15"><span class="id" title="binder">A</span></a>},<br/>
@@ -252,7 +252,7 @@ Past a module slot: as past a definition, without the tie.
 </div>
 
 <div class="doc">
-<a id="lab684"></a><h2 class="section">The Rules</h2>
+<a id="lab724"></a><h2 class="section">The Rules</h2>
 
 </div>
 <div class="code">

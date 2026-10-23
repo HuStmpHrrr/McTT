@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab183"></a><h1 class="section">Valid Units: Validity, Substitution, Instantiation, Abstraction</h1>
+<a id="lab187"></a><h1 class="section">Valid Units: Validity, Substitution, Instantiation, Abstraction</h1>
 
 
 <div class="paragraph"> </div>
@@ -94,7 +94,7 @@
 </div>
 
 <div class="doc">
-<a id="lab184"></a><h2 class="section">Valid Units Are Valid</h2>
+<a id="lab188"></a><h2 class="section">Valid Units Are Valid</h2>
 
 </div>
 <div class="code">
@@ -145,7 +145,7 @@ Member typing moves along related module expressions.
 </div>
 
 <div class="doc">
-<a id="lab185"></a><h2 class="section">Valid Units along Substitutions, in the PER Model</h2>
+<a id="lab189"></a><h2 class="section">Valid Units along Substitutions, in the PER Model</h2>
 
 </div>
 <div class="code">
@@ -186,7 +186,7 @@ The same under one parameter fewer.
 </div>
 
 <div class="doc">
-<a id="lab186"></a><h2 class="section">Valid Units along Substitutions Built from Valid Parts</h2>
+<a id="lab190"></a><h2 class="section">Valid Units along Substitutions Built from Valid Parts</h2>
 
 </div>
 <div class="code">
@@ -250,7 +250,7 @@ The parts of a body, along a substitution built from valid parts, make
 &nbsp;&nbsp;1: { <span class="comment">(*&nbsp;the&nbsp;modules,&nbsp;each&nbsp;in&nbsp;the&nbsp;body&nbsp;before&nbsp;it,&nbsp;then&nbsp;substituted&nbsp;*)</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">intros</span> <span class="id" title="var">y</span> <span class="id" title="var">Φ0w</span> <span class="id" title="var">pv</span> <span class="id" title="var">Uw</span> <span class="id" title="var">Hp</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Global.MemberLemmas.html#gm_prefix_sub_inv"><span class="id" title="lemma">gm_prefix_sub_inv</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hp</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">Φ0</span> &amp; <span class="id" title="var">E</span> &amp; <span class="id" title="var">Hp0</span> &amp; -&gt; &amp; <span class="id" title="var">HE</span>).<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">E</span> <span class="id" title="keyword">as</span> [| <span class="id" title="var">pv0</span> <span class="id" title="var">U</span> | | ]; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> <span class="id" title="var">HE</span>; <span class="id" title="tactic">try</span> <span class="id" title="tactic">discriminate</span>; <span class="id" title="tactic">injection</span> <span class="id" title="var">HE</span> <span class="id" title="keyword">as</span> -&gt; -&gt;.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">E</span> <span class="id" title="keyword">as</span> [| <span class="id" title="var">pv0</span> <span class="id" title="var">U</span> | | |]; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> <span class="id" title="var">HE</span>; <span class="id" title="tactic">try</span> <span class="id" title="tactic">discriminate</span>; <span class="id" title="tactic">injection</span> <span class="id" title="var">HE</span> <span class="id" title="keyword">as</span> -&gt; -&gt;.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.Modules.ValidUnit.html#prefix_body_ctx"><span class="id" title="lemma">prefix_body_ctx</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Syntactic.Members.html#body_xp_nopens"><span class="id" title="lemma">body_xp_nopens</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hx</span>) <span class="id" title="var">Hp0</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">X</span> &amp; <span class="id" title="var">HX</span>); <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#body_ctx"><span class="id" title="definition">body_ctx</span></a>] <span class="id" title="tactic">in</span> <span class="id" title="var">HX</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> <span class="id" title="var">HX</span>, &lt;- !<span class="id" title="lemma">app_assoc</span> <span class="id" title="tactic">in</span> <span class="id" title="var">HC</span>, <span class="id" title="var">HwCx</span>; <span class="id" title="var">cbn</span> [<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#app"><span class="id" title="definition">List.app</span></a>] <span class="id" title="tactic">in</span> <span class="id" title="var">HC</span>, <span class="id" title="var">HwCx</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_ctx_wf_tail"><span class="id" title="lemma">rel_ctx_wf_tail</span></a> (<a class="idref" href="Mctt.Core.Completeness.UnitCases.html#rel_ctx_wf_app_r"><span class="id" title="lemma">rel_ctx_wf_app_r</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HC</span>)) <span class="id" title="keyword">as</span> <span class="id" title="var">HC0</span>.<br/>
@@ -355,7 +355,7 @@ The parts of a body, along a substitution built from valid parts, make
 </div>
 
 <div class="doc">
-<a id="lab187"></a><h2 class="section">Valid Units Given an Argument</h2>
+<a id="lab191"></a><h2 class="section">Valid Units Given an Argument</h2>
 
 </div>
 <div class="code">
@@ -398,7 +398,7 @@ The parts of a body, along a substitution built from valid parts, make
 </div>
 
 <div class="doc">
-<a id="lab188"></a><h2 class="section">Valid Units Abstracted over Parameters</h2>
+<a id="lab192"></a><h2 class="section">Valid Units Abstracted over Parameters</h2>
 
 </div>
 <div class="code">

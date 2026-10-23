@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab756"></a><h1 class="section">The Algebra of Weakenings and Substitutions</h1>
+<a id="lab798"></a><h1 class="section">The Algebra of Weakenings and Substitutions</h1>
 
 
 <div class="paragraph"> </div>
@@ -271,7 +271,7 @@ The heads that do meet a binder.  Kept out of the databases above: pushing
 </div>
 
 <div class="doc">
-<a id="lab757"></a><h3 class="section">Shared Tactics</h3>
+<a id="lab799"></a><h3 class="section">Shared Tactics</h3>
 
 
 <div class="paragraph"> </div>
@@ -281,7 +281,7 @@ The heads that do meet a binder.  Kept out of the databases above: pushing
 <div class="paragraph"> </div>
 
     <span class="inlinecode"><span class="id" title="var">pointwise</span></span> opens a goal about weakenings or substitutions at index <span class="inlinecode">0</span> and
-    at index <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><span class="id" title="var">_</span></span> and normalises both; <span class="inlinecode"><span class="id" title="var">pointwise_solve</span></span> additionally closes
+    at index <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Records.Model.html#Fixed_GCtx.SortTele.S"><span class="id" title="variable">S</span></a></span> <span class="inlinecode"><span class="id" title="var">_</span></span> and normalises both; <span class="inlinecode"><span class="id" title="var">pointwise_solve</span></span> additionally closes
     the resulting arithmetic.  <span class="inlinecode"><span class="id" title="var">syn_ind_ext</span></span> runs the induction on the syntax
     used by every law in <span class="inlinecode"><span class="id" title="var">_ext</span></span> form. 
 <div class="paragraph"> </div>
@@ -363,6 +363,65 @@ The branches of an eliminator, a list mapped elementwise: each body is
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">lazymatch</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> |- <span class="id" title="abbreviation">List.map</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">idtac</span> | |- <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <span class="id" title="abbreviation">List.map</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">idtac</span> <span class="id" title="keyword">end</span>;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">induction</span> <span class="id" title="var">HF</span> <span class="id" title="keyword">as</span> [| [[? ?] ?] ? ? ? ?]; <span class="id" title="var">cbn</span> [<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Lists.ListDef.html#map"><span class="id" title="definition">List.map</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#fst"><span class="id" title="definition">fst</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#snd"><span class="id" title="definition">snd</span></a>] <span class="id" title="tactic">in</span> *; [ <span class="id" title="tactic">reflexivity</span> |];<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">f_equal</span>; [ <span class="id" title="tactic">f_equal</span>; <span class="id" title="tactic">autorewrite</span> <span class="id" title="keyword">with</span> <span class="id" title="var">syn_ops</span>; <span class="id" title="tactic">solve</span> [ <span class="id" title="tactic">eauto</span> <span class="id" title="keyword">using</span> <span class="id" title="var">lift</span>, <span class="id" title="var">liftn</span> ] | <span class="id" title="tactic">assumption</span> ]<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The fields of a record element: named terms mapped elementwise, under
+    no binder. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">syn_ext_fields</span> <span class="id" title="var">lift</span> <span class="id" title="var">liftn</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">HF</span> : @<span class="id" title="abbreviation">List.Forall</span> (<span class="id" title="inductive">String.string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>) <span class="id" title="var">_</span> ?<span class="id" title="var">fs</span> |- <span class="id" title="var">_</span> =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">lazymatch</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> |- <span class="id" title="abbreviation">List.map</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">idtac</span> | |- <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <span class="id" title="abbreviation">List.map</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">idtac</span> <span class="id" title="keyword">end</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">induction</span> <span class="id" title="var">HF</span> <span class="id" title="keyword">as</span> [| [? ?] ? ? ? ?]; <span class="id" title="var">cbn</span> [<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Lists.ListDef.html#map"><span class="id" title="definition">List.map</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#fst"><span class="id" title="definition">fst</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#snd"><span class="id" title="definition">snd</span></a>] <span class="id" title="tactic">in</span> *; [ <span class="id" title="tactic">reflexivity</span> |];<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">f_equal</span>; [ <span class="id" title="tactic">f_equal</span>; <span class="id" title="tactic">autorewrite</span> <span class="id" title="keyword">with</span> <span class="id" title="var">syn_ops</span>; <span class="id" title="tactic">solve</span> [ <span class="id" title="tactic">eauto</span> <span class="id" title="keyword">using</span> <span class="id" title="var">lift</span>, <span class="id" title="var">liftn</span> ] | <span class="id" title="tactic">assumption</span> ]<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The fields of a record element, for a property read through a nested
+    <span class="inlinecode"><span class="id" title="keyword">fix</span></span> over them: an induction over the <span class="inlinecode"><span class="id" title="abbreviation">Forall</span></span> the principle carries,
+    each field closed by <span class="inlinecode"><span class="id" title="var">one</span></span> from its induction hypothesis. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">fields_case</span> <span class="id" title="var">one</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">HF</span> : @<span class="id" title="abbreviation">List.Forall</span> (<span class="id" title="inductive">String.string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>) <span class="id" title="var">_</span> ?<span class="id" title="var">fs</span> |- <span class="id" title="var">_</span> =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">lazymatch</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> |- <span class="id" title="keyword">context</span> [<span class="id" title="var">fs</span>] =&gt; <span class="id" title="tactic">idtac</span> <span class="id" title="keyword">end</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">H</span> : <span class="id" title="keyword">context</span> [<span class="id" title="var">fs</span>] |- <span class="id" title="var">_</span> =&gt; <span class="id" title="keyword">lazymatch</span> <span class="id" title="var">H</span> <span class="id" title="keyword">with</span> <span class="id" title="var">HF</span> =&gt; <span class="id" title="tactic">fail</span> | <span class="id" title="var">_</span> =&gt; <span class="id" title="var">revert</span> <span class="id" title="var">H</span> <span class="id" title="keyword">end</span> <span class="id" title="keyword">end</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> <span class="id" title="var">HF1</span> := <span class="id" title="tactic">fresh</span> "HF1" <span class="id" title="tactic">in</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">induction</span> <span class="id" title="var">HF</span> <span class="id" title="keyword">as</span> [| [? ?] ? <span class="id" title="var">HF1</span> ? ?]; <span class="id" title="tactic">intros</span>; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> *; <span class="id" title="var">destruct_all</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ <span class="id" title="tactic">exact</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#I"><span class="id" title="constructor">I</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">refine</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#conj"><span class="id" title="constructor">conj</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span>);<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ <span class="id" title="var">one</span> <span class="id" title="var">HF1</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">solve</span> [ <span class="id" title="tactic">auto</span> | <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">IH</span> : <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> ?<span class="id" title="var">G</span> |- ?<span class="id" title="var">G</span> =&gt; <span class="id" title="tactic">apply</span> <span class="id" title="var">IH</span>; <span class="id" title="tactic">assumption</span> <span class="id" title="keyword">end</span> ] ] ]<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The same for an equation between two lists of fields, mapped
+    elementwise. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">fields_eq_case</span> <span class="id" title="var">one</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <span class="id" title="var">HF</span> : @<span class="id" title="abbreviation">List.Forall</span> (<span class="id" title="inductive">String.string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>) <span class="id" title="var">_</span> ?<span class="id" title="var">fs</span> |- <span class="id" title="var">_</span> =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">lazymatch</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> |- <span class="id" title="keyword">context</span> [<span class="id" title="var">fs</span>] =&gt; <span class="id" title="tactic">idtac</span> <span class="id" title="keyword">end</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">H</span> : <span class="id" title="keyword">context</span> [<span class="id" title="var">fs</span>] |- <span class="id" title="var">_</span> =&gt; <span class="id" title="keyword">lazymatch</span> <span class="id" title="var">H</span> <span class="id" title="keyword">with</span> <span class="id" title="var">HF</span> =&gt; <span class="id" title="tactic">fail</span> | <span class="id" title="var">_</span> =&gt; <span class="id" title="var">revert</span> <span class="id" title="var">H</span> <span class="id" title="keyword">end</span> <span class="id" title="keyword">end</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> <span class="id" title="var">HF1</span> := <span class="id" title="tactic">fresh</span> "HF1" <span class="id" title="tactic">in</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">induction</span> <span class="id" title="var">HF</span> <span class="id" title="keyword">as</span> [| [? ?] ? <span class="id" title="var">HF1</span> ? ?]; <span class="id" title="tactic">intros</span>; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> *; <span class="id" title="var">destruct_all</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ <span class="id" title="tactic">reflexivity</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">f_equal</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ <span class="id" title="tactic">f_equal</span>; <span class="id" title="var">one</span> <span class="id" title="var">HF1</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">solve</span> [ <span class="id" title="tactic">auto</span> | <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">IH</span> : <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> ?<span class="id" title="var">G</span> |- ?<span class="id" title="var">G</span> =&gt; <span class="id" title="tactic">apply</span> <span class="id" title="var">IH</span>; <span class="id" title="tactic">assumption</span> <span class="id" title="keyword">end</span> ] ] ]<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 
 <br/>
@@ -518,7 +577,8 @@ The same for an equation between two lists of blocks.
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span>;<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">f_equal</span>;<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">try</span> <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> |- <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">f_equal</span> <span class="id" title="keyword">end</span>;<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">first</span> [ <span class="id" title="tactic">solve</span> [ <span class="id" title="tactic">eauto</span> <span class="id" title="keyword">using</span> <span class="id" title="var">lift</span>, <span class="id" title="var">liftn</span> ] | <span class="id" title="var">syn_ext_us</span> <span class="id" title="var">lift</span> <span class="id" title="var">liftn</span> | <span class="id" title="var">syn_ext_blocks</span> <span class="id" title="var">lift</span> <span class="id" title="var">liftn</span> | <span class="id" title="var">syn_ext_brs</span> <span class="id" title="var">lift</span> <span class="id" title="var">liftn</span><br/>
+&nbsp;&nbsp;<span class="id" title="tactic">first</span> [ <span class="id" title="tactic">solve</span> [ <span class="id" title="tactic">eauto</span> <span class="id" title="keyword">using</span> <span class="id" title="var">lift</span>, <span class="id" title="var">liftn</span> ] | <span class="id" title="var">syn_ext_us</span> <span class="id" title="var">lift</span> <span class="id" title="var">liftn</span> | <span class="id" title="var">syn_ext_fields</span> <span class="id" title="var">lift</span> <span class="id" title="var">liftn</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">syn_ext_blocks</span> <span class="id" title="var">lift</span> <span class="id" title="var">liftn</span> | <span class="id" title="var">syn_ext_brs</span> <span class="id" title="var">lift</span> <span class="id" title="var">liftn</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">syn_ext_tele</span> <span class="id" title="var">lift</span> <span class="id" title="var">liftn</span> | <span class="id" title="tactic">solve</span> [ <span class="id" title="var">vars</span> ] ].<br/>
 
 <br/>
@@ -544,7 +604,7 @@ The variable cases of most laws are the pointwise hypothesis read at the
 </div>
 
 <div class="doc">
-<a id="lab758"></a><h2 class="section">Weakenings</h2>
+<a id="lab800"></a><h2 class="section">Weakenings</h2>
 
 </div>
 <div class="code">
@@ -853,8 +913,8 @@ The <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.L
 </div>
 
 <div class="doc">
-<a id="lab759"></a><h2 class="section">Substitutions</h2>
-<a id="lab760"></a><h2 class="section">Substitutions</h2>
+<a id="lab801"></a><h2 class="section">Substitutions</h2>
+<a id="lab802"></a><h2 class="section">Substitutions</h2>
 
 </div>
 <div class="code">
@@ -1963,14 +2023,14 @@ The same for a module extension.
 </div>
 
 <div class="doc">
-<a id="lab761"></a><h2 class="section">The Instances the Typing Rules Need</h2>
+<a id="lab803"></a><h2 class="section">The Instances the Typing Rules Need</h2>
 
 
 <div class="paragraph"> </div>
 
     Every type appearing in an elimination rule is of one of three
     shapes: <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a>]</span> (application, <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-elimination), <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.GrecTyped.html#N"><span class="id" title="abbreviation">N</span></a></span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">N'</span>]</span> (the
-    <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#661f0677b2eef5d3f50fb7c23155e9ec"><span class="id" title="variable">β</span></a></span> rule for <span class="inlinecode"><span class="id" title="var">succ</span></span>) or <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Wk</span>⨟<span class="id" title="var">Wk</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">succ</span></span> <span class="inlinecode">#1]</span> (the successor branch of the
+    <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.Elim.html#661f0677b2eef5d3f50fb7c23155e9ec"><span class="id" title="variable">β</span></a></span> rule for <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Nat.html#succ"><span class="id" title="definition">succ</span></a></span>) or <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Wk</span>⨟<span class="id" title="var">Wk</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Nat.html#succ"><span class="id" title="definition">succ</span></a></span> <span class="inlinecode">#1]</span> (the successor branch of the
     eliminator).  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wk_preserves_wf"><span class="id" title="lemma">wk_preserves_wf</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#sub_preserves_wf"><span class="id" title="lemma">sub_preserves_wf</span></a></span> have to push a
     weakening, respectively a
     substitution, past each of them, and the six corollaries below are exactly
@@ -2101,7 +2161,7 @@ The action of <span class="inlinecode"><span class="id" title="var">q</span>^<a 
 </div>
 
 <div class="doc">
-<a id="lab762"></a><h2 class="section">Automation</h2>
+<a id="lab804"></a><h2 class="section">Automation</h2>
 
 
 <div class="paragraph"> </div>
@@ -2162,7 +2222,7 @@ A unit is moved by its telescope and definition (<span class="inlinecode"><a cla
 </div>
 
 <div class="doc">
-<a id="lab763"></a><h2 class="section">Lifting Under Several Binders, and Application Spines</h2>
+<a id="lab805"></a><h2 class="section">Lifting Under Several Binders, and Application Spines</h2>
 
 </div>
 <div class="code">

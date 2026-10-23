@@ -38,7 +38,7 @@
 </div>
 
 <div class="doc">
-<a id="lab778"></a><h1 class="section">Canonical Levels</h1>
+<a id="lab820"></a><h1 class="section">Canonical Levels</h1>
 
 
 <div class="paragraph"> </div>
@@ -71,7 +71,7 @@
     decidable order the universe subtyping rule uses. 
 <div class="paragraph"> </div>
 
-<a id="lab779"></a><h2 class="section">A Total Order on Normal Forms</h2>
+<a id="lab821"></a><h2 class="section">A Total Order on Normal Forms</h2>
 
 
 <div class="paragraph"> </div>
@@ -238,6 +238,10 @@ The coding of normal forms.  The tags order the constructors; in a
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_con"><span class="id" title="constructor">nf_con</span></a> <span class="id" title="var">p</span> <span class="id" title="var">k</span> <span class="id" title="var">c</span> <span class="id" title="var">Ms</span> =&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_node"><span class="id" title="constructor">lt_node</span></a> 14 (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_node"><span class="id" title="constructor">lt_node</span></a> <span class="id" title="var">k</span> (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#strs_code"><span class="id" title="definition">strs_code</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#q_unit"><span class="id" title="projection">q_unit</span></a> <span class="id" title="var">p</span>) (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#strs_code"><span class="id" title="definition">strs_code</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#q_chain"><span class="id" title="projection">q_chain</span></a> <span class="id" title="var">p</span>) <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_nil"><span class="id" title="constructor">lt_nil</span></a>))<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_node"><span class="id" title="constructor">lt_node</span></a> 0 (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#str_code"><span class="id" title="definition">str_code</span></a> <span class="id" title="var">c</span> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_nil"><span class="id" title="constructor">lt_nil</span></a>) (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#nfs_code:49"><span class="id" title="definition">nfs_code</span></a> <span class="id" title="var">Ms</span> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_nil"><span class="id" title="constructor">lt_nil</span></a>))) <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#t:35"><span class="id" title="variable">t</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_record"><span class="id" title="constructor">nf_record</span></a> <span class="id" title="var">p</span> <span class="id" title="var">Ms</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_node"><span class="id" title="constructor">lt_node</span></a> 15 (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_node"><span class="id" title="constructor">lt_node</span></a> 0 (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#strs_code"><span class="id" title="definition">strs_code</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#q_unit"><span class="id" title="projection">q_unit</span></a> <span class="id" title="var">p</span>) (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#strs_code"><span class="id" title="definition">strs_code</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#q_chain"><span class="id" title="projection">q_chain</span></a> <span class="id" title="var">p</span>) <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_nil"><span class="id" title="constructor">lt_nil</span></a>)) (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#nfs_code:49"><span class="id" title="definition">nfs_code</span></a> <span class="id" title="var">Ms</span> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_nil"><span class="id" title="constructor">lt_nil</span></a>)) <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#t:35"><span class="id" title="variable">t</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_tuple"><span class="id" title="constructor">nf_tuple</span></a> <span class="id" title="var">p</span> <span class="id" title="var">Ms</span> <span class="id" title="var">fs</span> <span class="id" title="var">Ns</span> =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_node"><span class="id" title="constructor">lt_node</span></a> 16 (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_node"><span class="id" title="constructor">lt_node</span></a> 0 (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#strs_code"><span class="id" title="definition">strs_code</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#q_unit"><span class="id" title="projection">q_unit</span></a> <span class="id" title="var">p</span>) (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#strs_code"><span class="id" title="definition">strs_code</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#q_chain"><span class="id" title="projection">q_chain</span></a> <span class="id" title="var">p</span>) <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_nil"><span class="id" title="constructor">lt_nil</span></a>))<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_node"><span class="id" title="constructor">lt_node</span></a> 0 (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#strs_code"><span class="id" title="definition">strs_code</span></a> <span class="id" title="var">fs</span> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_nil"><span class="id" title="constructor">lt_nil</span></a>) (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_node"><span class="id" title="constructor">lt_node</span></a> 0 (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#nfs_code:49"><span class="id" title="definition">nfs_code</span></a> <span class="id" title="var">Ms</span> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_nil"><span class="id" title="constructor">lt_nil</span></a>) (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#nfs_code:49"><span class="id" title="definition">nfs_code</span></a> <span class="id" title="var">Ns</span> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_nil"><span class="id" title="constructor">lt_nil</span></a>)))) <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#t:35"><span class="id" title="variable">t</span></a><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span><br/>
 <span class="id" title="keyword">with</span> <a id="ne_code" class="idref" href="#ne_code"><span class="id" title="definition">ne_code</span></a> (<a id="m:36" class="idref" href="#m:36"><span class="id" title="binder">m</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ne"><span class="id" title="inductive">ne</span></a>) (<a id="t:37" class="idref" href="#t:37"><span class="id" title="binder">t</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#ltree"><span class="id" title="inductive">ltree</span></a>) : <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#ltree"><span class="id" title="inductive">ltree</span></a> :=<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#m:36"><span class="id" title="variable">m</span></a> <span class="id" title="keyword">with</span><br/>
@@ -248,6 +252,7 @@ The coding of normal forms.  The tags order the constructors; in a
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ne_elim"><span class="id" title="constructor">ne_elim</span></a> <span class="id" title="var">p</span> <span class="id" title="var">Us</span> <span class="id" title="var">m</span> <span class="id" title="var">Bks</span> <span class="id" title="var">m'</span> =&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_node"><span class="id" title="constructor">lt_node</span></a> 5 (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_node"><span class="id" title="constructor">lt_node</span></a> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#m:36"><span class="id" title="variable">m</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#strs_code"><span class="id" title="definition">strs_code</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#q_unit"><span class="id" title="projection">q_unit</span></a> <span class="id" title="var">p</span>) (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#strs_code"><span class="id" title="definition">strs_code</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#q_chain"><span class="id" title="projection">q_chain</span></a> <span class="id" title="var">p</span>) <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_nil"><span class="id" title="constructor">lt_nil</span></a>))<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#nblocks_code:51"><span class="id" title="definition">nblocks_code</span></a> <span class="id" title="var">Bks</span> (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#ne_code:47"><span class="id" title="definition">ne_code</span></a> <span class="id" title="var">m'</span> (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#nfs_code:49"><span class="id" title="definition">nfs_code</span></a> <span class="id" title="var">Us</span> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_nil"><span class="id" title="constructor">lt_nil</span></a>)))) <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#t:37"><span class="id" title="variable">t</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ne_proj"><span class="id" title="constructor">ne_proj</span></a> <span class="id" title="var">f</span> <span class="id" title="var">m'</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_node"><span class="id" title="constructor">lt_node</span></a> 6 (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_node"><span class="id" title="constructor">lt_node</span></a> 0 (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#str_code"><span class="id" title="definition">str_code</span></a> <span class="id" title="var">f</span> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_nil"><span class="id" title="constructor">lt_nil</span></a>) (<a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#ne_code:47"><span class="id" title="definition">ne_code</span></a> <span class="id" title="var">m'</span> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_nil"><span class="id" title="constructor">lt_nil</span></a>)) <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#t:37"><span class="id" title="variable">t</span></a><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span><br/>
 <span class="id" title="keyword">with</span> <a id="la_code" class="idref" href="#la_code"><span class="id" title="definition">la_code</span></a> (<a id="xs:38" class="idref" href="#xs:38"><span class="id" title="binder">xs</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#lvl_atoms"><span class="id" title="inductive">lvl_atoms</span></a>) (<a id="t:39" class="idref" href="#t:39"><span class="id" title="binder">t</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#ltree"><span class="id" title="inductive">ltree</span></a>) : <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#ltree"><span class="id" title="inductive">ltree</span></a> :=<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#xs:38"><span class="id" title="variable">xs</span></a> <span class="id" title="keyword">with</span><br/>
@@ -291,6 +296,7 @@ The coding of normal forms.  The tags order the constructors; in a
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#nblocks_code"><span class="id" title="definition">nblocks_code</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#nblocks_code"><span class="id" title="definition">nblocks_code</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">apply</span> <span class="id" title="var">nblocks_code_inj</span> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span> <span class="id" title="keyword">as</span> [-&gt; <span class="id" title="var">H</span>]<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#str_code"><span class="id" title="definition">str_code</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#str_code"><span class="id" title="definition">str_code</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#str_code_inj"><span class="id" title="lemma">str_code_inj</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span> <span class="id" title="keyword">as</span> [-&gt; <span class="id" title="var">H</span>]<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#strs_code"><span class="id" title="definition">strs_code</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#strs_code"><span class="id" title="definition">strs_code</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#qname_code_inj"><span class="id" title="lemma">qname_code_inj</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span> <span class="id" title="keyword">as</span> -&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#strs_code"><span class="id" title="definition">strs_code</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#strs_code"><span class="id" title="definition">strs_code</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#strs_code_inj"><span class="id" title="lemma">strs_code_inj</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">H</span> <span class="id" title="keyword">as</span> [-&gt; <span class="id" title="var">H</span>]<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_node"><span class="id" title="constructor">lt_node</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lt_node"><span class="id" title="constructor">lt_node</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">injection</span> <span class="id" title="var">H</span> <span class="id" title="keyword">as</span>; <span class="id" title="tactic">subst</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="tactic">try</span> <span class="id" title="tactic">discriminate</span>.<br/>
@@ -329,7 +335,7 @@ The order on the atoms of a level.
 </div>
 
 <div class="doc">
-<a id="lab780"></a><h2 class="section">Levels and Their Canonical Forms</h2>
+<a id="lab822"></a><h2 class="section">Levels and Their Canonical Forms</h2>
 
 
 <div class="paragraph"> </div>
@@ -870,7 +876,7 @@ Canonicalising a part of a level does not change its canonical form: this
 </div>
 
 <div class="doc">
-<a id="lab781"></a><h2 class="section">Properties of Every Atom</h2>
+<a id="lab823"></a><h2 class="section">Properties of Every Atom</h2>
 
 
 <div class="paragraph"> </div>
@@ -941,7 +947,7 @@ Canonicalising a part of a level does not change its canonical form: this
 </div>
 
 <div class="doc">
-<a id="lab782"></a><h2 class="section">The Order on Levels</h2>
+<a id="lab824"></a><h2 class="section">The Order on Levels</h2>
 
 
 <div class="paragraph"> </div>
@@ -1046,7 +1052,7 @@ The least level, and the literals.
 </div>
 
 <div class="doc">
-<a id="lab783"></a><h2 class="section">Levels of a Sort</h2>
+<a id="lab825"></a><h2 class="section">Levels of a Sort</h2>
 
 
 <div class="paragraph"> </div>
@@ -1134,7 +1140,7 @@ The least level, and the literals.
 </div>
 
 <div class="doc">
-<a id="lab784"></a><h2 class="section">The Realiser</h2>
+<a id="lab826"></a><h2 class="section">The Realiser</h2>
 
 
 <div class="paragraph"> </div>
@@ -1189,7 +1195,7 @@ The least level, and the literals.
 </div>
 
 <div class="doc">
-<a id="lab785"></a><h2 class="section">The Order on Universe Normal Forms</h2>
+<a id="lab827"></a><h2 class="section">The Order on Universe Normal Forms</h2>
 
 
 <div class="paragraph"> </div>
@@ -1249,7 +1255,7 @@ The semantic index of a universe normal form.
 </div>
 
 <div class="doc">
-<a id="lab786"></a><h2 class="section">The Join of Two Universe Normal Forms</h2>
+<a id="lab828"></a><h2 class="section">The Join of Two Universe Normal Forms</h2>
 
 
 <div class="paragraph"> </div>
