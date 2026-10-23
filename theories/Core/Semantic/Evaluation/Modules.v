@@ -57,7 +57,8 @@ Section Members.
   Proof.
     intros * Hf Ha; inversion Hf; subst;
       match goal with Hn : eval_apps _ _ _ nil _ |- _ => inversion Hn; subst end;
-      [ eapply eval_sel_global | eapply eval_sel_global_neut | eapply eval_sel_global_ind | eapply eval_sel_global_ind_alias ]; eassumption.
+      [ eapply eval_sel_global | eapply eval_sel_global_neut | eapply eval_sel_global_ind | eapply eval_sel_global_ind_alias
+      | eapply eval_sel_global_record ]; eassumption.
   Qed.
 
   Lemma eval_sel_global_inv : forall p x args r,
@@ -65,7 +66,8 @@ Section Members.
       exists f, dm_global p nil ·ₜ x Θ ⍮ Ξ ↘ f /\ $*| f & args | Θ ⍮ Ξ ↘ r.
   Proof.
     intros * H; inversion H; subst; eexists; split; try eassumption;
-      [ eapply eval_sel_global | eapply eval_sel_global_neut | eapply eval_sel_global_ind | eapply eval_sel_global_ind_alias ]; eauto; constructor.
+      [ eapply eval_sel_global | eapply eval_sel_global_neut | eapply eval_sel_global_ind | eapply eval_sel_global_ind_alias
+      | eapply eval_sel_global_record ]; eauto; constructor.
   Qed.
 
   (** A chain of submodules of a global module, each a body module, an open

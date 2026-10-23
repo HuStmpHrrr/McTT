@@ -92,6 +92,7 @@
     | ABSTRACT _ -> "abstract"
     | EVAL _ -> "eval"
     | INDUCTIVE _ -> "inductive"
+    | RECORD _ -> "record"
     | BUILTIN _ -> "builtin"
     | ELIM _ -> "elim"
     | MUTUAL _ -> "mutual"
@@ -155,6 +156,7 @@
     | ABSTRACT r
     | EVAL r
     | INDUCTIVE r
+    | RECORD r
     | BUILTIN r
     | ELIM r
     | MUTUAL r
@@ -256,6 +258,7 @@ rule read =
   | ';' { SEMI (get_range lexbuf) }
   | "module" { MODULE (get_range lexbuf) }
   | "inductive" { INDUCTIVE (get_range lexbuf) }
+  | "record" { RECORD (get_range lexbuf) }
   | "builtin" { BUILTIN (get_range lexbuf) }
   | "elim" { ELIM (get_range lexbuf) }
   | "mutual" { MUTUAL (get_range lexbuf) }

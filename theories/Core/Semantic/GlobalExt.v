@@ -1,7 +1,7 @@
 (** * NbE Reads the Global Context Only Through Its Lookups
 
     Evaluation and readback read the global context through [gc_resolve],
-    [gc_module], [ind_lookup], [ind_alias_lookup], [gc_frame] and [gs_find_ind] alone, so two global contexts with the same
+    [gc_module], [ind_lookup], [ind_alias_lookup], [record_lookup], [gc_frame] and [gs_find_ind] alone, so two global contexts with the same
     lookups normalize alike. *)
 
 From Mctt Require Import LibTactics.
@@ -19,6 +19,8 @@ Section GlobalExt.
   Hypothesis Hfr : forall p, gc_frame Ξ1 p = gc_frame Ξ2 p.
   Hypothesis Hfi : forall p, gs_find_ind Ξ1 p = gs_find_ind Ξ2 p.
   Hypothesis Hbody : forall p, gc_body Θ1 Ξ1 p = gc_body Θ2 Ξ2 p.
+  (** The neutral projection reads the record's fields. *)
+  Hypothesis Hrec : forall p, record_lookup Θ1 Ξ1 p = record_lookup Θ2 Ξ2 p.
 
   Lemma ind_lookup_ext : forall p, ind_lookup Θ1 Ξ1 p = ind_lookup Θ2 Ξ2 p.
   Proof. exact Hind. Qed.
@@ -82,7 +84,9 @@ Section GlobalExt.
     (forall ρ p ups Bks t v r, ⟦ih v of t under p ups Bks ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ r -> ⟦ih v of t under p ups Bks ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ r) /\
     (forall p ups j r, ⟦mref j of p ups ⟧ Θ1 ⍮ Ξ1 ↘ r -> ⟦mref j of p ups ⟧ Θ2 ⍮ Ξ2 ↘ r) /\
     (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a -> ⟦shty t of p ups ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a) /\
-    (forall ρm As ρ t v a, ⟦ihty v of t under ρm As ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a -> ⟦ihty v of t under ρm As ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a).
+    (forall ρm As ρ t v a, ⟦ihty v of t under ρm As ⟧ Θ1 ⍮ Ξ1 ⍮ ρ ↘ a -> ⟦ihty v of t under ρm As ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ a) /\
+    (forall f m r, eval_proj Θ1 Ξ1 f m r -> eval_proj Θ2 Ξ2 f m r) /\
+    (forall ns m fl pre rs, eval_nflds Θ1 Ξ1 ns m fl pre rs -> eval_nflds Θ2 Ξ2 ns m fl pre rs).
   Proof.
     apply (eval_mut_ind Θ1 Ξ1
              (fun M ρ m _ => ⟦ M ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ m)
@@ -103,13 +107,15 @@ Section GlobalExt.
              (fun ρ p ups Bks t v r _ => eval_ih Θ2 Ξ2 ρ p ups Bks t v r)
              (fun p ups j r _ => eval_mref Θ2 Ξ2 p ups j r)
              (fun p ups ρ t a _ => eval_shty Θ2 Ξ2 p ups ρ t a)
-             (fun ρm As ρ t v a _ => eval_ihty Θ2 Ξ2 ρm As ρ t v a)).
+             (fun ρm As ρ t v a _ => eval_ihty Θ2 Ξ2 ρm As ρ t v a)
+             (fun f m r _ => eval_proj Θ2 Ξ2 f m r)
+             (fun ns m fl pre rs _ => eval_nflds Θ2 Ξ2 ns m fl pre rs)).
     all: intros;
       repeat match goal with
              | H : _ \/ _ |- _ => destruct H
              | H : exists _, _ |- _ => destruct H
              end;
-      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?ind_lookup_ext, ?ind_mlookup_ext, ?Hia in *.
+      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?ind_lookup_ext, ?ind_mlookup_ext, ?Hia, ?Hrec in *.
     all: try solve [ econstructor; eauto; apply kind_ext; assumption ].
   Qed.
 
@@ -140,7 +146,8 @@ Section GlobalExt.
     (forall s ρ p ups Bks sel i Ms NBks, Rblks i Ms from p ups Bks sel in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ NBks ->
        Rblks i Ms from p ups Bks sel in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ NBks) /\
     (forall s ρ p ups Bks Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Bs' ->
-       Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Bs').
+       Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Bs') /\
+    (forall s ρ fl v Fs, Rflds v at fl in Θ1 ⍮ Ξ1 ⍮ ρ ⍮ s ↘ Fs -> Rflds v at fl in Θ2 ⍮ Ξ2 ⍮ ρ ⍮ s ↘ Fs).
   Proof.
     pose proof eval_ext as He; destruct_all.
     apply (read_mut_ind Θ1 Ξ1
@@ -152,10 +159,12 @@ Section GlobalExt.
              (fun s p ups ρ gs vs Ms _ => read_cargs Θ2 Ξ2 s p ups ρ gs vs Ms)
              (fun s p ups ρ t v V _ => read_shape Θ2 Ξ2 s p ups ρ t v V)
              (fun s ρ p ups Bks sel i Ms NBks _ => read_blocks Θ2 Ξ2 s ρ p ups Bks sel i Ms NBks)
-             (fun s ρ p ups Bks Mv A Mi r cs Bs Bs' _ => read_brs Θ2 Ξ2 s ρ p ups Bks Mv A Mi r cs Bs Bs')).
+             (fun s ρ p ups Bks Mv A Mi r cs Bs Bs' _ => read_brs Θ2 Ξ2 s ρ p ups Bks Mv A Mi r cs Bs Bs')
+             (fun s ρ fl v Fs _ => read_fields Θ2 Ξ2 s ρ fl v Fs)).
     all: intros; econstructor;
       repeat match goal with
           | H : ind_lookup Θ1 Ξ1 _ = _ |- _ => rewrite ind_lookup_ext in H
+          | H : record_lookup Θ1 Ξ1 _ = _ |- _ => rewrite Hrec in H
           end; eauto using fresh_tele_ext, fresh_cargs_ext, fresh_ihs_ext, wrap_ihs_eval_ext.
   Qed.
 

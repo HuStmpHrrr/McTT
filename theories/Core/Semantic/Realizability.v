@@ -409,6 +409,141 @@ Proof.
       exact (nparams_rel_refl_r p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ HM _ _ Hns).
 Qed.
 
+(** ** Record Types *)
+
+(** The neutral projections of a prefix of the fields are the prefix of
+    the neutral projections. *)
+Lemma eval_nflds_firstn : forall ns m fl pre rs, eval_nflds gc_deps gc_stack ns m fl pre rs ->
+    forall n, eval_nflds gc_deps gc_stack ns m (List.firstn n fl) pre (List.firstn n rs).
+Proof.
+  induction 1; intros [| n]; cbn [List.firstn]; econstructor; eauto.
+Qed.
+
+Lemma eval_nflds_length : forall ns m fl pre rs, eval_nflds gc_deps gc_stack ns m fl pre rs ->
+    List.length rs = List.length fl.
+Proof. induction 1; cbn; congruence. Qed.
+
+(** Distinct names: the first field of a name is the one at its
+    position. *)
+Lemma field_index_nth_nodup : forall {A : Type} (fs : list (String.string * A)) k f T,
+    List.NoDup (List.map fst fs) -> List.nth_error fs k = Some (f, T) -> field_index fs f = Some k.
+Proof.
+  induction fs as [| [g U] fs IH]; intros [| k] * Hnd Hk; cbn in Hk |- *; try discriminate.
+  - injection Hk as -> ->; rewrite String.eqb_refl; reflexivity.
+  - inversion Hnd as [| ? ? Hg Hnd']; subst.
+    destruct (String.eqb_spec f g) as [-> | _].
+    + exfalso; apply Hg; change g with (fst (g, T)); apply List.in_map; eapply List.nth_error_In; exact Hk.
+    + rewrite (IH _ _ _ Hnd' Hk); reflexivity.
+Qed.
+
+Lemma Forall2_of_nth : forall {X Y} (P : X -> Y -> Prop) l1 l2, List.length l1 = List.length l2 ->
+    (forall k x y, List.nth_error l1 k = Some x -> List.nth_error l2 k = Some y -> P x y) -> List.Forall2 P l1 l2.
+Proof.
+  induction l1 as [| x l1 IH]; intros [| y l2] Hl H; cbn in Hl; try discriminate; constructor.
+  - exact (H 0 _ _ eq_refl eq_refl).
+  - apply IH; [ congruence | intros k; exact (H (S k)) ].
+Qed.
+
+Lemma Forall2_nth_both : forall {X Y} (P : X -> Y -> Prop) l1 l2 k x y,
+    List.Forall2 P l1 l2 -> List.nth_error l1 k = Some x -> List.nth_error l2 k = Some y -> P x y.
+Proof.
+  intros * H; revert k; induction H; intros [| k] H1 H2; cbn in *; try discriminate.
+  - congruence.
+  - eauto.
+Qed.
+
+(** A record type at related parameters is realisable when its fields'
+    types are: it reads back, its neutrals are related (their neutral
+    projections, at each field's type, are), and related elements read back
+    equally, as the η-long tuple of their projections. *)
+Lemma realize_record : forall p R ns ns' (fr : nat -> list domain -> relation domain),
+    record_lookup gc_deps gc_stack p = Some R ->
+    List.NoDup (List.map fst (record_fields R)) ->
+    List.length ns = List.length (record_params R) ->
+    List.length ns' = List.length (record_params R) ->
+    per_top_ps (List.rev (record_params R)) ns ns' ->
+    (forall k f T vs vs', List.nth_error (record_fields R) k = Some (f, T) -> tele_prefix_rel fr k vs vs' ->
+       exists a a', ⟦ T ⟧ env_args nil (ns ++ vs) ↘ a /\ ⟦ T ⟧ env_args nil (ns' ++ vs') ↘ a' /\
+         (forall c c', Dom c ≈ c' ∈ per_bot -> fr k vs (⇑ a c) (⇑ a' c')) /\
+         (forall b b', fr k vs b b' -> Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top)) ->
+    Dom d_record p ns ≈ d_record p ns' ∈ per_top_typ /\
+    (forall c c', Dom c ≈ c' ∈ per_bot -> record_rel R fr (⇑ (d_record p ns) c) (⇑ (d_record p ns') c')) /\
+    (forall b b', record_rel R fr b b' -> Dom ⇓ (d_record p ns) b ≈ ⇓ (d_record p ns') b' ∈ per_top).
+Proof.
+  intros * Hl Hnd Hn Hn' Hps Hev.
+  set (fl := record_fields R) in *.
+  repeat split.
+  - intros s; destruct (Hps s) as (Ps & H1 & H2); exists (nf_record p Ps); split; econstructor; eassumption.
+  - (** The neutral projections, built field by field, related at each
+        field's type, and the projections they are. *)
+    intros c c' Hc.
+    assert (Hall : forall m j pre pre', m + j = List.length fl -> tele_prefix_rel fr j pre pre' ->
+               exists rs rs', eval_nflds gc_deps gc_stack ns c (List.skipn j fl) pre rs /\
+                 eval_nflds gc_deps gc_stack ns' c' (List.skipn j fl) pre' rs' /\
+                 tele_prefix_rel fr (List.length fl) (pre ++ rs) (pre' ++ rs')).
+    { induction m as [| m IH]; intros j pre pre' Hj Hp.
+      - rewrite List.skipn_all2 by lia; exists nil, nil; rewrite !List.app_nil_r.
+        split; [ constructor | split; [ constructor |] ]; replace (List.length fl) with j by lia; exact Hp.
+      - destruct (nth_error_lt_some' fl j ltac:(lia)) as [[g T] Hg].
+        destruct (Hev _ _ _ _ _ Hg Hp) as (a & a' & Ea & Ea' & Hbot & _).
+        assert (Hpc : Dom d_proj g c ≈ d_proj g c' ∈ per_bot)
+          by (intros s; destruct (Hc s) as (M & HM & HM'); exists (ne_proj g M); split; constructor; assumption).
+        destruct (IH (S j) (pre ++ ⇑ a (d_proj g c) :: nil) (pre' ++ ⇑ a' (d_proj g c') :: nil) ltac:(lia)
+                    (tele_prefix_rel_snoc _ _ _ _ _ _ Hp (Hbot _ _ Hpc))) as (rs & rs' & Er & Er' & Hrs).
+        exists (⇑ a (d_proj g c) :: rs), (⇑ a' (d_proj g c') :: rs').
+        rewrite (skipn_nth_cons' _ _ _ Hg).
+        rewrite <- !List.app_assoc in Hrs; cbn [List.app] in Hrs.
+        split; [ econstructor; eassumption | split; [ econstructor; eassumption | exact Hrs ] ]. }
+    destruct (Hall (List.length fl) 0 nil nil ltac:(lia) (tele_prefix_rel_nil _)) as (rs & rs' & Er & Er' & Hrs).
+    cbn [List.skipn List.app] in *.
+    assert (Hproj : forall ms m0 rs0, eval_nflds gc_deps gc_stack ms m0 fl nil rs0 ->
+               record_projs R (⇑ (d_record p ms) m0) rs0).
+    { intros ms m0 rs0 E.
+      apply Forall2_of_nth; [ symmetry; exact (eval_nflds_length _ _ _ _ _ E) |].
+      intros k [g T] r Hk Hr; cbn [fst].
+      econstructor; [ exact Hl | exact (field_index_nth_nodup _ _ _ _ Hnd Hk) | apply eval_nflds_firstn; exact E |].
+      rewrite List.nth_error_firstn; destruct (Nat.ltb_spec k (S k)); [ exact Hr | lia ]. }
+    destruct Hrs as [Hlr Hfrom].
+    econstructor; [ exact (Hproj _ _ _ Er) | exact (Hproj _ _ _ Er') | split; [ exact Hlr | exact Hfrom ] ].
+  - (** The elements: the projections, read back field by field at each
+        field's type in the parameters and the projections before it. *)
+    intros b b' [vs vs' Hvl Hvr Hrel] s.
+    destruct (Hps s) as (Ps & H1 & H2).
+    pose proof Hrel as Hrel'; rewrite tele_rel_iff in Hrel'; destruct Hrel' as (Hlv & Hlv' & Hr).
+    fold fl in Hrel, Hlv, Hlv'.
+    assert (Hall : forall m j, m + j = List.length fl ->
+               exists Fs, Rflds b at List.skipn j fl in gc_deps ⍮ gc_stack ⍮ env_args nil (ns ++ List.firstn j vs) ⍮ s ↘ Fs /\
+                 Rflds b' at List.skipn j fl in gc_deps ⍮ gc_stack ⍮ env_args nil (ns' ++ List.firstn j vs') ⍮ s ↘ Fs).
+    { induction m as [| m IH]; intros j Hj.
+      - rewrite List.skipn_all2 by lia; exists nfs_nil; split; constructor.
+      - destruct (nth_error_lt_some' fl j ltac:(lia)) as [[g T] Hg].
+        destruct (nth_error_lt_some' vs j ltac:(lia)) as [v Hv].
+        destruct (nth_error_lt_some' vs' j ltac:(lia)) as [v' Hv'].
+        destruct (Hev _ _ _ _ _ Hg (tele_prefix_rel_of_full _ _ _ _ j Hrel ltac:(lia))) as (a & a' & Ea & Ea' & _ & Htop).
+        destruct (Htop _ _ (Hr _ _ _ Hv Hv') s) as (F & HF & HF').
+        destruct (IH (S j) ltac:(lia)) as (Fs & HFs & HFs').
+        rewrite (firstn_S_snoc _ _ _ Hv), List.app_assoc, env_args_snoc in HFs.
+        rewrite (firstn_S_snoc _ _ _ Hv'), List.app_assoc, env_args_snoc in HFs'.
+        exists (nfs_cons F Fs); rewrite (skipn_nth_cons' _ _ _ Hg).
+        split; econstructor;
+          [ exact (Forall2_nth_both _ _ _ _ _ _ Hvl Hg Hv) | exact Ea | exact HF | exact HFs
+          | exact (Forall2_nth_both _ _ _ _ _ _ Hvr Hg Hv') | exact Ea' | exact HF' | exact HFs' ]. }
+    destruct (Hall (List.length fl) 0 ltac:(lia)) as (Fs & HFs & HFs').
+    cbn [List.skipn List.firstn] in HFs, HFs'; rewrite List.app_nil_r in HFs, HFs'.
+    exists (nf_tuple p Ps (List.map fst fl) Fs); split; econstructor; eassumption.
+Qed.
+
+(** [realize_record] at the record clause's premises, the realisability of
+    the fields' types read off the induction hypotheses. *)
+#[local] Ltac realize_record_from_ih :=
+  match goal with
+  | Hl : record_lookup _ _ ?p = Some ?R, Hnd : List.NoDup _, Hn : List.length ?ns = _, Hn' : List.length ?ns' = _,
+    Hps : per_top_ps _ ?ns ?ns', HfE : fields_evals _ ?R ?ns ?ns' ?fr |- _ =>
+      unshelve epose proof (realize_record p R ns ns' fr Hl Hnd Hn Hn' Hps _) as (Hrt & Hrn & Hre);
+      [ intros k f T vs vs' Hk Hp; destruct (HfE _ _ _ _ _ Hk Hp) as [a a' Ea Ea' (_ & _ & Hbot & Htop)];
+        exists a, a'; repeat split; eauto |]
+  end.
+
 Lemma realize_per_univ_elem_gen : forall {i a a' R},
     DF a ≈ a' ∈ per_univ_elem i ↘ R ->
     Dom a ≈ a' ∈ per_top_typ
@@ -512,6 +647,11 @@ Proof.
       destruct (H13 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm0 Hm Hc Heq Hw HB Hy) as [a a' Ea Ea' (_ & Htt & Hbot & _)];
       exists a, a'; repeat split; eauto
     | unfold grp_rel in *; eapply Hre; eassumption ].
+  (** A record type: [realize_record], from the realisability of the types
+      of its fields. *)
+  - realize_record_from_ih; exact Hrt.
+  - realize_record_from_ih; apply Hrn; assumption.
+  - realize_record_from_ih; apply Hre; assumption.
 Qed.
 
 Corollary per_univ_then_per_top_typ : forall {i a a' R},

@@ -516,7 +516,7 @@ Proof.
   | H : $| d_ind _ _ _ & _ | _ ⍮ _ ↘ _ |- _ => inversion H; subst; clear H
   end.
   cbn in Hr.
-  inversion Hr as [| | | | | | | ? ? ? D3 M3 Rs Hl3 Hk3 Hlen3 Hps]; subst; clear Hr.
+  inversion Hr as [| | | | | | | ? ? ? D3 M3 Rs Hl3 Hk3 Hlen3 Hps |]; subst; clear Hr.
   rewrite Hl in Hk3; injection Hk3 as <-; rewrite Hk in Hlen3; injection Hlen3 as <-.
   match goal with H : read_ps _ _ _ _ _ _ _ |- _ => rename H into Hps' end.
   unfold im_params in Hps'; rewrite Hnp, Hu in Hps'; cbn in Hps'.

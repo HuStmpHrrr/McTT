@@ -33,7 +33,8 @@ From Mctt.Core.Completeness.LogicalRelation Require Import Telescope.
 From Mctt.Core.Completeness.Inductives Require Import Elim.
 From Mctt.Core.Completeness Require Import IndCases ElimCases.
 From Mctt.Core.Completeness.Inductives Require Import Iota.
-From Mctt.Core.Completeness Require Import IotaCases ModuleCases.
+From Mctt.Core.Completeness Require Import IotaCases ModuleCases RecordCases.
+From Mctt.Core.Completeness.Records Require Model.
 From Mctt.Core.Completeness.Modules Require Import ValidUnit.
 From Mctt.Core.Completeness.Global Require Import Embedding.
 From Mctt.Core.Completeness Require Export LogicalRelation.
@@ -59,7 +60,7 @@ Proof.
       eapply sem_typ | eapply sem_univ | eapply sem_level | eapply sem_llit | eapply sem_succl | eapply sem_maxl
     | eapply sem_True | eapply sem_true | eapply sem_False | eapply sem_exfalso | eapply sem_ind | eapply sem_con
     | eapply sem_elim | eapply sem_pi | eapply sem_fn | eapply sem_app | eapply sem_let | eapply sem_let_mod
-    | eapply sem_mem | eapply sem_vlookup | eapply sem_exp_subtyp
+    | eapply sem_mem | eapply sem_vlookup | eapply sem_record | eapply sem_tuple | eapply sem_proj | eapply sem_exp_subtyp
     | (** term equality *)
       eapply sem_exp_eq_typ_cong | eapply sem_exp_eq_univ_cong | eapply sem_exp_eq_level_cong
     | eapply sem_exp_eq_llit_cong | eapply sem_exp_eq_succl_cong | eapply sem_exp_eq_maxl_cong
@@ -74,7 +75,9 @@ Proof.
     | eapply sem_exp_eq_elim_iota | eapply sem_exp_eq_elim_view | eapply sem_exp_eq_con_view
     | eapply sem_exp_eq_let_zeta | eapply sem_exp_eq_let_mod_zeta
     | eapply sem_exp_eq_mem_delta | eapply sem_exp_eq_var_delta | eapply sem_exp_eq_fn_eta
-    | eapply sem_exp_eq_true_eta | eapply sem_exp_eq_subtyp | eapply sem_exp_eq_sym | eapply sem_exp_eq_trans
+    | eapply sem_exp_eq_true_eta | eapply sem_exp_eq_record_cong | eapply sem_exp_eq_tuple_cong
+    | eapply sem_exp_eq_proj_cong | eapply sem_exp_eq_field_beta | eapply sem_exp_eq_record_eta
+    | eapply sem_exp_eq_subtyp | eapply sem_exp_eq_sym | eapply sem_exp_eq_trans
     | (** subtyping *)
       eapply sem_subtyp_refl | eapply sem_subtyp_trans | eapply sem_subtyp_univ | eapply sem_subtyp_suniv
     | eapply sem_subtyp_level | eapply sem_subtyp_small_large | eapply sem_subtyp_pi
@@ -132,8 +135,8 @@ Qed.
 (** ** Each entry is valid where it is checked *)
 
 Lemma valid_entry_def : forall Θ Ξ T A M b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ T ⊢ M : A -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
-    gds_valid valid_entry valid_mod_tele valid_ind_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid valid_entry valid_mod_tele valid_ind_decl_entry Θ Ξ Θ2 Ξ2 Ξ ->
+    Θ ⍮ Ξ ⍮ T ⊢ M : A -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    gds_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ Θ2 Ξ2 Ξ ->
     forall Θs Ξs, valid_entry Θs Ξs Θ2 Ξ2 T (ge_def b pv (ctx_pi T A) (Some (ctx_fn T M))).
 Proof.
   intros * HM _ He HΘ HΞ Θs Ξs.
@@ -144,7 +147,7 @@ Proof.
 Qed.
 
 Lemma valid_entry_ax : forall Θ Ξ A i b pv Θ2 Ξ2 Θs Ξs,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     valid_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
 Proof.
   intros * HA HG He _.
@@ -155,7 +158,7 @@ Qed.
 
 Lemma valid_entry_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 Θs Ξs,
     tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    GoodV valid_entry valid_mod_tele valid_ind_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     valid_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof.
   intros * HΔ _ HE HG He Hs HgS; cbn.
@@ -177,7 +180,7 @@ Lemma valid_entry_indalias : forall Θ Ξ pv Δ pm p k Ns D Mk Θ2 Ξ2 Θs Ξs,
     List.length Ns <= ind_nu D ->
     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ apps (a_ind p k) Ns : ind_ty_at D Mk Ns ->
     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ me_apps (qname_mod pm) Ns ≈ me_apps (qname_mod pm) Ns ->
-    GoodV valid_entry valid_mod_tele valid_ind_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     valid_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_ind_alias pv (Δ ++ gs_tele Ξ) pm p k Ns).
 Proof.
   intros * _ _ Hl HMk _ _ _ _ HM _ HG He Hs.
@@ -193,7 +196,7 @@ Proof.
 Qed.
 
 Lemma valid_mod_tele_nil : forall Θ Ξ Δ Θ2 Ξ2,
-    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
     valid_mod_tele Θ2 Ξ2 (Δ ++ gs_tele Ξ).
 Proof.
   intros * HΔ HC HG He.
@@ -333,7 +336,7 @@ Proof.
 Qed.
 
 Lemma valid_entry_ind : forall Θ Ξ D Θ2 Ξ2,
-    decl_typed Θ Ξ D -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> valid_ind_decl_entry Θ2 Ξ2 D /\ valid_mod_tele Θ2 Ξ2 (ind_uparams D).
+    decl_typed Θ Ξ D -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> valid_ind_decl_entry Θ2 Ξ2 D /\ valid_mod_tele Θ2 Ξ2 (ind_uparams D).
 Proof.
   intros * Hdt HG He.
   destruct (decl_typed_uparams _ _ _ Hdt) as [HUw HUa].
@@ -348,12 +351,60 @@ Proof.
   - split; [ exact (rel_ctx_wf_of_emb _ _ _ _ _ Hμ HUw) | exact HUa ].
 Qed.
 
+(** A record declaration typed at the source is valid at the target: its
+    judgments, read in the PER model. *)
+Lemma valid_record_decl_of_typed : forall Θ Ξ R Θ2 Ξ2, record_typed Θ Ξ R -> valid_emb Θ Ξ Θ2 Ξ2 ->
+    @valid_record_decl (gc_mk Θ2 Ξ2) R.
+Proof.
+  intros * Ht Hμ.
+  pose proof (typed_sort _ _ _ Ht) as HS.
+  constructor.
+  - exact (rel_ctx_wf_of_emb _ _ _ _ _ Hμ (presup_is_univ_ctx HS)).
+  - destruct (wf_is_univ_typ HS) as [i Hi]; exists i; exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ Hi).
+  - exact (rel_ctx_wf_of_emb _ _ _ _ _ Hμ (record_typed_fctx_wf _ _ _ Ht _ (le_n _))).
+  - intros * Hk; exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ (typed_fields _ _ _ Ht _ _ _ Hk)).
+Qed.
+
+Lemma valid_entry_record : forall Θ Ξ R Θ2 Ξ2,
+    record_typed Θ Ξ R -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ ->
+    Embx Θ Ξ Θ2 Ξ2 -> valid_record_decl_entry Θ2 Ξ2 R.
+Proof.
+  intros * Ht HG He.
+  pose proof (valid_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ (presup_is_univ_ctx (typed_sort _ _ _ Ht))) HG He) as Hμ.
+  exact (valid_record_decl_of_typed _ _ _ _ _ Ht Hμ).
+Qed.
+
+(** A record's module telescope, at a target where the record is found:
+    its parameters, valid there, and a value of it, of the type former at
+    the parameters as variables, a type of the sort. *)
+Lemma valid_mod_tele_record : forall Θ Ξ p R Θ2 Ξ2,
+    record_typed Θ Ξ R -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ ->
+    Embx Θ Ξ Θ2 Ξ2 -> record_lookup Θ2 Ξ2 p = Some R ->
+    valid_mod_tele Θ2 Ξ2 (record_params R) -> valid_mod_tele Θ2 Ξ2 (record_mod_tele p R).
+Proof.
+  intros * Ht HG He Hl [HP Ha].
+  pose proof (valid_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ (presup_is_univ_ctx (typed_sort _ _ _ Ht))) HG He) as Hμ.
+  pose proof (valid_record_decl_of_typed _ _ _ _ _ Ht Hμ) as [HPv [i HSv] HFv HTv].
+  assert (Hc : record_closed R) by exact (gctx_closed_record _ _ _ _ (wf_gstack_closed _ _ (emx_wf _ _ _ _ He)) Hl).
+  pose proof (@Records.Model.valid_exp_under_ctx_record (gc_mk Θ2 Ξ2) p R Hl Hc Ha (typed_nodup _ _ _ Ht)
+                (record_typed_sort_univ _ _ _ Ht) HFv (ex_intro _ i HSv) HTv) as HF0.
+  pose proof (@valid_apps_vars (gc_mk Θ2 Ξ2) _ (record_params R) ⋅ (record_sort R) i (a_record p) eq_refl Ha
+                ltac:(rewrite List.app_nil_r; exact HP) ltac:(rewrite List.app_nil_r; exact HSv) HF0) as Hself.
+  rewrite List.app_nil_r in Hself; cbn [exp_wk] in Hself.
+  split; [| constructor; [ eexists; reflexivity | exact Ha ] ].
+  unfold record_mod_tele, record_self.
+  destruct (record_typed_sort_univ _ _ _ Ht) as [[j HU] | [L HU]]; rewrite HU in Hself.
+  - exact (@rel_ctx_wf_extend (gc_mk Θ2 Ξ2) _ _ _ HP Hself).
+  - exact (@rel_ctx_wf_extend (gc_mk Θ2 Ξ2) _ _ 0 HP (@rel_exp_suniv_tm_large (gc_mk Θ2 Ξ2) _ _ _ _ 0 Hself)).
+Qed.
+
 (** ** Every well-formed global context embeds soundly into itself *)
 
 Theorem valid_emb_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> valid_emb Θ Ξ Θ Ξ.
 Proof.
   intros * Hg; apply valid_emb_good; [ exact Hg | | apply Embx_refl; exact Hg ].
-  exact (global_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_entry_def valid_entry_ax valid_entry_alias valid_entry_indalias valid_mod_tele_nil valid_entry_ind _ _ Hg).
+  exact (global_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry valid_entry_def valid_entry_ax valid_entry_alias valid_entry_indalias valid_mod_tele_nil valid_entry_ind
+           valid_entry_record valid_mod_tele_record _ _ Hg).
 Qed.
 
 (** ** The fundamental theorem at the identity embedding

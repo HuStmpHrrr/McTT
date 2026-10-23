@@ -245,6 +245,7 @@ Fixpoint elab_body (S : list ent) (Φ : gmod) (cs : list Cst.cmd) : eres gmod :=
   | Cst.c_mdef _ _ _ :: _ => eerr "a mutual definition is not allowed in a local module"
   | Cst.c_builtin _ _ :: _ => eerr "builtin is not allowed in a local module"
   | Cst.c_ind_alias _ _ _ _ :: _ => eerr "an inductive alias is not allowed in a local module"
+  | Cst.c_record _ _ _ _ _ _ :: _ => eerr "a record type is not allowed in a local module"
   end.
 
 Lemma elab_mdef_where : forall S cs, elab_mdef S (Cst.md_where cs) = let* Φ := elab_body S gm_nil cs in eok (md_body sm_open Φ).
@@ -375,6 +376,19 @@ Proof.
       rewrite (proj2 (IH _ _)) by eassumption; reflexivity.
 Qed.
 
+(** The fields of a record value, as [elab_tfields_with] reads them. *)
+Lemma tfields_iff : forall fs, Forall (fun f => Pterm (snd f)) fs ->
+    forall S Ms, elab_tfields_with elab S fs = eok Ms <-> stfields S fs Ms.
+Proof.
+  induction 1 as [| [y oM] fs HM Hfs IH]; intros S Ms; cbn [elab_tfields_with].
+  - split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
+  - unfold Pterm in HM; cbn [snd] in HM. split.
+    + intros H; dest_eok. constructor; [ apply HM | apply IH ]; assumption.
+    + intros H; inversion H; subst.
+      rewrite (proj2 (HM _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (IH _ _)) by eassumption. reflexivity.
+Qed.
+
 Lemma Pterm_params : forall ps : list (string * Cst.obj),
     Forall (fun p => Pterm (snd p) /\ Pmod (snd p)) ps -> Forall (fun p => Pterm (snd p)) ps.
 Proof. intros ps; apply Forall_impl; intros ? []; assumption. Qed.
@@ -415,6 +429,16 @@ Proof.
     + inversion H.
     + dest_eok; constructor; apply unit_in_b_iff; assumption.
     + inversion H; subst. rewrite (proj2 (unit_in_b_iff _ _)) by assumption. reflexivity.
+  - (* proj: a member of a path's module, or of a term's, let-bound *)
+    intros o x [IHt IHm]; split; intros S M; cbn [elab elab_mod].
+    + destruct (obj_path o) eqn:Ep; split; intros Hg.
+      * apply ebind_eok in Hg as (H & HH & Hg); inv_eok; constructor; [ exact Ep | apply IHm; exact HH ].
+      * inversion Hg; subst; [ rewrite (proj2 (IHm _ _)) by eassumption; reflexivity | congruence ].
+      * apply ebind_eok in Hg as (M' & HM & Hg); inv_eok; apply sel_proj_let; [ exact Ep | apply IHt; exact HM ].
+      * inversion Hg; subst; [ congruence | rewrite (proj2 (IHt _ _)) by eassumption; reflexivity ].
+    + split; intros Hg.
+      * apply ebind_eok in Hg as (H & HH & Hg); inv_eok; constructor; apply IHm; exact HH.
+      * inversion Hg; subst; rewrite (proj2 (IHm _ _)) by eassumption; reflexivity.
   - (* letb *)
     intros d o IHd [IH _]; split; [ apply IHd, IH |].
     intros S M; destruct d; cbn [elab_mod]; split; intros H; try discriminate; inversion H.
@@ -430,6 +454,18 @@ Proof.
         rewrite (proj2 (IHm _ _)) by eassumption; cbn [ebind].
         rewrite (proj2 (Hb _ _)) by eassumption; cbn [ebind].
         match goal with Ea : elim_at _ = Some _ |- _ => rewrite Ea end; reflexivity.
+    + split; [ discriminate | intros Hg; inversion Hg ].
+  - (* tuple *)
+    intros oT fs [IHT _] Hfs.
+    assert (Hf : forall S Ms, elab_tfields_with elab S fs = eok Ms <-> stfields S fs Ms)
+      by (apply tfields_iff; eapply Forall_impl; [| exact Hfs ]; intros ? []; assumption).
+    split; intros S M; cbn [elab elab_mod].
+    + split; intros Hg.
+      * apply ebind_eok in Hg as (T & HT & Hg); apply ebind_eok in Hg as (Ms & HMs & Hg); inv_eok.
+        constructor; [ apply IHT; exact HT | apply Hf; exact HMs ].
+      * inversion Hg; subst.
+        rewrite (proj2 (IHT _ _)) by eassumption; cbn [ebind].
+        rewrite (proj2 (Hf _ _)) by eassumption; reflexivity.
     + split; [ discriminate | intros Hg; inversion Hg ].
   - (* d_def *)
     intros x [o1 |] o2 HA [IH2 _] ob IHb S M; [ destruct HA as [IH1 _] |]; cbn [elab]; iff_case.
@@ -489,6 +525,8 @@ Proof.
     intros k o _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
   - (* c_ind_alias *)
     intros pv x ps o _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
+  - (* c_record *)
+    intros pv x ps o fs cs' _ _ _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
 Qed.
 
 Lemma elab_iff : forall S o M, elab S o = eok M <-> sel S o M.
@@ -583,6 +621,16 @@ Lemma check_distinct_ok : forall w xs u, check_distinct w xs = eok u <-> NoDup x
 Proof.
   intros w xs []; unfold check_distinct; rewrite <- first_dup_none.
   destruct (first_dup xs); split; congruence.
+Qed.
+
+Lemma check_no_field_ok : forall x fs cs u,
+    check_no_field x fs cs = eok u <-> Forall (fun y => ~ In y fs) (flat_map cmd_decls cs).
+Proof.
+  intros x fs cs []; unfold check_no_field; rewrite Forall_forall.
+  destruct (find (fun y => mem_b y fs) (flat_map cmd_decls cs)) as [f |] eqn:E; split; try discriminate.
+  - intros H; apply find_some in E as [Hin Hm]; apply mem_b_iff in Hm; exfalso; exact (H _ Hin Hm).
+  - intros _ y Hin Hy; apply (find_none _ _ E) in Hin; apply (proj2 (mem_b_iff _ _)) in Hy; congruence.
+  - intros _; reflexivity.
 Qed.
 
 (** ** Commands *)
@@ -686,6 +734,24 @@ Section Commands.
         rewrite (proj2 (elab_mod_iff _ _ _)) by eassumption; reflexivity.
     - intros pv x ps o _ _ ch O F F' c'; cbn [elab_cmd].
       split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].
+    - (* a record type: its with-area by the commands' induction *)
+      intros pv x ps o fs cs _ _ _ Hcs ch O F F' c'; apply cmds_iff in Hcs; cbn [elab_cmd]; split.
+      + intros Hg; apply ebind_eok in Hg as ([] & Hf & Hg); apply ebind_eok in Hg as ([] & Hp & Hg).
+        apply ebind_eok in Hg as (tys & Ht & Hg); apply ebind_eok in Hg as (Srt & HS & Hg).
+        apply ebind_eok in Hg as (fs' & Hr & Hg); apply ebind_eok in Hg as ([] & Hn & Hg).
+        apply ebind_eok in Hg as (bcs & Hb & Hg); dest_eok.
+        econstructor; [ apply (check_fresh_ok _ _ tt); exact Hf | apply (check_params_ok _ tt); exact Hp
+                      | apply elab_params_iff; exact Ht | apply elab_iff; exact HS | apply elab_rargs_iff; exact Hr
+                      | apply (check_no_field_ok x _ _ tt); exact Hn | apply Hcs; exact Hb ].
+      + intros Hg; inversion Hg; subst.
+        rewrite (proj2 (check_fresh_ok _ _ tt)) by assumption; cbn [ebind].
+        rewrite (proj2 (check_params_ok _ tt)) by assumption; cbn [ebind].
+        rewrite (proj2 (elab_params_iff _ _ _)) by eassumption; cbn [ebind].
+        rewrite (proj2 (elab_iff _ _ _)) by eassumption; cbn [ebind].
+        rewrite (proj2 (elab_rargs_iff _ _ _)) by eassumption; cbn [ebind].
+        rewrite (proj2 (check_no_field_ok _ _ _ tt)) by assumption; cbn [ebind].
+        change (elab_cmds_with (elab_cmd fp)) with (elab_cmds fp).
+        rewrite (proj2 (Hcs _ _ _ _)) by eassumption; reflexivity.
   Qed.
 
   Corollary elab_cmds_iff : forall ch O F cs ccs, elab_cmds fp ch O F cs = eok ccs <-> scmds fp ch O F cs ccs.

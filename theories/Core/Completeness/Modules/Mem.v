@@ -148,7 +148,7 @@ Proof.
       exists Φxh; do 6 eexists; split; [ cbn; rewrite String.eqb_refl; reflexivity |].
       split; [ exact Hk0 | split; [ exact Hmh | apply E; exact HRm ] ].
     + (* an entry before it *)
-      assert (HC0 : ⊨ body_ctx Φx ++ Γ) by (destruct E as [? ? ? [] | | |]; cbn in HsE; try contradiction; exact (rel_ctx_wf_tail HC)).
+      assert (HC0 : ⊨ body_ctx Φx ++ Γ) by (destruct E as [? ? ? [] | | | |]; cbn in HsE; try contradiction; exact (rel_ctx_wf_tail HC)).
       destruct (IH Hsx0 HC0 Ho _ _ HRD Hρ _ Hkb0 Hkx0 _ _ _ _ _ _ Hp) as (ρ' & a & i & RA & r & Hb & Ha & HRA & Hr & Hh).
       exists ρ', a, i, RA, r; split; [ exact Hb | split; [ exact Ha | split; [ exact HRA | split; [ exact Hr |] ] ] ].
       intros ρh Φh Φhk Hbh Hkh.
@@ -286,7 +286,7 @@ Qed.
 (** ** What the Term Members of Literals Denote *)
 
 Lemma ds_ty_mod_none : forall R, ds_is_mod R -> ds_ty Θm Ξm R = None.
-Proof. intros [| | |] H; cbn in *; first [ contradiction | reflexivity ]. Qed.
+Proof. intros [| | | |] H; cbn in *; first [ contradiction | reflexivity ]. Qed.
 
 (** A definition of a body, filled in, over the parameters. *)
 Lemma body_mem_desc : forall Γ Δ Φ Φx x R A, body_xp Θm Ξm (Δ ++ Γ) Φ Φx ->
@@ -295,7 +295,8 @@ Lemma body_mem_desc : forall Γ Δ Φ Φx x R A, body_xp Θm Ξm (Δ ++ Γ) Φ �
       R = ds_term (ctx_pi Δ A0[σ]) (Some (ctx_fn Δ M0[σ])).
 Proof.
   intros * Hx Hm Ht.
-  inversion Hm as [? ? ? ? ? Hq _ | ? ? ? ? ? ? Hq _ | | | |? ? ? R0 R0m Γy E rd R1 ? Hm0 Hmd He Hed Hr]; subst; [ cbn in Hq; discriminate | cbn in Hq; discriminate |].
+  inversion Hm as [? ? ? ? ? Hq _ | ? ? ? ? ? ? Hq _ | | | |? ? ? R0 R0m Γy E rd R1 ? Hm0 Hmd He Hed Hr | ? ? ? ? Hq _]; subst;
+    [ cbn in Hq; discriminate | cbn in Hq; discriminate | | cbn in Hq; discriminate ].
   inversion Hm0; subst; try (match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end).
   match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
   match goal with Hb : ds_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
@@ -304,7 +305,7 @@ Proof.
   cbn in Hmd; injection Hmd as <-.
   cbn in He; destruct (gm_prefix_upto Φx x) as [[| Φ' z E0 | ] |] eqn:Hp; try discriminate.
   pose proof (gm_prefix_name _ _ _ _ _ Hp) as ->.
-  destruct E0 as [[|] pv A0 [M0 |] | pv U | | ]; try discriminate; injection He as <- <- <-.
+  destruct E0 as [[|] pv A0 [M0 |] | pv U | | |]; try discriminate; injection He as <- <- <-.
   - inversion Hed; subst; cbn in Hr.
     destruct (gm_fill Φ') as [σ |] eqn:Hf; cbn in Hr; [ injection Hr as <- | discriminate ].
     do 6 eexists; split; [ reflexivity | split; [ exact Hf | reflexivity ] ].
@@ -322,7 +323,7 @@ Lemma ds_named_app : forall Θ Δ Ns M R,
     (Θ = nil /\ Ns = nil /\ exists A0, R = ds_term A0 None /\ ds_named (Θ ++ Δ) Ns M R = ds_term A0 (Some M)).
 Proof.
   intros [| e Θ] [| e' Δ] [| N Ns] M R; cbn [List.app]; try (left; reflexivity).
-  destruct R as [A0 [M0 |] | | |]; try (left; reflexivity).
+  destruct R as [A0 [M0 |] | | | |]; try (left; reflexivity).
   right; repeat split; eauto.
 Qed.
 
@@ -337,18 +338,19 @@ Lemma alias_mem_desc : forall Γ Δ E x R A,
          ds_mod Θm Ξm RE = Some (ds_closed nil p T Φ nil) /\ R = ds_up Δ (ds_term A0 (Some (a_mem (qname_mod p) x)))).
 Proof.
   intros * Hm Ht.
-  inversion Hm as [? ? ? ? ? Hq _ | ? ? ? ? ? ? Hq _ | | | |? ? ? R0 R0m Γy Ee rd R1 ? Hm0 Hmd He Hed Hr]; subst; [ cbn in Hq; discriminate | cbn in Hq; discriminate |].
+  inversion Hm as [? ? ? ? ? Hq _ | ? ? ? ? ? ? Hq _ | | | |? ? ? R0 R0m Γy Ee rd R1 ? Hm0 Hmd He Hed Hr | ? ? ? ? Hq _]; subst;
+    [ cbn in Hq; discriminate | cbn in Hq; discriminate | | cbn in Hq; discriminate ].
   inversion Hm0; subst; try (match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end).
   match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu as [| ? ? ? ? RE REm HmE HmodE]; subst end.
   pose proof (ds_mod_is_mod _ _ _ _ HmodE) as HisE.
   rewrite (ds_is_mod_mod _ _ _ (ds_is_mod_up _ _ HisE)) in Hmd; injection Hmd as <-.
-  destruct REm as [| Δe Φ Φx | Θ p T Φ Ns | ]; cbn in HisE; try contradiction; cbn [ds_up] in He, Hed.
+  destruct REm as [| Δe Φ Φx | Θ p T Φ Ns | |]; cbn in HisE; try contradiction; cbn [ds_up] in He, Hed.
   - (* an open module part *)
     cbn in He; destruct (gm_prefix_upto Φx x) as [[| Φ' z E0 | ] |] eqn:Hp; try discriminate.
     pose proof (gm_prefix_name _ _ _ _ _ Hp) as ->.
     assert (He' : exists Ee', ds_entry (ds_open Δe Φ Φx) x = Some (body_ctx Φ' ++ Δe, Ee', rd_open Δe Φ') /\
                     Ee = Ee' /\ Γy = body_ctx Φ' ++ Δe ++ Δ /\ rd = rd_open (Δe ++ Δ) Φ').
-    { cbn; rewrite Hp; destruct E0 as [[|] ? ? [] | | | ]; try discriminate; injection He as <- <- <-; eexists; repeat split. }
+    { cbn; rewrite Hp; destruct E0 as [[|] ? ? [] | | | |]; try discriminate; injection He as <- <- <-; eexists; repeat split. }
     destruct He' as (Ee' & He' & -> & -> & ->).
     cbn [ds_read] in Hr; destruct (gm_fill Φ') as [σ |] eqn:Hf; cbn in Hr; [ injection Hr as <- | discriminate ].
     exists (ds_up Δe (ds_sub R1 σ)); split; [| left; rewrite ds_up_cat; reflexivity ].
@@ -359,7 +361,7 @@ Proof.
     injection He as <- <- <-.
     cbn [ds_read] in Hr; destruct (ds_ats R1 Ns) as [R2 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
     assert (Hed' : edenote Θm Ξm (nil ++ Δ ++ Γ) (Some (qname_in p x)) (ge_read T E0) R1).
-    { destruct E0 as [? ? ? ? | pv U | | ]; cbn [ge_read] in Hed |- *; try (inversion Hed; subst; constructor).
+    { destruct E0 as [? ? ? ? | pv U | | |]; cbn [ge_read] in Hed |- *; try (inversion Hed; subst; constructor).
       exfalso.
       assert (HU : exists U', match U with | gu_mk Δ (md_body sm_closed Φ) => ge_mod pv (gu_mk (Δ ++ T) (md_body sm_closed Φ)) | _ => ge_mod pv U end = ge_mod pv U')
         by (destruct U as [? [[] ?|?]]; eexists; reflexivity).
@@ -640,8 +642,22 @@ Proof.
     exact (mk_rel_mem_reduct _ _ _ _ _ m r Hm0 Hr Hmr).
   - (* a module expression equal to a valid unit *)
     intros Γ H R Rm K RK HwH HmH HmodH HHK HK IHK HmK HmodK x R' A Hm Ht.
-    inversion Hm as [? ? ? ? ? _ _ | ? ? ? pq k D Hq Hk | | | | ? ? ? R0 R0m Γy E rd R1 ? Hm0 Hmd He Hed Hr]; subst;
-      [ cbn in Ht; discriminate | |].
+    inversion Hm as [? ? ? ? ? _ _ | ? ? ? pq k D Hq Hk | | | | ? ? ? R0 R0m Γy E rd R1 ? Hm0 Hmd He Hed Hr
+                    | ? ? ? Rr Hq Hk]; subst;
+      [ cbn in Ht; discriminate | | |].
+    3:{ (* the open frame of a record type's module under [H]: likewise *)
+      cbn in Hq; destruct (mod_qname H) as [mq |] eqn:Hq0; [| discriminate ]; injection Hq as <-.
+      change {| q_unit := q_unit mq; q_chain := q_chain mq ++ x :: nil |} with (qname_in mq x) in Hk.
+      destruct (gs_find_record_tele _ _ _ Hk) as (U & T0 & Ht0).
+      destruct (frame_parent _ _ Hgm _ _ _ _ Ht0) as (Tq & Φq & Hfq & _).
+      assert (Hgl : gc_loc Θm Ξm mq = Some (Tq, Φq)) by (unfold gc_loc; rewrite Hfq; reflexivity).
+      assert (Hs : valid_args Γ Tq nil)
+        by (apply (mk_valid_args _ _ _ Tq nil); [ rewrite app_nil_r; reflexivity | reflexivity | constructor | exact I
+                                                 | intros k0 N0 A0 HN0; destruct k0; discriminate ]).
+      rewrite (mod_qname_inv _ _ Hq0) in Hm |- *.
+      change (qname_mod mq) with (me_apps (qname_mod mq) nil) in Hm |- *.
+      assert (HΓ : ⊨ Γ) by (eapply valid_unit_ctx_wf; exact HK).
+      eapply filed_mem; eassumption. }
     { (* the open frame of a member's module under [H]: [H] names a frame,
          a filed module at no argument *)
       cbn in Hq; destruct (mod_qname H) as [mq |] eqn:Hq0; [| discriminate ]; injection Hq as <-.

@@ -147,10 +147,15 @@ Inductive den_term (k n : nat) : ent -> exp -> Prop :=
 | dt_open : forall x E c, den_term k n (en_open x E (Some c)) (a_mem E c).
 
 (** As a module expression.  A variable that may hold a module is a module
-    slot, which the core rejects if it holds a term; a term binder is no
-    module. *)
+    slot, which the core rejects if it holds a term; a term binder is the
+    binder too: the core fills it, a term of a record type standing for
+    the record's module at the term ([AccessFill]), and rejects any
+    other. *)
 Inductive den_mod (k n : nat) : ent -> modexp -> Prop :=
 | dm_var : forall x, den_mod k n (en_var x) (me_var k)
+(** A term binder: the binder, which the core fills when the term is of a
+    record type *)
+| dm_tvar : forall x, den_mod k n (en_tvar x) (me_var k)
 | dm_mem : forall x p, den_mod k n (en_mem x p) (mapps (qname_mod p) (vars_desc k n))
 | dm_open : forall x E oc, den_mod k n (en_open x E oc) (open_mod E oc).
 
@@ -210,7 +215,18 @@ Fixpoint elim_at (ks : list bool) : option nat :=
 
     [sel S o M] holds when the surface object [o] denotes the term [M] in the
     scope [S], and [selm S o H] when it denotes the module expression [H].
-    Every rule but the two for names is a homomorphism. *)
+    Every rule but the two for names, and the one for a projection from a
+    head that is no path, is a homomorphism. *)
+
+(** Whether an object is a path of module position: a name, a member of
+    one, or one applied.  A projection from it is a member of the module
+    it denotes; one from any other head is a member of a term's. *)
+Fixpoint obj_path (o : Cst.obj) : bool :=
+  match o with
+  | Cst.var _ | Cst.glob _ => true
+  | Cst.proj o' _ | Cst.app o' _ => obj_path o'
+  | _ => false
+  end.
 
 (** [ptele ps] is the parameter list [ps] as a core context, innermost
     first. *)
@@ -240,9 +256,15 @@ Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
     sel S o1 M -> sel S o2 N -> sel S (Cst.app o1 o2) (M $ N)
 | sel_var : forall S x k e n M,
     bound S x k e n -> den_term k n e M -> sel S (Cst.var x) M
-(** A projection selects a member of the module its head denotes. *)
+(** A projection selects a member of the module its head denotes, a
+    name, a member of one, or one applied ([obj_path]). *)
 | sel_proj : forall S o x H,
-    selm S o H -> sel S (Cst.proj o x) (a_mem H x)
+    obj_path o = true -> selm S o H -> sel S (Cst.proj o x) (a_mem H x)
+(** A projection from any other head, a term, selects the member of the
+    module of a [let] bound to it, which the core fills
+    ([AccessFill]). *)
+| sel_proj_let : forall S o x M,
+    obj_path o = false -> sel S o M -> sel S (Cst.proj o x) (ℓ ≔ M in a_mem (me_var 0) x)
 | sel_let : forall S x oA oM ob A M B,
     sel S oA A -> sel S oM M -> sel (en_tvar x :: S) ob B ->
     sel S (Cst.letb (Cst.d_def x (Some oA) oM) ob) (ℓ A ≔ M in B)
@@ -261,6 +283,11 @@ Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
 | sel_elim : forall S om bks M Bks m,
     sel S om M -> sblocks S bks Bks -> elim_at (List.map (fun bk => fst (fst (fst bk))) bks) = Some m ->
     sel S (Cst.elim om bks) (a_elim None nil m Bks M)
+(** A record value: its type and its fields, as written.  Whether the type
+    is a record type and the fields are its own, in order, is the core's
+    to check. *)
+| sel_tuple : forall S oT fs T Ms,
+    sel S oT T -> stfields S fs Ms -> sel S (Cst.tuple oT fs) (a_tuple T Ms)
 
 with selm : list ent -> Cst.obj -> modexp -> Prop :=
 | selm_var : forall S x k e n H,
@@ -275,6 +302,15 @@ with selm : list ent -> Cst.obj -> modexp -> Prop :=
     selm S o H -> selm S (Cst.proj o y) (me_mem H y)
 | selm_app : forall S o1 o2 H N,
     selm S o1 H -> sel S o2 N -> selm S (Cst.app o1 o2) (me_app H N)
+
+(** The fields of a record value, each its name and its value, all in the
+    scope of the value. *)
+with stfields : list ent -> list (string * Cst.obj) -> list (string * exp) -> Prop :=
+(** No field *)
+| stf_nil : forall S, stfields S nil nil
+(** The first field, its name and its value, then the rest *)
+| stf_cons : forall S y oM fs M Ms,
+    sel S oM M -> stfields S fs Ms -> stfields S ((y, oM) :: fs) ((y, M) :: Ms)
 
 with sbrs : list ent -> list (string * list string * Cst.obj) -> list (string * nat * exp) -> Prop :=
 | sbr_nil : forall S, sbrs S nil nil
@@ -423,6 +459,36 @@ Inductive sfuns (S : list ent) :
 Definition filed_mems (fp : path) (ch : list string) (xs : list string) : list ent :=
   rev (map (fun x => en_mem x (q_abs fp (ch ++ x :: nil))) xs).
 
+(** ** Record Types
+
+    A record type's module is a frame over the record's parameters and,
+    bound last, a value of the record ([Core.Syntactic.Members.record_mod_tele]),
+    whose members are the fields, then the with-area.  The value has no
+    name: a member of the with-area reaches it through the fields, which
+    are members of the frame, so [snd] is the field of the value the
+    module is at. *)
+
+(** The value a record's module is at: a term binder no name denotes. *)
+Definition en_self : ent := en_tvar "".
+
+(** The entries of the frame of the record [x] with the parameters [ps]
+    and the fields [fs], declared at member chain [ch] of the unit [fp],
+    before its with-area: the fields, the value, then the parameters,
+    innermost first. *)
+Definition record_ents (fp : path) (ch : list string) (x : string) (ps fs : list (string * Cst.obj)) : list ent :=
+  filed_mems fp (ch ++ x :: nil) (map fst fs) ++ en_self :: pents ps.
+
+(** The names a command declares in its frame. *)
+Definition cmd_decls (c : Cst.cmd) : list string :=
+  match c with
+  | Cst.c_mod _ x _ _ | Cst.c_def _ x _ _ | Cst.c_axiom x _ | Cst.c_ind_alias _ x _ _
+  | Cst.c_record _ x _ _ _ _ => x :: nil
+  | Cst.c_open _ _ _ its => map iitem_name its
+  | Cst.c_ind _ _ _ ms => member_names ms
+  | Cst.c_mdef _ _ fs => fun_names fs
+  | Cst.c_import _ | Cst.c_error _ | Cst.c_eval _ _ | Cst.c_builtin _ _ => nil
+  end.
+
 (** ** Commands
 
     [scmd fp ch O F c F' c']: the command [c], in the open frame at member
@@ -516,6 +582,21 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
 | sc_builtin : forall ch O F k oX H,
     selm (F ++ O) oX H ->
     scmd fp ch O F (Cst.c_builtin k oX) F (cc_builtin k H :: nil)
+(** [record x (ps) : S where f : A ; … with cs end]: the parameters are
+    read in [F], the sort under them, each field's type under them and the
+    fields before it.  The with-area is read in the record's frame
+    ([record_ents]), with [x] in scope outside it; no name it declares is
+    a field's.  It declares [x], a type and a module. *)
+| sc_record : forall ch O F pv x ps oS fs cs tys Srt fs' bcs,
+    fresh x F ->
+    NoDup (map fst ps) ->
+    sparams (F ++ O) ps tys ->
+    sel (pents ps ++ F ++ O) oS Srt ->
+    srargs (pents ps ++ F ++ O) fs fs' ->
+    Forall (fun y => ~ In y (map fst fs)) (flat_map cmd_decls cs) ->
+    scmds fp (ch ++ x :: nil) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F ++ O) (record_ents fp ch x ps fs) cs bcs ->
+    scmd fp ch O F (Cst.c_record pv x ps oS fs cs) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
+      (cc_record x pv (ptele tys) Srt fs' bcs :: nil)
 
 with scmds (fp : path) : list string -> list ent -> list ent -> list Cst.cmd -> list ccmd -> Prop :=
 | scs_nil : forall ch O F, scmds fp ch O F nil nil
@@ -569,6 +650,7 @@ Proof.
   apply (scmds_mind fp (fun _ _ _ _ _ c' => cmds_written c') (fun _ _ _ _ ccs => cmds_written ccs));
     intros; unfold cmds_written in *; repeat constructor; try assumption.
   - apply cmd_written_mod; assumption.
+  - apply cmd_written_record; assumption.
   - apply List.Forall_app; split; assumption.
 Qed.
 

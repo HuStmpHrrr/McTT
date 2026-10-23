@@ -22,6 +22,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic.System Require Export Scoping.
 From Mctt.Core.Syntactic.System.Global Require Export MemberLemmas.
 From Mctt.Core.Syntactic.System.Inductives Require Export Syntax.
+From Mctt.Core.Syntactic.System.Records Require Export Syntax.
 Import Syntax_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 
@@ -493,7 +494,7 @@ Lemma body_shape_wk : forall Φ Φ' φ φ', body_shape Φ Φ' -> body_shape (gmo
 Proof.
   induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] * Hs; cbn in *; try contradiction; auto.
   - destruct Hs as (Hs & -> & HE); repeat split; auto.
-    destruct E as [? ? ? [] | | | ], E' as [? ? ? [] | | | ]; cbn in *; auto.
+    destruct E as [? ? ? [] | | | | ], E' as [? ? ? [] | | | | ]; cbn in *; auto.
   - destruct Hs as (Hs & ->); split; auto.
 Qed.
 
@@ -501,7 +502,7 @@ Lemma body_shape_sub : forall Φ Φ' σ σ', body_shape Φ Φ' -> body_shape (gm
 Proof.
   induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] * Hs; cbn in *; try contradiction; auto.
   - destruct Hs as (Hs & -> & HE); repeat split; auto.
-    destruct E as [? ? ? [] | | | ], E' as [? ? ? [] | | | ]; cbn in *; auto.
+    destruct E as [? ? ? [] | | | | ], E' as [? ? ? [] | | | | ]; cbn in *; auto.
   - destruct Hs as (Hs & ->); split; auto.
 Qed.
 
@@ -1214,6 +1215,274 @@ Section ElimMove.
   Qed.
 End ElimMove.
 
+(** ** The Rules of Records, Moved
+
+    A record's declaration is closed, so only the parameters, the fields
+    and the projected term move.  The premises about the declaration are
+    about fixed contexts: their induction hypotheses are read back at the
+    identity ([R_id]). *)
+Section RecordMove.
+  Variables (Θ : gdeps) (Ξ : gstack) (R : ctx -> sub -> ctx -> Prop).
+  Hypothesis R_dom : forall Δ σ Γ, R Δ σ Γ -> ⊢ Θ ⍮ Ξ ⍮ Δ.
+
+  Lemma mv_record_closed : forall Δ σ Γ p Rd, R Δ σ Γ -> record_lookup Θ Ξ p = Some Rd -> record_closed Rd.
+  Proof. intros * HR Hl; eapply wf_record_closed; [ eapply R_dom, HR | exact Hl ]. Qed.
+
+  Lemma mv_record_params : forall Γ Δ σ Rd Ns, record_closed Rd ->
+      (forall j N A, List.nth_error Ns j = Some N -> List.nth_error (tele_insts (record_params Rd) Id Ns) j = Some A ->
+         forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ N[σ0] : A[σ0]) ->
+      R Δ σ Γ ->
+      forall j N A, List.nth_error (List.map (fun N => N[σ]) Ns) j = Some N ->
+        List.nth_error (tele_insts (record_params Rd) Id (List.map (fun N => N[σ]) Ns)) j = Some A ->
+        Θ ⍮ Ξ ⍮ Δ ⊢ N : A.
+  Proof.
+    intros * HRd IH HR j N' A' HN HA.
+    rewrite <- record_params_insts_sub in HA by exact HRd.
+    apply nth_error_map_inv in HN as (N & HN & ->); apply nth_error_map_inv in HA as (A & HA & ->).
+    eauto.
+  Qed.
+
+  (** The first fields' context is a tail of all of them. *)
+  Lemma record_fctx_split : forall Rd k, k <= List.length (record_fields Rd) ->
+      exists Ψ, record_fctx Rd (List.length (record_fields Rd)) = Ψ ++ record_fctx Rd k.
+  Proof.
+    intros Rd k Hk; unfold record_fctx; rewrite List.firstn_all.
+    generalize (record_fields Rd) as l; intros l.
+    exists (List.rev (List.map (fun fT => ce_ass (snd fT)) (List.skipn k l))).
+    rewrite <- (List.firstn_skipn k l) at 1; rewrite List.map_app, List.rev_app_distr; reflexivity.
+  Qed.
+
+  (** The premises of the type former's rule, in their fixed contexts, read
+      back from their induction hypotheses at the identity. *)
+  Lemma mv_record_premises : forall Rd i Δ σ Γ,
+      (forall Γ0, ⊢ Θ ⍮ Ξ ⍮ Γ0 -> R Γ0 Id Γ0) ->
+      (forall Δ0 σ0, R Δ0 σ0 ⋅ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (record_ty Rd)[σ0] : Typeω@i[σ0]) ->
+      ⊢ Θ ⍮ Ξ ⍮ record_fctx Rd (List.length (record_fields Rd)) ++ record_params Rd ->
+      (forall Δ0 σ0, R Δ0 σ0 (record_params Rd) -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵤ (record_sort Rd)[σ0]) ->
+      (forall k f T, List.nth_error (record_fields Rd) k = Some (f, T) ->
+         forall Δ0 σ0, R Δ0 σ0 (record_fctx Rd k ++ record_params Rd) ->
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] : ((record_sort Rd)[wk_shiftn k]ʷ)[σ0]) ->
+      R Δ σ Γ ->
+      Θ ⍮ Ξ ⍮ ⋅ ⊢ record_ty Rd : Typeω@i /\
+      Θ ⍮ Ξ ⍮ record_params Rd ⊢ᵤ record_sort Rd /\
+      (forall k f T, List.nth_error (record_fields Rd) k = Some (f, T) ->
+         Θ ⍮ Ξ ⍮ record_fctx Rd k ++ record_params Rd ⊢ T : (record_sort Rd)[wk_shiftn k]ʷ).
+  Proof.
+    intros * R_id Hty Hc Hs Hf HR.
+    assert (Hnil : ⊢ Θ ⍮ Ξ ⍮ ⋅)
+      by (apply (ctx_app_wf_tail _ _ Δ); rewrite List.app_nil_r; exact (R_dom _ _ _ HR)).
+    split; [| split ].
+    - pose proof (Hty _ _ (R_id _ Hnil)) as H; rewrite !exp_sub_id in H; exact H.
+    - pose proof (Hs _ _ (R_id _ (ctx_app_wf_tail _ _ _ _ Hc))) as H; rewrite !exp_sub_id in H; exact H.
+    - intros k f T Hk.
+      destruct (record_fctx_split Rd k ltac:(pose proof (nth_error_lt_length _ _ _ Hk); lia)) as [Ψ HΨ].
+      rewrite HΨ, <- List.app_assoc in Hc.
+      pose proof (Hf _ _ _ Hk _ _ (R_id _ (ctx_app_wf_tail _ _ _ _ Hc))) as H; rewrite !exp_sub_id in H; exact H.
+  Qed.
+
+  Lemma mv_record_case : forall p Rd Γ i Δ σ,
+      (forall Γ0, ⊢ Θ ⍮ Ξ ⍮ Γ0 -> R Γ0 Id Γ0) ->
+      record_lookup Θ Ξ p = Some Rd ->
+      List.NoDup (List.map fst (record_fields Rd)) ->
+      tele_ass (record_params Rd) ->
+      (forall Δ0 σ0, R Δ0 σ0 ⋅ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (record_ty Rd)[σ0] : Typeω@i[σ0]) ->
+      ⊢ Θ ⍮ Ξ ⍮ record_fctx Rd (List.length (record_fields Rd)) ++ record_params Rd ->
+      (forall Δ0 σ0, R Δ0 σ0 (record_params Rd) -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵤ (record_sort Rd)[σ0]) ->
+      (forall k f T, List.nth_error (record_fields Rd) k = Some (f, T) ->
+         forall Δ0 σ0, R Δ0 σ0 (record_fctx Rd k ++ record_params Rd) ->
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] : ((record_sort Rd)[wk_shiftn k]ʷ)[σ0]) ->
+      R Δ σ Γ ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ (a_record p)[σ] : (record_ty Rd)[σ].
+  Proof.
+    intros * R_id Hl Hnd Hass Hty Hc Hs Hf HR.
+    destruct (mv_record_premises _ _ _ _ _ R_id Hty Hc Hs Hf HR) as (Hty' & Hs' & Hf').
+    rewrite (record_ty_sub _ _ (mv_record_closed _ _ _ _ _ HR Hl)); cbn.
+    eapply wf_record; eauto.
+  Qed.
+
+  Lemma mv_record_cong_case : forall p Rd Γ i Δ σ,
+      (forall Γ0, ⊢ Θ ⍮ Ξ ⍮ Γ0 -> R Γ0 Id Γ0) ->
+      record_lookup Θ Ξ p = Some Rd ->
+      List.NoDup (List.map fst (record_fields Rd)) ->
+      tele_ass (record_params Rd) ->
+      (forall Δ0 σ0, R Δ0 σ0 ⋅ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (record_ty Rd)[σ0] : Typeω@i[σ0]) ->
+      ⊢ Θ ⍮ Ξ ⍮ record_fctx Rd (List.length (record_fields Rd)) ++ record_params Rd ->
+      (forall Δ0 σ0, R Δ0 σ0 (record_params Rd) -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵤ (record_sort Rd)[σ0]) ->
+      (forall k f T, List.nth_error (record_fields Rd) k = Some (f, T) ->
+         forall Δ0 σ0, R Δ0 σ0 (record_fctx Rd k ++ record_params Rd) ->
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] : ((record_sort Rd)[wk_shiftn k]ʷ)[σ0]) ->
+      R Δ σ Γ ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ (a_record p)[σ] ≈ (a_record p)[σ] : (record_ty Rd)[σ].
+  Proof.
+    intros * R_id Hl Hnd Hass Hty Hc Hs Hf HR.
+    destruct (mv_record_premises _ _ _ _ _ R_id Hty Hc Hs Hf HR) as (Hty' & Hs' & Hf').
+    rewrite (record_ty_sub _ _ (mv_record_closed _ _ _ _ _ HR Hl)); cbn.
+    eapply wf_exp_eq_record_cong; eauto.
+  Qed.
+
+  Lemma mv_tuple_case : forall T p Ns Rd fs i Γ Δ σ,
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] : Typeω@i[σ0]) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] ≈ (apps_exp (a_record p) Ns)[σ0] : Typeω@i[σ0]) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_record p)[σ0] : (record_ty Rd)[σ0]) ->
+      record_lookup Θ Ξ p = Some Rd ->
+      List.length Ns = List.length (record_params Rd) ->
+      (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params Rd) Id Ns) k = Some A ->
+         forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ N[σ0] : A[σ0]) ->
+      List.map fst fs = List.map fst (record_fields Rd) ->
+      (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields Rd) k = Some (f, U) ->
+         forall Δ0 σ0, R Δ0 σ0 Γ ->
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σ0] : (U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))])[σ0]) ->
+      R Δ σ Γ ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ (a_tuple T fs)[σ] : T[σ].
+  Proof.
+    intros * IHTy IHT IHr Hl Hn IHN Hnames IHf HR.
+    pose proof (mv_record_closed _ _ _ _ _ HR Hl) as HRd.
+    cbn [exp_sub].
+    eapply wf_tuple with (Ns := List.map (fun N => N[σ]) Ns).
+    - exact (IHTy _ _ HR).
+    - pose proof (IHT _ _ HR) as H; rewrite apps_exp_sub in H; exact H.
+    - pose proof (IHr _ _ HR) as H; rewrite record_ty_sub in H by exact HRd; exact H.
+    - exact Hl.
+    - rewrite List.length_map; exact Hn.
+    - eapply mv_record_params; eassumption.
+    - rewrite tuple_names_sub; exact Hnames.
+    - intros k f M' U HM' HU.
+      apply nth_error_map_inv in HM' as ([f0 M] & HM & [= -> ->]); cbn.
+      pose proof (IHf _ _ _ _ HM HU _ _ HR) as H.
+      rewrite (record_field_sub _ _ _ _ _ _ _ HRd HU Hn) in H.
+      + rewrite tuple_values_sub in H; exact H.
+      + rewrite List.length_firstn, List.length_map; pose proof (nth_error_lt_length _ _ _ HM); lia.
+  Qed.
+
+  Lemma mv_proj_case : forall M p Ns Rd k f U i Γ Δ σ,
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σ0] : (apps_exp (a_record p) Ns)[σ0]) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_record p)[σ0] : (record_ty Rd)[σ0]) ->
+      record_lookup Θ Ξ p = Some Rd ->
+      List.length Ns = List.length (record_params Rd) ->
+      (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params Rd) Id Ns) k = Some A ->
+         forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ N[σ0] : A[σ0]) ->
+      List.nth_error (record_fields Rd) k = Some (f, U) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (U[sb_of_list Id (Ns ++ record_pre Rd k M)])[σ0] : Typeω@i[σ0]) ->
+      R Δ σ Γ ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ (a_proj f M)[σ] : (U[sb_of_list Id (Ns ++ record_pre Rd k M)])[σ].
+  Proof.
+    intros * IHM IHr Hl Hn IHN HU IHU HR.
+    pose proof (mv_record_closed _ _ _ _ _ HR Hl) as HRd.
+    assert (HL : List.length (record_pre Rd k M) = k)
+      by (apply length_record_pre; pose proof (nth_error_lt_length _ _ _ HU); lia).
+    pose proof (IHU _ _ HR) as HUσ.
+    rewrite (record_field_sub _ _ _ _ _ _ _ HRd HU Hn HL), record_pre_sub in HUσ |- *.
+    cbn [exp_sub].
+    eapply wf_proj.
+    - pose proof (IHM _ _ HR) as H; rewrite apps_exp_sub in H; exact H.
+    - pose proof (IHr _ _ HR) as H; rewrite record_ty_sub in H by exact HRd; exact H.
+    - exact Hl.
+    - rewrite List.length_map; exact Hn.
+    - eapply mv_record_params; eassumption.
+    - exact HU.
+    - exact HUσ.
+  Qed.
+
+  Lemma mv_proj_cong_case : forall M M' p Ns Rd k f U i Γ Δ σ,
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σ0] ≈ M'[σ0] : (apps_exp (a_record p) Ns)[σ0]) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_record p)[σ0] : (record_ty Rd)[σ0]) ->
+      record_lookup Θ Ξ p = Some Rd ->
+      List.length Ns = List.length (record_params Rd) ->
+      (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params Rd) Id Ns) k = Some A ->
+         forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ N[σ0] : A[σ0]) ->
+      List.nth_error (record_fields Rd) k = Some (f, U) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (U[sb_of_list Id (Ns ++ record_pre Rd k M)])[σ0] : Typeω@i[σ0]) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_proj f M')[σ0] : (U[sb_of_list Id (Ns ++ record_pre Rd k M)])[σ0]) ->
+      R Δ σ Γ ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ (a_proj f M)[σ] ≈ (a_proj f M')[σ] : (U[sb_of_list Id (Ns ++ record_pre Rd k M)])[σ].
+  Proof.
+    intros * IHM IHr Hl Hn IHN HU IHU IH2 HR.
+    pose proof (mv_record_closed _ _ _ _ _ HR Hl) as HRd.
+    assert (HL : List.length (record_pre Rd k M) = k)
+      by (apply length_record_pre; pose proof (nth_error_lt_length _ _ _ HU); lia).
+    pose proof (IHU _ _ HR) as HUσ.
+    pose proof (IH2 _ _ HR) as Hr2.
+    rewrite (record_field_sub _ _ _ _ _ _ _ HRd HU Hn HL), record_pre_sub in HUσ, Hr2 |- *.
+    cbn [exp_sub] in Hr2 |- *.
+    eapply wf_exp_eq_proj_cong.
+    - pose proof (IHM _ _ HR) as H; rewrite apps_exp_sub in H; exact H.
+    - pose proof (IHr _ _ HR) as H; rewrite record_ty_sub in H by exact HRd; exact H.
+    - exact Hl.
+    - rewrite List.length_map; exact Hn.
+    - eapply mv_record_params; eassumption.
+    - exact HU.
+    - exact HUσ.
+    - exact Hr2.
+  Qed.
+
+  Lemma mv_tuple_cong_case : forall T T' fs fs' p Ns Rd i Γ Δ σ,
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_tuple T fs)[σ0] : T[σ0]) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] ≈ T'[σ0] : Typeω@i[σ0]) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ T[σ0] ≈ (apps_exp (a_record p) Ns)[σ0] : Typeω@i[σ0]) ->
+      record_lookup Θ Ξ p = Some Rd ->
+      List.length Ns = List.length (record_params Rd) ->
+      (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params Rd) Id Ns) k = Some A ->
+         forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ N[σ0] : A[σ0]) ->
+      List.map fst fs = List.map fst (record_fields Rd) ->
+      List.map fst fs' = List.map fst fs ->
+      (forall k f M M' U, List.nth_error fs k = Some (f, M) -> List.nth_error fs' k = Some (f, M') ->
+         List.nth_error (record_fields Rd) k = Some (f, U) ->
+         forall Δ0 σ0, R Δ0 σ0 Γ ->
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σ0] ≈ M'[σ0] : (U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))])[σ0]) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_tuple T' fs')[σ0] : T[σ0]) ->
+      R Δ σ Γ ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ (a_tuple T fs)[σ] ≈ (a_tuple T' fs')[σ] : T[σ].
+  Proof.
+    intros * IH1 IHT IHT' Hl Hn IHN Hnames0 Hnames IHf IH2 HR.
+    pose proof (mv_record_closed _ _ _ _ _ HR Hl) as HRd.
+    eapply wf_exp_eq_tuple_cong with (Ns := List.map (fun N => N[σ]) Ns).
+    - exact (IH1 _ _ HR).
+    - exact (IHT _ _ HR).
+    - pose proof (IHT' _ _ HR) as H; rewrite apps_exp_sub in H; exact H.
+    - exact Hl.
+    - rewrite List.length_map; exact Hn.
+    - eapply mv_record_params; eassumption.
+    - rewrite tuple_names_sub; exact Hnames0.
+    - cbn [exp_sub]; rewrite !tuple_names_sub; exact Hnames.
+    - intros k f M0 M0' U HM0 HM0' HU.
+      apply nth_error_map_inv in HM0 as ([f0 M] & HM & [= -> ->]).
+      apply nth_error_map_inv in HM0' as ([f1 M'] & HM' & [= -> ->]); cbn.
+      pose proof (IHf _ _ _ _ _ HM HM' HU _ _ HR) as H.
+      rewrite (record_field_sub _ _ _ _ _ _ _ HRd HU Hn) in H.
+      + rewrite tuple_values_sub in H; exact H.
+      + rewrite List.length_firstn, List.length_map; pose proof (nth_error_lt_length _ _ _ HM); lia.
+    - exact (IH2 _ _ HR).
+  Qed.
+
+  Lemma mv_field_beta_case : forall T fs f M A Γ Δ σ,
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_tuple T fs)[σ0] : T[σ0]) ->
+      field_lookup fs f = Some M ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_proj f (a_tuple T fs))[σ0] : A[σ0]) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σ0] : A[σ0]) ->
+      R Δ σ Γ ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ (a_proj f (a_tuple T fs))[σ] ≈ M[σ] : A[σ].
+  Proof.
+    intros * IH1 Hk IH2 IH3 HR.
+    eapply wf_exp_eq_field_beta; [ exact (IH1 _ _ HR) | | exact (IH2 _ _ HR) | exact (IH3 _ _ HR) ].
+    cbn [exp_sub]; rewrite (field_lookup_map (fun N => N[σ])), Hk; reflexivity.
+  Qed.
+
+  Lemma mv_record_eta_case : forall M p Ns Rd Γ Δ σ,
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σ0] : (apps_exp (a_record p) Ns)[σ0]) ->
+      record_lookup Θ Ξ p = Some Rd ->
+      List.length Ns = List.length (record_params Rd) ->
+      (forall Δ0 σ0, R Δ0 σ0 Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_tuple (apps_exp (a_record p) Ns) (record_eta_fields Rd M))[σ0]
+                                       : (apps_exp (a_record p) Ns)[σ0]) ->
+      R Δ σ Γ ->
+      Θ ⍮ Ξ ⍮ Δ ⊢ M[σ] ≈ (a_tuple (apps_exp (a_record p) Ns) (record_eta_fields Rd M))[σ] : (apps_exp (a_record p) Ns)[σ].
+  Proof.
+    intros * IHM Hl Hn IHt HR.
+    pose proof (IHM _ _ HR) as H1; pose proof (IHt _ _ HR) as H2.
+    cbn [exp_sub] in H2 |- *; rewrite apps_exp_sub in H1, H2 |- *; rewrite record_eta_fields_sub in H2 |- *.
+    eapply wf_exp_eq_record_eta; [ exact H1 | exact Hl | rewrite List.length_map; exact Hn | exact H2 ].
+  Qed.
+End RecordMove.
+
 (** A weakening, seen as the substitution it is. *)
 Definition wk_as_sub (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (σ : sub) (Γ : ctx) : Prop :=
   exists φ, sb_eq σ (ι φ) /\ Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ.
@@ -1231,6 +1500,10 @@ Qed.
 
 Lemma wk_as_sub_of : forall Θ Ξ Δ φ Γ, Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ -> wk_as_sub Θ Ξ Δ (ι φ) Γ.
 Proof. intros * Hφ; exists φ; split; [ reflexivity | exact Hφ ]. Qed.
+
+(** The identity is a weakening. *)
+Lemma wk_as_sub_id : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> wk_as_sub Θ Ξ Γ Id Γ.
+Proof. intros * HΓ; exists wk_id; split; [ symmetry; exact sb_of_wk_id | apply wf_wk_id; exact HΓ ]. Qed.
 
 (** An induction hypothesis about weakenings, read about [wk_as_sub]. *)
 Lemma exp_sub_wk_as : forall M σ φ, sb_eq σ (ι φ) -> M[σ] = M[φ]ʷ.
@@ -1259,8 +1532,16 @@ Ltac wk_elim_case :=
   first [ eapply (mv_elim_case _ _ _ (wk_as_sub_dom _ _) (wk_as_sub_ext _ _))
         | eapply (mv_elim_cong_case _ _ _ (wk_as_sub_dom _ _) (wk_as_sub_ext _ _))
         | eapply (mv_elim_iota_case _ _ _ (wk_as_sub_dom _ _) (wk_as_sub_ext _ _))
-        | eapply (mv_elim_view_case _ _ _ (wk_as_sub_dom _ _) (wk_as_sub_ext _ _)) ];
-  first [ eassumption | apply wk_as_sub_of; eassumption | wk_as_sub_ih ].
+        | eapply (mv_elim_view_case _ _ _ (wk_as_sub_dom _ _) (wk_as_sub_ext _ _))
+        | eapply (mv_record_case _ _ _ (wk_as_sub_dom _ _))
+        | eapply (mv_record_cong_case _ _ _ (wk_as_sub_dom _ _))
+        | eapply (mv_tuple_case _ _ _ (wk_as_sub_dom _ _))
+        | eapply (mv_proj_case _ _ _ (wk_as_sub_dom _ _))
+        | eapply (mv_proj_cong_case _ _ _ (wk_as_sub_dom _ _))
+        | eapply (mv_tuple_cong_case _ _ _ (wk_as_sub_dom _ _))
+        | eapply (mv_field_beta_case _ _ (wk_as_sub _ _))
+        | eapply (mv_record_eta_case _ _ (wk_as_sub _ _)) ];
+  first [ eassumption | apply wk_as_sub_of; eassumption | exact (wk_as_sub_id _ _) | wk_as_sub_ih ].
 
 
 
@@ -1356,9 +1637,9 @@ Proof.
   (* the definitions, each filled in, then substituted *)
   all: try (intros y Φ0w b pv Aw Mw Φ0w' b' pv' Aw' Mw' σw σw' Hp Hp' Hfw Hfw';
     destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & HE);
-    destruct E as [b0 pv0 A [M |] | | | ]; cbn in HE; try discriminate; injection HE as ? ? ? ?; subst;
+    destruct E as [b0 pv0 A [M |] | | | | ]; cbn in HE; try discriminate; injection HE as ? ? ? ?; subst;
     destruct (gm_prefix_sub_inv _ _ _ _ _ Hp') as (Φ0' & E' & Hp0' & -> & HE');
-    destruct E' as [b0' pv0' A' [M' |] | | | ]; cbn in HE'; try discriminate; injection HE' as ? ? ? ?; subst;
+    destruct E' as [b0' pv0' A' [M' |] | | | | ]; cbn in HE'; try discriminate; injection HE' as ? ? ? ?; subst;
     destruct (gm_fill Φ0) as [σf |] eqn:Hf0; [| apply (proj2 (gm_fill_sub_none Φ0 (sb_qn (length Δu) σ))) in Hf0; congruence ];
     destruct (gm_fill Φ0') as [σf' |] eqn:Hf0'; [| apply (proj2 (gm_fill_sub_none Φ0' (sb_qn (length Δu') σ'))) in Hf0'; congruence ];
     destruct (gm_fill_sub Φ0 (length Δu) σ σf Hf0) as (τ & Hτ & Heq); rewrite Hτ in Hfw; injection Hfw as <-;
@@ -1373,9 +1654,9 @@ Proof.
   - (* the modules, each filled in, then substituted *)
     intros y Φ0w pv Uw Φ0w' pv' Uw' σw σw' Hp Hp' Hfw Hfw'.
     destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & HE).
-    destruct E as [| pv0 U | | ]; cbn in HE; try discriminate; injection HE as ? ?; subst.
+    destruct E as [| pv0 U | | | ]; cbn in HE; try discriminate; injection HE as ? ?; subst.
     destruct (gm_prefix_sub_inv _ _ _ _ _ Hp') as (Φ0' & E' & Hp0' & -> & HE').
-    destruct E' as [| pv0' U' | | ]; cbn in HE'; try discriminate; injection HE' as ? ?; subst.
+    destruct E' as [| pv0' U' | | | ]; cbn in HE'; try discriminate; injection HE' as ? ?; subst.
     destruct (gm_fill Φ0) as [σf |] eqn:Hf0; [| apply (proj2 (gm_fill_sub_none Φ0 (sb_qn (length Δu) σ))) in Hf0; congruence ].
     destruct (gm_fill Φ0') as [σf' |] eqn:Hf0'; [| apply (proj2 (gm_fill_sub_none Φ0' (sb_qn (length Δu') σ'))) in Hf0'; congruence ].
     destruct (gm_fill_sub Φ0 (length Δu) σ σf Hf0) as (τ & Hτ & Heq); rewrite Hτ in Hfw; injection Hfw as <-.
@@ -1385,9 +1666,9 @@ Proof.
   - (* the modules of the right side, each filled in, then substituted *)
     intros y Φ0w pv Uw Φ0w' pv' Uw' σw σw' Hp Hp' Hfw Hfw'.
     destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & HE).
-    destruct E as [| pv0 U | | ]; cbn in HE; try discriminate; injection HE as ? ?; subst.
+    destruct E as [| pv0 U | | | ]; cbn in HE; try discriminate; injection HE as ? ?; subst.
     destruct (gm_prefix_sub_inv _ _ _ _ _ Hp') as (Φ0' & E' & Hp0' & -> & HE').
-    destruct E' as [| pv0' U' | | ]; cbn in HE'; try discriminate; injection HE' as ? ?; subst.
+    destruct E' as [| pv0' U' | | | ]; cbn in HE'; try discriminate; injection HE' as ? ?; subst.
     destruct (gm_fill Φ0) as [σf |] eqn:Hf0; [| apply (proj2 (gm_fill_sub_none Φ0 (sb_qn (length Δu) σ))) in Hf0; congruence ].
     destruct (gm_fill Φ0') as [σf' |] eqn:Hf0'; [| apply (proj2 (gm_fill_sub_none Φ0' (sb_qn (length Δu') σ'))) in Hf0'; congruence ].
     destruct (gm_fill_sub Φ0' (length Δu') σ' σf' Hf0') as (τ' & Hτ' & Heq'); rewrite Hτ' in Hfw'; injection Hfw' as <-.
@@ -1988,6 +2269,22 @@ Proof.
                    intros; repeat match goal with H1 : List.nth_error ?l ?k = Some _, H2 : List.nth_error ?l ?k = Some _ |- _ =>
                                              rewrite H1 in H2; injection H2 as <- end;
                    eauto using List.nth_error_In ].
+  (** A record type former: its own congruence. *)
+  all: try solve [ eapply wf_exp_eq_record_cong; eassumption ].
+  (** A tuple: its fields, each equal to itself; [T ≈ T] through the record
+      type it is equal to. *)
+  all: try match goal with
+         | H : _ ⍮ _ ⍮ _ ⊢ ?T ≈ apps_exp (a_record _) _ : _ |- _ ⍮ _ ⍮ _ ⊢ a_tuple ?T ?fs ≈ a_tuple ?T ?fs : ?T =>
+             let Ht := fresh "Ht" in
+             assert (Ht : Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple T fs : T) by (eapply wf_tuple; eassumption);
+             eapply wf_exp_eq_tuple_cong;
+             [ exact Ht | eapply wf_exp_eq_trans; [ exact H | eapply wf_exp_eq_sym; exact H ] | exact H
+             | eassumption | eassumption | eassumption | eassumption | reflexivity | | exact Ht ];
+             let HM := fresh "HM" in let HM' := fresh "HM'" in
+             intros * HM HM' ?; rewrite HM in HM'; injection HM' as <-; eauto
+         end.
+  (** A projection: its own congruence. *)
+  all: try solve [ eapply wf_exp_eq_proj_cong; try eassumption; eapply wf_proj; eassumption ].
   all: first [ eapply wf_exp_eq_let_mod_cong; mauto 3
              | (* a member: its own congruence *)
                eapply wf_exp_eq_mem_cong;
@@ -2382,7 +2679,7 @@ Proof. induction Ns as [| N Ns IH]; intros; cbn; [ reflexivity | rewrite IH; ref
 
 Lemma ds_unit_slot_root : forall Γ R, me_slot_root Γ (ds_unit R).
 Proof.
-  intros Γ [A om | Δ Φ | [| e Θ] p T Φ Ns | Θ p Ns]; cbn; try exact I.
+  intros Γ [A om | Δ Φ | [| e Θ] p T Φ Ns | Θ p Ns | Θ p Ns]; cbn; try exact I.
   apply me_apps_slot_root; eapply mod_qname_slot_root, qname_mod_qname.
 Qed.
 
@@ -2429,8 +2726,16 @@ Ltac sub_elim_case :=
   first [ eapply (mv_elim_case _ _ _ (sub_as_sub_dom _ _) (sub_as_sub_ext _ _))
         | eapply (mv_elim_cong_case _ _ _ (sub_as_sub_dom _ _) (sub_as_sub_ext _ _))
         | eapply (mv_elim_iota_case _ _ _ (sub_as_sub_dom _ _) (sub_as_sub_ext _ _))
-        | eapply (mv_elim_view_case _ _ _ (sub_as_sub_dom _ _) (sub_as_sub_ext _ _)) ];
-  unfold sub_as_sub; eassumption.
+        | eapply (mv_elim_view_case _ _ _ (sub_as_sub_dom _ _) (sub_as_sub_ext _ _))
+        | eapply (mv_record_case _ _ _ (sub_as_sub_dom _ _))
+        | eapply (mv_record_cong_case _ _ _ (sub_as_sub_dom _ _))
+        | eapply (mv_tuple_case _ _ _ (sub_as_sub_dom _ _))
+        | eapply (mv_proj_case _ _ _ (sub_as_sub_dom _ _))
+        | eapply (mv_proj_cong_case _ _ _ (sub_as_sub_dom _ _))
+        | eapply (mv_tuple_cong_case _ _ _ (sub_as_sub_dom _ _))
+        | eapply (mv_field_beta_case _ _ (sub_as_sub _ _))
+        | eapply (mv_record_eta_case _ _ (sub_as_sub _ _)) ];
+  unfold sub_as_sub; first [ eassumption | exact (wf_sub_id _ _) ].
 
 (** ** Substitution Preserves the Judgments ([sub_preserves_wf]) *)
 
@@ -3483,11 +3788,14 @@ Qed.
     weakening carried by [ctx_lookup] is exactly what makes this so. *)
 
 (** What the global context guarantees about the parameters in scope: popping a
-    frame leaves a well-formed context, whose parameters are well formed. *)
+    frame leaves a well-formed context, whose parameters are well formed.  The
+    parameters checked one frame out are those of [frame_params]: all of them
+    but a record module's value, which is typed inside the record's frame
+    ([wf_gs_tele] gives the whole telescope there). *)
 
-Lemma wf_gmod_ctx : forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ.
+Lemma wf_gmod_ctx : forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> ⊢ Θ ⍮ Ξ ⍮ frame_params K Δ ++ gs_tele Ξ.
 Proof.
-  induction 1; assumption.
+  induction 1; cbn [frame_params List.tl]; assumption.
 Qed.
 
 Lemma ctx_wf_gctx : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊢ᵍ Θ ⍮ Ξ.

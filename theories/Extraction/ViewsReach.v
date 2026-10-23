@@ -354,7 +354,9 @@ Section Fixed_GCtx.
   (** A member of a group at its parameters *)
   | tn_indty : forall p k Ms, type_nf (nf_indty p k Ms)
   (** A neutral *)
-  | tn_neut : forall u, type_nf (nf_neut u).
+  | tn_neut : forall u, type_nf (nf_neut u)
+  (** A record type at its parameters *)
+  | tn_record : forall p Ms, type_nf (nf_record p Ms).
 
   Lemma read_typ_type_nf : forall s m W, Rtyp m in gc_deps ⍮ gc_stack ⍮ s ↘ W -> type_nf W.
   Proof. induction 1; constructor; assumption. Qed.
@@ -366,6 +368,7 @@ Section Fixed_GCtx.
     - injection H as <- <-; do 2 eexists; eauto.
     - destruct (nfs_to_exps _) using List.rev_ind; cbn in H; [ discriminate | rewrite apps_exp_app in H; discriminate ].
     - exfalso; exact (proj1 (ne_head_not_ind _) _ _ H).
+    - destruct (nfs_to_exps _) using List.rev_ind; cbn in H; [ discriminate | rewrite apps_exp_app in H; discriminate ].
   Qed.
 
   Lemma nf_pis_end : forall Bs E W, type_nf W -> nf_to_exp W = pis Bs E -> exists WE, type_nf WE /\ nf_to_exp WE = E.
@@ -380,6 +383,7 @@ Section Fixed_GCtx.
     intros W p k HW H; destruct HW; cbn in H; try discriminate.
     - rewrite app_head_apps in H; cbn in H; injection H as <- <-; eexists; reflexivity.
     - exfalso; exact (proj2 (ne_head_not_ind _) _ _ H).
+    - rewrite app_head_apps in H; cbn in H; discriminate.
   Qed.
 
   (** The end of a typed chain of [Π]s is a type under its domains. *)

@@ -54,6 +54,9 @@ Fixpoint exp_fresh (k : nat) (M : exp) {struct M} : Prop :=
   | a_var x => x <> k
   | a_let b B => bnd_fresh k b /\ exp_fresh (S k) B
   | a_mem H _ => modexp_fresh k H
+  | a_record _ => True
+  | a_tuple T fs => exp_fresh k T /\ all_list (fun f => exp_fresh k (snd f)) fs
+  | a_proj _ M => exp_fresh k M
   end
 with modexp_fresh (k : nat) (H : modexp) {struct H} : Prop :=
   match H with
@@ -95,6 +98,7 @@ with gentry_fresh (k : nat) (E : gentry) {struct E} : Prop :=
   | ge_mod _ U => gunit_fresh k U
   | ge_ind _ _ _ D Φ => gmod_fresh (ind_nu D + k) Φ
   | ge_ind_alias _ _ _ _ _ _ => True
+  | ge_record _ _ R Φ => gmod_fresh (S (List.length (record_params R)) + k) Φ
   end
 with centry_fresh (k : nat) (e : centry) {struct e} : Prop :=
   match e with
@@ -173,6 +177,7 @@ Proof.
   (** The blocks of an eliminator, and the telescope of a unit: their own
       inductions, over the [Forall] the principle carries. *)
   all: try ups_eq_case ltac:(fun H => eapply H; eassumption).
+  all: try fields_eq_case ltac:(fun H => eapply H; eassumption).
   1: blocks_eq_case ltac:(fun H => eapply H; [ eassumption | auto ]).
   match goal with
   | HF : List.Forall _ _ |- _ => clear - HF H1 H2; induction HF; cbn in *; destruct_conjs; f_equal; eauto
@@ -192,6 +197,7 @@ Proof.
   syn_mut_ind; fresh_case; rewrite ?gm_binders_wk, ?length_tele_wk; eauto;
     try solve [ match goal with H : forall A, Some ?X = Some A -> _ |- _ => eapply (H X); eauto end ].
   all: try ups_case ltac:(fun H => eapply H; eassumption).
+  all: try fields_case ltac:(fun H => eapply H; eassumption).
   1: blocks_case ltac:(fun H => eapply H; auto).
   match goal with
   | HF : List.Forall _ _ |- _ =>
@@ -226,6 +232,7 @@ Proof.
     try solve [ match goal with H : wk_reflects _ _ _ |- _ => intros Heq; apply H in Heq; contradiction end
               | match goal with H : forall A, Some ?X = Some A -> _ |- _ => eapply (H X); eauto end ].
   all: try ups_case ltac:(fun H => eapply H; eassumption).
+  all: try fields_case ltac:(fun H => eapply H; eassumption).
   - blocks_case ltac:(fun H => eapply H; [ eassumption | apply wk_reflects_qn; assumption ]).
   - match goal with
     | HF : List.Forall _ ?Δ, Hf : _ ?Δ, Hw : wk_reflects _ _ _ |- _ =>
@@ -325,7 +332,10 @@ Section Nf_Induction.
     (f_nbrs_nil : P3 nbrs_nil)
     (f_nbrs_cons : forall c n B, P B -> forall Bs, P3 Bs -> P3 (nbrs_cons c n B Bs))
     (f_nblocks_nil : P4 nblocks_nil)
-    (f_nblocks_cons : forall nm A, P A -> forall Bs, P3 Bs -> forall Bks, P4 Bks -> P4 (nblocks_cons nm A Bs Bks)).
+    (f_nblocks_cons : forall nm A, P A -> forall Bs, P3 Bs -> forall Bks, P4 Bks -> P4 (nblocks_cons nm A Bs Bks))
+    (f_record : forall p Ms, P2 Ms -> P (nf_record p Ms))
+    (f_tuple : forall p Ms, P2 Ms -> forall fs Ns, P2 Ns -> P (nf_tuple p Ms fs Ns))
+    (f_proj : forall f u, P0 u -> P0 (ne_proj f u)).
 
   (** The mutual induction principle over normal forms and their sorts. *)
   Fixpoint nf_mind (W : nf) : P W :=
@@ -342,6 +352,8 @@ Section Nf_Induction.
     | nf_indty p k Ms => f_indty p k Ms (nfs_mind Ms)
     | nf_con p k c Ms => f_con p k c Ms (nfs_mind Ms)
     | nf_neut u => f_neut u (ne_mind u)
+    | nf_record p Ms => f_record p Ms (nfs_mind Ms)
+    | nf_tuple p Ms fs Ns => f_tuple p Ms (nfs_mind Ms) fs Ns (nfs_mind Ns)
     end
   with ne_mind (u : ne) : P0 u :=
     match u with
@@ -350,6 +362,7 @@ Section Nf_Induction.
     | ne_app u W => f_app u (ne_mind u) W (nf_mind W)
     | ne_var x => f_var x
     | ne_glob p => f_glob p
+    | ne_proj f u => f_proj f u (ne_mind u)
     end
   with la_mind (xs : lvl_atoms) : P1 xs :=
     match xs with
@@ -398,6 +411,8 @@ Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
   | nf_pi A B | nf_fn A B => nf_fresh k A /\ nf_fresh (S k) B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => nfs_fresh k Ms
   | nf_neut u => ne_fresh k u
+  | nf_record _ Ms => nfs_fresh k Ms
+  | nf_tuple _ Ms _ Ns => nfs_fresh k Ms /\ nfs_fresh k Ns
   end
 with ne_fresh (k : nat) (u : ne) {struct u} : Prop :=
   match u with
@@ -406,6 +421,7 @@ with ne_fresh (k : nat) (u : ne) {struct u} : Prop :=
   | ne_app u W => ne_fresh k u /\ nf_fresh k W
   | ne_var x => x <> k
   | ne_glob _ => True
+  | ne_proj _ u => ne_fresh k u
   end
 with la_fresh (k : nat) (xs : lvl_atoms) {struct xs} : Prop :=
   match xs with
@@ -445,6 +461,8 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
   | nf_indty p j Ms => nf_indty p j (nfs_unwk k Ms)
   | nf_con p j c Ms => nf_con p j c (nfs_unwk k Ms)
   | nf_neut u => nf_neut (ne_unwk k u)
+  | nf_record p Ms => nf_record p (nfs_unwk k Ms)
+  | nf_tuple p Ms fs Ns => nf_tuple p (nfs_unwk k Ms) fs (nfs_unwk k Ns)
   end
 with ne_unwk (k : nat) (u : ne) {struct u} : ne :=
   match u with
@@ -453,6 +471,7 @@ with ne_unwk (k : nat) (u : ne) {struct u} : ne :=
   | ne_app u W => ne_app (ne_unwk k u) (nf_unwk k W)
   | ne_var x => ne_var (unwk k x)
   | ne_glob p => ne_glob p
+  | ne_proj f u => ne_proj f (ne_unwk k u)
   end
 with la_unwk (k : nat) (xs : lvl_atoms) {struct xs} : lvl_atoms :=
   match xs with
@@ -559,6 +578,20 @@ Proof. intros [fp ch] φ; apply me_mems_wk; reflexivity. Qed.
 Lemma qname_mod_fresh : forall p k, modexp_fresh k (qname_mod p).
 Proof. intros [fp ch] k; apply me_mems_fresh; exact I. Qed.
 
+(** The fields of a tuple read back from its names and values: each as
+    its value. *)
+Lemma all_list_combine : forall (P : exp -> Prop) (fs : list String.string) Ms,
+    List.Forall P Ms -> all_list (fun f => P (snd f)) (List.combine fs Ms).
+Proof.
+  intros P; induction fs as [| f fs IH]; intros [| M Ms] HF; cbn; try exact I.
+  inversion HF; subst; split; [ assumption | apply IH; assumption ].
+Qed.
+
+(** Mapping the values of [combine] is mapping the second components. *)
+Lemma combine_map_r : forall {A B C : Type} (g : B -> C) (xs : list A) (ys : list B),
+    List.combine xs (List.map g ys) = List.map (fun p => (fst p, g (snd p))) (List.combine xs ys).
+Proof. induction xs as [| x xs IH]; intros [| y ys]; cbn; f_equal; auto. Qed.
+
 (** Freshness of a normal form is freshness of the term it denotes, and
     un-weakening agrees with the renaming on terms. *)
 Lemma nf_fresh_to_exp :
@@ -580,7 +613,8 @@ Proof.
               | apply apps_exp_fresh; [ exact I | eauto ]
               | apply exp_fresh_elim; repeat split; eauto using qname_mod_fresh
               | apply exp_fresh_elim; split; [ apply (proj2 (all_list_Forall _ _)); eauto
-                                                   | unfold blocks_fresh; repeat split; eauto using qname_mod_fresh ] ].
+                                                   | unfold blocks_fresh; repeat split; eauto using qname_mod_fresh ]
+              | split; [ apply apps_exp_fresh; [ exact I | eauto ] | apply all_list_combine; eauto ] ].
   (** A global never mentions a local variable. *)
   apply qname_term_fresh.
 Qed.
@@ -602,6 +636,12 @@ Lemma nf_unwk_to_exp :
 Proof.
   apply nf_mut_ind; intros; cbn; rewrite ?apps_exp_wk;
     try reflexivity;
+    (** A tuple: its values through [combine]. *)
+    try solve [ match goal with
+                | HM : forall k, nfs_to_exps (nfs_unwk k ?Ms) = _, HN : forall k, nfs_to_exps (nfs_unwk k ?Ns) = _
+                  |- a_tuple _ (List.combine _ (nfs_to_exps (nfs_unwk _ ?Ns))) = _ =>
+                    cbn [exp_wk]; rewrite HM, HN, combine_map_r; reflexivity
+                end ];
     try solve [ (** A small universe and a level carry the same atom list, so
                     both go through [lvl_exp_of_wk]. *)
                 f_equal; rewrite lvl_exp_of_wk; f_equal; eauto
@@ -635,6 +675,8 @@ Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
   | nf_pi A B | nf_fn A B => nf_freshb k A && nf_freshb (S k) B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => nfs_freshb k Ms
   | nf_neut u => ne_freshb k u
+  | nf_record _ Ms => nfs_freshb k Ms
+  | nf_tuple _ Ms _ Ns => nfs_freshb k Ms && nfs_freshb k Ns
   end
 with ne_freshb (k : nat) (u : ne) {struct u} : bool :=
   match u with
@@ -643,6 +685,7 @@ with ne_freshb (k : nat) (u : ne) {struct u} : bool :=
   | ne_app u W => ne_freshb k u && nf_freshb k W
   | ne_var x => negb (Nat.eqb x k)
   | ne_glob _ => true
+  | ne_proj _ u => ne_freshb k u
   end
 with la_freshb (k : nat) (xs : lvl_atoms) {struct xs} : bool :=
   match xs with

@@ -38,6 +38,8 @@ Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   | nf_indty p k Ms => nf_indty p k (nfs_wk φ Ms)
   | nf_con p k c Ms => nf_con p k c (nfs_wk φ Ms)
   | nf_neut u => nf_neut (ne_wk φ u)
+  | nf_record p Ms => nf_record p (nfs_wk φ Ms)
+  | nf_tuple p Ms fs Ns => nf_tuple p (nfs_wk φ Ms) fs (nfs_wk φ Ns)
   end
 with ne_wk (φ : wk) (u : ne) {struct u} : ne :=
   match u with
@@ -46,6 +48,7 @@ with ne_wk (φ : wk) (u : ne) {struct u} : ne :=
   | ne_app u W => ne_app (ne_wk φ u) (nf_wk φ W)
   | ne_var x => ne_var (φ x)
   | ne_glob p => ne_glob p
+  | ne_proj f u => ne_proj f (ne_wk φ u)
   end
 with la_wk (φ : wk) (xs : lvl_atoms) {struct xs} : lvl_atoms :=
   match xs with
@@ -95,6 +98,12 @@ Lemma nf_wk_to_exp :
 Proof.
   apply nf_mut_ind; intros; cbn; rewrite ?apps_exp_wk;
     try reflexivity;
+    (** A tuple: its values through [combine]. *)
+    try solve [ match goal with
+                | HM : forall φ, nfs_to_exps (nfs_wk φ ?Ms) = _, HN : forall φ, nfs_to_exps (nfs_wk φ ?Ns) = _
+                  |- a_tuple _ (List.combine _ (nfs_to_exps (nfs_wk _ ?Ns))) = _ =>
+                    cbn [exp_wk]; rewrite HM, HN, combine_map_r; reflexivity
+                end ];
     try solve [ f_equal; rewrite lvl_exp_of_wk; f_equal; eauto
               | rewrite lvl_exp_of_wk; f_equal; eauto
               | symmetry; apply qname_term_wk

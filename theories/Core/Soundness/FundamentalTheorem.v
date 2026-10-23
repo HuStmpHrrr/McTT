@@ -31,7 +31,7 @@ From Mctt.Core.Soundness Require Import LevelCases.
 From Mctt.Core.Soundness Require Import ContextCases VariableCases UnitCases
   SubtypingCases UniverseCases FunctionCases LetCases TrueFalseCases.
 From Mctt.Core.Soundness.Inductives Require Import Con.
-From Mctt.Core.Soundness Require Import IndCases ModuleCases.
+From Mctt.Core.Soundness Require Import IndCases ModuleCases RecordCases.
 From Mctt.Core.Soundness.Global Require Import Embedding.
 From Mctt.Core.Completeness.Inductives Require Con.
 Require Import Mctt.Core.Soundness.Inductives.Elim.
@@ -61,7 +61,7 @@ Proof.
       eapply glu_typ | eapply glu_univ | eapply glu_level | eapply glu_llit | eapply glu_succl | eapply glu_maxl
     | eapply glu_True | eapply glu_true | eapply glu_False | eapply glu_exfalso | eapply glu_ind | eapply glu_con
     | eapply glu_elim | eapply glu_pi | eapply glu_fn | eapply glu_app | eapply glu_let | eapply glu_let_mod
-    | eapply glu_mem | eapply glu_vlookup | eapply glu_exp_subtyp
+    | eapply glu_mem | eapply glu_vlookup | eapply glu_record | eapply glu_tuple | eapply glu_proj | eapply glu_exp_subtyp
     | (** term equality *)
       eapply glu_exp_eq_typ_cong | eapply glu_exp_eq_univ_cong | eapply glu_exp_eq_level_cong
     | eapply glu_exp_eq_llit_cong | eapply glu_exp_eq_succl_cong | eapply glu_exp_eq_maxl_cong
@@ -76,7 +76,10 @@ Proof.
     | eapply glu_exp_eq_elim_iota | eapply glu_exp_eq_elim_view | eapply glu_exp_eq_con_view
     | eapply glu_exp_eq_let_zeta | eapply glu_exp_eq_let_mod_zeta
     | eapply glu_exp_eq_mem_delta | eapply glu_exp_eq_var_delta | eapply glu_exp_eq_fn_eta
-    | eapply glu_exp_eq_true_eta | eapply glu_exp_eq_subtyp | eapply glu_exp_eq_sym | eapply glu_exp_eq_trans
+    | eapply glu_exp_eq_true_eta
+    | eapply glu_exp_eq_record_cong | eapply glu_exp_eq_tuple_cong | eapply glu_exp_eq_proj_cong
+    | eapply glu_exp_eq_field_beta | eapply glu_exp_eq_record_eta
+    | eapply glu_exp_eq_subtyp | eapply glu_exp_eq_sym | eapply glu_exp_eq_trans
     | (** subtyping *)
       eapply glu_subtyp_refl | eapply glu_subtyp_trans | eapply glu_subtyp_univ | eapply glu_subtyp_suniv
     | eapply glu_subtyp_level | eapply glu_subtyp_small_large | eapply glu_subtyp_pi
@@ -106,8 +109,8 @@ Proof. intros * Hμ HM; exact (proj1 (proj2 soundness_fundamental) _ _ _ _ _ HM 
 (** ** Each entry is valid where it is checked *)
 
 Lemma glu_entry_def : forall Θ Ξ T A M b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ T ⊢ M : A -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
-    gds_valid glu_entry glu_mod_tele glu_ind_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry Θ Ξ Θ2 Ξ2 Ξ ->
+    Θ ⍮ Ξ ⍮ T ⊢ M : A -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    gds_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Ξ ->
     forall Θs Ξs, glu_entry Θs Ξs Θ2 Ξ2 T (ge_def b pv (ctx_pi T A) (Some (ctx_fn T M))).
 Proof.
   intros * HM _ He HΘ HΞ Θs Ξs.
@@ -118,7 +121,7 @@ Proof.
 Qed.
 
 Lemma glu_entry_ax : forall Θ Ξ A i b pv Θ2 Ξ2 Θs Ξs,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     glu_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
 Proof.
   intros * HA HG He _.
@@ -129,7 +132,7 @@ Qed.
 
 Lemma glu_entry_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 Θs Ξs,
     tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    GoodV glu_entry glu_mod_tele glu_ind_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    GoodV glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     glu_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof. intros; exact I. Qed.
 
@@ -139,19 +142,19 @@ Lemma glu_entry_indalias : forall Θ Ξ pv Δ pm p k Ns D Mk Θ2 Ξ2 Θs Ξs,
     List.length Ns <= ind_nu D ->
     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ apps (a_ind p k) Ns : ind_ty_at D Mk Ns ->
     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ me_apps (qname_mod pm) Ns ≈ me_apps (qname_mod pm) Ns ->
-    GoodV glu_entry glu_mod_tele glu_ind_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    GoodV glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     glu_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_ind_alias pv (Δ ++ gs_tele Ξ) pm p k Ns).
 Proof. intros; exact I. Qed.
 
 Lemma glu_mod_tele_nil : forall Θ Ξ Δ Θ2 Ξ2,
-    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
     glu_mod_tele Θ2 Ξ2 (Δ ++ gs_tele Ξ).
 Proof. intros; exact I. Qed.
 
 (** A declaration typed at the source glues at the target: its judgments,
     glued. *)
 Lemma glu_entry_ind : forall Θ Ξ D Θ2 Ξ2,
-    decl_typed Θ Ξ D -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+    decl_typed Θ Ξ D -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
     glu_ind_decl_entry Θ2 Ξ2 D /\ glu_mod_tele Θ2 Ξ2 (ind_uparams D).
 Proof.
   intros * Hdt HG He; split; [| exact I ]; unfold glu_ind_decl_entry.
@@ -219,7 +222,7 @@ Qed.
 Theorem glu_emb_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> glu_emb Θ Ξ Θ Ξ.
 Proof.
   intros * Hg; apply glu_emb_good; [ exact Hg | | apply Embx_refl; exact Hg ].
-  exact (global_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_entry_def glu_entry_ax glu_entry_alias glu_entry_indalias glu_mod_tele_nil glu_entry_ind _ _ Hg).
+  exact (global_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry glu_entry_def glu_entry_ax glu_entry_alias glu_entry_indalias glu_mod_tele_nil glu_entry_ind ltac:(intros; exact I) ltac:(intros; exact I) _ _ Hg).
 Qed.
 
 (** ** The fundamental theorem at the identity embedding *)

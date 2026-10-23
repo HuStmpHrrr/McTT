@@ -59,6 +59,9 @@ Ltac destruct_ind_glu_exp :=
   repeat match goal with
     | H : ind_glu_exp_pred _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => destruct H
     | H : ind_glu_exp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ => destruct H
+    (** and of an element of a record type *)
+    | H : record_glu_exp_pred _ _ _ _ _ _ _ _ _ _ _ |- _ => destruct H
+    | H : record_glu_exp _ _ _ _ _ _ _ _ _ _ _ |- _ => destruct H
     end.
 
 Ltac invert_glu_rel1 :=

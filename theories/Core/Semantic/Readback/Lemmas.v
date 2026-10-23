@@ -3,6 +3,7 @@ From Stdlib Require Import Lia PeanoNat Relations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Evaluation.
+From Mctt.Core.Syntactic Require Import Records.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Semantic.Readback Require Import Definitions.
 Import Domain_Notations.
@@ -58,6 +59,8 @@ Import Domain_Notations.
       | H : (_, _) = (_, _) |- _ => injection H; intros; subst; clear H
       | H1 : ind_lookup ?T ?X ?p = Some _, H2 : ind_lookup ?T ?X ?p = Some _ |- _ =>
           rewrite H1 in H2; injection H2 as ?; subst
+      | H1 : record_lookup ?T ?X ?p = Some _, H2 : record_lookup ?T ?X ?p = Some _ |- _ =>
+          rewrite H1 in H2; injection H2 as ?; subst
       | H1 : ind_member ?D ?k = Some _, H2 : ind_member ?D ?k = Some _ |- _ =>
           rewrite H1 in H2; injection H2 as ?; subst
       | H1 : im_ref ?p ?j ?M = _, H2 : im_ref ?p ?j ?M = _ |- _ =>
@@ -99,7 +102,8 @@ Import Domain_Notations.
       (forall s ρ p ups Bks sel i Ms NBks1, Rblks i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks1 ->
          forall NBks2, Rblks i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks2 -> NBks1 = NBks2) /\
       (forall s ρ p ups Bks Mv A Mi r cs Bs Bs1, Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs1 ->
-         forall Bs2, Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs2 -> Bs1 = Bs2).
+         forall Bs2, Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs2 -> Bs1 = Bs2) /\
+      (forall s ρ fl v Fs1, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs1 -> forall Fs2, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs2 -> Fs1 = Fs2).
   Proof.
     intros Θ Ξ; apply read_mut_ind; intros; progressive_inversion; functional_eval_rewrite_clear;
       functional_fresh_rewrite_clear; functional_eval_rewrite_clear.

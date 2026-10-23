@@ -203,6 +203,33 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
   `( Γ ∋ #x : A ->
      nbe_ty_f Γ A B ->
      Γ ⊢a #x ⟹ B )
+(** A record's type former infers the normal form of its closed type. *)
+| ati_record :
+  `( record_lookup gc_deps gc_stack p = Some R ->
+     nbe_ty_f Γ (record_ty R) W ->
+     Γ ⊢a a_record p ⟹ W )
+(** A tuple: its annotation is a type whose normal form is the record
+    type at normal parameters [Rs], and each field is checked at its type
+    at [Rs] and the fields before it; the tuple infers that normal form. *)
+| ati_tuple :
+  `( Γ ⊢a T ⟹ UT ->
+     is_univ_nf UT u ->
+     nbe_ty_f Γ T (nf_record p Rs) ->
+     record_lookup gc_deps gc_stack p = Some R ->
+     List.map fst fs = List.map fst (record_fields R) ->
+     (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
+        Γ ⊢a M ⟸ U[sb_of_list Id (nfs_to_exps Rs ++ List.firstn k (List.map snd fs))]) ->
+     Γ ⊢a a_tuple T fs ⟹ nf_record p Rs )
+(** A projection: the element infers a record type at normal parameters
+    [Rs]; the field is the first one so named, and the projection infers
+    the normal form of its type at [Rs] and the projections before it. *)
+| ati_proj :
+  `( Γ ⊢a M ⟹ nf_record p Rs ->
+     record_lookup gc_deps gc_stack p = Some R ->
+     field_index (record_fields R) f = Some k ->
+     List.nth_error (record_fields R) k = Some (f, U) ->
+     nbe_ty_f Γ U[sb_of_list Id (nfs_to_exps Rs ++ record_pre R k M)] W ->
+     Γ ⊢a a_proj f M ⟹ W )
 where "Γ '⊢a' M ⟹ A" := (alg_type_infer Γ A M) : type_scope
 (** The well-formedness of extensions, units and module expressions, entry by
     entry, part by part. *)
@@ -448,7 +475,19 @@ Inductive user_exp : exp -> Prop :=
 | user_exp_mem :
   `( user_exp (a_mem H x) )
 | user_exp_vlookup :
-  `( user_exp (a_var x) ).
+  `( user_exp (a_var x) )
+(** A record type's former *)
+| user_exp_record :
+  `( user_exp (a_record p) )
+(** A record element: its type and its fields *)
+| user_exp_tuple :
+  `( user_exp T ->
+     (forall fM, List.In fM fs -> user_exp (snd fM)) ->
+     user_exp (a_tuple T fs) )
+(** A field *)
+| user_exp_proj :
+  `( user_exp M ->
+     user_exp (a_proj f M) ).
 
 #[export]
 Hint Constructors user_exp : mctt.
@@ -467,6 +506,8 @@ Proof.
                        | intros b Hb; exact (proj1 (proj2 (HB b Hb)))
                        | intros b br Hb Hbr; exact (proj1 (List.Forall_forall _ _) (proj2 (proj2 (HB b Hb))) br Hbr)
                        | assumption ]
+      | HF : List.Forall _ ?fs |- user_exp (a_tuple _ ?fs) =>
+          rewrite List.Forall_forall in HF; constructor; [ assumption | exact HF ]
       end;
     mauto 3.
 Qed.

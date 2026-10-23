@@ -98,7 +98,8 @@ Proof.
     (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Θ = Θ1 -> Ξ = Ξ1 -> Θ2 ⍮ Ξ2 ⍮ Γ ⊢ᵐ H ≈ H')).
   { apply syntactic_wf_mut_ind; intros; subst;
       repeat match goal with IH : ?x = ?x -> ?x' = ?x' -> _ |- _ => specialize (IH eq_refl eq_refl) end;
-      try solve [ econstructor; eauto using gc_sub_resolve, ind_lookup_gc_sub, ind_mlookup_gc_sub, gc_sub_ind_alias ].
+      try solve [ econstructor; eauto using gc_sub_resolve, ind_lookup_gc_sub, ind_mlookup_gc_sub, gc_sub_ind_alias,
+                                             record_lookup_gc_sub ].
     all: try match goal with
       | Hm : mdenote ?T1 ?X1 _ _ _ |- _ =>
           assert (Hg1 : ⊢ᵍ T1 ⍮ X1)
@@ -113,11 +114,14 @@ Proof.
     all: try solve [
       match goal with Hu : gc_unit ?T1 ?X1 (me_unit ?fp) = Some ?TΦ, HΓ : ⊢ ?T1 ⍮ ?X1 ⍮ ?G |- _ =>
         destruct TΦ; destruct (emb_mdenote _ _ _ _ (ctx_wf_gctx _ _ _ HΓ) He G _ _ (dn_unit _ _ G (me_unit fp) _ _ _ eq_refl Hu)) as (R2 & Hm2 & _);
-        inversion Hm2; subst; [ eapply wf_me_unit; [ eauto | eassumption ] |];
-        (* a unit is the module of no member *)
-        exfalso; match goal with Hk : gs_find_ind _ _ = Some _, Hq : mod_qname _ = Some _ |- _ =>
-          cbn in Hq; injection Hq as <-; destruct (frame_ind_parent _ _ Hg _ _ Hk) as ([? cq] & ? & Hp);
-          unfold qname_in in Hp; cbn in Hp; injection Hp as _ Hc; destruct cq; discriminate end
+        inversion Hm2; subst; [ eapply wf_me_unit; [ eauto | eassumption ] | |];
+        (* a unit is the module of no member and of no record type *)
+        exfalso;
+        [ match goal with Hk : gs_find_ind _ _ = Some _, Hq : mod_qname _ = Some _ |- _ =>
+            cbn in Hq; injection Hq as <-; destruct (frame_ind_parent _ _ Hg _ _ Hk) as ([? cq] & ? & Hp) end
+        | match goal with Hk : gs_find_record _ _ = Some _, Hq : mod_qname _ = Some _ |- _ =>
+            cbn in Hq; injection Hq as <-; destruct (frame_record_parent _ _ Hg _ _ Hk) as ([? cq] & ? & Hp) end ];
+        unfold qname_in in Hp; cbn in Hp; injection Hp as _ Hc; destruct cq; discriminate
       end ].
     all: solve [ econstructor; eauto ]. }
   destruct H as (Hc & He' & Hq & Hst & _ & Hx & Hu & Hm).
@@ -133,6 +137,7 @@ Definition ge_entries (E : gentry) (ip : list String.string) : option gentry :=
   | ge_mod _ U => gm_resolve (gu_mod U) ip
   | ge_ind _ _ _ _ Φ => gm_resolve Φ ip
   | ge_ind_alias _ _ _ _ _ _ => None
+  | ge_record _ _ _ Φ => gm_resolve Φ ip
   end.
 
 (** The entries an entry stores, read below its own path: itself, and
@@ -144,6 +149,7 @@ Definition ge_subentry (E : gentry) (ip : list String.string) : option gentry :=
       match E with
       | ge_mod _ (gu_mk _ (md_body _ Φ)) => gm_entry Φ ip
       | ge_ind _ _ _ _ Φ => gm_entry Φ ip
+      | ge_record _ _ _ Φ => gm_entry Φ ip
       | _ => None
       end
   end.
@@ -151,7 +157,7 @@ Definition ge_subentry (E : gentry) (ip : list String.string) : option gentry :=
 Lemma gm_entry_ext_here : forall Φ x E ip, gm_entry (Φ ⊳ x ↦ E) (x :: ip) = ge_subentry E ip.
 Proof.
   intros; cbn; rewrite String.eqb_refl.
-  destruct ip, E as [| ? [Δ' [? Φ' | E']] | ? ? ? ? Φ' | ? ? ? ? ? ?]; reflexivity.
+  destruct ip, E as [| ? [Δ' [? Φ' | E']] | ? ? ? ? Φ' | ? ? ? ? ? ? | ? ? ? ?]; reflexivity.
 Qed.
 
 Lemma gm_entry_ext_inv : forall Φ x E ip E0,
@@ -183,7 +189,7 @@ Lemma gm_resolve_ext_here : forall Φ x E ip,
     gm_resolve (Φ ⊳ x ↦ E) (x :: ip) = ge_entries E ip.
 Proof.
   intros; cbn; rewrite String.eqb_refl.
-  destruct ip, E as [| ? [Δ' [? Φ' | E']] | ? ? ? ? Φ' | ? ? ? ? ? ?]; cbn; rewrite ?gm_resolve_nil; reflexivity.
+  destruct ip, E as [| ? [Δ' [? Φ' | E']] | ? ? ? ? Φ' | ? ? ? ? ? ? | ? ? ? ?]; cbn; rewrite ?gm_resolve_nil; reflexivity.
 Qed.
 
 Lemma gm_resolve_ext_inv : forall Φ x E ip E0,
@@ -205,6 +211,7 @@ Definition ge_ind_targets (E : gentry) (ip : list String.string) : option ind_al
   | nil, _ => ge_ind_target E
   | _ :: _, ge_mod _ (gu_mk _ (md_body sm Φ)) => gm_ind_target Φ ip
   | _ :: _, ge_ind _ _ _ _ Φ => gm_ind_target Φ ip
+  | _ :: _, ge_record _ _ _ Φ => gm_ind_target Φ ip
   | _, _ => None
   end.
 
@@ -212,7 +219,7 @@ Lemma gm_ind_target_ext_here : forall Φ x E ip,
     gm_ind_target (Φ ⊳ x ↦ E) (x :: ip) = ge_ind_targets E ip.
 Proof.
   intros; unfold gm_ind_target, ge_ind_targets; cbn; rewrite String.eqb_refl.
-  destruct ip, E as [| ? [? [? ? | ?]] | ? ? ? ? ? | ? ? ? ? ? ?]; reflexivity.
+  destruct ip, E as [| ? [? [? ? | ?]] | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ? ?]; reflexivity.
 Qed.
 
 Lemma gm_ind_target_ext_inv : forall Φ x E ip v,
@@ -282,10 +289,11 @@ Definition ge_module (T : ctx) (E : gentry) : option modres :=
   | ge_mod _ (gu_mk Δ (md_alias E')) => Some (mr_alias (gu_mk Δ (md_alias E')))
   | ge_ind _ pq k D _ => Some (mr_body (ind_uparams D) (Some (pq, k, D)))
   | ge_ind_alias _ Δ pm _ _ Ns => Some (mr_alias (gu_mk Δ (md_alias (me_apps (qname_mod pm) Ns))))
+  | ge_record _ p R _ => Some (mr_body (record_mod_tele p R) None)
   end.
 
 Lemma gm_submodule_ext_here_nil : forall T Φ x E, gm_submodule T (Φ ⊳ x ↦ E) x nil = ge_module T E.
-Proof. intros; cbn; rewrite String.eqb_refl; destruct E as [| ? [Δ [? ? | ?]] | ? ? ? ? ? | ? ? ? ? ? ?]; reflexivity. Qed.
+Proof. intros; cbn; rewrite String.eqb_refl; destruct E as [| ? [Δ [? ? | ?]] | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ? ?]; reflexivity. Qed.
 
 (** The body an entry is, read at its own path, over the telescope [T]. *)
 Definition ge_selfbody (T : ctx) (E : gentry) : option (ctx * gmod) :=
@@ -293,10 +301,11 @@ Definition ge_selfbody (T : ctx) (E : gentry) : option (ctx * gmod) :=
   | ge_def _ _ _ _ | ge_mod _ (gu_mk _ (md_alias _)) | ge_ind_alias _ _ _ _ _ _ => None
   | ge_mod _ (gu_mk Δ (md_body sm Φ)) => Some (Δ ++ T, Φ)
   | ge_ind _ _ _ D Φ => Some (ind_uparams D, Φ)
+  | ge_record _ p R Φ => Some (record_mod_tele p R, Φ)
   end.
 
 Lemma gm_subbody_ext_here_nil : forall T Φ x E, gm_subbody T (Φ ⊳ x ↦ E) x nil = ge_selfbody T E.
-Proof. intros; cbn; rewrite String.eqb_refl; destruct E as [| ? [Δ [? ? | ?]] | ? ? ? ? ? | ? ? ? ? ? ?]; reflexivity. Qed.
+Proof. intros; cbn; rewrite String.eqb_refl; destruct E as [| ? [Δ [? ? | ?]] | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ? ?]; reflexivity. Qed.
 
 (** The submodules an entry contributes, read below its own path, for an
     entry checked over the telescope [T]. *)
@@ -307,13 +316,14 @@ Definition ge_submodule (T : ctx) (E : gentry) (x : String.string) (ip : list St
   | ge_mod _ (gu_mk Δ (md_alias E')) => None
   | ge_ind _ _ _ D Φ => gm_submodule (ind_uparams D) Φ x ip
   | ge_ind_alias _ _ _ _ _ _ => None
+  | ge_record _ p R Φ => gm_submodule (record_mod_tele p R) Φ x ip
   end.
 
 Lemma gm_submodule_ext_here : forall T Φ x E z ip r,
     ge_submodule T E z ip = Some r -> gm_submodule T (Φ ⊳ x ↦ E) x (z :: ip) = Some r.
 Proof.
   intros * H; cbn; rewrite String.eqb_refl.
-  destruct E as [| ? [Δ' [? Φ' | E']] | ? ? ? ? ? | ? ? ? ? ? ?]; cbn in H; [ discriminate | exact H | exact H | exact H | exact H ].
+  destruct E as [| ? [Δ' [? Φ' | E']] | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ? ?]; cbn in H; [ discriminate | exact H | exact H | exact H | exact H | exact H ].
 Qed.
 
 Lemma gm_submodule_ext_inv : forall T Φ x E y ip r,
@@ -327,7 +337,7 @@ Proof.
   - left; split; [ reflexivity | split; [ reflexivity |] ].
     rewrite <- (gm_submodule_ext_here_nil T Φ x); cbn; rewrite String.eqb_refl; exact H.
   - right; left; exists z, ip'; split; [ reflexivity | split; [ reflexivity |] ].
-    destruct E as [| ? [Δ' [? Φ' | E']] | ? ? ? ? ? | ? ? ? ? ? ?]; cbn in *; try discriminate; exact H.
+    destruct E as [| ? [Δ' [? Φ' | E']] | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ? ?]; cbn in *; try discriminate; exact H.
 Qed.
 
 (** The body modules an entry contributes, read below its own path. *)
@@ -337,13 +347,14 @@ Definition ge_subbody (T : ctx) (E : gentry) (x : String.string) (ip : list Stri
   | ge_mod _ U => gm_subbody (gu_params U ++ T) (gu_mod U) x ip
   | ge_ind _ _ _ D Φ => gm_subbody (ind_uparams D) Φ x ip
   | ge_ind_alias _ _ _ _ _ _ => None
+  | ge_record _ p R Φ => gm_subbody (record_mod_tele p R) Φ x ip
   end.
 
 Lemma gm_subbody_ext_here : forall T Φ x E z ip r,
     ge_subbody T E z ip = Some r -> gm_subbody T (Φ ⊳ x ↦ E) x (z :: ip) = Some r.
 Proof.
   intros * H; cbn; rewrite String.eqb_refl.
-  destruct E as [| ? [Δ' [? Φ' | E']] | ? ? ? ? ? | ? ? ? ? ? ?]; cbn in H; [ discriminate | exact H | | exact H | discriminate ].
+  destruct E as [| ? [Δ' [? Φ' | E']] | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ? ?]; cbn in H; [ discriminate | exact H | | exact H | discriminate | exact H ].
   destruct z; discriminate.
 Qed.
 
@@ -388,55 +399,94 @@ Proof.
     rewrite gc_entry_frame_here; cbn [gu_mod]; rewrite gm_entry_ext_here; exact HE0.
 Qed.
 
-(** The entry an open frame closes into, of the frame's kind: a body
-    module, or the module of a member of a group. *)
-Definition frame_entry (pv : bool) (K : frame_kind) (Δ : ctx) (Φ : gmod) : gentry :=
+(** The entry the open frame at [mp] closes into, of the frame's kind: a
+    body module, the module of a member of a group, or a record type at
+    [mp]. *)
+Definition frame_entry (pv : bool) (mp : qname) (K : frame_kind) (Δ : ctx) (Φ : gmod) : gentry :=
   match K with
   | fk_module => ge_body pv Δ Φ
   | fk_ind pq k D => ge_ind pv pq k D Φ
+  | fk_record R => ge_record pv mp R Φ
   end.
 
 (** The member a frame's kind names, if any. *)
 Definition kind_ref (K : frame_kind) : option (qname * nat * ind_decl) :=
   match K with
-  | fk_module => None
+  | fk_module | fk_record _ => None
   | fk_ind pq k D => Some (pq, k, D)
   end.
 
-(** The parameters of a frame of its kind over [T]: any for a module, the
-    group's uniform ones for the module of a member. *)
-Definition kind_tele (K : frame_kind) (Δ T : ctx) : Prop :=
+(** The record type a frame's kind names, if any. *)
+Definition kind_record (K : frame_kind) : option record_decl :=
+  match K with
+  | fk_module | fk_ind _ _ _ => None
+  | fk_record R => Some R
+  end.
+
+(** The parameters of the frame at [mp] of its kind over [T]: any for a
+    module, the group's uniform ones for the module of a member, the
+    record's own and then a value of it for the module of a record type. *)
+Definition kind_tele (mp : qname) (K : frame_kind) (Δ T : ctx) : Prop :=
   match K with
   | fk_module => True
   | fk_ind _ _ D => ind_uparams D = Δ ++ T
+  | fk_record R => exists Δr, Δ = ce_ass (record_self mp R) :: Δr /\ record_params R = Δr ++ T
   end.
 
 Lemma gs_find_ind_own : forall mp K U Ξ, gs_find_ind ((mp, K, U) :: Ξ) mp = kind_ref K.
 Proof. intros; cbn; rewrite qname_strip_refl; destruct K; reflexivity. Qed.
 
+Lemma gs_find_record_own : forall mp K U Ξ, gs_find_record ((mp, K, U) :: Ξ) mp = kind_record K.
+Proof. intros; cbn; rewrite qname_strip_refl; destruct K; reflexivity. Qed.
+
+(** Where the entry a frame closes into is, the record type its kind names
+    is read. *)
+Lemma frame_entry_record_lookup : forall Θ Ξ pv mp K Δ Φ p E',
+    gc_entry Θ Ξ p = Some E' -> entry_grows (frame_entry pv mp K Δ Φ) E' -> record_lookup Θ Ξ p = kind_record K.
+Proof.
+  intros * He Hg; unfold record_lookup; rewrite (gc_entry_record_frame_none _ _ _ _ He), He.
+  destruct K as [| pq k D | R]; cbn in Hg |- *.
+  - destruct E' as [| ? [? [? ?| ?]] | | | ]; cbn in Hg; try discriminate; reflexivity.
+  - destruct E' as [| ? [? [? ?| ?]] | | | ]; cbn in Hg; try discriminate; try contradiction; reflexivity.
+  - destruct E' as [| ? [? [? ?| ?]] | | | pv' pr' R' Φ']; cbn in Hg; try discriminate; try contradiction.
+    destruct Hg as (_ & _ & ->); reflexivity.
+Qed.
+
+(** Where a record entry is contributed, its record type is found. *)
+Lemma Ctb_record_lookup : forall Θ2 Ξ2 T mp pv pr R Φ,
+    Ctb Θ2 Ξ2 T mp (ge_record pv pr R Φ) -> record_lookup Θ2 Ξ2 mp = Some R.
+Proof.
+  intros * Hc; destruct (ctb_subentry _ _ _ _ _ Hc nil _ eq_refl) as (E' & HE & Hg); rewrite qname_app_nil in HE.
+  destruct E' as [| ? [? [? ?| ?]] | | | pv' pr' R' Φ']; cbn in Hg; try discriminate; try contradiction.
+  destruct Hg as (_ & _ & <-); exact (gc_entry_record _ _ _ _ _ _ _ HE).
+Qed.
+
 (** What the entry a frame closes into contributes is the frame's body, at
     the frame's telescope. *)
-Lemma frame_entry_reads : forall pv K Δ Φ T, kind_tele K Δ T ->
-    (forall ip, ge_entries (frame_entry pv K Δ Φ) ip = gm_resolve Φ ip) /\
-    ge_module T (frame_entry pv K Δ Φ) = Some (mr_body (Δ ++ T) (kind_ref K)) /\
-    (forall x ip, ge_submodule T (frame_entry pv K Δ Φ) x ip = gm_submodule (Δ ++ T) Φ x ip) /\
-    ge_selfbody T (frame_entry pv K Δ Φ) = Some (Δ ++ T, Φ) /\
-    (forall x ip, ge_subbody T (frame_entry pv K Δ Φ) x ip = gm_subbody (Δ ++ T) Φ x ip) /\
-    (forall x ip, ge_ind_targets (frame_entry pv K Δ Φ) (x :: ip) = gm_ind_target Φ (x :: ip)) /\
-    (forall x ip, ge_subentry (frame_entry pv K Δ Φ) (x :: ip) = gm_entry Φ (x :: ip)).
-Proof. intros * HK; destruct K as [| pq k D]; cbn in HK |- *; [| rewrite HK ]; repeat split; reflexivity. Qed.
+Lemma frame_entry_reads : forall pv mp K Δ Φ T, kind_tele mp K Δ T ->
+    (forall ip, ge_entries (frame_entry pv mp K Δ Φ) ip = gm_resolve Φ ip) /\
+    ge_module T (frame_entry pv mp K Δ Φ) = Some (mr_body (Δ ++ T) (kind_ref K)) /\
+    (forall x ip, ge_submodule T (frame_entry pv mp K Δ Φ) x ip = gm_submodule (Δ ++ T) Φ x ip) /\
+    ge_selfbody T (frame_entry pv mp K Δ Φ) = Some (Δ ++ T, Φ) /\
+    (forall x ip, ge_subbody T (frame_entry pv mp K Δ Φ) x ip = gm_subbody (Δ ++ T) Φ x ip) /\
+    (forall x ip, ge_ind_targets (frame_entry pv mp K Δ Φ) (x :: ip) = gm_ind_target Φ (x :: ip)) /\
+    (forall x ip, ge_subentry (frame_entry pv mp K Δ Φ) (x :: ip) = gm_entry Φ (x :: ip)).
+Proof.
+  intros * HK; destruct K as [| pq k D | R]; cbn in HK |- *;
+    [| rewrite HK | destruct HK as (Δr & -> & HK); unfold record_mod_tele; rewrite HK ]; repeat split; reflexivity.
+Qed.
 
 (** Pushing a nested module's frame, of either kind, embeds into any
     context that has its entries, submodules and bodies where the frame
     says. *)
 Lemma gc_sub_nested : forall Θ Ξ mp pv K Δ' Φ' Θ2 Ξ2,
     gc_sub Θ Ξ Θ2 Ξ2 ->
-    Ctb Θ2 Ξ2 (gs_tele Ξ) mp (frame_entry pv K Δ' Φ') ->
-    kind_tele K Δ' (gs_tele Ξ) ->
+    Ctb Θ2 Ξ2 (gs_tele Ξ) mp (frame_entry pv mp K Δ' Φ') ->
+    kind_tele mp K Δ' (gs_tele Ξ) ->
     gc_sub Θ ((mp, K, gu_body Δ' Φ') :: Ξ) Θ2 Ξ2.
 Proof.
   intros * Hs [Hin Hm0 Hmod Hb0 Hbod Hia Hen] HK.
-  destruct (frame_entry_reads pv _ _ Φ' _ HK) as (Rin & Rm0 & Rmod & Rb0 & Rbod & Ria & Ren).
+  destruct (frame_entry_reads pv _ _ _ Φ' _ HK) as (Rin & Rm0 & Rmod & Rb0 & Rbod & Ria & Ren).
   constructor.
   - intros p E Hr; destruct (gc_resolve_frame _ _ _ _ _ _ _ Hr) as [(ip & -> & Hm) | Hr'];
       [ apply Hin; rewrite Rin; exact Hm | eauto using gc_sub_resolve ].
@@ -453,9 +503,11 @@ Proof.
     + destruct ip as [| ? ?]; [| discriminate ]; injection Hr as <- <-.
       apply qname_strip_app_inv in Hst; rewrite qname_app_nil in Hst; subst p.
       destruct (Hb0 (Δ' ++ gs_tele Ξ) Φ' Rb0) as (Φ'' & HΦ'' & _).
-      exists Φ''; right; split; [ exact HΦ'' | rewrite gs_find_ind_own; exact (Hm0 _ Rm0) ].
+      destruct (Hen nil _ eq_refl) as (E0' & HE0' & Hgr); rewrite qname_app_nil in HE0'.
+      exists Φ''; right; split; [ exact HΦ'' | split; [ rewrite gs_find_ind_own; exact (Hm0 _ Rm0) |] ].
+      rewrite gs_find_record_own; exact (frame_entry_record_lookup _ _ _ _ _ _ _ _ _ HE0' Hgr).
     + destruct (gc_sub_frame_loc _ _ _ _ _ _ _ Hs ltac:(unfold gc_frame; exact Hr)) as (Φ'' & H'').
-      exists Φ''; cbn [gs_find_ind]; rewrite Hst; exact H''.
+      exists Φ''; cbn [gs_find_ind gs_find_record]; rewrite Hst; exact H''.
   - intros p E Hr; destruct (gc_entry_frame _ _ _ _ _ _ _ Hr) as [(ip & -> & Hm) | Hr'];
       [| eauto using gc_sub_entry ].
     destruct ip as [| z ip]; [ rewrite gm_entry_nil in Hm; discriminate |].
@@ -463,14 +515,20 @@ Proof.
   - intros p r Hr; cbn [gs_find_ind] in Hr.
     destruct (qname_strip mp p) as [[| ? ?] |] eqn:Hst; [| discriminate | exact (gc_sub_frame_ind _ _ _ _ _ _ Hs Hr) ].
     apply qname_strip_app_inv in Hst; rewrite qname_app_nil in Hst; subst p.
-    destruct K as [| pq k D]; [ discriminate |]; injection Hr as <-.
+    destruct K as [| pq k D | R]; [ discriminate | | discriminate ]; injection Hr as <-.
     exact (ind_mlookup_body _ _ _ _ _ (Hm0 _ Rm0)).
+  - intros p R Hr; cbn [gs_find_record] in Hr.
+    destruct (qname_strip mp p) as [[| ? ?] |] eqn:Hst; [| discriminate | exact (gc_sub_frame_record _ _ _ _ _ _ Hs Hr) ].
+    apply qname_strip_app_inv in Hst; rewrite qname_app_nil in Hst; subst p.
+    destruct (Hen nil _ eq_refl) as (E0' & HE0' & Hgr); rewrite qname_app_nil in HE0'.
+    rewrite (frame_entry_record_lookup _ _ _ _ _ _ _ _ _ HE0' Hgr).
+    destruct K as [| pq k D | R']; cbn in Hr |- *; [ discriminate | discriminate | exact Hr ].
 Qed.
 
 Lemma Emb_nested : forall Θ Ξ mp pv K Δ' Φ' Θ2 Ξ2,
     Emb Θ Ξ Θ2 Ξ2 ->
-    Ctb Θ2 Ξ2 (gs_tele Ξ) mp (frame_entry pv K Δ' Φ') ->
-    kind_tele K Δ' (gs_tele Ξ) ->
+    Ctb Θ2 Ξ2 (gs_tele Ξ) mp (frame_entry pv mp K Δ' Φ') ->
+    kind_tele mp K Δ' (gs_tele Ξ) ->
     Emb Θ ((mp, K, gu_body Δ' Φ') :: Ξ) Θ2 Ξ2.
 Proof. intros * [Hg Hs] Hc HK; constructor; [ exact Hg | exact (gc_sub_nested _ _ _ _ _ _ _ _ _ Hs Hc HK) ]. Qed.
 
@@ -505,7 +563,7 @@ Proof.
         -- rewrite <- (qname_app_in mq y nil), qname_app_nil; apply Hb0.
            rewrite <- (gm_subbody_ext_here_nil _ Φ0 y); cbn; rewrite String.eqb_refl; exact Hr.
         -- rewrite <- qname_app_in; apply Hbod.
-           destruct E as [| ? [Δ' [? Φ' | E']] | ? ? ? ? ? | ? ? ? ? ? ?]; cbn in *; try discriminate; exact Hr.
+           destruct E as [| ? [Δ' [? Φ' | E']] | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ? ?]; cbn in *; try discriminate; exact Hr.
       * apply (gc_sub_body _ _ _ _ _ _ _ Hs); rewrite gc_body_frame_here; exact Hr.
     + apply (gc_sub_body _ _ _ _ _ _ _ Hs); unfold gc_body; cbn; rewrite Hst; exact Hr.
   - intros p v Hr; unfold ind_alias_lookup, ind_alias_lookup_u in Hr; cbn in Hr.
@@ -515,7 +573,8 @@ Proof.
       * rewrite <- qname_app_in; exact (Hia _ _ HE).
       * apply (gc_sub_ind_alias _ _ _ _ _ _ Hs); rewrite ind_alias_lookup_frame_here; exact HΦ.
     + apply (gc_sub_ind_alias _ _ _ _ _ _ Hs); unfold ind_alias_lookup, ind_alias_lookup_u; cbn; rewrite Hst; exact Hr.
-  - intros p T Φ Hr; rewrite (gs_find_ind_unit _ _ _ (gu_body Δ Φ0)); unfold gc_frame in Hr; cbn in Hr.
+  - intros p T Φ Hr; rewrite (gs_find_ind_unit _ _ _ (gu_body Δ Φ0)), (gs_find_record_unit _ _ _ (gu_body Δ Φ0)).
+    unfold gc_frame in Hr; cbn in Hr.
     destruct (qname_strip mq p) as [ip |] eqn:Hst.
     + destruct ip as [| ? ?]; [| discriminate ]; injection Hr as <- <-.
       eapply gc_sub_frame_loc; [ exact Hs | unfold gc_frame; cbn; rewrite Hst; reflexivity ].
@@ -528,20 +587,7 @@ Proof.
       * apply (gc_sub_entry _ _ _ _ _ _ Hs); rewrite gc_entry_frame_here; exact HΦ.
     + apply (gc_sub_entry _ _ _ _ _ _ Hs); unfold gc_entry, gc_entry_u; cbn; rewrite Hst; exact Hr.
   - intros p r Hr; rewrite (gs_find_ind_unit _ _ _ (gu_body Δ Φ0)) in Hr; exact (gc_sub_frame_ind _ _ _ _ _ _ Hs Hr).
-Qed.
-
-(** The telescope of the frames' parameters is a well-formed context: the
-    innermost frame's module was checked over it, one frame out, and pushing
-    the frame is an embedding. *)
-Lemma wf_gs_tele : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> ⊢ Θ ⍮ Ξ ⍮ gs_tele Ξ.
-Proof.
-  intros Θ [| [[mp K] U] Ξ] Hg; [ constructor; exact Hg |].
-  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as (Hs0 & HU & Hff).
-  assert (HP : ⊢ Θ ⍮ Ξ ⍮ gu_params U ++ gs_tele Ξ)
-    by exact (wf_gmod_ctx _ _ _ _ _ _ (wf_gunit_mod _ _ _ _ _ HU)).
-  destruct (emb_preserves_wf Θ Ξ Θ ((mp, K, U) :: Ξ)) as (Hc & _).
-  - constructor; [ exact Hg | apply gc_sub_push; exact Hff ].
-  - exact (Hc _ HP).
+  - intros p R Hr; rewrite (gs_find_record_unit _ _ _ (gu_body Δ Φ0)) in Hr; exact (gc_sub_frame_record _ _ _ _ _ _ Hs Hr).
 Qed.
 
 
@@ -2154,6 +2200,160 @@ Proof.
   unfold im_params; rewrite !List.app_assoc; reflexivity.
 Qed.
 
+(** A typed record declaration: what [wf_gentry_record] checks of it. *)
+Record record_typed (Θ : gdeps) (Ξ : gstack) (R : record_decl) : Prop := mk_record_typed
+  { (** The parameters are assumptions *)
+    typed_params_ass : tele_ass (record_params R)
+    (** No type of the declaration has a free module variable *)
+  ; typed_mvc : record_mvc R
+    (** The sort is a universe over the parameters *)
+  ; typed_sort : Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R
+    (** The field names are distinct *)
+  ; typed_nodup : List.NoDup (List.map fst (record_fields R))
+    (** Each field is a type in the sort, over the fields before it and
+        the parameters *)
+  ; typed_fields : forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
+      Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : (record_sort R)[wk_shiftn k]ʷ }.
+
+(** A typed record stays typed along an embedding. *)
+Lemma record_typed_emb : forall Θ Ξ Θ2 Ξ2 R, Emb Θ Ξ Θ2 Ξ2 -> record_typed Θ Ξ R -> record_typed Θ2 Ξ2 R.
+Proof.
+  intros * He [Ha Hmv Hs Hnd Hf].
+  destruct (emb_preserves_wf _ _ _ _ He) as (Hc & Ht & _ & _ & _ & _ & _).
+  constructor; [ exact Ha | exact Hmv | | exact Hnd | intros; apply Ht; eapply Hf; eassumption ].
+  (* the sort: a universe moves along the embedding *)
+  inversion Hs; subst; [ constructor; apply Hc; assumption | econstructor; apply Ht; eassumption ].
+Qed.
+
+(** A universe is large, or small at a level. *)
+Lemma is_univ_cases : forall Θ Ξ Γ U, Θ ⍮ Ξ ⍮ Γ ⊢ᵤ U ->
+    (exists i, U = Typeω@i) \/ (exists L n, U = Type⟨L⟩ /\ Θ ⍮ Ξ ⍮ Γ ⊢ L : Level@n).
+Proof. intros * H; inversion H; subst; eauto 6. Qed.
+
+(** The sort of a typed record is a universe. *)
+Lemma record_typed_sort_univ : forall Θ Ξ R, record_typed Θ Ξ R -> ind_sort_univ (record_sort R).
+Proof.
+  intros * Ht; destruct (is_univ_cases _ _ _ _ (typed_sort _ _ _ Ht)) as [(i & ->) | (L & n & -> & _)];
+    [ left | right ]; eauto.
+Qed.
+
+(** The context of a typed record's first [k] fields over its parameters
+    is well formed: each field is a type of the sort, a universe. *)
+Lemma record_typed_fctx_wf : forall Θ Ξ R, record_typed Θ Ξ R ->
+    forall k, k <= List.length (record_fields R) -> ⊢ Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R.
+Proof.
+  intros * [Ha Hmv Hs Hnd Hf]; pose proof (presup_is_univ_ctx Hs) as HP.
+  induction k as [| k IH]; intros Hk; [ exact HP |].
+  assert (Hlt : k < List.length (record_fields R)) by lia.
+  destruct (List.nth_error (record_fields R) k) as [[f T] |] eqn:HT;
+    [| apply List.nth_error_None in HT; lia ].
+  rewrite (record_fctx_succ _ _ _ _ HT); cbn [List.app].
+  specialize (IH ltac:(lia)).
+  pose proof (Hf _ _ _ HT) as HTt.
+  pose proof (wf_wk_shiftn_app _ _ _ _ IH HP) as Hw; rewrite length_record_fctx in Hw by lia.
+  destruct (is_univ_cases _ _ _ _ Hs) as [(i & HU) | (L & n & HU & HL)]; rewrite HU in HTt; cbn in HTt.
+  - eapply wf_ctx_extend; exact HTt.
+  - pose proof (wk_preserves_exp _ _ _ _ _ _ _ HL Hw) as HL'; cbn in HL'.
+    eapply wf_ctx_extend; exact (@wf_exp_suniv_large _ _ _ _ _ 0 _ HL' HTt).
+Qed.
+
+(** The type of a typed record's type former is a type. *)
+Lemma record_typed_ty : forall Θ Ξ R, record_typed Θ Ξ R -> exists i, Θ ⍮ Ξ ⍮ ⋅ ⊢ record_ty R : Typeω@i.
+Proof.
+  intros * [Ha Hmv Hs Hnd Hf]; pose proof (presup_is_univ_ctx Hs) as HP.
+  destruct (wf_is_univ_typ Hs) as [i Hi].
+  unfold record_ty; apply (ctx_pi_wf _ _ _ nil _ i); rewrite List.app_nil_r; assumption.
+Qed.
+
+(** The type former of a typed record found at [p] is typed. *)
+Lemma record_typed_former : forall Θ Ξ Γ p R, record_typed Θ Ξ R -> record_lookup Θ Ξ p = Some R -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_record p : record_ty R.
+Proof.
+  intros * HR Hl HΓ; pose proof HR as [Ha Hmv Hs Hnd Hf].
+  destruct (record_typed_ty _ _ _ HR) as [i Hi].
+  eapply wf_record; [ exact HΓ | exact Hl | exact Hnd | exact Ha | exact Hi
+                    | exact (record_typed_fctx_wf _ _ _ HR _ (le_n _)) | exact Hs | exact Hf ].
+Qed.
+
+(** A record entry, and the module of a record type, have a typed
+    declaration: it is checked where the module starts
+    ([wf_gmod_record_nil]). *)
+Lemma wf_record_typed_all :
+  (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢ᵉ E -> forall pv pr R Φ, E = ge_record pv pr R Φ -> record_typed Θ Ξ R) /\
+  (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> forall R, K = fk_record R -> record_typed Θ Ξ R).
+Proof.
+  apply global_wf_mut_ind; intros; try discriminate.
+  - (* the declaration *)
+    match goal with Heq : ge_record _ _ _ _ = ge_record _ _ _ _ |- _ => injection Heq as <- <- <- <- end.
+    constructor; assumption.
+  - (* with the body of its module *)
+    match goal with Heq : ge_record _ _ _ _ = ge_record _ _ _ _ |- _ => injection Heq as <- <- <- <- end.
+    match goal with IH : forall R, fk_record _ = fk_record R -> _ |- _ => exact (IH _ eq_refl) end.
+  - (* the module, before its members *)
+    match goal with Heq : fk_record _ = fk_record _ |- _ => injection Heq as <- end.
+    match goal with IH : forall pv pr R Φ, ge_record _ _ _ _ = _ -> _ |- _ => exact (IH _ _ _ _ eq_refl) end.
+  - (* one more member of the module *)
+    match goal with IH : forall R, ?K = fk_record R -> _, Heq : ?K = fk_record _ |- _ => exact (IH _ Heq) end.
+Qed.
+
+Lemma wf_gmod_record_typed : forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ ->
+    forall R, K = fk_record R -> record_typed Θ Ξ R.
+Proof. exact (proj2 wf_record_typed_all). Qed.
+
+(** The type of a value of a typed record found at [p] is a type over the
+    record's parameters: its module's telescope is well formed where the
+    record is found.  The parameters as variables are of the parameters'
+    types, and the sort is the sort at them, as the declaration has no
+    free module variable. *)
+Lemma record_mod_tele_wf : forall Θ Ξ p R, record_typed Θ Ξ R -> record_lookup Θ Ξ p = Some R ->
+    ⊢ Θ ⍮ Ξ ⍮ record_mod_tele p R.
+Proof.
+  intros * HR Hl; pose proof HR as [Ha Hmv Hs Hnd Hf]; pose proof (presup_is_univ_ctx Hs) as HP.
+  destruct (wf_is_univ_typ Hs) as [i Hi].
+  pose proof (wf_ctx_scoped _ _ _ HP) as HsP.
+  destruct (proj1 (proj2 wf_scoped) _ _ _ _ _ Hi) as (_ & HsS & _).
+  assert (Hself : Θ ⍮ Ξ ⍮ record_params R ⊢ record_self p R : record_sort R).
+  { pose proof (wf_apps_closed_pi _ _ (record_params R) (record_sort R) i (record_params R) (a_record p)
+                  (vars_from 0 (List.length (record_params R))) Ha HsP HsS Hi HP
+                  (record_typed_former _ _ _ _ _ HR Hl HP) (length_vars_from _ _)
+                  (wf_vars_tele _ _ nil _ Ha HsP (params_mvc _ Hmv) HP)) as H.
+    rewrite (exp_at_vars _ _ 0 HsS (sort_mvc _ Hmv)), exp_wk_id_ext in H by (intros x; cbn; lia).
+    exact H. }
+  unfold record_mod_tele.
+  destruct (is_univ_cases _ _ _ _ Hs) as [(j & HU) | (L & n & HU & HL)]; rewrite HU in Hself.
+  - eapply wf_ctx_extend; exact Hself.
+  - eapply wf_ctx_extend; exact (@wf_exp_suniv_large _ _ _ _ _ 0 _ HL Hself).
+Qed.
+
+(** The telescope of the frames' parameters is a well-formed context: the
+    innermost frame's module was checked over it, one frame out, and pushing
+    the frame is an embedding; a record's module ends with a value of the
+    record, typed in the record's own frame, where the record is found. *)
+Lemma wf_gs_tele : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> ⊢ Θ ⍮ Ξ ⍮ gs_tele Ξ.
+Proof.
+  intros Θ [| [[mp K] U] Ξ] Hg; [ constructor; exact Hg |].
+  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as (Hs0 & HU & Hff).
+  pose proof (wf_gunit_mod _ _ _ _ _ HU) as HΦ.
+  assert (HP : ⊢ Θ ⍮ Ξ ⍮ frame_params K (gu_params U) ++ gs_tele Ξ) by exact (wf_gmod_ctx _ _ _ _ _ _ HΦ).
+  assert (He : Emb Θ Ξ Θ ((mp, K, U) :: Ξ)) by (constructor; [ exact Hg | apply gc_sub_push; exact Hff ]).
+  destruct (emb_preserves_wf _ _ _ _ He) as (Hc & _).
+  destruct K as [| pq k D | R]; cbn [frame_params gs_tele] in HP |- *; [ exact (Hc _ HP) | exact (Hc _ HP) |].
+  destruct (wf_gmod_record_params _ _ _ _ _ _ HΦ _ eq_refl) as (Δr & HΔ & HPR & _).
+  rewrite HΔ; cbn [List.app]; rewrite <- HPR.
+  apply (record_mod_tele_wf _ _ mp R).
+  - exact (record_typed_emb _ _ _ _ _ He (wf_gmod_record_typed _ _ _ _ _ _ HΦ _ eq_refl)).
+  - unfold record_lookup; rewrite gs_find_record_own; reflexivity.
+Qed.
+
+(** A module's whole telescope is well formed in its own frame, pushed: the
+    parameters checked one frame out ([wf_gmod_ctx]) and, for a record's
+    module, the value. *)
+Corollary wf_gmod_ctx_pushed : forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> frame_fresh Θ Ξ mp ->
+    ⊢ Θ ⍮ (mp, K, gu_body Δ Φ) :: Ξ ⍮ Δ ++ gs_tele Ξ.
+Proof.
+  intros * HΦ Hff.
+  exact (wf_gs_tele _ _ (wf_gstack_cons _ _ _ _ _ _ (ctx_wf_gctx _ _ _ (wf_gmod_ctx _ _ _ _ _ _ HΦ)) HΦ Hff)).
+Qed.
 
 Section Induction.
   (** [V Θ Ξ E]: the (closed) entry [E] is valid at [Θ ⍮ Ξ]; [VD Θ Ξ D]: so
@@ -2324,6 +2524,23 @@ Section Induction.
         exists D1 M1; [ exact (ind_lookup_gc_sub _ _ _ _ _ _ (em_res _ _ _ _ He) HD) | exact HM | assumption |] end.
       unfold alias_def; eapply Hdef; [ eassumption | | exact He ].
       match goal with H : Good _ _ |- _ => exact H end.
+    - (* a record: it contributes no entry and no declaration *)
+      intros ? ? _; split; [ intros ? ? ? ? Heq; discriminate Heq |]; intros _; constructor;
+        [ intros [| ? ?] ? Hx; cbn in Hx; discriminate | intros ? ? ? Hx; cbn in Hx; discriminate
+        | intros ? ? ? ? ? Hx; cbn in Hx; discriminate | intros [| ? ?] ? ? ? ? ? Hx; cbn in Hx; discriminate ].
+    - (* a record with the body of its module, checked in the record's open
+         frame: it declares no group *)
+      match goal with IH : GoodM _ _ _ _ _ _ |- _ => rename IH into IHM end.
+      match goal with Hu : record_params R = _ |- _ => rename Hu into HRu end.
+      intros Θ2 Ξ2 He; destruct (IHM _ _ He) as [_ HB].
+      split; [ intros ? ? ? ? Heq; discriminate Heq | intros Hc ].
+      destruct (HB (Emb_nested _ _ _ pv (fk_record R) _ _ _ _ He Hc (ex_intro _ _ (conj eq_refl HRu)))) as [HΦE HΦU HΦA].
+      constructor.
+      + intros ip E0 HE; exact (HΦE _ _ HE).
+      + intros T pq0 D0 Hx; cbn [ge_module] in Hx; discriminate.
+      + intros z ip T pq0 D0 Hx; cbn [ge_submodule] in Hx; unfold record_mod_tele in Hx; rewrite HRu in Hx.
+        exact (HΦU _ _ _ _ _ Hx).
+      + intros [| z ip] Δa pma pa ka Nsa Hx; [ cbn in Hx; discriminate |]; exact (HΦA _ _ _ _ _ _ Hx).
     - (* the empty module *)
       intros ? ? _; split; [ intros ? ? Heq; discriminate Heq | intros _ ].
       constructor; [ intros [| ? ?] ? Hx; discriminate | intros ? ? ? ? ? Hx; discriminate |].
@@ -2333,6 +2550,11 @@ Section Induction.
       intros Θ2 Ξ2 He; split.
       + intros pq0 D0 Heq; injection Heq as -> -> ->.
         exact (proj1 (IHE _ _ He) _ _ _ _ eq_refl).
+      + intros _; constructor; [ intros [| ? ?] ? Hx; discriminate | intros ? ? ? ? ? Hx; discriminate |].
+        intros [| ? ?] ? ? ? ? ? Hx; unfold gm_ind_target in Hx; discriminate.
+    - (* the module of a record, before its members: no group *)
+      intros Θ2 Ξ2 He; split.
+      + intros pq0 D0 Heq; discriminate Heq.
       + intros _; constructor; [ intros [| ? ?] ? Hx; discriminate | intros ? ? ? ? ? Hx; discriminate |].
         intros [| ? ?] ? ? ? ? ? Hx; unfold gm_ind_target in Hx; discriminate.
     - (* extending a module *)
@@ -2373,7 +2595,7 @@ Section Induction.
         * destruct (gc_module_frame _ _ _ _ _ _ _ Hm) as [(x & ip & -> & Hm') | Hm']; [ eauto |].
           apply (HI p); rewrite (ind_lookup_body _ _ _ _ _ Hm'); reflexivity.
         * cbn [gs_find_ind] in Hf; destruct (qname_strip mp p) as [[| ? ?] |] eqn:Hs; [| discriminate |].
-          -- destruct K as [| pq1 k1 D1]; [ discriminate |]; injection Hf as -> -> ->; exact (HK _ _ eq_refl).
+          -- destruct K as [| pq1 k1 D1 | R1]; [ discriminate | | discriminate ]; injection Hf as -> -> ->; exact (HK _ _ eq_refl).
           -- apply (HI p); rewrite ind_lookup_unfold, ind_mlookup_unfold, Hf; reflexivity.
       + intros pq ? ? ? ? ? Hr; destruct (ind_alias_lookup_frame _ _ _ _ _ _ _ Hr) as [(ip & -> & Hm) | Hr']; eauto.
   Qed.
@@ -2431,14 +2653,14 @@ Qed.
 
 Lemma Embx_nested : forall Θ Ξ mp pv K Δ' Φ' Θ2 Ξ2,
     Embx Θ Ξ Θ2 Ξ2 ->
-    Ctbx Θ2 Ξ2 (gs_tele Ξ) mp (frame_entry pv K Δ' Φ') ->
-    kind_tele K Δ' (gs_tele Ξ) ->
+    Ctbx Θ2 Ξ2 (gs_tele Ξ) mp (frame_entry pv mp K Δ' Φ') ->
+    kind_tele mp K Δ' (gs_tele Ξ) ->
     Embx Θ ((mp, K, gu_body Δ' Φ') :: Ξ) Θ2 Ξ2.
 Proof.
   intros * He [Hc Hbod] HK; constructor; [ exact (emx_wf _ _ _ _ He) | split ].
   - exact (em_res _ _ _ _ (Emb_nested _ _ _ _ _ _ _ _ _ (Embx_emb _ _ _ _ He) Hc HK)).
   - intros p r Hr; destruct (gc_body_frame _ _ _ _ _ _ _ Hr) as [(x & ip & -> & Hm) | Hr'].
-    + apply Hbod; rewrite (proj1 (proj2 (proj2 (proj2 (proj2 (frame_entry_reads pv _ _ Φ' _ HK)))))); exact Hm.
+    + apply Hbod; rewrite (proj1 (proj2 (proj2 (proj2 (proj2 (frame_entry_reads pv _ _ _ Φ' _ HK)))))); exact Hm.
     + exact (gc_subx_body _ _ _ _ _ _ (emx_res _ _ _ _ He) Hr').
 Qed.
 
@@ -2449,10 +2671,13 @@ Section ModInduction.
   Variable F : gdeps -> gstack -> ctx -> Prop.
   (** The validity of the declaration of an inductive type. *)
   Variable VD : gdeps -> gstack -> ind_decl -> Prop.
+  (** The validity of the declaration of a record type. *)
+  Variable VR : gdeps -> gstack -> record_decl -> Prop.
 
   (** A body is valid when its definitions and aliases are, and its body
-      modules and the modules of its inductive types are, over their
-      telescopes; the declaration of an inductive type is valid too. *)
+      modules and the modules of its inductive and record types are, over
+      their telescopes; the declaration of an inductive or a record type is
+      valid too. *)
   Fixpoint gm_valid (Θs : gdeps) (Ξs : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (Φ : gmod) : Prop :=
     match Φ with
     | gm_nil => True
@@ -2465,6 +2690,9 @@ Section ModInduction.
     | gm_ext Φ0 _ (ge_ind_alias pv Δ pm p k Ns) =>
         gm_valid Θs Ξs Θ2 Ξ2 T Φ0 /\ V Θs Ξs Θ2 Ξ2 T (ge_mod pv (gu_mk Δ (md_alias (me_apps (qname_mod pm) Ns)))) /\
         V Θs Ξs Θ2 Ξ2 T (ge_ind_alias pv Δ pm p k Ns)
+    | gm_ext Φ0 _ (ge_record pv pr R Φ') =>
+        gm_valid Θs Ξs Θ2 Ξ2 T Φ0 /\ VR Θ2 Ξ2 R /\ F Θ2 Ξ2 (record_mod_tele pr R) /\
+        gm_valid Θs Ξs Θ2 Ξ2 (record_mod_tele pr R) Φ'
     | gm_ext Φ0 _ E => gm_valid Θs Ξs Θ2 Ξ2 T Φ0 /\ V Θs Ξs Θ2 Ξ2 T E
     end.
 
@@ -2479,17 +2707,22 @@ Section ModInduction.
         as itself, the term it δ-unfolds to. *)
     | ge_ind_alias pv Δ pm p k Ns =>
         V Θs Ξs Θ2 Ξ2 T (ge_mod pv (gu_mk Δ (md_alias (me_apps (qname_mod pm) Ns)))) /\ V Θs Ξs Θ2 Ξ2 T E
+    (** A record is valid as its declaration, and its module as a body over
+        its parameters and a value. *)
+    | ge_record pv pr R Φ' =>
+        VR Θ2 Ξ2 R /\ F Θ2 Ξ2 (record_mod_tele pr R) /\ gm_valid Θs Ξs Θ2 Ξ2 (record_mod_tele pr R) Φ'
     | _ => V Θs Ξs Θ2 Ξ2 T E
     end.
 
   Lemma gm_valid_ext : forall Θs Ξs Θ2 Ξ2 T Φ x E,
       gm_valid Θs Ξs Θ2 Ξ2 T (Φ ⊳ x ↦ E) <-> gm_valid Θs Ξs Θ2 Ξ2 T Φ /\ ge_valid Θs Ξs Θ2 Ξ2 T E.
-  Proof. intros; destruct E as [? ? ? ? | ? [Δ [? Φ' | E']] | ? ? ? ? ? | ? Δa pma pa ka Nsa]; cbn; tauto. Qed.
+  Proof. intros; destruct E as [? ? ? ? | ? [Δ [? Φ' | E']] | ? ? ? ? ? | ? Δa pma pa ka Nsa | ? pr Rr ΦR]; cbn; tauto. Qed.
 
   (** The group a frame's kind names, if the frame is the module of the
-      group's first member, is valid at [Θ2 ⍮ Ξ2]. *)
+      group's first member, is valid at [Θ2 ⍮ Ξ2]; so is the record type
+      whose module the frame is. *)
   Definition kind_valid (Θ2 : gdeps) (Ξ2 : gstack) (K : frame_kind) : Prop :=
-    forall pq D, K = fk_ind pq 0 D -> VD Θ2 Ξ2 D.
+    (forall pq D, K = fk_ind pq 0 D -> VD Θ2 Ξ2 D) /\ (forall R, K = fk_record R -> VR Θ2 Ξ2 R).
 
   Fixpoint gs_valid (Θs : gdeps) (Ξs : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (Ξ : gstack) : Prop :=
     match Ξ with
@@ -2539,6 +2772,15 @@ Section ModInduction.
       module's members are checked in. *)
   Hypothesis Hind : forall Θ Ξ D Θ2 Ξ2,
       decl_typed Θ Ξ D -> GoodV Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> VD Θ2 Ξ2 D /\ F Θ2 Ξ2 (ind_uparams D).
+  (** A record's declaration, at any target its context embeds into. *)
+  Hypothesis Hrecord : forall Θ Ξ R Θ2 Ξ2,
+      record_typed Θ Ξ R -> GoodV Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> VR Θ2 Ξ2 R.
+  (** A record's module telescope, at any target its context embeds into
+      where the record is found: its parameters, then a value of it, which
+      is typed only there. *)
+  Hypothesis Hrecord_tele : forall Θ Ξ p R Θ2 Ξ2,
+      record_typed Θ Ξ R -> GoodV Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> record_lookup Θ2 Ξ2 p = Some R ->
+      F Θ2 Ξ2 (record_params R) -> F Θ2 Ξ2 (record_mod_tele p R).
 
   (** An entry, and the context it is checked in: valid read from any
       context that has it and what the context it is checked in has. *)
@@ -2612,22 +2854,67 @@ Section ModInduction.
       match goal with IH : GoodMV _ _ _ _ _ _ |- _ => rename IH into IHM end.
       match goal with Hu : ind_uparams D = _ |- _ => rename Hu into HU end.
       destruct IHM as [HG [HK IHM]]; split; [ exact HG |].
-      split; [ intros Θ2 Ξ2 He ? ? ? ? Heq; injection Heq as _ <- -> <- _; exact (HK _ _ He _ _ eq_refl) |].
+      split; [ intros Θ2 Ξ2 He ? ? ? ? Heq; injection Heq as _ <- -> <- _; exact (proj1 (HK _ _ He) _ _ eq_refl) |].
       intros Θ2 Ξ2 He Hc Θs Ξs Hs Hcs; cbn.
       destruct (IHM _ _ (Embx_nested _ _ _ pv (fk_ind pq k D) _ _ _ _ He Hc HU) He) as [HF HΦ].
-      rewrite HU; split; [ intros ->; exact (HK _ _ He _ _ eq_refl) | split; [ exact HF |] ].
+      rewrite HU; split; [ intros ->; exact (proj1 (HK _ _ He) _ _ eq_refl) | split; [ exact HF |] ].
       apply HΦ; exact (gc_sub_nested _ _ _ pv (fk_ind pq k D) _ _ _ _ Hs Hcs HU).
     - (* an inductive alias: valid as the module alias it is a view as, and
          as itself *)
       split; [ assumption |]; split; [ intros ? ? _ ? ? ? ? Heq; discriminate Heq |].
       intros Θ2 Ξ2 He _ Θs Ξs Hs _; cbn; split; [ eapply Halias | eapply Hindalias ]; eassumption.
-    - split; [ assumption |]; split; [ intros ? ? _ ? ? Heq; discriminate Heq |].
+    - (* a record, before the members of its module: valid as its
+         declaration, over its parameters and a value *)
+      split; [ assumption |]; split; [ intros ? ? _ ? ? ? ? Heq; discriminate Heq |].
+      intros Θ2 Ξ2 He [Hct _] Θs Ξs Hs _; cbn.
+      split; [ eapply Hrecord; [ constructor; eassumption | eassumption | exact He ] | split; [| exact I ] ].
+      eapply Hrecord_tele; [ constructor; eassumption | eassumption | exact He | exact (Ctb_record_lookup _ _ _ _ _ _ _ _ Hct) |].
+      match goal with
+      | HU : record_params ?R = ?Δu ++ gs_tele ?Ξ', Ha : tele_ass (record_params ?R),
+        HS : _ ⍮ _ ⍮ record_params ?R ⊢ᵤ _, HG : GoodV _ _ |- F _ _ (record_params ?R) =>
+          pose proof (presup_is_univ_ctx HS) as HC;
+          rewrite HU in Ha, HC |- *; eapply Hnil; [ exact (proj1 (proj1 (List.Forall_app _ _ _) Ha)) | exact HC | exact HG | exact He ]
+      end.
+    - (* a record with the body of its module, checked in the record's open
+         frame *)
+      match goal with IH : GoodMV _ _ _ _ _ _ |- _ => rename IH into IHM end.
+      match goal with Hu : record_params R = _ |- _ => rename Hu into HU end.
+      match goal with Hm : _ ⍮ _ ⍮ _ ⍮ fk_record R ⍮ _ ⊢ᵍᵐ _ |- _ => pose proof (wf_gmod_record_typed _ _ _ _ _ _ Hm _ eq_refl) as HRt end.
+      destruct IHM as [HG [HK IHM]]; split; [ exact HG |].
+      split; [ intros Θ2 Ξ2 He ? ? ? ? Heq; discriminate Heq |].
+      intros Θ2 Ξ2 He Hc Θs Ξs Hs Hcs; cbn.
+      assert (HKt : kind_tele mp (fk_record R) (ce_ass (record_self mp R) :: Δ) (gs_tele Ξ))
+        by (exists Δ; split; [ reflexivity | exact HU ]).
+      destruct (IHM _ _ (Embx_nested _ _ _ pv (fk_record R) _ _ _ _ He Hc HKt) He) as [HF HΦ].
+      split; [ exact (proj2 (HK _ _ He) _ eq_refl) |].
+      unfold record_mod_tele; rewrite HU; split; [ exact HF |].
+      apply HΦ; exact (gc_sub_nested _ _ _ pv (fk_record R) _ _ _ _ Hs Hcs HKt).
+    - split; [ assumption |]; split; [ intros ? ? _; split; [ intros ? ? Heq | intros ? Heq ]; discriminate Heq |].
       intros Θ2 Ξ2 _ He; split; [ eapply Hnil; eassumption | intros; exact I ].
     - (* the module of a member, before its members: the member's group *)
       match goal with IH : GoodEV _ _ _ _ |- _ => rename IH into IHE end.
       split; [ exact (proj1 IHE) |]; split.
-      + intros Θ2 Ξ2 He pq0 D0 Heq; injection Heq as -> -> ->; exact (proj1 (proj2 IHE) _ _ He _ _ _ _ eq_refl).
+      + intros Θ2 Ξ2 He; split; [| intros ? Heq; discriminate Heq ].
+        intros pq0 D0 Heq; injection Heq as -> -> ->; exact (proj1 (proj2 IHE) _ _ He _ _ _ _ eq_refl).
       + intros Θ2 Ξ2 _ He; split; [ eapply Hnil; eassumption | intros; exact I ].
+    - (* the module of a record, before its members: the record's
+         declaration *)
+      match goal with IH : GoodEV _ _ _ _ |- _ => rename IH into IHE end.
+      split; [ exact (proj1 IHE) |]; split.
+      + intros Θ2 Ξ2 He; split; [ intros ? ? Heq; discriminate Heq |].
+        intros R0 Heq; injection Heq as <-.
+        match goal with HE : _ ⍮ _ ⍮ _ ⊢ᵉ ge_record _ _ _ _ |- _ =>
+          exact (Hrecord _ _ _ _ _ (proj1 wf_record_typed_all _ _ _ _ HE _ _ _ _ eq_refl) (proj1 IHE) He) end.
+      + (* its telescope: the parameters, valid one frame out, and the
+           value, where the record's frame is *)
+        intros Θ2 Ξ2 Hp He; split; [| intros; exact I ].
+        match goal with HE : _ ⍮ _ ⍮ _ ⊢ᵉ ge_record _ _ _ _, HU : record_params _ = _ ++ _ |- _ =>
+          pose proof (proj1 wf_record_typed_all _ _ _ _ HE _ _ _ _ eq_refl) as HRt; cbn [List.app]; rewrite <- HU end.
+        eapply Hrecord_tele; [ exact HRt | exact (proj1 IHE) | exact He | |].
+        * apply (gc_sub_frame_record _ _ _ _ _ _ (gc_subx_sub _ _ _ _ (emx_res _ _ _ _ Hp))).
+          rewrite gs_find_record_own; reflexivity.
+        * match goal with HU : record_params _ = _ ++ _ |- _ => rewrite HU end.
+          match goal with Ha : tele_ass ?Δ, HC : ⊢ _ ⍮ _ ⍮ ?Δ ++ _ |- _ => exact (Hnil _ _ _ _ _ Ha HC (proj1 IHE) He) end.
     - match goal with IH : GoodMV _ _ _ _ _ _ |- _ => rename IH into IHΦ end.
       match goal with IH : GoodEV _ _ _ _ |- _ => rename IH into IHE end.
       destruct IHΦ as [HG [HK IHΦ]]; split; [ exact HG |]; split; [ exact HK |].
@@ -2669,9 +2956,12 @@ Section ModInduction.
   Proof.
     fix IH 1; intros [| Φ y E | Φ c] * Hv H; cbn in Hv, H; [ discriminate | | exact (IH _ _ _ _ _ _ _ _ _ _ Hv H) ].
     destruct (String.eqb x y);
-      [| destruct E as [? ? ? ? | ? [Δ [? Φ0 | E0]] | ? ? ? ? ? | ? Δa pma pa ka Nsa]; (eapply IH; [ exact (proj1 Hv) | exact H ]) ].
-    destruct E as [? ? ? ? | ? [Δ [? Φ0 | E0]] | ? ? ? D Φ0 | ? Δa pma pa ka Nsa]; try discriminate.
+      [| destruct E as [? ? ? ? | ? [Δ [? Φ0 | E0]] | ? ? ? ? ? | ? Δa pma pa ka Nsa | ? Rr ΦR]; (eapply IH; [ exact (proj1 Hv) | exact H ]) ].
+    destruct E as [? ? ? ? | ? [Δ [? Φ0 | E0]] | ? ? ? D Φ0 | ? Δa pma pa ka Nsa | ? Rr ΦR]; try discriminate.
     - destruct Hv as (_ & HF & Hv); destruct ip as [| w ip].
+      + injection H as <- <-; split; assumption.
+      + exact (IH _ _ _ _ _ _ _ _ _ _ Hv H).
+    - destruct Hv as (_ & _ & HF & Hv); destruct ip as [| w ip].
       + injection H as <- <-; split; assumption.
       + exact (IH _ _ _ _ _ _ _ _ _ _ Hv H).
     - destruct Hv as (_ & _ & HF & Hv); destruct ip as [| w ip].
@@ -2692,10 +2982,11 @@ Section ModInduction.
     fix IH 1; intros [| Φ y E0 | Φ c] * Hv H; cbn in Hv, H; [ discriminate | | exact (IH _ _ _ _ _ _ _ _ Hv H) ].
     destruct ip as [| x ip]; [ discriminate |].
     destruct (String.eqb x y);
-      [| destruct E0 as [? ? ? ? | ? [Δ [? Φ0 | E1]] | ? ? ? ? ? | ? Δa pma pa ka Nsa]; (eapply IH; [ exact (proj1 Hv) | exact H ]) ].
-    destruct ip as [| w ip], E0 as [? ? ? ? | ? [Δ [? Φ0 | E1]] | ? ? ? D Φ0 | ? Δa pma pa ka Nsa]; try discriminate.
+      [| destruct E0 as [? ? ? ? | ? [Δ [? Φ0 | E1]] | ? ? ? ? ? | ? Δa pma pa ka Nsa | ? Rr ΦR]; (eapply IH; [ exact (proj1 Hv) | exact H ]) ].
+    destruct ip as [| w ip], E0 as [? ? ? ? | ? [Δ [? Φ0 | E1]] | ? ? ? D Φ0 | ? Δa pma pa ka Nsa | ? Rr ΦR]; try discriminate.
     - injection H as <-; exists T; exact (proj2 Hv).
     - destruct Hv as (_ & _ & Hv); exact (IH _ _ _ _ _ _ _ _ Hv H).
+    - destruct Hv as (_ & _ & _ & Hv); exact (IH _ _ _ _ _ _ _ _ Hv H).
     - destruct Hv as (_ & _ & _ & Hv); exact (IH _ _ _ _ _ _ _ _ Hv H).
   Qed.
 
@@ -2704,8 +2995,8 @@ Section ModInduction.
   Proof.
     induction Φ as [| Φ IH y E0 | Φ IH c]; intros * Hv H; cbn in Hv, H; [ discriminate | | eauto ].
     destruct (String.eqb z y);
-      [| destruct E0 as [? ? ? ? | ? [Δ [? Φ0 | E1]] | ? ? ? ? ? | ? Δa pma pa ka Nsa]; (eapply IH; [ exact (proj1 Hv) | exact H ]) ].
-    destruct E0 as [? ? ? ? | ? [Δ [? Φ0 | E1]] | ? ? ? ? ? | ? Δa pma pa ka Nsa]; try discriminate.
+      [| destruct E0 as [? ? ? ? | ? [Δ [? Φ0 | E1]] | ? ? ? ? ? | ? Δa pma pa ka Nsa | ? Rr ΦR]; (eapply IH; [ exact (proj1 Hv) | exact H ]) ].
+    destruct E0 as [? ? ? ? | ? [Δ [? Φ0 | E1]] | ? ? ? ? ? | ? Δa pma pa ka Nsa | ? Rr ΦR]; try discriminate.
     injection H; intros; subst; exact (proj2 Hv).
   Qed.
 
@@ -2714,14 +3005,16 @@ Section ModInduction.
   Proof.
     fix IH 1; intros [| Φ y E | Φ c] * Hv H; cbn in Hv, H; [ discriminate | | exact (IH _ _ _ _ _ _ _ _ _ Hv H) ].
     destruct (String.eqb x y);
-      [| destruct E as [? ? ? ? | ? [Δ [? Φ0 | E0]] | ? ? ? ? ? | ? Δa pma pa ka Nsa]; (eapply IH; [ exact (proj1 Hv) | exact H ]) ].
-    destruct E as [? ? ? ? | pm [Δ [? Φ0 | E0]] | ? ? ? D Φ0 | pm Δa pma pa ka Nsa]; try discriminate.
+      [| destruct E as [? ? ? ? | ? [Δ [? Φ0 | E0]] | ? ? ? ? ? | ? Δa pma pa ka Nsa | ? Rr ΦR]; (eapply IH; [ exact (proj1 Hv) | exact H ]) ].
+    destruct E as [? ? ? ? | pm [Δ [? Φ0 | E0]] | ? ? ? D Φ0 | pm Δa pma pa ka Nsa | pm Rr ΦR]; try discriminate.
     - destruct ip as [| w ip]; [ discriminate |].
       destruct Hv as (_ & _ & Hv); exact (IH _ _ _ _ _ _ _ _ _ Hv H).
     - destruct ip; [| discriminate ]; injection H as <-; exists T, pm; exact (proj2 Hv).
     - destruct ip as [| w ip]; [ discriminate |].
       destruct Hv as (_ & _ & _ & Hv); exact (IH _ _ _ _ _ _ _ _ _ Hv H).
     - destruct ip; [| discriminate ]; injection H as <-; exists T, pm; exact (proj1 (proj2 Hv)).
+    - destruct ip as [| w ip]; [ discriminate |].
+      destruct Hv as (_ & _ & _ & Hv); exact (IH _ _ _ _ _ _ _ _ _ Hv H).
   Qed.
 
   Lemma gm_valid_ind_target : forall Φ Θs Ξs Θ2 Ξ2 T ip Δ pm0 p k Ns,
@@ -2731,10 +3024,11 @@ Section ModInduction.
     unfold gm_ind_target; fix IH 1; intros [| Φ y E0 | Φ c] * Hv H; cbn in Hv, H; [ discriminate | | exact (IH _ _ _ _ _ _ _ _ _ _ _ _ Hv H) ].
     destruct ip as [| x ip]; [ discriminate |].
     destruct (String.eqb x y);
-      [| destruct E0 as [? ? ? ? | ? [Δ0 [? Φ0 | E1]] | ? ? ? ? ? | ? Δa pma pa ka Nsa]; (eapply IH; [ exact (proj1 Hv) | exact H ]) ].
-    destruct ip as [| w ip], E0 as [? ? ? ? | ? [Δ0 [? Φ0 | E1]] | ? ? ? D Φ0 | pm Δa pma pa ka Nsa]; cbn in H; try discriminate.
+      [| destruct E0 as [? ? ? ? | ? [Δ0 [? Φ0 | E1]] | ? ? ? ? ? | ? Δa pma pa ka Nsa | ? Rr ΦR]; (eapply IH; [ exact (proj1 Hv) | exact H ]) ].
+    destruct ip as [| w ip], E0 as [? ? ? ? | ? [Δ0 [? Φ0 | E1]] | ? ? ? D Φ0 | pm Δa pma pa ka Nsa | pm Rr ΦR]; cbn in H; try discriminate.
     - injection H as -> -> -> -> ->; exists T, pm; exact (proj2 (proj2 Hv)).
     - destruct Hv as (_ & _ & Hv); exact (IH _ _ _ _ _ _ _ _ _ _ _ _ Hv H).
+    - destruct Hv as (_ & _ & _ & Hv); exact (IH _ _ _ _ _ _ _ _ _ _ _ _ Hv H).
     - destruct Hv as (_ & _ & _ & Hv); exact (IH _ _ _ _ _ _ _ _ _ _ _ _ Hv H).
   Qed.
 
@@ -2743,11 +3037,27 @@ Section ModInduction.
   Proof.
     fix IH 1; intros [| Φ y E | Φ c] * Hv H; cbn in Hv, H; [ discriminate | | exact (IH _ _ _ _ _ _ _ _ _ _ _ Hv H) ].
     destruct (String.eqb x y);
-      [| destruct E as [? ? ? ? | ? [Δ [? Φ0 | E0]] | ? ? ? ? ? | ? Δa pma pa ka Nsa]; (eapply IH; [ exact (proj1 Hv) | exact H ]) ].
-    destruct E as [? ? ? ? | pm [Δ [? Φ0 | E0]] | ? ? ? D0 Φ0 | pm Δa pma pa ka Nsa]; try discriminate;
+      [| destruct E as [? ? ? ? | ? [Δ [? Φ0 | E0]] | ? ? ? ? ? | ? Δa pma pa ka Nsa | ? Rr ΦR]; (eapply IH; [ exact (proj1 Hv) | exact H ]) ].
+    destruct E as [? ? ? ? | pm [Δ [? Φ0 | E0]] | ? ? ? D0 Φ0 | pm Δa pma pa ka Nsa | pm Rr ΦR]; try discriminate;
       destruct ip as [| w ip]; try discriminate.
     - destruct Hv as (_ & _ & Hv); exact (IH _ _ _ _ _ _ _ _ _ _ _ Hv H).
     - injection H; intros; subst; exact (proj1 (proj2 Hv) eq_refl).
+    - destruct Hv as (_ & _ & _ & Hv); exact (IH _ _ _ _ _ _ _ _ _ _ _ Hv H).
+    - destruct Hv as (_ & _ & _ & Hv); exact (IH _ _ _ _ _ _ _ _ _ _ _ Hv H).
+  Qed.
+
+  (** A record entry of a valid body is valid as its declaration. *)
+  Lemma gm_valid_record : forall Φ Θs Ξs Θ2 Ξ2 T ip pv pr R Φ',
+      gm_valid Θs Ξs Θ2 Ξ2 T Φ -> gm_entry Φ ip = Some (ge_record pv pr R Φ') -> VR Θ2 Ξ2 R.
+  Proof.
+    fix IH 1; intros [| Φ y E0 | Φ c] * Hv H; cbn in Hv, H; [ discriminate | | exact (IH _ _ _ _ _ _ _ _ _ _ _ Hv H) ].
+    destruct ip as [| x ip]; [ discriminate |].
+    destruct (String.eqb x y);
+      [| destruct E0 as [? ? ? ? | ? [Δ [? Φ0 | E1]] | ? ? ? ? ? | ? Δa pma pa ka Nsa | ? pr0 Rr ΦR]; (eapply IH; [ exact (proj1 Hv) | exact H ]) ].
+    destruct ip as [| w ip], E0 as [? ? ? ? | ? [Δ0 [? Φ0 | E1]] | ? ? ? D Φ0 | pm Δa pma pa ka Nsa | pm pr0 Rr ΦR]; cbn in H; try discriminate.
+    - injection H as <- <- <- <-; exact (proj1 (proj2 Hv)).
+    - destruct Hv as (_ & _ & Hv); exact (IH _ _ _ _ _ _ _ _ _ _ _ Hv H).
+    - destruct Hv as (_ & _ & _ & Hv); exact (IH _ _ _ _ _ _ _ _ _ _ _ Hv H).
     - destruct Hv as (_ & _ & _ & Hv); exact (IH _ _ _ _ _ _ _ _ _ _ _ Hv H).
   Qed.
 
@@ -2765,8 +3075,18 @@ Section ModInduction.
   Proof.
     induction Ξ as [| [[mp K0] U0] Ξ IH]; intros * Hv H; cbn in Hv, H; [ discriminate |].
     destruct (qname_strip mp p) as [[| ? ?] |]; [| discriminate | exact (IH _ _ _ (proj2 (proj2 (proj2 Hv))) H) ].
-    destruct K0 as [| pq' k' D']; [ discriminate |]; injection H as -> -> ->.
-    exact (proj1 (proj2 (proj2 Hv)) _ _ eq_refl).
+    destruct K0 as [| pq' k' D' | R']; [ discriminate | | discriminate ]; injection H as -> -> ->.
+    exact (proj1 (proj1 (proj2 (proj2 Hv))) _ _ eq_refl).
+  Qed.
+
+  (** The record type whose module an open frame is, is valid. *)
+  Lemma gs_valid_record_kind : forall Θs Ξs Θ2 Ξ2 Ξ p R,
+      gs_valid Θs Ξs Θ2 Ξ2 Ξ -> gs_find_record Ξ p = Some R -> VR Θ2 Ξ2 R.
+  Proof.
+    induction Ξ as [| [[mp K0] U0] Ξ IH]; intros * Hv H; cbn in Hv, H; [ discriminate |].
+    destruct (qname_strip mp p) as [[| ? ?] |]; [| discriminate | exact (IH _ _ (proj2 (proj2 (proj2 Hv))) H) ].
+    destruct K0 as [| pq' k' D' | R']; try discriminate; injection H as ->.
+    exact (proj2 (proj1 (proj2 (proj2 Hv))) _ eq_refl).
   Qed.
 
   Lemma good_body : forall Θ Ξ Θs Ξs Θ2 Ξ2 p T Φ, gds_valid Θs Ξs Θ2 Ξ2 Θ -> gs_valid Θs Ξs Θ2 Ξ2 Ξ ->
@@ -2788,6 +3108,29 @@ Section ModInduction.
     - destruct (gs_valid_find _ _ _ _ _ _ _ _ _ HΞ Hf) as [_ Hv]; exact (gm_valid_resolve _ _ _ _ _ _ _ _ Hv H).
     - destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:Hl; [| discriminate ].
       destruct (HΘ _ _ Hl) as [_ Hv]; exact (gm_valid_resolve _ _ _ _ _ _ _ _ Hv H).
+  Qed.
+
+  (** A filed record entry is valid as its declaration. *)
+  Lemma good_record_entry : forall Θ Ξ Θs Ξs Θ2 Ξ2 p pv pr R Φ', gds_valid Θs Ξs Θ2 Ξ2 Θ -> gs_valid Θs Ξs Θ2 Ξ2 Ξ ->
+      gc_entry Θ Ξ p = Some (ge_record pv pr R Φ') -> VR Θ2 Ξ2 R.
+  Proof.
+    intros * HΘ HΞ H; unfold gc_entry, gc_entry_u in H.
+    rewrite gs_find_tele_find in H.
+    destruct (gs_find_tele Ξ p) as [[[U ip] T0] |] eqn:Hf; cbn in H.
+    - destruct (gs_valid_find _ _ _ _ _ _ _ _ _ HΞ Hf) as [_ Hv]; exact (gm_valid_record _ _ _ _ _ _ _ _ _ _ _ Hv H).
+    - destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:Hl; [| discriminate ].
+      destruct (HΘ _ _ Hl) as [_ Hv]; exact (gm_valid_record _ _ _ _ _ _ _ _ _ _ _ Hv H).
+  Qed.
+
+  (** A record type a path names, filed or with its module's frame open,
+      is valid. *)
+  Lemma good_record : forall Θ Ξ Θs Ξs Θ2 Ξ2 p R, gds_valid Θs Ξs Θ2 Ξ2 Θ -> gs_valid Θs Ξs Θ2 Ξ2 Ξ ->
+      record_lookup Θ Ξ p = Some R -> VR Θ2 Ξ2 R.
+  Proof.
+    intros * HΘ HΞ H; unfold record_lookup in H.
+    destruct (gs_find_record Ξ p) as [R' |] eqn:Hf; [ injection H as <-; exact (gs_valid_record_kind _ _ _ _ _ _ _ HΞ Hf) |].
+    destruct (gc_entry Θ Ξ p) as [[| | | | pv pr R' Φ'] |] eqn:He; try discriminate; injection H as <-.
+    exact (good_record_entry _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ He).
   Qed.
 
   Lemma good_alias : forall Θ Ξ Θs Ξs Θ2 Ξ2 p U, gds_valid Θs Ξs Θ2 Ξ2 Θ -> gs_valid Θs Ξs Θ2 Ξ2 Ξ ->
@@ -2838,6 +3181,8 @@ Definition syn_F (Θ : gdeps) (Ξ : gstack) (T : ctx) : Prop := tele_ass T /\ �
 
 Definition syn_VD : gdeps -> gstack -> ind_decl -> Prop := decl_typed.
 
+Definition syn_VR : gdeps -> gstack -> record_decl -> Prop := record_typed.
+
 (** An inductive alias over [Δa] of the declared member [k] of the group at
     [pq], its module at [pm], at arguments [Ns]: what [wf_gentry_ind_alias]
     gives, the arguments typed by its module view. *)
@@ -2880,6 +3225,7 @@ Definition syn_V (Θ : gdeps) (Ξ : gstack) (T : ctx) (E : gentry) : Prop :=
         (exists R, mdenote Θ Ξ (Δa ++ Γ) E' R) /\
         forall R, mdenote Θ Ξ (Δa ++ Γ) E' R -> desc_ok Θ Ξ (Δa ++ Γ) R /\ exists Rm, ds_mod Θ Ξ R = Some Rm
   | ge_ind_alias _ Δa pm pq k Ns => ind_alias_typed Θ Ξ Δa pm pq k Ns
+  | ge_record _ _ R _ => record_typed Θ Ξ R
   | _ => True
   end.
 
@@ -2888,25 +3234,47 @@ Abbreviation syn_Vs := (fun (_ : gdeps) (_ : gstack) => syn_V).
 
 (** Everything stored at [Θ ⍮ Ξ] is valid there. *)
 Definition valid_syn (Θ : gdeps) (Ξ : gstack) : Prop :=
-  gds_valid syn_Vs syn_F syn_VD Θ Ξ Θ Ξ Θ /\ gs_valid syn_Vs syn_F syn_VD Θ Ξ Θ Ξ Ξ.
+  gds_valid syn_Vs syn_F syn_VD syn_VR Θ Ξ Θ Ξ Θ /\ gs_valid syn_Vs syn_F syn_VD syn_VR Θ Ξ Θ Ξ Ξ.
 
-Lemma gm_valid_prefix : forall V F VD Θs Ξs Θ2 Ξ2 T Φ y Φ0 E,
-    gm_valid V F VD Θs Ξs Θ2 Ξ2 T Φ -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> ge_valid V F VD Θs Ξs Θ2 Ξ2 T E.
+Lemma gm_valid_prefix : forall V F VD VR Θs Ξs Θ2 Ξ2 T Φ y Φ0 E,
+    gm_valid V F VD VR Θs Ξs Θ2 Ξ2 T Φ -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> ge_valid V F VD VR Θs Ξs Θ2 Ξ2 T E.
 Proof.
-  intros V F VD Θs Ξs Θ2 Ξ2 T; induction Φ as [| Φ IH x E0 | Φ IH H its]; intros * Hv Hp; cbn in Hp; [ discriminate | |].
+  intros V F VD VR Θs Ξs Θ2 Ξ2 T; induction Φ as [| Φ IH x E0 | Φ IH H its]; intros * Hv Hp; cbn in Hp; [ discriminate | |].
   - apply gm_valid_ext in Hv as [Hv HE].
     destruct (String.eqb y x); [ injection Hp as -> -> ->; exact HE | eauto ].
   - destruct (existsb _ _); [ discriminate | cbn in Hv; eauto ].
 Qed.
 
 Lemma loc_valid : forall Θ Ξ p T Φ, valid_syn Θ Ξ -> loc Θ Ξ p T Φ ->
-    syn_F Θ Ξ T /\ gm_valid syn_Vs syn_F syn_VD Θ Ξ Θ Ξ T Φ.
+    syn_F Θ Ξ T /\ gm_valid syn_Vs syn_F syn_VD syn_VR Θ Ξ Θ Ξ T Φ.
 Proof.
   intros * [HΘ HΞ] [Hl | Hl].
   - unfold gc_frame in Hl.
     destruct (gs_find_tele Ξ p) as [[[[Δ [[|] Φ0 | E]] [| ? ?]] T0] |] eqn:Ef; try discriminate.
-    injection Hl as <- <-; exact (gs_valid_find _ _ _ _ _ _ _ _ _ _ _ _ HΞ Ef).
-  - exact (good_body _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl).
+    injection Hl as <- <-; exact (gs_valid_find _ _ _ _ _ _ _ _ _ _ _ _ _ HΞ Ef).
+  - exact (good_body _ _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl).
+Qed.
+
+(** The record type an open frame is the module of is typed: it was
+    checked where the module started. *)
+Lemma record_frame_typed : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p R, gs_find_record Ξ p = Some R -> record_typed Θ Ξ R.
+Proof.
+  intros * Hg * Hf.
+  destruct (gs_find_record_split _ _ _ Hf) as (Ξ1 & U & Ξ0 & HΞ & _); subst Ξ.
+  destruct (wf_gstack_app_inv _ _ _ Hg) as [Hg0 Hsub].
+  destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as (_ & [Δ Φ0 -> HΦ] & Hff).
+  eapply record_typed_emb; [| exact (wf_gmod_record_typed _ _ _ _ _ _ HΦ _ eq_refl) ].
+  constructor; [ exact Hg | eapply gc_sub_trans; [ apply gc_sub_push; exact Hff | exact Hsub ] ].
+Qed.
+
+(** Over valid storage, every record type found is typed. *)
+Lemma record_lookup_typed : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> valid_syn Θ Ξ -> forall p R,
+    record_lookup Θ Ξ p = Some R -> record_typed Θ Ξ R.
+Proof.
+  intros * Hg [HΘ HΞ] * Hl; unfold record_lookup in Hl.
+  destruct (gs_find_record Ξ p) as [R0 |] eqn:Hf; [ injection Hl as <-; exact (record_frame_typed _ _ Hg _ _ Hf) |].
+  destruct (gc_entry Θ Ξ p) as [[| | | | pv pr R0 Φ] |] eqn:He; try discriminate; injection Hl as <-.
+  exact (good_record_entry syn_Vs syn_F syn_VD syn_VR _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ He).
 Qed.
 
 
@@ -2941,7 +3309,7 @@ Lemma desc_ok_entry_closed : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> valid_syn Θ Ξ -
     edenote Θ Ξ (Γy ++ Γ) (Some (qname_in p y)) E R -> ds_read rd R = Some R' -> desc_ok Θ Ξ Γ R'.
 Proof.
   intros Θ Ξ Hg Hv * HR He Hed Hr.
-  inversion HR as [| | | Γ0 Θa T0 Φ1 Ns0 Θ0 Ξ0 p0 Hg0 Hsub Hloc Ha HsT HT HΘ' Hargs HaΘ']; subst.
+  inversion HR as [| | | Γ0 Θa T0 Φ1 Ns0 Θ0 Ξ0 p0 Hg0 Hsub Hloc Ha HsT HT HΘ' Hargs HaΘ' |]; subst.
   cbn in He; destruct (gm_prefix_upto Φ y) as [[| Φ0 x E0 | ? ? ?] |] eqn:Hp; try discriminate.
   injection He as <- <- <-.
   destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & Hent).
@@ -2957,13 +3325,13 @@ Proof.
   pose proof (proj1 (loc_entry _ _ Hg _ _ _ Hloc' _ _) HeΘ) as Hent1.
   destruct (gm_entry_prefix _ _ _ (body_closed_noopen _ _ (proj2 (loc_closed _ _ Hg _ _ _ Hloc'))) Hent1) as (Φ0' & Hp1).
   destruct (loc_valid _ _ _ _ _ Hv Hloc') as [_ HvΦ].
-  pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ HvΦ Hp1) as HE0.
+  pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ HvΦ Hp1) as HE0.
   pose proof (gm_coh_prefix _ _ _ _ _ (loc_coh _ _ Hg0 _ _ _ Hloc) Hp) as HcE0.
   pose proof (loc_closed _ _ Hg0 _ _ _ Hloc) as [_ HcΦ].
   pose proof (body_closed_prefix _ _ _ _ HcΦ Hp) as HcE; cbn in HcE; destruct HcE as [_ HcE].
   pose proof (closed_tele_wf _ _ _ _ HsT HT HΘ') as HTΘ.
   apply desc_ok_up; [| exact HΘ' | exact HaΘ' ].
-  destruct E0 as [b pv A oM | pv [Δ [sm Φy | E'] ] | pv pq k D ΦD | pv Δa pma pq ka Nsa ].
+  destruct E0 as [b pv A oM | pv [Δ [sm Φy | E'] ] | pv pq k D ΦD | pv Δa pma pq ka Nsa | pv pr Rr ΦR ].
   - (* a definition: its body, applied *)
     cbn in Hgr; subst E1.
     cbn in HE0; destruct HE0 as (A0 & -> & [i HA0] & HM0).
@@ -2994,7 +3362,7 @@ Proof.
       rewrite Hats in HR2; injection HR2 as <-; exact Hok2.
   - (* a closed submodule: its body, at the arguments recorded *)
     destruct HcE as (-> & HsΔ & HcΦy).
-    destruct E1 as [| pv1 [Δ1 [sm1 Φy1 | ?]] | | ]; cbn in Hgr; try discriminate; destruct Hgr as (<- & <- & <-).
+    destruct E1 as [| pv1 [Δ1 [sm1 Φy1 | ?]] | | | ]; cbn in Hgr; try discriminate; destruct Hgr as (<- & <- & <-).
     cbn [ge_read] in Hed; inversion Hed; subst.
     match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
     match goal with Hx : body_xp _ _ _ Φy ?Φx |- _ =>
@@ -3035,7 +3403,7 @@ Proof.
     eapply ds_ats_is_mod; [| exact Hats ]; apply ds_is_mod_up; eapply ds_mod_is_mod; eassumption.
   - (* an inductive type, stored at its own path: its type former at the
        arguments *)
-    destruct E1 as [| | pv1 pq1 k1 D1 ΦD1 |]; cbn in Hgr; try discriminate; destruct Hgr as (<- & <- & <- & <-).
+    destruct E1 as [| | pv1 pq1 k1 D1 ΦD1 | |]; cbn in Hgr; try discriminate; destruct Hgr as (<- & <- & <- & <-).
     cbn [ge_read] in Hed; inversion Hed; subst.
     rewrite ds_ats_ind_nil in Hats; injection Hats as <-; cbn [List.app].
     rewrite ds_named_fix by reflexivity.
@@ -3059,7 +3427,7 @@ Proof.
     destruct HcE0 as (Δ0 & -> & HaΔ0).
     destruct HcE as [HsΔ HsN].
     destruct Hv as [HvΘ HvΞ].
-    pose proof (good_ind _ _ _ _ _ _ _ _ _ _ _ HvΘ HvΞ Hl) as HDt; cbn [syn_VD] in HDt.
+    pose proof (good_ind _ _ _ _ _ _ _ _ _ _ _ _ HvΘ HvΞ Hl) as HDt; cbn [syn_VD] in HDt.
     destruct (decl_typed_uparams _ _ _ HDt) as [HU HaU].
     pose proof (gctx_closed_ind _ _ _ _ (wf_gstack_closed _ _ Hg) Hl) as HDc.
     pose proof (closed_tele_wf _ _ _ _ HsΔ HΔa (ctx_app_wf_tail _ _ _ _ HTΘ)) as HΔΘ.
@@ -3080,6 +3448,23 @@ Proof.
     destruct (ats_up_ok _ _ Hg Ns (Θ' ++ Γ) (Δ0 ++ T) _ HΔΘ HaΔ (args_ok_length _ _ _ _ _ Hargs') (args_ok_insts _ _ _ _ _ Hargs') Hok) as (R2 & HR2 & Hok3).
     rewrite Hats in HR2; injection HR2 as <-.
     destruct (ds_ats_ind _ _ _ _ _ _ Hats) as (? & ? & ->); rewrite ds_named_fix by reflexivity; exact Hok3.
+  - (* a record type, stored at its own path: its type former at the
+       arguments *)
+    destruct E1 as [| ? [? [? ?| ?]] | | | pv1 pr1 Rr1 ΦR1]; cbn in Hgr; try discriminate; try contradiction.
+    destruct Hgr as (<- & <- & <-).
+    cbn [ge_read] in Hed; inversion Hed; subst.
+    rewrite ds_ats_record_nil in Hats; injection Hats as <-; cbn [List.app].
+    rewrite ds_named_fix by reflexivity.
+    pose proof (gc_entry_record_selfpath _ _ Hg _ _ _ _ _ HeΘ) as ->.
+    destruct HE0 as (_ & [HaU HU] & _).
+    destruct HcE0 as ((Δ0 & HΔ0 & _) & _).
+    destruct HcE as ((HF & _) & _).
+    assert (Hrl : record_lookup Θ Ξ (qname_in p y) = Some Rr)
+      by (unfold record_lookup; rewrite (gc_entry_record_frame_none _ _ _ _ HeΘ), HeΘ; reflexivity).
+    econstructor; [ exact Hrl | exact HaU | exact (record_mod_tele_scoped _ _ (proj2 (proj1 (ctx_scoped_app_iff _ _) HF)))
+                  | exact HU | exact HΘ' | | constructor ].
+    unfold record_mod_tele; rewrite HΔ0.
+    exact (args_ok_ext _ _ _ _ _ (ce_ass (record_self (qname_in p y) Rr) :: Δ0) Hargs).
 Qed.
 
 (** ** Well-formed Module Expressions Denote Typed Descriptions *)
@@ -3173,6 +3558,17 @@ Proof.
     end.
     + eapply desc_ok_entry_open; eassumption.
     + eapply desc_ok_entry_closed; eassumption.
+  - (* the open frame of a record's module: the record's type former *)
+    match goal with Hk0 : gs_find_record _ _ = Some _ |- _ => rename Hk0 into Hk end.
+    destruct (gs_find_record_tele _ _ _ Hk) as (U & T0 & Ht).
+    destruct (gs_find_tele_body _ _ Hg _ _ _ _ Ht) as (Δ & Φ & ->).
+    assert (Hf : gc_frame Ξ p = Some (Δ ++ T0, Φ)) by (unfold gc_frame; rewrite Ht; reflexivity).
+    pose proof (frame_record_params _ _ Hg _ _ _ _ Hk Hf) as Hup.
+    destruct (loc_valid _ _ _ _ _ Hv (or_introl Hf)) as [[HaU HU] _]; rewrite Hup in HaU, HU.
+    assert (Hrl : record_lookup Θ Ξ p = Some R0) by (unfold record_lookup; rewrite Hk; reflexivity).
+    econstructor; [ exact Hrl | exact HaU | exact (wf_ctx_scoped _ _ _ HU) | exact HU | exact HΓ | | constructor ].
+    exists (record_mod_tele p R0) nil; [ rewrite List.app_nil_r; reflexivity | reflexivity | constructor | constructor | exact HΓ |].
+    intros k0 ? ? Hk0; rewrite List.nth_error_nil in Hk0; discriminate.
 Qed.
 
 Lemma body_shape_names : forall Φ Φ', body_shape Φ Φ' -> gm_names Φ = gm_names Φ'.
@@ -3186,7 +3582,7 @@ Lemma body_shape_l : forall Φ Φ', body_shape Φ Φ' -> body_shape Φ Φ.
 Proof.
   induction Φ as [| Φ IH x E | Φ IH H its]; intros [| Φ' x' E' | Φ' H' its'] Hs; cbn in Hs |- *; try contradiction; [ exact I | |].
   - destruct Hs as (Hs & _ & HE); split; [ exact (IH _ Hs) | split; [ reflexivity |] ].
-    destruct E as [? ? ? [] | | | ], E' as [? ? ? [] | | | ]; cbn in HE |- *; try contradiction; destruct_all; auto.
+    destruct E as [? ? ? [] | | | | ], E' as [? ? ? [] | | | | ]; cbn in HE |- *; try contradiction; destruct_all; auto.
   - destruct Hs as [Hs _]; split; [ exact (IH _ Hs) | reflexivity ].
 Qed.
 
@@ -3194,7 +3590,7 @@ Lemma body_shape_r : forall Φ Φ', body_shape Φ Φ' -> body_shape Φ' Φ'.
 Proof.
   induction Φ as [| Φ IH x E | Φ IH H its]; intros [| Φ' x' E' | Φ' H' its'] Hs; cbn in Hs |- *; try contradiction; [ exact I | |].
   - destruct Hs as (Hs & _ & HE); split; [ exact (IH _ Hs) | split; [ reflexivity |] ].
-    destruct E as [? ? ? [] | | | ], E' as [? ? ? [] | | | ]; cbn in HE |- *; try contradiction; destruct_all; auto.
+    destruct E as [? ? ? [] | | | | ], E' as [? ? ? [] | | | | ]; cbn in HE |- *; try contradiction; destruct_all; auto.
   - destruct Hs as [Hs _]; split; [ exact (IH _ Hs) | reflexivity ].
 Qed.
 
@@ -3245,9 +3641,9 @@ Proof. intros; unfold tele_view; rewrite List.rev_app_distr; cbn; rewrite List.r
 Lemma desc_ok_mtele_last : forall Θ Ξ Γ X R2, ds_is_mod R2 -> desc_ok Θ Ξ Γ (ds_up (ce_ass X :: nil) R2) ->
     exists T1, ds_mtele Θ Ξ (ds_up (ce_ass X :: nil) R2) = Some (T1 ++ ce_ass X :: nil).
 Proof.
-  intros * Hm Hok; destruct R2 as [| Δ Φ | Θ' p T Φ Ns |]; cbn in Hm; try contradiction.
+  intros * Hm Hok; destruct R2 as [| Δ Φ | Θ' p T Φ Ns | |]; cbn in Hm; try contradiction.
   - exists Δ; reflexivity.
-  - inversion Hok as [| | | Γ0 Θa T0 Φ1 Ns0 Θ0 Ξ0 p0 Hg0 Hsub Hloc Ha HsT HT HΘ' Hargs]; subst.
+  - inversion Hok as [| | | Γ0 Θa T0 Φ1 Ns0 Θ0 Ξ0 p0 Hg0 Hsub Hloc Ha HsT HT HΘ' Hargs |]; subst.
     pose proof (args_ok_length _ _ _ _ _ Hargs) as Hle.
     unfold ds_mtele; cbn; destruct (Nat.leb_spec (length Ns) (length T)) as [_ | ?]; [| lia ].
     eexists; rewrite List.app_assoc; reflexivity.
@@ -3283,17 +3679,23 @@ Lemma ds_unit_desc_ok : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ Rm, desc_ok 
 Proof.
   intros Θ Ξ Hg * Hok Hc Hm Hxp R HR.
   pose proof (proj1 (mdenote_functional_all _ _ Hg)) as Hf.
-  destruct Rm as [A om | Δ Φw Φ | [| e Θ'] p T Φ Ns | Θ0 p Ns]; cbn in Hm, Hc, Hxp, HR; try contradiction.
+  destruct Rm as [A om | Δ Φw Φ | [| e Θ'] p T Φ Ns | Θ0 p Ns | Θ0 p Ns]; cbn in Hm, Hc, Hxp, HR; try contradiction.
   - inversion HR; subst; try (cbn in *; discriminate); match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
     match goal with Hx : body_xp _ _ _ Φw ?Φx, Hb : ds_body _ _ _ _ _ = Some _ |- _ =>
       rewrite <- (proj1 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hg)))) _ _ _ Hxp _ Hx) in Hb; cbn in Hb; injection Hb as <- end.
     exact Hok.
-  - destruct (qname_mod_denote _ _ Hg _ _ _ Γ Hc) as (R1 & Hm1 & [-> | (pq & k & D & -> & Hb & Hml)]).
+  - destruct (qname_mod_denote _ _ Hg _ _ _ Γ Hc) as (R1 & Hm1 & [-> | [(pq & k & D & -> & Hb & Hml) | (Rr & -> & Hb & Hrl)]]);
+      [| | (* the module of a record type: the record type at the arguments *)
+           pose proof (mdenote_apps _ _ _ _ _ _ _ Hm1 (ds_ats_record_nil Ns p nil)) as Hm2;
+           rewrite (Hf _ _ _ HR _ Hm2); cbn [List.app];
+           inversion Hok as [| | | Γ0 Θa T0 Φ1 Ns0 Θ1 Ξ1 p0 Hg0 Hsub Hloc Ha HsT HT HΘ' Hargs |]; subst;
+           pose proof (record_lookup_gc_loc _ _ Hg _ _ _ _ Hrl Hb) as ->;
+           econstructor; [ exact Hrl | exact Ha | exact HsT | exact HT | exact HΘ' | exact Hargs | constructor ] ].
     + pose proof (mdenote_apps _ _ _ _ _ _ _ Hm1 (ds_ats_closed_nil Ns p T Φ nil)) as Hm2.
       rewrite (Hf _ _ _ HR _ Hm2); exact Hok.
     + pose proof (mdenote_apps _ _ _ _ _ _ _ Hm1 (ds_ats_ind_nil Ns pq k nil)) as Hm2.
       rewrite (Hf _ _ _ HR _ Hm2); cbn [List.app].
-      inversion Hok as [| | | Γ0 Θa T0 Φ1 Ns0 Θ1 Ξ1 p0 Hg0 Hsub Hloc Ha HsT HT HΘ' Hargs]; subst.
+      inversion Hok as [| | | Γ0 Θa T0 Φ1 Ns0 Θ1 Ξ1 p0 Hg0 Hsub Hloc Ha HsT HT HΘ' Hargs |]; subst.
       pose proof (ind_mlookup_gc_loc _ _ Hg _ _ _ _ _ _ Hml Hb) as ->.
       destruct (ind_mlookup_selfpath _ _ Hg _ _ _ _ Hml) as [Hmp _ Hlt].
       assert (HMk : exists Mk, ind_member D k = Some Mk)
@@ -3369,10 +3771,13 @@ Proof.
         apply desc_ok_up; [ exact (IH _ HR0) | exact HΔ | exact Ha ] ]
     end.
   - (* a loaded unit or an open frame; a unit is the module of no member *)
-    split; intros R0 HR0; inversion HR0; subst; [ eapply desc_ok_unit; eassumption | exfalso | eapply desc_ok_unit; eassumption | exfalso ];
-      match goal with Hk : gs_find_ind _ _ = Some _, Hq : mod_qname _ = Some _ |- _ =>
-        cbn in Hq; injection Hq as <-; destruct (frame_ind_parent _ _ Hg _ _ Hk) as ([? cq] & ? & Hp);
-        unfold qname_in in Hp; cbn in Hp; injection Hp as _ Hc; destruct cq; discriminate end.
+    split; intros R0 HR0; inversion HR0; subst;
+      [ eapply desc_ok_unit; eassumption | exfalso | exfalso | eapply desc_ok_unit; eassumption | exfalso | exfalso ];
+      first [ match goal with Hk : gs_find_ind _ _ = Some _, Hq : mod_qname _ = Some _ |- _ =>
+                cbn in Hq; injection Hq as <-; destruct (frame_ind_parent _ _ Hg _ _ Hk) as ([? cq] & ? & Hp) end
+            | match goal with Hk : gs_find_record _ _ = Some _, Hq : mod_qname _ = Some _ |- _ =>
+                cbn in Hq; injection Hq as <-; destruct (frame_record_parent _ _ Hg _ _ Hk) as ([? cq] & ? & Hp) end ];
+      unfold qname_in in Hp; cbn in Hp; injection Hp as _ Hc; destruct cq; discriminate.
   - (* a slot *)
     split; intros R HR; inversion HR; subst; try (cbn in *; discriminate); first [ eapply desc_ok_unit; eassumption |
       match goal with Hl : ctx_lookup_mod _ ?U0 _, HU : udenote _ _ _ _ ?U0 _ |- _ =>
@@ -3386,7 +3791,8 @@ Proof.
   - (* an application *)
     pose proof (presup_modexp_eq_ctx H0).
     split; intros R0 HR0; inversion HR0; subst;
-      [ eapply desc_ok_unit; eassumption | cbn in *; discriminate | | eapply desc_ok_unit; eassumption | cbn in *; discriminate |].
+      [ eapply desc_ok_unit; eassumption | cbn in *; discriminate | | cbn in *; discriminate
+      | eapply desc_ok_unit; eassumption | cbn in *; discriminate | | cbn in *; discriminate ].
     + match goal with Hm : mdenote _ _ _ H ?R1, Ha : ds_at ?R1 _ = Some _ |- _ =>
         rewrite (proj1 (mdenote_functional_all _ _ Hg) _ _ _ Hm _ H2) in Ha;
         exact (desc_ok_at _ _ Hg _ _ _ _ _ _ _ (H19 _ H2) H3 H4 H7 Ha) end.
@@ -3448,18 +3854,66 @@ Proof.
   - eapply wf_apps_ctx_pi; [ exact Ha | exact HT2 | exact HB' | exact HM | symmetry; exact Hlen | exact HN ].
 Qed.
 
+(** The type former of a typed record at arguments for its outermost
+    parameters is of the type its declaration gives there. *)
+Lemma wf_record_args : forall Θ Ξ Γ p R Ns,
+    record_typed Θ Ξ R -> record_lookup Θ Ξ p = Some R -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    args_ok Θ Ξ Γ (record_params R) Ns ->
+    (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ record_ty_at R Ns : Typeω@i) /\ Θ ⍮ Ξ ⍮ Γ ⊢ apps (a_record p) Ns : record_ty_at R Ns.
+Proof.
+  intros * HR Hl HΓ [T1 T2 HT Hlen Ha Hs HT2 HN].
+  pose proof HR as [_ _ HSu _ _].
+  destruct (wf_is_univ_typ HSu) as [i Hi].
+  pose proof (presup_is_univ_ctx HSu) as HP.
+  rewrite HT in Hi, HP.
+  destruct (ctx_pi_wf _ _ _ _ _ _ HP Hi) as [j HB].
+  pose proof (closed_tele_weaken_exp _ _ _ _ _ _ Hs HB HT2) as HB'.
+  assert (Hat : record_ty_at R Ns = (ctx_pi T1 (record_sort R))[sb_of_list Id Ns]).
+  { unfold record_ty_at; rewrite HT.
+    replace (length (T1 ++ T2) - length Ns) with (length T1) by (rewrite List.length_app; lia).
+    rewrite List.firstn_app, List.firstn_all, Nat.sub_diag; cbn [List.firstn]; rewrite List.app_nil_r; reflexivity. }
+  assert (HM : Θ ⍮ Ξ ⍮ Γ ⊢ a_record p : ctx_pi T2 (ctx_pi T1 (record_sort R))).
+  { rewrite <- ctx_pi_app, <- HT; exact (record_typed_former _ _ _ _ _ HR Hl HΓ). }
+  pose proof (wf_sub_of_list_id _ _ _ _ _ Ha HT2 (eq_sym Hlen) HN) as Hσ.
+  rewrite Hat; split.
+  - exists j; pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB' Hσ) as H; cbn in H; exact H.
+  - eapply wf_apps_ctx_pi; [ exact Ha | exact HT2 | exact HB' | exact HM | symmetry; exact Hlen | exact HN ].
+Qed.
+
+(** Arguments for a record's module telescope that are no more than its
+    parameters are arguments for its parameters: the value is bound last. *)
+Lemma args_ok_record_params : forall Θ Ξ Γ p R Ns,
+    args_ok Θ Ξ Γ (record_mod_tele p R) Ns -> List.length Ns <= List.length (record_params R) ->
+    args_ok Θ Ξ Γ (record_params R) Ns.
+Proof.
+  intros * [T1 T2 HT Hlen Ha Hs HT2 HN] Hle.
+  destruct T1 as [| c T1].
+  - exfalso; cbn in HT; apply (f_equal (@List.length _)) in HT; cbn in HT; lia.
+  - unfold record_mod_tele in HT; cbn in HT; injection HT as _ HT.
+    exists T1 T2; assumption.
+Qed.
+
 (** The term part of a typed description is of a type, and its δ-reduct of
     that type. *)
 Lemma desc_ok_ty : forall Θ Ξ, valid_syn Θ Ξ -> forall Γ R A, desc_ok Θ Ξ Γ R -> ds_ty Θ Ξ R = Some A ->
     (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) /\ (forall M, ds_red R = Some M -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A).
 Proof.
-  intros * [HΘ HΞ] * HR HA.
-  destruct HR as [Γ A0 om HA0 HM | Γ Θ' pq k Ns D Mk pm Hl HMk Hlt Hmp Hml Ha Hs HT HΘ' Hargs | |];
+  intros * Hv * HR HA; pose proof Hv as [HΘ HΞ].
+  destruct HR as [Γ A0 om HA0 HM | Γ Θ' pq k Ns D Mk pm Hl HMk Hlt Hmp Hml Ha Hs HT HΘ' Hargs | |
+                 | Γ Θ' p Ns Rr Hl Ha Hs HT HΘ' Hargs];
     cbn in HA |- *; try discriminate.
   - injection HA as <-; split; [ exact HA0 | exact HM ].
   - rewrite Hl, HMk in HA; injection HA as <-.
-    pose proof (good_ind _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) as HD.
+    pose proof (good_ind _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) as HD.
     destruct (wf_ind_args _ _ _ _ _ _ _ _ HD Hl HMk Hlt HΘ' Hargs) as [[i Hi] HM].
+    split.
+    + exact (ctx_pi_wf _ _ _ _ _ _ HΘ' Hi).
+    + intros M [= <-]; exact (ctx_fn_wf _ _ _ _ _ _ _ HΘ' Hi HM).
+  - rewrite Hl in HA; destruct (Nat.leb _ _) eqn:Hle; [ injection HA as <- | discriminate ].
+    apply Nat.leb_le in Hle.
+    pose proof (ctx_wf_gctx _ _ _ HΘ') as Hg.
+    destruct (wf_record_args _ _ _ _ _ _ (record_lookup_typed _ _ Hg Hv _ _ Hl) Hl HΘ'
+                (args_ok_record_params _ _ _ _ _ _ Hargs Hle)) as [[i Hi] HM].
     split.
     + exact (ctx_pi_wf _ _ _ _ _ _ HΘ' Hi).
     + intros M [= <-]; exact (ctx_fn_wf _ _ _ _ _ _ _ HΘ' Hi HM).
@@ -3471,7 +3925,7 @@ Qed.
     abstracted over. *)
 Lemma desc_ok_up_inv : forall Θ Ξ Γ Δ Rm, ds_is_mod Rm -> desc_ok Θ Ξ Γ (ds_up Δ Rm) -> desc_ok Θ Ξ (Δ ++ Γ) Rm.
 Proof.
-  intros * Hm Hok; destruct Rm as [| Δ0 Φ | Θ' p T Φ Ns |]; cbn in Hm |- *; try contradiction.
+  intros * Hm Hok; destruct Rm as [| Δ0 Φ | Θ' p T Φ Ns | |]; cbn in Hm |- *; try contradiction.
   - assert (Ha : tele_ass (Δ0 ++ Δ)) by (inversion Hok; assumption).
     apply (desc_ok_open_root _ _ _ _ _ _ Ha) in Hok; apply (desc_ok_open_root _ _ _ _ _ _ (proj1 (proj1 (List.Forall_app _ _ _) Ha))).
     rewrite <- List.app_assoc in Hok; exact Hok.
@@ -3487,6 +3941,7 @@ Proof.
   - eapply ctx_app_wf_tail; eassumption.
   - eapply ctx_app_wf_tail; eapply ctx_app_wf_tail; eassumption.
   - eapply ctx_app_wf_tail; eassumption.
+  - eapply ctx_app_wf_tail; eassumption.
 Qed.
 
 (** A selection from a module part of typed descriptions. *)
@@ -3499,8 +3954,12 @@ Proof.
   - eapply desc_ok_entry_closed; eassumption.
 Qed.
 
-Lemma entry_term_edenote : forall Θ Ξ Γ o T E R, entry_term E = Some R -> edenote Θ Ξ Γ o (ge_read T E) R.
-Proof. intros * He; destruct E as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ?]; cbn in He |- *; try discriminate; injection He as <-; constructor. Qed.
+Lemma entry_term_edenote : forall Θ Ξ Γ o T E R, entry_term o E = Some R -> edenote Θ Ξ Γ o (ge_read T E) R.
+Proof.
+  intros * He; destruct E as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ? ?]; cbn in He |- *; try discriminate;
+    try (injection He as <-; constructor).
+  destruct o; cbn in He; [ injection He as <-; constructor | discriminate ].
+Qed.
 
 
 
@@ -3508,10 +3967,12 @@ Proof. intros * He; destruct E as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ?]; 
 
 Lemma ds_ty_up : forall Θ Ξ Δ R A, ds_ty Θ Ξ R = Some A -> ds_ty Θ Ξ (ds_up Δ R) = Some (ctx_pi Δ A).
 Proof.
-  intros * Ht; destruct R as [A0 om | | | Θ' p k Ns]; cbn in *; try discriminate.
+  intros * Ht; destruct R as [A0 om | | | Θ' p k Ns | Θ' p Ns]; cbn in *; try discriminate.
   - injection Ht as <-; reflexivity.
   - destruct (ind_lookup Θ Ξ p) as [D |]; [| discriminate ].
     destruct (ind_member D k); [| discriminate ]; injection Ht as <-; rewrite ctx_pi_app; reflexivity.
+  - destruct (record_lookup Θ Ξ p) as [R |]; [| discriminate ].
+    destruct (Nat.leb _ _); [ injection Ht as <-; rewrite ctx_pi_app; reflexivity | discriminate ].
 Qed.
 
 (** A term of the type a description abstracted over [Δa] has, applied to
@@ -3644,8 +4105,11 @@ Proof.
   destruct (emb_preserves_wf _ _ _ _ He) as (Hc & Ht & _ & _ & _ & Hu & _).
   induction 1 as [Γ A om HA HM | Γ Θ' pq k Ns D Mk pm Hl HMk Hlt Hmp Hml Ha Hsc HT HΘ' Hargs HaΘ
                  | Γ Δ Φw Φ HΦ Hn Hent IH HaΔ Hsh Hnd HUw
-                 | Γ Θ' T Φ Ns Θ0 Ξ0 p Hg0 Hs0 Hloc Ha Hsc HT HΘ' Hargs HaΘ];
+                 | Γ Θ' T Φ Ns Θ0 Ξ0 p Hg0 Hs0 Hloc Ha Hsc HT HΘ' Hargs HaΘ
+                 | Γ Θ' p Ns R Hl Ha Hsc HT HΘ' Hargs HaΘ];
     intros R2 [[<- Hcb] | (Θ'' & T' & Φ1 & Φ2 & Ns' & p' & Heq1 & -> & Hl1 & Hl2)]; try discriminate.
+  5: { econstructor; [ exact (record_lookup_gc_sub _ _ _ _ _ _ Hs Hl) | exact Ha | exact Hsc | apply Hc, HT | apply Hc, HΘ'
+                     | exact (args_ok_emb _ _ _ _ _ _ _ He Hargs) | exact HaΘ ]. }
   - constructor; [ destruct HA as [i HA]; exists i; apply Ht, HA | intros M HM0; apply Ht, HM, HM0 ].
   - econstructor; [ exact (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hl) | exact HMk | exact Hlt | exact Hmp
                   | exact (ind_mlookup_gc_sub _ _ _ _ _ _ Hs Hml) | exact Ha | exact Hsc | apply Hc, HT | apply Hc, HΘ'
@@ -3693,7 +4157,7 @@ Proof.
      the scrutinee *)
   all: try match goal with
     | Hl : ind_lookup _ _ _ = Some ?D, HΓ : ⊢ _ ⍮ _ ⍮ ?Γ |- _ =>
-        pose proof (good_ind _ _ _ _ _ _ _ _ _ _ _ (proj1 Hv) (proj2 Hv) Hl) as HDt; cbn [syn_VD] in HDt;
+        pose proof (good_ind _ _ _ _ _ _ _ _ _ _ _ _ (proj1 Hv) (proj2 Hv) Hl) as HDt; cbn [syn_VD] in HDt;
         pose proof (gctx_closed_ind _ _ _ _ (wf_gctx_closed _ _ _ HΓ) Hl) as HDc
     end.
   all: try solve [ eapply ind_ty_typed; eassumption ].
@@ -3714,6 +4178,13 @@ Proof.
       |- exists _, _ ⍮ _ ⍮ _ ⊢ (eb_motive ?bm)[_] : _ =>
         eexists; eapply (sub_preserves_exp _ _ _ _ _ _ _ (HA _ _ _ Hm Hb)); eapply wf_elim_inst_sub;
           [ eassumption | exact Hm | assumption | assumption | assumption | eapply ext_eq_ctx_left; exact (Hx _ _ Hm) ]
+    end ].
+  (* a record's type former: its type is a closed type *)
+  all: try solve [
+    match goal with
+    | Hl : record_lookup _ _ _ = Some ?R, Hty : _ ⍮ _ ⍮ ⋅ ⊢ record_ty ?R : _, HΓ : ⊢ _ ⍮ _ ⍮ ?Γ |- _ =>
+        eexists; eapply closed_weaken_exp;
+          [ exact HΓ | exact Hty | apply record_ty_scoped; eapply wf_record_closed; eassumption | exact I ]
     end ].
   all: mauto 3.
   all: eexists; mauto 3.
@@ -3748,18 +4219,18 @@ Proof.
   split; assumption.
 Qed.
 
-Lemma syn_valid_here : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> GoodV syn_Vs syn_F syn_VD Θ Ξ -> valid_syn Θ Ξ.
+Lemma syn_valid_here : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> valid_syn Θ Ξ.
 Proof. intros * Hg HG; exact (HG _ _ (Embx_refl _ _ Hg) _ _ (gc_sub_refl _ _)). Qed.
 
-Lemma syn_tele_ass : forall Θ Ξ Θ2 Ξ2, GoodV syn_Vs syn_F syn_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> tele_ass (gs_tele Ξ).
+Lemma syn_tele_ass : forall Θ Ξ Θ2 Ξ2, GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> tele_ass (gs_tele Ξ).
 Proof.
   intros * HG He; destruct (HG _ _ He _ _ (gc_sub_refl _ _)) as [_ HΞ].
   destruct Ξ as [| [[mp K] U] Ξ]; [ constructor | exact (proj1 (proj1 HΞ)) ].
 Qed.
 
 Lemma syn_def : forall Θ Ξ T A M b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ T ⊢ M : A -> GoodV syn_Vs syn_F syn_VD Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
-    gds_valid syn_Vs syn_F syn_VD Θ Ξ Θ2 Ξ2 Θ -> gs_valid syn_Vs syn_F syn_VD Θ Ξ Θ2 Ξ2 Ξ ->
+    Θ ⍮ Ξ ⍮ T ⊢ M : A -> GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    gds_valid syn_Vs syn_F syn_VD syn_VR Θ Ξ Θ2 Ξ2 Θ -> gs_valid syn_Vs syn_F syn_VD syn_VR Θ Ξ Θ2 Ξ2 Ξ ->
     forall (Θs : gdeps) (Ξs : gstack), syn_V Θ2 Ξ2 T (ge_def b pv (ctx_pi T A) (Some (ctx_fn T M))).
 Proof.
   intros * HM HG He _ _ Θs Ξs.
@@ -3771,7 +4242,7 @@ Proof.
 Qed.
 
 Lemma syn_ax : forall Θ Ξ A i b pv Θ2 Ξ2 (Θs : gdeps) (Ξs : gstack),
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> GoodV syn_Vs syn_F syn_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     syn_V Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
 Proof.
   intros * HA _ He _; destruct (emb_preserves_wf _ _ _ _ (Embx_emb _ _ _ _ He)) as (_ & Ht & _).
@@ -3781,7 +4252,7 @@ Qed.
 (** An alias: what its target denotes, wherever it is read, is typed. *)
 Lemma syn_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 (Θs : gdeps) (Ξs : gstack),
     tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    GoodV syn_Vs syn_F syn_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     syn_V Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof.
   intros * HaΔ Hx HE HG He _; cbn [syn_V].
@@ -3817,7 +4288,7 @@ Lemma syn_ind_alias : forall Θ Ξ pv Δ pm p k Ns D Mk Θ2 Ξ2 (Θs : gdeps) (�
     List.length Ns <= ind_nu D ->
     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ apps (a_ind p k) Ns : ind_ty_at D Mk Ns ->
     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ me_apps (qname_mod pm) Ns ≈ me_apps (qname_mod pm) Ns ->
-    GoodV syn_Vs syn_F syn_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
+    GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
     syn_V Θ2 Ξ2 (gs_tele Ξ) (ge_ind_alias pv (Δ ++ gs_tele Ξ) pm p k Ns).
 Proof.
   intros * HaΔ Hx Hl HMk Hlt Hmp Hml Hle _ HE HG He _; cbn [syn_V].
@@ -3830,7 +4301,7 @@ Proof.
   destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HE) as (_ & (R1 & _ & HR1 & _) & _).
   destruct (mdenote_apps_inv _ _ _ _ _ _ HR1) as (R0 & HR0 & Ha).
   rewrite (mdenote_mind_path _ _ Hg _ _ _ _ _ _ Hml HR0), ds_ats_ind_nil in Ha; cbn in Ha; injection Ha as <-.
-  pose proof (HR _ HR1) as Hok; inversion Hok as [| Γ0 Θ' pq k' Ns' D' Mk' pm' Hl' _ _ _ _ _ _ _ _ Hargs | |]; subst.
+  pose proof (HR _ HR1) as Hok; inversion Hok as [| Γ0 Θ' pq k' Ns' D' Mk' pm' Hl' _ _ _ _ _ _ _ _ Hargs | | |]; subst.
   rewrite Hl in Hl'; injection Hl' as <-.
   pose proof (em_res _ _ _ _ He') as Hs.
   exists D Mk; [ exact (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hl) | exact HMk | exact Hlt | exact Hmp
@@ -3839,7 +4310,7 @@ Proof.
 Qed.
 
 Lemma syn_nil : forall Θ Ξ Δ Θ2 Ξ2,
-    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV syn_Vs syn_F syn_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
     syn_F Θ2 Ξ2 (Δ ++ gs_tele Ξ).
 Proof.
   intros * HΔ HC HG He.
@@ -3848,7 +4319,7 @@ Proof.
 Qed.
 
 Lemma syn_ind : forall Θ Ξ D Θ2 Ξ2,
-    decl_typed Θ Ξ D -> GoodV syn_Vs syn_F syn_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+    decl_typed Θ Ξ D -> GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
     syn_VD Θ2 Ξ2 D /\ syn_F Θ2 Ξ2 (ind_uparams D).
 Proof.
   intros * HD _ He.
@@ -3857,12 +4328,28 @@ Proof.
   split; [ exact HD2 | split; assumption ].
 Qed.
 
+(** A record: its declaration, typed where it is checked, moved along. *)
+Lemma syn_record : forall Θ Ξ R Θ2 Ξ2,
+    record_typed Θ Ξ R -> GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> syn_VR Θ2 Ξ2 R.
+Proof. intros * HR _ He; exact (record_typed_emb _ _ _ _ _ (Embx_emb _ _ _ _ He) HR). Qed.
+
+(** A record's module telescope, where the record is found: the value's
+    type is typed there. *)
+Lemma syn_record_tele : forall Θ Ξ p R Θ2 Ξ2,
+    record_typed Θ Ξ R -> GoodV syn_Vs syn_F syn_VD syn_VR Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> record_lookup Θ2 Ξ2 p = Some R ->
+    syn_F Θ2 Ξ2 (record_params R) -> syn_F Θ2 Ξ2 (record_mod_tele p R).
+Proof.
+  intros * HR _ He Hl [Ha _]; split; [ constructor; [ eexists; reflexivity | exact Ha ] |].
+  exact (record_mod_tele_wf _ _ _ _ (record_typed_emb _ _ _ _ _ (Embx_emb _ _ _ _ He) HR) Hl).
+Qed.
+
 (** Everything stored in a well-formed global context is valid there. *)
 Theorem gctx_valid_syn : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> valid_syn Θ Ξ.
 Proof.
   intros * Hg; apply (syn_valid_here _ _ Hg).
   exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2
-           (global_valid_all syn_Vs syn_F syn_VD syn_def syn_ax syn_alias syn_ind_alias syn_nil syn_ind)))))))))) _ _ Hg).
+           (global_valid_all syn_Vs syn_F syn_VD syn_VR syn_def syn_ax syn_alias syn_ind_alias syn_nil syn_ind syn_record
+              syn_record_tele)))))))))) _ _ Hg).
 Qed.
 
 (** A term a well-formed module expression looks up is typed at the type
@@ -3943,7 +4430,7 @@ Definition entry_typed (Θ : gdeps) (Ξ : gstack) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B =>
       (exists i, Θ ⍮ Ξ ⍮ ⋅ ⊢ A : Typeω@i) /\ (forall M, B = Some M -> Θ ⍮ Ξ ⍮ ⋅ ⊢ M : A)
-  | ge_mod _ _ | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ => True
+  | ge_mod _ _ | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ | ge_record _ _ _ _ => True
   end.
 
 Definition rwf (Θ : gdeps) (Ξ : gstack) : Prop := GV entry_typed decl_typed Θ Ξ Θ Ξ.

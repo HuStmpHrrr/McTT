@@ -79,6 +79,15 @@ Proof.
     match goal with H1 : im_ref p k M = (hd, kq) |- _ => unfold im_ref in H1; rewrite HhM in H1; injection H1 as <- <- end.
     rewrite HlD in Hq; injection Hq as <-.
     eapply ind_rel_con_prefix_l; [ exact HMk | unfold im_unu; rewrite HhM; exact Lc | lia | exact Hx' ].
+  - (* a record type: a constructor has no projection, so the record has
+       no field and every value is its element *)
+    match goal with HE : elem_rel <~> record_rel _ _ |- _ =>
+      apply (proj2 (HE _ _)); pose proof (proj1 (HE _ _) Hx) as Hx' end.
+    destruct Hx' as [vs vs' Hl Hr Hrel]; unfold record_projs in Hl.
+    inversion Hl; subst;
+      [| match goal with Hp : eval_proj _ _ _ (d_con _ _ _ _) _ |- _ => inversion Hp end ].
+    econstructor; [| exact Hr | exact Hrel ].
+    unfold record_projs; match goal with Hf : nil = record_fields _ |- _ => rewrite <- Hf end; constructor.
 Qed.
 
 (** A declared member's constructor along any arguments it takes. *)

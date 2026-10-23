@@ -2,7 +2,7 @@ From Stdlib Require Import Lia PeanoNat Relations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Members.
+From Mctt.Core.Syntactic Require Import Members Records.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Semantic.Evaluation Require Import Definitions.
 Import Domain_Notations.
@@ -91,7 +91,9 @@ Import Domain_Notations.
           ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 -> forall r2, ⟦ih v of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
       (forall p ups j r1, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r1 -> forall r2, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall p ups ρ t a1, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> forall a2, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2) /\
-      (forall ρm As ρ t v a1, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> forall a2, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2).
+      (forall ρm As ρ t v a1, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a1 -> forall a2, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a2 -> a1 = a2) /\
+      (forall f m r1, eval_proj Θ Ξ f m r1 -> forall r2, eval_proj Θ Ξ f m r2 -> r1 = r2) /\
+      (forall ns m fl pre rs1, eval_nflds Θ Ξ ns m fl pre rs1 -> forall rs2, eval_nflds Θ Ξ ns m fl pre rs2 -> rs1 = rs2).
   Proof.
     intros Θ Ξ; apply eval_mut_ind; intros;
       (* invert the other evaluation, then use the hypotheses on its parts; the
@@ -109,6 +111,16 @@ Import Domain_Notations.
         | H1 : ind_mlookup Θ Ξ ?p = Some _, H2 : ind_mlookup Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : ind_lookup Θ Ξ ?p = Some _, H2 : ind_lookup Θ Ξ ?p = Some _ |- _ =>
+            rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : record_lookup Θ Ξ ?p = Some _, H2 : record_lookup Θ Ξ ?p = Some _ |- _ =>
+            rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : record_lookup Θ Ξ ?p = Some _, H2 : ind_mlookup Θ Ξ ?p = Some _ |- _ =>
+            exfalso; rewrite (record_lookup_not_ind _ _ _ _ H1) in H2; discriminate H2
+        | H1 : record_lookup Θ Ξ ?p = Some _, H2 : ind_alias_lookup Θ Ξ ?p = Some _ |- _ =>
+            exfalso; rewrite (record_lookup_not_ind_alias _ _ _ _ H1) in H2; discriminate H2
+        | H1 : field_index ?fl ?f = Some _, H2 : field_index ?fl ?f = Some _ |- _ =>
+            rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : field_lookup ?fl ?f = Some _, H2 : field_lookup ?fl ?f = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
         | H1 : ind_member ?D ?k = Some _, H2 : ind_member ?D ?k = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
@@ -209,6 +221,20 @@ Import Domain_Notations.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
 
+  (** A field of a value is one value. *)
+  Corollary functional_eval_proj : forall {Θ Ξ} f m r1 r2,
+      eval_proj Θ Ξ f m r1 -> eval_proj Θ Ξ f m r2 -> r1 = r2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
+  Qed.
+
+  (** So are the neutral projections of the fields of a neutral. *)
+  Corollary functional_eval_nflds : forall {Θ Ξ} ns m fl pre rs1 rs2,
+      eval_nflds Θ Ξ ns m fl pre rs1 -> eval_nflds Θ Ξ ns m fl pre rs2 -> rs1 = rs2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
+  Qed.
+
   (** An evaluated substitution is determined pointwise. *)
   Corollary functional_eval_modexp : forall {Θ Ξ} H ρ h1 h2,
       ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h1 ->
@@ -239,7 +265,7 @@ Import Domain_Notations.
   Qed.
 
 #[export]
-Hint Resolve functional_eval_exp functional_eval_elim functional_eval_ihs functional_eval_ih functional_eval_mref functional_eval_shty functional_eval_ihty functional_eval_app functional_eval_modexp functional_eval_sub : mctt.
+Hint Resolve functional_eval_exp functional_eval_elim functional_eval_ihs functional_eval_ih functional_eval_mref functional_eval_shty functional_eval_ihty functional_eval_app functional_eval_modexp functional_eval_sub functional_eval_proj functional_eval_nflds : mctt.
 
 
 
@@ -263,6 +289,10 @@ Ltac functional_eval_rewrite_clear1 :=
   | H1 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r1, H2 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : eval_ihty ?T ?X ?ρm ?As ?ρ ?t ?v ?r1, H2 : eval_ihty ?T ?X ?ρm ?As ?ρ ?t ?v ?r2 |- _ =>
+      clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
+  | H1 : eval_proj ?T ?X ?f ?m ?r1, H2 : eval_proj ?T ?X ?f ?m ?r2 |- _ =>
+      clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
+  | H1 : eval_nflds ?T ?X ?ns ?m ?fl ?pre ?r1, H2 : eval_nflds ?T ?X ?ns ?m ?fl ?pre ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   end.
 (** There is no [eval_sub] case: [functional_eval_sub] gives only pointwise

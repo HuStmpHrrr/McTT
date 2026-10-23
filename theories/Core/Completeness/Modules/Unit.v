@@ -162,7 +162,7 @@ Proof.
   1: { (* the modules, each in the body before it, then substituted *)
     intros y Φ0w pv Uw Hp.
     destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & HE).
-    destruct E as [| pv0 U | | ]; cbn in HE; try discriminate; injection HE as -> ->.
+    destruct E as [| pv0 U | | |]; cbn in HE; try discriminate; injection HE as -> ->.
     destruct (prefix_body_ctx _ _ _ (body_xp_nopens _ _ _ _ _ Hx) Hp0) as (X & HX); cbn [body_ctx] in HX.
     rewrite HX, <- !app_assoc in HC, HwCx; cbn [List.app] in HC, HwCx.
     pose proof (rel_ctx_wf_tail (rel_ctx_wf_app_r _ _ HC)) as HC0.

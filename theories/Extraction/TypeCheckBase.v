@@ -62,7 +62,7 @@ Section type_check.
       visibly the only ones. *)
   Definition univ_nf_idx_dec (A : nf) : { u : unf | is_univ_nf A u } + { forall u, ~ is_univ_nf A u }.
   Proof.
-    destruct A as [ i | c xs | | ? ? | | | | ? ? | ? ? | ? ? | ? ? ? | ? ];
+    destruct A as [ i | c xs | | ? ? | | | | ? ? | ? ? | ? ? | ? ? ? | ? | ? ? | ? ? ? ? ];
       [ left; exists (unl i); constructor
       | left; exists (uns (c, xs)); constructor
       | right; intros ? H; inversion H .. ].
@@ -109,7 +109,8 @@ Section type_check.
 
   Definition entry_shape_dec : forall E E', { entry_shape E E' } + { ~ entry_shape E E' }.
   Proof.
-    intros [b pv A [M |] | pm U | pvi Di Φi | ? ? ? ?] [b' pv' A' [M' |] | pm' U' | pvi' Di' Φi' | ? ? ? ?]; cbn; try (right; intros []; fail); try (left; exact I).
+    intros [b pv A [M |] | pm U | pvi Di Φi | ? ? ? ? | ? ? ?] [b' pv' A' [M' |] | pm' U' | pvi' Di' Φi' | ? ? ? ? | ? ? ?]; cbn;
+      try (right; intros []; fail); try (left; exact I).
     - destruct b, b', (Bool.bool_dec pv pv'); try (right; intuition congruence; fail); left; auto.
     - exact (Bool.bool_dec pm pm').
   Defined.
@@ -373,6 +374,13 @@ Section type_check.
   | ti_let_mod : forall {U B}, unit_order U -> type_infer_order B -> type_infer_order (ℓₘ U in B)
   | ti_mem : forall {H x}, modexp_order H -> type_infer_order (a_mem H x)
   | ti_vlookup : forall {x}, type_infer_order #x
+  (** A record's type former recurses on nothing *)
+  | ti_record : forall {p}, type_infer_order (a_record p)
+  (** A tuple infers its annotation and checks its fields *)
+  | ti_tuple : forall {T fs}, type_infer_order T -> (forall fm, List.In fm fs -> type_check_order (snd fm)) ->
+      type_infer_order (a_tuple T fs)
+  (** A projection infers its element *)
+  | ti_proj : forall {f M}, type_infer_order M -> type_infer_order (a_proj f M)
   (** An application, apart from its head: the checker computes the type
       of a spine of applications as a value ([type_infer_app_in]), and
       checks its head ([type_infer_val_in]) at the order of a check. *)
@@ -396,6 +404,9 @@ Section type_check.
   | bo_axiom : forall {Φ x b pv A}, body_order Φ -> body_order (gm_ext Φ x (ge_def b pv A None))
   | bo_ind : forall {Φ x pv p k D Φi}, body_order Φ -> body_order (gm_ext Φ x (ge_ind pv p k D Φi))
   | bo_ind_alias : forall {Φ x pv Δ pm p k Ns}, body_order Φ -> body_order (gm_ext Φ x (ge_ind_alias pv Δ pm p k Ns))
+  (** A record declaration: as written in no local body, only the entries
+      before it *)
+  | bo_record : forall {Φ x pv pr R Φr}, body_order Φ -> body_order (gm_ext Φ x (ge_record pv pr R Φr))
   | bo_open : forall {Φ H its}, body_order Φ -> modexp_order H -> body_order (gm_open Φ H its)
   with modexp_order : modexp -> Prop :=
   | mo_unit : forall {fp}, modexp_order (me_unit fp)
@@ -441,7 +452,7 @@ Section type_check.
     (forall E, match E with
            | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
            | ge_mod _ U => unit_order U
-           | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ => True
+           | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ | ge_record _ _ _ _ => True
            end) /\
     (forall e, centry_order e).
   Proof.
@@ -459,9 +470,12 @@ Section type_check.
       (fun E => match E with
              | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
              | ge_mod _ U => unit_order U
-             | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ => True
+             | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ | ge_record _ _ _ _ => True
              end)
       centry_order); intros; cbn in *; destruct_conjs; eauto 6 with mctt.
+    (* a tuple: its fields are checked *)
+    all: try match goal with HF : List.Forall _ ?fs |- type_infer_order (a_tuple _ ?fs) =>
+           rewrite List.Forall_forall in HF; constructor; [ assumption | intros fm Hfm; apply tc_ti; auto ] end.
     - (* an eliminator: its uniform parameters and branches are checked *)
       match goal with
       | HU : List.Forall _ ?Us, HB : List.Forall _ ?Bks |- type_infer_order (a_elim _ ?Us _ ?Bks _) =>
@@ -479,9 +493,10 @@ Section type_check.
         | apply ti_let_infer; assumption
         | apply ti_let_mod; assumption ].
     - destruct D; destruct_conjs; constructor; auto using ext_order_of_forall.
-    - destruct E as [b pv A [M |] | pm U | pvi pk ki Di Φi | ? ? ? ? ? ?]; destruct_conjs;
+    - destruct E as [b pv A [M |] | pm U | pvi pk ki Di Φi | ? ? ? ? ? ? | ? ? ?]; destruct_conjs;
         first [ apply bo_def; eauto with mctt | apply bo_mod; assumption
-              | apply bo_axiom; assumption | apply bo_ind; assumption | apply bo_ind_alias; assumption ].
+              | apply bo_axiom; assumption | apply bo_ind; assumption | apply bo_ind_alias; assumption
+              | apply bo_record; assumption ].
   Qed.
 
   Lemma type_infer_order_all : forall M, type_infer_order M.
@@ -777,6 +792,18 @@ Ltac ob_ord :=
 Ltac ob_ord_elim :=
   clear_defs;
   match goal with H : type_infer_order (a_elim _ _ _ _ _) |- _ => progressive_invert H end;
+  first
+    [ eassumption
+    | match goal with Hall : forall _ : _, _ |- _ => solve [ eapply Hall; eassumption ] end ].
+
+(** The orders of the parts of a tuple and of a projection: the annotation
+    or a field, the element. *)
+Ltac ob_ord_record :=
+  clear_defs;
+  match goal with
+  | H : type_infer_order (a_tuple _ _) |- _ => progressive_invert H
+  | H : type_infer_order (a_proj _ _) |- _ => progressive_invert H
+  end;
   first
     [ eassumption
     | match goal with Hall : forall _ : _, _ |- _ => solve [ eapply Hall; eassumption ] end ].

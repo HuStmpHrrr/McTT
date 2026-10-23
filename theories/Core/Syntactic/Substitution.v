@@ -227,6 +227,47 @@ Ltac syn_ext_brs lift liftn :=
       f_equal; [ f_equal; autorewrite with syn_ops; solve [ eauto using lift, liftn ] | assumption ]
   end.
 
+(** The fields of a record element: named terms mapped elementwise, under
+    no binder. *)
+Ltac syn_ext_fields lift liftn :=
+  match goal with
+  | HF : @List.Forall (String.string * exp) _ ?fs |- _ =>
+      lazymatch goal with |- List.map _ _ = _ => idtac | |- _ = List.map _ _ => idtac end;
+      induction HF as [| [? ?] ? ? ? ?]; cbn [List.map fst snd] in *; [ reflexivity |];
+      f_equal; [ f_equal; autorewrite with syn_ops; solve [ eauto using lift, liftn ] | assumption ]
+  end.
+
+(** The fields of a record element, for a property read through a nested
+    [fix] over them: an induction over the [Forall] the principle carries,
+    each field closed by [one] from its induction hypothesis. *)
+Ltac fields_case one :=
+  match goal with
+  | HF : @List.Forall (String.string * exp) _ ?fs |- _ =>
+      lazymatch goal with |- context [fs] => idtac end;
+      repeat match goal with H : context [fs] |- _ => lazymatch H with HF => fail | _ => revert H end end;
+      let HF1 := fresh "HF1" in
+      induction HF as [| [? ?] ? HF1 ? ?]; intros; cbn in *; destruct_all;
+      [ exact I
+      | refine (conj _ _);
+        [ one HF1
+        | solve [ auto | match goal with IH : _ -> ?G |- ?G => apply IH; assumption end ] ] ]
+  end.
+
+(** The same for an equation between two lists of fields, mapped
+    elementwise. *)
+Ltac fields_eq_case one :=
+  match goal with
+  | HF : @List.Forall (String.string * exp) _ ?fs |- _ =>
+      lazymatch goal with |- context [fs] => idtac end;
+      repeat match goal with H : context [fs] |- _ => lazymatch H with HF => fail | _ => revert H end end;
+      let HF1 := fresh "HF1" in
+      induction HF as [| [? ?] ? HF1 ? ?]; intros; cbn in *; destruct_all;
+      [ reflexivity
+      | f_equal;
+        [ f_equal; one HF1
+        | solve [ auto | match goal with IH : _ -> ?G |- ?G => apply IH; assumption end ] ] ]
+  end.
+
 (** The uniform parameters an eliminator carries: a list mapped
     elementwise, under no binder. *)
 Ltac syn_ext_us lift liftn :=
@@ -337,7 +378,8 @@ Ltac syn_ext_case_with lift liftn vars :=
          end;
   f_equal;
   try match goal with |- Some _ = Some _ => f_equal end;
-  first [ solve [ eauto using lift, liftn ] | syn_ext_us lift liftn | syn_ext_blocks lift liftn | syn_ext_brs lift liftn
+  first [ solve [ eauto using lift, liftn ] | syn_ext_us lift liftn | syn_ext_fields lift liftn
+        | syn_ext_blocks lift liftn | syn_ext_brs lift liftn
         | syn_ext_tele lift liftn | solve [ vars ] ].
 
 (** The variable cases of most laws are the pointwise hypothesis read at the

@@ -13,7 +13,7 @@ From Mctt Require Import Entrypoint.
 From Mctt Require Import Core.Completeness Core.Soundness Core.Semantic.Consequences Extraction.Command Frontend.ElabCorrect Algorithmic.Typing.Lemmas Algorithmic.Strengthening Core.Semantic.Avoid Core.NbEWeakening.
 From Mctt Require Import Reference.Refinement Extraction.Simulation Extraction.GlobalCheck.
 From Mctt Require Import Core.Syntactic.Presup Core.Syntactic.System.Global.Presup Core.IndCommand.
-From Mctt Require Import Core.Syntactic.System.Inductives.IndRuns.
+From Mctt Require Import Core.Syntactic.System.Inductives.IndRuns Core.Syntactic.System.Records.RecordRuns.
 Print Assumptions Mctt.Core.Completeness.completeness.
 Print Assumptions Mctt.Core.Completeness.FundamentalTheorem.completeness_fundamental.
 Print Assumptions Mctt.Core.Soundness.soundness.
@@ -124,3 +124,22 @@ Print Assumptions Mctt.Extraction.Command.prog_impl_complete_wf.
 Print Assumptions Mctt.Frontend.ElabCorrect.elaborate_core_sound.
 Print Assumptions Mctt.Frontend.ElabCorrect.elaborate_core_complete.
 Print Assumptions Mctt.Frontend.ElabCorrect.elab_spec_functional.
+(* Records: equal record types have equal parameters, and a type below a
+   record type normalises to it. *)
+Print Assumptions Mctt.Core.Semantic.Consequences.exp_eq_record_apps_inv.
+Print Assumptions Mctt.Core.Semantic.Consequences.subtyp_record_nf.
+(* Records: a field's projection of its module's value is of the field's
+   type, and an accepted record declaration runs. *)
+Print Assumptions Mctt.Core.Syntactic.System.Records.RecordRuns.record_field_def_typed.
+Print Assumptions Mctt.Core.Syntactic.System.Records.RecordRuns.rc_record_runs.
+(* Records: the fill of the accesses through terms of a command is
+   functional, the identity on a command with none, and decided by the
+   checker. *)
+Print Assumptions Mctt.Core.Syntactic.System.Command.fill_cmd_functional.
+Print Assumptions Mctt.Core.Syntactic.System.Command.fill_cmd_access_free.
+Print Assumptions Mctt.Core.Syntactic.System.Command.fill_params_functional.
+Print Assumptions Mctt.Extraction.AccessDecide.fill_cmd_fn_sound.
+Print Assumptions Mctt.Extraction.AccessDecide.fill_cmd_fn_complete.
+Print Assumptions Mctt.Extraction.AccessDecide.fill_params_fn_sound.
+Print Assumptions Mctt.Extraction.AccessDecide.fill_params_fn_complete.
+Print Assumptions Mctt.Extraction.MdefGroup.mdef_group_dec_complete.

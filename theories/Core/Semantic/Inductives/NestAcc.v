@@ -231,7 +231,7 @@ Section NestAcc.
   Proof.
     intros i R a a' H.
     eapply per_univ_elem_ind with (motive := nest_motive); try eassumption; unfold nest_motive; intros.
-    1-5,7: match goal with
+    1-5,7,9: match goal with
       | Hz : per_univ_elem _ _ ?z _, He : shape_end ?e ?z, He' : per_univ_elem _ _ ?e' ?e |- nest_acc ?e' =>
           exact (non_ind_non_pi_nest _ _ _ _ _ _ _ _ Hz ltac:(intros; discriminate) ltac:(intros; discriminate) He He')
       end.

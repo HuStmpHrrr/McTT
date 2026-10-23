@@ -393,7 +393,7 @@ Section Filed.
 Lemma eval_apps_filed : forall p T Φ Ns ρ ns, gc_loc Θm Ξm p = Some (T, Φ) ->
     ⟦ Ns ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ns -> ⟦ me_apps (qname_mod p) Ns ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ dm_global p ns.
 Proof.
-  intros * Hl Hns; destruct (Hgf _ _ _ Hl) as [_ Hp _ _ _ _ _ _ _ _].
+  intros * Hl Hns; destruct (Hgf _ _ _ Hl) as [_ Hp _ _ _ _ _ _ _ _ _].
   exact (eval_apps_global _ _ _ nil _ _ (Hp ρ) Hns).
 Qed.
 
@@ -401,7 +401,7 @@ Lemma filed_gval : forall p T Φ, gc_loc Θm Ξm p = Some (T, Φ) ->
     forall args args', List.length args <= List.length T -> per_gargs (rev T) nil nil args args' ->
     per_dmod (dm_global p args) (dm_global p args').
 Proof.
-  intros * Hl * Hle Hg; destruct (Hgf _ _ _ Hl) as [(Φ' & Hm) _ HT HTa _ _ _ _ _ _].
+  intros * Hl * Hle Hg; destruct (Hgf _ _ _ Hl) as [(Φ' & Hm) _ HT HTa _ _ _ _ _ _ _].
   exact (gval_rel _ _ _ Hm HTa HT _ _ _ eq_refl Hle Hg).
 Qed.
 
@@ -413,7 +413,7 @@ Lemma filed_lacks : forall Γ p T Φ L A T2 Ns, gc_loc Θm Ξm p = Some (T, Φ) 
     modexp_next_param Γ (me_apps (qname_mod p) Ns) A[sb_of_list Id Ns].
 Proof.
   intros * Hl HΓ -> Hlen HNs R HR ρ Hρ.
-  destruct (Hgf _ _ _ Hl) as [(oD & Hm) Hp HT HTa HTs _ _ _ _ _].
+  destruct (Hgf _ _ _ Hl) as [(oD & Hm) Hp HT HTa HTs _ _ _ _ _ _].
   pose proof (rel_ctx_wf_app_r _ _ HT) as HAT2.
   destruct (rel_ctx_wf_ass_inv HAT2) as [i HA].
   pose proof (rel_ctx_wf_tail HAT2) as HT2.
@@ -435,7 +435,7 @@ Proof.
   intros * Hl HΓ [T1 T2 -> Hlen HTa2 HTs2 HNs].
   revert T1 T2 Hl Hlen HTa2 HTs2 HNs.
   induction Ns as [| N Ns IH] using rev_ind; intros * Hl Hlen HTa2 HTs2 HNs.
-  - destruct (Hgf _ _ _ Hl) as [_ Hp _ _ _ _ _ _ _ _].
+  - destruct (Hgf _ _ _ Hl) as [_ Hp _ _ _ _ _ _ _ _ _].
     destruct (rel_ctx_wf_per_ctx_env HΓ) as [R HR].
     pose proof (filed_gval _ _ _ Hl nil nil ltac:(cbn; lia) ltac:(constructor)) as Hd.
     cbn [me_apps]; refine (mk_rel_modexp_under_ctx _ _ _ R HR _); intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
@@ -466,28 +466,36 @@ Proof.
 Qed.
 
 Lemma ds_ty_named_m : forall Θ' Ns M R, ds_ty Θm Ξm (ds_named Θ' Ns M R) = ds_ty Θm Ξm R.
-Proof. intros; apply (ds_named_cases (fun R' => ds_ty Θm Ξm R' = ds_ty Θm Ξm R)); [| destruct R as [A [?|] | | | ] ]; reflexivity. Qed.
+Proof. intros; apply (ds_named_cases (fun R' => ds_ty Θm Ξm R' = ds_ty Θm Ξm R)); [| destruct R as [A [?|] | | | | ] ]; reflexivity. Qed.
 
 Lemma ds_red_named_some : forall Θ' Ns M R N, ds_red R = Some N -> ds_red (ds_named Θ' Ns M R) = Some N.
-Proof. intros * H; apply (ds_named_cases (fun R' => ds_red R' = Some N)); [ exact H | destruct R as [A [?|] | | | ]; cbn in *; congruence ]. Qed.
+Proof. intros * H; apply (ds_named_cases (fun R' => ds_red R' = Some N)); [ exact H | destruct R as [A [?|] | | | | ]; cbn in *; congruence ]. Qed.
 
 (** A term member of a filed module at arguments, read off its stored
-    entry, or the open frame of a member's module under it, read as its
-    type former. *)
+    entry, or the open frame of a member's module or of a record type's
+    module under it, read as its type former. *)
 Lemma filed_mem_desc : forall Γ p T Φ Ns x R A, gc_loc Θm Ξm p = Some (T, Φ) ->
     mdenote Θm Ξm Γ (me_mem (me_apps (qname_mod p) Ns) x) R -> ds_ty Θm Ξm R = Some A ->
     exists R0 R1,
-      ((exists Φ0 E0, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E0) /\ entry_term E0 = Some R0) \/
-       (exists pq k D, gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) /\ R0 = ds_ind nil pq k nil)) /\
+      ((exists Φ0 E0, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E0) /\ entry_term (Some (qname_in p x)) E0 = Some R0) \/
+       (exists pq k D, gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) /\ R0 = ds_ind nil pq k nil) \/
+       (exists Rr, gs_find_record Ξm (qname_in p x) = Some Rr /\ R0 = ds_record nil (qname_in p x) nil)) /\
       ds_ats R0 Ns = Some R1 /\ R = ds_named nil Ns (apps (a_mem (qname_mod p) x) Ns) R1.
 Proof.
   intros * Hgl Hm Hty.
-  inversion Hm as [? ? ? ? ? Hq Hu | ? ? ? pq k D Hq Hk | | | | ? ? ? R0 R0m Γy E rd R1 ? Hm0 Hmd He Hed Hr]; subst;
-    [ cbn in Hty; discriminate | |].
+  inversion Hm as [? ? ? ? ? Hq Hu | ? ? ? pq k D Hq Hk | | | | ? ? ? R0 R0m Γy E rd R1 ? Hm0 Hmd He Hed Hr
+                  | ? ? ? Rr Hq Hk]; subst;
+    [ cbn in Hty; discriminate | | |].
   { (* the open frame of a member's module: no argument *)
     destruct Ns as [| N Ns'] using List.rev_ind; [| rewrite me_apps_snoc in Hq; discriminate ].
     cbn [me_apps] in Hq; rewrite <- qname_mod_in, mod_qname_qname_mod in Hq; injection Hq as <-.
-    exists (ds_ind nil pq k nil), (ds_ind nil pq k nil); split; [ right; exists pq, k, D; split; [ exact Hk | reflexivity ] |].
+    exists (ds_ind nil pq k nil), (ds_ind nil pq k nil); split; [ right; left; exists pq, k, D; split; [ exact Hk | reflexivity ] |].
+    split; [ reflexivity | rewrite ds_named_nil; reflexivity ]. }
+  2:{ (* the open frame of a record type's module: no argument *)
+    destruct Ns as [| N Ns'] using List.rev_ind; [| rewrite me_apps_snoc in Hq; discriminate ].
+    cbn [me_apps] in Hq; rewrite <- qname_mod_in, mod_qname_qname_mod in Hq; injection Hq as <-.
+    exists (ds_record nil (qname_in p x) nil), (ds_record nil (qname_in p x) nil);
+      split; [ right; right; exists Rr; split; [ exact Hk | reflexivity ] |].
     split; [ reflexivity | rewrite ds_named_nil; reflexivity ]. }
   destruct (filed_denote _ _ Hgm _ _ _ Γ Ns Hgl) as (R2 & Hm2 & Hmod2).
   rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ Hm0 _ Hm2), Hmod2 in Hmd; injection Hmd as <-.
@@ -496,7 +504,7 @@ Proof.
   injection He as <- <- <-; cbn [app] in Hed.
   cbn [ds_read] in Hr; destruct (ds_ats R1 Ns) as [R3 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
   rewrite ds_up_nil in Hty |- *.
-  destruct E0 as [b pv A0 oM | pv U | pv pq D Φd | pv Δ pq Ns'].
+  destruct E0 as [b pv A0 oM | pv U | pv pq D Φd | pv Δ pq Ns' | pv Rr Φr].
   - inversion Hed; subst; do 2 eexists; split; [ left; do 2 eexists; split; reflexivity | split; [ exact Ha | reflexivity ] ].
   - exfalso.
     assert (HU : exists U', ge_read T (ge_mod pv U) = ge_mod pv U') by (destruct U as [? [[] ?|?]]; eexists; reflexivity).
@@ -505,6 +513,8 @@ Proof.
     destruct R3; cbn in Hmod; try contradiction; rewrite ds_named_fix in Hty by reflexivity; cbn in Hty; discriminate.
   - inversion Hed; subst; do 2 eexists; split; [ left; do 2 eexists; split; reflexivity | split; [ exact Ha | reflexivity ] ].
   - inversion Hed; subst; do 2 eexists; split; [ left; do 2 eexists; split; reflexivity | split; [ exact Ha | reflexivity ] ].
+  - (* a record type: its type former *)
+    inversion Hed; subst; do 2 eexists; split; [ left; do 2 eexists; split; reflexivity | split; [ exact Ha | reflexivity ] ].
 Qed.
 
 (** The term members of a filed module at arguments valid against its
@@ -517,10 +527,11 @@ Proof.
   intros * Hl HΓ Hs Hm Ht.
   destruct (filed_mem_desc _ _ _ _ _ _ _ _ Hl Hm Ht) as (R0 & R1 & HR0 & Ha & ->).
   rewrite ds_ty_named_m in Ht.
-  destruct (Hgf _ _ _ Hl) as [(oD & Hmo) Hpe HT HTa HTs _ _ Hents Hfrs _].
+  destruct (Hgf _ _ _ Hl) as [(oD & Hmo) Hpe HT HTa HTs _ _ Hents Hfrs Hrfrs _].
   pose proof Hs as [T1 T2 -> Hlen HTa2 HTs2 HNs].
   assert (Hvt : valid_filed_term Θm Ξm p (T1 ++ T2) x R0)
-    by (destruct HR0 as [(Φ0 & E & Hp & He) | (pq & k & D & Hk & ->)]; [ exact (Hents _ _ _ _ Hp He) | exact (Hfrs _ _ _ _ Hk) ]).
+    by (destruct HR0 as [(Φ0 & E & Hp & He) | [(pq & k & D & Hk & ->) | (Rr & Hk & ->)]];
+          [ exact (Hents _ _ _ _ Hp He) | exact (Hfrs _ _ _ _ Hk) | exact (Hrfrs _ _ Hk) ]).
   destruct Hvt as [A0 i g HA0 Hats Hsel [j E0 e He0 HE0 Hgg]].
   destruct (Hats _ _ _ _ eq_refl Hlen Ha) as [HtyR1 HredR1].
   rewrite HtyR1 in Ht; injection Ht as <-.
@@ -578,7 +589,7 @@ Proof.
       apply E2; exact Hmn. }
   - (* an axiom or an abstract definition: its name at the arguments, or,
        read bare, none *)
-    destruct R1 as [A1 [?|] | | |]; cbn in HredR1, HtyR1; try discriminate.
+    destruct R1 as [A1 [?|] | | | |]; cbn in HredR1, HtyR1; try discriminate.
     destruct (ds_named_term_none nil Ns Mn A1) as [(Hn & _ & HN) | Hn]; rewrite Hn; cbn [ds_red];
       [ exact HS0 |].
     assert (Hiff : forall σ ρ r, ⟦ (a_mem K x)[σ] ⟧ ρ ↘ r <-> ⟦ Mn[σ] ⟧ ρ ↘ r).

@@ -44,7 +44,7 @@ Section Fixed_GCtx.
 Lemma ds_tele_up_tele : forall Δ R T, ds_is_mod R -> ds_tele (ds_up Δ R) = Some T ->
     exists T0, ds_tele R = Some T0 /\ T = T0 ++ Δ.
 Proof.
-  intros * Hm Ht; destruct R as [| Δ' Φ | Θ0 p T' Φ Ns |]; cbn in Hm, Ht |- *; try contradiction.
+  intros * Hm Ht; destruct R as [| Δ' Φ | Θ0 p T' Φ Ns | |]; cbn in Hm, Ht |- *; try contradiction.
   - injection Ht as <-; eauto.
   - destruct (Nat.leb _ _); [ injection Ht as <-; rewrite app_assoc; eauto | discriminate ].
 Qed.
@@ -107,7 +107,7 @@ Proof.
     injection Ht as <-.
     replace (List.length T1s + List.length T2s - List.length Ns) with (List.length T1s) in Hv by lia.
     rewrite List.firstn_app, List.firstn_all, Nat.sub_diag in Hv; cbn [List.firstn] in Hv; rewrite !app_nil_r in Hv.
-    destruct (Hgf _ _ _ Hgl) as [_ _ _ HTa _ _ _ _ _ _].
+    destruct (Hgf _ _ _ Hgl) as [_ _ _ HTa _ _ _ _ _ _ _].
     destruct (tele_ass_app_inv _ _ HTa) as [HTa1 _].
     destruct (List.exists_last (l := T1s)) as (L & e & ->); [ intros ->; cbn in Hv; discriminate |].
     destruct (tele_ass_app_inv _ _ HTa1) as [_ He]; inversion He as [| ? ? [A ->] _]; subst.
@@ -120,7 +120,7 @@ Proof.
     assert (Hs' : valid_args Γ (L ++ ce_ass A :: T2s) (Ns ++ N :: nil)).
     { apply (mk_valid_args _ _ _ L (ce_ass A :: T2s));
         [ reflexivity | cbn; rewrite length_app; cbn; lia | constructor; [ eexists; reflexivity | exact HTa2 ]
-        | destruct (Hgf _ _ _ Hgl) as [_ _ _ _ HTs _ _ _ _ _]; exact (proj2 (proj1 (ctx_scoped_app_iff _ _) HTs)) |].
+        | destruct (Hgf _ _ _ Hgl) as [_ _ _ _ HTs _ _ _ _ _ _]; exact (proj2 (proj1 (ctx_scoped_app_iff _ _) HTs)) |].
       assert (Hti : tele_insts (ce_ass A :: T2s) Id (Ns ++ N :: nil) = tele_insts T2s Id Ns ++ A[sb_of_list Id Ns] :: nil).
       { change (ce_ass A :: T2s) with ((ce_ass A :: nil) ++ T2s).
         rewrite tele_insts_app by (try exact HTa2; lia); reflexivity. }

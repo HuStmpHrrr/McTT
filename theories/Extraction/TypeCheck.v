@@ -12,7 +12,7 @@ From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Semantic Require Import MemberWf.
 From Mctt.Extraction Require Import FastEval Simulation Evaluation Readback NbE PseudoMonadic Subtyping MemberType.
 From Mctt.Extraction Require Export TypeCheckBase.
-From Mctt.Extraction Require Import IndCheck.
+From Mctt.Extraction Require Import IndCheck RecordCheck.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Section Fixed_GCtx.
@@ -200,7 +200,7 @@ Section type_check.
     destruct (feval_of_ref _ _ _ _ _ _ Hn (agree_all _ _ _ Hag)) as [HoN HsN].
     split; [ exact HoN |].
     intros n' Hn'.
-    inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | |]; subst.
+    inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | | | |]; subst.
     destruct (typ_val_pi _ _ _ _ _ _ _ _ _ _ _ Hp HT Ha1 Hv0 HN' Hn) as (v1 & c & Hv1 & _).
     destruct (feval_clo_sim _ _ _ _ _ _ _ _ Hρ0 (HsN _ Hn') Hv1) as (v1' & Hv1' & _).
     eapply feval_exp_order_sound; exact Hv1'.
@@ -218,7 +218,7 @@ Section type_check.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n0 Hn0].
     pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Hn0 (agree_all _ _ _ Hag)) _ Hn') as HsN.
-    inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | |]; subst.
+    inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | | | |]; subst.
     destruct (typ_val_pi _ _ _ _ _ _ _ _ _ _ _ Hp HΠ Ha1 Hv0 HN' Hn0) as (v1 & c & Hv1 & Hc & Hv1c).
     destruct (feval_clo_sim _ _ _ _ _ _ _ _ Hρ0 HsN Hv1) as (v1' & Hv1' & Hs1).
     rewrite (functional_feval_exp _ _ _ _ Hv' Hv1') in *.
@@ -266,7 +266,7 @@ Section type_check.
     assert (G ⊢ A : Typeω@i /\ G ▹ A ⊢ B : Typeω@i) as [HA HB] by mauto 3.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n Hn].
-    inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | |]; subst.
+    inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | | | |]; subst.
     destruct (typ_val_pi _ _ _ _ _ _ _ _ _ _ _ Hp HT Ha1 Hv0 HN' Hn) as (v1 & c & Hv1 & _).
     destruct (feval_clo_unread _ _ _ _ _ _ 𝕌ω@0 _ Hρ0 Ef Hv1) as (v1' & Hv1' & _).
     eapply feval_exp_order_sound; exact Hv1'.
@@ -283,7 +283,7 @@ Section type_check.
     assert (G ⊢ A : Typeω@i /\ G ▹ A ⊢ B : Typeω@i) as [HA HB] by mauto 3.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n0 Hn0].
-    inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | |]; subst.
+    inversion Hs as [? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | | | |]; subst.
     destruct (typ_val_pi _ _ _ _ _ _ _ _ _ _ _ Hp HΠ Ha1 Hv0 HN' Hn0) as (v1 & c & Hv1 & Hc & Hv1c).
     destruct (feval_clo_unread _ _ _ _ _ _ 𝕌ω@0 _ Hρ0 Ef Hv1) as (v1' & Hv1' & Hs1).
     rewrite (functional_feval_exp _ _ _ _ Hv' Hv1') in *.
@@ -430,6 +430,14 @@ Section type_check.
         eliminator's recursive calls are passed on. *)
     | a_ind r k => ind_infer G HG P r k
     | a_con r k c => con_infer G HG P r k c
+    (** The forms of record types ([Extraction.RecordCheck]); the
+        recursive calls on a tuple's parts and a projection's element are
+        passed on. *)
+    | a_record r => record_infer G HG P r
+    | a_tuple T' fs =>
+        tuple_infer G HG P T' fs (type_infer_in G HG P T' ltac:(ob_ord_record))
+          (fun fm Hfm A'' HA'' => type_check_in G A'' HA'' P (snd fm) ltac:(ob_ord_record))
+    | a_proj f M' => proj_infer G HG P f M' (type_infer_in G HG P M' ltac:(ob_ord_record))
     | a_nlit n => inright (fun A HA => alg_nlit_no_infer G n A HA)
     | a_ntok => inright (fun A HA => alg_ntok_no_infer G A HA)
     | a_elim oq Us m Bks M' =>
@@ -994,11 +1002,11 @@ Section type_check.
   Obligation 206. all: bc_obl. Qed.
   Obligation 207. all: bc_obl. Qed.
   Obligation 208. all: bc_obl. Qed.
-  Obligation 209. ob_ord. Defined.
-  Obligation 210. all: bc_obl. Qed.
+  Obligation 209. (* no body holds a record entry *) all: bc_obl. Qed.
+  Obligation 210. ob_ord. Defined.
   Obligation 211. all: bc_obl. Qed.
-  Obligation 212. ob_ord. Defined.
-  Obligation 213. all: bc_obl. Qed.
+  Obligation 212. all: bc_obl. Qed.
+  Obligation 213. ob_ord. Defined.
   Obligation 214. all: bc_obl. Qed.
   Obligation 215. all: bc_obl. Qed.
   Obligation 216. all: bc_obl. Qed.
@@ -1008,6 +1016,7 @@ Section type_check.
   Obligation 220. all: bc_obl. Qed.
   Obligation 221. all: bc_obl. Qed.
   Obligation 222. all: bc_obl. Qed.
+  Obligation 223. all: bc_obl. Qed.
 
 
   Extraction Inline type_check_in_functional type_infer_in_functional ext_check_functional

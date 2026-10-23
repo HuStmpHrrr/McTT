@@ -325,7 +325,7 @@ Proof.
   - destruct Hm as (Hm & <- & HEe); cbn [body_shape] in Hs; destruct Hs as (Hs & _ & HsE).
     assert (Hq : sb_eq (sb_qn (gm_binders Φe0) (sb_qn (List.length Ψ) σ)) (sb_qn (List.length (body_ctx Φt ++ Ψ)) σ))
       by (rewrite sb_qn_add, length_app, length_body_ctx, (body_eq_upto_types_binders _ _ Hm); reflexivity).
-    destruct Et as [bt pvt At [Mt |] | pmt Ut | ? ? ? ? | ? ? ? ?]; cbn in HsE; try contradiction;
+    destruct Et as [bt pvt At [Mt |] | pmt Ut | ? ? ? ? | ? ? ? ? | ? ? ?]; cbn in HsE; try contradiction;
       destruct HEe as [-> | (b' & pv' & A' & A'' & M' & -> & [= <- <- <- <-])];
       cbn [gmod_sub gentry_sub body_ctx app] in *.
     1,2: (* a definition *)
@@ -446,7 +446,7 @@ Proof.
     cbn [body_opens gm_dropn] in Ho; cbn [body_shape] in Hsx; destruct Hsx as (Hsx & _ & _).
     assert (Hq : sb_eq (sb_qn (gm_binders Φ) (sb_qn (List.length Ψ) σ)) (sb_qn (List.length (body_ctx Φx0 ++ Ψ)) σ))
       by (rewrite sb_qn_add, length_app, length_body_ctx, (body_xp_binders _ _ _ _ _ Hx0); reflexivity).
-    destruct E as [b pv A [M |] | pm Uy | pv D Φd | ? ? ? ?]; cbn in HE; try contradiction; cbn [gmod_sub gentry_sub body_ctx app] in *.
+    destruct E as [b pv A [M |] | pm Uy | pv D Φd | ? ? ? ? | ? ? ?]; cbn in HE; try contradiction; cbn [gmod_sub gentry_sub body_ctx app] in *.
     + destruct (rel_ctx_wf_def_inv HΦ) as [[i HA] HM].
       destruct (IH _ _ _ _ Hx0 Hs Hsx (rel_ctx_wf_tail HΦ) Ho Hinv) as (Hb & Φr & ρl1 & ρr1 & Hkl & Hkr & Hkx & Hb1 & Hb1' & Hi1).
       rewrite app_assoc in HA, HM.
@@ -820,7 +820,7 @@ Proof. intros * Hl; cbn [body_opens]; rewrite <- Hl, gm_dropn_gens_append; refle
 
 (** The prefix of a valid body's expansion is valid, and evaluates. *)
 Lemma body_prefix_rel_ctx_wf : forall Φx0 y E C, ⊨ body_ctx (gm_ext Φx0 y E) ++ C -> ⊨ body_ctx Φx0 ++ C.
-Proof. intros * H; destruct E as [? ? ? [] | | |]; exact (rel_ctx_wf_tail H). Qed.
+Proof. intros * H; destruct E as [? ? ? [] | | | |]; exact (rel_ctx_wf_tail H). Qed.
 
 (** The original's generated block against itself: the target read again
     after the first [k] entries the open generates. *)
@@ -951,7 +951,7 @@ Proof.
     assert (Hp : gm_prefix_upto (gm_ext Φx0 y E) y = Some (gm_ext Φx0 y E)) by (cbn; rewrite String.eqb_refl; reflexivity).
     assert (Hp' : gm_prefix_upto (gm_ext Φx0' y E') y = Some (gm_ext Φx0' y E')) by (cbn; rewrite String.eqb_refl; reflexivity).
     pose proof (proj2 (body_eq_upto_types_benv _ _ Hkx _ _) Hb1) as Hb1k; pose proof (proj2 (body_eq_upto_types_benv _ _ Hkx' _ _) Hb1') as Hb1k'.
-    destruct E as [b pv A [M |] | pm U | | ], E' as [b' pv' A' [M' |] | pm' U' | | ]; cbn in HE, HsE, HsE'; try contradiction.
+    destruct E as [b pv A [M |] | pm U | | | ], E' as [b' pv' A' [M' |] | pm' U' | | | ]; cbn in HE, HsE, HsE'; try contradiction.
     + (* a definition each *)
       destruct (HD _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0') as [[j HAA'] HMM'].
       destruct (rel_ctx_wf_def_inv HC) as [[i HA] HM]; destruct (rel_ctx_wf_def_inv HC') as [[i' HA'] HM'].

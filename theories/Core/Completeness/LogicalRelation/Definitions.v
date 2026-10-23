@@ -11,7 +11,8 @@
        that [GC] extends and values at [GC]; and the contexts whose slots
        hold valid units ([valid_ctx]).
     3. What a global context [Θm ⍮ Ξm] files and has open is worth at [GC]
-       ([valid_filed_mod], [valid_filed_mods]), and a declaration ([valid_ind_decl]); a sound
+       ([valid_filed_mod], [valid_filed_mods]), and a declaration ([valid_ind_decl],
+       [valid_record_decl]); a sound
        embedding of [Θ1 ⍮ Ξ1] into [Θ2 ⍮ Ξ2] ([valid_emb]).
     4. The semantic judgments: a judgment of [Θ ⍮ Ξ] is the relation of the
        first two parts at every global context [Θ ⍮ Ξ] embeds into soundly.
@@ -31,7 +32,7 @@ From Stdlib Require Import List Relations.
 Import ListNotations.
 
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Members.
+From Mctt.Core.Syntactic Require Import Members Records.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Syntactic.System Require Import Scoping.
 From Mctt.Core.Semantic Require Export PER.
@@ -470,12 +471,16 @@ Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_file
       dkind gc_deps gc_stack (dm_global p nil) (x :: nil) (entry_kind E)
   ; vfm_sub_kinds : forall x TΦ, gc_loc Θm Ξm (qname_app p (x :: nil)) = Some TΦ ->
       dkind gc_deps gc_stack (dm_global p nil) (x :: nil) mk_mod
-  ; vfm_terms : forall x Φ0 E R0, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) -> entry_term E = Some R0 ->
+  ; vfm_terms : forall x Φ0 E R0, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
+      entry_term (Some (qname_in p x)) E = Some R0 ->
       valid_filed_term p T x R0
     (** The open frame of a member's module under it is its type former,
         as a filed member's entry is *)
   ; vfm_ind_frames : forall x pq k D, gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) ->
       valid_filed_term p T x (ds_ind nil pq k nil)
+    (** So is the open frame of a record type's module under it *)
+  ; vfm_record_frames : forall x R, gs_find_record Ξm (qname_in p x) = Some R ->
+      valid_filed_term p T x (ds_record nil (qname_in p x) nil)
   ; vfm_aliases : forall y Φ0 E Ua, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
       gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias Ua) /\
       forall Γ, ⊨ Γ -> ⊢ Θm ⍮ Ξm ⍮ Γ -> valid_unit Θm Ξm Γ (me_lit Ua) }.
@@ -625,6 +630,21 @@ Record valid_ind_decl (D : ind_decl) : Prop := mk_valid_ind_decl
 ; vid_views : exists IsS, views_self_valid D IsS
 }.
 
+(** A semantically valid record declaration: its parameters, its sort and
+    its fields, read in the PER model. *)
+Record valid_record_decl (R : record_decl) : Prop := mk_valid_record_decl
+{ (** The parameters are a valid context *)
+  params_valid : ⊨ record_params R
+(** The sort is a valid type over them *)
+; sort_valid : exists i : nat, record_params R ⊨ record_sort R : Typeω@i
+(** The fields, over the parameters, are a valid context *)
+; field_ctx_valid : ⊨ record_fctx R (List.length (record_fields R)) ++ record_params R
+(** Each field is a type of the sort over the parameters and the fields
+    before it *)
+; fields_valid : forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
+    record_fctx R k ++ record_params R ⊨ T : (record_sort R)[wk_shiftn k]ʷ
+}.
+
 End Filed.
 
 (** [Θ1 ⍮ Ξ1] embeds soundly into [Θ2 ⍮ Ξ2]: it grows into it, and what it
@@ -634,6 +654,7 @@ Record valid_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Pro
   ; vem_wf : ⊢ᵍ Θ1 ⍮ Ξ1
   ; vem_filed : @valid_filed_mods (gc_mk Θ2 Ξ2) Θ1 Ξ1
   ; vem_ind : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @valid_ind_decl (gc_mk Θ2 Ξ2) D
+  ; vem_record : forall p R, record_lookup Θ1 Ξ1 p = Some R -> @valid_record_decl (gc_mk Θ2 Ξ2) R
   }.
 
 (** ** 4. The Semantic Judgments

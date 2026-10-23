@@ -71,7 +71,7 @@ Definition den_to_term (k n : nat) (e : ent) : eres exp :=
 Definition den_to_mod (k n : nat) (e : ent) : eres modexp :=
   match e with
   | en_var _ => eok (me_var k)
-  | en_tvar x => eerr (x ++ " is a variable, not a module")
+  | en_tvar _ => eok (me_var k)
   | en_mem _ p => eok (mapps (qname_mod p) (vars_desc k n))
   | en_unit _ => eerr "not a module"
   | en_open _ E oc => eok (open_mod E oc)
@@ -199,6 +199,17 @@ Definition elab_blocks_with (f : list ent -> Cst.obj -> eres exp) (S : list ent)
         eok (eb_mk (List.length xs) oZ A Bs :: Bks)
     end.
 
+(** The fields of a record value, each its name and its value. *)
+Definition elab_tfields_with (f : list ent -> Cst.obj -> eres exp) (S : list ent) :=
+  fix go (fs : list (string * Cst.obj)) : eres (list (string * exp)) :=
+    match fs with
+    | nil => eok nil
+    | (y, oM) :: fs' =>
+        let* M := f S oM in
+        let* Ms := go fs' in
+        eok ((y, M) :: Ms)
+    end.
+
 Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
   match o with
   | Cst.typ n => eok (Typeω@n)
@@ -242,8 +253,12 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
       end
   | Cst.glob _ => eerr "a unit is not a term"
   | Cst.proj o x =>
-      let* H := elab_mod S o in
-      eok (a_mem H x)
+      if obj_path o then
+        let* H := elab_mod S o in
+        eok (a_mem H x)
+      else
+        let* M := elab S o in
+        eok (ℓ ≔ M in a_mem (me_var 0) x)
   | Cst.letb (Cst.d_def x (Some oA) oM) ob =>
       let* A := elab S oA in
       let* M := elab S oM in
@@ -266,6 +281,10 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
       | Some m => eok (a_elim None nil m Bks M)
       | None => eerr elim_at_msg
       end
+  | Cst.tuple oT fs =>
+      let* T := elab S oT in
+      let* Ms := elab_tfields_with elab S fs in
+      eok (a_tuple T Ms)
   end
 
 with elab_mod (S : list ent) (o : Cst.obj) {struct o} : eres modexp :=
@@ -318,6 +337,7 @@ with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
            | Cst.c_mdef _ _ _ :: _ => eerr "a mutual definition is not allowed in a local module"
            | Cst.c_builtin _ _ :: _ => eerr "builtin is not allowed in a local module"
            | Cst.c_ind_alias _ _ _ _ :: _ => eerr "an inductive alias is not allowed in a local module"
+           | Cst.c_record _ _ _ _ _ _ :: _ => eerr "a record type is not allowed in a local module"
            end) S gm_nil cs in
       eok (md_body sm_open Φ)
   end.
@@ -388,6 +408,14 @@ Definition check_distinct (what : string) (xs : list string) : eres unit :=
   match first_dup xs with
   | None => eok tt
   | Some x => eerr (x ++ " is declared twice in " ++ what)
+  end.
+
+(** A name the with-area [cs] of the record [x] declares that is one of its
+    fields [fs]: the field took it. *)
+Definition check_no_field (x : string) (fs : list string) (cs : list Cst.cmd) : eres unit :=
+  match List.find (fun y => mem_b y fs) (flat_map cmd_decls cs) with
+  | Some f => eerr (f ++ " is a field of record " ++ x)
+  | None => eok tt
   end.
 
 (** ** Commands
@@ -471,6 +499,19 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) 
       let* tys := elab_params (F ++ O) ps in
       let* E := elab_mod (pents ps ++ F ++ O) oE in
       eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_ind_alias x pv (ptele tys) E :: nil)
+  (** The parameters, the sort and the fields' types are read as an
+      inductive type's are; the with-area in the record's frame, the record
+      in scope outside it. *)
+  | Cst.c_record pv x ps oS fs cs =>
+      let* _ := check_fresh x F in
+      let* _ := check_params ps in
+      let* tys := elab_params (F ++ O) ps in
+      let* Srt := elab (pents ps ++ F ++ O) oS in
+      let* fs' := elab_rargs (pents ps ++ F ++ O) fs in
+      let* _ := check_no_field x (map fst fs) cs in
+      let* bcs := elab_cmds_with (elab_cmd fp) (ch ++ x :: nil) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F ++ O)
+                    (record_ents fp ch x ps fs) cs in
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_record x pv (ptele tys) Srt fs' bcs :: nil)
   end.
 
 Definition elab_cmds (fp : path) := elab_cmds_with (elab_cmd fp).

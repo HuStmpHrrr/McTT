@@ -59,6 +59,15 @@ Fixpoint exp_mvcb (n : nat) (M : exp) {struct M} : bool :=
   | a_var _ => true
   | a_let b B => bnd_mvcb n b && exp_mvcb (S n) B
   | a_mem H _ => modexp_mvcb n H
+  | a_record _ => true
+  | a_tuple T fs =>
+      exp_mvcb n T &&
+      (fix fields_mvcb (fs : list (string * exp)) : bool :=
+         match fs with
+         | nil => true
+         | f :: fs' => exp_mvcb n (snd f) && fields_mvcb fs'
+         end) fs
+  | a_proj _ M => exp_mvcb n M
   end
 with modexp_mvcb (n : nat) (H : modexp) {struct H} : bool :=
   match H with
@@ -100,6 +109,7 @@ with gentry_mvcb (n : nat) (E : gentry) {struct E} : bool :=
   | ge_mod _ U => gunit_mvcb n U
   | ge_ind _ _ _ D Φ => gmod_mvcb (ind_nu D + n) Φ
   | ge_ind_alias _ _ _ _ _ _ => true
+  | ge_record _ _ R Φ => gmod_mvcb (S (List.length (record_params R)) + n) Φ
   end
 with centry_mvcb (n : nat) (e : centry) {struct e} : bool :=
   match e with
@@ -162,6 +172,20 @@ Proof.
   destruct oZ as [Z |]; cbn; [ rewrite (HZ Z eq_refl) | ]; tauto.
 Qed.
 
+(** The fields of a tuple, computed. *)
+Lemma fields_mvcb_spec : forall n (fs : list (string * exp)),
+    List.Forall (fun f => forall n, exp_mvcb n (snd f) = true <-> exp_mvc n (snd f)) fs ->
+    (fix fields_mvcb (fs : list (string * exp)) : bool :=
+       match fs with
+       | nil => true
+       | f :: fs' => exp_mvcb n (snd f) && fields_mvcb fs'
+       end) fs = true <->
+    all_list (fun f => exp_mvc n (snd f)) fs.
+Proof.
+  intros n fs HF; induction HF as [| f fs Hf _ IH]; cbn in *; [ split; auto |].
+  rewrite andb_true_iff, Hf, IH; reflexivity.
+Qed.
+
 Lemma mvcb_spec :
   (forall M n, exp_mvcb n M = true <-> exp_mvc n M) /\
   (forall H n, modexp_mvcb n H = true <-> modexp_mvc n H) /\
@@ -181,6 +205,11 @@ Proof.
     | HU : List.Forall _ ?Us, HB : List.Forall _ ?Bks, HM : forall n, exp_mvcb n ?M = true <-> _
       |- _ <-> all_list _ ?Us /\ all_blocks _ ?Bks /\ exp_mvc _ ?M =>
         rewrite !andb_true_iff, (us_mvcb_spec _ _ HU), (blocks_mvcb_spec _ _ HB), HM; tauto
+    end.
+  (** A tuple: its annotation and its fields, by the inner fixpoint. *)
+  all: try lazymatch goal with
+    | HF : List.Forall _ ?fs, HT : forall n, exp_mvcb n ?T = true <-> _ |- _ <-> exp_mvc _ ?T /\ all_list _ ?fs =>
+        rewrite andb_true_iff, (fields_mvcb_spec _ _ HF), HT; reflexivity
     end.
   all: rewrite ?andb_true_iff.
   all: repeat match goal with IH : forall n : nat, _ <-> _ |- _ => setoid_rewrite IH; clear IH end.
@@ -1991,12 +2020,22 @@ Proof. intros * He; rewrite !ind_lookup_unfold, !ind_mlookup_unfold, (gds_equiv_
 Lemma gds_equiv_ind_alias : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> ind_alias_lookup Θ Ξ p = ind_alias_lookup Θ' Ξ p.
 Proof. intros * He; unfold ind_alias_lookup, ind_alias_lookup_u; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
 
+(** The record types are found alike: in the frames, or in the entries. *)
+Lemma gds_equiv_record_lookup : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> record_lookup Θ Ξ p = record_lookup Θ' Ξ p.
+Proof.
+  intros * He; unfold record_lookup, gc_entry, gc_entry_u.
+  rewrite (gds_equiv_lookup _ _ (q_unit p) He); reflexivity.
+Qed.
+
 (** The module a description denotes reads the dependencies through their
     lookups alone. *)
 Lemma gds_equiv_ds_mod : forall Θ Θ' Ξ R, gds_equiv Θ Θ' -> ds_mod Θ Ξ R = ds_mod Θ' Ξ R.
 Proof.
-  intros * He; destruct R; cbn [ds_mod]; try reflexivity; rewrite (gds_equiv_ind_lookup _ _ _ _ He).
-  destruct (ind_lookup Θ' Ξ _); [ destruct (ind_mpath _ _); [ unfold gc_loc; rewrite (gds_equiv_body _ _ _ _ He) |] |]; reflexivity.
+  intros * He; destruct R; cbn [ds_mod]; try reflexivity.
+  - rewrite (gds_equiv_ind_lookup _ _ _ _ He).
+    destruct (ind_lookup Θ' Ξ _); [ destruct (ind_mpath _ _); [ unfold gc_loc; rewrite (gds_equiv_body _ _ _ _ He) |] |]; reflexivity.
+  - (* a record type's module, at its path *)
+    unfold gc_loc; rewrite (gds_equiv_body _ _ _ _ He); reflexivity.
 Qed.
 
 (** What module expressions denote reads the dependencies through their
@@ -2031,7 +2070,8 @@ Section Equiv.
   Lemma equiv_nbe_ty : forall Γ A W, nbe_ty Θ Ξ Γ A W -> nbe_ty Θ' Ξ Γ A W.
   Proof.
     apply nbe_ty_ext; intros; [ apply gds_equiv_resolve | apply gds_equiv_module | apply gds_equiv_ind_lookup
-                               | apply gds_equiv_ind_alias | reflexivity | reflexivity | apply gds_equiv_body ]; exact He.
+                               | apply gds_equiv_ind_alias | reflexivity | reflexivity | apply gds_equiv_body
+                               | apply gds_equiv_record_lookup ]; exact He.
   Qed.
 
   Lemma equiv_nbe : forall Γ M A W, nbe Θ Ξ Γ M A W -> nbe Θ' Ξ Γ M A W.
@@ -2039,13 +2079,15 @@ Section Equiv.
     assert (Hs : (forall p, gc_resolve Θ Ξ p = gc_resolve Θ' Ξ p) /\ (forall p, gc_module Θ Ξ p = gc_module Θ' Ξ p) /\
                  (forall p, ind_lookup Θ Ξ p = ind_lookup Θ' Ξ p) /\ (forall p, ind_alias_lookup Θ Ξ p = ind_alias_lookup Θ' Ξ p) /\
                  (forall p, gc_frame Ξ p = gc_frame Ξ p) /\ (forall p, gs_find_ind Ξ p = gs_find_ind Ξ p) /\
-                 (forall p, gc_body Θ Ξ p = gc_body Θ' Ξ p))
+                 (forall p, gc_body Θ Ξ p = gc_body Θ' Ξ p) /\ (forall p, record_lookup Θ Ξ p = record_lookup Θ' Ξ p))
       by (repeat split; intros; first [ reflexivity | apply gds_equiv_resolve | apply gds_equiv_module
-                                       | apply gds_equiv_ind_lookup | apply gds_equiv_ind_alias | apply gds_equiv_body ];
+                                       | apply gds_equiv_ind_lookup | apply gds_equiv_ind_alias | apply gds_equiv_body
+                                       | apply gds_equiv_record_lookup ];
           exact He).
-    destruct Hs as (Hres & Hmod & Hind & Hia & Hfr & Hfi & Hbody).
-    pose proof (eval_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hfi Hbody) as Hev; pose proof (read_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hfi Hbody) as Hrd.
-    pose proof (initial_env_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hfi Hbody) as Hie.
+    destruct Hs as (Hres & Hmod & Hind & Hia & Hfr & Hfi & Hbody & Hrec).
+    pose proof (eval_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hfi Hbody Hrec) as Hev;
+      pose proof (read_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hfi Hbody Hrec) as Hrd.
+    pose proof (initial_env_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hfi Hbody Hrec) as Hie.
     destruct_all.
     intros * []; econstructor; eauto.
   Qed.

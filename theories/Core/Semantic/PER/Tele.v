@@ -1858,4 +1858,90 @@ Section Tele.
       - intros * Ef Ef' Hsh IH; intros; econstructor; [ exact Ef | exact Ef' | eapply IH; eassumption ].
     Qed.
   End FamChange.
+
+  (** ** The Elements of a Record Type
+
+      Two elements are related when their projections are related as a
+      telescope at the fields' relations ([record_rel]).  The projections of
+      a value are unique, so the lemmas of [TelePER] carry over. *)
+
+  Lemma record_projs_functional : forall R v vs ws, record_projs R v vs -> record_projs R v ws -> vs = ws.
+  Proof.
+    unfold record_projs; intros R v vs ws H1; revert ws.
+    induction H1 as [| fT r fl rs Hr Hrs IH]; intros ws H2; inversion H2 as [| ? r' ? rs' Hr' Hrs']; subst;
+      [ reflexivity |].
+    f_equal; [ exact (functional_eval_proj _ _ _ _ Hr Hr') | exact (IH _ Hrs') ].
+  Qed.
+
+  Lemma record_projs_length : forall R v vs, record_projs R v vs -> List.length vs = List.length (record_fields R).
+  Proof. intros * H; symmetry; exact (List.Forall2_length H). Qed.
+
+  (** Across two families of field relations that agree along prefixes
+      related at both. *)
+  Lemma record_rel_change : forall R fr1 fr2 v v',
+      (forall k pa pb, k < List.length (record_fields R) -> tele_prefix_rel fr1 k pa pb -> tele_prefix_rel fr2 k pa pb ->
+         (fr1 k pa <~> fr2 k pa)) ->
+      record_rel R fr1 v v' -> record_rel R fr2 v v'.
+  Proof.
+    intros * Heq [vs vs' Hl Hr Hrel]; econstructor; [ exact Hl | exact Hr |].
+    eapply tele_rel_map; [| exact Hrel ].
+    intros k pa pb x y Hk Hp1 Hp2 Hxy; exact (proj1 (Heq _ _ _ Hk Hp1 Hp2 _ _) Hxy).
+  Qed.
+
+  (** [fields_per] and [fields_inv] at the positions below the number of
+      fields, as [TelePER] takes them. *)
+  Lemma fields_per_lt : forall R fr, fields_per R fr ->
+      forall k vs vs', k < List.length (record_fields R) -> tele_prefix_rel fr k vs vs' -> PER (fr k vs).
+  Proof.
+    intros * HP * Hk Hp; destruct (nth_error_lt_some' _ _ Hk) as [[f T] HT]; exact (HP _ _ _ _ _ HT Hp).
+  Qed.
+
+  Lemma fields_inv_lt : forall R fr, fields_inv R fr ->
+      forall k vs vs', k < List.length (record_fields R) -> tele_prefix_rel fr k vs vs' -> (fr k vs <~> fr k vs').
+  Proof.
+    intros * HI * Hk Hp; destruct (nth_error_lt_some' _ _ Hk) as [[f T] HT]; exact (HI _ _ _ _ _ HT Hp).
+  Qed.
+
+  Section RecordPER.
+    Variable (R : record_decl) (fr : nat -> list domain -> relation domain).
+    Hypothesis (HP : fields_per R fr) (HI : fields_inv R fr).
+
+    Let HP' := fields_per_lt R fr HP.
+    Let HI' := fields_inv_lt R fr HI.
+
+    (** Related prefixes of the fields, swapped, composed, and on the
+        diagonal. *)
+    Lemma fields_prefix_sym : forall k a b, k <= List.length (record_fields R) ->
+        tele_prefix_rel fr k a b -> tele_prefix_rel fr k b a.
+    Proof. exact (tele_prefix_rel_sym _ fr HP' HI'). Qed.
+
+    Lemma fields_prefix_trans : forall k a b c, k <= List.length (record_fields R) ->
+        tele_prefix_rel fr k a b -> tele_prefix_rel fr k b c -> tele_prefix_rel fr k a c.
+    Proof. exact (tele_prefix_rel_trans _ fr HP' HI'). Qed.
+
+    Lemma fields_prefix_refl_l : forall k a b, k <= List.length (record_fields R) ->
+        tele_prefix_rel fr k a b -> tele_prefix_rel fr k a a.
+    Proof. exact (tele_prefix_rel_refl_l _ fr HP' HI'). Qed.
+
+    Lemma fields_prefix_refl_r : forall k a b, k <= List.length (record_fields R) ->
+        tele_prefix_rel fr k a b -> tele_prefix_rel fr k b b.
+    Proof. exact (tele_prefix_rel_refl_r _ fr HP' HI'). Qed.
+
+    Lemma record_rel_sym : forall v v', record_rel R fr v v' -> record_rel R fr v' v.
+    Proof.
+      intros * [vs vs' Hl Hr Hrel]; econstructor; [ exact Hr | exact Hl |].
+      exact (tele_rel_sym _ fr HP' HI' _ _ _ (le_n _) Hrel).
+    Qed.
+
+    Lemma record_rel_trans : forall v v' v'', record_rel R fr v v' -> record_rel R fr v' v'' -> record_rel R fr v v''.
+    Proof.
+      intros * [vs vs' Hl Hr Hrel] [ws ws' Hl' Hr' Hrel'].
+      pose proof (record_projs_functional _ _ _ _ Hr Hl') as <-.
+      econstructor; [ exact Hl | exact Hr' |].
+      exact (tele_rel_trans _ fr HP' HI' _ _ _ _ (le_n _) Hrel Hrel').
+    Qed.
+
+    Lemma record_rel_PER : PER (record_rel R fr).
+    Proof. split; [ exact record_rel_sym | exact record_rel_trans ]. Qed.
+  End RecordPER.
 End Tele.

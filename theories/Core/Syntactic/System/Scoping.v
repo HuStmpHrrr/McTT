@@ -41,6 +41,9 @@ Fixpoint exp_scoped (n : nat) (M : exp) : Prop :=
   | a_var x => x < n
   | a_let b B => bnd_scoped n b /\ exp_scoped (S n) B
   | a_mem H _ => modexp_scoped n H
+  | a_record _ => True
+  | a_tuple T fs => exp_scoped n T /\ all_list (fun f => exp_scoped n (snd f)) fs
+  | a_proj _ M => exp_scoped n M
   end
 with modexp_scoped (n : nat) (H : modexp) : Prop :=
   match H with
@@ -92,6 +95,7 @@ with gentry_scoped (n : nat) (E : gentry) : Prop :=
          | nil => True
          | N :: Ns' => exp_scoped (List.length Δ) N /\ args_scoped Ns'
          end) Ns
+  | ge_record _ _ R Φ => gmod_scoped (S (List.length (record_params R)) + n) Φ
   end
 with centry_scoped (n : nat) (e : centry) : Prop :=
   match e with
@@ -197,6 +201,7 @@ Proof.
            end; cbn in *; destruct_all;
     repeat split; try lia; eauto with arith.
   all: try ups_case ltac:(fun H => eapply H; [| eassumption ]; lia).
+  all: try fields_case ltac:(fun H => eapply H; [| eassumption ]; lia).
   1: blocks_case ltac:(fun H => eapply H; [| eassumption ]; lia).
   clear - H H1 H2; induction H; cbn in *; destruct_all; [ auto |].
   split; [ eapply H; [| eassumption ]; lia | auto ].
@@ -256,6 +261,7 @@ Proof.
   pose proof wk_q_bound as lift1; pose proof wk_qn_bound as lift.
   syn_mut_ind; scoped_law_case lift1 lift.
   all: try ups_case ltac:(fun H => eapply H; eassumption).
+  all: try fields_case ltac:(fun H => eapply H; eassumption).
   all: blocks_case ltac:(fun H => eapply H; [ eassumption | eapply lift; eassumption ]).
 Qed.
 
@@ -320,6 +326,7 @@ Proof.
   pose proof sb_q_bound as lift1; pose proof sb_qn_bound as lift.
   syn_mut_ind; scoped_law_case lift1 lift.
   all: try ups_case ltac:(fun H => eapply H; eassumption).
+  all: try fields_case ltac:(fun H => eapply H; eassumption).
   all: blocks_case ltac:(fun H => eapply H; [ eassumption | eapply lift; eassumption ]).
 Qed.
 
@@ -376,6 +383,7 @@ Proof.
   pose proof wk_q_fix as lift1; pose proof wk_qn_fix as lift.
   syn_mut_ind; scoped_id_case lift1 lift tele_wk_id_gen.
   all: try ups_eq_case ltac:(fun H => eapply H; eassumption).
+  all: try fields_eq_case ltac:(fun H => eapply H; eassumption).
   all: blocks_eq_case ltac:(fun H => eapply H; [ eassumption | eapply lift; eassumption ]).
 Qed.
 
@@ -392,6 +400,7 @@ Proof.
   pose proof sb_q_fix as lift1; pose proof sb_qn_fix as lift.
   syn_mut_ind; scoped_id_case lift1 lift tele_sub_id_gen.
   all: try ups_eq_case ltac:(fun H => eapply H; eassumption).
+  all: try fields_eq_case ltac:(fun H => eapply H; eassumption).
   all: blocks_eq_case ltac:(fun H => eapply H; [ eassumption | eapply lift; eassumption ]).
 Qed.
 
@@ -447,6 +456,7 @@ Proof.
   pose proof sb_q_agree as lift1; pose proof sb_qn_agree as lift.
   syn_mut_ind; scoped_agree_case lift1 lift tele_sub_agree_gen.
   all: try ups_eq_case ltac:(fun H => eapply H; eassumption).
+  all: try fields_eq_case ltac:(fun H => eapply H; eassumption).
   all: blocks_eq_case ltac:(fun H => eapply H; [ eassumption | eapply lift; eassumption ]).
 Qed.
 
@@ -500,6 +510,7 @@ Proof.
            end; cbn in *; destruct_all;
     repeat split; try lia; eauto with arith.
   all: try ups_case ltac:(fun H => eapply H; [| eassumption ]; lia).
+  all: try fields_case ltac:(fun H => eapply H; [| eassumption ]; lia).
   - blocks_case ltac:(fun H => eapply H; [| eassumption ]; lia).
   - clear - H H1 H2; induction H; cbn in *; destruct_all; [ auto |].
     split; [ eapply H; [| eassumption ]; lia | auto ].
@@ -589,8 +600,9 @@ Lemma syn_mvc_sub_agree :
      (forall x, sentry_exp (σ x) = sentry_exp (τ x)) -> centry_sub e σ = centry_sub e τ).
 Proof.
   syn_mut_ind; mvc_case.
-  all: try solve [ eauto 8 using sb_q_agree, sb_q_exp_agree ].
+  all: try solve [ eauto 8 using sb_q_agree, sb_q_exp_agree, sb_qn_agree, sb_qn_exp_agree ].
   all: try ups_eq_case ltac:(fun H => eapply H; eassumption).
+  all: try fields_eq_case ltac:(fun H => eapply H; eassumption).
   all: blocks_eq_case ltac:(fun H => eapply H; eauto using sb_qn_agree, sb_qn_exp_agree).
 Qed.
 
@@ -651,6 +663,7 @@ Proof.
   syn_mut_ind; mvc_wk_case.
   all: try solve [ eapply tele_wk_mvc_gen; eassumption ].
   all: try ups_case ltac:(fun H => eapply H; eassumption).
+  all: try fields_case ltac:(fun H => eapply H; eassumption).
   all: blocks_case ltac:(fun H => eapply H; [ eassumption | eapply wk_qn_bound; eassumption ]).
 Qed.
 
@@ -792,7 +805,7 @@ Lemma ctx_lookup_mod_length : forall Γ x U, Γ ∋ #x ≔ₘ U -> x < length Γ
 Proof. induction 1; cbn; lia. Qed.
 
 Lemma length_body_ctx : forall Φ, length (body_ctx Φ) = gm_binders Φ.
-Proof. induction Φ as [| Φ IH x [? ? ? [] | | | ] | Φ IH c]; cbn; rewrite ?length_app, ?repeat_length; auto. Qed.
+Proof. induction Φ as [| Φ IH x [? ? ? [] | | | | ] | Φ IH c]; cbn; rewrite ?length_app, ?repeat_length; auto. Qed.
 
 (** A typed body, with no local open, is scoped when the context it binds
     is. *)
@@ -804,7 +817,7 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] n Ho Hs; cbn in Hs, Ho; try contradiction; try discriminate.
   - split; intros; exact I.
   - destruct Hs as (Hs & -> & HE); destruct (IH _ n Ho Hs) as [IH1 IH2].
-    destruct E as [? ? ? [] | | | ], E' as [? ? ? [] | | | ]; cbn in HE; try contradiction;
+    destruct E as [? ? ? [] | | | | ], E' as [? ? ? [] | | | | ]; cbn in HE; try contradiction;
       split; intros HΦ; cbn in *; destruct_all; repeat split; auto;
       first [ rewrite <- length_body_ctx; assumption | rewrite <- (length_body_ctx Φ'); assumption ].
 Qed.
@@ -836,7 +849,7 @@ Lemma body_shape_sym : forall Φ Φ', body_shape Φ Φ' -> body_shape Φ' Φ.
 Proof.
   induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] Hs; cbn in *; try contradiction; auto;
     destruct_all; subst; repeat split; auto.
-  destruct E as [? ? ? [] | | | ], E' as [? ? ? [] | | | ]; cbn in *; destruct_all; subst; auto.
+  destruct E as [? ? ? [] | | | | ], E' as [? ? ? [] | | | | ]; cbn in *; destruct_all; subst; auto.
 Qed.
 
 Lemma body_shape_refl : forall Φ Φ', body_shape Φ Φ' ->
@@ -845,7 +858,7 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] H; cbn in H |- *; try contradiction.
   - auto.
   - destruct H as (HΦ & <- & HE); destruct (IH _ HΦ) as (H1 & H2 & H3).
-    destruct E as [b pv A [M |] | pm U | ? ? ? | ? ? ? ?], E' as [b' pv' A' [M' |] | pm' U' | ? ? ? | ? ? ? ?]; cbn in HE |- *; try contradiction;
+    destruct E as [b pv A [M |] | pm U | ? ? ? | ? ? ? ? | ? ? ?], E' as [b' pv' A' [M' |] | pm' U' | ? ? ? | ? ? ? ? | ? ? ?]; cbn in HE |- *; try contradiction;
       intuition congruence.
   - destruct H as (HΦ & <-); destruct (IH _ HΦ) as (H1 & H2 & H3); intuition congruence.
 Qed.
@@ -887,7 +900,7 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH c its]; intros [| Φ' x' E' | Φ' c' its'] Ho Hs; cbn in Ho, Hs |- *;
     try contradiction; try discriminate; [ split; discriminate |].
   destruct Hs as (Hs & _ & HE); destruct (IH _ Ho Hs) as [H1 H2].
-  destruct E as [? ? ? [] | | | ], E' as [? ? ? [] | | | ]; cbn in HE |- *; try contradiction;
+  destruct E as [? ? ? [] | | | | ], E' as [? ? ? [] | | | | ]; cbn in HE |- *; try contradiction;
     (split; [ destruct (gm_fill Φ) | destruct (gm_fill Φ') ]; cbn; congruence).
 Qed.
 
@@ -994,6 +1007,15 @@ Lemma vars_from_scoped : forall k m n, k + m <= n -> List.Forall (exp_scoped n) 
 Proof.
   intros * H; unfold vars_from; apply List.Forall_map, List.Forall_forall.
   intros i Hi; apply List.in_rev, List.in_seq in Hi; cbn; lia.
+Qed.
+
+(** A record's module telescope is closed when its parameters are: the
+    value's type is the type former at the parameters as variables. *)
+Lemma record_mod_tele_scoped : forall p R,
+    ctx_scoped 0 (record_params R) -> ctx_scoped 0 (record_mod_tele p R).
+Proof.
+  intros * H; unfold record_mod_tele, record_self; cbn; split; [| exact H ].
+  rewrite Nat.add_0_r; apply exp_scoped_apps; split; [ exact I | apply vars_from_scoped; lia ].
 Qed.
 
 Lemma sb_of_list_bound : forall Ms σ n m,
@@ -1744,6 +1766,7 @@ Definition entry_closed (E : gentry) : Prop :=
   | ge_mod _ _ => True
   | ge_ind _ _ _ D _ => decl_closed D
   | ge_ind_alias _ Δ _ _ _ Ns => ctx_scoped 0 Δ /\ Forall (exp_scoped (List.length Δ)) Ns
+  | ge_record _ _ _ _ => True
   end.
 
 (** The declaration a module of a member of a group records is closed. *)
@@ -1776,6 +1799,10 @@ Fixpoint body_closed (k : nat) (Φ : gmod) {struct Φ} : Prop :=
       | ge_mod _ U => gunit_scoped 0 U
       | ge_ind _ _ _ D Φ1 => decl_closed D /\ body_closed (List.length (ind_uparams D)) Φ1
       | ge_ind_alias _ Δ _ _ _ Ns => ctx_scoped 0 Δ /\ List.Forall (exp_scoped (List.length Δ)) Ns
+      | ge_record _ p R Φ1 =>
+          (ctx_scoped 0 (record_fctx R (List.length (record_fields R)) ++ record_params R) /\
+           exp_scoped (List.length (record_params R)) (record_sort R)) /\
+          body_closed (List.length (record_mod_tele p R)) Φ1
       end
   | gm_open _ _ _ => False
   end.
@@ -1792,11 +1819,14 @@ Definition units_closed (Θ : gdeps) : Prop :=
   forall fp U, gds_lookup Θ fp = Some U -> unit_closed (gu_params U) (gu_mod U).
 
 (** A frame's kind is closed: the declaration of the member a type's open
-    frame is the module of. *)
+    frame is the module of, or of the record type it is the module of. *)
 Definition kind_closed (K : frame_kind) : Prop :=
   match K with
   | fk_module => True
   | fk_ind _ _ D => decl_closed D
+  | fk_record R =>
+      ctx_scoped 0 (record_fctx R (List.length (record_fields R)) ++ record_params R) /\
+      exp_scoped (List.length (record_params R)) (record_sort R)
   end.
 
 Fixpoint stack_closed (Ξ : gstack) : Prop :=
@@ -1815,7 +1845,7 @@ Proof.
   destruct HΦ as [HΦ HE]; destruct (IH Φ T (conj HT HΦ)) as [IHr IHm]; split.
   - intros [| x ip] E0 Hr; cbn in Hr; [ discriminate |].
     destruct (String.eqb x y); [| eapply IHr; exact Hr ].
-    destruct ip as [| z ip], E as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Δa pma pa ka Nsa]; try discriminate.
+    destruct ip as [| z ip], E as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Δa pma pa ka Nsa | pv pr Rr Φ1]; try discriminate.
     + injection Hr as <-; exact HE.
     + destruct HE as (-> & HΔ & HΦ1).
       assert (Hu : unit_closed (Δ ++ T) Φ1) by (split; [ apply ctx_scoped_app_iff; auto | rewrite length_app; exact HΦ1 ]).
@@ -1823,9 +1853,13 @@ Proof.
     + destruct HE as [HD HΦ1].
       assert (Hu : unit_closed (ind_uparams D) Φ1) by (split; [ apply (dc_uparams _ HD) | exact HΦ1 ]).
       exact (proj1 (IH _ _ Hu) _ _ Hr).
+    + destruct HE as [[HF _] HΦ1].
+      assert (Hu : unit_closed (record_mod_tele pr Rr) Φ1)
+        by (split; [ exact (record_mod_tele_scoped _ _ (proj2 (proj1 (ctx_scoped_app_iff _ _) HF))) | exact HΦ1 ]).
+      exact (proj1 (IH _ _ Hu) _ _ Hr).
   - intros x ip r Hr; cbn in Hr.
     destruct (String.eqb x y); [| eapply IHm; exact Hr ].
-    destruct E as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Δa pma pa ka Nsa]; try discriminate.
+    destruct E as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Δa pma pa ka Nsa | pv pr Rr Φ1]; try discriminate.
     + destruct HE as (-> & HΔ & HΦ1).
       assert (Hu : unit_closed (Δ ++ T) Φ1) by (split; [ apply ctx_scoped_app_iff; auto | rewrite length_app; exact HΦ1 ]).
       destruct ip as [| z ip]; [ injection Hr as <-; split; [ apply Hu | exact I ] |].
@@ -1839,6 +1873,11 @@ Proof.
       destruct HE as [HΔ HNs]; apply gunit_scoped_mk; split; [ exact HΔ |].
       cbn; apply me_apps_scoped_iff; split; [ apply qname_mod_scoped |].
       eapply Forall_impl; [| exact HNs ]; intros; cbn; rewrite Nat.add_0_r; assumption.
+    + destruct HE as [[HF _] HΦ1].
+      assert (Hu : unit_closed (record_mod_tele pr Rr) Φ1)
+        by (split; [ exact (record_mod_tele_scoped _ _ (proj2 (proj1 (ctx_scoped_app_iff _ _) HF))) | exact HΦ1 ]).
+      destruct ip as [| z ip]; [ injection Hr as <-; split; [ apply Hu | exact I ] |].
+      exact (proj2 (IH _ _ Hu) _ _ _ Hr).
 Qed.
 
 Lemma stack_closed_in : forall Ξ mp K U,
@@ -1854,7 +1893,18 @@ Proof.
   induction Ξ as [| [[mq Kq] V] Ξ IH]; intros * HΞ Hf; cbn in *; [ discriminate |].
   destruct HΞ as [HΞ [_ HK]].
   destruct (qname_strip mq p) as [[| ? ?] |]; [| discriminate | eauto ].
-  destruct Kq; [ discriminate | injection Hf as -> -> ->; exact HK ].
+  destruct Kq; [ discriminate | injection Hf as -> -> ->; exact HK | discriminate ].
+Qed.
+
+(** The declaration a record's open frame carries is closed. *)
+Lemma stack_closed_record : forall Ξ p R, stack_closed Ξ -> gs_find_record Ξ p = Some R ->
+    ctx_scoped 0 (record_fctx R (List.length (record_fields R)) ++ record_params R) /\
+    exp_scoped (List.length (record_params R)) (record_sort R).
+Proof.
+  induction Ξ as [| [[mq Kq] V] Ξ IH]; intros * HΞ Hf; cbn in *; [ discriminate |].
+  destruct HΞ as [HΞ [_ HK]].
+  destruct (qname_strip mq p) as [[| ? ?] |]; [| discriminate | eauto ].
+  destruct Kq; [ discriminate | discriminate | injection Hf as ->; exact HK ].
 Qed.
 
 Lemma stack_closed_find : forall Ξ p U ip T,
@@ -1915,6 +1965,10 @@ Definition entry_ok (T : ctx) (E : gentry) : Prop :=
   | ge_mod _ U => gunit_scoped 0 U
   | ge_ind _ _ _ D Φ => decl_closed D /\ unit_closed (ind_uparams D) Φ
   | ge_ind_alias _ _ _ _ _ _ => entry_closed E
+  | ge_record _ p R Φ =>
+      (ctx_scoped 0 (record_fctx R (List.length (record_fields R)) ++ record_params R) /\
+       exp_scoped (List.length (record_params R)) (record_sort R)) /\
+      unit_closed (record_mod_tele p R) Φ
   end.
 
 
@@ -1933,10 +1987,11 @@ Qed.
 Lemma mod_closed_ext : forall T Φ x E, unit_closed T Φ -> entry_ok T E -> unit_closed T (Φ ⊳ x ↦ E).
 Proof.
   intros * [HT HΦ] HE; split; [ exact HT |]; cbn; split; [ exact HΦ |].
-  destruct E as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Δa pma pa ka Nsa]; cbn in HE |- *; try exact HE.
+  destruct E as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Δa pma pa ka Nsa | pv pr Rr Φ1]; cbn in HE |- *; try exact HE.
   - destruct HE as (-> & HΔ & HΦ1); apply ctx_scoped_app_iff in HΔ as [HΔ _].
     rewrite length_app in HΦ1; auto.
   - destruct HE as [HD [_ HΦ1]]; auto.
+  - destruct HE as [HR [_ HΦ1]]; auto.
 Qed.
 
 (** A chain from a unit has no variable. *)

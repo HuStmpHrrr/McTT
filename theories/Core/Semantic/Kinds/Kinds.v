@@ -289,13 +289,13 @@ Section Kinds.
       + intros ρb Hk; inversion Hk; subst; cbn [gmod_wk gm_binders wk_qn].
         destruct (IH1 _ ltac:(eassumption)) as (ρa & Hk1 & Hr1).
         eexists; split; [ apply ke_ext; exact Hk1 |].
-        destruct E as [b pv A B | pm U | pv D Φd | pv Δa pa Nsa]; cbn [gentry_wk kbentry];
+        destruct E as [b pv A B | pm U | pv D Φd | pv Δa pa Nsa | pr Rr Φr]; cbn [gentry_wk kbentry];
           try (apply kren_q_term; exact Hr1).
         apply kren_q_mod; [ exact Hr1 |]; intros ch0 k0; rewrite !dkind_clo_iff; apply IHE; exact Hr1.
       + intros ρa Hk; cbn [gmod_wk] in Hk; inversion Hk; subst; cbn [gm_binders wk_qn].
         destruct (IH2 _ ltac:(eassumption)) as (ρb & Hk1 & Hr1).
         eexists; split; [ apply ke_ext; exact Hk1 |].
-        destruct E as [b pv A B | pm U | pv D Φd | pv Δa pa Nsa]; cbn [gentry_wk kbentry];
+        destruct E as [b pv A B | pm U | pv D Φd | pv Δa pa Nsa | pr Rr Φr]; cbn [gentry_wk kbentry];
           try (apply kren_q_term; exact Hr1).
         apply kren_q_mod; [ exact Hr1 |]; intros ch0 k0; rewrite !dkind_clo_iff; apply IHE; exact Hr1.
       + intros sm0 y ch kk; cbn [gmod_wk].
@@ -304,14 +304,14 @@ Section Kinds.
         assert (Ex : String.eqb x x = true) by apply String.eqb_refl.
         split; intros Hk; inversion Hk; subst; cbn [gm_prefix_upto gm_item_upto gmod_wk] in *; rewrite ?Ex in *;
           try discriminate.
-        * destruct E as [b0 pv0 A0 B0 | | |]; cbn in *; try congruence; eapply uk_def; cbn; rewrite Ex; reflexivity.
-        * destruct E as [| pm0 U0 | |]; cbn [gentry_wk] in *; try congruence.
+        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply uk_def; cbn; rewrite Ex; reflexivity.
+        * destruct E as [| pm0 U0 | | |]; cbn [gentry_wk] in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_mod _ _)) |- _ => injection Hp as <- <- <- end.
           match goal with Hk1 : kenv _ _ _ (gmod_wk Φ φ) _ |- _ => destruct (IH2 _ Hk1) as (ρb & Hk1' & Hr1) end.
           eapply uk_mod; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
-        * destruct E as [b0 pv0 A0 B0 | | |]; cbn in *; try congruence; eapply uk_def; cbn; rewrite Ex; reflexivity.
-        * destruct E as [| pm0 U0 | |]; cbn in *; try congruence.
+        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply uk_def; cbn; rewrite Ex; reflexivity.
+        * destruct E as [| pm0 U0 | | |]; cbn in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_mod _ _)) |- _ => injection Hp as <- <- <- end.
           match goal with Hk1 : kenv _ _ _ Φ _ |- _ => destruct (IH1 _ Hk1) as (ρa & Hk1' & Hr1) end.
           eapply uk_mod; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
@@ -523,13 +523,13 @@ Section Kinds.
       + intros ρb Hk; inversion Hk; subst; cbn [gmod_sub gm_binders sb_qn].
         destruct (IH1 _ ltac:(eassumption)) as (ρa & Hk1 & Hr1).
         eexists; split; [ apply ke_ext; exact Hk1 |].
-        destruct E as [b pv A B | pm U | pv D Φd | pv Δa pa Nsa]; cbn [gentry_sub kbentry];
+        destruct E as [b pv A B | pm U | pv D Φd | pv Δa pa Nsa | pr Rr Φr]; cbn [gentry_sub kbentry];
           try (apply ksub_q_term; exact Hr1).
         apply ksub_q_mod; [ exact Hr1 |]; intros ch0 k0; rewrite !dkind_clo_iff; apply IHE; exact Hr1.
       + intros ρa Hk; cbn [gmod_sub] in Hk; inversion Hk; subst; cbn [gm_binders sb_qn].
         destruct (IH2 _ ltac:(eassumption)) as (ρb & Hk1 & Hr1).
         eexists; split; [ apply ke_ext; exact Hk1 |].
-        destruct E as [b pv A B | pm U | pv D Φd | pv Δa pa Nsa]; cbn [gentry_sub kbentry];
+        destruct E as [b pv A B | pm U | pv D Φd | pv Δa pa Nsa | pr Rr Φr]; cbn [gentry_sub kbentry];
           try (apply ksub_q_term; exact Hr1).
         apply ksub_q_mod; [ exact Hr1 |]; intros ch0 k0; rewrite !dkind_clo_iff; apply IHE; exact Hr1.
       + intros sm0 y ch kk; cbn [gmod_sub].
@@ -538,14 +538,14 @@ Section Kinds.
         assert (Ex : String.eqb x x = true) by apply String.eqb_refl.
         split; intros Hk; inversion Hk; subst; cbn [gm_prefix_upto gm_item_upto gmod_sub] in *; rewrite ?Ex in *;
           try discriminate.
-        * destruct E as [b0 pv0 A0 B0 | | |]; cbn in *; try congruence; eapply uk_def; cbn; rewrite Ex; reflexivity.
-        * destruct E as [| pm0 U0 | |]; cbn [gentry_sub] in *; try congruence.
+        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply uk_def; cbn; rewrite Ex; reflexivity.
+        * destruct E as [| pm0 U0 | | |]; cbn [gentry_sub] in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_mod _ _)) |- _ => injection Hp as <- <- <- end.
           match goal with Hk1 : kenv _ _ _ (gmod_sub Φ σ) _ |- _ => destruct (IH2 _ Hk1) as (ρb & Hk1' & Hr1) end.
           eapply uk_mod; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].
           apply (IHE _ _ _ Hr1); assumption.
-        * destruct E as [b0 pv0 A0 B0 | | |]; cbn in *; try congruence; eapply uk_def; cbn; rewrite Ex; reflexivity.
-        * destruct E as [| pm0 U0 | |]; cbn in *; try congruence.
+        * destruct E as [b0 pv0 A0 B0 | | | |]; cbn in *; try congruence; eapply uk_def; cbn; rewrite Ex; reflexivity.
+        * destruct E as [| pm0 U0 | | |]; cbn in *; try congruence.
           match goal with Hp : Some _ = Some (gm_ext _ _ (ge_mod _ _)) |- _ => injection Hp as <- <- <- end.
           match goal with Hk1 : kenv _ _ _ Φ _ |- _ => destruct (IH1 _ Hk1) as (ρa & Hk1' & Hr1) end.
           eapply uk_mod; [ cbn; rewrite Ex; reflexivity | exact Hk1' |].

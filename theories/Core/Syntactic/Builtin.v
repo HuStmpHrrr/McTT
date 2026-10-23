@@ -187,6 +187,16 @@ Section Literals.
     | a_app M N => let% M' := exp_lits M in let% N' := exp_lits N in lok (a_app M' N')
     | a_let b B => let% b' := bnd_lits b in let% B' := exp_lits B in lok (a_let b' B')
     | a_mem H x => let% H' := modexp_lits H in lok (a_mem H' x)
+    | a_record _ => lok M
+    | a_tuple T fs =>
+        let% T' := exp_lits T in
+        let% fs' := (fix fields_lits (fs : list (String.string * exp)) : lres (list (String.string * exp)) :=
+                       match fs with
+                       | nil => lok nil
+                       | f :: fs0 => let% M' := exp_lits (snd f) in let% fs0' := fields_lits fs0 in lok ((fst f, M') :: fs0')
+                       end) fs in
+        lok (a_tuple T' fs')
+    | a_proj f M => let% M' := exp_lits M in lok (a_proj f M')
     end
   with modexp_lits (H : modexp) {struct H} : lres modexp :=
     match H with
@@ -226,7 +236,7 @@ Section Literals.
     match E with
     | ge_def b pv A B => let% A' := exp_lits A in let% B' := lopt exp_lits B in lok (ge_def b pv A' B')
     | ge_mod pv U => let% U' := gunit_lits U in lok (ge_mod pv U')
-    | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ => lok E
+    | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ | ge_record _ _ _ _ => lok E
     end
   with centry_lits (e : centry) {struct e} : lres centry :=
     match e with
@@ -259,6 +269,13 @@ Section Literals.
     let% cl' := lmap (fun b => let% B' := exp_lits (snd b) in lok (fst b, B')) (rf_clauses F) in
     lok (mk_rfun (rf_name F) ys' Z' A' cl').
 
+  (** A record's own terms as written: its parameters, its sort and its
+      fields. *)
+  Definition record_lits (Δ : ctx) (Srt : typ) (fs : list (string * typ)) : lres (ctx * typ * list (string * typ))%type :=
+    let% Δ' := tele_lits Δ in let% S' := exp_lits Srt in
+    let% fs' := lmap (fun fT => let% T' := exp_lits (snd fT) in lok (fst fT, T')) fs in
+    lok (Δ', S', fs').
+
   (** A command's own terms: the nested commands of a module get their
       literals when they run; a generated command is taken as it is
       ([cc_gen]). *)
@@ -275,6 +292,8 @@ Section Literals.
     | cc_mdef b pv Δ fs => let% Δ' := tele_lits Δ in let% fs' := lmap fun_lits fs in lok (cc_mdef b pv Δ' fs')
     | cc_builtin k H => let% H' := modexp_lits H in lok (cc_builtin k H')
     | cc_ind_alias x pv Δ H => let% Δ' := tele_lits Δ in let% H' := modexp_lits H in lok (cc_ind_alias x pv Δ' H')
+    | cc_record x pv Δ Srt fs cs =>
+        let% r := record_lits Δ Srt fs in lok (cc_record x pv (fst (fst r)) (snd (fst r)) (snd r) cs)
     end.
 End Literals.
 
@@ -369,6 +388,12 @@ Fixpoint exp_sites (Γ : ctx) (M : exp) {struct M} : list fill_site :=
          end) Bks ++
       exp_sites Γ M1
   | a_mem H _ => modexp_sites Γ H
+  (** A tuple: its annotation, then its fields; a projection: its element *)
+  | a_tuple T fs =>
+      exp_sites Γ T ++
+      (fix fields_sites (fs : list (string * exp)) : list fill_site :=
+         match fs with nil => nil | f :: fs' => exp_sites Γ (snd f) ++ fields_sites fs' end) fs
+  | a_proj _ M1 => exp_sites Γ M1
   | _ => nil
   end
 (** The sites of a module expression: the arguments it is applied to, and
@@ -413,7 +438,7 @@ with body_sites (Γ : ctx) (Φ : gmod) {struct Φ} : list fill_site :=
       | ge_def _ _ A oM =>
           exp_sites (body_ctx Φ' ++ Γ) A ++ match oM with Some M => exp_sites (body_ctx Φ' ++ Γ) M | None => nil end
       | ge_mod _ U => unit_sites (body_ctx Φ' ++ Γ) U
-      | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ => nil
+      | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ | ge_record _ _ _ _ => nil
       end
   | gm_open Φ' H _ => body_sites Γ Φ' ++ modexp_sites (body_ctx Φ' ++ Γ) H
   end.
@@ -470,6 +495,17 @@ Fixpoint exp_fill (rs : list fill_result) (M : exp) {struct M} : (exp * list fil
       let rM := exp_fill (snd rB) M1 in
       (a_elim oq' (match elim_site oq Us m Bks with Some _ => Us' | None => fst rU end) m (fst rB) (fst rM), snd rM)
   | a_mem H x => let r := modexp_fill rs H in (a_mem (fst r) x, snd r)
+  | a_tuple T fs =>
+      let rT := exp_fill rs T in
+      let rF := (fix fields_fill (rs : list fill_result) (fs : list (string * exp)) :
+                   (list (string * exp) * list fill_result)%type :=
+                   match fs with
+                   | nil => (nil, rs)
+                   | f :: fs0 => let r := exp_fill rs (snd f) in let r0 := fields_fill (snd r) fs0 in
+                                 ((fst f, fst r) :: fst r0, snd r0)
+                   end) (snd rT) fs in
+      (a_tuple (fst rT) (fst rF), snd rF)
+  | a_proj f M1 => let r := exp_fill rs M1 in (a_proj f (fst r), snd r)
   | _ => (M, rs)
   end
 (** A module expression filled, in the order [modexp_sites] lists its
@@ -518,7 +554,7 @@ with body_fill (rs : list fill_result) (Φ : gmod) {struct Φ} : (gmod * list fi
                     | None => (ge_def b pv (fst rA) None, snd rA)
                     end
                 | ge_mod pv U => let rU := unit_fill (snd r) U in (ge_mod pv (fst rU), snd rU)
-                | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ => (E, snd r)
+                | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ | ge_record _ _ _ _ => (E, snd r)
                 end in
       (gm_ext (fst r) x (fst rE), snd rE)
   | gm_open Φ' H its =>
@@ -630,7 +666,21 @@ Definition cmd_sites (Ξ : gstack) (c : ccmd) : list fill_site :=
   | cc_mdef _ _ Δ fs => tele_sites (gs_tele Ξ) Δ ++ List.concat (List.map (fun_sites Ξ Δ) fs)
   | cc_open E _ | cc_builtin _ E => modexp_sites (gs_tele Ξ) E
   | cc_load _ => nil
+  (** A record's parameters, its sort over them, and each field over the
+      fields before it; its with-area is filled when it runs *)
+  | cc_record _ _ Δ Srt fs _ =>
+      tele_sites (gs_tele Ξ) Δ ++ exp_sites (Δ ++ gs_tele Ξ) Srt ++
+      list_sites (List.map (fun j => ctx_holes j ++ Δ ++ gs_tele Ξ) (List.seq 0 (List.length fs))) (List.map snd fs)
   end.
+
+(** A record's parameters, sort and fields filled from the results of
+    their sites, in order. *)
+Definition record_fill (rs : list fill_result) (Δ : ctx) (Srt : typ) (fs : list (string * typ)) :
+    (ctx * typ * list (string * typ))%type :=
+  let rΔ := tele_fill rs Δ in
+  let rS := exp_fill (snd rΔ) Srt in
+  let rF := list_fill (snd rS) (List.map snd fs) in
+  (fst rΔ, fst rS, List.combine (List.map fst fs) (fst rF)).
 
 (** A command filled from the results of its sites. *)
 Definition cmd_fill (rs : list fill_result) (c : ccmd) : ccmd :=
@@ -664,6 +714,8 @@ Definition cmd_fill (rs : list fill_result) (c : ccmd) : ccmd :=
                     end) (snd rD) fs in
       cc_mdef b pv (fst rD) rFs
   | cc_load _ => c
+  | cc_record x pv Δ Srt fs cs =>
+      let r := record_fill rs Δ Srt fs in cc_record x pv (fst (fst r)) (snd (fst r)) (snd r) cs
   end.
 
 (** The arguments a member's type former gets from a head that denotes

@@ -63,13 +63,13 @@ Lemma mem_no_red : forall Θ Ξ Γ H x R A,
 Proof.
   intros * Hm Ht Hr.
   assert (HR : R = ds_term A None)
-    by (destruct R as [A' om | | | ]; cbn in Ht, Hr; try discriminate; subst; congruence).
+    by (destruct R as [A' om | | | | ]; cbn in Ht, Hr; try discriminate; subst; congruence).
   subst R.
-  inversion Hm as [| | | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hrd]; subst.
-  destruct R0m as [| Δ Φw Φx | Θ' p T Φ Ns |]; cbn in He; try discriminate.
+  inversion Hm as [| | | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hrd |]; subst.
+  destruct R0m as [| Δ Φw Φx | Θ' p T Φ Ns | |]; cbn in He; try discriminate.
   - (* an open body reads only transparent definitions and modules *)
     destruct (gm_prefix_upto Φx x) as [[| Φ' y E0 | ? ? ?] |]; try discriminate.
-    destruct E0 as [[] pv A' [M |] | pv U | | ]; try discriminate; injection He as <- <- <-.
+    destruct E0 as [[] pv A' [M |] | pv U | | |]; try discriminate; injection He as <- <- <-.
     + inversion Hed; subst; cbn in Hrd.
       destruct (gm_fill Φ'); cbn in Hrd; discriminate.
     + inversion Hed; subst.
@@ -81,7 +81,7 @@ Proof.
     pose proof (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & _).
     cbn [ds_read] in Hrd; destruct (ds_ats Re Ns) as [R1 |] eqn:Hats; cbn [option_map] in Hrd; [| discriminate ].
     injection Hrd as Heq.
-    destruct E0 as [b pv A' oM | pv [Δ [sm Φy | E'] ] | pv pq D ΦD | pv Δa pq Nsa ].
+    destruct E0 as [b pv A' oM | pv [Δ [sm Φy | E'] ] | pv pq D ΦD | pv Δa pq Nsa | pv Rr ΦR ].
     + (* a definition: one of no body, read bare *)
       cbn [ge_read] in Hed; inversion Hed; subst.
       destruct (if b then oM else None) as [M |] eqn:Ho.
@@ -103,6 +103,10 @@ Proof.
       rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
     + exfalso; cbn [ge_read] in Hed; inversion Hed; subst.
       destruct (ds_ats_ind _ _ _ _ _ _ Hats) as (? & ? & ->).
+      rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
+    + (* a record type: its type former, a reduct *)
+      exfalso; cbn [ge_read] in Hed; inversion Hed; subst.
+      rewrite ds_ats_record_nil in Hats; injection Hats as <-.
       rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
 Qed.
 

@@ -24,6 +24,8 @@ From Mctt.Core.Syntactic.Inductives Require Export Inductives.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Syntactic.System.Global Require Import MemberWf Modules.
 From Mctt.Core.Syntactic.System Require Export Privacy.
+From Mctt.Core.Syntactic.System Require Export AccessFill.
+From Mctt.Core.Syntactic.System Require Import AccessFillLemmas.
 From Mctt.Core.Semantic Require Import NbE.
 Import Syntax_Notations GlobalCtx_Notations.
 
@@ -55,6 +57,12 @@ Definition gs_push (mp : qname) (Δ : ctx) (Ξ : gstack) : gstack := (mp, fk_mod
     at [pq], opened at [mp] with the parameters [Δ] and no member yet. *)
 Definition gs_push_ind (mp pq : qname) (k : nat) (D : ind_decl) (Δ : ctx) (Ξ : gstack) : gstack :=
   (mp, fk_ind pq k D, gu_body Δ ⋄) :: Ξ.
+
+(** The frame of the module of the record type [R] at [mp], opened with
+    the record's own parameters [Δ] and then a value of it
+    ([record_self]), and no member yet. *)
+Definition gs_push_record (mp : qname) (R : record_decl) (Δ : ctx) (Ξ : gstack) : gstack :=
+  (mp, fk_record R, gu_body (ce_ass (record_self mp R) :: Δ) ⋄) :: Ξ.
 
 Definition gs_add (x : string) (E : gentry) (Ξ : gstack) : gstack :=
   match Ξ with
@@ -786,6 +794,8 @@ Fixpoint exp_self_form (pq : qname) (D : ind_decl) (d : nat) (M : exp) {struct M
       | a_app M1 M2 => a_app (exp_self_form pq D d M1) (exp_self_form pq D d M2)
       | a_var x => a_var (if x <? d then x else x + ind_ndecl D)
       | a_mem H x => a_mem (modexp_self_form pq D d H) x
+      | a_tuple T fs => a_tuple (exp_self_form pq D d T) (List.map (fun f => (fst f, exp_self_form pq D d (snd f))) fs)
+      | a_proj f M' => a_proj f (exp_self_form pq D d M')
       | _ => M
       end
   end
@@ -1025,6 +1035,33 @@ Inductive mdef_member (Θ : gdeps) (Ξ : gstack) (pq : qname) (D : ind_decl) (Us
     im_nn Mm = List.length (rf_nparams f) ->
     mdef_member Θ Ξ pq D Us Δ f m.
 
+(** [mdef_group Θ Ξ Δ f0 fs pq m0 Ps D Us ms]: the functions [f0 :: fs] of
+    a mutual definition over [Δ] are of the group [D] at [pq], at the
+    uniform parameters [Us], over [Δ] and the frames, read off the first
+    function's scrutinee, whose normal form is the member [m0] at [Ps]; the
+    function [i] is of the member [ms_i], each member of one function. *)
+Record mdef_group (Θ : gdeps) (Ξ : gstack) (Δ : ctx) (f0 : raw_fun) (fs : list raw_fun) (pq : qname) (m0 : nat)
+    (Ps : nfs) (D : ind_decl) (Us : list exp) (ms : list nat) : Prop := mk_mdef_group
+  { (** The first function's scrutinee is a type, before it is normalized,
+        as normalizing an untyped term need not terminate *)
+    mdef_group_scrut_typed : exists i, Θ ⍮ Ξ ⍮ rf_nparams f0 ++ Δ ++ gs_tele Ξ ⊢ rf_scrut f0 : Typeω@i
+    (** Its normal form is the member [m0] of the group at [pq], at [Ps] *)
+  ; mdef_group_scrut_nf : nbe_ty Θ Ξ (rf_nparams f0 ++ Δ ++ gs_tele Ξ) (rf_scrut f0) (nf_indty pq m0 Ps)
+    (** The group at [pq] is [D] *)
+  ; mdef_group_lookup : ind_lookup Θ Ξ pq = Some D
+    (** The member [m0] is a declared one *)
+  ; mdef_group_declared : m0 < ind_ndecl D
+    (** The uniform parameters, free of the first function's own
+        parameters *)
+  ; mdef_group_uparams :
+      img_pats (List.repeat true (List.length (rf_nparams f0))) (List.firstn (ind_nu D) (nfs_to_exps Ps)) = Some Us
+    (** Each function's member *)
+  ; mdef_group_members : Forall2 (mdef_member Θ Ξ pq D Us Δ) (f0 :: fs) ms
+    (** One function per member *)
+  ; mdef_group_count : List.length ms = List.length (ind_members D)
+    (** No member has two functions *)
+  ; mdef_group_distinct : List.NoDup ms }.
+
 (** [mdefs_run Θ b pv ds Ξ Ξ']: filing the definitions [ds] in order in
     [Ξ], each checked at its type as [rc_def] does, gives [Ξ']. *)
 Inductive mdefs_run (Θ : gdeps) (b pv : bool) : list (string * typ * exp) -> gstack -> gstack -> Prop :=
@@ -1084,6 +1121,248 @@ Proof.
       destruct (path_beq fp fq) eqn:Hb; [| reflexivity ].
       apply path_beq_true in Hb; subst; rewrite Hq; reflexivity.
 Qed.
+
+(** ** Record Declarations
+
+    A record is filed as one entry ([ge_record]): its declaration, with the
+    parameters of the frames as its outermost parameters, and the body of
+    its module, an ordinary module over the record's parameters and then a
+    value of it.  The body starts with the record's fields, one generated
+    definition each, the field's projection of the value, followed by the
+    entries of the with-area's commands, run in the record's frame as the
+    commands of a module body are. *)
+
+(** The record declared over the frames' parameters with its own
+    parameters [Δ], its sort [S] and its fields [fs], all as written over
+    [Δ] and the frames' parameters. *)
+Definition record_at (Ξ : gstack) (Δ : ctx) (S : typ) (fs : list (string * typ)) : record_decl :=
+  mk_record_decl (Δ ++ gs_tele Ξ) S fs.
+
+(** The type of the field [k], of type [T] over the fields before it and
+    the parameters, in the record's module: at the module's parameters and
+    the projections of its value at the fields before it, as [wf_proj]
+    types the projection. *)
+Definition record_field_ty (R : record_decl) (k : nat) (T : typ) : typ :=
+  T[sb_of_list Id (vars_from 1 (List.length (record_params R)) ++ record_pre R k (a_var 0))].
+
+(** The field definitions of the fields [fs] of [R] from the field [k] on:
+    each the field's projection of the module's value, at its type. *)
+Fixpoint record_fields_cmds (R : record_decl) (k : nat) (fs : list (string * typ)) : list ccmd :=
+  match fs with
+  | nil => nil
+  | (f, T) :: fs' =>
+      cc_gen (cc_def f true false (record_field_ty R k T) (Some (a_proj f (a_var 0)))) :: record_fields_cmds R (S k) fs'
+  end.
+
+(** The field definitions of the record [R], the first entries of its
+    module. *)
+Definition record_field_cmds (R : record_decl) : list ccmd := record_fields_cmds R 0 (record_fields R).
+
+(** The name a command declares in the frame it runs in, if any. *)
+Definition cmd_decl_name (c : ccmd) : option string :=
+  match c with
+  | cc_def x _ _ _ _ | cc_mod x _ _ _ | cc_alias x _ _ _ | cc_ind_alias x _ _ _ | cc_record x _ _ _ _ _ => Some x
+  | _ => None
+  end.
+
+(** Literals and the fill keep the name a command declares. *)
+Lemma cmd_lits_name : forall nv c c1, cmd_lits nv c = lok c1 -> cmd_decl_name c1 = cmd_decl_name c.
+Proof.
+  intros nv [] c1 El; cbn [cmd_lits] in El;
+    repeat match goal with
+      | H : lbind ?m _ = lok _ |- _ => destruct m; cbn [lbind] in H; [| discriminate ]
+      end;
+    injection El as <-; reflexivity.
+Qed.
+
+Lemma cmd_fill_name : forall rs c, cmd_decl_name (cmd_fill rs c) = cmd_decl_name c.
+Proof. intros rs []; reflexivity. Qed.
+
+(** ** The Access Fill of a Command
+
+    A command, its literals and eliminators filled, has its accesses
+    through terms filled ([AccessFill]) before it runs, each part in the
+    context its run reads it in.  A mutual definition's functions are
+    filled in two steps: their parameters and scrutinees, from which the
+    group is read ([mdef_group]), then their results and clauses, in the
+    contexts the eliminator its translation files ([mdef_defs]) reads them
+    in, at the motives of the translation's own blocks ([mdef_blocks]). *)
+Section CommandFill.
+  Variables (Θ : gdeps) (Ξ : gstack).
+
+  (** [cmd_access_free c]: no term of the command [c] itself has an
+      access, read in the contexts [cmd_sites] reads them in.  A module's
+      nested commands, and a record's with-area, are filled when they run;
+      a generated command has no access. *)
+  Definition cmd_access_free (c : ccmd) : Prop :=
+    match c with
+    | cc_gen _ | cc_load _ => True
+    | cc_def _ _ _ A oM => access_free_exp Θ Ξ (gs_tele Ξ) A /\ access_free_oexp Θ Ξ (gs_tele Ξ) oM
+    | cc_mod _ _ Δ _ => access_free_tele Θ Ξ (gs_tele Ξ) Δ
+    | cc_alias _ _ Δ E | cc_ind_alias _ _ Δ E =>
+        access_free_tele Θ Ξ (gs_tele Ξ) Δ /\ access_free_mod Θ Ξ (Δ ++ gs_tele Ξ) E
+    | cc_eval M oA => access_free_exp Θ Ξ (gs_tele Ξ) M /\ access_free_oexp Θ Ξ (gs_tele Ξ) oA
+    | cc_open E _ | cc_builtin _ E => access_free_mod Θ Ξ (gs_tele Ξ) E
+    | cc_ind _ R =>
+        access_free_tele Θ Ξ (gs_tele Ξ) (rd_uparams R) /\
+        Forall (fun Mr =>
+          access_free_tele Θ Ξ (rd_uparams R ++ gs_tele Ξ) (rm_nparams Mr) /\
+          access_free_exp Θ Ξ (rd_uparams R ++ gs_tele Ξ) (rm_sort Mr) /\
+          Forall (fun rc => access_free_tele Θ Ξ (rm_pctx Ξ R Mr) (rtele (snd rc))) (rm_cons Mr))
+          (rd_members R)
+    | cc_mdef _ _ Δ fs =>
+        access_free_tele Θ Ξ (gs_tele Ξ) Δ /\
+        Forall (fun f =>
+          access_free_tele Θ Ξ (Δ ++ gs_tele Ξ) (rf_nparams f) /\
+          access_free_exp Θ Ξ (rf_nparams f ++ Δ ++ gs_tele Ξ) (rf_scrut f) /\
+          access_free_exp Θ Ξ (ctx_holes (S (List.length (rf_nparams f))) ++ Δ ++ gs_tele Ξ) (rf_res f) /\
+          access_free_brs Θ Ξ (Δ ++ gs_tele Ξ) (rf_clauses f)) fs
+    | cc_record _ _ Δ Srt fs _ =>
+        access_free_tele Θ Ξ (gs_tele Ξ) Δ /\ access_free_exp Θ Ξ (Δ ++ gs_tele Ξ) Srt /\
+        access_free_fields Θ Ξ (Δ ++ gs_tele Ξ) fs
+    end.
+
+  (** A function of a mutual definition over [Γ], its parameters and
+      scrutinee filled, as [rc_mdef] reads them, to [f']. *)
+  Record fill_raw_fun_head (Γ : ctx) (f f' : raw_fun) : Prop := mk_fill_raw_fun_head
+    { (** The name is kept *)
+      fill_raw_fun_head_name : rf_name f' = rf_name f
+      (** The parameters, over [Γ], are filled *)
+    ; fill_raw_fun_head_nparams : fill_tele Θ Ξ Γ (rf_nparams f) (rf_nparams f')
+      (** The scrutinee's type, over the filled parameters, is filled *)
+    ; fill_raw_fun_head_scrut : fill_exp Θ Ξ (rf_nparams f' ++ Γ) (rf_scrut f) (rf_scrut f')
+      (** The result type is kept, filled with the clauses *)
+    ; fill_raw_fun_head_res : rf_res f' = rf_res f
+      (** The clauses are kept, filled with the result type *)
+    ; fill_raw_fun_head_clauses : rf_clauses f' = rf_clauses f }.
+
+  (** A function [f] of the member [m] of the group [D] at [pq], at the
+      uniform parameters [Us] and the motives [As], over [Γ], its result
+      and clauses filled to [f']: the result in the motive's context, the
+      clauses in their branches', as [ati_elim] reads them. *)
+  Record fill_raw_fun_body (pq : qname) (D : ind_decl) (Us : list exp) (Γ : ctx) (As : list exp)
+      (f : raw_fun) (m : nat) (f' : raw_fun) : Prop := mk_fill_raw_fun_body
+    { (** The name is kept *)
+      fill_raw_fun_body_name : rf_name f' = rf_name f
+      (** The parameters are kept, filled already *)
+    ; fill_raw_fun_body_nparams : rf_nparams f' = rf_nparams f
+      (** The scrutinee's type is kept, filled already *)
+    ; fill_raw_fun_body_scrut : rf_scrut f' = rf_scrut f
+      (** The member is one of the group *)
+    ; fill_raw_fun_body_member : ind_member D m <> None
+      (** The result type, over the member's parameters and the scrutinee,
+          is filled *)
+    ; fill_raw_fun_body_res : forall Mm, ind_member D m = Some Mm ->
+        fill_exp Θ Ξ (elim_mctx pq D m Mm Us ++ Γ) (rf_res f) (rf_res f')
+      (** The clauses, each in its constructor's branch context, are
+          filled *)
+    ; fill_raw_fun_body_clauses : forall Mm, ind_member D m = Some Mm ->
+        fill_brs Θ Ξ Γ pq D Mm Us As (rf_clauses f) (rf_clauses f') }.
+
+  (** A constructor's arguments over [Γ], filled: the names kept, the
+      types filled as a telescope, each over the ones before it, as
+      [cls_args_in] reads them. *)
+  Record fill_raw_args (Γ : ctx) (args args' : list (string * exp)) : Prop := mk_fill_raw_args
+    { (** The names are kept *)
+      fill_raw_args_names : List.map fst args' = List.map fst args
+      (** The types, each over the ones before it, are filled *)
+    ; fill_raw_args_types : fill_tele Θ Ξ Γ (rtele args) (rtele args') }.
+
+  (** A declared member [Mr] of a group whose filled form is [R'], filled
+      to [Mr']: its parameters and sort over the uniform parameters, its
+      constructors' arguments over its context ([rm_pctx]), in the filled
+      group. *)
+  Record fill_raw_member (R' : raw_decl) (Mr Mr' : raw_member) : Prop := mk_fill_raw_member
+    { (** The name is kept *)
+      fill_raw_member_name : rm_name Mr' = rm_name Mr
+      (** The parameters, over the uniform ones, are filled *)
+    ; fill_raw_member_nparams : fill_tele Θ Ξ (rd_uparams R' ++ gs_tele Ξ) (rm_nparams Mr) (rm_nparams Mr')
+      (** The sort, over the uniform parameters, is filled *)
+    ; fill_raw_member_sort : fill_exp Θ Ξ (rd_uparams R' ++ gs_tele Ξ) (rm_sort Mr) (rm_sort Mr')
+      (** Each constructor keeps its name, and its arguments are filled
+          over the member's context *)
+    ; fill_raw_member_cons :
+        Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args (rm_pctx Ξ R' Mr') (snd rc) (snd rc'))
+          (rm_cons Mr) (rm_cons Mr') }.
+
+  (** [fill_raw_decl R R']: the group as written [R] is filled to [R'],
+      each part in the context the classification reads it in. *)
+  Record fill_raw_decl (R R' : raw_decl) : Prop := mk_fill_raw_decl
+    { (** The uniform parameters, over the frames', are filled *)
+      fill_raw_decl_uparams : fill_tele Θ Ξ (gs_tele Ξ) (rd_uparams R) (rd_uparams R')
+      (** Whether the group files its recursor module is kept *)
+    ; fill_raw_decl_rec : rd_rec R' = rd_rec R
+      (** Each declared member is filled, in order *)
+    ; fill_raw_decl_members : Forall2 (fill_raw_member R') (rd_members R) (rd_members R') }.
+
+  (** [fill_cmd c c']: the command [c], its literals and eliminators
+      filled, has its accesses filled to [c'], its terms read in the
+      frames' telescope.  One rule per kind of command, and one for a
+      command with no access. *)
+  Inductive fill_cmd : ccmd -> ccmd -> Prop :=
+  (** A command with no access: itself *)
+  | fill_cmd_plain : forall c, cmd_access_free c -> fill_cmd c c
+  (** A definition: its type and its body *)
+  | fill_cmd_def : forall x b pv A A' oM oM',
+      fill_exp Θ Ξ (gs_tele Ξ) A A' -> fill_oexp Θ Ξ (gs_tele Ξ) oM oM' ->
+      fill_cmd (cc_def x b pv A oM) (cc_def x b pv A' oM')
+  (** A module: its telescope; its commands are filled when they run *)
+  | fill_cmd_mod : forall x pv Δ Δ' cs,
+      fill_tele Θ Ξ (gs_tele Ξ) Δ Δ' -> fill_cmd (cc_mod x pv Δ cs) (cc_mod x pv Δ' cs)
+  (** A module alias: its telescope, then its target, which may be a
+      record value *)
+  | fill_cmd_alias : forall x pv Δ Δ' E E' op,
+      fill_tele Θ Ξ (gs_tele Ξ) Δ Δ' -> fill_mod Θ Ξ (Δ' ++ gs_tele Ξ) E E' op ->
+      fill_cmd (cc_alias x pv Δ E) (cc_alias x pv Δ' E')
+  (** An inductive alias: its telescope, then its target, a module *)
+  | fill_cmd_ind_alias : forall x pv Δ Δ' E E',
+      fill_tele Θ Ξ (gs_tele Ξ) Δ Δ' -> fill_mod Θ Ξ (Δ' ++ gs_tele Ξ) E E' None ->
+      fill_cmd (cc_ind_alias x pv Δ E) (cc_ind_alias x pv Δ' E')
+  (** An open: its target, which may be a record value, whose members its
+      items name accessible *)
+  | fill_cmd_open : forall E E' op its,
+      fill_mod Θ Ξ (gs_tele Ξ) E E' op -> Forall (sel_ok Θ Ξ op) (items_members its) ->
+      fill_cmd (cc_open E its) (cc_open E' its)
+  (** A builtin binding: its type, a module *)
+  | fill_cmd_builtin : forall k E E',
+      fill_mod Θ Ξ (gs_tele Ξ) E E' None -> fill_cmd (cc_builtin k E) (cc_builtin k E')
+  (** An evaluation: its term and its type *)
+  | fill_cmd_eval : forall M M' oA oA',
+      fill_exp Θ Ξ (gs_tele Ξ) M M' -> fill_oexp Θ Ξ (gs_tele Ξ) oA oA' -> fill_cmd (cc_eval M oA) (cc_eval M' oA')
+  (** A group: each part in the context the classification reads it in *)
+  | fill_cmd_ind_decl : forall pv R R', fill_raw_decl R R' -> fill_cmd (cc_ind pv R) (cc_ind pv R')
+  (** A mutual definition: its telescope; its functions' parameters and
+      scrutinees, from which the group is read as [rc_mdef] reads it; then
+      their results and clauses, at the group, at the motives of the
+      blocks of the filled functions *)
+  | fill_cmd_mdef : forall b pv Δ Δ' f0 fs fh0 fsh f0' fs' pq m0 Ps D Us ms,
+      fill_tele Θ Ξ (gs_tele Ξ) Δ Δ' ->
+      Forall2 (fill_raw_fun_head (Δ' ++ gs_tele Ξ)) (f0 :: fs) (fh0 :: fsh) ->
+      mdef_group Θ Ξ Δ' fh0 fsh pq m0 Ps D Us ms ->
+      Forall2 (fun fm f' => fill_raw_fun_body pq D Us (Δ' ++ gs_tele Ξ)
+                              (blocks_motives (mdef_blocks 0 (List.length (ind_members D)) (f0' :: fs') ms))
+                              (fst fm) (snd fm) f')
+        (List.combine (fh0 :: fsh) ms) (f0' :: fs') ->
+      fill_cmd (cc_mdef b pv Δ (f0 :: fs)) (cc_mdef b pv Δ' (f0' :: fs'))
+  (** A record declaration: its parameters, its sort over them, its
+      fields over them and the fields before; its with-area is filled
+      when it runs *)
+  | fill_cmd_record : forall x pv Δ Δ' Srt Srt' fs fs' cs,
+      fill_tele Θ Ξ (gs_tele Ξ) Δ Δ' -> fill_exp Θ Ξ (Δ' ++ gs_tele Ξ) Srt Srt' ->
+      fill_fields Θ Ξ (Δ' ++ gs_tele Ξ) fs fs' ->
+      fill_cmd (cc_record x pv Δ Srt fs cs) (cc_record x pv Δ' Srt' fs' cs).
+
+  (** A unit's parameter telescope, over the frames', filled: itself, with
+      no access, or entry by entry. *)
+  Inductive fill_params : ctx -> ctx -> Prop :=
+  (** With no access: itself *)
+  | fill_params_plain : forall Δ, access_free_tele Θ Ξ (gs_tele Ξ) Δ -> fill_params Δ Δ
+  (** Entry by entry *)
+  | fill_params_tele : forall Δ Δ', fill_tele Θ Ξ (gs_tele Ξ) Δ Δ' -> fill_params Δ Δ'.
+End CommandFill.
+
+#[export]
+Hint Constructors fill_cmd fill_params : mctt.
 
 (** ** Privacy
 
@@ -1192,22 +1471,13 @@ Section Semantics.
       run_ind_members ch B Rb Θ Ξ pv R (ind_qname Ξ (rm_name Mr0)) D 0 (List.map rm_name (rd_members R)) B' Rb' Θ' Ξ' ->
       Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ⊢[ch] rec_cmds Θ' Ξ' R (ind_qname Ξ (rm_name Mr0)) D ⇝* Θ'' ⍮ Ξ'' ⍮ B'' ⍮ Rb'' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_ind pv R ⇝ Θ'' ⍮ Ξ'' ⍮ B'' ⍮ Rb''
-  (** A mutual definition: the group and its uniform parameters read off
-      the first function's scrutinee, a type before it is normalized, as
-      normalizing an untyped term need not terminate; each function's
-      member, one function per member, and the definitions filed in order,
+  (** A mutual definition: the group, its uniform parameters and each
+      function's member ([mdef_group]), and the definitions filed in order,
       each checked as a definition is. *)
   | rc_mdef : forall ch B Rb Θ Ξ b pv Δ f0 fs pq m0 Ps D Us ms Ξ',
       tele_ass Δ ->
       ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
-      (exists i, Θ ⍮ Ξ ⍮ rf_nparams f0 ++ Δ ++ gs_tele Ξ ⊢ rf_scrut f0 : Typeω@i) ->
-      nbe_ty Θ Ξ (rf_nparams f0 ++ Δ ++ gs_tele Ξ) (rf_scrut f0) (nf_indty pq m0 Ps) ->
-      ind_lookup Θ Ξ pq = Some D ->
-      m0 < ind_ndecl D ->
-      img_pats (List.repeat true (List.length (rf_nparams f0))) (List.firstn (ind_nu D) (nfs_to_exps Ps)) = Some Us ->
-      Forall2 (mdef_member Θ Ξ pq D Us Δ) (f0 :: fs) ms ->
-      List.length ms = List.length (ind_members D) ->
-      List.NoDup ms ->
+      mdef_group Θ Ξ Δ f0 fs pq m0 Ps D Us ms ->
       mdefs_run Θ b pv (mdef_defs pq D Us Δ (f0 :: fs) ms) Ξ Ξ' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_mdef b pv Δ (f0 :: fs) ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
   (** [builtin natural := X]: [X], a module expression, denotes an inductive type at no argument
@@ -1235,6 +1505,20 @@ Section Semantics.
       gs_fresh x Ξ ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_ind_alias x pv Δ H ⇝
         Θ ⍮ gs_add x (ge_ind_alias pv (Θ' ++ Δ ++ gs_tele Ξ) pm p k Ns) Ξ ⍮ B ⍮ Rb
+  (** A record: checked with an empty module where it is filed
+      ([wf_gentry_record]); its module's frame is opened over the record's
+      own parameters and then a value of it, its field definitions and then
+      its with-area run in it as a module body's commands do, and the record
+      is filed with the body they end with, as [rim_cons] files a member of
+      a group. *)
+  | rc_record : forall ch B Rb Θ Ξ x pv Δ Srt fs cs B1 Rb1 Θ1 Ξ1 B' Rb' Θ' mp K U,
+      gs_fresh x Ξ ->
+      Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_record pv (ind_qname Ξ x) (record_at Ξ Δ Srt fs) ⋄ ->
+      Θ ⍮ gs_push_record (ind_qname Ξ x) (record_at Ξ Δ Srt fs) Δ Ξ ⍮ B ⍮ Rb ⊢[ch]
+        record_field_cmds (record_at Ξ Δ Srt fs) ⇝* Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
+      Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ⊢[ch] cs ⇝* Θ' ⍮ (mp, K, U) :: Ξ ⍮ B' ⍮ Rb' ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_record x pv Δ Srt fs cs ⇝
+        Θ' ⍮ gs_add x (ge_record pv (ind_qname Ξ x) (record_at Ξ Δ Srt fs) (gu_mod U)) Ξ ⍮ B' ⍮ Rb'
   (** An [eval] changes nothing, but must type-check where it stands. *)
   | rc_eval_check : forall ch B Rb Θ Ξ M A,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
@@ -1262,14 +1546,16 @@ Section Semantics.
   with run_cmds : list path -> builtins -> bmap -> gdeps -> gstack -> list ccmd -> builtins -> bmap -> gdeps -> gstack -> Prop :=
   | rcs_nil : forall ch B Rb Θ Ξ, Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] nil ⇝* Θ ⍮ Ξ ⍮ B ⍮ Rb
   (** Each command is checked for privacy as written, its literals are
-      generated from the builtin bindings ([Builtin]), and its eliminators
-      get their groups and uniform parameters from their annotations
-      ([elim_fill_ok]), before it runs. *)
-  | rcs_cons : forall ch B Rb Θ Ξ c c1 c2 cs B1 Rb1 Θ1 Ξ1 B2 Rb2 Θ2 Ξ2,
+      generated from the builtin bindings ([Builtin]), its eliminators get
+      their groups and uniform parameters from their annotations
+      ([elim_fill_ok]), and its accesses through terms of record types
+      are filled ([fill_cmd]), before it runs. *)
+  | rcs_cons : forall ch B Rb Θ Ξ c c1 c2 c3 cs B1 Rb1 Θ1 Ξ1 B2 Rb2 Θ2 Ξ2,
       acc_ok Θ Ξ (cmd_refs c) ->
       cmd_lits_ok Θ Ξ B c c1 ->
       elim_fill_ok Θ Ξ c1 c2 ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] c2 ⇝ Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
+      fill_cmd Θ Ξ c2 c3 ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] c3 ⇝ Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
       Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ⊢[ch] cs ⇝* Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2 ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] c :: cs ⇝* Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2
   where "Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ] cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'" := (run_cmds ch B Rb Θ Ξ cs B' Rb' Θ' Ξ')
@@ -1277,19 +1563,20 @@ Section Semantics.
   (** [run_unit (fp :: ch) u B Rb Θ U]: the unit [fp], at the head of the
       chain, runs from nothing filed and no binding.  Its leading loads run
       on the empty stack, then its parameters get their literals, their
-      eliminators are filled ([tele_fill_ok]), and they are checked
-      against what they filed, then its body runs in its own frame, named
-      [fp]; [Θ] is what it filed, [Rb] their records, [U] the unit, [B] its
-      own record. *)
+      eliminators are filled ([tele_fill_ok]), then their accesses
+      ([fill_params]), and they are checked against what they filed, then
+      its body runs in its own frame, named [fp]; [Θ] is what it filed,
+      [Rb] their records, [U] the unit, [B] its own record. *)
   with run_unit : list path -> cunit -> builtins -> bmap -> gdeps -> gunit -> Prop :=
-  | ru_intro : forall fp ch B1 Rb1 B2 Rb2 imps P P1 P2 cs Θ1 Θ2 mp K U,
+  | ru_intro : forall fp ch B1 Rb1 B2 Rb2 imps P P1 P2 P3 cs Θ1 Θ2 mp K U,
       nil ⍮ nil ⍮ bt_empty ⍮ nil ⊢[fp :: ch] imps ⇝* Θ1 ⍮ nil ⍮ B1 ⍮ Rb1 ->
       tele_lits_ok Θ1 nil B1 P P1 ->
       tele_fill_ok Θ1 nil P1 P2 ->
-      tele_ass P2 ->
-      ⊢ Θ1 ⍮ nil ⍮ P2 ->
+      fill_params Θ1 nil P2 P3 ->
+      tele_ass P3 ->
+      ⊢ Θ1 ⍮ nil ⍮ P3 ->
       acc_ok Θ1 nil (tele_refs nil P) ->
-      Θ1 ⍮ gs_push (q_abs fp nil) P2 nil ⍮ B1 ⍮ Rb1 ⊢[fp :: ch] cs ⇝* Θ2 ⍮ (mp, K, U) :: nil ⍮ B2 ⍮ Rb2 ->
+      Θ1 ⍮ gs_push (q_abs fp nil) P3 nil ⍮ B1 ⍮ Rb1 ⊢[fp :: ch] cs ⇝* Θ2 ⍮ (mp, K, U) :: nil ⍮ B2 ⍮ Rb2 ->
       run_unit (fp :: ch) (imps, P, cs) B2 Rb2 Θ2 U
 
   (** [run_ind_members ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ']: the
@@ -1479,6 +1766,345 @@ Qed.
 Lemma mdefs_run_functional : forall Θ b pv ds Ξ Ξ1, mdefs_run Θ b pv ds Ξ Ξ1 -> forall Ξ2, mdefs_run Θ b pv ds Ξ Ξ2 -> Ξ1 = Ξ2.
 Proof. induction 1; intros Ξ2 H2; inversion H2; subst; auto. Qed.
 
+(** A mutual definition's functions are of one group, at one set of
+    uniform parameters, each of one member. *)
+Lemma mdef_group_functional : forall Θ Ξ Δ f0 fs pq m0 Ps D Us ms pq' m0' Ps' D' Us' ms',
+    mdef_group Θ Ξ Δ f0 fs pq m0 Ps D Us ms -> mdef_group Θ Ξ Δ f0 fs pq' m0' Ps' D' Us' ms' ->
+    pq = pq' /\ m0 = m0' /\ Ps = Ps' /\ D = D' /\ Us = Us' /\ ms = ms'.
+Proof.
+  intros * [_ HW Hl _ HU Hm _ _] [_ HW' Hl' _ HU' Hm' _ _].
+  pose proof (functional_nbe_ty _ _ _ _ HW HW') as E; injection E as <- <- <-.
+  rewrite Hl in Hl'; injection Hl' as <-.
+  rewrite HU in HU'; injection HU' as <-.
+  assert (ms = ms') as <-
+    by (eapply Forall2_functional; [| exact Hm | exact Hm' ]; intros; eapply mdef_member_functional; eassumption).
+  repeat split.
+Qed.
+
+(** The motives of a mutual definition's blocks are its functions'
+    results, under their parameters. *)
+Lemma mdef_blocks_motives_eq : forall k nm fs1 fs2 ms,
+    Forall2 (fun f1 f2 => rf_nparams f1 = rf_nparams f2 /\ rf_res f1 = rf_res f2) fs1 fs2 ->
+    blocks_motives (mdef_blocks k nm fs1 ms) = blocks_motives (mdef_blocks k nm fs2 ms).
+Proof.
+  intros * H; unfold blocks_motives, mdef_blocks; rewrite !List.map_map; apply List.map_ext; intros j.
+  destruct (nat_index j ms) as [i |]; [| reflexivity ].
+  revert i; induction H as [| f1 f2 fs1 fs2 [En Er] _ IH]; intros [| i]; cbn; try reflexivity.
+  - unfold rf_block; rewrite En, Er; reflexivity.
+  - apply IH.
+Qed.
+
+(** A function of a mutual definition is its parts. *)
+Lemma raw_fun_parts_eq : forall f f',
+    rf_name f' = rf_name f -> rf_nparams f' = rf_nparams f -> rf_scrut f' = rf_scrut f ->
+    rf_res f' = rf_res f -> rf_clauses f' = rf_clauses f -> f' = f.
+Proof. intros [] []; cbn; intros; subst; reflexivity. Qed.
+
+(** A declared member as written is its parts. *)
+Lemma raw_member_parts_eq : forall Mr Mr',
+    rm_name Mr' = rm_name Mr -> rm_nparams Mr' = rm_nparams Mr -> rm_sort Mr' = rm_sort Mr ->
+    rm_cons Mr' = rm_cons Mr -> Mr' = Mr.
+Proof. intros [] []; cbn; intros; subst; reflexivity. Qed.
+
+(** A group as written is its parts. *)
+Lemma raw_decl_parts_eq : forall R R',
+    rd_uparams R' = rd_uparams R -> rd_members R' = rd_members R -> rd_rec R' = rd_rec R -> R' = R.
+Proof. intros [] []; cbn; intros; subst; reflexivity. Qed.
+
+(** Arguments are their names and their telescope. *)
+Lemma rtele_names_eq : forall args args', List.map fst args' = List.map fst args -> rtele args' = rtele args -> args' = args.
+Proof.
+  intros args args' En Et; unfold rtele in Et; apply (f_equal (@List.rev _)) in Et; rewrite !rev_involutive in Et.
+  revert args En Et; induction args' as [| [y T] a' IH]; intros [| [z U] a] En Et; cbn in *; try discriminate;
+    [ reflexivity |].
+  injection En as -> En; injection Et as -> Et; rewrite (IH _ En Et); reflexivity.
+Qed.
+
+(** The [Self]s are read off the uniform parameters and the members'
+    parameters and sorts. *)
+Lemma rd_selfs_from_heads_eq : forall R1 R2 ms1 ms2 j, rd_uparams R1 = rd_uparams R2 ->
+    Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) ms1 ms2 ->
+    rd_selfs_from R1 j ms1 = rd_selfs_from R2 j ms2.
+Proof.
+  intros * Eu H; revert j; induction H as [| M1 M2 ms1 ms2 [En Es] _ IH]; intros j; cbn; [ reflexivity |].
+  rewrite IH; unfold rd_self_ty; rewrite Eu, En, Es; reflexivity.
+Qed.
+
+(** So is a member's context. *)
+Lemma rm_pctx_heads_eq : forall Ξ R1 R2 Mr1 Mr2, rd_uparams R1 = rd_uparams R2 ->
+    Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) (rd_members R1) (rd_members R2) ->
+    rm_nparams Mr1 = rm_nparams Mr2 -> rm_pctx Ξ R1 Mr1 = rm_pctx Ξ R2 Mr2.
+Proof.
+  intros * Eu Hm En; unfold rm_pctx, rd_selfs, rd_n.
+  rewrite Eu, En, (rd_selfs_from_heads_eq _ _ _ _ 0 Eu Hm), (Forall2_length Hm); reflexivity.
+Qed.
+
+Section CommandFillLemmas.
+  Variables (Θ : gdeps) (Ξ : gstack).
+  Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
+
+  (** The heads of functions with no access are filled to themselves. *)
+  Lemma fill_raw_fun_heads_access_free : forall Γ fs fsh,
+      Forall (fun f => access_free_tele Θ Ξ Γ (rf_nparams f) /\ access_free_exp Θ Ξ (rf_nparams f ++ Γ) (rf_scrut f)) fs ->
+      Forall2 (fill_raw_fun_head Θ Ξ Γ) fs fsh -> fsh = fs.
+  Proof.
+    pose proof (fill_access_free_all Θ Ξ Hg) as (Fe & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
+    intros * Hp Hf; induction Hf as [| f f' fs fs' [En Ep Es Er Ec] _ IH]; [ reflexivity |].
+    inversion Hp as [| ? ? [Hpp Hps] Hps']; subst.
+    pose proof (Ft _ _ _ Ep _ Hpp eq_refl) as Ep'.
+    rewrite Ep' in Es; pose proof (Fe _ _ _ Es _ Hps eq_refl) as Es'.
+    rewrite (raw_fun_parts_eq f f' En Ep' Es' Er Ec), (IH Hps'); reflexivity.
+  Qed.
+
+  (** The bodies of functions with no access are filled to themselves. *)
+  Lemma fill_raw_fun_bodies_access_free : forall Γ Δ0 pq D Us As hs ms fs',
+      ind_lookup Θ Ξ pq = Some D ->
+      Forall (fun f => access_free_exp Θ Ξ (ctx_holes (S (List.length (rf_nparams f))) ++ Γ) (rf_res f) /\
+                       access_free_brs Θ Ξ Γ (rf_clauses f)) hs ->
+      Forall2 (mdef_member Θ Ξ pq D Us Δ0) hs ms ->
+      Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ pq D Us Γ As (fst fm) (snd fm) f') (List.combine hs ms) fs' ->
+      fs' = hs.
+  Proof.
+    pose proof (fill_access_free_all Θ Ξ Hg) as (Fe & _ & _ & _ & _ & Fb & _).
+    intros * Hl Hp Hm; revert fs'; induction Hm as [| h m hs ms Hhm _ IH]; intros fs' Hf;
+      inversion Hf as [| ? f' ? fs'' [En Ep Es _ Hr Hc] Hf']; subst; [ reflexivity |].
+    inversion Hp as [| ? ? [Hpr Hpc] Hp']; subst.
+    destruct Hhm as [h W Ws m Mm _ _ _ _ Hj Hnn].
+    destruct (elim_ctx_skeletons Θ Ξ Hg pq D m Mm Us nil nil Γ Γ Hl Hj eq_refl) as (_ & E2 & _).
+    rewrite Hnn in E2.
+    pose proof (Fe _ _ _ (Hr Mm Hj) _ Hpr E2) as Er'.
+    pose proof (Fb _ _ _ _ _ _ _ _ (Hc Mm Hj) Hl m Hj _ Hpc eq_refl) as Ec'.
+    cbn [fst snd] in *.
+    rewrite (raw_fun_parts_eq h f' En Ep Es Er' Ec'), (IH Hp' _ Hf'); reflexivity.
+  Qed.
+
+  (** A group's members with no access in their parameters and sorts keep
+      them. *)
+  Lemma fill_raw_members_heads_access_free : forall R R' ms ms', rd_uparams R' = rd_uparams R ->
+      Forall (fun Mr => access_free_tele Θ Ξ (rd_uparams R ++ gs_tele Ξ) (rm_nparams Mr) /\
+                        access_free_exp Θ Ξ (rd_uparams R ++ gs_tele Ξ) (rm_sort Mr)) ms ->
+      Forall2 (fill_raw_member Θ Ξ R') ms ms' ->
+      Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) ms' ms.
+  Proof.
+    pose proof (fill_access_free_all Θ Ξ Hg) as (Fe & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
+    intros * Eu Hp Hm; induction Hm as [| Mr Mr' ms ms' [_ Hn Hs _] _ IH]; [ constructor |].
+    inversion Hp as [| ? ? [Hpn Hps] Hp']; subst; rewrite Eu in Hn, Hs.
+    constructor; [ split; [ exact (Ft _ _ _ Hn _ Hpn eq_refl) | exact (Fe _ _ _ Hs _ Hps eq_refl) ] | exact (IH Hp') ].
+  Qed.
+
+  (** A constructor's arguments with no access keep them. *)
+  Lemma fill_raw_cons_access_free : forall Γ (cs cs' : list (string * list (string * exp))),
+      Forall (fun rc => access_free_tele Θ Ξ Γ (rtele (snd rc))) cs ->
+      Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args Θ Ξ Γ (snd rc) (snd rc')) cs cs' -> cs' = cs.
+  Proof.
+    pose proof (fill_access_free_all Θ Ξ Hg) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
+    intros * Hp Hc; induction Hc as [| [c args] [c' args'] cs cs' [Ef [Hn Ht]] _ IH]; [ reflexivity |].
+    inversion Hp as [| ? ? Hpt Hp']; subst; cbn in *; subst.
+    rewrite (IH Hp'), (rtele_names_eq _ _ Hn (Ft _ _ _ Ht _ Hpt eq_refl)); reflexivity.
+  Qed.
+
+  (** A group's members with no access keep them, in a group whose
+      uniform parameters and members' parameters and sorts are kept. *)
+  Lemma fill_raw_members_access_free : forall R R' ms ms', rd_uparams R' = rd_uparams R ->
+      Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) (rd_members R') (rd_members R) ->
+      Forall (fun Mr =>
+        access_free_tele Θ Ξ (rd_uparams R ++ gs_tele Ξ) (rm_nparams Mr) /\
+        access_free_exp Θ Ξ (rd_uparams R ++ gs_tele Ξ) (rm_sort Mr) /\
+        Forall (fun rc => access_free_tele Θ Ξ (rm_pctx Ξ R Mr) (rtele (snd rc))) (rm_cons Mr)) ms ->
+      Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) ms' ms ->
+      Forall2 (fill_raw_member Θ Ξ R') ms ms' -> ms' = ms.
+  Proof.
+    intros * Eu Hh Hp Hh0 Hm; induction Hm as [| Mr Mr' ms ms' [En _ _ Ec] _ IH]; [ reflexivity |].
+    inversion Hp as [| ? ? (_ & _ & Hpc) Hp']; inversion Hh0 as [| ? ? ? ? [Enp Ens] Hh0']; subst.
+    rewrite (rm_pctx_heads_eq Ξ R' R Mr' Mr Eu Hh Enp) in Ec.
+    rewrite (raw_member_parts_eq Mr Mr' En Enp Ens (fill_raw_cons_access_free _ _ _ Hpc Ec)), (IH Hp' Hh0');
+      reflexivity.
+  Qed.
+
+  (** A group with no access is filled to itself. *)
+  Lemma fill_raw_decl_access_free : forall R R', fill_raw_decl Θ Ξ R R' ->
+      access_free_tele Θ Ξ (gs_tele Ξ) (rd_uparams R) ->
+      Forall (fun Mr =>
+        access_free_tele Θ Ξ (rd_uparams R ++ gs_tele Ξ) (rm_nparams Mr) /\
+        access_free_exp Θ Ξ (rd_uparams R ++ gs_tele Ξ) (rm_sort Mr) /\
+        Forall (fun rc => access_free_tele Θ Ξ (rm_pctx Ξ R Mr) (rtele (snd rc))) (rm_cons Mr)) (rd_members R) ->
+      R' = R.
+  Proof.
+    pose proof (fill_access_free_all Θ Ξ Hg) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
+    intros R R' [Hu Hr Hm] Hpu Hpm.
+    pose proof (Ft _ _ _ Hu _ Hpu eq_refl) as Eu.
+    assert (Hh : Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2)
+                   (rd_members R') (rd_members R)).
+    { eapply fill_raw_members_heads_access_free; [ exact Eu | | exact Hm ].
+      eapply Forall_impl; [| exact Hpm ]; intros Mr (? & ? & _); split; assumption. }
+    apply raw_decl_parts_eq; [ exact Eu | | exact Hr ].
+    exact (fill_raw_members_access_free _ _ _ _ Eu Hh Hpm Hh Hm).
+  Qed.
+
+  (** Two fills of a group's members, in groups of one set of uniform
+      parameters, agree on the members' parameters and sorts. *)
+  Lemma fill_raw_members_heads_functional : forall R1 R2 ms ms1 ms2, rd_uparams R1 = rd_uparams R2 ->
+      Forall2 (fill_raw_member Θ Ξ R1) ms ms1 -> Forall2 (fill_raw_member Θ Ξ R2) ms ms2 ->
+      Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) ms1 ms2.
+  Proof.
+    pose proof (fill_functional_all Θ Ξ Hg) as (Fe & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
+    intros * Eu H1; revert ms2; induction H1 as [| Mr M1 ms ms1 [_ Hn1 Hs1 _] _ IH]; intros ms2 H2;
+      inversion H2 as [| ? M2 ? ms2' [_ Hn2 Hs2 _] H2']; subst; constructor; [| exact (IH _ H2') ].
+    rewrite Eu in Hn1, Hs1; split; [ exact (Ft _ _ _ Hn1 _ Hn2) | exact (Fe _ _ _ Hs1 _ Hs2) ].
+  Qed.
+
+  (** A constructor's arguments have one fill. *)
+  Lemma fill_raw_cons_functional : forall Γ (cs cs1 cs2 : list (string * list (string * exp))),
+      Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args Θ Ξ Γ (snd rc) (snd rc')) cs cs1 ->
+      Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args Θ Ξ Γ (snd rc) (snd rc')) cs cs2 -> cs1 = cs2.
+  Proof.
+    pose proof (fill_functional_all Θ Ξ Hg) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
+    intros * H1; revert cs2; induction H1 as [| [c args] [c1 a1] cs cs1 [Ef1 [Hn1 Ht1]] _ IH]; intros cs2 H2;
+      inversion H2 as [| ? [c2 a2] ? cs2' [Ef2 [Hn2 Ht2]] H2']; subst; [ reflexivity |].
+    cbn in *; subst.
+    rewrite (IH _ H2'), (rtele_names_eq a2 a1 (eq_trans Hn1 (eq_sym Hn2)) (Ft _ _ _ Ht1 _ Ht2)); reflexivity.
+  Qed.
+
+  (** A group's members have one fill, in groups that agree on the
+      uniform parameters and the members' parameters and sorts. *)
+  Lemma fill_raw_members_functional : forall R1 R2 ms ms1 ms2, rd_uparams R1 = rd_uparams R2 ->
+      Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) (rd_members R1) (rd_members R2) ->
+      Forall2 (fill_raw_member Θ Ξ R1) ms ms1 -> Forall2 (fill_raw_member Θ Ξ R2) ms ms2 ->
+      Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) ms1 ms2 -> ms1 = ms2.
+  Proof.
+    intros * Eu Hh H1; revert ms2; induction H1 as [| Mr M1 ms ms1 [En1 _ _ Ec1] _ IH]; intros ms2 H2 Hh0;
+      inversion H2 as [| ? M2 ? ms2' [En2 _ _ Ec2] H2']; subst; [ reflexivity |].
+    inversion Hh0 as [| ? ? ? ? [Enp Ens] Hh0']; subst.
+    rewrite (rm_pctx_heads_eq Ξ R1 R2 M1 M2 Eu Hh Enp) in Ec1.
+    rewrite (raw_member_parts_eq M2 M1 (eq_trans En1 (eq_sym En2)) Enp Ens (fill_raw_cons_functional _ _ _ _ Ec1 Ec2)),
+      (IH _ H2' Hh0'); reflexivity.
+  Qed.
+
+  (** A group has one fill. *)
+  Lemma fill_raw_decl_functional : forall R R1 R2, fill_raw_decl Θ Ξ R R1 -> fill_raw_decl Θ Ξ R R2 -> R1 = R2.
+  Proof.
+    pose proof (fill_functional_all Θ Ξ Hg) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
+    intros R R1 R2 [Hu1 Hr1 Hm1] [Hu2 Hr2 Hm2].
+    pose proof (Ft _ _ _ Hu1 _ Hu2) as Eu.
+    pose proof (fill_raw_members_heads_functional _ _ _ _ _ Eu Hm1 Hm2) as Hh.
+    apply (raw_decl_parts_eq R2 R1); [ exact Eu | exact (fill_raw_members_functional _ _ _ _ _ Eu Hh Hm1 Hm2 Hh) | congruence ].
+  Qed.
+
+  (** Every fill of a command with no access is the command itself. *)
+  Theorem fill_cmd_access_free : forall c c', fill_cmd Θ Ξ c c' -> cmd_access_free Θ Ξ c -> c' = c.
+  Proof.
+    pose proof (fill_access_free_all Θ Ξ Hg) as (Fe & _ & _ & _ & _ & _ & Fo & _ & Fm & _ & _ & Ft & _).
+    intros c c' Hf Hp; inversion Hf; subst; cbn in Hp; try reflexivity;
+      repeat match goal with Hp : _ /\ _ |- _ => destruct Hp end.
+    - rewrite (Fe _ _ _ H _ H1 eq_refl), (Fo _ _ _ H0 _ H2 eq_refl); reflexivity.
+    - rewrite (Ft _ _ _ H _ Hp eq_refl); reflexivity.
+    - rewrite (Ft _ _ _ H _ H1 eq_refl) in *.
+      destruct (Fm _ _ _ _ H0 _ H2 eq_refl) as [-> _]; reflexivity.
+    - rewrite (Ft _ _ _ H _ H1 eq_refl) in *.
+      destruct (Fm _ _ _ _ H0 _ H2 eq_refl) as [-> _]; reflexivity.
+    - destruct (Fm _ _ _ _ H _ Hp eq_refl) as [-> _]; reflexivity.
+    - destruct (Fm _ _ _ _ H _ Hp eq_refl) as [-> _]; reflexivity.
+    - rewrite (Fe _ _ _ H _ H1 eq_refl), (Fo _ _ _ H0 _ H2 eq_refl); reflexivity.
+    - (* a group *)
+      rewrite (fill_raw_decl_access_free _ _ H H0 H1); reflexivity.
+    - (* a mutual definition: its telescope, its heads, then its bodies *)
+      rewrite (Ft _ _ _ H _ H3 eq_refl) in *.
+      assert (Eh : fh0 :: fsh = f0 :: fs).
+      { eapply fill_raw_fun_heads_access_free; [| exact H0 ].
+        eapply Forall_impl; [| exact H4 ]; intros f (? & ? & _); split; assumption. }
+      injection Eh as -> ->.
+      assert (Eb : f0' :: fs' = f0 :: fs).
+      { eapply fill_raw_fun_bodies_access_free;
+          [ exact (mdef_group_lookup _ _ _ _ _ _ _ _ _ _ _ H1) | | exact (mdef_group_members _ _ _ _ _ _ _ _ _ _ _ H1)
+          | exact H2 ].
+        eapply Forall_impl; [| exact H4 ]; intros f (_ & _ & ? & ?); split; assumption. }
+      rewrite Eb; reflexivity.
+    - rewrite (Ft _ _ _ H _ H2 eq_refl) in *.
+      rewrite (Fe _ _ _ H0 _ H3 eq_refl), (fill_fields_access_free _ _ Hg _ _ _ H1 _ H4 eq_refl); reflexivity.
+  Qed.
+
+  (** The heads of functions have one fill. *)
+  Lemma fill_raw_fun_heads_functional : forall Γ fs fs1 fs2,
+      Forall2 (fill_raw_fun_head Θ Ξ Γ) fs fs1 -> Forall2 (fill_raw_fun_head Θ Ξ Γ) fs fs2 -> fs1 = fs2.
+  Proof.
+    pose proof (fill_functional_all Θ Ξ Hg) as (Fe & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
+    intros * H1; revert fs2; induction H1 as [| f f1 fs fs1 [En1 Ep1 Es1 Er1 Ec1] _ IH]; intros fs2 H2;
+      inversion H2 as [| ? f2 ? fs2' [En2 Ep2 Es2 Er2 Ec2] H2']; subst; [ reflexivity |].
+    pose proof (Ft _ _ _ Ep1 _ Ep2) as Ep; rewrite <- Ep in Es2; pose proof (Fe _ _ _ Es1 _ Es2) as Es.
+    rewrite (raw_fun_parts_eq f2 f1 (eq_trans En1 (eq_sym En2)) Ep Es (eq_trans Er1 (eq_sym Er2))
+               (eq_trans Ec1 (eq_sym Ec2))), (IH _ H2'); reflexivity.
+  Qed.
+
+  (** The bodies of functions have one fill: first their results, which fix
+      the motives, then their clauses. *)
+  Lemma fill_raw_fun_bodies_functional : forall Γ pq D Us As1 As2 hs ms fs1 fs2,
+      Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ pq D Us Γ As1 (fst fm) (snd fm) f') (List.combine hs ms) fs1 ->
+      Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ pq D Us Γ As2 (fst fm) (snd fm) f') (List.combine hs ms) fs2 ->
+      Forall2 (fun f1 f2 => rf_nparams f1 = rf_nparams f2 /\ rf_res f1 = rf_res f2) fs1 fs2 /\
+      (As1 = As2 -> fs1 = fs2).
+  Proof.
+    pose proof (fill_functional_all Θ Ξ Hg) as (Fe & _ & _ & _ & _ & Fb & _).
+    intros Γ pq D Us As1 As2 hs ms; generalize (List.combine hs ms); clear hs ms.
+    intros l fs1 fs2 H1; revert fs2; induction H1 as [| [h m] f1 l fs1 [En1 Ep1 Es1 Hm1 Hr1 Hc1] _ IH];
+      intros fs2 H2; inversion H2 as [| ? f2 ? fs2' [En2 Ep2 Es2 _ Hr2 Hc2] H2']; subst; [ split; [ constructor | reflexivity ] |].
+    cbn [fst snd] in *.
+    destruct (ind_member D m) as [Mm |] eqn:Hj; [| contradiction ].
+    pose proof (Fe _ _ _ (Hr1 Mm eq_refl) _ (Hr2 Mm eq_refl)) as Er.
+    destruct (IH _ H2') as [Hrs IHe].
+    split; [ constructor; [ split; [ congruence | exact Er ] | exact Hrs ] |].
+    intros <-; pose proof (Fb _ _ _ _ _ _ _ _ (Hc1 Mm eq_refl) _ (Hc2 Mm eq_refl)) as Ec.
+    rewrite (raw_fun_parts_eq f2 f1 (eq_trans En1 (eq_sym En2)) (eq_trans Ep1 (eq_sym Ep2)) (eq_trans Es1 (eq_sym Es2))
+               Er Ec), (IHe eq_refl); reflexivity.
+  Qed.
+
+  (** A command has one fill. *)
+  Theorem fill_cmd_functional : forall c c1 c2, fill_cmd Θ Ξ c c1 -> fill_cmd Θ Ξ c c2 -> c1 = c2.
+  Proof.
+    pose proof (fill_functional_all Θ Ξ Hg) as (Fe & _ & _ & _ & _ & _ & Fo & _ & Fm & _ & _ & Ft & _).
+    intros c c1 c2 H1 H2.
+    inversion H1; subst; try (symmetry; apply (fill_cmd_access_free _ _ H2); assumption);
+      inversion H2; subst; try (apply (fill_cmd_access_free _ _ H1); assumption).
+    (** Two fills of one kind: part by part, in order *)
+    all: repeat match goal with
+      | Ha : fill_tele _ _ ?G ?D ?X, Hb : fill_tele _ _ ?G ?D ?Y |- _ =>
+          assert_fails constr_eq X Y; pose proof (Ft _ _ _ Ha _ Hb); subst X
+      | Ha : fill_exp _ _ ?G ?D ?X, Hb : fill_exp _ _ ?G ?D ?Y |- _ =>
+          assert_fails constr_eq X Y; pose proof (Fe _ _ _ Ha _ Hb); subst X
+      | Ha : fill_oexp _ _ ?G ?D ?X, Hb : fill_oexp _ _ ?G ?D ?Y |- _ =>
+          assert_fails constr_eq X Y; pose proof (Fo _ _ _ Ha _ Hb); subst X
+      | Ha : fill_mod _ _ ?G ?D ?X _, Hb : fill_mod _ _ ?G ?D ?Y _ |- _ =>
+          assert_fails constr_eq X Y; destruct (Fm _ _ _ _ Ha _ _ Hb) as [? _]; subst X
+      | Ha : fill_fields _ _ ?G ?D ?X, Hb : fill_fields _ _ ?G ?D ?Y |- _ =>
+          assert_fails constr_eq X Y; pose proof (fill_fields_functional _ _ Hg _ _ _ Ha _ Hb); subst X
+      | Ha : fill_raw_decl _ _ ?R ?X, Hb : fill_raw_decl _ _ ?R ?Y |- _ =>
+          assert_fails constr_eq X Y; pose proof (fill_raw_decl_functional _ _ _ Ha Hb); subst X
+      | Ha : Forall2 (fill_raw_fun_head _ _ ?G) ?F ?X, Hb : Forall2 (fill_raw_fun_head _ _ ?G) ?F ?Y |- _ =>
+          assert_fails constr_eq X Y; pose proof (fill_raw_fun_heads_functional _ _ _ _ Ha Hb) as E;
+          injection E as <- <-
+      | Ha : mdef_group _ _ ?G ?f ?F ?p ?m ?P ?D ?U ?M, Hb : mdef_group _ _ ?G ?f ?F ?p' ?m' ?P' ?D' ?U' ?M' |- _ =>
+          assert_fails constr_eq p p'; destruct (mdef_group_functional _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Ha Hb)
+            as (<- & <- & <- & <- & <- & <-)
+      end; try reflexivity.
+    (** A mutual definition's bodies: their results, then their motives,
+        then their clauses *)
+    lazymatch goal with
+    | Ha : Forall2 _ (List.combine ?h ?m) (?a :: ?x), Hb : Forall2 _ (List.combine ?h ?m) (?b :: ?y) |- _ =>
+        destruct (fill_raw_fun_bodies_functional _ _ _ _ _ _ _ _ _ _ Ha Hb) as [Hrs He];
+        rewrite (He (mdef_blocks_motives_eq _ _ _ _ _ Hrs)) in *; reflexivity
+    end.
+  Qed.
+
+  (** A unit's parameter telescope has one fill. *)
+  Theorem fill_params_functional : forall Δ Δ1 Δ2, fill_params Θ Ξ Δ Δ1 -> fill_params Θ Ξ Δ Δ2 -> Δ1 = Δ2.
+  Proof.
+    pose proof (fill_access_free_all Θ Ξ Hg) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & At & _).
+    pose proof (fill_functional_all Θ Ξ Hg) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ft & _).
+    intros * H1 H2; inversion H1 as [? Hp1 | ? ? Ht1]; inversion H2 as [? Hp2 | ? ? Ht2]; subst;
+      [ reflexivity | exact (eq_sym (At _ _ _ Ht2 _ Hp1 eq_refl)) | exact (At _ _ _ Ht1 _ Hp2 eq_refl)
+      | exact (Ft _ _ _ Ht1 _ Ht2) ].
+  Qed.
+End CommandFillLemmas.
+
 Scheme run_cmd_mind := Minimality for run_cmd Sort Prop
 with run_cmds_mind := Minimality for run_cmds Sort Prop
 with run_unit_mind := Minimality for run_unit Sort Prop
@@ -1541,7 +2167,8 @@ Section Determinism.
             | eapply ctx_wf_gctx; eassumption
             | eapply ctx_wf_gctx, presup_ext_eq_ctx; eassumption
             | eapply ctx_wf_gctx, presup_modexp_eq_ctx; eassumption
-            | match goal with Hn : ind_nil_at _ _ _ _ _ |- _ => destruct Hn; eapply ctx_wf_gctx; eassumption end ].
+            | match goal with Hn : ind_nil_at _ _ _ _ _ |- _ => destruct Hn; eapply ctx_wf_gctx; eassumption end
+            | eapply wf_gentry_gctx; eassumption ].
   Qed.
 
   (** Two fills of a command agree when one of them runs. *)
@@ -1554,6 +2181,39 @@ Section Determinism.
     - assert (Ht2 : cmd_terms c2 = true) by (destruct H2 as (rs & _ & <-); rewrite cmd_fill_terms; exact Ht).
       exact (elim_fill_functional _ _ (run_cmd_gctx _ _ _ _ _ _ _ _ _ _ Hr Ht2) _ _ _ H1 H2).
     - rewrite (elim_fill_no_terms _ _ _ _ Ht H1), (elim_fill_no_terms _ _ _ _ Ht H2); reflexivity.
+  Qed.
+
+  (** The access fill keeps the kind of a command. *)
+  Lemma fill_cmd_terms : forall Θ Ξ c c', fill_cmd Θ Ξ c c' -> cmd_terms c' = cmd_terms c.
+  Proof. intros * H; destruct H; reflexivity. Qed.
+
+  (** A generated command has itself for access fill. *)
+  Lemma fill_cmd_generated : forall Θ Ξ c c', fill_cmd Θ Ξ c c' -> forall c0, c = cc_gen c0 -> c' = c.
+  Proof. intros * H; destruct H; intros ? Eg; try discriminate; reflexivity. Qed.
+
+  (** The access fill keeps the name a command declares. *)
+  Lemma fill_cmd_name : forall Θ Ξ c c', fill_cmd Θ Ξ c c' -> cmd_decl_name c' = cmd_decl_name c.
+  Proof. intros * H; destruct H; reflexivity. Qed.
+
+  (** A command without terms of its own has itself for access fill. *)
+  Lemma fill_cmd_no_terms : forall Θ Ξ c c', cmd_terms c = false -> fill_cmd Θ Ξ c c' -> c' = c.
+  Proof. intros * Ht H; destruct H; cbn in Ht; try discriminate; reflexivity. Qed.
+
+  (** Two eliminator fills of a command, then two access fills, agree when
+      one of them runs. *)
+  Lemma fills_unique_run : forall ch B Rb Θ Ξ c c1 c2 d1 d2 B' Rb' Θ' Ξ',
+      elim_fill_ok Θ Ξ c c1 -> elim_fill_ok Θ Ξ c c2 -> fill_cmd Θ Ξ c1 d1 -> fill_cmd Θ Ξ c2 d2 ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ d2 ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> c1 = c2 /\ d1 = d2.
+  Proof.
+    intros * H1 H2 F1 F2 Hr.
+    destruct (cmd_terms c) eqn:Ht.
+    - assert (Ht2 : cmd_terms d2 = true)
+        by (rewrite (fill_cmd_terms _ _ _ _ F2); destruct H2 as (rs & _ & <-); rewrite cmd_fill_terms; exact Ht).
+      pose proof (run_cmd_gctx _ _ _ _ _ _ _ _ _ _ Hr Ht2) as Hg.
+      pose proof (elim_fill_functional _ _ Hg _ _ _ H1 H2) as <-.
+      split; [ reflexivity | exact (fill_cmd_functional _ _ Hg _ _ _ F1 F2) ].
+    - rewrite (elim_fill_no_terms _ _ _ _ Ht H1), (elim_fill_no_terms _ _ _ _ Ht H2) in *.
+      rewrite (fill_cmd_no_terms _ _ _ _ Ht F1), (fill_cmd_no_terms _ _ _ _ Ht F2); split; reflexivity.
   Qed.
 
   (** A unit runs in a frame named by the head of its chain, from no
@@ -1583,8 +2243,10 @@ Section Determinism.
       | H1 : tele_lits_ok ?a ?b ?B ?c ?c1, H2 : tele_lits_ok ?a ?b ?B ?c ?c2 |- _ =>
           assert_fails constr_eq c1 c2; assert (c1 = c2) by (unfold tele_lits_ok in *; congruence); subst c2
       | H1 : elim_fill_ok ?a ?b ?c ?c1, H2 : elim_fill_ok ?a ?b ?c ?c2,
-        Hr : run_cmd _ _ _ ?a ?b ?c2 _ _ _ _ |- _ =>
-          assert_fails constr_eq c1 c2; pose proof (elim_fill_unique_run _ _ _ _ _ _ _ _ _ _ _ _ H1 H2 Hr); subst c2
+        F1 : fill_cmd ?a ?b ?c1 ?d1, F2 : fill_cmd ?a ?b ?c2 ?d2,
+        Hr : run_cmd _ _ _ ?a ?b ?d2 _ _ _ _ |- _ =>
+          assert_fails constr_eq d1 d2;
+          destruct (fills_unique_run _ _ _ _ _ _ _ _ _ _ _ _ _ _ H1 H2 F1 F2 Hr); subst c2 d2
       | H1 : open_gens ?a ?b ?o ?G ?E ?is ?g1, H2 : open_gens ?a ?b ?o ?G ?E ?is ?g2,
         HE : _ ⍮ _ ⍮ _ ⊢ᵐ _ ≈ _ |- _ =>
           assert_fails constr_eq g1 g2;
@@ -1651,19 +2313,21 @@ Section Determinism.
       end.
     - (* a mutual definition: the group, each function's member *)
       match goal with
-      | H1 : nbe_ty _ _ _ ?T (nf_indty ?p1 _ _), H2 : nbe_ty _ _ _ ?T (nf_indty ?p2 _ _) |- _ =>
+      | H1 : mdef_group _ _ _ _ _ _ _ _ _ _ _, H2 : mdef_group _ _ _ _ _ _ _ _ _ _ _ |- _ =>
           assert_fails constr_eq H1 H2;
-          pose proof (functional_nbe_ty _ _ _ _ H1 H2) as E; injection E as <- <- <-
+          destruct (mdef_group_functional _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ H1 H2) as (<- & <- & <- & <- & <- & <-)
       end.
-      try match goal with H1 : ind_lookup _ _ ?qn = _, H2 : ind_lookup _ _ ?qn = _ |- _ =>
-        assert_fails constr_eq H1 H2; rewrite H1 in H2; injection H2 as <- end.
-      try match goal with H1 : img_pats _ _ = Some ?U1, H2 : img_pats _ _ = Some ?U2 |- _ =>
-        assert_fails constr_eq U1 U2; rewrite H1 in H2; injection H2 as <- end.
-      match goal with H1 : Forall2 _ ?fs ?m1, H2 : Forall2 _ ?fs ?m2 |- _ =>
-        assert_fails constr_eq m1 m2;
-        assert (m1 = m2) as <- by (eapply Forall2_functional; [ intros; eapply mdef_member_functional; eassumption
-                                                              | exact H1 | exact H2 ]) end.
       repeat split; auto; eapply mdefs_run_functional; eassumption.
+    - (* a record: its field definitions, then its with-area from where they end *)
+      match goal with
+      | IH1 : forall _ _ _ _ _, run_cmds _ _ _ _ _ (record_field_cmds _) _ _ _ _ -> _,
+        H1 : run_cmds _ _ _ _ _ (record_field_cmds _) _ _ _ _ |- _ =>
+          destruct (IH1 _ _ _ _ _ H1) as (? & ? & ? & ?); subst
+      end.
+      match goal with
+      | IH2 : forall _ _ _ _ _, run_cmds _ _ _ _ _ ?cs _ _ _ _ -> _, H2 : run_cmds _ _ _ _ _ ?cs _ _ _ _ |- _ =>
+          destruct (IH2 _ _ _ _ _ H2) as (-> & [= -> -> ->] & -> & ->)
+      end; repeat split; auto.
     - (* a generated module: its body *)
       match goal with
       | IH : forall _ _ _ _ _, run_cmds _ _ _ _ _ _ _ _ _ _ -> _, H : run_cmds _ _ _ _ _ _ _ _ _ _ |- _ =>
@@ -1690,8 +2354,10 @@ Section Determinism.
           assert_fails constr_eq c1 c2; assert (c1 = c2) by (unfold tele_lits_ok in *; congruence); subst c2
       end.
       repeat match goal with
-      | H1 : tele_fill_ok ?a ?b ?c ?c1, H2 : tele_fill_ok ?a ?b ?c ?c2, HP : ⊢ ?a ⍮ ?b ⍮ ?c1 |- _ =>
+      | H1 : tele_fill_ok ?a ?b ?c ?c1, H2 : tele_fill_ok ?a ?b ?c ?c2, HP : ⊢ ?a ⍮ ?b ⍮ _ |- _ =>
           assert_fails constr_eq c1 c2; pose proof (tele_fill_functional _ _ (ctx_wf_gctx _ _ _ HP) _ _ _ H1 H2); subst c2
+      | H1 : fill_params ?a ?b ?c ?c1, H2 : fill_params ?a ?b ?c ?c2, HP : ⊢ ?a ⍮ ?b ⍮ _ |- _ =>
+          assert_fails constr_eq c1 c2; pose proof (fill_params_functional _ _ (ctx_wf_gctx _ _ _ HP) _ _ _ H1 H2); subst c2
       end.
       match goal with
       | IH2 : forall _ _ _ _ _, run_cmds _ _ _ ?T (gs_push ?mp ?P nil) ?cs _ _ _ _ -> _,
@@ -1824,6 +2490,24 @@ Proof.
     split; assumption.
 Qed.
 
+(** A record checked with an empty module has its own parameters, over the
+    frames', as assumptions of a well-formed context: those its module is
+    opened over, before its value. *)
+Lemma record_nil_entry_params : forall Θ Ξ mp pv pr Δ Srt fs,
+    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_record pv pr (record_at Ξ Δ Srt fs) ⋄ ->
+    tele_ass Δ /\ ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ.
+Proof.
+  intros * HE.
+  assert (HP : record_params (record_at Ξ Δ Srt fs) = Δ ++ gs_tele Ξ) by reflexivity.
+  inversion HE; subst.
+  - split.
+    + match goal with Ha : tele_ass (record_params _) |- _ => rewrite HP in Ha; apply Forall_app in Ha; tauto end.
+    + match goal with HS : _ ⍮ _ ⍮ record_params _ ⊢ᵤ _ |- _ => rewrite HP in HS; exact (presup_is_univ_ctx HS) end.
+  - match goal with Hm : _ ⍮ _ ⍮ _ ⍮ fk_record _ ⍮ _ ⊢ᵍᵐ ⋄ |- _ => inversion Hm; subst end.
+    match goal with Hp : record_params _ = ?Δ' ++ _, Ha : tele_ass ?Δ', HC : ⊢ _ ⍮ _ ⍮ ?Δ' ++ _ |- _ =>
+      rewrite HP in Hp; apply app_inv_tail in Hp; subst; split; assumption end.
+Qed.
+
 (** A later declared member of a group whose first member's entry is in
     the innermost frame is well formed with an empty module, where it is
     declared. *)
@@ -1915,10 +2599,19 @@ Section GrowDeps.
         first [ apply Hx; assumption | apply He; assumption | apply Hm; assumption
               | eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ]
               | eapply ind_mlookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ] ].
+    - (* a record *)
+      econstructor; try eassumption; [| intros; apply He; eauto ].
+      match goal with Hu : wf_is_univ _ _ _ _ |- _ =>
+        inversion Hu; subst; [ constructor; apply Hc; assumption | econstructor; apply He; eassumption ] end.
+    - (* a record with the body of its module, an ordinary module *)
+      econstructor; [ eassumption | auto ].
     - econstructor; [ assumption | apply Hc; assumption ].
     - (* the module of a member, before its first entry *)
       match goal with Hg : ⊢ᵍ Θ' ⍮ ?X |- _ => pose proof (deps_grow _ _ _ Hsub (wf_ctx_empty _ _ Hg)) as (Hc' & _) end.
       eapply wf_gmod_ind_nil; [ assumption | apply Hc'; assumption | auto | assumption ].
+    - (* the module of a record, before its first entry *)
+      match goal with Hg : ⊢ᵍ Θ' ⍮ ?X |- _ => pose proof (deps_grow _ _ _ Hsub (wf_ctx_empty _ _ Hg)) as (Hc' & _) end.
+      eapply wf_gmod_record_nil; [ assumption | apply Hc'; assumption | auto | assumption ].
     - match goal with HE : Θ ⍮ _ ⍮ qname_in _ _ ⊢ᵉ _ |- _ => pose proof (wf_gentry_gctx _ _ _ _ HE) as Hg0 end.
       destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as (_ & _ & Hff).
       assert (HΦ : Θ' ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ) by auto.
@@ -2111,6 +2804,13 @@ Proof.
   destruct Ξ as [| [[mq Kq] V] Ξ]; [ contradiction |]; cbn; eapply H; left; reflexivity.
 Qed.
 
+Lemma stack_in_push_record : forall ch x R Δ Ξ,
+    stack_in ch Ξ -> gs_fresh x Ξ -> stack_in ch (gs_push_record (qname_in (gs_path Ξ) x) R Δ Ξ).
+Proof.
+  intros * H Hfr mp K U [[= <- <- <-] | Hin]; [| eapply H; exact Hin ].
+  destruct Ξ as [| [[mq Kq] V] Ξ]; [ contradiction |]; cbn; eapply H; left; reflexivity.
+Qed.
+
 (** A definition or an alias, checked against the frame so far, keeps the
     stack well formed. *)
 Lemma add_def_wf : forall Θ Ξ x b pv A M,
@@ -2215,8 +2915,9 @@ Qed.
 (** A frame, of either kind, closed into the member it becomes: what was
     read in it is read in that member. *)
 Lemma gc_sub_close : forall Θ Ξ x pv K Δ Φ,
-    ⊢ᵍ Θ ⍮ Ξ -> gs_fresh x Ξ -> kind_tele K Δ (gs_tele Ξ) ->
-    gc_sub Θ ((qname_in (gs_path Ξ) x, K, gu_body Δ Φ) :: Ξ) Θ (gs_add x (frame_entry pv K Δ Φ) Ξ).
+    ⊢ᵍ Θ ⍮ Ξ -> gs_fresh x Ξ -> kind_tele (qname_in (gs_path Ξ) x) K Δ (gs_tele Ξ) ->
+    gc_sub Θ ((qname_in (gs_path Ξ) x, K, gu_body Δ Φ) :: Ξ) Θ
+      (gs_add x (frame_entry pv (qname_in (gs_path Ξ) x) K Δ Φ) Ξ).
 Proof.
   intros * HΞ Hfr HK.
   destruct Ξ as [| [[mq Kq] U] Ξ0]; [ contradiction |].
@@ -2227,9 +2928,9 @@ Proof.
 Qed.
 
 Lemma ind_lookup_close : forall Θ Ξ x pv K Δ Φ p D,
-    ⊢ᵍ Θ ⍮ Ξ -> gs_fresh x Ξ -> kind_tele K Δ (gs_tele Ξ) ->
+    ⊢ᵍ Θ ⍮ Ξ -> gs_fresh x Ξ -> kind_tele (qname_in (gs_path Ξ) x) K Δ (gs_tele Ξ) ->
     ind_lookup Θ ((qname_in (gs_path Ξ) x, K, gu_body Δ Φ) :: Ξ) p = Some D ->
-    ind_lookup Θ (gs_add x (frame_entry pv K Δ Φ) Ξ) p = Some D.
+    ind_lookup Θ (gs_add x (frame_entry pv (qname_in (gs_path Ξ) x) K Δ Φ) Ξ) p = Some D.
 Proof. intros * HΞ Hfr HK Hl; exact (ind_lookup_gc_sub _ _ _ _ _ _ (gc_sub_close _ _ _ pv _ _ Φ HΞ Hfr HK) Hl). Qed.
 
 (** Read under frames of units not filed: as filed. *)
@@ -2479,7 +3180,7 @@ Section WellFormed.
       destruct (IHr H1 Hc1 Hst1) as (H2 & Hc2 & Hs2 & Hl2).
       split; [ exact H2 | split; [ exact Hc2 | split; eauto using gds_sub_trans, bt_le_trans ] ].
     - (* a mutual definition: its definitions, each checked as a definition is *)
-      intros * _ _ _ _ _ _ _ _ _ _ Hd HΞ Hc Hst.
+      intros * _ _ _ Hd HΞ Hc Hst.
       repeat split; [ exact (mdefs_run_wf _ _ _ _ _ _ Hd HΞ) | exact (proj1 Hc) | exact (proj2 Hc)
                     | apply gds_sub_refl | apply bt_le_refl ].
     - (* a builtin binding: nothing filed, and its binding merged in *)
@@ -2488,6 +3189,27 @@ Section WellFormed.
     - (* an inductive alias: its entry, checked where it is declared *)
       intros * _ _ _ _ HE Hfr HΞ Hc Hst.
       repeat split; [ apply add_entry_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
+    - (* a record: checked with an empty module, its module's frame opened
+         over its parameters and a value of it, its field definitions and
+         its with-area run in it, and the record filed with the body they
+         end with *)
+      intros ch B Rb Θ Ξ x pv Δ Srt fs cs B1 Rb1 Θ1 Ξ1 B' Rb' Θ' mp' K' U Hfr HE Hr1 IH1 Hr2 IH2 HΞ Hc Hst.
+      destruct Ξ as [| [[mq Kq] Uq] Ξ0]; [ contradiction |].
+      destruct (record_nil_entry_params _ _ _ _ _ _ _ _ HE) as [Htel HΔ].
+      assert (Hpush : ⊢ᵍ Θ ⍮ gs_push_record (ind_qname ((mq, Kq, Uq) :: Ξ0) x)
+                              (record_at ((mq, Kq, Uq) :: Ξ0) Δ Srt fs) Δ ((mq, Kq, Uq) :: Ξ0)).
+      { apply wf_gstack_cons; [ exact HΞ | eapply wf_gmod_record_nil; [ exact Htel | exact HΔ | exact HE | reflexivity ] |].
+        cbn; exists x; split; [ reflexivity | exact Hfr ]. }
+      pose proof (stack_in_push_record _ x (record_at ((mq, Kq, Uq) :: Ξ0) Δ Srt fs) Δ _ Hst Hfr) as Hst'.
+      destruct (IH1 Hpush Hc Hst') as (H1 & Hc1 & Hs1 & Hl1).
+      pose proof (stack_in_shape _ _ _ (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr1) Hst') as Hst1.
+      destruct (IH2 H1 Hc1 Hst1) as (H2 & Hc2 & Hs2 & Hl2).
+      pose proof (eq_trans (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr2) (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr1))
+        as Hp; cbn in Hp; injection Hp as -> -> HP.
+      destruct (wf_gstack_cons_inv _ _ _ _ _ H2) as (H20 & [Δ2 Φ -> HΦ] & _); cbn in HP; subst Δ2.
+      split; [| split; [ exact Hc2 | split; [ eapply gds_sub_trans; eassumption | eapply bt_le_trans; eassumption ] ] ].
+      apply add_entry_wf; [ exact H20 | | exact Hfr ].
+      eapply wf_gentry_record_body; [ reflexivity | exact HΦ ].
     - intros * _ HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
     - intros * _ HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
     - (* a generated definition: as a definition *)
@@ -2507,14 +3229,14 @@ Section WellFormed.
       apply wf_gstack_cons; [ exact Hs0 | | exact Hff0 ].
       cbn; econstructor; [ eassumption | constructor; eassumption | exact Hfr ].
     - intros * HΞ Hc _; repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
-    - intros * _ _ _ Hr1 IH1 Hr2 IH2 HΞ Hc Hst.
+    - intros * _ _ _ _ Hr1 IH1 Hr2 IH2 HΞ Hc Hst.
       destruct (IH1 HΞ Hc Hst) as (H1 & Hc1 & Hs1 & Hl1).
       pose proof (stack_in_shape _ _ _ (proj1 run_params _ _ _ _ _ _ _ _ _ _ Hr1) Hst) as Hst1.
       destruct (IH2 H1 Hc1 Hst1) as (H2 & Hc2 & Hs2 & Hl2).
       split; [ exact H2 | split; [ exact Hc2 | split; eauto using gds_sub_trans, bt_le_trans ] ].
     - (* a unit: its imports from nothing, its parameters, then its body in
          the frame named by its path, which nothing it imported filed *)
-      intros fp ch B1 Rb1 B2 Rb2 imps P0 P1 P cs Θ1 Θ2 mp K U Hi IHi _ _ Htel HP _ Hb IHb.
+      intros fp ch B1 Rb1 B2 Rb2 imps P0 P1 P2 P cs Θ1 Θ2 mp K U Hi IHi _ _ _ Htel HP _ Hb IHb.
       destruct (IHi ltac:(constructor; constructor) canon_nil ltac:(intros ? ? ? [])) as (H1 & Hc1 & _ & _).
       assert (Hn1 : gds_lookup Θ1 fp = None)
         by exact (proj1 (proj2 run_chain_fresh) _ _ _ _ _ _ _ _ _ _ Hi fp (or_introl eq_refl) eq_refl).
@@ -2628,7 +3350,7 @@ Section WellFormed.
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_gen c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'.
   Proof.
-    intros * Hg H; destruct c as [x b pv A [M |] | | | | | | | | | |]; try contradiction;
+    intros * Hg H; destruct c as [x b pv A [M |] | | | | | | | | | | |]; try contradiction;
       inversion H; subst; econstructor; eassumption.
   Qed.
 
@@ -2642,10 +3364,11 @@ Section WellFormed.
     induction Hd as [| c cs Hd0 Hds IH ]; intros * Hr HΞ; inversion Hr; subst;
       [ constructor; [ reflexivity | reflexivity | reflexivity | exact HΞ | apply gc_sub_refl ] |].
     lazymatch goal with
-    | Hl : cmd_lits_ok _ _ _ c ?c1, Hf : elim_fill_ok _ _ ?c1 ?c2, Hc : run_cmd _ _ _ _ _ ?c2 _ _ _ _,
-      Hcs : run_cmds _ _ _ _ _ cs _ _ _ _ |- _ =>
+    | Hl : cmd_lits_ok _ _ _ c ?c1, Hf : elim_fill_ok _ _ ?c1 ?c2, Ha : fill_cmd _ _ ?c2 ?c3,
+      Hc : run_cmd _ _ _ _ _ ?c3 _ _ _ _, Hcs : run_cmds _ _ _ _ _ cs _ _ _ _ |- _ =>
         pose proof (elim_fill_ok_def _ _ _ _ Hf (cmd_lits_ok_def _ _ _ _ _ Hl Hd0)) as Hd2;
-        rename Hcs into Hrest; rename Hc into Hrun
+        assert (c3 = c2) by (destruct c2; try contradiction; exact (fill_cmd_generated _ _ _ _ Ha _ eq_refl));
+        subst c3; rename Hcs into Hrest; rename Hc into Hrun
     end.
     destruct c2; try contradiction; destruct c2; try contradiction; apply run_gen_inv in Hrun; inversion Hrun; subst.
     - destruct (IH _ _ _ _ _ _ _ _ _ Hrest (add_def_wf _ _ _ _ _ _ _ HΞ ltac:(eassumption) ltac:(eassumption)))
@@ -2667,10 +3390,11 @@ Section WellFormed.
     induction Hd as [| c cs Hd0 Hds IH ]; intros * Hr HΞ; inversion Hr; subst;
       [ constructor; [ reflexivity | reflexivity | reflexivity | exact HΞ | apply gc_sub_refl ] |].
     match goal with
-    | Hl : cmd_lits_ok _ _ _ c ?c1, Hf : elim_fill_ok _ _ ?c1 ?c2, Hc : run_cmd _ _ _ _ _ ?c2 _ _ _ _,
-      Hcs : run_cmds _ _ _ _ _ cs _ _ _ _ |- _ =>
+    | Hl : cmd_lits_ok _ _ _ c ?c1, Hf : elim_fill_ok _ _ ?c1 ?c2, Ha : fill_cmd _ _ ?c2 ?c3,
+      Hc : run_cmd _ _ _ _ _ ?c3 _ _ _ _, Hcs : run_cmds _ _ _ _ _ cs _ _ _ _ |- _ =>
         pose proof (elim_fill_ok_gen _ _ _ _ Hf (cmd_lits_ok_gen _ _ _ _ _ Hl Hd0)) as Hd2;
-        rename Hcs into Hrest; rename Hc into Hrun
+        assert (c3 = c2) by (destruct c2; try contradiction; exact (fill_cmd_generated _ _ _ _ Ha _ eq_refl));
+        subst c3; rename Hcs into Hrest; rename Hc into Hrun
     end.
     assert (Hstep : forall Ξn, ⊢ᵍ Θ ⍮ Ξn -> gc_sub Θ Ξ Θ Ξn ->
               Θ ⍮ Ξn ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
@@ -2910,13 +3634,42 @@ Section WellFormed.
       pose proof (stack_in_shape _ _ _ (proj2 (proj2 (proj2 run_params)) _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm) Hst) as Hst1.
       destruct (IHm HΞ Hc Hst Hu Hb HR) as [Hb1 HR1].
       exact (IHr H1 Hc1 Hst1 Hb1 HR1).
-    - intros * _ _ _ _ _ _ _ _ _ _ Hd HΞ _ _ Hb HR; split; [| exact HR ].
+    - intros * _ _ _ Hd HΞ _ _ Hb HR; split; [| exact HR ].
       revert Hb; apply builtins_wf_mono; intros; eapply mdefs_run_ind_lookup; eassumption.
     - (* a binding: of a type read here *)
       intros ch B Rb B' Θ Ξ H p D z0 s0 _ Hl Hs Ho Hso Hbd _ _ _ Hb HR; split; [| exact HR ].
       eapply bt_merge_wf; [ exact Hb | | exact Hbd ].
       intros p1 Hq; cbn in Hq; injection Hq as <-; exact (mk_nat_binding_ok _ _ _ D z0 s0 Hs Ho Hso).
     - intros * _ _ _ _ _ Hfr HΞ _ _ Hb HR; split; [ apply Hadd; assumption | exact HR ].
+    - (* a record: read in its module's frame, then in the record it becomes *)
+      intros ch B Rb Θ Ξ x pv Δ Srt fs cs B1 Rb1 Θ1 Ξ1 B' Rb' Θ' mp' K' U Hfr HE Hr1 IH1 Hr2 IH2 HΞ Hc Hst Hb HR.
+      destruct Ξ as [| [[mq Kq] Uq] Ξ0]; [ contradiction |].
+      destruct (record_nil_entry_params _ _ _ _ _ _ _ _ HE) as [Htel HΔ].
+      assert (Hff : frame_fresh Θ ((mq, Kq, Uq) :: Ξ0) (ind_qname ((mq, Kq, Uq) :: Ξ0) x))
+        by (cbn; exists x; split; [ reflexivity | exact Hfr ]).
+      assert (Hpush : ⊢ᵍ Θ ⍮ gs_push_record (ind_qname ((mq, Kq, Uq) :: Ξ0) x)
+                              (record_at ((mq, Kq, Uq) :: Ξ0) Δ Srt fs) Δ ((mq, Kq, Uq) :: Ξ0))
+        by (apply wf_gstack_cons; [ exact HΞ | eapply wf_gmod_record_nil; [ exact Htel | exact HΔ | exact HE | reflexivity ]
+                                  | exact Hff ]).
+      pose proof (stack_in_push_record _ x (record_at ((mq, Kq, Uq) :: Ξ0) Δ Srt fs) Δ _ Hst Hfr) as Hst'.
+      match type of Hpush with ⊢ᵍ _ ⍮ ?Xp =>
+        assert (Hb0 : builtins_wf Θ Xp B)
+          by (eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_push; exact Hff | eassumption ]
+                                       | exact Hb ]) end.
+      destruct (proj1 (proj2 run_wf) _ _ _ _ _ _ _ _ _ _ Hr1 Hpush Hc Hst') as (H1 & Hc1 & _).
+      destruct (IH1 Hpush Hc Hst' Hb0 HR) as [Hb1 HR1].
+      pose proof (stack_in_shape _ _ _ (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr1) Hst') as Hst1.
+      destruct (proj1 (proj2 run_wf) _ _ _ _ _ _ _ _ _ _ Hr2 H1 Hc1 Hst1) as (H2 & Hc2 & _).
+      destruct (IH2 H1 Hc1 Hst1 Hb1 HR1) as [Hb2 HR2].
+      pose proof (eq_trans (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr2) (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr1))
+        as Hp; cbn in Hp; injection Hp as -> -> HP.
+      destruct (wf_gstack_cons_inv _ _ _ _ _ H2) as (H10 & [Δ1 Φ -> HΦ] & _); cbn in HP; subst Δ1.
+      split; [| exact HR2 ].
+      eapply builtins_wf_mono; [| exact Hb2 ].
+      intros p0 D0 Hl; exact (ind_lookup_close _ ((mq, Kq, Uq) :: Ξ0) x pv
+                                (fk_record (record_at ((mq, Kq, Uq) :: Ξ0) Δ Srt fs))
+                                (ce_ass (record_self (ind_qname ((mq, Kq, Uq) :: Ξ0) x) (record_at ((mq, Kq, Uq) :: Ξ0) Δ Srt fs)) :: Δ)
+                                Φ _ _ H10 Hfr (ex_intro _ Δ (conj eq_refl eq_refl)) Hl).
     - intros; split; assumption.
     - intros; split; assumption.
     - (* a generated definition: as a definition *)
@@ -2940,13 +3693,13 @@ Section WellFormed.
       eapply builtins_wf_mono; [| exact Hb' ].
       intros p0 D0 Hl; apply (ind_lookup_close _ ((mp, K, gu_mk P Φ) :: Ξ0) x pv fk_module); [ exact HΞ0 | exact Hfr | exact I | exact Hl ].
     - intros; split; assumption.
-    - intros * _ _ _ Hr1 IH1 _ IH2 HΞ Hc Hst Hb HR.
+    - intros * _ _ _ _ Hr1 IH1 _ IH2 HΞ Hc Hst Hb HR.
       destruct (proj1 run_wf _ _ _ _ _ _ _ _ _ _ Hr1 HΞ Hc Hst) as (H1 & Hc1 & _).
       pose proof (stack_in_shape _ _ _ (proj1 run_params _ _ _ _ _ _ _ _ _ _ Hr1) Hst) as Hst1.
       destruct (IH1 HΞ Hc Hst Hb HR) as [Hb1 HR1].
       exact (IH2 H1 Hc1 Hst1 Hb1 HR1).
     - (* a unit: its imports, its frame pushed, then filed *)
-      intros fp ch B1 Rb1 B2 Rb2 imps P0 P1 P cs Θ1 Θ2 mp K U Hi IHi _ _ Htel HP _ Hbd IHb.
+      intros fp ch B1 Rb1 B2 Rb2 imps P0 P1 P2 P cs Θ1 Θ2 mp K U Hi IHi _ _ _ Htel HP _ Hbd IHb.
       assert (Hnil : ⊢ᵍ nil ⍮ nil) by (constructor; constructor).
       destruct (proj1 (proj2 run_wf) _ _ _ _ _ _ _ _ _ _ Hi Hnil canon_nil ltac:(intros ? ? ? [])) as (H1 & Hc1 & _).
       assert (Hn1 : gds_lookup Θ1 fp = None)
@@ -3213,16 +3966,19 @@ Section Runs.
     - intros; eapply rc_mdef; eassumption.
     - intros; eapply rc_builtin; eassumption.
     - intros; eapply rc_ind_alias; eassumption.
+    - intros * Hfr HE Hr1 IH1 Hr2 IH2 ch' Hch.
+      eapply rc_record; [ exact Hfr | exact HE | apply IH1; eapply Hpre; eassumption | apply IH2; exact Hch ].
     - intros; apply rc_eval_check; assumption.
     - intros; eapply rc_eval_infer; eassumption.
     - intros; apply rc_gen_def; assumption.
     - intros; eapply rc_gen_mod; eauto.
     - intros; constructor.
-    - intros * Ha Hl Hf Hr1 IH1 Hr2 IH2 ch' Hch.
-      econstructor; [ exact Ha | exact Hl | exact Hf | apply IH1; eapply Hpre; eassumption | auto ].
-    - intros fp ch B1 Rb1 B2 Rb2 imps P P1 P2 cs Θ1 Θ2 mp K U Hi IHi Hl Hf Htel HP Ha Hb IHb ch' Hch.
+    - intros * Ha Hl Hf Hfa Hr1 IH1 Hr2 IH2 ch' Hch.
+      econstructor; [ exact Ha | exact Hl | exact Hf | exact Hfa | apply IH1; eapply Hpre; eassumption | auto ].
+    - intros fp ch B1 Rb1 B2 Rb2 imps P P1 P2 P3 cs Θ1 Θ2 mp K U Hi IHi Hl Hf Hfa Htel HP Ha Hb IHb ch' Hch.
       cbn [hd] in *; econstructor;
-        [ apply IHi; eapply Hpre; eassumption | eassumption | eassumption | assumption | assumption | assumption | auto ].
+        [ apply IHi; eapply Hpre; eassumption | eassumption | eassumption | eassumption | assumption | assumption
+        | assumption | auto ].
     - intros; constructor.
     - intros * HM Hfr HE Hr IHr Hrest IHrest ch' Hch.
       econstructor; [ exact HM | exact Hfr | exact HE | apply IHr; eapply Hpre'; eassumption | apply IHrest; exact Hch ].
@@ -3258,6 +4014,68 @@ Section Runs.
   Proof.
     intros * H; destruct (proj1 (proj2 run_tl) _ _ _ _ _ _ _ _ _ _ H) as [_ Hl].
     destruct Ξ'; [ reflexivity | discriminate ].
+  Qed.
+
+  (** A name taken in the innermost frame stays taken: a run only adds
+      entries to the frame it runs in. *)
+  Lemma run_fresh_back :
+    (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
+       forall y, gs_fresh y Ξ' -> gs_fresh y Ξ) /\
+    (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
+       forall y, gs_fresh y Ξ' -> gs_fresh y Ξ) /\
+    (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U -> True) /\
+    (forall ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ', run_ind_members ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ' ->
+       forall y, gs_fresh y Ξ' -> gs_fresh y Ξ).
+  Proof.
+    assert (Hg : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> forall y, gs_fresh y Ξ' -> gs_fresh y Ξ)
+      by (induction 1; intros y Hy; [ exact Hy | .. ]; exact (proj1 (gs_fresh_add_inv _ _ _ _ (IHgens_run _ Hy)))).
+    assert (Hm : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> forall y, gs_fresh y Ξ' -> gs_fresh y Ξ)
+      by (induction 1; intros y Hy; [ exact Hy | exact (proj1 (gs_fresh_add_inv _ _ _ _ (IHmdefs_run _ Hy))) ]).
+    apply run_mut_ind; intros; try exact I;
+      repeat match goal with H : gs_fresh _ (gs_add _ _ _) |- _ => apply gs_fresh_add_inv in H as [H _] end;
+      try solve [ eauto ].
+    (* a member: the rest of the group from the frame with it added *)
+    match goal with
+    | H : forall y, gs_fresh y ?X -> gs_fresh y (gs_add _ _ ?Z), Hy : gs_fresh ?y ?X |- gs_fresh ?y ?Z =>
+        exact (proj1 (gs_fresh_add_inv _ _ _ _ (H _ Hy)))
+    end.
+  Qed.
+
+  (** A command that declares a name runs only where the name is fresh. *)
+  Lemma run_decl_fresh : forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ' y,
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> cmd_decl_name c = Some y -> gs_fresh y Ξ.
+  Proof. intros * H Hn; inversion H; subst; cbn in Hn; try discriminate; injection Hn as <-; assumption. Qed.
+
+  (** No command of a run declares a name taken where the run starts. *)
+  Lemma run_cmds_taken : forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ',
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
+      forall c y, In c cs -> cmd_decl_name c = Some y -> ~ gs_fresh y Ξ -> False.
+  Proof.
+    intros * H; induction H as [| ch B Rb Θ Ξ c0 c1 c2 c3 cs B1 Rb1 Θ1 Ξ1 B2 Rb2 Θ2 Ξ2 _ Hl Hf Hfa Hr _ IH];
+      intros c y Hin Hn Ht; [ destruct Hin |].
+    destruct Hin as [<- | Hin].
+    - apply Ht; eapply run_decl_fresh; [ exact Hr |].
+      rewrite <- Hn, (fill_cmd_name _ _ _ _ Hfa); destruct Hf as (rs & _ & <-); rewrite cmd_fill_name;
+        exact (cmd_lits_name _ _ _ Hl).
+    - apply (IH c y Hin Hn); intros Hy; apply Ht; exact (proj1 run_fresh_back _ _ _ _ _ _ _ _ _ _ Hr _ Hy).
+  Qed.
+
+  (** After its field definitions, each field of a record is taken in its
+      module's frame. *)
+  Lemma record_field_cmds_taken : forall ch B Rb Θ Ξ R B' Rb' Θ' Ξ' f,
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ record_field_cmds R ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
+      In f (List.map fst (record_fields R)) -> ~ gs_fresh f Ξ'.
+  Proof.
+    intros ch B Rb Θ Ξ R B' Rb' Θ' Ξ' f; unfold record_field_cmds; generalize 0.
+    revert B Rb Θ Ξ; induction (record_fields R) as [| [g T] fs IH]; intros B Rb Θ Ξ k Hr Hin; [ destruct Hin |].
+    cbn in Hr; inversion Hr as [| ? ? ? ? ? ? c1 c2 c3 ? B1 Rb1 Θ1 Ξ1 ? ? ? ? _ Hl Hf Hfa Hc Hcs]; subst.
+    unfold cmd_lits_ok in Hl; cbn [cmd_lits] in Hl; injection Hl as <-.
+    destruct Hf as (rs & _ & <-); cbn [cmd_fill] in Hfa.
+    rewrite (fill_cmd_generated _ _ _ _ Hfa _ eq_refl) in Hc.
+    inversion Hc; subst.
+    destruct Hin as [<- | Hin]; [| exact (IH _ _ _ _ _ Hcs Hin) ].
+    intros Hy; apply (proj1 (proj2 run_fresh_back) _ _ _ _ _ _ _ _ _ _ Hcs) in Hy.
+    apply gs_fresh_add_inv in Hy as [_ Hne]; exact (Hne eq_refl).
   Qed.
 
 End Runs.

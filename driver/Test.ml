@@ -3669,10 +3669,10 @@ let%expect_test "an eliminator with two branches for a constructor is rejected" 
                         def f (n : N) : N := elim n at k -> N | z => N.z | z => N.z | s m, h => m end end" in
   [%expect {| Error: the eliminator has two branches for z |}]
 
-let%expect_test "a term variable shadowing a module is not a module" =
+let%expect_test "a term variable shadowing a module is a term, of no record type" =
   let _ = main_of_body "module B where def Id : Nat := 0 end end \
                         def f (B : Nat) : Nat := B.Id end" in
-  [%expect {| Error: B is a variable, not a module |}]
+  [%expect {| Error: Id is selected from B, of type ℕ, which is not a record type |}]
 
 let%expect_test "the branches must follow the constructors' order" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
@@ -4623,3 +4623,140 @@ let%expect_test "lib/Roses.mctt" =
     Evaluate P.Flatten.lengthFlatten example --> ⋆ : ⊤
     Evaluate P.Flatten.lengthFlattenForest (children example) --> ⋆ : ⊤
     |}]
+
+(** Member access through a term: a term of a record type, in module
+    position, stands for the record's module at the term. *)
+
+let pair_decl =
+  "record Pair (A : Type@0) (B : Type@0) : Type@0 where fst : A; snd : B \
+   with def swap : Pair B A := record Pair B A where fst := snd; snd := fst end end end end "
+
+let%expect_test "a field through a term binder" =
+  let _ = main_of_body (pair_decl ^ "def first (p : Pair Nat Nat) : Nat := p.fst end \
+                                     eval first (record Pair Nat Nat where fst := 1; snd := 2 end)") in
+  [%expect {| Evaluate first (record Pair ℕ ℕ where fst ≔ 1; snd ≔ 2 end) --> 1 : ℕ |}]
+
+let%expect_test "a with-area member through a term binder" =
+  let _ = main_of_body (pair_decl ^ "def sw (p : Pair Nat Nat) : Pair Nat Nat := p.swap end \
+                                     eval (sw (record Pair Nat Nat where fst := 1; snd := 2 end)).fst") in
+  [%expect {| Evaluate (sw (record Pair ℕ ℕ where fst ≔ 1; snd ≔ 2 end)).fst --> 2 : ℕ |}]
+
+let%expect_test "a field through a term applied, with no let" =
+  let _ = main_of_body (pair_decl ^ "def mk (n : Nat) : Pair Nat Nat := record Pair Nat Nat where fst := n; snd := 0 end end \
+                                     def g (n : Nat) : Nat := (mk n).fst end eval g 7") in
+  [%expect {| Evaluate g 7 --> 7 : ℕ |}]
+
+let%expect_test "a field through a head that is no path, let-bound" =
+  let _ = main_of_body (pair_decl ^ "eval (record Pair Nat Nat where fst := 5; snd := 6 end).snd \
+                                     eval ((λ (q : Pair Nat Nat) → q) (record Pair Nat Nat where fst := 3; snd := 4 end)).fst") in
+  [%expect {|
+    Evaluate let x1 ≔ record Pair ℕ ℕ where fst ≔ 5; snd ≔ 6 end in x1.snd end
+      --> 6 : ℕ
+    Evaluate let x1 ≔
+                   (λ (x2 : Pair ℕ ℕ) → x2)
+                     (record Pair ℕ ℕ where fst ≔ 3; snd ≔ 4 end)
+             in x1.fst
+             end --> 3 : ℕ
+    |}]
+
+let%expect_test "a field through a term in a clause of a mutual definition" =
+  let _ = main_of_body (pair_decl ^ "inductive L : Type@0 where | nil | cons (p : Pair Nat Nat) (l : L) end \
+                                     mutual def sumFst (l : L) : Nat := \
+                                     | nil => 0 \
+                                     | cons p l, h => (elim p.fst at k -> Nat | zero => h | succ m, r => succ r end) \
+                                     end \
+                                     eval sumFst (L.cons (record Pair Nat Nat where fst := 3; snd := 4 end) \
+                                                   (L.cons (record Pair Nat Nat where fst := 5; snd := 0 end) L.nil))") in
+  [%expect {|
+    Evaluate sumFst
+               (L.cons (record Pair ℕ ℕ where fst ≔ 3; snd ≔ 4 end)
+                 (L.cons (record Pair ℕ ℕ where fst ≔ 5; snd ≔ 0 end) L.nil))
+      --> 8 : ℕ
+    |}]
+
+let%expect_test "a field through a term in the clauses of a mutual group" =
+  let _ = main_of_body (pair_decl ^ "mutual EO where inductive Ev : Type@0 where | ez | es (o : Od) \
+                                     with Od : Type@0 where | os (e : Ev) end end \
+                                     mutual def (q : Pair Nat Nat) \
+                                       evf (e : EO.Ev) : Nat := | ez => q.fst | es o, h => succ h \
+                                       with odf (o : EO.Od) : Nat := | os e, h => succ (succ h) \
+                                     end \
+                                     eval evf (record Pair Nat Nat where fst := 10; snd := 0 end) \
+                                       (EO.Ev.es (EO.Od.os EO.Ev.ez))") in
+  [%expect {|
+    Evaluate evf (record Pair ℕ ℕ where fst ≔ 10; snd ≔ 0 end)
+               (EO.Ev.es (EO.Od.os EO.Ev.ez)) --> 13 : ℕ
+    |}]
+
+let%expect_test "a field through a term in the clauses of a nested group, its view's too" =
+  let _ = main_of_body (pair_decl ^ "inductive Lst (A : Type@0) : Type@0 where | lnil | lcons (x : A) (xs : Lst A) end \
+                                     inductive Rose : Type@0 where | node (p : Pair Nat Nat) (ts : Lst Rose) end \
+                                     mutual def (q : Pair Nat Nat) \
+                                       fstR (r : Rose) : Nat := | node p ts, h => p.fst \
+                                       with fstL (ts : Lst Rose) : Nat := | lnil => q.snd | lcons t ts, ht hts => ht \
+                                     end \
+                                     eval fstR (record Pair Nat Nat where fst := 0; snd := 9 end) \
+                                       (Rose.node (record Pair Nat Nat where fst := 7; snd := 0 end) (Lst.lnil Rose)) \
+                                     eval fstL (record Pair Nat Nat where fst := 0; snd := 9 end) (Lst.lnil Rose)") in
+  [%expect {|
+    Evaluate fstR (record Pair ℕ ℕ where fst ≔ 0; snd ≔ 9 end)
+               (Rose.node (record Pair ℕ ℕ where fst ≔ 7; snd ≔ 0 end)
+                 (Lst.lnil Rose)) --> 7 : ℕ
+    Evaluate fstL (record Pair ℕ ℕ where fst ≔ 0; snd ≔ 9 end) (Lst.lnil Rose)
+      --> 9 : ℕ
+    |}]
+
+let%expect_test "a field through a global definition" =
+  let _ = main_of_body (pair_decl ^ "def p : Pair Nat Nat := record Pair Nat Nat where fst := 1; snd := 2 end end \
+                                     module M where def q : Pair Nat Nat := record Pair Nat Nat where fst := 3; snd := 4 end end end \
+                                     eval p.fst eval p.snd eval M.q.fst") in
+  [%expect {|
+    Evaluate p.fst --> 1 : ℕ
+    Evaluate p.snd --> 2 : ℕ
+    Evaluate M.q.fst --> 3 : ℕ
+    |}]
+
+let%expect_test "an eliminator's annotation with an access through a term at its head" =
+  let _ = main_of_body "record R : Type@1 where carrier : Type@0 with inductive T : Type@0 where | t end end end \
+                        def f (q : R) (z : q.T) : Nat := elim z at (w : q.T) -> Nat | t => 0 end end" in
+  [%expect {|
+    Error: the head of an eliminator's annotation, q.T,
+      cannot be an access through a term;
+      name the type through its record, R.T As q
+    |}]
+
+let%expect_test "an eliminator's annotation with an access through a term in its arguments" =
+  let _ = main_of_body "inductive Vec (A : Type@0) : Type@0 where | vnil | vcons (x : A) (v : Vec A) end \
+                        record Carrier : Type@1 where carrier : Type@0 end \
+                        def len (q : Carrier) (v : Vec q.carrier) : Nat := \
+                          elim v at (z : Vec q.carrier) -> Nat | vnil => 0 | vcons x w, h => succ h end end \
+                        eval len (record Carrier where carrier := Nat end) (Vec.vcons Nat 1 (Vec.vnil Nat))" in
+  [%expect {|
+    Evaluate len (record Carrier where carrier ≔ ℕ end)
+               (Vec.vcons ℕ 1 (Vec.vnil ℕ)) --> 1 : ℕ
+    |}]
+
+let%expect_test "a constructor argument's type through a term" =
+  let _ = main_of_body "record Carrier : Type@1 where carrier : Type@0 end \
+                        inductive Vec (M : Carrier) : Type@0 where | vnil | vcons (x : M.carrier) (v : Vec M) end \
+                        def NatC : Carrier := record Carrier where carrier := Nat end end \
+                        eval Vec.vcons NatC 3 (Vec.vnil NatC)" in
+  [%expect {|
+    Evaluate Vec.vcons NatC 3 (Vec.vnil NatC)
+      --> Vec.vcons (record Carrier where carrier ≔ ℕ end) 3
+            (Vec.vnil (record Carrier where carrier ≔ ℕ end))
+      : Vec (record Carrier where carrier ≔ ℕ end)
+    |}]
+
+let%expect_test "a member a record's module does not have, through a term" =
+  let _ = main_of_body (pair_decl ^ "def g (q : Pair Nat Nat) : Nat := q.third end") in
+  [%expect {| Error: third is not a member of record Test.Pair: neither a field nor a member of its with-area |}]
+
+let%expect_test "a private with-area member, through a term" =
+  let _ = main_of_body "record P : Type@0 where a : Nat with private def h : Nat := 0 end end end \
+                        def g (q : P) : Nat := q.h end" in
+  [%expect {| Error: Test.P.h is private |}]
+
+let%expect_test "a field through a term of no record type" =
+  let _ = main_of_body "def g (n : Nat) (m : Nat) : Nat := m.fst end" in
+  [%expect {| Error: fst is selected from m, of type ℕ, which is not a record type |}]

@@ -4,7 +4,7 @@ From Stdlib Require Import List PeanoNat String.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Readback Evaluation.
-From Mctt.Core.Syntactic Require Import Members.
+From Mctt.Core.Syntactic Require Import Members Records.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Extraction Require Import FastEval Evaluation.
 Import Domain_Notations.
@@ -268,6 +268,13 @@ Inductive fread_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :
 | frnf_ind_neut :
   `( fread_ne_order Θ Ξ s m ->
      fread_nf_order Θ Ξ s ⇓ (d_ind p k as') (⇑ a m) )
+(** A value of a record type: the type's parameters, then the fields *)
+| frnf_record :
+  `( record_lookup Θ Ξ p = Some R ->
+     List.length ns = List.length (record_params R) ->
+     fread_ps_order Θ Ξ s nil (List.rev (record_params R)) ns ->
+     fread_fields_order Θ Ξ s (env_args nil ns) (record_fields R) v ->
+     fread_nf_order Θ Ξ s ⇓ (d_record p ns) v )
 
 with fread_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
 | frne_var :
@@ -300,6 +307,10 @@ with fread_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
      fread_blocks_order Θ Ξ s ρ p ups Bks (im_sel Mj) 0 (ind_members Dq) ->
      fread_ne_order Θ Ξ s m ->
      fread_ne_order Θ Ξ s (d_elim ρ Bks p ups j as' m) )
+(** The field of a neutral *)
+| frne_proj :
+  `( fread_ne_order Θ Ξ s m ->
+     fread_ne_order Θ Ξ s (d_proj f m) )
 
 with fread_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
 | frtyp_univ :
@@ -334,6 +345,12 @@ with fread_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
      List.length (a :: as') = im_np D Mk ->
      fread_ps_order Θ Ξ s nil (List.rev (im_params D Mk)) (a :: as') ->
      fread_typ_order Θ Ξ s (d_ind p k (a :: as')) )
+(** A record type at all its parameters *)
+| frtyp_record :
+  `( record_lookup Θ Ξ p = Some R ->
+     List.length ns = List.length (record_params R) ->
+     fread_ps_order Θ Ξ s nil (List.rev (record_params R)) ns ->
+     fread_typ_order Θ Ξ s (d_record p ns) )
 
 with fread_la_order (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> Prop :=
 | frla_nil :
@@ -351,6 +368,20 @@ with fread_ps_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> li
      (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> fread_nf_order Θ Ξ s ⇓ a v) ->
      fread_ps_order Θ Ξ s (ρ ↦ v) T vs ->
      fread_ps_order Θ Ξ s ρ (ce_ass A :: T) (v :: vs) )
+
+(** The fields of a record value, each its projection at its type *)
+with fread_fields_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> list (string * exp) -> domain -> Prop :=
+(** No field left *)
+| frflds_nil :
+  `( fread_fields_order Θ Ξ s ρ nil v )
+(** The next field: its projection, its type, its readback, then the rest
+    with the projection in the environment *)
+| frflds_cons :
+  `( feval_proj_order Θ Ξ f v ->
+     feval_exp_order Θ Ξ T ρ ->
+     (forall r t, feval_proj Θ Ξ f v r -> ⟦ T ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ t -> fread_nf_order Θ Ξ s ⇓ t r) ->
+     (forall r, feval_proj Θ Ξ f v r -> fread_fields_order Θ Ξ s (ρ ↦ r) fl v) ->
+     fread_fields_order Θ Ξ s ρ ((f, T) :: fl) v )
 
 with fread_cargs_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> list carg -> list domain -> Prop :=
 | frcargs_nil :
@@ -457,7 +488,7 @@ with fread_brs_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list do
 
 #[local]
 Hint Constructors fread_nf_order fread_ne_order fread_typ_order fread_la_order
-  fread_ps_order fread_cargs_order fread_shape_order fread_blocks_order fread_brs_order : mctt.
+  fread_ps_order fread_fields_order fread_cargs_order fread_shape_order fread_blocks_order fread_brs_order : mctt.
 
 (** Every readback derivation is within its order: by the mutual induction
     on readback, the evaluations the orders quantify over being the ones
@@ -473,7 +504,8 @@ Lemma fread_order_sound : forall Θ Ξ,
     (forall s ρ p ups Bks sel i Ms NBks, Rblksᶠ i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
        fread_blocks_order Θ Ξ s ρ p ups Bks sel i Ms) /\
     (forall s ρ p ups Bks Mv A Mi r cs Bs Bs', Rbrsᶠ Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-       fread_brs_order Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs).
+       fread_brs_order Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs) /\
+    (forall s ρ fl v Fs, Rfldsᶠ v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs -> fread_fields_order Θ Ξ s ρ fl v).
 Proof.
   intros Θ Ξ; apply fread_mut_ind; intros;
     (** A constructor at a view: its arguments are the last values, as
@@ -517,10 +549,14 @@ Lemma fread_brs_order_sound : forall Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs Bs',
     Rbrsᶠ Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' -> fread_brs_order Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs.
 Proof. intros Θ Ξ; pose proof (fread_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
+Lemma fread_fields_order_sound : forall Θ Ξ s ρ fl v Fs,
+    Rfldsᶠ v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs -> fread_fields_order Θ Ξ s ρ fl v.
+Proof. intros Θ Ξ; pose proof (fread_order_sound Θ Ξ); destruct_all; eauto. Qed.
+
 #[export]
 Hint Resolve fread_nf_order_sound fread_ne_order_sound fread_typ_order_sound fread_la_order_sound
   fread_ps_order_sound fread_cargs_order_sound fread_shape_order_sound fread_blocks_order_sound
-  fread_brs_order_sound : mctt.
+  fread_brs_order_sound fread_fields_order_sound : mctt.
 
 (** A constructor at a view, its arguments the last values, as many as the
     constructor takes ([fread_nf_con_view]). *)
@@ -545,6 +581,7 @@ Ltac impl_obl_tac1 :=
   | H : fread_typ_order _ _ _ _ |- _ => progressive_invert H
   | H : fread_la_order _ _ _ _ |- _ => progressive_invert H
   | H : fread_ps_order _ _ _ _ _ _ |- _ => progressive_invert H
+  | H : fread_fields_order _ _ _ _ _ _ |- _ => progressive_invert H
   | H : fread_cargs_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
   | H : fread_shape_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
   | H : fread_blocks_order _ _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
@@ -608,6 +645,12 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
 | s, ⇓ (d_ind p k as') (⇑ a m), ck, H =>
     let (M, HM) := fread_ne_impl_c s m ck _ in
     exist _ ⇑ⁿ M _
+| s, ⇓ (d_record p ns) v, ck, H with inspect (record_lookup Θ Ξ p) := {
+  | exist _ (Some R) El =>
+      let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (record_params R)) ns ck _ in
+      let (Fs, HFs) := fread_fields_impl_c s (env_args nil ns) (record_fields R) v ck _ in
+      exist _ (nf_tuple p Ps (List.map fst (record_fields R)) Fs) _
+  | exist _ None El => False_rect _ _ }
 
   with fread_ne_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_ne_order Θ Ξ s d) : { m | Rneᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
 | s, #ᵈ x, ck, H => exist _ #ⁿ (s - x - 1) _
@@ -634,6 +677,9 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
         | exist _ None Edq => False_rect _ _ } }
     | exist _ None Em => False_rect _ _ }
   | exist _ None Ed => False_rect _ _ }
+| s, d_proj f m, ck, H =>
+    let (M, HM) := fread_ne_impl_c s m ck _ in
+    exist _ (ne_proj f M) _
 
   with fread_typ_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_typ_order Θ Ξ s d) : { m | Rtypᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
 | s, 𝕌ω@i, ck, H => exist _ Typeωⁿ@i _
@@ -659,6 +705,11 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
         exist _ (nf_indty p k Ps) _
     | exist _ None Em => False_rect _ _ }
   | exist _ None Ed => False_rect _ _ }
+| s, d_record p ns, ck, H with inspect (record_lookup Θ Ξ p) := {
+  | exist _ (Some R) El =>
+      let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (record_params R)) ns ck _ in
+      exist _ (nf_record p Ps) _
+  | exist _ None El => False_rect _ _ }
 
   with fread_la_impl_c s xs (ck : lk_cache Θ Ξ) (H : fread_la_order Θ Ξ s xs) : { ys | Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys } by struct H :=
 | s, nil, ck, H => exist _ la_nil _
@@ -675,6 +726,16 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
     let (Vs, HVs) := fread_ps_impl_c s (ρ ↦ v) T vs ck _ in
     exist _ (nfs_cons V Vs) _
 | s, ρ, _, _, ck, H => False_rect _ _
+
+  with fread_fields_impl_c s ρ fl v (ck : lk_cache Θ Ξ) (H : fread_fields_order Θ Ξ s ρ fl v) :
+    { Fs | Rfldsᶠ v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs } by struct H :=
+| s, ρ, nil, v, ck, H => exist _ nfs_nil _
+| s, ρ, (f, T) :: fl, v, ck, H =>
+    let (r, Hr) := feval_proj_impl Θ Ξ f v _ in
+    let (t, Ht) := feval_exp_impl Θ Ξ T ρ _ in
+    let (V, HV) := fread_nf_impl_c s ⇓ t r ck _ in
+    let (Vs, HVs) := fread_fields_impl_c s (ρ ↦ r) fl v ck _ in
+    exist _ (nfs_cons V Vs) _
 
   with fread_cargs_impl_c s p ups ρ gs vs (ck : lk_cache Θ Ξ) (H : fread_cargs_order Θ Ξ s p ups ρ gs vs) :
     { Ms | Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms } by struct H :=
@@ -774,6 +835,10 @@ Ltac rb_glob :=
         rewrite H1 in H2; first [ discriminate H2 | injection H2; clear H2; intros; subst ]
     | H1 : im_ref ?p ?j ?M = _, H2 : im_ref ?p ?j ?M = _ |- _ =>
         rewrite H1 in H2; injection H2; clear H2; intros; subst
+    (** A record, looked up once *)
+    | H1 : record_lookup _ _ ?p = Some ?x, H2 : record_lookup _ _ ?p = Some ?y |- _ =>
+        assert_fails (constr_eq x y);
+        rewrite H1 in H2; injection H2; clear H2; rb_unify x y
     (** The member a member stands for, at the reference the order records *)
     | Hm : feval_mref _ _ ?p _ ?j (?a, ?b, _), Hl : ind_lookup _ _ ?p = Some _, Hj : ind_member _ ?j = Some _,
       Hr : im_ref ?p ?j _ = (?c, ?d) |- _ =>
@@ -820,6 +885,8 @@ Ltac rb_obl_auto :=
       first [ solve [ match goal with H : fread_typ_order _ _ _ (d_ind _ _ (_ :: _)) |- _ =>
                         inversion H; subst; rb_glob; assumption end ]
             | rb_ord | rb_run ]
+  | |- fread_fields_order _ _ _ _ _ _ => first [ rb_ord | rb_run ]
+  | |- feval_proj_order _ _ _ _ => first [ rb_ord | rb_run ]
   | |- fread_cargs_order _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- fread_shape_order _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- fread_blocks_order _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
@@ -902,6 +969,7 @@ Extraction Inline fread_nf_impl_c_functional
   fread_typ_impl_c_functional
   fread_la_impl_c_functional
   fread_ps_impl_c_functional
+  fread_fields_impl_c_functional
   fread_cargs_impl_c_functional
   fread_shape_impl_c_functional
   fread_blocks_impl_c_functional

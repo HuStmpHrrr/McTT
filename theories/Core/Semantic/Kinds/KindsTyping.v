@@ -208,7 +208,7 @@ Section Match.
   Lemma kmatch_ext : forall Φ y E Γ ρ1, kmatch (body_ctx Φ ++ Γ) ρ1 ->
       kmatch (body_ctx (gm_ext Φ y E) ++ Γ) (kbentry ρ1 E :: ρ1).
   Proof.
-    intros * H; destruct E as [b pv A [M |] | pm U | pv D Φd | pv Δ p Ns]; cbn [body_ctx kbentry app];
+    intros * H; destruct E as [b pv A [M |] | pm U | pv D Φd | pv Δ p Ns | pr Rr Φr]; cbn [body_ctx kbentry app];
       first [ apply kmatch_cons_mod; [ exact H | apply kequiv_refl ]
             | apply kmatch_cons_term; [ exact H | discriminate ] ].
   Qed.

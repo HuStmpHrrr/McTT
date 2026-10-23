@@ -95,6 +95,12 @@ Inductive domain : Set :=
     [t] at [f c], the motives [As] of the members in [ρm], the shape's
     components in [ρ] extended by [c]. *)
 | d_ihfam : list dentry -> list exp -> list dentry -> ptyp -> domain -> domain
+(** [d_record p ns]: the type former of the record at [p] applied to
+    [ns]; a type once [ns] holds all its parameters, a function before *)
+| d_record : qname -> list domain -> domain
+(** A record value: its fields' values, by name.  It carries no
+    parameters. *)
+| d_tuple : list (string * domain) -> domain
 with domain_ne : Set :=
 (** [x] is a de Bruijn level, not an index: it names a variable absolutely and
     does not change under binders. *)
@@ -111,6 +117,8 @@ with domain_ne : Set :=
     a view, the container's member).  [ups] are the group's uniform
     parameters, which its eliminator carries. *)
 | d_elim : list dentry -> list eblock -> qname -> list domain -> nat -> list domain -> domain_ne -> domain_ne
+(** The field [f] of a neutral of a record type *)
+| d_proj : string -> domain_ne -> domain_ne
 with domain_nf : Set :=
 (** [d_dom a m]: the value [m] at the type [a], to be read back *)
 | d_dom : domain -> domain -> domain_nf

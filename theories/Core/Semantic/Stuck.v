@@ -25,6 +25,8 @@ Fixpoint nf_stuck (G : qname -> Prop) (W : nf) : Prop :=
   | nf_pi A B | nf_fn A B => nf_stuck G A /\ nf_stuck G B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => nfs_stuck G Ms
   | nf_neut M => ne_stuck G M
+  | nf_record _ Ms => nfs_stuck G Ms
+  | nf_tuple _ Ms _ Ns => nfs_stuck G Ms /\ nfs_stuck G Ns
   end
 with ne_stuck (G : qname -> Prop) (M : ne) : Prop :=
   match M with
@@ -33,6 +35,7 @@ with ne_stuck (G : qname -> Prop) (M : ne) : Prop :=
   | ne_app M N => ne_stuck G M /\ nf_stuck G N
   | ne_var _ => True
   | ne_glob p => G p
+  | ne_proj _ M => ne_stuck G M
   end
 with la_stuck (G : qname -> Prop) (xs : lvl_atoms) : Prop :=
   match xs with
@@ -125,6 +128,10 @@ Inductive dstuck : domain -> Prop :=
     environments, and the argument *)
 | dstuck_ihfam : forall (ρm : env) As (ρ : env) t f, (forall x, destuck (env_entry ρm x)) -> (forall x, destuck (env_entry ρ x)) ->
     dstuck f -> dstuck (d_ihfam ρm As ρ t f)
+(** A record type former: its arguments *)
+| dstuck_record : forall p args, (forall a, In a args -> dstuck a) -> dstuck (d_record p args)
+(** A record value: its fields *)
+| dstuck_tuple : forall vs, (forall f a, In (f, a) vs -> dstuck a) -> dstuck (d_tuple vs)
 with dstuck_ne : domain_ne -> Prop :=
 (** A variable *)
 | dstuck_var : forall x, dstuck_ne (#ᵈ x)
@@ -142,6 +149,8 @@ with dstuck_ne : domain_ne -> Prop :=
     (forall x, destuck (env_entry ρ x)) -> (forall a, In a ups -> dstuck a) ->
     (forall a, In a args -> dstuck a) -> dstuck_ne m ->
     dstuck_ne (d_elim ρ Bks p ups j args m)
+(** The field of a neutral: the neutral *)
+| dstuck_proj : forall f m, dstuck_ne m -> dstuck_ne (d_proj f m)
 with dstuck_nf : domain_nf -> Prop :=
 | dstuck_dom : forall a m, dstuck a -> dstuck m -> dstuck_nf (⇓ a m)
 with dmstuck : dmod -> Prop :=
@@ -172,6 +181,8 @@ Definition ups_stuck (ups : list domain) : Prop := forall a, In a ups -> dstuck 
 (** Nor are the rules of inductive types, whose premises are about all the
     members of a list: [all_in_with] reaches them instead. *)
 #[local] Remove Hints dstuck_indty dstuck_con dstuck_elim dstuck_shfam dstuck_ihfn dstuck_ihfam : mctt.
+(** Nor are those of records, for the same reason. *)
+#[local] Remove Hints dstuck_record dstuck_tuple : mctt.
 #[local] Hint Unfold env_stuck : mctt.
 
 Lemma env_stuck_nil : env_stuck nil.
@@ -198,6 +209,23 @@ Qed.
 Lemma stuck_app_snoc : forall (args : list domain) n,
     (forall a, In a args -> dstuck a) -> dstuck n -> forall a, In a (args ++ n :: nil) -> dstuck a.
 Proof. intros * H Hn a Ha; apply in_app_or in Ha as [Ha | [<- | []]]; auto. Qed.
+
+Lemma stuck_app : forall (l1 l2 : list domain),
+    (forall a, In a l1 -> dstuck a) -> (forall a, In a l2 -> dstuck a) -> forall a, In a (l1 ++ l2) -> dstuck a.
+Proof. intros * H1 H2 a Ha; apply in_app_or in Ha as [Ha | Ha]; auto. Qed.
+
+(** The neutral projections of the fields of a neutral of a record type,
+    one more: the next one at its type, then the rest after it. *)
+Lemma nflds_cons_stuck : forall t m g rs pre ns,
+    dstuck t -> (forall x, In x ns -> dstuck x) -> dstuck_ne m -> (forall x, In x pre -> dstuck x) ->
+    ((forall x, In x ns -> dstuck x) -> dstuck_ne m ->
+       (forall y, In y (pre ++ ⇑ t (d_proj g m) :: nil) -> dstuck y) -> forall z, In z rs -> dstuck z) ->
+    forall d, In d (⇑ t (d_proj g m) :: rs) -> dstuck d.
+Proof.
+  intros * Ht Hns Hm Hpre IH d [<- | Hd]; [ constructor; [ exact Ht | constructor; exact Hm ] |].
+  apply (IH Hns Hm); [| exact Hd ].
+  apply stuck_app_snoc; [ exact Hpre | constructor; [ exact Ht | constructor; exact Hm ] ].
+Qed.
 
 Lemma env_stuck_entry : forall ρ x, env_stuck ρ -> destuck (env_entry ρ x).
 Proof. intros * H; exact (H x). Qed.
@@ -259,7 +287,10 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
        ups_stuck ups -> dstuck v -> dstuck r) /\
     (forall p ups j r, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r -> (forall u, In u ups -> dstuck u) -> forall a, In a (snd r) -> dstuck a) /\
     (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> (forall u, In u ups -> dstuck u) -> env_stuck ρ -> dstuck a) /\
-    (forall ρm As ρ t v a, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> env_stuck ρm -> env_stuck ρ -> dstuck v -> dstuck a).
+    (forall ρm As ρ t v a, ⟦ihty v of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> env_stuck ρm -> env_stuck ρ -> dstuck v -> dstuck a) /\
+    (forall f m r, eval_proj Θ Ξ f m r -> dstuck m -> dstuck r) /\
+    (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs -> (forall a, In a ns -> dstuck a) -> dstuck_ne m ->
+       (forall a, In a pre -> dstuck a) -> forall a, In a rs -> dstuck a).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => env_stuck ρ -> dstuck m)
@@ -281,8 +312,45 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
              (fun ρ p ups Bks t v r _ => env_stuck ρ -> ups_stuck ups -> dstuck v -> dstuck r)
              (fun p ups j r _ => (forall u, In u ups -> dstuck u) -> forall a, In a (snd r) -> dstuck a)
              (fun p ups ρ t a _ => (forall u, In u ups -> dstuck u) -> env_stuck ρ -> dstuck a)
-             (fun ρm As ρ t v a _ => env_stuck ρm -> env_stuck ρ -> dstuck v -> dstuck a));
+             (fun ρm As ρ t v a _ => env_stuck ρm -> env_stuck ρ -> dstuck v -> dstuck a)
+             (fun f m r _ => dstuck m -> dstuck r)
+             (fun ns m fl pre rs _ => (forall a, In a ns -> dstuck a) -> dstuck_ne m ->
+                (forall a, In a pre -> dstuck a) -> forall a, In a rs -> dstuck a));
       intros; cbn [snd] in *.
+    (* records: a type former's arguments, a tuple's fields, and the
+       projections of a neutral at their types *)
+    all: try solve [ apply dstuck_record; intros ? [] ].
+    all: try solve [ match goal with
+      | IH : env_stuck ?ρ -> forall x, In x ?vs -> dstuck x, Hρ : env_stuck ?ρ |- dstuck (d_tuple (List.combine _ ?vs)) =>
+          apply dstuck_tuple; intros f a Hin; apply (IH Hρ), (List.in_combine_r _ _ _ _ Hin)
+      end ].
+    all: try solve [ match goal with
+      | IHp : dstuck ?m -> dstuck ?r, IHM : env_stuck ?ρ -> dstuck ?m, Hρ : env_stuck ?ρ |- dstuck ?r =>
+          exact (IHp (IHM Hρ))
+      end ].
+    all: try solve [ match goal with
+      | H : dstuck (d_record _ _) |- dstuck (d_record _ (_ ++ _ :: nil)) =>
+          inversion_clear H; apply dstuck_record, stuck_app_snoc; assumption
+      end ].
+    all: try solve [ match goal with
+      | H : dstuck (d_tuple ?vs), Hl : field_lookup ?vs _ = Some ?r |- dstuck ?r =>
+          inversion H; subst; eauto using field_lookup_In
+      end ].
+    all: try solve [ match goal with
+      | H : dstuck (⇑ (d_record _ ?ns) ?m), Hk : List.nth_error ?rs _ = Some ?r,
+        IH : (forall x, In x ?ns -> dstuck x) -> dstuck_ne ?m -> (forall y, In y nil -> dstuck y) -> forall z, In z ?rs -> dstuck z
+        |- dstuck ?r =>
+          inversion H; subst;
+          match goal with Hrec : dstuck (d_record _ _), Hm : dstuck_ne _ |- _ =>
+            inversion Hrec; subst;
+            eapply IH; [ eassumption | exact Hm | intros ? [] | eapply List.nth_error_In; exact Hk ] end
+      end ].
+    all: try solve [ match goal with Hin : In _ nil |- _ => destruct Hin end ].
+    all: try solve [ match goal with
+      | IHT : env_stuck (env_args nil (?ns ++ ?pre)) -> dstuck ?t, Hin : In ?d (⇑ ?t (d_proj _ ?m) :: ?rs) |- dstuck ?d =>
+          eapply (nflds_cons_stuck t m _ rs pre ns);
+            [ apply IHT, env_stuck_args; [ exact env_stuck_nil | apply stuck_app; eassumption ] | eassumption .. ]
+      end ].
     all: repeat match goal with
            | H : dstuck (d_ind _ _ _) |- _ => inversion_clear H
            | H : dstuck (d_con _ _ _ _) |- _ => inversion_clear H
@@ -389,9 +457,12 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
     all: try solve [ match goal with
       | Hin : In ?a (cons _ _) |- _ => destruct Hin as [<- | Hin]; eauto with mctt end ].
     all: try solve [ eauto 6 with mctt ].
-    (* the module of an inductive type: the type former, applied *)
-    all: try solve [ match goal with IH : dstuck (d_ind _ _ nil) -> _ -> dstuck ?r |- dstuck ?r =>
-                       apply IH; [ first [ constructor; intros ? [] | repeat constructor ] | assumption ] end ].
+    (* the module of an inductive type, a record type: the type former, applied *)
+    all: try solve [ match goal with
+                     | IH : dstuck (d_ind _ _ nil) -> _ -> dstuck ?r |- dstuck ?r =>
+                         apply IH; [ first [ constructor; intros ? [] | repeat constructor ] | assumption ]
+                     | IH : dstuck (d_record _ nil) -> _ -> dstuck ?r |- dstuck ?r =>
+                         apply IH; [ constructor; intros ? [] | assumption ] end ].
     (* a local open, and a name it declares: the entry its open makes *)
     all: try solve [ match goal with
       | IH2 : env_stuck ?ρ1 -> env_stuck ?ρ2, IH1 : env_stuck ?ρ -> env_stuck ?ρ1, Hρ : env_stuck ?ρ |- env_stuck ?ρ2 =>
@@ -459,7 +530,7 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
       Fihs vs at gs' gs under ρ A in Θ ⍮ Ξ ⍮ ρa ⍮ s ↘ ihs -> env_stuck ρ -> env_stuck ρa -> (forall a, In a vs -> dstuck a) ->
       forall a, In a ihs -> dstuck a.
   Proof.
-    destruct eval_stuck as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hit).
+    destruct eval_stuck as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hit & _).
     induction 1; intros Hρ Hρa Hv; [ apply all_in_nil | apply IHfresh_ihs; [ assumption | stuck_env | all_in_with assumption ] | |].
     - assert (dstuck a) by (eapply Hit; [ eassumption | assumption | assumption | apply Hv; left; reflexivity ]).
       apply all_in_cons; [ stuck_val | apply IHfresh_ihs; [ assumption | assumption | all_in_with assumption ] ].
@@ -533,9 +604,11 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
        env_stuck ρ -> ups_stuck ups -> nblocks_stuck (gstuck Θ Ξ) NBks) /\
     (forall s ρ p ups Bks Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
        env_stuck ρ -> ups_stuck ups -> (forall a, In a (snd r) -> dstuck a) ->
-       nbrs_stuck (gstuck Θ Ξ) Bs').
+       nbrs_stuck (gstuck Θ Ξ) Bs') /\
+    (forall s ρ fl v Fs, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs ->
+       env_stuck ρ -> dstuck v -> nfs_stuck (gstuck Θ Ξ) Fs).
   Proof.
-    destruct eval_stuck as (He & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hm & Hsh & _).
+    destruct eval_stuck as (He & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hm & Hsh & _ & Hpj & _).
     apply (read_mut_ind Θ Ξ
              (fun s m W _ => dstuck_nf m -> nf_stuck (gstuck Θ Ξ) W)
              (fun s m M _ => dstuck_ne m -> ne_stuck (gstuck Θ Ξ) M)
@@ -549,8 +622,14 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
              (fun s ρ p ups Bks sel i Ms NBks _ => env_stuck ρ -> ups_stuck ups ->
                                                       nblocks_stuck (gstuck Θ Ξ) NBks)
              (fun s ρ p ups Bks Mv A Mi r cs Bs Bs' _ => env_stuck ρ -> ups_stuck ups ->
-                                                            (forall a, In a (snd r) -> dstuck a) -> nbrs_stuck (gstuck Θ Ξ) Bs'));
+                                                            (forall a, In a (snd r) -> dstuck a) -> nbrs_stuck (gstuck Θ Ξ) Bs')
+             (fun s ρ fl v Fs _ => env_stuck ρ -> dstuck v -> nfs_stuck (gstuck Θ Ξ) Fs));
       intros; cbn [snd] in *; cbn;
+      (* a field of a value: stuck as the value is *)
+      repeat match goal with
+        | H : eval_proj _ _ _ ?v ?r, Hv : dstuck ?v |- _ =>
+            let h := fresh "Hs" in assert (h : dstuck r) by exact (Hpj _ _ _ H Hv); clear H
+        end;
       repeat match goal with
         | H : dstuck (_ _) |- _ => inversion_clear H
         | H : dstuck (_ _ _) |- _ => inversion_clear H

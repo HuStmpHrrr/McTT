@@ -33,7 +33,7 @@ From Stdlib Require Import Lia List Classes.RelationClasses Setoid Morphisms.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Export Substitution Members.
+From Mctt.Core.Syntactic Require Export Substitution Members Records.
 From Mctt.Core.Syntactic.Inductives Require Export Inductives.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
@@ -350,6 +350,53 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Γ ∋ #x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ #x : A )
+(** The type former of a record, of the type its declaration gives: a [Π]
+    over its parameters of its sort.  The facts about the declaration are
+    premises, as for [wf_con], so that the semantic models read them off
+    the derivation: the field names are distinct, the parameters are
+    assumptions, the type is a closed type, the fields' context is well
+    formed, the sort is a universe over the parameters, and each field is
+    a type in the sort over the fields before it and the parameters. *)
+| wf_record :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     record_lookup Θ Ξ p = Some R ->
+     List.NoDup (List.map fst (record_fields R)) ->
+     tele_ass (record_params R) ->
+     Θ ⍮ Ξ ⍮ ⋅ ⊢ record_ty R : Typeω@i ->
+     ⊢ Θ ⍮ Ξ ⍮ record_fctx R (List.length (record_fields R)) ++ record_params R ->
+     Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R ->
+     (forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
+        Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : (record_sort R)[wk_shiftn k]ʷ) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_record p : record_ty R )
+(** An element of a record type [T], the type former at the parameters
+    [Ns]: the fields by name in the declaration's order, each at its type
+    at the parameters and the values of the fields before it.  [T] is
+    premised to be a type, as the type of [wf_mem] is. *)
+| wf_tuple :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ T : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ apps_exp (a_record p) Ns : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_record p : record_ty R ->
+     record_lookup Θ Ξ p = Some R ->
+     List.length Ns = List.length (record_params R) ->
+     (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ N : A) ->
+     List.map fst fs = List.map fst (record_fields R) ->
+     (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ M : U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))]) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple T fs : T )
+(** A field, at its type at the parameters and the projections of the
+    fields before it.  That type is premised to be a type, as the type of
+    [wf_mem] is. *)
+| wf_proj :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : apps_exp (a_record p) Ns ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_record p : record_ty R ->
+     record_lookup Θ Ξ p = Some R ->
+     List.length Ns = List.length (record_params R) ->
+     (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ N : A) ->
+     List.nth_error (record_fields R) k = Some (f, U) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f M : U[sb_of_list Id (Ns ++ record_pre R k M)] )
 (** Subsumption: a term is at every type above its type. *)
 | wf_exp_subtyp :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
@@ -696,6 +743,76 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_true_eta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊤ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ ⋆ : ⊤ )
+(** *** Records *)
+(** The record type former is equal to itself, with the premises of
+    [wf_record]. *)
+| wf_exp_eq_record_cong :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     record_lookup Θ Ξ p = Some R ->
+     List.NoDup (List.map fst (record_fields R)) ->
+     tele_ass (record_params R) ->
+     Θ ⍮ Ξ ⍮ ⋅ ⊢ record_ty R : Typeω@i ->
+     ⊢ Θ ⍮ Ξ ⍮ record_fctx R (List.length (record_fields R)) ++ record_params R ->
+     Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R ->
+     (forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
+        Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : (record_sort R)[wk_shiftn k]ʷ) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_record p ≈ a_record p : record_ty R )
+(** Record elements of equal types with equal fields, both sides typed.
+    The parameters are typed and the field names are the declaration's, as
+    in [wf_tuple]: the semantic models relate the two tuples at the record
+    type only at parameters they read as valid. *)
+| wf_exp_eq_tuple_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple T fs : T ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ T' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ apps_exp (a_record p) Ns : Typeω@i ->
+     record_lookup Θ Ξ p = Some R ->
+     List.length Ns = List.length (record_params R) ->
+     (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ N : A) ->
+     List.map fst fs = List.map fst (record_fields R) ->
+     List.map fst fs' = List.map fst fs ->
+     (forall k f M M' U, List.nth_error fs k = Some (f, M) -> List.nth_error fs' k = Some (f, M') ->
+        List.nth_error (record_fields R) k = Some (f, U) ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))]) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple T' fs' : T ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple T fs ≈ a_tuple T' fs' : T )
+(** The fields of equal records, at the field's type at the parameters and
+    the projections of the fields before it, with the premises of
+    [wf_proj]: the semantic models relate the two projections only at the
+    field's type; at any other type they are equal by subsumption.  The
+    right-hand side is premised at that type, as for [wf_exp_eq_tuple_cong]:
+    its own type is at the projections of [M'], equal to it only by this
+    rule at the fields before. *)
+| wf_exp_eq_proj_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : apps_exp (a_record p) Ns ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_record p : record_ty R ->
+     record_lookup Θ Ξ p = Some R ->
+     List.length Ns = List.length (record_params R) ->
+     (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ N : A) ->
+     List.nth_error (record_fields R) k = Some (f, U) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f M' : U[sb_of_list Id (Ns ++ record_pre R k M)] ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f M ≈ a_proj f M' : U[sb_of_list Id (Ns ++ record_pre R k M)] )
+(** Field-β: the field of a record element is its first field so named.
+    Both sides are premised to be of the type: the field's type at the
+    element's projections and at its fields are equal only by the field-β
+    of the fields before it. *)
+| wf_exp_eq_field_beta :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple T fs : T ->
+     field_lookup fs f = Some M ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f (a_tuple T fs) : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_proj f (a_tuple T fs) ≈ M : A )
+(** η for records: an element is the tuple of its projections.  The
+    parameters are all given, as in [wf_tuple]: the semantic models read the
+    record type only at all its parameters. *)
+| wf_exp_eq_record_eta :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : apps_exp (a_record p) Ns ->
+     record_lookup Θ Ξ p = Some R ->
+     List.length Ns = List.length (record_params R) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_tuple (apps_exp (a_record p) Ns) (record_eta_fields R M) : apps_exp (a_record p) Ns ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ a_tuple (apps_exp (a_record p) Ns) (record_eta_fields R M) : apps_exp (a_record p) Ns )
 (** *** Subsumption and the PER rules *)
 | wf_exp_eq_subtyp :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
@@ -1235,6 +1352,32 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ apps (a_ind p k) Ns : ind_ty_at D Mk Ns ->
      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ me_apps (qname_mod pm) Ns ≈ me_apps (qname_mod pm) Ns ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind_alias pv (Δ ++ gs_tele Ξ) pm p k Ns )
+(** A record type, with parameters [Δ] over the frames' parameters, before
+    the members of its module: its sort is a universe over the parameters,
+    its field names are distinct, and each field is a type in the sort
+    over the fields before it and the parameters.  The record is not filed
+    while its fields are checked, so no field mentions it: records are not
+    recursive, by construction.  No type of the declaration has a free
+    module variable ([record_mvc]), as no type in a context of assumptions. *)
+| wf_gentry_record :
+  `( record_params R = Δ ++ gs_tele Ξ ->
+     tele_ass (record_params R) ->
+     record_mvc R ->
+     Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R ->
+     List.NoDup (List.map fst (record_fields R)) ->
+     (forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
+        Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : (record_sort R)[wk_shiftn k]ʷ) ->
+     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_record pv mp R ⋄ )
+(** A record type with the body of its module: the body is checked as an
+    ordinary module over the record's own parameters and then a value of
+    the record ([record_self]), in the record's open frame, which carries
+    the declaration ([fk_record]); the declaration itself is checked where
+    the module starts ([wf_gmod_record_nil]).  The record is filed only
+    when its frame closes. *)
+| wf_gentry_record_body :
+  `( record_params R = Δ ++ gs_tele Ξ ->
+     Θ ⍮ Ξ ⍮ mp ⍮ fk_record R ⍮ ce_ass (record_self mp R) :: Δ ⊢ᵍᵐ Φ ->
+     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_record pv mp R Φ )
 where "Θ ⍮ Ξ ⍮ mp ⊢ᵉ E" := (wf_gentry Θ Ξ mp E) : type_scope
 
 (** The module at path [mp], of kind [K], with own parameters [Δ], a
@@ -1257,6 +1400,20 @@ with wf_gmod : gdeps -> gstack -> qname -> frame_kind -> ctx -> gmod -> Prop :=
      Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⊢ᵉ ge_ind pv pq k D ⋄ ->
      ind_uparams D = Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
      Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⍮ fk_ind pq k D ⍮ Δ ⊢ᵍᵐ ⋄ )
+(** The module of the record type [R], before its members: the record's
+    declaration, checked as an entry with an empty module
+    ([wf_gentry_record]), and the module's parameters: the record's own,
+    over the frames' parameters, as [wf_gmod_nil] has them, and then a
+    value of the record ([record_self]).  The value's type names the
+    record, found only inside the record's frame, so it is typed there
+    (as [wf_gs_tele] shows), not here ([frame_params]).  A record is
+    declared in an enclosing frame, so its module is no unit. *)
+| wf_gmod_record_nil :
+  `( tele_ass Δ ->
+     ⊢ Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
+     Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⊢ᵉ ge_record pv mp R ⋄ ->
+     record_params R = Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
+     Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⍮ fk_record R ⍮ ce_ass (record_self mp R) :: Δ ⊢ᵍᵐ ⋄ )
 (** The entry is checked against the members declared before it: the module so
     far is [gu_mk Δ Φ], pushed as the innermost frame under its own path,
     of the module's kind. *)

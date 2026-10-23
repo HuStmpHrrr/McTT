@@ -196,7 +196,11 @@ term = ( '∀' | 'Π' | 'forall' ) , {parameter} , ( '→' | '->' ) , term
      | 'exfalso' , term , 'return' , motive
      (* eliminator of a group of inductive types: one block per member,
         in member order, the scrutinee's marked 'at' *)
-     | 'elim' , term , elim block , {elim block} , 'end';
+     | 'elim' , term , elim block , {elim block} , 'end'
+     (* a value of a record type: its fields, in order *)
+     | 'record' , {atomic term} , 'where' , [ field value , {';' , field value} ] , 'end';
+
+field value = id , ( '≔' | ':=' ) , term;
 
             (* universe at the level nat, short for Type@{<nat>l} *)
 atomic term = 'Type', '@' , nat
@@ -375,6 +379,55 @@ type with a non-uniform parameter, Brouwer ordinals `Ord` (with
 `lim (f : ∀ (n : ℕ) → Ord)`, also written through a definition `Arr`),
 W-types `W A B` (the natural numbers as a W-type, with `elim` and
 `W.rec`), and `Grid`, a function shape of two arguments.
+
+### Record types
+
+A module declares a record type with a command:
+
+```EBNF
+record = ['private'] , 'record' , id , {parameter} , ':' , type , 'where' ,
+         [ field , {';' , field} ] , [ 'with' , {command} , 'end' ] , 'end';
+(* each field's type sees the parameters and the fields before it *)
+field = id , ':' , type;
+```
+
+```
+record Pair (A : Type@0) (B : Type@0) : Type@0 where
+  fst : A; snd : B
+with
+  def swap : Pair B A := record Pair B A where fst := snd; snd := fst end end
+end end
+```
+
+The sort is a universe, and a field's type is in it.  A record type is
+never recursive: no field mentions it.  `record Pair ℕ ℕ where fst := 1;
+snd := 2 end` is a value, its fields by name in the declaration's order.
+It is a term, not an atom: as an argument, or before a selection, it is
+written in parentheses, `f (record Pair ℕ ℕ where … end)`.  A value is
+determined by its fields (η): `p` is `record Pair A B where fst :=
+Pair.fst A B p; snd := Pair.snd A B p end`.  Two record types are equal only when they are the same
+type at equal parameters: there is no subtyping between record types.
+
+The declaration makes `Pair` a type over its parameters and a module over
+its parameters and a value of it: `Pair A B p`, whose members are the
+fields, `(Pair A B p).fst` the field `fst` of `p`, then the commands of
+the `with` area.  In the with-area the value has no name: a field names
+the field of the value the module is at, so `snd` in `swap` is the second
+field, and `Pair.swap A B p` swaps `p`.  A with-area command may not
+declare a field's name ("fst is a field of record Pair").
+
+A member is selected through a term of a record type too: for
+`p : Pair A B`, `p.fst` is `(Pair A B p).fst` and `p.swap` is
+`Pair.swap A B p`, the record's parameters read off `p`'s type.  The
+term may be a variable, a definition, a term applied, `(mk n).fst`, or
+any other term, `(record Pair ℕ ℕ where fst := 1; snd := 2 end).snd`.
+This works wherever a term is written: in definitions, in the types of
+an inductive type's constructor arguments (`vcons (x : M.carrier)` for a
+parameter `M` of a record type), and in the clauses of a mutual
+definition.  A term of no record type has no members ("fst is selected
+from m, of type ℕ, which is not a record type"), nor does a record have
+members it does not declare ("third is not a member of record Pair"),
+and a private member of the with-area stays private.
 
 ## Branches
 

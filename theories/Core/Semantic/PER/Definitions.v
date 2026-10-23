@@ -4,6 +4,7 @@ From Equations Require Import Equations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Export Fixed.
+From Mctt.Core.Syntactic Require Export Records.
 Import Domain_Notations Fixed_Notations.
 From Stdlib Require String.
 #[local] Open Scope list_scope.
@@ -672,6 +673,53 @@ Definition grp_rel (p : qname) (D : ind_decl) (ups : list domain)
     nat -> list domain -> list domain -> list domain -> list domain -> relation domain :=
   ind_rel p D (okr_at D ups nr) nr ar dr.
 
+(** ** Records
+
+    The fields of a record are a telescope of relations [fr k vs]: field
+    [k]'s, after the left values [vs] of the fields before it.  Values carry
+    no parameters: the elements of a record type are related field by field,
+    their projections taken by name ([eval_proj]), each at the relation the
+    universe clause gives the field's type at the type's parameters and the
+    projections before it.  No condition is put on a value beyond its
+    projections, and records are not recursive, so the clause has no fixed
+    point. *)
+
+(** The fields' relations are PERs at related prefixes. *)
+Definition fields_per (R : record_decl) (fr : nat -> list domain -> relation domain) : Prop :=
+  forall k f T vs vs', List.nth_error (record_fields R) k = Some (f, T) -> tele_prefix_rel fr k vs vs' ->
+    PER (fr k vs).
+
+(** They do not depend on which of two related prefixes they are read at. *)
+Definition fields_inv (R : record_decl) (fr : nat -> list domain -> relation domain) : Prop :=
+  forall k f T vs vs', List.nth_error (record_fields R) k = Some (f, T) -> tele_prefix_rel fr k vs vs' ->
+    (fr k vs <~> fr k vs').
+
+(** Each is the relation [Rel] gives the field's type, at the two sides'
+    parameters and related prefixes. *)
+Definition fields_evals (Rel : relation domain -> domain -> domain -> Prop) (R : record_decl) (ns ns' : list domain)
+    (fr : nat -> list domain -> relation domain) : Prop :=
+  forall k f T vs vs', List.nth_error (record_fields R) k = Some (f, T) -> tele_prefix_rel fr k vs vs' ->
+    rel_mod_eval Rel T (env_args nil (ns ++ vs)) T (env_args nil (ns' ++ vs')) (fr k vs).
+
+(** The projections [vs] of the value [v] at the fields of [R], in order. *)
+Definition record_projs (R : record_decl) (v : domain) (vs : list domain) : Prop :=
+  List.Forall2 (fun fT r => eval_proj gc_deps gc_stack (fst fT) v r) (record_fields R) vs.
+
+(** Two elements of a record type: their projections, related as a
+    telescope at the fields' relations. *)
+#[warnings="-cannot-define-projection"]
+Record record_rel (R : record_decl) (fr : nat -> list domain -> relation domain) (v v' : domain) : Prop := mk_record_rel
+  { (** The left value's projections *)
+    left_projs : list domain
+    (** The right value's projections *)
+  ; right_projs : list domain
+    (** They are the left value's fields *)
+  ; left_projs_eval : record_projs R v left_projs
+    (** They are the right value's fields *)
+  ; right_projs_eval : record_projs R v' right_projs
+    (** They are related, field by field *)
+  ; projs_related : tele_rel fr (record_fields R) left_projs right_projs }.
+
 (** * Universe/Element PER *)
 (** ** Universe/Element PER Definition *)
 
@@ -770,6 +818,22 @@ Section Per_univ_elem_core_def.
           Dom b ≈ b' ∈ per_bot ->
           (elem_rel <~> per_ne) ->
           DF ⇑ a b ≈ ⇑ a' b' ∈ per_univ_elem_core ↘ elem_rel }
+  (** A record type at its parameters.  The parameters read back equally;
+      the field names are distinct; the fields' types, at the two sides'
+      parameters and related prefixes, are related; the elements are related
+      field by field ([record_rel]). *)
+  | per_univ_elem_core_record :
+    `{ forall (fr : nat -> list domain -> relation domain) (elem_rel : relation domain),
+         record_lookup gc_deps gc_stack p = Some R ->
+         List.NoDup (List.map fst (record_fields R)) ->
+         List.length ns = List.length (record_params R) ->
+         List.length ns' = List.length (record_params R) ->
+         per_top_ps (List.rev (record_params R)) ns ns' ->
+         fields_per R fr ->
+         fields_evals per_univ_elem_core R ns ns' fr ->
+         fields_inv R fr ->
+         (elem_rel <~> record_rel R fr) ->
+         DF d_record p ns ≈ d_record p ns' ∈ per_univ_elem_core ↘ elem_rel }
   .
 
   Hypothesis
@@ -831,7 +895,18 @@ Section Per_univ_elem_core_def.
           adm_uparams D ups nr ar dr ups ->
           tele_rel (nr k) (List.rev (im_nparams M)) ns ns' ->
           (elem_rel <~> grp_rel p D ups nr ar dr k ups ups' ns ns') ->
-          motive elem_rel (d_ind p k (ups ++ ns)) (d_ind p k (ups' ++ ns'))).
+          motive elem_rel (d_ind p k (ups ++ ns)) (d_ind p k (ups' ++ ns')))
+      (case_Rec : forall {p R ns ns'} (fr : nat -> list domain -> relation domain) {elem_rel},
+          record_lookup gc_deps gc_stack p = Some R ->
+          List.NoDup (List.map fst (record_fields R)) ->
+          List.length ns = List.length (record_params R) ->
+          List.length ns' = List.length (record_params R) ->
+          per_top_ps (List.rev (record_params R)) ns ns' ->
+          fields_per R fr ->
+          fields_evals (fun R x y => DF x ≈ y ∈ per_univ_elem_core ↘ R /\ motive R x y) R ns ns' fr ->
+          fields_inv R fr ->
+          (elem_rel <~> record_rel R fr) ->
+          motive elem_rel (d_record p ns) (d_record p ns')).
 
   #[derive(equations=no, eliminator=no)]
   Equations per_univ_elem_core_strong_ind R a b (H : DF a ≈ b ∈ per_univ_elem_core ↘ R) : DF a ≈ b ∈ motive ↘ R :=
@@ -865,7 +940,14 @@ Section Per_univ_elem_core_def.
            | mk_rel_mod_eval b b' evb evb' Rel =>
                mk_rel_mod_eval b b' evb evb' (conj Rel (per_univ_elem_core_strong_ind _ _ _ Rel))
            end)
-        HdI Hcl Hcd Hns HE.
+        HdI Hcl Hcd Hns HE;
+  | R, a, b, (per_univ_elem_core_record fr _ Hl Hnd Hn Hn' Hps HfP Hf HfI HE) =>
+      case_Rec fr Hl Hnd Hn Hn' Hps HfP
+        (fun k f T vs vs' Hk Hpre => match Hf k f T vs vs' Hk Hpre with
+                                   | mk_rel_mod_eval b b' evb evb' Rel =>
+                                       mk_rel_mod_eval b b' evb evb' (conj Rel (per_univ_elem_core_strong_ind _ _ _ Rel))
+                                   end)
+        HfI HE.
 
 End Per_univ_elem_core_def.
 
@@ -1081,7 +1163,18 @@ Section Per_univ_elem_ind_def.
           adm_uparams D ups nr ar dr ups ->
           tele_rel (nr k) (List.rev (im_nparams M)) ns ns' ->
           (elem_rel <~> grp_rel p D ups nr ar dr k ups ups' ns ns') ->
-          motive i elem_rel (d_ind p k (ups ++ ns)) (d_ind p k (ups' ++ ns'))).
+          motive i elem_rel (d_ind p k (ups ++ ns)) (d_ind p k (ups' ++ ns')))
+      (case_Rec : forall i {p R ns ns'} (fr : nat -> list domain -> relation domain) {elem_rel},
+          record_lookup gc_deps gc_stack p = Some R ->
+          List.NoDup (List.map fst (record_fields R)) ->
+          List.length ns = List.length (record_params R) ->
+          List.length ns' = List.length (record_params R) ->
+          per_top_ps (List.rev (record_params R)) ns ns' ->
+          fields_per R fr ->
+          fields_evals (fun R x y => DF x ≈ y ∈ per_univ_elem i ↘ R /\ motive i R x y) R ns ns' fr ->
+          fields_inv R fr ->
+          (elem_rel <~> record_rel R fr) ->
+          motive i elem_rel (d_record p ns) (d_record p ns')).
 
   Lemma per_univ_elem_ind i a b R (H : per_univ_elem i a b R) : motive i a b R.
   Proof.
@@ -1090,7 +1183,7 @@ Section Per_univ_elem_ind_def.
     intros R a b H.
     refine (per_univ_elem_core_strong_ind i _ (motive i) _ _
               (fun _ _ => case_L i) (fun _ => case_True i) (fun _ => case_False i)
-              _ (fun _ _ _ _ _ => case_ne i) _ R a b H).
+              _ (fun _ _ _ _ _ => case_ne i) _ (fun _ _ _ _ fr _ => case_Rec i fr) R a b H).
     - intros j j' elem_rel lt_j_i Heq HE.
       rewrite per_univ_below_spec in HE by assumption.
       eapply case_U; eauto.
@@ -1157,6 +1250,11 @@ Inductive per_subtyp : uidx -> domain -> domain -> Prop :=
   `( forall elem_rel,
         DF d_ind p k as1 ≈ d_ind p k as2 ∈ per_univ_elem i ↘ elem_rel ->
         Sub d_ind p k as1 <: d_ind p k as2 at i)
+(** A record type below itself: records are invariant. *)
+| per_subtyp_record :
+  `( forall elem_rel,
+        DF d_record p ns ≈ d_record p ns' ∈ per_univ_elem i ↘ elem_rel ->
+        Sub d_record p ns <: d_record p ns' at i)
 where "'Sub' a <: b 'at' i" := (per_subtyp i a b) : type_scope.
 
  Hint Constructors per_subtyp : mctt.
@@ -1509,11 +1607,11 @@ Ltac per_univ_elem_induction_core HH ih :=
                  end
              end;
       revert HH; revert i R a b;
-      refine (per_univ_elem_ind _ _ _ _ _ _ _ _ _);
+      refine (per_univ_elem_ind _ _ _ _ _ _ _ _ _ _);
       (** The level case has one binder more than the other closed types: the
           sort of its type of levels. *)
       [ do 8 intro | do 8 intro | do 4 intro | do 3 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro
-      | do 34 intro ]; cbv beta
+      | do 34 intro | do 16 intro ]; cbv beta
   end.
 
 (** The analogue of [induction H using per_univ_elem_ind]; the induction

@@ -379,9 +379,9 @@ Proof.
     intros;
     destruct_rel_mod_eval;
     econstructor; mautosolve ].
-  (** An inductive type: its relations are untouched. *)
+  (** An inductive type, a record type: their relations are untouched. *)
   all: intros R0 HR0; basic_per_univ_elem_econstructor; try eassumption;
-    unfold nparams_evals, args_evals, doms_evals in *;
+    unfold nparams_evals, args_evals, doms_evals, fields_evals in *;
     try (intros; eapply rel_mod_eval_proj1; match goal with H : _ |- _ => eapply H; eassumption end);
     try (etransitivity; [ symmetry + idtac | ]; eassumption).
 Qed.
@@ -556,6 +556,19 @@ Proof.
     intros;
     apply_relation_equivalence;
     try reflexivity.
+  (** A record type: the fields' relations agree with those of the other
+      derivation along related prefixes, the field types being the same. *)
+  3: {
+    assert (R0 = R) as -> by congruence.
+    assert (Hfr : forall k pa pb1 pb2, k < List.length (record_fields R) -> tele_prefix_rel fr k pa pb1 ->
+                    tele_prefix_rel fr0 k pa pb2 -> (fr k pa <~> fr0 k pa)).
+    { intros k pa pb1 pb2 Hk Hp1 Hp2.
+      destruct (nth_error_lt_some' _ _ Hk) as [[f T] HT].
+      destruct (H5 _ _ _ _ _ HT Hp1) as [a1 a1' E1 E1' [Hper Hmot]].
+      destruct (H14 _ _ _ _ _ HT Hp2) as [a2 a2' E2 E2' Hper2].
+      functional_eval_rewrite_clear; exact (Hmot _ _ _ eq_refl Hper2). }
+    intros v v'; split; apply record_rel_change; intros;
+      [ eapply Hfr; eassumption | symmetry; eapply Hfr; eassumption ]. }
   (** An inductive type: the telescope relations agree with those of the
       other derivation, and so do the elements. *)
   2: {
@@ -801,6 +814,20 @@ Proof.
       pose proof (proj1 (ind_rel_sym_all p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _) _ _ _ _ _ _ _ Hm0) as Hm1.
       apply (ind_rel_idx p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ _ _ _ ns' ns _ _ _ _ HM); [| exact Hsn | exact Hns ].
       exact (ind_rel_bases p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ ups' ups _ _ _ _ _ _ Hcl Hcd Hcd Hcl Hm1).
+  - (** A record type: the same field relations serve the swapped type, by
+        their invariance along related prefixes and the symmetry of the
+        field types; the elements are swapped by [record_rel_sym]. *)
+    rename H into Hl, H0 into Hnd, H1 into Hn, H2 into Hn', H3 into Hps, H4 into HfP, H5 into Hf, H6 into HfI, H7 into HE.
+    split.
+    + basic_per_univ_elem_econstructor;
+        [ exact Hl | exact Hnd | exact Hn' | exact Hn | exact (per_top_ps_sym _ _ _ Hps) | exact HfP | | exact HfI | exact HE ].
+      intros k f T vs vs' Hk Hp.
+      assert (Hkl : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence).
+      pose proof (fields_prefix_sym R fr HfP HfI k vs vs' ltac:(lia) Hp) as Hp'.
+      destruct (Hf _ _ _ _ _ Hk Hp') as [a a' Ea Ea' (_ & Hsym & _)].
+      econstructor; [ exact Ea' | exact Ea |].
+      eapply per_univ_elem_resp_iff; [ exact Hsym |]; symmetry; exact (HfI _ _ _ _ _ Hk Hp).
+    + intros m m' Hm; apply HE in Hm; apply HE; exact (record_rel_sym R fr HfP HfI _ _ Hm).
 Qed.
 
 Corollary per_univ_sym : forall i R a b,
@@ -1137,6 +1164,42 @@ Proof.
     unfold grp_rel in *.
     eapply (proj1 (ind_rel_trans_all p D ups nr ar dr H0 H6 H8 H9 H11 H12 H14 _)); [ exact HTR1 |].
     exact (ind_rel_bases p D ups nr ar dr H0 H6 H8 H9 H11 H12 H14 _ ups ups' _ _ _ _ _ _ H16 H15 H15 H15 HTR2).
+  - (** A record type.  The field relations of the first derivation serve
+        the composite: those of the second agree with them along related
+        prefixes, as the relations of types with a common side. *)
+    try match goal with Hl1 : record_lookup _ _ p = Some ?R1, Hl2 : record_lookup _ _ p = Some ?R2 |- _ =>
+      assert_fails constr_eq R1 R2; assert (R2 = R1) as -> by congruence end.
+    match goal with
+    | Hf2 : fields_evals (per_univ_elem ?j) ?R ?ns' ?ns'' ?fr0, Hf1 : fields_evals _ ?R ?ns ?ns' ?fr,
+      HfP : fields_per ?R ?fr, HfP2 : fields_per ?R ?fr0, HfI : fields_inv ?R ?fr,
+      Hps : per_top_ps _ ?ns ?ns', Hps2 : per_top_ps _ ?ns' ?ns'',
+      Hl : record_lookup _ _ _ = Some ?R, Hnd : List.NoDup _,
+      Hn : List.length ?ns = _, Hn2 : List.length ?ns'' = _,
+      HE : ?elem_rel <~> record_rel ?R ?fr |- per_univ_elem _ ?elem_rel _ _ =>
+        assert (Hcr : forall k pa pb pc, k < List.length (record_fields R) -> tele_prefix_rel fr k pa pb ->
+                  tele_prefix_rel fr0 k pb pc -> (fr k pa <~> fr0 k pb));
+        [ intros k pa pb pc Hk Hp1 Hp2;
+          destruct (nth_error_lt_some' _ _ Hk) as [[f T] HT];
+          destruct (Hf1 _ _ _ _ _ HT Hp1) as [a a' Ea Ea' (Hper & _)];
+          destruct (Hf2 _ _ _ _ _ HT Hp2) as [b b' Eb Eb' Hper2];
+          functional_eval_rewrite_clear;
+          eapply per_univ_elem_left_irrel; [ exact Hper | apply per_univ_sym; exact Hper2 ] |];
+        basic_per_univ_elem_econstructor;
+          [ exact Hl | exact Hnd | exact Hn | exact Hn2 | exact (per_top_ps_trans _ _ _ _ Hps Hps2) | exact HfP | | exact HfI | exact HE ];
+        intros k f T vs vs'' Hk Hp;
+        assert (Hkl : k < List.length (record_fields R)) by (apply List.nth_error_Some; congruence);
+        assert (Hp2 : tele_prefix_rel fr0 k vs'' vs'')
+          by (eapply (tele_prefix_rel_cross_refl fr fr0 (List.length (record_fields R)));
+              [ lia | intros j0 pa pb Hj Hq1 Hq2; exact (Hcr _ _ _ _ Hj Hq1 Hq2) | exact (fields_per_lt R fr0 HfP2) | exact Hp ]);
+        destruct (Hf1 _ _ _ _ _ Hk Hp) as [a a' Ea Ea' (_ & Htr & _)];
+        destruct (Hf2 _ _ _ _ _ Hk Hp2) as [b b' Eb Eb' Hper2];
+        functional_eval_rewrite_clear;
+        econstructor; [ exact Ea | exact Eb' |];
+        apply (Htr j); eapply per_univ_elem_resp_iff; [ exact Hper2 |]; symmetry; exact (Hcr _ _ _ _ Hkl Hp Hp2)
+    end.
+  - (** Its elements: [record_rel_trans]. *)
+    match goal with HfP : fields_per ?R ?fr, HfI : fields_inv ?R ?fr |- record_rel ?R ?fr _ _ =>
+      eapply (record_rel_trans R fr HfP HfI); eassumption end.
 Qed.
 
 Corollary per_univ_trans : forall i j R a1 a2 a3,
@@ -1391,10 +1454,14 @@ Proof.
   per_univ_elem_induction1; intros; subst;
     per_univ_elem_econstructor; eauto; try solve_uidx.
   1: intros; destruct_rel_mod_eval; econstructor; solve [eauto].
-  (** An inductive type: its telescopes, lifted one by one. *)
-  all: unfold nparams_evals, args_evals, doms_evals in *; intros;
+  (** An inductive type, a record type: their telescopes, lifted one by
+      one. *)
+  all: unfold nparams_evals, args_evals, doms_evals, fields_evals in *; intros;
     match goal with
     | H : forall m Mm, _ |- rel_mod_eval _ _ _ _ _ _ =>
+        edestruct H as [a a' Ea Ea' [_ HIH]]; try eassumption;
+        econstructor; [ exact Ea | exact Ea' | apply HIH; assumption ]
+    | H : forall k f T vs vs', List.nth_error (record_fields _) k = Some (f, T) -> _ |- rel_mod_eval _ _ _ _ _ _ =>
         edestruct H as [a a' Ea Ea' [_ HIH]]; try eassumption;
         econstructor; [ exact Ea | exact Ea' | apply HIH; assumption ]
     end.
@@ -1493,6 +1560,10 @@ Proof.
          end);
     mauto;
     destruct_all.
+  (** A record type: rebuilt without the induction hypotheses. *)
+  3: { eapply per_subtyp_record; basic_per_univ_elem_econstructor; try eassumption;
+       unfold fields_evals in *; intros; eapply rel_mod_eval_proj1;
+       match goal with H : forall k f T vs vs', _ |- _ => eapply H; eassumption end. }
   (** An inductive type: rebuilt without the induction hypotheses. *)
   2: { eapply per_subtyp_indty; basic_per_univ_elem_econstructor; try eassumption;
        unfold nparams_evals, args_evals, doms_evals in *; intros; eapply rel_mod_eval_proj1;
@@ -1547,10 +1618,16 @@ Proof.
       handle_per_univ_elem_irrel.
       intuition.
   - (** Inductive types: their equalities compose. *)
-    inversion Hsub as [| | | | | | | | ? ? ? ? ? R' HR']; subst.
+    inversion Hsub as [| | | | | | | | ? ? ? ? ? R' HR' |]; subst.
     match goal with H : per_univ_elem _ ?R (d_ind _ _ _) (d_ind _ _ _) |- _ =>
       assert (HRR : R <~> R') by (eapply per_univ_elem_left_irrel; [ exact H | apply per_univ_sym; exact HR' ]);
       eapply per_subtyp_indty; eapply per_univ_trans; [ exact H | eapply per_univ_elem_resp_iff; [ exact HR' | symmetry; exact HRR ] ]
+    end.
+  - (** Record types: their equalities compose. *)
+    inversion Hsub as [| | | | | | | | | ? ? ? ? R' HR']; subst.
+    match goal with H : per_univ_elem _ ?R (d_record _ _) (d_record _ _) |- _ =>
+      assert (HRR : R <~> R') by (eapply per_univ_elem_left_irrel; [ exact H | apply per_univ_sym; exact HR' ]);
+      eapply per_subtyp_record; eapply per_univ_trans; [ exact H | eapply per_univ_elem_resp_iff; [ exact HR' | symmetry; exact HRR ] ]
     end.
 Qed.
 

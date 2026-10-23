@@ -647,7 +647,7 @@ Lemma fill_prefix : forall Φ y Φ0 E, gm_fill Φ <> None -> gm_prefix_upto Φ y
 Proof.
   induction Φ as [| Φ IH x E0 | Φ IH H its]; intros * Hf Hp; cbn in Hf, Hp; try discriminate.
   - assert (Hf0 : gm_fill Φ <> None)
-      by (destruct E0 as [? ? ? [] | | | ]; try contradiction; destruct (gm_fill Φ); cbn in Hf; congruence).
+      by (destruct E0 as [? ? ? [] | | | | ]; try contradiction; destruct (gm_fill Φ); cbn in Hf; congruence).
     destruct (String.eqb y x); [ injection Hp as ? ? ?; subst; destruct (gm_fill Φ0) eqn:Ef; [ eauto | contradiction ] |].
     exact (IH _ _ _ Hf0 Hp).
   - contradiction.
@@ -983,7 +983,7 @@ Proof.
             exists Φ0 E σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) /\ entry_shape E E' /\ gm_fill Φ0 = Some σf).
   { intros * Hp'; destruct (shape_prefix _ _ _ _ _ (body_shape_sym _ _ Hsx) Hp') as (Φ0 & E & Hp & _ & HE).
     destruct (fill_prefix _ _ _ _ Hf Hp) as (σf & Hf0).
-    destruct E' as [? ? ? [] | | | ], E as [? ? ? [] | | | ]; cbn in HE; try contradiction; do 3 eexists;
+    destruct E' as [? ? ? [] | | | | ], E as [? ? ? [] | | | | ]; cbn in HE; try contradiction; do 3 eexists;
       (split; [ exact Hp | split; [| exact Hf0 ] ]); cbn; intuition. }
   assert (HU0 : Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_open Δu Φ ≈ gu_open Δu' Φ')
     by (eapply wf_unit_eq_body; eassumption).
@@ -993,35 +993,35 @@ Proof.
     7: intros k Φ0 H σf Ek Hf0; destruct (Hopair _ _ _ _ Ek Hf0) as (Φ0' & H' & σf' & Ek' & Hf0');
          intros; eapply proj1; eapply IHOO; eassumption.
     + intros y Φ0 b pv A M σf Hp Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HE & Hf0');
-        destruct E' as [? ? ? [] | | | ]; cbn in HE; try contradiction; eapply HA; eassumption.
+        destruct E' as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply HA; eassumption.
     + intros y Φ0 b pv A M σf Hp Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HE & Hf0');
-        destruct E' as [? ? ? [] | | | ]; cbn in HE; try contradiction; eapply IHA; eassumption.
+        destruct E' as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply IHA; eassumption.
     + intros y Φ0 b pv A M σf Hp Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HE & Hf0');
-        destruct E' as [? ? ? [] | | | ]; cbn in HE; try contradiction; eapply HM; eassumption.
+        destruct E' as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply HM; eassumption.
     + intros y Φ0 b pv A M σf Hp Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HE & Hf0');
-        destruct E' as [? ? ? [] | | | ]; cbn in HE; try contradiction; eapply IHM; eassumption.
+        destruct E' as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply IHM; eassumption.
     + intros y Φ0 pv U σf Hp Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HE & Hf0');
-        destruct E' as [? ? ? [] | ? ? | | ]; cbn in HE; try contradiction;
+        destruct E' as [? ? ? [] | ? ? | | | ]; cbn in HE; try contradiction;
         eapply wf_unit_eq_trans; [ eapply HU; eassumption | apply wf_unit_eq_sym; eapply HU; eassumption ].
     + intros y Φ0 pv U σf Hp Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HE & Hf0');
-        destruct E' as [? ? ? [] | ? ? | | ]; cbn in HE; try contradiction; intros; eapply proj1; eapply IHU; eassumption.
+        destruct E' as [? ? ? [] | ? ? | | | ]; cbn in HE; try contradiction; intros; eapply proj1; eapply IHU; eassumption.
   - eapply sub_eq_unit_self; [ exact Hb' | exact Hσ | exact L' | exact HΔσ' | exact Hx' | | | | | | | exact Ho' |
                              | exact Ha' | exact Hs2 | exact Hsx2 | rewrite <- Hnames; exact Hn
                              | eapply wf_unit_eq_trans; [ apply wf_unit_eq_sym; exact HU0 | exact HU0 ] ].
     7: intros k Φ0' H' σf' Ek' Hf0'; destruct (Hopair' _ _ _ _ Ek' Hf0') as (Φ0 & H & σf & Ek & Hf0);
          intros; eapply proj1; eapply IHOR; [ exact Ek | exact Ek' | exact Hf0 | exact Hf0' | eassumption ].
     + intros y Φ0' b' pv' A' M' σf' Hp' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HE & Hf0);
-        destruct E as [? ? ? [] | | | ]; cbn in HE; try contradiction; eapply HAr; eassumption.
+        destruct E as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply HAr; eassumption.
     + intros y Φ0' b' pv' A' M' σf' Hp' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HE & Hf0);
-        destruct E as [? ? ? [] | | | ]; cbn in HE; try contradiction; eapply IHAr; eassumption.
+        destruct E as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply IHAr; eassumption.
     + intros y Φ0' b' pv' A' M' σf' Hp' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HE & Hf0);
-        destruct E as [? ? ? [] | | | ]; cbn in HE; try contradiction; eapply HMr; eassumption.
+        destruct E as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply HMr; eassumption.
     + intros y Φ0' b' pv' A' M' σf' Hp' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HE & Hf0);
-        destruct E as [? ? ? [] | | | ]; cbn in HE; try contradiction; eapply IHMr; eassumption.
+        destruct E as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply IHMr; eassumption.
     + intros y Φ0' pv' U' σf' Hp' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HE & Hf0);
-        destruct E as [? ? ? [] | ? ? | | ]; cbn in HE; try contradiction; eapply HUr; eassumption.
+        destruct E as [? ? ? [] | ? ? | | | ]; cbn in HE; try contradiction; eapply HUr; eassumption.
     + intros y Φ0' pv' U' σf' Hp' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HE & Hf0);
-        destruct E as [? ? ? [] | ? ? | | ]; cbn in HE; try contradiction; intros; eapply proj1; eapply IHUr; eassumption.
+        destruct E as [? ? ? [] | ? ? | | | ]; cbn in HE; try contradiction; intros; eapply proj1; eapply IHUr; eassumption.
 Qed.
 
 (** A literal given its outermost parameter, both sides moved. *)
@@ -1047,6 +1047,116 @@ Proof.
   destruct (presup_exp_typ HN2) as [j HX2].
   eapply wf_me_app; [ exact HH | exact HR1 | exact HT1 | apply tele_view_last | exact HX1 | exact HN1 | exact HN
                     | exact HR2 | exact HT2 | apply tele_view_last | exact HX2 | exact HN2 ].
+Qed.
+
+(** The record cases of [sub_eq_preserves_mut].  The type former is
+    closed, so both sides are the same term at its closed type. *)
+Lemma sub_eq_record_case : forall Θ Ξ Γ Δ σ σ' p R i,
+    record_lookup Θ Ξ p = Some R ->
+    List.NoDup (List.map fst (record_fields R)) ->
+    tele_ass (record_params R) ->
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ record_ty R : Typeω@i ->
+    ⊢ Θ ⍮ Ξ ⍮ record_fctx R (List.length (record_fields R)) ++ record_params R ->
+    Θ ⍮ Ξ ⍮ record_params R ⊢ᵤ record_sort R ->
+    (forall k f T, List.nth_error (record_fields R) k = Some (f, T) ->
+       Θ ⍮ Ξ ⍮ record_fctx R k ++ record_params R ⊢ T : (record_sort R)[wk_shiftn k]ʷ) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ (a_record p)[σ] ≈ (a_record p)[σ'] : (record_ty R)[σ].
+Proof.
+  intros * Hl Hnd Hass Hty Hc Hs Hf Hσ.
+  pose proof (wf_sub_dom _ _ _ _ _ (wf_sub_eq_left _ _ _ _ _ _ Hσ)) as HΓ.
+  rewrite record_ty_sub by (eapply wf_record_closed; [ exact HΓ | exact Hl ]).
+  cbn [exp_sub]; eapply wf_exp_eq_record_cong; eassumption.
+Qed.
+
+(** A tuple: field by field, at the moved parameters. *)
+Lemma sub_eq_tuple_case : forall Θ Ξ Γ Δ σ σ' T p Ns R fs i,
+    Θ ⍮ Ξ ⍮ Δ ⊢ T : Typeω@i ->
+    (forall Γ0 τ τ', Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ τ ≈ τ' : Δ -> Θ ⍮ Ξ ⍮ Γ0 ⊢ T[τ] ≈ T[τ'] : Typeω@i[τ]) ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ T ≈ apps_exp (a_record p) Ns : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ a_record p : record_ty R ->
+    record_lookup Θ Ξ p = Some R ->
+    List.length Ns = List.length (record_params R) ->
+    (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A ->
+       Θ ⍮ Ξ ⍮ Δ ⊢ N : A) ->
+    List.map fst fs = List.map fst (record_fields R) ->
+    (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
+       Θ ⍮ Ξ ⍮ Δ ⊢ M : U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))]) ->
+    (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
+       forall Γ0 τ τ', Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ τ ≈ τ' : Δ ->
+       Θ ⍮ Ξ ⍮ Γ0 ⊢ M[τ] ≈ M[τ'] : U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))][τ]) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ (a_tuple T fs)[σ] ≈ (a_tuple T fs)[σ'] : T[σ].
+Proof.
+  intros * HT IHT HTeq Hr Hl Hn HN Hnames Hf IHf Hσ.
+  pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hs'.
+  assert (Ht : Θ ⍮ Ξ ⍮ Δ ⊢ a_tuple T fs : T) by (eapply wf_tuple; eassumption).
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ Ht Hs) as Htl.
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ Ht Hs') as Htr.
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ HT Hs) as HTl.
+  pose proof (IHT _ _ _ Hσ) as ET.
+  assert (HRd : record_closed R) by (eapply wf_record_closed; [ exact (wf_sub_dom _ _ _ _ _ Hs) | exact Hl ]).
+  cbn [exp_sub] in Htl, Htr, HTl, ET |- *.
+  eapply wf_exp_eq_tuple_cong with (Ns := List.map (fun N => N[σ]) Ns).
+  - exact Htl.
+  - exact ET.
+  - pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ HTeq Hs) as H; rewrite apps_exp_sub in H; exact H.
+  - exact Hl.
+  - rewrite List.length_map; exact Hn.
+  - intros j N' A' HN' HA'.
+    rewrite <- record_params_insts_sub in HA' by exact HRd.
+    apply nth_error_map_inv in HN' as (N & HN0 & ->); apply nth_error_map_inv in HA' as (A & HA0 & ->).
+    exact (sub_preserves_exp _ _ _ _ _ _ _ (HN _ _ _ HN0 HA0) Hs).
+  - rewrite tuple_names_sub; exact Hnames.
+  - rewrite !tuple_names_sub; reflexivity.
+  - intros k f M0 M0' U HM0 HM0' HU.
+    apply nth_error_map_inv in HM0 as ([f0 M] & HM & [= -> ->]).
+    apply nth_error_map_inv in HM0' as ([f1 M'] & HM' & [= -> ->]); cbn.
+    rewrite HM in HM'; injection HM' as <-.
+    pose proof (IHf _ _ _ _ HM HU _ _ _ Hσ) as H.
+    rewrite (record_field_sub _ _ _ _ _ _ _ HRd HU Hn) in H.
+    + rewrite tuple_values_sub in H; exact H.
+    + rewrite List.length_firstn, List.length_map; pose proof (nth_error_lt_length _ _ _ HM); lia.
+  - eapply wf_exp_subtyp; [ exact Htr | exact HTl | eapply wf_subtyp_refl; [ exact HTl | apply wf_exp_eq_sym; exact ET ] ].
+Qed.
+
+(** A projection: its own congruence, at the moved scrutinee. *)
+Lemma sub_eq_proj_case : forall Θ Ξ Γ Δ σ σ' M p Ns R k f U i,
+    Θ ⍮ Ξ ⍮ Δ ⊢ M : apps_exp (a_record p) Ns ->
+    (forall Γ0 τ τ', Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ τ ≈ τ' : Δ -> Θ ⍮ Ξ ⍮ Γ0 ⊢ M[τ] ≈ M[τ'] : (apps_exp (a_record p) Ns)[τ]) ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ a_record p : record_ty R ->
+    record_lookup Θ Ξ p = Some R ->
+    List.length Ns = List.length (record_params R) ->
+    (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A ->
+       Θ ⍮ Ξ ⍮ Δ ⊢ N : A) ->
+    List.nth_error (record_fields R) k = Some (f, U) ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] : Typeω@i ->
+    (forall Γ0 τ τ', Θ ⍮ Ξ ⍮ Γ0 ⊢ˢ τ ≈ τ' : Δ ->
+       Θ ⍮ Ξ ⍮ Γ0 ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)][τ] ≈ U[sb_of_list Id (Ns ++ record_pre R k M)][τ'] : Typeω@i[τ]) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ≈ σ' : Δ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ (a_proj f M)[σ] ≈ (a_proj f M)[σ'] : U[sb_of_list Id (Ns ++ record_pre R k M)][σ].
+Proof.
+  intros * HM IHM Hr Hl Hn HN Hk HU IHU Hσ.
+  pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hσ) as Hs'.
+  assert (HRd : record_closed R) by (eapply wf_record_closed; [ exact (wf_sub_dom _ _ _ _ _ Hs) | exact Hl ]).
+  assert (HL : List.length (record_pre R k M) = k)
+    by (apply length_record_pre; pose proof (nth_error_lt_length _ _ _ Hk); lia).
+  assert (Hp : Θ ⍮ Ξ ⍮ Δ ⊢ a_proj f M : U[sb_of_list Id (Ns ++ record_pre R k M)]) by (eapply wf_proj; eassumption).
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ Hp Hs') as Hpr.
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ HU Hs) as HUl.
+  pose proof (IHU _ _ _ Hσ) as EU.
+  assert (Hpr' : Θ ⍮ Ξ ⍮ Γ ⊢ (a_proj f M)[σ'] : U[sb_of_list Id (Ns ++ record_pre R k M)][σ])
+    by (eapply wf_exp_subtyp; [ exact Hpr | exact HUl | eapply wf_subtyp_refl; [ exact HUl | apply wf_exp_eq_sym; exact EU ] ]).
+  pose proof (IHM _ _ _ Hσ) as EM; rewrite apps_exp_sub in EM.
+  pose proof (sub_preserves_exp _ _ _ _ _ _ _ Hr Hs) as Hrσ; rewrite record_ty_sub in Hrσ by exact HRd.
+  rewrite (record_field_sub _ _ _ _ _ _ _ HRd Hk Hn HL), record_pre_sub in HUl, Hpr' |- *.
+  cbn [exp_sub] in Hpr' |- *.
+  eapply wf_exp_eq_proj_cong; [ exact EM | exact Hrσ | exact Hl | rewrite List.length_map; exact Hn | | exact Hk | exact HUl
+                              | exact Hpr' ].
+  intros j N' A' HN' HA'.
+  rewrite <- record_params_insts_sub in HA' by exact HRd.
+  apply nth_error_map_inv in HN' as (N & HN0 & ->); apply nth_error_map_inv in HA' as (A & HA0 & ->).
+  exact (sub_preserves_exp _ _ _ _ _ _ _ (HN _ _ _ HN0 HA0) Hs).
 Qed.
 
 Lemma sub_eq_preserves_mut :
@@ -1267,6 +1377,10 @@ Proof.
           | eapply wf_subtyp_refl; [ eapply sub_preserves_typ; [ exact HA | exact Hl ] | apply wf_exp_eq_sym; exact HAσ ] ] ]
     end ].
   (** [Π]: by the kind of its universe. *)
+  (** The records, before the universe premise of the type former is
+      inverted. *)
+  all: try solve [ first [ eapply sub_eq_record_case | eapply sub_eq_tuple_case | eapply sub_eq_proj_case ];
+                   eassumption ].
   all: repeat match goal with Hu : wf_is_univ _ _ _ _ |- _ => inversion Hu; subst; clear Hu end.
   (** Telescopes of assumptions: the substitutions are lifted entry by
       entry, at the equation of the entry's type the induction hypothesis
@@ -1642,10 +1756,10 @@ Hint Resolve wf_gstack_deps : mctt.
 
 Lemma wf_gentry_gctx : forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢ᵉ E -> ⊢ᵍ Θ ⍮ Ξ.
 Proof.
-  induction 1; subst; eauto using ctx_wf_gctx, presup_exp_ctx, presup_ext_eq_ctx, wf_gmod_ctx.
+  induction 1; subst; eauto using ctx_wf_gctx, presup_exp_ctx, presup_ext_eq_ctx, wf_gmod_ctx, presup_is_univ_ctx.
 Qed.
 
-Lemma wf_gunit_ctx : forall Θ Ξ mp K U, Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U -> ⊢ Θ ⍮ Ξ ⍮ gu_params U ++ gs_tele Ξ.
+Lemma wf_gunit_ctx : forall Θ Ξ mp K U, Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U -> ⊢ Θ ⍮ Ξ ⍮ frame_params K (gu_params U) ++ gs_tele Ξ.
 Proof. eauto using wf_gmod_ctx, wf_gunit_mod. Qed.
 
 Corollary wf_gunit_gctx : forall Θ Ξ mp K U, Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U -> ⊢ᵍ Θ ⍮ Ξ.
@@ -1654,21 +1768,35 @@ Proof. eauto using ctx_wf_gctx, wf_gunit_ctx. Qed.
 Corollary wf_gmod_gctx : forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> ⊢ᵍ Θ ⍮ Ξ.
 Proof. eauto using ctx_wf_gctx, wf_gmod_ctx. Qed.
 
+(** A unit's whole telescope is well formed in its own frame, pushed
+    ([wf_gmod_ctx_pushed]). *)
+Corollary wf_gunit_ctx_pushed : forall Θ Ξ mp K U, Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U -> frame_fresh Θ Ξ mp ->
+    ⊢ Θ ⍮ (mp, K, U) :: Ξ ⍮ gu_params U ++ gs_tele Ξ.
+Proof. intros * [Δ Φ -> HΦ] Hff; exact (wf_gmod_ctx_pushed _ _ _ _ _ _ HΦ Hff). Qed.
+
 (** Each judgment presupposes what it is relative to: a term judgment its
     context, a context the global context, an entry or a unit the global
     context it is checked against, a module its telescope, the stack the filed
-    units with no frame open. *)
+    units with no frame open.  A module's (and a unit's) telescope is
+    presupposed twice: the parameters checked one frame out, there
+    ([frame_params]: all of them but a record module's value), and the whole
+    telescope in the module's own frame, pushed. *)
 Theorem presup_ambient :
   (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊢ᵍ Θ ⍮ Ξ) /\
   (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> ⊢ Θ ⍮ Ξ ⍮ Γ) /\
   (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> ⊢ Θ ⍮ Ξ ⍮ Γ) /\
   (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> ⊢ Θ ⍮ Ξ ⍮ Γ) /\
   (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢ᵉ E -> ⊢ᵍ Θ ⍮ Ξ) /\
-  (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ) /\
-  (forall Θ Ξ mp K U, Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U -> ⊢ Θ ⍮ Ξ ⍮ gu_params U ++ gs_tele Ξ) /\
+  (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ ->
+     ⊢ Θ ⍮ Ξ ⍮ frame_params K Δ ++ gs_tele Ξ /\
+     (frame_fresh Θ Ξ mp -> ⊢ Θ ⍮ (mp, K, gu_body Δ Φ) :: Ξ ⍮ Δ ++ gs_tele Ξ)) /\
+  (forall Θ Ξ mp K U, Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U ->
+     ⊢ Θ ⍮ Ξ ⍮ frame_params K (gu_params U) ++ gs_tele Ξ /\
+     (frame_fresh Θ Ξ mp -> ⊢ Θ ⍮ (mp, K, U) :: Ξ ⍮ gu_params U ++ gs_tele Ξ)) /\
   (forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ Θ ⍮ nil).
 Proof.
-  refine (conj ctx_wf_gctx (conj _ (conj _ (conj _ (conj wf_gentry_gctx (conj wf_gmod_ctx
-    (conj wf_gunit_ctx wf_gstack_deps)))))));
+  refine (conj ctx_wf_gctx (conj _ (conj _ (conj _ (conj wf_gentry_gctx (conj _ (conj _ wf_gstack_deps)))))));
     intros * H; eauto using presup_exp_ctx, presup_exp_eq_ctx, presup_subtyp_ctx.
+  - split; [ exact (wf_gmod_ctx _ _ _ _ _ _ H) | exact (wf_gmod_ctx_pushed _ _ _ _ _ _ H) ].
+  - split; [ exact (wf_gunit_ctx _ _ _ _ _ H) | exact (wf_gunit_ctx_pushed _ _ _ _ _ H) ].
 Qed.

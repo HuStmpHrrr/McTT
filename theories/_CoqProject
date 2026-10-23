@@ -8,6 +8,7 @@
 ./Algorithmic/Subtyping/Lemmas.v
 ./Algorithmic/Typing.v
 ./Algorithmic/Typing/Definitions.v
+./Algorithmic/Typing/Functional.v
 ./Algorithmic/Typing/Lemmas.v
 ./Core/Base.v
 ./Core/Completeness.v
@@ -58,6 +59,8 @@
 ./Core/Completeness/Inductives/ElimView.v
 ./Core/Completeness/Inductives/ViewReadback.v
 ./Core/Completeness/Inductives/ElimViewRule.v
+./Core/Completeness/Records/Model.v
+./Core/Completeness/RecordCases.v
 ./Core/Completeness/IndCases.v
 ./Core/Completeness/ElimCases.v
 ./Core/Completeness/IotaCases.v
@@ -87,6 +90,7 @@
 ./Core/Semantic/Readback/Lemmas.v
 ./Core/Semantic/Realizability.v
 ./Core/Semantic/Inductives/IndPER.v
+./Core/Semantic/RecordPER.v
 ./Core/Semantic/Inductives/IndCanon.v
 ./Core/Semantic/Inductives/IndElim.v
 ./Core/Semantic/Inductives/ReadPairs.v
@@ -130,6 +134,8 @@
 ./Core/Soundness/LogicalRelation/Definitions.v
 ./Core/Soundness/LogicalRelation/Lemmas.v
 ./Core/Soundness/LogicalRelation/Realizability.v
+./Core/Soundness/RecordCases.v
+./Core/Soundness/Records/Model.v
 ./Core/Soundness/SubtypingCases.v
 ./Core/Soundness/VariableCases.v
 ./Core/Soundness/TrueFalseCases.v
@@ -141,6 +147,7 @@
 ./Core/Syntactic/Corollaries.v
 ./Core/Syntactic/CtxSub.v
 ./Core/Syntactic/Members.v
+./Core/Syntactic/Records.v
 ./Extraction/Opens.v
 ./Core/Syntactic/Inductives/Group.v
 ./Core/Syntactic/Inductives/Inductives.v
@@ -157,6 +164,8 @@
 ./Core/Syntactic/Levels/Ordinals.v
 ./Core/Syntactic/Syntax.v
 ./Core/Syntactic/System.v
+./Core/Syntactic/System/AccessFill.v
+./Core/Syntactic/System/AccessFillLemmas.v
 ./Core/Syntactic/System/Command.v
 ./Core/Syntactic/System/Definitions.v
 ./Core/Syntactic/System/Global/Paths.v
@@ -167,6 +176,7 @@
 ./Core/Syntactic/System/Lemmas.v
 ./Core/Syntactic/System/Global/MemberLemmas.v
 ./Core/Syntactic/System/Inductives/Syntax.v
+./Core/Syntactic/System/Records/Syntax.v
 ./Core/Syntactic/System/Global/LookupSound.v
 ./Core/Syntactic/System/Inductives/Typing.v
 ./Core/Syntactic/System/Inductives/Runs.v
@@ -179,6 +189,8 @@
 ./Core/Syntactic/System/Structural.v
 ./Core/Syntactic/System/Tactics.v
 ./Core/Syntactic/SystemOpt.v
+./Core/Syntactic/System/Records/Typing.v
+./Core/Syntactic/System/Records/RecordRuns.v
 ./Core/Syntactic/Unseal.v
 ./Entrypoint.v
 ./Extraction/Command.v
@@ -188,6 +200,7 @@
 ./Extraction/Simulation.v
 ./Extraction/GlobalCheck.v
 ./Extraction/IndDecl.v
+./Extraction/RecordDecl.v
 ./Extraction/MemberType.v
 ./Extraction/MemberOrder.v
 ./Extraction/ViewsSearch.v
@@ -195,6 +208,8 @@
 ./Extraction/ViewsCluster.v
 ./Extraction/ViewsFound.v
 ./Extraction/Privacy.v
+./Extraction/MdefGroup.v
+./Extraction/AccessDecide.v
 ./Extraction/NbE.v
 ./Extraction/PseudoMonadic.v
 ./Extraction/Readback.v
@@ -202,6 +217,7 @@
 ./Extraction/TypeCheck.v
 ./Extraction/TypeCheckBase.v
 ./Extraction/IndCheck.v
+./Extraction/RecordCheck.v
 ./Extraction/Kinds.v
 ./Frontend/ElabCorrect.v
 ./Frontend/ElabExamples.v

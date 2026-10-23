@@ -30,7 +30,9 @@ Inductive xerr : Set :=
 (** A name the open declares twice *)
 | xe_fresh : string -> xerr
 (** An inductive type, or an inductive alias, opened in a local module *)
-| xe_ind : string -> xerr.
+| xe_ind : string -> xerr
+(** A record type, which an open does not use *)
+| xe_record : string -> xerr.
 
 Inductive xres (A : Type) : Type :=
 | xok : A -> xres A
@@ -127,6 +129,7 @@ Section Gen.
           | Some (ds_term A _) => xok (ig_def d pv A (a_mem H n))
           | Some (ds_open _ _ _) | Some (ds_closed _ _ _ _ _) => xok (ig_alias d pv (me_mem H n))
           | Some (ds_ind Θ' p k Ns) => if g then ind_alias_gen d pv n Θ' p k Ns else xfail (xe_ind n)
+          | Some (ds_record _ _ _) => xfail (xe_record n)
           | None => xfail (xe_member H n)
           end
       end.
@@ -156,8 +159,8 @@ Section Gen.
     Proof.
       intros g; induction its as [| [[[n |] d] pv] its IH]; intros gs Hx; cbn in Hx.
       - injection Hx as <-; constructor.
-      - destruct (denote_of Γ (me_mem H n) _) as [[A om | Δ Φ | Θ' ? T Φ Ns | Θ' p k Ns] |] eqn:E; cbn in Hx;
-          [| | | | discriminate ]; apply denote_of_spec in E.
+      - destruct (denote_of Γ (me_mem H n) _) as [[A om | Δ Φ | Θ' ? T Φ Ns | Θ' p k Ns | ? ? ?] |] eqn:E; cbn in Hx;
+          [| | | | discriminate | discriminate ]; apply denote_of_spec in E.
         + destruct (xmap (item_gen g) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
           injection Hx as <-; eapply ign_def; [ exact E | apply IH; reflexivity ].
         + destruct (xmap (item_gen g) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
@@ -330,6 +333,18 @@ Section OpenError.
         let+ B' := oe_exp (bnd_skel b' :: S) B in
         xok (a_let b' B')
     | a_mem H x => let+ H' := oe_modexp S H in xok (a_mem H' x)
+    (** A record type former is closed; a tuple, its type and its fields;
+        a projection, its argument *)
+    | a_record _ => xok M
+    | a_tuple T fs =>
+        let+ T' := oe_exp S T in
+        let+ fs' := (fix oe_flds (fs : list (String.string * exp)) : xres (list (String.string * exp)) :=
+                       match fs with
+                       | nil => xok nil
+                       | (f, N) :: fs0 => let+ N' := oe_exp S N in let+ fs0' := oe_flds fs0 in xok ((f, N') :: fs0')
+                       end) fs in
+        xok (a_tuple T' fs')
+    | a_proj f N => let+ N' := oe_exp S N in xok (a_proj f N')
     end
   with oe_modexp (S : skel) (H : modexp) {struct H} : xres modexp :=
     match H with
@@ -398,7 +413,7 @@ Section OpenError.
                    end in
         xok (ge_def b pv A' B')
     | ge_mod pv U => let+ U' := oe_unit S U in xok (ge_mod pv U')
-    | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ => xok E
+    | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ | ge_record _ _ _ _ => xok E
     end
   with oe_centry (S : skel) (e : centry) {struct e} : xres centry :=
     match e with
@@ -506,6 +521,11 @@ Section OpenError.
         let+ Δ' := oe_tele S Δ in
         let+ H' := oe_modexp (map centry_skel Δ' ++ S) H in
         xok (cc_ind_alias x pv Δ' H')
+    | cc_record x pv Δ Srt fs cs =>
+        let+ Δ' := oe_tele S Δ in
+        let+ Srt' := oe_exp (map centry_skel Δ' ++ S) Srt in
+        let+ fs' := oe_rargs (map centry_skel Δ' ++ S) fs in
+        xok (cc_record x pv Δ' Srt' fs' cs)
     | cc_gen c0 =>
         let+ c0' := oe_cmd S c0 in
         xok (cc_gen c0')

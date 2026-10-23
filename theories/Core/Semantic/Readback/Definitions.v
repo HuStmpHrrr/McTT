@@ -4,7 +4,7 @@ From Mctt.Core.Semantic Require Import Evaluation.
 From Mctt.Core.Semantic Require Export Domain.
 Import Domain_Notations.
 #[local] Open Scope list_scope.
-From Mctt.Core.Syntactic Require Import Members.
+From Mctt.Core.Syntactic Require Import Members Records.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 
 Reserved Notation "'Rnf' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
@@ -12,6 +12,7 @@ Reserved Notation "'Rne' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at le
 Reserved Notation "'Rtyp' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
 Reserved Notation "'Rla' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" (at level 70, xs at level 69, Θ at level 69, Ξ at level 69, s constr, ys at level 69).
 
+Reserved Notation "'Rflds' v 'at' fl 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Fs" (at level 70, v at level 69, fl at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Fs at level 69).
 Reserved Notation "'Rps' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" (at level 70, vs at level 69, T at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Ms at level 69).
 Reserved Notation "'Rcargs' vs 'at' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" (at level 70, vs at level 69, gs at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Ms at level 69).
 Reserved Notation "'Rsh' v 'at' t 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ V" (at level 70, v at level 69, t at level 69, p at level 0, ups at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, V at level 69).
@@ -193,6 +194,15 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
 | read_nf_ind_neut :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rnf ⇓ (d_ind p k as') (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
+(** Any value of a record type, η-long and type-directed: the type's
+    parameters at their telescope, and each field's projection at the
+    field's type at those parameters and the projections before it. *)
+| read_nf_record :
+  `( record_lookup Θ Ξ p = Some R ->
+     List.length ns = List.length (record_params R) ->
+     Rps ns at List.rev (record_params R) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
+     Rflds v at record_fields R in Θ ⍮ Ξ ⍮ env_args nil ns ⍮ s ↘ Fs ->
+     Rnf ⇓ (d_record p ns) v in Θ ⍮ Ξ ⍮ s ↘ nf_tuple p Ps (List.map fst (record_fields R)) Fs )
 where "'Rnf' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_nf Θ Ξ s m M) : type_scope
 with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
 | read_ne_var :
@@ -235,6 +245,10 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
      Rblks 0 (ind_members Dq) from p ups Bks (im_sel Mj) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
      Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rne d_elim ρ Bks p ups j as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim pc Us k NBks M )
+(** The field of a neutral *)
+| read_ne_proj :
+  `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
+     Rne d_proj f m in Θ ⍮ Ξ ⍮ s ↘ ne_proj f M )
 where "'Rne' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_ne Θ Ξ s m M) : type_scope
 with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | read_typ_univ :
@@ -272,6 +286,12 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
      List.length as' = im_np D Mk ->
      Rps as' at List.rev (im_params D Mk) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
      Rtyp d_ind p k as' in Θ ⍮ Ξ ⍮ s ↘ nf_indty p k Ps )
+(** A record type at all its parameters, each read at its type. *)
+| read_typ_record :
+  `( record_lookup Θ Ξ p = Some R ->
+     List.length ns = List.length (record_params R) ->
+     Rps ns at List.rev (record_params R) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
+     Rtyp d_record p ns in Θ ⍮ Ξ ⍮ s ↘ nf_record p Ps )
 where "'Rtyp' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_typ Θ Ξ s m M) : type_scope
 (** The atoms of a level, read one by one. *)
 with read_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> lvl_atoms -> Prop :=
@@ -298,6 +318,22 @@ with read_ps (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list doma
      Rps vs at T in Θ ⍮ Ξ ⍮ ρ ↦ v ⍮ s ↘ Vs ->
      Rps v :: vs at ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons V Vs )
 where "'Rps' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (read_ps Θ Ξ s ρ T vs Ms) : type_scope
+(** The fields [fl] of a record value [v], each at its type in [ρ] (the
+    type's parameters and the projections of the fields before it), its
+    projection read back there. *)
+with read_fields (Θ : gdeps) (Ξ : gstack) : nat -> env -> list (string * exp) -> domain -> nfs -> Prop :=
+(** No field left *)
+| read_fields_nil :
+  `( Rflds v at nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_nil )
+(** The next field's projection at its type, then the rest with it in the
+    environment *)
+| read_fields_cons :
+  `( eval_proj Θ Ξ f v r ->
+     ⟦ T ⟧ Θ ⍮ Ξ ⍮ ρ ↘ t ->
+     Rnf ⇓ t r in Θ ⍮ Ξ ⍮ s ↘ F ->
+     Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ↦ r ⍮ s ↘ Fs ->
+     Rflds v at (f, T) :: fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons F Fs )
+where "'Rflds' v 'at' fl 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Fs" := (read_fields Θ Ξ s ρ fl v Fs) : type_scope
 (** The arguments of a constructor of [p] at the uniform parameters [ups],
     each at its type: a non-recursive one at the type its declaration gives,
     a recursive one at the type itself. *)
@@ -408,7 +444,8 @@ with read_ps_mut_ind := Induction for read_ps Sort Prop
 with read_cargs_mut_ind := Induction for read_cargs Sort Prop
 with read_shape_mut_ind := Induction for read_shape Sort Prop
 with read_blocks_mut_ind := Induction for read_blocks Sort Prop
-with read_brs_mut_ind := Induction for read_brs Sort Prop.
+with read_brs_mut_ind := Induction for read_brs Sort Prop
+with read_fields_mut_ind := Induction for read_fields Sort Prop.
 Combined Scheme read_mut_ind from
   read_nf_mut_ind,
   read_ne_mut_ind,
@@ -418,7 +455,8 @@ Combined Scheme read_mut_ind from
   read_cargs_mut_ind,
   read_shape_mut_ind,
   read_blocks_mut_ind,
-  read_brs_mut_ind.
+  read_brs_mut_ind,
+  read_fields_mut_ind.
 
 #[export]
-Hint Constructors read_nf read_ne read_typ read_la read_ps read_cargs read_shape read_blocks read_brs : mctt.
+Hint Constructors read_nf read_ne read_typ read_la read_ps read_fields read_cargs read_shape read_blocks read_brs : mctt.

@@ -31,7 +31,7 @@ Proof.
   fix IH 1; intros [| Φ y E0 | Φ c] ip E H; cbn in H |- *; try discriminate; [| exact (IH _ _ _ H) ].
   destruct ip as [| x ip']; [ discriminate |].
   destruct (String.eqb x y); [| exact (IH _ _ _ H) ].
-  destruct ip' as [| z ip''], E0 as [b pv A B | pm [Δ [? Φ' | E']] | pv ? D Φ' | pv Δa pa Nsa]; try discriminate; auto;
+  destruct ip' as [| z ip''], E0 as [b pv A B | pm [Δ [? Φ' | E']] | pv ? D Φ' | pv Δa pa Nsa | pv Rr ΦR]; try discriminate; auto;
     exact (IH _ _ _ H).
 Qed.
 
@@ -86,20 +86,26 @@ Proof.
 Qed.
 
 (** A module that is a loaded unit, an open frame, or the open frame of a
-    member's module, is stored at its own path, and nowhere else. *)
+    member's or a record's module, is stored at its own path, and nowhere
+    else. *)
 Lemma msite_unit : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall H pq, msite Θ Ξ H pq ->
     forall p, mod_qname H = Some p ->
-    (exists TΦ, gc_unit Θ Ξ H = Some TΦ) \/ (exists r, gs_find_ind Ξ p = Some r) -> pq = p.
+    (exists TΦ, gc_unit Θ Ξ H = Some TΦ) \/ (exists r, gs_find_ind Ξ p = Some r) \/ (exists R, gs_find_record Ξ p = Some R) ->
+    pq = p.
 Proof.
   intros Θ Ξ Hg.
   (* below an open frame, a selection names no entry *)
   assert (Hmem : forall H z p1 pq E, mod_qname H = Some p1 -> msite Θ Ξ H pq ->
-            (forall p, mod_qname H = Some p -> (exists TΦ, gc_unit Θ Ξ H = Some TΦ) \/ (exists r, gs_find_ind Ξ p = Some r) -> pq = p) ->
+            (forall p, mod_qname H = Some p ->
+               (exists TΦ, gc_unit Θ Ξ H = Some TΦ) \/ (exists r, gs_find_ind Ξ p = Some r) \/ (exists R, gs_find_record Ξ p = Some R) ->
+               pq = p) ->
             gc_entry Θ Ξ (qname_in pq z) = Some E ->
-            (exists TΦ, gc_unit Θ Ξ (me_mem H z) = Some TΦ) \/ (exists r, gs_find_ind Ξ (qname_in p1 z) = Some r) -> False).
+            (exists TΦ, gc_unit Θ Ξ (me_mem H z) = Some TΦ) \/ (exists r, gs_find_ind Ξ (qname_in p1 z) = Some r) \/
+            (exists R, gs_find_record Ξ (qname_in p1 z) = Some R) -> False).
   { intros * Hp1 Hs IH He Hu'.
     assert (Ht : exists U T, gs_find_tele Ξ (qname_in p1 z) = Some (U, nil, T)).
-    { destruct Hu' as [([T Φ] & Hu) | (r & Hk)]; [| exact (gs_find_ind_tele _ _ _ Hk) ].
+    { destruct Hu' as [([T Φ] & Hu) | [(r & Hk) | (R & Hk)]];
+        [| exact (gs_find_ind_tele _ _ _ Hk) | exact (gs_find_record_tele _ _ _ Hk) ].
       destruct (gc_unit_cases _ _ _ _ _ Hu) as (mp & Hq & [Hf | (_ & Hc & _)]); cbn in Hq; rewrite Hp1 in Hq; injection Hq as <-.
       - change {| q_unit := q_unit p1; q_chain := q_chain p1 ++ z :: nil |} with (qname_in p1 z) in Hf.
         unfold gc_frame in Hf; destruct (gs_find_tele Ξ (qname_in p1 z)) as [[[U [| ? ?]] T0] |];
@@ -109,11 +115,14 @@ Proof.
     destruct (frame_parent _ _ Hg _ _ _ _ Ht) as (T1 & Φ1 & Hf1 & _).
     assert (Hq : pq = p1).
     { apply IH; [ exact Hp1 |].
-      destruct (gs_find_ind Ξ p1) as [r |] eqn:Hk1; [ right; eauto | left ].
-      exists (T1, Φ1); exact (gc_unit_frame _ _ _ _ _ _ Hp1 Hf1 Hk1). }
+      destruct (gs_find_ind Ξ p1) as [r |] eqn:Hk1; [ right; left; eauto |].
+      destruct (gs_find_record Ξ p1) as [R |] eqn:Hr1; [ right; right; eauto | left ].
+      exists (T1, Φ1); exact (gc_unit_frame _ _ _ _ _ _ Hp1 Hf1 Hk1 Hr1). }
     subst pq; rewrite (frame_gc_entry_none _ _ _ _ _ Ht) in He; discriminate. }
-  induction 1 as [H p0 T0 Φ0 Hq Hu | H p0 r0 Hq Hk | H pq z E Hs IH He _ | H pq z E E' pq' Hs IH He _ _ _ | H N pq _ _];
+  induction 1 as [H p0 T0 Φ0 Hq Hu | H p0 r0 Hq Hk | H pq z E Hs IH He _ | H pq z E E' pq' Hs IH He _ _ _ | H N pq _ _
+                 | H p0 R0 Hq Hk];
     intros p Hp Hu'.
+  6: congruence.
   - congruence.
   - congruence.
   - exfalso; cbn in Hp; case_eq (mod_qname H); [ intros p1 Hp1 | intros Hn; rewrite Hn in Hp; discriminate ]; rewrite Hp1 in Hp; injection Hp as <-.
@@ -127,24 +136,28 @@ Qed.
 
 Lemma msite_functional : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall H pq, msite Θ Ξ H pq -> forall pq', msite Θ Ξ H pq' -> pq = pq'.
 Proof.
-  intros Θ Ξ Hg; induction 1 as [H p T Φ Hq Hu | H p r Hq Hk | H pq z E Hs IH He Hb | H pq z E E' pq' Hs IH He Ha Hs' IH' | H N pq Hs IH];
+  intros Θ Ξ Hg; induction 1 as [H p T Φ Hq Hu | H p r Hq Hk | H pq z E Hs IH He Hb | H pq z E E' pq' Hs IH He Ha Hs' IH' | H N pq Hs IH
+                               | H p R Hq Hk];
     intros pq0 H0.
   - symmetry; exact (msite_unit _ _ Hg _ _ H0 _ Hq ltac:(left; eauto)).
-  - symmetry; exact (msite_unit _ _ Hg _ _ H0 _ Hq ltac:(right; eauto)).
-  - inversion H0 as [? ? ? ? Hq0 Hu0 | ? ? ? Hq0 Hk0 | ? pq1 ? E1 Hs1 He1 Hb1 | ? pq1 ? E1 E1' ? Hs1 He1 Ha1 _ |]; subst.
+  - symmetry; exact (msite_unit _ _ Hg _ _ H0 _ Hq ltac:(right; left; eauto)).
+  - inversion H0 as [? ? ? ? Hq0 Hu0 | ? ? ? Hq0 Hk0 | ? pq1 ? E1 Hs1 He1 Hb1 | ? pq1 ? E1 E1' ? Hs1 He1 Ha1 _ | | ? ? ? Hq0 Hk0]; subst.
     + exact (msite_unit _ _ Hg _ _ (ms_body _ _ _ _ _ _ Hs He Hb) _ Hq0 ltac:(left; eauto)).
-    + exact (msite_unit _ _ Hg _ _ (ms_body _ _ _ _ _ _ Hs He Hb) _ Hq0 ltac:(right; eauto)).
+    + exact (msite_unit _ _ Hg _ _ (ms_body _ _ _ _ _ _ Hs He Hb) _ Hq0 ltac:(right; left; eauto)).
     + rewrite (IH _ Hs1); reflexivity.
     + rewrite (IH _ Hs1), He1 in He; injection He as <-.
-      destruct E1 as [| ? [? [? ?| ?]] | | ]; cbn in Hb, Ha1; try contradiction; discriminate.
-  - inversion H0 as [? ? ? ? Hq0 Hu0 | ? ? ? Hq0 Hk0 | ? pq1 ? E1 Hs1 He1 Hb1 | ? pq1 ? E1 E1' ? Hs1 He1 Ha1 Hs1' |]; subst.
+      destruct E1 as [| ? [? [? ?| ?]] | | | ]; cbn in Hb, Ha1; try contradiction; discriminate.
+    + exact (msite_unit _ _ Hg _ _ (ms_body _ _ _ _ _ _ Hs He Hb) _ Hq0 ltac:(right; right; eauto)).
+  - inversion H0 as [? ? ? ? Hq0 Hu0 | ? ? ? Hq0 Hk0 | ? pq1 ? E1 Hs1 He1 Hb1 | ? pq1 ? E1 E1' ? Hs1 He1 Ha1 Hs1' | | ? ? ? Hq0 Hk0]; subst.
     + exact (msite_unit _ _ Hg _ _ (ms_alias _ _ _ _ _ _ _ _ Hs He Ha Hs') _ Hq0 ltac:(left; eauto)).
-    + exact (msite_unit _ _ Hg _ _ (ms_alias _ _ _ _ _ _ _ _ Hs He Ha Hs') _ Hq0 ltac:(right; eauto)).
+    + exact (msite_unit _ _ Hg _ _ (ms_alias _ _ _ _ _ _ _ _ Hs He Ha Hs') _ Hq0 ltac:(right; left; eauto)).
     + rewrite (IH _ Hs1), He1 in He; injection He as <-.
-      destruct E1 as [| ? [? [? ?| ?]] | | ]; cbn in Hb1, Ha; try contradiction; discriminate.
+      destruct E1 as [| ? [? [? ?| ?]] | | | ]; cbn in Hb1, Ha; try contradiction; discriminate.
     + rewrite (IH _ Hs1), He1 in He; injection He as <-; rewrite Ha1 in Ha; injection Ha as <-.
       exact (IH' _ Hs1').
-  - inversion H0; subst; [ discriminate | discriminate | exact (IH _ ltac:(eassumption)) ].
+    + exact (msite_unit _ _ Hg _ _ (ms_alias _ _ _ _ _ _ _ _ Hs He Ha Hs') _ Hq0 ltac:(right; right; eauto)).
+  - inversion H0; subst; [ discriminate | discriminate | exact (IH _ ltac:(eassumption)) | discriminate ].
+  - symmetry; exact (msite_unit _ _ Hg _ _ H0 _ Hq ltac:(right; right; eauto)).
 Qed.
 
 (** Where a member is declared, and its privacy, are unique. *)
@@ -159,7 +172,8 @@ Qed.
 (** Declarations are read off lookups, which more dependencies only extend. *)
 Lemma msite_dsub : forall Θ1 Θ2 Ξ, Θ1 ⊑ Θ2 -> forall H pq, msite Θ1 Ξ H pq -> msite Θ2 Ξ H pq.
 Proof.
-  intros * Hs; induction 1; [ eapply ms_unit | eapply ms_ind_frame | eapply ms_body | eapply ms_alias | eapply ms_app ];
+  intros * Hs; induction 1; [ eapply ms_unit | eapply ms_ind_frame | eapply ms_body | eapply ms_alias | eapply ms_app
+                            | eapply ms_record_frame ];
     eauto using gc_unit_dsub, gc_entry_dsub.
 Qed.
 
@@ -271,6 +285,7 @@ with etab (S : list ptab) (E : gentry) : ptab :=
   | ge_mod _ U => utab S U
   | ge_ind _ _ _ D Φ => pt_body nil (btab (repeat pt_none (ind_nu D) ++ S) Φ)
   | ge_ind_alias _ _ pm _ _ _ => pt_glob (qname_mod pm)
+  | ge_record _ _ R Φ => pt_body nil (btab (repeat pt_none (Nat.succ (List.length (record_params R))) ++ S) Φ)
   end.
 
 (** The table a local binding gives its index. *)
@@ -322,6 +337,15 @@ Fixpoint exp_refs (S : list ptab) (M : exp) : list (ptab * string)%type :=
   | a_app M N => exp_refs S M ++ exp_refs S N
   | a_let b B => bnd_refs S b ++ exp_refs (bnd_tab S b :: S) B
   | a_mem H x => (mtab S H, x) :: modexp_refs S H
+  | a_record _ => nil
+  | a_tuple T fs =>
+      exp_refs S T ++
+      (fix fields_refs (fs : list (string * exp)) : list (ptab * string)%type :=
+         match fs with
+         | nil => nil
+         | f :: fs' => exp_refs S (snd f) ++ fields_refs fs'
+         end) fs
+  | a_proj _ M => exp_refs S M
   end
 with modexp_refs (S : list ptab) (H : modexp) : list (ptab * string)%type :=
   match H with
@@ -361,7 +385,7 @@ with gentry_refs (S : list ptab) (E : gentry) : list (ptab * string)%type :=
   match E with
   | ge_def _ _ A B => exp_refs S A ++ match B with Some M => exp_refs S M | None => nil end
   | ge_mod _ U => gunit_refs S U
-  | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ => nil
+  | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ | ge_record _ _ _ _ => nil
   end
 with centry_refs (S : list ptab) (e : centry) : list (ptab * string)%type :=
   match e with
@@ -427,6 +451,10 @@ Definition cmd_refs (c : ccmd) : list (ptab * string)%type :=
   | cc_mdef _ _ Δ fs => tele_refs nil Δ ++ flat_map (rfun_refs (List.length Δ)) fs
   | cc_builtin _ H => modexp_refs nil H
   | cc_ind_alias _ _ Δ H => tele_refs nil Δ ++ modexp_refs nil H
+  (** A record's parameters, sort and fields, each field binding a variable
+      for the ones after it; its with-area is checked when it runs *)
+  | cc_record _ _ Δ Srt fs _ =>
+      tele_refs nil Δ ++ exp_refs (repeat pt_none (List.length Δ)) Srt ++ rargs_refs (repeat pt_none (List.length Δ)) fs
   end.
 
 (** ** Accessibility *)

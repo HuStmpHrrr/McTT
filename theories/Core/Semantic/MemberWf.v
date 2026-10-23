@@ -60,7 +60,7 @@ Lemma desc_ok_tele_head : forall Γ Rm T B T1,
     exists i, Γ ⊢ B : Typeω@i.
 Proof.
   intros * HR Ht Hv.
-  inversion HR as [Γ0 A om HA HM | Γ0 Θ' pq Ns D Hl Hau Hsu HTu HΘ' Hargs HaΘ | Γ0 Δ Φw Φ HΦ Hn Hent HaΔ Hsh Hnd HUw | Γ0 Θ' T0 Φ Ns Θ0 Ξ0 p Hg0 Hsub0 Hloc Ha0 Hs0 HT0 HΘ' Hargs HaΘ];
+  inversion HR as [Γ0 A om HA HM | Γ0 Θ' pq Ns D Hl Hau Hsu HTu HΘ' Hargs HaΘ | Γ0 Δ Φw Φ HΦ Hn Hent HaΔ Hsh Hnd HUw | Γ0 Θ' T0 Φ Ns Θ0 Ξ0 p Hg0 Hsub0 Hloc Ha0 Hs0 HT0 HΘ' Hargs HaΘ |];
     subst; cbn in Ht; try discriminate.
   - (* an open module: its parameters *)
     injection Ht as <-.

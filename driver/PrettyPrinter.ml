@@ -178,6 +178,17 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
        fprintf f "@ end@]"
      in
      pp_print_paren_if (p >= 1) impl f ()
+  (* [record T where f := M; … end]: an object, not an atom, so it takes
+     parentheses as an argument or before a selection. *)
+  | Cst.Coq_tuple (et, fs) ->
+     let field f (y, em) = fprintf f "@[<hov 2>%s @<1>%s@ %a@]" y s_eq format_obj em in
+     let impl f () =
+       fprintf f "@[<hv 2>@[<hov 2>record %a@ where@]" (format_obj_prec 1) et;
+       if fs <> [] then
+         fprintf f "@ %a" (pp_print_list ~pp_sep:(fun f () -> fprintf f ";@ ") field) fs;
+       fprintf f "@;<1 -2>end@]"
+     in
+     pp_print_paren_if (p >= 1) impl f ()
   | Cst.Coq_true_ty -> pp_sym f s_true_ty
   | Cst.Coq_true_tm -> pp_sym f s_true_tm
   | Cst.Coq_false_ty -> pp_sym f s_false_ty
@@ -341,6 +352,21 @@ and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      fprintf f "@[<hov 2>%sinductive %s" (if priv then "private " else "") x;
      List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
      fprintf f " @<1>%s@ %a@]" s_eq format_obj e
+  (* [record x (ps) : S where f : A; … with cs end end]: the fields, then
+     the with-area, if any. *)
+  | Cst.Coq_c_record (priv, x, ps, es, fs, cs) ->
+     fprintf f "@[<v 2>%srecord %s" (if priv then "private " else "") x;
+     List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
+     fprintf f " : %a where" format_obj es;
+     List.iteri
+       (fun i (y, ea) -> fprintf f "%s@ @[<hov 2>%s :@ %a@]" (if i > 0 then ";" else "") y format_obj ea)
+       fs;
+     if cs <> [] then begin
+       fprintf f "@ @[<v 2>with";
+       List.iter (fun c -> fprintf f "@ %a" format_cmd c) cs;
+       fprintf f "@;<1 -2>end@]"
+     end;
+     fprintf f "@;<1 -2>end@]"
   | Cst.Coq_c_eval (e, ot) -> begin
      match ot with
      | None -> fprintf f "@[<hov 2>eval %a@]" format_obj e
@@ -583,6 +609,27 @@ let unview (e : exp) : exp option =
       | None -> None)
   | _ -> None
 
+(* The value [v] whose record's module [h] is, where it is one: the module
+   of a record of the state printed, applied to as many arguments as the
+   record has parameters, then to [v] ([record_value_module]). *)
+let record_value_of (h : modexp) : exp option =
+  let rec spine h args = match h with Coq_me_app (h', n) -> spine h' (n :: args) | _ -> (h, args) in
+  let rec chain = function
+    | Coq_me_unit fp -> Some (fp, [])
+    | Coq_me_mem (h, y) -> Option.map (fun (fp, ms) -> (fp, ms @ [ y ])) (chain h)
+    | _ -> None
+  in
+  match spine h [] with
+  | head, (_ :: _ as args) ->
+     (match chain head with
+      | Some (fp, ms) ->
+         let deps, xi = !current_state in
+         (match McttExtracted.Members.record_lookup deps xi { q_unit = fp; q_chain = ms } with
+          | Some r when List.length args = List.length r.record_params + 1 -> Some (List.nth args (List.length args - 1))
+          | _ -> None)
+      | None -> None)
+  | _ -> None
+
 (* The number of induction hypotheses a branch of [n] binders for the
    constructor [c] of the member [mk] binds, where it binds as many names
    as it should. *)
@@ -734,6 +781,9 @@ let exp_to_obj =
     | Coq_a_mem (h, x) when (match chain_of h with
                              | Some (fp, ms) -> is_bound_nat { q_unit = fp; q_chain = ms }
                              | None -> false) -> Cst.Coq_var x
+    (* A member of the module of a record value, as the access fill writes
+       it: selected from the value. *)
+    | Coq_a_mem (h, x) when record_value_of h <> None -> Cst.Coq_proj (impl ctx (Option.get (record_value_of h)), x)
     | Coq_a_mem (h, x) ->
        (match chain_of h with
         | Some (fp, ms) -> path_to_obj fp (ms @ [x])
@@ -745,6 +795,11 @@ let exp_to_obj =
     (* An inductive type is named by its member's path, which is its
        module's; a constructor is a member of that module. *)
     | Coq_a_ind (p, k) -> let q = member_path p k in path_to_obj q.q_unit q.q_chain
+    (* A record type is named by its path; a field is selected as a member
+       is; a tuple is a record value, at its type. *)
+    | Coq_a_record p -> path_to_obj p.q_unit p.q_chain
+    | Coq_a_proj (f, e) -> Cst.Coq_proj (impl ctx e, f)
+    | Coq_a_tuple (t, fs) -> Cst.Coq_tuple (impl ctx t, List.map (fun (y, e) -> (y, impl ctx e)) fs)
     | Coq_a_con (p, k, c) -> let q = member_path p k in path_to_obj q.q_unit (q.q_chain @ [c])
     (* An eliminator: fresh names for what its motive and its branches
        bind. *)
@@ -888,6 +943,7 @@ let exp_to_obj =
          (* A declaration is filed in a unit, never in a local body. *)
          | Coq_ge_ind (_, _, _, _, _) -> Cst.Coq_c_error "inductive declaration"
          | Coq_ge_ind_alias (_, _, _, _, _, _) -> Cst.Coq_c_error "inductive alias"
+         | Coq_ge_record (_, _, _, _) -> Cst.Coq_c_error "record declaration"
        in
        (cs @ [c], x :: ctx')
     | Coq_gm_open (phi, h, its) ->
@@ -898,28 +954,90 @@ let exp_to_obj =
        let names = List.map (fun ((_, d), _) -> d) its in
        (cs @ [Cst.Coq_c_open ([], [target], [], its)], List.rev_append names ctx')
   in
-  (* The names of a context, innermost entry first, as binders are named. *)
-  let names_of (delta : centry list) : string list =
-    List.fold_left
-      (fun names ce ->
-        let px = match ce with
-          | Coq_ce_ass (Coq_a_typ _ | Coq_a_univ _) | Coq_ce_def ((Coq_a_typ _ | Coq_a_univ _), _) -> new_tyvar ()
-          | Coq_ce_mod _ -> new_mod ()
+  (* The names of a context, innermost entry first, as binders are named;
+     [given], innermost first too, the names the source gives some of
+     them. *)
+  let names_of (given : string option list) (delta : centry list) : string list =
+    let n = List.length delta in
+    snd (List.fold_left
+      (fun (i, names) ce ->
+        let px = match List.nth_opt given (n - 1 - i), ce with
+          | Some (Some y), _ -> y
+          | _, (Coq_ce_ass (Coq_a_typ _ | Coq_a_univ _) | Coq_ce_def ((Coq_a_typ _ | Coq_a_univ _), _)) -> new_tyvar ()
+          | _, Coq_ce_mod _ -> new_mod ()
           | _ -> new_var () in
-        px :: names)
-      [] (List.rev delta)
+        (i + 1, px :: names))
+      (0, []) (List.rev delta))
   in
   (* A term in the context [delta], whose entries are named first. *)
-  fun ?(delta = []) exp ->
+  fun ?(delta = []) ?(names = []) exp ->
     reset_var_suffix ();
     reset_tyvar_suffix ();
     reset_mod_suffix ();
-    let ctx = names_of delta in
+    let ctx = names_of names delta in
     impl ctx exp
 
 let format_exp f exp = format_obj f (exp_to_obj exp)
 
 let format_exp_in delta f exp = format_obj f (exp_to_obj ~delta exp)
+
+(* The commands of the module at the member chain [ch] of the commands
+   [cs], as declared. *)
+let rec declared_cmds (cs : Cst.cmd list) (ch : string list) : Cst.cmd list option =
+  match ch with
+  | [] -> Some cs
+  | x :: ch' ->
+     List.find_map
+       (function
+        | Cst.Coq_c_mod (_, y, _, Cst.Coq_md_where cs') when y = x -> declared_cmds cs' ch'
+        | _ -> None)
+       cs
+
+(* The names the definition [x] of the innermost frame of [current_state]
+   gives its parameters, as declared in the program run, outermost first:
+   the binders its type and its body both start with. *)
+let def_param_names (x : string) : string list =
+  let _, xi = !current_state in
+  let cmds = match xi, !current_prog with
+    | (((q : qname), _), _) :: _, Some (_, ((path, _), cs)) when q.q_unit = path -> declared_cmds cs q.q_chain
+    | _ -> None in
+  let rec common ty body =
+    match ty, body with
+    | Cst.Coq_pi (y, _, ty'), Cst.Coq_fn (y', _, body') when y = y' -> y :: common ty' body'
+    | _ -> [] in
+  match cmds with
+  | None -> []
+  | Some cs ->
+     (match List.find_map (function Cst.Coq_c_def (_, y, a, m) when y = x -> Some (a, m) | _ -> None) cs with
+      | Some (a, m) -> List.filter (fun y -> not (generated_name y)) (common a m)
+      | None -> [])
+
+(* The names the source gives the entries of [delta], the context inside
+   the frames of a term of the definition [ox] where it is one, innermost
+   first: its parameters, the outermost entries. *)
+let given_names (ox : string option) (delta : centry list) : string option list =
+  match ox with
+  | None -> []
+  | Some x ->
+     let ps = def_param_names x and n = List.length delta in
+     List.init n (fun i -> List.nth_opt ps (n - 1 - i))
+
+let format_exp_named ox delta f exp = format_obj f (exp_to_obj ~delta ~names:(given_names ox delta) exp)
+
+(* The member selected and the term it is selected through, where the head
+   of an eliminator's annotation, in the skeleton [delta] of its site, is a
+   member of a module expression with a term binder, a hole of the
+   skeleton ([ce_hole], [ce_ass ⊤]), at its head, applied or not. *)
+let annot_term_access (delta : centry list) (z : exp) : (string * exp) option =
+  let rec head = function Coq_a_app (e, _) -> head e | e -> e in
+  let rec term_of = function
+    | Coq_me_var k -> (match List.nth_opt delta k with Some (Coq_ce_ass Coq_a_True) -> Some (Coq_a_var k) | _ -> None)
+    | Coq_me_app (h, n) -> Option.map (fun t -> Coq_a_app (t, n)) (term_of h)
+    | _ -> None
+  in
+  match head z with
+  | Coq_a_mem (h, y) -> Option.map (fun t -> (y, t)) (term_of h)
+  | _ -> None
 
 (************************************************************)
 (* Formatting nf *)
@@ -1120,7 +1238,8 @@ let rec format_run_error (f : Format.formatter) (e : Command1.run_error) : unit 
   (match e with
    | Coq_re_def (_, xi, _, _) | Coq_re_def_typ (_, xi, _) | Coq_re_eval_typ (xi, _, _)
    | Coq_re_eval_check (xi, _, _) | Coq_re_eval_infer (xi, _) | Coq_re_level (xi, _, _)
-   | Coq_re_elim_blocks (xi, _, _, _, _, _) ->
+   | Coq_re_elim_blocks (xi, _, _, _, _, _)
+   | Coq_re_access_no_type (xi, _, _, _, _) | Coq_re_access_not_record (xi, _, _, _, _, _) ->
       set_ind_decls (fst !current_state) xi;
       current_state := (fst !current_state, xi)
    | _ -> ());
@@ -1170,6 +1289,17 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
      fprintf f "@[<hov 2>Error: %a is not an inductive type@]" pp_u (string_of_qpath q.q_unit q.q_chain)
   | Coq_re_private (q, x) ->
      fprintf f "@[<hov 2>Error: %a is private@]" pp_u (string_of_qpath q.q_unit (q.q_chain @ [x]))
+  (* A member selected from a term, in the binders crossed to reach it:
+     the term's type is not inferred, or is no record type. *)
+  | Coq_re_access_no_type (_, ox, delta, m, y) ->
+     fprintf f "@[<hov 2>Error: %s is selected from@ %a,@ whose type cannot be inferred@]"
+       y (format_exp_named ox delta) m
+  | Coq_re_record_member (q, y) ->
+     fprintf f "@[<hov 2>Error: %s is not a member of record %a: neither a field nor a member of its with-area@]"
+       y pp_u (string_of_qpath q.q_unit q.q_chain)
+  | Coq_re_access_not_record (_, ox, delta, m, a, y) ->
+     fprintf f "@[<hov 2>Error: %s is selected from@ %a,@ of type@ %a,@ which is not a record type@]"
+       y (format_exp_named ox delta) m (format_exp_named ox delta) a
   (* A private entry of a local body, from the local module. *)
   | Coq_re_private_local (ch, x) ->
      fprintf f "@[<hov 2>Error: %s is private in a local module, but it is used outside it@]" (String.concat "." (ch @ [x]))
@@ -1182,9 +1312,15 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_re_mdef_nparams (g, m, n) ->
      fprintf f "@[<hov 2>Error: %s has %d non-uniform %s,@ its member %d@]"
        g m (if m = 1 then "parameter" else "parameters") n
-  | Coq_re_elim_ann (_, delta, z) ->
+  (* An annotation whose head is a member selected through a term: the
+     type is named through the term's record instead. *)
+  | Coq_re_elim_ann (_, ox, delta, z) when annot_term_access delta z <> None ->
+     let y, t = Option.get (annot_term_access delta z) in
+     fprintf f "@[<hov 2>Error: the head of an eliminator's annotation,@ %a,@ cannot be an access through a term;@ name the type through its record, R.%s As %a@]"
+       (format_exp_named ox delta) z y (format_exp_named ox delta) t
+  | Coq_re_elim_ann (_, ox, delta, z) ->
      fprintf f "@[<hov 2>Error: the binder type@ %a@ of an eliminator's block is no member of a group of inductive types@ applied to its uniform parameters,@ or its uniform arguments depend on the block's binders@]"
-       (format_exp_in delta) z
+       (format_exp_named ox delta) z
   (* An eliminator whose blocks are not those of its group: what is
      missing, extra or out of order, then the eliminator as it should be. *)
   | Coq_re_elim_blocks (_, delta, Coq_a_elim (Some p, us, _, bks, scr), missing, extra, j) ->
@@ -1242,7 +1378,8 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
           | None -> fprintf f "@[<hov 2>Error:@ %a@ is not a member@]" format_exp (Coq_a_mem (h, n)))
       | Coq_xe_both n -> fprintf f "@[<hov 2>Error: %s is used and exported@]" n
       | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n
-      | Coq_xe_ind n -> fprintf f "@[<hov 2>Error: an inductive type cannot be opened in a local module: %s@]" n)
+      | Coq_xe_ind n -> fprintf f "@[<hov 2>Error: an inductive type cannot be opened in a local module: %s@]" n
+      | Coq_xe_record n -> fprintf f "@[<hov 2>Error: a record type cannot be opened: %s@]" n)
   | Coq_re_branch_arity (c, n, k, a, r) ->
      let count n one many = Printf.sprintf "%d %s" n (if n = 1 then one else many) in
      let parts =

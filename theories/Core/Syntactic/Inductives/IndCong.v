@@ -292,6 +292,23 @@ Section Fixed_GCtx.
     eapply wf_exp_eq_conv'; [ exact (HYZ _ _ _ _ HY HZ HT') | symmetry; exact HTT ].
   Qed.
 
+  (** Symmetry, for any closed telescope. *)
+  Lemma tele_eq_sym : forall Γ C Xs Ys, tele_ass C -> ⊢ Θ ⍮ Ξ ⍮ C ++ Γ ->
+      List.length Xs = List.length C -> List.length Ys = List.length C ->
+      (forall k X Y T, List.nth_error Xs k = Some X -> List.nth_error Ys k = Some Y ->
+         List.nth_error (tele_insts C Id Xs) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ X ≈ Y : T) ->
+      (forall k Y X T, List.nth_error Ys k = Some Y -> List.nth_error Xs k = Some X ->
+         List.nth_error (tele_insts C Id Ys) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ Y ≈ X : T).
+  Proof.
+    intros * Hass HC HXl HYl HXY k Y X T HY HX HT.
+    assert (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) by (eapply ctx_app_wf_tail; exact HC).
+    destruct (nth_error_lt_some (tele_insts C Id Xs) k) as [T0 HT0].
+    { rewrite length_tele_insts by exact Hass.
+      assert (k < List.length Xs) by (apply List.nth_error_Some; congruence); lia. }
+    destruct (tele_insts_cong C Γ Γ Id Id Xs Ys Hass HC ltac:(apply wf_sub_eq_refl; mauto 3) HXl HYl HXY _ _ _ HT0 HT) as [i HTT].
+    symmetry; eapply wf_exp_eq_conv'; [ exact (HXY _ _ _ _ HX HY HT0) | exact HTT ].
+  Qed.
+
   Lemma uparams_ctx_wf : forall Γ p D, ind_lookup Θ Ξ p = Some D -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊢ Θ ⍮ Ξ ⍮ ind_uparams D ++ Γ.
   Proof.
     intros * Hl HΓ; destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].

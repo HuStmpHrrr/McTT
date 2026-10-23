@@ -655,6 +655,9 @@ Fixpoint exp_mvc (n : nat) (M : exp) : Prop :=
   | a_var _ => True
   | a_let b B => bnd_mvc n b /\ exp_mvc (S n) B
   | a_mem H _ => modexp_mvc n H
+  | a_record _ => True
+  | a_tuple T fs => exp_mvc n T /\ all_list (fun f => exp_mvc n (snd f)) fs
+  | a_proj _ M => exp_mvc n M
   end
 with modexp_mvc (n : nat) (H : modexp) : Prop :=
   match H with
@@ -696,6 +699,7 @@ with gentry_mvc (n : nat) (E : gentry) : Prop :=
   | ge_mod _ U => gunit_mvc n U
   | ge_ind _ _ _ D Φ => gmod_mvc (ind_nu D + n) Φ
   | ge_ind_alias _ _ _ _ _ _ => True
+  | ge_record _ _ R Φ => gmod_mvc (S (List.length (record_params R)) + n) Φ
   end
 with centry_mvc (n : nat) (e : centry) : Prop :=
   match e with
@@ -735,6 +739,17 @@ Record decl_mvc (D : ind_decl) : Prop := mk_decl_mvc
   ; dmv_members : forall k M, ind_member D k = Some M ->
       ctx_mvc (im_nparams M) /\ mhead_mvc (im_head M) /\
       (forall c gs, In (c, gs) (im_cons M) -> List.Forall carg_mvc gs) }.
+
+(** No free module variable anywhere in a record declaration, as
+    [decl_mvc] for a group: so its value's type, the type former at the
+    parameters as variables, is a type over them ([record_self]). *)
+Record record_mvc (R : record_decl) : Prop := mk_record_mvc
+  { (** No parameter's type has a free module variable. *)
+    params_mvc : ctx_mvc (record_params R)
+  (** The sort has no free module variable. *)
+  ; sort_mvc : exp_mvc 0 (record_sort R)
+  (** No field's type has a free module variable. *)
+  ; fields_mvc : forall k f T, List.nth_error (record_fields R) k = Some (f, T) -> exp_mvc 0 T }.
 
 (** The types are read off a declaration once; [simpl] leaves them
     folded, and the lemmas below compute with them. *)

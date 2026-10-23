@@ -154,6 +154,10 @@ Fixpoint nf_code (M : nf) (t : ltree) : ltree :=
   | nf_con p k c Ms =>
       lt_node 14 (lt_node k (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
                     (lt_node 0 (str_code c lt_nil) (nfs_code Ms lt_nil))) t
+  | nf_record p Ms => lt_node 15 (lt_node 0 (strs_code (q_unit p) (strs_code (q_chain p) lt_nil)) (nfs_code Ms lt_nil)) t
+  | nf_tuple p Ms fs Ns =>
+      lt_node 16 (lt_node 0 (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
+                    (lt_node 0 (strs_code fs lt_nil) (lt_node 0 (nfs_code Ms lt_nil) (nfs_code Ns lt_nil)))) t
   end
 with ne_code (m : ne) (t : ltree) : ltree :=
   match m with
@@ -164,6 +168,7 @@ with ne_code (m : ne) (t : ltree) : ltree :=
   | ne_elim p Us m Bks m' =>
       lt_node 5 (lt_node m (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
                    (nblocks_code Bks (ne_code m' (nfs_code Us lt_nil)))) t
+  | ne_proj f m' => lt_node 6 (lt_node 0 (str_code f lt_nil) (ne_code m' lt_nil)) t
   end
 with la_code (xs : lvl_atoms) (t : ltree) : ltree :=
   match xs with
@@ -206,6 +211,7 @@ Proof.
          | H : nblocks_code _ _ = nblocks_code _ _ |- _ => apply nblocks_code_inj in H as [-> H]
          | H : str_code _ _ = str_code _ _ |- _ => apply str_code_inj in H as [-> H]
          | H : strs_code _ _ = strs_code _ _ |- _ => apply qname_code_inj in H as ->
+         | H : strs_code _ _ = strs_code _ _ |- _ => apply strs_code_inj in H as [-> H]
          | H : lt_node _ _ _ = lt_node _ _ _ |- _ => injection H as; subst
        end.
   all: try discriminate.

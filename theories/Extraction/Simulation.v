@@ -20,7 +20,7 @@ From Stdlib Require Import Lia List PeanoNat String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Substitution Members Fresh.
+From Mctt.Core.Syntactic Require Import Substitution Members Records Fresh.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Semantic Require Import Domain Evaluation Readback Avoid.
 From Mctt.Core.Semantic.Kinds Require Import Kinds.
@@ -96,6 +96,10 @@ Inductive dsim : domain -> domain -> Prop :=
        desim (env_entry ρm x) (env_entry ρm' x)) ->
     (forall x, ~ pt_fresh (S x) t -> desim (env_entry ρ x) (env_entry ρ' x)) ->
     dsim f f' -> dsim (d_ihfam ρm As ρ t f) (d_ihfam ρm' As ρ' t f')
+(** A record's type former at related arguments *)
+| ds_record : forall p args args', dsim_list args args' -> dsim (d_record p args) (d_record p args')
+(** A tuple of related fields *)
+| ds_tuple : forall vs vs', dsim_fields vs vs' -> dsim (d_tuple vs) (d_tuple vs')
 with dsim_ne : domain_ne -> domain_ne -> Prop :=
 (** A variable *)
 | dsn_var : forall x, dsim_ne (#ᵈ x) (#ᵈ x)
@@ -116,6 +120,8 @@ with dsim_ne : domain_ne -> domain_ne -> Prop :=
        (forall c n B, In (c, n, B) (eb_brs b) -> forall x, ~ exp_fresh (n + x) B -> desim (env_entry ρ x) (env_entry ρ' x))) ->
     dsim_list ups ups' -> dsim_list args args' -> dsim_ne m m' ->
     dsim_ne (d_elim ρ Bks p ups j args m) (d_elim ρ' Bks p ups' j args' m')
+(** The field of a neutral *)
+| dsn_proj : forall f m m', dsim_ne m m' -> dsim_ne (d_proj f m) (d_proj f m')
 with dsim_nf : domain_nf -> domain_nf -> Prop :=
 (** A value at a type, both related *)
 | dsf_dom : forall a a' m m', dsim a a' -> dsim m m' -> dsim_nf (⇓ a m) (⇓ a' m')
@@ -138,6 +144,12 @@ with dsim_list : list domain -> list domain -> Prop :=
 | dsa_nil : dsim_list nil nil
 (** Related first values, then the rest *)
 | dsa_cons : forall a a' args args', dsim a a' -> dsim_list args args' -> dsim_list (a :: args) (a' :: args')
+(** Named fields, the same names at related values *)
+with dsim_fields : list (string * domain) -> list (string * domain) -> Prop :=
+(** No field *)
+| dsfl_nil : dsim_fields nil nil
+(** A field of the same name at related values, then the rest *)
+| dsfl_cons : forall f a a' vs vs', dsim a a' -> dsim_fields vs vs' -> dsim_fields ((f, a) :: vs) ((f, a') :: vs')
 with desim : dentry -> dentry -> Prop :=
 (** Related terms *)
 | des_term : forall d d', dsim d d' -> desim (de_term d) (de_term d')
@@ -145,7 +157,7 @@ with desim : dentry -> dentry -> Prop :=
 | des_mod : forall h h', dmsim h h' -> desim (de_mod h) (de_mod h').
 
 #[export]
-Hint Constructors dsim dsim_ne dsim_nf dmsim dsim_la dsim_list desim : mctt.
+Hint Constructors dsim dsim_ne dsim_nf dmsim dsim_la dsim_list dsim_fields desim : mctt.
 
 (** Agreement of two environments at the entries [P] selects. *)
 Definition env_agree (P : nat -> Prop) (ρ ρ' : env) : Prop :=
@@ -242,6 +254,26 @@ Proof. intros n args args' H; revert n; induction H; intros [| n]; cbn; construc
 
 Lemma dsim_list_skipn : forall n args args', dsim_list args args' -> dsim_list (skipn n args) (skipn n args').
 Proof. intros n args args' H; revert n; induction H; intros [| n]; cbn; try constructor; auto. Qed.
+
+(** The fields of a tuple, named alike at related values. *)
+Lemma dsim_fields_combine : forall fs vs vs', dsim_list vs vs' -> dsim_fields (List.combine fs vs) (List.combine fs vs').
+Proof. induction fs as [| f fs IH]; intros vs vs' H; destruct H; cbn; constructor; auto. Qed.
+
+(** A field of related tuples: related values. *)
+Lemma field_lookup_sim : forall vs vs' f r, dsim_fields vs vs' -> field_lookup vs f = Some r ->
+    exists r', field_lookup vs' f = Some r' /\ dsim r r'.
+Proof.
+  induction 1 as [| g a a' vs vs' Ha Hvs IH]; cbn; intros Hl; [ discriminate |].
+  destruct (String.eqb f g); [ injection Hl as <-; eauto | auto ].
+Qed.
+
+(** An entry of related lists: related values. *)
+Lemma dsim_list_nth_error : forall args args' k r, dsim_list args args' -> List.nth_error args k = Some r ->
+    exists r', List.nth_error args' k = Some r' /\ dsim r r'.
+Proof.
+  intros * H; revert k; induction H as [| a a' args args' Ha Hargs IH]; intros [| k]; cbn; intros Hk;
+    try discriminate; [ injection Hk as <-; eauto | auto ].
+Qed.
 
 (** Agreement everywhere: the environments of the telescopes of a
     declaration, whose types are read at every entry. *)
@@ -636,7 +668,7 @@ Section KindSim.
       destruct (IH ρ' P) as (ρ1' & Hk1 & Hρ1); [ intros x Hx; apply HP; cbn; tauto | exact Hρ |].
       exists (kbentry ρ1' E :: ρ1'); split; [ constructor; exact Hk1 |].
       cbn [gm_binders]; apply env_agree_above_cons; [ exact Hρ1 |].
-      destruct E as [? ? ? ? | pm U | ? ? ? ? ? | ? ? ? ? ? ?]; cbn [kbentry]; try (repeat constructor; fail).
+      destruct E as [? ? ? ? | pm U | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ?]; cbn [kbentry]; try (repeat constructor; fail).
       destruct U as [Δu Du]; cbn [dm_clo]; constructor; constructor.
       eapply env_agree_mono; [ exact Hρ1 | apply above_of ].
       intros y0 Hy; apply HP; intros Hf; apply Hy; cbn [gmod_fresh gentry_fresh] in Hf; destruct Hf as [_ Hf]; exact Hf.
@@ -717,7 +749,12 @@ Section Eval.
     (forall ρm As ρ t m a, ⟦ihty m of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> forall ρm' ρ' m',
        env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) (List.nth (ptyp_mem t) As a_True)) ρm ρm' ->
        env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> dsim m m' ->
-       exists a', ⟦ihtyᶠ m' of t under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a').
+       exists a', ⟦ihtyᶠ m' of t under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a') /\
+    (forall f m r, eval_proj Θ Ξ f m r -> forall m', dsim m m' ->
+       exists r', feval_proj Θ Ξ f m' r' /\ dsim r r') /\
+    (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs -> forall ns' m' pre',
+       dsim_list ns ns' -> dsim_ne m m' -> dsim_list pre pre' ->
+       exists rs', feval_nflds Θ Ξ ns' m' fl pre' rs' /\ dsim_list rs rs').
   Proof.
     apply (eval_mut_ind Θ Ξ
       (fun M ρ m _ => forall ρ', env_agree (fun x => ~ exp_fresh x M) ρ ρ' ->
@@ -758,8 +795,62 @@ Section Eval.
       (fun ρm As ρ t m a _ => forall ρm' ρ' m',
          env_agree (fun x => ~ exp_fresh (S (List.length (ptyp_ps t)) + x) (List.nth (ptyp_mem t) As a_True)) ρm ρm' ->
          env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> dsim m m' ->
-         exists a', ⟦ihtyᶠ m' of t under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a'));
+         exists a', ⟦ihtyᶠ m' of t under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a')
+      (fun f m r _ => forall m', dsim m m' -> exists r', feval_proj Θ Ξ f m' r' /\ dsim r r')
+      (fun ns m fl pre rs _ => forall ns' m' pre',
+         dsim_list ns ns' -> dsim_ne m m' -> dsim_list pre pre' ->
+         exists rs', feval_nflds Θ Ξ ns' m' fl pre' rs' /\ dsim_list rs rs'));
       intros; cbn [fst snd ptyp_ps ptyp_mem] in *.
+    (** Records: a tuple's fields, a field of a value, and the projections
+        of a neutral, each from related parts. *)
+    all: try solve [ match goal with
+      | IH : forall ρ0, env_agree (fun x => ~ Forall (exp_fresh x) (List.map snd ?fs)) ?ρ ρ0 -> exists _, _ /\ _,
+        Hρ : env_agree (fun x => ~ exp_fresh x (a_tuple ?T ?fs)) ?ρ ?ρ' |- _ =>
+          let vs' := fresh "vs'" in
+          destruct (IH ρ') as (vs' & ? & ?);
+            [ eapply env_agree_mono; [ exact Hρ |];
+              let x := fresh "x" in let Hx := fresh "Hx" in let Hf := fresh "Hf" in
+              intros x Hx Hf; apply Hx; cbn [exp_fresh] in Hf; destruct Hf as [_ Hf];
+              apply (proj2 (List.Forall_map _ _ _)), (proj1 (all_list_Forall _ _)), Hf
+            |];
+          eexists; split; [ constructor; eassumption | constructor; apply dsim_fields_combine; assumption ]
+      | IHM : forall ρ0, env_agree (fun x => ~ exp_fresh x ?M) ?ρ ρ0 -> exists _, _ /\ _,
+        IHp : forall m0, dsim ?m m0 -> exists _, feval_proj _ _ ?f m0 _ /\ _,
+        Hρ : env_agree (fun x => ~ exp_fresh x (a_proj ?f ?M)) ?ρ ?ρ' |- _ =>
+          let m' := fresh "m'" in let r' := fresh "r'" in
+          destruct (IHM ρ') as (m' & ? & ?); [ exact Hρ |];
+          destruct (IHp m') as (r' & ? & ?); [ assumption |];
+          exists r'; split; [ econstructor; eassumption | assumption ]
+      | Hl : field_lookup ?vs ?f = Some _, Hs : dsim (d_tuple ?vs) _ |- _ =>
+          inversion Hs; subst;
+          match goal with Hfs : dsim_fields vs _ |- _ =>
+            let r' := fresh "r'" in
+            destruct (field_lookup_sim _ _ _ _ Hfs Hl) as (r' & ? & ?);
+            exists r'; split; [ constructor; assumption | assumption ] end
+      | IH : forall ns0 m0 pre0, dsim_list ?ns ns0 -> dsim_ne ?m m0 -> dsim_list nil pre0 -> exists _, _ /\ _,
+        Hk : List.nth_error ?rs ?k = Some _, Hs : dsim (⇑ (d_record _ ?ns) ?m) _ |- _ =>
+          inversion Hs; subst;
+          match goal with Ha : dsim (d_record _ _) _ |- _ => inversion Ha; subst end;
+          match goal with Hns : dsim_list ns ?ns', Hm : dsim_ne m ?m' |- _ =>
+            let rs' := fresh "rs'" in let r' := fresh "r'" in
+            destruct (IH ns' m' nil Hns Hm ltac:(constructor)) as (rs' & ? & Hrs);
+            destruct (dsim_list_nth_error _ _ _ _ Hrs Hk) as (r' & ? & ?);
+            exists r'; split; [ econstructor; eassumption | assumption ] end
+      | |- exists _, feval_nflds _ _ _ _ nil _ _ /\ _ => eexists; split; constructor
+      end ].
+    all: repeat first [ sim_inv | sim_fwd ].
+    (** The next field of a neutral: its type, at the related parameters
+        ([sim_fwd]), then the rest after its projection. *)
+    all: try solve [ match goal with
+      | IH : forall ns0 m0 pre0, dsim_list ?ns ns0 -> dsim_ne ?m m0 ->
+               dsim_list (?pre ++ ⇑ ?a (d_proj ?g ?m) :: nil) pre0 -> exists _, _ /\ _,
+        Hns : dsim_list ?ns ?ns', Hm : dsim_ne ?m ?m', Hpre : dsim_list ?pre ?pre',
+        HT : ⟦ _ ⟧ᶠ _ ⍮ _ ⍮ env_args nil (?ns' ++ ?pre') ↘ ?a', Ha : dsim ?a ?a' |- _ =>
+          let rs' := fresh "rs'" in
+          destruct (IH ns' m' (pre' ++ ⇑ a' (d_proj g m') :: nil) Hns Hm) as (rs' & ? & ?);
+            [ apply dsim_list_snoc; [ exact Hpre | constructor; [ exact Ha | constructor; exact Hm ] ] |];
+          eexists; split; [ econstructor; eassumption | constructor; [ constructor; [ exact Ha | constructor; exact Hm ] | assumption ] ]
+      end ].
     all: repeat first [ sim_inv | sim_fwd ].
     all: try solve [ sim_fin ].
     (** The eliminator: its blocks agree where it does; the group it
@@ -1064,8 +1155,16 @@ Section Read.
       env_agree (fun x => ~ pt_fresh x t) ρ ρ' -> dsim m m' ->
       exists a', ⟦ihtyᶠ m' of t under ρm' As ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ a' /\ dsim a a'.
   Proof.
-    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
+    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy & _).
     exact (Hy _ _ _ _ _ _ H).
+  Qed.
+
+  (** A field of related values: related values. *)
+  Lemma feval_proj_sim : forall f m r, eval_proj Θ Ξ f m r -> forall m', dsim m m' ->
+      exists r', feval_proj Θ Ξ f m' r' /\ dsim r r'.
+  Proof.
+    intros * H; destruct (feval_sim Θ Ξ) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hp & _).
+    exact (Hp _ _ _ H).
   Qed.
 
   Lemma ffresh_cargs_sim : forall p ups ρ gs s vs, Fcargs gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ vs ->
@@ -1156,7 +1255,9 @@ Section Read.
        ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> im_nn Mv = im_nn Mi ->
        env_agree (fun x => ~ exp_fresh (S (im_nn Mi) + x) A) ρ ρ' ->
        (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-       Rbrsᶠ Bs at cs of Mi (fst r, pre') from p ups' Bks Mv A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs').
+       Rbrsᶠ Bs at cs of Mi (fst r, pre') from p ups' Bks Mv A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs') /\
+    (forall s ρ fl v Fs, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs -> forall ρ' v',
+       env_agree (fun _ => True) ρ ρ' -> dsim v v' -> Rfldsᶠ v' at fl in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Fs).
   Proof.
     apply (read_mut_ind Θ Ξ
       (fun s n W _ => forall n', dsim_nf n n' -> Rnfᶠ n' in Θ ⍮ Ξ ⍮ s ↘ W)
@@ -1177,7 +1278,9 @@ Section Read.
          ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> im_nn Mv = im_nn Mi ->
          env_agree (fun x => ~ exp_fresh (S (im_nn Mi) + x) A) ρ ρ' ->
          (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-         Rbrsᶠ Bs at cs of Mi (fst r, pre') from p ups' Bks Mv A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs'));
+         Rbrsᶠ Bs at cs of Mi (fst r, pre') from p ups' Bks Mv A in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Bs')
+      (fun s ρ fl v Fs _ => forall ρ' v',
+         env_agree (fun _ => True) ρ ρ' -> dsim v v' -> Rfldsᶠ v' at fl in Θ ⍮ Ξ ⍮ ρ' ⍮ s ↘ Fs));
       intros; cbn [fst snd] in *;
       repeat match goal with
         | H : dsim_nf _ _ |- _ => inversion H; subst; clear H
@@ -1197,6 +1300,33 @@ Section Read.
         | H : forall b, In b ?Bks -> (forall x, _ -> desim (env_entry ?ρ x) (env_entry ?ρ' x)) /\ _ |- _ =>
             change (blocks_agree Bks ρ ρ') in H
         end.
+    (** Records.  A value of a record type, its parameters at their
+        telescope and its fields' projections at their types; a record
+        type; and the fields, each a projection of related values at a type
+        evaluated in environments related everywhere. *)
+    all: try solve [ match goal with
+      | IH1 : forall ρ0 vs0, env_agree _ nil ρ0 -> dsim_list ?ns vs0 -> Rpsᶠ vs0 at _ in _ ⍮ _ ⍮ ρ0 ⍮ _ ↘ ?Ps,
+        IH2 : forall ρ0 v0, env_agree _ (env_args nil ?ns) ρ0 -> dsim ?v v0 -> Rfldsᶠ v0 at _ in _ ⍮ _ ⍮ ρ0 ⍮ _ ↘ ?Fs,
+        Ha : dsim_list ?ns ?ns', Hv : dsim ?v ?v'
+        |- Rnfᶠ ⇓ (d_record _ ?ns') ?v' in _ ⍮ _ ⍮ _ ↘ nf_tuple _ ?Ps _ ?Fs =>
+          econstructor; try eassumption;
+            [ rewrite <- (dsim_list_length _ _ Ha); assumption
+            | apply IH1; [ apply env_agree_nil | exact Ha ]
+            | apply IH2; [ apply env_agree_all_args; [ apply env_agree_nil | exact Ha ] | exact Hv ] ]
+      | IH : forall ρ0 vs0, env_agree _ nil ρ0 -> dsim_list ?ns vs0 -> Rpsᶠ vs0 at _ in _ ⍮ _ ⍮ ρ0 ⍮ _ ↘ ?Ps,
+        Ha : dsim_list ?ns ?ns' |- Rtypᶠ d_record _ ?ns' in _ ⍮ _ ⍮ _ ↘ nf_record _ ?Ps =>
+          econstructor; try eassumption;
+            [ rewrite <- (dsim_list_length _ _ Ha); assumption | apply IH; [ apply env_agree_nil | exact Ha ] ]
+      | Hp : eval_proj _ _ ?f ?v ?r, e : ⟦ ?T ⟧ Θ ⍮ Ξ ⍮ ?ρ ↘ ?t, Hρ : env_agree (fun _ => True) ?ρ ?ρ',
+        IHV : forall n0, dsim_nf (⇓ ?t ?r) n0 -> _, IHR : forall ρ0 v0, env_agree _ (?ρ ↦ ?r) ρ0 -> dsim ?v v0 -> _,
+        Hv : dsim ?v ?v' |- _ =>
+          let r' := fresh "r'" in let t' := fresh "t'" in
+          destruct (feval_proj_sim _ _ _ Hp v' Hv) as (r' & ? & ?);
+          destruct (feval_exp_sim _ _ _ e ρ') as (t' & ? & ?);
+            [ eapply env_agree_mono; [ exact Hρ | intros; exact I ] |];
+          econstructor; [ eassumption | eassumption | apply IHV; constructor; assumption
+                        | apply IHR; [ apply env_agree_all_cons; assumption | exact Hv ] ]
+      end ].
     (** Inductive types.  A constructor, a type, and the parameters and
         arguments of each, at their types: the types are evaluated in
         environments related everywhere. *)

@@ -288,6 +288,11 @@ let rec term st env (o : C.obj) : unit =
               let v = bind st x in Option.iter (term st env') oz; push x v env') env xs in
           term st envx a;
           List.iter (fun ((c, ys), b) -> st.occ.(next st c).bare <- true; term st (binds env ys) b) bs) bks
+  (* A record value: its type, then each field's name, which names no
+     global here, and its value. *)
+  | C.Coq_tuple (t, fs) ->
+      term st env t;
+      List.iter (fun (y, m) -> st.occ.(next st y).bare <- true; term st env m) fs
 
 (* Module position: [Elaborator.elab_mod]. *)
 and modv st env (o : C.obj) : mden =
@@ -494,6 +499,26 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
        ignore (decl (Some "inductive") x Mod);
        let env', _ = params st env ps in
        ignore (modv st env' e)
+   (* A record type: its name, a type and a module, its parameters, its
+      sort, then its fields, members of its module, each type seeing the
+      fields before it, then its with-area, in the record's frame
+      ([ElabSpec.record_ents]), the record in scope outside it. *)
+   | C.Coq_c_record (_, x, ps, s, fs, cs) ->
+       ignore (decl (Some "record") x Mod);
+       let env', vbs = params st env ps in
+       term st env' s;
+       ignore (List.fold_left (fun envf (y, a) ->
+           let i = next st y in
+           declare st i (anchor_of (ch @ [ x ]) y) Def;
+           entry (ch @ [ x ]) y "field" Def;
+           term st envf a;
+           push y { v_link = Site { s_unit = st.unit; s_anchor = anchor_of (ch @ [ x ]) y }; v_mod = MNone } envf)
+         env' fs);
+       (* The value the module is at: a binder no name denotes. *)
+       let self = { v_link = Site { s_unit = st.unit; s_anchor = "" }; v_mod = MNone } in
+       let p = { S.q_unit = fp; S.q_chain = ch @ [ x ] } in
+       ignore (cmds st fp (ch @ [ x ]) (E.Coq_en_mem (x, p) :: f @ o, fv @ ov)
+                 (E.record_ents fp ch x ps fs, self :: List.rev vbs) cs)
    (* A builtin binding: its kind, which declares nothing and links where
       the type it binds does, then the type. *)
    | C.Coq_c_builtin (k, x) ->
@@ -563,7 +588,7 @@ let eval_spans (toks : tok array) (evals : (C.obj * C.obj option) list) : (int *
   let follows = function
     | P.MODULE _ | P.PRIVATE _ | P.ABSTRACT _ | P.DEF _ | P.THEOREM _ | P.LEMMA _ | P.FACT _
     | P.REMARK _ | P.LET _ | P.GIVEN _ | P.AXIOM _ | P.IMPORT _ | P.OPEN _ | P.EVAL _ | P.INDUCTIVE _
-    | P.BUILTIN _ | P.MUTUAL _ | P.END _ | P.EOF _ -> true
+    | P.BUILTIN _ | P.MUTUAL _ | P.RECORD _ | P.END _ | P.EOF _ -> true
     | _ -> false in
   let parses i j (e, t) =
     let body = Array.to_list (Array.map (fun k -> k.t) (Array.sub toks i (j - i))) in

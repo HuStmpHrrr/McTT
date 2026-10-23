@@ -144,29 +144,34 @@ Definition glu_mod_tele (_ : gdeps) (_ : gstack) (_ : ctx) : Prop := True.
 
 Definition glu_ind_decl_entry (Θ2 : gdeps) (Ξ2 : gstack) (D : ind_decl) : Prop := @glu_ind_decl (gc_mk Θ2 Ξ2) D.
 
+(** A record declaration needs nothing: the rules of records premise the
+    facts about the declaration, whose gluings soundness reads off the
+    derivation. *)
+Definition glu_record_decl_entry (_ : gdeps) (_ : gstack) (_ : record_decl) : Prop := True.
+
 (** A stored body of the source, valid. *)
 Lemma glu_loc_valid : forall Θ Ξ Θs Ξs Θ2 Ξ2 p T Φ,
-    gds_valid glu_entry glu_mod_tele glu_ind_decl_entry Θs Ξs Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry Θs Ξs Θ2 Ξ2 Ξ -> loc Θ Ξ p T Φ ->
-    gm_valid glu_entry glu_mod_tele glu_ind_decl_entry Θs Ξs Θ2 Ξ2 T Φ.
+    gds_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θs Ξs Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θs Ξs Θ2 Ξ2 Ξ -> loc Θ Ξ p T Φ ->
+    gm_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θs Ξs Θ2 Ξ2 T Φ.
 Proof.
   intros * HΘ HΞ [Hl | Hl].
   - unfold gc_frame in Hl.
     destruct (gs_find_tele Ξ p) as [[[[Δ [[|] Φ1 | E]] [| ? ?]] T0] |] eqn:Ef; try discriminate.
-    injection Hl as <- <-; exact (proj2 (gs_valid_find _ _ _ _ _ _ _ _ _ _ _ _ HΞ Ef)).
-  - exact (proj2 (good_body _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl)).
+    injection Hl as <- <-; exact (proj2 (gs_valid_find _ _ _ _ _ _ _ _ _ _ _ _ _ HΞ Ef)).
+  - exact (proj2 (good_body _ _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl)).
 Qed.
 
 (** A sound embedding, from the validity at the target of what the source
     files and has open. *)
 Theorem glu_emb_of : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
-    gds_valid glu_entry glu_mod_tele glu_ind_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry Θ Ξ Θ2 Ξ2 Ξ -> glu_emb Θ Ξ Θ2 Ξ2.
+    gds_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Θ -> gs_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ Θ2 Ξ2 Ξ -> glu_emb Θ Ξ Θ2 Ξ2.
 Proof.
   intros * Hg He HΘ HΞ; pose proof He as [Hg2 Hs].
-  constructor; [ exact He | intros p D Hl; exact (good_ind _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) |].
+  constructor; [ exact He | intros p D Hl; exact (good_ind _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) |].
   intros * Hl Hp Hn HΓ.
   apply glu_rel_exp_nil_weaken; [ exact HΓ |].
   (* the type glues, by the entry's validity *)
-  pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ (glu_loc_valid _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) Hp) as [i HA].
+  pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ (glu_loc_valid _ _ _ _ _ _ _ _ _ HΘ HΞ Hl) Hp) as [i HA].
   (* the entry, stored at the target where it is at the source *)
   destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- <-] & Hent).
   pose proof (proj2 (loc_entry _ _ Hg _ _ _ Hl x _) Hent) as HeE.
@@ -178,7 +183,7 @@ Proof.
   exact (glob_glu _ _ Hg2 _ _ _ _ _ _ _ _ _ _ Hl2 Hp2 Hn HA).
 Qed.
 
-Corollary glu_emb_good : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
+Corollary glu_emb_good : forall Θ Ξ Θ2 Ξ2, ⊢ᵍ Θ ⍮ Ξ -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
     glu_emb Θ Ξ Θ2 Ξ2.
 Proof.
   intros * Hg HG He; destruct (HG _ _ He _ _ (gc_sub_refl _ _)) as [HΘ HΞ].

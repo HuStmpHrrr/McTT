@@ -4,7 +4,7 @@ From Stdlib Require Import Lia List PeanoNat String.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Readback Evaluation.
-From Mctt.Core.Syntactic Require Import Members.
+From Mctt.Core.Syntactic Require Import Members Records.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Reference Require Import Evaluation.
 From Mctt.Extraction Require Import Readback.
@@ -255,6 +255,13 @@ Inductive read_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :=
 | rnf_ind_neut :
   `( read_ne_order Θ Ξ s m ->
      read_nf_order Θ Ξ s ⇓ (d_ind p k as') (⇑ a m) )
+(** A value of a record type: the type's parameters, then the fields *)
+| rnf_record :
+  `( record_lookup Θ Ξ p = Some R ->
+     List.length ns = List.length (record_params R) ->
+     read_ps_order Θ Ξ s nil (List.rev (record_params R)) ns ->
+     read_fields_order Θ Ξ s (env_args nil ns) (record_fields R) v ->
+     read_nf_order Θ Ξ s ⇓ (d_record p ns) v )
 
 with read_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
 | rne_var :
@@ -287,6 +294,10 @@ with read_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
      read_blocks_order Θ Ξ s ρ p ups Bks (im_sel Mj) 0 (ind_members Dq) ->
      read_ne_order Θ Ξ s m ->
      read_ne_order Θ Ξ s (d_elim ρ Bks p ups j as' m) )
+(** The field of a neutral *)
+| rne_proj :
+  `( read_ne_order Θ Ξ s m ->
+     read_ne_order Θ Ξ s (d_proj f m) )
 
 with read_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
 | rtyp_univ :
@@ -318,6 +329,12 @@ with read_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
      List.length as' = im_np D Mk ->
      read_ps_order Θ Ξ s nil (List.rev (im_params D Mk)) as' ->
      read_typ_order Θ Ξ s (d_ind p k as') )
+(** A record type at all its parameters *)
+| rtyp_record :
+  `( record_lookup Θ Ξ p = Some R ->
+     List.length ns = List.length (record_params R) ->
+     read_ps_order Θ Ξ s nil (List.rev (record_params R)) ns ->
+     read_typ_order Θ Ξ s (d_record p ns) )
 
 with read_la_order (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> Prop :=
 | rla_nil :
@@ -335,6 +352,20 @@ with read_ps_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> lis
      (forall a, ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> read_nf_order Θ Ξ s ⇓ a v) ->
      read_ps_order Θ Ξ s (ρ ↦ v) T vs ->
      read_ps_order Θ Ξ s ρ (ce_ass A :: T) (v :: vs) )
+
+(** The fields of a record value, each its projection at its type *)
+with read_fields_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> list (string * exp) -> domain -> Prop :=
+(** No field left *)
+| rflds_nil :
+  `( read_fields_order Θ Ξ s ρ nil v )
+(** The next field: its projection, its type, its readback, then the rest
+    with the projection in the environment *)
+| rflds_cons :
+  `( eval_proj_order Θ Ξ f v ->
+     eval_exp_order Θ Ξ T ρ ->
+     (forall r t, eval_proj Θ Ξ f v r -> ⟦ T ⟧ Θ ⍮ Ξ ⍮ ρ ↘ t -> read_nf_order Θ Ξ s ⇓ t r) ->
+     (forall r, eval_proj Θ Ξ f v r -> read_fields_order Θ Ξ s (ρ ↦ r) fl v) ->
+     read_fields_order Θ Ξ s ρ ((f, T) :: fl) v )
 
 with read_cargs_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> list carg -> list domain -> Prop :=
 | rcargs_nil :
@@ -441,7 +472,7 @@ with read_brs_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list dom
 
 #[local]
 Hint Constructors read_nf_order read_ne_order read_typ_order read_la_order
-  read_ps_order read_cargs_order read_shape_order read_blocks_order read_brs_order : mctt.
+  read_ps_order read_fields_order read_cargs_order read_shape_order read_blocks_order read_brs_order : mctt.
 
 (** Every readback derivation is within its order. *)
 Lemma read_order_sound : forall Θ Ξ,
@@ -455,7 +486,8 @@ Lemma read_order_sound : forall Θ Ξ,
     (forall s ρ p ups Bks sel i Ms NBks, Rblks i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
        read_blocks_order Θ Ξ s ρ p ups Bks sel i Ms) /\
     (forall s ρ p ups Bks Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-       read_brs_order Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs).
+       read_brs_order Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs) /\
+    (forall s ρ fl v Fs, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs -> read_fields_order Θ Ξ s ρ fl v).
 Proof.
   intros Θ Ξ; apply read_mut_ind; intros;
     (** A constructor at a view: its arguments are the last values, as
@@ -499,10 +531,14 @@ Lemma read_brs_order_sound : forall Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs Bs',
     Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' -> read_brs_order Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs.
 Proof. intros Θ Ξ; pose proof (read_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
+Lemma read_fields_order_sound : forall Θ Ξ s ρ fl v Fs,
+    Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs -> read_fields_order Θ Ξ s ρ fl v.
+Proof. intros Θ Ξ; pose proof (read_order_sound Θ Ξ); destruct_all; eauto. Qed.
+
 #[export]
 Hint Resolve read_nf_order_sound read_ne_order_sound read_typ_order_sound read_la_order_sound
   read_ps_order_sound read_cargs_order_sound read_shape_order_sound read_blocks_order_sound
-  read_brs_order_sound : mctt.
+  read_brs_order_sound read_fields_order_sound : mctt.
 
 (** A constructor at a view, its arguments the last values, as many as the
     constructor takes ([read_nf_con_view]). *)
@@ -527,6 +563,7 @@ Ltac impl_obl_tac1 :=
   | H : read_typ_order _ _ _ _ |- _ => progressive_invert H
   | H : read_la_order _ _ _ _ |- _ => progressive_invert H
   | H : read_ps_order _ _ _ _ _ _ |- _ => progressive_invert H
+  | H : read_fields_order _ _ _ _ _ _ |- _ => progressive_invert H
   | H : read_cargs_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
   | H : read_shape_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
   | H : read_blocks_order _ _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
@@ -586,6 +623,12 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
 | s, ⇓ (d_ind p k as') (⇑ a m), H =>
     let (M, HM) := read_ne_impl s m _ in
     exist _ ⇑ⁿ M _
+| s, ⇓ (d_record p ns) v, H with inspect (record_lookup Θ Ξ p) := {
+  | exist _ (Some R) El =>
+      let (Ps, HPs) := read_ps_impl s nil (List.rev (record_params R)) ns _ in
+      let (Fs, HFs) := read_fields_impl s (env_args nil ns) (record_fields R) v _ in
+      exist _ (nf_tuple p Ps (List.map fst (record_fields R)) Fs) _
+  | exist _ None El => False_rect _ _ }
 
   with read_ne_impl s d (H : read_ne_order Θ Ξ s d) : { m | Rne d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
 | s, #ᵈ x, H => exist _ #ⁿ (s - x - 1) _
@@ -612,6 +655,9 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
         | exist _ None Edq => False_rect _ _ } }
     | exist _ None Em => False_rect _ _ }
   | exist _ None Ed => False_rect _ _ }
+| s, d_proj f m, H =>
+    let (M, HM) := read_ne_impl s m _ in
+    exist _ (ne_proj f M) _
 
   with read_typ_impl s d (H : read_typ_order Θ Ξ s d) : { m | Rtyp d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
 | s, 𝕌ω@i, H => exist _ Typeωⁿ@i _
@@ -636,6 +682,11 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
         exist _ (nf_indty p k Ps) _
     | exist _ None Em => False_rect _ _ }
   | exist _ None Ed => False_rect _ _ }
+| s, d_record p ns, H with inspect (record_lookup Θ Ξ p) := {
+  | exist _ (Some R) El =>
+      let (Ps, HPs) := read_ps_impl s nil (List.rev (record_params R)) ns _ in
+      exist _ (nf_record p Ps) _
+  | exist _ None El => False_rect _ _ }
 
   with read_la_impl s xs (H : read_la_order Θ Ξ s xs) : { ys | Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys } by struct H :=
 | s, nil, H => exist _ la_nil _
@@ -652,6 +703,16 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
     let (Vs, HVs) := read_ps_impl s (ρ ↦ v) T vs _ in
     exist _ (nfs_cons V Vs) _
 | s, ρ, _, _, H => False_rect _ _
+
+  with read_fields_impl s ρ fl v (H : read_fields_order Θ Ξ s ρ fl v) :
+    { Fs | Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs } by struct H :=
+| s, ρ, nil, v, H => exist _ nfs_nil _
+| s, ρ, (f, T) :: fl, v, H =>
+    let (r, Hr) := eval_proj_impl Θ Ξ f v _ in
+    let (t, Ht) := eval_exp_impl Θ Ξ T ρ _ in
+    let (V, HV) := read_nf_impl s ⇓ t r _ in
+    let (Vs, HVs) := read_fields_impl s (ρ ↦ r) fl v _ in
+    exist _ (nfs_cons V Vs) _
 
   with read_cargs_impl s p ups ρ gs vs (H : read_cargs_order Θ Ξ s p ups ρ gs vs) :
     { Ms | Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms } by struct H :=
@@ -747,6 +808,10 @@ Ltac rb_glob :=
         rewrite H1 in H2; first [ discriminate H2 | injection H2; clear H2; intros; subst ]
     | H1 : im_ref ?p ?j ?M = _, H2 : im_ref ?p ?j ?M = _ |- _ =>
         rewrite H1 in H2; injection H2; clear H2; intros; subst
+    (** A record, looked up once *)
+    | H1 : record_lookup _ _ ?p = Some ?x, H2 : record_lookup _ _ ?p = Some ?y |- _ =>
+        assert_fails (constr_eq x y);
+        rewrite H1 in H2; injection H2; clear H2; rb_unify x y
     (** The member a member stands for, at the reference the order records *)
     | Hm : eval_mref _ _ ?p _ ?j (?a, ?b, _), Hl : ind_lookup _ _ ?p = Some _, Hj : ind_member _ ?j = Some _,
       Hr : im_ref ?p ?j _ = (?c, ?d) |- _ =>
@@ -784,6 +849,8 @@ Ltac rb_obl_auto :=
   | |- read_typ_order _ _ _ _ => first [ rb_ord | rb_run ]
   | |- read_la_order _ _ _ _ => first [ rb_ord | rb_run ]
   | |- read_ps_order _ _ _ _ _ _ => first [ rb_ord | rb_run ]
+  | |- read_fields_order _ _ _ _ _ _ => first [ rb_ord | rb_run ]
+  | |- eval_proj_order _ _ _ _ => first [ rb_ord | rb_run ]
   | |- read_cargs_order _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- read_shape_order _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- read_blocks_order _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]

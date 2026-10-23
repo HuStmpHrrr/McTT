@@ -130,6 +130,9 @@ Inductive obj : Set :=
     the non-uniform parameters, the constructor's arguments and the
     induction hypotheses, in that order *)
 | elim : obj -> list (bool * list (string * option obj) * obj * list (string * list string * obj)) -> obj
+(** [record T where f := M ; … end]: a value of the record type [T], its
+    fields in order, each its name and its value *)
+| tuple : obj -> list (string * obj) -> obj
 
 with decl : Set :=
 (** [x : A := M], or [x := M] without the type.  A local definition is
@@ -189,7 +192,13 @@ with cmd : Set :=
 | c_builtin : string -> obj -> cmd
 (** [private inductive x (ps) := X Ms]: an inductive alias, the inductive
     type [X] at the arguments [Ms], under the parameters [ps]. *)
-| c_ind_alias : bool -> string -> list (string * obj) -> obj -> cmd.
+| c_ind_alias : bool -> string -> list (string * obj) -> obj -> cmd
+(** [private record x (ps) : S where f : A ; … with cs end]: a record type,
+    private when the flag is set: its parameters [ps], its sort [S], its
+    fields in order, each its name and its type over the fields before it,
+    and its with-area [cs], the commands of its module after the fields
+    (none without [with]). *)
+| c_record : bool -> string -> list (string * obj) -> obj -> list (string * obj) -> list cmd -> cmd.
 
 (** The family is nested through [list], so its induction principle is written
     by hand: a parameter list and a command list carry [Forall] of their
@@ -221,6 +230,7 @@ Section cst_mut_ind.
         List.Forall (fun bk => List.Forall (fun x => match snd x with Some A => Po A | None => True end) (snd (fst (fst bk))) /\
                                Po (snd (fst bk)) /\ List.Forall (fun b => Po (snd b)) (snd bk)) bks ->
         Po (elim o1 bks))
+    (case_tuple : forall o fs, Po o -> List.Forall (fun f => Po (snd f)) fs -> Po (tuple o fs))
     (case_d_def : forall x oA o2, match oA with Some A => Po A | None => True end -> Po o2 -> Pd (d_def x oA o2))
     (case_d_mod : forall x ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pd (d_mod x ps md))
     (case_md_where : forall cs, List.Forall Pc cs -> Pm (md_where cs))
@@ -240,7 +250,9 @@ Section cst_mut_ind.
                               List.Forall (fun b => Po (snd b)) (snd f)) fs ->
         Pc (c_mdef m ps fs))
     (case_c_builtin : forall k o, Po o -> Pc (c_builtin k o))
-    (case_c_ind_alias : forall pv x ps o, List.Forall (fun p => Po (snd p)) ps -> Po o -> Pc (c_ind_alias pv x ps o)).
+    (case_c_ind_alias : forall pv x ps o, List.Forall (fun p => Po (snd p)) ps -> Po o -> Pc (c_ind_alias pv x ps o))
+    (case_c_record : forall pv x ps o fs cs, List.Forall (fun p => Po (snd p)) ps -> Po o ->
+        List.Forall (fun f => Po (snd f)) fs -> List.Forall Pc cs -> Pc (c_record pv x ps o fs cs)).
 
   Fixpoint obj_mut (o : obj) : Po o :=
     match o with
@@ -291,6 +303,13 @@ Section cst_mut_ind.
                               end) (snd bk))))
                     (blocks bks')
               end) bks)
+    | tuple o fs =>
+        case_tuple o fs (obj_mut o)
+          ((fix go (fs : list (string * obj)) : List.Forall (fun f => Po (snd f)) fs :=
+              match fs with
+              | nil => List.Forall_nil _
+              | f :: fs' => List.Forall_cons f (obj_mut (snd f)) (go fs')
+              end) fs)
     end
   with decl_mut (d : decl) : Pd d :=
     match d with
@@ -414,6 +433,24 @@ Section cst_mut_ind.
               | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
               end) ps)
           (obj_mut o)
+    | c_record pv x ps o fs cs =>
+        case_c_record pv x ps o fs cs
+          ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
+              match ps with
+              | nil => List.Forall_nil _
+              | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
+              end) ps)
+          (obj_mut o)
+          ((fix go (fs : list (string * obj)) : List.Forall (fun f => Po (snd f)) fs :=
+              match fs with
+              | nil => List.Forall_nil _
+              | f :: fs' => List.Forall_cons f (obj_mut (snd f)) (go fs')
+              end) fs)
+          ((fix go (cs : list cmd) : List.Forall Pc cs :=
+              match cs with
+              | nil => List.Forall_nil _
+              | c :: cs' => List.Forall_cons c (cmd_mut c) (go cs')
+              end) cs)
     end.
 
   Theorem cst_mut_ind : (forall o, Po o) /\ (forall d, Pd d) /\ (forall md, Pm md) /\ (forall c, Pc c).
@@ -705,6 +742,23 @@ Arguments ind_uparams {E C}.
 Arguments ind_sort {E C}.
 Arguments ind_members {E C}.
 
+(** The declaration of a record type, filed by [ge_record] at its path,
+    which names it.  Records are never recursive: no field's type mentions
+    the record. *)
+Record record_decl_g (E C : Set) : Set := mk_record_decl
+  { (** The parameters, innermost first: the record's own, then those of
+        the enclosing frames.  A closed telescope. *)
+    record_params : list C
+  (** The sort, over the parameters. *)
+  ; record_sort : E
+  (** The fields in order, each named, its type over the fields before it
+      (innermost first) and then the parameters. *)
+  ; record_fields : list (string * E) }.
+Arguments mk_record_decl {E C}.
+Arguments record_params {E C}.
+Arguments record_sort {E C}.
+Arguments record_fields {E C}.
+
 (** A block of an eliminator ([a_elim]), one per member of the group, in
     the group's order: [eb_mk nm oZ A Bs].  The motive [A] binds [nm]
     variables, the member's non-uniform parameters and the scrutinee; [oZ]
@@ -832,6 +886,14 @@ Inductive exp : Set :=
     closed: [X::Y::Z.W.bar] stands for [bar] generalized over the parameters
     of every module enclosing it, outermost first, and is applied to them. *)
 | a_mem : modexp -> string -> exp
+(** The type former of the record filed at [p], to be applied to its
+    parameters *)
+| a_record : qname -> exp
+(** [a_tuple T fs]: the element of the record type [T] whose fields are
+    [fs], by name, in the declaration's order *)
+| a_tuple : exp -> list (string * exp) -> exp
+(** [a_proj f M]: the field [f] of [M], of a record type *)
+| a_proj : string -> exp -> exp
 with modexp : Set :=
 (** A unit, by its path *)
 | me_unit : path -> modexp
@@ -889,6 +951,12 @@ with gentry : Set :=
     parameters [Ns], terms over [Δ].  As a term it is
     [λ Δ. a_ind pq k Ns], as a module the member's module at [Ns]. *)
 | ge_ind_alias : bool -> list centry -> qname -> qname -> nat -> list exp -> gentry
+(** [ge_record pv p R Φ]: the record type declared by [R], private when
+    [pv], at its own path [p], and the body [Φ] of its module, under the
+    record's parameters and then a value of the record at them
+    ([record_mod_tele]).  As a term the entry is the type former
+    [a_record p]. *)
+| ge_record : bool -> qname -> record_decl_g exp centry -> gmod -> gentry
 with centry : Set :=
 (** An assumption of a type *)
 | ce_ass : exp -> centry
@@ -901,6 +969,7 @@ Abbreviation typ := exp.
 Abbreviation carg := (carg_g exp).
 Abbreviation ptyp := (ptyp_g exp).
 Abbreviation ind_decl := (ind_decl_g exp centry).
+Abbreviation record_decl := (record_decl_g exp centry).
 Abbreviation imember := (imember_g exp centry).
 Abbreviation mhead := (mhead_g exp).
 Abbreviation eblock := (eblock_g exp).
@@ -985,6 +1054,9 @@ Section syn_mut_ind.
     (case_var : forall x, Pe (a_var x))
     (case_let : forall b B, Pb b -> Pe B -> Pe (a_let b B))
     (case_mem : forall H x, Pm H -> Pe (a_mem H x))
+    (case_record : forall p, Pe (a_record p))
+    (case_tuple : forall T fs, Pe T -> List.Forall (fun f => Pe (snd f)) fs -> Pe (a_tuple T fs))
+    (case_proj : forall f M, Pe M -> Pe (a_proj f M))
     (case_me_unit : forall fp, Pm (me_unit fp))
     (case_me_var : forall k, Pm (me_var k))
     (case_me_mem : forall H y, Pm H -> Pm (me_mem H y))
@@ -1002,6 +1074,7 @@ Section syn_mut_ind.
     (case_ge_mod : forall pv U, Pu U -> Pn (ge_mod pv U))
     (case_ge_ind : forall pv p k D Φ, Pg Φ -> Pn (ge_ind pv p k D Φ))
     (case_ge_ind_alias : forall pv Δ pm p k Ns, Pn (ge_ind_alias pv Δ pm p k Ns))
+    (case_ge_record : forall pv p R Φ, Pg Φ -> Pn (ge_record pv p R Φ))
     (case_ce_ass : forall A, Pe A -> Pc (ce_ass A))
     (case_ce_def : forall A M, Pe A -> Pe M -> Pc (ce_def A M))
     (case_ce_mod : forall U, Pu U -> Pc (ce_mod U)).
@@ -1060,6 +1133,15 @@ Section syn_mut_ind.
     | a_var x => case_var x
     | a_let b B => case_let b B (bnd_mut b) (exp_mut B)
     | a_mem H x => case_mem H x (modexp_mut H)
+    | a_record p => case_record p
+    | a_tuple T fs0 =>
+        case_tuple T fs0 (exp_mut T)
+          ((fix fields_mut (fs : list (string * exp)) : List.Forall (fun f => Pe (snd f)) fs :=
+              match fs with
+              | nil => List.Forall_nil _
+              | cons f fs' => List.Forall_cons f (exp_mut (snd f)) (fields_mut fs')
+              end) fs0)
+    | a_proj f M => case_proj f M (exp_mut M)
     end
   with modexp_mut (H : modexp) : Pm H :=
     match H with
@@ -1117,6 +1199,7 @@ Section syn_mut_ind.
     | ge_mod pv U => case_ge_mod pv U (gunit_mut U)
     | ge_ind pv p k D Φ => case_ge_ind pv p k D Φ (gmod_mut Φ)
     | ge_ind_alias pv Δ pm p k Ns => case_ge_ind_alias pv Δ pm p k Ns
+    | ge_record pv p R Φ => case_ge_record pv p R Φ (gmod_mut Φ)
     end
   with centry_mut (e : centry) : Pc e :=
     match e with
@@ -1317,6 +1400,7 @@ Fixpoint body_ctx (Φ : gmod) : ctx :=
   | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
   | gm_ext Φ' _ (ge_ind _ _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
   | gm_ext Φ' _ (ge_ind_alias _ _ _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_record _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
   | gm_open Φ' _ its => List.repeat (ce_ass a_True) (List.length its) ++ body_ctx Φ'
   end.
 
@@ -1540,6 +1624,11 @@ Inductive nf : Set :=
 | nf_con : qname -> nat -> string -> nfs -> nf
 (** A neutral *)
 | nf_neut : ne -> nf
+(** A record type at its parameters *)
+| nf_record : qname -> nfs -> nf
+(** An element of the record type at [p], η-long: the type's parameters,
+    the field names and the fields *)
+| nf_tuple : qname -> nfs -> list string -> nfs -> nf
 with ne : Set :=
 (** The [⊥]-eliminator, always stuck *)
 | ne_exfalso : nf -> ne -> ne
@@ -1554,6 +1643,8 @@ with ne : Set :=
 | ne_var : nat -> ne
 (** An opaque definition or an axiom: it does not unfold. *)
 | ne_glob : qname -> ne
+(** A field of a neutral *)
+| ne_proj : string -> ne -> ne
 (** The atoms of a canonical level, each with its offset and its sort: an
     atom of sort [s] is a level of type [Level@s], below ω·(s+1).  They are
     their own sort rather than a [list (nat * nat * ne)] so that the family
@@ -1612,6 +1703,8 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   | nf_indty p k Ms => apps_exp (a_ind p k) (nfs_to_exps Ms)
   | nf_con p k c Ms => apps_exp (a_con p k c) (nfs_to_exps Ms)
   | nf_neut M => ne_to_exp M
+  | nf_record p Ms => apps_exp (a_record p) (nfs_to_exps Ms)
+  | nf_tuple p Ms fs Ns => a_tuple (apps_exp (a_record p) (nfs_to_exps Ms)) (List.combine fs (nfs_to_exps Ns))
   end
 with ne_to_exp (M : ne) : exp :=
   match M with
@@ -1620,6 +1713,7 @@ with ne_to_exp (M : ne) : exp :=
   | ne_app M N => a_app (ne_to_exp M) (nf_to_exp N)
   | ne_var x => a_var x
   | ne_glob p => qname_term p
+  | ne_proj f M => a_proj f (ne_to_exp M)
   end
 with la_to_list (xs : lvl_atoms) : list (nat * exp) :=
   match xs with
@@ -1731,6 +1825,8 @@ Fixpoint nf_clean (W : nf) : Prop :=
   | nf_pi A B | nf_fn A B => nf_clean A /\ nf_clean B
   | nf_indty _ _ Ms | nf_con _ _ _ Ms => nfs_clean Ms
   | nf_neut M => ne_clean M
+  | nf_record _ Ms => nfs_clean Ms
+  | nf_tuple _ Ms _ Ns => nfs_clean Ms /\ nfs_clean Ns
   end
 with ne_clean (M : ne) : Prop :=
   match M with
@@ -1739,6 +1835,7 @@ with ne_clean (M : ne) : Prop :=
   | ne_app M N => ne_clean M /\ nf_clean N
   | ne_var _ => True
   | ne_glob _ => False
+  | ne_proj _ M => ne_clean M
   end
 with la_clean (xs : lvl_atoms) : Prop :=
   match xs with
@@ -1882,6 +1979,9 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_var x => a_var (φ x)
   | a_let b B => a_let (bnd_wk b φ) (exp_wk B (wk_q φ))
   | a_mem H x => a_mem (modexp_wk H φ) x
+  | a_record p => a_record p
+  | a_tuple T fs => a_tuple (exp_wk T φ) (List.map (fun f => (fst f, exp_wk (snd f) φ)) fs)
+  | a_proj f M => a_proj f (exp_wk M φ)
   end
 with modexp_wk (H : modexp) (φ : wk) : modexp :=
   match H with
@@ -1925,6 +2025,7 @@ with gentry_wk (E : gentry) (φ : wk) : gentry :=
   | ge_mod pv U => ge_mod pv (gunit_wk U φ)
   | ge_ind pv p k D Φ => ge_ind pv p k D (gmod_wk Φ (wk_qn (ind_nu D) φ))
   | ge_ind_alias pv Δ pm p k Ns => ge_ind_alias pv Δ pm p k Ns
+  | ge_record pv p R Φ => ge_record pv p R (gmod_wk Φ (wk_qn (S (List.length (record_params R))) φ))
   end
 with centry_wk (e : centry) (φ : wk) : centry :=
   match e with
@@ -2061,6 +2162,9 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_var x => sentry_exp (σ x)
   | a_let b B => a_let (bnd_sub b σ) (exp_sub B (sb_q σ))
   | a_mem H x => a_mem (modexp_sub H σ) x
+  | a_record p => a_record p
+  | a_tuple T fs => a_tuple (exp_sub T σ) (List.map (fun f => (fst f, exp_sub (snd f) σ)) fs)
+  | a_proj f M => a_proj f (exp_sub M σ)
   end
 with modexp_sub (H : modexp) (σ : sub) : modexp :=
   match H with
@@ -2102,6 +2206,7 @@ with gentry_sub (E : gentry) (σ : sub) : gentry :=
   | ge_mod pv U => ge_mod pv (gunit_sub U σ)
   | ge_ind pv p k D Φ => ge_ind pv p k D (gmod_sub Φ (sb_qn (ind_nu D) σ))
   | ge_ind_alias pv Δ pm p k Ns => ge_ind_alias pv Δ pm p k Ns
+  | ge_record pv p R Φ => ge_record pv p R (gmod_sub Φ (sb_qn (S (List.length (record_params R))) σ))
   end
 with centry_sub (e : centry) (σ : sub) : centry :=
   match e with
@@ -2255,7 +2360,20 @@ Inductive frame_kind : Set :=
 (** An ordinary module *)
 | fk_module
 (** The module of the declared member [k] of the group [D] at [pq] *)
-| fk_ind (pq : qname) (k : nat) (D : ind_decl).
+| fk_ind (pq : qname) (k : nat) (D : ind_decl)
+(** The module of the record type declared by [R], at the frame's own
+    path *)
+| fk_record (R : record_decl).
+
+(** The own parameters [Δ] of a module of kind [K] that are checked one
+    frame out, where the module is declared: all of them, but for a
+    record's module, whose last parameter is a value of the record, typed
+    only inside the record's own frame, where the record is found. *)
+Definition frame_params (K : frame_kind) (Δ : ctx) : ctx :=
+  match K with
+  | fk_record _ => List.tl Δ
+  | fk_module | fk_ind _ _ _ => Δ
+  end.
 
 Definition gstack : Set := list (qname * frame_kind * gunit).
 

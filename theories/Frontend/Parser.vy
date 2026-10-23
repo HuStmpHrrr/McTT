@@ -28,6 +28,7 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %token <loc> TRUE_TY TRUE FALSE_TY EXFALSO (* unit and empty type keywords *)
 %token <loc> MODULE WHERE DEF IMPORT OPEN AS USE EXPORT PRIVATE ABSTRACT EVAL (* module keywords *)
 %token <loc> INDUCTIVE ELIM BUILTIN (* inductive types *)
+%token <loc> RECORD (* record types and their values *)
 %token <loc> MUTUAL WITH BLOCK_AT (* groups: [mutual], [with], and [at], which marks the scrutinee's block *)
 %token <loc> THEOREM LEMMA FACT REMARK GIVEN AXIOM (* definition keywords; [let] is [LET] *)
 %token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COLONCOLON "::" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" LBRACE "{" RBRACE "}" PLUS "+" STAR "*" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
@@ -65,6 +66,8 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %type <list (bool * list (string * option Cst.obj) * Cst.obj * list (string * list string * Cst.obj))> eblocks
 %type <string * list (string * Cst.obj) * Cst.obj * list (string * list string * Cst.obj)> mfun
 %type <list (string * list (string * Cst.obj) * Cst.obj * list (string * list string * Cst.obj))> mfuns
+%type <list (string * Cst.obj)> rfields rfields1 tfields tfields1
+%type <list Cst.cmd> rwith
 
 %on_error_reduce obj params params_opt app_obj atomic_obj cmds leads mods path fpath
 
@@ -131,6 +134,38 @@ let cmd :=
       { [Cst.c_ind_alias true (snd x) (List.rev ps) e] }
   (* [builtin natural := X]: the inductive type [X] is the natural numbers. *)
   | BUILTIN; k = VAR; ":="; x = atomic_obj; { [Cst.c_builtin (snd k) x] }
+  (* [record x (ps) : S where f : A ; … with cs end end]: a record type, its
+     parameters, its sort, its fields in order, and its with-area, the
+     commands of its module after the fields. *)
+  | RECORD; x = VAR; ps = params_opt; ":"; t = obj; WHERE; fs = rfields; cs = rwith; END;
+      { [Cst.c_record false (snd x) (List.rev ps) t (List.rev fs) cs] }
+  | PRIVATE; RECORD; x = VAR; ps = params_opt; ":"; t = obj; WHERE; fs = rfields; cs = rwith; END;
+      { [Cst.c_record true (snd x) (List.rev ps) t (List.rev fs) cs] }
+
+(* Reversed list of the fields of a record type, possibly empty, separated
+   by [;]: [f : A] *)
+let rfields :=
+  | { @nil (string * Cst.obj) }
+  | ~ = rfields1; <>
+
+let rfields1 :=
+  | f = VAR; ":"; a = obj; { [(snd f, a)] }
+  | ~ = rfields1; ";"; f = VAR; ":"; a = obj; { (snd f, a) :: rfields1 }
+
+(* The with-area of a record type, in order: [with cs end], or nothing *)
+let rwith :=
+  | { @nil Cst.cmd }
+  | WITH; cs = cmds; END; { List.rev cs }
+
+(* Reversed list of the fields of a record value, possibly empty, separated
+   by [;]: [f := M] *)
+let tfields :=
+  | { @nil (string * Cst.obj) }
+  | ~ = tfields1; <>
+
+let tfields1 :=
+  | f = VAR; ":="; m = obj; { [(snd f, m)] }
+  | ~ = tfields1; ";"; f = VAR; ":="; m = obj; { (snd f, m) :: tfields1 }
 
 (* Reversed list of constructors, possibly empty: [| c (x : A) …] *)
 let ctors :=
@@ -281,6 +316,11 @@ let obj :=
   (* [let x : A := a; y := b in body end].  The bindings fold into nested
      [letb]s, so each one sees the earlier ones. *)
   | LET; ds = let_defns; IN; body = obj; END; { List.fold_left (fun acc d => Cst.letb d acc) ds body }
+
+  (* [record T where f := M ; … end]: a value of the record type [T], its
+     fields in order.  Not atomic, as a command may follow an object with
+     no separator: an argument or a selection takes it in parentheses. *)
+  | RECORD; t = app_obj; WHERE; fs = tfields; END; { Cst.tuple t (List.rev fs) }
 
 
 let app_obj :=

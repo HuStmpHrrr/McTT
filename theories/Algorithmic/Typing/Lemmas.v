@@ -1,6 +1,7 @@
 From Stdlib Require Import Wf_nat PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic.Typing Require Import Definitions.
+From Mctt.Algorithmic.Typing Require Export Functional.
 From Mctt.Algorithmic.Subtyping Require Export Lemmas.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import Consequences.Rules.
@@ -12,6 +13,7 @@ From Mctt.Core.Syntactic.Levels Require Levels.
 From Mctt.Algorithmic Require Import Strengthening.
 From Mctt.Core.Syntactic.System.Global Require Import Modules Paths DescTyping LookupSound MemberWf.
 From Mctt.Core.Semantic Require Import MemberWf Avoid.
+From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 Import Domain_Notations Fixed_Notations Wk_Notations.
 
 (** The universe premise of a [Π] rule, as its two cases: a large universe,
@@ -30,81 +32,6 @@ Ltac destruct_univ :=
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
-
-(** A term infers one type.  A member's is read off what its module
-    denotes, which of a well-formed global context is one description
-    ([mdenote_functional_all]). *)
-Lemma functional_alg_type_infer : forall {Γ A A' M},
-    ⊢ᵍ gc_deps ⍮ gc_stack ->
-    Γ ⊢a M ⟹ A ->
-    Γ ⊢a M ⟹ A' ->
-    A = A'.
-Proof.
-  intros * Hg HM1 HM2. gen A'.
-  induction HM1; intros;
-    inversion_clear HM2;
-    (** The eliminator: the scrutinee infers one type, so the member's
-        non-uniform parameters and the block are the same. *)
-    try solve [ match goal with
-      | IH : forall A'0, ?G ⊢a ?M ⟹ A'0 -> nf_indty _ _ _ = A'0, H : ?G ⊢a ?M ⟹ nf_indty _ _ _ |- _ =>
-          specialize (IH _ H); injection IH; clear H; intros; subst;
-          repeat match goal with H1 : List.nth_error ?B ?m = Some ?b1, H2 : List.nth_error ?B ?m = Some ?b2 |- _ =>
-            assert_fails constr_eq b1 b2; assert (b1 = b2) as <- by congruence; clear H2 end;
-          repeat match goal with H1 : ind_lookup _ _ ?p = Some ?D1, H2 : ind_lookup _ _ ?p = Some ?D2 |- _ =>
-            assert_fails constr_eq D1 D2; assert (D1 = D2) as <- by congruence; clear H2 end;
-          functional_nbe_rewrite_clear; reflexivity
-      end ];
-    functional_nbe_rewrite_clear;
-    f_equiv;
-    try reflexivity;
-    intuition.
-  (** A member: the same description, so the same type. *)
-  all: try solve [ match goal with
-    | H1 : mdenote _ _ ?G ?H ?R1, H2 : mdenote _ _ ?G ?H ?R2 |- _ =>
-        pose proof (proj1 (mdenote_functional_all _ _ Hg) _ _ _ H1 _ H2) as <-;
-        match goal with E1 : ds_ty _ _ R1 = Some ?A1, E2 : ds_ty _ _ R1 = Some ?A2 |- _ =>
-          assert (A1 = A2) as <- by congruence end;
-        functional_nbe_rewrite_clear; reflexivity end ].
-  (** The level operations: the arguments infer the same types of levels. *)
-  all: try solve [ repeat match goal with
-    | IH : forall A'0, ?G ⊢a ?M ⟹ A'0 -> Levelⁿ@?k = A'0, H : ?G ⊢a ?M ⟹ Levelⁿ@?k' |- _ =>
-        specialize (IH _ H); injection IH as ->; clear H end; reflexivity ].
-  (** The type former and a constructor: the declaration and the member
-      are looked up once, and the types are normal forms of the same
-      types. *)
-  all: try solve [
-    repeat match goal with H1 : ind_lookup _ _ ?p = Some ?D1, H2 : ind_lookup _ _ ?p = Some ?D2 |- _ =>
-      assert_fails constr_eq D1 D2; assert (D1 = D2) as <- by congruence; clear H2 end;
-    repeat match goal with H1 : ind_member ?D ?k = Some ?M1, H2 : ind_member ?D ?k = Some ?M2 |- _ =>
-      assert_fails constr_eq M1 M2; assert (M1 = M2) as <- by congruence; clear H2 end;
-    repeat match goal with H1 : ind_con ?D ?c = Some ?g1, H2 : ind_con ?D ?c = Some ?g2 |- _ =>
-      assert (g1 = g2) as <- by congruence; clear H2 end;
-    functional_nbe_rewrite_clear; reflexivity ].
-  (** A module [let]: the same type of the rest. *)
-  4:{ assert (C = C0) as <- by eauto. functional_nbe_rewrite_clear. reflexivity. }
-  (** [Π]: the two parts infer the same universes, so the two universes the
-      side conditions normalise are the same. *)
-  - assert (UA = UA0) as <- by intuition.
-    assert (UB = UB0) as <- by intuition.
-    functional_nbe_rewrite_clear.
-    assert (u = u0) as <- by (eapply is_univ_nf_functional; eassumption).
-    assert (v = v0) as <- by (eapply is_univ_nf_functional; eassumption).
-    functional_nbe_rewrite_clear.
-    reflexivity.
-  - assert (Πⁿ A B = Πⁿ A0 B0) as [= <- <-] by intuition.
-    functional_nbe_rewrite_clear.
-    reflexivity.
-  (** [let]: both derivations read the same annotation; without one, the
-      body's type, then the type of the rest. *)
-  - destruct H as [-> | ->]; destruct H8 as [[=] | [= <-]]; simpl_let_guards.
-    + assert (W = W0) as <- by eauto. assert (C = C0) as <- by eauto.
-      functional_nbe_rewrite_clear. reflexivity.
-    + assert (C = C0) as <- by eauto.
-      functional_nbe_rewrite_clear. reflexivity.
-  - assert (A = A0) as <- by mauto using ctx_lookup_functional.
-    functional_nbe_rewrite_clear.
-    reflexivity.
-Qed.
 
 #[local]
 Hint Resolve functional_alg_type_infer : mctt.
@@ -557,6 +484,59 @@ Proof.
   exact (unit_eq_of_full _ _ _ _ (unit_full_body _ _ _ _ _ _ Hbx HC Ho Ht Hs Hsx Hn)).
 Qed.
 
+(** A tuple whose annotation normalises to a record type at [Rs], its
+    fields checked at their types at [Rs]: of that normal form. *)
+Lemma alg_tuple_sound : forall Γ T (fs : list (String.string * exp)) p Rs R i,
+    ⊢ Γ -> Γ ⊢ T : Typeω@i -> nbe_ty_f Γ T (nf_record p Rs) -> record_lookup gc_deps gc_stack p = Some R ->
+    List.map fst fs = List.map fst (record_fields R) ->
+    (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
+       ⊢ Γ -> forall i, Γ ⊢ U[sb_of_list Id (nfs_to_exps Rs ++ List.firstn k (List.map snd fs))] : Typeω@i ->
+       Γ ⊢ M : U[sb_of_list Id (nfs_to_exps Rs ++ List.firstn k (List.map snd fs))]) ->
+    Γ ⊢ a_tuple T fs : nf_record p Rs.
+Proof.
+  intros * HΓ HT Hn Hl Hfs HMs.
+  assert (HTR : Γ ⊢ T ≈ nf_record p Rs : Typeω@i) by (eapply soundness_ty'; eassumption).
+  cbn [nf_to_exp] in HTR |- *.
+  assert (HRa : Γ ⊢ apps (a_record p) (nfs_to_exps Rs) : Typeω@i) by (gen_presups; assumption).
+  pose proof (wf_record_apps_len _ _ _ _ _ Hl HRa) as HRl.
+  pose proof (wf_record_apps_inv _ _ _ _ _ Hl HRa HRl) as HRt.
+  destruct (record_former_typed _ _ _ HΓ Hl) as [j [Hrt _]].
+  pose proof (tuple_fields_typed_seq _ _ _ _ _ Hrt Hl HRl Hfs HRt
+                ltac:(intros * Hk Hfk [i' Hi']; exact (HMs _ _ _ _ Hk Hfk HΓ _ Hi'))) as HFt.
+  eapply wf_conv'; [ eapply wf_tuple; [ exact HT | exact HTR | exact Hrt | exact Hl | exact HRl | exact HRt | exact Hfs | exact HFt ]
+                   | exact HTR ].
+Qed.
+
+(** A projection of an element of a record type at [Rs]: of its field's
+    type at [Rs] and the projections before it, which is a type. *)
+Lemma alg_proj_typed : forall Γ M p Rs R f k U,
+    ⊢ Γ -> Γ ⊢ M : nf_record p Rs -> record_lookup gc_deps gc_stack p = Some R ->
+    List.nth_error (record_fields R) k = Some (f, U) ->
+    exists m, Γ ⊢ U[sb_of_list Id (nfs_to_exps Rs ++ record_pre R k M)] : Typeω@m /\
+      Γ ⊢ a_proj f M : U[sb_of_list Id (nfs_to_exps Rs ++ record_pre R k M)].
+Proof.
+  intros * HΓ HM Hl Hfk; cbn [nf_to_exp] in HM.
+  assert (exists i, Γ ⊢ apps (a_record p) (nfs_to_exps Rs) : Typeω@i) as [i HRa] by (gen_presups; eauto 2).
+  pose proof (wf_record_apps_len _ _ _ _ _ Hl HRa) as HRl.
+  pose proof (wf_record_apps_inv _ _ _ _ _ Hl HRa HRl) as HRt.
+  destruct (record_former_typed _ _ _ HΓ Hl) as [j [Hrt _]].
+  destruct (record_sort_large _ _ _ _ _ _ Hrt Hl HRl HRt) as [m Hm].
+  destruct (record_proj_cong_at _ _ _ M M p R _ m k f U (wf_exp_eq_refl HM) Hrt Hl HRl HRt Hm Hfk) as [HUU Hpp].
+  exists m; split; gen_presups; assumption.
+Qed.
+
+(** So it is of the normal form of that type. *)
+Lemma alg_proj_sound : forall Γ M p Rs R f k U W,
+    ⊢ Γ -> Γ ⊢ M : nf_record p Rs -> record_lookup gc_deps gc_stack p = Some R ->
+    List.nth_error (record_fields R) k = Some (f, U) ->
+    nbe_ty_f Γ U[sb_of_list Id (nfs_to_exps Rs ++ record_pre R k M)] W ->
+    Γ ⊢ a_proj f M : W.
+Proof.
+  intros * HΓ HM Hl Hfk Hn.
+  destruct (alg_proj_typed _ _ _ _ _ _ _ _ HΓ HM Hl Hfk) as (m & HUt & Hp).
+  eapply wf_conv'; [ exact Hp | eapply soundness_ty'; eassumption ].
+Qed.
+
 Lemma alg_type_sound :
   (forall {Γ A M}, Γ ⊢a M ⟸ A -> ⊢ Γ -> forall i, Γ ⊢ A : Typeω@i -> Γ ⊢ M : A) /\
     (forall {Γ A M}, Γ ⊢a M ⟹ A -> ⊢ Γ -> Γ ⊢ M : A) /\
@@ -604,6 +584,19 @@ Proof.
       | HM : ⊢ ?G -> ?G ⊢ ?M : _, HΓ : ⊢ ?G, Hg : elim_grp ?D ?oq ?p ?m |- ?G ⊢ a_elim ?oq _ ?m _ ?M : _ =>
           eapply proj1; eapply (alg_elim_sound G M _ _ _ p D oq m); first [ exact HΓ | exact (HM HΓ) | eassumption ]
       end
+  (** A record's type former, a tuple and a projection. *)
+  | |- _ ⊢ a_record _ : _ =>
+      match goal with Hl : record_lookup _ _ _ = Some _, HΓ : ⊢ ?G |- _ =>
+        let j := fresh "j" in let Hrt := fresh "Hrt" in let Hj := fresh "Hj" in
+        destruct (record_former_typed _ _ _ HΓ Hl) as [j [Hrt Hj]];
+        eapply wf_conv'; [ exact Hrt | eapply soundness_ty'; eassumption ] end
+  | |- _ ⊢ a_tuple ?T _ : _ =>
+      match goal with Hu : is_univ_nf _ ?u, HΓ : ⊢ ?G |- _ =>
+        lift_univ_at G T u;
+        eapply alg_tuple_sound; [ exact HΓ | eassumption | eassumption | eassumption | eassumption | intros; eauto ] end
+  | |- _ ⊢ a_proj _ ?M : _ =>
+      match goal with HM : ⊢ ?G -> ?G ⊢ M : _, HΓ : ⊢ ?G, Hfk : List.nth_error (record_fields _) _ = Some _ |- _ =>
+        eapply alg_proj_sound; [ exact HΓ | exact (HM HΓ) | eassumption | exact Hfk | eassumption ] end
   (** A module [let]. *)
   | |- _ ⊢ ℓₘ _ in _ : _ =>
       assert (HU : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U) by eauto;
@@ -933,6 +926,16 @@ Proof.
       destruct (member_wf _ _ _ _ _ ltac:(eapply alg_modexp_sound; eassumption) Hm Ht) as ([i HA] & _) end.
     (f_equiv; mautosolve 4).
   - assert (exists i, Γ ⊢ A : Typeω@i) as [i] by mauto 2; (f_equiv; mautosolve 4).
+  (** A record's type former, a tuple and a projection: the normal forms of
+      types. *)
+  - destruct (record_former_typed _ _ _ ltac:(eassumption) ltac:(eassumption)) as [j [_ Hj]].
+    eapply idempotent_nbe_ty; eassumption.
+  - lift_univ_sound Γ T u.
+    eapply idempotent_nbe_ty; eassumption.
+  - match goal with HΓ : ⊢ Γ, HMi : Γ ⊢a ?N ⟹ nf_record _ _ |- _ =>
+      destruct (alg_proj_typed _ _ _ _ _ _ _ _ HΓ (alg_type_infer_sound HMi HΓ) ltac:(eassumption) ltac:(eassumption))
+        as (m & HUt & _) end.
+    eapply idempotent_nbe_ty; eassumption.
 Qed.
 
 Hint Resolve alg_type_infer_normal : mctt.
@@ -1070,6 +1073,14 @@ Fixpoint exp_lets (M : exp) : nat :=
   | a_app M N => exp_lets M + exp_lets N
   | a_let b B => bnd_lets b + exp_lets B
   | a_mem H _ => S (modexp_lets H)
+  | a_tuple T fs =>
+      exp_lets T +
+      (fix fields_lets (fs : list (String.string * exp)) : nat :=
+         match fs with
+         | nil => 0
+         | f :: fs' => exp_lets (snd f) + fields_lets fs'
+         end) fs
+  | a_proj _ M => exp_lets M
   | _ => 0
   end
 with modexp_lets (H : modexp) : nat :=
@@ -1111,6 +1122,7 @@ with gentry_lets (E : gentry) : nat :=
   | ge_mod _ U => gunit_lets U
   | ge_ind _ _ _ _ Φ => gmod_lets Φ
   | ge_ind_alias _ _ _ _ _ _ => 0
+  | ge_record _ _ _ Φ => gmod_lets Φ
   end
 with centry_lets (e : centry) : nat :=
   match e with
@@ -1133,7 +1145,7 @@ Proof. induction Ψ; intros; cbn; [| rewrite IHΨ ]; lia. Qed.
 
 Lemma body_ctx_lets : forall Φ, ctx_lets (body_ctx Φ) <= gmod_lets Φ.
 Proof.
-  induction Φ as [| Φ IH x [b pv A [M |] | pm U | ? ? ? | ? ? ? ?] | Φ IH c its ]; cbn; rewrite ?ctx_lets_app; [ lia .. |].
+  induction Φ as [| Φ IH x [b pv A [M |] | pm U | ? ? ? | ? ? ? ? | ? ? ?] | Φ IH c its ]; cbn; rewrite ?ctx_lets_app; [ lia .. |].
   enough (ctx_lets (List.repeat (ce_ass a_True) (List.length its)) = 0) by lia.
   induction (List.length its); cbn; auto.
 Qed.
@@ -1707,9 +1719,9 @@ Proof.
   - constructor.
   - cbn [body_shape] in Hs; destruct Hs as (Hs & _ & HsE).
     assert (HEt : ext_entries n Γ0 (body_ctx Φx ++ Δ)).
-    { destruct E as [? ? ? [] | | | ]; cbn [body_ctx List.app] in HE; exact (ext_entries_app_r _ _ (_ :: nil) _ HE). }
+    { destruct E as [? ? ? [] | | | | ]; cbn [body_ctx List.app] in HE; exact (ext_entries_app_r _ _ (_ :: nil) _ HE). }
     specialize (IH eq_refl HEt ltac:(lia) Hs Ho).
-    destruct E as [b pv A [M |] | pm U | ? ? ? | ? ? ? ?]; cbn in HsE; try contradiction.
+    destruct E as [b pv A [M |] | pm U | ? ? ? | ? ? ? ? | ? ? ?]; cbn in HsE; try contradiction.
     + pose proof (ext_entries_head _ _ _ _ HE) as He; cbn [body_ctx List.app gentry_lets centry_lets alg_entry] in He, Hl.
       rewrite <- List.app_assoc in He; destruct (He ltac:(lia)) as ((UA & u & HA & Hu) & HM).
       econstructor; eassumption.
@@ -1762,6 +1774,109 @@ Proof.
                        | rewrite <- List.app_assoc; eassumption | assumption .. ].
   - eapply aunit_alias; [ eapply alg_ext_app; eassumption | apply List.Forall_app; split; assumption
                         | rewrite <- List.app_assoc; eassumption ].
+Qed.
+
+(** ** Records, Algorithmically *)
+
+(** A field of a tuple has at most the tuple's unannotated [let]s. *)
+Lemma tuple_field_lets : forall T (fs : list (String.string * exp)) k f M,
+    List.nth_error fs k = Some (f, M) -> exp_lets M <= exp_lets (a_tuple T fs).
+Proof.
+  intros T fs; cbn [exp_lets].
+  enough (H : forall k f M, List.nth_error fs k = Some (f, M) ->
+                exp_lets M <= (fix fields_lets (fs : list (String.string * exp)) : nat :=
+                                 match fs with
+                                 | nil => 0
+                                 | f :: fs' => exp_lets (snd f) + fields_lets fs'
+                                 end) fs) by (intros; pose proof (H _ _ _ ltac:(eassumption)); lia).
+  induction fs as [| [g N] fs IH]; intros [| k] f M Hk; cbn in Hk |- *; try discriminate.
+  - injection Hk as <- <-; lia.
+  - pose proof (IH _ _ _ Hk); lia.
+Qed.
+
+(** A record's type former checks at its type. *)
+Lemma alg_record_complete : forall Γ p R, ⊢ Γ -> record_lookup gc_deps gc_stack p = Some R ->
+    Γ ⊢a a_record p ⟸ record_ty R.
+Proof.
+  intros * HΓ Hl.
+  destruct (record_former_typed _ _ _ HΓ Hl) as [j [_ Hj]].
+  destruct (soundness_ty Hj) as [W [HW HWe]].
+  econstructor; [ eapply ati_record; eassumption | apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe ].
+Qed.
+
+(** A tuple checks at its annotation: the annotation normalises to the
+    record type at the normal forms [Rs] of its parameters
+    ([subtyp_record_nf]), and each field's type at them is its type at the
+    parameters, where the field checks. *)
+Lemma alg_tuple_complete : forall Γ T (fs : list (String.string * exp)) p R Ns i,
+    Γ ⊢ T : Typeω@i -> Γ ⊢a T ⟸ Typeω@i ->
+    Γ ⊢ T ≈ apps_exp (a_record p) Ns : Typeω@i ->
+    Γ ⊢ a_record p : record_ty R -> record_lookup gc_deps gc_stack p = Some R ->
+    List.length Ns = List.length (record_params R) ->
+    (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A -> Γ ⊢ N : A) ->
+    List.map fst fs = List.map fst (record_fields R) ->
+    (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
+       Γ ⊢ M : U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))]) ->
+    (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
+       Γ ⊢a M ⟸ U[sb_of_list Id (Ns ++ List.firstn k (List.map snd fs))]) ->
+    Γ ⊢a a_tuple T fs ⟸ T.
+Proof.
+  intros * HTt HTc HTeq Hrt Hl Hn HNs Hfs HMt HMc.
+  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+  destruct (wf_record_inversion Hrt) as [R0 Hl0 Hnd Hass i0 Hty HF HS HFs _].
+  rewrite Hl in Hl0; injection Hl0 as <-.
+  pose proof (wf_record_closed _ _ _ _ _ HΓ Hl) as Hc.
+  destruct (alg_type_check_typ_implies_alg_type_infer_typ HΓ HTc) as (UT & u & HTi & Hu & _).
+  destruct (soundness_ty HTt) as [W [HW HWe]].
+  destruct (subtyp_record_nf (wf_subtyp_refl' _ _ _ _ _ _ HTeq) Hl Hn HNs HW) as (Rs & -> & HRl & HNR).
+  assert (Hlf : List.length fs = List.length (record_fields R))
+    by (rewrite <- (List.length_map fst fs), <- (List.length_map fst (record_fields R)), Hfs; reflexivity).
+  econstructor; [| apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe ].
+  eapply ati_tuple; [ exact HTi | exact Hu | exact HW | exact Hl | exact Hfs |].
+  intros k f M U Hk Hfk.
+  assert (Hkl : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
+  pose proof (record_fields_insts_eq _ _ _ p R Ns (nfs_to_exps Rs) fs fs Hrt Hl Hn HRl HNR Hfs eq_refl
+                ltac:(intros * HM HM' HU; rewrite HM in HM'; injection HM' as <-; apply wf_exp_eq_refl; eapply HMt; eassumption)
+                k ltac:(lia)) as Hins.
+  destruct (record_field_typ_cong _ _ _ R k f U (Ns ++ List.firstn k (List.map snd fs))
+              (nfs_to_exps Rs ++ List.firstn k (List.map snd fs)) Hc Hass HF HΓ Hfk
+              ltac:(rewrite List.length_app, List.length_firstn, List.length_map; lia)
+              ltac:(rewrite List.length_app, List.length_firstn, List.length_map; lia) Hins) as [j HUU].
+  eapply alg_type_check_conv; [ exact (HMc _ _ _ _ Hk Hfk) | exact HUU ].
+Qed.
+
+(** A projection checks at its field's type at the parameters of the
+    element's type: the element infers the record type at the normal forms
+    of its parameters ([subtyp_record_nf]), at which the field's type is
+    equal to that one. *)
+Lemma alg_proj_complete : forall Γ M p R Ns k f U i,
+    Γ ⊢ M : apps_exp (a_record p) Ns -> Γ ⊢a M ⟸ apps_exp (a_record p) Ns ->
+    Γ ⊢ a_record p : record_ty R -> record_lookup gc_deps gc_stack p = Some R ->
+    List.length Ns = List.length (record_params R) ->
+    (forall k N A, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (record_params R) Id Ns) k = Some A -> Γ ⊢ N : A) ->
+    List.nth_error (record_fields R) k = Some (f, U) ->
+    Γ ⊢ U[sb_of_list Id (Ns ++ record_pre R k M)] : Typeω@i ->
+    Γ ⊢a a_proj f M ⟸ U[sb_of_list Id (Ns ++ record_pre R k M)].
+Proof.
+  intros * HMt HMc Hrt Hl Hn HNs Hfk HUt.
+  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+  destruct (wf_record_inversion Hrt) as [R0 Hl0 Hnd Hass i0 Hty HF HS HFs _].
+  rewrite Hl in Hl0; injection Hl0 as <-.
+  inversion HMc as [? W ? ? HMi HMs]; subst.
+  pose proof (alg_type_infer_sound HMi HΓ) as HMW.
+  assert (exists kW, Γ ⊢ (W : exp) : Typeω@kW) as [kW HWt] by (gen_presups; eauto 2).
+  assert (exists kP, Γ ⊢ apps_exp (a_record p) Ns : Typeω@kP) as [kP HPs] by (gen_presups; eauto 2).
+  assert (HWs : Γ ⊢ (W : exp) ⊆ apps_exp (a_record p) Ns)
+    by (eapply alg_subtyping_sound; [ exact HMs | eapply lift_exp_max_left; exact HWt | eapply lift_exp_max_right; exact HPs ]).
+  pose proof (alg_type_infer_self HΓ HMi) as HWW.
+  destruct (subtyp_record_nf HWs Hl Hn HNs HWW) as (Rs & -> & HRl & HNR).
+  destruct (alg_proj_typed _ _ _ _ _ _ _ _ HΓ HMW Hl Hfk) as (m & HUR & _).
+  destruct (soundness_ty HUR) as [V [HV HVe]].
+  destruct (record_sort_large _ _ _ _ _ _ Hrt Hl Hn HNs) as [n Hm].
+  pose proof (record_field_params_cong _ _ _ M p R Ns (nfs_to_exps Rs) n k f U HMt Hrt Hl Hn HRl HNs HNR Hm Hfk) as HUU.
+  econstructor; [ eapply ati_proj; [ exact HMi | exact Hl | exact (field_index_nth_nodup _ _ _ _ Hnd Hfk) | exact Hfk | exact HV ] |].
+  apply alg_subtyping_complete; eapply wf_subtyp_refl'.
+  eapply exp_eq_trans_typ_max; [ symmetry; exact HVe | symmetry; exact HUU ].
 Qed.
 
 (** The whole block, the universes included; [alg_type_complete_lets] below
@@ -1884,6 +1999,21 @@ Proof.
        assert (Γ ⊢ C'[Id ,,ₘ me_lit U] ⊆ C[Id ,,ₘ me_lit U]) by mauto 3.
        assert (Γ ⊢ W ⊆ C[Id ,,ₘ me_lit U]) by (transitivity C'[Id ,,ₘ me_lit U]; mauto 3).
        econstructor; [ eapply ati_let_mod; eauto | mauto 4 using alg_subtyping_complete ]. }
+  (** A record's type former, a projection and a tuple ([alg_record_complete],
+      [alg_proj_complete], [alg_tuple_complete]); the fields of a tuple are
+      below its bound on [let]s ([tuple_field_lets]). *)
+  all: try solve [ eapply alg_record_complete; eassumption ].
+  all: try solve [ eapply alg_proj_complete; eassumption ].
+  all: try match goal with
+    | HTt : _ ⊢ ?T : Typeω@?i, HTc : _ ⊢a ?T ⟸ Typeω@?i, HTe : _ ⊢ ?T ≈ apps_exp (a_record _) _ : _,
+      HMs : forall k f M U, List.nth_error ?fs k = Some (f, M) -> _ -> _ = _ -> _ = _ -> user_exp M -> exp_lets M <= _ -> _ ⊢a M ⟸ _,
+      Hbd : exp_lets (a_tuple ?T ?fs) <= _ |- _ ⊢a a_tuple ?T ?fs ⟸ _ =>
+        eapply alg_tuple_complete; [ exact HTt | exact HTc | exact HTe | eassumption .. |];
+        let k := fresh "k" in let f := fresh "f" in let M := fresh "M" in let U := fresh "U" in
+        let Hk := fresh "Hk" in let Hfk := fresh "Hfk" in
+        intros k f M U Hk Hfk; apply (HMs _ _ _ _ Hk Hfk eq_refl eq_refl (user_exp_all _));
+        pose proof (tuple_field_lets T fs k f M Hk); lia
+    end.
   (** A member, at the normal form of the type its module's description
       reads; the module, by generation. *)
   all: try match goal with

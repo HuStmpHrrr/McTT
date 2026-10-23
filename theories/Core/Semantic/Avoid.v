@@ -141,6 +141,10 @@ Section Avoid.
       ptfresh (oshift 1 K) t ->
       dav f ->
       dav (d_ihfam ρm As ρ t f)
+  (** A record type former at avoiding arguments *)
+  | dav_record : forall p args, (forall a, In a args -> dav a) -> dav (d_record p args)
+  (** A tuple of avoiding fields *)
+  | dav_tuple : forall vs, (forall f a, In (f, a) vs -> dav a) -> dav (d_tuple vs)
   with dav_ne : domain_ne -> Prop :=
   (** A variable other than [v], below [b] *)
   | dav_var : forall x, x <> v -> x < b -> dav_ne (#ᵈ x)
@@ -164,6 +168,8 @@ Section Avoid.
       (forall a, In a args -> dav a) ->
       dav_ne m ->
       dav_ne (d_elim ρ Bks p ups j args m)
+  (** The field of an avoiding neutral *)
+  | dav_proj : forall f m, dav_ne m -> dav_ne (d_proj f m)
   with dav_nf : domain_nf -> Prop :=
   | dav_dom : forall a m, dav a -> dav m -> dav_nf (⇓ a m)
   with dmav : dmod -> Prop :=
@@ -468,6 +474,13 @@ Section OFresh.
   Qed.
   Lemma ofresh_var : forall x, ofresh K #x -> K <> Some x.
   Proof. destruct K; cbn; congruence. Qed.
+  Lemma ofresh_tuple_fields : forall T fs, ofresh K (a_tuple T fs) -> Forall (ofresh K) (List.map snd fs).
+  Proof.
+    destruct K as [k |]; cbn; [| intros; apply Forall_forall; intros; exact I ].
+    intros T fs [_ H]; induction fs as [| [f M] fs IH]; cbn in H |- *; constructor; tauto.
+  Qed.
+  Lemma ofresh_proj : forall f M, ofresh K (a_proj f M) -> ofresh K M.
+  Proof. destruct K; cbn; auto. Qed.
 
   Lemma omfresh_var : forall x, omfresh K (me_var x) -> K <> Some x.
   Proof. destruct K; cbn; congruence. Qed.
@@ -508,7 +521,7 @@ End OFresh.
 #[local] Hint Resolve ofresh_univ ofresh_succl ofresh_maxl_l ofresh_maxl_r
   ofresh_exfalso_A ofresh_exfalso_M
   ofresh_pi_A ofresh_pi_B ofresh_fn_M ofresh_app_l ofresh_app_r ofresh_let_M ofresh_let_B
-  ofresh_letmod_U ofresh_mem ofresh_var omfresh_var omfresh_lit omfresh_mem omfresh_app_l omfresh_app_r
+  ofresh_letmod_U ofresh_mem ofresh_var ofresh_tuple_fields ofresh_proj omfresh_var omfresh_lit omfresh_mem omfresh_app_l omfresh_app_r
   oufresh_body oufresh_alias ogfresh_def_prefix ogfresh_def_body ogfresh_mod_prefix ogfresh_mod_unit
   : avoid.
 (** Freshness does not read the group or the member of an eliminator, so
@@ -585,6 +598,18 @@ Section Eval.
         let HP := fresh "HP" in assert (HP : P) by (solve [ eassumption | eauto 3 with mctt avoid ]); specialize (IH HP)
     end.
 
+  (** The next neutral projection of a neutral of a record type: at its
+      field's type, evaluated in the parameters and the projections before
+      it, which avoid. *)
+  Ltac nflds_head_av :=
+    match goal with IHT : forall K0, env_av _ _ K0 (env_args nil (?ns ++ ?pre)) -> ofresh K0 _ -> dav _ _ ?t |- _ =>
+      constructor;
+        [ apply (IHT None);
+            [ apply env_av_args_none; [ apply env_av_nil | intros x Hx; apply List.in_app_or in Hx as [Hx | Hx]; auto ]
+            | exact I ]
+        | constructor; assumption ]
+    end.
+
   Lemma eval_av :
     (forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> forall K, env_av v b K ρ -> ofresh K M -> dav v b m) /\
     (forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> dav v b m -> dav v b n -> dav v b r) /\
@@ -615,7 +640,11 @@ Section Eval.
        forall K, env_av v b K ρ -> ptfresh K t -> (forall u, In u ups -> dav v b u) -> dav v b a) /\
     (forall ρm As ρ t m a, ⟦ihty m of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
        forall Km, env_av v b Km ρm -> ofresh (oshift (S (List.length (ptyp_ps t))) Km) (List.nth (ptyp_mem t) As a_True) ->
-       forall K, env_av v b K ρ -> ptfresh K t -> dav v b m -> dav v b a).
+       forall K, env_av v b K ρ -> ptfresh K t -> dav v b m -> dav v b a) /\
+    (forall f m r, eval_proj Θ Ξ f m r -> dav v b m -> dav v b r) /\
+    (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs ->
+       (forall a, In a ns -> dav v b a) -> dav_ne v b m -> (forall a, In a pre -> dav v b a) ->
+       forall a, In a rs -> dav v b a).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => forall K, env_av v b K ρ -> ofresh K M -> dav v b m)
@@ -643,7 +672,10 @@ Section Eval.
              (fun p ups ρ t a _ => forall K, env_av v b K ρ -> ptfresh K t -> (forall u, In u ups -> dav v b u) -> dav v b a)
              (fun ρm As ρ t m a _ => forall Km, env_av v b Km ρm ->
                                     ofresh (oshift (S (List.length (ptyp_ps t))) Km) (List.nth (ptyp_mem t) As a_True) ->
-                                    forall K, env_av v b K ρ -> ptfresh K t -> dav v b m -> dav v b a));
+                                    forall K, env_av v b K ρ -> ptfresh K t -> dav v b m -> dav v b a)
+             (fun f m r _ => dav v b m -> dav v b r)
+             (fun ns m fl pre rs _ => (forall a, In a ns -> dav v b a) -> dav_ne v b m ->
+                                     (forall a, In a pre -> dav v b a) -> forall a, In a rs -> dav v b a));
       intros; cbn [ptfresh ptyp_ps ptyp_mem snd] in *.
     all: repeat match goal with
            | H : dav _ _ (_ _) |- _ => inversion_clear H
@@ -732,6 +764,30 @@ Section Eval.
     (** The type of a recursive argument: the member at the shape's
         parameters after the uniform ones. *)
     all: try solve [ apply dav_indty; intros a Ha; apply List.in_app_or in Ha as [Ha | Ha]; eauto ].
+    (** Records: a type former's arguments, a tuple's fields, a field of a
+        tuple, and the projections of a neutral at their types. *)
+    all: try solve [ lazymatch goal with |- dav _ _ (d_record _ nil) => apply dav_record; intros ? [] end ].
+    all: try solve [ match goal with
+      | H : forall y, In y ?vs -> dav _ _ y |- dav _ _ (d_tuple (List.combine _ ?vs)) =>
+          apply dav_tuple; intros f y Hin; exact (H _ (List.in_combine_r _ _ _ _ Hin))
+      end ].
+    all: try solve [ match goal with
+      | H : forall f y, In (f, y) ?vs -> dav _ _ y, Hl : field_lookup ?vs _ = Some ?r |- dav _ _ ?r =>
+          exact (H _ _ (field_lookup_In _ _ _ Hl))
+      end ].
+    all: try solve [ match goal with
+      | IH : (forall y, In y nil -> dav _ _ y) -> forall z, In z ?rs -> dav _ _ z, Hk : List.nth_error ?rs _ = Some ?r |- dav _ _ ?r =>
+          exact (IH (fun _ Hin => match Hin with end) _ (List.nth_error_In _ _ Hk))
+      end ].
+    all: try solve [ lazymatch goal with |- dav _ _ (⇑ _ (d_proj _ _)) => nflds_head_av end ].
+    (** A record type of a global module: its type former, applied to the
+        module's arguments. *)
+    all: try solve [ match goal with IH : dav _ _ (d_record _ nil) -> _ -> _, Ha : forall a, In a _ -> dav _ _ a |- _ =>
+                       apply IH; [ apply dav_record; intros ? [] | exact Ha ] end ].
+    all: try solve [ match goal with
+      | IH : (forall y, In y (?pre ++ ?x :: nil) -> dav _ _ y) -> forall z, In z ?rs -> dav _ _ z, Hin : In ?d ?rs |- dav _ _ ?d =>
+          eapply IH; [ apply dav_args_snoc; [ assumption | nflds_head_av ] | exact Hin ]
+      end ].
     (** What is left: the closures the rules build, and the module bodies,
         whose freshness is at the position their parameters and entries
         shift it to. *)
@@ -805,8 +861,14 @@ Lemma ihty_av : forall Θ Ξ v b ρm As ρ t m a Km K, ⟦ihty m of t under ρm 
     env_av v b Km ρm -> ofresh (oshift (S (List.length (ptyp_ps t))) Km) (List.nth (ptyp_mem t) As a_True) ->
     env_av v b K ρ -> ptfresh K t -> dav v b m -> dav v b a.
 Proof.
-  intros * H; destruct (eval_av Θ Ξ v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
+  intros * H; destruct (eval_av Θ Ξ v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy & _).
   intros; eapply Hy; eassumption.
+Qed.
+
+Lemma proj_av : forall Θ Ξ v b f m r, eval_proj Θ Ξ f m r -> dav v b m -> dav v b r.
+Proof.
+  intros * H; destruct (eval_av Θ Ξ v b) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hp & _).
+  exact (Hp _ _ _ H).
 Qed.
 
 Lemma ih_av : forall Θ Ξ v b ρ p ups Bks t m r K, ⟦ih m of t under p ups Bks ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
@@ -1116,7 +1178,9 @@ Section Read.
        ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> im_nn Mv = im_nn Mi ->
        ofresh (oshift (S (im_nn Mi)) K) A ->
        (forall c n B, In (c, n, B) Bs -> ofresh (oshift n K) B) ->
-       (forall a, In a ups -> dav v b a) -> (forall a, In a (snd r) -> dav v b a) -> nbrs_fresh (s - v - 1) Bs').
+       (forall a, In a ups -> dav v b a) -> (forall a, In a (snd r) -> dav v b a) -> nbrs_fresh (s - v - 1) Bs') /\
+    (forall s ρ fl d Fs, Rflds d at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs ->
+       forall b, v < s -> b <= s -> env_av v b None ρ -> dav v b d -> nfs_fresh (s - v - 1) Fs).
   Proof.
     apply (read_mut_ind Θ Ξ
              (fun s m W _ => forall b, v < s -> b <= s -> dav_nf v b m -> nf_fresh (s - v - 1) W)
@@ -1141,7 +1205,8 @@ Section Read.
                                                             ofresh (oshift (S (im_nn Mi)) K) A ->
                                                             (forall c n B, In (c, n, B) Bs -> ofresh (oshift n K) B) ->
                                                             (forall a, In a ups -> dav v b a) ->
-                                                            (forall a, In a (snd r) -> dav v b a) -> nbrs_fresh (s - v - 1) Bs'));
+                                                            (forall a, In a (snd r) -> dav v b a) -> nbrs_fresh (s - v - 1) Bs')
+             (fun s ρ fl d Fs _ => forall b, v < s -> b <= s -> env_av v b None ρ -> dav v b d -> nfs_fresh (s - v - 1) Fs));
       intros; cbn [snd] in *;
       repeat match goal with
         | H : dav_nf _ _ (_ _ _) |- _ => inversion_clear H
@@ -1158,6 +1223,8 @@ Section Read.
       | H : dav_ne _ _ (d_var _) |- _ => inversion_clear H
       | H : dav_ne _ _ (d_exfalso _ _ _) |- _ => inversion_clear H
       | H : dav_ne _ _ (d_elim _ _ _ _ _ _ _) |- _ => inversion_clear H
+      | H : dav _ _ (d_record _ _) |- _ => inversion_clear H
+      | H : dav_ne _ _ (d_proj _ _) |- _ => inversion_clear H
       | H : dav_nf _ _ (_ _ _) |- _ => inversion_clear H
       end.
     (** The group of a stuck eliminator's blocks, looked up once. *)
@@ -1344,6 +1411,26 @@ Section Read.
             [ lia | | eassumption | eassumption | eassumption | eassumption | eassumption | eassumption
             | intros c1 n1 B1 Hin; exact (HB c1 n1 B1 (or_intror Hin)) | eassumption | eassumption ];
           lia
+      end ].
+    (** Records: the fields of a tuple read in the environment of the
+        parameters; each field projected, at its type evaluated in the
+        environment of the fields before it. *)
+    all: try solve [ match goal with
+      | IH : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None (env_args nil ?ns) -> dav v b0 ?d -> nfs_fresh _ ?W,
+        Hb : ?b <= ?s, Hn : forall a, In a ?ns -> dav v ?b a, Hd : dav v ?b ?d |- nfs_fresh _ ?W =>
+          apply (IH b); [ lia | lia | apply env_av_args_none; [ apply env_av_nil | exact Hn ] | exact Hd ]
+      end ].
+    all: try solve [ match goal with
+      | e : eval_proj _ _ _ ?d ?r, e0 : ⟦ ?T ⟧ _ ⍮ _ ⍮ ?ρ ↘ ?t, Hρ : env_av v ?b None ?ρ, Hb : ?b <= ?s, Hd : dav v ?b ?d,
+        IH : forall b0, v < ?s -> b0 <= ?s -> dav_nf v b0 (⇓ ?t ?r) -> nf_fresh _ ?W |- nf_fresh _ ?W =>
+          apply (IH b);
+            [ lia | lia
+            | constructor; [ eapply (proj1 (eval_av Θ Ξ v b)); [ exact e0 | exact Hρ | exact I ] | exact (proj_av _ _ _ _ _ _ _ e Hd) ] ]
+      end ].
+    all: try solve [ match goal with
+      | e : eval_proj _ _ _ ?d ?r, Hρ : env_av v ?b None ?ρ, Hb : ?b <= ?s, Hd : dav v ?b ?d,
+        IH : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None (?ρ ↦ ?r) -> dav v b0 ?d -> nfs_fresh _ ?W |- nfs_fresh _ ?W =>
+          apply (IH b); [ lia | lia | apply env_av_cons_none; [ exact Hρ | exact (proj_av _ _ _ _ _ _ _ e Hd) ] | exact Hd ]
       end ].
     (** Under a binder: the closure is evaluated at a neutral at the readback
         length, which is above the bound, and read back one step further. *)

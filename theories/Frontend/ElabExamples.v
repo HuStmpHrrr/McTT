@@ -290,11 +290,26 @@ Example kw_theorem :
     (nil, ⋅, cc_def "foo" false false (Π ℕ ℕ) (Some (λ ℕ #0)) :: nil).
 Proof. elab_ok. Qed.
 
-(** A term variable is no module: [B.Id], under a [λ] binding [B], names the
-    variable, which is innermost, and is rejected as a module. *)
-Example var_not_module :
-  elaborate_core (unit_of (def_cmd dk_def md_pub "f" (pi "B" nat nat) (fn "B" nat (proj (var "B") "Id")) :: nil))
-  = eerr "B is a variable, not a module".
+(** A term variable in module position is the binder: [B.Id], under a [λ]
+    binding [B], names the variable, which is innermost.  Whether it is a
+    term of a record type, whose module has a member [Id], is the core's
+    to say ([AccessFill]). *)
+Example var_module_position :
+  elab_spec (unit_of (def_cmd dk_def md_pub "f" (pi "B" nat nat) (fn "B" nat (proj (var "B") "Id")) :: nil))
+    (nil, ⋅, cc_def "f" true false (Π ℕ ℕ) (Some (λ ℕ (a_mem (me_var 0) "Id"))) :: nil).
+Proof. elab_ok. Qed.
+
+(** A projection from a head that is no path, a term, is from a [let]
+    bound to it: [(λ (x : ℕ) → x).f] is [ℓ ≔ λ ℕ #0 in #0.f]. *)
+Example proj_of_term :
+  elab (nil) (proj (fn "x" nat (var "x")) "f") = eok (ℓ ≔ λ ℕ #0 in a_mem (me_var 0) "f").
+Proof. vm_compute; reflexivity. Qed.
+
+(** A projection from a path, a term applied, is not let-bound:
+    [(g 3).fst], [g] a term binder, is [(g 3).fst] as a member of a module
+    expression. *)
+Example proj_of_path :
+  elab (en_tvar "g" :: nil) (proj (app (var "g") (num 3)) "fst") = eok (a_mem (me_app (me_var 0) (a_nlit 3)) "fst").
 Proof. vm_compute; reflexivity. Qed.
 
 (** [private lemma], [fact], [remark], [let], [abstract given]: *)
@@ -654,7 +669,7 @@ Example one_segment_unit :
 Proof. vm_compute; reflexivity. Qed.
 
 Example one_segment_unit_shadowed :
-  elab_mod (en_tvar "X" :: en_unit ("X" :: nil) :: nil) (proj (var "X") "f") = eerr "X is a variable, not a module".
+  elab_mod (en_tvar "X" :: en_unit ("X" :: nil) :: nil) (proj (var "X") "f") = eok (me_mem (me_var 0) "f").
 Proof. vm_compute; reflexivity. Qed.
 
 (** A local body has no [import]s: it opens what is loaded already. *)

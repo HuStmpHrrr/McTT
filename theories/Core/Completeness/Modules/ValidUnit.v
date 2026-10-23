@@ -133,7 +133,7 @@ Lemma fill_gsub : forall Φ D σ, gm_nopens Φ = 0 -> gm_fill Φ = Some σ -> �
 Proof.
   induction Φ as [| Φ IH y E | Φ IH H its]; intros * Hn Hf HC; cbn in Hn, Hf; [| | discriminate ].
   - injection Hf as <-; constructor; exact HC.
-  - destruct E as [b pv A [M |] | pv U | ? ? ? ? | ? ? ? ?]; cbn in Hf; try discriminate;
+  - destruct E as [b pv A [M |] | pv U | ? ? ? ? | ? ? ? ? | ? ? ?]; cbn in Hf; try discriminate;
       destruct (gm_fill Φ) as [σ0 |] eqn:Hf0; cbn in Hf; try discriminate; injection Hf as <-;
       cbn [body_ctx app] in HC.
     + destruct (rel_ctx_wf_def_inv HC) as [[i HA] HM].
@@ -149,7 +149,7 @@ Proof.
   - injection Hf as <-.
     assert (E : R <~> RD) by (eapply per_ctx_env_right_irrel; eassumption).
     exists ρ, ρ; split; [ apply eval_sub_id | split; [ constructor | apply E, Hρ ] ].
-  - destruct E as [b pv A [M |] | pv U | ? ? ? ? | ? ? ? ?]; cbn in Hf; try discriminate;
+  - destruct E as [b pv A [M |] | pv U | ? ? ? ? | ? ? ? ? | ? ? ?]; cbn in Hf; try discriminate;
       destruct (gm_fill Φ) as [σ0 |] eqn:Hf0; cbn in Hf; try discriminate; injection Hf as <-;
       cbn [body_ctx app] in HC, HR.
     + (* a definition: its filled-in body at the environment, against its value in the body's *)
@@ -347,7 +347,7 @@ Proof.
 Qed.
 
 Lemma entry_kind_read : forall T E, entry_kind (ge_read T E) = entry_kind E.
-Proof. intros T [| ? [? [[|] ?|?]] | |]; reflexivity. Qed.
+Proof. intros T [| ? [? [[|] ?|?]] | | |]; reflexivity. Qed.
 
 Lemma mdesc_kind_edenote : forall Γ o E R, edenote Θm Ξm Γ o E R -> mdesc_kind R = entry_kind E.
 Proof.
@@ -373,27 +373,30 @@ Proof.
   intros [Δ Φ' | Θ' Ns M] * Hr; cbn in Hr.
   - destruct (gm_fill Φ'); cbn in Hr; [ injection Hr as <- | discriminate ]; destruct R; reflexivity.
   - destruct (ds_ats R Ns) as [R1 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
-    rewrite <- (mdesc_kind_ats _ _ _ Ha); destruct Θ', Ns; destruct R1 as [? [] | | |]; reflexivity.
+    rewrite <- (mdesc_kind_ats _ _ _ Ha); destruct Θ', Ns; destruct R1 as [? [] | | | |]; reflexivity.
 Qed.
 
 (** What a member of a module expression denotes has the kind its value
     gives the name: an entry of the module part, or a unit or open frame
-    the member names, of either kind. *)
+    the member names, of any kind. *)
 Definition kinds_ok (Γ : ctx) (H : modexp) : Prop :=
   (forall R Rm x Γy E rd, mdenote Θm Ξm Γ H R -> ds_mod Θm Ξm R = Some Rm -> ds_entry Rm x = Some (Γy, E, rd) ->
      forall RΓ ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> skind gc_deps gc_stack ρ H (x :: nil) (entry_kind E)) /\
   (forall x, (exists TΦ, gc_unit Θm Ξm (me_mem H x) = Some TΦ) \/
-             (exists p r, mod_qname (me_mem H x) = Some p /\ gs_find_ind Ξm p = Some r) ->
+             (exists p r, mod_qname (me_mem H x) = Some p /\ gs_find_ind Ξm p = Some r) \/
+             (exists p Rr, mod_qname (me_mem H x) = Some p /\ gs_find_record Ξm p = Some Rr) ->
      forall RΓ ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> skind gc_deps gc_stack ρ H (x :: nil) mk_mod).
 
 Lemma kinds_ok_mem : forall Γ H x R, kinds_ok Γ H -> mdenote Θm Ξm Γ (me_mem H x) R ->
     forall RΓ ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> skind gc_deps gc_stack ρ H (x :: nil) (mdesc_kind R).
 Proof.
   intros * [Ke Ku] Hm RΓ ρ HΓ Hρ.
-  inversion Hm as [? ? ? ? ? Hq Hu | ? ? ? ? ? ? Hq Hk | | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hr]; subst.
+  inversion Hm as [? ? ? ? ? Hq Hu | ? ? ? ? ? ? Hq Hk | | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hr
+                  | ? ? ? Rr Hq Hk]; subst.
   - exact (Ku _ (or_introl (ex_intro _ _ Hu)) _ _ HΓ Hρ).
-  - exact (Ku _ (or_intror (ex_intro _ _ (ex_intro _ _ (conj Hq Hk)))) _ _ HΓ Hρ).
+  - exact (Ku _ (or_intror (or_introl (ex_intro _ _ (ex_intro _ _ (conj Hq Hk))))) _ _ HΓ Hρ).
   - rewrite (mdesc_kind_read _ _ _ Hr), (mdesc_kind_edenote _ _ _ _ Hed); exact (Ke _ _ _ _ _ _ Hm0 Hmd He _ _ HΓ Hρ).
+  - exact (Ku _ (or_intror (or_intror (ex_intro _ _ (ex_intro _ _ (conj Hq Hk))))) _ _ HΓ Hρ).
 Qed.
 
 Lemma items_kgens : forall Γ H its gs, items_gen Θm Ξm false Γ H its gs -> kinds_ok Γ H ->
@@ -423,7 +426,7 @@ Proof.
     intros Hsh HC Ho RC ρ σ HRC Hρ Hs.
   - exists gm_nil; split; [ constructor | exact I ].
   - cbn [body_shape] in Hsh.
-    destruct (IH (proj1 Hsh) ltac:(destruct E as [? ? ? [] | | |]; exact (rel_ctx_wf_tail HC))
+    destruct (IH (proj1 Hsh) ltac:(destruct E as [? ? ? [] | | | |]; exact (rel_ctx_wf_tail HC))
                 ltac:(intros k Ψ H0 Hk; apply (Ho k); cbn [body_opens gm_dropn]; exact Hk) _ _ _ HRC Hρ Hs)
       as (Φk & Hb & Hk).
     exists (gm_ext Φk x E); split; [ constructor; exact Hb | split; [ exact Hk | split; [ reflexivity | left; reflexivity ] ] ].
@@ -476,7 +479,7 @@ Proof.
   destruct (frame_parent _ _ Hgm _ _ _ _ Ht) as (T1 & Φ1 & Hf1 & _).
   assert (Hgl0 : gc_loc Θm Ξm mq = Some (T1, Φ1)) by (unfold gc_loc; rewrite Hf1; reflexivity).
   assert (Hgl : gc_loc Θm Ξm (qname_in mq x) = Some TΦ) by (unfold gc_loc; rewrite Hf; reflexivity).
-  destruct (Hgf _ _ _ Hgl0) as [_ Hp _ _ _ _ Hsub _ _ _].
+  destruct (Hgf _ _ _ Hgl0) as [_ Hp _ _ _ _ Hsub _ _ _ _].
   rewrite (mod_qname_inv _ _ Hq0).
   apply (kind_eval_modexp _ _ _ _ _ (Hp ρ)), (Hsub x TΦ); exact Hgl.
 Qed.
@@ -501,18 +504,30 @@ Proof.
   exact (frame_kind _ _ _ _ Hq Hf ρ).
 Qed.
 
-Lemma unit_or_frame_kind : forall H x,
-    (exists TΦ, gc_unit Θm Ξm (me_mem H x) = Some TΦ) \/ (exists p r, mod_qname (me_mem H x) = Some p /\ gs_find_ind Ξm p = Some r) ->
+(** So is the open frame of a record type's module. *)
+Lemma record_frame_kind : forall H x p Rr, mod_qname (me_mem H x) = Some p -> gs_find_record Ξm p = Some Rr ->
     forall ρ, skind gc_deps gc_stack ρ H (x :: nil) mk_mod.
 Proof.
-  intros * [(TΦ & Hu) | (p & r & Hq & Hk)] ρ; [ exact (gunit_kind _ _ _ Hu ρ) | exact (ind_frame_kind _ _ _ _ Hq Hk ρ) ].
+  intros * Hq Hk ρ.
+  destruct (ds_mod_record_frame _ _ Hgm _ _ nil nil Hk) as (T & Φ & Hf & _).
+  exact (frame_kind _ _ _ _ Hq Hf ρ).
+Qed.
+
+Lemma unit_or_frame_kind : forall H x,
+    (exists TΦ, gc_unit Θm Ξm (me_mem H x) = Some TΦ) \/
+    (exists p r, mod_qname (me_mem H x) = Some p /\ gs_find_ind Ξm p = Some r) \/
+    (exists p Rr, mod_qname (me_mem H x) = Some p /\ gs_find_record Ξm p = Some Rr) ->
+    forall ρ, skind gc_deps gc_stack ρ H (x :: nil) mk_mod.
+Proof.
+  intros * [(TΦ & Hu) | [(p & r & Hq & Hk) | (p & Rr & Hq & Hk)]] ρ;
+    [ exact (gunit_kind _ _ _ Hu ρ) | exact (ind_frame_kind _ _ _ _ Hq Hk ρ) | exact (record_frame_kind _ _ _ _ Hq Hk ρ) ].
 Qed.
 
 Lemma ds_entry_up_inv : forall Δ R y Γy E rd, ds_entry (ds_up Δ R) y = Some (Γy, E, rd) ->
     exists Γy' rd', ds_entry R y = Some (Γy', E, rd').
 Proof.
   intros * He; destruct R; cbn in He |- *; try discriminate.
-  - destruct (gm_prefix_upto _ y) as [[| ? ? [[|] ? ? [] | | |] | ] |]; try discriminate;
+  - destruct (gm_prefix_upto _ y) as [[| ? ? [[|] ? ? [] | | | |] | ] |]; try discriminate;
       injection He as <- <- <-; eauto.
   - destruct (gm_prefix_upto _ y) as [[| ? ? E0 | ] |]; try discriminate; injection He as <- <- <-; eauto.
 Qed.
@@ -525,7 +540,7 @@ Proof.
   destruct (gm_prefix_upto Φx y) as [[| Φ' z E0 | ] |] eqn:Hp; try discriminate.
   pose proof (gm_prefix_name _ _ _ _ _ Hp) as ->.
   exists Φ', E0; split; [ reflexivity |].
-  destruct E0 as [[|] ? ? [] | | |]; try discriminate; injection He as <- <- <-; repeat split.
+  destruct E0 as [[|] ? ? [] | | | |]; try discriminate; injection He as <- <- <-; repeat split.
 Qed.
 
 Lemma ds_entry_closed_inv : forall Θ p T Φ Ns y Γy E rd, ds_entry (ds_closed Θ p T Φ Ns) y = Some (Γy, E, rd) ->
@@ -544,7 +559,7 @@ Proof.
   induction Φ as [| Φ IH z E | Φ IH H its]; intros * Hn Hp; cbn in Hn, Hp; try discriminate.
   destruct (String.eqb y z); [ injection Hp as <-; exists nil; reflexivity |].
   destruct (IH _ _ Hn Hp) as (X & HX).
-  destruct E as [? ? ? [] | | |]; cbn [body_ctx]; rewrite HX; eexists (_ :: X); reflexivity.
+  destruct E as [? ? ? [] | | | |]; cbn [body_ctx]; rewrite HX; eexists (_ :: X); reflexivity.
 Qed.
 
 Lemma prefix_shape : forall Φ x Φ' E, body_shape Φ Φ -> gm_prefix_upto Φ x = Some (gm_ext Φ' x E) ->
@@ -574,11 +589,12 @@ Proof.
     destruct (filed_denote _ _ Hgm _ _ _ Γ Ns Hgl) as (R1 & Hm1 & Hmod1).
     rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ Hm _ Hm1), Hmod1 in Hmod; injection Hmod as <-.
     destruct (ds_entry_closed_inv _ _ _ _ _ _ _ _ _ He) as (Φ0 & E0 & Hp & ->).
-    destruct (Hgf _ _ _ Hgl) as [_ Hpe _ _ _ Hk _ _ _ _].
+    destruct (Hgf _ _ _ Hgl) as [_ Hpe _ _ _ Hk _ _ _ _ _].
     apply skind_apps, (kind_eval_modexp _ _ _ _ _ (Hpe ρ)); rewrite entry_kind_read; exact (Hk _ _ _ Hp).
   - (* a body *)
     intros Γ Δ Φ Φx Hw Hx HΔ HΓ HC Hslots IHslots Hs Hsx HK Hopv Hops IHops.
-    split; [| intros x [(TΦ & Hu) | (p & r & Hq & _)]; [ cbn in Hu; unfold gc_unit in Hu; cbn in Hu; discriminate | cbn in Hq; discriminate ] ].
+    split; [| intros x [(TΦ & Hu) | [(p & r & Hq & _) | (p & r & Hq & _)]];
+                [ cbn in Hu; unfold gc_unit in Hu; cbn in Hu; discriminate | cbn in Hq; discriminate | cbn in Hq; discriminate ] ].
     intros R Rm x Γy E rd Hm Hmod He RΓ ρ HRΓ Hρ.
     inversion Hm; subst; try (match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end).
     match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
@@ -598,7 +614,7 @@ Proof.
     pose proof (body_xp_nopens _ _ _ _ _ Hx) as Hn.
     destruct (prefix_shape _ _ _ _ Hsx Hp) as [Hsh' HshE].
     pose proof (prefix_nopens _ _ _ Hn Hp) as Hn'; cbn [gm_nopens] in Hn'.
-    destruct E0 as [b pv A0 oM | pm U | | ]; cbn in HshE; try contradiction;
+    destruct E0 as [b pv A0 oM | pm U | | | ]; cbn in HshE; try contradiction;
       destruct HE as [-> | (b' & pv' & A' & A'' & M' & -> & [= -> -> -> ->])]; cbn [entry_kind].
     1,2: eapply uk_def; exact Hpk.
     + (* a submodule: a module, at an environment of its context *)
@@ -616,7 +632,8 @@ Proof.
       exact (valid_nil_kind _ _ _ (ruu_lit _ _ _ (rel_ctx_wf_mod_inv HC1)) HR0 _ Hρ1).
   - (* an alias *)
     intros Γ Δ E Hw HΔ HΓ HΔΓ HK HE Hsmt IHE.
-    split; [| intros x [(TΦ & Hu) | (p & r & Hq & _)]; [ cbn in Hu; unfold gc_unit in Hu; cbn in Hu; discriminate | cbn in Hq; discriminate ] ].
+    split; [| intros x [(TΦ & Hu) | [(p & r & Hq & _) | (p & r & Hq & _)]];
+                [ cbn in Hu; unfold gc_unit in Hu; cbn in Hu; discriminate | cbn in Hq; discriminate | cbn in Hq; discriminate ] ].
     intros R Rm x Γy E' rd Hm Hmod He RΓ ρ HRΓ Hρ.
     inversion Hm; subst; try (match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end).
     match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu as [| ? ? ? E0 RE Rem HmE HmodE]; subst end.

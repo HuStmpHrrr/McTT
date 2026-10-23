@@ -5,6 +5,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Export PER.
 From Mctt.Core.Semantic.Inductives Require Export IndPER.
+From Mctt.Core.Semantic Require Export RecordPER.
 From Mctt.Core.Syntactic Require Export SystemOpt.
 From Mctt.Core.Syntactic.Levels Require Import Levels LevelEq.
 From Mctt.Core.Syntactic.System.Global Require Import Presup Paths.
@@ -480,6 +481,106 @@ Definition ind_glu_exp_pred (p : qname) (D : ind_decl) (ups ns : list domain)
     (k : nat) (Mk : imember) (elem_rel : relation domain) (U : typ) : glu_exp_pred :=
   ind_glu_exp p D ups ns NP NEl AP AEl DP DEl k Mk elem_rel U.
 
+(** ** Record Types
+
+    The parameters of a record type are glued to their values by their
+    readback, at their telescope, as the uniform parameters of an inductive
+    type are.  Its fields are glued at the gluing predicates of their types
+    ([FP], [FEl], indexed by the position and the values of the fields
+    before it), each after glued earlier ones. *)
+
+(** The parameters [Ps] at the telescope [T], glued to their values [ps] by
+    their readback. *)
+Record params_glu_top (T : ctx) (Γ : ctx) (Ps : list exp) (ps : list domain) : Prop := mk_params_glu_top
+  { (** One term per parameter *)
+    params_glu_len : List.length Ps = List.length T
+    (** Each typed at the telescope *)
+  ; params_glu_typ : forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts T Id Ps) k = Some A ->
+      Γ ⊢ P : A
+    (** At every weakening, equal to the readback of the values *)
+  ; params_glu_read : forall Δ φ Ms, Δ ⊢ᵏ φ : Γ -> Rps ps at List.rev T in gc_deps ⍮ gc_stack ⍮ nil ⍮ length Δ ↘ Ms ->
+      exps_eq_at Δ T (List.map (fun P => P[φ]ʷ) Ps) (nfs_to_exps Ms) }.
+
+(** The types of the fields of [R] at the parameters [Ns], glued: the type
+    of a field, after terms [Ms] glued to values [ms] at the types of the
+    fields before it, glues at [FP] of its position and [ms]. *)
+Definition record_fields_glu (R : record_decl) (ns : list domain)
+    (FP : nat -> list domain -> glu_typ_pred) (FEl : nat -> list domain -> glu_exp_pred)
+    (Γ : ctx) (Ns : list exp) : Prop :=
+  forall k f T Ms ms, List.nth_error (record_fields R) k = Some (f, T) -> List.length Ms = k -> List.length ms = k ->
+    (forall j g T' M m, List.nth_error (record_fields R) j = Some (g, T') -> List.nth_error Ms j = Some M ->
+       List.nth_error ms j = Some m ->
+       Γ ⊢ M : T'[sb_of_list Id (Ns ++ List.firstn j Ms)] ® m ∈ FEl j (List.firstn j ms)) ->
+    tele_prefix_rel (canon_fields_rel R ns) k ms ms ->
+    Γ ⊢ T[sb_of_list Id (Ns ++ Ms)] ® FP k ms.
+
+(** What a record type at the syntactic parameters [Ns] is at every
+    weakening [φ]: the parameters glued, the sort in the ambient universe
+    [U], and the fields glued at every equal instance of the parameters. *)
+Record record_typ_parts (R : record_decl) (ns : list domain)
+    (FP : nat -> list domain -> glu_typ_pred) (FEl : nat -> list domain -> glu_exp_pred)
+    (U : typ) (Δ : ctx) (Ns : list exp) : Prop := mk_record_typ_parts
+  { (** The parameters, glued *)
+    record_typ_params : params_glu_top (record_params R) Δ Ns ns
+    (** The sort at them is in the ambient universe *)
+  ; record_typ_sort : Δ ⊢ (record_sort R)[sb_of_list Id Ns] ⊆ U
+    (** The fields, glued at every equal instance *)
+  ; record_typ_fields : forall Ns', exps_eq_at Δ (record_params R) Ns Ns' -> record_fields_glu R ns FP FEl Δ Ns' }.
+
+(** A type of the record type [p] at its parameters, at syntactic
+    parameters [Ns]: equal to [p] at them, and at every weakening its
+    parts glued ([record_typ_parts]). *)
+Record record_typ_at (p : qname) (R : record_decl) (ns : list domain)
+    (FP : nat -> list domain -> glu_typ_pred) (FEl : nat -> list domain -> glu_exp_pred)
+    (U : typ) (Γ : ctx) (A : typ) (Ns : list exp) : Prop := mk_record_typ_at
+  { (** [A] is the record type at [Ns] *)
+    record_typ_eq : Γ ⊢ A ≈ apps_exp (a_record p) Ns : U
+    (** At every weakening, its parts are glued *)
+  ; record_typ_wk : forall Δ φ, Δ ⊢ᵏ φ : Γ ->
+      record_typ_parts R ns FP FEl U Δ (List.map (fun N => N[φ]ʷ) Ns) }.
+
+(** The type predicate of a record type: a type at some syntactic
+    parameters ([record_typ_at]). *)
+Definition record_glu_typ_pred (p : qname) (R : record_decl) (ns : list domain)
+    (FP : nat -> list domain -> glu_typ_pred) (FEl : nat -> list domain -> glu_exp_pred) (U : typ) : glu_typ_pred :=
+  fun Γ A => exists Ns, record_typ_at p R ns FP FEl U Γ A Ns.
+#[global] Arguments record_glu_typ_pred p R ns FP FEl U Γ A/.
+
+(** An element of a record type: typed, related to itself, at some
+    syntactic parameters of its type, with its projections; at every
+    weakening and equal instance of the parameters, the projection of each
+    field is glued to the value's at the field's type there, after the
+    projections of the fields before it. *)
+#[warnings="-cannot-define-projection"]
+Record record_glu_exp (p : qname) (R : record_decl) (ns : list domain)
+    (FP : nat -> list domain -> glu_typ_pred) (FEl : nat -> list domain -> glu_exp_pred)
+    (elem_rel : relation domain) (U : typ) (Γ : ctx) (A : typ) (M : exp) (m : domain) : Prop := mk_record_glu_exp
+  { (** [M] is of type [A] *)
+    record_elem_typ : Γ ⊢ M : A
+    (** [m] is related to itself *)
+  ; record_elem_per : Dom m ≈ m ∈ elem_rel
+    (** The syntactic parameters of [A] *)
+  ; record_elem_params : list exp
+    (** [A] is the record type at them *)
+  ; record_elem_at : record_typ_at p R ns FP FEl U Γ A record_elem_params
+    (** The projections of [m] *)
+  ; record_elem_projs : list domain
+    (** They are [m]'s fields *)
+  ; record_elem_projs_eval : record_projs R m record_elem_projs
+    (** At every weakening and equal instance, each field's projection is
+        glued to [m]'s *)
+  ; record_elem_fields : forall Δ φ Ns', Δ ⊢ᵏ φ : Γ ->
+      exps_eq_at Δ (record_params R) (List.map (fun N => N[φ]ʷ) record_elem_params) Ns' ->
+      forall k f T r, List.nth_error (record_fields R) k = Some (f, T) -> List.nth_error record_elem_projs k = Some r ->
+        Δ ⊢ a_proj f M[φ]ʷ : T[sb_of_list Id (Ns' ++ record_pre R k M[φ]ʷ)] ® r
+          ∈ FEl k (List.firstn k record_elem_projs) }.
+
+(** The element predicate of a record type: [record_glu_exp]. *)
+Definition record_glu_exp_pred (p : qname) (R : record_decl) (ns : list domain)
+    (FP : nat -> list domain -> glu_typ_pred) (FEl : nat -> list domain -> glu_exp_pred)
+    (elem_rel : relation domain) (U : typ) : glu_exp_pred :=
+  record_glu_exp p R ns FP FEl elem_rel U.
+
 (** The gluing of a type of a small universe quotes the large universe
     [Typeω@0] (any small type is in it), so it does not say that the type is
     in the small universe; the element predicate of a small universe
@@ -635,7 +736,24 @@ Section Gluing.
              DG b ∈ glu_univ_elem_core ↘ DP m (ms ++ ws ++ ys) B ↘ DEl m (ms ++ ws ++ ys) B) ->
           typ_rel <∙> ind_glu_typ_pred p D ups ns NP NEl AP AEl DP DEl k M (Typeω@(ulvl i)) ->
           el_rel <∙> ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl k M elem_rel (Typeω@(ulvl i)) ->
-          DG d_ind p k (ups ++ ns) ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }.
+          DG d_ind p k (ups ++ ns) ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
+
+  (** A record type at its parameters: the type of each field glues at the
+      related values of the fields before it; the relations are the
+      canonical ones of [Core.Semantic.RecordPER]. *)
+  | glu_univ_elem_core_record :
+    `{ forall (FP : nat -> list domain -> glu_typ_pred) (FEl : nat -> list domain -> glu_exp_pred)
+         typ_rel el_rel (elem_rel : relation domain),
+          record_lookup gc_deps gc_stack p = Some R ->
+          DF d_record p ns ≈ d_record p ns ∈ per_univ_elem i ↘ elem_rel ->
+          (forall k f T vs, List.nth_error (record_fields R) k = Some (f, T) ->
+             tele_prefix_rel (canon_fields_rel R ns) k vs vs -> exists b, ⟦ T ⟧ env_args nil (ns ++ vs) ↘ b) ->
+          (forall k f T vs b, List.nth_error (record_fields R) k = Some (f, T) ->
+             tele_prefix_rel (canon_fields_rel R ns) k vs vs -> ⟦ T ⟧ env_args nil (ns ++ vs) ↘ b ->
+             DG b ∈ glu_univ_elem_core ↘ FP k vs ↘ FEl k vs) ->
+          typ_rel <∙> record_glu_typ_pred p R ns FP FEl (Typeω@(ulvl i)) ->
+          el_rel <∙> record_glu_exp_pred p R ns FP FEl elem_rel (Typeω@(ulvl i)) ->
+          DG d_record p ns ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }.
 End Gluing.
 
 Hint Constructors glu_univ_elem_core : mctt.
@@ -907,6 +1025,23 @@ Section GluingInduction.
           P <∙> ind_glu_typ_pred p D ups ns NP NEl AP AEl DP DEl k M (Typeω@(ulvl i)) ->
           El <∙> ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl k M elem_rel (Typeω@(ulvl i)) ->
           motive i P El (d_ind p k (ups ++ ns)))
+
+      (case_record :
+        forall i p R ns (FP : nat -> list domain -> glu_typ_pred) (FEl : nat -> list domain -> glu_exp_pred)
+          (P : glu_typ_pred) (El : glu_exp_pred) (elem_rel : relation domain),
+          record_lookup gc_deps gc_stack p = Some R ->
+          DF d_record p ns ≈ d_record p ns ∈ per_univ_elem i ↘ elem_rel ->
+          (forall k f T vs, List.nth_error (record_fields R) k = Some (f, T) ->
+             tele_prefix_rel (canon_fields_rel R ns) k vs vs -> exists b, ⟦ T ⟧ env_args nil (ns ++ vs) ↘ b) ->
+          (forall k f T vs b, List.nth_error (record_fields R) k = Some (f, T) ->
+             tele_prefix_rel (canon_fields_rel R ns) k vs vs -> ⟦ T ⟧ env_args nil (ns ++ vs) ↘ b ->
+             DG b ∈ glu_univ_elem i ↘ FP k vs ↘ FEl k vs) ->
+          (forall k f T vs b, List.nth_error (record_fields R) k = Some (f, T) ->
+             tele_prefix_rel (canon_fields_rel R ns) k vs vs -> ⟦ T ⟧ env_args nil (ns ++ vs) ↘ b ->
+             motive i (FP k vs) (FEl k vs) b) ->
+          P <∙> record_glu_typ_pred p R ns FP FEl (Typeω@(ulvl i)) ->
+          El <∙> record_glu_exp_pred p R ns FP FEl elem_rel (Typeω@(ulvl i)) ->
+          motive i P El (d_record p ns))
   .
 
   Lemma glu_univ_elem_ind i P El a
@@ -926,6 +1061,7 @@ Section GluingInduction.
     - eapply case_pi; eassumption.
     - eapply case_neut; eassumption.
     - eapply case_indty; eassumption.
+    - eapply case_record; eassumption.
   Qed.
 End GluingInduction.
 
@@ -1153,14 +1289,14 @@ Ltac glu_univ_elem_induction_core HH ih :=
                  end
              end;
       revert HH; revert i P El a;
-      refine (glu_univ_elem_ind _ _ _ _ _ _ _ _ _);
+      refine (glu_univ_elem_ind _ _ _ _ _ _ _ _ _ _);
       (** The level case has one binder more than the other closed types: the
           sort of its type of levels. *)
       [ do 5 intro; do 3 glu_induction_hintro | do 5 intro; do 3 glu_induction_hintro
       | do 4 intro; do 2 glu_induction_hintro | do 3 intro; do 2 glu_induction_hintro
       | do 3 intro; do 2 glu_induction_hintro
       | do 12 intro; glu_induction_hintro; ih; do 6 glu_induction_hintro | do 5 intro; do 3 glu_induction_hintro
-      | do 17 intro; do 17 glu_induction_hintro ]; cbv beta
+      | do 17 intro; do 17 glu_induction_hintro | do 9 intro; do 7 glu_induction_hintro ]; cbv beta
   end.
 
 (** As [induction H using glu_univ_elem_ind]: the hypothesis on the motive at

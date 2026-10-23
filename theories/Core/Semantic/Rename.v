@@ -61,6 +61,8 @@ Section Rename.
     | d_ihfn ρ Bks p ups t g => d_ihfn (List.map dern ρ) Bks p (List.map drn ups) t (drn g)
     | d_shfam p ups ρ t => d_shfam p (List.map drn ups) (List.map dern ρ) t
     | d_ihfam ρm As ρ t g => d_ihfam (List.map dern ρm) As (List.map dern ρ) t (drn g)
+    | d_record p args => d_record p (List.map drn args)
+    | d_tuple vs => d_tuple (List.map (fun ga => match ga with (g, a) => (g, drn a) end) vs)
     end
   with drn_ne (m : domain_ne) : domain_ne :=
     match m with
@@ -70,6 +72,7 @@ Section Rename.
     | d_elim ρ Bks p ups j args m =>
         d_elim (List.map dern ρ) Bks p (List.map drn ups) j (List.map drn args) (drn_ne m)
     | d_glob p => d_glob p
+    | d_proj g m => d_proj g (drn_ne m)
     end
   with drn_nf (n : domain_nf) : domain_nf :=
     match n with
@@ -137,6 +140,11 @@ Section Rename.
   Lemma length_ern : forall ρ, List.length (ern ρ) = List.length ρ.
   Proof. intros; apply List.length_map. Qed.
 
+  (** The fields of a renamed tuple: each value renamed. *)
+  Lemma tuple_rn : forall (vs : list (string * domain)),
+      List.map (fun ga => match ga with (g, a) => (g, drn a) end) vs = List.map (fun p => (fst p, drn (snd p))) vs.
+  Proof. intros; apply List.map_ext; intros []; reflexivity. Qed.
+
   (** The group of an eliminator is read off the head of a value, which the
       renaming keeps. *)
   Lemma elim_grp_of_rn : forall oq m, elim_grp_of oq (drn m) = elim_grp_of oq m.
@@ -161,7 +169,7 @@ Section Eval.
   Proof. intros; unfold kpad, ern; rewrite List.map_app; f_equal; induction n; cbn; f_equal; assumption. Qed.
 
   Lemma kbentry_rn : forall ρ E, dern f (kbentry ρ E) = kbentry (ern f ρ) E.
-  Proof. intros ρ [? ? ? ? | ? [] | ? ? ? ? | ? ? ? ?]; reflexivity. Qed.
+  Proof. intros ρ [? ? ? ? | ? [] | ? ? ? ? | ? ? ? ? | ? ? ?]; reflexivity. Qed.
 
   Lemma kgens_env_rn : forall gs ρ k, ern f (kgens_env ρ k gs) = kgens_env (ern f ρ) k gs.
   Proof.
@@ -213,7 +221,10 @@ Section Eval.
     (forall p ups j r, ⟦mref j of p ups ⟧ Θ ⍮ Ξ ↘ r ->
        ⟦mref j of p (List.map (drn f) ups) ⟧ Θ ⍮ Ξ ↘ (fst (fst r), snd (fst r), List.map (drn f) (snd r))) /\
     (forall p ups ρ t a, ⟦shty t of p ups ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> ⟦shty t of p (List.map (drn f) ups) ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f a) /\
-    (forall ρm As ρ t m a, ⟦ihty m of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> ⟦ihty drn f m of t under (ern f ρm) As ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f a).
+    (forall ρm As ρ t m a, ⟦ihty m of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> ⟦ihty drn f m of t under (ern f ρm) As ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f a) /\
+    (forall g m r, eval_proj Θ Ξ g m r -> eval_proj Θ Ξ g (drn f m) (drn f r)) /\
+    (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs ->
+       eval_nflds Θ Ξ (List.map (drn f) ns) (drn_ne f m) fl (List.map (drn f) pre) (List.map (drn f) rs)).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => ⟦ M ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f m)
@@ -235,14 +246,25 @@ Section Eval.
              (fun ρ p ups Bks t m r _ => ⟦ih drn f m of t under p (List.map (drn f) ups) Bks ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f r)
              (fun p ups j r _ => ⟦mref j of p (List.map (drn f) ups) ⟧ Θ ⍮ Ξ ↘ (fst (fst r), snd (fst r), List.map (drn f) (snd r)))
              (fun p ups ρ t a _ => ⟦shty t of p (List.map (drn f) ups) ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f a)
-             (fun ρm As ρ t m a _ => ⟦ihty drn f m of t under (ern f ρm) As ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f a));
+             (fun ρm As ρ t m a _ => ⟦ihty drn f m of t under (ern f ρm) As ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f a)
+             (fun g m r _ => eval_proj Θ Ξ g (drn f m) (drn f r))
+             (fun ns m fl pre rs _ =>
+                eval_nflds Θ Ξ (List.map (drn f) ns) (drn_ne f m) fl (List.map (drn f) pre) (List.map (drn f) rs)));
       intros; cbn [drn drn_ne drn_nf dmrn dern List.map extend_env fst snd] in *;
+      rewrite ?tuple_rn in *;
       repeat change (List.map (dern f) ?ρ) with (ern f ρ) in *;
       autorewrite with rn in *; cbn [List.map] in *;
       try solve [ econstructor; autorewrite with rn; eauto ].
     all: try solve [ econstructor; [ eassumption | rewrite elim_grp_of_rn; eassumption | eassumption ] ].
     all: try solve [ econstructor; [ eassumption | eassumption | rewrite elim_grp_of_rn; eassumption | eassumption ] ].
     all: try solve [ econstructor; [ apply kind_rn; eassumption | eassumption | eauto | eauto ] ].
+    (* records: a tuple's fields, a field of a tuple, a neutral projection *)
+    all: try solve [ rewrite <- combine_map_r; constructor; assumption ].
+    all: try solve [ constructor; rewrite field_lookup_map;
+                     match goal with H : field_lookup _ _ = Some _ |- _ => rewrite H end; reflexivity ].
+    all: try solve [ econstructor; [ eassumption | eassumption | eassumption |];
+                     rewrite List.nth_error_map; match goal with H : List.nth_error _ _ = Some _ |- _ => rewrite H end;
+                     reflexivity ].
     - (* a variable *) rewrite <- env_var_rn; apply eval_exp_var.
     - (* a module slot *) rewrite <- env_mod_rn; apply eval_me_var.
   Qed.
@@ -381,6 +403,17 @@ Section Bound.
 
   Lemma dbd_con_inv : forall b p k c args, dbd b (d_con p k c args) -> forall a, In a args -> dbd b a.
   Proof. intros * H a Ha v Hv; specialize (H v Hv); inversion H; auto. Qed.
+
+  (** Records: the arguments of a type former, the neutral a field is
+      projected from, and a field of a bounded value. *)
+  Lemma dbd_record_inv : forall b p args, dbd b (d_record p args) -> forall a, In a args -> dbd b a.
+  Proof. intros * H a Ha v Hv; specialize (H v Hv); inversion H; auto. Qed.
+
+  Lemma dbd_proj_inv : forall b g m, dbd_ne b (d_proj g m) -> dbd_ne b m.
+  Proof. intros * H v Hv; specialize (H v Hv); inversion H; assumption. Qed.
+
+  Lemma dbd_proj : forall b g m r, eval_proj Θ Ξ g m r -> dbd b m -> dbd b r.
+  Proof. intros * H Hm v Hv; exact (proj_av _ _ _ _ _ _ _ H (Hm v Hv)). Qed.
 
   (** The blocks of an eliminator, closures in an environment that avoids
       the excluded level at every position they read. *)
@@ -621,8 +654,14 @@ Section Read.
   Lemma ihty_rn : forall ρm As ρ t m a,
       ⟦ihty m of t under ρm As ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> ⟦ihty drn f m of t under (ern f ρm) As ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f a.
   Proof.
-    intros * H; destruct (eval_rn Θ Ξ f) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy).
+    intros * H; destruct (eval_rn Θ Ξ f) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hy & _).
     exact (Hy _ _ _ _ _ _ H).
+  Qed.
+
+  Lemma proj_rn : forall g m r, eval_proj Θ Ξ g m r -> eval_proj Θ Ξ g (drn f m) (drn f r).
+  Proof.
+    intros * H; destruct (eval_rn Θ Ξ f) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hp & _).
+    exact (Hp _ _ _ H).
   Qed.
 
   Lemma ih_rn : forall ρ p ups Bks t m r,
@@ -703,7 +742,10 @@ Section Read.
        (forall c n B, In (c, n, B) Bs -> dbd_clon Θ Ξ s ρ B n) -> (forall a, In a ups -> dbd s a) ->
        (forall a, In a (snd r) -> dbd s a) ->
        Rbrs Bs at cs of Mi (fst (fst r), snd (fst r), List.map (drn f) (snd r)) from p (List.map (drn f) ups)
-         Bks Mv A in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nbrs_wk φ Bs').
+         Bks Mv A in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nbrs_wk φ Bs') /\
+    (forall s ρ fl d Fs, Rflds d at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs ->
+       forall s' φ, rn_ok f s s' φ -> env_dbd s ρ -> dbd s d ->
+       Rflds drn f d at fl in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nfs_wk φ Fs).
   Proof.
     apply (read_mut_ind Θ Ξ
              (fun s m W _ => forall s' φ, rn_ok f s s' φ -> dbd_nf s m -> Rnf drn_nf f m in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ W)
@@ -727,7 +769,9 @@ Section Read.
                 (forall c n B, In (c, n, B) Bs -> dbd_clon Θ Ξ s ρ B n) -> (forall a, In a ups -> dbd s a) ->
                 (forall a, In a (snd r) -> dbd s a) ->
                 Rbrs Bs at cs of Mi (fst (fst r), snd (fst r), List.map (drn f) (snd r)) from p (List.map (drn f) ups)
-                  Bks Mv A in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nbrs_wk φ Bs'));
+                  Bks Mv A in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nbrs_wk φ Bs')
+             (fun s ρ fl d Fs _ => forall s' φ, rn_ok f s s' φ -> env_dbd s ρ -> dbd s d ->
+                Rflds drn f d at fl in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nfs_wk φ Fs));
       intros; cbn [drn drn_ne drn_nf dmrn dern nf_wk ne_wk la_wk larn nfs_wk nbrs_wk nblocks_wk List.map fst snd] in *.
     (** The bounds of the parts. *)
     all: repeat match goal with
@@ -742,6 +786,8 @@ Section Read.
       | H : dbd _ (d_ind _ _ _) |- _ => pose proof (dbd_indty_inv _ _ _ _ H); clear H
       | H : dbd _ (d_con _ _ _ _) |- _ => pose proof (dbd_con_inv _ _ _ _ _ H); clear H
       | H : dbd_ne _ (d_elim _ _ _ _ _ _ _) |- _ => apply dbd_elim_inv in H as (? & ? & ? & ?)
+      | H : dbd _ (d_record _ _) |- _ => pose proof (dbd_record_inv _ _ _ H); clear H
+      | H : dbd_ne _ (d_proj _ _) |- _ => apply dbd_proj_inv in H
       end.
     (** The fresh levels correspond, under one binder and under two. *)
     all: match goal with Hok : rn_ok f ?s ?s' ?φ |- _ =>
@@ -1016,6 +1062,38 @@ Section Read.
           [ intros; eapply dbd_mono; [| apply Hu; eassumption ]; lia
           | apply env_dbd_cons; [ eapply env_dbd_mono; [| exact Hρ ]; lia | apply dbd_fresh; [ lia | exact Hbd ] ]
           | eapply dbd_app; [ exact e0 | eapply dbd_mono; [| exact Hx ]; lia | apply dbd_fresh; [ lia | exact Hbd ] ] ]
+      end end ].
+    (** Records: a tuple at its record type, the parameters and the fields
+        renamed; a record type at its parameters; a field, projected and
+        read at its renamed type, then the rest with it. *)
+    all: try solve [ lazymatch goal with |- read_nf _ _ _ (d_dom (d_record _ _) _) _ =>
+      match goal with
+      | IHp : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_dbd ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
+        IHf : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_dbd ?s (env_args nil ?ns) -> _ -> read_fields _ _ s0 _ _ _ _,
+        Hok : rn_ok f ?s ?s' ?φ, Hns : forall a, In a ?ns -> dbd ?s a |- _ =>
+          econstructor; [ eassumption | rewrite List.length_map; eassumption
+                        | exact (IHp s' φ Hok (env_dbd_nil _) Hns) |];
+          change (env_args nil (List.map (drn f) ns)) with (env_args (ern f nil) (List.map (drn f) ns));
+          rewrite <- env_args_rn;
+          apply IHf; [ exact Hok | apply env_dbd_args; [ apply env_dbd_nil | exact Hns ] | assumption ]
+      end end ].
+    all: try solve [ lazymatch goal with |- read_typ _ _ _ (d_record _ _) _ =>
+      match goal with
+      | IHp : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_dbd ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
+        Hok : rn_ok f ?s ?s' ?φ, Hns : forall a, In a ?ns -> dbd ?s a |- _ =>
+          econstructor; [ eassumption | rewrite List.length_map; eassumption | exact (IHp s' φ Hok (env_dbd_nil _) Hns) ]
+      end end ].
+    all: try solve [ lazymatch goal with |- read_fields _ _ _ _ (_ :: _) _ _ =>
+      match goal with
+      | e : eval_proj _ _ _ ?d ?r, e0 : ⟦ ?T ⟧ _ ⍮ _ ⍮ ?ρ ↘ ?t,
+        IHF : forall s0 φ0, rn_ok f ?s s0 φ0 -> dbd_nf ?s _ -> read_nf _ _ s0 _ _,
+        IHR : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_dbd ?s (?ρ ↦ ?r) -> _ -> read_fields _ _ s0 _ _ _ _,
+        Hok : rn_ok f ?s ?s' ?φ, Hρ : env_dbd ?s ?ρ, Hd : dbd ?s ?d |- _ =>
+          let Hr := fresh "Hr" in
+          assert (Hr : dbd s r) by exact (dbd_proj Θ Ξ _ _ _ _ e Hd);
+          econstructor; [ exact (proj_rn _ _ _ e) | exact (proj1 (eval_rn Θ Ξ f) _ _ _ e0)
+                        | apply (IHF s' φ Hok); apply dbd_nf_dom; [ eapply eval_dbd; eassumption | exact Hr ]
+                        | apply (IHR s' φ Hok); [ apply env_dbd_cons; assumption | exact Hd ] ]
       end end ].
     all: econstructor.
     all: try rewrite <- nf_lvl_of_wk.

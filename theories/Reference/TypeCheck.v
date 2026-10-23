@@ -8,7 +8,7 @@ From Mctt.Core.Semantic Require Import Consequences Realizability.
 From Mctt.Core.Syntactic.System.Global Require Import MemberWf.
 From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Semantic Require Import MemberWf.
-From Mctt.Extraction Require Import Evaluation NbE PseudoMonadic Subtyping MemberType TypeCheckBase IndCheck.
+From Mctt.Extraction Require Import Evaluation NbE PseudoMonadic Subtyping MemberType TypeCheckBase IndCheck RecordCheck.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 (** * The Reference Checker
@@ -84,6 +84,12 @@ Section type_check.
         eliminator's recursive calls are passed on. *)
     | a_ind r k => ind_infer G HG P r k
     | a_con r k c => con_infer G HG P r k c
+    (** The forms of record types ([Extraction.RecordCheck]). *)
+    | a_record r => record_infer G HG P r
+    | a_tuple T' fs =>
+        tuple_infer G HG P T' fs (type_infer_in G HG P T' ltac:(ob_ord_record))
+          (fun fm Hfm A'' HA'' => type_check_in G A'' HA'' P (snd fm) ltac:(ob_ord_record))
+    | a_proj f M' => proj_infer G HG P f M' (type_infer_in G HG P M' ltac:(ob_ord_record))
     | a_nlit n => inright (fun A HA => alg_nlit_no_infer G n A HA)
     | a_ntok => inright (fun A HA => alg_ntok_no_infer G A HA)
     | a_elim oq Us m Bks M' =>
@@ -601,11 +607,11 @@ Section type_check.
   Obligation 195. all: bc_obl. Qed.
   Obligation 196. all: bc_obl. Qed.
   Obligation 197. all: bc_obl. Qed.
-  Obligation 198. ob_ord. Defined.
-  Obligation 199. all: bc_obl. Qed.
+  Obligation 198. (* no body holds a record entry *) all: bc_obl. Qed.
+  Obligation 199. ob_ord. Defined.
   Obligation 200. all: bc_obl. Qed.
-  Obligation 201. ob_ord. Defined.
-  Obligation 202. all: bc_obl. Qed.
+  Obligation 201. all: bc_obl. Qed.
+  Obligation 202. ob_ord. Defined.
   Obligation 203. all: bc_obl. Qed.
   Obligation 204. all: bc_obl. Qed.
   Obligation 205. all: bc_obl. Qed.
@@ -615,6 +621,7 @@ Section type_check.
   Obligation 209. all: bc_obl. Qed.
   Obligation 210. all: bc_obl. Qed.
   Obligation 211. all: bc_obl. Qed.
+  Obligation 212. all: bc_obl. Qed.
 
   (** The checker from scratch: the initial environment of the context is
       computed once, at the start. *)

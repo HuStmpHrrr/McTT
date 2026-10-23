@@ -3,7 +3,7 @@ From Stdlib Require Import Lia List PeanoNat String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Members.
+From Mctt.Core.Syntactic Require Import Members Records.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Semantic Require Import Evaluation.
 From Mctt.Extraction Require Import Kinds.
@@ -115,6 +115,46 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
      (forall h f ns, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> h ·ₜ* (pre ++ x :: nil) Θ ⍮ Ξ ↘ f ->
         ⟦ args ⟧* Θ ⍮ Ξ ⍮ p ↘ ns -> eval_apps_order Θ Ξ f ns) ->
      eval_exp_order Θ Ξ (a_mem H x) p )
+(** A record's type former is a value. *)
+| eeo_record :
+  `( eval_exp_order Θ Ξ (a_record pq) p )
+(** A record element: the values of its fields *)
+| eeo_tuple :
+  `( eval_exps_order Θ Ξ (List.map snd fs) p ->
+     eval_exp_order Θ Ξ (a_tuple T fs) p )
+(** A field: the value, then the field of it *)
+| eeo_proj :
+  `( eval_exp_order Θ Ξ M p ->
+     (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> eval_proj_order Θ Ξ f m) ->
+     eval_exp_order Θ Ξ (a_proj f M) p )
+
+(** The field [f] of a value, as [eval_proj] reads it *)
+with eval_proj_order (Θ : gdeps) (Ξ : gstack) : string -> domain -> Prop :=
+(** Of a tuple with the field *)
+| epo_tuple :
+  `( field_lookup vs f <> None ->
+     eval_proj_order Θ Ξ f (d_tuple vs) )
+(** Of a neutral of a record type with the field: the projections of the
+    fields up to it, which reach it *)
+| epo_neut :
+  `( record_lookup Θ Ξ pq = Some R ->
+     field_index (record_fields R) f = Some k ->
+     eval_nflds_order Θ Ξ ns m (List.firstn (S k) (record_fields R)) nil ->
+     (forall rs, eval_nflds Θ Ξ ns m (List.firstn (S k) (record_fields R)) nil rs -> List.nth_error rs k <> None) ->
+     eval_proj_order Θ Ξ f (⇑ (d_record pq ns) m) )
+
+(** The neutral projections at a list of fields, as [eval_nflds] reads
+    them *)
+with eval_nflds_order (Θ : gdeps) (Ξ : gstack) : list domain -> domain_ne -> list (string * exp) -> list domain -> Prop :=
+(** No field left *)
+| eno_nil :
+  `( eval_nflds_order Θ Ξ ns m nil pre )
+(** The next field's type, then the rest after its projection *)
+| eno_cons :
+  `( eval_exp_order Θ Ξ T (env_args nil (ns ++ pre)) ->
+     (forall a, ⟦ T ⟧ Θ ⍮ Ξ ⍮ env_args nil (ns ++ pre) ↘ a ->
+        eval_nflds_order Θ Ξ ns m fl (pre ++ ⇑ a (d_proj g m) :: nil)) ->
+     eval_nflds_order Θ Ξ ns m ((g, T) :: fl) pre )
 
 (** The eliminator of the group at [pq] at its member [j], on a value, as
     [eval_elim] reads it. *)
@@ -263,6 +303,11 @@ with eval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
   `( eval_appm_order Θ Ξ h n ->
      (forall h', $ᵐ| h & n | Θ ⍮ Ξ ↘ h' -> eval_selc_order Θ Ξ h' ch) ->
      eval_app_order Θ Ξ (d_member h ch) n )
+(** A record's type former, before its last parameter *)
+| eao_record :
+  `( record_lookup Θ Ξ pq = Some R ->
+     List.length ns < List.length (record_params R) ->
+     eval_app_order Θ Ξ (d_record pq ns) n )
 
 with eval_exps_order (Θ : gdeps) (Ξ : gstack) : list exp -> env -> Prop :=
 | eso_nil :
@@ -363,6 +408,13 @@ with eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
      eval_sel_order Θ Ξ (dm_local nil (md_body sm Φ) p) x )
 | eslo_member :
   `( eval_sel_order Θ Ξ (dm_member h ch) x )
+(** A record type of a global module, not a definition: its type former,
+    applied to the arguments *)
+| eslo_global_record :
+  `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
+     record_lookup Θ Ξ (qname_app pq (x :: nil)) = Some R ->
+     eval_apps_order Θ Ξ (d_record (qname_app pq (x :: nil)) nil) args ->
+     eval_sel_order Θ Ξ (dm_global pq args) x )
 
 with eval_selm_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
 | esmo_global :
@@ -416,7 +468,7 @@ with eval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
 #[local]
 Hint Constructors eval_exp_order eval_elim_order eval_ihs_order eval_ih_order eval_mref_order eval_shty_order eval_ihty_order eval_app_order eval_exps_order eval_apps_order
   eval_modexp_order eval_close_order eval_appm_order eval_appms_order eval_sel_order eval_selm_order eval_selc_order eval_selmc_order
-  eval_benv_order : mctt.
+  eval_benv_order eval_proj_order eval_nflds_order : mctt.
 
 (** Determinism of every evaluation relation, as rewriting. *)
 Ltac functional_eval_all :=
@@ -486,6 +538,12 @@ Ltac functional_eval_all :=
         assert_fails (constr_eq g1 g2);
         pose proof (functional_kgens _ _ _ _ _ H1 H2); subst; clear H2
     | H : d_neut _ _ = d_neut _ _ |- _ => injection H; clear H; intros; subst
+    | H1 : eval_proj ?T ?X ?f ?m ?r1, H2 : eval_proj ?T ?X ?f ?m ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_eval_proj _ _ _ _ H1 H2); subst; clear H2
+    | H1 : eval_nflds ?T ?X ?ns ?m ?fl ?pre ?r1, H2 : eval_nflds ?T ?X ?ns ?m ?fl ?pre ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_eval_nflds _ _ _ _ _ _ H1 H2); subst; clear H2
     end.
 
 Lemma eval_order_sound : forall Θ Ξ,
@@ -507,7 +565,9 @@ Lemma eval_order_sound : forall Θ Ξ,
     (forall p pq ups Bks t v r, ⟦ih v of t under pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ r -> eval_ih_order Θ Ξ p pq ups Bks t v) /\
     (forall pq ups j r, ⟦mref j of pq ups ⟧ Θ ⍮ Ξ ↘ r -> eval_mref_order Θ Ξ pq ups j) /\
     (forall pq ups p t a, ⟦shty t of pq ups ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_shty_order Θ Ξ pq ups p t) /\
-    (forall pm As p t v a, ⟦ihty v of t under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_ihty_order Θ Ξ pm As p t v).
+    (forall pm As p t v a, ⟦ihty v of t under pm As ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_ihty_order Θ Ξ pm As p t v) /\
+    (forall f m r, eval_proj Θ Ξ f m r -> eval_proj_order Θ Ξ f m) /\
+    (forall ns m fl pre rs, eval_nflds Θ Ξ ns m fl pre rs -> eval_nflds_order Θ Ξ ns m fl pre).
 Proof.
   intros Θ Ξ; apply eval_mut_ind; intros;
     (** A closure lacking a parameter lacks a first one, and a chain of one
@@ -517,6 +577,8 @@ Proof.
           destruct c; [ inversion H |] end;
     solve [ eapply eslo_global_neut; eauto; intros; functional_eval_all; eauto
           | econstructor; try eassumption; intros; functional_eval_all; eauto using kgens_order_sound, tele_snoc_app
+          (** The projections of a neutral reach the field projected. *)
+          | econstructor; try eassumption; intros; functional_eval_all; congruence
           (** The eliminator: the group the scrutinee's value names, once. *)
           | econstructor; try eassumption; intros; functional_eval_all;
             first [ eexists; eassumption
@@ -553,8 +615,11 @@ Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Q
 Lemma eval_mref_order_sound : forall Θ Ξ pq ups j r, ⟦mref j of pq ups ⟧ Θ ⍮ Ξ ↘ r -> eval_mref_order Θ Ξ pq ups j.
 Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Qed.
 
+Lemma eval_proj_order_sound : forall Θ Ξ f m r, eval_proj Θ Ξ f m r -> eval_proj_order Θ Ξ f m.
+Proof. intros Θ Ξ; pose proof (eval_order_sound Θ Ξ); destruct_all; eauto. Qed.
+
 #[export]
-Hint Resolve eval_ih_order_sound eval_mref_order_sound : mctt.
+Hint Resolve eval_ih_order_sound eval_mref_order_sound eval_proj_order_sound : mctt.
 
 (** The member a member stands for is the one [im_ref] names. *)
 Lemma eval_mref_im_ref : forall Θ Ξ p ups j pc k pre D Mj,
@@ -612,6 +677,8 @@ Section EvalImpl.
     | H : eval_ih_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : eval_shty_order _ _ _ _ _ _ |- _ => progressive_invert H
     | H : eval_ihty_order _ _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : eval_proj_order _ _ _ _ |- _ => progressive_invert H
+    | H : eval_nflds_order _ _ _ _ _ _ |- _ => progressive_invert H
     end.
 
   (** The lookups recorded in the order are the ones computed, which either
@@ -701,6 +768,21 @@ Section EvalImpl.
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : brs_lookup ?Bs ?c = Some _, H2 : brs_lookup ?Bs ?c = None |- _ =>
           rewrite H1 in H2; discriminate H2
+      (** A record, its fields and the projections of a neutral, looked up
+          once. *)
+      | H1 : record_lookup _ _ ?p = Some _, H2 : record_lookup _ _ ?p = Some _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : record_lookup _ _ ?p = Some _, H2 : record_lookup _ _ ?p = None |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H1 : record_lookup _ _ ?p = Some _, H2 : ind_mlookup _ _ ?p = Some _ |- _ =>
+          exfalso; rewrite (record_lookup_not_ind _ _ _ _ H1) in H2; discriminate H2
+      | H1 : record_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = Some _ |- _ =>
+          exfalso; rewrite (record_lookup_not_ind_alias _ _ _ _ H1) in H2; discriminate H2
+      | H1 : field_index ?fs ?f = Some _, H2 : field_index ?fs ?f = Some _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : field_index ?fs ?f = Some _, H2 : field_index ?fs ?f = None |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H1 : ?x <> None, H2 : ?x = None |- _ => exfalso; exact (H1 H2)
       end.
 
   (** The [efq] case: the order says that the scrutinee evaluates to a
@@ -713,6 +795,9 @@ Section EvalImpl.
       (** The eliminator's scrutinee names a group. *)
       | H : forall m, eval_exp _ _ ?M ?p m -> exists _, elim_grp_of _ m = Some _, Hm : eval_exp _ _ ?M ?p _ |- _ =>
           destruct (H _ Hm) as (? & ?); clear H
+      (** The projections of a neutral reach the field projected. *)
+      | H : forall rs, eval_nflds _ _ ?ns ?m ?fl ?pre rs -> _, Hm : eval_nflds _ _ ?ns ?m ?fl ?pre _ |- _ =>
+          specialize (H _ Hm)
       end.
 
   #[local]
@@ -734,10 +819,15 @@ Section EvalImpl.
     | H : eval_ih_order _ _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : eval_shty_order _ _ _ _ _ _ |- _ => dependent destruction H
     | H : eval_ihty_order _ _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : eval_proj_order _ _ _ _ |- _ => dependent destruction H
+    | H : eval_nflds_order _ _ _ _ _ _ |- _ => dependent destruction H
     end.
 
   #[local]
   Ltac impl_obl_finish :=
+    impl_obl_exfalso;
+    impl_obl_glob;
+    (** once more, at the lookups fixed *)
     impl_obl_exfalso;
     impl_obl_glob;
     cbn [gu_params] in *;
@@ -784,6 +874,8 @@ Section EvalImpl.
     | |- eval_ih_order _ _ _ _ _ _ _ _ => ev_obl
     | |- eval_shty_order _ _ _ _ _ _ => ev_obl
     | |- eval_ihty_order _ _ _ _ _ _ _ => ev_obl
+    | |- eval_proj_order _ _ _ _ => ev_obl
+    | |- eval_nflds_order _ _ _ _ _ _ => ev_obl
     | |- _ => abstract ev_obl
     end.
 
@@ -857,6 +949,36 @@ Section EvalImpl.
         let (ns, Hns) := eval_exps_impl args p _ in
         let (r, Hr) := eval_apps_impl f ns _ in
         exist _ r _ }
+  | a_record pq, p, H => exist _ (d_record pq nil) _
+  | a_tuple T fs, p, H =>
+      let (vs, Hvs) := eval_exps_impl (List.map snd fs) p _ in
+      exist _ (d_tuple (List.combine (List.map fst fs) vs)) _
+  | a_proj f M, p, H =>
+      let (m, Hm) := eval_exp_impl M p _ in
+      let (r, Hr) := eval_proj_impl f m _ in
+      exist _ r _
+
+  with eval_proj_impl f m (H : eval_proj_order Θ Ξ f m) : { r | eval_proj Θ Ξ f m r } by struct H :=
+  | f, d_tuple vs, H with inspect (field_lookup vs f) := {
+    | exist _ (Some r) E => exist _ r _
+    | exist _ None E => False_rect _ _ }
+  | f, ⇑ (d_record pq ns) m, H with inspect (record_lookup Θ Ξ pq) := {
+    | exist _ (Some R) El with inspect (field_index (record_fields R) f) := {
+      | exist _ (Some k) Ek with eval_nflds_impl ns m (List.firstn (S k) (record_fields R)) nil _ := {
+        | exist _ rs Hrs with inspect (List.nth_error rs k) := {
+          | exist _ (Some r) Er => exist _ r _
+          | exist _ None Er => False_rect _ _ } }
+      | exist _ None Ek => False_rect _ _ }
+    | exist _ None El => False_rect _ _ }
+  | f, _, H => False_rect _ _
+
+  with eval_nflds_impl ns m fl pre (H : eval_nflds_order Θ Ξ ns m fl pre) :
+      { rs | eval_nflds Θ Ξ ns m fl pre rs } by struct H :=
+  | ns, m, nil, pre, H => exist _ nil _
+  | ns, m, (g, T) :: fl, pre, H =>
+      let (a, Ha) := eval_exp_impl T (env_args nil (ns ++ pre)) _ in
+      let (rs, Hrs) := eval_nflds_impl ns m fl (pre ++ ⇑ a (d_proj g m) :: nil) _ in
+      exist _ (⇑ a (d_proj g m) :: rs) _
 
   with eval_elim_impl p pq ups Bks j m (H : eval_elim_order Θ Ξ p pq ups Bks j m) :
       { r | ⟦elim m at j of pq ups Bks ⟧ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
@@ -969,6 +1091,7 @@ Section EvalImpl.
       let (fn, Hfn) := eval_app_impl f n _ in
       let (a, Ha) := eval_ihty_impl pm As (p ↦ n) t fn _ in
       exist _ a _
+  | d_record pq ns, n, H => exist _ (d_record pq (ns ++ n :: nil)) _
   | _, n, H => False_rect _ _
 
   with eval_exps_impl Ms p (H : eval_exps_order Θ Ξ Ms p) : { ms | ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ p ↘ ms } by struct H :=
@@ -1044,6 +1167,7 @@ Section EvalImpl.
     | exist _ (Some (ge_mod _ _)) E => False_rect _ _
     | exist _ (Some (ge_ind _ _ _ _ _)) E => False_rect _ _
     | exist _ (Some (ge_ind_alias _ _ _ _ _ _)) E => False_rect _ _
+    | exist _ (Some (ge_record _ _ _ _)) E => False_rect _ _
     | exist _ None E with inspect (ind_mlookup Θ Ξ (qname_app pq (x :: nil))) := {
       | exist _ (Some (pg, k, D)) Ed =>
           let (r, Hr) := eval_apps_impl (d_ind pg k nil) args _ in
@@ -1053,7 +1177,12 @@ Section EvalImpl.
             let (f, Hf) := eval_exp_impl (ctx_fn Δ (apps (a_ind pt k) Ns)) nil _ in
             let (r, Hr) := eval_apps_impl f args _ in
             exist _ r _
-        | exist _ None Ea => False_rect _ _ } } }
+        (** A record type: its type former *)
+        | exist _ None Ea with inspect (record_lookup Θ Ξ (qname_app pq (x :: nil))) := {
+          | exist _ (Some R) Er =>
+              let (r, Hr) := eval_apps_impl (d_record (qname_app pq (x :: nil)) nil) args _ in
+              exist _ r _
+          | exist _ None Er => False_rect _ _ } } } }
   | dm_local (e :: Δ) D p, x, H => exist _ (d_member (dm_local (e :: Δ) D p) (x :: nil)) _
   | dm_local nil (md_alias E) p, x, H => False_rect _ _
   | dm_local nil (md_body sm Φ) p, x, H with kbody_impl Θ Ξ p Φ _ := {

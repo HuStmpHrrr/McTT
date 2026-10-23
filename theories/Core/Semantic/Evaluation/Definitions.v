@@ -1,7 +1,7 @@
 From Stdlib Require Import Lia List Morphisms String.
 
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Substitution Members.
+From Mctt.Core.Syntactic Require Import Substitution Members Records.
 From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Semantic Require Export Domain.
 Import Domain_Notations.
@@ -346,7 +346,51 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      ⟦ args ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns ->
      $*| f & ns | Θ ⍮ Ξ ↘ r ->
      ⟦ a_mem H x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+(** A record's type former is a value, with no argument yet. *)
+| eval_exp_record :
+  `( ⟦ a_record p ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_record p nil )
+(** A record element is the tuple of its fields' values, by name; the type
+    it is annotated with is not evaluated, and the value carries no
+    parameters. *)
+| eval_exp_tuple :
+  `( ⟦ List.map snd fs ⟧* Θ ⍮ Ξ ⍮ ρ ↘ vs ->
+     ⟦ a_tuple T fs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_tuple (List.combine (List.map fst fs) vs) )
+(** A field: the field of the value. *)
+| eval_exp_proj :
+  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+     eval_proj Θ Ξ f m r ->
+     ⟦ a_proj f M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 where "'⟦' e '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_exp Θ Ξ e ρ r)
+(** The field [f] of a value: of a tuple, the value of its first field so
+    named; of a neutral of a record type, the neutral projection, at the
+    field's type at the type's parameters and the neutral projections of
+    the fields before it (read off the neutral's annotation, as a stuck
+    eliminator's motive is). *)
+with eval_proj (Θ : gdeps) (Ξ : gstack) : string -> domain -> domain -> Prop :=
+(** A tuple: its field *)
+| eval_proj_tuple :
+  `( field_lookup vs f = Some r ->
+     eval_proj Θ Ξ f (d_tuple vs) r )
+(** A neutral: its projection, at the field's type *)
+| eval_proj_neut :
+  `( record_lookup Θ Ξ p = Some R ->
+     field_index (record_fields R) f = Some k ->
+     eval_nflds Θ Ξ ns m (List.firstn (S k) (record_fields R)) nil rs ->
+     List.nth_error rs k = Some r ->
+     eval_proj Θ Ξ f (⇑ (d_record p ns) m) r )
+(** [eval_nflds ns m fl pre rs]: the neutral projections [rs] of [m] at
+    the fields [fl], after the projections [pre] of the fields before them,
+    each at its type at the parameters [ns] and the projections before
+    it. *)
+with eval_nflds (Θ : gdeps) (Ξ : gstack) : list domain -> domain_ne -> list (string * exp) -> list domain -> list domain -> Prop :=
+(** No field left *)
+| eval_nflds_nil :
+  `( eval_nflds Θ Ξ ns m nil pre nil )
+(** The next field's projection, at its type, then the rest after it *)
+| eval_nflds_cons :
+  `( ⟦ T ⟧ Θ ⍮ Ξ ⍮ env_args nil (ns ++ pre) ↘ a ->
+     eval_nflds Θ Ξ ns m fl (pre ++ ⇑ a (d_proj g m) :: nil) rs ->
+     eval_nflds Θ Ξ ns m ((g, T) :: fl) pre (⇑ a (d_proj g m) :: rs) )
 (** The eliminator of the group at [p] at its member [j], on a value.  The
     member is the declared member [k] of the group at [q] ([im_ref]): the
     group itself at a declared member, the container's at a view.  On a
@@ -480,6 +524,11 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
      ind_member D k = Some Mk ->
      List.length as' < im_np D Mk ->
      $| d_ind p k as' & n | Θ ⍮ Ξ ↘ d_ind p k (as' ++ n :: nil) )
+(** So does a record's type former. *)
+| eval_app_record :
+  `( record_lookup Θ Ξ p = Some R ->
+     List.length ns < List.length (record_params R) ->
+     $| d_record p ns & n | Θ ⍮ Ξ ↘ d_record p (ns ++ n :: nil) )
 (** So does a constructor, a parameter or an argument. *)
 | eval_app_con :
   `( ind_lookup Θ Ξ p = Some D ->
@@ -663,6 +712,13 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
 (** A member of a submodule closure extends the chain. *)
 | eval_sel_member :
   `( dm_member h ch ·ₜ x Θ ⍮ Ξ ↘ d_member h (ch ++ x :: nil) )
+(** A record type of a global module, stored or with its module's frame
+    open, as a term: its type former, applied to the module's arguments. *)
+| eval_sel_global_record :
+  `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
+     record_lookup Θ Ξ (qname_app p (x :: nil)) = Some R ->
+     $*| d_record (qname_app p (x :: nil)) nil & args | Θ ⍮ Ξ ↘ r ->
+     dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
 where "h '·ₜ' x Θ '⍮' Ξ '↘' r" := (eval_sel Θ Ξ h x r)
 (** Selecting a submodule. *)
 with eval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop :=
@@ -754,7 +810,9 @@ with eval_ihs_mut_ind := Induction for eval_ihs Sort Prop
 with eval_ih_mut_ind := Induction for eval_ih Sort Prop
 with eval_mref_mut_ind := Induction for eval_mref Sort Prop
 with eval_shty_mut_ind := Induction for eval_shty Sort Prop
-with eval_ihty_mut_ind := Induction for eval_ihty Sort Prop.
+with eval_ihty_mut_ind := Induction for eval_ihty Sort Prop
+with eval_proj_mut_ind := Induction for eval_proj Sort Prop
+with eval_nflds_mut_ind := Induction for eval_nflds Sort Prop.
 Combined Scheme eval_mut_ind from
   eval_exp_mut_ind,
   eval_app_mut_ind,
@@ -774,10 +832,12 @@ Combined Scheme eval_mut_ind from
   eval_ih_mut_ind,
   eval_mref_mut_ind,
   eval_shty_mut_ind,
-  eval_ihty_mut_ind.
+  eval_ihty_mut_ind,
+  eval_proj_mut_ind,
+  eval_nflds_mut_ind.
 
 #[export]
-Hint Constructors eval_exp eval_elim eval_ihs eval_ih eval_mref eval_shty eval_ihty eval_app eval_exps eval_apps eval_modexp eval_close eval_appm eval_appms eval_sel eval_selm
+Hint Constructors eval_exp eval_proj eval_nflds eval_elim eval_ihs eval_ih eval_mref eval_shty eval_ihty eval_app eval_exps eval_apps eval_modexp eval_close eval_appm eval_appms eval_sel eval_selm
   eval_selc eval_selmc eval_benv : mctt.
 
 (** [eval_exp_var] with the value as a premise.  The value [ρ x] is a flexible

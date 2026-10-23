@@ -107,6 +107,23 @@ Section GenericDec.
     destruct (brs_eq_dec_g Bs Bs') as [<- |]; [| right; congruence ].
     destruct (IH Bks') as [<- |]; [ left; reflexivity | right; congruence ].
   Defined.
+
+  (** Equality of named terms (the fields of a record) is decidable. *)
+  Definition named_eq_dec_g (x y : (string * E)%type) : {x = y} + {x <> y}.
+  Proof.
+    destruct x as [a x], y as [b y].
+    destruct (string_dec a b) as [<- |]; [| right; congruence ].
+    destruct (de x y) as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  (** Equality of record declarations is decidable. *)
+  Definition record_decl_eq_dec_g (R R' : record_decl_g E C) : {R = R'} + {R <> R'}.
+  Proof.
+    destruct R as [Δ S fs], R' as [Δ' S' fs'].
+    destruct (list_eq_dec dc Δ Δ') as [<- |]; [| right; congruence ].
+    destruct (de S S') as [<- |]; [| right; congruence ].
+    destruct (list_eq_dec named_eq_dec_g fs fs') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
 End GenericDec.
 
 (** Equality of terms, and of the module syntax nested in them, is
@@ -125,6 +142,8 @@ Proof.
           | apply list_eq_dec, string_dec | apply o2_eq_dec | apply (list_eq_dec exp_eq_dec)
           | apply (list_eq_dec centry_eq_dec) | apply (eblocks_eq_dec_g exp_eq_dec)
           | apply (ind_decl_eq_dec_g exp_eq_dec centry_eq_dec)
+          | apply (record_decl_eq_dec_g exp_eq_dec centry_eq_dec)
+          | apply (list_eq_dec (named_eq_dec_g exp_eq_dec))
           | (decide equality; apply (list_eq_dec exp_eq_dec)) | idtac ].
   all: try (decide equality; fail).
   all: try (decide equality; apply qname_eq_dec).

@@ -9,6 +9,9 @@ From Mctt.Core.Syntactic.Levels Require Import LevelEq.
 From Mctt.Core.Semantic Require Import Realizability Levels.
 From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
 From Mctt.Core.Soundness.Inductives Require Con Elim.
+From Mctt.Core.Soundness.Records Require Model.
+From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
+From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.Inductives Require Import IndCong.
 Require Import Mctt.Core.Syntactic.Command.
 From Mctt.Core.Syntactic Require Import Builtin.
@@ -492,6 +495,164 @@ Proof.
   - exfalso; eapply exp_eq_ind_pi_absurd; symmetry; exact Hb.
 Qed.
 
+(** ** The Parameters of a Record Type
+
+    As for inductive types: the normal form of a record type is the type
+    former at the normal forms of its parameters, each equal to its
+    parameter; so equal record types have equal parameters, and a record
+    type is neither a [Π] nor a universe nor a type of levels. *)
+
+(** A record found from a well-formed context: typed, closed, and its
+    parameters a telescope over the context. *)
+Lemma record_params_facts : forall Γ p R, ⊢ Γ -> record_lookup gc_deps gc_stack p = Some R ->
+    record_typed gc_deps gc_stack R /\ record_closed R /\ ⊢ record_params R ++ Γ.
+Proof.
+  intros * HΓ Hl.
+  pose proof (ctx_wf_gctx _ _ _ HΓ) as Hg.
+  pose proof (record_lookup_typed _ _ Hg (gctx_valid_syn _ _ Hg) _ _ Hl) as Ht.
+  pose proof (wf_record_closed _ _ _ _ _ HΓ Hl) as Hc.
+  split; [ exact Ht | split; [ exact Hc |] ].
+  pose proof (record_fctx_app_wf _ _ R 0 Γ ltac:(lia) Hc (typed_params_ass _ _ _ Ht)
+                (record_typed_fctx_wf _ _ _ Ht _ (le_n _)) HΓ) as H.
+  change (record_fctx R 0) with (@nil centry) in H; exact H.
+Qed.
+
+Lemma nbe_ty_record_params : forall Γ p R Ms W, record_lookup gc_deps gc_stack p = Some R -> ⊢ Γ ->
+    List.length Ms = List.length (record_params R) ->
+    (forall j P T, List.nth_error Ms j = Some P -> List.nth_error (tele_insts (record_params R) Id Ms) j = Some T -> Γ ⊢ P : T) ->
+    nbe_ty_f Γ (apps (a_record p) Ms) W ->
+    exists Rs, W = nf_record p Rs /\ exps_eq_at Γ (record_params R) Ms (nfs_to_exps Rs).
+Proof.
+  intros * Hl HΓ HMl HMt HW.
+  destruct (record_params_facts _ _ _ HΓ Hl) as (Ht & Hc & HPΓ).
+  pose proof (typed_params_ass _ _ _ Ht) as Hass.
+  pose proof (closed_params _ Hc) as Hs0.
+  inversion HW as [ρ a Hinit Ea HRa]; subst.
+  apply Modules.eval_apps_exp in Ea as (f & ms & Ef & Ems & Eap).
+  inversion Ef; subst.
+  apply eval_apps_record_inv in Eap; cbn in Eap; subst.
+  inversion HRa; subst.
+  match goal with H' : record_lookup _ _ p = Some ?R0 |- _ => assert_fails constr_eq R0 R; rewrite Hl in H'; injection H' as <- end.
+  eexists; split; [ reflexivity |].
+  destruct (soundness_fundamental_ctx _ HΓ) as [Sb HSb].
+  pose proof (initial_env_glu_rel_exp Hinit HSb) as Hσ.
+  pose proof (completeness_fundamental_ctx _ HΓ) as HΓs; destruct (rel_ctx_wf_per_ctx_env HΓs) as [RΓ HRΓ].
+  pose proof (Soundness.Inductives.ViewCon.params_glu_args _ _ _ _ _ _ _ _ _ Hass Hs0
+                (completeness_fundamental_ctx _ (presup_is_univ_ctx (typed_sort _ _ _ Ht))) HΓs HRΓ HSb Hσ HMl
+                ltac:(intros; eapply completeness_fundamental_exp; eauto)
+                ltac:(intros; eapply soundness_fundamental_exp; eauto) Ems) as Hg.
+  rewrite (List.map_ext (fun M => M[Id]) (fun M => M) exp_sub_id), List.map_id in Hg.
+  destruct (Soundness.Records.Model.glu_args_params_glu_top _ _ _ _ Hass Hs0 Hg) as [_ _ Htop].
+  match goal with Hr : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ _ |- _ => pose proof (Htop Γ wk_id _ ltac:(mauto 3) Hr) as H end.
+  rewrite map_wk_id in H; exact H.
+Qed.
+
+(** A type whose normal form is a record type is equal to the type former
+    at typed parameters, whose normal forms the normal form has. *)
+Lemma typ_record_shape : forall Γ T i p Rs, Γ ⊢ T : Typeω@i -> nbe_ty_f Γ T (nf_record p Rs) ->
+    exists R Ps, record_lookup gc_deps gc_stack p = Some R /\ List.length Ps = List.length (record_params R) /\
+      (forall j P A, List.nth_error Ps j = Some P -> List.nth_error (tele_insts (record_params R) Id Ps) j = Some A -> Γ ⊢ P : A) /\
+      Γ ⊢ T ≈ apps (a_record p) Ps : Typeω@i /\ exps_eq_at Γ (record_params R) Ps (nfs_to_exps Rs).
+Proof.
+  intros * HT HW.
+  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+  inversion HW as [ρ a Hinit Ea HRa]; subst.
+  inversion HRa; subst.
+  destruct (soundness_fundamental_ctx _ HΓ) as [Sb HSb].
+  pose proof (initial_env_glu_rel_exp Hinit HSb) as Hσ.
+  destruct (Soundness.Inductives.Args.glu_rel_typ_at _ _ _ _ _ _ _ HSb (soundness_fundamental_exp _ _ _ HT) Hσ) as (_ & a' & Ea' & Hpa & HPa).
+  assert (a' = d_record p ns) as -> by (eapply functional_eval_exp; eassumption).
+  destruct (per_univ_glu_univ_elem _ _ Hpa) as (P & El & Hg).
+  pose proof (HPa P El Hg) as HP; rewrite exp_sub_id in HP.
+  invert_glu_univ_elem Hg.
+  match goal with H : _ <∙> record_glu_typ_pred _ _ _ _ _ _ |- _ => apply H in HP end.
+  destruct HP as (Ps & [Heq HK]).
+  assert (Hid : Γ ⊢ᵏ wk_id : Γ) by mauto 3.
+  destruct (HK Γ wk_id Hid) as [Htop _ _].
+  rewrite map_wk_id in Htop.
+  destruct Htop as [HPl HPt Hrb].
+  match goal with H : record_lookup _ _ p = Some ?R0, H' : record_lookup _ _ p = Some ?R1 |- _ =>
+    assert (R0 = R1) as -> by congruence end.
+  eexists _, Ps; split; [ eassumption | split; [ exact HPl | split; [ exact HPt | split; [ exact Heq |] ] ] ].
+  match goal with Hr : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ Rs |- _ => pose proof (Hrb Γ wk_id Rs Hid Hr) as H' end.
+  rewrite map_wk_id in H'; exact H'.
+Qed.
+
+Corollary exp_eq_record_apps_inv : forall Γ p R X Y i, record_lookup gc_deps gc_stack p = Some R ->
+    Γ ⊢ apps (a_record p) X ≈ apps (a_record p) Y : Typeω@i ->
+    List.length X = List.length (record_params R) -> List.length Y = List.length (record_params R) ->
+    (forall j P T, List.nth_error X j = Some P -> List.nth_error (tele_insts (record_params R) Id X) j = Some T -> Γ ⊢ P : T) ->
+    (forall j P T, List.nth_error Y j = Some P -> List.nth_error (tele_insts (record_params R) Id Y) j = Some T -> Γ ⊢ P : T) ->
+    exps_eq_at Γ (record_params R) X Y.
+Proof.
+  intros * Hl H HXl HYl HXt HYt.
+  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+  destruct (record_params_facts _ _ _ HΓ Hl) as (Ht & Hc & HPΓ).
+  pose proof (typed_params_ass _ _ _ Ht) as Hass.
+  destruct (completeness_ty H) as (W & HWX & HWY).
+  destruct (nbe_ty_record_params _ _ _ _ _ Hl HΓ HXl HXt HWX) as (Rs & -> & HX).
+  destruct (nbe_ty_record_params _ _ _ _ _ Hl HΓ HYl HYt HWY) as (Rs' & E & HY).
+  injection E as <-.
+  destruct HX as [L1 H1]; destruct HY as [L2 H2]; split; [ congruence |].
+  eapply (tele_eq_trans _ (record_params R) X (nfs_to_exps Rs) Y Hass HPΓ); [ exact HXl | congruence | congruence | exact H1 |].
+  eapply (tele_eq_sym _ (record_params R) Y (nfs_to_exps Rs) Hass HPΓ); [ exact HYl | congruence | exact H2 ].
+Qed.
+
+Lemma exp_eq_record_pi_absurd : forall {Γ p X A B k},
+    Γ ⊢ apps (a_record p) X ≈ Π A B : Typeω@k ->
+    False.
+Proof.
+  intros * H%completeness_fundamental_exp_eq.
+  destruct (rel_typ_under_ctx_at_initial_env H) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
+  destruct (eval_record_value _ _ _ _ Ha) as [? ->].
+  inversion Ha'; subst.
+  invert_per_univ_elem HR.
+Qed.
+
+Lemma exp_eq_record_sort_absurd : forall {Γ p X U k},
+    sort_term U ->
+    Γ ⊢ apps (a_record p) X ≈ U : Typeω@k ->
+    False.
+Proof.
+  intros * HU H%completeness_fundamental_exp_eq.
+  destruct (rel_typ_under_ctx_at_initial_env H) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
+  destruct (eval_record_value _ _ _ _ Ha) as [? ->].
+  destruct HU as [U' HU' | n]; [ destruct HU' |]; inversion Ha'; subst; invert_per_univ_elem HR.
+Qed.
+
+Lemma subtyp_record_inv : forall {Γ p X Y},
+    Γ ⊢ apps (a_record p) X ⊆ apps (a_record p) Y ->
+    exists k, Γ ⊢ apps (a_record p) X ≈ apps (a_record p) Y : Typeω@k.
+Proof.
+  intros * H.
+  apply subtyp_spec in H as [[k Heq] | [(U & V & [k1 HU] & [k2 HV] & Hs) | (A1 & A2 & B1 & B2 & [k1 HA] & _)]].
+  - exists k; exact Heq.
+  - exfalso; destruct (univ_sub_sort_term Hs) as [HUt _]; eapply exp_eq_record_sort_absurd; [ exact HUt | exact HU ].
+  - exfalso; eapply exp_eq_record_pi_absurd; exact HA.
+Qed.
+
+(** A type below a record type normalises to that record type, at the
+    normal forms of parameters equal to the ones below. *)
+Lemma subtyp_record_nf : forall {Γ T p R Ps W}, Γ ⊢ T ⊆ apps (a_record p) Ps -> record_lookup gc_deps gc_stack p = Some R ->
+    List.length Ps = List.length (record_params R) ->
+    (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (record_params R) Id Ps) k = Some A -> Γ ⊢ P : A) ->
+    nbe_ty_f Γ T W ->
+    exists Rs, W = nf_record p Rs /\ List.length (nfs_to_exps Rs) = List.length (record_params R) /\
+      (forall k P Q A, List.nth_error Ps k = Some P -> List.nth_error (nfs_to_exps Rs) k = Some Q ->
+         List.nth_error (tele_insts (record_params R) Id Ps) k = Some A -> Γ ⊢ P ≈ Q : A).
+Proof.
+  intros * Hs Hl HPl HPt HW.
+  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+  apply subtyp_spec in Hs as [[k Heq] | [(U & V & [k1 HU] & [k2 HV] & Hsu) | (A1 & A2 & B1 & B2 & _ & [k2 Hb] & _)]].
+  - destruct (completeness_ty Heq) as (W' & HW1 & HW2).
+    functional_nbe_rewrite_clear.
+    destruct (nbe_ty_record_params _ _ _ _ _ Hl HΓ HPl HPt HW2) as (Rs & -> & [HL HE]).
+    exists Rs; split; [ reflexivity | split; [ congruence | exact HE ] ].
+  - exfalso; destruct (univ_sub_sort_term Hsu) as [_ HVt].
+    eapply exp_eq_record_sort_absurd; [ exact HVt | symmetry; exact HV ].
+  - exfalso; eapply exp_eq_record_pi_absurd; symmetry; exact Hb.
+Qed.
+
 (** A literal of type [Level@n] is of a tier at most [n], and so is the
     constant of a level of type [Level@n]. *)
 Lemma wf_llit_sort : forall {Γ o n},
@@ -557,7 +718,10 @@ Inductive small_typ_nf (n : nat) : nf -> Prop :=
 | small_typ_nf_univ : forall m, m < n -> small_typ_nf n Typeⁿ@m
 (** An inductive type applied to its parameters.  Its sort is not
     recorded: the shape says only that it is an inductive type. *)
-| small_typ_nf_indty : forall p k Ms, small_typ_nf n (nf_indty p k Ms).
+| small_typ_nf_indty : forall p k Ms, small_typ_nf n (nf_indty p k Ms)
+(** A record type applied to its parameters; its sort is not recorded
+    either. *)
+| small_typ_nf_record : forall p Ms, small_typ_nf n (nf_record p Ms).
 #[export]
 Hint Constructors small_typ_nf : mctt.
 
@@ -585,7 +749,9 @@ Inductive typ_nf_below : unf -> nf -> Prop :=
 (** A large universe below [u] *)
 | typ_nf_below_typ : forall i j, j < i -> typ_nf_below (unl i) Typeωⁿ@j
 (** An inductive type at its parameters *)
-| typ_nf_below_indty : forall u p k Ms, typ_nf_below u (nf_indty p k Ms).
+| typ_nf_below_indty : forall u p k Ms, typ_nf_below u (nf_indty p k Ms)
+(** A record type at its parameters *)
+| typ_nf_below_record : forall u p Ms, typ_nf_below u (nf_record p Ms).
 #[export]
 Hint Constructors typ_nf_below : mctt.
 
@@ -596,7 +762,7 @@ Lemma typ_nf_below_lit : forall n W,
     typ_nf_below (uns (lvl_lit (ofin n))) W ->
     small_typ_nf n W.
 Proof.
-  intros * H; inversion H as [| | | | ? c xs Hle | |]; subst; try constructor.
+  intros * H; inversion H as [| | | | ? c xs Hle | | |]; subst; try constructor.
   cbn [unf_le] in Hle.
   pose proof (lvl_le_lit_closed _ _ Hle) as Hxs.
   destruct xs as [| k s a r]; cbn in Hxs; [| discriminate ].
@@ -1253,7 +1419,7 @@ Proof. intros * Htr; exact (@consistency_False (gc_mk Θ Ξ) Htr M). Qed.
 (** The global at the head of a neutral, if any. *)
 Fixpoint ne_head (W : ne) : option qname :=
   match W with
-  | ne_exfalso _ W | ne_elim _ _ _ _ W | ne_app W _ => ne_head W
+  | ne_exfalso _ W | ne_elim _ _ _ _ W | ne_app W _ | ne_proj _ W => ne_head W
   | ne_var _ => None
   | ne_glob p => Some p
   end.

@@ -112,7 +112,8 @@ Proof.
   pose proof (slot_valid_unit Hgw _ _ Hgm Hsub _ _ _ Hl HΓ (presup_modexp_eq_ctx Hw) Hok) as HK.
   split; [| exact HK ].
   destruct (me_denotes _ _ _ _ _ Hw) as (R & Rm & Hm & Hmd).
-  inversion Hm as [? ? ? ? ? Hq _ | ? ? ? ? ? ? Hq _ | ? ? ? ? Hl' Hu | | |]; subst; [ cbn in Hq; discriminate | cbn in Hq; discriminate |].
+  inversion Hm as [? ? ? ? ? Hq _ | ? ? ? ? ? ? Hq _ | ? ? ? ? Hl' Hu | | | | ? ? ? ? Hq _]; subst;
+    [ cbn in Hq; discriminate | cbn in Hq; discriminate | | cbn in Hq; discriminate ].
   pose proof (ctx_lookup_mod_functional _ _ _ _ Hl Hl') as <-.
   exact (valid_modexp_intro _ _ _ _ _ _ _ _ Hw Hm Hmd (rel_modexp_under_ctx_delta_slot _ _ _ HΓ Hl) HK (dn_lit _ _ _ _ _ Hu) Hmd).
 Qed.

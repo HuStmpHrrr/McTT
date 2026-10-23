@@ -8,6 +8,8 @@ From Mctt.Core.Syntactic.Inductives Require Import IndCong.
 From Mctt.Core.Syntactic.System.Global Require Import Presup.
 From Mctt.Core.Syntactic.System.Inductives Require Import Typing.
 From Mctt.Core.Semantic.Inductives Require Import IndCanon.
+From Mctt.Core.Semantic Require Import RecordPER.
+From Mctt.Core.Syntactic.System Require Import Records.Typing.
 From Mctt.Core.Soundness.LogicalRelation Require Export Core.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
@@ -549,6 +551,236 @@ Section IndRealize.
   Qed.
 End IndRealize.
 
+(** ** Record Types
+
+    A type of a record type reads back as the type former at the readback
+    of its parameters.  A neutral is glued by its neutral projections, each
+    a neutral of its field's type, field by field.  An element reads back
+    as the tuple of the readbacks of its projections, equal to it by η, at
+    the readback of its parameters. *)
+Section RecordRealize.
+  Variables (i : uidx) (p : qname) (R : record_decl) (ns : list domain)
+    (FP : nat -> list domain -> glu_typ_pred) (FEl : nat -> list domain -> glu_exp_pred)
+    (elem_rel : relation domain) (P : glu_typ_pred) (El : glu_exp_pred).
+  Hypothesis (Hl : record_lookup gc_deps gc_stack p = Some R)
+    (Hper : DF d_record p ns ≈ d_record p ns ∈ per_univ_elem i ↘ elem_rel)
+    (HgF : forall k f T vs b, List.nth_error (record_fields R) k = Some (f, T) ->
+       tele_prefix_rel (canon_fields_rel R ns) k vs vs -> ⟦ T ⟧ env_args nil (ns ++ vs) ↘ b ->
+       DG b ∈ glu_univ_elem i ↘ FP k vs ↘ FEl k vs)
+    (HrF : forall k f T vs b, List.nth_error (record_fields R) k = Some (f, T) ->
+       tele_prefix_rel (canon_fields_rel R ns) k vs vs -> ⟦ T ⟧ env_args nil (ns ++ vs) ↘ b ->
+       (forall Γ A R0, DF b ≈ b ∈ per_univ_elem i ↘ R0 -> Γ ⊢ A ® FP k vs -> Γ ⊢ A ® glu_typ_top i b) /\
+       (forall Γ M A m, DG b ∈ glu_univ_elem i ↘ FP k vs ↘ FEl k vs ->
+          Γ ⊢ M : A ® m ∈ glu_elem_bot i b -> Γ ⊢ M : A ® ⇑ b m ∈ FEl k vs) /\
+       (forall Γ M A m R0, DG b ∈ glu_univ_elem i ↘ FP k vs ↘ FEl k vs ->
+          Γ ⊢ M : A ® m ∈ FEl k vs -> DF b ≈ b ∈ per_univ_elem i ↘ R0 -> Dom m ≈ m ∈ R0 ->
+          Γ ⊢ M : A ® m ∈ glu_elem_top i b))
+    (HP : P <∙> record_glu_typ_pred p R ns FP FEl (Typeω@(ulvl i)))
+    (HEl : El <∙> record_glu_exp_pred p R ns FP FEl elem_rel (Typeω@(ulvl i))).
+
+  (** A type at syntactic parameters, at a weakening: equal to the type
+      former at them, which are typed at its telescope, its sort in the
+      ambient universe. *)
+  Lemma record_typ_at_facts : forall Γ A Ns Δ φ, record_typ_at p R ns FP FEl (Typeω@(ulvl i)) Γ A Ns -> Δ ⊢ᵏ φ : Γ ->
+      Δ ⊢ A[φ]ʷ ≈ apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns) : Typeω@(ulvl i) /\
+      Δ ⊢ a_record p : record_ty R /\
+      List.length (List.map (fun N => N[φ]ʷ) Ns) = List.length (record_params R) /\
+      (forall j N A0, List.nth_error (List.map (fun N => N[φ]ʷ) Ns) j = Some N ->
+         List.nth_error (tele_insts (record_params R) Id (List.map (fun N => N[φ]ʷ) Ns)) j = Some A0 -> Δ ⊢ N : A0) /\
+      Δ ⊢ (record_sort R)[sb_of_list Id (List.map (fun N => N[φ]ʷ) Ns)] ⊆ Typeω@(ulvl i).
+  Proof.
+    intros * HNs Hφ.
+    destruct (record_typ_at_wk _ _ _ _ _ _ _ _ _ _ _ HNs Hφ) as [HAφ _].
+    destruct HNs as [_ Hwk]; destruct (Hwk Δ φ Hφ) as [[HNl HNt _] HS _].
+    assert (Hrt : Δ ⊢ a_record p : record_ty R) by (gen_presups; eapply wf_record_own_apps; eassumption).
+    repeat split; assumption.
+  Qed.
+
+  Lemma record_realize_typ : forall Γ A, Γ ⊢ A ® P -> Γ ⊢ A ® glu_typ_top i (d_record p ns).
+  Proof.
+    intros Γ A HA; apply HP in HA; destruct HA as (Ns & HNs).
+    econstructor; [ destruct HNs as [HA _]; gen_presups; assumption | exact (per_univ_then_per_top_typ Hper) |].
+    intros Δ φ A' Hφ Hr.
+    inversion Hr; subst.
+    match goal with H : record_lookup _ _ p = Some ?R1 |- _ => assert (R1 = R) as -> by congruence end.
+    destruct (record_typ_at_facts _ _ _ _ _ HNs Hφ) as (HAφ & Hrt & HNl & HNt & HS).
+    pose proof HNs as [_ Hwk]; destruct (Hwk Δ φ Hφ) as [[_ _ HPr] _ _].
+    assert (HΔ : ⊢ Δ) by (eapply kripke_dom; eassumption).
+    assert (Hid : Δ ⊢ᵏ wk_id : Δ) by mauto 3.
+    match goal with H : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Ms |- _ => pose proof (HPr Δ wk_id Ms Hid H) as HMs end.
+    rewrite map_wk_id_exp in HMs; destruct HMs as [HMl HMs].
+    cbn [nf_to_exp]; etransitivity; [ exact HAφ |].
+    eapply wf_exp_eq_subtyp'; [| exact HS ].
+    eapply wf_exp_eq_record_apps; [ exact Hrt | exact Hl | exact HNl | rewrite <- HMl; exact HNl | exact HMs ].
+  Qed.
+
+  (** A neutral: its projections are neutral projections, each glued at
+      its field's type, by induction on the position, the projections
+      before it glued, by the realisability of the field's type. *)
+  Lemma record_realize_bot : forall Γ M A m,
+      DG d_record p ns ∈ glu_univ_elem i ↘ P ↘ El ->
+      Γ ⊢ M : A ® m ∈ glu_elem_bot i (d_record p ns) ->
+      Γ ⊢ M : A ® ⇑ (d_record p ns) m ∈ El.
+  Proof.
+    intros * Hglu [P' El' HM Hglu' HAP' Hm Hrb].
+    destruct (functional_glu_univ_elem _ _ _ _ _ _ Hglu Hglu') as [HPP _].
+    assert (HA : Γ ⊢ A ® P) by (apply HPP; exact HAP').
+    apply HEl; apply HP in HA; destruct HA as (Ns & HNs).
+    destruct (realize_per_univ_elem_gen Hper) as (_ & Hbot & _).
+    pose proof (Hbot _ _ Hm) as Hrel.
+    pose proof (record_rel_canon _ _ _ _ _ _ Hl Hper) as ER.
+    pose proof (proj1 (ER _ _) Hrel) as Hrr; pose proof Hrr as [vs vs' Hvs _ _].
+    refine (mk_record_glu_exp _ _ _ _ _ _ _ _ _ _ _ _ Hrel Ns HNs vs Hvs _); [ exact HM |].
+    intros Δ φ Ns' Hφ HNs'.
+    destruct (record_typ_at_facts _ _ _ _ _ HNs Hφ) as (HAφ & Hrt & HNl & HNt & HS).
+    pose proof HNs as [_ Hwk]; destruct (Hwk Δ φ Hφ) as [_ _ Hfg].
+    pose proof (Hfg Ns' HNs') as HFg.
+    destruct HNs' as [HNl' HNN].
+    assert (HΔ : ⊢ Δ) by (eapply kripke_dom; eassumption).
+    destruct (wf_record_inversion Hrt) as [R0 Hl0 Hnd Hass i0 Hty HF HSu HFs _].
+    rewrite Hl in Hl0; injection Hl0 as <-.
+    pose proof (wf_record_closed _ _ _ _ _ HΔ Hl) as Hc.
+    assert (HNl'' : List.length Ns' = List.length (record_params R)) by lia.
+    assert (HNt' : forall j Y T0, List.nth_error Ns' j = Some Y -> List.nth_error (tele_insts (record_params R) Id Ns') j = Some T0 ->
+               Δ ⊢ Y : T0)
+      by (eapply (record_params_eq_right _ _ _ R (List.map (fun N => N[φ]ʷ) Ns) Ns'); eassumption).
+    assert (Happs : Δ ⊢ apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns) ≈ apps_exp (a_record p) Ns' : Typeω@(ulvl i))
+      by (eapply wf_exp_eq_subtyp'; [ exact (wf_exp_eq_record_apps _ _ _ _ _ _ _ Hrt Hl HNl HNl'' HNN) | exact HS ]).
+    assert (HMφ : Δ ⊢ M[φ]ʷ : apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns)) by (eapply wf_conv'; [ mauto 3 | exact HAφ ]).
+    assert (HMb : Δ ⊢ M[φ]ʷ : apps_exp (a_record p) Ns') by (eapply wf_conv'; [ exact HMφ | exact Happs ]).
+    assert (Hlv : List.length vs = List.length (record_fields R)) by (symmetry; exact (List.Forall2_length Hvs)).
+    enough (Hall : forall k, k <= List.length (record_fields R) -> forall j f T r, j < k ->
+              List.nth_error (record_fields R) j = Some (f, T) -> List.nth_error vs j = Some r ->
+              Δ ⊢ a_proj f M[φ]ʷ : T[sb_of_list Id (Ns' ++ record_pre R j M[φ]ʷ)] ® r ∈ FEl j (List.firstn j vs)).
+    { intros k f T r Hk Hr.
+      eapply (Hall (List.length (record_fields R))); [ lia | exact (nth_error_lt_length _ _ _ Hk) | exact Hk | exact Hr ]. }
+    induction k as [| k IH]; intros Hk j f T r Hj Hjf Hjr; [ lia |].
+    destruct (Nat.lt_ge_cases j k) as [Hjk | Hjk]; [ exact (IH ltac:(lia) j f T r Hjk Hjf Hjr) |].
+    assert (j = k) as -> by lia.
+    destruct (record_projs_neut_nth _ _ _ _ _ Hl Hnd Hvs _ _ _ _ Hjf Hjr) as (a & -> & Ea).
+    pose proof (record_projs_prefix_diag _ _ _ _ k Hrr Hvs ltac:(lia)) as Hpre.
+    pose proof (HgF _ _ _ _ _ Hjf Hpre Ea) as Hga.
+    destruct (HrF _ _ _ _ _ Hjf Hpre Ea) as (_ & HrB & _).
+    apply HrB; [ exact Hga |].
+    (** The field's type is glued: the projections before it are. *)
+    assert (HTP : Δ ⊢ T[sb_of_list Id (Ns' ++ record_pre R k M[φ]ʷ)] ® FP k (List.firstn k vs)).
+    { apply (HFg k f T (record_pre R k M[φ]ʷ) (List.firstn k vs) Hjf);
+        [ apply length_record_pre; lia | rewrite List.length_firstn; lia | | exact Hpre ].
+      intros j' g T' N v Hj' HN Hv.
+      assert (Hj'k : j' < k)
+        by (pose proof (nth_error_lt_length _ _ _ HN) as Hx; rewrite length_record_pre in Hx by lia; exact Hx).
+      rewrite List.nth_error_firstn in Hv; destruct (Nat.ltb_spec j' k); [| lia ].
+      unfold record_pre in HN; rewrite List.nth_error_map, List.nth_error_firstn in HN.
+      destruct (Nat.ltb_spec j' k); [| lia ]; rewrite Hj' in HN; cbn in HN; injection HN as <-.
+      rewrite List.firstn_firstn, Nat.min_l by lia.
+      replace (List.firstn j' (record_pre R k M[φ]ʷ)) with (record_pre R j' M[φ]ʷ)
+        by (unfold record_pre; rewrite List.firstn_map, List.firstn_firstn, Nat.min_l by lia; reflexivity).
+      exact (IH ltac:(lia) j' g T' v Hj'k Hj' Hv). }
+    pose proof (glu_univ_elem_univ_lvl _ _ _ _ _ eq_refl Hga _ _ HTP) as HTw.
+    assert (Hp : Δ ⊢ a_proj f M[φ]ʷ : T[sb_of_list Id (Ns' ++ record_pre R k M[φ]ʷ)])
+      by (eapply wf_proj; [ exact HMb | exact Hrt | exact Hl | exact HNl'' | exact HNt' | exact Hjf | exact HTw ]).
+    econstructor; [ exact Hp | exact Hga | exact HTP | |].
+    - intros s; destruct (Hm s) as (W & H1 & H2); exists (ne_proj f W); split; constructor; assumption.
+    - (** The readback: the projection of the readback of the neutral, at
+          the field's type at the parameters of the weakening. *)
+      intros Δ' φ' W Hφ' HW.
+      inversion HW; subst.
+      match goal with H : Rne m in _ ↘ ?W0 |- _ => rename H into HW0; rename W0 into W1 end.
+      pose proof (kripke_compose _ _ _ _ _ Hφ' Hφ) as Hc'.
+      pose proof (Hrb _ _ _ Hc' HW0) as HMW.
+      destruct (record_typ_at_facts _ _ _ _ _ HNs Hc') as (HAd & Hrt' & HNld & HNtd & HSd).
+      assert (HMW' : Δ' ⊢ M[φ ⊙ φ']ʷ ≈ W1 : apps_exp (a_record p) (List.map (fun N => N[φ ⊙ φ']ʷ) Ns))
+        by (eapply wf_exp_eq_conv'; [ exact HMW | exact HAd ]).
+      destruct (record_proj_cong_at _ _ _ _ _ p R _ (ulvl i) k f T HMW' Hrt' Hl HNld HNtd HSd Hjf) as [_ Hpp].
+      assert (HTeq : Δ ⊢ T[sb_of_list Id (List.map (fun N => N[φ]ʷ) Ns ++ record_pre R k M[φ]ʷ)]
+                       ≈ T[sb_of_list Id (Ns' ++ record_pre R k M[φ]ʷ)] : Typeω@(ulvl i))
+        by (eapply record_field_params_cong; [ exact HMφ | exact Hrt | exact Hl | exact HNl | exact HNl'' | exact HNt
+                                              | exact HNN | exact HS | exact Hjf ]).
+      assert (HTeq' : Δ' ⊢ T[sb_of_list Id (List.map (fun N => N[φ]ʷ) Ns ++ record_pre R k M[φ]ʷ)][φ']ʷ
+                        ≈ T[sb_of_list Id (Ns' ++ record_pre R k M[φ]ʷ)][φ']ʷ : Typeω@(ulvl i)) by mauto 3.
+      assert (HLk : List.length (record_pre R k M[φ]ʷ) = k) by (apply length_record_pre; lia).
+      rewrite (record_field_wk R k f T (List.map (fun N => N[φ]ʷ) Ns) (record_pre R k M[φ]ʷ) φ' Hc Hjf HNl HLk) in HTeq'.
+      rewrite (record_field_wk R k f T Ns' (record_pre R k M[φ]ʷ) φ' Hc Hjf HNl'' HLk) in HTeq'.
+      rewrite (record_field_wk R k f T Ns' (record_pre R k M[φ]ʷ) φ' Hc Hjf HNl'' HLk).
+      rewrite !record_pre_wk, map_wk_wk, exp_wk_wk in HTeq'.
+      rewrite record_pre_wk, exp_wk_wk.
+      replace ((a_proj f M[φ]ʷ)[φ']ʷ) with (a_proj f M[φ ⊙ φ']ʷ) by (cbn [exp_wk]; rewrite exp_wk_wk; reflexivity).
+      eapply wf_exp_eq_conv'; [ exact Hpp | exact HTeq' ].
+  Qed.
+
+  (** An element: η, then the tuple of the readbacks of its projections,
+      each by the realisability of its field's type, at the readback of
+      the parameters. *)
+  Lemma record_realize_top : forall Γ M A m R0,
+      DG d_record p ns ∈ glu_univ_elem i ↘ P ↘ El ->
+      Γ ⊢ M : A ® m ∈ El ->
+      DF d_record p ns ≈ d_record p ns ∈ per_univ_elem i ↘ R0 ->
+      Dom m ≈ m ∈ R0 ->
+      Γ ⊢ M : A ® m ∈ glu_elem_top i (d_record p ns).
+  Proof.
+    intros * Hglu HM HR Hm.
+    pose proof HM as HM'; apply HEl in HM'; destruct HM' as [HMt Hme Ns HNs vs Hvs Hk].
+    assert (HPt : Γ ⊢ A ® P) by (apply HP; exists Ns; exact HNs).
+    pose proof (record_rel_canon _ _ _ _ _ _ Hl Hper) as ER.
+    pose proof (proj1 (ER _ _) Hme) as Hrr.
+    econstructor; [ exact HMt | exact Hglu | exact HPt | eapply per_elem_then_per_top; eassumption |].
+    intros Δ φ w Hφ Hw.
+    inversion Hw; subst.
+    match goal with H : record_lookup _ _ p = Some ?R1 |- _ => assert (R1 = R) as -> by congruence end.
+    match goal with H1 : Rps ns at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Ps0, H2 : Rflds m at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Fs0 |- _ =>
+      rename H1 into HRps; rename H2 into HRf; rename Ps0 into Ps; rename Fs0 into Fs end.
+    destruct (record_typ_at_facts _ _ _ _ _ HNs Hφ) as (HAφ & Hrt & HNl & HNt & HS).
+    pose proof HNs as [_ Hwk]; destruct (Hwk Δ φ Hφ) as [[_ _ HPr] _ _].
+    assert (HΔ : ⊢ Δ) by (eapply kripke_dom; eassumption).
+    assert (Hid : Δ ⊢ᵏ wk_id : Δ) by mauto 3.
+    pose proof (HPr Δ wk_id Ps Hid HRps) as HPs; rewrite map_wk_id_exp in HPs; destruct HPs as [HPl HPs].
+    assert (HMφ : Δ ⊢ M[φ]ʷ : apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns)) by (eapply wf_conv'; [ mauto 3 | exact HAφ ]).
+    assert (HT : Δ ⊢ apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns) : Typeω@(ulvl i)) by (gen_presups; eassumption).
+    pose proof (wf_record_eta_tuple _ _ _ _ _ _ _ _ HMφ Hrt Hl HNl HNt HS HT) as Hetat.
+    assert (Heta : Δ ⊢ M[φ]ʷ ≈ a_tuple (apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns)) (record_eta_fields R M[φ]ʷ)
+                     : apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns))
+      by (eapply wf_exp_eq_record_eta; [ exact HMφ | exact Hl | exact HNl | exact Hetat ]).
+    destruct (read_fields_nth _ _ _ _ _ HRf ns nil vs ltac:(rewrite List.app_nil_r; reflexivity) Hvs) as [HFl HFn].
+    assert (Hlv : List.length vs = List.length (record_fields R)) by (symmetry; exact (List.Forall2_length Hvs)).
+    assert (HNdrefl : exps_eq_at Δ (record_params R) (List.map (fun N => N[φ]ʷ) Ns) (List.map (fun N => N[φ]ʷ) Ns)).
+    { split; [ reflexivity |].
+      intros k X Y A0 HX HY HA0; rewrite HX in HY; injection HY as <-; apply wf_exp_eq_refl; exact (HNt _ _ _ HX HA0). }
+    assert (Htc : Δ ⊢ a_tuple (apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns)) (record_eta_fields R M[φ]ʷ)
+                    ≈ a_tuple (apps_exp (a_record p) (nfs_to_exps Ps)) (List.combine (List.map fst (record_fields R)) (nfs_to_exps Fs))
+                    : apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns)).
+    { eapply wf_exp_eq_tuple_fields;
+        [ exact Hetat | exact Hrt | exact Hl | exact HNl | rewrite <- HPl; exact HNl | exact HPs | exact HS
+        | apply record_eta_fields_names
+        | rewrite record_eta_fields_names; apply map_fst_combine; rewrite List.length_map; symmetry; exact HFl |].
+      intros k f M1 M1' U Hk1 Hk1' Hfk.
+      rewrite (record_eta_fields_nth _ _ _ _ _ Hfk) in Hk1; injection Hk1 as <-.
+      rewrite record_eta_fields_pre.
+      assert (Hlt : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
+      destruct (nth_error_lt_some' vs k ltac:(lia)) as [r Hr].
+      destruct (HFn _ _ _ _ Hfk Hr) as (t & F & Et & HF & HnF).
+      assert (M1' = nf_to_exp F) as ->.
+      { pose proof (nth_error_combine_both (List.map fst (record_fields R)) (nfs_to_exps Fs) k f (nf_to_exp F)
+                      ltac:(rewrite List.nth_error_map, Hfk; reflexivity) HnF) as E.
+        rewrite E in Hk1'; injection Hk1' as <-; reflexivity. }
+      cbn [List.app] in Et.
+      pose proof (record_projs_prefix_diag _ _ _ _ k Hrr Hvs ltac:(lia)) as Hpre.
+      pose proof (HgF _ _ _ _ _ Hfk Hpre Et) as Hgt.
+      destruct (HrF _ _ _ _ _ Hfk Hpre Et) as (_ & _ & HrT).
+      destruct (glu_univ_elem_per_univ _ _ _ _ Hgt) as [Rt HRt].
+      assert (Hrr' : Dom r ≈ r ∈ Rt).
+      { destruct Hrr as [vs1 vs2 Hv1 Hv2 Hrel].
+        pose proof (record_projs_functional _ _ _ _ Hv1 Hvs) as ->; pose proof (record_projs_functional _ _ _ _ Hv2 Hvs) as ->.
+        rewrite tele_rel_iff in Hrel; destruct Hrel as (_ & _ & Hrel).
+        pose proof (Hrel _ _ _ Hr Hr) as Hrk; unfold canon_fields_rel in Hrk; rewrite (nth_ftyp_eq _ _ _ _ Hfk) in Hrk.
+        exact (proj2 (per_head_iff Et Et HRt _ _) Hrk). }
+      pose proof (Hk Δ φ (List.map (fun N => N[φ]ʷ) Ns) Hφ HNdrefl k f U r Hfk Hr) as Hgl.
+      destruct (HrT _ _ _ _ _ Hgt Hgl HRt Hrr') as [_ _ _ _ _ _ Hrbt].
+      pose proof (Hrbt Δ wk_id F Hid HF) as Heq; rewrite !exp_wk_id in Heq; exact Heq. }
+    cbn [nf_to_exp].
+    eapply wf_exp_eq_conv'; [ etransitivity; [ exact Heta | exact Htc ] | symmetry; exact HAφ ].
+  Qed.
+End RecordRealize.
+
 Theorem realize_glu_univ_elem_gen : forall a i P El,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     (forall Γ A R,
@@ -571,6 +803,12 @@ Theorem realize_glu_univ_elem_gen : forall a i P El,
           Γ ⊢ M : A ® m ∈ glu_elem_top i a).
 Proof.
   simpl. glu_univ_elem_induction1.
+  9:{ (** A record type. *)
+      split; [| split]; intros.
+      - eapply record_realize_typ; eassumption.
+      - eapply record_realize_bot; eassumption.
+      - match goal with H : _ <∙> record_glu_exp_pred _ _ _ _ _ ?er _ |- _ =>
+          eapply record_realize_top with (elem_rel := er); eassumption end. }
   8:{ (** An inductive type. *)
       split; [| split]; intros.
       - eapply ind_realize_typ; eassumption.
