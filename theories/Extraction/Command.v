@@ -4241,15 +4241,20 @@ End Impl.
 
     Only here is [load_path] assumed to know finitely many files.  Each load
     adds one of them to the chain, so loading terminates, in whatever order
-    it happens.  The executable never sees the list. *)
+    it happens.  The executable never sees the list: [all_files] is a thunk,
+    so only its existence matters, and nothing has to compute it. *)
 
 Section Files.
   Variable load_path : path -> option string.
-  Variable all_files : list path.
-  Hypothesis Hfiles : forall fp, (exists s, load_path fp = Some s) <-> In fp all_files.
+  (** The files [load_path] knows, as a thunk: the termination proof needs
+      such a list to exist, never its value. *)
+  Variable all_files : unit -> list path.
+  Hypothesis Hfiles : forall fp, (exists s, load_path fp = Some s) <-> In fp (all_files tt).
 
+  (** How many known files the chain [ch] has not loaded yet; it decreases
+      with every load. *)
   Definition unloaded (ch : list path) : nat :=
-    List.length (filter (fun fp => if in_dec path_eq_dec fp ch then false else true) all_files).
+    List.length (filter (fun fp => if in_dec path_eq_dec fp ch then false else true) (all_files tt)).
 
   Lemma filter_mono : forall (p1 p2 : path -> bool) l, (forall y, p1 y = true -> p2 y = true) ->
       List.length (filter p1 l) <= List.length (filter p2 l).

@@ -48,8 +48,22 @@ let read_unit src =
     | _ -> None
   with Lexer.Error _ -> None
 
-(* A unit is looked up under each search root in turn. *)
+(* A unit is looked up under each search root in turn; the first root that
+   has its file wins. *)
 let load_path_in roots fp = List.find_map (fun r -> load_path r fp) roots
+
+(* The name of the environment variable listing extra search roots. *)
+let search_root_env = "MCTT_SEARCH_ROOT"
+
+(* The search roots of the command line, in lookup order: the
+   [--search-root] flags in the order given, then the entries of the
+   colon-separated value of [MCTT_SEARCH_ROOT] (empty entries ignored), then
+   the current directory. *)
+let search_roots flags env =
+  let env_roots = match env with
+    | None -> []
+    | Some s -> List.filter (fun e -> e <> "") (String.split_on_char ':' s) in
+  flags @ env_roots @ [ "." ]
 
 let main_of_lexbuf ?(search_root = ".") ?(extra_roots = []) lexbuf =
   (* The printer reads the declarations of imported units for their names. *)
@@ -71,3 +85,8 @@ let main_of_filename ?search_root ?extra_roots filename =
 
 let main_of_program_string ?search_root ?extra_roots program =
   Lexing.from_string program |> main_of_lexbuf ?search_root ?extra_roots
+
+let main_of_command_line flags env filename =
+  match search_roots flags env with
+  | search_root :: extra_roots -> main_of_filename ~search_root ~extra_roots filename
+  | [] -> assert false (* [search_roots] always ends with the current directory *)

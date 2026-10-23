@@ -1182,6 +1182,106 @@ let%expect_test "a missing unit is reported" =
   let _ = main_of_multi "Missing.mctt" in
   [%expect {| Error: Lib›Nowhere: cannot find unit |}]
 
+(** Search roots: the [--search-root] flags in order, then the entries of
+    [MCTT_SEARCH_ROOT], then the current directory, run through
+    [main_of_command_line] as the executable does. *)
+
+(* A fresh, empty temporary directory (without [Filename.temp_dir], which is
+   OCaml 5.1). *)
+let fresh_dir () =
+  let d = Filename.temp_file "mctt-roots" "" in
+  Sys.remove d; Sys.mkdir d 0o755; d
+
+let write_file path contents =
+  let oc = open_out_bin path in
+  Fun.protect ~finally:(fun () -> close_out oc) (fun () -> output_string oc contents)
+
+(* Two search roots under a temporary directory: [a] holds [A›U] and [D›U],
+   [b] holds [B›U] and another [D›U], which differ in the type of [which].
+   [both] imports [A›U] and [B›U]; [dup] imports [D›U] and shows [which]. *)
+type roots_tree = { a : string; b : string; both : string; dup : string }
+let roots_tree = lazy (
+  let top = fresh_dir () in
+  let root name units =
+    let r = Filename.concat top name in
+    Sys.mkdir r 0o755;
+    List.iter (fun (dir, src) ->
+        let d = Filename.concat r dir in
+        Sys.mkdir d 0o755; write_file (Filename.concat d "U.mctt") src)
+      units;
+    r in
+  let a = root "a" [ ("A", "module A›U where def t : Type@1 ≔ Type@0 end end");
+                     ("D", "module D›U where def which : Type@1 ≔ Type@0 end end") ] in
+  let b = root "b" [ ("B", "module B›U where def t : Type@2 ≔ Type@1 end end");
+                     ("D", "module D›U where def which : Type@2 ≔ Type@1 end end") ] in
+  let both = Filename.concat top "Both.mctt" in
+  write_file both "import A›U\nimport B›U\nmodule Both where eval A›U.t eval B›U.t end";
+  let dup = Filename.concat top "Dup.mctt" in
+  write_file dup "import D›U\nmodule Dup where eval D›U.which end";
+  { a; b; both; dup })
+
+let%expect_test "--search-root given twice adds both roots" =
+  let t = Lazy.force roots_tree in
+  let _ = main_of_command_line [ t.a; t.b ] None t.both in
+  [%expect {|
+    Evaluate A›U.t --> Type@0 : Type@1
+    Evaluate B›U.t --> Type@1 : Type@2
+    |}]
+
+let%expect_test "a unit under no --search-root is not found" =
+  let t = Lazy.force roots_tree in
+  let _ = main_of_command_line [ t.a ] None t.both in
+  [%expect {| Error: B›U: cannot find unit |}]
+
+let%expect_test "MCTT_SEARCH_ROOT alone adds its entries, ignoring empty ones" =
+  let t = Lazy.force roots_tree in
+  let _ = main_of_command_line [] (Some (":" ^ t.a ^ "::" ^ t.b ^ ":")) t.both in
+  [%expect {|
+    Evaluate A›U.t --> Type@0 : Type@1
+    Evaluate B›U.t --> Type@1 : Type@2
+    |}]
+
+let%expect_test "a unit under no entry of MCTT_SEARCH_ROOT is not found" =
+  let t = Lazy.force roots_tree in
+  let _ = main_of_command_line [] (Some t.b) t.both in
+  [%expect {| Error: A›U: cannot find unit |}]
+
+let%expect_test "--search-root and MCTT_SEARCH_ROOT together add all their roots" =
+  let t = Lazy.force roots_tree in
+  let _ = main_of_command_line [ t.b ] (Some t.a) t.both in
+  [%expect {|
+    Evaluate A›U.t --> Type@0 : Type@1
+    Evaluate B›U.t --> Type@1 : Type@2
+    |}]
+
+let%expect_test "a unit under several roots is read from the first: flags before the variable" =
+  let t = Lazy.force roots_tree in
+  let _ = main_of_command_line [ t.a ] (Some t.b) t.dup in
+  let _ = main_of_command_line [ t.b ] (Some t.a) t.dup in
+  [%expect {|
+    Evaluate D›U.which --> Type@0 : Type@1
+    Evaluate D›U.which --> Type@1 : Type@2
+    |}]
+
+let%expect_test "a unit under several roots is read from the first: flags and entries in order" =
+  let t = Lazy.force roots_tree in
+  let _ = main_of_command_line [ t.b; t.a ] None t.dup in
+  let _ = main_of_command_line [] (Some (t.a ^ ":" ^ t.b)) t.dup in
+  [%expect {|
+    Evaluate D›U.which --> Type@1 : Type@2
+    Evaluate D›U.which --> Type@0 : Type@1
+    |}]
+
+let%expect_test "the search roots are the flags, then the variable's entries, then ." =
+  List.iter print_endline (search_roots [ "f1"; "f2" ] (Some "e1::e2:"));
+  [%expect {|
+    f1
+    f2
+    e1
+    e2
+    .
+    |}]
+
 let%expect_test "an ill-typed imported unit is reported" =
   let _ = main_of_multi "BadDep.mctt" in
   [%expect {| Error: the body of wrong, Type@0, is not of type ℕ |}]

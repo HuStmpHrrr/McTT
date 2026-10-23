@@ -115,14 +115,29 @@ or more directly
 _build/default/driver/mctt.exe examples/Nary.mctt # or your own example
 ```
 
-A program can import units from other files, found under `--search-root`
-(the current directory by default). The library `lib/Prelude` proves basic
+A program can import units from other files, found under the search roots
+(`--search-root`, see below). The library `lib/Prelude` proves basic
 properties of natural numbers, and `lib/NatTheory.mctt` uses it:
 ```
 dune exec mctt -- --search-root lib lib/NatTheory.mctt
 ```
-`--search-root` may be given more than once; a unit is looked up under each
-root in turn.
+An imported unit `X›Y` is the file `X/Y.mctt` under a search root.  The
+search roots are, in lookup order:
+
+1. every `--search-root <dir>` flag, in the order given (the flag may be
+   given more than once, each adding a root);
+2. the entries of the environment variable `MCTT_SEARCH_ROOT`, a
+   colon-separated list of directories, in order; empty entries are ignored;
+3. the current directory, always, even when `--search-root` is given
+   (earlier versions dropped it as soon as one flag was given).
+
+A unit is looked up under each root in turn, and the first root that has its
+file wins: a unit found under several roots is read from the first, with no
+error.  For example
+```
+MCTT_SEARCH_ROOT=lib dune exec mctt -- --search-root mylib Main.mctt
+```
+looks up each unit under `mylib`, then `lib`, then the current directory.
 
 The natural numbers are not built in.  A unit binds an inductive type of
 their shape with `builtin natural ≔ X`.  A unit sees the bindings it makes

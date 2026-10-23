@@ -26,7 +26,8 @@ Import Syntax_Notations GlobalCtx_Notations.
     - [read], which lexes (in OCaml) and parses what was found.
 
     Termination of the loader is a [Prop] argument, erased by extraction; it
-    holds when the search root has finitely many units ([load_step_wf]). *)
+    holds when the search roots have finitely many units ([load_step_wf],
+    given a thunk [all_files : unit -> list path] enumerating them). *)
 
 Variant main_result :=
   | AllGood : Cst.prog -> builtins -> gdeps -> gunit -> list eval_entry -> main_result
