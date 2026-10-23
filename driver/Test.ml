@@ -4760,3 +4760,25 @@ let%expect_test "a private with-area member, through a term" =
 let%expect_test "a field through a term of no record type" =
   let _ = main_of_body "def g (n : Nat) (m : Nat) : Nat := m.fst end" in
   [%expect {| Error: fst is selected from m, of type ℕ, which is not a record type |}]
+
+let%expect_test "a record type applied to a value, as a term" =
+  let _ = main_of_body (pair_decl ^ "def g (q : Pair Nat Nat) : Nat := Pair Nat Nat q end") in
+  [%expect {|
+    Error: Pair ℕ ℕ q is the module of the record value q; write (Pair ℕ ℕ q).f
+      for a field, or Pair ℕ ℕ for the type
+    |}]
+
+let%expect_test "a record value with its fields out of order" =
+  let _ = main_of_body (pair_decl ^ "eval record Pair Nat Nat where snd := 1; fst := 2 end") in
+  [%expect {|
+    Error: fields of Test.Pair must be given in order: fst, snd;
+      got snd before fst
+    |}]
+
+let%expect_test "a record value with a field its record does not have" =
+  let _ = main_of_body (pair_decl ^ "eval record Pair Nat Nat where fst := 1; zz := 2 end") in
+  [%expect {| Error: zz is not a field of record Test.Pair |}]
+
+let%expect_test "a record value with a field missing" =
+  let _ = main_of_body (pair_decl ^ "eval record Pair Nat Nat where fst := 1 end") in
+  [%expect {| Error: field snd of record Test.Pair is missing |}]

@@ -218,6 +218,19 @@ Inductive run_error : Set :=
 (** A member selected from a value of the record [p] that the record's
     module does not have: neither a field nor a member of its with-area. *)
 | re_record_member : qname -> string -> run_error
+(** A record type applied past its parameters, to a value, where a term
+    stands: [re_record_value_term Ξ ox Γ M n], [M] the record type
+    applied, its first [n] arguments the parameters, in the context [Γ]
+    the stack's telescope is extended by, in the command declaring
+    [ox].  It is the module of the value, not a term. *)
+| re_record_value_term : gstack -> option string -> ctx -> exp -> nat -> run_error
+(** A record value whose fields are not the record's in order: the record,
+    its fields, then the field given where the other was due. *)
+| re_record_fields_order : qname -> list string -> string -> string -> run_error
+(** A record value with a field its record does not have *)
+| re_record_field_unknown : qname -> string -> run_error
+(** A record value without a field of its record *)
+| re_record_field_missing : qname -> string -> run_error
 (** A private entry of a local body, by the chain of submodules from the
     local module, reached from outside it. *)
 | re_private_local : list string -> string -> run_error
@@ -656,13 +669,115 @@ Section BlocksBlame.
     end.
 End BlocksBlame.
 
-(** The error for a rejected term: a module where a term stands, if there
-    is one, then an eliminator whose blocks do not match its group, then
-    one whose branches do not match its type, otherwise the given
-    error. *)
-Definition mod_error {Θ Ξ} (Hg : ⊢ᵍ Θ ⍮ Ξ) (it : qname -> option ind_alias_view) (Ms : list exp) (e : run_error) : run_error :=
+(** Where a term is rejected, a record type applied past its parameters,
+    to a value, where a term stands; or a record value whose fields are
+    not the record's, in order.  [ox] names the command, for the printer;
+    the contexts are past the stack's telescope. *)
+Section ValueBlame.
+  Variables (Θ : gdeps) (Ξ : gstack) (ox : option string).
+
+  (** The record a term's head names, with its declaration. *)
+  Definition record_head (M : exp) : option (qname * record_decl) :=
+    match app_head M with
+    | a_record p => option_map (pair p) (record_lookup Θ Ξ p)
+    | a_mem H x =>
+        match mod_qname H with
+        | Some mp => option_map (pair (qname_app mp (x :: nil))) (record_lookup Θ Ξ (qname_app mp (x :: nil)))
+        | None => None
+        end
+    | _ => None
+    end.
+
+  (** The first name given, of [ys], where another of [xs] was due. *)
+  Fixpoint first_mismatch (ys xs : list string) : option (string * string) :=
+    match ys, xs with
+    | y :: ys', x :: xs' => if String.eqb y x then first_mismatch ys' xs' else Some (y, x)
+    | _, _ => None
+    end.
+
+  (** The fields [fs] of a value of the record [R] at [p]: one it does not
+      have, then one of it missing, then one out of order. *)
+  Definition fields_blame (p : qname) (R : record_decl) (fs : list (string * exp)) : option run_error :=
+    let xs := List.map fst (record_fields R) in
+    let ys := List.map fst fs in
+    match List.find (fun y => negb (List.existsb (String.eqb y) xs)) ys with
+    | Some y => Some (re_record_field_unknown p y)
+    | None =>
+        match List.find (fun x => negb (List.existsb (String.eqb x) ys)) xs with
+        | Some x => Some (re_record_field_missing p x)
+        | None =>
+            match first_mismatch ys xs with
+            | Some (y, x) => Some (re_record_fields_order p xs y x)
+            | None => None
+            end
+        end
+    end.
+
+  (** A record type applied to more arguments than it has parameters. *)
+  Definition applied_blame (Γ : ctx) (M : exp) : option run_error :=
+    match record_head M with
+    | Some (_, R) =>
+        if Nat.ltb (List.length (record_params R)) (List.length (app_args M))
+        then Some (re_record_value_term Ξ ox Γ M (List.length (record_params R)))
+        else None
+    | None => None
+    end.
+
+  Fixpoint value_blame (Γ : ctx) (M : exp) : option run_error :=
+    match M with
+    | a_succl M0 | a_univ M0 | a_proj _ M0 => value_blame Γ M0
+    | a_maxl M0 N => first_some (value_blame Γ M0) (fun _ => value_blame Γ N)
+    | a_app M0 N =>
+        first_some (applied_blame Γ M) (fun _ => first_some (value_blame Γ M0) (fun _ => value_blame Γ N))
+    | a_pi A B | a_fn A B => first_some (value_blame Γ A) (fun _ => value_blame (ce_ass A :: Γ) B)
+    | a_exfalso A M0 => first_some (value_blame Γ M0) (fun _ => value_blame (ce_hole :: Γ) A)
+    | a_let (b_def oA N) B =>
+        first_some (match oA with Some A => value_blame Γ A | None => None end)
+          (fun _ => first_some (value_blame Γ N) (fun _ => value_blame (ce_hole :: Γ) B))
+    | a_let (b_mod U) B => value_blame (ce_mod U :: Γ) B
+    | a_tuple T fs =>
+        first_some (match record_head T with Some (p, R) => fields_blame p R fs | None => None end)
+          (fun _ => first_some (value_blame Γ T) (fun _ =>
+            (fix fields (fs : list (string * exp)) : option run_error :=
+               match fs with
+               | nil => None
+               | (_, N) :: fs' => first_some (value_blame Γ N) (fun _ => fields fs')
+               end) fs))
+    | a_elim _ Us _ Bks M0 =>
+        first_some (value_blame Γ M0) (fun _ => first_some
+          ((fix exps (Us : list exp) : option run_error :=
+              match Us with
+              | nil => None
+              | U :: Us' => first_some (value_blame Γ U) (fun _ => exps Us')
+              end) Us)
+          (fun _ =>
+            (fix blocks (Bks : list eblock) : option run_error :=
+               match Bks with
+               | nil => None
+               | eb_mk nm _ A Bs :: Bks' =>
+                   first_some (value_blame (ctx_holes nm ++ Γ) A) (fun _ => first_some
+                     ((fix brs (Bs : list (string * nat * exp)) : option run_error :=
+                         match Bs with
+                         | nil => None
+                         | b :: Bs' => first_some (value_blame (ctx_holes (snd (fst b)) ++ Γ) (snd b)) (fun _ => brs Bs')
+                         end) Bs)
+                     (fun _ => blocks Bks'))
+               end) Bks))
+    | _ => None
+    end.
+End ValueBlame.
+
+(** The error for a rejected term of the command declaring [ox]: a module
+    where a term stands, if there is one, then a record value's module
+    where a term stands or a record value with wrong fields, then an
+    eliminator whose blocks do not match its group, then one whose
+    branches do not match its type, otherwise the given error. *)
+Definition mod_error {Θ Ξ} (Hg : ⊢ᵍ Θ ⍮ Ξ) (it : qname -> option ind_alias_view) (ox : option string) (Ms : list exp)
+    (e : run_error) : run_error :=
   match List.fold_right (fun M r => first_some (first_some (mod_blame Θ Ξ it M)
-                                      (fun _ => first_some (blocks_blame Θ Ξ nil M) (fun _ => brs_blame Θ Ξ M))) (fun _ => r)) None Ms with
+                                      (fun _ => first_some (value_blame Θ Ξ ox nil M)
+                                        (fun _ => first_some (blocks_blame Θ Ξ nil M) (fun _ => brs_blame Θ Ξ M))))
+                                      (fun _ => r)) None Ms with
   | Some e' => e'
   | None => e
   end.
@@ -2194,17 +2309,17 @@ Section Impl.
     | right _ => rerr (re_msg ("duplicate name " ++ x))
     | left Hfr with check_typ (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
       | inright _ => rerr (blame_error (find_level_blame fctx_none _ _ _ (pre_ctx H) A)
-                            (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) (A :: nil) (re_def_typ x Ξ A)))
+                            (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) (Some x) (A :: nil) (re_def_typ x Ξ A)))
       | inleft (exist _ i HA) with check_exp_typed (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A (ex_intro _ i HA) M => {
         | left HM => rok (da_ok (def_ok Hfr HM))
-        | right _ => rerr (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) (M :: nil) (re_def x Ξ A M)) } } }
+        | right _ => rerr (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) (Some x) (M :: nil) (re_def x Ξ A M)) } } }
   | ch, Θ, K, D, B, Ξ, cc_def x b pv A None, H with gs_fresh_dec x Ξ => {
     | right _ => rerr (re_msg ("duplicate name " ++ x))
     | left Hfr with check_typ (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
       | inleft (exist _ i HA) => rok (da_ok (axiom_ok Hfr HA))
       | inright _ =>
           rerr (blame_error (find_level_blame fctx_none _ _ _ (pre_ctx H) A)
-                  (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) (A :: nil) (re_msg ("the type of axiom " ++ x ++ " is not a type")))) } }
+                  (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) (Some x) (A :: nil) (re_msg ("the type of axiom " ++ x ++ " is not a type")))) } }
   | ch, Θ, K, D, B, Ξ, cc_alias x pv Δ E, H with tele_ass_dec Δ => {
     | right _ => rerr (re_msg ("parameters of module " ++ x ++ " that are not assumptions"))
     | left Htel with check_ext (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) Δ => {
@@ -2864,15 +2979,15 @@ Section Impl.
   | ch, L, Θ, K, D, B, Ξ, cc_eval M (Some A), H
       with check_typ (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
     | inright _ => rerr (blame_error (find_level_blame fctx_none _ _ _ (pre_ctx H) A)
-                          (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) (A :: nil) (re_eval_typ Ξ M A)))
+                          (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) None (A :: nil) (re_eval_typ Ξ M A)))
     | inleft (exist _ i HA)
         with check_exp_typed (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A (ex_intro _ i HA) M => {
       | left HM => rok (exist _ _ (eval_check_ok HM), eval_log _ _ (fctx_cmd B _ _) (pre_gctx H) M A HM)
-      | right _ => rerr (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) (M :: nil) (re_eval_check Ξ M A)) } }
+      | right _ => rerr (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) None (M :: nil) (re_eval_check Ξ M A)) } }
   | ch, L, Θ, K, D, B, Ξ, cc_eval M None, H
       with @type_infer_at (gc_mk (gds_restrict D Θ) Ξ) (fctx_cmd B (gds_restrict D Θ) Ξ) (gs_tele Ξ) (pre_ctx H) M (user_exp_all M) => {
     | inleft (exist _ A HA) => rok (exist _ _ (eval_infer_ok A HA), eval_log _ _ (fctx_cmd B _ _) (pre_gctx H) M A HA)
-    | inright _ => rerr (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) (M :: nil) (re_eval_infer Ξ M)) }
+    | inright _ => rerr (mod_error (pre_gctx H) (ind_target (gds_restrict D Θ) Ξ) None (M :: nil) (re_eval_infer Ξ M)) }
   | ch, L, Θ, K, D, B, Ξ, cc_builtin k p, H with builtin_step ch Θ K D B Ξ k p H => {
     | rerr e => rerr e
     | rok (exist _ B' Hp) => rok (cmd_ok Hp, log_nil) }

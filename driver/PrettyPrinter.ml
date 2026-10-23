@@ -1294,6 +1294,22 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_re_access_no_type (_, ox, delta, m, y) ->
      fprintf f "@[<hov 2>Error: %s is selected from@ %a,@ whose type cannot be inferred@]"
        y (format_exp_named ox delta) m
+  (* A record type applied to a value where a term stands: what it is, and
+     what to write instead. *)
+  | Coq_re_record_value_term (_, ox, delta, m, n) ->
+     let head = McttExtracted.Group.app_head m and args = McttExtracted.Group.app_args m in
+     let ty = McttExtracted.Syntax.apps_exp head (List.filteri (fun i _ -> i < n) args) in
+     let v = List.nth args n in
+     fprintf f "@[<hov 2>Error: %a@ is the module of the record value@ %a;@ write@ (%a).f@ for a field,@ or@ %a@ for the type@]"
+       (format_exp_named ox delta) m (format_exp_named ox delta) v (format_exp_named ox delta) m
+       (format_exp_named ox delta) ty
+  | Coq_re_record_fields_order (q, xs, y, x) ->
+     fprintf f "@[<hov 2>Error: fields of %a must be given in order:@ %s;@ got %s before %s@]"
+       pp_u (string_of_qpath q.q_unit q.q_chain) (String.concat ", " xs) y x
+  | Coq_re_record_field_unknown (q, y) ->
+     fprintf f "@[<hov 2>Error: %s is not a field of record %a@]" y pp_u (string_of_qpath q.q_unit q.q_chain)
+  | Coq_re_record_field_missing (q, x) ->
+     fprintf f "@[<hov 2>Error: field %s of record %a is missing@]" x pp_u (string_of_qpath q.q_unit q.q_chain)
   | Coq_re_record_member (q, y) ->
      fprintf f "@[<hov 2>Error: %s is not a member of record %a: neither a field nor a member of its with-area@]"
        y pp_u (string_of_qpath q.q_unit q.q_chain)
