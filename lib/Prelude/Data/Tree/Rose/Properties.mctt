@@ -54,6 +54,17 @@ theorem mapForestList : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (ts : F) →
     end
 end
 
+(* The same equation by reflexivity, on any forest [ts], a variable here:
+   an eliminator at the view [List (Rose A)] IS the eliminator of [List],
+   each element's induction hypothesis the eliminator of [Rose] applied to
+   it.  So [mapForest] is [List]'s [map] by [map], definitionally, and no
+   induction is needed. *)
+theorem sameMap : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (ts : F) →
+    Id (Forest B) (Op.mapForest B f ts)
+      (LO.map u T (Rose u B) (Op.map B f) ts) ≔
+  λ (B : Type@{u}) (f : ∀ (x : A) → B) (ts : F) → idRefl (Forest B) (Op.mapForest B f ts)
+end
+
 abstract mutual def (B : Type@{u}) (f : ∀ (x : A) → B)
   sizeMap (t : T) :
       Eq (RO.size u B (Op.map B f t)) (Op.size t) ≔
