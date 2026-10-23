@@ -5,7 +5,7 @@ From Mctt.Algorithmic.Typing Require Export Functional.
 From Mctt.Algorithmic.Subtyping Require Export Lemmas.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import Consequences.Rules.
-From Mctt.Core.Semantic Require Import Consequences.
+From Mctt.Core.Consequences Require Import Consistency.
 From Mctt.Core.Syntactic Require Import CoreInversions Corollaries Fresh.
 From Mctt.Core.Syntactic.Levels Require Import LevelEq.
 From Mctt.Core.Syntactic.Inductives Require Import IndCong IndConv.

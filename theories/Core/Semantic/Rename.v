@@ -6,7 +6,7 @@
     the weakening [↑] — provided the value only mentions levels below [s]
     ([read_shift]).  This is the step "readback at [|Γ| + 1] is the weakening
     of readback at [|Γ|]" of the semantic proof that NbE commutes with
-    weakening ([Core.NbEWeakening]).
+    weakening ([Core.Consequences.NormalFormWeakening]).
 
     The two readbacks do not run in lockstep on the *same* value: under a
     binder, readback at [s] applies the closure to the fresh level [s], and

@@ -160,7 +160,7 @@ files:
 | --- | --- | --- |
 | `Core/Syntactic/NfRename.v` | 243 | `nf_wk φ` (the renaming of normal forms); `ne_cmp_wk`; `lvl_canon_wk`; freshness and injectivity of `nf_wk` |
 | `Core/Semantic/Rename.v` | 522 | `drn f` (a renaming of levels on values); `eval_rn`, `read_rn`, `read_shift` |
-| `Core/NbEWeakening.v` | 137 | `nbe_wk`, `nbe_wk_fresh_sem`, `exp_eq_strengthen_sem` |
+| `Core/Consequences/NormalFormWeakening.v` | 137 | `nbe_wk`, `nbe_wk_fresh_sem`, `exp_eq_strengthen_sem` |
 
 **The theorem.** For a term `M` of `Γ`, the normal form of `M[↑]ʷ` in
 `Γ ▹ A` is the weakening of the normal form of `M` in `Γ`:

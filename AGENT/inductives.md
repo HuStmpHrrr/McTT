@@ -207,7 +207,7 @@ judgment, outside the mutual block; NbE builds no syntax.
   global state is equivalent to the checker's, so the normal forms agree
   (`nbe_ty_ext`, `Core/Semantic/GlobalExt.v`).
 
-`rc_ind_con_types` (`Core/IndCommand.v`) states that after a run of a group
+`rc_ind_con_types` (`Core/Consequences/FiledConstructorTypes.v`) states that after a run of a group
 each constructor of each declared member `j` is filed (`filed_con_ty`) at a
 type `≈` at `⋅` to the user's (`user_con_ty`, every `Self_i := a_ind p i` at
 the frames' parameters, `sb_selfs`): an argument classified is filed as its
@@ -477,7 +477,7 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
     `ind_lookup`, has `nat_shape`, is in `Type@0`), and so are the records
     of the filed units (`bm_wf Θ Rb`), through added entries, closed module
     frames (`ind_lookup_close`), filing, merging and record merges.
-  - `canonical_form_of_bound_nat_prog` (`Core/Semantic/Consequences.v`):
+  - `canonical_form_of_bound_nat_prog` (`Core/Consequences/Consistency.v`):
     with `bt_nat B = Some p` at the end of a program, a closed term of
     `a_ind p` normalizes to `nat_chain p z s n`.  Below it,
     `canonical_form_of_ind_nat(_gctx)`, `…_stuck(_gctx)` and

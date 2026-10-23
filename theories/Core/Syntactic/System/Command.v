@@ -4082,7 +4082,7 @@ End Runs.
 
 (** ** Lookups of a Run of a Declaration
 
-    What [IndCommand.rc_ind_con_types] reads off a run: the filed
+    What [FiledConstructorTypes.rc_ind_con_types] reads off a run: the filed
     declaration and its constructors. *)
 
 Lemma Forall2_in_left : forall {X Y} (Rl : X -> Y -> Prop) l1 l2 a,

@@ -59,7 +59,7 @@ def node_of_path(path: str) -> str:
         result = under_subgraph(f"Core/{node_label}", f""""{module_name}"[label="{node_label}",tooltip="{module_name}",color={color},fillcolor=white];""")
     elif module_name == "Mctt.LibTactics":
         result = f"""{{ graph[cluster=false,rank=min]; "{module_name}"[label="{node_label}",tooltip="{module_name}",fillcolor={color}]; }}"""
-    elif module_name == "Mctt.Core.Semantic.Consequences":
+    elif module_name == "Mctt.Core.Consequences.Consistency":
         result = f"""{{ cluster=false; rank=max; "{module_name}"[label="{node_label}",tooltip="{module_name}",fillcolor={color}]; }}"""
     else:
         result = f""""{module_name}"[label="{node_label}",tooltip="{module_name}",fillcolor={color}];"""

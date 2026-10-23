@@ -4,7 +4,7 @@ From Mctt.Core Require Import Base Soundness.
 From Mctt.Core.Syntactic Require Import CoreInversions.
 From Mctt.Core.Syntactic.Levels Require Import LevelEq.
 From Mctt.Core.Syntactic Require Import SystemOpt.
-From Mctt.Core.Semantic Require Import Levels Consequences.
+From Mctt.Core Require Import Semantic.Levels Consequences.Consistency.
 From Mctt.Core.Completeness.Consequences Require Import Rules.
 Import Syntax_Notations Fixed_Notations.
 

@@ -66,7 +66,7 @@
 ./Core/Completeness/IotaCases.v
 ./Core/Completeness/UniverseCases.v
 ./Core/Completeness/VariableCases.v
-./Core/Semantic/Consequences.v
+./Core/Consequences/Consistency.v
 ./Core/Semantic/MemberWf.v
 ./Core/Semantic/Domain.v
 ./Core/Semantic/Evaluation.v
@@ -105,8 +105,8 @@
 ./Core/Semantic/Kinds/KindsEval.v
 ./Core/Semantic/Kinds/KindsTyping.v
 ./Core/Soundness.v
-./Core/IndCommand.v
-./Core/NbEWeakening.v
+./Core/Consequences/FiledConstructorTypes.v
+./Core/Consequences/NormalFormWeakening.v
 ./Core/Soundness/ContextCases.v
 ./Core/Soundness/FunctionCases.v
 ./Core/Soundness/Inductives/Args.v

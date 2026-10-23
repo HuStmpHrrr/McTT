@@ -4,7 +4,7 @@ From Equations Require Import Equations.
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing Strengthening.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Semantic Require Import Consequences Realizability.
+From Mctt.Core Require Import Consequences.Consistency Semantic.Realizability.
 From Mctt.Core.Syntactic.System.Records Require Import Syntax Typing.
 From Mctt.Extraction Require Import Lookup NbE PseudoMonadic TypeCheckBase IndCheck.
 Import Domain_Notations Wk_Notations Fixed_Notations.
