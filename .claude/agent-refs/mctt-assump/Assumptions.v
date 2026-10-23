@@ -1,7 +1,7 @@
 From Mctt Require Import Entrypoint.
 From Mctt Require Import Core.Completeness Core.Soundness Core.Semantic.Consequences Extraction.Command Frontend.ElabCorrect Algorithmic.Typing.Lemmas Algorithmic.Strengthening Core.Semantic.Avoid Core.NbEWeakening.
 From Mctt Require Import Reference.Refinement Extraction.Simulation Extraction.GlobalCheck.
-From Mctt Require Import Core.Syntactic.Presup Core.Syntactic.System.Global.Presup Core.Syntactic.System.Inductives.Rec Core.IndCommand.
+From Mctt Require Import Core.Syntactic.Presup Core.Syntactic.System.Global.Presup Core.IndCommand.
 Print Assumptions Mctt.Core.Completeness.completeness.
 Print Assumptions Mctt.Core.Completeness.FundamentalTheorem.completeness_fundamental.
 Print Assumptions Mctt.Core.Soundness.soundness.
@@ -92,7 +92,6 @@ Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind.
 Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_gctx.
 Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_nat.
 Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_ind_nat_stuck.
-Print Assumptions Mctt.Core.Syntactic.System.Inductives.Rec.rc_ind_runs.
 Print Assumptions Mctt.Core.IndCommand.rc_ind_con_types.
 (* Presupposition: local, and of the global context. *)
 Print Assumptions Mctt.Core.Syntactic.System.Lemmas.presup_exp.
