@@ -33,15 +33,15 @@
 </div>
 
 <div class="doc">
-<a id="lab765"></a><h1 class="section">Freshness and Un-weakening</h1>
+<a id="lab764"></a><h1 class="section">Freshness and Un-weakening</h1>
 
 
 <div class="paragraph"> </div>
 
-    A variable that does not occur can be dropped.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#exp_fresh"><span class="id" title="definition">exp_fresh</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> says that
-    <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> does not occur free in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#unwk"><span class="id" title="definition">unwk</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> is the renaming that drops
-    index <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>; together they invert <span class="inlinecode"><span class="id" title="var">q</span>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">↑</span>, the weakening that inserts a
-    variable at position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>:
+    A variable that does not occur can be dropped.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#exp_fresh"><span class="id" title="definition">exp_fresh</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> says that
+    <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> does not occur free in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#unwk"><span class="id" title="definition">unwk</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> is the renaming that drops
+    index <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>; together they invert <span class="inlinecode"><span class="id" title="var">q</span>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">↑</span>, the weakening that inserts a
+    variable at position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>:
 
 <div class="paragraph"> </div>
 
@@ -54,7 +54,7 @@
       the dropped variable did not occur;
 
 </li>
-<li> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#exp_wk_fresh"><span class="id" title="lemma">exp_wk_fresh</span></a></span>: what <span class="inlinecode"><span class="id" title="var">q</span>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">↑</span> produces never mentions <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>.
+<li> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#exp_wk_fresh"><span class="id" title="lemma">exp_wk_fresh</span></a></span>: what <span class="inlinecode"><span class="id" title="var">q</span>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">↑</span> produces never mentions <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>.
 
 </li>
 </ul>
@@ -82,14 +82,14 @@
 </div>
 
 <div class="doc">
-<a id="lab766"></a><h2 class="section">Un-weakening</h2>
+<a id="lab765"></a><h2 class="section">Un-weakening</h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#unwk"><span class="id" title="definition">unwk</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> fixes the indices below <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>, sends <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> to itself (any value would
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#unwk"><span class="id" title="definition">unwk</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> fixes the indices below <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>, sends <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> to itself (any value would
     do: a fresh term never looks at it) and decrements those above.  It is the
-    renaming <span class="inlinecode"><span class="id" title="var">q</span>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#pred"><span class="id" title="abbreviation">pred</span></a></span>, so it acts on terms by <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_wk"><span class="id" title="definition">exp_wk</span></a></span> and needs no new
+    renaming <span class="inlinecode"><span class="id" title="var">q</span>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#pred"><span class="id" title="abbreviation">pred</span></a></span>, so it acts on terms by <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_wk"><span class="id" title="definition">exp_wk</span></a></span> and needs no new
     recursion. 
 </div>
 <div class="code">
@@ -99,13 +99,13 @@
 </div>
 
 <div class="doc">
-<a id="lab767"></a><h2 class="section"><span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> Does Not Occur</h2>
+<a id="lab766"></a><h2 class="section"><span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> Does Not Occur</h2>
 
 
 <div class="paragraph"> </div>
 
     One clause per syntactic sort, as for <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_wk"><span class="id" title="definition">exp_wk</span></a></span>: under <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> binders the
-    index to avoid is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>.  A telescope shifts by its own length, and a
+    index to avoid is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>.  A telescope shifts by its own length, and a
     module body by its binders, exactly as the weakenings do. 
 </div>
 <div class="code">
@@ -202,13 +202,13 @@ The blocks clause of <span class="inlinecode"><a class="idref" href="Mctt.Core.S
 </div>
 
 <div class="doc">
-<a id="lab768"></a><h2 class="section">Two Classes of Renaming</h2>
+<a id="lab767"></a><h2 class="section">Two Classes of Renaming</h2>
 
 
 <div class="paragraph"> </div>
 
-    A renaming that is the identity away from <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> fixes every term in which
-    <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> does not occur; a renaming that never hits <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> produces only such
+    A renaming that is the identity away from <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> fixes every term in which
+    <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> does not occur; a renaming that never hits <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> produces only such
     terms.  Both classes are closed under <span class="inlinecode"><span class="id" title="var">q</span></span> and so under <span class="inlinecode"><span class="id" title="var">q</span>^<a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>, at the index
     the binders shift it to. 
 </div>
@@ -314,8 +314,8 @@ The blocks of an eliminator, and the telescope of a unit: their own
 </div>
 
 <div class="doc">
-A renaming that sends only <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.k'"><span class="id" title="variable">k'</span></a></span> keeps <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.k'"><span class="id" title="variable">k'</span></a></span> out of what kept
-    <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> out. 
+A renaming that sends only <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.k'"><span class="id" title="variable">k'</span></a></span> keeps <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.k'"><span class="id" title="variable">k'</span></a></span> out of what kept
+    <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> out. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="wk_reflects" class="idref" href="#wk_reflects"><span class="id" title="definition">wk_reflects</span></a> (<a id="k:125" class="idref" href="#k:125"><span class="id" title="binder">k</span></a> <a id="k':126" class="idref" href="#k':126"><span class="id" title="binder">k'</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="c90c9f623728ece6aecc4504b9d63116" class="idref" href="#c90c9f623728ece6aecc4504b9d63116"><span class="id" title="binder">φ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk"><span class="id" title="definition">wk</span></a>) : <span class="id" title="keyword">Prop</span> := <span class="id" title="keyword">forall</span> <a id="x:128" class="idref" href="#x:128"><span class="id" title="binder">x</span></a>, <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#c90c9f623728ece6aecc4504b9d63116"><span class="id" title="variable">φ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#x:128"><span class="id" title="variable">x</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#k':126"><span class="id" title="variable">k'</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#x:128"><span class="id" title="variable">x</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#k:125"><span class="id" title="variable">k</span></a>.<br/>
@@ -373,12 +373,12 @@ A renaming that sends only <span class="inlinecode"><a class="idref" href="Mctt.
 </div>
 
 <div class="doc">
-<a id="lab769"></a><h2 class="section"><span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#unwk"><span class="id" title="definition">unwk</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> Inverts <span class="inlinecode"><span class="id" title="var">q</span>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">↑</span></h2>
+<a id="lab768"></a><h2 class="section"><span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#unwk"><span class="id" title="definition">unwk</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> Inverts <span class="inlinecode"><span class="id" title="var">q</span>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">↑</span></h2>
 
 
 <div class="paragraph"> </div>
 
-    One way round the composite is the identity away from <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>, the other is
+    One way round the composite is the identity away from <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>, the other is
     the identity outright. 
 </div>
 <div class="code">
@@ -427,7 +427,7 @@ A renaming that sends only <span class="inlinecode"><a class="idref" href="Mctt.
 </div>
 
 <div class="doc">
-<a id="lab770"></a><h2 class="section">Normal and Neutral Forms</h2>
+<a id="lab769"></a><h2 class="section">Normal and Neutral Forms</h2>
 
 
 <div class="paragraph"> </div>
@@ -555,7 +555,7 @@ Freshness of an eliminator: of its uniform parameters, its blocks and
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#nf_fresh"><span class="id" title="definition">nf_fresh</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span>: the variable <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> does not occur in the normal form
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#nf_fresh"><span class="id" title="definition">nf_fresh</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span>: the variable <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> does not occur in the normal form
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span>; mutually, for its other sorts. 
 </div>
 <div class="code">
@@ -600,8 +600,8 @@ Freshness of an eliminator: of its uniform parameters, its blocks and
 </div>
 
 <div class="doc">
-The normal form <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> with the variable <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> removed: the variables above
-    it moved down by one; the inverse of the weakening at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> when <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> is
+The normal form <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span> with the variable <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> removed: the variables above
+    it moved down by one; the inverse of the weakening at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> when <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> is
     fresh in <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#W"><span class="id" title="abbreviation">W</span></a></span>. 
 </div>
 <div class="code">
@@ -927,9 +927,9 @@ Freshness of a normal form is decidable: it is a conjunction of
 </div>
 
 <div class="doc">
-A level below a level fresh at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> mentions <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> only in atoms that the
+A level below a level fresh at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> mentions <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> only in atoms that the
     larger one's constant absorbs: an atom of the smaller one that mentions
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> is not an atom of the larger, and the assignment that makes it alone
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> is not an atom of the larger, and the assignment that makes it alone
     large, at <span class="inlinecode">ω·<span class="id" title="var">s</span></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> for its sort <span class="inlinecode"><span class="id" title="var">s</span></span>, is below the larger level only if
     that level's constant is at least <span class="inlinecode">ω·(<span class="id" title="var">s</span>+1)</span>. 
 </div>
@@ -970,14 +970,14 @@ A level below a level fresh at <span class="inlinecode"><a class="idref" href="M
 </div>
 
 <div class="doc">
-<a id="lab771"></a><h2 class="section">The Bound of a Level Under a Binder</h2>
+<a id="lab770"></a><h2 class="section">The Bound of a Level Under a Binder</h2>
 
 
 <div class="paragraph"> </div>
 
     The least level of the context that is above a level <span class="inlinecode"><span class="id" title="var">l</span></span> of the context
     extended by a variable, for every value of the variable: an atom fresh
-    at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> stays, un-weakened, and an atom that mentions <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>, of sort <span class="inlinecode"><span class="id" title="var">s</span></span>,
+    at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> stays, un-weakened, and an atom that mentions <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>, of sort <span class="inlinecode"><span class="id" title="var">s</span></span>,
     ranges over the ordinals below <span class="inlinecode">ω·(<span class="id" title="var">s</span>+1)</span>, which is the bound it
     contributes (<span class="inlinecode"><span class="id" title="var">lvl_bound_le</span></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#lvl_le_bound"><span class="id" title="lemma">lvl_le_bound</span></a></span>). 
 </div>
@@ -1024,7 +1024,7 @@ The bound, weakened back, is above the level: the fresh atoms are the
 </div>
 
 <div class="doc">
-The bound is below every level fresh at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> above the level, un-weakened:
+The bound is below every level fresh at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> above the level, un-weakened:
     so it is the least such level of the context. 
 </div>
 <div class="code">
@@ -1100,7 +1100,7 @@ The fresh atoms are fresh and are atoms of the level; the bound of the
 </div>
 
 <div class="doc">
-The bound, weakened back, is below every level fresh at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> above the
+The bound, weakened back, is below every level fresh at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> above the
     level. 
 </div>
 <div class="code">
@@ -1120,7 +1120,7 @@ The bound, weakened back, is below every level fresh at <span class="inlinecode"
 </div>
 
 <div class="doc">
-<a id="lab772"></a><h2 class="section">The Universe of a <span class="inlinecode"><span class="id" title="var">Π</span></span></h2>
+<a id="lab771"></a><h2 class="section">The Universe of a <span class="inlinecode"><span class="id" title="var">Π</span></span></h2>
 
 
 <div class="paragraph"> </div>

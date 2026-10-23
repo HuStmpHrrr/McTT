@@ -56,7 +56,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1200"></a><h1 class="section">The Checker</h1>
+<a id="lab1195"></a><h1 class="section">The Checker</h1>
 
 
 <div class="paragraph"> </div>
@@ -67,7 +67,7 @@
 <div class="paragraph"> </div>
 
 <ul class="doclist">
-<li> An application spine <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">$</span> <span class="inlinecode"><span class="id" title="var">N1</span></span> <span class="inlinecode">$</span> <span class="inlinecode">⋯</span> <span class="inlinecode">$</span> <span class="inlinecode"><span class="id" title="var">Nk</span></span> is checked against the value of
+<li> An application spine <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">$</span> <span class="inlinecode"><span class="id" title="var">N1</span></span> <span class="inlinecode">$</span> <span class="inlinecode">⋯</span> <span class="inlinecode">$</span> <span class="inlinecode"><span class="id" title="var">Nk</span></span> is checked against the value of
       the type of its head (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypeCheck.html#type_infer_val_in"><span class="id" title="definition">type_infer_val_in</span></a></span>): each argument instantiates
       the codomain closure of the current <span class="inlinecode"><span class="id" title="var">Π</span></span> value with the argument's value
       (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypeCheck.html#type_infer_app_in"><span class="id" title="definition">type_infer_app_in</span></a></span>), where <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Definitions.html#ati_app"><span class="id" title="constructor">ati_app</span></a></span> substitutes the argument into the
@@ -89,7 +89,7 @@
     both checkers compute the same. 
 <div class="paragraph"> </div>
 
-<a id="lab1201"></a><h2 class="section">The Type of an Application as a Value</h2>
+<a id="lab1196"></a><h2 class="section">The Type of an Application as a Value</h2>
 
 
 <div class="paragraph"> </div>
@@ -467,7 +467,7 @@ Whether a term is an application, and a value a <span class="inlinecode"><span c
 </div>
 
 <div class="doc">
-<a id="lab1202"></a><h2 class="section">Obligations of the Refined Cases</h2>
+<a id="lab1197"></a><h2 class="section">Obligations of the Refined Cases</h2>
 
 <div class="paragraph"> </div>
 
@@ -719,7 +719,7 @@ A member infers the normal form of the type that the description of
 &nbsp;&nbsp;</div>
 
 <div class="doc">
-The type of an application <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">$</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span>, as a value. 
+The type of an application <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">$</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span>, as a value. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">with</span> <a id="type_infer_app_in" class="idref" href="#type_infer_app_in"><span class="id" title="definition">type_infer_app_in</span></a> <a id="G:260" class="idref" href="#G:260"><span class="id" title="binder">G</span></a> (<a id="HG:261" class="idref" href="#HG:261"><span class="id" title="binder">HG</span></a> : <a class="idref" href="Mctt.Core.Semantic.Fixed.html#f478f7ff183196729a187ddd7c2a86f5"><span class="id" title="notation">⊢</span></a> <a class="idref" href="Mctt.Extraction.TypeCheck.html#G:260"><span class="id" title="variable">G</span></a>) (<a id="P:262" class="idref" href="#P:262"><span class="id" title="binder">P</span></a> : <a class="idref" href="Mctt.Extraction.TypeCheckBase.html#tenv"><span class="id" title="definition">tenv</span></a> <a class="idref" href="Mctt.Extraction.TypeCheck.html#G:260"><span class="id" title="variable">G</span></a>) <a id="M:263" class="idref" href="#M:263"><span class="id" title="binder">M</span></a> <a id="N:264" class="idref" href="#N:264"><span class="id" title="binder">N</span></a> (<a id="H:265" class="idref" href="#H:265"><span class="id" title="binder">H</span></a> : <a class="idref" href="Mctt.Extraction.TypeCheckBase.html#app_order"><span class="id" title="inductive">app_order</span></a> <a class="idref" href="Mctt.Extraction.TypeCheck.html#M:263"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Extraction.TypeCheck.html#N:264"><span class="id" title="variable">N</span></a>) :<br/>

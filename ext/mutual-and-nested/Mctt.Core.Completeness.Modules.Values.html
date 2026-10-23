@@ -38,12 +38,12 @@
 
 <div class="paragraph"> </div>
 
-    A term member of a module expression <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#K"><span class="id" title="abbreviation">K</span></a></span> is valid at a type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> when, at
-    every environment of the context, every module value related to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#K"><span class="id" title="abbreviation">K</span></a></span>'s
-    selects it, related at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#K"><span class="id" title="abbreviation">K</span></a></span>'s own (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#valid_mem"><span class="id" title="record">valid_mem</span></a></span>); and a module member,
+    A term member of a module expression <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#OFresh.K"><span class="id" title="variable">K</span></a></span> is valid at a type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> when, at
+    every environment of the context, every module value related to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#OFresh.K"><span class="id" title="variable">K</span></a></span>'s
+    selects it, related at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#OFresh.K"><span class="id" title="variable">K</span></a></span>'s own (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#valid_mem"><span class="id" title="record">valid_mem</span></a></span>); and a module member,
     when the submodule every related value selects is related to a given
     module expression's value (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#valid_sel"><span class="id" title="definition">valid_sel</span></a></span>).  So the members of a module
-    expression related to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#K"><span class="id" title="abbreviation">K</span></a></span> are related to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#K"><span class="id" title="abbreviation">K</span></a></span>'s (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#rel_mem_of_valid_mem"><span class="id" title="lemma">rel_mem_of_valid_mem</span></a></span>,
+    expression related to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#OFresh.K"><span class="id" title="variable">K</span></a></span> are related to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#OFresh.K"><span class="id" title="variable">K</span></a></span>'s (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#rel_mem_of_valid_mem"><span class="id" title="lemma">rel_mem_of_valid_mem</span></a></span>,
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#rel_sel_of_valid_sel"><span class="id" title="lemma">rel_sel_of_valid_sel</span></a></span>).  Selection from a value lacking a parameter commutes
     with application (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.Values.html#sel_app_comm"><span class="id" title="lemma">sel_app_comm</span></a></span>), and a member, which is evaluated by
     the root of its module expression and the arguments after it, is the
@@ -311,8 +311,8 @@ The four values of a valid module expression are related to the one at
 
 <div class="paragraph"> </div>
 
- The member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> of the module value <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>, related at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsFound.html#Clusters.R"><span class="id" title="variable">R</span></a></span> to that of any
-    value related to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>. 
+ The member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> of the module value <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>, related at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsFound.html#Clusters.R"><span class="id" title="variable">R</span></a></span> to that of any
+    value related to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>. 
 </div>
 <div class="code">
 #[<span class="id" title="var">warnings</span>="-cannot-define-projection"]<br/>
@@ -331,7 +331,7 @@ The four values of a valid module expression are related to the one at
 </div>
 
 <div class="doc">
-The δ-reduct <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>, at <span class="inlinecode">ρ</span>: its value is related
+The δ-reduct <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>, at <span class="inlinecode">ρ</span>: its value is related
     at <span class="inlinecode"><span class="id" title="var">RA</span></span> to the member's. 
 </div>
 <div class="code">
@@ -347,7 +347,7 @@ The δ-reduct <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntacti
 </div>
 
 <div class="doc">
-The member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#K"><span class="id" title="abbreviation">K</span></a></span> at <span class="inlinecode">ρ</span>, of type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> and δ-reduct <span class="inlinecode"><span class="id" title="var">om</span></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#K"><span class="id" title="abbreviation">K</span></a></span>'s
+The member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#OFresh.K"><span class="id" title="variable">K</span></a></span> at <span class="inlinecode">ρ</span>, of type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> and δ-reduct <span class="inlinecode"><span class="id" title="var">om</span></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#OFresh.K"><span class="id" title="variable">K</span></a></span>'s
     value has the member at the value of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, and the reduct, if any, is
     related to it. 
 </div>
@@ -374,8 +374,8 @@ The member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.S
 </div>
 
 <div class="doc">
-The submodule <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.y"><span class="id" title="variable">y</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#K"><span class="id" title="abbreviation">K</span></a></span> at every environment, from any value related
-    to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#K"><span class="id" title="abbreviation">K</span></a></span>'s, related to the value of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#ModInduction.V"><span class="id" title="variable">V</span></a></span>. 
+The submodule <span class="inlinecode"><span class="id" title="var">y</span></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#OFresh.K"><span class="id" title="variable">K</span></a></span> at every environment, from any value related
+    to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#OFresh.K"><span class="id" title="variable">K</span></a></span>'s, related to the value of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#ModInduction.V"><span class="id" title="variable">V</span></a></span>. 
 </div>
 <div class="code">
 #[<span class="id" title="var">warnings</span>="-cannot-define-projection"]<br/>

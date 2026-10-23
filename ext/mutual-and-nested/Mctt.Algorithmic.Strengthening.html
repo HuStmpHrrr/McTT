@@ -43,7 +43,7 @@
     already terms of the shorter one, the extra variable is irrelevant to
     them.  The induction that does this (on normal forms, in the second half of
     this file) descends under binders, so the extra variable sits at an
-    arbitrary position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>, between a telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> of assumptions and the
+    arbitrary position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>, between a telescope <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> of assumptions and the
     shorter context <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span>:
 
 <div class="paragraph"> </div>
@@ -52,7 +52,7 @@
 
 <div class="paragraph"> </div>
 
-    where <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="abbreviation">length</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span>.  Nothing here inducts on a *derivation*: a derivation
+    where <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="abbreviation">length</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span>.  Nothing here inducts on a *derivation*: a derivation
     in the long context may pass through terms that do mention the variable
     (the <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> of <span class="inlinecode"><span class="id" title="library">Core.Syntactic.Fresh</span></span>'s companion experiment), and those can
     never be strengthened.  Instead every equation whose two ends are typed in
@@ -88,7 +88,7 @@
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><span class="id" title="var">q</span>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">↑</span> keeps the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> innermost variables and shifts the rest by one: it is
+    <span class="inlinecode"><span class="id" title="var">q</span>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">↑</span> keeps the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> innermost variables and shifts the rest by one: it is
     the weakening from the long context to the short one.  It is monotone, so
     it acts on environments by <span class="inlinecode">⟪<span class="id" title="var">_</span>⟫</span>. 
 </div>
@@ -141,7 +141,7 @@ The result cannot be empty: it has the entry <span class="inlinecode"><a class="
 </div>
 
 <div class="doc">
-Inserting an entry at position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>, and dropping it again. 
+Inserting an entry at position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>, and dropping it again. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="env_ins" class="idref" href="#env_ins"><span class="id" title="definition">env_ins</span></a> (<a id="k:8" class="idref" href="#k:8"><span class="id" title="binder">k</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="e:9" class="idref" href="#e:9"><span class="id" title="binder">e</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#dentry"><span class="id" title="inductive">dentry</span></a>) (<a id="08a2c986d0dd6a1e2a07939a13a16080" class="idref" href="#08a2c986d0dd6a1e2a07939a13a16080"><span class="id" title="binder">ρ</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a>) : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a> :=<br/>
@@ -171,13 +171,13 @@ Inserting an entry at position <span class="inlinecode"><a class="idref" href="M
 </div>
 
 <div class="doc">
-<a id="lab3"></a><h2 class="section">Semantic Weakening at Position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span></h2>
+<a id="lab3"></a><h2 class="section">Semantic Weakening at Position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span></h2>
 
 
 <div class="paragraph"> </div>
 
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Substitution.html#rel_wk_under_ctx_q"><span class="id" title="lemma">rel_wk_under_ctx_q</span></a></span> lifts a semantic weakening over one assumption; the
-    telescope is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> of those.  The entry types come from the well-formedness
+    telescope is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of those.  The entry types come from the well-formedness
     of the short context. 
 </div>
 <div class="code">
@@ -226,7 +226,7 @@ The head of an assumption telescope is an assumption, so the step is
     under the drop is exactly that.  It cannot be the long context's own
     initial environment: that gives every variable of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> a level one too big.
     So the initial environment of the short context is used, with an entry for
-    the dropped variable spliced in at position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>.  Its level is irrelevant —
+    the dropped variable spliced in at position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>.  Its level is irrelevant —
     a neutral is related to itself at every level (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#var_per_bot"><span class="id" title="lemma">var_per_bot</span></a></span>) — and so is
     its type annotation, since the model relates two neutrals by their neutral
     parts alone.  The length of an initial environment is the length of its context. 
@@ -289,7 +289,7 @@ The first two links of the chain are the two readings of <span class="inlinecode
     under the drop is exactly that.  It cannot be the long context's own
     initial environment: that would give every variable of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> a level one too
     big.  So the short initial environment is used, with an entry for the
-    dropped variable spliced in at position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>.  The level of that entry is
+    dropped variable spliced in at position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>.  The level of that entry is
     irrelevant — a neutral is related to itself at every level
     (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#var_per_bot"><span class="id" title="lemma">var_per_bot</span></a></span>) — and the entries of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> keep the type annotations they
     have in the short environment, which <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Strengthening.html#typ_along_qn"><span class="id" title="lemma">typ_along_qn</span></a></span> shows are related to
@@ -459,7 +459,7 @@ The long equation at the identity.
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> along the weakening: each links its long value to its short
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> along the weakening: each links its long value to its short
       one. 
 </div>
 <div class="code">
@@ -479,8 +479,8 @@ The long equation at the identity.
 </div>
 
 <div class="doc">
-The chains, after the values have been identified: <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a>[φ]</span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a>[φ]</span> have
-      one value each in <span class="inlinecode">ρ</span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> one each in its image, and the links
+The chains, after the values have been identified: <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a>[φ]</span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[φ]</span> have
+      one value each in <span class="inlinecode">ρ</span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> one each in its image, and the links
       are between those. 
 </div>
 <div class="code">
@@ -493,7 +493,7 @@ The chains, after the values have been identified: <span class="inlinecode"><a c
 </div>
 
 <div class="doc">
-<span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a>⟧ρ<span class="id" title="var">s</span></span> <span class="inlinecode">≈</span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a>[φ]⟧ρ</span> <span class="inlinecode">≈</span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>[φ]⟧ρ</span> <span class="inlinecode">≈</span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>⟧ρ<span class="id" title="var">s</span></span>. 
+<span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧ρ<span class="id" title="var">s</span></span> <span class="inlinecode">≈</span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[φ]⟧ρ</span> <span class="inlinecode">≈</span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>[φ]⟧ρ</span> <span class="inlinecode">≈</span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>⟧ρ<span class="id" title="var">s</span></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
@@ -521,7 +521,7 @@ Read back at the short length: the values are already those of the short
 </div>
 
 <div class="doc">
-The syntactic weakening at position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>, the companion of the semantic one:
+The syntactic weakening at position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>, the companion of the semantic one:
     a term of the short context is a term of the long one. 
 </div>
 <div class="code">
@@ -1091,7 +1091,8 @@ A path names a closed module: it is a module expression in every
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">induction</span> <span class="id" title="var">H</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">fp</span> | <span class="id" title="var">x</span> | <span class="id" title="var">H</span> <span class="id" title="var">IH</span> <span class="id" title="var">y</span> | <span class="id" title="var">H</span> <span class="id" title="var">IH</span> <span class="id" title="var">N</span> | <span class="id" title="var">U</span>]; <span class="id" title="tactic">intros</span> * <span class="id" title="var">Hp</span> <span class="id" title="var">HH</span> <span class="id" title="var">HΓ'</span>; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hp</span>; <span class="id" title="tactic">try</span> <span class="id" title="tactic">discriminate</span>.<br/>
 &nbsp;&nbsp;- <span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Global.LookupSound.html#me_denotes"><span class="id" title="lemma">me_denotes</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HH</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">R</span> &amp; <span class="id" title="var">_</span> &amp; <span class="id" title="var">Hm</span> &amp; <span class="id" title="var">_</span>).<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">inversion</span> <span class="id" title="var">Hm</span>; <span class="id" title="tactic">subst</span>; <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_me_unit"><span class="id" title="constructor">wf_me_unit</span></a>; <span class="id" title="var">eassumption</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Global.Paths.html#mdenote_unit_inv"><span class="id" title="lemma">mdenote_unit_inv</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#ctx_wf_gctx"><span class="id" title="lemma">ctx_wf_gctx</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#presup_modexp_eq_ctx"><span class="id" title="lemma">presup_modexp_eq_ctx</span></a> <span class="id" title="var">HH</span>)) <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hm</span>) <span class="id" title="keyword">as</span> (<span class="id" title="var">T</span> &amp; <span class="id" title="var">Φ</span> &amp; <span class="id" title="var">Hu</span> &amp; <span class="id" title="var">_</span>).<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_me_unit"><span class="id" title="constructor">wf_me_unit</span></a>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">HΓ'</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">Hu</span> ].<br/>
 &nbsp;&nbsp;- <span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#mod_qname"><span class="id" title="definition">mod_qname</span></a> <span class="id" title="var">H</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">p0</span> |] <span class="id" title="var">eqn</span>:<span class="id" title="var">E</span>; [| <span class="id" title="tactic">discriminate</span> ].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#ctx_wf_gctx"><span class="id" title="lemma">ctx_wf_gctx</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΓ'</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">Hg</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Global.Presup.html#gctx_valid_syn"><span class="id" title="lemma">gctx_valid_syn</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hg</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">Hv</span>.<br/>
@@ -1385,14 +1386,14 @@ The parameters of a member's type former applied, typed at the
 <div class="paragraph"> </div>
 
     The type of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.m"><span class="id" title="variable">m</span></a></span> of the group at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>, at the uniform
-    parameters <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span>, is that of the declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> of the group at
+    parameters <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span>, is that of the declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the group at
     <span class="inlinecode"><span class="id" title="var">pc</span></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#im_ref"><span class="id" title="definition">im_ref</span></a></span>) at the member's uniform arguments (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#im_pre"><span class="id" title="definition">im_pre</span></a></span>) and its
     non-uniform parameters.  Parameters <span class="inlinecode"><span class="id" title="var">Rs</span></span> of that type former whose
     uniform ones are equal to the member's uniform arguments give the
     member's non-uniform parameters. 
 <div class="paragraph"> </div>
 
- What parameters <span class="inlinecode"><span class="id" title="var">Rs</span></span> of the type former of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> at <span class="inlinecode"><span class="id" title="var">pc</span></span> give the member
+ What parameters <span class="inlinecode"><span class="id" title="var">Rs</span></span> of the type former of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> at <span class="inlinecode"><span class="id" title="var">pc</span></span> give the member
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.m"><span class="id" title="variable">m</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.Mm"><span class="id" title="variable">Mm</span></a></span>, of the group <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span>, at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span>:
     non-uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.AtCon.Ns"><span class="id" title="variable">Ns</span></a></span> of the member, and the equality of the two
     types. 

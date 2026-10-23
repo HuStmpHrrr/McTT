@@ -332,7 +332,7 @@
   : Type@{ω·2}</pre></details>
 <div class="doc"><p>15. Inductive types. <code>inductive T (ps) : Type@n where | c (x : A) … end</code> declares a type and its constructors, and <code>T.c</code> reaches a constructor. <code>elim t at z -&gt; P | c x ⇒ … end</code> eliminates <code>t</code>; a recursive argument also gives an induction hypothesis, named after a comma.  A type with parameters, as <code>List A</code>, is eliminated with the scrutinee's binder typed, <code>elim l at (z : List A) -&gt; P | …</code>, since the eliminator reads the type's parameters off that type.</p>
 </div>
-<pre class="code"><span class="kw">inductive</span> <span class="mod bind" id="Shape">Shape</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="kw">where</span>
+<pre class="code"><span class="kw">inductive</span> <span id="Shape.Rec"><span id="Shape.Rec.rec_Shape"><span class="mod bind" id="Shape">Shape</span></span></span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="kw">where</span>
 <span class="sym">|</span> <span class="def bind" id="Shape.dot">dot</span>
 <span class="sym">|</span> <span class="def bind" id="Shape.line">line</span> <span class="sym">(</span><span class="var bind" id="l310">n</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span>
 <span class="sym">|</span> <span class="def bind" id="Shape.stack">stack</span> <span class="sym">(</span><span class="var bind" id="l312">s</span> <span class="sym">:</span> <a class="mod" href="#Shape">Shape</a><span class="sym">)</span>

@@ -39,7 +39,7 @@
 <div class="paragraph"> </div>
 
     Normalizing a weakened term in the extended context never mentions the
-    new variable: if <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a>[↑]</span> is normalized in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, its normal form is
+    new variable: if <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[↑]</span> is normalized in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, its normal form is
     fresh at <span class="inlinecode">#0</span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#nbe_wk_fresh"><span class="id" title="lemma">nbe_wk_fresh</span></a></span>).  Evaluation builds no variable, so a
     value can only mention a variable its environment holds; and readback
     introduces only variables above the ones in scope.
@@ -51,9 +51,9 @@
     alone: the environment of the extended context holds the new variable,
     at index <span class="inlinecode">0</span>, and so does every closure built in it.  What makes the
     value fresh is that the weakened term never *reads* that index.  So a
-    closure records one position <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#K"><span class="id" title="abbreviation">K</span></a></span> of its environment that may be bad,
+    closure records one position <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#OFresh.K"><span class="id" title="variable">K</span></a></span> of its environment that may be bad,
     together with the freshness of its body at that position, shifted by the
-    closure's binders.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#K"><span class="id" title="abbreviation">K</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a></span> is a closure whose environment avoids <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>
+    closure's binders.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#OFresh.K"><span class="id" title="variable">K</span></a></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a></span> is a closure whose environment avoids <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.v"><span class="id" title="variable">v</span></a></span>
     everywhere.
 
 <div class="paragraph"> </div>
@@ -169,7 +169,7 @@ The blocks of an eliminator: each motive fresh under the binders it
 &nbsp;&nbsp;</div>
 
 <div class="doc">
-A <span class="inlinecode"><span class="id" title="var">Π</span></span>: its domain avoids, and its closure avoids but at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#K"><span class="id" title="abbreviation">K</span></a></span>, where
+A <span class="inlinecode"><span class="id" title="var">Π</span></span>: its domain avoids, and its closure avoids but at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#OFresh.K"><span class="id" title="variable">K</span></a></span>, where
       the codomain is fresh 
 </div>
 <div class="code">
@@ -230,7 +230,7 @@ The empty type
 &nbsp;&nbsp;</div>
 
 <div class="doc">
-A λ: its closure avoids but at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#K"><span class="id" title="abbreviation">K</span></a></span>, where the body is fresh 
+A λ: its closure avoids but at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#OFresh.K"><span class="id" title="variable">K</span></a></span>, where the body is fresh 
 </div>
 <div class="code">
 &nbsp;&nbsp;| <a id="dav_fn" class="idref" href="#dav_fn"><span class="id" title="constructor">dav_fn</span></a> : <span class="id" title="keyword">forall</span> (<a id="57f97e098f7cbe289962f63028b8af67" class="idref" href="#57f97e098f7cbe289962f63028b8af67"><span class="id" title="binder">ρ</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a>) <a id="M:58" class="idref" href="#M:58"><span class="id" title="binder">M</span></a> <a id="K:59" class="idref" href="#K:59"><span class="id" title="binder">K</span></a>,<br/>
@@ -374,7 +374,7 @@ A stuck eliminator: the motives are fresh under their binders, and so
 </div>
 
 <div class="doc">
-An environment that avoids at every position but <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#K"><span class="id" title="abbreviation">K</span></a></span>. 
+An environment that avoids at every position but <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#OFresh.K"><span class="id" title="variable">K</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="env_av" class="idref" href="#env_av"><span class="id" title="definition">env_av</span></a> (<a id="K:137" class="idref" href="#K:137"><span class="id" title="binder">K</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="5e8c1b9fa78417b8777926dcc8715f38" class="idref" href="#5e8c1b9fa78417b8777926dcc8715f38"><span class="id" title="binder">ρ</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a>) : <span class="id" title="keyword">Prop</span> :=<br/>

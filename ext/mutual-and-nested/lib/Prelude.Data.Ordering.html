@@ -13,7 +13,7 @@
 <span class="kw">import</span> <a class="unit" href="Prelude.Arith.Equality.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Equality.html">Arith</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Equality.html">Equality</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="Eq" href="Prelude.Arith.Equality.html#Eq">Eq</a><span class="sym">)</span>
 <span class="kw">import</span> <a class="unit" href="Prelude.Arith.Order.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Order.html">Arith</a><span class="sym">›</span><a class="unit" href="Prelude.Arith.Order.html">Order</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="Lt" href="Prelude.Arith.Order.html#Lt">Lt</a><span class="sym">)</span>
 
-<span class="kw">inductive</span> <span class="mod bind" id="Ordering">Ordering</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="kw">where</span>
+<span class="kw">inductive</span> <span id="Ordering.Rec"><span id="Ordering.Rec.rec_Ordering"><span class="mod bind" id="Ordering">Ordering</span></span></span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="kw">where</span>
 <span class="sym">|</span> <span class="def bind" id="Ordering.less">less</span>
 <span class="sym">|</span> <span class="def bind" id="Ordering.equal">equal</span>
 <span class="sym">|</span> <span class="def bind" id="Ordering.greater">greater</span>

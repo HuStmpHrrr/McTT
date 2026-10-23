@@ -45,7 +45,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1211"></a><h1 class="section">Checking the Forms of Inductive Types</h1>
+<a id="lab1206"></a><h1 class="section">Checking the Forms of Inductive Types</h1>
 
 
 <div class="paragraph"> </div>
@@ -58,7 +58,7 @@
     so that the mutual fixpoints of the checkers only pass them on. 
 <div class="paragraph"> </div>
 
-<a id="lab1212"></a><h2 class="section">Deciding Properties of Lists and of Indices</h2>
+<a id="lab1207"></a><h2 class="section">Deciding Properties of Lists and of Indices</h2>
 
 <div class="paragraph"> </div>
 
@@ -158,7 +158,7 @@ Whether a normal form is an instance of the type former of a member.
 </div>
 
 <div class="doc">
-<a id="lab1213"></a><h2 class="section">The Type Former and the Constructors</h2>
+<a id="lab1208"></a><h2 class="section">The Type Former and the Constructors</h2>
 
 </div>
 <div class="code">
@@ -243,13 +243,13 @@ A constructor of a member.
 </div>
 
 <div class="doc">
-<a id="lab1214"></a><h2 class="section">The Eliminator</h2>
+<a id="lab1209"></a><h2 class="section">The Eliminator</h2>
 
 <div class="paragraph"> </div>
 
- What <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Definitions.html#ati_elim"><span class="id" title="constructor">ati_elim</span></a></span> asks of the eliminator <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_elim"><span class="id" title="constructor">a_elim</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.oq"><span class="id" title="variable">oq</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.m"><span class="id" title="variable">m</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Bks"><span class="id" title="variable">Bks</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> whose
-    scrutinee infers <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_indty"><span class="id" title="constructor">nf_indty</span></a></span> <span class="inlinecode"><span class="id" title="var">pc</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><span class="id" title="var">Rs</span></span>, at the group <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> it
-    eliminates, its member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.Mm"><span class="id" title="variable">Mm</span></a></span>, the declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.Mk"><span class="id" title="variable">Mk</span></a></span> of the group
+ What <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Typing.Definitions.html#ati_elim"><span class="id" title="constructor">ati_elim</span></a></span> asks of the eliminator <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_elim"><span class="id" title="constructor">a_elim</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.oq"><span class="id" title="variable">oq</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.m"><span class="id" title="variable">m</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Bks"><span class="id" title="variable">Bks</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> whose
+    scrutinee infers <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_indty"><span class="id" title="constructor">nf_indty</span></a></span> <span class="inlinecode"><span class="id" title="var">pc</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><span class="id" title="var">Rs</span></span>, at the group <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> at <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> it
+    eliminates, its member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.Mm"><span class="id" title="variable">Mm</span></a></span>, the declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.Mk"><span class="id" title="variable">Mk</span></a></span> of the group
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.Dq"><span class="id" title="variable">Dq</span></a></span> at <span class="inlinecode"><span class="id" title="var">pc</span></span> the member's type is headed by, the member's block <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimViewRule.html#Fixed_GCtx.ElimViewRule.bm"><span class="id" title="variable">bm</span></a></span>,
     the universe <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a></span> of the blocks' annotations and motives, and the type
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span> it infers. 
@@ -283,7 +283,7 @@ The member eliminated
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-Its type is headed by the declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> of the group at <span class="inlinecode"><span class="id" title="var">pc</span></span> 
+Its type is headed by the declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the group at <span class="inlinecode"><span class="id" title="var">pc</span></span> 
 </div>
 <div class="code">
 &nbsp;&nbsp;; <a id="elim_ok_ref" class="idref" href="#elim_ok_ref"><span class="id" title="projection">elim_ok_ref</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#im_ref"><span class="id" title="definition">im_ref</span></a> <a class="idref" href="Mctt.Extraction.IndCheck.html#p:123"><span class="id" title="variable">p</span></a> <a class="idref" href="Mctt.Extraction.IndCheck.html#m:117"><span class="id" title="variable">m</span></a> <a class="idref" href="Mctt.Extraction.IndCheck.html#Mm:125"><span class="id" title="variable">Mm</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a><a class="idref" href="Mctt.Extraction.IndCheck.html#pc:120"><span class="id" title="variable">pc</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Extraction.IndCheck.html#k:121"><span class="id" title="variable">k</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">)</span></a><br/>
@@ -830,7 +830,7 @@ A derivation of an eliminator, inverted against what the checker has
 
 <div class="doc">
 The eliminator.  The scrutinee infers the type former of the declared
-    member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> of the group <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.Dq"><span class="id" title="variable">Dq</span></a></span> at <span class="inlinecode"><span class="id" title="var">pc</span></span>; the group eliminated is the one
+    member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of the group <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.Dq"><span class="id" title="variable">Dq</span></a></span> at <span class="inlinecode"><span class="id" title="var">pc</span></span>; the group eliminated is the one
     named, or that one (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#elim_target"><span class="id" title="definition">elim_target</span></a></span>).  The uniform parameters are checked
     one by one (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#tele_check_dec"><span class="id" title="definition">tele_check_dec</span></a></span>) and the member's uniform arguments at
     them compared with the scrutinee type's (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#nfs_agree_dec"><span class="id" title="definition">nfs_agree_dec</span></a></span>).  The blocks'

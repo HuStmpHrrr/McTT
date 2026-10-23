@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1123"></a><h1 class="section">The Fast Evaluation Simulates the Reference One</h1>
+<a id="lab1118"></a><h1 class="section">The Fast Evaluation Simulates the Reference One</h1>
 
 
 <div class="paragraph"> </div>
@@ -53,7 +53,7 @@
 </li>
 <li> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Simulation.html#env_agree"><span class="id" title="definition">env_agree</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> <span class="inlinecode">ρ</span> <span class="inlinecode">ρ'</span> is agreement of two environments at the entries
       <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> selects; a term is evaluated in environments that agree where the
-      term may read, <span class="inlinecode"><span class="id" title="keyword">fun</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">=&gt;</span> <span class="inlinecode">~</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#exp_fresh"><span class="id" title="definition">exp_fresh</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>.
+      term may read, <span class="inlinecode"><span class="id" title="keyword">fun</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">=&gt;</span> <span class="inlinecode">~</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Fresh.html#exp_fresh"><span class="id" title="definition">exp_fresh</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>.
 
 </li>
 </ul>
@@ -83,12 +83,12 @@
 </div>
 
 <div class="doc">
-<a id="lab1124"></a><h2 class="section">The Relation</h2>
+<a id="lab1119"></a><h2 class="section">The Relation</h2>
 
 <div class="paragraph"> </div>
 
  The components of a shape, each under the domains before it, are fresh
-    at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>. 
+    at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="pt_fresh" class="idref" href="#pt_fresh"><span class="id" title="definition">pt_fresh</span></a> (<a id="k:1" class="idref" href="#k:1"><span class="id" title="binder">k</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="t:2" class="idref" href="#t:2"><span class="id" title="binder">t</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ptyp"><span class="id" title="abbreviation">ptyp</span></a>) : <span class="id" title="keyword">Prop</span> :=<br/>
@@ -397,7 +397,7 @@ Agreement of two environments where the blocks of an eliminator may
 </div>
 
 <div class="doc">
-<a id="lab1125"></a><h2 class="section">Environments</h2>
+<a id="lab1120"></a><h2 class="section">Environments</h2>
 
 </div>
 <div class="code">
@@ -446,7 +446,7 @@ Agreement of two environments where the blocks of an eliminator may
 </div>
 
 <div class="doc">
-<a id="lab1126"></a><h2 class="section">Levels</h2>
+<a id="lab1121"></a><h2 class="section">Levels</h2>
 
 </div>
 <div class="code">
@@ -696,7 +696,7 @@ The motive of each recursive argument's member, among the blocks'
 </div>
 
 <div class="doc">
-<a id="lab1127"></a><h2 class="section">Environments of Bodies and Spines</h2>
+<a id="lab1122"></a><h2 class="section">Environments of Bodies and Spines</h2>
 
 <div class="paragraph"> </div>
 
@@ -747,7 +747,7 @@ The motive of each recursive argument's member, among the blocks'
 </div>
 
 <div class="doc">
-<a id="lab1128"></a><h2 class="section">Evaluation</h2>
+<a id="lab1123"></a><h2 class="section">Evaluation</h2>
 
 <div class="paragraph"> </div>
 
@@ -912,7 +912,7 @@ The goal: the fast rule, and the relation between the results, whose
 </div>
 
 <div class="doc">
-<a id="lab1129"></a><h2 class="section">Kinds</h2>
+<a id="lab1124"></a><h2 class="section">Kinds</h2>
 
 
 <div class="paragraph"> </div>
@@ -937,7 +937,7 @@ The goal: the fast rule, and the relation between the results, whose
 </div>
 
 <div class="doc">
-A weakening past <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> entries reads none of them. 
+A weakening past <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> entries reads none of them. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="modexp_unfresh_shiftn" class="idref" href="#modexp_unfresh_shiftn"><span class="id" title="lemma">modexp_unfresh_shiftn</span></a> : <span class="id" title="keyword">forall</span> <a id="E:372" class="idref" href="#E:372"><span class="id" title="binder">E</span></a> <a id="k:373" class="idref" href="#k:373"><span class="id" title="binder">k</span></a> <a id="z:374" class="idref" href="#z:374"><span class="id" title="binder">z</span></a>, <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#63a68285c81db8f9bc456233bb9ed181"><span class="id" title="notation">~</span></a> <a class="idref" href="Mctt.Core.Syntactic.Fresh.html#modexp_fresh"><span class="id" title="definition">modexp_fresh</span></a> <a class="idref" href="Mctt.Extraction.Simulation.html#z:374"><span class="id" title="variable">z</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#modexp_wk"><span class="id" title="definition">modexp_wk</span></a> <a class="idref" href="Mctt.Extraction.Simulation.html#E:372"><span class="id" title="variable">E</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_shiftn"><span class="id" title="definition">wk_shiftn</span></a> <a class="idref" href="Mctt.Extraction.Simulation.html#k:373"><span class="id" title="variable">k</span></a>)) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>

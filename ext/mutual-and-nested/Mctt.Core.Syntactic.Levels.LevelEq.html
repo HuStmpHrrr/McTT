@@ -44,7 +44,7 @@
 </div>
 
 <div class="doc">
-<a id="lab788"></a><h1 class="section">Levels as Expressions: the Equations of a Canonical Form</h1>
+<a id="lab787"></a><h1 class="section">Levels as Expressions: the Equations of a Canonical Form</h1>
 
 
 <div class="paragraph"> </div>
@@ -62,9 +62,9 @@
     where <span class="inlinecode">⌈<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a>,</span> <span class="inlinecode"><span class="id" title="var">xs</span>⌉</span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#lvl_exp_of"><span class="id" title="definition">lvl_exp_of</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#la_to_list"><span class="id" title="definition">la_to_list</span></a></span> <span class="inlinecode"><span class="id" title="var">xs</span>)</span>, the expression a
     canonical level reads back as.  Each step of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.Levels.html#lvl_canon"><span class="id" title="definition">lvl_canon</span></a></span> is an instance of
     the level equations: sorting is commutativity and associativity, merging is
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a>)</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.k'"><span class="id" title="variable">k'</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a>)</span> <span class="inlinecode">≈</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.k'"><span class="id" title="variable">k'</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>, dropping an atom of a sort below
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a>)</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.k'"><span class="id" title="variable">k'</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a>)</span> <span class="inlinecode">≈</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.k'"><span class="id" title="variable">k'</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>, dropping an atom of a sort below
     the constant's tier is absorption, and dropping the constant is
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode">≤</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">-&gt;</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a>)</span> <span class="inlinecode">≈</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>.  Absorption needs every atom typed at
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode">≤</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">-&gt;</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a>)</span> <span class="inlinecode">≈</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span>.  Absorption needs every atom typed at
     its own sort (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#la_ws"><span class="id" title="definition">la_ws</span></a></span>); the other steps only at the sort of the whole
     (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#la_wf"><span class="id" title="definition">la_wf</span></a></span>).
 
@@ -96,7 +96,7 @@ Every equation of this file is at one sort, the levels below <span class="inline
 </div>
 
 <div class="doc">
-<a id="lab789"></a><h2 class="section">The Iterated Successor</h2>
+<a id="lab788"></a><h2 class="section">The Iterated Successor</h2>
 
 </div>
 <div class="code">
@@ -161,12 +161,12 @@ The iterated distributivity of <span class="inlinecode"><a class="idref" href="M
 </div>
 
 <div class="doc">
-<a id="lab790"></a><h2 class="section">The Order on Levels</h2>
+<a id="lab789"></a><h2 class="section">The Order on Levels</h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> is the order of the universe subtyping rule.  It is
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> is the order of the universe subtyping rule.  It is
     reflexive by idempotence, transitive by associativity, monotone under
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succl"><span class="id" title="constructor">succl</span></a></span> by distributivity, least at <span class="inlinecode">𝕃@0</span> by the unit law, and
     inflationary by the subsumption law. 
@@ -323,7 +323,7 @@ The drop step: a constant below an offset of an atom is absorbed.
 </div>
 
 <div class="doc">
-<span class="inlinecode">𝕃@<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succl"><span class="id" title="constructor">succl</span></a>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode">𝕃@0</span>, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succl"><span class="id" title="constructor">succl</span></a>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succl"><span class="id" title="constructor">succl</span></a>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succl"><span class="id" title="constructor">succl</span></a>^(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a>-<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a>)</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a>)</span>;
+<span class="inlinecode">𝕃@<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succl"><span class="id" title="constructor">succl</span></a>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode">𝕃@0</span>, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succl"><span class="id" title="constructor">succl</span></a>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succl"><span class="id" title="constructor">succl</span></a>^<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succl"><span class="id" title="constructor">succl</span></a>^(<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a>-<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a>)</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>)</span>;
       the join distributes over the common prefix and <span class="inlinecode">𝕃@0</span> is the unit. 
 </div>
 <div class="code">
@@ -341,7 +341,7 @@ The drop step: a constant below an offset of an atom is absorbed.
 </div>
 
 <div class="doc">
-<a id="lab791"></a><h2 class="section">The Atoms of a Level, Well Typed</h2>
+<a id="lab790"></a><h2 class="section">The Atoms of a Level, Well Typed</h2>
 
 <div class="paragraph"> </div>
 
@@ -473,7 +473,7 @@ Every atom a level of its own sort, at most <span class="inlinecode"><a class="i
 </div>
 
 <div class="doc">
-<a id="lab792"></a><h2 class="section">The Two Folds</h2>
+<a id="lab791"></a><h2 class="section">The Two Folds</h2>
 
 
 <div class="paragraph"> </div>
@@ -557,7 +557,7 @@ The innermost expression of the fold comes out.
 </div>
 
 <div class="doc">
-The swap: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.y"><span class="id" title="variable">y</span></a></span> <span class="inlinecode"><span class="id" title="var">z</span>)</span> <span class="inlinecode">≈</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.y"><span class="id" title="variable">y</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode"><span class="id" title="var">z</span>)</span>. 
+The swap: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode"><span class="id" title="var">y</span></span> <span class="inlinecode"><span class="id" title="var">z</span>)</span> <span class="inlinecode">≈</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode"><span class="id" title="var">y</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.maxl"><span class="id" title="constructor">maxl</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode"><span class="id" title="var">z</span>)</span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">transitivity</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Exp_Notations.::mctt_scope:'maxl'_x_x"><span class="id" title="notation">maxl</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Exp_Notations.::mctt_scope:'maxl'_x_x"><span class="id" title="notation">(</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Exp_Notations.::mctt_scope:'maxl'_x_x"><span class="id" title="notation">maxl</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Exp_Notations.::mctt_scope:'maxl'_x_x"><span class="id" title="notation">(</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#succl_n"><span class="id" title="definition">succl_n</span></a> <span class="id" title="var">k</span> <span class="id" title="var">a</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Exp_Notations.::mctt_scope:'maxl'_x_x"><span class="id" title="notation">)</span></a> <span class="id" title="var">hd</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Exp_Notations.::mctt_scope:'maxl'_x_x"><span class="id" title="notation">)</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Exp_Notations.::mctt_scope:'maxl'_x_x"><span class="id" title="notation">(</span></a><a class="idref" href="Mctt.Core.Syntactic.Levels.LevelEq.html#lvl_tm_from"><span class="id" title="definition">lvl_tm_from</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#de500fd298032b26557352621086efb8"><span class="id" title="notation">𝕃@</span></a>0) <span class="id" title="var">r</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Exp_Notations.::mctt_scope:'maxl'_x_x"><span class="id" title="notation">)</span></a>);<br/>
@@ -724,7 +724,7 @@ No atom on the left: the two constants join in front of the right.
 </div>
 
 <div class="doc">
-<a id="lab793"></a><h2 class="section">Sorting, Merging and Dropping</h2>
+<a id="lab792"></a><h2 class="section">Sorting, Merging and Dropping</h2>
 
 </div>
 <div class="code">
@@ -945,7 +945,7 @@ Some atom of the tail does.
 </div>
 
 <div class="doc">
-<a id="lab794"></a><h2 class="section">The Canonical Form</h2>
+<a id="lab793"></a><h2 class="section">The Canonical Form</h2>
 
 
 <div class="paragraph"> </div>
@@ -1004,7 +1004,7 @@ Some atom of the tail does.
 </div>
 
 <div class="doc">
-<a id="lab795"></a><h2 class="section">The Atoms of a Well-Typed Level</h2>
+<a id="lab794"></a><h2 class="section">The Atoms of a Well-Typed Level</h2>
 
 
 <div class="paragraph"> </div>
@@ -1028,7 +1028,7 @@ Some atom of the tail does.
 </div>
 
 <div class="doc">
-<a id="lab796"></a><h2 class="section">The Order on Canonical Levels, Syntactically</h2>
+<a id="lab795"></a><h2 class="section">The Order on Canonical Levels, Syntactically</h2>
 
 
 <div class="paragraph"> </div>

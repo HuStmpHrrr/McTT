@@ -49,7 +49,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1224"></a><h1 class="section">The Specification on Concrete Programs</h1>
+<a id="lab1219"></a><h1 class="section">The Specification on Concrete Programs</h1>
 
 
 <div class="paragraph"> </div>
@@ -62,7 +62,7 @@
 <div class="paragraph"> </div>
 
     <span class="inlinecode">⟨<span class="id" title="var">U.M</span>⟩</span> below abbreviates the module expression
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname_mod"><span class="id" title="definition">qname_mod</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#q_abs"><span class="id" title="abbreviation">q_abs</span></a></span> <span class="inlinecode">[&quot;<span class="id" title="var">U</span>&quot;]</span> <span class="inlinecode">[&quot;<a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a>&quot;])</span>. 
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname_mod"><span class="id" title="definition">qname_mod</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#q_abs"><span class="id" title="abbreviation">q_abs</span></a></span> <span class="inlinecode">[&quot;<span class="id" title="var">U</span>&quot;]</span> <span class="inlinecode">[&quot;<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>&quot;])</span>. 
 </div>
 <div class="code">
 
@@ -88,7 +88,7 @@ Items as the parser writes them: <span class="inlinecode"><span class="id" title
 </div>
 
 <div class="doc">
-<a id="lab1225"></a><h2 class="section">Pre-application</h2>
+<a id="lab1220"></a><h2 class="section">Pre-application</h2>
 
 
 <div class="paragraph"> </div>
@@ -108,8 +108,8 @@ end
 
 <div class="paragraph"> </div>
 
-    Inside <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, <span class="inlinecode"><span class="id" title="definition">B</span></span> is <span class="inlinecode">#0</span> and <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> is <span class="inlinecode">#1</span>.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> is applied to <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span>
-    to <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> and <span class="inlinecode"><span class="id" title="definition">B</span></span>; under the <span class="inlinecode"><span class="id" title="keyword">fun</span></span> both shift by one.  Outside <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> is
+    Inside <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, <span class="inlinecode"><span class="id" title="definition">B</span></span> is <span class="inlinecode">#0</span> and <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> is <span class="inlinecode">#1</span>.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> is applied to <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span>
+    to <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> and <span class="inlinecode"><span class="id" title="definition">B</span></span>; under the <span class="inlinecode"><span class="id" title="keyword">fun</span></span> both shift by one.  Outside <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> is
     the module <span class="inlinecode">⟨<span class="id" title="var">U.M</span>⟩</span> <span class="inlinecode">$</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, and <span class="inlinecode"><span class="id" title="var">M.b</span></span> selects its member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span>. 
 </div>
 <div class="code">
@@ -145,7 +145,7 @@ end
 </div>
 
 <div class="doc">
-The first <span class="inlinecode"><span class="id" title="tactic">eval</span></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, derived from the rules.  It is read in the
+The first <span class="inlinecode"><span class="id" title="tactic">eval</span></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, derived from the rules.  It is read in the
     scope <span class="inlinecode"><span class="id" title="definition">B</span>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">U.a</span>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> lies under one binder (<span class="inlinecode"><span class="id" title="definition">B</span></span>) and over one
     (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>), so it is <span class="inlinecode"><span class="id" title="var">U.a</span></span> applied to <span class="inlinecode">#1</span>. 
 </div>
@@ -162,7 +162,7 @@ The first <span class="inlinecode"><span class="id" title="tactic">eval</span></
 </div>
 
 <div class="doc">
-<a id="lab1226"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">ModuleParam.mctt</span></span>: a parameterized module and <span class="inlinecode"><span class="id" title="keyword">let</span></span> <span class="inlinecode"><span class="id" title="var">module</span></span></h2>
+<a id="lab1221"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">ModuleParam.mctt</span></span>: a parameterized module and <span class="inlinecode"><span class="id" title="keyword">let</span></span> <span class="inlinecode"><span class="id" title="var">module</span></span></h2>
 
 </div>
 <div class="code">
@@ -204,7 +204,7 @@ Inside <span class="inlinecode"><span class="id" title="var">Church</span></span
 </div>
 
 <div class="doc">
-<a id="lab1227"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">ImportUse.mctt</span></span>: privacy, <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">as</span></span>, <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="var">use</span></span></h2>
+<a id="lab1222"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">ImportUse.mctt</span></span>: privacy, <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">as</span></span>, <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="var">use</span></span></h2>
 
 </div>
 <div class="code">
@@ -253,7 +253,7 @@ A private member is visible in its own frame.  An open is a command
 </div>
 
 <div class="doc">
-<a id="lab1228"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">multi</span>/<span class="id" title="var">Main.mctt</span></span>: leading imports of other units</h2>
+<a id="lab1223"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">multi</span>/<span class="id" title="var">Main.mctt</span></span>: leading imports of other units</h2>
 
 
 <div class="paragraph"> </div>
@@ -305,7 +305,7 @@ A leading import loads its unit before the unit runs, and is read again
 </div>
 
 <div class="doc">
-<a id="lab1229"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">TrueFalse.mctt</span></span>: the unit type and the empty type</h2>
+<a id="lab1224"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">TrueFalse.mctt</span></span>: the unit type and the empty type</h2>
 
 
 <div class="paragraph"> </div>
@@ -333,7 +333,7 @@ A leading import loads its unit before the unit runs, and is read again
 </div>
 
 <div class="doc">
-<a id="lab1230"></a><h2 class="section">Scoping Rules, Positive and Negative</h2>
+<a id="lab1225"></a><h2 class="section">Scoping Rules, Positive and Negative</h2>
 
 </div>
 <div class="code">
@@ -426,7 +426,7 @@ A definition does not see itself.
 
 <div class="doc">
 A projection out of a closed module selects a member of the module
-    expression; whether <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> still expects its parameter is left to typing. 
+    expression; whether <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> still expects its parameter is left to typing. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Example</span> <a id="partial_args" class="idref" href="#partial_args"><span class="id" title="definition">partial_args</span></a> :<br/>
@@ -481,7 +481,7 @@ The error names the unit by its path.
 </div>
 
 <div class="doc">
-<a id="lab1231"></a><h2 class="section">Definition Keywords</h2>
+<a id="lab1226"></a><h2 class="section">Definition Keywords</h2>
 
 
 <div class="paragraph"> </div>
@@ -550,7 +550,7 @@ A term variable is no module: <span class="inlinecode"><span class="id" title="v
 </div>
 
 <div class="doc">
-<a id="lab1232"></a><h2 class="section">Axioms</h2>
+<a id="lab1227"></a><h2 class="section">Axioms</h2>
 
 
 <div class="paragraph"> </div>
@@ -620,7 +620,7 @@ In a local body, a keyword that means <span class="inlinecode"><span class="id" 
 </div>
 
 <div class="doc">
-<a id="lab1233"></a><h2 class="section">One Binding per Name per Frame</h2>
+<a id="lab1228"></a><h2 class="section">One Binding per Name per Frame</h2>
 
 
 <div class="paragraph"> </div>
@@ -637,7 +637,7 @@ In a local body, a keyword that means <span class="inlinecode"><span class="id" 
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">def</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">…</span> <span class="inlinecode">;</span> <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode"><span class="id" title="keyword">as</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>: an alias may not take a member's name. 
+<span class="inlinecode"><span class="id" title="var">def</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">…</span> <span class="inlinecode">;</span> <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode"><span class="id" title="keyword">as</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>: an alias may not take a member's name. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="alias_after_member" class="idref" href="#alias_after_member"><span class="id" title="definition">alias_after_member</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.prog"><span class="id" title="definition">Cst.prog</span></a> := <a class="idref" href="Mctt.Frontend.ElabExamples.html#unit_of"><span class="id" title="definition">unit_of</span></a><br/>
@@ -652,7 +652,7 @@ In a local body, a keyword that means <span class="inlinecode"><span class="id" 
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode"><span class="id" title="keyword">as</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">;</span> <span class="inlinecode"><span class="id" title="var">def</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">…</span>: a member may not take an alias's name. 
+<span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode"><span class="id" title="keyword">as</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">;</span> <span class="inlinecode"><span class="id" title="var">def</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">…</span>: a member may not take an alias's name. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="member_after_alias" class="idref" href="#member_after_alias"><span class="id" title="definition">member_after_alias</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.prog"><span class="id" title="definition">Cst.prog</span></a> := <a class="idref" href="Mctt.Frontend.ElabExamples.html#unit_of"><span class="id" title="definition">unit_of</span></a><br/>
@@ -679,7 +679,7 @@ In a local body, a keyword that means <span class="inlinecode"><span class="id" 
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span>)</span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><span class="id" title="var">def</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: a member may not take a
+<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span>)</span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><span class="id" title="var">def</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: a member may not take a
     parameter's name … 
 </div>
 <div class="code">
@@ -722,7 +722,7 @@ An alias may not take a parameter's name (here the unit's).
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span>)</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span>)</span>: a telescope may not repeat a name … 
+<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span>)</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span>)</span>: a telescope may not repeat a name … 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="dup_params" class="idref" href="#dup_params"><span class="id" title="definition">dup_params</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.prog"><span class="id" title="definition">Cst.prog</span></a> := <a class="idref" href="Mctt.Frontend.ElabExamples.html#unit_of"><span class="id" title="definition">unit_of</span></a><br/>
@@ -781,7 +781,7 @@ Across frames, shadowing is allowed: a module's parameter may reuse a
 </div>
 
 <div class="doc">
-<a id="lab1234"></a><h2 class="section">Local Definitions</h2>
+<a id="lab1229"></a><h2 class="section">Local Definitions</h2>
 
 
 <div class="paragraph"> </div>
@@ -895,7 +895,7 @@ end
 </div>
 
 <div class="doc">
-<a id="lab1235"></a><h2 class="section">Module Forms</h2>
+<a id="lab1230"></a><h2 class="section">Module Forms</h2>
 
 </div>
 <div class="code">
@@ -907,7 +907,7 @@ end
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@0)</span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> is an alias, read under its
+<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.P"><span class="id" title="variable">P</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@0)</span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> is an alias, read under its
     parameters. 
 </div>
 <div class="code">
@@ -984,7 +984,7 @@ in L.w end
 <div class="paragraph"> </div>
 
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#me_var"><span class="id" title="constructor">me_var</span></a></span> <span class="inlinecode">0</span> at the first open and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#me_var"><span class="id" title="constructor">me_var</span></a></span> <span class="inlinecode">1</span> at the second;
-    under <span class="inlinecode"><span class="id" title="var">z</span></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.y"><span class="id" title="variable">y</span></a></span> is <span class="inlinecode">#1</span>, and under <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.WrapClo.w"><span class="id" title="variable">w</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#K"><span class="id" title="abbreviation">K</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#me_var"><span class="id" title="constructor">me_var</span></a></span> <span class="inlinecode">1</span>. 
+    under <span class="inlinecode"><span class="id" title="var">z</span></span>, <span class="inlinecode"><span class="id" title="var">y</span></span> is <span class="inlinecode">#1</span>, and under <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Inductives.ElimView.html#Fixed_GCtx.WrapClo.w"><span class="id" title="variable">w</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Avoid.html#OFresh.K"><span class="id" title="variable">K</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#me_var"><span class="id" title="constructor">me_var</span></a></span> <span class="inlinecode">1</span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Example</span> <a id="local_open" class="idref" href="#local_open"><span class="id" title="definition">local_open</span></a> :<br/>
@@ -1237,7 +1237,7 @@ A local module's telescope may not repeat a name.
 </div>
 
 <div class="doc">
-<a id="lab1236"></a><h2 class="section">Opens Declare Names</h2>
+<a id="lab1231"></a><h2 class="section">Opens Declare Names</h2>
 
 
 <div class="paragraph"> </div>
@@ -1570,7 +1570,7 @@ in L.y end
 </div>
 
 <div class="doc">
-<a id="lab1237"></a><h2 class="section">The Running Example of <span class="inlinecode"><span class="id" title="library">ElabSpec</span></span></h2>
+<a id="lab1232"></a><h2 class="section">The Running Example of <span class="inlinecode"><span class="id" title="library">ElabSpec</span></span></h2>
 
 
 <div class="paragraph"> </div>
@@ -1618,7 +1618,7 @@ end
 </div>
 
 <div class="doc">
-<a id="lab1238"></a><h2 class="section">Inductive Types</h2>
+<a id="lab1233"></a><h2 class="section">Inductive Types</h2>
 
 
 <div class="paragraph"> </div>

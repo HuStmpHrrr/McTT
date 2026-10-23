@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab728"></a><h1 class="section">Inductive Types: Reading a Group's Declaration</h1>
+<a id="lab727"></a><h1 class="section">Inductive Types: Reading a Group's Declaration</h1>
 
 
 <div class="paragraph"> </div>
@@ -41,8 +41,8 @@
     A group's declaration (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_decl"><span class="id" title="abbreviation">ind_decl</span></a></span>, in <span class="inlinecode"><span class="id" title="keyword">Syntax</span></span>) is filed in the entry
     of each of its declared members (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ge_ind"><span class="id" title="constructor">ge_ind</span></a></span>), with the body of the
     member's module: its constructors (and the recursor).  The type former
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_ind"><span class="id" title="constructor">a_ind</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#pq"><span class="id" title="abbreviation">pq</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> and the constructors <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_con"><span class="id" title="constructor">a_con</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#pq"><span class="id" title="abbreviation">pq</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> name the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> of
-    the group <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#pq"><span class="id" title="abbreviation">pq</span></a></span>, the path of the entry of its first member
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_ind"><span class="id" title="constructor">a_ind</span></a></span> <span class="inlinecode"><span class="id" title="var">pq</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> and the constructors <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_con"><span class="id" title="constructor">a_con</span></a></span> <span class="inlinecode"><span class="id" title="var">pq</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> name the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> of
+    the group <span class="inlinecode"><span class="id" title="var">pq</span></span>, the path of the entry of its first member
     (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#ind_lookup"><span class="id" title="definition">ind_lookup</span></a></span>); these are the counts and the types that typing,
     evaluation and readback read off it. 
 </div>
@@ -62,7 +62,7 @@
 </div>
 
 <div class="doc">
-The arguments of the constructor <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>. 
+The arguments of the constructor <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="ind_con" class="idref" href="#ind_con"><span class="id" title="definition">ind_con</span></a> (<a id="M:1" class="idref" href="#M:1"><span class="id" title="binder">M</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#imember"><span class="id" title="abbreviation">imember</span></a>) (<a id="c:2" class="idref" href="#c:2"><span class="id" title="binder">c</span></a> : <span class="id" title="inductive">string</span>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#carg"><span class="id" title="abbreviation">carg</span></a>) := <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#cons_lookup"><span class="id" title="definition">cons_lookup</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_cons"><span class="id" title="projection">im_cons</span></a> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#M:1"><span class="id" title="variable">M</span></a>) <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#c:2"><span class="id" title="variable">c</span></a>.<br/>
@@ -99,7 +99,7 @@ The number of recursive arguments among <span class="inlinecode"><a class="idref
 </div>
 
 <div class="doc">
-<a id="lab729"></a><h2 class="section">A Property of All the Members of a List</h2>
+<a id="lab728"></a><h2 class="section">A Property of All the Members of a List</h2>
 
 
 <div class="paragraph"> </div>
@@ -218,12 +218,12 @@ The telescope of the non-uniform parameters, outermost first.
 </div>
 
 <div class="doc">
-<a id="lab730"></a><h2 class="section">The Types of a Declaration</h2>
+<a id="lab729"></a><h2 class="section">The Types of a Declaration</h2>
 
 
 <div class="paragraph"> </div>
 
-    What typing reads off a group <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#pq"><span class="id" title="abbreviation">pq</span></a></span>: the types of the type
+    What typing reads off a group <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> at <span class="inlinecode"><span class="id" title="var">pq</span></span>: the types of the type
     formers and of the constructors, the contexts of the motives and of the
     branches of the eliminator, and the instances of telescopes at lists
     of terms.  All are built once, by typing; evaluation and readback use
@@ -231,8 +231,8 @@ The telescope of the non-uniform parameters, outermost first.
 
 <div class="paragraph"> </div>
 
-    The parameters of a member, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_params"><span class="id" title="definition">im_params</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, are a closed context,
-    innermost first: its non-uniform ones, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_nn"><span class="id" title="definition">im_nn</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> of them, are the
+    The parameters of a member, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_params"><span class="id" title="definition">im_params</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, are a closed context,
+    innermost first: its non-uniform ones, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_nn"><span class="id" title="definition">im_nn</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> of them, are the
     innermost.  The sort is in the context of the uniform ones. 
 </div>
 <div class="code">
@@ -244,7 +244,7 @@ The telescope of the non-uniform parameters, outermost first.
 </div>
 
 <div class="doc">
-The member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> of the group <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#pq"><span class="id" title="abbreviation">pq</span></a></span> at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span> and
+The member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> of the group <span class="inlinecode"><span class="id" title="var">pq</span></span> at the uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span> and
     its non-uniform parameters <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.AtCon.Ns"><span class="id" title="variable">Ns</span></a></span>. 
 </div>
 <div class="code">
@@ -258,15 +258,15 @@ The member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.I
 </div>
 
 <div class="doc">
-The parameters of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, and the uniform ones, as variables,
-    under <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> more binders. 
+The parameters of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, and the uniform ones, as variables,
+    under <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> more binders. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="ind_pvars" class="idref" href="#ind_pvars"><span class="id" title="definition">ind_pvars</span></a> (<a id="D:64" class="idref" href="#D:64"><span class="id" title="binder">D</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_decl"><span class="id" title="abbreviation">ind_decl</span></a>) (<a id="M:65" class="idref" href="#M:65"><span class="id" title="binder">M</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#imember"><span class="id" title="abbreviation">imember</span></a>) (<a id="k:66" class="idref" href="#k:66"><span class="id" title="binder">k</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a> := <a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#vars_from"><span class="id" title="definition">vars_from</span></a> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#k:66"><span class="id" title="variable">k</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#im_np"><span class="id" title="definition">im_np</span></a> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#D:64"><span class="id" title="variable">D</span></a> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#M:65"><span class="id" title="variable">M</span></a>).<br/>
 </div>
 
 <div class="doc">
-The uniform parameters as variables, under <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> binders and the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#nn"><span class="id" title="abbreviation">nn</span></a></span>
+The uniform parameters as variables, under <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> binders and the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.nn"><span class="id" title="variable">nn</span></a></span>
     non-uniform parameters of a member. 
 </div>
 <div class="code">
@@ -304,7 +304,7 @@ The types of the non-recursive arguments of a constructor are in the
 </div>
 
 <div class="doc">
-<a id="lab731"></a><h2 class="section">Shapes</h2>
+<a id="lab730"></a><h2 class="section">Shapes</h2>
 
 
 <div class="paragraph"> </div>
@@ -371,7 +371,7 @@ The context of the domains of a shape, each weakened past the arguments
 
 <div class="doc">
 The type of a recursive argument of shape <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.t"><span class="id" title="variable">t</span></a></span>, in the context of all
-    the arguments before it and the parameters of a member with <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#nn"><span class="id" title="abbreviation">nn</span></a></span>
+    the arguments before it and the parameters of a member with <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.nn"><span class="id" title="variable">nn</span></a></span>
     non-uniform parameters, its components over the non-recursive
     arguments before it (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#IhtyConv.pat"><span class="id" title="variable">pat</span></a></span>, innermost first, tells which of those
     before it are recursive): the <span class="inlinecode"><span class="id" title="var">Π</span></span> over the domains of the member the
@@ -405,7 +405,7 @@ The arguments of a constructor as a context over the parameters,
 </div>
 
 <div class="doc">
-The arguments of a constructor of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> as a context over its
+The arguments of a constructor of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> as a context over its
     parameters, from no argument before. 
 </div>
 <div class="code">
@@ -416,7 +416,7 @@ The arguments of a constructor of the member <span class="inlinecode"><a class="
 </div>
 
 <div class="doc">
-<a id="lab732"></a><h2 class="section">The Group's Members as Variables</h2>
+<a id="lab731"></a><h2 class="section">The Group's Members as Variables</h2>
 
 
 <div class="paragraph"> </div>
@@ -427,8 +427,8 @@ The arguments of a constructor of the member <span class="inlinecode"><a class="
     declared member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>, each of the member's type over the group's
     uniform parameters, the <span class="inlinecode"><span class="id" title="var">Self</span></span>s inside the uniform parameters
     (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#grp_sctx"><span class="id" title="definition">grp_sctx</span></a></span>); <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndDecl.html#NilDecide.IsS"><span class="id" title="variable">IsS</span></a></span> gives each view's instance there.  Once the group
-    is filed at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#pq"><span class="id" title="abbreviation">pq</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#grp_sb"><span class="id" title="definition">grp_sb</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#pq"><span class="id" title="abbreviation">pq</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> instantiates <span class="inlinecode"><span class="id" title="var">Self_j</span></span> by the type former
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_ind"><span class="id" title="constructor">a_ind</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#pq"><span class="id" title="abbreviation">pq</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> at the uniform parameters, and the checked forms become
+    is filed at <span class="inlinecode"><span class="id" title="var">pq</span></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#grp_sb"><span class="id" title="definition">grp_sb</span></a></span> <span class="inlinecode"><span class="id" title="var">pq</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.D"><span class="id" title="variable">D</span></a></span> instantiates <span class="inlinecode"><span class="id" title="var">Self_j</span></span> by the type former
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_ind"><span class="id" title="constructor">a_ind</span></a></span> <span class="inlinecode"><span class="id" title="var">pq</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span> at the uniform parameters, and the checked forms become
     the filed ones. 
 </div>
 <div class="code">
@@ -472,7 +472,7 @@ The context a group's views are checked in: the <span class="inlinecode"><span c
 
 <div class="doc">
 The <span class="inlinecode"><span class="id" title="var">Self</span></span>s instantiated by the type formers of the filed group at
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#pq"><span class="id" title="abbreviation">pq</span></a></span>, at the uniform parameters. 
+    <span class="inlinecode"><span class="id" title="var">pq</span></span>, at the uniform parameters. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="grp_sb" class="idref" href="#grp_sb"><span class="id" title="definition">grp_sb</span></a> (<a id="pq:125" class="idref" href="#pq:125"><span class="id" title="binder">pq</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a>) (<a id="D:126" class="idref" href="#D:126"><span class="id" title="binder">D</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_decl"><span class="id" title="abbreviation">ind_decl</span></a>) : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sub"><span class="id" title="definition">sub</span></a> :=<br/>
@@ -483,7 +483,7 @@ The <span class="inlinecode"><span class="id" title="var">Self</span></span>s in
 
 <div class="doc">
 The group's own data, which never mentions the group, moved under the
-    <span class="inlinecode"><span class="id" title="var">Self</span></span>s: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> binders above the uniform parameters. 
+    <span class="inlinecode"><span class="id" title="var">Self</span></span>s: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> binders above the uniform parameters. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="self_wk" class="idref" href="#self_wk"><span class="id" title="definition">self_wk</span></a> (<a id="D:128" class="idref" href="#D:128"><span class="id" title="binder">D</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_decl"><span class="id" title="abbreviation">ind_decl</span></a>) (<a id="k:129" class="idref" href="#k:129"><span class="id" title="binder">k</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk"><span class="id" title="definition">wk</span></a> := <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_qn"><span class="id" title="definition">wk_qn</span></a> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#k:129"><span class="id" title="variable">k</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_shiftn"><span class="id" title="definition">wk_shiftn</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Inductives.Group.html#ind_ndecl"><span class="id" title="definition">ind_ndecl</span></a> <a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#D:128"><span class="id" title="variable">D</span></a>)).<br/>
@@ -550,7 +550,7 @@ The type of the member <span class="inlinecode"><a class="idref" href="Mctt.Core
 </div>
 
 <div class="doc">
-The type of a constructor of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>: a <span class="inlinecode"><span class="id" title="var">Π</span></span> over the
+The type of a constructor of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>: a <span class="inlinecode"><span class="id" title="var">Π</span></span> over the
     parameters and the arguments of the member at the parameters.  (For a
     view, this is the type of the container's constructor at the view's
     uniform arguments, as the group sees it.) 
@@ -583,12 +583,12 @@ The instances of the types of a telescope <span class="inlinecode"><a class="idr
 </div>
 
 <div class="doc">
-<a id="lab733"></a><h2 class="section">The Eliminator</h2>
+<a id="lab732"></a><h2 class="section">The Eliminator</h2>
 
 
 <div class="paragraph"> </div>
 
-    The motive of the block of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> is in the context of the
+    The motive of the block of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> is in the context of the
     member's non-uniform parameters, at the group's uniform ones <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span>, and
     of the scrutinee. 
 </div>
@@ -636,7 +636,7 @@ The type of the recursive result of an argument <span class="inlinecode"><a clas
 The recursive results of a constructor's arguments: the motive of the
     member each recursive argument's shape ends in, at the argument and the
     non-uniform parameters it is declared at.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.i"><span class="id" title="variable">i</span></a></span> arguments of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>
-    results come before; <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.na"><span class="id" title="variable">na</span></a></span> is the number of all the arguments, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#nn"><span class="id" title="abbreviation">nn</span></a></span> that
+    results come before; <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.na"><span class="id" title="variable">na</span></a></span> is the number of all the arguments, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.nn"><span class="id" title="variable">nn</span></a></span> that
     of the member's non-uniform parameters.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#ihs_sub"><span class="id" title="definition">ihs_sub</span></a></span> moves a shape's
     components from the context of the non-recursive arguments before it
     and the parameters to the branch's: past the recursive arguments before
@@ -672,7 +672,7 @@ The recursive results of a branch, after <span class="inlinecode"><a class="idre
 
 <div class="doc">
 The context of the branch of a constructor with arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs"><span class="id" title="variable">gs</span></a></span> of the
-    member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>: the non-uniform parameters, the arguments and the recursive
+    member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>: the non-uniform parameters, the arguments and the recursive
     results, the motives being <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#IhtyConv.As"><span class="id" title="variable">As</span></a></span>. 
 </div>
 <div class="code">
@@ -685,7 +685,7 @@ The context of the branch of a constructor with arguments <span class="inlinecod
 </div>
 
 <div class="doc">
-The type of the branch: the motive <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> at the
+The type of the branch: the motive <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> of the member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> at the
     constructor applied to the parameters and the arguments. 
 </div>
 <div class="code">
@@ -744,7 +744,7 @@ The motives of the blocks, in order.
 </div>
 
 <div class="doc">
-<a id="lab734"></a><h2 class="section">Reading an Eliminator at its Member</h2>
+<a id="lab733"></a><h2 class="section">Reading an Eliminator at its Member</h2>
 
 
 <div class="paragraph"> </div>
@@ -817,9 +817,9 @@ The eliminator a recursive result at the member <span class="inlinecode"><a clas
 </div>
 
 <div class="doc">
-The recursive result of an argument <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> of shape <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.t"><span class="id" title="variable">t</span></a></span>, as an
+The recursive result of an argument <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> of shape <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Bridge.html#Fixed_GCtx.ToGroup.WalkCtx.t"><span class="id" title="variable">t</span></a></span>, as an
     elimination: under the shape's domains, moved by <span class="inlinecode">σ</span>, the eliminator at
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> applied to them. 
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> applied to them. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="ptyp_ih" class="idref" href="#ptyp_ih"><span class="id" title="definition">ptyp_ih</span></a> (<a id="pq:261" class="idref" href="#pq:261"><span class="id" title="binder">pq</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a>) (<a id="D:262" class="idref" href="#D:262"><span class="id" title="binder">D</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_decl"><span class="id" title="abbreviation">ind_decl</span></a>) (<a id="oq:263" class="idref" href="#oq:263"><span class="id" title="binder">oq</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a>) (<a id="Us:264" class="idref" href="#Us:264"><span class="id" title="binder">Us</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>) (<a id="Bks:265" class="idref" href="#Bks:265"><span class="id" title="binder">Bks</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#eblock"><span class="id" title="abbreviation">eblock</span></a>)<br/>
@@ -936,7 +936,7 @@ The arguments of a view's constructor that the view nests through
 </div>
 
 <div class="doc">
-<a id="lab735"></a><h2 class="section">The Eliminator at a View, as the Container's</h2>
+<a id="lab734"></a><h2 class="section">The Eliminator at a View, as the Container's</h2>
 
 
 <div class="paragraph"> </div>
@@ -968,7 +968,7 @@ The arguments of a view's constructor that the view nests through
 <div class="doc">
 The branch of the container's constructor <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> with arguments <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.gs'"><span class="id" title="variable">gs'</span></a></span>, the
     view's member <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.Mv"><span class="id" title="variable">Mv</span></a></span> and its block's branches <span class="inlinecode"><span class="id" title="var">Bs</span></span>, under the context of
-    the eliminator; <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#nn"><span class="id" title="abbreviation">nn</span></a></span> non-uniform parameters. 
+    the eliminator; <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.nn"><span class="id" title="variable">nn</span></a></span> non-uniform parameters. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="wrap_br" class="idref" href="#wrap_br"><span class="id" title="definition">wrap_br</span></a> (<a id="pq:317" class="idref" href="#pq:317"><span class="id" title="binder">pq</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qname"><span class="id" title="record">qname</span></a>) (<a id="D:318" class="idref" href="#D:318"><span class="id" title="binder">D</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_decl"><span class="id" title="abbreviation">ind_decl</span></a>) (<a id="Us:319" class="idref" href="#Us:319"><span class="id" title="binder">Us</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>) (<a id="Bks:320" class="idref" href="#Bks:320"><span class="id" title="binder">Bks</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#eblock"><span class="id" title="abbreviation">eblock</span></a>)<br/>
@@ -1101,12 +1101,12 @@ The level of a small sort, and a level of none for a large one.
 </div>
 
 <div class="doc">
-<a id="lab736"></a><h2 class="section">Module Variables</h2>
+<a id="lab735"></a><h2 class="section">Module Variables</h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#exp_mvc"><span class="id" title="definition">exp_mvc</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>: every module variable of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> is bound by one of the <span class="inlinecode"><span class="id" title="var">d</span></span>
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Inductives.Inductives.html#exp_mvc"><span class="id" title="definition">exp_mvc</span></a></span> <span class="inlinecode"><span class="id" title="var">d</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>: every module variable of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> is bound by one of the <span class="inlinecode"><span class="id" title="var">d</span></span>
     binders above it inside the term, not free.  The parameters of a
     declaration are a telescope of assumptions, so their types have no free
     module variable; the typing rule of a declaration says so, which is what
@@ -1274,7 +1274,7 @@ The types are read off a declaration once; <span class="inlinecode"><span class=
 </div>
 
 <div class="doc">
-<a id="lab737"></a><h2 class="section">Facts About the Types of a Declaration</h2>
+<a id="lab736"></a><h2 class="section">Facts About the Types of a Declaration</h2>
 
 </div>
 <div class="code">

@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab757"></a><h1 class="section">The Algebra of Weakenings and Substitutions</h1>
+<a id="lab756"></a><h1 class="section">The Algebra of Weakenings and Substitutions</h1>
 
 
 <div class="paragraph"> </div>
@@ -271,7 +271,7 @@ The heads that do meet a binder.  Kept out of the databases above: pushing
 </div>
 
 <div class="doc">
-<a id="lab758"></a><h3 class="section">Shared Tactics</h3>
+<a id="lab757"></a><h3 class="section">Shared Tactics</h3>
 
 
 <div class="paragraph"> </div>
@@ -544,7 +544,7 @@ The variable cases of most laws are the pointwise hypothesis read at the
 </div>
 
 <div class="doc">
-<a id="lab759"></a><h2 class="section">Weakenings</h2>
+<a id="lab758"></a><h2 class="section">Weakenings</h2>
 
 </div>
 <div class="code">
@@ -853,8 +853,8 @@ The <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Levels.L
 </div>
 
 <div class="doc">
+<a id="lab759"></a><h2 class="section">Substitutions</h2>
 <a id="lab760"></a><h2 class="section">Substitutions</h2>
-<a id="lab761"></a><h2 class="section">Substitutions</h2>
 
 </div>
 <div class="code">
@@ -1925,9 +1925,9 @@ A single substitution commutes past a lifted one.
 <div class="doc">
 The form the completeness proof uses it in: an instantiated type or term,
     substituted, is the instantiation along the substitution.  Every rule whose
-    type is an <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>]</span> reads its two outer values through this equation,
+    type is an <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.Modules.ModexpRel.html#Fixed_GCtx.Beta.N"><span class="id" title="variable">N</span></a>]</span> reads its two outer values through this equation,
     because those are values at <span class="inlinecode">ρ</span> and <span class="inlinecode">ρ'</span> of the substituted expression while
-    the judgment about <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> can only produce values along a substitution into the
+    the judgment about <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> can only produce values along a substitution into the
     extended context. 
 </div>
 <div class="code">
@@ -1963,7 +1963,7 @@ The same for a module extension.
 </div>
 
 <div class="doc">
-<a id="lab762"></a><h2 class="section">The Instances the Typing Rules Need</h2>
+<a id="lab761"></a><h2 class="section">The Instances the Typing Rules Need</h2>
 
 
 <div class="paragraph"> </div>
@@ -2028,7 +2028,7 @@ The same for a module extension.
 
 <div class="doc">
 The two-argument analogue of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_extend_sub"><span class="id" title="lemma">exp_sub_extend_sub</span></a></span>, which is what the
-    right-hand side of that rule — an <span class="inlinecode"><span class="id" title="var">MS</span>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a>]</span> — is read through. 
+    right-hand side of that rule — an <span class="inlinecode"><span class="id" title="var">MS</span>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.E"><span class="id" title="variable">E</span></a>]</span> — is read through. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Corollary</span> <a id="exp_sub_extend_sub2" class="idref" href="#exp_sub_extend_sub2"><span class="id" title="lemma">exp_sub_extend_sub2</span></a> : <span class="id" title="keyword">forall</span> <a id="M:1129" class="idref" href="#M:1129"><span class="id" title="binder">M</span></a> <a id="0f6c76d9323e7ba25d17f9058b454c6b" class="idref" href="#0f6c76d9323e7ba25d17f9058b454c6b"><span class="id" title="binder">σ</span></a> <a id="N:1131" class="idref" href="#N:1131"><span class="id" title="binder">N</span></a> <a id="N':1132" class="idref" href="#N':1132"><span class="id" title="binder">N'</span></a>,<br/>
@@ -2101,7 +2101,7 @@ The action of <span class="inlinecode"><span class="id" title="var">q</span>^<a 
 </div>
 
 <div class="doc">
-<a id="lab763"></a><h2 class="section">Automation</h2>
+<a id="lab762"></a><h2 class="section">Automation</h2>
 
 
 <div class="paragraph"> </div>
@@ -2162,7 +2162,7 @@ A unit is moved by its telescope and definition (<span class="inlinecode"><a cla
 </div>
 
 <div class="doc">
-<a id="lab764"></a><h2 class="section">Lifting Under Several Binders, and Application Spines</h2>
+<a id="lab763"></a><h2 class="section">Lifting Under Several Binders, and Application Spines</h2>
 
 </div>
 <div class="code">

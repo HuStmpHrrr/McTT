@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab694"></a><h1 class="section">Inverting the Typing Rules</h1>
+<a id="lab693"></a><h1 class="section">Inverting the Typing Rules</h1>
 
 
 <div class="paragraph"> </div>
@@ -53,7 +53,7 @@
 <div class="paragraph"> </div>
 
 <ul class="doclist">
-<li> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a>[σ]</span> is not a term former, so there is nothing to invert;
+<li> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]</span> is not a term former, so there is nothing to invert;
 
 </li>
 <li> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub"><span class="id" title="record">wf_sub</span></a></span> is a record, not an inductive family, so a derivation of
@@ -419,7 +419,7 @@ For an annotated definition, the type is the annotation.
 We omit <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_subtyp"><span class="id" title="constructor">wf_exp_subtyp</span></a></span> as it does not give a useful inversion. 
 <div class="paragraph"> </div>
 
-<a id="lab695"></a><h2 class="section">Inductive Types</h2>
+<a id="lab694"></a><h2 class="section">Inductive Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -448,7 +448,7 @@ We omit <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syst
 </div>
 
 <div class="doc">
-What the type former <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_ind"><span class="id" title="constructor">a_ind</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> is typed by. 
+What the type former <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_ind"><span class="id" title="constructor">a_ind</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> is typed by. 
 </div>
 <div class="code">
 #[<span class="id" title="var">warnings</span>="-cannot-define-projection"]<br/>
@@ -477,7 +477,7 @@ The group is found at <span class="inlinecode"><a class="idref" href="Mctt.Extra
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-The member is the group's <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>-th 
+The member is the group's <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>-th 
 </div>
 <div class="code">
 &nbsp;&nbsp;; <a id="ii_member" class="idref" href="#ii_member"><span class="id" title="projection">ii_member</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_member"><span class="id" title="definition">ind_member</span></a> <a class="idref" href="Mctt.Core.Syntactic.CoreInversions.html#ii_decl:147"><span class="id" title="method">ii_decl</span></a> <a class="idref" href="Mctt.Core.Syntactic.CoreInversions.html#k:144"><span class="id" title="variable">k</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <a class="idref" href="Mctt.Core.Syntactic.CoreInversions.html#ii_mem:148"><span class="id" title="method">ii_mem</span></a><br/>
@@ -509,7 +509,7 @@ The type former's type is below <span class="inlinecode"><a class="idref" href="
 </div>
 
 <div class="doc">
-What the constructor <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_con"><span class="id" title="constructor">a_con</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> is typed by. 
+What the constructor <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_con"><span class="id" title="constructor">a_con</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.p"><span class="id" title="variable">p</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.ViewBranch.c"><span class="id" title="variable">c</span></a></span> is typed by. 
 </div>
 <div class="code">
 #[<span class="id" title="var">warnings</span>="-cannot-define-projection"]<br/>
@@ -546,7 +546,7 @@ The group is found at <span class="inlinecode"><a class="idref" href="Mctt.Extra
 &nbsp;&nbsp;&nbsp;&nbsp;</div>
 
 <div class="doc">
-The member is the group's <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#GensRun.k"><span class="id" title="variable">k</span></a></span>-th 
+The member is the group's <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#Cargs.k"><span class="id" title="variable">k</span></a></span>-th 
 </div>
 <div class="code">
 &nbsp;&nbsp;; <a id="ci_member" class="idref" href="#ci_member"><span class="id" title="projection">ci_member</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ind_member"><span class="id" title="definition">ind_member</span></a> <a class="idref" href="Mctt.Core.Syntactic.CoreInversions.html#ci_decl:167"><span class="id" title="method">ci_decl</span></a> <a class="idref" href="Mctt.Core.Syntactic.CoreInversions.html#k:163"><span class="id" title="variable">k</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <a class="idref" href="Mctt.Core.Syntactic.CoreInversions.html#ci_mem:168"><span class="id" title="method">ci_mem</span></a><br/>
@@ -578,7 +578,7 @@ The constructor's type is below <span class="inlinecode"><a class="idref" href="
 </div>
 
 <div class="doc">
-What the eliminator <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_elim"><span class="id" title="constructor">a_elim</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.oq"><span class="id" title="variable">oq</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.m"><span class="id" title="variable">m</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Bks"><span class="id" title="variable">Bks</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Rec.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> is typed by: the premises of
+What the eliminator <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_elim"><span class="id" title="constructor">a_elim</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Typing.html#IhTm.oq"><span class="id" title="variable">oq</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Us"><span class="id" title="variable">Us</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Views.html#ViewBlocks.m"><span class="id" title="variable">m</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.IndCheck.html#Fixed_GCtx.Blocks.Bks"><span class="id" title="variable">Bks</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> is typed by: the premises of
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_elim"><span class="id" title="constructor">wf_elim</span></a></span>, and the type it gives below <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Tele.html#Tele.FamChange.Member.T"><span class="id" title="variable">T</span></a></span>.  The stored uniform
     parameters are exactly those of the derivation (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.CoreInversions.html#ei_ups"><span class="id" title="projection">ei_ups</span></a></span>): convertible
     ones are reached only through the congruence rule. 
