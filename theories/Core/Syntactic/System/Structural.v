@@ -3485,7 +3485,7 @@ Qed.
 (** What the global context guarantees about the parameters in scope: popping a
     frame leaves a well-formed context, whose parameters are well formed. *)
 
-Lemma wf_gmod_ctx : forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ.
+Lemma wf_gmod_ctx : forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ.
 Proof.
   induction 1; assumption.
 Qed.

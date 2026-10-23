@@ -4436,9 +4436,69 @@ let%expect_test "the recursor module names a view by its instance" =
                  (List.nil R.Rose)) --> 1 : ℕ
     |}]
 
-let%expect_test "a single inductive type has no recursor module" =
+let%expect_test "a single inductive type files its recursor module in its own module" =
+  let _ = main_of_body
+    "inductive E : Type@0 where | e | f (x : E) end \
+     eval E.Rec.rec_E 0l (fun (z : E) -> Nat) 0 (fun (x : E) (h : Nat) -> succ h) (E.f (E.f E.e))" in
+  [%expect {|
+    Evaluate E.Rec.rec_E 0l (λ (x1 : E) → ℕ) 0 (λ (x2 : E)
+                                                  (x3 : ℕ)
+                                                 → succ x3)
+               (E.f (E.f E.e)) --> 2 : ℕ
+    |}]
+
+let%expect_test "the recursor module is a module" =
   let _ = main_of_body "inductive E : Type@0 where | e end eval E.Rec" in
-  [%expect {| Error: E.Rec has no inferable type |}]
+  [%expect {| Error: Test.E.Rec is a module, not a term |}]
+
+let%expect_test "a nested type of one member files its recursor module in its own module" =
+  let _ = main_of_body
+    "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
+     inductive Rose : Type@0 where | node (ts : List Rose) end \
+     eval Rose.Rec.rec_List_Rose 0l (fun (z : Rose) -> Nat) (fun (z : List Rose) -> Nat) \
+       (fun (ts : List Rose) (h : Nat) -> succ h) 0 \
+       (fun (t : Rose) (ts : List Rose) (ht : Nat) (hts : Nat) -> succ hts) \
+       (List.cons Rose (Rose.node (List.nil Rose)) (List.nil Rose))" in
+  [%expect {|
+    Evaluate Rose.Rec.rec_List_Rose 0l (λ (x1 : Rose) → ℕ)
+               (λ (x2 : List Rose) → ℕ)
+               (λ (x3 : List Rose)
+                  (x4 : ℕ)
+                 → succ x4)
+               0
+               (λ (x5 : Rose)
+                  (x6 : List Rose)
+                  (x7 : ℕ)
+                  (x8 : ℕ)
+                 → succ x8)
+               (List.cons Rose (Rose.node (List.nil Rose)) (List.nil Rose)) --> 1
+      : ℕ
+    |}]
+
+(* [inductive A … with B … end]: the recursor module is in the first
+   declared member's module, [A.Rec]; its function at [B] is typed through
+   the group as [A]'s module's frame carries it. *)
+let%expect_test "a group written with [with] files its recursor module in its first member's module" =
+  let _ = main_of_body
+    "inductive A : Type@0 where | a0 | a1 (b : B) with B : Type@0 where | b0 (a : A) end \
+     eval A.Rec.rec_B 0l (fun (z : A) -> Nat) (fun (z : B) -> Nat) \
+       0 (fun (b : B) (h : Nat) -> succ h) (fun (a : A) (h : Nat) -> succ h) \
+       (B.b0 (A.a1 (B.b0 A.a0)))" in
+  [%expect {|
+    Evaluate A.Rec.rec_B 0l (λ (x1 : A) → ℕ) (λ (x2 : B) → ℕ) 0
+               (λ (x3 : B)
+                  (x4 : ℕ)
+                 → succ x4)
+               (λ (x5 : A)
+                  (x6 : ℕ)
+                 → succ x6)
+               (B.b0 (A.a1 (B.b0 A.a0))) --> 3 : ℕ
+    |}]
+
+let%expect_test "a later member of a group written with [with] has no recursor module" =
+  let _ = main_of_body
+    "inductive A : Type@0 where | a0 | a1 (b : B) with B : Type@0 where | b0 (a : A) end eval B.Rec" in
+  [%expect {| Error: B.Rec has no inferable type |}]
 
 let%expect_test "a mutual group prints back as written" =
   let _ = main_of_body (group_tm_sp ^ "eval S.Tm.var 0") in

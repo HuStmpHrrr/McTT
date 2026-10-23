@@ -764,7 +764,8 @@ Lemma path_wf_any_ctx : forall H p Γ Γ',
 Proof.
   induction H as [fp | x | H IH y | H IH N | U]; intros * Hp HH HΓ'; cbn in Hp; try discriminate.
   - destruct (me_denotes _ _ _ _ _ HH) as (R & _ & Hm & _).
-    inversion Hm; subst; eapply wf_me_unit; eassumption.
+    destruct (mdenote_unit_inv _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) _ _ _ Hm) as (T & Φ & Hu & _).
+    eapply wf_me_unit; [ exact HΓ' | exact Hu ].
   - destruct (mod_qname H) as [p0 |] eqn:E; [| discriminate ].
     pose proof (ctx_wf_gctx _ _ _ HΓ') as Hg.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.

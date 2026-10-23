@@ -90,8 +90,9 @@ type link =
 (* [bare]: a name that names nothing by itself, the constructor of an
    eliminator's branch, which is the scrutinee's type's.  [extra]: the
    anchors of what the declaration of the name generates besides it, each
-   with its kind: the recursor module [Rec] of a [mutual] group at the
-   group's name, and its function [rec_x] at the member [x]'s. *)
+   with its kind: the recursor module [Rec] of a group at the group's
+   name for [mutual T], at its first member's otherwise, and its function
+   [rec_x] at the member [x]'s. *)
 type occ = { mutable link : link option; mutable anchor : string option; mutable kind : kind option;
              mutable bare : bool; mutable extra : (string * kind) list }
 
@@ -136,14 +137,17 @@ type st = {
   mutable toc : toc_entry list;  (* the unit's declarations at every depth, last first *)
   mutable notes : string list;
   mutable evals : (C.obj * C.obj option) list;  (* the evals walked, last first *)
-  mutable recs : rec_site list;  (* the [mutual] groups walked, last first *)
+  mutable recs : rec_site list;  (* the groups walked, last first *)
 }
 
-(* A group declared by [mutual T (ps) where …], which files a recursor
-   module [T.Rec]: the member chain of [T], the VAR of its name, and its
+(* A group, which files a recursor module [Rec]: [T.Rec] for one declared
+   by [mutual T (ps) where …], otherwise [X.Rec] in its first member [X]'s
+   module.  [r_chain]: the member chain of the module [Rec] is in;
+   [r_group]: that of the frame the members are declared in; [r_name]: the
+   VAR the anchor of [Rec] is at, [T]'s or [X]'s; [r_members]: the
    declared members' names, in order.  The views' functions of [Rec] are
    known only once the group is filed ([rec_view_anchors]). *)
-and rec_site = { r_chain : string list; r_name : int; r_members : string list }
+and rec_site = { r_chain : string list; r_group : string list; r_name : int; r_members : string list }
 
 let next st x =
   let i = st.cur in
@@ -411,23 +415,31 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
   let group ch env ps_first ps ms =
     let self x = { v_link = Site { s_unit = st.unit; s_anchor = anchor_of ch x }; v_mod = MNone } in
     let base = List.fold_left (fun env ((x, _), _) -> push x (self x) env) env ms in
-    let declm x =
+    (* The chain of the module the group's recursor module [Rec] is in: [T]
+       for [mutual T], which [ch] is; otherwise the first member's module. *)
+    let rch = if ps_first then ch else (match ms with ((x0, _), _) :: _ -> ch @ [ x0 ] | [] -> ch) in
+    let declm j x =
       let i = next st x in
       declare st i (anchor_of ch x) Mod;
-      (* A member of a [mutual] group: its function of [Rec] too. *)
-      if ps_first then st.occ.(i).extra <- [ (anchor_of (ch @ [ "Rec" ]) ("rec_" ^ x), Def) ];
+      (* A member: its function of [Rec] too; the first member of a group
+         not declared by [mutual], [Rec] itself, filed in its module. *)
+      st.occ.(i).extra <- [ (anchor_of (rch @ [ "Rec" ]) ("rec_" ^ x), Def) ];
+      if not ps_first && j = 0 then begin
+        st.occ.(i).extra <- (anchor_of rch "Rec", Mod) :: st.occ.(i).extra;
+        st.recs <- { r_chain = rch; r_group = ch; r_name = i; r_members = List.map (fun ((y, _), _) -> y) ms } :: st.recs
+      end;
       st.toc <- { te_depth = List.length ch; te_name = x; te_anchor = anchor_of ch x; te_kw = "inductive"; te_kind = Mod }
                 :: st.toc
     in
     let envu =
       if ps_first then fst (params st env ps)
-      else (match ms with ((x, _), _) :: _ -> declm x; fst (params st env ps) | [] -> env)
+      else (match ms with ((x, _), _) :: _ -> declm 0 x; fst (params st env ps) | [] -> env)
     in
     (match ms with
      | [ ((x, _), _) ] -> Hashtbl.replace st.items (fp, ch @ [ x; "rec" ]) (self x).v_link
      | _ -> ());
     List.iteri (fun j ((x, t), cs) ->
-        if ps_first || j > 0 then declm x;
+        if ps_first || j > 0 then declm j x;
         let rec pis env t =
           match t with
           | C.Coq_pi (y, a, b) -> let v = bind st y in term st env a; pis (push y v env) b
@@ -454,7 +466,8 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
        let i = decl (Some "mutual") x Mod in
        (* The recursor module the group files, at the group's name. *)
        st.occ.(i).extra <- [ (anchor_of (ch @ [ x ]) "Rec", Mod) ];
-       st.recs <- { r_chain = ch @ [ x ]; r_name = i; r_members = List.map (fun ((y, _), _) -> y) ms } :: st.recs;
+       st.recs <- { r_chain = ch @ [ x ]; r_group = ch @ [ x ]; r_name = i; r_members = List.map (fun ((y, _), _) -> y) ms }
+                  :: st.recs;
        group (ch @ [ x ]) env true ps ms
    | C.Coq_c_mod (_, x, ps, md) ->
        ignore (decl (Some "module") x Mod);
@@ -534,7 +547,7 @@ type unit_info = {
   u_toc : toc_entry list;      (* the declarations of the body at every depth, in order *)
   u_notes : string list;
   u_evals : (int * int) list;  (* each eval's first and last token, in order *)
-  u_recs : rec_site list;      (* the [mutual] groups declared, in order *)
+  u_recs : rec_site list;      (* the groups declared, in order *)
 }
 
 let read_file p = In_channel.with_open_bin p In_channel.input_all
@@ -640,10 +653,10 @@ let check_units ?(extra_roots = []) root (us : unit_info list) thetas outputs na
           Option.iter (Hashtbl.replace nats u.u_path) (bt : S.qname option)
       | _ -> ()) us
 
-(* The functions of [Rec] for the views of each [mutual] group of a checked
-   unit, at the group's name: the core names them ([grec_names]) after the
-   declared members' [rec_x], in member order, from the group as filed at
-   the path of its first member. *)
+(* The functions of [Rec] for the views of each group of a checked unit, at
+   the name [Rec]'s anchor is at: the core names them ([grec_names]) after
+   the declared members' [rec_x], in member order, from the group as filed
+   at the path of its first member. *)
 let rec_view_anchors (us : unit_info list) thetas =
   List.iter (fun u ->
       match Hashtbl.find_opt thetas u.u_path with
@@ -653,7 +666,7 @@ let rec_view_anchors (us : unit_info list) thetas =
               match r.r_members with
               | [] -> ()
               | m0 :: _ ->
-                  let p = { S.q_unit = u.u_path; S.q_chain = r.r_chain @ [ m0 ] } in
+                  let p = { S.q_unit = u.u_path; S.q_chain = r.r_group @ [ m0 ] } in
                   match McttExtracted.Members.ind_lookup th [] p with
                   | None -> ()
                   | Some d ->

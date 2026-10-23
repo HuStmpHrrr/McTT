@@ -1069,7 +1069,11 @@ Section EvalImpl.
         let (a, Ha) := feval_exp_impl A nil _ in
         let (r, Hr) := feval_apps_impl (⇑ a (d_glob (qname_app pq (x :: nil)))) args _ in
         exist _ r _
-    | exist _ (Some (ge_mod _ _)) E => False_rect _ _
+    | exist _ (Some (ge_mod _ _)) E with inspect (ind_mlookup Θ Ξ (qname_app pq (x :: nil))) := {
+      | exist _ (Some (pg, k, D)) El =>
+          let (r, Hr) := feval_apps_impl (d_ind pg k nil) args _ in
+          exist _ r _
+      | exist _ None El => False_rect _ _ }
     | exist _ (Some (ge_ind _ pg k D _)) E =>
         let (r, Hr) := feval_apps_impl (d_ind pg k nil) args _ in
         exist _ r _
@@ -1077,7 +1081,12 @@ Section EvalImpl.
         let (f, Hf) := feval_exp_impl (ctx_fn Δ (apps (a_ind pt k) Ns)) nil _ in
         let (r, Hr) := feval_apps_impl f args _ in
         exist _ r _
-    | exist _ None E => False_rect _ _ }
+    (** The open frame of a member's module: its type former *)
+    | exist _ None E with inspect (ind_mlookup Θ Ξ (qname_app pq (x :: nil))) := {
+      | exist _ (Some (pg, k, D)) El =>
+          let (r, Hr) := feval_apps_impl (d_ind pg k nil) args _ in
+          exist _ r _
+      | exist _ None El => False_rect _ _ } }
   | dm_local (e :: Δ) D p, x, H => exist _ (d_member (dm_local (e :: Δ) D p) (x :: nil)) _
   | dm_local nil (md_alias E) p, x, H => False_rect _ _
   | dm_local nil (md_body sm Φ) p, x, H with kbody_impl Θ Ξ p Φ _ := {

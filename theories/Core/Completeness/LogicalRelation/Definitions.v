@@ -472,6 +472,10 @@ Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_file
       dkind gc_deps gc_stack (dm_global p nil) (x :: nil) mk_mod
   ; vfm_terms : forall x Φ0 E R0, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) -> entry_term E = Some R0 ->
       valid_filed_term p T x R0
+    (** The open frame of a member's module under it is its type former,
+        as a filed member's entry is *)
+  ; vfm_ind_frames : forall x pq k D, gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) ->
+      valid_filed_term p T x (ds_ind nil pq k nil)
   ; vfm_aliases : forall y Φ0 E Ua, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
       gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias Ua) /\
       forall Γ, ⊨ Γ -> ⊢ Θm ⍮ Ξm ⍮ Γ -> valid_unit Θm Ξm Γ (me_lit Ua) }.

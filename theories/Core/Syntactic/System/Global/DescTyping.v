@@ -398,22 +398,22 @@ Proof.
     destruct R0 as [| | | ? p kd ?]; cbn in Hm; try discriminate; try (injection Hm as <-; exact I);
     destruct (ind_lookup Θ Ξ p) as [D |]; [| discriminate ];
     destruct (ind_mpath D kd) as [pm |]; [| discriminate ];
-    destruct (gc_body Θ Ξ pm) as [[? ?] |]; [ injection Hm as <-; exact I | discriminate ] end.
+    destruct (gc_loc Θ Ξ pm) as [[? ?] |]; [ injection Hm as <-; exact I | discriminate ] end.
 Qed.
 
 Lemma ds_is_mod_mod : forall Θ Ξ R, ds_is_mod R -> ds_mod Θ Ξ R = Some R.
 Proof. intros * H; destruct R; cbn in *; tauto. Qed.
 
 (** The module part of a member of a group: the module stored at the
-    member's path. *)
+    member's path, its open frame or its filed module. *)
 Lemma ds_mod_ind_inv : forall Θ Ξ Θ' pq k Ns R, ds_mod Θ Ξ (ds_ind Θ' pq k Ns) = Some R ->
-    exists D pm T Φ, ind_lookup Θ Ξ pq = Some D /\ ind_mpath D k = Some pm /\ gc_body Θ Ξ pm = Some (T, Φ) /\
+    exists D pm T Φ, ind_lookup Θ Ξ pq = Some D /\ ind_mpath D k = Some pm /\ gc_loc Θ Ξ pm = Some (T, Φ) /\
       R = ds_closed Θ' pm T Φ Ns.
 Proof.
   intros * Hm; cbn in Hm.
   destruct (ind_lookup Θ Ξ pq) as [D |] eqn:Hl; [| discriminate ].
   destruct (ind_mpath D k) as [pm |] eqn:Hp; [| discriminate ].
-  destruct (gc_body Θ Ξ pm) as [[T Φ] |] eqn:Hb; [| discriminate ].
+  destruct (gc_loc Θ Ξ pm) as [[T Φ] |] eqn:Hb; [| discriminate ].
   injection Hm as <-; exists D, pm, T, Φ; repeat split; assumption.
 Qed.
 
@@ -437,7 +437,7 @@ Proof.
   - destruct (tele_split (rev Θ0)) as [[[? ?] ?] | ?]; injection Ha as <-; eexists; reflexivity.
   - destruct (ind_lookup Θ Ξ p) as [D |] eqn:Hl; [| discriminate ].
     destruct (ind_mpath D kd) as [pm |] eqn:Hp; [| discriminate ].
-    destruct (gc_body Θ Ξ pm) as [[T1 Φ1] |] eqn:Hb; [| discriminate ].
+    destruct (gc_loc Θ Ξ pm) as [[T1 Φ1] |] eqn:Hb; [| discriminate ].
     destruct (tele_split (rev Θ0)) as [[[? ?] ?] | ?]; injection Ha as <-; cbn; rewrite Hl, Hp, Hb; eexists; reflexivity.
 Qed.
 
@@ -657,10 +657,10 @@ Qed.
 
 (** The module of a member of a group of inductive types is over the
     group's uniform parameters. *)
-Lemma ind_mlookup_uparams : forall Θ Ξ p pq k D, ind_mlookup Θ Ξ p = Some (pq, k, D) ->
+Lemma ind_mlookup_uparams : forall Θ Ξ p pq k D, ind_mlookup Θ Ξ p = Some (pq, k, D) -> gs_find_ind Ξ p = None ->
     gc_module Θ Ξ p = Some (mr_body (ind_uparams D) (Some (pq, k, D))).
 Proof.
-  intros * Hl; destruct (ind_mlookup_module _ _ _ _ Hl) as [T Hm].
+  intros * Hl Hk; destruct (ind_mlookup_module _ _ _ _ Hl) as [[T Hm] | Hf]; [| rewrite Hk in Hf; discriminate ].
   rewrite Hm; unfold gc_module, gc_module_u in Hm.
   destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T0] |]; [ discriminate | |].
   - destruct (gm_submodule_entry _ _ _ _ _ _ _ _ Hm) as (pv & Φ' & He).
@@ -671,11 +671,22 @@ Proof.
     rewrite (gm_entry_submodule _ (gu_params U) _ _ _ _ _ _ _ He) in Hm; injection Hm as ->; reflexivity.
 Qed.
 
-Lemma ind_mlookup_gc_body : forall Θ Ξ p pq k D T Φ, ind_mlookup Θ Ξ p = Some (pq, k, D) ->
-    gc_body Θ Ξ p = Some (T, Φ) -> T = ind_uparams D.
+(** The body stored at a member's path, its open frame or its filed module,
+    is over the group's uniform parameters. *)
+Lemma ind_mlookup_gc_loc : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p pq k D T Φ, ind_mlookup Θ Ξ p = Some (pq, k, D) ->
+    gc_loc Θ Ξ p = Some (T, Φ) -> T = ind_uparams D.
 Proof.
-  intros * Hl Hb; destruct (gc_body_module _ _ _ _ _ Hb) as [oD Hm].
-  rewrite (ind_mlookup_uparams _ _ _ _ _ _ Hl) in Hm; injection Hm as -> _; reflexivity.
+  intros * Hg * Hl Hb; unfold gc_loc in Hb.
+  destruct (gs_find_ind Ξ p) as [r |] eqn:Hk.
+  - rewrite ind_mlookup_unfold, Hk in Hl; injection Hl as ->.
+    destruct (gc_frame Ξ p) as [[T' Φ'] |] eqn:Hf.
+    + injection Hb as <- <-; exact (frame_ind_uparams _ _ Hg _ _ _ _ _ _ Hk Hf).
+    + exfalso; destruct (gs_find_ind_tele _ _ _ Hk) as (U & T0 & Ht).
+      unfold gc_body in Hb; rewrite Ht in Hb; discriminate.
+  - destruct (gc_frame Ξ p) as [[T' Φ'] |] eqn:Hf.
+    + rewrite (frame_mlookup_none _ _ _ _ Hf Hk) in Hl; discriminate.
+    + destruct (gc_body_module _ _ _ _ _ Hb) as [oD Hm].
+      rewrite (ind_mlookup_uparams _ _ _ _ _ _ Hl Hk) in Hm; injection Hm as -> _; reflexivity.
 Qed.
 
 
@@ -710,23 +721,13 @@ Qed.
 Lemma qname_mod_denote : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T Φ Γ, loc Θ Ξ p T Φ ->
     exists R, mdenote Θ Ξ Γ (qname_mod p) R /\
       (R = ds_closed nil p T Φ nil \/
-       (exists pq k D, R = ds_ind nil pq k nil /\ gc_body Θ Ξ p = Some (T, Φ) /\ ind_mlookup Θ Ξ p = Some (pq, k, D))).
+       (exists pq k D, R = ds_ind nil pq k nil /\ gc_loc Θ Ξ p = Some (T, Φ) /\ ind_mlookup Θ Ξ p = Some (pq, k, D))).
 Proof.
   intros Θ Ξ Hg * Hl.
-  destruct Hl as [Hl | Hl].
-  - exists (ds_closed nil p T Φ nil); split; [ apply (mdenote_of_loc _ _ Hg _ p); [ apply mod_qname_qname_mod | left; exact Hl ] |].
-    left; reflexivity.
-  - destruct (gc_body_module _ _ _ _ _ Hl) as [[[[pq k] D] |] Hm].
-    + assert (Hi : ind_mlookup Θ Ξ p = Some (pq, k, D)) by (rewrite ind_mlookup_unfold, Hm; reflexivity).
-      destruct (ind_mparent _ _ Hg _ _ _ _ Hi) as (mq & y & Tq & Φq & pv & Φ' & -> & Hlq & He).
-      exists (ds_ind nil pq k nil); split; [| right; exists pq, k, D; split; [ reflexivity | split; [ exact Hl | exact Hi ] ] ].
-      rewrite qname_mod_in.
-      pose proof (proj2 (loc_closed _ _ Hg _ _ _ (loc_mod_loc _ _ _ _ _ Hlq))) as Hc.
-      destruct (gm_entry_prefix _ _ _ (body_closed_noopen _ _ Hc) He) as (Φ0 & Hp).
-      eapply dn_mem; [ exact (mdenote_of_loc _ _ Hg _ _ _ _ Γ (mod_qname_qname_mod mq) Hlq) | reflexivity
-                     | cbn; rewrite Hp; reflexivity | constructor | reflexivity ].
-    + exists (ds_closed nil p T Φ nil); split; [ apply (mdenote_of_loc _ _ Hg _ p); [ apply mod_qname_qname_mod | right; split; assumption ] |].
-      left; reflexivity.
+  destruct (mdenote_of_loc_any _ _ Hg _ _ _ _ Γ (mod_qname_qname_mod p) Hl) as (R & Hm & _ & HR).
+  exists R; split; [ exact Hm |].
+  destruct (ind_mlookup Θ Ξ p) as [[[pq k] D] |] eqn:Hi; [ right | left; exact HR ].
+  exists pq, k, D; split; [ exact HR | split; [ exact (gc_loc_of_loc _ _ Hg _ _ _ Hl) | reflexivity ] ].
 Qed.
 
 Lemma filed_denote : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall p T Φ Γ Ns, gc_loc Θ Ξ p = Some (T, Φ) ->
@@ -760,7 +761,7 @@ Lemma ds_canon_mod : forall Θ Ξ R Rm, ds_canon Θ Ξ R -> ds_mod Θ Ξ R = Som
 Proof.
   intros * Hc Hm; destruct R as [A om | Δ Φ | Θ0 p T Φ Ns | Θ0 p kd Ns]; try (cbn in Hm |- *; discriminate);
     try (cbn in Hm |- *; injection Hm as <-; exact Hc).
-  destruct (ds_mod_ind_inv _ _ _ _ _ _ _ Hm) as (D & pm & T & Φ & _ & _ & Hb & ->); right; exact Hb.
+  destruct (ds_mod_ind_inv _ _ _ _ _ _ _ Hm) as (D & pm & T & Φ & _ & _ & Hb & ->); exact (gc_loc_loc _ _ _ _ _ Hb).
 Qed.
 
 Lemma ds_canon_at : forall Θ Ξ R N R', ds_canon Θ Ξ R -> ds_at R N = Some R' -> ds_canon Θ Ξ R'.
@@ -1194,7 +1195,11 @@ Proof.
   intros [u ch]; revert u; induction ch as [| y ch IH] using List.rev_ind; intros u T Φ Hl.
   - destruct (qname_mod_denote _ _ Hg _ _ _ Γ Hl) as (R & Hm & _).
     unfold qname_mod in Hm |- *; cbn [q_unit q_chain me_mems] in Hm |- *.
-    inversion Hm; subst; eapply wf_me_unit; eassumption.
+    inversion Hm; subst; [ eapply wf_me_unit; eassumption |].
+    exfalso; match goal with Hk : gs_find_ind _ _ = Some _, Hq : mod_qname _ = Some _ |- _ =>
+      cbn in Hq; injection Hq as <-; destruct (frame_ind_parent _ _ Hg _ _ Hk) as (mq & y & Hp) end.
+    destruct mq as [? cq]; unfold qname_in in Hp; cbn in Hp; injection Hp as _ Hc.
+    destruct cq; discriminate.
   - change {| q_unit := u; q_chain := ch ++ y :: nil |} with (qname_in {| q_unit := u; q_chain := ch |} y) in *.
     destruct (qname_mod_denote _ _ Hg _ _ _ Γ Hl) as (R & Hm & HR).
     assert (Ht : exists T0, ds_mtele Θ Ξ R = Some T0).
@@ -1204,14 +1209,13 @@ Proof.
     destruct Ht as (T0 & Ht).
     assert (Hp : exists T' Φ', loc Θ Ξ {| q_unit := u; q_chain := ch |} T' Φ').
     { destruct Hl as [Hf | Hb].
-      - pose proof (gc_unit_of_frame Θ _ _ _ _ _ (mod_qname_qname_mod _) Hf) as Hu.
-        rewrite qname_mod_in in Hu.
-        destruct (gc_unit_mem_parent _ _ Hg _ _ _ _ Hu) as (T' & Φ' & Hu' & _).
-        destruct (gc_unit_loc _ _ _ _ _ Hu') as (mp & Hq & Hl'); rewrite mod_qname_qname_mod in Hq; injection Hq as <-.
-        eauto.
+      - unfold gc_frame in Hf.
+        destruct (gs_find_tele Ξ (qname_in {| q_unit := u; q_chain := ch |} y)) as [[[U [| ? ?]] T1] |] eqn:Ef;
+          try (destruct U as [? [[|] ? | ?]]); try discriminate.
+        destruct (frame_parent _ _ Hg _ _ _ _ Ef) as (T' & Φ' & Hf' & _); exists T', Φ'; left; exact Hf'.
       - destruct (gc_body_module _ _ _ _ _ Hb) as [oD Hmd].
         destruct (parent_loc_any _ _ Hg _ _ _ _ _ Hb Hmd) as (Tq & Φq & Hlq & _).
-        exists Tq, Φq; apply loc_mod_loc; exact Hlq. }
+        exists Tq, Φq; exact Hlq. }
     destruct Hp as (T' & Φ' & Hp).
     rewrite qname_mod_in in Hm |- *.
     eapply wf_me_mem; [ exact (IH _ _ _ Hp) | exact Hm | exact Ht | exact Hm | exact Ht ].
@@ -1263,7 +1267,7 @@ Definition ge_coh (T : ctx) (E : gentry) : Prop :=
   | ge_def _ _ A _ => exists A0, A = ctx_pi T A0
   | ge_mod _ (gu_mk Δ (md_body _ Φ')) => tele_ass Δ /\ gm_coh (Δ ++ T) Φ'
   | ge_mod _ (gu_mk Δ (md_alias _)) => exists Δ0, Δ = Δ0 ++ T /\ tele_ass Δ0
-  | ge_ind _ _ _ D Φ' => (exists Δ0, ind_uparams D = Δ0 ++ T /\ tele_ass Δ0) /\ gm_coh (ind_uparams D) Φ' /\ gm_defs Φ'
+  | ge_ind _ _ _ D Φ' => (exists Δ0, ind_uparams D = Δ0 ++ T /\ tele_ass Δ0) /\ gm_coh (ind_uparams D) Φ'
   | ge_ind_alias _ Δ _ _ _ _ => exists Δ0, Δ = Δ0 ++ T /\ tele_ass Δ0
   end.
 
@@ -1703,8 +1707,8 @@ Section DescOk.
     - discriminate.
     - (* a member of a group of inductive types *)
       rewrite Hl, Hmp in Ht.
-      destruct (gc_body Θ Ξ pm) as [[T0 Φ0] |] eqn:Hb; [| discriminate ].
-      pose proof (ind_mlookup_gc_body _ _ _ _ _ _ _ _ Hml Hb) as ->.
+      destruct (gc_loc Θ Ξ pm) as [[T0 Φ0] |] eqn:Hb; [| discriminate ].
+      pose proof (ind_mlookup_gc_loc _ _ Hg _ _ _ _ _ _ Hml Hb) as ->.
       destruct (Nat.leb (length Ns) (length (ind_uparams D))); [| discriminate ]; injection Ht as <-.
       pose proof (args_at _ _ _ _ _ _ _ Hau Hsu HTu HΘ' Hargs Hv HN) as Hat.
       destruct (tele_split (rev Θ')) as [[[B' Θ''] τ] | τ] eqn:Es; injection Ha as <-.
@@ -1742,8 +1746,8 @@ Section DescOk.
     destruct (ds_mod_ind_inv _ _ _ _ _ _ _ Hm) as (D' & pm' & T0 & Φ0 & Hl' & Hmp' & Hb & ->).
     match goal with Hl : ind_lookup _ _ _ = Some ?D0, Hmp : ind_mpath ?D0 _ = Some _, Hml : ind_mlookup _ _ _ = Some _ |- _ =>
       rewrite Hl in Hl'; injection Hl' as <-; rewrite Hmp in Hmp'; injection Hmp' as <-;
-      pose proof (ind_mlookup_gc_body _ _ _ _ _ _ _ _ Hml Hb) as -> end.
-    econstructor; [ exact Hg | apply gc_sub_refl | right; exact Hb | eassumption .. ].
+      pose proof (ind_mlookup_gc_loc _ _ Hg _ _ _ _ _ _ Hml Hb) as -> end.
+    econstructor; [ exact Hg | apply gc_sub_refl | exact (gc_loc_loc _ _ _ _ _ Hb) | eassumption .. ].
   Qed.
 
   (** An entry of an open module: a definition is typed by the extension the

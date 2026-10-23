@@ -3,7 +3,10 @@
    level [u], one motive per member, in member order, then one case per
    constructor of each member, in order; its functions [rec_<member>] are
    the group's eliminator at each member.  A view is named by its
-   instance: [List (Rose A)] gives [rec_List_Rose]. *)
+   instance: [List (Rose A)] gives [rec_List_Rose].  Any other group files
+   it in its first declared member's module: [X.Rec] for a single type
+   [X], [A.Rec] for [inductive A … with B … end]; that module's own
+   parameters are the uniform ones, so [Rec]'s are the rest. *)
 import Prelude›Builtin›Nat use (Nat; succ)
 
 module GroupRecursors where
@@ -106,4 +109,41 @@ end
 
 eval termSize (Lam.Term.block (List.cons Lam.Bind (Lam.Bind.bind 0 (Lam.Term.var 0)) (List.nil Lam.Bind))
                  (Lam.Term.call 1 (List.cons Lam.Term (Lam.Term.var 1) (List.nil Lam.Term))))
+
+(* Rose trees without [mutual]: [Tree.Rec], in [Tree]'s module, over
+   [Tree]'s parameter [A], has [rec_Tree] and [rec_List_Tree]. *)
+inductive Tree (A : Type@0) : Type@0 where
+| node (x : A) (ts : List (Tree A))
+end
+
+def treeNodes (t : Tree ℕ) : ℕ :=
+  Tree.Rec.rec_Tree ℕ 0l (λ (z : Tree ℕ) → ℕ) (λ (z : List (Tree ℕ)) → ℕ)
+    (λ (x : ℕ) (ts : List (Tree ℕ)) (h : ℕ) → succ h)
+    0
+    (λ (t : Tree ℕ) (ts : List (Tree ℕ)) (ht : ℕ) (hts : ℕ) → add ht hts)
+    t
+end
+
+def twig (n : ℕ) : Tree ℕ := Tree.node ℕ n (List.nil (Tree ℕ)) end
+
+eval treeNodes (Tree.node ℕ 0 (List.cons (Tree ℕ) (twig 1) (List.cons (Tree ℕ) (twig 2) (List.nil (Tree ℕ)))))
+
+(* Even and odd numbers of a unary type, as [inductive … with … end]: the
+   recursor module is [Even.Rec], with [rec_Even] and [rec_Odd]. *)
+inductive Even : Type@0 where
+| ezero
+| esucc (o : Odd)
+with Odd : Type@0 where
+| osucc (e : Even)
+end
+
+def oddHalf (o : Odd) : ℕ :=
+  Even.Rec.rec_Odd 0l (λ (z : Even) → ℕ) (λ (z : Odd) → ℕ)
+    0
+    (λ (o : Odd) (h : ℕ) → succ h)
+    (λ (e : Even) (h : ℕ) → h)
+    o
+end
+
+eval oddHalf (Odd.osucc (Even.esucc (Odd.osucc (Even.esucc (Odd.osucc Even.ezero)))))
 end

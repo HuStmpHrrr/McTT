@@ -295,8 +295,8 @@ Lemma body_mem_desc : forall Γ Δ Φ Φx x R A, body_xp Θm Ξm (Δ ++ Γ) Φ �
       R = ds_term (ctx_pi Δ A0[σ]) (Some (ctx_fn Δ M0[σ])).
 Proof.
   intros * Hx Hm Ht.
-  inversion Hm as [? ? ? ? ? Hq _ | | | | ? ? ? R0 R0m Γy E rd R1 ? Hm0 Hmd He Hed Hr]; subst; [ cbn in Hq; discriminate |].
-  inversion Hm0; subst; [ match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end |].
+  inversion Hm as [? ? ? ? ? Hq _ | ? ? ? ? ? ? Hq _ | | | |? ? ? R0 R0m Γy E rd R1 ? Hm0 Hmd He Hed Hr]; subst; [ cbn in Hq; discriminate | cbn in Hq; discriminate |].
+  inversion Hm0; subst; try (match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end).
   match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
   match goal with Hb : ds_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
   match goal with Hx' : body_xp _ _ _ Φ ?Φx1 |- _ =>
@@ -337,8 +337,8 @@ Lemma alias_mem_desc : forall Γ Δ E x R A,
          ds_mod Θm Ξm RE = Some (ds_closed nil p T Φ nil) /\ R = ds_up Δ (ds_term A0 (Some (a_mem (qname_mod p) x)))).
 Proof.
   intros * Hm Ht.
-  inversion Hm as [? ? ? ? ? Hq _ | | | | ? ? ? R0 R0m Γy Ee rd R1 ? Hm0 Hmd He Hed Hr]; subst; [ cbn in Hq; discriminate |].
-  inversion Hm0; subst; [ match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end |].
+  inversion Hm as [? ? ? ? ? Hq _ | ? ? ? ? ? ? Hq _ | | | |? ? ? R0 R0m Γy Ee rd R1 ? Hm0 Hmd He Hed Hr]; subst; [ cbn in Hq; discriminate | cbn in Hq; discriminate |].
+  inversion Hm0; subst; try (match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end).
   match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu as [| ? ? ? ? RE REm HmE HmodE]; subst end.
   pose proof (ds_mod_is_mod _ _ _ _ HmodE) as HisE.
   rewrite (ds_is_mod_mod _ _ _ (ds_is_mod_up _ _ HisE)) in Hmd; injection Hmd as <-.
@@ -640,7 +640,22 @@ Proof.
     exact (mk_rel_mem_reduct _ _ _ _ _ m r Hm0 Hr Hmr).
   - (* a module expression equal to a valid unit *)
     intros Γ H R Rm K RK HwH HmH HmodH HHK HK IHK HmK HmodK x R' A Hm Ht.
-    inversion Hm as [? ? ? ? ? _ _ | | | | ? ? ? R0 R0m Γy E rd R1 ? Hm0 Hmd He Hed Hr]; subst; [ cbn in Ht; discriminate |].
+    inversion Hm as [? ? ? ? ? _ _ | ? ? ? pq k D Hq Hk | | | | ? ? ? R0 R0m Γy E rd R1 ? Hm0 Hmd He Hed Hr]; subst;
+      [ cbn in Ht; discriminate | |].
+    { (* the open frame of a member's module under [H]: [H] names a frame,
+         a filed module at no argument *)
+      cbn in Hq; destruct (mod_qname H) as [mq |] eqn:Hq0; [| discriminate ]; injection Hq as <-.
+      change {| q_unit := q_unit mq; q_chain := q_chain mq ++ x :: nil |} with (qname_in mq x) in Hk.
+      destruct (gs_find_ind_tele _ _ _ Hk) as (U & T0 & Ht0).
+      destruct (frame_parent _ _ Hgm _ _ _ _ Ht0) as (Tq & Φq & Hfq & _).
+      assert (Hgl : gc_loc Θm Ξm mq = Some (Tq, Φq)) by (unfold gc_loc; rewrite Hfq; reflexivity).
+      assert (Hs : valid_args Γ Tq nil)
+        by (apply (mk_valid_args _ _ _ Tq nil); [ rewrite app_nil_r; reflexivity | reflexivity | constructor | exact I
+                                                 | intros k0 N0 A0 HN0; destruct k0; discriminate ]).
+      rewrite (mod_qname_inv _ _ Hq0) in Hm |- *.
+      change (qname_mod mq) with (me_apps (qname_mod mq) nil) in Hm |- *.
+      assert (HΓ : ⊨ Γ) by (eapply valid_unit_ctx_wf; exact HK).
+      eapply filed_mem; eassumption. }
     pose proof (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ Hm0 _ HmH) as ->.
     rewrite HmodH in Hmd; injection Hmd as <-.
     assert (HmKx : mdenote Θm Ξm Γ (me_mem K x) R') by (eapply dn_mem; [ exact HmK | exact HmodK | exact He | exact Hed | exact Hr ]).

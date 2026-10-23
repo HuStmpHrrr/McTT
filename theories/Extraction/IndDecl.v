@@ -14,8 +14,8 @@ Import Syntax_Notations GlobalCtx_Notations.
 (** * Deciding a Declaration
 
     The well-formedness of a group of inductive declarations as entries of
-    a frame ([wf_gentry_ind_nil], [wf_gentry_ind_mem_nil],
-    [wf_gentry_ind_ext]), decided premise by premise: the syntactic ones
+    a frame, each with an empty module ([wf_gentry_ind_nil],
+    [wf_gentry_ind_mem_nil]), decided premise by premise: the syntactic ones
     by computation, the judgments by [Extraction.GlobalCheck].  The
     premises quantifying over the members, the arguments of the
     constructors and the non-uniform parameters are decided along the
@@ -1996,7 +1996,7 @@ Proof. intros * He; unfold ind_alias_lookup, ind_alias_lookup_u; rewrite (gds_eq
 Lemma gds_equiv_ds_mod : forall Θ Θ' Ξ R, gds_equiv Θ Θ' -> ds_mod Θ Ξ R = ds_mod Θ' Ξ R.
 Proof.
   intros * He; destruct R; cbn [ds_mod]; try reflexivity; rewrite (gds_equiv_ind_lookup _ _ _ _ He).
-  destruct (ind_lookup Θ' Ξ _); [ destruct (ind_mpath _ _); [ rewrite (gds_equiv_body _ _ _ _ He) |] |]; reflexivity.
+  destruct (ind_lookup Θ' Ξ _); [ destruct (ind_mpath _ _); [ unfold gc_loc; rewrite (gds_equiv_body _ _ _ _ He) |] |]; reflexivity.
 Qed.
 
 (** What module expressions denote reads the dependencies through their
@@ -2031,20 +2031,21 @@ Section Equiv.
   Lemma equiv_nbe_ty : forall Γ A W, nbe_ty Θ Ξ Γ A W -> nbe_ty Θ' Ξ Γ A W.
   Proof.
     apply nbe_ty_ext; intros; [ apply gds_equiv_resolve | apply gds_equiv_module | apply gds_equiv_ind_lookup
-                               | apply gds_equiv_ind_alias | reflexivity | apply gds_equiv_body ]; exact He.
+                               | apply gds_equiv_ind_alias | reflexivity | reflexivity | apply gds_equiv_body ]; exact He.
   Qed.
 
   Lemma equiv_nbe : forall Γ M A W, nbe Θ Ξ Γ M A W -> nbe Θ' Ξ Γ M A W.
   Proof.
     assert (Hs : (forall p, gc_resolve Θ Ξ p = gc_resolve Θ' Ξ p) /\ (forall p, gc_module Θ Ξ p = gc_module Θ' Ξ p) /\
                  (forall p, ind_lookup Θ Ξ p = ind_lookup Θ' Ξ p) /\ (forall p, ind_alias_lookup Θ Ξ p = ind_alias_lookup Θ' Ξ p) /\
-                 (forall p, gc_frame Ξ p = gc_frame Ξ p) /\ (forall p, gc_body Θ Ξ p = gc_body Θ' Ξ p))
+                 (forall p, gc_frame Ξ p = gc_frame Ξ p) /\ (forall p, gs_find_ind Ξ p = gs_find_ind Ξ p) /\
+                 (forall p, gc_body Θ Ξ p = gc_body Θ' Ξ p))
       by (repeat split; intros; first [ reflexivity | apply gds_equiv_resolve | apply gds_equiv_module
                                        | apply gds_equiv_ind_lookup | apply gds_equiv_ind_alias | apply gds_equiv_body ];
           exact He).
-    destruct Hs as (Hres & Hmod & Hind & Hia & Hfr & Hbody).
-    pose proof (eval_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hbody) as Hev; pose proof (read_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hbody) as Hrd.
-    pose proof (initial_env_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hbody) as Hie.
+    destruct Hs as (Hres & Hmod & Hind & Hia & Hfr & Hfi & Hbody).
+    pose proof (eval_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hfi Hbody) as Hev; pose proof (read_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hfi Hbody) as Hrd.
+    pose proof (initial_env_ext _ _ _ _ Hres Hmod Hind Hia Hfr Hfi Hbody) as Hie.
     destruct_all.
     intros * []; econstructor; eauto.
   Qed.

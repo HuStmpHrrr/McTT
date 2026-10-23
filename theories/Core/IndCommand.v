@@ -343,25 +343,6 @@ Proof.
   cbn; f_equal; eapply IH; exact E2.
 Qed.
 
-(** ** The Entries of the Declared Members
-
-    Filing the entries embeds the stack before into the stack after. *)
-
-Lemma gs_add_gc_sub : forall Θ Ξ x E, ⊢ᵍ Θ ⍮ Ξ -> gs_fresh x Ξ -> gc_sub Θ Ξ Θ (gs_add x E Ξ).
-Proof.
-  intros * HΞ Hfr.
-  destruct Ξ as [| [mq U] Ξ0]; [ contradiction |].
-  destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & [P Ψ -> _] & _).
-  cbn in Hfr |- *; apply gc_sub_grow; exact Hfr.
-Qed.
-
-Lemma ind_entries_run_emb : forall Θ pv pq D k xs Ξ Ξ', ind_entries_run Θ pv pq D k xs Ξ Ξ' -> ⊢ᵍ Θ ⍮ Ξ -> Emb Θ Ξ Θ Ξ'.
-Proof.
-  induction 1 as [k Ξ | k x xs M Ξ Ξ' Hk Hfr HE Hrun IH]; intros HΞ; [ apply Emb_refl; exact HΞ |].
-  eapply Emb_pre; [ apply gs_add_gc_sub; eassumption |].
-  apply IH; apply add_entry_wf; assumption.
-Qed.
-
 Lemma rtele_cons : forall y T args, rtele ((y, T) :: args) = rtele args ++ ce_ass T :: nil.
 Proof. reflexivity. Qed.
 
@@ -482,22 +463,20 @@ Section ConTypes.
   Hypothesis Hnps : Forall2 (view_nps Θ Ξ R) Vs Nvs.
   Hypothesis Hms : rms_filed Ξ n Vs (rd_members R) csD = Some Ms.
   Hypothesis Hmvs : rvs_filed Θ Ξ (sb_selfs p nu n t) n Vs Vs Ss csV Nvs = Some Mvs.
-  Hypothesis Hent : ind_entries_run Θ pv p D 0 (List.map rm_name (rd_members R)) Ξ Ξf.
+  (** The stack the declared members end on: well formed, the stack before
+      embedded in it, the group found at its first member's path *)
+  Hypothesis Hfwf : ⊢ᵍ Θ ⍮ Ξf.
+  Hypothesis Hfemb : Emb Θ Ξ Θ Ξf.
+  Hypothesis Hflk : ind_lookup Θ Ξf p = Some D.
 
   Lemma filed_wf : ⊢ᵍ Θ ⍮ Ξf.
-  Proof. exact (ind_entries_run_wf _ _ _ _ _ _ _ _ Hent HΞ). Qed.
+  Proof. exact Hfwf. Qed.
 
   Lemma filed_emb : Emb Θ Ξ Θ Ξf.
-  Proof. exact (ind_entries_run_emb _ _ _ _ _ _ _ _ Hent HΞ). Qed.
+  Proof. exact Hfemb. Qed.
 
   Lemma filed_lookup : ind_lookup Θ Ξf p = Some D.
-  Proof.
-    pose proof Hent as He; rewrite HMr in He; cbn [List.map] in He.
-    inversion He as [| ? ? ? M0 ? Ξ1 Hk Hfr HE Hrest]; subst.
-    assert (HΞn : Ξ <> nil) by (intros ->; exact Hfr).
-    pose proof (ind_lookup_added Θ Ξ (rm_name Mr0) pv D (gen_body p D 0 M0) HΞn) as H1.
-    eapply ind_entries_run_ind_lookup; [ exact Hrest | apply add_entry_wf; assumption | exact H1 ].
-  Qed.
+  Proof. exact Hflk. Qed.
 
   Lemma filed_decl_typed : decl_typed Θ Ξf D.
   Proof. exact (proj1 (decl_of_lookup _ _ ⋅ _ _ (wf_ctx_empty _ _ filed_wf) filed_lookup)). Qed.
@@ -901,19 +880,29 @@ Proof.
   inversion Hr; subst.
   (** The group as filed: its declared members, then its views. *)
   match goal with
-  | HM : rd_members R = _ :: _, Hfiled : rd_filed _ _ R _ _ _ _ _ = Some _, Hent : ind_entries_run _ _ _ _ _ _ _ _ |- _ =>
+  | Hfiled : rd_filed _ _ R _ _ _ _ _ = Some _ |- _ => pose proof (rd_filed_uparams _ _ _ _ _ _ _ _ _ Hfiled) as Hu
+  end.
+  match goal with
+  | HM : rd_members R = _ :: _, Hfiled : rd_filed _ _ R _ _ _ _ _ = Some _ |- _ =>
       rewrite HMr in HM; injection HM as <- <-;
       unfold rd_filed in Hfiled; rewrite HMr in Hfiled;
       destruct (rms_filed _ _ _ _ _) as [Ms |] eqn:Hms; [| discriminate ];
       destruct (rvs_filed _ _ _ _ _ _ _ _ _) as [Mvs |] eqn:Hmvs; [| discriminate ];
       injection Hfiled as <-; rewrite <- HMr in Hms
   end.
+  (** The declared members, each with its module, file no unit and embed the
+      stack; the group is found at its first member's path. *)
+  match goal with
+  | Hm : run_ind_members _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ?Ξf |- _ =>
+      pose proof Hm as Hm'; rewrite HMr in Hm'; cbn [List.map] in Hm';
+      pose proof (ind_members_run_lookup _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm' HΞ Hu) as Hlk;
+      destruct (ind_members_run_gen _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm HΞ Hu) as [-> -> -> Hwf1 Hsub1]
+  end.
   (** The recursor module, if any, is filed after the members. *)
   match goal with
-  | Hent : ind_entries_run _ _ _ _ _ _ _ ?Ξf, Hrec : run_cmds _ _ _ _ _ _ _ _ (rec_cmds _ _ _ _ _) _ _ _ _ |- _ =>
-      destruct (rec_cmds_run_wf _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hrec (ind_entries_run_wf _ _ _ _ _ _ _ _ Hent HΞ))
-        as (-> & Hwf & Hsub);
+  | Hrec : run_cmds _ _ _ _ _ _ _ _ (rec_cmds _ _ _ _ _) _ _ _ _, Hwf1 : ⊢ᵍ Θ ⍮ ?Ξf |- _ =>
+      destruct (rec_cmds_run_wf _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hrec Hwf1) as [-> -> -> Hwf Hsub];
       apply (filed_con_ty_emb Θ Ξf); [ constructor; assumption |]
   end.
-  eapply member_con_ty; eassumption.
+  eapply member_con_ty; try eassumption; constructor; assumption.
 Qed.

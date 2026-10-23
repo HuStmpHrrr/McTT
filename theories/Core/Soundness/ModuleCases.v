@@ -65,7 +65,7 @@ Proof.
   assert (HR : R = ds_term A None)
     by (destruct R as [A' om | | | ]; cbn in Ht, Hr; try discriminate; subst; congruence).
   subst R.
-  inversion Hm as [| | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hrd]; subst.
+  inversion Hm as [| | | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hrd]; subst.
   destruct R0m as [| Δ Φw Φx | Θ' p T Φ Ns |]; cbn in He; try discriminate.
   - (* an open body reads only transparent definitions and modules *)
     destruct (gm_prefix_upto Φx x) as [[| Φ' y E0 | ? ? ?] |]; try discriminate.

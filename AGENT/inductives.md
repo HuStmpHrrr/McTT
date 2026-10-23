@@ -235,8 +235,8 @@ step to be proved never to fail at the user's type, beyond
 | PER: `ind_rel` (two-sided, each element at its own parameters, indexed by both sides' non-uniform parameters), `con_args_rel`, `rec_arg_rel`, `rec_arg_app_rel`, `adm_uparams`; canonical relations `canon_nparams_rel`, `canon_args_rel`, `canon_doms_rel`; telescopes `tele_rel`, `tele_prefix_rel`, `shape_doms_rel` | `Core/Semantic/PER/Definitions.v`, `Inductives/IndPER.v`, `Inductives/IndCanon.v`, `Inductives/IndElim.v`, `PER/Tele.v` |
 | completeness | `Core/Completeness/Inductives/{Decl,Con,Elim,Iota}.v`, `IndCases.v`, `ElimCases.v`, `IotaCases.v`, `LogicalRelation/Telescope.v` |
 | gluing (`glu_univ_elem_core_indty`, `ind_typ_at`, `ind_glu_elem`, `ind_glu_exp_pred`) and soundness | `Core/Soundness/LogicalRelation/*`, `Soundness/Inductives/{Con,Elim}.v`, `IndCases.v`, `ElimCases.v`, `IotaCases.v` |
-| commands: `cc_ind`, `rc_ind`, `rd_uparams`, `ind_qname`, `gs_ind`, `ind_gens`, `gen_body` | `Core/Syntactic/Command.v`, `System/Command.v` |
-| the members' derivation (`ind_gens_typed`) | `System/Inductives/Rec.v` |
+| commands: `cc_ind`, `rc_ind`, `run_ind_members`, `ind_mod_cmds`, `rec_cmds`, `rd_uparams`, `ind_qname` | `Core/Syntactic/Command.v`, `System/Command.v` |
+| the checker's group step (`members_step`, `ind_step`) | `Extraction/Command.v` |
 
 ## The entry: `ge_ind pv D Φ`
 
@@ -251,32 +251,45 @@ stored closed over them, as every definition is.
 * `gm_submodule` reads `ge_ind` as a body module, `mr_body (ind_uparams D)
   (Some D)`; `ind_lookup Θ Ξ p` is the `Some D` of the module at `p`.
   `gm_resolve`/`gm_entry`/`gm_subbody` go into `Φ` like into a body.
-* **The judgment is incremental**, as `wf_gmod_ext` is
-  (`System/Definitions.v`):
+* **The module is an ordinary module** (`System/Definitions.v`). The
+  current entry is `ge_ind pv pq k D Φ`: the declared member `k` of the
+  group `D` at `pq`, with its module's body `Φ`. A declared member is
+  checked with an empty module (`wf_gentry_ind_nil` for the first,
+  `wf_gentry_ind_mem_nil` for a later one, the group found at the first
+  member's entry). Its body is checked as any module body is, in the
+  member's open frame, of kind `fk_ind pq k D`, over the uniform
+  parameters:
 
   ```
-  wf_gentry_ind_nil : … D ok … -> Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv D ⋄
-  wf_gentry_ind_ext :
-    Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y ⊢ᵉ ge_ind pv D Φ ->
-    Θ ⍮ (mq, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv D Φ)) :: Ξ ⍮ ind_uparams D ⊢ M : A ->
-    gm_fresh x Φ ->
-    Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y
-      ⊢ᵉ ge_ind pv D (Φ ⊳ x ↦ ge_def b pv' (ctx_pi (ind_uparams D) A) (Some (ctx_fn (ind_uparams D) M)))
+  wf_gmod_ind_nil :
+    tele_ass Δ -> ⊢ Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
+    Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⊢ᵉ ge_ind pv pq k D ⋄ ->
+    ind_uparams D = Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
+    Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⍮ fk_ind pq k D ⍮ Δ ⊢ᵍᵐ ⋄
+  wf_gentry_ind_body :
+    ind_uparams D = Δu ++ gs_tele Ξ -> Θ ⍮ Ξ ⍮ mp ⍮ fk_ind pq k D ⍮ Δu ⊢ᵍᵐ Φ ->
+    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv pq k D Φ
   ```
 
-  Each member is checked with the entry so far visible in its frame.  That
-  `Φ = gen_body p D` is no premise of the judgment; `rc_ind` files
-  `gen_body` with this judgment as premise.  `gc_sub` (`Members.v`) lets a
-  body module grow "same `D`, longer body" (`gm_grows`); `gc_subx` is the
-  growth that keeps every body.
-* `rc_ind` (`System/Command.v`):
-  `cls_cons_in Θ Ξ R cs -> gs_fresh x Ξ ->
-   Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_ind pv p D' (gen_body p D') ->
-   Θ ⍮ Ξ ⊢[ch] cc_ind x pv R ⇝ Θ ⍮ gs_add x (ge_ind pv p D' (gen_body p D')) Ξ`,
-  `p = ind_qname Ξ x`, the entry's own canonical path, and
-  `D' = gs_ind Ξ (rd_filed R cs)`.  `ind_gens_typed` (`Rec.v`) derives
-  that premise from `ge_ind pv p D' ⋄` and `rec` not naming a constructor; the
-  checker (`Extraction/Command.v`, `ind_ok`) decides only those two.
+  The body grows by `wf_gmod_ext`, as any module's does. While the frame
+  is open, the group is found through it (`gs_find_ind`; `ind_mlookup`
+  reads the frame first). The frame denotes `ds_ind nil pq k nil`
+  (`dn_ind_frame`).
+* `rc_ind` (`System/Command.v`) checks the group as written (`rd_filed`,
+  `ind_nil_at`). Then `run_ind_members` runs each declared member in
+  order (`rim_cons`):
+  - it checks the member with an empty module;
+  - it pushes the member's frame (`gs_push_ind`);
+  - it runs the member's generated commands (`ind_mod_cmds`) as a module
+    body's: a definition per constructor, `rec` for a group of one member
+    and no view, and the recursor module `Rec` (below), read at that
+    frame;
+  - it files `ge_ind pv pq k D (gu_mod U)` with the body they end with.
+
+  For `mutual T where`, `rec_cmds` then runs `T.Rec` in `T`'s frame. The
+  checker (`Extraction/Command.v`) runs the generated commands through the
+  ordinary steps (`members_step` uses `rec_step` per member). These runs
+  load and bind nothing (`gen_run`, `gen_cmds_run_wf`).
 
 ## Names (option B)
 
@@ -340,8 +353,8 @@ are marked `bare` and left unlinked (accepted for now).
 
 ## The recursor (item 4b)
 
-The declaration also generates the member `rec` of its module
-(`ind_gens`, last), over the uniform parameters `Γ0`:
+A group of one member and no view also generates the member `rec` of
+its module (`ind_rec_cmds`), over the uniform parameters `Γ0`:
 
 ```
 rec : Π (u : Level). Π (P : Π Δn. Π (z : X us ns). Type⟨u⟩).
@@ -352,12 +365,25 @@ rec := λ u P b_c … . λ Δn z. a_elim (S nn) P' [(c, n_c, b_c $ its n_c vars)
 
 (`rec_ty`, `rec_fn`, `rec_tele`, `rec_btys`, `rec_motive`, `rec_brs`,
 `System/Command.v`): each branch argument has exactly the type the
-eliminator gives the branch at the motive `P`.  It is a member of the
-entry like the constructors (`wf_gentry_ind_ext`), and it always checks:
-`ind_gens_typed` (`System/Inductives/Rec.v`) derives the whole entry from the
-declaration's, and `rc_ind_runs` shows that such a declaration command
-runs.  The surface reads `X.rec`; `rec` is an ordinary name, so `open X
-use (rec)` declares it too.
+eliminator gives the branch at the motive `P`. It is a definition of the
+module, checked as the constructors' are, by the ordinary rules. The
+surface reads `X.rec`. `rec` is an ordinary name, so `open X use (rec)`
+declares it too.
+
+Every group also files a recursor module `Rec` (`grec_mod_cmd`). It has
+one function `rec_<member>` per member, views included; a view is named
+by its instance, e.g. `rec_List_Rose`.
+
+| group | `Rec` is filed | example |
+|---|---|---|
+| a single declared type `X` | in `X`'s module (`ind_grec_cmds`, member 0) | `Nat.Rec.rec_Nat`, `Rose.Rec.rec_List_Rose` |
+| `mutual T where …` | in `T`'s frame, after the members (`rec_cmds`) | `T.Rec.rec_Tm` |
+| `inductive A … with B … end` | in the first declared member's module | `A.Rec.rec_B` |
+
+In a member's module, `Rec`'s own parameters omit the uniform ones, which
+the frame binds already. Its types name the group as `a_ind pq j`, found
+through the `fk_ind` frame. So `A.Rec.rec_B` types `a_ind pq 1` through
+`D` while `A`'s module is open.
 
 ## Algorithmic layer and checker
 

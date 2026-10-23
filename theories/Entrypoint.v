@@ -66,7 +66,7 @@ Section Main.
   Theorem main_sound : forall log_fuel buf prg B Θ U log,
       main log_fuel buf = AllGood prg B Θ U log ->
       (exists ΘR, prog_sem load_path read to_core prg B ΘR U /\ gds_equiv ΘR Θ /\
-                  ⊢ᵍ ΘR ⍮ nil /\ ΘR ⍮ nil ⍮ q_abs (prog_path prg) nil ⊢ᵍᵘ U) /\
+                  ⊢ᵍ ΘR ⍮ nil /\ ΘR ⍮ nil ⍮ q_abs (prog_path prg) nil ⍮ fk_module ⊢ᵍᵘ U) /\
       (forall e, In e log ->
          ⊢ᵍ ev_deps e ⍮ ev_stack e /\ ev_deps e ⍮ ev_stack e ⍮ gs_tele (ev_stack e) ⊢ ev_exp e : ev_typ e /\
          nbe (ev_deps e) (ev_stack e) (gs_tele (ev_stack e)) (ev_exp e) (ev_typ e) (ev_nf e)).

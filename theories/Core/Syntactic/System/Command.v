@@ -45,21 +45,26 @@ Reserved Notation "Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ]⟨ lp ⍮ rd ⍮ tc ⟩ cs �
 
 Definition gs_path (Ξ : gstack) : qname :=
   match Ξ with
-  | (mp, _) :: _ => mp
+  | (mp, _, _) :: _ => mp
   | nil => q_abs nil nil
   end.
 
-Definition gs_push (mp : qname) (Δ : ctx) (Ξ : gstack) : gstack := (mp, gu_body Δ ⋄) :: Ξ.
+Definition gs_push (mp : qname) (Δ : ctx) (Ξ : gstack) : gstack := (mp, fk_module, gu_body Δ ⋄) :: Ξ.
+
+(** The frame of the module of the declared member [k] of the group [D]
+    at [pq], opened at [mp] with the parameters [Δ] and no member yet. *)
+Definition gs_push_ind (mp pq : qname) (k : nat) (D : ind_decl) (Δ : ctx) (Ξ : gstack) : gstack :=
+  (mp, fk_ind pq k D, gu_body Δ ⋄) :: Ξ.
 
 Definition gs_add (x : string) (E : gentry) (Ξ : gstack) : gstack :=
   match Ξ with
-  | (mp, U) :: Ξ' => (mp, gu_body (gu_params U) (gu_mod U ⊳ x ↦ E)) :: Ξ'
+  | (mp, K, U) :: Ξ' => (mp, K, gu_body (gu_params U) (gu_mod U ⊳ x ↦ E)) :: Ξ'
   | nil => nil
   end.
 
 Definition gs_fresh (x : string) (Ξ : gstack) : Prop :=
   match Ξ with
-  | (_, U) :: _ => gm_fresh x (gu_mod U)
+  | (_, _, U) :: _ => gm_fresh x (gu_mod U)
   | nil => False
   end.
 
@@ -104,14 +109,12 @@ Inductive gens_run (Θ : gdeps) : gstack -> list igen -> gstack -> Prop :=
 
     A group is filed as one entry per declared member, in order
     ([ge_ind]): the group, with the parameters of the frames as its
-    outermost uniform parameters, and the body of the member's module,
-    whose members are generated ([gen_body]): the member's constructors,
-    each the constructor applied to the uniform parameters, and, for a
-    group of one member and no view, the recursor, all closed over the
-    uniform parameters, which are the module's.  Each entry is checked
-    member by member ([wf_gentry_ind_ext]).  As a term, the path of a
-    member's entry is its type former ([wf_mem_glob_ind]); the group is
-    named by the path of its first member. *)
+    outermost uniform parameters, and the body of the member's module.
+    The module is filled by generated commands ([ind_mod_cmds]), run in
+    its frame as the commands of a module body are, and checked by the
+    ordinary module judgment ([wf_gentry_ind_body]).  As a term, the path
+    of a member's entry is its type former ([wf_mem_glob_ind]); the group
+    is named by the path of its first member. *)
 
 (** The path of the declared type [x] a declaration makes. *)
 Definition ind_qname (Ξ : gstack) (x : string) : qname := qname_in (gs_path Ξ) x.
@@ -173,39 +176,12 @@ Definition rec_fn (pq : qname) (D : ind_decl) (M : imember) : exp :=
 (** A group has a recursor when it is one member, and no view. *)
 Definition ind_has_rec (D : ind_decl) : bool := Nat.eqb (List.length (ind_members D)) 1.
 
-(** The constructors of the member [k], [M], of the filed group [D] at
-    [pq], over the module's parameters: [D]'s uniform ones, then the
-    recursor, if the group has one.  They are public members of the
-    module, as the declaration is: the module's own privacy is the
-    declaration's. *)
-Definition ind_gens (pq : qname) (D : ind_decl) (k : nat) (M : imember) : list igen :=
-  List.map (fun cg =>
-              ig_def (fst cg) false
-                (ctx_pi (im_nparams M)
-                   (ctx_pi (cargs_ctx pq D M (snd cg)) (apps (a_ind pq k) (ind_pvars D M (List.length (snd cg))))))
-                (apps (a_con pq k (fst cg)) (vars_from 0 (ind_nu D))))
-    (im_cons M)
-  ++ (if ind_has_rec D then ig_def "rec" false (rec_ty pq D M) (rec_fn pq D M) :: nil else nil).
-
-(** The body the generated definitions make after [Φ], each closed over the
-    telescope [T]; an alias generates nothing here. *)
-Fixpoint gens_body (Φ : gmod) (T : ctx) (gs : list igen) : gmod :=
-  match gs with
-  | nil => Φ
-  | ig_def d pv A M :: gs' => gens_body (Φ ⊳ d ↦ ge_def true pv (ctx_pi T A) (Some (ctx_fn T M))) T gs'
-  | ig_alias _ _ _ :: gs' | ig_ind_alias _ _ _ _ _ _ _ :: gs' => gens_body Φ T gs'
-  end.
-
-(** The body of the module of the member [k], [M], of the group [D] at
-    [pq]: its constructors (and the recursor), over the uniform
-    parameters. *)
-Definition gen_body (pq : qname) (D : ind_decl) (k : nat) (M : imember) : gmod :=
-  gens_body ⋄ (ind_uparams D) (ind_gens pq D k M).
-
 (** ** The Recursor Module of a Group
 
-    A group declared by [mutual T where] files, in [T]'s frame after its
-    members, the module [Rec] ([rec_cmds]), checked as any module is.  Its
+    Every group files a recursor module [Rec], checked as any module is: a
+    group declared by [mutual T where] in [T]'s frame after its members
+    ([rec_cmds]), any other in the module of its first declared member
+    ([ind_grec_cmds]).  Its
     parameters, innermost first: one case per constructor of each member,
     in member order; one motive per member, [P_i : Π (nps_i) (z : M_i Us
     nps_i). Type@{u}]; the level [u]; the group's own uniform parameters.
@@ -364,16 +340,59 @@ Fixpoint grec_fresh_names (seen : list string) (xs : list string) : list string 
 Definition grec_names (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : list string :=
   List.map (fun x => ("rec_" ++ x)%string) (grec_fresh_names nil (List.map (grec_member_name Θ Ξ) (ind_members D))).
 
+(** The command that files the recursor module [Rec] of the group [D] at
+    [pq], its names read at [Θ ⍮ Ξ], with [Δu] the uniform parameters its
+    own parameters end in: the group's own ones in the frame the members
+    are filed in, none in the module of a member, whose frame binds
+    them. *)
+Definition grec_mod_cmd (Θ : gdeps) (Ξ : gstack) (pq : qname) (D : ind_decl) (Δu : ctx) : ccmd :=
+  cc_mod "Rec" false (grec_tele pq D Δu)
+    (List.map (fun jx => let '(j, Mj, x) := jx in cc_def x true false (grec_fn_ty pq D j Mj) (Some (grec_fn pq D j Mj)))
+       (List.combine (List.combine (List.seq 0 (List.length (ind_members D))) (ind_members D)) (grec_names Θ Ξ D))).
+
 (** The commands that file the recursor module of the group [D] at [pq],
     declared as [R], after its members, at the stack [Ξ] they are filed
     in: none unless [R] asks for it. *)
 Definition rec_cmds (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (pq : qname) (D : ind_decl) : list ccmd :=
-  if rd_rec R then
-    cc_mod "Rec" false (grec_tele pq D (rd_uparams R))
-      (List.map (fun jx => let '(j, Mj, x) := jx in cc_def x true false (grec_fn_ty pq D j Mj) (Some (grec_fn pq D j Mj)))
-         (List.combine (List.combine (List.seq 0 (List.length (ind_members D))) (ind_members D)) (grec_names Θ Ξ D)))
-    :: nil
-  else nil.
+  if rd_rec R then grec_mod_cmd Θ Ξ pq D (rd_uparams R) :: nil else nil.
+
+(** ** The Module of a Declared Member
+
+    The module of the declared member [k], [M], of the group [D] at [pq]
+    is filled by commands run in its frame, whose parameters are the
+    group's uniform ones, as the commands of a module body are: one
+    transparent public definition per constructor, the constructor at the
+    module's parameters ([ind_con_cmd]); the recursor [rec] of a group of
+    one member and no view; and, in the first declared member's module of
+    a group not declared by [mutual T where], the recursor module [Rec],
+    whose parameters are those of [grec_tele] without the uniform ones,
+    which the frame binds already ([ind_mod_cmds]). *)
+
+(** The definition of the constructor [c] of arguments [gs]: its type over
+    the member's non-uniform parameters and its arguments, its term the
+    constructor at the module's parameters. *)
+Definition ind_con_cmd (pq : qname) (D : ind_decl) (k : nat) (M : imember) (cg : (string * list carg)%type) : ccmd :=
+  cc_def (fst cg) true false
+    (ctx_pi (im_nparams M) (ctx_pi (cargs_ctx pq D M (snd cg)) (apps (a_ind pq k) (ind_pvars D M (List.length (snd cg))))))
+    (Some (apps (a_con pq k (fst cg)) (vars_from 0 (ind_nu D)))).
+
+(** The recursor [rec], when the group has one. *)
+Definition ind_rec_cmds (pq : qname) (D : ind_decl) (M : imember) : list ccmd :=
+  if ind_has_rec D then cc_def "rec" true false (rec_ty pq D M) (Some (rec_fn pq D M)) :: nil else nil.
+
+(** The recursor module [Rec], in the first declared member's module of a
+    group not declared by [mutual T where]. *)
+Definition ind_grec_cmds (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (pq : qname) (D : ind_decl) (k : nat) : list ccmd :=
+  if Nat.eqb k 0 && negb (rd_rec R) then grec_mod_cmd Θ Ξ pq D nil :: nil else nil.
+
+(** The commands of the module of the declared member [k], [M]: its
+    constructors, the recursor, and the recursor module, in that order;
+    the names of [Rec]'s functions are read at [Θ ⍮ Ξ], the stack the
+    commands run in: the member's frame, through which the group is
+    found. *)
+Definition ind_mod_cmds (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (pq : qname) (D : ind_decl) (k : nat) (M : imember) :
+    list ccmd :=
+  List.map (ind_con_cmd pq D k M) (im_cons M) ++ ind_rec_cmds pq D M ++ ind_grec_cmds Θ Ξ R pq D k.
 
 (** ** Classifying the Arguments
 
@@ -688,21 +707,6 @@ Definition rd_filed (Θ : gdeps) (Ξ : gstack) (R : raw_decl) (Vs : list rview) 
       end
   | nil => None
   end.
-
-(** The entries of the declared members, in order, each checked where it
-    is filed, after those before it. *)
-Inductive ind_entries_run (Θ : gdeps) (pv : bool) (pq : qname) (D : ind_decl) :
-    nat -> list string -> gstack -> gstack -> Prop :=
-(** No member left *)
-| ind_entries_nil : forall k Ξ, ind_entries_run Θ pv pq D k nil Ξ Ξ
-(** The entry of member [k], checked and filed under the name [x], then
-    the rest *)
-| ind_entries_cons : forall k x xs M Ξ Ξ',
-    ind_member D k = Some M ->
-    gs_fresh x Ξ ->
-    Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_ind pv pq k D (gen_body pq D k M) ->
-    ind_entries_run Θ pv pq D (S k) xs (gs_add x (ge_ind pv pq k D (gen_body pq D k M)) Ξ) Ξ' ->
-    ind_entries_run Θ pv pq D k (x :: xs) Ξ Ξ'.
 
 (** ** The Views' Instances with the Members as Variables
 
@@ -1105,11 +1109,11 @@ Section Semantics.
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_def x b pv A None ⇝ Θ ⍮ gs_add x (gs_axiom b pv Ξ A) Ξ ⍮ B ⍮ Rb
   (** The body ends on the frame it opened, the stack below as it was; that
       frame becomes the member [x] of the one below, as it is. *)
-  | rc_mod : forall ch B Rb B' Rb' Θ Ξ x pv Δ cs Θ' mp U,
+  | rc_mod : forall ch B Rb B' Rb' Θ Ξ x pv Δ cs Θ' mp K U,
       tele_ass Δ ->
       ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
       gs_fresh x Ξ ->
-      Θ ⍮ gs_push (qname_in (gs_path Ξ) x) Δ Ξ ⍮ B ⍮ Rb ⊢[ch] cs ⇝* Θ' ⍮ (mp, U) :: Ξ ⍮ B' ⍮ Rb' ->
+      Θ ⍮ gs_push (qname_in (gs_path Ξ) x) Δ Ξ ⍮ B ⍮ Rb ⊢[ch] cs ⇝* Θ' ⍮ (mp, K, U) :: Ξ ⍮ B' ⍮ Rb' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_mod x pv Δ cs ⇝ Θ' ⍮ gs_add x (ge_body pv Δ (gu_mod U)) Ξ ⍮ B' ⍮ Rb'
   (** An alias is filed with the frames' parameters it is declared under. *)
   | rc_alias : forall ch B Rb Θ Ξ x pv Δ E,
@@ -1152,12 +1156,11 @@ Section Semantics.
       instances met ([views_bfs]), each with its siblings, its
       constructors classified and its non-uniform parameters filed
       ([view_nps]); the group filed ([rd_filed]) and checked at its
-      views' instances read back ([ind_nil_at], [grp_self_insts]), and an
-      entry per declared member, each with its module's generated body,
-      checked where it is filed; then, for a group declared by [mutual T
-      where], its recursor module ([rec_cmds]), run as written commands
-      are. *)
-  | rc_ind : forall ch B Rb Θ Ξ pv R Mr0 Mrs csD Vs Ss csV Nvs D Ξ' B' Rb' Θ' Ξ'',
+      views' instances read back ([ind_nil_at], [grp_self_insts]); the
+      declared members, each with its module ([run_ind_members]); then,
+      for a group declared by [mutual T where], its recursor module
+      ([rec_cmds]), run as written commands are. *)
+  | rc_ind : forall ch B Rb Θ Ξ pv R Mr0 Mrs csD Vs Ss csV Nvs D B' Rb' Θ' Ξ' B'' Rb'' Θ'' Ξ'',
       rd_members R = Mr0 :: Mrs ->
       Forall (fun Mr => rm_sort Mr = rm_sort Mr0) Mrs ->
       Forall2 (rm_cls Θ Ξ R) (rd_members R) csD ->
@@ -1167,9 +1170,9 @@ Section Semantics.
       views_bfs (sibs_tbl Vs Ss) (meets_tbl Vs csV) nil (List.concat (List.map rcons_views csD)) Vs ->
       rd_filed Θ Ξ R Vs Ss csD csV Nvs = Some D ->
       ind_nil_at Θ Ξ (ind_qname Ξ (rm_name Mr0)) D (grp_self_insts (ind_qname Ξ (rm_name Mr0)) D) ->
-      ind_entries_run Θ pv (ind_qname Ξ (rm_name Mr0)) D 0 (List.map rm_name (rd_members R)) Ξ Ξ' ->
-      Θ ⍮ Ξ' ⍮ B ⍮ Rb ⊢[ch] rec_cmds Θ Ξ' R (ind_qname Ξ (rm_name Mr0)) D ⇝* Θ' ⍮ Ξ'' ⍮ B' ⍮ Rb' ->
-      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_ind pv R ⇝ Θ' ⍮ Ξ'' ⍮ B' ⍮ Rb'
+      run_ind_members ch B Rb Θ Ξ pv R (ind_qname Ξ (rm_name Mr0)) D 0 (List.map rm_name (rd_members R)) B' Rb' Θ' Ξ' ->
+      Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ⊢[ch] rec_cmds Θ' Ξ' R (ind_qname Ξ (rm_name Mr0)) D ⇝* Θ'' ⍮ Ξ'' ⍮ B'' ⍮ Rb'' ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_ind pv R ⇝ Θ'' ⍮ Ξ'' ⍮ B'' ⍮ Rb''
   (** A mutual definition: the group and its uniform parameters read off
       the first function's scrutinee, a type before it is normalized, as
       normalizing an untyped term need not terminate; each function's
@@ -1246,15 +1249,39 @@ Section Semantics.
       [fp]; [Θ] is what it filed, [Rb] their records, [U] the unit, [B] its
       own record. *)
   with run_unit : list path -> cunit -> builtins -> bmap -> gdeps -> gunit -> Prop :=
-  | ru_intro : forall fp ch B1 Rb1 B2 Rb2 imps P P1 P2 cs Θ1 Θ2 mp U,
+  | ru_intro : forall fp ch B1 Rb1 B2 Rb2 imps P P1 P2 cs Θ1 Θ2 mp K U,
       nil ⍮ nil ⍮ bt_empty ⍮ nil ⊢[fp :: ch] imps ⇝* Θ1 ⍮ nil ⍮ B1 ⍮ Rb1 ->
       tele_lits_ok Θ1 nil B1 P P1 ->
       tele_fill_ok Θ1 nil P1 P2 ->
       tele_ass P2 ->
       ⊢ Θ1 ⍮ nil ⍮ P2 ->
       acc_ok Θ1 nil (tele_refs nil P) ->
-      Θ1 ⍮ gs_push (q_abs fp nil) P2 nil ⍮ B1 ⍮ Rb1 ⊢[fp :: ch] cs ⇝* Θ2 ⍮ (mp, U) :: nil ⍮ B2 ⍮ Rb2 ->
-      run_unit (fp :: ch) (imps, P, cs) B2 Rb2 Θ2 U.
+      Θ1 ⍮ gs_push (q_abs fp nil) P2 nil ⍮ B1 ⍮ Rb1 ⊢[fp :: ch] cs ⇝* Θ2 ⍮ (mp, K, U) :: nil ⍮ B2 ⍮ Rb2 ->
+      run_unit (fp :: ch) (imps, P, cs) B2 Rb2 Θ2 U
+
+  (** [run_ind_members ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ']: the
+      declared members [k], [k + 1], … of the group [D] at [pq], declared
+      as [R], named [xs], in order.  Each is checked with an empty module
+      where it is filed, after those before it; its module's frame is
+      opened over the group's own uniform parameters, its generated
+      commands ([ind_mod_cmds]) run in it as a module body's do, and the
+      member is filed with the body they end with, as [rc_mod] files a
+      module. *)
+  with run_ind_members : list path -> builtins -> bmap -> gdeps -> gstack -> bool -> raw_decl -> qname -> ind_decl ->
+                         nat -> list string -> builtins -> bmap -> gdeps -> gstack -> Prop :=
+  (** No member left *)
+  | rim_nil : forall ch B Rb Θ Ξ pv R pq D k, run_ind_members ch B Rb Θ Ξ pv R pq D k nil B Rb Θ Ξ
+  (** The member [k], named [x]: checked with an empty module, its
+      module's commands run in its frame, filed; then the rest *)
+  | rim_cons : forall ch B Rb Θ Ξ pv R pq D k x xs M B1 Rb1 Θ1 mp K U B2 Rb2 Θ2 Ξ2,
+      ind_member D k = Some M ->
+      gs_fresh x Ξ ->
+      Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_ind pv pq k D ⋄ ->
+      Θ ⍮ gs_push_ind (ind_qname Ξ x) pq k D (rd_uparams R) Ξ ⍮ B ⍮ Rb ⊢[ch]
+        ind_mod_cmds Θ (gs_push_ind (ind_qname Ξ x) pq k D (rd_uparams R) Ξ) R pq D k M ⇝*
+        Θ1 ⍮ (mp, K, U) :: Ξ ⍮ B1 ⍮ Rb1 ->
+      run_ind_members ch B1 Rb1 Θ1 (gs_add x (ge_ind pv pq k D (gu_mod U)) Ξ) pv R pq D (S k) xs B2 Rb2 Θ2 Ξ2 ->
+      run_ind_members ch B Rb Θ Ξ pv R pq D k (x :: xs) B2 Rb2 Θ2 Ξ2.
 
   (** The unit given on the command line: run like an imported one, with
       itself as the whole chain; [B] is the record it ends with. *)
@@ -1368,24 +1395,14 @@ Proof.
   congruence.
 Qed.
 
-Lemma ind_entries_run_functional : forall Θ pv pq D k xs Ξ Ξ1, ind_entries_run Θ pv pq D k xs Ξ Ξ1 ->
-    forall Ξ2, ind_entries_run Θ pv pq D k xs Ξ Ξ2 -> Ξ1 = Ξ2.
-Proof.
-  induction 1; intros Ξ2 HE; inversion HE; subst; [ reflexivity |].
-  match goal with H1 : ind_member ?D ?k = _, H2 : ind_member ?D ?k = _ |- _ => rewrite H1 in H2; injection H2 as <- end.
-  auto.
-Qed.
-
 (** A group is classified, its views found and it is filed in one way. *)
-Lemma rc_ind_functional : forall Θ Ξ pv R Mr0 csD Vs Ss csV Nvs D Ξ1 Mr0' csD' Vs' Ss' csV' Nvs' D' Ξ2,
-    ind_entries_run Θ pv (ind_qname Ξ (rm_name Mr0)) D 0 (List.map rm_name (rd_members R)) Ξ Ξ1 ->
+Lemma rc_ind_functional : forall Θ Ξ R Mr0 csD Vs Ss csV Nvs D Mr0' csD' Vs' Ss' csV' Nvs' D',
     rd_filed Θ Ξ R Vs Ss csD csV Nvs = Some D ->
     Forall2 (rm_cls Θ Ξ R) (rd_members R) csD ->
     Forall2 (view_sibs Θ Ξ R) Vs Ss ->
     Forall2 (view_cls Θ Ξ R) Vs csV ->
     Forall2 (view_nps Θ Ξ R) Vs Nvs ->
     views_bfs (sibs_tbl Vs Ss) (meets_tbl Vs csV) nil (List.concat (List.map rcons_views csD)) Vs ->
-    ind_entries_run Θ pv (ind_qname Ξ (rm_name Mr0')) D' 0 (List.map rm_name (rd_members R)) Ξ Ξ2 ->
     rd_filed Θ Ξ R Vs' Ss' csD' csV' Nvs' = Some D' ->
     Forall2 (rm_cls Θ Ξ R) (rd_members R) csD' ->
     Forall2 (view_sibs Θ Ξ R) Vs' Ss' ->
@@ -1393,9 +1410,9 @@ Lemma rc_ind_functional : forall Θ Ξ pv R Mr0 csD Vs Ss csV Nvs D Ξ1 Mr0' csD
     Forall2 (view_nps Θ Ξ R) Vs' Nvs' ->
     views_bfs (sibs_tbl Vs' Ss') (meets_tbl Vs' csV') nil (List.concat (List.map rcons_views csD')) Vs' ->
     forall Mrs Mrs', rd_members R = Mr0 :: Mrs -> rd_members R = Mr0' :: Mrs' ->
-    Mr0 = Mr0' /\ D = D' /\ Ξ1 = Ξ2.
+    Mr0 = Mr0' /\ D = D'.
 Proof.
-  intros * He Hf Hc Hs Hv Hn Hb He' Hf' Hc' Hs' Hv' Hn' Hb' Mrs Mrs' HM HM'.
+  intros * Hf Hc Hs Hv Hn Hb Hf' Hc' Hs' Hv' Hn' Hb' Mrs Mrs' HM HM'.
   rewrite HM in HM'; injection HM' as <- <-.
   assert (Ecs : csD = csD') by (eapply Forall2_functional; [| exact Hc | exact Hc' ];
                                 intros; unfold rm_cls in *; eapply cls_cons_in_functional; eassumption).
@@ -1411,7 +1428,7 @@ Proof.
   assert (EcsV : csV = csV') by (eapply Forall2_functional; [ exact (view_cls_functional Θ Ξ R) | exact Hv | exact Hv' ]).
   assert (ENv : Nvs = Nvs') by (eapply Forall2_functional; [ exact (view_nps_functional Θ Ξ R) | exact Hn | exact Hn' ]).
   subst Ss' csV' Nvs'; rewrite Hf in Hf'; injection Hf' as <-.
-  repeat split; auto; eapply ind_entries_run_functional; eassumption.
+  split; reflexivity.
 Qed.
 
 Lemma mdef_member_functional : forall Θ Ξ pq D Us Δ f m m',
@@ -1431,8 +1448,9 @@ Proof. induction 1; intros Ξ2 H2; inversion H2; subst; auto. Qed.
 
 Scheme run_cmd_mind := Minimality for run_cmd Sort Prop
 with run_cmds_mind := Minimality for run_cmds Sort Prop
-with run_unit_mind := Minimality for run_unit Sort Prop.
-Combined Scheme run_mut_ind from run_cmd_mind, run_cmds_mind, run_unit_mind.
+with run_unit_mind := Minimality for run_unit Sort Prop
+with run_ind_members_mind := Minimality for run_ind_members Sort Prop.
+Combined Scheme run_mut_ind from run_cmd_mind, run_cmds_mind, run_unit_mind, run_ind_members_mind.
 
 (** The fill of a site is a function of what its head denotes. *)
 Lemma site_resolves_functional : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall s r1 r2, site_resolves Θ Ξ s r1 -> site_resolves Θ Ξ s r2 -> r1 = r2.
@@ -1477,6 +1495,7 @@ Section Determinism.
   #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
   #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
   #[local] Abbreviation run_unit := (run_unit load_path read to_core).
+  #[local] Abbreviation run_ind_members := (run_ind_members load_path read to_core).
 
   (** A command with terms of its own checks a judgment where it runs, so
       its global context is well formed. *)
@@ -1515,7 +1534,10 @@ Section Determinism.
          Θ1 = Θ2 /\ Ξ1 = Ξ2 /\ B1 = B2 /\ Rb1 = Rb2) /\
     (forall ch u B1 Rb1 Θ1 U1, run_unit ch u B1 Rb1 Θ1 U1 ->
        forall ch' B2 Rb2 Θ2 U2, hd nil ch = hd nil ch' -> run_unit ch' u B2 Rb2 Θ2 U2 ->
-         Θ1 = Θ2 /\ U1 = U2 /\ B1 = B2 /\ Rb1 = Rb2).
+         Θ1 = Θ2 /\ U1 = U2 /\ B1 = B2 /\ Rb1 = Rb2) /\
+    (forall ch B Rb Θ Ξ pv R pq D k xs B1 Rb1 Θ1 Ξ1, run_ind_members ch B Rb Θ Ξ pv R pq D k xs B1 Rb1 Θ1 Ξ1 ->
+       forall ch' B2 Rb2 Θ2 Ξ2, run_ind_members ch' B Rb Θ Ξ pv R pq D k xs B2 Rb2 Θ2 Ξ2 ->
+         Θ1 = Θ2 /\ Ξ1 = Ξ2 /\ B1 = B2 /\ Rb1 = Rb2).
   Proof.
     (* the second derivation is the last hypothesis; literals, expansions
        and generations are unique *)
@@ -1553,7 +1575,7 @@ Section Determinism.
     - (* a module: its body *)
       match goal with
       | IH : forall _ _ _ _ _, run_cmds _ _ _ _ _ _ _ _ _ _ -> _, H : run_cmds _ _ _ _ _ _ _ _ _ _ |- _ =>
-          destruct (IH _ _ _ _ _ H) as (-> & [= -> ->] & -> & ->)
+          destruct (IH _ _ _ _ _ H) as (-> & [= -> -> ->] & -> & ->)
       end; repeat split; auto.
     - (* a load: the same file, hence the same unit *)
       repeat match goal with
@@ -1572,17 +1594,22 @@ Section Determinism.
     - (* a group: its classification, its views and its filing, then its
          recursor module *)
       match goal with
-      | He : ind_entries_run _ _ _ ?D1 _ _ _ ?Ξa, Hf : rd_filed _ _ _ ?Vs ?Ss ?cs ?cV ?Nv = Some ?D1,
+      | Hf : rd_filed _ _ _ ?Vs ?Ss ?cs ?cV ?Nv = Some ?D1,
         Hc : Forall2 (rm_cls _ _ _) _ ?cs, Hs : Forall2 (view_sibs _ _ _) ?Vs ?Ss,
         Hv : Forall2 (view_cls _ _ _) ?Vs ?cV, Hn : Forall2 (view_nps _ _ _) ?Vs ?Nv,
         Hb : views_bfs _ _ _ _ ?Vs, HM : rd_members _ = ?M1 :: _,
-        He' : ind_entries_run _ _ _ ?D2 _ _ _ ?Ξb, Hf' : rd_filed _ _ _ ?Vs' ?Ss' ?cs' ?cV' ?Nv' = Some ?D2,
+        Hf' : rd_filed _ _ _ ?Vs' ?Ss' ?cs' ?cV' ?Nv' = Some ?D2,
         Hc' : Forall2 (rm_cls _ _ _) _ ?cs', Hs' : Forall2 (view_sibs _ _ _) ?Vs' ?Ss',
         Hv' : Forall2 (view_cls _ _ _) ?Vs' ?cV', Hn' : Forall2 (view_nps _ _ _) ?Vs' ?Nv',
         Hb' : views_bfs _ _ _ _ ?Vs', HM' : rd_members _ = ?M2 :: _ |- _ =>
-          assert_fails constr_eq Ξa Ξb;
-          destruct (rc_ind_functional _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-                      He Hf Hc Hs Hv Hn Hb He' Hf' Hc' Hs' Hv' Hn' Hb' _ _ HM HM') as (<- & <- & <-)
+          assert_fails constr_eq D1 D2;
+          destruct (rc_ind_functional _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+                      Hf Hc Hs Hv Hn Hb Hf' Hc' Hs' Hv' Hn' Hb' _ _ HM HM') as (<- & <-)
+      end.
+      match goal with
+      | IH : forall _ _ _ _ _, run_ind_members _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ -> _,
+        H : run_ind_members _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ =>
+          destruct (IH _ _ _ _ _ H) as (? & ? & ? & ?); subst
       end.
       match goal with
       | IH : forall _ _ _ _ _, run_cmds _ _ _ _ _ ?cs _ _ _ _ -> _, H : run_cmds _ _ _ _ _ ?cs _ _ _ _ |- _ =>
@@ -1632,6 +1659,17 @@ Section Determinism.
         H2 : run_cmds _ _ _ ?T (gs_push ?mp ?P nil) ?cs _ _ _ _ |- _ =>
           destruct (IH2 _ _ _ _ _ H2) as (? & Heq & ? & ?); injection Heq; intros; subst
       end; repeat split; auto.
+    - (* a member: its module's commands, then the rest from where they end *)
+      match goal with H1 : ind_member ?D ?k = _, H2 : ind_member ?D ?k = _ |- _ => rewrite H1 in H2; injection H2 as <- end.
+      match goal with
+      | IH1 : forall _ _ _ _ _, run_cmds _ _ _ _ _ ?cs _ _ _ _ -> _, H1 : run_cmds _ _ _ _ _ ?cs _ _ _ _ |- _ =>
+          destruct (IH1 _ _ _ _ _ H1) as (? & Heq & ? & ?); injection Heq as <- <- <-; subst
+      end.
+      match goal with
+      | IH2 : forall _ _ _ _ _, run_ind_members _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ -> _,
+        H2 : run_ind_members _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ |- _ =>
+          exact (IH2 _ _ _ _ _ H2)
+      end.
   Qed.
 
   Corollary run_cmd_functional : forall ch ch' B Rb Θ Ξ c B1 Rb1 Θ1 Ξ1 B2 Rb2 Θ2 Ξ2,
@@ -1647,7 +1685,7 @@ Section Determinism.
   Corollary run_unit_functional : forall ch ch' u B1 Rb1 Θ1 U1 B2 Rb2 Θ2 U2,
       hd nil ch = hd nil ch' -> run_unit ch u B1 Rb1 Θ1 U1 -> run_unit ch' u B2 Rb2 Θ2 U2 ->
       Θ1 = Θ2 /\ U1 = U2 /\ B1 = B2 /\ Rb1 = Rb2.
-  Proof. intros * Hh H1 H2; exact (proj2 (proj2 run_functional) _ _ _ _ _ _ H1 _ _ _ _ _ Hh H2). Qed.
+  Proof. intros * Hh H1 H2; exact (proj1 (proj2 (proj2 run_functional)) _ _ _ _ _ _ H1 _ _ _ _ _ Hh H2). Qed.
 End Determinism.
 
 (** ** Merging Keeps Both Sides *)
@@ -1719,8 +1757,8 @@ Lemma add_entry_wf : forall Θ Ξ x E,
     ⊢ᵍ Θ ⍮ gs_add x E Ξ.
 Proof.
   intros * HΞ HE Hfr.
-  destruct Ξ as [| [mp [P Φ1]] Ξ]; [ contradiction |]; cbn in Hfr, HE |- *.
-  inversion HΞ as [| | ? ? ? ? ? Hs0 HΦ Hff]; subst.
+  destruct Ξ as [| [[mp K] [P Φ1]] Ξ]; [ contradiction |]; cbn in Hfr, HE |- *.
+  inversion HΞ as [| | ? ? ? ? ? ? Hs0 HΦ Hff]; subst.
   apply wf_gstack_cons; [ exact Hs0 | | exact Hff ].
   cbn; econstructor; [ eassumption | exact HE | exact Hfr ].
 Qed.
@@ -1730,12 +1768,50 @@ Lemma add_ind_wf : forall Θ Ξ x pv pq k D Φ,
     ⊢ᵍ Θ ⍮ gs_add x (ge_ind pv pq k D Φ) Ξ.
 Proof. intros; apply add_entry_wf; assumption. Qed.
 
-(** The name of an entry of a frame is fresh in the body before it. *)
-Lemma wf_gstack_ext_fresh : forall Θ mq Δ Φ0 y E Ξ0,
-    ⊢ᵍ Θ ⍮ (mq, gu_body Δ (Φ0 ⊳ y ↦ E)) :: Ξ0 -> gm_fresh y Φ0.
+(** A member checked with an empty module has its group's own uniform
+    parameters, over the frames', as assumptions of a well-formed context:
+    those its module is opened over. *)
+Lemma ind_nil_entry_uparams : forall Θ Ξ mp pv pq k D Δu,
+    Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv pq k D ⋄ -> ind_uparams D = Δu ++ gs_tele Ξ ->
+    tele_ass Δu /\ ⊢ Θ ⍮ Ξ ⍮ Δu ++ gs_tele Ξ.
 Proof.
-  intros * Hg; destruct (wf_gstack_cons_inv _ _ _ _ Hg) as (_ & HU & _).
-  pose proof (wf_gunit_mod _ _ _ _ HU) as HΦ; cbn in HΦ; inversion HΦ; subst; assumption.
+  intros * HE Hu.
+  assert (Hass : tele_ass (ind_uparams D) -> tele_ass Δu) by (rewrite Hu; intros Ha; apply Forall_app in Ha; tauto).
+  inversion HE; subst.
+  - split; [ auto | rewrite <- Hu; assumption ].
+  - split; [ auto | rewrite <- Hu; assumption ].
+  - match goal with Hm : _ ⍮ _ ⍮ _ ⍮ fk_ind _ _ _ ⍮ _ ⊢ᵍᵐ ⋄, Hu' : ind_uparams D = ?Δ' ++ _ |- _ =>
+      inversion Hm; subst; rewrite Hu in Hu'; apply app_inv_tail in Hu'; subst Δ' end.
+    split; assumption.
+Qed.
+
+(** A later declared member of a group whose first member's entry is in
+    the innermost frame is well formed with an empty module, where it is
+    declared. *)
+Lemma later_member_entry : forall Θ mq Kq Δ Φ Ξ0 y0 pv0 Φm D k Mk x pv Δu,
+    ⊢ᵍ Θ ⍮ (mq, Kq, gu_body Δ Φ) :: Ξ0 ->
+    gm_entry Φ (y0 :: nil) = Some (ge_ind pv0 (qname_in mq y0) 0 D Φm) ->
+    ind_member D k = Some Mk -> 0 < k -> k < ind_ndecl D -> im_head Mk = mh_decl (qname_in mq x) ->
+    ind_uparams D = Δu ++ gs_tele ((mq, Kq, gu_body Δ Φ) :: Ξ0) ->
+    Θ ⍮ (mq, Kq, gu_body Δ Φ) :: Ξ0 ⍮ qname_in mq x ⊢ᵉ ge_ind pv (qname_in mq y0) k D ⋄.
+Proof.
+  intros * HΞ He HMk Hk Hlt Hh Hu.
+  assert (Hl : ind_lookup Θ ((mq, Kq, gu_body Δ Φ) :: Ξ0) (qname_in mq y0) = Some D).
+  { assert (HeE : gc_entry Θ ((mq, Kq, gu_body Δ Φ) :: Ξ0) (qname_in mq y0) = Some (ge_ind pv0 (qname_in mq y0) 0 D Φm))
+      by (apply (proj2 (loc_entry _ _ HΞ mq (Δ ++ gs_tele Ξ0) Φ ltac:(left; unfold gc_frame; cbn; rewrite qname_strip_refl; reflexivity) _ _));
+        exact He).
+    rewrite ind_lookup_unfold, (proj2 (gc_entry_ind _ _ _ _ _ _ _ _ HeE)); reflexivity. }
+  destruct (decl_of_lookup _ _ ⋅ _ _ (wf_ctx_empty _ _ HΞ) Hl) as [HD _].
+  destruct (decl_typed_uparams _ _ _ HD) as [HU Hass].
+  eapply wf_gentry_ind_mem_nil; eassumption.
+Qed.
+
+(** The name of an entry of a frame is fresh in the body before it. *)
+Lemma wf_gstack_ext_fresh : forall Θ mq Kq Δ Φ0 y E Ξ0,
+    ⊢ᵍ Θ ⍮ (mq, Kq, gu_body Δ (Φ0 ⊳ y ↦ E)) :: Ξ0 -> gm_fresh y Φ0.
+Proof.
+  intros * Hg; destruct (wf_gstack_cons_inv _ _ _ _ _ Hg) as (_ & HU & _).
+  pose proof (wf_gunit_mod _ _ _ _ _ HU) as HΦ; cbn in HΦ; inversion HΦ; subst; assumption.
 Qed.
 
 Section GrowDeps.
@@ -1745,8 +1821,8 @@ Section GrowDeps.
   Lemma global_deps_grow :
     (forall Θ0 Ξ mp E, Θ0 ⍮ Ξ ⍮ mp ⊢ᵉ E -> Θ0 = Θ -> ⊢ᵍ Θ' ⍮ Ξ ->
        gds_lookup Θ' (q_unit mp) = None -> Θ' ⍮ Ξ ⍮ mp ⊢ᵉ E) /\
-    (forall Θ0 Ξ mp Δ Φ, Θ0 ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ -> Θ0 = Θ -> ⊢ᵍ Θ' ⍮ Ξ ->
-       gds_lookup Θ' (q_unit mp) = None -> Θ' ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ).
+    (forall Θ0 Ξ mp K Δ Φ, Θ0 ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> Θ0 = Θ -> ⊢ᵍ Θ' ⍮ Ξ ->
+       gds_lookup Θ' (q_unit mp) = None -> Θ' ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ).
   Proof.
     apply global_wf_mut_ind; intros; subst.
     all: try assert (Hb : ⊢ Θ' ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
@@ -1793,37 +1869,33 @@ Section GrowDeps.
       match goal with Hg : ⊢ᵍ Θ' ⍮ ?X |- _ => pose proof (deps_grow _ _ _ Hsub (wf_ctx_empty _ _ Hg)) as (Hc' & _) end.
       eapply wf_gentry_ind_mem_nil; try eassumption;
         first [ apply Hc'; eassumption | eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ] ].
-    - (* one more member, checked with the entry so far declared *)
-      rename H0 into IH, H1 into HM.
-      pose proof (IH eq_refl ltac:(assumption) ltac:(assumption)) as HE'.
-      pose proof (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) as Hg0.
-      assert (Hg' : ⊢ᵍ Θ' ⍮ (mq, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv pq k D Φ)) :: Ξ).
-      { refine (add_ind_wf _ ((mq, gu_body Δ Φ0) :: Ξ) y pv pq k D Φ _ HE' _); [ assumption |].
-        cbn; exact (wf_gstack_ext_fresh _ _ _ _ _ _ _ Hg0). }
-      pose proof (deps_grow _ _ _ Hsub (wf_ctx_empty _ _ Hg')) as (_ & He' & _).
-      econstructor; [ exact HE' | apply He'; exact HM | assumption ].
+    - (* a member with the body of its module, an ordinary module *)
+      econstructor; [ eassumption | auto ].
     - (* an inductive alias *)
       eapply wf_gentry_ind_alias; try eassumption;
         first [ apply Hx; assumption | apply He; assumption | apply Hm; assumption
               | eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ]
               | eapply ind_mlookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ] ].
     - econstructor; [ assumption | apply Hc; assumption ].
+    - (* the module of a member, before its first entry *)
+      match goal with Hg : ⊢ᵍ Θ' ⍮ ?X |- _ => pose proof (deps_grow _ _ _ Hsub (wf_ctx_empty _ _ Hg)) as (Hc' & _) end.
+      eapply wf_gmod_ind_nil; [ assumption | apply Hc'; assumption | auto | assumption ].
     - match goal with HE : Θ ⍮ _ ⍮ qname_in _ _ ⊢ᵉ _ |- _ => pose proof (wf_gentry_gctx _ _ _ _ HE) as Hg0 end.
-      destruct (wf_gstack_cons_inv _ _ _ _ Hg0) as (_ & _ & Hff).
-      assert (HΦ : Θ' ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ) by auto.
+      destruct (wf_gstack_cons_inv _ _ _ _ _ Hg0) as (_ & _ & Hff).
+      assert (HΦ : Θ' ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ) by auto.
       econstructor; [ exact HΦ | | assumption ].
-      match goal with IH : _ = _ -> ⊢ᵍ _ ⍮ (mp, gu_body Δ Φ) :: Ξ -> _ |- _ => apply IH end;
+      match goal with IH : _ = _ -> ⊢ᵍ _ ⍮ (mp, K, gu_body Δ Φ) :: Ξ -> _ |- _ => apply IH end;
         [ reflexivity | | assumption ].
       apply wf_gstack_cons; [ assumption | exact HΦ | eapply frame_fresh_grow; eassumption ].
   Qed.
 
   Lemma gstack_deps_grow : forall Ξ, ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ Θ' ⍮ nil ->
-      (forall mp U, In (mp, U) Ξ -> gds_lookup Θ' (q_unit mp) = None) -> ⊢ᵍ Θ' ⍮ Ξ.
+      (forall mp K U, In (mp, K, U) Ξ -> gds_lookup Θ' (q_unit mp) = None) -> ⊢ᵍ Θ' ⍮ Ξ.
   Proof.
-    induction Ξ as [| [mp U] Ξ IH]; intros HΞ HΘ' Hfr; [ exact HΘ' |].
-    destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (HΞ0 & HU & Hff).
+    induction Ξ as [| [[mp K] U] Ξ IH]; intros HΞ HΘ' Hfr; [ exact HΘ' |].
+    destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as (HΞ0 & HU & Hff).
     assert (HΞ' : ⊢ᵍ Θ' ⍮ Ξ) by (apply IH; [ assumption | assumption | intros; eapply Hfr; right; eassumption ]).
-    pose proof (Hfr mp U (or_introl eq_refl)) as Hn.
+    pose proof (Hfr mp K U (or_introl eq_refl)) as Hn.
     destruct HU as [Δ Φ -> HΦ].
     apply wf_gstack_cons; [ exact HΞ' | | eapply frame_fresh_grow; eassumption ].
     eapply (proj2 global_deps_grow); eauto.
@@ -1833,7 +1905,7 @@ Section GrowDeps.
       path must stay unfiled. *)
   Lemma unit_deps_grow : forall fp U,
       ⊢ᵍ Θ' ⍮ nil -> gds_lookup Θ' fp = None ->
-      Θ ⍮ nil ⍮ q_abs fp nil ⊢ᵍᵘ U -> Θ' ⍮ nil ⍮ q_abs fp nil ⊢ᵍᵘ U.
+      Θ ⍮ nil ⍮ q_abs fp nil ⍮ fk_module ⊢ᵍᵘ U -> Θ' ⍮ nil ⍮ q_abs fp nil ⍮ fk_module ⊢ᵍᵘ U.
   Proof.
     intros * HΘ' Hn [Δ Φ -> HΦ]; apply wf_gunit_intro.
     eapply (proj2 global_deps_grow); [ eassumption | reflexivity | exact HΘ' | exact Hn ].
@@ -1870,31 +1942,134 @@ Qed.
 
 Scheme run_cmd_dind := Induction for run_cmd Sort Prop
 with run_cmds_dind := Induction for run_cmds Sort Prop
-with run_unit_dind := Induction for run_unit Sort Prop.
-Combined Scheme run_mut_dind from run_cmd_dind, run_cmds_dind, run_unit_dind.
+with run_unit_dind := Induction for run_unit Sort Prop
+with run_ind_members_dind := Induction for run_ind_members Sort Prop.
+Combined Scheme run_mut_dind from run_cmd_dind, run_cmds_dind, run_unit_dind, run_ind_members_dind.
 
-(** What a run keeps of a stack: each frame's path and parameters. *)
-Definition gs_shape (Ξ : gstack) : list (qname * ctx) := map (fun f => (fst f, gu_params (snd f))) Ξ.
+(** What a run keeps of a stack: each frame's path, kind and parameters. *)
+Definition gs_shape (Ξ : gstack) : list (qname * frame_kind * ctx) := map (fun f => (fst f, gu_params (snd f))) Ξ.
 
 Lemma gs_add_params : forall x E Ξ, gs_shape (gs_add x E Ξ) = gs_shape Ξ.
-Proof. intros ? ? [| [? ?] ?]; reflexivity. Qed.
+Proof. intros ? ? [| [[? ?] ?] ?]; reflexivity. Qed.
+
+Lemma gs_tele_add : forall x E Ξ, gs_tele (gs_add x E Ξ) = gs_tele Ξ.
+Proof. intros ? ? [| [[? ?] ?] ?]; reflexivity. Qed.
+
+(** A name is fresh in a frame with an entry added iff it is fresh in it
+    and not the entry's. *)
+Lemma gs_fresh_add_inv : forall y x E Ξ, gs_fresh y (gs_add x E Ξ) -> gs_fresh y Ξ /\ y <> x.
+Proof.
+  intros * H; destruct Ξ as [| [[mp K] U] Ξ']; [ contradiction |]; cbn in H |- *.
+  destruct U as [Δ [sm Φ | E0]]; cbn in H |- *; unfold gm_fresh in *; cbn [gm_names In] in H |- *;
+    split; intros Hy; apply H; auto.
+Qed.
+
+Lemma gs_fresh_add : forall y x E Ξ, gs_fresh y Ξ -> y <> x -> gs_fresh y (gs_add x E Ξ).
+Proof.
+  intros * H Hn; destruct Ξ as [| [[mp K] U] Ξ']; [ contradiction |]; cbn in H |- *.
+  destruct U as [Δ [sm Φ | E0]]; cbn in H |- *; unfold gm_fresh in *; cbn [gm_names In];
+    (intros [Hy | Hy]; [ exact (Hn (eq_sym Hy)) | exact (H Hy) ]).
+Qed.
+
+Lemma gs_path_add : forall x E Ξ, gs_path (gs_add x E Ξ) = gs_path Ξ.
+Proof. intros ? ? [| [[? ?] ?] ?]; reflexivity. Qed.
+
+(** A filed group's uniform parameters are its own, over the frames'. *)
+Lemma rd_filed_uparams : forall Θ Ξ R Vs Ss csD csV Nvs D,
+    rd_filed Θ Ξ R Vs Ss csD csV Nvs = Some D -> ind_uparams D = rd_uparams R ++ gs_tele Ξ.
+Proof.
+  intros * Hf; unfold rd_filed in Hf; destruct (rd_members R) as [| Mr0 ?]; [ discriminate |].
+  repeat match type of Hf with context [match ?e with _ => _ end] => destruct e end; try discriminate.
+  injection Hf as <-; reflexivity.
+Qed.
+
+(** The declared members of a filed group are its first ones, each named
+    after its raw member ([rms_filed]); the views after them. *)
+Lemma rms_filed_heads : forall Ξ n Vs ms css Ms, rms_filed Ξ n Vs ms css = Some Ms ->
+    List.length Ms = List.length ms /\
+    forall i M, List.nth_error Ms i = Some M ->
+      exists Mr, List.nth_error ms i = Some Mr /\ im_head M = mh_decl (ind_qname Ξ (rm_name Mr)).
+Proof.
+  induction ms as [| Mr ms IH]; intros [| cs css] Ms H; cbn in H; try discriminate.
+  - injection H as <-; split; [ reflexivity | intros [] ? [=] ].
+  - destruct (rcons_num n Vs cs) as [cs' |]; [| discriminate ].
+    destruct (rms_filed Ξ n Vs ms css) as [Ms' |] eqn:E; [| discriminate ].
+    injection H as <-; destruct (IH _ _ E) as [Hl Hh].
+    split; [ cbn; rewrite Hl; reflexivity |].
+    intros [| i] M HM; cbn in HM; [ injection HM as <-; exists Mr; split; reflexivity | exact (Hh _ _ HM) ].
+Qed.
+
+(** The members a group's views are filed as are not declared ones. *)
+Lemma rvs_filed_views : forall Θ Ξ σ n Vs xs Ss css Nvs Ms, rvs_filed Θ Ξ σ n Vs xs Ss css Nvs = Some Ms ->
+    forall M, In M Ms -> im_is_decl M = false.
+Proof.
+  induction xs as [| x xs IH]; intros [| ss Ss] [| cs css] [| Nv Nvs] Ms H; cbn in H; try discriminate.
+  - injection H as <-; intros M [].
+  - destruct (rv_filed Θ Ξ σ n Vs x ss cs Nv) as [M0 |] eqn:E0; [| discriminate ].
+    destruct (rvs_filed Θ Ξ σ n Vs xs Ss css Nvs) as [Ms' |] eqn:E; [| discriminate ].
+    injection H as <-; intros M [<- | HM]; [| exact (IH _ _ _ _ E _ HM) ].
+    unfold rv_filed in E0; destruct x as [[qc k] Cs].
+    destruct (ind_lookup Θ Ξ qc) as [D' |]; [| discriminate ].
+    destruct (ind_member D' k), (rcons_num n Vs cs); try discriminate.
+    injection E0 as <-; reflexivity.
+Qed.
+
+(** Filtering keeps a list all of whose elements pass, and empties one
+    none of whose elements does. *)
+Lemma filter_all_true : forall {X} (f : X -> bool) l, (forall x, In x l -> f x = true) -> List.filter f l = l.
+Proof. induction l as [| x l IH]; intros H; cbn; [ reflexivity |]; rewrite (H x (or_introl eq_refl)), IH; auto with datatypes. Qed.
+
+Lemma filter_all_false : forall {X} (f : X -> bool) l, (forall x, In x l -> f x = false) -> List.filter f l = nil.
+Proof. induction l as [| x l IH]; intros H; cbn; [ reflexivity |]; rewrite (H x (or_introl eq_refl)), IH; auto with datatypes. Qed.
+
+(** A filed group declares as many members as are written, each at its
+    position, named after its raw member. *)
+Lemma rd_filed_decl : forall Θ Ξ R Vs Ss csD csV Nvs D, rd_filed Θ Ξ R Vs Ss csD csV Nvs = Some D ->
+    ind_ndecl D = List.length (rd_members R) /\
+    forall i Mr, List.nth_error (rd_members R) i = Some Mr ->
+      exists M, ind_member D i = Some M /\ im_head M = mh_decl (ind_qname Ξ (rm_name Mr)).
+Proof.
+  intros * H; unfold rd_filed in H; destruct (rd_members R) as [| Mr0 Mrs] eqn:HR; [ discriminate |].
+  destruct (rms_filed _ _ _ _ _) as [Ms |] eqn:E1; [| discriminate ].
+  destruct (rvs_filed _ _ _ _ _ _ _ _ _) as [Mv |] eqn:E2; [| discriminate ].
+  injection H as <-; destruct (rms_filed_heads _ _ _ _ _ _ E1) as [Hl Hh].
+  pose proof (rvs_filed_views _ _ _ _ _ _ _ _ _ _ E2) as Hv.
+  split.
+  - unfold ind_ndecl; cbn [ind_members]; rewrite List.filter_app, (filter_all_false _ Mv Hv), List.app_nil_r.
+    rewrite filter_all_true; [ exact Hl |].
+    intros M HM; destruct (List.In_nth_error _ _ HM) as [i Hi].
+    destruct (Hh _ _ Hi) as (Mr & _ & Hhd); unfold im_is_decl; rewrite Hhd; reflexivity.
+  - intros i Mr Hi.
+    assert (Hlt : i < List.length Ms) by (rewrite Hl; apply List.nth_error_Some; congruence).
+    destruct (List.nth_error Ms i) as [M |] eqn:HM; [| apply List.nth_error_None in HM; exfalso; exact (Nat.lt_irrefl _ (Nat.lt_le_trans _ _ _ Hlt HM)) ].
+    destruct (Hh _ _ HM) as (Mr' & Hi' & Hhd); rewrite Hi in Hi'; injection Hi' as <-.
+    exists M; split; [ unfold ind_member; cbn [ind_members]; rewrite List.nth_error_app1 by exact Hlt; exact HM | exact Hhd ].
+Qed.
 
 (** The frames of a stack belong to units on the chain: the ones being
     loaded, so none a load files. *)
 Definition stack_in (ch : list path) (Ξ : gstack) : Prop :=
-  forall mp U, In (mp, U) Ξ -> In (q_unit mp) ch.
+  forall mp K U, In (mp, K, U) Ξ -> In (q_unit mp) ch.
 
 Lemma stack_in_add : forall ch x E Ξ, stack_in ch Ξ -> stack_in ch (gs_add x E Ξ).
 Proof.
-  intros * H mp U Hin; destruct Ξ as [| [mq V] Ξ]; [ contradiction |].
-  destruct Hin as [[= <- <-] | Hin]; [ eapply H; left; reflexivity | eapply H; right; exact Hin ].
+  intros * H mp K U Hin; destruct Ξ as [| [[mq Kq] V] Ξ]; [ contradiction |].
+  destruct Hin as [[= <- <- <-] | Hin]; [ eapply H; left; reflexivity | eapply H; right; exact Hin ].
 Qed.
 
 Lemma stack_in_push : forall ch x Δ Ξ,
     stack_in ch Ξ -> gs_fresh x Ξ -> stack_in ch (gs_push (qname_in (gs_path Ξ) x) Δ Ξ).
 Proof.
-  intros * H Hfr mp U [[= <- <-] | Hin]; [| eapply H; exact Hin ].
-  destruct Ξ as [| [mq V] Ξ]; [ contradiction |]; cbn; eapply H; left; reflexivity.
+  intros * H Hfr mp K U [[= <- <- <-] | Hin]; [| eapply H; exact Hin ].
+  destruct Ξ as [| [[mq Kq] V] Ξ]; [ contradiction |]; cbn; eapply H; left; reflexivity.
+Qed.
+
+(** Likewise the frame of the module of a member. *)
+Lemma stack_in_push_ind : forall ch x pq k D Δ Ξ,
+    stack_in ch Ξ -> gs_fresh x Ξ -> stack_in ch (gs_push_ind (qname_in (gs_path Ξ) x) pq k D Δ Ξ).
+Proof.
+  intros * H Hfr mp K U [[= <- <- <-] | Hin]; [| eapply H; exact Hin ].
+  destruct Ξ as [| [[mq Kq] V] Ξ]; [ contradiction |]; cbn; eapply H; left; reflexivity.
 Qed.
 
 (** A definition or an alias, checked against the frame so far, keeps the
@@ -1903,8 +2078,8 @@ Lemma add_def_wf : forall Θ Ξ x b pv A M,
     ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> gs_fresh x Ξ -> ⊢ᵍ Θ ⍮ gs_add x (gs_def b pv Ξ A M) Ξ.
 Proof.
   intros * HΞ HM Hfr.
-  destruct Ξ as [| [mp [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
-  inversion HΞ as [| | ? ? ? ? ? Hs0 HΦ Hff]; subst.
+  destruct Ξ as [| [[mp K] [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
+  inversion HΞ as [| | ? ? ? ? ? ? Hs0 HΦ Hff]; subst.
   apply wf_gstack_cons; [ exact Hs0 | | exact Hff ].
   destruct (presup_exp_typ HM) as [i HA].
   cbn; econstructor; [ eassumption | unfold gs_def; eapply wf_gentry_def_body; [ exact HA | exact HM ] | exact Hfr ].
@@ -1914,8 +2089,8 @@ Lemma add_axiom_wf : forall Θ Ξ x b pv A i,
     ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> gs_fresh x Ξ -> ⊢ᵍ Θ ⍮ gs_add x (gs_axiom b pv Ξ A) Ξ.
 Proof.
   intros * HΞ HA Hfr.
-  destruct Ξ as [| [mp [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
-  inversion HΞ as [| | ? ? ? ? ? Hs0 HΦ Hff]; subst.
+  destruct Ξ as [| [[mp K] [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
+  inversion HΞ as [| | ? ? ? ? ? ? Hs0 HΦ Hff]; subst.
   apply wf_gstack_cons; [ exact Hs0 | | exact Hff ].
   cbn; econstructor; [ eassumption | unfold gs_axiom; eapply wf_gentry_def_axiom; exact HA | exact Hfr ].
 Qed.
@@ -1925,8 +2100,8 @@ Lemma add_alias_wf : forall Θ Ξ x pv Δ E,
     gs_fresh x Ξ -> ⊢ᵍ Θ ⍮ gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ.
 Proof.
   intros * HΞ Htel HΔ HE Hfr.
-  destruct Ξ as [| [mp [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
-  inversion HΞ as [| | ? ? ? ? ? Hs0 HΦ Hff]; subst.
+  destruct Ξ as [| [[mp K] [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
+  inversion HΞ as [| | ? ? ? ? ? ? Hs0 HΦ Hff]; subst.
   apply wf_gstack_cons; [ exact Hs0 | | exact Hff ].
   cbn; econstructor; [ eassumption | constructor; assumption | exact Hfr ].
 Qed.
@@ -1947,7 +2122,7 @@ Proof. induction 1; rewrite ?IHgens_run, ?gs_add_params; reflexivity. Qed.
 Lemma gens_run_tl : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> tl Ξ' = tl Ξ /\ List.length Ξ' = List.length Ξ.
 Proof.
   assert (Hadd : forall x E Ξ, tl (gs_add x E Ξ) = tl Ξ /\ List.length (gs_add x E Ξ) = List.length Ξ)
-    by (intros ? ? [| [? ?] ?]; split; reflexivity).
+    by (intros ? ? [| [[? ?] ?] ?]; split; reflexivity).
   induction 1; [ auto | .. ]; destruct IHgens_run as [Ht Hl]; rewrite Ht, Hl; apply Hadd.
 Qed.
 
@@ -1961,8 +2136,8 @@ Lemma ind_lookup_add : forall Θ Ξ x E p D,
     ⊢ᵍ Θ ⍮ Ξ -> gs_fresh x Ξ -> ind_lookup Θ Ξ p = Some D -> ind_lookup Θ (gs_add x E Ξ) p = Some D.
 Proof.
   intros * HΞ Hfr Hl.
-  destruct Ξ as [| [mq U] Ξ0]; [ contradiction |].
-  destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & [P Ψ -> _] & _).
+  destruct Ξ as [| [[mq Kq] U] Ξ0]; [ contradiction |].
+  destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as (_ & [P Ψ -> _] & _).
   cbn in Hfr |- *.
   eapply ind_lookup_gc_sub; [ apply gc_sub_grow; exact Hfr | exact Hl ].
 Qed.
@@ -1977,29 +2152,7 @@ Proof.
   - apply add_entry_wf; assumption.
 Qed.
 
-(** The entries of a group's declared members and the definitions of a
-    mutual definition, filed in order, likewise. *)
-Lemma ind_entries_run_wf : forall Θ pv pq D k xs Ξ Ξ', ind_entries_run Θ pv pq D k xs Ξ Ξ' -> ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ Θ ⍮ Ξ'.
-Proof. induction 1; intros HΞ; [ exact HΞ | apply IHind_entries_run; apply add_entry_wf; assumption ]. Qed.
-
-Lemma ind_entries_run_shape : forall Θ pv pq D k xs Ξ Ξ', ind_entries_run Θ pv pq D k xs Ξ Ξ' -> gs_shape Ξ' = gs_shape Ξ.
-Proof. induction 1; rewrite ?IHind_entries_run, ?gs_add_params; reflexivity. Qed.
-
-Lemma ind_entries_run_tl : forall Θ pv pq D k xs Ξ Ξ', ind_entries_run Θ pv pq D k xs Ξ Ξ' ->
-    tl Ξ' = tl Ξ /\ List.length Ξ' = List.length Ξ.
-Proof.
-  assert (Hadd : forall x E Ξ, tl (gs_add x E Ξ) = tl Ξ /\ List.length (gs_add x E Ξ) = List.length Ξ)
-    by (intros ? ? [| [? ?] ?]; split; reflexivity).
-  induction 1; [ auto | .. ]; destruct IHind_entries_run as [Ht Hl]; rewrite Ht, Hl; apply Hadd.
-Qed.
-
-Lemma ind_entries_run_ind_lookup : forall Θ pv pq D k xs Ξ Ξ', ind_entries_run Θ pv pq D k xs Ξ Ξ' -> ⊢ᵍ Θ ⍮ Ξ ->
-    forall p D0, ind_lookup Θ Ξ p = Some D0 -> ind_lookup Θ Ξ' p = Some D0.
-Proof.
-  induction 1; intros HΞ p0 D0 Hl; [ exact Hl |]; apply IHind_entries_run; [ apply add_entry_wf; assumption |].
-  apply ind_lookup_add; assumption.
-Qed.
-
+(** The definitions of a mutual definition, filed in order, likewise. *)
 Lemma mdefs_run_wf : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ Θ ⍮ Ξ'.
 Proof. induction 1; intros HΞ; [ exact HΞ | apply IHmdefs_run; apply add_def_wf; assumption ]. Qed.
 
@@ -2009,7 +2162,7 @@ Proof. induction 1; rewrite ?IHmdefs_run, ?gs_add_params; reflexivity. Qed.
 Lemma mdefs_run_tl : forall Θ b pv ds Ξ Ξ', mdefs_run Θ b pv ds Ξ Ξ' -> tl Ξ' = tl Ξ /\ List.length Ξ' = List.length Ξ.
 Proof.
   assert (Hadd : forall x E Ξ, tl (gs_add x E Ξ) = tl Ξ /\ List.length (gs_add x E Ξ) = List.length Ξ)
-    by (intros ? ? [| [? ?] ?]; split; reflexivity).
+    by (intros ? ? [| [[? ?] ?] ?]; split; reflexivity).
   induction 1; [ auto | .. ]; destruct IHmdefs_run as [Ht Hl]; rewrite Ht, Hl; apply Hadd.
 Qed.
 
@@ -2020,39 +2173,43 @@ Proof.
   apply ind_lookup_add; assumption.
 Qed.
 
-(** A module frame, closed: what was read in it is read in the member it
-    becomes. *)
-Lemma ind_lookup_close : forall Θ Ξ x pv Δ Φ p D,
-    ⊢ᵍ Θ ⍮ Ξ -> gs_fresh x Ξ ->
-    ind_lookup Θ ((qname_in (gs_path Ξ) x, gu_body Δ Φ) :: Ξ) p = Some D ->
-    ind_lookup Θ (gs_add x (ge_body pv Δ Φ) Ξ) p = Some D.
+(** A frame, of either kind, closed into the member it becomes: what was
+    read in it is read in that member. *)
+Lemma gc_sub_close : forall Θ Ξ x pv K Δ Φ,
+    ⊢ᵍ Θ ⍮ Ξ -> gs_fresh x Ξ -> kind_tele K Δ (gs_tele Ξ) ->
+    gc_sub Θ ((qname_in (gs_path Ξ) x, K, gu_body Δ Φ) :: Ξ) Θ (gs_add x (frame_entry pv K Δ Φ) Ξ).
 Proof.
-  intros * HΞ Hfr Hl.
-  destruct (ind_lookup_module _ _ _ _ Hl) as (T & pq & Hm).
-  apply gc_module_frame in Hm as [(y & ip & -> & Hm) | Hm].
-  - destruct Ξ as [| [mq U] Ξ0]; [ contradiction |].
-    destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & [P Ψ -> _] & _).
-    cbn [gs_path gs_add gu_params gu_mod gs_tele] in Hm |- *.
-    assert (Hp : qname_app (qname_in mq x) (y :: ip) = qname_app mq (x :: y :: ip))
-      by (unfold qname_app, qname_in; cbn; rewrite <- List.app_assoc; reflexivity).
-    rewrite Hp; rewrite ind_lookup_unfold, ind_mlookup_unfold, gc_module_frame_here; cbn [gu_params gu_mod].
-    assert (Hm' : ge_submodule (P ++ gs_tele Ξ0) (ge_body pv Δ Φ) y ip = Some (mr_body T (Some (pq, 0, D)))) by (cbn; exact Hm).
-    rewrite (gm_submodule_ext_here _ Ψ x _ _ _ _ Hm'); reflexivity.
-  - apply ind_lookup_add; [ exact HΞ | exact Hfr | exact (ind_lookup_body _ _ _ _ _ Hm) ].
+  intros * HΞ Hfr HK.
+  destruct Ξ as [| [[mq Kq] U] Ξ0]; [ contradiction |].
+  destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as (_ & [P Ψ -> _] & _).
+  cbn [gs_path gs_add gu_params gu_mod gs_fresh] in Hfr |- *.
+  apply (gc_sub_nested _ _ _ pv); [ apply gc_sub_grow; exact Hfr | | exact HK ].
+  exact (Ctb_frame Θ mq Kq P Ψ x _ Ξ0 _ _ (gc_sub_refl _ _)).
 Qed.
+
+Lemma ind_lookup_close : forall Θ Ξ x pv K Δ Φ p D,
+    ⊢ᵍ Θ ⍮ Ξ -> gs_fresh x Ξ -> kind_tele K Δ (gs_tele Ξ) ->
+    ind_lookup Θ ((qname_in (gs_path Ξ) x, K, gu_body Δ Φ) :: Ξ) p = Some D ->
+    ind_lookup Θ (gs_add x (frame_entry pv K Δ Φ) Ξ) p = Some D.
+Proof. intros * HΞ Hfr HK Hl; exact (ind_lookup_gc_sub _ _ _ _ _ _ (gc_sub_close _ _ _ pv _ _ Φ HΞ Hfr HK) Hl). Qed.
 
 (** Read under frames of units not filed: as filed. *)
 Lemma ind_lookup_below : forall Θ Ξ p D,
-    (forall mp U, In (mp, U) Ξ -> gds_lookup Θ (q_unit mp) = None) ->
+    (forall mp K U, In (mp, K, U) Ξ -> gds_lookup Θ (q_unit mp) = None) ->
     ind_lookup Θ nil p = Some D -> ind_lookup Θ Ξ p = Some D.
 Proof.
   intros * Hfr Hl.
-  unfold ind_lookup, ind_lookup_u, ind_mlookup_u, gc_module, gc_module_u in *; cbn [gs_find_tele] in Hl.
-  destruct (gs_find_tele Ξ p) as [[[U ip] T] |] eqn:Hf; [| exact Hl ].
-  exfalso.
-  assert (Hg : gs_find Ξ p = Some (U, ip)) by (rewrite gs_find_tele_find, Hf; reflexivity).
-  destruct (gs_find_unit _ _ _ _ Hg) as (mp & Hin & Hu).
-  rewrite <- Hu, (Hfr _ _ Hin) in Hl; discriminate.
+  (* no frame of [Ξ] is at a path of a filed unit *)
+  assert (Hno : forall U ip, gs_find Ξ p = Some (U, ip) -> False).
+  { intros U ip Hg; destruct (gs_find_unit _ _ _ _ Hg) as (mp & K & Hin & Hu).
+    unfold ind_lookup, ind_lookup_u, ind_mlookup_u, gc_module, gc_module_u in Hl; cbn [gs_find_ind gs_find_tele] in Hl.
+    rewrite <- Hu, (Hfr _ _ _ Hin) in Hl; discriminate. }
+  unfold ind_lookup, ind_lookup_u, ind_mlookup_u, gc_module, gc_module_u in *; cbn [gs_find_ind gs_find_tele] in Hl.
+  destruct (gs_find_ind Ξ p) as [r |] eqn:Hk.
+  - exfalso; destruct (gs_find_ind_tele _ _ _ Hk) as (U & T & Hf).
+    apply (Hno U nil); rewrite gs_find_tele_find, Hf; reflexivity.
+  - destruct (gs_find_tele Ξ p) as [[[U ip] T] |] eqn:Hf; [| exact Hl ].
+    exfalso; apply (Hno U ip); rewrite gs_find_tele_find, Hf; reflexivity.
 Qed.
 
 (** A binding well formed at one state is at another that reads every
@@ -2064,7 +2221,7 @@ Proof. intros * Hm Hb p Hp; destruct (Hb p Hp) as [D z s Hl Hs Ho]; exact (mk_na
 
 (** A record read under no frame is read under frames of units not filed. *)
 Lemma builtins_wf_below : forall Θ Ξ B,
-    (forall mp U, In (mp, U) Ξ -> gds_lookup Θ (q_unit mp) = None) ->
+    (forall mp K U, In (mp, K, U) Ξ -> gds_lookup Θ (q_unit mp) = None) ->
     builtins_wf Θ nil B -> builtins_wf Θ Ξ B.
 Proof. intros * Hfr; apply builtins_wf_mono; intros; apply ind_lookup_below; assumption. Qed.
 
@@ -2078,19 +2235,33 @@ Proof.
   intros; eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hs | eassumption ].
 Qed.
 
+(** The group a declared member's entry files, at its path. *)
+Lemma ind_lookup_added : forall Θ Ξ x pv D Φ,
+    Ξ <> nil -> ind_lookup Θ (gs_add x (ge_ind pv (qname_in (gs_path Ξ) x) 0 D Φ) Ξ) (qname_in (gs_path Ξ) x) = Some D.
+Proof.
+  intros * Hn; destruct Ξ as [| [[mp K] U] Ξ0]; [ contradiction |].
+  rewrite ind_lookup_unfold, ind_mlookup_unfold; cbn [gs_add gs_path].
+  change (qname_in mp x) with (qname_app mp (x :: nil)).
+  cbn [gs_find_ind]; rewrite qname_strip_app.
+  rewrite gc_module_frame_here; cbn; rewrite String.eqb_refl; reflexivity.
+Qed.
+
 Section WellFormed.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
   #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
   #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
   #[local] Abbreviation run_unit := (run_unit load_path read to_core).
+  #[local] Abbreviation run_ind_members := (run_ind_members load_path read to_core).
 
   Lemma run_chain_fresh :
     (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        forall fq, In fq ch -> gds_lookup Θ fq = None -> gds_lookup Θ' fq = None) /\
     (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        forall fq, In fq ch -> gds_lookup Θ fq = None -> gds_lookup Θ' fq = None) /\
-    (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U -> forall fq, In fq ch -> gds_lookup Θ fq = None).
+    (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U -> forall fq, In fq ch -> gds_lookup Θ fq = None) /\
+    (forall ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ', run_ind_members ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ' ->
+       forall fq, In fq ch -> gds_lookup Θ fq = None -> gds_lookup Θ' fq = None).
   Proof.
     apply run_mut_ind; intros; eauto.
     - (* a load files what its unit filed, and the unit, which is not on the chain *)
@@ -2106,11 +2277,12 @@ Section WellFormed.
   Lemma run_params :
     (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> gs_shape Ξ' = gs_shape Ξ) /\
     (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> gs_shape Ξ' = gs_shape Ξ) /\
-    (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U -> True).
+    (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U -> True) /\
+    (forall ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ', run_ind_members ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ' ->
+       gs_shape Ξ' = gs_shape Ξ).
   Proof.
-    apply run_mut_ind; intros; rewrite ?gs_add_params;
+    apply run_mut_ind; intros; rewrite ?gs_add_params in *;
       solve [ congruence | exact I | eapply gens_run_shape; eassumption
-            | etransitivity; [ eassumption | eapply ind_entries_run_shape; eassumption ]
             | eapply mdefs_run_shape; eassumption
             | erewrite gens_run_shape by eassumption; apply gs_add_params ].
   Qed.
@@ -2194,9 +2366,9 @@ Section WellFormed.
 
   Lemma stack_in_shape : forall ch Ξ Ξ', gs_shape Ξ' = gs_shape Ξ -> stack_in ch Ξ -> stack_in ch Ξ'.
   Proof.
-    intros * Hs H mp U Hin.
-    assert (Hin' : In (mp, gu_params U) (gs_shape Ξ')) by (apply (in_map (fun f => (fst f, gu_params (snd f))) _ _ Hin)).
-    rewrite Hs in Hin'; apply in_map_iff in Hin' as ([mq V] & [= -> _] & HV); eapply H; exact HV.
+    intros * Hs H mp K U Hin.
+    assert (Hin' : In (mp, K, gu_params U) (gs_shape Ξ')) by (apply (in_map (fun f => (fst f, gu_params (snd f))) _ _ Hin)).
+    rewrite Hs in Hin'; apply in_map_iff in Hin' as ([[mq Kq] V] & [= -> -> _] & HV); eapply H; exact HV.
   Qed.
 
   Theorem run_wf :
@@ -2205,7 +2377,10 @@ Section WellFormed.
     (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ -> ⊢ᵍ Θ' ⍮ Ξ' /\ canon Rb' Θ' /\ Θ ⊑ Θ' /\ bt_le B B') /\
     (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U ->
-       ⊢ᵍ Θ ⍮ nil /\ canon Rb Θ /\ Θ ⍮ nil ⍮ q_abs (hd nil ch) nil ⊢ᵍᵘ U).
+       ⊢ᵍ Θ ⍮ nil /\ canon Rb Θ /\ Θ ⍮ nil ⍮ q_abs (hd nil ch) nil ⍮ fk_module ⊢ᵍᵘ U) /\
+    (forall ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ', run_ind_members ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ' ->
+       ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ -> ind_uparams D = rd_uparams R ++ gs_tele Ξ ->
+       ⊢ᵍ Θ' ⍮ Ξ' /\ canon Rb' Θ' /\ Θ ⊑ Θ' /\ bt_le B B').
   Proof.
     apply run_mut_dind.
     - (* a definition: the new member is checked against the frame so far *)
@@ -2215,16 +2390,16 @@ Section WellFormed.
       intros ch B Rb Θ Ξ x b pv A i HA Hfr HΞ Hc Hst.
       repeat split; [ eapply add_axiom_wf; eassumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
     - (* a module: its body ends on a frame with the path and parameters it opened with *)
-      intros ch B Rb B' Rb' Θ Ξ x pv Δ cs Θ' mp' U Htel HΔ Hfr Hr IH HΞ Hc Hst.
-      destruct Ξ as [| [mp [P Φ]] Ξ0]; [ contradiction |]; cbn [gs_fresh gs_path] in Hfr, Hr, IH |- *.
-      assert (Hpush : ⊢ᵍ Θ ⍮ gs_push (qname_in mp x) Δ ((mp, gu_mk P Φ) :: Ξ0)).
+      intros ch B Rb B' Rb' Θ Ξ x pv Δ cs Θ' mp' K' U Htel HΔ Hfr Hr IH HΞ Hc Hst.
+      destruct Ξ as [| [[mp K] [P Φ]] Ξ0]; [ contradiction |]; cbn [gs_fresh gs_path] in Hfr, Hr, IH |- *.
+      assert (Hpush : ⊢ᵍ Θ ⍮ gs_push (qname_in mp x) Δ ((mp, K, gu_mk P Φ) :: Ξ0)).
       { apply wf_gstack_cons; [ exact HΞ | constructor; [ exact Htel | exact HΔ ] |].
         cbn; exists x; split; [ reflexivity | exact Hfr ]. }
       destruct (IH Hpush Hc (stack_in_push _ x Δ _ Hst Hfr)) as (HΞ' & Hc' & Hsub & Hle).
-      pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr) as Hp; cbn in Hp; injection Hp as -> HP.
+      pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr) as Hp; cbn in Hp; injection Hp as -> -> HP.
       split; [| split; [| split ]]; try assumption.
-      inversion HΞ' as [| | ? ? ? ? ? Hs1 HU Hff1]; subst.
-      inversion Hs1 as [| | ? ? ? ? ? Hs0 HV Hff0]; subst.
+      inversion HΞ' as [| | ? ? ? ? ? ? Hs1 HU Hff1]; subst.
+      inversion Hs1 as [| | ? ? ? ? ? ? Hs0 HV Hff0]; subst.
       apply wf_gstack_cons; [ exact Hs0 | | exact Hff0 ].
       cbn; econstructor; [ eassumption | constructor; eassumption | exact Hfr ].
     - (* an alias: checked against the frame so far, as a definition is *)
@@ -2239,28 +2414,31 @@ Section WellFormed.
          unit filed. *)
       intros ch B Rb B' Θ Ξ fp src prg u BU RbU ΘU U Hn Hnin Hl Hr Hp Ht Hu IH Hm HΞ Hc Hst.
       destruct IH as (HΘU & HcU & HU); cbn [hd] in HU.
-      pose proof (proj2 (proj2 run_chain_fresh) _ _ _ _ _ _ Hu fp ltac:(left; reflexivity)) as HfU.
+      pose proof (proj1 (proj2 (proj2 run_chain_fresh)) _ _ _ _ _ _ Hu fp ltac:(left; reflexivity)) as HfU.
       assert (Hcf : canon ((fp, BU) :: RbU) ((fp, U) :: ΘU)) by (eapply canon_file; eassumption).
       assert (Hag : gds_agree Θ ((fp, U) :: ΘU)) by exact (proj1 (canon_agree _ _ _ _ Hc Hcf)).
       assert (Hwf : ⊢ᵍ gds_merge Θ ((fp, U) :: ΘU) ⍮ nil)
         by (apply merge_wf; [ eapply wf_gstack_deps; eassumption | apply wf_gstack_file'; assumption | exact Hag ]).
       split; [ eapply gstack_deps_grow; [ apply merge_left | exact HΞ | exact Hwf |] |].
-      + intros mq V Hin; pose proof (Hst _ _ Hin) as Hch.
+      + intros mq Kq V Hin; pose proof (Hst _ _ _ Hin) as Hch.
         destruct (gds_lookup (gds_merge _ _) (q_unit mq)) eqn:E; [ exfalso | reflexivity ].
         apply merge_inv in E as [E | E].
-        * rewrite (wf_gstack_frames _ _ HΞ _ _ Hin) in E; discriminate.
+        * rewrite (wf_gstack_frames _ _ HΞ _ _ _ Hin) in E; discriminate.
         * cbn in E; destruct (path_beq (q_unit mq) fp) eqn:Hb.
           -- apply path_beq_true in Hb; rewrite Hb in Hch; contradiction.
-          -- rewrite (proj2 (proj2 run_chain_fresh) _ _ _ _ _ _ Hu _ (or_intror Hch)) in E; discriminate.
+          -- rewrite (proj1 (proj2 (proj2 run_chain_fresh)) _ _ _ _ _ _ Hu _ (or_intror Hch)) in E; discriminate.
       + pose proof (canon_merge _ _ _ _ Hc Hcf) as Hcm.
         repeat split; [ exact (proj1 Hcm) | exact (proj2 Hcm) | apply merge_left | exact (proj1 (bt_merge_le _ _ _ Hm)) ].
     - (* an import: what its generated commands make *)
       intros * _ _ Hg HΞ Hc Hst.
       repeat split; [ exact (gens_run_wf _ _ _ _ Hg HΞ) | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
-    - (* a group: its entries, each checked where it is filed, then its
-         recursor module, run as written commands are *)
-      intros * _ _ _ _ _ _ _ _ _ He _ IH HΞ Hc Hst.
-      exact (IH (ind_entries_run_wf _ _ _ _ _ _ _ _ He HΞ) Hc (stack_in_shape _ _ _ (ind_entries_run_shape _ _ _ _ _ _ _ _ He) Hst)).
+    - (* a group: its members, each with its module, then its recursor
+         module, run as written commands are *)
+      intros * _ _ _ _ _ _ _ Hf _ Hm IHm Hr IHr HΞ Hc Hst.
+      destruct (IHm HΞ Hc Hst (rd_filed_uparams _ _ _ _ _ _ _ _ _ Hf)) as (H1 & Hc1 & Hs1 & Hl1).
+      pose proof (stack_in_shape _ _ _ (proj2 (proj2 (proj2 run_params)) _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm) Hst) as Hst1.
+      destruct (IHr H1 Hc1 Hst1) as (H2 & Hc2 & Hs2 & Hl2).
+      split; [ exact H2 | split; [ exact Hc2 | split; eauto using gds_sub_trans, bt_le_trans ] ].
     - (* a mutual definition: its definitions, each checked as a definition is *)
       intros * _ _ _ _ _ _ _ _ _ _ Hd HΞ Hc Hst.
       repeat split; [ exact (mdefs_run_wf _ _ _ _ _ _ Hd HΞ) | exact (proj1 Hc) | exact (proj2 Hc)
@@ -2281,8 +2459,8 @@ Section WellFormed.
       split; [ exact H2 | split; [ exact Hc2 | split; eauto using gds_sub_trans, bt_le_trans ] ].
     - (* a unit: its imports from nothing, its parameters, then its body in
          the frame named by its path, which nothing it imported filed *)
-      intros fp ch B1 Rb1 B2 Rb2 imps P0 P1 P cs Θ1 Θ2 mp U Hi IHi _ _ Htel HP _ Hb IHb.
-      destruct (IHi ltac:(constructor; constructor) canon_nil ltac:(intros ? ? [])) as (H1 & Hc1 & _ & _).
+      intros fp ch B1 Rb1 B2 Rb2 imps P0 P1 P cs Θ1 Θ2 mp K U Hi IHi _ _ Htel HP _ Hb IHb.
+      destruct (IHi ltac:(constructor; constructor) canon_nil ltac:(intros ? ? ? [])) as (H1 & Hc1 & _ & _).
       assert (Hn1 : gds_lookup Θ1 fp = None)
         by exact (proj1 (proj2 run_chain_fresh) _ _ _ _ _ _ _ _ _ _ Hi fp (or_introl eq_refl) eq_refl).
       assert (Hpush : ⊢ᵍ Θ1 ⍮ gs_push (q_abs fp nil) P nil).
@@ -2290,21 +2468,74 @@ Section WellFormed.
         - exact Htel.
         - cbn; rewrite app_nil_r; exact HP.
         - cbn; split; [ exact Hn1 | reflexivity ]. }
-      destruct (IHb Hpush Hc1 ltac:(intros ? ? [[= <- <-] | []]; left; reflexivity)) as (H2 & Hc2 & _ & _).
-      pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hb) as Hp; cbn in Hp; injection Hp as -> _.
+      destruct (IHb Hpush Hc1 ltac:(intros ? ? ? [[= <- <- <-] | []]; left; reflexivity)) as (H2 & Hc2 & _ & _).
+      pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hb) as Hp; cbn in Hp; injection Hp as -> -> _.
       inversion H2; subst.
       split; [ eapply wf_gstack_deps; eassumption | split; [ exact Hc2 | cbn; apply wf_gunit_intro; assumption ] ].
+    - (* no member left *)
+      intros ch B Rb Θ Ξ pv R pq D k HΞ Hc Hst Hu.
+      repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
+    - (* a member: checked with an empty module, its module's frame opened
+         over the group's uniform parameters, its commands run in it, and
+         the member filed with the body they end with *)
+      intros ch B Rb Θ Ξ pv R pq D k x xs M B1 Rb1 Θ1 mp K U B2 Rb2 Θ2 Ξ2 HM Hfr HE Hr IHr Hrest IHrest HΞ Hc Hst Hu.
+      destruct Ξ as [| [[mq Kq] Uq] Ξ0]; [ contradiction |].
+      destruct (ind_nil_entry_uparams _ _ _ _ _ _ _ _ HE Hu) as [Htel HΔ].
+      assert (Hpush : ⊢ᵍ Θ ⍮ gs_push_ind (ind_qname ((mq, Kq, Uq) :: Ξ0) x) pq k D (rd_uparams R) ((mq, Kq, Uq) :: Ξ0)).
+      { apply wf_gstack_cons; [ exact HΞ | eapply wf_gmod_ind_nil; eassumption |].
+        cbn; exists x; split; [ reflexivity | exact Hfr ]. }
+      destruct (IHr Hpush Hc (stack_in_push_ind _ x pq k D (rd_uparams R) _ Hst Hfr)) as (H1 & Hc1 & Hs1 & Hl1).
+      pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr) as Hp; cbn in Hp; injection Hp as -> -> HP.
+      destruct (wf_gstack_cons_inv _ _ _ _ _ H1) as (H10 & [Δ Φ -> HΦ] & _); cbn in HP; subst Δ.
+      assert (Hadd : ⊢ᵍ Θ1 ⍮ gs_add x (ge_ind pv pq k D (gu_mod (gu_body (rd_uparams R) Φ))) ((mq, Kq, Uq) :: Ξ0)).
+      { apply add_entry_wf; [ exact H10 | | exact Hfr ].
+        eapply wf_gentry_ind_body; [ exact Hu | exact HΦ ]. }
+      destruct (IHrest Hadd Hc1 (stack_in_add _ _ _ _ Hst) ltac:(rewrite gs_tele_add; exact Hu)) as (H2 & Hc2 & Hs2 & Hl2).
+      split; [ exact H2 | split; [ exact Hc2 | split; eauto using gds_sub_trans, bt_le_trans ] ].
   Qed.
 
-  (** ** Runs of the Recursor Module
+  (** ** Runs of Generated Commands
 
-      The recursor module of a group ([rec_cmds]) is a module of
-      definitions: it loads nothing, so its run files no unit, and it is
-      well formed from where it runs, whatever the loads before checked.
-      The stack it runs on embeds into the one it ends with. *)
+      The commands a group generates — the definitions of its members'
+      modules ([ind_mod_cmds]) and its recursor module ([rec_cmds],
+      [ind_grec_cmds]) — are definitions and modules of definitions: they
+      load nothing and bind nothing, so their run files no unit and keeps
+      the records, and it is well formed from where it runs, whatever the
+      loads before checked.  The stack it runs on embeds into the one it
+      ends with. *)
 
   (** A command that is a definition or an axiom. *)
   Definition cmd_is_def (c : ccmd) : Prop := match c with cc_def _ _ _ _ _ => True | _ => False end.
+
+  (** A generated command: a definition, or a module of definitions. *)
+  Definition cmd_is_gen (c : ccmd) : Prop :=
+    match c with
+    | cc_def _ _ _ _ _ => True
+    | cc_mod _ _ _ cs => Forall cmd_is_def cs
+    | _ => False
+    end.
+
+  (** What a run of generated commands keeps. *)
+  Record gen_run (Θ : gdeps) (Ξ : gstack) (B : builtins) (Rb : bmap)
+      (Θ' : gdeps) (Ξ' : gstack) (B' : builtins) (Rb' : bmap) : Prop := mk_gen_run
+    { (** No unit is filed *)
+      gr_deps : Θ' = Θ
+      (** No binding is made *)
+    ; gr_builtins : B' = B
+      (** No record is merged *)
+    ; gr_records : Rb' = Rb
+      (** The stack it ends with is well formed *)
+    ; gr_wf : ⊢ᵍ Θ ⍮ Ξ'
+      (** The stack it runs on embeds into the one it ends with *)
+    ; gr_sub : gc_sub Θ Ξ Θ Ξ' }.
+
+  (** An entry added to the innermost frame embeds the stack. *)
+  Lemma gc_sub_add : forall Θ Ξ x E, ⊢ᵍ Θ ⍮ Ξ -> gs_fresh x Ξ -> gc_sub Θ Ξ Θ (gs_add x E Ξ).
+  Proof.
+    intros * HΞ Hfr; destruct Ξ as [| [[mq Kq] U] Ξ]; [ contradiction |].
+    destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ) as (_ & [P Ψ -> _] & _).
+    apply gc_sub_grow; exact Hfr.
+  Qed.
 
   Lemma cmd_lits_ok_def : forall Θ Ξ B c c', cmd_lits_ok Θ Ξ B c c' -> cmd_is_def c -> cmd_is_def c'.
   Proof.
@@ -2316,54 +2547,167 @@ Section WellFormed.
   Lemma elim_fill_ok_def : forall Θ Ξ c c', elim_fill_ok Θ Ξ c c' -> cmd_is_def c -> cmd_is_def c'.
   Proof. intros * (rs & _ & <-) Hd; destruct c; try contradiction; exact I. Qed.
 
-  (** Definitions file no unit, and keep the stack well formed. *)
+  Lemma cmd_lits_ok_gen : forall Θ Ξ B c c', cmd_lits_ok Θ Ξ B c c' -> cmd_is_gen c -> cmd_is_gen c'.
+  Proof.
+    intros * H Hd; destruct c; try contradiction.
+    - pose proof (cmd_lits_ok_def _ _ _ _ _ H I) as Hd'; destruct c'; try contradiction; exact I.
+    - unfold cmd_lits_ok in H; cbn [cmd_lits] in H.
+      destruct (tele_lits _ _); [| discriminate ]; cbn [lbind] in H; injection H as <-; exact Hd.
+  Qed.
+
+  Lemma elim_fill_ok_gen : forall Θ Ξ c c', elim_fill_ok Θ Ξ c c' -> cmd_is_gen c -> cmd_is_gen c'.
+  Proof. intros * (rs & _ & <-) Hd; destruct c; try contradiction; exact Hd. Qed.
+
+  (** Definitions file no unit, bind nothing, and keep the stack well
+      formed. *)
   Lemma defs_run_wf : forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ',
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
-      Forall cmd_is_def cs -> ⊢ᵍ Θ ⍮ Ξ -> Θ' = Θ /\ ⊢ᵍ Θ ⍮ Ξ'.
+      Forall cmd_is_def cs -> ⊢ᵍ Θ ⍮ Ξ -> gen_run Θ Ξ B Rb Θ' Ξ' B' Rb'.
   Proof.
     intros * Hr Hd; revert ch B Rb Θ Ξ B' Rb' Θ' Ξ' Hr.
-    induction Hd as [| c cs Hd0 Hds IH ]; intros * Hr HΞ; inversion Hr; subst; [ split; [ reflexivity | exact HΞ ] |].
-    match goal with
+    induction Hd as [| c cs Hd0 Hds IH ]; intros * Hr HΞ; inversion Hr; subst;
+      [ constructor; [ reflexivity | reflexivity | reflexivity | exact HΞ | apply gc_sub_refl ] |].
+    lazymatch goal with
     | Hl : cmd_lits_ok _ _ _ c ?c1, Hf : elim_fill_ok _ _ ?c1 ?c2, Hc : run_cmd _ _ _ _ _ ?c2 _ _ _ _,
       Hcs : run_cmds _ _ _ _ _ cs _ _ _ _ |- _ =>
         pose proof (elim_fill_ok_def _ _ _ _ Hf (cmd_lits_ok_def _ _ _ _ _ Hl Hd0)) as Hd2;
-        destruct c2; try contradiction; inversion Hc; subst;
-        [ exact (IH _ _ _ _ _ _ _ _ _ Hcs (add_def_wf _ _ _ _ _ _ _ HΞ ltac:(eassumption) ltac:(eassumption)))
-        | exact (IH _ _ _ _ _ _ _ _ _ Hcs (add_axiom_wf _ _ _ _ _ _ _ HΞ ltac:(eassumption) ltac:(eassumption))) ]
+        rename Hcs into Hrest; rename Hc into Hrun
     end.
+    destruct c2; try contradiction; inversion Hrun; subst.
+    - destruct (IH _ _ _ _ _ _ _ _ _ Hrest (add_def_wf _ _ _ _ _ _ _ HΞ ltac:(eassumption) ltac:(eassumption)))
+        as [-> -> -> Hw Hs].
+      constructor; [ reflexivity | reflexivity | reflexivity | exact Hw |].
+      eapply gc_sub_trans; [ apply gc_sub_add; [ exact HΞ | eassumption ] | exact Hs ].
+    - destruct (IH _ _ _ _ _ _ _ _ _ Hrest (add_axiom_wf _ _ _ _ _ _ _ HΞ ltac:(eassumption) ltac:(eassumption)))
+        as [-> -> -> Hw Hs].
+      constructor; [ reflexivity | reflexivity | reflexivity | exact Hw |].
+      eapply gc_sub_trans; [ apply gc_sub_add; [ exact HΞ | eassumption ] | exact Hs ].
+  Qed.
+
+  (** Generated commands likewise. *)
+  Lemma gen_cmds_run_wf : forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ',
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
+      Forall cmd_is_gen cs -> ⊢ᵍ Θ ⍮ Ξ -> gen_run Θ Ξ B Rb Θ' Ξ' B' Rb'.
+  Proof.
+    intros * Hr Hd; revert ch B Rb Θ Ξ B' Rb' Θ' Ξ' Hr.
+    induction Hd as [| c cs Hd0 Hds IH ]; intros * Hr HΞ; inversion Hr; subst;
+      [ constructor; [ reflexivity | reflexivity | reflexivity | exact HΞ | apply gc_sub_refl ] |].
+    match goal with
+    | Hl : cmd_lits_ok _ _ _ c ?c1, Hf : elim_fill_ok _ _ ?c1 ?c2, Hc : run_cmd _ _ _ _ _ ?c2 _ _ _ _,
+      Hcs : run_cmds _ _ _ _ _ cs _ _ _ _ |- _ =>
+        pose proof (elim_fill_ok_gen _ _ _ _ Hf (cmd_lits_ok_gen _ _ _ _ _ Hl Hd0)) as Hd2;
+        rename Hcs into Hrest; rename Hc into Hrun
+    end.
+    assert (Hstep : forall Ξn, ⊢ᵍ Θ ⍮ Ξn -> gc_sub Θ Ξ Θ Ξn ->
+              Θ ⍮ Ξn ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
+              gen_run Θ Ξ B Rb Θ' Ξ' B' Rb').
+    { intros Ξn Hw1 Hs1 Hr1; destruct (IH _ _ _ _ _ _ _ _ _ Hr1 Hw1) as [-> -> -> Hw Hs].
+      constructor; [ reflexivity | reflexivity | reflexivity | exact Hw | eapply gc_sub_trans; eassumption ]. }
+    destruct c2; try contradiction; inversion Hrun; subst.
+    - exact (Hstep _ (add_def_wf _ _ _ _ _ _ _ HΞ ltac:(eassumption) ltac:(eassumption)) (gc_sub_add _ _ _ _ HΞ ltac:(eassumption)) Hrest).
+    - exact (Hstep _ (add_axiom_wf _ _ _ _ _ _ _ HΞ ltac:(eassumption) ltac:(eassumption)) (gc_sub_add _ _ _ _ HΞ ltac:(eassumption)) Hrest).
+    - (* a module of definitions: its body, then its frame filed *)
+      match goal with Hb : run_cmds _ _ _ _ (gs_push _ _ _) _ _ _ _ _ |- _ => rename Hb into Hbody end.
+      match goal with Hf : gs_fresh ?x0 Ξ |- _ => rename Hf into Hfr end.
+      destruct Ξ as [| [[mq Kq] [P Φ]] Ξs]; [ contradiction |]; cbn [gs_fresh gs_path] in Hfr, Hbody |- *.
+      assert (Hpush : ⊢ᵍ Θ ⍮ gs_push (qname_in mq s) l ((mq, Kq, gu_mk P Φ) :: Ξs)).
+      { apply wf_gstack_cons; [ exact HΞ | constructor; assumption |].
+        cbn; exists s; split; [ reflexivity | exact Hfr ]. }
+      destruct (defs_run_wf _ _ _ _ _ _ _ _ _ _ Hbody Hd2 Hpush) as [-> -> -> HΞ' _].
+      pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hbody) as Hp; cbn in Hp; injection Hp as -> -> HP.
+      destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ') as (Hs0 & [Δ' Φ' -> HΦ'] & _); cbn in HP; subst Δ'.
+      refine (Hstep _ _ _ Hrest); [| apply gc_sub_add; [ exact HΞ | exact Hfr ] ].
+      apply add_entry_wf; [ exact Hs0 | constructor; exact HΦ' | exact Hfr ].
+  Qed.
+
+  (** The commands of the recursor module of a group are generated. *)
+  Lemma grec_mod_cmd_gen : forall Θ Ξ pq D Δu, cmd_is_gen (grec_mod_cmd Θ Ξ pq D Δu).
+  Proof.
+    intros; cbn; apply Forall_forall; intros c0 Hin; apply in_map_iff in Hin as ([[j Mj] x0] & <- & _); exact I.
+  Qed.
+
+  Lemma rec_cmds_gen : forall Θ Ξ R pq D, Forall cmd_is_gen (rec_cmds Θ Ξ R pq D).
+  Proof. intros; unfold rec_cmds; destruct (rd_rec R); [ constructor; [ apply grec_mod_cmd_gen | constructor ] | constructor ]. Qed.
+
+  (** So are those of the module of a declared member. *)
+  Lemma ind_mod_cmds_gen : forall Θ Ξ R pq D k M, Forall cmd_is_gen (ind_mod_cmds Θ Ξ R pq D k M).
+  Proof.
+    intros; unfold ind_mod_cmds, ind_rec_cmds, ind_grec_cmds.
+    apply Forall_app; split; [| apply Forall_app; split ].
+    - apply Forall_forall; intros c0 Hin; apply in_map_iff in Hin as (cg & <- & _); exact I.
+    - destruct (ind_has_rec D); [ constructor; [ exact I | constructor ] | constructor ].
+    - destruct (_ && _); [ constructor; [ apply grec_mod_cmd_gen | constructor ] | constructor ].
   Qed.
 
   (** The recursor module of a group files no unit, and the stack it runs
       on, well formed, embeds into the one it ends with. *)
   Lemma rec_cmds_run_wf : forall ch B Rb Θ Ξ Θ0 Ξ0 R pq D B' Rb' Θ' Ξ',
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ rec_cmds Θ0 Ξ0 R pq D ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
-      ⊢ᵍ Θ ⍮ Ξ -> Θ' = Θ /\ ⊢ᵍ Θ ⍮ Ξ' /\ gc_sub Θ Ξ Θ Ξ'.
+      ⊢ᵍ Θ ⍮ Ξ -> gen_run Θ Ξ B Rb Θ' Ξ' B' Rb'.
+  Proof. intros * Hr HΞ; exact (gen_cmds_run_wf _ _ _ _ _ _ _ _ _ _ Hr (rec_cmds_gen _ _ _ _ _) HΞ). Qed.
+
+  (** A member's module, its generated commands run in its frame, closed
+      into the member's entry: no unit is filed, nothing is bound, and the
+      stack it is declared in embeds into the one with the entry. *)
+  Lemma ind_member_run_gen : forall ch B Rb Θ Ξ pv R pq D k x M B1 Rb1 Θ1 mp K U,
+      ⊢ᵍ Θ ⍮ Ξ -> ind_uparams D = rd_uparams R ++ gs_tele Ξ -> gs_fresh x Ξ ->
+      Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_ind pv pq k D ⋄ ->
+      Θ ⍮ gs_push_ind (ind_qname Ξ x) pq k D (rd_uparams R) Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩
+        ind_mod_cmds Θ (gs_push_ind (ind_qname Ξ x) pq k D (rd_uparams R) Ξ) R pq D k M ⇝*
+        Θ1 ⍮ (mp, K, U) :: Ξ ⍮ B1 ⍮ Rb1 ->
+      gen_run Θ Ξ B Rb Θ1 (gs_add x (ge_ind pv pq k D (gu_mod U)) Ξ) B1 Rb1.
   Proof.
-    intros * Hr HΞ; unfold rec_cmds in Hr; destruct (rd_rec R).
-    2:{ inversion Hr; subst; split; [ reflexivity | split; [ exact HΞ | apply gc_sub_refl ] ]. }
-    inversion Hr as [| ? ? ? ? ? c c1 c2 cs B1 Rb1 Θ1 Ξ1 B2 Rb2 Θ2 Ξ2 _ Hl Hf Hc Hcs ]; subst.
-    inversion Hcs; subst.
-    unfold cmd_lits_ok in Hl; cbn [cmd_lits] in Hl.
-    destruct (tele_lits _ _) as [Δ1 |]; [| discriminate ]; cbn [lbind] in Hl; injection Hl as <-.
-    destruct Hf as (rs & _ & <-); cbn [cmd_fill] in Hc.
-    inversion Hc as [| | ch' B0 Rb0 B1' Rb1' Θ0' Ξ0' x pv Δ cs' Θ1' mp U Htel HΔ Hfr Hbody | | | | | | | | | | ]; subst.
-    destruct Ξ as [| [mq [P Φ]] Ξs]; [ contradiction |]; cbn [gs_fresh gs_path] in Hfr, Hbody |- *.
-    assert (Hff : frame_fresh Θ ((mq, gu_mk P Φ) :: Ξs) (qname_in mq "Rec"))
-      by (cbn; exists "Rec"%string; split; [ reflexivity | exact Hfr ]).
-    assert (Hpush : ⊢ᵍ Θ ⍮ gs_push (qname_in mq "Rec") (fst (tele_fill rs Δ1)) ((mq, gu_mk P Φ) :: Ξs))
-      by (apply wf_gstack_cons; [ exact HΞ | constructor; [ exact Htel | exact HΔ ] | exact Hff ]).
-    assert (Hdefs : Forall cmd_is_def
-                      (List.map (fun jx => let '(j, Mj, x) := jx in cc_def x true false (grec_fn_ty pq D j Mj) (Some (grec_fn pq D j Mj)))
-                         (List.combine (List.combine (List.seq 0 (List.length (ind_members D))) (ind_members D)) (grec_names Θ0 Ξ0 D)))).
-    { apply Forall_forall; intros c0 Hin; apply in_map_iff in Hin as ([[j Mj] x0] & <- & _); exact I. }
-    destruct (defs_run_wf _ _ _ _ _ _ _ _ _ _ Hbody Hdefs Hpush) as (-> & HΞ').
-    pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hbody) as Hp; cbn in Hp; injection Hp as -> HP.
-    inversion HΞ' as [| | ? ? ? ? ? Hs1 HU Hff1]; subst.
-    inversion Hs1 as [| | ? ? ? ? ? Hs0 HV Hff0]; subst.
-    split; [ reflexivity | split ].
-    - apply wf_gstack_cons; [ exact Hs0 | | exact Hff0 ].
-      cbn in HP; rewrite <- HP; cbn; econstructor; [ eassumption | constructor; eassumption | exact Hfr ].
-    - apply gc_sub_grow; exact Hfr.
+    intros * HΞ Hu Hfr HE Hr.
+    destruct Ξ as [| [[mq Kq] Uq] Ξ0]; [ contradiction |].
+    destruct (ind_nil_entry_uparams _ _ _ _ _ _ _ _ HE Hu) as [Htel HΔ].
+    assert (Hpush : ⊢ᵍ Θ ⍮ gs_push_ind (ind_qname ((mq, Kq, Uq) :: Ξ0) x) pq k D (rd_uparams R) ((mq, Kq, Uq) :: Ξ0)).
+    { apply wf_gstack_cons; [ exact HΞ | eapply wf_gmod_ind_nil; eassumption |].
+      cbn; exists x; split; [ reflexivity | exact Hfr ]. }
+    destruct (gen_cmds_run_wf _ _ _ _ _ _ _ _ _ _ Hr (ind_mod_cmds_gen _ _ _ _ _ _ _) Hpush) as [-> -> -> H1 _].
+    pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr) as Hp; cbn in Hp; injection Hp as -> -> HP.
+    destruct (wf_gstack_cons_inv _ _ _ _ _ H1) as (H10 & [Δ Φ -> HΦ] & _); cbn in HP; subst Δ.
+    constructor; [ reflexivity | reflexivity | reflexivity | | apply gc_sub_add; [ exact HΞ | exact Hfr ] ].
+    apply add_entry_wf; [ exact H10 | | exact Hfr ].
+    eapply wf_gentry_ind_body; [ exact Hu | exact HΦ ].
+  Qed.
+
+  (** The declared members of a group, each with its module: likewise. *)
+  Lemma ind_members_run_gen : forall ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ',
+      run_ind_members ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ' ->
+      ⊢ᵍ Θ ⍮ Ξ -> ind_uparams D = rd_uparams R ++ gs_tele Ξ -> gen_run Θ Ξ B Rb Θ' Ξ' B' Rb'.
+  Proof.
+    induction 1 as [ch B Rb Θ Ξ pv R pq D k | ch B Rb Θ Ξ pv R pq D k x xs M B1 Rb1 Θ1 mp K U B2 Rb2 Θ2 Ξ2 HM Hfr HE Hr Hrest IH];
+      intros HΞ Hu.
+    - constructor; [ reflexivity | reflexivity | reflexivity | exact HΞ | apply gc_sub_refl ].
+    - destruct (ind_member_run_gen _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HΞ Hu Hfr HE Hr) as [-> -> -> H1 Hs1].
+      destruct (IH H1 ltac:(rewrite gs_tele_add; exact Hu)) as [-> -> -> H2 Hs2].
+      constructor; [ reflexivity | reflexivity | reflexivity | exact H2 | eapply gc_sub_trans; eassumption ].
+  Qed.
+
+  (** After the declared members, the group is found at its first member's
+      path. *)
+  Lemma ind_members_run_lookup : forall ch B Rb Θ Ξ pv R D x xs B' Rb' Θ' Ξ',
+      run_ind_members ch B Rb Θ Ξ pv R (ind_qname Ξ x) D 0 (x :: xs) B' Rb' Θ' Ξ' ->
+      ⊢ᵍ Θ ⍮ Ξ -> ind_uparams D = rd_uparams R ++ gs_tele Ξ -> ind_lookup Θ' Ξ' (ind_qname Ξ x) = Some D.
+  Proof.
+    intros * Hr HΞ Hu.
+    inversion Hr as [| ? ? ? ? ? ? ? ? ? ? x' xs' M B1 Rb1 Θ1 mp K U B2 Rb2 Θ2 Ξ2 HM Hfr HE Hr1 Hrest]; subst.
+    destruct (ind_member_run_gen _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ HΞ Hu Hfr HE Hr1) as [-> -> -> H1 _].
+    destruct (ind_members_run_gen _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hrest H1 ltac:(rewrite gs_tele_add; exact Hu)) as [-> _ _ _ Hs2].
+    eapply ind_lookup_gc_sub; [ exact Hs2 |].
+    apply ind_lookup_added; intros ->; exact Hfr.
+  Qed.
+
+  (** The members a run files are named apart, each fresh where the run
+      starts. *)
+  Lemma ind_members_run_fresh : forall ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ',
+      run_ind_members ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ' -> List.NoDup xs /\ Forall (fun x => gs_fresh x Ξ) xs.
+  Proof.
+    induction 1 as [| ch B Rb Θ Ξ pv R pq D k x xs M B1 Rb1 Θ1 mp K U B2 Rb2 Θ2 Ξ2 HM Hfr HE Hr Hrest [Hnd Hall]];
+      [ split; constructor |].
+    split; [ constructor; [| exact Hnd ] | constructor; [ exact Hfr |] ].
+    - intros Hin; destruct (gs_fresh_add_inv _ _ _ _ (proj1 (List.Forall_forall _ _) Hall x Hin)) as [_ []]; reflexivity.
+    - eapply Forall_impl; [| exact Hall ]; intros y Hy; exact (proj1 (gs_fresh_add_inv _ _ _ _ Hy)).
   Qed.
 
   (** What a load files is well formed, whatever the import checks. *)
@@ -2375,20 +2719,20 @@ Section WellFormed.
         Θ ⊑ gds_merge Θ ((fp, U) :: ΘU).
   Proof.
     intros * HΞ Hc Hst Hn Hnin Hl Hr Ht Hu.
-    destruct (proj2 (proj2 run_wf) _ _ _ _ _ _ Hu) as (HΘU & HcU & HU); cbn [hd] in HU.
-    pose proof (proj2 (proj2 run_chain_fresh) _ _ _ _ _ _ Hu fp ltac:(left; reflexivity)) as HfU.
+    destruct (proj1 (proj2 (proj2 run_wf)) _ _ _ _ _ _ Hu) as (HΘU & HcU & HU); cbn [hd] in HU.
+    pose proof (proj1 (proj2 (proj2 run_chain_fresh)) _ _ _ _ _ _ Hu fp ltac:(left; reflexivity)) as HfU.
     assert (Hcf : canon ((fp, BU) :: RbU) ((fp, U) :: ΘU)) by (eapply canon_file; eassumption).
     assert (Hag : gds_agree Θ ((fp, U) :: ΘU)) by exact (proj1 (canon_agree _ _ _ _ Hc Hcf)).
     assert (Hwf : ⊢ᵍ gds_merge Θ ((fp, U) :: ΘU) ⍮ nil)
       by (apply merge_wf; [ eapply wf_gstack_deps; eassumption | apply wf_gstack_file'; assumption | exact Hag ]).
     split; [ eapply gstack_deps_grow; [ apply merge_left | exact HΞ | exact Hwf |] |].
-    + intros mq V Hin; pose proof (Hst _ _ Hin) as Hch.
+    + intros mq Kq V Hin; pose proof (Hst _ _ _ Hin) as Hch.
       destruct (gds_lookup (gds_merge _ _) (q_unit mq)) eqn:E; [ exfalso | reflexivity ].
       apply merge_inv in E as [E | E].
-      * rewrite (wf_gstack_frames _ _ HΞ _ _ Hin) in E; discriminate.
+      * rewrite (wf_gstack_frames _ _ HΞ _ _ _ Hin) in E; discriminate.
       * cbn in E; destruct (path_beq (q_unit mq) fp) eqn:Hb.
         -- apply path_beq_true in Hb; rewrite Hb in Hch; contradiction.
-        -- rewrite (proj2 (proj2 run_chain_fresh) _ _ _ _ _ _ Hu _ (or_intror Hch)) in E; discriminate.
+        -- rewrite (proj1 (proj2 (proj2 run_chain_fresh)) _ _ _ _ _ _ Hu _ (or_intror Hch)) in E; discriminate.
     + split; [ apply canon_merge; assumption | apply merge_left ].
   Qed.
 
@@ -2406,9 +2750,9 @@ Section WellFormed.
 
   Corollary prog_sem_wf : forall prg B Θ U,
       prog_sem load_path read to_core prg B Θ U ->
-      ⊢ᵍ Θ ⍮ nil /\ Θ ⍮ nil ⍮ q_abs (prog_path prg) nil ⊢ᵍᵘ U.
+      ⊢ᵍ Θ ⍮ nil /\ Θ ⍮ nil ⍮ q_abs (prog_path prg) nil ⍮ fk_module ⊢ᵍᵘ U.
   Proof.
-    intros * [u Rb _ Hu]; destruct (proj2 (proj2 run_wf) _ _ _ _ _ _ Hu) as (? & _ & ?); split; assumption.
+    intros * [u Rb _ Hu]; destruct (proj1 (proj2 (proj2 run_wf)) _ _ _ _ _ _ Hu) as (? & _ & ?); split; assumption.
   Qed.
 
   (** ** Builtin Bindings Stay Well Formed
@@ -2426,7 +2770,10 @@ Section WellFormed.
        ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ -> builtins_wf Θ Ξ B -> bm_wf Θ Rb ->
        builtins_wf Θ' Ξ' B' /\ bm_wf Θ' Rb') /\
     (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U ->
-       builtins_wf ((hd nil ch, U) :: Θ) nil B /\ bm_wf ((hd nil ch, U) :: Θ) Rb).
+       builtins_wf ((hd nil ch, U) :: Θ) nil B /\ bm_wf ((hd nil ch, U) :: Θ) Rb) /\
+    (forall ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ', run_ind_members ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ' ->
+       ⊢ᵍ Θ ⍮ Ξ -> canon Rb Θ -> stack_in ch Ξ -> ind_uparams D = rd_uparams R ++ gs_tele Ξ ->
+       builtins_wf Θ Ξ B -> bm_wf Θ Rb -> builtins_wf Θ' Ξ' B' /\ bm_wf Θ' Rb').
   Proof.
     assert (Hadd : forall Θ Ξ x E B, ⊢ᵍ Θ ⍮ Ξ -> gs_fresh x Ξ -> builtins_wf Θ Ξ B -> builtins_wf Θ (gs_add x E Ξ) B)
       by (intros * HΞ Hfr; apply builtins_wf_mono; intros; apply ind_lookup_add; assumption).
@@ -2434,23 +2781,23 @@ Section WellFormed.
     - intros * _ Hfr HΞ _ _ Hb HR; split; [ apply Hadd; assumption | exact HR ].
     - intros * _ Hfr HΞ _ _ Hb HR; split; [ apply Hadd; assumption | exact HR ].
     - (* a module: read in its frame, then in the member it becomes *)
-      intros ch B Rb B' Rb' Θ Ξ x pv Δ cs Θ' mp' U Htel HΔ Hfr Hr IH HΞ Hc Hst Hb HR.
-      destruct Ξ as [| [mp [P Φ]] Ξ0]; [ contradiction |]; cbn [gs_fresh gs_path] in Hfr, Hr, IH |- *.
-      assert (Hff : frame_fresh Θ ((mp, gu_mk P Φ) :: Ξ0) (qname_in mp x))
+      intros ch B Rb B' Rb' Θ Ξ x pv Δ cs Θ' mp' K' U Htel HΔ Hfr Hr IH HΞ Hc Hst Hb HR.
+      destruct Ξ as [| [[mp K] [P Φ]] Ξ0]; [ contradiction |]; cbn [gs_fresh gs_path] in Hfr, Hr, IH |- *.
+      assert (Hff : frame_fresh Θ ((mp, K, gu_mk P Φ) :: Ξ0) (qname_in mp x))
         by (cbn; exists x; split; [ reflexivity | exact Hfr ]).
-      assert (Hpush : ⊢ᵍ Θ ⍮ gs_push (qname_in mp x) Δ ((mp, gu_mk P Φ) :: Ξ0))
+      assert (Hpush : ⊢ᵍ Θ ⍮ gs_push (qname_in mp x) Δ ((mp, K, gu_mk P Φ) :: Ξ0))
         by (apply wf_gstack_cons; [ exact HΞ | constructor; [ exact Htel | exact HΔ ] | exact Hff ]).
       pose proof (stack_in_push _ x Δ _ Hst Hfr) as Hst'.
-      assert (Hb0 : builtins_wf Θ (gs_push (qname_in mp x) Δ ((mp, gu_mk P Φ) :: Ξ0)) B)
+      assert (Hb0 : builtins_wf Θ (gs_push (qname_in mp x) Δ ((mp, K, gu_mk P Φ) :: Ξ0)) B)
         by (eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_push; exact Hff | eassumption ] | exact Hb ]).
       destruct (proj1 (proj2 run_wf) _ _ _ _ _ _ _ _ _ _ Hr Hpush Hc Hst') as (HΞ' & _).
       destruct (IH Hpush Hc Hst' Hb0 HR) as [Hb' HR'].
-      pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr) as Hp; cbn in Hp; injection Hp as -> HP.
-      destruct (wf_gstack_cons_inv _ _ _ _ HΞ') as (HΞ0 & [Δ' Φ' -> _] & _).
+      pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr) as Hp; cbn in Hp; injection Hp as -> -> HP.
+      destruct (wf_gstack_cons_inv _ _ _ _ _ HΞ') as (HΞ0 & [Δ' Φ' -> _] & _).
       cbn in HP; subst Δ'; cbn [gu_mod].
       split; [| exact HR' ].
       eapply builtins_wf_mono; [| exact Hb' ].
-      intros p0 D0 Hl; apply (ind_lookup_close _ ((mp, gu_mk P Φ) :: Ξ0)); [ exact HΞ0 | exact Hfr | exact Hl ].
+      intros p0 D0 Hl; apply (ind_lookup_close _ ((mp, K, gu_mk P Φ) :: Ξ0) x pv fk_module); [ exact HΞ0 | exact Hfr | exact I | exact Hl ].
     - intros * _ _ _ Hfr HΞ _ _ Hb HR; split; [ apply Hadd; assumption | exact HR ].
     - (* a shared unit: its record, read where it is filed, merged in *)
       intros ch B Rb B' Θ Ξ fp U BU _ HBU Hm HΞ _ _ Hb HR; split; [| exact HR ].
@@ -2463,8 +2810,8 @@ Section WellFormed.
       assert (Hrun : Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_load fp ⇝ gds_merge Θ ((fp, U) :: ΘU) ⍮ Ξ ⍮ B' ⍮ bm_merge Rb ((fp, BU) :: RbU))
         by (eapply rc_load; eassumption).
       destruct (proj1 run_wf _ _ _ _ _ _ _ _ _ _ Hrun HΞ Hc Hst) as (HΞ' & _ & Hsub & _).
-      pose proof (proj2 (proj2 run_chain_fresh) _ _ _ _ _ _ Hu fp ltac:(left; reflexivity)) as HfU.
-      destruct (proj2 (proj2 run_wf) _ _ _ _ _ _ Hu) as (_ & HcU & _).
+      pose proof (proj1 (proj2 (proj2 run_chain_fresh)) _ _ _ _ _ _ Hu fp ltac:(left; reflexivity)) as HfU.
+      destruct (proj1 (proj2 (proj2 run_wf)) _ _ _ _ _ _ Hu) as (_ & HcU & _).
       assert (Hcf : canon ((fp, BU) :: RbU) ((fp, U) :: ΘU)) by (eapply canon_file; eassumption).
       assert (Hsub' : (fp, U) :: ΘU ⊑ gds_merge Θ ((fp, U) :: ΘU))
         by (apply merge_right; exact (proj1 (canon_agree _ _ _ _ Hc Hcf))).
@@ -2482,10 +2829,13 @@ Section WellFormed.
         eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub' | eassumption ] | exact HbU ].
     - intros * _ _ Hg HΞ _ _ Hb HR; split; [| exact HR ].
       revert Hb; apply builtins_wf_mono; intros; eapply gens_run_ind_lookup; eassumption.
-    - intros * _ _ _ _ _ _ _ _ _ He _ IH HΞ Hc Hst Hb HR; apply IH;
-        [ exact (ind_entries_run_wf _ _ _ _ _ _ _ _ He HΞ) | exact Hc
-        | exact (stack_in_shape _ _ _ (ind_entries_run_shape _ _ _ _ _ _ _ _ He) Hst) | | exact HR ].
-      revert Hb; apply builtins_wf_mono; intros; eapply ind_entries_run_ind_lookup; eassumption.
+    - (* a group: its members, then its recursor module *)
+      intros * _ _ _ _ _ _ _ Hf _ Hm IHm Hr IHr HΞ Hc Hst Hb HR.
+      pose proof (rd_filed_uparams _ _ _ _ _ _ _ _ _ Hf) as Hu.
+      destruct (proj2 (proj2 (proj2 run_wf)) _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm HΞ Hc Hst Hu) as (H1 & Hc1 & _).
+      pose proof (stack_in_shape _ _ _ (proj2 (proj2 (proj2 run_params)) _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Hm) Hst) as Hst1.
+      destruct (IHm HΞ Hc Hst Hu Hb HR) as [Hb1 HR1].
+      exact (IHr H1 Hc1 Hst1 Hb1 HR1).
     - intros * _ _ _ _ _ _ _ _ _ _ Hd HΞ _ _ Hb HR; split; [| exact HR ].
       revert Hb; apply builtins_wf_mono; intros; eapply mdefs_run_ind_lookup; eassumption.
     - (* a binding: of a type read here *)
@@ -2502,9 +2852,9 @@ Section WellFormed.
       destruct (IH1 HΞ Hc Hst Hb HR) as [Hb1 HR1].
       exact (IH2 H1 Hc1 Hst1 Hb1 HR1).
     - (* a unit: its imports, its frame pushed, then filed *)
-      intros fp ch B1 Rb1 B2 Rb2 imps P0 P1 P cs Θ1 Θ2 mp U Hi IHi _ _ Htel HP _ Hbd IHb.
+      intros fp ch B1 Rb1 B2 Rb2 imps P0 P1 P cs Θ1 Θ2 mp K U Hi IHi _ _ Htel HP _ Hbd IHb.
       assert (Hnil : ⊢ᵍ nil ⍮ nil) by (constructor; constructor).
-      destruct (proj1 (proj2 run_wf) _ _ _ _ _ _ _ _ _ _ Hi Hnil canon_nil ltac:(intros ? ? [])) as (H1 & Hc1 & _).
+      destruct (proj1 (proj2 run_wf) _ _ _ _ _ _ _ _ _ _ Hi Hnil canon_nil ltac:(intros ? ? ? [])) as (H1 & Hc1 & _).
       assert (Hn1 : gds_lookup Θ1 fp = None)
         by exact (proj1 (proj2 run_chain_fresh) _ _ _ _ _ _ _ _ _ _ Hi fp (or_introl eq_refl) eq_refl).
       assert (Hff : frame_fresh Θ1 nil (q_abs fp nil)) by (cbn; split; [ exact Hn1 | reflexivity ]).
@@ -2512,24 +2862,46 @@ Section WellFormed.
       { apply wf_gstack_cons; [ exact H1 | constructor | exact Hff ].
         - exact Htel.
         - cbn; rewrite app_nil_r; exact HP. }
-      destruct (IHi Hnil canon_nil ltac:(intros ? ? []) ltac:(intros p Hp; discriminate) ltac:(intros ? ? Hq; discriminate))
+      destruct (IHi Hnil canon_nil ltac:(intros ? ? ? []) ltac:(intros p Hp; discriminate) ltac:(intros ? ? Hq; discriminate))
         as [Hb1 HR1].
       assert (Hb1' : builtins_wf Θ1 (gs_push (q_abs fp nil) P nil) B1)
         by (eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_push; exact Hff | eassumption ] | exact Hb1 ]).
-      destruct (IHb Hpush Hc1 ltac:(intros ? ? [[= <- <-] | []]; left; reflexivity) Hb1' HR1) as [Hb2 HR2].
-      pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hbd) as Hp; cbn in Hp; injection Hp as -> _.
+      destruct (IHb Hpush Hc1 ltac:(intros ? ? ? [[= <- <- <-] | []]; left; reflexivity) Hb1' HR1) as [Hb2 HR2].
+      pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hbd) as Hp; cbn in Hp; injection Hp as -> -> _.
       assert (Hn2 : gds_lookup Θ2 fp = None)
         by exact (proj1 (proj2 run_chain_fresh) _ _ _ _ _ _ _ _ _ _ Hbd fp (or_introl eq_refl) Hn1).
       cbn [hd]; split.
       + eapply builtins_wf_mono; [| exact Hb2 ].
         intros p0 D0 Hl0; rewrite ind_lookup_file; exact Hl0.
       + exact (bm_wf_sub _ _ _ (gds_sub_cons _ _ _ Hn2) HR2).
+    - intros; split; assumption.
+    - (* a member: read in its module's frame, then in the member it becomes *)
+      intros ch B Rb Θ Ξ pv R pq D k x xs M B1 Rb1 Θ1 mp K U B2 Rb2 Θ2 Ξ2 HM Hfr HE Hr IHr Hrest IHrest HΞ Hc Hst Hu Hb HR.
+      destruct Ξ as [| [[mq Kq] Uq] Ξ0]; [ contradiction |].
+      destruct (ind_nil_entry_uparams _ _ _ _ _ _ _ _ HE Hu) as [Htel HΔ].
+      assert (Hff : frame_fresh Θ ((mq, Kq, Uq) :: Ξ0) (ind_qname ((mq, Kq, Uq) :: Ξ0) x))
+        by (cbn; exists x; split; [ reflexivity | exact Hfr ]).
+      assert (Hpush : ⊢ᵍ Θ ⍮ gs_push_ind (ind_qname ((mq, Kq, Uq) :: Ξ0) x) pq k D (rd_uparams R) ((mq, Kq, Uq) :: Ξ0))
+        by (apply wf_gstack_cons; [ exact HΞ | eapply wf_gmod_ind_nil; eassumption | exact Hff ]).
+      pose proof (stack_in_push_ind _ x pq k D (rd_uparams R) _ Hst Hfr) as Hst'.
+      assert (Hb0 : builtins_wf Θ (gs_push_ind (ind_qname ((mq, Kq, Uq) :: Ξ0) x) pq k D (rd_uparams R) ((mq, Kq, Uq) :: Ξ0)) B)
+        by (eapply builtins_wf_mono; [ intros; eapply ind_lookup_gc_sub; [ apply gc_sub_push; exact Hff | eassumption ] | exact Hb ]).
+      destruct (proj1 (proj2 run_wf) _ _ _ _ _ _ _ _ _ _ Hr Hpush Hc Hst') as (H1 & Hc1 & _).
+      destruct (IHr Hpush Hc Hst' Hb0 HR) as [Hb1 HR1].
+      pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ _ _ _ _ Hr) as Hp; cbn in Hp; injection Hp as -> -> HP.
+      destruct (wf_gstack_cons_inv _ _ _ _ _ H1) as (H10 & [Δ Φ -> HΦ] & _); cbn in HP; subst Δ.
+      assert (Hadd' : ⊢ᵍ Θ1 ⍮ gs_add x (ge_ind pv pq k D (gu_mod (gu_body (rd_uparams R) Φ))) ((mq, Kq, Uq) :: Ξ0)).
+      { apply add_entry_wf; [ exact H10 | | exact Hfr ].
+        eapply wf_gentry_ind_body; [ exact Hu | exact HΦ ]. }
+      apply IHrest; [ exact Hadd' | exact Hc1 | exact (stack_in_add _ _ _ _ Hst) | rewrite gs_tele_add; exact Hu | | exact HR1 ].
+      eapply builtins_wf_mono; [| exact Hb1 ].
+      intros p0 D0 Hl; exact (ind_lookup_close _ ((mq, Kq, Uq) :: Ξ0) x pv (fk_ind pq k D) (rd_uparams R) Φ _ _ H10 Hfr Hu Hl).
   Qed.
 
   (** At the end of a program, its record is of a type it reads. *)
   Corollary prog_sem_builtins_wf : forall prg B Θ U,
       prog_sem load_path read to_core prg B Θ U -> builtins_wf ((prog_path prg, U) :: Θ) nil B.
-  Proof. intros * [u Rb _ Hu]; exact (proj1 (proj2 (proj2 run_builtins_wf) _ _ _ _ _ _ Hu)). Qed.
+  Proof. intros * [u Rb _ Hu]; exact (proj1 (proj1 (proj2 (proj2 run_builtins_wf)) _ _ _ _ _ _ Hu)). Qed.
 End WellFormed.
 
 
@@ -2617,7 +2989,7 @@ Qed.
 Lemma equiv_gctx : forall Θ Θ' Ξ, gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ nil -> ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ Θ' ⍮ Ξ.
 Proof.
   intros * [H H'] HΘ' HΞ; apply (gstack_deps_grow _ _ H _ HΞ HΘ').
-  intros mp U Hin; pose proof (wf_gstack_frames _ _ HΞ _ _ Hin) as Hn.
+  intros mp K U Hin; pose proof (wf_gstack_frames _ _ HΞ _ _ _ Hin) as Hn.
   destruct (gds_lookup Θ' (q_unit mp)) eqn:E; [ rewrite (H' _ _ E) in Hn; discriminate | reflexivity ].
 Qed.
 
@@ -2659,7 +3031,7 @@ Fixpoint closure_ok (S : list path) (Θ : gdeps) : Prop :=
   match Θ with
   | nil => True
   | (fp, U) :: Θ' =>
-      (In fp S -> exists ΘU, ΘU ⍮ nil ⍮ q_abs fp nil ⊢ᵍᵘ U /\ ΘU ⊑ Θ' /\ forall x, In x (gds_dom ΘU) -> In x S) /\
+      (In fp S -> exists ΘU, ΘU ⍮ nil ⍮ q_abs fp nil ⍮ fk_module ⊢ᵍᵘ U /\ ΘU ⊑ Θ' /\ forall x, In x (gds_dom ΘU) -> In x S) /\
       closure_ok S Θ'
   end.
 
@@ -2688,13 +3060,16 @@ Section Runs.
   #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
   #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
   #[local] Abbreviation run_unit := (run_unit load_path read to_core).
+  #[local] Abbreviation run_ind_members := (run_ind_members load_path read to_core).
 
   Lemma run_dom_mono :
     (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        forall x, gds_lookup Θ x <> None -> gds_lookup Θ' x <> None) /\
     (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        forall x, gds_lookup Θ x <> None -> gds_lookup Θ' x <> None) /\
-    (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U -> True).
+    (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U -> True) /\
+    (forall ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ', run_ind_members ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ' ->
+       forall x, gds_lookup Θ x <> None -> gds_lookup Θ' x <> None).
   Proof.
     apply run_mut_ind; intros; auto.
     intros Ef; apply merge_none in Ef as [Ef _]; contradiction.
@@ -2709,7 +3084,9 @@ Section Runs.
     (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
        forall ch', (forall x, In x ch' -> gds_lookup Θ' x = None) -> Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch']⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb') /\
     (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U ->
-       forall ch', (forall x, In x (hd nil ch :: ch') -> gds_lookup Θ x = None) -> run_unit (hd nil ch :: ch') u B Rb Θ U).
+       forall ch', (forall x, In x (hd nil ch :: ch') -> gds_lookup Θ x = None) -> run_unit (hd nil ch :: ch') u B Rb Θ U) /\
+    (forall ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ', run_ind_members ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ' ->
+       forall ch', (forall x, In x ch' -> gds_lookup Θ' x = None) -> run_ind_members ch' B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ').
   Proof.
     (* what a run filed before its last step it still has after it *)
     assert (Hpre : forall ch B Rb Θ Ξ cs B1 Rb1 Θ1 Ξ1 ch', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ->
@@ -2717,6 +3094,11 @@ Section Runs.
               forall x, In x ch' -> gds_lookup Θ x = None).
     { intros * Hr Hch x Hx; destruct (gds_lookup Θ x) eqn:Ef; [ exfalso | reflexivity ].
       eapply (proj1 (proj2 run_dom_mono)); [ exact Hr | rewrite Ef; discriminate | apply Hch, Hx ]. }
+    assert (Hpre' : forall ch B Rb Θ Ξ pv R pq D k xs B1 Rb1 Θ1 Ξ1 ch', run_ind_members ch B Rb Θ Ξ pv R pq D k xs B1 Rb1 Θ1 Ξ1 ->
+              (forall x, In x ch' -> gds_lookup Θ1 x = None) ->
+              forall x, In x ch' -> gds_lookup Θ x = None).
+    { intros * Hr Hch x Hx; destruct (gds_lookup Θ x) eqn:Ef; [ exfalso | reflexivity ].
+      eapply (proj2 (proj2 (proj2 run_dom_mono))); [ exact Hr | rewrite Ef; discriminate | apply Hch, Hx ]. }
     apply run_mut_ind.
     - intros; constructor; assumption.
     - intros; eapply rc_axiom; eassumption.
@@ -2728,11 +3110,12 @@ Section Runs.
       + intros Hin; specialize (Hch _ Hin); apply merge_none in Hch as [_ Hf].
         cbn in Hf; rewrite path_beq_refl in Hf; discriminate.
       + apply IH; intros x [<- | Hin].
-        * exact (proj2 (proj2 (run_chain_fresh load_path read to_core)) _ _ _ _ _ _ Hu _ (or_introl eq_refl)).
+        * exact (proj1 (proj2 (proj2 (run_chain_fresh load_path read to_core))) _ _ _ _ _ _ Hu _ (or_introl eq_refl)).
         * specialize (Hch _ Hin); apply merge_none in Hch as [_ Hf].
           cbn in Hf; destruct (path_beq x fp); [ discriminate | exact Hf ].
     - intros; econstructor; eauto.
-    - intros; eapply rc_ind; try eassumption; auto.
+    - intros * HM Hs Hc Hv Hn Hcl Hb Hf Hnil Hm IHm Hr IHr ch' Hch.
+      eapply rc_ind; try eassumption; [ apply IHm; eapply Hpre; eassumption | apply IHr; exact Hch ].
     - intros; eapply rc_mdef; eassumption.
     - intros; eapply rc_builtin; eassumption.
     - intros; eapply rc_ind_alias; eassumption.
@@ -2741,24 +3124,28 @@ Section Runs.
     - intros; constructor.
     - intros * Ha Hl Hf Hr1 IH1 Hr2 IH2 ch' Hch.
       econstructor; [ exact Ha | exact Hl | exact Hf | apply IH1; eapply Hpre; eassumption | auto ].
-    - intros fp ch B1 Rb1 B2 Rb2 imps P P1 P2 cs Θ1 Θ2 mp U Hi IHi Hl Hf Htel HP Ha Hb IHb ch' Hch.
+    - intros fp ch B1 Rb1 B2 Rb2 imps P P1 P2 cs Θ1 Θ2 mp K U Hi IHi Hl Hf Htel HP Ha Hb IHb ch' Hch.
       cbn [hd] in *; econstructor;
         [ apply IHi; eapply Hpre; eassumption | eassumption | eassumption | assumption | assumption | assumption | auto ].
+    - intros; constructor.
+    - intros * HM Hfr HE Hr IHr Hrest IHrest ch' Hch.
+      econstructor; [ exact HM | exact Hfr | exact HE | apply IHr; eapply Hpre'; eassumption | apply IHrest; exact Hch ].
   Qed.
 
   Lemma run_tl :
     (forall ch B Rb Θ Ξ c B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> tl Ξ' = tl Ξ /\ List.length Ξ' = List.length Ξ) /\
     (forall ch B Rb Θ Ξ cs B' Rb' Θ' Ξ', Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' -> tl Ξ' = tl Ξ /\ List.length Ξ' = List.length Ξ) /\
-    (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U -> True).
+    (forall ch u B Rb Θ U, run_unit ch u B Rb Θ U -> True) /\
+    (forall ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ', run_ind_members ch B Rb Θ Ξ pv R pq D k xs B' Rb' Θ' Ξ' ->
+       tl Ξ' = tl Ξ /\ List.length Ξ' = List.length Ξ).
   Proof.
     assert (Hadd : forall x E Ξ, tl (gs_add x E Ξ) = tl Ξ /\ List.length (gs_add x E Ξ) = List.length Ξ)
-      by (intros ? ? [| [? ?] ?]; split; reflexivity).
+      by (intros ? ? [| [[? ?] ?] ?]; split; reflexivity).
     apply run_mut_ind; intros; auto;
       try (match goal with Hg : gens_run _ (gs_add _ _ _) _ _ |- _ =>
              destruct (gens_run_tl _ _ _ _ Hg) as [-> ->]; apply Hadd end);
       try (eapply gens_run_tl; eassumption);
-      try (match goal with He : ind_entries_run _ _ _ _ _ _ _ _ |- _ =>
-             destruct (ind_entries_run_tl _ _ _ _ _ _ _ _ He) end);
+      try (match goal with H : tl ?Ξ2 = tl (gs_add ?x ?E ?Ξ) /\ _ |- _ => destruct (Hadd x E Ξ) end);
       try (eapply mdefs_run_tl; eassumption); intuition congruence.
   Qed.
 
@@ -2783,15 +3170,6 @@ End Runs.
 
     What [IndCommand.rc_ind_con_types] reads off a run: the filed
     declaration and its constructors. *)
-
-Lemma ind_lookup_added : forall Θ Ξ x pv D Φ,
-    Ξ <> nil -> ind_lookup Θ (gs_add x (ge_ind pv (qname_in (gs_path Ξ) x) 0 D Φ) Ξ) (qname_in (gs_path Ξ) x) = Some D.
-Proof.
-  intros * Hn; destruct Ξ as [| [mp U] Ξ0]; [ contradiction |].
-  rewrite ind_lookup_unfold, ind_mlookup_unfold; cbn [gs_add gs_path].
-  change (qname_in mp x) with (qname_app mp (x :: nil)).
-  rewrite gc_module_frame_here; cbn; rewrite String.eqb_refl; reflexivity.
-Qed.
 
 Lemma Forall2_in_left : forall {X Y} (Rl : X -> Y -> Prop) l1 l2 a,
     Forall2 Rl l1 l2 -> In a l1 -> exists b, In b l2 /\ Rl a b.

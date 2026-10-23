@@ -1,7 +1,7 @@
 (** * NbE Reads the Global Context Only Through Its Lookups
 
     Evaluation and readback read the global context through [gc_resolve],
-    [gc_module], [ind_lookup], [ind_alias_lookup] and [gc_frame] alone, so two global contexts with the same
+    [gc_module], [ind_lookup], [ind_alias_lookup], [gc_frame] and [gs_find_ind] alone, so two global contexts with the same
     lookups normalize alike. *)
 
 From Mctt Require Import LibTactics.
@@ -17,13 +17,14 @@ Section GlobalExt.
   Hypothesis Hind : forall p, ind_lookup Θ1 Ξ1 p = ind_lookup Θ2 Ξ2 p.
   Hypothesis Hia : forall p, ind_alias_lookup Θ1 Ξ1 p = ind_alias_lookup Θ2 Ξ2 p.
   Hypothesis Hfr : forall p, gc_frame Ξ1 p = gc_frame Ξ2 p.
+  Hypothesis Hfi : forall p, gs_find_ind Ξ1 p = gs_find_ind Ξ2 p.
   Hypothesis Hbody : forall p, gc_body Θ1 Ξ1 p = gc_body Θ2 Ξ2 p.
 
   Lemma ind_lookup_ext : forall p, ind_lookup Θ1 Ξ1 p = ind_lookup Θ2 Ξ2 p.
   Proof. exact Hind. Qed.
 
   Lemma ind_mlookup_ext : forall p, ind_mlookup Θ1 Ξ1 p = ind_mlookup Θ2 Ξ2 p.
-  Proof. intros; rewrite !ind_mlookup_unfold, Hmod; reflexivity. Qed.
+  Proof. intros; rewrite !ind_mlookup_unfold, Hfi, Hmod; reflexivity. Qed.
 
   Lemma gc_loc_ext : forall p, gc_loc Θ1 Ξ1 p = gc_loc Θ2 Ξ2 p.
   Proof. intros; unfold gc_loc; rewrite Hfr, Hbody; reflexivity. Qed.

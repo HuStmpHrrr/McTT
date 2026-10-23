@@ -54,8 +54,8 @@ Reserved Notation "Γ ∋ '#' x : A" (at level 70, x constr at level 0, A at lev
 Reserved Notation "Γ ∋ '#' x ≔ M : A" (at level 70, x constr at level 0, M at level 69, A at level 69).
 Reserved Notation "⊢ᵍ Θ ⍮ Ξ" (at level 70, Θ at level 69, Ξ at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ mp ⊢ᵉ E" (at level 70, Ξ at level 69, mp at level 69, E at level 69).
-Reserved Notation "Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ" (at level 70, Ξ at level 69, mp at level 69, Δ at level 69, Φ at level 69).
-Reserved Notation "Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U" (at level 70, Ξ at level 69, mp at level 69, U at level 69).
+Reserved Notation "Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ" (at level 70, Ξ at level 69, mp at level 69, K at level 69, Δ at level 69, Φ at level 69).
+Reserved Notation "Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U" (at level 70, Ξ at level 69, mp at level 69, K at level 69, U at level 69).
 
 Generalizable All Variables.
 
@@ -1037,7 +1037,7 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def b pv (ctx_pi (gs_tele Ξ) A) (option_map (ctx_fn (gs_tele Ξ)) oM) )
 (** An internal module, under the parameters [Δ'] it declares. *)
 | wf_gentry_mod :
-  `( Θ ⍮ Ξ ⍮ mp ⍮ Δ' ⊢ᵍᵐ Φ ->
+  `( Θ ⍮ Ξ ⍮ mp ⍮ fk_module ⍮ Δ' ⊢ᵍᵐ Φ ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_body pv Δ' Φ )
 (** An alias, under the parameters [Δ] it declares.  It is filed with its
     full telescope, so that it is closed; its target is checked, and its
@@ -1199,27 +1199,26 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
     the group is filed at its first member, [y0], an entry of the same
     module before it. *)
 | wf_gentry_ind_mem_nil :
-  `( ind_uparams D = Δu ++ gs_tele ((mq, gu_body Δ Φ0) :: Ξ) ->
+  `( ind_uparams D = Δu ++ gs_tele ((mq, Kq, gu_body Δ Φ0) :: Ξ) ->
      tele_ass (ind_uparams D) ->
-     ⊢ Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ ⍮ ind_uparams D ->
+     ⊢ Θ ⍮ (mq, Kq, gu_body Δ Φ0) :: Ξ ⍮ ind_uparams D ->
      gm_entry Φ0 (y0 :: nil) = Some (ge_ind pv0 (qname_in mq y0) 0 D Φm) ->
-     ind_lookup Θ ((mq, gu_body Δ Φ0) :: Ξ) (qname_in mq y0) = Some D ->
+     ind_lookup Θ ((mq, Kq, gu_body Δ Φ0) :: Ξ) (qname_in mq y0) = Some D ->
      ind_member D k = Some Mk ->
      0 < k ->
      k < ind_ndecl D ->
      im_head Mk = mh_decl (qname_in mq y) ->
-     Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y ⊢ᵉ ge_ind pv (qname_in mq y0) k D ⋄ )
-(** One more member of the module of a member of a group of inductive
-    types, a definition: it is checked with the entry so far declared in
-    the innermost frame, under the uniform parameters, the module's
-    ([ind_unit]), and stored generalized over them, so that it is
-    closed. *)
-| wf_gentry_ind_ext :
-  `( Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y ⊢ᵉ ge_ind pv pq k D Φ ->
-     Θ ⍮ (mq, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv pq k D Φ)) :: Ξ ⍮ ind_uparams D ⊢ M : A ->
-     gm_fresh x Φ ->
-     Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y
-       ⊢ᵉ ge_ind pv pq k D (Φ ⊳ x ↦ ge_def b pv' (ctx_pi (ind_uparams D) A) (Some (ctx_fn (ind_uparams D) M))) )
+     Θ ⍮ (mq, Kq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y ⊢ᵉ ge_ind pv (qname_in mq y0) k D ⋄ )
+(** A declared member of a group with the body of its module: the body
+    is checked as an ordinary module over the uniform parameters, in the
+    member's open frame, which carries the declaration ([fk_ind]); the
+    declaration itself is checked where the module starts
+    ([wf_gmod_ind_nil]).  The member is filed only when its frame
+    closes. *)
+| wf_gentry_ind_body :
+  `( ind_uparams D = Δu ++ gs_tele Ξ ->
+     Θ ⍮ Ξ ⍮ mp ⍮ fk_ind pq k D ⍮ Δu ⊢ᵍᵐ Φ ->
+     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv pq k D Φ )
 (** An inductive alias with parameters [Δ] over the frames' parameters,
     of the declared member [k] of the group at [p], its module at [pm], at
     arguments [Ns] for its first uniform parameters; it is stored over its
@@ -1238,21 +1237,35 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind_alias pv (Δ ++ gs_tele Ξ) pm p k Ns )
 where "Θ ⍮ Ξ ⍮ mp ⊢ᵉ E" := (wf_gentry Θ Ξ mp E) : type_scope
 
-(** The module at path [mp], with own parameters [Δ], a telescope over the
-    frames' parameters [gs_tele Ξ]. *)
-with wf_gmod : gdeps -> gstack -> qname -> ctx -> gmod -> Prop :=
+(** The module at path [mp], of kind [K], with own parameters [Δ], a
+    telescope over the frames' parameters [gs_tele Ξ]. *)
+with wf_gmod : gdeps -> gstack -> qname -> frame_kind -> ctx -> gmod -> Prop :=
+(** An ordinary module, before its members *)
 | wf_gmod_nil :
   `( tele_ass Δ ->
      ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
-     Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ ⋄ )
+     Θ ⍮ Ξ ⍮ mp ⍮ fk_module ⍮ Δ ⊢ᵍᵐ ⋄ )
+(** The module of the declared member [k] of the group [D] at [pq], before
+    its members: the member's declaration, checked as an entry with an
+    empty module ([wf_gentry_ind_nil], [wf_gentry_ind_mem_nil]), and the
+    module's parameters, the uniform ones, over the frames' parameters,
+    as [wf_gmod_nil] has them.  A member is declared in an enclosing
+    frame, so its module is no unit. *)
+| wf_gmod_ind_nil :
+  `( tele_ass Δ ->
+     ⊢ Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
+     Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⊢ᵉ ge_ind pv pq k D ⋄ ->
+     ind_uparams D = Δ ++ gs_tele ((mq, Kq, Uq) :: Ξ) ->
+     Θ ⍮ (mq, Kq, Uq) :: Ξ ⍮ mp ⍮ fk_ind pq k D ⍮ Δ ⊢ᵍᵐ ⋄ )
 (** The entry is checked against the members declared before it: the module so
-    far is [gu_mk Δ Φ], pushed as the innermost frame under its own path. *)
+    far is [gu_mk Δ Φ], pushed as the innermost frame under its own path,
+    of the module's kind. *)
 | wf_gmod_ext :
-  `( Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ ->
-     Θ ⍮ (mp, gu_body Δ Φ) :: Ξ ⍮ qname_in mp x ⊢ᵉ E ->
+  `( Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ ->
+     Θ ⍮ (mp, K, gu_body Δ Φ) :: Ξ ⍮ qname_in mp x ⊢ᵉ E ->
      gm_fresh x Φ ->
-     Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ ⊳ x ↦ E )
-where "Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ" := (wf_gmod Θ Ξ mp Δ Φ) : type_scope
+     Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ ⊳ x ↦ E )
+where "Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ" := (wf_gmod Θ Ξ mp K Δ Φ) : type_scope
 
 (** The filed units [Θ] and the stack [Ξ] of open frames, innermost first.
     A frame is checked against the frames outside it, and a unit is filed by
@@ -1264,13 +1277,13 @@ where "Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ" := (wf_gmod Θ Ξ mp Δ Φ) : type_
 with wf_gstack : gdeps -> gstack -> Prop :=
 | wf_gstack_nil : ⊢ᵍ nil ⍮ nil
 | wf_gstack_file :
-  `( ⊢ᵍ Θ ⍮ (q_abs fp nil, U) :: nil ->
+  `( ⊢ᵍ Θ ⍮ (q_abs fp nil, fk_module, U) :: nil ->
      ⊢ᵍ (fp, U) :: Θ ⍮ nil )
 | wf_gstack_cons :
   `( ⊢ᵍ Θ ⍮ Ξ ->
-     Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ ->
+     Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ ->
      frame_fresh Θ Ξ mp ->
-     ⊢ᵍ Θ ⍮ (mp, gu_body Δ Φ) :: Ξ )
+     ⊢ᵍ Θ ⍮ (mp, K, gu_body Δ Φ) :: Ξ )
 where "⊢ᵍ Θ ⍮ Ξ" := (wf_gstack Θ Ξ) : type_scope.
 
 (** The schemes are [Minimality], not [Induction]: nothing in this development
@@ -1382,39 +1395,43 @@ Combined Scheme wf_mut_ind_all from
     [⊢ᵍᵐ], hence of [⊢ᵍᵘ], and [⊢ᵍ Θ ⍮ nil] of [⊢ᵍ Θ ⍮ Ξ]. *)
 
 #[warnings="-cannot-define-projection"]
-Record wf_gunit (Θ : gdeps) (Ξ : gstack) (mp : qname) (U : gunit) : Prop := mk_wf_gunit
-  { wgu_params : ctx
+Record wf_gunit (Θ : gdeps) (Ξ : gstack) (mp : qname) (K : frame_kind) (U : gunit) : Prop := mk_wf_gunit
+  { (** The unit's parameters *)
+    wgu_params : ctx
+    (** The unit's body *)
   ; wgu_body : gmod
+    (** The unit is a body module *)
   ; wgu_eq : U = gu_body wgu_params wgu_body
-  ; wgu_wf : Θ ⍮ Ξ ⍮ mp ⍮ wgu_params ⊢ᵍᵐ wgu_body }.
-Notation "Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U" := (wf_gunit Θ Ξ mp U) : type_scope.
+    (** Its body is a module of kind [K] *)
+  ; wgu_wf : Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ wgu_params ⊢ᵍᵐ wgu_body }.
+Notation "Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U" := (wf_gunit Θ Ξ mp K U) : type_scope.
 
-Lemma wf_gunit_intro : forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ -> Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ gu_body Δ Φ.
+Lemma wf_gunit_intro : forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ gu_body Δ Φ.
 Proof. intros; econstructor; [ reflexivity | eassumption ]. Qed.
 
-Lemma wf_gunit_mod : forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U -> Θ ⍮ Ξ ⍮ mp ⍮ gu_params U ⊢ᵍᵐ gu_mod U.
+Lemma wf_gunit_mod : forall Θ Ξ mp K U, Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U -> Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ gu_params U ⊢ᵍᵐ gu_mod U.
 Proof. intros * [Δ Φ -> H]; exact H. Qed.
 
 (** The unit form of the two constructors that file one. *)
 
-Lemma wf_gstack_cons' : forall Θ Ξ mp U,
-    ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U -> frame_fresh Θ Ξ mp -> ⊢ᵍ Θ ⍮ (mp, U) :: Ξ.
+Lemma wf_gstack_cons' : forall Θ Ξ mp K U,
+    ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U -> frame_fresh Θ Ξ mp -> ⊢ᵍ Θ ⍮ (mp, K, U) :: Ξ.
 Proof. intros * ? [Δ Φ -> ?] ?; apply wf_gstack_cons; assumption. Qed.
 
-Lemma wf_gstack_cons_inv : forall Θ Ξ mp U,
-    ⊢ᵍ Θ ⍮ (mp, U) :: Ξ -> ⊢ᵍ Θ ⍮ Ξ /\ Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U /\ frame_fresh Θ Ξ mp.
+Lemma wf_gstack_cons_inv : forall Θ Ξ mp K U,
+    ⊢ᵍ Θ ⍮ (mp, K, U) :: Ξ -> ⊢ᵍ Θ ⍮ Ξ /\ Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U /\ frame_fresh Θ Ξ mp.
 Proof. inversion 1; subst; eauto using wf_gunit_intro. Qed.
 
 (** Filing, from the premises of the frame it closes. *)
 Lemma wf_gstack_file' : forall Θ fp U,
-    ⊢ᵍ Θ ⍮ nil -> Θ ⍮ nil ⍮ q_abs fp nil ⊢ᵍᵘ U -> gds_lookup Θ fp = None -> ⊢ᵍ (fp, U) :: Θ ⍮ nil.
+    ⊢ᵍ Θ ⍮ nil -> Θ ⍮ nil ⍮ q_abs fp nil ⍮ fk_module ⊢ᵍᵘ U -> gds_lookup Θ fp = None -> ⊢ᵍ (fp, U) :: Θ ⍮ nil.
 Proof. intros * ? ? ?; apply wf_gstack_file, wf_gstack_cons'; [ assumption | assumption | split; [ assumption | reflexivity ] ]. Qed.
 
 Lemma wf_gstack_file_inv : forall Θ fp U,
-    ⊢ᵍ (fp, U) :: Θ ⍮ nil -> ⊢ᵍ Θ ⍮ nil /\ Θ ⍮ nil ⍮ q_abs fp nil ⊢ᵍᵘ U /\ gds_lookup Θ fp = None.
+    ⊢ᵍ (fp, U) :: Θ ⍮ nil -> ⊢ᵍ Θ ⍮ nil /\ Θ ⍮ nil ⍮ q_abs fp nil ⍮ fk_module ⊢ᵍᵘ U /\ gds_lookup Θ fp = None.
 Proof.
   inversion 1; subst.
-  match goal with H : ⊢ᵍ _ ⍮ _ :: nil |- _ => destruct (wf_gstack_cons_inv _ _ _ _ H) as (? & ? & [? _]) end; auto.
+  match goal with H : ⊢ᵍ _ ⍮ _ :: nil |- _ => destruct (wf_gstack_cons_inv _ _ _ _ _ H) as (? & ? & [? _]) end; auto.
 Qed.
 
 #[export]

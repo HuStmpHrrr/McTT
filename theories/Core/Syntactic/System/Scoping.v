@@ -1791,10 +1791,18 @@ Definition unit_closed (T : ctx) (Φ : gmod) : Prop := ctx_scoped 0 T /\ body_cl
 Definition units_closed (Θ : gdeps) : Prop :=
   forall fp U, gds_lookup Θ fp = Some U -> unit_closed (gu_params U) (gu_mod U).
 
+(** A frame's kind is closed: the declaration of the member a type's open
+    frame is the module of. *)
+Definition kind_closed (K : frame_kind) : Prop :=
+  match K with
+  | fk_module => True
+  | fk_ind _ _ D => decl_closed D
+  end.
+
 Fixpoint stack_closed (Ξ : gstack) : Prop :=
   match Ξ with
   | nil => True
-  | (_, U) :: Ξ' => stack_closed Ξ' /\ unit_closed (gu_params U ++ gs_tele Ξ') (gu_mod U)
+  | (_, K, U) :: Ξ' => stack_closed Ξ' /\ unit_closed (gu_params U ++ gs_tele Ξ') (gu_mod U) /\ kind_closed K
   end.
 
 Definition gctx_closed (Θ : gdeps) (Ξ : gstack) : Prop :=
@@ -1833,18 +1841,27 @@ Proof.
       eapply Forall_impl; [| exact HNs ]; intros; cbn; rewrite Nat.add_0_r; assumption.
 Qed.
 
-Lemma stack_closed_in : forall Ξ mp U,
-    stack_closed Ξ -> List.In (mp, U) Ξ -> exists T, unit_closed T (gu_mod U).
+Lemma stack_closed_in : forall Ξ mp K U,
+    stack_closed Ξ -> List.In (mp, K, U) Ξ -> exists T, unit_closed T (gu_mod U).
 Proof.
-  induction Ξ as [| [mq V] Ξ IH]; intros * HΞ Hin; cbn in *; [ contradiction |].
-  destruct HΞ as [HΞ HV]; destruct Hin as [[= <- <-] | Hin]; eauto.
+  induction Ξ as [| [[mq Kq] V] Ξ IH]; intros * HΞ Hin; cbn in *; [ contradiction |].
+  destruct HΞ as [HΞ [HV _]]; destruct Hin as [[= <- <- <-] | Hin]; eauto.
+Qed.
+
+(** The declaration a type's open frame carries is closed. *)
+Lemma stack_closed_ind : forall Ξ p pq k D, stack_closed Ξ -> gs_find_ind Ξ p = Some (pq, k, D) -> decl_closed D.
+Proof.
+  induction Ξ as [| [[mq Kq] V] Ξ IH]; intros * HΞ Hf; cbn in *; [ discriminate |].
+  destruct HΞ as [HΞ [_ HK]].
+  destruct (qname_strip mq p) as [[| ? ?] |]; [| discriminate | eauto ].
+  destruct Kq; [ discriminate | injection Hf as -> -> ->; exact HK ].
 Qed.
 
 Lemma stack_closed_find : forall Ξ p U ip T,
     stack_closed Ξ -> gs_find_tele Ξ p = Some (U, ip, T) -> unit_closed (gu_params U ++ T) (gu_mod U).
 Proof.
-  induction Ξ as [| [mq V] Ξ IH]; intros * HΞ Hf; cbn in *; [ discriminate |].
-  destruct HΞ as [HΞ HV].
+  induction Ξ as [| [[mq Kq] V] Ξ IH]; intros * HΞ Hf; cbn in *; [ discriminate |].
+  destruct HΞ as [HΞ [HV _]].
   destruct (qname_strip mq p); [ injection Hf as <- <- <-; exact HV | eauto ].
 Qed.
 
@@ -1854,8 +1871,8 @@ Lemma gctx_closed_resolve : forall Θ Ξ p b pv A B,
     exp_scoped 0 A /\ opt_scoped 0 B.
 Proof.
   intros * [HΘ HΞ] Hr.
-  destruct (gc_resolve_inv _ _ _ _ Hr) as [(mp & U & ip & Hin & Hm) | (fp & U & Hl & Hm)].
-  - destruct (stack_closed_in _ _ _ HΞ Hin) as (T & HU).
+  destruct (gc_resolve_inv _ _ _ _ Hr) as [(mp & K & U & ip & Hin & Hm) | (fp & U & Hl & Hm)].
+  - destruct (stack_closed_in _ _ _ _ HΞ Hin) as (T & HU).
     exact (proj1 (unit_closed_mod _ _ HU) _ _ Hm).
   - exact (proj1 (unit_closed_mod _ _ (HΘ _ _ Hl)) _ _ Hm).
 Qed.
@@ -1876,8 +1893,9 @@ Qed.
 Lemma gctx_closed_mind : forall Θ Ξ p pq k D,
     gctx_closed Θ Ξ -> ind_mlookup Θ Ξ p = Some (pq, k, D) -> decl_closed D.
 Proof.
-  intros * HΘ Hl; destruct (ind_mlookup_module _ _ _ _ Hl) as [T Hm].
-  exact (proj2 (gctx_closed_module _ _ _ _ HΘ Hm)).
+  intros * HΘ Hl; destruct (ind_mlookup_module _ _ _ _ Hl) as [[T Hm] | Hf].
+  - exact (proj2 (gctx_closed_module _ _ _ _ HΘ Hm)).
+  - exact (stack_closed_ind _ _ _ _ _ (proj2 HΘ) Hf).
 Qed.
 
 Lemma gctx_closed_ind : forall Θ Ξ p D,

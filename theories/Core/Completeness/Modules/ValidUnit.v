@@ -378,19 +378,21 @@ Qed.
 
 (** What a member of a module expression denotes has the kind its value
     gives the name: an entry of the module part, or a unit or open frame
-    the member names. *)
+    the member names, of either kind. *)
 Definition kinds_ok (Γ : ctx) (H : modexp) : Prop :=
   (forall R Rm x Γy E rd, mdenote Θm Ξm Γ H R -> ds_mod Θm Ξm R = Some Rm -> ds_entry Rm x = Some (Γy, E, rd) ->
      forall RΓ ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> skind gc_deps gc_stack ρ H (x :: nil) (entry_kind E)) /\
-  (forall x TΦ, gc_unit Θm Ξm (me_mem H x) = Some TΦ ->
+  (forall x, (exists TΦ, gc_unit Θm Ξm (me_mem H x) = Some TΦ) \/
+             (exists p r, mod_qname (me_mem H x) = Some p /\ gs_find_ind Ξm p = Some r) ->
      forall RΓ ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> skind gc_deps gc_stack ρ H (x :: nil) mk_mod).
 
 Lemma kinds_ok_mem : forall Γ H x R, kinds_ok Γ H -> mdenote Θm Ξm Γ (me_mem H x) R ->
     forall RΓ ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> skind gc_deps gc_stack ρ H (x :: nil) (mdesc_kind R).
 Proof.
   intros * [Ke Ku] Hm RΓ ρ HΓ Hρ.
-  inversion Hm as [? ? ? ? ? Hq Hu | | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hr]; subst.
-  - exact (Ku _ _ Hu _ _ HΓ Hρ).
+  inversion Hm as [? ? ? ? ? Hq Hu | ? ? ? ? ? ? Hq Hk | | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hr]; subst.
+  - exact (Ku _ (or_introl (ex_intro _ _ Hu)) _ _ HΓ Hρ).
+  - exact (Ku _ (or_intror (ex_intro _ _ (ex_intro _ _ (conj Hq Hk)))) _ _ HΓ Hρ).
   - rewrite (mdesc_kind_read _ _ _ Hr), (mdesc_kind_edenote _ _ _ _ Hed); exact (Ke _ _ _ _ _ _ Hm0 Hmd He _ _ HΓ Hρ).
 Qed.
 
@@ -460,21 +462,50 @@ Proof.
   rewrite IH; apply skind_app_iff.
 Qed.
 
-(** A unit or open frame a member names is a module. *)
+(** An open frame a member names is a module. *)
+Lemma frame_kind : forall H x p TΦ, mod_qname (me_mem H x) = Some p -> gc_frame Ξm p = Some TΦ ->
+    forall ρ, skind gc_deps gc_stack ρ H (x :: nil) mk_mod.
+Proof.
+  intros * Hq Hf ρ.
+  cbn in Hq; destruct (mod_qname H) as [mq |] eqn:Hq0; [| discriminate ]; injection Hq as <-.
+  change {| q_unit := q_unit mq; q_chain := q_chain mq ++ x :: nil |} with (qname_in mq x) in Hf.
+  assert (Ht : exists U T0, gs_find_tele Ξm (qname_in mq x) = Some (U, nil, T0)).
+  { unfold gc_frame in Hf; destruct (gs_find_tele Ξm (qname_in mq x)) as [[[U [| ? ?]] T0] |];
+      try (destruct U as [? [[|] ? | ?]]); try discriminate; eauto. }
+  destruct Ht as (U & T0 & Ht).
+  destruct (frame_parent _ _ Hgm _ _ _ _ Ht) as (T1 & Φ1 & Hf1 & _).
+  assert (Hgl0 : gc_loc Θm Ξm mq = Some (T1, Φ1)) by (unfold gc_loc; rewrite Hf1; reflexivity).
+  assert (Hgl : gc_loc Θm Ξm (qname_in mq x) = Some TΦ) by (unfold gc_loc; rewrite Hf; reflexivity).
+  destruct (Hgf _ _ _ Hgl0) as [_ Hp _ _ _ _ Hsub _ _ _].
+  rewrite (mod_qname_inv _ _ Hq0).
+  apply (kind_eval_modexp _ _ _ _ _ (Hp ρ)), (Hsub x TΦ); exact Hgl.
+Qed.
+
+(** A unit a member names is an open frame, so a module. *)
 Lemma gunit_kind : forall H x TΦ, gc_unit Θm Ξm (me_mem H x) = Some TΦ ->
     forall ρ, skind gc_deps gc_stack ρ H (x :: nil) mk_mod.
 Proof.
-  intros * Hu ρ.
-  destruct TΦ as [T' Φ'].
-  destruct (gc_unit_mem_parent _ _ Hgm _ _ _ _ Hu) as (T0 & Φ0 & Hu0 & _).
-  destruct (gc_unit_loc _ _ _ _ _ Hu0) as (mq & Hq & Hl0).
-  destruct (gc_unit_loc _ _ _ _ _ Hu) as (mp & Hqp & Hl).
-  cbn [mod_qname] in Hqp; rewrite Hq in Hqp; injection Hqp as <-.
-  pose proof (gc_loc_of_loc _ _ Hgm _ _ _ Hl0) as Hgl0.
-  pose proof (gc_loc_of_loc _ _ Hgm _ _ _ Hl) as Hgl.
-  destruct (Hgf _ _ _ Hgl0) as [_ Hp _ _ _ _ Hsub _ _].
-  rewrite (mod_qname_inv _ _ Hq).
-  apply (kind_eval_modexp _ _ _ _ _ (Hp ρ)), (Hsub x (T', Φ')); exact Hgl.
+  intros * Hu ρ; destruct TΦ as [T' Φ'].
+  destruct (gc_unit_cases _ _ _ _ _ Hu) as (mp & Hq & [Hf | (_ & Hc & _)]).
+  - exact (frame_kind _ _ _ _ Hq Hf ρ).
+  - exfalso; cbn in Hq; destruct (mod_qname H) as [mq |]; [| discriminate ]; injection Hq as <-.
+    cbn in Hc; destruct (q_chain mq); discriminate.
+Qed.
+
+(** The open frame of a member's module a member names is a module. *)
+Lemma ind_frame_kind : forall H x p r, mod_qname (me_mem H x) = Some p -> gs_find_ind Ξm p = Some r ->
+    forall ρ, skind gc_deps gc_stack ρ H (x :: nil) mk_mod.
+Proof.
+  intros * Hq Hk ρ; destruct r as [[pq k] D].
+  destruct (ds_mod_ind_frame _ _ Hgm _ _ _ _ nil nil Hk) as (T & Φ & Hf & _).
+  exact (frame_kind _ _ _ _ Hq Hf ρ).
+Qed.
+
+Lemma unit_or_frame_kind : forall H x,
+    (exists TΦ, gc_unit Θm Ξm (me_mem H x) = Some TΦ) \/ (exists p r, mod_qname (me_mem H x) = Some p /\ gs_find_ind Ξm p = Some r) ->
+    forall ρ, skind gc_deps gc_stack ρ H (x :: nil) mk_mod.
+Proof.
+  intros * [(TΦ & Hu) | (p & r & Hq & Hk)] ρ; [ exact (gunit_kind _ _ _ Hu ρ) | exact (ind_frame_kind _ _ _ _ Hq Hk ρ) ].
 Qed.
 
 Lemma ds_entry_up_inv : forall Δ R y Γy E rd, ds_entry (ds_up Δ R) y = Some (Γy, E, rd) ->
@@ -538,18 +569,18 @@ Lemma valid_unit_kinds_all :
 Proof.
   apply valid_unit_modexp_ind.
   - (* a filed module at arguments *)
-    intros Γ p T Φ Ns Hw Hgl HΓ Hs; split; [| intros x TΦ Hu RΓ ρ _ _; exact (gunit_kind _ _ _ Hu ρ) ].
+    intros Γ p T Φ Ns Hw Hgl HΓ Hs; split; [| intros x Hx RΓ ρ _ _; exact (unit_or_frame_kind _ _ Hx ρ) ].
     intros R Rm x Γy E rd Hm Hmod He RΓ ρ HRΓ Hρ.
     destruct (filed_denote _ _ Hgm _ _ _ Γ Ns Hgl) as (R1 & Hm1 & Hmod1).
     rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ Hm _ Hm1), Hmod1 in Hmod; injection Hmod as <-.
     destruct (ds_entry_closed_inv _ _ _ _ _ _ _ _ _ He) as (Φ0 & E0 & Hp & ->).
-    destruct (Hgf _ _ _ Hgl) as [_ Hpe _ _ _ Hk _ _ _].
+    destruct (Hgf _ _ _ Hgl) as [_ Hpe _ _ _ Hk _ _ _ _].
     apply skind_apps, (kind_eval_modexp _ _ _ _ _ (Hpe ρ)); rewrite entry_kind_read; exact (Hk _ _ _ Hp).
   - (* a body *)
     intros Γ Δ Φ Φx Hw Hx HΔ HΓ HC Hslots IHslots Hs Hsx HK Hopv Hops IHops.
-    split; [| intros x TΦ Hu; cbn in Hu; unfold gc_unit in Hu; cbn in Hu; discriminate ].
+    split; [| intros x [(TΦ & Hu) | (p & r & Hq & _)]; [ cbn in Hu; unfold gc_unit in Hu; cbn in Hu; discriminate | cbn in Hq; discriminate ] ].
     intros R Rm x Γy E rd Hm Hmod He RΓ ρ HRΓ Hρ.
-    inversion Hm; subst; [ match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end |].
+    inversion Hm; subst; try (match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end).
     match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
     match goal with Hb : ds_body _ _ _ _ _ = Some _ |- _ => cbn in Hb; injection Hb as <- end.
     match goal with Hx' : body_xp _ _ _ Φ ?Φx1 |- _ =>
@@ -585,9 +616,9 @@ Proof.
       exact (valid_nil_kind _ _ _ (ruu_lit _ _ _ (rel_ctx_wf_mod_inv HC1)) HR0 _ Hρ1).
   - (* an alias *)
     intros Γ Δ E Hw HΔ HΓ HΔΓ HK HE Hsmt IHE.
-    split; [| intros x TΦ Hu; cbn in Hu; unfold gc_unit in Hu; cbn in Hu; discriminate ].
+    split; [| intros x [(TΦ & Hu) | (p & r & Hq & _)]; [ cbn in Hu; unfold gc_unit in Hu; cbn in Hu; discriminate | cbn in Hq; discriminate ] ].
     intros R Rm x Γy E' rd Hm Hmod He RΓ ρ HRΓ Hρ.
-    inversion Hm; subst; [ match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end |].
+    inversion Hm; subst; try (match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end).
     match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu as [| ? ? ? E0 RE Rem HmE HmodE]; subst end.
     rewrite (ds_is_mod_mod _ _ _ (ds_is_mod_up _ _ (ds_mod_is_mod _ _ _ _ HmodE))) in Hmod; injection Hmod as <-.
     destruct (ds_entry_up_inv _ _ _ _ _ _ He) as (Γy' & rd' & He').
@@ -598,7 +629,7 @@ Proof.
     exact (proj1 IHE _ _ _ _ _ _ HmE HmodE He' _ _ HRΔ Hρa).
   - (* a module expression equal to a valid unit: as the unit *)
     intros Γ H R Rm K RK HwH HmH HmodH HHK HK IHK HmK HmodK.
-    split; [| intros x TΦ Hu RΓ ρ _ _; exact (gunit_kind _ _ _ Hu ρ) ].
+    split; [| intros x Hx RΓ ρ _ _; exact (unit_or_frame_kind _ _ Hx ρ) ].
     intros R' Rm' x Γy E rd Hm Hmod He RΓ ρ HRΓ Hρ.
     rewrite (proj1 (mdenote_functional_all _ _ Hgm) _ _ _ Hm _ HmH), HmodH in Hmod; injection Hmod as <-.
     pose proof (proj1 IHK _ _ _ _ _ _ HmK HmodK He _ _ HRΓ Hρ) as Hk.

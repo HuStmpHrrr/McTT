@@ -1037,7 +1037,7 @@ Proof.
   destruct (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 desc_typed)))))) _ _ _ _ _ HH Hv) as (_ & HK1 & HK2).
   assert (Ht : forall Δ X D R, mdenote Θ Ξ Γ (me_lit (gu_mk (Δ ++ ce_ass X :: nil) D)) R -> desc_ok Θ Ξ Γ R ->
             exists T1, ds_mtele Θ Ξ R = Some (T1 ++ ce_ass X :: nil)).
-  { intros * Hm Hok; inversion Hm; subst; [ unfold gc_unit in *; cbn in *; discriminate |].
+  { intros * Hm Hok; inversion Hm; subst; try (unfold gc_unit in *; cbn in *; discriminate).
     match goal with Hu : udenote _ _ _ _ _ _ |- _ =>
       destruct (udenote_last _ _ _ _ _ _ _ Hu) as (R0 & Hu0 & ->);
       exact (desc_ok_mtele_last _ _ _ _ _ (udenote_is_mod _ _ _ _ _ _ Hu0) Hok) end. }
@@ -1645,13 +1645,13 @@ Proof.
   induction 1; subst; eauto using ctx_wf_gctx, presup_exp_ctx, presup_ext_eq_ctx, wf_gmod_ctx.
 Qed.
 
-Lemma wf_gunit_ctx : forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U -> ⊢ Θ ⍮ Ξ ⍮ gu_params U ++ gs_tele Ξ.
+Lemma wf_gunit_ctx : forall Θ Ξ mp K U, Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U -> ⊢ Θ ⍮ Ξ ⍮ gu_params U ++ gs_tele Ξ.
 Proof. eauto using wf_gmod_ctx, wf_gunit_mod. Qed.
 
-Corollary wf_gunit_gctx : forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U -> ⊢ᵍ Θ ⍮ Ξ.
+Corollary wf_gunit_gctx : forall Θ Ξ mp K U, Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U -> ⊢ᵍ Θ ⍮ Ξ.
 Proof. eauto using ctx_wf_gctx, wf_gunit_ctx. Qed.
 
-Corollary wf_gmod_gctx : forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ -> ⊢ᵍ Θ ⍮ Ξ.
+Corollary wf_gmod_gctx : forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> ⊢ᵍ Θ ⍮ Ξ.
 Proof. eauto using ctx_wf_gctx, wf_gmod_ctx. Qed.
 
 (** Each judgment presupposes what it is relative to: a term judgment its
@@ -1664,8 +1664,8 @@ Theorem presup_ambient :
   (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> ⊢ Θ ⍮ Ξ ⍮ Γ) /\
   (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> ⊢ Θ ⍮ Ξ ⍮ Γ) /\
   (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢ᵉ E -> ⊢ᵍ Θ ⍮ Ξ) /\
-  (forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ) /\
-  (forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢ᵍᵘ U -> ⊢ Θ ⍮ Ξ ⍮ gu_params U ++ gs_tele Ξ) /\
+  (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ) /\
+  (forall Θ Ξ mp K U, Θ ⍮ Ξ ⍮ mp ⍮ K ⊢ᵍᵘ U -> ⊢ Θ ⍮ Ξ ⍮ gu_params U ++ gs_tele Ξ) /\
   (forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ Θ ⍮ nil).
 Proof.
   refine (conj ctx_wf_gctx (conj _ (conj _ (conj _ (conj wf_gentry_gctx (conj wf_gmod_ctx

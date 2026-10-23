@@ -427,7 +427,7 @@ let generated_name (y : string) : bool =
 let frame_param_names () : string option list =
   let _, xi = !current_state in
   List.concat_map
-    (fun ((q : qname), Coq_gu_mk (delta, _)) ->
+    (fun (((q : qname), _), Coq_gu_mk (delta, _)) ->
       let n = List.length delta in
       let ps = match !current_prog with
         | Some (_, ((path, top), cs)) when q.q_unit = path ->
@@ -452,7 +452,7 @@ let frame_member (nloc : int) ((fp, ms) : string list * string list) (args : exp
   let _, xi = !current_state in
   let rec find inner = function
     | [] -> None
-    | ((q : qname), u) :: xi' ->
+    | (((q : qname), _), u) :: xi' ->
        if q.q_unit = fp && q.q_chain = ms then
          Some (inner, List.length (McttExtracted.Syntax.gs_tele xi))
        else find (inner + List.length (McttExtracted.Syntax.gu_params u)) xi'

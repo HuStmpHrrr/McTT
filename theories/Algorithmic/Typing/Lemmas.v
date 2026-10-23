@@ -656,7 +656,9 @@ Proof.
       eapply wf_me_mem; eassumption
   (** A loaded unit. *)
   | Hm : mdenote _ _ _ (me_unit _) _ |- wf_modexp_eq _ _ _ _ _ =>
-      inversion Hm; subst; eapply wf_me_unit; eassumption
+      let Hu := fresh "Hu" in
+      destruct (mdenote_unit_inv _ _ ltac:(eapply ctx_wf_gctx; eassumption) _ _ _ Hm) as (? & ? & Hu & _);
+      eapply wf_me_unit; [ eauto | exact Hu ]
   | _ => idtac
   end.
   (** The join of two levels: both arguments move to the larger sort. *)
@@ -1734,7 +1736,7 @@ Proof.
     pose proof (proj1 (modexp_gen _ _ _ _ _ HH)) as Hgen; cbn [gen_m modexp_lets] in Hgen, Hl.
   - destruct (me_mtele _ _ _ HH) as (R & T & Hm & Ht); econstructor; eassumption.
   - destruct (me_denotes _ _ _ _ _ HH) as (R & _ & Hm & _).
-    inversion Hm; subst; [ unfold gc_unit in *; discriminate |].
+    inversion Hm; subst; try (unfold gc_unit in *; cbn in *; discriminate).
     econstructor; eassumption.
   - destruct (me_mtele _ _ _ HH) as (R & T & Hm & Ht).
     eapply amod_mem; [ apply IH; [ exact Hgen | lia ] | exact Hm | exact Ht ].

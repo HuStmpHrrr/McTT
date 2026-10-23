@@ -30,6 +30,10 @@ Inductive dn_order (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> Prop :=
 | dno_unit : forall Γ H TΦ,
     gc_unit Θ Ξ H = Some TΦ ->
     dn_order Θ Ξ Γ H
+(** The open frame of a member's module, named by its path *)
+| dno_ind_frame : forall Γ H p r,
+    mod_qname H = Some p -> gs_find_ind Ξ p = Some r ->
+    dn_order Θ Ξ Γ H
 | dno_path : forall Γ fp,
     dn_order Θ Ξ Γ (me_unit fp)
 | dno_var : forall Γ x,
@@ -120,6 +124,23 @@ Proof. intros * Hq; cbn; rewrite Hq; reflexivity. Qed.
 Lemma gc_unit_mem_qname : forall Θ Ξ H y r, gc_unit Θ Ξ (me_mem H y) = Some r -> mod_qname H = None -> False.
 Proof. intros * Hu Hq; unfold gc_unit in Hu; cbn in Hu; rewrite Hq in Hu; discriminate. Qed.
 
+(** The member whose module's open frame a module expression names, if
+    any. *)
+Definition frame_ind_of (Ξ : gstack) (H : modexp) : option (qname * nat * ind_decl) :=
+  match mod_qname H with
+  | Some p => gs_find_ind Ξ p
+  | None => None
+  end.
+
+Lemma frame_ind_of_some : forall Ξ H r, frame_ind_of Ξ H = Some r -> exists p, mod_qname H = Some p /\ gs_find_ind Ξ p = Some r.
+Proof. intros * Hf; unfold frame_ind_of in Hf; destruct (mod_qname H) as [p |]; [ eauto | discriminate ]. Qed.
+
+Lemma frame_ind_of_none : forall Ξ H p r, frame_ind_of Ξ H = None -> mod_qname H = Some p -> gs_find_ind Ξ p = Some r -> False.
+Proof. intros * Hf Hq Hk; unfold frame_ind_of in Hf; rewrite Hq, Hk in Hf; discriminate. Qed.
+
+Lemma dn_of_frame_ind : forall Θ Ξ Γ H pq k D, frame_ind_of Ξ H = Some (pq, k, D) -> mdenote Θ Ξ Γ H (ds_ind nil pq k nil).
+Proof. intros * Hf; destruct (frame_ind_of_some _ _ _ Hf) as (p & Hq & Hk); eapply dn_ind_frame; eassumption. Qed.
+
 Section DenoteImpl.
   Variables (Θ : gdeps) (Ξ : gstack).
   Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
@@ -154,6 +175,8 @@ Section DenoteImpl.
   #[local]
   Ltac dn_finish :=
     first [ congruence
+          | solve [ eapply frame_ind_of_none; eassumption ]
+          | match goal with Hq : mod_qname _ = Some _ |- _ => solve [ cbn in Hq; congruence ] end
           | match goal with HN : forall r, ~ _ |- _ => solve [ eapply HN; eassumption ] end
           | intuition congruence
           | cbn in *; contradiction ].
@@ -180,8 +203,8 @@ Section DenoteImpl.
       | H : en_order _ _ _ _ |- _ => progressive_invert H
       | H : bx_order _ _ _ _ |- _ => progressive_invert H
       | H : ig_order _ _ _ _ _ |- _ => progressive_invert H
-      | Ho : dn_order _ _ _ (me_mem _ _), Eu : gc_unit _ _ (me_mem _ _) = None |- _ =>
-          inversion Ho; subst; clear Ho; [ congruence |]
+      | Ho : dn_order _ _ _ (me_mem _ _), Eu : gc_unit _ _ (me_mem _ _) = None, Ek : frame_ind_of _ (me_mem _ _) = None |- _ =>
+          inversion Ho; subst; clear Ho; [ congruence | exfalso; eapply frame_ind_of_none; eassumption |]
       (** The reference a member's path names, decided equal *)
       | Hr : ?r = (_, _, _) |- _ => is_var r; subst r
       end;
@@ -199,7 +222,9 @@ Section DenoteImpl.
       { R | mdenote Θ Ξ Γ H R } + { forall R, ~ mdenote Θ Ξ Γ H R } by struct Ho :=
   | Γ, me_unit fp, Ho with inspect (gc_unit Θ Ξ (me_unit fp)) := {
     | exist _ (Some (T, Φ)) Eu => inleft (exist _ (ds_closed nil (q_abs fp nil) T Φ nil) _)
-    | exist _ None Eu => inright _ }
+    | exist _ None Eu with inspect (frame_ind_of Ξ (me_unit fp)) := {
+      | exist _ (Some (pq, k, D)) Ek => inleft (exist _ (ds_ind nil pq k nil) (dn_of_frame_ind _ _ _ _ _ _ _ Ek))
+      | exist _ None Ek => inright _ } }
   | Γ, me_var x, Ho with inspect (ctx_find_mod Γ x) := {
     | exist _ (Some U) Ef with udenote_impl Γ None U _ := {
       | inleft (exist _ R HR) => inleft (exist _ R _)
@@ -218,17 +243,19 @@ Section DenoteImpl.
       | exist _ (Some p) Eqp =>
           inleft (exist _ (ds_closed nil (qname_in p y) T Φ nil) (dn_unit _ _ _ _ _ _ _ (mod_qname_mem_in _ _ _ Eqp) Eu))
       | exist _ None Eqp => False_rect _ (gc_unit_mem_qname _ _ _ _ _ Eu Eqp) }
-    | exist _ None Eu with mdenote_impl Γ H _ := {
-      | inright HN => inright _
-      | inleft (exist _ R0 HR0) with inspect (ds_mod Θ Ξ R0) := {
-        | exist _ None Em => inright _
-        | exist _ (Some R0m) Em with inspect (ds_entry R0m y) := {
-          | exist _ None Ee => inright _
-          | exist _ (Some (Γy, E, rd)) Ee with edenote_impl (Γy ++ Γ) (ds_epath R0m y) E _ := {
-            | inright HN => inright _
-            | inleft (exist _ R HR) with inspect (ds_read rd R) := {
-              | exist _ None Er => inright _
-              | exist _ (Some R') Er => inleft (exist _ R' _) } } } } } }
+    | exist _ None Eu with inspect (frame_ind_of Ξ (me_mem H y)) := {
+      | exist _ (Some (pq, k, D)) Ek => inleft (exist _ (ds_ind nil pq k nil) (dn_of_frame_ind _ _ _ _ _ _ _ Ek))
+      | exist _ None Ek with mdenote_impl Γ H _ := {
+        | inright HN => inright _
+        | inleft (exist _ R0 HR0) with inspect (ds_mod Θ Ξ R0) := {
+          | exist _ None Em => inright _
+          | exist _ (Some R0m) Em with inspect (ds_entry R0m y) := {
+            | exist _ None Ee => inright _
+            | exist _ (Some (Γy, E, rd)) Ee with edenote_impl (Γy ++ Γ) (ds_epath R0m y) E _ := {
+              | inright HN => inright _
+              | inleft (exist _ R HR) with inspect (ds_read rd R) := {
+                | exist _ None Er => inright _
+                | exist _ (Some R') Er => inleft (exist _ R' _) } } } } } } }
 
   with udenote_impl Γ o U (Ho : un_order Θ Ξ Γ U) :
       { R | udenote Θ Ξ Γ o U R } + { forall R, ~ udenote Θ Ξ Γ o U R } by struct Ho :=
@@ -320,6 +347,7 @@ Section Orders.
     pose proof (mdenote_functional_all _ _ Hg) as (Fm & Fu & Fe & Fb & Fi).
     apply mdenote_all_ind; intros.
     - eapply dno_unit; eassumption.
+    - eapply dno_ind_frame; eassumption.
     - apply dno_var; intros U' Hf.
       match goal with Hl : _ ∋ # _ ≔ₘ _ |- _ => rewrite (ctx_find_mod_complete _ _ _ Hl) in Hf end.
       injection Hf as <-; assumption.
@@ -387,7 +415,7 @@ Section Orders.
       + (* an alias: valid, so its target denotes *)
         assert (Hloc' : exists Φ', loc Θ Ξ pc T Φ').
         { destruct Hloc as [Hf | Hb].
-          - destruct (gc_sub_frame_loc _ _ _ _ _ _ _ Hsub Hf) as (Φq & [Hf' | [Hb' _]]); exists Φq; [ left | right ]; assumption.
+          - destruct (gc_sub_frame_loc _ _ _ _ _ _ _ Hsub Hf) as (Φq & [[Hf' _] | [Hb' _]]); exists Φq; [ left | right ]; assumption.
           - destruct (gc_sub_body _ _ _ _ _ _ _ Hsub Hb) as (Φq & Hb' & _); exists Φq; right; exact Hb'. }
         destruct Hloc' as (Φ'' & Hloc').
         destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & Hent).

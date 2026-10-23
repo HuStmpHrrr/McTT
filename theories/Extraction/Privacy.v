@@ -72,8 +72,8 @@ Section SiteDesc.
     intros * [(Θ' & T & Φ & Ns & -> & Hl) | (Θ' & pg & k & D & Ns & -> & Hl)] Hm; cbn in Hm.
     - injection Hm as <-; do 4 eexists; split; [ reflexivity | exact Hl ].
     - rewrite (ind_mlookup_group _ _ Hg _ _ _ _ Hl), (isp_path _ _ _ _ (ind_mlookup_selfpath _ _ Hg _ _ _ _ Hl)) in Hm.
-      destruct (gc_body Θ Ξ pq) as [[T Φ] |] eqn:Hb; [| discriminate ]; injection Hm as <-.
-      do 4 eexists; split; [ reflexivity | right; exact Hb ].
+      destruct (gc_loc Θ Ξ pq) as [[T Φ] |] eqn:Hb; [| discriminate ]; injection Hm as <-.
+      do 4 eexists; split; [ reflexivity | exact (gc_loc_loc _ _ _ _ _ Hb) ].
   Qed.
 
   Lemma mdenote_apps : forall Ns Γ H R R', mdenote Θ Ξ Γ H R -> ds_ats R Ns = Some R' -> mdenote Θ Ξ Γ (me_apps H Ns) R'.
@@ -88,30 +88,59 @@ Section SiteDesc.
       mdenote Θ Ξ Γ (qname_mod pm) (ds_ind nil pq k nil).
   Proof.
     intros * Hl.
-    destruct (ind_mparent _ _ Hg _ _ _ _ Hl) as (mq & y & Tq & Φq & pv & Φ' & -> & Hlm & He).
+    destruct (ind_mparent _ _ Hg _ _ _ _ Hl) as [(mq & y & Tq & Φq & pv & Φ' & -> & Hlm & He) | Hk].
+    2:{ (* the open frame of its module *) eapply dn_ind_frame; [ apply mod_qname_qname_mod | exact Hk ]. }
     rewrite qname_mod_in.
-    pose proof (mdenote_of_loc _ _ Hg _ _ _ _ Γ (mod_qname_qname_mod mq) Hlm) as Hm.
-    pose proof (loc_closed _ _ Hg _ _ _ (loc_mod_loc _ _ _ _ _ Hlm)) as [_ HcΦ].
+    destruct (mdenote_of_loc_any _ _ Hg _ _ _ _ Γ (mod_qname_qname_mod mq) Hlm) as (R & Hm & Hmd & _).
+    pose proof (loc_closed _ _ Hg _ _ _ Hlm) as [_ HcΦ].
     destruct (gm_entry_prefix _ _ _ (body_closed_noopen _ _ HcΦ) He) as (Φ0 & Hp).
-    eapply dn_mem; [ exact Hm | reflexivity | cbn; rewrite Hp; reflexivity | constructor | reflexivity ].
+    eapply dn_mem; [ exact Hm | exact Hmd | cbn; rewrite Hp; reflexivity | constructor | reflexivity ].
+  Qed.
+
+  (** An open frame, of either kind, named by its path, is stored there. *)
+  Lemma site_of_frame : forall H p TΦ, mod_qname H = Some p -> gc_frame Ξ p = Some TΦ -> msite Θ Ξ H p.
+  Proof.
+    intros * Hq Hf; destruct TΦ as [T Φ].
+    destruct (gs_find_ind Ξ p) as [r |] eqn:Hk; [ exact (ms_ind_frame _ _ _ _ _ Hq Hk) |].
+    exact (ms_unit _ _ _ _ _ _ Hq (gc_unit_frame _ _ _ _ _ _ Hq Hf Hk)).
+  Qed.
+
+  (** The member of a stored module expression that is the open frame of a
+      member's module is no entry there. *)
+  Lemma ind_frame_no_entry : forall H z pq E p r, msite Θ Ξ H pq -> gc_entry Θ Ξ (qname_in pq z) = Some E ->
+      mod_qname (me_mem H z) = Some p -> gs_find_ind Ξ p = Some r -> False.
+  Proof.
+    intros * Hs He Hq Hk.
+    cbn in Hq; destruct (mod_qname H) as [p0 |] eqn:Hq0; [| discriminate ]; injection Hq as <-.
+    change {| q_unit := q_unit p0; q_chain := q_chain p0 ++ z :: nil |} with (qname_in p0 z) in Hk.
+    destruct (gs_find_ind_tele _ _ _ Hk) as (U & T0 & Ht).
+    destruct (frame_parent _ _ Hg _ _ _ _ Ht) as (Tq & Φq & Hfq & _).
+    pose proof (msite_functional _ _ Hg _ _ Hs _ (site_of_frame _ _ _ Hq0 Hfq)) as ->.
+    rewrite (frame_gc_entry_none _ _ _ _ _ Ht) in He; discriminate.
   Qed.
 
   (** What a stored module expression denotes is read off its storage. *)
   Theorem msite_desc : forall H pq, msite Θ Ξ H pq -> forall Γ R, mdenote Θ Ξ Γ H R -> site_desc Θ Ξ pq R.
   Proof.
-    induction 1 as [H p T Φ Hq Hu | H pq z E Hs IH He Hb | H pq z E E' pq' Hs IH He Ha Hs' IH' | H N pq Hs IH];
+    induction 1 as [H p T Φ Hq Hu | H p r Hq Hk | H pq z E Hs IH He Hb | H pq z E E' pq' Hs IH He Ha Hs' IH' | H N pq Hs IH];
       intros Γ R Hm.
     - (* a loaded unit or an open frame *)
       rewrite (unit_denote_unique _ _ Hg _ _ _ _ _ _ Hq Hu Hm).
       destruct (gc_unit_loc _ _ _ _ _ Hu) as (mp & Hq' & Hl); rewrite Hq in Hq'; injection Hq' as <-.
       left; do 4 eexists; split; [ reflexivity | exact Hl ].
+    - (* the open frame of a member's module: the member *)
+      destruct r as [[pg k] D].
+      rewrite (proj2 (frame_denote_unique _ _ Hg _ _ _ _ Hq Hm) _ _ _ Hk).
+      right; exists nil, pg, k, D, nil; split; [ reflexivity | rewrite ind_mlookup_unfold, Hk; reflexivity ].
     - (* a body module: stored at its own path, or an inductive type *)
-      inversion Hm as [? ? ? ? ? ? Hu | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst.
+      inversion Hm as [? ? ? ? ? ? Hu | ? ? ? ? ? ? Hq Hk | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst.
       + destruct (gc_unit_loc _ _ _ _ _ Hu) as (mp & Hq & Hl).
-        rewrite (msite_unit _ _ Hg _ _ (ms_body _ _ _ _ _ _ Hs He Hb) _ _ _ Hq Hu).
+        rewrite (msite_unit _ _ Hg _ _ (ms_body _ _ _ _ _ _ Hs He Hb) _ Hq (or_introl (ex_intro _ _ Hu))).
         match goal with Hq1 : mod_qname _ = Some ?p0 |- _ =>
           assert_fails (constr_eq p0 mp); assert (mp = p0) by congruence; subst mp end.
         left; do 4 eexists; split; [ reflexivity | exact Hl ].
+      + (* an open frame of a member's module is no entry *)
+        exfalso; exact (ind_frame_no_entry _ _ _ _ _ _ Hs He Hq Hk).
       + destruct (site_desc_mod _ _ _ (IH _ _ Hm0) Hd0) as (Θ' & T & Φ & Ns & -> & Hl).
         cbn in He0; destruct (gm_prefix_upto Φ z) as [[| Φ0 x E1 | ? ? ?] |] eqn:Hp; try discriminate.
         injection He0 as <- <- <-.
@@ -133,12 +162,13 @@ Section SiteDesc.
         * cbn [ge_read] in Hed; inversion Hed; subst.
           right; do 5 eexists; split; [ reflexivity | exact (proj2 (gc_entry_ind _ _ _ _ _ _ _ _ He)) ].
     - (* an alias: where its target is *)
-      inversion Hm as [? ? ? ? ? ? Hu | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst.
+      inversion Hm as [? ? ? ? ? ? Hu | ? ? ? ? ? ? Hq Hk | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst.
       + destruct (gc_unit_loc _ _ _ _ _ Hu) as (mp & Hq & Hl).
-        rewrite (msite_unit _ _ Hg _ _ (ms_alias _ _ _ _ _ _ _ _ Hs He Ha Hs') _ _ _ Hq Hu).
+        rewrite (msite_unit _ _ Hg _ _ (ms_alias _ _ _ _ _ _ _ _ Hs He Ha Hs') _ Hq (or_introl (ex_intro _ _ Hu))).
         match goal with Hq1 : mod_qname _ = Some ?p0 |- _ =>
           assert_fails (constr_eq p0 mp); assert (mp = p0) by congruence; subst mp end.
         left; do 4 eexists; split; [ reflexivity | exact Hl ].
+      + exfalso; exact (ind_frame_no_entry _ _ _ _ _ _ Hs He Hq Hk).
       + destruct (site_desc_mod _ _ _ (IH _ _ Hm0) Hd0) as (Θ' & T & Φ & Ns & -> & Hl).
         cbn in He0; destruct (gm_prefix_upto Φ z) as [[| Φ0 x E1 | ? ? ?] |] eqn:Hp; try discriminate.
         injection He0 as <- <- <-.
@@ -162,7 +192,8 @@ Section SiteDesc.
           injection Heq as _ <- <- _.
           right; do 5 eexists; split; [ reflexivity | exact Hml ].
     - (* an application *)
-      inversion Hm as [? ? ? ? ? ? Hu | | | ? ? ? R0 ? Hm0 Ha0 |]; subst; [ cbn in Hu; discriminate |].
+      inversion Hm as [? ? ? ? ? ? Hu | ? ? ? ? ? ? Hq _ | | | ? ? ? R0 ? Hm0 Ha0 |]; subst;
+        [ cbn in Hu; discriminate | cbn in Hq; discriminate |].
       exact (site_desc_at _ _ _ _ (IH _ _ Hm0) Ha0).
   Qed.
 End SiteDesc.
@@ -189,6 +220,28 @@ Proof.
     try discriminate; auto.
 Qed.
 
+Lemma gm_entry_alias_sub : forall Φ T x ip E E', gm_entry Φ (x :: ip) = Some E -> entry_alias E = Some E' ->
+    exists Δ, gm_submodule T Φ x ip = Some (mr_alias (gu_mk Δ (md_alias E'))).
+Proof.
+  fix IH 1; intros [| Φ0 y E0 | Φ0 c its] T x ip E E' He Ha; cbn in He |- *; [ discriminate | | exact (IH _ _ _ _ _ _ He Ha) ].
+  destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ He Ha) ].
+  destruct ip as [| z ip'].
+  - injection He as <-; destruct E0 as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ?]; cbn in Ha; try discriminate;
+      injection Ha as <-; eexists; reflexivity.
+  - destruct E0 as [| ? [Δ [? Φ'| ?]] | ? ? ? D Φ' | ? ? ? ? ? ?]; try discriminate; eapply IH; eassumption.
+Qed.
+
+Lemma gc_entry_alias_module : forall Θ Ξ p E E', gc_entry Θ Ξ p = Some E -> entry_alias E = Some E' ->
+    exists Δ, gc_module Θ Ξ p = Some (mr_alias (gu_mk Δ (md_alias E'))).
+Proof.
+  intros * He Ha; unfold gc_entry, gc_entry_u in He; unfold gc_module, gc_module_u.
+  rewrite gs_find_tele_find in He.
+  destruct (gs_find_tele Ξ p) as [[[U ip] T0] |]; cbn in He.
+  - destruct ip as [| x ip]; [ rewrite gm_entry_nil in He; discriminate | exact (gm_entry_alias_sub _ _ _ _ _ _ He Ha) ].
+  - destruct (gds_lookup Θ (q_unit p)) as [U |]; [| discriminate ].
+    destruct (q_chain p) as [| x ip]; cbn; [ rewrite gm_entry_nil in He; discriminate | exact (gm_entry_alias_sub _ _ _ _ _ _ He Ha) ].
+Qed.
+
 Section Below.
   Variables (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack).
   Hypothesis Hg1 : ⊢ᵍ Θ1 ⍮ Ξ1.
@@ -197,15 +250,118 @@ Section Below.
   Let Hg2 : ⊢ᵍ Θ2 ⍮ Ξ2 := emx_wf _ _ _ _ He.
   Let Hs : gc_sub Θ1 Ξ1 Θ2 Ξ2 := gc_subx_sub _ _ _ _ (emx_res _ _ _ _ He).
 
+  (** A member is an open frame of the smaller context, or neither a unit
+      nor the open frame of a member's module there. *)
+  Lemma mem_frame_cases : forall H z,
+      (exists p1 TΦ, mod_qname (me_mem H z) = Some p1 /\ gc_frame Ξ1 p1 = Some TΦ) \/
+      (gc_unit Θ1 Ξ1 (me_mem H z) = None /\ frame_ind_of Ξ1 (me_mem H z) = None).
+  Proof.
+    intros H z; destruct (mod_qname (me_mem H z)) as [p1 |] eqn:Hq1.
+    - destruct (gc_frame Ξ1 p1) as [TΦ |] eqn:Hf1; [ left; eauto | right; split ].
+      + destruct (gc_unit Θ1 Ξ1 (me_mem H z)) as [[T Φ] |] eqn:Hu; [ exfalso | reflexivity ].
+        destruct (gc_unit_cases _ _ _ _ _ Hu) as (mp & Hq & [Hf | (_ & Hc & _)]); rewrite Hq1 in Hq; injection Hq as <-;
+          [ congruence |].
+        cbn in Hq1; destruct (mod_qname H) as [p0 |]; [| discriminate ]; injection Hq1 as <-.
+        cbn in Hc; destruct (q_chain p0); discriminate.
+      + unfold frame_ind_of; rewrite Hq1; destruct (gs_find_ind Ξ1 p1) as [r |] eqn:Hk; [ exfalso | reflexivity ].
+        destruct (gs_find_ind_tele _ _ _ Hk) as (U & T & Ht).
+        destruct (gs_find_tele_body _ _ Hg1 _ _ _ _ Ht) as (Δ & Φ & ->).
+        unfold gc_frame in Hf1; rewrite Ht in Hf1; discriminate.
+    - right; split; [ unfold gc_unit; rewrite Hq1; reflexivity | unfold frame_ind_of; rewrite Hq1; reflexivity ].
+  Qed.
+
+  (** An open frame of the smaller context a member names is that member
+      of where its parent is stored. *)
+  Lemma frame_mem_site : forall H z p1 TΦ pq Γ0,
+      mod_qname (me_mem H z) = Some p1 -> gc_frame Ξ1 p1 = Some TΦ ->
+      (forall R, mdenote Θ1 Ξ1 Γ0 H R -> msite Θ1 Ξ1 H pq) -> p1 = qname_in pq z.
+  Proof.
+    intros * Hq Hf IH.
+    cbn in Hq; destruct (mod_qname H) as [p0 |] eqn:Hq0; [| discriminate ]; injection Hq as <-.
+    change {| q_unit := q_unit p0; q_chain := q_chain p0 ++ z :: nil |} with (qname_in p0 z) in *.
+    assert (Ht : exists U T0, gs_find_tele Ξ1 (qname_in p0 z) = Some (U, nil, T0)).
+    { destruct TΦ as [T Φ]; unfold gc_frame in Hf; destruct (gs_find_tele Ξ1 (qname_in p0 z)) as [[[U [| ? ?]] T0] |];
+        try (destruct U as [? [[|] ? | ?]]); try discriminate; eauto. }
+    destruct Ht as (U & T0 & Ht).
+    destruct (frame_parent _ _ Hg1 _ _ _ _ Ht) as (Tq & Φq & Hfq & _).
+    destruct (mdenote_of_loc_any _ _ Hg1 _ _ _ _ Γ0 Hq0 (or_introl Hfq)) as (R & Hm & _ & _).
+    pose proof (msite_functional _ _ Hg1 _ _ (IH _ Hm) _ (site_of_frame _ _ _ _ _ Hq0 Hfq)) as ->; reflexivity.
+  Qed.
+
+  (** An open frame of the bigger context, at a path denoting in the
+      smaller one, is an open frame there, of the same kind. *)
+  Lemma frame_below : forall H p T2 Φ2, mod_qname H = Some p -> gc_frame Ξ2 p = Some (T2, Φ2) ->
+      forall Γ R, mdenote Θ1 Ξ1 Γ H R ->
+      exists T1 Φ1, gc_frame Ξ1 p = Some (T1, Φ1) /\ gs_find_ind Ξ1 p = gs_find_ind Ξ2 p.
+  Proof.
+    (* a frame of the smaller context that is one of the bigger keeps its kind *)
+    assert (Hkeep : forall p T1 Φ1 T2 Φ2, gc_frame Ξ1 p = Some (T1, Φ1) -> gc_frame Ξ2 p = Some (T2, Φ2) ->
+              gs_find_ind Ξ1 p = gs_find_ind Ξ2 p).
+    { intros * Hf1 Hf2; destruct (gc_sub_frame_loc _ _ _ _ _ _ _ Hs Hf1) as (Φ' & [[_ Hk] | [Hb _]]); [ symmetry; exact Hk |].
+      rewrite (gc_body_not_frame _ _ _ _ Hb) in Hf2; discriminate. }
+    induction H as [fp | x | H0 IH y | H0 IH N | U]; intros p T2 Φ2 Hq Hf2 Γ R Hm; cbn in Hq; try discriminate.
+    - injection Hq as <-.
+      destruct (mdenote_unit_inv _ _ Hg1 _ _ _ Hm) as (T & Φ & Hu & _).
+      destruct (gc_unit_cases _ _ _ _ _ Hu) as (mp & Hq & [Hf | (_ & _ & Hb & _)]); cbn in Hq; injection Hq as <-.
+      + exists T, Φ; split; [ exact Hf | exact (Hkeep _ _ _ _ _ Hf Hf2) ].
+      + exfalso; destruct (gc_sub_body _ _ _ _ _ _ _ Hs Hb) as (Φ' & Hb2 & _).
+        rewrite (gc_body_not_frame _ _ _ _ Hb2) in Hf2; discriminate.
+    - case_eq (mod_qname H0); [ intros p0 Hq0 | intros Hn; rewrite Hn in Hq; discriminate ].
+      rewrite Hq0 in Hq; injection Hq as <-.
+      change {| q_unit := q_unit p0; q_chain := q_chain p0 ++ y :: nil |} with (qname_in p0 y) in *.
+      assert (Hq : mod_qname (me_mem H0 y) = Some (qname_in p0 y)) by (cbn; rewrite Hq0; reflexivity).
+      inversion Hm as [? ? ? T Φ Hq' Hu | ? ? ? pq k D Hq' Hk | | | | ? ? ? R0 R0m Γy E rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst.
+      + (* a unit there: an open frame *)
+        destruct (gc_unit_cases _ _ _ _ _ Hu) as (mp & Hq1 & [Hf | (_ & Hc & _)]); rewrite Hq in Hq1; injection Hq1 as <-.
+        * exists T, Φ; split; [ exact Hf | exact (Hkeep _ _ _ _ _ Hf Hf2) ].
+        * exfalso; cbn in Hc; destruct (q_chain p0); discriminate.
+      + (* the open frame of a member's module there *)
+        rewrite Hq in Hq'; injection Hq' as <-.
+        destruct (ds_mod_ind_frame _ _ Hg1 _ _ _ _ nil nil Hk) as (T & Φ & Hf & _).
+        exists T, Φ; split; [ exact Hf | exact (Hkeep _ _ _ _ _ Hf Hf2) ].
+      + (* a member there: its entry is no frame here *)
+        exfalso.
+        assert (Ht2 : exists U T0, gs_find_tele Ξ2 (qname_in p0 y) = Some (U, nil, T0)).
+        { unfold gc_frame in Hf2; destruct (gs_find_tele Ξ2 (qname_in p0 y)) as [[[U [| ? ?]] T0] |];
+            try (destruct U as [? [[|] ? | ?]]); try discriminate; eauto. }
+        destruct Ht2 as (U & T0 & Ht2).
+        destruct (frame_parent _ _ Hg2 _ _ _ _ Ht2) as (Tq2 & Φq2 & Hfq2 & _).
+        destruct (IH _ _ _ Hq0 Hfq2 _ _ Hm0) as (Tq & Φq & Hfq & _).
+        (* what the parent denotes is its frame *)
+        assert (Hmd : R0m = ds_closed nil p0 Tq Φq nil).
+        { destruct (frame_denote_unique _ _ Hg1 _ _ _ _ Hq0 Hm0) as [Hu0 Hk0].
+          destruct (gs_find_ind Ξ1 p0) as [[[pq k] D] |] eqn:Hk.
+          - rewrite (Hk0 _ _ _ eq_refl) in Hd0.
+            destruct (ds_mod_ind_frame _ _ Hg1 _ _ _ _ nil nil Hk) as (T' & Φ' & Hf' & Hd'); rewrite Hd' in Hd0.
+            rewrite Hfq in Hf'; injection Hf' as <- <-; injection Hd0 as <-; reflexivity.
+          - rewrite (Hu0 _ _ (gc_unit_frame _ _ _ _ _ _ Hq0 Hfq Hk)) in Hd0; cbn in Hd0; injection Hd0 as <-; reflexivity. }
+        subst R0m; cbn in He0; destruct (gm_prefix_upto Φq y) as [[| Φ0 x E1 | ? ? ?] |] eqn:Hp; try discriminate.
+        destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & Hent).
+        pose proof (proj2 (loc_entry _ _ Hg1 _ _ _ (or_introl Hfq) _ _) Hent) as HE1.
+        destruct (gc_sub_entry _ _ _ _ _ _ Hs HE1) as (E2 & HE2 & _).
+        rewrite (gc_frame_entry_none _ _ _ _ Hf2) in HE2; discriminate.
+  Qed.
+
+  (** An open frame of the smaller context is, in the bigger one, no alias. *)
+  Lemma frame_not_alias : forall p TΦ E E', gc_frame Ξ1 p = Some TΦ -> gc_entry Θ2 Ξ2 p = Some E ->
+      entry_alias E = Some E' -> False.
+  Proof.
+    intros * Hf HE Ha; destruct TΦ as [T Φ].
+    destruct (gc_sub_frame_loc _ _ _ _ _ _ _ Hs Hf) as (Φ' & [[Hf' _] | [_ Hm']]).
+    - rewrite (gc_frame_entry_none _ _ _ _ Hf') in HE; discriminate.
+    - destruct (gc_entry_alias_module _ _ _ _ _ HE Ha) as (Δ & Hm); congruence.
+  Qed.
+
   (** The entry an expression denoting in the smaller context selects from
-      where it is stored is stored there too. *)
+      where it is stored is stored there too, unless it names an open frame. *)
   Lemma entry_below : forall Γ H z R pq,
       mdenote Θ1 Ξ1 Γ (me_mem H z) R -> msite Θ1 Ξ1 H pq ->
-      gc_unit Θ1 Ξ1 (me_mem H z) = None ->
+      gc_unit Θ1 Ξ1 (me_mem H z) = None -> frame_ind_of Ξ1 (me_mem H z) = None ->
       exists E1, gc_entry Θ1 Ξ1 (qname_in pq z) = Some E1.
   Proof.
-    intros * Hm Hsi Hu; inversion Hm as [? ? ? ? ? ? Hu' | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst;
-      [ congruence |].
+    intros * Hm Hsi Hu Hk;
+      inversion Hm as [? ? ? ? ? ? Hu' | ? ? ? ? ? ? Hq' Hk' | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst;
+      [ congruence | exfalso; eapply frame_ind_of_none; eassumption |].
     destruct (site_desc_mod _ _ Hg1 _ _ _ (msite_desc _ _ Hg1 _ _ Hsi _ _ Hm0) Hd0) as (Θ' & T & Φ & Ns & -> & Hl).
     cbn in He0; destruct (gm_prefix_upto Φ z) as [[| Φ0 x E1 | ? ? ?] |] eqn:Hp; try discriminate.
     destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & Hent).
@@ -214,20 +370,20 @@ Section Below.
 
   (** A loaded unit or an open frame of the bigger context, at an expression
       denoting in the smaller one, is one there too. *)
+  (** A loaded unit or an open frame of the bigger context, at an expression
+      denoting in the smaller one, is one there too. *)
   Lemma unit_below : forall H T2 Φ2, gc_unit Θ2 Ξ2 H = Some (T2, Φ2) ->
       forall Γ R, mdenote Θ1 Ξ1 Γ H R -> exists T1 Φ1, gc_unit Θ1 Ξ1 H = Some (T1, Φ1).
   Proof.
-    induction H as [fp | x | H0 IH y | H0 IH N | U]; intros T2 Φ2 Hu Γ R Hm;
-      try (unfold gc_unit in Hu; cbn in Hu; discriminate).
-    - inversion Hm; subst; eauto.
-    - destruct (gc_unit Θ1 Ξ1 (me_mem H0 y)) as [[T1 Φ1] |] eqn:Hu1; [ eauto | exfalso ].
-      inversion Hm as [? ? ? ? ? ? Hu' | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst; [ congruence |].
-      destruct (gc_unit_mem_parent _ _ Hg2 _ _ _ _ Hu) as (T2' & Φ2' & Hu0 & _).
-      destruct (IH _ _ Hu0 _ _ Hm0) as (T0 & Φ0 & Hu01).
-      destruct (gc_unit_loc _ _ _ _ _ Hu01) as (p0 & Hq0 & _).
-      destruct (entry_below _ _ _ _ _ Hm (ms_unit _ _ _ _ _ _ Hq0 Hu01) Hu1) as (E1 & HE1).
-      destruct (gc_sub_entry _ _ _ _ _ _ Hs HE1) as (E2 & HE2 & _).
-      rewrite (gc_unit_mem_entry_none _ _ _ _ _ _ _ Hu (mod_qname_mem _ _ _ Hq0)) in HE2; discriminate.
+    intros * Hu Γ R Hm.
+    destruct (gc_unit_cases _ _ _ _ _ Hu) as (p & Hq & [Hf2 | (_ & Hc & _)]).
+    - destruct (frame_below _ _ _ _ Hq Hf2 _ _ Hm) as (T1 & Φ1 & Hf1 & Hk).
+      exists T1, Φ1; apply (gc_unit_frame _ _ _ _ _ _ Hq Hf1).
+      rewrite Hk; exact (gc_unit_not_ind _ _ _ _ _ _ Hq Hu).
+    - (* a filed unit: a unit's path *)
+      pose proof (mod_qname_inv _ _ Hq) as ->.
+      destruct p as [fp ch]; cbn in Hc; subst ch; cbn [qname_mod me_mems] in Hm |- *.
+      destruct (mdenote_unit_inv _ _ Hg1 _ _ _ Hm) as (T1 & Φ1 & Hu1 & _); eauto.
   Qed.
 
   (** A loaded unit or an open frame of the smaller context is, in the
@@ -238,13 +394,7 @@ Section Below.
   Proof.
     intros * Hu pq0 Hq HE Ha.
     destruct (gc_unit_cases _ _ _ _ _ Hu) as (mp & Hq' & [Hf | (_ & Hc & _)]); rewrite Hq in Hq'; injection Hq' as <-.
-    - destruct (gc_sub_frame_loc _ _ _ _ _ _ _ Hs Hf) as (Φ' & [Hf' | [Hb' Hm']]).
-      + rewrite (gc_unit_mem_entry_none _ _ _ _ _ _ _ (gc_unit_of_frame _ _ _ _ _ _ Hq Hf') Hq) in HE; discriminate.
-      + cbn in Hq; destruct (mod_qname H) as [q0 |] eqn:Hq0; [| discriminate ]; injection Hq as <-.
-        change {| q_unit := q_unit q0; q_chain := q_chain q0 ++ p :: nil |} with (qname_in q0 p) in *.
-        destruct (parent_loc _ _ Hg2 _ _ _ _ Hb' Hm') as (Tq & Φq & pv & Δ & Hlq & Hent & _).
-        rewrite (proj2 (loc_entry _ _ Hg2 _ _ _ (loc_mod_loc _ _ _ _ _ Hlq) _ _) Hent) in HE.
-        injection HE as <-; discriminate.
+    - exact (frame_not_alias _ _ _ _ Hf HE Ha).
     - cbn in Hq; destruct (mod_qname H) as [q0 |]; [| discriminate ]; injection Hq as <-.
       cbn in Hc; destruct (q_chain q0); discriminate.
   Qed.
@@ -252,32 +402,33 @@ Section Below.
   Theorem msite_below : forall H pq, msite Θ2 Ξ2 H pq ->
       forall Γ R, mdenote Θ1 Ξ1 Γ H R -> msite Θ1 Ξ1 H pq.
   Proof.
-    induction 1 as [H p T Φ Hq Hu | H pq z E Hsi IH HE Hb | H pq z E E' pq' Hsi IH HE Ha Hsi' IH' | H N pq Hsi IH];
+    induction 1 as [H p T Φ Hq Hu | H p r Hq Hk | H pq z E Hsi IH HE Hb | H pq z E E' pq' Hsi IH HE Ha Hsi' IH' | H N pq Hsi IH];
       intros Γ R Hm.
     - destruct (unit_below _ _ _ Hu _ _ Hm) as (T1 & Φ1 & Hu1); eapply ms_unit; eassumption.
-    - destruct (gc_unit Θ1 Ξ1 (me_mem H z)) as [[T1 Φ1] |] eqn:Hu1.
+    - (* the open frame of a member's module there: an open frame here *)
+      destruct r as [[pg k] D].
+      destruct (ds_mod_ind_frame _ _ Hg2 _ _ _ _ nil nil Hk) as (T2 & Φ2 & Hf2 & _).
+      destruct (frame_below _ _ _ _ Hq Hf2 _ _ Hm) as (T1 & Φ1 & Hf1 & _).
+      exact (site_of_frame _ _ _ _ _ Hq Hf1).
+    - destruct (mem_frame_cases H z) as [(p1 & TΦ & Hq1 & Hf1) | (Hu1 & Hk1)].
       + (* an open frame there: stored at its own path *)
-        destruct (gc_unit_mem_parent _ _ Hg1 _ _ _ _ Hu1) as (T0 & Φ0 & Hu0 & _).
-        destruct (gc_unit_loc _ _ _ _ _ Hu0) as (p0 & Hq0 & _).
-        pose proof (IH _ _ (dn_unit _ _ Γ _ _ _ _ Hq0 Hu0)) as Hs1.
-        rewrite (msite_unit _ _ Hg1 _ _ Hs1 _ _ _ Hq0 Hu0).
-        eapply ms_unit; [ exact (mod_qname_mem _ _ _ Hq0) | exact Hu1 ].
-      + inversion Hm as [? ? ? ? ? ? Hu' | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst; [ congruence |].
+        pose proof (frame_mem_site _ _ _ _ _ Γ Hq1 Hf1 (IH Γ)) as ->.
+        exact (site_of_frame _ _ _ _ _ Hq1 Hf1).
+      + inversion Hm as [? ? ? ? ? ? Hu' | ? ? ? ? ? ? Hq' Hk' | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst;
+          [ congruence | exfalso; eapply frame_ind_of_none; eassumption |].
         pose proof (IH _ _ Hm0) as Hs1.
-        destruct (entry_below _ _ _ _ _ Hm Hs1 Hu1) as (E1 & HE1).
+        destruct (entry_below _ _ _ _ _ Hm Hs1 Hu1 Hk1) as (E1 & HE1).
         destruct (gc_sub_entry _ _ _ _ _ _ Hs HE1) as (E2 & HE2 & Hgr); rewrite HE in HE2; injection HE2 as <-.
         eapply ms_body; [ exact Hs1 | exact HE1 | exact (entry_grows_body _ _ Hgr Hb) ].
-    - destruct (gc_unit Θ1 Ξ1 (me_mem H z)) as [[T1 Φ1] |] eqn:Hu1.
+    - destruct (mem_frame_cases H z) as [(p1 & TΦ & Hq1 & Hf1) | (Hu1 & Hk1)].
       + (* an open frame there is no alias here *)
         exfalso.
-        destruct (gc_unit_mem_parent _ _ Hg1 _ _ _ _ Hu1) as (T0 & Φ0 & Hu0 & _).
-        destruct (gc_unit_loc _ _ _ _ _ Hu0) as (p0 & Hq0 & _).
-        pose proof (IH _ _ (dn_unit _ _ Γ _ _ _ _ Hq0 Hu0)) as Hs1.
-        rewrite (msite_unit _ _ Hg1 _ _ Hs1 _ _ _ Hq0 Hu0) in HE.
-        exact (unit_not_alias _ _ _ _ _ _ Hu1 _ (mod_qname_mem _ _ _ Hq0) HE Ha).
-      + inversion Hm as [? ? ? ? ? ? Hu' | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst; [ congruence |].
+        pose proof (frame_mem_site _ _ _ _ _ Γ Hq1 Hf1 (IH Γ)) as ->.
+        exact (frame_not_alias _ _ _ _ Hf1 HE Ha).
+      + inversion Hm as [? ? ? ? ? ? Hu' | ? ? ? ? ? ? Hq' Hk' | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst;
+          [ congruence | exfalso; eapply frame_ind_of_none; eassumption |].
         pose proof (IH _ _ Hm0) as Hs1.
-        destruct (entry_below _ _ _ _ _ Hm Hs1 Hu1) as (E1 & HE1).
+        destruct (entry_below _ _ _ _ _ Hm Hs1 Hu1 Hk1) as (E1 & HE1).
         destruct (gc_sub_entry _ _ _ _ _ _ Hs HE1) as (E2 & HE2 & Hgr); rewrite HE in HE2; injection HE2 as <-.
         pose proof (entry_grows_alias _ _ _ Hgr Ha) as <-.
         eapply ms_alias; [ exact Hs1 | exact HE1 | exact Ha |].
@@ -295,7 +446,8 @@ Section Below.
           pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ HvΦ Hp) as HE0; cbn [ge_valid] in HE0.
           destruct HE0 as [_ HE0]; cbn [syn_V] in HE0; destruct HE0 as [D Mk _ _ _ _ HD].
           exact (IH' _ _ (mdenote_apps _ _ Ns' Γ _ _ _ (mdenote_ind_canon _ _ Hg1 _ _ _ _ Γ HD) (ds_ats_ind_nil Ns' p k nil))).
-    - inversion Hm as [? ? ? ? ? ? Hu | | | ? ? ? R0 ? Hm0 Ha0 |]; subst; [ cbn in Hu; discriminate |].
+    - inversion Hm as [? ? ? ? ? ? Hu | ? ? ? ? ? ? Hq _ | | | ? ? ? R0 ? Hm0 Ha0 |]; subst;
+        [ cbn in Hu; discriminate | cbn in Hq; discriminate |].
       exact (ms_app _ _ _ _ _ (IH _ _ Hm0)).
   Qed.
 End Below.
@@ -323,28 +475,6 @@ Inductive site_order (Θ : gdeps) (Ξ : gstack) : modexp -> Prop :=
 Definition aliases_sited (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
   forall p E E', gc_entry Θ1 Ξ1 p = Some E -> entry_alias E = Some E' -> site_order Θ2 Ξ2 E'.
 
-Lemma gm_entry_alias_sub : forall Φ T x ip E E', gm_entry Φ (x :: ip) = Some E -> entry_alias E = Some E' ->
-    exists Δ, gm_submodule T Φ x ip = Some (mr_alias (gu_mk Δ (md_alias E'))).
-Proof.
-  fix IH 1; intros [| Φ0 y E0 | Φ0 c its] T x ip E E' He Ha; cbn in He |- *; [ discriminate | | exact (IH _ _ _ _ _ _ He Ha) ].
-  destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ He Ha) ].
-  destruct ip as [| z ip'].
-  - injection He as <-; destruct E0 as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ?]; cbn in Ha; try discriminate;
-      injection Ha as <-; eexists; reflexivity.
-  - destruct E0 as [| ? [Δ [? Φ'| ?]] | ? ? ? D Φ' | ? ? ? ? ? ?]; try discriminate; eapply IH; eassumption.
-Qed.
-
-Lemma gc_entry_alias_module : forall Θ Ξ p E E', gc_entry Θ Ξ p = Some E -> entry_alias E = Some E' ->
-    exists Δ, gc_module Θ Ξ p = Some (mr_alias (gu_mk Δ (md_alias E'))).
-Proof.
-  intros * He Ha; unfold gc_entry, gc_entry_u in He; unfold gc_module, gc_module_u.
-  rewrite gs_find_tele_find in He.
-  destruct (gs_find_tele Ξ p) as [[[U ip] T0] |]; cbn in He.
-  - destruct ip as [| x ip]; [ rewrite gm_entry_nil in He; discriminate | exact (gm_entry_alias_sub _ _ _ _ _ _ He Ha) ].
-  - destruct (gds_lookup Θ (q_unit p)) as [U |]; [| discriminate ].
-    destruct (q_chain p) as [| x ip]; cbn; [ rewrite gm_entry_nil in He; discriminate | exact (gm_entry_alias_sub _ _ _ _ _ _ He Ha) ].
-Qed.
-
 Section Sited.
   Variables (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack).
   Hypothesis Hg1 : ⊢ᵍ Θ1 ⍮ Ξ1.
@@ -358,25 +488,36 @@ Section Sited.
   Proof.
     induction H as [fp | x | H0 IH z | H0 IH N | U]; intros Γ R Hm; try solve [ constructor ].
     - assert (Hm0 : exists Γ0 R0, mdenote Θ1 Ξ1 Γ0 H0 R0).
-      { inversion Hm as [? ? ? ? ? ? Hu | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst; [| eauto ].
-        destruct (gc_unit_mem_parent _ _ Hg1 _ _ _ _ Hu) as (T0 & Φ0 & Hu0 & _).
-        destruct (gc_unit_loc _ _ _ _ _ Hu0) as (p0 & Hq0 & _).
-        exists Γ, (ds_closed nil p0 T0 Φ0 nil); econstructor; [ exact Hq0 | exact Hu0 ]. }
+      { (* the parent of an open frame is one, which denotes *)
+        assert (Hpar : forall p U T0, mod_qname (me_mem H0 z) = Some p -> gs_find_tele Ξ1 p = Some (U, nil, T0) ->
+                  exists Γ0 R0, mdenote Θ1 Ξ1 Γ0 H0 R0).
+        { intros p U T0 Hq Ht.
+          cbn in Hq; destruct (mod_qname H0) as [p0 |] eqn:Hq0; [| discriminate ]; injection Hq as <-.
+          destruct (frame_parent _ _ Hg1 _ _ _ _ Ht) as (Tq & Φq & Hfq & _).
+          destruct (mdenote_of_loc_any _ _ Hg1 _ _ _ _ Γ Hq0 (or_introl Hfq)) as (R0 & Hm0 & _ & _); eauto. }
+        inversion Hm as [? ? ? ? ? Hq Hu | ? ? ? ? ? ? Hq Hk | | | | ? ? ? R0 R0m Γy E0 rd R1 ? Hm0 Hd0 He0 Hed Hr]; subst;
+          [ | | eauto ].
+        - destruct (gc_unit_cases _ _ _ _ _ Hu) as (mp & Hq' & [Hf | (_ & Hc & _)]); rewrite Hq in Hq'; injection Hq' as <-.
+          + unfold gc_frame in Hf; destruct (gs_find_tele Ξ1 _) as [[[U [| ? ?]] T0] |] eqn:Ht;
+              try (destruct U as [? [[|] ? | ?]]); try discriminate; eapply Hpar; eassumption.
+          + exfalso; cbn in Hq; destruct (mod_qname H0) as [p0 |]; [| discriminate ]; injection Hq as <-.
+            cbn in Hc; destruct (q_chain p0); discriminate.
+        - destruct (gs_find_ind_tele _ _ _ Hk) as (U & T0 & Ht); eapply Hpar; eassumption. }
       destruct Hm0 as (Γ0 & R0 & Hm0).
       apply so_mem; [ exact (IH _ _ Hm0) |].
       intros pq E E' Hs2 HE2 Hal.
       pose proof (msite_below _ _ _ _ Hg1 He _ _ Hs2 _ _ Hm0) as Hs1.
-      destruct (gc_unit Θ1 Ξ1 (me_mem H0 z)) as [[T1 Φ1] |] eqn:Hu1.
+      destruct (mem_frame_cases _ _ Hg1 H0 z) as [(p1 & TΦ & Hq1 & Hf1) | (Hu1 & Hk1)].
       + exfalso.
-        destruct (gc_unit_mem_parent _ _ Hg1 _ _ _ _ Hu1) as (T0 & Φ0 & Hu0 & _).
-        destruct (gc_unit_loc _ _ _ _ _ Hu0) as (p0 & Hq0 & _).
-        rewrite (msite_unit _ _ Hg1 _ _ Hs1 _ _ _ Hq0 Hu0) in HE2.
-        exact (unit_not_alias _ _ _ _ He _ _ _ _ _ _ Hu1 _ (mod_qname_mem _ _ _ Hq0) HE2 Hal).
-      + destruct (entry_below _ _ Hg1 _ _ _ _ _ Hm Hs1 Hu1) as (E1 & HE1).
+        assert (Ep : p1 = qname_in pq z)
+          by (eapply frame_mem_site with (Γ0 := Γ0); [ exact Hg1 | exact Hq1 | exact Hf1 | intros R' Hm'; eapply msite_below; eassumption ]).
+        subst p1; eapply frame_not_alias; eassumption.
+      + destruct (entry_below _ _ Hg1 _ _ _ _ _ Hm Hs1 Hu1 Hk1) as (E1 & HE1).
         destruct (gc_sub_entry _ _ _ _ _ _ Hs HE1) as (E2 & HE2' & Hgr); rewrite HE2 in HE2'; injection HE2' as <-.
         pose proof (entry_grows_alias _ _ _ Hgr Hal) as <-.
         exact (Ha _ _ _ HE1 Hal).
-    - inversion Hm as [? ? ? ? ? ? Hu | | | ? ? ? R0 ? Hm0 Ha0 |]; subst; [ cbn in Hu; discriminate |].
+    - inversion Hm as [? ? ? ? ? ? Hu | ? ? ? ? ? ? Hq _ | | | ? ? ? R0 ? Hm0 Ha0 |]; subst;
+        [ cbn in Hu; discriminate | cbn in Hq; discriminate |].
       exact (so_app _ _ _ _ (IH _ _ Hm0)).
   Qed.
 End Sited.
@@ -455,6 +596,12 @@ Section PrivacyImpl.
   Lemma gc_unit_qname : forall H T Φ, gc_unit Θ Ξ H = Some (T, Φ) -> mod_qname H = None -> False.
   Proof. intros * Hu Hq; unfold gc_unit in Hu; rewrite Hq in Hu; discriminate. Qed.
 
+  Lemma site_of_frame_ind : forall H r p, frame_ind_of Ξ H = Some r -> mod_qname H = Some p -> msite Θ Ξ H p.
+  Proof. intros * Hf Hq; unfold frame_ind_of in Hf; rewrite Hq in Hf; exact (ms_ind_frame _ _ _ _ _ Hq Hf). Qed.
+
+  Lemma frame_ind_of_qname : forall H r, frame_ind_of Ξ H = Some r -> mod_qname H = None -> False.
+  Proof. intros * Hf Hq; unfold frame_ind_of in Hf; rewrite Hq in Hf; discriminate. Qed.
+
   #[local]
   Ltac site_obl :=
     intros; cbv beta in *;
@@ -466,6 +613,8 @@ Section PrivacyImpl.
     try solve [ exfalso; eapply gc_unit_qname; eassumption ];
     try solve [ exfalso; eapply gc_unit_qname; [ eassumption | cbn; match goal with Eqm : mod_qname _ = None |- _ => rewrite Eqm end; reflexivity ] ];
     try solve [ eapply ms_unit; [ apply mod_qname_mem; eassumption | eassumption ] ];
+    try solve [ eapply site_of_frame_ind; [ eassumption | first [ reflexivity | apply mod_qname_mem; eassumption ] ] ];
+    try solve [ exfalso; eapply frame_ind_of_qname; [ eassumption | cbn; match goal with Eqm : mod_qname _ = None |- _ => rewrite Eqm end; reflexivity ] ];
     try solve [ eapply ms_body; [ eassumption | eassumption | apply entry_is_body_b_spec; assumption ] ];
     try solve [ eapply ms_alias; eassumption ];
     exfalso;
@@ -480,6 +629,7 @@ Section PrivacyImpl.
           | H1 : ?f = Some _, H2 : ?f = None |- _ => rewrite H1 in H2; discriminate H2
           end;
         first [ congruence
+              | solve [ eapply frame_ind_of_none; eassumption ]
               | match goal with HN : forall _, ~ msite _ _ _ _ |- _ => solve [ eapply HN; eassumption ] end
               | match goal with Hb : entry_is_body ?E, Hf : entry_is_body_b ?E = false |- _ =>
                   apply entry_is_body_b_spec in Hb; congruence end
@@ -495,7 +645,9 @@ Section PrivacyImpl.
       by struct Ho :=
   | me_unit fp, Ho with inspect (gc_unit Θ Ξ (me_unit fp)) := {
     | exist _ (Some (T, Φ)) Eu => inleft (exist _ (q_abs fp nil) _)
-    | exist _ None Eu => inright _ }
+    | exist _ None Eu with inspect (frame_ind_of Ξ (me_unit fp)) := {
+      | exist _ (Some r) Ek => inleft (exist _ (q_abs fp nil) _)
+      | exist _ None Ek => inright _ } }
   | me_var x, Ho => inright _
   | me_lit U, Ho => inright _
   | me_app H N, Ho with site_impl H _ := {
@@ -505,17 +657,25 @@ Section PrivacyImpl.
     | exist _ (Some (T, Φ)) Eu with inspect (mod_qname H) := {
       | exist _ (Some p0) Eqm => inleft (exist _ (qname_in p0 z) _)
       | exist _ None Eqm => False_rect _ _ }
-    | exist _ None Eu with site_impl H _ := {
-      | inright HN => inright _
-      | inleft (exist _ pq Hs) with inspect (gc_entry Θ Ξ (qname_in pq z)) := {
-        | exist _ None Ee => inright _
-        | exist _ (Some E) Ee with inspect (entry_alias E) := {
-          | exist _ (Some E') Ea with site_impl E' _ := {
-            | inleft (exist _ pq' Hs') => inleft (exist _ pq' _)
-            | inright HN => inright _ }
-          | exist _ None Ea with inspect (entry_is_body_b E) := {
-            | exist _ true Eb => inleft (exist _ (qname_in pq z) _)
-            | exist _ false Eb => inright _ } } } } }.
+    | exist _ None Eu with inspect (frame_ind_of Ξ (me_mem H z)) := {
+      (** The open frame of a member's module: stored at its own path *)
+      | exist _ (Some r) Ek with inspect (mod_qname H) := {
+        | exist _ (Some p0) Eqm => inleft (exist _ (qname_in p0 z) _)
+        | exist _ None Eqm => False_rect _ _ }
+      | exist _ None Ek with site_impl H _ := {
+        | inright HN => inright _
+        | inleft (exist _ pq Hs) with inspect (gc_entry Θ Ξ (qname_in pq z)) := {
+          | exist _ None Ee => inright _
+          | exist _ (Some E) Ee with inspect (entry_alias E) := {
+            | exist _ (Some E') Ea with site_impl E' _ := {
+              | inleft (exist _ pq' Hs') => inleft (exist _ pq' _)
+              | inright HN => inright _ }
+            | exist _ None Ea with inspect (entry_is_body_b E) := {
+              | exist _ true Eb => inleft (exist _ (qname_in pq z) _)
+              | exist _ false Eb => inright _ } } } } } }.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
+  Next Obligation. site_obl. Defined.
   Next Obligation. site_obl. Defined.
   Next Obligation. site_obl. Defined.
   Next Obligation. site_obl. Defined.
@@ -549,17 +709,18 @@ Section PrivacyImpl.
 
   (** Whether a module is an open frame or an ancestor of one. *)
   Definition open_anc_b (qd : qname) : bool :=
-    existsb (fun e => andb (path_beq (q_unit (fst e)) (q_unit qd))
-                      (match strip_prefix (q_chain qd) (q_chain (fst e)) with Some _ => true | None => false end)) Ξ.
+    existsb (fun e => let '(mp, _, _) := e in
+                      andb (path_beq (q_unit mp) (q_unit qd))
+                        (match strip_prefix (q_chain qd) (q_chain mp) with Some _ => true | None => false end)) Ξ.
 
   Lemma open_anc_b_spec : forall qd, open_anc_b qd = true <-> open_anc Ξ qd.
   Proof.
     intros qd; unfold open_anc_b; rewrite existsb_exists; split.
-    - intros ([mp U] & Hin & Hb); apply andb_prop in Hb as [H1 H2]; cbn in *.
+    - intros ([[mp K] U] & Hin & Hb); apply andb_prop in Hb as [H1 H2]; cbn in *.
       apply path_beq_true in H1.
       destruct (strip_prefix (q_chain qd) (q_chain mp)) as [suf |] eqn:E; [| discriminate ].
-      exact (mk_open_anc _ _ mp U suf Hin H1 (strip_prefix_spec _ _ _ E)).
-    - intros [mp U suf Hin H1 H2]; exists (mp, U); split; [ exact Hin |]; cbn.
+      exact (mk_open_anc _ _ mp K U suf Hin H1 (strip_prefix_spec _ _ _ E)).
+    - intros [mp K U suf Hin H1 H2]; exists (mp, K, U); split; [ exact Hin |]; cbn.
       rewrite H1, path_beq_refl, H2, strip_prefix_app; reflexivity.
   Qed.
 

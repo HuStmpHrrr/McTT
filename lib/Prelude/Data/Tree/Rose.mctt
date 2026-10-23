@@ -77,28 +77,25 @@ end
 
 (* The fold, into [R] at trees and [S] at forests: [node] combines a label
    with the result of its children, [cons] the results of a tree and of
-   the forest after it.  It is the eliminator with both blocks at constant
-   motives, the tree's block marked [at] in [fold] and the forest's in
-   [foldForest].  When single types have a recursor module, these move to
-   [Rose.Rec]. *)
+   the forest after it.  It is the recursor module [Rose.Rec] the
+   declaration files, at constant motives: [rec_Rose] at trees and
+   [rec_List_Rose] at forests. *)
 def fold (R : Type@{u}) (S : Type@{u}) (node : ∀ (x : A) (s : S) → R)
     (nil : S) (cons : ∀ (r : R) (s : S) → S) (t : T) : R ≔
-  elim t at (z : T) -> R
-  | node x ts, h ⇒ node x h
-  with (z : F) -> S
-  | nil ⇒ nil
-  | cons s ts, hs hts ⇒ cons hs hts
-  end
+  Rose.Rec.rec_Rose u A u (λ (z : T) → R) (λ (z : F) → S)
+    (λ (x : A) (ts : F) (h : S) → node x h)
+    nil
+    (λ (s : T) (ts : F) (hs : R) (hts : S) → cons hs hts)
+    t
 end
 
 def foldForest (R : Type@{u}) (S : Type@{u}) (node : ∀ (x : A) (s : S) → R)
     (nil : S) (cons : ∀ (r : R) (s : S) → S) (ts : F) : S ≔
-  elim ts with (z : T) -> R
-  | node x us, h ⇒ node x h
-  at (z : F) -> S
-  | nil ⇒ nil
-  | cons s us, hs hus ⇒ cons hs hus
-  end
+  Rose.Rec.rec_List_Rose u A u (λ (z : T) → R) (λ (z : F) → S)
+    (λ (x : A) (us : F) (h : S) → node x h)
+    nil
+    (λ (s : T) (us : F) (hs : R) (hus : S) → cons hs hus)
+    ts
 end
 
 end

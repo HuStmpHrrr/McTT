@@ -868,6 +868,7 @@ Section Classify.
   Proof.
     apply mdenote_all_ind; intros; try exact I.
     - (* a unit *) right; cbn; lia.
+    - (* the open frame of a member's module *) right; cbn; lia.
     - (* a slot *)
       eapply typed_or_bounded_mono; [ eassumption |]; cbn [modexp_size].
       match goal with Hl : _ ∋ # _ ≔ₘ _ |- _ =>

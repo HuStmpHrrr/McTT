@@ -2245,13 +2245,24 @@ Qed.
     The modules open around the point being checked, innermost first, each
     recorded with its own (absolute) module path.  Their parameters are the
     local context members are checked in, [gs_tele]: the innermost frame's
-    parameters are bound last, so they come first. *)
-Definition gstack : Set := list (qname * gunit).
+    parameters are bound last, so they come first.  A frame also records
+    what it is the module of ([frame_kind]): a module, or a type former
+    that is also a module, whose declaration is read off the frame while
+    it is open, as it is filed only when the frame closes. *)
+
+(** What an open frame is the module of. *)
+Inductive frame_kind : Set :=
+(** An ordinary module *)
+| fk_module
+(** The module of the declared member [k] of the group [D] at [pq] *)
+| fk_ind (pq : qname) (k : nat) (D : ind_decl).
+
+Definition gstack : Set := list (qname * frame_kind * gunit).
 
 Fixpoint gs_tele (Ξ : gstack) : ctx :=
   match Ξ with
   | nil => nil
-  | (_, U) :: Ξ' => gu_params U ++ gs_tele Ξ'
+  | (_, _, U) :: Ξ' => gu_params U ++ gs_tele Ξ'
   end.
 
 (** ** A Fixed Global Context

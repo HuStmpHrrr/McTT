@@ -925,14 +925,24 @@ Lemma gctx_closed_entry_ind : forall Θ Ξ p pv pq k D Φ,
 Proof.
   intros * [HΘ HΞ] He; unfold gc_entry, gc_entry_u in He.
   destruct (gs_find Ξ p) as [[U ip] |] eqn:Hf.
-  - destruct (gs_find_unit _ _ _ _ Hf) as (mp & Hin & _).
-    destruct (stack_closed_in _ _ _ HΞ Hin) as (T & _ & HU).
+  - destruct (gs_find_unit _ _ _ _ Hf) as (mp & K & Hin & _).
+    destruct (stack_closed_in _ _ _ _ HΞ Hin) as (T & _ & HU).
     destruct (gm_entry_closed _ _ _ _ HU He) as (_ & HD & HΦ).
     split; [ apply (dc_uparams _ HD) | exact HΦ ].
   - destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:Hl; [| discriminate ].
     destruct (HΘ _ _ Hl) as (_ & HU).
     destruct (gm_entry_closed _ _ _ _ HU He) as (_ & HD & HΦ).
     split; [ apply (dc_uparams _ HD) | exact HΦ ].
+Qed.
+
+(** The body at a located path, closed. *)
+Lemma gc_loc_closed : forall Θ Ξ p T Φ, gctx_closed Θ Ξ -> gc_loc Θ Ξ p = Some (T, Φ) -> unit_closed T Φ.
+Proof.
+  intros * Hc Hl; unfold gc_loc in Hl.
+  destruct (gc_frame Ξ p) as [r |] eqn:Hf; [ injection Hl as -> | eapply gctx_closed_body; eassumption ].
+  unfold gc_frame in Hf.
+  destruct (gs_find_tele Ξ p) as [[[[Δ [[|] Φ0 | E]] [| x ip]] T0] |] eqn:Hft; try discriminate.
+  injection Hf as <- <-; exact (stack_closed_find _ _ _ _ _ (proj2 Hc) Hft).
 Qed.
 
 Lemma ds_mod_scoped : forall Θ Ξ R R' n,
@@ -942,8 +952,8 @@ Proof.
     try (injection Hm as <-; exact HR).
   destruct (ind_lookup Θ Ξ p) as [D |]; [| discriminate ].
   destruct (ind_mpath D k) as [pm |]; [| discriminate ].
-  destruct (gc_body Θ Ξ pm) as [[T Φ] |] eqn:He; try discriminate; injection Hm as <-.
-  destruct HR as [HΘ HNs]; cbn; split; [ exact HΘ | split; [ eapply gctx_closed_body; eassumption | exact HNs ] ].
+  destruct (gc_loc Θ Ξ pm) as [[T Φ] |] eqn:He; try discriminate; injection Hm as <-.
+  destruct HR as [HΘ HNs]; cbn; split; [ exact HΘ | split; [ eapply gc_loc_closed; eassumption | exact HNs ] ].
 Qed.
 
 (** The unit a loaded unit or an open frame is, closed. *)
@@ -952,7 +962,7 @@ Proof.
   intros * [HΘ HΞ] Hu; unfold gc_unit in Hu.
   destruct (mod_qname H) as [mp |]; [| discriminate ].
   destruct (gs_find_tele Ξ mp) as [[[U [| ? ?]] T0] |] eqn:Hf.
-  - destruct U as [Δ [[|] Φ0 | E]]; try discriminate; injection Hu as <- <-.
+  - destruct U as [Δ [[|] Φ0 | E]], (gs_find_ind Ξ mp); try discriminate; injection Hu as <- <-.
     exact (stack_closed_find _ _ _ _ _ HΞ Hf).
   - discriminate.
   - destruct (q_chain mp), (gds_lookup Θ (q_unit mp)) as [[Δ [[|] Φ0 | E]] |] eqn:Hl; try discriminate.
@@ -1001,6 +1011,7 @@ Lemma mdenote_scoped_all : forall Θ Ξ, gctx_closed Θ Ξ ->
 Proof.
   intros Θ Ξ Hc; apply mdenote_all_ind; intros; cbn in *.
   - (* a unit *) split; [ exact I | split; [ eapply gctx_closed_unit; eassumption | constructor ] ].
+  - (* a type's open frame *) split; [ exact I | constructor ].
   - (* a slot *)
     match goal with IH : forall m, slots_ok m ?Γ -> _ -> _, HΓ : slots_ok ?m ?Γ, Hl : ?Γ ∋ # ?x ≔ₘ _, Hx : ?x < ?m |- _ =>
       apply IH; [ exact HΓ | left; exact (HΓ _ _ Hx Hl) ] end.
@@ -1067,16 +1078,6 @@ Proof.
   - discriminate.
 Qed.
 
-
-(** The body at a located path, closed. *)
-Lemma gc_loc_closed : forall Θ Ξ p T Φ, gctx_closed Θ Ξ -> gc_loc Θ Ξ p = Some (T, Φ) -> unit_closed T Φ.
-Proof.
-  intros * Hc Hl; unfold gc_loc in Hl.
-  destruct (gc_frame Ξ p) as [r |] eqn:Hf; [ injection Hl as -> | eapply gctx_closed_body; eassumption ].
-  unfold gc_frame in Hf.
-  destruct (gs_find_tele Ξ p) as [[[[Δ [[|] Φ0 | E]] [| x ip]] T0] |] eqn:Hft; try discriminate.
-  injection Hf as <- <-; exact (stack_closed_find _ _ _ _ _ (proj2 Hc) Hft).
-Qed.
 
 (** What a closed body's term entry describes is closed. *)
 Lemma entry_term_scoped : forall k Φ x Φ0 E R m,
@@ -1298,7 +1299,7 @@ Theorem wf_scoped :
   (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
       ctx_ok Θ Ξ Γ /\ modexp_scoped (length Γ) H /\ modexp_scoped (length Γ) H') /\
   (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢ᵉ E -> entry_ok (gs_tele Ξ) E) /\
-  (forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢ᵍᵐ Φ -> unit_closed (Δ ++ gs_tele Ξ) Φ) /\
+  (forall Θ Ξ mp K Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ K ⍮ Δ ⊢ᵍᵐ Φ -> unit_closed (Δ ++ gs_tele Ξ) Φ /\ kind_closed K) /\
   (forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> gctx_closed Θ Ξ).
 Proof.
   apply wf_mut_ind_all; intros;
@@ -1393,13 +1394,18 @@ Proof.
   all: try solve [ (* a filed unit: its closed frame, or the units before it *)
     match goal with
     | H : gctx_closed _ _ |- gctx_closed ((?f, _) :: _) nil =>
-        destruct H as [HΘ [_ HU]]; split; [| exact I ];
+        destruct H as [HΘ [_ [HU _]]]; split; [| exact I ];
         intros fq0 V0 Hl; cbn in Hl; destruct (path_beq fq0 f);
         [ injection Hl as <-; rewrite List.app_nil_r in HU; exact HU | exact (HΘ _ _ Hl) ]
     end ].
   all: try solve [ (* a frame *)
     match goal with H : gctx_closed _ _ |- _ => destruct H as [HΘ HΞ] end;
-    split; [ assumption | cbn; split; assumption ] ].
+    split; [ assumption | cbn; split; [ assumption | split; assumption ] ] ].
+  all: try solve [ (* a declared member with the body of its module, over its uniform parameters *)
+    match goal with
+    | HU : ind_uparams ?D = _ |- unit_closed (ind_uparams ?D) _ => rewrite HU; assumption
+    | HU : ind_uparams ?D = ?T, Hc : unit_closed (ind_uparams ?D) ?Φ |- unit_closed ?T ?Φ => rewrite <- HU; exact Hc
+    end ].
   (* a filed member at arguments *)
   all: try solve [ apply exp_scoped_apps; split; [ apply qname_mod_scoped |];
     match goal with Hs : modexp_scoped _ (me_apps _ ?Ns) |- List.Forall _ ?Ns => exact (proj2 (proj1 (me_apps_scoped_iff _ _ _) Hs)) end ].
@@ -1721,7 +1727,7 @@ Proof.
     try (injection Hm as <-; reflexivity).
   destruct (ind_lookup Θ Ξ p) as [D |]; [| discriminate ].
   destruct (ind_mpath D k) as [pm |]; [| discriminate ].
-  destruct (gc_body Θ Ξ pm) as [[T Φ] |]; try discriminate; injection Hm as <-; reflexivity.
+  destruct (gc_loc Θ Ξ pm) as [[T Φ] |]; try discriminate; injection Hm as <-; reflexivity.
 Qed.
 
 Lemma ds_tele_sub : forall R T σ,
@@ -2151,6 +2157,9 @@ Proof.
   - (* a unit *)
     intros Γ H p T Φ hq e m HS HH Γ' σ Hσ.
     rewrite (mod_qname_sub _ _ σ hq); cbn; apply dn_unit; assumption.
+  - (* a type's open frame *)
+    intros Γ H p pq k D hq e m HS HH Γ' σ Hσ.
+    rewrite (mod_qname_sub _ _ σ hq); cbn; eapply dn_ind_frame; eassumption.
   - (* a slot *)
     intros Γ x U R l u IHu m HS HH Γ' σ Hσ; cbn in HH.
     destruct (Hσ _ _ HH l) as [Hx | (y & Hx & Hy)]; cbn; rewrite Hx; cbn [sentry_modexp].
