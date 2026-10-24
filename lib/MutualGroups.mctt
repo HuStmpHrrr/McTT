@@ -3,7 +3,7 @@
    definitions. *)
 import Prelude›Builtin›Nat use (Nat; succ)
 
-module Groups where
+module MutualGroups where
 
 def add (n : ℕ) (m : ℕ) : ℕ :=
   elim n at z -> ℕ | zero ⇒ m | succ k, r ⇒ succ r end

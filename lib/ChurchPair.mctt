@@ -1,6 +1,6 @@
 (* Church-encoded pairs, passed as arguments to the program that uses
    them. *)
-module Pair where
+module ChurchPair where
 
 import Prelude›Builtin›Nat use (succ)
 

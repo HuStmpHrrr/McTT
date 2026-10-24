@@ -1,6 +1,6 @@
 (* Church-encoded vectors, passed as arguments to the program that uses
    them, with a head function that is total on non-empty vectors. *)
-module Vector where
+module ChurchVector where
 
 import Prelude›Builtin›Nat use (zero; succ)
 

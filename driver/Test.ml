@@ -218,8 +218,8 @@ let%expect_test "exfalso needs a motive" =
       This token is invalid for the beginning of an expression.
     |}]
 
-let%expect_test "Pair.mctt works" =
-  let _ = main_of_example "Pair.mctt" in
+let%expect_test "lib/ChurchPair.mctt" =
+  let _ = main_of_lib "ChurchPair.mctt" in
   [%expect {|
     Evaluate (λ (x1 : ∀ (A1 : Type@0)
                         (A2 : Type@0)
@@ -278,8 +278,8 @@ let%expect_test "Pair.mctt works" =
                              → x34)) --> 5 : ℕ
     |}]
 
-let%expect_test "Vector.mctt works" =
-  let _ = main_of_example "Vector.mctt" in
+let%expect_test "lib/ChurchVector.mctt" =
+  let _ = main_of_lib "ChurchVector.mctt" in
   [%expect {|
     Evaluate (λ (x1 : ∀ (A1 : Type@0)
                         (x2 : ℕ)
@@ -3567,7 +3567,7 @@ let%expect_test "mctt-doc: every eval of lib has one output box, with mctt's out
   List.iter (fun b -> if String.starts_with ~prefix:"Evaluate Adding.five " b then print_endline b)
     (doc_boxes (Doc.render_unit lib kinds tut));
   [%expect {|
-    543 evals, 543 boxes, 543 equal to mctt's output
+    560 evals, 560 boxes, 560 equal to mctt's output
     Evaluate Adding.five --> 5 : ℕ
     |}]
 
@@ -3644,7 +3644,7 @@ let%expect_test "mctt-doc: ℕ links to the type bound as the natural numbers" =
   let page = Doc.render_unit lib' (Doc.anchor_kinds lib') u in
   Printf.printf "%d links, %d without a link\n" (doc_count "ℕ</a>" page) (doc_count span page);
   [%expect {|
-    2860 links to Nat, 0 other links, 0 without a link
+    3076 links to Nat, 0 other links, 0 without a link
     NoNat: not checked
     0 links, 2 without a link
     |}]
@@ -5436,4 +5436,62 @@ let%expect_test "lib/Hierarchy.mctt" =
                 (MH.identity additive.monoid)
                Both.first).map
                (pair 0l ℕ ℕ 7 8) --> 7 : ℕ
+    |}]
+
+let%expect_test "lib/MutualGroups.mctt" =
+  let _ = main_of_lib "MutualGroups.mctt" in
+  [%expect {|
+    Evaluate size example --> 4 : ℕ
+    Evaluate spineLength
+               (Syntax.Sp.scons (Syntax.Tm.var 1)
+                 (Syntax.Sp.scons (Syntax.Tm.var 2) Syntax.Sp.snil)) --> 2 : ℕ
+    Evaluate heads
+               (Syntax.Tm.app (Syntax.Tm.app (Syntax.Tm.var 0) Syntax.Sp.snil)
+                 Syntax.Sp.snil) --> 2 : ℕ
+    Evaluate nodes forest --> 4 : ℕ
+    Evaluate total forest --> 6 : ℕ
+    Evaluate forestNodes
+               (List.cons (Rose ℕ) (leaf 1)
+                 (List.cons (Rose ℕ) (leaf 2) (List.nil (Rose ℕ)))) --> 2 : ℕ
+    Evaluate termSize
+               (Lam.Term.block
+                  (List.cons Lam.Bind (Lam.Bind.bind 0 (Lam.Term.var 1))
+                    (List.nil Lam.Bind))
+                 (Lam.Term.call 0
+                   (List.cons Lam.Term (Lam.Term.var 0) (List.nil Lam.Term))))
+      --> 5 : ℕ
+    Evaluate depth T.stop --> 0 : ℕ
+    |}]
+
+let%expect_test "lib/GroupRecursors.mctt" =
+  let _ = main_of_lib "GroupRecursors.mctt" in
+  [%expect {|
+    Evaluate size
+               (Syntax.Tm.app (Syntax.Tm.var 0)
+                 (Syntax.Sp.scons (Syntax.Tm.var 1) Syntax.Sp.snil)) --> 3 : ℕ
+    Evaluate spineLength
+               (Syntax.Sp.scons (Syntax.Tm.var 1)
+                 (Syntax.Sp.scons (Syntax.Tm.var 2) Syntax.Sp.snil)) --> 2 : ℕ
+    Evaluate nodes
+               (R.Rose.node ℕ 0
+                 (List.cons (R.Rose ℕ) (leaf 1)
+                   (List.cons (R.Rose ℕ) (leaf 2) (List.nil (R.Rose ℕ))))) --> 3
+      : ℕ
+    Evaluate forestNodes (List.cons (R.Rose ℕ) (leaf 1) (List.nil (R.Rose ℕ)))
+      --> 1 : ℕ
+    Evaluate termSize
+               (Lam.Term.block
+                  (List.cons Lam.Bind (Lam.Bind.bind 0 (Lam.Term.var 0))
+                    (List.nil Lam.Bind))
+                 (Lam.Term.call 1
+                   (List.cons Lam.Term (Lam.Term.var 1) (List.nil Lam.Term))))
+      --> 4 : ℕ
+    Evaluate treeNodes
+               (Tree.node ℕ 0
+                 (List.cons (Tree ℕ) (twig 1)
+                   (List.cons (Tree ℕ) (twig 2) (List.nil (Tree ℕ))))) --> 3 : ℕ
+    Evaluate oddHalf
+               (Odd.osucc
+                 (Even.esucc (Odd.osucc (Even.esucc (Odd.osucc Even.ezero)))))
+      --> 2 : ℕ
     |}]
