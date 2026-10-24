@@ -477,14 +477,15 @@ function shape of two arguments.</p>
 <h3 id="record-types">Record types</h3>
 <p>A module declares a record type with a command:</p>
 <pre class="ebnf"><code>record = [&#39;private&#39;] , &#39;record&#39; , id , {parameter} , &#39;:&#39; , type , &#39;where&#39; ,
-         [ field , {&#39;;&#39; , field} ] , [ &#39;with&#39; , {command} , &#39;end&#39; ] , &#39;end&#39;;
-(* each field&#39;s type sees the parameters and the fields before it *)
+         [ field , {&#39;;&#39; , field} ] , [ &#39;with&#39; , {command} ] , &#39;end&#39;;
+(* each field&#39;s type sees the parameters and the fields before it; one
+   &#39;end&#39; closes the with-area and the record together *)
 field = id , &#39;:&#39; , type;</code></pre>
 <pre><code>record Pair (A : Type@0) (B : Type@0) : Type@0 where
   fst : A; snd : B
 with
   def swap : Pair B A := record Pair B A where fst := snd; snd := fst end end
-end end</code></pre>
+end</code></pre>
 <p>The sort is a universe, and a field’s type is in it. A record type is
 never recursive: no field mentions it.
 <code>record Pair ℕ ℕ where fst := 1; snd := 2 end</code> is a value,

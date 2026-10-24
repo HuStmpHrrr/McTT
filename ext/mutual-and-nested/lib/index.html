@@ -2,63 +2,63 @@
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>McTT library</title><link rel="stylesheet" href="mctt.css"></head><body>
 <nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
 <h1>The McTT library</h1>
-<h2>Prelude</h2><ul class="units"><li><a class="unit" href="Prelude.Algebra.AbelianGroup.html">Prelude›Algebra›AbelianGroup</a> <p>Abelian groups: a group whose operation is commutative.</p>
+<h2>Prelude</h2><ul class="units"><li><a class="unit" href="Prelude.Algebra.AbelianGroup.html">Prelude›Algebra›AbelianGroup</a> <p>Abelian groups: <code>IsAbelianGroup A eq op e inv</code> holds when the operations form a group up to <code>eq</code>, its predicate <code>isGroup</code>, and <code>op</code> is commutative.</p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.AbelianGroup.Properties.html">Prelude›Algebra›AbelianGroup›Properties</a> <p>Laws of an abelian group <code>A</code>: the inverse of a product is the product of the inverses, in either order, and the inverse is a homomorphism from <code>A</code> to itself.</p>
+<li><a class="unit" href="Prelude.Algebra.AbelianGroup.Properties.html">Prelude›Algebra›AbelianGroup›Properties</a> <p>Laws of an abelian group <code>A</code>, up to <code>A.</code></p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.CommutativeMonoid.html">Prelude›Algebra›CommutativeMonoid</a> <p>Commutative monoids: a monoid whose operation is commutative.</p>
+<li><a class="unit" href="Prelude.Algebra.CommutativeMonoid.html">Prelude›Algebra›CommutativeMonoid</a> <p>Commutative monoids: <code>IsCommutativeMonoid A eq op e</code> holds when <code>op</code> and <code>e</code> form a monoid up to <code>eq</code>, its predicate <code>isMonoid</code>, and <code>op</code> is commutative.</p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.CommutativeMonoid.Properties.html">Prelude›Algebra›CommutativeMonoid›Properties</a> <p>Laws of a commutative monoid <code>M</code>: a factor may be moved past another, and the middle factors of a product of products exchanged.</p>
+<li><a class="unit" href="Prelude.Algebra.CommutativeMonoid.Properties.html">Prelude›Algebra›CommutativeMonoid›Properties</a> <p>Laws of a commutative monoid <code>M</code>, up to <code>M.</code></p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Group.html">Prelude›Algebra›Group</a> <p>Groups: a monoid with an inverse <code>inv</code> on both sides.</p>
+<li><a class="unit" href="Prelude.Algebra.Group.html">Prelude›Algebra›Group</a> <p>Groups: <code>IsGroup A eq op e inv</code> holds when <code>op</code> and <code>e</code> form a monoid up to <code>eq</code>, its predicate <code>isMonoid</code>, and <code>inv</code> respects <code>eq</code> and is an inverse on both sides.</p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Group.Hom.html">Prelude›Algebra›Group›Hom</a> <p>Homomorphisms of groups: <code>Hom G H</code> is the record of a map from the carrier of <code>G</code> to that of <code>H</code> that takes products to products.</p>
+<li><a class="unit" href="Prelude.Algebra.Group.Hom.html">Prelude›Algebra›Group›Hom</a> <p>Homomorphisms of groups: <code>Hom G H</code> is the record of a map from the carrier of <code>G</code> to that of <code>H</code> that respects the relations and takes products to products, up to <code>H.</code></p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Group.Properties.html">Prelude›Algebra›Group›Properties</a> <p>Laws of a group <code>G</code>, derived from the fields of <code>Prelude›Algebra›Group</code>: cancellation on both sides, the uniqueness of inverses, and the inverses of <code>G.</code></p>
+<li><a class="unit" href="Prelude.Algebra.Group.Properties.html">Prelude›Algebra›Group›Properties</a> <p>Laws of a group <code>G</code>, derived from the fields of <code>Prelude›Algebra›Group</code> and stated up to <code>G.</code></p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Instances.Bool.html">Prelude›Algebra›Instances›Bool</a> <p>The booleans as instances of the bundled structures of <code>Prelude›Algebra</code>: commutative monoids under <code>and</code> with <code>tt</code> (<code>conjunction</code>) and under <code>or</code> with <code>ff</code> (<code>disjunction</code>), the lattice of <code>and</code> and <code>or</code> (<code>andOr</code>), and the boolean ring of <code>xor</code> and <code>and</code> (<code>ring</code>), in which every element is its own negative.</p>
+<li><a class="unit" href="Prelude.Algebra.Instances.Bool.html">Prelude›Algebra›Instances›Bool</a> <p>The booleans as instances of the structures of <code>Prelude›Algebra</code>, up to Leibniz equality, at the levels <code>0l</code> and <code>1l</code>: commutative monoids under <code>and</code> with <code>tt</code> (<code>conjunction</code>) and under <code>or</code> with <code>ff</code> (<code>disjunction</code>), the lattice of <code>and</code> and <code>or</code> (<code>andOr</code>), and the boolean ring of <code>xor</code> and <code>and</code> (<code>ring</code>), in which every element is its own negative.</p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Instances.Endo.html">Prelude›Algebra›Instances›Endo</a> <p>The functions from <code>A</code> to itself under composition, with the identity as the neutral element: the endomorphism monoid of <code>A</code>, <code>endo</code>.</p>
+<li><a class="unit" href="Prelude.Algebra.Instances.Endo.html">Prelude›Algebra›Instances›Endo</a> <p>The functions from <code>A</code> to itself under composition, with the identity as the neutral element: the endomorphism monoid of <code>A</code>, <code>endo</code>, up to Leibniz equality, at the levels <code>u</code> and <code>succl u</code>.</p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Instances.Integer.html">Prelude›Algebra›Instances›Integer</a> <p>The integers of <code>Prelude›Data›Integer</code> as instances of the bundled structures: an abelian group under addition (<code>additive</code>) and a commutative monoid under multiplication (<code>multiplicative</code>).</p>
+<li><a class="unit" href="Prelude.Algebra.Instances.Endo.Pointwise.html">Prelude›Algebra›Instances›Endo›Pointwise</a> <p>Functions on numbers under composition, compared pointwise with the equality of numbers <code>Eq</code>: <code>Pointwise f g</code> holds when <code>f n</code> and <code>g n</code> are equal for every <code>n</code>.</p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Instances.List.html">Prelude›Algebra›Instances›List</a> <p>The lists over <code>A</code> under <code>append</code>, with <code>nil</code> as the neutral element: the free monoid on <code>A</code>, <code>freeMonoid</code>.</p>
+<li><a class="unit" href="Prelude.Algebra.Instances.Integer.html">Prelude›Algebra›Instances›Integer</a> <p>The integers of <code>Prelude›Data›Integer</code> as instances of the structures of <code>Prelude›Algebra</code>, up to Leibniz equality, at the levels <code>0l</code> and <code>1l</code>: an abelian group under addition (<code>additive</code>) and a commutative monoid under multiplication (<code>multiplicative</code>).</p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Instances.Nat.html">Prelude›Algebra›Instances›Nat</a> <p>The numbers as instances of the bundled structures of <code>Prelude›Algebra</code>: a commutative monoid under addition (<code>additive</code>) and under multiplication (<code>multiplicative</code>), the semiring of both (<code>semiring</code>), and the lattice of <code>min</code> and <code>max</code> (<code>minMax</code>).</p>
+<li><a class="unit" href="Prelude.Algebra.Instances.List.html">Prelude›Algebra›Instances›List</a> <p>The lists over <code>A</code> under <code>append</code>, with <code>nil</code> as the neutral element, up to Leibniz equality: the free monoid on <code>A</code>, <code>freeMonoid</code>, at the levels <code>u</code> and <code>succl u</code>.</p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Instances.Product.html">Prelude›Algebra›Instances›Product</a> <p>The product of two monoids <code>M</code> and <code>N</code>: pairs of <code>Prelude›Data›Prod</code>, combined componentwise, with the pair of the neutral elements as neutral element (<code>product</code>).</p>
+<li><a class="unit" href="Prelude.Algebra.Instances.Nat.html">Prelude›Algebra›Instances›Nat</a> <p>The numbers as instances of the structures of <code>Prelude›Algebra</code>, up to the equality of numbers <code>Eq</code> of <code>Prelude›Arith›Equality</code>, which computes, so a closed law between numbers normalizes to <code>⋆</code>: commutative monoids under addition (<code>additive</code>), multiplication (<code>multiplicative</code>) and maximum (<code>maximum</code>), the semiring of addition and multiplication (<code>semiring</code>), and the lattice of <code>min</code> and <code>max</code> (<code>minMax</code>).</p>
+</li>
+<li><a class="unit" href="Prelude.Algebra.Instances.Product.html">Prelude›Algebra›Instances›Product</a> <p>The product of two monoids <code>M</code> and <code>N</code> of the same levels: pairs of <code>Prelude›Data›Prod</code>, combined componentwise, with the pair of the neutral elements as neutral element (<code>product</code>).</p>
 </li>
 <li><a class="unit" href="Prelude.Algebra.Integers.html">Prelude›Algebra›Integers</a> <p>The integers, as differences of numbers.</p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Lattice.html">Prelude›Algebra›Lattice</a> <p>Lattices: a semilattice <code>meet</code> and a second operation <code>join</code> on its carrier, associative and commutative, tied to <code>meet</code> by the two absorption laws.</p>
+<li><a class="unit" href="Prelude.Algebra.Lattice.html">Prelude›Algebra›Lattice</a> <p>Lattices: <code>IsLattice A eq meet join</code> holds when <code>meet</code> and <code>join</code> are semilattices up to <code>eq</code> on the one carrier <code>A</code>, <code>meetIsSemilattice</code> and <code>joinIsSemilattice</code>, tied by the two absorption laws.</p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Lattice.Properties.html">Prelude›Algebra›Lattice›Properties</a> <p>Laws of a lattice <code>L</code>: the orders of its two semilattices agree, since <code>L.</code></p>
+<li><a class="unit" href="Prelude.Algebra.Lattice.Properties.html">Prelude›Algebra›Lattice›Properties</a> <p>Laws of a lattice <code>L</code>, up to <code>L.</code></p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Magma.html">Prelude›Algebra›Magma</a> <p>Magmas: a carrier <code>carrier</code> in <code>Type@{u}</code> with a binary operation <code>op</code>.</p>
+<li><a class="unit" href="Prelude.Algebra.Leibniz.html">Prelude›Algebra›Leibniz</a> <p>The Leibniz equality of <code>Prelude›Logic›Leibniz</code> as the relation of the structures of <code>Prelude›Algebra</code>: it is an equivalence (<code>idIsEquivalence</code>) and every operation respects it (<code>idIsMagma</code>), so a Leibniz instance fills its bottom predicate in one line.</p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Monoid.html">Prelude›Algebra›Monoid</a> <p>Monoids: a semigroup with a neutral element <code>e</code> on both sides.</p>
+<li><a class="unit" href="Prelude.Algebra.Magma.html">Prelude›Algebra›Magma</a> <p>Magmas: <code>IsMagma A eq op</code> holds when <code>eq</code> is an equivalence on <code>A</code> and <code>op</code> respects it in both arguments; the bundle <code>Magma</code> is a carrier, a relation, an operation and that predicate.</p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Monoid.Hom.html">Prelude›Algebra›Monoid›Hom</a> <p>Homomorphisms of monoids: <code>Hom M N</code> is the record of a map from the carrier of <code>M</code> to that of <code>N</code> that takes products to products and the neutral element to the neutral element.</p>
+<li><a class="unit" href="Prelude.Algebra.Monoid.html">Prelude›Algebra›Monoid</a> <p>Monoids: <code>IsMonoid A eq op e</code> holds when <code>op</code> is a semigroup up to <code>eq</code>, its predicate <code>isSemigroup</code>, and <code>e</code> is neutral on both sides; the bundle <code>Monoid</code> is a carrier, a relation, <code>op</code>, <code>e</code> and that predicate.</p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Monoid.Properties.html">Prelude›Algebra›Monoid›Properties</a> <p>Laws of a monoid <code>M</code>, derived from the fields of <code>Prelude›Algebra›Monoid</code>: the neutral element is unique, and the powers <code>pow x n</code>, <code>x</code> combined with itself <code>n</code> times, satisfy the laws of exponents.</p>
+<li><a class="unit" href="Prelude.Algebra.Monoid.Hom.html">Prelude›Algebra›Monoid›Hom</a> <p>Homomorphisms of monoids: <code>Hom M N</code> is the record of a map from the carrier of <code>M</code> to that of <code>N</code> that respects the relations, takes products to products and the neutral element to the neutral element, up to <code>N.</code></p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Ring.html">Prelude›Algebra›Ring</a> <p>Rings: a semiring with an additive inverse <code>neg</code>.</p>
+<li><a class="unit" href="Prelude.Algebra.Monoid.Properties.html">Prelude›Algebra›Monoid›Properties</a> <p>Laws of a monoid <code>M</code>, derived from the fields of <code>Prelude›Algebra›Monoid</code> and stated up to its relation <code>M.</code></p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Ring.Properties.html">Prelude›Algebra›Ring›Properties</a> <p>Laws of a ring <code>R</code>: the signs of products.</p>
+<li><a class="unit" href="Prelude.Algebra.Ring.html">Prelude›Algebra›Ring</a> <p>Rings: <code>IsRing A eq plus mul zero one neg</code> holds when the operations form a semiring up to <code>eq</code>, <code>isSemiring</code>, and <code>neg</code> respects <code>eq</code> and is a left inverse of <code>plus</code>.</p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Semigroup.html">Prelude›Algebra›Semigroup</a> <p>Semigroups: a magma whose operation is associative.</p>
+<li><a class="unit" href="Prelude.Algebra.Ring.Properties.html">Prelude›Algebra›Ring›Properties</a> <p>Laws of a ring <code>R</code>, up to <code>R.</code></p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Semilattice.html">Prelude›Algebra›Semilattice</a> <p>Semilattices: a semigroup whose operation is commutative and idempotent, such as the minimum of two numbers or the conjunction of two booleans.</p>
+<li><a class="unit" href="Prelude.Algebra.Semigroup.html">Prelude›Algebra›Semigroup</a> <p>Semigroups: <code>IsSemigroup A eq op</code> holds when <code>op</code> is a magma up to <code>eq</code>, its predicate <code>isMagma</code>, and associative up to <code>eq</code>; the bundle <code>Semigroup</code> is a carrier, a relation, an operation and that predicate.</p>
+</li>
+<li><a class="unit" href="Prelude.Algebra.Semilattice.html">Prelude›Algebra›Semilattice</a> <p>Semilattices: <code>IsSemilattice A eq op</code> holds when <code>op</code> is a semigroup up to <code>eq</code>, its predicate <code>isSemigroup</code>, commutative and idempotent, as the minimum of two numbers or the conjunction of two booleans.</p>
 </li>
 <li><a class="unit" href="Prelude.Algebra.Semilattice.Properties.html">Prelude›Algebra›Semilattice›Properties</a> <p>The order of a semilattice <code>S</code>: <code>Le x y</code> when <code>S.</code></p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Semiring.html">Prelude›Algebra›Semiring</a> <p>Semirings: a commutative monoid <code>additive</code>, written <code>add</code> and <code>zero</code>, and a multiplication <code>mul</code> with a unit <code>one</code>, associative, distributing over <code>add</code> on both sides, and absorbed by <code>zero</code> on both sides.</p>
+<li><a class="unit" href="Prelude.Algebra.Semiring.html">Prelude›Algebra›Semiring</a> <p>Semirings: <code>IsSemiring A eq plus mul zero one</code> holds when <code>plus</code> and <code>zero</code> form a commutative monoid up to <code>eq</code>, <code>plusIsCommutativeMonoid</code>, and <code>mul</code> and <code>one</code> a monoid, <code>mulIsMonoid</code>, both on the one carrier <code>A</code>; <code>mul</code> distributes over <code>plus</code> on both sides, and <code>zero</code> absorbs on both sides.</p>
 </li>
-<li><a class="unit" href="Prelude.Algebra.Setoid.Group.html">Prelude›Algebra›Setoid›Group</a> <p>Groups over a setoid.</p>
-</li>
-<li><a class="unit" href="Prelude.Algebra.Setoid.Instances.html">Prelude›Algebra›Setoid›Instances</a> <p>Instances of <code>Prelude›Algebra›Setoid›Monoid</code>: numbers under addition, multiplication and maximum, and functions on numbers under composition.</p>
-</li>
-<li><a class="unit" href="Prelude.Algebra.Setoid.Monoid.html">Prelude›Algebra›Setoid›Monoid</a> <p>Monoids over a setoid, as a unit with parameters; the bundled monoids, whose laws are Leibniz equalities, are <code>Prelude›Algebra›Monoid</code>.</p>
+<li><a class="unit" href="Prelude.Algebra.Setoid.html">Prelude›Algebra›Setoid</a> <p>Setoids: <code>IsEquivalence A eq</code> holds when <code>eq</code> is reflexive, symmetric and transitive, and the bundle <code>Setoid</code> is a carrier with such a relation.</p>
 </li>
 <li><a class="unit" href="Prelude.Arith.Ackermann.html">Prelude›Arith›Ackermann</a> <p>The Ackermann function, by higher-order primitive recursion, with its defining equations and closed forms for <code>ack 1</code> and <code>ack 2</code>.</p>
 </li>
@@ -216,7 +216,7 @@
 </li>
 <li><a class="unit" href="Prelude.Universe.Levels.html">Prelude›Universe›Levels</a> <p>Universe levels as data.</p>
 </li>
-</ul><h2>Programs</h2><ul class="units"><li><a class="unit" href="Algebra.html">Algebra</a> <p>A client of <code>Prelude›Algebra›Setoid›Monoid</code> and its instances.</p>
+</ul><h2>Programs</h2><ul class="units"><li><a class="unit" href="Algebra.html">Algebra</a> <p>A client of <code>Prelude›Algebra›Monoid›Properties</code> and the instances of monoids on numbers.</p>
 </li>
 <li><a class="unit" href="Arithmetic.html">Arithmetic</a> <p>A client of the arithmetic in <code>Prelude</code>: closed instances of the laws of addition and multiplication, and a few computations.</p>
 </li>
@@ -236,9 +236,9 @@
 </li>
 <li><a class="unit" href="GroupRecursors.html">GroupRecursors</a> <p>The recursor module of a group: <code>mutual T where … end</code> files, after the members, the module <code>T.</code></p>
 </li>
-<li><a class="unit" href="Groups.html">Groups</a> <p>A client of <code>Prelude›Algebra›Setoid›Group</code>, read in the group of integers of <code>Prelude›Algebra›Integers</code>.</p>
+<li><a class="unit" href="Groups.html">Groups</a> <p>A client of <code>Prelude›Algebra›Group›Properties</code>, read in the group of integers of <code>Prelude›Algebra›Integers</code>, up to <code>Same</code>.</p>
 </li>
-<li><a class="unit" href="Hierarchy.html">Hierarchy</a> <p>A client of the bundled algebraic hierarchy of <code>Prelude›Algebra</code>: one function written once for every monoid, <code>concat</code>, run in the monoids of numbers, booleans, lists, endomorphisms and pairs; the derived laws of monoids, groups, lattices and rings, read at instances; and homomorphisms.</p>
+<li><a class="unit" href="Hierarchy.html">Hierarchy</a> <p>A client of the algebraic hierarchy of <code>Prelude›Algebra</code>: one function written once for every monoid, <code>concat</code>, run in the monoids of numbers, booleans, lists, endomorphisms and pairs; the derived laws of monoids, groups, lattices and rings, read at instances; and homomorphisms.</p>
 </li>
 <li><a class="unit" href="Induction.html">Induction</a> <p>A client of <code>Prelude›Arith›Induction</code> and <code>Prelude›Arith›Decide</code>: halving by strong and by two-step induction, decisions eliminated into <code>Bool</code> to show which branch they compute, and the equality test <code>eqb</code>.</p>
 </li>
