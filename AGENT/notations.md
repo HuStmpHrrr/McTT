@@ -143,7 +143,7 @@ tier.
 | --- | --- | --- |
 | `exp` | `Type⟨t⟩` (`a_univ t`), `Type@n` (literal level) | `Typeω@n` (`a_typ n`, the universe ω²+n) |
 | `domain` | `𝕌@l` (`d_suniv l`, a level *value*) | `𝕌ω@n` (`d_univ n`) |
-| `nf` | `univⁿ c xs` (`nf_univ c xs`), `Typeⁿ@n` (= `univⁿ n la_nil`) | `Typeωⁿ@n` (`nf_typ n`) |
+| `nf` | `univⁿ c xs` (`nf_univ c xs`), `Typeⁿ@n` (= `univⁿ n nil`) | `Typeωⁿ@n` (`nf_typ n`) |
 
 `Type⟨t⟩` takes a level *term* in angle brackets: braces are impossible
 (`Type@{` is Rocq's own universe annotation) and `{ }` in `constr` would
@@ -163,7 +163,8 @@ finite literal, so a lemma about any literal is stated with `𝕃ᵒ`.
 `Level@n` holds the levels below ω·(n+1): a literal `𝕃ᵒ o` is in it when
 `fst o <= n` (`wf_llit`), and `maxl M 𝕃ᵒ(S n, 0) ≈ 𝕃ᵒ(S n, 0) : Level@(S n)`
 for `M : Level@n` (`wf_exp_eq_maxl_absorb`).  An atom of a level normal form
-carries its sort, `la_cons k s a r` (offset, sort, neutral); in values the
+carries its sort, `mk_level_atom k s a` (offset, sort, neutral; a
+`level_atom`, and the atoms are a `list level_atom`); in values the
 sort is read from the annotation of the neutral, `dsort (Levelᵈ@s) = s`.
 The canonical form drops an atom whose sort is below the constant's tier
 (`la_keep`), and `lvl_canon_iff` holds over the assignments that put an atom

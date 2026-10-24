@@ -1684,10 +1684,10 @@ Lemma la_wf_strengthen : forall Γ A Δ n xs,
     ⊢ (tele_wk Δ ↑ ++ Γ ▹ A)%list ->
     ⊢ (Δ ++ Γ)%list ->
     List.Forall (fun p => (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ snd p : Level@n)
-      (List.map (fun p => (fst p, (snd p)[wk_qn (length Δ) ↑]ʷ)) (la_to_list xs)) ->
+      (List.map (fun p => (fst p, (snd p)[wk_qn (length Δ) ↑]ʷ)) (List.map atom_exp xs)) ->
     @la_wf gc_deps gc_stack n (Δ ++ Γ)%list xs.
 Proof.
-  intros Γ A Δ n xs; induction xs as [| k s u r IH]; cbn; [ intros; exact I |].
+  intros Γ A Δ n xs; induction xs as [| [k s u] r IH]; cbn; [ intros; exact I |].
   intros [Hu Hr] Hass HΓf HΓs HF.
   inversion HF as [| ? ? Hk HF']; subst.
   split; [ eapply ne_str_level; eassumption | apply IH; assumption ].
@@ -1705,10 +1705,10 @@ Qed.
 
 (** A weakened atom list with a single entry and no offset. *)
 Lemma la_map_single : forall φ xs a,
-    List.map (fun p => (fst p, (snd p)[φ]ʷ)) (la_to_list xs) = (0, a) :: nil ->
-    exists s u, xs = la_cons 0 s u la_nil /\ a = (u : exp)[φ]ʷ.
+    List.map (fun p => (fst p, (snd p)[φ]ʷ)) (List.map atom_exp xs) = (0, a) :: nil ->
+    exists s u, xs = cons (mk_level_atom 0 s u) nil /\ a = (u : exp)[φ]ʷ.
 Proof.
-  intros φ [| k s u [| k' s' u' r]] a H; cbn in H; try discriminate.
+  intros φ [| [k s u] [| [k' s' u'] r]] a H; cbn in H; try discriminate.
   injection H as -> <-; do 2 eexists; split; reflexivity.
 Qed.
 
@@ -2156,6 +2156,25 @@ Proof.
   exact (record_field_params_cong _ _ _ (u[φ]ʷ) p R (List.map (fun N => N[φ]ʷ) Ps) Ns n k f U Huφ Hr Hl HPφl Hn HPφt HPNs Hn' Hfk).
 Qed.
 
+(** The generated induction hypothesis at a list of normal forms, as the
+    lemmas on application spines above take it: [nf_str_exp] of each
+    term. *)
+Ltac nfs_str_ih Γ A IH :=
+  apply (list_all_Forall_map _ (nf_str_exp Γ A) nf_to_exp _) in IH; [| intros ? Hx; exact Hx ].
+
+(** The same at the blocks of a stuck eliminator, as [elim_str] takes it:
+    of each block's motive and branches. *)
+Ltac blocks_str_ih Γ A IH :=
+  apply (list_all_Forall_map _ (fun b => eb_ann b = None /\ nf_str_exp Γ A (eb_motive b) /\
+                                         List.Forall (fun br => nf_str_exp Γ A (snd br)) (eb_brs b))
+           block_exp _) in IH;
+  [| let x := fresh "x" in let Hx := fresh "Hx" in let HA := fresh "HA" in let Hbrs := fresh "Hbrs" in
+     intros x Hx; destruct Hx as [? ? HA ? Hbrs]; cbn;
+     split; [ reflexivity | split; [ exact HA |] ];
+     apply (list_all_Forall_map _ (fun br => nf_str_exp Γ A (snd br)) branch_exp _ Hbrs);
+     let y := fresh "y" in let Hy := fresh "Hy" in let HB := fresh "HB" in
+     intros y Hy; destruct Hy as [? ? ? HB]; exact HB ].
+
 Theorem nf_strengthen : forall Γ A,
     (forall (W : nf) Δ T i,
         tele_ass Δ ->
@@ -2163,28 +2182,22 @@ Theorem nf_strengthen : forall Γ A,
         (Δ ++ Γ)%list ⊢ T : Typeω@i ->
         (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ (W : exp)[wk_qn (length Δ) ↑]ʷ : T[wk_qn (length Δ) ↑]ʷ ->
         (Δ ++ Γ)%list ⊢ W : T) /\
-    (forall u, ne_str Γ A u) /\
-    (forall xs, la_all (ne_str Γ A) xs) /\
-    (forall Ms : nfs, List.Forall (nf_str_exp Γ A) (nfs_to_exps Ms)) /\
-    (forall Bs : nbrs, List.Forall (fun b => nf_str_exp Γ A (snd b)) (nbrs_to_brs Bs)) /\
-    (forall Bks : nblocks, List.Forall (fun b => eb_ann b = None /\ nf_str_exp Γ A (eb_motive b) /\
-                                                 List.Forall (fun br => nf_str_exp Γ A (snd br)) (eb_brs b))
-                             (nblocks_to_blocks Bks)).
+    (forall u, ne_str Γ A u).
 Proof.
-  intros Γ A; apply nf_mut_ind.
+  intros Γ A; apply nf_ne_ind.
   - intros * Hass HΓf HT HW; cbn [nf_to_exp exp_wk] in HW.
     assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
     apply wf_typ_inversion in HW.
     eapply wf_exp_subtyp; [ apply wf_typ, HΓs | exact HT |].
     eapply subtyp_strengthen_closed; [ exact Hass | exact HΓf | apply wf_typ, HΓs | exact HT | reflexivity | exact HW ].
-  - intros c xs IH * Hass HΓf HT HW; cbn [nf_to_exp exp_wk] in HW.
+  - intros c xs IH * Hass HΓf HT HW; apply list_all_la_all in IH; cbn [nf_to_exp exp_wk] in HW.
     assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
     pose proof (wf_univ_inversion HW) as Hs.
     apply wf_univ_lvl_inversion in HW as [n HW].
     rewrite lvl_exp_of_wk in HW.
     assert (Hla : @la_wf gc_deps gc_stack n (Δ ++ Γ)%list xs)
       by (eapply la_wf_strengthen; [ exact IH | exact Hass | exact HΓf | exact HΓs | eapply lvl_exp_of_atoms; exact HW ]).
-    assert (HL : (Δ ++ Γ)%list ⊢ lvl_exp_of c (la_to_list xs) : Level@n)
+    assert (HL : (Δ ++ Γ)%list ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n)
       by (apply lvl_exp_of_wf; [ exact (lvl_exp_of_cst_sort HW) | assumption | assumption ]).
     eapply wf_exp_subtyp; [ eapply wf_univ; exact HL | exact HT |].
     eapply subtyp_strengthen';
@@ -2194,13 +2207,13 @@ Proof.
     apply wf_level_inversion in HW.
     eapply wf_exp_subtyp; [ apply wf_level, HΓs | exact HT |].
     eapply subtyp_strengthen_closed; [ exact Hass | exact HΓf | apply (wf_univ_large (i := 0)), HΓs | exact HT | reflexivity | exact HW ].
-  - intros c xs IH * Hass HΓf HT HW; cbn [nf_to_exp exp_wk] in HW.
+  - intros c xs IH * Hass HΓf HT HW; apply list_all_la_all in IH; cbn [nf_to_exp exp_wk] in HW.
     assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
     rewrite lvl_exp_of_wk in HW.
     destruct (lvl_exp_of_inv _ _ _ _ HW) as [(n & HsL & Hcn & HF) | (a & -> & Hmap)].
     + assert (Hla : @la_wf gc_deps gc_stack n (Δ ++ Γ)%list xs)
         by (eapply la_wf_strengthen; [ exact IH | exact Hass | exact HΓf | exact HΓs | exact HF ]).
-      assert (HL : (Δ ++ Γ)%list ⊢ lvl_exp_of c (la_to_list xs) : Level@n)
+      assert (HL : (Δ ++ Γ)%list ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n)
         by (apply lvl_exp_of_wf; [ exact Hcn | assumption | assumption ]).
       eapply wf_exp_subtyp; [ exact HL | exact HT |].
       eapply subtyp_strengthen_closed;
@@ -2267,7 +2280,7 @@ Proof.
         eapply wf_subtyp_refl'; symmetry; exact HTj.
       * assert (HTM : (Δ ++ Γ)%list ⊢ T ≈ (nf_univ_of M : exp) : Typeω@i) by (eapply soundness_ty'; eassumption).
         cbn [nf_to_exp nf_univ_of] in HTM.
-        set (Mx := lvl_exp_of (fst M) (la_to_list (snd M))) in *.
+        set (Mx := lvl_exp_of (fst M) (List.map atom_exp (snd M))) in *.
         assert (exists k, (Δ ++ Γ)%list ⊢ Type⟨Mx⟩ : Typeω@k) as [k Hk] by (gen_presups; eexists; eassumption).
         destruct (wf_univ_lvl_inversion Hk) as [nM HMx].
         pose proof (short_wk_exp_eq _ _ _ _ _ _ HΓf HTM) as HTMf; cbn [exp_wk] in HTMf.
@@ -2333,14 +2346,22 @@ Proof.
     eapply exp_eq_trans_typ_max; [| symmetry; exact HTCD ].
     eapply wf_exp_eq_pi_cong_large; [ exact HA'm | exact HACs | eapply wf_exp_eq_refl, lift_exp_ge; [| exact HDs ]; lia ].
   - (** The type former applied. *)
-    intros p k Ms IHMs; exact (exp_str_at _ _ _ (apps_str _ _ _ _ IHMs (ind_str _ _ p k))).
+    intros p k Ms IHMs; nfs_str_ih Γ A IHMs; exact (exp_str_at _ _ _ (apps_str _ _ _ _ IHMs (ind_str _ _ p k))).
   - (** A constructor applied. *)
-    intros p k c Ms IHMs; exact (exp_str_at _ _ _ (apps_str _ _ _ _ IHMs (con_str _ _ p k c))).
+    intros p k c Ms IHMs; nfs_str_ih Γ A IHMs; exact (exp_str_at _ _ _ (apps_str _ _ _ _ IHMs (con_str _ _ p k c))).
   - intros u IH * Hass HΓf HT HW; cbn [nf_to_exp] in HW |- *.
     assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
     destruct (IH _ _ Hass HΓf HΓs HW) as [T0 j HuT HT0 Hs].
     eapply wf_exp_subtyp; [ exact HuT | exact HT |].
     eapply subtyp_strengthen'; eassumption.
+  - (** A record type at its parameters. *)
+    intros p Ms IHMs; nfs_str_ih Γ A IHMs; exact (exp_str_at _ _ _ (apps_str _ _ _ _ IHMs (record_str _ _ p))).
+  - (** A tuple ([tuple_str]). *)
+    intros p Ms IHMs fs Fs IHFs; nfs_str_ih Γ A IHMs; nfs_str_ih Γ A IHFs; cbn [nf_to_exp].
+    apply tuple_str; [ exact IHMs |].
+    apply List.Forall_forall; intros x Hx.
+    apply List.in_map_iff in Hx as ([g y] & <- & Hin); apply List.in_combine_r in Hin.
+    exact (proj1 (List.Forall_forall _ _) IHFs _ Hin).
   - intros A' IHA u IHu Δ C Hass HΓf HΓs HW; cbn [ne_to_exp nf_to_exp exp_wk] in HW.
     destruct (wf_exfalso_inversion _ _ _ _ _ _ HW) as ([j HA] & Hu & HsC).
     assert (HΓf1 : ⊢ ((tele_wk Δ ↑ ++ Γ ▹ A) ▹ ⊥)%list) by (gen_presups; assumption).
@@ -2357,7 +2378,8 @@ Proof.
     + eapply (exp_sub_single _ _ _ _ Typeω@j); [ exact HAs | exact Hus ].
     + rewrite exp_wk_sub_id_extend; exact HsC.
   - (** A stuck eliminator ([elim_str]). *)
-    intros pc Us IHUs k Bks IHBs u IHu; exact (elim_str _ _ _ _ _ _ _ IHUs IHBs IHu).
+    intros pc Us IHUs k Bks IHBs u IHu; nfs_str_ih Γ A IHUs; blocks_str_ih Γ A IHBs.
+    exact (elim_str _ _ _ _ _ _ _ IHUs IHBs IHu).
   - (** An application. *)
     intros u IHu w IHw; exact (app_str _ _ _ _ IHu IHw).
   - (** A variable: the long variable is the image of a short one. *)
@@ -2384,22 +2406,6 @@ Proof.
       pose proof (Hany _ HΓs) as HTs.
       assert (exists j, (Δ ++ Γ)%list ⊢ T : Typeω@j) as [j HTj] by (gen_presups; eexists; eassumption).
       apply (mk_short_typ _ _ _ _ _ T j); [ exact HTs | exact HTj | rewrite exp_closed_wk by exact HTc; exact HsT ].
-  - intros; exact I.
-  - intros k u IHu xs IHxs; split; assumption.
-  - cbn; constructor.
-  - intros W IHW Ms IHMs; cbn; constructor; [ exact IHW | exact IHMs ].
-  - cbn; constructor.
-  - intros c n B IHB Bs IHBs; cbn; constructor; [ exact IHB | exact IHBs ].
-  - cbn; constructor.
-  - intros nm A' IHA Bs IHBs Bks IHBks; cbn; constructor; [ split; [ reflexivity | split; [ exact IHA | exact IHBs ] ] | exact IHBks ].
-  - (** A record type at its parameters. *)
-    intros p Ms IHMs; exact (exp_str_at _ _ _ (apps_str _ _ _ _ IHMs (record_str _ _ p))).
-  - (** A tuple ([tuple_str]). *)
-    intros p Ms IHMs fs Fs IHFs; cbn [nf_to_exp].
-    apply tuple_str; [ exact IHMs |].
-    apply List.Forall_forall; intros x Hx.
-    apply List.in_map_iff in Hx as ([g y] & <- & Hin); apply List.in_combine_r in Hin.
-    exact (proj1 (List.Forall_forall _ _) IHFs _ Hin).
   - (** A projection ([proj_str]). *)
     intros f u IHu; exact (proj_str _ _ f _ IHu).
 Qed.

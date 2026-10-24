@@ -3,13 +3,12 @@
     [MemberType.mdenote_impl] decides what a module expression [H]
     denotes in a context [Γ], by recursion on a termination order
     [dn_order Θ Ξ Γ H].  Typing gives that order ([dn_order_of_wf]), but
-    the resolution of an eliminator's annotation ([site_resolves], in
-    [Core.Syntactic.Builtin]) reads module expressions that are not typed:
-    the binders of the terms around are holes.  This file proves that,
-    in a well-formed global context, *every* module expression has the
-    order, in *every* context ([dn_order_all]), with no condition on the
-    context and no typing, and so discharges the interface [site_search]
-    of [Extraction.Command].
+    the typed fill ([Core.TypedElab]) reads module expressions before
+    the command they are in is checked, in contexts not known to be well
+    formed.  This file proves that, in a well-formed global context,
+    *every* module expression has the order, in *every* context
+    ([dn_order_all]), with no condition on the context and no typing, so
+    that [mdenote_dec] and [body_xp_dec] decide on every input.
 
     The measure.  What [mdenote] produces at an open module is a
     description [ds_open Δ Φw Φx] whose entries it later reads.  Each such
@@ -1051,49 +1050,3 @@ Section Order.
       { Φx | body_xp Θ Ξ Γ Φ Φx } + { forall Φx, ~ body_xp Θ Ξ Γ Φ Φx } :=
     body_xp_impl Θ Ξ Hg Γ Φ (bx_order_all Γ Φ).
 End Order.
-
-(** ** Resolving a Site of an Eliminator
-
-    The interface [site_search] of [Extraction.Command]: the head of the
-    annotation is the type former itself, or a member, resolved by
-    [mdenote_dec] in the context with the site's binders as holes. *)
-
-(** Refute [site_resolves] at a head [Eh] that is not the one tried. *)
-Local Ltac refute_site Eh :=
-  let r := fresh "r" in let Hr := fresh "Hr" in
-  intros r Hr; inversion Hr; subst; try congruence;
-  repeat match goal with Eh' : app_head _ = _ |- _ =>
-           rewrite Eh in Eh'; injection Eh' as <- <- end;
-  try congruence.
-
-(** A site of an eliminator resolves to a type former and its uniform
-    arguments, or to nothing. *)
-Definition site_search (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (s : fill_site) :
-    {r | site_resolves Θ Ξ s r} + {forall r, ~ site_resolves Θ Ξ s r}.
-Proof.
-  destruct s as [[Γ d] Z].
-  pose proof (proj1 (mdenote_functional_all _ _ HΞ)) as Fm.
-  destruct (app_head Z) as [| | | | | | | | | | | p k | | | | | | | | | H x | | |] eqn:Eh;
-    try solve [ right; refute_site Eh ].
-  - (* the type former *)
-    destruct (ind_lookup Θ Ξ p) as [D |] eqn:El; [| right; refute_site Eh ].
-    destruct (img_pats (repeat true d) (firstn (ind_nu D) (app_args Z))) as [Us |] eqn:Ei; [| right; refute_site Eh ].
-    left; exists (p, Us); eapply site_resolves_former; eassumption.
-  - (* a member *)
-    destruct (mdenote_dec Θ Ξ HΞ (ctx_holes d ++ Γ) (me_mem H x)) as [(R & HR) | HN];
-      [| right; refute_site Eh; eapply HN; eassumption ].
-    assert (Hu : forall Θ' p k Ns, mdenote Θ Ξ (ctx_holes d ++ Γ) (me_mem H x) (ds_ind Θ' p k Ns) -> R = ds_ind Θ' p k Ns)
-      by (intros * Hm; exact (Fm _ _ _ HR _ Hm)).
-    destruct R as [| | | Θ' p k Ns |];
-      try solve [ right; refute_site Eh;
-                  match goal with Hm : mdenote _ _ _ _ (ds_ind _ _ _ _) |- _ => apply Hu in Hm; discriminate end ].
-    destruct (ind_lookup Θ Ξ p) as [D |] eqn:El;
-      [| right; refute_site Eh;
-         match goal with Hm : mdenote _ _ _ _ (ds_ind _ _ _ _) |- _ =>
-           apply Hu in Hm; injection Hm as <- <- <- <-; congruence end ].
-    destruct (img_pats (repeat true d) (firstn (ind_nu D) (head_args Θ' Ns (app_args Z)))) as [Us |] eqn:Ei;
-      [| right; refute_site Eh;
-         match goal with Hm : mdenote _ _ _ _ (ds_ind _ _ _ _) |- _ =>
-           apply Hu in Hm; injection Hm as <- <- <- <-; congruence end ].
-    left; exists (p, Us); eapply site_resolves_member; eassumption.
-Defined.

@@ -1335,7 +1335,7 @@ Section Read.
         IH2 : forall ups0 ρ0 vs0, dsim_list _ ups0 -> env_agree _ (env_args nil ?as') ρ0 -> dsim_list _ vs0 ->
               fread_cargs _ _ _ _ ups0 ρ0 _ vs0 ?Args,
         Ha : dsim_list ?as' ?as'', Hv : dsim_list ?vs ?vs'
-        |- Rnfᶠ ⇓ (d_ind _ _ ?as'') (d_con _ _ _ ?vs') in _ ⍮ _ ⍮ _ ↘ nf_con _ _ _ (nfs_app ?Ps ?Args) =>
+        |- Rnfᶠ ⇓ (d_ind _ _ ?as'') (d_con _ _ _ ?vs') in _ ⍮ _ ⍮ _ ↘ nf_con _ _ _ (?Ps ++ ?Args) =>
           econstructor; try eassumption;
             [ rewrite <- (dsim_list_length _ _ Ha); assumption
             | rewrite <- (dsim_list_length _ _ Hv); assumption
@@ -1350,7 +1350,7 @@ Section Read.
         IH2 : forall ups0 ρ0 vs0, dsim_list _ ups0 -> env_agree _ (env_args nil ?as') ρ0 -> dsim_list (skipn ?n ?vs) vs0 ->
               fread_cargs _ _ _ _ ups0 ρ0 _ vs0 ?Args,
         Ha : dsim_list ?as' ?as'', Hv : dsim_list ?vs ?vs'
-        |- Rnfᶠ ⇓ (d_ind _ _ ?as'') (d_con _ _ _ ?vs') in _ ⍮ _ ⍮ _ ↘ nf_con _ _ _ (nfs_app ?Ps ?Args) =>
+        |- Rnfᶠ ⇓ (d_ind _ _ ?as'') (d_con _ _ _ ?vs') in _ ⍮ _ ⍮ _ ↘ nf_con _ _ _ (?Ps ++ ?Args) =>
           eapply fread_nf_con_view with (n := n); try eassumption;
             [ rewrite <- (dsim_list_length _ _ Ha); assumption
             | rewrite <- (dsim_list_length _ _ Hv); assumption

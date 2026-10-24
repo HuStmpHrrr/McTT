@@ -17,55 +17,33 @@ Import Domain_Notations.
 (** ** Normal Forms Whose Global Heads Satisfy [G] *)
 
 (** [nf_stuck G W]: every global heading a neutral in [W] satisfies [G];
-    mutually, for the other sorts of normal forms. *)
+    mutually, in the neutral [M]. *)
 Fixpoint nf_stuck (G : qname -> Prop) (W : nf) : Prop :=
   match W with
   | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => True
-  | nf_univ _ xs | nf_lvl _ xs => la_stuck G xs
+  | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_stuck G (atom_level a)) xs
   | nf_pi A B | nf_fn A B => nf_stuck G A /\ nf_stuck G B
-  | nf_indty _ _ Ms | nf_con _ _ _ Ms => nfs_stuck G Ms
+  | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_stuck G) Ms
   | nf_neut M => ne_stuck G M
-  | nf_record _ Ms => nfs_stuck G Ms
-  | nf_tuple _ Ms _ Ns => nfs_stuck G Ms /\ nfs_stuck G Ns
+  | nf_record _ Ms => all_list (nf_stuck G) Ms
+  | nf_tuple _ Ms _ Ns => all_list (nf_stuck G) Ms /\ all_list (nf_stuck G) Ns
   end
 with ne_stuck (G : qname -> Prop) (M : ne) : Prop :=
   match M with
   | ne_exfalso A M => nf_stuck G A /\ ne_stuck G M
-  | ne_elim _ Us _ Bks M => nfs_stuck G Us /\ nblocks_stuck G Bks /\ ne_stuck G M
+  | ne_elim _ Us _ Bks M =>
+      all_list (nf_stuck G) Us /\
+      all_list (fun b => nf_stuck G (block_motive b) /\ all_list (fun br => nf_stuck G (branch_body br)) (block_branches b)) Bks /\
+      ne_stuck G M
   | ne_app M N => ne_stuck G M /\ nf_stuck G N
   | ne_var _ => True
   | ne_glob p => G p
   | ne_proj _ M => ne_stuck G M
-  end
-with la_stuck (G : qname -> Prop) (xs : lvl_atoms) : Prop :=
-  match xs with
-  | la_nil => True
-  | la_cons _ _ M r => ne_stuck G M /\ la_stuck G r
-  end
-with nfs_stuck (G : qname -> Prop) (Ms : nfs) : Prop :=
-  match Ms with
-  | nfs_nil => True
-  | nfs_cons M Ms => nf_stuck G M /\ nfs_stuck G Ms
-  end
-with nbrs_stuck (G : qname -> Prop) (Bs : nbrs) : Prop :=
-  match Bs with
-  | nbrs_nil => True
-  | nbrs_cons _ _ B Bs => nf_stuck G B /\ nbrs_stuck G Bs
-  end
-with nblocks_stuck (G : qname -> Prop) (Bks : nblocks) : Prop :=
-  match Bks with
-  | nblocks_nil => True
-  | nblocks_cons _ A Bs Bks => nf_stuck G A /\ nbrs_stuck G Bs /\ nblocks_stuck G Bks
   end.
 
-Lemma la_stuck_all : forall G xs, la_stuck G xs <-> la_all (ne_stuck G) xs.
-Proof. intros G; induction xs as [| k s a r IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
-
-Lemma la_stuck_sort : forall G xs, la_stuck G xs -> la_stuck G (la_sort xs).
-Proof. intros * H; apply la_stuck_all, la_all_sort, la_stuck_all; assumption. Qed.
-
-Lemma nfs_stuck_app : forall G Ms Ns, nfs_stuck G Ms -> nfs_stuck G Ns -> nfs_stuck G (nfs_app Ms Ns).
-Proof. induction Ms; cbn; intuition. Qed.
+Lemma la_stuck_sort : forall G xs, all_list (fun a => ne_stuck G (atom_level a)) xs ->
+    all_list (fun a => ne_stuck G (atom_level a)) (la_sort xs).
+Proof. intros * H; apply la_all_all_list, la_all_sort, la_all_all_list; assumption. Qed.
 
 (** A global that does not unfold: an opaque definition or an axiom. *)
 #[warnings="-cannot-define-projection"]
@@ -592,38 +570,43 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
     (forall s m M, Rne m in Θ ⍮ Ξ ⍮ s ↘ M -> dstuck_ne m -> ne_stuck (gstuck Θ Ξ) M) /\
     (forall s a A, Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A -> dstuck a -> nf_stuck (gstuck Θ Ξ) A) /\
     (forall s xs ys, Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-       dstuck_la xs -> la_stuck (gstuck Θ Ξ) ys) /\
+       dstuck_la xs -> all_list (fun a => ne_stuck (gstuck Θ Ξ) (atom_level a)) ys) /\
     (forall s ρ T vs Ms, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
-       env_stuck ρ -> (forall a, In a vs -> dstuck a) -> nfs_stuck (gstuck Θ Ξ) Ms) /\
+       env_stuck ρ -> (forall a, In a vs -> dstuck a) -> all_list (nf_stuck (gstuck Θ Ξ)) Ms) /\
     (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        env_stuck ρ -> (forall a, In a ups -> dstuck a) -> (forall a, In a vs -> dstuck a) ->
-       nfs_stuck (gstuck Θ Ξ) Ms) /\
+       all_list (nf_stuck (gstuck Θ Ξ)) Ms) /\
     (forall s p ups ρ t x X, Rsh x at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ X ->
        env_stuck ρ -> (forall a, In a ups -> dstuck a) -> dstuck x -> nf_stuck (gstuck Θ Ξ) X) /\
     (forall s ρ p ups Bks sel i Ms NBks, Rblks i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
-       env_stuck ρ -> ups_stuck ups -> nblocks_stuck (gstuck Θ Ξ) NBks) /\
+       env_stuck ρ -> ups_stuck ups ->
+       all_list (fun b => nf_stuck (gstuck Θ Ξ) (block_motive b) /\
+                          all_list (fun br => nf_stuck (gstuck Θ Ξ) (branch_body br)) (block_branches b)) NBks) /\
     (forall s ρ p ups Bks Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
        env_stuck ρ -> ups_stuck ups -> (forall a, In a (snd r) -> dstuck a) ->
-       nbrs_stuck (gstuck Θ Ξ) Bs') /\
+       all_list (fun br => nf_stuck (gstuck Θ Ξ) (branch_body br)) Bs') /\
     (forall s ρ fl v Fs, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs ->
-       env_stuck ρ -> dstuck v -> nfs_stuck (gstuck Θ Ξ) Fs).
+       env_stuck ρ -> dstuck v -> all_list (nf_stuck (gstuck Θ Ξ)) Fs).
   Proof.
     destruct eval_stuck as (He & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hm & Hsh & _ & Hpj & _).
     apply (read_mut_ind Θ Ξ
              (fun s m W _ => dstuck_nf m -> nf_stuck (gstuck Θ Ξ) W)
              (fun s m M _ => dstuck_ne m -> ne_stuck (gstuck Θ Ξ) M)
              (fun s a A _ => dstuck a -> nf_stuck (gstuck Θ Ξ) A)
-             (fun s xs ys _ => dstuck_la xs -> la_stuck (gstuck Θ Ξ) ys)
-             (fun s ρ T vs Ms _ => env_stuck ρ -> (forall a, In a vs -> dstuck a) -> nfs_stuck (gstuck Θ Ξ) Ms)
+             (fun s xs ys _ => dstuck_la xs -> all_list (fun a => ne_stuck (gstuck Θ Ξ) (atom_level a)) ys)
+             (fun s ρ T vs Ms _ => env_stuck ρ -> (forall a, In a vs -> dstuck a) -> all_list (nf_stuck (gstuck Θ Ξ)) Ms)
              (fun s p ups ρ gs vs Ms _ => env_stuck ρ -> (forall a, In a ups -> dstuck a) ->
-                                        (forall a, In a vs -> dstuck a) -> nfs_stuck (gstuck Θ Ξ) Ms)
+                                        (forall a, In a vs -> dstuck a) -> all_list (nf_stuck (gstuck Θ Ξ)) Ms)
              (fun s p ups ρ t x X _ => env_stuck ρ -> (forall a, In a ups -> dstuck a) -> dstuck x ->
                                      nf_stuck (gstuck Θ Ξ) X)
-             (fun s ρ p ups Bks sel i Ms NBks _ => env_stuck ρ -> ups_stuck ups ->
-                                                      nblocks_stuck (gstuck Θ Ξ) NBks)
-             (fun s ρ p ups Bks Mv A Mi r cs Bs Bs' _ => env_stuck ρ -> ups_stuck ups ->
-                                                            (forall a, In a (snd r) -> dstuck a) -> nbrs_stuck (gstuck Θ Ξ) Bs')
-             (fun s ρ fl v Fs _ => env_stuck ρ -> dstuck v -> nfs_stuck (gstuck Θ Ξ) Fs));
+             (fun s ρ p ups Bks sel i Ms NBks _ =>
+                env_stuck ρ -> ups_stuck ups ->
+                all_list (fun b => nf_stuck (gstuck Θ Ξ) (block_motive b) /\
+                                   all_list (fun br => nf_stuck (gstuck Θ Ξ) (branch_body br)) (block_branches b)) NBks)
+             (fun s ρ p ups Bks Mv A Mi r cs Bs Bs' _ =>
+                env_stuck ρ -> ups_stuck ups -> (forall a, In a (snd r) -> dstuck a) ->
+                all_list (fun br => nf_stuck (gstuck Θ Ξ) (branch_body br)) Bs')
+             (fun s ρ fl v Fs _ => env_stuck ρ -> dstuck v -> all_list (nf_stuck (gstuck Θ Ξ)) Fs));
       intros; cbn [snd] in *; cbn;
       (* a field of a value: stuck as the value is *)
       repeat match goal with
@@ -645,25 +628,23 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
         environment, of stuck values. *)
     all: try solve [
       stuck_fwd He Hes Hsh Hm;
-      try apply nfs_stuck_app;
+      try apply all_list_app;
       match goal with
       | IH : context [ nf_stuck _ ?W ] |- nf_stuck _ ?W => apply IH
       | IH : context [ ne_stuck _ ?W ] |- ne_stuck _ ?W => apply IH
-      | IH : context [ nfs_stuck _ ?W ] |- nfs_stuck _ ?W => apply IH
-      | IH : context [ nbrs_stuck _ ?W ] |- nbrs_stuck _ ?W => apply IH
-      | IH : context [ nblocks_stuck _ ?W ] |- nblocks_stuck _ ?W => apply IH
+      | IH : context [ all_list _ ?W ] |- all_list _ ?W => apply IH
       end;
       first [ stuck_env | solve [ all_in_with stuck_val ] | stuck_val | solve [ constructor; stuck_val ] ] ].
     (** A level reads back canonically, so its atoms are sorted and merged;
         [la_all_keep] and [la_all_sort] move the property of all the atoms
         across. *)
-    all: try solve [ apply la_stuck_all, la_all_keep, la_all_sort, la_stuck_all; eauto 3 with mctt
+    all: try solve [ apply la_all_all_list, la_all_keep, la_all_sort, la_all_all_list; eauto 3 with mctt
                    | apply la_stuck_sort; eauto 3 with mctt ].
     (** A small universe reads back at the canonical level its level reads
         back as, and the two normal forms have the same atoms, so this case
         is the level's. *)
     all: try match goal with
-         | IH : _ -> nf_stuck (gstuck Θ Ξ) (nf_lvl_of _) |- la_stuck (gstuck Θ Ξ) _ =>
+         | IH : _ -> nf_stuck (gstuck Θ Ξ) (nf_lvl_of _) |- all_list _ _ =>
              apply IH; repeat constructor; assumption
          end.
     (* a recursive argument of a function shape, under a fresh variable *)
@@ -681,7 +662,7 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
     all: match goal with
          | IH : _ -> nf_stuck (gstuck Θ Ξ) ?W |- nf_stuck (gstuck Θ Ξ) ?W => apply IH
          | IH : _ -> ne_stuck (gstuck Θ Ξ) ?W |- ne_stuck (gstuck Θ Ξ) ?W => apply IH
-         | IH : _ -> la_stuck (gstuck Θ Ξ) ?W |- la_stuck (gstuck Θ Ξ) ?W => apply IH
+         | IH : _ -> all_list _ ?W |- all_list _ ?W => apply IH
          end.
     all: repeat first [ eassumption | constructor | apply env_stuck_extend
                       | eapply He; [ eassumption |] | eapply Ha; [ eassumption | |] | eapply Hsh; [ eassumption | |] ].

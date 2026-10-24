@@ -22,56 +22,37 @@ From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Semantic Require Import Domain.
 Import Syntax_Notations.
 
-(** A normal form renamed by the weakening [φ]; mutually, for its other
-    sorts. *)
+(** A normal form renamed by the weakening [φ]; mutually, a neutral.  A
+    block's motive and a branch's body are under their binders. *)
 Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   match W with
   | nf_typ i => nf_typ i
-  | nf_univ c xs => nf_univ c (la_wk φ xs)
+  | nf_univ c xs => nf_univ c (List.map (map_level_atom (ne_wk φ)) xs)
   | nf_level n => nf_level n
-  | nf_lvl c xs => nf_lvl c (la_wk φ xs)
+  | nf_lvl c xs => nf_lvl c (List.map (map_level_atom (ne_wk φ)) xs)
   | nf_True => nf_True
   | nf_true => nf_true
   | nf_False => nf_False
   | nf_pi A B => nf_pi (nf_wk φ A) (nf_wk (wk_q φ) B)
   | nf_fn A M => nf_fn (nf_wk φ A) (nf_wk (wk_q φ) M)
-  | nf_indty p k Ms => nf_indty p k (nfs_wk φ Ms)
-  | nf_con p k c Ms => nf_con p k c (nfs_wk φ Ms)
+  | nf_indty p k Ms => nf_indty p k (List.map (nf_wk φ) Ms)
+  | nf_con p k c Ms => nf_con p k c (List.map (nf_wk φ) Ms)
   | nf_neut u => nf_neut (ne_wk φ u)
-  | nf_record p Ms => nf_record p (nfs_wk φ Ms)
-  | nf_tuple p Ms fs Ns => nf_tuple p (nfs_wk φ Ms) fs (nfs_wk φ Ns)
+  | nf_record p Ms => nf_record p (List.map (nf_wk φ) Ms)
+  | nf_tuple p Ms fs Ns => nf_tuple p (List.map (nf_wk φ) Ms) fs (List.map (nf_wk φ) Ns)
   end
 with ne_wk (φ : wk) (u : ne) {struct u} : ne :=
   match u with
   | ne_exfalso A u => ne_exfalso (nf_wk (wk_q φ) A) (ne_wk φ u)
-  | ne_elim p Us m Bks u => ne_elim p (nfs_wk φ Us) m (nblocks_wk φ Bks) (ne_wk φ u)
+  | ne_elim p Us m Bks u =>
+      ne_elim p (List.map (nf_wk φ) Us) m (List.map (map_normal_block (fun n => nf_wk (wk_qn n φ))) Bks) (ne_wk φ u)
   | ne_app u W => ne_app (ne_wk φ u) (nf_wk φ W)
   | ne_var x => ne_var (φ x)
   | ne_glob p => ne_glob p
   | ne_proj f u => ne_proj f (ne_wk φ u)
-  end
-with la_wk (φ : wk) (xs : lvl_atoms) {struct xs} : lvl_atoms :=
-  match xs with
-  | la_nil => la_nil
-  | la_cons j s u r => la_cons j s (ne_wk φ u) (la_wk φ r)
-  end
-with nfs_wk (φ : wk) (Ms : nfs) {struct Ms} : nfs :=
-  match Ms with
-  | nfs_nil => nfs_nil
-  | nfs_cons M Ms => nfs_cons (nf_wk φ M) (nfs_wk φ Ms)
-  end
-with nbrs_wk (φ : wk) (Bs : nbrs) {struct Bs} : nbrs :=
-  match Bs with
-  | nbrs_nil => nbrs_nil
-  | nbrs_cons c n B Bs => nbrs_cons c n (nf_wk (wk_qn n φ) B) (nbrs_wk φ Bs)
-  end
-with nblocks_wk (φ : wk) (Bks : nblocks) {struct Bks} : nblocks :=
-  match Bks with
-  | nblocks_nil => nblocks_nil
-  | nblocks_cons nm A Bs Bks => nblocks_cons nm (nf_wk (wk_qn nm φ) A) (nbrs_wk φ Bs) (nblocks_wk φ Bks)
   end.
 
-Definition lvl_wk (φ : wk) (l : lvl) : lvl := (fst l, la_wk φ (snd l)).
+Definition lvl_wk (φ : wk) (l : lvl) : lvl := (fst l, List.map (map_level_atom (ne_wk φ)) (snd l)).
 
 Lemma nf_lvl_of_wk : forall φ l, nf_wk φ (nf_lvl_of l) = nf_lvl_of (lvl_wk φ l).
 Proof. reflexivity. Qed.
@@ -83,35 +64,20 @@ Proof. reflexivity. Qed.
 
 Lemma nf_wk_to_exp :
   (forall W φ, nf_to_exp (nf_wk φ W) = (nf_to_exp W)[φ]ʷ) /\
-  (forall u φ, ne_to_exp (ne_wk φ u) = (ne_to_exp u)[φ]ʷ) /\
-  (forall xs φ, la_to_list (la_wk φ xs)
-                = List.map (fun p => (fst p, (snd p)[φ]ʷ)) (la_to_list xs)) /\
-  (forall Ms φ, nfs_to_exps (nfs_wk φ Ms) = List.map (fun M => M[φ]ʷ) (nfs_to_exps Ms)) /\
-  (forall Bs φ, nbrs_to_brs (nbrs_wk φ Bs)
-                = List.map (fun b => (fst b, (snd b)[wk_qn (snd (fst b)) φ]ʷ)) (nbrs_to_brs Bs)) /\
-  (forall Bks φ, nblocks_to_blocks (nblocks_wk φ Bks)
-                 = List.map (fun b => match b with
-                                      | eb_mk nm oZ A Bs =>
-                                          eb_mk nm (option_map (fun Z => Z[wk_qn (nm - 1) φ]ʷ) oZ) A[wk_qn nm φ]ʷ
-                                            (List.map (fun br => (fst br, (snd br)[wk_qn (snd (fst br)) φ]ʷ)) Bs)
-                                      end) (nblocks_to_blocks Bks)).
+  (forall u φ, ne_to_exp (ne_wk φ u) = (ne_to_exp u)[φ]ʷ).
 Proof.
-  apply nf_mut_ind; intros; cbn; rewrite ?apps_exp_wk;
-    try reflexivity;
-    (** A tuple: its values through [combine]. *)
-    try solve [ match goal with
-                | HM : forall φ, nfs_to_exps (nfs_wk φ ?Ms) = _, HN : forall φ, nfs_to_exps (nfs_wk φ ?Ns) = _
-                  |- a_tuple _ (List.combine _ (nfs_to_exps (nfs_wk _ ?Ns))) = _ =>
-                    cbn [exp_wk]; rewrite HM, HN, combine_map_r; reflexivity
-                end ];
-    try solve [ f_equal; rewrite lvl_exp_of_wk; f_equal; eauto
-              | rewrite lvl_exp_of_wk; f_equal; eauto
-              | symmetry; apply qname_term_wk
-              | f_equal; eauto
-              | match goal with
-                | Hu : forall φ, _ = _, Hr : forall φ, _ = _ |- _ => rewrite Hu, Hr; reflexivity
-                end ].
-  all: repeat match goal with H : forall φ, _ = _ |- _ => rewrite H end; rewrite ?qname_mod_wk; reflexivity.
+  apply nf_ne_ind; intros; cbn [nf_wk ne_wk nf_to_exp ne_to_exp exp_wk]; rewrite ?apps_exp_wk, ?lvl_exp_of_wk;
+    (** A global is closed, so the renaming does not touch it. *)
+    try solve [ symmetry; apply qname_term_wk ];
+    repeat (f_equal; try solve [ eauto ]).
+  (** A tuple: its values through [combine]. *)
+  all: try match goal with
+           | |- combine ?fs _ = List.map (fun f => (fst f, (snd f)[?φ]ʷ)) _ =>
+               rewrite <- (combine_map_r (fun N => N[φ]ʷ)); f_equal
+           end.
+  all: nested_elements; cbn; repeat (f_equal; try solve [ eauto ]).
+  (** A block's branches. *)
+  all: nested_elements; cbn; f_equal; eauto.
 Qed.
 
 (** ** Order-Preserving Renamings Preserve the Order on Atoms
@@ -119,21 +85,16 @@ Qed.
     The coding of a normal form is a node whose sibling is the continuation
     [t], so comparing two codings compares the forms first and the
     continuations only if the forms are equal ([nf_code_cmp]).  The
-    continuation of [la_code] sits at the end of its list, with the same
-    effect ([la_code_cmp]). *)
+    continuation of [list_code] sits at the end of its list, with the same
+    effect ([list_code_cmp]). *)
 Definition cmp_then (c c' : comparison) : comparison :=
   match c with Eq => c' | _ => c end.
 
 (** The order on normal forms: of their codings. *)
 Definition nf_cmp (M N : nf) : comparison := lt_cmp (nf_code M lt_nil) (nf_code N lt_nil).
-(** The order on lists of level atoms: of their codings. *)
-Definition la_cmp (xs ys : lvl_atoms) : comparison := lt_cmp (la_code xs lt_nil) (la_code ys lt_nil).
-(** The order on lists of normal forms: of their codings. *)
-Definition nfs_cmp (Ms Ns : nfs) : comparison := lt_cmp (nfs_code Ms lt_nil) (nfs_code Ns lt_nil).
-(** The order on lists of normal branches: of their codings. *)
-Definition nbrs_cmp (Bs Cs : nbrs) : comparison := lt_cmp (nbrs_code Bs lt_nil) (nbrs_code Cs lt_nil).
-(** The order on lists of normal blocks: of their codings. *)
-Definition nblocks_cmp (Bks Cks : nblocks) : comparison := lt_cmp (nblocks_code Bks lt_nil) (nblocks_code Cks lt_nil).
+(** The order on lists, each element coded by [f]: of their codings. *)
+Definition list_cmp {A : Set} (f : A -> ltree) (l l' : list A) : comparison :=
+  lt_cmp (list_code f l lt_nil) (list_code f l' lt_nil).
 
 Lemma cmp_then_eq : forall c, cmp_then c Eq = c.
 Proof. intros []; reflexivity. Qed.
@@ -176,36 +137,23 @@ Qed.
 Lemma cmp_then_assoc : forall a b c, cmp_then (cmp_then a b) c = cmp_then a (cmp_then b c).
 Proof. intros [] [] []; reflexivity. Qed.
 
-Lemma la_code_cmp : forall xs ys t t',
-    lt_cmp (la_code xs t) (la_code ys t') = cmp_then (la_cmp xs ys) (lt_cmp t t').
+Lemma list_code_cmp {A : Set} (f : A -> ltree) : forall l l' t t',
+    lt_cmp (list_code f l t) (list_code f l' t') = cmp_then (list_cmp f l l') (lt_cmp t t').
 Proof.
-  unfold la_cmp; induction xs as [| k n m r IH]; intros [| k' n' m' r'] t t'; cbn [la_code];
+  unfold list_cmp; induction l as [| x l IH]; intros [| y l'] t t'; cbn [list_code];
     rewrite ?lt_cmp_node; cbn [Nat.compare lt_cmp cmp_then]; try reflexivity.
-  rewrite (IH r' t t'), (IH r' lt_nil lt_nil); cbn [lt_cmp]; rewrite !cmp_then_eq, !cmp_then_assoc; reflexivity.
+  rewrite (IH l' t t'), (IH l' lt_nil lt_nil); cbn [lt_cmp]; rewrite !cmp_then_eq, !cmp_then_assoc; reflexivity.
 Qed.
 
-Lemma nfs_code_cmp : forall Ms Ns t t',
-    lt_cmp (nfs_code Ms t) (nfs_code Ns t') = cmp_then (nfs_cmp Ms Ns) (lt_cmp t t').
+(** A map that preserves the order on the elements of a list preserves
+    the order on the list. *)
+Lemma list_cmp_map {A : Set} (P : A -> Set) (f : A -> ltree) (g : A -> A) : forall l,
+    list_all A P l -> (forall x, P x -> forall y, lt_cmp (f (g x)) (f (g y)) = lt_cmp (f x) (f y)) ->
+    forall l', list_cmp f (List.map g l) (List.map g l') = list_cmp f l l'.
 Proof.
-  unfold nfs_cmp; induction Ms as [| M Ms IH]; intros [| N Ns] t t'; cbn [nfs_code];
+  unfold list_cmp; intros l Hl Hg; induction Hl as [| x Hx l Hl IH]; intros [| y l']; cbn [List.map list_code];
     rewrite ?lt_cmp_node; cbn [Nat.compare lt_cmp cmp_then]; try reflexivity.
-  rewrite (IH Ns t t'), (IH Ns lt_nil lt_nil); cbn [lt_cmp]; rewrite !cmp_then_eq, !cmp_then_assoc; reflexivity.
-Qed.
-
-Lemma nbrs_code_cmp : forall Bs Cs t t',
-    lt_cmp (nbrs_code Bs t) (nbrs_code Cs t') = cmp_then (nbrs_cmp Bs Cs) (lt_cmp t t').
-Proof.
-  unfold nbrs_cmp; induction Bs as [| c n B Bs IH]; intros [| c' n' B' Cs] t t'; cbn [nbrs_code];
-    rewrite ?lt_cmp_node; cbn [Nat.compare lt_cmp cmp_then]; try reflexivity.
-  rewrite (IH Cs t t'), (IH Cs lt_nil lt_nil); cbn [lt_cmp]; rewrite !cmp_then_eq, !cmp_then_assoc; reflexivity.
-Qed.
-
-Lemma nblocks_code_cmp : forall Bks Cks t t',
-    lt_cmp (nblocks_code Bks t) (nblocks_code Cks t') = cmp_then (nblocks_cmp Bks Cks) (lt_cmp t t').
-Proof.
-  unfold nblocks_cmp; induction Bks as [| nm A Bs Bks IH]; intros [| nm' A' Bs' Cks] t t'; cbn [nblocks_code];
-    rewrite ?lt_cmp_node; cbn [Nat.compare lt_cmp cmp_then]; try reflexivity.
-  rewrite (IH Cks t t'), (IH Cks lt_nil lt_nil); cbn [lt_cmp]; rewrite !cmp_then_eq, !cmp_then_assoc; reflexivity.
+  rewrite (Hg x Hx y), (IH l'); reflexivity.
 Qed.
 
 Lemma wk_mono_qn : forall n φ, wk_mono φ -> wk_mono (wk_qn n φ).
@@ -214,11 +162,10 @@ Proof. induction n; intros; cbn; [ assumption | apply wk_mono_q; auto ]. Qed.
 (** Every coding is compared by [lt_cmp] of a node, so the comparisons
     reduce to [cmp_then] of the comparisons of the parts. *)
 Ltac cmp_norm :=
-  unfold nf_cmp, la_cmp, ne_cmp, nfs_cmp, nbrs_cmp, nblocks_cmp;
-  cbn [nf_code ne_code la_code nfs_code nbrs_code nblocks_code nf_wk ne_wk la_wk nfs_wk nbrs_wk nblocks_wk];
+  unfold nf_cmp, ne_cmp;
+  cbn [nf_code ne_code nf_wk ne_wk];
   rewrite ?lt_cmp_node; cbn [lt_cmp];
-  repeat first [ rewrite nf_code_cmp | rewrite ne_code_cmp | rewrite la_code_cmp
-               | rewrite nfs_code_cmp | rewrite nbrs_code_cmp | rewrite nblocks_code_cmp
+  repeat first [ rewrite nf_code_cmp | rewrite ne_code_cmp | rewrite list_code_cmp
                  (** a node a coding continues with, as the uniform parameters of a
                      stuck eliminator are *)
                | rewrite lt_cmp_node ]; cbn [lt_cmp];
@@ -232,43 +179,65 @@ Proof.
     apply Hφ; assumption.
 Qed.
 
+(** The side condition of [list_cmp_map] at the elements of a normal form:
+    a normal form, an atom, or a block (whose motive and branches are
+    compared at equal binder counts only). *)
+Ltac elem_cmp_wk :=
+  let x := fresh "x" in let Hx := fresh "Hx" in let y := fresh "y" in
+  intros x Hx y; cbv beta;
+  match goal with Hφ : wk_mono ?φ |- _ =>
+    first
+      [ (** a normal form *)
+        exact (Hx _ y Hφ)
+      | (** an atom *)
+        let a := fresh "a" in let Ha := fresh "Ha" in let b := fresh "b" in let E := fresh "E" in
+        destruct Hx as [? ? a Ha]; destruct y as [? ? b];
+        unfold atom_code, map_level_atom; cbn [atom_offset atom_sort atom_level]; rewrite !lt_cmp_node;
+        pose proof (Ha φ b Hφ) as E; unfold ne_cmp in E; rewrite E; reflexivity
+      | (** a block *)
+        let n := fresh "n" in let A := fresh "A" in let HA := fresh "HA" in let brs := fresh "brs" in
+        let Hbrs := fresh "Hbrs" in let n' := fresh "n" in let A' := fresh "A" in let E := fresh "E" in
+        destruct Hx as [n A HA brs Hbrs]; destruct y as [n' A' ?];
+        unfold block_code, map_normal_block; cbn [block_arity block_motive block_branches]; rewrite !lt_cmp_node;
+        destruct (Nat.compare_spec n n') as [<- | ? | ?]; cbn [cmp_then]; [| reflexivity | reflexivity ];
+        pose proof (HA (wk_qn n φ) A' (wk_mono_qn _ _ Hφ)) as E; unfold nf_cmp in E; rewrite E;
+        rewrite !list_code_cmp; rewrite (list_cmp_map _ _ _ brs Hbrs); [ reflexivity |];
+        let z := fresh "z" in let Hz := fresh "Hz" in let w := fresh "w" in
+        let m := fresh "m" in let B := fresh "B" in let HB := fresh "HB" in let m' := fresh "m" in
+        let B' := fresh "B" in let E' := fresh "E" in
+        intros z Hz w; destruct Hz as [? m B HB]; destruct w as [? m' B'];
+        unfold branch_code, map_normal_branch; cbn [branch_constructor branch_arity branch_body]; rewrite !lt_cmp_node;
+        destruct (Nat.compare_spec m m') as [<- | ? | ?]; cbn [cmp_then]; [| reflexivity | reflexivity ];
+        pose proof (HB (wk_qn m φ) B' (wk_mono_qn _ _ Hφ)) as E'; unfold nf_cmp in E'; rewrite E';
+        reflexivity ]
+  end.
+
 Lemma nf_cmp_wk :
   (forall M φ N, wk_mono φ -> nf_cmp (nf_wk φ M) (nf_wk φ N) = nf_cmp M N) /\
-  (forall m φ n, wk_mono φ -> ne_cmp (ne_wk φ m) (ne_wk φ n) = ne_cmp m n) /\
-  (forall xs φ ys, wk_mono φ -> la_cmp (la_wk φ xs) (la_wk φ ys) = la_cmp xs ys) /\
-  (forall Ms φ Ns, wk_mono φ -> nfs_cmp (nfs_wk φ Ms) (nfs_wk φ Ns) = nfs_cmp Ms Ns) /\
-  (forall Bs φ Cs, wk_mono φ -> nbrs_cmp (nbrs_wk φ Bs) (nbrs_wk φ Cs) = nbrs_cmp Bs Cs) /\
-  (forall Bks φ Cks, wk_mono φ -> nblocks_cmp (nblocks_wk φ Bks) (nblocks_wk φ Cks) = nblocks_cmp Bks Cks).
+  (forall m φ n, wk_mono φ -> ne_cmp (ne_wk φ m) (ne_wk φ n) = ne_cmp m n).
 Proof.
-  apply nf_mut_ind; intros;
+  apply nf_ne_ind; intros;
     match goal with
     | |- nf_cmp _ (nf_wk _ ?N) = _ => destruct N
     | |- ne_cmp _ (ne_wk _ ?N) = _ => destruct N
-    | |- la_cmp _ (la_wk _ ?N) = _ => destruct N
-    | |- nfs_cmp _ (nfs_wk _ ?N) = _ => destruct N
-    | |- nbrs_cmp _ (nbrs_wk _ ?N) = _ => destruct N
-    | |- nblocks_cmp _ (nblocks_wk _ ?N) = _ => destruct N
     end;
     repeat match goal with p : o2 |- _ => destruct p end;
     cmp_norm; try reflexivity.
+  (** The lists, element by element. *)
+  all: repeat match goal with
+         | Hl : list_all _ _ ?l |- context [ list_cmp ?f (List.map ?g ?l) (List.map ?g ?l') ] =>
+             rewrite (list_cmp_map _ f g l Hl) by elem_cmp_wk
+         end.
   all: repeat match goal with
          | IH : forall φ N, wk_mono φ -> ?cmp (?wk φ ?M) (?wk φ N) = _ |- context [ ?cmp (?wk ?ψ ?M) (?wk ?ψ ?N') ] =>
-             rewrite (IH ψ N') by (repeat apply wk_mono_q; try apply wk_mono_qn; assumption)
+             rewrite (IH ψ N') by (repeat apply wk_mono_q; assumption)
          end; try reflexivity.
   (** A variable: an order-preserving renaming preserves the comparison. *)
   all: try (match goal with H : wk_mono ?φ |- context [Nat.compare (?φ _) (?φ _)] => rewrite (compare_mono φ H) end; reflexivity).
-  (** An eliminator and a branch: the bodies are under their binders, and
-      the comparison reaches them only at equal binder counts. *)
-  all: match goal with |- context [Nat.compare ?a ?b] => is_var a; is_var b; destruct (Nat.compare_spec a b) as [<- | ? | ?] end;
-    cbn [cmp_then]; try reflexivity;
-    match goal with
-    | IH : forall φ N, wk_mono φ -> nf_cmp (nf_wk φ ?M) (nf_wk φ N) = _, H : wk_mono ?φ |- context [nf_cmp (nf_wk (wk_qn ?n ?φ) ?M) (nf_wk _ ?N')] =>
-        rewrite (IH (wk_qn n φ) N') by (apply wk_mono_qn; exact H)
-    end; reflexivity.
 Qed.
 
 Corollary ne_cmp_wk : forall φ m n, wk_mono φ -> ne_cmp (ne_wk φ m) (ne_wk φ n) = ne_cmp m n.
-Proof. intros; apply (proj1 (proj2 nf_cmp_wk)); assumption. Qed.
+Proof. intros; apply (proj2 nf_cmp_wk); assumption. Qed.
 
 (** ** Order-Preserving Renamings Commute with the Canonical Form *)
 
@@ -276,27 +245,32 @@ Lemma at_cmp_wk : forall φ a s b t, wk_mono φ -> at_cmp (ne_wk φ a) s (ne_wk 
 Proof. intros; unfold at_cmp; rewrite ne_cmp_wk by assumption; reflexivity. Qed.
 
 Lemma la_ins_wk : forall φ, wk_mono φ ->
-    forall k s a ys, la_wk φ (la_ins k s a ys) = la_ins k s (ne_wk φ a) (la_wk φ ys).
+    forall k s a ys, List.map (map_level_atom (ne_wk φ)) (la_ins k s a ys)
+                     = la_ins k s (ne_wk φ a) (List.map (map_level_atom (ne_wk φ)) ys).
 Proof.
-  intros φ Hφ k s a; induction ys as [| k' t b r IH]; cbn [la_ins la_wk]; [ reflexivity |].
+  intros φ Hφ k s a; induction ys as [| [k' t b] r IH]; cbn [la_ins List.map]; [ reflexivity |].
+  unfold map_level_atom at 2; cbn [atom_offset atom_sort atom_level].
   rewrite at_cmp_wk by assumption.
-  destruct (at_cmp a s b t); cbn [la_wk]; congruence.
+  destruct (at_cmp a s b t); cbn [List.map]; rewrite ?IH; reflexivity.
 Qed.
 
-Lemma la_sort_wk : forall φ, wk_mono φ -> forall xs, la_wk φ (la_sort xs) = la_sort (la_wk φ xs).
+Lemma la_sort_wk : forall φ, wk_mono φ -> forall xs,
+    List.map (map_level_atom (ne_wk φ)) (la_sort xs) = la_sort (List.map (map_level_atom (ne_wk φ)) xs).
 Proof.
-  intros φ Hφ; induction xs as [| k s a r IH]; cbn [la_sort la_wk]; [ reflexivity |].
+  intros φ Hφ; induction xs as [| [k s a] r IH]; cbn [la_sort List.map]; [ reflexivity |].
   rewrite la_ins_wk, IH by assumption; reflexivity.
 Qed.
 
-Lemma la_keep_wk : forall φ c xs, la_wk φ (la_keep c xs) = la_keep c (la_wk φ xs).
+Lemma la_keep_wk : forall φ c xs,
+    List.map (map_level_atom (ne_wk φ)) (la_keep c xs) = la_keep c (List.map (map_level_atom (ne_wk φ)) xs).
 Proof.
-  intros φ c; induction xs as [| k s a r IH]; cbn [la_keep la_wk]; [ reflexivity |].
-  destruct (fst c <=? s); cbn [la_wk]; congruence.
+  intros φ c; induction xs as [| [k s a] r IH]; cbn [la_keep List.map]; [ reflexivity |].
+  unfold map_level_atom at 2; cbn [atom_offset atom_sort atom_level la_keep].
+  destruct (fst c <=? s); cbn [List.map]; rewrite IH; reflexivity.
 Qed.
 
-Lemma la_maxoff_wk : forall φ xs, la_maxoff (la_wk φ xs) = la_maxoff xs.
-Proof. intros φ; induction xs; cbn; congruence. Qed.
+Lemma la_maxoff_wk : forall φ xs, la_maxoff (List.map (map_level_atom (ne_wk φ)) xs) = la_maxoff xs.
+Proof. intros φ; induction xs as [| [k s a] r IH]; cbn; congruence. Qed.
 
 Theorem lvl_canon_wk : forall φ, wk_mono φ -> forall l, lvl_canon (lvl_wk φ l) = lvl_wk φ (lvl_canon l).
 Proof.
@@ -310,13 +284,12 @@ Qed.
 
 Lemma nf_wk_fresh :
   (forall W k φ, wk_avoids k φ -> nf_fresh k (nf_wk φ W)) /\
-  (forall u k φ, wk_avoids k φ -> ne_fresh k (ne_wk φ u)) /\
-  (forall xs k φ, wk_avoids k φ -> la_fresh k (la_wk φ xs)) /\
-  (forall Ms k φ, wk_avoids k φ -> nfs_fresh k (nfs_wk φ Ms)) /\
-  (forall Bs k φ, wk_avoids k φ -> nbrs_fresh k (nbrs_wk φ Bs)) /\
-  (forall Bks k φ, wk_avoids k φ -> nblocks_fresh k (nblocks_wk φ Bks)).
+  (forall u k φ, wk_avoids k φ -> ne_fresh k (ne_wk φ u)).
 Proof.
-  apply nf_mut_ind; intros; cbn; repeat split; eauto 6 using wk_avoids_q, wk_avoids_qn.
+  apply nf_ne_ind; intros; cbn; rewrite ?all_list_map; repeat split; eauto 6 using wk_avoids_q, wk_avoids_qn.
+  all: nested_elements; cbn; unfold normal_block_forall; cbn; rewrite ?all_list_map;
+    repeat split; eauto 6 using wk_avoids_q, wk_avoids_qn.
+  all: nested_elements; cbn; eauto 6 using wk_avoids_q, wk_avoids_qn.
 Qed.
 
 (** ** Injectivity
@@ -333,22 +306,37 @@ Proof. intros x y; cbn; lia. Qed.
 Lemma wk_inj_qn : forall n φ, wk_inj φ -> wk_inj (wk_qn n φ).
 Proof. induction n; intros; cbn; [ assumption | apply wk_inj_q; auto ]. Qed.
 
+(** A map injective on the elements of a list is injective on the list. *)
+Lemma list_all_map_inj {A B : Set} (P : A -> Set) (g : A -> B) : forall l,
+    list_all A P l -> (forall x, P x -> forall y, g x = g y -> x = y) ->
+    forall l', List.map g l = List.map g l' -> l = l'.
+Proof.
+  intros l Hl Hg; induction Hl as [| x Hx l Hl IH]; intros [| y l'] H; cbn in H; try discriminate; [ reflexivity |].
+  injection H as Hxy Hr; f_equal; [ eapply Hg; eassumption | apply IH; exact Hr ].
+Qed.
+
 Lemma nf_wk_inj :
   (forall W φ W', wk_inj φ -> nf_wk φ W = nf_wk φ W' -> W = W') /\
-  (forall u φ u', wk_inj φ -> ne_wk φ u = ne_wk φ u' -> u = u') /\
-  (forall xs φ xs', wk_inj φ -> la_wk φ xs = la_wk φ xs' -> xs = xs') /\
-  (forall Ms φ Ms', wk_inj φ -> nfs_wk φ Ms = nfs_wk φ Ms' -> Ms = Ms') /\
-  (forall Bs φ Bs', wk_inj φ -> nbrs_wk φ Bs = nbrs_wk φ Bs' -> Bs = Bs') /\
-  (forall Bks φ Bks', wk_inj φ -> nblocks_wk φ Bks = nblocks_wk φ Bks' -> Bks = Bks').
+  (forall u φ u', wk_inj φ -> ne_wk φ u = ne_wk φ u' -> u = u').
 Proof.
-  apply nf_mut_ind; intros;
+  apply nf_ne_ind; intros;
     match goal with
     | H : nf_wk _ _ = nf_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
     | H : ne_wk _ _ = ne_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
-    | H : la_wk _ _ = la_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
-    | H : nfs_wk _ _ = nfs_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
-    | H : nbrs_wk _ _ = nbrs_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
-    | H : nblocks_wk _ _ = nblocks_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
     end;
     f_equal; eauto using wk_inj_q, wk_inj_qn.
+  (** The lists, element by element. *)
+  all: eapply list_all_map_inj; [ eassumption | | eassumption ].
+  all: let x := fresh "x" in let Hx := fresh "Hx" in let y := fresh "y" in let Hy := fresh "Hy" in
+       intros x Hx y Hy; try solve [ eauto ].
+  (** An atom. *)
+  all: try (destruct Hx; destruct y; unfold map_level_atom in Hy; cbn in Hy; injection Hy as -> -> Hy;
+            f_equal; eauto).
+  (** A block: its motive and its branches. *)
+  all: destruct Hx as [n A HA brs Hbrs]; destruct y as [n' A' brs']; unfold map_normal_block in Hy; cbn in Hy;
+    injection Hy as -> Hy Hy'; f_equal; [ eauto using wk_inj_qn |].
+  all: eapply list_all_map_inj; [ exact Hbrs | | exact Hy' ].
+  all: let z := fresh "z" in let Hz := fresh "Hz" in let w := fresh "w" in let Hw := fresh "Hw" in
+       intros z Hz w Hw; destruct Hz; destruct w; unfold map_normal_branch in Hw; cbn in Hw;
+       injection Hw as -> -> Hw; f_equal; eauto using wk_inj_qn.
 Qed.

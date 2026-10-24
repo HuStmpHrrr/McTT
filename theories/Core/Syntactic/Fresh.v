@@ -303,94 +303,6 @@ Proof. intros; exact (exp_wk_fresh 0 M). Qed.
     normal form; it does **not** preserve canonicity of a level, since
     dropping a variable changes the order of the atoms.  The checker therefore
     re-canonicalises ([lvl_canon]) after un-weakening a level. *)
-(** The induction principle on normal forms, the six types at once. *)
-Section Nf_Induction.
-  Variables (P : nf -> Prop) (P0 : ne -> Prop) (P1 : lvl_atoms -> Prop) (P2 : nfs -> Prop)
-    (P3 : nbrs -> Prop) (P4 : nblocks -> Prop).
-  Hypotheses
-    (f_typ : forall i, P (nf_typ i))
-    (f_univ : forall c xs, P1 xs -> P (nf_univ c xs))
-    (f_level : forall n, P (nf_level n))
-    (f_lvl : forall c xs, P1 xs -> P (nf_lvl c xs))
-    (f_True : P nf_True)
-    (f_true : P nf_true)
-    (f_False : P nf_False)
-    (f_pi : forall A, P A -> forall B, P B -> P (nf_pi A B))
-    (f_fn : forall A, P A -> forall M, P M -> P (nf_fn A M))
-    (f_indty : forall p k Ms, P2 Ms -> P (nf_indty p k Ms))
-    (f_con : forall p k c Ms, P2 Ms -> P (nf_con p k c Ms))
-    (f_neut : forall u, P0 u -> P (nf_neut u))
-    (f_exfalso : forall A, P A -> forall u, P0 u -> P0 (ne_exfalso A u))
-    (f_elim : forall p Us, P2 Us -> forall m Bks, P4 Bks -> forall u, P0 u -> P0 (ne_elim p Us m Bks u))
-    (f_app : forall u, P0 u -> forall W, P W -> P0 (ne_app u W))
-    (f_var : forall x, P0 (ne_var x))
-    (f_glob : forall p, P0 (ne_glob p))
-    (f_la_nil : P1 la_nil)
-    (f_la_cons : forall j s u, P0 u -> forall r, P1 r -> P1 (la_cons j s u r))
-    (f_nfs_nil : P2 nfs_nil)
-    (f_nfs_cons : forall M, P M -> forall Ms, P2 Ms -> P2 (nfs_cons M Ms))
-    (f_nbrs_nil : P3 nbrs_nil)
-    (f_nbrs_cons : forall c n B, P B -> forall Bs, P3 Bs -> P3 (nbrs_cons c n B Bs))
-    (f_nblocks_nil : P4 nblocks_nil)
-    (f_nblocks_cons : forall nm A, P A -> forall Bs, P3 Bs -> forall Bks, P4 Bks -> P4 (nblocks_cons nm A Bs Bks))
-    (f_record : forall p Ms, P2 Ms -> P (nf_record p Ms))
-    (f_tuple : forall p Ms, P2 Ms -> forall fs Ns, P2 Ns -> P (nf_tuple p Ms fs Ns))
-    (f_proj : forall f u, P0 u -> P0 (ne_proj f u)).
-
-  (** The mutual induction principle over normal forms and their sorts. *)
-  Fixpoint nf_mind (W : nf) : P W :=
-    match W with
-    | nf_typ i => f_typ i
-    | nf_univ c xs => f_univ c xs (la_mind xs)
-    | nf_level n => f_level n
-    | nf_lvl c xs => f_lvl c xs (la_mind xs)
-    | nf_True => f_True
-    | nf_true => f_true
-    | nf_False => f_False
-    | nf_pi A B => f_pi A (nf_mind A) B (nf_mind B)
-    | nf_fn A M => f_fn A (nf_mind A) M (nf_mind M)
-    | nf_indty p k Ms => f_indty p k Ms (nfs_mind Ms)
-    | nf_con p k c Ms => f_con p k c Ms (nfs_mind Ms)
-    | nf_neut u => f_neut u (ne_mind u)
-    | nf_record p Ms => f_record p Ms (nfs_mind Ms)
-    | nf_tuple p Ms fs Ns => f_tuple p Ms (nfs_mind Ms) fs Ns (nfs_mind Ns)
-    end
-  with ne_mind (u : ne) : P0 u :=
-    match u with
-    | ne_exfalso A u => f_exfalso A (nf_mind A) u (ne_mind u)
-    | ne_elim p Us m Bks u => f_elim p Us (nfs_mind Us) m Bks (nblocks_mind Bks) u (ne_mind u)
-    | ne_app u W => f_app u (ne_mind u) W (nf_mind W)
-    | ne_var x => f_var x
-    | ne_glob p => f_glob p
-    | ne_proj f u => f_proj f u (ne_mind u)
-    end
-  with la_mind (xs : lvl_atoms) : P1 xs :=
-    match xs with
-    | la_nil => f_la_nil
-    | la_cons j s u r => f_la_cons j s u (ne_mind u) r (la_mind r)
-    end
-  with nfs_mind (Ms : nfs) : P2 Ms :=
-    match Ms with
-    | nfs_nil => f_nfs_nil
-    | nfs_cons M Ms => f_nfs_cons M (nf_mind M) Ms (nfs_mind Ms)
-    end
-  with nbrs_mind (Bs : nbrs) : P3 Bs :=
-    match Bs with
-    | nbrs_nil => f_nbrs_nil
-    | nbrs_cons c n B Bs => f_nbrs_cons c n B (nf_mind B) Bs (nbrs_mind Bs)
-    end
-  with nblocks_mind (Bks : nblocks) : P4 Bks :=
-    match Bks with
-    | nblocks_nil => f_nblocks_nil
-    | nblocks_cons nm A Bs Bks => f_nblocks_cons nm A (nf_mind A) Bs (nbrs_mind Bs) Bks (nblocks_mind Bks)
-    end.
-
-  Lemma nf_mut_ind :
-    (forall W, P W) /\ (forall u, P0 u) /\ (forall xs, P1 xs) /\ (forall Ms, P2 Ms) /\
-    (forall Bs, P3 Bs) /\ (forall Bks, P4 Bks).
-  Proof. repeat split; [ exact nf_mind | exact ne_mind | exact la_mind | exact nfs_mind | exact nbrs_mind | exact nblocks_mind ]. Qed.
-End Nf_Induction.
-
 (** Freshness of an eliminator: of its uniform parameters, its blocks and
     its scrutinee. *)
 Lemma exp_fresh_elim : forall k oq Us m Bks M,
@@ -403,45 +315,26 @@ Lemma apps_exp_fresh : forall Ms M k,
 Proof. induction Ms; intros * HM HF; inversion HF; subst; cbn; [ assumption | apply IHMs; [ split |]; assumption ]. Qed.
 
 (** [nf_fresh k W]: the variable [k] does not occur in the normal form
-    [W]; mutually, for its other sorts. *)
+    [W]; mutually, in the neutral [u]. *)
 Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
   match W with
   | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => True
-  | nf_univ _ xs | nf_lvl _ xs => la_fresh k xs
+  | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_fresh k (atom_level a)) xs
   | nf_pi A B | nf_fn A B => nf_fresh k A /\ nf_fresh (S k) B
-  | nf_indty _ _ Ms | nf_con _ _ _ Ms => nfs_fresh k Ms
+  | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list (nf_fresh k) Ms
   | nf_neut u => ne_fresh k u
-  | nf_record _ Ms => nfs_fresh k Ms
-  | nf_tuple _ Ms _ Ns => nfs_fresh k Ms /\ nfs_fresh k Ns
+  | nf_record _ Ms => all_list (nf_fresh k) Ms
+  | nf_tuple _ Ms _ Ns => all_list (nf_fresh k) Ms /\ all_list (nf_fresh k) Ns
   end
 with ne_fresh (k : nat) (u : ne) {struct u} : Prop :=
   match u with
   | ne_exfalso A u => nf_fresh (S k) A /\ ne_fresh k u
-  | ne_elim _ Us _ Bks u => nfs_fresh k Us /\ nblocks_fresh k Bks /\ ne_fresh k u
+  | ne_elim _ Us _ Bks u =>
+      all_list (nf_fresh k) Us /\ all_list (normal_block_forall (fun n => nf_fresh (n + k))) Bks /\ ne_fresh k u
   | ne_app u W => ne_fresh k u /\ nf_fresh k W
   | ne_var x => x <> k
   | ne_glob _ => True
   | ne_proj _ u => ne_fresh k u
-  end
-with la_fresh (k : nat) (xs : lvl_atoms) {struct xs} : Prop :=
-  match xs with
-  | la_nil => True
-  | la_cons _ _ u r => ne_fresh k u /\ la_fresh k r
-  end
-with nfs_fresh (k : nat) (Ms : nfs) {struct Ms} : Prop :=
-  match Ms with
-  | nfs_nil => True
-  | nfs_cons M Ms => nf_fresh k M /\ nfs_fresh k Ms
-  end
-with nbrs_fresh (k : nat) (Bs : nbrs) {struct Bs} : Prop :=
-  match Bs with
-  | nbrs_nil => True
-  | nbrs_cons _ n B Bs => nf_fresh (n + k) B /\ nbrs_fresh k Bs
-  end
-with nblocks_fresh (k : nat) (Bks : nblocks) {struct Bks} : Prop :=
-  match Bks with
-  | nblocks_nil => True
-  | nblocks_cons nm A Bs Bks => nf_fresh (nm + k) A /\ nbrs_fresh k Bs /\ nblocks_fresh k Bks
   end.
 
 (** The normal form [W] with the variable [k] removed: the variables above
@@ -450,48 +343,29 @@ with nblocks_fresh (k : nat) (Bks : nblocks) {struct Bks} : Prop :=
 Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
   match W with
   | nf_typ i => nf_typ i
-  | nf_univ c xs => nf_univ c (la_unwk k xs)
+  | nf_univ c xs => nf_univ c (List.map (map_level_atom (ne_unwk k)) xs)
   | nf_level n => nf_level n
-  | nf_lvl c xs => nf_lvl c (la_unwk k xs)
+  | nf_lvl c xs => nf_lvl c (List.map (map_level_atom (ne_unwk k)) xs)
   | nf_True => nf_True
   | nf_true => nf_true
   | nf_False => nf_False
   | nf_pi A B => nf_pi (nf_unwk k A) (nf_unwk (S k) B)
   | nf_fn A M => nf_fn (nf_unwk k A) (nf_unwk (S k) M)
-  | nf_indty p j Ms => nf_indty p j (nfs_unwk k Ms)
-  | nf_con p j c Ms => nf_con p j c (nfs_unwk k Ms)
+  | nf_indty p j Ms => nf_indty p j (List.map (nf_unwk k) Ms)
+  | nf_con p j c Ms => nf_con p j c (List.map (nf_unwk k) Ms)
   | nf_neut u => nf_neut (ne_unwk k u)
-  | nf_record p Ms => nf_record p (nfs_unwk k Ms)
-  | nf_tuple p Ms fs Ns => nf_tuple p (nfs_unwk k Ms) fs (nfs_unwk k Ns)
+  | nf_record p Ms => nf_record p (List.map (nf_unwk k) Ms)
+  | nf_tuple p Ms fs Ns => nf_tuple p (List.map (nf_unwk k) Ms) fs (List.map (nf_unwk k) Ns)
   end
 with ne_unwk (k : nat) (u : ne) {struct u} : ne :=
   match u with
   | ne_exfalso A u => ne_exfalso (nf_unwk (S k) A) (ne_unwk k u)
-  | ne_elim p Us m Bks u => ne_elim p (nfs_unwk k Us) m (nblocks_unwk k Bks) (ne_unwk k u)
+  | ne_elim p Us m Bks u =>
+      ne_elim p (List.map (nf_unwk k) Us) m (List.map (map_normal_block (fun n => nf_unwk (n + k))) Bks) (ne_unwk k u)
   | ne_app u W => ne_app (ne_unwk k u) (nf_unwk k W)
   | ne_var x => ne_var (unwk k x)
   | ne_glob p => ne_glob p
   | ne_proj f u => ne_proj f (ne_unwk k u)
-  end
-with la_unwk (k : nat) (xs : lvl_atoms) {struct xs} : lvl_atoms :=
-  match xs with
-  | la_nil => la_nil
-  | la_cons j s u r => la_cons j s (ne_unwk k u) (la_unwk k r)
-  end
-with nfs_unwk (k : nat) (Ms : nfs) {struct Ms} : nfs :=
-  match Ms with
-  | nfs_nil => nfs_nil
-  | nfs_cons M Ms => nfs_cons (nf_unwk k M) (nfs_unwk k Ms)
-  end
-with nbrs_unwk (k : nat) (Bs : nbrs) {struct Bs} : nbrs :=
-  match Bs with
-  | nbrs_nil => nbrs_nil
-  | nbrs_cons c n B Bs => nbrs_cons c n (nf_unwk (n + k) B) (nbrs_unwk k Bs)
-  end
-with nblocks_unwk (k : nat) (Bks : nblocks) {struct Bks} : nblocks :=
-  match Bks with
-  | nblocks_nil => nblocks_nil
-  | nblocks_cons nm A Bs Bks => nblocks_cons nm (nf_unwk (nm + k) A) (nbrs_unwk k Bs) (nblocks_unwk k Bks)
   end.
 
 (** Weakening of a level expression: [lvl_exp_of] builds a term out of a
@@ -596,65 +470,43 @@ Proof. induction xs as [| x xs IH]; intros [| y ys]; cbn; f_equal; auto. Qed.
     un-weakening agrees with the renaming on terms. *)
 Lemma nf_fresh_to_exp :
   (forall W k, nf_fresh k W -> exp_fresh k (nf_to_exp W)) /\
-  (forall u k, ne_fresh k u -> exp_fresh k (ne_to_exp u)) /\
-  (forall xs k, la_fresh k xs -> List.Forall (fun p => exp_fresh k (snd p)) (la_to_list xs)) /\
-  (forall Ms k, nfs_fresh k Ms -> List.Forall (exp_fresh k) (nfs_to_exps Ms)) /\
-  (forall Bs k, nbrs_fresh k Bs -> all_brs (fun n B => exp_fresh (n + k) B) (nbrs_to_brs Bs)) /\
-  (forall Bks k, nblocks_fresh k Bks -> blocks_fresh k (nblocks_to_blocks Bks)).
+  (forall u k, ne_fresh k u -> exp_fresh k (ne_to_exp u)).
 Proof.
-  apply nf_mut_ind; intros;
-    cbn [nf_to_exp ne_to_exp la_to_list nfs_to_exps nbrs_to_brs nblocks_to_blocks nf_fresh ne_fresh la_fresh nfs_fresh
-         nbrs_fresh nblocks_fresh blocks_fresh all_blocks all_brs opt_all option_map fst snd] in *;
-    unfold blocks_fresh in *; destruct_conjs;
-    try exact I;
-    try solve [ repeat split; eauto
-              | apply lvl_exp_of_fresh; eauto
-              | constructor; eauto
-              | apply apps_exp_fresh; [ exact I | eauto ]
-              | apply exp_fresh_elim; repeat split; eauto using qname_mod_fresh
-              | apply exp_fresh_elim; split; [ apply (proj2 (all_list_Forall _ _)); eauto
-                                                   | unfold blocks_fresh; repeat split; eauto using qname_mod_fresh ]
-              | split; [ apply apps_exp_fresh; [ exact I | eauto ] | apply all_list_combine; eauto ] ].
-  (** A global never mentions a local variable. *)
-  apply qname_term_fresh.
+  apply nf_ne_ind; intros; cbn [nf_to_exp ne_to_exp nf_fresh ne_fresh exp_fresh] in *; destruct_conjs;
+    (** The lists of terms a normal form spells, as [all_list]s over the
+        lists it holds. *)
+    rewrite ?exp_fresh_elim; unfold blocks_fresh;
+    rewrite <- ?all_list_Forall, ?all_blocks_all_list, ?all_list_map;
+    repeat split;
+    first [ exact I | solve [ eauto ] | apply lvl_exp_of_fresh | apply apps_exp_fresh; [ exact I |] | apply all_list_combine
+          | apply qname_term_fresh | idtac ];
+    rewrite <- ?all_list_Forall, ?all_list_map; nested_elements; cbn in *; destruct_conjs;
+    repeat split; eauto.
+  (** A block: its motive, and its branches. *)
+  all: unfold normal_block_forall in *; cbn in *; destruct_conjs; eauto.
+  rewrite all_brs_all_list, all_list_map; nested_elements; cbn in *; eauto.
 Qed.
+
+(** Un-weakening at [k], under [n] binders, is un-weakening at [n + k]. *)
+Lemma unwk_plus : forall n k, wk_qn n (unwk k) = unwk (n + k).
+Proof. intros; unfold unwk; rewrite wk_qn_plus; reflexivity. Qed.
 
 Lemma nf_unwk_to_exp :
   (forall W k, nf_to_exp (nf_unwk k W) = (nf_to_exp W)[unwk k]ʷ) /\
-  (forall u k, ne_to_exp (ne_unwk k u) = (ne_to_exp u)[unwk k]ʷ) /\
-  (forall xs k, la_to_list (la_unwk k xs)
-                = List.map (fun p => (fst p, (snd p)[unwk k]ʷ)) (la_to_list xs)) /\
-  (forall Ms k, nfs_to_exps (nfs_unwk k Ms) = List.map (fun M => M[unwk k]ʷ) (nfs_to_exps Ms)) /\
-  (forall Bs k, nbrs_to_brs (nbrs_unwk k Bs)
-                = List.map (fun b => (fst b, (snd b)[wk_qn (snd (fst b)) (unwk k)]ʷ)) (nbrs_to_brs Bs)) /\
-  (forall Bks k, nblocks_to_blocks (nblocks_unwk k Bks)
-                 = List.map (fun b => match b with
-                                      | eb_mk nm oZ A Bs =>
-                                          eb_mk nm (option_map (fun Z => Z[wk_qn (nm - 1) (unwk k)]ʷ) oZ) A[wk_qn nm (unwk k)]ʷ
-                                            (List.map (fun br => (fst br, (snd br)[wk_qn (snd (fst br)) (unwk k)]ʷ)) Bs)
-                                      end) (nblocks_to_blocks Bks)).
+  (forall u k, ne_to_exp (ne_unwk k u) = (ne_to_exp u)[unwk k]ʷ).
 Proof.
-  apply nf_mut_ind; intros; cbn; rewrite ?apps_exp_wk;
-    try reflexivity;
-    (** A tuple: its values through [combine]. *)
-    try solve [ match goal with
-                | HM : forall k, nfs_to_exps (nfs_unwk k ?Ms) = _, HN : forall k, nfs_to_exps (nfs_unwk k ?Ns) = _
-                  |- a_tuple _ (List.combine _ (nfs_to_exps (nfs_unwk _ ?Ns))) = _ =>
-                    cbn [exp_wk]; rewrite HM, HN, combine_map_r; reflexivity
-                end ];
-    try solve [ (** A small universe and a level carry the same atom list, so
-                    both go through [lvl_exp_of_wk]. *)
-                f_equal; rewrite lvl_exp_of_wk; f_equal; eauto
-              | rewrite lvl_exp_of_wk; f_equal; eauto
-                (** A global is closed, so the renaming does not touch it. *)
-              | symmetry; apply qname_term_wk
-              | f_equal; eauto
-              | match goal with
-                | Hu : forall k, _ = _, Hr : forall k, _ = _ |- _ => rewrite Hu, Hr; reflexivity
-                end ].
-  (** An application spine, and an eliminator under its binders. *)
-  all: unfold unwk in *; repeat match goal with H : forall k, _ = _ |- _ => rewrite H end;
-    rewrite ?wk_qn_plus, ?qname_mod_wk; reflexivity.
+  apply nf_ne_ind; intros; cbn [nf_unwk ne_unwk nf_to_exp ne_to_exp exp_wk]; rewrite ?apps_exp_wk, ?lvl_exp_of_wk;
+    (** A global is closed, so the renaming does not touch it. *)
+    try solve [ symmetry; apply qname_term_wk ];
+    repeat (f_equal; try solve [ eauto ]).
+  (** A tuple: its values through [combine]. *)
+  all: try match goal with
+           | |- combine ?fs _ = List.map (fun f => (fst f, (snd f)[?φ]ʷ)) _ =>
+               rewrite <- (combine_map_r (fun N => N[φ]ʷ)); f_equal
+           end.
+  all: nested_elements; cbn; rewrite ?unwk_plus; repeat (f_equal; try solve [ eauto ]).
+  (** A block's branches. *)
+  all: nested_elements; cbn; rewrite ?unwk_plus; f_equal; eauto.
 Qed.
 
 (** The three facts of un-weakening, on normal forms. *)
@@ -671,56 +523,40 @@ Qed.
 Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
   match W with
   | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => true
-  | nf_univ _ xs | nf_lvl _ xs => la_freshb k xs
+  | nf_univ _ xs | nf_lvl _ xs => List.forallb (fun a => ne_freshb k (atom_level a)) xs
   | nf_pi A B | nf_fn A B => nf_freshb k A && nf_freshb (S k) B
-  | nf_indty _ _ Ms | nf_con _ _ _ Ms => nfs_freshb k Ms
+  | nf_indty _ _ Ms | nf_con _ _ _ Ms => List.forallb (nf_freshb k) Ms
   | nf_neut u => ne_freshb k u
-  | nf_record _ Ms => nfs_freshb k Ms
-  | nf_tuple _ Ms _ Ns => nfs_freshb k Ms && nfs_freshb k Ns
+  | nf_record _ Ms => List.forallb (nf_freshb k) Ms
+  | nf_tuple _ Ms _ Ns => List.forallb (nf_freshb k) Ms && List.forallb (nf_freshb k) Ns
   end
 with ne_freshb (k : nat) (u : ne) {struct u} : bool :=
   match u with
   | ne_exfalso A u => nf_freshb (S k) A && ne_freshb k u
-  | ne_elim _ Us _ Bks u => nfs_freshb k Us && nblocks_freshb k Bks && ne_freshb k u
+  | ne_elim _ Us _ Bks u =>
+      List.forallb (nf_freshb k) Us && (List.forallb (normal_block_forallb (fun n => nf_freshb (n + k))) Bks
+                                         && ne_freshb k u)
   | ne_app u W => ne_freshb k u && nf_freshb k W
   | ne_var x => negb (Nat.eqb x k)
   | ne_glob _ => true
   | ne_proj _ u => ne_freshb k u
-  end
-with la_freshb (k : nat) (xs : lvl_atoms) {struct xs} : bool :=
-  match xs with
-  | la_nil => true
-  | la_cons _ _ u r => ne_freshb k u && la_freshb k r
-  end
-with nfs_freshb (k : nat) (Ms : nfs) {struct Ms} : bool :=
-  match Ms with
-  | nfs_nil => true
-  | nfs_cons M Ms => nf_freshb k M && nfs_freshb k Ms
-  end
-with nbrs_freshb (k : nat) (Bs : nbrs) {struct Bs} : bool :=
-  match Bs with
-  | nbrs_nil => true
-  | nbrs_cons _ n B Bs => nf_freshb (n + k) B && nbrs_freshb k Bs
-  end
-with nblocks_freshb (k : nat) (Bks : nblocks) {struct Bks} : bool :=
-  match Bks with
-  | nblocks_nil => true
-  | nblocks_cons nm A Bs Bks => nf_freshb (nm + k) A && nbrs_freshb k Bs && nblocks_freshb k Bks
   end.
 
 Lemma nf_freshb_iff :
   (forall W k, nf_freshb k W = true <-> nf_fresh k W) /\
-  (forall u k, ne_freshb k u = true <-> ne_fresh k u) /\
-  (forall xs k, la_freshb k xs = true <-> la_fresh k xs) /\
-  (forall Ms k, nfs_freshb k Ms = true <-> nfs_fresh k Ms) /\
-  (forall Bs k, nbrs_freshb k Bs = true <-> nbrs_fresh k Bs) /\
-  (forall Bks k, nblocks_freshb k Bks = true <-> nblocks_fresh k Bks).
+  (forall u k, ne_freshb k u = true <-> ne_fresh k u).
 Proof.
-  apply nf_mut_ind; intros; cbn;
-    repeat rewrite Bool.andb_true_iff;
+  assert (Hand : forall A B C D : Prop, (A <-> B) -> (C <-> D) -> (A /\ C <-> B /\ D)) by tauto.
+  apply nf_ne_ind; intros; cbn; rewrite ?Bool.andb_true_iff;
+    repeat apply Hand;
     try solve [ split; [ intros _; exact I | reflexivity ]
               | rewrite Bool.negb_true_iff, Nat.eqb_neq; reflexivity
-              | firstorder ].
+              | eauto ].
+  (** The lists, element by element. *)
+  all: (eapply list_all_forallb; [ eassumption |]); intros x Hx; try destruct Hx; cbn; try solve [ eauto ].
+  (** A block: its motive and its branches. *)
+  all: unfold normal_block_forallb, normal_block_forall; cbn; rewrite Bool.andb_true_iff; apply Hand; [ eauto |].
+  all: (eapply list_all_forallb; [ eassumption |]); intros y Hy; destruct Hy; cbn; eauto.
 Qed.
 
 (** A level below a level fresh at [k] mentions [k] only in atoms that the
@@ -728,13 +564,13 @@ Qed.
     [k] is not an atom of the larger, and the assignment that makes it alone
     large, at [ω·s + N] for its sort [s], is below the larger level only if
     that level's constant is at least [ω·(s+1)]. *)
-Lemma la_fresh_In : forall k ys j s a, la_fresh k ys -> la_In j s a ys -> ne_fresh k a.
+Lemma la_fresh_In : forall k ys j s a, all_list (fun a => ne_fresh k (atom_level a)) ys -> la_In j s a ys -> ne_fresh k a.
 Proof.
-  induction ys as [| j0 t b r IH]; cbn; intros j s a Hf Hi; [ contradiction |].
+  induction ys as [| [j0 t b] r IH]; cbn; intros j s a Hf Hi; [ contradiction |].
   destruct Hf as [Hb Hr]; destruct Hi as [(_ & _ & ->) | Hi]; [ exact Hb | eapply IH; eassumption ].
 Qed.
 
-Lemma lvl_le_la_fresh : forall k l l', lvl_le l l' -> la_fresh k (snd l') ->
+Lemma lvl_le_la_fresh : forall k l l', lvl_le l l' -> all_list (fun a => ne_fresh k (atom_level a)) (snd l') ->
     forall j s a, la_In j s a (snd l) -> ~ ne_fresh k a -> s < fst (fst l').
 Proof.
   intros k [c xs] [d ys] Hle Hys j s a Hin Ha; cbn [fst snd] in *.
@@ -748,7 +584,7 @@ Proof.
   unfold lvl_ev in Hle; cbn [fst snd] in Hle.
   rewrite (la_ev_at_none _ _ _ _ Hn) in Hle.
   assert (Hge : ole (s, N) (la_ev (ν_at a s N) xs)).
-  { clear Hle; induction xs as [| j0 t b r IH]; cbn in Hin |- *; [ contradiction |].
+  { clear Hle; induction xs as [| [j0 t b] r IH]; cbn in Hin |- *; [ contradiction |].
     destruct Hin as [(<- & <- & <-) | Hin].
     - unfold ν_at at 1; rewrite at_cmp_refl.
       generalize (la_ev (ν_at a s N) r); intros; ord.
@@ -766,20 +602,20 @@ Qed.
     at [k] stays, un-weakened, and an atom that mentions [k], of sort [s],
     ranges over the ordinals below [ω·(s+1)], which is the bound it
     contributes ([lvl_bound_le], [lvl_le_bound]). *)
-Fixpoint la_fresh_part (k : nat) (xs : lvl_atoms) : lvl_atoms :=
+Fixpoint la_fresh_part (k : nat) (xs : list level_atom) : list level_atom :=
   match xs with
-  | la_nil => la_nil
-  | la_cons j s a r => if ne_freshb k a then la_cons j s a (la_fresh_part k r) else la_fresh_part k r
+  | nil => nil
+  | mk_level_atom j s a :: r => if ne_freshb k a then mk_level_atom j s a :: la_fresh_part k r else la_fresh_part k r
   end.
 
-Fixpoint la_open_bound (k : nat) (xs : lvl_atoms) : o2 :=
+Fixpoint la_open_bound (k : nat) (xs : list level_atom) : o2 :=
   match xs with
-  | la_nil => oz
-  | la_cons j s a r => if ne_freshb k a then la_open_bound k r else omax (S s, 0) (la_open_bound k r)
+  | nil => oz
+  | mk_level_atom j s a :: r => if ne_freshb k a then la_open_bound k r else omax (S s, 0) (la_open_bound k r)
   end.
 
 Definition lvl_bound (k : nat) (l : lvl) : lvl :=
-  (omax (fst l) (la_open_bound k (snd l)), la_unwk k (la_fresh_part k (snd l))).
+  (omax (fst l) (la_open_bound k (snd l)), List.map (map_level_atom (ne_unwk k)) (la_fresh_part k (snd l))).
 
 (** The bound, weakened back, is above the level: the fresh atoms are the
     same, and an atom of sort [s] is below [ω·(s+1)]. *)
@@ -789,7 +625,7 @@ Proof.
   intros k [c xs]; apply lvl_le_correct; intros ν Hν; unfold lvl_ev; cbn [fst snd].
   enough (ole (la_ev ν xs) (omax (la_open_bound k xs) (la_ev ν (la_fresh_part k xs)))) as H
     by (revert H; generalize (la_ev ν xs) (la_open_bound k xs) (la_ev ν (la_fresh_part k xs)); intros; ord).
-  induction xs as [| j s a r IH]; cbn [la_ev la_open_bound la_fresh_part]; [ ord |].
+  induction xs as [| [j s a] r IH]; cbn [la_ev la_open_bound la_fresh_part]; [ ord |].
   specialize (Hν a s).
   destruct (ne_freshb k a); cbn [la_ev].
   - revert IH; generalize (la_ev ν r) (la_open_bound k r) (la_ev ν (la_fresh_part k r)) (ν a s); intros; ord.
@@ -799,12 +635,12 @@ Qed.
 (** The bound is below every level fresh at [k] above the level, un-weakened:
     so it is the least such level of the context. *)
 Lemma la_ev_unwk : forall ν k xs,
-    la_ev ν (la_unwk k xs) = la_ev (fun a s => ν (ne_unwk k a) s) xs.
-Proof. intros ν k; induction xs as [| j s a r IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
+    la_ev ν (List.map (map_level_atom (ne_unwk k)) xs) = la_ev (fun a s => ν (ne_unwk k a) s) xs.
+Proof. intros ν k; induction xs as [| [j s a] r IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
 Lemma la_ev_fresh_part : forall ν k xs, ole (la_ev ν (la_fresh_part k xs)) (la_ev ν xs).
 Proof.
-  intros ν k; induction xs as [| j s a r IH]; cbn [la_ev la_fresh_part]; [ ord |].
+  intros ν k; induction xs as [| [j s a] r IH]; cbn [la_ev la_fresh_part]; [ ord |].
   destruct (ne_freshb k a); cbn [la_ev];
     revert IH; generalize (la_ev ν r) (la_ev ν (la_fresh_part k r)) (ν a s); intros; ord.
 Qed.
@@ -813,16 +649,16 @@ Lemma la_open_bound_le : forall k xs d,
     (forall j s a, la_In j s a xs -> ~ ne_fresh k a -> s < fst d) ->
     ole (la_open_bound k xs) d.
 Proof.
-  intros k xs d; induction xs as [| j s a r IH]; cbn [la_open_bound]; intros H; [ apply ole_zero |].
+  intros k xs d; induction xs as [| [j s a] r IH]; cbn [la_open_bound]; intros H; [ apply ole_zero |].
   assert (IH' : ole (la_open_bound k r) d) by (apply IH; intros; eapply H; [ right |]; eassumption).
   destruct (ne_freshb k a) eqn:E; [ exact IH' |].
   assert (Hs : s < fst d).
-  { eapply H; [ left; auto |]. intros Hf; apply (proj1 (proj2 nf_freshb_iff)) in Hf; congruence. }
+  { eapply H; [ left; auto |]. intros Hf; apply (proj2 nf_freshb_iff) in Hf; congruence. }
   revert IH' Hs; generalize (la_open_bound k r); intros; ord.
 Qed.
 
-Lemma lvl_le_bound : forall k l l', lvl_le l l' -> la_fresh k (snd l') ->
-    lvl_le (lvl_bound k l) (fst l', la_unwk k (snd l')).
+Lemma lvl_le_bound : forall k l l', lvl_le l l' -> all_list (fun a => ne_fresh k (atom_level a)) (snd l') ->
+    lvl_le (lvl_bound k l) (fst l', List.map (map_level_atom (ne_unwk k)) (snd l')).
 Proof.
   intros k [c xs] [d ys] Hle Hys; cbn [fst snd] in *.
   pose proof (lvl_le_la_fresh _ _ _ Hle Hys) as Hs; cbn [fst snd] in Hs.
@@ -838,18 +674,18 @@ Qed.
 
 (** The fresh atoms are fresh and are atoms of the level; the bound of the
     others is of the tier just above their largest sort. *)
-Lemma la_fresh_part_fresh : forall k xs, la_fresh k (la_fresh_part k xs).
+Lemma la_fresh_part_fresh : forall k xs, all_list (fun a => ne_fresh k (atom_level a)) (la_fresh_part k xs).
 Proof.
-  intros k; induction xs as [| j s a r IH]; cbn [la_fresh_part]; [ exact I |].
+  intros k; induction xs as [| [j s a] r IH]; cbn [la_fresh_part]; [ exact I |].
   destruct (ne_freshb k a) eqn:E; cbn; [| exact IH ].
-  split; [ apply (proj1 (proj2 nf_freshb_iff)); exact E | exact IH ].
+  split; [ apply (proj2 nf_freshb_iff); exact E | exact IH ].
 Qed.
 
 Lemma la_open_bound_fst : forall k xs n,
     (forall j s a, la_In j s a xs -> s <= n) ->
     fst (la_open_bound k xs) <= S n.
 Proof.
-  intros k xs n; induction xs as [| j s a r IH]; cbn [la_open_bound]; intros H; [ cbn; lia |].
+  intros k xs n; induction xs as [| [j s a] r IH]; cbn [la_open_bound]; intros H; [ cbn; lia |].
   assert (IH' : fst (la_open_bound k r) <= S n) by (apply IH; intros; eapply H; right; eassumption).
   assert (Hs : s <= n) by (eapply H; left; auto).
   destruct (ne_freshb k a); [ exact IH' |].
@@ -858,7 +694,7 @@ Qed.
 
 (** The bound, weakened back, is below every level fresh at [k] above the
     level. *)
-Lemma lvl_le_bound_wk : forall k l l', lvl_le l l' -> la_fresh k (snd l') ->
+Lemma lvl_le_bound_wk : forall k l l', lvl_le l l' -> all_list (fun a => ne_fresh k (atom_level a)) (snd l') ->
     lvl_le (omax (fst l) (la_open_bound k (snd l)), la_fresh_part k (snd l)) l'.
 Proof.
   intros k [c xs] [d ys] Hle Hys; cbn [fst snd] in *.
@@ -882,7 +718,7 @@ Qed.
 Definition unf_pi_tm (u v : unf) : exp :=
   match u, v with
   | uns l, uns l' =>
-      a_univ (a_maxl (lvl_exp_of (fst l) (la_to_list (snd l)))
-                     (lvl_exp_of (fst (lvl_bound 0 l')) (la_to_list (snd (lvl_bound 0 l')))))
+      a_univ (a_maxl (lvl_exp_of (fst l) (List.map atom_exp (snd l)))
+                     (lvl_exp_of (fst (lvl_bound 0 l')) (List.map atom_exp (snd (lvl_bound 0 l')))))
   | _, _ => unf_tm (unf_max u v)
   end.

@@ -21,7 +21,7 @@ Generalizable All Variables.
     back as [nf_lvl_of] of a canonical level ([fread_nf_level_lvl_of_nf]), so
     the default is never reached. *)
 Definition lvl_of_nf (W : nf) : lvl :=
-  match W with nf_lvl c xs => (c, xs) | _ => (oz, la_nil) end.
+  match W with nf_lvl c xs => (c, xs) | _ => (oz, nil) end.
 
 Lemma fread_nf_level_lvl_of_nf : forall Θ Ξ s l W,
     Rnfᶠ ⇓ Levelᵈ l in Θ ⍮ Ξ ⍮ s ↘ W ->
@@ -570,7 +570,7 @@ Lemma fread_nf_con_view_last : forall Θ Ξ s p D j Mj qc k Is vm c gs as' vs Ps
     Rpsᶠ as' at List.rev (im_params D Mj) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
     Rcargsᶠ List.skipn (List.length vs - List.length gs) vs at gs of p (List.firstn (ind_nu D) as') in Θ ⍮ Ξ
       ⍮ env_args nil as' ⍮ s ↘ Args ->
-    Rnfᶠ ⇓ (d_ind p j as') (d_con qc k c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p j c (nfs_app Ps Args).
+    Rnfᶠ ⇓ (d_ind p j as') (d_con qc k c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p j c (Ps ++ Args).
 Proof. intros; eapply fread_nf_con_view; try eassumption; lia. Qed.
 
 #[local]
@@ -608,7 +608,7 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
     exist _ (nf_lvl_of (lvl_canon (c, ys))) _
 | s, ⇓ (Levelᵈ@n) (⇑ a m), ck, H =>
     let (M, HM) := fread_ne_impl_c s m ck _ in
-    exist _ (lvⁿ oz (la_cons 0 (dsort a) M la_nil)) _
+    exist _ (lvⁿ oz (cons (mk_level_atom 0 (dsort a) M) nil)) _
 | s, ⇓ ⊤ᵈ m, ck, H => exist _ ⋆ⁿ _
 | s, ⇓ ⊥ᵈ (⇑ _ m), ck, H =>
     let (M, HM) := fread_ne_impl_c s m ck _ in
@@ -632,13 +632,13 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
             let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (im_params D Mj)) as' ck _ in
             let (Args, HArgs) := fread_cargs_impl_c s p (List.firstn (ind_nu D) as') (env_args nil as') gs
                                    (List.skipn (im_np D Mj) vs) (Some (exist _ (p, D) Ed)) _ in
-            exist _ (nf_con p j c (nfs_app Ps Args)) _
+            exist _ (nf_con p j c (Ps ++ Args)%list) _
         (** At a view: its arguments are the last values *)
         | exist _ (mh_view _ _ _ _) Eh =>
             let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (im_params D Mj)) as' ck _ in
             let (Args, HArgs) := fread_cargs_impl_c s p (List.firstn (ind_nu D) as') (env_args nil as') gs
                                    (List.skipn (List.length vs - List.length gs) vs) (Some (exist _ (p, D) Ed)) _ in
-            exist _ (nf_con p j c (nfs_app Ps Args)) _ }
+            exist _ (nf_con p j c (Ps ++ Args)%list) _ }
       | exist _ None Ec => False_rect _ _ }
     | exist _ None Em => False_rect _ _ }
   | exist _ None Ed => False_rect _ _ }
@@ -697,7 +697,7 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
 | s, ⇑ a b, ck, H =>
     let (B, HB) := fread_ne_impl_c s b ck _ in
     exist _ ⇑ⁿ B _
-| s, d_ind p k nil, ck, H => exist _ (nf_indty p k nfs_nil) _
+| s, d_ind p k nil, ck, H => exist _ (nf_indty p k nil) _
 | s, d_ind p k as', ck, H with cache_lookup Θ Ξ ck p := {
   | exist _ (Some D) Ed with inspect (ind_member D k) := {
     | exist _ (Some Mk) Em =>
@@ -712,43 +712,43 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
   | exist _ None El => False_rect _ _ }
 
   with fread_la_impl_c s xs (ck : lk_cache Θ Ξ) (H : fread_la_order Θ Ξ s xs) : { ys | Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys } by struct H :=
-| s, nil, ck, H => exist _ la_nil _
+| s, nil, ck, H => exist _ nil _
 | s, cons (k, n, m) xs, ck, H =>
     let (M, HM) := fread_ne_impl_c s m ck _ in
     let (ys, Hys) := fread_la_impl_c s xs ck _ in
-    exist _ (la_cons k n M ys) _
+    exist _ (cons (mk_level_atom k n M) ys) _
 
   with fread_ps_impl_c s ρ T vs (ck : lk_cache Θ Ξ) (H : fread_ps_order Θ Ξ s ρ T vs) : { Ms | Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms } by struct H :=
-| s, ρ, nil, nil, ck, H => exist _ nfs_nil _
+| s, ρ, nil, nil, ck, H => exist _ nil _
 | s, ρ, ce_ass A :: T, v :: vs, ck, H =>
     let (a, Ha) := feval_exp_impl Θ Ξ A ρ _ in
     let (V, HV) := fread_nf_impl_c s ⇓ a v ck _ in
     let (Vs, HVs) := fread_ps_impl_c s (ρ ↦ v) T vs ck _ in
-    exist _ (nfs_cons V Vs) _
+    exist _ (cons V Vs) _
 | s, ρ, _, _, ck, H => False_rect _ _
 
   with fread_fields_impl_c s ρ fl v (ck : lk_cache Θ Ξ) (H : fread_fields_order Θ Ξ s ρ fl v) :
     { Fs | Rfldsᶠ v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs } by struct H :=
-| s, ρ, nil, v, ck, H => exist _ nfs_nil _
+| s, ρ, nil, v, ck, H => exist _ nil _
 | s, ρ, (f, T) :: fl, v, ck, H =>
     let (r, Hr) := feval_proj_impl Θ Ξ f v _ in
     let (t, Ht) := feval_exp_impl Θ Ξ T ρ _ in
     let (V, HV) := fread_nf_impl_c s ⇓ t r ck _ in
     let (Vs, HVs) := fread_fields_impl_c s (ρ ↦ r) fl v ck _ in
-    exist _ (nfs_cons V Vs) _
+    exist _ (cons V Vs) _
 
   with fread_cargs_impl_c s p ups ρ gs vs (ck : lk_cache Θ Ξ) (H : fread_cargs_order Θ Ξ s p ups ρ gs vs) :
     { Ms | Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms } by struct H :=
-| s, p, ups, ρ, nil, nil, ck, H => exist _ nfs_nil _
+| s, p, ups, ρ, nil, nil, ck, H => exist _ nil _
 | s, p, ups, ρ, ca_arg A :: gs, v :: vs, ck, H =>
     let (a, Ha) := feval_exp_impl Θ Ξ A ρ _ in
     let (V, HV) := fread_nf_impl_c s ⇓ a v ck _ in
     let (Vs, HVs) := fread_cargs_impl_c s p ups (ρ ↦ v) gs vs ck _ in
-    exist _ (nfs_cons V Vs) _
+    exist _ (cons V Vs) _
 | s, p, ups, ρ, ca_rec t :: gs, v :: vs, ck, H =>
     let (V, HV) := fread_shape_impl_c s p ups ρ t v ck _ in
     let (Vs, HVs) := fread_cargs_impl_c s p ups ρ gs vs ck _ in
-    exist _ (nfs_cons V Vs) _
+    exist _ (cons V Vs) _
 | s, p, ups, ρ, _, _, ck, H => False_rect _ _
 
   with fread_shape_impl_c s p ups ρ t v (ck : lk_cache Θ Ξ) (H : fread_shape_order Θ Ξ s p ups ρ t v) :
@@ -766,7 +766,7 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
 
   with fread_blocks_impl_c s ρ p ups Bks sel i Ms (ck : lk_cache Θ Ξ) (H : fread_blocks_order Θ Ξ s ρ p ups Bks sel i Ms) :
     { NBks | Rblksᶠ i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks } by struct H :=
-| s, ρ, p, ups, Bks, sel, i, nil, ck, H => exist _ nblocks_nil _
+| s, ρ, p, ups, Bks, sel, i, nil, ck, H => exist _ nil _
 | s, ρ, p, ups, Bks, sel, i, Mi :: Ms, ck, H with cache_lookup Θ Ξ ck p := {
   | exist _ (Some D) Ed with inspect (ind_member D (elim_src sel i)) := {
     | exist _ (Some Mv) Em with inspect (List.nth_error Bks (elim_src sel i)) := {
@@ -778,7 +778,7 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
             let (A', HA') := fread_typ_impl_c (S (s + im_nn Mi)) a ck _ in
             let (Bs', HBs') := fread_brs_impl_c s ρ p ups Bks Mv (eb_motive b) Mi (pk, k, pre) (im_cons Mi) (eb_brs b) ck _ in
             let (NBks, HNBks) := fread_blocks_impl_c s ρ p ups Bks sel (S i) Ms ck _ in
-            exist _ (nblocks_cons (S (im_nn Mi)) A' Bs' NBks) _ }
+            exist _ (cons (mk_normal_block (S (im_nn Mi)) A' Bs') NBks) _ }
       | exist _ None Eb => False_rect _ _ }
     | exist _ None Em => False_rect _ _ }
   | exist _ None Ed => False_rect _ _ }
@@ -786,7 +786,7 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
   with fread_brs_impl_c s ρ p ups Bks Mv A Mi r cs Bs (ck : lk_cache Θ Ξ)
          (H : fread_brs_order Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs) :
     { Bs' | Rbrsᶠ Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' } by struct H :=
-| s, ρ, p, ups, Bks, Mv, A, Mi, r, nil, nil, ck, H => exist _ nbrs_nil _
+| s, ρ, p, ups, Bks, Mv, A, Mi, r, nil, nil, ck, H => exist _ nil _
 | s, ρ, p, ups, Bks, Mv, A, Mi, (pk, k, pre), (c, gs') :: cs, (_, _, B) :: Bs, ck, H with inspect (ind_con Mv c) := {
   | exist _ (Some gs) Ec =>
       let (ns, Hns) := ffresh_tele_impl Θ Ξ (env_args nil ups) (List.rev (im_nparams Mv)) s _ in
@@ -798,7 +798,7 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
       let (t, Ht) := feval_exp_impl Θ Ξ A (env_args ρ (ns ++ d_con pk k c (pre ++ ns ++ vs) :: nil)) _ in
       let (B', HB') := fread_nf_impl_c (s + (im_nn Mi + List.length gs' + cargs_nrec gs')) ⇓ t b ck _ in
       let (Bs', HBs') := fread_brs_impl_c s ρ p ups Bks Mv A Mi (pk, k, pre) cs Bs ck _ in
-      exist _ (nbrs_cons c (im_nn Mi + List.length gs' + cargs_nrec gs') B' Bs') _
+      exist _ (cons (mk_normal_branch c (im_nn Mi + List.length gs' + cargs_nrec gs') B') Bs') _
   | exist _ None Ec => False_rect _ _ }
 | s, ρ, p, ups, Bks, Mv, A, Mi, r, _, _, ck, H => False_rect _ _.
 

@@ -65,7 +65,7 @@ Proof. reflexivity. Qed.
 Lemma read_la_app : forall s xs ys xs' ys',
     Rla xs in s ↘ ys ->
     Rla xs' in s ↘ ys' ->
-    Rla (xs ++ xs') in s ↘ la_app ys ys'.
+    Rla (xs ++ xs') in s ↘ (ys ++ ys').
 Proof.
   intros * H H'; induction H; cbn; eauto with mctt.
 Qed.
@@ -109,7 +109,7 @@ Proof.
     eexists (lvl_canon (_, _)); split; [ reflexivity |].
     eexists; split; [ eassumption | reflexivity ].
   - split; [ constructor |].
-    exists (oz, la_cons 0 (dsort a) M la_nil); split; [ reflexivity |].
+    exists (oz, cons (mk_level_atom 0 (dsort a) M) nil); split; [ reflexivity |].
     eexists; split; [ repeat constructor; eassumption | reflexivity ].
 Qed.
 

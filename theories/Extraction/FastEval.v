@@ -1174,7 +1174,7 @@ Inductive fread_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :
     type ([dsort]) *)
 | fread_nf_lvl_neut :
   `( Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnfᶠ ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ oz (la_cons 0 (dsort a) M la_nil) )
+     Rnfᶠ ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ oz (mk_level_atom 0 (dsort a) M :: nil) )
 (** η for [⊤]: every value of type [⊤] reads back as [⋆]. *)
 | fread_nf_true :
   `( Rnfᶠ ⇓ ⊤ᵈ m in Θ ⍮ Ξ ⍮ s ↘ ⋆ⁿ )
@@ -1207,7 +1207,7 @@ Inductive fread_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :
      List.length vs = (im_np D Mk + List.length gs)%nat ->
      Rpsᶠ as' at List.rev (im_params D Mk) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
      Rcargsᶠ List.skipn (im_np D Mk) vs at gs of p (List.firstn (ind_nu D) as') in Θ ⍮ Ξ ⍮ env_args nil as' ⍮ s ↘ Args ->
-     Rnfᶠ ⇓ (d_ind p k as') (d_con p k c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p k c (nfs_app Ps Args) )
+     Rnfᶠ ⇓ (d_ind p k as') (d_con p k c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p k c (Ps ++ Args) )
 (** A constructor at a view, read as the view's constructor *)
 | fread_nf_con_view :
   `( ind_lookup Θ Ξ p = Some D ->
@@ -1218,7 +1218,7 @@ Inductive fread_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :
      List.length vs = (n + List.length gs)%nat ->
      Rpsᶠ as' at List.rev (im_params D Mj) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
      Rcargsᶠ List.skipn n vs at gs of p (List.firstn (ind_nu D) as') in Θ ⍮ Ξ ⍮ env_args nil as' ⍮ s ↘ Args ->
-     Rnfᶠ ⇓ (d_ind p j as') (d_con qc k c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p j c (nfs_app Ps Args) )
+     Rnfᶠ ⇓ (d_ind p j as') (d_con qc k c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p j c (Ps ++ Args) )
 (** A neutral of a member of a group *)
 | fread_nf_ind_neut :
   `( Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
@@ -1307,7 +1307,7 @@ with fread_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 (** A type former without arguments reads back without its declaration:
     it has no parameter to read. *)
 | fread_typ_indty_nil :
-  `( Rtypᶠ d_ind p k nil in Θ ⍮ Ξ ⍮ s ↘ nf_indty p k nfs_nil )
+  `( Rtypᶠ d_ind p k nil in Θ ⍮ Ξ ⍮ s ↘ nf_indty p k nil )
 (** At one argument or more, each read at its type. *)
 | fread_typ_indty :
   `( ind_lookup Θ Ξ p = Some D ->
@@ -1323,35 +1323,35 @@ with fread_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
      Rtypᶠ d_record p ns in Θ ⍮ Ξ ⍮ s ↘ nf_record p Ps )
 where "'Rtypᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (fread_typ Θ Ξ s m M) : type_scope
 (** The atoms of a level, read one by one. *)
-with fread_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> lvl_atoms -> Prop :=
+with fread_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> list level_atom -> Prop :=
 (** No atom *)
 | fread_la_nil :
-  `( Rlaᶠ nil in Θ ⍮ Ξ ⍮ s ↘ la_nil )
+  `( Rlaᶠ nil in Θ ⍮ Ξ ⍮ s ↘ nil )
 (** The first atom's neutral, then the rest *)
 | fread_la_cons :
   `( Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-     Rlaᶠ (k, n, m) :: xs in Θ ⍮ Ξ ⍮ s ↘ la_cons k n M ys )
+     Rlaᶠ (k, n, m) :: xs in Θ ⍮ Ξ ⍮ s ↘ mk_level_atom k n M :: ys )
 where "'Rlaᶠ' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" := (fread_la Θ Ξ s xs ys) : type_scope
 (** Values at a telescope, outermost first. *)
-with fread_ps (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list domain -> nfs -> Prop :=
+with fread_ps (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list domain -> list nf -> Prop :=
 (** No value *)
 | fread_ps_nil :
-  `( Rpsᶠ nil at nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_nil )
+  `( Rpsᶠ nil at nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 (** The first value at its type, then the rest with it in the
     environment *)
 | fread_ps_cons :
   `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Rnfᶠ ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
      Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ↦ v ⍮ s ↘ Vs ->
-     Rpsᶠ v :: vs at ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons V Vs )
+     Rpsᶠ v :: vs at ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V :: Vs )
 where "'Rpsᶠ' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (fread_ps Θ Ξ s ρ T vs Ms) : type_scope
 (** The fields of a record value, each at its type, as in
     [Core.Semantic.Readback]. *)
-with fread_fields (Θ : gdeps) (Ξ : gstack) : nat -> env -> list (string * exp) -> domain -> nfs -> Prop :=
+with fread_fields (Θ : gdeps) (Ξ : gstack) : nat -> env -> list (string * exp) -> domain -> list nf -> Prop :=
 (** No field left *)
 | fread_fields_nil :
-  `( Rfldsᶠ v at nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_nil )
+  `( Rfldsᶠ v at nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 (** The next field's projection at its type, then the rest with it in the
     environment *)
 | fread_fields_cons :
@@ -1359,24 +1359,24 @@ with fread_fields (Θ : gdeps) (Ξ : gstack) : nat -> env -> list (string * exp)
      ⟦ T ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ t ->
      Rnfᶠ ⇓ t r in Θ ⍮ Ξ ⍮ s ↘ F ->
      Rfldsᶠ v at fl in Θ ⍮ Ξ ⍮ ρ ↦ r ⍮ s ↘ Fs ->
-     Rfldsᶠ v at (f, T) :: fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons F Fs )
+     Rfldsᶠ v at (f, T) :: fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ F :: Fs )
 where "'Rfldsᶠ' v 'at' fl 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Fs" := (fread_fields Θ Ξ s ρ fl v Fs) : type_scope
 (** The arguments of a constructor, each at its type. *)
-with fread_cargs (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> list carg -> list domain -> nfs -> Prop :=
+with fread_cargs (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> list carg -> list domain -> list nf -> Prop :=
 (** No argument *)
 | fread_cargs_nil :
-  `( Rcargsᶠ nil at nil of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_nil )
+  `( Rcargsᶠ nil at nil of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 (** A non-recursive argument, at its declared type *)
 | fread_cargs_arg :
   `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Rnfᶠ ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
      Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ v ⍮ s ↘ Vs ->
-     Rcargsᶠ v :: vs at ca_arg A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons V Vs )
+     Rcargsᶠ v :: vs at ca_arg A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V :: Vs )
 (** A recursive argument, along its shape *)
 | fread_cargs_rec :
   `( Rshᶠ v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V ->
      Rcargsᶠ vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs ->
-     Rcargsᶠ v :: vs at ca_rec t :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons V Vs )
+     Rcargsᶠ v :: vs at ca_rec t :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V :: Vs )
 where "'Rcargsᶠ' vs 'at' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (fread_cargs Θ Ξ s p ups ρ gs vs Ms) : type_scope
 (** A recursive argument of shape [t], as in [Core.Semantic.Readback]. *)
 with fread_shape (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> ptyp -> domain -> nf -> Prop :=
@@ -1395,10 +1395,10 @@ with fread_shape (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env
 where "'Rshᶠ' v 'at' t 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ V" := (fread_shape Θ Ξ s p ups ρ t v V) : type_scope
 (** The blocks of a stuck eliminator, as in [Core.Semantic.Readback]. *)
 with fread_blocks (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -> list eblock ->
-                                       option (list nat) -> nat -> list imember -> nblocks -> Prop :=
+                                       option (list nat) -> nat -> list imember -> list normal_block -> Prop :=
 (** No member left *)
 | fread_blocks_nil :
-  `( Rblksᶠ i nil from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nblocks_nil )
+  `( Rblksᶠ i nil from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 (** The block for the member [Mi]: the motive, then the branches, then
     the rest *)
 | fread_blocks_cons :
@@ -1412,17 +1412,17 @@ with fread_blocks (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domai
      Rtypᶠ a in Θ ⍮ Ξ ⍮ S (s + im_nn Mi)%nat ↘ A' ->
      Rbrsᶠ eb_brs b at im_cons Mi of Mi (pk, k, pre) from p ups Bks Mv (eb_motive b) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
      Rblksᶠ (S i) Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
-     Rblksᶠ i (Mi :: Ms) from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nblocks_cons (S (im_nn Mi)) A' Bs' NBks )
+     Rblksᶠ i (Mi :: Ms) from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ mk_normal_block (S (im_nn Mi)) A' Bs' :: NBks )
 where "'Rblksᶠ' i Ms 'from' p ups Bks sel 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ NBks" := (fread_blocks Θ Ξ s ρ p ups Bks sel i Ms NBks) : type_scope
 (** The branches of a block, as in [Core.Semantic.Readback]; a recursive
     result the branch does not read gets the type [𝕌ω@0]
     ([ffresh_ihs_skip]). *)
 with fread_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -> list eblock ->
                                     imember -> exp -> imember -> (qname * nat * list domain) ->
-                                    list (string * list carg) -> list (string * nat * exp) -> nbrs -> Prop :=
+                                    list (string * list carg) -> list (string * nat * exp) -> list normal_branch -> Prop :=
 (** No constructor left *)
 | fread_brs_nil :
-  `( Rbrsᶠ nil at nil of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_nil )
+  `( Rbrsᶠ nil at nil of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 (** The branch of the next constructor, under its fresh variables, at
     the motive's instance, then the rest *)
 | fread_brs_cons :
@@ -1439,7 +1439,7 @@ with fread_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -
      ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ d_con pk k c (pre ++ ns ++ vs) :: nil) ↘ t ->
      Rnfᶠ ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
      Rbrsᶠ Bs at cs of Mi (pk, k, pre) from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-     Rbrsᶠ (c, n0, B) :: Bs at (c, gs') :: cs of Mi (pk, k, pre) from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_cons c n B' Bs' )
+     Rbrsᶠ (c, n0, B) :: Bs at (c, gs') :: cs of Mi (pk, k, pre) from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ mk_normal_branch c n B' :: Bs' )
 where "'Rbrsᶠ' Bs 'at' cs 'of' Mi r 'from' p ups Bks Mv A 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Bs'" := (fread_brs Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs Bs') : type_scope
 .
 

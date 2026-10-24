@@ -513,10 +513,10 @@ Proof.
 Qed.
 
 Lemma read_ps_nth : forall s ρ T vs Rs, Rps vs at T in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Rs ->
-    List.length (nfs_to_exps Rs) = List.length vs /\
+    List.length (List.map nf_to_exp Rs) = List.length vs /\
     forall k v A, List.nth_error vs k = Some v -> List.nth_error T k = Some (ce_ass A) ->
       exists a (V : nf), ⟦ A ⟧ env_args ρ (List.firstn k vs) ↘ a /\ Rnf ⇓ a v in gc_deps ⍮ gc_stack ⍮ s ↘ V /\
-        List.nth_error (nfs_to_exps Rs) k = Some (V : exp).
+        List.nth_error (List.map nf_to_exp Rs) k = Some (V : exp).
 Proof.
   induction 1; [ split; [ reflexivity | intros [] *; discriminate ] |].
   match goal with H : _ /\ _ |- _ => destruct H as [IHl IHn] end.

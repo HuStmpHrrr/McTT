@@ -219,7 +219,7 @@ Proof.
   cbn in HwsA, HwsB; destruct HwsA as [Hc0 Hwsx]; destruct HwsB as [Hd0 Hwsy].
   pose proof (la_ws_wf _ Hwsx) as Hwfx; pose proof (la_ws_wf _ Hwsy) as Hwfy.
   assert (Hcd : fst (omax c d) <= n) by (apply omax_fst_le; assumption).
-  assert (Hwsa : @la_ws gc_deps gc_stack n Δ' (la_app xs ys)) by (apply la_ws_app; [ exact Hwsx | exact Hwsy ]).
+  assert (Hwsa : @la_ws gc_deps gc_stack n Δ' (xs ++ ys)%list) by (apply la_ws_app; [ exact Hwsx | exact Hwsy ]).
   assert (Hcc : fst (fst (lvl_canon (lvl_max (c, xs) (d, ys)))) <= n)
     by (eapply Nat.le_trans; [ apply lvl_canon_cst_le | exact Hcd ]).
   assert (Hwsm : @la_ws gc_deps gc_stack n Δ' (snd (lvl_canon (lvl_max (c, xs) (d, ys)))))

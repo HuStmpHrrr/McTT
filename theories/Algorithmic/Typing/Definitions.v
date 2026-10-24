@@ -113,15 +113,15 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      im_ref p m Mm = (pc, k) ->
      ind_lookup gc_deps gc_stack pc = Some Dq ->
      ind_member Dq k = Some Mk ->
-     List.length (nfs_to_exps Rs) = im_np Dq Mk ->
+     List.length (List.map nf_to_exp Rs) = im_np Dq Mk ->
      List.nth_error Bks m = Some bm ->
      List.length Bks = List.length (ind_members D) ->
      List.length Us = ind_nu D ->
      (forall j U T, List.nth_error Us j = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) j = Some T ->
         Γ ⊢a U ⟸ T) ->
-     nfs_agree Γ (im_pre Mm Us) (List.firstn (ind_nu Dq) (nfs_to_exps Rs))
+     nfs_agree Γ (im_pre Mm Us) (List.firstn (ind_nu Dq) (List.map nf_to_exp Rs))
        (tele_insts (ind_uparams Dq) Id (im_pre Mm Us)) ->
-     Ns = List.skipn (ind_nu Dq) (nfs_to_exps Rs) ->
+     Ns = List.skipn (ind_nu Dq) (List.map nf_to_exp Rs) ->
      (forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_nm b = S (im_nn Mj)) ->
      (forall j Mj b Z, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_ann b = Some Z ->
         tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ ⊢a Z ⟸ Typeω@i) ->
@@ -218,7 +218,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      record_lookup gc_deps gc_stack p = Some R ->
      List.map fst fs = List.map fst (record_fields R) ->
      (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
-        Γ ⊢a M ⟸ U[sb_of_list Id (nfs_to_exps Rs ++ List.firstn k (List.map snd fs))]) ->
+        Γ ⊢a M ⟸ U[sb_of_list Id (List.map nf_to_exp Rs ++ List.firstn k (List.map snd fs))]) ->
      Γ ⊢a a_tuple T fs ⟹ nf_record p Rs )
 (** A projection: the element infers a record type at normal parameters
     [Rs]; the field is the first one so named, and the projection infers
@@ -228,7 +228,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      record_lookup gc_deps gc_stack p = Some R ->
      field_index (record_fields R) f = Some k ->
      List.nth_error (record_fields R) k = Some (f, U) ->
-     nbe_ty_f Γ U[sb_of_list Id (nfs_to_exps Rs ++ record_pre R k M)] W ->
+     nbe_ty_f Γ U[sb_of_list Id (List.map nf_to_exp Rs ++ record_pre R k M)] W ->
      Γ ⊢a a_proj f M ⟹ W )
 where "Γ '⊢a' M ⟹ A" := (alg_type_infer Γ A M) : type_scope
 (** The well-formedness of extensions, units and module expressions, entry by

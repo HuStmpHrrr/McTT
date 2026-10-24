@@ -55,16 +55,16 @@ Proof.
   - gen_presups.
     destruct (univ_nf_ws HA HnA) as (n1 & Ht & Hc & Hxs).
     destruct (univ_nf_ws HB HnB) as (n2 & Ht' & Hd & Hys).
-    assert (Γ ⊢ lvl_exp_of c (la_to_list xs) : Level@(Nat.max n1 n2))
+    assert (Γ ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@(Nat.max n1 n2))
       by (eapply wf_exp_subtyp'; [ exact Ht | apply wf_subtyp_level; [ lia | mauto 2 ] ]).
-    assert (Γ ⊢ lvl_exp_of d (la_to_list ys) : Level@(Nat.max n1 n2))
+    assert (Γ ⊢ lvl_exp_of d (List.map atom_exp ys) : Level@(Nat.max n1 n2))
       by (eapply wf_exp_subtyp'; [ exact Ht' | apply wf_subtyp_level; [ lia | mauto 2 ] ]).
     eapply wf_subtyp_suniv; [ assumption | eassumption | eassumption |].
     apply lvl_exp_of_le; [ lia | lia | assumption
                          | eapply la_ws_mono; [| exact Hxs ]; lia
                          | eapply la_ws_mono; [| exact Hys ]; lia | assumption ].
   - gen_presups.
-    assert (exists n, Γ ⊢ lvl_exp_of c (la_to_list xs) : Level@n) as [n Ht]
+    assert (exists n, Γ ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n) as [n Ht]
       by (eapply wf_univ_lvl_inversion; eassumption).
     eapply wf_subtyp_small_large; [ assumption | exact Ht ].
   - gen_presups; apply wf_subtyp_level; assumption.

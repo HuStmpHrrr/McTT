@@ -315,7 +315,7 @@ Section Fixed_GCtx.
       apply tele_ass_sub, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (dt_nparams_ass _ _ _ Hdt _ _ HM) ]. }
     assert (HΨΓ : ⊢ Ψ ++ Γu) by (unfold Ψ; rewrite <- List.app_assoc; gen_presups; assumption).
     assert (HCszl : List.length Csz = ind_nu Dq)
-      by (apply (f_equal (@List.length _)) in HC2; rewrite List.length_firstn, List.length_map in HC2; lia).
+      by (apply (f_equal (@List.length _)) in HC2; rewrite List.length_firstn, !List.length_map in HC2; rewrite ?List.length_map in Hm2; lia).
     set (args := List.map (fun N => N[wk_shiftn K]ʷ) Q ++ List.map (fun N => N[sb_qn K (sb_of_list Id Cs)]) Ps) in *.
     assert (Hfa : List.firstn (ind_nu Dq) args = List.map (fun N => N[wk_shiftn K]ʷ) Q)
       by (unfold args; rewrite List.firstn_app, List.length_map, HlQu, Nat.sub_diag, List.firstn_all2 by (rewrite List.length_map; lia);
@@ -343,7 +343,7 @@ Section Fixed_GCtx.
         by (rewrite List.nth_error_map, HCj; reflexivity).
       rewrite <- HC2, List.nth_error_firstn in HCw.
       destruct (j <? ind_nu Dq) eqn:Ejn; [| apply Nat.ltb_ge in Ejn; lia ].
-      rewrite <- nfs_list_exps, List.nth_error_map, HR in HCw; cbn in HCw; injection HCw as HCw.
+      rewrite List.nth_error_map, HR in HCw; cbn in HCw; injection HCw as HCw.
       rewrite HW'e, <- (exp_wk_wk_eq _ _ _ (wk_pat_trues K)) in HCw.
       apply exp_wk_pat_inj in HCw.
       rewrite HCj, List.nth_error_map, HW0; cbn; rewrite HCw; reflexivity. }
@@ -605,11 +605,11 @@ Section Fixed_GCtx.
         ⊢ A[wk_pat (cargs_pat gs1)]ʷ[sb_qn (List.length gs1 + im_nn Mi) (sb_of_list Id Cs)] : Typeω@i ->
       nbe_ty_f (tele_sub (cargs_ctx p D Mi gs1 ++ im_nparams Mi) (sb_of_list Id Cs) ++ Γu)
         A[wk_pat (cargs_pat gs1)]ʷ[sb_qn (List.length gs1 + im_nn Mi) (sb_of_list Id Cs)] W ->
-      nf_to_exp W = pis Bs (apps (a_ind qz kz) (nfs_to_exps Rs)) ->
+      nf_to_exp W = pis Bs (apps (a_ind qz kz) (List.map nf_to_exp Rs)) ->
       ind_lookup gc_deps gc_stack qz = Some Dz -> kz < ind_ndecl Dz -> List.length Csz = ind_nu Dz ->
       (forall j C T, List.nth_error Csz j = Some C -> List.nth_error (tele_insts (ind_uparams Dz) Id Csz) j = Some T ->
          Γu ⊢ C : T) ->
-      List.firstn (ind_nu Dz) (nfs_to_exps Rs)
+      List.firstn (ind_nu Dz) (List.map nf_to_exp Rs)
         = List.map (fun C => C[wk_pat (List.repeat true (List.length Bs + List.length gs1 + im_nn Mi))]ʷ) Csz ->
       exists usz nsz, ⟦ Csz ⟧* gc_deps ⍮ gc_stack ⍮ ρ0 ↘ usz /\ List.length usz = ind_nu Dz /\
         grp_step (d_ind qz kz (usz ++ nsz)) (d_ind p k us).
@@ -709,7 +709,7 @@ Section Fixed_GCtx.
     destruct Hwa as [R0 HR0].
     (** the shape end of the normal form's value: the member at [qz] at
         the values of the end's arguments *)
-    assert (HWt : tele_sub Δ σ ++ Γu ⊢ pis Bs (apps (a_ind qz kz) (nfs_to_exps Rs)) : Typeω@i)
+    assert (HWt : tele_sub Δ σ ++ Γu ⊢ pis Bs (apps (a_ind qz kz) (List.map nf_to_exp Rs)) : Typeω@i)
       by (rewrite <- HWe; gen_presups; assumption).
     rewrite HWe in Ew.
     destruct (shape_end_at Bs _ _ i RS (env_args ρ0 xs) w HWt HRS HSS Ew) as (ws & e & RE & HRE & HEE & Hlw & Hse & Ee).

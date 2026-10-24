@@ -102,7 +102,7 @@ Lemma wf_exp_unf_large : forall {Γ A} {u : unf},
     Γ ⊢ A : Typeω@(unf_large u).
 Proof.
   intros * HA; destruct u as [L | n]; cbn in *; [| exact HA ].
-  assert (exists k, Γ ⊢ Type⟨lvl_exp_of (fst L) (la_to_list (snd L))⟩ : Typeω@k) as [k Hk]
+  assert (exists k, Γ ⊢ Type⟨lvl_exp_of (fst L) (List.map atom_exp (snd L))⟩ : Typeω@k) as [k Hk]
     by (gen_presups; eauto 2).
   assert (⊢ Γ) by (gen_presups; assumption).
   destruct (wf_univ_lvl_inversion Hk) as [n Hn].
@@ -128,7 +128,7 @@ Qed.
     of a universe is ([univ_nf_ws]). *)
 Definition unf_ws (Γ : ctx) (u : unf) : Prop :=
   match u with
-  | uns L => exists n, Γ ⊢ lvl_exp_of (fst L) (la_to_list (snd L)) : Level@n /\
+  | uns L => exists n, Γ ⊢ lvl_exp_of (fst L) (List.map atom_exp (snd L)) : Level@n /\
                     fst (fst L) <= n /\ @la_ws gc_deps gc_stack n Γ (snd L)
   | unl _ => True
   end.
@@ -163,10 +163,10 @@ Proof.
   - (** The small join. *)
     destruct Hv as (nB & HLB0 & Hd & Hys); cbn [fst snd] in *.
     unfold lvl_bound; cbn [fst snd].
-    set (LA := lvl_exp_of c (la_to_list xs)) in *.
+    set (LA := lvl_exp_of c (List.map atom_exp xs)) in *.
     set (cb := omax d (la_open_bound 0 ys)) in *.
     set (fp := la_fresh_part 0 ys) in *.
-    set (LBs := lvl_exp_of cb (la_to_list (la_unwk 0 fp))).
+    set (LBs := lvl_exp_of cb (List.map atom_exp (List.map (map_level_atom (ne_unwk 0)) fp))).
     assert (exists nA, Γ ⊢ LA : Level@nA) as [nA HLA0]
       by (assert (exists k, Γ ⊢ Type⟨LA⟩ : Typeω@k) as [k Hk] by (gen_presups; eauto 2);
           eapply wf_univ_lvl_inversion; exact Hk).
@@ -176,19 +176,19 @@ Proof.
           [ lia | eapply Nat.le_trans; [ apply la_open_bound_fst; eapply la_ws_sorts; exact Hys | lia ] ]).
     assert (HysN : @la_ws gc_deps gc_stack N (Γ ▹ A) ys) by (eapply la_ws_mono; [| exact Hys ]; lia).
     assert (HfpN : @la_ws gc_deps gc_stack N (Γ ▹ A) fp) by (apply la_ws_fresh_part; exact HysN).
-    assert (HLB : Γ ▹ A ⊢ lvl_exp_of d (la_to_list ys) : Level@N) by (eapply wf_exp_level_up; [| exact HLB0 ]; lia).
+    assert (HLB : Γ ▹ A ⊢ lvl_exp_of d (List.map atom_exp ys) : Level@N) by (eapply wf_exp_level_up; [| exact HLB0 ]; lia).
     (** The bound, weakened back, is the level of its fresh atoms. *)
-    assert (Hfresh : lvl_exp_of cb (la_to_list fp) = LBs[↑]ʷ)
+    assert (Hfresh : lvl_exp_of cb (List.map atom_exp fp) = LBs[↑]ʷ)
       by exact (nf_fresh_unwk 0 (nf_lvl cb fp) (la_fresh_part_fresh 0 ys)).
     assert (HLBl : Γ ▹ A ⊢ LBs[↑]ʷ : Level@N)
       by (rewrite <- Hfresh; apply lvl_exp_of_wf; [ exact Hcb | exact HΓA | apply la_ws_wf; exact HfpN ]).
-    assert (Habove : Γ ▹ A ⊢ maxl (lvl_exp_of d (la_to_list ys)) LBs[↑]ʷ ≈ LBs[↑]ʷ : Level@N).
+    assert (Habove : Γ ▹ A ⊢ maxl (lvl_exp_of d (List.map atom_exp ys)) LBs[↑]ʷ ≈ LBs[↑]ʷ : Level@N).
     { rewrite <- Hfresh.
       apply lvl_exp_of_le; [ lia | exact Hcb | exact HΓA | exact HysN | exact HfpN |].
       exact (lvl_bound_above 0 (d, ys)). }
     assert (HLA : Γ ⊢ LA : Level@N) by (eapply wf_exp_level_up; [| exact HLA0 ]; lia).
     assert (HLBs : Γ ⊢ LBs : Level@N)
-      by exact (level_nf_strengthen Γ A _ (nf_lvl cb (la_unwk 0 fp)) HΓA HLBl).
+      by exact (level_nf_strengthen Γ A _ (nf_lvl cb (List.map (map_level_atom (ne_unwk 0)) fp)) HΓA HLBl).
     assert (Ht : Γ ⊢ maxl LA LBs : Level@N) by mauto 3.
     assert (Hw : Γ ▹ A ⊢ʷ ↑ : Γ) by mauto 2.
     eapply wf_pi_lvl; [ exact Ht | |].
@@ -270,16 +270,16 @@ Qed.
     parameters, by the induction hypotheses.  The eliminator is of the
     motive's instance, before that is normalised. *)
 Lemma alg_elim_typed : forall Γ M pc k Rs p D oq m Mm Dq Mk bm Bks Us Ns i,
-    ⊢ Γ -> Γ ⊢ M : apps (a_ind pc k) (nfs_to_exps Rs) ->
+    ⊢ Γ -> Γ ⊢ M : apps (a_ind pc k) (List.map nf_to_exp Rs) ->
     ind_lookup gc_deps gc_stack p = Some D -> elim_grp D oq p m -> ind_member D m = Some Mm ->
     im_ref p m Mm = (pc, k) -> ind_lookup gc_deps gc_stack pc = Some Dq -> ind_member Dq k = Some Mk ->
-    List.length (nfs_to_exps Rs) = im_np Dq Mk ->
+    List.length (List.map nf_to_exp Rs) = im_np Dq Mk ->
     List.nth_error Bks m = Some bm -> List.length Bks = List.length (ind_members D) ->
     List.length Us = ind_nu D ->
     (forall j U T, List.nth_error Us j = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) j = Some T ->
        ⊢ Γ -> forall i, Γ ⊢ T : Typeω@i -> Γ ⊢ U : T) ->
-    nfs_agree Γ (im_pre Mm Us) (List.firstn (ind_nu Dq) (nfs_to_exps Rs)) (tele_insts (ind_uparams Dq) Id (im_pre Mm Us)) ->
-    Ns = List.skipn (ind_nu Dq) (nfs_to_exps Rs) ->
+    nfs_agree Γ (im_pre Mm Us) (List.firstn (ind_nu Dq) (List.map nf_to_exp Rs)) (tele_insts (ind_uparams Dq) Id (im_pre Mm Us)) ->
+    Ns = List.skipn (ind_nu Dq) (List.map nf_to_exp Rs) ->
     blocks_nm_ok D Bks ->
     (forall j Mj b Z, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_ann b = Some Z ->
        ⊢ (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ)%list -> forall i',
@@ -311,13 +311,13 @@ Proof.
   { eapply tele_insts_typed_all; [ exact (dc_ass _ Hc) | exact (wf_uparams_app _ _ _ HD Hc _ HΓ) | apply wf_sub_id, HΓ |].
     intros j U X HU HX [iT HXt]; exact (HUs _ _ _ HU HX HΓ _ HXt). }
   (** The scrutinee, of the member's type. *)
-  assert (exists kk, Γ ⊢ apps (a_ind pc k) (nfs_to_exps Rs) : Typeω@kk) as [kk Hkk] by (gen_presups; eauto).
+  assert (exists kk, Γ ⊢ apps (a_ind pc k) (List.map nf_to_exp Rs) : Typeω@kk) as [kk Hkk] by (gen_presups; eauto).
   pose proof (wf_ind_apps_inv _ _ _ _ _ _ _ Hlq Hk Hkk HRl) as HRt.
   destruct (im_pre_typed _ _ _ _ _ _ _ _ _ HΓ Hl Hm Hr Hlq HUl HUt) as [HPl HPt].
   destruct (params_typed_split _ _ Dq Hcq _ _ _ _ Hk HRl HRt) as [HRu _].
-  assert (HRl' : List.length (List.firstn (ind_nu Dq) (nfs_to_exps Rs)) = ind_nu Dq)
+  assert (HRl' : List.length (List.firstn (ind_nu Dq) (List.map nf_to_exp Rs)) = ind_nu Dq)
     by (rewrite List.length_firstn; unfold im_np in HRl; lia).
-  assert (HPR : forall j N R X, List.nth_error (im_pre Mm Us) j = Some N -> List.nth_error (nfs_to_exps Rs) j = Some R ->
+  assert (HPR : forall j N R X, List.nth_error (im_pre Mm Us) j = Some N -> List.nth_error (List.map nf_to_exp Rs) j = Some R ->
              List.nth_error (tele_insts (ind_uparams Dq) Id (im_pre Mm Us)) j = Some X -> Γ ⊢ N ≈ R : X).
   { intros j N R X HN HR HX.
     assert (Hj : j < ind_nu Dq) by (rewrite <- HPl; apply List.nth_error_Some; congruence).
@@ -326,9 +326,9 @@ Proof.
            | exact HPt | exact HRu | exact Hag | exact HN | | exact HX ].
     rewrite List.nth_error_firstn; destruct (Nat.ltb_spec j (ind_nu Dq)); [ exact HR | lia ]. }
   destruct (mty_params_conv _ _ _ _ _ _ _ _ _ _ _ HΓ Hl Hm Hr Hlq Hk HUl HUt HRl HRt HPR) as [HNl HNt [iE HE]].
-  assert (HM' : Γ ⊢ M : ind_mty p D m Us (List.skipn (ind_nu Dq) (nfs_to_exps Rs))) by (eapply wf_conv'; [ exact HM | exact HE ]).
+  assert (HM' : Γ ⊢ M : ind_mty p D m Us (List.skipn (ind_nu Dq) (List.map nf_to_exp Rs))) by (eapply wf_conv'; [ exact HM | exact HE ]).
   clear HPR HRu HPt HRt Hkk HE Hag HUs HRl' HPl HM.
-  set (Ns := List.skipn (ind_nu Dq) (nfs_to_exps Rs)) in *.
+  set (Ns := List.skipn (ind_nu Dq) (List.map nf_to_exp Rs)) in *.
   (** The blocks. *)
   assert (HUt' : forall j Mj, ind_member D j = Some Mj -> ⊢ (elim_mctx p D j Mj Us ++ Γ)%list)
     by (intros; eapply elim_mctx_wf; eassumption).
@@ -367,16 +367,16 @@ Qed.
 
 (** The eliminator is of the normal form of the motive's instance. *)
 Lemma alg_elim_sound : forall Γ M pc k Rs p D oq m Mm Dq Mk bm Bks Us Ns i T,
-    ⊢ Γ -> Γ ⊢ M : apps (a_ind pc k) (nfs_to_exps Rs) ->
+    ⊢ Γ -> Γ ⊢ M : apps (a_ind pc k) (List.map nf_to_exp Rs) ->
     ind_lookup gc_deps gc_stack p = Some D -> elim_grp D oq p m -> ind_member D m = Some Mm ->
     im_ref p m Mm = (pc, k) -> ind_lookup gc_deps gc_stack pc = Some Dq -> ind_member Dq k = Some Mk ->
-    List.length (nfs_to_exps Rs) = im_np Dq Mk ->
+    List.length (List.map nf_to_exp Rs) = im_np Dq Mk ->
     List.nth_error Bks m = Some bm -> List.length Bks = List.length (ind_members D) ->
     List.length Us = ind_nu D ->
     (forall j U T, List.nth_error Us j = Some U -> List.nth_error (tele_insts (ind_uparams D) Id Us) j = Some T ->
        ⊢ Γ -> forall i, Γ ⊢ T : Typeω@i -> Γ ⊢ U : T) ->
-    nfs_agree Γ (im_pre Mm Us) (List.firstn (ind_nu Dq) (nfs_to_exps Rs)) (tele_insts (ind_uparams Dq) Id (im_pre Mm Us)) ->
-    Ns = List.skipn (ind_nu Dq) (nfs_to_exps Rs) ->
+    nfs_agree Γ (im_pre Mm Us) (List.firstn (ind_nu Dq) (List.map nf_to_exp Rs)) (tele_insts (ind_uparams Dq) Id (im_pre Mm Us)) ->
+    Ns = List.skipn (ind_nu Dq) (List.map nf_to_exp Rs) ->
     blocks_nm_ok D Bks ->
     (forall j Mj b Z, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_ann b = Some Z ->
        ⊢ (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ)%list -> forall i',
@@ -490,14 +490,14 @@ Lemma alg_tuple_sound : forall Γ T (fs : list (String.string * exp)) p Rs R i,
     ⊢ Γ -> Γ ⊢ T : Typeω@i -> nbe_ty_f Γ T (nf_record p Rs) -> record_lookup gc_deps gc_stack p = Some R ->
     List.map fst fs = List.map fst (record_fields R) ->
     (forall k f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
-       ⊢ Γ -> forall i, Γ ⊢ U[sb_of_list Id (nfs_to_exps Rs ++ List.firstn k (List.map snd fs))] : Typeω@i ->
-       Γ ⊢ M : U[sb_of_list Id (nfs_to_exps Rs ++ List.firstn k (List.map snd fs))]) ->
+       ⊢ Γ -> forall i, Γ ⊢ U[sb_of_list Id (List.map nf_to_exp Rs ++ List.firstn k (List.map snd fs))] : Typeω@i ->
+       Γ ⊢ M : U[sb_of_list Id (List.map nf_to_exp Rs ++ List.firstn k (List.map snd fs))]) ->
     Γ ⊢ a_tuple T fs : nf_record p Rs.
 Proof.
   intros * HΓ HT Hn Hl Hfs HMs.
   assert (HTR : Γ ⊢ T ≈ nf_record p Rs : Typeω@i) by (eapply soundness_ty'; eassumption).
   cbn [nf_to_exp] in HTR |- *.
-  assert (HRa : Γ ⊢ apps (a_record p) (nfs_to_exps Rs) : Typeω@i) by (gen_presups; assumption).
+  assert (HRa : Γ ⊢ apps (a_record p) (List.map nf_to_exp Rs) : Typeω@i) by (gen_presups; assumption).
   pose proof (wf_record_apps_len _ _ _ _ _ Hl HRa) as HRl.
   pose proof (wf_record_apps_inv _ _ _ _ _ Hl HRa HRl) as HRt.
   destruct (record_former_typed _ _ _ HΓ Hl) as [j [Hrt _]].
@@ -512,11 +512,11 @@ Qed.
 Lemma alg_proj_typed : forall Γ M p Rs R f k U,
     ⊢ Γ -> Γ ⊢ M : nf_record p Rs -> record_lookup gc_deps gc_stack p = Some R ->
     List.nth_error (record_fields R) k = Some (f, U) ->
-    exists m, Γ ⊢ U[sb_of_list Id (nfs_to_exps Rs ++ record_pre R k M)] : Typeω@m /\
-      Γ ⊢ a_proj f M : U[sb_of_list Id (nfs_to_exps Rs ++ record_pre R k M)].
+    exists m, Γ ⊢ U[sb_of_list Id (List.map nf_to_exp Rs ++ record_pre R k M)] : Typeω@m /\
+      Γ ⊢ a_proj f M : U[sb_of_list Id (List.map nf_to_exp Rs ++ record_pre R k M)].
 Proof.
   intros * HΓ HM Hl Hfk; cbn [nf_to_exp] in HM.
-  assert (exists i, Γ ⊢ apps (a_record p) (nfs_to_exps Rs) : Typeω@i) as [i HRa] by (gen_presups; eauto 2).
+  assert (exists i, Γ ⊢ apps (a_record p) (List.map nf_to_exp Rs) : Typeω@i) as [i HRa] by (gen_presups; eauto 2).
   pose proof (wf_record_apps_len _ _ _ _ _ Hl HRa) as HRl.
   pose proof (wf_record_apps_inv _ _ _ _ _ Hl HRa HRl) as HRt.
   destruct (record_former_typed _ _ _ HΓ Hl) as [j [Hrt _]].
@@ -529,7 +529,7 @@ Qed.
 Lemma alg_proj_sound : forall Γ M p Rs R f k U W,
     ⊢ Γ -> Γ ⊢ M : nf_record p Rs -> record_lookup gc_deps gc_stack p = Some R ->
     List.nth_error (record_fields R) k = Some (f, U) ->
-    nbe_ty_f Γ U[sb_of_list Id (nfs_to_exps Rs ++ record_pre R k M)] W ->
+    nbe_ty_f Γ U[sb_of_list Id (List.map nf_to_exp Rs ++ record_pre R k M)] W ->
     Γ ⊢ a_proj f M : W.
 Proof.
   intros * HΓ HM Hl Hfk Hn.
@@ -1184,7 +1184,7 @@ Proof.
   rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in *.
   apply alg_subtyping_complete.
   destruct u as [L | j]; cbn [unf_tm unf_le] in *.
-  - assert (exists k, Γ ⊢ Type⟨lvl_exp_of (fst L) (la_to_list (snd L))⟩ : Typeω@k) as [k Hk]
+  - assert (exists k, Γ ⊢ Type⟨lvl_exp_of (fst L) (List.map atom_exp (snd L))⟩ : Typeω@k) as [k Hk]
       by (gen_presups; eauto 2).
     destruct (wf_univ_lvl_inversion Hk) as [n Hn].
     eapply wf_subtyp_small_large; eassumption.
@@ -1205,7 +1205,7 @@ Proof.
   assert (HA : Γ ⊢ A : UA) by (eapply alg_type_infer_sound; eassumption).
   pose proof (alg_type_infer_self HΓ Hi) as HnA.
   rewrite (is_univ_nf_eq _ _ Hu) in HA, HnA; cbn [univ_nf nf_univ_of fst snd nf_to_exp] in HA, HnA.
-  assert (exists k, Γ ⊢ Type⟨lvl_exp_of c (la_to_list xs)⟩ : Typeω@k) as [k Hk] by (gen_presups; eauto 2).
+  assert (exists k, Γ ⊢ Type⟨lvl_exp_of c (List.map atom_exp xs)⟩ : Typeω@k) as [k Hk] by (gen_presups; eauto 2).
   destruct (univ_nf_ws Hk HnA) as (nA & HLA & Hc & Hxs).
   set (N := Nat.max nA (fst m)).
   econstructor; [ exact Hi |].
@@ -1218,7 +1218,7 @@ Proof.
   assert (HcN : fst c <= N) by (subst N; lia).
   assert (HmN : fst m <= N) by (subst N; lia).
   assert (HxsN : @la_ws gc_deps gc_stack N Γ xs) by (eapply la_ws_mono; [| exact Hxs ]; subst N; lia).
-  exact (lvl_exp_of_le (n := N) c xs m la_nil HcN HmN HΓ HxsN I Hle).
+  exact (lvl_exp_of_le (n := N) c xs m nil HcN HmN HΓ HxsN I Hle).
 Qed.
 
 (** A type checked against a small universe infers a small universe, at a canonical
@@ -1385,7 +1385,7 @@ Proof.
   assert (HΓA : ⊢ Γ ▹ A) by (gen_presups; assumption).
   destruct (alg_type_check_suniv_tm_implies_alg_type_infer_univ HΓ HAc) as (LA & Lt & HAi & HnL & HLA).
   destruct (alg_type_check_suniv_tm_implies_alg_type_infer_univ HΓA HBc) as (LB & L' & HBi & HnL' & HLB).
-  assert (HfL' : la_fresh 0 (snd L'))
+  assert (HfL' : all_list (fun a => ne_fresh 0 (atom_level a)) (snd L'))
     by exact (nbe_ty_wk_fresh _ _ Γ A Type⟨L⟩ _ HnL').
   pose proof (lvl_le_bound_wk 0 _ _ HLB HfL') as HbLB.
   destruct LA as [c xs], LB as [d ys], Lt as [e zs], L' as [f ws]; cbn [fst snd] in *.
@@ -1393,10 +1393,10 @@ Proof.
     [ exact HΓ | exact HAi | exact HBi | constructor | constructor | eapply wf_univ_large_tm; eassumption |].
   cbn [unf_pi_tm fst snd]; unfold lvl_bound; cbn [fst snd].
   (** The levels and their atoms, each at its own sort. *)
-  assert (HAi' : Γ ⊢ A : Type⟨lvl_exp_of c (la_to_list xs)⟩) by (eapply alg_type_infer_sound in HAi; eassumption).
-  assert (HBi' : Γ ▹ A ⊢ B : Type⟨lvl_exp_of d (la_to_list ys)⟩) by (eapply alg_type_infer_sound in HBi; eassumption).
-  assert (exists k, Γ ⊢ Type⟨lvl_exp_of c (la_to_list xs)⟩ : Typeω@k) as [kA HkA] by (gen_presups; eauto 2).
-  assert (exists k, Γ ▹ A ⊢ Type⟨lvl_exp_of d (la_to_list ys)⟩ : Typeω@k) as [kB HkB] by (gen_presups; eauto 2).
+  assert (HAi' : Γ ⊢ A : Type⟨lvl_exp_of c (List.map atom_exp xs)⟩) by (eapply alg_type_infer_sound in HAi; eassumption).
+  assert (HBi' : Γ ▹ A ⊢ B : Type⟨lvl_exp_of d (List.map atom_exp ys)⟩) by (eapply alg_type_infer_sound in HBi; eassumption).
+  assert (exists k, Γ ⊢ Type⟨lvl_exp_of c (List.map atom_exp xs)⟩ : Typeω@k) as [kA HkA] by (gen_presups; eauto 2).
+  assert (exists k, Γ ▹ A ⊢ Type⟨lvl_exp_of d (List.map atom_exp ys)⟩ : Typeω@k) as [kB HkB] by (gen_presups; eauto 2).
   destruct (univ_nf_ws HkA (alg_type_infer_self HΓ HAi)) as (nA & HLAe0 & Hc & Hxs).
   destruct (univ_nf_ws HkB (alg_type_infer_self HΓA HBi)) as (nB & HLBe0 & Hd & Hys).
   assert (HL1 : Γ ▹ A ⊢ L[↑]ʷ : Level@n) by (eapply (wk_preserves_exp _ _ _ _ Level@n); [ exact HL0 | mauto 2 ]).
@@ -1423,18 +1423,18 @@ Proof.
   assert (HfpN : @la_ws gc_deps gc_stack N (Γ ▹ A) fp)
     by (apply la_ws_fresh_part; eapply la_ws_mono; [| exact Hys ]; subst N; lia).
   assert (HL : Γ ⊢ L : Level@N) by (eapply wf_exp_level_up; [| exact HL0 ]; subst N; lia).
-  assert (HLAe : Γ ⊢ lvl_exp_of c (la_to_list xs) : Level@N) by (eapply wf_exp_level_up; [| exact HLAe0 ]; subst N; lia).
-  assert (HTt : Γ ⊢ L ≈ lvl_exp_of e (la_to_list zs) : Level@N) by (eapply wf_exp_eq_level_up; [| exact HTt0 ]; subst N; lia).
-  assert (HTt' : Γ ▹ A ⊢ L[↑]ʷ ≈ lvl_exp_of f (la_to_list ws) : Level@N)
+  assert (HLAe : Γ ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@N) by (eapply wf_exp_level_up; [| exact HLAe0 ]; subst N; lia).
+  assert (HTt : Γ ⊢ L ≈ lvl_exp_of e (List.map atom_exp zs) : Level@N) by (eapply wf_exp_eq_level_up; [| exact HTt0 ]; subst N; lia).
+  assert (HTt' : Γ ▹ A ⊢ L[↑]ʷ ≈ lvl_exp_of f (List.map atom_exp ws) : Level@N)
     by (eapply wf_exp_eq_level_up; [| exact HTt'0 ]; subst N; lia).
   clear HL0 HLAe0 HTt0 HTt'0.
-  set (LAe := lvl_exp_of c (la_to_list xs)) in *.
-  set (LBs := lvl_exp_of cb (la_to_list (la_unwk 0 fp))).
-  assert (Hfresh : lvl_exp_of cb (la_to_list fp) = LBs[↑]ʷ)
+  set (LAe := lvl_exp_of c (List.map atom_exp xs)) in *.
+  set (LBs := lvl_exp_of cb (List.map atom_exp (List.map (map_level_atom (ne_unwk 0)) fp))).
+  assert (Hfresh : lvl_exp_of cb (List.map atom_exp fp) = LBs[↑]ʷ)
     by exact (nf_fresh_unwk 0 (nf_lvl cb fp) (la_fresh_part_fresh 0 ys)).
   assert (HLBl : Γ ▹ A ⊢ LBs[↑]ʷ : Level@N)
     by (rewrite <- Hfresh; apply lvl_exp_of_wf; [ exact Hcb | exact HΓA | apply la_ws_wf; exact HfpN ]).
-  assert (HLBs : Γ ⊢ LBs : Level@N) by exact (level_nf_strengthen Γ A N (nf_lvl cb (la_unwk 0 fp)) HΓA HLBl).
+  assert (HLBs : Γ ⊢ LBs : Level@N) by exact (level_nf_strengthen Γ A N (nf_lvl cb (List.map (map_level_atom (ne_unwk 0)) fp)) HΓA HLBl).
   eapply wf_subtyp_suniv; [ exact HΓ | apply wf_maxl; eassumption | exact HL |].
   apply lvl_sub_maxl_lub; [ exact HLAe | exact HLBs | exact HL | |].
   - (** The domain's level is below [L]. *)
@@ -1442,18 +1442,18 @@ Proof.
     assert (HcN : fst c <= N) by (subst N; lia).
     assert (HeN : fst e <= N) by (subst N; lia).
     pose proof (lvl_exp_of_le (n := N) c xs e zs HcN HeN HΓ HxsN HzsN HLA) as Hle.
-    transitivity (maxl LAe (lvl_exp_of e (la_to_list zs)));
+    transitivity (maxl LAe (lvl_exp_of e (List.map atom_exp zs)));
       [ apply wf_exp_eq_maxl_cong; [ mauto 3 | exact HTt ] |].
-    transitivity (lvl_exp_of e (la_to_list zs)); [ exact Hle | symmetry; exact HTt ].
+    transitivity (lvl_exp_of e (List.map atom_exp zs)); [ exact Hle | symmetry; exact HTt ].
   - (** The codomain's bound, below [L[↑]ʷ] in [Γ ▹ A], strengthened. *)
     unfold lvl_sub.
     assert (HfN : fst f <= N) by (subst N; lia).
     pose proof (lvl_exp_of_le (n := N) cb fp f ws Hcb HfN HΓA HfpN HwsN HbLB) as Hle.
     rewrite Hfresh in Hle.
     assert (Hlong : Γ ▹ A ⊢ maxl LBs[↑]ʷ L[↑]ʷ ≈ L[↑]ʷ : Level@N).
-    { transitivity (maxl LBs[↑]ʷ (lvl_exp_of f (la_to_list ws)));
+    { transitivity (maxl LBs[↑]ʷ (lvl_exp_of f (List.map atom_exp ws)));
         [ apply wf_exp_eq_maxl_cong; [ mauto 3 | exact HTt' ] |].
-      transitivity (lvl_exp_of f (la_to_list ws)); [ exact Hle | symmetry; exact HTt' ]. }
+      transitivity (lvl_exp_of f (List.map atom_exp ws)); [ exact Hle | symmetry; exact HTt' ]. }
     exact (exp_eq_strengthen nil Γ A (maxl LBs L) L Level@N ltac:(constructor) HΓA ltac:(mauto 3) HL Hlong).
 Qed.
 
@@ -1584,12 +1584,12 @@ Proof.
     by (unfold im_params; apply tele_insts_app; [ exact (dc_ass _ Hcq) | exact HPrl ]).
   assert (Hl1 : List.length (tele_insts (ind_uparams Dq) Id (im_pre Mm Us)) = ind_nu Dq)
     by (rewrite length_tele_insts by exact (dc_ass _ Hcq); rewrite HPrl; unfold ind_nu in *; lia).
-  assert (HPR : forall j N R T, List.nth_error (im_pre Mm Us) j = Some N -> List.nth_error (nfs_to_exps Rs) j = Some R ->
+  assert (HPR : forall j N R T, List.nth_error (im_pre Mm Us) j = Some N -> List.nth_error (List.map nf_to_exp Rs) j = Some R ->
              List.nth_error (tele_insts (ind_uparams Dq) Id (im_pre Mm Us)) j = Some T -> Γ ⊢ N ≈ R : T).
   { intros j N R T HN HR HT.
     assert (Hj : j < ind_nu Dq) by (rewrite <- HPrl; apply List.nth_error_Some; congruence).
     apply (HXR j); [ rewrite List.nth_error_app1 by lia; exact HN | exact HR | rewrite Hti, List.nth_error_app1 by lia; exact HT ]. }
-  assert (Hag : nfs_agree Γ (im_pre Mm Us) (List.firstn (ind_nu Dq) (nfs_to_exps Rs)) (tele_insts (ind_uparams Dq) Id (im_pre Mm Us))).
+  assert (Hag : nfs_agree Γ (im_pre Mm Us) (List.firstn (ind_nu Dq) (List.map nf_to_exp Rs)) (tele_insts (ind_uparams Dq) Id (im_pre Mm Us))).
   { apply nfs_agree_of_nth; [ lia | rewrite List.length_firstn; unfold im_np in HRl; lia |].
     intros j N R T HN HR HT.
     assert (Hj : j < ind_nu Dq) by (rewrite <- HPrl; apply List.nth_error_Some; congruence).
@@ -1599,7 +1599,7 @@ Proof.
       ones, equal to the derivation's. *)
   pose proof (wf_ind_apps_inv _ _ _ _ _ _ _ Hlq Hk HWt HRl) as HRt.
   destruct (mty_params_conv _ _ _ _ _ _ _ _ _ _ _ HΓ Hl Hm Hr Hlq Hk HUl HUt HRl HRt HPR) as [HNl HNt [iE HE]].
-  set (Ns := List.skipn (ind_nu Dq) (nfs_to_exps Rs)) in *.
+  set (Ns := List.skipn (ind_nu Dq) (List.map nf_to_exp Rs)) in *.
   destruct (subtyp_ind_inv HWs) as [kk HeqR].
   rewrite <- Emty in HeqR.
   assert (HmE : Γ ⊢ ind_mty p D m Us NsP ≈ ind_mty p D m Us Ns : Typeω@(max kk iE))
@@ -1835,13 +1835,13 @@ Proof.
   eapply ati_tuple; [ exact HTi | exact Hu | exact HW | exact Hl | exact Hfs |].
   intros k f M U Hk Hfk.
   assert (Hkl : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
-  pose proof (record_fields_insts_eq _ _ _ p R Ns (nfs_to_exps Rs) fs fs Hrt Hl Hn HRl HNR Hfs eq_refl
+  pose proof (record_fields_insts_eq _ _ _ p R Ns (List.map nf_to_exp Rs) fs fs Hrt Hl Hn HRl HNR Hfs eq_refl
                 ltac:(intros * HM HM' HU; rewrite HM in HM'; injection HM' as <-; apply wf_exp_eq_refl; eapply HMt; eassumption)
                 k ltac:(lia)) as Hins.
   destruct (record_field_typ_cong _ _ _ R k f U (Ns ++ List.firstn k (List.map snd fs))
-              (nfs_to_exps Rs ++ List.firstn k (List.map snd fs)) Hc Hass HF HΓ Hfk
-              ltac:(rewrite List.length_app, List.length_firstn, List.length_map; lia)
-              ltac:(rewrite List.length_app, List.length_firstn, List.length_map; lia) Hins) as [j HUU].
+              (List.map nf_to_exp Rs ++ List.firstn k (List.map snd fs)) Hc Hass HF HΓ Hfk
+              ltac:(rewrite ?List.length_app, ?List.length_firstn, ?List.length_map in *; lia)
+              ltac:(rewrite ?List.length_app, ?List.length_firstn, ?List.length_map in *; lia) Hins) as [j HUU].
   eapply alg_type_check_conv; [ exact (HMc _ _ _ _ Hk Hfk) | exact HUU ].
 Qed.
 
@@ -1873,7 +1873,7 @@ Proof.
   destruct (alg_proj_typed _ _ _ _ _ _ _ _ HΓ HMW Hl Hfk) as (m & HUR & _).
   destruct (soundness_ty HUR) as [V [HV HVe]].
   destruct (record_sort_large _ _ _ _ _ _ Hrt Hl Hn HNs) as [n Hm].
-  pose proof (record_field_params_cong _ _ _ M p R Ns (nfs_to_exps Rs) n k f U HMt Hrt Hl Hn HRl HNs HNR Hm Hfk) as HUU.
+  pose proof (record_field_params_cong _ _ _ M p R Ns (List.map nf_to_exp Rs) n k f U HMt Hrt Hl Hn HRl HNs HNR Hm Hfk) as HUU.
   econstructor; [ eapply ati_proj; [ exact HMi | exact Hl | exact (field_index_nth_nodup _ _ _ _ Hnd Hfk) | exact Hfk | exact HV ] |].
   apply alg_subtyping_complete; eapply wf_subtyp_refl'.
   eapply exp_eq_trans_typ_max; [ symmetry; exact HVe | symmetry; exact HUU ].

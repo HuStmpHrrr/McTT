@@ -66,7 +66,7 @@ is its own normal form, which the algorithmic rule's premises get by
 completeness.
 
 Readback has one rule more: a type former without arguments reads back as
-`nf_indty p nfs_nil` without looking its declaration up
+`nf_indty p nil` without looking its declaration up
 (`fread_typ_indty_nil`; the general rule asks `as' <> nil`).
 
 The implementations keep a declaration they looked up (`lk_cache`,

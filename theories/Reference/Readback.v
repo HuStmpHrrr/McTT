@@ -552,7 +552,7 @@ Lemma read_nf_con_view_last : forall Θ Ξ s p D j Mj qc k Is vm c gs as' vs Ps 
     Rps as' at List.rev (im_params D Mj) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
     Rcargs List.skipn (List.length vs - List.length gs) vs at gs of p (List.firstn (ind_nu D) as') in Θ ⍮ Ξ
       ⍮ env_args nil as' ⍮ s ↘ Args ->
-    Rnf ⇓ (d_ind p j as') (d_con qc k c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p j c (nfs_app Ps Args).
+    Rnf ⇓ (d_ind p j as') (d_con qc k c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p j c (Ps ++ Args).
 Proof. intros; eapply read_nf_con_view; try eassumption; lia. Qed.
 
 #[local]
@@ -589,7 +589,7 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
     exist _ (nf_lvl_of (lvl_canon (c, ys))) _
 | s, ⇓ (Levelᵈ@n) (⇑ a m), H =>
     let (M, HM) := read_ne_impl s m _ in
-    exist _ (lvⁿ oz (la_cons 0 (dsort a) M la_nil)) _
+    exist _ (lvⁿ oz (cons (mk_level_atom 0 (dsort a) M) nil)) _
 | s, ⇓ ⊤ᵈ m, H => exist _ ⋆ⁿ _
 | s, ⇓ ⊥ᵈ (⇑ _ m), H =>
     let (M, HM) := read_ne_impl s m _ in
@@ -611,12 +611,12 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
             let (Ps, HPs) := read_ps_impl s nil (List.rev (im_params D Mj)) as' _ in
             let (Args, HArgs) := read_cargs_impl s p (List.firstn (ind_nu D) as') (env_args nil as') gs
                                    (List.skipn (im_np D Mj) vs) _ in
-            exist _ (nf_con p j c (nfs_app Ps Args)) _
+            exist _ (nf_con p j c (Ps ++ Args)%list) _
         | exist _ (mh_view _ _ _ _) Eh =>
             let (Ps, HPs) := read_ps_impl s nil (List.rev (im_params D Mj)) as' _ in
             let (Args, HArgs) := read_cargs_impl s p (List.firstn (ind_nu D) as') (env_args nil as') gs
                                    (List.skipn (List.length vs - List.length gs) vs) _ in
-            exist _ (nf_con p j c (nfs_app Ps Args)) _ }
+            exist _ (nf_con p j c (Ps ++ Args)%list) _ }
       | exist _ None Ec => False_rect _ _ }
     | exist _ None Em => False_rect _ _ }
   | exist _ None Ed => False_rect _ _ }
@@ -689,43 +689,43 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
   | exist _ None El => False_rect _ _ }
 
   with read_la_impl s xs (H : read_la_order Θ Ξ s xs) : { ys | Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys } by struct H :=
-| s, nil, H => exist _ la_nil _
+| s, nil, H => exist _ nil _
 | s, cons (k, n, m) xs, H =>
     let (M, HM) := read_ne_impl s m _ in
     let (ys, Hys) := read_la_impl s xs _ in
-    exist _ (la_cons k n M ys) _
+    exist _ (cons (mk_level_atom k n M) ys) _
 
   with read_ps_impl s ρ T vs (H : read_ps_order Θ Ξ s ρ T vs) : { Ms | Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms } by struct H :=
-| s, ρ, nil, nil, H => exist _ nfs_nil _
+| s, ρ, nil, nil, H => exist _ nil _
 | s, ρ, ce_ass A :: T, v :: vs, H =>
     let (a, Ha) := eval_exp_impl Θ Ξ A ρ _ in
     let (V, HV) := read_nf_impl s ⇓ a v _ in
     let (Vs, HVs) := read_ps_impl s (ρ ↦ v) T vs _ in
-    exist _ (nfs_cons V Vs) _
+    exist _ (cons V Vs) _
 | s, ρ, _, _, H => False_rect _ _
 
   with read_fields_impl s ρ fl v (H : read_fields_order Θ Ξ s ρ fl v) :
     { Fs | Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs } by struct H :=
-| s, ρ, nil, v, H => exist _ nfs_nil _
+| s, ρ, nil, v, H => exist _ nil _
 | s, ρ, (f, T) :: fl, v, H =>
     let (r, Hr) := eval_proj_impl Θ Ξ f v _ in
     let (t, Ht) := eval_exp_impl Θ Ξ T ρ _ in
     let (V, HV) := read_nf_impl s ⇓ t r _ in
     let (Vs, HVs) := read_fields_impl s (ρ ↦ r) fl v _ in
-    exist _ (nfs_cons V Vs) _
+    exist _ (cons V Vs) _
 
   with read_cargs_impl s p ups ρ gs vs (H : read_cargs_order Θ Ξ s p ups ρ gs vs) :
     { Ms | Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms } by struct H :=
-| s, p, ups, ρ, nil, nil, H => exist _ nfs_nil _
+| s, p, ups, ρ, nil, nil, H => exist _ nil _
 | s, p, ups, ρ, ca_arg A :: gs, v :: vs, H =>
     let (a, Ha) := eval_exp_impl Θ Ξ A ρ _ in
     let (V, HV) := read_nf_impl s ⇓ a v _ in
     let (Vs, HVs) := read_cargs_impl s p ups (ρ ↦ v) gs vs _ in
-    exist _ (nfs_cons V Vs) _
+    exist _ (cons V Vs) _
 | s, p, ups, ρ, ca_rec t :: gs, v :: vs, H =>
     let (V, HV) := read_shape_impl s p ups ρ t v _ in
     let (Vs, HVs) := read_cargs_impl s p ups ρ gs vs _ in
-    exist _ (nfs_cons V Vs) _
+    exist _ (cons V Vs) _
 | s, p, ups, ρ, _, _, H => False_rect _ _
 
   with read_shape_impl s p ups ρ t v (H : read_shape_order Θ Ξ s p ups ρ t v) :
@@ -743,7 +743,7 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
 
   with read_blocks_impl s ρ p ups Bks sel i Ms (H : read_blocks_order Θ Ξ s ρ p ups Bks sel i Ms) :
     { NBks | Rblks i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks } by struct H :=
-| s, ρ, p, ups, Bks, sel, i, nil, H => exist _ nblocks_nil _
+| s, ρ, p, ups, Bks, sel, i, nil, H => exist _ nil _
 | s, ρ, p, ups, Bks, sel, i, Mi :: Ms, H with inspect (ind_lookup Θ Ξ p) := {
   | exist _ (Some D) Ed with inspect (ind_member D (elim_src sel i)) := {
     | exist _ (Some Mv) Em with inspect (List.nth_error Bks (elim_src sel i)) := {
@@ -755,14 +755,14 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
             let (A', HA') := read_typ_impl (S (s + im_nn Mi)) a _ in
             let (Bs', HBs') := read_brs_impl s ρ p ups Bks Mv (eb_motive b) Mi (pk, k, pre) (im_cons Mi) (eb_brs b) _ in
             let (NBks, HNBks) := read_blocks_impl s ρ p ups Bks sel (S i) Ms _ in
-            exist _ (nblocks_cons (S (im_nn Mi)) A' Bs' NBks) _ }
+            exist _ (cons (mk_normal_block (S (im_nn Mi)) A' Bs') NBks) _ }
       | exist _ None Eb => False_rect _ _ }
     | exist _ None Em => False_rect _ _ }
   | exist _ None Ed => False_rect _ _ }
 
   with read_brs_impl s ρ p ups Bks Mv A Mi r cs Bs (H : read_brs_order Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs) :
     { Bs' | Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' } by struct H :=
-| s, ρ, p, ups, Bks, Mv, A, Mi, r, nil, nil, H => exist _ nbrs_nil _
+| s, ρ, p, ups, Bks, Mv, A, Mi, r, nil, nil, H => exist _ nil _
 | s, ρ, p, ups, Bks, Mv, A, Mi, (pk, k, pre), (c, gs') :: cs, (_, _, B) :: Bs, H with inspect (ind_con Mv c) := {
   | exist _ (Some gs) Ec =>
       let (ns, Hns) := fresh_tele_impl Θ Ξ (env_args nil ups) (List.rev (im_nparams Mv)) s _ in
@@ -774,7 +774,7 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
       let (t, Ht) := eval_exp_impl Θ Ξ A (env_args ρ (ns ++ d_con pk k c (pre ++ ns ++ vs) :: nil)) _ in
       let (B', HB') := read_nf_impl (s + (im_nn Mi + List.length gs' + cargs_nrec gs')) ⇓ t b _ in
       let (Bs', HBs') := read_brs_impl s ρ p ups Bks Mv A Mi (pk, k, pre) cs Bs _ in
-      exist _ (nbrs_cons c (im_nn Mi + List.length gs' + cargs_nrec gs') B' Bs') _
+      exist _ (cons (mk_normal_branch c (im_nn Mi + List.length gs' + cargs_nrec gs') B') Bs') _
   | exist _ None Ec => False_rect _ _ }
 | s, ρ, p, ups, Bks, Mv, A, Mi, r, _, _, H => False_rect _ _.
 

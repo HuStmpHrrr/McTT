@@ -1058,37 +1058,12 @@ Proof.
     cbn; constructor; [ cbn; discriminate | apply IH ].
 Qed.
 
-(** Expansion keeps a definition one, and a module's body as it is. *)
-(** Literals keep a command's body, if it has one: a module's nested
-    commands get theirs when they run. *)
-Lemma cmd_lits_no_axioms : forall nv c c', cmd_lits nv c = lok c' -> cmd_no_axioms c -> cmd_no_axioms c'.
-Proof.
-  intros nv c; induction c as [x b pv A oM | x pv Δ cs | | | | | | | | | | c0 IH]; intros c' E Hc.
-  1: destruct oM as [M |].
-  all: cbn [cmd_lits] in E;
-    repeat match goal with
-      | H : lbind _ _ = lok _ |- _ =>
-          let E := fresh "E" in let a := fresh "a" in apply lbind_lok_inv in H as (a & E & H)
-      end;
-    try (injection E as <-); try exact I; try exact Hc.
-  - cbn [lopt] in *; apply lbind_lok_inv in E1 as (M' & _ & E1); injection E1 as <-; cbn; discriminate.
-  - cbn in Hc; congruence.
-Qed.
-
-(** The fill keeps a command's body, if it has one: a module's nested
-    commands are filled when they run. *)
-Lemma elim_fill_no_axioms : forall Θ Ξ c c', elim_fill_ok Θ Ξ c c' -> cmd_no_axioms c -> cmd_no_axioms c'.
-Proof.
-  intros Θ Ξ c c' (rs & _ & <-); induction c as [x b pv A oM | x pv Δ cs | | | | | | | | | | c0 IH]; intros Hc;
-    [ destruct oM | .. ]; cbn in *; first [ exact I | exact Hc | discriminate | exact (IH Hc) ].
-Qed.
-
-(** The access fill keeps a command free of axioms: a definition keeps
-    its body, a module and a record their commands. *)
-Lemma fill_cmd_no_axioms : forall Θ Ξ c c', fill_cmd Θ Ξ c c' -> cmd_no_axioms c -> cmd_no_axioms c'.
+(** The fill keeps a command free of axioms: a definition keeps its body,
+    a module and a record their commands. *)
+Lemma fill_cmd_no_axioms : forall Θ Ξ B c c', fill_cmd Θ Ξ B c c' -> cmd_no_axioms c -> cmd_no_axioms c'.
 Proof.
   intros * H Hc; destruct H; try exact Hc; cbn in *; try exact I.
-  match goal with Ho : fill_oexp _ _ _ _ _ |- _ => destruct Ho end; [ contradiction | discriminate ].
+  match goal with Ho : fill_oexp _ _ _ _ _ _ |- _ => destruct Ho end; [ contradiction | discriminate ].
 Qed.
 
 Lemma in_gds_merge : forall Θ Θ' x,
@@ -1232,13 +1207,10 @@ Section Run.
         destruct (IH ltac:(assumption) ltac:(split; auto with mctt)) as [HΘ HΞ] end.
       split; [ exact HΘ | apply gs_no_axioms_add; cbn; eauto with mctt ].
     - assumption.
-    (* a command runs with its literals and its fill, which keep it free
-       of axioms *)
+    (* a command runs filled, which keeps it free of axioms *)
     - match goal with
-      | Hl : cmd_lits_ok _ _ _ _ _, Hf : elim_fill_ok _ _ _ _, Ha : fill_cmd _ _ _ _, Hc : cmds_no_axioms (_ :: _) |- _ =>
-          inversion Hc; subst;
-          pose proof (fill_cmd_no_axioms _ _ _ _ Ha
-                        (elim_fill_no_axioms _ _ _ _ Hf (cmd_lits_no_axioms _ _ _ Hl ltac:(assumption))))
+      | Ha : fill_cmd _ _ _ _ _, Hc : cmds_no_axioms (_ :: _) |- _ =>
+          inversion Hc; subst; pose proof (fill_cmd_no_axioms _ _ _ _ _ Ha ltac:(assumption))
       end; eauto.
     (* a unit: its loads from nothing, then its body in its own frame *)
     - cbn in *; destruct_all.

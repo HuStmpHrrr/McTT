@@ -228,11 +228,11 @@ Lemma per_gargs_top : forall ts ρ ρ' xs xs', per_gargs ts ρ ρ' xs xs' -> Lis
     forall s, exists Ms, Rps xs at ts in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Ms /\ Rps xs' at ts in gc_deps ⍮ gc_stack ⍮ ρ' ⍮ s ↘ Ms.
 Proof.
   induction 1 as [ts ρ ρ' | i A ρ ρ' a a' ts args args' R HA Ha Hg IH]; intros Hl s.
-  - destruct ts; cbn in Hl; try discriminate; exists nfs_nil; split; constructor.
+  - destruct ts; cbn in Hl; try discriminate; exists nil; split; constructor.
   - destruct HA as [b b' Eb Eb' HR].
     destruct (IH ltac:(cbn in Hl; lia) s) as (Ms & HM & HM').
     destruct (per_elem_then_per_top HR Ha s) as (V & HV & HV').
-    exists (nfs_cons V Ms); split; econstructor; eassumption.
+    exists (cons V Ms); split; econstructor; eassumption.
 Qed.
 
 (** ** Environments of Arguments *)

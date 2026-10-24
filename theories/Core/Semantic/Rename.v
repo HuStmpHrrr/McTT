@@ -609,8 +609,6 @@ Qed.
 Lemma rn_ok_qn : forall n f s s' φ, rn_ok f s s' φ -> rn_ok f (n + s) (n + s') (wk_qn n φ).
 Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
 
-Lemma nfs_wk_app : forall φ Ms Ns, nfs_wk φ (nfs_app Ms Ns) = nfs_app (nfs_wk φ Ms) (nfs_wk φ Ns).
-Proof. induction Ms; intros; cbn; congruence. Qed.
 
 Section Read.
   Variables (Θ : gdeps) (Ξ : gstack) (f : nat -> nat).
@@ -720,21 +718,21 @@ Section Read.
     (forall s a A, Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
        forall s' φ, rn_ok f s s' φ -> dbd s a -> Rtyp drn f a in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ A) /\
     (forall s xs ys, Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-       forall s' φ, rn_ok f s s' φ -> dbd_la s xs -> Rla larn f xs in Θ ⍮ Ξ ⍮ s' ↘ la_wk φ ys) /\
+       forall s' φ, rn_ok f s s' φ -> dbd_la s xs -> Rla larn f xs in Θ ⍮ Ξ ⍮ s' ↘ List.map (map_level_atom (ne_wk φ)) ys) /\
     (forall s ρ T vs Ms, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        forall s' φ, rn_ok f s s' φ -> env_dbd s ρ -> (forall a, In a vs -> dbd s a) ->
-       Rps List.map (drn f) vs at T in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nfs_wk φ Ms) /\
+       Rps List.map (drn f) vs at T in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ List.map (nf_wk φ) Ms) /\
     (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> dbd s a) -> env_dbd s ρ ->
        (forall a, In a vs -> dbd s a) ->
-       Rcargs List.map (drn f) vs at gs of p (List.map (drn f) ups) in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nfs_wk φ Ms) /\
+       Rcargs List.map (drn f) vs at gs of p (List.map (drn f) ups) in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ List.map (nf_wk φ) Ms) /\
     (forall s p ups ρ t x X, Rsh x at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ X ->
        forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> dbd s a) -> env_dbd s ρ -> dbd s x ->
        Rsh drn f x at t of p (List.map (drn f) ups) in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nf_wk φ X) /\
     (forall s ρ p ups Bks sel i Ms NBks, Rblks i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
        forall s' φ, rn_ok f s s' φ -> dbd_blocks s ρ Bks ->
        (forall D, ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks) -> (forall a, In a ups -> dbd s a) ->
-       Rblks i Ms from p (List.map (drn f) ups) Bks sel in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nblocks_wk φ NBks) /\
+       Rblks i Ms from p (List.map (drn f) ups) Bks sel in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ List.map (map_normal_block (fun n => nf_wk (wk_qn n φ))) NBks) /\
     (forall s ρ p ups Bks Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
        forall s' φ, rn_ok f s s' φ -> dbd_blocks s ρ Bks ->
        (forall D, ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks) -> im_nn Mv = im_nn Mi ->
@@ -742,37 +740,40 @@ Section Read.
        (forall c n B, In (c, n, B) Bs -> dbd_clon Θ Ξ s ρ B n) -> (forall a, In a ups -> dbd s a) ->
        (forall a, In a (snd r) -> dbd s a) ->
        Rbrs Bs at cs of Mi (fst (fst r), snd (fst r), List.map (drn f) (snd r)) from p (List.map (drn f) ups)
-         Bks Mv A in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nbrs_wk φ Bs') /\
+         Bks Mv A in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ List.map (map_normal_branch (fun n => nf_wk (wk_qn n φ))) Bs') /\
     (forall s ρ fl d Fs, Rflds d at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs ->
        forall s' φ, rn_ok f s s' φ -> env_dbd s ρ -> dbd s d ->
-       Rflds drn f d at fl in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nfs_wk φ Fs).
+       Rflds drn f d at fl in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ List.map (nf_wk φ) Fs).
   Proof.
     apply (read_mut_ind Θ Ξ
              (fun s m W _ => forall s' φ, rn_ok f s s' φ -> dbd_nf s m -> Rnf drn_nf f m in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ W)
              (fun s m M _ => forall s' φ, rn_ok f s s' φ -> dbd_ne s m -> Rne drn_ne f m in Θ ⍮ Ξ ⍮ s' ↘ ne_wk φ M)
              (fun s a A _ => forall s' φ, rn_ok f s s' φ -> dbd s a -> Rtyp drn f a in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ A)
-             (fun s xs ys _ => forall s' φ, rn_ok f s s' φ -> dbd_la s xs -> Rla larn f xs in Θ ⍮ Ξ ⍮ s' ↘ la_wk φ ys)
+             (fun s xs ys _ => forall s' φ, rn_ok f s s' φ -> dbd_la s xs -> Rla larn f xs in Θ ⍮ Ξ ⍮ s' ↘ List.map (map_level_atom (ne_wk φ)) ys)
              (fun s ρ T vs Ms _ => forall s' φ, rn_ok f s s' φ -> env_dbd s ρ -> (forall a, In a vs -> dbd s a) ->
-                Rps List.map (drn f) vs at T in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nfs_wk φ Ms)
+                Rps List.map (drn f) vs at T in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ List.map (nf_wk φ) Ms)
              (fun s p ups ρ gs vs Ms _ => forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> dbd s a) ->
                 env_dbd s ρ -> (forall a, In a vs -> dbd s a) ->
-                Rcargs List.map (drn f) vs at gs of p (List.map (drn f) ups) in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nfs_wk φ Ms)
+                Rcargs List.map (drn f) vs at gs of p (List.map (drn f) ups) in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ List.map (nf_wk φ) Ms)
              (fun s p ups ρ t x X _ => forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> dbd s a) ->
                 env_dbd s ρ -> dbd s x ->
                 Rsh drn f x at t of p (List.map (drn f) ups) in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nf_wk φ X)
              (fun s ρ p ups Bks sel i Ms NBks _ => forall s' φ, rn_ok f s s' φ -> dbd_blocks s ρ Bks ->
                 (forall D, ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks) -> (forall a, In a ups -> dbd s a) ->
-                Rblks i Ms from p (List.map (drn f) ups) Bks sel in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nblocks_wk φ NBks)
+                Rblks i Ms from p (List.map (drn f) ups) Bks sel in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ List.map (map_normal_block (fun n => nf_wk (wk_qn n φ))) NBks)
              (fun s ρ p ups Bks Mv A Mi r cs Bs Bs' _ => forall s' φ, rn_ok f s s' φ -> dbd_blocks s ρ Bks ->
                 (forall D, ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks) -> im_nn Mv = im_nn Mi ->
                 dbd_eclo s ρ A (S (im_nn Mi)) ->
                 (forall c n B, In (c, n, B) Bs -> dbd_clon Θ Ξ s ρ B n) -> (forall a, In a ups -> dbd s a) ->
                 (forall a, In a (snd r) -> dbd s a) ->
                 Rbrs Bs at cs of Mi (fst (fst r), snd (fst r), List.map (drn f) (snd r)) from p (List.map (drn f) ups)
-                  Bks Mv A in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nbrs_wk φ Bs')
+                  Bks Mv A in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ List.map (map_normal_branch (fun n => nf_wk (wk_qn n φ))) Bs')
              (fun s ρ fl d Fs _ => forall s' φ, rn_ok f s s' φ -> env_dbd s ρ -> dbd s d ->
-                Rflds drn f d at fl in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nfs_wk φ Fs));
-      intros; cbn [drn drn_ne drn_nf dmrn dern nf_wk ne_wk la_wk larn nfs_wk nbrs_wk nblocks_wk List.map fst snd] in *.
+                Rflds drn f d at fl in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ List.map (nf_wk φ) Fs));
+      intros; cbn [drn drn_ne drn_nf dmrn dern nf_wk ne_wk larn List.map fst snd] in *;
+      unfold map_level_atom, map_normal_block, map_normal_branch in *;
+      cbn [atom_offset atom_sort atom_level block_arity block_motive block_branches
+           branch_constructor branch_arity branch_body] in *.
     (** The bounds of the parts. *)
     all: repeat match goal with
       | H : dbd_nf _ (d_dom _ _) |- _ => apply dbd_nf_inv in H as [? ?]
@@ -835,7 +836,7 @@ Section Read.
         IH1 : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_dbd ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
         IH2 : forall s0 φ0, rn_ok f ?s s0 φ0 -> _ -> env_dbd ?s (env_args nil ?as') -> _ -> read_cargs _ _ s0 _ _ _ _ _ _,
         Hok : rn_ok f ?s ?s' ?φ, Has : forall a, In a ?as' -> dbd ?s a, Hvs : forall a, In a ?vs -> dbd ?s a |- _ =>
-          rewrite nfs_wk_app;
+          rewrite List.map_app;
           eapply read_nf_con; [ exact Hl | exact Hk | exact Hh | exact Hc | rewrite List.length_map; exact Hla
                               | rewrite List.length_map; exact Hlv | exact (IH1 s' φ Hok (env_dbd_nil _) Has) | ];
           rewrite List.firstn_map, List.skipn_map;
@@ -854,7 +855,7 @@ Section Read.
         IH1 : forall s0 φ0, rn_ok f ?s s0 φ0 -> env_dbd ?s nil -> _ -> read_ps _ _ s0 _ _ _ _,
         IH2 : forall s0 φ0, rn_ok f ?s s0 φ0 -> _ -> env_dbd ?s (env_args nil ?as') -> _ -> read_cargs _ _ s0 _ _ _ _ _ _,
         Hok : rn_ok f ?s ?s' ?φ, Has : forall a, In a ?as' -> dbd ?s a, Hvs : forall a, In a ?vs -> dbd ?s a |- _ =>
-          rewrite nfs_wk_app;
+          rewrite List.map_app;
           eapply read_nf_con_view; [ exact Hl | exact Hk | exact Hh | exact Hc
                                    | rewrite List.length_map; exact Hla
                                    | rewrite List.length_map; exact Hlv | exact (IH1 s' φ Hok (env_dbd_nil _) Has) | ];

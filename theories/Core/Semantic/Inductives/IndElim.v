@@ -840,7 +840,7 @@ Section Fixed_GCtx.
         intros s v Mv Mi hd k prea preb nsa nsb ba bb HM Ha Hb Hnn La Lb Fa Fb.
         induction cs as [| [c gs'] cs IH]; intros [| [[c1 n1] B1] Bs1] [| [[c2 n2] B2] Bs2] Hcs HB1 HB2 Hn1 Hn2;
           cbn in Hn1, Hn2; try discriminate.
-        - exists nbrs_nil; split; constructor.
+        - exists nil; split; constructor.
         - injection Hn1 as <- Hn1; injection Hn2 as <- Hn2.
           destruct (Hcs c gs' ltac:(left; reflexivity)) as (gs & Hc & Hpl & Lg & BP).
           destruct (HB1 c n1 B1 ltac:(left; reflexivity)) as [HL1 HI1].
@@ -862,7 +862,7 @@ Section Fixed_GCtx.
           { intros c' n' Bx Hin; apply HB2; right; exact Hin. }
           { exact Hn1. }
           { exact Hn2. }
-          exists (nbrs_cons c (im_nn Mi + List.length gs' + cargs_nrec gs') B' Bs'); split.
+          exists (cons (mk_normal_branch c (im_nn Mi + List.length gs' + cargs_nrec gs') B') Bs'); split.
           + eapply read_brs_cons; [ exact Hc | lia | reflexivity | exact Hl | exact Hpl | exact Fa | exact Ca | exact Ia | exact Wa
                                   | exact Er1 | exact T1 | exact RB1 | exact RBs1 ].
           + eapply read_brs_cons; [ exact Hc | lia | reflexivity | exact Hl | exact Hpl | exact Fb | exact Cb | exact Ib | exact Wb
@@ -924,7 +924,7 @@ Section Fixed_GCtx.
             Rblks i Ms from p ub Bksb sel in gc_deps ⍮ gc_stack ⍮ ρb ⍮ s ↘ NBks.
       Proof.
         intros s sel Ms; induction Ms as [| Mi Ms IH]; intros i0 HMs.
-        - exists nblocks_nil; split; constructor.
+        - exists nil; split; constructor.
         - destruct (HMs 0 Mi eq_refl) as [Mv HM Hnn hd k prea preb Ra Rb La Lb nsa nsb Fa Fb Hne Hnames Hbrs].
           rewrite Nat.add_0_r in *.
           destruct (HbA _ _ HM) as [ba Ha]; destruct (HbB _ _ HM) as [bb Hb].
@@ -942,7 +942,7 @@ Section Fixed_GCtx.
           { unfold brs_names; rewrite Hnames; exact (HnaB _ _ _ HM Hb). }
           destruct (IH (S i0)) as (NBks & RN1 & RN2).
           { intros n Mi' Hn; replace (S i0 + n) with (i0 + S n) by lia; exact (HMs (S n) Mi' Hn). }
-          exists (nblocks_cons (S (im_nn Mi)) A' Bs' NBks); split.
+          exists (cons (mk_normal_block (S (im_nn Mi)) A' Bs') NBks); split.
           + eapply read_blocks_cons; [ exact Hl | exact HM | exact Ha | rewrite (HnmA _ _ _ HM Ha), Hnn; reflexivity
                                      | exact Ra | exact Fa | exact Ea1 | exact RA1 | exact RB1 | exact RN1 ].
           + eapply read_blocks_cons; [ exact Hl | exact HM | exact Hb | rewrite (HnmB _ _ _ HM Hb), Hnn; reflexivity

@@ -64,7 +64,7 @@ Defined.
 
 Lemma proj_typed : forall G M p Rs R f k U, ⊢ G -> G ⊢a M ⟹ nf_record p Rs ->
     record_lookup gc_deps gc_stack p = Some R -> List.nth_error (record_fields R) k = Some (f, U) ->
-    exists m, G ⊢ U[sb_of_list Id (nfs_to_exps Rs ++ record_pre R k M)] : Typeω@m.
+    exists m, G ⊢ U[sb_of_list Id (List.map nf_to_exp Rs ++ record_pre R k M)] : Typeω@m.
 Proof.
   intros * HG HM Hl Hfk.
   destruct (alg_proj_typed _ _ _ _ _ _ _ _ HG (alg_type_infer_sound HM HG) Hl Hfk) as (m & Hm & _); eauto.
@@ -72,13 +72,13 @@ Qed.
 
 Lemma proj_order : forall G M p Rs R f k U, ⊢ G -> G ⊢a M ⟹ nf_record p Rs ->
     record_lookup gc_deps gc_stack p = Some R -> List.nth_error (record_fields R) k = Some (f, U) ->
-    nbe_ty_order gc_deps gc_stack G U[sb_of_list Id (nfs_to_exps Rs ++ record_pre R k M)].
+    nbe_ty_order gc_deps gc_stack G U[sb_of_list Id (List.map nf_to_exp Rs ++ record_pre R k M)].
 Proof. intros * HG HM Hl Hfk; destruct (proj_typed _ _ _ _ _ _ _ _ HG HM Hl Hfk) as [m Hm]; exact (nbe_order_of_typ _ _ _ Hm). Qed.
 
 Lemma proj_post : forall G M p Rs R f k U W, ⊢ G -> G ⊢a M ⟹ nf_record p Rs ->
     record_lookup gc_deps gc_stack p = Some R -> field_index (record_fields R) f = Some k ->
     List.nth_error (record_fields R) k = Some (f, U) ->
-    nbe_ty_f G U[sb_of_list Id (nfs_to_exps Rs ++ record_pre R k M)] W -> infer_post G (a_proj f M) W.
+    nbe_ty_f G U[sb_of_list Id (List.map nf_to_exp Rs ++ record_pre R k M)] W -> infer_post G (a_proj f M) W.
 Proof.
   intros * HG HM Hl Hfi Hfk HW; destruct (proj_typed _ _ _ _ _ _ _ _ HG HM Hl Hfk) as [m Hm].
   split; [ econstructor; eassumption | eapply level_of_nbe; eassumption ].
@@ -111,7 +111,7 @@ Proof.
     [| right; intros W H; inversion H; subst;
        match goal with H' : G ⊢a M ⟹ _ |- _ => pose proof (functional_alg_type_infer Hg HM H') as E end;
        injection E as <- <-; unify_lookups; congruence ].
-  refine (let (W, HW) := nbe_ty_env_impl gc_deps gc_stack G P U[sb_of_list Id (nfs_to_exps Rs ++ record_pre R k M)]
+  refine (let (W, HW) := nbe_ty_env_impl gc_deps gc_stack G P U[sb_of_list Id (List.map nf_to_exp Rs ++ record_pre R k M)]
                            (proj_order G M p Rs R f k U HG HM Hl Hfk) in
           inleft (exist _ W (proj_post G M p Rs R f k U W HG HM Hl Hfi Hfk HW))).
 Defined.
@@ -120,21 +120,21 @@ Defined.
 
 (** What [ati_tuple] asks of the field [k] of a tuple, at the parameters
     [Rs]. *)
-Definition field_checks (G : ctx) (R : record_decl) (Rs : nfs) (fs : list (string * exp)) (k : nat) : Prop :=
+Definition field_checks (G : ctx) (R : record_decl) (Rs : list nf) (fs : list (string * exp)) (k : nat) : Prop :=
   forall f M U, List.nth_error fs k = Some (f, M) -> List.nth_error (record_fields R) k = Some (f, U) ->
-    G ⊢a M ⟸ U[sb_of_list Id (nfs_to_exps Rs ++ List.firstn k (List.map snd fs))].
+    G ⊢a M ⟸ U[sb_of_list Id (List.map nf_to_exp Rs ++ List.firstn k (List.map snd fs))].
 
 (** The parameters of a record type a type normalises to, typed. *)
 Lemma record_nf_params : forall G T p Rs R i, G ⊢ T : Typeω@i -> nbe_ty_f G T (nf_record p Rs) ->
     record_lookup gc_deps gc_stack p = Some R ->
-    List.length (nfs_to_exps Rs) = List.length (record_params R) /\
-    (forall j N A, List.nth_error (nfs_to_exps Rs) j = Some N ->
-       List.nth_error (tele_insts (record_params R) Id (nfs_to_exps Rs)) j = Some A -> G ⊢ N : A).
+    List.length (List.map nf_to_exp Rs) = List.length (record_params R) /\
+    (forall j N A, List.nth_error (List.map nf_to_exp Rs) j = Some N ->
+       List.nth_error (tele_insts (record_params R) Id (List.map nf_to_exp Rs)) j = Some A -> G ⊢ N : A).
 Proof.
   intros * HT Hn Hl.
   assert (HTR : G ⊢ T ≈ nf_record p Rs : Typeω@i) by (eapply soundness_ty'; eassumption).
   cbn [nf_to_exp] in HTR.
-  assert (HRa : G ⊢ apps (a_record p) (nfs_to_exps Rs) : Typeω@i) by (gen_presups; assumption).
+  assert (HRa : G ⊢ apps (a_record p) (List.map nf_to_exp Rs) : Typeω@i) by (gen_presups; assumption).
   pose proof (wf_record_apps_len _ _ _ _ _ Hl HRa) as HRl.
   split; [ exact HRl | exact (wf_record_apps_inv _ _ _ _ _ Hl HRa HRl) ].
 Qed.
@@ -145,7 +145,7 @@ Lemma tuple_field_typed : forall G T (fs : list (string * exp)) p Rs R i, ⊢ G 
     List.map fst fs = List.map fst (record_fields R) ->
     forall k, (forall j, j < k -> field_checks G R Rs fs j) ->
     forall f U, List.nth_error (record_fields R) k = Some (f, U) ->
-      exists m, G ⊢ U[sb_of_list Id (nfs_to_exps Rs ++ List.firstn k (List.map snd fs))] : Typeω@m.
+      exists m, G ⊢ U[sb_of_list Id (List.map nf_to_exp Rs ++ List.firstn k (List.map snd fs))] : Typeω@m.
 Proof.
   intros * HG HT Hn Hl Hfs.
   destruct (record_nf_params _ _ _ _ _ _ HT Hn Hl) as [HRl HRt].
@@ -158,14 +158,14 @@ Proof.
   intros k; induction k as [k IH] using lt_wf_ind; intros Hprev f U Hfk.
   assert (Hkl : k < List.length (record_fields R)) by exact (nth_error_lt_length _ _ _ Hfk).
   pose proof (tuple_prefix_insts _ _ _ _ Hass HRl Hfs HRt k ltac:(lia)) as Hins.
-  assert (Hins' : forall j N B, List.nth_error (nfs_to_exps Rs ++ List.firstn k (List.map snd fs)) j = Some N ->
-             List.nth_error (tele_insts (record_fctx R k ++ record_params R) Id (nfs_to_exps Rs ++ List.firstn k (List.map snd fs))) j
+  assert (Hins' : forall j N B, List.nth_error (List.map nf_to_exp Rs ++ List.firstn k (List.map snd fs)) j = Some N ->
+             List.nth_error (tele_insts (record_fctx R k ++ record_params R) Id (List.map nf_to_exp Rs ++ List.firstn k (List.map snd fs))) j
                = Some B -> G ⊢ N : B).
   { apply Hins; intros j g M U' Hj HM HU'.
     destruct (IH j Hj ltac:(intros j' Hj'; apply Hprev; lia) g U' HU') as [m Hm].
     exact (alg_type_check_sound (Hprev j Hj g M U' HM HU') HG Hm). }
-  assert (Hl1 : List.length (nfs_to_exps Rs ++ List.firstn k (List.map snd fs)) = k + List.length (record_params R))
-    by (rewrite List.length_app, List.length_firstn, List.length_map; lia).
+  assert (Hl1 : List.length (List.map nf_to_exp Rs ++ List.firstn k (List.map snd fs)) = k + List.length (record_params R))
+    by (rewrite ?List.length_app, ?List.length_firstn, ?List.length_map in *; lia).
   destruct (record_field_typ_cong _ _ _ R k f U _ _ Hc Hass HF HG Hfk Hl1 Hl1
               ltac:(intros j1 N N' B HN HN' HB; rewrite HN in HN'; injection HN' as <-; apply wf_exp_eq_refl; exact (Hins' _ _ _ HN HB)))
     as [m HUU].

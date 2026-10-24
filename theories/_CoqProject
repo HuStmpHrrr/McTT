@@ -164,8 +164,11 @@
 ./Core/Syntactic/Levels/Ordinals.v
 ./Core/Syntactic/Syntax.v
 ./Core/Syntactic/System.v
-./Core/Syntactic/System/AccessFill.v
-./Core/Syntactic/System/AccessFillLemmas.v
+./Core/Syntactic/System/Translations.v
+./Core/TypedElab.v
+./Core/TypedElab/ElimTarget.v
+./Core/TypedElab/Fill.v
+./Core/TypedElab/Lemmas.v
 ./Core/Syntactic/System/Command.v
 ./Core/Syntactic/System/Definitions.v
 ./Core/Syntactic/System/Global/Paths.v
@@ -209,7 +212,7 @@
 ./Extraction/ViewsFound.v
 ./Extraction/Privacy.v
 ./Extraction/MdefGroup.v
-./Extraction/AccessDecide.v
+./Extraction/TypedElab.v
 ./Extraction/NbE.v
 ./Extraction/PseudoMonadic.v
 ./Extraction/Readback.v

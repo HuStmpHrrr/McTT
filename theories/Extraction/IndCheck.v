@@ -154,7 +154,7 @@ Defined.
     the universe [i] of the blocks' annotations and motives, and the type
     [T] it infers. *)
 Record elim_alg_ok (G : ctx) (oq : option qname) (Us : list exp) (m : nat) (Bks : list eblock) (M : exp)
-    (pc : qname) (k : nat) (Rs : nfs) (p : qname) (D : ind_decl) (Mm : imember) (Dq : ind_decl) (Mk : imember)
+    (pc : qname) (k : nat) (Rs : list nf) (p : qname) (D : ind_decl) (Mm : imember) (Dq : ind_decl) (Mk : imember)
     (bm : eblock) (i : nat) (T : nf) : Prop := mk_elim_alg_ok
   { (** The group is found at [p] *)
     elim_ok_lookup : ind_lookup gc_deps gc_stack p = Some D
@@ -170,7 +170,7 @@ Record elim_alg_ok (G : ctx) (oq : option qname) (Us : list exp) (m : nat) (Bks 
     (** And that member *)
   ; elim_ok_ref_member : ind_member Dq k = Some Mk
     (** The scrutinee's type has all its parameters *)
-  ; elim_ok_nparams : List.length (nfs_to_exps Rs) = im_np Dq Mk
+  ; elim_ok_nparams : List.length (List.map nf_to_exp Rs) = im_np Dq Mk
     (** The member's block *)
   ; elim_ok_block : List.nth_error Bks m = Some bm
     (** One block per member *)
@@ -181,7 +181,7 @@ Record elim_alg_ok (G : ctx) (oq : option qname) (Us : list exp) (m : nat) (Bks 
   ; elim_ok_uparams : forall j U T', List.nth_error Us j = Some U ->
       List.nth_error (tele_insts (ind_uparams D) Id Us) j = Some T' -> G ⊢a U ⟸ T'
     (** The member's uniform arguments agree with the scrutinee type's *)
-  ; elim_ok_agree : nfs_agree G (im_pre Mm Us) (List.firstn (ind_nu Dq) (nfs_to_exps Rs))
+  ; elim_ok_agree : nfs_agree G (im_pre Mm Us) (List.firstn (ind_nu Dq) (List.map nf_to_exp Rs))
       (tele_insts (ind_uparams Dq) Id (im_pre Mm Us))
     (** Each block binds the non-uniform parameters and the scrutinee *)
   ; elim_ok_binders : forall j Mj b, ind_member D j = Some Mj -> List.nth_error Bks j = Some b -> eb_nm b = S (im_nn Mj)
@@ -205,7 +205,7 @@ Record elim_alg_ok (G : ctx) (oq : option qname) (Us : list exp) (m : nat) (Bks 
       ind_con Mj c = Some gs -> List.In (c, n, B) (eb_brs b) ->
       elim_bctx p D Mj gs (blocks_motives Bks) Us ++ G ⊢a B ⟸ elim_bty p j Mj c gs (eb_motive b) Us
     (** The type is the normal form of the motive's instance *)
-  ; elim_ok_nbe : nbe_ty_f G (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu Dq) (nfs_to_exps Rs) ++ M :: nil)] T }.
+  ; elim_ok_nbe : nbe_ty_f G (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu Dq) (List.map nf_to_exp Rs) ++ M :: nil)] T }.
 
 (** The inversion of [ati_elim], at the scrutinee's inferred type. *)
 Lemma ati_elim_inv : forall G oq Us m Bks M T pc k Rs, ⊢ᵍ gc_deps ⍮ gc_stack ->
@@ -542,7 +542,7 @@ Proof.
        symmetry in Heq; eapply HnI; exact Heq ].
   destruct (ind_lookup_f gc_deps gc_stack pc) as [[Dq |] Hlq]; [| right; intros T' H; inv_elim Hg HG HMi; congruence ].
   destruct (ind_member Dq k) as [Mk |] eqn:Hk; [| right; intros T' H; inv_elim Hg HG HMi; congruence ].
-  destruct (Nat.eq_dec (List.length (nfs_to_exps Rs)) (im_np Dq Mk)) as [HRl | HRl];
+  destruct (Nat.eq_dec (List.length (List.map nf_to_exp Rs)) (im_np Dq Mk)) as [HRl | HRl];
     [| right; intros T' H; inv_elim Hg HG HMi; contradiction ].
   (** The group eliminated and its member. *)
   destruct (ind_lookup_f gc_deps gc_stack (elim_target oq pc)) as [[D |] Hl];
@@ -576,14 +576,14 @@ Proof.
              (fun j' N T' _ HN HT' => HUc j' N T' HN HT') j U T (Nat.lt_succ_diag_r j) HU HT). }
   (** The member's uniform arguments, against the scrutinee type's. *)
   destruct (im_pre_typed _ _ _ _ _ _ _ _ _ HG Hl Hm Hr Hlq HUl HUt) as [HPrl HPrt].
-  assert (HRt : forall j R T', List.nth_error (nfs_to_exps Rs) j = Some R ->
-             List.nth_error (tele_insts (im_params Dq Mk) Id (nfs_to_exps Rs)) j = Some T' -> G ⊢ R : T')
+  assert (HRt : forall j R T', List.nth_error (List.map nf_to_exp Rs) j = Some R ->
+             List.nth_error (tele_insts (im_params Dq Mk) Id (List.map nf_to_exp Rs)) j = Some T' -> G ⊢ R : T')
     by (destruct HTt as [iT HTt]; exact (wf_ind_apps_inv _ _ _ _ _ _ _ Hlq Hk HTt HRl)).
   destruct (params_typed_split _ _ Dq Hcq _ _ _ _ Hk HRl HRt) as [HRu _].
-  assert (HRl' : List.length (List.firstn (ind_nu Dq) (nfs_to_exps Rs)) = List.length (ind_uparams Dq))
+  assert (HRl' : List.length (List.firstn (ind_nu Dq) (List.map nf_to_exp Rs)) = List.length (ind_uparams Dq))
     by (rewrite List.length_firstn; unfold im_np in HRl; unfold ind_nu in *; lia).
   destruct (nfs_agree_dec G HG P (ind_uparams Dq) (dc_ass _ Hcq) (wf_uparams_app _ _ _ HDq Hcq _ HG)
-              (im_pre Mm Us) (List.firstn (ind_nu Dq) (nfs_to_exps Rs)) ltac:(unfold ind_nu in HPrl; exact HPrl) HRl' HPrt HRu)
+              (im_pre Mm Us) (List.firstn (ind_nu Dq) (List.map nf_to_exp Rs)) ltac:(unfold ind_nu in HPrl; exact HPrl) HRl' HPrt HRu)
     as [Hag | Hag];
     [| right; intros T' H; inv_elim Hg HG HMi; contradiction ].
   (** The blocks: the binders, then the universe of the annotations and the
@@ -644,7 +644,7 @@ Proof.
   destruct (blocks_dec D Bks _ Hbr) as [HBc | HBc]; [| right; intros T' H; inv_elim Hg HG HMi; apply HBc; intros; eauto ].
   (** The type: the normal form of the motive's instance. *)
   assert (Hel : G ⊢ a_elim oq Us m Bks M
-                  : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu Dq) (nfs_to_exps Rs) ++ M :: nil)]).
+                  : (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu Dq) (List.map nf_to_exp Rs) ++ M :: nil)]).
   { eapply alg_elim_typed with (i := L); try eassumption; try reflexivity.
     all: first
       [ exact (alg_type_infer_sound HMi HG)
@@ -658,7 +658,7 @@ Proof.
       | intros j Mj b c gs n B Hj Hb0 Hcon Hin HΓ i0 HTi; exact (alg_type_check_sound (HBc _ _ _ Hj Hb0 _ _ _ _ Hcon Hin) HΓ HTi)
       | intros j Mj b c gs n B Hj Hb0 Hcon Hin; exact (HBa _ _ _ Hj Hb0 _ _ _ _ Hcon Hin) ]. }
   assert (Hord : nbe_ty_order gc_deps gc_stack G
-                   (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu Dq) (nfs_to_exps Rs) ++ M :: nil)])
+                   (eb_motive bm)[sb_of_list Id (List.skipn (ind_nu Dq) (List.map nf_to_exp Rs) ++ M :: nil)])
     by (destruct (presup_exp_typ Hel) as [jT HTe]; exact (nbe_order_of_typ _ _ _ HTe)).
   refine (let (T', HT') := nbe_ty_env_impl gc_deps gc_stack G P _ Hord in inleft (exist _ T' _)).
   split; [| destruct (presup_exp_typ Hel) as [jT HTe]; eapply level_of_nbe; eassumption ].

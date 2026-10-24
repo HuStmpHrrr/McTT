@@ -12,9 +12,6 @@ From Mctt.Core.Syntactic.Inductives Require Import Inductives.
 From Mctt.Core.Semantic Require Import NbE.
 Import Domain_Notations.
 
-Lemma nfs_clean_app : forall Ms Ns, nfs_clean Ms -> nfs_clean Ns -> nfs_clean (nfs_app Ms Ns).
-Proof. induction Ms; cbn; intuition. Qed.
-
 (** ** Values Without Global Neutrals *)
 
 (** [dclean d]: the value [d], its closures' environments included, has no
@@ -524,37 +521,41 @@ Section Transparent.
     (forall s m M, Rne m in Θ ⍮ Ξ ⍮ s ↘ M -> dclean_ne m -> ne_clean M) /\
     (forall s a A, Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A -> dclean a -> nf_clean A) /\
     (forall s xs ys, Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-       dclean_la xs -> la_clean ys) /\
+       dclean_la xs -> all_list (fun a => ne_clean (atom_level a)) ys) /\
     (forall s ρ T vs Ms, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
-       env_clean ρ -> (forall a, In a vs -> dclean a) -> nfs_clean Ms) /\
+       env_clean ρ -> (forall a, In a vs -> dclean a) -> all_list nf_clean Ms) /\
     (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        env_clean ρ -> (forall a, In a ups -> dclean a) -> (forall a, In a vs -> dclean a) ->
-       nfs_clean Ms) /\
+       all_list nf_clean Ms) /\
     (forall s p ups ρ t x X, Rsh x at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ X ->
        env_clean ρ -> (forall a, In a ups -> dclean a) -> dclean x -> nf_clean X) /\
     (forall s ρ p ups Bks sel i Ms NBks, Rblks i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
-       env_clean ρ -> ups_clean ups -> nblocks_clean NBks) /\
+       env_clean ρ -> ups_clean ups ->
+       all_list (fun b => nf_clean (block_motive b) /\ all_list (fun br => nf_clean (branch_body br)) (block_branches b)) NBks) /\
     (forall s ρ p ups Bks Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
        env_clean ρ -> ups_clean ups -> (forall a, In a (snd r) -> dclean a) ->
-       nbrs_clean Bs') /\
+       all_list (fun br => nf_clean (branch_body br)) Bs') /\
     (forall s ρ fl v Fs, Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs ->
-       env_clean ρ -> dclean v -> nfs_clean Fs).
+       env_clean ρ -> dclean v -> all_list nf_clean Fs).
   Proof.
     destruct eval_clean as (He & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hm & Hsh & _ & Hpj & _).
     apply (read_mut_ind Θ Ξ
              (fun s m W _ => dclean_nf m -> nf_clean W)
              (fun s m M _ => dclean_ne m -> ne_clean M)
              (fun s a A _ => dclean a -> nf_clean A)
-             (fun s xs ys _ => dclean_la xs -> la_clean ys)
-             (fun s ρ T vs Ms _ => env_clean ρ -> (forall a, In a vs -> dclean a) -> nfs_clean Ms)
+             (fun s xs ys _ => dclean_la xs -> all_list (fun a => ne_clean (atom_level a)) ys)
+             (fun s ρ T vs Ms _ => env_clean ρ -> (forall a, In a vs -> dclean a) -> all_list nf_clean Ms)
              (fun s p ups ρ gs vs Ms _ => env_clean ρ -> (forall a, In a ups -> dclean a) ->
-                                        (forall a, In a vs -> dclean a) -> nfs_clean Ms)
+                                        (forall a, In a vs -> dclean a) -> all_list nf_clean Ms)
              (fun s p ups ρ t x X _ => env_clean ρ -> (forall a, In a ups -> dclean a) -> dclean x -> nf_clean X)
-             (fun s ρ p ups Bks sel i Ms NBks _ => env_clean ρ -> ups_clean ups ->
-                                                      nblocks_clean NBks)
-             (fun s ρ p ups Bks Mv A Mi r cs Bs Bs' _ => env_clean ρ -> ups_clean ups ->
-                                                            (forall a, In a (snd r) -> dclean a) -> nbrs_clean Bs')
-             (fun s ρ fl v Fs _ => env_clean ρ -> dclean v -> nfs_clean Fs));
+             (fun s ρ p ups Bks sel i Ms NBks _ =>
+                env_clean ρ -> ups_clean ups ->
+                all_list (fun b => nf_clean (block_motive b) /\
+                                   all_list (fun br => nf_clean (branch_body br)) (block_branches b)) NBks)
+             (fun s ρ p ups Bks Mv A Mi r cs Bs Bs' _ =>
+                env_clean ρ -> ups_clean ups -> (forall a, In a (snd r) -> dclean a) ->
+                all_list (fun br => nf_clean (branch_body br)) Bs')
+             (fun s ρ fl v Fs _ => env_clean ρ -> dclean v -> all_list nf_clean Fs));
       intros; cbn [snd] in *; cbn;
       (* a field of a value: clean as the value is *)
       repeat match goal with
@@ -576,13 +577,11 @@ Section Transparent.
         environment, of clean values. *)
     all: try solve [
       clean_fwd He Hes Hsh Hm;
-      try apply nfs_clean_app;
+      try apply all_list_app;
       match goal with
       | IH : context [ nf_clean ?W ] |- nf_clean ?W => apply IH
       | IH : context [ ne_clean ?W ] |- ne_clean ?W => apply IH
-      | IH : context [ nfs_clean ?W ] |- nfs_clean ?W => apply IH
-      | IH : context [ nbrs_clean ?W ] |- nbrs_clean ?W => apply IH
-      | IH : context [ nblocks_clean ?W ] |- nblocks_clean ?W => apply IH
+      | IH : context [ all_list _ ?W ] |- all_list _ ?W => apply IH
       end;
       first [ clean_env | solve [ all_in_with clean_val ] | clean_val | solve [ constructor; clean_val ] ] ].
     (** A level reads back canonically, so its atoms are sorted and merged;
@@ -594,7 +593,7 @@ Section Transparent.
         back as, and the two normal forms have the same atoms, so this case
         is the level's. *)
     all: try match goal with
-         | IH : _ -> nf_clean (nf_lvl_of _) |- la_clean _ =>
+         | IH : _ -> nf_clean (nf_lvl_of _) |- all_list _ _ =>
              apply IH; repeat constructor; assumption
          end.
     (* a recursive argument of a function shape, under a fresh variable *)
@@ -612,7 +611,7 @@ Section Transparent.
     all: match goal with
          | IH : _ -> nf_clean ?W |- nf_clean ?W => apply IH
          | IH : _ -> ne_clean ?W |- ne_clean ?W => apply IH
-         | IH : _ -> la_clean ?W |- la_clean ?W => apply IH
+         | IH : _ -> all_list _ ?W |- all_list _ ?W => apply IH
          end.
     all: repeat first [ eassumption | constructor | apply env_clean_extend
                       | eapply He; [ eassumption |] | eapply Ha; [ eassumption | |] | eapply Hsh; [ eassumption | |] ].

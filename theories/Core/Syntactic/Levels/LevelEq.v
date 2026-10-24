@@ -17,7 +17,7 @@ Import Syntax_Notations.
 <<
     la_wf Γ xs -> Γ ⊢ ⌈c, xs⌉ ≈ ⌈lvl_canon (c, xs)⌉ : Level@n
 >>
-    where [⌈c, xs⌉] is [lvl_exp_of c (la_to_list xs)], the expression a
+    where [⌈c, xs⌉] is [lvl_exp_of c (List.map atom_exp xs)], the expression a
     canonical level reads back as.  Each step of [lvl_canon] is an instance of
     the level equations: sorting is commutativity and associativity, merging is
     [maxl (k + a) (k' + a) ≈ max k k' + a], dropping an atom of a sort below
@@ -223,23 +223,23 @@ Qed.
 (** ** The Atoms of a Level, Well Typed *)
 
 (** Every atom a level of the sort [n] of the whole. *)
-Fixpoint la_wf (Γ : ctx) (xs : lvl_atoms) : Prop :=
+Fixpoint la_wf (Γ : ctx) (xs : list level_atom) : Prop :=
   match xs with
-  | la_nil => True
-  | la_cons _ _ a r => Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@n /\ la_wf Γ r
+  | nil => True
+  | mk_level_atom _ _ a :: r => Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@n /\ la_wf Γ r
   end.
 
 (** Every atom a level of its own sort, at most [n]: the atoms of a level
     readback produces are of this kind, their sorts read off their types. *)
-Fixpoint la_ws (Γ : ctx) (xs : lvl_atoms) : Prop :=
+Fixpoint la_ws (Γ : ctx) (xs : list level_atom) : Prop :=
   match xs with
-  | la_nil => True
-  | la_cons _ s a r => (s <= n /\ Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@s) /\ la_ws Γ r
+  | nil => True
+  | mk_level_atom _ s a :: r => (s <= n /\ Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@s) /\ la_ws Γ r
   end.
 
 Lemma la_ws_wf : forall {Γ} xs, la_ws Γ xs -> la_wf Γ xs.
 Proof.
-  intros Γ xs; induction xs as [| k s a r IH]; cbn; intros H; [ exact I |].
+  intros Γ xs; induction xs as [| [k s a] r IH]; cbn; intros H; [ exact I |].
   destruct H as [[Hs Ha] Hr]; split; [| auto ].
   assert (⊢ Θ ⍮ Ξ ⍮ Γ) by (gen_presups; assumption).
   eapply wf_exp_subtyp'; [ exact Ha | apply wf_subtyp_level; assumption ].
@@ -250,7 +250,7 @@ Lemma la_wf_ins : forall {Γ} k s (a : ne) ys,
     la_wf Γ ys ->
     la_wf Γ (la_ins k s a ys).
 Proof.
-  intros Γ k s a ys Ha; induction ys as [| k' t b r IH]; cbn; intros Hys; [ split; assumption |].
+  intros Γ k s a ys Ha; induction ys as [| [k' t b] r IH]; cbn; intros Hys; [ split; assumption |].
   destruct Hys as [Hb Hr]; destruct (at_cmp a s b t); cbn; split; auto.
 Qed.
 
@@ -258,7 +258,7 @@ Lemma la_wf_sort : forall {Γ} xs,
     la_wf Γ xs ->
     la_wf Γ (la_sort xs).
 Proof.
-  intros Γ xs; induction xs as [| k s a r IH]; cbn; intros H; [ exact I |].
+  intros Γ xs; induction xs as [| [k s a] r IH]; cbn; intros H; [ exact I |].
   destruct H; apply la_wf_ins; auto.
 Qed.
 
@@ -266,7 +266,7 @@ Lemma la_wf_keep : forall {Γ} c xs,
     la_wf Γ xs ->
     la_wf Γ (la_keep c xs).
 Proof.
-  intros Γ c xs; induction xs as [| k s a r IH]; cbn [la_keep]; intros H; [ exact I |].
+  intros Γ c xs; induction xs as [| [k s a] r IH]; cbn [la_keep]; intros H; [ exact I |].
   destruct H; destruct (fst c <=? s); cbn; auto.
 Qed.
 
@@ -276,7 +276,7 @@ Lemma la_ws_ins : forall {Γ} k s (a : ne) ys,
     la_ws Γ ys ->
     la_ws Γ (la_ins k s a ys).
 Proof.
-  intros Γ k s a ys Hs Ha; induction ys as [| k' t b r IH]; cbn; intros Hys; [ auto |].
+  intros Γ k s a ys Hs Ha; induction ys as [| [k' t b] r IH]; cbn; intros Hys; [ auto |].
   destruct Hys as [Hb Hr]; destruct (at_cmp a s b t); cbn; auto.
 Qed.
 
@@ -284,7 +284,7 @@ Lemma la_ws_sort : forall {Γ} xs,
     la_ws Γ xs ->
     la_ws Γ (la_sort xs).
 Proof.
-  intros Γ xs; induction xs as [| k s a r IH]; cbn; intros H; [ exact I |].
+  intros Γ xs; induction xs as [| [k s a] r IH]; cbn; intros H; [ exact I |].
   destruct H as [[? ?] ?]; apply la_ws_ins; auto.
 Qed.
 
@@ -292,7 +292,7 @@ Lemma la_ws_keep : forall {Γ} c xs,
     la_ws Γ xs ->
     la_ws Γ (la_keep c xs).
 Proof.
-  intros Γ c xs; induction xs as [| k s a r IH]; cbn [la_keep]; intros H; [ exact I |].
+  intros Γ c xs; induction xs as [| [k s a] r IH]; cbn [la_keep]; intros H; [ exact I |].
   destruct H; destruct (fst c <=? s); cbn; auto.
 Qed.
 
@@ -300,22 +300,22 @@ Lemma la_ws_fresh_part : forall {Γ} k xs,
     la_ws Γ xs ->
     la_ws Γ (la_fresh_part k xs).
 Proof.
-  intros Γ k xs; induction xs as [| j s a r IH]; cbn [la_fresh_part]; intros H; [ exact I |].
+  intros Γ k xs; induction xs as [| [j s a] r IH]; cbn [la_fresh_part]; intros H; [ exact I |].
   destruct H; destruct (ne_freshb k a); cbn; auto.
 Qed.
 
 Lemma la_ws_sorts : forall {Γ} xs, la_ws Γ xs -> forall j s a, la_In j s a xs -> s <= n.
 Proof.
-  intros Γ xs; induction xs as [| j0 t b r IH]; cbn; intros H j s a Hin; [ destruct Hin |].
+  intros Γ xs; induction xs as [| [j0 t b] r IH]; cbn; intros H j s a Hin; [ destruct Hin |].
   destruct H as [[Ht _] Hr]; destruct Hin as [(_ & -> & _) | Hin]; [ exact Ht | eapply IH; eassumption ].
 Qed.
 
 Lemma la_ws_app : forall {Γ} xs ys,
     la_ws Γ xs ->
     la_ws Γ ys ->
-    la_ws Γ (la_app xs ys).
+    la_ws Γ (xs ++ ys).
 Proof.
-  intros Γ xs ys; induction xs as [| k s a r IH]; cbn; intros Hxs Hys;
+  intros Γ xs ys; induction xs as [| [k s a] r IH]; cbn; intros Hxs Hys;
     [ exact Hys | destruct Hxs; split; auto ].
 Qed.
 
@@ -323,7 +323,7 @@ Lemma la_ws_suc : forall {Γ} xs,
     la_ws Γ xs ->
     la_ws Γ (la_suc xs).
 Proof.
-  intros Γ xs; induction xs as [| k s a r IH]; cbn; intros Hxs;
+  intros Γ xs; induction xs as [| [k s a] r IH]; cbn; intros Hxs;
     [ exact I | destruct Hxs; split; auto ].
 Qed.
 
@@ -331,20 +331,20 @@ Qed.
 
     [lvl_tm_from hd xs] is the right-nested fold, innermost [hd]; readback's
     [lvl_fold] is the left-nested one.  Up to the equations the two agree. *)
-Fixpoint lvl_tm_from (hd : exp) (xs : lvl_atoms) : exp :=
+Fixpoint lvl_tm_from (hd : exp) (xs : list level_atom) : exp :=
   match xs with
-  | la_nil => hd
-  | la_cons k _ a r => maxl (succl_n k (a : exp)) (lvl_tm_from hd r)
+  | nil => hd
+  | mk_level_atom k _ a :: r => maxl (succl_n k (a : exp)) (lvl_tm_from hd r)
   end.
 
-Definition lvl_tm (c : o2) (xs : lvl_atoms) : exp := lvl_tm_from (𝕃ᵒ c) xs.
+Definition lvl_tm (c : o2) (xs : list level_atom) : exp := lvl_tm_from (𝕃ᵒ c) xs.
 
 Lemma lvl_tm_from_wf : forall {Γ} hd xs,
     Θ ⍮ Ξ ⍮ Γ ⊢ hd : Level@n ->
     la_wf Γ xs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm_from hd xs : Level@n.
 Proof.
-  intros Γ hd xs; revert hd; induction xs as [| k s a r IH]; cbn; intros hd Hhd Hxs;
+  intros Γ hd xs; revert hd; induction xs as [| [k s a] r IH]; cbn; intros hd Hhd Hxs;
     [ assumption |].
   destruct Hxs as [Ha Hr].
   apply wf_maxl; [ apply (wf_succl_n k); exact Ha | apply IH; assumption ].
@@ -377,7 +377,7 @@ Lemma lvl_tm_from_out : forall {Γ} hd xs,
     la_wf Γ xs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm_from hd xs ≈ maxl hd (lvl_tm_from (𝕃@0) xs) : Level@n.
 Proof.
-  intros Γ hd xs; revert hd; induction xs as [| k s a r IH]; cbn; intros hd Hhd Hxs.
+  intros Γ hd xs; revert hd; induction xs as [| [k s a] r IH]; cbn; intros hd Hhd Hxs.
   - assert (⊢ Θ ⍮ Ξ ⍮ Γ) by mauto 2.
     transitivity (maxl (𝕃@0) hd); [ apply wf_exp_eq_sym, wf_exp_eq_maxl_zero; assumption |].
     apply wf_exp_eq_maxl_comm; mauto 3.
@@ -396,9 +396,9 @@ Qed.
 Lemma lvl_fold_tm_from : forall {Γ} xs hd,
     Θ ⍮ Ξ ⍮ Γ ⊢ hd : Level@n ->
     la_wf Γ xs ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_fold hd (la_to_list xs) ≈ lvl_tm_from hd xs : Level@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_fold hd (List.map atom_exp xs) ≈ lvl_tm_from hd xs : Level@n.
 Proof.
-  intros Γ xs; induction xs as [| k s a r IH]; cbn; intros hd Hhd Hxs; [ mauto 3 |].
+  intros Γ xs; induction xs as [| [k s a] r IH]; cbn; intros hd Hhd Hxs; [ mauto 3 |].
   destruct Hxs as [Ha Hr].
   assert (⊢ Θ ⍮ Ξ ⍮ Γ) by mauto 2.
   transitivity (lvl_tm_from (maxl hd (succl_n k a)) r); [ apply IH; mauto 3 |].
@@ -416,17 +416,17 @@ Lemma lvl_exp_of_tm : forall {Γ} c xs,
     fst c <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     la_wf Γ xs ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_exp_of c (la_to_list xs) ≈ lvl_tm c xs : Level@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_exp_of c (List.map atom_exp xs) ≈ lvl_tm c xs : Level@n.
 Proof.
   intros Γ c xs Hc HΓ Hxs; unfold lvl_tm.
-  destruct xs as [| k s a r]; cbn; [ apply wf_exp_eq_llit_cong; assumption |].
+  destruct xs as [| [k s a] r]; cbn; [ apply wf_exp_eq_llit_cong; assumption |].
   destruct Hxs as [Ha Hr].
   assert (Hka : Θ ⍮ Ξ ⍮ Γ ⊢ succl_n k a : Level@n) by (apply (wf_succl_n k); exact Ha).
   assert (Hz : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃@0 : Level@n) by (apply wf_llit; [ cbn; lia | assumption ]).
   assert (Hrt : Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm_from (𝕃@0) r : Level@n) by (apply lvl_tm_from_wf; assumption).
   assert (Hct : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ c : Level@n) by (apply wf_llit; assumption).
   assert (Hgen :
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_fold (maxl (𝕃ᵒ c) (succl_n k a)) (la_to_list r) ≈ lvl_tm_from (𝕃ᵒ c) (la_cons k s a r) : Level@n).
+    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_fold (maxl (𝕃ᵒ c) (succl_n k a)) (List.map atom_exp r) ≈ lvl_tm_from (𝕃ᵒ c) (mk_level_atom k s a :: r) : Level@n).
   { cbn [lvl_tm_from].
     assert (Hhd : Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃ᵒ c) (succl_n k a) : Level@n)
       by (apply wf_maxl; [ exact Hct | exact Hka ]).
@@ -473,7 +473,7 @@ Lemma lvl_tm_suc : forall {Γ} c xs,
     la_wf Γ xs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ succl (lvl_tm c xs) ≈ lvl_tm (osuc c) (la_suc xs) : Level@n.
 Proof.
-  intros Γ c xs Hc; revert c Hc; induction xs as [| k s a r IH]; cbn; intros c Hc HΓ Hxs;
+  intros Γ c xs Hc; revert c Hc; induction xs as [| [k s a] r IH]; cbn; intros c Hc HΓ Hxs;
     [ unfold lvl_tm; cbn; destruct c; apply wf_exp_eq_sym, wf_exp_eq_llit_succl; assumption |].
   destruct Hxs as [Ha Hr].
   assert (Hka : Θ ⍮ Ξ ⍮ Γ ⊢ succl_n k a : Level@n) by (apply (wf_succl_n k); exact Ha).
@@ -490,9 +490,9 @@ Lemma lvl_tm_max : forall {Γ} c xs d ys,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     la_wf Γ xs ->
     la_wf Γ ys ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ maxl (lvl_tm c xs) (lvl_tm d ys) ≈ lvl_tm (omax c d) (la_app xs ys) : Level@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ maxl (lvl_tm c xs) (lvl_tm d ys) ≈ lvl_tm (omax c d) (xs ++ ys) : Level@n.
 Proof.
-  intros Γ c xs d ys Hc Hd; revert c Hc; induction xs as [| k s a r IH]; cbn; intros c Hc HΓ Hxs Hys.
+  intros Γ c xs d ys Hc Hd; revert c Hc; induction xs as [| [k s a] r IH]; cbn; intros c Hc HΓ Hxs Hys.
   - (** No atom on the left: the two constants join in front of the right. *)
     assert (Hct : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ c : Level@n) by (apply wf_llit; assumption).
     assert (Hdt : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ d : Level@n) by (apply wf_llit; assumption).
@@ -525,7 +525,7 @@ Lemma lvl_tm_ins : forall {Γ} c k s (a : ne) ys,
     la_wf Γ ys ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c (la_ins k s a ys) ≈ maxl (succl_n k a) (lvl_tm c ys) : Level@n.
 Proof.
-  intros Γ c k s a ys Hc HΓ Ha; induction ys as [| k' t b r IH]; cbn; intros Hys;
+  intros Γ c k s a ys Hc HΓ Ha; induction ys as [| [k' t b] r IH]; cbn; intros Hys;
     [ unfold lvl_tm; cbn; apply wf_exp_eq_refl, wf_maxl; mauto 3 |].
   destruct Hys as [Hb Hr].
   assert (Hka : Θ ⍮ Ξ ⍮ Γ ⊢ succl_n k a : Level@n) by (apply (wf_succl_n k); exact Ha).
@@ -562,7 +562,7 @@ Lemma lvl_tm_sort : forall {Γ} c xs,
     la_wf Γ xs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c (la_sort xs) ≈ lvl_tm c xs : Level@n.
 Proof.
-  intros Γ c xs Hc HΓ; induction xs as [| k s a r IH]; cbn; intros Hxs; [ mauto 3 |].
+  intros Γ c xs Hc HΓ; induction xs as [| [k s a] r IH]; cbn; intros Hxs; [ mauto 3 |].
   destruct Hxs as [Ha Hr].
   transitivity (maxl (succl_n k a) (lvl_tm c (la_sort r)));
     [ apply lvl_tm_ins; [ assumption | assumption | assumption | apply la_wf_sort; assumption ] |].
@@ -605,7 +605,7 @@ Lemma lvl_tm_keep : forall {Γ} c xs,
     la_ws Γ xs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c (la_keep c xs) ≈ lvl_tm c xs : Level@n.
 Proof.
-  intros Γ c xs Hc HΓ; induction xs as [| k s a r IH]; cbn [la_keep]; intros Hxs; [ mauto 3 |].
+  intros Γ c xs Hc HΓ; induction xs as [| [k s a] r IH]; cbn [la_keep]; intros Hxs; [ mauto 3 |].
   destruct Hxs as [[Hs Ha] Hr].
   pose proof (la_ws_wf _ Hr) as Hrw.
   assert (Han : Θ ⍮ Ξ ⍮ Γ ⊢ (a : exp) : Level@n)
@@ -635,7 +635,7 @@ Lemma lvl_tm_drop_fin : forall {Γ} c xs,
     c <= la_maxoff xs ->
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm (ofin c) xs ≈ lvl_tm oz xs : Level@n.
 Proof.
-  intros Γ c xs HΓ; induction xs as [| k s a r IH]; cbn; intros Hxs Hle.
+  intros Γ c xs HΓ; induction xs as [| [k s a] r IH]; cbn; intros Hxs Hle.
   - (** No atom: the constant is [0] already. *)
     assert (c = 0) as -> by lia; apply wf_exp_eq_llit_cong; [ cbn; lia | assumption ].
   - destruct Hxs as [Ha Hr].
@@ -706,7 +706,7 @@ Theorem lvl_exp_of_canon : forall {Γ} c xs,
     fst c <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     la_ws Γ xs ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_exp_of c (la_to_list xs)
+    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_exp_of c (List.map atom_exp xs)
              ≈ nf_to_exp (nf_lvl_of (lvl_canon (c, xs))) : Level@n.
 Proof.
   intros Γ c xs Hc HΓ Hxs.
@@ -749,10 +749,10 @@ Lemma lvl_exp_of_wf : forall {Γ} c xs,
     fst c <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     la_wf Γ xs ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_exp_of c (la_to_list xs) : Level@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n.
 Proof.
   intros Γ c xs Hc HΓ Hxs.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ lvl_exp_of c (la_to_list xs) ≈ lvl_tm c xs : Level@n)
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ lvl_exp_of c (List.map atom_exp xs) ≈ lvl_tm c xs : Level@n)
     by (apply lvl_exp_of_tm; assumption).
   gen_presups; assumption.
 Qed.
@@ -766,8 +766,8 @@ Lemma lvl_exp_of_le : forall {Γ} c xs d ys,
     la_ws Γ xs ->
     la_ws Γ ys ->
     lvl_le (c, xs) (d, ys) ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ maxl (lvl_exp_of c (la_to_list xs)) (lvl_exp_of d (la_to_list ys))
-             ≈ lvl_exp_of d (la_to_list ys) : Level@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ maxl (lvl_exp_of c (List.map atom_exp xs)) (lvl_exp_of d (List.map atom_exp ys))
+             ≈ lvl_exp_of d (List.map atom_exp ys) : Level@n.
 Proof.
   intros Γ c xs d ys Hc Hd HΓ Hxs Hys Hle.
   pose proof (la_ws_wf _ Hxs) as Hxw; pose proof (la_ws_wf _ Hys) as Hyw.
@@ -776,7 +776,7 @@ Proof.
                        (snd (lvl_canon (lvl_max (c, xs) (d, ys))))).
   - transitivity (maxl (lvl_tm c xs) (lvl_tm d ys));
       [ apply wf_exp_eq_maxl_cong; apply lvl_exp_of_tm; assumption |].
-    transitivity (lvl_tm (omax c d) (la_app xs ys));
+    transitivity (lvl_tm (omax c d) (xs ++ ys));
       [ apply lvl_tm_max; assumption |].
     apply lvl_tm_canon; [ exact Hcd | exact HΓ | cbn; apply la_ws_app; assumption ].
   - unfold lvl_le in Hle; rewrite Hle.
@@ -794,7 +794,7 @@ Lemma la_ws_mono : forall {Θ Ξ} m n Γ xs,
     @la_ws Θ Ξ m Γ xs ->
     @la_ws Θ Ξ n Γ xs.
 Proof.
-  intros * Hmn; induction xs as [| k s a r IH]; cbn; [ auto |].
+  intros * Hmn; induction xs as [| [k s a] r IH]; cbn; [ auto |].
   intros [[Hs Ha] Hr]; split; [ split; [ lia | exact Ha ] | auto ].
 Qed.
 

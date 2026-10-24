@@ -81,7 +81,7 @@ Ltac grp_in_model Hl Hta G :=
   match goal with |- DF d_ind ?p ?k nil ≈ _ ∈ _ ↘ _ => change (d_ind p k nil) with (d_ind p k (nil ++ nil)) end;
   basic_per_univ_elem_econstructor;
   try exact Hl; try exact Hta; try reflexivity;
-  try (intros ?s; exists nfs_nil; split; constructor);
+  try (intros ?s; exists nil; split; constructor);
   try (red; intros; grp_vacuous; fail);
   try (cbn; split; [ reflexivity | exact I ]);
   try (constructor; intros; grp_vacuous;
@@ -503,7 +503,7 @@ Lemma nbe_ty_container_at_self : forall Θ Ξ A B Γ pC DC MC iU W,
     ind_lookup Θ Ξ pC = Some DC -> ind_uparams DC = ce_ass (a_typ iU) :: nil -> ind_member DC 0 = Some MC ->
     im_nparams MC = ce_ass (a_var 0) :: nil ->
     nbe_ty Θ Ξ (ce_ass A :: ce_ass B :: Γ) (a_app (a_app (a_ind pC 0) (a_var 1)) (a_var 0)) W ->
-    W = nf_indty pC 0 (nfs_cons (nf_neut (ne_var 1)) (nfs_cons (nf_neut (ne_var 0)) nfs_nil)).
+    W = nf_indty pC 0 (cons (nf_neut (ne_var 1)) (cons (nf_neut (ne_var 0)) nil)).
 Proof.
   intros * Hl Hu Hk Hnp [ρ m Hi He Hr].
   inversion Hi as [| ? ρ1 ? a1 Hi1 Ha1 | |]; subst.

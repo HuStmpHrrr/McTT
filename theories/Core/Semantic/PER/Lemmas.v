@@ -242,7 +242,7 @@ Lemma per_bot_then_per_lvl : forall m m' a a',
 Proof.
   intros * Ha H s.
   destruct (H s) as [M [Hl Hr]].
-  exists (lvⁿ oz (la_cons 0 (dsort a) M la_nil)); split; [| rewrite Ha ]; econstructor; eassumption.
+  exists (lvⁿ oz (cons (mk_level_atom 0 (dsort a) M) nil)); split; [| rewrite Ha ]; econstructor; eassumption.
 Qed.
 
 Hint Resolve per_bot_then_per_lvl : mctt.
@@ -289,7 +289,7 @@ Lemma per_bot_then_per_lvl_at : forall n m m',
 Proof.
   intros * H s.
   destruct (H s) as [M [Hl Hr]].
-  exists (oz, la_cons 0 n M la_nil); [ econstructor; eassumption .. | split; [ cbn; lia |] ].
+  exists (oz, cons (mk_level_atom 0 n M) nil); [ econstructor; eassumption .. | split; [ cbn; lia |] ].
   intros k t a Hin; cbn in Hin; destruct Hin as [(_ & -> & _) | []]; lia.
 Qed.
 

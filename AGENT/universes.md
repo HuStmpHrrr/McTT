@@ -43,7 +43,7 @@ where `u` and `v` are the universes of the parts:
 - **Both parts small.** The result is always small:
   `Type⟨maxl LA LB'⟩`, where `LB'` is the *bound* of the codomain level,
   `lvl_bound 0` (`Core/Syntactic/Fresh.v`): its atoms fresh at index 0 are
-  un-weakened by `la_unwk 0`, and an atom on `#0` of sort `s` is replaced by
+  un-weakened by `List.map (map_level_atom (ne_unwk 0))`, and an atom on `#0` of sort `s` is replaced by
   the constant `ω·(s+1)`, the least level above every level of `Level@s`.
   So `forall (u : Level) -> Type@{u}` is in `Type@{ω}`, by
   `wf_exp_eq_maxl_absorb` and `wf_pi_small`.

@@ -144,7 +144,7 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
      Rnf ⇓ (Levelᵈ@n) (lvᵈ c xs) in Θ ⍮ Ξ ⍮ s ↘ nf_lvl_of (lvl_canon (c, ys)) )
 | read_nf_lvl_neut :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnf ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ oz (la_cons 0 (dsort a) M la_nil) )
+     Rnf ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ oz (mk_level_atom 0 (dsort a) M :: nil) )
 (** η for [⊤]: every value of type [⊤] reads back as [⋆]. *)
 | read_nf_true :
   `( Rnf ⇓ ⊤ᵈ m in Θ ⍮ Ξ ⍮ s ↘ ⋆ⁿ )
@@ -175,7 +175,7 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
      List.length vs = (im_np D Mk + List.length gs)%nat ->
      Rps as' at List.rev (im_params D Mk) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
      Rcargs List.skipn (im_np D Mk) vs at gs of p (List.firstn (ind_nu D) as') in Θ ⍮ Ξ ⍮ env_args nil as' ⍮ s ↘ Args ->
-     Rnf ⇓ (d_ind p k as') (d_con p k c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p k c (nfs_app Ps Args) )
+     Rnf ⇓ (d_ind p k as') (d_con p k c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p k c (Ps ++ Args) )
 (** A constructor at a view of the group at [p], a value of the
     container's member: read as the view's constructor, its parameters off
     the type at the view's parameters, its arguments at the view's own
@@ -190,7 +190,7 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
      List.length vs = (n + List.length gs)%nat ->
      Rps as' at List.rev (im_params D Mj) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
      Rcargs List.skipn n vs at gs of p (List.firstn (ind_nu D) as') in Θ ⍮ Ξ ⍮ env_args nil as' ⍮ s ↘ Args ->
-     Rnf ⇓ (d_ind p j as') (d_con qc k c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p j c (nfs_app Ps Args) )
+     Rnf ⇓ (d_ind p j as') (d_con qc k c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p j c (Ps ++ Args) )
 | read_nf_ind_neut :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rnf ⇓ (d_ind p k as') (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
@@ -294,37 +294,37 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
      Rtyp d_record p ns in Θ ⍮ Ξ ⍮ s ↘ nf_record p Ps )
 where "'Rtyp' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_typ Θ Ξ s m M) : type_scope
 (** The atoms of a level, read one by one. *)
-with read_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> lvl_atoms -> Prop :=
+with read_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> list level_atom -> Prop :=
 (** No atom *)
 | read_la_nil :
-  `( Rla nil in Θ ⍮ Ξ ⍮ s ↘ la_nil )
+  `( Rla nil in Θ ⍮ Ξ ⍮ s ↘ nil )
 (** The first atom's neutral, then the rest *)
 | read_la_cons :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-     Rla (k, n, m) :: xs in Θ ⍮ Ξ ⍮ s ↘ la_cons k n M ys )
+     Rla (k, n, m) :: xs in Θ ⍮ Ξ ⍮ s ↘ mk_level_atom k n M :: ys )
 where "'Rla' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" := (read_la Θ Ξ s xs ys) : type_scope
 (** Values at a telescope, outermost first, each at its type in the
     environment of the values before it. *)
-with read_ps (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list domain -> nfs -> Prop :=
+with read_ps (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list domain -> list nf -> Prop :=
 (** No value *)
 | read_ps_nil :
-  `( Rps nil at nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_nil )
+  `( Rps nil at nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 (** The first value at its type, then the rest with it in the
     environment *)
 | read_ps_cons :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
      Rps vs at T in Θ ⍮ Ξ ⍮ ρ ↦ v ⍮ s ↘ Vs ->
-     Rps v :: vs at ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons V Vs )
+     Rps v :: vs at ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V :: Vs )
 where "'Rps' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (read_ps Θ Ξ s ρ T vs Ms) : type_scope
 (** The fields [fl] of a record value [v], each at its type in [ρ] (the
     type's parameters and the projections of the fields before it), its
     projection read back there. *)
-with read_fields (Θ : gdeps) (Ξ : gstack) : nat -> env -> list (string * exp) -> domain -> nfs -> Prop :=
+with read_fields (Θ : gdeps) (Ξ : gstack) : nat -> env -> list (string * exp) -> domain -> list nf -> Prop :=
 (** No field left *)
 | read_fields_nil :
-  `( Rflds v at nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_nil )
+  `( Rflds v at nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 (** The next field's projection at its type, then the rest with it in the
     environment *)
 | read_fields_cons :
@@ -332,26 +332,26 @@ with read_fields (Θ : gdeps) (Ξ : gstack) : nat -> env -> list (string * exp) 
      ⟦ T ⟧ Θ ⍮ Ξ ⍮ ρ ↘ t ->
      Rnf ⇓ t r in Θ ⍮ Ξ ⍮ s ↘ F ->
      Rflds v at fl in Θ ⍮ Ξ ⍮ ρ ↦ r ⍮ s ↘ Fs ->
-     Rflds v at (f, T) :: fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons F Fs )
+     Rflds v at (f, T) :: fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ F :: Fs )
 where "'Rflds' v 'at' fl 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Fs" := (read_fields Θ Ξ s ρ fl v Fs) : type_scope
 (** The arguments of a constructor of [p] at the uniform parameters [ups],
     each at its type: a non-recursive one at the type its declaration gives,
     a recursive one at the type itself. *)
-with read_cargs (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> list carg -> list domain -> nfs -> Prop :=
+with read_cargs (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> list carg -> list domain -> list nf -> Prop :=
 (** No argument *)
 | read_cargs_nil :
-  `( Rcargs nil at nil of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_nil )
+  `( Rcargs nil at nil of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 (** A non-recursive argument, at its declared type *)
 | read_cargs_arg :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
      Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ↦ v ⍮ s ↘ Vs ->
-     Rcargs v :: vs at ca_arg A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons V Vs )
+     Rcargs v :: vs at ca_arg A :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V :: Vs )
 (** A recursive argument, along its shape *)
 | read_cargs_rec :
   `( Rsh v at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V ->
      Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs ->
-     Rcargs v :: vs at ca_rec t :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons V Vs )
+     Rcargs v :: vs at ca_rec t :: gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ V :: Vs )
 where "'Rcargs' vs 'at' gs 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (read_cargs Θ Ξ s p ups ρ gs vs Ms) : type_scope
 (** A recursive argument of shape [t] in [ρ], at the uniform parameters
     [ups] of the group at [p]: a function shape under a fresh variable of
@@ -382,10 +382,10 @@ where "'Rsh' v 'at' t 'of' p ups 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ V" := (re
     branches under their own variables.  The recursive results are
     computed by the eliminator at [ups] too. *)
 with read_blocks (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -> list eblock ->
-                                      option (list nat) -> nat -> list imember -> nblocks -> Prop :=
+                                      option (list nat) -> nat -> list imember -> list normal_block -> Prop :=
 (** No member left *)
 | read_blocks_nil :
-  `( Rblks i nil from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nblocks_nil )
+  `( Rblks i nil from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 (** The block for the member [Mi]: the motive, then the branches, then
     the rest *)
 | read_blocks_cons :
@@ -399,7 +399,7 @@ with read_blocks (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain
      Rtyp a in Θ ⍮ Ξ ⍮ S (s + im_nn Mi)%nat ↘ A' ->
      Rbrs eb_brs b at im_cons Mi of Mi (hd, k, pre) from p ups Bks Mv (eb_motive b) in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
      Rblks (S i) Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
-     Rblks i (Mi :: Ms) from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nblocks_cons (S (im_nn Mi)) A' Bs' NBks )
+     Rblks i (Mi :: Ms) from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ mk_normal_block (S (im_nn Mi)) A' Bs' :: NBks )
 where "'Rblks' i Ms 'from' p ups Bks sel 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ NBks" := (read_blocks Θ Ξ s ρ p ups Bks sel i Ms NBks) : type_scope
 (** The branches of a block, one per constructor [cs] of the member [Mi]
     of the group read in order, of kinds [gs'], the block's motive [A] and
@@ -412,10 +412,10 @@ where "'Rblks' i Ms 'from' p ups Bks sel 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ N
     [pre]. *)
 with read_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain -> list eblock ->
                                     imember -> exp -> imember -> (qname * nat * list domain) ->
-                                    list (string * list carg) -> list (string * nat * exp) -> nbrs -> Prop :=
+                                    list (string * list carg) -> list (string * nat * exp) -> list normal_branch -> Prop :=
 (** No constructor left *)
 | read_brs_nil :
-  `( Rbrs nil at nil of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_nil )
+  `( Rbrs nil at nil of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nil )
 (** The branch of the next constructor, under its fresh variables, at
     the motive's instance, then the rest *)
 | read_brs_cons :
@@ -432,7 +432,7 @@ with read_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> qname -> list domain ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ d_con hd k c (pre ++ ns ++ vs) :: nil) ↘ t ->
      Rnf ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
      Rbrs Bs at cs of Mi (hd, k, pre) from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
-     Rbrs (c, n0, B) :: Bs at (c, gs') :: cs of Mi (hd, k, pre) from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nbrs_cons c n B' Bs' )
+     Rbrs (c, n0, B) :: Bs at (c, gs') :: cs of Mi (hd, k, pre) from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ mk_normal_branch c n B' :: Bs' )
 where "'Rbrs' Bs 'at' cs 'of' Mi r 'from' p ups Bks Mv A 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Bs'" := (read_brs Θ Ξ s ρ p ups Bks Mv A Mi r cs Bs Bs') : type_scope
 .
 

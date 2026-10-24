@@ -1024,21 +1024,6 @@ let given_names (ox : string option) (delta : centry list) : string option list 
 
 let format_exp_named ox delta f exp = format_obj f (exp_to_obj ~delta ~names:(given_names ox delta) exp)
 
-(* The member selected and the term it is selected through, where the head
-   of an eliminator's annotation, in the skeleton [delta] of its site, is a
-   member of a module expression with a term binder, a hole of the
-   skeleton ([ce_hole], [ce_ass ⊤]), at its head, applied or not. *)
-let annot_term_access (delta : centry list) (z : exp) : (string * exp) option =
-  let rec head = function Coq_a_app (e, _) -> head e | e -> e in
-  let rec term_of = function
-    | Coq_me_var k -> (match List.nth_opt delta k with Some (Coq_ce_ass Coq_a_True) -> Some (Coq_a_var k) | _ -> None)
-    | Coq_me_app (h, n) -> Option.map (fun t -> Coq_a_app (t, n)) (term_of h)
-    | _ -> None
-  in
-  match head z with
-  | Coq_a_mem (h, y) -> Option.map (fun t -> (y, t)) (term_of h)
-  | _ -> None
-
 (************************************************************)
 (* Formatting nf *)
 (************************************************************)
@@ -1056,56 +1041,6 @@ let format_eval (f : Format.formatter) (r : Command1.eval_entry) : unit =
   Format.fprintf f "@[<hov 2>Evaluate %a@ --> %a@ : %a@]" format_exp r.ev_exp
     format_nf r.ev_nf format_exp r.ev_typ
 
-(* An eliminator in [m] with no binder type, whose scrutinee is of a member
-   of a group with uniform parameters: the core gets the group and its
-   uniform parameters from a block's binder type only, so the eliminator is
-   rejected.  The scrutinee and its type, in the binders [delta] of [m]
-   crossed to reach it.  Only the binders whose types are written are
-   crossed: a motive's and a branch's are not. *)
-let unannotated_elim (m : exp) : (centry list * exp * exp) option =
-  let deps, xi = !current_state in
-  let gc = { gc_deps = deps; gc_stack = xi } in
-  let fc = McttExtracted.Lookup.fctx_none deps xi in
-  let tele = McttExtracted.Syntax.gs_tele xi in
-  let uniform t =
-    match McttExtracted.Group.app_head t with
-    | Coq_a_ind (p, _) ->
-       (match McttExtracted.Members.ind_lookup deps xi p with
-        | Some d -> McttExtracted.Syntax.ind_nu d > 0
-        | None -> false)
-    | _ -> false
-  in
-  let rec go delta e =
-    match e with
-    | Coq_a_elim (None, [], _, bks, scr) ->
-       let typed = List.exists (fun (Coq_eb_mk (_, oz, _, _)) -> oz <> None) bks in
-       let here =
-         if typed then None
-         else match McttExtracted.TypeCheck.type_infer_at gc fc (delta @ tele) scr with
-           | Some w -> let t = McttExtracted.Syntax.nf_to_exp w in if uniform t then Some (delta, scr, t) else None
-           | None -> None
-       in
-       (match here with Some r -> Some r | None -> go delta scr)
-    | Coq_a_elim (_, _, _, _, scr) -> go delta scr
-    | Coq_a_fn (a, b) | Coq_a_pi (a, b) ->
-       (match go delta a with Some r -> Some r | None -> go (Coq_ce_ass a :: delta) b)
-    | Coq_a_app (e1, e2) | Coq_a_maxl (e1, e2) ->
-       (match go delta e1 with Some r -> Some r | None -> go delta e2)
-    | Coq_a_exfalso (_, e1) | Coq_a_succl e1 | Coq_a_univ e1 -> go delta e1
-    | Coq_a_let (Coq_b_def (Some a, n), b) ->
-       (match go delta n with Some r -> Some r | None -> go (Coq_ce_def (a, n) :: delta) b)
-    | Coq_a_let (Coq_b_def (None, n), _) -> go delta n
-    | _ -> None
-  in
-  go [] m
-
-(* The hint for [unannotated_elim], after an error. *)
-let format_elim_hint (f : Format.formatter) (m : exp) : unit =
-  match unannotated_elim m with
-  | Some (delta, scr, t) ->
-     Format.fprintf f "@\n@[<hov 2>Hint: the eliminator of@ %a@ has no binder type,@ and its type has uniform parameters:@ write it on the scrutinee's binder,@ as in @[elim … at (z :@ %a)@ %s …@]@]"
-       (format_exp_in delta) scr (format_exp_in delta) t s_arrow
-  | None -> ()
 
 (* The source of a unit other than the program run, parsed, for the names
    its declarations give ([decl_names]); the driver sets it to its loader. *)
@@ -1238,7 +1173,8 @@ let rec format_run_error (f : Format.formatter) (e : Command1.run_error) : unit 
   (match e with
    | Coq_re_def (_, xi, _, _) | Coq_re_def_typ (_, xi, _) | Coq_re_eval_typ (xi, _, _)
    | Coq_re_eval_check (xi, _, _) | Coq_re_eval_infer (xi, _) | Coq_re_level (xi, _, _)
-   | Coq_re_elim_blocks (xi, _, _, _, _, _)
+   | Coq_re_elim_blocks (xi, _, _, _, _, _) | Coq_re_elim_scrutinee (xi, _, _, _, _)
+   | Coq_re_elim_no_group (xi, _, _) | Coq_re_elim_ambiguous (xi, _, _, _)
    | Coq_re_access_no_type (xi, _, _, _, _) | Coq_re_access_not_record (xi, _, _, _, _, _) ->
       set_ind_decls (fst !current_state) xi;
       current_state := (fst !current_state, xi)
@@ -1251,8 +1187,7 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_re_msg msg -> fprintf f "@[<hov 2>Error: %s@]" msg
   | Coq_re_def (x, _, typ, exp) ->
      fprintf f "@[<hov 2>Error: the body of %s,@ %a,@ is not of type@ %a@]" x
-       format_exp exp format_exp typ;
-     format_elim_hint f exp
+       format_exp exp format_exp typ
   | Coq_re_def_typ (x, _, typ) ->
      fprintf f "@[<hov 2>Error: the type of %s,@ %a,@ is not a type@]" x
        format_exp typ
@@ -1261,8 +1196,7 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
        format_exp exp format_exp typ
   | Coq_re_eval_check (_, exp, typ) ->
      fprintf f "@[<hov 2>Error:@ %a@ is not of type@ %a@]" format_exp exp
-       format_exp typ;
-     format_elim_hint f exp
+       format_exp typ
   (* The level of a universe that is no level, in the binders crossed to
      reach it; a numeral there is a natural number, not the level. *)
   | Coq_re_level (_, delta, t) ->
@@ -1273,8 +1207,7 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
      fprintf f "@[<hov 2>Error:@ %a@ is not of type Level@@n for any n@ (the level of@ %a)%a@]"
        (format_exp_in delta) t (format_exp_in delta) (Coq_a_univ t) hint ()
   | Coq_re_eval_infer (_, exp) ->
-     fprintf f "@[<hov 2>Error:@ %a@ has no inferable type@]" format_exp exp;
-     format_elim_hint f exp
+     fprintf f "@[<hov 2>Error:@ %a@ has no inferable type@]" format_exp exp
   | Coq_re_cycle ch ->
      fprintf f "@[<hov 2>Error: cyclic import:@ %a@]"
        pp_u (String.concat (" " ^ s_arrow ^ " ") (List.map string_of_upath ch))
@@ -1328,15 +1261,25 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_re_mdef_nparams (g, m, n) ->
      fprintf f "@[<hov 2>Error: %s has %d non-uniform %s,@ its member %d@]"
        g m (if m = 1 then "parameter" else "parameters") n
-  (* An annotation whose head is a member selected through a term: the
-     type is named through the term's record instead. *)
-  | Coq_re_elim_ann (_, ox, delta, z) when annot_term_access delta z <> None ->
-     let y, t = Option.get (annot_term_access delta z) in
-     fprintf f "@[<hov 2>Error: the head of an eliminator's annotation,@ %a,@ cannot be an access through a term;@ name the type through its record, R.%s As %a@]"
-       (format_exp_named ox delta) z y (format_exp_named ox delta) t
-  | Coq_re_elim_ann (_, ox, delta, z) ->
-     fprintf f "@[<hov 2>Error: the binder type@ %a@ of an eliminator's block is no member of a group of inductive types@ applied to its uniform parameters,@ or its uniform arguments depend on the block's binders@]"
-       (format_exp_named ox delta) z
+  (* An eliminator's scrutinee whose type is not inferred, or is no
+     inductive type: the eliminator's group is read off that type. *)
+  | Coq_re_elim_scrutinee (_, ox, delta, m, None) ->
+     fprintf f "@[<hov 2>Error: the scrutinee@ %a@ of an eliminator has no inferable type@]"
+       (format_exp_named ox delta) m
+  | Coq_re_elim_scrutinee (_, ox, delta, m, Some a) ->
+     fprintf f "@[<hov 2>Error: the scrutinee@ %a@ of an eliminator is of type@ %a,@ which is not an inductive type@]"
+       (format_exp_named ox delta) m (format_exp_named ox delta) a
+  (* An eliminator no reading of which fits its blocks. *)
+  | Coq_re_elim_no_group (_, delta, e) ->
+     let scr = match e with Coq_a_elim (_, _, _, _, s) -> s | s -> s in
+     fprintf f "@[<hov 2>Error: no group fits the blocks of the eliminator of@ %a@]" (format_exp_in delta) scr
+  (* An eliminator several readings of which fit its blocks, each named by
+     its group's type former at its uniform parameters. *)
+  | Coq_re_elim_ambiguous (_, delta, e, rs) ->
+     let scr = match e with Coq_a_elim (_, _, _, _, s) -> s | s -> s in
+     let reading (q, us) = Format.asprintf "%a" (format_exp_in delta) (McttExtracted.Syntax.apps_exp (Coq_a_ind (q, 0)) us) in
+     fprintf f "@[<hov 2>Error: the eliminator of@ %a@ is ambiguous:@ its blocks fit the eliminators of@ %a@]"
+       (format_exp_in delta) scr pp_u (String.concat " and of " (List.map reading rs))
   (* An eliminator whose blocks are not those of its group: what is
      missing, extra or out of order, then the eliminator as it should be. *)
   | Coq_re_elim_blocks (_, delta, Coq_a_elim (Some p, us, _, bks, scr), missing, extra, j) ->

@@ -57,14 +57,14 @@ Qed.
 
 (** The arguments of a constructor read back position by position. *)
 Lemma read_cargs_nth : forall s p ups ρ gs vs Vs, Rcargs vs at gs of p ups in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Vs ->
-    List.length (nfs_to_exps Vs) = List.length gs /\
+    List.length (List.map nf_to_exp Vs) = List.length gs /\
     (forall gs1 A gs2 v, gs = gs1 ++ ca_arg A :: gs2 -> List.nth_error vs (List.length gs1) = Some v ->
        exists a (V : nf), ⟦ A ⟧ env_args ρ (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
-         Rnf ⇓ a v in s ↘ V /\ List.nth_error (nfs_to_exps Vs) (List.length gs1) = Some (V : exp)) /\
+         Rnf ⇓ a v in s ↘ V /\ List.nth_error (List.map nf_to_exp Vs) (List.length gs1) = Some (V : exp)) /\
     (forall gs1 Pr gs2 v, gs = gs1 ++ ca_rec Pr :: gs2 -> List.nth_error vs (List.length gs1) = Some v ->
        exists (V : nf), Rsh v at Pr of p ups in gc_deps ⍮ gc_stack ⍮
                           env_args ρ (nonrec_arg_vals gs1 (List.firstn (List.length gs1) vs)) ⍮ s ↘ V /\
-         List.nth_error (nfs_to_exps Vs) (List.length gs1) = Some (V : exp)).
+         List.nth_error (List.map nf_to_exp Vs) (List.length gs1) = Some (V : exp)).
 Proof.
   induction 1.
   - split; [ reflexivity | split; intros [] *; discriminate ].
@@ -98,7 +98,7 @@ Lemma read_nf_con_member_inv : forall s p D k Mk hd k' c gs bs vs as' w,
     forall (Q : nf -> Prop),
       (forall PN Args, Rps as' at List.rev (im_params D Mk) in gc_deps ⍮ gc_stack ⍮ nil ⍮ s ↘ PN ->
          Rcargs vs at gs of p (List.firstn (ind_nu D) as') in gc_deps ⍮ gc_stack ⍮ env_args nil as' ⍮ s ↘ Args ->
-         Q (nf_con p k c (nfs_app PN Args))) ->
+         Q (nf_con p k c (PN ++ Args))) ->
       Q w.
 Proof.
   intros * Hl HM Href Hc Hbl Hvl Hw Q HQ.
@@ -363,7 +363,7 @@ Section IndRealize.
       pose proof (HPsr Γ wk_id PN Hid HRps) as HPsN; rewrite map_wk_id_exp in HPsN.
       destruct HPsN as [HlN HPcN].
       clear HPsr HPst.
-      cbn [nf_to_exp]; rewrite nfs_to_exps_app.
+      cbn [nf_to_exp]; rewrite List.map_app.
       etransitivity; [ exact Heq |].
       replace (im_ty_at p k' Mk0 Us Ns) with (ind_mty p D k' (List.firstn (ind_nu D) (Us ++ Ns)) (List.skipn (ind_nu D) (Us ++ Ns)))
         by (unfold ind_mty; rewrite HMk0, firstn_app_exact, skipn_app_exact by exact HUl; reflexivity).
@@ -746,7 +746,7 @@ Section RecordRealize.
     { split; [ reflexivity |].
       intros k X Y A0 HX HY HA0; rewrite HX in HY; injection HY as <-; apply wf_exp_eq_refl; exact (HNt _ _ _ HX HA0). }
     assert (Htc : Δ ⊢ a_tuple (apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns)) (record_eta_fields R M[φ]ʷ)
-                    ≈ a_tuple (apps_exp (a_record p) (nfs_to_exps Ps)) (List.combine (List.map fst (record_fields R)) (nfs_to_exps Fs))
+                    ≈ a_tuple (apps_exp (a_record p) (List.map nf_to_exp Ps)) (List.combine (List.map fst (record_fields R)) (List.map nf_to_exp Fs))
                     : apps_exp (a_record p) (List.map (fun N => N[φ]ʷ) Ns)).
     { eapply wf_exp_eq_tuple_fields;
         [ exact Hetat | exact Hrt | exact Hl | exact HNl | rewrite <- HPl; exact HNl | exact HPs | exact HS
@@ -759,7 +759,7 @@ Section RecordRealize.
       destruct (nth_error_lt_some' vs k ltac:(lia)) as [r Hr].
       destruct (HFn _ _ _ _ Hfk Hr) as (t & F & Et & HF & HnF).
       assert (M1' = nf_to_exp F) as ->.
-      { pose proof (nth_error_combine_both (List.map fst (record_fields R)) (nfs_to_exps Fs) k f (nf_to_exp F)
+      { pose proof (nth_error_combine_both (List.map fst (record_fields R)) (List.map nf_to_exp Fs) k f (nf_to_exp F)
                       ltac:(rewrite List.nth_error_map, Hfk; reflexivity) HnF) as E.
         rewrite E in Hk1'; injection Hk1' as <-; reflexivity. }
       cbn [List.app] in Et.

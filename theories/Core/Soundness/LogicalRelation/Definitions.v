@@ -220,7 +220,7 @@ Record glu_params_top (Dh : ind_decl) (Mh : imember) (Γ : ctx) (Ps : list exp) 
       Γ ⊢ P : A
     (** At every weakening, equal to the readback of the values *)
   ; gpt_read : forall Δ φ Ms, Δ ⊢ᵏ φ : Γ -> Rps as' at List.rev (im_params Dh Mh) in gc_deps ⍮ gc_stack ⍮ nil ⍮ length Δ ↘ Ms ->
-      exps_eq_at Δ (im_params Dh Mh) (List.map (fun P => P[φ]ʷ) Ps) (nfs_to_exps Ms) }.
+      exps_eq_at Δ (im_params Dh Mh) (List.map (fun P => P[φ]ʷ) Ps) (List.map nf_to_exp Ms) }.
 
 (** The non-uniform parameters [Ns] of the member [Mk] (the member [k] of
     the group) at the group's uniform parameters [Us], glued to the values
@@ -499,7 +499,7 @@ Record params_glu_top (T : ctx) (Γ : ctx) (Ps : list exp) (ps : list domain) : 
       Γ ⊢ P : A
     (** At every weakening, equal to the readback of the values *)
   ; params_glu_read : forall Δ φ Ms, Δ ⊢ᵏ φ : Γ -> Rps ps at List.rev T in gc_deps ⍮ gc_stack ⍮ nil ⍮ length Δ ↘ Ms ->
-      exps_eq_at Δ T (List.map (fun P => P[φ]ʷ) Ps) (nfs_to_exps Ms) }.
+      exps_eq_at Δ T (List.map (fun P => P[φ]ʷ) Ps) (List.map nf_to_exp Ms) }.
 
 (** The types of the fields of [R] at the parameters [Ns], glued: the type
     of a field, after terms [Ms] glued to values [ms] at the types of the

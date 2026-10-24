@@ -168,7 +168,7 @@ Inductive mdef_group_why : Set :=
 (** The group of a mutual definition's functions [f0 :: fs] over [Δ],
     checked premise by premise as [mdef_group] reads it. *)
 Definition mdef_group_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (Δ : ctx) (f0 : raw_fun) (fs : list raw_fun) :
-    ({r : qname * nat * nfs * ind_decl * list exp * list nat |
+    ({r : qname * nat * list nf * ind_decl * list exp * list nat |
        let '(pq, m0, Ps, D, Us, ms) := r in mdef_group Θ Ξ Δ f0 fs pq m0 Ps D Us ms} + mdef_group_why)%type :=
   match typ_least_dec Θ Ξ HΞ (rf_nparams f0 ++ Δ ++ gs_tele Ξ) (rf_scrut f0) with
   | inright _ => inr (mgw_function (rf_name f0) mw_scrut_untyped)
@@ -182,7 +182,7 @@ Definition mdef_group_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (�
               | right _ => inr (mgw_view (rf_name f0))
               | left Hm0 =>
                   match inspect (img_pats (List.repeat true (List.length (rf_nparams f0)))
-                                   (List.firstn (ind_nu D) (nfs_to_exps Ps))) with
+                                   (List.firstn (ind_nu D) (List.map nf_to_exp Ps))) with
                   | exist _ None _ => inr (mgw_uparams (rf_name f0))
                   | exist _ (Some Us) HUs =>
                       match mdef_members_dec Θ Ξ HΞ pq D Us Δ (f0 :: fs) with

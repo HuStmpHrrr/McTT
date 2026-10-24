@@ -550,7 +550,7 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
    (`valid_exp_under_ctx_elim_of_emb` in `Completeness/Inductives/Elim.v`,
    `glu_rel_exp_elim_of_emb` in `Soundness/Inductives/Elim.v`) takes the
    `⊢ˣ` premises of `wf_elim` too.
-7. `ati_elim` has the premise `length (nfs_to_exps Rs) = ind_np D`; the
+7. `ati_elim` has the premise `length (List.map nf_to_exp Rs) = ind_np D`; the
    checker decides it.
 8. The checker's message for an ill-formed declaration names the type only
    (`"ill-formed inductive declaration x"`), not the failing premise, except

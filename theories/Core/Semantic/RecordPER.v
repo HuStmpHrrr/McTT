@@ -307,10 +307,10 @@ Section Fixed_GCtx.
   Lemma read_fields_nth : forall s ρ fl v Fs, Rflds v at fl in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Fs ->
       forall ns pre vs, ρ = env_args nil (ns ++ pre) ->
       List.Forall2 (fun fT r => eval_proj gc_deps gc_stack (fst fT) v r) fl vs ->
-      List.length (nfs_to_exps Fs) = List.length fl /\
+      List.length (List.map nf_to_exp Fs) = List.length fl /\
       forall j g T r, List.nth_error fl j = Some (g, T) -> List.nth_error vs j = Some r ->
         exists t F, ⟦ T ⟧ env_args nil (ns ++ pre ++ List.firstn j vs) ↘ t /\ Rnf ⇓ t r in gc_deps ⍮ gc_stack ⍮ s ↘ F /\
-          List.nth_error (nfs_to_exps Fs) j = Some (nf_to_exp F).
+          List.nth_error (List.map nf_to_exp Fs) j = Some (nf_to_exp F).
   Proof.
     induction 1 as [| f v r T ρ t s F fl Fs Hp Et HF HFs IH]; intros ns pre vs -> Hvs.
     - inversion Hvs; subst; split; [ reflexivity |]; intros [| j]; discriminate.

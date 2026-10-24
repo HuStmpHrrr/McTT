@@ -1,20 +1,19 @@
-(** * Deciding the Access Fill
+(** * Deciding the Typed Fill
 
-    The fill of [Core.Syntactic.System.AccessFill], computed.  A command
-    with no access ([cmd_access_free_b]) is its own fill, found with no
-    typing; any other is filled part by part, its contexts computed as the
-    relation reads them, inferring a type ([infer_at]) only where the
-    relation does: at an access's head, at an unannotated [let], at an
-    unnamed eliminator.  The computed fill is the relation's
-    ([fill_cmd_fn_sound]), and is found whenever the relation has one
-    ([fill_cmd_fn_complete]). *)
+    The fill of [Core.TypedElab.Fill], computed.  Every command is filled
+    part by part, its contexts computed as the relation reads them,
+    inferring a type ([infer_at]) only where the relation does: at an
+    access's head, at an unannotated [let], at an eliminator's scrutinee.
+    The computed fill is the relation's ([fill_cmd_fn_sound]), and is found
+    whenever the relation has one ([fill_cmd_fn_complete]). *)
 
 From Stdlib Require Import List String PeanoNat Bool Lia.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System Builtin Records.
-From Mctt.Core.Syntactic.System Require Import Privacy AccessFill AccessFillLemmas.
+From Mctt.Core.Syntactic.System Require Import Privacy Translations.
+From Mctt.Core Require Import TypedElab.
 From Mctt.Core.Syntactic.System.Global Require Import Paths.
 From Mctt.Algorithmic.Typing Require Import Definitions Functional.
 From Mctt.Extraction Require Import Lookup TypeCheckBase TypeCheck GlobalCheck MemberType MemberOrder Privacy.
@@ -28,8 +27,9 @@ Open Scope string_scope.
 
     The checker fills a command at the units the unit imported, the
     judgment at the units filed: the two have the same lookups, so the
-    same inferred types, the same denotations and the same privacy, and so
-    the same fills. *)
+    same inferred types, the same denotations, the same eliminator
+    readings, the same literals and the same privacy, and so the same
+    fills. *)
 
 Lemma gds_equiv_ds_ty : forall Θ Θ' Ξ R, gds_equiv Θ Θ' -> ds_ty Θ Ξ R = ds_ty Θ' Ξ R.
 Proof.
@@ -40,8 +40,16 @@ Qed.
 Lemma gds_equiv_ds_mtele : forall Θ Θ' Ξ R, gds_equiv Θ Θ' -> ds_mtele Θ Ξ R = ds_mtele Θ' Ξ R.
 Proof. intros * He; unfold ds_mtele; rewrite (gds_equiv_ds_mod _ _ _ _ He); reflexivity. Qed.
 
+(** The literals are read off the bound type's declaration, the same at
+    equivalent dependencies. *)
+Lemma equiv_nat_view : forall Θ Θ' Ξ B, gds_equiv Θ Θ' -> nat_view Θ Ξ B = nat_view Θ' Ξ B.
+Proof.
+  intros * He; unfold nat_view; destruct (bt_nat B) as [p |]; [| reflexivity ].
+  rewrite (gds_equiv_ind_lookup _ _ _ _ He); reflexivity.
+Qed.
+
 Section AlgEquiv.
-  Variables (Θ Θ' : gdeps) (Ξ : gstack).
+  Variables (Θ Θ' : gdeps) (Ξ : gstack) (B : builtins).
   Hypothesis He : gds_equiv Θ Θ'.
 
   Let Hind : forall p D, ind_lookup Θ Ξ p = Some D -> ind_lookup Θ' Ξ p = Some D.
@@ -54,6 +62,13 @@ Section AlgEquiv.
   Proof. intros; rewrite <- (gds_equiv_ds_mtele _ _ _ _ He); assumption. Qed.
   Let Hdmod : forall R Rm, ds_mod Θ Ξ R = Some Rm -> ds_mod Θ' Ξ R = Some Rm.
   Proof. intros; rewrite <- (gds_equiv_ds_mod _ _ _ _ He); assumption. Qed.
+  Let Hnv : forall v, nat_view Θ Ξ B = v -> nat_view Θ' Ξ B = v.
+  Proof. intros; rewrite <- (equiv_nat_view _ _ _ _ He); assumption. Qed.
+  Let Het : forall pc k Rs m Bks t, elim_target Θ Ξ pc k Rs m Bks = t -> elim_target Θ' Ξ pc k Rs m Bks = t.
+  Proof.
+    intros * E; rewrite <- E; symmetry; apply elim_target_lookup_ext; intros p.
+    exact (gds_equiv_ind_lookup _ _ _ _ He).
+  Qed.
   Let Hnbt : forall Γ A W, nbe_ty Θ Ξ Γ A W -> nbe_ty Θ' Ξ Γ A W := equiv_nbe_ty Θ Θ' Ξ He.
   Let Hnb : forall Γ M A W, nbe Θ Ξ Γ M A W -> nbe Θ' Ξ Γ M A W := equiv_nbe Θ Θ' Ξ He.
   Let Hmd := gds_equiv_mdenote_all Θ Θ' Ξ He.
@@ -93,22 +108,20 @@ Section AlgEquiv.
 
   Hypothesis Hg' : ⊢ᵍ Θ' ⍮ Ξ.
 
-  (** The fill reads the dependencies through lookups, inference and
-      privacy, all alike. *)
+  (** The fill reads the dependencies through lookups, inference, the
+      eliminator readings, the literals and privacy, all alike. *)
   Lemma equiv_fill_all :
-    (forall Γ M M', fill_exp Θ Ξ Γ M M' -> fill_exp Θ' Ξ Γ M M') /\
-    (forall Γ oq M p, elim_group Θ Ξ Γ oq M p -> elim_group Θ' Ξ Γ oq M p) /\
-    (forall Γ Ms Ms', fill_exps Θ Ξ Γ Ms Ms' -> fill_exps Θ' Ξ Γ Ms Ms') /\
-    (forall Γ fs fs', fill_fvals Θ Ξ Γ fs fs' -> fill_fvals Θ' Ξ Γ fs fs') /\
-    (forall Γ p D Us As j Bks Bks', fill_blocks Θ Ξ Γ p D Us As j Bks Bks' -> fill_blocks Θ' Ξ Γ p D Us As j Bks Bks') /\
-    (forall Γ p D Mj Us As Bs Bs', fill_brs Θ Ξ Γ p D Mj Us As Bs Bs' -> fill_brs Θ' Ξ Γ p D Mj Us As Bs Bs') /\
-    (forall Γ oM oM', fill_oexp Θ Ξ Γ oM oM' -> fill_oexp Θ' Ξ Γ oM oM') /\
-    (forall Γ H r, fill_read Θ Ξ Γ H r -> fill_read Θ' Ξ Γ H r) /\
-    (forall Γ H H' op, fill_mod Θ Ξ Γ H H' op -> fill_mod Θ' Ξ Γ H H' op) /\
-    (forall Γ U U', fill_unit Θ Ξ Γ U U' -> fill_unit Θ' Ξ Γ U U') /\
-    (forall Γ D D', fill_def Θ Ξ Γ D D' -> fill_def Θ' Ξ Γ D D') /\
-    (forall Γ Δ Δ', fill_tele Θ Ξ Γ Δ Δ' -> fill_tele Θ' Ξ Γ Δ Δ') /\
-    (forall Γ Φ Φ', fill_body Θ Ξ Γ Φ Φ' -> fill_body Θ' Ξ Γ Φ Φ').
+    (forall Γ M M', fill_exp Θ Ξ B Γ M M' -> fill_exp Θ' Ξ B Γ M M') /\
+    (forall Γ fs fs', fill_fvals Θ Ξ B Γ fs fs' -> fill_fvals Θ' Ξ B Γ fs fs') /\
+    (forall Γ p D Us As j Bks Bks', fill_blocks Θ Ξ B Γ p D Us As j Bks Bks' -> fill_blocks Θ' Ξ B Γ p D Us As j Bks Bks') /\
+    (forall Γ p D Mj Us As Bs Bs', fill_brs Θ Ξ B Γ p D Mj Us As Bs Bs' -> fill_brs Θ' Ξ B Γ p D Mj Us As Bs Bs') /\
+    (forall Γ oM oM', fill_oexp Θ Ξ B Γ oM oM' -> fill_oexp Θ' Ξ B Γ oM oM') /\
+    (forall Γ H r, fill_read Θ Ξ B Γ H r -> fill_read Θ' Ξ B Γ H r) /\
+    (forall Γ H H' op, fill_mod Θ Ξ B Γ H H' op -> fill_mod Θ' Ξ B Γ H H' op) /\
+    (forall Γ U U', fill_unit Θ Ξ B Γ U U' -> fill_unit Θ' Ξ B Γ U U') /\
+    (forall Γ D D', fill_def Θ Ξ B Γ D D' -> fill_def Θ' Ξ B Γ D D') /\
+    (forall Γ Δ Δ', fill_tele Θ Ξ B Γ Δ Δ' -> fill_tele Θ' Ξ B Γ Δ Δ') /\
+    (forall Γ Φ Φ', fill_body Θ Ξ B Γ Φ Φ' -> fill_body Θ' Ξ B Γ Φ Φ').
   Proof.
     destruct Hmd as (Hm1 & _ & _ & Hm4 & _); destruct Hmd' as (Hm1' & _ & _ & _ & _).
     pose proof (proj1 (proj2 equiv_alg_all)) as Hinf.
@@ -116,42 +129,15 @@ Section AlgEquiv.
     (* a member that is no term: no term along the equivalence either *)
     eapply fill_read_mem_module; [ exact H0 | apply equiv_sel_ok; exact s | intros A oM Hm; exact (n A oM (Hm1' _ _ _ Hm)) ].
   Qed.
-
-  (** Access-free terms alike. *)
-  Lemma equiv_access_free_all :
-    (forall Γ M, access_free_exp Θ Ξ Γ M -> access_free_exp Θ' Ξ Γ M) /\
-    (forall Γ Ms, access_free_exps Θ Ξ Γ Ms -> access_free_exps Θ' Ξ Γ Ms) /\
-    (forall Γ fs, access_free_fvals Θ Ξ Γ fs -> access_free_fvals Θ' Ξ Γ fs) /\
-    (forall Γ Bks, access_free_blocks Θ Ξ Γ Bks -> access_free_blocks Θ' Ξ Γ Bks) /\
-    (forall Γ Bs, access_free_brs Θ Ξ Γ Bs -> access_free_brs Θ' Ξ Γ Bs) /\
-    (forall Γ oM, access_free_oexp Θ Ξ Γ oM -> access_free_oexp Θ' Ξ Γ oM) /\
-    (forall Γ H, access_free_mod Θ Ξ Γ H -> access_free_mod Θ' Ξ Γ H) /\
-    (forall Γ U, access_free_unit Θ Ξ Γ U -> access_free_unit Θ' Ξ Γ U) /\
-    (forall Γ D, access_free_def Θ Ξ Γ D -> access_free_def Θ' Ξ Γ D) /\
-    (forall Γ Δ, access_free_tele Θ Ξ Γ Δ -> access_free_tele Θ' Ξ Γ Δ) /\
-    (forall Γ Φ, access_free_body Θ Ξ Γ Φ -> access_free_body Θ' Ξ Γ Φ).
-  Proof.
-    destruct Hmd as (Hm1 & _ & _ & Hm4 & _); destruct Hmd' as (Hm1' & _ & _ & _ & _).
-    apply access_free_mut_ind; intros;
-      first [ solve [ econstructor 1; eauto ] | solve [ econstructor 2; eauto ] | solve [ econstructor 3; eauto ]
-            | solve [ econstructor 4; eauto ] | solve [ econstructor 5; eauto ] | solve [ econstructor 6; eauto ]
-            | solve [ econstructor 7; eauto ] | solve [ econstructor 8; eauto ] | solve [ econstructor 9; eauto ]
-            | solve [ econstructor 10; eauto ] | solve [ econstructor 11; eauto ] | solve [ econstructor 12; eauto ]
-            | solve [ econstructor 13; eauto ] | solve [ econstructor 14; eauto ] | solve [ econstructor 15; eauto ]
-            | idtac ].
-    (* a member that is no term: no term along the equivalence either *)
-    constructor; [ eauto | intros A oM Hm; eapply n; apply Hm1'; exact Hm ].
-  Qed.
 End AlgEquiv.
 
 (** The fill of a command, and of a unit's parameters, along an
     equivalence of the dependencies. *)
-Lemma equiv_fill_cmd : forall Θ Θ' Ξ c c', gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ -> fill_cmd Θ Ξ c c' -> fill_cmd Θ' Ξ c c'.
+Lemma equiv_fill_cmd : forall Θ Θ' Ξ B c c', gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ -> fill_cmd Θ Ξ B c c' -> fill_cmd Θ' Ξ B c c'.
 Proof.
   intros * He Hg' H.
-  pose proof (equiv_fill_all _ _ _ He Hg') as (Fe & _ & _ & _ & _ & Fb & Fo & _ & Fm & _ & _ & Ft & _).
-  pose proof (equiv_access_free_all _ _ Ξ He) as (Ae & _ & _ & _ & Ab & Ao & Am & _ & _ & At & _).
-  destruct H as [c Hp | | | | | | | | pv R R' [Hu Hr Hm] | b pv Δ Δ' f0 fs fh0 fsh f0' fs' pq m0 Ps D Us ms HΔ Hh Hgp Hb |].
+  pose proof (equiv_fill_all _ _ _ B He Hg') as (Fe & _ & _ & Fb & Fo & _ & Fm & _ & _ & Ft & _).
+  destruct H as [ | | | | | | | | pv R R' [Hu Hr Hm] | b pv Δ Δ' f0 fs fh0 fsh f0' fs' pq m0 Ps D Us ms HΔ Hh Hgp Hb | |].
   10:{ (* a mutual definition: its heads, its group, its bodies *)
       eapply fill_cmd_mdef; [ exact (Ft _ _ _ HΔ) | | exact (equiv_mdef_group _ _ _ _ _ _ _ _ _ _ _ _ He Hg' Hgp) | ].
       - eapply Forall2_impl; [| exact Hh ]; intros f f' [En Ep Es Er Ec]; constructor; eauto.
@@ -160,50 +146,58 @@ Proof.
       apply fill_cmd_ind_decl; constructor; [ exact (Ft _ _ _ Hu) | exact Hr |].
       eapply Forall2_impl; [| exact Hm ]; intros Mr Mr' [En Hn Hs Hc]; constructor; eauto.
       eapply Forall2_impl; [| exact Hc ]; intros rc rc' [Ef [Hna Ht]]; split; [ exact Ef | constructor; eauto ]. }
-  1: apply fill_cmd_plain.
   all: try (econstructor; eauto using Forall_impl, equiv_sel_ok; fail).
-  - destruct c; cbn in *; try exact I; repeat match goal with Hc : _ /\ _ |- _ => destruct Hc end;
-      repeat split; eauto.
-    + eapply Forall_impl; [| eassumption ]; intros Mr (Hn & Hs & Hc); repeat split; eauto.
-      eapply Forall_impl; [| eassumption ]; intros; eauto.
-    + eapply Forall_impl; [| eassumption ]; intros f (Hn & Hz & Hr & Hc); repeat split; eauto.
-    + intros j f T Hj; eauto.
-  - (* a record declaration: its fields *)
-    econstructor; eauto.
-    match goal with H1 : fill_fields _ _ _ _ _ |- _ => clear - Fe H1; induction H1; constructor; auto end.
+  (* a record declaration: its fields *)
+  econstructor; eauto.
+  match goal with H1 : fill_fields _ _ _ _ _ _ |- _ => clear - Fe H1; induction H1; constructor; auto end.
 Qed.
 
-Lemma equiv_fill_params : forall Θ Θ' Ξ Δ Δ', gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ -> fill_params Θ Ξ Δ Δ' -> fill_params Θ' Ξ Δ Δ'.
-Proof.
-  intros * He Hg' [Δ0 Hp | Δ0 Δ1 Ht];
-    [ apply fill_params_plain, (equiv_access_free_all _ _ Ξ He); exact Hp
-    | apply fill_params_tele, (equiv_fill_all _ _ _ He Hg'); exact Ht ].
-Qed.
+Lemma equiv_fill_params : forall Θ Θ' Ξ B Δ Δ', gds_equiv Θ Θ' -> ⊢ᵍ Θ' ⍮ Ξ ->
+    fill_params Θ Ξ B Δ Δ' -> fill_params Θ' Ξ B Δ Δ'.
+Proof. intros * He Hg' Ht; apply (equiv_fill_all _ _ _ B He Hg'); exact Ht. Qed.
 
 (** ** Results *)
 
-(** Why a command's accesses cannot be filled. *)
-Inductive access_error : Set :=
-(** The term a member [y] is selected from: its type is not inferred *)
-| access_error_no_type : string -> ctx -> exp -> access_error
-(** The term a member [y] is selected from: its type, inferred, is not a
-    record type *)
-| access_error_not_record : string -> ctx -> exp -> nf -> access_error
+(** Why a command has no fill. *)
+Inductive fill_failure : Set :=
+(** The term a member [y] is selected from, in its context: its type is
+    not inferred *)
+| fill_failure_no_type : string -> ctx -> exp -> fill_failure
+(** The term a member [y] is selected from, in its context: its type,
+    inferred, is not a record type *)
+| fill_failure_not_record : string -> ctx -> exp -> nf -> fill_failure
 (** A private member, named by its record's module, reached from outside
     it *)
-| access_error_private : qname -> string -> access_error
+| fill_failure_private : qname -> string -> fill_failure
 (** A mutual definition's functions, their heads filled, have no group:
     why *)
-| access_error_mdef_group : mdef_group_why -> access_error
+| fill_failure_mdef_group : mdef_group_why -> fill_failure
+(** A literal, with no natural-number type bound *)
+| fill_failure_literal : lerr -> fill_failure
+(** An eliminator's scrutinee, filled, in its context: its type, if
+    inferred, is not an inductive type *)
+| fill_failure_elim_scrutinee : ctx -> exp -> option nf -> fill_failure
+(** An eliminator, in its context, whose scrutinee's type is the member
+    [k] of the group [pc] at the arguments [Rs], and no reading of which
+    fits its blocks: [pc], [k], [Rs], the block marked [at], the blocks
+    and the filled scrutinee *)
+| fill_failure_elim_none : ctx -> qname -> nat -> list nf -> nat -> list eblock -> exp -> fill_failure
+(** An eliminator, in its context, several readings of which fit its
+    blocks: the eliminator, its scrutinee filled, and the readings, each
+    its group and its uniform parameters *)
+| fill_failure_elim_ambiguous : ctx -> exp -> list (qname * list exp) -> fill_failure
+(** A local body, in its context, whose entries filled so far have no
+    expansion: an open among them generates nothing *)
+| fill_failure_body : ctx -> gmod -> fill_failure
 (** Any other reason *)
-| access_error_message : string -> access_error.
+| fill_failure_message : string -> fill_failure.
 
 (** A fill, or why there is none. *)
 Inductive fill_result (A : Type) : Type :=
 (** The fill *)
 | fill_ok : A -> fill_result A
 (** Why there is none *)
-| fill_error : access_error -> fill_result A.
+| fill_error : fill_failure -> fill_result A.
 Arguments fill_ok {A}.
 Arguments fill_error {A}.
 
@@ -228,7 +222,7 @@ Proof.
 Qed.
 
 Section Decide.
-  Variables (Θ : gdeps) (Ξ : gstack).
+  Variables (Θ : gdeps) (Ξ : gstack) (B : builtins).
   Hypothesis Hg : ⊢ᵍ Θ ⍮ Ξ.
   (** The data the typed checks look names up in ([Extraction.Lookup]). *)
   Variable FF : forall Θ Ξ, FCtx Θ Ξ.
@@ -279,7 +273,7 @@ Section Decide.
     | nil => fill_ok tt
     | y :: ys' =>
         match sel_check op y with
-        | Some (qd, x) => fill_error (access_error_private qd x)
+        | Some (qd, x) => fill_error (fill_failure_private qd x)
         | None => sels_check op ys'
         end
     end.
@@ -288,7 +282,7 @@ Section Decide.
   Definition body_xp_fn (Γ : ctx) (Φ : gmod) : fill_result gmod :=
     match body_xp_dec Θ Ξ Hg Γ Φ with
     | inleft (exist _ Φx _) => fill_ok Φx
-    | inright _ => fill_error (access_error_message "a local open of a body opens no module")
+    | inright _ => fill_error (fill_failure_body Γ Φ)
     end.
 
   (** A module expression, in module position, read as [r]: the module it
@@ -301,8 +295,8 @@ Section Decide.
     | fill_ok (read_term M) =>
         match infer_at Γ M with
         | Some (nf_record p Rs) => fill_ok (record_value_module p Rs M, Some p)
-        | Some W => fill_error (access_error_not_record y Γ M W)
-        | None => fill_error (access_error_no_type y Γ M)
+        | Some W => fill_error (fill_failure_not_record y Γ M W)
+        | None => fill_error (fill_failure_no_type y Γ M)
         end
     end.
 
@@ -310,8 +304,18 @@ Section Decide.
 
   Fixpoint fill_exp_fn (Γ : ctx) (M : exp) {struct M} : fill_result exp :=
     match M with
-    | a_typ _ | a_level _ | a_llit _ | a_ntok | a_True | a_true | a_False
-    | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_var _ | a_record _ => fill_ok M
+    | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False
+    | a_ind _ _ | a_con _ _ _ | a_var _ | a_record _ => fill_ok M
+    | a_nlit n =>
+        match nat_view Θ Ξ B with
+        | Some (p, z, s) => fill_ok (nat_chain p z s n)
+        | None => fill_error (fill_failure_literal (le_num n))
+        end
+    | a_ntok =>
+        match nat_view Θ Ξ B with
+        | Some (p, _, _) => fill_ok (a_ind p 0)
+        | None => fill_error (fill_failure_literal le_tok)
+        end
     | a_univ M0 => let%a M' := fill_exp_fn Γ M0 in fill_ok (a_univ M')
     | a_succl M0 => let%a M' := fill_exp_fn Γ M0 in fill_ok (a_succl M')
     | a_maxl M0 N0 =>
@@ -322,9 +326,9 @@ Section Decide.
         let%a A' := fill_exp_fn (ce_ass a_False :: Γ) A in
         let%a M' := fill_exp_fn Γ M0 in
         fill_ok (a_exfalso A' M')
-    | a_pi A B =>
+    | a_pi A B0 =>
         let%a A' := fill_exp_fn Γ A in
-        let%a B' := fill_exp_fn (ce_ass A' :: Γ) B in
+        let%a B' := fill_exp_fn (ce_ass A' :: Γ) B0 in
         fill_ok (a_pi A' B')
     | a_fn A M0 =>
         let%a A' := fill_exp_fn Γ A in
@@ -334,27 +338,27 @@ Section Decide.
         let%a M' := fill_exp_fn Γ M0 in
         let%a N' := fill_exp_fn Γ N0 in
         fill_ok (a_app M' N')
-    | a_let (b_def (Some A) M0) B =>
+    | a_let (b_def (Some A) M0) B0 =>
         let%a A' := fill_exp_fn Γ A in
         let%a M' := fill_exp_fn Γ M0 in
-        let%a B' := fill_exp_fn (ce_def A' M' :: Γ) B in
+        let%a B' := fill_exp_fn (ce_def A' M' :: Γ) B0 in
         fill_ok (a_let (b_def (Some A') M') B')
-    | a_let (b_def None M0) B =>
+    | a_let (b_def None M0) B0 =>
         let%a M' := fill_exp_fn Γ M0 in
         match infer_at Γ M' with
         | Some W =>
-            let%a B' := fill_exp_fn (ce_def (nf_to_exp W) M' :: Γ) B in
+            let%a B' := fill_exp_fn (ce_def (nf_to_exp W) M' :: Γ) B0 in
             fill_ok (a_let (b_def None M') B')
-        | None => fill_error (access_error_message "the definition of an unannotated let infers no type")
+        | None => fill_error (fill_failure_message "the definition of an unannotated let infers no type")
         end
-    | a_let (b_mod U) B =>
+    | a_let (b_mod U) B0 =>
         let%a U' := fill_unit_fn Γ U in
-        let%a B' := fill_exp_fn (ce_mod U' :: Γ) B in
+        let%a B' := fill_exp_fn (ce_mod U' :: Γ) B0 in
         fill_ok (a_let (b_mod U') B')
     | a_mem H x =>
         let%a r := fill_mod_of Γ x (fill_read_fn Γ H) in
         match sel_check (snd r) x with
-        | Some (qd, y) => fill_error (access_error_private qd y)
+        | Some (qd, y) => fill_error (fill_failure_private qd y)
         | None => fill_ok (a_mem (fst r) x)
         end
     | a_tuple T fs =>
@@ -370,86 +374,78 @@ Section Decide.
              end) fs in
         fill_ok (a_tuple T' fs')
     | a_proj f M0 => let%a M' := fill_exp_fn Γ M0 in fill_ok (a_proj f M')
-    | a_elim oq Us m Bks M0 =>
+    | a_elim None nil m Bks M0 =>
         let%a M' := fill_exp_fn Γ M0 in
-        let%a p :=
-          match oq with
-          | Some p => fill_ok p
-          | None =>
-              match infer_at Γ M' with
-              | Some (nf_indty p _ _) => fill_ok p
-              | _ => fill_error (access_error_message "the scrutinee of an unnamed eliminator infers no inductive type")
-              end
-          end in
-        match ind_lookup Θ Ξ p with
-        | None => fill_error (access_error_message "an eliminator of no group")
-        | Some D =>
-            let%a Us' :=
-              (fix ups (Us : list exp) : fill_result (list exp) :=
-                 match Us with
-                 | nil => fill_ok nil
-                 | U :: Us0 =>
-                     let%a U' := fill_exp_fn Γ U in
-                     let%a Us0' := ups Us0 in
-                     fill_ok (U' :: Us0')
-                 end) Us in
-            (** first each block's annotation and motive, at the filled
-                uniform parameters *)
-            let%a hs :=
-              (fix heads (j : nat) (Bks : list eblock) : fill_result (list (option exp * exp)) :=
-                 match Bks with
-                 | nil => fill_ok nil
-                 | eb_mk nm oZ A Bs :: Bks0 =>
-                     match ind_member D j with
-                     | None => fill_error (access_error_message "an eliminator with more blocks than its group has members")
-                     | Some Mj =>
-                         if Nat.eqb nm (S (im_nn Mj)) then
-                           let%a oZ' :=
-                             match oZ with
-                             | None => fill_ok None
-                             | Some Z =>
-                                 let%a Z' := fill_exp_fn (tele_sub (im_nparams Mj) (sb_of_list Id Us') ++ Γ) Z in
-                                 fill_ok (Some Z')
-                             end in
-                           let%a A' := fill_exp_fn (elim_mctx p D j Mj Us' ++ Γ) A in
-                           let%a hs0 := heads (S j) Bks0 in
-                           fill_ok ((oZ', A') :: hs0)
-                         else fill_error (access_error_message "a block of an eliminator binds the wrong number of variables")
-                     end
-                 end) 0 Bks in
-            (** then the branches, at the filled motives of all the
-                blocks *)
-            let As := List.map snd hs in
-            let%a Bks' :=
-              (fix blocks (j : nat) (Bks : list eblock) (rest : list (option exp * exp)) : fill_result (list eblock) :=
-                 match Bks, rest with
-                 | nil, _ => fill_ok nil
-                 | eb_mk nm _ _ Bs :: Bks0, (oZ', A') :: rest0 =>
-                     match ind_member D j with
-                     | None => fill_error (access_error_message "an eliminator with more blocks than its group has members")
-                     | Some Mj =>
-                         let%a Bs' :=
-                           (fix brs (Bs : list (string * nat * exp)) : fill_result (list (string * nat * exp)) :=
-                              match Bs with
-                              | nil => fill_ok nil
-                              | (c, n, B) :: Bs0 =>
-                                  match ind_con Mj c with
-                                  | None => fill_error (access_error_message ("a branch of no constructor " ++ c))
-                                  | Some gs =>
-                                      if Nat.eqb n (im_nn Mj + List.length gs + cargs_nrec gs) then
-                                        let%a B' := fill_exp_fn (elim_bctx p D Mj gs As Us' ++ Γ) B in
-                                        let%a Bs0' := brs Bs0 in
-                                        fill_ok ((c, n, B') :: Bs0')
-                                      else fill_error (access_error_message ("the branch of " ++ c ++ " binds the wrong number of variables"))
-                                  end
-                              end) Bs in
-                         let%a Bks0' := blocks (S j) Bks0 rest0 in
-                         fill_ok (eb_mk nm oZ' A' Bs' :: Bks0')
-                     end
-                 | _ :: _, nil => fill_error (access_error_message "internal error: a block without its motive")
-                 end) 0 Bks hs in
-            fill_ok (a_elim oq Us' m Bks' M')
+        match infer_at Γ M' with
+        | Some (nf_indty pc k Rs) =>
+            match elim_target Θ Ξ pc k Rs m Bks with
+            | elim_target_one p Us =>
+                match ind_lookup Θ Ξ p with
+                | None => fill_error (fill_failure_message "internal error: an eliminator of no group")
+                | Some D =>
+                    (** first each block's annotation and motive, at the
+                        uniform parameters *)
+                    let%a hs :=
+                      (fix heads (j : nat) (Bks : list eblock) : fill_result (list (option exp * exp)) :=
+                         match Bks with
+                         | nil => fill_ok nil
+                         | eb_mk nm oZ A Bs :: Bks0 =>
+                             match ind_member D j with
+                             | None => fill_error (fill_failure_message "an eliminator with more blocks than its group has members")
+                             | Some Mj =>
+                                 if Nat.eqb nm (S (im_nn Mj)) then
+                                   let%a oZ' :=
+                                     match oZ with
+                                     | None => fill_ok None
+                                     | Some Z =>
+                                         let%a Z' := fill_exp_fn (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ) Z in
+                                         fill_ok (Some Z')
+                                     end in
+                                   let%a A' := fill_exp_fn (elim_mctx p D j Mj Us ++ Γ) A in
+                                   let%a hs0 := heads (S j) Bks0 in
+                                   fill_ok ((oZ', A') :: hs0)
+                                 else fill_error (fill_failure_message "a block of an eliminator binds the wrong number of variables")
+                             end
+                         end) 0 Bks in
+                    (** then the branches, at the filled motives of all
+                        the blocks *)
+                    let As := List.map snd hs in
+                    let%a Bks' :=
+                      (fix blocks (j : nat) (Bks : list eblock) (rest : list (option exp * exp)) : fill_result (list eblock) :=
+                         match Bks, rest with
+                         | nil, _ => fill_ok nil
+                         | eb_mk nm _ _ Bs :: Bks0, (oZ', A') :: rest0 =>
+                             match ind_member D j with
+                             | None => fill_error (fill_failure_message "an eliminator with more blocks than its group has members")
+                             | Some Mj =>
+                                 let%a Bs' :=
+                                   (fix brs (Bs : list (string * nat * exp)) : fill_result (list (string * nat * exp)) :=
+                                      match Bs with
+                                      | nil => fill_ok nil
+                                      | (c, n, B0) :: Bs0 =>
+                                          match ind_con Mj c with
+                                          | None => fill_error (fill_failure_message ("a branch of no constructor " ++ c))
+                                          | Some gs =>
+                                              if Nat.eqb n (im_nn Mj + List.length gs + cargs_nrec gs) then
+                                                let%a B' := fill_exp_fn (elim_bctx p D Mj gs As Us ++ Γ) B0 in
+                                                let%a Bs0' := brs Bs0 in
+                                                fill_ok ((c, n, B') :: Bs0')
+                                              else fill_error (fill_failure_message ("the branch of " ++ c ++ " binds the wrong number of variables"))
+                                          end
+                                      end) Bs in
+                                 let%a Bks0' := blocks (S j) Bks0 rest0 in
+                                 fill_ok (eb_mk nm oZ' A' Bs' :: Bks0')
+                             end
+                         | _ :: _, nil => fill_error (fill_failure_message "internal error: a block without its motive")
+                         end) 0 Bks hs in
+                    fill_ok (a_elim (Some p) Us m Bks' M')
+                end
+            | elim_target_ambiguous rs => fill_error (fill_failure_elim_ambiguous Γ (a_elim None nil m Bks M') rs)
+            | elim_target_none => fill_error (fill_failure_elim_none Γ pc k Rs m Bks M')
+            end
+        | W => fill_error (fill_failure_elim_scrutinee Γ M' W)
         end
+    | a_elim _ _ _ _ _ => fill_error (fill_failure_message "an eliminator written with its group")
     end
 
   with fill_read_fn (Γ : ctx) (H : modexp) {struct H} : fill_result module_read :=
@@ -460,7 +456,7 @@ Section Decide.
     | me_mem H0 y =>
         let%a r := fill_mod_of Γ y (fill_read_fn Γ H0) in
         match sel_check (snd r) y with
-        | Some (qd, x) => fill_error (access_error_private qd x)
+        | Some (qd, x) => fill_error (fill_failure_private qd x)
         | None =>
             if member_term_b Γ (fst r) y then fill_ok (read_term (a_mem (fst r) y))
             else fill_ok (read_module (me_mem (fst r) y))
@@ -514,7 +510,7 @@ Section Decide.
         | ge_mod pv U =>
             let%a U' := fill_unit_fn (body_ctx Φx ++ Γ) U in
             fill_ok (gm_ext Φ0' x (ge_mod pv U'))
-        | _ => fill_error (access_error_message "an entry no local body is written with")
+        | _ => fill_error (fill_failure_message "an entry no local body is written with")
         end
     | gm_open Φ0 H its =>
         let%a Φ0' := fill_body_fn Γ Φ0 in
@@ -566,157 +562,6 @@ Section Decide.
     | Some M => let%a M' := fill_exp_fn Γ M in fill_ok (Some M')
     end.
 
-  (** ** Access-Free Terms, Decided *)
-
-  Fixpoint access_free_exp_b (Γ : ctx) (M : exp) {struct M} : bool :=
-    match M with
-    | a_typ _ | a_level _ | a_llit _ | a_ntok | a_True | a_true | a_False
-    | a_ind _ _ | a_con _ _ _ | a_nlit _ | a_var _ | a_record _ => true
-    | a_univ M0 | a_succl M0 | a_proj _ M0 => access_free_exp_b Γ M0
-    | a_maxl M0 N0 | a_app M0 N0 => access_free_exp_b Γ M0 && access_free_exp_b Γ N0
-    | a_exfalso A M0 => access_free_exp_b (ce_hole :: Γ) A && access_free_exp_b Γ M0
-    | a_pi A B | a_fn A B => access_free_exp_b Γ A && access_free_exp_b (ce_hole :: Γ) B
-    | a_let (b_def oA M0) B =>
-        match oA with Some A => access_free_exp_b Γ A | None => true end &&
-        access_free_exp_b Γ M0 && access_free_exp_b (ce_hole :: Γ) B
-    | a_let (b_mod U) B => access_free_unit_b Γ U && access_free_exp_b (ce_mod U :: Γ) B
-    | a_mem H _ => access_free_mod_b Γ H
-    | a_tuple T fs =>
-        access_free_exp_b Γ T &&
-        (fix fields (fs : list (string * exp)) : bool :=
-           match fs with
-           | nil => true
-           | (_, N) :: fs0 => access_free_exp_b Γ N && fields fs0
-           end) fs
-    | a_elim _ Us _ Bks M0 =>
-        access_free_exp_b Γ M0 &&
-        (fix ups (Us : list exp) : bool :=
-           match Us with
-           | nil => true
-           | U :: Us0 => access_free_exp_b Γ U && ups Us0
-           end) Us &&
-        (fix blocks (Bks : list eblock) : bool :=
-           match Bks with
-           | nil => true
-           | eb_mk nm oZ A Bs :: Bks0 =>
-               match oZ with Some Z => access_free_exp_b (ctx_holes (nm - 1) ++ Γ) Z | None => true end &&
-               access_free_exp_b (ctx_holes nm ++ Γ) A &&
-               (fix brs (Bs : list (string * nat * exp)) : bool :=
-                  match Bs with
-                  | nil => true
-                  | (_, n, B) :: Bs0 => access_free_exp_b (ctx_holes n ++ Γ) B && brs Bs0
-                  end) Bs &&
-               blocks Bks0
-           end) Bks
-    end
-
-  with access_free_mod_b (Γ : ctx) (H : modexp) {struct H} : bool :=
-    match H with
-    | me_unit _ => true
-    | me_var k => negb (term_binder_b Γ k)
-    | me_mem H0 y => access_free_mod_b Γ H0 && negb (member_term_b Γ H0 y)
-    | me_app H0 N => access_free_mod_b Γ H0 && access_free_exp_b Γ N
-    | me_lit U => access_free_unit_b Γ U
-    end
-
-  with access_free_unit_b (Γ : ctx) (U : gunit) {struct U} : bool :=
-    match U with
-    | gu_mk Δ D =>
-        (fix tele (Δ : list centry) : bool :=
-           match Δ with
-           | nil => true
-           | e :: Δ0 => tele Δ0 && access_free_centry_b (Δ0 ++ Γ) e
-           end) Δ &&
-        access_free_def_b (Δ ++ Γ) D
-    end
-
-  with access_free_def_b (Γ : ctx) (D : moddef) {struct D} : bool :=
-    match D with
-    | md_alias E => access_free_mod_b Γ E
-    | md_body _ Φ => access_free_body_b Γ Φ
-    end
-
-  with access_free_body_b (Γ : ctx) (Φ : gmod) {struct Φ} : bool :=
-    match Φ with
-    | gm_nil => true
-    | gm_ext Φ0 _ E =>
-        access_free_body_b Γ Φ0 &&
-        match body_xp_dec Θ Ξ Hg Γ Φ0 with
-        | inleft (exist _ Φx _) =>
-            match E with
-            | ge_def _ _ A oM =>
-                access_free_exp_b (body_ctx Φx ++ Γ) A &&
-                match oM with Some M => access_free_exp_b (body_ctx Φx ++ Γ) M | None => true end
-            | ge_mod _ U => access_free_unit_b (body_ctx Φx ++ Γ) U
-            | _ => false
-            end
-        | inright _ => false
-        end
-    | gm_open Φ0 H _ =>
-        access_free_body_b Γ Φ0 &&
-        match body_xp_dec Θ Ξ Hg Γ Φ0 with
-        | inleft (exist _ Φx _) => access_free_mod_b (body_ctx Φx ++ Γ) H
-        | inright _ => false
-        end
-    end
-
-  with access_free_centry_b (Γ : ctx) (e : centry) {struct e} : bool :=
-    match e with
-    | ce_ass A => access_free_exp_b Γ A
-    | ce_def A M => access_free_exp_b Γ A && access_free_exp_b Γ M
-    | ce_mod U => access_free_unit_b Γ U
-    end.
-
-  (** A telescope with no access. *)
-  Fixpoint access_free_tele_b (Γ : ctx) (Δ : ctx) : bool :=
-    match Δ with
-    | nil => true
-    | e :: Δ0 => access_free_tele_b Γ Δ0 && access_free_centry_b (Δ0 ++ Γ) e
-    end.
-
-  (** A term that may be absent, with no access. *)
-  Definition access_free_oexp_b (Γ : ctx) (oM : option exp) : bool :=
-    match oM with Some M => access_free_exp_b Γ M | None => true end.
-
-  (** Terms each over as many holes as their position. *)
-  Fixpoint access_free_at_b (Γ : ctx) (j : nat) (As : list exp) : bool :=
-    match As with
-    | nil => true
-    | A :: As0 => access_free_exp_b (ctx_holes j ++ Γ) A && access_free_at_b Γ (S j) As0
-    end.
-
-  (** ** Commands *)
-
-  (** Whether a command has no access, as [cmd_access_free] says. *)
-  Definition cmd_access_free_b (c : ccmd) : bool :=
-    match c with
-    | cc_gen _ | cc_load _ => true
-    | cc_def _ _ _ A oM => access_free_exp_b (gs_tele Ξ) A && access_free_oexp_b (gs_tele Ξ) oM
-    | cc_mod _ _ Δ _ => access_free_tele_b (gs_tele Ξ) Δ
-    | cc_alias _ _ Δ E | cc_ind_alias _ _ Δ E =>
-        access_free_tele_b (gs_tele Ξ) Δ && access_free_mod_b (Δ ++ gs_tele Ξ) E
-    | cc_eval M oA => access_free_exp_b (gs_tele Ξ) M && access_free_oexp_b (gs_tele Ξ) oA
-    | cc_open E _ | cc_builtin _ E => access_free_mod_b (gs_tele Ξ) E
-    | cc_ind _ R =>
-        access_free_tele_b (gs_tele Ξ) (rd_uparams R) &&
-        List.forallb (fun Mr =>
-          access_free_tele_b (rd_uparams R ++ gs_tele Ξ) (rm_nparams Mr) &&
-          access_free_exp_b (rd_uparams R ++ gs_tele Ξ) (rm_sort Mr) &&
-          List.forallb (fun rc => access_free_tele_b (rm_pctx Ξ R Mr) (rtele (snd rc))) (rm_cons Mr))
-          (rd_members R)
-    | cc_mdef _ _ Δ fs =>
-        access_free_tele_b (gs_tele Ξ) Δ &&
-        List.forallb (fun f =>
-          access_free_tele_b (Δ ++ gs_tele Ξ) (rf_nparams f) &&
-          access_free_exp_b (rf_nparams f ++ Δ ++ gs_tele Ξ) (rf_scrut f) &&
-          access_free_exp_b (ctx_holes (S (List.length (rf_nparams f))) ++ Δ ++ gs_tele Ξ) (rf_res f) &&
-          List.forallb (fun b => access_free_exp_b (ctx_holes (snd (fst b)) ++ Δ ++ gs_tele Ξ) (snd b))
-            (rf_clauses f)) fs
-    | cc_record _ _ Δ Srt fs _ =>
-        access_free_tele_b (gs_tele Ξ) Δ && access_free_exp_b (Δ ++ gs_tele Ξ) Srt &&
-        access_free_at_b (Δ ++ gs_tele Ξ) 0 (List.map snd fs)
-    end.
-
   (** ** The Loops of the Fill
 
       The loops [fill_exp_fn] runs over the lists inside a term, named, so
@@ -733,74 +578,86 @@ Section Decide.
           fill_ok ((f, N') :: fs0')
       end.
 
-  (** Terms side by side. *)
-  Definition exps_fn (Γ : ctx) :=
-    fix ups (Us : list exp) : fill_result (list exp) :=
-      match Us with
-      | nil => fill_ok nil
-      | U :: Us0 =>
-          let%a U' := fill_exp_fn Γ U in
-          let%a Us0' := ups Us0 in
-          fill_ok (U' :: Us0')
-      end.
-
   (** Each block's annotation and motive. *)
-  Definition heads_fn (Γ : ctx) (p : qname) (D : ind_decl) (Us' : list exp) :=
+  Definition heads_fn (Γ : ctx) (p : qname) (D : ind_decl) (Us : list exp) :=
     fix heads (j : nat) (Bks : list eblock) : fill_result (list (option exp * exp)) :=
       match Bks with
       | nil => fill_ok nil
       | eb_mk nm oZ A Bs :: Bks0 =>
           match ind_member D j with
-          | None => fill_error (access_error_message "an eliminator with more blocks than its group has members")
+          | None => fill_error (fill_failure_message "an eliminator with more blocks than its group has members")
           | Some Mj =>
               if Nat.eqb nm (S (im_nn Mj)) then
                 let%a oZ' :=
                   match oZ with
                   | None => fill_ok None
                   | Some Z =>
-                      let%a Z' := fill_exp_fn (tele_sub (im_nparams Mj) (sb_of_list Id Us') ++ Γ) Z in
+                      let%a Z' := fill_exp_fn (tele_sub (im_nparams Mj) (sb_of_list Id Us) ++ Γ) Z in
                       fill_ok (Some Z')
                   end in
-                let%a A' := fill_exp_fn (elim_mctx p D j Mj Us' ++ Γ) A in
+                let%a A' := fill_exp_fn (elim_mctx p D j Mj Us ++ Γ) A in
                 let%a hs0 := heads (S j) Bks0 in
                 fill_ok ((oZ', A') :: hs0)
-              else fill_error (access_error_message "a block of an eliminator binds the wrong number of variables")
+              else fill_error (fill_failure_message "a block of an eliminator binds the wrong number of variables")
           end
       end.
 
   (** A block's branches, at the motives [As]. *)
-  Definition brs_fn (Γ : ctx) (p : qname) (D : ind_decl) (Mj : imember) (As Us' : list exp) :=
+  Definition brs_fn (Γ : ctx) (p : qname) (D : ind_decl) (Mj : imember) (As Us : list exp) :=
     fix brs (Bs : list (string * nat * exp)) : fill_result (list (string * nat * exp)) :=
       match Bs with
       | nil => fill_ok nil
-      | (c, n, B) :: Bs0 =>
+      | (c, n, B0) :: Bs0 =>
           match ind_con Mj c with
-          | None => fill_error (access_error_message ("a branch of no constructor " ++ c))
+          | None => fill_error (fill_failure_message ("a branch of no constructor " ++ c))
           | Some gs =>
               if Nat.eqb n (im_nn Mj + List.length gs + cargs_nrec gs) then
-                let%a B' := fill_exp_fn (elim_bctx p D Mj gs As Us' ++ Γ) B in
+                let%a B' := fill_exp_fn (elim_bctx p D Mj gs As Us ++ Γ) B0 in
                 let%a Bs0' := brs Bs0 in
                 fill_ok ((c, n, B') :: Bs0')
-              else fill_error (access_error_message ("the branch of " ++ c ++ " binds the wrong number of variables"))
+              else fill_error (fill_failure_message ("the branch of " ++ c ++ " binds the wrong number of variables"))
           end
       end.
 
   (** The blocks, their annotations and motives filled as [hs], and the
       motives of all of them [As]. *)
-  Definition blocks_fn (Γ : ctx) (p : qname) (D : ind_decl) (As Us' : list exp) :=
+  Definition blocks_fn (Γ : ctx) (p : qname) (D : ind_decl) (As Us : list exp) :=
     fix blocks (j : nat) (Bks : list eblock) (rest : list (option exp * exp)) : fill_result (list eblock) :=
       match Bks, rest with
       | nil, _ => fill_ok nil
       | eb_mk nm _ _ Bs :: Bks0, (oZ', A') :: rest0 =>
           match ind_member D j with
-          | None => fill_error (access_error_message "an eliminator with more blocks than its group has members")
+          | None => fill_error (fill_failure_message "an eliminator with more blocks than its group has members")
           | Some Mj =>
-              let%a Bs' := brs_fn Γ p D Mj As Us' Bs in
+              let%a Bs' := brs_fn Γ p D Mj As Us Bs in
               let%a Bks0' := blocks (S j) Bks0 rest0 in
               fill_ok (eb_mk nm oZ' A' Bs' :: Bks0')
           end
-      | _ :: _, nil => fill_error (access_error_message "internal error: a block without its motive")
+      | _ :: _, nil => fill_error (fill_failure_message "internal error: a block without its motive")
       end.
+
+  (** An eliminator as written, its scrutinee filled to [M'] in [Γ]: the
+      one reading that fits its blocks, then its blocks at it, their
+      annotations and motives first, then their branches at the filled
+      motives. *)
+  Definition elim_fill_fn (Γ : ctx) (m : nat) (Bks : list eblock) (M' : exp) : fill_result exp :=
+    match infer_at Γ M' with
+    | Some (nf_indty pc k Rs) =>
+        match elim_target Θ Ξ pc k Rs m Bks with
+        | elim_target_one p Us =>
+            match ind_lookup Θ Ξ p with
+            | None => fill_error (fill_failure_message "internal error: an eliminator of no group")
+            | Some D =>
+                let%a hs := heads_fn Γ p D Us 0 Bks in
+                let As := List.map snd hs in
+                let%a Bks' := blocks_fn Γ p D As Us 0 Bks hs in
+                fill_ok (a_elim (Some p) Us m Bks' M')
+            end
+        | elim_target_ambiguous rs => fill_error (fill_failure_elim_ambiguous Γ (a_elim None nil m Bks M') rs)
+        | elim_target_none => fill_error (fill_failure_elim_none Γ pc k Rs m Bks M')
+        end
+    | W => fill_error (fill_failure_elim_scrutinee Γ M' W)
+    end.
 
   (** ** Commands, Filled *)
 
@@ -824,7 +681,7 @@ Section Decide.
     | nil => fill_ok nil
     | (f, m) :: fms0 =>
         match ind_member D m with
-        | None => fill_error (access_error_message "internal error: a function of no member")
+        | None => fill_error (fill_failure_message "internal error: a function of no member")
         | Some Mm =>
             let%a A' := fill_exp_fn (elim_mctx pq D m Mm Us ++ Γ) (rf_res f) in
             let%a fs0' := fill_rfun_results_fn Γ pq D Us fms0 in
@@ -840,7 +697,7 @@ Section Decide.
     | nil => fill_ok nil
     | (f, m) :: fms0 =>
         match ind_member D m with
-        | None => fill_error (access_error_message "internal error: a function of no member")
+        | None => fill_error (fill_failure_message "internal error: a function of no member")
         | Some Mm =>
             let%a Bs' := brs_fn Γ pq D Mm As Us (rf_clauses f) in
             let%a fs0' := fill_rfun_clauses_fn Γ pq D Us As fms0 in
@@ -853,10 +710,10 @@ Section Decide.
       motives of the blocks of the functions with their results filled. *)
   Definition fill_rfun_bodies_fn (Γ : ctx) (Δ' : ctx) (hs : list raw_fun) : fill_result (list raw_fun) :=
     match hs with
-    | nil => fill_error (access_error_message "a mutual definition with no function")
+    | nil => fill_error (fill_failure_message "a mutual definition with no function")
     | h0 :: hs0 =>
         match mdef_group_dec Θ Ξ Hg Δ' h0 hs0 with
-        | inr e => fill_error (access_error_mdef_group e)
+        | inr e => fill_error (fill_failure_mdef_group e)
         | inl (exist _ (pq, m0, Ps, D, Us, ms) _) =>
             let%a rs := fill_rfun_results_fn Γ pq D Us (List.combine hs ms) in
             fill_rfun_clauses_fn Γ pq D Us (blocks_motives (mdef_blocks 0 (List.length (ind_members D)) rs ms))
@@ -879,7 +736,7 @@ Section Decide.
     let%a Δ' := fill_tele_fn Γ (rtele args) in
     match zip_ass (List.map fst args) (List.rev Δ') with
     | Some args' => fill_ok args'
-    | None => fill_error (access_error_message "internal error: a constructor's arguments filled to no arguments")
+    | None => fill_error (fill_failure_message "internal error: a constructor's arguments filled to no arguments")
     end.
 
   (** Constructors' arguments over [Γ], their names kept. *)
@@ -925,8 +782,8 @@ Section Decide.
     let%a ms' := fill_raw_bodies_fn (mk_raw ups' hs (rd_rec R)) hs in
     fill_ok (mk_raw ups' ms' (rd_rec R)).
 
-  (** A command with an access, filled part by part. *)
-  Definition fill_cmd_typed (c : ccmd) : fill_result ccmd :=
+  (** A command filled, part by part. *)
+  Definition fill_cmd_fn (c : ccmd) : fill_result ccmd :=
     match c with
     | cc_def x b pv A oM =>
         let%a A' := fill_exp_fn (gs_tele Ξ) A in
@@ -942,7 +799,7 @@ Section Decide.
         let%a r := fill_mod_fn (Δ' ++ gs_tele Ξ) "" E in
         match snd r with
         | None => fill_ok (cc_ind_alias x pv Δ' (fst r))
-        | Some _ => fill_error (access_error_message ("the inductive alias " ++ x ++ " names a record value, not an inductive type"))
+        | Some _ => fill_error (fill_failure_message ("the inductive alias " ++ x ++ " names a record value, not an inductive type"))
         end
     | cc_open E its =>
         let%a r := fill_mod_fn (gs_tele Ξ) "" E in
@@ -952,7 +809,7 @@ Section Decide.
         let%a r := fill_mod_fn (gs_tele Ξ) "" E in
         match snd r with
         | None => fill_ok (cc_builtin k (fst r))
-        | Some _ => fill_error (access_error_message "a builtin binding names a record value, not an inductive type")
+        | Some _ => fill_error (fill_failure_message "a builtin binding names a record value, not an inductive type")
         end
     | cc_eval M oA =>
         let%a M' := fill_exp_fn (gs_tele Ξ) M in
@@ -969,40 +826,15 @@ Section Decide.
         let%a fs' := fill_rfun_bodies_fn (Δ' ++ gs_tele Ξ) Δ' hs in
         fill_ok (cc_mdef b pv Δ' fs')
     | cc_ind pv R => let%a R' := fill_raw_decl_fn R in fill_ok (cc_ind pv R')
-    | cc_load _ | cc_gen _ => fill_error (access_error_message "internal error: a command with no terms has an access")
+    | cc_load _ | cc_gen _ => fill_ok c
     end.
 
-  (** A command's accesses filled: itself, with none, no typing done;
-      otherwise part by part. *)
-  Definition fill_cmd_fn (c : ccmd) : fill_result ccmd :=
-    if cmd_access_free_b c then fill_ok c else fill_cmd_typed c.
+  (** A unit's parameter telescope filled. *)
+  Definition fill_params_fn (Δ : ctx) : fill_result ctx := fill_tele_fn (gs_tele Ξ) Δ.
 
-  (** A unit's parameter telescope's accesses filled. *)
-  Definition fill_params_fn (Δ : ctx) : fill_result ctx :=
-    if access_free_tele_b (gs_tele Ξ) Δ then fill_ok Δ else fill_tele_fn (gs_tele Ξ) Δ.
-
-  (** An eliminator, through the named loops. *)
-  Lemma fill_exp_fn_elim : forall Γ oq Us m Bks M0,
-      fill_exp_fn Γ (a_elim oq Us m Bks M0) =
-        let%a M' := fill_exp_fn Γ M0 in
-        let%a p :=
-          match oq with
-          | Some p => fill_ok p
-          | None =>
-              match infer_at Γ M' with
-              | Some (nf_indty p _ _) => fill_ok p
-              | _ => fill_error (access_error_message "the scrutinee of an unnamed eliminator infers no inductive type")
-              end
-          end in
-        match ind_lookup Θ Ξ p with
-        | None => fill_error (access_error_message "an eliminator of no group")
-        | Some D =>
-            let%a Us' := exps_fn Γ Us in
-            let%a hs := heads_fn Γ p D Us' 0 Bks in
-            let As := List.map snd hs in
-            let%a Bks' := blocks_fn Γ p D As Us' 0 Bks hs in
-            fill_ok (a_elim oq Us' m Bks' M')
-        end.
+  (** An eliminator as written, through the named loops. *)
+  Lemma fill_exp_fn_elim : forall Γ m Bks M0,
+      fill_exp_fn Γ (a_elim None nil m Bks M0) = let%a M' := fill_exp_fn Γ M0 in elim_fill_fn Γ m Bks M'.
   Proof. reflexivity. Qed.
 
   (** A record value, through the named loop. *)
@@ -1096,15 +928,15 @@ Section Decide.
   (** ** The Computed Fill Is the Relation's *)
 
   Definition exp_fill_sound (M : exp) : Prop :=
-    forall Γ M', fill_exp_fn Γ M = fill_ok M' -> fill_exp Θ Ξ Γ M M'.
+    forall Γ M', fill_exp_fn Γ M = fill_ok M' -> fill_exp Θ Ξ B Γ M M'.
   Definition read_fill_sound (H : modexp) : Prop :=
-    forall Γ r, fill_read_fn Γ H = fill_ok r -> fill_read Θ Ξ Γ H r.
+    forall Γ r, fill_read_fn Γ H = fill_ok r -> fill_read Θ Ξ B Γ H r.
   Definition unit_fill_sound (U : gunit) : Prop :=
-    forall Γ U', fill_unit_fn Γ U = fill_ok U' -> fill_unit Θ Ξ Γ U U'.
+    forall Γ U', fill_unit_fn Γ U = fill_ok U' -> fill_unit Θ Ξ B Γ U U'.
   Definition def_fill_sound (D : moddef) : Prop :=
-    forall Γ D', fill_def_fn Γ D = fill_ok D' -> fill_def Θ Ξ Γ D D'.
+    forall Γ D', fill_def_fn Γ D = fill_ok D' -> fill_def Θ Ξ B Γ D D'.
   Definition body_fill_sound (Φ : gmod) : Prop :=
-    forall Γ Φ', fill_body_fn Γ Φ = fill_ok Φ' -> fill_body Θ Ξ Γ Φ Φ'.
+    forall Γ Φ', fill_body_fn Γ Φ = fill_ok Φ' -> fill_body Θ Ξ B Γ Φ Φ'.
   Definition centry_fill_sound (e : centry) : Prop :=
     match e with
     | ce_ass A => exp_fill_sound A
@@ -1131,7 +963,7 @@ Section Decide.
 
   (** A module position, as [fill_mod]. *)
   Lemma fill_mod_of_read_sound : forall Γ y H H' op, read_fill_sound H ->
-      fill_mod_of Γ y (fill_read_fn Γ H) = fill_ok (H', op) -> fill_mod Θ Ξ Γ H H' op.
+      fill_mod_of Γ y (fill_read_fn Γ H) = fill_ok (H', op) -> fill_mod Θ Ξ B Γ H H' op.
   Proof.
     intros * IH E.
     destruct (fill_read_fn Γ H) as [r | e] eqn:Er; [| discriminate ].
@@ -1141,12 +973,13 @@ Section Decide.
   Qed.
 
   Lemma oexp_fill_sound : forall Γ oM oM', (forall M, oM = Some M -> exp_fill_sound M) ->
-      fill_oexp_fn Γ oM = fill_ok oM' -> fill_oexp Θ Ξ Γ oM oM'.
+      fill_oexp_fn Γ oM = fill_ok oM' -> fill_oexp Θ Ξ B Γ oM oM'.
   Proof.
     intros Γ [M |] oM' IH E; cbn in E; bind_inv; constructor; [ exact (IH _ eq_refl _ _ H) ].
   Qed.
 
-  Lemma tele_fill_sound : forall Γ Δ Δ', Forall centry_fill_sound Δ -> fill_tele_fn Γ Δ = fill_ok Δ' -> fill_tele Θ Ξ Γ Δ Δ'.
+  Lemma tele_fill_sound : forall Γ Δ Δ', Forall centry_fill_sound Δ -> fill_tele_fn Γ Δ = fill_ok Δ' ->
+      fill_tele Θ Ξ B Γ Δ Δ'.
   Proof.
     intros Γ; induction Δ as [| e Δ IH]; intros Δ' HΔ E; cbn in E; bind_inv; [ constructor |].
     inversion HΔ as [| ? ? He HΔ0]; subst.
@@ -1154,23 +987,17 @@ Section Decide.
     destruct e as [A | A M | U]; cbn in *; bind_inv; constructor; auto; apply He; assumption.
   Qed.
 
-  Lemma exps_fill_sound : forall Γ Us Us', Forall exp_fill_sound Us -> exps_fn Γ Us = fill_ok Us' -> fill_exps Θ Ξ Γ Us Us'.
-  Proof.
-    intros Γ; induction Us as [| U Us IH]; intros Us' HU E; cbn in E; bind_inv; constructor;
-      inversion HU; subst; auto.
-  Qed.
-
   Lemma fvals_fill_sound : forall Γ fs fs', Forall (fun f => exp_fill_sound (snd f)) fs ->
-      fvals_fn Γ fs = fill_ok fs' -> fill_fvals Θ Ξ Γ fs fs'.
+      fvals_fn Γ fs = fill_ok fs' -> fill_fvals Θ Ξ B Γ fs fs'.
   Proof.
     intros Γ; induction fs as [| [f N] fs IH]; intros fs' Hf E; cbn in E; bind_inv; constructor;
       inversion Hf; subst; auto.
   Qed.
 
-  Lemma brs_fill_sound : forall Γ p D Mj As Us' Bs Bs', Forall (fun br => exp_fill_sound (snd br)) Bs ->
-      brs_fn Γ p D Mj As Us' Bs = fill_ok Bs' -> fill_brs Θ Ξ Γ p D Mj Us' As Bs Bs'.
+  Lemma brs_fill_sound : forall Γ p D Mj As Us Bs Bs', Forall (fun br => exp_fill_sound (snd br)) Bs ->
+      brs_fn Γ p D Mj As Us Bs = fill_ok Bs' -> fill_brs Θ Ξ B Γ p D Mj Us As Bs Bs'.
   Proof.
-    intros Γ p D Mj As Us'; induction Bs as [| [[c n] B] Bs IH]; intros Bs' HB E; cbn in E; bind_inv; [ constructor |].
+    intros Γ p D Mj As Us; induction Bs as [| [[c n] B0] Bs IH]; intros Bs' HB E; cbn in E; bind_inv; [ constructor |].
     inversion HB; subst.
     destruct (ind_con Mj c) as [gs |] eqn:Ec; [| discriminate ].
     destruct (Nat.eqb_spec n (im_nn Mj + List.length gs + cargs_nrec gs)); [| discriminate ].
@@ -1179,13 +1006,13 @@ Section Decide.
 
   (** The blocks of an eliminator: the motives they end with are the
       ones the branches were read at. *)
-  Lemma blocks_fill_sound : forall Γ p D Us' As j Bks hs Bks',
+  Lemma blocks_fill_sound : forall Γ p D Us As j Bks hs Bks',
       Forall (fun b => (forall Z, eb_ann b = Some Z -> exp_fill_sound Z) /\ exp_fill_sound (eb_motive b) /\
                        Forall (fun br => exp_fill_sound (snd br)) (eb_brs b)) Bks ->
-      heads_fn Γ p D Us' j Bks = fill_ok hs -> blocks_fn Γ p D As Us' j Bks hs = fill_ok Bks' ->
-      fill_blocks Θ Ξ Γ p D Us' As j Bks Bks' /\ blocks_motives Bks' = List.map snd hs.
+      heads_fn Γ p D Us j Bks = fill_ok hs -> blocks_fn Γ p D As Us j Bks hs = fill_ok Bks' ->
+      fill_blocks Θ Ξ B Γ p D Us As j Bks Bks' /\ blocks_motives Bks' = List.map snd hs.
   Proof.
-    intros Γ p D Us' As j Bks; revert j; induction Bks as [| [nm oZ A Bs] Bks IH]; intros j hs Bks' HB Eh Eb;
+    intros Γ p D Us As j Bks; revert j; induction Bks as [| [nm oZ A Bs] Bks IH]; intros j hs Bks' HB Eh Eb;
       cbn in Eh; bind_inv; [ cbn in Eb; bind_inv; split; [ constructor | reflexivity ] |].
     inversion HB as [| ? ? (HZ & HA & HBs) HB0]; subst; cbn in HZ, HA, HBs.
     destruct (ind_member D j) as [Mj |] eqn:Ej; [| discriminate ].
@@ -1195,6 +1022,24 @@ Section Decide.
     split; [| cbn; f_equal; exact Hm ].
     econstructor; [ exact Ej | reflexivity | | exact (HA _ _ H0) | eapply brs_fill_sound; eassumption | exact Hb ].
     destruct oZ as [Z |]; bind_inv; [ apply fill_oexp_some; eapply HZ; [ reflexivity | eassumption ] | apply fill_oexp_none ].
+  Qed.
+
+  (** An eliminator as written, its scrutinee filled. *)
+  Lemma elim_fill_fn_sound : forall Γ m Bks M M',
+      Forall (fun b => (forall Z, eb_ann b = Some Z -> exp_fill_sound Z) /\ exp_fill_sound (eb_motive b) /\
+                       Forall (fun br => exp_fill_sound (snd br)) (eb_brs b)) Bks ->
+      fill_exp Θ Ξ B Γ M M' -> forall E, elim_fill_fn Γ m Bks M' = fill_ok E ->
+      fill_exp Θ Ξ B Γ (a_elim None nil m Bks M) E.
+  Proof.
+    intros * HB HM E Ee; unfold elim_fill_fn in Ee.
+    destruct (infer_at Γ M') as [W |] eqn:Ei; [| discriminate ].
+    destruct W as [| | | | | | | | | pc k Rs | | | | ]; try discriminate.
+    apply infer_at_sound in Ei as [HΓ HW].
+    destruct (elim_target Θ Ξ pc k Rs m Bks) as [p Us | rs |] eqn:Et; try discriminate.
+    destruct (ind_lookup Θ Ξ p) as [D |] eqn:El; [| discriminate ].
+    bind_inv.
+    destruct (blocks_fill_sound _ _ _ _ _ _ _ _ _ HB H H0) as [Hbk Hm].
+    eapply fill_exp_elim; [ exact HM | exact HΓ | exact HW | exact Et | exact El | rewrite Hm; exact Hbk ].
   Qed.
 
   Lemma fill_fn_sound_all :
@@ -1207,24 +1052,26 @@ Section Decide.
       try match goal with
         |- forall _ _, _ = fill_ok _ -> _ => let G := fresh "Γ" in let X := fresh "X" in let E := fresh "E" in intros G X E
         end.
-    all: try match goal with E : fill_exp_fn _ (a_elim _ _ _ _ _) = _ |- _ => rewrite fill_exp_fn_elim in E end;
-      try match goal with E : fill_exp_fn _ (a_tuple _ _) = _ |- _ => rewrite fill_exp_fn_tuple in E end;
+    all: try match goal with E : fill_exp_fn _ (a_tuple _ _) = _ |- _ => rewrite fill_exp_fn_tuple in E end;
       try match goal with E : fill_unit_fn _ (gu_mk _ _) = _ |- _ => rewrite fill_unit_fn_mk in E end.
     all: try match goal with
+      | E : fill_exp_fn _ (a_elim _ _ _ _ _) = fill_ok _ |- _ => idtac
       | E : fill_exp_fn _ ?X = fill_ok _ |- _ => tryif is_var X then fail else cbn [fill_exp_fn] in E
       | E : fill_read_fn _ ?X = fill_ok _ |- _ => tryif is_var X then fail else cbn [fill_read_fn] in E
       | E : fill_def_fn _ ?X = fill_ok _ |- _ => tryif is_var X then fail else cbn [fill_def_fn] in E
       | E : fill_body_fn _ ?X = fill_ok _ |- _ => tryif is_var X then fail else cbn [fill_body_fn] in E
       end; bind_inv.
     all: try solve [ apply fill_exp_leaf; reflexivity | econstructor; eauto ].
-    - (* an eliminator: its group, its parameters, then its blocks *)
-      destruct (ind_lookup Θ Ξ x0) as [D |] eqn:El; [| discriminate ]; bind_inv.
-      cbv zeta in H2; bind_inv.
-      destruct (blocks_fill_sound _ _ _ _ _ _ _ _ _ H0 H6 H7) as [Hbk Hm].
-      eapply fill_exp_elim; [ exact (H1 _ _ H3) | | exact El | exact (exps_fill_sound _ _ _ H H5) | rewrite Hm; exact Hbk ].
-      destruct oq as [p |]; bind_inv; [ constructor |].
-      destruct (infer_at Γ x) as [[] |] eqn:Ei; try discriminate; bind_inv.
-      apply infer_at_sound in Ei as [? ?]; econstructor; eassumption.
+    - (* a numeral *)
+      destruct (nat_view Θ Ξ B) as [[[p z] s] |] eqn:Ev; [| discriminate ]; bind_inv; econstructor; exact Ev.
+    - (* the token [ℕ] *)
+      destruct (nat_view Θ Ξ B) as [[[p z] s] |] eqn:Ev; [| discriminate ]; bind_inv; econstructor; exact Ev.
+    - (* an eliminator: written without its group, its scrutinee, then the
+         reading and its blocks *)
+      match goal with Ee : fill_exp_fn _ (a_elim _ _ _ _ _) = fill_ok _ |- _ => rename Ee into E end.
+      destruct oq as [p |]; [ cbn in E; discriminate |]; destruct Us as [| U Us]; [| cbn in E; discriminate ].
+      rewrite fill_exp_fn_elim in E; bind_inv.
+      eapply elim_fill_fn_sound; [ eassumption | eauto | exact E ].
     - (* a let *)
       destruct b as [[A |] M0 | U].
       + destruct H as [HA HM]; bind_inv.
@@ -1275,60 +1122,51 @@ Section Decide.
 
   (** ** The Relation's Fill Is Computed *)
 
-  (** The group an eliminator is of, computed. *)
-  Definition elim_group_fn (Γ : ctx) (oq : option qname) (M : exp) : fill_result qname :=
-    match oq with
-    | Some p => fill_ok p
-    | None =>
-        match infer_at Γ M with
-        | Some (nf_indty p _ _) => fill_ok p
-        | _ => fill_error (access_error_message "the scrutinee of an unnamed eliminator infers no inductive type")
-        end
-    end.
-
   (** The annotation and motive of each block. *)
   Definition block_heads (Bks : list eblock) : list (option exp * exp) :=
     List.map (fun b => (eb_ann b, eb_motive b)) Bks.
 
   Lemma fill_fn_complete_all :
-    (forall Γ M M', fill_exp Θ Ξ Γ M M' -> fill_exp_fn Γ M = fill_ok M') /\
-    (forall Γ oq M p, elim_group Θ Ξ Γ oq M p -> elim_group_fn Γ oq M = fill_ok p) /\
-    (forall Γ Ms Ms', fill_exps Θ Ξ Γ Ms Ms' -> exps_fn Γ Ms = fill_ok Ms') /\
-    (forall Γ fs fs', fill_fvals Θ Ξ Γ fs fs' -> fvals_fn Γ fs = fill_ok fs') /\
-    (forall Γ p D Us As j Bks Bks', fill_blocks Θ Ξ Γ p D Us As j Bks Bks' ->
+    (forall Γ M M', fill_exp Θ Ξ B Γ M M' -> fill_exp_fn Γ M = fill_ok M') /\
+    (forall Γ fs fs', fill_fvals Θ Ξ B Γ fs fs' -> fvals_fn Γ fs = fill_ok fs') /\
+    (forall Γ p D Us As j Bks Bks', fill_blocks Θ Ξ B Γ p D Us As j Bks Bks' ->
        heads_fn Γ p D Us j Bks = fill_ok (block_heads Bks') /\
        blocks_fn Γ p D As Us j Bks (block_heads Bks') = fill_ok Bks') /\
-    (forall Γ p D Mj Us As Bs Bs', fill_brs Θ Ξ Γ p D Mj Us As Bs Bs' -> brs_fn Γ p D Mj As Us Bs = fill_ok Bs') /\
-    (forall Γ oM oM', fill_oexp Θ Ξ Γ oM oM' -> fill_oexp_fn Γ oM = fill_ok oM') /\
-    (forall Γ H r, fill_read Θ Ξ Γ H r -> fill_read_fn Γ H = fill_ok r) /\
-    (forall Γ H H' op, fill_mod Θ Ξ Γ H H' op -> forall y, fill_mod_fn Γ y H = fill_ok (H', op)) /\
-    (forall Γ U U', fill_unit Θ Ξ Γ U U' -> fill_unit_fn Γ U = fill_ok U') /\
-    (forall Γ D D', fill_def Θ Ξ Γ D D' -> fill_def_fn Γ D = fill_ok D') /\
-    (forall Γ Δ Δ', fill_tele Θ Ξ Γ Δ Δ' -> fill_tele_fn Γ Δ = fill_ok Δ') /\
-    (forall Γ Φ Φ', fill_body Θ Ξ Γ Φ Φ' -> fill_body_fn Γ Φ = fill_ok Φ').
+    (forall Γ p D Mj Us As Bs Bs', fill_brs Θ Ξ B Γ p D Mj Us As Bs Bs' -> brs_fn Γ p D Mj As Us Bs = fill_ok Bs') /\
+    (forall Γ oM oM', fill_oexp Θ Ξ B Γ oM oM' -> fill_oexp_fn Γ oM = fill_ok oM') /\
+    (forall Γ H r, fill_read Θ Ξ B Γ H r -> fill_read_fn Γ H = fill_ok r) /\
+    (forall Γ H H' op, fill_mod Θ Ξ B Γ H H' op -> forall y, fill_mod_fn Γ y H = fill_ok (H', op)) /\
+    (forall Γ U U', fill_unit Θ Ξ B Γ U U' -> fill_unit_fn Γ U = fill_ok U') /\
+    (forall Γ D D', fill_def Θ Ξ B Γ D D' -> fill_def_fn Γ D = fill_ok D') /\
+    (forall Γ Δ Δ', fill_tele Θ Ξ B Γ Δ Δ' -> fill_tele_fn Γ Δ = fill_ok Δ') /\
+    (forall Γ Φ Φ', fill_body Θ Ξ B Γ Φ Φ' -> fill_body_fn Γ Φ = fill_ok Φ').
   Proof.
     apply fill_mut_ind; intros;
       try match goal with |- fill_exp_fn _ (a_elim _ _ _ _ _) = _ => rewrite fill_exp_fn_elim end;
       try match goal with |- fill_exp_fn _ (a_tuple _ _) = _ => rewrite fill_exp_fn_tuple end;
       try match goal with |- fill_unit_fn _ (gu_mk _ _) = _ => rewrite fill_unit_fn_mk end;
       try match goal with |- fill_mod_fn _ _ _ = _ => unfold fill_mod_fn end;
-      cbn [fill_exp_fn fill_read_fn fill_def_fn fill_body_fn fill_tele_fn exps_fn fvals_fn brs_fn heads_fn blocks_fn
-           fill_oexp_fn elim_group_fn];
+      cbn [fill_exp_fn fill_read_fn fill_def_fn fill_body_fn fill_tele_fn fvals_fn brs_fn heads_fn blocks_fn
+           fill_oexp_fn];
       repeat match goal with E : ?a = fill_ok _ |- context [?a] => rewrite E; cbn [fill_result_bind] end;
       try reflexivity.
     - (* a term with no subterm *)
       destruct M; try discriminate; reflexivity.
+    - (* a numeral *)
+      rewrite e; reflexivity.
+    - (* the token [ℕ] *)
+      rewrite e; reflexivity.
     - (* an unannotated let: its definition infers the type *)
       rewrite (infer_at_complete _ _ _ w a); cbn; rewrite H0; reflexivity.
     - (* a member *)
       unfold fill_mod_fn in H0; rewrite (H0 x); cbn; rewrite (proj2 (sel_check_spec _ _) s); reflexivity.
-    - (* an eliminator: its blocks' motives are those its branches are read at *)
-      unfold elim_group_fn in H0; rewrite H0; cbn; rewrite e0; destruct H2 as [Hh Hb]; rewrite Hh; cbn.
+    - (* an eliminator: the reading, then its blocks, whose motives are
+         those its branches are read at *)
+      unfold elim_fill_fn; rewrite (infer_at_complete _ _ _ w a), e, e0.
+      destruct H0 as [Hh Hb]; rewrite Hh; cbn.
       replace (List.map snd (block_heads Bks')) with (blocks_motives Bks')
         by (clear; induction Bks' as [| [] ? IH]; cbn; [ reflexivity | f_equal; exact IH ]).
       rewrite Hb; reflexivity.
-    - (* the group of an unnamed eliminator *)
-      rewrite (infer_at_complete _ _ _ w a); reflexivity.
     - split; reflexivity.
     - (* a block *)
       rewrite e; subst nm; rewrite Nat.eqb_refl.
@@ -1365,311 +1203,29 @@ Section Decide.
       rewrite (proj2 (sels_check_spec _ _) f1); reflexivity.
   Qed.
 
-  (** ** Access-Free, Decided Exactly *)
-
-  (** The loops of [access_free_exp_b], named. *)
-  Definition af_fvals_b (Γ : ctx) :=
-    fix fields (fs : list (string * exp)) : bool :=
-      match fs with
-      | nil => true
-      | (_, N) :: fs0 => access_free_exp_b Γ N && fields fs0
-      end.
-
-  Definition af_exps_b (Γ : ctx) :=
-    fix ups (Us : list exp) : bool :=
-      match Us with
-      | nil => true
-      | U :: Us0 => access_free_exp_b Γ U && ups Us0
-      end.
-
-  Definition af_brs_b (Γ : ctx) :=
-    fix brs (Bs : list (string * nat * exp)) : bool :=
-      match Bs with
-      | nil => true
-      | (_, n, B) :: Bs0 => access_free_exp_b (ctx_holes n ++ Γ) B && brs Bs0
-      end.
-
-  Definition af_blocks_b (Γ : ctx) :=
-    fix blocks (Bks : list eblock) : bool :=
-      match Bks with
-      | nil => true
-      | eb_mk nm oZ A Bs :: Bks0 =>
-          match oZ with Some Z => access_free_exp_b (ctx_holes (nm - 1) ++ Γ) Z | None => true end &&
-          access_free_exp_b (ctx_holes nm ++ Γ) A && af_brs_b Γ Bs && blocks Bks0
-      end.
-
-  Lemma access_free_exp_b_tuple : forall Γ T fs,
-      access_free_exp_b Γ (a_tuple T fs) = access_free_exp_b Γ T && af_fvals_b Γ fs.
-  Proof. reflexivity. Qed.
-
-  Lemma access_free_exp_b_elim : forall Γ oq Us m Bks M,
-      access_free_exp_b Γ (a_elim oq Us m Bks M) = access_free_exp_b Γ M && af_exps_b Γ Us && af_blocks_b Γ Bks.
-  Proof. reflexivity. Qed.
-
-  Lemma access_free_unit_b_mk : forall Γ Δ D,
-      access_free_unit_b Γ (gu_mk Δ D) = access_free_tele_b Γ Δ && access_free_def_b (Δ ++ Γ) D.
-  Proof.
-    intros; cbn [access_free_unit_b]; f_equal.
-    induction Δ as [| e Δ IH]; cbn; [ reflexivity | rewrite IH; reflexivity ].
-  Qed.
-
-  Definition af_exp_sound (M : exp) : Prop := forall Γ, access_free_exp_b Γ M = true -> access_free_exp Θ Ξ Γ M.
-  Definition af_mod_sound (H : modexp) : Prop := forall Γ, access_free_mod_b Γ H = true -> access_free_mod Θ Ξ Γ H.
-  Definition af_unit_sound (U : gunit) : Prop := forall Γ, access_free_unit_b Γ U = true -> access_free_unit Θ Ξ Γ U.
-  Definition af_def_sound (D : moddef) : Prop := forall Γ, access_free_def_b Γ D = true -> access_free_def Θ Ξ Γ D.
-  Definition af_body_sound (Φ : gmod) : Prop := forall Γ, access_free_body_b Γ Φ = true -> access_free_body Θ Ξ Γ Φ.
-  Definition af_centry_sound (e : centry) : Prop :=
-    match e with
-    | ce_ass A => af_exp_sound A
-    | ce_def A M => af_exp_sound A /\ af_exp_sound M
-    | ce_mod U => af_unit_sound U
-    end.
-  Definition af_bnd_sound (b : bnd) : Prop :=
-    match b with
-    | b_def oA M => (forall A, oA = Some A -> af_exp_sound A) /\ af_exp_sound M
-    | b_mod U => af_unit_sound U
-    end.
-  Definition af_gentry_sound (E : gentry) : Prop :=
-    match E with
-    | ge_def _ _ A oM => af_exp_sound A /\ (forall M, oM = Some M -> af_exp_sound M)
-    | ge_mod _ U => af_unit_sound U
-    | _ => True
-    end.
-
-  Lemma af_tele_sound : forall Γ Δ, Forall af_centry_sound Δ -> access_free_tele_b Γ Δ = true -> access_free_tele Θ Ξ Γ Δ.
-  Proof.
-    intros Γ; induction Δ as [| e Δ IH]; intros HΔ E; cbn in E; [ constructor |].
-    apply andb_true_iff in E as [E1 E2]; inversion HΔ as [| ? ? He HΔ0]; subst.
-    destruct e as [A | A M | U]; cbn in *; [ | apply andb_true_iff in E2 as [E2 E3] |]; constructor; auto;
-      first [ apply He | apply (proj1 He) | apply (proj2 He) ]; assumption.
-  Qed.
-
-  Lemma af_oexp_sound : forall Γ oM, (forall M, oM = Some M -> af_exp_sound M) ->
-      access_free_oexp_b Γ oM = true -> access_free_oexp Θ Ξ Γ oM.
-  Proof. intros Γ [M |] IH E; constructor; exact (IH _ eq_refl _ E). Qed.
-
-  Lemma af_exps_sound : forall Γ Us, Forall af_exp_sound Us -> af_exps_b Γ Us = true -> access_free_exps Θ Ξ Γ Us.
-  Proof.
-    intros Γ; induction Us as [| U Us IH]; intros HU E; cbn in E; [ constructor |].
-    apply andb_true_iff in E as [E1 E2]; inversion HU; subst; constructor; auto.
-  Qed.
-
-  Lemma af_fvals_sound : forall Γ fs, Forall (fun f => af_exp_sound (snd f)) fs ->
-      af_fvals_b Γ fs = true -> access_free_fvals Θ Ξ Γ fs.
-  Proof.
-    intros Γ; induction fs as [| [f N] fs IH]; intros Hf E; cbn in E; [ constructor |].
-    apply andb_true_iff in E as [E1 E2]; inversion Hf; subst; constructor; auto.
-  Qed.
-
-  Lemma af_brs_sound : forall Γ Bs, Forall (fun br => af_exp_sound (snd br)) Bs ->
-      af_brs_b Γ Bs = true -> access_free_brs Θ Ξ Γ Bs.
-  Proof.
-    intros Γ; induction Bs as [| [[c n] B] Bs IH]; intros HB E; cbn in E; [ constructor |].
-    apply andb_true_iff in E as [E1 E2]; inversion HB; subst; constructor; auto.
-  Qed.
-
-  Lemma af_blocks_sound : forall Γ Bks,
-      Forall (fun b => (forall Z, eb_ann b = Some Z -> af_exp_sound Z) /\ af_exp_sound (eb_motive b) /\
-                       Forall (fun br => af_exp_sound (snd br)) (eb_brs b)) Bks ->
-      af_blocks_b Γ Bks = true -> access_free_blocks Θ Ξ Γ Bks.
-  Proof.
-    intros Γ; induction Bks as [| [nm oZ A Bs] Bks IH]; intros HB E; cbn in E; [ constructor |].
-    repeat match goal with E : _ && _ = true |- _ => apply andb_true_iff in E as [? ?] end.
-    inversion HB as [| ? ? (HZ & HA & HBs) HB0]; subst; cbn in HZ, HA, HBs.
-    constructor; [ apply af_oexp_sound; assumption | auto | apply af_brs_sound; assumption | auto ].
-  Qed.
-
-  Lemma access_free_b_sound_all :
-    (forall M, af_exp_sound M) /\ (forall H, af_mod_sound H) /\ (forall b, af_bnd_sound b) /\
-    (forall U, af_unit_sound U) /\ (forall D, af_def_sound D) /\ (forall Φ, af_body_sound Φ) /\
-    (forall E, af_gentry_sound E) /\ (forall e, af_centry_sound e).
-  Proof.
-    apply syn_mut_ind; unfold af_exp_sound, af_mod_sound, af_unit_sound, af_def_sound, af_body_sound,
-      af_centry_sound, af_bnd_sound, af_gentry_sound; intros; try exact I; try (split; assumption).
-    all: try match goal with E : access_free_exp_b _ (a_tuple _ _) = true |- _ => rewrite access_free_exp_b_tuple in E end;
-      try match goal with E : access_free_exp_b _ (a_elim _ _ _ _ _) = true |- _ => rewrite access_free_exp_b_elim in E end;
-      try match goal with E : access_free_unit_b _ (gu_mk _ _) = true |- _ => rewrite access_free_unit_b_mk in E end.
-    all: try match goal with
-      | E : access_free_exp_b _ ?X = true |- _ => tryif is_var X then fail else cbn [access_free_exp_b] in E
-      | E : access_free_mod_b _ ?X = true |- _ => tryif is_var X then fail else cbn [access_free_mod_b] in E
-      | E : access_free_def_b _ ?X = true |- _ => tryif is_var X then fail else cbn [access_free_def_b] in E
-      | E : access_free_body_b _ ?X = true |- _ => tryif is_var X then fail else cbn [access_free_body_b] in E
-      end;
-      repeat match goal with E : _ && _ = true |- _ => apply andb_true_iff in E as [? ?] end.
-    all: try solve [ apply access_free_exp_leaf; reflexivity | constructor; auto | exact H ].
-    - constructor; [ auto | apply af_exps_sound; assumption | apply af_blocks_sound; assumption ].
-    - destruct b as [oA M0 | U].
-      + destruct H as [HA HM].
-        repeat match goal with E : _ && _ = true |- _ => apply andb_true_iff in E as [? ?] end.
-        constructor; [ apply af_oexp_sound; assumption | auto | auto ].
-      + repeat match goal with E : _ && _ = true |- _ => apply andb_true_iff in E as [? ?] end.
-        constructor; [ apply H; assumption | auto ].
-    - constructor; [ auto | apply af_fvals_sound; assumption ].
-    - constructor; intros A HA; apply negb_true_iff in H.
-      assert (term_binder_b Γ k = true) by (apply term_binder_b_spec; eauto); congruence.
-    - constructor; [ auto | intros A oM HA; apply negb_true_iff in H2 ].
-      assert (member_term_b Γ H y = true) by (apply member_term_b_spec; eauto); congruence.
-    - constructor; [ apply af_tele_sound; assumption | auto ].
-    - destruct (body_xp_dec Θ Ξ Hg Γ Φ) as [[Φx HΦ] |]; [| discriminate ].
-      destruct E as [b pv A oM | pv U | | |]; try discriminate.
-      + destruct H0 as [HA HoM]; apply andb_true_iff in H2 as [E1 E2].
-        econstructor; [ auto | exact HΦ | auto | apply af_oexp_sound; assumption ].
-      + econstructor; [ auto | exact HΦ | auto ].
-    - destruct (body_xp_dec Θ Ξ Hg Γ Φ) as [[Φx HΦ] |]; [| discriminate ].
-      econstructor; [ auto | exact HΦ | auto ].
-  Qed.
-
-  Lemma access_free_b_complete_all :
-    (forall Γ M, access_free_exp Θ Ξ Γ M -> access_free_exp_b Γ M = true) /\
-    (forall Γ Ms, access_free_exps Θ Ξ Γ Ms -> af_exps_b Γ Ms = true) /\
-    (forall Γ fs, access_free_fvals Θ Ξ Γ fs -> af_fvals_b Γ fs = true) /\
-    (forall Γ Bks, access_free_blocks Θ Ξ Γ Bks -> af_blocks_b Γ Bks = true) /\
-    (forall Γ Bs, access_free_brs Θ Ξ Γ Bs -> af_brs_b Γ Bs = true) /\
-    (forall Γ oM, access_free_oexp Θ Ξ Γ oM -> access_free_oexp_b Γ oM = true) /\
-    (forall Γ H, access_free_mod Θ Ξ Γ H -> access_free_mod_b Γ H = true) /\
-    (forall Γ U, access_free_unit Θ Ξ Γ U -> access_free_unit_b Γ U = true) /\
-    (forall Γ D, access_free_def Θ Ξ Γ D -> access_free_def_b Γ D = true) /\
-    (forall Γ Δ, access_free_tele Θ Ξ Γ Δ -> access_free_tele_b Γ Δ = true) /\
-    (forall Γ Φ, access_free_body Θ Ξ Γ Φ -> access_free_body_b Γ Φ = true).
-  Proof.
-    apply access_free_mut_ind; intros;
-      try rewrite access_free_exp_b_tuple; try rewrite access_free_exp_b_elim; try rewrite access_free_unit_b_mk;
-      cbn [access_free_exp_b access_free_mod_b access_free_def_b access_free_body_b access_free_tele_b
-           af_exps_b af_fvals_b af_blocks_b af_brs_b access_free_oexp_b];
-      repeat match goal with E : ?a = true |- context [?a] => rewrite E end;
-      try reflexivity.
-    (** a term with no subterm *)
-    all: try match goal with e : exp_leaf ?M = true |- _ => destruct M; try discriminate; reflexivity end.
-    (** a body: the expansion the relation reads is the one decided *)
-    all: try match goal with
-      | Hb : body_xp _ _ ?G ?F ?X |- context [body_xp_dec _ _ _ ?G ?F] =>
-          destruct (body_xp_dec Θ Ξ Hg G F) as [[X0 HX] | Hn]; [| exfalso; exact (Hn _ Hb) ];
-          pose proof (proj1 (proj2 (proj2 (proj2 (mdenote_functional_all _ _ Hg)))) _ _ _ Hb _ HX) as <-
-      end.
-    (** an annotation that may be absent *)
-    all: repeat match goal with
-      | |- context [match ?o with Some _ => _ | None => true end] => destruct o
-      end; cbn in *;
-      repeat match goal with E : ?a = true |- context [?a] => rewrite E end; try reflexivity.
-    (** a binder, or a member, that holds no term *)
-    all: try match goal with
-      | n : forall A, ~ ?G ∋ #?k : A |- context [term_binder_b ?G ?k] =>
-          destruct (term_binder_b G k) eqn:E; [ apply term_binder_b_spec in E as [A HA]; exfalso; exact (n A HA) | reflexivity ]
-      | n : forall A oM, ~ mdenote _ _ ?G (me_mem ?H ?y) _ |- context [member_term_b ?G ?H ?y] =>
-          destruct (member_term_b G H y) eqn:E;
-            [ apply member_term_b_spec in E as (A & oM & HA); exfalso; exact (n _ _ HA) | reflexivity ]
-      end.
-  Qed.
-
-  Lemma access_free_exp_b_spec : forall Γ M, access_free_exp_b Γ M = true <-> access_free_exp Θ Ξ Γ M.
-  Proof. split; [ apply (proj1 access_free_b_sound_all) | apply (proj1 access_free_b_complete_all) ]. Qed.
-
-  Lemma access_free_oexp_b_spec : forall Γ oM, access_free_oexp_b Γ oM = true <-> access_free_oexp Θ Ξ Γ oM.
-  Proof.
-    split; [ apply af_oexp_sound; intros; apply (proj1 access_free_b_sound_all)
-           | apply (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 access_free_b_complete_all)))))) ].
-  Qed.
-
-  Lemma access_free_mod_b_spec : forall Γ H, access_free_mod_b Γ H = true <-> access_free_mod Θ Ξ Γ H.
-  Proof.
-    split; [ apply (proj1 (proj2 access_free_b_sound_all))
-           | apply (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 access_free_b_complete_all))))))) ].
-  Qed.
-
-  Lemma access_free_tele_b_spec : forall Γ Δ, access_free_tele_b Γ Δ = true <-> access_free_tele Θ Ξ Γ Δ.
-  Proof.
-    split.
-    - apply af_tele_sound, Forall_forall; intros; apply access_free_b_sound_all.
-    - apply access_free_b_complete_all.
-  Qed.
-
-  (** Terms each over as many more holes as their position. *)
-  Lemma access_free_at_b_spec : forall Γ As j, access_free_at_b Γ j As = true <->
-      forall i A, List.nth_error As i = Some A -> access_free_exp Θ Ξ (ctx_holes (j + i) ++ Γ) A.
-  Proof.
-    intros Γ; induction As as [| A As IH]; intros j; cbn.
-    - split; [ intros _ [] ? [=] | reflexivity ].
-    - rewrite andb_true_iff, access_free_exp_b_spec, IH; split.
-      + intros [HA HAs] [| i] B Hi; cbn in Hi; [ injection Hi as <-; rewrite Nat.add_0_r; exact HA |].
-        rewrite <- Nat.add_succ_comm; exact (HAs _ _ Hi).
-      + intros Hall; split; [ rewrite <- (Nat.add_0_r j); exact (Hall 0 A eq_refl) |].
-        intros i B Hi; rewrite Nat.add_succ_comm; exact (Hall (S i) B Hi).
-  Qed.
-
-  Lemma ctx_holes_add : forall m n Γ, (ctx_holes m ++ ctx_holes n ++ Γ = ctx_holes (m + n) ++ Γ)%list.
-  Proof. intros; unfold ctx_holes; rewrite app_assoc, repeat_app; reflexivity. Qed.
-
-  Lemma forallb_Forall_iff : forall {A} (f : A -> bool) (P : A -> Prop) l,
-      (forall x, In x l -> f x = true <-> P x) -> forallb f l = true <-> Forall P l.
-  Proof.
-    intros * H; rewrite forallb_forall, Forall_forall; split; intros Hl x Hx; apply (H x Hx), Hl, Hx.
-  Qed.
-
-  (** Arguments each over as many holes as their position, past [n]. *)
-  Lemma access_free_args_spec : forall Γ n (args : list (string * typ)),
-      access_free_at_b (ctx_holes n ++ Γ) 0 (List.map snd args) = true <->
-      forall j y A, List.nth_error args j = Some (y, A) -> access_free_exp Θ Ξ (ctx_holes (j + n) ++ Γ) A.
-  Proof.
-    intros; rewrite access_free_at_b_spec; split.
-    - intros Hall j y A Hj; rewrite <- ctx_holes_add; apply (Hall j); rewrite nth_error_map, Hj; reflexivity.
-    - intros Hall i A Hi; rewrite ctx_holes_add; rewrite nth_error_map in Hi.
-      destruct (nth_error args i) as [[y A0] |] eqn:E; [| discriminate ]; injection Hi as <-; exact (Hall _ _ _ E).
-  Qed.
-
-  (** Branches each over as many holes as they bind. *)
-  Lemma access_free_brs_forallb : forall Γ Bs,
-      List.forallb (fun b => access_free_exp_b (ctx_holes (snd (fst b)) ++ Γ) (snd b)) Bs = true <->
-      access_free_brs Θ Ξ Γ Bs.
-  Proof.
-    intros Γ; induction Bs as [| [[c n] B] Bs IH]; cbn; split; intros H.
-    - constructor.
-    - reflexivity.
-    - apply andb_true_iff in H as [H1 H2]; constructor; [ apply access_free_exp_b_spec; exact H1 | apply IH; exact H2 ].
-    - inversion H; subst; apply andb_true_iff; split; [ apply access_free_exp_b_spec; assumption | apply IH; assumption ].
-  Qed.
-
-  Lemma cmd_access_free_b_spec : forall c, cmd_access_free_b c = true <-> cmd_access_free Θ Ξ c.
-  Proof.
-    intros c; destruct c; cbn [cmd_access_free_b cmd_access_free];
-      rewrite ?andb_true_iff, ?access_free_exp_b_spec, ?access_free_oexp_b_spec, ?access_free_tele_b_spec,
-        ?access_free_mod_b_spec; try tauto.
-    - (* a group: each member, each constructor's arguments *)
-      apply and_iff_compat_l, forallb_Forall_iff; intros Mr _.
-      rewrite !andb_true_iff, access_free_tele_b_spec, access_free_exp_b_spec, and_assoc.
-      do 2 apply and_iff_compat_l; apply forallb_Forall_iff; intros rc _; apply access_free_tele_b_spec.
-    - (* a mutual definition: each function *)
-      apply and_iff_compat_l, forallb_Forall_iff; intros f _.
-      rewrite !andb_true_iff, access_free_tele_b_spec, !access_free_exp_b_spec, access_free_brs_forallb; tauto.
-    - (* a record declaration: its fields *)
-      unfold access_free_fields; rewrite and_assoc; do 2 apply and_iff_compat_l.
-      rewrite <- (app_nil_l (l ++ gs_tele Ξ)); change (@nil centry) with (ctx_holes 0).
-      rewrite access_free_args_spec; split; intros H j f T Hj; specialize (H j f T Hj);
-        rewrite Nat.add_0_r in *; exact H.
-  Qed.
-
   (** ** Commands *)
 
-  Lemma fill_exp_fn_sound : forall Γ M M', fill_exp_fn Γ M = fill_ok M' -> fill_exp Θ Ξ Γ M M'.
+  Lemma fill_exp_fn_sound : forall Γ M M', fill_exp_fn Γ M = fill_ok M' -> fill_exp Θ Ξ B Γ M M'.
   Proof. intros; apply (proj1 fill_fn_sound_all); assumption. Qed.
 
-  Lemma fill_oexp_fn_sound : forall Γ oM oM', fill_oexp_fn Γ oM = fill_ok oM' -> fill_oexp Θ Ξ Γ oM oM'.
+  Lemma fill_oexp_fn_sound : forall Γ oM oM', fill_oexp_fn Γ oM = fill_ok oM' -> fill_oexp Θ Ξ B Γ oM oM'.
   Proof. intros; eapply oexp_fill_sound; [ intros; apply (proj1 fill_fn_sound_all) | eassumption ]. Qed.
 
-  Lemma fill_tele_fn_sound : forall Γ Δ Δ', fill_tele_fn Γ Δ = fill_ok Δ' -> fill_tele Θ Ξ Γ Δ Δ'.
+  Lemma fill_tele_fn_sound : forall Γ Δ Δ', fill_tele_fn Γ Δ = fill_ok Δ' -> fill_tele Θ Ξ B Γ Δ Δ'.
   Proof.
     intros; eapply tele_fill_sound; [ apply Forall_forall; intros; apply fill_fn_sound_all | eassumption ].
   Qed.
 
-  Lemma fill_mod_fn_sound : forall Γ y H H' op, fill_mod_fn Γ y H = fill_ok (H', op) -> fill_mod Θ Ξ Γ H H' op.
+  Lemma fill_mod_fn_sound : forall Γ y H H' op, fill_mod_fn Γ y H = fill_ok (H', op) -> fill_mod Θ Ξ B Γ H H' op.
   Proof. intros; eapply fill_mod_of_read_sound; [ apply fill_fn_sound_all | eassumption ]. Qed.
 
-  Lemma fill_fields_fn_sound : forall Γ fs fs', fill_fields_fn Γ fs = fill_ok fs' -> fill_fields Θ Ξ Γ fs fs'.
+  Lemma fill_fields_fn_sound : forall Γ fs fs', fill_fields_fn Γ fs = fill_ok fs' -> fill_fields Θ Ξ B Γ fs fs'.
   Proof.
     intros Γ fs; revert Γ; induction fs as [| [f T] fs IH]; intros Γ fs' E; cbn in E; bind_inv; constructor;
       [ apply fill_exp_fn_sound; assumption | apply IH; assumption ].
   Qed.
 
-  Lemma fill_fields_fn_complete : forall Γ fs fs', fill_fields Θ Ξ Γ fs fs' -> fill_fields_fn Γ fs = fill_ok fs'.
+  Lemma fill_fields_fn_complete : forall Γ fs fs', fill_fields Θ Ξ B Γ fs fs' -> fill_fields_fn Γ fs = fill_ok fs'.
   Proof.
     induction 1 as [| Γ f T T' fs fs' HT _ IH]; cbn; [ reflexivity |].
     rewrite (proj1 fill_fn_complete_all _ _ _ HT); cbn; rewrite IH; reflexivity.
@@ -1677,7 +1233,7 @@ Section Decide.
 
   (** A mutual definition's heads, filled as the relation fills them. *)
   Lemma fill_rfun_heads_fn_sound : forall Γ fs hs,
-      fill_rfun_heads_fn Γ fs = fill_ok hs -> Forall2 (fill_raw_fun_head Θ Ξ Γ) fs hs.
+      fill_rfun_heads_fn Γ fs = fill_ok hs -> Forall2 (fill_raw_fun_head Θ Ξ B Γ) fs hs.
   Proof.
     intros Γ fs; induction fs as [| f fs IH]; intros hs E; cbn in E; bind_inv; constructor; [| apply IH; assumption ].
     constructor; cbn; [ reflexivity | apply fill_tele_fn_sound; assumption | apply fill_exp_fn_sound; assumption
@@ -1685,9 +1241,9 @@ Section Decide.
   Qed.
 
   Lemma fill_rfun_heads_fn_complete : forall Γ fs hs,
-      Forall2 (fill_raw_fun_head Θ Ξ Γ) fs hs -> fill_rfun_heads_fn Γ fs = fill_ok hs.
+      Forall2 (fill_raw_fun_head Θ Ξ B Γ) fs hs -> fill_rfun_heads_fn Γ fs = fill_ok hs.
   Proof.
-    pose proof fill_fn_complete_all as (Ce & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
+    pose proof fill_fn_complete_all as (Ce & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
     induction 1 as [| f h fs hs [En Ep Es Er Ec] _ IH]; cbn; [ reflexivity |].
     rewrite (Ct _ _ _ Ep); cbn; rewrite (Ce _ _ _ Es); cbn; rewrite IH; cbn.
     rewrite <- (raw_fun_parts_eq (mk_rfun (rf_name f) (rf_nparams h) (rf_scrut h) (rf_res f) (rf_clauses f)) h
@@ -1700,7 +1256,7 @@ Section Decide.
   Lemma fill_rfun_bodies_parts_sound : forall Γ pq D Us As hs ms rs fs',
       fill_rfun_results_fn Γ pq D Us (List.combine hs ms) = fill_ok rs ->
       fill_rfun_clauses_fn Γ pq D Us As (List.combine rs ms) = fill_ok fs' ->
-      Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ pq D Us Γ As (fst fm) (snd fm) f') (List.combine hs ms) fs' /\
+      Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As (fst fm) (snd fm) f') (List.combine hs ms) fs' /\
       Forall2 (fun f1 f2 => rf_nparams f1 = rf_nparams f2 /\ rf_res f1 = rf_res f2) fs' rs.
   Proof.
     intros Γ pq D Us As hs; induction hs as [| h hs IH]; intros [| m ms] rs fs' Er Ec; cbn in Er;
@@ -1716,12 +1272,12 @@ Section Decide.
   Qed.
 
   Lemma fill_rfun_bodies_parts_complete : forall Γ pq D Us As hs ms fs',
-      Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ pq D Us Γ As (fst fm) (snd fm) f') (List.combine hs ms) fs' ->
+      Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ As (fst fm) (snd fm) f') (List.combine hs ms) fs' ->
       exists rs, fill_rfun_results_fn Γ pq D Us (List.combine hs ms) = fill_ok rs /\
         Forall2 (fun f1 f2 => rf_nparams f1 = rf_nparams f2 /\ rf_res f1 = rf_res f2) rs fs' /\
         fill_rfun_clauses_fn Γ pq D Us As (List.combine rs ms) = fill_ok fs'.
   Proof.
-    pose proof fill_fn_complete_all as (Ce & _ & _ & _ & _ & Cb & _).
+    pose proof fill_fn_complete_all as (Ce & _ & _ & Cb & _).
     intros Γ pq D Us As hs; induction hs as [| h hs IH]; intros [| m ms] fs' Hb; cbn in Hb;
       inversion Hb as [| ? f' ? fs'' [En Ep Es Hm Hr Hc] Hb']; subst; try (exists nil; repeat split; constructor).
     cbn [fst snd] in *.
@@ -1750,7 +1306,7 @@ Section Decide.
   Proof. induction a as [| [y A] a IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
   Lemma fill_raw_args_fn_sound : forall Γ args args',
-      fill_raw_args_fn Γ args = fill_ok args' -> fill_raw_args Θ Ξ Γ args args'.
+      fill_raw_args_fn Γ args = fill_ok args' -> fill_raw_args Θ Ξ B Γ args args'.
   Proof.
     intros * E; unfold fill_raw_args_fn in E; bind_inv.
     destruct (zip_ass _ _) as [a |] eqn:Ez; [| discriminate ]; injection E as <-.
@@ -1761,22 +1317,22 @@ Section Decide.
   Qed.
 
   Lemma fill_raw_args_fn_complete : forall Γ args args',
-      fill_raw_args Θ Ξ Γ args args' -> fill_raw_args_fn Γ args = fill_ok args'.
+      fill_raw_args Θ Ξ B Γ args args' -> fill_raw_args_fn Γ args = fill_ok args'.
   Proof.
-    pose proof fill_fn_complete_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
+    pose proof fill_fn_complete_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
     intros * [En Ht]; unfold fill_raw_args_fn; rewrite (Ct _ _ _ Ht); cbn [fill_result_bind].
     rewrite <- En; unfold rtele; rewrite rev_involutive, zip_ass_complete; reflexivity.
   Qed.
 
   Lemma fill_raw_cons_fn_sound : forall Γ cs cs', fill_raw_cons_fn Γ cs = fill_ok cs' ->
-      Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args Θ Ξ Γ (snd rc) (snd rc')) cs cs'.
+      Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args Θ Ξ B Γ (snd rc) (snd rc')) cs cs'.
   Proof.
     intros Γ cs; induction cs as [| [c args] cs IH]; intros cs' E; cbn in E; bind_inv; [ constructor |].
     constructor; [ split; [ reflexivity | apply fill_raw_args_fn_sound; assumption ] | apply IH; assumption ].
   Qed.
 
   Lemma fill_raw_cons_fn_complete : forall Γ cs cs',
-      Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args Θ Ξ Γ (snd rc) (snd rc')) cs cs' ->
+      Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args Θ Ξ B Γ (snd rc) (snd rc')) cs cs' ->
       fill_raw_cons_fn Γ cs = fill_ok cs'.
   Proof.
     induction 1 as [| [c args] [c' args'] cs cs' [Ef Ha] _ IH]; cbn; [ reflexivity |].
@@ -1784,8 +1340,8 @@ Section Decide.
   Qed.
 
   Lemma fill_raw_heads_fn_sound : forall Γ ms hs, fill_raw_heads_fn Γ ms = fill_ok hs ->
-      Forall2 (fun Mr Mh => rm_name Mh = rm_name Mr /\ fill_tele Θ Ξ Γ (rm_nparams Mr) (rm_nparams Mh) /\
-                            fill_exp Θ Ξ Γ (rm_sort Mr) (rm_sort Mh) /\ rm_cons Mh = rm_cons Mr) ms hs.
+      Forall2 (fun Mr Mh => rm_name Mh = rm_name Mr /\ fill_tele Θ Ξ B Γ (rm_nparams Mr) (rm_nparams Mh) /\
+                            fill_exp Θ Ξ B Γ (rm_sort Mr) (rm_sort Mh) /\ rm_cons Mh = rm_cons Mr) ms hs.
   Proof.
     intros Γ ms; induction ms as [| Mr ms IH]; intros hs E; cbn in E; bind_inv; [ constructor |].
     constructor; [ cbn; repeat split; [ apply fill_tele_fn_sound | apply fill_exp_fn_sound ]; assumption
@@ -1794,7 +1350,7 @@ Section Decide.
 
   Lemma fill_raw_bodies_fn_sound : forall Rh hs ms', fill_raw_bodies_fn Rh hs = fill_ok ms' ->
       Forall2 (fun Mh Mr' => rm_name Mr' = rm_name Mh /\ rm_nparams Mr' = rm_nparams Mh /\ rm_sort Mr' = rm_sort Mh /\
-                             Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args Θ Ξ (rm_pctx Ξ Rh Mh) (snd rc) (snd rc'))
+                             Forall2 (fun rc rc' => fst rc' = fst rc /\ fill_raw_args Θ Ξ B (rm_pctx Ξ Rh Mh) (snd rc) (snd rc'))
                                (rm_cons Mh) (rm_cons Mr')) hs ms'.
   Proof.
     intros Rh hs; induction hs as [| Mh hs IH]; intros ms' E; cbn in E; bind_inv; [ constructor |].
@@ -1805,13 +1361,13 @@ Section Decide.
       the filled heads: the relation's members of the filled group. *)
   Lemma fill_raw_members_compose : forall ups rec hsG msG ms hs ms',
       Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) hsG msG ->
-      Forall2 (fun Mr Mh => rm_name Mh = rm_name Mr /\ fill_tele Θ Ξ (ups ++ gs_tele Ξ) (rm_nparams Mr) (rm_nparams Mh) /\
-                            fill_exp Θ Ξ (ups ++ gs_tele Ξ) (rm_sort Mr) (rm_sort Mh) /\ rm_cons Mh = rm_cons Mr) ms hs ->
+      Forall2 (fun Mr Mh => rm_name Mh = rm_name Mr /\ fill_tele Θ Ξ B (ups ++ gs_tele Ξ) (rm_nparams Mr) (rm_nparams Mh) /\
+                            fill_exp Θ Ξ B (ups ++ gs_tele Ξ) (rm_sort Mr) (rm_sort Mh) /\ rm_cons Mh = rm_cons Mr) ms hs ->
       Forall2 (fun Mh Mr' => rm_name Mr' = rm_name Mh /\ rm_nparams Mr' = rm_nparams Mh /\ rm_sort Mr' = rm_sort Mh /\
                              Forall2 (fun rc rc' => fst rc' = fst rc /\
-                                                    fill_raw_args Θ Ξ (rm_pctx Ξ (mk_raw ups hsG rec) Mh) (snd rc) (snd rc'))
+                                                    fill_raw_args Θ Ξ B (rm_pctx Ξ (mk_raw ups hsG rec) Mh) (snd rc) (snd rc'))
                                (rm_cons Mh) (rm_cons Mr')) hs ms' ->
-      Forall2 (fill_raw_member Θ Ξ (mk_raw ups msG rec)) ms ms'.
+      Forall2 (fill_raw_member Θ Ξ B (mk_raw ups msG rec)) ms ms'.
   Proof.
     intros * HG Hh; revert ms'; induction Hh as [| Mr Mh ms hs (En & Hn & Hs & Hc) _ IH]; intros ms' Hb;
       inversion Hb as [| ? Mr' ? ms'' (En' & Ep' & Es' & Hc') Hb']; subst; constructor; [| exact (IH _ Hb') ].
@@ -1821,7 +1377,7 @@ Section Decide.
   Qed.
 
   (** The computed fill of a group is the relation's. *)
-  Lemma fill_raw_decl_fn_sound : forall R R', fill_raw_decl_fn R = fill_ok R' -> fill_raw_decl Θ Ξ R R'.
+  Lemma fill_raw_decl_fn_sound : forall R R', fill_raw_decl_fn R = fill_ok R' -> fill_raw_decl Θ Ξ B R R'.
   Proof.
     intros R R' E; unfold fill_raw_decl_fn in E; bind_inv.
     rename x into ups', x0 into hs, x1 into ms'.
@@ -1834,14 +1390,14 @@ Section Decide.
   Qed.
 
   (** The relation's fill of a group is computed. *)
-  Lemma fill_raw_heads_fn_complete : forall R' ms ms', Forall2 (fill_raw_member Θ Ξ R') ms ms' ->
+  Lemma fill_raw_heads_fn_complete : forall R' ms ms', Forall2 (fill_raw_member Θ Ξ B R') ms ms' ->
       exists hs, fill_raw_heads_fn (rd_uparams R' ++ gs_tele Ξ) ms = fill_ok hs /\
         Forall2 (fun Mh Mr' => rm_name Mh = rm_name Mr' /\ rm_nparams Mh = rm_nparams Mr' /\ rm_sort Mh = rm_sort Mr' /\
                                Forall2 (fun rc rc' => fst rc' = fst rc /\
-                                                      fill_raw_args Θ Ξ (rm_pctx Ξ R' Mr') (snd rc) (snd rc'))
+                                                      fill_raw_args Θ Ξ B (rm_pctx Ξ R' Mr') (snd rc) (snd rc'))
                                  (rm_cons Mh) (rm_cons Mr')) hs ms'.
   Proof.
-    pose proof fill_fn_complete_all as (Ce & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
+    pose proof fill_fn_complete_all as (Ce & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
     induction 1 as [| Mr Mr' ms ms' [En Hn Hs Hc] _ (hs & Eh & Hhs)]; [ exists nil; split; [ reflexivity | constructor ] |].
     exists (mk_rmem (rm_name Mr) (rm_nparams Mr') (rm_sort Mr') (rm_cons Mr) :: hs); cbn.
     rewrite (Ct _ _ _ Hn); cbn [fill_result_bind]; rewrite (Ce _ _ _ Hs); cbn [fill_result_bind]; rewrite Eh.
@@ -1852,7 +1408,7 @@ Section Decide.
       Forall2 (fun M1 M2 => rm_nparams M1 = rm_nparams M2 /\ rm_sort M1 = rm_sort M2) (rd_members Rh) (rd_members R') ->
       Forall2 (fun Mh Mr' => rm_name Mh = rm_name Mr' /\ rm_nparams Mh = rm_nparams Mr' /\ rm_sort Mh = rm_sort Mr' /\
                              Forall2 (fun rc rc' => fst rc' = fst rc /\
-                                                    fill_raw_args Θ Ξ (rm_pctx Ξ R' Mr') (snd rc) (snd rc'))
+                                                    fill_raw_args Θ Ξ B (rm_pctx Ξ R' Mr') (snd rc) (snd rc'))
                                (rm_cons Mh) (rm_cons Mr')) hs ms' ->
       fill_raw_bodies_fn Rh hs = fill_ok ms'.
   Proof.
@@ -1863,9 +1419,9 @@ Section Decide.
       reflexivity.
   Qed.
 
-  Lemma fill_raw_decl_fn_complete : forall R R', fill_raw_decl Θ Ξ R R' -> fill_raw_decl_fn R = fill_ok R'.
+  Lemma fill_raw_decl_fn_complete : forall R R', fill_raw_decl Θ Ξ B R R' -> fill_raw_decl_fn R = fill_ok R'.
   Proof.
-    pose proof fill_fn_complete_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
+    pose proof fill_fn_complete_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
     intros R R' [Hu Hr Hm]; unfold fill_raw_decl_fn; rewrite (Ct _ _ _ Hu); cbn [fill_result_bind].
     destruct (fill_raw_heads_fn_complete _ _ _ Hm) as (hs & Eh & Hhs); rewrite Eh; cbn [fill_result_bind].
     rewrite (fill_raw_bodies_fn_complete (mk_raw (rd_uparams R') hs (rd_rec R)) R' hs (rd_members R') eq_refl); cbn.
@@ -1881,7 +1437,7 @@ Section Decide.
       fill_rfun_bodies_fn Γ Δ' (h0 :: hs0) = fill_ok fs' ->
       exists f0' fs0' pq m0 Ps D Us ms, fs' = f0' :: fs0' /\
         mdef_group Θ Ξ Δ' h0 hs0 pq m0 Ps D Us ms /\
-        Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ pq D Us Γ
+        Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us Γ
                                 (blocks_motives (mdef_blocks 0 (List.length (ind_members D)) (f0' :: fs0') ms))
                                 (fst fm) (snd fm) f')
           (List.combine (h0 :: hs0) ms) (f0' :: fs0').
@@ -1899,7 +1455,7 @@ Section Decide.
 
   Lemma fill_rfun_bodies_fn_complete : forall Δ' h0 hs0 f0' fs0' pq m0 Ps D Us ms,
       mdef_group Θ Ξ Δ' h0 hs0 pq m0 Ps D Us ms ->
-      Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ pq D Us (Δ' ++ gs_tele Ξ)%list
+      Forall2 (fun fm f' => fill_raw_fun_body Θ Ξ B pq D Us (Δ' ++ gs_tele Ξ)%list
                               (blocks_motives (mdef_blocks 0 (List.length (ind_members D)) (f0' :: fs0') ms))
                               (fst fm) (snd fm) f')
         (List.combine (h0 :: hs0) ms) (f0' :: fs0') ->
@@ -1912,77 +1468,66 @@ Section Decide.
   Qed.
 
   (** The computed fill of a command is the relation's. *)
-  Theorem fill_cmd_fn_sound : forall c c', fill_cmd_fn c = fill_ok c' -> fill_cmd Θ Ξ c c'.
+  Theorem fill_cmd_fn_sound : forall c c', fill_cmd_fn c = fill_ok c' -> fill_cmd Θ Ξ B c c'.
   Proof.
-    intros c c'; unfold fill_cmd_fn; destruct (cmd_access_free_b c) eqn:Eb.
-    - intros [= <-]; apply fill_cmd_plain, cmd_access_free_b_spec; exact Eb.
-    - destruct c; cbn [fill_cmd_typed]; intros E; bind_inv; try discriminate.
-      + constructor; [ apply fill_exp_fn_sound | apply fill_oexp_fn_sound ]; assumption.
-      + constructor; apply fill_tele_fn_sound; assumption.
-      + destruct x0 as [E' op]; econstructor; [ apply fill_tele_fn_sound | eapply fill_mod_fn_sound ]; eassumption.
-      + destruct x as [E' op]; destruct x0; apply sels_check_spec in H0.
-        econstructor; [ eapply fill_mod_fn_sound; eassumption | exact H0 ].
-      + constructor; [ apply fill_exp_fn_sound | apply fill_oexp_fn_sound ]; assumption.
-      + (* a group *)
-        constructor; apply fill_raw_decl_fn_sound; assumption.
-      + (* a mutual definition: its telescope, its heads, then its bodies *)
-        match goal with
-        | Ht : fill_tele_fn _ _ = fill_ok _, Hh : fill_rfun_heads_fn _ ?fs = fill_ok ?hs,
-          Hb : fill_rfun_bodies_fn _ _ ?hs = fill_ok _ |- _ =>
-            destruct hs as [| h0 hs0]; [ discriminate |];
-            destruct (fill_rfun_bodies_fn_sound _ _ _ _ _ eq_refl Hb)
-              as (f0' & fs0' & pq & m0 & Ps & D & Us & ms & -> & Hgp & Hb');
-            pose proof (fill_rfun_heads_fn_sound _ _ _ Hh) as Hh';
-            destruct fs as [| f0 fs]; [ inversion Hh' |];
-            eapply fill_cmd_mdef; [ apply fill_tele_fn_sound; exact Ht | exact Hh' | exact Hgp | exact Hb' ]
-        end.
-      + destruct x as [E' [p |]]; cbn [fst snd] in *; bind_inv; try discriminate.
-        constructor; eapply fill_mod_fn_sound; eassumption.
-      + destruct x0 as [E' [p |]]; cbn [fst snd] in *; bind_inv; try discriminate.
-        constructor; [ apply fill_tele_fn_sound | eapply fill_mod_fn_sound ]; eassumption.
-      + constructor; [ apply fill_tele_fn_sound | apply fill_exp_fn_sound | apply fill_fields_fn_sound ]; assumption.
+    intros c c'; destruct c; cbn [fill_cmd_fn]; intros E; bind_inv; try discriminate.
+    - constructor; [ apply fill_exp_fn_sound | apply fill_oexp_fn_sound ]; assumption.
+    - constructor; apply fill_tele_fn_sound; assumption.
+    - destruct x0 as [E' op]; econstructor; [ apply fill_tele_fn_sound | eapply fill_mod_fn_sound ]; eassumption.
+    - constructor.
+    - destruct x as [E' op]; destruct x0; apply sels_check_spec in H0.
+      econstructor; [ eapply fill_mod_fn_sound; eassumption | exact H0 ].
+    - constructor; [ apply fill_exp_fn_sound | apply fill_oexp_fn_sound ]; assumption.
+    - (* a group *)
+      constructor; apply fill_raw_decl_fn_sound; assumption.
+    - (* a mutual definition: its telescope, its heads, then its bodies *)
+      match goal with
+      | Ht : fill_tele_fn _ _ = fill_ok _, Hh : fill_rfun_heads_fn _ ?fs = fill_ok ?hs,
+        Hb : fill_rfun_bodies_fn _ _ ?hs = fill_ok _ |- _ =>
+          destruct hs as [| h0 hs0]; [ discriminate |];
+          destruct (fill_rfun_bodies_fn_sound _ _ _ _ _ eq_refl Hb)
+            as (f0' & fs0' & pq & m0 & Ps & D & Us & ms & -> & Hgp & Hb');
+          pose proof (fill_rfun_heads_fn_sound _ _ _ Hh) as Hh';
+          destruct fs as [| f0 fs]; [ inversion Hh' |];
+          eapply fill_cmd_mdef; [ apply fill_tele_fn_sound; exact Ht | exact Hh' | exact Hgp | exact Hb' ]
+      end.
+    - destruct x as [E' [p |]]; cbn [fst snd] in *; bind_inv; try discriminate.
+      constructor; eapply fill_mod_fn_sound; eassumption.
+    - destruct x0 as [E' [p |]]; cbn [fst snd] in *; bind_inv; try discriminate.
+      constructor; [ apply fill_tele_fn_sound | eapply fill_mod_fn_sound ]; eassumption.
+    - constructor; [ apply fill_tele_fn_sound | apply fill_exp_fn_sound | apply fill_fields_fn_sound ]; assumption.
+    - constructor.
   Qed.
 
   (** The relation's fill of a command is computed. *)
-  Theorem fill_cmd_fn_complete : forall c c', fill_cmd Θ Ξ c c' -> fill_cmd_fn c = fill_ok c'.
+  Theorem fill_cmd_fn_complete : forall c c', fill_cmd Θ Ξ B c c' -> fill_cmd_fn c = fill_ok c'.
   Proof.
-    pose proof fill_fn_complete_all as (Ce & _ & _ & _ & _ & _ & Co & _ & Cm & _ & _ & Ct & _).
-    intros c c' H; unfold fill_cmd_fn; destruct (cmd_access_free_b c) eqn:Eb.
-    - apply cmd_access_free_b_spec in Eb; rewrite (fill_cmd_access_free Θ Ξ Hg _ _ H Eb); reflexivity.
-    - inversion H; subst; [ apply cmd_access_free_b_spec in H0; congruence | .. ]; cbn [fill_cmd_typed].
-      + rewrite (Ce _ _ _ H0); cbn; rewrite (Co _ _ _ H1); reflexivity.
-      + rewrite (Ct _ _ _ H0); reflexivity.
-      + rewrite (Ct _ _ _ H0); cbn; rewrite (Cm _ _ _ _ H1 ""); reflexivity.
-      + rewrite (Ct _ _ _ H0); cbn; rewrite (Cm _ _ _ _ H1 ""); reflexivity.
-      + rewrite (Cm _ _ _ _ H0 ""); cbn; rewrite (proj2 (sels_check_spec _ _) H1); reflexivity.
-      + rewrite (Cm _ _ _ _ H0 ""); reflexivity.
-      + rewrite (Ce _ _ _ H0); cbn; rewrite (Co _ _ _ H1); reflexivity.
-      + (* a group *)
-        rewrite (fill_raw_decl_fn_complete _ _ H0); reflexivity.
-      + (* a mutual definition: its telescope, its heads, then its bodies *)
-        rewrite (Ct _ _ _ H0); cbn [fill_result_bind]; rewrite (fill_rfun_heads_fn_complete _ _ _ H1);
-          cbn [fill_result_bind].
-        rewrite (fill_rfun_bodies_fn_complete _ _ _ _ _ _ _ _ _ _ _ H2 H3); reflexivity.
-      + rewrite (Ct _ _ _ H0); cbn; rewrite (Ce _ _ _ H1); cbn; rewrite (fill_fields_fn_complete _ _ _ H2); reflexivity.
+    pose proof fill_fn_complete_all as (Ce & _ & _ & _ & Co & _ & Cm & _ & _ & Ct & _).
+    intros c c' H; inversion H; subst; cbn [fill_cmd_fn]; try reflexivity.
+    - rewrite (Ce _ _ _ H0); cbn; rewrite (Co _ _ _ H1); reflexivity.
+    - rewrite (Ct _ _ _ H0); reflexivity.
+    - rewrite (Ct _ _ _ H0); cbn; rewrite (Cm _ _ _ _ H1 ""); reflexivity.
+    - rewrite (Ct _ _ _ H0); cbn; rewrite (Cm _ _ _ _ H1 ""); reflexivity.
+    - rewrite (Cm _ _ _ _ H0 ""); cbn; rewrite (proj2 (sels_check_spec _ _) H1); reflexivity.
+    - rewrite (Cm _ _ _ _ H0 ""); reflexivity.
+    - rewrite (Ce _ _ _ H0); cbn; rewrite (Co _ _ _ H1); reflexivity.
+    - (* a group *)
+      rewrite (fill_raw_decl_fn_complete _ _ H0); reflexivity.
+    - (* a mutual definition: its telescope, its heads, then its bodies *)
+      rewrite (Ct _ _ _ H0); cbn [fill_result_bind]; rewrite (fill_rfun_heads_fn_complete _ _ _ H1);
+        cbn [fill_result_bind].
+      rewrite (fill_rfun_bodies_fn_complete _ _ _ _ _ _ _ _ _ _ _ H2 H3); reflexivity.
+    - rewrite (Ct _ _ _ H0); cbn; rewrite (Ce _ _ _ H1); cbn; rewrite (fill_fields_fn_complete _ _ _ H2); reflexivity.
   Qed.
 
   (** A unit's parameters, likewise. *)
-  Theorem fill_params_fn_sound : forall Δ Δ', fill_params_fn Δ = fill_ok Δ' -> fill_params Θ Ξ Δ Δ'.
-  Proof.
-    intros Δ Δ'; unfold fill_params_fn; destruct (access_free_tele_b (gs_tele Ξ) Δ) eqn:Eb.
-    - intros [= <-]; apply fill_params_plain, access_free_tele_b_spec; exact Eb.
-    - intros E; apply fill_params_tele, fill_tele_fn_sound; exact E.
-  Qed.
+  Theorem fill_params_fn_sound : forall Δ Δ', fill_params_fn Δ = fill_ok Δ' -> fill_params Θ Ξ B Δ Δ'.
+  Proof. intros * E; apply fill_tele_fn_sound; exact E. Qed.
 
-  Theorem fill_params_fn_complete : forall Δ Δ', fill_params Θ Ξ Δ Δ' -> fill_params_fn Δ = fill_ok Δ'.
+  Theorem fill_params_fn_complete : forall Δ Δ', fill_params Θ Ξ B Δ Δ' -> fill_params_fn Δ = fill_ok Δ'.
   Proof.
-    pose proof (fill_access_free_all Θ Ξ Hg) as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & At & _).
-    pose proof fill_fn_complete_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
-    intros Δ Δ' H; unfold fill_params_fn; destruct (access_free_tele_b (gs_tele Ξ) Δ) eqn:Eb.
-    - apply access_free_tele_b_spec in Eb; inversion H as [? Hp | ? ? Ht]; subst; [ reflexivity |].
-      rewrite (At _ _ _ Ht _ Eb eq_refl); reflexivity.
-    - inversion H as [? Hp | ? ? Ht]; subst; [ apply access_free_tele_b_spec in Hp; congruence |].
-      exact (Ct _ _ _ Ht).
+    pose proof fill_fn_complete_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & Ct & _).
+    intros * H; exact (Ct _ _ _ H).
   Qed.
 
   (** ** A Module's and a Record's Fills
@@ -1991,29 +1536,23 @@ Section Decide.
       declaration its telescope's, sort's and fields'. *)
 
   Lemma fill_cmd_mod_params : forall x pv Δ Δ' cs,
-      fill_params Θ Ξ Δ Δ' -> fill_cmd Θ Ξ (cc_mod x pv Δ cs) (cc_mod x pv Δ' cs).
-  Proof. intros * [? Hp | ? ? Ht]; [ apply fill_cmd_plain; exact Hp | apply fill_cmd_mod; exact Ht ]. Qed.
+      fill_params Θ Ξ B Δ Δ' -> fill_cmd Θ Ξ B (cc_mod x pv Δ cs) (cc_mod x pv Δ' cs).
+  Proof. intros * Ht; apply fill_cmd_mod; exact Ht. Qed.
 
   Lemma fill_cmd_mod_inv : forall x pv Δ cs c',
-      fill_cmd Θ Ξ (cc_mod x pv Δ cs) c' -> exists Δ', c' = cc_mod x pv Δ' cs /\ fill_params Θ Ξ Δ Δ'.
-  Proof.
-    intros * H; inversion H; subst; eexists; (split; [ reflexivity |]);
-      [ apply fill_params_plain; assumption | apply fill_params_tele; assumption ].
-  Qed.
+      fill_cmd Θ Ξ B (cc_mod x pv Δ cs) c' -> exists Δ', c' = cc_mod x pv Δ' cs /\ fill_params Θ Ξ B Δ Δ'.
+  Proof. intros * H; inversion H; subst; eexists; split; [ reflexivity | assumption ]. Qed.
 
   (** What fills to a module is a module with the same name and body, its
       parameters filled. *)
   Lemma fill_cmd_to_mod : forall c x pv Δ' cs,
-      fill_cmd Θ Ξ c (cc_mod x pv Δ' cs) -> exists Δ, c = cc_mod x pv Δ cs /\ fill_params Θ Ξ Δ Δ'.
-  Proof.
-    intros * H; inversion H; subst; eexists; (split; [ reflexivity |]);
-      [ apply fill_params_plain; assumption | apply fill_params_tele; assumption ].
-  Qed.
+      fill_cmd Θ Ξ B c (cc_mod x pv Δ' cs) -> exists Δ, c = cc_mod x pv Δ cs /\ fill_params Θ Ξ B Δ Δ'.
+  Proof. intros * H; inversion H; subst; eexists; split; [ reflexivity | assumption ]. Qed.
 
   (** What fills to a record declaration is one with the same name and
       with-area. *)
   Lemma fill_cmd_to_record : forall c x pv Δ' Srt' fs' cs,
-      fill_cmd Θ Ξ c (cc_record x pv Δ' Srt' fs' cs) -> exists Δ Srt fs, c = cc_record x pv Δ Srt fs cs.
+      fill_cmd Θ Ξ B c (cc_record x pv Δ' Srt' fs' cs) -> exists Δ Srt fs, c = cc_record x pv Δ Srt fs cs.
   Proof. intros * H; inversion H; subst; eauto. Qed.
 
   (** A record declaration's telescope, sort and fields filled. *)
@@ -2021,17 +1560,17 @@ Section Decide.
       fill_result (ctx * typ * list (string * typ))%type :=
     match fill_cmd_fn (cc_record x pv Δ Srt fs cs) with
     | fill_ok (cc_record _ _ Δ' Srt' fs' _) => fill_ok (Δ', Srt', fs')
-    | fill_ok _ => fill_error (access_error_message "internal error: a record declaration filled to no record declaration")
+    | fill_ok _ => fill_error (fill_failure_message "internal error: a record declaration filled to no record declaration")
     | fill_error e => fill_error e
     end.
 
   Lemma fill_cmd_record_inv : forall x pv Δ Srt fs cs c',
-      fill_cmd Θ Ξ (cc_record x pv Δ Srt fs cs) c' -> exists Δ' Srt' fs', c' = cc_record x pv Δ' Srt' fs' cs.
+      fill_cmd Θ Ξ B (cc_record x pv Δ Srt fs cs) c' -> exists Δ' Srt' fs', c' = cc_record x pv Δ' Srt' fs' cs.
   Proof. intros * H; inversion H; subst; eauto. Qed.
 
   Lemma fill_record_fn_sound : forall x pv Δ Srt fs cs Δ' Srt' fs',
       fill_record_fn x pv Δ Srt fs cs = fill_ok (Δ', Srt', fs') ->
-      fill_cmd Θ Ξ (cc_record x pv Δ Srt fs cs) (cc_record x pv Δ' Srt' fs' cs).
+      fill_cmd Θ Ξ B (cc_record x pv Δ Srt fs cs) (cc_record x pv Δ' Srt' fs' cs).
   Proof.
     intros * E; unfold fill_record_fn in E.
     destruct (fill_cmd_fn (cc_record x pv Δ Srt fs cs)) as [c' | e] eqn:Ef; [| discriminate ].
@@ -2041,7 +1580,7 @@ Section Decide.
   Qed.
 
   Lemma fill_record_fn_complete : forall x pv Δ Srt fs cs Δ' Srt' fs',
-      fill_cmd Θ Ξ (cc_record x pv Δ Srt fs cs) (cc_record x pv Δ' Srt' fs' cs) ->
+      fill_cmd Θ Ξ B (cc_record x pv Δ Srt fs cs) (cc_record x pv Δ' Srt' fs' cs) ->
       fill_record_fn x pv Δ Srt fs cs = fill_ok (Δ', Srt', fs').
   Proof. intros * H; unfold fill_record_fn; rewrite (fill_cmd_fn_complete _ _ H); reflexivity. Qed.
 End Decide.

@@ -260,9 +260,7 @@ Section IndRuns.
       Θ1 ⍮ Ξ1 ⍮ B1 ⍮ Rb1 ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs ⇝* Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2 ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_gen c :: cs ⇝* Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2.
   Proof.
-    intros * H1 H2; eapply rcs_cons;
-      [ constructor | reflexivity | exists nil; split; [ constructor | reflexivity ]
-      | apply fill_cmd_plain; exact I | exact H1 | exact H2 ].
+    intros * H1 H2; eapply rcs_cons; [ constructor | apply fill_cmd_gen | exact H1 | exact H2 ].
   Qed.
 
   Lemma run_cmds_app : forall ch cs1 cs2 B Rb Θ Ξ B1 Rb1 Θ1 Ξ1 B2 Rb2 Θ2 Ξ2,
@@ -271,7 +269,7 @@ Section IndRuns.
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cs1 ++ cs2 ⇝* Θ2 ⍮ Ξ2 ⍮ B2 ⍮ Rb2.
   Proof.
     intros ch cs1; induction cs1 as [| c cs1 IH]; intros * H1 H2; inversion H1; subst; [ exact H2 |].
-    eapply rcs_cons; [ eassumption | eassumption | eassumption | eassumption | eassumption | eapply IH; eassumption ].
+    eapply rcs_cons; [ eassumption | eassumption | eassumption | eapply IH; eassumption ].
   Qed.
 
   (** Generated definitions [ds], their names distinct and fresh in the

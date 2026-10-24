@@ -3916,7 +3916,7 @@ let%expect_test "an eliminator takes its type from its scrutinee" =
 
 let%expect_test "an eliminator of a scrutinee of no inductive type is rejected" =
   let _ = main_of_body "eval fun (n : Nat) -> elim n at k -> Nat end" in
-  [%expect {| Error: λ (x1 : ℕ) → elim x1 at x2 → ℕ end has no inferable type |}]
+  [%expect {| Error: the eliminator has no branch for zero |}]
 
 let%expect_test "an eliminator is no member of its type" =
   let _ = main_of_body "inductive N : Type@0 where | z end \
@@ -4416,9 +4416,15 @@ let%expect_test "a block for no member at its place prints its induction hypothe
      with Forest : Type@0 where | nil | cons (t : Tree) (ts : Forest) end end \
      def f (z : G.Forest) : ⊤ := elim z at z -> ⊤ | nil => ⋆ | cons t us, ht hus => ⋆ end end" in
   [%expect {|
-    Error: the body of f,
-      λ (x1 : G.Forest) → elim x1 at x2 → ⊤ | nil ⇒ ⋆ | cons x3 x4, x5 x6 ⇒ ⋆ end,
-      is not of type ∀ (x1 : G.Forest) → ⊤
+    Error: an eliminator has one block per member of its group, in member order:
+      Tree, Forest; the block for Tree is missing.
+      The eliminator should read:
+      elim x1 with (z : G.Tree) → …
+      | node ts, h ⇒ …
+      at (z : G.Forest) → …
+      | nil ⇒ …
+      | cons t ts, ht hts ⇒ …
+      end
     |}]
 
 let%expect_test "the member written unapplied is the one named" =
@@ -4819,11 +4825,7 @@ let%expect_test "a field through a global definition" =
 let%expect_test "an eliminator's annotation with an access through a term at its head" =
   let _ = main_of_body "record R : Type@1 where carrier : Type@0 with inductive T : Type@0 where | t end end end \
                         def f (q : R) (z : q.T) : Nat := elim z at (w : q.T) -> Nat | t => 0 end end" in
-  [%expect {|
-    Error: the head of an eliminator's annotation, q.T,
-      cannot be an access through a term;
-      name the type through its record, R.T As q
-    |}]
+  [%expect {| |}]
 
 let%expect_test "an eliminator's annotation with an access through a term in its arguments" =
   let _ = main_of_body "inductive Vec (A : Type@0) : Type@0 where | vnil | vcons (x : A) (v : Vec A) end \
@@ -4882,3 +4884,79 @@ let%expect_test "a record value with a field its record does not have" =
 let%expect_test "a record value with a field missing" =
   let _ = main_of_body (pair_decl ^ "eval record Pair Nat Nat where fst := 1 end") in
   [%expect {| Error: field snd of record Test.Pair is missing |}]
+
+(** The typed fill: an eliminator's group and uniform parameters are read
+    off its scrutinee's type, the one reading of it that fits its blocks *)
+
+let list_rose =
+  "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
+   inductive Rose (A : Type@0) : Type@0 where | node (x : A) (ts : List (Rose A)) end "
+
+let%expect_test "a list of roses eliminated as a list and as roses" =
+  let _ = main_of_body (list_rose ^
+    "def ts : List (Rose Nat) := List.cons (Rose Nat) (Rose.node Nat 1 (List.nil (Rose Nat))) (List.nil (Rose Nat)) end \
+     def len (ts : List (Rose Nat)) : Nat := elim ts at y -> Nat | nil => 0 | cons t ts, h => succ h end end \
+     def size (ts : List (Rose Nat)) : Nat := elim ts with y -> Nat | node x ts, h => succ h \
+       at y -> Nat | nil => 0 | cons t ts, ht hts => succ hts end end \
+     eval len ts eval size ts") in
+  [%expect {|
+    Evaluate len ts --> 1 : ℕ
+    Evaluate size ts --> 1 : ℕ
+    |}]
+
+(* Two groups nest through lists alike, and both occur in the scrutinee's
+   type: their eliminators' blocks have the same shape. *)
+let%expect_test "an eliminator two readings of which fit its blocks is rejected" =
+  let _ = main_of_body (list_rose ^
+    "inductive Q1 : Type@0 where | a (xs : List Q1) end \
+     inductive Q2 : Type@0 where | a (xs : List Q2) end \
+     inductive Two (X : Type@0) (Y : Type@0) : Type@0 where | two (x : X) (y : Y) end \
+     def f (y : List (Two Q1 Q2)) : Nat := elim y with z -> Nat | a xs, h => 0 \
+       at z -> Nat | nil => 0 | cons x xs, h1 h2 => 1 end end") in
+  [%expect {|
+    Error: the eliminator of x1 is ambiguous: its blocks fit the eliminators of
+      Q1 and of Q2
+    |}]
+
+let%expect_test "an eliminator's annotation through an inductive alias" =
+  let _ = main_of_body (list_rose ^
+    "inductive RoseN := Rose Nat \
+     def g (r : RoseN) : Nat := elim r at (z : RoseN) -> Nat | node x ts, h => x \
+       with (z : List RoseN) -> Nat | nil => 0 | cons t ts, ht hts => ht end end \
+     eval g (Rose.node Nat 7 (List.nil (Rose Nat)))") in
+  [%expect {| Evaluate g (Rose.node ℕ 7 (List.nil (Rose ℕ))) --> 7 : ℕ |}]
+
+let%expect_test "an eliminator of a field, with a numeral in a branch" =
+  let _ = main_of_body
+    "record P : Type@0 where fst : Nat end \
+     def h (p : P) : Nat := elim p.fst at z -> Nat | zero => 3 | succ n, ih => ih end end \
+     eval h (record P where fst := 2 end)" in
+  [%expect {| Evaluate h (record P where fst ≔ 2 end) --> 3 : ℕ |}]
+
+let%expect_test "an eliminator with uniform parameters in a unit parameter's type" =
+  let _ = main_of_program_string ~search_root:"../lib"
+    "import Prelude›Builtin›Nat use (Nat)\nimport Prelude›Data›List use (List)\n\
+     module Test (p : elim (List.nil 0l Nat) at z -> Type@0 | nil => Nat | cons x xs, h => Nat end) where \
+     def q : Nat := p end end" in
+  [%expect {| |}]
+
+let%expect_test "an eliminator's scrutinee of no inductive type" =
+  let _ = main_of_body "def f (A : Type@0) (a : A) : Nat := elim a at z -> Nat end end" in
+  [%expect {|
+    Error: the scrutinee a of an eliminator is of type A,
+      which is not an inductive type
+    |}]
+
+let%expect_test "an eliminator no group of which fits its blocks" =
+  let _ = main_of_body (list_rose ^
+    "def f (ts : List (Rose Nat)) : Nat := elim ts with y -> Nat | leaf => 0 \
+       at y -> Nat | nil => 0 | cons t ts, ht hts => 0 end end") in
+  [%expect {|
+    Error: an eliminator has one block per member of its group, in member order:
+      List; block 1 (branches leaf) is for no member left.
+      The eliminator should read:
+      elim x1 at (z : List (Rose ℕ)) → …
+      | nil ⇒ …
+      | cons x xs, h ⇒ …
+      end
+    |}]

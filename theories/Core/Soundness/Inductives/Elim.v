@@ -432,8 +432,8 @@ Qed.
 (** The readback of the branches of a block, entry by entry. *)
 Lemma read_brs_nth : forall p D ups Bks ρ s Mi r Mv A cs Bs Bs', ind_lookup gc_deps gc_stack p = Some D ->
     Rbrs Bs at cs of Mi r from p ups Bks Mv A in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Bs' ->
-    List.length (nbrs_to_brs Bs') = List.length cs /\ List.length Bs = List.length cs /\
-    forall idx c n B', List.nth_error (nbrs_to_brs Bs') idx = Some (c, n, B') ->
+    List.length (List.map branch_exp Bs') = List.length cs /\ List.length Bs = List.length cs /\
+    forall idx c n B', List.nth_error (List.map branch_exp Bs') idx = Some (c, n, B') ->
       exists gs' gs n0 B ns vs ihs wihs bv t Bn, List.nth_error Bs idx = Some (c, n0, B) /\
         List.nth_error cs idx = Some (c, gs') /\ ind_con Mv c = Some gs /\
         n0 = (im_nn Mi + List.length gs' + cargs_nrec gs)%nat /\ n = (im_nn Mi + List.length gs' + cargs_nrec gs')%nat /\
@@ -475,7 +475,7 @@ Qed.
     their values, at every weakening. *)
 Lemma glu_args_read : forall Δ C Ms vs, tele_ass C -> ctx_scoped 0 C -> glu_args Δ C Id nil Ms vs ->
     forall Δ' φ Rs, Δ' ⊢ᵏ φ : Δ -> Rps vs at List.rev C in gc_deps ⍮ gc_stack ⍮ nil ⍮ length Δ' ↘ Rs ->
-      exps_eq_at Δ' C (List.map (fun P => P[φ]ʷ) Ms) (nfs_to_exps Rs).
+      exps_eq_at Δ' C (List.map (fun P => P[φ]ʷ) Ms) (List.map nf_to_exp Rs).
 Proof.
   intros * Hass Hs Hg; pose proof Hg as [L1 L2 H].
   intros Δ' φ Rs Hφ HRs.
@@ -2158,8 +2158,8 @@ Section ElimGlu.
 
   (** The readback of a stuck eliminator's blocks, block by block. *)
   Lemma read_blocks_nth : forall s sel Ms i NBks, Rblks i Ms from p ups Bks sel in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ NBks ->
-      List.length (nblocks_to_blocks NBks) = List.length Ms /\
-      forall n b', List.nth_error (nblocks_to_blocks NBks) n = Some b' ->
+      List.length (List.map block_exp NBks) = List.length Ms /\
+      forall n b', List.nth_error (List.map block_exp NBks) n = Some b' ->
         exists Mi Mv b hd k pre ns a A' Bs', List.nth_error Ms n = Some Mi /\
           ind_member D (elim_src sel (i + n)) = Some Mv /\ List.nth_error Bks (elim_src sel (i + n)) = Some b /\
           eb_nm b = S (im_nn Mi) /\ ⟦mref elim_src sel (i + n) of p ups ⟧ gc_deps ⍮ gc_stack ↘ (hd, k, pre) /\
@@ -2167,7 +2167,7 @@ Section ElimGlu.
           ⟦ eb_motive b ⟧ env_args ρ (ns ++ ⇑! (d_ind hd k (pre ++ ns)) (s + im_nn Mi) :: nil) ↘ a /\
           Rtyp a in gc_deps ⍮ gc_stack ⍮ S (s + im_nn Mi) ↘ A' /\
           Rbrs (eb_brs b) at (im_cons Mi) of Mi (hd, k, pre) from p ups Bks Mv (eb_motive b) in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Bs' /\
-          b' = eb_mk (S (im_nn Mi)) None (nf_to_exp A') (nbrs_to_brs Bs').
+          b' = eb_mk (S (im_nn Mi)) None (nf_to_exp A') (List.map branch_exp Bs').
   Proof.
     intros s sel Ms; induction Ms as [| Mi Ms IH]; intros i NBks HR; inversion HR; subst.
     - split; [ reflexivity | intros [] *; discriminate ].
@@ -2226,7 +2226,7 @@ Section ElimGlu.
   Lemma own_block_rb : forall Δ σ'' NBks, Δ ⊢ˢ σ'' ® ρ ∈ SbΓ ->
       Rblks 0 (ind_members D) from p ups Bks None in gc_deps ⍮ gc_stack ⍮ ρ ⍮ length Δ ↘ NBks ->
       forall k Mk b b', ind_member D k = Some Mk -> List.nth_error Bks k = Some b ->
-        List.nth_error (nblocks_to_blocks NBks) k = Some b' ->
+        List.nth_error (List.map block_exp NBks) k = Some b' ->
         eb_nm b' = S (im_nn Mk) /\ eb_ann b' = None /\
         elim_mctx p D k Mk (List.map (fun U => U[σ'']) Us) ++ Δ ⊢ (eb_motive b)[sb_qn (S (im_nn Mk)) σ''] ≈ eb_motive b' : Typeω@iA /\
         List.map fst (brs_sub (eb_brs b) σ'') = List.map fst (eb_brs b') /\
@@ -2252,8 +2252,8 @@ Section ElimGlu.
       + (** The names and counts. *)
         assert (Efst : List.map fst (brs_sub (eb_brs b) σ'') = List.map fst (eb_brs b))
           by (unfold brs_sub; rewrite List.map_map; apply List.map_ext; intros [[c0 n0] B0]; reflexivity).
-        rewrite Efst; apply List.nth_error_ext; intros idx; rewrite !List.nth_error_map.
-        destruct (List.nth_error (nbrs_to_brs Bs') idx) as [[[c1 n1] B1] |] eqn:E1.
+        rewrite Efst; apply List.nth_error_ext; intros idx; rewrite !List.nth_error_map, <- (List.nth_error_map branch_exp).
+        destruct (List.nth_error (List.map branch_exp Bs') idx) as [[[c1 n1] B1] |] eqn:E1.
         * destruct (HBn idx c1 n1 B1 E1) as (gs' & gs & n0 & B0 & ns' & vs & ihs & wihs & bv & t & Bn & HB0 & Hcs & Hcn & En0 & En & _).
           rewrite HB0; cbn.
           pose proof (Hgs _ _ _ (List.nth_error_In _ _ Hcs) Hcn) as ->.
@@ -2325,7 +2325,7 @@ Section ElimGlu.
     set (Us' := List.map (fun U => U[σ'']) Us) in *.
     assert (HUl' : List.length Us' = ind_nu D) by (unfold Us'; rewrite List.length_map; exact HUl).
     destruct (read_ps_nth _ _ _ _ _ HRU0) as [LUr _].
-    assert (LUr' : List.length (nfs_to_exps Us0) = ind_nu D) by (rewrite LUr; exact ups_len).
+    assert (LUr' : List.length (List.map nf_to_exp Us0) = ind_nu D) by (rewrite LUr; exact ups_len).
     destruct (HBks _ _ HMj) as [b Hb].
     assert (Hσt : Δ ⊢ˢ σ'' : Γ) by exact (glu_ctx_env_sub_escape HSbΓ _ _ _ Hσ'').
     pose proof (blocks_typed_sub _ _ _ _ _ _ _ _ _ _ Hl HUl HBt Hσt) as HBt'; fold Us' in HBt'.
@@ -2333,14 +2333,14 @@ Section ElimGlu.
     assert (HPl : List.length (Us' ++ Ns) = im_np D Mj) by (rewrite List.length_app, HUl', HNl; unfold im_np; lia).
     destruct (read_blocks_nth _ _ _ _ _ HRB) as [LNB _].
     rewrite (blocks_motives_nth _ _ _ Hb).
-    change (ne_to_exp (ne_elim p Us0 j NBks M1)) with (a_elim (Some p) (nfs_to_exps Us0) j (nblocks_to_blocks NBks) (ne_to_exp M1)).
+    change (ne_to_exp (ne_elim p Us0 j NBks M1)) with (a_elim (Some p) (List.map nf_to_exp Us0) j (List.map block_exp NBks) (ne_to_exp M1)).
     rewrite <- (Hnm _ _ _ HMj Hb), <- Completeness.Inductives.Elim.eb_motive_sub.
     assert (HΔ : ⊢ Δ) by (gen_presups; assumption).
     pose proof (own_block_rb Δ σ'' NBks Hσ'' HRB) as Hown.
     assert (E : Δ ⊢ a_elim oq (List.firstn (ind_nu D) (Us' ++ Ns)) j (blocks_sub Bks σ'') M
-              ≈ a_elim (Some p) (List.firstn (ind_nu D) (nfs_to_exps Us0 ++ Ns)) j (nblocks_to_blocks NBks) (ne_to_exp M1)
+              ≈ a_elim (Some p) (List.firstn (ind_nu D) (List.map nf_to_exp Us0 ++ Ns)) j (List.map block_exp NBks) (ne_to_exp M1)
               : (eb_motive (eblock_sub b σ''))[sb_of_list Id (List.skipn (ind_nu D) (Us' ++ Ns) ++ M :: nil)]).
-    { eapply wf_exp_eq_elim_cong with (Ps' := nfs_to_exps Us0 ++ Ns) (Bks' := nblocks_to_blocks NBks);
+    { eapply wf_exp_eq_elim_cong with (Ps' := List.map nf_to_exp Us0 ++ Ns) (Bks' := List.map block_exp NBks);
       first [ exact Hl | exact Hgrp | exact HMj | exact Hbk' | exact HPl | exact HPs | reflexivity | exact LNB
             | exact (bt_len _ _ _ _ _ _ _ _ HBt') | idtac ];
       rewrite ?firstn_app_exact, ?skipn_app_exact by first [ exact HUl' | exact LUr' ];
@@ -2354,7 +2354,7 @@ Section ElimGlu.
                       (kripke_id Δ HΔ) HRU0) as Hu.
         rewrite map_wk_id in Hu.
         rewrite <- (firstn_app_exact Us' Ns (ind_nu D) HUl') in Hu.
-        pose proof (exps_eq_at_params_of_uparams D Mj Δ (Us' ++ Ns) (nfs_to_exps Us0) Hc HPl HPs Hu) as [_ Hu'].
+        pose proof (exps_eq_at_params_of_uparams D Mj Δ (Us' ++ Ns) (List.map nf_to_exp Us0) Hc HPl HPs Hu) as [_ Hu'].
         rewrite skipn_app_exact in Hu' by exact HUl'.
         exact Hu'.
       - assert (Emt : ind_mty p D j Us' Ns = im_ty_at p j Mj Us' Ns) by (unfold ind_mty; rewrite HMj; reflexivity).
@@ -3303,7 +3303,7 @@ Section ElimGlu.
       Rblks 0 (ind_members D') from p ups Bks (Some vm) in gc_deps ⍮ gc_stack ⍮ ρ ⍮ length Δ ↘ NBks ->
       forall k Mk b b', ind_member D' k = Some Mk ->
         List.nth_error (vwrap p D D' vm (List.map (fun U => U[σ'']) Us) (blocks_sub Bks σ'')) k = Some b ->
-        List.nth_error (nblocks_to_blocks NBks) k = Some b' ->
+        List.nth_error (List.map block_exp NBks) k = Some b' ->
         eb_nm b' = S (im_nn Mk) /\ eb_ann b' = None /\
         elim_mctx qc D' k Mk (List.map (fun I => I[sb_of_list Id (List.map (fun U => U[σ'']) Us)]) Is) ++ Δ
           ⊢ eb_motive b ≈ eb_motive b' : Typeω@iA /\
@@ -3343,8 +3343,8 @@ Section ElimGlu.
       rewrite !exp_sub_id in H'; exact H'.
     - split.
       + (** The names and counts. *)
-        apply List.nth_error_ext; intros idx; rewrite !List.nth_error_map.
-        destruct (List.nth_error (nbrs_to_brs Bs') idx) as [[[c1 n1] B1] |] eqn:E1.
+        apply List.nth_error_ext; intros idx; rewrite !List.nth_error_map, <- (List.nth_error_map branch_exp).
+        destruct (List.nth_error (List.map branch_exp Bs') idx) as [[[c1 n1] B1] |] eqn:E1.
         * destruct (HBn idx c1 n1 B1 E1) as (gs' & gs & n0 & B0 & ns' & vs & ihs & wihs & bv & t & Bn & HB0 & Hcs & _ & _ & En & _).
           rewrite Hcs; cbn; rewrite En, Hnn; reflexivity.
         * rewrite (proj2 (List.nth_error_None (im_cons Mk) idx)); [ reflexivity |].
@@ -3481,10 +3481,10 @@ Section ElimGlu.
     pose proof (glu_args_read Δ (ind_uparams D') Is' pre (dc_ass _ Hc') (dc_uparams _ Hc') HUc Δ wk_id Us0 (kripke_id Δ HΔ) HRU0) as Hu.
     rewrite map_wk_id in Hu.
     rewrite <- (firstn_app_exact Is' Ns (ind_nu D') HIl') in Hu.
-    pose proof (exps_eq_at_params_of_uparams D' Mk Δ (Is' ++ Ns) (nfs_to_exps Us0) Hc' HPl' HPs' Hu) as [_ Hu'].
+    pose proof (exps_eq_at_params_of_uparams D' Mk Δ (Is' ++ Ns) (List.map nf_to_exp Us0) Hc' HPl' HPs' Hu) as [_ Hu'].
     rewrite skipn_app_exact in Hu' by exact HIl'.
     destruct (read_ps_nth _ _ _ _ _ HRU0) as [LUr _].
-    assert (LUr' : List.length (nfs_to_exps Us0) = ind_nu D').
+    assert (LUr' : List.length (List.map nf_to_exp Us0) = ind_nu D').
     { rewrite LUr, (Completeness.Inductives.Model.eval_exps_length _ _ _ Epy); exact HIl. }
     (** The blocks, read back. *)
     assert (Hok : forall i' Mi' v Mv c gs' gs gs1' A' gs2' gs1 t gs2, ind_member D' i' = Some Mi' -> List.nth_error vm i' = Some v ->
@@ -3506,9 +3506,9 @@ Section ElimGlu.
     assert (HMt' : Δ ⊢ M ≈ ne_to_exp M1 : ind_mty qc D' kc (List.firstn (ind_nu D') (Is' ++ Ns)) (List.skipn (ind_nu D') (Is' ++ Ns)))
       by (rewrite firstn_app_exact, skipn_app_exact, Emt' by exact HIl'; exact HMM1).
     assert (E2 : Δ ⊢ a_elim (Some qc) (List.firstn (ind_nu D') (Is' ++ Ns)) kc (vwrap p D D' vm Us' (blocks_sub Bks σ'')) M
-               ≈ a_elim (Some qc) (List.firstn (ind_nu D') (nfs_to_exps Us0 ++ Ns)) kc (nblocks_to_blocks NBks) (ne_to_exp M1)
+               ≈ a_elim (Some qc) (List.firstn (ind_nu D') (List.map nf_to_exp Us0 ++ Ns)) kc (List.map block_exp NBks) (ne_to_exp M1)
                : (eb_motive (eblock_sub b σ''))[sb_of_list Id (List.skipn (ind_nu D') (Is' ++ Ns) ++ M :: nil)]).
-    { eapply wf_exp_eq_elim_cong with (Ps' := nfs_to_exps Us0 ++ Ns) (Bks' := nblocks_to_blocks NBks) (bm := eb_mk _ _ _ _);
+    { eapply wf_exp_eq_elim_cong with (Ps' := List.map nf_to_exp Us0 ++ Ns) (Bks' := List.map block_exp NBks) (bm := eb_mk _ _ _ _);
         first [ exact Hq | left; reflexivity | exact HMk | exact Hbv | exact HPl' | exact HPs' | reflexivity | exact LNB
               | exact LBv | exact HMt' | idtac ];
         rewrite ?firstn_app_exact, ?skipn_app_exact by first [ exact HIl' | exact LUr' ];
@@ -3535,7 +3535,7 @@ Section ElimGlu.
         exact (proj2 (proj2 (proj2 (proj2 (Hown k Mk0 ba b' HMk0 Hba Hb')))) i c n B B' gs HB HB' Hcn). }
     rewrite !firstn_app_exact, skipn_app_exact in E2 by first [ exact HIl' | exact LUr' ].
     rewrite (blocks_motives_nth _ _ _ Hb).
-    change (ne_to_exp (ne_elim qc Us0 kc NBks M1)) with (a_elim (Some qc) (nfs_to_exps Us0) kc (nblocks_to_blocks NBks) (ne_to_exp M1)).
+    change (ne_to_exp (ne_elim qc Us0 kc NBks M1)) with (a_elim (Some qc) (List.map nf_to_exp Us0) kc (List.map block_exp NBks) (ne_to_exp M1)).
     rewrite <- (Hnm _ _ _ HMm Hb), <- Completeness.Inductives.Elim.eb_motive_sub.
     eapply wf_exp_eq_trans; [ exact E1 | exact E2 ].
   Qed.

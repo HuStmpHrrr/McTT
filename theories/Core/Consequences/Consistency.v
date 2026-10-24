@@ -72,7 +72,7 @@ Lemma nbe_ty_ind_params : forall Γ p D k Mk Ms W, ind_lookup gc_deps gc_stack p
     List.length Ms = im_np D Mk ->
     (forall j P T, List.nth_error Ms j = Some P -> List.nth_error (tele_insts (im_params D Mk) Id Ms) j = Some T -> Γ ⊢ P : T) ->
     nbe_ty_f Γ (apps (a_ind p k) Ms) W ->
-    exists Rs, W = nf_indty p k Rs /\ exps_eq_at Γ (im_params D Mk) Ms (nfs_to_exps Rs).
+    exists Rs, W = nf_indty p k Rs /\ exps_eq_at Γ (im_params D Mk) Ms (List.map nf_to_exp Rs).
 Proof.
   intros * Hl Hk HΓ HMl HMt HW.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [Hdt Hc].
@@ -105,7 +105,7 @@ Qed.
 Lemma typ_ind_shape : forall Γ T i p k Rs, Γ ⊢ T : Typeω@i -> nbe_ty_f Γ T (nf_indty p k Rs) ->
     exists D Mk Ps, ind_lookup gc_deps gc_stack p = Some D /\ ind_member D k = Some Mk /\ List.length Ps = im_np D Mk /\
       (forall j P A, List.nth_error Ps j = Some P -> List.nth_error (tele_insts (im_params D Mk) Id Ps) j = Some A -> Γ ⊢ P : A) /\
-      Γ ⊢ T ≈ apps (a_ind p k) Ps : Typeω@i /\ exps_eq_at Γ (im_params D Mk) Ps (nfs_to_exps Rs).
+      Γ ⊢ T ≈ apps (a_ind p k) Ps : Typeω@i /\ exps_eq_at Γ (im_params D Mk) Ps (List.map nf_to_exp Rs).
 Proof.
   intros * HT HW.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
@@ -147,8 +147,8 @@ Proof.
   destruct (nbe_ty_ind_params _ _ _ _ _ _ _ Hl Hk HΓ HYl HYt HWY) as (Rs' & E & HY).
   injection E as <-.
   destruct HX as [L1 H1]; destruct HY as [L2 H2]; split; [ congruence |].
-  eapply (params_eq_trans _ p D k Mk X (nfs_to_exps Rs) Y Hl Hk HΓ); [ exact HXl | congruence | congruence | exact H1 |].
-  eapply (params_eq_sym _ p D k Mk Y (nfs_to_exps Rs) Hl Hk HΓ); [ exact HYl | congruence | exact H2 ].
+  eapply (params_eq_trans _ p D k Mk X (List.map nf_to_exp Rs) Y Hl Hk HΓ); [ exact HXl | congruence | congruence | exact H1 |].
+  eapply (params_eq_sym _ p D k Mk Y (List.map nf_to_exp Rs) Hl Hk HΓ); [ exact HYl | congruence | exact H2 ].
 Qed.
 
 Lemma nf_of_pi : forall {Γ M A B},
@@ -479,8 +479,8 @@ Lemma subtyp_ind_nf : forall {Γ T p m D Mm Ps W}, Γ ⊢ T ⊆ apps (a_ind p m)
     List.length Ps = im_np D Mm ->
     (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some A -> Γ ⊢ P : A) ->
     nbe_ty_f Γ T W ->
-    exists Rs, W = nf_indty p m Rs /\ List.length (nfs_to_exps Rs) = im_np D Mm /\
-      (forall k P R A, List.nth_error Ps k = Some P -> List.nth_error (nfs_to_exps Rs) k = Some R ->
+    exists Rs, W = nf_indty p m Rs /\ List.length (List.map nf_to_exp Rs) = im_np D Mm /\
+      (forall k P R A, List.nth_error Ps k = Some P -> List.nth_error (List.map nf_to_exp Rs) k = Some R ->
          List.nth_error (tele_insts (im_params D Mm) Id Ps) k = Some A -> Γ ⊢ P ≈ R : A).
 Proof.
   intros * Hs Hl Hm HPl HPt HW.
@@ -521,7 +521,7 @@ Lemma nbe_ty_record_params : forall Γ p R Ms W, record_lookup gc_deps gc_stack 
     List.length Ms = List.length (record_params R) ->
     (forall j P T, List.nth_error Ms j = Some P -> List.nth_error (tele_insts (record_params R) Id Ms) j = Some T -> Γ ⊢ P : T) ->
     nbe_ty_f Γ (apps (a_record p) Ms) W ->
-    exists Rs, W = nf_record p Rs /\ exps_eq_at Γ (record_params R) Ms (nfs_to_exps Rs).
+    exists Rs, W = nf_record p Rs /\ exps_eq_at Γ (record_params R) Ms (List.map nf_to_exp Rs).
 Proof.
   intros * Hl HΓ HMl HMt HW.
   destruct (record_params_facts _ _ _ HΓ Hl) as (Ht & Hc & HPΓ).
@@ -552,7 +552,7 @@ Qed.
 Lemma typ_record_shape : forall Γ T i p Rs, Γ ⊢ T : Typeω@i -> nbe_ty_f Γ T (nf_record p Rs) ->
     exists R Ps, record_lookup gc_deps gc_stack p = Some R /\ List.length Ps = List.length (record_params R) /\
       (forall j P A, List.nth_error Ps j = Some P -> List.nth_error (tele_insts (record_params R) Id Ps) j = Some A -> Γ ⊢ P : A) /\
-      Γ ⊢ T ≈ apps (a_record p) Ps : Typeω@i /\ exps_eq_at Γ (record_params R) Ps (nfs_to_exps Rs).
+      Γ ⊢ T ≈ apps (a_record p) Ps : Typeω@i /\ exps_eq_at Γ (record_params R) Ps (List.map nf_to_exp Rs).
 Proof.
   intros * HT HW.
   assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
@@ -594,8 +594,8 @@ Proof.
   destruct (nbe_ty_record_params _ _ _ _ _ Hl HΓ HYl HYt HWY) as (Rs' & E & HY).
   injection E as <-.
   destruct HX as [L1 H1]; destruct HY as [L2 H2]; split; [ congruence |].
-  eapply (tele_eq_trans _ (record_params R) X (nfs_to_exps Rs) Y Hass HPΓ); [ exact HXl | congruence | congruence | exact H1 |].
-  eapply (tele_eq_sym _ (record_params R) Y (nfs_to_exps Rs) Hass HPΓ); [ exact HYl | congruence | exact H2 ].
+  eapply (tele_eq_trans _ (record_params R) X (List.map nf_to_exp Rs) Y Hass HPΓ); [ exact HXl | congruence | congruence | exact H1 |].
+  eapply (tele_eq_sym _ (record_params R) Y (List.map nf_to_exp Rs) Hass HPΓ); [ exact HYl | congruence | exact H2 ].
 Qed.
 
 Lemma exp_eq_record_pi_absurd : forall {Γ p X A B k},
@@ -637,8 +637,8 @@ Lemma subtyp_record_nf : forall {Γ T p R Ps W}, Γ ⊢ T ⊆ apps (a_record p) 
     List.length Ps = List.length (record_params R) ->
     (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (record_params R) Id Ps) k = Some A -> Γ ⊢ P : A) ->
     nbe_ty_f Γ T W ->
-    exists Rs, W = nf_record p Rs /\ List.length (nfs_to_exps Rs) = List.length (record_params R) /\
-      (forall k P Q A, List.nth_error Ps k = Some P -> List.nth_error (nfs_to_exps Rs) k = Some Q ->
+    exists Rs, W = nf_record p Rs /\ List.length (List.map nf_to_exp Rs) = List.length (record_params R) /\
+      (forall k P Q A, List.nth_error Ps k = Some P -> List.nth_error (List.map nf_to_exp Rs) k = Some Q ->
          List.nth_error (tele_insts (record_params R) Id Ps) k = Some A -> Γ ⊢ P ≈ Q : A).
 Proof.
   intros * Hs Hl HPl HPt HW.
@@ -765,7 +765,7 @@ Proof.
   intros * H; inversion H as [| | | | ? c xs Hle | | |]; subst; try constructor.
   cbn [unf_le] in Hle.
   pose proof (lvl_le_lit_closed _ _ Hle) as Hxs.
-  destruct xs as [| k s a r]; cbn in Hxs; [| discriminate ].
+  destruct xs as [| [k s a] r]; cbn in Hxs; [| discriminate ].
   rewrite lvl_le_correct in Hle; specialize (Hle _ lvl_adm_zero).
   rewrite lvl_ev_suc in Hle; unfold lvl_ev, lvl_lit in Hle; cbn in Hle.
   destruct c as [a m]; assert (a = 0) as -> by ord.
@@ -843,9 +843,9 @@ Qed.
     sort its level term has: its constant is of a tier at most that sort, and
     each atom is a level of its own sort ([soundness_lvl_ws]). *)
 Lemma univ_nf_ws : forall {Γ c xs A},
-    Γ ⊢ Type⟨lvl_exp_of c (la_to_list xs)⟩ : A ->
-    nbe_ty_f Γ Type⟨lvl_exp_of c (la_to_list xs)⟩ (univⁿ c xs) ->
-    exists n, Γ ⊢ lvl_exp_of c (la_to_list xs) : Level@n /\ fst c <= n /\ @la_ws gc_deps gc_stack n Γ xs.
+    Γ ⊢ Type⟨lvl_exp_of c (List.map atom_exp xs)⟩ : A ->
+    nbe_ty_f Γ Type⟨lvl_exp_of c (List.map atom_exp xs)⟩ (univⁿ c xs) ->
+    exists n, Γ ⊢ lvl_exp_of c (List.map atom_exp xs) : Level@n /\ fst c <= n /\ @la_ws gc_deps gc_stack n Γ xs.
 Proof.
   intros * HA Hn.
   destruct (wf_univ_lvl_inversion HA) as [n Ht].
@@ -869,7 +869,7 @@ Qed.
 (** A small universe at a literal level reads back as itself. *)
 Lemma nbe_ty_suniv_lit : forall {Γ n W},
     nbe_ty_f Γ Type⟨𝕃ᵒ n⟩ W ->
-    W = nf_univ n la_nil.
+    W = nf_univ n nil.
 Proof.
   intros * Hn.
   dir_inversion_clear_by_head nbe_ty; dir_inversion_by_head eval_exp; subst.
@@ -1009,7 +1009,7 @@ Proof.
     + apply nbe_ty_typ_univ_nf in HnT as ->; exact I.
     + destruct (nbe_ty_suniv_univ_nf HnT) as (L' & -> & HL').
       cbn [unf_le nf_to_exp] in *.
-      set (E := lvl_exp_of c (la_to_list xs)) in *.
+      set (E := lvl_exp_of c (List.map atom_exp xs)) in *.
       apply wf_univ_inversion in HW.
       assert (HL : nbe_f Γ E Level (nf_lvl_of (c, xs))) by (apply (nbe_ty_univ_level (L := (c, xs))); exact HWW).
       inversion HL; subst.
@@ -1217,16 +1217,16 @@ Qed.
     [z]. *)
 Inductive nat_chain_nf (p : qname) (z s : String.string) : nf -> Prop :=
 (** The constructor [z] *)
-| ncn_zero : nat_chain_nf p z s (nf_con p 0 z nfs_nil)
+| ncn_zero : nat_chain_nf p z s (nf_con p 0 z nil)
 (** The constructor [s] at a chain *)
-| ncn_succ : forall W, nat_chain_nf p z s W -> nat_chain_nf p z s (nf_con p 0 s (nfs_cons W nfs_nil)).
+| ncn_succ : forall W, nat_chain_nf p z s W -> nat_chain_nf p z s (nf_con p 0 s (cons W nil)).
 
 (** The number of constructors of one argument heading a normal form: the
     number a chain of [s] ending in [z] stands for. *)
 Definition nf_succ_depth (W : nf) : nat :=
   (fix go (W : nf) : nat :=
      match W with
-     | nf_con _ _ _ (nfs_cons V nfs_nil) => S (go V)
+     | nf_con _ _ _ (cons V nil) => S (go V)
      | _ => 0
      end) W.
 
@@ -1235,10 +1235,10 @@ Definition nf_succ_depth (W : nf) : nat :=
     readback of a value of the same type, or a neutral. *)
 Inductive nat_read_step (p : qname) (z s : String.string) : nf -> Prop :=
 (** The constructor [z] *)
-| nrs_zero : nat_read_step p z s (nf_con p 0 z nfs_nil)
+| nrs_zero : nat_read_step p z s (nf_con p 0 z nil)
 (** The constructor [s] at the readback of a value of the same type *)
 | nrs_succ : forall v V, Rnf ⇓ (d_ind p 0 nil) v in gc_deps ⍮ gc_stack ⍮ 0 ↘ V ->
-    nat_read_step p z s (nf_con p 0 s (nfs_cons V nfs_nil))
+    nat_read_step p z s (nf_con p 0 s (cons V nil))
 (** A neutral *)
 | nrs_neut : forall M, nat_read_step p z s ⇑ⁿ M.
 
@@ -1276,10 +1276,10 @@ Qed.
 (** The argument of the constructor [s] of a closed term of a type of the
     shape of the natural numbers is of that type. *)
 Lemma nat_succ_arg_typed : forall p D z s V, ind_lookup gc_deps gc_stack p = Some D -> nat_shape D = Some (z, s) ->
-    ⋅ ⊢ nf_con p 0 s (nfs_cons V nfs_nil) : a_ind p 0 -> ⋅ ⊢ V : a_ind p 0.
+    ⋅ ⊢ nf_con p 0 s (cons V nil) : a_ind p 0 -> ⋅ ⊢ V : a_ind p 0.
 Proof.
   intros * Hl Hs HT; destruct (nat_shape_inv _ _ _ Hs) as (Hnu & Hms).
-  cbn [nf_to_exp nfs_to_exps apps_exp] in HT.
+  cbn [nf_to_exp List.map apps_exp] in HT.
   apply wf_app_inversion in HT as (A & B & Hf & HV & _).
   apply wf_con_inversion in Hf as [D' Mk gs Hl' Hk Hc Hsub].
   rewrite Hl in Hl'; injection Hl' as <-.
@@ -1449,9 +1449,9 @@ Qed.
     neutral whose globals satisfy [G], headed by one. *)
 Inductive nat_chain_stuck (G : qname -> Prop) (p : qname) (z s : String.string) : nf -> Prop :=
 (** The constructor [z] *)
-| ncs_zero : nat_chain_stuck G p z s (nf_con p 0 z nfs_nil)
+| ncs_zero : nat_chain_stuck G p z s (nf_con p 0 z nil)
 (** The constructor [s] at a chain *)
-| ncs_succ : forall W, nat_chain_stuck G p z s W -> nat_chain_stuck G p z s (nf_con p 0 s (nfs_cons W nfs_nil))
+| ncs_succ : forall W, nat_chain_stuck G p z s W -> nat_chain_stuck G p z s (nf_con p 0 s (cons W nil))
 (** A neutral headed by a global, its globals satisfying [G] *)
 | ncs_neut : forall W h, ne_head W = Some h -> ne_stuck G W -> nat_chain_stuck G p z s ⇑ⁿ W.
 #[export]
@@ -1470,22 +1470,23 @@ Proof.
   unfold gopaque; eauto.
 Qed.
 
-Lemma nf_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
-    forall W, nf_stuck G W -> nf_stuck G' W
-with ne_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
-    forall W, ne_stuck G W -> ne_stuck G' W
-with la_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
-    forall xs, la_stuck G xs -> la_stuck G' xs
-with nfs_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
-    forall Ms, nfs_stuck G Ms -> nfs_stuck G' Ms
-with nbrs_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
-    forall Bs, nbrs_stuck G Bs -> nbrs_stuck G' Bs
-with nblocks_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
-    forall Bks, nblocks_stuck G Bks -> nblocks_stuck G' Bks.
+Lemma nf_ne_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
+    (forall W, nf_stuck G W -> nf_stuck G' W) /\ (forall W, ne_stuck G W -> ne_stuck G' W).
 Proof.
-  all: intros G G' HG [] H; cbn in *; destruct_all;
-    repeat split; eauto using nf_stuck_mono, ne_stuck_mono, la_stuck_mono, nfs_stuck_mono, nbrs_stuck_mono, nblocks_stuck_mono.
+  intros G G' HG; apply nf_ne_ind; intros; cbn in *; destruct_all; repeat split; eauto.
+  (** The lists, element by element; a block by its motive and its
+      branches. *)
+  all: nested_elements; cbn in *; destruct_all; eauto.
+  all: split; eauto; nested_elements; cbn in *; eauto.
 Qed.
+
+Lemma nf_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
+    forall W, nf_stuck G W -> nf_stuck G' W.
+Proof. intros * HG; apply (nf_ne_stuck_mono _ _ HG). Qed.
+
+Lemma ne_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
+    forall W, ne_stuck G W -> ne_stuck G' W.
+Proof. intros * HG; apply (nf_ne_stuck_mono _ _ HG). Qed.
 
 Lemma nat_chain_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
     forall p z s W, nat_chain_stuck G p z s W -> nat_chain_stuck G' p z s W.

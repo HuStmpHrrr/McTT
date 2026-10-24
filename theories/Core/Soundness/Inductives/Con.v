@@ -441,7 +441,7 @@ Section ConGlu.
                       destruct (canon_nparams_evals _ _ _ _ Hn _ _ _ _ _ _ HMj Hj0 Hp) as [a a' Ea Ea' HRa];
                       exists a, a'; split; [ exact Ea | split; [ exact Ea' | intros b b' Hb; exact (per_elem_then_per_top HRa Hb) ] ])
                 _ _ Hbs s) as (Ms2 & HM2 & HM2').
-    exists (nfs_app Ms1 Ms2); rewrite rev_im_params_split; split; apply read_ps_app; assumption.
+    exists (Ms1 ++ Ms2)%list; rewrite rev_im_params_split; split; apply read_ps_app; assumption.
   Qed.
 
   (** A recursive argument ending in a declared member [j]: glued at a type

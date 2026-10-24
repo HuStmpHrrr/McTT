@@ -1,4 +1,5 @@
 From Stdlib Require Import Ascii Lia List PeanoNat String.
+From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Syntax.
 Import Syntax_Notations.
 
@@ -135,29 +136,59 @@ Proof.
   apply strs_code_inj in H as [-> H]; apply strs_code_inj in H as [-> _]; reflexivity.
 Qed.
 
+(** The coding of a list, each element by [f]: the elements are the
+    children of [1]-nodes, and the list ends in a [0]-node continuing with
+    [t]. *)
+Fixpoint list_code {A : Set} (f : A -> ltree) (l : list A) (t : ltree) : ltree :=
+  match l with
+  | nil => lt_node 0 lt_nil t
+  | x :: r => lt_node 1 (f x) (list_code f r t)
+  end.
+
+(** The coding of the records normal forms hold, given that of what they
+    hold.  An atom: its offset, the neutral, then its sort. *)
+Definition atom_code {E : Set} (f : E -> ltree) (a : level_atom_g E) : ltree :=
+  lt_node (atom_offset a) (f (atom_level a)) (lt_node (atom_sort a) lt_nil lt_nil).
+
+(** A branch: its arity, its constructor, then its body. *)
+Definition branch_code {E : Set} (f : E -> ltree) (br : normal_branch_g E) : ltree :=
+  lt_node (branch_arity br) (str_code (branch_constructor br) lt_nil) (f (branch_body br)).
+
+(** A block: its arity, its motive, then its branches. *)
+Definition block_code {E : Set} (f : E -> ltree) (b : normal_block_g E) : ltree :=
+  lt_node (block_arity b) (f (block_motive b)) (list_code (branch_code f) (block_branches b) lt_nil).
+
 (** The coding of normal forms.  The tags order the constructors; in a
     neutral, [ne_var] comes first, so variables precede every other atom and
     are ordered by their index. *)
 Fixpoint nf_code (M : nf) (t : ltree) : ltree :=
   match M with
   | nf_typ i => lt_node 0 (lt_node i lt_nil lt_nil) t
-  | nf_univ (a, b) xs => lt_node 1 (lt_node a (lt_node b (la_code xs lt_nil) lt_nil) lt_nil) t
+  | nf_univ (a, b) xs =>
+      lt_node 1 (lt_node a (lt_node b (list_code (atom_code (fun m => ne_code m lt_nil)) xs lt_nil) lt_nil) lt_nil) t
   | nf_level n => lt_node 2 (lt_node n lt_nil lt_nil) t
-  | nf_lvl (a, b) xs => lt_node 3 (lt_node a (lt_node b (la_code xs lt_nil) lt_nil) lt_nil) t
+  | nf_lvl (a, b) xs =>
+      lt_node 3 (lt_node a (lt_node b (list_code (atom_code (fun m => ne_code m lt_nil)) xs lt_nil) lt_nil) lt_nil) t
   | nf_True => lt_node 7 lt_nil t
   | nf_true => lt_node 8 lt_nil t
   | nf_False => lt_node 9 lt_nil t
   | nf_pi A B => lt_node 10 (nf_code A (nf_code B lt_nil)) t
   | nf_fn A M' => lt_node 11 (nf_code A (nf_code M' lt_nil)) t
   | nf_neut m => lt_node 12 (ne_code m lt_nil) t
-  | nf_indty p k Ms => lt_node 13 (lt_node k (strs_code (q_unit p) (strs_code (q_chain p) lt_nil)) (nfs_code Ms lt_nil)) t
+  | nf_indty p k Ms =>
+      lt_node 13 (lt_node k (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
+                    (list_code (fun M => nf_code M lt_nil) Ms lt_nil)) t
   | nf_con p k c Ms =>
       lt_node 14 (lt_node k (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
-                    (lt_node 0 (str_code c lt_nil) (nfs_code Ms lt_nil))) t
-  | nf_record p Ms => lt_node 15 (lt_node 0 (strs_code (q_unit p) (strs_code (q_chain p) lt_nil)) (nfs_code Ms lt_nil)) t
+                    (lt_node 0 (str_code c lt_nil) (list_code (fun M => nf_code M lt_nil) Ms lt_nil))) t
+  | nf_record p Ms =>
+      lt_node 15 (lt_node 0 (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
+                    (list_code (fun M => nf_code M lt_nil) Ms lt_nil)) t
   | nf_tuple p Ms fs Ns =>
       lt_node 16 (lt_node 0 (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
-                    (lt_node 0 (strs_code fs lt_nil) (lt_node 0 (nfs_code Ms lt_nil) (nfs_code Ns lt_nil)))) t
+                    (lt_node 0 (strs_code fs lt_nil)
+                       (lt_node 0 (list_code (fun M => nf_code M lt_nil) Ms lt_nil)
+                          (list_code (fun M => nf_code M lt_nil) Ns lt_nil)))) t
   end
 with ne_code (m : ne) (t : ltree) : ltree :=
   match m with
@@ -167,48 +198,85 @@ with ne_code (m : ne) (t : ltree) : ltree :=
   | ne_exfalso A m' => lt_node 4 (nf_code A (ne_code m' lt_nil)) t
   | ne_elim p Us m Bks m' =>
       lt_node 5 (lt_node m (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
-                   (nblocks_code Bks (ne_code m' (nfs_code Us lt_nil)))) t
+                   (list_code (block_code (fun A => nf_code A lt_nil)) Bks
+                      (ne_code m' (list_code (fun M => nf_code M lt_nil) Us lt_nil)))) t
   | ne_proj f m' => lt_node 6 (lt_node 0 (str_code f lt_nil) (ne_code m' lt_nil)) t
-  end
-with la_code (xs : lvl_atoms) (t : ltree) : ltree :=
-  match xs with
-  | la_nil => lt_node 0 lt_nil t
-  | la_cons k n m r => lt_node 1 (lt_node k (ne_code m lt_nil) (lt_node n lt_nil lt_nil)) (la_code r t)
-  end
-with nfs_code (Ms : nfs) (t : ltree) : ltree :=
-  match Ms with
-  | nfs_nil => lt_node 0 lt_nil t
-  | nfs_cons M Ms => lt_node 1 (nf_code M lt_nil) (nfs_code Ms t)
-  end
-with nbrs_code (Bs : nbrs) (t : ltree) : ltree :=
-  match Bs with
-  | nbrs_nil => lt_node 0 lt_nil t
-  | nbrs_cons c n B Bs => lt_node 1 (lt_node n (str_code c lt_nil) (nf_code B lt_nil)) (nbrs_code Bs t)
-  end
-with nblocks_code (Bks : nblocks) (t : ltree) : ltree :=
-  match Bks with
-  | nblocks_nil => lt_node 0 lt_nil t
-  | nblocks_cons nm A Bs Bks => lt_node 1 (lt_node nm (nf_code A lt_nil) (nbrs_code Bs lt_nil)) (nblocks_code Bks t)
   end.
 
-Lemma nf_code_inj : forall M N t t', nf_code M t = nf_code N t' -> M = N /\ t = t'
-with ne_code_inj : forall m m' t t', ne_code m t = ne_code m' t' -> m = m' /\ t = t'
-with la_code_inj : forall xs ys t t', la_code xs t = la_code ys t' -> xs = ys /\ t = t'
-with nfs_code_inj : forall Ms Ns t t', nfs_code Ms t = nfs_code Ns t' -> Ms = Ns /\ t = t'
-with nbrs_code_inj : forall Bs Cs t t', nbrs_code Bs t = nbrs_code Cs t' -> Bs = Cs /\ t = t'
-with nblocks_code_inj : forall Bks Cks t t', nblocks_code Bks t = nblocks_code Cks t' -> Bks = Cks /\ t = t'.
+#[global] Arguments atom_code : simpl never.
+#[global] Arguments block_code : simpl never.
+
+(** The coding of a list is injective where that of its elements is: on
+    the elements of which [P] holds, [P] saying that [f] is injective
+    there. *)
+Lemma list_code_inj {A : Set} (P : A -> Set) (f : A -> ltree) : forall l,
+    list_all A P l -> (forall x, P x -> forall y, f x = f y -> x = y) ->
+    forall l' t t', list_code f l t = list_code f l' t' -> l = l' /\ t = t'.
 Proof.
-  all: [> destruct M, N | destruct m, m' | destruct xs, ys | destruct Ms, Ns | destruct Bs, Cs | destruct Bks, Cks ].
+  intros l Hl Hf; induction Hl as [| x Hx l Hl IH]; intros [| y l'] t t' H; cbn in H;
+    injection H as; subst; try discriminate; [ split; reflexivity |].
+  match goal with H : list_code _ _ _ = list_code _ _ _ |- _ => apply IH in H as [-> ->] end.
+  match goal with H : f _ = f _ |- _ => apply (Hf _ Hx) in H as -> end.
+  split; reflexivity.
+Qed.
+
+Lemma atom_code_inj {E : Set} (P : E -> Set) (f : E -> ltree) : forall a,
+    level_atom_g_all E P a -> (forall x, P x -> forall y, f x = f y -> x = y) ->
+    forall a', atom_code f a = atom_code f a' -> a = a'.
+Proof.
+  intros a [k s x Hx] Hf [k' s' y] H; unfold atom_code in H; cbn in H; injection H as -> H ->.
+  apply (Hf _ Hx) in H as ->; reflexivity.
+Qed.
+
+Lemma branch_code_inj {E : Set} (P : E -> Set) (f : E -> ltree) : forall br,
+    normal_branch_g_all E P br -> (forall x, P x -> forall y, f x = f y -> x = y) ->
+    forall br', branch_code f br = branch_code f br' -> br = br'.
+Proof.
+  intros br [c n x Hx] Hf [c' n' y] H; unfold branch_code in H; cbn in H; injection H as -> H H'.
+  apply str_code_inj in H as [-> _]; apply (Hf _ Hx) in H' as ->; reflexivity.
+Qed.
+
+Lemma block_code_inj {E : Set} (P : E -> Set) (f : E -> ltree) : forall b,
+    normal_block_g_all E P b -> (forall x, P x -> forall y, f x = f y -> x = y) ->
+    forall b', block_code f b = block_code f b' -> b = b'.
+Proof.
+  intros b [n x Hx brs Hbrs] Hf [n' y brs'] H; unfold block_code in H; cbn in H; injection H as -> H H'.
+  apply (Hf _ Hx) in H as ->.
+  eapply list_code_inj in H' as [-> _]; [ reflexivity | exact Hbrs |].
+  intros br Hbr br'; eapply branch_code_inj; eassumption.
+Qed.
+
+(** The side condition of [list_code_inj] and the record lemmas at the
+    elements of a normal form: an element is coded at [lt_nil], and the
+    induction hypothesis at it says its coding is injective. *)
+#[local] Ltac code_elem_inj :=
+  let x := fresh "x" in let Hx := fresh "Hx" in let y := fresh "y" in let Hy := fresh "Hy" in
+  intros x Hx y Hy; cbv beta in Hy;
+  first [ apply Hx in Hy as [? _]; assumption
+        | eapply atom_code_inj; [ exact Hx | code_elem_inj | exact Hy ]
+        | eapply block_code_inj; [ exact Hx | code_elem_inj | exact Hy ] ].
+
+Lemma nf_ne_code_inj :
+  (forall M N t t', nf_code M t = nf_code N t' -> M = N /\ t = t') /\
+  (forall m m' t t', ne_code m t = ne_code m' t' -> m = m' /\ t = t').
+Proof.
+  apply nf_ne_ind.
+  all: intros; match goal with
+               | H : nf_code _ _ = nf_code ?N _ |- _ => destruct N
+               | H : ne_code _ _ = ne_code ?N _ |- _ => destruct N
+               end.
   all: repeat match goal with p : o2 |- _ => destruct p end.
-  all: repeat match goal with o : option nfs |- _ => destruct o end.
-  all: intros t t' H; cbn in H; injection H as; subst; try discriminate.
+  all: match goal with
+       | H : nf_code _ _ = nf_code _ _ |- _ => cbn in H; injection H as; subst; try discriminate
+       | H : ne_code _ _ = ne_code _ _ |- _ => cbn in H; injection H as; subst; try discriminate
+       end.
   all: repeat match goal with
-         | H : nf_code _ _ = nf_code _ _ |- _ => apply nf_code_inj in H as [-> H]
-         | H : ne_code _ _ = ne_code _ _ |- _ => apply ne_code_inj in H as [-> H]
-         | H : la_code _ _ = la_code _ _ |- _ => apply la_code_inj in H as [-> H]
-         | H : nfs_code _ _ = nfs_code _ _ |- _ => apply nfs_code_inj in H as [-> H]
-         | H : nbrs_code _ _ = nbrs_code _ _ |- _ => apply nbrs_code_inj in H as [-> H]
-         | H : nblocks_code _ _ = nblocks_code _ _ |- _ => apply nblocks_code_inj in H as [-> H]
+         | H : nf_code ?M _ = nf_code _ _, IH : forall N t t', nf_code ?M t = nf_code N t' -> _ |- _ =>
+             apply IH in H as [-> H]
+         | H : ne_code ?M _ = ne_code _ _, IH : forall N t t', ne_code ?M t = ne_code N t' -> _ |- _ =>
+             apply IH in H as [-> H]
+         | H : list_code _ _ _ = list_code _ _ _ |- _ =>
+             eapply list_code_inj in H as [-> H]; [| eassumption | code_elem_inj ]
          | H : str_code _ _ = str_code _ _ |- _ => apply str_code_inj in H as [-> H]
          | H : strs_code _ _ = strs_code _ _ |- _ => apply qname_code_inj in H as ->
          | H : strs_code _ _ = strs_code _ _ |- _ => apply strs_code_inj in H as [-> H]
@@ -217,6 +285,12 @@ Proof.
   all: try discriminate.
   all: split; first [ reflexivity | assumption ].
 Qed.
+
+Lemma nf_code_inj : forall M N t t', nf_code M t = nf_code N t' -> M = N /\ t = t'.
+Proof. apply nf_ne_code_inj. Qed.
+
+Lemma ne_code_inj : forall m m' t t', ne_code m t = ne_code m' t' -> m = m' /\ t = t'.
+Proof. apply nf_ne_code_inj. Qed.
 
 (** The order on the atoms of a level. *)
 Definition ne_cmp (m m' : ne) : comparison := lt_cmp (ne_code m lt_nil) (ne_code m' lt_nil).
@@ -283,10 +357,10 @@ Proof.
   - rewrite (ne_cmp_trans _ _ _ E1 E2); reflexivity.
 Qed.
 
-Fixpoint la_ev (ν : ne -> nat -> o2) (xs : lvl_atoms) : o2 :=
+Fixpoint la_ev (ν : ne -> nat -> o2) (xs : list level_atom) : o2 :=
   match xs with
-  | la_nil => oz
-  | la_cons k s a r => omax (osucn k (ν a s)) (la_ev ν r)
+  | nil => oz
+  | mk_level_atom k s a :: r => omax (osucn k (ν a s)) (la_ev ν r)
   end.
 
 Definition lvl_ev (ν : ne -> nat -> o2) (l : lvl) : o2 := omax (fst l) (la_ev ν (snd l)).
@@ -297,54 +371,48 @@ Definition lvl_adm (ν : ne -> nat -> o2) : Prop := forall a s, fst (ν a s) <= 
 Lemma lvl_adm_zero : lvl_adm (fun _ _ => oz).
 Proof. intros a s; cbn; lia. Qed.
 
-Definition lvl_zero : lvl := (oz, la_nil).
+Definition lvl_zero : lvl := (oz, nil).
 
-Fixpoint la_suc (xs : lvl_atoms) : lvl_atoms :=
+Fixpoint la_suc (xs : list level_atom) : list level_atom :=
   match xs with
-  | la_nil => la_nil
-  | la_cons k s a r => la_cons (S k) s a (la_suc r)
+  | nil => nil
+  | mk_level_atom k s a :: r => mk_level_atom (S k) s a :: la_suc r
   end.
 
 Definition lvl_suc (l : lvl) : lvl := (osuc (fst l), la_suc (snd l)).
 
-Fixpoint la_app (xs ys : lvl_atoms) : lvl_atoms :=
-  match xs with
-  | la_nil => ys
-  | la_cons k s a r => la_cons k s a (la_app r ys)
-  end.
-
-Definition lvl_max (l l' : lvl) : lvl := (omax (fst l) (fst l'), la_app (snd l) (snd l')).
+Definition lvl_max (l l' : lvl) : lvl := (omax (fst l) (fst l'), snd l ++ snd l').
 
 (** Insertion into a sorted list of atoms, merging at the larger offset. *)
-Fixpoint la_ins (k s : nat) (a : ne) (ys : lvl_atoms) : lvl_atoms :=
+Fixpoint la_ins (k s : nat) (a : ne) (ys : list level_atom) : list level_atom :=
   match ys with
-  | la_nil => la_cons k s a la_nil
-  | la_cons k' t b r =>
+  | nil => mk_level_atom k s a :: nil
+  | mk_level_atom k' t b :: r =>
       match at_cmp a s b t with
-      | Lt => la_cons k s a ys
-      | Eq => la_cons (Nat.max k k') t b r
-      | Gt => la_cons k' t b (la_ins k s a r)
+      | Lt => mk_level_atom k s a :: ys
+      | Eq => mk_level_atom (Nat.max k k') t b :: r
+      | Gt => mk_level_atom k' t b :: la_ins k s a r
       end
   end.
 
-Fixpoint la_sort (xs : lvl_atoms) : lvl_atoms :=
+Fixpoint la_sort (xs : list level_atom) : list level_atom :=
   match xs with
-  | la_nil => la_nil
-  | la_cons k s a r => la_ins k s a (la_sort r)
+  | nil => nil
+  | mk_level_atom k s a :: r => la_ins k s a (la_sort r)
   end.
 
-Fixpoint la_maxoff (xs : lvl_atoms) : nat :=
+Fixpoint la_maxoff (xs : list level_atom) : nat :=
   match xs with
-  | la_nil => 0
-  | la_cons k _ _ r => Nat.max k (la_maxoff r)
+  | nil => 0
+  | mk_level_atom k _ _ :: r => Nat.max k (la_maxoff r)
   end.
 
 (** The atoms a constant does not absorb: those of a sort at least its
     tier. *)
-Fixpoint la_keep (c : o2) (xs : lvl_atoms) : lvl_atoms :=
+Fixpoint la_keep (c : o2) (xs : list level_atom) : list level_atom :=
   match xs with
-  | la_nil => la_nil
-  | la_cons k s a r => if fst c <=? s then la_cons k s a (la_keep c r) else la_keep c r
+  | nil => nil
+  | mk_level_atom k s a :: r => if fst c <=? s then mk_level_atom k s a :: la_keep c r else la_keep c r
   end.
 
 (** A constant is dominated by atoms whose largest offset is [m] when it is
@@ -366,7 +434,7 @@ Definition lvl_canon (l : lvl) : lvl :=
 
 Lemma la_ev_ins : forall ν k s a ys, la_ev ν (la_ins k s a ys) = omax (osucn k (ν a s)) (la_ev ν ys).
 Proof.
-  induction ys as [| k' t b r IH]; cbn; [ reflexivity |].
+  induction ys as [| [k' t b] r IH]; cbn; [ reflexivity |].
   destruct (at_cmp a s b t) eqn:E; cbn.
   - apply at_cmp_eq in E as [-> ->]; generalize (ν b t) (la_ev ν r); intros; ord.
   - reflexivity.
@@ -374,12 +442,12 @@ Proof.
 Qed.
 
 Lemma la_ev_sort : forall ν xs, la_ev ν (la_sort xs) = la_ev ν xs.
-Proof. induction xs as [| k s a r IH]; cbn; [ reflexivity | rewrite la_ev_ins, IH; reflexivity ]. Qed.
+Proof. induction xs as [| [k s a] r IH]; cbn; [ reflexivity | rewrite la_ev_ins, IH; reflexivity ]. Qed.
 
 (** The dropped atoms are absorbed by the constant. *)
 Lemma la_ev_keep : forall ν c ys, lvl_adm ν -> omax c (la_ev ν (la_keep c ys)) = omax c (la_ev ν ys).
 Proof.
-  intros ν c ys Hadm; induction ys as [| k s a r IH]; cbn [la_keep la_ev]; [ reflexivity |].
+  intros ν c ys Hadm; induction ys as [| [k s a] r IH]; cbn [la_keep la_ev]; [ reflexivity |].
   specialize (Hadm a s).
   destruct (Nat.leb_spec (fst c) s); cbn [la_ev].
   - revert IH; generalize (la_ev ν (la_keep c r)) (la_ev ν r); intros; ord.
@@ -388,7 +456,7 @@ Qed.
 
 Lemma la_maxoff_le_ev : forall ν xs, ole (ofin (la_maxoff xs)) (la_ev ν xs).
 Proof.
-  induction xs as [| k s a r IH]; cbn; [ ord |].
+  induction xs as [| [k s a] r IH]; cbn; [ ord |].
   revert IH; generalize (ν a s) (la_ev ν r) (la_maxoff r); intros; ord.
 Qed.
 
@@ -403,22 +471,22 @@ Proof.
 Qed.
 
 (** Strictly sorted: every later atom is greater. *)
-Fixpoint la_In (k s : nat) (a : ne) (xs : lvl_atoms) : Prop :=
+Fixpoint la_In (k s : nat) (a : ne) (xs : list level_atom) : Prop :=
   match xs with
-  | la_nil => False
-  | la_cons k' t b r => (k = k' /\ s = t /\ a = b) \/ la_In k s a r
+  | nil => False
+  | mk_level_atom k' t b :: r => (k = k' /\ s = t /\ a = b) \/ la_In k s a r
   end.
 
-Fixpoint la_sorted (ys : lvl_atoms) : Prop :=
+Fixpoint la_sorted (ys : list level_atom) : Prop :=
   match ys with
-  | la_nil => True
-  | la_cons _ s a r => (forall k t b, la_In k t b r -> at_cmp a s b t = Lt) /\ la_sorted r
+  | nil => True
+  | mk_level_atom _ s a :: r => (forall k t b, la_In k t b r -> at_cmp a s b t = Lt) /\ la_sorted r
   end.
 
 Lemma la_ins_atoms : forall k s a ys k' t b,
     la_In k' t b (la_ins k s a ys) -> (t = s /\ b = a) \/ exists k'', la_In k'' t b ys.
 Proof.
-  induction ys as [| k0 u c r IH]; cbn; intros k' t b H.
+  induction ys as [| [k0 u c] r IH]; cbn; intros k' t b H.
   - destruct H as [(_ & -> & ->) | []]; auto.
   - destruct (at_cmp a s c u) eqn:E; cbn in H.
     + destruct H as [(_ & -> & ->) | H]; [ right; eauto | right; eauto ].
@@ -429,7 +497,7 @@ Qed.
 
 Lemma la_ins_sorted : forall k s a ys, la_sorted ys -> la_sorted (la_ins k s a ys).
 Proof.
-  induction ys as [| k0 u c r IH]; cbn; intros Hs.
+  induction ys as [| [k0 u c] r IH]; cbn; intros Hs.
   - split; [ intros ? ? ? [] | exact I ].
   - destruct Hs as [Hc Hr].
     destruct (at_cmp a s c u) eqn:E; cbn.
@@ -442,11 +510,11 @@ Proof.
 Qed.
 
 Lemma la_sort_sorted : forall xs, la_sorted (la_sort xs).
-Proof. induction xs as [| k s a r IH]; cbn; [ exact I | apply la_ins_sorted; exact IH ]. Qed.
+Proof. induction xs as [| [k s a] r IH]; cbn; [ exact I | apply la_ins_sorted; exact IH ]. Qed.
 
 Lemma la_keep_In : forall c ys k s a, la_In k s a (la_keep c ys) -> la_In k s a ys /\ fst c <= s.
 Proof.
-  intros c; induction ys as [| k0 t b r IH]; cbn [la_keep]; intros k s a H; [ destruct H |].
+  intros c; induction ys as [| [k0 t b] r IH]; cbn [la_keep]; intros k s a H; [ destruct H |].
   destruct (Nat.leb_spec (fst c) t); cbn in H |- *.
   - destruct H as [(-> & -> & ->) | H]; [ auto |].
     apply IH in H as [? ?]; auto.
@@ -455,7 +523,7 @@ Qed.
 
 Lemma la_keep_sorted : forall c ys, la_sorted ys -> la_sorted (la_keep c ys).
 Proof.
-  intros c; induction ys as [| k t b r IH]; cbn [la_keep]; intros Hs; [ exact I |].
+  intros c; induction ys as [| [k t b] r IH]; cbn [la_keep]; intros Hs; [ exact I |].
   destruct Hs as [Hb Hr].
   destruct (Nat.leb_spec (fst c) t); [| apply IH; exact Hr ].
   cbn [la_sorted]; split; [| apply IH; exact Hr ].
@@ -482,15 +550,15 @@ Proof.
     revert Hn; generalize (la_maxoff (la_keep c (la_sort xs))); intros; ord.
 Qed.
 
-Fixpoint la_look (a : ne) (s : nat) (ys : lvl_atoms) : option nat :=
+Fixpoint la_look (a : ne) (s : nat) (ys : list level_atom) : option nat :=
   match ys with
-  | la_nil => None
-  | la_cons k t b r => match at_cmp a s b t with Eq => Some k | _ => la_look a s r end
+  | nil => None
+  | mk_level_atom k t b :: r => match at_cmp a s b t with Eq => Some k | _ => la_look a s r end
   end.
 
 Lemma la_look_In : forall a s ys k, la_look a s ys = Some k -> la_In k s a ys.
 Proof.
-  induction ys as [| k0 t b r IH]; cbn; intros k H; [ discriminate |].
+  induction ys as [| [k0 t b] r IH]; cbn; intros k H; [ discriminate |].
   destruct (at_cmp a s b t) eqn:E;
     [ apply at_cmp_eq in E as [-> ->]; injection H as <-; auto | right; auto | right; auto ].
 Qed.
@@ -498,7 +566,7 @@ Qed.
 Lemma la_sorted_unique : forall ys1 ys2, la_sorted ys1 -> la_sorted ys2 ->
     (forall a s, la_look a s ys1 = la_look a s ys2) -> ys1 = ys2.
 Proof.
-  induction ys1 as [| k s a r1 IH]; intros [| k' t b r2] H1 H2 Hl.
+  induction ys1 as [| [k s a] r1 IH]; intros [| [k' t b] r2] H1 H2 Hl.
   - reflexivity.
   - specialize (Hl b t); cbn in Hl; rewrite at_cmp_refl in Hl; discriminate.
   - specialize (Hl a s); cbn in Hl; rewrite at_cmp_refl in Hl; discriminate.
@@ -536,18 +604,18 @@ Proof.
 Qed.
 
 Lemma la_ev_zero : forall ys, la_ev (fun _ _ => oz) ys = ofin (la_maxoff ys).
-Proof. induction ys as [| k s a r IH]; cbn; [ reflexivity | rewrite IH; ord ]. Qed.
+Proof. induction ys as [| [k s a] r IH]; cbn; [ reflexivity | rewrite IH; ord ]. Qed.
 
 Lemma la_ev_at_none : forall a s N ys, la_look a s ys = None -> la_ev (ν_at a s N) ys = ofin (la_maxoff ys).
 Proof.
-  induction ys as [| k t b r IH]; cbn; intros H; [ reflexivity |].
+  induction ys as [| [k t b] r IH]; cbn; intros H; [ reflexivity |].
   unfold ν_at at 1; destruct (at_cmp a s b t); try discriminate; rewrite IH by auto; ord.
 Qed.
 
 Lemma la_ev_at_some : forall a s N ys k, la_maxoff ys < N -> la_sorted ys -> la_look a s ys = Some k ->
     la_ev (ν_at a s N) ys = (s, k + N).
 Proof.
-  induction ys as [| k0 t b r IH]; cbn; intros k HN Hs H; [ discriminate |].
+  induction ys as [| [k0 t b] r IH]; cbn; intros k HN Hs H; [ discriminate |].
   destruct Hs as [Hb Hr]; unfold ν_at at 1.
   destruct (at_cmp a s b t) eqn:E.
   - apply at_cmp_eq in E as [<- <-]; injection H as <-.
@@ -606,21 +674,21 @@ Qed.
 
 (** The level operations evaluate as the successor and the join. *)
 Lemma la_ev_suc : forall ν xs,
-    la_ev ν (la_suc xs) = match xs with la_nil => oz | _ => osuc (la_ev ν xs) end.
+    la_ev ν (la_suc xs) = match xs with nil => oz | _ => osuc (la_ev ν xs) end.
 Proof.
-  intros ν; induction xs as [| k s a r IH]; cbn; [ reflexivity |]; rewrite IH.
-  destruct r; cbn; [| generalize (la_ev ν (la_cons n n0 n1 r)) ]; generalize (ν a s); intros; ord.
+  intros ν; induction xs as [| [k s a] r IH]; cbn; [ reflexivity |]; rewrite IH.
+  destruct r as [| x r]; cbn; [| generalize (la_ev ν (x :: r)) ]; generalize (ν a s); intros; ord.
 Qed.
 
 Lemma lvl_ev_suc : forall ν l, lvl_ev ν (lvl_suc l) = osuc (lvl_ev ν l).
 Proof.
   intros ν [c xs]; unfold lvl_ev, lvl_suc; cbn; rewrite la_ev_suc.
-  destruct xs; cbn; [| generalize (la_ev ν (la_cons n n0 n1 xs)) ]; intros; ord.
+  destruct xs as [| x xs]; cbn; [| generalize (la_ev ν (x :: xs)) ]; intros; ord.
 Qed.
 
-Lemma la_ev_app : forall ν xs ys, la_ev ν (la_app xs ys) = omax (la_ev ν xs) (la_ev ν ys).
+Lemma la_ev_app : forall ν xs ys, la_ev ν (xs ++ ys) = omax (la_ev ν xs) (la_ev ν ys).
 Proof.
-  induction xs as [| k s a r IH]; intros; cbn; [ symmetry; apply omax_zero_l |].
+  induction xs as [| [k s a] r IH]; intros; cbn; [ symmetry; apply omax_zero_l |].
   rewrite IH; symmetry; apply omax_assoc.
 Qed.
 
@@ -660,54 +728,68 @@ Qed.
 (** ** Properties of Every Atom
 
     Canonicalisation only reorders, merges and drops atoms, so a property of
-    all the atoms of a level survives it.  [la_clean] and [la_stuck] are
-    instances. *)
-Fixpoint la_all (P : ne -> Prop) (xs : lvl_atoms) : Prop :=
+    all the atoms of a level survives it.  Cleanness, stuckness and
+    freshness of the atoms are instances, through [la_all_all_list]. *)
+Fixpoint la_all (P : ne -> Prop) (xs : list level_atom) : Prop :=
   match xs with
-  | la_nil => True
-  | la_cons _ _ a r => P a /\ la_all P r
+  | nil => True
+  | mk_level_atom _ _ a :: r => P a /\ la_all P r
   end.
 
 Lemma la_all_ins : forall P k s a ys, P a -> la_all P ys -> la_all P (la_ins k s a ys).
 Proof.
-  induction ys as [| k' t b r IH]; cbn; intros Ha Hys; [ auto |].
+  induction ys as [| [k' t b] r IH]; cbn; intros Ha Hys; [ auto |].
   destruct Hys as [Hb Hr]; destruct (at_cmp a s b t) eqn:E; cbn; auto.
 Qed.
 
 Lemma la_all_sort : forall P xs, la_all P xs -> la_all P (la_sort xs).
 Proof.
-  induction xs as [| k s a r IH]; cbn; intros H; [ exact I |].
+  induction xs as [| [k s a] r IH]; cbn; intros H; [ exact I |].
   destruct H; apply la_all_ins; auto.
 Qed.
 
 Lemma la_all_keep : forall P c xs, la_all P xs -> la_all P (la_keep c xs).
 Proof.
-  intros P c; induction xs as [| k s a r IH]; cbn [la_keep]; intros H; [ exact I |].
+  intros P c; induction xs as [| [k s a] r IH]; cbn [la_keep]; intros H; [ exact I |].
   destruct H as [Ha Hr]; destruct (fst c <=? s); cbn; auto.
 Qed.
 
 Lemma la_all_canon : forall P c xs, la_all P xs -> la_all P (snd (lvl_canon (c, xs))).
 Proof. intros; unfold lvl_canon; cbn; apply la_all_keep, la_all_sort; assumption. Qed.
 
-Lemma la_all_app : forall P xs ys, la_all P xs -> la_all P ys -> la_all P (la_app xs ys).
+Lemma la_all_app : forall P xs ys, la_all P xs -> la_all P ys -> la_all P (xs ++ ys).
 Proof.
-  intros P xs ys; induction xs as [| k s a r IH]; cbn; [ intros _ H; exact H |].
+  intros P xs ys; induction xs as [| [k s a] r IH]; cbn; [ intros _ H; exact H |].
   intros [Ha Hr] Hy; split; auto.
 Qed.
 
 Lemma la_all_suc : forall P xs, la_all P xs -> la_all P (la_suc xs).
 Proof.
-  intros P xs; induction xs as [| k s a r IH]; cbn; [ intros; exact I |].
+  intros P xs; induction xs as [| [k s a] r IH]; cbn; [ intros; exact I |].
   intros [Ha Hr]; split; auto.
 Qed.
 
-Lemma la_clean_all : forall xs, la_clean xs <-> la_all ne_clean xs.
-Proof. induction xs as [| k s a r IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
+(** [la_all P] is [all_list] at the atoms' neutrals, the form the
+    properties of normal forms take at a level. *)
+Lemma la_all_all_list : forall P xs, all_list (fun a => P (atom_level a)) xs <-> la_all P xs.
+Proof. induction xs as [| [k s a] r IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
-Lemma la_clean_canon : forall c xs, la_clean xs -> la_clean (snd (lvl_canon (c, xs))).
+(** The generated induction hypothesis at the atoms of a level is [la_all]
+    of the motive. *)
+Lemma list_all_la_all : forall (P : ne -> Prop) xs, list_all level_atom (level_atom_g_all ne P) xs -> la_all P xs.
+Proof. intros P xs H; induction H as [| [k s a] Ha r Hr IH]; cbn; [ exact I | inversion Ha; subst; auto ]. Qed.
+
+(** The atoms of a level are clean, as [nf_clean] asks of a level, when
+    every atom's neutral is. *)
+Lemma la_clean_all : forall xs, all_list (fun a => ne_clean (atom_level a)) xs <-> la_all ne_clean xs.
+Proof. intros; apply la_all_all_list. Qed.
+
+Lemma la_clean_canon : forall c xs, all_list (fun a => ne_clean (atom_level a)) xs ->
+    all_list (fun a => ne_clean (atom_level a)) (snd (lvl_canon (c, xs))).
 Proof. intros * H; apply la_clean_all, la_all_canon, la_clean_all; assumption. Qed.
 
-Lemma la_clean_sort : forall xs, la_clean xs -> la_clean (la_sort xs).
+Lemma la_clean_sort : forall xs, all_list (fun a => ne_clean (atom_level a)) xs ->
+    all_list (fun a => ne_clean (atom_level a)) (la_sort xs).
 Proof. intros * H; apply la_clean_all, la_all_sort, la_clean_all; assumption. Qed.
 
 (** ** The Order on Levels
@@ -726,7 +808,7 @@ Qed.
 Definition lvl_eq_dec : forall (l l' : lvl), ({l = l'} + {l <> l'})%type.
 Proof.
   intros [c xs] [c' ys]; destruct (o2_eq_dec c c') as [-> |]; [| right; congruence ].
-  destruct (la_eq_dec xs ys) as [-> |]; [ left; reflexivity | right; congruence ].
+  destruct (List.list_eq_dec (level_atom_eq_dec_g ne_eq_dec) xs ys) as [-> |]; [ left; reflexivity | right; congruence ].
 Defined.
 
 Definition lvl_le_dec : forall l l', ({lvl_le l l'} + {~ lvl_le l l'})%type.
@@ -768,7 +850,7 @@ Lemma lvl_le_suc : forall l, lvl_le l (lvl_suc l).
 Proof. intros; apply lvl_le_correct; intros; rewrite lvl_ev_suc; apply ole_osuc. Qed.
 
 (** The least level, and the literals. *)
-Definition lvl_lit (o : o2) : lvl := (o, la_nil).
+Definition lvl_lit (o : o2) : lvl := (o, nil).
 
 Lemma lvl_ev_lit : forall ν o, lvl_ev ν (lvl_lit o) = o.
 Proof. intros; unfold lvl_ev, lvl_lit; cbn; apply omax_zero_r. Qed.
@@ -795,7 +877,7 @@ Definition lvl_bnd (n : nat) (l : lvl) : Prop :=
 
 Lemma la_sort_In : forall xs k s a, la_In k s a (la_sort xs) -> exists k', la_In k' s a xs.
 Proof.
-  induction xs as [| j t b r IH]; cbn; intros k s a H; [ contradiction |].
+  induction xs as [| [j t b] r IH]; cbn; intros k s a H; [ contradiction |].
   destruct (la_ins_atoms _ _ _ _ _ _ _ H) as [[-> ->] | [k'' Hin]]; [ eauto |].
   destruct (IH _ _ _ Hin) as [k' ?]; eauto.
 Qed.
@@ -810,14 +892,14 @@ Qed.
 
 Lemma la_suc_In : forall xs k s a, la_In k s a (la_suc xs) -> exists k', la_In k' s a xs.
 Proof.
-  induction xs as [| j t b r IH]; cbn; intros k s a H; [ contradiction |].
+  induction xs as [| [j t b] r IH]; cbn; intros k s a H; [ contradiction |].
   destruct H as [(_ & -> & ->) | H]; [ eauto |].
   destruct (IH _ _ _ H) as [k' ?]; eauto.
 Qed.
 
-Lemma la_app_In : forall xs ys k s a, la_In k s a (la_app xs ys) -> la_In k s a xs \/ la_In k s a ys.
+Lemma la_app_In : forall xs ys k s a, la_In k s a (xs ++ ys) -> la_In k s a xs \/ la_In k s a ys.
 Proof.
-  induction xs as [| j t b r IH]; cbn; intros ys k s a H; [ auto |].
+  induction xs as [| [j t b] r IH]; cbn; intros ys k s a H; [ auto |].
   destruct H as [H | H]; [ auto |].
   destruct (IH _ _ _ _ H); auto.
 Qed.
@@ -841,7 +923,7 @@ Lemma lvl_ev_bnd : forall ν n l, lvl_adm ν -> lvl_bnd n l -> fst (lvl_ev ν l)
 Proof.
   intros ν n [c xs] Hν [Hc Hxs]; unfold lvl_ev; cbn [fst snd] in *.
   enough (fst (la_ev ν xs) <= n) by (revert Hc H; generalize (la_ev ν xs); intros; ord).
-  induction xs as [| k s a r IH]; cbn; [ lia |].
+  induction xs as [| [k s a] r IH]; cbn; [ lia |].
   assert (Hs : s <= n) by (eapply Hxs; left; auto).
   assert (IH' : fst (la_ev ν r) <= n) by (apply IH; intros; eapply Hxs; right; eassumption).
   specialize (Hν a s); revert IH' Hs Hν; generalize (la_ev ν r) (ν a s); intros; ord.
@@ -865,10 +947,10 @@ Qed.
     between small universes hold in the model. *)
 (** The constant is the base of the fold rather than an [omax] on top of it,
     so that the realiser of a literal level is that literal by computation. *)
-Fixpoint la_max (c : o2) (xs : lvl_atoms) : o2 :=
+Fixpoint la_max (c : o2) (xs : list level_atom) : o2 :=
   match xs with
-  | la_nil => c
-  | la_cons k _ _ r => omax (ofin k) (la_max c r)
+  | nil => c
+  | mk_level_atom k _ _ :: r => omax (ofin k) (la_max c r)
   end.
 
 Definition lvl_real (l : lvl) : o2 := la_max (fst l) (snd l).
@@ -876,7 +958,7 @@ Definition lvl_real (l : lvl) : o2 := la_max (fst l) (snd l).
 Lemma lvl_real_ev : forall l, lvl_real l = lvl_ev (fun _ _ => oz) l.
 Proof.
   intros [c xs]; unfold lvl_real, lvl_ev; cbn.
-  induction xs as [| k s a r IH]; cbn; [ symmetry; apply omax_zero_r |].
+  induction xs as [| [k s a] r IH]; cbn; [ symmetry; apply omax_zero_r |].
   rewrite IH; generalize (la_ev (fun _ _ => oz) r); intros; ord.
 Qed.
 
@@ -967,7 +1049,7 @@ Proof.
   specialize (H (ν_at a s (S (snd o))) (ν_at_adm _ _ _)); rewrite lvl_ev_lit in H.
   unfold lvl_ev in H; cbn [fst snd] in H.
   assert (Hge : ole (s, S (snd o)) (la_ev (ν_at a s (S (snd o))) xs)).
-  { clear H; induction xs as [| k0 t b r IH]; cbn in Hin |- *; [ contradiction |].
+  { clear H; induction xs as [| [k0 t b] r IH]; cbn in Hin |- *; [ contradiction |].
     destruct Hin as [(<- & <- & <-) | Hin].
     - unfold ν_at at 1; rewrite at_cmp_refl.
       generalize (la_ev (ν_at a s (S (snd o))) r); intros; ord.
@@ -975,9 +1057,9 @@ Proof.
   revert H Hge Hs; generalize (la_ev (ν_at a s (S (snd o))) xs); intros; ord.
 Qed.
 
-Lemma lvl_le_lit_closed : forall l n, lvl_le l (lvl_lit (ofin n)) -> snd l = la_nil.
+Lemma lvl_le_lit_closed : forall l n, lvl_le l (lvl_lit (ofin n)) -> snd l = nil.
 Proof.
-  intros [c xs] n H; destruct xs as [| k s a r]; [ reflexivity | exfalso ].
+  intros [c xs] n H; destruct xs as [| [k s a] r]; [ reflexivity | exfalso ].
   pose proof (lvl_le_lit_sorts _ _ H k s a ltac:(cbn; left; auto)) as Hs; cbn in Hs; lia.
 Qed.
 

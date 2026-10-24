@@ -1010,6 +1010,16 @@ Proof.
   rewrite IH; split; [ intros []; constructor; assumption | intros H; inversion H; auto ].
 Qed.
 
+(** [all_brs] and [all_blocks] are [all_list] at the branch and at the
+    block. *)
+Lemma all_brs_all_list : forall {A : Set} (f : nat -> A -> Prop) Bs,
+    all_brs f Bs <-> all_list (fun b => f (snd (fst b)) (snd b)) Bs.
+Proof. induction Bs as [| b Bs IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
+
+Lemma all_blocks_all_list : forall {A : Set} (f : nat -> option A -> A -> list (string * nat * A) -> Prop) Bks,
+    all_blocks f Bks <-> all_list (fun b => match b with eb_mk nm oZ M Bs => f nm oZ M Bs end) Bks.
+Proof. induction Bks as [| [] Bks IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
+
 Lemma all_list_Forall : forall {A : Set} (f : A -> Prop) l, all_list f l <-> List.Forall f l.
 Proof.
   induction l as [| x l IH]; cbn; split; intros H; auto.
@@ -1592,13 +1602,153 @@ Definition lvl_exp_of (c : o2) (xs : list (nat * exp)) : exp :=
   | (k, a) :: r, _ => lvl_fold (a_maxl (a_llit c) (succl_n k a)) r
   end.
 
-(** * Normal and Neutral Forms *)
+(** * Normal and Neutral Forms
+
+    Normal forms nest through lists, as terms do: the parameters and
+    arguments of a type former or a constructor are a [list nf]; the atoms
+    of a canonical level, and the blocks and branches of a stuck
+    eliminator, are lists of the small records below, generic in what they
+    hold.  Each record has [Scheme All] registered, so that the induction
+    principle generated for [nf] and [ne] carries hypotheses for what they
+    hold, as [list_all] does for lists. *)
+
+(** An atom [k + a] of a canonical level: the neutral level [a], of type
+    [Level@s], with its offset [k]. *)
+Record level_atom_g (E : Set) : Set := mk_level_atom
+  { (** The offset [k]: the number of successors above the neutral *)
+    atom_offset : nat
+    (** The sort [s] of the neutral: it is of type [Level@s], so below
+        ω·(s+1) *)
+  ; atom_sort : nat
+    (** The neutral level [a] *)
+  ; atom_level : E }.
+Arguments mk_level_atom {E}.
+Arguments atom_offset {E}.
+Arguments atom_sort {E}.
+Arguments atom_level {E}.
+Scheme All for level_atom_g.
+
+(** A branch of a stuck eliminator: the case of a constructor, binding a
+    number of variables. *)
+Record normal_branch_g (E : Set) : Set := mk_normal_branch
+  { (** The constructor the branch is the case of *)
+    branch_constructor : string
+    (** The number of variables the branch binds: the member's non-uniform
+        parameters, the arguments, and one recursive result per recursive
+        argument *)
+  ; branch_arity : nat
+    (** The branch's body, under those variables *)
+  ; branch_body : E }.
+Arguments mk_normal_branch {E}.
+Arguments branch_constructor {E}.
+Arguments branch_arity {E}.
+Arguments branch_body {E}.
+Scheme All for normal_branch_g.
+
+(** A block of a stuck eliminator, one per member of the group, in the
+    group's order. *)
+Record normal_block_g (E : Set) : Set := mk_normal_block
+  { (** The number of variables the motive binds: the member's
+        non-uniform parameters and the scrutinee *)
+    block_arity : nat
+    (** The motive, under those variables *)
+  ; block_motive : E
+    (** The branches, one per constructor of the member, in order *)
+  ; block_branches : list (normal_branch_g E) }.
+Arguments mk_normal_block {E}.
+Arguments block_arity {E}.
+Arguments block_motive {E}.
+Arguments block_branches {E}.
+Scheme All for normal_block_g.
+
+(** ** Operations on the Records
+
+    A function on what the records hold acts on the records.  A branch's
+    body and a block's motive sit under binders, so the function on a
+    branch or a block is told how many: the arity. *)
+
+(** An atom with its neutral mapped. *)
+Definition map_level_atom {E F : Set} (f : E -> F) (a : level_atom_g E) : level_atom_g F :=
+  mk_level_atom (atom_offset a) (atom_sort a) (f (atom_level a)).
+
+(** A branch with its body mapped, at its arity. *)
+Definition map_normal_branch {E F : Set} (f : nat -> E -> F) (br : normal_branch_g E) : normal_branch_g F :=
+  mk_normal_branch (branch_constructor br) (branch_arity br) (f (branch_arity br) (branch_body br)).
+
+(** A block with its motive and its branches' bodies mapped, each at its
+    arity. *)
+Definition map_normal_block {E F : Set} (f : nat -> E -> F) (b : normal_block_g E) : normal_block_g F :=
+  mk_normal_block (block_arity b) (f (block_arity b) (block_motive b))
+    (List.map (map_normal_branch f) (block_branches b)).
+
+(** [P] holds of a block's motive and of its branches' bodies, each at its
+    arity. *)
+Definition normal_block_forall {E : Set} (P : nat -> E -> Prop) (b : normal_block_g E) : Prop :=
+  P (block_arity b) (block_motive b) /\ all_list (fun br => P (branch_arity br) (branch_body br)) (block_branches b).
+
+(** The boolean [normal_block_forall]. *)
+Definition normal_block_forallb {E : Set} (f : nat -> E -> bool) (b : normal_block_g E) : bool :=
+  f (block_arity b) (block_motive b) && List.forallb (fun br => f (branch_arity br) (branch_body br)) (block_branches b).
+
+(** ** Using the Generated Hypotheses
+
+    The induction principle of a type nesting through [list] and the
+    records gives [list_all] of the motive at a list.  These lemmas turn it
+    into what a proof by that induction needs: equal maps, and [all_list]. *)
+Lemma list_all_map_ext {A B : Set} (P : A -> Set) (f g : A -> B) : forall l,
+    list_all A P l -> (forall x, P x -> f x = g x) -> List.map f l = List.map g l.
+Proof. intros l Hl Hfg; induction Hl; cbn; f_equal; auto. Qed.
+
+Lemma list_all_all_list {A : Set} (P : A -> Set) (Q : A -> Prop) : forall l,
+    list_all A P l -> (forall x, P x -> Q x) -> all_list Q l.
+Proof. intros l Hl HPQ; induction Hl; cbn; auto. Qed.
+
+Lemma list_all_all_list_impl {A : Set} (P : A -> Set) (Q R : A -> Prop) : forall l,
+    list_all A P l -> all_list Q l -> (forall x, P x -> Q x -> R x) -> all_list R l.
+Proof. intros l Hl; induction Hl as [| x Hx l Hl IH]; cbn; [ auto | intros [Hq Hr] H; split; auto ]. Qed.
+
+Lemma all_list_app {A : Set} (Q : A -> Prop) : forall l l',
+    all_list Q l -> all_list Q l' -> all_list Q (l ++ l').
+Proof. induction l as [| x l IH]; cbn; [ auto | intros l' [Hx Hl] Hl'; split; auto ]. Qed.
+
+Lemma all_list_map {A B : Set} (f : A -> B) (Q : B -> Prop) : forall l,
+    all_list Q (List.map f l) <-> all_list (fun x => Q (f x)) l.
+Proof. induction l as [| x l IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
+
+Lemma list_all_Forall_map {A B : Set} (P : A -> Set) (Q : B -> Prop) (f : A -> B) : forall l,
+    list_all A P l -> (forall x, P x -> Q (f x)) -> List.Forall Q (List.map f l).
+Proof. intros l Hl HPQ; induction Hl; constructor; auto. Qed.
+
+(** A goal [List.map f l = List.map g l], or [all_list R l], reduced to one
+    goal per element [x] of [l], from the generated hypothesis on [l] (and,
+    for [all_list], from an [all_list] hypothesis on [l] when there is
+    one): [Hx] the motive at [x], [Hy] that hypothesis at [x].  A record's
+    [_all] hypothesis is taken apart, and with it the record. *)
+Ltac nested_elements :=
+  rewrite ?List.map_map;
+  let x := fresh "x" in let Hx := fresh "Hx" in let Hy := fresh "Hy" in
+  match goal with
+  | Hl : list_all _ _ ?l |- List.map _ ?l = List.map _ ?l =>
+      apply (list_all_map_ext _ _ _ l Hl); intros x Hx; try destruct Hx
+  | Hl : list_all _ _ ?l, Hq : all_list _ ?l |- all_list _ ?l =>
+      apply (list_all_all_list_impl _ _ _ l Hl Hq); intros x Hx Hy; try destruct Hx
+  | Hl : list_all _ _ ?l |- all_list _ ?l =>
+      apply (list_all_all_list _ _ l Hl); intros x Hx; try destruct Hx
+  end.
+
+Lemma list_all_forallb {A : Set} (P : A -> Set) (f : A -> bool) (Q : A -> Prop) : forall l,
+    list_all A P l -> (forall x, P x -> f x = true <-> Q x) -> List.forallb f l = true <-> all_list Q l.
+Proof.
+  intros l Hl HfQ; induction Hl as [| x Hx l Hl IH]; cbn; [ split; auto |].
+  rewrite Bool.andb_true_iff, (HfQ x Hx), IH; reflexivity.
+Qed.
+
 Inductive nf : Set :=
 (** A large universe *)
 | nf_typ : nat -> nf
 (** A small universe at a canonical level [max (c, k₁ + a₁, …)], in the shape
     of [nf_lvl] below *)
-| nf_univ : o2 -> lvl_atoms -> nf
+| nf_univ : o2 -> list (level_atom_g ne) -> nf
 (** The type [Level@n] *)
 | nf_level : nat -> nf
 (** A canonical level [max (c, k₁ + a₁, …)]: the atoms are strictly sorted by
@@ -1607,7 +1757,7 @@ Inductive nf : Set :=
     absorbs it), and the constant [c] is [0] unless it exceeds every
     offset.  [nf_lvl_of] builds
     the normal form of a canonical level [lvl]. *)
-| nf_lvl : o2 -> lvl_atoms -> nf
+| nf_lvl : o2 -> list (level_atom_g ne) -> nf
 (** [⊤] *)
 | nf_True : nf
 (** Its element *)
@@ -1619,16 +1769,16 @@ Inductive nf : Set :=
 (** A function, its domain and body normal *)
 | nf_fn : nf -> nf -> nf
 (** A member of a group of inductive types at its parameters *)
-| nf_indty : qname -> nat -> nfs -> nf
+| nf_indty : qname -> nat -> list nf -> nf
 (** A constructor at the parameters of its type and its arguments *)
-| nf_con : qname -> nat -> string -> nfs -> nf
+| nf_con : qname -> nat -> string -> list nf -> nf
 (** A neutral *)
 | nf_neut : ne -> nf
 (** A record type at its parameters *)
-| nf_record : qname -> nfs -> nf
+| nf_record : qname -> list nf -> nf
 (** An element of the record type at [p], η-long: the type's parameters,
     the field names and the fields *)
-| nf_tuple : qname -> nfs -> list string -> nfs -> nf
+| nf_tuple : qname -> list nf -> list string -> list nf -> nf
 with ne : Set :=
 (** The [⊥]-eliminator, always stuck *)
 | ne_exfalso : nf -> ne -> ne
@@ -1636,7 +1786,7 @@ with ne : Set :=
     on a neutral, at the group's uniform parameters; its blocks carry no
     annotation.  (An eliminator at a view is stuck as the eliminator of the
     view's container's group.) *)
-| ne_elim : qname -> nfs -> nat -> nblocks -> ne -> ne
+| ne_elim : qname -> list nf -> nat -> list (normal_block_g nf) -> ne -> ne
 (** A neutral applied *)
 | ne_app : ne -> nf -> ne
 (** A variable *)
@@ -1644,41 +1794,19 @@ with ne : Set :=
 (** An opaque definition or an axiom: it does not unfold. *)
 | ne_glob : qname -> ne
 (** A field of a neutral *)
-| ne_proj : string -> ne -> ne
-(** The atoms of a canonical level, each with its offset and its sort: an
-    atom of sort [s] is a level of type [Level@s], below ω·(s+1).  They are
-    their own sort rather than a [list (nat * nat * ne)] so that the family
-    stays mutual and [Scheme] generates the induction principle. *)
-with lvl_atoms : Set :=
-(** No atom. *)
-| la_nil : lvl_atoms
-(** An atom: its offset, its sort and the neutral level, before the rest. *)
-| la_cons : nat -> nat -> ne -> lvl_atoms -> lvl_atoms
-(** A list of normal forms: the parameters and arguments of an inductive
-    type or a constructor, outermost first.  Its own sort, like [lvl_atoms],
-    so that [Scheme] generates the induction principle. *)
-with nfs : Set :=
-(** The empty list. *)
-| nfs_nil : nfs
-(** A normal form before the rest. *)
-| nfs_cons : nf -> nfs -> nfs
-(** The branches of a stuck eliminator: the constructor, the number of
-    variables bound, the body. *)
-with nbrs : Set :=
-(** No branch. *)
-| nbrs_nil : nbrs
-(** The branch of a constructor, binding a number of variables, before
-    the rest. *)
-| nbrs_cons : string -> nat -> nf -> nbrs -> nbrs
-(** The blocks of a stuck eliminator: the number of variables the motive
-    binds, the motive, the branches. *)
-with nblocks : Set :=
-(** No block. *)
-| nblocks_nil : nblocks
-(** A block: its motive's number of binders, its motive and its branches,
-    before the rest. *)
-| nblocks_cons : nat -> nf -> nbrs -> nblocks -> nblocks
-.
+| ne_proj : string -> ne -> ne.
+
+(** The records at normal forms and neutrals. *)
+Abbreviation level_atom := (level_atom_g ne).
+Abbreviation normal_branch := (normal_branch_g nf).
+Abbreviation normal_block := (normal_block_g nf).
+
+(** The induction principle of normal forms and neutrals, generated: a
+    list carries [list_all] of the motive, a record of the records above
+    its own [_all]. *)
+Scheme nf_nested_ind := Induction for nf Sort Prop
+with ne_nested_ind := Induction for ne Sort Prop.
+Combined Scheme nf_ne_ind from nf_nested_ind, ne_nested_ind.
 
 (** [M] applied to [args], outermost first. *)
 Fixpoint apps_exp (M : exp) (args : list exp) : exp :=
@@ -1692,70 +1820,69 @@ Fixpoint apps_exp (M : exp) (args : list exp) : exp :=
 Fixpoint nf_to_exp (M : nf) : exp :=
   match M with
   | nf_typ i => a_typ i
-  | nf_univ c xs => a_univ (lvl_exp_of c (la_to_list xs))
+  | nf_univ c xs => a_univ (lvl_exp_of c (List.map (fun a => (atom_offset a, ne_to_exp (atom_level a))) xs))
   | nf_level n => a_level n
-  | nf_lvl c xs => lvl_exp_of c (la_to_list xs)
+  | nf_lvl c xs => lvl_exp_of c (List.map (fun a => (atom_offset a, ne_to_exp (atom_level a))) xs)
   | nf_True => a_True
   | nf_true => a_true
   | nf_False => a_False
   | nf_pi A B => a_pi (nf_to_exp A) (nf_to_exp B)
   | nf_fn A M => a_fn (nf_to_exp A) (nf_to_exp M)
-  | nf_indty p k Ms => apps_exp (a_ind p k) (nfs_to_exps Ms)
-  | nf_con p k c Ms => apps_exp (a_con p k c) (nfs_to_exps Ms)
+  | nf_indty p k Ms => apps_exp (a_ind p k) (List.map nf_to_exp Ms)
+  | nf_con p k c Ms => apps_exp (a_con p k c) (List.map nf_to_exp Ms)
   | nf_neut M => ne_to_exp M
-  | nf_record p Ms => apps_exp (a_record p) (nfs_to_exps Ms)
-  | nf_tuple p Ms fs Ns => a_tuple (apps_exp (a_record p) (nfs_to_exps Ms)) (List.combine fs (nfs_to_exps Ns))
+  | nf_record p Ms => apps_exp (a_record p) (List.map nf_to_exp Ms)
+  | nf_tuple p Ms fs Ns => a_tuple (apps_exp (a_record p) (List.map nf_to_exp Ms)) (List.combine fs (List.map nf_to_exp Ns))
   end
 with ne_to_exp (M : ne) : exp :=
   match M with
   | ne_exfalso A M => a_exfalso (nf_to_exp A) (ne_to_exp M)
-  | ne_elim p Us m Bks M => a_elim (Some p) (nfs_to_exps Us) m (nblocks_to_blocks Bks) (ne_to_exp M)
+  | ne_elim p Us m Bks M =>
+      a_elim (Some p) (List.map nf_to_exp Us) m
+        (List.map (fun b => eb_mk (block_arity b) None (nf_to_exp (block_motive b))
+                              (List.map (fun br => (branch_constructor br, branch_arity br, nf_to_exp (branch_body br)))
+                                 (block_branches b))) Bks)
+        (ne_to_exp M)
   | ne_app M N => a_app (ne_to_exp M) (nf_to_exp N)
   | ne_var x => a_var x
   | ne_glob p => qname_term p
   | ne_proj f M => a_proj f (ne_to_exp M)
-  end
-with la_to_list (xs : lvl_atoms) : list (nat * exp) :=
-  match xs with
-  | la_nil => nil
-  | la_cons k _ M r => (k, ne_to_exp M) :: la_to_list r
-  end
-with nfs_to_exps (Ms : nfs) : list exp :=
-  match Ms with
-  | nfs_nil => nil
-  | nfs_cons M Ms => nf_to_exp M :: nfs_to_exps Ms
-  end
-with nbrs_to_brs (Bs : nbrs) : list (string * nat * exp) :=
-  match Bs with
-  | nbrs_nil => nil
-  | nbrs_cons c n B Bs => (c, n, nf_to_exp B) :: nbrs_to_brs Bs
-  end
-with nblocks_to_blocks (Bks : nblocks) : list eblock :=
-  match Bks with
-  | nblocks_nil => nil
-  | nblocks_cons nm A Bs Bks => eb_mk nm None (nf_to_exp A) (nbrs_to_brs Bs) :: nblocks_to_blocks Bks
-  end
-.
+  end.
 
 Coercion nf_to_exp : nf >-> exp.
 Coercion ne_to_exp : ne >-> exp.
 
-(** Two lists of normal forms, one after the other. *)
-Fixpoint nfs_app (Ms Ns : nfs) : nfs :=
-  match Ms with
-  | nfs_nil => Ns
-  | nfs_cons M Ms' => nfs_cons M (nfs_app Ms' Ns)
-  end.
+(** An atom of a canonical level as a term spells it: its offset, and the
+    neutral level as a term. *)
+Definition atom_exp (a : level_atom) : (nat * exp)%type := (atom_offset a, ne_to_exp (atom_level a)).
 
-Lemma nfs_to_exps_app : forall Ms Ns, nfs_to_exps (nfs_app Ms Ns) = nfs_to_exps Ms ++ nfs_to_exps Ns.
-Proof. induction Ms; intros; cbn; congruence. Qed.
+(** A branch of a stuck eliminator as a term's branch. *)
+Definition branch_exp (br : normal_branch) : (string * nat * exp)%type :=
+  (branch_constructor br, branch_arity br, nf_to_exp (branch_body br)).
+
+(** A block of a stuck eliminator as a term's block: it carries no
+    annotation. *)
+Definition block_exp (b : normal_block) : eblock :=
+  eb_mk (block_arity b) None (nf_to_exp (block_motive b)) (List.map branch_exp (block_branches b)).
+
+(** The clauses of [nf_to_exp] at the levels and at a stuck eliminator,
+    through the definitions above. *)
+Lemma nf_to_exp_univ : forall c xs, nf_to_exp (nf_univ c xs) = a_univ (lvl_exp_of c (List.map atom_exp xs)).
+Proof. reflexivity. Qed.
+
+Lemma nf_to_exp_lvl : forall c xs, nf_to_exp (nf_lvl c xs) = lvl_exp_of c (List.map atom_exp xs).
+Proof. reflexivity. Qed.
+
+Lemma ne_to_exp_elim : forall p Us m Bks M,
+    ne_to_exp (ne_elim p Us m Bks M) = a_elim (Some p) (List.map nf_to_exp Us) m (List.map block_exp Bks) (ne_to_exp M).
+Proof. reflexivity. Qed.
 
 (** * Canonical Levels
 
     A canonical level is its constant and its atoms.  The operations on
     canonical levels, and their order, are [Core.Syntactic.Levels.Levels]; the type
     is here because the universe normal forms below are indexed by it. *)
-Definition lvl : Set := (o2 * lvl_atoms)%type.
+Definition lvl : Set := (o2 * list level_atom)%type.
 
 Definition nf_lvl_of (l : lvl) : nf := nf_lvl (fst l) (snd l).
 
@@ -1791,7 +1918,7 @@ Definition univ_nf (u : unf) : nf :=
 
 Definition unf_tm (u : unf) : exp :=
   match u with
-  | uns L => a_univ (lvl_exp_of (fst L) (la_to_list (snd L)))
+  | uns L => a_univ (lvl_exp_of (fst L) (List.map atom_exp (snd L)))
   | unl n => a_typ n
   end.
 
@@ -1821,61 +1948,67 @@ Proof. intros ? ? ? H H'; destruct H; inversion H'; reflexivity. Qed.
 Fixpoint nf_clean (W : nf) : Prop :=
   match W with
   | nf_typ _ | nf_level _ | nf_True | nf_true | nf_False => True
-  | nf_univ _ xs | nf_lvl _ xs => la_clean xs
+  | nf_univ _ xs | nf_lvl _ xs => all_list (fun a => ne_clean (atom_level a)) xs
   | nf_pi A B | nf_fn A B => nf_clean A /\ nf_clean B
-  | nf_indty _ _ Ms | nf_con _ _ _ Ms => nfs_clean Ms
+  | nf_indty _ _ Ms | nf_con _ _ _ Ms => all_list nf_clean Ms
   | nf_neut M => ne_clean M
-  | nf_record _ Ms => nfs_clean Ms
-  | nf_tuple _ Ms _ Ns => nfs_clean Ms /\ nfs_clean Ns
+  | nf_record _ Ms => all_list nf_clean Ms
+  | nf_tuple _ Ms _ Ns => all_list nf_clean Ms /\ all_list nf_clean Ns
   end
 with ne_clean (M : ne) : Prop :=
   match M with
   | ne_exfalso A M => nf_clean A /\ ne_clean M
-  | ne_elim _ Us _ Bks M => nfs_clean Us /\ nblocks_clean Bks /\ ne_clean M
+  | ne_elim _ Us _ Bks M =>
+      all_list nf_clean Us /\
+      all_list (fun b => nf_clean (block_motive b) /\ all_list (fun br => nf_clean (branch_body br)) (block_branches b)) Bks /\
+      ne_clean M
   | ne_app M N => ne_clean M /\ nf_clean N
   | ne_var _ => True
   | ne_glob _ => False
   | ne_proj _ M => ne_clean M
-  end
-with la_clean (xs : lvl_atoms) : Prop :=
-  match xs with
-  | la_nil => True
-  | la_cons _ _ M r => ne_clean M /\ la_clean r
-  end
-with nfs_clean (Ms : nfs) : Prop :=
-  match Ms with
-  | nfs_nil => True
-  | nfs_cons M Ms => nf_clean M /\ nfs_clean Ms
-  end
-with nbrs_clean (Bs : nbrs) : Prop :=
-  match Bs with
-  | nbrs_nil => True
-  | nbrs_cons _ _ B Bs => nf_clean B /\ nbrs_clean Bs
-  end
-with nblocks_clean (Bks : nblocks) : Prop :=
-  match Bks with
-  | nblocks_nil => True
-  | nblocks_cons _ A Bs Bks => nf_clean A /\ nbrs_clean Bs /\ nblocks_clean Bks
   end.
 
-Fact nf_eq_dec : forall (M M' : nf),
-    ({M = M'} + {M <> M'})%type
-with ne_eq_dec : forall (M M' : ne),
-    ({M = M'} + {M <> M'})%type
-with la_eq_dec : forall (xs xs' : lvl_atoms),
-    ({xs = xs'} + {xs <> xs'})%type
-with nfs_eq_dec : forall (Ms Ms' : nfs),
-    ({Ms = Ms'} + {Ms <> Ms'})%type
-with nbrs_eq_dec : forall (Bs Bs' : nbrs),
-    ({Bs = Bs'} + {Bs <> Bs'})%type
-with nblocks_eq_dec : forall (Bks Bks' : nblocks),
-    ({Bks = Bks'} + {Bks <> Bks'})%type.
+(** Decidable equality of the records of normal forms, given that of what
+    they hold. *)
+Section RecordDec.
+  Context {E : Set} (de : forall x y : E, {x = y} + {x <> y}).
+
+  Definition level_atom_eq_dec_g (a a' : level_atom_g E) : {a = a'} + {a <> a'}.
+  Proof.
+    destruct a as [k s u], a' as [k' s' u'].
+    destruct (PeanoNat.Nat.eq_dec k k') as [<- |]; [| right; congruence ].
+    destruct (PeanoNat.Nat.eq_dec s s') as [<- |]; [| right; congruence ].
+    destruct (de u u') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  Definition normal_branch_eq_dec_g (b b' : normal_branch_g E) : {b = b'} + {b <> b'}.
+  Proof.
+    destruct b as [c n B], b' as [c' n' B'].
+    destruct (String.string_dec c c') as [<- |]; [| right; congruence ].
+    destruct (PeanoNat.Nat.eq_dec n n') as [<- |]; [| right; congruence ].
+    destruct (de B B') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+
+  Definition normal_block_eq_dec_g (b b' : normal_block_g E) : {b = b'} + {b <> b'}.
+  Proof.
+    destruct b as [nm A Bs], b' as [nm' A' Bs'].
+    destruct (PeanoNat.Nat.eq_dec nm nm') as [<- |]; [| right; congruence ].
+    destruct (de A A') as [<- |]; [| right; congruence ].
+    destruct (List.list_eq_dec normal_branch_eq_dec_g Bs Bs') as [<- |]; [ left; reflexivity | right; congruence ].
+  Defined.
+End RecordDec.
+
+(** Equality of normal forms and neutrals is decidable. *)
+Fixpoint nf_eq_dec (M M' : nf) {struct M} : {M = M'} + {M <> M'}
+with ne_eq_dec (M M' : ne) {struct M} : {M = M'} + {M <> M'}.
 Proof.
   (** Names are compared by [string_dec], before [decide equality] could
       take a string apart character by character. *)
-  all: intros; decide equality;
-    repeat (apply PeanoNat.Nat.eq_dec || apply String.string_dec ||
-            apply (List.list_eq_dec String.string_dec) || decide equality).
+  all: decide equality;
+    first [ apply PeanoNat.Nat.eq_dec | apply String.string_dec | apply qname_eq_dec | apply o2_eq_dec
+          | apply (List.list_eq_dec String.string_dec) | apply (List.list_eq_dec nf_eq_dec)
+          | apply (List.list_eq_dec (level_atom_eq_dec_g ne_eq_dec))
+          | apply (List.list_eq_dec (normal_block_eq_dec_g nf_eq_dec)) | idtac ].
 Defined.
 
 (** ** Notations *)
@@ -1885,7 +2018,7 @@ Module Nf_Notations.
   Notation "'⊥ⁿ'" := nf_False : mctt_scope.
   Notation "'Typeωⁿ' @ n" := (nf_typ n) (at level 1, n at level 0, format "'Typeωⁿ' @ n") : mctt_scope.
   Notation "'univⁿ' c xs" := (nf_univ c xs) (at level 1, c at level 0, xs at level 0, format "'univⁿ'  c  xs") : mctt_scope.
-  Notation "'Typeⁿ' @ n" := (nf_univ (ofin n) la_nil) (at level 1, n at level 0, format "'Typeⁿ' @ n") : mctt_scope.
+  Notation "'Typeⁿ' @ n" := (nf_univ (ofin n) nil) (at level 1, n at level 0, format "'Typeⁿ' @ n") : mctt_scope.
   Notation "'Levelⁿ' @ n" := (nf_level n) (at level 1, n at level 0, format "'Levelⁿ' @ n") : mctt_scope.
   Notation "'Levelⁿ'" := (nf_level 0) : mctt_scope.
   Notation "'lvⁿ' c xs" := (nf_lvl c xs) (at level 1, c at level 0, xs at level 0, format "'lvⁿ'  c  xs") : mctt_scope.

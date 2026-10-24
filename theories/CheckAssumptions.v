@@ -132,14 +132,14 @@ Print Assumptions Mctt.Core.Consequences.Consistency.subtyp_record_nf.
    type, and an accepted record declaration runs. *)
 Print Assumptions Mctt.Core.Syntactic.System.Records.RecordRuns.record_field_def_typed.
 Print Assumptions Mctt.Core.Syntactic.System.Records.RecordRuns.rc_record_runs.
-(* Records: the fill of the accesses through terms of a command is
-   functional, the identity on a command with none, and decided by the
+(* The typed fill of a command (its literals, its eliminators' groups,
+   its accesses through terms) is functional, and decided by the
    checker. *)
-Print Assumptions Mctt.Core.Syntactic.System.Command.fill_cmd_functional.
-Print Assumptions Mctt.Core.Syntactic.System.Command.fill_cmd_access_free.
-Print Assumptions Mctt.Core.Syntactic.System.Command.fill_params_functional.
-Print Assumptions Mctt.Extraction.AccessDecide.fill_cmd_fn_sound.
-Print Assumptions Mctt.Extraction.AccessDecide.fill_cmd_fn_complete.
-Print Assumptions Mctt.Extraction.AccessDecide.fill_params_fn_sound.
-Print Assumptions Mctt.Extraction.AccessDecide.fill_params_fn_complete.
+Print Assumptions Mctt.Core.TypedElab.Lemmas.fill_cmd_functional.
+Print Assumptions Mctt.Core.TypedElab.Lemmas.fill_params_functional.
+Print Assumptions Mctt.Core.Syntactic.System.Command.fill_unique_run.
+Print Assumptions Mctt.Extraction.TypedElab.fill_cmd_fn_sound.
+Print Assumptions Mctt.Extraction.TypedElab.fill_cmd_fn_complete.
+Print Assumptions Mctt.Extraction.TypedElab.fill_params_fn_sound.
+Print Assumptions Mctt.Extraction.TypedElab.fill_params_fn_complete.
 Print Assumptions Mctt.Extraction.MdefGroup.mdef_group_dec_complete.

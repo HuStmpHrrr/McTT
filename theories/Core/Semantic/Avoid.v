@@ -964,11 +964,9 @@ Proof. intros * Hb H a Ha; exact (dav_mono' _ _ _ _ Hb (H a Ha)). Qed.
 
 (** ** Readback Introduces Only Variables Above the Ones in Scope *)
 
-Lemma la_fresh_all : forall k xs, la_fresh k xs <-> la_all (ne_fresh k) xs.
-Proof. intros k xs; induction xs as [| j s a r IH]; cbn; [ tauto | rewrite IH; tauto ]. Qed.
-
-Lemma la_fresh_canon : forall k c xs, la_fresh k xs -> la_fresh k (snd (lvl_canon (c, xs))).
-Proof. intros * H; apply la_fresh_all, la_all_canon, la_fresh_all; assumption. Qed.
+Lemma la_fresh_canon : forall k c xs, all_list (fun a => ne_fresh k (atom_level a)) xs ->
+    all_list (fun a => ne_fresh k (atom_level a)) (snd (lvl_canon (c, xs))).
+Proof. intros * H; apply la_all_all_list, la_all_canon, la_all_all_list; assumption. Qed.
 
 Section Read.
   Variables (Θ : gdeps) (Ξ : gstack) (v : nat).
@@ -1069,9 +1067,6 @@ Section Read.
       exact (all_in_tail _ _ _ Hvs).
   Qed.
 
-  Lemma nfs_fresh_app : forall k Ms Ns, nfs_fresh k Ms -> nfs_fresh k Ns -> nfs_fresh k (nfs_app Ms Ns).
-  Proof. induction Ms; cbn; intuition. Qed.
-
   (** The motive of a block of a stuck eliminator, at the fresh non-uniform
       parameters and scrutinee, which are above the readback length. *)
   Lemma motive_av : forall ρ K A X pre hd k Mi s ns a b,
@@ -1159,45 +1154,45 @@ Section Read.
     (forall s a A, Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
        forall b, v < s -> b <= s -> dav v b a -> nf_fresh (s - v - 1) A) /\
     (forall s xs ys, Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-       forall b, v < s -> b <= s -> dav_la v b xs -> la_fresh (s - v - 1) ys) /\
+       forall b, v < s -> b <= s -> dav_la v b xs -> all_list (fun a => ne_fresh (s - v - 1) (atom_level a)) ys) /\
     (forall s ρ T vs Ms, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        forall b, v < s -> b <= s -> env_av v b None ρ -> (forall a, In a vs -> dav v b a) ->
-       nfs_fresh (s - v - 1) Ms) /\
+       all_list (nf_fresh (s - v - 1)) Ms) /\
     (forall s p ups ρ gs vs Ms, Rcargs vs at gs of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
        forall b, v < s -> b <= s -> env_av v b None ρ -> (forall a, In a ups -> dav v b a) ->
-       (forall a, In a vs -> dav v b a) -> nfs_fresh (s - v - 1) Ms) /\
+       (forall a, In a vs -> dav v b a) -> all_list (nf_fresh (s - v - 1)) Ms) /\
     (forall s p ups ρ t x X, Rsh x at t of p ups in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ X ->
        forall b, v < s -> b <= s -> env_av v b None ρ -> (forall a, In a ups -> dav v b a) ->
        dav v b x -> nf_fresh (s - v - 1) X) /\
     (forall s ρ p ups Bks sel i Ms NBks, Rblks i Ms from p ups Bks sel in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ NBks ->
        forall b K D, v < s -> b <= s -> env_av v b K ρ -> blocks_ofresh K Bks ->
        ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks ->
-       (forall a, In a ups -> dav v b a) -> nblocks_fresh (s - v - 1) NBks) /\
+       (forall a, In a ups -> dav v b a) -> all_list (normal_block_forall (fun n => nf_fresh (n + (s - v - 1)))) NBks) /\
     (forall s ρ p ups Bks Mv A Mi r cs Bs Bs', Rbrs Bs at cs of Mi r from p ups Bks Mv A in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Bs' ->
        forall b K D, v < s -> b <= s -> env_av v b K ρ -> blocks_ofresh K Bks ->
        ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks -> im_nn Mv = im_nn Mi ->
        ofresh (oshift (S (im_nn Mi)) K) A ->
        (forall c n B, In (c, n, B) Bs -> ofresh (oshift n K) B) ->
-       (forall a, In a ups -> dav v b a) -> (forall a, In a (snd r) -> dav v b a) -> nbrs_fresh (s - v - 1) Bs') /\
+       (forall a, In a ups -> dav v b a) -> (forall a, In a (snd r) -> dav v b a) -> all_list (fun br => nf_fresh (branch_arity br + (s - v - 1)) (branch_body br)) Bs') /\
     (forall s ρ fl d Fs, Rflds d at fl in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Fs ->
-       forall b, v < s -> b <= s -> env_av v b None ρ -> dav v b d -> nfs_fresh (s - v - 1) Fs).
+       forall b, v < s -> b <= s -> env_av v b None ρ -> dav v b d -> all_list (nf_fresh (s - v - 1)) Fs).
   Proof.
     apply (read_mut_ind Θ Ξ
              (fun s m W _ => forall b, v < s -> b <= s -> dav_nf v b m -> nf_fresh (s - v - 1) W)
              (fun s m M _ => forall b, v < s -> b <= s -> dav_ne v b m -> ne_fresh (s - v - 1) M)
              (fun s a A _ => forall b, v < s -> b <= s -> dav v b a -> nf_fresh (s - v - 1) A)
-             (fun s xs ys _ => forall b, v < s -> b <= s -> dav_la v b xs -> la_fresh (s - v - 1) ys)
+             (fun s xs ys _ => forall b, v < s -> b <= s -> dav_la v b xs -> all_list (fun a => ne_fresh (s - v - 1) (atom_level a)) ys)
              (fun s ρ T vs Ms _ => forall b, v < s -> b <= s -> env_av v b None ρ ->
-                                  (forall a, In a vs -> dav v b a) -> nfs_fresh (s - v - 1) Ms)
+                                  (forall a, In a vs -> dav v b a) -> all_list (nf_fresh (s - v - 1)) Ms)
              (fun s p ups ρ gs vs Ms _ => forall b, v < s -> b <= s -> env_av v b None ρ ->
                                         (forall a, In a ups -> dav v b a) ->
-                                        (forall a, In a vs -> dav v b a) -> nfs_fresh (s - v - 1) Ms)
+                                        (forall a, In a vs -> dav v b a) -> all_list (nf_fresh (s - v - 1)) Ms)
              (fun s p ups ρ t x X _ => forall b, v < s -> b <= s -> env_av v b None ρ ->
                                      (forall a, In a ups -> dav v b a) -> dav v b x -> nf_fresh (s - v - 1) X)
              (fun s ρ p ups Bks sel i Ms NBks _ => forall b K D, v < s -> b <= s -> env_av v b K ρ ->
                                                       blocks_ofresh K Bks ->
                                                       ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks ->
-                                                      (forall a, In a ups -> dav v b a) -> nblocks_fresh (s - v - 1) NBks)
+                                                      (forall a, In a ups -> dav v b a) -> all_list (normal_block_forall (fun n => nf_fresh (n + (s - v - 1)))) NBks)
              (fun s ρ p ups Bks Mv A Mi r cs Bs Bs' _ => forall b K D, v < s -> b <= s -> env_av v b K ρ ->
                                                             blocks_ofresh K Bks ->
                                                             ind_lookup Θ Ξ p = Some D -> blocks_nm_at D None Bks ->
@@ -1205,8 +1200,8 @@ Section Read.
                                                             ofresh (oshift (S (im_nn Mi)) K) A ->
                                                             (forall c n B, In (c, n, B) Bs -> ofresh (oshift n K) B) ->
                                                             (forall a, In a ups -> dav v b a) ->
-                                                            (forall a, In a (snd r) -> dav v b a) -> nbrs_fresh (s - v - 1) Bs')
-             (fun s ρ fl d Fs _ => forall b, v < s -> b <= s -> env_av v b None ρ -> dav v b d -> nfs_fresh (s - v - 1) Fs));
+                                                            (forall a, In a (snd r) -> dav v b a) -> all_list (fun br => nf_fresh (branch_arity br + (s - v - 1)) (branch_body br)) Bs')
+             (fun s ρ fl d Fs _ => forall b, v < s -> b <= s -> env_av v b None ρ -> dav v b d -> all_list (nf_fresh (s - v - 1)) Fs));
       intros; cbn [snd] in *;
       repeat match goal with
         | H : dav_nf _ _ (_ _ _) |- _ => inversion_clear H
@@ -1232,7 +1227,8 @@ Section Read.
       | H1 : ind_lookup _ _ ?p = Some ?D1, H2 : ind_lookup _ _ ?p = Some ?D2 |- _ =>
           assert_fails (constr_eq D1 D2); rewrite H1 in H2; injection H2 as <-
       end.
-    all: cbn [nf_fresh ne_fresh la_fresh nfs_fresh nbrs_fresh nblocks_fresh nf_lvl_of nf_univ_of fst snd]; repeat split.
+    all: cbn [nf_fresh ne_fresh all_list nf_lvl_of nf_univ_of fst snd]; unfold normal_block_forall;
+      cbn [block_arity block_motive block_branches branch_arity branch_body]; repeat split.
     all: try exact I.
     all: try lia.
     all: try solve [ eauto 3 with mctt ].
@@ -1241,17 +1237,17 @@ Section Read.
         and the parameters of a type, are read back at their types, which
         are closed. *)
     all: try solve [ match goal with
-      | IH1 : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None nil -> _ -> nfs_fresh _ ?Ps,
-        IH2 : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None (env_args nil ?as') -> _ -> _ -> nfs_fresh _ ?Args,
-        Hb : ?b <= ?s, Ha : forall a, In a ?as' -> dav v ?b a |- nfs_fresh _ (nfs_app ?Ps ?Args) =>
-          apply nfs_fresh_app;
+      | IH1 : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None nil -> _ -> all_list (nf_fresh _) ?Ps,
+        IH2 : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None (env_args nil ?as') -> _ -> _ -> all_list (nf_fresh _) ?Args,
+        Hb : ?b <= ?s, Ha : forall a, In a ?as' -> dav v ?b a |- all_list (nf_fresh _) (?Ps ++ ?Args) =>
+          apply all_list_app;
             [ apply (IH1 b); [ lia | lia | apply env_av_nil | assumption ]
             | apply (IH2 b); [ lia | lia | apply env_av_args_none; [ apply env_av_nil | assumption ]
                              | all_in_with assumption | all_in_with assumption ] ]
       end ].
     all: try solve [ match goal with
-      | IH : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None nil -> _ -> nfs_fresh _ ?Ps,
-        Hb : ?b <= ?s |- nfs_fresh _ ?Ps =>
+      | IH : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None nil -> _ -> all_list (nf_fresh _) ?Ps,
+        Hb : ?b <= ?s |- all_list (nf_fresh _) ?Ps =>
           apply (IH b); [ lia | lia | apply env_av_nil | assumption ]
       end ].
     all: try solve [ match goal with
@@ -1264,7 +1260,7 @@ Section Read.
     all: try solve [ match goal with
       | e : ⟦ ?A ⟧ _ ⍮ _ ⍮ ?ρ ↘ ?a, Hρ : env_av v ?b None ?ρ, Hb : ?b <= ?s,
         Hv : forall x, In x (?v0 :: _) -> dav v ?b x,
-        IH : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None (?ρ ↦ ?v0) -> _ |- nfs_fresh _ _ =>
+        IH : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None (?ρ ↦ ?v0) -> _ |- all_list (nf_fresh _) _ =>
           apply (IH b); try lia;
             [ apply env_av_cons_none; [ exact Hρ | exact (all_in_head _ _ _ Hv) ] |..]; all_in_with assumption
       end ].
@@ -1316,8 +1312,8 @@ Section Read.
     all: try solve [ match goal with
       | Hρ : env_av v ?b None ?ρ, Hb : ?b <= ?s,
         Hv : forall x, In x (_ :: ?vs) -> dav v ?b x,
-        IH : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None ?ρ -> _ -> (forall x, In x ?vs -> _) -> nfs_fresh _ ?W
-        |- nfs_fresh _ ?W =>
+        IH : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None ?ρ -> _ -> (forall x, In x ?vs -> _) -> all_list (nf_fresh _) ?W
+        |- all_list (nf_fresh _) ?W =>
           apply (IH b); [ lia | lia | exact Hρ | assumption | exact (all_in_tail _ _ _ Hv) ]
       end ].
     (** A stuck eliminator: the container's uniform parameters read at
@@ -1326,15 +1322,15 @@ Section Read.
     all: try solve [ match goal with
       | em : eval_mref _ _ _ ?ups _ (_, _, ?pre),
         Hu : forall a, In a ?ups -> dav v ?b a, Hb : ?b <= ?s,
-        IH : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None nil -> _ -> nfs_fresh _ ?Ps |- nfs_fresh _ ?Ps =>
+        IH : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None nil -> _ -> all_list (nf_fresh _) ?Ps |- all_list (nf_fresh _) ?Ps =>
           apply (IH b); [ lia | lia | apply env_av_nil | exact (mref_av _ _ _ _ _ _ _ _ em Hu) ]
       end ].
     all: try solve [ match goal with
       | IH : forall b0 K0 D0, v < ?s -> b0 <= ?s -> env_av v b0 K0 ?ρ -> blocks_ofresh K0 ?Bks ->
-               ind_lookup _ _ ?p = Some D0 -> blocks_nm_at D0 None ?Bks -> (forall a, In a ?ups -> _) -> nblocks_fresh _ ?W,
+               ind_lookup _ _ ?p = Some D0 -> blocks_nm_at D0 None ?Bks -> (forall a, In a ?ups -> _) -> all_list _ ?W,
         Hl : ind_lookup _ _ ?p = Some ?D, Hnm : blocks_nm_at ?D None ?Bks,
         Hb : ?b <= ?s, Hρ : forall x, ?K <> Some x -> deav v ?b (env_entry ?ρ x), HBk : blocks_ofresh ?K ?Bks,
-        Hu : forall a, In a ?ups -> dav v ?b a |- nblocks_fresh _ ?W =>
+        Hu : forall a, In a ?ups -> dav v ?b a |- all_list _ ?W =>
           apply (IH b K D); [ lia | lia | exact Hρ | exact HBk | exact Hl | exact Hnm | exact Hu ]
       end ].
     (** A block: its motive under the fresh non-uniform parameters of its
@@ -1362,12 +1358,12 @@ Section Read.
     all: try solve [ match goal with
       | IH : forall b0 K0 D0, v < ?s -> b0 <= ?s -> env_av v b0 K0 ?ρ -> blocks_ofresh K0 ?Bks ->
                ind_lookup _ _ ?p = Some D0 -> blocks_nm_at D0 None ?Bks -> im_nn ?Mv = im_nn ?Mi -> _ -> _ -> _ -> _ ->
-               nbrs_fresh _ ?W,
+               all_list _ ?W,
         Hnth : List.nth_error ?Bks ?ix = Some ?bk, Hnmb : eb_nm ?bk = S (im_nn ?Mi), HMv : ind_member ?D ?ix = Some ?Mv,
         em : eval_mref _ _ _ ?X _ (_, _, ?pre),
         Hl : ind_lookup _ _ ?p = Some ?D, Hnm : blocks_nm_at ?D None ?Bks,
         Hb : ?b <= ?s, Hρ : env_av v ?b ?K ?ρ, HBk : blocks_ofresh ?K ?Bks,
-        HX : forall x, In x ?X -> dav v ?b x |- nbrs_fresh _ ?W =>
+        HX : forall x, In x ?X -> dav v ?b x |- all_list _ ?W =>
           apply (IH b K D); [ lia | lia | exact Hρ | exact HBk | exact Hl | exact Hnm
                             | pose proof (Hnm _ _ _ HMv Hnth) as Hx; cbn [elim_src] in Hx; congruence
                             | rewrite <- Hnmb; exact (proj1 (HBk _ (List.nth_error_In _ _ Hnth)))
@@ -1376,10 +1372,10 @@ Section Read.
       end ].
     all: try solve [ match goal with
       | IH : forall b0 K0 D0, v < ?s -> b0 <= ?s -> env_av v b0 K0 ?ρ -> blocks_ofresh K0 ?Bks ->
-               ind_lookup _ _ ?p = Some D0 -> blocks_nm_at D0 None ?Bks -> (forall a, In a ?X -> _) -> nblocks_fresh _ ?W,
+               ind_lookup _ _ ?p = Some D0 -> blocks_nm_at D0 None ?Bks -> (forall a, In a ?X -> _) -> all_list _ ?W,
         Hl : ind_lookup _ _ ?p = Some ?D, Hnm : blocks_nm_at ?D None ?Bks,
         Hb : ?b <= ?s, Hρ : env_av v ?b ?K ?ρ, HBk : blocks_ofresh ?K ?Bks,
-        HX : forall x, In x ?X -> dav v ?b x |- nblocks_fresh _ ?W =>
+        HX : forall x, In x ?X -> dav v ?b x |- all_list _ ?W =>
           apply (IH b K D); [ lia | lia | exact Hρ | exact HBk | exact Hl | exact Hnm | exact HX ]
       end ].
     (** A branch: under the fresh non-uniform parameters, arguments and
@@ -1406,7 +1402,7 @@ Section Read.
           apply (IH (s + n)); [ lia | lia | constructor; apply Hbr ]
       end ].
     all: try solve [ match goal with
-      | IH : context [ nbrs_fresh _ ?W ], HB : forall c0 n0 B0, In (c0, n0, B0) (_ :: _) -> _ |- nbrs_fresh _ ?W =>
+      | IH : context [ all_list _ ?W ], HB : forall c0 n0 B0, In (c0, n0, B0) (_ :: _) -> _ |- all_list _ ?W =>
           eapply IH;
             [ lia | | eassumption | eassumption | eassumption | eassumption | eassumption | eassumption
             | intros c1 n1 B1 Hin; exact (HB c1 n1 B1 (or_intror Hin)) | eassumption | eassumption ];
@@ -1416,8 +1412,8 @@ Section Read.
         parameters; each field projected, at its type evaluated in the
         environment of the fields before it. *)
     all: try solve [ match goal with
-      | IH : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None (env_args nil ?ns) -> dav v b0 ?d -> nfs_fresh _ ?W,
-        Hb : ?b <= ?s, Hn : forall a, In a ?ns -> dav v ?b a, Hd : dav v ?b ?d |- nfs_fresh _ ?W =>
+      | IH : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None (env_args nil ?ns) -> dav v b0 ?d -> all_list (nf_fresh _) ?W,
+        Hb : ?b <= ?s, Hn : forall a, In a ?ns -> dav v ?b a, Hd : dav v ?b ?d |- all_list (nf_fresh _) ?W =>
           apply (IH b); [ lia | lia | apply env_av_args_none; [ apply env_av_nil | exact Hn ] | exact Hd ]
       end ].
     all: try solve [ match goal with
@@ -1429,8 +1425,15 @@ Section Read.
       end ].
     all: try solve [ match goal with
       | e : eval_proj _ _ _ ?d ?r, Hρ : env_av v ?b None ?ρ, Hb : ?b <= ?s, Hd : dav v ?b ?d,
-        IH : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None (?ρ ↦ ?r) -> dav v b0 ?d -> nfs_fresh _ ?W |- nfs_fresh _ ?W =>
+        IH : forall b0, v < ?s -> b0 <= ?s -> env_av v b0 None (?ρ ↦ ?r) -> dav v b0 ?d -> all_list (nf_fresh _) ?W |- all_list (nf_fresh _) ?W =>
           apply (IH b); [ lia | lia | apply env_av_cons_none; [ exact Hρ | exact (proj_av _ _ _ _ _ _ _ e Hd) ] | exact Hd ]
+      end ].
+    (** A small universe reads back at the canonical level its level reads
+        back as, and the two normal forms have the same atoms, so this case
+        is the level's. *)
+    all: try solve [ match goal with
+      | IH : forall b0, v < ?s -> b0 <= ?s -> _ -> nf_fresh _ (nf_lvl_of _), Hb : ?b <= ?s |- all_list _ _ =>
+          apply (IH b); [ lia | lia |]; repeat constructor; assumption
       end ].
     (** Under a binder: the closure is evaluated at a neutral at the readback
         length, which is above the bound, and read back one step further. *)

@@ -30,22 +30,12 @@ From Mctt.Core.Syntactic.System.Inductives Require Import UniformParams Views.
 Import Domain_Notations Fixed_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 
-(** The normal forms of a list, as a list. *)
-Fixpoint nfs_list (Ws : nfs) : list nf :=
-  match Ws with
-  | nfs_nil => nil
-  | nfs_cons W Ws' => W :: nfs_list Ws'
-  end.
-
-Lemma nfs_list_exps : forall Ws, List.map nf_to_exp (nfs_list Ws) = nfs_to_exps Ws.
-Proof. induction Ws as [| W Ws IH]; cbn; congruence. Qed.
-
 (** The [j]-th value of a telescope's readback, read at its type in the
     environment of the values before it. *)
 Lemma read_ps_nth : forall Θ Ξ s ρ T vs Ws, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ws ->
     forall j A v, List.nth_error T j = Some (ce_ass A) -> List.nth_error vs j = Some v ->
     exists a V, ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρ (List.firstn j vs) ↘ a /\ Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V /\
-      List.nth_error (nfs_list Ws) j = Some V.
+      List.nth_error Ws j = Some V.
 Proof.
   induction 1 as [| ? ? ? ? ? ? ? ? ? Ea HV Hr IH]; intros [| j] A' v' HT Hv; cbn in HT, Hv; try discriminate.
   - injection HT as <-; injection Hv as <-; do 2 eexists; cbn; eauto.
@@ -213,7 +203,7 @@ Section Fixed_GCtx.
          Γ ⊢ P : T) ->
       nbe_ty_f Γ (apps (a_ind p k) Ms) (nf_indty p k Rs) ->
       forall j P T, List.nth_error Ms j = Some P -> List.nth_error (tele_insts (im_params D Mk) Id Ms) j = Some T ->
-        exists R, List.nth_error (nfs_list Rs) j = Some R /\ nbe_f Γ P T R.
+        exists R, List.nth_error Rs j = Some R /\ nbe_f Γ P T R.
   Proof.
     intros * Hl Hk HMl HMs HW j P T HP HT.
     assert (HΓ : ⊢ Γ) by (pose proof (HMs j P T HP HT); gen_presups; assumption).
@@ -366,9 +356,9 @@ Section Fixed_GCtx.
   Proof.
     intros W X Y HW H; destruct HW; cbn in H; try discriminate.
     - injection H as <- <-; do 2 eexists; eauto.
-    - destruct (nfs_to_exps _) using List.rev_ind; cbn in H; [ discriminate | rewrite apps_exp_app in H; discriminate ].
+    - destruct (List.map nf_to_exp _) using List.rev_ind; cbn in H; [ discriminate | rewrite apps_exp_app in H; discriminate ].
     - exfalso; exact (proj1 (ne_head_not_ind _) _ _ H).
-    - destruct (nfs_to_exps _) using List.rev_ind; cbn in H; [ discriminate | rewrite apps_exp_app in H; discriminate ].
+    - destruct (List.map nf_to_exp _) using List.rev_ind; cbn in H; [ discriminate | rewrite apps_exp_app in H; discriminate ].
   Qed.
 
   Lemma nf_pis_end : forall Bs E W, type_nf W -> nf_to_exp W = pis Bs E -> exists WE, type_nf WE /\ nf_to_exp WE = E.
@@ -482,20 +472,20 @@ Section Fixed_GCtx.
     intros j N T0 HN HT0 [i0 HT0t].
     assert (Hj : j < ind_nu D2) by (rewrite <- HCl; apply List.nth_error_Some; congruence).
     set (φ := wk_pat (List.repeat true L)) in *.
-    assert (HNw : List.nth_error (nfs_to_exps Rs) j = Some N[φ]ʷ).
-    { rewrite <- (List.firstn_skipn (ind_nu D2) (nfs_to_exps Rs)), List.nth_error_app1
+    assert (HNw : List.nth_error (List.map nf_to_exp Rs) j = Some N[φ]ʷ).
+    { rewrite <- (List.firstn_skipn (ind_nu D2) (List.map nf_to_exp Rs)), List.nth_error_app1
         by (rewrite List.length_firstn; lia).
       rewrite HC, List.nth_error_map, HN; reflexivity. }
-    assert (HTw : List.nth_error (tele_insts (im_params D2 Mk2) Id (nfs_to_exps Rs)) j = Some T0[φ]ʷ).
-    { rewrite <- (List.firstn_skipn (ind_nu D2) (nfs_to_exps Rs)).
+    assert (HTw : List.nth_error (tele_insts (im_params D2 Mk2) Id (List.map nf_to_exp Rs)) j = Some T0[φ]ʷ).
+    { rewrite <- (List.firstn_skipn (ind_nu D2) (List.map nf_to_exp Rs)).
       unfold im_params; rewrite tele_insts_app by (try exact (dt_ass _ _ _ Hdt); rewrite List.length_firstn; unfold ind_nu in *; lia).
       rewrite List.nth_error_app1 by (rewrite length_tele_insts by exact (dt_ass _ _ _ Hdt); rewrite List.length_firstn; unfold ind_nu in *; lia).
       rewrite HC.
       rewrite (List.map_ext (fun C => C[φ]ʷ) (fun M => M[ι φ]) (fun M => eq_sym (exp_sub_of_wk M φ))).
       rewrite (tele_insts_closed_sub _ _ _ _ _ (dt_ass _ _ _ Hdt) (dc_uparams _ Hc2) HT0), exp_sub_of_wk; reflexivity. }
     pose proof (HRt _ _ _ HNw HTw) as HNt.
-    rewrite <- nfs_list_exps, List.nth_error_map in HNw.
-    destruct (List.nth_error (nfs_list Rs) j) as [R |] eqn:HR; cbn in HNw; [ injection HNw as HRN | discriminate ].
+    rewrite List.nth_error_map in HNw.
+    destruct (List.nth_error Rs j) as [R |] eqn:HR; cbn in HNw; [ injection HNw as HRN | discriminate ].
     assert (HNR : N = nf_to_exp (nf_wk (unwk_pat (List.repeat true L)) R)).
     { rewrite (proj1 nf_wk_to_exp), HRN, exp_wk_wk_ext with (χ := wk_id) by apply unwk_wk_pat; symmetry; apply exp_wk_id. }
     rewrite HNR in HNt |- *.
@@ -661,19 +651,19 @@ Section Fixed_GCtx.
       destruct (soundness HCj) as (Wj & HWj & _).
       destruct (nbe_wk_tele (doms_ctx Bs ++ Δ) Γu C T0 Wj HassE ltac:(rewrite <- List.app_assoc; exact HΓe) HCj HWj)
         as (Wj' & HWj' & HWj'e).
-      assert (HNw : List.nth_error (nfs_to_exps Rs) j = Some C[φ]ʷ).
+      assert (HNw : List.nth_error (List.map nf_to_exp Rs) j = Some C[φ]ʷ).
       { assert (Hj : j < ind_nu D2) by (rewrite <- HCl; apply List.nth_error_Some; congruence).
-        rewrite <- (List.firstn_skipn (ind_nu D2) (nfs_to_exps Rs)), List.nth_error_app1
+        rewrite <- (List.firstn_skipn (ind_nu D2) (List.map nf_to_exp Rs)), List.nth_error_app1
           by (rewrite List.length_firstn, HRl; unfold im_np, ind_nu in *; lia).
         rewrite HC, List.nth_error_map, HN; reflexivity. }
-      pose proof (tele_insts_params_uniform_wk D2 Mk2 Cs (nfs_to_exps Rs) φ j T0 (dt_ass _ _ _ Hdt) (dc_uparams _ Hc2) HCl HC HT0) as HTw.
+      pose proof (tele_insts_params_uniform_wk D2 Mk2 Cs (List.map nf_to_exp Rs) φ j T0 (dt_ass _ _ _ Hdt) (dc_uparams _ Hc2) HCl HC HT0) as HTw.
       destruct (nbe_ind_args _ _ _ _ _ _ _ Hl2 HMk2 HRl HRt HnE j _ _ HNw HTw) as (Rj & HRj & HnRj).
       rewrite HLe in HWj', HWj'e; rewrite <- List.app_assoc in HWj'.
       rewrite <- !(exp_wk_wk_eq _ φ (wk_shiftn L)) in HWj' by apply wk_pat_trues.
       rewrite <- (exp_wk_wk_eq _ φ (wk_shiftn L)) in HWj'e by apply wk_pat_trues.
       pose proof (functional_nbe _ _ _ _ _ HnRj HWj') as ->.
       exists Wj; split; [ exact HWj |].
-      rewrite <- nfs_list_exps, List.nth_error_map, HRj in HNw; cbn in HNw; injection HNw as HNw.
+      rewrite List.nth_error_map, HRj in HNw; cbn in HNw; injection HNw as HNw.
       rewrite HWj'e in HNw.
       apply (f_equal (fun M => M[unwk_pat (List.repeat true L)]ʷ)) in HNw.
       unfold φ in HNw; rewrite !(exp_wk_wk_ext _ _ _ wk_id (unwk_wk_pat _)), !exp_wk_id in HNw; exact HNw. }

@@ -633,9 +633,9 @@ Proof.
   pose proof (HPr _ _ _ Hid HMs) as [HPM HPMs]; pose proof (HQr _ _ _ Hid HMs) as [HQM HQMs].
   rewrite (map_wk_id Ps) in HPM, HPMs; rewrite (map_wk_id Qs) in HQM, HQMs.
   split; [ congruence |].
-  assert (HMl : List.length (nfs_to_exps Ms) = im_np D Mk) by congruence.
-  eapply (params_eq_trans _ p D k Mk Ps (nfs_to_exps Ms) Qs Hl HMk HΔ HPl HMl HQl HPMs).
-  eapply (params_eq_sym _ p D k Mk Qs (nfs_to_exps Ms) Hl HMk HΔ HQl HMl HQMs).
+  assert (HMl : List.length (List.map nf_to_exp Ms) = im_np D Mk) by congruence.
+  eapply (params_eq_trans _ p D k Mk Ps (List.map nf_to_exp Ms) Qs Hl HMk HΔ HPl HMl HQl HPMs).
+  eapply (params_eq_sym _ p D k Mk Qs (List.map nf_to_exp Ms) Hl HMk HΔ HQl HMl HQMs).
 Qed.
 
 Lemma ind_typ_at_cumu : forall p D ups ns NP NEl AP AEl DP DEl NP' NEl' AP' AEl' DP' DEl' k Mk a b Γ A Ps,
@@ -924,9 +924,9 @@ Proof.
   pose proof (HPr _ _ _ Hid HMs) as [HPM HPMs]; pose proof (HQr _ _ _ Hid HMs) as [HQM HQMs].
   rewrite (map_wk_id Ps) in HPM, HPMs; rewrite (map_wk_id Qs) in HQM, HQMs.
   split; [ congruence |].
-  assert (HMl : List.length (nfs_to_exps Ms) = List.length (record_params R)) by congruence.
-  eapply (tele_eq_trans _ (record_params R) Ps (nfs_to_exps Ms) Qs Hass HC HPl HMl HQl HPMs).
-  eapply (tele_eq_sym _ (record_params R) Qs (nfs_to_exps Ms) Hass HC HQl HMl HQMs).
+  assert (HMl : List.length (List.map nf_to_exp Ms) = List.length (record_params R)) by congruence.
+  eapply (tele_eq_trans _ (record_params R) Ps (List.map nf_to_exp Ms) Qs Hass HC HPl HMl HQl HPMs).
+  eapply (tele_eq_sym _ (record_params R) Qs (List.map nf_to_exp Ms) Hass HC HQl HMl HQMs).
 Qed.
 
 (** A type of a record at parameters [Ps] is one at parameters [Qs] glued
@@ -1517,9 +1517,9 @@ Proof.
   assert (nf_lvl_ws n Γ (nf_lvl_of (d, ys))) as [Hd Hys]
     by (eapply glu_lvl_ws_readback; [ exact Ht' | mauto 3 | exact HL' ]).
   unfold nf_lvl_of in *; cbn [nf_to_exp fst snd] in *.
-  transitivity (maxl (lvl_exp_of c (la_to_list xs)) (lvl_exp_of d (la_to_list ys)));
+  transitivity (maxl (lvl_exp_of c (List.map atom_exp xs)) (lvl_exp_of d (List.map atom_exp ys)));
     [ apply wf_exp_eq_maxl_cong; assumption |].
-  transitivity (lvl_exp_of d (la_to_list ys));
+  transitivity (lvl_exp_of d (List.map atom_exp ys));
     [ apply lvl_exp_of_le; assumption | symmetry; assumption ].
 Qed.
 

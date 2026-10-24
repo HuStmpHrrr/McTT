@@ -16,9 +16,9 @@ Section Fixed_GCtx.
 
 Lemma read_ps_app : forall s ρ T1 vs1 Ms1, Rps vs1 at T1 in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ Ms1 ->
     forall T2 vs2 Ms2, Rps vs2 at T2 in gc_deps ⍮ gc_stack ⍮ env_args ρ vs1 ⍮ s ↘ Ms2 ->
-    Rps vs1 ++ vs2 at T1 ++ T2 in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ nfs_app Ms1 Ms2.
+    Rps vs1 ++ vs2 at T1 ++ T2 in gc_deps ⍮ gc_stack ⍮ ρ ⍮ s ↘ (Ms1 ++ Ms2).
 Proof.
-  induction 1; intros * H2; cbn [List.app nfs_app]; [ exact H2 |].
+  induction 1; intros * H2; cbn [List.app]; [ exact H2 |].
   econstructor; [ eassumption | eassumption | apply IHread_ps; exact H2 ].
 Qed.
 
@@ -44,7 +44,7 @@ Proof.
              exists Ms, Rps List.skipn j vs at List.skipn j T in gc_deps ⍮ gc_stack ⍮ env_args ρ (List.firstn j vs) ⍮ s ↘ Ms /\
                         Rps List.skipn j vs' at List.skipn j T in gc_deps ⍮ gc_stack ⍮ env_args ρ' (List.firstn j vs') ⍮ s ↘ Ms).
   { induction m as [| m IH]; intros j Hj.
-    - rewrite !List.skipn_all2 by lia; exists nfs_nil; split; constructor.
+    - rewrite !List.skipn_all2 by lia; exists nil; split; constructor.
     - destruct (nth_error_lt_some' T j ltac:(lia)) as [e He].
       destruct (nth_error_lt_some' vs j ltac:(lia)) as [v Hv].
       destruct (nth_error_lt_some' vs' j ltac:(lia)) as [v' Hv'].
@@ -56,7 +56,7 @@ Proof.
       destruct (IH (S j) ltac:(lia)) as (Ms & HM & HM').
       rewrite (firstn_S_snoc _ _ _ Hv), env_args_snoc in HM.
       rewrite (firstn_S_snoc _ _ _ Hv'), env_args_snoc in HM'.
-      exists (nfs_cons V Ms).
+      exists (cons V Ms).
       rewrite (skipn_nth_cons' _ _ _ He), (skipn_nth_cons' _ _ _ Hv), (skipn_nth_cons' _ _ _ Hv').
       split; econstructor; eassumption. }
   destruct (Hall (List.length T) 0 ltac:(lia)) as (Ms & HM & HM'); exists Ms; split; assumption.
@@ -144,7 +144,7 @@ Proof.
     destruct (read_ps_tele (List.rev (im_nparams Mm)) (nr m) (env_args nil ups) (env_args nil ups') Hassn
                 ltac:(intros k A pre pre' Hk Hp; rewrite <- !env_args_app; exact (Hn _ _ _ _ _ _ HM Hk Hp))
                 _ _ Hx s) as (Ms2 & HM2 & HM2').
-    exists (nfs_app Ms1 Ms2); rewrite rev_im_params_split; split; apply read_ps_app; assumption. }
+    exists (Ms1 ++ Ms2)%list; rewrite rev_im_params_split; split; apply read_ps_app; assumption. }
   assert (Hlen : forall m Mm xs xs', ind_member D m = Some Mm -> tele_rel (nr m) (List.rev (im_nparams Mm)) xs xs' ->
              List.length (ups ++ xs) = im_np D Mm /\ List.length (ups' ++ xs') = im_np D Mm).
   { intros m Mm xs xs' HM Hx; rewrite tele_rel_iff in Hx; destruct Hx as (Hl1 & Hl2 & _).
@@ -222,13 +222,13 @@ Proof.
       cbn [nonrec_arg_vals List.app] in HV, HV'; rewrite List.app_nil_r in HV, HV'.
       unfold im_ref in Hr; destruct (im_head Mk0) as [pm | qc kc Is vm] eqn:Hh; injection Hr as <- <-.
       + assert (Hu0 : im_unu D Mk0 = ind_nu D) by (unfold im_unu; rewrite Hh; reflexivity).
-        exists (nf_con p k0 c (nfs_app Ms Vs)); split;
+        exists (nf_con p k0 c (Ms ++ Vs)%list); split;
           (eapply read_nf_con; [ exact Hl | exact HM | exact Hh | exact Hc | eassumption | | eassumption |]).
         * rewrite List.length_app; unfold im_np, im_nn in *; lia.
         * rewrite firstn_app_exact by exact Hu; rewrite skipn_app_exact by (unfold im_np, im_nn in *; lia); exact HV.
         * rewrite List.length_app; unfold im_np, im_nn in *; lia.
         * rewrite firstn_app_exact by exact Hu'; rewrite skipn_app_exact by (unfold im_np, im_nn in *; lia); exact HV'.
-      + exists (nf_con p k0 c (nfs_app Ms Vs)); split.
+      + exists (nf_con p k0 c (Ms ++ Vs)%list); split.
         * eapply read_nf_con_view with (n := List.length bs);
             [ exact Hl | exact HM | exact Hh | exact Hc | exact Hl1 | rewrite List.length_app; lia | exact HMs |].
           rewrite firstn_app_exact by exact Hu; rewrite skipn_app_exact by reflexivity; exact HV.
@@ -237,7 +237,7 @@ Proof.
           rewrite firstn_app_exact by exact Hu'; rewrite skipn_app_exact by reflexivity; exact HV'.
     - intros k0 Mk0 hd k' ns0 ns0' as1 as2 m m' _ _ _ _ _ _ _ _ _ Hm Mk1 xs xs' _ _ _ s; destruct (Hm s) as (L & HL & HL').
       exists (⇑ⁿ L); split; constructor; assumption.
-    - intros; exists nfs_nil; split; constructor.
+    - intros; exists nil; split; constructor.
     - intros k0 u u' pre v pre' v' gs vs vs' A Hia IH Mk0 ms ms' xs xs' c gsf gs1 vp vp' HM Hρ Hρ' Hl1 Hl2 Hm Hx Hx'
         Hc Heq Ha0 s.
       subst pre pre' gsf.
@@ -279,7 +279,7 @@ Proof.
                   ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
                   Hm Hx Hx' Hc ltac:(rewrite <- List.app_assoc; reflexivity) ltac:(rewrite <- !List.app_assoc; exact Ha0) s)
         as (Vs & HVs & HVs').
-      exists (nfs_cons V Vs); split; econstructor; try eassumption.
+      exists (cons V Vs); split; econstructor; try eassumption.
       + rewrite Henv by assumption; exact HVs.
       + rewrite Henv by assumption; exact HVs'.
     - intros k0 u u' pre pre' t v v' gs vs vs' Hsh IHs Hia IH Mk0 ms ms' xs xs' c gsf gs1 vp vp' HM Hρ Hρ' Hl1 Hl2 Hm Hx Hx'
@@ -298,7 +298,7 @@ Proof.
                   Hm Hx Hx' Hc ltac:(rewrite <- List.app_assoc; reflexivity) ltac:(rewrite <- !List.app_assoc; exact Ha0) s)
         as (Vs & HVs & HVs').
       rewrite nonrec_arg_vals_app in HVs, HVs' by assumption; cbn in HVs, HVs'; rewrite List.app_nil_r in HVs, HVs'.
-      exists (nfs_cons V Vs); split; econstructor; eassumption.
+      exists (cons V Vs); split; econstructor; eassumption.
     - (** The end of a shape: the index at the type's prefix is related to
           the element's own through the index at the element's own prefix
           ([okr_at]), the two prefixes related by [Hcd] on the left and by
@@ -515,7 +515,7 @@ Proof.
                exists Fs, Rflds b at List.skipn j fl in gc_deps ⍮ gc_stack ⍮ env_args nil (ns ++ List.firstn j vs) ⍮ s ↘ Fs /\
                  Rflds b' at List.skipn j fl in gc_deps ⍮ gc_stack ⍮ env_args nil (ns' ++ List.firstn j vs') ⍮ s ↘ Fs).
     { induction m as [| m IH]; intros j Hj.
-      - rewrite List.skipn_all2 by lia; exists nfs_nil; split; constructor.
+      - rewrite List.skipn_all2 by lia; exists nil; split; constructor.
       - destruct (nth_error_lt_some' fl j ltac:(lia)) as [[g T] Hg].
         destruct (nth_error_lt_some' vs j ltac:(lia)) as [v Hv].
         destruct (nth_error_lt_some' vs' j ltac:(lia)) as [v' Hv'].
@@ -524,7 +524,7 @@ Proof.
         destruct (IH (S j) ltac:(lia)) as (Fs & HFs & HFs').
         rewrite (firstn_S_snoc _ _ _ Hv), List.app_assoc, env_args_snoc in HFs.
         rewrite (firstn_S_snoc _ _ _ Hv'), List.app_assoc, env_args_snoc in HFs'.
-        exists (nfs_cons F Fs); rewrite (skipn_nth_cons' _ _ _ Hg).
+        exists (cons F Fs); rewrite (skipn_nth_cons' _ _ _ Hg).
         split; econstructor;
           [ exact (Forall2_nth_both _ _ _ _ _ _ Hvl Hg Hv) | exact Ea | exact HF | exact HFs
           | exact (Forall2_nth_both _ _ _ _ _ _ Hvr Hg Hv') | exact Ea' | exact HF' | exact HFs' ]. }
