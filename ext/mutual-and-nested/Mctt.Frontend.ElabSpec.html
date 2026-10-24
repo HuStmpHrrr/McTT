@@ -43,7 +43,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1340"></a><h1 class="section">A Declarative Specification of Elaboration</h1>
+<a id="lab1337"></a><h1 class="section">A Declarative Specification of Elaboration</h1>
 
 
 <div class="paragraph"> </div>
@@ -116,13 +116,13 @@ y, x, B, id ↦ Main.M.id, A
 
 <div class="paragraph"> </div>
 
-    (innermost first).  <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#id"><span class="id" title="definition">id</span></a></span> lies under three binders (<span class="inlinecode"><span class="id" title="var">y</span></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>, <span class="inlinecode"><span class="id" title="definition">B</span></span>) and
+    (innermost first).  <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#id"><span class="id" title="definition">id</span></a></span> lies under three binders (<span class="inlinecode"><span class="id" title="var">y</span></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>) and
     over one (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>), so it denotes <span class="inlinecode"><span class="id" title="var">Main.M.id</span></span> <span class="inlinecode">$</span> <span class="inlinecode">#3</span>, and <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#id"><span class="id" title="definition">id</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> is
     <span class="inlinecode"><span class="id" title="var">Main.M.id</span></span> <span class="inlinecode">$</span> <span class="inlinecode">#3</span> <span class="inlinecode">$</span> <span class="inlinecode">#1</span>.  In <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.NeutCase.j"><span class="id" title="variable">j</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> is closed, so <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> is the module
     <span class="inlinecode">⟨<span class="id" title="var">Main.M</span>⟩</span> and <span class="inlinecode"><span class="id" title="var">M.id</span></span> <span class="inlinecode"><span class="id" title="library">Nat</span></span> selects its member <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#id"><span class="id" title="definition">id</span></a></span> and applies it. 
 <div class="paragraph"> </div>
 
-<a id="lab1341"></a><h2 class="section">Entries</h2>
+<a id="lab1338"></a><h2 class="section">Entries</h2>
 
 </div>
 <div class="code">
@@ -248,7 +248,7 @@ The entries of names bound in order, innermost first: the binders of
 </div>
 
 <div class="doc">
-<a id="lab1342"></a><h2 class="section">What an Entry Denotes</h2>
+<a id="lab1339"></a><h2 class="section">What an Entry Denotes</h2>
 
 
 <div class="paragraph"> </div>
@@ -311,7 +311,7 @@ As a term.  A module alias is not one.  A leading open's entry needs
 As a module expression.  A variable that may hold a module is a module
     slot, which the core rejects if it holds a term; a term binder is the
     binder too: the core fills it, a term of a record type standing for
-    the record's module at the term (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.AccessFill.html#AccessFill"><span class="id" title="section">AccessFill</span></a></span>), and rejects any
+    the record's module at the term (<span class="inlinecode"><span class="id" title="var">AccessFill</span></span>), and rejects any
     other. 
 </div>
 <div class="code">
@@ -332,7 +332,7 @@ A term binder: the binder, which the core fills when the term is of a
 </div>
 
 <div class="doc">
-<a id="lab1343"></a><h2 class="section">What an Open Declares</h2>
+<a id="lab1340"></a><h2 class="section">What an Open Declares</h2>
 
 
 <div class="paragraph"> </div>
@@ -396,7 +396,7 @@ What <span class="inlinecode"><span class="id" title="var">open</span></span> <s
 </div>
 
 <div class="doc">
-<a id="lab1344"></a><h2 class="section">Eliminators</h2>
+<a id="lab1341"></a><h2 class="section">Eliminators</h2>
 
 
 <div class="paragraph"> </div>
@@ -423,7 +423,7 @@ What <span class="inlinecode"><span class="id" title="var">open</span></span> <s
 </div>
 
 <div class="doc">
-<a id="lab1345"></a><h2 class="section">Objects</h2>
+<a id="lab1342"></a><h2 class="section">Objects</h2>
 
 
 <div class="paragraph"> </div>
@@ -500,7 +500,7 @@ A projection selects a member of the module its head denotes, a
 <div class="doc">
 A projection from any other head, a term, selects the member of the
     module of a <span class="inlinecode"><span class="id" title="keyword">let</span></span> bound to it, which the core fills
-    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.AccessFill.html#AccessFill"><span class="id" title="section">AccessFill</span></a></span>). 
+    (<span class="inlinecode"><span class="id" title="var">AccessFill</span></span>). 
 </div>
 <div class="code">
 | <a id="sel_proj_let" class="idref" href="#sel_proj_let"><span class="id" title="constructor">sel_proj_let</span></a> : <span class="id" title="keyword">forall</span> <a id="S:161" class="idref" href="#S:161"><span class="id" title="binder">S</span></a> <a id="o:162" class="idref" href="#o:162"><span class="id" title="binder">o</span></a> <a id="x:163" class="idref" href="#x:163"><span class="id" title="binder">x</span></a> <a id="M:164" class="idref" href="#M:164"><span class="id" title="binder">M</span></a>,<br/>
@@ -520,7 +520,7 @@ Without an annotation, none is emitted: the core infers it.
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="keyword">let</span></span> <span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.Con.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode"><span class="id" title="var">md</span></span> <span class="inlinecode"><span class="id" title="tactic">in</span></span> <span class="inlinecode"><span class="id" title="definition">B</span></span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> is the slot of the local module. 
+<span class="inlinecode"><span class="id" title="keyword">let</span></span> <span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Completeness.Inductives.Con.html#Fixed_GCtx.ConArgs.ps"><span class="id" title="variable">ps</span></a>)</span> <span class="inlinecode"><span class="id" title="var">md</span></span> <span class="inlinecode"><span class="id" title="tactic">in</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> is the slot of the local module. 
 </div>
 <div class="code">
 | <a id="sel_let_mod" class="idref" href="#sel_let_mod"><span class="id" title="constructor">sel_let_mod</span></a> : <span class="id" title="keyword">forall</span> <a id="S:179" class="idref" href="#S:179"><span class="id" title="binder">S</span></a> <a id="x:180" class="idref" href="#x:180"><span class="id" title="binder">x</span></a> <a id="ps:181" class="idref" href="#ps:181"><span class="id" title="binder">ps</span></a> <a id="md:182" class="idref" href="#md:182"><span class="id" title="binder">md</span></a> <a id="ob:183" class="idref" href="#ob:183"><span class="id" title="binder">ob</span></a> <a id="U:184" class="idref" href="#U:184"><span class="id" title="binder">U</span></a> <a id="B:185" class="idref" href="#B:185"><span class="id" title="binder">B</span></a>,<br/>
@@ -698,7 +698,7 @@ It loads nothing, so a unit it names must be nameable already.
 </div>
 
 <div class="doc">
-<a id="lab1346"></a><h2 class="section">Inductive Declarations</h2>
+<a id="lab1343"></a><h2 class="section">Inductive Declarations</h2>
 
 
 <div class="paragraph"> </div>
@@ -768,7 +768,7 @@ The members of a group, under its uniform parameters <span class="inlinecode"><a
 </div>
 
 <div class="doc">
-<a id="lab1347"></a><h2 class="section">Mutual Definitions</h2>
+<a id="lab1344"></a><h2 class="section">Mutual Definitions</h2>
 
 
 <div class="paragraph"> </div>
@@ -813,7 +813,7 @@ The entries of names filed in order in the open frame at member chain
 </div>
 
 <div class="doc">
-<a id="lab1348"></a><h2 class="section">Record Types</h2>
+<a id="lab1345"></a><h2 class="section">Record Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -865,7 +865,7 @@ The names a command declares in its frame.
 </div>
 
 <div class="doc">
-<a id="lab1349"></a><h2 class="section">Commands</h2>
+<a id="lab1346"></a><h2 class="section">Commands</h2>
 
 
 <div class="paragraph"> </div>
@@ -1040,7 +1040,7 @@ An open loads nothing, so a unit it names must be nameable already.
 </div>
 
 <div class="doc">
-<a id="lab1350"></a><h2 class="section">Units</h2>
+<a id="lab1347"></a><h2 class="section">Units</h2>
 
 
 <div class="paragraph"> </div>
@@ -1091,7 +1091,7 @@ An open loads nothing, so a unit it names must be nameable already.
 </div>
 
 <div class="doc">
-<a id="lab1351"></a><h2 class="section">Elaborated Commands Are Written</h2>
+<a id="lab1348"></a><h2 class="section">Elaborated Commands Are Written</h2>
 
 
 <div class="paragraph"> </div>

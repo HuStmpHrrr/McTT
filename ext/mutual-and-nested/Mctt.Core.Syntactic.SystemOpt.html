@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1142"></a><h1 class="section">The Rules with the Redundant Premises Removed</h1>
+<a id="lab1144"></a><h1 class="section">The Rules with the Redundant Premises Removed</h1>
 
 
 <div class="paragraph"> </div>
@@ -63,7 +63,7 @@
 
 <div class="paragraph"> </div>
 
-    Equations such as <span class="inlinecode">(<span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><span class="id" title="definition">B</span>)[σ]</span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a>[σ]</span> <span class="inlinecode"><span class="id" title="definition">B</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ]</span> are not rules but
+    Equations such as <span class="inlinecode">(<span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a>)[σ]</span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a>[σ]</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ]</span> are not rules but
     equalities of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a></span>, proved in <span class="inlinecode"><span class="id" title="library">Core.Syntactic.Substitution</span></span> and used by
     <span class="inlinecode"><span class="id" title="tactic">rewrite</span></span> or <span class="inlinecode"><span class="id" title="var">simpl_sub</span></span>, so they need no optimized form.  Neither does
     context equality, which is <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Refines.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#5198acf5a7a6891a3156739f7d8ae320"><span class="id" title="variable">Δ</span></a></span> <span class="inlinecode">⊢ˢ</span> <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> in both directions. 
@@ -81,7 +81,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1143"></a><h2 class="section">Rewriting the Type of a Judgment</h2>
+<a id="lab1145"></a><h2 class="section">Rewriting the Type of a Judgment</h2>
 
 </div>
 <div class="code">
@@ -120,7 +120,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1144"></a><h2 class="section">The Optimized Rules</h2>
+<a id="lab1146"></a><h2 class="section">The Optimized Rules</h2>
 
 </div>
 <div class="code">
@@ -584,7 +584,7 @@ A term equation presupposes that both sides are well-typed, so the
 <div class="doc">
 Refinement of <span class="inlinecode"><span class="id" title="var">Π</span></span>-types needs only the equation between the domains and the
     refinement between the codomains; that the four components are types, and at
-    a common level, is presupposition and cumulativity.  The codomain <span class="inlinecode"><span class="id" title="definition">B</span></span> is
+    a common level, is presupposition and cumulativity.  The codomain <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> is
     checked in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Algorithmic.Subtyping.Definitions.html#A'"><span class="id" title="projection">A'</span></a></span> by the premise and in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#22b94da0bff5f2bbaf7251f70eaaeec0"><span class="id" title="variable">Γ</span></a></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> by the rule, and the two
     are related by context conversion along the domain equation. 
 </div>

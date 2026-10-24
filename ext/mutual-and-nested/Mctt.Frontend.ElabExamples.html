@@ -49,7 +49,7 @@
 </div>
 
 <div class="doc">
-<a id="lab1325"></a><h1 class="section">The Specification on Concrete Programs</h1>
+<a id="lab1322"></a><h1 class="section">The Specification on Concrete Programs</h1>
 
 
 <div class="paragraph"> </div>
@@ -88,7 +88,7 @@ Items as the parser writes them: <span class="inlinecode"><span class="id" title
 </div>
 
 <div class="doc">
-<a id="lab1326"></a><h2 class="section">Pre-application</h2>
+<a id="lab1323"></a><h2 class="section">Pre-application</h2>
 
 
 <div class="paragraph"> </div>
@@ -108,8 +108,8 @@ end
 
 <div class="paragraph"> </div>
 
-    Inside <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, <span class="inlinecode"><span class="id" title="definition">B</span></span> is <span class="inlinecode">#0</span> and <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> is <span class="inlinecode">#1</span>.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> is applied to <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span>
-    to <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> and <span class="inlinecode"><span class="id" title="definition">B</span></span>; under the <span class="inlinecode"><span class="id" title="keyword">fun</span></span> both shift by one.  Outside <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> is
+    Inside <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> is <span class="inlinecode">#0</span> and <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> is <span class="inlinecode">#1</span>.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> is applied to <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span>
+    to <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>; under the <span class="inlinecode"><span class="id" title="keyword">fun</span></span> both shift by one.  Outside <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span> is
     the module <span class="inlinecode">⟨<span class="id" title="var">U.M</span>⟩</span> <span class="inlinecode">$</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, and <span class="inlinecode"><span class="id" title="var">M.b</span></span> selects its member <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Inductives.Elim.html#Fixed_GCtx.ElimGlu.ViewBranch.b"><span class="id" title="variable">b</span></a></span>. 
 </div>
 <div class="code">
@@ -146,7 +146,7 @@ end
 
 <div class="doc">
 The first <span class="inlinecode"><span class="id" title="tactic">eval</span></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Inductives.Runs.html#RecTyped.M"><span class="id" title="variable">M</span></a></span>, derived from the rules.  It is read in the
-    scope <span class="inlinecode"><span class="id" title="definition">B</span>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">U.a</span>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> lies under one binder (<span class="inlinecode"><span class="id" title="definition">B</span></span>) and over one
+    scope <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">U.a</span>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#a"><span class="id" title="projection">a</span></a></span> lies under one binder (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>) and over one
     (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>), so it is <span class="inlinecode"><span class="id" title="var">U.a</span></span> applied to <span class="inlinecode">#1</span>. 
 </div>
 <div class="code">
@@ -162,7 +162,7 @@ The first <span class="inlinecode"><span class="id" title="tactic">eval</span></
 </div>
 
 <div class="doc">
-<a id="lab1327"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">ModuleParam.mctt</span></span>: a parameterized module and <span class="inlinecode"><span class="id" title="keyword">let</span></span> <span class="inlinecode"><span class="id" title="var">module</span></span></h2>
+<a id="lab1324"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">ModuleParam.mctt</span></span>: a parameterized module and <span class="inlinecode"><span class="id" title="keyword">let</span></span> <span class="inlinecode"><span class="id" title="var">module</span></span></h2>
 
 </div>
 <div class="code">
@@ -204,7 +204,7 @@ Inside <span class="inlinecode"><span class="id" title="var">Church</span></span
 </div>
 
 <div class="doc">
-<a id="lab1328"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">ImportUse.mctt</span></span>: privacy, <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">as</span></span>, <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="var">use</span></span></h2>
+<a id="lab1325"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">ImportUse.mctt</span></span>: privacy, <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">as</span></span>, <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="var">use</span></span></h2>
 
 </div>
 <div class="code">
@@ -253,7 +253,7 @@ A private member is visible in its own frame.  An open is a command
 </div>
 
 <div class="doc">
-<a id="lab1329"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">multi</span>/<span class="id" title="var">Main.mctt</span></span>: leading imports of other units</h2>
+<a id="lab1326"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">multi</span>/<span class="id" title="var">Main.mctt</span></span>: leading imports of other units</h2>
 
 
 <div class="paragraph"> </div>
@@ -305,7 +305,7 @@ A leading import loads its unit before the unit runs, and is read again
 </div>
 
 <div class="doc">
-<a id="lab1330"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">TrueFalse.mctt</span></span>: the unit type and the empty type</h2>
+<a id="lab1327"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">TrueFalse.mctt</span></span>: the unit type and the empty type</h2>
 
 
 <div class="paragraph"> </div>
@@ -333,7 +333,7 @@ A leading import loads its unit before the unit runs, and is read again
 </div>
 
 <div class="doc">
-<a id="lab1331"></a><h2 class="section">Scoping Rules, Positive and Negative</h2>
+<a id="lab1328"></a><h2 class="section">Scoping Rules, Positive and Negative</h2>
 
 </div>
 <div class="code">
@@ -442,7 +442,7 @@ A projection out of a closed module selects a member of the module
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><span class="id" title="var">A.B</span></span> is <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, without parameters, holding <span class="inlinecode"><span class="id" title="definition">B</span></span>. 
+<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><span class="id" title="var">A.B</span></span> is <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, without parameters, holding <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Example</span> <a id="dotted_module" class="idref" href="#dotted_module"><span class="id" title="definition">dotted_module</span></a> :<br/>
@@ -481,7 +481,7 @@ The error names the unit by its path.
 </div>
 
 <div class="doc">
-<a id="lab1332"></a><h2 class="section">Definition Keywords</h2>
+<a id="lab1329"></a><h2 class="section">Definition Keywords</h2>
 
 
 <div class="paragraph"> </div>
@@ -501,9 +501,9 @@ The error names the unit by its path.
 
 <div class="doc">
 A term variable in module position is the binder: <span class="inlinecode"><span class="id" title="var">B.Id</span></span>, under a <span class="inlinecode"><span class="id" title="var">λ</span></span>
-    binding <span class="inlinecode"><span class="id" title="definition">B</span></span>, names the variable, which is innermost.  Whether it is a
+    binding <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>, names the variable, which is innermost.  Whether it is a
     term of a record type, whose module has a member <span class="inlinecode"><span class="id" title="var">Id</span></span>, is the core's
-    to say (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.AccessFill.html#AccessFill"><span class="id" title="section">AccessFill</span></a></span>). 
+    to say (<span class="inlinecode"><span class="id" title="var">AccessFill</span></span>). 
 </div>
 <div class="code">
 <span class="id" title="keyword">Example</span> <a id="var_module_position" class="idref" href="#var_module_position"><span class="id" title="definition">var_module_position</span></a> :<br/>
@@ -577,7 +577,7 @@ A projection from a path, a term applied, is not let-bound:
 </div>
 
 <div class="doc">
-<a id="lab1333"></a><h2 class="section">Axioms</h2>
+<a id="lab1330"></a><h2 class="section">Axioms</h2>
 
 
 <div class="paragraph"> </div>
@@ -647,7 +647,7 @@ In a local body, a keyword that means <span class="inlinecode"><span class="id" 
 </div>
 
 <div class="doc">
-<a id="lab1334"></a><h2 class="section">One Binding per Name per Frame</h2>
+<a id="lab1331"></a><h2 class="section">One Binding per Name per Frame</h2>
 
 
 <div class="paragraph"> </div>
@@ -808,7 +808,7 @@ Across frames, shadowing is allowed: a module's parameter may reuse a
 </div>
 
 <div class="doc">
-<a id="lab1335"></a><h2 class="section">Local Definitions</h2>
+<a id="lab1332"></a><h2 class="section">Local Definitions</h2>
 
 
 <div class="paragraph"> </div>
@@ -922,7 +922,7 @@ end
 </div>
 
 <div class="doc">
-<a id="lab1336"></a><h2 class="section">Module Forms</h2>
+<a id="lab1333"></a><h2 class="section">Module Forms</h2>
 
 </div>
 <div class="code">
@@ -1178,7 +1178,7 @@ A local open that <span class="inlinecode"><span class="id" title="var">use</spa
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><span class="id" title="var">A.B</span></span> in a local body is <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, without parameters, holding <span class="inlinecode"><span class="id" title="definition">B</span></span>. 
+<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><span class="id" title="var">A.B</span></span> in a local body is <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span>, without parameters, holding <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Example</span> <a id="local_path" class="idref" href="#local_path"><span class="id" title="definition">local_path</span></a> :<br/>
@@ -1264,7 +1264,7 @@ A local module's telescope may not repeat a name.
 </div>
 
 <div class="doc">
-<a id="lab1337"></a><h2 class="section">Opens Declare Names</h2>
+<a id="lab1334"></a><h2 class="section">Opens Declare Names</h2>
 
 
 <div class="paragraph"> </div>
@@ -1597,7 +1597,7 @@ in L.y end
 </div>
 
 <div class="doc">
-<a id="lab1338"></a><h2 class="section">The Running Example of <span class="inlinecode"><span class="id" title="library">ElabSpec</span></span></h2>
+<a id="lab1335"></a><h2 class="section">The Running Example of <span class="inlinecode"><span class="id" title="library">ElabSpec</span></span></h2>
 
 
 <div class="paragraph"> </div>
@@ -1645,7 +1645,7 @@ end
 </div>
 
 <div class="doc">
-<a id="lab1339"></a><h2 class="section">Inductive Types</h2>
+<a id="lab1336"></a><h2 class="section">Inductive Types</h2>
 
 
 <div class="paragraph"> </div>

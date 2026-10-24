@@ -33,7 +33,7 @@
 </div>
 
 <div class="doc">
-<a id="lab996"></a><h1 class="section">Properties of the Judgments, continued</h1>
+<a id="lab998"></a><h1 class="section">Properties of the Judgments, continued</h1>
 
 
 <div class="paragraph"> </div>
@@ -58,7 +58,7 @@
 </div>
 
 <div class="doc">
-<a id="lab997"></a><h2 class="section">Presupposition for Typing</h2>
+<a id="lab999"></a><h2 class="section">Presupposition for Typing</h2>
 
 
 <div class="paragraph"> </div>
@@ -79,7 +79,7 @@
 </div>
 
 <div class="doc">
-<a id="lab998"></a><h2 class="section">Context Conversion of Substitutions</h2>
+<a id="lab1000"></a><h2 class="section">Context Conversion of Substitutions</h2>
 
 
 <div class="paragraph"> </div>
@@ -118,7 +118,7 @@
 </div>
 
 <div class="doc">
-<a id="lab999"></a><h1 class="section">Substitution Equivalence</h1>
+<a id="lab1001"></a><h1 class="section">Substitution Equivalence</h1>
 
 
 <div class="paragraph"> </div>
@@ -452,7 +452,7 @@ Two sides reduced to equal terms, at types that are equal.
 </div>
 
 <div class="doc">
-<a id="lab1000"></a><h2 class="section">Equivalent Substitutions Preserve Typing</h2>
+<a id="lab1002"></a><h2 class="section">Equivalent Substitutions Preserve Typing</h2>
 
 
 <div class="paragraph"> </div>
@@ -804,7 +804,7 @@ The eliminator: the scrutinee, the motives, the annotations and the
 </div>
 
 <div class="doc">
-<a id="lab1001"></a><h2 class="section">The Module Cases of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#sub_eq_preserves_mut"><span class="id" title="lemma">sub_eq_preserves_mut</span></a></span></h2>
+<a id="lab1003"></a><h2 class="section">The Module Cases of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#sub_eq_preserves_mut"><span class="id" title="lemma">sub_eq_preserves_mut</span></a></span></h2>
 
 
 <div class="paragraph"> </div>
@@ -1848,7 +1848,7 @@ Equivalent substitutions move a well-formed module expression and a
 </div>
 
 <div class="doc">
-<a id="lab1002"></a><h2 class="section">Substitution Equivalence is a PER</h2>
+<a id="lab1004"></a><h2 class="section">Substitution Equivalence is a PER</h2>
 
 
 <div class="paragraph"> </div>
@@ -1931,7 +1931,7 @@ Equivalent substitutions move a well-formed module expression and a
 </div>
 
 <div class="doc">
-<a id="lab1003"></a><h2 class="section">Composition of Equivalent Substitutions</h2>
+<a id="lab1005"></a><h2 class="section">Composition of Equivalent Substitutions</h2>
 
 
 <div class="paragraph"> </div>
@@ -1990,16 +1990,16 @@ Equivalent substitutions move a well-formed module expression and a
 </div>
 
 <div class="doc">
-<a id="lab1004"></a><h2 class="section">η-Expansion</h2>
+<a id="lab1006"></a><h2 class="section">η-Expansion</h2>
 
 
 <div class="paragraph"> </div>
 
     The right-hand side of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_fn_eta"><span class="id" title="constructor">wf_exp_eq_fn_eta</span></a></span> is well-typed at the same type as
     the left.  Getting there is entirely a matter of moving between the two
-    descriptions of a weakened <span class="inlinecode"><span class="id" title="var">Π</span></span>-type: <span class="inlinecode">(<span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><span class="id" title="definition">B</span>)[↑]ʷ</span> is <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a>[↑]ʷ</span> <span class="inlinecode"><span class="id" title="definition">B</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">↑]ʷ</span>, but
+    descriptions of a weakened <span class="inlinecode"><span class="id" title="var">Π</span></span>-type: <span class="inlinecode">(<span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a>)[↑]ʷ</span> is <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.ViewsSearch.html#Search.A"><span class="id" title="variable">A</span></a>[↑]ʷ</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a>[<span class="id" title="var">q</span></span> <span class="inlinecode">↑]ʷ</span>, but
     only by computation, so <span class="inlinecode"><span class="id" title="tactic">eauto</span></span> cannot see it and the step is taken by hand.
-    The application's type is <span class="inlinecode"><span class="id" title="definition">B</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">↑]ʷ[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode">#0]</span>, which is <span class="inlinecode"><span class="id" title="definition">B</span></span> by
+    The application's type is <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a>[<span class="id" title="var">q</span></span> <span class="inlinecode">↑]ʷ[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode">#0]</span>, which is <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypedElab.html#Decide.B"><span class="id" title="variable">B</span></a></span> by
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_wk_q_shift_single"><span class="id" title="lemma">exp_wk_q_shift_single</span></a></span>: lifting a weakening and then substituting the top
     variable for it is the identity. 
 <div class="paragraph"> </div>
@@ -2064,7 +2064,7 @@ Equivalent substitutions move a well-formed module expression and a
 </div>
 
 <div class="doc">
-<a id="lab1005"></a><h2 class="section">Closed Neutrals</h2>
+<a id="lab1007"></a><h2 class="section">Closed Neutrals</h2>
 
 
 <div class="paragraph"> </div>
@@ -2097,7 +2097,7 @@ Equivalent substitutions move a well-formed module expression and a
 </div>
 
 <div class="doc">
-<a id="lab1006"></a><h2 class="section">Conversion</h2>
+<a id="lab1008"></a><h2 class="section">Conversion</h2>
 
 
 <div class="paragraph"> </div>
@@ -2137,7 +2137,7 @@ Equivalent substitutions move a well-formed module expression and a
 </div>
 
 <div class="doc">
-<a id="lab1007"></a><h2 class="section">The Global Context</h2>
+<a id="lab1009"></a><h2 class="section">The Global Context</h2>
 
 
 <div class="paragraph"> </div>
