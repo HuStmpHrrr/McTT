@@ -3561,6 +3561,28 @@ let%expect_test "mctt-doc: a selection from a term the checker does not file doe
     line 3 ty: not linked
     |}]
 
+let%expect_test "mctt-doc: a load sees nothing of the loads before it" =
+  (* Two libraries with units of the same names, [R] and [U], which
+     declare different records and select different members.  The second,
+     loaded alone, and loaded after the first and after all of lib, says
+     the same. *)
+  let first = ("module R where record P : Type@0 where a : ⊤ end end\n",
+               "import R\nmodule U (p : R.P) where open p use (a as b) def f : ⊤ := b end def g : ⊤ := p.a end end\n") in
+  let second = ("module R where record Q : Type@0 where c : ⊤; a : ⊤ end end\n",
+                "import R\nmodule U (q : R.Q) where open q use (c as b) def f : ⊤ := q.a end end\n") in
+  let run (r, u) = doc_links ~units:[ ("R", r) ] u [ "a"; "b"; "c" ]; [%expect.output] in
+  let alone = run second in
+  ignore (run first);
+  ignore (Doc.load "../lib");
+  let after = run second in
+  print_string alone;
+  Printf.printf "the same after other loads: %b\n" (alone = after);
+  [%expect {|
+    line 2 c: R#Q.c
+    line 2 a: R#Q.a
+    the same after other loads: true
+    |}]
+
 let%expect_test "mctt-doc: every name of examples lines up" =
   List.iter print_endline (Doc.problems ~resolve:false (Doc.load ~check:false "../examples"));
   List.iter print_endline (Doc.problems ~resolve:false (Doc.load ~check:false "../examples/multi"));
