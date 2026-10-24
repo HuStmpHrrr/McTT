@@ -3153,15 +3153,59 @@ let%expect_test "lib/Tutorial.mctt" =
     Evaluate ∀ (x1 : Level@1) → Type@{x1} --> ∀ (x1 : Level@1) → Type@{x1}
       : Type@{ω·2}
     Evaluate size (Shape.stack (Shape.line 3)) --> 4 : ℕ
+    Evaluate 3 --> 3 : ℕ
     Evaluate L.List.cons 0l ℕ 1 (L.List.nil 0l ℕ)
       --> Prelude›Data›List.List.cons 0l ℕ 1 (Prelude›Data›List.List.nil 0l ℕ)
       : Prelude›Data›List.List 0l ℕ
+    Evaluate total (countDown 4) --> 10 : ℕ
     Evaluate L.Ops.length 0l ℕ oneTwo --> 2 : ℕ
+    Evaluate Lists.nil 0l ℕ --> Prelude›Data›List.List.nil 0l ℕ : NatList
     Evaluate cons 3 nil
       --> Prelude›Data›List.List.cons 0l ℕ 3 (Prelude›Data›List.List.nil 0l ℕ)
       : Prelude›Data›List.List 0l ℕ
+    Evaluate summit 0 (Climb.step 0 (Climb.step 1 (Climb.stop 2))) --> 2 : ℕ
+    Evaluate Shape.rec 0l (λ (x1 : Shape) → ℕ) 0 (λ (x2 : ℕ) → x2)
+               (λ (x3 : Shape)
+                  (x4 : ℕ)
+                 → succ x4)
+               (Shape.stack (Shape.line 3)) --> 4 : ℕ
+    Evaluate half
+               (Parity.Even.esucc
+                 (Parity.Odd.osucc
+                   (Parity.Even.esucc (Parity.Odd.osucc Parity.Even.ezero))))
+      --> 2 : ℕ
+    Evaluate Parity.Rec.rec_Odd 0l (λ (x1 : Parity.Even) → ℕ)
+               (λ (x2 : Parity.Odd) → ℕ)
+               0
+               (λ (x3 : Parity.Odd)
+                  (x4 : ℕ)
+                 → x4)
+               (λ (x5 : Parity.Even)
+                  (x6 : ℕ)
+                 → succ x6)
+               (Parity.Odd.osucc Parity.Even.ezero) --> 1 : ℕ
+    Evaluate oddLength
+               (Parity.Odd.osucc
+                 (Parity.Even.esucc (Parity.Odd.osucc Parity.Even.ezero))) --> 3
+      : ℕ
+    Evaluate labels tree --> 6 : ℕ
+    Evaluate nodes tree --> 3 : ℕ
+    Evaluate origin.x --> 0 : ℕ
+    Evaluate (onDiagonal 3).sum --> 6 : ℕ
+    Evaluate let x1 ≔ let x2 ≔ record Point where x ≔ 1; y ≔ 2 end in x2.flip end
+             in x1.x
+             end --> 2 : ℕ
+    Evaluate Point.flip corner --> record Point where x ≔ 5; y ≔ 3 end : Point
     Evaluate Pairs.snd twoThree --> 3 : ℕ
     Evaluate twoThree.snd --> 3 : ℕ
+    Evaluate fiveSix.swap
+      --> record Prelude›Data›Prod.Prod 0l ℕ ℕ where fst ≔ 6; snd ≔ 5 end
+      : SamePair ℕ
+    Evaluate Fields.first --> 5 : ℕ
+    Evaluate square NatAlgebra.additive.monoid 7 --> 14 : ℕ
+    Evaluate square NatAlgebra.multiplicative.monoid 7 --> 49 : ℕ
+    Evaluate square endo succ 0 --> 2 : ℕ
+    Evaluate Times.pow 3 4 --> 81 : ℕ
     |}]
 
 (** The documentation generator ([Doc]) *)
@@ -3567,7 +3611,7 @@ let%expect_test "mctt-doc: every eval of lib has one output box, with mctt's out
   List.iter (fun b -> if String.starts_with ~prefix:"Evaluate Adding.five " b then print_endline b)
     (doc_boxes (Doc.render_unit lib kinds tut));
   [%expect {|
-    560 evals, 560 boxes, 560 equal to mctt's output
+    580 evals, 580 boxes, 580 equal to mctt's output
     Evaluate Adding.five --> 5 : ℕ
     |}]
 
@@ -3579,7 +3623,7 @@ let%expect_test "mctt-doc: a unit whose log is out of step with its evals is rep
   let tut = List.find (fun u -> u.Doc.u_path = [ "Tutorial" ]) lib.Doc.units in
   Printf.printf "%d boxes\n" (List.length (doc_boxes (Doc.render_unit lib (Doc.anchor_kinds lib) tut)));
   [%expect {|
-    Tutorial: 46 evals, 1 outputs
+    Tutorial: 66 evals, 1 outputs
     0 boxes
     |}]
 
@@ -3609,15 +3653,15 @@ let%expect_test "mctt-doc: links" =
     Additive line 22: Prelude›Algebra›Setoid›Instances#Additive
     pow line 22: Prelude›Algebra›Setoid›Monoid#pow
     powPlus line 76: Prelude›Algebra›Setoid›Monoid#Power.powPlus
-    plus line 211: Prelude›Arith›Plus#plus
-    plus line 212: Prelude›Arith›Plus#plus
-    add line 211: declares #Adding.add
-    add line 212: Prelude›Arith›Plus#plus
-    P line 211: declares #Adding.P
-    P line 212: Tutorial#Adding.P
-    addIter line 287: Tutorial#Adder.addIter
-    x line 47: declares #l20
-    x line 47: Tutorial#l20
+    plus line 230: Prelude›Arith›Plus#plus
+    plus line 231: Prelude›Arith›Plus#plus
+    add line 230: declares #Adding.add
+    add line 231: Prelude›Arith›Plus#plus
+    P line 230: declares #Adding.P
+    P line 231: Tutorial#Adding.P
+    addIter line 308: Tutorial#Adder.addIter
+    x line 63: declares #l20
+    x line 63: Tutorial#l20
     |}]
 
 let%expect_test "mctt-doc: ℕ links to the type bound as the natural numbers" =
@@ -3644,7 +3688,7 @@ let%expect_test "mctt-doc: ℕ links to the type bound as the natural numbers" =
   let page = Doc.render_unit lib' (Doc.anchor_kinds lib') u in
   Printf.printf "%d links, %d without a link\n" (doc_count "ℕ</a>" page) (doc_count span page);
   [%expect {|
-    3076 links to Nat, 0 other links, 0 without a link
+    3120 links to Nat, 0 other links, 0 without a link
     NoNat: not checked
     0 links, 2 without a link
     |}]

@@ -1,5 +1,21 @@
-(* A tour of the McTT surface language, one feature at a time. Run it from
-   lib/ with ../_build/default/driver/mctt.exe Tutorial.mctt. *)
+(* A tour of the McTT surface language, one feature at a time, from the
+   simplest to the most advanced; every example is checked and evaluated
+   when the file is run. Run it from lib/ with
+     ../_build/default/driver/mctt.exe Tutorial.mctt
+
+   1-6    lexical matters, evaluation, functions, recursion on numbers,
+          the unit and empty types, local definitions;
+   7-8    definitions, their modifiers and keywords, axioms;
+   9-13   modules: nesting, parameters, aliases, privacy, units, imports
+          and opens, local modules;
+   14     universe levels, and sorted levels;
+   15-17  inductive types, the builtin natural numbers, aliases, indexed
+          types, recursors;
+   18-19  mutual and nested types, their eliminators and mutual
+          definitions;
+   20     records: values, fields through any term, eta, with-areas,
+          aliases;
+   21     a showcase: the algebraic hierarchy of the Prelude. *)
 
 (* A file is one unit: one module. Its imports go inside it (section 11). *)
 
@@ -48,15 +64,15 @@ eval (λ (A : Type@0) (x : A) → x) ℕ 4
 
 eval λ (A : Type@0) (x : A) → x
 
-(* 4. Recursion. [elim n at y -> T | zero ⇒ z | succ p, r ⇒ s end] is
+(* 4. Recursion. [elim n at y → T | zero ⇒ z | succ p, r ⇒ s end] is
    primitive recursion on n, the eliminator of Nat: T is the motive, which
    binds y, p the predecessor and r the result for p. The branches are named
    by the constructors. *)
 
-eval elim 3 at y -> ℕ | zero ⇒ 0 | succ p, r ⇒ succ (succ r) end
+eval elim 3 at y → ℕ | zero ⇒ 0 | succ p, r ⇒ succ (succ r) end
 
 (* The motive may compute a type: here, the type of n-ary functions on ℕ. *)
-eval elim 2 at y -> Type@0
+eval elim 2 at y → Type@0
      | zero ⇒ ℕ
      | succ p, r ⇒ ∀ (x : ℕ) → r
      end
@@ -85,7 +101,7 @@ eval let n : ℕ ≔ 2;
    transparent: it unfolds wherever it is used. *)
 
 def double (n : ℕ) : ℕ ≔
-  elim n at y -> ℕ | zero ⇒ 0 | succ p, r ⇒ succ (succ r) end
+  elim n at y → ℕ | zero ⇒ 0 | succ p, r ⇒ succ (succ r) end
 end
 
 eval double 3
@@ -195,8 +211,11 @@ eval Vault.Inside.peek
 
 (* Rejected: eval Vault.secret   Error: Tutorial.Vault.secret is private *)
 
-(* 11. Imports and opens. [import X›Y] only loads the unit X›Y: its
-   members are reached by their full name. *)
+(* 11. Units, imports and opens. The unit X›Y is the file X/Y.mctt under
+   a search root: the directories given by [--search-root] (the flag may
+   be repeated), then those of the variable MCTT_SEARCH_ROOT, then the
+   current directory, in that order. [import X›Y] only loads the unit
+   X›Y: its members are reached by their full name. *)
 
 import Prelude›Arith›Plus
 
@@ -238,7 +257,9 @@ eval Counting.seven
 
 (* 12. Local modules. [let module X (ps) where … end in M end] declares a
    module inside a term, and [let module X ≔ E in M end] an alias. The body
-   may [open] modules and declare private members, which M cannot use. *)
+   may [open] modules and declare private members, which M cannot use.
+   (Aliases and opens of types in a local module come with the next stage;
+   see the end of the file.) *)
 
 eval let module Doubler (n : ℕ) where
          open Twice ℕ double use (twice)
@@ -267,13 +288,13 @@ eval let module Doubler (n : ℕ) where
 
 module Adder (m : ℕ) where
   def add (n : ℕ) : ℕ ≔
-    elim n at y -> ℕ | zero ⇒ m | succ p, r ⇒ succ r end
+    elim n at y → ℕ | zero ⇒ m | succ p, r ⇒ succ r end
   end
 
   (* Adding n is iterating succ n times. *)
   theorem addIter (n : ℕ) :
       Eq (add n) (Iter.iter 0l ℕ (λ (x : ℕ) → succ x) n m) ≔
-    elim n at y -> Eq (add y) (Iter.iter 0l ℕ (λ (x : ℕ) → succ x) y m)
+    elim n at y → Eq (add y) (Iter.iter 0l ℕ (λ (x : ℕ) → succ x) y m)
     | zero ⇒ refl m
     | succ p, ih ⇒ ih
     end
@@ -350,11 +371,9 @@ eval (∀ (u : Level@1) → Type@{u}) : Type@{ω·2}
 
 (* 15. Inductive types. [inductive T (ps) : Type@n where | c (x : A) … end]
    declares a type and its constructors, and [T.c] reaches a constructor.
-   [elim t at z -> P | c x ⇒ … end] eliminates [t]; a recursive
-   argument also gives an induction hypothesis, named after a comma.  A
-   type with parameters, as [List A], is eliminated the same way,
-   [elim l at z -> P | …]: the eliminator reads the type's parameters off
-   the scrutinee's type, so the binder [z] needs no annotation. *)
+   [elim t at z → P | c x ⇒ … end] eliminates [t]: one branch per
+   constructor, in order, and a recursive argument also gives an induction
+   hypothesis, named after a comma. *)
 
 inductive Shape : Type@0 where
 | dot
@@ -363,29 +382,57 @@ inductive Shape : Type@0 where
 end
 
 def size (s : Shape) : ℕ ≔
-  elim s at z -> ℕ | dot ⇒ 0 | line n ⇒ n | stack t, r ⇒ succ r end
+  elim s at z → ℕ | dot ⇒ 0 | line n ⇒ n | stack t, r ⇒ succ r end
 end
 
 eval size (Shape.stack (Shape.line 3))
 
+(* The natural numbers are such a type too. Prelude›Builtin›Nat declares
+   [inductive Nat] and then [builtin natural ≔ Nat], which binds it as the
+   natural numbers: from then on ℕ denotes [Nat] and the numerals denote
+   chains of its constructors, in every unit that imports it. A second
+   binding is rejected ("the natural numbers are bound already"). *)
+eval Prelude›Builtin›Nat.Nat.succ 2
+
 (* An inductive type of another unit is reached through its import, by
    name with [use] or through an [as] alias: [L.List 0l ℕ] is a type, and
    [L.List.nil 0l ℕ] one of its elements. The parameters of the type come
-   first in its constructors. *)
+   first in its constructors. A type with parameters is eliminated as
+   [Shape] is: the eliminator reads the parameters off the scrutinee's
+   type, so neither the motive's binder [z] nor the branches mention
+   them. *)
 import Prelude›Data›List as L use (List)
 
 eval L.List.cons 0l ℕ 1 (L.List.nil 0l ℕ)
 
+def countDown (n : ℕ) : List 0l ℕ ≔
+  elim n at k → List 0l ℕ
+  | zero ⇒ L.List.nil 0l ℕ
+  | succ p, r ⇒ L.List.cons 0l ℕ (succ p) r
+  end
+end
+
+def total (l : List 0l ℕ) : ℕ ≔
+  elim l at z → ℕ | nil ⇒ 0 | cons x xs, r ⇒ Prelude›Arith›Plus.plus x r end
+end
+
+eval total (countDown 4)
+
 (* [inductive A ≔ T ps] declares an inductive alias: [A] is [T] at those
    parameters, with [T]'s constructors, which then take no parameters. An
-   alias of an alias is an alias of the same type. *)
+   alias of an alias is an alias of the same type, and an alias may leave
+   some parameters to its own: [Lists u] is [List u]. *)
 inductive NatList ≔ List 0l ℕ
 
 inductive Numbers ≔ NatList
 
+inductive Lists (u : Level) ≔ List u
+
 def oneTwo : Numbers ≔ Numbers.cons 1 (NatList.cons 2 NatList.nil) end
 
 eval L.Ops.length 0l ℕ oneTwo
+
+eval Lists.nil 0l ℕ : NatList
 
 (* [open T use (c)] declares constructors of [T] as names. The data units
    of the Prelude keep their constructors to their type, so a client opens
@@ -394,9 +441,166 @@ open NatList use (nil; cons)
 
 eval cons 3 nil
 
-(* A unit with parameters may declare a record type over them, and
-   [use (R)] names that type at the arguments of the import.  A field is
-   selected through any term of the record type: [twoThree.snd]. *)
+(* 16. Indexed types. A parameter right of the ":", bound by a [∀] in
+   front of the sort, is non-uniform: a recursive argument may give it a
+   new value. [Climb n] is a climb that starts at height [n]: it stops
+   there, or steps on to a climb from [succ n]. The motive binds the
+   parameter ([k]) before the scrutinee, and a branch binds the
+   constructor's value of it ([m]) first. *)
+inductive Climb : ∀ (n : ℕ) → Type@0 where
+| stop
+| step (rest : Climb (succ n))
+end
+
+(* The height a climb ends at. *)
+def summit (n : ℕ) (c : Climb n) : ℕ ≔
+  elim c at k z → ℕ
+  | stop m ⇒ m
+  | step m rest, h ⇒ h
+  end
+end
+
+eval summit 0 (Climb.step 0 (Climb.step 1 (Climb.stop 2)))
+
+(* 17. Recursors. Each inductive type [T] has the recursor [T.rec], a
+   function: the level of the motive, the motive, one case per
+   constructor, then the scrutinee. [elim] is its readable form. *)
+eval Shape.rec 0l (λ (z : Shape) → ℕ) 0 (λ (n : ℕ) → n)
+       (λ (t : Shape) (r : ℕ) → succ r) (Shape.stack (Shape.line 3))
+
+(* 18. Mutual types. [mutual G where inductive A … with B … end end]
+   declares a group of types, each in scope in the others' constructors.
+   An eliminator of a group has one block per member, in member order,
+   each with its motive; the scrutinee's block is marked [at] and the
+   others [with], and a block's binder may be annotated with its member to
+   say which block is which. *)
+mutual Parity where
+  inductive Even : Type@0 where
+  | ezero
+  | esucc (o : Odd)
+  with Odd : Type@0 where
+  | osucc (e : Even)
+  end
+end
+
+def half (e : Parity.Even) : ℕ ≔
+  elim e at (z : Parity.Even) → ℕ
+    | ezero ⇒ 0
+    | esucc o, h ⇒ h
+  with (z : Parity.Odd) → ℕ
+    | osucc e, h ⇒ succ h
+  end
+end
+
+eval half (Parity.Even.esucc (Parity.Odd.osucc (Parity.Even.esucc
+       (Parity.Odd.osucc Parity.Even.ezero))))
+
+(* The group's recursor module is [Parity.Rec], with one function per
+   member, [rec_Even] and [rec_Odd]: the level, a motive per member, a
+   case per constructor of each member, then the scrutinee. *)
+(* [half] again, at an odd number, through the recursor. *)
+eval Parity.Rec.rec_Odd 0l (λ (z : Parity.Even) → ℕ) (λ (z : Parity.Odd) → ℕ)
+       0 (λ (o : Parity.Odd) (h : ℕ) → h) (λ (e : Parity.Even) (h : ℕ) → succ h)
+       (Parity.Odd.osucc Parity.Even.ezero)
+
+(* [mutual def] gives one function per member, in any order, each by its
+   clauses: the branches of its block, with the induction hypotheses. *)
+mutual def
+  evenLength (e : Parity.Even) : ℕ ≔
+    | ezero ⇒ 0
+    | esucc o, h ⇒ succ h
+  with oddLength (o : Parity.Odd) : ℕ ≔
+    | osucc e, h ⇒ succ h
+end
+
+eval oddLength (Parity.Odd.osucc (Parity.Even.esucc (Parity.Odd.osucc
+       Parity.Even.ezero)))
+
+(* 19. Nested types. A constructor may hold its own type inside another
+   inductive type: a rose tree holds a list of rose trees. The occurrence
+   [List Rose] is a view of the group: its eliminator has a block for the
+   tree and one for the list of trees, after it, and so does a [mutual
+   def]. *)
+inductive Rose : Type@0 where
+| node (x : ℕ) (ts : List 0l Rose)
+end
+
+def leaf (n : ℕ) : Rose ≔ Rose.node n (L.List.nil 0l Rose) end
+
+def tree : Rose ≔
+  Rose.node 1 (L.List.cons 0l Rose (leaf 2) (L.List.cons 0l Rose (leaf 3)
+    (L.List.nil 0l Rose)))
+end
+
+def labels (r : Rose) : ℕ ≔
+  elim r at (z : Rose) → ℕ
+    | node x ts, h ⇒ Prelude›Arith›Plus.plus x h
+  with (z : List 0l Rose) → ℕ
+    | nil ⇒ 0
+    | cons t ts, ht hts ⇒ Prelude›Arith›Plus.plus ht hts
+  end
+end
+
+eval labels tree
+
+mutual def
+  nodes (r : Rose) : ℕ ≔
+    | node x ts, h ⇒ succ h
+  with forest (ts : List 0l Rose) : ℕ ≔
+    | nil ⇒ 0
+    | cons t ts, ht hts ⇒ Prelude›Arith›Plus.plus ht hts
+end
+
+eval nodes tree
+
+(* 20. Records. [record R (ps) : Type@n where f : A; … end] declares a
+   record type, each field's type seeing the fields before it, and
+   [record R ps where f ≔ M; … end] is a value, its fields in order. *)
+record Point : Type@0 where
+  x : ℕ;
+  y : ℕ
+with
+  (* The members of the with-area see the fields of the value. *)
+  def flip : Point ≔ record Point where x ≔ y; y ≔ x end end
+  def sum : ℕ ≔ Prelude›Arith›Plus.plus x y end
+end
+end
+
+def origin : Point ≔ record Point where x ≔ 0; y ≔ 0 end end
+
+def onDiagonal (n : ℕ) : Point ≔ record Point where x ≔ n; y ≔ n end end
+
+def corner : Point ≔ record Point where x ≔ 3; y ≔ 5 end end
+
+(* A field or a with-area member is selected through any term of the
+   record type: a definition, a term applied, a value in parentheses. *)
+eval origin.x
+
+eval (onDiagonal 3).sum
+
+eval (record Point where x ≔ 1; y ≔ 2 end).flip.x
+
+(* The record type is also a module over its parameters and a value:
+   [Point.flip p] is [p.flip]. *)
+eval Point.flip corner
+
+(* η: a record value is determined by its fields, so [p] and the point of
+   [p.x] and [p.y] are the same, by conversion. *)
+import Prelude›Logic›Leibniz 0l use (Id; idRefl)
+
+theorem pointEta : ∀ (p : Point) →
+    Id Point (record Point where x ≔ p.x; y ≔ p.y end) p ≔
+  λ (p : Point) → idRefl Point p
+end
+
+theorem flipFlip : ∀ (p : Point) → Id Point p.flip.flip p ≔
+  λ (p : Point) → idRefl Point p
+end
+
+(* A record may take parameters, and a field's type may depend on an
+   earlier field: [Prelude›Data›Sigma] is the record of a first component
+   and a second whose type depends on it. A unit with parameters declares
+   it over them, and [use (Sigma)] names it at the import's arguments. *)
 import Prelude›Data›Sigma 0l ℕ (λ (n : ℕ) → ℕ) as Pairs use (Sigma; pair)
 
 def twoThree : Sigma ≔ pair 2 3 end
@@ -405,11 +609,70 @@ eval Pairs.snd twoThree
 
 eval twoThree.snd
 
+(* [record A ≔ R ps] declares a record alias, which, like an inductive
+   alias, may leave some parameters: [SamePair A] is [Prod 0l A A]. An
+   [import … use (R)] or [open … use (R)] brings a record in as both a
+   type and a module, and [open q as W] makes a record value [q] a
+   module. *)
+import Prelude›Data›Prod use (Prod)
+
+record NatPair ≔ Prod 0l ℕ ℕ
+
+record SamePair (A : Type@0) ≔ Prod 0l A A
+
+def fiveSix : NatPair ≔ record Prod 0l ℕ ℕ where fst ≔ 5; snd ≔ 6 end end
+
+eval fiveSix.swap : SamePair ℕ
+
+module Fields where
+  open fiveSix as W
+  def first : ℕ ≔ W.fst end
+end
+
+eval Fields.first
+
+(* 21. A showcase: the algebraic hierarchy of Prelude›Algebra. Each
+   structure is a record whose first field holds the structure below:
+   a monoid has a semigroup, which has a magma, the carrier and the
+   operation. A function over every monoid takes the record as an
+   argument and selects its members. *)
+import Prelude›Algebra›Monoid 0l use (Monoid)
+import Prelude›Algebra›Instances›Nat as NatAlgebra
+import Prelude›Algebra›Instances›Endo 0l ℕ use (endo)
+
+def square (M : Monoid) (a : M.carrier) : M.carrier ≔ M.op a a end
+
+eval square NatAlgebra.additive.monoid 7
+
+eval square NatAlgebra.multiplicative.monoid 7
+
+eval square endo succ 0
+
+(* The laws derived once for every monoid are a unit over the monoid:
+   [pow] and [powPlus] at the multiplicative monoid are powers of
+   numbers. *)
+import Prelude›Algebra›Monoid›Properties 0l NatAlgebra.multiplicative.monoid as Times
+
+eval Times.pow 3 4
+
+theorem powers : Id ℕ (Times.pow 2 (Prelude›Arith›Plus.plus 1 2))
+    (NatAlgebra.multiplicative.op (Times.pow 2 1) (Times.pow 2 2)) ≔
+  Times.Power.powPlus 2 1 2
+end
+
 (* Rejected:
      module M ≔ List   then   eval M 0l ℕ
                                  Error: Tutorial.M is a module, not a term
      an [open … use (List)] in a local module body
                        Error: an inductive type cannot be opened in a local
-                              module: List *)
+                              module: List
+     record R : Type@0 where a : ℕ end   in a local module body
+                       Error: a record type is not allowed in a local module
+
+   Not yet: inductive and record aliases, and opens of types, inside a
+   local module (section 12) come with the next stage, and their examples
+   go here; today they give
+                       Error: an inductive alias is not allowed in a local
+                              module *)
 
 end

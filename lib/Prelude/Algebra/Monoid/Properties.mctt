@@ -2,8 +2,9 @@
    [Prelude›Algebra›Monoid]: the neutral element is unique, and the powers
    [pow x n], [x] combined with itself [n] times, satisfy the laws of
    exponents.  The unit takes the monoid as a parameter:
-   [import Prelude›Algebra›Monoid›Properties 0l natPlus as P] gives the
-   laws of numbers under addition. *)
+   with [N] the unit [Prelude›Algebra›Instances›Nat],
+   [import Prelude›Algebra›Monoid›Properties 0l N.additive.monoid as P]
+   gives the laws of numbers under addition. *)
 import Prelude›Algebra›Monoid
 module Prelude›Algebra›Monoid›Properties (u : Level)
     (M : Prelude›Algebra›Monoid.Monoid u) where
