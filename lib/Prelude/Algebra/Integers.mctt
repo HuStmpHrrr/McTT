@@ -1,5 +1,6 @@
-(* The integers, as differences of numbers.  An integer is a pair [(a, b)] of
-   numbers that stands for [a - b], and two pairs are the same integer,
+(* The integers, as differences of numbers.  An integer is a record of two
+   numbers, [pos] and [neg], that stands for [pos - neg]; [pair a b] stands
+   for [a - b], and two pairs are the same integer,
    [Same x y], when they stand for the same difference: [a + d = c + b] for
    [(a, b)] and [(c, d)].  Addition is componentwise and negation swaps the
    pair.  With [ofNat 0] as zero they form a commutative group, [Additive], an
@@ -21,26 +22,27 @@ import Prelude›Arith›Order use (leb)
 import Prelude›Data›Bool use (Bool; not)
 import Prelude›Algebra›Group as Group
 
-(* A pair of numbers, as a function from the index 0 or 1. *)
-def Int : Type@0 ≔ ∀ (i : ℕ) → ℕ end
-
-def pair (a : ℕ) (b : ℕ) : Int ≔
-  λ (i : ℕ) → elim i at y -> ℕ | zero ⇒ a | succ j, r ⇒ b end
+(* A pair of numbers, standing for their difference [pos - neg]. *)
+record Int : Type@0 where
+  pos : ℕ;
+  neg : ℕ
 end
+
+def pair (a : ℕ) (b : ℕ) : Int ≔ record Int where pos ≔ a; neg ≔ b end end
 
 (* [x] and [y] stand for the same difference. *)
 def Same (x : Int) (y : Int) : Type@0 ≔
-  Eq (plus (x 0) (y 1)) (plus (y 0) (x 1))
+  Eq (plus x.pos y.neg) (plus y.pos x.neg)
 end
 
 (* The number [n] as the integer [n - 0]. *)
 def ofNat (n : ℕ) : Int ≔ pair n 0 end
 
 def add (x : Int) (y : Int) : Int ≔
-  pair (plus (x 0) (y 0)) (plus (x 1) (y 1))
+  pair (plus x.pos y.pos) (plus x.neg y.neg)
 end
 
-def negate (x : Int) : Int ≔ pair (x 1) (x 0) end
+def negate (x : Int) : Int ≔ pair x.neg x.pos end
 
 (* [x - y]. *)
 def minus (x : Int) (y : Int) : Int ≔ add x (negate y) end
@@ -48,37 +50,37 @@ def minus (x : Int) (y : Int) : Int ≔ add x (negate y) end
 (* The absolute value of the difference, read back by truncated
    subtraction. *)
 def magnitude (x : Int) : ℕ ≔
-  plus (monus (x 0) (x 1)) (monus (x 1) (x 0))
+  plus (monus x.pos x.neg) (monus x.neg x.pos)
 end
 
-(* [tt] when the difference is negative, that is when [x 1] is not at most
-   [x 0], and [ff] otherwise. *)
-def negative (x : Int) : Bool ≔ not (leb (x 1) (x 0)) end
+(* [tt] when the difference is negative, that is when [x.neg] is not at
+   most [x.pos], and [ff] otherwise. *)
+def negative (x : Int) : Bool ≔ not (leb x.neg x.pos) end
 
 (* [Same] is an equivalence. *)
 module Setoid where
 
 theorem sameRefl : ∀ (x : Int) → Same x x ≔
-  λ (x : Int) → refl (plus (x 0) (x 1))
+  λ (x : Int) → refl (plus x.pos x.neg)
 end
 
 theorem sameSym : ∀ (x : Int) (y : Int) (h : Same x y) → Same y x ≔
   λ (x : Int) (y : Int) (h : Same x y) →
-    sym (plus (x 0) (y 1)) (plus (y 0) (x 1)) h
+    sym (plus x.pos y.neg) (plus y.pos x.neg) h
 end
 
-(* Adding [y 1] to both sides of the goal, the two hypotheses rewrite it
-   into an equation that holds by rearranging; [y 1] then cancels. *)
+(* Adding [y.neg] to both sides of the goal, the two hypotheses rewrite
+   it into an equation that holds by rearranging; [y.neg] then cancels. *)
 theorem sameTrans : ∀ (x : Int) (y : Int) (z : Int)
     (hxy : Same x y) (hyz : Same y z) →
     Same x z ≔
   λ (x : Int) (y : Int) (z : Int) (hxy : Same x y) (hyz : Same y z) →
-    let a ≔ x 0;
-        b ≔ x 1;
-        c ≔ y 0;
-        d ≔ y 1;
-        f ≔ z 0;
-        g ≔ z 1;
+    let a ≔ x.pos;
+        b ≔ x.neg;
+        c ≔ y.pos;
+        d ≔ y.neg;
+        f ≔ z.pos;
+        g ≔ z.neg;
         start : Eq (plus (plus a g) d) (plus (plus a d) g) ≔
           plusRightComm a g d;
         first : Eq (plus (plus a d) g) (plus (plus c b) g) ≔
@@ -113,66 +115,66 @@ theorem addCong : ∀ (a : Int) (b : Int) (c : Int) (d : Int)
     Same (add a b) (add c d) ≔
   λ (a : Int) (b : Int) (c : Int) (d : Int)
     (hac : Same a c) (hbd : Same b d) →
-    let lhs ≔ plus (plus (a 0) (b 0)) (plus (c 1) (d 1));
-        rhs ≔ plus (plus (c 0) (d 0)) (plus (a 1) (b 1))
-    in trans lhs (plus (plus (a 0) (c 1)) (plus (b 0) (d 1))) rhs
-         (plusSwapMiddle (a 0) (b 0) (c 1) (d 1))
-         (trans (plus (plus (a 0) (c 1)) (plus (b 0) (d 1)))
-            (plus (plus (c 0) (a 1)) (plus (d 0) (b 1))) rhs
-            (plusCongBoth (plus (a 0) (c 1)) (plus (b 0) (d 1))
-               (plus (c 0) (a 1)) (plus (d 0) (b 1)) hac hbd)
-            (plusSwapMiddle (c 0) (a 1) (d 0) (b 1)))
+    let lhs ≔ plus (plus a.pos b.pos) (plus c.neg d.neg);
+        rhs ≔ plus (plus c.pos d.pos) (plus a.neg b.neg)
+    in trans lhs (plus (plus a.pos c.neg) (plus b.pos d.neg)) rhs
+         (plusSwapMiddle a.pos b.pos c.neg d.neg)
+         (trans (plus (plus a.pos c.neg) (plus b.pos d.neg))
+            (plus (plus c.pos a.neg) (plus d.pos b.neg)) rhs
+            (plusCongBoth (plus a.pos c.neg) (plus b.pos d.neg)
+               (plus c.pos a.neg) (plus d.pos b.neg) hac hbd)
+            (plusSwapMiddle c.pos a.neg d.pos b.neg))
     end
 end
 
 theorem addAssoc : ∀ (x : Int) (y : Int) (z : Int) →
     Same (add (add x y) z) (add x (add y z)) ≔
   λ (x : Int) (y : Int) (z : Int) →
-    plusCongBoth (plus (plus (x 0) (y 0)) (z 0)) (plus (x 1) (plus (y 1) (z 1)))
-      (plus (x 0) (plus (y 0) (z 0))) (plus (plus (x 1) (y 1)) (z 1))
-      (plusAssoc (x 0) (y 0) (z 0))
-      (sym (plus (plus (x 1) (y 1)) (z 1)) (plus (x 1) (plus (y 1) (z 1)))
-         (plusAssoc (x 1) (y 1) (z 1)))
+    plusCongBoth (plus (plus x.pos y.pos) z.pos) (plus x.neg (plus y.neg z.neg))
+      (plus x.pos (plus y.pos z.pos)) (plus (plus x.neg y.neg) z.neg)
+      (plusAssoc x.pos y.pos z.pos)
+      (sym (plus (plus x.neg y.neg) z.neg) (plus x.neg (plus y.neg z.neg))
+         (plusAssoc x.neg y.neg z.neg))
 end
 
 (* Zero on the left holds by conversion: [plus 0 n] is [n]. *)
 theorem addIdentityLeft : ∀ (x : Int) → Same (add (ofNat 0) x) x ≔
-  λ (x : Int) → refl (plus (x 0) (x 1))
+  λ (x : Int) → refl (plus x.pos x.neg)
 end
 
 theorem addIdentityRight : ∀ (x : Int) → Same (add x (ofNat 0)) x ≔
   λ (x : Int) →
-    plusCongBoth (plus (x 0) 0) (x 1) (x 0) (plus (x 1) 0) (plusIdentityRight (x 0))
-      (sym (plus (x 1) 0) (x 1) (plusIdentityRight (x 1)))
+    plusCongBoth (plus x.pos 0) x.neg x.pos (plus x.neg 0) (plusIdentityRight x.pos)
+      (sym (plus x.neg 0) x.neg (plusIdentityRight x.neg))
 end
 
 theorem addComm : ∀ (x : Int) (y : Int) → Same (add x y) (add y x) ≔
   λ (x : Int) (y : Int) →
-    plusCongBoth (plus (x 0) (y 0)) (plus (y 1) (x 1))
-      (plus (y 0) (x 0)) (plus (x 1) (y 1))
-      (plusComm (x 0) (y 0)) (plusComm (y 1) (x 1))
+    plusCongBoth (plus x.pos y.pos) (plus y.neg x.neg)
+      (plus y.pos x.pos) (plus x.neg y.neg)
+      (plusComm x.pos y.pos) (plusComm y.neg x.neg)
 end
 
 theorem negateCong : ∀ (a : Int) (b : Int) (h : Same a b) →
     Same (negate a) (negate b) ≔
   λ (a : Int) (b : Int) (h : Same a b) →
-    trans (plus (a 1) (b 0)) (plus (b 0) (a 1)) (plus (b 1) (a 0))
-      (plusComm (a 1) (b 0))
-      (trans (plus (b 0) (a 1)) (plus (a 0) (b 1)) (plus (b 1) (a 0))
-         (sym (plus (a 0) (b 1)) (plus (b 0) (a 1)) h) (plusComm (a 0) (b 1)))
+    trans (plus a.neg b.pos) (plus b.pos a.neg) (plus b.neg a.pos)
+      (plusComm a.neg b.pos)
+      (trans (plus b.pos a.neg) (plus a.pos b.neg) (plus b.neg a.pos)
+         (sym (plus a.pos b.neg) (plus b.pos a.neg) h) (plusComm a.pos b.neg))
 end
 
-(* [(-x) + x] stands for [(x 1 + x 0) - (x 0 + x 1)], which is zero. *)
+(* [(-x) + x] stands for [(x.neg + x.pos) - (x.pos + x.neg)], which is zero. *)
 theorem negateLeft : ∀ (x : Int) → Same (add (negate x) x) (ofNat 0) ≔
   λ (x : Int) →
-    trans (plus (plus (x 1) (x 0)) 0) (plus (x 1) (x 0)) (plus (x 0) (x 1))
-      (plusIdentityRight (plus (x 1) (x 0))) (plusComm (x 1) (x 0))
+    trans (plus (plus x.neg x.pos) 0) (plus x.neg x.pos) (plus x.pos x.neg)
+      (plusIdentityRight (plus x.neg x.pos)) (plusComm x.neg x.pos)
 end
 
 theorem negateRight : ∀ (x : Int) → Same (add x (negate x)) (ofNat 0) ≔
   λ (x : Int) →
-    trans (plus (plus (x 0) (x 1)) 0) (plus (x 0) (x 1)) (plus (x 1) (x 0))
-      (plusIdentityRight (plus (x 0) (x 1))) (plusComm (x 0) (x 1))
+    trans (plus (plus x.pos x.neg) 0) (plus x.pos x.neg) (plus x.neg x.pos)
+      (plusIdentityRight (plus x.pos x.neg)) (plusComm x.pos x.neg)
 end
 
 end

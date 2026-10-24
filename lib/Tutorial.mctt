@@ -394,13 +394,16 @@ open NatList use (nil; cons)
 
 eval cons 3 nil
 
-(* A unit with parameters may declare an inductive type over them, and
-   [use (T)] names that type at the arguments of the import. *)
-import Prelude›Data›Sigma 0l ℕ (λ (n : ℕ) → ℕ) as Pairs use (Sigma)
+(* A unit with parameters may declare a record type over them, and
+   [use (R)] names that type at the arguments of the import.  A field is
+   selected through any term of the record type: [twoThree.snd]. *)
+import Prelude›Data›Sigma 0l ℕ (λ (n : ℕ) → ℕ) as Pairs use (Sigma; pair)
 
-def twoThree : Sigma ≔ Sigma.pair 2 3 end
+def twoThree : Sigma ≔ pair 2 3 end
 
 eval Pairs.snd twoThree
+
+eval twoThree.snd
 
 (* Rejected:
      module M ≔ List   then   eval M 0l ℕ

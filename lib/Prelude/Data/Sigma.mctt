@@ -1,28 +1,26 @@
-(* Dependent pairs: [Sigma u A B] has the one constructor [pair a b], for
-   [a : A] and [b : B a], at every level [u].  The type of the second
-   component depends on the first, so [snd p] has the type [B (fst p)].
+(* Dependent pairs: [Sigma] is the record of a first component [fst : A]
+   and a second [snd : B fst], whose type depends on the first; [pair a b]
+   builds one, for [a : A] and [b : B a].
 
    The unit takes the level [u], the type [A] of first components and the
    family [B] of second components as parameters: [Prelude›Data›Sigma 0l ℕ
-   (λ (n : ℕ) → Vec n)] holds the vectors of every length.  Its laws are in
+   (λ (n : ℕ) → NV.Vec n)], with [NV] the vectors of numbers, holds the
+   vectors of every length.  A record has eta, so every [p : Sigma] is
+   [pair p.fst p.snd] by conversion.  Its laws are in
    [Prelude›Data›Sigma›Properties]. *)
 module Prelude›Data›Sigma (u : Level) (A : Type@{u})
     (B : ∀ (a : A) → Type@{u}) where
 
-inductive Sigma : Type@{u} where
-| pair (a : A) (b : B a)
+record Sigma : Type@{u} where
+  fst : A;
+  snd : B fst
 end
 
-open Sigma use (pair)
+def pair (a : A) (b : B a) : Sigma ≔ record Sigma where fst ≔ a; snd ≔ b end end
 
-def fst (p : Sigma) : A ≔
-  elim p at (z : Sigma) -> A | pair a b ⇒ a end
-end
+(* The projections as functions; [snd p] has the type [B (fst p)]. *)
+def fst (p : Sigma) : A ≔ p.fst end
 
-(* The second component; the branch's type, [B (fst (pair a b))], computes
-   to [B a]. *)
-def snd (p : Sigma) : B (fst p) ≔
-  elim p at (z : Sigma) -> B (fst z) | pair a b ⇒ b end
-end
+def snd (p : Sigma) : B (fst p) ≔ p.snd end
 
 end

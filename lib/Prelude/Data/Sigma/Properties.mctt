@@ -1,13 +1,15 @@
 (* Laws of [Prelude›Data›Sigma u A B], stated with the Leibniz equality of
    [Prelude›Logic›Leibniz]: the projections of a pair, surjective pairing,
    the equality of pairs whose second component is a function of the
-   first, and the injectivity of [pair] in its first component. *)
+   first, and the injectivity of [pair] in its first component.
+
+   [Sigma] is a record, so surjective pairing holds by eta: [pair p.fst
+   p.snd] is convertible to [p]. *)
 module Prelude›Data›Sigma›Properties (u : Level) (A : Type@{u})
     (B : ∀ (a : A) → Type@{u}) where
 
 import Prelude›Logic›Leibniz u use (Id; idRefl; idCong)
-import Prelude›Data›Sigma u A B use (Sigma; fst; snd)
-open Sigma use (pair)
+import Prelude›Data›Sigma u A B use (Sigma; pair; fst; snd)
 
 (* The projections and surjective pairing. *)
 module Projections where
@@ -21,12 +23,9 @@ theorem sndPair : ∀ (a : A) (b : B a) → Id (B a) (snd (pair a b)) b ≔
   λ (a : A) (b : B a) → idRefl (B a) b
 end
 
-(* Surjective pairing: a pair is the pair of its projections. *)
+(* Surjective pairing: a pair is the pair of its projections, by eta. *)
 theorem pairEta : ∀ (p : Sigma) → Id Sigma (pair (fst p) (snd p)) p ≔
-  λ (p : Sigma) →
-    elim p at (z : Sigma) -> Id Sigma (pair (fst z) (snd z)) z
-    | pair a b ⇒ idRefl Sigma (pair a b)
-    end
+  λ (p : Sigma) → idRefl Sigma p
 end
 
 end

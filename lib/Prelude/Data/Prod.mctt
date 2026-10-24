@@ -1,59 +1,56 @@
-(* Pairs: [Prod u A B] has the one constructor [pair a b], for [a : A] and
-   [b : B], at every level [u].  The dependent pairs, whose second component
-   has a type depending on the first, are [Prelude›Data›Sigma].
+(* Pairs: [Prod u A B] is the record of a first component [fst : A] and a
+   second [snd : B], at every level [u]; [pair u A B a b] builds one.  The
+   dependent pairs, whose second component has a type depending on the
+   first, are [Prelude›Data›Sigma].
 
-   The operations on pairs over fixed [A] and [B] are in the module
+   A record has eta: every [p : Prod u A B] is [pair u A B p.fst p.snd] by
+   conversion, so the laws of [Prelude›Data›Prod›Properties] hold by
+   reflexivity.  The record's own member [swap] exchanges the components:
+   [p.swap] is [pair u B A p.snd p.fst].
+
+   The operations as functions over fixed [A] and [B] are in the module
    [Ops u A B]: the projections, [swap], the reassociations [assoc] and
-   [unassoc], [map] on both components, and currying.  The laws are in
-   [Prelude›Data›Prod›Properties]. *)
+   [unassoc], [map] on both components, and currying. *)
 module Prelude›Data›Prod where
 
-inductive Prod (u : Level) (A : Type@{u}) (B : Type@{u}) : Type@{u} where
-| pair (a : A) (b : B)
+record Prod (u : Level) (A : Type@{u}) (B : Type@{u}) : Type@{u} where
+  fst : A;
+  snd : B
+with
+  (* The pair with its components exchanged. *)
+  def swap : Prod u B A ≔ record Prod u B A where fst ≔ snd; snd ≔ fst end end
+end
 end
 
-open Prod use (pair)
+def pair (u : Level) (A : Type@{u}) (B : Type@{u}) (a : A) (b : B) :
+    Prod u A B ≔
+  record Prod u A B where fst ≔ a; snd ≔ b end
+end
 
 module Ops (u : Level) (A : Type@{u}) (B : Type@{u}) where
 
-def fst (p : Prod u A B) : A ≔
-  elim p at (z : Prod u A B) -> A | pair a b ⇒ a end
-end
+def fst (p : Prod u A B) : A ≔ p.fst end
 
-def snd (p : Prod u A B) : B ≔
-  elim p at (z : Prod u A B) -> B | pair a b ⇒ b end
-end
+def snd (p : Prod u A B) : B ≔ p.snd end
 
-def swap (p : Prod u A B) : Prod u B A ≔
-  elim p at (z : Prod u A B) -> Prod u B A | pair a b ⇒ pair u B A b a end
-end
+def swap (p : Prod u A B) : Prod u B A ≔ p.swap end
 
 (* From [((a, b), c)] to [(a, (b, c))]. *)
 def assoc (C : Type@{u}) (p : Prod u (Prod u A B) C) :
     Prod u A (Prod u B C) ≔
-  elim p at (z : Prod u (Prod u A B) C) -> Prod u A (Prod u B C)
-  | pair ab c ⇒
-      elim ab at (y : Prod u A B) -> Prod u A (Prod u B C)
-      | pair a b ⇒ pair u A (Prod u B C) a (pair u B C b c)
-      end
-  end
+  pair u A (Prod u B C) p.fst.fst (pair u B C p.fst.snd p.snd)
 end
 
 (* From [(a, (b, c))] to [((a, b), c)]. *)
 def unassoc (C : Type@{u}) (p : Prod u A (Prod u B C)) :
     Prod u (Prod u A B) C ≔
-  elim p at (z : Prod u A (Prod u B C)) -> Prod u (Prod u A B) C
-  | pair a bc ⇒
-      elim bc at (y : Prod u B C) -> Prod u (Prod u A B) C
-      | pair b c ⇒ pair u (Prod u A B) C (pair u A B a b) c
-      end
-  end
+  pair u (Prod u A B) C (pair u A B p.fst p.snd.fst) p.snd.snd
 end
 
 (* Applies [f] to the first component and [g] to the second. *)
 def map (C : Type@{u}) (D : Type@{u}) (f : ∀ (a : A) → C)
     (g : ∀ (b : B) → D) (p : Prod u A B) : Prod u C D ≔
-  elim p at (z : Prod u A B) -> Prod u C D | pair a b ⇒ pair u C D (f a) (g b) end
+  pair u C D (f p.fst) (g p.snd)
 end
 
 def curry (C : Type@{u}) (f : ∀ (p : Prod u A B) → C) (a : A) (b : B) : C ≔
@@ -62,7 +59,7 @@ end
 
 def uncurry (C : Type@{u}) (f : ∀ (a : A) (b : B) → C) (p : Prod u A B) :
     C ≔
-  elim p at (z : Prod u A B) -> C | pair a b ⇒ f a b end
+  f p.fst p.snd
 end
 
 end

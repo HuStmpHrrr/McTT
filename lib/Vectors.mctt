@@ -157,4 +157,30 @@ eval anybSound 0l ℕ positive 3 (NV.snoc 2 (NV.replicate 2 0) 9) ⋆ ℕ
        (λ (i : ℕ) (h : Lt i 3)
           (q : IsTrue (positive (NV.snoc 2 (NV.replicate 2 0) 9 i h))) → i)
 
+(* Vectors of every length, as dependent pairs of a length and a vector of
+   that length.  [fromList] packs a list, its length computed alongside;
+   the length and the vector are read back as fields. *)
+import Prelude›Data›List use (List)
+import Prelude›Data›Sigma 0l ℕ NV.Vec as Sized use (Sigma; pair)
+
+def fromList (l : List 0l ℕ) : Sigma ≔
+  elim l at z -> Sigma
+  | nil ⇒ pair 0 NV.nil
+  | cons x xs, r ⇒ pair (succ r.fst) (NV.cons r.fst x r.snd)
+  end
+end
+
+(* A packed vector's sum: its vector at its own length. *)
+def sumPacked (s : Sigma) : ℕ ≔ sumVec s.fst s.snd end
+
+def packed : Sigma ≔
+  fromList (List.cons 0l ℕ 4 (List.cons 0l ℕ 5 (List.cons 0l ℕ 6 (List.nil 0l ℕ))))
+end
+
+eval packed.fst
+
+eval sumPacked packed
+
+eval NV.head 2 packed.snd
+
 end

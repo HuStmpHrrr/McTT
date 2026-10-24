@@ -1333,14 +1333,17 @@ let%expect_test "lib/Lists.mctt" =
     Evaluate Opt.bind 0l ℕ ℕ (λ (x1 : ℕ) → head (NL.reverse oneTwoThree))
                (head oneTwoThree) --> Prelude›Data›Option.Option.some 0l ℕ 3
       : Prelude›Data›Option.Option 0l ℕ
-    Evaluate P.swap 0l ℕ Bool (Prod.pair 0l ℕ Bool 1 tt)
-      --> Prelude›Data›Prod.Prod.pair 0l Prelude›Data›Bool.Bool ℕ
-            Prelude›Data›Bool.Bool.tt
-            1 : Prelude›Data›Prod.Prod 0l Prelude›Data›Bool.Bool ℕ
+    Evaluate P.swap 0l ℕ Bool (pair 0l ℕ Bool 1 tt)
+      --> record Prelude›Data›Prod.Prod 0l Prelude›Data›Bool.Bool ℕ where
+            fst ≔ Prelude›Data›Bool.Bool.tt;
+            snd ≔ 1
+          end : Prelude›Data›Prod.Prod 0l Prelude›Data›Bool.Bool ℕ
+    Evaluate (pair 0l ℕ Bool 1 tt).swap.fst --> Prelude›Data›Bool.Bool.tt
+      : Prelude›Data›Bool.Bool
     Evaluate S.case 0l ℕ Bool ℕ succ (λ (x1 : Bool) → if ℕ x1 1 0)
                (S.swap 0l Bool ℕ (Sum.inl 0l Bool ℕ ff)) --> 0 : ℕ
-    Evaluate Tagged.snd (Tagged.Sigma.pair tt 3) --> 3 : ℕ
-    Evaluate Tagged.snd (Tagged.Sigma.pair ff ff) --> Prelude›Data›Bool.Bool.ff
+    Evaluate Tagged.snd (Tagged.pair tt 3) --> 3 : ℕ
+    Evaluate (Tagged.pair ff ff).snd --> Prelude›Data›Bool.Bool.ff
       : Prelude›Data›Bool.Bool
     Evaluate lengthAppend oneTwoThree oneTwoThree --> ⋆ : ⊤
     Evaluate sumReverse oneTwoThree --> ⋆ : ⊤
@@ -1709,6 +1712,9 @@ let%expect_test "lib/Vectors.mctt" =
                   (x2 : Lt x1 3)
                   (x3 : IsTrue (positive (NV.snoc 2 (NV.replicate 2 0) 9 x1 x2)))
                  → x1) --> 2 : ℕ
+    Evaluate packed.fst --> 3 : ℕ
+    Evaluate sumPacked packed --> 15 : ℕ
+    Evaluate NV.head 2 packed.snd --> 4 : ℕ
     |}]
 
 let%expect_test "lib/Powers.mctt" =
@@ -3155,6 +3161,7 @@ let%expect_test "lib/Tutorial.mctt" =
       --> Prelude›Data›List.List.cons 0l ℕ 3 (Prelude›Data›List.List.nil 0l ℕ)
       : Prelude›Data›List.List 0l ℕ
     Evaluate Pairs.snd twoThree --> 3 : ℕ
+    Evaluate twoThree.snd --> 3 : ℕ
     |}]
 
 (** The documentation generator ([Doc]) *)
@@ -3560,7 +3567,7 @@ let%expect_test "mctt-doc: every eval of lib has one output box, with mctt's out
   List.iter (fun b -> if String.starts_with ~prefix:"Evaluate Adding.five " b then print_endline b)
     (doc_boxes (Doc.render_unit lib kinds tut));
   [%expect {|
-    524 evals, 524 boxes, 524 equal to mctt's output
+    529 evals, 529 boxes, 529 equal to mctt's output
     Evaluate Adding.five --> 5 : ℕ
     |}]
 
@@ -3572,7 +3579,7 @@ let%expect_test "mctt-doc: a unit whose log is out of step with its evals is rep
   let tut = List.find (fun u -> u.Doc.u_path = [ "Tutorial" ]) lib.Doc.units in
   Printf.printf "%d boxes\n" (List.length (doc_boxes (Doc.render_unit lib (Doc.anchor_kinds lib) tut)));
   [%expect {|
-    Tutorial: 45 evals, 1 outputs
+    Tutorial: 46 evals, 1 outputs
     0 boxes
     |}]
 
@@ -3637,7 +3644,7 @@ let%expect_test "mctt-doc: ℕ links to the type bound as the natural numbers" =
   let page = Doc.render_unit lib' (Doc.anchor_kinds lib') u in
   Printf.printf "%d links, %d without a link\n" (doc_count "ℕ</a>" page) (doc_count span page);
   [%expect {|
-    2717 links to Nat, 0 other links, 0 without a link
+    2723 links to Nat, 0 other links, 0 without a link
     NoNat: not checked
     0 links, 2 without a link
     |}]
@@ -4484,13 +4491,31 @@ let%expect_test "an inductive type used from an applied unit" =
 let%expect_test "an inductive alias of an inductive alias" =
   let _ =
     main_of_program_string ~search_root:"../lib"
-      "import Prelude›Builtin›Nat use (Nat; zero; succ) import Prelude›Data›Prod use (Prod) \
-       module X where inductive A2 (B : Type@0) := Prod 0l B B inductive K := A2 \
-       axiom F (X : Type@0) : Type@0 axiom f : F (Prod 0l Nat Nat) eval f : F (K Nat) eval (K Nat).pair 1 2 end"
+      "import Prelude›Builtin›Nat use (Nat; zero; succ) import Prelude›Data›Sum use (Sum) \
+       module X where inductive A2 (B : Type@0) := Sum 0l B B inductive K := A2 \
+       axiom F (X : Type@0) : Type@0 axiom f : F (Sum 0l Nat Nat) eval f : F (K Nat) eval (K Nat).inl 1 end"
   in
   [%expect {|
     Evaluate f --> f : F (K ℕ)
-    Evaluate (K ℕ).pair 1 2 --> Prelude›Data›Prod.Prod.pair 0l ℕ ℕ 1 2
+    Evaluate (K ℕ).inl 1 --> Prelude›Data›Sum.Sum.inl 0l ℕ ℕ 1
+      : Prelude›Data›Sum.Sum 0l ℕ ℕ
+    |}]
+
+let%expect_test "a record alias of a record alias" =
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "import Prelude›Builtin›Nat use (Nat; zero; succ) import Prelude›Data›Prod use (Prod; pair) \
+       module X where record P2 (B : Type@0) := Prod 0l B B record K := P2 \
+       axiom F (X : Type@0) : Type@0 axiom f : F (Prod 0l Nat Nat) eval f : F (K Nat) \
+       def q : K Nat := pair 0l Nat Nat 1 2 end eval q.swap eval (K Nat).swap q end"
+  in
+  [%expect {|
+    Evaluate f --> f : F (K ℕ)
+    Evaluate q.swap
+      --> record Prelude›Data›Prod.Prod 0l ℕ ℕ where fst ≔ 2; snd ≔ 1 end
+      : Prelude›Data›Prod.Prod 0l ℕ ℕ
+    Evaluate (K ℕ).swap q
+      --> record Prelude›Data›Prod.Prod 0l ℕ ℕ where fst ≔ 2; snd ≔ 1 end
       : Prelude›Data›Prod.Prod 0l ℕ ℕ
     |}]
 

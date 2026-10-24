@@ -12,7 +12,7 @@ import Prelude›Data›List›Nat use (sum)
 open Prelude›Data›List.Ops as Ops
 import Prelude›Data›Option use (Option)
 open Prelude›Data›Option.Ops as Opt
-import Prelude›Data›Prod use (Prod)
+import Prelude›Data›Prod use (Prod; pair)
 open Prelude›Data›Prod.Ops as P
 import Prelude›Data›Sum use (Sum)
 open Prelude›Data›Sum.Ops as S
@@ -77,7 +77,8 @@ eval Opt.bind 0l ℕ ℕ (λ (x : ℕ) → head (NL.reverse oneTwoThree))
   (head oneTwoThree)
 
 (* Pairs and sums. *)
-eval P.swap 0l ℕ Bool (Prod.pair 0l ℕ Bool 1 tt)
+eval P.swap 0l ℕ Bool (pair 0l ℕ Bool 1 tt)
+eval (pair 0l ℕ Bool 1 tt).swap.fst
 eval S.case 0l ℕ Bool ℕ succ (λ (b : Bool) → if ℕ b 1 0)
   (S.swap 0l Bool ℕ (Sum.inl 0l Bool ℕ ff))
 
@@ -87,8 +88,8 @@ def Payload (b : Bool) : Type@0 ≔ Cond.if 1l Type@0 b ℕ Bool end
 
 import Prelude›Data›Sigma 0l Bool Payload as Tagged
 
-eval Tagged.snd (Tagged.Sigma.pair tt 3)
-eval Tagged.snd (Tagged.Sigma.pair ff ff)
+eval Tagged.snd (Tagged.pair tt 3)
+eval (Tagged.pair ff ff).snd
 
 (* Closed instances of laws.  A law between numbers computes to [⋆]; a
    Leibniz equality is a function of the predicate. *)
