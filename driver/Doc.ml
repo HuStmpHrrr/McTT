@@ -158,8 +158,8 @@ type sel = { sl_var : int; sl_name : string; sl_link : link option }
    - [L_alias (ch, x, k, n)]: the inductive or record alias [x], with its
      [n] parameters, filed as a definition with a module part, which
      repeats the definition;
-   - [L_open (ch, k, d)]: an open or import declaring the item [d] first,
-     which is filed with the module opened;
+   - [L_open (ch, k, ds)]: an open or import declaring the items [ds],
+     each filed with the module opened;
    - [L_eval (k, a)]: the [k]-th eval of the unit, which is in the log of
      the run, not in the unit, and whether it has a type annotation [a],
      which the log holds as its type;
@@ -173,7 +173,7 @@ type cmd_loc =
   | L_mdef of string list * int * int * (string * int * string list) list
   | L_ind of string list * string * int
   | L_alias of string list * string * int * int
-  | L_open of string list * int * string
+  | L_open of string list * int * string list
   | L_eval of int * bool
   | L_params
   | L_none
@@ -415,7 +415,15 @@ and items st m (its : S.iitem list) : (string * int * mden * link option) list =
           let i = next st n in
           let l = member_link st m n in
           Option.iter (refer st i) l;
-          let j = (match tok_after_var st i with P.AS _ -> next st d | _ -> i) in
+          let j = (match tok_after_var st i with
+              | P.AS _ ->
+                  (* The member renamed: of the opened module, or, if that
+                     is a term's, of its record ([record_selections]). *)
+                  (match m with
+                   | MNone | MGlobal _ -> st.sels <- { sl_var = i; sl_name = n; sl_link = l } :: st.sels
+                   | MLocal _ -> ());
+                  next st d
+              | _ -> i) in
           (d, j, member_mden m n, l)) its
 
 (* A local module: [Elaborator.elab_mdef]. *)
@@ -564,7 +572,7 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
            declare st i (anchor_of ch d) k;
            if not pv then entry ch d "export" k;
            Option.iter (Hashtbl.replace st.items (fp, ch @ [ d ])) l) ds its;
-       (match ds with (d, _, _, _) :: _ -> L_open (ch, st.frame_ps, d) | [] -> L_none)
+       (match ds with [] -> L_none | _ -> L_open (ch, st.frame_ps, List.map (fun (d, _, _, _) -> d) ds))
    | C.Coq_c_eval (e, t) ->
        let k = List.length st.evals in
        st.evals <- (e, t) :: st.evals; term st env e; Option.iter (term st env) t; L_eval (k, t <> None)
@@ -860,7 +868,13 @@ and rc_unit th (S.Coq_gu_mk (d, md)) =
 and rc_gmod th = function
   | S.Coq_gm_nil -> []
   | S.Coq_gm_ext (g, _, e) -> rc_gmod th g @ rc_gentry th e
-  | S.Coq_gm_open (g, h, _) -> rc_gmod th g @ rc_mod th h
+  (* An open of a local body: the module opened, then, if it is a record
+     value's, each member an item names, a selection from it. *)
+  | S.Coq_gm_open (g, h, its) ->
+      rc_gmod th g @ rc_mod th h
+      @ (match record_value th h with
+          | Some (p, _) -> List.filter_map (fun ((on, _), _) -> Option.map (fun n -> (n, p)) on) its
+          | None -> [])
 
 and rc_gentry th = function
   | S.Coq_ge_def (_, _, a, om) -> rc_exp th a @ rc_opt th om
@@ -950,11 +964,14 @@ let record_cands th (gu : S.gunit) (log : McttExtracted.Command1.eval_entry list
        | _ -> [])
   (* An [as] alias is filed as an alias of the module opened, a [use]d
      member as the member of it, each over the frames' parameters. *)
-  | L_open (ch, k, d) ->
-      (match entry_at gu ch d with
-       | Some (S.Coq_ge_mod (_, S.Coq_gu_mk (_, S.Coq_md_alias h))) -> rc_mod th h
-       | Some (S.Coq_ge_def (_, _, _, Some m)) -> rc_exp th (strip_fns k m)
-       | _ -> [])
+  (* Each item repeats the module opened; a member of a record value's
+     module is a selection from it, [a] of [open p use (a as b)]. *)
+  | L_open (ch, k, ds) ->
+      List.concat_map (fun d ->
+          match entry_at gu ch d with
+          | Some (S.Coq_ge_mod (_, S.Coq_gu_mk (_, S.Coq_md_alias h))) -> rc_mod th h
+          | Some (S.Coq_ge_def (_, _, _, Some m)) -> rc_exp th (strip_fns k m)
+          | _ -> []) ds
   (* Each function is filed as [λ Δ ys z. a_elim … Bks z] at the type
      [Π Δ ys z. A], with the blocks [Bks] of all the functions: the common
      parameters [Δ] are read off the first function's type, each

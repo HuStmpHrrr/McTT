@@ -3478,6 +3478,74 @@ let%expect_test "mctt-doc: selections from terms link in aliases and in the argu
     line 10 ty: U#T.ty
     |}]
 
+(* A unit [R] of records: [P] with fields [a] and [c], and [L], whose
+   field [inner] is a [P]. *)
+let doc_records = ("R", "module R where\n\
+                         record P : Type@0 where a : ⊤; c : ⊤ end\n\
+                         record L : Type@0 where inner : P end\n\
+                         end\n")
+
+let%expect_test "mctt-doc: a renamed item of an open of a term links to its record's member" =
+  (* [a] links to [P]'s field, [b] declares a site of its own, which its
+     use links to; the unrenamed [c] declares itself. *)
+  doc_links ~units:[ doc_records ]
+    "import R\n\
+     module U (p : R.P) where\n\
+     open p use (a as b; c)\n\
+     def f : ⊤ := b end\n\
+     def g : ⊤ := c end\n\
+     end\n" [ "a"; "b"; "c" ];
+  [%expect {|
+    line 3 a: R#P.a
+    line 4 b: U#b
+    line 5 c: U#c
+    |}]
+
+let%expect_test "mctt-doc: a renamed export of an open of a term links to its record's member" =
+  doc_links ~units:[ doc_records ]
+    "import R\n\
+     module U (p : R.P) where\n\
+     open p export (a as b; c as d)\n\
+     def f : ⊤ := b end\n\
+     end\n" [ "a"; "b"; "c"; "d" ];
+  [%expect {|
+    line 3 a: R#P.a
+    line 3 c: R#P.c
+    line 4 b: U#b
+    |}]
+
+let%expect_test "mctt-doc: a renamed item of an open of a field path links member by member" =
+  (* [l.inner] is a term too: [inner] links to [L]'s field, [a] and [c]
+     to [P]'s. *)
+  doc_links ~units:[ doc_records ]
+    "import R\n\
+     module U (l : R.L) where\n\
+     open l.inner use (a as b; c as d)\n\
+     open l.inner export (a as e)\n\
+     def f : ⊤ := b end\n\
+     end\n" [ "inner"; "a"; "c" ];
+  [%expect {|
+    line 3 inner: R#L.inner
+    line 3 a: R#P.a
+    line 3 c: R#P.c
+    line 4 inner: R#L.inner
+    line 4 a: R#P.a
+    |}]
+
+let%expect_test "mctt-doc: a renamed item of an open of a term in a local module links" =
+  doc_links ~units:[ doc_records ]
+    "import R\n\
+     module U where\n\
+     def f (p : R.P) (l : R.L) : ⊤ :=\n\
+     \  let module X where open p use (a as b) open l.inner use (c as d) def g : ⊤ := b end end in X.g end end\n\
+     end\n" [ "inner"; "a"; "b"; "c" ];
+  [%expect {|
+    line 4 a: R#P.a
+    line 4 inner: R#L.inner
+    line 4 c: R#P.c
+    line 4 b: U#l12
+    |}]
+
 let%expect_test "mctt-doc: a selection from a term the checker does not file does not link" =
   (* An import that declares nothing is not filed: the [ty] in its
      arguments is matched with nothing the checker found, so it has a note
