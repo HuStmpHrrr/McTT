@@ -1,0 +1,70 @@
+(* The product of two monoids [M] and [N]: pairs of
+   [Prelude›Data›Prod], combined componentwise, with the pair of the
+   neutral elements as neutral element ([product]).  A law holds of pairs
+   when it holds of both components, by [pairCong]; eta for records makes
+   a pair [p] the pair of its projections, so the right-hand sides need
+   no rewriting.  The projections are homomorphisms ([first], [second]). *)
+import Prelude›Algebra›Monoid
+module Prelude›Algebra›Instances›Product (u : Level)
+    (M : Prelude›Algebra›Monoid.Monoid u) (N : Prelude›Algebra›Monoid.Monoid u)
+    where
+
+import Prelude›Logic›Leibniz u use (Id; idRefl; idCongTwo)
+import Prelude›Data›Prod use (Prod; pair)
+import Prelude›Algebra›Magma u use (Magma)
+import Prelude›Algebra›Semigroup u use (Semigroup)
+import Prelude›Algebra›Monoid u use (Monoid)
+import Prelude›Algebra›Monoid›Hom u use (Hom)
+
+private record P ≔ Prod u M.carrier N.carrier
+
+private def mk (a : M.carrier) (b : N.carrier) : P ≔
+  pair u M.carrier N.carrier a b
+end
+
+(* Pairs of equal components are equal. *)
+private def pairCong (a : M.carrier) (c : M.carrier) (b : N.carrier)
+    (d : N.carrier) (hac : Id M.carrier a c) (hbd : Id N.carrier b d) :
+    Id P (mk a b) (mk c d) ≔
+  idCongTwo M.carrier N.carrier P mk a c b d hac hbd
+end
+
+def op (p : P) (q : P) : P ≔ mk (M.op p.fst q.fst) (N.op p.snd q.snd) end
+
+def product : Monoid ≔
+  record Monoid where
+    semigroup ≔
+      record Semigroup where
+        magma ≔ record Magma where carrier ≔ P; op ≔ op end;
+        assoc ≔ λ (p : P) (q : P) (r : P) →
+          pairCong (M.op (M.op p.fst q.fst) r.fst) (M.op p.fst (M.op q.fst r.fst))
+            (N.op (N.op p.snd q.snd) r.snd) (N.op p.snd (N.op q.snd r.snd))
+            (M.assoc p.fst q.fst r.fst) (N.assoc p.snd q.snd r.snd)
+      end;
+    e ≔ mk M.e N.e;
+    leftId ≔ λ (p : P) →
+      pairCong (M.op M.e p.fst) p.fst (N.op N.e p.snd) p.snd
+        (M.leftId p.fst) (N.leftId p.snd);
+    rightId ≔ λ (p : P) →
+      pairCong (M.op p.fst M.e) p.fst (N.op p.snd N.e) p.snd
+        (M.rightId p.fst) (N.rightId p.snd)
+  end
+end
+
+def first : Hom product M ≔
+  record Hom product M where
+    map ≔ λ (p : P) → p.fst;
+    mapOp ≔ λ (p : P) (q : P) → idRefl M.carrier (M.op p.fst q.fst);
+    mapE ≔ idRefl M.carrier M.e
+  end
+end
+
+def second : Hom product N ≔
+  record Hom product N where
+    map ≔ λ (p : P) → p.snd;
+    mapOp ≔ λ (p : P) (q : P) → idRefl N.carrier (N.op p.snd q.snd);
+    mapE ≔ idRefl N.carrier N.e
+  end
+end
+
+end

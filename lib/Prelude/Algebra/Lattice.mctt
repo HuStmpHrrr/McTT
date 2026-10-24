@@ -1,0 +1,57 @@
+(* Lattices: a semilattice [meet] and a second operation [join] on its
+   carrier, associative and commutative, tied to [meet] by the two
+   absorption laws.
+
+   A lattice has one carrier, but a [join] field of type [Semilattice]
+   would have a carrier of its own, which no field type can require to be
+   [meet]'s.  So [join] is an operation on [meet.carrier], with its laws as
+   fields, and its semilattice is built in the with-area, as
+   [joinSemilattice].  The idempotence of [join] is not a field: it
+   follows from absorption, as [joinIdem]. *)
+module Prelude›Algebra›Lattice (u : Level) where
+
+import Prelude›Logic›Leibniz u use (Id; idSym; idTrans; idCong)
+import Prelude›Algebra›Magma u use (Magma)
+import Prelude›Algebra›Semigroup u use (Semigroup)
+import Prelude›Algebra›Semilattice u use (Semilattice)
+
+record Lattice : Type@{succl u} where
+  meet : Semilattice;
+  join : ∀ (x : meet.carrier) (y : meet.carrier) → meet.carrier;
+  joinAssoc : ∀ (x : meet.carrier) (y : meet.carrier) (z : meet.carrier) →
+    Id meet.carrier (join (join x y) z) (join x (join y z));
+  joinComm : ∀ (x : meet.carrier) (y : meet.carrier) →
+    Id meet.carrier (join x y) (join y x);
+  absorbMeet : ∀ (x : meet.carrier) (y : meet.carrier) →
+    Id meet.carrier (meet.op x (join x y)) x;
+  absorbJoin : ∀ (x : meet.carrier) (y : meet.carrier) →
+    Id meet.carrier (join x (meet.op x y)) x
+with
+  def carrier : Type@{u} ≔ meet.carrier end
+
+  (* [join x x] is [join x (meet x (join x x))] by [absorbMeet], which is
+     [x] by [absorbJoin]. *)
+  def joinIdem : ∀ (x : carrier) → Id carrier (join x x) x ≔
+    λ (x : carrier) →
+      idTrans carrier (join x x) (join x (meet.op x (join x x))) x
+        (idCong carrier carrier (λ (y : carrier) → join x y)
+           x (meet.op x (join x x))
+           (idSym carrier (meet.op x (join x x)) x (absorbMeet x x)))
+        (absorbJoin x (join x x))
+  end
+
+  def joinSemilattice : Semilattice ≔
+    record Semilattice where
+      semigroup ≔
+        record Semigroup where
+          magma ≔ record Magma where carrier ≔ carrier; op ≔ join end;
+          assoc ≔ joinAssoc
+        end;
+      comm ≔ joinComm;
+      idem ≔ joinIdem
+    end
+  end
+end
+end
+
+end

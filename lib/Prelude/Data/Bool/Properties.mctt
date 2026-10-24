@@ -2,7 +2,8 @@
    [Prelude›Logic›Leibniz] at [Bool]: negation is an injective involution,
    [and] and [or] are commutative, associative and idempotent monoids that
    distribute over each other and absorb each other, de Morgan's laws, the
-   conditional, [xor], and the correctness of [eqb].
+   conditional, the laws of [xor] (with [and], those of a ring), and the
+   correctness of [eqb].
 
    Each law is proved by cases.  Since every connective computes on its
    first argument, a law needs cases on that argument only, and on a second
@@ -276,6 +277,45 @@ theorem xorNotEqb : ∀ (a : Bool) (b : Bool) →
            | tt ⇒ idRefl Bool tt
            | ff ⇒ idRefl Bool ff
            end
+    end
+end
+
+(* By cases on [a], then on [b] after [tt], then on [c] after [tt, tt]. *)
+theorem xorAssoc : ∀ (a : Bool) (b : Bool) (c : Bool) →
+    Id Bool (xor (xor a b) c) (xor a (xor b c)) ≔
+  λ (a : Bool) (b : Bool) (c : Bool) →
+    elim a at x → Id Bool (xor (xor x b) c) (xor x (xor b c))
+    | tt ⇒ elim b at y → Id Bool (xor (not y) c) (not (xor y c))
+           | tt ⇒ elim c at z → Id Bool z (not (not z))
+                  | tt ⇒ idRefl Bool tt
+                  | ff ⇒ idRefl Bool ff
+                  end
+           | ff ⇒ idRefl Bool (not c)
+           end
+    | ff ⇒ idRefl Bool (xor b c)
+    end
+end
+
+(* Conjunction distributes over exclusive or, on both sides: with [xor]
+   as addition and [and] as multiplication, the booleans form a ring. *)
+theorem andXorDistribLeft : ∀ (a : Bool) (b : Bool) (c : Bool) →
+    Id Bool (and a (xor b c)) (xor (and a b) (and a c)) ≔
+  λ (a : Bool) (b : Bool) (c : Bool) →
+    elim a at x → Id Bool (and x (xor b c)) (xor (and x b) (and x c))
+    | tt ⇒ idRefl Bool (xor b c)
+    | ff ⇒ idRefl Bool ff
+    end
+end
+
+theorem andXorDistribRight : ∀ (a : Bool) (b : Bool) (c : Bool) →
+    Id Bool (and (xor a b) c) (xor (and a c) (and b c)) ≔
+  λ (a : Bool) (b : Bool) (c : Bool) →
+    elim a at x → Id Bool (and (xor x b) c) (xor (and x c) (and b c))
+    | tt ⇒ elim b at y → Id Bool (and (not y) c) (xor c (and y c))
+           | tt ⇒ idSym Bool (xor c c) ff (xorSelf c)
+           | ff ⇒ idSym Bool (xor c ff) c (xorIdentityRight c)
+           end
+    | ff ⇒ idRefl Bool (and b c)
     end
 end
 

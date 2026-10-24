@@ -1,0 +1,29 @@
+(* Laws of an abelian group [A]: the inverse of a product is the product
+   of the inverses, in either order, and the inverse is a homomorphism
+   from [A] to itself.  The laws of every group are
+   [Prelude›Algebra›Group›Properties] at [A.group]. *)
+import Prelude›Algebra›AbelianGroup
+module Prelude›Algebra›AbelianGroup›Properties (u : Level)
+    (A : Prelude›Algebra›AbelianGroup.AbelianGroup u) where
+
+import Prelude›Logic›Leibniz u use (Id; idTrans)
+import Prelude›Algebra›Group›Properties u A.group as GP
+import Prelude›Algebra›Group›Hom u use (Hom)
+
+private def C : Type@{u} ≔ A.carrier end
+
+(* [inv (a b) = inv b inv a = inv a inv b]. *)
+theorem invOp : ∀ (a : C) (b : C) →
+    Id C (A.inv (A.op a b)) (A.op (A.inv a) (A.inv b)) ≔
+  λ (a : C) (b : C) →
+    idTrans C (A.inv (A.op a b)) (A.op (A.inv b) (A.inv a))
+      (A.op (A.inv a) (A.inv b))
+      (GP.Inverse.invOp a b) (A.comm (A.inv b) (A.inv a))
+end
+
+(* The inverse, as a homomorphism from [A] to itself. *)
+def invHom : Hom A.group A.group ≔
+  record Hom A.group A.group where map ≔ A.inv; mapOp ≔ invOp end
+end
+
+end

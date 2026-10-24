@@ -1,0 +1,137 @@
+(* The numbers as instances of the bundled structures of
+   [Prelude›Algebra]: a commutative monoid under addition ([additive]) and
+   under multiplication ([multiplicative]), the semiring of both
+   ([semiring]), and the lattice of [min] and [max] ([minMax]).
+
+   The laws of [Prelude›Arith] are stated with the equality of numbers
+   [Eq], which computes; [eqToId] turns each into the Leibniz equality the
+   structures ask for, through the private [lawOne], [lawTwo] and
+   [lawThree], one per number of variables. *)
+module Prelude›Algebra›Instances›Nat where
+
+import Prelude›Arith›Equality use (Eq)
+import Prelude›Logic›Leibniz 0l use (Id; idRefl; eqToId)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusIdentityRight)
+open Prelude›Arith›Plus.Algebra use (plusAssoc; plusComm)
+import Prelude›Arith›Mult use (mult)
+open Prelude›Arith›Mult.Basic
+  use (multIdentityLeft; multIdentityRight; multZeroRight)
+open Prelude›Arith›Mult.Algebra
+  use (multAssoc; multComm; multDistribLeft; multDistribRight)
+import Prelude›Arith›MinMax use (min; max)
+open Prelude›Arith›MinMax.Laws use (minComm; minIdem; maxComm)
+import Prelude›Arith›Lattice.Algebra
+  use (minAssoc; maxAssoc; minMaxAbsorb; maxMinAbsorb)
+import Prelude›Algebra›Magma 0l use (Magma)
+import Prelude›Algebra›Semigroup 0l use (Semigroup)
+import Prelude›Algebra›Monoid 0l use (Monoid)
+import Prelude›Algebra›CommutativeMonoid 0l use (CommutativeMonoid)
+import Prelude›Algebra›Semiring 0l use (Semiring)
+import Prelude›Algebra›Semilattice 0l use (Semilattice)
+import Prelude›Algebra›Lattice 0l use (Lattice)
+
+(* A law between numbers, as a Leibniz equality, in one, two or three
+   variables. *)
+private def lawOne (f : ∀ (a : ℕ) → ℕ) (g : ∀ (a : ℕ) → ℕ)
+    (h : ∀ (a : ℕ) → Eq (f a) (g a)) : ∀ (a : ℕ) → Id ℕ (f a) (g a) ≔
+  λ (a : ℕ) → eqToId (f a) (g a) (h a)
+end
+
+private def lawTwo (f : ∀ (a : ℕ) (b : ℕ) → ℕ) (g : ∀ (a : ℕ) (b : ℕ) → ℕ)
+    (h : ∀ (a : ℕ) (b : ℕ) → Eq (f a b) (g a b)) :
+    ∀ (a : ℕ) (b : ℕ) → Id ℕ (f a b) (g a b) ≔
+  λ (a : ℕ) (b : ℕ) → eqToId (f a b) (g a b) (h a b)
+end
+
+private def lawThree (f : ∀ (a : ℕ) (b : ℕ) (c : ℕ) → ℕ)
+    (g : ∀ (a : ℕ) (b : ℕ) (c : ℕ) → ℕ)
+    (h : ∀ (a : ℕ) (b : ℕ) (c : ℕ) → Eq (f a b c) (g a b c)) :
+    ∀ (a : ℕ) (b : ℕ) (c : ℕ) → Id ℕ (f a b c) (g a b c) ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) → eqToId (f a b c) (g a b c) (h a b c)
+end
+
+(* The semigroup of an associative operation on numbers. *)
+private def semigroupOf (op : ∀ (a : ℕ) (b : ℕ) → ℕ)
+    (assoc : ∀ (a : ℕ) (b : ℕ) (c : ℕ) → Eq (op (op a b) c) (op a (op b c))) :
+    Semigroup ≔
+  record Semigroup where
+    magma ≔ record Magma where carrier ≔ ℕ; op ≔ op end;
+    assoc ≔ lawThree (λ (a : ℕ) (b : ℕ) (c : ℕ) → op (op a b) c)
+              (λ (a : ℕ) (b : ℕ) (c : ℕ) → op a (op b c)) assoc
+  end
+end
+
+(* Numbers under addition, with [0]; [plus 0 n] is [n] by computation. *)
+def additive : CommutativeMonoid ≔
+  record CommutativeMonoid where
+    monoid ≔
+      record Monoid where
+        semigroup ≔ semigroupOf plus plusAssoc;
+        e ≔ 0;
+        leftId ≔ λ (a : ℕ) → idRefl ℕ a;
+        rightId ≔ lawOne (λ (a : ℕ) → plus a 0) (λ (a : ℕ) → a) plusIdentityRight
+      end;
+    comm ≔ lawTwo plus (λ (a : ℕ) (b : ℕ) → plus b a) plusComm
+  end
+end
+
+(* Numbers under multiplication, with [1]. *)
+def multiplicative : CommutativeMonoid ≔
+  record CommutativeMonoid where
+    monoid ≔
+      record Monoid where
+        semigroup ≔ semigroupOf mult multAssoc;
+        e ≔ 1;
+        leftId ≔ lawOne (λ (a : ℕ) → mult 1 a) (λ (a : ℕ) → a) multIdentityLeft;
+        rightId ≔ lawOne (λ (a : ℕ) → mult a 1) (λ (a : ℕ) → a) multIdentityRight
+      end;
+    comm ≔ lawTwo mult (λ (a : ℕ) (b : ℕ) → mult b a) multComm
+  end
+end
+
+(* The semiring of addition and multiplication; [mult 0 n] is [0] by
+   computation. *)
+def semiring : Semiring ≔
+  record Semiring where
+    additive ≔ additive;
+    mul ≔ mult;
+    one ≔ 1;
+    mulAssoc ≔ multiplicative.assoc;
+    mulLeftId ≔ multiplicative.leftId;
+    mulRightId ≔ multiplicative.rightId;
+    distribLeft ≔
+      lawThree (λ (a : ℕ) (b : ℕ) (c : ℕ) → mult a (plus b c))
+        (λ (a : ℕ) (b : ℕ) (c : ℕ) → plus (mult a b) (mult a c)) multDistribLeft;
+    distribRight ≔
+      lawThree (λ (a : ℕ) (b : ℕ) (c : ℕ) → mult (plus a b) c)
+        (λ (a : ℕ) (b : ℕ) (c : ℕ) → plus (mult a c) (mult b c)) multDistribRight;
+    zeroLeft ≔ λ (a : ℕ) → idRefl ℕ 0;
+    zeroRight ≔ lawOne (λ (a : ℕ) → mult a 0) (λ (a : ℕ) → 0) multZeroRight
+  end
+end
+
+(* The lattice of [min] and [max]: its order is the order of numbers. *)
+def minMax : Lattice ≔
+  record Lattice where
+    meet ≔
+      record Semilattice where
+        semigroup ≔ semigroupOf min minAssoc;
+        comm ≔ lawTwo min (λ (a : ℕ) (b : ℕ) → min b a) minComm;
+        idem ≔ lawOne (λ (a : ℕ) → min a a) (λ (a : ℕ) → a) minIdem
+      end;
+    join ≔ max;
+    joinAssoc ≔
+      lawThree (λ (a : ℕ) (b : ℕ) (c : ℕ) → max (max a b) c)
+        (λ (a : ℕ) (b : ℕ) (c : ℕ) → max a (max b c)) maxAssoc;
+    joinComm ≔ lawTwo max (λ (a : ℕ) (b : ℕ) → max b a) maxComm;
+    absorbMeet ≔
+      lawTwo (λ (a : ℕ) (b : ℕ) → min a (max a b)) (λ (a : ℕ) (b : ℕ) → a)
+        minMaxAbsorb;
+    absorbJoin ≔
+      lawTwo (λ (a : ℕ) (b : ℕ) → max a (min a b)) (λ (a : ℕ) (b : ℕ) → a)
+        maxMinAbsorb
+  end
+end
+
+end

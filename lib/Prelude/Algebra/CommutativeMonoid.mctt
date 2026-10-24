@@ -1,0 +1,26 @@
+(* Commutative monoids: a monoid whose operation is commutative.  The
+   record's members [carrier], [op], [e] and the monoid laws are those of
+   its monoid. *)
+module Prelude›Algebra›CommutativeMonoid (u : Level) where
+
+import Prelude›Logic›Leibniz u use (Id)
+import Prelude›Algebra›Monoid u use (Monoid)
+
+record CommutativeMonoid : Type@{succl u} where
+  monoid : Monoid;
+  comm : ∀ (x : monoid.carrier) (y : monoid.carrier) →
+    Id monoid.carrier (monoid.op x y) (monoid.op y x)
+with
+  def carrier : Type@{u} ≔ monoid.carrier end
+  def op (x : carrier) (y : carrier) : carrier ≔ monoid.op x y end
+  def e : carrier ≔ monoid.e end
+  def assoc : ∀ (x : carrier) (y : carrier) (z : carrier) →
+      Id carrier (op (op x y) z) (op x (op y z)) ≔
+    monoid.assoc
+  end
+  def leftId : ∀ (x : carrier) → Id carrier (op e x) x ≔ monoid.leftId end
+  def rightId : ∀ (x : carrier) → Id carrier (op x e) x ≔ monoid.rightId end
+end
+end
+
+end

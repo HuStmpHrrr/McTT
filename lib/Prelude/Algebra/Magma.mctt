@@ -1,0 +1,16 @@
+(* Magmas: a carrier [carrier] in [Type@{u}] with a binary operation
+   [op].  A magma is the bottom layer of the bundled algebraic hierarchy of
+   [Prelude›Algebra]: each structure above it is a record with one field
+   holding the structure below and further fields for its operations and
+   laws.  The laws are Leibniz equalities, [Prelude›Logic›Leibniz].
+
+   The record holds a type of [Type@{u}], so it lives in
+   [Type@{succl u}]. *)
+module Prelude›Algebra›Magma (u : Level) where
+
+record Magma : Type@{succl u} where
+  carrier : Type@{u};
+  op : ∀ (x : carrier) (y : carrier) → carrier
+end
+
+end

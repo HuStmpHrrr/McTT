@@ -1,0 +1,100 @@
+(* Laws of a monoid [M], derived from the fields of
+   [Prelude›Algebra›Monoid]: the neutral element is unique, and the powers
+   [pow x n], [x] combined with itself [n] times, satisfy the laws of
+   exponents.  The unit takes the monoid as a parameter:
+   [import Prelude›Algebra›Monoid›Properties 0l natPlus as P] gives the
+   laws of numbers under addition. *)
+import Prelude›Algebra›Monoid
+module Prelude›Algebra›Monoid›Properties (u : Level)
+    (M : Prelude›Algebra›Monoid.Monoid u) where
+
+import Prelude›Builtin›Nat use (succ)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Arith›Mult use (mult)
+import Prelude›Logic›Leibniz u use (Id; idRefl; idSym; idTrans; idCong)
+
+private def C : Type@{u} ≔ M.carrier end
+
+(* [pow x n] is [M.op x (M.op x … M.e)], with [n] factors [x]. *)
+def pow (x : C) (n : ℕ) : C ≔
+  elim n at k → C
+  | zero ⇒ M.e
+  | succ p, r ⇒ M.op x r
+  end
+end
+
+(* The neutral element is unique. *)
+module Neutral where
+
+(* An element neutral on the left is [M.e]: both are [M.op d M.e]. *)
+theorem leftIdUnique : ∀ (d : C) (h : ∀ (x : C) → Id C (M.op d x) x) →
+    Id C d M.e ≔
+  λ (d : C) (h : ∀ (x : C) → Id C (M.op d x) x) →
+    idTrans C d (M.op d M.e) M.e (idSym C (M.op d M.e) d (M.rightId d)) (h M.e)
+end
+
+(* An element neutral on the right is [M.e]: both are [M.op M.e d]. *)
+theorem rightIdUnique : ∀ (d : C) (h : ∀ (x : C) → Id C (M.op x d) x) →
+    Id C d M.e ≔
+  λ (d : C) (h : ∀ (x : C) → Id C (M.op x d) x) →
+    idTrans C d (M.op M.e d) M.e (idSym C (M.op M.e d) d (M.leftId d)) (h M.e)
+end
+
+end
+
+(* Laws of powers. *)
+module Power where
+
+theorem powOne : ∀ (x : C) → Id C (pow x 1) x ≔
+  λ (x : C) → M.rightId x
+end
+
+(* The last factor may be split off on the right as well as on the left. *)
+theorem powSuccRight : ∀ (x : C) (n : ℕ) →
+    Id C (pow x (succ n)) (M.op (pow x n) x) ≔
+  λ (x : C) (n : ℕ) →
+    elim n at k → Id C (pow x (succ k)) (M.op (pow x k) x)
+    | zero ⇒
+        idTrans C (M.op x M.e) x (M.op M.e x) (M.rightId x)
+          (idSym C (M.op M.e x) x (M.leftId x))
+    | succ p, ih ⇒
+        idTrans C (M.op x (pow x (succ p))) (M.op x (M.op (pow x p) x))
+          (M.op (M.op x (pow x p)) x)
+          (idCong C C (M.op x) (pow x (succ p)) (M.op (pow x p) x) ih)
+          (idSym C (M.op (M.op x (pow x p)) x) (M.op x (M.op (pow x p) x))
+             (M.assoc x (pow x p) x))
+    end
+end
+
+(* A power of a sum of exponents is the product of the powers. *)
+theorem powPlus : ∀ (x : C) (m : ℕ) (n : ℕ) →
+    Id C (pow x (plus m n)) (M.op (pow x m) (pow x n)) ≔
+  λ (x : C) (m : ℕ) (n : ℕ) →
+    elim m at k → Id C (pow x (plus k n)) (M.op (pow x k) (pow x n))
+    | zero ⇒ idSym C (M.op M.e (pow x n)) (pow x n) (M.leftId (pow x n))
+    | succ p, ih ⇒
+        idTrans C (M.op x (pow x (plus p n))) (M.op x (M.op (pow x p) (pow x n)))
+          (M.op (M.op x (pow x p)) (pow x n))
+          (idCong C C (M.op x) (pow x (plus p n)) (M.op (pow x p) (pow x n)) ih)
+          (idSym C (M.op (M.op x (pow x p)) (pow x n))
+             (M.op x (M.op (pow x p) (pow x n))) (M.assoc x (pow x p) (pow x n)))
+    end
+end
+
+(* A power of a product of exponents is a power of a power. *)
+theorem powMult : ∀ (x : C) (m : ℕ) (n : ℕ) →
+    Id C (pow x (mult m n)) (pow (pow x n) m) ≔
+  λ (x : C) (m : ℕ) (n : ℕ) →
+    elim m at k → Id C (pow x (mult k n)) (pow (pow x n) k)
+    | zero ⇒ idRefl C M.e
+    | succ p, ih ⇒
+        idTrans C (pow x (plus n (mult p n))) (M.op (pow x n) (pow x (mult p n)))
+          (M.op (pow x n) (pow (pow x n) p))
+          (powPlus x n (mult p n))
+          (idCong C C (M.op (pow x n)) (pow x (mult p n)) (pow (pow x n) p) ih)
+    end
+end
+
+end
+
+end

@@ -3567,7 +3567,7 @@ let%expect_test "mctt-doc: every eval of lib has one output box, with mctt's out
   List.iter (fun b -> if String.starts_with ~prefix:"Evaluate Adding.five " b then print_endline b)
     (doc_boxes (Doc.render_unit lib kinds tut));
   [%expect {|
-    529 evals, 529 boxes, 529 equal to mctt's output
+    543 evals, 543 boxes, 543 equal to mctt's output
     Evaluate Adding.five --> 5 : ℕ
     |}]
 
@@ -3604,11 +3604,11 @@ let%expect_test "mctt-doc: links" =
   (* A local binder. *)
   show [ "Tutorial" ] "x" [ 1; 2 ];
   [%expect {|
-    pow line 39: Prelude›Algebra›Monoid#pow
+    pow line 39: Prelude›Algebra›Setoid›Monoid#pow
     pow line 39: Prelude›Arith›Pow#pow
-    Additive line 22: Prelude›Algebra›Instances#Additive
-    pow line 22: Prelude›Algebra›Monoid#pow
-    powPlus line 76: Prelude›Algebra›Monoid#Power.powPlus
+    Additive line 22: Prelude›Algebra›Setoid›Instances#Additive
+    pow line 22: Prelude›Algebra›Setoid›Monoid#pow
+    powPlus line 76: Prelude›Algebra›Setoid›Monoid#Power.powPlus
     plus line 211: Prelude›Arith›Plus#plus
     plus line 212: Prelude›Arith›Plus#plus
     add line 211: declares #Adding.add
@@ -3644,7 +3644,7 @@ let%expect_test "mctt-doc: ℕ links to the type bound as the natural numbers" =
   let page = Doc.render_unit lib' (Doc.anchor_kinds lib') u in
   Printf.printf "%d links, %d without a link\n" (doc_count "ℕ</a>" page) (doc_count span page);
   [%expect {|
-    2722 links to Nat, 0 other links, 0 without a link
+    2860 links to Nat, 0 other links, 0 without a link
     NoNat: not checked
     0 links, 2 without a link
     |}]
@@ -5389,3 +5389,51 @@ let%expect_test "an inductive type of a parameterized module, by its bare name i
      end \
      eval P.n" in
   [%expect {| Evaluate P.n --> λ (A1 : Type@0) → P.N.z A1 : ∀ (A1 : Type@0) → P.N A1 |}]
+
+let%expect_test "lib/Hierarchy.mctt" =
+  let _ = main_of_lib "Hierarchy.mctt" in
+  [%expect {|
+    Evaluate concat additive.monoid oneTwoThree --> 6 : ℕ
+    Evaluate concat multiplicative.monoid oneTwoThree --> 6 : ℕ
+    Evaluate concat conjunction.monoid bools --> Prelude›Data›Bool.Bool.ff
+      : Prelude›Data›Bool.Bool
+    Evaluate concat disjunction.monoid bools --> Prelude›Data›Bool.Bool.tt
+      : Prelude›Data›Bool.Bool
+    Evaluate concat freeMonoid
+               (List.cons 0l NatList oneTwoThree
+                 (List.cons 0l NatList oneTwoThree (List.nil 0l NatList)))
+      --> Prelude›Data›List.List.cons 0l ℕ 1
+            (Prelude›Data›List.List.cons 0l ℕ 2
+              (Prelude›Data›List.List.cons 0l ℕ 3
+                (Prelude›Data›List.List.cons 0l ℕ 1
+                  (Prelude›Data›List.List.cons 0l ℕ 2
+                    (Prelude›Data›List.List.cons 0l ℕ 3
+                      (Prelude›Data›List.List.nil 0l ℕ))))))
+      : Prelude›Data›List.List 0l ℕ
+    Evaluate concat endo
+               (List.cons 0l Endo succ
+                 (List.cons 0l Endo succ
+                   (List.cons 0l Endo succ (List.nil 0l Endo))))
+               4 --> 7 : ℕ
+    Evaluate concat Both.product
+               (List.cons 0l (Prod 0l ℕ ℕ) (pair 0l ℕ ℕ 2 3)
+                 (List.cons 0l (Prod 0l ℕ ℕ) (pair 0l ℕ ℕ 4 5)
+                   (List.nil 0l (Prod 0l ℕ ℕ))))
+      --> record Prelude›Data›Prod.Prod 0l ℕ ℕ where fst ≔ 6; snd ≔ 15 end
+      : Prelude›Data›Prod.Prod 0l ℕ ℕ
+    Evaluate Times.pow 2 5 --> 32 : ℕ
+    Evaluate Integer.additive.inv (add (pos 2) (negsuc 4))
+      --> Prelude›Data›Integer.Int.pos 3 : Prelude›Data›Integer.Int
+    Evaluate minMax.join 2 5 --> 5 : ℕ
+    Evaluate ring.add tt tt --> Prelude›Data›Bool.Bool.ff
+      : Prelude›Data›Bool.Bool
+    Evaluate ring.mul (ring.neg ring.one) tt --> Prelude›Data›Bool.Bool.tt
+      : Prelude›Data›Bool.Bool
+    Evaluate Pairs.pow (pair 0l ℕ ℕ 2 3) 3
+      --> record Prelude›Data›Prod.Prod 0l ℕ ℕ where fst ≔ 6; snd ≔ 27 end
+      : Prelude›Data›Prod.Prod 0l ℕ ℕ
+    Evaluate (MH.compose Both.product additive.monoid additive.monoid
+                (MH.identity additive.monoid)
+               Both.first).map
+               (pair 0l ℕ ℕ 7 8) --> 7 : ℕ
+    |}]

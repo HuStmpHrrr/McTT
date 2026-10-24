@@ -4,7 +4,7 @@
    [Same x y], when they stand for the same difference: [a + d = c + b] for
    [(a, b)] and [(c, d)].  Addition is componentwise and negation swaps the
    pair.  With [ofNat 0] as zero they form a commutative group, [Additive], an
-   instance of [Prelude›Algebra›Group]; its powers are the multiples of an
+   instance of [Prelude›Algebra›Setoid›Group]; its powers are the multiples of an
    integer.
 
    [Same] computes, so a closed instance is [⊤] or [⊥].  [magnitude] and
@@ -20,7 +20,7 @@ open Prelude›Arith›Plus.Cancel use (plusCancelRight)
 import Prelude›Arith›Sub use (monus)
 import Prelude›Arith›Order use (leb)
 import Prelude›Data›Bool use (Bool; not)
-import Prelude›Algebra›Group as Group
+import Prelude›Algebra›Setoid›Group as Group
 
 (* A pair of numbers, standing for their difference [pos - neg]. *)
 record Int : Type@0 where

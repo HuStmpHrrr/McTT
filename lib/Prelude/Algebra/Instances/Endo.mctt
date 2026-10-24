@@ -1,0 +1,33 @@
+(* The functions from [A] to itself under composition, with the identity
+   as the neutral element: the endomorphism monoid of [A], [endo].  Every
+   law holds by computation and eta for functions, so each is [idRefl]:
+   [compose f id] is [λ x → f x], which is [f]. *)
+module Prelude›Algebra›Instances›Endo (u : Level) (A : Type@{u}) where
+
+import Prelude›Logic›Leibniz u use (idRefl)
+import Prelude›Algebra›Magma u use (Magma)
+import Prelude›Algebra›Semigroup u use (Semigroup)
+import Prelude›Algebra›Monoid u use (Monoid)
+
+def Endo : Type@{u} ≔ ∀ (a : A) → A end
+
+(* [compose f g] applies [g], then [f]. *)
+def compose (f : Endo) (g : Endo) : Endo ≔ λ (a : A) → f (g a) end
+
+def identity : Endo ≔ λ (a : A) → a end
+
+def endo : Monoid ≔
+  record Monoid where
+    semigroup ≔
+      record Semigroup where
+        magma ≔ record Magma where carrier ≔ Endo; op ≔ compose end;
+        assoc ≔ λ (f : Endo) (g : Endo) (h : Endo) →
+                  idRefl Endo (compose f (compose g h))
+      end;
+    e ≔ identity;
+    leftId ≔ λ (f : Endo) → idRefl Endo f;
+    rightId ≔ λ (f : Endo) → idRefl Endo f
+  end
+end
+
+end

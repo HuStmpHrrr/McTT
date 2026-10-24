@@ -1,0 +1,116 @@
+(* The booleans as instances of the bundled structures of
+   [Prelude›Algebra]: commutative monoids under [and] with [tt]
+   ([conjunction]) and under [or] with [ff] ([disjunction]), the lattice of
+   [and] and [or] ([andOr]), and the boolean ring of [xor] and [and]
+   ([ring]), in which every element is its own negative.  The laws are
+   those of [Prelude›Data›Bool›Properties]; [and tt b] is [b] and
+   [or ff b] is [b] by computation. *)
+module Prelude›Algebra›Instances›Bool where
+
+import Prelude›Logic›Leibniz 0l use (Id; idRefl)
+import Prelude›Data›Bool use (Bool; tt; ff; and; or; xor)
+import Prelude›Data›Bool›Properties
+open Prelude›Data›Bool›Properties.Conj
+  use (andIdentityRight; andZeroRight; andComm; andAssoc; andIdem)
+open Prelude›Data›Bool›Properties.Disj
+  use (orIdentityRight; orComm; orAssoc; orIdem)
+open Prelude›Data›Bool›Properties.DeMorgan use (andAbsorbsOr; orAbsorbsAnd)
+open Prelude›Data›Bool›Properties.Xor
+  use (xorIdentityRight; xorSelf; xorComm; xorAssoc; andXorDistribLeft;
+       andXorDistribRight)
+import Prelude›Algebra›Magma 0l use (Magma)
+import Prelude›Algebra›Semigroup 0l use (Semigroup)
+import Prelude›Algebra›Monoid 0l use (Monoid)
+import Prelude›Algebra›CommutativeMonoid 0l use (CommutativeMonoid)
+import Prelude›Algebra›Semilattice 0l use (Semilattice)
+import Prelude›Algebra›Lattice 0l use (Lattice)
+import Prelude›Algebra›Semiring 0l use (Semiring)
+import Prelude›Algebra›Ring 0l use (Ring)
+
+(* The semigroup of an associative operation on booleans. *)
+private def semigroupOf (op : ∀ (a : Bool) (b : Bool) → Bool)
+    (assoc : ∀ (a : Bool) (b : Bool) (c : Bool) →
+               Id Bool (op (op a b) c) (op a (op b c))) : Semigroup ≔
+  record Semigroup where
+    magma ≔ record Magma where carrier ≔ Bool; op ≔ op end;
+    assoc ≔ assoc
+  end
+end
+
+def conjunction : CommutativeMonoid ≔
+  record CommutativeMonoid where
+    monoid ≔
+      record Monoid where
+        semigroup ≔ semigroupOf and andAssoc;
+        e ≔ tt;
+        leftId ≔ λ (b : Bool) → idRefl Bool b;
+        rightId ≔ andIdentityRight
+      end;
+    comm ≔ andComm
+  end
+end
+
+def disjunction : CommutativeMonoid ≔
+  record CommutativeMonoid where
+    monoid ≔
+      record Monoid where
+        semigroup ≔ semigroupOf or orAssoc;
+        e ≔ ff;
+        leftId ≔ λ (b : Bool) → idRefl Bool b;
+        rightId ≔ orIdentityRight
+      end;
+    comm ≔ orComm
+  end
+end
+
+(* The lattice of [and] and [or]: [Le a b], [and a b = a], is implication. *)
+def andOr : Lattice ≔
+  record Lattice where
+    meet ≔
+      record Semilattice where
+        semigroup ≔ semigroupOf and andAssoc;
+        comm ≔ andComm;
+        idem ≔ andIdem
+      end;
+    join ≔ or;
+    joinAssoc ≔ orAssoc;
+    joinComm ≔ orComm;
+    absorbMeet ≔ andAbsorbsOr;
+    absorbJoin ≔ orAbsorbsAnd
+  end
+end
+
+(* The boolean ring: [xor] is the addition, with [ff] as zero, and [and]
+   the multiplication, with [tt] as one; [and ff b] is [ff] by
+   computation. *)
+def ring : Ring ≔
+  record Ring where
+    semiring ≔
+      record Semiring where
+        additive ≔
+          record CommutativeMonoid where
+            monoid ≔
+              record Monoid where
+                semigroup ≔ semigroupOf xor xorAssoc;
+                e ≔ ff;
+                leftId ≔ λ (b : Bool) → idRefl Bool b;
+                rightId ≔ xorIdentityRight
+              end;
+            comm ≔ xorComm
+          end;
+        mul ≔ and;
+        one ≔ tt;
+        mulAssoc ≔ andAssoc;
+        mulLeftId ≔ λ (b : Bool) → idRefl Bool b;
+        mulRightId ≔ andIdentityRight;
+        distribLeft ≔ andXorDistribLeft;
+        distribRight ≔ andXorDistribRight;
+        zeroLeft ≔ λ (b : Bool) → idRefl Bool ff;
+        zeroRight ≔ andZeroRight
+      end;
+    neg ≔ λ (b : Bool) → b;
+    negLeft ≔ xorSelf
+  end
+end
+
+end

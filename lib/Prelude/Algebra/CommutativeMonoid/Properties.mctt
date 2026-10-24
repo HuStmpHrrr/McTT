@@ -1,0 +1,37 @@
+(* Laws of a commutative monoid [M]: a factor may be moved past another,
+   and the middle factors of a product of products exchanged. *)
+import Prelude›Algebra›CommutativeMonoid
+module Prelude›Algebra›CommutativeMonoid›Properties (u : Level)
+    (M : Prelude›Algebra›CommutativeMonoid.CommutativeMonoid u) where
+
+import Prelude›Logic›Leibniz u use (Id; idSym; idTrans; idCong)
+
+private def C : Type@{u} ≔ M.carrier end
+
+(* [a (b c) = (a b) c = (b a) c = b (a c)]. *)
+theorem leftComm : ∀ (a : C) (b : C) (c : C) →
+    Id C (M.op a (M.op b c)) (M.op b (M.op a c)) ≔
+  λ (a : C) (b : C) (c : C) →
+    idTrans C (M.op a (M.op b c)) (M.op (M.op a b) c) (M.op b (M.op a c))
+      (idSym C (M.op (M.op a b) c) (M.op a (M.op b c)) (M.assoc a b c))
+      (idTrans C (M.op (M.op a b) c) (M.op (M.op b a) c) (M.op b (M.op a c))
+         (idCong C C (λ (y : C) → M.op y c) (M.op a b) (M.op b a) (M.comm a b))
+         (M.assoc b a c))
+end
+
+(* [(a b) (c d) = a (b (c d)) = a (c (b d)) = (a c) (b d)]. *)
+theorem swapMiddle : ∀ (a : C) (b : C) (c : C) (d : C) →
+    Id C (M.op (M.op a b) (M.op c d)) (M.op (M.op a c) (M.op b d)) ≔
+  λ (a : C) (b : C) (c : C) (d : C) →
+    idTrans C (M.op (M.op a b) (M.op c d)) (M.op a (M.op b (M.op c d)))
+      (M.op (M.op a c) (M.op b d))
+      (M.assoc a b (M.op c d))
+      (idTrans C (M.op a (M.op b (M.op c d))) (M.op a (M.op c (M.op b d)))
+         (M.op (M.op a c) (M.op b d))
+         (idCong C C (M.op a) (M.op b (M.op c d)) (M.op c (M.op b d))
+            (leftComm b c d))
+         (idSym C (M.op (M.op a c) (M.op b d)) (M.op a (M.op c (M.op b d)))
+            (M.assoc a c (M.op b d))))
+end
+
+end

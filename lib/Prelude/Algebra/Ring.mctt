@@ -1,0 +1,47 @@
+(* Rings: a semiring with an additive inverse [neg].  Only the left
+   inverse law is a field: the right one follows by commutativity of
+   [add], and [additiveGroup] is the abelian group of the addition.  That
+   [zero] absorbs on both sides is part of the semiring, though in a ring
+   it would follow from the other laws. *)
+module Prelude›Algebra›Ring (u : Level) where
+
+import Prelude›Logic›Leibniz u use (Id; idTrans)
+import Prelude›Algebra›Group u use (Group)
+import Prelude›Algebra›AbelianGroup u use (AbelianGroup)
+import Prelude›Algebra›Semiring u use (Semiring)
+
+record Ring : Type@{succl u} where
+  semiring : Semiring;
+  neg : ∀ (x : semiring.carrier) → semiring.carrier;
+  negLeft : ∀ (x : semiring.carrier) →
+    Id semiring.carrier (semiring.add (neg x) x) semiring.zero
+with
+  def carrier : Type@{u} ≔ semiring.carrier end
+  def add (x : carrier) (y : carrier) : carrier ≔ semiring.add x y end
+  def zero : carrier ≔ semiring.zero end
+  def mul (x : carrier) (y : carrier) : carrier ≔ semiring.mul x y end
+  def one : carrier ≔ semiring.one end
+
+  (* [x + (-x)] is [(-x) + x] by commutativity. *)
+  def negRight : ∀ (x : carrier) → Id carrier (add x (neg x)) zero ≔
+    λ (x : carrier) →
+      idTrans carrier (add x (neg x)) (add (neg x) x) zero
+        (semiring.additive.comm x (neg x)) (negLeft x)
+  end
+
+  def additiveGroup : AbelianGroup ≔
+    record AbelianGroup where
+      group ≔
+        record Group where
+          monoid ≔ semiring.additive.monoid;
+          inv ≔ neg;
+          leftInv ≔ negLeft;
+          rightInv ≔ negRight
+        end;
+      comm ≔ semiring.additive.comm
+    end
+  end
+end
+end
+
+end

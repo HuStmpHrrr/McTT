@@ -1,0 +1,77 @@
+(* Homomorphisms of groups: [Hom G H] is the record of a map from the
+   carrier of [G] to that of [H] that takes products to products.  Unlike
+   a homomorphism of monoids, it needs no field for the neutral element:
+   the local module [Laws G H f] derives that [f] takes [G.e] to [H.e]
+   ([mapE]) and inverses to inverses ([mapInv]), and gives the
+   homomorphism of the underlying monoids ([toMonoid]). *)
+module Prelude›Algebra›Group›Hom (u : Level) where
+
+import Prelude›Logic›Leibniz u use (Id; idRefl; idSym; idTrans; idCong)
+import Prelude›Algebra›Group u use (Group)
+import Prelude›Algebra›Monoid›Hom u as MonoidHom
+import Prelude›Algebra›Group›Properties
+
+record Hom (G : Group) (H : Group) : Type@{succl u} where
+  map : ∀ (x : G.carrier) → H.carrier;
+  mapOp : ∀ (x : G.carrier) (y : G.carrier) →
+    Id H.carrier (map (G.op x y)) (H.op (map x) (map y))
+end
+
+def identity (G : Group) : Hom G G ≔
+  record Hom G G where
+    map ≔ λ (x : G.carrier) → x;
+    mapOp ≔ λ (x : G.carrier) (y : G.carrier) → idRefl G.carrier (G.op x y)
+  end
+end
+
+(* Laws of a homomorphism [f] from [G] to [H]. *)
+module Laws (G : Group) (H : Group) (f : Hom G H) where
+
+open Prelude›Algebra›Group›Properties u H as PH
+
+(* [f.map G.e] times itself is [f.map (G.op G.e G.e)], that is
+   [f.map G.e], which is [f.map G.e] times [H.e]; cancel it on the
+   left. *)
+theorem mapE : Id H.carrier (f.map G.e) H.e ≔
+  let m : H.carrier ≔ f.map G.e;
+      square : Id H.carrier (H.op m m) (f.map (G.op G.e G.e)) ≔
+        idSym H.carrier (f.map (G.op G.e G.e)) (H.op m m) (f.mapOp G.e G.e);
+      idem : Id H.carrier (f.map (G.op G.e G.e)) m ≔
+        idCong G.carrier H.carrier f.map (G.op G.e G.e) G.e (G.leftId G.e);
+      unit : Id H.carrier m (H.op m H.e) ≔
+        idSym H.carrier (H.op m H.e) m (H.rightId m)
+  in PH.Cancel.leftCancel m m H.e
+       (idTrans H.carrier (H.op m m) (f.map (G.op G.e G.e)) (H.op m H.e) square
+          (idTrans H.carrier (f.map (G.op G.e G.e)) m (H.op m H.e) idem unit))
+  end
+end
+
+(* [f.map x] times [f.map (G.inv x)] is [f.map (G.op x (G.inv x))], that
+   is [f.map G.e], which is [H.e]: so [f.map (G.inv x)] is the inverse of
+   [f.map x]. *)
+theorem mapInv : ∀ (x : G.carrier) →
+    Id H.carrier (f.map (G.inv x)) (H.inv (f.map x)) ≔
+  λ (x : G.carrier) →
+    PH.Inverse.invUnique (f.map x) (f.map (G.inv x))
+      (idTrans H.carrier (H.op (f.map x) (f.map (G.inv x)))
+         (f.map (G.op x (G.inv x))) H.e
+         (idSym H.carrier (f.map (G.op x (G.inv x)))
+            (H.op (f.map x) (f.map (G.inv x))) (f.mapOp x (G.inv x)))
+         (idTrans H.carrier (f.map (G.op x (G.inv x))) (f.map G.e) H.e
+            (idCong G.carrier H.carrier f.map (G.op x (G.inv x)) G.e
+               (G.rightInv x))
+            mapE))
+end
+
+(* The same map, as a homomorphism of the underlying monoids. *)
+def toMonoid : MonoidHom.Hom G.monoid H.monoid ≔
+  record MonoidHom.Hom G.monoid H.monoid where
+    map ≔ f.map;
+    mapOp ≔ f.mapOp;
+    mapE ≔ mapE
+  end
+end
+
+end
+
+end

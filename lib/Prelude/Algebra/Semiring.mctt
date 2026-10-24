@@ -1,0 +1,58 @@
+(* Semirings: a commutative monoid [additive], written [add] and [zero], and
+   a multiplication [mul] with a unit [one], associative, distributing over
+   [add] on both sides, and absorbed by [zero] on both sides.
+
+   As in [Prelude›Algebra›Lattice], the second operation is a field on
+   [additive.carrier] rather than a second monoid, whose carrier could not
+   be required to be the same; the monoid it forms is built in the
+   with-area, as [multiplicative]. *)
+module Prelude›Algebra›Semiring (u : Level) where
+
+import Prelude›Logic›Leibniz u use (Id)
+import Prelude›Algebra›Magma u use (Magma)
+import Prelude›Algebra›Semigroup u use (Semigroup)
+import Prelude›Algebra›Monoid u use (Monoid)
+import Prelude›Algebra›CommutativeMonoid u use (CommutativeMonoid)
+
+record Semiring : Type@{succl u} where
+  additive : CommutativeMonoid;
+  mul : ∀ (x : additive.carrier) (y : additive.carrier) → additive.carrier;
+  one : additive.carrier;
+  mulAssoc : ∀ (x : additive.carrier) (y : additive.carrier)
+    (z : additive.carrier) →
+    Id additive.carrier (mul (mul x y) z) (mul x (mul y z));
+  mulLeftId : ∀ (x : additive.carrier) → Id additive.carrier (mul one x) x;
+  mulRightId : ∀ (x : additive.carrier) → Id additive.carrier (mul x one) x;
+  distribLeft : ∀ (x : additive.carrier) (y : additive.carrier)
+    (z : additive.carrier) →
+    Id additive.carrier (mul x (additive.op y z))
+      (additive.op (mul x y) (mul x z));
+  distribRight : ∀ (x : additive.carrier) (y : additive.carrier)
+    (z : additive.carrier) →
+    Id additive.carrier (mul (additive.op x y) z)
+      (additive.op (mul x z) (mul y z));
+  zeroLeft : ∀ (x : additive.carrier) →
+    Id additive.carrier (mul additive.e x) additive.e;
+  zeroRight : ∀ (x : additive.carrier) →
+    Id additive.carrier (mul x additive.e) additive.e
+with
+  def carrier : Type@{u} ≔ additive.carrier end
+  def add (x : carrier) (y : carrier) : carrier ≔ additive.op x y end
+  def zero : carrier ≔ additive.e end
+
+  def multiplicative : Monoid ≔
+    record Monoid where
+      semigroup ≔
+        record Semigroup where
+          magma ≔ record Magma where carrier ≔ carrier; op ≔ mul end;
+          assoc ≔ mulAssoc
+        end;
+      e ≔ one;
+      leftId ≔ mulLeftId;
+      rightId ≔ mulRightId
+    end
+  end
+end
+end
+
+end

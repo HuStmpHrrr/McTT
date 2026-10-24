@@ -1,0 +1,19 @@
+(* Semigroups: a magma whose operation is associative.  The record's
+   members [carrier] and [op] are those of its magma, so [S.op x y] works
+   for a semigroup [S] as for a magma. *)
+module Prelude›Algebra›Semigroup (u : Level) where
+
+import Prelude›Logic›Leibniz u use (Id)
+import Prelude›Algebra›Magma u use (Magma)
+
+record Semigroup : Type@{succl u} where
+  magma : Magma;
+  assoc : ∀ (x : magma.carrier) (y : magma.carrier) (z : magma.carrier) →
+    Id magma.carrier (magma.op (magma.op x y) z) (magma.op x (magma.op y z))
+with
+  def carrier : Type@{u} ≔ magma.carrier end
+  def op (x : carrier) (y : carrier) : carrier ≔ magma.op x y end
+end
+end
+
+end

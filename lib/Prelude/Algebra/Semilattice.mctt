@@ -1,0 +1,26 @@
+(* Semilattices: a semigroup whose operation is commutative and
+   idempotent, such as the minimum of two numbers or the conjunction of
+   two booleans.  The record's members [carrier], [op] and [assoc] are
+   those of its semigroup.  The order a semilattice defines is in
+   [Prelude›Algebra›Semilattice›Properties]. *)
+module Prelude›Algebra›Semilattice (u : Level) where
+
+import Prelude›Logic›Leibniz u use (Id)
+import Prelude›Algebra›Semigroup u use (Semigroup)
+
+record Semilattice : Type@{succl u} where
+  semigroup : Semigroup;
+  comm : ∀ (x : semigroup.carrier) (y : semigroup.carrier) →
+    Id semigroup.carrier (semigroup.op x y) (semigroup.op y x);
+  idem : ∀ (x : semigroup.carrier) → Id semigroup.carrier (semigroup.op x x) x
+with
+  def carrier : Type@{u} ≔ semigroup.carrier end
+  def op (x : carrier) (y : carrier) : carrier ≔ semigroup.op x y end
+  def assoc : ∀ (x : carrier) (y : carrier) (z : carrier) →
+      Id carrier (op (op x y) z) (op x (op y z)) ≔
+    semigroup.assoc
+  end
+end
+end
+
+end

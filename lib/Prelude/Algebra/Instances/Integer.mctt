@@ -1,0 +1,64 @@
+(* The integers of [Prelude›Data›Integer] as instances of the bundled
+   structures: an abelian group under addition ([additive]) and a
+   commutative monoid under multiplication ([multiplicative]).  The laws
+   are those of [Prelude›Data›Integer›Properties], already Leibniz
+   equalities.  The ring of both needs distributivity, which that unit
+   does not prove yet. *)
+module Prelude›Algebra›Instances›Integer where
+
+import Prelude›Data›Integer use (Int; neg; add; mul)
+open Int use (pos)
+import Prelude›Data›Integer›Properties
+open Prelude›Data›Integer›Properties.Add
+  use (addIdentityLeft; addIdentityRight; addComm; addInverseLeft;
+       addInverseRight; addAssoc)
+open Prelude›Data›Integer›Properties.Mul
+  use (mulComm; mulIdentityLeft; mulIdentityRight; mulAssoc)
+import Prelude›Algebra›Magma 0l use (Magma)
+import Prelude›Algebra›Semigroup 0l use (Semigroup)
+import Prelude›Algebra›Monoid 0l use (Monoid)
+import Prelude›Algebra›CommutativeMonoid 0l use (CommutativeMonoid)
+import Prelude›Algebra›Group 0l use (Group)
+import Prelude›Algebra›AbelianGroup 0l use (AbelianGroup)
+
+def additive : AbelianGroup ≔
+  record AbelianGroup where
+    group ≔
+      record Group where
+        monoid ≔
+          record Monoid where
+            semigroup ≔
+              record Semigroup where
+                magma ≔ record Magma where carrier ≔ Int; op ≔ add end;
+                assoc ≔ addAssoc
+              end;
+            e ≔ pos 0;
+            leftId ≔ addIdentityLeft;
+            rightId ≔ addIdentityRight
+          end;
+        inv ≔ neg;
+        leftInv ≔ addInverseLeft;
+        rightInv ≔ addInverseRight
+      end;
+    comm ≔ addComm
+  end
+end
+
+def multiplicative : CommutativeMonoid ≔
+  record CommutativeMonoid where
+    monoid ≔
+      record Monoid where
+        semigroup ≔
+          record Semigroup where
+            magma ≔ record Magma where carrier ≔ Int; op ≔ mul end;
+            assoc ≔ mulAssoc
+          end;
+        e ≔ pos 1;
+        leftId ≔ mulIdentityLeft;
+        rightId ≔ mulIdentityRight
+      end;
+    comm ≔ mulComm
+  end
+end
+
+end
