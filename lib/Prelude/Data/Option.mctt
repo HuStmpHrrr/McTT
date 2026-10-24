@@ -22,7 +22,7 @@ module Ops (u : Level) (A : Type@{u}) where
 
 (* Applies [f] under [some]. *)
 def map (B : Type@{u}) (f : ∀ (x : A) → B) (o : Option u A) : Option u B ≔
-  elim o at (z : Option u A) -> Option u B
+  elim o at z -> Option u B
   | none ⇒ none u B
   | some x ⇒ some u B (f x)
   end
@@ -31,7 +31,7 @@ end
 (* Continues with [f] on a defined value; [none] stays [none]. *)
 def bind (B : Type@{u}) (f : ∀ (x : A) → Option u B) (o : Option u A) :
     Option u B ≔
-  elim o at (z : Option u A) -> Option u B
+  elim o at z -> Option u B
   | none ⇒ none u B
   | some x ⇒ f x
   end
@@ -39,14 +39,14 @@ end
 
 (* The value of [o], or the default [d] when there is none. *)
 def getOr (d : A) (o : Option u A) : A ≔
-  elim o at (z : Option u A) -> A
+  elim o at z -> A
   | none ⇒ d
   | some x ⇒ x
   end
 end
 
 def isSome (o : Option u A) : Bool ≔
-  elim o at (z : Option u A) -> Bool
+  elim o at z -> Bool
   | none ⇒ ff
   | some x ⇒ tt
   end
@@ -54,7 +54,7 @@ end
 
 (* [o] if it is defined, else [p]. *)
 def orElse (o : Option u A) (p : Option u A) : Option u A ≔
-  elim o at (z : Option u A) -> Option u A
+  elim o at z -> Option u A
   | none ⇒ p
   | some x ⇒ some u A x
   end

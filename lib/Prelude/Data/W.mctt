@@ -21,17 +21,17 @@ module Ops (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u}) where
 
 private inductive T ≔ W u A B
 
-def head (w : T) : A ≔ elim w at (z : T) -> A | sup x f, h ⇒ x end end
+def head (w : T) : A ≔ elim w at z -> A | sup x f, h ⇒ x end end
 
 (* The subtrees: a function of the positions of the head. *)
 def tail (w : T) : ∀ (p : B (head w)) → T ≔
-  elim w at (z : T) -> (∀ (p : B (head z)) → T) | sup x f, h ⇒ f end
+  elim w at z -> (∀ (p : B (head z)) → T) | sup x f, h ⇒ f end
 end
 
 (* Along [m] on shapes and [n] on positions, which goes the other way. *)
 def map (C : Type@{u}) (D : ∀ (c : C) → Type@{u}) (m : ∀ (a : A) → C)
     (n : ∀ (a : A) (d : D (m a)) → B a) (w : T) : W u C D ≔
-  elim w at (z : T) -> W u C D
+  elim w at z -> W u C D
   | sup x f, h ⇒ W.sup u C D (m x) (λ (d : D (m x)) → h (n x d))
   end
 end
@@ -39,7 +39,7 @@ end
 (* The fold: [alg] combines a shape and the results at its positions. *)
 def foldr (P : Type@{u}) (alg : ∀ (x : A) (r : ∀ (p : B x) → P) → P)
     (w : T) : P ≔
-  elim w at (z : T) -> P | sup x f, h ⇒ alg x h end
+  elim w at z -> P | sup x f, h ⇒ alg x h end
 end
 
 end

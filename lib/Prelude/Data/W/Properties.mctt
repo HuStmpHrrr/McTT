@@ -30,7 +30,7 @@ end
 (* Surjective pairing: a tree is [sup] of its head and its tail. *)
 theorem supEta : ∀ (w : T) → Id T (T.sup (Op.head w) (Op.tail w)) w ≔
   λ (w : T) →
-    elim w at (z : T) -> Id T (T.sup (Op.head z) (Op.tail z)) z
+    elim w at z -> Id T (T.sup (Op.head z) (Op.tail z)) z
     | sup x f, h ⇒ idRefl T (T.sup x f)
     end
 end
@@ -53,7 +53,7 @@ theorem headMap : ∀ (C : Type@{u}) (D : ∀ (c : C) → Type@{u})
     Id C (WO.head u C D (Op.map C D m n w)) (m (Op.head w)) ≔
   λ (C : Type@{u}) (D : ∀ (c : C) → Type@{u}) (m : ∀ (a : A) → C)
     (n : ∀ (a : A) (d : D (m a)) → B a) (w : T) →
-    elim w at (z : T) -> Id C (WO.head u C D (Op.map C D m n z)) (m (Op.head z))
+    elim w at z -> Id C (WO.head u C D (Op.map C D m n z)) (m (Op.head z))
     | sup x f, h ⇒ idRefl C (m x)
     end
 end

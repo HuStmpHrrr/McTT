@@ -22,7 +22,7 @@ open These use (this; that; these)
 module Ops (u : Level) (A : Type@{u}) (B : Type@{u}) where
 
 def fromSum (s : Sum u A B) : These u A B ≔
-  elim s at (z : Sum u A B) -> These u A B
+  elim s at z -> These u A B
   | inl a ⇒ this u A B a
   | inr b ⇒ that u A B b
   end
@@ -30,7 +30,7 @@ end
 
 def map (C : Type@{u}) (D : Type@{u}) (f : ∀ (a : A) → C)
     (g : ∀ (b : B) → D) (t : These u A B) : These u C D ≔
-  elim t at (z : These u A B) -> These u C D
+  elim t at z -> These u C D
   | this a ⇒ this u C D (f a)
   | that b ⇒ that u C D (g b)
   | these a b ⇒ these u C D (f a) (g b)
@@ -51,7 +51,7 @@ end
    [these]. *)
 def fold (C : Type@{u}) (l : ∀ (a : A) → C) (r : ∀ (b : B) → C)
     (lr : ∀ (a : A) (b : B) → C) (t : These u A B) : C ≔
-  elim t at (z : These u A B) -> C
+  elim t at z -> C
   | this a ⇒ l a
   | that b ⇒ r b
   | these a b ⇒ lr a b

@@ -123,7 +123,7 @@ end
 
 (* The forest of a list of trees. *)
 def fromList (l : List u T) : F ≔
-  elim l at (z : List u T) -> F
+  elim l at z -> F
   | nil ⇒ F.nil
   | cons t us, r ⇒ F.cons t r
   end

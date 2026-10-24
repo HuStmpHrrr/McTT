@@ -8,7 +8,7 @@ import Prelude›Data›List use (List)
 
 (* The sum of a list of numbers. *)
 def sum (l : List 0l ℕ) : ℕ ≔
-  elim l at (z : List 0l ℕ) -> ℕ
+  elim l at z -> ℕ
   | nil ⇒ 0
   | cons x xs, r ⇒ plus x r
   end

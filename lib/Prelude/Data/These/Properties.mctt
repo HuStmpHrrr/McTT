@@ -24,21 +24,21 @@ private module Op ≔ T u A B
 
 (* The left component, or [d] if there is none. *)
 private def leftOr (d : A) (t : TAB) : A ≔
-  elim t at (z : TAB) -> A | this a ⇒ a | that b ⇒ d | these a b ⇒ a end
+  elim t at z -> A | this a ⇒ a | that b ⇒ d | these a b ⇒ a end
 end
 
 (* The right component, or [d] if there is none. *)
 private def rightOr (d : B) (t : TAB) : B ≔
-  elim t at (z : TAB) -> B | this a ⇒ d | that b ⇒ b | these a b ⇒ b end
+  elim t at z -> B | this a ⇒ d | that b ⇒ b | these a b ⇒ b end
 end
 
 (* The proposition that [t] is built by [this], [that] or [these]. *)
 private def IsThis (t : TAB) : Type@{u} ≔
-  elim t at (z : TAB) -> Type@{u} | this a ⇒ ⊤ | that b ⇒ ⊥ | these a b ⇒ ⊥ end
+  elim t at z -> Type@{u} | this a ⇒ ⊤ | that b ⇒ ⊥ | these a b ⇒ ⊥ end
 end
 
 private def IsThat (t : TAB) : Type@{u} ≔
-  elim t at (z : TAB) -> Type@{u} | this a ⇒ ⊥ | that b ⇒ ⊤ | these a b ⇒ ⊥ end
+  elim t at z -> Type@{u} | this a ⇒ ⊥ | that b ⇒ ⊤ | these a b ⇒ ⊥ end
 end
 
 (* The constructors are injective. *)
@@ -101,7 +101,7 @@ module Maps where
 
 theorem swapSwap : ∀ (t : TAB) → Id TAB (T.swap u B A (Op.swap t)) t ≔
   λ (t : TAB) →
-    elim t at (z : TAB) -> Id TAB (T.swap u B A (Op.swap z)) z
+    elim t at z -> Id TAB (T.swap u B A (Op.swap z)) z
     | this a ⇒ idRefl TAB (TAB.this a)
     | that b ⇒ idRefl TAB (TAB.that b)
     | these a b ⇒ idRefl TAB (TAB.these a b)
@@ -111,7 +111,7 @@ end
 theorem mapId : ∀ (t : TAB) →
     Id TAB (Op.map A B (λ (a : A) → a) (λ (b : B) → b) t) t ≔
   λ (t : TAB) →
-    elim t at (z : TAB) -> Id TAB
+    elim t at z -> Id TAB
                         (Op.map A B (λ (a : A) → a) (λ (b : B) → b) z) z
     | this a ⇒ idRefl TAB (TAB.this a)
     | that b ⇒ idRefl TAB (TAB.that b)
@@ -127,7 +127,7 @@ theorem mapComp : ∀ (C : Type@{u}) (D : Type@{u}) (E : Type@{u}) (F : Type@{u}
   λ (C : Type@{u}) (D : Type@{u}) (E : Type@{u}) (F : Type@{u})
     (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
     (h : ∀ (c : C) → E) (k : ∀ (d : D) → F) (t : TAB) →
-    elim t at (z : TAB) -> Id (These u E F)
+    elim t at z -> Id (These u E F)
                         (T.map u C D E F h k (Op.map C D f g z))
                         (Op.map E F (λ (a : A) → h (f a))
                            (λ (b : B) → k (g b)) z)
@@ -149,7 +149,7 @@ theorem foldSwap : ∀ (C : Type@{u}) (l : ∀ (b : B) → C) (r : ∀ (a : A) �
       (Op.fold C r l (λ (a : A) (b : B) → lr b a) t) ≔
   λ (C : Type@{u}) (l : ∀ (b : B) → C) (r : ∀ (a : A) → C)
     (lr : ∀ (b : B) (a : A) → C) (t : TAB) →
-    elim t at (z : TAB) -> Id C (T.fold u B A C l r lr (Op.swap z))
+    elim t at z -> Id C (T.fold u B A C l r lr (Op.swap z))
                         (Op.fold C r l (λ (a : A) (b : B) → lr b a) z)
     | this a ⇒ idRefl C (r a)
     | that b ⇒ idRefl C (l b)
@@ -163,7 +163,7 @@ theorem foldFromSum : ∀ (C : Type@{u}) (l : ∀ (a : A) → C) (r : ∀ (b : B
     Id C (Op.fold C l r lr (Op.fromSum s)) (S.case u A B C l r s) ≔
   λ (C : Type@{u}) (l : ∀ (a : A) → C) (r : ∀ (b : B) → C)
     (lr : ∀ (a : A) (b : B) → C) (s : Sum u A B) →
-    elim s at (z : Sum u A B) -> Id C (Op.fold C l r lr (Op.fromSum z))
+    elim s at z -> Id C (Op.fold C l r lr (Op.fromSum z))
                         (S.case u A B C l r z)
     | inl a ⇒ idRefl C (l a)
     | inr b ⇒ idRefl C (r b)

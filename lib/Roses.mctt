@@ -59,7 +59,7 @@ eval R.flattenForest (LO.reverse 0l T (children example))
 def leaves (t : T) : ℕ ≔
   elim t at (z : T) -> ℕ
   | node x ts, h ⇒
-      elim ts at (z : F) -> ℕ
+      elim ts at z -> ℕ
       | nil ⇒ 1
       | cons s us, r ⇒ h
       end

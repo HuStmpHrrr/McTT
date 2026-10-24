@@ -24,7 +24,7 @@ module Cases where
 theorem caseEta : ∀ (s : AB) →
     Id AB (Op.case AB (λ (a : A) → AB.inl a) (λ (b : B) → AB.inr b) s) s ≔
   λ (s : AB) →
-    elim s at (z : AB) -> Id AB (Op.case AB (λ (a : A) → AB.inl a)
+    elim s at z -> Id AB (Op.case AB (λ (a : A) → AB.inl a)
                                (λ (b : B) → AB.inr b) z)
                         z
     | inl a ⇒ idRefl AB (AB.inl a)
@@ -41,7 +41,7 @@ theorem caseMap : ∀ (C : Type@{u}) (D : Type@{u}) (E : Type@{u})
   λ (C : Type@{u}) (D : Type@{u}) (E : Type@{u})
     (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
     (h : ∀ (c : C) → E) (k : ∀ (d : D) → E) (s : AB) →
-    elim s at (z : AB) -> Id E (S.case u C D E h k (Op.map C D f g z))
+    elim s at z -> Id E (S.case u C D E h k (Op.map C D f g z))
                         (Op.case E (λ (a : A) → h (f a))
                            (λ (b : B) → k (g b)) z)
     | inl a ⇒ idRefl E (h (f a))
@@ -56,7 +56,7 @@ module Swap where
 
 theorem swapSwap : ∀ (s : AB) → Id AB (S.swap u B A (Op.swap s)) s ≔
   λ (s : AB) →
-    elim s at (z : AB) -> Id AB (S.swap u B A (Op.swap z)) z
+    elim s at z -> Id AB (S.swap u B A (Op.swap z)) z
     | inl a ⇒ idRefl AB (AB.inl a)
     | inr b ⇒ idRefl AB (AB.inr b)
     end
@@ -66,7 +66,7 @@ end
 theorem isLeftSwap : ∀ (s : AB) →
     BoolId.Id Bool (S.isLeft u B A (Op.swap s)) (not (Op.isLeft s)) ≔
   λ (s : AB) →
-    elim s at (z : AB) -> BoolId.Id Bool (S.isLeft u B A (Op.swap z))
+    elim s at z -> BoolId.Id Bool (S.isLeft u B A (Op.swap z))
                         (not (Op.isLeft z))
     | inl a ⇒ BoolId.idRefl Bool (S.isLeft u B A (inr u B A a))
     | inr b ⇒ BoolId.idRefl Bool (S.isLeft u B A (inl u B A b))
@@ -81,9 +81,9 @@ module Assoc where
 theorem unassocAssoc : ∀ (C : Type@{u}) (s : Sum u AB C) →
     Id (Sum u AB C) (Op.unassoc C (Op.assoc C s)) s ≔
   λ (C : Type@{u}) (s : Sum u AB C) →
-    elim s at (z : Sum u AB C) -> Id (Sum u AB C) (Op.unassoc C (Op.assoc C z)) z
+    elim s at z -> Id (Sum u AB C) (Op.unassoc C (Op.assoc C z)) z
     | inl ab ⇒
-        elim ab at (y : AB) -> Id (Sum u AB C)
+        elim ab at y -> Id (Sum u AB C)
                              (Op.unassoc C (Op.assoc C (inl u AB C y)))
                              (inl u AB C y)
         | inl a ⇒ idRefl (Sum u AB C) (inl u AB C (AB.inl a))
@@ -96,11 +96,11 @@ end
 theorem assocUnassoc : ∀ (C : Type@{u}) (s : Sum u A (Sum u B C)) →
     Id (Sum u A (Sum u B C)) (Op.assoc C (Op.unassoc C s)) s ≔
   λ (C : Type@{u}) (s : Sum u A (Sum u B C)) →
-    elim s at (z : Sum u A (Sum u B C)) -> Id (Sum u A (Sum u B C)) (Op.assoc C (Op.unassoc C z))
+    elim s at z -> Id (Sum u A (Sum u B C)) (Op.assoc C (Op.unassoc C z))
                         z
     | inl a ⇒ idRefl (Sum u A (Sum u B C)) (inl u A (Sum u B C) a)
     | inr bc ⇒
-        elim bc at (y : Sum u B C) -> Id (Sum u A (Sum u B C))
+        elim bc at y -> Id (Sum u A (Sum u B C))
                              (Op.assoc C (Op.unassoc C (inr u A (Sum u B C) y)))
                              (inr u A (Sum u B C) y)
         | inl b ⇒
@@ -119,7 +119,7 @@ module Maps where
 theorem mapId : ∀ (s : AB) →
     Id AB (Op.map A B (λ (a : A) → a) (λ (b : B) → b) s) s ≔
   λ (s : AB) →
-    elim s at (z : AB) -> Id AB (Op.map A B (λ (a : A) → a) (λ (b : B) → b) z) z
+    elim s at z -> Id AB (Op.map A B (λ (a : A) → a) (λ (b : B) → b) z) z
     | inl a ⇒ idRefl AB (AB.inl a)
     | inr b ⇒ idRefl AB (AB.inr b)
     end
@@ -133,7 +133,7 @@ theorem mapComp : ∀ (C : Type@{u}) (D : Type@{u}) (E : Type@{u})
   λ (C : Type@{u}) (D : Type@{u}) (E : Type@{u}) (F : Type@{u})
     (f : ∀ (a : A) → C) (g : ∀ (b : B) → D)
     (h : ∀ (c : C) → E) (k : ∀ (d : D) → F) (s : AB) →
-    elim s at (z : AB) -> Id (Sum u E F)
+    elim s at z -> Id (Sum u E F)
                         (S.map u C D E F h k (Op.map C D f g z))
                         (Op.map E F (λ (a : A) → h (f a))
                            (λ (b : B) → k (g b)) z)

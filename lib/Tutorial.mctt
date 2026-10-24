@@ -352,9 +352,9 @@ eval (∀ (u : Level@1) → Type@{u}) : Type@{ω·2}
    declares a type and its constructors, and [T.c] reaches a constructor.
    [elim t at z -> P | c x ⇒ … end] eliminates [t]; a recursive
    argument also gives an induction hypothesis, named after a comma.  A
-   type with parameters, as [List A], is eliminated with the scrutinee's
-   binder typed, [elim l at (z : List A) -> P | …], since the eliminator
-   reads the type's parameters off that type. *)
+   type with parameters, as [List A], is eliminated the same way,
+   [elim l at z -> P | …]: the eliminator reads the type's parameters off
+   the scrutinee's type, so the binder [z] needs no annotation. *)
 
 inductive Shape : Type@0 where
 | dot

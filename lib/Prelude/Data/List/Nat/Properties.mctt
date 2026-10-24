@@ -21,7 +21,7 @@ module Sums where
 theorem sumAppend : ∀ (l : NL) (m : NL) →
     Eq (sum (Op.append l m)) (plus (sum l) (sum m)) ≔
   λ (l : NL) (m : NL) →
-    elim l at (z : NL) -> Eq (sum (Op.append z m)) (plus (sum z) (sum m))
+    elim l at z -> Eq (sum (Op.append z m)) (plus (sum z) (sum m))
     | nil ⇒ refl (sum m)
     | cons x xs, ih ⇒
         trans (plus x (sum (Op.append xs m)))
@@ -40,7 +40,7 @@ end
    hypothesis under [plus x]. *)
 theorem sumReverse : ∀ (l : NL) → Eq (sum (Op.reverse l)) (sum l) ≔
   λ (l : NL) →
-    elim l at (z : NL) -> Eq (sum (Op.reverse z)) (sum z)
+    elim l at z -> Eq (sum (Op.reverse z)) (sum z)
     | nil ⇒ ⋆
     | cons x xs, ih ⇒
         let r : ℕ ≔ sum (Op.reverse xs) in

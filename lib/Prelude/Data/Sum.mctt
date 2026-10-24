@@ -21,11 +21,11 @@ module Ops (u : Level) (A : Type@{u}) (B : Type@{u}) where
 (* Case analysis: [f] on the left, [g] on the right. *)
 def case (C : Type@{u}) (f : ∀ (a : A) → C) (g : ∀ (b : B) → C)
     (s : Sum u A B) : C ≔
-  elim s at (z : Sum u A B) -> C | inl a ⇒ f a | inr b ⇒ g b end
+  elim s at z -> C | inl a ⇒ f a | inr b ⇒ g b end
 end
 
 def swap (s : Sum u A B) : Sum u B A ≔
-  elim s at (z : Sum u A B) -> Sum u B A
+  elim s at z -> Sum u B A
   | inl a ⇒ inr u B A a
   | inr b ⇒ inl u B A b
   end
@@ -33,9 +33,9 @@ end
 
 (* From [Sum (Sum A B) C] to [Sum A (Sum B C)]. *)
 def assoc (C : Type@{u}) (s : Sum u (Sum u A B) C) : Sum u A (Sum u B C) ≔
-  elim s at (z : Sum u (Sum u A B) C) -> Sum u A (Sum u B C)
+  elim s at z -> Sum u A (Sum u B C)
   | inl ab ⇒
-      elim ab at (y : Sum u A B) -> Sum u A (Sum u B C)
+      elim ab at y -> Sum u A (Sum u B C)
       | inl a ⇒ inl u A (Sum u B C) a
       | inr b ⇒ inr u A (Sum u B C) (inl u B C b)
       end
@@ -45,10 +45,10 @@ end
 
 (* From [Sum A (Sum B C)] to [Sum (Sum A B) C]. *)
 def unassoc (C : Type@{u}) (s : Sum u A (Sum u B C)) : Sum u (Sum u A B) C ≔
-  elim s at (z : Sum u A (Sum u B C)) -> Sum u (Sum u A B) C
+  elim s at z -> Sum u (Sum u A B) C
   | inl a ⇒ inl u (Sum u A B) C (inl u A B a)
   | inr bc ⇒
-      elim bc at (y : Sum u B C) -> Sum u (Sum u A B) C
+      elim bc at y -> Sum u (Sum u A B) C
       | inl b ⇒ inl u (Sum u A B) C (inr u A B b)
       | inr c ⇒ inr u (Sum u A B) C c
       end
@@ -58,14 +58,14 @@ end
 (* Applies [f] on the left and [g] on the right. *)
 def map (C : Type@{u}) (D : Type@{u}) (f : ∀ (a : A) → C)
     (g : ∀ (b : B) → D) (s : Sum u A B) : Sum u C D ≔
-  elim s at (z : Sum u A B) -> Sum u C D
+  elim s at z -> Sum u C D
   | inl a ⇒ inl u C D (f a)
   | inr b ⇒ inr u C D (g b)
   end
 end
 
 def isLeft (s : Sum u A B) : Bool ≔
-  elim s at (z : Sum u A B) -> Bool | inl a ⇒ tt | inr b ⇒ ff end
+  elim s at z -> Bool | inl a ⇒ tt | inr b ⇒ ff end
 end
 
 end

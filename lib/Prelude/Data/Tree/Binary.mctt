@@ -27,7 +27,7 @@ private inductive T ≔ Tree u N L
 
 def map (M : Type@{u}) (K : Type@{u}) (f : ∀ (m : N) → M)
     (g : ∀ (x : L) → K) (t : T) : Tree u M K ≔
-  elim t at (z : T) -> Tree u M K
+  elim t at z -> Tree u M K
   | leaf x ⇒ leaf u M K (g x)
   | node l m r, hl hr ⇒ node u M K hl (f m) hr
   end
@@ -44,14 +44,14 @@ end
 (* The number of nodes: [nodes (node l m r)] is
    [plus (nodes l) (succ (nodes r))]. *)
 def nodes (t : T) : ℕ ≔
-  elim t at (z : T) -> ℕ
+  elim t at z -> ℕ
   | leaf x ⇒ 0
   | node l m r, hl hr ⇒ plus hl (succ hr)
   end
 end
 
 def leaves (t : T) : ℕ ≔
-  elim t at (z : T) -> ℕ
+  elim t at z -> ℕ
   | leaf x ⇒ 1
   | node l m r, hl hr ⇒ plus hl hr
   end
@@ -59,7 +59,7 @@ end
 
 def foldr (A : Type@{u}) (f : ∀ (a : A) (m : N) (b : A) → A)
     (g : ∀ (x : L) → A) (t : T) : A ≔
-  elim t at (z : T) -> A
+  elim t at z -> A
   | leaf x ⇒ g x
   | node l m r, hl hr ⇒ f hl m hr
   end
@@ -68,7 +68,7 @@ end
 (* The node labels, left subtree first, then the node, then the right
    subtree. *)
 def toListInfix (t : T) : List u N ≔
-  elim t at (z : T) -> List u N
+  elim t at z -> List u N
   | leaf x ⇒ List.nil u N
   | node l m r, hl hr ⇒ LO.append u N hl (List.cons u N m hr)
   end
@@ -76,7 +76,7 @@ end
 
 (* The leaf labels, left to right. *)
 def toListLeaves (t : T) : List u L ≔
-  elim t at (z : T) -> List u L
+  elim t at z -> List u L
   | leaf x ⇒ List.cons u L x (List.nil u L)
   | node l m r, hl hr ⇒ LO.append u L hl hr
   end
@@ -84,7 +84,7 @@ end
 
 (* The mirror image: the subtrees of every node exchanged. *)
 def mirror (t : T) : T ≔
-  elim t at (z : T) -> T
+  elim t at z -> T
   | leaf x ⇒ T.leaf x
   | node l m r, hl hr ⇒ T.node hr m hl
   end

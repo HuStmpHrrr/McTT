@@ -185,7 +185,7 @@ end
 theorem toFromList : ∀ (l : List u T) →
     Id (List u T) (Op.toList (Op.fromList l)) l ≔
   λ (l : List u T) →
-    elim l at (z : List u T) -> Id (List u T) (Op.toList (Op.fromList z)) z
+    elim l at z -> Id (List u T) (Op.toList (Op.fromList z)) z
     | nil ⇒ idRefl (List u T) (List.nil u T)
     | cons t us, r ⇒
         idCong (List u T) (List u T) (List.cons u T t)

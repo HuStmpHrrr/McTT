@@ -40,7 +40,7 @@ end
 theorem toListAppendList : ∀ (l : N) (m : LA) →
     Id LA (LOp.append (Op.toList l) m) (Op.toList (Op.appendList l m)) ≔
   λ (l : N) (m : LA) →
-    elim l at (z : N) -> Id LA (LOp.append (Op.toList z) m)
+    elim l at z -> Id LA (LOp.append (Op.toList z) m)
                         (Op.toList (Op.appendList z m))
     | cons x xs ⇒ idRefl LA (LA.cons x (LOp.append xs m))
     end
@@ -57,7 +57,7 @@ end
 theorem toListPrependList : ∀ (l : LA) (m : N) →
     Id LA (Op.toList (Op.prependList l m)) (LOp.append l (Op.toList m)) ≔
   λ (l : LA) (m : N) →
-    elim l at (z : LA) -> Id LA (Op.toList (Op.prependList z m))
+    elim l at z -> Id LA (Op.toList (Op.prependList z m))
                         (LOp.append z (Op.toList m))
     | nil ⇒ idRefl LA (Op.toList m)
     | cons x xs, ih ⇒
@@ -70,7 +70,7 @@ end
 theorem toListReverse : ∀ (l : N) →
     Id LA (Op.toList (Op.reverse l)) (LOp.reverse (Op.toList l)) ≔
   λ (l : N) →
-    elim l at (z : N) -> Id LA (Op.toList (Op.reverse z))
+    elim l at z -> Id LA (Op.toList (Op.reverse z))
                         (LOp.reverse (Op.toList z))
     | cons x xs ⇒
         toListPrependList (LOp.reverse xs) (N.cons x LA.nil)
@@ -81,7 +81,7 @@ end
 theorem fromListToList : ∀ (l : N) →
     Id (Option u N) (Op.fromList (Op.toList l)) (Option.some u N l) ≔
   λ (l : N) →
-    elim l at (z : N) -> Id (Option u N) (Op.fromList (Op.toList z))
+    elim l at z -> Id (Option u N) (Op.fromList (Op.toList z))
                         (Option.some u N z)
     | cons x xs ⇒ idRefl (Option u N) (Option.some u N (N.cons x xs))
     end
@@ -96,7 +96,7 @@ module Length where
 theorem lengthToList : ∀ (l : N) →
     Eq (Op.length l) (LOp.length (Op.toList l)) ≔
   λ (l : N) →
-    elim l at (z : N) -> Eq (Op.length z) (LOp.length (Op.toList z))
+    elim l at z -> Eq (Op.length z) (LOp.length (Op.toList z))
     | cons x xs ⇒ refl (LOp.length xs)
     end
 end
@@ -105,10 +105,10 @@ end
 theorem lengthAppend : ∀ (l : N) (m : N) →
     Eq (Op.length (Op.append l m)) (plus (Op.length l) (Op.length m)) ≔
   λ (l : N) (m : N) →
-    elim l at (z : N) -> Eq (Op.length (Op.append z m))
+    elim l at z -> Eq (Op.length (Op.append z m))
                         (plus (Op.length z) (Op.length m))
     | cons x xs ⇒
-        elim m at (w : N) -> Eq (LOp.length (LOp.append xs (Op.toList w)))
+        elim m at w -> Eq (LOp.length (LOp.append xs (Op.toList w)))
                             (plus (LOp.length xs) (Op.length w))
         | cons y ys ⇒ LP.lengthAppend xs (LA.cons y ys)
         end
@@ -119,14 +119,14 @@ end
 theorem lengthPrependList : ∀ (l : LA) (m : N) →
     Eq (Op.length (Op.prependList l m)) (plus (LOp.length l) (Op.length m)) ≔
   λ (l : LA) (m : N) →
-    elim l at (z : LA) -> Eq (Op.length (Op.prependList z m))
+    elim l at z -> Eq (Op.length (Op.prependList z m))
                         (plus (LOp.length z) (Op.length m))
     | nil ⇒ refl (Op.length m)
     | cons x xs, ih ⇒
         trans (LOp.length (Op.toList (Op.prependList xs m)))
           (Op.length (Op.prependList xs m))
           (plus (LOp.length xs) (Op.length m))
-          (elim (Op.prependList xs m) at (w : N) -> Eq (LOp.length (Op.toList w))
+          (elim (Op.prependList xs m) at w -> Eq (LOp.length (Op.toList w))
                                                   (Op.length w)
            | cons y ys ⇒ refl (LOp.length ys)
            end)
@@ -141,7 +141,7 @@ module Maps where
 
 theorem mapId : ∀ (l : N) → Id N (Op.map A (λ (x : A) → x) l) l ≔
   λ (l : N) →
-    elim l at (z : N) -> Id N (Op.map A (λ (x : A) → x) z) z
+    elim l at z -> Id N (Op.map A (λ (x : A) → x) z) z
     | cons x xs ⇒
         idCong LA N (N.cons x) (LOp.map A (λ (y : A) → y) xs) xs (LM.mapId xs)
     end
@@ -154,7 +154,7 @@ theorem mapComp : ∀ (B : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → B)
       (Op.map C (λ (x : A) → g (f x)) l) ≔
   λ (B : Type@{u}) (C : Type@{u}) (f : ∀ (x : A) → B) (g : ∀ (y : B) → C)
     (l : N) →
-    elim l at (z : N) -> Id (NonEmpty u C) (NE.map u B C g (Op.map B f z))
+    elim l at z -> Id (NonEmpty u C) (NE.map u B C g (Op.map B f z))
                         (Op.map C (λ (x : A) → g (f x)) z)
     | cons x xs ⇒
         idCong (List u C) (NonEmpty u C) (NonEmpty.cons u C (g (f x)))
@@ -173,7 +173,7 @@ theorem mapCong : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (g : ∀ (x : A) �
     let tails : ∀ (xs : LA) →
           Id (List u B) (LOp.map B f xs) (LOp.map B g xs) ≔
       λ (xs : LA) →
-        elim xs at (z : LA) -> Id (List u B) (LOp.map B f z) (LOp.map B g z)
+        elim xs at z -> Id (List u B) (LOp.map B f z) (LOp.map B g z)
         | nil ⇒ idRefl (List u B) (List.nil u B)
         | cons y ys, ih ⇒
             λ (P : ∀ (w : List u B) → Type@{u})
@@ -182,7 +182,7 @@ theorem mapCong : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (g : ∀ (x : A) �
                 (h y (λ (b : B) → P (List.cons u B b (LOp.map B f ys))) p)
         end
     in
-    elim l at (z : N) -> Id (NonEmpty u B) (Op.map B f z) (Op.map B g z)
+    elim l at z -> Id (NonEmpty u B) (Op.map B f z) (Op.map B g z)
     | cons x xs ⇒
         λ (P : ∀ (w : NonEmpty u B) → Type@{u})
           (p : P (NonEmpty.cons u B (f x) (LOp.map B f xs))) →
@@ -196,7 +196,7 @@ end
 theorem toListMap : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) →
     Id (List u B) (NE.toList u B (Op.map B f l)) (LOp.map B f (Op.toList l)) ≔
   λ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) →
-    elim l at (z : N) -> Id (List u B) (NE.toList u B (Op.map B f z))
+    elim l at z -> Id (List u B) (NE.toList u B (Op.map B f z))
                         (LOp.map B f (Op.toList z))
     | cons x xs ⇒ idRefl (List u B) (List.cons u B (f x) (LOp.map B f xs))
     end
@@ -206,7 +206,7 @@ end
 theorem lengthMap : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) →
     Eq (NE.length u B (Op.map B f l)) (Op.length l) ≔
   λ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) →
-    elim l at (z : N) -> Eq (NE.length u B (Op.map B f z)) (Op.length z)
+    elim l at z -> Eq (NE.length u B (Op.map B f z)) (Op.length z)
     | cons x xs ⇒ LM.lengthMap B f xs
     end
 end
@@ -216,10 +216,10 @@ theorem mapAppend : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) (m : N) �
     Id (NonEmpty u B) (Op.map B f (Op.append l m))
       (NE.append u B (Op.map B f l) (Op.map B f m)) ≔
   λ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) (m : N) →
-    elim l at (z : N) -> Id (NonEmpty u B) (Op.map B f (Op.append z m))
+    elim l at z -> Id (NonEmpty u B) (Op.map B f (Op.append z m))
                         (NE.append u B (Op.map B f z) (Op.map B f m))
     | cons x xs ⇒
-        elim m at (w : N) ->
+        elim m at w ->
             Id (NonEmpty u B)
               (NonEmpty.cons u B (f x)
                   (LOp.map B f (LOp.append xs (Op.toList w))))
@@ -244,7 +244,7 @@ module Access where
 theorem headMap : ∀ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) →
     Id B (NE.head u B (Op.map B f l)) (f (Op.head l)) ≔
   λ (B : Type@{u}) (f : ∀ (x : A) → B) (l : N) →
-    elim l at (z : N) -> Id B (NE.head u B (Op.map B f z)) (f (Op.head z))
+    elim l at z -> Id B (NE.head u B (Op.map B f z)) (f (Op.head z))
     | cons x xs ⇒ idRefl B (f x)
     end
 end

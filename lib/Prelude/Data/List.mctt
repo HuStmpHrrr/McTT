@@ -22,7 +22,7 @@ open List use (nil; cons)
 module Ops (u : Level) (A : Type@{u}) where
 
 def length (l : List u A) : ℕ ≔
-  elim l at (z : List u A) -> ℕ
+  elim l at z -> ℕ
   | nil ⇒ 0
   | cons x xs, r ⇒ succ r
   end
@@ -30,14 +30,14 @@ end
 
 (* Concatenation, by recursion on the first list: [append nil m] is [m]. *)
 def append (l : List u A) (m : List u A) : List u A ≔
-  elim l at (z : List u A) -> List u A
+  elim l at z -> List u A
   | nil ⇒ m
   | cons x xs, r ⇒ cons u A x r
   end
 end
 
 def map (B : Type@{u}) (f : ∀ (x : A) → B) (l : List u A) : List u B ≔
-  elim l at (z : List u A) -> List u B
+  elim l at z -> List u B
   | nil ⇒ nil u B
   | cons x xs, r ⇒ cons u B (f x) r
   end
@@ -46,7 +46,7 @@ end
 (* Right fold: [foldr B f z [x1, …, xn]] is [f x1 (… (f xn z))]. *)
 def foldr (B : Type@{u}) (f : ∀ (x : A) (b : B) → B) (z : B)
     (l : List u A) : B ≔
-  elim l at (y : List u A) -> B
+  elim l at y -> B
   | nil ⇒ z
   | cons x xs, r ⇒ f x r
   end
@@ -54,7 +54,7 @@ end
 
 (* Reversal: the reversed tail, then the head. *)
 def reverse (l : List u A) : List u A ≔
-  elim l at (z : List u A) -> List u A
+  elim l at z -> List u A
   | nil ⇒ nil u A
   | cons x xs, r ⇒ append r (cons u A x (nil u A))
   end
