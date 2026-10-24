@@ -387,8 +387,8 @@ Inductive valid_unit : ctx -> modexp -> Prop :=
 with valid_modexp : ctx -> modexp -> Prop :=
 | valid_modexp_intro : forall Γ H R Rm K RK,
     Θm ⍮ Ξm ⍮ Γ ⊢ᵐ H ≈ H ->
-    mdenote Θm Ξm Γ H R -> ds_mod Θm Ξm R = Some Rm ->
-    Γ ⊨ᵐ H ≈ K -> valid_unit Γ K -> mdenote Θm Ξm Γ K RK -> ds_mod Θm Ξm RK = Some Rm ->
+    mdenote Θm Ξm Γ H R -> ds_mod R = Some Rm ->
+    Γ ⊨ᵐ H ≈ K -> valid_unit Γ K -> mdenote Θm Ξm Γ K RK -> ds_mod RK = Some Rm ->
     valid_modexp Γ H.
 
 Scheme valid_unit_mut_ind := Induction for valid_unit Sort Prop
@@ -443,17 +443,18 @@ Record rel_self (T : ctx) (A0 : exp) (g : domain) : Prop := mk_rel_self
 
 (** The term member [x] of the filed module [p], over its telescope [T],
     read as [R0]: of a type over [T], of a value related to itself, with
-    its δ-reduct at arguments for the outer part of [T], if it has one, a
-    term over that part instantiated, valid there, whose value at arguments
-    is the member's value applied to them. *)
+    its δ-reduct at arguments for the outer part of [T] (read as a filed
+    entry's term part is, [ds_ats_tm]), if it has one, a term over that
+    part instantiated, valid there, whose value at arguments is the
+    member's value applied to them. *)
 #[warnings="-cannot-define-projection"]
 Record valid_filed_term (p : qname) (T : ctx) (x : String.string) (R0 : mdesc) : Prop := mk_valid_filed_term
   { vft_typ : exp
   ; vft_lvl : nat
   ; vft_val : domain
   ; vft_typed : T ⊨ vft_typ : Typeω@vft_lvl
-  ; vft_reads : forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> ds_ats R0 Ns = Some R1 ->
-      ds_ty Θm Ξm R1 = Some (ctx_pi T1 vft_typ)[sb_of_list Id Ns] /\
+  ; vft_reads : forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> ds_ats_tm R0 Ns = Some R1 ->
+      ds_ty R1 = Some (ctx_pi T1 vft_typ)[sb_of_list Id Ns] /\
       (ds_red R1 = None \/
        exists M1, ds_red R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 vft_typ /\
          forall ns m, List.length ns = List.length T2 -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
@@ -476,11 +477,11 @@ Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_file
       valid_filed_term p T x R0
     (** The open frame of a member's module under it is its type former,
         as a filed member's entry is *)
-  ; vfm_ind_frames : forall x pq k D, gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) ->
-      valid_filed_term p T x (ds_ind nil pq k nil)
+  ; vfm_ind_frames : forall x pq k D Mk, gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) -> ind_member D k = Some Mk ->
+      valid_filed_term p T x (ds_term (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k)))
     (** So is the open frame of a record type's module under it *)
   ; vfm_record_frames : forall x R, gs_find_record Ξm (qname_in p x) = Some R ->
-      valid_filed_term p T x (ds_record nil (qname_in p x) nil)
+      valid_filed_term p T x (ds_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x))))
   ; vfm_aliases : forall y Φ0 E Ua, gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some Ua ->
       gc_module gc_deps gc_stack (qname_in p y) = Some (mr_alias Ua) /\
       forall Γ, ⊨ Γ -> ⊢ Θm ⍮ Ξm ⍮ Γ -> valid_unit Θm Ξm Γ (me_lit Ua) }.

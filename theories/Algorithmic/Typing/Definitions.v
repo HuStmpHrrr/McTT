@@ -196,7 +196,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
 | ati_mem :
   `( Γ ⊢aᵐ H ->
      mdenote gc_deps gc_stack Γ (me_mem H x) R ->
-     ds_ty gc_deps gc_stack R = Some A ->
+     ds_ty R = Some A ->
      nbe_ty_f Γ A B ->
      Γ ⊢a a_mem H x ⟹ B )
 | ati_vlookup :
@@ -290,7 +290,7 @@ with alg_body : ctx -> gmod -> gmod -> Prop :=
   `( Γ ⊢aᵇ Φ ⇝ Φx ->
      body_ctx Φx ++ Γ ⊢aᵐ H ->
      mdenote gc_deps gc_stack (body_ctx Φx ++ Γ) H R ->
-     ds_mod gc_deps gc_stack R = Some Rm ->
+     ds_mod R = Some Rm ->
      items_gen gc_deps gc_stack false (body_ctx Φx ++ Γ) H its gs ->
      items_ok its ->
      Γ ⊢aᵇ gm_open Φ H its ⇝ gens_append Φx 0 gs )
@@ -298,7 +298,7 @@ where "Γ '⊢aᵇ' Φ ⇝ Φx" := (alg_body Γ Φ Φx) : type_scope
 with alg_modexp : ctx -> modexp -> Prop :=
 | amod_unit :
   `( mdenote gc_deps gc_stack Γ (me_unit fp) R ->
-     ds_mtele gc_deps gc_stack R = Some T ->
+     ds_mtele R = Some T ->
      Γ ⊢aᵐ me_unit fp )
 | amod_var :
   `( Γ ∋ #x ≔ₘ U ->
@@ -309,14 +309,14 @@ with alg_modexp : ctx -> modexp -> Prop :=
 | amod_mem :
   `( Γ ⊢aᵐ H ->
      mdenote gc_deps gc_stack Γ (me_mem H y) R ->
-     ds_mtele gc_deps gc_stack R = Some T ->
+     ds_mtele R = Some T ->
      Γ ⊢aᵐ me_mem H y )
 (** An argument is checked against the outermost parameter of the
     telescope. *)
 | amod_app :
   `( Γ ⊢aᵐ H ->
      mdenote gc_deps gc_stack Γ H R ->
-     ds_mtele gc_deps gc_stack R = Some T ->
+     ds_mtele R = Some T ->
      tele_view T = Some (B, T1) ->
      Γ ⊢a N ⟸ B ->
      Γ ⊢aᵐ me_app H N )

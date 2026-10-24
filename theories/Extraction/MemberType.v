@@ -51,7 +51,7 @@ Inductive dn_order (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> Prop :=
     dn_order Θ Ξ Γ (me_app H N)
 | dno_mem : forall Γ H y,
     dn_order Θ Ξ Γ H ->
-    (forall R0 R0m Γy E rd, mdenote Θ Ξ Γ H R0 -> ds_mod Θ Ξ R0 = Some R0m ->
+    (forall R0 R0m Γy E rd, mdenote Θ Ξ Γ H R0 -> ds_mod R0 = Some R0m ->
        ds_entry R0m y = Some (Γy, E, rd) -> en_order Θ Ξ (Γy ++ Γ) E) ->
     dn_order Θ Ξ Γ (me_mem H y)
 with un_order (Θ : gdeps) (Ξ : gstack) : ctx -> gunit -> Prop :=
@@ -150,8 +150,37 @@ Proof. intros * Hf; unfold frame_ind_of in Hf; destruct (mod_qname H) as [p |]; 
 Lemma frame_ind_of_none : forall Ξ H p r, frame_ind_of Ξ H = None -> mod_qname H = Some p -> gs_find_ind Ξ p = Some r -> False.
 Proof. intros * Hf Hq Hk; unfold frame_ind_of in Hf; rewrite Hq, Hk in Hf; discriminate. Qed.
 
-Lemma dn_of_frame_ind : forall Θ Ξ Γ H pq k D, frame_ind_of Ξ H = Some (pq, k, D) -> mdenote Θ Ξ Γ H (ds_ind nil pq k nil).
-Proof. intros * Hf; destruct (frame_ind_of_some _ _ _ Hf) as (p & Hq & Hk); eapply dn_ind_frame; eassumption. Qed.
+(** What the open frame of member [k] of the group [D] declared at [pq]
+    that a module expression names denotes: the member's type former,
+    with its module. *)
+Definition frame_ind_desc (Θ : gdeps) (Ξ : gstack) (H : modexp) (pq : qname) (k : nat) (D : ind_decl) : option mdesc :=
+  match mod_qname H with
+  | Some p =>
+      match ind_member D k, gc_loc Θ Ξ p with
+      | Some Mk, Some (Tm, Φm) => Some (ind_former_desc pq k D Mk (ds_closed nil p Tm Φm nil))
+      | _, _ => None
+      end
+  | None => None
+  end.
+
+Lemma dn_of_frame_ind : forall Θ Ξ Γ H pq k D R, frame_ind_of Ξ H = Some (pq, k, D) ->
+    frame_ind_desc Θ Ξ H pq k D = Some R -> mdenote Θ Ξ Γ H R.
+Proof.
+  intros * Hf Hd; destruct (frame_ind_of_some _ _ _ Hf) as (p & Hq & Hk).
+  unfold frame_ind_desc in Hd; rewrite Hq in Hd.
+  destruct (ind_member D k) as [Mk |] eqn:HMk; [| discriminate ].
+  destruct (gc_loc Θ Ξ p) as [[Tm Φm] |] eqn:Hl; [ injection Hd as <- | discriminate ].
+  eapply dn_ind_frame; eassumption.
+Qed.
+
+(** In a well-formed global context, the open frame of a member denotes. *)
+Lemma frame_ind_desc_some : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall H pq k D,
+    frame_ind_of Ξ H = Some (pq, k, D) -> frame_ind_desc Θ Ξ H pq k D = None -> False.
+Proof.
+  intros * Hg * Hf Hd; destruct (frame_ind_of_some _ _ _ Hf) as (p & Hq & Hk).
+  destruct (frame_ind_loc _ _ Hg _ _ _ _ Hk) as (U & T0 & T & Φ & Mk & Ht & _ & Hl & HMk).
+  unfold frame_ind_desc in Hd; rewrite Hq, HMk, Hl in Hd; discriminate.
+Qed.
 
 (** The record type whose module's open frame a module expression names,
     if any. *)
@@ -170,8 +199,32 @@ Qed.
 Lemma frame_record_of_none : forall Ξ H p R, frame_record_of Ξ H = None -> mod_qname H = Some p -> gs_find_record Ξ p = Some R -> False.
 Proof. intros * Hf Hq Hk; unfold frame_record_of in Hf; rewrite Hq, Hk in Hf; discriminate. Qed.
 
-Lemma dn_of_frame_record : forall Θ Ξ Γ H p R, frame_record_of Ξ H = Some (p, R) -> mdenote Θ Ξ Γ H (ds_record nil p nil).
-Proof. intros * Hf; destruct (frame_record_of_some _ _ _ _ Hf) as (Hq & Hk); eapply dn_record_frame; eassumption. Qed.
+(** What the open frame of the record type [R] at [p] denotes: its type
+    former, with its module. *)
+Definition frame_record_desc (Θ : gdeps) (Ξ : gstack) (p : qname) (R : record_decl) : option mdesc :=
+  match gc_loc Θ Ξ p with
+  | Some (Tm, Φm) => Some (record_former_desc p R (ds_closed nil p Tm Φm nil))
+  | None => None
+  end.
+
+Lemma dn_of_frame_record : forall Θ Ξ Γ H p R Rd, frame_record_of Ξ H = Some (p, R) ->
+    frame_record_desc Θ Ξ p R = Some Rd -> mdenote Θ Ξ Γ H Rd.
+Proof.
+  intros * Hf Hd; destruct (frame_record_of_some _ _ _ _ Hf) as (Hq & Hk).
+  unfold frame_record_desc in Hd.
+  destruct (gc_loc Θ Ξ p) as [[Tm Φm] |] eqn:Hl; [ injection Hd as <- | discriminate ].
+  eapply dn_record_frame; eassumption.
+Qed.
+
+(** In a well-formed global context, the open frame of a record type
+    denotes. *)
+Lemma frame_record_desc_some : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall H p R,
+    frame_record_of Ξ H = Some (p, R) -> frame_record_desc Θ Ξ p R = None -> False.
+Proof.
+  intros * Hg * Hf Hd; destruct (frame_record_of_some _ _ _ _ Hf) as (Hq & Hk).
+  destruct (frame_record_loc _ _ Hg _ _ Hk) as (U & T0 & T & Φ & _ & _ & Hl).
+  unfold frame_record_desc in Hd; rewrite Hl in Hd; discriminate.
+Qed.
 
 Section DenoteImpl.
   Variables (Θ : gdeps) (Ξ : gstack).
@@ -262,9 +315,13 @@ Section DenoteImpl.
   | Γ, me_unit fp, Ho with inspect (gc_unit Θ Ξ (me_unit fp)) := {
     | exist _ (Some (T, Φ)) Eu => inleft (exist _ (ds_closed nil (q_abs fp nil) T Φ nil) _)
     | exist _ None Eu with inspect (frame_ind_of Ξ (me_unit fp)) := {
-      | exist _ (Some (pq, k, D)) Ek => inleft (exist _ (ds_ind nil pq k nil) (dn_of_frame_ind _ _ _ _ _ _ _ Ek))
+      | exist _ (Some (pq, k, D)) Ek with inspect (frame_ind_desc Θ Ξ (me_unit fp) pq k D) := {
+        | exist _ (Some R) Ed => inleft (exist _ R (dn_of_frame_ind _ _ _ _ _ _ _ _ Ek Ed))
+        | exist _ None Ed => False_rect _ (frame_ind_desc_some _ _ Hg _ _ _ _ Ek Ed) }
       | exist _ None Ek with inspect (frame_record_of Ξ (me_unit fp)) := {
-        | exist _ (Some (p, R)) Er => inleft (exist _ (ds_record nil p nil) (dn_of_frame_record _ _ _ _ _ _ Er))
+        | exist _ (Some (p, R)) Er with inspect (frame_record_desc Θ Ξ p R) := {
+          | exist _ (Some Rd) Ed => inleft (exist _ Rd (dn_of_frame_record _ _ _ _ _ _ _ Er Ed))
+          | exist _ None Ed => False_rect _ (frame_record_desc_some _ _ Hg _ _ _ Er Ed) }
         | exist _ None Er => inright _ } } }
   | Γ, me_var x, Ho with inspect (ctx_find_mod Γ x) := {
     | exist _ (Some U) Ef with udenote_impl Γ None U _ := {
@@ -285,12 +342,16 @@ Section DenoteImpl.
           inleft (exist _ (ds_closed nil (qname_in p y) T Φ nil) (dn_unit _ _ _ _ _ _ _ (mod_qname_mem_in _ _ _ Eqp) Eu))
       | exist _ None Eqp => False_rect _ (gc_unit_mem_qname _ _ _ _ _ Eu Eqp) }
     | exist _ None Eu with inspect (frame_ind_of Ξ (me_mem H y)) := {
-      | exist _ (Some (pq, k, D)) Ek => inleft (exist _ (ds_ind nil pq k nil) (dn_of_frame_ind _ _ _ _ _ _ _ Ek))
+      | exist _ (Some (pq, k, D)) Ek with inspect (frame_ind_desc Θ Ξ (me_mem H y) pq k D) := {
+        | exist _ (Some R) Ed => inleft (exist _ R (dn_of_frame_ind _ _ _ _ _ _ _ _ Ek Ed))
+        | exist _ None Ed => False_rect _ (frame_ind_desc_some _ _ Hg _ _ _ _ Ek Ed) }
       | exist _ None Ek with inspect (frame_record_of Ξ (me_mem H y)) := {
-        | exist _ (Some (p, Rr)) Erf => inleft (exist _ (ds_record nil p nil) (dn_of_frame_record _ _ _ _ _ _ Erf))
+        | exist _ (Some (p, Rr)) Erf with inspect (frame_record_desc Θ Ξ p Rr) := {
+          | exist _ (Some Rd) Ed => inleft (exist _ Rd (dn_of_frame_record _ _ _ _ _ _ _ Erf Ed))
+          | exist _ None Ed => False_rect _ (frame_record_desc_some _ _ Hg _ _ _ Erf Ed) }
         | exist _ None Erf with mdenote_impl Γ H _ := {
           | inright HN => inright _
-          | inleft (exist _ R0 HR0) with inspect (ds_mod Θ Ξ R0) := {
+          | inleft (exist _ R0 HR0) with inspect (ds_mod R0) := {
             | exist _ None Em => inright _
             | exist _ (Some R0m) Em with inspect (ds_entry R0m y) := {
               | exist _ None Ee => inright _
@@ -309,7 +370,7 @@ Section DenoteImpl.
     | inright HN => inright _ }
   | Γ, o, gu_mk Δ (md_alias E), Ho with mdenote_impl (Δ ++ Γ) E _ := {
     | inright HN => inright _
-    | inleft (exist _ R HR) with inspect (ds_mod Θ Ξ R) := {
+    | inleft (exist _ R HR) with inspect (ds_mod R) := {
       | exist _ (Some R') Em => inleft (exist _ (ds_up Δ R') _)
       | exist _ None Em => inright _ } }
 
@@ -319,14 +380,22 @@ Section DenoteImpl.
   | Γ, o, ge_mod pv U, Ho with udenote_impl Γ o U _ := {
     | inleft (exist _ R HR) => inleft (exist _ R _)
     | inright HN => inright _ }
-  | Γ, o, ge_ind pv p k D Φ, Ho => inleft (exist _ (ds_ind nil p k nil) _)
+  | Γ, o, ge_ind pv p k D Φ, Ho with inspect (ind_member D k) := {
+    | exist _ None EMk => inright _
+    | exist _ (Some Mk) EMk with inspect (ind_mpath D k) := {
+      | exist _ None Ep => inright _
+      | exist _ (Some pm) Ep with inspect (gc_loc Θ Ξ pm) := {
+        | exist _ None El => inright _
+        | exist _ (Some (Tm, Φm)) El => inleft (exist _ (ind_former_desc p k D Mk (ds_closed nil pm Tm Φm nil)) _) } } }
   | Γ, o, ge_def_mod pv A M (gu_mk Δ (md_alias E)), Ho with mdenote_impl (Δ ++ Γ) E _ := {
     | inright HN => inright _
-    | inleft (exist _ R HR) with inspect (ds_mod Θ Ξ R) := {
+    | inleft (exist _ R HR) with inspect (ds_mod R) := {
       | exist _ (Some R') Em => inleft (exist _ (ds_dm nil A M (ds_up Δ R')) _)
       | exist _ None Em => inright _ } }
   | Γ, o, ge_def_mod pv A M (gu_mk Δ (md_body sm Φ)), Ho => inright _
-  | Γ, Some p, ge_record pv pr R Φ, Ho => inleft (exist _ (ds_record nil p nil) _)
+  | Γ, Some p, ge_record pv pr R Φ, Ho with inspect (gc_loc Θ Ξ p) := {
+    | exist _ None El => inright _
+    | exist _ (Some (Tm, Φm)) El => inleft (exist _ (record_former_desc p R (ds_closed nil p Tm Φm nil)) _) }
   | Γ, None, ge_record pv pr R Φ, Ho => inright _
 
   with body_xp_impl Γ Φ (Ho : bx_order Θ Ξ Γ Φ) :
@@ -339,7 +408,7 @@ Section DenoteImpl.
     | inright HN => inright _
     | inleft (exist _ Φx Hx) with mdenote_impl (body_ctx Φx ++ Γ) H _ := {
       | inright HN => inright _
-      | inleft (exist _ R HR) with inspect (ds_mod Θ Ξ R) := {
+      | inleft (exist _ R HR) with inspect (ds_mod R) := {
         | exist _ None Em => inright _
         | exist _ (Some Rm) Em with items_gen_impl false (body_ctx Φx ++ Γ) H its _ := {
           | inright HN => inright _
@@ -368,9 +437,9 @@ Section DenoteImpl.
         only, a definition with a module part *)
     | inleft (exist _ R HR) with g := {
       | false => inright _
-      | true with inspect (ds_ty Θ Ξ R) := {
+      | true with inspect (ds_ty R) := {
         | exist _ None Et => inright _
-        | exist _ (Some A) Et with inspect (ds_mod Θ Ξ R) := {
+        | exist _ (Some A) Et with inspect (ds_mod R) := {
           | exist _ None Em => inright _
           | exist _ (Some Rm) Em with items_gen_impl true Γ H its _ := {
             | inleft (exist _ gs Hgs) => inleft (exist _ (ig_def_mod d pv (a_mem H n) (me_mem H n) :: gs) _)
@@ -402,7 +471,7 @@ Section Orders.
     - apply dno_mem; [ assumption |].
       intros R1 R1m Γy' E' rd' Hm1 Hd1 He1.
       match goal with Hm0 : mdenote _ _ _ H _ |- _ => rewrite <- (Fm _ _ _ Hm0 _ Hm1) in Hd1 end.
-      match goal with Hd0 : ds_mod _ _ _ = Some _ |- _ => rewrite Hd0 in Hd1; injection Hd1 as <- end.
+      match goal with Hd0 : ds_mod _ = Some _ |- _ => rewrite Hd0 in Hd1; injection Hd1 as <- end.
       match goal with He0 : ds_entry _ _ = Some _ |- _ => rewrite He0 in He1; injection He1 as <- <- <- end.
       assumption.
     - eapply dno_record_frame; eassumption.
@@ -439,9 +508,9 @@ Section Orders.
       desc_ok Θ Ξ Γ Rm -> ds_entry Rm y = Some (Γy, E, rd) -> en_order Θ Ξ (Γy ++ Γ) E.
   Proof.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.
-    intros * Hok He; destruct Rm as [A om | Δ Φw Φ | Θ' pc T Φ Ns | Θ' p k Ns | Θ' p Ns | ]; cbn in He; try discriminate.
+    intros * Hok He; destruct Rm as [A om | Δ Φw Φ | Θ' pc T Φ Ns | ]; cbn in He; try discriminate.
     - (* an open module: a slot of its extended context *)
-      inversion Hok as [| | ? ? ? ? HΓ Hno Hsub | | |]; subst.
+      inversion Hok as [| ? ? ? ? HΓ Hno Hsub | |]; subst.
       destruct (gm_prefix_upto Φ y) as [[| Φ' x E0 | ? ? ?] |] eqn:Hp; try discriminate.
       destruct E0 as [[|] pv A [M |] | pv U | ? ? ? ? ? | ? ? ? ? | ? ? ?]; try discriminate; injection He as <- <- <-;
         [ constructor |].
@@ -452,7 +521,7 @@ Section Orders.
       destruct (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HU) as (_ & (R & HR) & _).
       rewrite <- app_assoc; exact (proj1 (proj2 order_of_denote) _ _ _ _ HR).
     - (* a closed module: a stored entry *)
-      inversion Hok as [| | | ? ? ? ? ? Θ0 Ξ0 ? Hg0 Hsub Hloc HaT HsT HT HΘ' Hargs | |]; subst.
+      inversion Hok as [| | ? ? ? ? ? Θ0 Ξ0 ? Hg0 Hsub Hloc HaT HsT HT HΘ' Hargs |]; subst.
       destruct (gm_prefix_upto Φ y) as [[| Φ' x E0 | ? ? ?] |] eqn:Hp; try discriminate.
       injection He as <- <- <-; cbn [List.app].
       pose proof (loc_closed _ _ Hg0 _ _ _ Hloc) as [_ HcΦ].

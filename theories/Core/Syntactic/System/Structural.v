@@ -560,40 +560,32 @@ Proof.
   exact (mdenote_sub _ _ (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) _ _ _ Hm HΓ HHs _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ)).
 Qed.
 
-Lemma wf_wk_ds_ty : forall Θ Ξ Γ Δ φ R A,
-    Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ -> ds_ty Θ Ξ R = Some A -> ds_ty Θ Ξ (ds_sub R (ι φ)) = Some A[φ]ʷ.
-Proof. intros * Hφ; apply ds_ty_wk; eapply wf_gctx_closed, (wf_wk_dom _ _ _ _ _ Hφ). Qed.
-
-Lemma wf_sub_ds_ty : forall Θ Ξ Γ Δ σ R A,
-    Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ -> ds_ty Θ Ξ R = Some A -> ds_ty Θ Ξ (ds_sub R σ) = Some A[σ].
-Proof. intros * Hσ; apply ds_ty_sub; eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hσ). Qed.
-
 Lemma wf_wk_ds_mtele : forall Θ Ξ Γ H H' R T Δ φ,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ H R -> ds_mtele Θ Ξ R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
-    ds_mtele Θ Ξ (ds_sub R (ι φ)) = Some (tele_wk T φ).
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ H R -> ds_mtele R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
+    ds_mtele (ds_sub R (ι φ)) = Some (tele_wk T φ).
 Proof.
-  intros * HH Hm HT Hφ; eapply ds_mtele_wk; [ eapply wf_gctx_closed, presup_modexp_eq_ctx, HH | eapply wf_mdenote_scoped; eassumption | exact HT ].
+  intros * HH Hm HT Hφ; eapply ds_mtele_wk; [ eapply wf_mdenote_scoped; eassumption | exact HT ].
 Qed.
 
 Lemma wf_wk_ds_mtele_mem : forall Θ Ξ Γ H H' x R T Δ φ,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ (me_mem H x) R -> ds_mtele Θ Ξ R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
-    ds_mtele Θ Ξ (ds_sub R (ι φ)) = Some (tele_wk T φ).
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ (me_mem H x) R -> ds_mtele R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
+    ds_mtele (ds_sub R (ι φ)) = Some (tele_wk T φ).
 Proof.
-  intros * HH Hm HT Hφ; eapply ds_mtele_wk; [ eapply wf_gctx_closed, presup_modexp_eq_ctx, HH | eapply wf_mdenote_mem_scoped; eassumption | exact HT ].
+  intros * HH Hm HT Hφ; eapply ds_mtele_wk; [ eapply wf_mdenote_mem_scoped; eassumption | exact HT ].
 Qed.
 
 Lemma wf_sub_ds_mtele : forall Θ Ξ Γ H H' R T Δ σ,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ H R -> ds_mtele Θ Ξ R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
-    ds_mtele Θ Ξ (ds_sub R σ) = Some (tele_sub T σ).
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ H R -> ds_mtele R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
+    ds_mtele (ds_sub R σ) = Some (tele_sub T σ).
 Proof.
-  intros * HH Hm HT Hσ; eapply ds_mtele_sub; [ eapply wf_gctx_closed, presup_modexp_eq_ctx, HH | eapply wf_mdenote_scoped; eassumption | exact HT ].
+  intros * HH Hm HT Hσ; eapply ds_mtele_sub; [ eapply wf_mdenote_scoped; eassumption | exact HT ].
 Qed.
 
 Lemma wf_sub_ds_mtele_mem : forall Θ Ξ Γ H H' x R T Δ σ,
-    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ (me_mem H x) R -> ds_mtele Θ Ξ R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
-    ds_mtele Θ Ξ (ds_sub R σ) = Some (tele_sub T σ).
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> mdenote Θ Ξ Γ (me_mem H x) R -> ds_mtele R = Some T -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
+    ds_mtele (ds_sub R σ) = Some (tele_sub T σ).
 Proof.
-  intros * HH Hm HT Hσ; eapply ds_mtele_sub; [ eapply wf_gctx_closed, presup_modexp_eq_ctx, HH | eapply wf_mdenote_mem_scoped; eassumption | exact HT ].
+  intros * HH Hm HT Hσ; eapply ds_mtele_sub; [ eapply wf_mdenote_mem_scoped; eassumption | exact HT ].
 Qed.
 
 Lemma ext_eq_length : forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> length Ψ = length Ψ'.
@@ -1914,7 +1906,7 @@ Section WkMem.
   Lemma wk_mem_case : forall H x R A i,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
       (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ modexp_wk H φ0 ≈ modexp_wk H φ0) ->
-      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty Θ Ξ R = Some A ->
+      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A ->
       (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ A[φ0]ʷ : (Typeω@i)[φ0]ʷ) ->
       (forall M, ds_red R = Some M -> forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[φ0]ʷ : A[φ0]ʷ) ->
       Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
@@ -1922,15 +1914,15 @@ Section WkMem.
   Proof.
     intros * HH IH Hm Ht IHA IHM Hφ; cbn; eapply wf_mem;
       [ exact (IH _ _ Hφ) | eapply wf_wk_mdenote_mem; eassumption
-      | eapply ds_ty_wk; [ exact (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) | exact Ht ] | exact (IHA _ _ Hφ) |].
+      | eapply ds_ty_wk; exact Ht | exact (IHA _ _ Hφ) |].
     intros M' HM'; destruct (ds_red_wk_inv _ _ _ HM') as (M0 & HM0 & ->); exact (IHM _ HM0 _ _ Hφ).
   Qed.
 
   Lemma wk_mem_cong_case : forall H H' x R A R' A',
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
       (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ modexp_wk H φ0 ≈ modexp_wk H' φ0) ->
-      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty Θ Ξ R = Some A ->
-      mdenote Θ Ξ Γ (me_mem H' x) R' -> ds_ty Θ Ξ R' = Some A' ->
+      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A ->
+      mdenote Θ Ξ Γ (me_mem H' x) R' -> ds_ty R' = Some A' ->
       (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_mem H' x)[φ0]ʷ : A[φ0]ʷ) ->
       Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_mem H x)[φ]ʷ ≈ (a_mem H' x)[φ]ʷ : A[φ]ʷ.
@@ -1946,7 +1938,7 @@ Section WkMem.
   Lemma wk_mem_delta_case : forall H x R A M,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
       (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ modexp_wk H φ0 ≈ modexp_wk H φ0) ->
-      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty Θ Ξ R = Some A -> ds_red R = Some M -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
+      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A -> ds_red R = Some M -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_mem H x)[φ]ʷ ≈ M[φ]ʷ : A[φ]ʷ.
   Proof.
     intros * HH IH Hm Ht Hr Hφ; cbn.
@@ -1958,7 +1950,7 @@ Section WkMem.
   Lemma wk_me_delta_sel_case : forall H y R Rm,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y ->
       (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ modexp_wk (me_mem H y) φ0 ≈ modexp_wk (me_mem H y) φ0) ->
-      mdenote Θ Ξ Γ (me_mem H y) R -> ds_mod Θ Ξ R = Some Rm -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
+      mdenote Θ Ξ Γ (me_mem H y) R -> ds_mod R = Some Rm -> Θ ⍮ Ξ ⍮ Δ ⊢ʷ φ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ᵐ modexp_wk (me_mem H y) φ ≈ modexp_wk (ds_unit Rm) φ.
   Proof.
     intros * HH IH Hm Hd Hφ.
@@ -2674,7 +2666,7 @@ Proof. induction Ns as [| N Ns IH]; intros; cbn; [ reflexivity | rewrite IH; ref
 
 Lemma ds_unit_slot_root : forall Γ R, me_slot_root Γ (ds_unit R).
 Proof.
-  intros Γ [A om | Δ Φ | [| e Θ] p T Φ Ns | Θ p Ns | Θ p Ns | A M Rm]; cbn; try exact I.
+  intros Γ [A om | Δ Φ | [| e Θ] p T Φ Ns | A M Rm]; cbn; try exact I.
   apply me_apps_slot_root; eapply mod_qname_slot_root, qname_mod_qname.
 Qed.
 
@@ -2864,7 +2856,7 @@ Section SubMem.
   Lemma sub_mem_case : forall H x R A i,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
       (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ H[σ0]ᵐ ≈ H[σ0]ᵐ) ->
-      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty Θ Ξ R = Some A ->
+      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A ->
       (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ A[σ0] : (Typeω@i)[σ0]) ->
       (forall M, ds_red R = Some M -> forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σ0] : A[σ0]) ->
       Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
@@ -2872,15 +2864,15 @@ Section SubMem.
   Proof.
     intros * HH IH Hm Ht IHA IHM Hσ; cbn; eapply wf_mem;
       [ exact (IH _ _ Hσ) | eapply wf_sub_mdenote_mem; eassumption
-      | eapply ds_ty_sub; [ exact (wf_gctx_closed _ _ _ (presup_modexp_eq_ctx HH)) | exact Ht ] | exact (IHA _ _ Hσ) |].
+      | eapply ds_ty_sub; exact Ht | exact (IHA _ _ Hσ) |].
     intros M' HM'; destruct (ds_red_sub_inv _ _ _ HM') as (M0 & HM0 & ->); exact (IHM _ HM0 _ _ Hσ).
   Qed.
 
   Lemma sub_mem_cong_case : forall H H' x R A R' A',
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
       (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ H[σ0]ᵐ ≈ H'[σ0]ᵐ) ->
-      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty Θ Ξ R = Some A ->
-      mdenote Θ Ξ Γ (me_mem H' x) R' -> ds_ty Θ Ξ R' = Some A' ->
+      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A ->
+      mdenote Θ Ξ Γ (me_mem H' x) R' -> ds_ty R' = Some A' ->
       (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ (a_mem H' x)[σ0] : A[σ0]) ->
       Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_mem H x)[σ] ≈ (a_mem H' x)[σ] : A[σ].
@@ -2896,7 +2888,7 @@ Section SubMem.
   Lemma sub_mem_delta_case : forall H x R A M,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
       (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ H[σ0]ᵐ ≈ H[σ0]ᵐ) ->
-      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty Θ Ξ R = Some A -> ds_red R = Some M -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
+      mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A -> ds_red R = Some M -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ (a_mem H x)[σ] ≈ M[σ] : A[σ].
   Proof.
     intros * HH IH Hm Ht Hr Hσ; cbn.
@@ -2908,7 +2900,7 @@ Section SubMem.
   Lemma sub_me_delta_sel_case : forall H y R Rm,
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y ->
       (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵐ (me_mem H y)[σ0]ᵐ ≈ (me_mem H y)[σ0]ᵐ) ->
-      mdenote Θ Ξ Γ (me_mem H y) R -> ds_mod Θ Ξ R = Some Rm -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
+      mdenote Θ Ξ Γ (me_mem H y) R -> ds_mod R = Some Rm -> Θ ⍮ Ξ ⍮ Δ ⊢ˢ σ : Γ ->
       Θ ⍮ Ξ ⍮ Δ ⊢ᵐ (me_mem H y)[σ]ᵐ ≈ (ds_unit Rm)[σ]ᵐ.
   Proof.
     intros * HH IH Hm Hd Hσ.

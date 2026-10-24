@@ -155,18 +155,18 @@ Section type_check.
       { gs | items_gen gc_deps gc_stack false Γ H its gs } + { forall gs, ~ items_gen gc_deps gc_stack false Γ H its gs } :=
     items_gen_impl gc_deps gc_stack Hg false Γ H its (ig_order_of_wf _ _ Hg _ _ _ its HH).
 
-  Equations ds_ty_dec (R : mdesc) : { A | ds_ty gc_deps gc_stack R = Some A } + { ds_ty gc_deps gc_stack R = None } :=
-  ds_ty_dec R with inspect (ds_ty gc_deps gc_stack R) := {
+  Equations ds_ty_dec (R : mdesc) : { A | ds_ty R = Some A } + { ds_ty R = None } :=
+  ds_ty_dec R with inspect (ds_ty R) := {
     | exist _ (Some A) E => inleft (exist _ A E)
     | exist _ None E => inright E }.
 
-  Equations ds_mtele_dec (R : mdesc) : { T | ds_mtele gc_deps gc_stack R = Some T } + { ds_mtele gc_deps gc_stack R = None } :=
-  ds_mtele_dec R with inspect (ds_mtele gc_deps gc_stack R) := {
+  Equations ds_mtele_dec (R : mdesc) : { T | ds_mtele R = Some T } + { ds_mtele R = None } :=
+  ds_mtele_dec R with inspect (ds_mtele R) := {
     | exist _ (Some T) E => inleft (exist _ T E)
     | exist _ None E => inright E }.
 
-  Equations ds_mod_dec (R : mdesc) : { Rm | ds_mod gc_deps gc_stack R = Some Rm } + { ds_mod gc_deps gc_stack R = None } :=
-  ds_mod_dec R with inspect (ds_mod gc_deps gc_stack R) := {
+  Equations ds_mod_dec (R : mdesc) : { Rm | ds_mod R = Some Rm } + { ds_mod R = None } :=
+  ds_mod_dec R with inspect (ds_mod R) := {
     | exist _ (Some Rm) E => inleft (exist _ Rm E)
     | exist _ None E => inright E }.
 
@@ -202,7 +202,7 @@ Section type_check.
   (** The type a member of a checked module expression is read at is a
       type ([member_wf]). *)
   Lemma member_typ_of_alg : forall G M x R A, ⊢ G -> G ⊢aᵐ M ->
-      mdenote gc_deps gc_stack G (me_mem M x) R -> ds_ty gc_deps gc_stack R = Some A -> exists i, G ⊢ A : Typeω@i.
+      mdenote gc_deps gc_stack G (me_mem M x) R -> ds_ty R = Some A -> exists i, G ⊢ A : Typeω@i.
   Proof.
     intros * HG HM Hm Ht.
     exact (proj1 (member_wf _ _ _ _ _ (alg_modexp_sound HM HG) Hm Ht)).
@@ -708,7 +708,7 @@ Ltac mo_3 :=
 Ltac mo_7 :=
   clear_defs; destruct_conjs;
   solve [ match goal with
-              | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : mdenote _ _ ?G (me_mem ?M _) _, Ht : ds_ty _ _ _ = Some ?A
+              | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : mdenote _ _ ?G (me_mem ?M _) _, Ht : ds_ty _ = Some ?A
                 |- nbe_ty_order _ _ ?G ?A =>
                   destruct (member_typ_of_alg _ _ _ _ _ HG HM Hm Ht) as [? ?];
                   eapply nbe_order_of_typ; eassumption
@@ -718,7 +718,7 @@ Ltac mo_7 :=
 Ltac mo_8 :=
   clear_defs; destruct_conjs;
   solve [ match goal with
-              | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : mdenote _ _ ?G (me_mem ?M _) _, Ht : ds_ty _ _ _ = Some ?A,
+              | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : mdenote _ _ ?G (me_mem ?M _) _, Ht : ds_ty _ = Some ?A,
                 Hn : nbe_ty_f ?G ?A _ |- _ =>
                   destruct (member_typ_of_alg _ _ _ _ _ HG HM Hm Ht) as [? ?]
               end;
@@ -754,7 +754,7 @@ Ltac mo_21 :=
 Ltac mo_22 :=
   clear_defs; destruct_conjs;
   solve [ match goal with
-              | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : mdenote _ _ ?G ?M _, Ht : ds_mtele _ _ _ = Some ?T,
+              | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : mdenote _ _ ?G ?M _, Ht : ds_mtele _ = Some ?T,
                 Hv : tele_view ?T = Some (?B, _) |- exists i, ?G ⊢ ?B : Typeω@i =>
                   exact (mtele_head_wf _ _ _ _ _ _ (alg_modexp_sound HM HG) Hm Ht Hv)
               end ].

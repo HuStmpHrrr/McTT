@@ -68,9 +68,9 @@ Section Grow.
       exact (valid_unit_alias _ _ _ _ _ (Hwm _ _ _ Hw) HΔ HΓ HΔΓ HU HE IHE).
     - intros Γ H R Rm K RK Hw HmH HmodH HHK _ IHK HmK HmodK.
       destruct (emb_mdenote _ _ _ _ Hg1 He _ _ _ HmH) as (R2 & HmH2 & Hd).
-      destruct (dsg_mod _ _ _ _ Hs _ _ _ Hd HmodH) as (Rm2 & HmodH2 & Hdm).
+      destruct (dsg_mod _ _ _ _ _ _ _ Hd HmodH) as (Rm2 & HmodH2 & Hdm).
       destruct (emb_mdenote _ _ _ _ Hg1 He _ _ _ HmK) as (RK2 & HmK2 & HdK).
-      destruct (dsg_mod _ _ _ _ Hs _ _ _ HdK HmodK) as (Rm2' & HmodK2 & Hdm').
+      destruct (dsg_mod _ _ _ _ _ _ _ HdK HmodK) as (Rm2' & HmodK2 & Hdm').
       pose proof (dsg_functional _ _ _ _ _ _ _ Hdm Hdm') as <-.
       exact (valid_modexp_intro _ _ _ _ _ _ _ _ (Hwm _ _ _ Hw) HmH2 HmodH2 HHK IHK HmK2 HmodK2).
   Qed.
@@ -114,18 +114,18 @@ End Closed.
 Lemma ds_red_sub_map : forall R σ, ds_red (ds_sub R σ) = option_map (fun M => M[σ]) (ds_red R).
 Proof.
   intros R σ; destruct (ds_red R) as [M |] eqn:E; [ exact (ds_red_sub _ _ _ E) |].
-  destruct R as [A [M |] | | | | | ]; cbn in E |- *; congruence.
+  destruct R as [A [M |] | | | ]; cbn in E |- *; congruence.
 Qed.
 
 (** An abstracted description, substituted under its parameters: the term
     part and the reduct, substituted. *)
-Lemma ds_up_sub_parts : forall Θ Ξ, gctx_closed Θ Ξ -> forall Θa R σ,
-    (forall A, ds_ty Θ Ξ (ds_up Θa R) = Some A ->
-       ds_ty Θ Ξ (ds_up (tele_sub Θa σ) (ds_sub R (sb_qn (length Θa) σ))) = Some A[σ]) /\
+Lemma ds_up_sub_parts : forall Θa R σ,
+    (forall A, ds_ty (ds_up Θa R) = Some A ->
+       ds_ty (ds_up (tele_sub Θa σ) (ds_sub R (sb_qn (length Θa) σ))) = Some A[σ]) /\
     ds_red (ds_up (tele_sub Θa σ) (ds_sub R (sb_qn (length Θa) σ))) = option_map (fun M => M[σ]) (ds_red (ds_up Θa R)).
 Proof.
-  intros * Hc Θa R σ; split.
-  - intros A Ht; destruct (ds_ty_up_inv _ _ _ _ _ Ht) as (A0 & Ht0 & ->).
+  intros Θa R σ; split.
+  - intros A Ht; destruct (ds_ty_up_inv _ _ _ Ht) as (A0 & Ht0 & ->).
     rewrite ctx_pi_sub; apply ds_ty_up, ds_ty_sub; assumption.
   - rewrite !ds_red_up, ds_red_sub_map; destruct (ds_red R) as [M |]; cbn; [ rewrite ctx_fn_sub |]; reflexivity.
 Qed.
@@ -133,12 +133,12 @@ Qed.
 (** A description abstracted over [Θa] and then a telescope [T2], given
     arguments for all of [T2]: its term part and reduct are those of the
     description abstracted over [Θa], instantiated. *)
-Lemma ds_ats_up_parts : forall Θ Ξ, gctx_closed Θ Ξ -> forall Ns T2 Θa R R1,
+Lemma ds_ats_up_parts : forall Ns T2 Θa R R1,
     tele_ass T2 -> length T2 = length Ns -> ds_ats (ds_up (Θa ++ T2) R) Ns = Some R1 ->
-    (forall A, ds_ty Θ Ξ (ds_up Θa R) = Some A -> ds_ty Θ Ξ R1 = Some A[sb_of_list Id Ns]) /\
+    (forall A, ds_ty (ds_up Θa R) = Some A -> ds_ty R1 = Some A[sb_of_list Id Ns]) /\
     ds_red R1 = option_map (fun M => M[sb_of_list Id Ns]) (ds_red (ds_up Θa R)).
 Proof.
-  intros Θ Ξ Hc; induction Ns as [| N Ns IH]; intros * HT Hl Ha.
+  induction Ns as [| N Ns IH]; intros * HT Hl Ha.
   - destruct T2; [| cbn in Hl; discriminate ]; cbn in Ha; injection Ha as <-; rewrite app_nil_r.
     split; [ intros A Ht; rewrite Ht, exp_sub_id; reflexivity |].
     destruct (ds_red (ds_up Θa R)); cbn; rewrite ?exp_sub_id; reflexivity.
@@ -148,7 +148,7 @@ Proof.
     cbn [ds_ats] in Ha; rewrite app_assoc, ds_at_up, tele_sub_app, List.length_app, sb_qn_plus in Ha.
     set (σ := sb_qn (length T2') (Id,,N)) in Ha.
     destruct (IH _ _ _ _ (tele_ass_sub _ _ HT') ltac:(rewrite length_tele_sub; lia) Ha) as [Hty Hred].
-    destruct (ds_up_sub_parts _ _ Hc Θa R σ) as [Hty0 Hred0].
+    destruct (ds_up_sub_parts Θa R σ) as [Hty0 Hred0].
     assert (Hσ : forall M, M[σ][sb_of_list Id Ns] = M[sb_of_list Id (N :: Ns)]).
     { intros M; subst σ; cbn [sb_of_list]; rewrite exp_sub_sub; apply exp_sub_sb_eq.
       replace (length T2') with (length Ns) by lia.
@@ -432,11 +432,11 @@ Section FiledOk.
       valid body, the member's value its value. *)
   Lemma fo_term_fn : forall T A0 i M0 R0 g, tele_ass T -> ⊨ T -> T ⊨ A0 : Typeω@i -> T ⊨ M0 : A0 ->
       ⟦ ctx_fn T M0 ⟧ nil ↘ g ->
-      (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> ds_ats R0 Ns = Some R1 ->
-         ds_ty Θm Ξm R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
+      (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> ds_ats_tm R0 Ns = Some R1 ->
+         ds_ty R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
          ds_red R1 = Some (ctx_fn T1 M0)[sb_of_list Id Ns]) ->
-      (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> ds_ats R0 Ns = Some R1 ->
-         ds_ty Θm Ξm R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
+      (forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns -> ds_ats_tm R0 Ns = Some R1 ->
+         ds_ty R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
          (ds_red R1 = None \/
           exists M1, ds_red R1 = Some M1[sb_of_list Id Ns] /\ T2 ⊨ M1 : ctx_pi T1 A0 /\
             forall ns m, List.length ns = List.length T2 -> ⟦ M1 ⟧ env_args nil ns ↘ m ->
@@ -461,11 +461,11 @@ Section FiledOk.
   (** The reduct clause for an abstracted description, by its parts. *)
   Lemma fo_ats_up : forall T R Ns R1 T1 T2, T = T1 ++ T2 -> tele_ass T -> List.length T2 = List.length Ns ->
       ds_ats (ds_up T R) Ns = Some R1 ->
-      (forall A, ds_ty Θm Ξm (ds_up T1 R) = Some A -> ds_ty Θm Ξm R1 = Some A[sb_of_list Id Ns]) /\
+      (forall A, ds_ty (ds_up T1 R) = Some A -> ds_ty R1 = Some A[sb_of_list Id Ns]) /\
       ds_red R1 = option_map (fun M => M[sb_of_list Id Ns]) (ds_red (ds_up T1 R)).
   Proof.
     intros * -> HTa Hl Ha.
-    exact (ds_ats_up_parts _ _ (wf_gstack_closed _ _ Hgm) _ _ _ _ _ (proj2 (tele_ass_app_inv _ _ HTa)) Hl Ha).
+    exact (ds_ats_up_parts _ _ _ _ _ (proj2 (tele_ass_app_inv _ _ HTa)) Hl Ha).
   Qed.
 
   Lemma per_bot_glob : forall pg, per_bot (d_glob pg) (d_glob pg).
@@ -474,21 +474,19 @@ Section FiledOk.
   (** The type former of the member [k] of the group [D], at [p.x], over the
       telescope [T] of [p]: what a filed member's entry and the open frame
       of a member's module both are. *)
-  Lemma fo_ind_term : forall p T Φ x pq k D Δu, gc_loc Θm Ξm p = Some (T, Φ) ->
+  Lemma fo_ind_term : forall p T Φ x pq k D Mk Δu, gc_loc Θm Ξm p = Some (T, Φ) ->
       ind_mlookup Θm Ξm (qname_in p x) = Some (pq, k, D) -> ind_selfpath pq k D (qname_in p x) ->
-      ind_uparams D = Δu ++ T ->
+      ind_member D k = Some Mk -> ind_uparams D = Δu ++ T ->
       gc_resolve Θ2 Ξ2 (qname_in p x) = None -> ind_mlookup Θ2 Ξ2 (qname_in p x) = Some (pq, k, D) ->
-      valid_filed_term Θm Ξm p T x (ds_ind nil pq k nil).
+      valid_filed_term p T x (ds_term (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k))).
   Proof.
-    intros * Hl Hindm Hsp HU Hres2 Hind2.
+    intros * Hl Hindm Hsp HMk HU Hres2 Hind2.
     destruct (good_loc _ _ _ Hl) as [[HT HTa] _].
     pose proof (ind_mlookup_group _ _ Hgm _ _ _ _ Hindm) as HlD.
     pose proof (ind_lookup_gc_sub _ _ _ _ _ _ fo_sub HlD) as HlD2.
     destruct (good_ind _ _ _ _ _ _ _ _ _ _ _ _ HΘ HΞ HlD) as [HD HDs].
     destruct (decl_of_lookup _ _ ⋅ _ _ (wf_ctx_empty _ _ Hgm) HlD) as [Hdt Hc].
     pose proof (dt_sort_univ _ _ _ Hdt) as Hsu.
-    destruct (ind_member D k) as [Mk |] eqn:HMk;
-      [| pose proof (isp_path _ _ _ _ Hsp) as H0; unfold ind_mpath in H0; rewrite HMk in H0; discriminate ].
     destruct (member_lt_decl _ _ _ _ _ Hdt HMk (isp_decl _ _ _ _ Hsp)) as [pm Hh].
     pose proof (grp_tele_ass_of_emb _ _ _ _ _ _ Hgm He HlD) as Hass.
     set (Δp := im_nparams Mk ++ Δu).
@@ -504,13 +502,14 @@ Section FiledOk.
     apply mk_valid_filed_term with (vft_typ := ctx_pi Δp S') (vft_lvl := i) (vft_val := d_ind pq k nil);
       [ exact HA0 | | | ].
     - intros Ns R1 T1 T2 HT12 Hlen Ha.
-      rewrite ds_ats_ind_nil in Ha; injection Ha as <-; cbn [app].
+      assert (Hle : length Ns <= length (ind_uparams D)) by (rewrite HU, HT12, !length_app; lia).
+      unfold S' in Ha; rewrite (ds_ats_tm_ind _ _ _ _ _ (dc_ass _ Hc) Hle) in Ha; injection Ha as <-.
       split.
-      + cbn [ds_ty]; rewrite HlD, HMk; cbn [ctx_pi]; f_equal.
+      + cbn [ds_ty]; f_equal.
         unfold ind_ty_at; rewrite <- length_im_params, Hpar, HT12, app_assoc, length_app, <- Hlen, Nat.add_sub, firstn_app,
           Nat.sub_diag, firstn_all; cbn [List.firstn]; rewrite app_nil_r, ctx_pi_app; reflexivity.
       + right; exists (apps_exp (a_ind pq k) (vars_from 0 (length T2))).
-        split; [ cbn [ds_red ctx_fn]; rewrite apps_exp_sub; cbn [exp_sub]; rewrite Hlen, vars_from_sb_of_list; reflexivity |].
+        split; [ cbn [ds_red]; rewrite apps_exp_sub; cbn [exp_sub]; rewrite Hlen, vars_from_sb_of_list; reflexivity |].
         destruct (tele_ass_app_inv T1 T2 ltac:(rewrite <- HT12; exact HTa)) as [HTa1 HTa2].
         assert (HT12' : ⊨ T1 ++ T2) by (rewrite <- HT12; exact HT).
         pose proof (rel_ctx_wf_app_r _ _ HT12') as HT2.
@@ -539,7 +538,7 @@ Section FiledOk.
       frame of a record type's module both are. *)
   Lemma fo_record_term : forall p T Φ x R Δ0, gc_loc Θm Ξm p = Some (T, Φ) ->
       record_lookup Θm Ξm (qname_in p x) = Some R -> record_params R = Δ0 ++ T ->
-      valid_filed_term Θm Ξm p T x (ds_record nil (qname_in p x) nil).
+      valid_filed_term p T x (ds_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x)))).
   Proof.
     intros * Hl Hrl HP.
     destruct (good_loc _ _ _ Hl) as [[HT HTa] _].
@@ -563,15 +562,14 @@ Section FiledOk.
     apply mk_valid_filed_term with (vft_typ := ctx_pi Δ0 S) (vft_lvl := i) (vft_val := d_record (qname_in p x) nil);
       [ exact HA0 | | | ].
     - intros Ns R1 T1 T2 HT12 Hlen Ha.
-      rewrite ds_ats_record_nil in Ha; injection Ha as <-; cbn [app].
+      assert (Hle : length Ns <= length (record_params R)) by (rewrite HP, HT12, !length_app; lia).
+      rewrite (ds_ats_tm_record _ _ _ Hass Hle) in Ha; injection Ha as <-.
       split.
-      + assert (Hle : (length Ns <=? length (record_params R)) = true)
-          by (apply Nat.leb_le; rewrite HP, HT12, !length_app; lia).
-        cbn [ds_ty]; rewrite Hrl, Hle; cbn [ctx_pi]; f_equal.
+      + cbn [ds_ty]; f_equal.
         unfold record_ty_at; rewrite HP, HT12, app_assoc, length_app, <- Hlen, Nat.add_sub, firstn_app,
           Nat.sub_diag, firstn_all; cbn [List.firstn]; rewrite app_nil_r, ctx_pi_app; reflexivity.
       + right; exists (apps_exp (a_record (qname_in p x)) (vars_from 0 (length T2))).
-        split; [ cbn [ds_red ctx_fn]; rewrite apps_exp_sub; cbn [exp_sub]; rewrite Hlen, vars_from_sb_of_list; reflexivity |].
+        split; [ cbn [ds_red]; rewrite apps_exp_sub; cbn [exp_sub]; rewrite Hlen, vars_from_sb_of_list; reflexivity |].
         destruct (tele_ass_app_inv T1 T2 ltac:(rewrite <- HT12; exact HTa)) as [HTa1 HTa2].
         assert (HT12' : ⊨ T1 ++ T2) by (rewrite <- HT12; exact HT).
         pose proof (rel_ctx_wf_app_r _ _ HT12') as HT2.
@@ -597,14 +595,14 @@ Section FiledOk.
 
   Lemma fo_term : forall p T Φ x Φ0 E R0, gc_loc Θm Ξm p = Some (T, Φ) ->
       gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) -> entry_term (Some (qname_in p x)) E = Some R0 ->
-      valid_filed_term Θm Ξm p T x R0.
+      valid_filed_term p T x R0.
   Proof.
     intros * Hl Hp HR0.
     destruct (good_loc _ _ _ Hl) as [[HT HTa] Hv].
     pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ Hv Hp) as HV.
     destruct (fo_entry _ _ _ _ _ _ Hl Hp) as (Φ2 & E2 & Hl2 & Hent2 & HeE2 & Hgr & HeE & Hent).
     destruct E as [b pv A oM | pv U | pv pq k D ΦD | pv Ad Md U | pv pr Rr ΦR]; cbn in HR0; try discriminate;
-      injection HR0 as <-.
+      try (injection HR0 as <-).
     - (* a definition *)
       cbn in HV; destruct HV as (A0 & i & oM0 & -> & -> & HA0 & HM0).
       assert (HE2 : ge_def b pv (ctx_pi T A0) (option_map (ctx_fn T) oM0) = E2)
@@ -614,10 +612,12 @@ Section FiledOk.
                    ds_up T (ds_term A0 (if b then oM0 else None))) by (destruct b; reflexivity).
       rewrite HR.
       assert (Hats : forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns ->
-                ds_ats (ds_up T (ds_term A0 (if b then oM0 else None))) Ns = Some R1 ->
-                ds_ty Θm Ξm R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
+                ds_ats_tm (ds_up T (ds_term A0 (if b then oM0 else None))) Ns = Some R1 ->
+                ds_ty R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
                 ds_red R1 = option_map (fun M => (ctx_fn T1 M)[sb_of_list Id Ns]) (if b then oM0 else None)).
-      { intros * HT12 Hlen Ha; destruct (fo_ats_up _ _ _ _ _ _ HT12 HTa Hlen Ha) as [Hty Hred].
+      { intros * HT12 Hlen Ha.
+        rewrite (ds_ats_tm_up Ns _ _ _ HTa ltac:(rewrite HT12, length_app; lia)) in Ha.
+        destruct (fo_ats_up _ _ _ _ _ _ HT12 HTa Hlen Ha) as [Hty Hred].
         split; [ apply Hty; reflexivity | rewrite Hred; cbn; destruct (if b then oM0 else None); reflexivity ]. }
       destruct b; [ destruct oM0 as [M0 |] |].
       1:{ (* transparent: its body *)
@@ -651,7 +651,8 @@ Section FiledOk.
       pose proof (loc_coh _ _ Hgm _ _ _ (gc_loc_loc _ _ _ _ _ Hl)) as Hcoh.
       destruct (gm_coh_child _ _ _ _ Hcoh (gm_entry_submodule _ T _ _ _ _ _ _ _ Hent))
         as [(Δu & oD & [= HU _] & HΔu) | (? & ? & [=] & _)].
-      exact (fo_ind_term _ _ _ _ _ _ _ _ Hl Hindm Hsp HU Hres2 Hind2).
+      destruct (ind_member D k) as [Mk |] eqn:HMk; cbn in HR0; [ injection HR0 as <- | discriminate ].
+      exact (fo_ind_term _ _ _ _ _ _ _ _ _ Hl Hindm Hsp HMk HU Hres2 Hind2).
     - (* a definition with a module part: its term part, as a transparent
          definition *)
       cbn in HV; destruct HV as [_ (A0 & i & oM0 & -> & HoM & HA0 & HM0)].
@@ -661,10 +662,12 @@ Section FiledOk.
       subst E2; rewrite qname_in_app in HeE2.
       change (ds_term (ctx_pi T A0) (Some (ctx_fn T M0))) with (ds_up T (ds_term A0 (Some M0))).
       assert (Hats : forall Ns R1 T1 T2, T = T1 ++ T2 -> List.length T2 = List.length Ns ->
-                ds_ats (ds_up T (ds_term A0 (Some M0))) Ns = Some R1 ->
-                ds_ty Θm Ξm R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
+                ds_ats_tm (ds_up T (ds_term A0 (Some M0))) Ns = Some R1 ->
+                ds_ty R1 = Some (ctx_pi T1 A0)[sb_of_list Id Ns] /\
                 ds_red R1 = option_map (fun M => (ctx_fn T1 M)[sb_of_list Id Ns]) (Some M0)).
-      { intros * HT12 Hlen Ha; destruct (fo_ats_up _ _ _ _ _ _ HT12 HTa Hlen Ha) as [Hty Hred].
+      { intros * HT12 Hlen Ha.
+        rewrite (ds_ats_tm_up Ns _ _ _ HTa ltac:(rewrite HT12, length_app; lia)) in Ha.
+        destruct (fo_ats_up _ _ _ _ _ _ HT12 HTa Hlen Ha) as [Hty Hred].
         split; [ apply Hty; reflexivity | rewrite Hred; reflexivity ]. }
       assert (HT0 : ⊨ T ++ ⋅) by (rewrite app_nil_r; exact HT).
       assert (HM0' : T ++ ⋅ ⊨ M0 : A0) by (rewrite app_nil_r; exact (HM0 _ eq_refl)).
@@ -683,12 +686,11 @@ Section FiledOk.
   (** The open frame of a record type's module under a stored body is its
       type former, as a filed record entry is. *)
   Lemma fo_record_frame : forall p T Φ x R, gc_loc Θm Ξm p = Some (T, Φ) ->
-      gs_find_record Ξm (qname_in p x) = Some R -> valid_filed_term Θm Ξm p T x (ds_record nil (qname_in p x) nil).
+      gs_find_record Ξm (qname_in p x) = Some R ->
+      valid_filed_term p T x (ds_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record (qname_in p x)))).
   Proof.
     intros * Hl Hk.
     assert (Hrl : record_lookup Θm Ξm (qname_in p x) = Some R) by (unfold record_lookup; rewrite Hk; reflexivity).
-    destruct (ds_mod_record_frame _ _ Hgm _ _ nil nil Hk) as (Tx & Φx & Hfx & _).
-    pose proof (frame_record_params _ _ Hgm _ _ _ _ Hk Hfx) as HTx.
     destruct (gs_find_record_tele _ _ _ Hk) as (U & T0 & Ht0).
     destruct (frame_parent _ _ Hgm _ _ _ _ Ht0) as (Tq & Φq & Hfq & _).
     assert (HTq : T = Tq) by (unfold gc_loc in Hl; rewrite Hfq in Hl; injection Hl as <- _; reflexivity).
@@ -699,13 +701,14 @@ Section FiledOk.
 
   (** The open frame of a member's module under a stored body is its type
       former, as a filed member's entry is. *)
-  Lemma fo_ind_frame : forall p T Φ x pq k D, gc_loc Θm Ξm p = Some (T, Φ) ->
-      gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) -> valid_filed_term Θm Ξm p T x (ds_ind nil pq k nil).
+  Lemma fo_ind_frame : forall p T Φ x pq k D Mk, gc_loc Θm Ξm p = Some (T, Φ) ->
+      gs_find_ind Ξm (qname_in p x) = Some (pq, k, D) -> ind_member D k = Some Mk ->
+      valid_filed_term p T x (ds_term (ctx_pi (im_params D Mk) (ind_sort D)[wk_shiftn (im_nn Mk)]ʷ) (Some (a_ind pq k))).
   Proof.
-    intros * Hl Hk.
+    intros * Hl Hk HMk.
     assert (Hindm : ind_mlookup Θm Ξm (qname_in p x) = Some (pq, k, D)) by (rewrite ind_mlookup_unfold, Hk; reflexivity).
     pose proof (frame_ind_selfpath _ _ Hgm _ _ _ _ Hk) as Hsp.
-    destruct (ds_mod_ind_frame _ _ Hgm _ _ _ _ nil nil Hk) as (Tx & Φx & Hfx & _).
+    destruct (frame_ind_loc _ _ Hgm _ _ _ _ Hk) as (? & ? & Tx & Φx & ? & _ & Hfx & _ & _).
     pose proof (frame_ind_uparams _ _ Hgm _ _ _ _ _ _ Hk Hfx) as HTx.
     destruct (gs_find_ind_tele _ _ _ Hk) as (U & T0 & Ht0).
     destruct (frame_parent _ _ Hgm _ _ _ _ Ht0) as (Tq & Φq & Hfq & _).
@@ -713,7 +716,7 @@ Section FiledOk.
     subst Tq; destruct (frame_child_tele _ _ Hgm _ _ _ _ _ _ Hfx Hfq) as (Δu & ->).
     pose proof (gc_sub_frame_ind _ _ _ _ _ _ fo_sub Hk) as Hind2.
     pose proof (ind_mlookup_resolve _ _ _ _ Hind2) as Hres2.
-    exact (fo_ind_term _ _ _ _ _ _ _ _ Hl Hindm Hsp (eq_sym HTx) Hres2 Hind2).
+    exact (fo_ind_term _ _ _ _ _ _ _ _ _ Hl Hindm Hsp HMk (eq_sym HTx) Hres2 Hind2).
   Qed.
 
 End FiledOk.

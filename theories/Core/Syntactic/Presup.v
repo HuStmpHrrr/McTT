@@ -50,7 +50,7 @@ Proof.
   (** Members: the left-hand side by [wf_mem], at the type the lookup reads,
       which is a type; a δ-reduct is of that type. *)
   all: try solve [
-    match goal with HH : _ ⍮ _ ⍮ _ ⊢ᵐ ?H ≈ _, Hm : mdenote _ _ _ (me_mem ?H _) ?R, Ht : ds_ty _ _ ?R = Some ?A |- _ =>
+    match goal with HH : _ ⍮ _ ⍮ _ ⊢ᵐ ?H ≈ _, Hm : mdenote _ _ _ (me_mem ?H _) ?R, Ht : ds_ty ?R = Some ?A |- _ =>
       let Hv := fresh "Hv" in
       pose proof (gctx_valid_syn _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH))) as Hv;
       destruct (desc_ok_ty _ _ Hv _ _ _ (mem_desc_ok _ _ _ _ _ _ _ Hv HH Hm) Ht) as [[? HA] HM];

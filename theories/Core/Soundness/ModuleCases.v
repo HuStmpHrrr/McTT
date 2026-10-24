@@ -56,17 +56,17 @@ Qed.
     definition of a stored body, read bare: the module expression's module
     part is the body's path at no argument and no outside parameter. *)
 Lemma mem_no_red : forall Θ Ξ Γ H x R A,
-    mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty Θ Ξ R = Some A -> ds_red R = None ->
+    mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A -> ds_red R = None ->
     exists R0 p T Φ Φ0 b pv oM,
-      mdenote Θ Ξ Γ H R0 /\ ds_mod Θ Ξ R0 = Some (ds_closed nil p T Φ nil) /\
+      mdenote Θ Ξ Γ H R0 /\ ds_mod R0 = Some (ds_closed nil p T Φ nil) /\
       gm_prefix_upto Φ x = Some (gm_ext Φ0 x (ge_def b pv A oM)) /\ (if b then oM else None) = None.
 Proof.
   intros * Hm Ht Hr.
   assert (HR : R = ds_term A None)
-    by (destruct R as [A' om | | | | | ]; cbn in Ht, Hr; try discriminate; subst; congruence).
+    by (destruct R as [A' om | | | ]; cbn in Ht, Hr; try discriminate; subst; congruence).
   subst R.
   inversion Hm as [| | | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hrd |]; subst.
-  destruct R0m as [| Δ Φw Φx | Θ' p T Φ Ns | | |]; cbn in He; try discriminate.
+  destruct R0m as [| Δ Φw Φx | Θ' p T Φ Ns |]; cbn in He; try discriminate.
   - (* an open body reads only transparent definitions and modules *)
     destruct (gm_prefix_upto Φx x) as [[| Φ' y E0 | ? ? ?] |]; try discriminate.
     destruct E0 as [[] pv A' [M |] | pv U | | |]; try discriminate; injection He as <- <- <-.
@@ -100,29 +100,24 @@ Proof.
       rewrite (ds_ats_read_mod _ _ Hmm) in Hats.
       pose proof (ds_ats_is_mod _ _ _ Hmm Hats) as Hm1.
       destruct R1; cbn in Hm1; try contradiction; rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
-    + exfalso; cbn [ge_read] in Hed; inversion Hed; subst; cbn [ds_ats_read] in Hats.
-      destruct (ds_ats_ind _ _ _ _ _ _ Hats) as (? & ? & ->).
+    + (* a member of a group: its type former, a reduct *)
+      exfalso; cbn [ge_read] in Hed; inversion Hed; subst; cbn [ds_ats_read ind_former_desc] in Hats.
+      ds_dm_read_shape Hats.
       rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
     + (* a definition with a module part: read with its module part, no term *)
       exfalso; cbn [ge_read] in Hed; inversion Hed; subst; cbn [ds_ats_read] in Hats.
-      match type of Hats with
-      | context [ds_ats (ds_term ?A1 (Some ?M1)) Ns] =>
-          destruct (ds_ats (ds_term A1 (Some M1)) Ns) as [[B [M' |] | | | | |] |]; try discriminate
-      end.
-      match type of Hats with
-      | context [ds_ats ?Rx Ns] => destruct (ds_ats Rx Ns); [ injection Hats as <- | discriminate ]
-      end.
+      ds_dm_read_shape Hats.
       rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
     + (* a record type: its type former, a reduct *)
-      exfalso; cbn [ge_read] in Hed; inversion Hed; subst; cbn [ds_ats_read] in Hats.
-      rewrite ds_ats_record_nil in Hats; injection Hats as <-.
+      exfalso; cbn [ge_read] in Hed; inversion Hed; subst; cbn [ds_ats_read record_former_desc] in Hats.
+      ds_dm_read_shape Hats.
       rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
 Qed.
 
 (** A member glues: as its δ-reduct, which glues by the premise of [wf_mem];
     without one, as the filed member it is equal to. *)
 Lemma glu_rel_exp_mem_of_emb : forall Θ Ξ Θ2 Ξ2 Γ H x R A,
-    glu_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty Θ Ξ R = Some A ->
+    glu_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θ Ξ Γ (me_mem H x) R -> ds_ty R = Some A ->
     (forall M, ds_red R = Some M -> forall Θ0 Ξ0, glu_emb Θ Ξ Θ0 Ξ0 -> @glu_rel_exp (gc_mk Θ0 Ξ0) Γ M A) ->
     @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ ->
     @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_mem H x) A.
@@ -151,7 +146,7 @@ Lemma glu_mem :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ->
      mdenote Θ Ξ Γ (me_mem H x) R ->
-     ds_ty Θ Ξ R = Some A ->
+     ds_ty R = Some A ->
      (forall M, ds_red R = Some M -> Θ ⍮ Ξ ⍮ Γ ⊩ M : A) ->
      Θ ⍮ Ξ ⍮ Γ ⊩ a_mem H x : A ).
 Proof. glu_intro; eapply glu_rel_exp_mem_of_emb; eassumption. Qed.
@@ -159,9 +154,9 @@ Proof. glu_intro; eapply glu_rel_exp_mem_of_emb; eassumption. Qed.
 Lemma glu_exp_eq_mem_cong :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
      mdenote Θ Ξ Γ (me_mem H x) R ->
-     ds_ty Θ Ξ R = Some A ->
+     ds_ty R = Some A ->
      mdenote Θ Ξ Γ (me_mem H' x) R' ->
-     ds_ty Θ Ξ R' = Some A' ->
+     ds_ty R' = Some A' ->
      Θ ⍮ Ξ ⍮ Γ ⊩ a_mem H' x : A ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ).
 Proof. glu_ctx_case. Qed.
@@ -169,7 +164,7 @@ Proof. glu_ctx_case. Qed.
 Lemma glu_exp_eq_mem_delta :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
      mdenote Θ Ξ Γ (me_mem H x) R ->
-     ds_ty Θ Ξ R = Some A ->
+     ds_ty R = Some A ->
      ds_red R = Some M ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ).
 Proof. glu_ctx_case. Qed.
@@ -325,22 +320,22 @@ Proof. glu_ctx_case. Qed.
 Lemma glu_me_mem :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
      mdenote Θ Ξ Γ (me_mem H y) R ->
-     ds_mtele Θ Ξ R = Some T ->
+     ds_mtele R = Some T ->
      mdenote Θ Ξ Γ (me_mem H' y) R' ->
-     ds_mtele Θ Ξ R' = Some T' ->
+     ds_mtele R' = Some T' ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ).
 Proof. glu_ctx_case. Qed.
 
 Lemma glu_me_app :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
      mdenote Θ Ξ Γ H R ->
-     ds_mtele Θ Ξ R = Some T ->
+     ds_mtele R = Some T ->
      tele_view T = Some (B, T1) ->
      Θ ⍮ Ξ ⍮ Γ ⊩ B : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊩ N : B ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ->
      mdenote Θ Ξ Γ H' R' ->
-     ds_mtele Θ Ξ R' = Some T' ->
+     ds_mtele R' = Some T' ->
      tele_view T' = Some (B', T1') ->
      Θ ⍮ Ξ ⍮ Γ ⊩ B' : Typeω@j ->
      Θ ⍮ Ξ ⍮ Γ ⊩ N' : B' ->
@@ -356,7 +351,7 @@ Proof. glu_ctx_case. Qed.
 Lemma glu_me_delta_sel :
   `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
      mdenote Θ Ξ Γ (me_mem H y) R ->
-     ds_mod Θ Ξ R = Some Rm ->
+     ds_mod R = Some Rm ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ).
 Proof. glu_ctx_case. Qed.
 

@@ -341,7 +341,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
 | wf_mem :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
      mdenote Θ Ξ Γ (me_mem H x) R ->
-     ds_ty Θ Ξ R = Some A ->
+     ds_ty R = Some A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      (forall M, ds_red R = Some M -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : A )
@@ -589,9 +589,9 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_mem_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
      mdenote Θ Ξ Γ (me_mem H x) R ->
-     ds_ty Θ Ξ R = Some A ->
+     ds_ty R = Some A ->
      mdenote Θ Ξ Γ (me_mem H' x) R' ->
-     ds_ty Θ Ξ R' = Some A' ->
+     ds_ty R' = Some A' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H' x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ a_mem H' x : A )
 | wf_exp_eq_var :
@@ -725,7 +725,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_mem_delta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
      mdenote Θ Ξ Γ (me_mem H x) R ->
-     ds_ty Θ Ξ R = Some A ->
+     ds_ty R = Some A ->
      ds_red R = Some M ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ M : A )
 (** [δ] for local definitions: a defined variable is its body.  It is stated
@@ -1059,22 +1059,22 @@ with wf_modexp_eq : gdeps -> gstack -> ctx -> modexp -> modexp -> Prop :=
 | wf_me_mem :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
      mdenote Θ Ξ Γ (me_mem H y) R ->
-     ds_mtele Θ Ξ R = Some T ->
+     ds_mtele R = Some T ->
      mdenote Θ Ξ Γ (me_mem H' y) R' ->
-     ds_mtele Θ Ξ R' = Some T' ->
+     ds_mtele R' = Some T' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H' y )
 (** An application: the argument is checked against the outermost
     parameter of the telescope of what the module expression denotes. *)
 | wf_me_app :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
      mdenote Θ Ξ Γ H R ->
-     ds_mtele Θ Ξ R = Some T ->
+     ds_mtele R = Some T ->
      tele_view T = Some (B, T1) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ B : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : B ->
      mdenote Θ Ξ Γ H' R' ->
-     ds_mtele Θ Ξ R' = Some T' ->
+     ds_mtele R' = Some T' ->
      tele_view T' = Some (B', T1') ->
      Θ ⍮ Ξ ⍮ Γ ⊢ B' : Typeω@j ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N' : B' ->
@@ -1092,7 +1092,7 @@ with wf_modexp_eq : gdeps -> gstack -> ctx -> modexp -> modexp -> Prop :=
 | wf_me_delta_sel :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H y ->
      mdenote Θ Ξ Γ (me_mem H y) R ->
-     ds_mod Θ Ξ R = Some Rm ->
+     ds_mod R = Some Rm ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ ds_unit Rm )
 (** *** [β] *)
 (** A literal body or alias given its outermost parameter is the literal

@@ -29,10 +29,7 @@ Open Scope string_scope.
     judgment at the units filed: the two have the same lookups, so the
     same inferred types, the same denotations, the same eliminator
     readings, the same literals and the same privacy, and so the same
-    fills.  [gds_equiv_ds_ty] is in [IndDecl]. *)
-
-Lemma gds_equiv_ds_mtele : forall Θ Θ' Ξ R, gds_equiv Θ Θ' -> ds_mtele Θ Ξ R = ds_mtele Θ' Ξ R.
-Proof. intros * He; unfold ds_mtele; rewrite (gds_equiv_ds_mod _ _ _ _ He); reflexivity. Qed.
+    fills. *)
 
 (** The literals are read off the bound type's declaration, the same at
     equivalent dependencies. *)
@@ -50,12 +47,6 @@ Section AlgEquiv.
   Proof. intros; rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); assumption. Qed.
   Let Hrec : forall p R, record_lookup Θ Ξ p = Some R -> record_lookup Θ' Ξ p = Some R.
   Proof. intros; rewrite <- (gds_equiv_record_lookup _ _ _ _ He); assumption. Qed.
-  Let Hdty : forall R A, ds_ty Θ Ξ R = Some A -> ds_ty Θ' Ξ R = Some A.
-  Proof. intros; rewrite <- (gds_equiv_ds_ty _ _ _ _ He); assumption. Qed.
-  Let Hdmt : forall R T, ds_mtele Θ Ξ R = Some T -> ds_mtele Θ' Ξ R = Some T.
-  Proof. intros; rewrite <- (gds_equiv_ds_mtele _ _ _ _ He); assumption. Qed.
-  Let Hdmod : forall R Rm, ds_mod Θ Ξ R = Some Rm -> ds_mod Θ' Ξ R = Some Rm.
-  Proof. intros; rewrite <- (gds_equiv_ds_mod _ _ _ _ He); assumption. Qed.
   Let Hnv : forall v, nat_view Θ Ξ B = v -> nat_view Θ' Ξ B = v.
   Proof. intros; rewrite <- (equiv_nat_view _ _ _ _ He); assumption. Qed.
   Let Het : forall pc k Rs m Bks t, elim_target Θ Ξ pc k Rs m Bks = t -> elim_target Θ' Ξ pc k Rs m Bks = t.

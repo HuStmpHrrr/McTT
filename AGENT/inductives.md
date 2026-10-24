@@ -273,8 +273,9 @@ stored closed over them, as every definition is.
 
   The body grows by `wf_gmod_ext`, as any module's does. While the frame
   is open, the group is found through it (`gs_find_ind`; `ind_mlookup`
-  reads the frame first). The frame denotes `ds_ind nil pq k nil`
-  (`dn_ind_frame`).
+  reads the frame first). The frame denotes the member's type former with
+  the frame's body so far as its module part,
+  `ind_former_desc pq k D Mk (ds_closed nil p Tm Φm nil)` (`dn_ind_frame`).
 * `rc_ind` (`System/Command.v`) checks the group as written (`rd_filed`,
   `ind_nil_at`). Then `run_ind_members` runs each declared member in
   order (`rim_cons`):
@@ -295,10 +296,15 @@ stored closed over them, as every definition is.
 
 A member is typed by one rule, `wf_mem`, over what its module expression
 denotes (`mdenote`, `Core/Syntactic/Members.v`): a `ge_ind` entry denotes
-`ds_ind Θ' p Ns`, whose type (`ds_ty`) is the type former's at the
-arguments, and whose δ-reduct (`ds_red`) is the type former `p Ns`
+its type former, a `ds_dm` (`ind_former_desc`, `en_ind`) whose term part
+is the constant `a_ind pq k` of the type former's type and whose module
+part is the member's module.  Read at a closed module's arguments
+(`ds_ats_read`), the term part is applied to them (`ds_ats_tm`): its type
+(`ds_ty`) is the type former's at the arguments (`ind_ty_at`), and its
+δ-reduct (`ds_red`) is the type former applied to them
 (`wf_exp_eq_mem_delta`).  Selecting from it reads the module part
-(`ds_mod`): the inductive type's module, at its canonical path.  A module
+(`ds_mod`): the inductive type's module, at its canonical path.  A record
+type is read the same way (`record_former_desc`, `en_record`).  A module
 alias of it (`module M := N`) denotes the module, not the type former, so
 it is a module only:
 

@@ -2030,29 +2030,8 @@ Proof.
   rewrite (gds_equiv_lookup _ _ (q_unit p) He); reflexivity.
 Qed.
 
-(** The module a description denotes reads the dependencies through their
-    lookups alone. *)
-Lemma gds_equiv_ds_mod : forall Θ Θ' Ξ R, gds_equiv Θ Θ' -> ds_mod Θ Ξ R = ds_mod Θ' Ξ R.
-Proof.
-  intros * He; induction R as [| | | | | Θd A M Rm IH]; cbn [ds_mod]; try reflexivity.
-  - rewrite (gds_equiv_ind_lookup _ _ _ _ He).
-    destruct (ind_lookup Θ' Ξ _); [ destruct (ind_mpath _ _); [ unfold gc_loc; rewrite (gds_equiv_body _ _ _ _ He) |] |]; reflexivity.
-  - (* a record type's module, at its path *)
-    unfold gc_loc; rewrite (gds_equiv_body _ _ _ _ He); reflexivity.
-  - (* a definition with a module part: its module part's *)
-    exact IH.
-Qed.
-
-(** The term part of a description reads the dependencies through their
-    lookups alone. *)
-Lemma gds_equiv_ds_ty : forall Θ Θ' Ξ R, gds_equiv Θ Θ' -> ds_ty Θ Ξ R = ds_ty Θ' Ξ R.
-Proof.
-  intros * He; destruct R; cbn [ds_ty]; try reflexivity;
-    first [ rewrite (gds_equiv_ind_lookup _ _ _ _ He) | rewrite (gds_equiv_record_lookup _ _ _ _ He) ]; reflexivity.
-Qed.
-
 (** What module expressions denote reads the dependencies through their
-    lookups alone ([gc_unit], [ds_mod], [ds_ty]). *)
+    lookups alone ([gc_unit], [gc_loc]). *)
 Lemma gds_equiv_mdenote_all : forall Θ Θ' Ξ, gds_equiv Θ Θ' ->
     (forall Γ H R, mdenote Θ Ξ Γ H R -> mdenote Θ' Ξ Γ H R) /\
     (forall Γ o U R, udenote Θ Ξ Γ o U R -> udenote Θ' Ξ Γ o U R) /\
@@ -2064,11 +2043,8 @@ Proof.
   assert (Hu : forall H, gc_unit Θ Ξ H = gc_unit Θ' Ξ H).
   { intros H; unfold gc_unit; destruct (mod_qname H) as [mp |]; [| reflexivity ].
     rewrite (gds_equiv_lookup _ _ (q_unit mp) He); reflexivity. }
-  assert (Hd : forall R, ds_mod Θ Ξ R = ds_mod Θ' Ξ R) by (intros R; exact (gds_equiv_ds_mod _ _ _ R He)).
-  assert (Ht : forall R, ds_ty Θ Ξ R = ds_ty Θ' Ξ R) by (intros R; exact (gds_equiv_ds_ty _ _ _ R He)).
-  apply mdenote_all_ind; intros; rewrite ?Hu, ?Hd, ?Ht in *; econstructor; eauto.
-  all: first [ rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); assumption
-             | rewrite !ind_mlookup_unfold, <- (gds_equiv_module _ _ _ _ He); assumption ].
+  apply mdenote_all_ind; intros; rewrite ?Hu in *; econstructor; eauto.
+  all: unfold gc_loc in *; rewrite <- (gds_equiv_body _ _ _ _ He); assumption.
 Qed.
 
 Corollary gds_equiv_mdenote : forall Θ Θ' Ξ Γ H R, gds_equiv Θ Θ' -> mdenote Θ Ξ Γ H R -> mdenote Θ' Ξ Γ H R.

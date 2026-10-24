@@ -1697,15 +1697,17 @@ Proof. reflexivity. Qed.
     given the arguments [Ns] and still abstracted over the parameters [Θ]
     that come from outside it ([ds_closed Θ p T Φ Ns]): the path is what
     identifies a filed module, two filed modules with equal bodies staying
-    distinct; or the inductive type declared at [p], given the
-    arguments [Ns] and still abstracted over [Θ] ([ds_ind Θ p Ns]).  The
+    distinct; or a term part with a module part ([ds_dm Θ A M Rm]): a
+    definition with a module part, or the type former of an inductive or
+    a record type with its module ([ind_former_desc],
+    [record_former_desc]).  The
     arguments are terms over the context extended by [Θ].  A description
     never contains an alias, and its entries are read where no local open
     is left.
 
     A lookup returns the whole description, and each rule takes the part it
     expects: the term part ([ds_ty], [ds_red]), the module part
-    ([ds_mod]), or the inductive part, the description itself. *)
+    ([ds_mod]). *)
 
 (** The sort of a member, as evaluation reads it. *)
 Inductive mkind : Set :=
@@ -1725,16 +1727,10 @@ Inductive mdesc : Set :=
 (** A closed module, at its canonical path, over its full telescope, given
     the arguments so far, abstracted over the outer parameters *)
 | ds_closed : ctx -> qname -> ctx -> gmod -> list exp -> mdesc
-(** Member [k] of the inductive group declared at the path, given the
-    arguments so far, abstracted over the outer parameters *)
-| ds_ind : ctx -> qname -> nat -> list exp -> mdesc
-(** The record type declared at the path, given the arguments so far,
-    abstracted over the outer parameters.  The arguments fill the
-    record's module telescope ([record_mod_tele]): its parameters, as a
-    type, and then a value, as its module only *)
-| ds_record : ctx -> qname -> list exp -> mdesc
 (** [ds_dm Θd A M Rm]: what a definition with a module part
-    ([ge_def_mod]) denotes.  Its term part is read as a transparent
+    ([ge_def_mod]) denotes, and the type former of an inductive or a
+    record type with its module ([ind_former_desc],
+    [record_former_desc]).  Its term part is read as a transparent
     definition's is: the term [M] of the type [A], both over the outer
     parameters [Θd], given the arguments so far as [ds_term A (Some M)] is
     ([ds_ats_read]); its module part is [Rm] *)
@@ -1758,76 +1754,34 @@ Definition ds_body (o : option qname) (sm : smark) (Δ : ctx) (Φ Φx : gmod) : 
   | sm_closed => option_map (fun pq => ds_closed nil pq Δ Φx nil) o
   end.
 
-(** The term part: the type of a definition, or of the type former of an
-    inductive type at its arguments, over the outside parameters. *)
-Definition ds_ty (Θ : gdeps) (Ξ : gstack) (R : mdesc) : option typ :=
+(** The term part: the type of a definition, or of a definition with a
+    module part, over the outside parameters. *)
+Definition ds_ty (R : mdesc) : option typ :=
   match R with
   | ds_term A _ => Some A
-  | ds_ind Θ' p k Ns =>
-      match ind_lookup Θ Ξ p with
-      | Some D =>
-          match ind_member D k with
-          | Some M => Some (ctx_pi Θ' (ind_ty_at D M Ns))
-          | None => None
-          end
-      | None => None
-      end
-  (** A record type has a term part while its arguments are parameters
-      only: given its value too, it is its module at that value *)
-  | ds_record Θ' p Ns =>
-      match record_lookup Θ Ξ p with
-      | Some R =>
-          if Nat.leb (List.length Ns) (List.length (record_params R))
-          then Some (ctx_pi Θ' (record_ty_at R Ns))
-          else None
-      | None => None
-      end
   (** A definition with a module part: its term part's type *)
   | ds_dm Θd A _ _ => Some (ctx_pi Θd A)
   | _ => None
   end.
 
 (** The δ-reduct of the term part: the body of a transparent definition, or
-    the type former at its arguments; an axiom and an abstract definition
-    have none. *)
+    of a definition with a module part; an axiom and an abstract
+    definition have none. *)
 Definition ds_red (R : mdesc) : option exp :=
   match R with
   | ds_term _ om => om
-  | ds_ind Θ' p k Ns => Some (ctx_fn Θ' (apps_exp (a_ind p k) Ns))
-  | ds_record Θ' p Ns => Some (ctx_fn Θ' (apps_exp (a_record p) Ns))
   | ds_dm Θd _ M _ => Some (ctx_fn Θd M)
   | _ => None
   end.
 
-(** The module part: a module is its own, and an inductive type's is the
-    stored module of its members, closed over its uniform parameters, at the
-    same arguments: its open frame's body so far while it is open, its
-    filed body after ([gc_loc]). *)
-Fixpoint ds_mod (Θ : gdeps) (Ξ : gstack) (R : mdesc) : option mdesc :=
+(** The module part: a module is its own, and a definition with a module
+    part's is that of its module part. *)
+Fixpoint ds_mod (R : mdesc) : option mdesc :=
   match R with
   | ds_open _ _ _ | ds_closed _ _ _ _ _ => Some R
-  | ds_ind Θ' p k Ns =>
-      match ind_lookup Θ Ξ p with
-      | Some D =>
-          match ind_mpath D k with
-          | Some pm =>
-              match gc_loc Θ Ξ pm with
-              | Some (T, Φ) => Some (ds_closed Θ' pm T Φ Ns)
-              | None => None
-              end
-          | None => None
-          end
-      | None => None
-      end
-  (** A record type's is its own module, stored at its path *)
-  | ds_record Θ' p Ns =>
-      match gc_loc Θ Ξ p with
-      | Some (T, Φ) => Some (ds_closed Θ' p T Φ Ns)
-      | None => None
-      end
   (** A definition with a module part: the module of its module part, so
       that a module part is always read as a module *)
-  | ds_dm _ _ _ Rm => ds_mod Θ Ξ Rm
+  | ds_dm _ _ _ Rm => ds_mod Rm
   | ds_term _ _ => None
   end.
 
@@ -1846,8 +1800,8 @@ Definition ds_tele (R : mdesc) : option ctx :=
 
 (** The telescope of the module part: what a module expression used as a
     module still takes. *)
-Definition ds_mtele (Θ : gdeps) (Ξ : gstack) (R : mdesc) : option ctx :=
-  match ds_mod Θ Ξ R with
+Definition ds_mtele (R : mdesc) : option ctx :=
+  match ds_mod R with
   | Some Rm => ds_tele Rm
   | None => None
   end.
@@ -1860,8 +1814,6 @@ Fixpoint ds_up (Θ' : ctx) (R : mdesc) : mdesc :=
   | ds_term A om => ds_term (ctx_pi Θ' A) (option_map (ctx_fn Θ') om)
   | ds_open Δ Φ Φx => ds_open (Δ ++ Θ') Φ Φx
   | ds_closed Θ p T Φ Ns => ds_closed (Θ ++ Θ') p T Φ Ns
-  | ds_ind Θ p k Ns => ds_ind (Θ ++ Θ') p k Ns
-  | ds_record Θ p Ns => ds_record (Θ ++ Θ') p Ns
   | ds_dm Θd A M Rm => ds_dm (Θd ++ Θ') A M (ds_up Θ' Rm)
   end.
 
@@ -1944,18 +1896,6 @@ Fixpoint ds_at (R : mdesc) (N : exp) : option mdesc :=
           Some (ds_closed (tele_sub Θ' (Id,,N)) p T Φ (List.map (fun M => M[τ ⨟ sb_qn (List.length Θ') (Id,,N)]) Ns))
       | inr τ => Some (ds_closed nil p T Φ (List.map (fun M => M[τ]) Ns ++ N :: nil))
       end
-  | ds_ind Θ p k Ns =>
-      match tele_split (rev Θ) with
-      | inl (_, Θ', τ) =>
-          Some (ds_ind (tele_sub Θ' (Id,,N)) p k (List.map (fun M => M[τ ⨟ sb_qn (List.length Θ') (Id,,N)]) Ns))
-      | inr τ => Some (ds_ind nil p k (List.map (fun M => M[τ]) Ns ++ N :: nil))
-      end
-  | ds_record Θ p Ns =>
-      match tele_split (rev Θ) with
-      | inl (_, Θ', τ) =>
-          Some (ds_record (tele_sub Θ' (Id,,N)) p (List.map (fun M => M[τ ⨟ sb_qn (List.length Θ') (Id,,N)]) Ns))
-      | inr τ => Some (ds_record nil p (List.map (fun M => M[τ]) Ns ++ N :: nil))
-      end
   | ds_dm Θ A M Rm =>
       match ds_at Rm N with
       | None => None
@@ -1993,8 +1933,6 @@ Fixpoint ds_sub (R : mdesc) (σ : sub) : mdesc :=
   | ds_term A om => ds_term A[σ] (option_map (fun M => M[σ]) om)
   | ds_open Δ Φ Φx => ds_open (tele_sub Δ σ) (gmod_sub Φ (sb_qn (List.length Δ) σ)) (gmod_sub Φx (sb_qn (List.length Δ) σ))
   | ds_closed Θ p T Φ Ns => ds_closed (tele_sub Θ σ) p T Φ (List.map (fun M => M[sb_qn (List.length Θ) σ]) Ns)
-  | ds_ind Θ p k Ns => ds_ind (tele_sub Θ σ) p k (List.map (fun M => M[sb_qn (List.length Θ) σ]) Ns)
-  | ds_record Θ p Ns => ds_record (tele_sub Θ σ) p (List.map (fun M => M[sb_qn (List.length Θ) σ]) Ns)
   | ds_dm Θd A M Rm => ds_dm (tele_sub Θd σ) A[sb_qn (List.length Θd) σ] M[sb_qn (List.length Θd) σ] (ds_sub Rm σ)
   end.
 
@@ -2057,26 +1995,82 @@ Proof. intros [|] [|] *; cbn; auto. Qed.
 Lemma ds_named_self : forall Θ Ns, (Θ <> nil \/ Ns <> nil) -> ds_named Θ Ns = ds_self.
 Proof. intros [|] [|] H; cbn; try reflexivity; destruct H as [H | H]; contradiction H; reflexivity. Qed.
 
+(** Whether a term is a type former, an inductive's or a record's,
+    applied. *)
+Fixpoint app_const (M : exp) : bool :=
+  match M with
+  | a_ind _ _ | a_record _ => true
+  | a_app M _ => app_const M
+  | _ => false
+  end.
+
+(** The term part of a description given the argument [N]: by [β] when
+    its body is a [λ], as [ds_at]; a type former applied, applied to [N]
+    (see [ds_ats_read]). *)
+Definition ds_at_tm (R : mdesc) (N : exp) : option mdesc :=
+  match R with
+  | ds_term A (Some M) =>
+      match pi_view A with
+      | Some (_, C) =>
+          match fn_view M with
+          | Some M' => Some (ds_term C[Id,,N] (Some M'[Id,,N]))
+          | None => if app_const M then Some (ds_term C[Id,,N] (Some (a_app M N))) else None
+          end
+      | None => None
+      end
+  | _ => ds_at R N
+  end.
+
+(** [ds_at_tm] at [N₁ … Nₖ]. *)
+Fixpoint ds_ats_tm (R : mdesc) (Ns : list exp) : option mdesc :=
+  match Ns with
+  | nil => Some R
+  | N :: Ns' =>
+      match ds_at_tm R N with
+      | Some R' => ds_ats_tm R' Ns'
+      | None => None
+      end
+  end.
+
 (** An entry's description given the arguments of the closed module it is
     a member of, which are those of the frames it is filed in: as applied
-    ([ds_ats]), but a definition with a module part with no outside
-    parameter is given them in both its parts: its term part as a
-    transparent definition is ([ds_term A (Some M)]), its module part as a
-    module is.  So [F 3 .K], for a def-mod [K] filed in [module F (n : ℕ)],
-    is K's term at [3] as well as its module at [3]; an application [K N] as
-    a module, past the frames' arguments, is its module part only
-    ([ds_at]).  This reading runs only at a filed entry's frame arguments,
-    where the entry's coherence ([gm_coh]) makes [A] a [ctx_pi] and [M] a
-    [ctx_fn] over the frames' parameters, syntactically: each step of the
-    term part goes through. *)
+    ([ds_ats]), but a definition with a module part, or a type former,
+    with no outside parameter is given them in both its parts: its term
+    part as a transparent definition is ([ds_term A (Some M)]), its module
+    part as a module is.  So [F 3 .K], for a def-mod [K] filed in
+    [module F (n : ℕ)], is K's term at [3] as well as its module at [3];
+    an application [K N] as a module, past the frames' arguments, is its
+    module part only ([ds_at]).
+
+    The term part is given each argument by [ds_at_tm]: as [ds_at] does,
+    by [β], when its body is a [λ], and otherwise, when its body is a type
+    former applied ([app_const]), by applying it to the argument.  The
+    second step is stable: it runs only at a filed entry's frame
+    arguments, where the entry's coherence ([gm_coh]) makes a definition's
+    body a [ctx_fn] over the frames' parameters, and where a type former's
+    term part ([ind_former_desc], [record_former_desc]) is the closed
+    constant [a_ind pq k] or [a_record p], applied: no substitution makes
+    it a [λ] ([app_const] is kept by substitution).  So [F 3 .K] is [K]'s
+    body at [3], and [P ℕ .N], for an inductive [N] filed in
+    [module P (A : Type@0)], is [N ℕ]. *)
 Definition ds_ats_read (R : mdesc) (Ns : list exp) : option mdesc :=
   match R with
   | ds_dm nil A M Rm =>
-      match ds_ats (ds_term A (Some M)) Ns, ds_ats Rm Ns with
+      match ds_ats_tm (ds_term A (Some M)) Ns, ds_ats Rm Ns with
       | Some (ds_term B (Some M')), Some Rm' => Some (ds_dm nil B M' Rm')
       | _, _ => None
       end
   | _ => ds_ats R Ns
+  end.
+
+(** [H : (the [ds_dm nil] case of [ds_ats_read]) = Some R]: [R] is a
+    [ds_dm nil] of the two parts given the arguments. *)
+Ltac ds_dm_read_shape H :=
+  match type of H with
+  | context [ds_ats_tm ?R ?Ns] => destruct (ds_ats_tm R Ns) as [[? [?|] | | |] |]; cbn in H; try discriminate H
+  end;
+  match type of H with
+  | context [ds_ats ?R ?Ns] => destruct (ds_ats R Ns); cbn in H; [ injection H as <- | discriminate H ]
   end.
 
 (** [ds_ats_read] is [ds_ats], but on a definition with a module part and
@@ -2084,26 +2078,26 @@ Definition ds_ats_read (R : mdesc) (Ns : list exp) : option mdesc :=
 Lemma ds_ats_read_inv : forall R Ns R', ds_ats_read R Ns = Some R' ->
     ds_ats R Ns = Some R' \/
     exists A M Rm B M' Rm', R = ds_dm nil A M Rm /\ R' = ds_dm nil B M' Rm' /\
-      ds_ats (ds_term A (Some M)) Ns = Some (ds_term B (Some M')) /\ ds_ats Rm Ns = Some Rm'.
+      ds_ats_tm (ds_term A (Some M)) Ns = Some (ds_term B (Some M')) /\ ds_ats Rm Ns = Some Rm'.
 Proof.
-  intros [| | | | | [| e Θd] A M Rm] Ns R' Ha; cbn [ds_ats_read] in Ha; try (left; exact Ha).
-  right; destruct (ds_ats (ds_term A (Some M)) Ns) as [[B [M' |] | | | | |] |] eqn:Et; try discriminate.
+  intros [| | | [| e Θd] A M Rm] Ns R' Ha; cbn [ds_ats_read] in Ha; try (left; exact Ha).
+  right; destruct (ds_ats_tm (ds_term A (Some M)) Ns) as [[B [M' |] | | |] |] eqn:Et; try discriminate.
   destruct (ds_ats Rm Ns) as [Rm' |] eqn:E; [| discriminate ]; injection Ha as <-.
   do 6 eexists; split; [ reflexivity | split; [ reflexivity | split; [ exact Et | exact E ] ] ].
 Qed.
 
 (** At no argument, [ds_ats_read] reads the description as it is. *)
 Lemma ds_ats_read_nil : forall R, ds_ats_read R nil = Some R.
-Proof. intros [| | | | | [| e Θd] A M Rm]; reflexivity. Qed.
+Proof. intros [| | | [| e Θd] A M Rm]; reflexivity. Qed.
 
 (** On anything but a definition with a module part, [ds_ats_read] is
     [ds_ats]. *)
 Lemma ds_ats_read_other : forall R Ns, (forall Θd A M Rm, R <> ds_dm Θd A M Rm) -> ds_ats_read R Ns = ds_ats R Ns.
-Proof. intros [| | | | | Θd A M Rm] Ns Hn; try reflexivity; exfalso; eapply Hn; reflexivity. Qed.
+Proof. intros [| | | Θd A M Rm] Ns Hn; try reflexivity; exfalso; eapply Hn; reflexivity. Qed.
 
 (** On a module, [ds_ats_read] is [ds_ats]. *)
 Lemma ds_ats_read_mod : forall R Ns, ds_is_mod R -> ds_ats_read R Ns = ds_ats R Ns.
-Proof. intros [| | | | |] Ns Hm; cbn in Hm; first [ contradiction | reflexivity ]. Qed.
+Proof. intros [| | |] Ns Hm; cbn in Hm; first [ contradiction | reflexivity ]. Qed.
 
 (** How an entry's description is read: one of an open body, the entries
     before it [Φ'] filled in, abstracted over the body's parameters [Δ]; one
@@ -2120,7 +2114,7 @@ Definition ds_read (rd : reader) (R : mdesc) : option mdesc :=
 Lemma ds_named_term : forall Θ Ns M A om, exists om', ds_named Θ Ns M (ds_term A om) = ds_term A om'.
 Proof. intros [|] [|] * ; destruct om; cbn; eexists; reflexivity. Qed.
 
-Lemma ds_mod_named_term : forall Θs Ξs Δ Θ Ns M A om, ds_mod Θs Ξs (ds_up Δ (ds_named Θ Ns M (ds_term A om))) = None.
+Lemma ds_mod_named_term : forall Δ Θ Ns M A om, ds_mod (ds_up Δ (ds_named Θ Ns M (ds_term A om))) = None.
 Proof. intros; destruct (ds_named_term Θ Ns M A om) as [om' ->]; reflexivity. Qed.
 
 (** A stored closed entry read in a closed body of telescope [T]: as it is,
@@ -2177,6 +2171,17 @@ Definition ds_epath (R : mdesc) (y : string) : option qname :=
   | ds_closed _ p _ _ _ => Some (qname_in p y)
   | _ => None
   end.
+
+(** The type former of member [k] of the group [D] declared at [pq], of
+    its type, with the module part [Rm]; read at the frames' arguments
+    ([ds_ats_read]), it is the type former at them. *)
+Definition ind_former_desc (pq : qname) (k : nat) (D : ind_decl) (Mk : imember) (Rm : mdesc) : mdesc :=
+  ds_dm nil (ctx_pi (im_params D Mk) (exp_wk (ind_sort D) (wk_shiftn (im_nn Mk)))) (a_ind pq k) Rm.
+
+(** The type former of the record type [R] declared at [p], of its type,
+    with the module part [Rm]. *)
+Definition record_former_desc (p : qname) (R : record_decl) (Rm : mdesc) : mdesc :=
+  ds_dm nil (ctx_pi (record_params R) (record_sort R)) (a_record p) Rm.
 
 (** The stored unit a path [P] names when it is a loaded unit or an open
     frame, with its full telescope: an open frame's own parameters, then
@@ -2390,12 +2395,12 @@ Qed.
     of what its target denotes, abstracted over the alias's parameters.
     Aliases are resolved here only.
 
-    [edenote Θ Ξ Γ o E R], [Γ ⊢ E denotes R]: what an entry stored at [o]
-    denotes, one rule per entry kind.  A definition is a term of its type, whose δ-reduct is
-    its body when it is transparent; a module is what its unit denotes; an
-    inductive type is its type former with no argument; a definition with
-    a module part, its term with what its unit denotes as its module
-    part. *)
+    [edenote Θ Ξ Γ o E R], [Γ ⊢ E denotes R]: what an entry stored at
+    [o] denotes, one rule per entry kind.  A definition is a term of its
+    type, whose δ-reduct is its body when it is transparent; a module is
+    what its unit denotes; an inductive or a record type is its type
+    former with its module; a definition with a module part, its term
+    with what its unit denotes as its module part. *)
 Inductive mdenote (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> mdesc -> Prop :=
 (** A loaded unit or open frame: its stored closed unit, at its path *)
 | dn_unit : forall Γ H p T Φ,
@@ -2403,13 +2408,16 @@ Inductive mdenote (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> mdesc -> Prop :=
     gc_unit Θ Ξ H = Some (T, Φ) ->
     mdenote Θ Ξ Γ H (ds_closed nil p T Φ nil)
 (** The open frame of the module of a member of a group of inductive
-    types: the member's type former with no argument, whose module part is
-    the frame's body so far ([ds_mod]); the member is filed only when the
-    frame closes, so it is denoted so nowhere else *)
-| dn_ind_frame : forall Γ H p pq k D,
+    types: the member's type former, as it is read once filed there
+    ([en_ind]), of the declaration the frame carries, whose module part is
+    the frame's body so far; the member is filed only when the frame
+    closes, so it is denoted so nowhere else *)
+| dn_ind_frame : forall Γ H p pq k D Mk Tm Φm,
     mod_qname H = Some p ->
     gs_find_ind Ξ p = Some (pq, k, D) ->
-    mdenote Θ Ξ Γ H (ds_ind nil pq k nil)
+    ind_member D k = Some Mk ->
+    gc_loc Θ Ξ p = Some (Tm, Φm) ->
+    mdenote Θ Ξ Γ H (ind_former_desc pq k D Mk (ds_closed nil p Tm Φm nil))
 (** A module slot: what its unit denotes *)
 | dn_slot : forall Γ x U R,
     Γ ∋ #x ≔ₘ U ->
@@ -2428,19 +2436,20 @@ Inductive mdenote (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> mdesc -> Prop :=
     module's description, denoted and read there *)
 | dn_mem : forall Γ H y R0 R0m Γy E rd R R',
     mdenote Θ Ξ Γ H R0 ->
-    ds_mod Θ Ξ R0 = Some R0m ->
+    ds_mod R0 = Some R0m ->
     ds_entry R0m y = Some (Γy, E, rd) ->
     edenote Θ Ξ (Γy ++ Γ) (ds_epath R0m y) E R ->
     ds_read rd R = Some R' ->
     mdenote Θ Ξ Γ (me_mem H y) R'
 (** The open frame of the module of a record type: the record's type
-    former with no argument, whose module part is the frame's body so far
-    ([ds_mod]); the record is filed only when the frame closes, so it is
-    denoted so nowhere else *)
-| dn_record_frame : forall Γ H p R,
+    former, as it is read once filed there ([en_record]), whose module
+    part is the frame's body so far; the record is filed only when the
+    frame closes, so it is denoted so nowhere else *)
+| dn_record_frame : forall Γ H p R Tm Φm,
     mod_qname H = Some p ->
     gs_find_record Ξ p = Some R ->
-    mdenote Θ Ξ Γ H (ds_record nil p nil)
+    gc_loc Θ Ξ p = Some (Tm, Φm) ->
+    mdenote Θ Ξ Γ H (record_former_desc p R (ds_closed nil p Tm Φm nil))
 with udenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gunit -> mdesc -> Prop :=
 (** A body, read through the entries its local opens generate, by its
     storage *)
@@ -2452,7 +2461,7 @@ with udenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gunit -> mdesc 
     the alias's parameters *)
 | un_alias : forall Γ o Δ E R R',
     mdenote Θ Ξ (Δ ++ Γ) E R ->
-    ds_mod Θ Ξ R = Some R' ->
+    ds_mod R = Some R' ->
     udenote Θ Ξ Γ o (gu_mk Δ (md_alias E)) (ds_up Δ R')
 with edenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gentry -> mdesc -> Prop :=
 (** A definition: a term of its type, with its body as δ-reduct when it is
@@ -2463,9 +2472,15 @@ with edenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gentry -> mdesc
 | en_mod : forall Γ o pv U R,
     udenote Θ Ξ Γ o U R ->
     edenote Θ Ξ Γ o (ge_mod pv U) R
-(** An inductive member: its type former with no argument *)
-| en_ind : forall Γ o pv p k D Φ,
-    edenote Θ Ξ Γ o (ge_ind pv p k D Φ) (ds_ind nil p k nil)
+(** An inductive member: its type former ([ind_former_desc]), whose module
+    part is the member's module, stored at its path.  The declaration is
+    the one the entry stores, not one looked up again by path; the two
+    agree in a well-formed context. *)
+| en_ind : forall Γ o pv pq k D Φ Mk pm Tm Φm,
+    ind_member D k = Some Mk ->
+    ind_mpath D k = Some pm ->
+    gc_loc Θ Ξ pm = Some (Tm, Φm) ->
+    edenote Θ Ξ Γ o (ge_ind pv pq k D Φ) (ind_former_desc pq k D Mk (ds_closed nil pm Tm Φm nil))
 (** A definition with a module part: its term, a transparent
     definition's, with what its unit, an alias, denotes as its module
     part.  A module part that is no alias denotes nothing, as it is no
@@ -2473,10 +2488,12 @@ with edenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gentry -> mdesc
 | en_def_mod : forall Γ o pv A M Δ E Rm,
     udenote Θ Ξ Γ o (gu_mk Δ (md_alias E)) Rm ->
     edenote Θ Ξ Γ o (ge_def_mod pv A M (gu_mk Δ (md_alias E))) (ds_dm nil A M Rm)
-(** A record type stored at [p]: its type former with no argument.  It
-    denotes only where it is stored, read at the path it is found at *)
-| en_record : forall Γ p pv pr R Φ,
-    edenote Θ Ξ Γ (Some p) (ge_record pv pr R Φ) (ds_record nil p nil)
+(** A record type stored at [p]: its type former ([record_former_desc]),
+    whose module part is its module, stored at [p].  It denotes only where
+    it is stored, read at the path it is found at *)
+| en_record : forall Γ p pv pr R Φ Tm Φm,
+    gc_loc Θ Ξ p = Some (Tm, Φm) ->
+    edenote Θ Ξ Γ (Some p) (ge_record pv pr R Φ) (record_former_desc p R (ds_closed nil p Tm Φm nil))
 (** [body_xp Θ Ξ Γ Φ Φx]: the body [Φ], read in [Γ], is [Φx] with every
     local open replaced by the entries it generates ([items_gen]), in the
     context its own expanded prefix makes.  The entries themselves are not
@@ -2493,7 +2510,7 @@ with body_xp (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> gmod -> Prop :=
 | bx_open : forall Γ Φ Φx H its R Rm gs,
     body_xp Θ Ξ Γ Φ Φx ->
     mdenote Θ Ξ (body_ctx Φx ++ Γ) H R ->
-    ds_mod Θ Ξ R = Some Rm ->
+    ds_mod R = Some Rm ->
     items_gen Θ Ξ false (body_ctx Φx ++ Γ) H its gs ->
     items_ok its ->
     body_xp Θ Ξ Γ (gm_open Φ H its) (gens_append Φx 0 gs)
@@ -2530,8 +2547,8 @@ with items_gen (Θ : gdeps) (Ξ : gstack) : bool -> ctx -> modexp -> list iitem 
     the alias of the selection as its module *)
 | ign_dm : forall Γ H n d pv R A Rm its gs,
     mdenote Θ Ξ Γ (me_mem H n) R ->
-    ds_ty Θ Ξ R = Some A ->
-    ds_mod Θ Ξ R = Some Rm ->
+    ds_ty R = Some A ->
+    ds_mod R = Some Rm ->
     items_gen Θ Ξ true Γ H its gs ->
     items_gen Θ Ξ true Γ H ((Some n, d, pv) :: its) (ig_def_mod d pv (a_mem H n) (me_mem H n) :: gs).
 
@@ -2555,7 +2572,7 @@ Record open_gens (Θ : gdeps) (Ξ : gstack) (g : bool) (Γ : ctx) (H : modexp) (
   { og_desc : mdesc
   ; og_mod : mdesc
   ; og_denote : mdenote Θ Ξ Γ H og_desc
-  ; og_is_mod : ds_mod Θ Ξ og_desc = Some og_mod
+  ; og_is_mod : ds_mod og_desc = Some og_mod
   ; og_items : items_gen Θ Ξ g Γ H its gs
   ; og_ok : items_ok its }.
 
@@ -2826,17 +2843,20 @@ Proof.
   - destruct TΦ as [T Φ]; destruct (gc_body_module _ _ _ _ _ Hl) as (oD & Hm'); rewrite Hm in Hm'; discriminate.
 Qed.
 
-(** What a term entry stored at [o] describes as a term: a definition or a
-    type former; a definition with a module part, its term part, read as
-    a transparent definition is.  A record entry stores no path, so it
-    describes its type former only where it is stored. *)
+(** What a term entry stored at [o] describes as a term: a definition; a
+    type former, the term part of its [ind_former_desc] or
+    [record_former_desc]; a definition with a module part, its term part,
+    read as a transparent definition is.  A record entry stores no path,
+    so it describes its type former only where it is stored. *)
 Definition entry_term (o : option qname) (E : gentry) : option mdesc :=
   match E with
   | ge_def b _ A oM => Some (ds_term A (if b then oM else None))
-  | ge_ind _ pq k _ _ => Some (ds_ind nil pq k nil)
+  | ge_ind _ pq k D _ =>
+      option_map (fun Mk => ds_term (ctx_pi (im_params D Mk) (exp_wk (ind_sort D) (wk_shiftn (im_nn Mk)))) (Some (a_ind pq k)))
+        (ind_member D k)
   | ge_def_mod _ A M _ => Some (ds_term A (Some M))
   | ge_mod _ _ => None
-  | ge_record _ _ _ _ => option_map (fun p => ds_record nil p nil) o
+  | ge_record _ _ R _ => option_map (fun p => ds_term (ctx_pi (record_params R) (record_sort R)) (Some (a_record p))) o
   end.
 
 (** A stored alias entry as the alias unit it is, over its full telescope:

@@ -107,7 +107,7 @@ Qed.
     of any body related to it. *)
 Lemma body_sel_term : forall D Φ Φx, body_xp Θm Ξm D Φ Φx -> body_shape Φx Φx -> ⊨ body_ctx Φx ++ D ->
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Ψ ++ D ⊨ᵐ H ≈ H /\
-       forall n Rn An, mdenote Θm Ξm (Ψ ++ D) (me_mem H n) Rn -> ds_ty Θm Ξm Rn = Some An -> valid_mem (Ψ ++ D) H n An (ds_red Rn)) ->
+       forall n Rn An, mdenote Θm Ξm (Ψ ++ D) (me_mem H n) Rn -> ds_ty Rn = Some An -> valid_mem (Ψ ++ D) H n An (ds_red Rn)) ->
     forall RD ρ, EF D ≈ D ∈ per_ctx_env ↘ RD -> RD ρ ρ -> forall Φk, kbody gc_deps gc_stack ρ Φ Φk -> body_eq_upto_types Φk Φx ->
     forall x Φx' b pv A M, gm_prefix_upto Φx x = Some (gm_ext Φx' x (ge_def b pv A (Some M))) ->
     exists ρ' a i RA r, ⟦ Φx' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ' /\ ⟦ A ⟧ ρ' ↘ a /\ per_univ_elem i RA a a /\ ⟦ M ⟧ ρ' ↘ r /\
@@ -285,17 +285,17 @@ Qed.
 
 (** ** What the Term Members of Literals Denote *)
 
-Lemma ds_ty_mod_none : forall R, ds_is_mod R -> ds_ty Θm Ξm R = None.
-Proof. intros [| | | | |] H; cbn in *; first [ contradiction | reflexivity ]. Qed.
+Lemma ds_ty_mod_none : forall R, ds_is_mod R -> ds_ty R = None.
+Proof. intros [| | | ] H; cbn in *; first [ contradiction | reflexivity ]. Qed.
 
 (** A definition of a body, filled in, over the parameters. *)
 Lemma body_mem_desc : forall Γ Δ Φ Φx x R A, body_xp Θm Ξm (Δ ++ Γ) Φ Φx ->
-    mdenote Θm Ξm Γ (me_mem (me_lit (gu_open Δ Φ)) x) R -> ds_ty Θm Ξm R = Some A ->
+    mdenote Θm Ξm Γ (me_mem (me_lit (gu_open Δ Φ)) x) R -> ds_ty R = Some A ->
     exists Φ' b pv A0 M0 σ, gm_prefix_upto Φx x = Some (gm_ext Φ' x (ge_def b pv A0 (Some M0))) /\ gm_fill Φ' = Some σ /\
       R = ds_term (ctx_pi Δ A0[σ]) (Some (ctx_fn Δ M0[σ])).
 Proof.
   intros * Hx Hm Ht.
-  inversion Hm as [? ? ? ? ? Hq _ | ? ? ? ? ? ? Hq _ | | | |? ? ? R0 R0m Γy E rd R1 ? Hm0 Hmd He Hed Hr | ? ? ? ? Hq _]; subst;
+  inversion Hm as [? ? ? ? ? Hq _ | ? ? ? ? ? ? ? ? ? Hq _ | | | |? ? ? R0 R0m Γy E rd R1 ? Hm0 Hmd He Hed Hr | ? ? ? ? ? ? Hq _]; subst;
     [ cbn in Hq; discriminate | cbn in Hq; discriminate | | cbn in Hq; discriminate ].
   inversion Hm0; subst; try (match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end).
   match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
@@ -323,7 +323,7 @@ Lemma ds_named_app : forall Θ Δ Ns M R,
     (Θ = nil /\ Ns = nil /\ exists A0, R = ds_term A0 None /\ ds_named (Θ ++ Δ) Ns M R = ds_term A0 (Some M)).
 Proof.
   intros [| e Θ] [| e' Δ] [| N Ns] M R; cbn [List.app]; try (left; reflexivity).
-  destruct R as [A0 [M0 |] | | | | |]; try (left; reflexivity).
+  destruct R as [A0 [M0 |] | | |]; try (left; reflexivity).
   right; repeat split; eauto.
 Qed.
 
@@ -331,20 +331,20 @@ Qed.
     when the target is a filed module read bare and the member has no
     δ-reduct there, the member read as its name over the parameters. *)
 Lemma alias_mem_desc : forall Γ Δ E x R A, ⊢ Θm ⍮ Ξm ⍮ Δ ++ Γ ->
-    mdenote Θm Ξm Γ (me_mem (me_lit (gu_mk Δ (md_alias E))) x) R -> ds_ty Θm Ξm R = Some A ->
+    mdenote Θm Ξm Γ (me_mem (me_lit (gu_mk Δ (md_alias E))) x) R -> ds_ty R = Some A ->
     exists R', mdenote Θm Ξm (Δ ++ Γ) (me_mem E x) R' /\
       (R = ds_up Δ R' \/
        exists A0 RE p T Φ, R' = ds_term A0 None /\ mdenote Θm Ξm (Δ ++ Γ) E RE /\
-         ds_mod Θm Ξm RE = Some (ds_closed nil p T Φ nil) /\ R = ds_up Δ (ds_term A0 (Some (a_mem (qname_mod p) x)))).
+         ds_mod RE = Some (ds_closed nil p T Φ nil) /\ R = ds_up Δ (ds_term A0 (Some (a_mem (qname_mod p) x)))).
 Proof.
   intros * HΔΓ Hm Ht.
-  inversion Hm as [? ? ? ? ? Hq _ | ? ? ? ? ? ? Hq _ | | | |? ? ? R0 R0m Γy Ee rd R1 ? Hm0 Hmd He Hed Hr | ? ? ? ? Hq _]; subst;
+  inversion Hm as [? ? ? ? ? Hq _ | ? ? ? ? ? ? ? ? ? Hq _ | | | |? ? ? R0 R0m Γy Ee rd R1 ? Hm0 Hmd He Hed Hr | ? ? ? ? ? ? Hq _]; subst;
     [ cbn in Hq; discriminate | cbn in Hq; discriminate | | cbn in Hq; discriminate ].
   inversion Hm0; subst; try (match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end).
   match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu as [| ? ? ? ? RE REm HmE HmodE]; subst end.
-  pose proof (ds_mod_is_mod _ _ _ _ HmodE) as HisE.
-  rewrite (ds_is_mod_mod _ _ _ (ds_is_mod_up _ _ HisE)) in Hmd; injection Hmd as <-.
-  destruct REm as [| Δe Φ Φx | Θ p T Φ Ns | | |]; cbn in HisE; try contradiction; cbn [ds_up] in He, Hed.
+  pose proof (ds_mod_is_mod _ _ HmodE) as HisE.
+  rewrite (ds_is_mod_mod _ (ds_is_mod_up _ _ HisE)) in Hmd; injection Hmd as <-.
+  destruct REm as [| Δe Φ Φx | Θ p T Φ Ns |]; cbn in HisE; try contradiction; cbn [ds_up] in He, Hed.
   - (* an open module part *)
     cbn in He; destruct (gm_prefix_upto Φx x) as [[| Φ' z E0 | ] |] eqn:Hp; try discriminate.
     pose proof (gm_prefix_name _ _ _ _ _ Hp) as ->.
@@ -362,7 +362,8 @@ Proof.
     cbn [ds_read] in Hr; destruct (ds_ats_read R1 Ns) as [R2 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
     assert (Hed' : edenote Θm Ξm (nil ++ Δ ++ Γ) (Some (qname_in p x)) (ge_read T E0) R1).
     { destruct E0 as [? ? ? ? | pv U | | pv Ad Md Ud | ] eqn:EE0; cbn [ge_read] in Hed |- *;
-        [ inversion Hed; subst; constructor | | inversion Hed; subst; constructor | | inversion Hed; subst; constructor ].
+        [ inversion Hed; subst; constructor | | inversion Hed; subst; econstructor; eassumption | |
+          inversion Hed; subst; econstructor; eassumption ].
       2:{ (* a definition with a module part: closed, so read alike in any
              context *)
         pose proof (ds_canon_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hgm HmE) HmodE) as Hc; cbn in Hc.
@@ -394,7 +395,7 @@ Qed.
 (** A member of no δ-reduct of a module expression whose module part is a
     filed module read bare is related to that filed member. *)
 Lemma valid_mem_bare_name : forall Γ E RE p T Φ x A,
-    valid_modexp Γ E -> mdenote Θm Ξm Γ E RE -> ds_mod Θm Ξm RE = Some (ds_closed nil p T Φ nil) ->
+    valid_modexp Γ E -> mdenote Θm Ξm Γ E RE -> ds_mod RE = Some (ds_closed nil p T Φ nil) ->
     valid_mem Γ E x A None -> valid_mem Γ E x A (Some (a_mem (qname_mod p) x)).
 Proof.
   intros * Hs Hm Hmd Hsm.
@@ -529,7 +530,7 @@ Qed.
 Lemma body_base : forall D Φ Φx x Φ' b pv A M σ,
     body_xp Θm Ξm D Φ Φx -> body_shape Φx Φx -> ⊨ body_ctx Φx ++ D ->
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Ψ ++ D ⊨ᵐ H ≈ H /\ kinds_ok Θm Ξm (Ψ ++ D) H /\
-       forall n Rn An, mdenote Θm Ξm (Ψ ++ D) (me_mem H n) Rn -> ds_ty Θm Ξm Rn = Some An -> valid_mem (Ψ ++ D) H n An (ds_red Rn)) ->
+       forall n Rn An, mdenote Θm Ξm (Ψ ++ D) (me_mem H n) Rn -> ds_ty Rn = Some An -> valid_mem (Ψ ++ D) H n An (ds_red Rn)) ->
     gm_prefix_upto Φx x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) -> gm_fill Φ' = Some σ ->
     forall RD, EF D ≈ D ∈ per_ctx_env ↘ RD -> forall ρ, RD ρ ρ -> forall sm,
     exists a i Ra, ⟦ A[σ] ⟧ ρ ↘ a /\ per_univ_elem i Ra a a /\ dmod_has_mem (dm_local nil (md_body sm Φ) ρ) x Ra /\
@@ -584,9 +585,9 @@ Qed.
 (** ** The Term Members of Valid Units *)
 
 Lemma valid_unit_mem_all :
-  (forall Γ K, valid_unit Γ K -> forall x R A, mdenote Θm Ξm Γ (me_mem K x) R -> ds_ty Θm Ξm R = Some A ->
+  (forall Γ K, valid_unit Γ K -> forall x R A, mdenote Θm Ξm Γ (me_mem K x) R -> ds_ty R = Some A ->
      valid_mem Γ K x A (ds_red R)) /\
-  (forall Γ H, valid_modexp Γ H -> forall x R A, mdenote Θm Ξm Γ (me_mem H x) R -> ds_ty Θm Ξm R = Some A ->
+  (forall Γ H, valid_modexp Γ H -> forall x R A, mdenote Θm Ξm Γ (me_mem H x) R -> ds_ty R = Some A ->
      valid_mem Γ H x A (ds_red R)).
 Proof.
   apply valid_unit_modexp_ind.
@@ -608,7 +609,7 @@ Proof.
     apply eval_me_lit_iff in Hk.
     assert (Ho : forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Ψ ++ Δ ++ Γ ⊨ᵐ H ≈ H /\
                kinds_ok Θm Ξm (Ψ ++ Δ ++ Γ) H /\
-               forall n Rn An, mdenote Θm Ξm (Ψ ++ Δ ++ Γ) (me_mem H n) Rn -> ds_ty Θm Ξm Rn = Some An ->
+               forall n Rn An, mdenote Θm Ξm (Ψ ++ Δ ++ Γ) (me_mem H n) Rn -> ds_ty Rn = Some An ->
                  valid_mem (Ψ ++ Δ ++ Γ) H n An (ds_red Rn))
       by (intros k0 Ψ H Hk0; split; [ exact (Hopv _ _ _ Hk0) | split; [ exact (valid_modexp_kinds _ _ Hgm Hgf _ _ (Hops _ _ _ Hk0)) | exact (IHops _ _ _ Hk0) ] ]).
     destruct (unit_walk Δ Γ (md_body sm_open Φ) x A0[σ] (Some M0[σ]) RΓ HΔ HΔΓ (ex_intro _ i HAσ)
@@ -629,7 +630,7 @@ Proof.
     assert (Hk : exists A' om', A = ctx_pi Δ A' /\ ds_red R = option_map (ctx_fn Δ) om' /\ valid_mem (Δ ++ Γ) E x A' om').
     { pose proof (proj1 (modexp_gen _ _ _ _ _ Hw)) as Hf; cbn [gen_m unit_full] in Hf; destruct Hf as (HwΔΓ & _ & _).
       destruct (alias_mem_desc _ _ _ _ _ _ HwΔΓ Hm Ht) as (R' & Hm' & [-> | (A0 & RE & p & T & Φ & -> & HmE & HmdE & ->)]).
-      - destruct (ds_ty_up_inv _ _ _ _ _ Ht) as (A' & Ht' & ->).
+      - destruct (ds_ty_up_inv _ _ _ Ht) as (A' & Ht' & ->).
         exists A', (ds_red R'); split; [ reflexivity | split; [ apply ds_red_up | exact (IHE _ _ _ Hm' Ht') ] ].
       - cbn in Ht; injection Ht as <-.
         exists A0, (Some (a_mem (qname_mod p) x)); split; [ reflexivity | split; [ reflexivity |] ].
@@ -658,13 +659,13 @@ Proof.
     exact (mk_rel_mem_reduct _ _ _ _ _ m r Hm0 Hr Hmr).
   - (* a module expression equal to a valid unit *)
     intros Γ H R Rm K RK HwH HmH HmodH HHK HK IHK HmK HmodK x R' A Hm Ht.
-    inversion Hm as [? ? ? ? ? _ _ | ? ? ? pq k D Hq Hk | | | | ? ? ? R0 R0m Γy E rd R1 ? Hm0 Hmd He Hed Hr
-                    | ? ? ? Rr Hq Hk]; subst;
+    inversion Hm as [? ? ? ? ? _ _ | ? ? ? pq k D ? ? ? Hq Hk | | | | ? ? ? R0 R0m Γy E rd R1 ? Hm0 Hmd He Hed Hr
+                    | ? ? ? Rr ? ? Hq Hk]; subst;
       [ cbn in Ht; discriminate | | |].
     3:{ (* the open frame of a record type's module under [H]: likewise *)
       cbn in Hq; destruct (mod_qname H) as [mq |] eqn:Hq0; [| discriminate ]; injection Hq as <-.
       change {| q_unit := q_unit mq; q_chain := q_chain mq ++ x :: nil |} with (qname_in mq x) in Hk.
-      destruct (gs_find_record_tele _ _ _ Hk) as (U & T0 & Ht0).
+      destruct (gs_find_record_tele _ _ _ Hk) as (? & ? & Ht0).
       destruct (frame_parent _ _ Hgm _ _ _ _ Ht0) as (Tq & Φq & Hfq & _).
       assert (Hgl : gc_loc Θm Ξm mq = Some (Tq, Φq)) by (unfold gc_loc; rewrite Hfq; reflexivity).
       assert (Hs : valid_args Γ Tq nil)
@@ -678,7 +679,7 @@ Proof.
          a filed module at no argument *)
       cbn in Hq; destruct (mod_qname H) as [mq |] eqn:Hq0; [| discriminate ]; injection Hq as <-.
       change {| q_unit := q_unit mq; q_chain := q_chain mq ++ x :: nil |} with (qname_in mq x) in Hk.
-      destruct (gs_find_ind_tele _ _ _ Hk) as (U & T0 & Ht0).
+      destruct (gs_find_ind_tele _ _ _ Hk) as (? & ? & Ht0).
       destruct (frame_parent _ _ Hgm _ _ _ _ Ht0) as (Tq & Φq & Hfq & _).
       assert (Hgl : gc_loc Θm Ξm mq = Some (Tq, Φq)) by (unfold gc_loc; rewrite Hfq; reflexivity).
       assert (Hs : valid_args Γ Tq nil)

@@ -826,8 +826,8 @@ Proof.
     pose proof (proj1 (modexp_gen _ _ _ _ _ HH)) as HH0; cbn in HH0.
     destruct (me_denotes _ _ _ _ _ HH) as (R & Rm & Hm & Hmd).
     destruct (desc_ok_tele _ _ _ _ (desc_ok_mod _ _ Hg _ _ _ (me_desc_ok _ _ _ _ _ _ HH Hm) Hmd)
-                (ds_mod_is_mod _ _ _ _ Hmd)) as [T HT].
-    assert (Hmt : ds_mtele gc_deps gc_stack R = Some T) by (unfold ds_mtele; rewrite Hmd; exact HT).
+                (ds_mod_is_mod _ _ Hmd)) as [T HT].
+    assert (Hmt : ds_mtele R = Some T) by (unfold ds_mtele; rewrite Hmd; exact HT).
     pose proof (mdenote_closed_any _ _ (wf_gstack_closed _ _ Hg) _ _ _ Γ' Hm
                   (mod_qname_scoped (me_mem H y) (qname_app p0 (y :: nil)) 0 ltac:(cbn; rewrite E; reflexivity))) as Hm'.
     eapply wf_me_mem; [ eapply IH; [ reflexivity | exact HH0 | exact HΓ' ] | exact Hm' | exact Hmt | exact Hm' | exact Hmt ].
@@ -847,14 +847,14 @@ Proof.
   induction HM; intros Hm pm xm Hpm EMm; subst; try discriminate; try (injection EMm as <- <-).
   - (** The type the member is looked up at: closed, as the lookup reads
         nothing of the context. *)
-    match goal with HH : _ ⍮ _ ⍮ _ ⊢ᵐ ?H0 ≈ ?H0, Hd : mdenote _ _ _ (me_mem ?H0 ?y) ?R, Ht : ds_ty _ _ ?R = Some ?A0,
+    match goal with HH : _ ⍮ _ ⍮ _ ⊢ᵐ ?H0 ≈ ?H0, Hd : mdenote _ _ _ (me_mem ?H0 ?y) ?R, Ht : ds_ty ?R = Some ?A0,
                     HA0 : _ ⊢ ?A0 : Typeω@_ |- _ =>
       pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HH)) as Hg;
       pose proof (wf_gstack_closed _ _ Hg) as Hc;
       assert (HHs : modexp_scoped 0 (me_mem H0 y)) by (cbn; exact (mod_qname_scoped _ _ _ Hpm));
       assert (HA : exp_scoped 0 A0)
         by (pose proof (proj1 (mdenote_scoped_all _ _ Hc) _ _ _ Hd 0 ltac:(intros ? ? Hx; lia) HHs) as HR;
-            exact (ds_ty_scoped _ _ _ _ _ Hc HR Ht));
+            exact (ds_ty_scoped _ _ _ HR Ht));
       exists A0; split; [ exact HA | split; [ eapply wf_subtyp_refl'; apply wf_exp_eq_refl; exact HA0 |] ];
       intros Γ' HΓ';
       eapply wf_mem_desc; [ eapply path_wf_any_ctx; [ exact Hpm | exact HH | exact HΓ' ] | | exact Ht ];

@@ -5063,3 +5063,56 @@ let%expect_test "an open of a record value given at the parameters" =
      def q : D.Pair Nat Nat := record D.Pair Nat Nat where fst := 1; snd := 2 end end \
      module M where open R Nat Nat q as W eval W.snd end") in
   [%expect {| Evaluate M.W.snd --> 2 : ℕ |}]
+
+(** Inductive aliases of a library inductive type at a level, the type
+    former given some of its uniform parameters, and an alias of an
+    alias. *)
+let list_import =
+  "import Prelude›Builtin›Nat use (Nat) import Prelude›Data›List use (List) "
+
+let%expect_test "inductive aliases of a list type at a level, and of an alias" =
+  let _ = main_of_program_string ~search_root:"../lib" (list_import ^
+    "module Test where \
+       inductive F (u : Level) := List u \
+       def xs : F 0l Nat := List.nil 0l Nat end \
+       inductive G := F 0l \
+       def ys : G Nat := xs end \
+       eval ys \
+       eval List.cons 0l Nat 1 ys : G Nat \
+     end") in
+  [%expect {|
+    Evaluate ys --> Prelude›Data›List.List.nil 0l ℕ : Prelude›Data›List.List 0l ℕ
+    Evaluate List.cons 0l ℕ 1 ys
+      --> Prelude›Data›List.List.cons 0l ℕ 1 (Prelude›Data›List.List.nil 0l ℕ)
+      : G ℕ
+    |}]
+
+let%expect_test "a private inductive alias at a parameterized module's parameters" =
+  let _ = main_of_program_string ~search_root:"../lib" (list_import ^
+    "module Test where \
+       module M (u : Level) (A : Type@{u}) where \
+         private inductive L := List u A \
+         def e : L := L.nil end \
+       end \
+       eval M.e 0l Nat \
+     end") in
+  [%expect {|
+    Evaluate M.e 0l ℕ --> Prelude›Data›List.List.nil 0l ℕ
+      : Prelude›Data›List.List 0l ℕ
+    |}]
+
+let%expect_test "an inductive type of a parameterized module, from outside it" =
+  let _ = main_of_body
+    "module P (A : Type@0) where inductive N : Type@0 where | z end end \
+     def a : P.N Nat := (P Nat).N.z end \
+     eval a" in
+  [%expect {| Evaluate a --> P.N.z ℕ : P.N ℕ |}]
+
+let%expect_test "an inductive type of a parameterized module, by its bare name inside it" =
+  let _ = main_of_bare_body
+    "module P (A : Type@0) where \
+       inductive N : Type@0 where | z end \
+       def n : N := N.z end \
+     end \
+     eval P.n" in
+  [%expect {| Evaluate P.n --> λ (A1 : Type@0) → P.N.z A1 : ∀ (A1 : Type@0) → P.N A1 |}]

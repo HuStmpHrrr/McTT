@@ -96,9 +96,23 @@ Section Gen.
     (** The definition with a module part an item names, at the global
         level: a member with a term part and a module part ([ign_dm]). *)
     Definition dm_gen (d : string) (pv : bool) (n : string) (R : mdesc) : xres igen :=
-      match ds_ty Θ Ξ R, ds_mod Θ Ξ R with
+      match ds_ty R, ds_mod R with
       | Some _, Some _ => xok (ig_def_mod d pv (a_mem H n) (me_mem H n))
       | _, _ => xfail (xe_member H n)
+      end.
+
+    (** Why a member [n] with a term part and a module part cannot be opened
+        locally: a record type, when the closed module [H] stands for files
+        [n] as one ([record_lookup] at its path), and otherwise an inductive
+        type or an inductive alias. *)
+    Definition local_dm_err (n : string) : xerr :=
+      match option_map ds_mod (denote_of Γ H (dn_order_of_wf _ _ Hg _ _ _ HH)) with
+      | Some (Some (ds_closed _ p _ _ _)) =>
+          match record_lookup Θ Ξ (qname_in p n) with
+          | Some _ => xe_record n
+          | None => xe_ind n
+          end
+      | _ => xe_ind n
       end.
 
     (** The item [it] of an open of [H], by what the member it names
@@ -115,7 +129,7 @@ Section Gen.
           | Some R =>
               if ds_is_modb R then xok (ig_alias d pv (me_mem H n))
               else if g then dm_gen d pv n R
-              else match R with ds_record _ _ _ => xfail (xe_record n) | _ => xfail (xe_ind n) end
+              else xfail (local_dm_err n)
           | None => xfail (xe_member H n)
           end
       end.
@@ -124,7 +138,7 @@ Section Gen.
         it, no member is both used and exported, and the names declared are
         distinct; then each item's declaration, all in [Γ]. *)
     Definition import_gen (g : bool) (its : list iitem) : xres (list igen) :=
-      match option_map (ds_mod Θ Ξ) (denote_of Γ H (dn_order_of_wf _ _ Hg _ _ _ HH)) with
+      match option_map ds_mod (denote_of Γ H (dn_order_of_wf _ _ Hg _ _ _ HH)) with
       | Some (Some _) =>
           let+ gs := xmap (item_gen g) its in
           match both_dup its with
@@ -146,13 +160,13 @@ Section Gen.
       intros g; induction its as [| [[[n |] d] pv] its IH]; intros gs Hx; cbn in Hx.
       - injection Hx as <-; constructor.
       - destruct (denote_of Γ (me_mem H n) _) as [R |] eqn:E; cbn in Hx; [| discriminate ]; apply denote_of_spec in E.
-        destruct R as [A om | Δ Φ Φx | Θ' ? T Φ Ns | Θ' p k Ns | Θ' p Ns | Θd A M Rm]; cbn -[dm_gen] in Hx.
+        destruct R as [A om | Δ Φ Φx | Θ' ? T Φ Ns | Θd A M Rm]; cbn -[dm_gen local_dm_err] in Hx.
         1-3: destruct (xmap (item_gen g) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-;
           first [ eapply ign_def; [ exact E | apply IH; reflexivity ]
                 | eapply ign_mod; [ exact E | exact I | apply IH; reflexivity ] ].
         all: destruct g; cbn -[dm_gen] in Hx; [| discriminate ].
-        all: unfold dm_gen in Hx; destruct (ds_ty Θ Ξ _) as [A0 |] eqn:Et; [| discriminate ];
-          destruct (ds_mod Θ Ξ _) as [Rm0 |] eqn:Em; [| discriminate ]; cbn in Hx.
+        all: unfold dm_gen in Hx; destruct (ds_ty _) as [A0 |] eqn:Et; [| discriminate ];
+          destruct (ds_mod _) as [Rm0 |] eqn:Em; [| discriminate ]; cbn in Hx.
         all: destruct (xmap (item_gen true) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-.
         all: eapply ign_dm; [ exact E | exact Et | exact Em | apply IH; reflexivity ].
       - destruct (xmap (item_gen g) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
@@ -168,7 +182,7 @@ Section Gen.
       - match goal with Hm : mdenote _ _ _ _ ?R, Hk : ds_is_mod ?R |- _ =>
           rewrite (proj2 (denote_of_spec _ _ _ _) Hm), (IH _ ltac:(eassumption));
           destruct R; cbn in Hk; try contradiction; reflexivity end.
-      - match goal with Hm : mdenote _ _ _ _ ?R, Ht : ds_ty _ _ ?R = Some _, Hd : ds_mod _ _ ?R = Some _ |- _ =>
+      - match goal with Hm : mdenote _ _ _ _ ?R, Ht : ds_ty ?R = Some _, Hd : ds_mod ?R = Some _ |- _ =>
           rewrite (proj2 (denote_of_spec _ _ _ _) Hm); destruct R; try (cbn in Ht; discriminate); try (cbn in Hd; discriminate);
           cbn [ds_is_modb]; unfold dm_gen; rewrite Ht, Hd, (IH _ ltac:(eassumption)); reflexivity end.
       - rewrite (IH _ ltac:(eassumption)); reflexivity.
@@ -185,7 +199,7 @@ Section Gen.
       intros; unfold import_gen.
       destruct (denote_of Γ H _) as [R |] eqn:E; cbn [option_map].
       - apply denote_of_spec in E.
-        destruct (ds_mod Θ Ξ R) as [Rm |] eqn:Em.
+        destruct (ds_mod R) as [Rm |] eqn:Em.
         + destruct (xmap (item_gen g) its) as [gs' | e] eqn:Er; cbn.
           * destruct (both_dup its) eqn:Eb; [ split; [ discriminate | intros [_ _ _ _ _ [Hb _]]; congruence ] |].
             destruct (name_dup (map iitem_name its)) eqn:En; [ split; [ discriminate | intros [_ _ _ _ _ [_ Hn]]; congruence ] |].

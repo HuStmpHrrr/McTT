@@ -303,7 +303,7 @@ Proof. intros R σ; revert σ; induction R; intros; cbn; auto. Qed.
 Lemma mdesc_kind_named : forall Θ' Ns M R, mdesc_kind (ds_named Θ' Ns M R) = mdesc_kind R.
 Proof.
   intros; apply (ds_named_cases (fun R' => mdesc_kind R' = mdesc_kind R)); [ reflexivity |].
-  destruct R as [? [] | | | | |]; reflexivity.
+  destruct R as [? [] | | |]; reflexivity.
 Qed.
 
 Definition entry_eq_upto_type (Ek Ex : gentry) : Prop :=
@@ -373,8 +373,8 @@ Qed.
 
 Lemma mdesc_kind_at : forall R N R', ds_at R N = Some R' -> mdesc_kind R' = mdesc_kind R.
 Proof.
-  intros R N; induction R as [| | | | | Θd A M Rm IH]; intros R' E1; cbn in E1.
-  6: { destruct (ds_at Rm N) as [Rm' |] eqn:E; [| discriminate ].
+  intros R N; induction R as [| | | Θd A M Rm IH]; intros R' E1; cbn in E1.
+  4: { destruct (ds_at Rm N) as [Rm' |] eqn:E; [| discriminate ].
        destruct (tele_split (rev Θd)) as [[[? ?] ?] | ?]; injection E1 as <-; cbn; exact (IH _ eq_refl). }
   all: repeat match type of E1 with
          | match ?s with _ => _ end = _ => destruct s; try discriminate
@@ -407,7 +407,7 @@ Qed.
     gives the name: an entry of the module part, or a unit or open frame
     the member names, of any kind. *)
 Definition kinds_ok (Γ : ctx) (H : modexp) : Prop :=
-  (forall R Rm x Γy E rd, mdenote Θm Ξm Γ H R -> ds_mod Θm Ξm R = Some Rm -> ds_entry Rm x = Some (Γy, E, rd) ->
+  (forall R Rm x Γy E rd, mdenote Θm Ξm Γ H R -> ds_mod R = Some Rm -> ds_entry Rm x = Some (Γy, E, rd) ->
      forall RΓ ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> skind gc_deps gc_stack ρ H (x :: nil) (entry_kind E)) /\
   (forall x, (exists TΦ, gc_unit Θm Ξm (me_mem H x) = Some TΦ) \/
              (exists p r, mod_qname (me_mem H x) = Some p /\ gs_find_ind Ξm p = Some r) \/
@@ -418,8 +418,8 @@ Lemma kinds_ok_mem : forall Γ H x R, kinds_ok Γ H -> mdenote Θm Ξm Γ (me_me
     forall RΓ ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ RΓ -> RΓ ρ ρ -> skind gc_deps gc_stack ρ H (x :: nil) (mdesc_kind R).
 Proof.
   intros * [Ke Ku] Hm RΓ ρ HΓ Hρ.
-  inversion Hm as [? ? ? ? ? Hq Hu | ? ? ? ? ? ? Hq Hk | | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hr
-                  | ? ? ? Rr Hq Hk]; subst.
+  inversion Hm as [? ? ? ? ? Hq Hu | ? ? ? ? ? ? ? ? ? Hq Hk | | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hr
+                  | ? ? ? Rr ? ? Hq Hk]; subst.
   - exact (Ku _ (or_introl (ex_intro _ _ Hu)) _ _ HΓ Hρ).
   - exact (Ku _ (or_intror (or_introl (ex_intro _ _ (ex_intro _ _ (conj Hq Hk))))) _ _ HΓ Hρ).
   - rewrite (mdesc_kind_read _ _ _ Hr), (mdesc_kind_edenote _ _ _ _ Hed); exact (Ke _ _ _ _ _ _ Hm0 Hmd He _ _ HΓ Hρ).
@@ -527,7 +527,7 @@ Lemma ind_frame_kind : forall H x p r, mod_qname (me_mem H x) = Some p -> gs_fin
     forall ρ, skind gc_deps gc_stack ρ H (x :: nil) mk_mod.
 Proof.
   intros * Hq Hk ρ; destruct r as [[pq k] D].
-  destruct (ds_mod_ind_frame _ _ Hgm _ _ _ _ nil nil Hk) as (T & Φ & Hf & _).
+  destruct (frame_ind_loc _ _ Hgm _ _ _ _ Hk) as (? & ? & T & Φ & ? & _ & Hf & _ & _).
   exact (frame_kind _ _ _ _ Hq Hf ρ).
 Qed.
 
@@ -536,7 +536,7 @@ Lemma record_frame_kind : forall H x p Rr, mod_qname (me_mem H x) = Some p -> gs
     forall ρ, skind gc_deps gc_stack ρ H (x :: nil) mk_mod.
 Proof.
   intros * Hq Hk ρ.
-  destruct (ds_mod_record_frame _ _ Hgm _ _ nil nil Hk) as (T & Φ & Hf & _).
+  destruct (frame_record_loc _ _ Hgm _ _ Hk) as (? & ? & T & Φ & _ & Hf & _).
   exact (frame_kind _ _ _ _ Hq Hf ρ).
 Qed.
 
@@ -664,7 +664,7 @@ Proof.
     intros R Rm x Γy E' rd Hm Hmod He RΓ ρ HRΓ Hρ.
     inversion Hm; subst; try (match goal with Hq : mod_qname (me_lit _) = Some _ |- _ => cbn in Hq; discriminate end).
     match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu as [| ? ? ? E0 RE Rem HmE HmodE]; subst end.
-    rewrite (ds_is_mod_mod _ _ _ (ds_is_mod_up _ _ (ds_mod_is_mod _ _ _ _ HmodE))) in Hmod; injection Hmod as <-.
+    rewrite (ds_is_mod_mod _ (ds_is_mod_up _ _ (ds_mod_is_mod _ _ HmodE))) in Hmod; injection Hmod as <-.
     destruct (ds_entry_up_inv _ _ _ _ _ _ He) as (Γy' & rd' & He').
     destruct (rel_ctx_wf_per_ctx_env HΔΓ) as [RΔ HRΔ].
     destruct (params_env _ _ _ _ HΔ HRΓ HRΔ _ Hρ) as (args & Hl & Hρa).

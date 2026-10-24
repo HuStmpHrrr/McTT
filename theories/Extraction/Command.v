@@ -1748,7 +1748,7 @@ Section Impl.
     intros * He [R Rm HR HRm Hg Hok].
     pose proof (gds_equiv_mdenote_all _ _ Ξ He) as (H1 & _ & _ & _ & H5).
     apply (mk_open_gens _ _ _ _ _ _ _ R Rm); [ exact (H1 _ _ _ HR) | | exact (H5 _ _ _ _ _ Hg) | exact Hok ].
-    rewrite <- (gds_equiv_ds_mod _ _ _ _ He); exact HRm.
+    exact HRm.
   Qed.
 
   Lemma import_ok {ch Θ K D B Ξ E its gs Ξ'} (Hg : ⊢ᵍ gds_restrict D Θ ⍮ Ξ)
@@ -2433,13 +2433,19 @@ Section Impl.
   Definition alias_wf_error (x : string) (Θr : gdeps) (Ξ : gstack) (Hg : ⊢ᵍ Θr ⍮ Ξ) (Γ : ctx) (E : modexp)
       (Hh : Θr ⍮ Ξ ⍮ Γ ⊢ᵐ fst (me_unapps E) ≈ fst (me_unapps E)) : run_error :=
     match mdenote_impl Θr Ξ Hg Γ (fst (me_unapps E)) (dn_order_of_wf _ _ Hg _ _ _ Hh) with
-    | inleft (exist _ (ds_ind Θ0 p _ Ns0) _) =>
-        match ind_lookup Θr Ξ p with
-        | Some Dp =>
-            if Nat.ltb (ind_nu Dp) (List.length Ns0 + (List.length (snd (me_unapps E)) - List.length Θ0))
-            then re_msg ("inductive alias " ++ x ++ ": more arguments than uniform parameters of " ++ ind_short p)
-            else re_msg ("ill-formed inductive alias " ++ x)
-        | None => re_msg ("ill-formed inductive alias " ++ x)
+    | inleft (exist _ (ds_dm Θ0 _ M _) _) =>
+        (* a type former: its term part is the group's constant applied to
+           the arguments given so far *)
+        match app_head M with
+        | a_ind p _ =>
+            match ind_lookup Θr Ξ p with
+            | Some Dp =>
+                if Nat.ltb (ind_nu Dp) (List.length (app_args M) + (List.length (snd (me_unapps E)) - List.length Θ0))
+                then re_msg ("inductive alias " ++ x ++ ": more arguments than uniform parameters of " ++ ind_short p)
+                else re_msg ("ill-formed inductive alias " ++ x)
+            | None => re_msg ("ill-formed inductive alias " ++ x)
+            end
+        | _ => re_msg ("ill-formed inductive alias " ++ x)
         end
     | _ => re_msg ("ill-formed inductive alias " ++ x)
     end.
