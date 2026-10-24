@@ -352,6 +352,10 @@ and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      fprintf f "@[<hov 2>%sinductive %s" (if priv then "private " else "") x;
      List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
      fprintf f " @<1>%s@ %a@]" s_eq format_obj e
+  | Cst.Coq_c_record_alias (priv, x, ps, e) ->
+     fprintf f "@[<hov 2>%srecord %s" (if priv then "private " else "") x;
+     List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
+     fprintf f " @<1>%s@ %a@]" s_eq format_obj e
   (* [record x (ps) : S where f : A; … with cs end end]: the fields, then
      the with-area, if any. *)
   | Cst.Coq_c_record (priv, x, ps, es, fs, cs) ->
@@ -496,13 +500,26 @@ let frame_member (nloc : int) ((fp, ms) : string list * string list) (args : exp
      in
      strip expected args
 
+(* The path a term spells as a chain of members from a unit, if it is one. *)
+let path_of_term : exp -> qname option =
+  let rec chain = function
+    | Coq_me_unit fp -> Some (fp, [])
+    | Coq_me_mem (h, y) -> Option.map (fun (fp, ms) -> (fp, ms @ [ y ])) (chain h)
+    | _ -> None
+  in
+  function
+  | Coq_a_mem (h, y) -> Option.map (fun (fp, ms) -> { q_unit = fp; q_chain = ms @ [ y ] }) (chain h)
+  | _ -> None
+
 (* A path naming the bound type: the type, or an inductive alias of it
-   without arguments, as an [import … use (Nat)] declares one. *)
-let names_bound_nat (q : qname) : bool =
+   without arguments, as an [import … use (Nat)] declares one: a
+   definition with a module part whose term is a path naming it. *)
+let rec names_bound_nat (q : qname) : bool =
   is_bound_nat q ||
   (let deps, xi = !current_state in
-   match McttExtracted.Members.ind_target deps xi q with
-   | Some ((((_, _), p), 0), []) -> is_bound_nat p
+   match McttExtracted.Members.gc_entry deps xi q with
+   | Some (Coq_ge_def_mod (_, _, m, _)) ->
+      (match path_of_term m with Some p -> p <> q && names_bound_nat p | None -> false)
    | _ -> false)
 
 (* A constructor, written as such, as a member of its type's module from a
@@ -942,7 +959,7 @@ let exp_to_obj =
             Cst.Coq_c_mod (priv, x, params, md)
          (* A declaration is filed in a unit, never in a local body. *)
          | Coq_ge_ind (_, _, _, _, _) -> Cst.Coq_c_error "inductive declaration"
-         | Coq_ge_ind_alias (_, _, _, _, _, _) -> Cst.Coq_c_error "inductive alias"
+         | Coq_ge_def_mod (_, _, _, _) -> Cst.Coq_c_error "definition with a module part"
          | Coq_ge_record (_, _, _, _) -> Cst.Coq_c_error "record declaration"
        in
        (cs @ [c], x :: ctx')

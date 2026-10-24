@@ -324,7 +324,7 @@ Proof.
   match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu as [| ? ? ? ? RE REm HmE HmodE]; subst end.
   pose proof (ds_mod_is_mod _ _ _ _ HmodE) as HisE.
   rewrite (ds_is_mod_mod _ _ _ (ds_is_mod_up _ _ HisE)) in Hmd; injection Hmd as <-.
-  destruct REm as [| Δe Φ Φx | Θ p T Φ Ns | |] eqn:EREm; cbn in HisE; try contradiction; cbn [ds_up] in He, Hed.
+  destruct REm as [| Δe Φ Φx | Θ p T Φ Ns | | |] eqn:EREm; cbn in HisE; try contradiction; cbn [ds_up] in He, Hed.
   - (* an open module part *)
     cbn in He; destruct (gm_prefix_upto Φx y) as [[| Φ' z E0 | ] |] eqn:Hp; try discriminate.
     pose proof (gm_prefix_name _ _ _ _ _ Hp) as ->.
@@ -339,7 +339,7 @@ Proof.
   - (* a closed module part: its entries read alike in any context *)
     cbn in He; destruct (gm_prefix_upto Φ y) as [[| Φ' z E0 | ] |] eqn:Hp; try discriminate.
     injection He as <- <- <-.
-    cbn [ds_read] in Hr; destruct (ds_ats R1 Ns) as [R2 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
+    cbn [ds_read] in Hr; destruct (ds_ats_read R1 Ns) as [R2 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
     pose proof (ds_canon_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hgm HmE) HmodE) as Hc; cbn in Hc.
     pose proof (loc_closed _ _ Hgm _ _ _ Hc) as HU.
     assert (He0 : ds_entry (ds_closed Θ p T Φ Ns) y = Some (nil, ge_read T E0, rd_closed Θ Ns (apps (a_mem (qname_mod p) y) Ns)))
@@ -354,7 +354,7 @@ Proof.
     exists (ds_up Θ (ds_named Θ Ns (apps (a_mem (qname_mod p) y) Ns) R2)); split.
     { eapply dn_mem; [ exact HmE | exact HmodE | exact He0 | exact Hed' | cbn; rewrite Ha; reflexivity ]. }
     (* a module is read alike with any outside parameters *)
-    rewrite ds_up_cat; destruct R2 as [A0 om | | | |]; [| rewrite !ds_named_fix by reflexivity; reflexivity .. ].
+    rewrite ds_up_cat; destruct R2 as [A0 om | | | | |]; [| rewrite !ds_named_fix by reflexivity; reflexivity .. ].
     exfalso; assert (Ht : exists om', ds_named (Θ ++ Δ) Ns (apps (a_mem (qname_mod p) y) Ns) (ds_term A0 om) = ds_term A0 om')
       by (apply (ds_named_cases (fun R => exists om', R = ds_term A0 om')); [| destruct om ]; eexists; reflexivity).
     destruct Ht as [om' Ht]; rewrite Ht in HmR; cbn in HmR; discriminate.
@@ -401,9 +401,10 @@ Proof.
     destruct (loc_closed _ _ Hgm _ _ _ Hl) as [_ HΦc].
     pose proof (body_closed_prefix _ _ _ _ HΦc Hp) as HΦ0; cbn in HΦ0; destruct HΦ0 as [_ HE0].
     destruct (gm_prefix_entry _ _ _ Hp) as (Φ0' & E0' & [= <- <-] & Hent).
-    destruct E0 as [b pv A0 oM | pv [Δy [sm Φy | Ea]] | pv pq k ΦD Φm | pv Δa pm pq k Nsa | pv Rr Φr]; cbn [ge_read] in Hed, HE0.
+    destruct E0 as [b pv A0 oM | pv [Δy [sm Φy | Ea]] | pv pq k ΦD Φm | pv Ad Md [Δd [smd Φd | Ed]] | pv Rr Φr];
+      cbn [ge_read] in Hed, HE0.
     + (* a definition is no module *)
-      exfalso; inversion Hed; subst; cbn [ds_read] in Hr.
+      exfalso; inversion Hed; subst; cbn [ds_read ds_ats_read] in Hr.
       destruct (ds_ats _ Ns) as [R3 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
       destruct (ds_ats_term _ _ _ _ Ha) as (A' & om' & ->); rewrite ds_mod_named_term in Hmd; discriminate.
     + (* a body module: filed at its own path *)
@@ -412,7 +413,7 @@ Proof.
       inversion Hu as [? ? ? ? ? Φyx ? Hx Hb |]; subst.
       cbn in Hb; injection Hb as <-.
       rewrite (body_xp_noopen_id _ _ _ _ _ (body_closed_noopen _ _ HΦy) Hx) in Hr.
-      cbn [ds_read] in Hr; rewrite ds_ats_closed_nil in Hr; cbn in Hr; injection Hr as <-.
+      cbn [ds_read ds_ats_read] in Hr; rewrite ds_ats_closed_nil in Hr; cbn in Hr; injection Hr as <-.
       rewrite ds_named_fix in Hmd by reflexivity; cbn in Hmd; injection Hmd as <-.
       destruct (loc_child_mod _ _ Hgm _ _ _ Hl _ _ _ _ _ Hent) as [Hb _].
       exists (Δy ++ T), Φy; split; [ exact (gc_loc_of_loc _ _ Hgm _ _ _ (or_intror Hb)) | reflexivity ].
@@ -422,16 +423,17 @@ Proof.
       inversion Hu as [| ? ? ? ? RE REm HmE HmodE]; subst.
       assert (HmU : mdenote Θm Ξm Γ (me_lit (gu_mk Δy (md_alias Ea))) (ds_up Δy REm))
         by (apply dn_lit; eapply un_alias; eassumption).
-      cbn [ds_read] in Hr; destruct (ds_ats (ds_up Δy REm) Ns) as [R3 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
+      cbn [ds_read] in Hr; rewrite (ds_ats_read_mod _ _ (ds_is_mod_up _ _ (ds_mod_is_mod _ _ _ _ HmodE))) in Hr.
+      destruct (ds_ats (ds_up Δy REm) Ns) as [R3 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
       pose proof (ds_ats_is_mod _ _ _ (ds_is_mod_up _ _ (ds_mod_is_mod _ _ _ _ HmodE)) Ha) as HmR3.
-      assert (Es : ds_self (apps (a_mem (qname_mod p) y) Ns) R3 = R3) by (destruct R3 as [? [] | | | |]; cbn in HmR3 |- *; first [ contradiction | reflexivity ]).
+      assert (Es : ds_self (apps (a_mem (qname_mod p) y) Ns) R3 = R3) by (destruct R3 as [? [] | | | | |]; cbn in HmR3 |- *; first [ contradiction | reflexivity ]).
       rewrite (ds_named_fix _ _ _ _ Es), ds_up_nil in Hmd.
       exists Φ0, (ge_mod pv (gu_mk Δy (md_alias Ea))), (gu_mk Δy (md_alias Ea)), R3.
       split; [ reflexivity | split; [ reflexivity | split; [ exact (mdenote_apps _ _ _ _ _ _ _ HmU Ha) | exact Hmd ] ] ].
     + (* a member of a group: its module is filed at the member's path *)
       left.
       inversion Hed; subst.
-      cbn [ds_read] in Hr; rewrite ds_ats_ind_nil in Hr; cbn in Hr; injection Hr as <-.
+      cbn [ds_read ds_ats_read] in Hr; rewrite ds_ats_ind_nil in Hr; cbn in Hr; injection Hr as <-.
       pose proof (proj2 (loc_entry _ _ Hgm _ _ _ Hl _ _) Hent) as Hge.
       pose proof (isp_path _ _ _ _ (gc_entry_selfpath _ _ Hgm _ _ _ _ _ _ Hge)) as Hsp.
       pose proof (ind_mlookup_group _ _ Hgm _ _ _ _ (proj2 (gc_entry_ind _ _ _ _ _ _ _ _ Hge))) as Hlq.
@@ -439,31 +441,26 @@ Proof.
       destruct (ds_mod_ind_inv _ _ _ _ _ _ _ Hmd) as (D1 & pm1 & Tb & Φb & Hl1 & Hpm & Hb & ->).
       rewrite Hlq in Hl1; injection Hl1 as <-; rewrite Hsp in Hpm; injection Hpm as <-.
       exists Tb, Φb; split; [ exact Hb | reflexivity ].
-    + (* an inductive alias: the alias of the module of the member it names, at the arguments *)
+    + (* a definition with a module part that is a body denotes nothing *)
+      inversion Hed.
+    + (* a definition with a module part, an alias: the stored unit at the
+         arguments *)
       right.
-      inversion Hed; subst.
-      cbn [ds_read] in Hr; destruct (ds_ats (ds_ind Δa pq k Nsa) Ns) as [R3 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
-      destruct (ds_ats_ind _ _ _ _ _ _ Ha) as (Θ'' & Ns'' & ->); rewrite ds_named_fix in Hmd by reflexivity.
-      cbn [ds_up] in Hmd; rewrite app_nil_r in Hmd.
-      pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ (proj2 (loc_valid _ _ _ _ _ (gctx_valid_syn _ _ Hgm) Hl)) Hp)
-        as [_ [D1 M1 Hl1 _ _ Hpm1 _ _ _ _]].
-      assert (Hb : exists Tb Φb, gc_loc Θm Ξm pm = Some (Tb, Φb))
-        by (cbn in Hmd; rewrite Hl1, Hpm1 in Hmd; destruct (gc_loc Θm Ξm pm) as [[Tb Φb] |]; [ eauto | discriminate ]).
-      destruct Hb as (Tb & Φb & Hglq).
-      destruct (filed_denote _ _ Hgm _ _ _ (Δa ++ Γ) Nsa Hglq) as (RE & HmE & HmodE).
-      assert (HmU : mdenote Θm Ξm Γ (me_lit (gu_mk Δa (md_alias (me_apps (qname_mod pm) Nsa)))) (ds_closed Δa pm Tb Φb Nsa))
-        by (apply dn_lit; exact (un_alias _ _ _ _ _ _ _ _ HmE HmodE)).
-      assert (Hmi : ds_mod Θm Ξm (ds_ind Δa pq k Nsa) = Some (ds_closed Δa pm Tb Φb Nsa))
-        by (cbn; rewrite Hl1, Hpm1, Hglq; reflexivity).
-      destruct (ds_mod_ats _ _ _ _ _ _ Hmi Ha) as (Rm' & Ha' & Hmd').
-      rewrite Hmd in Hmd'; injection Hmd' as <-.
-      exists Φ0, (ge_ind_alias pv Δa pm pq k Nsa), (gu_mk Δa (md_alias (me_apps (qname_mod pm) Nsa))), Rm.
-      split; [ reflexivity | split; [ reflexivity | split; [ exact (mdenote_apps _ _ _ _ _ _ _ HmU Ha') |] ] ].
-      apply ds_is_mod_mod; exact (ds_ats_is_mod _ (ds_closed Δa pm Tb Φb Nsa) _ I Ha').
+      inversion Hed as [| | | ? ? ? ? ? ? ? Rd Hu |]; subst.
+      inversion Hu as [| ? ? ? ? RE REm HmE HmodE]; subst.
+      assert (HmU : mdenote Θm Ξm Γ (me_lit (gu_mk Δd (md_alias Ed))) (ds_up Δd REm))
+        by (apply dn_lit; eapply un_alias; eassumption).
+      cbn [ds_read ds_ats_read] in Hr.
+      destruct (ds_ats (ds_up Δd REm) Ns) as [R3 |] eqn:Ha;
+        destruct (ds_ats (ds_term Ad (Some Md)) Ns) as [[B [M' |] | | | | |] |]; cbn in Hr; try discriminate.
+      injection Hr as <-.
+      rewrite ds_named_fix, ds_up_nil in Hmd by reflexivity; cbn [ds_mod] in Hmd.
+      exists Φ0, (ge_def_mod pv Ad Md (gu_mk Δd (md_alias Ed))), (gu_mk Δd (md_alias Ed)), R3.
+      split; [ reflexivity | split; [ reflexivity | split; [ exact (mdenote_apps _ _ _ _ _ _ _ HmU Ha) | exact Hmd ] ] ].
     + (* a record type: its module is filed at the record's path *)
       left.
       inversion Hed; subst.
-      cbn [ds_read] in Hr; rewrite ds_ats_record_nil in Hr; cbn in Hr; injection Hr as <-.
+      cbn [ds_read ds_ats_read] in Hr; rewrite ds_ats_record_nil in Hr; cbn in Hr; injection Hr as <-.
       rewrite ds_named_fix in Hmd by reflexivity.
       destruct (ds_mod_record_inv _ _ _ _ _ _ Hmd) as (Tb & Φb & Hb & ->).
       exists Tb, Φb; split; [ exact Hb | reflexivity ].
@@ -855,7 +852,7 @@ Proof.
   destruct (Hgf _ _ _ Hgl) as [(Φd & Hm) _ HT HTa HTs _ _ _ _ _ Hals].
   destruct (Hals _ _ _ _ Hp HUa) as (HmUa & HsUa).
   assert (HUa' : exists Ta Ea, Ua = gu_mk Ta (md_alias Ea))
-    by (destruct E as [| pv [Ta [| Ea]] | | pv Δa pq Nsa |]; cbn in HUa; try discriminate; injection HUa as <-; eauto).
+    by (destruct E as [| pv [Ta [| Ea]] | | pv Ad Md [Ta [| Ea]] |]; cbn in HUa; try discriminate; injection HUa as <-; eauto).
   destruct HUa' as (Ta & Ea & ->).
   destruct (loc_alias_params _ _ Hgw _ _ _ _ _ Hm HmUa) as (Δ0 & HTa' & HaΔ0); cbn [gu_params] in HTa'; subst Ta.
   pose proof (presup_modexp_eq_ctx Hw) as HwΓ.

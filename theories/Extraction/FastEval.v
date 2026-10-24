@@ -122,7 +122,7 @@ with gentry_freshb (k : nat) (E : gentry) {struct E} : bool :=
   | ge_def _ _ A B => exp_freshb k A && match B with Some M => exp_freshb k M | None => true end
   | ge_mod _ U => gunit_freshb k U
   | ge_ind _ _ _ D Φ => gmod_freshb (ind_nu D + k) Φ
-  | ge_ind_alias _ _ _ _ _ _ => true
+  | ge_def_mod _ A M U => exp_freshb k A && exp_freshb k M && gunit_freshb k U
   | ge_record _ _ R Φ => gmod_freshb (S (List.length (record_params R)) + k) Φ
   end
 with centry_freshb (k : nat) (e : centry) {struct e} : bool :=
@@ -671,12 +671,12 @@ with feval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      ind_mlookup Θ Ξ (qname_app p (x :: nil)) = Some (pq, k, D) ->
      $*ᶠ| d_ind pq k nil & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
-(** An inductive alias, as a term: the type former at its arguments, over
-    its telescope. *)
-| feval_sel_global_ind_alias :
-  `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
-     ind_alias_lookup Θ Ξ (qname_app p (x :: nil)) = Some (Δ, pm, pt, k, Ns) ->
-     ⟦ ctx_fn Δ (apps (a_ind pt k) Ns) ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ f ->
+(** A definition with a module part, as a term: its term, closed, applied
+    to the module's arguments.  It is read off the entry, as the kinds read
+    it as a module ([eval_sel_global_def_mod]). *)
+| feval_sel_global_def_mod :
+  `( gc_entry Θ Ξ (qname_app p (x :: nil)) = Some (ge_def_mod pv A M U) ->
+     ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ f ->
      $*ᶠ| f & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
 (** A member of a closure lacking a parameter is a member closure. *)
@@ -870,10 +870,12 @@ Hint Constructors feval_exp feval_proj feval_nflds feval_elim feval_ihs feval_ih
       repeat match goal with
         | H1 : Members.gc_resolve Θ Ξ ?p = Some _, H2 : Members.gc_resolve Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
-        | H1 : ind_alias_lookup Θ Ξ ?p = Some _, H2 : ind_alias_lookup Θ Ξ ?p = Some _ |- _ =>
+        | H1 : gc_entry Θ Ξ ?p = Some _, H2 : gc_entry Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
-        | H1 : ind_mlookup Θ Ξ ?p = Some _, H2 : ind_alias_lookup Θ Ξ ?p = Some _ |- _ =>
-            exfalso; rewrite (ind_mlookup_not_ind_alias _ _ _ _ H1) in H2; discriminate H2
+        | H1 : gc_entry Θ Ξ ?p = Some (ge_def_mod _ _ _ _), H2 : Members.gc_resolve Θ Ξ ?p = Some _ |- _ =>
+            exfalso; rewrite (gc_entry_def_mod _ _ _ _ _ _ _ H1) in H2; discriminate H2
+        | H1 : ind_mlookup Θ Ξ ?p = Some _, H2 : gc_entry Θ Ξ ?p = Some (ge_def_mod _ _ _ _) |- _ =>
+            exfalso; exact (ind_mlookup_not_def_mod _ _ _ _ _ _ _ _ H1 H2)
         | H1 : ind_mlookup Θ Ξ ?p = Some _, H2 : ind_mlookup Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : ind_lookup Θ Ξ ?p = Some _, H2 : ind_lookup Θ Ξ ?p = Some _ |- _ =>
@@ -882,8 +884,8 @@ Hint Constructors feval_exp feval_proj feval_nflds feval_elim feval_ihs feval_ih
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
         | H1 : record_lookup Θ Ξ ?p = Some _, H2 : ind_mlookup Θ Ξ ?p = Some _ |- _ =>
             exfalso; rewrite (record_lookup_not_ind _ _ _ _ H1) in H2; discriminate H2
-        | H1 : record_lookup Θ Ξ ?p = Some _, H2 : ind_alias_lookup Θ Ξ ?p = Some _ |- _ =>
-            exfalso; rewrite (record_lookup_not_ind_alias _ _ _ _ H1) in H2; discriminate H2
+        | H1 : record_lookup Θ Ξ ?p = Some _, H2 : gc_entry Θ Ξ ?p = Some (ge_def_mod _ _ _ _) |- _ =>
+            exfalso; exact (record_lookup_not_def_mod _ _ _ _ _ _ _ _ H1 H2)
         | H1 : field_index ?fl ?f = Some _, H2 : field_index ?fl ?f = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
         | H1 : field_lookup ?fl ?f = Some _, H2 : field_lookup ?fl ?f = Some _ |- _ =>

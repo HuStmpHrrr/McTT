@@ -63,10 +63,10 @@ Lemma mem_no_red : forall Θ Ξ Γ H x R A,
 Proof.
   intros * Hm Ht Hr.
   assert (HR : R = ds_term A None)
-    by (destruct R as [A' om | | | | ]; cbn in Ht, Hr; try discriminate; subst; congruence).
+    by (destruct R as [A' om | | | | | ]; cbn in Ht, Hr; try discriminate; subst; congruence).
   subst R.
   inversion Hm as [| | | | | ? ? ? R0 R0m Γy E rd Re ? Hm0 Hmd He Hed Hrd |]; subst.
-  destruct R0m as [| Δ Φw Φx | Θ' p T Φ Ns | |]; cbn in He; try discriminate.
+  destruct R0m as [| Δ Φw Φx | Θ' p T Φ Ns | | |]; cbn in He; try discriminate.
   - (* an open body reads only transparent definitions and modules *)
     destruct (gm_prefix_upto Φx x) as [[| Φ' y E0 | ? ? ?] |]; try discriminate.
     destruct E0 as [[] pv A' [M |] | pv U | | |]; try discriminate; injection He as <- <- <-.
@@ -79,11 +79,11 @@ Proof.
   - destruct (gm_prefix_upto Φ x) as [[| Φ0 y E0 | ? ? ?] |] eqn:Hp; try discriminate.
     injection He as <- <- <-.
     pose proof (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & _).
-    cbn [ds_read] in Hrd; destruct (ds_ats Re Ns) as [R1 |] eqn:Hats; cbn [option_map] in Hrd; [| discriminate ].
+    cbn [ds_read] in Hrd; destruct (ds_ats_read Re Ns) as [R1 |] eqn:Hats; cbn [option_map] in Hrd; [| discriminate ].
     injection Hrd as Heq.
-    destruct E0 as [b pv A' oM | pv [Δ [sm Φy | E'] ] | pv pq D ΦD | pv Δa pq Nsa | pv Rr ΦR ].
+    destruct E0 as [b pv A' oM | pv [Δ [sm Φy | E'] ] | pv pq D ΦD | pv Ad Md Ud | pv Rr ΦR ].
     + (* a definition: one of no body, read bare *)
-      cbn [ge_read] in Hed; inversion Hed; subst.
+      cbn [ge_read] in Hed; inversion Hed; subst; cbn [ds_ats_read] in Hats.
       destruct (if b then oM else None) as [M |] eqn:Ho.
       * exfalso; destruct (ds_ats_some_red _ _ _ _ Hats) as (A1 & M1 & ->).
         rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
@@ -93,19 +93,28 @@ Proof.
         cbn in Hats; injection Hats as ->; injection Heq as ->.
         exists R0, p, T, Φ, Φ0, b, pv, oM; repeat split; assumption.
     + exfalso; assert (Hmm : ds_is_mod Re) by (destruct sm; cbn [ge_read] in Hed; inversion Hed; subst; eapply udenote_is_mod; eassumption).
+      rewrite (ds_ats_read_mod _ _ Hmm) in Hats.
       pose proof (ds_ats_is_mod _ _ _ Hmm Hats) as Hm1.
       destruct R1; cbn in Hm1; try contradiction; rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
     + exfalso; assert (Hmm : ds_is_mod Re) by (cbn [ge_read] in Hed; inversion Hed; subst; eapply udenote_is_mod; eassumption).
+      rewrite (ds_ats_read_mod _ _ Hmm) in Hats.
       pose proof (ds_ats_is_mod _ _ _ Hmm Hats) as Hm1.
       destruct R1; cbn in Hm1; try contradiction; rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
-    + exfalso; cbn [ge_read] in Hed; inversion Hed; subst.
+    + exfalso; cbn [ge_read] in Hed; inversion Hed; subst; cbn [ds_ats_read] in Hats.
       destruct (ds_ats_ind _ _ _ _ _ _ Hats) as (? & ? & ->).
       rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
-    + exfalso; cbn [ge_read] in Hed; inversion Hed; subst.
-      destruct (ds_ats_ind _ _ _ _ _ _ Hats) as (? & ? & ->).
+    + (* a definition with a module part: read with its module part, no term *)
+      exfalso; cbn [ge_read] in Hed; inversion Hed; subst; cbn [ds_ats_read] in Hats.
+      match type of Hats with
+      | context [ds_ats (ds_term ?A1 (Some ?M1)) Ns] =>
+          destruct (ds_ats (ds_term A1 (Some M1)) Ns) as [[B [M' |] | | | | |] |]; try discriminate
+      end.
+      match type of Hats with
+      | context [ds_ats ?Rx Ns] => destruct (ds_ats Rx Ns); [ injection Hats as <- | discriminate ]
+      end.
       rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
     + (* a record type: its type former, a reduct *)
-      exfalso; cbn [ge_read] in Hed; inversion Hed; subst.
+      exfalso; cbn [ge_read] in Hed; inversion Hed; subst; cbn [ds_ats_read] in Hats.
       rewrite ds_ats_record_nil in Hats; injection Hats as <-.
       rewrite ds_named_fix in Heq by reflexivity; cbn in Heq; discriminate.
 Qed.

@@ -83,53 +83,39 @@ Section Gen.
     Variables (Γ : ctx) (H : modexp) (H' : modexp).
     Hypothesis HH : Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'.
 
-    (** The inductive alias an item [n] of an open declares, as [d], of
-        the member [k] of the group at [p], over [Θ'] at [Ns]: its module
-        is the one the member's path names, which must name the member
-        back ([ign_ind]). *)
-    Definition ind_alias_gen (d : string) (pv : bool) (n : string) (Θ' : ctx) (p : qname) (k : nat) (Ns : list exp) :
-        xres igen :=
-      match ind_lookup Θ Ξ p with
-      | Some D =>
-          match ind_mpath D k with
-          | Some pm =>
-              match ind_mlookup Θ Ξ pm with
-              | Some r => if indref_eq_dec r (p, k, D) then xok (ig_ind_alias d pv Θ' pm p k Ns) else xfail (xe_member H n)
-              | None => xfail (xe_member H n)
-              end
-          | None => xfail (xe_member H n)
-          end
-      | None => xfail (xe_member H n)
+    (** Whether a description is a module only, an open or a closed one. *)
+    Definition ds_is_modb (R : mdesc) : bool :=
+      match R with
+      | ds_open _ _ _ | ds_closed _ _ _ _ _ => true
+      | _ => false
       end.
 
-    Lemma ind_alias_gen_spec : forall d pv n Θ' p k Ns g,
-        ind_alias_gen d pv n Θ' p k Ns = xok g <->
-          exists D pm, ind_lookup Θ Ξ p = Some D /\ ind_mpath D k = Some pm /\ ind_mlookup Θ Ξ pm = Some (p, k, D) /\
-                       g = ig_ind_alias d pv Θ' pm p k Ns.
-    Proof.
-      intros; unfold ind_alias_gen; split.
-      - destruct (ind_lookup Θ Ξ p) as [D |] eqn:El; [| discriminate ].
-        destruct (ind_mpath D k) as [pm |] eqn:Ep; [| discriminate ].
-        destruct (ind_mlookup Θ Ξ pm) as [r |] eqn:Em; [| discriminate ].
-        destruct (indref_eq_dec r (p, k, D)) as [-> | ]; [| discriminate ].
-        intros [= <-]; exists D, pm; auto.
-      - intros (D & pm & El & Ep & Em & ->); rewrite El, Ep, Em.
-        destruct (indref_eq_dec (p, k, D) (p, k, D)) as [_ | Hn]; [ reflexivity | contradiction ].
-    Qed.
+    Lemma ds_is_modb_spec : forall R, ds_is_modb R = true <-> ds_is_mod R.
+    Proof. intros []; cbn; split; first [ tauto | discriminate | intros [] ]. Qed.
+
+    (** The definition with a module part an item names, at the global
+        level: a member with a term part and a module part ([ign_dm]). *)
+    Definition dm_gen (d : string) (pv : bool) (n : string) (R : mdesc) : xres igen :=
+      match ds_ty Θ Ξ R, ds_mod Θ Ξ R with
+      | Some _, Some _ => xok (ig_def_mod d pv (a_mem H n) (me_mem H n))
+      | _, _ => xfail (xe_member H n)
+      end.
 
     (** The item [it] of an open of [H], by what the member it names
-        denotes: a term gives a definition, a module an alias, an inductive
-        type at the global level ([g = true]) an inductive alias; or the
-        alias of [H] itself. *)
+        denotes: a term gives a definition, a module an alias, a member with
+        a term part and a module part at the global level ([g = true]) a
+        definition with a module part; an item naming no member, the alias
+        of [H] itself. *)
     Definition item_gen (g : bool) (it : iitem) : xres igen :=
       match it with
       | (None, d, pv) => xok (ig_alias d pv H)
       | (Some n, d, pv) =>
           match denote_of Γ (me_mem H n) (dn_order_mem_of_wf _ _ Hg _ _ _ n HH) with
           | Some (ds_term A _) => xok (ig_def d pv A (a_mem H n))
-          | Some (ds_open _ _ _) | Some (ds_closed _ _ _ _ _) => xok (ig_alias d pv (me_mem H n))
-          | Some (ds_ind Θ' p k Ns) => if g then ind_alias_gen d pv n Θ' p k Ns else xfail (xe_ind n)
-          | Some (ds_record _ _ _) => xfail (xe_record n)
+          | Some R =>
+              if ds_is_modb R then xok (ig_alias d pv (me_mem H n))
+              else if g then dm_gen d pv n R
+              else match R with ds_record _ _ _ => xfail (xe_record n) | _ => xfail (xe_ind n) end
           | None => xfail (xe_member H n)
           end
       end.
@@ -159,19 +145,16 @@ Section Gen.
     Proof.
       intros g; induction its as [| [[[n |] d] pv] its IH]; intros gs Hx; cbn in Hx.
       - injection Hx as <-; constructor.
-      - destruct (denote_of Γ (me_mem H n) _) as [[A om | Δ Φ | Θ' ? T Φ Ns | Θ' p k Ns | ? ? ?] |] eqn:E; cbn in Hx;
-          [| | | | discriminate | discriminate ]; apply denote_of_spec in E.
-        + destruct (xmap (item_gen g) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
-          injection Hx as <-; eapply ign_def; [ exact E | apply IH; reflexivity ].
-        + destruct (xmap (item_gen g) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
-          injection Hx as <-; eapply ign_mod; [ exact E | exact I | apply IH; reflexivity ].
-        + destruct (xmap (item_gen g) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
-          injection Hx as <-; eapply ign_mod; [ exact E | exact I | apply IH; reflexivity ].
-        + destruct g; cbn in Hx; [| discriminate ].
-          destruct (ind_alias_gen d pv n Θ' p k Ns) as [g0 |] eqn:Eg; cbn in Hx; [| discriminate ].
-          apply ind_alias_gen_spec in Eg as (D & pm & El & Ep & Em & ->).
-          destruct (xmap (item_gen true) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
-          injection Hx as <-; eapply ign_ind; [ exact E | exact El | exact Ep | exact Em | apply IH; reflexivity ].
+      - destruct (denote_of Γ (me_mem H n) _) as [R |] eqn:E; cbn in Hx; [| discriminate ]; apply denote_of_spec in E.
+        destruct R as [A om | Δ Φ Φx | Θ' ? T Φ Ns | Θ' p k Ns | Θ' p Ns | Θd A M Rm]; cbn -[dm_gen] in Hx.
+        1-3: destruct (xmap (item_gen g) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-;
+          first [ eapply ign_def; [ exact E | apply IH; reflexivity ]
+                | eapply ign_mod; [ exact E | exact I | apply IH; reflexivity ] ].
+        all: destruct g; cbn -[dm_gen] in Hx; [| discriminate ].
+        all: unfold dm_gen in Hx; destruct (ds_ty Θ Ξ _) as [A0 |] eqn:Et; [| discriminate ];
+          destruct (ds_mod Θ Ξ _) as [Rm0 |] eqn:Em; [| discriminate ]; cbn in Hx.
+        all: destruct (xmap (item_gen true) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-.
+        all: eapply ign_dm; [ exact E | exact Et | exact Em | apply IH; reflexivity ].
       - destruct (xmap (item_gen g) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
         injection Hx as <-; constructor; apply IH; reflexivity.
     Qed.
@@ -185,9 +168,9 @@ Section Gen.
       - match goal with Hm : mdenote _ _ _ _ ?R, Hk : ds_is_mod ?R |- _ =>
           rewrite (proj2 (denote_of_spec _ _ _ _) Hm), (IH _ ltac:(eassumption));
           destruct R; cbn in Hk; try contradiction; reflexivity end.
-      - rewrite (proj2 (denote_of_spec _ _ _ _) ltac:(eassumption)).
-        rewrite (proj2 (ind_alias_gen_spec _ _ _ _ _ _ _ _) ltac:(eexists _, _; repeat split; eassumption)).
-        rewrite (IH _ ltac:(eassumption)); reflexivity.
+      - match goal with Hm : mdenote _ _ _ _ ?R, Ht : ds_ty _ _ ?R = Some _, Hd : ds_mod _ _ ?R = Some _ |- _ =>
+          rewrite (proj2 (denote_of_spec _ _ _ _) Hm); destruct R; try (cbn in Ht; discriminate); try (cbn in Hd; discriminate);
+          cbn [ds_is_modb]; unfold dm_gen; rewrite Ht, Hd, (IH _ ltac:(eassumption)); reflexivity end.
       - rewrite (IH _ ltac:(eassumption)); reflexivity.
     Qed.
 
@@ -413,7 +396,7 @@ Section OpenError.
                    end in
         xok (ge_def b pv A' B')
     | ge_mod pv U => let+ U' := oe_unit S U in xok (ge_mod pv U')
-    | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ | ge_record _ _ _ _ => xok E
+    | ge_ind _ _ _ _ _ | ge_def_mod _ _ _ _ | ge_record _ _ _ _ => xok E
     end
   with oe_centry (S : skel) (e : centry) {struct e} : xres centry :=
     match e with
@@ -521,6 +504,10 @@ Section OpenError.
         let+ Δ' := oe_tele S Δ in
         let+ H' := oe_modexp (map centry_skel Δ' ++ S) H in
         xok (cc_ind_alias x pv Δ' H')
+    | cc_record_alias x pv Δ H =>
+        let+ Δ' := oe_tele S Δ in
+        let+ H' := oe_modexp (map centry_skel Δ' ++ S) H in
+        xok (cc_record_alias x pv Δ' H')
     | cc_record x pv Δ Srt fs cs =>
         let+ Δ' := oe_tele S Δ in
         let+ Srt' := oe_exp (map centry_skel Δ' ++ S) Srt in

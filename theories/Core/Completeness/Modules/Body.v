@@ -509,9 +509,10 @@ Proof.
             (kind_eval_modexp _ _ _ _ _ Hhr), (skind_id _ _ _ _ (proj1 (kshape_sym _ _ Hs'))); exact Hk. }
     set (gsl := List.map (fun g => igen_sub g τ1) gse) in *.
     assert (Eg : forall g, igen_sub g (sb_qn (gm_binders Φr) (sb_qn (List.length Ψ) σ)) = igen_sub g τ1).
-    { rewrite Hbr; intros [d pv A0 M0 | d pv E0 | ? ? ? ? ?]; cbn [igen_sub]; try reflexivity.
+    { rewrite Hbr; intros [d pv A0 M0 | d pv E0 | d pv M0 E0]; cbn [igen_sub]; try reflexivity.
       - rewrite (exp_sub_sb_eq A0 _ _ Hq), (exp_sub_sb_eq M0 _ _ Hq); reflexivity.
-      - rewrite (modexp_sub_sb_eq E0 _ _ Hq); reflexivity. }
+      - rewrite (modexp_sub_sb_eq E0 _ _ Hq); reflexivity.
+      - rewrite (exp_sub_sb_eq M0 _ _ Hq), (modexp_sub_sb_eq E0 _ _ Hq); reflexivity. }
     assert (Ex : gmod_sub (gens_append Φr 0 gse) (sb_qn (List.length Ψ) σ) = gens_append (gmod_sub Φr (sb_qn (List.length Ψ) σ)) 0 gsl).
     { rewrite gens_append_sub by lia; rewrite Nat.sub_0_r; subst gsl; f_equal; apply map_ext; exact Eg. }
     assert (Hlse : List.length gse = List.length its) by (subst gse; rewrite length_map; exact Hl).

@@ -96,9 +96,12 @@ Inductive ccmd : Set :=
 (** [builtin k := X]: the module [X], as written, is bound as the builtin
     [k]; the command resolves it to the inductive type it names. *)
 | cc_builtin : string -> modexp -> ccmd
-(** [inductive x := X]: the inductive alias [x] of the inductive type the
-    module [X], as written, names. *)
+(** [inductive x (Δ) := X]: the inductive alias [x] of the inductive type
+    the module [X], as written, names, under its own parameters [Δ]. *)
 | cc_ind_alias : string -> bool -> ctx -> modexp -> ccmd
+(** [record x (Δ) := X]: the record alias [x] of the record type the
+    module [X], as written, names, under its own parameters [Δ]. *)
+| cc_record_alias : string -> bool -> ctx -> modexp -> ccmd
 (** [record x (Δ) : S where f : T ; … with cs end], private or not: the
     record's own parameters [Δ], over those of the enclosing frames, its
     sort over them, its fields in order, each over the fields before it

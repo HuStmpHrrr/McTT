@@ -178,11 +178,11 @@ Record view_inv (Θ : gdeps) (Ξ : gstack) (Γu : ctx) (qc : qname) (k : nat) (C
   { (** It is typed *)
     inv_typed : view_typed Θ Ξ Γu qc k Cs
     (** The normal forms of its arguments *)
-  ; inv_nfs : list nf
+  ; inv_normal_forms : list nf
     (** They are the arguments' normal forms at the uniform telescope *)
-  ; inv_nbes : forall D, ind_lookup Θ Ξ qc = Some D -> nbes Θ Ξ Γu Cs (tele_insts (ind_uparams D) Id Cs) inv_nfs
+  ; inv_nbes : forall D, ind_lookup Θ Ξ qc = Some D -> nbes Θ Ξ Γu Cs (tele_insts (ind_uparams D) Id Cs) inv_normal_forms
     (** And the arguments themselves *)
-  ; inv_normal : Cs = List.map nf_to_exp inv_nfs }.
+  ; inv_normal : Cs = List.map nf_to_exp inv_normal_forms }.
 
 Lemma unwk_wk_pat : forall pat, wk_eq (wk_compose (wk_pat pat) (unwk_pat pat)) wk_id.
 Proof.

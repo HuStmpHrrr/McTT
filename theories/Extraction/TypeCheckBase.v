@@ -403,7 +403,8 @@ Section type_check.
   | bo_mod : forall {Φ x pm U}, body_order Φ -> unit_order U -> body_order (gm_ext Φ x (ge_mod pm U))
   | bo_axiom : forall {Φ x b pv A}, body_order Φ -> body_order (gm_ext Φ x (ge_def b pv A None))
   | bo_ind : forall {Φ x pv p k D Φi}, body_order Φ -> body_order (gm_ext Φ x (ge_ind pv p k D Φi))
-  | bo_ind_alias : forall {Φ x pv Δ pm p k Ns}, body_order Φ -> body_order (gm_ext Φ x (ge_ind_alias pv Δ pm p k Ns))
+  (** A definition with a module part: filed only, held by no body *)
+  | bo_def_mod : forall {Φ x pv A M U}, body_order Φ -> body_order (gm_ext Φ x (ge_def_mod pv A M U))
   (** A record declaration: as written in no local body, only the entries
       before it *)
   | bo_record : forall {Φ x pv pr R Φr}, body_order Φ -> body_order (gm_ext Φ x (ge_record pv pr R Φr))
@@ -452,7 +453,7 @@ Section type_check.
     (forall E, match E with
            | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
            | ge_mod _ U => unit_order U
-           | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ | ge_record _ _ _ _ => True
+           | ge_ind _ _ _ _ _ | ge_def_mod _ _ _ _ | ge_record _ _ _ _ => True
            end) /\
     (forall e, centry_order e).
   Proof.
@@ -470,7 +471,7 @@ Section type_check.
       (fun E => match E with
              | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
              | ge_mod _ U => unit_order U
-             | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ | ge_record _ _ _ _ => True
+             | ge_ind _ _ _ _ _ | ge_def_mod _ _ _ _ | ge_record _ _ _ _ => True
              end)
       centry_order); intros; cbn in *; destruct_conjs; eauto 6 with mctt.
     (* a tuple: its fields are checked *)
@@ -493,9 +494,9 @@ Section type_check.
         | apply ti_let_infer; assumption
         | apply ti_let_mod; assumption ].
     - destruct D; destruct_conjs; constructor; auto using ext_order_of_forall.
-    - destruct E as [b pv A [M |] | pm U | pvi pk ki Di Φi | ? ? ? ? ? ? | ? ? ?]; destruct_conjs;
+    - destruct E as [b pv A [M |] | pm U | pvi pk ki Di Φi | ? ? ? ? | ? ? ?]; destruct_conjs;
         first [ apply bo_def; eauto with mctt | apply bo_mod; assumption
-              | apply bo_axiom; assumption | apply bo_ind; assumption | apply bo_ind_alias; assumption
+              | apply bo_axiom; assumption | apply bo_ind; assumption | apply bo_def_mod; assumption
               | apply bo_record; assumption ].
   Qed.
 

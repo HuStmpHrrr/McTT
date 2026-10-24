@@ -141,6 +141,12 @@ let cmd :=
       { [Cst.c_record false (snd x) (List.rev ps) t (List.rev fs) cs] }
   | PRIVATE; RECORD; x = VAR; ps = params_opt; ":"; t = obj; WHERE; fs = rfields; cs = rwith; END;
       { [Cst.c_record true (snd x) (List.rev ps) t (List.rev fs) cs] }
+  (* [record x (ps) := X Ms]: a record alias, the record type [X] at the
+     arguments [Ms], under the parameters. *)
+  | RECORD; x = VAR; ps = params_opt; ":="; e = obj;
+      { [Cst.c_record_alias false (snd x) (List.rev ps) e] }
+  | PRIVATE; RECORD; x = VAR; ps = params_opt; ":="; e = obj;
+      { [Cst.c_record_alias true (snd x) (List.rev ps) e] }
 
 (* Reversed list of the fields of a record type, possibly empty, separated
    by [;]: [f : A] *)

@@ -136,16 +136,6 @@ Lemma glu_entry_alias : forall Θ Ξ pv Δ E Θ2 Ξ2 Θs Ξs,
     glu_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof. intros; exact I. Qed.
 
-Lemma glu_entry_indalias : forall Θ Ξ pv Δ pm p k Ns D Mk Θ2 Ξ2 Θs Ξs,
-    tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> ind_lookup Θ Ξ p = Some D -> ind_member D k = Some Mk ->
-    k < ind_ndecl D -> ind_mpath D k = Some pm -> ind_mlookup Θ Ξ pm = Some (p, k, D) ->
-    List.length Ns <= ind_nu D ->
-    Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ apps (a_ind p k) Ns : ind_ty_at D Mk Ns ->
-    Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ me_apps (qname_mod pm) Ns ≈ me_apps (qname_mod pm) Ns ->
-    GoodV glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
-    glu_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_ind_alias pv (Δ ++ gs_tele Ξ) pm p k Ns).
-Proof. intros; exact I. Qed.
-
 Lemma glu_mod_tele_nil : forall Θ Ξ Δ Θ2 Ξ2,
     tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
     glu_mod_tele Θ2 Ξ2 (Δ ++ gs_tele Ξ).
@@ -222,7 +212,7 @@ Qed.
 Theorem glu_emb_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> glu_emb Θ Ξ Θ Ξ.
 Proof.
   intros * Hg; apply glu_emb_good; [ exact Hg | | apply Embx_refl; exact Hg ].
-  exact (global_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry glu_entry_def glu_entry_ax glu_entry_alias glu_entry_indalias glu_mod_tele_nil glu_entry_ind ltac:(intros; exact I) ltac:(intros; exact I) _ _ Hg).
+  exact (global_valid glu_entry glu_mod_tele glu_ind_decl_entry glu_record_decl_entry glu_entry_def glu_entry_ax glu_entry_alias glu_mod_tele_nil glu_entry_ind ltac:(intros; exact I) ltac:(intros; exact I) _ _ Hg).
 Qed.
 
 (** ** The fundamental theorem at the identity embedding *)

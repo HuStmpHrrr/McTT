@@ -27,6 +27,7 @@ From Mctt.Core.Syntactic.System.Global Require Import MemberWf Modules.
 From Mctt.Core.Syntactic.System Require Export Privacy Translations.
 From Mctt.Core Require Export TypedElab.
 From Mctt.Core.Semantic Require Import NbE.
+From Mctt.Algorithmic.Typing Require Import Definitions Functional.
 Import Syntax_Notations GlobalCtx_Notations.
 
 Reserved Notation "Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ ch ] c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'"
@@ -84,6 +85,31 @@ Definition gs_def (b pv : bool) (Ξ : gstack) (A M : exp) : gentry :=
 Definition gs_axiom (b pv : bool) (Ξ : gstack) (A : exp) : gentry :=
   ge_def b pv (ctx_pi (gs_tele Ξ) A) None.
 
+(** A definition with a module part as it is filed, declared with the
+    parameters [Δ] over the frames': its term part [M] of type [A], both
+    over [Δ] and the frames' parameters, closed over them; its module part
+    the alias of [H] over them. *)
+Definition dm_entry (Ξ : gstack) (pv : bool) (Δ : ctx) (A M : exp) (H : modexp) : gentry :=
+  ge_def_mod pv (ctx_pi (gs_tele Ξ) (ctx_pi Δ A)) (ctx_fn (gs_tele Ξ) (ctx_fn Δ M)) (gu_mk (Δ ++ gs_tele Ξ) (md_alias H)).
+
+(** [M], of the normal type [W] in [Γ], is a type former of an inductive
+    type: [W] is [Π]s ending in a universe, and [M] at the variables they
+    bind is, in normal form, a member of a group of inductive types at
+    its parameters. *)
+Definition ind_former (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M : exp) (W : nf) : Prop :=
+  let '(Ds, C) := nf_pi_tele W in
+  nf_is_universe C /\
+  exists p k Rs, nbe Θ Ξ (Ds ++ Γ) (exp_applied_to_vars M (List.length Ds)) (nf_to_exp C) (nf_indty p k Rs).
+
+(** [M], of the normal type [W] in [Γ], is a type former of a record type,
+    given any prefix of its parameters: [W] is [Π]s ending in a universe,
+    and [M] at the variables they bind is, in normal form, the record type
+    at its parameters. *)
+Definition record_former (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (M : exp) (W : nf) : Prop :=
+  let '(Ds, C) := nf_pi_tele W in
+  nf_is_universe C /\
+  exists p Rs, nbe Θ Ξ (Ds ++ Γ) (exp_applied_to_vars M (List.length Ds)) (nf_to_exp C) (nf_record p Rs).
+
 (** ** Opens
 
     The definitions and aliases an open generates ([items_gen]), declared in
@@ -106,12 +132,17 @@ Inductive gens_run (Θ : gdeps) : gstack -> list igen -> gstack -> Prop :=
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E -> gs_fresh d Ξ ->
     gens_run Θ (gs_add d (ge_mod pv (gu_mk (gs_tele Ξ) (md_alias E))) Ξ) gs Ξ' ->
     gens_run Θ Ξ (ig_alias d pv E :: gs) Ξ'
-(** A generated inductive alias, closed over the frame's parameters and
-    checked as an entry *)
-| gr_ind_alias : forall Ξ d pv Δ pm p k Ns gs Ξ',
-    Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) d ⊢ᵉ ge_ind_alias pv (Δ ++ gs_tele Ξ) pm p k Ns -> gs_fresh d Ξ ->
-    gens_run Θ (gs_add d (ge_ind_alias pv (Δ ++ gs_tele Ξ) pm p k Ns) Ξ) gs Ξ' ->
-    gens_run Θ Ξ (ig_ind_alias d pv Δ pm p k Ns :: gs) Ξ'.
+(** A generated definition with a module part: its term [M] at the type
+    inferred for it, [W], and its module the alias of [E].  The typing of
+    [M] at [W] follows from its inference ([alg_type_infer_sound]); it is a
+    premise only because the well-formedness of a run is proved before that
+    lemma, in the order of the files. *)
+| gr_def_mod : forall Ξ d pv M E W gs Ξ',
+    @alg_type_infer (gc_mk Θ Ξ) (gs_tele Ξ) W M ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : nf_to_exp W ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E -> gs_fresh d Ξ ->
+    gens_run Θ (gs_add d (dm_entry Ξ pv nil (nf_to_exp W) M E) Ξ) gs Ξ' ->
+    gens_run Θ Ξ (ig_def_mod d pv M E :: gs) Ξ'.
 
 (** ** Groups of Inductive Declarations
 
@@ -1024,7 +1055,8 @@ Definition record_field_cmds (R : record_decl) : list ccmd := record_fields_cmds
 (** The name a command declares in the frame it runs in, if any. *)
 Definition cmd_decl_name (c : ccmd) : option string :=
   match c with
-  | cc_def x _ _ _ _ | cc_mod x _ _ _ | cc_alias x _ _ _ | cc_ind_alias x _ _ _ | cc_record x _ _ _ _ _ => Some x
+  | cc_def x _ _ _ _ | cc_mod x _ _ _ | cc_alias x _ _ _ | cc_ind_alias x _ _ _ | cc_record_alias x _ _ _
+  | cc_record x _ _ _ _ _ => Some x
   | _ => None
   end.
 
@@ -1148,31 +1180,59 @@ Section Semantics.
       mdef_group Θ Ξ Δ f0 fs pq m0 Ps D Us ms ->
       mdefs_run Θ b pv (mdef_defs pq D Us Δ (f0 :: fs) ms) Ξ Ξ' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_mdef b pv Δ (f0 :: fs) ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
-  (** [builtin natural := X]: [X], a module expression, denotes an inductive type at no argument
-      and over no parameter, with the shape of the natural numbers, in
-      [Type@0]; its binding is merged in ([bt_bind_nat]), so it is bound
-      unless another type is. *)
-  | rc_builtin : forall ch B Rb B' Θ Ξ H p D z s,
-      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ H ≈ H ->
-      mdenote Θ Ξ (gs_tele Ξ) H (ds_ind nil p 0 nil) ->
+  (** [builtin natural := X]: [X], read as a term, is in normal form the
+      type former of the first member of a group, at no argument, with the
+      shape of the natural numbers, in [Type@0]; its binding is merged in
+      ([bt_bind_nat]), so it is bound unless another type is.  [X] is read
+      through its normal form, so through any alias or definition.  Its
+      typing at the inferred type follows from the inference; it is a
+      premise only because the well-formedness of a run is proved before
+      [alg_type_infer_sound], in the order of the files. *)
+  | rc_builtin : forall ch B Rb B' Θ Ξ H M W p D z s,
+      modexp_as_term H = Some M ->
+      @alg_type_infer (gc_mk Θ Ξ) (gs_tele Ξ) W M ->
+      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : nf_to_exp W ->
+      nf_is_universe W ->
+      nbe Θ Ξ (gs_tele Ξ) M (nf_to_exp W) (nf_indty p 0 nil) ->
       ind_lookup Θ Ξ p = Some D ->
       nat_shape D = Some (z, s) ->
       ind_sort D = nat_sort ->
       bt_bind_nat B p = Some B' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_builtin nat_kind H ⇝ Θ ⍮ Ξ ⍮ B' ⍮ Rb
-  (** [inductive x Δ := E]: [E], a module expression, denotes an inductive
-      type at arguments [Ns], over the parameters [Θ'] it is still
-      abstracted over; the alias stores the canonical path and the
-      arguments, over [Θ'] and [Δ], checked as its entry. *)
-  | rc_ind_alias : forall ch B Rb Θ Ξ x pv Δ H Θ' p k Ns D pm,
+  (** [inductive x Δ := H]: both parts alias [H] as written.  Read as a
+      term, [H] has the inferred type [W] over [Δ] and the frames'
+      parameters, and is a type former of an inductive type
+      ([ind_former]); read as a module, it is well formed there.  The
+      definition with a module part filed is [H] as a term over [Δ], of
+      type [W] over [Δ], and the alias of [H] over [Δ].  The typing of [H]
+      at [W] follows from the inference; it is a premise only because the
+      well-formedness of a run is proved before [alg_type_infer_sound], in
+      the order of the files. *)
+  | rc_ind_alias : forall ch B Rb Θ Ξ x pv Δ H M W,
+      tele_ass Δ ->
+      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ H ≈ H ->
-      mdenote Θ Ξ (Δ ++ gs_tele Ξ) H (ds_ind Θ' p k Ns) ->
-      ind_lookup Θ Ξ p = Some D ->
-      ind_mpath D k = Some pm ->
-      Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢ᵉ ge_ind_alias pv (Θ' ++ Δ ++ gs_tele Ξ) pm p k Ns ->
+      modexp_as_term H = Some M ->
+      @alg_type_infer (gc_mk Θ Ξ) (Δ ++ gs_tele Ξ) W M ->
+      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ M : nf_to_exp W ->
+      ind_former Θ Ξ (Δ ++ gs_tele Ξ) M W ->
       gs_fresh x Ξ ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_ind_alias x pv Δ H ⇝
-        Θ ⍮ gs_add x (ge_ind_alias pv (Θ' ++ Δ ++ gs_tele Ξ) pm p k Ns) Ξ ⍮ B ⍮ Rb
+        Θ ⍮ gs_add x (dm_entry Ξ pv Δ (nf_to_exp W) M H) Ξ ⍮ B ⍮ Rb
+  (** [record x Δ := H]: as [inductive x Δ := H], [H] being a type former
+      of a record type, given any prefix of its parameters
+      ([record_former]). *)
+  | rc_record_alias : forall ch B Rb Θ Ξ x pv Δ H M W,
+      tele_ass Δ ->
+      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
+      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ H ≈ H ->
+      modexp_as_term H = Some M ->
+      @alg_type_infer (gc_mk Θ Ξ) (Δ ++ gs_tele Ξ) W M ->
+      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ M : nf_to_exp W ->
+      record_former Θ Ξ (Δ ++ gs_tele Ξ) M W ->
+      gs_fresh x Ξ ->
+      Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_record_alias x pv Δ H ⇝
+        Θ ⍮ gs_add x (dm_entry Ξ pv Δ (nf_to_exp W) M H) Ξ ⍮ B ⍮ Rb
   (** A record: checked with an empty module where it is filed
       ([wf_gentry_record]); its module's frame is opened over the record's
       own parameters and then a value of it, its field definitions and then
@@ -1309,7 +1369,13 @@ Proof.
 Qed.
 
 Lemma gens_run_functional : forall Θ Ξ gs Ξ1, gens_run Θ Ξ gs Ξ1 -> forall Ξ2, gens_run Θ Ξ gs Ξ2 -> Ξ1 = Ξ2.
-Proof. induction 1; intros * H2; inversion H2; subst; auto. Qed.
+Proof.
+  induction 1 as [| | | Ξ d pv M E W gs Ξ' HW _ HE _ _ IH]; intros Ξ2 Hr; inversion Hr; subst; auto.
+  (* a definition with a module part: one type inferred *)
+  match goal with HW' : alg_type_infer _ ?W' M |- _ =>
+    pose proof (functional_alg_type_infer (GC := gc_mk Θ Ξ) (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) HW HW') as <- end.
+  auto.
+Qed.
 
 Lemma Forall2_index : forall {Y} (P : rview -> Y -> Prop) Vs Ys x v d, Forall2 P Vs Ys -> rview_index x Vs = Some v ->
     P x (List.nth v Ys d).
@@ -1482,22 +1548,24 @@ Section Determinism.
           assert_fails constr_eq g1 g2;
           pose proof (open_gens_functional _ _ _ _ _ _ _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) H1 H2); subst g2
       end.
-    (* an inductive alias: the inductive type its target denotes is one *)
+    (* an inductive or a record alias, and a builtin binding: its target
+       read as a term is one term, of one inferred type, of one normal
+       form *)
     all: try solve [
-      match goal with
-      | He : _ ⍮ _ ⍮ _ ⊢ᵉ _, H1 : mdenote _ _ ?G ?H ?R1, H2 : mdenote _ _ ?G ?H ?R2 |- _ =>
-          assert_fails constr_eq R1 R2;
-          pose proof (proj1 (mdenote_functional_all _ _ (wf_gentry_gctx _ _ _ _ He)) _ _ _ H1 _ H2) as E;
-          injection E as <- <- <-; repeat split; auto
-      end ].
-    (* a builtin binding: the type its target denotes is one, and so is the binding it makes *)
-    all: try solve [
-      match goal with
-      | HE : _ ⍮ _ ⍮ _ ⊢ᵐ ?H ≈ _, H1 : mdenote _ _ ?G ?H ?R1, H2 : mdenote _ _ ?G ?H ?R2 |- _ =>
-          assert_fails constr_eq R1 R2;
-          pose proof (proj1 (mdenote_functional_all _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE))) _ _ _ H1 _ H2) as E;
-          injection E as <-; repeat split; congruence
-      end ].
+      repeat match goal with
+        | H1 : modexp_as_term ?H = Some ?M1, H2 : modexp_as_term ?H = Some ?M2 |- _ =>
+            assert_fails constr_eq M1 M2; rewrite H1 in H2; injection H2 as <-
+        end;
+      repeat match goal with
+        | HT : ?Θ0 ⍮ ?Ξ0 ⍮ ?G ⊢ ?M : _, H1 : alg_type_infer ?G ?W1 ?M, H2 : alg_type_infer ?G ?W2 ?M |- _ =>
+            assert_fails constr_eq W1 W2;
+            pose proof (functional_alg_type_infer (GC := gc_mk Θ0 Ξ0) (ctx_wf_gctx _ _ _ (presup_exp_ctx HT)) H1 H2) as <-
+        end;
+      repeat match goal with
+        | H1 : nbe _ _ ?G ?M ?A ?W1, H2 : nbe _ _ ?G ?M ?A ?W2 |- _ =>
+            assert_fails constr_eq W1 W2; pose proof (functional_nbe _ _ _ _ _ H1 H2) as E; injection E as <-
+        end;
+      repeat split; congruence ].
     - (* a module: its body *)
       match goal with
       | IH : forall _ _ _ _ _, run_cmds _ _ _ _ _ _ _ _ _ _ -> _, H : run_cmds _ _ _ _ _ _ _ _ _ _ |- _ =>
@@ -1819,11 +1887,8 @@ Section GrowDeps.
         first [ apply Hc'; eassumption | eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ] ].
     - (* a member with the body of its module, an ordinary module *)
       econstructor; [ eassumption | auto ].
-    - (* an inductive alias *)
-      eapply wf_gentry_ind_alias; try eassumption;
-        first [ apply Hx; assumption | apply He; assumption | apply Hm; assumption
-              | eapply ind_lookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ]
-              | eapply ind_mlookup_gc_sub; [ apply gc_sub_deps; exact Hsub | eassumption ] ].
+    - (* a definition with a module part *)
+      eapply wf_gentry_def_mod; first [ eassumption | apply He; eassumption | apply Hx; eassumption | apply Hm; eassumption ].
     - (* a record *)
       econstructor; try eassumption; [| intros; apply He; eauto ].
       match goal with Hu : wf_is_univ _ _ _ _ |- _ =>
@@ -2070,14 +2135,30 @@ Proof.
   cbn; econstructor; [ eassumption | constructor; assumption | exact Hfr ].
 Qed.
 
-
+(** A definition with a module part, its term typed and its module part's
+    target well formed over its parameters, keeps the stack well formed. *)
+Lemma add_dm_wf : forall Θ Ξ x pv Δ A M H,
+    ⊢ᵍ Θ ⍮ Ξ -> tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ H ≈ H -> gs_fresh x Ξ -> ⊢ᵍ Θ ⍮ gs_add x (dm_entry Ξ pv Δ A M H) Ξ.
+Proof.
+  intros * HΞ Htel HΔ HM HH Hfr.
+  pose proof (presup_exp_ctx HM) as HΔT.
+  destruct (presup_exp_typ HM) as [i HA].
+  destruct (ctx_pi_wf _ _ _ _ _ _ HΔT HA) as [j HP].
+  pose proof (ctx_fn_wf _ _ _ _ _ _ _ HΔT HA HM) as HF.
+  destruct Ξ as [| [[mp K] [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
+  inversion HΞ as [| | ? ? ? ? ? ? Hs0 HΦ Hff]; subst.
+  apply wf_gstack_cons; [ exact Hs0 | | exact Hff ].
+  cbn; econstructor; [ eassumption | unfold dm_entry; eapply wf_gentry_def_mod; eassumption | exact Hfr ].
+Qed.
 
 Lemma gens_run_wf : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> ⊢ᵍ Θ ⍮ Ξ -> ⊢ᵍ Θ ⍮ Ξ'.
 Proof.
   induction 1; intros HΞ; [ exact HΞ | apply IHgens_run; apply add_def_wf; assumption | |].
   - apply IHgens_run; apply (add_alias_wf _ _ _ _ nil); try assumption; [ constructor |].
     constructor; exact (presup_modexp_eq_ctx H).
-  - apply IHgens_run; apply add_entry_wf; assumption.
+  - apply IHgens_run; apply (add_dm_wf _ _ _ _ nil); try assumption; [ constructor |].
+    constructor; exact (presup_exp_ctx H0).
 Qed.
 
 Lemma gens_run_shape : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> gs_shape Ξ' = gs_shape Ξ.
@@ -2113,7 +2194,8 @@ Proof.
   - apply add_def_wf; assumption.
   - apply (add_alias_wf _ _ _ _ nil); try assumption; [ constructor |].
     constructor; exact (presup_modexp_eq_ctx H).
-  - apply add_entry_wf; assumption.
+  - apply (add_dm_wf _ _ _ _ nil); try assumption; [ constructor |].
+    constructor; exact (presup_exp_ctx H0).
 Qed.
 
 (** The definitions of a mutual definition, filed in order, likewise. *)
@@ -2409,11 +2491,15 @@ Section WellFormed.
       repeat split; [ exact (mdefs_run_wf _ _ _ _ _ _ Hd HΞ) | exact (proj1 Hc) | exact (proj2 Hc)
                     | apply gds_sub_refl | apply bt_le_refl ].
     - (* a builtin binding: nothing filed, and its binding merged in *)
-      intros * _ _ _ _ _ Hb HΞ Hc Hst.
+      intros * _ _ _ _ _ _ _ _ Hb HΞ Hc Hst.
       repeat split; [ exact HΞ | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | exact (bt_bind_nat_le _ _ _ Hb) ].
-    - (* an inductive alias: its entry, checked where it is declared *)
-      intros * _ _ _ _ HE Hfr HΞ Hc Hst.
-      repeat split; [ apply add_entry_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
+    - (* an inductive alias: a definition with a module part, checked
+         where it is declared *)
+      intros * Htel HΔ HH _ _ HM _ Hfr HΞ Hc Hst.
+      repeat split; [ apply add_dm_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
+    - (* a record alias: likewise *)
+      intros * Htel HΔ HH _ _ HM _ Hfr HΞ Hc Hst.
+      repeat split; [ apply add_dm_wf; assumption | exact (proj1 Hc) | exact (proj2 Hc) | apply gds_sub_refl | apply bt_le_refl ].
     - (* a record: checked with an empty module, its module's frame opened
          over its parameters and a value of it, its field definitions and
          its with-area run in it, and the record filed with the body they
@@ -2558,7 +2644,7 @@ Section WellFormed.
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch]⟨load_path ⍮ read ⍮ to_core⟩ cc_gen c ⇝ Θ' ⍮ Ξ' ⍮ B' ⍮ Rb'.
   Proof.
-    intros * Hg H; destruct c as [x b pv A [M |] | | | | | | | | | | |]; try contradiction;
+    intros * Hg H; destruct c as [x b pv A [M |] | | | | | | | | | | | |]; try contradiction;
       inversion H; subst; econstructor; eassumption.
   Qed.
 
@@ -2842,10 +2928,11 @@ Section WellFormed.
     - intros * _ _ _ Hd HΞ _ _ Hb HR; split; [| exact HR ].
       revert Hb; apply builtins_wf_mono; intros; eapply mdefs_run_ind_lookup; eassumption.
     - (* a binding: of a type read here *)
-      intros ch B Rb B' Θ Ξ H p D z0 s0 _ Hl Hs Ho Hso Hbd _ _ _ Hb HR; split; [| exact HR ].
+      intros ch B Rb B' Θ Ξ H M W p D z0 s0 _ _ _ _ _ Hs Ho Hso Hbd _ _ _ Hb HR; split; [| exact HR ].
       eapply bt_merge_wf; [ exact Hb | | exact Hbd ].
       intros p1 Hq; cbn in Hq; injection Hq as <-; exact (mk_nat_binding_ok _ _ _ D z0 s0 Hs Ho Hso).
-    - intros * _ _ _ _ _ Hfr HΞ _ _ Hb HR; split; [ apply Hadd; assumption | exact HR ].
+    - intros * _ _ _ _ _ _ _ Hfr HΞ _ _ Hb HR; split; [ apply Hadd; assumption | exact HR ].
+    - intros * _ _ _ _ _ _ _ Hfr HΞ _ _ Hb HR; split; [ apply Hadd; assumption | exact HR ].
     - (* a record: read in its module's frame, then in the record it becomes *)
       intros ch B Rb Θ Ξ x pv Δ Srt fs cs B1 Rb1 Θ1 Ξ1 B' Rb' Θ' mp' K' U Hfr HE Hr1 IH1 Hr2 IH2 HΞ Hc Hst Hb HR.
       destruct Ξ as [| [[mq Kq] Uq] Ξ0]; [ contradiction |].
@@ -3171,6 +3258,7 @@ Section Runs.
     - intros; eapply rc_mdef; eassumption.
     - intros; eapply rc_builtin; eassumption.
     - intros; eapply rc_ind_alias; eassumption.
+    - intros; eapply rc_record_alias; eassumption.
     - intros * Hfr HE Hr1 IH1 Hr2 IH2 ch' Hch.
       eapply rc_record; [ exact Hfr | exact HE | apply IH1; eapply Hpre; eassumption | apply IH2; exact Hch ].
     - intros; apply rc_eval_check; assumption.

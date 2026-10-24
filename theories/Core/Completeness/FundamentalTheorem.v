@@ -174,27 +174,6 @@ Proof.
   exact (valid_unit_grow _ _ _ _ Hg {| em_wf := HgS; em_res := Hs |} _ _ HK).
 Qed.
 
-Lemma valid_entry_indalias : forall Θ Ξ pv Δ pm p k Ns D Mk Θ2 Ξ2 Θs Ξs,
-    tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> ind_lookup Θ Ξ p = Some D -> ind_member D k = Some Mk ->
-    k < ind_ndecl D -> ind_mpath D k = Some pm -> ind_mlookup Θ Ξ pm = Some (p, k, D) ->
-    List.length Ns <= ind_nu D ->
-    Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ apps (a_ind p k) Ns : ind_ty_at D Mk Ns ->
-    Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ me_apps (qname_mod pm) Ns ≈ me_apps (qname_mod pm) Ns ->
-    GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> gc_sub Θ Ξ Θs Ξs ->
-    valid_entry Θs Ξs Θ2 Ξ2 (gs_tele Ξ) (ge_ind_alias pv (Δ ++ gs_tele Ξ) pm p k Ns).
-Proof.
-  intros * _ _ Hl HMk _ _ _ _ HM _ HG He Hs.
-  pose proof (presup_exp_ctx HM) as HC.
-  pose proof (valid_emb_good _ _ _ _ (ctx_wf_gctx _ _ _ HC) HG He) as Hμ.
-  destruct (presup_exp_typ HM) as [i HA].
-  destruct (ctx_pi_wf _ _ _ _ _ _ HC HA) as [j HP].
-  pose proof (ctx_fn_wf _ _ _ _ _ _ _ HC HA HM) as HF.
-  exists Δ, D, Mk, j; split; [ reflexivity |]; split; [ exact (ind_lookup_gc_sub _ _ _ _ _ _ Hs Hl) |].
-  split; [ exact (ind_lookup_gc_sub _ _ _ _ _ _ (gc_subx_sub _ _ _ _ (emx_res _ _ _ _ He)) Hl) |].
-  split; [ exact HMk |].
-  split; [ exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HP) | exact (valid_exp_under_ctx_of_emb _ _ _ _ _ _ _ Hμ HF) ].
-Qed.
-
 Lemma valid_mod_tele_nil : forall Θ Ξ Δ Θ2 Ξ2,
     tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
     valid_mod_tele Θ2 Ξ2 (Δ ++ gs_tele Ξ).
@@ -403,7 +382,7 @@ Qed.
 Theorem valid_emb_refl : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> valid_emb Θ Ξ Θ Ξ.
 Proof.
   intros * Hg; apply valid_emb_good; [ exact Hg | | apply Embx_refl; exact Hg ].
-  exact (global_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry valid_entry_def valid_entry_ax valid_entry_alias valid_entry_indalias valid_mod_tele_nil valid_entry_ind
+  exact (global_valid valid_entry valid_mod_tele valid_ind_decl_entry valid_record_decl_entry valid_entry_def valid_entry_ax valid_entry_alias valid_mod_tele_nil valid_entry_ind
            valid_entry_record valid_mod_tele_record _ _ Hg).
 Qed.
 

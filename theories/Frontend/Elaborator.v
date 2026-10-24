@@ -337,6 +337,7 @@ with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
            | Cst.c_mdef _ _ _ :: _ => eerr "a mutual definition is not allowed in a local module"
            | Cst.c_builtin _ _ :: _ => eerr "builtin is not allowed in a local module"
            | Cst.c_ind_alias _ _ _ _ :: _ => eerr "an inductive alias is not allowed in a local module"
+           | Cst.c_record_alias _ _ _ _ :: _ => eerr "a record alias is not allowed in a local module"
            | Cst.c_record _ _ _ _ _ _ :: _ => eerr "a record type is not allowed in a local module"
            end) S gm_nil cs in
       eok (md_body sm_open Φ)
@@ -499,6 +500,13 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) 
       let* tys := elab_params (F ++ O) ps in
       let* E := elab_mod (pents ps ++ F ++ O) oE in
       eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_ind_alias x pv (ptele tys) E :: nil)
+  (** A record alias, as an inductive alias is. *)
+  | Cst.c_record_alias pv x ps oE =>
+      let* _ := check_fresh x F in
+      let* _ := check_params ps in
+      let* tys := elab_params (F ++ O) ps in
+      let* E := elab_mod (pents ps ++ F ++ O) oE in
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_record_alias x pv (ptele tys) E :: nil)
   (** The parameters, the sort and the fields' types are read as an
       inductive type's are; the with-area in the record's frame, the record
       in scope outside it. *)

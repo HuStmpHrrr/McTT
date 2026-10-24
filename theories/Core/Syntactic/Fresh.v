@@ -97,7 +97,7 @@ with gentry_fresh (k : nat) (E : gentry) {struct E} : Prop :=
   | ge_def _ _ A B => exp_fresh k A /\ match B with Some M => exp_fresh k M | None => True end
   | ge_mod _ U => gunit_fresh k U
   | ge_ind _ _ _ D Φ => gmod_fresh (ind_nu D + k) Φ
-  | ge_ind_alias _ _ _ _ _ _ => True
+  | ge_def_mod _ A M U => exp_fresh k A /\ exp_fresh k M /\ gunit_fresh k U
   | ge_record _ _ R Φ => gmod_fresh (S (List.length (record_params R)) + k) Φ
   end
 with centry_fresh (k : nat) (e : centry) {struct e} : Prop :=

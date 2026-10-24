@@ -193,6 +193,9 @@ with cmd : Set :=
 (** [private inductive x (ps) := X Ms]: an inductive alias, the inductive
     type [X] at the arguments [Ms], under the parameters [ps]. *)
 | c_ind_alias : bool -> string -> list (string * obj) -> obj -> cmd
+(** [private record x (ps) := X Ms]: a record alias, the record type [X]
+    at the arguments [Ms], under the parameters [ps]. *)
+| c_record_alias : bool -> string -> list (string * obj) -> obj -> cmd
 (** [private record x (ps) : S where f : A ; … with cs end]: a record type,
     private when the flag is set: its parameters [ps], its sort [S], its
     fields in order, each its name and its type over the fields before it,
@@ -251,6 +254,7 @@ Section cst_mut_ind.
         Pc (c_mdef m ps fs))
     (case_c_builtin : forall k o, Po o -> Pc (c_builtin k o))
     (case_c_ind_alias : forall pv x ps o, List.Forall (fun p => Po (snd p)) ps -> Po o -> Pc (c_ind_alias pv x ps o))
+    (case_c_record_alias : forall pv x ps o, List.Forall (fun p => Po (snd p)) ps -> Po o -> Pc (c_record_alias pv x ps o))
     (case_c_record : forall pv x ps o fs cs, List.Forall (fun p => Po (snd p)) ps -> Po o ->
         List.Forall (fun f => Po (snd f)) fs -> List.Forall Pc cs -> Pc (c_record pv x ps o fs cs)).
 
@@ -427,6 +431,14 @@ Section cst_mut_ind.
     | c_builtin k o => case_c_builtin k o (obj_mut o)
     | c_ind_alias pv x ps o =>
         case_c_ind_alias pv x ps o
+          ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
+              match ps with
+              | nil => List.Forall_nil _
+              | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
+              end) ps)
+          (obj_mut o)
+    | c_record_alias pv x ps o =>
+        case_c_record_alias pv x ps o
           ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
               match ps with
               | nil => List.Forall_nil _
@@ -945,12 +957,13 @@ with gentry : Set :=
     uniform parameters of [D] ([ind_unit]).  As a term the entry is the
     type former [a_ind pq k]. *)
 | ge_ind : bool -> qname -> nat -> ind_decl_g exp centry -> gmod -> gentry
-(** [ge_ind_alias pv Δ pm pq k Ns]: an inductive alias, private when [pv]:
-    over its full telescope [Δ] (closed, as an alias's), the member [k] of
-    the group [pq], whose module is at [pm], at the first uniform
-    parameters [Ns], terms over [Δ].  As a term it is
-    [λ Δ. a_ind pq k Ns], as a module the member's module at [Ns]. *)
-| ge_ind_alias : bool -> list centry -> qname -> qname -> nat -> list exp -> gentry
+(** [ge_def_mod pv A M U]: a definition with a module part, private when
+    [pv]: as a term, the transparent definition of type [A] equal to [M];
+    as a module, the unit [U].  An inductive or record alias, or an open's
+    item naming a type former, is one: [M] is the alias's target read as a
+    term and [U] the alias of it, both over the alias's full telescope.  A
+    filed one is closed. *)
+| ge_def_mod : bool -> exp -> exp -> gunit -> gentry
 (** [ge_record pv p R Φ]: the record type declared by [R], private when
     [pv], at its own path [p], and the body [Φ] of its module, under the
     record's parameters and then a value of the record at them
@@ -1083,7 +1096,7 @@ Section syn_mut_ind.
     (case_ge_def : forall b pv A B, Pe A -> (forall M, B = Some M -> Pe M) -> Pn (ge_def b pv A B))
     (case_ge_mod : forall pv U, Pu U -> Pn (ge_mod pv U))
     (case_ge_ind : forall pv p k D Φ, Pg Φ -> Pn (ge_ind pv p k D Φ))
-    (case_ge_ind_alias : forall pv Δ pm p k Ns, Pn (ge_ind_alias pv Δ pm p k Ns))
+    (case_ge_def_mod : forall pv A M U, Pe A -> Pe M -> Pu U -> Pn (ge_def_mod pv A M U))
     (case_ge_record : forall pv p R Φ, Pg Φ -> Pn (ge_record pv p R Φ))
     (case_ce_ass : forall A, Pe A -> Pc (ce_ass A))
     (case_ce_def : forall A M, Pe A -> Pe M -> Pc (ce_def A M))
@@ -1208,7 +1221,7 @@ Section syn_mut_ind.
            end)
     | ge_mod pv U => case_ge_mod pv U (gunit_mut U)
     | ge_ind pv p k D Φ => case_ge_ind pv p k D Φ (gmod_mut Φ)
-    | ge_ind_alias pv Δ pm p k Ns => case_ge_ind_alias pv Δ pm p k Ns
+    | ge_def_mod pv A M U => case_ge_def_mod pv A M U (exp_mut A) (exp_mut M) (gunit_mut U)
     | ge_record pv p R Φ => case_ge_record pv p R Φ (gmod_mut Φ)
     end
   with centry_mut (e : centry) : Pc e :=
@@ -1253,6 +1266,16 @@ Fixpoint me_apps (H : modexp) (Ns : list exp) : modexp :=
   match Ns with
   | nil => H
   | N :: Ns' => me_apps (me_app H N) Ns'
+  end.
+
+(** A module expression read as the term it spells, as written: a
+    selection is the member as a term, an application the term applied; a
+    unit, a module slot and a literal spell no term. *)
+Fixpoint modexp_as_term (H : modexp) : option exp :=
+  match H with
+  | me_mem H' y => Some (a_mem H' y)
+  | me_app H' N => option_map (fun M => a_app M N) (modexp_as_term H')
+  | _ => None
   end.
 
 Definition qname_mod (p : qname) : modexp := me_mems (me_unit (q_unit p)) (q_chain p).
@@ -1409,7 +1432,7 @@ Fixpoint body_ctx (Φ : gmod) : ctx :=
   | gm_ext Φ' _ (ge_def _ _ A None) => cons (ce_ass A) (body_ctx Φ')
   | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
   | gm_ext Φ' _ (ge_ind _ _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
-  | gm_ext Φ' _ (ge_ind_alias _ _ _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_def_mod _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
   | gm_ext Φ' _ (ge_record _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
   | gm_open Φ' _ its => List.repeat (ce_ass a_True) (List.length its) ++ body_ctx Φ'
   end.
@@ -2157,7 +2180,7 @@ with gentry_wk (E : gentry) (φ : wk) : gentry :=
   | ge_def b pv A B => ge_def b pv (exp_wk A φ) (match B with Some M => Some (exp_wk M φ) | None => None end)
   | ge_mod pv U => ge_mod pv (gunit_wk U φ)
   | ge_ind pv p k D Φ => ge_ind pv p k D (gmod_wk Φ (wk_qn (ind_nu D) φ))
-  | ge_ind_alias pv Δ pm p k Ns => ge_ind_alias pv Δ pm p k Ns
+  | ge_def_mod pv A M U => ge_def_mod pv (exp_wk A φ) (exp_wk M φ) (gunit_wk U φ)
   | ge_record pv p R Φ => ge_record pv p R (gmod_wk Φ (wk_qn (S (List.length (record_params R))) φ))
   end
 with centry_wk (e : centry) (φ : wk) : centry :=
@@ -2338,7 +2361,7 @@ with gentry_sub (E : gentry) (σ : sub) : gentry :=
   | ge_def b pv A B => ge_def b pv (exp_sub A σ) (match B with Some M => Some (exp_sub M σ) | None => None end)
   | ge_mod pv U => ge_mod pv (gunit_sub U σ)
   | ge_ind pv p k D Φ => ge_ind pv p k D (gmod_sub Φ (sb_qn (ind_nu D) σ))
-  | ge_ind_alias pv Δ pm p k Ns => ge_ind_alias pv Δ pm p k Ns
+  | ge_def_mod pv A M U => ge_def_mod pv (exp_sub A σ) (exp_sub M σ) (gunit_sub U σ)
   | ge_record pv p R Φ => ge_record pv p R (gmod_sub Φ (sb_qn (S (List.length (record_params R))) σ))
   end
 with centry_sub (e : centry) (σ : sub) : centry :=

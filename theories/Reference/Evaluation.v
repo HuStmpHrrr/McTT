@@ -392,11 +392,12 @@ with eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
      ind_mlookup Θ Ξ (qname_app pq (x :: nil)) = Some (pg, k, D) ->
      eval_apps_order Θ Ξ (d_ind pg k nil) args ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
-| eslo_global_ind_alias :
-  `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
-     ind_alias_lookup Θ Ξ (qname_app pq (x :: nil)) = Some (Δ, pm, pt, k, Ns) ->
-     eval_exp_order Θ Ξ (ctx_fn Δ (apps (a_ind pt k) Ns)) nil ->
-     (forall f, ⟦ ctx_fn Δ (apps (a_ind pt k) Ns) ⟧ Θ ⍮ Ξ ⍮ nil ↘ f -> eval_apps_order Θ Ξ f args) ->
+(** A definition with a module part: its term, closed, applied to the
+    arguments *)
+| eslo_global_def_mod :
+  `( gc_entry Θ Ξ (qname_app pq (x :: nil)) = Some (ge_def_mod pv A M U) ->
+     eval_exp_order Θ Ξ M nil ->
+     (forall f, ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ f -> eval_apps_order Θ Ξ f args) ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
 | eslo_unsat :
   `( eval_sel_order Θ Ξ (dm_local (e :: Δ) D p) x )
@@ -686,12 +687,16 @@ Section EvalImpl.
   #[local]
   Ltac impl_obl_glob :=
     repeat match goal with
-      | H1 : ind_alias_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = Some _ |- _ =>
+      | H1 : gc_entry _ _ ?p = Some _, H2 : gc_entry _ _ ?p = Some _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
-      | H1 : ind_alias_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = None |- _ =>
+      | H1 : gc_entry _ _ ?p = Some _, H2 : gc_entry _ _ ?p = None |- _ =>
           rewrite H1 in H2; discriminate H2
-      | H1 : ind_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = Some _ |- _ =>
-          exfalso; rewrite (ind_lookup_not_ind_alias _ _ _ _ H1) in H2; discriminate H2
+      | H1 : gc_entry _ _ ?p = Some (ge_def_mod _ _ _ _), H2 : gc_resolve _ _ ?p = Some _ |- _ =>
+          exfalso; rewrite (gc_entry_def_mod _ _ _ _ _ _ _ H1) in H2; discriminate H2
+      | H1 : ind_mlookup _ _ ?p = Some _, H2 : gc_entry _ _ ?p = Some (ge_def_mod _ _ _ _) |- _ =>
+          exfalso; exact (ind_mlookup_not_def_mod _ _ _ _ _ _ _ _ H1 H2)
+      | H1 : record_lookup _ _ ?p = Some _, H2 : gc_entry _ _ ?p = Some (ge_def_mod _ _ _ _) |- _ =>
+          exfalso; exact (record_lookup_not_def_mod _ _ _ _ _ _ _ _ H1 H2)
       | H1 : gc_resolve _ _ ?p = Some _, H2 : gc_resolve _ _ ?p = Some _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : gc_resolve _ _ ?p = Some _, H2 : gc_resolve _ _ ?p = None |- _ =>
@@ -760,8 +765,6 @@ Section EvalImpl.
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : ind_mlookup _ _ ?p = Some _, H2 : ind_mlookup _ _ ?p = None |- _ =>
           rewrite H1 in H2; discriminate H2
-      | H1 : ind_mlookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = Some _ |- _ =>
-          exfalso; rewrite (ind_mlookup_not_ind_alias _ _ _ _ H1) in H2; discriminate H2
       | H : (_ <? _) = true |- _ => apply Nat.ltb_lt in H
       | H : (_ <? _) = false |- _ => apply Nat.ltb_ge in H
       | H1 : brs_lookup ?Bs ?c = Some _, H2 : brs_lookup ?Bs ?c = Some _ |- _ =>
@@ -776,8 +779,6 @@ Section EvalImpl.
           rewrite H1 in H2; discriminate H2
       | H1 : record_lookup _ _ ?p = Some _, H2 : ind_mlookup _ _ ?p = Some _ |- _ =>
           exfalso; rewrite (record_lookup_not_ind _ _ _ _ H1) in H2; discriminate H2
-      | H1 : record_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = Some _ |- _ =>
-          exfalso; rewrite (record_lookup_not_ind_alias _ _ _ _ H1) in H2; discriminate H2
       | H1 : field_index ?fs ?f = Some _, H2 : field_index ?fs ?f = Some _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : field_index ?fs ?f = Some _, H2 : field_index ?fs ?f = None |- _ =>
@@ -1166,23 +1167,24 @@ Section EvalImpl.
         exist _ r _
     | exist _ (Some (ge_mod _ _)) E => False_rect _ _
     | exist _ (Some (ge_ind _ _ _ _ _)) E => False_rect _ _
-    | exist _ (Some (ge_ind_alias _ _ _ _ _ _)) E => False_rect _ _
+    | exist _ (Some (ge_def_mod _ _ _ _)) E => False_rect _ _
     | exist _ (Some (ge_record _ _ _ _)) E => False_rect _ _
     | exist _ None E with inspect (ind_mlookup Θ Ξ (qname_app pq (x :: nil))) := {
       | exist _ (Some (pg, k, D)) Ed =>
           let (r, Hr) := eval_apps_impl (d_ind pg k nil) args _ in
           exist _ r _
-      | exist _ None Ed with inspect (ind_alias_lookup Θ Ξ (qname_app pq (x :: nil))) := {
-        | exist _ (Some (Δ, pm, pt, k, Ns)) Ea =>
-            let (f, Hf) := eval_exp_impl (ctx_fn Δ (apps (a_ind pt k) Ns)) nil _ in
-            let (r, Hr) := eval_apps_impl f args _ in
+      (** A record type: its type former *)
+      | exist _ None Ed with inspect (record_lookup Θ Ξ (qname_app pq (x :: nil))) := {
+        | exist _ (Some R) Er =>
+            let (r, Hr) := eval_apps_impl (d_record (qname_app pq (x :: nil)) nil) args _ in
             exist _ r _
-        (** A record type: its type former *)
-        | exist _ None Ea with inspect (record_lookup Θ Ξ (qname_app pq (x :: nil))) := {
-          | exist _ (Some R) Er =>
-              let (r, Hr) := eval_apps_impl (d_record (qname_app pq (x :: nil)) nil) args _ in
+        (** A definition with a module part: its term *)
+        | exist _ None Er with inspect (gc_entry Θ Ξ (qname_app pq (x :: nil))) := {
+          | exist _ (Some (ge_def_mod _ _ M _)) Ea =>
+              let (f, Hf) := eval_exp_impl M nil _ in
+              let (r, Hr) := eval_apps_impl f args _ in
               exist _ r _
-          | exist _ None Er => False_rect _ _ } } } }
+          | exist _ _ Ea => False_rect _ _ } } } }
   | dm_local (e :: Δ) D p, x, H => exist _ (d_member (dm_local (e :: Δ) D p) (x :: nil)) _
   | dm_local nil (md_alias E) p, x, H => False_rect _ _
   | dm_local nil (md_body sm Φ) p, x, H with kbody_impl Θ Ξ p Φ _ := {

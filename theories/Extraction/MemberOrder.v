@@ -420,10 +420,12 @@ Qed.
 (** ** The Size of an Open Description *)
 
 (** The size of an open description over [Γ]: one more than its expanded
-    body's, read under its parameters; 0 for the other descriptions. *)
-Definition open_size (Γ : ctx) (R : mdesc) : nat :=
+    body's, read under its parameters; a definition with a module part's
+    is its module part's; 0 for the other descriptions. *)
+Fixpoint open_size (Γ : ctx) (R : mdesc) : nat :=
   match R with
   | ds_open Δ _ Φx => S (fst (body_size (ctx_sizes (Δ ++ Γ)) Φx))
+  | ds_dm _ _ _ Rm => open_size Γ Rm
   | _ => 0
   end.
 
@@ -453,19 +455,21 @@ Proof.
 Qed.
 
 Lemma open_size_up : forall Γ Θ' R, open_size Γ (ds_up Θ' R) = open_size (Θ' ++ Γ) R.
-Proof. intros * ; destruct R; cbn; rewrite ?app_assoc; reflexivity. Qed.
+Proof. intros Γ Θ' R; induction R; cbn; rewrite ?app_assoc; auto. Qed.
 
 Lemma open_size_sub : forall Γ1 Γ2 R σ, sub_keeps_sizes (ctx_sizes Γ2) (ctx_sizes Γ1) σ ->
     open_size Γ2 (ds_sub R σ) <= open_size Γ1 R.
 Proof.
-  intros * Hσ; destruct R as [| Δ Φw Φx | | |]; cbn; try lia.
+  intros Γ1 Γ2 R σ Hσ; induction R as [| Δ Φw Φx | | | |]; cbn; try lia.
   rewrite !ctx_sizes_app; apply le_n_S.
   apply (proj1 (proj2 (proj2 (proj2 sizes_sub))) Φx), sub_keeps_sizes_ctx_ext, Hσ.
 Qed.
 
 Lemma open_size_at : forall Γ R N R', ds_at R N = Some R' -> open_size Γ R' <= open_size Γ R.
 Proof.
-  intros * Ha; destruct R as [A om | Δ Φw Φx | Θ' p T Φ Ns | Θ' p k Ns | Θ' p Ns]; cbn in Ha.
+  intros Γ R N; induction R as [A om | Δ Φw Φx | Θ' p T Φ Ns | Θ' p k Ns | Θ' p Ns | Θd A M Rm IH]; intros R' Ha; cbn in Ha.
+  6: { destruct (ds_at Rm N) as [Rm' |] eqn:E; [| discriminate ].
+       destruct (tele_split (rev Θd)) as [[[? ?] ?] | ?]; injection Ha as <-; cbn; exact (IH _ eq_refl). }
   - destruct (pi_view A) as [[? ?] |]; [| discriminate ].
     destruct om as [M |]; [ destruct (fn_view M); [| discriminate ] |]; injection Ha as <-; cbn; lia.
   - pose proof (tele_split_keeps_sizes (rev Δ) Γ) as Hc; rewrite rev_involutive in Hc.
@@ -515,7 +519,7 @@ Section Expansion.
       Forall (fun x => forall ρ, gentry_size ρ (snd (ig_entry x)) <= S (S (modexp_size ρ H))) gs.
   Proof.
     induction 1 as [g Γ H | g Γ H d pv its gs Hig IH | g Γ H n d pv A om its gs Hm Hig IH
-                    | g Γ H n d pv R its gs Hm Hmod Hig IH | Γ H n d pv Θ' p k D pm Ns its gs Hm Hl Hp Hml Hig IH];
+                    | g Γ H n d pv R its gs Hm Hmod Hig IH | Γ H n d pv R A Rm its gs Hm Hty Hmd _ _];
       intros Hgf; [ split; [ reflexivity | constructor ] | | | | discriminate ].
     all: destruct (IH Hgf) as [IHl IHf]; split; [ cbn; lia | constructor; [ intros ρ; cbn; lia | exact IHf ] ].
   Qed.
@@ -598,12 +602,14 @@ Section Typed.
     ; instance_eq : U = gunit_sub instance_unit instance_sub }.
 
   (** Every module entry of an open description over [Γ] is a typed
-      instance; other descriptions have no module entry to read. *)
-  Definition typed_open (Γ : ctx) (R : mdesc) : Prop :=
+      instance; a definition with a module part, its module part's; other
+      descriptions have no module entry to read. *)
+  Fixpoint typed_open (Γ : ctx) (R : mdesc) : Prop :=
     match R with
     | ds_open Δ _ Φx =>
         forall y Φ' pm U, gm_prefix_upto Φx y = Some (gm_ext Φ' y (ge_mod pm U)) ->
           typed_instance (body_ctx Φ' ++ Δ ++ Γ) U
+    | ds_dm _ _ _ Rm => typed_open Γ Rm
     | _ => True
     end.
 
@@ -633,20 +639,22 @@ Section Typed.
 
   Lemma typed_open_sub : forall Γ1 R Γ2 σ, typed_open Γ1 R -> sub_mod_compat σ Γ2 Γ1 -> typed_open Γ2 (ds_sub R σ).
   Proof.
-    intros * HT Hσ; destruct R as [| Δ Φw Φx | | |]; cbn [ds_sub]; try exact I.
+    intros Γ1 R Γ2 σ HT Hσ; induction R as [| Δ Φw Φx | | | |]; cbn [ds_sub]; try exact I; [| exact (IHR HT) ].
     eapply typed_open_body_sub; [ exact HT |].
     apply sub_mod_compat_ext; exact Hσ.
   Qed.
 
   Lemma typed_open_up : forall Γ Θ' R, typed_open (Θ' ++ Γ) R -> typed_open Γ (ds_up Θ' R).
   Proof.
-    intros * HT; destruct R as [| Δ Φw Φx | | |]; cbn in *; try exact I.
+    intros Γ Θ' R HT; induction R as [| Δ Φw Φx | | | |]; cbn in *; try exact I; [| exact (IHR HT) ].
     intros * Hp; rewrite <- List.app_assoc; exact (HT _ _ _ _ Hp).
   Qed.
 
   Lemma typed_open_at : forall Γ R N R', typed_open Γ R -> ds_at R N = Some R' -> typed_open Γ R'.
   Proof.
-    intros * HT Ha; destruct R as [A om | Δ Φw Φx | Θ' p T Φ Ns | Θ' p k Ns | Θ' p Ns]; cbn in Ha.
+    intros Γ R N; induction R as [A om | Δ Φw Φx | Θ' p T Φ Ns | Θ' p k Ns | Θ' p Ns | Θd A M Rm IH]; intros R' HT Ha; cbn in Ha.
+    6: { destruct (ds_at Rm N) as [Rm' |] eqn:E; [| discriminate ].
+         destruct (tele_split (rev Θd)) as [[[? ?] ?] | ?]; injection Ha as <-; cbn; exact (IH _ HT eq_refl). }
     - destruct (pi_view A) as [[? ?] |]; [| discriminate ].
       destruct om as [M |]; [ destruct (fn_view M); [| discriminate ] |]; injection Ha as <-; exact I.
     - pose proof (tele_split_compat (rev Δ) Γ) as Hc; rewrite rev_involutive in Hc.
@@ -668,16 +676,23 @@ Section Typed.
 
   Lemma typed_open_mod : forall Γ R Rm, typed_open Γ R -> ds_mod Θ Ξ R = Some Rm -> typed_open Γ Rm.
   Proof.
-    intros * HT Hm; destruct R; cbn in Hm; try discriminate; try (injection Hm as <-; exact HT).
+    intros Γ R; induction R; intros Rm HT Hm; cbn in Hm; try discriminate; try (injection Hm as <-; exact HT).
     - destruct (ds_mod_ind_inv _ _ _ _ _ _ _ Hm) as (D & pm & T & Φ & _ & _ & _ & ->); exact I.
     - destruct (gc_loc _ _ _) as [[T Φ] |]; [ injection Hm as <-; exact I | discriminate ].
+    - exact (IHR _ HT Hm).
+  Qed.
+
+  Lemma typed_open_ats_read : forall Ns Γ R R', typed_open Γ R -> ds_ats_read R Ns = Some R' -> typed_open Γ R'.
+  Proof.
+    intros * HT Ha; destruct (ds_ats_read_inv _ _ _ Ha) as [Ha' | (A & M & Rm & B & M' & Rm' & -> & -> & _ & Ha')];
+      [ exact (typed_open_ats _ _ _ _ HT Ha') | cbn in HT |- *; exact (typed_open_ats _ _ _ _ HT Ha') ].
   Qed.
 
   (** A typed open description: its module entries are typed units. *)
   Lemma typed_open_of_desc : forall Γt R, desc_ok Θ Ξ Γt R -> typed_open Γt R.
   Proof.
-    intros * Hok; destruct R as [| Δ Φw Φx | | |]; cbn; try exact I.
-    inversion Hok as [| | ? ? ? ? HΦ Hno Hent | |]; subst.
+    intros * Hok; induction Hok as [| | Γt Δ Φw Φx HΦ Hno Hent _ | | | ? ? ? ? ? ? ? ? ? _ IH]; cbn; try exact I.
+    2: { apply typed_open_up; exact IH. }
     intros y Φ' pm U Hp.
     destruct (gm_prefix_body_ctx _ _ _ Hno Hp) as (Ψ & HΨ); rewrite HΨ in HΦ; cbn [body_ctx] in HΦ.
     rewrite <- !List.app_assoc in HΦ; apply ctx_app_wf_right in HΦ.
@@ -774,15 +789,20 @@ Section Stored.
 
   (** A stored alias's target denotes in any context under its telescope,
       a typed description. *)
-  Lemma stored_alias_denotes : forall p T Φ y Φ0 pv Δa E',
-      loc Θ Ξ p T Φ -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y (ge_mod pv (gu_mk Δa (md_alias E')))) ->
+  Lemma stored_alias_denotes : forall p T Φ y Φ0 E Δa E',
+      loc Θ Ξ p T Φ -> gm_prefix_upto Φ y = Some (gm_ext Φ0 y E) -> entry_alias_unit E = Some (gu_mk Δa (md_alias E')) ->
       exists R0, desc_ok Θ Ξ Δa R0 /\ forall Γ, mdenote Θ Ξ (Δa ++ Γ) E' (ds_sub R0 Id).
   Proof.
-    intros * Hloc Hp.
+    intros * Hloc Hp HUa.
     pose proof (gctx_valid_syn _ _ Hg) as Hv.
     destruct (loc_valid _ _ _ _ _ Hv Hloc) as [_ HvΦ].
     pose proof (gm_valid_prefix _ _ _ _ _ _ _ _ _ _ _ _ _ HvΦ Hp) as HE0.
-    cbn [ge_valid syn_V] in HE0; destruct HE0 as (HE' & HΔ & Hcl).
+    assert (HE1 : Θ ⍮ Ξ ⍮ Δa ⊢ᵐ E' ≈ E' /\ ⊢ Θ ⍮ Ξ ⍮ Δa /\
+                  forall Γ, ⊢ Θ ⍮ Ξ ⍮ Δa ++ Γ -> (exists R, mdenote Θ Ξ (Δa ++ Γ) E' R) /\
+                    forall R, mdenote Θ Ξ (Δa ++ Γ) E' R -> desc_ok Θ Ξ (Δa ++ Γ) R /\ exists Rm, ds_mod Θ Ξ R = Some Rm).
+    { destruct E as [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? [? [? ?| ?]] | ? ? ?]; cbn in HUa; try discriminate;
+        injection HUa as <- <-; cbn [ge_valid syn_V] in HE0; [ exact HE0 | exact (proj1 HE0) ]. }
+    destruct HE1 as (HE' & HΔ & Hcl).
     destruct (Hcl nil ltac:(rewrite app_nil_r; exact HΔ)) as ((R0 & HR0) & Hok).
     rewrite app_nil_r in HR0, Hok.
     exists R0; split; [ exact (proj1 (Hok _ HR0)) |].
@@ -800,12 +820,15 @@ Section Stored.
     intros * Hloc Hp.
     pose proof (loc_closed _ _ Hg _ _ _ Hloc) as [_ HcΦ].
     pose proof (body_closed_prefix _ _ _ _ HcΦ Hp) as HcE; cbn in HcE; destruct HcE as [_ HcE].
-    destruct E0 as [b pv A oM | pv [Δ [sm Φy | E']] | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ?]; cbn [ge_read];
+    destruct E0 as [b pv A oM | pv [Δ [sm Φy | E']] | ? ? ? ? ? | pvd Ad Md [Δ [sm Φy | E']] | ? ? ?]; cbn [ge_read];
       try solve [ constructor ].
     - destruct HcE as (-> & _ & HcΦy); cbn [ge_read].
       constructor; constructor; apply bx_order_noopen, (body_closed_noopen _ _ HcΦy).
-    - destruct (stored_alias_denotes _ _ _ _ _ _ _ _ Hloc Hp) as (R0 & _ & HR).
+    - destruct (stored_alias_denotes _ _ _ _ _ _ _ _ Hloc Hp eq_refl) as (R0 & _ & HR).
       constructor; constructor; exact (proj1 (order_of_denote _ _ Hg) _ _ _ (HR Γ)).
+    - (* a definition with a module part: its module part's target *)
+      destruct (stored_alias_denotes _ _ _ _ _ _ _ _ Hloc Hp eq_refl) as (R0 & _ & HR).
+      constructor; exact (proj1 (order_of_denote _ _ Hg) _ _ _ (HR Γ)).
   Qed.
 
   (** What an entry of a stored module denotes, in any context, is typed. *)
@@ -817,7 +840,7 @@ Section Stored.
     intros * Hloc Hp Hd Γ'.
     pose proof (loc_closed _ _ Hg _ _ _ Hloc) as [_ HcΦ].
     pose proof (body_closed_prefix _ _ _ _ HcΦ Hp) as HcE; cbn in HcE; destruct HcE as [_ HcE].
-    destruct E0 as [b pv A oM | pv [Δ [sm Φy | E']] | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ?]; cbn [ge_read] in Hd;
+    destruct E0 as [b pv A oM | pv [Δ [sm Φy | E']] | ? ? ? ? ? | pvd Ad Md [Δ [sm Φy | E']] | ? ? ?]; cbn [ge_read] in Hd;
       try solve [ inversion Hd; subst; exact I ].
     - destruct HcE as (-> & _ & _); cbn [ge_read] in Hd.
       inversion Hd; subst.
@@ -825,8 +848,16 @@ Section Stored.
       match goal with Hb : ds_body _ _ _ _ _ = Some _ |- _ =>
         cbn in Hb; destruct o; cbn in Hb; [ injection Hb as <- | discriminate ] end.
       exact I.
-    - destruct (stored_alias_denotes _ _ _ _ _ _ _ _ Hloc Hp) as (R0 & Hok & HR).
+    - destruct (stored_alias_denotes _ _ _ _ _ _ _ _ Hloc Hp eq_refl) as (R0 & Hok & HR).
       inversion Hd; subst.
+      match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
+      apply typed_open_up.
+      match goal with Hm : mdenote _ _ _ E' ?R1, Hmod : ds_mod _ _ ?R1 = Some _ |- _ =>
+        rewrite (Fm _ _ _ Hm _ (HR Γ)) in Hmod; eapply typed_open_mod; [| exact Hmod ] end.
+      eapply typed_open_sub; [ apply typed_open_of_desc; exact Hok | apply sub_mod_compat_id_app ].
+    - (* a definition with a module part: its module part, as an alias's *)
+      destruct (stored_alias_denotes _ _ _ _ _ _ _ _ Hloc Hp eq_refl) as (R0 & Hok & HR).
+      inversion Hd; subst; cbn [typed_open].
       match goal with Hu : udenote _ _ _ _ _ _ |- _ => inversion Hu; subst end.
       apply typed_open_up.
       match goal with Hm : mdenote _ _ _ E' ?R1, Hmod : ds_mod _ _ ?R1 = Some _ |- _ =>
@@ -849,19 +880,20 @@ Section Classify.
 
   Lemma open_size_mod : forall Γ R R', ds_mod Θ Ξ R = Some R' -> open_size Γ R' <= open_size Γ R.
   Proof.
-    intros * Hm; destruct R; cbn in Hm; try discriminate; try (injection Hm as <-; lia).
+    intros Γ R; induction R; intros R' Hm; cbn in Hm; try discriminate; try (injection Hm as <-; lia).
     - destruct (ds_mod_ind_inv _ _ _ _ _ _ _ Hm) as (D & pm & T & Φ & _ & _ & _ & ->); cbn; lia.
     - destruct (gc_loc _ _ _) as [[T Φ] |]; [ injection Hm as <-; cbn; lia | discriminate ].
+    - cbn; exact (IHR _ Hm).
   Qed.
 
   Lemma typed_open_self : forall Γ M R, typed_open Θ Ξ Γ R -> typed_open Θ Ξ Γ (ds_self M R).
-  Proof. intros * HT; destruct R as [A [] | | | |]; cbn in *; exact HT || exact I. Qed.
+  Proof. intros * HT; destruct R as [A [] | | | | |]; cbn in *; exact HT || exact I. Qed.
 
-  Lemma ds_mod_open_inv : forall R Δ Φw Φx, ds_mod Θ Ξ R = Some (ds_open Δ Φw Φx) -> R = ds_open Δ Φw Φx.
+  (** What is typed or bounded has a module part that is. *)
+  Lemma typed_or_bounded_mod : forall Γ R Rm b, typed_or_bounded Γ R b -> ds_mod Θ Ξ R = Some Rm -> typed_or_bounded Γ Rm b.
   Proof.
-    intros * Hm; destruct R; try (cbn in Hm; congruence).
-    - destruct (ds_mod_ind_inv Θ Ξ _ _ _ _ _ Hm) as (D & pm & T & Φ & _ & _ & _ & ?); discriminate.
-    - cbn in Hm; destruct (gc_loc _ _ _) as [[T Φ] |]; discriminate.
+    intros * [HT | Hn] Hm; [ left; exact (typed_open_mod _ _ _ _ _ HT Hm) | right ].
+    pose proof (open_size_mod Γ _ _ Hm); lia.
   Qed.
 
   (** Every open description [mdenote] produces is typed or no bigger
@@ -869,7 +901,8 @@ Section Classify.
   Theorem denotation_classified :
     (forall Γ H R, mdenote Θ Ξ Γ H R -> typed_or_bounded Γ R (modexp_size (ctx_sizes Γ) H)) /\
     (forall Γ o U R, udenote Θ Ξ Γ o U R -> typed_or_bounded Γ R (unit_size (ctx_sizes Γ) U)) /\
-    (forall Γ o E R, edenote Θ Ξ Γ o E R -> typed_or_bounded Γ R (gentry_size (ctx_sizes Γ) E)) /\
+    (forall Γ o E R, edenote Θ Ξ Γ o E R -> (forall pv A M U, E <> ge_def_mod pv A M U) ->
+       typed_or_bounded Γ R (gentry_size (ctx_sizes Γ) E)) /\
     (forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> True) /\
     (forall g Γ H its gs, items_gen Θ Ξ g Γ H its gs -> True).
   Proof.
@@ -889,17 +922,20 @@ Section Classify.
       match goal with
       | Hm0 : mdenote _ _ _ _ R0, Hmod0 : ds_mod _ _ R0 = Some _, He1 : ds_entry _ _ = Some _,
         Hd0 : edenote _ _ _ _ _ R, Hr0 : ds_read _ R = Some _,
-        IH1 : typed_or_bounded _ R0 _, IH2 : typed_or_bounded _ R _ |- _ =>
+        IH1 : typed_or_bounded _ R0 _, IH2 : _ -> typed_or_bounded _ R _ |- _ =>
           rename Hm0 into Hm, Hmod0 into Hmod, He1 into He, Hd0 into Hd, Hr0 into Hr, IH1 into IH0, IH2 into IHe
       end.
-      destruct R0m as [A om | Δ Φw Φx | Θ' p T Φ Ns | Θ' p k Ns | Θ' p Ns]; try (cbn in He; discriminate).
+      destruct R0m as [A om | Δ Φw Φx | Θ' p T Φ Ns | Θ' p k Ns | Θ' p Ns | ]; try (cbn in He; discriminate).
       + (* an open module *)
-        pose proof (ds_mod_open_inv _ _ _ _ Hmod) as ->.
+        pose proof (typed_or_bounded_mod _ _ _ _ IH0 Hmod) as IH0m; clear IH0; rename IH0m into IH0.
         pose proof He as He0; cbn in He.
         destruct (gm_prefix_upto Φx y) as [[| Φ' x E0 | ? ? ?] |] eqn:Hp; try discriminate.
         destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & _).
         assert (Hrd : rd = rd_open Δ Φ' /\ Γy = body_ctx Φ' ++ Δ /\ E = E0).
         { destruct E0 as [[|] pv A [M |] | pm U | | | ]; try discriminate; injection He as <- <- <-; auto. }
+        (* an entry of an open body is no definition with a module part *)
+        assert (Hnd : forall pv A M U, E0 <> ge_def_mod pv A M U) by (intros * ->; discriminate He).
+        specialize (IHe ltac:(destruct Hrd as (_ & _ & ->); exact Hnd)).
         destruct Hrd as (-> & -> & ->); cbn [ds_epath] in Hd.
         destruct IH0 as [HT | Hn]; [ left; eapply typed_open_read; eassumption |].
         cbn in Hr; destruct (gm_fill Φ') as [σ |] eqn:Hf; cbn in Hr; [ injection Hr as <- | discriminate ].
@@ -908,7 +944,7 @@ Section Classify.
           rewrite <- app_assoc in HTe; exact HTe.
         * right; rewrite open_size_up.
           pose proof (open_size_sub (body_ctx Φ' ++ Δ ++ Γ) (Δ ++ Γ) R σ (fill_keeps_sizes _ _ _ Hf)) as H1.
-          pose proof (mdenote_canon _ _ _ _ _ Hg Hm) as Hc; cbn in Hc.
+          pose proof (ds_canon_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hg Hm) Hmod) as Hc; cbn in Hc.
           pose proof (body_size_prefix _ _ _ _ (ctx_sizes (Δ ++ Γ)) Hc Hp) as H2.
           rewrite <- app_assoc, ctx_sizes_app in Hne.
           cbn [open_size] in Hn; cbn [modexp_size]; lia.
@@ -919,9 +955,9 @@ Section Classify.
         destruct (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & _).
         injection He as <- <- <-.
         cbn in Hd; left.
-        cbn in Hr; destruct (ds_ats R Ns) as [R1 |] eqn:Ea; cbn in Hr; [ injection Hr as <- | discriminate ].
+        cbn [ds_read] in Hr; destruct (ds_ats_read R Ns) as [R1 |] eqn:Ea; cbn in Hr; [ injection Hr as <- | discriminate ].
         apply typed_open_up, ds_named_cases; [| apply typed_open_self ];
-          (eapply typed_open_ats; [ eapply stored_entry_typed; eassumption | exact Ea ]).
+          (eapply typed_open_ats_read; [ eapply stored_entry_typed; eassumption | exact Ea ]).
     - (* the open frame of a record type's module *) right; cbn; lia.
     - (* a body *)
       match goal with Hb : ds_body _ _ _ _ _ = Some _ |- _ => rename Hb into Hds end.
@@ -938,7 +974,8 @@ Section Classify.
     - (* a definition *) right; cbn; lia.
     - (* a module *) cbn [gentry_size]; assumption.
     - right; cbn; lia.
-    - right; cbn; lia.
+    - (* a definition with a module part: excluded *)
+      exfalso; match goal with Hn : forall pv A M U, _ <> _ |- _ => eapply Hn; reflexivity end.
     - (* a record type *) right; cbn; lia.
   Qed.
 End Classify.
@@ -952,16 +989,15 @@ Section Order.
   (** The order at the entries of what a module expression denotes, given
       the order at the smaller entries. *)
   Lemma entries_order_bounded : forall n Γ H,
-      (forall Γ E, S (gentry_size (ctx_sizes Γ) E) < n -> en_order Θ Ξ Γ E) ->
+      (forall Γ E, (forall pv A M U, E <> ge_def_mod pv A M U) -> S (gentry_size (ctx_sizes Γ) E) < n -> en_order Θ Ξ Γ E) ->
       modexp_size (ctx_sizes Γ) H < n ->
       forall y R0 R0m Γy E rd, mdenote Θ Ξ Γ H R0 -> ds_mod Θ Ξ R0 = Some R0m ->
         ds_entry R0m y = Some (Γy, E, rd) -> en_order Θ Ξ (Γy ++ Γ) E.
   Proof.
     intros * IHe Hn * Hm Hmod He.
-    destruct R0m as [A om | Δ Φw Φx | Θ' p T Φ Ns | Θ' p k Ns | Θ' p Ns]; try (cbn in He; discriminate).
+    destruct R0m as [A om | Δ Φw Φx | Θ' p T Φ Ns | Θ' p k Ns | Θ' p Ns | ]; try (cbn in He; discriminate).
     - (* an open module *)
-      pose proof (ds_mod_open_inv _ _ _ _ _ _ Hmod) as ->.
-      destruct (proj1 (denotation_classified _ _ Hg) _ _ _ Hm) as [HT | Hnu];
+      destruct (typed_or_bounded_mod _ _ _ _ _ _ (proj1 (denotation_classified _ _ Hg) _ _ _ Hm) Hmod) as [HT | Hnu];
         [ eapply typed_open_entry_order; eassumption |].
       pose proof He as He0; cbn in He.
       destruct (gm_prefix_upto Φx y) as [[| Φ' x E0 | ? ? ?] |] eqn:Hp; try discriminate.
@@ -969,8 +1005,8 @@ Section Order.
       assert (Hrd : Γy = body_ctx Φ' ++ Δ /\ E = E0).
       { destruct E0 as [[|] pv A [M |] | pm U | | | ]; try discriminate; injection He as <- <- <-; auto. }
       destruct Hrd as (-> & ->).
-      apply IHe.
-      pose proof (mdenote_canon _ _ _ _ _ Hg Hm) as Hc; cbn in Hc.
+      apply IHe; [ intros * ->; discriminate He |].
+      pose proof (ds_canon_mod _ _ _ _ (mdenote_canon _ _ _ _ _ Hg Hm) Hmod) as Hc; cbn in Hc.
       pose proof (body_size_prefix _ _ _ _ (ctx_sizes (Δ ++ Γ)) Hc Hp) as H2.
       rewrite <- app_assoc, ctx_sizes_app; cbn [open_size] in Hnu; lia.
     - (* a closed module *)
@@ -986,7 +1022,7 @@ Section Order.
   Theorem order_bounded : forall n,
       (forall Γ H, modexp_size (ctx_sizes Γ) H < n -> dn_order Θ Ξ Γ H) /\
       (forall Γ U, unit_size (ctx_sizes Γ) U < n -> un_order Θ Ξ Γ U) /\
-      (forall Γ E, S (gentry_size (ctx_sizes Γ) E) < n -> en_order Θ Ξ Γ E) /\
+      (forall Γ E, (forall pv A M U, E <> ge_def_mod pv A M U) -> S (gentry_size (ctx_sizes Γ) E) < n -> en_order Θ Ξ Γ E) /\
       (forall Γ Φ, fst (body_size (ctx_sizes Γ) Φ) < n -> bx_order Θ Ξ Γ Φ) /\
       (forall Γ H its, S (S (modexp_size (ctx_sizes Γ) H)) < n -> ig_order Θ Ξ Γ H its).
   Proof.
@@ -1008,8 +1044,8 @@ Section Order.
       + apply uno_body, IHb; lia.
       + apply uno_alias, IHd; lia.
     - (* entries *)
-      intros Γ [b pv A oM | pv U | pv p k D Φ | pv Δ pm p k Ns | pv R Φ] Hn; cbn [gentry_size] in Hn; try constructor.
-      apply IHu; lia.
+      intros Γ [b pv A oM | pv U | pv p k D Φ | pv Ad Md Ud | pv R Φ] Hnd Hn; cbn [gentry_size] in Hn;
+        [ constructor | constructor; apply IHu; lia | constructor | exfalso; eapply Hnd; reflexivity | constructor ].
     - (* bodies *)
       intros Γ [| Φ x E | Φ H its] Hn; cbn [body_size fst] in Hn; [ apply bxo_nil | apply bxo_ext, IHb; lia |].
       assert (Hx : forall Φx, body_xp Θ Ξ Γ Φ Φx ->

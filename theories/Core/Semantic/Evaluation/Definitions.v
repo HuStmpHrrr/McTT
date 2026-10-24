@@ -80,11 +80,12 @@ Definition kbentry (ρ : env) (E : gentry) : dentry :=
   end.
 
 (** The entries generated items add over [ρ], as kinds read them, the
-    [k]-th under the [k] before it: an alias, the closure of its unit; a
-    definition, a placeholder. *)
+    [k]-th under the [k] before it: an alias, the closure of its unit, and
+    a definition with a module part, of its module part's; a definition, a
+    placeholder. *)
 Definition kentry (ρ : env) (k : nat) (g : igen) : dentry :=
   match g with
-  | ig_alias _ _ E => de_mod (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
+  | ig_alias _ _ E | ig_def_mod _ _ _ E => de_mod (dm_local nil (md_alias (modexp_wk E (wk_shiftn k))) ρ)
   | _ => de_term d_true
   end.
 
@@ -688,12 +689,14 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      ind_mlookup Θ Ξ (qname_app p (x :: nil)) = Some (pq, k, D) ->
      $*| d_ind pq k nil & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
-(** An inductive alias, as a term: the type former at its arguments, over
-    its telescope. *)
-| eval_sel_global_ind_alias :
-  `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
-     ind_alias_lookup Θ Ξ (qname_app p (x :: nil)) = Some (Δ, pm, pt, k, Ns) ->
-     ⟦ ctx_fn Δ (apps (a_ind pt k) Ns) ⟧ Θ ⍮ Ξ ⍮ nil ↘ f ->
+(** A definition with a module part, as a term: its term, as a
+    transparent definition's body, applied to the module's arguments.  It
+    is read off its entry, not through [gc_resolve]: resolution and the
+    kinds of members read it as a module only (its alias), which keeps the
+    kinds functional, a path naming one kind of member. *)
+| eval_sel_global_def_mod :
+  `( gc_entry Θ Ξ (qname_app p (x :: nil)) = Some (ge_def_mod pv A M U) ->
+     ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ f ->
      $*| f & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
 (** A member of a closure lacking a parameter is a member closure. *)

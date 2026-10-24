@@ -1336,22 +1336,17 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
   `( ind_uparams D = Δu ++ gs_tele Ξ ->
      Θ ⍮ Ξ ⍮ mp ⍮ fk_ind pq k D ⍮ Δu ⊢ᵍᵐ Φ ->
      Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind pv pq k D Φ )
-(** An inductive alias with parameters [Δ] over the frames' parameters,
-    of the declared member [k] of the group at [p], its module at [pm], at
-    arguments [Ns] for its first uniform parameters; it is stored over its
-    full telescope, as an alias is. *)
-| wf_gentry_ind_alias :
-  `( tele_ass Δ ->
+(** A definition with a module part: its term part as a transparent
+    definition is ([wf_gentry_def]), over the frames' parameters, and its
+    module part as an alias under the parameters [Δ] it declares is
+    ([wf_gentry_alias]); both are filed closed. *)
+| wf_gentry_def_mod :
+  `( Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
+     tele_ass Δ ->
      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
-     ind_lookup Θ Ξ p = Some D ->
-     ind_member D k = Some Mk ->
-     k < ind_ndecl D ->
-     ind_mpath D k = Some pm ->
-     ind_mlookup Θ Ξ pm = Some (p, k, D) ->
-     List.length Ns <= ind_nu D ->
-     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ apps (a_ind p k) Ns : ind_ty_at D Mk Ns ->
-     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ me_apps (qname_mod pm) Ns ≈ me_apps (qname_mod pm) Ns ->
-     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_ind_alias pv (Δ ++ gs_tele Ξ) pm p k Ns )
+     Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
+     Θ ⍮ Ξ ⍮ mp ⊢ᵉ ge_def_mod pv (ctx_pi (gs_tele Ξ) A) (ctx_fn (gs_tele Ξ) M) (gu_mk (Δ ++ gs_tele Ξ) (md_alias E)) )
 (** A record type, with parameters [Δ] over the frames' parameters, before
     the members of its module: its sort is a universe over the parameters,
     its field names are distinct, and each field is a type in the sort

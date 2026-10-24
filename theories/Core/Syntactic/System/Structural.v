@@ -355,11 +355,6 @@ Ltac saturate_closed :=
   | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : gc_resolve ?Θ ?Ξ _ = Some (ge_def _ _ _ (Some ?M)) |- _ =>
       assert_fails (assert (exp_scoped 0 M) by eassumption);
       pose proof (wf_gc_resolve_body_closed _ _ _ _ _ _ _ _ Hc Hl)
-  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : ind_alias_lookup ?Θ ?Ξ _ = Some (?Δ, _, ?p, ?k, ?Ns), Hd : ind_lookup ?Θ ?Ξ ?p = Some ?D,
-    HM : ind_member ?D ?k = Some ?Mk |- _ =>
-      assert_fails (assert (exp_scoped 0 (ctx_pi Δ (ind_ty_at D Mk Ns))) by eassumption);
-      let Ha := fresh "Ha" in
-      pose proof (wf_ind_alias_closed _ _ _ _ _ _ _ _ _ _ _ Hc Hl Hd HM) as Ha; destruct Ha
   end.
 
 Ltac push_closed :=
@@ -2679,7 +2674,7 @@ Proof. induction Ns as [| N Ns IH]; intros; cbn; [ reflexivity | rewrite IH; ref
 
 Lemma ds_unit_slot_root : forall Γ R, me_slot_root Γ (ds_unit R).
 Proof.
-  intros Γ [A om | Δ Φ | [| e Θ] p T Φ Ns | Θ p Ns | Θ p Ns]; cbn; try exact I.
+  intros Γ [A om | Δ Φ | [| e Θ] p T Φ Ns | Θ p Ns | Θ p Ns | A M Rm]; cbn; try exact I.
   apply me_apps_slot_root; eapply mod_qname_slot_root, qname_mod_qname.
 Qed.
 

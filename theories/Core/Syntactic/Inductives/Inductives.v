@@ -698,7 +698,7 @@ with gentry_mvc (n : nat) (E : gentry) : Prop :=
   | ge_def _ _ A B => exp_mvc n A /\ match B with Some M => exp_mvc n M | None => True end
   | ge_mod _ U => gunit_mvc n U
   | ge_ind _ _ _ D Φ => gmod_mvc (ind_nu D + n) Φ
-  | ge_ind_alias _ _ _ _ _ _ => True
+  | ge_def_mod _ A M U => exp_mvc n A /\ exp_mvc n M /\ gunit_mvc n U
   | ge_record _ _ R Φ => gmod_mvc (S (List.length (record_params R)) + n) Φ
   end
 with centry_mvc (n : nat) (e : centry) : Prop :=

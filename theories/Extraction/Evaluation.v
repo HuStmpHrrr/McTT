@@ -396,11 +396,12 @@ with feval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
      ind_mlookup Θ Ξ (qname_app pq (x :: nil)) = Some (pg, k, D) ->
      feval_apps_order Θ Ξ (d_ind pg k nil) args ->
      feval_sel_order Θ Ξ (dm_global pq args) x )
-| feslo_global_ind_alias :
-  `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
-     ind_alias_lookup Θ Ξ (qname_app pq (x :: nil)) = Some (Δ, pm, pt, k, Ns) ->
-     feval_exp_order Θ Ξ (ctx_fn Δ (apps (a_ind pt k) Ns)) nil ->
-     (forall f, ⟦ ctx_fn Δ (apps (a_ind pt k) Ns) ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ f -> feval_apps_order Θ Ξ f args) ->
+(** A definition with a module part: its term, closed, applied to the
+    arguments *)
+| feslo_global_def_mod :
+  `( gc_entry Θ Ξ (qname_app pq (x :: nil)) = Some (ge_def_mod pv A M U) ->
+     feval_exp_order Θ Ξ M nil ->
+     (forall f, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ f -> feval_apps_order Θ Ξ f args) ->
      feval_sel_order Θ Ξ (dm_global pq args) x )
 | feslo_unsat :
   `( feval_sel_order Θ Ξ (dm_local (e :: Δ) D p) x )
@@ -712,6 +713,10 @@ Section EvalImpl.
   #[local]
   Ltac impl_obl_glob :=
     repeat match goal with
+      | H1 : gc_entry _ _ ?p = Some _, H2 : gc_entry _ _ ?p = Some _ |- _ =>
+          rewrite H1 in H2; first [ discriminate H2 | injection H2; clear H2; intros; subst ]
+      | H1 : gc_entry _ _ ?p = Some _, H2 : gc_entry _ _ ?p = None |- _ =>
+          rewrite H1 in H2; discriminate H2
       | H : gc_entry _ _ _ = Some (ge_def _ _ _ _) |- _ => apply gc_entry_def in H
       | H : gc_entry _ _ _ = Some (ge_ind _ _ _ _ _) |- _ =>
           let H1 := fresh "Hr" in let H2 := fresh "Hl" in destruct (gc_entry_ind _ _ _ _ _ _ _ _ H) as [H1 H2]; clear H
@@ -719,16 +724,12 @@ Section EvalImpl.
           apply gc_entry_def in H'; rewrite H in H'; discriminate H'
       | H : gc_entry ?T ?X ?p = _, H' : ind_mlookup ?T ?X ?p = Some _ |- _ =>
           let He := fresh "He" in destruct (ind_mlookup_entry _ _ _ _ _ _ H') as (? & ? & He); rewrite H in He; discriminate He
-      | H : gc_entry _ _ _ = Some (ge_ind_alias _ _ _ _ _ _) |- _ =>
-          let H1 := fresh "Hr" in let H2 := fresh "Ha" in destruct (gc_entry_ind_alias _ _ _ _ _ _ _ _ _ H) as [H1 H2]; clear H
-      | H : gc_entry ?T ?X ?p = _, H' : ind_alias_lookup ?T ?X ?p = Some _ |- _ =>
-          rewrite ind_alias_lookup_entry, H in H'; cbn in H'; discriminate H'
-      | H1 : ind_alias_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = Some _ |- _ =>
-          rewrite H1 in H2; injection H2; clear H2; intros; subst
-      | H1 : ind_alias_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = None |- _ =>
-          rewrite H1 in H2; discriminate H2
-      | H1 : ind_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = Some _ |- _ =>
-          exfalso; rewrite (ind_lookup_not_ind_alias _ _ _ _ H1) in H2; discriminate H2
+      | H : gc_entry ?T ?X ?p = Some (ge_def_mod _ _ _ _), H' : gc_resolve ?T ?X ?p = Some _ |- _ =>
+          rewrite (gc_entry_def_mod _ _ _ _ _ _ _ H) in H'; discriminate H'
+      | H : gc_entry ?T ?X ?p = Some (ge_def_mod _ _ _ _), H' : ind_mlookup ?T ?X ?p = Some _ |- _ =>
+          exfalso; exact (ind_mlookup_not_def_mod _ _ _ _ _ _ _ _ H' H)
+      | H : gc_entry ?T ?X ?p = Some (ge_def_mod _ _ _ _), H' : record_lookup ?T ?X ?p = Some _ |- _ =>
+          exfalso; exact (record_lookup_not_def_mod _ _ _ _ _ _ _ _ H' H)
       | H1 : gc_resolve _ _ ?p = Some _, H2 : gc_resolve _ _ ?p = Some _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : gc_resolve _ _ ?p = Some _, H2 : gc_resolve _ _ ?p = None |- _ =>
@@ -810,8 +811,6 @@ Section EvalImpl.
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : ind_mlookup _ _ ?p = Some _, H2 : ind_mlookup _ _ ?p = None |- _ =>
           rewrite H1 in H2; discriminate H2
-      | H1 : ind_mlookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = Some _ |- _ =>
-          exfalso; rewrite (ind_mlookup_not_ind_alias _ _ _ _ H1) in H2; discriminate H2
       | H : (_ <? _) = true |- _ => apply Nat.ltb_lt in H
       | H : (_ <? _) = false |- _ => apply Nat.ltb_ge in H
       (** A record, its fields and the projections of a neutral, looked up
@@ -828,8 +827,6 @@ Section EvalImpl.
           destruct (record_lookup_entry _ _ _ _ H') as [He | (? & ? & ? & He)]; rewrite H in He; discriminate He
       | H1 : record_lookup _ _ ?p = Some _, H2 : ind_mlookup _ _ ?p = Some _ |- _ =>
           exfalso; rewrite (record_lookup_not_ind _ _ _ _ H1) in H2; discriminate H2
-      | H1 : record_lookup _ _ ?p = Some _, H2 : ind_alias_lookup _ _ ?p = Some _ |- _ =>
-          exfalso; rewrite (record_lookup_not_ind_alias _ _ _ _ H1) in H2; discriminate H2
       | H1 : field_index ?fs ?f = Some _, H2 : field_index ?fs ?f = Some _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : field_index ?fs ?f = Some _, H2 : field_index ?fs ?f = None |- _ =>
@@ -1205,8 +1202,8 @@ Section EvalImpl.
     | exist _ (Some (ge_ind _ pg k D _)) E =>
         let (r, Hr) := feval_apps_impl (d_ind pg k nil) args _ in
         exist _ r _
-    | exist _ (Some (ge_ind_alias _ Δ _ pt k Ns)) E =>
-        let (f, Hf) := feval_exp_impl (ctx_fn Δ (apps (a_ind pt k) Ns)) nil _ in
+    | exist _ (Some (ge_def_mod _ _ M _)) E =>
+        let (f, Hf) := feval_exp_impl M nil _ in
         let (r, Hr) := feval_apps_impl f args _ in
         exist _ r _
     (** A stored record type: its type former *)

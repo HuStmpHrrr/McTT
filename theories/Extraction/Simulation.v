@@ -668,7 +668,7 @@ Section KindSim.
       destruct (IH ρ' P) as (ρ1' & Hk1 & Hρ1); [ intros x Hx; apply HP; cbn; tauto | exact Hρ |].
       exists (kbentry ρ1' E :: ρ1'); split; [ constructor; exact Hk1 |].
       cbn [gm_binders]; apply env_agree_above_cons; [ exact Hρ1 |].
-      destruct E as [? ? ? ? | pm U | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ?]; cbn [kbentry]; try (repeat constructor; fail).
+      destruct E as [? ? ? ? | pm U | ? ? ? ? ? | ? ? ? ? | ? ? ?]; cbn [kbentry]; try (repeat constructor; fail).
       destruct U as [Δu Du]; cbn [dm_clo]; constructor; constructor.
       eapply env_agree_mono; [ exact Hρ1 | apply above_of ].
       intros y0 Hy; apply HP; intros Hf; apply Hy; cbn [gmod_fresh gentry_fresh] in Hf; destruct Hf as [_ Hf]; exact Hf.

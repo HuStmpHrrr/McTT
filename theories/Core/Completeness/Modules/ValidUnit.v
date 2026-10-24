@@ -285,11 +285,26 @@ Qed.
     Kinds read a body as its expansion, but for the types of the
     definitions an open generates, which they leave out ([body_eq_upto_types]). *)
 
-Definition mdesc_kind (R : mdesc) : mkind :=
+(** The kind of what a description describes: a term, or a module; a
+    definition with a module part, that of its module part, a module. *)
+Fixpoint mdesc_kind (R : mdesc) : mkind :=
   match R with
   | ds_term _ _ => mk_term
+  | ds_dm _ _ _ Rm => mdesc_kind Rm
   | _ => mk_mod
   end.
+
+Lemma mdesc_kind_up : forall Θ' R, mdesc_kind (ds_up Θ' R) = mdesc_kind R.
+Proof. intros Θ' R; induction R; cbn; auto. Qed.
+
+Lemma mdesc_kind_sub : forall R σ, mdesc_kind (ds_sub R σ) = mdesc_kind R.
+Proof. intros R σ; revert σ; induction R; intros; cbn; auto. Qed.
+
+Lemma mdesc_kind_named : forall Θ' Ns M R, mdesc_kind (ds_named Θ' Ns M R) = mdesc_kind R.
+Proof.
+  intros; apply (ds_named_cases (fun R' => mdesc_kind R' = mdesc_kind R)); [ reflexivity |].
+  destruct R as [? [] | | | | |]; reflexivity.
+Qed.
 
 Definition entry_eq_upto_type (Ek Ex : gentry) : Prop :=
   Ek = Ex \/ exists b pv A A' M, Ek = ge_def b pv A (Some M) /\ Ex = ge_def b pv A' (Some M).
@@ -352,28 +367,40 @@ Proof. intros T [| ? [? [[|] ?|?]] | | |]; reflexivity. Qed.
 Lemma mdesc_kind_edenote : forall Γ o E R, edenote Θm Ξm Γ o E R -> mdesc_kind R = entry_kind E.
 Proof.
   intros * He; inversion He; subst; try reflexivity.
-  match goal with Hu : udenote _ _ _ _ _ _ |- _ => pose proof (udenote_is_mod _ _ _ _ _ _ Hu) as Hm end.
-  destruct R; cbn in *; first [ contradiction | reflexivity ].
+  all: match goal with Hu : udenote _ _ _ _ _ ?R0 |- _ => pose proof (udenote_is_mod _ _ _ _ _ _ Hu) as Hm; destruct R0 end;
+    cbn in *; first [ contradiction | reflexivity ].
+Qed.
+
+Lemma mdesc_kind_at : forall R N R', ds_at R N = Some R' -> mdesc_kind R' = mdesc_kind R.
+Proof.
+  intros R N; induction R as [| | | | | Θd A M Rm IH]; intros R' E1; cbn in E1.
+  6: { destruct (ds_at Rm N) as [Rm' |] eqn:E; [| discriminate ].
+       destruct (tele_split (rev Θd)) as [[[? ?] ?] | ?]; injection E1 as <-; cbn; exact (IH _ eq_refl). }
+  all: repeat match type of E1 with
+         | match ?s with _ => _ end = _ => destruct s; try discriminate
+         end;
+       injection E1 as <-; reflexivity.
 Qed.
 
 Lemma mdesc_kind_ats : forall Ns R R', ds_ats R Ns = Some R' -> mdesc_kind R' = mdesc_kind R.
 Proof.
   induction Ns as [| N Ns IH]; intros * Ha; cbn in Ha; [ injection Ha as <-; reflexivity |].
   destruct (ds_at R N) as [R1 |] eqn:E1; [| discriminate ].
-  rewrite (IH _ _ Ha).
-  destruct R; cbn in E1;
-    repeat match type of E1 with
-           | match ?s with _ => _ end = _ => destruct s; try discriminate
-           end;
-    injection E1 as <-; reflexivity.
+  rewrite (IH _ _ Ha); exact (mdesc_kind_at _ _ _ E1).
+Qed.
+
+Lemma mdesc_kind_ats_read : forall Ns R R', ds_ats_read R Ns = Some R' -> mdesc_kind R' = mdesc_kind R.
+Proof.
+  intros * Ha; destruct (ds_ats_read_inv _ _ _ Ha) as [Ha' | (A & M & Rm & B & M' & Rm' & -> & -> & _ & Ha')];
+    [ exact (mdesc_kind_ats _ _ _ Ha') | cbn; exact (mdesc_kind_ats _ _ _ Ha') ].
 Qed.
 
 Lemma mdesc_kind_read : forall rd R R', ds_read rd R = Some R' -> mdesc_kind R' = mdesc_kind R.
 Proof.
   intros [Δ Φ' | Θ' Ns M] * Hr; cbn in Hr.
-  - destruct (gm_fill Φ'); cbn in Hr; [ injection Hr as <- | discriminate ]; destruct R; reflexivity.
-  - destruct (ds_ats R Ns) as [R1 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
-    rewrite <- (mdesc_kind_ats _ _ _ Ha); destruct Θ', Ns; destruct R1 as [? [] | | | |]; reflexivity.
+  - destruct (gm_fill Φ'); cbn in Hr; [ injection Hr as <- | discriminate ]; rewrite mdesc_kind_up, mdesc_kind_sub; reflexivity.
+  - destruct (ds_ats_read R Ns) as [R1 |] eqn:Ha; cbn in Hr; [ injection Hr as <- | discriminate ].
+    rewrite mdesc_kind_up, mdesc_kind_named; exact (mdesc_kind_ats_read _ _ _ Ha).
 Qed.
 
 (** What a member of a module expression denotes has the kind its value

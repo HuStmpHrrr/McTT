@@ -293,7 +293,7 @@ Proof. elab_ok. Qed.
 (** A term variable in module position is the binder: [B.Id], under a [λ]
     binding [B], names the variable, which is innermost.  Whether it is a
     term of a record type, whose module has a member [Id], is the core's
-    to say ([AccessFill]). *)
+    to say ([fill_mod_term]). *)
 Example var_module_position :
   elab_spec (unit_of (def_cmd dk_def md_pub "f" (pi "B" nat nat) (fn "B" nat (proj (var "B") "Id")) :: nil))
     (nil, ⋅, cc_def "f" true false (Π ℕ ℕ) (Some (λ ℕ (a_mem (me_var 0) "Id"))) :: nil).
@@ -1230,6 +1230,26 @@ Example local_ind_alias :
   forall u, ~ elab_spec (unit_of
                 (c_eval (letb (d_mod "M" nil (md_where (c_ind_alias false "E" nil (var "Nat") :: nil))) (num 0)) None :: nil)) u.
 Proof. elab_fails. Qed.
+
+(** A record alias reads its target as an inductive alias does: a module
+    under its parameters, applied to them.  Whether it names a record
+    type is the core's to decide ([rc_record_alias]):
+
+<<
+module T where
+record P (A : Typeω@0) : Typeω@0 where fst : A end
+record Q (B : Typeω@0) := P B
+end
+>>
+*)
+Example record_alias_spec :
+  elab_spec (unit_of
+    (c_record false "P" (("A", typ 0) :: nil) (typ 0) (("fst", var "A") :: nil) nil ::
+     c_record_alias false "Q" (("B", typ 0) :: nil) (app (var "P") (var "B")) :: nil))
+    (nil, ⋅,
+     cc_record "P" false (⋅ ▹ Typeω@0) Typeω@0 (("fst", #0) :: nil) nil ::
+     cc_record_alias "Q" false (⋅ ▹ Typeω@0) (me_app (T_ ("P" :: nil)) #0) :: nil).
+Proof. elab_ok. Qed.
 
 (** A numeral is a core literal; what it stands for, the bound natural
     numbers or [ℕ], is the core's.  [builtin natural := Nat] names the type

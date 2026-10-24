@@ -421,6 +421,10 @@ Section Fill.
   | fill_cmd_ind_alias : forall x pv Δ Δ' E E',
       fill_tele (gs_tele Ξ) Δ Δ' -> fill_mod (Δ' ++ gs_tele Ξ) E E' None ->
       fill_cmd (cc_ind_alias x pv Δ E) (cc_ind_alias x pv Δ' E')
+  (** A record alias: its telescope, then its target, a module *)
+  | fill_cmd_record_alias : forall x pv Δ Δ' E E',
+      fill_tele (gs_tele Ξ) Δ Δ' -> fill_mod (Δ' ++ gs_tele Ξ) E E' None ->
+      fill_cmd (cc_record_alias x pv Δ E) (cc_record_alias x pv Δ' E')
   (** A load: itself *)
   | fill_cmd_load : forall fp, fill_cmd (cc_load fp) (cc_load fp)
   (** An open: its target, which may be a record value, whose members its

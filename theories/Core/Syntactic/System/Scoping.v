@@ -84,17 +84,7 @@ with gentry_scoped (n : nat) (E : gentry) : Prop :=
   | ge_def _ _ A B => exp_scoped n A /\ match B with Some M => exp_scoped n M | None => True end
   | ge_mod _ U => gunit_scoped n U
   | ge_ind _ _ _ D Φ => gmod_scoped (ind_nu D + n) Φ
-  | ge_ind_alias _ Δ _ _ _ Ns =>
-      (fix tele_closed (Δ : list centry) : Prop :=
-         match Δ with
-         | nil => True
-         | e :: Δ' => centry_scoped (List.length Δ') e /\ tele_closed Δ'
-         end) Δ /\
-      (fix args_scoped (Ns : list exp) : Prop :=
-         match Ns with
-         | nil => True
-         | N :: Ns' => exp_scoped (List.length Δ) N /\ args_scoped Ns'
-         end) Ns
+  | ge_def_mod _ A M U => exp_scoped n A /\ exp_scoped n M /\ gunit_scoped n U
   | ge_record _ _ R Φ => gmod_scoped (S (List.length (record_params R)) + n) Φ
   end
 with centry_scoped (n : nat) (e : centry) : Prop :=
@@ -1765,7 +1755,7 @@ Definition entry_closed (E : gentry) : Prop :=
   | ge_def _ _ A B => exp_scoped 0 A /\ opt_scoped 0 B
   | ge_mod _ _ => True
   | ge_ind _ _ _ D _ => decl_closed D
-  | ge_ind_alias _ Δ _ _ _ Ns => ctx_scoped 0 Δ /\ Forall (exp_scoped (List.length Δ)) Ns
+  | ge_def_mod _ A M U => exp_scoped 0 A /\ exp_scoped 0 M /\ gunit_scoped 0 U
   | ge_record _ _ _ _ => True
   end.
 
@@ -1798,7 +1788,7 @@ Fixpoint body_closed (k : nat) (Φ : gmod) {struct Φ} : Prop :=
       | ge_mod _ (gu_mk Δ (md_body sm Φ1)) => sm = sm_closed /\ ctx_scoped k Δ /\ body_closed (List.length Δ + k) Φ1
       | ge_mod _ U => gunit_scoped 0 U
       | ge_ind _ _ _ D Φ1 => decl_closed D /\ body_closed (List.length (ind_uparams D)) Φ1
-      | ge_ind_alias _ Δ _ _ _ Ns => ctx_scoped 0 Δ /\ List.Forall (exp_scoped (List.length Δ)) Ns
+      | ge_def_mod _ A M U => exp_scoped 0 A /\ exp_scoped 0 M /\ gunit_scoped 0 U
       | ge_record _ p R Φ1 =>
           (ctx_scoped 0 (record_fctx R (List.length (record_fields R)) ++ record_params R) /\
            exp_scoped (List.length (record_params R)) (record_sort R)) /\
@@ -1845,7 +1835,7 @@ Proof.
   destruct HΦ as [HΦ HE]; destruct (IH Φ T (conj HT HΦ)) as [IHr IHm]; split.
   - intros [| x ip] E0 Hr; cbn in Hr; [ discriminate |].
     destruct (String.eqb x y); [| eapply IHr; exact Hr ].
-    destruct ip as [| z ip], E as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Δa pma pa ka Nsa | pv pr Rr Φ1]; try discriminate.
+    destruct ip as [| z ip], E as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Aa Ma Ua | pv pr Rr Φ1]; try discriminate.
     + injection Hr as <-; exact HE.
     + destruct HE as (-> & HΔ & HΦ1).
       assert (Hu : unit_closed (Δ ++ T) Φ1) by (split; [ apply ctx_scoped_app_iff; auto | rewrite length_app; exact HΦ1 ]).
@@ -1859,7 +1849,7 @@ Proof.
       exact (proj1 (IH _ _ Hu) _ _ Hr).
   - intros x ip r Hr; cbn in Hr.
     destruct (String.eqb x y); [| eapply IHm; exact Hr ].
-    destruct E as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Δa pma pa ka Nsa | pv pr Rr Φ1]; try discriminate.
+    destruct E as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Aa Ma [Δa [sma Φa | Ea]] | pv pr Rr Φ1]; try discriminate.
     + destruct HE as (-> & HΔ & HΦ1).
       assert (Hu : unit_closed (Δ ++ T) Φ1) by (split; [ apply ctx_scoped_app_iff; auto | rewrite length_app; exact HΦ1 ]).
       destruct ip as [| z ip]; [ injection Hr as <-; split; [ apply Hu | exact I ] |].
@@ -1869,10 +1859,7 @@ Proof.
       assert (Hu : unit_closed (ind_uparams D) Φ1) by (split; [ apply (dc_uparams _ HD) | exact HΦ1 ]).
       destruct ip as [| z ip]; [ injection Hr as <-; split; [ apply Hu | exact HD ] |].
       exact (proj2 (IH _ _ Hu) _ _ _ Hr).
-    + destruct ip; [ injection Hr as <- | discriminate ].
-      destruct HE as [HΔ HNs]; apply gunit_scoped_mk; split; [ exact HΔ |].
-      cbn; apply me_apps_scoped_iff; split; [ apply qname_mod_scoped |].
-      eapply Forall_impl; [| exact HNs ]; intros; cbn; rewrite Nat.add_0_r; assumption.
+    + destruct ip; [ injection Hr as <-; exact (proj2 (proj2 HE)) | discriminate ].
     + destruct HE as [[HF _] HΦ1].
       assert (Hu : unit_closed (record_mod_tele pr Rr) Φ1)
         by (split; [ exact (record_mod_tele_scoped _ _ (proj2 (proj1 (ctx_scoped_app_iff _ _) HF))) | exact HΦ1 ]).
@@ -1927,6 +1914,35 @@ Proof.
   - exact (proj1 (unit_closed_mod _ _ (HΘ _ _ Hl)) _ _ Hm).
 Qed.
 
+(** Every entry of a closed body is closed. *)
+Lemma body_closed_entry : forall Φ k ip E, body_closed k Φ -> gm_entry Φ ip = Some E -> entry_closed E.
+Proof.
+  fix IH 1; intros [| Φ y E0 | Φ H its] k ip E HΦ He; cbn in HΦ, He; [ discriminate | | contradiction ].
+  destruct HΦ as [HΦ HE]; destruct ip as [| x ip]; [ discriminate |].
+  destruct (String.eqb x y); [| exact (IH _ _ _ _ HΦ He) ].
+  destruct ip as [| z ip].
+  - injection He as <-.
+    destruct E0 as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Aa Ma Ua | pv pr Rr Φ1]; cbn;
+      first [ exact HE | exact I | exact (proj1 HE) ].
+  - destruct E0 as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Aa Ma Ua | pv pr Rr Φ1]; try discriminate.
+    + exact (IH _ _ _ _ (proj2 (proj2 HE)) He).
+    + exact (IH _ _ _ _ (proj2 HE) He).
+    + exact (IH _ _ _ _ (proj2 HE) He).
+Qed.
+
+(** Every entry of a closed global context is closed. *)
+Lemma gctx_closed_entry : forall Θ Ξ p E,
+    gctx_closed Θ Ξ -> gc_entry Θ Ξ p = Some E -> entry_closed E.
+Proof.
+  intros * [HΘ HΞ] He; unfold gc_entry, gc_entry_u in He.
+  destruct (gs_find Ξ p) as [[U ip] |] eqn:Hf.
+  - destruct (gs_find_unit _ _ _ _ Hf) as (mp & K & Hin & _).
+    destruct (stack_closed_in _ _ _ _ HΞ Hin) as (T & _ & HU).
+    exact (body_closed_entry _ _ _ _ HU He).
+  - destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:Hl; [| discriminate ].
+    exact (body_closed_entry _ _ _ _ (proj2 (HΘ _ _ Hl)) He).
+Qed.
+
 Lemma gctx_closed_module : forall Θ Ξ p r,
     gctx_closed Θ Ξ ->
     gc_module Θ Ξ p = Some r ->
@@ -1964,7 +1980,7 @@ Definition entry_ok (T : ctx) (E : gentry) : Prop :=
   | ge_mod _ (gu_mk Δ (md_body sm Φ)) => sm = sm_closed /\ unit_closed (Δ ++ T) Φ
   | ge_mod _ U => gunit_scoped 0 U
   | ge_ind _ _ _ D Φ => decl_closed D /\ unit_closed (ind_uparams D) Φ
-  | ge_ind_alias _ _ _ _ _ _ => entry_closed E
+  | ge_def_mod _ _ _ _ => entry_closed E
   | ge_record _ p R Φ =>
       (ctx_scoped 0 (record_fctx R (List.length (record_fields R)) ++ record_params R) /\
        exp_scoped (List.length (record_params R)) (record_sort R)) /\
@@ -1972,22 +1988,10 @@ Definition entry_ok (T : ctx) (E : gentry) : Prop :=
   end.
 
 
-(** What an inductive alias records is closed: its telescope, and the
-    arguments over it. *)
-Lemma gctx_closed_ind_alias : forall Θ Ξ pq Δ pm p k Ns,
-    gctx_closed Θ Ξ -> ind_alias_lookup Θ Ξ pq = Some (Δ, pm, p, k, Ns) ->
-    ctx_scoped 0 Δ /\ List.Forall (exp_scoped (List.length Δ)) Ns.
-Proof.
-  intros * Hc Hl.
-  pose proof (gctx_closed_module _ _ _ _ Hc (ind_alias_lookup_module _ _ _ _ _ _ _ _ Hl)) as Hm; cbn in Hm.
-  apply gunit_scoped_mk in Hm as [HΔ Hm]; cbn in Hm.
-  apply me_apps_scoped_iff in Hm as [_ HNs]; rewrite Nat.add_0_r in HNs; auto.
-Qed.
-
 Lemma mod_closed_ext : forall T Φ x E, unit_closed T Φ -> entry_ok T E -> unit_closed T (Φ ⊳ x ↦ E).
 Proof.
   intros * [HT HΦ] HE; split; [ exact HT |]; cbn; split; [ exact HΦ |].
-  destruct E as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Δa pma pa ka Nsa | pv pr Rr Φ1]; cbn in HE |- *; try exact HE.
+  destruct E as [b pv A B | pm [Δ [sm Φ1 | E1]] | pv pq k0 D Φ1 | pv Aa Ma Ua | pv pr Rr Φ1]; cbn in HE |- *; try exact HE.
   - destruct HE as (-> & HΔ & HΦ1); apply ctx_scoped_app_iff in HΔ as [HΔ _].
     rewrite length_app in HΦ1; auto.
   - destruct HE as [HD [_ HΦ1]]; auto.

@@ -245,6 +245,7 @@ Fixpoint elab_body (S : list ent) (Φ : gmod) (cs : list Cst.cmd) : eres gmod :=
   | Cst.c_mdef _ _ _ :: _ => eerr "a mutual definition is not allowed in a local module"
   | Cst.c_builtin _ _ :: _ => eerr "builtin is not allowed in a local module"
   | Cst.c_ind_alias _ _ _ _ :: _ => eerr "an inductive alias is not allowed in a local module"
+  | Cst.c_record_alias _ _ _ _ :: _ => eerr "a record alias is not allowed in a local module"
   | Cst.c_record _ _ _ _ _ _ :: _ => eerr "a record type is not allowed in a local module"
   end.
 
@@ -525,6 +526,8 @@ Proof.
     intros k o _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
   - (* c_ind_alias *)
     intros pv x ps o _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
+  - (* c_record_alias *)
+    intros pv x ps o _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
   - (* c_record *)
     intros pv x ps o fs cs' _ _ _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
 Qed.
@@ -733,6 +736,9 @@ Section Commands.
       + intros Hg; inversion Hg; subst.
         rewrite (proj2 (elab_mod_iff _ _ _)) by eassumption; reflexivity.
     - intros pv x ps o _ _ ch O F F' c'; cbn [elab_cmd].
+      split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].
+    - (* a record alias, as an inductive alias *)
+      intros pv x ps o _ _ ch O F F' c'; cbn [elab_cmd].
       split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].
     - (* a record type: its with-area by the commands' induction *)
       intros pv x ps o fs cs _ _ _ Hcs ch O F F' c'; apply cmds_iff in Hcs; cbn [elab_cmd]; split.

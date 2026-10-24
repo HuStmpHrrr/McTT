@@ -108,7 +108,7 @@ with gentry_mvcb (n : nat) (E : gentry) {struct E} : bool :=
   | ge_def _ _ A B => exp_mvcb n A && match B with Some M => exp_mvcb n M | None => true end
   | ge_mod _ U => gunit_mvcb n U
   | ge_ind _ _ _ D Φ => gmod_mvcb (ind_nu D + n) Φ
-  | ge_ind_alias _ _ _ _ _ _ => true
+  | ge_def_mod _ A M U => exp_mvcb n A && exp_mvcb n M && gunit_mvcb n U
   | ge_record _ _ R Φ => gmod_mvcb (S (List.length (record_params R)) + n) Φ
   end
 with centry_mvcb (n : nat) (e : centry) {struct e} : bool :=
@@ -214,6 +214,8 @@ Proof.
   all: rewrite ?andb_true_iff.
   all: repeat match goal with IH : forall n : nat, _ <-> _ |- _ => setoid_rewrite IH; clear IH end.
   all: try (split; auto; fail).
+  (** A definition with a module part: its three parts, reassociated. *)
+  all: try (tauto; fail).
   - apply Nat.ltb_lt.
   - destruct oA as [A |]; [ rewrite (H A eq_refl) | split; intros [_ ?]; split; auto ]; reflexivity.
   - (* a unit: its telescope *)
@@ -2017,8 +2019,9 @@ Proof. intros * He; unfold gc_body; rewrite (gds_equiv_lookup _ _ _ He); reflexi
 Lemma gds_equiv_ind_lookup : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> ind_lookup Θ Ξ p = ind_lookup Θ' Ξ p.
 Proof. intros * He; rewrite !ind_lookup_unfold, !ind_mlookup_unfold, (gds_equiv_module _ _ _ _ He); reflexivity. Qed.
 
-Lemma gds_equiv_ind_alias : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> ind_alias_lookup Θ Ξ p = ind_alias_lookup Θ' Ξ p.
-Proof. intros * He; unfold ind_alias_lookup, ind_alias_lookup_u; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
+(** The entries are found alike: in the frames, or in the dependencies. *)
+Lemma gds_equiv_entry : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> gc_entry Θ Ξ p = gc_entry Θ' Ξ p.
+Proof. intros * He; unfold gc_entry, gc_entry_u; rewrite (gds_equiv_lookup _ _ (q_unit p) He); reflexivity. Qed.
 
 (** The record types are found alike: in the frames, or in the entries. *)
 Lemma gds_equiv_record_lookup : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> record_lookup Θ Ξ p = record_lookup Θ' Ξ p.
@@ -2031,15 +2034,25 @@ Qed.
     lookups alone. *)
 Lemma gds_equiv_ds_mod : forall Θ Θ' Ξ R, gds_equiv Θ Θ' -> ds_mod Θ Ξ R = ds_mod Θ' Ξ R.
 Proof.
-  intros * He; destruct R; cbn [ds_mod]; try reflexivity.
+  intros * He; induction R as [| | | | | Θd A M Rm IH]; cbn [ds_mod]; try reflexivity.
   - rewrite (gds_equiv_ind_lookup _ _ _ _ He).
     destruct (ind_lookup Θ' Ξ _); [ destruct (ind_mpath _ _); [ unfold gc_loc; rewrite (gds_equiv_body _ _ _ _ He) |] |]; reflexivity.
   - (* a record type's module, at its path *)
     unfold gc_loc; rewrite (gds_equiv_body _ _ _ _ He); reflexivity.
+  - (* a definition with a module part: its module part's *)
+    exact IH.
+Qed.
+
+(** The term part of a description reads the dependencies through their
+    lookups alone. *)
+Lemma gds_equiv_ds_ty : forall Θ Θ' Ξ R, gds_equiv Θ Θ' -> ds_ty Θ Ξ R = ds_ty Θ' Ξ R.
+Proof.
+  intros * He; destruct R; cbn [ds_ty]; try reflexivity;
+    first [ rewrite (gds_equiv_ind_lookup _ _ _ _ He) | rewrite (gds_equiv_record_lookup _ _ _ _ He) ]; reflexivity.
 Qed.
 
 (** What module expressions denote reads the dependencies through their
-    lookups alone ([gc_unit], [ds_mod]). *)
+    lookups alone ([gc_unit], [ds_mod], [ds_ty]). *)
 Lemma gds_equiv_mdenote_all : forall Θ Θ' Ξ, gds_equiv Θ Θ' ->
     (forall Γ H R, mdenote Θ Ξ Γ H R -> mdenote Θ' Ξ Γ H R) /\
     (forall Γ o U R, udenote Θ Ξ Γ o U R -> udenote Θ' Ξ Γ o U R) /\
@@ -2052,9 +2065,10 @@ Proof.
   { intros H; unfold gc_unit; destruct (mod_qname H) as [mp |]; [| reflexivity ].
     rewrite (gds_equiv_lookup _ _ (q_unit mp) He); reflexivity. }
   assert (Hd : forall R, ds_mod Θ Ξ R = ds_mod Θ' Ξ R) by (intros R; exact (gds_equiv_ds_mod _ _ _ R He)).
-  apply mdenote_all_ind; intros; rewrite ?Hu, ?Hd in *; econstructor; eauto.
-  - rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); assumption.
-  - rewrite !ind_mlookup_unfold, <- (gds_equiv_module _ _ _ _ He); assumption.
+  assert (Ht : forall R, ds_ty Θ Ξ R = ds_ty Θ' Ξ R) by (intros R; exact (gds_equiv_ds_ty _ _ _ R He)).
+  apply mdenote_all_ind; intros; rewrite ?Hu, ?Hd, ?Ht in *; econstructor; eauto.
+  all: first [ rewrite <- (gds_equiv_ind_lookup _ _ _ _ He); assumption
+             | rewrite !ind_mlookup_unfold, <- (gds_equiv_module _ _ _ _ He); assumption ].
 Qed.
 
 Corollary gds_equiv_mdenote : forall Θ Θ' Ξ Γ H R, gds_equiv Θ Θ' -> mdenote Θ Ξ Γ H R -> mdenote Θ' Ξ Γ H R.
@@ -2070,18 +2084,18 @@ Section Equiv.
   Lemma equiv_nbe_ty : forall Γ A W, nbe_ty Θ Ξ Γ A W -> nbe_ty Θ' Ξ Γ A W.
   Proof.
     apply nbe_ty_ext; intros; [ apply gds_equiv_resolve | apply gds_equiv_module | apply gds_equiv_ind_lookup
-                               | apply gds_equiv_ind_alias | reflexivity | reflexivity | apply gds_equiv_body
+                               | apply gds_equiv_entry | reflexivity | reflexivity | apply gds_equiv_body
                                | apply gds_equiv_record_lookup ]; exact He.
   Qed.
 
   Lemma equiv_nbe : forall Γ M A W, nbe Θ Ξ Γ M A W -> nbe Θ' Ξ Γ M A W.
   Proof.
     assert (Hs : (forall p, gc_resolve Θ Ξ p = gc_resolve Θ' Ξ p) /\ (forall p, gc_module Θ Ξ p = gc_module Θ' Ξ p) /\
-                 (forall p, ind_lookup Θ Ξ p = ind_lookup Θ' Ξ p) /\ (forall p, ind_alias_lookup Θ Ξ p = ind_alias_lookup Θ' Ξ p) /\
+                 (forall p, ind_lookup Θ Ξ p = ind_lookup Θ' Ξ p) /\ (forall p, gc_entry Θ Ξ p = gc_entry Θ' Ξ p) /\
                  (forall p, gc_frame Ξ p = gc_frame Ξ p) /\ (forall p, gs_find_ind Ξ p = gs_find_ind Ξ p) /\
                  (forall p, gc_body Θ Ξ p = gc_body Θ' Ξ p) /\ (forall p, record_lookup Θ Ξ p = record_lookup Θ' Ξ p))
       by (repeat split; intros; first [ reflexivity | apply gds_equiv_resolve | apply gds_equiv_module
-                                       | apply gds_equiv_ind_lookup | apply gds_equiv_ind_alias | apply gds_equiv_body
+                                       | apply gds_equiv_ind_lookup | apply gds_equiv_entry | apply gds_equiv_body
                                        | apply gds_equiv_record_lookup ];
           exact He).
     destruct Hs as (Hres & Hmod & Hind & Hia & Hfr & Hfi & Hbody & Hrec).

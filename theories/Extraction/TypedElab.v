@@ -29,13 +29,7 @@ Open Scope string_scope.
     judgment at the units filed: the two have the same lookups, so the
     same inferred types, the same denotations, the same eliminator
     readings, the same literals and the same privacy, and so the same
-    fills. *)
-
-Lemma gds_equiv_ds_ty : forall Θ Θ' Ξ R, gds_equiv Θ Θ' -> ds_ty Θ Ξ R = ds_ty Θ' Ξ R.
-Proof.
-  intros * He; destruct R; cbn [ds_ty]; try reflexivity;
-    [ rewrite (gds_equiv_ind_lookup _ _ _ _ He) | rewrite (gds_equiv_record_lookup _ _ _ _ He) ]; reflexivity.
-Qed.
+    fills.  [gds_equiv_ds_ty] is in [IndDecl]. *)
 
 Lemma gds_equiv_ds_mtele : forall Θ Θ' Ξ R, gds_equiv Θ Θ' -> ds_mtele Θ Ξ R = ds_mtele Θ' Ξ R.
 Proof. intros * He; unfold ds_mtele; rewrite (gds_equiv_ds_mod _ _ _ _ He); reflexivity. Qed.
@@ -137,12 +131,12 @@ Lemma equiv_fill_cmd : forall Θ Θ' Ξ B c c', gds_equiv Θ Θ' -> ⊢ᵍ Θ' �
 Proof.
   intros * He Hg' H.
   pose proof (equiv_fill_all _ _ _ B He Hg') as (Fe & _ & _ & Fb & Fo & _ & Fm & _ & _ & Ft & _).
-  destruct H as [ | | | | | | | | pv R R' [Hu Hr Hm] | b pv Δ Δ' f0 fs fh0 fsh f0' fs' pq m0 Ps D Us ms HΔ Hh Hgp Hb | |].
-  10:{ (* a mutual definition: its heads, its group, its bodies *)
+  destruct H as [ | | | | | | | | | pv R R' [Hu Hr Hm] | b pv Δ Δ' f0 fs fh0 fsh f0' fs' pq m0 Ps D Us ms HΔ Hh Hgp Hb | |].
+  11:{ (* a mutual definition: its heads, its group, its bodies *)
       eapply fill_cmd_mdef; [ exact (Ft _ _ _ HΔ) | | exact (equiv_mdef_group _ _ _ _ _ _ _ _ _ _ _ _ He Hg' Hgp) | ].
       - eapply Forall2_impl; [| exact Hh ]; intros f f' [En Ep Es Er Ec]; constructor; eauto.
       - eapply Forall2_impl; [| exact Hb ]; intros fm f' [En Ep Es Hm' Hr' Hc]; constructor; eauto. }
-  9:{ (* a group: each part *)
+  10:{ (* a group: each part *)
       apply fill_cmd_ind_decl; constructor; [ exact (Ft _ _ _ Hu) | exact Hr |].
       eapply Forall2_impl; [| exact Hm ]; intros Mr Mr' [En Hn Hs Hc]; constructor; eauto.
       eapply Forall2_impl; [| exact Hc ]; intros rc rc' [Ef [Hna Ht]]; split; [ exact Ef | constructor; eauto ]. }
@@ -800,6 +794,13 @@ Section Decide.
         match snd r with
         | None => fill_ok (cc_ind_alias x pv Δ' (fst r))
         | Some _ => fill_error (fill_failure_message ("the inductive alias " ++ x ++ " names a record value, not an inductive type"))
+        end
+    | cc_record_alias x pv Δ E =>
+        let%a Δ' := fill_tele_fn (gs_tele Ξ) Δ in
+        let%a r := fill_mod_fn (Δ' ++ gs_tele Ξ) "" E in
+        match snd r with
+        | None => fill_ok (cc_record_alias x pv Δ' (fst r))
+        | Some _ => fill_error (fill_failure_message ("the record alias " ++ x ++ " names a record value, not a record type"))
         end
     | cc_open E its =>
         let%a r := fill_mod_fn (gs_tele Ξ) "" E in
@@ -1495,6 +1496,8 @@ Section Decide.
       constructor; eapply fill_mod_fn_sound; eassumption.
     - destruct x0 as [E' [p |]]; cbn [fst snd] in *; bind_inv; try discriminate.
       constructor; [ apply fill_tele_fn_sound | eapply fill_mod_fn_sound ]; eassumption.
+    - destruct x0 as [E' [p |]]; cbn [fst snd] in *; bind_inv; try discriminate.
+      constructor; [ apply fill_tele_fn_sound | eapply fill_mod_fn_sound ]; eassumption.
     - constructor; [ apply fill_tele_fn_sound | apply fill_exp_fn_sound | apply fill_fields_fn_sound ]; assumption.
     - constructor.
   Qed.
@@ -1506,6 +1509,7 @@ Section Decide.
     intros c c' H; inversion H; subst; cbn [fill_cmd_fn]; try reflexivity.
     - rewrite (Ce _ _ _ H0); cbn; rewrite (Co _ _ _ H1); reflexivity.
     - rewrite (Ct _ _ _ H0); reflexivity.
+    - rewrite (Ct _ _ _ H0); cbn; rewrite (Cm _ _ _ _ H1 ""); reflexivity.
     - rewrite (Ct _ _ _ H0); cbn; rewrite (Cm _ _ _ _ H1 ""); reflexivity.
     - rewrite (Ct _ _ _ H0); cbn; rewrite (Cm _ _ _ _ H1 ""); reflexivity.
     - rewrite (Cm _ _ _ _ H0 ""); cbn; rewrite (proj2 (sels_check_spec _ _) H1); reflexivity.

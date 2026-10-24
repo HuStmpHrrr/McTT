@@ -284,7 +284,7 @@ with etab (S : list ptab) (E : gentry) : ptab :=
   | ge_def _ _ _ _ => pt_none
   | ge_mod _ U => utab S U
   | ge_ind _ _ _ D Φ => pt_body nil (btab (repeat pt_none (ind_nu D) ++ S) Φ)
-  | ge_ind_alias _ _ pm _ _ _ => pt_glob (qname_mod pm)
+  | ge_def_mod _ _ _ U => utab S U
   | ge_record _ _ R Φ => pt_body nil (btab (repeat pt_none (Nat.succ (List.length (record_params R))) ++ S) Φ)
   end.
 
@@ -385,7 +385,7 @@ with gentry_refs (S : list ptab) (E : gentry) : list (ptab * string)%type :=
   match E with
   | ge_def _ _ A B => exp_refs S A ++ match B with Some M => exp_refs S M | None => nil end
   | ge_mod _ U => gunit_refs S U
-  | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ | ge_record _ _ _ _ => nil
+  | ge_ind _ _ _ _ _ | ge_def_mod _ _ _ _ | ge_record _ _ _ _ => nil
   end
 with centry_refs (S : list ptab) (e : centry) : list (ptab * string)%type :=
   match e with
@@ -451,6 +451,7 @@ Definition cmd_refs (c : ccmd) : list (ptab * string)%type :=
   | cc_mdef _ _ Δ fs => tele_refs nil Δ ++ flat_map (rfun_refs (List.length Δ)) fs
   | cc_builtin _ H => modexp_refs nil H
   | cc_ind_alias _ _ Δ H => tele_refs nil Δ ++ modexp_refs nil H
+  | cc_record_alias _ _ Δ H => tele_refs nil Δ ++ modexp_refs nil H
   (** A record's parameters, sort and fields, each field binding a variable
       for the ones after it; its with-area is checked when it runs *)
   | cc_record _ _ Δ Srt fs _ =>

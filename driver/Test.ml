@@ -3914,7 +3914,7 @@ let%expect_test "an eliminator takes its type from its scrutinee" =
                         eval elim (N.s N.z) at k -> Nat | z => 0 | s m, h => succ h end" in
   [%expect {| Evaluate elim N.s N.z at x1 → ℕ | z ⇒ 0 | s x2, x3 ⇒ succ x3 end --> 1 : ℕ |}]
 
-let%expect_test "an eliminator of a scrutinee of no inductive type is rejected" =
+let%expect_test "an eliminator with no branches is rejected" =
   let _ = main_of_body "eval fun (n : Nat) -> elim n at k -> Nat end" in
   [%expect {| Error: the eliminator has no branch for zero |}]
 
@@ -4960,3 +4960,106 @@ let%expect_test "an eliminator no group of which fits its blocks" =
       | cons x xs, h ⇒ …
       end
     |}]
+
+(** Definitions with a module part: inductive and record aliases, the
+    items of opens, and the binding of the natural numbers, read as terms
+    through their normal forms and as modules through their aliases. *)
+let dm_decls =
+  "module D where \
+     record Pair (A : Type@0) (B : Type@0) : Type@0 where fst : A; snd : B with def two : Nat := 2 end end end \
+     inductive N : Type@0 where | z | s (n : N) end \
+   end "
+
+let%expect_test "an open's items of a record type and an inductive type" =
+  let _ = main_of_body (dm_decls ^
+    "open D use (Pair; N) \
+     def y : Pair Nat Nat := record Pair Nat Nat where fst := 1; snd := 2 end end \
+     eval Pair.two Nat Nat y \
+     eval y.two \
+     eval N.rec 0l (fun (n : N) -> Nat) 0 (fun (n : N) (r : Nat) -> succ r) (N.s N.z)") in
+  [%expect {|
+    Evaluate Pair.two ℕ ℕ y --> 2 : ℕ
+    Evaluate y.two --> 2 : ℕ
+    Evaluate N.rec 0l (λ (x1 : N) → ℕ) 0 (λ (x2 : N)
+                                            (x3 : ℕ)
+                                           → succ x3) (N.s N.z) --> 1 : ℕ
+    |}]
+
+let%expect_test "an open's renamed items of an inductive type, a type and a module" =
+  let _ = main_of_body (dm_decls ^ "open D use (N as K) def x : K := K.z end eval K.s x") in
+  [%expect {| Evaluate K.s x --> D.N.s D.N.z : D.N |}]
+
+let%expect_test "a record alias at all the parameters" =
+  let _ = main_of_body (dm_decls ^
+    "record P := D.Pair Nat Nat \
+     def y : P := record D.Pair Nat Nat where fst := 1; snd := 2 end end \
+     eval P.two y \
+     eval y.fst") in
+  [%expect {|
+    Evaluate P.two y --> 2 : ℕ
+    Evaluate y.fst --> 1 : ℕ
+    |}]
+
+let%expect_test "record aliases at some of the parameters" =
+  let _ = main_of_body (dm_decls ^
+    "record R := D.Pair \
+     record S (A : Type@0) := D.Pair A \
+     def y : R Nat Nat := record D.Pair Nat Nat where fst := 1; snd := 2 end end \
+     eval R.two Nat Nat y \
+     eval y : S Nat Nat") in
+  [%expect {|
+    Evaluate R.two ℕ ℕ y --> 2 : ℕ
+    Evaluate y --> record D.Pair ℕ ℕ where fst ≔ 1; snd ≔ 2 end : S ℕ ℕ
+    |}]
+
+let%expect_test "an inductive alias is the type, its constructors and its recursor" =
+  let _ = main_of_body (dm_decls ^
+    "inductive M := D.N \
+     eval M.z \
+     eval elim M.s M.z at (k : M) -> Nat | z => 0 | s m, r => succ r end \
+     eval M.rec 0l (fun (n : M) -> Nat) 0 (fun (n : M) (r : Nat) -> succ r) (M.s M.z)") in
+  [%expect {|
+    Evaluate M.z --> D.N.z : D.N
+    Evaluate elim M.s M.z at (x1 : M) → ℕ | z ⇒ 0 | s x2, x3 ⇒ succ x3 end --> 1
+      : ℕ
+    Evaluate M.rec 0l (λ (x1 : M) → ℕ) 0 (λ (x2 : M)
+                                            (x3 : ℕ)
+                                           → succ x3) (M.s M.z) --> 1 : ℕ
+    |}]
+
+let%expect_test "an inductive alias of a record type is rejected" =
+  let _ = main_of_body (dm_decls ^ "inductive F := D.Pair") in
+  [%expect {| Error: inductive alias F names a record type: use record |}]
+
+let%expect_test "a record alias of an inductive type is rejected" =
+  let _ = main_of_body (dm_decls ^ "record F := D.N") in
+  [%expect {| Error: record alias F names an inductive type: use inductive |}]
+
+let%expect_test "an open of an inductive type as a module, a plain module alias" =
+  let _ = main_of_body (dm_decls ^ "open D.N as K def x : D.N := K.z end eval x eval K.s x") in
+  [%expect {|
+    Evaluate x --> D.N.z : D.N
+    Evaluate K.s x --> D.N.s D.N.z : D.N
+    |}]
+
+let%expect_test "a binding through an inductive alias in another module" =
+  let _ = main_of_bare_body "module A where inductive MyNatT : Type@0 where | z | s (n : MyNatT) end end \
+                             inductive MyNat := A.MyNatT builtin natural := MyNat eval 2" in
+  [%expect {| Evaluate 2 --> 2 : ℕ |}]
+
+let%expect_test "a binding of a plain module is rejected" =
+  let _ = main_of_bare_body "module X where end builtin natural := X" in
+  [%expect {| Error: Test.X is not an inductive type |}]
+
+let%expect_test "an open of a record value as a module" =
+  let _ = main_of_body (dm_decls ^
+    "def q : D.Pair Nat Nat := record D.Pair Nat Nat where fst := 1; snd := 2 end end \
+     module M where open q as W eval W.fst end") in
+  [%expect {| Evaluate M.W.fst --> 1 : ℕ |}]
+
+let%expect_test "an open of a record value given at the parameters" =
+  let _ = main_of_body (dm_decls ^
+    "record R := D.Pair \
+     def q : D.Pair Nat Nat := record D.Pair Nat Nat where fst := 1; snd := 2 end end \
+     module M where open R Nat Nat q as W eval W.snd end") in
+  [%expect {| Evaluate M.W.snd --> 2 : ℕ |}]

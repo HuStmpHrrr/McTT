@@ -78,7 +78,8 @@ The result is the *normal form* of that term, a side condition
 
 The atoms of `L` are arbitrary neutrals, for example `g (fun x -> x)`. So this
 needs strengthening of every normal form (`nf_strengthen`), by mutual induction
-on `nf`/`ne`/`lvl_atoms`. Each case does three things:
+on `nf`/`ne` (`nf_ne_ind`; a level's atoms are a nested list of
+`level_atom_g ne`). Each case does three things:
 
 - It inverts the long typing of its head (`CoreInversions`).
 - It strengthens the parts by the induction hypotheses.

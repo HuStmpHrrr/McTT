@@ -95,7 +95,7 @@ Lemma rel_alias_unit_up : forall Γ Δ X, Δ <> nil -> tele_ass Δ -> ds_is_mod 
     Γ ⊨ᵐ me_lit (gu_mk Δ (md_alias (ds_unit X))) ≈ ds_unit (ds_up Δ X) /\ valid_unit Γ (ds_unit (ds_up Δ X)).
 Proof.
   intros * Hne HΔ Hm HK.
-  destruct X as [A om | Δe Φ Φx | [| e Θ'] p T Φ Ns | Θ0 p Ns | Θ0 p Ns]; cbn in Hm; try contradiction; cbn [ds_up ds_unit] in HK |- *.
+  destruct X as [A om | Δe Φ Φx | [| e Θ'] p T Φ Ns | Θ0 p Ns | Θ0 p Ns | Θd Ad Md Rm]; cbn in Hm; try contradiction; cbn [ds_up ds_unit] in HK |- *.
   - (* a local body *)
     split; [ exact (rel_lit_flatten _ _ _ _ HΔ HK) | exact (valid_unit_abs _ _ Hgm Hgf _ _ _ HK HΔ) ].
   - (* a filed module at arguments: the alias is the unit *)

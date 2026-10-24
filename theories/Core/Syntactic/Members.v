@@ -23,7 +23,10 @@ Generalizable All Variables.
 (** ** Resolution in a Module
 
     A module is a sequence of entries, in declaration order: definitions and
-    nested modules (see [gentry] in [Syntax]).  A nested module of a filed
+    nested modules (see [gentry] in [Syntax]).  A definition with a module
+    part ([ge_def_mod]) does not resolve here: as a module it is its alias
+    ([gm_submodule]), and as a term evaluation reads it off its entry
+    ([gc_entry]), as kinds see a module only.  A nested module of a filed
     unit is a body [ge_body pv Δ Φ], with [Δ] the parameters it adds to the ones
     it is already under, or an alias [ge_mod pv (gu_mk T (md_alias E))], with [T]
     its full telescope.
@@ -135,14 +138,15 @@ Fixpoint gm_submodule (T : ctx) (Φ : gmod) (x : string) (ip : list string) : op
             | nil => Some (mr_body (ind_uparams D) (Some (pq, k, D)))
             | z :: ip' => gm_submodule (ind_uparams D) Φ' z ip'
             end
-        (** As a module, an inductive alias is an alias, over its own
-            telescope, of the module at its canonical path at its
-            arguments. *)
-        | ge_ind_alias _ Δ pm _ _ Ns =>
+        (** As a module, a definition with a module part is its module
+            part, an alias.  Its well-formedness makes the unit an alias,
+            so the case of a body ([md_body]) is unreachable; it is none. *)
+        | ge_def_mod _ _ _ (gu_mk Δ (md_alias E')) =>
             match ip with
-            | nil => Some (mr_alias (gu_mk Δ (md_alias (me_apps (qname_mod pm) Ns))))
+            | nil => Some (mr_alias (gu_mk Δ (md_alias E')))
             | _ :: _ => None
             end
+        | ge_def_mod _ _ _ (gu_mk _ (md_body _ _)) => None
         (** A record's module is a body module over the record's
             parameters and then a value of it ([record_mod_tele]). *)
         | ge_record _ p R Φ' =>
@@ -615,7 +619,7 @@ Definition ge_private (E : gentry) : bool :=
   | ge_def _ pv _ _ => pv
   | ge_mod pv _ => pv
   | ge_ind pv _ _ _ _ => pv
-  | ge_ind_alias pv _ _ _ _ _ => pv
+  | ge_def_mod pv _ _ _ => pv
   | ge_record pv _ _ _ => pv
   end.
 
@@ -638,56 +642,6 @@ Proof.
   destruct (String.eqb_spec z x) as [-> |]; [ contradiction | assumption ].
 Qed.
 
-(** ** The Inductive Alias a Path Names
-
-    [ind_alias_lookup Θ Ξ q]: the telescope, the member named (the path of
-    its module, the group's path, the member) and the arguments of the
-    inductive alias at the path [q]. *)
-Definition ind_alias_view : Type := (list centry * qname * qname * nat * list exp)%type.
-
-(** The member an entry names, if it is an inductive alias. *)
-Definition ge_ind_target (E : gentry) : option ind_alias_view :=
-  match E with
-  | ge_ind_alias _ Δ pm pq k Ns => Some (Δ, pm, pq, k, Ns)
-  | _ => None
-  end.
-
-Definition gm_ind_target (Φ : gmod) (ip : list string) : option ind_alias_view :=
-  match gm_entry Φ ip with
-  | Some E => ge_ind_target E
-  | None => None
-  end.
-
-Definition ind_alias_lookup_u (uf : path -> option gunit) (Ξ : gstack) (pq : qname) : option ind_alias_view :=
-  match gs_find Ξ pq with
-  | Some (U, ip) => gm_ind_target (gu_mod U) ip
-  | None =>
-      match uf (q_unit pq) with
-      | Some U => gm_ind_target (gu_mod U) (q_chain pq)
-      | None => None
-      end
-  end.
-
-Definition ind_alias_lookup (Θ : gdeps) (Ξ : gstack) (pq : qname) : option ind_alias_view :=
-  ind_alias_lookup_u (gds_lookup Θ) Ξ pq.
-
-(** The member of a group of inductive types a path names, its own module
-    or through an inductive alias, as a view: no telescope and no argument
-    for the member itself. *)
-Definition ind_target_u (uf : path -> option gunit) (Ξ : gstack) (p : qname) : option ind_alias_view :=
-  match ind_mlookup_u uf Ξ p with
-  | Some (pq, k, _) => Some (nil, p, pq, k, nil)
-  | None => ind_alias_lookup_u uf Ξ p
-  end.
-
-(** [ind_target_u] at the filed units of [Θ]. *)
-Definition ind_target (Θ : gdeps) (Ξ : gstack) (p : qname) : option ind_alias_view := ind_target_u (gds_lookup Θ) Ξ p.
-
-Lemma ind_target_unfold : forall Θ Ξ p,
-    ind_target Θ Ξ p =
-      match ind_mlookup Θ Ξ p with Some (pq, k, _) => Some (nil, p, pq, k, nil) | None => ind_alias_lookup Θ Ξ p end.
-Proof. reflexivity. Qed.
-
 (** The lookups at a function agreeing with [gds_lookup Θ] are those at
     [Θ]. *)
 Section UnitsOk.
@@ -708,18 +662,7 @@ Section UnitsOk.
 
   Lemma gc_entry_u_ok : forall Ξ p, gc_entry_u uf Ξ p = gc_entry Θ Ξ p.
   Proof. intros; unfold gc_entry, gc_entry_u; rewrite Huf; reflexivity. Qed.
-
-  Lemma ind_alias_lookup_u_ok : forall Ξ p, ind_alias_lookup_u uf Ξ p = ind_alias_lookup Θ Ξ p.
-  Proof. intros; unfold ind_alias_lookup, ind_alias_lookup_u; rewrite Huf; reflexivity. Qed.
 End UnitsOk.
-
-Lemma gm_ind_target_ext_fresh : forall Φ x E ip p,
-    gm_fresh x Φ -> gm_ind_target Φ ip = Some p -> gm_ind_target (Φ ⊳ x ↦ E) ip = Some p.
-Proof.
-  intros * Hf H; unfold gm_ind_target in *.
-  destruct (gm_entry Φ ip) as [E0 |] eqn:E1; [| discriminate ].
-  rewrite (gm_entry_ext_fresh _ _ _ _ _ Hf E1); exact H.
-Qed.
 
 (** ** One Lookup for a Global
 
@@ -731,7 +674,7 @@ Lemma gm_entry_resolve_def : forall Φ ip b pv A B,
 Proof.
   fix IH 1; intros [| Φ y E | Φ H its] [| x ip] *; cbn; try tauto; try exact (IH _ _ _ _ _ _).
   destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _) ].
-  destruct ip as [| z ip], E as [b' pv' A' B' | pm [Δ [? Φ' | E']] | pv' ? ? D Φ' | pv' Δa pma pa ka Nsa | pv' Rr Φ']; cbn; try tauto;
+  destruct ip as [| z ip], E as [b' pv' A' B' | pm [Δ [? Φ' | E']] | pv' ? ? D Φ' | pv' A1 M1 U1 | pv' Rr Φ']; cbn; try tauto;
     try (split; intros; discriminate); exact (IH _ _ _ _ _ _).
 Qed.
 
@@ -740,7 +683,7 @@ Lemma gm_entry_ind_resolve : forall Φ ip pv pq k D Φ',
 Proof.
   fix IH 1; intros [| Φ y E | Φ H its] [| x ip] *; cbn; try discriminate; intros He; try (eapply IH; exact He).
   destruct (String.eqb x y); [| eapply IH; exact He ].
-  destruct ip as [| z ip], E as [b' pv' A' B' | pm [Δ [? Φ1 | E']] | pv' ? ? D' Φ1 | pv' Δ1 pm1 p1 k1 Ns1 | pv' Rr Φ1]; cbn in He |- *;
+  destruct ip as [| z ip], E as [b' pv' A' B' | pm [Δ [? Φ1 | E']] | pv' ? ? D' Φ1 | pv' A1 M1 [Δ1 [? Φ2 | E2]] | pv' Rr Φ1]; cbn in He |- *;
     try discriminate; try reflexivity; eapply IH; exact He.
 Qed.
 
@@ -750,7 +693,7 @@ Lemma gm_entry_submodule : forall Φ T x ip pv pq k D Φ',
 Proof.
   fix IH 1; intros [| Φ y E | Φ H its] T x ip *; cbn; try discriminate; intros He; try (eapply IH; exact He).
   destruct (String.eqb x y); [| eapply IH; exact He ].
-  destruct ip as [| z ip], E as [b' pv' A' B' | pm [Δ [? Φ1 | E']] | pv' ? ? D' Φ1 | pv' Δ1 pm1 p1 k1 Ns1 | pv' Rr Φ1]; cbn in He |- *;
+  destruct ip as [| z ip], E as [b' pv' A' B' | pm [Δ [? Φ1 | E']] | pv' ? ? D' Φ1 | pv' A1 M1 [Δ1 [? Φ2 | E2]] | pv' Rr Φ1]; cbn in He |- *;
     try discriminate; try (injection He as -> -> -> -> ->; reflexivity); eapply IH; exact He.
 Qed.
 
@@ -760,7 +703,7 @@ Lemma gm_submodule_entry : forall Φ T x ip T' pq k D,
 Proof.
   fix IH 1; intros [| Φ y E | Φ H its] T x ip *; cbn; try discriminate; intros He; try (eapply IH; exact He).
   destruct (String.eqb x y); [| eapply IH; exact He ].
-  destruct ip as [| z ip], E as [b' pv' A' B' | pm [Δ [? Φ1 | E']] | pv' ? ? D' Φ1 | pv' Δ1 pm1 p1 k1 Ns1 | pv' Rr Φ1]; cbn in He |- *;
+  destruct ip as [| z ip], E as [b' pv' A' B' | pm [Δ [? Φ1 | E']] | pv' ? ? D' Φ1 | pv' A1 M1 [Δ1 [? Φ2 | E2]] | pv' Rr Φ1]; cbn in He |- *;
     try discriminate; try (injection He as _ -> -> ->; eauto; fail); eapply IH; exact He.
 Qed.
 
@@ -820,96 +763,79 @@ Proof.
   exists pq; exact (ind_mlookup_entry _ _ _ _ _ _ Hm).
 Qed.
 
-Lemma ind_alias_lookup_entry : forall Θ Ξ pq,
-    ind_alias_lookup Θ Ξ pq = match gc_entry Θ Ξ pq with Some E => ge_ind_target E | None => None end.
-Proof.
-  intros; unfold ind_alias_lookup, ind_alias_lookup_u, gc_entry, gc_entry_u, gm_ind_target.
-  destruct (gs_find Ξ pq) as [[U ip] |]; [ reflexivity |].
-  destruct (gds_lookup Θ (q_unit pq)); reflexivity.
-Qed.
-
 Lemma gm_entry_resolve_none : forall Φ ip E,
     gm_entry Φ ip = Some E -> (forall b pv A B, E <> ge_def b pv A B) -> gm_resolve Φ ip = None.
 Proof.
   fix IH 1; intros [| Φ y E | Φ H its] [| x ip] * He Hn; cbn in He |- *; try discriminate; try (eapply IH; eassumption).
   destruct (String.eqb x y); [| eapply IH; eassumption ].
-  destruct ip as [| z ip], E as [b' pv' A' B' | pm [Δ [? Φ1 | E']] | pv' ? ? D' Φ1 | pv' Δ1 pm1 p1 k1 Ns1 | pv' Rr Φ1]; cbn in He |- *;
+  destruct ip as [| z ip], E as [b' pv' A' B' | pm [Δ [? Φ1 | E']] | pv' ? ? D' Φ1 | pv' A1 M1 [Δ1 [? Φ2 | E2]] | pv' Rr Φ1]; cbn in He |- *;
     try reflexivity; try (eapply IH; eassumption).
   injection He as <-; exfalso; eapply Hn; reflexivity.
 Qed.
 
-Lemma gm_entry_ind_alias_submodule : forall Φ T x ip pv Δ pm p k Ns,
-    gm_entry Φ (x :: ip) = Some (ge_ind_alias pv Δ pm p k Ns) ->
-    gm_submodule T Φ x ip = Some (mr_alias (gu_mk Δ (md_alias (me_apps (qname_mod pm) Ns)))).
+(** A definition with a module part, as a module, is its module part. *)
+Lemma gm_entry_def_mod_submodule : forall Φ T x ip pv A M Δ E,
+    gm_entry Φ (x :: ip) = Some (ge_def_mod pv A M (gu_mk Δ (md_alias E))) ->
+    gm_submodule T Φ x ip = Some (mr_alias (gu_mk Δ (md_alias E))).
 Proof.
-  fix IH 1; intros [| Φ y E | Φ H its] T x ip *; cbn; try discriminate; intros He; try (eapply IH; exact He).
+  fix IH 1; intros [| Φ y E0 | Φ H its] T x ip *; cbn; try discriminate; intros He; try (eapply IH; exact He).
   destruct (String.eqb x y); [| eapply IH; exact He ].
-  destruct ip as [| z ip], E as [b' pv' A' B' | pm0 [Δ0 [? Φ1 | E']] | pv' ? ? D' Φ1 | pv' Δ1 pm1 p1 k1 Ns1 | pv' Rr Φ1]; cbn in He |- *;
-    try discriminate; try (injection He as -> -> -> -> -> ->; reflexivity); eapply IH; exact He.
+  destruct ip as [| z ip], E0 as [b' pv' A' B' | pm0 [Δ0 [? Φ1 | E']] | pv' ? ? D' Φ1 | pv' A1 M1 [Δ1 [? Φ1 | E1]] | pv' Rr Φ1];
+    cbn in He |- *; try discriminate; try (injection He as -> -> -> -> ->; reflexivity); eapply IH; exact He.
 Qed.
 
-Lemma ind_alias_lookup_module : forall Θ Ξ pq Δ pm p k Ns,
-    ind_alias_lookup Θ Ξ pq = Some (Δ, pm, p, k, Ns) ->
-    gc_module Θ Ξ pq = Some (mr_alias (gu_mk Δ (md_alias (me_apps (qname_mod pm) Ns)))).
+(** A stored definition with a module part resolves to no definition. *)
+Lemma gc_entry_def_mod : forall Θ Ξ p pv A M U,
+    gc_entry Θ Ξ p = Some (ge_def_mod pv A M U) -> gc_resolve Θ Ξ p = None.
 Proof.
-  intros * Hl; unfold ind_alias_lookup, ind_alias_lookup_u, gc_module, gc_module_u, gm_ind_target in *.
-  rewrite gs_find_tele_find in Hl.
-  destruct (gs_find_tele Ξ pq) as [[[U ip] T] |]; cbn in Hl |- *.
-  - destruct (gm_entry (gu_mod U) ip) as [E |] eqn:He; [| discriminate ].
-    destruct E as [| | | pv Δ' pm' p' k' Ns' |]; cbn in Hl; try discriminate; injection Hl as -> -> -> -> ->.
-    destruct ip as [| x ip]; [ rewrite gm_entry_nil in He; discriminate |].
-    eapply gm_entry_ind_alias_submodule; exact He.
-  - destruct (gds_lookup Θ (q_unit pq)) as [U |]; [| discriminate ].
-    destruct (gm_entry (gu_mod U) (q_chain pq)) as [E |] eqn:He; [| discriminate ].
-    destruct E as [| | | pv Δ' pm' p' k' Ns' |]; cbn in Hl; try discriminate; injection Hl as -> -> -> -> ->.
-    destruct (q_chain pq) as [| x ip]; [ rewrite gm_entry_nil in He; discriminate |].
-    unfold gm_module; eapply gm_entry_ind_alias_submodule; exact He.
+  intros * He; unfold gc_entry, gc_entry_u, gc_resolve, gc_resolve_u in *.
+  rewrite gs_find_tele_find in *.
+  destruct (gs_find_tele Ξ p) as [[[Uf ip] T] |]; cbn in He |- *.
+  - eapply gm_entry_resolve_none; [ exact He | intros; discriminate ].
+  - destruct (gds_lookup Θ (q_unit p)) as [Uf |]; [| discriminate ].
+    eapply gm_entry_resolve_none; [ exact He | intros; discriminate ].
 Qed.
 
-Lemma gc_entry_ind_alias : forall Θ Ξ pq pv Δ pm pt k Ns,
-    gc_entry Θ Ξ pq = Some (ge_ind_alias pv Δ pm pt k Ns) ->
-    gc_resolve Θ Ξ pq = None /\ ind_alias_lookup Θ Ξ pq = Some (Δ, pm, pt, k, Ns).
+(** As a module, a stored definition with a module part is its module part,
+    an alias. *)
+Lemma gc_entry_def_mod_alias : forall Θ Ξ p pv A M Δ E,
+    gc_entry Θ Ξ p = Some (ge_def_mod pv A M (gu_mk Δ (md_alias E))) ->
+    gc_module Θ Ξ p = Some (mr_alias (gu_mk Δ (md_alias E))).
 Proof.
-  intros * He; split; [| rewrite ind_alias_lookup_entry, He; reflexivity ].
-  unfold gc_entry, gc_entry_u, gc_resolve, gc_resolve_u in *.
-  destruct (gs_find Ξ pq) as [[U ip] |]; [ eapply gm_entry_resolve_none; [ exact He | intros; discriminate ] |].
-  destruct (gds_lookup Θ (q_unit pq)); [ eapply gm_entry_resolve_none; [ exact He | intros; discriminate ] | discriminate ].
-Qed.
-
-(** A path names a member of a group or an inductive alias, not both. *)
-Lemma ind_mlookup_not_ind_alias : forall Θ Ξ p r,
-    ind_mlookup Θ Ξ p = Some r -> ind_alias_lookup Θ Ξ p = None.
-Proof.
-  intros * H; destruct r as [[pq k] D]; destruct (ind_mlookup_entry _ _ _ _ _ _ H) as [(? & ? & He) | Hf].
-  - rewrite ind_alias_lookup_entry, He; reflexivity.
-  - destruct (gs_find_ind_tele _ _ _ Hf) as (U & T & HT).
-    unfold ind_alias_lookup, ind_alias_lookup_u, gm_ind_target; rewrite gs_find_tele_find, HT; cbn.
-    rewrite gm_entry_nil; reflexivity.
-Qed.
-
-Lemma ind_lookup_not_ind_alias : forall Θ Ξ p D,
-    ind_lookup Θ Ξ p = Some D -> ind_alias_lookup Θ Ξ p = None.
-Proof.
-  intros * H; destruct (ind_lookup_mlookup _ _ _ _ H) as [pq Hm]; exact (ind_mlookup_not_ind_alias _ _ _ _ Hm).
-Qed.
-
-Lemma ind_mlookup_not_ind_alias_rev : forall Θ Ξ p v,
-    ind_alias_lookup Θ Ξ p = Some v -> ind_mlookup Θ Ξ p = None.
-Proof.
-  intros * H; destruct (ind_mlookup Θ Ξ p) as [r |] eqn:E; [| reflexivity ].
-  rewrite (ind_mlookup_not_ind_alias _ _ _ _ E) in H; discriminate.
-Qed.
-
-Lemma ind_lookup_not_ind_alias_rev : forall Θ Ξ p v,
-    ind_alias_lookup Θ Ξ p = Some v -> ind_lookup Θ Ξ p = None.
-Proof.
-  intros * H; rewrite ind_lookup_unfold, (ind_mlookup_not_ind_alias_rev _ _ _ _ H); reflexivity.
+  intros * He; unfold gc_entry, gc_entry_u, gc_module, gc_module_u in *.
+  rewrite gs_find_tele_find in *.
+  destruct (gs_find_tele Ξ p) as [[[Uf ip] T] |]; cbn in He |- *.
+  - destruct ip as [| x ip]; [ rewrite gm_entry_nil in He; discriminate |].
+    eapply gm_entry_def_mod_submodule; exact He.
+  - destruct (gds_lookup Θ (q_unit p)) as [Uf |]; [| discriminate ].
+    destruct (q_chain p) as [| x ip]; [ rewrite gm_entry_nil in He; discriminate |].
+    unfold gm_module; eapply gm_entry_def_mod_submodule; exact He.
 Qed.
 
 (** The path of an open frame names no entry. *)
 Lemma gc_entry_tele_nil : forall Θ Ξ p U T, gs_find_tele Ξ p = Some (U, nil, T) -> gc_entry Θ Ξ p = None.
 Proof.
   intros * HT; unfold gc_entry, gc_entry_u; rewrite gs_find_tele_find, HT; cbn; apply gm_entry_nil.
+Qed.
+
+(** A path names the module of a member of a group or a definition with a
+    module part, not both; nor a record type and one. *)
+Lemma ind_mlookup_not_def_mod : forall Θ Ξ p r pv A M U,
+    ind_mlookup Θ Ξ p = Some r -> gc_entry Θ Ξ p = Some (ge_def_mod pv A M U) -> False.
+Proof.
+  intros * H He; destruct r as [[pq k] D]; destruct (ind_mlookup_entry _ _ _ _ _ _ H) as [(? & ? & He') | Hf].
+  - rewrite He in He'; discriminate.
+  - destruct (gs_find_ind_tele _ _ _ Hf) as (U' & T & HT).
+    rewrite (gc_entry_tele_nil Θ _ _ _ _ HT) in He; discriminate.
+Qed.
+
+Lemma record_lookup_not_def_mod : forall Θ Ξ p R pv A M U,
+    record_lookup Θ Ξ p = Some R -> gc_entry Θ Ξ p = Some (ge_def_mod pv A M U) -> False.
+Proof.
+  intros * H He; unfold record_lookup in H.
+  destruct (gs_find_record Ξ p) as [R' |] eqn:Hf.
+  - destruct (gs_find_record_tele _ _ _ Hf) as (U' & T & HT); rewrite (gc_entry_tele_nil Θ _ _ _ _ HT) in He; discriminate.
+  - rewrite He in H; discriminate.
 Qed.
 
 (** A path names a record type or a member of a group, not both. *)
@@ -923,15 +849,6 @@ Proof.
   - rewrite (gs_find_ind_not_record _ _ _ Hf) in H.
     destruct (gs_find_ind_tele _ _ _ Hf) as (U & T & HT).
     rewrite (gc_entry_tele_nil Θ _ _ _ _ HT) in H; discriminate.
-Qed.
-
-(** A path names a record type or an inductive alias, not both. *)
-Lemma record_lookup_not_ind_alias : forall Θ Ξ p R, record_lookup Θ Ξ p = Some R -> ind_alias_lookup Θ Ξ p = None.
-Proof.
-  intros * H; rewrite ind_alias_lookup_entry; unfold record_lookup in H.
-  destruct (gs_find_record Ξ p) as [R' |] eqn:Hf.
-  - destruct (gs_find_record_tele _ _ _ Hf) as (U & T & HT); rewrite (gc_entry_tele_nil Θ _ _ _ _ HT); reflexivity.
-  - destruct (gc_entry Θ Ξ p) as [[] |]; try discriminate; reflexivity.
 Qed.
 
 (** [gm_grows Φ Φ']: [Φ'] is [Φ] with more definitions, of fresh names,
@@ -965,12 +882,12 @@ Definition entry_grows (E1 E2 : gentry) : Prop :=
   end.
 
 Lemma entry_grows_refl : forall E, entry_grows E E.
-Proof. intros [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ?]; cbn; auto. Qed.
+Proof. intros [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? | ? ? ?]; cbn; auto. Qed.
 
 Lemma entry_grows_trans : forall E1 E2 E3, entry_grows E1 E2 -> entry_grows E2 E3 -> entry_grows E1 E3.
 Proof.
-  intros [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ?] [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ?]
-    [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? ? ? | ? ? ?];
+  intros [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? | ? ? ?] [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? | ? ? ?]
+    [| ? [? [? ?| ?]] | ? ? ? ? ? | ? ? ? ? | ? ? ?];
     cbn; intros; destruct_all; subst; try congruence; auto.
 Qed.
 
@@ -981,7 +898,6 @@ Record gc_sub (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :
   ; gcs_module : forall p r, gc_module Θ1 Ξ1 p = Some r -> gc_module Θ2 Ξ2 p = Some r
   ; gcs_body : forall p T Φ, gc_body Θ1 Ξ1 p = Some (T, Φ) ->
       exists Φ', gc_body Θ2 Ξ2 p = Some (T, Φ') /\ gm_grows Φ Φ'
-  ; gcs_ind_alias : forall pq v, ind_alias_lookup Θ1 Ξ1 pq = Some v -> ind_alias_lookup Θ2 Ξ2 pq = Some v
   ; gcs_frame : forall p T Φ, gc_frame Ξ1 p = Some (T, Φ) ->
       exists Φ', (gc_frame Ξ2 p = Some (T, Φ') /\ gs_find_ind Ξ2 p = gs_find_ind Ξ1 p /\
                   gs_find_record Ξ2 p = gs_find_record Ξ1 p) \/
@@ -1007,10 +923,6 @@ Lemma gc_sub_body : forall Θ1 Ξ1 Θ2 Ξ2 p T Φ,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_body Θ1 Ξ1 p = Some (T, Φ) ->
     exists Φ', gc_body Θ2 Ξ2 p = Some (T, Φ') /\ gm_grows Φ Φ'.
 Proof. intros * H; apply (gcs_body _ _ _ _ H). Qed.
-
-Lemma gc_sub_ind_alias : forall Θ1 Ξ1 Θ2 Ξ2 pq v,
-    gc_sub Θ1 Ξ1 Θ2 Ξ2 -> ind_alias_lookup Θ1 Ξ1 pq = Some v -> ind_alias_lookup Θ2 Ξ2 pq = Some v.
-Proof. intros * H; apply (gcs_ind_alias _ _ _ _ H). Qed.
 
 (** An open frame is still one, of the same kind, or has been closed into
     a body module, of the member of a group or the record type its kind
@@ -1111,7 +1023,7 @@ Proof.
   fix IH 1; intros [| Φ y E | Φ c] * H; cbn in H |- *; [ discriminate | | exact (IH _ _ _ _ _ _ H) ].
   destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ H) ].
   destruct ip as [| z ip]; [ eauto |].
-  destruct E as [? ? ? ? | ? [Δ [? Φ0 | E0]] | ? ? ? D Φ0 | ? ? ? ? ? ? | ? R Φ0]; try discriminate; exact (IH _ _ _ _ _ _ H).
+  destruct E as [? ? ? ? | ? [Δ [? Φ0 | E0]] | ? ? ? D Φ0 | ? ? ? ? | ? R Φ0]; try discriminate; exact (IH _ _ _ _ _ _ H).
 Qed.
 
 (** A path that names a body module, at the root of its unit, names no
@@ -1159,7 +1071,7 @@ Qed.
 
 Lemma gc_sub_refl : forall Θ Ξ, gc_sub Θ Ξ Θ Ξ.
 Proof.
-  constructor; intros * H; [ exact H | exact H | exists Φ; split; [ exact H | constructor ] | exact H
+  constructor; intros * H; [ exact H | exact H | exists Φ; split; [ exact H | constructor ]
     | exists Φ; left; split; [ exact H | split; reflexivity ] | exists E; split; [ exact H | apply entry_grows_refl ]
     | rewrite ind_mlookup_unfold, H; reflexivity | unfold record_lookup; rewrite H; reflexivity ].
 Qed.
@@ -1168,8 +1080,8 @@ Lemma gc_sub_trans : forall Θ1 Ξ1 Θ2 Ξ2 Θ3 Ξ3,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_sub Θ2 Ξ2 Θ3 Ξ3 -> gc_sub Θ1 Ξ1 Θ3 Ξ3.
 Proof.
   intros * Hs12 Hs23; pose proof Hs23 as Hs23'.
-  destruct Hs12 as [H12 M12 B12 I12 F12 E12 K12 R12], Hs23 as [H23 M23 B23 I23 F23 E23 K23 R23]; constructor; intros * H;
-    [ apply H23, H12, H | apply M23, M12, H | | apply I23, I12, H | | | | ].
+  destruct Hs12 as [H12 M12 B12 F12 E12 K12 R12], Hs23 as [H23 M23 B23 F23 E23 K23 R23]; constructor; intros * H;
+    [ apply H23, H12, H | apply M23, M12, H | | | | | ].
   - destruct (B12 _ _ _ H) as (Φ2 & H2 & G12); destruct (B23 _ _ _ H2) as (Φ3 & H3 & G23).
     exists Φ3; split; [ exact H3 | exact (gm_grows_trans _ _ _ G12 G23) ].
   - destruct (F12 _ _ _ H) as (Φ2 & [(H2 & Hk2 & Hr2) | (H2 & Hm2 & Hr2)]).
@@ -1215,7 +1127,6 @@ Record gm_sub (Φ1 Φ2 : gmod) : Prop := mk_gm_sub
   ; gms_submodule : forall T z ip r, gm_submodule T Φ1 z ip = Some r -> gm_submodule T Φ2 z ip = Some r
   ; gms_subbody : forall T z ip T' Φ, gm_subbody T Φ1 z ip = Some (T', Φ) ->
       exists Φ', gm_subbody T Φ2 z ip = Some (T', Φ') /\ gm_grows Φ Φ'
-  ; gms_ind_target : forall ip v, gm_ind_target Φ1 ip = Some v -> gm_ind_target Φ2 ip = Some v
   ; gms_entry : forall ip E, gm_entry Φ1 ip = Some E -> exists E', gm_entry Φ2 ip = Some E' /\ entry_grows E E' }.
 
 Lemma gm_sub_refl : forall Φ, gm_sub Φ Φ.
@@ -1223,8 +1134,8 @@ Proof. repeat split; intros * H; eauto using entry_grows_refl with mctt. Qed.
 
 Lemma gm_sub_trans : forall Φ1 Φ2 Φ3, gm_sub Φ1 Φ2 -> gm_sub Φ2 Φ3 -> gm_sub Φ1 Φ3.
 Proof.
-  intros * [H12 M12 B12 I12 E12] [H23 M23 B23 I23 E23]; constructor; intros * H;
-    [ apply H23, H12, H | apply M23, M12, H | | apply I23, I12, H | ].
+  intros * [H12 M12 B12 E12] [H23 M23 B23 E23]; constructor; intros * H;
+    [ apply H23, H12, H | apply M23, M12, H | | ].
   - destruct (B12 _ _ _ _ _ H) as (Φ2' & H2 & G12); destruct (B23 _ _ _ _ _ H2) as (Φ3' & H3 & G23).
     exists Φ3'; split; [ exact H3 | exact (gm_grows_trans _ _ _ G12 G23) ].
   - destruct (E12 _ _ H) as (E2 & H2 & G12); destruct (E23 _ _ H2) as (E3 & H3 & G23).
@@ -1238,7 +1149,6 @@ Proof.
   - exact (gm_resolve_ext_fresh _ _ _ _ _ Hf H).
   - exact (gm_submodule_ext_fresh _ _ _ _ _ _ _ Hf H).
   - eexists; split; [ exact (gm_subbody_ext_fresh _ _ _ _ _ _ _ Hf H) | constructor ].
-  - exact (gm_ind_target_ext_fresh _ _ _ _ _ Hf H).
   - eexists; split; [ exact (gm_entry_ext_fresh _ _ _ _ _ Hf H) | apply entry_grows_refl ].
 Qed.
 
@@ -1247,7 +1157,7 @@ Lemma gc_sub_frame : forall Θ Ξ mp K Δ Φ1 Φ2,
     gm_sub Φ1 Φ2 ->
     gc_sub Θ ((mp, K, gu_body Δ Φ1) :: Ξ) Θ ((mp, K, gu_body Δ Φ2) :: Ξ).
 Proof.
-  intros * [HR HM HB HI HE]; constructor.
+  intros * [HR HM HB HE]; constructor.
   - intros p E0 Hr; unfold gc_resolve, gc_resolve_u in *; cbn in *.
     destruct (qname_strip mp p); [ apply HR; exact Hr | exact Hr ].
   - intros p r Hr; unfold gc_module, gc_module_u in *; cbn in *.
@@ -1256,8 +1166,6 @@ Proof.
   - intros p T Φ Hr; unfold gc_body in *; cbn in *.
     destruct (qname_strip mp p) as [[| y ip] |]; [ discriminate | | eexists; split; [ exact Hr | constructor ] ].
     apply HB; exact Hr.
-  - intros pq p Hr; unfold ind_alias_lookup, ind_alias_lookup_u in *; cbn in *.
-    destruct (qname_strip mp pq); [ apply HI; exact Hr | exact Hr ].
   - intros p T Φ Hr; unfold gc_frame in *; cbn in *.
     destruct (qname_strip mp p) as [[| y ip] |]; [ | discriminate | eexists; left; split; [ exact Hr | split; reflexivity ] ].
     injection Hr as <- <-; eexists; left; split; [ reflexivity | split; reflexivity ].
@@ -1321,19 +1229,6 @@ Proof.
       pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
       unfold qname_strip in Hr; rewrite Hb, path_beq_refl, Hs' in Hr.
       exact (Hx (gm_subbody_head _ _ _ _ _ Hr)).
-  - intros pq p0 Hr; unfold ind_alias_lookup, ind_alias_lookup_u, gm_ind_target in *; cbn.
-    destruct (qname_strip mp pq) as [ip |] eqn:Hs; [| exact Hr ].
-    exfalso; unfold qname_strip in Hs.
-    destruct (path_beq (q_unit mp) (q_unit pq)) eqn:Hb; [| discriminate ].
-    apply path_beq_true in Hb.
-    destruct Ξ as [| [[mq K'] V] Ξ']; cbn in Hf, Hr.
-    + destruct Hf as [Hf _].
-      rewrite <- Hb, Hf in Hr; discriminate.
-    + destruct Hf as (x & -> & Hx); cbn in Hs, Hb.
-      pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
-      unfold qname_strip in Hr; rewrite Hb, path_beq_refl, Hs' in Hr.
-      destruct (gm_entry (gu_mod V) (x :: ip)) eqn:He; [| discriminate ].
-      destruct (gm_entry_head _ _ _ He) as (z & ip' & [= <- <-] & Hin); contradiction.
   - intros p T Φ Hr; exists Φ; left; unfold gc_frame in *; cbn [gs_find_tele gs_find_ind gs_find_record].
     destruct (qname_strip mp p) as [ip |] eqn:Hs; [| split; [ exact Hr | split; reflexivity ] ].
     exfalso; unfold qname_strip in Hs.
@@ -1409,11 +1304,6 @@ Proof.
       destruct (q_chain p) as [| x ip] eqn:Hp; [ discriminate |].
       cbn in *; rewrite List.app_nil_r in Hr; exact Hr.
     + destruct (path_beq (q_unit p) fp) eqn:Hb'; [ apply path_beq_true in Hb'; subst; rewrite path_beq_refl in Hb; discriminate | exact Hr ].
-  - intros pq p0 Hr; unfold ind_alias_lookup, ind_alias_lookup_u in *; cbn [gs_find] in *.
-    unfold qname_strip in Hr; cbn [q_unit q_chain strip_prefix] in Hr; cbn [gds_lookup].
-    destruct (path_beq fp (q_unit pq)) eqn:Hb.
-    + apply path_beq_true in Hb; subst; rewrite path_beq_refl; exact Hr.
-    + destruct (path_beq (q_unit pq) fp) eqn:Hb'; [ apply path_beq_true in Hb'; subst; rewrite path_beq_refl in Hb; discriminate | exact Hr ].
   - intros p T Φ Hr; exists Φ; right; unfold gc_frame, gc_body in *; cbn [gs_find_tele] in *.
     unfold qname_strip in Hr; cbn [q_unit q_chain strip_prefix] in Hr; cbn [gds_lookup].
     destruct (path_beq fp (q_unit p)) eqn:Hb; [| discriminate ].
@@ -1447,6 +1337,17 @@ Proof.
     apply path_beq_true in Hb'; rewrite Hb', path_beq_refl in Hb; discriminate.
 Qed.
 
+(** A filed unit stores the entries its closed frame did. *)
+Lemma gc_entry_file : forall Θ fp U p,
+    gc_entry ((fp, U) :: Θ) nil p = gc_entry Θ ((q_abs fp nil, fk_module, U) :: nil) p.
+Proof.
+  intros; unfold gc_entry, gc_entry_u; cbn [gs_find gds_lookup]; unfold qname_strip; cbn [q_unit q_chain strip_prefix].
+  destruct (path_beq fp (q_unit p)) eqn:Hb.
+  - apply path_beq_true in Hb as ->; rewrite path_beq_refl; reflexivity.
+  - destruct (path_beq (q_unit p) fp) eqn:Hb'; [| reflexivity ].
+    apply path_beq_true in Hb'; rewrite Hb', path_beq_refl in Hb; discriminate.
+Qed.
+
 (** Filing more units under the same stack. *)
 Lemma gc_sub_deps : forall Θ Θ' Ξ, Θ ⊑ Θ' -> gc_sub Θ Ξ Θ' Ξ.
 Proof.
@@ -1462,10 +1363,6 @@ Proof.
   - intros p T Φ Hr; exists Φ; split; [| constructor ]; unfold gc_body in *.
     destruct (gs_find_tele Ξ p) as [[[U ip] T'] |]; [ exact Hr |].
     destruct (gds_lookup Θ (q_unit p)) as [V |] eqn:E1; [| discriminate ].
-    rewrite (Hs _ _ E1); exact Hr.
-  - intros pq p0 Hr; unfold ind_alias_lookup, ind_alias_lookup_u in *.
-    destruct (gs_find Ξ pq) as [[U ip] |]; [ exact Hr |].
-    destruct (gds_lookup Θ (q_unit pq)) as [V |] eqn:E1; [| discriminate ].
     rewrite (Hs _ _ E1); exact Hr.
   - intros p T Φ Hr; exists Φ; left; split; [ exact Hr | split; reflexivity ].
   - intros p E Hr; exists E; split; [| apply entry_grows_refl ]; unfold gc_entry, gc_entry_u in *.
@@ -1557,7 +1454,7 @@ Fixpoint ge_transparent (E : gentry) : Prop :=
   | ge_mod _ (gu_mk _ (md_body sm Φ)) => gm_transparent Φ
   | ge_mod _ (gu_mk _ (md_alias _)) => True
   | ge_ind _ _ _ _ Φ => gm_transparent Φ
-  | ge_ind_alias _ _ _ _ _ _ => True
+  | ge_def_mod _ _ _ _ => True
   | ge_record _ _ _ Φ => gm_transparent Φ
   end
 with gm_transparent (Φ : gmod) : Prop :=
@@ -1578,7 +1475,7 @@ Proof.
   destruct HΦ as [HΦ HE].
   destruct ip as [| x ip']; [ discriminate |].
   destruct (String.eqb x y); [| eapply IH; eassumption ].
-  destruct ip' as [| z ip''], E as [b pv A B | pm [Δ' [? Φ' | E']] | pv ? ? D Φ' | pv Δa pma pa ka Nsa | pv Rr Φ']; try discriminate.
+  destruct ip' as [| z ip''], E as [b pv A B | pm [Δ' [? Φ' | E']] | pv ? ? D Φ' | pv Aa Ma [Δa [? Φa | Ea]] | pv Rr Φ']; try discriminate.
   - injection H as <-; exact HE.
   - eapply IH; [ exact HE | exact H ].
   - eapply IH; [ exact HE | exact H ].
@@ -1720,6 +1617,30 @@ Fixpoint pi_view (A : typ) : option (typ * typ)%type :=
   | _ => None
   end.
 
+(** The [Π]s a normal type is written with and what they end in: the
+    domains as a context, innermost first (the last [Π]'s domain at the
+    head, the first one's at the end), and the codomain past them, in that
+    context.  [Π (A : Typeω@0). A → Typeω@0] gives the context
+    [ce_ass #0 :: ce_ass Typeω@0 :: nil] (the inner domain [A], bound
+    second, at the head) and the codomain [Typeω@0]. *)
+Fixpoint nf_pi_tele (W : nf) : (ctx * nf)%type :=
+  match W with
+  | nf_pi B C => let '(Ds, C') := nf_pi_tele C in (Ds ++ ce_ass (nf_to_exp B) :: nil, C')
+  | _ => (nil, W)
+  end.
+
+(** A normal type that is a universe, large or small. *)
+Definition nf_is_universe (W : nf) : Prop :=
+  match W with
+  | nf_typ _ | nf_univ _ _ => True
+  | _ => False
+  end.
+
+(** [M] applied to the [n] innermost variables, outermost first, past
+    them: [M], in [Γ], read in [Ds ++ Γ] for an [n]-entry [Ds], at the
+    variables [Ds] binds. *)
+Definition exp_applied_to_vars (M : exp) (n : nat) : exp := apps_exp M[wk_shiftn n]ʷ (vars_from 0 n).
+
 (** ** Arities
 
     A module's arity is the telescope of parameters it still takes, a [ctx]
@@ -1811,7 +1732,13 @@ Inductive mdesc : Set :=
     abstracted over the outer parameters.  The arguments fill the
     record's module telescope ([record_mod_tele]): its parameters, as a
     type, and then a value, as its module only *)
-| ds_record : ctx -> qname -> list exp -> mdesc.
+| ds_record : ctx -> qname -> list exp -> mdesc
+(** [ds_dm Θd A M Rm]: what a definition with a module part
+    ([ge_def_mod]) denotes.  Its term part is read as a transparent
+    definition's is: the term [M] of the type [A], both over the outer
+    parameters [Θd], given the arguments so far as [ds_term A (Some M)] is
+    ([ds_ats_read]); its module part is [Rm] *)
+| ds_dm : ctx -> typ -> exp -> mdesc -> mdesc.
 
 (** A description of a module, of either storage. *)
 Definition ds_is_mod (R : mdesc) : Prop :=
@@ -1855,6 +1782,8 @@ Definition ds_ty (Θ : gdeps) (Ξ : gstack) (R : mdesc) : option typ :=
           else None
       | None => None
       end
+  (** A definition with a module part: its term part's type *)
+  | ds_dm Θd A _ _ => Some (ctx_pi Θd A)
   | _ => None
   end.
 
@@ -1866,6 +1795,7 @@ Definition ds_red (R : mdesc) : option exp :=
   | ds_term _ om => om
   | ds_ind Θ' p k Ns => Some (ctx_fn Θ' (apps_exp (a_ind p k) Ns))
   | ds_record Θ' p Ns => Some (ctx_fn Θ' (apps_exp (a_record p) Ns))
+  | ds_dm Θd _ M _ => Some (ctx_fn Θd M)
   | _ => None
   end.
 
@@ -1873,7 +1803,7 @@ Definition ds_red (R : mdesc) : option exp :=
     stored module of its members, closed over its uniform parameters, at the
     same arguments: its open frame's body so far while it is open, its
     filed body after ([gc_loc]). *)
-Definition ds_mod (Θ : gdeps) (Ξ : gstack) (R : mdesc) : option mdesc :=
+Fixpoint ds_mod (Θ : gdeps) (Ξ : gstack) (R : mdesc) : option mdesc :=
   match R with
   | ds_open _ _ _ | ds_closed _ _ _ _ _ => Some R
   | ds_ind Θ' p k Ns =>
@@ -1895,6 +1825,9 @@ Definition ds_mod (Θ : gdeps) (Ξ : gstack) (R : mdesc) : option mdesc :=
       | Some (T, Φ) => Some (ds_closed Θ' p T Φ Ns)
       | None => None
       end
+  (** A definition with a module part: the module of its module part, so
+      that a module part is always read as a module *)
+  | ds_dm _ _ _ Rm => ds_mod Θ Ξ Rm
   | ds_term _ _ => None
   end.
 
@@ -1922,13 +1855,14 @@ Definition ds_mtele (Θ : gdeps) (Ξ : gstack) (R : mdesc) : option ctx :=
 (** Abstraction: a description from inside an open body, the body's
     parameters and the entries before the member being [Θ'], re-expressed
     outside it.  [Π] and [λ] read a definition entry of [Θ'] as a [let]. *)
-Definition ds_up (Θ' : ctx) (R : mdesc) : mdesc :=
+Fixpoint ds_up (Θ' : ctx) (R : mdesc) : mdesc :=
   match R with
   | ds_term A om => ds_term (ctx_pi Θ' A) (option_map (ctx_fn Θ') om)
   | ds_open Δ Φ Φx => ds_open (Δ ++ Θ') Φ Φx
   | ds_closed Θ p T Φ Ns => ds_closed (Θ ++ Θ') p T Φ Ns
   | ds_ind Θ p k Ns => ds_ind (Θ ++ Θ') p k Ns
   | ds_record Θ p Ns => ds_record (Θ ++ Θ') p Ns
+  | ds_dm Θd A M Rm => ds_dm (Θd ++ Θ') A M (ds_up Θ' Rm)
   end.
 
 (** The [λ] a term is, looking through local definitions and local modules
@@ -1975,8 +1909,14 @@ Fixpoint tele_split (R : list centry) : ((typ * ctx * sub) + sub)%type :=
     entry is substituted away first, in every form.  An open module
     substitutes [N] into its body; a closed one with outside parameters left
     fills the outermost of them, and with none records the argument, the
-    stored module being read as it is; likewise for an inductive type. *)
-Definition ds_at (R : mdesc) (N : exp) : option mdesc :=
+    stored module being read as it is; likewise for an inductive type.  A
+    definition with a module part given its outside parameters fills them,
+    in both its parts, as a closed module does; past them it is its module
+    part applied: the term reading and the module reading of [K N] are
+    separate, and an application is a module reading.  (Its term part takes
+    only the arguments of the frames it is filed in, when it is read as a
+    member of a closed module at them: [ds_read].) *)
+Fixpoint ds_at (R : mdesc) (N : exp) : option mdesc :=
   match R with
   | ds_term A om =>
       match pi_view A with
@@ -2016,6 +1956,16 @@ Definition ds_at (R : mdesc) (N : exp) : option mdesc :=
           Some (ds_record (tele_sub Θ' (Id,,N)) p (List.map (fun M => M[τ ⨟ sb_qn (List.length Θ') (Id,,N)]) Ns))
       | inr τ => Some (ds_record nil p (List.map (fun M => M[τ]) Ns ++ N :: nil))
       end
+  | ds_dm Θ A M Rm =>
+      match ds_at Rm N with
+      | None => None
+      | Some Rm' =>
+          match tele_split (rev Θ) with
+          | inl (_, Θ', τ) =>
+              Some (ds_dm (tele_sub Θ' (Id,,N)) A[τ ⨟ sb_qn (List.length Θ') (Id,,N)] M[τ ⨟ sb_qn (List.length Θ') (Id,,N)] Rm')
+          | inr _ => Some Rm'
+          end
+      end
   end.
 
 (** "R at N₁ … Nₖ". *)
@@ -2038,13 +1988,14 @@ Inductive reader : Set :=
 (** A description under a substitution.  The parts of a description over
     the context are substituted; a closed module's stored unit is not, being
     closed. *)
-Definition ds_sub (R : mdesc) (σ : sub) : mdesc :=
+Fixpoint ds_sub (R : mdesc) (σ : sub) : mdesc :=
   match R with
   | ds_term A om => ds_term A[σ] (option_map (fun M => M[σ]) om)
   | ds_open Δ Φ Φx => ds_open (tele_sub Δ σ) (gmod_sub Φ (sb_qn (List.length Δ) σ)) (gmod_sub Φx (sb_qn (List.length Δ) σ))
   | ds_closed Θ p T Φ Ns => ds_closed (tele_sub Θ σ) p T Φ (List.map (fun M => M[sb_qn (List.length Θ) σ]) Ns)
   | ds_ind Θ p k Ns => ds_ind (tele_sub Θ σ) p k (List.map (fun M => M[sb_qn (List.length Θ) σ]) Ns)
   | ds_record Θ p Ns => ds_record (tele_sub Θ σ) p (List.map (fun M => M[sb_qn (List.length Θ) σ]) Ns)
+  | ds_dm Θd A M Rm => ds_dm (tele_sub Θd σ) A[sb_qn (List.length Θd) σ] M[sb_qn (List.length Θd) σ] (ds_sub Rm σ)
   end.
 
 (** The entries of a local body before a member, filled in: the
@@ -2106,15 +2057,63 @@ Proof. intros [|] [|] *; cbn; auto. Qed.
 Lemma ds_named_self : forall Θ Ns, (Θ <> nil \/ Ns <> nil) -> ds_named Θ Ns = ds_self.
 Proof. intros [|] [|] H; cbn; try reflexivity; destruct H as [H | H]; contradiction H; reflexivity. Qed.
 
+(** An entry's description given the arguments of the closed module it is
+    a member of, which are those of the frames it is filed in: as applied
+    ([ds_ats]), but a definition with a module part with no outside
+    parameter is given them in both its parts: its term part as a
+    transparent definition is ([ds_term A (Some M)]), its module part as a
+    module is.  So [F 3 .K], for a def-mod [K] filed in [module F (n : ℕ)],
+    is K's term at [3] as well as its module at [3]; an application [K N] as
+    a module, past the frames' arguments, is its module part only
+    ([ds_at]).  This reading runs only at a filed entry's frame arguments,
+    where the entry's coherence ([gm_coh]) makes [A] a [ctx_pi] and [M] a
+    [ctx_fn] over the frames' parameters, syntactically: each step of the
+    term part goes through. *)
+Definition ds_ats_read (R : mdesc) (Ns : list exp) : option mdesc :=
+  match R with
+  | ds_dm nil A M Rm =>
+      match ds_ats (ds_term A (Some M)) Ns, ds_ats Rm Ns with
+      | Some (ds_term B (Some M')), Some Rm' => Some (ds_dm nil B M' Rm')
+      | _, _ => None
+      end
+  | _ => ds_ats R Ns
+  end.
+
+(** [ds_ats_read] is [ds_ats], but on a definition with a module part and
+    no outside parameter, given the arguments in both its parts. *)
+Lemma ds_ats_read_inv : forall R Ns R', ds_ats_read R Ns = Some R' ->
+    ds_ats R Ns = Some R' \/
+    exists A M Rm B M' Rm', R = ds_dm nil A M Rm /\ R' = ds_dm nil B M' Rm' /\
+      ds_ats (ds_term A (Some M)) Ns = Some (ds_term B (Some M')) /\ ds_ats Rm Ns = Some Rm'.
+Proof.
+  intros [| | | | | [| e Θd] A M Rm] Ns R' Ha; cbn [ds_ats_read] in Ha; try (left; exact Ha).
+  right; destruct (ds_ats (ds_term A (Some M)) Ns) as [[B [M' |] | | | | |] |] eqn:Et; try discriminate.
+  destruct (ds_ats Rm Ns) as [Rm' |] eqn:E; [| discriminate ]; injection Ha as <-.
+  do 6 eexists; split; [ reflexivity | split; [ reflexivity | split; [ exact Et | exact E ] ] ].
+Qed.
+
+(** At no argument, [ds_ats_read] reads the description as it is. *)
+Lemma ds_ats_read_nil : forall R, ds_ats_read R nil = Some R.
+Proof. intros [| | | | | [| e Θd] A M Rm]; reflexivity. Qed.
+
+(** On anything but a definition with a module part, [ds_ats_read] is
+    [ds_ats]. *)
+Lemma ds_ats_read_other : forall R Ns, (forall Θd A M Rm, R <> ds_dm Θd A M Rm) -> ds_ats_read R Ns = ds_ats R Ns.
+Proof. intros [| | | | | Θd A M Rm] Ns Hn; try reflexivity; exfalso; eapply Hn; reflexivity. Qed.
+
+(** On a module, [ds_ats_read] is [ds_ats]. *)
+Lemma ds_ats_read_mod : forall R Ns, ds_is_mod R -> ds_ats_read R Ns = ds_ats R Ns.
+Proof. intros [| | | | |] Ns Hm; cbn in Hm; first [ contradiction | reflexivity ]. Qed.
+
 (** How an entry's description is read: one of an open body, the entries
     before it [Φ'] filled in, abstracted over the body's parameters [Δ]; one
-    of a closed body, given the arguments recorded, a term with no δ-reduct
-    being its name [M] there ([ds_named]), then abstracted over the outside
-    parameters. *)
+    of a closed body, given the arguments recorded ([ds_ats_read]), a term
+    with no δ-reduct being its name [M] there ([ds_named]), then abstracted
+    over the outside parameters. *)
 Definition ds_read (rd : reader) (R : mdesc) : option mdesc :=
   match rd with
   | rd_open Δ Φ' => option_map (fun σ => ds_up Δ (ds_sub R σ)) (gm_fill Φ')
-  | rd_closed Θ Ns M => option_map (fun R1 => ds_up Θ (ds_named Θ Ns M R1)) (ds_ats R Ns)
+  | rd_closed Θ Ns M => option_map (fun R1 => ds_up Θ (ds_named Θ Ns M R1)) (ds_ats_read R Ns)
   end.
 
 (** A term read as a name is a term. *)
@@ -2146,7 +2145,7 @@ Definition ds_entry (R : mdesc) (y : string) : option (ctx * gentry * reader) :=
               is not read.  A transparent local definition is read; an
               abstract one, and one without a body, are not: they are used
               only inside the body, as its definitions there. *)
-          | ge_ind _ _ _ _ _ | ge_ind_alias _ _ _ _ _ _ | ge_record _ _ _ _ | ge_def _ _ _ None | ge_def false _ _ _ => None
+          | ge_ind _ _ _ _ _ | ge_def_mod _ _ _ _ | ge_record _ _ _ _ | ge_def _ _ _ None | ge_def false _ _ _ => None
           | _ => Some (body_ctx Φ' ++ Δ, E, rd_open Δ Φ')
           end
       | _ => None
@@ -2240,7 +2239,7 @@ Lemma gm_submodule_resolve : forall Φ T x ip r,
 Proof.
   fix IH 1; intros [| Φ y E | Φ c] * H; cbn in H |- *; try discriminate; [| eapply IH; exact H ].
   destruct (String.eqb x y); [| eapply IH; exact H ].
-  destruct E as [b pv A B | ? [Δ [? Φ' | E']] | ? ? ? D Φ' | ? Δa pma pa ka Nsa | ? Rr Φ']; try discriminate.
+  destruct E as [b pv A B | ? [Δ [? Φ' | E']] | ? ? ? D Φ' | ? Aa Ma [Δa [? Φa | Ea]] | ? Rr Φ']; try discriminate.
   - destruct ip as [| z ip']; [ reflexivity |].
     eapply IH; exact H.
   - destruct ip; reflexivity.
@@ -2273,7 +2272,8 @@ Qed.
 
     [open E use (n)] declares [n] as a private definition equal to [E.n],
     [open E as y] declares [y] a private alias of [E], and, at the global
-    level, an item naming an inductive type declares an inductive alias of
+    level, an item naming a type former (an inductive or a record type),
+    and [open E as y] of one, declares a definition with a module part of
     it; a local open of one is rejected.  At the global level the generated
     entries are filed by the command ([rc_open]);
     in a local body the open stays, and every reader of the body reads it
@@ -2287,28 +2287,31 @@ Inductive igen : Set :=
 | ig_def : string -> bool -> typ -> exp -> igen
 (** [ig_alias d pv E]: the alias [d] of [E] *)
 | ig_alias : string -> bool -> modexp -> igen
-(** [ig_ind_alias d pv Δ pm p k Ns]: the inductive alias [d], over [Δ], of
-    the member [k] of the group at [p], its module at [pm], at [Ns] *)
-| ig_ind_alias : string -> bool -> list centry -> qname -> qname -> nat -> list exp -> igen.
+(** [ig_def_mod d pv M E]: the definition [d] equal to [M], with the module
+    part the alias of [E]; its type is inferred where it is filed
+    ([gr_def_mod]) *)
+| ig_def_mod : string -> bool -> exp -> modexp -> igen.
 
 
-(** A generated item as a body entry. *)
+(** A generated item as a body entry.  A definition with a module part,
+    which only a global open generates and which is filed with its inferred
+    type, is its module view here, the alias of [E]: what the kinds read. *)
 Definition ig_entry (g : igen) : (string * gentry)%type :=
   match g with
   | ig_def d pv A M => (d, ge_def true pv A (Some M))
   | ig_alias d pv E => (d, ge_mod pv (gu_mk nil (md_alias E)))
-  | ig_ind_alias d pv Δ pm p k Ns => (d, ge_ind_alias pv Δ pm p k Ns)
+  | ig_def_mod d pv M E => (d, ge_mod pv (gu_mk nil (md_alias E)))
   end.
 
 Definition ig_name (g : igen) : string := fst (ig_entry g).
 
 (** A generated item under a weakening and a substitution, as its entry
-    is ([ig_entry_wk], [ig_entry_sub]): an inductive alias is closed. *)
+    is ([ig_entry_wk], [ig_entry_sub]). *)
 Definition igen_wk (g : igen) (φ : wk) : igen :=
   match g with
   | ig_def d pv A M => ig_def d pv A[φ]ʷ M[φ]ʷ
   | ig_alias d pv E => ig_alias d pv (modexp_wk E φ)
-  | ig_ind_alias _ _ _ _ _ _ _ => g
+  | ig_def_mod d pv M E => ig_def_mod d pv M[φ]ʷ (modexp_wk E φ)
   end.
 
 (** The substitution counterpart of [igen_wk]. *)
@@ -2316,7 +2319,7 @@ Definition igen_sub (g : igen) (σ : sub) : igen :=
   match g with
   | ig_def d pv A M => ig_def d pv A[σ] M[σ]
   | ig_alias d pv E => ig_alias d pv E[σ]ᵐ
-  | ig_ind_alias _ _ _ _ _ _ _ => g
+  | ig_def_mod d pv M E => ig_def_mod d pv M[σ] E[σ]ᵐ
   end.
 
 (** The generated entries appended to [Φ], in order.  All are read in the
@@ -2390,8 +2393,9 @@ Qed.
     [edenote Θ Ξ Γ o E R], [Γ ⊢ E denotes R]: what an entry stored at [o]
     denotes, one rule per entry kind.  A definition is a term of its type, whose δ-reduct is
     its body when it is transparent; a module is what its unit denotes; an
-    inductive type is its type former with no argument; an inductive alias,
-    the type former at its arguments, over its telescope. *)
+    inductive type is its type former with no argument; a definition with
+    a module part, its term with what its unit denotes as its module
+    part. *)
 Inductive mdenote (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> mdesc -> Prop :=
 (** A loaded unit or open frame: its stored closed unit, at its path *)
 | dn_unit : forall Γ H p T Φ,
@@ -2462,10 +2466,13 @@ with edenote (Θ : gdeps) (Ξ : gstack) : ctx -> option qname -> gentry -> mdesc
 (** An inductive member: its type former with no argument *)
 | en_ind : forall Γ o pv p k D Φ,
     edenote Θ Ξ Γ o (ge_ind pv p k D Φ) (ds_ind nil p k nil)
-(** An inductive alias: the type former at its arguments, over its
-    telescope *)
-| en_ind_alias : forall Γ o pv Δ pm pq k Ns,
-    edenote Θ Ξ Γ o (ge_ind_alias pv Δ pm pq k Ns) (ds_ind Δ pq k Ns)
+(** A definition with a module part: its term, a transparent
+    definition's, with what its unit, an alias, denotes as its module
+    part.  A module part that is no alias denotes nothing, as it is no
+    module ([gm_submodule]). *)
+| en_def_mod : forall Γ o pv A M Δ E Rm,
+    udenote Θ Ξ Γ o (gu_mk Δ (md_alias E)) Rm ->
+    edenote Θ Ξ Γ o (ge_def_mod pv A M (gu_mk Δ (md_alias E))) (ds_dm nil A M Rm)
 (** A record type stored at [p]: its type former with no argument.  It
     denotes only where it is stored, read at the path it is found at *)
 | en_record : forall Γ p pv pr R Φ,
@@ -2493,14 +2500,16 @@ with body_xp (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> gmod -> Prop :=
 (** [items_gen Θ Ξ g Γ H its gs]: what the items [its] of an open of [H]
     declare, all read in [Γ], by what the member each names denotes: a term
     gives a definition of its type, a module an alias, and, at the global
-    level only ([g = true]), an inductive type an inductive alias of it over
-    the parameters it is still abstracted over; an item naming no member,
-    the alias of [H] itself.  A local open ([g = false]) has no case for an
-    inductive type: a local open of one is rejected. *)
+    level only ([g = true]), a member with both a term part and a module
+    part a definition with a module part; an item naming no member, the
+    alias of [H] itself, whatever [H] is.  A local open ([g = false]) has
+    no case for a member with a term part and a module part: a local open
+    of one is rejected. *)
 with items_gen (Θ : gdeps) (Ξ : gstack) : bool -> ctx -> modexp -> list iitem -> list igen -> Prop :=
 (** No item generates nothing *)
 | ign_nil : forall g Γ H, items_gen Θ Ξ g Γ H nil nil
-(** An item naming no member: the alias of [H] itself *)
+(** An item naming no member ([open E as y]): the alias of [H] itself,
+    whatever [H] is *)
 | ign_self : forall g Γ H d pv its gs,
     items_gen Θ Ξ g Γ H its gs ->
     items_gen Θ Ξ g Γ H ((None, d, pv) :: its) (ig_alias d pv H :: gs)
@@ -2515,16 +2524,16 @@ with items_gen (Θ : gdeps) (Ξ : gstack) : bool -> ctx -> modexp -> list iitem 
     ds_is_mod R ->
     items_gen Θ Ξ g Γ H its gs ->
     items_gen Θ Ξ g Γ H ((Some n, d, pv) :: its) (ig_alias d pv (me_mem H n) :: gs)
-(** At the global level only, an item naming an inductive member: an
-    inductive alias of it over the parameters it is still abstracted
-    over *)
-| ign_ind : forall Γ H n d pv Θ' p k D pm Ns its gs,
-    mdenote Θ Ξ Γ (me_mem H n) (ds_ind Θ' p k Ns) ->
-    ind_lookup Θ Ξ p = Some D ->
-    ind_mpath D k = Some pm ->
-    ind_mlookup Θ Ξ pm = Some (p, k, D) ->
+(** At the global level only, an item naming a member with both a term
+    part and a module part (a type former, or a definition with a module
+    part): a definition with a module part, the selection as its term and
+    the alias of the selection as its module *)
+| ign_dm : forall Γ H n d pv R A Rm its gs,
+    mdenote Θ Ξ Γ (me_mem H n) R ->
+    ds_ty Θ Ξ R = Some A ->
+    ds_mod Θ Ξ R = Some Rm ->
     items_gen Θ Ξ true Γ H its gs ->
-    items_gen Θ Ξ true Γ H ((Some n, d, pv) :: its) (ig_ind_alias d pv Θ' pm p k Ns :: gs).
+    items_gen Θ Ξ true Γ H ((Some n, d, pv) :: its) (ig_def_mod d pv (a_mem H n) (me_mem H n) :: gs).
 
 Scheme mdenote_mut_ind := Induction for mdenote Sort Prop
 with udenote_mut_ind := Induction for udenote Sort Prop
@@ -2732,12 +2741,12 @@ Definition entry_is_body (E : gentry) : Prop :=
   | _ => False
   end.
 
-(** The target of an alias entry, as a module: an inductive alias's module
-    view. *)
+(** The target of an alias entry, as a module: that of a definition with a
+    module part's alias. *)
 Definition entry_alias (E : gentry) : option modexp :=
   match E with
   | ge_mod _ (gu_mk _ (md_alias E')) => Some E'
-  | ge_ind_alias _ _ pm _ _ Ns => Some (me_apps (qname_mod pm) Ns)
+  | ge_def_mod _ _ _ (gu_mk _ (md_alias E')) => Some E'
   | _ => None
   end.
 
@@ -2796,7 +2805,7 @@ Lemma gm_subbody_module : forall Φ T x ip T' Φ',
 Proof.
   fix IH 1; intros [| Φ y E | Φ c] * H; cbn in H |- *; [ discriminate | | exact (IH _ _ _ _ _ _ H) ].
   destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ H) ].
-  destruct E as [? ? ? ? | ? [Δ [? Φ0 | E0]] | ? ? ? D0 Φ0 | ? Δa pma pa ka Nsa | ? Rr Φ0]; try discriminate;
+  destruct E as [? ? ? ? | ? [Δ [? Φ0 | E0]] | ? ? ? D0 Φ0 | ? Aa Ma [Δa [? Φa | Ea]] | ? Rr Φ0]; try discriminate;
     destruct ip as [| z ip]; first [ injection H as <- <-; eexists; reflexivity | exact (IH _ _ _ _ _ _ H) ].
 Qed.
 
@@ -2817,24 +2826,25 @@ Proof.
   - destruct TΦ as [T Φ]; destruct (gc_body_module _ _ _ _ _ Hl) as (oD & Hm'); rewrite Hm in Hm'; discriminate.
 Qed.
 
-(** What a term entry stored at [o] describes: a definition, a type
-    former, or an inductive alias.  A record entry stores no path, so it
+(** What a term entry stored at [o] describes as a term: a definition or a
+    type former; a definition with a module part, its term part, read as
+    a transparent definition is.  A record entry stores no path, so it
     describes its type former only where it is stored. *)
 Definition entry_term (o : option qname) (E : gentry) : option mdesc :=
   match E with
   | ge_def b _ A oM => Some (ds_term A (if b then oM else None))
   | ge_ind _ pq k _ _ => Some (ds_ind nil pq k nil)
-  | ge_ind_alias _ Δ _ pq k Ns => Some (ds_ind Δ pq k Ns)
+  | ge_def_mod _ A M _ => Some (ds_term A (Some M))
   | ge_mod _ _ => None
   | ge_record _ _ _ _ => option_map (fun p => ds_record nil p nil) o
   end.
 
 (** A stored alias entry as the alias unit it is, over its full telescope:
-    an inductive alias as the alias of the module of its inductive type. *)
+    a definition with a module part as its module part. *)
 Definition entry_alias_unit (E : gentry) : option gunit :=
   match E with
   | ge_mod _ (gu_mk Ta (md_alias E')) => Some (gu_mk Ta (md_alias E'))
-  | ge_ind_alias _ Δ pm _ _ Ns => Some (gu_mk Δ (md_alias (me_apps (qname_mod pm) Ns)))
+  | ge_def_mod _ _ _ (gu_mk Ta (md_alias E')) => Some (gu_mk Ta (md_alias E'))
   | _ => None
   end.
 

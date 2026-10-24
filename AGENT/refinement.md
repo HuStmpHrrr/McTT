@@ -120,7 +120,7 @@ Class FCtx (Θ : gdeps) (Ξ : gstack) : Set := mk_fctx
 
 Every lookup of a global name is defined in `Core/Syntactic/Members.v` at a
 function `uf : path -> option gunit` (`gc_resolve_u`, `gc_module_u`,
-`ind_lookup_u`, `gc_entry_u`, `ind_alias_lookup_u`, `ind_target_u`), and
+`ind_lookup_u`, `gc_entry_u`), and
 the core's lookup is that function at `gds_lookup Θ`, e.g.
 `gc_resolve Θ Ξ p := gc_resolve_u (gds_lookup Θ) Ξ p`.  At any `uf` that
 agrees with `gds_lookup Θ` the lookups agree (`gc_resolve_u_ok` and the

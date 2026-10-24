@@ -1,3 +1,19 @@
+(** * Consistency of the Core
+
+    What completeness and soundness of NbE give together: the inversions
+    of conversion and subtyping that normal forms decide (of [Π], of the
+    universes and levels, of inductive and record types); canonical forms
+    of closed terms of [Π], of a universe and of an inductive type,
+    without axioms, through opaque definitions and for every program a
+    run files; and the consistency of the core: at a transparent global
+    context no closed term inhabits [⊥] ([consistency_False]) nor every
+    type of a universe ([consistency]), and likewise at a global context
+    with no axiom and at the end of every run.
+
+    It sits in [Core/Consequences/] with [NormalFormWeakening.v] (NbE
+    commutes with weakening) and [FiledConstructorTypes.v] (the types of
+    filed constructors). *)
+
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core Require Export Soundness.

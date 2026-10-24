@@ -174,7 +174,7 @@ Record elim_alg_ok (G : ctx) (oq : option qname) (Us : list exp) (m : nat) (Bks 
     (** The member's block *)
   ; elim_ok_block : List.nth_error Bks m = Some bm
     (** One block per member *)
-  ; elim_ok_nblocks : List.length Bks = List.length (ind_members D)
+  ; elim_ok_block_count : List.length Bks = List.length (ind_members D)
     (** One uniform parameter per uniform parameter of the group *)
   ; elim_ok_nuparams : List.length Us = ind_nu D
     (** The uniform parameters are checked at the group's telescope *)

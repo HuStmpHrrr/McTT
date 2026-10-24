@@ -149,7 +149,7 @@ Inductive den_term (k n : nat) : ent -> exp -> Prop :=
 (** As a module expression.  A variable that may hold a module is a module
     slot, which the core rejects if it holds a term; a term binder is the
     binder too: the core fills it, a term of a record type standing for
-    the record's module at the term ([AccessFill]), and rejects any
+    the record's module at the term ([fill_mod_term]), and rejects any
     other. *)
 Inductive den_mod (k n : nat) : ent -> modexp -> Prop :=
 | dm_var : forall x, den_mod k n (en_var x) (me_var k)
@@ -262,7 +262,7 @@ Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
     obj_path o = true -> selm S o H -> sel S (Cst.proj o x) (a_mem H x)
 (** A projection from any other head, a term, selects the member of the
     module of a [let] bound to it, which the core fills
-    ([AccessFill]). *)
+    ([fill_mod_term]). *)
 | sel_proj_let : forall S o x M,
     obj_path o = false -> sel S o M -> sel S (Cst.proj o x) (ℓ ≔ M in a_mem (me_var 0) x)
 | sel_let : forall S x oA oM ob A M B,
@@ -482,7 +482,7 @@ Definition record_ents (fp : path) (ch : list string) (x : string) (ps fs : list
 Definition cmd_decls (c : Cst.cmd) : list string :=
   match c with
   | Cst.c_mod _ x _ _ | Cst.c_def _ x _ _ | Cst.c_axiom x _ | Cst.c_ind_alias _ x _ _
-  | Cst.c_record _ x _ _ _ _ => x :: nil
+  | Cst.c_record_alias _ x _ _ | Cst.c_record _ x _ _ _ _ => x :: nil
   | Cst.c_open _ _ _ its => map iitem_name its
   | Cst.c_ind _ _ _ ms => member_names ms
   | Cst.c_mdef _ _ fs => fun_names fs
@@ -577,6 +577,15 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
     selm (pents ps ++ F ++ O) oE E ->
     scmd fp ch O F (Cst.c_ind_alias pv x ps oE) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
       (cc_ind_alias x pv (ptele tys) E :: nil)
+(** [record x (ps) := E]: as an inductive alias; whether [E] names a record
+    type is the core's to check. *)
+| sc_record_alias : forall ch O F pv x ps oE tys E,
+    fresh x F ->
+    NoDup (map fst ps) ->
+    sparams (F ++ O) ps tys ->
+    selm (pents ps ++ F ++ O) oE E ->
+    scmd fp ch O F (Cst.c_record_alias pv x ps oE) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
+      (cc_record_alias x pv (ptele tys) E :: nil)
 (** [builtin k := X]: [X] is a module, as written; whether it is an
     inductive type of the right shape is the core's to check. *)
 | sc_builtin : forall ch O F k oX H,

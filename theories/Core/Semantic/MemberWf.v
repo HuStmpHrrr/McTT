@@ -60,7 +60,7 @@ Lemma desc_ok_tele_head : forall Γ Rm T B T1,
     exists i, Γ ⊢ B : Typeω@i.
 Proof.
   intros * HR Ht Hv.
-  inversion HR as [Γ0 A om HA HM | Γ0 Θ' pq Ns D Hl Hau Hsu HTu HΘ' Hargs HaΘ | Γ0 Δ Φw Φ HΦ Hn Hent HaΔ Hsh Hnd HUw | Γ0 Θ' T0 Φ Ns Θ0 Ξ0 p Hg0 Hsub0 Hloc Ha0 Hs0 HT0 HΘ' Hargs HaΘ |];
+  inversion HR as [Γ0 A om HA HM | Γ0 Θ' pq Ns D Hl Hau Hsu HTu HΘ' Hargs HaΘ | Γ0 Δ Φw Φ HΦ Hn Hent HaΔ Hsh Hnd HUw | Γ0 Θ' T0 Φ Ns Θ0 Ξ0 p Hg0 Hsub0 Hloc Ha0 Hs0 HT0 HΘ' Hargs HaΘ | |];
     subst; cbn in Ht; try discriminate.
   - (* an open module: its parameters *)
     injection Ht as <-.
@@ -123,7 +123,7 @@ Lemma gens_ext_wf_gen : forall g Γ1 H its gs, items_gen gc_deps gc_stack g Γ1 
                                 body_ctx (gens_append Φg (List.length (body_ctx Φg)) gs) ++ Ψ.
 Proof.
   induction 1 as [| g Γ1 H d pv its gs _ IH | g Γ1 H n d pv A om its gs Hm _ IH | g Γ1 H n d pv R its gs Hm Hmod _ IH
-                 | Γ1 H n d pv Θ' p k D pm Ns its gs Hm _ _ _ _ IH ];
+                 | Γ1 H n d pv R A Rm its gs Hm _ _ _ _ ];
     intros Eg Γ0 Ψ -> HH Φg HX; cbn [gens_append ig_entry]; try exact HX; [| | | discriminate ].
   all: pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- app_assoc in HC.
   all: pose proof (wf_wk_shiftn_app' _ _ _ _ HC) as Hw.

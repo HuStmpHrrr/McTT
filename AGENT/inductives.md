@@ -227,7 +227,7 @@ step to be proved never to fail at the user's type, beyond
 
 | What | Where |
 | --- | --- |
-| `a_ind p`, `a_con p c`, `a_elim nm A Bs M`; `ind_decl`, `carg`, `ge_ind pv D Φ`, `ge_ind_alias pv Δ p Ns` | `Core/Syntactic/Syntax.v` |
+| `a_ind p`, `a_con p c`, `a_elim nm A Bs M`; `ind_decl`, `carg`, `ge_ind pv D Φ`, `ge_def_mod pv A M U` | `Core/Syntactic/Syntax.v` |
 | telescopes, `ind_ty`, `con_ty`, `cargs_ctx`, `elim_mctx`, `elim_bctx`, `elim_bty`, `elim_ihs` | `Core/Syntactic/Inductives/Inductives.v` |
 | `wf_ind`, `wf_con`, `wf_elim`, congruences, `wf_exp_eq_elim_iota`, `wf_gentry_indty` (in the mutual block) | `Core/Syntactic/System/Definitions.v` |
 | declarations are well typed (`decl_typed`), presupposition | `System/Global/Presup.v`, `System/Inductives/Typing.v`, `Syntactic/Inductives/IndCong.v`, `Syntactic/Inductives/IndConv.v` |
@@ -313,21 +313,32 @@ The checker names that case (`mod_blame`, `re_mod_term`).
 
 ## Inductive aliases
 
-`[private] inductive L (Δ) := E` (`cc_ind_alias`, `rc_ind_alias`): `E`, a
-well-formed module expression in `Δ ++ gs_tele Ξ`, denotes an inductive
-type `ds_ind Θ' p Ns`, over the parameters `Θ'` it still takes (any
-number: an alias of an alias is accepted as what it names).  The entry is
-`ge_ind_alias pv (Θ' ++ Δ ++ gs_tele Ξ) p Ns`: `p` the canonical path,
-`Ns` (at most `ind_nu D` of them) over the alias's telescope.  The checker
-(`indalias_step`) checks `Δ`, the module `E` applies, `E`, then reads its
-description.
+`[private] inductive L (Δ) := E` (`cc_ind_alias`, `rc_ind_alias`) and
+`[private] record L (Δ) := E` (`cc_record_alias`, `rc_record_alias`) file
+a definition with a module part (`ge_def_mod pv A M U`, built by
+`dm_entry`, `Core/Syntactic/System/Command.v`).  `E`, a well-formed module
+expression in `Δ ++ gs_tele Ξ`, is read as a term (`modexp_as_term`), its
+type `W` inferred algorithmically; the term is a type former of an
+inductive type (`ind_former`) or of a record type (`record_former`): `W`
+is `Π`s ending in a universe, and the term at the variables they bind
+has, in normal form, an inductive type (`nf_indty`) or the record type
+(`nf_record`) as its head.  The entry's term part is `E` as a term over
+`Δ` and the frames' parameters, of type `W` over them; its module part is
+the alias of `E` over `Δ` and the frames' parameters.  The checker
+(`indalias_step`, `recalias_step`) checks `Δ`, the module `E` applies,
+`E`, infers the type, then decides the former by one normalization
+(`ind_former_dec`, `record_former_dec`); the wrong keyword is reported
+("use record" / "use inductive").
 
-* As a term, `L` denotes `ds_ind` again: of type `ctx_pi Δ (ind_ty_at D
-  Ns)`, δ-reducing to `λΔ. p Ns` (`wf_mem`, `wf_exp_eq_mem_delta`).
-* As a module, `L.cons` is `(p Ns).cons`, and `L.rec` the type's
-  recursor.
-* `open … use (X)` declares an inductive alias where `X` is an inductive
-  type or an inductive alias (`item_gen`, `ig_ind_alias`).
+* As a term, `L` is a transparent definition (`entry_term`, `ds_dm`'s
+  term part), δ-reducing to `λΔ. E`.
+* As a module, `L.cons` is `E.cons` (`ds_dm`'s module part, the alias),
+  and `L.rec` the type's recursor.
+* `open … use (X)` declares a definition with a module part where `X` is
+  an inductive type, a record type or such a definition (`items_gen`,
+  `ign_dm`, `ig_def_mod`); `open E as W` is always a plain module alias.
+* `builtin natural := X` reads `X` as a term, through its normal form
+  (`rc_builtin`), so through any alias.
 
 ```
 inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end
@@ -458,13 +469,14 @@ eval elim 3 return x . Num | Z ⇒ Z | S k, r ⇒ S (S r) end   (* 6 : ℕ *)
   local module.
 * **Literals.**  A numeral `a_nlit n` and the token `ℕ`, `a_ntok`, are
   core expressions with no typing, evaluation or readback rule.
-  `rcs_cons` generates them per command from the bindings, before
-  expansion (`cmd_lits_ok Θ Ξ B c c1`, `cmd_lits` over `nat_view Θ Ξ B`):
-  a numeral becomes `nat_chain p z s n`, `ℕ` becomes `a_ind p`.  Unit
-  parameters get theirs in `ru_intro` (`tele_lits_ok`).  Without a
-  binding read at the state, a literal fails with `le_num n` / `le_tok`.
-  `cmd_lits_agree`: a literal generated without a binding is the same with
-  one, which is what `run_functional` needs.
+  `rcs_cons` fills them per command from the bindings, in the typed fill
+  (`fill_cmd Θ Ξ B c c'`, `Core/TypedElab/Fill.v`; `fill_exp_nlit` and
+  `fill_exp_ntok` over `nat_view Θ Ξ B`): a numeral becomes
+  `nat_chain p z s n`, `ℕ` becomes `a_ind p 0`.  Unit parameters get
+  theirs in `ru_intro` (`fill_params`).  Without a binding read at the
+  state, a literal has no fill.  `fill_cmd_functional` and
+  `fill_params_functional` (`Core/TypedElab/Lemmas.v`): one fill each,
+  which is what `run_functional` needs.
 * **Metatheory.**
   - `run_functional`: two runs from the same record and map end in the
     same units, stack, record and map; two runs of a unit agree when their

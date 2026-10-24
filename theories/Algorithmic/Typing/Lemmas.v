@@ -1121,7 +1121,7 @@ with gentry_lets (E : gentry) : nat :=
   | ge_def _ _ A B => exp_lets A + match B with Some M => exp_lets M | None => 0 end
   | ge_mod _ U => gunit_lets U
   | ge_ind _ _ _ _ Φ => gmod_lets Φ
-  | ge_ind_alias _ _ _ _ _ _ => 0
+  | ge_def_mod _ _ _ _ => 0
   | ge_record _ _ _ Φ => gmod_lets Φ
   end
 with centry_lets (e : centry) : nat :=

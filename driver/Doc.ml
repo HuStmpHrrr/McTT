@@ -499,6 +499,11 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
        ignore (decl (Some "inductive") x Mod);
        let env', _ = params st env ps in
        ignore (modv st env' e)
+   (* A record alias: as an inductive alias. *)
+   | C.Coq_c_record_alias (_, x, ps, e) ->
+       ignore (decl (Some "record") x Mod);
+       let env', _ = params st env ps in
+       ignore (modv st env' e)
    (* A record type: its name, a type and a module, its parameters, its
       sort, then its fields, members of its module, each type seeing the
       fields before it, then its with-area, in the record's frame

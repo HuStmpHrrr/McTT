@@ -44,7 +44,7 @@ Section Fixed_GCtx.
 Lemma ds_tele_up_tele : forall Δ R T, ds_is_mod R -> ds_tele (ds_up Δ R) = Some T ->
     exists T0, ds_tele R = Some T0 /\ T = T0 ++ Δ.
 Proof.
-  intros * Hm Ht; destruct R as [| Δ' Φ | Θ0 p T' Φ Ns | |]; cbn in Hm, Ht |- *; try contradiction.
+  intros * Hm Ht; destruct R as [| Δ' Φ | Θ0 p T' Φ Ns | | |]; cbn in Hm, Ht |- *; try contradiction.
   - injection Ht as <-; eauto.
   - destruct (Nat.leb _ _); [ injection Ht as <-; rewrite app_assoc; eauto | discriminate ].
 Qed.

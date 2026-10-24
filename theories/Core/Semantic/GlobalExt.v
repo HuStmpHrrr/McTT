@@ -1,7 +1,7 @@
 (** * NbE Reads the Global Context Only Through Its Lookups
 
     Evaluation and readback read the global context through [gc_resolve],
-    [gc_module], [ind_lookup], [ind_alias_lookup], [record_lookup], [gc_frame] and [gs_find_ind] alone, so two global contexts with the same
+    [gc_module], [ind_lookup], [gc_entry], [record_lookup], [gc_frame] and [gs_find_ind] alone, so two global contexts with the same
     lookups normalize alike. *)
 
 From Mctt Require Import LibTactics.
@@ -15,7 +15,8 @@ Section GlobalExt.
   Hypothesis Hres : forall p, gc_resolve Θ1 Ξ1 p = gc_resolve Θ2 Ξ2 p.
   Hypothesis Hmod : forall p, gc_module Θ1 Ξ1 p = gc_module Θ2 Ξ2 p.
   Hypothesis Hind : forall p, ind_lookup Θ1 Ξ1 p = ind_lookup Θ2 Ξ2 p.
-  Hypothesis Hia : forall p, ind_alias_lookup Θ1 Ξ1 p = ind_alias_lookup Θ2 Ξ2 p.
+  (** A definition with a module part is read off its entry. *)
+  Hypothesis Hent : forall p, gc_entry Θ1 Ξ1 p = gc_entry Θ2 Ξ2 p.
   Hypothesis Hfr : forall p, gc_frame Ξ1 p = gc_frame Ξ2 p.
   Hypothesis Hfi : forall p, gs_find_ind Ξ1 p = gs_find_ind Ξ2 p.
   Hypothesis Hbody : forall p, gc_body Θ1 Ξ1 p = gc_body Θ2 Ξ2 p.
@@ -43,7 +44,7 @@ Section GlobalExt.
         | H : gc_module Θ1 Ξ1 _ = _ |- _ => rewrite Hmod in H
         end;
     try match goal with
-        | H : ind_alias_lookup Θ1 Ξ1 _ = _ |- _ => rewrite Hia in H
+        | H : gc_entry Θ1 Ξ1 _ = _ |- _ => rewrite Hent in H
         end;
     eassumption.
 
@@ -115,7 +116,7 @@ Section GlobalExt.
              | H : _ \/ _ |- _ => destruct H
              | H : exists _, _ |- _ => destruct H
              end;
-      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?ind_lookup_ext, ?ind_mlookup_ext, ?Hia, ?Hrec in *.
+      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?ind_lookup_ext, ?ind_mlookup_ext, ?Hent, ?Hrec in *.
     all: try solve [ econstructor; eauto; apply kind_ext; assumption ].
   Qed.
 
