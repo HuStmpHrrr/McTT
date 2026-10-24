@@ -24,11 +24,9 @@ def compose (B : Type@{u}) (C : Type@{u}) (g : ∀ (b : B) → C)
   g (f a)
 end
 
-(* [iterate f n a] applies [f] to [a] [n] times; it is
-   [Prelude›Function›Iter]. *)
-def iterate (f : ∀ (a : A) → A) (n : ℕ) (a : A) : A ≔
-  Iter.iter u A f n a
-end
+(* [iterate f n a] applies [f] to [a] [n] times; it is [iter] of
+   [Prelude›Function›Iter], at this unit's [u] and [A]. *)
+open Iter u A export (iter as iterate)
 
 end
 

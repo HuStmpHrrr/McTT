@@ -8,7 +8,6 @@
    [Prelude›Algebra›Monoid›Hom]. *)
 module Prelude›Algebra›Monoid (c : Level) (r : Level) where
 
-import Prelude›Algebra›Magma c r use (Magma)
 import Prelude›Algebra›Semigroup c r use (IsSemigroup; Semigroup)
 
 record IsMonoid (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
@@ -34,7 +33,7 @@ with
       carrier ≔ carrier; eq ≔ eq; op ≔ op; isSemigroup ≔ isMonoid.isSemigroup
     end
   end
-  def magma : Magma ≔ semigroup.magma end
+  open semigroup export (magma)
 end
 end
 

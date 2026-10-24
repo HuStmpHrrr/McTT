@@ -9,8 +9,9 @@
    [p.swap] is [pair u B A p.snd p.fst].
 
    The operations as functions over fixed [A] and [B] are in the module
-   [Ops u A B]: the projections, [swap], the reassociations [assoc] and
-   [unassoc], [map] on both components, and currying. *)
+   [Ops u A B]: the projections and [swap], exported from the record's
+   module at [u A B], the reassociations [assoc] and [unassoc], [map] on
+   both components, and currying. *)
 module Prelude›Data›Prod where
 
 record Prod (u : Level) (A : Type@{u}) (B : Type@{u}) : Type@{u} where
@@ -29,11 +30,8 @@ end
 
 module Ops (u : Level) (A : Type@{u}) (B : Type@{u}) where
 
-def fst (p : Prod u A B) : A ≔ p.fst end
-
-def snd (p : Prod u A B) : B ≔ p.snd end
-
-def swap (p : Prod u A B) : Prod u B A ≔ p.swap end
+(* [fst p], [snd p] and [swap p], the record's members at [u A B]. *)
+open Prod u A B export (fst; snd; swap)
 
 (* From [((a, b), c)] to [(a, (b, c))]. *)
 def assoc (C : Type@{u}) (p : Prod u (Prod u A B) C) :

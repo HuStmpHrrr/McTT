@@ -9,16 +9,14 @@
    [Prelude›Data›Church›Levels›Properties]. *)
 module Prelude›Data›Church›Properties (u : Level) where
 
-import Prelude›Builtin›Nat use (succ)
+(* [S] is the successor, the function [toNat] iterates. *)
+import Prelude›Builtin›Nat use (succ; succ as S)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusIdentityRight)
 open Prelude›Arith›Plus.Algebra use (plusAssoc)
 import Prelude›Arith›Mult use (mult)
 import Prelude›Data›Church u as C
-
-(* The successor on numbers, the function [toNat] iterates. *)
-private def S (k : ℕ) : ℕ ≔ succ k end
 
 (* Numerals of numbers. *)
 module Numerals where

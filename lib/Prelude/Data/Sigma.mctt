@@ -5,9 +5,10 @@
    The unit takes the level [u], the type [A] of first components and the
    family [B] of second components as parameters: [Prelude›Data›Sigma 0l ℕ
    (λ (n : ℕ) → NV.Vec n)], with [NV] the vectors of numbers, holds the
-   vectors of every length.  A record has eta, so every [p : Sigma] is
-   [pair p.fst p.snd] by conversion.  Its laws are in
-   [Prelude›Data›Sigma›Properties]. *)
+   vectors of every length.  The fields are also the projections as
+   functions, [fst p] and [snd p : B (fst p)], exported from the record's
+   module.  A record has eta, so every [p : Sigma] is [pair p.fst p.snd] by
+   conversion.  Its laws are in [Prelude›Data›Sigma›Properties]. *)
 module Prelude›Data›Sigma (u : Level) (A : Type@{u})
     (B : ∀ (a : A) → Type@{u}) where
 
@@ -16,11 +17,8 @@ record Sigma : Type@{u} where
   snd : B fst
 end
 
+open Sigma export (fst; snd)
+
 def pair (a : A) (b : B a) : Sigma ≔ record Sigma where fst ≔ a; snd ≔ b end end
-
-(* The projections as functions; [snd p] has the type [B (fst p)]. *)
-def fst (p : Sigma) : A ≔ p.fst end
-
-def snd (p : Sigma) : B (fst p) ≔ p.snd end
 
 end

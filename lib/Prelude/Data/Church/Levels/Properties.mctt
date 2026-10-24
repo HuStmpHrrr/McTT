@@ -5,7 +5,8 @@
    numbers. *)
 module Prelude›Data›Church›Levels›Properties (u : Level) where
 
-import Prelude›Builtin›Nat use (succ)
+(* [S] is the successor, the function [toNat] iterates. *)
+import Prelude›Builtin›Nat use (succ; succ as S)
 import Prelude›Arith›Equality use (Eq; refl; trans)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusIdentityRight)
@@ -15,9 +16,6 @@ import Prelude›Data›Church (succl u) as Up
 import Prelude›Data›Church›Levels u use (cpow; lower; raise; isZero)
 import Prelude›Data›Church›Properties.Numerals u use (fromNatAddsMult)
 import Prelude›Data›Church›Properties.Numerals (succl u) use (toNatFromNat)
-
-(* The successor on numbers, the function [C.toNat] iterates. *)
-private def S (k : ℕ) : ℕ ≔ succ k end
 
 (* Exponentiation computes the power. *)
 module Power where
