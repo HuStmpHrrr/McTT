@@ -13,7 +13,10 @@
      (Extraction/Privacy.v), over the global context the checker built;
    - the token [ℕ] is the type bound as the natural numbers in the
      checker's run of the unit ([check_units]), a member resolved by
-     [def_site] as any other.
+     [def_site] as any other;
+   - a member selected from a term, [p.y], is a member of the record the
+     core's typed fill found [p]'s type to be, read off the unit as the
+     checker filed it ([record_selections]), then resolved by [def_site].
 
    The [Cst] has no positions.  The walk visits the names of a [Cst] in
    source order and pairs each with the next VAR token, checking that the
@@ -127,6 +130,58 @@ type toc_entry = { te_depth : int; te_name : string; te_anchor : string; te_kw :
 
 let push x v env = { sc = E.Coq_en_var x :: env.sc; vs = v :: env.vs }
 
+(* A member selected from something that may be a term, [h.y] with [h]
+   not a local module: the VAR of [y], [y], and the link the walk gives
+   it, if any.  If [h] is a term, [y] is a member of the module of the
+   record [h]'s type, which only the core's typed fill knows
+   ([record_selections]). *)
+type sel = { sl_var : int; sl_name : string; sl_link : link option }
+
+(* Where the checked unit files what a command declares, for the
+   selections of the command ([cmd_rec]).  What a frame declares is filed
+   over the frame's parameters, those of the frames around it too, and for
+   a record's with-area the record's parameters and the value the record's
+   module is at: [k] counts them, as the source does not repeat them.
+   - [L_def (ch, x, k, n)]: the definition [x] of the frame [ch], with its
+     [n] parameters, which occur in the source once and in the core twice,
+     in its type and in its body;
+   - [L_mod (ch, x)]: the module [x], its parameters and, for an alias,
+     its target (its body's commands are commands of their own);
+   - [L_record (ch, x, k)]: the record [x], its parameters, sort and fields
+     (its with-area's commands are commands of their own);
+   - [L_mdef (ch, k, n, gs)]: a mutual definition with [n] common
+     parameters, and its functions [gs], each its name, its number of
+     parameters, and its clauses' constructors, in order;
+   - [L_ind (ch, x, k)]: the group of inductive types filed at its member
+     [x] of the frame [ch], its parameters and its members' parameters
+     and constructors' arguments;
+   - [L_alias (ch, x, k, n)]: the inductive or record alias [x], with its
+     [n] parameters, filed as a definition with a module part, which
+     repeats the definition;
+   - [L_open (ch, k, d)]: an open or import declaring the item [d] first,
+     which is filed with the module opened;
+   - [L_eval (k, a)]: the [k]-th eval of the unit, which is in the log of
+     the run, not in the unit, and whether it has a type annotation [a],
+     which the log holds as its type;
+   - [L_params]: the unit's parameters;
+   - [L_none]: none of these (an open declaring nothing, an import, a
+     builtin binding). *)
+type cmd_loc =
+  | L_def of string list * string * int * int
+  | L_mod of string list * string
+  | L_record of string list * string * int
+  | L_mdef of string list * int * int * (string * int * string list) list
+  | L_ind of string list * string * int
+  | L_alias of string list * string * int * int
+  | L_open of string list * int * string
+  | L_eval of int * bool
+  | L_params
+  | L_none
+
+(* A command's selections, in source order, and where what it declares
+   is filed. *)
+type cmd_rec = { cr_loc : cmd_loc; cr_sels : sel list }
+
 type st = {
   unit : string list;          (* the unit's declared path *)
   toks : tok array;
@@ -138,6 +193,9 @@ type st = {
   mutable notes : string list;
   mutable evals : (C.obj * C.obj option) list;  (* the evals walked, last first *)
   mutable recs : rec_site list;  (* the groups walked, last first *)
+  mutable sels : sel list;       (* the current command's selections, last first *)
+  mutable cmd_recs : cmd_rec list;  (* the commands walked, last first *)
+  mutable frame_ps : int;        (* what the current frame's declarations are filed over ([cmd_loc]) *)
 }
 
 (* A group, which files a recursor module [Rec]: [T.Rec] for one declared
@@ -247,7 +305,11 @@ let member_mden m y =
 
 let select st m y =
   let i = next st y in
-  Option.iter (refer st i) (member_link st m y);
+  let l = member_link st m y in
+  Option.iter (refer st i) l;
+  (match m with
+   | MNone | MGlobal _ -> st.sels <- { sl_var = i; sl_name = y; sl_link = l } :: st.sels
+   | MLocal _ -> ());
   member_mden m y
 
 let unit_path st fq =
@@ -400,6 +462,10 @@ let def_kw st i =
    declaration of the body is an entry of the unit's contents. *)
 let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
   let env = { sc = f @ o; vs = fv @ ov } in
+  (* The selections of an enclosing command, set aside while this one's
+     are gathered. *)
+  let outer = st.sels in
+  st.sels <- [];
   (* An entry of the contents, declared in the member chain [ch']. *)
   let entry ch' x kw k =
     st.toc <- { te_depth = List.length ch'; te_name = x; te_anchor = anchor_of ch' x; te_kw = kw; te_kind = k }
@@ -461,9 +527,10 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
             ignore (List.fold_left (fun env (y, a) ->
                 let v = bind st y in term st env a; push y v env) envs args)) cs) ms
   in
-  (match c with
-   | C.Coq_c_def (_, x, a, b) -> let i = decl None x Def in def_parts st env i a b
-   | C.Coq_c_axiom (x, a) -> ignore (decl (Some "axiom") x Def); term st env a
+  let loc = match c with
+   | C.Coq_c_def (_, x, a, b) ->
+       let i = decl None x Def in def_parts st env i a b; L_def (ch, x, st.frame_ps, count_params st i)
+   | C.Coq_c_axiom (x, a) -> ignore (decl (Some "axiom") x Def); term st env a; L_def (ch, x, st.frame_ps, 0)
    (* [mutual T (ps) where inductive … end end]: the module [T], then the
       group in its frame, its parameters first. *)
    | C.Coq_c_mod (_, x, [], C.Coq_md_where [ C.Coq_c_ind (_, _, ps, ms) ])
@@ -473,37 +540,46 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
        st.occ.(i).extra <- [ (anchor_of (ch @ [ x ]) "Rec", Mod) ];
        st.recs <- { r_chain = ch @ [ x ]; r_group = ch @ [ x ]; r_name = i; r_members = List.map (fun ((y, _), _) -> y) ms }
                   :: st.recs;
-       group (ch @ [ x ]) env true ps ms
+       group (ch @ [ x ]) env true ps ms;
+       (match ms with ((x0, _), _) :: _ -> L_ind (ch @ [ x ], x0, st.frame_ps) | [] -> L_none)
    | C.Coq_c_mod (_, x, ps, md) ->
        ignore (decl (Some "module") x Mod);
        let env', vbs = params st env ps in
        (match md with
         | C.Coq_md_where body ->
-            ignore (cmds st fp (ch @ [ x ]) (f @ o, fv @ ov) (E.pents ps, List.rev vbs) body)
-        | C.Coq_md_alias e -> ignore (modv st env' e))
-   | C.Coq_c_import fq -> unit_path st fq
+            let k = st.frame_ps in
+            st.frame_ps <- k + List.length ps;
+            ignore (cmds st fp (ch @ [ x ]) (f @ o, fv @ ov) (E.pents ps, List.rev vbs) body);
+            st.frame_ps <- k
+        | C.Coq_md_alias e -> ignore (modv st env' e));
+       L_mod (ch, x)
+   | C.Coq_c_import fq -> unit_path st fq; L_none
    | C.Coq_c_open (fq, ip, args, its) ->
        let m = target st env fq ip args in
        (* An exported item is a member of the module, and an entry of the
           contents; a [use]d one, or an [as] alias, only names one in scope. *)
+       let ds = items st m its in
        List.iter2 (fun (d, i, _, l) (_, pv) ->
            let k = if l = None then Mod else Def in
            declare st i (anchor_of ch d) k;
            if not pv then entry ch d "export" k;
-           Option.iter (Hashtbl.replace st.items (fp, ch @ [ d ])) l) (items st m its) its
-   | C.Coq_c_eval (e, t) -> st.evals <- (e, t) :: st.evals; term st env e; Option.iter (term st env) t
+           Option.iter (Hashtbl.replace st.items (fp, ch @ [ d ])) l) ds its;
+       (match ds with (d, _, _, _) :: _ -> L_open (ch, st.frame_ps, d) | [] -> L_none)
+   | C.Coq_c_eval (e, t) ->
+       let k = List.length st.evals in
+       st.evals <- (e, t) :: st.evals; term st env e; Option.iter (term st env) t; L_eval (k, t <> None)
    | C.Coq_c_error e -> raise (Misaligned ("rejected by the parser: " ^ e))
    (* An inductive alias: its name, a module, its parameters, then the
       type it names, as a module alias's target. *)
    | C.Coq_c_ind_alias (_, x, ps, e) ->
        ignore (decl (Some "inductive") x Mod);
        let env', _ = params st env ps in
-       ignore (modv st env' e)
+       ignore (modv st env' e); L_alias (ch, x, st.frame_ps, List.length ps)
    (* A record alias: as an inductive alias. *)
    | C.Coq_c_record_alias (_, x, ps, e) ->
        ignore (decl (Some "record") x Mod);
        let env', _ = params st env ps in
-       ignore (modv st env' e)
+       ignore (modv st env' e); L_alias (ch, x, st.frame_ps, List.length ps)
    (* A record type: its name, a type and a module, its parameters, its
       sort, then its fields, members of its module, each type seeing the
       fields before it, then its with-area, in the record's frame
@@ -522,17 +598,23 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
        (* The value the module is at: a binder no name denotes. *)
        let self = { v_link = Site { s_unit = st.unit; s_anchor = "" }; v_mod = MNone } in
        let p = { S.q_unit = fp; S.q_chain = ch @ [ x ] } in
+       let k = st.frame_ps in
+       st.frame_ps <- k + List.length ps + 1;
        ignore (cmds st fp (ch @ [ x ]) (E.Coq_en_mem (x, p) :: f @ o, fv @ ov)
-                 (E.record_ents fp ch x ps fs, self :: List.rev vbs) cs)
+                 (E.record_ents fp ch x ps fs, self :: List.rev vbs) cs);
+       st.frame_ps <- k;
+       L_record (ch, x, k)
    (* A builtin binding: its kind, which declares nothing and links where
       the type it binds does, then the type. *)
    | C.Coq_c_builtin (k, x) ->
        let i = next st k in
        ignore (modv st env x);
-       st.occ.(i).link <- st.occ.(st.cur - 1).link
+       st.occ.(i).link <- st.occ.(st.cur - 1).link; L_none
    (* A group: its first member's name, its uniform parameters, then its
       members ([group]). *)
-   | C.Coq_c_ind (_, _, ps, ms) -> group ch env false ps ms
+   | C.Coq_c_ind (_, _, ps, ms) ->
+       group ch env false ps ms;
+       (match ms with ((x0, _), _) :: _ -> L_ind (ch, x0, st.frame_ps) | [] -> L_none)
    (* A mutual definition: its common parameters, then each function, a
       definition of the frame: its name, its parameters, the last its
       scrutinee, its result type under them, then its clauses, each its
@@ -544,7 +626,12 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
            ignore (decl (Some "mutual def") g Def);
            let envg, _ = params st envd gps in
            term st envg a;
-           List.iter (fun ((c, ys), b) -> st.occ.(next st c).bare <- true; term st (binds envd ys) b) bs) fs);
+           List.iter (fun ((c, ys), b) -> st.occ.(next st c).bare <- true; term st (binds envd ys) b) bs) fs;
+       L_mdef (ch, st.frame_ps, List.length ps,
+               List.map (fun (((g, gps), _), bs) -> (g, List.length gps, List.map (fun ((c, _), _) -> c) bs)) fs)
+  in
+  st.cmd_recs <- { cr_loc = loc; cr_sels = List.rev st.sels } :: st.cmd_recs;
+  st.sels <- outer;
   next_frame st fp ch o f c
 
 and next_frame st fp ch o f c =
@@ -575,9 +662,10 @@ type unit_info = {
   u_vars : int array;
   u_occ : occ array;
   u_toc : toc_entry list;      (* the declarations of the body at every depth, in order *)
-  u_notes : string list;
+  mutable u_notes : string list;  (* the walk's, then the checked unit's ([record_selections]) *)
   u_evals : (int * int) list;  (* each eval's first and last token, in order *)
   u_recs : rec_site list;      (* the groups declared, in order *)
+  u_cmds : cmd_rec list;       (* each command's selections, the unit's parameters' first *)
 }
 
 let read_file p = In_channel.with_open_bin p In_channel.input_all
@@ -627,11 +715,14 @@ let walk (file : string list) (src : string) (items : (string list * string list
            | P.VAR _ -> Some i
            | _ -> None) (Array.to_list toks))) in
   let occ = Array.init (Array.length vars) (fun _ -> { link = None; anchor = None; kind = None; bare = false; extra = [] }) in
-  let st = { unit = fp; toks; vars; occ; cur = 0; items; toc = []; notes = []; evals = []; recs = [] } in
+  let st = { unit = fp; toks; vars; occ; cur = 0; items; toc = []; notes = []; evals = []; recs = [];
+             sels = []; cmd_recs = []; frame_ps = List.length ps } in
   let l = List.fold_left (lead st fp) [] leads in
   List.iter (fun x -> let i = next st x in declare st i "" Unit) fp;
   let env, vbs = params st { sc = l; vs = [] } ps in
   ignore env;
+  st.cmd_recs <- { cr_loc = L_params; cr_sels = List.rev st.sels } :: st.cmd_recs;
+  st.sels <- [];
   (* The leading commands again, as the frame's first commands. *)
   let f = List.fold_left (fun f c -> next_frame st fp [] l f c) (E.pents ps) leads in
   ignore (cmds st fp [] (l, []) (f, List.rev vbs) cs);
@@ -639,7 +730,7 @@ let walk (file : string list) (src : string) (items : (string list * string list
     raise (Misaligned (Printf.sprintf "%d of %d names paired" st.cur (Array.length vars)));
   { u_file = file; u_path = fp; u_src = src; u_toks = toks; u_comments = comments src toks;
     u_vars = vars; u_occ = occ; u_toc = List.rev st.toc; u_notes = List.rev st.notes;
-    u_evals = eval_spans toks (List.rev st.evals); u_recs = List.rev st.recs }
+    u_evals = eval_spans toks (List.rev st.evals); u_recs = List.rev st.recs; u_cmds = List.rev st.cmd_recs }
 
 (* The order of unit paths: segment by segment, each by [String.compare],
    and a path before every path it is a prefix of, so [X] comes before
@@ -680,6 +771,271 @@ type lib = {
   items : (string list * string list, link) Hashtbl.t;
 }
 
+(* ------------------------------------------------------------------ *)
+(* Selections through record values *)
+
+(* A member [y] selected from a term [h], [h.y], is a member of the module
+   of the record [h]'s type.  The walk cannot know that record; the core's
+   typed fill finds it, and files [h.y] as
+   [a_mem (record_value_module P Rs h) y], where
+   [record_value_module P Rs h = me_apps (qname_mod P) (Rs ++ [h])]
+   (Core/TypedElab/Fill.v).  The links of such selections are read off the
+   checked unit, as filed, and the log of its run, which holds its evals:
+   - [record_cands] lists, for the declaration of one command, its
+     selections through record values, as [(y, P)], in source order;
+   - [record_selections] pairs them with the command's selections that
+     the walk did not link ([sel]), in order and by name. *)
+
+(* The qname of a module path [U.x.y]. *)
+let rec path_qname (h : S.modexp) (acc : string list) : S.qname option =
+  match h with
+  | S.Coq_me_unit p -> Some { S.q_unit = p; S.q_chain = acc }
+  | S.Coq_me_mem (h', y) -> path_qname h' (y :: acc)
+  | _ -> None
+
+(* A module expression's head and arguments. *)
+let rec me_spine (h : S.modexp) (args : S.exp list) : S.modexp * S.exp list =
+  match h with
+  | S.Coq_me_app (h', e) -> me_spine h' (e :: args)
+  | _ -> (h, args)
+
+(* [record_value_module P Rs M]: the record [P] and the arguments [Rs] and
+   [M].  The fill infers [Rs], as normal forms, in which a field is a
+   projection [a_proj], not a selection; [(P Rs M).y] written out has
+   them in the source. *)
+let record_value th (h : S.modexp) : (S.qname * S.exp list) option =
+  match me_spine h [] with
+  | _, [] -> None
+  | b, args ->
+      match path_qname b [] with
+      | Some p when McttExtracted.Members.record_lookup th [] p <> None -> Some (p, args)
+      | _ -> None
+
+(* The selections through record values of filed terms, in the order the
+   walk visits the source they come from: a selection after its value, so
+   [M.y.z] gives [y] then [z]; an eliminator's scrutinee before its blocks;
+   the entries of a context outermost first.  An eliminator's uniform
+   parameters, which the fill infers and the source does not have, are
+   skipped. *)
+let rec rc_exp th (e : S.exp) : (string * S.qname) list =
+  match e with
+  | S.Coq_a_univ m | S.Coq_a_succl m | S.Coq_a_proj (_, m) -> rc_exp th m
+  | S.Coq_a_maxl (a, b) | S.Coq_a_pi (a, b) | S.Coq_a_fn (a, b) | S.Coq_a_app (a, b) ->
+      rc_exp th a @ rc_exp th b
+  | S.Coq_a_exfalso (a, m) -> rc_exp th m @ rc_exp th a
+  | S.Coq_a_let (S.Coq_b_def (oa, m), b) -> rc_opt th oa @ rc_exp th m @ rc_exp th b
+  | S.Coq_a_let (S.Coq_b_mod u, b) -> rc_unit th u @ rc_exp th b
+  | S.Coq_a_mem (h, y) -> rc_sel th h y
+  | S.Coq_a_tuple (t, fs) -> rc_exp th t @ List.concat_map (fun (_, m) -> rc_exp th m) fs
+  | S.Coq_a_elim (_, _, _, bks, m) ->
+      rc_exp th m
+      @ List.concat_map (fun (S.Coq_eb_mk (_, oz, a, bs)) ->
+          rc_opt th oz @ rc_exp th a @ List.concat_map (fun (_, b) -> rc_exp th b) bs) bks
+  | _ -> []
+
+and rc_opt th = function Some e -> rc_exp th e | None -> []
+
+and rc_sel th h y =
+  match record_value th h with
+  | Some (p, args) -> List.concat_map (rc_exp th) args @ [ (y, p) ]
+  | None -> rc_mod th h
+
+and rc_mod th (h : S.modexp) =
+  match h with
+  | S.Coq_me_mem (h', y) -> rc_sel th h' y
+  | S.Coq_me_app (h', e) -> rc_mod th h' @ rc_exp th e
+  | S.Coq_me_lit u -> rc_unit th u
+  | S.Coq_me_unit _ | S.Coq_me_var _ -> []
+
+and rc_ctx th (d : S.centry list) = List.concat_map (rc_centry th) (List.rev d)
+
+and rc_centry th = function
+  | S.Coq_ce_ass a -> rc_exp th a
+  | S.Coq_ce_def (a, m) -> rc_exp th a @ rc_exp th m
+  | S.Coq_ce_mod u -> rc_unit th u
+
+and rc_unit th (S.Coq_gu_mk (d, md)) =
+  rc_ctx th d @ (match md with S.Coq_md_alias h -> rc_mod th h | S.Coq_md_body (_, g) -> rc_gmod th g)
+
+and rc_gmod th = function
+  | S.Coq_gm_nil -> []
+  | S.Coq_gm_ext (g, _, e) -> rc_gmod th g @ rc_gentry th e
+  | S.Coq_gm_open (g, h, _) -> rc_gmod th g @ rc_mod th h
+
+and rc_gentry th = function
+  | S.Coq_ge_def (_, _, a, om) -> rc_exp th a @ rc_opt th om
+  | S.Coq_ge_mod (_, u) -> rc_unit th u
+  | S.Coq_ge_def_mod (_, a, m, u) -> rc_exp th a @ rc_exp th m @ rc_unit th u
+  | S.Coq_ge_record (_, _, d, _) -> rc_record th 0 d
+  | S.Coq_ge_ind (_, _, _, d, _) -> rc_ind th 0 d
+
+(* A context without its [k] outermost entries, the last ones. *)
+and outer_drop k (d : S.centry list) = List.filteri (fun i _ -> i < List.length d - k) d
+
+(* A record: its parameters but the [k] outermost, the frames', then its
+   sort and its fields. *)
+and rc_record th k (d : (S.exp, S.centry) S.record_decl_g) =
+  rc_ctx th (outer_drop k d.S.record_params) @ rc_exp th d.S.record_sort
+  @ List.concat_map (fun (_, a) -> rc_exp th a) d.S.record_fields
+
+(* A group: its parameters but the [k] outermost, the frames', then each
+   member's own parameters, the sort (which the group has once, after its
+   first member's parameters) and its constructors' arguments. *)
+and rc_ind th k (d : (S.exp, S.centry) S.ind_decl_g) =
+  let rec pt = function
+    | S.Coq_pt_pi (a, r) -> rc_exp th a @ pt r
+    | S.Coq_pt_self (_, es) -> List.concat_map (rc_exp th) es in
+  rc_ctx th (outer_drop k d.S.ind_uparams)
+  @ List.concat (List.mapi (fun j (m : (S.exp, S.centry) S.imember_g) ->
+      rc_ctx th m.S.im_nparams @ (if j = 0 then rc_exp th d.S.ind_sort else [])
+      @ List.concat_map (fun (_, args) ->
+          List.concat_map (function S.Coq_ca_arg a -> rc_exp th a | S.Coq_ca_rec r -> pt r) args) m.S.im_cons)
+      d.S.ind_members)
+
+(* The entry [x] of a body, the last if several. *)
+let rec gmod_entry (g : S.gmod) (x : string) : S.gentry option =
+  match g with
+  | S.Coq_gm_nil -> None
+  | S.Coq_gm_ext (g', y, e) -> if y = x then Some e else gmod_entry g' x
+  | S.Coq_gm_open (g', _, _) -> gmod_entry g' x
+
+let unit_body (S.Coq_gu_mk (_, md)) = match md with S.Coq_md_body (_, g) -> Some g | S.Coq_md_alias _ -> None
+
+(* The entry [x] of the frame at the member chain [ch] of a unit. *)
+let entry_at (gu : S.gunit) (ch : string list) (x : string) : S.gentry option =
+  let sub = function
+    | S.Coq_ge_mod (_, u) | S.Coq_ge_def_mod (_, _, _, u) -> unit_body u
+    | S.Coq_ge_record (_, _, _, g) | S.Coq_ge_ind (_, _, _, _, g) -> Some g
+    | S.Coq_ge_def _ -> None in
+  let rec go g = function
+    | [] -> gmod_entry g x
+    | y :: ch' -> Option.bind (Option.bind (gmod_entry g y) sub) (fun g' -> go g' ch') in
+  Option.bind (unit_body gu) (fun g -> go g ch)
+
+(* A definition's body without the binders of its [n] parameters, whose
+   types the walk visits once, in the definition's type. *)
+let rec strip_fns n (e : S.exp) = match n, e with
+  | 0, _ -> e
+  | _, S.Coq_a_fn (_, b) -> strip_fns (n - 1) b
+  | _, _ -> e
+
+(* A type without the domains of its first [n] parameters: those of the
+   frames it is filed over ([cmd_loc]). *)
+let rec skip_pis n (e : S.exp) = match n, e with
+  | 0, _ -> e
+  | _, S.Coq_a_pi (_, b) -> skip_pis (n - 1) b
+  | _, _ -> e
+
+(* The selections through record values of what a command declares. *)
+let record_cands th (gu : S.gunit) (log : McttExtracted.Command1.eval_entry list) (l : cmd_loc) =
+  let def k n = function
+    | Some (S.Coq_ge_def (_, _, a, om)) -> rc_exp th (skip_pis k a) @ rc_opt th (Option.map (strip_fns (k + n)) om)
+    | Some (S.Coq_ge_def_mod (_, a, m, u)) ->
+        rc_exp th (skip_pis k a) @ rc_exp th (strip_fns (k + n) m) @ rc_unit th u
+    | _ -> [] in
+  match l with
+  | L_def (ch, x, k, n) -> def k n (entry_at gu ch x)
+  | L_mod (ch, x) ->
+      (match entry_at gu ch x with
+       | Some (S.Coq_ge_mod (_, S.Coq_gu_mk (d, md))) ->
+           rc_ctx th d @ (match md with S.Coq_md_alias h -> rc_mod th h | S.Coq_md_body _ -> [])
+       | _ -> [])
+  | L_record (ch, x, k) ->
+      (match entry_at gu ch x with Some (S.Coq_ge_record (_, _, d, _)) -> rc_record th k d | _ -> [])
+  | L_ind (ch, x, k) ->
+      (match entry_at gu ch x with Some (S.Coq_ge_ind (_, _, _, d, _)) -> rc_ind th k d | _ -> [])
+  | L_alias (ch, x, k, n) ->
+      (match entry_at gu ch x with
+       | Some (S.Coq_ge_def_mod (_, a, m, _)) -> rc_exp th (skip_pis k a) @ rc_exp th (strip_fns (k + n) m)
+       | _ -> [])
+  (* An [as] alias is filed as an alias of the module opened, a [use]d
+     member as the member of it, each over the frames' parameters. *)
+  | L_open (ch, k, d) ->
+      (match entry_at gu ch d with
+       | Some (S.Coq_ge_mod (_, S.Coq_gu_mk (_, S.Coq_md_alias h))) -> rc_mod th h
+       | Some (S.Coq_ge_def (_, _, _, Some m)) -> rc_exp th (strip_fns k m)
+       | _ -> [])
+  (* Each function is filed as [λ Δ ys z. a_elim … Bks z] at the type
+     [Π Δ ys z. A], with the blocks [Bks] of all the functions: the common
+     parameters [Δ] are read off the first function's type, each
+     function's own parameters and result type off its type, and its
+     clauses off the block of the first function's eliminator whose
+     branches are of its clauses' constructors. *)
+  | L_mdef (ch, k, n, gs) ->
+      let ty g = match entry_at gu ch g with Some (S.Coq_ge_def (_, _, a, _)) -> Some a | _ -> None in
+      let rec doms k e = match k, e with
+        | 0, _ -> ([], e)
+        | _, S.Coq_a_pi (a, b) -> let ds, r = doms (k - 1) b in (a :: ds, r)
+        | _, _ -> ([], e) in
+      (match gs with
+       | [] -> []
+       | (g1, k1, _) :: _ ->
+           let bks = match entry_at gu ch g1 with
+             | Some (S.Coq_ge_def (_, _, _, Some m)) ->
+                 (match strip_fns (k + n + k1) m with S.Coq_a_elim (_, _, _, bks, _) -> bks | _ -> [])
+             | _ -> [] in
+           (match ty g1 with
+            | Some a -> List.concat_map (rc_exp th) (fst (doms n (snd (doms k a)))) | None -> [])
+           @ List.concat_map (fun (g, _, cs) ->
+               (match ty g with Some a -> rc_exp th (snd (doms (k + n) a)) | None -> [])
+               @ (match List.find_opt (fun (S.Coq_eb_mk (_, _, _, bs)) ->
+                   List.map (fun ((c, _), _) -> c) bs = cs) bks with
+                 | Some (S.Coq_eb_mk (_, _, _, bs)) -> List.concat_map (fun (_, b) -> rc_exp th b) bs
+                 | None -> [])) gs)
+  | L_eval (k, annotated) ->
+      (match List.nth_opt log k with
+       | Some e -> rc_exp th e.McttExtracted.Command1.ev_exp
+                   @ (if annotated then rc_exp th e.McttExtracted.Command1.ev_typ else [])
+       | None -> [])
+  | L_params -> let (S.Coq_gu_mk (d, _)) = gu in rc_ctx th d
+  | L_none -> []
+
+(* The links of the selections through record values of a checked unit,
+   command by command.  A selection the walk linked to a member the core
+   finds is one the command may have; one it did not is one it must have.
+   Each is paired with the first selection of the core it can be, after
+   the previous one's, in order, and again from the end, with the last.
+   A selection that must be one links to the member of the record the two
+   agree on: every selection of the core between them of its name is of
+   that record.  Otherwise the selection does not link, and the unit has a
+   note saying why. *)
+let record_selections (u : unit_info) th (gu : S.gunit) log : unit =
+  List.iter (fun cr ->
+      if cr.cr_sels <> [] then begin
+        let cs = Array.of_list (record_cands th gu log cr.cr_loc) in
+        let nc = Array.length cs in
+        let site (y, (p : S.qname)) = Pr.def_site th (S.Coq_me_unit p.S.q_unit) (p.S.q_chain @ [ y ]) in
+        let own s = match s.sl_link with Some (Member (_, h, ch)) -> Pr.def_site th h ch | _ -> None in
+        let its = Array.of_list (List.map (fun s -> (s, own s)) cr.cr_sels) in
+        let ni = Array.length its in
+        let fits (s, o) k =
+          fst cs.(k) = s.sl_name && (match o with None -> true | Some q -> site cs.(k) = Some q) in
+        let fwd = Array.make ni None and bwd = Array.make ni None in
+        let j = ref 0 in
+        Array.iteri (fun i it ->
+            let rec find k = if k >= nc then None else if fits it k then Some k else find (k + 1) in
+            match find !j with Some k -> fwd.(i) <- Some k; j := k + 1 | None -> ()) its;
+        let j = ref (nc - 1) in
+        for i = ni - 1 downto 0 do
+          let rec find k = if k < 0 then None else if fits its.(i) k then Some k else find (k - 1) in
+          match find !j with Some k -> bwd.(i) <- Some k; j := k - 1 | None -> ()
+        done;
+        Array.iteri (fun i (s, o) ->
+            if o = None then begin
+              let line = match u.u_toks.(u.u_vars.(s.sl_var)).t with
+                | P.VAR ((p, _), _) -> p.Lexing.pos_lnum | _ -> 0 in
+              let note why = u.u_notes <- u.u_notes @ [ Printf.sprintf "%s, line %d, %s" s.sl_name line why ] in
+              match fwd.(i), bwd.(i) with
+              | Some e, Some l when e <= l ->
+                  let p = snd cs.(e) in
+                  let rec agree k = k > l || ((fst cs.(k) <> s.sl_name || snd cs.(k) = p) && agree (k + 1)) in
+                  if agree e then
+                    u.u_occ.(s.sl_var).link <- Some (Member (u.u_path, S.Coq_me_unit p.S.q_unit, p.S.q_chain @ [ s.sl_name ]))
+                  else note "a member of one of several records"
+              | _ -> note "a member of no record the checker found"
+            end) its
+      end) u.u_cmds
+
 (* The global context of every unit, the output of its evals and the type
    it binds as the natural numbers, from the checker: each unit runs as its
    own program, as [mctt] runs it.  The log of a run holds only the evals of
@@ -694,8 +1050,10 @@ let check_units ?(extra_roots = []) root (us : unit_info list) thetas outputs na
   List.iter (fun u ->
       let r = Ep.main (Main.load_path_in (root :: extra_roots)) Main.read_unit Main.parser_log_fuel (buf_of u.u_toks 0) in
       match r, PrettyPrinter.eval_outputs r with
-      | Ep.AllGood (_, bt, th, gu, _), Some out ->
-          Hashtbl.replace thetas u.u_path ((u.u_path, gu) :: th);
+      | Ep.AllGood (_, bt, th, gu, log), Some out ->
+          let th = (u.u_path, gu) :: th in
+          Hashtbl.replace thetas u.u_path th;
+          record_selections u th gu log;
           Hashtbl.replace outputs u.u_path out;
           (* [builtins] is a record of one field, [bt_nat], which extraction
              leaves unboxed: the record is the field. *)

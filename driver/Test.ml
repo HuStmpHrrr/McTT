@@ -3230,6 +3230,218 @@ let%expect_test "mctt-doc: a unit comes before the units it is a prefix of" =
     A X X›Nat X›Nat›Properties X›Properties Xa
     |}]
 
+(* The unit [U] of [src], with the [units] it imports, each a name and its
+   source, documented and checked: the problems [--check] reports, then
+   each use in [U] of one of the names [xs], by line, with what it links
+   to. *)
+let doc_links ?(units = []) src xs =
+  let dir = fresh_dir () in
+  List.iter (fun (x, s) -> write_file (Filename.concat dir (x ^ ".mctt")) s) (("U", src) :: units);
+  let lib = Doc.load dir in
+  List.iter print_endline (Doc.problems lib);
+  let u = List.find (fun u -> u.Doc.u_path = [ "U" ]) lib.Doc.units in
+  Array.iteri (fun i o ->
+      match u.Doc.u_toks.(u.Doc.u_vars.(i)).Doc.t with
+      | McttExtracted.Parser.VAR ((p, _), y) when List.mem y xs && o.Doc.anchor = None && not o.Doc.bare ->
+          Printf.printf "line %d %s: %s\n" p.Lexing.pos_lnum y
+            (match Option.bind o.Doc.link (Doc.resolve lib 0) with
+             | Some s -> Doc.unit_name s.Doc.s_unit ^ "#" ^ s.Doc.s_anchor
+             | None -> "not linked")
+      | _ -> ()) u.Doc.u_occ
+
+let%expect_test "mctt-doc: a field selected from a term links to its record's field" =
+  (* Two records with a field [a], both selected from in one command. *)
+  doc_links
+    "module U where\n\
+     record P : Type@0 where a : ⊤; b : ⊤ end\n\
+     record Q : Type@0 where a : ⊤ end\n\
+     def f (p : P) (q : Q) (h : ∀ (z : ⊤) (w : ⊤) → ⊤) : ⊤ := h p.a q.a end\n\
+     def g (q : Q) (p : P) (h : ∀ (z : ⊤) (w : ⊤) → ⊤) : ⊤ := h q.a p.a end\n\
+     end\n" [ "a" ];
+  [%expect {|
+    line 4 a: U#P.a
+    line 4 a: U#Q.a
+    line 5 a: U#Q.a
+    line 5 a: U#P.a
+    |}]
+
+let%expect_test "mctt-doc: a with-member selected from a term links to its definition" =
+  doc_links
+    "module U where\n\
+     record P : Type@0 where a : ⊤; b : ⊤ with def sw : ⊤ := b end end end\n\
+     def g (p : P) : ⊤ := p.sw end\n\
+     def h (p : P) : ⊤ := (P p).sw end\n\
+     end\n" [ "sw" ];
+  [%expect {|
+    line 3 sw: U#P.sw
+    line 4 sw: U#P.sw
+    |}]
+
+let%expect_test "mctt-doc: a chain of selections from a record value links member by member" =
+  doc_links
+    "module U where\n\
+     record Pair (A : Type@0) (B : Type@0) : Type@0 where fst : A; snd : B\n\
+     \  with def swap : Pair B A := record Pair B A where fst := snd; snd := fst end end end end\n\
+     def c : ⊤ := (record Pair ⊤ ⊤ where fst := ⋆; snd := ⋆ end).swap.fst end\n\
+     eval (record Pair ⊤ ⊤ where fst := ⋆; snd := ⋆ end).swap.snd\n\
+     end\n" [ "swap"; "fst"; "snd" ];
+  [%expect {|
+    line 3 snd: U#Pair.snd
+    line 3 fst: U#Pair.fst
+    line 4 swap: U#Pair.swap
+    line 4 fst: U#Pair.fst
+    line 5 swap: U#Pair.swap
+    line 5 snd: U#Pair.snd
+    |}]
+
+let%expect_test "mctt-doc: a member selected from a function's result or a module's term links" =
+  doc_links
+    "module U where\n\
+     record P : Type@0 where a : ⊤; b : ⊤ with def sw : ⊤ := b end end end\n\
+     module M where def k : P := record P where a := ⋆; b := ⋆ end end end\n\
+     def l (x : ⊤) : P := M.k end\n\
+     def m (y : ⊤) : ⊤ := (l y).sw end\n\
+     def j : ⊤ := M.k.a end\n\
+     end\n" [ "sw"; "a"; "k" ];
+  [%expect {|
+    line 4 k: U#M.k
+    line 5 sw: U#P.sw
+    line 6 k: U#M.k
+    line 6 a: U#P.a
+    |}]
+
+let%expect_test "mctt-doc: selections from terms link in every kind of declaration" =
+  (* Two records with a field [ty]: in a module's parameters and its
+     definitions, filed over them; in a record's parameters and fields,
+     and its with-area, filed over the record's value; in a group's
+     constructors; in a mutual definition's common parameters, result
+     and clauses; in local definitions and modules; in an eval and its
+     type. *)
+  doc_links
+    "module U where\n\
+     record T : Type@1 where ty : Type@0 end\n\
+     record S : Type@1 where ty : Type@0 end\n\
+     module K (r : T) (q : S) (x : r.ty) where\n\
+     \  def e (y : q.ty) : r.ty := x end\n\
+     \  record R (v : q.ty) : Type@0 where f : r.ty with def g (w : q.ty) : r.ty := f end end end\n\
+     \  inductive I (v : q.ty) : Type@0 where | i (z : r.ty) end\n\
+     end\n\
+     inductive W (r : T) : Type@1 where | w (x : r.ty) (s : S) (y : s.ty) end\n\
+     inductive N : Type@0 where | z | s (k : N) end\n\
+     mutual def (r : T) (q : S) (x : r.ty) (y : q.ty) fn (n : N) : r.ty := | z => x | s k, hk => hk end\n\
+     def lt (r : T) (q : S) (x : r.ty) (y : q.ty) : r.ty :=\n\
+     \  let v : r.ty := x; w : q.ty := y; module X (u : r.ty) where def o : q.ty := y end end in v end end\n\
+     eval ⋆ : (record T where ty := ⊤ end).ty\n\
+     end\n" [ "ty" ];
+  [%expect {|
+    line 4 ty: U#T.ty
+    line 5 ty: U#S.ty
+    line 5 ty: U#T.ty
+    line 6 ty: U#S.ty
+    line 6 ty: U#T.ty
+    line 6 ty: U#S.ty
+    line 6 ty: U#T.ty
+    line 7 ty: U#S.ty
+    line 7 ty: U#T.ty
+    line 9 ty: U#T.ty
+    line 9 ty: U#S.ty
+    line 11 ty: U#T.ty
+    line 11 ty: U#S.ty
+    line 11 ty: U#T.ty
+    line 12 ty: U#T.ty
+    line 12 ty: U#S.ty
+    line 12 ty: U#T.ty
+    line 13 ty: U#T.ty
+    line 13 ty: U#S.ty
+    line 13 ty: U#T.ty
+    line 13 ty: U#S.ty
+    line 14 ty: U#T.ty
+    |}]
+
+let%expect_test "mctt-doc: a record value's module, its parameters written out" =
+  (* [Pair r.ty ⊤ v] is the module of the value [v]: the [ty] in its
+     parameters links as the others do. *)
+  doc_links
+    "module U where\n\
+     record T : Type@1 where ty : Type@0 end\n\
+     record Pair (A : Type@0) (B : Type@0) : Type@0 where fst : A; snd : B end\n\
+     def f (r : T) (v : Pair r.ty ⊤) : r.ty := (Pair r.ty ⊤ v).fst end\n\
+     end\n" [ "ty"; "fst" ];
+  [%expect {|
+    line 4 ty: U#T.ty
+    line 4 ty: U#T.ty
+    line 4 ty: U#T.ty
+    line 4 fst: U#Pair.fst
+    |}]
+
+
+let%expect_test "mctt-doc: a selection the members of two records could be does not link" =
+  (* The pairing alone: [f] as walked has the one selection [p.a], and is
+     paired with an [f] filed with two, [a] of [P] and [a] of [Q], either
+     of which it could be.  It has a note and no link. *)
+  let decls = "module U where\n\
+               record P : Type@0 where a : ⊤ end\n\
+               record Q : Type@0 where a : ⊤ end\n" in
+  let filed = decls ^ "def f (p : P) (q : Q) (h : ∀ (z : ⊤) (w : ⊤) → ⊤) : ⊤ := h p.a q.a end\nend\n" in
+  let walked = decls ^ "def f (p : P) (q : Q) (h : ∀ (z : ⊤) (w : ⊤) → ⊤) : ⊤ := h ⋆ p.a end\nend\n" in
+  let dir = fresh_dir () in
+  write_file (Filename.concat dir "U.mctt") filed;
+  (match McttExtracted.Entrypoint.main (Main.load_path_in [ dir ]) Main.read_unit Main.parser_log_fuel
+           (Doc.buf_of (Doc.lex filed) 0) with
+   | McttExtracted.Entrypoint.AllGood (_, _, th, gu, log) ->
+       let u = Doc.walk [ "U" ] walked (Hashtbl.create 1) in
+       Doc.record_selections u (([ "U" ], gu) :: th) gu log;
+       List.iter print_endline u.Doc.u_notes;
+       Array.iteri (fun i o -> match u.Doc.u_toks.(u.Doc.u_vars.(i)).Doc.t with
+           | McttExtracted.Parser.VAR ((p, _), "a") when o.Doc.anchor = None ->
+               Printf.printf "line %d a: %s\n" p.Lexing.pos_lnum (if o.Doc.link = None then "not linked" else "linked")
+           | _ -> ()) u.Doc.u_occ
+   | _ -> print_endline "not checked");
+  [%expect {|
+    a, line 4, a member of one of several records
+    line 4 a: not linked
+    |}]
+
+let%expect_test "mctt-doc: selections from terms link in aliases and in the arguments of opens" =
+  (* In an inductive and a record alias, a module alias, an import's and
+     an open's arguments, in a module with a parameter of its own. *)
+  doc_links ~units:[ ("A", "module A (X : Type@1) (x : X) where def y : X := x end end\n") ]
+    "module U where\n\
+     record T : Type@1 where ty : Type@0 end\n\
+     record Pair (A : Type@0) (B : Type@0) : Type@0 where fst : A; snd : B end\n\
+     inductive Id (A : Type@0) : Type@0 where | refl end\n\
+     module F (r : T) where\n\
+     \  record PT (s : T) := Pair r.ty s.ty\n\
+     \  inductive IT := Id (record T where ty := ⊤ end).ty\n\
+     \  import A Type@0 r.ty as B\n\
+     \  open A Type@0 r.ty use (y)\n\
+     \  module C := A Type@0 r.ty\n\
+     end\n\
+     end\n" [ "ty" ];
+  [%expect {|
+    line 6 ty: U#T.ty
+    line 6 ty: U#T.ty
+    line 7 ty: U#T.ty
+    line 8 ty: U#T.ty
+    line 9 ty: U#T.ty
+    line 10 ty: U#T.ty
+    |}]
+
+let%expect_test "mctt-doc: a selection from a term the checker does not file does not link" =
+  (* An import that declares nothing is not filed: the [ty] in its
+     arguments is matched with nothing the checker found, so it has a note
+     and no link. *)
+  doc_links ~units:[ ("A", "module A (X : Type@1) (x : X) where def y : X := x end end\n") ]
+    "module U where\n\
+     record T : Type@1 where ty : Type@0 end\n\
+     import A Type@0 (record T where ty := ⊤ end).ty\n\
+     end\n" [ "ty" ];
+  [%expect {|
+    U: ty, line 3, a member of no record the checker found
+    U: ty, line 3, not resolved
+    line 3 ty: not linked
+    |}]
+
 let%expect_test "mctt-doc: every name of examples lines up" =
   List.iter print_endline (Doc.problems ~resolve:false (Doc.load ~check:false "../examples"));
   List.iter print_endline (Doc.problems ~resolve:false (Doc.load ~check:false "../examples/multi"));
