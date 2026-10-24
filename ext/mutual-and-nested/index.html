@@ -158,13 +158,29 @@ parallel as much as possible.</p>
 <pre><code>dune exec mctt examples/Nary.mctt # or your own example</code></pre>
 <p>or more directly</p>
 <pre><code>_build/default/driver/mctt.exe examples/Nary.mctt # or your own example</code></pre>
-<p>A program can import units from other files, found under
-<code>--search-root</code> (the current directory by default). The
-library <code>lib/Prelude</code> proves basic properties of natural
-numbers, and <code>lib/NatTheory.mctt</code> uses it:</p>
+<p>A program can import units from other files, found under the search
+roots (<code>--search-root</code>, see below). The library
+<code>lib/Prelude</code> proves basic properties of natural numbers, and
+<code>lib/NatTheory.mctt</code> uses it:</p>
 <pre><code>dune exec mctt -- --search-root lib lib/NatTheory.mctt</code></pre>
-<p><code>--search-root</code> may be given more than once; a unit is
-looked up under each root in turn.</p>
+<p>An imported unit <code>X›Y</code> is the file <code>X/Y.mctt</code>
+under a search root. The search roots are, in lookup order:</p>
+<ol type="1">
+<li>every <code>--search-root &lt;dir&gt;</code> flag, in the order
+given (the flag may be given more than once, each adding a root);</li>
+<li>the entries of the environment variable
+<code>MCTT_SEARCH_ROOT</code>, a colon-separated list of directories, in
+order; empty entries are ignored;</li>
+<li>the current directory, always, even when <code>--search-root</code>
+is given (earlier versions dropped it as soon as one flag was
+given).</li>
+</ol>
+<p>A unit is looked up under each root in turn, and the first root that
+has its file wins: a unit found under several roots is read from the
+first, with no error. For example</p>
+<pre><code>MCTT_SEARCH_ROOT=lib dune exec mctt -- --search-root mylib Main.mctt</code></pre>
+<p>looks up each unit under <code>mylib</code>, then <code>lib</code>,
+then the current directory.</p>
 <p>The natural numbers are not built in. A unit binds an inductive type
 of their shape with <code>builtin natural ≔ X</code>. A unit sees the
 bindings it makes and those of the units it imports, directly or not,
