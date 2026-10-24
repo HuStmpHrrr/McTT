@@ -19,7 +19,6 @@ record IsGroup (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
 with
   open isMonoid export (refl; sym; trans; opCong; assoc; leftId; rightId)
 end
-end
 
 record Group : Type@{succl (maxl c r)} where
   carrier : Type@{c};
@@ -37,7 +36,6 @@ with
       carrier ≔ carrier; eq ≔ eq; op ≔ op; e ≔ e; isMonoid ≔ isGroup.isMonoid
     end
   end
-end
 end
 
 end

@@ -3320,7 +3320,7 @@ let%expect_test "mctt-doc: a field selected from a term links to its record's fi
 let%expect_test "mctt-doc: a with-member selected from a term links to its definition" =
   doc_links
     "module U where\n\
-     record P : Type@0 where a : ⊤; b : ⊤ with def sw : ⊤ := b end end end\n\
+     record P : Type@0 where a : ⊤; b : ⊤ with def sw : ⊤ := b end end\n\
      def g (p : P) : ⊤ := p.sw end\n\
      def h (p : P) : ⊤ := (P p).sw end\n\
      end\n" [ "sw" ];
@@ -3333,7 +3333,7 @@ let%expect_test "mctt-doc: a chain of selections from a record value links membe
   doc_links
     "module U where\n\
      record Pair (A : Type@0) (B : Type@0) : Type@0 where fst : A; snd : B\n\
-     \  with def swap : Pair B A := record Pair B A where fst := snd; snd := fst end end end end\n\
+     \  with def swap : Pair B A := record Pair B A where fst := snd; snd := fst end end end\n\
      def c : ⊤ := (record Pair ⊤ ⊤ where fst := ⋆; snd := ⋆ end).swap.fst end\n\
      eval (record Pair ⊤ ⊤ where fst := ⋆; snd := ⋆ end).swap.snd\n\
      end\n" [ "swap"; "fst"; "snd" ];
@@ -3349,7 +3349,7 @@ let%expect_test "mctt-doc: a chain of selections from a record value links membe
 let%expect_test "mctt-doc: a member selected from a function's result or a module's term links" =
   doc_links
     "module U where\n\
-     record P : Type@0 where a : ⊤; b : ⊤ with def sw : ⊤ := b end end end\n\
+     record P : Type@0 where a : ⊤; b : ⊤ with def sw : ⊤ := b end end\n\
      module M where def k : P := record P where a := ⋆; b := ⋆ end end end\n\
      def l (x : ⊤) : P := M.k end\n\
      def m (y : ⊤) : ⊤ := (l y).sw end\n\
@@ -3375,7 +3375,7 @@ let%expect_test "mctt-doc: selections from terms link in every kind of declarati
      record S : Type@1 where ty : Type@0 end\n\
      module K (r : T) (q : S) (x : r.ty) where\n\
      \  def e (y : q.ty) : r.ty := x end\n\
-     \  record R (v : q.ty) : Type@0 where f : r.ty with def g (w : q.ty) : r.ty := f end end end\n\
+     \  record R (v : q.ty) : Type@0 where f : r.ty with def g (w : q.ty) : r.ty := f end end\n\
      \  inductive I (v : q.ty) : Type@0 where | i (z : r.ty) end\n\
      end\n\
      inductive W (r : T) : Type@1 where | w (x : r.ty) (s : S) (y : s.ty) end\n\
@@ -5138,12 +5138,49 @@ let%expect_test "lib/Roses.mctt" =
     Evaluate P.Flatten.lengthFlattenForest (children example) --> ⋆ : ⊤
     |}]
 
+(** The end of a record type: one [end] closes the record, with or
+    without a with-area. *)
+
+let%expect_test "a record type with a with-area closes with one end" =
+  let _ = main_of_body
+    "record Prod (u : Level) (A : Type@{u}) (B : Type@{u}) : Type@{u} where \
+       fst : A; \
+       snd : B \
+     with \
+       def swap : Prod u B A := record Prod u B A where fst := snd; snd := fst end end \
+     end \
+     eval (record Prod 0l Nat Nat where fst := 1; snd := 2 end).swap.fst" in
+  [%expect {|
+    Evaluate let x1 ≔
+                   let x2 ≔ record Prod 0l ℕ ℕ where fst ≔ 1; snd ≔ 2 end
+                   in x2.swap
+                   end
+             in x1.fst
+             end --> 2 : ℕ
+    |}]
+
+let%expect_test "a record type without a with-area closes with one end" =
+  let _ = main_of_body
+    "record Pt : Type@0 where x : Nat; y : Nat end \
+     eval (record Pt where x := 1; y := 2 end).y" in
+  [%expect {| Evaluate let x1 ≔ record Pt where x ≔ 1; y ≔ 2 end in x1.y end --> 2 : ℕ |}]
+
+let%expect_test "an extra end after a record type's with-area" =
+  let _ = main_of_body
+    "record P : Type@0 where a : Nat with def h : Nat := 0 end end end" in
+  [%expect {|
+    Error: on "end" (at line 2, column 85 - line 2, column 88): Expected the end
+      of the file after the "end" that closes the module declaration. An extra
+      "end" has nothing to close here; note that a record type with a with-area
+      closes with a single "end": "record R : S where f : A with ... end".
+    |}]
+
 (** Member access through a term: a term of a record type, in module
     position, stands for the record's module at the term. *)
 
 let pair_decl =
   "record Pair (A : Type@0) (B : Type@0) : Type@0 where fst : A; snd : B \
-   with def swap : Pair B A := record Pair B A where fst := snd; snd := fst end end end end "
+   with def swap : Pair B A := record Pair B A where fst := snd; snd := fst end end end "
 
 let%expect_test "a field through a term binder" =
   let _ = main_of_body (pair_decl ^ "def first (p : Pair Nat Nat) : Nat := p.fst end \
@@ -5231,7 +5268,7 @@ let%expect_test "a field through a global definition" =
     |}]
 
 let%expect_test "an eliminator's annotation with an access through a term at its head" =
-  let _ = main_of_body "record R : Type@1 where carrier : Type@0 with inductive T : Type@0 where | t end end end \
+  let _ = main_of_body "record R : Type@1 where carrier : Type@0 with inductive T : Type@0 where | t end end \
                         def f (q : R) (z : q.T) : Nat := elim z at (w : q.T) -> Nat | t => 0 end end" in
   [%expect {| |}]
 
@@ -5263,7 +5300,7 @@ let%expect_test "a member a record's module does not have, through a term" =
   [%expect {| Error: third is not a member of record Test.Pair: neither a field nor a member of its with-area |}]
 
 let%expect_test "a private with-area member, through a term" =
-  let _ = main_of_body "record P : Type@0 where a : Nat with private def h : Nat := 0 end end end \
+  let _ = main_of_body "record P : Type@0 where a : Nat with private def h : Nat := 0 end end \
                         def g (q : P) : Nat := q.h end" in
   [%expect {| Error: Test.P.h is private |}]
 
@@ -5374,7 +5411,7 @@ let%expect_test "an eliminator no group of which fits its blocks" =
     through their normal forms and as modules through their aliases. *)
 let dm_decls =
   "module D where \
-     record Pair (A : Type@0) (B : Type@0) : Type@0 where fst : A; snd : B with def two : Nat := 2 end end end \
+     record Pair (A : Type@0) (B : Type@0) : Type@0 where fst : A; snd : B with def two : Nat := 2 end end \
      inductive N : Type@0 where | z | s (n : N) end \
    end "
 

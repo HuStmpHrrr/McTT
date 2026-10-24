@@ -33,7 +33,6 @@ record IsMagma (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
 with
   open isEquivalence export (refl; sym; trans)
 end
-end
 
 record Magma : Type@{succl (maxl c r)} where
   carrier : Type@{c};
@@ -47,7 +46,6 @@ with
       carrier ≔ carrier; eq ≔ eq; isEquivalence ≔ isMagma.isEquivalence
     end
   end
-end
 end
 
 end

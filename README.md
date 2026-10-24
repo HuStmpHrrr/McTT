@@ -401,8 +401,9 @@ A module declares a record type with a command:
 
 ```EBNF
 record = ['private'] , 'record' , id , {parameter} , ':' , type , 'where' ,
-         [ field , {';' , field} ] , [ 'with' , {command} , 'end' ] , 'end';
-(* each field's type sees the parameters and the fields before it *)
+         [ field , {';' , field} ] , [ 'with' , {command} ] , 'end';
+(* each field's type sees the parameters and the fields before it; one
+   'end' closes the with-area and the record together *)
 field = id , ':' , type;
 ```
 
@@ -411,7 +412,7 @@ record Pair (A : Type@0) (B : Type@0) : Type@0 where
   fst : A; snd : B
 with
   def swap : Pair B A := record Pair B A where fst := snd; snd := fst end end
-end end
+end
 ```
 
 The sort is a universe, and a field's type is in it.  A record type is

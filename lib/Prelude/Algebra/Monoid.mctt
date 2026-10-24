@@ -18,7 +18,6 @@ record IsMonoid (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
 with
   open isSemigroup export (refl; sym; trans; opCong; assoc)
 end
-end
 
 record Monoid : Type@{succl (maxl c r)} where
   carrier : Type@{c};
@@ -34,7 +33,6 @@ with
     end
   end
   open semigroup export (magma)
-end
 end
 
 end

@@ -564,7 +564,6 @@ with
   def flip : Point ≔ record Point where x ≔ y; y ≔ x end end
   def sum : ℕ ≔ Prelude›Arith›Plus.plus x y end
 end
-end
 
 def origin : Point ≔ record Point where x ≔ 0; y ≔ 0 end end
 

@@ -16,7 +16,6 @@ record IsSemilattice (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
 with
   open isSemigroup export (refl; sym; trans; opCong; assoc)
 end
-end
 
 record Semilattice : Type@{succl (maxl c r)} where
   carrier : Type@{c};
@@ -31,7 +30,6 @@ with
       isSemigroup ≔ isSemilattice.isSemigroup
     end
   end
-end
 end
 
 end

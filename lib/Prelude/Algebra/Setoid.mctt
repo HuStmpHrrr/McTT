@@ -28,6 +28,5 @@ record Setoid : Type@{succl (maxl c r)} where
 with
   open isEquivalence export (refl; sym; trans)
 end
-end
 
 end

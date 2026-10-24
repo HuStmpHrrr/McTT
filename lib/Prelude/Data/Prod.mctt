@@ -21,7 +21,6 @@ with
   (* The pair with its components exchanged. *)
   def swap : Prod u B A ≔ record Prod u B A where fst ≔ snd; snd ≔ fst end end
 end
-end
 
 def pair (u : Level) (A : Type@{u}) (B : Type@{u}) (a : A) (b : B) :
     Prod u A B ≔

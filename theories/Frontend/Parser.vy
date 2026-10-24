@@ -134,12 +134,13 @@ let cmd :=
       { [Cst.c_ind_alias true (snd x) (List.rev ps) e] }
   (* [builtin natural := X]: the inductive type [X] is the natural numbers. *)
   | BUILTIN; k = VAR; ":="; x = atomic_obj; { [Cst.c_builtin (snd k) x] }
-  (* [record x (ps) : S where f : A ; … with cs end end]: a record type, its
+  (* [record x (ps) : S where f : A ; … with cs end]: a record type, its
      parameters, its sort, its fields in order, and its with-area, the
-     commands of its module after the fields. *)
-  | RECORD; x = VAR; ps = params_opt; ":"; t = obj; WHERE; fs = rfields; cs = rwith; END;
+     commands of its module after the fields. One [end] closes the record,
+     with or without a with-area. *)
+  | RECORD; x = VAR; ps = params_opt; ":"; t = obj; WHERE; fs = rfields; cs = rwith;
       { [Cst.c_record false (snd x) (List.rev ps) t (List.rev fs) cs] }
-  | PRIVATE; RECORD; x = VAR; ps = params_opt; ":"; t = obj; WHERE; fs = rfields; cs = rwith; END;
+  | PRIVATE; RECORD; x = VAR; ps = params_opt; ":"; t = obj; WHERE; fs = rfields; cs = rwith;
       { [Cst.c_record true (snd x) (List.rev ps) t (List.rev fs) cs] }
   (* [record x (ps) := X Ms]: a record alias, the record type [X] at the
      arguments [Ms], under the parameters. *)
@@ -158,9 +159,11 @@ let rfields1 :=
   | f = VAR; ":"; a = obj; { [(snd f, a)] }
   | ~ = rfields1; ";"; f = VAR; ":"; a = obj; { (snd f, a) :: rfields1 }
 
-(* The with-area of a record type, in order: [with cs end], or nothing *)
+(* The end of a record type, with its with-area in order: [with cs end], or
+   just [end] for an empty with-area. The one [end] closes the with-area and
+   the record together. *)
 let rwith :=
-  | { @nil Cst.cmd }
+  | END; { @nil Cst.cmd }
   | WITH; cs = cmds; END; { List.rev cs }
 
 (* Reversed list of the fields of a record value, possibly empty, separated

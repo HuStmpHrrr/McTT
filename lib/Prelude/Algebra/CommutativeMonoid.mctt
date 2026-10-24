@@ -13,7 +13,6 @@ record IsCommutativeMonoid (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r}
 with
   open isMonoid export (refl; sym; trans; opCong; assoc; leftId; rightId)
 end
-end
 
 record CommutativeMonoid : Type@{succl (maxl c r)} where
   carrier : Type@{c};
@@ -30,7 +29,6 @@ with
       isMonoid ≔ isCommutativeMonoid.isMonoid
     end
   end
-end
 end
 
 end

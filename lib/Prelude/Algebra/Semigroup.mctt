@@ -14,7 +14,6 @@ record IsSemigroup (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
 with
   open isMagma export (refl; sym; trans; opCong)
 end
-end
 
 record Semigroup : Type@{succl (maxl c r)} where
   carrier : Type@{c};
@@ -28,7 +27,6 @@ with
       carrier ≔ carrier; eq ≔ eq; op ≔ op; isMagma ≔ isSemigroup.isMagma
     end
   end
-end
 end
 
 end

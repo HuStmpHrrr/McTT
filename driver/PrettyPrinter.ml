@@ -356,8 +356,8 @@ and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      fprintf f "@[<hov 2>%srecord %s" (if priv then "private " else "") x;
      List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
      fprintf f " @<1>%s@ %a@]" s_eq format_obj e
-  (* [record x (ps) : S where f : A; … with cs end end]: the fields, then
-     the with-area, if any. *)
+  (* [record x (ps) : S where f : A; … with cs end]: the fields, then the
+     with-area, if any; one [end] closes both. *)
   | Cst.Coq_c_record (priv, x, ps, es, fs, cs) ->
      fprintf f "@[<v 2>%srecord %s" (if priv then "private " else "") x;
      List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
@@ -368,7 +368,7 @@ and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      if cs <> [] then begin
        fprintf f "@ @[<v 2>with";
        List.iter (fun c -> fprintf f "@ %a" format_cmd c) cs;
-       fprintf f "@;<1 -2>end@]"
+       fprintf f "@]"
      end;
      fprintf f "@;<1 -2>end@]"
   | Cst.Coq_c_eval (e, ot) -> begin

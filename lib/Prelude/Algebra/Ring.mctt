@@ -38,7 +38,6 @@ with
     end
   end
 end
-end
 
 record Ring : Type@{succl (maxl c r)} where
   carrier : Type@{c};
@@ -70,7 +69,6 @@ with
       isAbelianGroup ≔ isRing.isAdditiveGroup
     end
   end
-end
 end
 
 end

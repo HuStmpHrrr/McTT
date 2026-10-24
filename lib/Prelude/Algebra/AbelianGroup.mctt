@@ -25,7 +25,6 @@ with
     end
   end
 end
-end
 
 record AbelianGroup : Type@{succl (maxl c r)} where
   carrier : Type@{c};
@@ -50,7 +49,6 @@ with
       isCommutativeMonoid ≔ isAbelianGroup.isCommutativeMonoid
     end
   end
-end
 end
 
 end
