@@ -1,44 +1,67 @@
-(* Laws of a monoid [M], derived from the fields of
-   [Prelude›Algebra›Monoid]: the neutral element is unique, and the powers
-   [pow x n], [x] combined with itself [n] times, satisfy the laws of
-   exponents.  The unit takes the monoid as a parameter:
-   with [N] the unit [Prelude›Algebra›Instances›Nat],
-   [import Prelude›Algebra›Monoid›Properties 0l N.additive.monoid as P]
+(* Laws of a monoid [M], derived from the fields of [Prelude›Algebra›Monoid]
+   and stated up to its relation [M.eq]: rewriting on each side of the
+   operation ([Cong]), the uniqueness of the neutral element ([Neutral]),
+   and the laws of the powers [pow x n], [x] combined with itself [n]
+   times ([Power]).  The unit takes the monoid as a parameter:
+   [import Prelude›Algebra›Monoid›Properties 0l 0l additive.monoid as P]
    gives the laws of numbers under addition. *)
 import Prelude›Algebra›Monoid
-module Prelude›Algebra›Monoid›Properties (u : Level)
-    (M : Prelude›Algebra›Monoid.Monoid u) where
+module Prelude›Algebra›Monoid›Properties (c : Level) (r : Level)
+    (M : Prelude›Algebra›Monoid.Monoid c r) where
 
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Plus use (plus)
 import Prelude›Arith›Mult use (mult)
-import Prelude›Logic›Leibniz u use (Id; idRefl; idSym; idTrans; idCong)
 
-private def C : Type@{u} ≔ M.carrier end
+open M
+  use (carrier as C; eq as R; op; e; opCong; assoc; leftId; rightId;
+       refl as rRefl; sym as rSym; trans as rTrans)
 
-(* [pow x n] is [M.op x (M.op x … M.e)], with [n] factors [x]. *)
+(* [pow x n] is [x] combined with itself [n] times: [op x (op x ... e)]. *)
 def pow (x : C) (n : ℕ) : C ≔
-  elim n at k → C
-  | zero ⇒ M.e
-  | succ p, r ⇒ M.op x r
+  elim n at y → C
+  | zero ⇒ e
+  | succ p, r ⇒ op x r
   end
 end
+
+(* Rewriting one side of the operation. *)
+module Cong where
+
+theorem congLeft : ∀ (a : C) (b : C) (c : C) (h : R a b) →
+    R (op a c) (op b c) ≔
+  λ (a : C) (b : C) (c : C) (h : R a b) → opCong a c b c h (rRefl c)
+end
+
+theorem congRight : ∀ (a : C) (b : C) (c : C) (h : R b c) →
+    R (op a b) (op a c) ≔
+  λ (a : C) (b : C) (c : C) (h : R b c) → opCong a b a c (rRefl a) h
+end
+
+(* Associativity read from right to left. *)
+theorem assocBack : ∀ (x : C) (y : C) (z : C) →
+    R (op x (op y z)) (op (op x y) z) ≔
+  λ (x : C) (y : C) (z : C) →
+    rSym (op (op x y) z) (op x (op y z)) (assoc x y z)
+end
+
+end
+
+open Cong use (congLeft; congRight; assocBack)
 
 (* The neutral element is unique. *)
 module Neutral where
 
-(* An element neutral on the left is [M.e]: both are [M.op d M.e]. *)
-theorem leftIdUnique : ∀ (d : C) (h : ∀ (x : C) → Id C (M.op d x) x) →
-    Id C d M.e ≔
-  λ (d : C) (h : ∀ (x : C) → Id C (M.op d x) x) →
-    idTrans C d (M.op d M.e) M.e (idSym C (M.op d M.e) d (M.rightId d)) (h M.e)
+(* An element that is neutral on the left is [e]: both are [op d e]. *)
+theorem leftIdUnique : ∀ (d : C) (h : ∀ (x : C) → R (op d x) x) → R d e ≔
+  λ (d : C) (h : ∀ (x : C) → R (op d x) x) →
+    rTrans d (op d e) e (rSym (op d e) d (rightId d)) (h e)
 end
 
-(* An element neutral on the right is [M.e]: both are [M.op M.e d]. *)
-theorem rightIdUnique : ∀ (d : C) (h : ∀ (x : C) → Id C (M.op x d) x) →
-    Id C d M.e ≔
-  λ (d : C) (h : ∀ (x : C) → Id C (M.op x d) x) →
-    idTrans C d (M.op M.e d) M.e (idSym C (M.op M.e d) d (M.leftId d)) (h M.e)
+(* An element that is neutral on the right is [e]: both are [op e d]. *)
+theorem rightIdUnique : ∀ (d : C) (h : ∀ (x : C) → R (op x d) x) → R d e ≔
+  λ (d : C) (h : ∀ (x : C) → R (op x d) x) →
+    rTrans d (op e d) e (rSym (op e d) d (leftId d)) (h e)
 end
 
 end
@@ -46,53 +69,89 @@ end
 (* Laws of powers. *)
 module Power where
 
-theorem powOne : ∀ (x : C) → Id C (pow x 1) x ≔
-  λ (x : C) → M.rightId x
+theorem powOne : ∀ (x : C) → R (pow x 1) x ≔
+  λ (x : C) → rightId x
+end
+
+(* Powers respect [R]. *)
+theorem powCong : ∀ (x : C) (y : C) (h : R x y) (n : ℕ) →
+    R (pow x n) (pow y n) ≔
+  λ (x : C) (y : C) (h : R x y) (n : ℕ) →
+    elim n at k → R (pow x k) (pow y k)
+    | zero ⇒ rRefl e
+    | succ p, ih ⇒ opCong x (pow x p) y (pow y p) h ih
+    end
 end
 
 (* The last factor may be split off on the right as well as on the left. *)
 theorem powSuccRight : ∀ (x : C) (n : ℕ) →
-    Id C (pow x (succ n)) (M.op (pow x n) x) ≔
+    R (pow x (succ n)) (op (pow x n) x) ≔
   λ (x : C) (n : ℕ) →
-    elim n at k → Id C (pow x (succ k)) (M.op (pow x k) x)
-    | zero ⇒
-        idTrans C (M.op x M.e) x (M.op M.e x) (M.rightId x)
-          (idSym C (M.op M.e x) x (M.leftId x))
+    elim n at k → R (pow x (succ k)) (op (pow x k) x)
+    | zero ⇒ rTrans (op x e) x (op e x) (rightId x) (rSym (op e x) x (leftId x))
     | succ p, ih ⇒
-        idTrans C (M.op x (pow x (succ p))) (M.op x (M.op (pow x p) x))
-          (M.op (M.op x (pow x p)) x)
-          (idCong C C (M.op x) (pow x (succ p)) (M.op (pow x p) x) ih)
-          (idSym C (M.op (M.op x (pow x p)) x) (M.op x (M.op (pow x p) x))
-             (M.assoc x (pow x p) x))
+        rTrans (op x (pow x (succ p))) (op x (op (pow x p) x))
+          (op (op x (pow x p)) x)
+          (congRight x (pow x (succ p)) (op (pow x p) x) ih)
+          (assocBack x (pow x p) x)
     end
 end
 
 (* A power of a sum of exponents is the product of the powers. *)
 theorem powPlus : ∀ (x : C) (m : ℕ) (n : ℕ) →
-    Id C (pow x (plus m n)) (M.op (pow x m) (pow x n)) ≔
+    R (pow x (plus m n)) (op (pow x m) (pow x n)) ≔
   λ (x : C) (m : ℕ) (n : ℕ) →
-    elim m at k → Id C (pow x (plus k n)) (M.op (pow x k) (pow x n))
-    | zero ⇒ idSym C (M.op M.e (pow x n)) (pow x n) (M.leftId (pow x n))
+    elim m at k → R (pow x (plus k n)) (op (pow x k) (pow x n))
+    | zero ⇒ rSym (op e (pow x n)) (pow x n) (leftId (pow x n))
     | succ p, ih ⇒
-        idTrans C (M.op x (pow x (plus p n))) (M.op x (M.op (pow x p) (pow x n)))
-          (M.op (M.op x (pow x p)) (pow x n))
-          (idCong C C (M.op x) (pow x (plus p n)) (M.op (pow x p) (pow x n)) ih)
-          (idSym C (M.op (M.op x (pow x p)) (pow x n))
-             (M.op x (M.op (pow x p) (pow x n))) (M.assoc x (pow x p) (pow x n)))
+        rTrans (op x (pow x (plus p n))) (op x (op (pow x p) (pow x n)))
+          (op (op x (pow x p)) (pow x n))
+          (congRight x (pow x (plus p n)) (op (pow x p) (pow x n)) ih)
+          (assocBack x (pow x p) (pow x n))
     end
 end
 
 (* A power of a product of exponents is a power of a power. *)
 theorem powMult : ∀ (x : C) (m : ℕ) (n : ℕ) →
-    Id C (pow x (mult m n)) (pow (pow x n) m) ≔
+    R (pow x (mult m n)) (pow (pow x n) m) ≔
   λ (x : C) (m : ℕ) (n : ℕ) →
-    elim m at k → Id C (pow x (mult k n)) (pow (pow x n) k)
-    | zero ⇒ idRefl C M.e
+    elim m at k → R (pow x (mult k n)) (pow (pow x n) k)
+    | zero ⇒ rRefl e
     | succ p, ih ⇒
-        idTrans C (pow x (plus n (mult p n))) (M.op (pow x n) (pow x (mult p n)))
-          (M.op (pow x n) (pow (pow x n) p))
+        rTrans (pow x (plus n (mult p n))) (op (pow x n) (pow x (mult p n)))
+          (op (pow x n) (pow (pow x n) p))
           (powPlus x n (mult p n))
-          (idCong C C (M.op (pow x n)) (pow x (mult p n)) (pow (pow x n) p) ih)
+          (congRight (pow x n) (pow x (mult p n)) (pow (pow x n) p) ih)
+    end
+end
+
+(* Powers of the same element commute. *)
+theorem powComm : ∀ (x : C) (m : ℕ) (n : ℕ) →
+    R (op (pow x m) (pow x n)) (op (pow x n) (pow x m)) ≔
+  λ (x : C) (m : ℕ) (n : ℕ) →
+    elim m at k → R (op (pow x k) (pow x n)) (op (pow x n) (pow x k))
+    | zero ⇒
+        rTrans (op e (pow x n)) (pow x n) (op (pow x n) e)
+          (leftId (pow x n))
+          (rSym (op (pow x n) e) (pow x n) (rightId (pow x n)))
+    | succ p, ih ⇒
+        let a ≔ op (op x (pow x p)) (pow x n);
+            b ≔ op x (op (pow x p) (pow x n));
+            c ≔ op x (op (pow x n) (pow x p));
+            d ≔ op (op x (pow x n)) (pow x p);
+            f ≔ op (op (pow x n) x) (pow x p);
+            g ≔ op (pow x n) (op x (pow x p));
+            ab : R a b ≔ assoc x (pow x p) (pow x n);
+            bc : R b c ≔
+              congRight x (op (pow x p) (pow x n)) (op (pow x n) (pow x p)) ih;
+            cd : R c d ≔ assocBack x (pow x n) (pow x p);
+            df : R d f ≔
+              congLeft (op x (pow x n)) (op (pow x n) x) (pow x p)
+                (powSuccRight x n);
+            fg : R f g ≔ assoc (pow x n) x (pow x p)
+        in rTrans a b g ab
+             (rTrans b c g bc (rTrans c d g cd (rTrans d f g df fg)))
+        end
     end
 end
 

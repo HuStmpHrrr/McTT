@@ -1,22 +1,36 @@
-(* A client of [Prelude›Algebra›Setoid›Monoid] and its instances.  The
-   laws of powers are proved once, for every monoid; read in the additive, the
-   multiplicative and the composition monoid, they become laws of
-   multiplication, of exponentiation and of iteration. *)
+(* A client of [Prelude›Algebra›Monoid›Properties] and the instances of
+   monoids on numbers.  The laws of powers are proved once, for every
+   monoid; read in the additive, the multiplicative and the composition
+   monoid, they become laws of multiplication, of exponentiation and of
+   iteration.  Each monoid's laws are its Properties unit, named here. *)
 module Algebra where
 
 import Prelude›Builtin›Nat use (succ)
 import Prelude›Arith›Equality use (Eq; refl; sym; trans)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusIdentityRight)
-open Prelude›Arith›Plus.Algebra use (plusAssoc; plusCongBoth)
+open Prelude›Arith›Plus.Algebra use (plusAssoc)
 import Prelude›Arith›Mult use (mult)
 import Prelude›Arith›Pow use (pow)
 import Prelude›Arith›MinMax use (max)
 open Prelude›Arith›MinMax.Laws use (maxIdem; maxIdentityRight)
-import Prelude›Algebra›Setoid›Monoid as Monoid
-import Prelude›Algebra›Setoid›Instances
-  use (Additive; AdditiveComm; Multiplicative; MultiplicativeComm; Maximum;
-       Composition; Endo; Pointwise; compose)
+import Prelude›Algebra›Setoid 0l 0l use (IsEquivalence)
+import Prelude›Algebra›Magma 0l 0l use (IsMagma)
+import Prelude›Algebra›Semigroup 0l 0l use (IsSemigroup)
+import Prelude›Algebra›Monoid 0l 0l use (IsMonoid; Monoid)
+import Prelude›Algebra›Instances›Nat
+  use (additive; multiplicative; maximum; eqIsEquivalence; congBoth)
+import Prelude›Algebra›Instances›Endo 0l ℕ use (Endo; compose)
+import Prelude›Algebra›Instances›Endo›Pointwise use (Pointwise; pointwise)
+import Prelude›Algebra›Monoid›Properties 0l 0l additive.monoid as Additive
+import Prelude›Algebra›Monoid›Properties 0l 0l multiplicative.monoid
+  as Multiplicative
+import Prelude›Algebra›Monoid›Properties 0l 0l maximum.monoid as Maximum
+import Prelude›Algebra›Monoid›Properties 0l 0l pointwise as Composition
+import Prelude›Algebra›CommutativeMonoid›Properties 0l 0l additive
+  as AdditiveComm
+import Prelude›Algebra›CommutativeMonoid›Properties 0l 0l multiplicative
+  as MultiplicativeComm
 
 (* Powers in each monoid. *)
 eval Additive.pow 3 4
@@ -114,12 +128,33 @@ end
 
 end
 
-(* A monoid built here, from a partial application of the unit: the setoid
-   of numbers is fixed, and the operation and its laws come later.  It is
-   addition again, so its powers agree with [Additive]'s. *)
-module NatMonoid ≔ Monoid 0l ℕ Eq refl sym trans
+(* A monoid built here, by a function that fixes the setoid of numbers
+   and takes the operation and its laws.  It is addition again, so its
+   powers agree with [Additive]'s. *)
+def natMonoid (op : ∀ (x : ℕ) (y : ℕ) → ℕ)
+    (assoc : ∀ (x : ℕ) (y : ℕ) (z : ℕ) → Eq (op (op x y) z) (op x (op y z)))
+    (e : ℕ) (leftId : ∀ (x : ℕ) → Eq (op e x) x)
+    (rightId : ∀ (x : ℕ) → Eq (op x e) x) : Monoid ≔
+  record Monoid where
+    carrier ≔ ℕ; eq ≔ Eq; op ≔ op; e ≔ e;
+    isMonoid ≔
+      record IsMonoid ℕ Eq op e where
+        isSemigroup ≔
+          record IsSemigroup ℕ Eq op where
+            isMagma ≔
+              record IsMagma ℕ Eq op where
+                isEquivalence ≔ eqIsEquivalence; opCong ≔ congBoth op
+              end;
+            assoc ≔ assoc
+          end;
+        leftId ≔ leftId;
+        rightId ≔ rightId
+      end
+  end
+end
 
-module Sums ≔ NatMonoid plus plusCongBoth 0 plusAssoc refl plusIdentityRight
+import Prelude›Algebra›Monoid›Properties 0l 0l
+  (natMonoid plus plusAssoc 0 refl plusIdentityRight) as Sums
 
 eval Sums.pow 6 3
 
@@ -129,7 +164,7 @@ eval Sums.pow 6 3
    congruence laws of the instance. *)
 theorem maxPowSucc : ∀ (x : ℕ) (n : ℕ) → Eq (Maximum.pow x (succ n)) x ≔
   λ (x : ℕ) (n : ℕ) →
-    elim n at k -> Eq (Maximum.pow x (succ k)) x
+    elim n at k → Eq (Maximum.pow x (succ k)) x
     | zero ⇒ maxIdentityRight x
     | succ p, ih ⇒
         let power ≔ Maximum.pow x (succ p);

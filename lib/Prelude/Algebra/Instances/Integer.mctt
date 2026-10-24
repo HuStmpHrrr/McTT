@@ -1,11 +1,13 @@
-(* The integers of [Prelude›Data›Integer] as instances of the bundled
-   structures: an abelian group under addition ([additive]) and a
-   commutative monoid under multiplication ([multiplicative]).  The laws
-   are those of [Prelude›Data›Integer›Properties], already Leibniz
-   equalities.  The ring of both needs distributivity, which that unit
-   does not prove yet. *)
+(* The integers of [Prelude›Data›Integer] as instances of the structures
+   of [Prelude›Algebra], up to Leibniz equality, at the levels [0l] and
+   [1l]: an abelian group under addition ([additive]) and a commutative
+   monoid under multiplication ([multiplicative]).  The laws are those of
+   [Prelude›Data›Integer›Properties], already Leibniz equalities.  The
+   ring of both needs distributivity, which that unit does not prove
+   yet. *)
 module Prelude›Algebra›Instances›Integer where
 
+import Prelude›Logic›Leibniz 0l use (Id; idCong)
 import Prelude›Data›Integer use (Int; neg; add; mul)
 open Int use (pos)
 import Prelude›Data›Integer›Properties
@@ -14,50 +16,55 @@ open Prelude›Data›Integer›Properties.Add
        addInverseRight; addAssoc)
 open Prelude›Data›Integer›Properties.Mul
   use (mulComm; mulIdentityLeft; mulIdentityRight; mulAssoc)
-import Prelude›Algebra›Magma 0l use (Magma)
-import Prelude›Algebra›Semigroup 0l use (Semigroup)
-import Prelude›Algebra›Monoid 0l use (Monoid)
-import Prelude›Algebra›CommutativeMonoid 0l use (CommutativeMonoid)
-import Prelude›Algebra›Group 0l use (Group)
-import Prelude›Algebra›AbelianGroup 0l use (AbelianGroup)
+import Prelude›Algebra›Leibniz 0l use (idIsMagma)
+import Prelude›Algebra›Semigroup 0l 1l use (IsSemigroup)
+import Prelude›Algebra›Monoid 0l 1l use (IsMonoid)
+import Prelude›Algebra›CommutativeMonoid 0l 1l
+  use (IsCommutativeMonoid; CommutativeMonoid)
+import Prelude›Algebra›Group 0l 1l use (IsGroup)
+import Prelude›Algebra›AbelianGroup 0l 1l use (IsAbelianGroup; AbelianGroup)
 
 def additive : AbelianGroup ≔
   record AbelianGroup where
-    group ≔
-      record Group where
-        monoid ≔
-          record Monoid where
-            semigroup ≔
-              record Semigroup where
-                magma ≔ record Magma where carrier ≔ Int; op ≔ add end;
-                assoc ≔ addAssoc
+    carrier ≔ Int; eq ≔ Id Int; op ≔ add; e ≔ pos 0; inv ≔ neg;
+    isAbelianGroup ≔
+      record IsAbelianGroup Int (Id Int) add (pos 0) neg where
+        isGroup ≔
+          record IsGroup Int (Id Int) add (pos 0) neg where
+            isMonoid ≔
+              record IsMonoid Int (Id Int) add (pos 0) where
+                isSemigroup ≔
+                  record IsSemigroup Int (Id Int) add where
+                    isMagma ≔ idIsMagma Int add; assoc ≔ addAssoc
+                  end;
+                leftId ≔ addIdentityLeft;
+                rightId ≔ addIdentityRight
               end;
-            e ≔ pos 0;
-            leftId ≔ addIdentityLeft;
-            rightId ≔ addIdentityRight
+            invCong ≔ idCong Int Int neg;
+            leftInv ≔ addInverseLeft;
+            rightInv ≔ addInverseRight
           end;
-        inv ≔ neg;
-        leftInv ≔ addInverseLeft;
-        rightInv ≔ addInverseRight
-      end;
-    comm ≔ addComm
+        comm ≔ addComm
+      end
   end
 end
 
 def multiplicative : CommutativeMonoid ≔
   record CommutativeMonoid where
-    monoid ≔
-      record Monoid where
-        semigroup ≔
-          record Semigroup where
-            magma ≔ record Magma where carrier ≔ Int; op ≔ mul end;
-            assoc ≔ mulAssoc
+    carrier ≔ Int; eq ≔ Id Int; op ≔ mul; e ≔ pos 1;
+    isCommutativeMonoid ≔
+      record IsCommutativeMonoid Int (Id Int) mul (pos 1) where
+        isMonoid ≔
+          record IsMonoid Int (Id Int) mul (pos 1) where
+            isSemigroup ≔
+              record IsSemigroup Int (Id Int) mul where
+                isMagma ≔ idIsMagma Int mul; assoc ≔ mulAssoc
+              end;
+            leftId ≔ mulIdentityLeft;
+            rightId ≔ mulIdentityRight
           end;
-        e ≔ pos 1;
-        leftId ≔ mulIdentityLeft;
-        rightId ≔ mulIdentityRight
-      end;
-    comm ≔ mulComm
+        comm ≔ mulComm
+      end
   end
 end
 

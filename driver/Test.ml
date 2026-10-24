@@ -3204,7 +3204,8 @@ let%expect_test "lib/Tutorial.mctt" =
     Evaluate Fields.first --> 5 : ℕ
     Evaluate square NatAlgebra.additive.monoid 7 --> 14 : ℕ
     Evaluate square NatAlgebra.multiplicative.monoid 7 --> 49 : ℕ
-    Evaluate square endo succ 0 --> 2 : ℕ
+    Evaluate square pointwise succ 0 --> 2 : ℕ
+    Evaluate NatAlgebra.additive.comm 2 3 --> ⋆ : ⊤
     Evaluate Times.pow 3 4 --> 81 : ℕ
     |}]
 
@@ -3701,7 +3702,7 @@ let%expect_test "mctt-doc: every eval of lib has one output box, with mctt's out
   List.iter (fun b -> if String.starts_with ~prefix:"Evaluate Adding.five " b then print_endline b)
     (doc_boxes (Doc.render_unit lib kinds tut));
   [%expect {|
-    580 evals, 580 boxes, 580 equal to mctt's output
+    581 evals, 581 boxes, 581 equal to mctt's output
     Evaluate Adding.five --> 5 : ℕ
     |}]
 
@@ -3713,7 +3714,7 @@ let%expect_test "mctt-doc: a unit whose log is out of step with its evals is rep
   let tut = List.find (fun u -> u.Doc.u_path = [ "Tutorial" ]) lib.Doc.units in
   Printf.printf "%d boxes\n" (List.length (doc_boxes (Doc.render_unit lib (Doc.anchor_kinds lib) tut)));
   [%expect {|
-    Tutorial: 66 evals, 1 outputs
+    Tutorial: 67 evals, 1 outputs
     0 boxes
     |}]
 
@@ -3738,11 +3739,11 @@ let%expect_test "mctt-doc: links" =
   (* A local binder. *)
   show [ "Tutorial" ] "x" [ 1; 2 ];
   [%expect {|
-    pow line 39: Prelude›Algebra›Setoid›Monoid#pow
-    pow line 39: Prelude›Arith›Pow#pow
-    Additive line 22: Prelude›Algebra›Setoid›Instances#Additive
-    pow line 22: Prelude›Algebra›Setoid›Monoid#pow
-    powPlus line 76: Prelude›Algebra›Setoid›Monoid#Power.powPlus
+    pow line 53: Prelude›Algebra›Monoid›Properties#pow
+    pow line 53: Prelude›Arith›Pow#pow
+    Additive line 36: Algebra#Additive
+    pow line 36: Prelude›Algebra›Monoid›Properties#pow
+    powPlus line 90: Prelude›Algebra›Monoid›Properties#Power.powPlus
     plus line 230: Prelude›Arith›Plus#plus
     plus line 231: Prelude›Arith›Plus#plus
     add line 230: declares #Adding.add
@@ -3778,7 +3779,7 @@ let%expect_test "mctt-doc: ℕ links to the type bound as the natural numbers" =
   let page = Doc.render_unit lib' (Doc.anchor_kinds lib') u in
   Printf.printf "%d links, %d without a link\n" (doc_count "ℕ</a>" page) (doc_count span page);
   [%expect {|
-    3120 links to Nat, 0 other links, 0 without a link
+    3042 links to Nat, 0 other links, 0 without a link
     NoNat: not checked
     0 links, 2 without a link
     |}]
@@ -5527,13 +5528,13 @@ let%expect_test "an inductive type of a parameterized module, by its bare name i
 let%expect_test "lib/Hierarchy.mctt" =
   let _ = main_of_lib "Hierarchy.mctt" in
   [%expect {|
-    Evaluate concat additive.monoid oneTwoThree --> 6 : ℕ
-    Evaluate concat multiplicative.monoid oneTwoThree --> 6 : ℕ
-    Evaluate concat conjunction.monoid bools --> Prelude›Data›Bool.Bool.ff
+    Evaluate concat 0l 0l additive.monoid oneTwoThree --> 6 : ℕ
+    Evaluate concat 0l 0l multiplicative.monoid oneTwoThree --> 6 : ℕ
+    Evaluate concat 0l 1l conjunction.monoid bools --> Prelude›Data›Bool.Bool.ff
       : Prelude›Data›Bool.Bool
-    Evaluate concat disjunction.monoid bools --> Prelude›Data›Bool.Bool.tt
+    Evaluate concat 0l 1l disjunction.monoid bools --> Prelude›Data›Bool.Bool.tt
       : Prelude›Data›Bool.Bool
-    Evaluate concat freeMonoid
+    Evaluate concat 0l 1l freeMonoid
                (List.cons 0l NatList oneTwoThree
                  (List.cons 0l NatList oneTwoThree (List.nil 0l NatList)))
       --> Prelude›Data›List.List.cons 0l ℕ 1
@@ -5544,12 +5545,12 @@ let%expect_test "lib/Hierarchy.mctt" =
                     (Prelude›Data›List.List.cons 0l ℕ 3
                       (Prelude›Data›List.List.nil 0l ℕ))))))
       : Prelude›Data›List.List 0l ℕ
-    Evaluate concat endo
+    Evaluate concat 0l 1l endo
                (List.cons 0l Endo succ
                  (List.cons 0l Endo succ
                    (List.cons 0l Endo succ (List.nil 0l Endo))))
                4 --> 7 : ℕ
-    Evaluate concat Both.product
+    Evaluate concat 0l 0l Both.product
                (List.cons 0l (Prod 0l ℕ ℕ) (pair 0l ℕ ℕ 2 3)
                  (List.cons 0l (Prod 0l ℕ ℕ) (pair 0l ℕ ℕ 4 5)
                    (List.nil 0l (Prod 0l ℕ ℕ))))
@@ -5559,7 +5560,7 @@ let%expect_test "lib/Hierarchy.mctt" =
     Evaluate Integer.additive.inv (add (pos 2) (negsuc 4))
       --> Prelude›Data›Integer.Int.pos 3 : Prelude›Data›Integer.Int
     Evaluate minMax.join 2 5 --> 5 : ℕ
-    Evaluate ring.add tt tt --> Prelude›Data›Bool.Bool.ff
+    Evaluate ring.plus tt tt --> Prelude›Data›Bool.Bool.ff
       : Prelude›Data›Bool.Bool
     Evaluate ring.mul (ring.neg ring.one) tt --> Prelude›Data›Bool.Bool.tt
       : Prelude›Data›Bool.Bool

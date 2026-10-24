@@ -1,29 +1,31 @@
-(* The lists over [A] under [append], with [nil] as the neutral element:
-   the free monoid on [A], [freeMonoid].  [append nil l] is [l] by
-   computation; the other laws are those of
-   [Prelude›Data›List›Properties]. *)
+(* The lists over [A] under [append], with [nil] as the neutral element,
+   up to Leibniz equality: the free monoid on [A], [freeMonoid], at the
+   levels [u] and [succl u].  [append nil l] is [l] by computation; the
+   other laws are those of [Prelude›Data›List›Properties]. *)
 module Prelude›Algebra›Instances›List (u : Level) (A : Type@{u}) where
 
-import Prelude›Logic›Leibniz u use (idRefl)
+import Prelude›Logic›Leibniz u use (Id; idRefl)
 import Prelude›Data›List use (List)
 open Prelude›Data›List.Ops as Ops
 import Prelude›Data›List›Properties.Append u A use (appendNil; appendAssoc)
-import Prelude›Algebra›Magma u use (Magma)
-import Prelude›Algebra›Semigroup u use (Semigroup)
-import Prelude›Algebra›Monoid u use (Monoid)
+import Prelude›Algebra›Leibniz u use (idIsMagma)
+import Prelude›Algebra›Semigroup u (succl u) use (IsSemigroup)
+import Prelude›Algebra›Monoid u (succl u) use (IsMonoid; Monoid)
 
 private inductive L ≔ List u A
 
 def freeMonoid : Monoid ≔
   record Monoid where
-    semigroup ≔
-      record Semigroup where
-        magma ≔ record Magma where carrier ≔ L; op ≔ Ops.append u A end;
-        assoc ≔ appendAssoc
-      end;
-    e ≔ L.nil;
-    leftId ≔ λ (l : L) → idRefl L l;
-    rightId ≔ appendNil
+    carrier ≔ L; eq ≔ Id L; op ≔ Ops.append u A; e ≔ L.nil;
+    isMonoid ≔
+      record IsMonoid L (Id L) (Ops.append u A) L.nil where
+        isSemigroup ≔
+          record IsSemigroup L (Id L) (Ops.append u A) where
+            isMagma ≔ idIsMagma L (Ops.append u A); assoc ≔ appendAssoc
+          end;
+        leftId ≔ idRefl L;
+        rightId ≔ appendNil
+      end
   end
 end
 

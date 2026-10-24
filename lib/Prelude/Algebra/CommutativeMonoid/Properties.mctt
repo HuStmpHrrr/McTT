@@ -1,37 +1,59 @@
-(* Laws of a commutative monoid [M]: a factor may be moved past another,
-   and the middle factors of a product of products exchanged. *)
+(* Laws of a commutative monoid [M], up to [M.eq]: a factor may be moved
+   past another ([leftComm]), the middle factors of a product of products
+   exchanged ([swapMiddle]), and a power of a product is the product of
+   the powers ([powOp]).  The laws of every monoid are
+   [Prelude›Algebra›Monoid›Properties] at [M.monoid]; [Base] is that
+   unit here. *)
 import Prelude›Algebra›CommutativeMonoid
-module Prelude›Algebra›CommutativeMonoid›Properties (u : Level)
-    (M : Prelude›Algebra›CommutativeMonoid.CommutativeMonoid u) where
+module Prelude›Algebra›CommutativeMonoid›Properties (c : Level) (r : Level)
+    (M : Prelude›Algebra›CommutativeMonoid.CommutativeMonoid c r) where
 
-import Prelude›Logic›Leibniz u use (Id; idSym; idTrans; idCong)
+import Prelude›Algebra›Monoid›Properties c r M.monoid as Base
+open Base use (pow)
+open Base.Cong use (congLeft; congRight; assocBack)
 
-private def C : Type@{u} ≔ M.carrier end
+open M
+  use (carrier as C; eq as R; op; e; assoc; leftId; comm; sym as rSym;
+       trans as rTrans)
 
-(* [a (b c) = (a b) c = (b a) c = b (a c)]. *)
+
+(* The first factor may be moved past the second. *)
 theorem leftComm : ∀ (a : C) (b : C) (c : C) →
-    Id C (M.op a (M.op b c)) (M.op b (M.op a c)) ≔
+    R (op a (op b c)) (op b (op a c)) ≔
   λ (a : C) (b : C) (c : C) →
-    idTrans C (M.op a (M.op b c)) (M.op (M.op a b) c) (M.op b (M.op a c))
-      (idSym C (M.op (M.op a b) c) (M.op a (M.op b c)) (M.assoc a b c))
-      (idTrans C (M.op (M.op a b) c) (M.op (M.op b a) c) (M.op b (M.op a c))
-         (idCong C C (λ (y : C) → M.op y c) (M.op a b) (M.op b a) (M.comm a b))
-         (M.assoc b a c))
+    rTrans (op a (op b c)) (op (op a b) c) (op b (op a c))
+      (assocBack a b c)
+      (rTrans (op (op a b) c) (op (op b a) c) (op b (op a c))
+         (congLeft (op a b) (op b a) c (comm a b))
+         (assoc b a c))
 end
 
-(* [(a b) (c d) = a (b (c d)) = a (c (b d)) = (a c) (b d)]. *)
+(* The two middle factors of a product of products can be exchanged. *)
 theorem swapMiddle : ∀ (a : C) (b : C) (c : C) (d : C) →
-    Id C (M.op (M.op a b) (M.op c d)) (M.op (M.op a c) (M.op b d)) ≔
+    R (op (op a b) (op c d)) (op (op a c) (op b d)) ≔
   λ (a : C) (b : C) (c : C) (d : C) →
-    idTrans C (M.op (M.op a b) (M.op c d)) (M.op a (M.op b (M.op c d)))
-      (M.op (M.op a c) (M.op b d))
-      (M.assoc a b (M.op c d))
-      (idTrans C (M.op a (M.op b (M.op c d))) (M.op a (M.op c (M.op b d)))
-         (M.op (M.op a c) (M.op b d))
-         (idCong C C (M.op a) (M.op b (M.op c d)) (M.op c (M.op b d))
-            (leftComm b c d))
-         (idSym C (M.op (M.op a c) (M.op b d)) (M.op a (M.op c (M.op b d)))
-            (M.assoc a c (M.op b d))))
+    rTrans (op (op a b) (op c d)) (op a (op b (op c d)))
+      (op (op a c) (op b d))
+      (assoc a b (op c d))
+      (rTrans (op a (op b (op c d))) (op a (op c (op b d)))
+         (op (op a c) (op b d))
+         (congRight a (op b (op c d)) (op c (op b d)) (leftComm b c d))
+         (assocBack a c (op b d)))
+end
+
+(* A power of a product is the product of the powers. *)
+theorem powOp : ∀ (x : C) (y : C) (n : ℕ) →
+    R (pow (op x y) n) (op (pow x n) (pow y n)) ≔
+  λ (x : C) (y : C) (n : ℕ) →
+    elim n at k → R (pow (op x y) k) (op (pow x k) (pow y k))
+    | zero ⇒ rSym (op e e) e (leftId e)
+    | succ p, ih ⇒
+        rTrans (op (op x y) (pow (op x y) p))
+          (op (op x y) (op (pow x p) (pow y p)))
+          (op (op x (pow x p)) (op y (pow y p)))
+          (congRight (op x y) (pow (op x y) p) (op (pow x p) (pow y p)) ih)
+          (swapMiddle x y (pow x p) (pow y p))
+    end
 end
 
 end

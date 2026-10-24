@@ -1,0 +1,27 @@
+(* The Leibniz equality of [Prelude›Logic›Leibniz] as the relation of the
+   structures of [Prelude›Algebra]: it is an equivalence
+   ([idIsEquivalence]) and every operation respects it ([idIsMagma]), so a
+   Leibniz instance fills its bottom predicate in one line.  The equality
+   [Id A] of a type of [Type@{c}] lives in [Type@{succl c}], so these are
+   predicates at the levels [c] and [succl c]. *)
+module Prelude›Algebra›Leibniz (c : Level) where
+
+import Prelude›Logic›Leibniz c use (Id; idRefl; idSym; idTrans; idCongTwo)
+import Prelude›Algebra›Setoid c (succl c) use (IsEquivalence)
+import Prelude›Algebra›Magma c (succl c) use (IsMagma)
+
+def idIsEquivalence (A : Type@{c}) : IsEquivalence A (Id A) ≔
+  record IsEquivalence A (Id A) where
+    refl ≔ idRefl A; sym ≔ idSym A; trans ≔ idTrans A
+  end
+end
+
+def idIsMagma (A : Type@{c}) (op : ∀ (x : A) (y : A) → A) : IsMagma A (Id A) op ≔
+  record IsMagma A (Id A) op where
+    isEquivalence ≔ idIsEquivalence A;
+    opCong ≔ λ (w : A) (x : A) (y : A) (z : A) (hwy : Id A w y) (hxz : Id A x z) →
+      idCongTwo A A A op w y x z hwy hxz
+  end
+end
+
+end

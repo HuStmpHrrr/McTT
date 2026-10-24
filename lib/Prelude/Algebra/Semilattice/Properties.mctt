@@ -1,56 +1,54 @@
-(* The order of a semilattice [S]: [Le x y] when [S.op x y] is [x], as
-   [min x y] is [x] when [x] is at most [y].  It is reflexive by
+(* The order of a semilattice [S]: [Le x y] when [S.op x y] is [x] up to
+   [S.eq], as [min x y] is [x] when [x] is at most [y].  It is reflexive by
    idempotence, antisymmetric by commutativity and transitive by
    associativity, and [S.op x y] is below both [x] and [y]. *)
 import Prelude›Algebra›Semilattice
-module Prelude›Algebra›Semilattice›Properties (u : Level)
-    (S : Prelude›Algebra›Semilattice.Semilattice u) where
+module Prelude›Algebra›Semilattice›Properties (c : Level) (r : Level)
+    (S : Prelude›Algebra›Semilattice.Semilattice c r) where
 
-import Prelude›Logic›Leibniz u use (Id; idSym; idTrans; idCong)
+open S use (carrier as C; op; eq; refl; sym; trans; opCong; assoc; comm; idem)
 
-private def C : Type@{u} ≔ S.carrier end
-
-def Le (x : C) (y : C) : Type@{succl u} ≔ Id C (S.op x y) x end
+def Le (x : C) (y : C) : Type@{r} ≔ eq (op x y) x end
 
 module Order where
 
-theorem leRefl : ∀ (x : C) → Le x x ≔ S.idem end
+theorem leRefl : ∀ (x : C) → Le x x ≔ idem end
 
 (* [x = x y = y x = y]. *)
-theorem leAntisym : ∀ (x : C) (y : C) (hxy : Le x y) (hyx : Le y x) → Id C x y ≔
+theorem leAntisym : ∀ (x : C) (y : C) (hxy : Le x y) (hyx : Le y x) → eq x y ≔
   λ (x : C) (y : C) (hxy : Le x y) (hyx : Le y x) →
-    idTrans C x (S.op x y) y (idSym C (S.op x y) x hxy)
-      (idTrans C (S.op x y) (S.op y x) y (S.comm x y) hyx)
+    trans x (op x y) y (sym (op x y) x hxy)
+      (trans (op x y) (op y x) y (comm x y) hyx)
 end
 
 (* [x z = (x y) z = x (y z) = x y = x]. *)
 theorem leTrans : ∀ (x : C) (y : C) (z : C) (hxy : Le x y) (hyz : Le y z) →
     Le x z ≔
   λ (x : C) (y : C) (z : C) (hxy : Le x y) (hyz : Le y z) →
-    idTrans C (S.op x z) (S.op (S.op x y) z) x
-      (idCong C C (λ (w : C) → S.op w z) x (S.op x y) (idSym C (S.op x y) x hxy))
-      (idTrans C (S.op (S.op x y) z) (S.op x (S.op y z)) x (S.assoc x y z)
-         (idTrans C (S.op x (S.op y z)) (S.op x y) x
-            (idCong C C (S.op x) (S.op y z) y hyz) hxy))
+    trans (op x z) (op (op x y) z) x
+      (opCong x z (op x y) z (sym (op x y) x hxy) (refl z))
+      (trans (op (op x y) z) (op x (op y z)) x (assoc x y z)
+         (trans (op x (op y z)) (op x y) x
+            (opCong x (op y z) x y (refl x) hyz) hxy))
 end
 
 (* [(x y) x = x (y x) = x (x y) = (x x) y = x y]. *)
-theorem opLeLeft : ∀ (x : C) (y : C) → Le (S.op x y) x ≔
+theorem opLeLeft : ∀ (x : C) (y : C) → Le (op x y) x ≔
   λ (x : C) (y : C) →
-    idTrans C (S.op (S.op x y) x) (S.op x (S.op y x)) (S.op x y)
-      (S.assoc x y x)
-      (idTrans C (S.op x (S.op y x)) (S.op x (S.op x y)) (S.op x y)
-         (idCong C C (S.op x) (S.op y x) (S.op x y) (S.comm y x))
-         (idTrans C (S.op x (S.op x y)) (S.op (S.op x x) y) (S.op x y)
-            (idSym C (S.op (S.op x x) y) (S.op x (S.op x y)) (S.assoc x x y))
-            (idCong C C (λ (w : C) → S.op w y) (S.op x x) x (S.idem x))))
+    trans (op (op x y) x) (op x (op y x)) (op x y)
+      (assoc x y x)
+      (trans (op x (op y x)) (op x (op x y)) (op x y)
+         (opCong x (op y x) x (op x y) (refl x) (comm y x))
+         (trans (op x (op x y)) (op (op x x) y) (op x y)
+            (sym (op (op x x) y) (op x (op x y)) (assoc x x y))
+            (opCong (op x x) y x y (idem x) (refl y))))
 end
 
 (* [(x y) y = x (y y) = x y]. *)
-theorem opLeRight : ∀ (x : C) (y : C) → Le (S.op x y) y ≔
+theorem opLeRight : ∀ (x : C) (y : C) → Le (op x y) y ≔
   λ (x : C) (y : C) →
-    idTrans C (S.op (S.op x y) y) (S.op x (S.op y y)) (S.op x y)
-      (S.assoc x y y) (idCong C C (S.op x) (S.op y y) y (S.idem y))
+    trans (op (op x y) y) (op x (op y y)) (op x y)
+      (assoc x y y) (opCong x (op y y) x y (refl x) (idem y))
 end
 
 end

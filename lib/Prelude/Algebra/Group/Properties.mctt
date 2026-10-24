@@ -1,129 +1,150 @@
-(* Laws of a group [G], derived from the fields of [Prelude›Algebra›Group]:
-   cancellation on both sides, the uniqueness of inverses, and the inverses
-   of [G.e], of an inverse and of a product.  The laws of its monoid,
-   powers among them, are [Prelude›Algebra›Monoid›Properties] at
-   [G.monoid].
+(* Laws of a group [G], derived from the fields of [Prelude›Algebra›Group]
+   and stated up to [G.eq].  The laws of its monoid are the submodule
+   [Base], [Prelude›Algebra›Monoid›Properties] at [G.monoid], with its
+   powers; [Laws] adds what the inverse gives: cancellation on both sides,
+   the uniqueness of inverses, the inverse of the neutral element, of an
+   inverse and of a product, and the powers of an inverse.
 
-   The proofs share a private module [Solve], which solves one-sided
-   equations by multiplying with an inverse on the same side. *)
+   The proofs share two private lemma modules: [Solve] solves one-sided
+   equations, and [Product] computes the products that cancel. *)
 import Prelude›Algebra›Group
-module Prelude›Algebra›Group›Properties (u : Level)
-    (G : Prelude›Algebra›Group.Group u) where
+import Prelude›Algebra›Monoid›Properties
+module Prelude›Algebra›Group›Properties (c : Level) (r : Level)
+    (G : Prelude›Algebra›Group.Group c r) where
 
-import Prelude›Logic›Leibniz u use (Id; idRefl; idSym; idTrans; idCong)
+open G
+  use (carrier as C; eq as R; op; e; inv; invCong; assoc; leftId; rightId;
+       leftInv; rightInv; refl as rRefl; sym as rSym; trans as rTrans)
 
-private def C : Type@{u} ≔ G.carrier end
+(* The underlying monoid's laws. *)
+module Base ≔ Prelude›Algebra›Monoid›Properties c r G.monoid
 
-(* Solving [a x = b] and [x a = b] for [x]. *)
+open Base use (pow)
+open Base.Cong use (congLeft; congRight; assocBack)
+open Base.Power use (powSuccRight)
+
+(* Solving [op a x ~ b] and [op x a ~ b] for [x], by multiplying with the
+   inverse of [a] on the same side. *)
 private module Solve where
 
-(* With [ia] the inverse of [a]: [x = e x = (ia a) x = ia (a x) = ia b]. *)
-lemma left : ∀ (a : C) (x : C) (b : C) (h : Id C (G.op a x) b) →
-    Id C x (G.op (G.inv a) b) ≔
-  λ (a : C) (x : C) (b : C) (h : Id C (G.op a x) b) →
-    let ia : C ≔ G.inv a;
-        one : Id C x (G.op G.e x) ≔ idSym C (G.op G.e x) x (G.leftId x);
-        two : Id C (G.op G.e x) (G.op (G.op ia a) x) ≔
-          idCong C C (λ (y : C) → G.op y x) G.e (G.op ia a)
-            (idSym C (G.op ia a) G.e (G.leftInv a));
-        three : Id C (G.op (G.op ia a) x) (G.op ia (G.op a x)) ≔ G.assoc ia a x;
-        four : Id C (G.op ia (G.op a x)) (G.op ia b) ≔
-          idCong C C (G.op ia) (G.op a x) b h
-    in idTrans C x (G.op G.e x) (G.op ia b) one
-         (idTrans C (G.op G.e x) (G.op (G.op ia a) x) (G.op ia b) two
-            (idTrans C (G.op (G.op ia a) x) (G.op ia (G.op a x)) (G.op ia b)
-               three four))
+(* With [ia] the inverse of [a]: [x ~ e x ~ (ia a) x ~ ia (a x) ~ ia b]. *)
+lemma left : ∀ (a : C) (x : C) (b : C) (h : R (op a x) b) →
+    R x (op (inv a) b) ≔
+  λ (a : C) (x : C) (b : C) (h : R (op a x) b) →
+    let ia ≔ inv a
+    in rTrans x (op e x) (op ia b) (rSym (op e x) x (leftId x))
+         (rTrans (op e x) (op (op ia a) x) (op ia b)
+            (congLeft e (op ia a) x (rSym (op ia a) e (leftInv a)))
+            (rTrans (op (op ia a) x) (op ia (op a x)) (op ia b)
+               (assoc ia a x) (congRight ia (op a x) b h)))
     end
 end
 
-(* With [ia] the inverse of [a]: [x = x e = x (a ia) = (x a) ia = b ia]. *)
-lemma right : ∀ (x : C) (a : C) (b : C) (h : Id C (G.op x a) b) →
-    Id C x (G.op b (G.inv a)) ≔
-  λ (x : C) (a : C) (b : C) (h : Id C (G.op x a) b) →
-    let ia : C ≔ G.inv a;
-        one : Id C x (G.op x G.e) ≔ idSym C (G.op x G.e) x (G.rightId x);
-        two : Id C (G.op x G.e) (G.op x (G.op a ia)) ≔
-          idCong C C (G.op x) G.e (G.op a ia)
-            (idSym C (G.op a ia) G.e (G.rightInv a));
-        three : Id C (G.op x (G.op a ia)) (G.op (G.op x a) ia) ≔
-          idSym C (G.op (G.op x a) ia) (G.op x (G.op a ia)) (G.assoc x a ia);
-        four : Id C (G.op (G.op x a) ia) (G.op b ia) ≔
-          idCong C C (λ (y : C) → G.op y ia) (G.op x a) b h
-    in idTrans C x (G.op x G.e) (G.op b ia) one
-         (idTrans C (G.op x G.e) (G.op x (G.op a ia)) (G.op b ia) two
-            (idTrans C (G.op x (G.op a ia)) (G.op (G.op x a) ia) (G.op b ia)
-               three four))
+(* With [ia] the inverse of [a]: [x ~ x e ~ x (a ia) ~ (x a) ia ~ b ia]. *)
+lemma right : ∀ (x : C) (a : C) (b : C) (h : R (op x a) b) →
+    R x (op b (inv a)) ≔
+  λ (x : C) (a : C) (b : C) (h : R (op x a) b) →
+    let ia ≔ inv a
+    in rTrans x (op x e) (op b ia) (rSym (op x e) x (rightId x))
+         (rTrans (op x e) (op x (op a ia)) (op b ia)
+            (congRight x e (op a ia) (rSym (op a ia) e (rightInv a)))
+            (rTrans (op x (op a ia)) (op (op x a) ia) (op b ia)
+               (assocBack x a ia) (congLeft (op x a) b ia h)))
     end
 end
 
 end
 
-(* Cancellation. *)
-module Cancel where
+(* Products of elements with inverses that reduce to [e]. *)
+private module Product where
 
-(* [b] and [c] are both [inv a] times [a c]. *)
-theorem leftCancel : ∀ (a : C) (b : C) (c : C) (h : Id C (G.op a b) (G.op a c)) →
-    Id C b c ≔
-  λ (a : C) (b : C) (c : C) (h : Id C (G.op a b) (G.op a c)) →
-    let s ≔ G.op (G.inv a) (G.op a c)
-    in idTrans C b s c (Solve.left a b (G.op a c) h)
-         (idSym C c s (Solve.left a c (G.op a c) (idRefl C (G.op a c))))
+(* With [ia] and [ib] the inverses:
+   [(a b) (ib ia) ~ a (b (ib ia)) ~ a ((b ib) ia) ~ a (e ia) ~ a ia ~ e]. *)
+lemma opInvs : ∀ (a : C) (b : C) →
+    R (op (op a b) (op (inv b) (inv a))) e ≔
+  λ (a : C) (b : C) →
+    let ia ≔ inv a;
+        ib ≔ inv b;
+        inner : R (op b (op ib ia)) ia ≔
+          rTrans (op b (op ib ia)) (op (op b ib) ia) ia (assocBack b ib ia)
+            (rTrans (op (op b ib) ia) (op e ia) ia
+               (congLeft (op b ib) e ia (rightInv b)) (leftId ia))
+    in rTrans (op (op a b) (op ib ia)) (op a (op b (op ib ia))) e
+         (assoc a b (op ib ia))
+         (rTrans (op a (op b (op ib ia))) (op a ia) e
+            (congRight a (op b (op ib ia)) ia inner)
+            (rightInv a))
     end
 end
 
-theorem rightCancel : ∀ (a : C) (b : C) (c : C) (h : Id C (G.op b a) (G.op c a)) →
-    Id C b c ≔
-  λ (a : C) (b : C) (c : C) (h : Id C (G.op b a) (G.op c a)) →
-    let s ≔ G.op (G.op c a) (G.inv a)
-    in idTrans C b s c (Solve.right b a (G.op c a) h)
-         (idSym C c s (Solve.right c a (G.op c a) (idRefl C (G.op c a))))
+end
+
+(* Laws of the inverse. *)
+module Laws where
+
+(* Cancelling [a] on the left: [b] and [c] are both [inv a] times
+   [op a c]. *)
+theorem leftCancel : ∀ (a : C) (b : C) (c : C) (h : R (op a b) (op a c)) →
+    R b c ≔
+  λ (a : C) (b : C) (c : C) (h : R (op a b) (op a c)) →
+    let ia ≔ inv a
+    in rTrans b (op ia (op a c)) c (Solve.left a b (op a c) h)
+         (rSym c (op ia (op a c)) (Solve.left a c (op a c) (rRefl (op a c))))
     end
 end
 
+theorem rightCancel : ∀ (a : C) (b : C) (c : C) (h : R (op b a) (op c a)) →
+    R b c ≔
+  λ (a : C) (b : C) (c : C) (h : R (op b a) (op c a)) →
+    let ia ≔ inv a
+    in rTrans b (op (op c a) ia) c (Solve.right b a (op c a) h)
+         (rSym c (op (op c a) ia) (Solve.right c a (op c a) (rRefl (op c a))))
+    end
 end
 
-(* Inverses. *)
-module Inverse where
-
-(* An element whose product with [a] is [G.e] is the inverse of [a]. *)
-theorem invUnique : ∀ (a : C) (b : C) (h : Id C (G.op a b) G.e) →
-    Id C b (G.inv a) ≔
-  λ (a : C) (b : C) (h : Id C (G.op a b) G.e) →
-    idTrans C b (G.op (G.inv a) G.e) (G.inv a) (Solve.left a b G.e h)
-      (G.rightId (G.inv a))
+(* An element whose product with [a] is [e] is the inverse of [a]. *)
+theorem invUnique : ∀ (a : C) (b : C) (h : R (op a b) e) → R b (inv a) ≔
+  λ (a : C) (b : C) (h : R (op a b) e) →
+    rTrans b (op (inv a) e) (inv a) (Solve.left a b e h) (rightId (inv a))
 end
 
-theorem invE : Id C (G.inv G.e) G.e ≔
-  idSym C G.e (G.inv G.e) (invUnique G.e G.e (G.leftId G.e))
+theorem invE : R (inv e) e ≔
+  rSym e (inv e) (invUnique e e (leftId e))
 end
 
-theorem invInv : ∀ (a : C) → Id C (G.inv (G.inv a)) a ≔
-  λ (a : C) → idSym C a (G.inv (G.inv a)) (invUnique (G.inv a) a (G.leftInv a))
+theorem invInv : ∀ (a : C) → R (inv (inv a)) a ≔
+  λ (a : C) → rSym a (inv (inv a)) (invUnique (inv a) a (leftInv a))
 end
 
 (* The inverse of a product is the product of the inverses, in the other
-   order: [(a b) (ib ia) = a ((b ib) ia) = a ia = e], with [ia] and [ib]
-   the inverses. *)
+   order. *)
 theorem invOp : ∀ (a : C) (b : C) →
-    Id C (G.inv (G.op a b)) (G.op (G.inv b) (G.inv a)) ≔
+    R (inv (op a b)) (op (inv b) (inv a)) ≔
   λ (a : C) (b : C) →
-    let ia : C ≔ G.inv a;
-        ib : C ≔ G.inv b;
-        inner : Id C (G.op b (G.op ib ia)) ia ≔
-          idTrans C (G.op b (G.op ib ia)) (G.op (G.op b ib) ia) ia
-            (idSym C (G.op (G.op b ib) ia) (G.op b (G.op ib ia))
-               (G.assoc b ib ia))
-            (idTrans C (G.op (G.op b ib) ia) (G.op G.e ia) ia
-               (idCong C C (λ (y : C) → G.op y ia) (G.op b ib) G.e (G.rightInv b))
-               (G.leftId ia));
-        cancels : Id C (G.op (G.op a b) (G.op ib ia)) G.e ≔
-          idTrans C (G.op (G.op a b) (G.op ib ia)) (G.op a (G.op b (G.op ib ia)))
-            G.e (G.assoc a b (G.op ib ia))
-            (idTrans C (G.op a (G.op b (G.op ib ia))) (G.op a ia) G.e
-               (idCong C C (G.op a) (G.op b (G.op ib ia)) ia inner)
-               (G.rightInv a))
-    in idSym C (G.op ib ia) (G.inv (G.op a b))
-         (invUnique (G.op a b) (G.op ib ia) cancels)
+    rSym (op (inv b) (inv a)) (inv (op a b))
+      (invUnique (op a b) (op (inv b) (inv a)) (Product.opInvs a b))
+end
+
+(* A power of the inverse is the inverse of the power.  In the step, the
+   inverse of [op x q], with [q] the power [p] of [x], is the inverse of
+   [op q x] by [powSuccRight], which [invOp] turns into
+   [op (inv x) (inv q)]. *)
+theorem powInv : ∀ (x : C) (n : ℕ) → R (pow (inv x) n) (inv (pow x n)) ≔
+  λ (x : C) (n : ℕ) →
+    elim n at k → R (pow (inv x) k) (inv (pow x k))
+    | zero ⇒ rSym (inv e) e invE
+    | succ p, ih ⇒
+        let ix ≔ inv x;
+            q ≔ pow x p;
+            swapped : R (inv (op q x)) (inv (op x q)) ≔
+              invCong (op q x) (op x q)
+                (rSym (op x q) (op q x) (powSuccRight x p))
+        in rTrans (op ix (pow ix p)) (op ix (inv q)) (inv (op x q))
+             (congRight ix (pow ix p) (inv q) ih)
+             (rTrans (op ix (inv q)) (inv (op q x)) (inv (op x q))
+                (rSym (inv (op q x)) (op ix (inv q)) (invOp q x))
+                swapped)
+        end
     end
 end
 

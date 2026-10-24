@@ -632,13 +632,18 @@ end
 eval Fields.first
 
 (* 21. A showcase: the algebraic hierarchy of Prelude›Algebra. Each
-   structure is a record whose first field holds the structure below:
-   a monoid has a semigroup, which has a magma, the carrier and the
-   operation. A function over every monoid takes the record as an
-   argument and selects its members. *)
-import Prelude›Algebra›Monoid 0l use (Monoid)
+   structure has two records. A predicate holds its laws, over a carrier,
+   a relation [eq] that the laws are stated up to, and the operations, and
+   extends the predicate below by a field: [IsMonoid A eq op e] has
+   [isSemigroup : IsSemigroup A eq op], which has [isMagma]. A bundle holds
+   a carrier, the relation, the operations and the predicate, and its
+   with-area forwards the laws, [M.assoc], with [open … export]. A
+   function over every monoid takes the bundle as an argument and selects
+   its members; the two levels of a monoid are those of its carrier and of
+   its relation. *)
+import Prelude›Algebra›Monoid 0l 0l use (Monoid)
 import Prelude›Algebra›Instances›Nat as NatAlgebra
-import Prelude›Algebra›Instances›Endo 0l ℕ use (endo)
+import Prelude›Algebra›Instances›Endo›Pointwise use (pointwise)
 
 def square (M : Monoid) (a : M.carrier) : M.carrier ≔ M.op a a end
 
@@ -646,16 +651,21 @@ eval square NatAlgebra.additive.monoid 7
 
 eval square NatAlgebra.multiplicative.monoid 7
 
-eval square endo succ 0
+eval square pointwise succ 0
+
+(* The numbers are compared by [Eq], which computes, so a law at closed
+   numbers is [⊤] and its proof normalizes to [⋆]. *)
+eval NatAlgebra.additive.comm 2 3
 
 (* The laws derived once for every monoid are a unit over the monoid:
    [pow] and [powPlus] at the multiplicative monoid are powers of
    numbers. *)
-import Prelude›Algebra›Monoid›Properties 0l NatAlgebra.multiplicative.monoid as Times
+import Prelude›Algebra›Monoid›Properties 0l 0l NatAlgebra.multiplicative.monoid
+  as Times
 
 eval Times.pow 3 4
 
-theorem powers : Id ℕ (Times.pow 2 (Prelude›Arith›Plus.plus 1 2))
+theorem powers : Eq (Times.pow 2 (Prelude›Arith›Plus.plus 1 2))
     (NatAlgebra.multiplicative.op (Times.pow 2 1) (Times.pow 2 2)) ≔
   Times.Power.powPlus 2 1 2
 end

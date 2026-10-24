@@ -1,0 +1,74 @@
+(* Functions on numbers under composition, compared pointwise with the
+   equality of numbers [Eq]: [Pointwise f g] holds when [f n] and [g n] are
+   equal for every [n].  It is an equivalence, composition respects it, and
+   the monoid laws hold pointwise by computation ([pointwise], at the
+   levels [0l] and [0l]); its powers iterate a function. *)
+module Prelude›Algebra›Instances›Endo›Pointwise where
+
+import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
+import Prelude›Algebra›Instances›Endo 0l ℕ use (Endo; compose; identity)
+import Prelude›Algebra›Setoid 0l 0l use (IsEquivalence)
+import Prelude›Algebra›Magma 0l 0l use (IsMagma)
+import Prelude›Algebra›Semigroup 0l 0l use (IsSemigroup)
+import Prelude›Algebra›Monoid 0l 0l use (IsMonoid; Monoid)
+
+def Pointwise (f : Endo) (g : Endo) : Type@0 ≔ ∀ (n : ℕ) → Eq (f n) (g n) end
+
+(* Pointwise equality is an equivalence, and composition respects it. *)
+module Laws where
+
+theorem pwRefl : ∀ (f : Endo) → Pointwise f f ≔
+  λ (f : Endo) (n : ℕ) → refl (f n)
+end
+
+theorem pwSym : ∀ (f : Endo) (g : Endo) (h : Pointwise f g) → Pointwise g f ≔
+  λ (f : Endo) (g : Endo) (h : Pointwise f g) (n : ℕ) → sym (f n) (g n) (h n)
+end
+
+theorem pwTrans : ∀ (f : Endo) (g : Endo) (k : Endo)
+    (hfg : Pointwise f g) (hgk : Pointwise g k) → Pointwise f k ≔
+  λ (f : Endo) (g : Endo) (k : Endo) (hfg : Pointwise f g) (hgk : Pointwise g k)
+    (n : ℕ) →
+    trans (f n) (g n) (k n) (hfg n) (hgk n)
+end
+
+(* [compose f g] at [n] is [f (g n)]: rewrite under [f], then use
+   [f ~ fb]. *)
+theorem composeCong : ∀ (f : Endo) (g : Endo) (fb : Endo) (gb : Endo)
+    (hf : Pointwise f fb) (hg : Pointwise g gb) →
+    Pointwise (compose f g) (compose fb gb) ≔
+  λ (f : Endo) (g : Endo) (fb : Endo) (gb : Endo)
+    (hf : Pointwise f fb) (hg : Pointwise g gb) (n : ℕ) →
+    trans (f (g n)) (f (gb n)) (fb (gb n)) (cong f (g n) (gb n) (hg n))
+      (hf (gb n))
+end
+
+end
+
+open Laws use (pwRefl; pwSym; pwTrans; composeCong)
+
+def pointwise : Monoid ≔
+  record Monoid where
+    carrier ≔ Endo; eq ≔ Pointwise; op ≔ compose; e ≔ identity;
+    isMonoid ≔
+      record IsMonoid Endo Pointwise compose identity where
+        isSemigroup ≔
+          record IsSemigroup Endo Pointwise compose where
+            isMagma ≔
+              record IsMagma Endo Pointwise compose where
+                isEquivalence ≔
+                  record IsEquivalence Endo Pointwise where
+                    refl ≔ pwRefl; sym ≔ pwSym; trans ≔ pwTrans
+                  end;
+                opCong ≔ composeCong
+              end;
+            assoc ≔ λ (f : Endo) (g : Endo) (h : Endo) →
+                      pwRefl (compose f (compose g h))
+          end;
+        leftId ≔ pwRefl;
+        rightId ≔ pwRefl
+      end
+  end
+end
+
+end

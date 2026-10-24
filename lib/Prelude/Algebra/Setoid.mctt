@@ -1,0 +1,33 @@
+(* Setoids: [IsEquivalence A eq] holds when [eq] is reflexive, symmetric
+   and transitive, and the bundle [Setoid] is a carrier with such a
+   relation.  Every structure of [Prelude›Algebra] states its laws up to a
+   relation [eq], so that a quotient-like carrier, as the integers as
+   differences of numbers in [Prelude›Algebra›Integers], is an instance,
+   and so is the Leibniz equality of [Prelude›Logic›Leibniz], through
+   [Prelude›Algebra›Leibniz].
+
+   Each unit of the hierarchy takes two levels: [c], of the carrier, and
+   [r], of the relation, [eq : A → A → Type@{r}].  The equality of numbers
+   [Eq] and the relation [Same] of [Prelude›Algebra›Integers] are at
+   [r = c]; the Leibniz equality of a type of [Type@{c}] lives one level
+   up, at [r = succl c].  A predicate lives in [Type@{maxl c r}] and a
+   bundle in [Type@{succl (maxl c r)}]. *)
+module Prelude›Algebra›Setoid (c : Level) (r : Level) where
+
+record IsEquivalence (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r}) :
+    Type@{maxl c r} where
+  refl : ∀ (x : A) → eq x x;
+  sym : ∀ (x : A) (y : A) (h : eq x y) → eq y x;
+  trans : ∀ (x : A) (y : A) (z : A) (hxy : eq x y) (hyz : eq y z) → eq x z
+end
+
+record Setoid : Type@{succl (maxl c r)} where
+  carrier : Type@{c};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+  isEquivalence : IsEquivalence carrier eq
+with
+  open isEquivalence export (refl; sym; trans)
+end
+end
+
+end

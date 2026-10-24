@@ -1,69 +1,91 @@
-(* The product of two monoids [M] and [N]: pairs of
+(* The product of two monoids [M] and [N] of the same levels: pairs of
    [Prelude›Data›Prod], combined componentwise, with the pair of the
-   neutral elements as neutral element ([product]).  A law holds of pairs
-   when it holds of both components, by [pairCong]; eta for records makes
-   a pair [p] the pair of its projections, so the right-hand sides need
-   no rewriting.  The projections are homomorphisms ([first], [second]). *)
+   neutral elements as neutral element ([product]).  Two pairs are related
+   when their components are, [Both p q], a pair of proofs, so every law of
+   the product is the pair of the laws of its components.  The projections
+   are homomorphisms ([first], [second]). *)
 import Prelude›Algebra›Monoid
-module Prelude›Algebra›Instances›Product (u : Level)
-    (M : Prelude›Algebra›Monoid.Monoid u) (N : Prelude›Algebra›Monoid.Monoid u)
-    where
+module Prelude›Algebra›Instances›Product (c : Level) (r : Level)
+    (M : Prelude›Algebra›Monoid.Monoid c r)
+    (N : Prelude›Algebra›Monoid.Monoid c r) where
 
-import Prelude›Logic›Leibniz u use (Id; idRefl; idCongTwo)
 import Prelude›Data›Prod use (Prod; pair)
-import Prelude›Algebra›Magma u use (Magma)
-import Prelude›Algebra›Semigroup u use (Semigroup)
-import Prelude›Algebra›Monoid u use (Monoid)
-import Prelude›Algebra›Monoid›Hom u use (Hom)
+import Prelude›Algebra›Setoid c r use (IsEquivalence)
+import Prelude›Algebra›Magma c r use (IsMagma)
+import Prelude›Algebra›Semigroup c r use (IsSemigroup)
+import Prelude›Algebra›Monoid c r use (IsMonoid; Monoid)
+import Prelude›Algebra›Monoid›Hom c r use (Hom)
 
-private record P ≔ Prod u M.carrier N.carrier
+private record P ≔ Prod c M.carrier N.carrier
 
 private def mk (a : M.carrier) (b : N.carrier) : P ≔
-  pair u M.carrier N.carrier a b
+  pair c M.carrier N.carrier a b
 end
 
-(* Pairs of equal components are equal. *)
-private def pairCong (a : M.carrier) (c : M.carrier) (b : N.carrier)
-    (d : N.carrier) (hac : Id M.carrier a c) (hbd : Id N.carrier b d) :
-    Id P (mk a b) (mk c d) ≔
-  idCongTwo M.carrier N.carrier P mk a c b d hac hbd
+(* Pairs are related when both components are. *)
+def Both (p : P) (q : P) : Type@{r} ≔
+  Prod r (M.eq p.fst q.fst) (N.eq p.snd q.snd)
+end
+
+private def both (p : P) (q : P) (h : M.eq p.fst q.fst) (k : N.eq p.snd q.snd) :
+    Both p q ≔
+  pair r (M.eq p.fst q.fst) (N.eq p.snd q.snd) h k
 end
 
 def op (p : P) (q : P) : P ≔ mk (M.op p.fst q.fst) (N.op p.snd q.snd) end
 
+def e : P ≔ mk M.e N.e end
+
+private def isMagma : IsMagma P Both op ≔
+  record IsMagma P Both op where
+    isEquivalence ≔
+      record IsEquivalence P Both where
+        refl ≔ λ (p : P) → both p p (M.refl p.fst) (N.refl p.snd);
+        sym ≔ λ (p : P) (q : P) (h : Both p q) →
+          both q p (M.sym p.fst q.fst h.fst) (N.sym p.snd q.snd h.snd);
+        trans ≔ λ (p : P) (q : P) (s : P) (h : Both p q) (k : Both q s) →
+          both p s (M.trans p.fst q.fst s.fst h.fst k.fst)
+            (N.trans p.snd q.snd s.snd h.snd k.snd)
+      end;
+    opCong ≔ λ (a : P) (b : P) (x : P) (y : P) (hax : Both a x) (hby : Both b y) →
+      both (op a b) (op x y) (M.opCong a.fst b.fst x.fst y.fst hax.fst hby.fst)
+        (N.opCong a.snd b.snd x.snd y.snd hax.snd hby.snd)
+  end
+end
+
 def product : Monoid ≔
   record Monoid where
-    semigroup ≔
-      record Semigroup where
-        magma ≔ record Magma where carrier ≔ P; op ≔ op end;
-        assoc ≔ λ (p : P) (q : P) (r : P) →
-          pairCong (M.op (M.op p.fst q.fst) r.fst) (M.op p.fst (M.op q.fst r.fst))
-            (N.op (N.op p.snd q.snd) r.snd) (N.op p.snd (N.op q.snd r.snd))
-            (M.assoc p.fst q.fst r.fst) (N.assoc p.snd q.snd r.snd)
-      end;
-    e ≔ mk M.e N.e;
-    leftId ≔ λ (p : P) →
-      pairCong (M.op M.e p.fst) p.fst (N.op N.e p.snd) p.snd
-        (M.leftId p.fst) (N.leftId p.snd);
-    rightId ≔ λ (p : P) →
-      pairCong (M.op p.fst M.e) p.fst (N.op p.snd N.e) p.snd
-        (M.rightId p.fst) (N.rightId p.snd)
+    carrier ≔ P; eq ≔ Both; op ≔ op; e ≔ e;
+    isMonoid ≔
+      record IsMonoid P Both op e where
+        isSemigroup ≔
+          record IsSemigroup P Both op where
+            isMagma ≔ isMagma;
+            assoc ≔ λ (p : P) (q : P) (s : P) →
+              both (op (op p q) s) (op p (op q s)) (M.assoc p.fst q.fst s.fst)
+                (N.assoc p.snd q.snd s.snd)
+          end;
+        leftId ≔ λ (p : P) → both (op e p) p (M.leftId p.fst) (N.leftId p.snd);
+        rightId ≔ λ (p : P) → both (op p e) p (M.rightId p.fst) (N.rightId p.snd)
+      end
   end
 end
 
 def first : Hom product M ≔
   record Hom product M where
     map ≔ λ (p : P) → p.fst;
-    mapOp ≔ λ (p : P) (q : P) → idRefl M.carrier (M.op p.fst q.fst);
-    mapE ≔ idRefl M.carrier M.e
+    mapCong ≔ λ (p : P) (q : P) (h : Both p q) → h.fst;
+    mapOp ≔ λ (p : P) (q : P) → M.refl (M.op p.fst q.fst);
+    mapE ≔ M.refl M.e
   end
 end
 
 def second : Hom product N ≔
   record Hom product N where
     map ≔ λ (p : P) → p.snd;
-    mapOp ≔ λ (p : P) (q : P) → idRefl N.carrier (N.op p.snd q.snd);
-    mapE ≔ idRefl N.carrier N.e
+    mapCong ≔ λ (p : P) (q : P) (h : Both p q) → h.snd;
+    mapOp ≔ λ (p : P) (q : P) → N.refl (N.op p.snd q.snd);
+    mapE ≔ N.refl N.e
   end
 end
 

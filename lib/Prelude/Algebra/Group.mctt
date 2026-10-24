@@ -1,31 +1,42 @@
-(* Groups: a monoid with an inverse [inv] on both sides.  The record's
-   members [carrier], [op], [e] and the monoid laws are those of its
-   monoid.  The laws derived from these (cancellation, the uniqueness of
-   inverses, the inverses of [e], of an inverse and of a product) and the
-   homomorphisms of groups are in [Prelude›Algebra›Group›Properties];
-   groups over a setoid are [Prelude›Algebra›Setoid›Group]. *)
-module Prelude›Algebra›Group (u : Level) where
+(* Groups: [IsGroup A eq op e inv] holds when [op] and [e] form a monoid
+   up to [eq], its predicate [isMonoid], and [inv] respects [eq] and is an
+   inverse on both sides.  The bundle's with-area forwards the laws and
+   gives the monoid below, [G.monoid].  The derived laws (cancellation,
+   the uniqueness of inverses, the inverses of [e], of an inverse, of a
+   product and of a power) are in [Prelude›Algebra›Group›Properties], the
+   homomorphisms in [Prelude›Algebra›Group›Hom]. *)
+module Prelude›Algebra›Group (c : Level) (r : Level) where
 
-import Prelude›Logic›Leibniz u use (Id)
-import Prelude›Algebra›Monoid u use (Monoid)
+import Prelude›Algebra›Monoid c r use (IsMonoid; Monoid)
 
-record Group : Type@{succl u} where
-  monoid : Monoid;
-  inv : ∀ (x : monoid.carrier) → monoid.carrier;
-  leftInv : ∀ (x : monoid.carrier) →
-    Id monoid.carrier (monoid.op (inv x) x) monoid.e;
-  rightInv : ∀ (x : monoid.carrier) →
-    Id monoid.carrier (monoid.op x (inv x)) monoid.e
+record IsGroup (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
+    (op : ∀ (x : A) (y : A) → A) (e : A) (inv : ∀ (x : A) → A) :
+    Type@{maxl c r} where
+  isMonoid : IsMonoid A eq op e;
+  invCong : ∀ (a : A) (b : A) (h : eq a b) → eq (inv a) (inv b);
+  leftInv : ∀ (x : A) → eq (op (inv x) x) e;
+  rightInv : ∀ (x : A) → eq (op x (inv x)) e
 with
-  def carrier : Type@{u} ≔ monoid.carrier end
-  def op (x : carrier) (y : carrier) : carrier ≔ monoid.op x y end
-  def e : carrier ≔ monoid.e end
-  def assoc : ∀ (x : carrier) (y : carrier) (z : carrier) →
-      Id carrier (op (op x y) z) (op x (op y z)) ≔
-    monoid.assoc
+  open isMonoid export (refl; sym; trans; opCong; assoc; leftId; rightId)
+end
+end
+
+record Group : Type@{succl (maxl c r)} where
+  carrier : Type@{c};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+  op : ∀ (x : carrier) (y : carrier) → carrier;
+  e : carrier;
+  inv : ∀ (x : carrier) → carrier;
+  isGroup : IsGroup carrier eq op e inv
+with
+  open isGroup
+    export (refl; sym; trans; opCong; assoc; leftId; rightId; invCong; leftInv;
+            rightInv)
+  def monoid : Monoid ≔
+    record Monoid where
+      carrier ≔ carrier; eq ≔ eq; op ≔ op; e ≔ e; isMonoid ≔ isGroup.isMonoid
+    end
   end
-  def leftId : ∀ (x : carrier) → Id carrier (op e x) x ≔ monoid.leftId end
-  def rightId : ∀ (x : carrier) → Id carrier (op x e) x ≔ monoid.rightId end
 end
 end
 

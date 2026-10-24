@@ -1,13 +1,18 @@
 (* The functions from [A] to itself under composition, with the identity
-   as the neutral element: the endomorphism monoid of [A], [endo].  Every
-   law holds by computation and eta for functions, so each is [idRefl]:
-   [compose f id] is [λ x → f x], which is [f]. *)
+   as the neutral element: the endomorphism monoid of [A], [endo], up to
+   Leibniz equality, at the levels [u] and [succl u].  Every law holds by
+   computation and eta for functions, so each is [idRefl]: [compose f id]
+   is [λ x → f x], which is [f].
+
+   For [ℕ], [Prelude›Algebra›Instances›Endo›Pointwise] has the same
+   monoid up to pointwise equality of numbers, whose closed laws
+   compute. *)
 module Prelude›Algebra›Instances›Endo (u : Level) (A : Type@{u}) where
 
-import Prelude›Logic›Leibniz u use (idRefl)
-import Prelude›Algebra›Magma u use (Magma)
-import Prelude›Algebra›Semigroup u use (Semigroup)
-import Prelude›Algebra›Monoid u use (Monoid)
+import Prelude›Logic›Leibniz u use (Id; idRefl)
+import Prelude›Algebra›Leibniz u use (idIsMagma)
+import Prelude›Algebra›Semigroup u (succl u) use (IsSemigroup)
+import Prelude›Algebra›Monoid u (succl u) use (IsMonoid; Monoid)
 
 def Endo : Type@{u} ≔ ∀ (a : A) → A end
 
@@ -18,15 +23,18 @@ def identity : Endo ≔ λ (a : A) → a end
 
 def endo : Monoid ≔
   record Monoid where
-    semigroup ≔
-      record Semigroup where
-        magma ≔ record Magma where carrier ≔ Endo; op ≔ compose end;
-        assoc ≔ λ (f : Endo) (g : Endo) (h : Endo) →
-                  idRefl Endo (compose f (compose g h))
-      end;
-    e ≔ identity;
-    leftId ≔ λ (f : Endo) → idRefl Endo f;
-    rightId ≔ λ (f : Endo) → idRefl Endo f
+    carrier ≔ Endo; eq ≔ Id Endo; op ≔ compose; e ≔ identity;
+    isMonoid ≔
+      record IsMonoid Endo (Id Endo) compose identity where
+        isSemigroup ≔
+          record IsSemigroup Endo (Id Endo) compose where
+            isMagma ≔ idIsMagma Endo compose;
+            assoc ≔ λ (f : Endo) (g : Endo) (h : Endo) →
+                      idRefl Endo (compose f (compose g h))
+          end;
+        leftId ≔ idRefl Endo;
+        rightId ≔ idRefl Endo
+      end
   end
 end
 

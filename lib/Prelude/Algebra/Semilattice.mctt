@@ -1,24 +1,35 @@
-(* Semilattices: a semigroup whose operation is commutative and
-   idempotent, such as the minimum of two numbers or the conjunction of
-   two booleans.  The record's members [carrier], [op] and [assoc] are
-   those of its semigroup.  The order a semilattice defines is in
+(* Semilattices: [IsSemilattice A eq op] holds when [op] is a semigroup up
+   to [eq], its predicate [isSemigroup], commutative and idempotent, as
+   the minimum of two numbers or the conjunction of two booleans.  The
+   bundle's with-area forwards the laws and gives the semigroup below.
+   The order a semilattice defines is in
    [Prelude›Algebra›Semilattice›Properties]. *)
-module Prelude›Algebra›Semilattice (u : Level) where
+module Prelude›Algebra›Semilattice (c : Level) (r : Level) where
 
-import Prelude›Logic›Leibniz u use (Id)
-import Prelude›Algebra›Semigroup u use (Semigroup)
+import Prelude›Algebra›Semigroup c r use (IsSemigroup; Semigroup)
 
-record Semilattice : Type@{succl u} where
-  semigroup : Semigroup;
-  comm : ∀ (x : semigroup.carrier) (y : semigroup.carrier) →
-    Id semigroup.carrier (semigroup.op x y) (semigroup.op y x);
-  idem : ∀ (x : semigroup.carrier) → Id semigroup.carrier (semigroup.op x x) x
+record IsSemilattice (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
+    (op : ∀ (x : A) (y : A) → A) : Type@{maxl c r} where
+  isSemigroup : IsSemigroup A eq op;
+  comm : ∀ (x : A) (y : A) → eq (op x y) (op y x);
+  idem : ∀ (x : A) → eq (op x x) x
 with
-  def carrier : Type@{u} ≔ semigroup.carrier end
-  def op (x : carrier) (y : carrier) : carrier ≔ semigroup.op x y end
-  def assoc : ∀ (x : carrier) (y : carrier) (z : carrier) →
-      Id carrier (op (op x y) z) (op x (op y z)) ≔
-    semigroup.assoc
+  open isSemigroup export (refl; sym; trans; opCong; assoc)
+end
+end
+
+record Semilattice : Type@{succl (maxl c r)} where
+  carrier : Type@{c};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+  op : ∀ (x : carrier) (y : carrier) → carrier;
+  isSemilattice : IsSemilattice carrier eq op
+with
+  open isSemilattice export (refl; sym; trans; opCong; assoc; comm; idem)
+  def semigroup : Semigroup ≔
+    record Semigroup where
+      carrier ≔ carrier; eq ≔ eq; op ≔ op;
+      isSemigroup ≔ isSemilattice.isSemigroup
+    end
   end
 end
 end

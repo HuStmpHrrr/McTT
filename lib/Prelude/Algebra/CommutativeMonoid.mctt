@@ -1,25 +1,35 @@
-(* Commutative monoids: a monoid whose operation is commutative.  The
-   record's members [carrier], [op], [e] and the monoid laws are those of
-   its monoid. *)
-module Prelude›Algebra›CommutativeMonoid (u : Level) where
+(* Commutative monoids: [IsCommutativeMonoid A eq op e] holds when [op]
+   and [e] form a monoid up to [eq], its predicate [isMonoid], and [op] is
+   commutative.  The bundle's with-area forwards the laws and gives the
+   monoid below, [M.monoid]. *)
+module Prelude›Algebra›CommutativeMonoid (c : Level) (r : Level) where
 
-import Prelude›Logic›Leibniz u use (Id)
-import Prelude›Algebra›Monoid u use (Monoid)
+import Prelude›Algebra›Monoid c r use (IsMonoid; Monoid)
 
-record CommutativeMonoid : Type@{succl u} where
-  monoid : Monoid;
-  comm : ∀ (x : monoid.carrier) (y : monoid.carrier) →
-    Id monoid.carrier (monoid.op x y) (monoid.op y x)
+record IsCommutativeMonoid (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
+    (op : ∀ (x : A) (y : A) → A) (e : A) : Type@{maxl c r} where
+  isMonoid : IsMonoid A eq op e;
+  comm : ∀ (x : A) (y : A) → eq (op x y) (op y x)
 with
-  def carrier : Type@{u} ≔ monoid.carrier end
-  def op (x : carrier) (y : carrier) : carrier ≔ monoid.op x y end
-  def e : carrier ≔ monoid.e end
-  def assoc : ∀ (x : carrier) (y : carrier) (z : carrier) →
-      Id carrier (op (op x y) z) (op x (op y z)) ≔
-    monoid.assoc
+  open isMonoid export (refl; sym; trans; opCong; assoc; leftId; rightId)
+end
+end
+
+record CommutativeMonoid : Type@{succl (maxl c r)} where
+  carrier : Type@{c};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+  op : ∀ (x : carrier) (y : carrier) → carrier;
+  e : carrier;
+  isCommutativeMonoid : IsCommutativeMonoid carrier eq op e
+with
+  open isCommutativeMonoid
+    export (refl; sym; trans; opCong; assoc; leftId; rightId; comm)
+  def monoid : Monoid ≔
+    record Monoid where
+      carrier ≔ carrier; eq ≔ eq; op ≔ op; e ≔ e;
+      isMonoid ≔ isCommutativeMonoid.isMonoid
+    end
   end
-  def leftId : ∀ (x : carrier) → Id carrier (op e x) x ≔ monoid.leftId end
-  def rightId : ∀ (x : carrier) → Id carrier (op x e) x ≔ monoid.rightId end
 end
 end
 

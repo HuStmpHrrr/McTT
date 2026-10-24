@@ -1,18 +1,33 @@
-(* Semigroups: a magma whose operation is associative.  The record's
-   members [carrier] and [op] are those of its magma, so [S.op x y] works
-   for a semigroup [S] as for a magma. *)
-module Prelude›Algebra›Semigroup (u : Level) where
+(* Semigroups: [IsSemigroup A eq op] holds when [op] is a magma up to
+   [eq], its predicate [isMagma], and associative up to [eq]; the bundle
+   [Semigroup] is a carrier, a relation, an operation and that predicate.
+   The with-areas forward the laws below, and the bundle's gives the
+   magma, [S.magma]. *)
+module Prelude›Algebra›Semigroup (c : Level) (r : Level) where
 
-import Prelude›Logic›Leibniz u use (Id)
-import Prelude›Algebra›Magma u use (Magma)
+import Prelude›Algebra›Magma c r use (IsMagma; Magma)
 
-record Semigroup : Type@{succl u} where
-  magma : Magma;
-  assoc : ∀ (x : magma.carrier) (y : magma.carrier) (z : magma.carrier) →
-    Id magma.carrier (magma.op (magma.op x y) z) (magma.op x (magma.op y z))
+record IsSemigroup (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
+    (op : ∀ (x : A) (y : A) → A) : Type@{maxl c r} where
+  isMagma : IsMagma A eq op;
+  assoc : ∀ (x : A) (y : A) (z : A) → eq (op (op x y) z) (op x (op y z))
 with
-  def carrier : Type@{u} ≔ magma.carrier end
-  def op (x : carrier) (y : carrier) : carrier ≔ magma.op x y end
+  open isMagma export (refl; sym; trans; opCong)
+end
+end
+
+record Semigroup : Type@{succl (maxl c r)} where
+  carrier : Type@{c};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+  op : ∀ (x : carrier) (y : carrier) → carrier;
+  isSemigroup : IsSemigroup carrier eq op
+with
+  open isSemigroup export (refl; sym; trans; opCong; assoc)
+  def magma : Magma ≔
+    record Magma where
+      carrier ≔ carrier; eq ≔ eq; op ≔ op; isMagma ≔ isSemigroup.isMagma
+    end
+  end
 end
 end
 

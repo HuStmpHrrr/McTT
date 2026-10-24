@@ -1,25 +1,40 @@
-(* Monoids: a semigroup with a neutral element [e] on both sides.  The
-   record's members [carrier], [op] and [assoc] are those of its semigroup.
-   The laws derived from these, and the homomorphisms of monoids, are in
-   [Prelude›Algebra›Monoid›Properties]; monoids over a setoid rather than
-   up to Leibniz equality are [Prelude›Algebra›Setoid›Monoid]. *)
-module Prelude›Algebra›Monoid (u : Level) where
+(* Monoids: [IsMonoid A eq op e] holds when [op] is a semigroup up to
+   [eq], its predicate [isSemigroup], and [e] is neutral on both sides;
+   the bundle [Monoid] is a carrier, a relation, [op], [e] and that
+   predicate.  The bundle's with-area forwards the laws, [M.refl] …
+   [M.opCong], [M.assoc], [M.leftId] and [M.rightId], and gives the
+   semigroup and the magma below.  The derived laws are in
+   [Prelude›Algebra›Monoid›Properties], the homomorphisms in
+   [Prelude›Algebra›Monoid›Hom]. *)
+module Prelude›Algebra›Monoid (c : Level) (r : Level) where
 
-import Prelude›Logic›Leibniz u use (Id)
-import Prelude›Algebra›Semigroup u use (Semigroup)
+import Prelude›Algebra›Magma c r use (Magma)
+import Prelude›Algebra›Semigroup c r use (IsSemigroup; Semigroup)
 
-record Monoid : Type@{succl u} where
-  semigroup : Semigroup;
-  e : semigroup.carrier;
-  leftId : ∀ (x : semigroup.carrier) → Id semigroup.carrier (semigroup.op e x) x;
-  rightId : ∀ (x : semigroup.carrier) → Id semigroup.carrier (semigroup.op x e) x
+record IsMonoid (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
+    (op : ∀ (x : A) (y : A) → A) (e : A) : Type@{maxl c r} where
+  isSemigroup : IsSemigroup A eq op;
+  leftId : ∀ (x : A) → eq (op e x) x;
+  rightId : ∀ (x : A) → eq (op x e) x
 with
-  def carrier : Type@{u} ≔ semigroup.carrier end
-  def op (x : carrier) (y : carrier) : carrier ≔ semigroup.op x y end
-  def assoc : ∀ (x : carrier) (y : carrier) (z : carrier) →
-      Id carrier (op (op x y) z) (op x (op y z)) ≔
-    semigroup.assoc
+  open isSemigroup export (refl; sym; trans; opCong; assoc)
+end
+end
+
+record Monoid : Type@{succl (maxl c r)} where
+  carrier : Type@{c};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+  op : ∀ (x : carrier) (y : carrier) → carrier;
+  e : carrier;
+  isMonoid : IsMonoid carrier eq op e
+with
+  open isMonoid export (refl; sym; trans; opCong; assoc; leftId; rightId)
+  def semigroup : Semigroup ≔
+    record Semigroup where
+      carrier ≔ carrier; eq ≔ eq; op ≔ op; isSemigroup ≔ isMonoid.isSemigroup
+    end
   end
+  def magma : Magma ≔ semigroup.magma end
 end
 end
 

@@ -1,16 +1,53 @@
-(* Magmas: a carrier [carrier] in [Type@{u}] with a binary operation
-   [op].  A magma is the bottom layer of the bundled algebraic hierarchy of
-   [Prelude›Algebra]: each structure above it is a record with one field
-   holding the structure below and further fields for its operations and
-   laws.  The laws are Leibniz equalities, [Prelude›Logic›Leibniz].
+(* Magmas: [IsMagma A eq op] holds when [eq] is an equivalence on [A] and
+   [op] respects it in both arguments; the bundle [Magma] is a carrier, a
+   relation, an operation and that predicate.
 
-   The record holds a type of [Type@{u}], so it lives in
-   [Type@{succl u}]. *)
-module Prelude›Algebra›Magma (u : Level) where
+   A magma is the bottom of the algebraic hierarchy of [Prelude›Algebra],
+   which has two layers:
+   - a predicate record [IsX A eq ops], over a carrier, a relation and the
+     operations, holds the laws of the structure [X], stated up to [eq],
+     and extends the predicate below by a field: [IsMonoid A eq op e] has
+     [isSemigroup : IsSemigroup A eq op];
+   - a bundle [X] holds a carrier, the relation, the operations and the
+     predicate: [Monoid] is [carrier], [eq], [op], [e] and [isMonoid].
+   A structure with two operations states the laws of each through the
+   predicates at the one carrier: [IsLattice A eq meet join] has
+   [meetIsSemilattice : IsSemilattice A eq meet] and
+   [joinIsSemilattice : IsSemilattice A eq join], so the carrier is shared
+   by construction.  The inherited laws are forwarded, in the with-areas,
+   by [open … export].  The levels [c] and [r] are those of the carrier
+   and of the relation, [Prelude›Algebra›Setoid].
 
-record Magma : Type@{succl u} where
-  carrier : Type@{u};
-  op : ∀ (x : carrier) (y : carrier) → carrier
+   Under Leibniz equality every operation is a congruence, so
+   [Prelude›Algebra›Leibniz.idIsMagma A op] fills the bottom predicate of a
+   Leibniz instance in one line. *)
+module Prelude›Algebra›Magma (c : Level) (r : Level) where
+
+import Prelude›Algebra›Setoid c r use (IsEquivalence; Setoid)
+
+record IsMagma (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
+    (op : ∀ (x : A) (y : A) → A) : Type@{maxl c r} where
+  isEquivalence : IsEquivalence A eq;
+  opCong : ∀ (a : A) (b : A) (c : A) (d : A) (hac : eq a c) (hbd : eq b d) →
+    eq (op a b) (op c d)
+with
+  open isEquivalence export (refl; sym; trans)
+end
+end
+
+record Magma : Type@{succl (maxl c r)} where
+  carrier : Type@{c};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+  op : ∀ (x : carrier) (y : carrier) → carrier;
+  isMagma : IsMagma carrier eq op
+with
+  open isMagma export (refl; sym; trans; opCong)
+  def setoid : Setoid ≔
+    record Setoid where
+      carrier ≔ carrier; eq ≔ eq; isEquivalence ≔ isMagma.isEquivalence
+    end
+  end
+end
 end
 
 end

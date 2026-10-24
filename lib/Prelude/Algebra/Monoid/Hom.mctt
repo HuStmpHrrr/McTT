@@ -1,26 +1,29 @@
 (* Homomorphisms of monoids: [Hom M N] is the record of a map from the
-   carrier of [M] to that of [N] that takes products to products and the
-   neutral element to the neutral element.  [identity] and [compose] are
-   the identity and the composite of homomorphisms; the local module
-   [Laws M N f] shows that a homomorphism [f] takes powers to powers. *)
-module Prelude›Algebra›Monoid›Hom (u : Level) where
+   carrier of [M] to that of [N] that respects the relations, takes
+   products to products and the neutral element to the neutral element,
+   up to [N.eq].  [identity] and [compose] are the identity and the
+   composite of homomorphisms; the local module [Laws M N f] shows that a
+   homomorphism [f] takes powers to powers. *)
+module Prelude›Algebra›Monoid›Hom (c : Level) (r : Level) where
 
-import Prelude›Logic›Leibniz u use (Id; idRefl; idTrans; idCong)
-import Prelude›Algebra›Monoid u use (Monoid)
+import Prelude›Algebra›Monoid c r use (Monoid)
 import Prelude›Algebra›Monoid›Properties
 
-record Hom (M : Monoid) (N : Monoid) : Type@{succl u} where
+record Hom (M : Monoid) (N : Monoid) : Type@{maxl c r} where
   map : ∀ (x : M.carrier) → N.carrier;
+  mapCong : ∀ (x : M.carrier) (y : M.carrier) (h : M.eq x y) →
+    N.eq (map x) (map y);
   mapOp : ∀ (x : M.carrier) (y : M.carrier) →
-    Id N.carrier (map (M.op x y)) (N.op (map x) (map y));
-  mapE : Id N.carrier (map M.e) N.e
+    N.eq (map (M.op x y)) (N.op (map x) (map y));
+  mapE : N.eq (map M.e) N.e
 end
 
 def identity (M : Monoid) : Hom M M ≔
   record Hom M M where
     map ≔ λ (x : M.carrier) → x;
-    mapOp ≔ λ (x : M.carrier) (y : M.carrier) → idRefl M.carrier (M.op x y);
-    mapE ≔ idRefl M.carrier M.e
+    mapCong ≔ λ (x : M.carrier) (y : M.carrier) (h : M.eq x y) → h;
+    mapOp ≔ λ (x : M.carrier) (y : M.carrier) → M.refl (M.op x y);
+    mapE ≔ M.refl M.e
   end
 end
 
@@ -29,38 +32,38 @@ def compose (M : Monoid) (N : Monoid) (P : Monoid) (g : Hom N P) (f : Hom M N) :
     Hom M P ≔
   record Hom M P where
     map ≔ λ (x : M.carrier) → g.map (f.map x);
+    mapCong ≔ λ (x : M.carrier) (y : M.carrier) (h : M.eq x y) →
+      g.mapCong (f.map x) (f.map y) (f.mapCong x y h);
     mapOp ≔ λ (x : M.carrier) (y : M.carrier) →
-      idTrans P.carrier (g.map (f.map (M.op x y)))
-        (g.map (N.op (f.map x) (f.map y)))
+      P.trans (g.map (f.map (M.op x y))) (g.map (N.op (f.map x) (f.map y)))
         (P.op (g.map (f.map x)) (g.map (f.map y)))
-        (idCong N.carrier P.carrier g.map (f.map (M.op x y))
-           (N.op (f.map x) (f.map y)) (f.mapOp x y))
+        (g.mapCong (f.map (M.op x y)) (N.op (f.map x) (f.map y)) (f.mapOp x y))
         (g.mapOp (f.map x) (f.map y));
     mapE ≔
-      idTrans P.carrier (g.map (f.map M.e)) (g.map N.e) P.e
-        (idCong N.carrier P.carrier g.map (f.map M.e) N.e f.mapE) g.mapE
+      P.trans (g.map (f.map M.e)) (g.map N.e) P.e
+        (g.mapCong (f.map M.e) N.e f.mapE) g.mapE
   end
 end
 
 (* Laws of a homomorphism [f] from [M] to [N]. *)
 module Laws (M : Monoid) (N : Monoid) (f : Hom M N) where
 
-open Prelude›Algebra›Monoid›Properties u M as PM
-open Prelude›Algebra›Monoid›Properties u N as PN
+open Prelude›Algebra›Monoid›Properties c r M as PM
+open Prelude›Algebra›Monoid›Properties c r N as PN
 
 (* [f] takes the [n]-th power of [x] to the [n]-th power of [f.map x]. *)
 theorem mapPow : ∀ (x : M.carrier) (n : ℕ) →
-    Id N.carrier (f.map (PM.pow x n)) (PN.pow (f.map x) n) ≔
+    N.eq (f.map (PM.pow x n)) (PN.pow (f.map x) n) ≔
   λ (x : M.carrier) (n : ℕ) →
-    elim n at k → Id N.carrier (f.map (PM.pow x k)) (PN.pow (f.map x) k)
+    elim n at k → N.eq (f.map (PM.pow x k)) (PN.pow (f.map x) k)
     | zero ⇒ f.mapE
     | succ p, ih ⇒
-        idTrans N.carrier (f.map (M.op x (PM.pow x p)))
+        N.trans (f.map (M.op x (PM.pow x p)))
           (N.op (f.map x) (f.map (PM.pow x p)))
           (N.op (f.map x) (PN.pow (f.map x) p))
           (f.mapOp x (PM.pow x p))
-          (idCong N.carrier N.carrier (N.op (f.map x)) (f.map (PM.pow x p))
-             (PN.pow (f.map x) p) ih)
+          (PN.Cong.congRight (f.map x) (f.map (PM.pow x p)) (PN.pow (f.map x) p)
+             ih)
     end
 end
 

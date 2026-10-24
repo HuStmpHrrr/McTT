@@ -1,16 +1,17 @@
-(* The numbers as instances of the bundled structures of
-   [Prelude›Algebra]: a commutative monoid under addition ([additive]) and
-   under multiplication ([multiplicative]), the semiring of both
-   ([semiring]), and the lattice of [min] and [max] ([minMax]).
+(* The numbers as instances of the structures of [Prelude›Algebra], up to
+   the equality of numbers [Eq] of [Prelude›Arith›Equality], which
+   computes, so a closed law between numbers normalizes to [⋆]: commutative
+   monoids under addition ([additive]), multiplication ([multiplicative])
+   and maximum ([maximum]), the semiring of addition and multiplication
+   ([semiring]), and the lattice of [min] and [max] ([minMax]).  [Eq] is a
+   relation into [Type@0], so the levels are [0l] and [0l].
 
-   The laws of [Prelude›Arith] are stated with the equality of numbers
-   [Eq], which computes; [eqToId] turns each into the Leibniz equality the
-   structures ask for, through the private [lawOne], [lawTwo] and
-   [lawThree], one per number of variables. *)
+   Every operation on numbers respects [Eq] ([congBoth]), so each magma
+   predicate comes from [magmaOf]; the predicates of addition and
+   multiplication are named, so that the semiring reuses them. *)
 module Prelude›Algebra›Instances›Nat where
 
-import Prelude›Arith›Equality use (Eq)
-import Prelude›Logic›Leibniz 0l use (Id; idRefl; eqToId)
+import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusIdentityRight)
 open Prelude›Arith›Plus.Algebra use (plusAssoc; plusComm)
@@ -20,117 +21,139 @@ open Prelude›Arith›Mult.Basic
 open Prelude›Arith›Mult.Algebra
   use (multAssoc; multComm; multDistribLeft; multDistribRight)
 import Prelude›Arith›MinMax use (min; max)
-open Prelude›Arith›MinMax.Laws use (minComm; minIdem; maxComm)
+open Prelude›Arith›MinMax.Laws
+  use (minComm; minIdem; maxComm; maxIdem; maxIdentityRight)
 import Prelude›Arith›Lattice.Algebra
   use (minAssoc; maxAssoc; minMaxAbsorb; maxMinAbsorb)
-import Prelude›Algebra›Magma 0l use (Magma)
-import Prelude›Algebra›Semigroup 0l use (Semigroup)
-import Prelude›Algebra›Monoid 0l use (Monoid)
-import Prelude›Algebra›CommutativeMonoid 0l use (CommutativeMonoid)
-import Prelude›Algebra›Semiring 0l use (Semiring)
-import Prelude›Algebra›Semilattice 0l use (Semilattice)
-import Prelude›Algebra›Lattice 0l use (Lattice)
+import Prelude›Algebra›Setoid 0l 0l use (IsEquivalence)
+import Prelude›Algebra›Magma 0l 0l use (IsMagma)
+import Prelude›Algebra›Semigroup 0l 0l use (IsSemigroup)
+import Prelude›Algebra›Monoid 0l 0l use (IsMonoid)
+import Prelude›Algebra›CommutativeMonoid 0l 0l
+  use (IsCommutativeMonoid; CommutativeMonoid)
+import Prelude›Algebra›Semiring 0l 0l use (IsSemiring; Semiring)
+import Prelude›Algebra›Semilattice 0l 0l use (IsSemilattice)
+import Prelude›Algebra›Lattice 0l 0l use (IsLattice; Lattice)
 
-(* A law between numbers, as a Leibniz equality, in one, two or three
-   variables. *)
-private def lawOne (f : ∀ (a : ℕ) → ℕ) (g : ∀ (a : ℕ) → ℕ)
-    (h : ∀ (a : ℕ) → Eq (f a) (g a)) : ∀ (a : ℕ) → Id ℕ (f a) (g a) ≔
-  λ (a : ℕ) → eqToId (f a) (g a) (h a)
+(* Every binary operation on numbers respects equality on both sides. *)
+theorem congBoth : ∀ (f : ∀ (x : ℕ) (y : ℕ) → ℕ)
+    (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) (hac : Eq a c) (hbd : Eq b d) →
+    Eq (f a b) (f c d) ≔
+  λ (f : ∀ (x : ℕ) (y : ℕ) → ℕ) (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ)
+    (hac : Eq a c) (hbd : Eq b d) →
+    trans (f a b) (f c b) (f c d)
+      (cong (λ (y : ℕ) → f y b) a c hac)
+      (cong (λ (y : ℕ) → f c y) b d hbd)
 end
 
-private def lawTwo (f : ∀ (a : ℕ) (b : ℕ) → ℕ) (g : ∀ (a : ℕ) (b : ℕ) → ℕ)
-    (h : ∀ (a : ℕ) (b : ℕ) → Eq (f a b) (g a b)) :
-    ∀ (a : ℕ) (b : ℕ) → Id ℕ (f a b) (g a b) ≔
-  λ (a : ℕ) (b : ℕ) → eqToId (f a b) (g a b) (h a b)
+def eqIsEquivalence : IsEquivalence ℕ Eq ≔
+  record IsEquivalence ℕ Eq where refl ≔ refl; sym ≔ sym; trans ≔ trans end
 end
 
-private def lawThree (f : ∀ (a : ℕ) (b : ℕ) (c : ℕ) → ℕ)
-    (g : ∀ (a : ℕ) (b : ℕ) (c : ℕ) → ℕ)
-    (h : ∀ (a : ℕ) (b : ℕ) (c : ℕ) → Eq (f a b c) (g a b c)) :
-    ∀ (a : ℕ) (b : ℕ) (c : ℕ) → Id ℕ (f a b c) (g a b c) ≔
-  λ (a : ℕ) (b : ℕ) (c : ℕ) → eqToId (f a b c) (g a b c) (h a b c)
+private def magmaOf (op : ∀ (a : ℕ) (b : ℕ) → ℕ) : IsMagma ℕ Eq op ≔
+  record IsMagma ℕ Eq op where
+    isEquivalence ≔ eqIsEquivalence; opCong ≔ congBoth op
+  end
 end
 
-(* The semigroup of an associative operation on numbers. *)
+(* An associative operation on numbers. *)
 private def semigroupOf (op : ∀ (a : ℕ) (b : ℕ) → ℕ)
     (assoc : ∀ (a : ℕ) (b : ℕ) (c : ℕ) → Eq (op (op a b) c) (op a (op b c))) :
-    Semigroup ≔
-  record Semigroup where
-    magma ≔ record Magma where carrier ≔ ℕ; op ≔ op end;
-    assoc ≔ lawThree (λ (a : ℕ) (b : ℕ) (c : ℕ) → op (op a b) c)
-              (λ (a : ℕ) (b : ℕ) (c : ℕ) → op a (op b c)) assoc
+    IsSemigroup ℕ Eq op ≔
+  record IsSemigroup ℕ Eq op where isMagma ≔ magmaOf op; assoc ≔ assoc end
+end
+
+(* Addition, with [0]; [plus 0 n] is [n] by computation. *)
+def plusIsCommutativeMonoid : IsCommutativeMonoid ℕ Eq plus 0 ≔
+  record IsCommutativeMonoid ℕ Eq plus 0 where
+    isMonoid ≔
+      record IsMonoid ℕ Eq plus 0 where
+        isSemigroup ≔ semigroupOf plus plusAssoc;
+        leftId ≔ refl;
+        rightId ≔ plusIdentityRight
+      end;
+    comm ≔ plusComm
   end
 end
 
-(* Numbers under addition, with [0]; [plus 0 n] is [n] by computation. *)
+(* Multiplication, with [1]. *)
+def multIsCommutativeMonoid : IsCommutativeMonoid ℕ Eq mult 1 ≔
+  record IsCommutativeMonoid ℕ Eq mult 1 where
+    isMonoid ≔
+      record IsMonoid ℕ Eq mult 1 where
+        isSemigroup ≔ semigroupOf mult multAssoc;
+        leftId ≔ multIdentityLeft;
+        rightId ≔ multIdentityRight
+      end;
+    comm ≔ multComm
+  end
+end
+
 def additive : CommutativeMonoid ≔
   record CommutativeMonoid where
-    monoid ≔
-      record Monoid where
-        semigroup ≔ semigroupOf plus plusAssoc;
-        e ≔ 0;
-        leftId ≔ λ (a : ℕ) → idRefl ℕ a;
-        rightId ≔ lawOne (λ (a : ℕ) → plus a 0) (λ (a : ℕ) → a) plusIdentityRight
-      end;
-    comm ≔ lawTwo plus (λ (a : ℕ) (b : ℕ) → plus b a) plusComm
+    carrier ≔ ℕ; eq ≔ Eq; op ≔ plus; e ≔ 0;
+    isCommutativeMonoid ≔ plusIsCommutativeMonoid
   end
 end
 
-(* Numbers under multiplication, with [1]. *)
 def multiplicative : CommutativeMonoid ≔
   record CommutativeMonoid where
-    monoid ≔
-      record Monoid where
-        semigroup ≔ semigroupOf mult multAssoc;
-        e ≔ 1;
-        leftId ≔ lawOne (λ (a : ℕ) → mult 1 a) (λ (a : ℕ) → a) multIdentityLeft;
-        rightId ≔ lawOne (λ (a : ℕ) → mult a 1) (λ (a : ℕ) → a) multIdentityRight
-      end;
-    comm ≔ lawTwo mult (λ (a : ℕ) (b : ℕ) → mult b a) multComm
+    carrier ≔ ℕ; eq ≔ Eq; op ≔ mult; e ≔ 1;
+    isCommutativeMonoid ≔ multIsCommutativeMonoid
   end
 end
 
-(* The semiring of addition and multiplication; [mult 0 n] is [0] by
-   computation. *)
+(* Maximum, with [0]; [max 0 n] is [n] by computation. *)
+def maximum : CommutativeMonoid ≔
+  record CommutativeMonoid where
+    carrier ≔ ℕ; eq ≔ Eq; op ≔ max; e ≔ 0;
+    isCommutativeMonoid ≔
+      record IsCommutativeMonoid ℕ Eq max 0 where
+        isMonoid ≔
+          record IsMonoid ℕ Eq max 0 where
+            isSemigroup ≔ semigroupOf max maxAssoc;
+            leftId ≔ refl;
+            rightId ≔ maxIdentityRight
+          end;
+        comm ≔ maxComm
+      end
+  end
+end
+
+(* The semiring of addition and multiplication, on the predicates above;
+   [mult 0 n] is [0] by computation. *)
 def semiring : Semiring ≔
   record Semiring where
-    additive ≔ additive;
-    mul ≔ mult;
-    one ≔ 1;
-    mulAssoc ≔ multiplicative.assoc;
-    mulLeftId ≔ multiplicative.leftId;
-    mulRightId ≔ multiplicative.rightId;
-    distribLeft ≔
-      lawThree (λ (a : ℕ) (b : ℕ) (c : ℕ) → mult a (plus b c))
-        (λ (a : ℕ) (b : ℕ) (c : ℕ) → plus (mult a b) (mult a c)) multDistribLeft;
-    distribRight ≔
-      lawThree (λ (a : ℕ) (b : ℕ) (c : ℕ) → mult (plus a b) c)
-        (λ (a : ℕ) (b : ℕ) (c : ℕ) → plus (mult a c) (mult b c)) multDistribRight;
-    zeroLeft ≔ λ (a : ℕ) → idRefl ℕ 0;
-    zeroRight ≔ lawOne (λ (a : ℕ) → mult a 0) (λ (a : ℕ) → 0) multZeroRight
+    carrier ≔ ℕ; eq ≔ Eq; plus ≔ plus; mul ≔ mult; zero ≔ 0; one ≔ 1;
+    isSemiring ≔
+      record IsSemiring ℕ Eq plus mult 0 1 where
+        plusIsCommutativeMonoid ≔ plusIsCommutativeMonoid;
+        mulIsMonoid ≔ multIsCommutativeMonoid.isMonoid;
+        distribLeft ≔ multDistribLeft;
+        distribRight ≔ multDistribRight;
+        zeroLeft ≔ λ (a : ℕ) → ⋆;
+        zeroRight ≔ multZeroRight
+      end
   end
 end
 
 (* The lattice of [min] and [max]: its order is the order of numbers. *)
 def minMax : Lattice ≔
   record Lattice where
-    meet ≔
-      record Semilattice where
-        semigroup ≔ semigroupOf min minAssoc;
-        comm ≔ lawTwo min (λ (a : ℕ) (b : ℕ) → min b a) minComm;
-        idem ≔ lawOne (λ (a : ℕ) → min a a) (λ (a : ℕ) → a) minIdem
-      end;
-    join ≔ max;
-    joinAssoc ≔
-      lawThree (λ (a : ℕ) (b : ℕ) (c : ℕ) → max (max a b) c)
-        (λ (a : ℕ) (b : ℕ) (c : ℕ) → max a (max b c)) maxAssoc;
-    joinComm ≔ lawTwo max (λ (a : ℕ) (b : ℕ) → max b a) maxComm;
-    absorbMeet ≔
-      lawTwo (λ (a : ℕ) (b : ℕ) → min a (max a b)) (λ (a : ℕ) (b : ℕ) → a)
-        minMaxAbsorb;
-    absorbJoin ≔
-      lawTwo (λ (a : ℕ) (b : ℕ) → max a (min a b)) (λ (a : ℕ) (b : ℕ) → a)
-        maxMinAbsorb
+    carrier ≔ ℕ; eq ≔ Eq; meet ≔ min; join ≔ max;
+    isLattice ≔
+      record IsLattice ℕ Eq min max where
+        meetIsSemilattice ≔
+          record IsSemilattice ℕ Eq min where
+            isSemigroup ≔ semigroupOf min minAssoc; comm ≔ minComm; idem ≔ minIdem
+          end;
+        joinIsSemilattice ≔
+          record IsSemilattice ℕ Eq max where
+            isSemigroup ≔ semigroupOf max maxAssoc; comm ≔ maxComm; idem ≔ maxIdem
+          end;
+        absorbMeet ≔ minMaxAbsorb;
+        absorbJoin ≔ maxMinAbsorb
+      end
   end
 end
 

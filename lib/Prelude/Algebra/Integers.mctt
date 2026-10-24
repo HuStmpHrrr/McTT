@@ -3,9 +3,9 @@
    for [a - b], and two pairs are the same integer,
    [Same x y], when they stand for the same difference: [a + d = c + b] for
    [(a, b)] and [(c, d)].  Addition is componentwise and negation swaps the
-   pair.  With [ofNat 0] as zero they form a commutative group, [Additive], an
-   instance of [Prelude›Algebra›Setoid›Group]; its powers are the multiples of an
-   integer.
+   pair.  With [ofNat 0] as zero they form an abelian group up to [Same],
+   [additiveGroup], an instance of [Prelude›Algebra›AbelianGroup]; its laws
+   are [Additive], and its powers are the multiples of an integer.
 
    [Same] computes, so a closed instance is [⊤] or [⊥].  [magnitude] and
    [negative] read a pair back as a sign and a number. *)
@@ -20,7 +20,14 @@ open Prelude›Arith›Plus.Cancel use (plusCancelRight)
 import Prelude›Arith›Sub use (monus)
 import Prelude›Arith›Order use (leb)
 import Prelude›Data›Bool use (Bool; not)
-import Prelude›Algebra›Setoid›Group as Group
+import Prelude›Algebra›Setoid 0l 0l use (IsEquivalence)
+import Prelude›Algebra›Magma 0l 0l use (IsMagma)
+import Prelude›Algebra›Semigroup 0l 0l use (IsSemigroup)
+import Prelude›Algebra›Monoid 0l 0l use (IsMonoid)
+import Prelude›Algebra›Group 0l 0l use (IsGroup)
+import Prelude›Algebra›AbelianGroup 0l 0l use (IsAbelianGroup; AbelianGroup)
+import Prelude›Algebra›Group›Properties
+import Prelude›Algebra›CommutativeMonoid›Properties
 
 (* A pair of numbers, standing for their difference [pos - neg]. *)
 record Int : Type@0 where
@@ -183,12 +190,47 @@ open Addition
   use (addCong; addAssoc; addIdentityLeft; addIdentityRight; addComm; negateCong; negateLeft;
        negateRight)
 
-(* The integers under addition: [Additive.Base.pow x n] is [n] times [x]. *)
-module Additive ≔
-  Group 0l Int Same sameRefl sameSym sameTrans add addCong (ofNat 0)
-    addAssoc addIdentityLeft addIdentityRight negate negateCong negateLeft negateRight
+(* The integers under addition, up to [Same]: an abelian group. *)
+def additiveGroup : AbelianGroup ≔
+  record AbelianGroup where
+    carrier ≔ Int; eq ≔ Same; op ≔ add; e ≔ ofNat 0; inv ≔ negate;
+    isAbelianGroup ≔
+      record IsAbelianGroup Int Same add (ofNat 0) negate where
+        isGroup ≔
+          record IsGroup Int Same add (ofNat 0) negate where
+            isMonoid ≔
+              record IsMonoid Int Same add (ofNat 0) where
+                isSemigroup ≔
+                  record IsSemigroup Int Same add where
+                    isMagma ≔
+                      record IsMagma Int Same add where
+                        isEquivalence ≔
+                          record IsEquivalence Int Same where
+                            refl ≔ sameRefl; sym ≔ sameSym; trans ≔ sameTrans
+                          end;
+                        opCong ≔ addCong
+                      end;
+                    assoc ≔ addAssoc
+                  end;
+                leftId ≔ addIdentityLeft;
+                rightId ≔ addIdentityRight
+              end;
+            invCong ≔ negateCong;
+            leftInv ≔ negateLeft;
+            rightInv ≔ negateRight
+          end;
+        comm ≔ addComm
+      end
+  end
+end
 
-module AdditiveComm ≔ Additive.Base.Commutative addComm
+(* The laws of the group: [Additive.Base.pow x n] is [n] times [x], and
+   [Additive.Laws] has cancellation and the laws of inverses. *)
+module Additive ≔ Prelude›Algebra›Group›Properties 0l 0l additiveGroup.group
+
+module AdditiveComm ≔
+  Prelude›Algebra›CommutativeMonoid›Properties 0l 0l
+    additiveGroup.commutativeMonoid
 
 (* The numbers embed into the integers. *)
 module Embedding where

@@ -1,44 +1,73 @@
-(* Rings: a semiring with an additive inverse [neg].  Only the left
-   inverse law is a field: the right one follows by commutativity of
-   [add], and [additiveGroup] is the abelian group of the addition.  That
-   [zero] absorbs on both sides is part of the semiring, though in a ring
-   it would follow from the other laws. *)
-module Prelude›Algebra›Ring (u : Level) where
+(* Rings: [IsRing A eq plus mul zero one neg] holds when the operations
+   form a semiring up to [eq], [isSemiring], and [neg] respects [eq] and is
+   a left inverse of [plus].  The right inverse follows by commutativity,
+   [negRight], and with it the predicate of the additive abelian group,
+   [isAdditiveGroup].  The bundle's with-area forwards the laws and gives
+   the semiring, [R.semiring], and the additive group, [R.additiveGroup].
+   That [zero] absorbs is part of the semiring, though in a ring it would
+   follow from the other laws. *)
+module Prelude›Algebra›Ring (c : Level) (r : Level) where
 
-import Prelude›Logic›Leibniz u use (Id; idTrans)
-import Prelude›Algebra›Group u use (Group)
-import Prelude›Algebra›AbelianGroup u use (AbelianGroup)
-import Prelude›Algebra›Semiring u use (Semiring)
+import Prelude›Algebra›Group c r use (IsGroup)
+import Prelude›Algebra›AbelianGroup c r use (IsAbelianGroup; AbelianGroup)
+import Prelude›Algebra›Semiring c r use (IsSemiring; Semiring)
 
-record Ring : Type@{succl u} where
-  semiring : Semiring;
-  neg : ∀ (x : semiring.carrier) → semiring.carrier;
-  negLeft : ∀ (x : semiring.carrier) →
-    Id semiring.carrier (semiring.add (neg x) x) semiring.zero
+record IsRing (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
+    (plus : ∀ (x : A) (y : A) → A) (mul : ∀ (x : A) (y : A) → A) (zero : A)
+    (one : A) (neg : ∀ (x : A) → A) : Type@{maxl c r} where
+  isSemiring : IsSemiring A eq plus mul zero one;
+  negCong : ∀ (a : A) (b : A) (h : eq a b) → eq (neg a) (neg b);
+  negLeft : ∀ (x : A) → eq (plus (neg x) x) zero
 with
-  def carrier : Type@{u} ≔ semiring.carrier end
-  def add (x : carrier) (y : carrier) : carrier ≔ semiring.add x y end
-  def zero : carrier ≔ semiring.zero end
-  def mul (x : carrier) (y : carrier) : carrier ≔ semiring.mul x y end
-  def one : carrier ≔ semiring.one end
-
+  open isSemiring.plusIsCommutativeMonoid use (trans; comm)
   (* [x + (-x)] is [(-x) + x] by commutativity. *)
-  def negRight : ∀ (x : carrier) → Id carrier (add x (neg x)) zero ≔
-    λ (x : carrier) →
-      idTrans carrier (add x (neg x)) (add (neg x) x) zero
-        (semiring.additive.comm x (neg x)) (negLeft x)
+  def negRight : ∀ (x : A) → eq (plus x (neg x)) zero ≔
+    λ (x : A) →
+      trans (plus x (neg x)) (plus (neg x) x) zero (comm x (neg x)) (negLeft x)
   end
-
-  def additiveGroup : AbelianGroup ≔
-    record AbelianGroup where
-      group ≔
-        record Group where
-          monoid ≔ semiring.additive.monoid;
-          inv ≔ neg;
+  def isAdditiveGroup : IsAbelianGroup A eq plus zero neg ≔
+    record IsAbelianGroup A eq plus zero neg where
+      isGroup ≔
+        record IsGroup A eq plus zero neg where
+          isMonoid ≔ isSemiring.plusIsCommutativeMonoid.isMonoid;
+          invCong ≔ negCong;
           leftInv ≔ negLeft;
           rightInv ≔ negRight
         end;
-      comm ≔ semiring.additive.comm
+      comm ≔ isSemiring.plusIsCommutativeMonoid.comm
+    end
+  end
+end
+end
+
+record Ring : Type@{succl (maxl c r)} where
+  carrier : Type@{c};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+  plus : ∀ (x : carrier) (y : carrier) → carrier;
+  mul : ∀ (x : carrier) (y : carrier) → carrier;
+  zero : carrier;
+  one : carrier;
+  neg : ∀ (x : carrier) → carrier;
+  isRing : IsRing carrier eq plus mul zero one neg
+with
+  open isRing export (negCong; negLeft; negRight)
+  open isRing.isSemiring export (distribLeft; distribRight; zeroLeft; zeroRight)
+  open isRing.isSemiring.plusIsCommutativeMonoid
+    export (refl; sym; trans; opCong as plusCong; assoc as plusAssoc;
+            leftId as plusLeftId; rightId as plusRightId; comm as plusComm)
+  open isRing.isSemiring.mulIsMonoid
+    export (opCong as mulCong; assoc as mulAssoc; leftId as mulLeftId;
+            rightId as mulRightId)
+  def semiring : Semiring ≔
+    record Semiring where
+      carrier ≔ carrier; eq ≔ eq; plus ≔ plus; mul ≔ mul; zero ≔ zero;
+      one ≔ one; isSemiring ≔ isRing.isSemiring
+    end
+  end
+  def additiveGroup : AbelianGroup ≔
+    record AbelianGroup where
+      carrier ≔ carrier; eq ≔ eq; op ≔ plus; e ≔ zero; inv ≔ neg;
+      isAbelianGroup ≔ isRing.isAdditiveGroup
     end
   end
 end

@@ -1,64 +1,56 @@
-(* Laws of a ring [R]: the signs of products.  Each is an instance of the
-   uniqueness of inverses in the additive group of [R]: [(-x) y] is the
-   inverse of [x y] since their sum is [(x + (-x)) y], that is [0 y], which
-   is [0]. *)
+(* Laws of a ring [R], up to [R.eq]: the signs of products.  Each is an
+   instance of the uniqueness of inverses in the additive group of [R]:
+   [(-x) y] is the inverse of [x y] since their sum is [(x + (-x)) y], that
+   is [0 y], which is [0]. *)
 import Prelude›Algebra›Ring
-module Prelude›Algebra›Ring›Properties (u : Level)
-    (R : Prelude›Algebra›Ring.Ring u) where
+module Prelude›Algebra›Ring›Properties (c : Level) (r : Level)
+    (R : Prelude›Algebra›Ring.Ring c r) where
 
-import Prelude›Logic›Leibniz u use (Id; idSym; idTrans; idCong)
-import Prelude›Algebra›Group›Properties u R.additiveGroup.group as Additive
+import Prelude›Algebra›Group›Properties c r R.additiveGroup.group as Additive
 
-private def C : Type@{u} ≔ R.carrier end
+open R
+  use (carrier as C; eq; plus; mul; zero; one; neg; refl; sym; trans;
+       mulCong; negCong; negRight; distribLeft; distribRight; zeroLeft;
+       zeroRight; mulLeftId)
 
-theorem negMulLeft : ∀ (x : C) (y : C) →
-    Id C (R.mul (R.neg x) y) (R.neg (R.mul x y)) ≔
+theorem negMulLeft : ∀ (x : C) (y : C) → eq (mul (neg x) y) (neg (mul x y)) ≔
   λ (x : C) (y : C) →
-    Additive.Inverse.invUnique (R.mul x y) (R.mul (R.neg x) y)
-      (idTrans C (R.add (R.mul x y) (R.mul (R.neg x) y))
-         (R.mul (R.add x (R.neg x)) y) R.zero
-         (idSym C (R.mul (R.add x (R.neg x)) y)
-            (R.add (R.mul x y) (R.mul (R.neg x) y))
-            (R.semiring.distribRight x (R.neg x) y))
-         (idTrans C (R.mul (R.add x (R.neg x)) y) (R.mul R.zero y) R.zero
-            (idCong C C (λ (w : C) → R.mul w y) (R.add x (R.neg x)) R.zero
-               (R.negRight x))
-            (R.semiring.zeroLeft y)))
+    Additive.Laws.invUnique (mul x y) (mul (neg x) y)
+      (trans (plus (mul x y) (mul (neg x) y)) (mul (plus x (neg x)) y) zero
+         (sym (mul (plus x (neg x)) y) (plus (mul x y) (mul (neg x) y))
+            (distribRight x (neg x) y))
+         (trans (mul (plus x (neg x)) y) (mul zero y) zero
+            (mulCong (plus x (neg x)) y zero y (negRight x) (refl y))
+            (zeroLeft y)))
 end
 
-theorem negMulRight : ∀ (x : C) (y : C) →
-    Id C (R.mul x (R.neg y)) (R.neg (R.mul x y)) ≔
+theorem negMulRight : ∀ (x : C) (y : C) → eq (mul x (neg y)) (neg (mul x y)) ≔
   λ (x : C) (y : C) →
-    Additive.Inverse.invUnique (R.mul x y) (R.mul x (R.neg y))
-      (idTrans C (R.add (R.mul x y) (R.mul x (R.neg y)))
-         (R.mul x (R.add y (R.neg y))) R.zero
-         (idSym C (R.mul x (R.add y (R.neg y)))
-            (R.add (R.mul x y) (R.mul x (R.neg y)))
-            (R.semiring.distribLeft x y (R.neg y)))
-         (idTrans C (R.mul x (R.add y (R.neg y))) (R.mul x R.zero) R.zero
-            (idCong C C (R.mul x) (R.add y (R.neg y)) R.zero (R.negRight y))
-            (R.semiring.zeroRight x)))
+    Additive.Laws.invUnique (mul x y) (mul x (neg y))
+      (trans (plus (mul x y) (mul x (neg y))) (mul x (plus y (neg y))) zero
+         (sym (mul x (plus y (neg y))) (plus (mul x y) (mul x (neg y)))
+            (distribLeft x y (neg y)))
+         (trans (mul x (plus y (neg y))) (mul x zero) zero
+            (mulCong x (plus y (neg y)) x zero (refl x) (negRight y))
+            (zeroRight x)))
 end
 
 (* [(-x) (-y) = -(x (-y)) = -(-(x y)) = x y]. *)
-theorem negMulNeg : ∀ (x : C) (y : C) →
-    Id C (R.mul (R.neg x) (R.neg y)) (R.mul x y) ≔
+theorem negMulNeg : ∀ (x : C) (y : C) → eq (mul (neg x) (neg y)) (mul x y) ≔
   λ (x : C) (y : C) →
-    idTrans C (R.mul (R.neg x) (R.neg y)) (R.neg (R.mul x (R.neg y))) (R.mul x y)
-      (negMulLeft x (R.neg y))
-      (idTrans C (R.neg (R.mul x (R.neg y))) (R.neg (R.neg (R.mul x y)))
-         (R.mul x y)
-         (idCong C C R.neg (R.mul x (R.neg y)) (R.neg (R.mul x y))
-            (negMulRight x y))
-         (Additive.Inverse.invInv (R.mul x y)))
+    trans (mul (neg x) (neg y)) (neg (mul x (neg y))) (mul x y)
+      (negMulLeft x (neg y))
+      (trans (neg (mul x (neg y))) (neg (neg (mul x y))) (mul x y)
+         (negCong (mul x (neg y)) (neg (mul x y)) (negMulRight x y))
+         (Additive.Laws.invInv (mul x y)))
 end
 
 (* Multiplying by [-1] negates. *)
-theorem negOneMul : ∀ (x : C) → Id C (R.mul (R.neg R.one) x) (R.neg x) ≔
+theorem negOneMul : ∀ (x : C) → eq (mul (neg one) x) (neg x) ≔
   λ (x : C) →
-    idTrans C (R.mul (R.neg R.one) x) (R.neg (R.mul R.one x)) (R.neg x)
-      (negMulLeft R.one x)
-      (idCong C C R.neg (R.mul R.one x) x (R.semiring.mulLeftId x))
+    trans (mul (neg one) x) (neg (mul one x)) (neg x)
+      (negMulLeft one x)
+      (negCong (mul one x) x (mulLeftId x))
 end
 
 end

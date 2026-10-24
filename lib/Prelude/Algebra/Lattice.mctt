@@ -1,54 +1,46 @@
-(* Lattices: a semilattice [meet] and a second operation [join] on its
-   carrier, associative and commutative, tied to [meet] by the two
-   absorption laws.
+(* Lattices: [IsLattice A eq meet join] holds when [meet] and [join] are
+   semilattices up to [eq] on the one carrier [A], [meetIsSemilattice] and
+   [joinIsSemilattice], tied by the two absorption laws.  The bundle's
+   with-area forwards the laws of both operations, under the names
+   [meetAssoc] … [joinIdem], and gives their semilattices,
+   [L.meetSemilattice] and [L.joinSemilattice]. *)
+module Prelude›Algebra›Lattice (c : Level) (r : Level) where
 
-   A lattice has one carrier, but a [join] field of type [Semilattice]
-   would have a carrier of its own, which no field type can require to be
-   [meet]'s.  So [join] is an operation on [meet.carrier], with its laws as
-   fields, and its semilattice is built in the with-area, as
-   [joinSemilattice].  The idempotence of [join] is not a field: it
-   follows from absorption, as [joinIdem]. *)
-module Prelude›Algebra›Lattice (u : Level) where
+import Prelude›Algebra›Semilattice c r use (IsSemilattice; Semilattice)
 
-import Prelude›Logic›Leibniz u use (Id; idSym; idTrans; idCong)
-import Prelude›Algebra›Magma u use (Magma)
-import Prelude›Algebra›Semigroup u use (Semigroup)
-import Prelude›Algebra›Semilattice u use (Semilattice)
+record IsLattice (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
+    (meet : ∀ (x : A) (y : A) → A) (join : ∀ (x : A) (y : A) → A) :
+    Type@{maxl c r} where
+  meetIsSemilattice : IsSemilattice A eq meet;
+  joinIsSemilattice : IsSemilattice A eq join;
+  absorbMeet : ∀ (x : A) (y : A) → eq (meet x (join x y)) x;
+  absorbJoin : ∀ (x : A) (y : A) → eq (join x (meet x y)) x
+end
 
-record Lattice : Type@{succl u} where
-  meet : Semilattice;
-  join : ∀ (x : meet.carrier) (y : meet.carrier) → meet.carrier;
-  joinAssoc : ∀ (x : meet.carrier) (y : meet.carrier) (z : meet.carrier) →
-    Id meet.carrier (join (join x y) z) (join x (join y z));
-  joinComm : ∀ (x : meet.carrier) (y : meet.carrier) →
-    Id meet.carrier (join x y) (join y x);
-  absorbMeet : ∀ (x : meet.carrier) (y : meet.carrier) →
-    Id meet.carrier (meet.op x (join x y)) x;
-  absorbJoin : ∀ (x : meet.carrier) (y : meet.carrier) →
-    Id meet.carrier (join x (meet.op x y)) x
+record Lattice : Type@{succl (maxl c r)} where
+  carrier : Type@{c};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+  meet : ∀ (x : carrier) (y : carrier) → carrier;
+  join : ∀ (x : carrier) (y : carrier) → carrier;
+  isLattice : IsLattice carrier eq meet join
 with
-  def carrier : Type@{u} ≔ meet.carrier end
-
-  (* [join x x] is [join x (meet x (join x x))] by [absorbMeet], which is
-     [x] by [absorbJoin]. *)
-  def joinIdem : ∀ (x : carrier) → Id carrier (join x x) x ≔
-    λ (x : carrier) →
-      idTrans carrier (join x x) (join x (meet.op x (join x x))) x
-        (idCong carrier carrier (λ (y : carrier) → join x y)
-           x (meet.op x (join x x))
-           (idSym carrier (meet.op x (join x x)) x (absorbMeet x x)))
-        (absorbJoin x (join x x))
+  open isLattice export (absorbMeet; absorbJoin)
+  open isLattice.meetIsSemilattice
+    export (refl; sym; trans; opCong as meetCong; assoc as meetAssoc;
+            comm as meetComm; idem as meetIdem)
+  open isLattice.joinIsSemilattice
+    export (opCong as joinCong; assoc as joinAssoc; comm as joinComm;
+            idem as joinIdem)
+  def meetSemilattice : Semilattice ≔
+    record Semilattice where
+      carrier ≔ carrier; eq ≔ eq; op ≔ meet;
+      isSemilattice ≔ isLattice.meetIsSemilattice
+    end
   end
-
   def joinSemilattice : Semilattice ≔
     record Semilattice where
-      semigroup ≔
-        record Semigroup where
-          magma ≔ record Magma where carrier ≔ carrier; op ≔ join end;
-          assoc ≔ joinAssoc
-        end;
-      comm ≔ joinComm;
-      idem ≔ joinIdem
+      carrier ≔ carrier; eq ≔ eq; op ≔ join;
+      isSemilattice ≔ isLattice.joinIsSemilattice
     end
   end
 end

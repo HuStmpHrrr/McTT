@@ -1,23 +1,54 @@
-(* Abelian groups: a group whose operation is commutative.  The record's
-   members are those of its group, and [commutativeMonoid] is its
-   underlying commutative monoid. *)
-module Prelude›Algebra›AbelianGroup (u : Level) where
+(* Abelian groups: [IsAbelianGroup A eq op e inv] holds when the
+   operations form a group up to [eq], its predicate [isGroup], and [op] is
+   commutative.  The predicate's with-area gives the commutative monoid
+   predicate, [isCommutativeMonoid]; the bundle's forwards the laws and
+   gives the group, [A.group], and the commutative monoid,
+   [A.commutativeMonoid]. *)
+module Prelude›Algebra›AbelianGroup (c : Level) (r : Level) where
 
-import Prelude›Logic›Leibniz u use (Id)
-import Prelude›Algebra›Group u use (Group)
-import Prelude›Algebra›CommutativeMonoid u use (CommutativeMonoid)
+import Prelude›Algebra›Group c r use (IsGroup; Group)
+import Prelude›Algebra›CommutativeMonoid c r
+  use (IsCommutativeMonoid; CommutativeMonoid)
 
-record AbelianGroup : Type@{succl u} where
-  group : Group;
-  comm : ∀ (x : group.carrier) (y : group.carrier) →
-    Id group.carrier (group.op x y) (group.op y x)
+record IsAbelianGroup (A : Type@{c}) (eq : ∀ (x : A) (y : A) → Type@{r})
+    (op : ∀ (x : A) (y : A) → A) (e : A) (inv : ∀ (x : A) → A) :
+    Type@{maxl c r} where
+  isGroup : IsGroup A eq op e inv;
+  comm : ∀ (x : A) (y : A) → eq (op x y) (op y x)
 with
-  def carrier : Type@{u} ≔ group.carrier end
-  def op (x : carrier) (y : carrier) : carrier ≔ group.op x y end
-  def e : carrier ≔ group.e end
-  def inv (x : carrier) : carrier ≔ group.inv x end
+  open isGroup
+    export (refl; sym; trans; opCong; assoc; leftId; rightId; invCong; leftInv;
+            rightInv)
+  def isCommutativeMonoid : IsCommutativeMonoid A eq op e ≔
+    record IsCommutativeMonoid A eq op e where
+      isMonoid ≔ isGroup.isMonoid; comm ≔ comm
+    end
+  end
+end
+end
+
+record AbelianGroup : Type@{succl (maxl c r)} where
+  carrier : Type@{c};
+  eq : ∀ (x : carrier) (y : carrier) → Type@{r};
+  op : ∀ (x : carrier) (y : carrier) → carrier;
+  e : carrier;
+  inv : ∀ (x : carrier) → carrier;
+  isAbelianGroup : IsAbelianGroup carrier eq op e inv
+with
+  open isAbelianGroup
+    export (refl; sym; trans; opCong; assoc; leftId; rightId; invCong; leftInv;
+            rightInv; comm)
+  def group : Group ≔
+    record Group where
+      carrier ≔ carrier; eq ≔ eq; op ≔ op; e ≔ e; inv ≔ inv;
+      isGroup ≔ isAbelianGroup.isGroup
+    end
+  end
   def commutativeMonoid : CommutativeMonoid ≔
-    record CommutativeMonoid where monoid ≔ group.monoid; comm ≔ comm end
+    record CommutativeMonoid where
+      carrier ≔ carrier; eq ≔ eq; op ≔ op; e ≔ e;
+      isCommutativeMonoid ≔ isAbelianGroup.isCommutativeMonoid
+    end
   end
 end
 end

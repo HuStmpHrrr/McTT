@@ -1,40 +1,38 @@
-(* Laws of a lattice [L]: the orders of its two semilattices agree, since
-   [L.meet.op x y] is [x] exactly when [L.join x y] is [y]; both
-   directions follow from absorption.  The laws of each semilattice, its
-   order among them, are [Prelude›Algebra›Semilattice›Properties] at
-   [L.meet] and at [L.joinSemilattice]. *)
+(* Laws of a lattice [L], up to [L.eq]: the orders of its two
+   semilattices agree, since [L.meet x y] is [x] exactly when [L.join x y]
+   is [y]; both directions follow from absorption.  The laws of each
+   semilattice, its order among them, are
+   [Prelude›Algebra›Semilattice›Properties] at [L.meetSemilattice] and at
+   [L.joinSemilattice]. *)
 import Prelude›Algebra›Lattice
-module Prelude›Algebra›Lattice›Properties (u : Level)
-    (L : Prelude›Algebra›Lattice.Lattice u) where
+module Prelude›Algebra›Lattice›Properties (c : Level) (r : Level)
+    (L : Prelude›Algebra›Lattice.Lattice c r) where
 
-import Prelude›Logic›Leibniz u use (Id; idSym; idTrans; idCong)
-
-private def C : Type@{u} ≔ L.carrier end
-
-private def meet (x : C) (y : C) : C ≔ L.meet.op x y end
+open L
+  use (carrier as C; eq; meet; join; refl; sym; trans; meetCong; joinCong;
+       meetComm; joinComm; absorbMeet; absorbJoin)
 
 (* [x y = x] in the meet gives
-   [join x y = join (x y) y = join y (y x) = y]. *)
-theorem meetToJoin : ∀ (x : C) (y : C) (h : Id C (meet x y) x) →
-    Id C (L.join x y) y ≔
-  λ (x : C) (y : C) (h : Id C (meet x y) x) →
-    idTrans C (L.join x y) (L.join (meet x y) y) y
-      (idCong C C (λ (w : C) → L.join w y) x (meet x y) (idSym C (meet x y) x h))
-      (idTrans C (L.join (meet x y) y) (L.join y (meet y x)) y
-         (idTrans C (L.join (meet x y) y) (L.join y (meet x y))
-            (L.join y (meet y x))
-            (L.joinComm (meet x y) y)
-            (idCong C C (L.join y) (meet x y) (meet y x) (L.meet.comm x y)))
-         (L.absorbJoin y x))
+   [join x y = join (x y) y = join y (x y) = join y (y x) = y]. *)
+theorem meetToJoin : ∀ (x : C) (y : C) (h : eq (meet x y) x) →
+    eq (join x y) y ≔
+  λ (x : C) (y : C) (h : eq (meet x y) x) →
+    trans (join x y) (join (meet x y) y) y
+      (joinCong x y (meet x y) y (sym (meet x y) x h) (refl y))
+      (trans (join (meet x y) y) (join y (meet x y)) y
+         (joinComm (meet x y) y)
+         (trans (join y (meet x y)) (join y (meet y x)) y
+            (joinCong y (meet x y) y (meet y x) (refl y) (meetComm x y))
+            (absorbJoin y x)))
 end
 
 (* [join x y = y] gives [x y = x (join x y) = x]. *)
-theorem joinToMeet : ∀ (x : C) (y : C) (h : Id C (L.join x y) y) →
-    Id C (meet x y) x ≔
-  λ (x : C) (y : C) (h : Id C (L.join x y) y) →
-    idTrans C (meet x y) (meet x (L.join x y)) x
-      (idCong C C (meet x) y (L.join x y) (idSym C (L.join x y) y h))
-      (L.absorbMeet x y)
+theorem joinToMeet : ∀ (x : C) (y : C) (h : eq (join x y) y) →
+    eq (meet x y) x ≔
+  λ (x : C) (y : C) (h : eq (join x y) y) →
+    trans (meet x y) (meet x (join x y)) x
+      (meetCong x y x (join x y) (refl x) (sym (join x y) y h))
+      (absorbMeet x y)
 end
 
 end
