@@ -30,6 +30,33 @@
 <h1 class="libtitle">Mctt.Core.Consequences.Consistency</h1>
 
 <div class="code">
+</div>
+
+<div class="doc">
+<a id="lab407"></a><h1 class="section">Consistency of the Core</h1>
+
+
+<div class="paragraph"> </div>
+
+    What completeness and soundness of NbE give together: the inversions
+    of conversion and subtyping that normal forms decide (of <span class="inlinecode"><span class="id" title="var">Π</span></span>, of the
+    universes and levels, of inductive and record types); canonical forms
+    of closed terms of <span class="inlinecode"><span class="id" title="var">Π</span></span>, of a universe and of an inductive type,
+    without axioms, through opaque definitions and for every program a
+    run files; and the consistency of the core: at a transparent global
+    context no closed term inhabits <span class="inlinecode">⊥</span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.Consistency.html#consistency_False"><span class="id" title="lemma">consistency_False</span></a></span>) nor every
+    type of a universe (<span class="inlinecode"><a class="idref" href="Mctt.Core.Consequences.Consistency.html#consistency"><span class="id" title="lemma">consistency</span></a></span>), and likewise at a global context
+    with no axiom and at the end of every run.
+
+<div class="paragraph"> </div>
+
+    It sits in <span class="inlinecode"><span class="id" title="library">Core</span>/<span class="id" title="var">Consequences</span>/</span> with <span class="inlinecode"><span class="id" title="var">NormalFormWeakening.v</span></span> (NbE
+    commutes with weakening) and <span class="inlinecode"><span class="id" title="var">FiledConstructorTypes.v</span></span> (the types of
+    filed constructors). 
+</div>
+<div class="code">
+
+<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.LibTactics.html#"><span class="id" title="library">LibTactics</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Soundness.html#"><span class="id" title="library">Soundness</span></a>.<br/>
@@ -106,7 +133,7 @@
 </div>
 
 <div class="doc">
-<a id="lab407"></a><h2 class="section">The Parameters of an Inductive Type</h2>
+<a id="lab408"></a><h2 class="section">The Parameters of an Inductive Type</h2>
 
 
 <div class="paragraph"> </div>
@@ -230,7 +257,7 @@ A type whose normal form is an inductive type is equal to the type
 </div>
 
 <div class="doc">
-<a id="lab408"></a><h2 class="section">Small Universes Are Injective</h2>
+<a id="lab409"></a><h2 class="section">Small Universes Are Injective</h2>
 
 
 <div class="paragraph"> </div>
@@ -283,7 +310,7 @@ Both level terms move to the larger of their two sorts, where the
 </div>
 
 <div class="doc">
-<a id="lab409"></a><h2 class="section">Subtyping of Universe Terms and Level Types</h2>
+<a id="lab410"></a><h2 class="section">Subtyping of Universe Terms and Level Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -693,7 +720,7 @@ A type below an inductive type normalises to an inductive type, at the
 </div>
 
 <div class="doc">
-<a id="lab410"></a><h2 class="section">The Parameters of a Record Type</h2>
+<a id="lab411"></a><h2 class="section">The Parameters of a Record Type</h2>
 
 
 <div class="paragraph"> </div>
@@ -937,7 +964,7 @@ The large tier is never below the small one.
 </div>
 
 <div class="doc">
-<a id="lab411"></a><h2 class="section">The Normal Forms of Small Types</h2>
+<a id="lab412"></a><h2 class="section">The Normal Forms of Small Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -1009,7 +1036,7 @@ A record type applied to its parameters; its sort is not recorded
 </div>
 
 <div class="doc">
-<a id="lab412"></a><h2 class="section">The Normal Forms of the Types of a Universe</h2>
+<a id="lab413"></a><h2 class="section">The Normal Forms of the Types of a Universe</h2>
 
 
 <div class="paragraph"> </div>
@@ -1492,7 +1519,7 @@ In the empty context, a neutral without a global head has no type: its
 </div>
 
 <div class="doc">
-<a id="lab413"></a><h2 class="section">Canonical Forms and Consistency</h2>
+<a id="lab414"></a><h2 class="section">Canonical Forms and Consistency</h2>
 
 
 <div class="paragraph"> </div>
@@ -1616,7 +1643,7 @@ Consistency at a universe: there is no closed inhabitant of <span class="inlinec
 </div>
 
 <div class="doc">
-<a id="lab414"></a><h2 class="section">Canonical Forms of Inductive Types</h2>
+<a id="lab415"></a><h2 class="section">Canonical Forms of Inductive Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -2000,7 +2027,7 @@ The theorems above, with the global context explicit.
 </div>
 
 <div class="doc">
-<a id="lab415"></a><h2 class="section">Opaque Definitions</h2>
+<a id="lab416"></a><h2 class="section">Opaque Definitions</h2>
 
 
 <div class="paragraph"> </div>
@@ -2293,7 +2320,7 @@ Canonicity at a universe, at any global context: the normal form is of
 </div>
 
 <div class="doc">
-<a id="lab416"></a><h3 class="section">Without Axioms</h3>
+<a id="lab417"></a><h3 class="section">Without Axioms</h3>
 
 </div>
 <div class="code">
@@ -2439,7 +2466,7 @@ At a universe term <span class="inlinecode"><a class="idref" href="Mctt.Core.Sem
 </div>
 
 <div class="doc">
-<a id="lab417"></a><h3 class="section">Every Program</h3>
+<a id="lab418"></a><h3 class="section">Every Program</h3>
 
 
 <div class="paragraph"> </div>
