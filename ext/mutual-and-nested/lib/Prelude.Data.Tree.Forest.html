@@ -114,9 +114,9 @@
 <div class="doc"><p>The forest of a list of trees.</p>
 </div>
 <pre class="code"><span class="kw">def</span> <span class="def bind" id="Ops.fromList">fromList</span> <span class="sym">(</span><span class="var bind" id="l349">l</span> <span class="sym">:</span> <a class="mod" href="Prelude.Data.List.html#List">List</a> <a class="var" href="#l57">u</a> <a class="mod" href="#Ops.T">T</a><span class="sym">)</span> <span class="sym">:</span> <a class="mod" href="#Ops.F">F</a> <span class="sym">≔</span>
-  <span class="kw">elim</span> <a class="var" href="#l349">l</a> <span class="kw">at</span> <span class="sym">(</span><span class="var bind" id="l355">z</span> <span class="sym">:</span> <a class="mod" href="Prelude.Data.List.html#List">List</a> <a class="var" href="#l57">u</a> <a class="mod" href="#Ops.T">T</a><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="mod" href="#Ops.F">F</a>
+  <span class="kw">elim</span> <a class="var" href="#l349">l</a> <span class="kw">at</span> <span class="var bind" id="l355">z</span> <span class="sym">-&gt;</span> <a class="mod" href="#Ops.F">F</a>
   <span class="sym">|</span> <span class="free">nil</span> <span class="sym">⇒</span> <a class="mod" href="#Ops.F">F</a><span class="sym">.</span><a class="def" href="#TreeForest.Forest.nil">nil</a>
-  <span class="sym">|</span> <span class="free">cons</span> <span class="var bind" id="l364">t</span> <span class="var bind" id="l365">us</span><span class="sym">,</span> <span class="var bind" id="l366">r</span> <span class="sym">⇒</span> <a class="mod" href="#Ops.F">F</a><span class="sym">.</span><a class="def" href="#TreeForest.Forest.cons">cons</a> <a class="var" href="#l364">t</a> <a class="var" href="#l366">r</a>
+  <span class="sym">|</span> <span class="free">cons</span> <span class="var bind" id="l361">t</span> <span class="var bind" id="l362">us</span><span class="sym">,</span> <span class="var bind" id="l363">r</span> <span class="sym">⇒</span> <a class="mod" href="#Ops.F">F</a><span class="sym">.</span><a class="def" href="#TreeForest.Forest.cons">cons</a> <a class="var" href="#l361">t</a> <a class="var" href="#l363">r</a>
   <span class="kw">end</span>
 <span class="kw">end</span>
 

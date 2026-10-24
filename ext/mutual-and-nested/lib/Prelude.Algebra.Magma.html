@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prelude›Algebra›Magma</title><link rel="stylesheet" href="mctt.css"></head><body class="unit-page">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">Prelude›Algebra›Magma</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul><li><details open><summary><span class="kw">record</span> <a class="mod" href="#Magma">Magma</a></summary><ul><li><span class="kw">field</span> <a class="def" href="#Magma.carrier">carrier</a></li><li><span class="kw">field</span> <a class="def" href="#Magma.op">op</a></li></ul></details></li></ul></nav>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Prelude›Algebra›Magma</h1>
+<div class="doc"><p>Magmas: a carrier <code>carrier</code> in <code>Type@{u}</code> with a binary operation <code>op</code>.  A magma is the bottom layer of the bundled algebraic hierarchy of <code>Prelude›Algebra</code>: each structure above it is a record with one field holding the structure below and further fields for its operations and laws.  The laws are Leibniz equalities, <code>Prelude›Logic›Leibniz</code>.</p>
+<p>The record holds a type of <code>Type@{u}</code>, so it lives in <code>Type@{succl u}</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">›</span><span class="unit bind">Algebra</span><span class="sym">›</span><span class="unit bind">Magma</span> <span class="sym">(</span><span class="var bind" id="l3">u</span> <span class="sym">:</span> <span class="ty">Level</span><span class="sym">)</span> <span class="kw">where</span>
+
+<span class="kw">record</span> <span class="mod bind" id="Magma">Magma</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><span class="kw">succl</span> <a class="var" href="#l3">u</a><span class="sym">}</span> <span class="kw">where</span>
+  <span class="def bind" id="Magma.carrier">carrier</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="sym">{</span><a class="var" href="#l3">u</a><span class="sym">}</span><span class="sym">;</span>
+  <span class="def bind" id="Magma.op">op</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l9">x</span> <span class="sym">:</span> <a class="def" href="#Magma.carrier">carrier</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l11">y</span> <span class="sym">:</span> <a class="def" href="#Magma.carrier">carrier</a><span class="sym">)</span> <span class="sym">→</span> <a class="def" href="#Magma.carrier">carrier</a>
+<span class="kw">end</span>
+
+<span class="kw">end</span></pre>
+</body></html>

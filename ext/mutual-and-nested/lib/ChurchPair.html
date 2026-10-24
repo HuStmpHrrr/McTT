@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ChurchPair</title><link rel="stylesheet" href="mctt.css"></head><body class="unit-page">
+<a class="toc-open" href="#-contents">&#9776; Contents</a>
+<nav class="toc" id="-contents" aria-label="Contents"><div class="toc-head"><a href="#">ChurchPair</a> <a class="toc-close" href="#-close" aria-label="Close">&times;</a></div><ul></ul></nav>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>ChurchPair</h1>
+<div class="doc"><p>Church-encoded pairs, passed as arguments to the program that uses them.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">ChurchPair</span> <span class="kw">where</span>
+
+<span class="kw">import</span> <a class="unit" href="Prelude.Builtin.Nat.html">Prelude</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Builtin</a><span class="sym">›</span><a class="unit" href="Prelude.Builtin.Nat.html">Nat</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="succ" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a><span class="sym">)</span>
+
+<span class="kw">eval</span> <span class="sym">(</span>
+    <span class="com">(* Main example *)</span>
+    <span class="sym">(</span>
+      <span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l5">Pair</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l6">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l7">B</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">→</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">1</span><span class="sym">)</span>
+        <span class="sym">(</span><span class="var bind" id="l8">pair</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l9">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l10">B</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l11">a</span> <span class="sym">:</span> <a class="var" href="#l9">A</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l13">b</span> <span class="sym">:</span> <a class="var" href="#l10">B</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l5">Pair</a> <a class="var" href="#l9">A</a> <a class="var" href="#l10">B</a><span class="sym">)</span>
+        <span class="sym">(</span><span class="var bind" id="l18">fst</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l19">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l20">B</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l21">p</span> <span class="sym">:</span> <a class="var" href="#l5">Pair</a> <a class="var" href="#l19">A</a> <a class="var" href="#l20">B</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l19">A</a><span class="sym">)</span>
+        <span class="sym">(</span><span class="var bind" id="l26">snd</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l27">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l28">B</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l29">p</span> <span class="sym">:</span> <a class="var" href="#l5">Pair</a> <a class="var" href="#l27">A</a> <a class="var" href="#l28">B</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l28">B</a><span class="sym">)</span> <span class="sym">→</span>
+        <span class="sym">(</span>
+          <span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l34">p</span> <span class="sym">:</span> <a class="var" href="#l5">Pair</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">(</span><span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l36">x</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span><span class="sym">)</span> <span class="sym">→</span>
+            <a class="var" href="#l26">snd</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">(</span><span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l38">x</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <a class="var" href="#l34">p</a>
+              <span class="sym">(</span><a class="var" href="#l18">fst</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">(</span><span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l41">x</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <a class="var" href="#l34">p</a><span class="sym">)</span>
+        <span class="sym">)</span>
+        <span class="sym">(</span><a class="var" href="#l8">pair</a> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a> <span class="sym">(</span><span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l44">x</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="num">3</span> <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l45">x</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a><span class="sym">)</span> <span class="sym">→</span> <a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <span class="sym">(</span><a class="def" href="Prelude.Builtin.Nat.html#Nat.succ">succ</a> <a class="var" href="#l45">x</a><span class="sym">)</span><span class="sym">)</span><span class="sym">)</span>
+    <span class="sym">)</span>
+    <span class="com">(* Church pair *)</span>
+    <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l49">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l50">B</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">→</span>
+       <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l51">C</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l52">pair</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l53">a</span> <span class="sym">:</span> <a class="var" href="#l49">A</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l55">b</span> <span class="sym">:</span> <a class="var" href="#l50">B</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l51">C</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l51">C</a><span class="sym">)</span>
+    <span class="com">(* Church pair constructor *)</span>
+    <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l59">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l60">B</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l61">a</span> <span class="sym">:</span> <a class="var" href="#l59">A</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l63">b</span> <span class="sym">:</span> <a class="var" href="#l60">B</a><span class="sym">)</span>
+       <span class="sym">(</span><span class="var bind" id="l65">C</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l66">pair</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l67">a</span> <span class="sym">:</span> <a class="var" href="#l59">A</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l69">b</span> <span class="sym">:</span> <a class="var" href="#l60">B</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l65">C</a><span class="sym">)</span> <span class="sym">→</span>
+       <a class="var" href="#l66">pair</a> <a class="var" href="#l61">a</a> <a class="var" href="#l63">b</a><span class="sym">)</span>
+    <span class="com">(* Church pair fst *)</span>
+    <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l75">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l76">B</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span>
+       <span class="sym">(</span><span class="var bind" id="l77">p</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l78">C</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l79">pair</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l80">a</span> <span class="sym">:</span> <a class="var" href="#l75">A</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l82">b</span> <span class="sym">:</span> <a class="var" href="#l76">B</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l78">C</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l78">C</a><span class="sym">)</span> <span class="sym">→</span>
+       <a class="var" href="#l77">p</a> <a class="var" href="#l75">A</a> <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l88">a</span> <span class="sym">:</span> <a class="var" href="#l75">A</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l90">b</span> <span class="sym">:</span> <a class="var" href="#l76">B</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l88">a</a><span class="sym">)</span><span class="sym">)</span>
+    <span class="com">(* Church pair snd *)</span>
+    <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l93">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l94">B</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span>
+       <span class="sym">(</span><span class="var bind" id="l95">p</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l96">C</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l97">pair</span> <span class="sym">:</span> <span class="kw">∀</span> <span class="sym">(</span><span class="var bind" id="l98">a</span> <span class="sym">:</span> <a class="var" href="#l93">A</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l100">b</span> <span class="sym">:</span> <a class="var" href="#l94">B</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l96">C</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l96">C</a><span class="sym">)</span> <span class="sym">→</span>
+       <a class="var" href="#l95">p</a> <a class="var" href="#l94">B</a> <span class="sym">(</span><span class="kw">λ</span> <span class="sym">(</span><span class="var bind" id="l106">a</span> <span class="sym">:</span> <a class="var" href="#l93">A</a><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l108">b</span> <span class="sym">:</span> <a class="var" href="#l94">B</a><span class="sym">)</span> <span class="sym">→</span> <a class="var" href="#l108">b</a><span class="sym">)</span><span class="sym">)</span>
+  <span class="sym">)</span> <span class="sym">:</span> <a class="ty" href="Prelude.Builtin.Nat.html#Nat">ℕ</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate (λ (x1 : ∀ (A1 : Type@0)
+                    (A2 : Type@0)
+                    → Type@1)
+            (x2 : ∀ (A3 : Type@0)
+                    (A4 : Type@0)
+                    (x3 : A3)
+                    (x4 : A4)
+                    → x1 A3 A4)
+            (x5 : ∀ (A5 : Type@0)
+                    (A6 : Type@0)
+                    (x6 : x1 A5 A6)
+                    → A5)
+            (x7 : ∀ (A7 : Type@0)
+                    (A8 : Type@0)
+                    (x8 : x1 A7 A8)
+                    → A8)
+           → (λ (x9 : x1 ℕ (∀ (x10 : ℕ) → ℕ))
+               → x7 ℕ (∀ (x11 : ℕ) → ℕ) x9 (x5 ℕ (∀ (x12 : ℕ) → ℕ) x9))
+               (x2 ℕ (∀ (x13 : ℕ) → ℕ) 3 (λ (x14 : ℕ) → succ (succ x14))))
+           (λ (A9 : Type@0)
+              (A10 : Type@0)
+             → ∀ (A11 : Type@0)
+                 (x15 : ∀ (x16 : A9)
+                          (x17 : A10)
+                          → A11)
+                 → A11)
+           (λ (A12 : Type@0)
+              (A13 : Type@0)
+              (x18 : A12)
+              (x19 : A13)
+              (A14 : Type@0)
+              (x20 : ∀ (x21 : A12)
+                       (x22 : A13)
+                       → A14)
+             → x20 x18 x19)
+           (λ (A15 : Type@0)
+              (A16 : Type@0)
+              (x23 : ∀ (A17 : Type@0)
+                       (x24 : ∀ (x25 : A15)
+                                (x26 : A16)
+                                → A17)
+                       → A17)
+             → x23 A15 (λ (x27 : A15)
+                          (x28 : A16)
+                         → x27))
+           (λ (A18 : Type@0)
+              (A19 : Type@0)
+              (x29 : ∀ (A20 : Type@0)
+                       (x30 : ∀ (x31 : A18)
+                                (x32 : A19)
+                                → A20)
+                       → A20)
+             → x29 A19 (λ (x33 : A18)
+                          (x34 : A19)
+                         → x34)) --&gt; 5 : ℕ</pre></details>
+<pre class="code"><span class="kw">end</span></pre>
+</body></html>
