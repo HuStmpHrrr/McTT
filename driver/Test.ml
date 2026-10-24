@@ -3194,6 +3194,42 @@ let%expect_test "mctt-doc: a mutual group's recursor module and its functions ha
     line 4: T#R.Rec.rec_List_Rose
     |}]
 
+let%expect_test "mctt-doc: a unit comes before the units it is a prefix of" =
+  (* [X/] and [X.mctt]: the directory's units come after [X], and [Xa]
+     after all of them, segment by segment. *)
+  let dir = fresh_dir () in
+  Sys.mkdir (Filename.concat dir "X") 0o755;
+  Sys.mkdir (Filename.concat dir "X/Nat") 0o755;
+  List.iter (fun f -> write_file (Filename.concat dir (f ^ ".mctt"))
+                (Printf.sprintf "module %s where\nend\n"
+                   (Doc.unit_name (String.split_on_char '/' f))))
+    [ "X"; "X/Properties"; "X/Nat"; "X/Nat/Properties"; "Xa"; "A" ];
+  let lib = Doc.load ~check:false dir in
+  List.iter (fun u -> print_endline (Doc.unit_name u.Doc.u_path)) lib.Doc.units;
+  List.iter print_endline (Doc.problems ~resolve:false lib);
+  (* The index lists them in the same order. *)
+  let out = Filename.concat dir "site" in
+  Doc.write_site lib out;
+  let index = Doc.read_file (Filename.concat out "index.html") in
+  let key = "class=\"unit\" href=\"" in
+  let rec find i = if i + String.length key > String.length index then None
+    else if String.sub index i (String.length key) = key then Some i else find (i + 1) in
+  let rec units i acc = match find i with
+    | None -> List.rev acc
+    | Some j -> let k = String.index_from index j '>' in
+        let e = String.index_from index k '<' in
+        units e (String.sub index (k + 1) (e - k - 1) :: acc) in
+  print_endline (String.concat " " (units 0 []));
+  [%expect {|
+    A
+    X
+    X›Nat
+    X›Nat›Properties
+    X›Properties
+    Xa
+    A X X›Nat X›Nat›Properties X›Properties Xa
+    |}]
+
 let%expect_test "mctt-doc: every name of examples lines up" =
   List.iter print_endline (Doc.problems ~resolve:false (Doc.load ~check:false "../examples"));
   List.iter print_endline (Doc.problems ~resolve:false (Doc.load ~check:false "../examples/multi"));

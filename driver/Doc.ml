@@ -641,19 +641,38 @@ let walk (file : string list) (src : string) (items : (string list * string list
     u_vars = vars; u_occ = occ; u_toc = List.rev st.toc; u_notes = List.rev st.notes;
     u_evals = eval_spans toks (List.rev st.evals); u_recs = List.rev st.recs }
 
-let rec find_units root dir acc =
+(* The order of unit paths: segment by segment, each by [String.compare],
+   and a path before every path it is a prefix of, so [X] comes before
+   [X›Properties].  Sorting the entries of a directory by their file names
+   does not give this order: the directory [X] sorts before the file
+   [X.mctt], so the units under [X/] would come before [X]. *)
+let rec compare_unit_path (p : string list) (q : string list) : int =
+  match p, q with
+  | [], [] -> 0
+  | [], _ :: _ -> -1
+  | _ :: _, [] -> 1
+  | x :: p', y :: q' ->
+      let c = String.compare x y in
+      if c <> 0 then c else compare_unit_path p' q'
+
+(* The units under [root/dir], as paths, in no particular order, consed
+   onto [acc]. *)
+let rec find_units_raw root dir acc =
   let a = Sys.readdir (Filename.concat root dir) in
-  Array.sort compare a;
   Array.fold_left (fun acc f ->
       let rel = if dir = "" then f else dir ^ "/" ^ f in
-      if Sys.is_directory (Filename.concat root rel) then find_units root rel acc
+      if Sys.is_directory (Filename.concat root rel) then find_units_raw root rel acc
       else if Filename.check_suffix f ".mctt" then
         String.split_on_char '/' (Filename.chop_suffix rel ".mctt") :: acc
       else acc) acc a
 
+(* The same, in reverse order of [compare_unit_path], consed onto [acc]. *)
+let find_units root dir acc =
+  List.rev_append (List.sort compare_unit_path (find_units_raw root dir [])) acc
+
 type lib = {
   root : string;
-  units : unit_info list;                       (* in file order *)
+  units : unit_info list;                       (* by [compare_unit_path] *)
   failed : (string list * string) list;         (* files that do not line up *)
   thetas : (string list, S.gdeps) Hashtbl.t;    (* each checked unit's global context *)
   outputs : (string list, string list) Hashtbl.t;  (* each checked unit's evals, as [mctt] prints them *)
