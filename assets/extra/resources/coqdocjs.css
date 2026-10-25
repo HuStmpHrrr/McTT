@@ -267,12 +267,45 @@ html {
 }
 
 @media (max-width: 700px) {
+  /* The page never scrolls sideways: #main takes the screen's width (as a
+     flex item it would otherwise grow to its widest line), and prose,
+     headings and index entries break long names to fit. */
   #main {
     padding: 8px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
   }
   /* Code lines do not wrap: a wide block scrolls on its own. */
   div.code {
     overflow-x: auto;
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+  /* So does a verbatim block of a documentation comment. */
+  #main pre {
+    overflow-x: auto;
+    overflow-wrap: normal;
+  }
+  /* A documentation comment folded into a proof still wraps. */
+  div.code .doc {
+    white-space: normal;
+  }
+  /* The letter tables of the index wrap onto several lines: the name of
+     the index on its own line, then the letters and the entry count. */
+  #main table tr {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 0.4em;
+  }
+  #main table td {
+    white-space: nowrap;
+    overflow-wrap: normal;
+    padding: 0 3px;
+  }
+  #main table td:first-child {
+    flex-basis: 100%;
   }
   #header {
     flex-wrap: wrap;

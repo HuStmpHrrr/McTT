@@ -3320,6 +3320,13 @@ let%expect_test "mctt-doc: a unit comes before the units it is a prefix of" =
   let out = Filename.concat dir "site" in
   Doc.write_site lib out;
   let index = Doc.read_file (Filename.concat out "index.html") in
+  (* A name's line-break hints are not part of its text. *)
+  let index =
+    let w = "<wbr>" and b = Buffer.create (String.length index) in
+    let rec go i = if i < String.length index then
+        if i + String.length w <= String.length index && String.sub index i (String.length w) = w
+        then go (i + String.length w) else (Buffer.add_char b index.[i]; go (i + 1)) in
+    go 0; Buffer.contents b in
   let key = "class=\"unit\" href=\"" in
   let rec find i = if i + String.length key > String.length index then None
     else if String.sub index i (String.length key) = key then Some i else find (i + 1) in

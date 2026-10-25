@@ -1249,6 +1249,10 @@ let esc s =
 
 let page_name fq = String.concat "." fq ^ ".html"
 
+(* A unit's name as HTML, a line break allowed after each separator, so a
+   long name wraps between its parts on a narrow screen. *)
+let unit_name_html fq = String.concat "\u{203A}<wbr>" (List.map esc fq)
+
 let href (from : string list) (s : site) =
   (if s.s_unit = from then "" else page_name s.s_unit) ^ (if s.s_anchor = "" then "" else "#" ^ s.s_anchor)
 
@@ -1339,9 +1343,11 @@ let anchor_kinds lib =
   t
 
 (* An eval's output, folded: [<details>] opens and closes it without
-   scripts, and a click on the open output closes it too. *)
+   scripts, and a click on the open output closes it too.  The box starts
+   at the eval's column [--col]; on a narrow screen the stylesheet caps
+   that indent, so a deep eval's output still fits the screen. *)
 let eval_box (c : int) (out : string) : string =
-  Printf.sprintf "<details class=\"eval\" style=\"margin-left:%dch\"><summary>output</summary>\
+  Printf.sprintf "<details class=\"eval\" style=\"--col:%dch\"><summary>output</summary>\
                   <pre class=\"out\" onclick=\"this.parentElement.open=false\">%s</pre></details>\n" c (esc out)
 
 (* Without it a phone lays the page out at a desktop's width, and the
@@ -1361,7 +1367,7 @@ let rec toc_forest d (es : toc_entry list) : toc list * toc_entry list =
       (Toc (e, kids) :: sibs, rest)
   | _ -> ([], es)
 
-(* The contents of the unit [name], one entry per declaration, nested as
+(* The contents of the unit [fq], one entry per declaration, nested as
    its modules are; an entry with members folds them in a [<details>].
    One [<nav>] serves both layouts of the stylesheet: a side panel beside
    the text on a wide screen; on a narrow one, a drawer the "Contents"
@@ -1369,7 +1375,7 @@ let rec toc_forest d (es : toc_entry list) : toc list * toc_entry list =
    entries' included, as the target moves to their anchor.  [#-close] is
    no anchor, so it closes the drawer in place; names never start with
    [-], so neither [-contents] nor [-close] is a name's anchor. *)
-let toc_html name (es : toc_entry list) : string =
+let toc_html fq (es : toc_entry list) : string =
   let b = Buffer.create 1024 in
   let rec node (Toc (e, kids)) =
     let line = Printf.sprintf "<span class=\"kw\">%s</span> <a class=\"%s\" href=\"#%s\">%s</a>"
@@ -1383,7 +1389,7 @@ let toc_html name (es : toc_entry list) : string =
   Printf.bprintf b "<a class=\"toc-open\" href=\"#-contents\">&#9776; Contents</a>\n\
                     <nav class=\"toc\" id=\"-contents\" aria-label=\"Contents\"><div class=\"toc-head\">\
                     <a href=\"#\">%s</a> <a class=\"toc-close\" href=\"#-close\" aria-label=\"Close\">&times;</a></div><ul>"
-    (esc name);
+    (unit_name_html fq);
   List.iter node (fst (toc_forest 0 es));
   Buffer.add_string b "</ul></nav>\n";
   Buffer.contents b
@@ -1485,7 +1491,7 @@ let render_unit lib kinds (u : unit_info) : string =
     "<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\">%s<title>%s</title>\
      <link rel=\"stylesheet\" href=\"mctt.css\"></head><body class=\"unit-page\">\n%s%s\
      <h1>%s</h1>\n%s</body></html>\n"
-    viewport name (toc_html name u.u_toc) nav name (Buffer.contents b)
+    viewport name (toc_html u.u_path u.u_toc) nav (unit_name_html u.u_path) (Buffer.contents b)
 
 let summary (u : unit_info) =
   match u.u_comments with
@@ -1528,10 +1534,16 @@ a.toc-open{display:block;position:fixed;top:.5em;right:.5em;z-index:5;padding:.2
 a.toc-close{display:inline;font-size:1.4em;line-height:1;color:#555}
 :target{scroll-margin-top:2.6em}
 }
-details.eval{font-family:"JetBrains Mono",Menlo,Consolas,monospace;font-size:.88em;margin-top:-.6em;margin-bottom:.6em;padding-left:1em}
+details.eval{font-family:"JetBrains Mono",Menlo,Consolas,monospace;font-size:.88em;margin-top:-.6em;margin-bottom:.6em;padding-left:1em;margin-left:var(--col,0)}
 details.eval summary{cursor:pointer;color:#6a737d;font-size:.9em;width:max-content}
 details.eval pre.out{cursor:pointer;margin:.2em 0;padding:.3em .8em;border:1px solid #dde3ea;border-radius:3px;background:#fbfcfd;white-space:pre-wrap;line-height:1.4}
 ul.units{list-style:none;padding-left:0}ul.units li{margin:.5em 0}ul.units p{display:inline;margin:0;color:#555}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media (max-width:40em){
+body{overflow-wrap:anywhere}
+pre.verb{overflow-x:auto}
+details.eval{margin-left:min(var(--col,0px),25%)}
+}
 |}
 
 let rec mkdir_p d =
@@ -1544,7 +1556,7 @@ let write_site lib out =
   let kinds = anchor_kinds lib in
   List.iter (fun u -> w (page_name u.u_path) (render_unit lib kinds u)) lib.units;
   let item u = Printf.sprintf "<li><a class=\"unit\" href=\"%s\">%s</a> %s</li>\n"
-      (page_name u.u_path) (unit_name u.u_path) (summary u) in
+      (page_name u.u_path) (unit_name_html u.u_path) (summary u) in
   let prel, progs = List.partition (fun u -> List.hd u.u_path = "Prelude") lib.units in
   w "index.html"
     (Printf.sprintf "<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\">%s<title>McTT library</title>\
