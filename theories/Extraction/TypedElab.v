@@ -495,6 +495,11 @@ Section Decide.
         | ge_mod pv U =>
             let%a U' := fill_unit_fn (body_ctx Φx ++ Γ) U in
             fill_ok (gm_ext Φ0' x (ge_mod pv U'))
+        | ge_def_mod pv A M U =>
+            let%a A' := fill_exp_fn (body_ctx Φx ++ Γ) A in
+            let%a M' := fill_exp_fn (body_ctx Φx ++ Γ) M in
+            let%a U' := fill_unit_fn (body_ctx Φx ++ Γ) U in
+            fill_ok (gm_ext Φ0' x (ge_def_mod pv A' M' U'))
         | _ => fill_error (fill_failure_message "an entry no local body is written with")
         end
     | gm_open Φ0 H its =>
@@ -513,6 +518,11 @@ Section Decide.
         let%a M' := fill_exp_fn Γ M in
         fill_ok (ce_def A' M')
     | ce_mod U => let%a U' := fill_unit_fn Γ U in fill_ok (ce_mod U')
+    | ce_dm A M U =>
+        let%a A' := fill_exp_fn Γ A in
+        let%a M' := fill_exp_fn Γ M in
+        let%a U' := fill_unit_fn Γ U in
+        fill_ok (ce_dm A' M' U')
     end.
 
   (** A module expression in module position. *)
@@ -862,13 +872,10 @@ Section Decide.
     rewrite (@functional_alg_type_infer GCd _ _ _ _ Hg HW0 HW); reflexivity.
   Qed.
 
-  Lemma term_binder_b_spec : forall Γ k, term_binder_b Γ k = true <-> exists A, Γ ∋ #k : A.
+  Lemma term_binder_b_spec : forall Γ k, term_binder_b Γ k = true <-> term_binder Γ k.
   Proof.
-    unfold term_binder_b; induction Γ as [| e Γ IH]; intros [| k]; cbn.
-    1,2: split; [ discriminate | intros [? H]; inversion H ].
-    - destruct e as [A | A M | U]; split; try discriminate; intros; try (eexists; constructor).
-      destruct H as [? H]; inversion H.
-    - rewrite IH; split; intros [A HA]; [ eexists; constructor; exact HA | inversion HA; subst; eauto ].
+    intros; unfold term_binder_b, term_binder.
+    destruct (List.nth_error Γ k) as [[] |]; split; intros H; first [ exact I | reflexivity | discriminate | destruct H ].
   Qed.
 
   Lemma member_term_b_spec : forall Γ H y,
@@ -934,6 +941,7 @@ Section Decide.
     | ce_ass A => exp_fill_sound A
     | ce_def A M => exp_fill_sound A /\ exp_fill_sound M
     | ce_mod U => unit_fill_sound U
+    | ce_dm A M U => exp_fill_sound A /\ exp_fill_sound M /\ unit_fill_sound U
     end.
   Definition bnd_fill_sound (b : bnd) : Prop :=
     match b with
@@ -944,6 +952,7 @@ Section Decide.
     match E with
     | ge_def _ _ A oM => exp_fill_sound A /\ (forall M, oM = Some M -> exp_fill_sound M)
     | ge_mod _ U => unit_fill_sound U
+    | ge_def_mod _ A M U => exp_fill_sound A /\ exp_fill_sound M /\ unit_fill_sound U
     | _ => True
     end.
 
@@ -976,7 +985,7 @@ Section Decide.
     intros Γ; induction Δ as [| e Δ IH]; intros Δ' HΔ E; cbn in E; bind_inv; [ constructor |].
     inversion HΔ as [| ? ? He HΔ0]; subst.
     specialize (IH _ HΔ0 H).
-    destruct e as [A | A M | U]; cbn in *; bind_inv; constructor; auto; apply He; assumption.
+    destruct e as [A | A M | U | A M U]; cbn in *; bind_inv; constructor; auto; apply He; assumption.
   Qed.
 
   Lemma fvals_fill_sound : forall Γ fs fs', Forall (fun f => exp_fill_sound (snd f)) fs ->
@@ -1080,9 +1089,9 @@ Section Decide.
       constructor; [ apply H; assumption | eapply fvals_fill_sound; eassumption ].
     - (* a binder in module position *)
       destruct (term_binder_b Γ k) eqn:Et; bind_inv.
-      + apply term_binder_b_spec in Et as [A HA]; econstructor; exact HA.
-      + apply fill_read_slot; intros A HA.
-        assert (term_binder_b Γ k = true) by (apply term_binder_b_spec; eauto); congruence.
+      + apply term_binder_b_spec in Et; econstructor; exact Et.
+      + apply fill_read_slot; intros HA.
+        assert (term_binder_b Γ k = true) by (apply term_binder_b_spec; exact HA); congruence.
     - (* a member in module position *)
       destruct (sel_check (snd x) y) as [[qd x0] |] eqn:Es; [ discriminate |].
       destruct x as [H' op]; cbn [fst snd] in *.
@@ -1104,6 +1113,9 @@ Section Decide.
         destruct oM as [M |]; bind_inv;
           [ apply fill_oexp_some; eapply HoM; [ reflexivity | eassumption ] | apply fill_oexp_none ].
       + eapply fill_body_mod; [ apply H; eassumption | eassumption | apply H0; assumption ].
+      + destruct H0 as (HA & HM & HU).
+        eapply fill_body_dm; [ apply H; eassumption | eassumption | apply HA; assumption | apply HM; assumption
+                             | apply HU; assumption ].
     - (* a local open *)
       apply body_xp_fn_spec in H4; destruct x2; apply sels_check_spec in H6; destruct x1 as [H' op].
       eapply fill_body_open; [ apply H0; eassumption | eassumption | eapply fill_mod_of_read_sound; eassumption | exact H6 ].
@@ -1169,9 +1181,9 @@ Section Decide.
     - (* a branch *)
       rewrite e; subst n; rewrite Nat.eqb_refl, H; reflexivity.
     - (* a binder that holds no term *)
-      destruct (term_binder_b Γ k) eqn:E; [ apply term_binder_b_spec in E as [A HA]; exfalso; exact (n A HA) | reflexivity ].
+      destruct (term_binder_b Γ k) eqn:E; [ apply term_binder_b_spec in E; exfalso; exact (n E) | reflexivity ].
     - (* a term binder *)
-      rewrite (proj2 (term_binder_b_spec Γ k) (ex_intro _ A c)); reflexivity.
+      rewrite (proj2 (term_binder_b_spec Γ k) t); reflexivity.
     - (* a member that is no term *)
       unfold fill_mod_fn in H0; rewrite (H0 y); cbn; rewrite (proj2 (sel_check_spec _ _) s).
       destruct (member_term_b Γ H' y) eqn:Em;
@@ -1185,11 +1197,16 @@ Section Decide.
     - cbn; rewrite H0; reflexivity.
     - cbn; repeat match goal with E : ?a = fill_ok _ |- context [?a] => rewrite E; cbn [fill_result_bind] end; reflexivity.
     - cbn; repeat match goal with E : ?a = fill_ok _ |- context [?a] => rewrite E; cbn [fill_result_bind] end; reflexivity.
+    - (* a definition with a module part of a telescope *)
+      cbn; repeat match goal with E : ?a = fill_ok _ |- context [?a] => rewrite E; cbn [fill_result_bind] end; reflexivity.
     - (* an entry of a body, in the expansion of the body before it *)
       rewrite (proj2 (body_xp_fn_spec _ _ _) b0); cbn; rewrite H0; cbn.
       change (match oM with Some M => _ | None => fill_ok None end) with (fill_oexp_fn (body_ctx Φx ++ Γ) oM).
       rewrite H1; reflexivity.
     - rewrite (proj2 (body_xp_fn_spec _ _ _) b); cbn; rewrite H0; reflexivity.
+    - (* a definition with a module part of a body *)
+      rewrite (proj2 (body_xp_fn_spec _ _ _) b); cbn;
+        repeat match goal with E : ?a = fill_ok _ |- context [?a] => rewrite E; cbn [fill_result_bind] end; reflexivity.
     - (* a local open *)
       rewrite (proj2 (body_xp_fn_spec _ _ _) b); cbn; unfold fill_mod_fn in H1; rewrite (H1 ""); cbn.
       rewrite (proj2 (sels_check_spec _ _) f1); reflexivity.
@@ -1288,7 +1305,7 @@ Section Decide.
   Lemma zip_ass_sound : forall ys es a, zip_ass ys es = Some a ->
       List.map fst a = ys /\ List.map (fun x => ce_ass (snd x)) a = es.
   Proof.
-    induction ys as [| y ys IH]; intros [| [A | A M | U] es] a E; cbn in E; try discriminate;
+    induction ys as [| y ys IH]; intros [| [A | A M | U | A M U] es] a E; cbn in E; try discriminate;
       [ injection E as <-; split; reflexivity |].
     destruct (zip_ass ys es) as [a0 |] eqn:E0; cbn in E; [| discriminate ]; injection E as <-.
     destruct (IH _ _ E0) as [<- <-]; split; reflexivity.

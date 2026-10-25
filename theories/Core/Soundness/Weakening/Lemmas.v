@@ -65,7 +65,16 @@ Proof.
     | symmetry; apply wk_compose_id_right ].
 Qed.
 
-Hint Resolve kripke_id kripke_shift kripke_shift_def kripke_shift_mod : mctt.
+(** Past a definition with a module part. *)
+Lemma kripke_shift_dm : forall Γ A M U, ⊢ Γ ▸ₘ A ≔ M ‖ U -> Γ ▸ₘ A ≔ M ‖ U ⊢ᵏ ↑ : Γ.
+Proof.
+  intros * H; eapply kwk_shift;
+    [ apply kripke_id; eassumption
+    | mauto 3
+    | symmetry; apply wk_compose_id_right ].
+Qed.
+
+Hint Resolve kripke_id kripke_shift kripke_shift_def kripke_shift_mod kripke_shift_dm : mctt.
 
 (** The codomain may always be coarsened: this is the closure property the
     subtyping cases need, and the reason for the refinement premise. *)
@@ -490,7 +499,7 @@ Proof. intros * ?%kripke_escape; eapply wf_sub_cod; eassumption. Qed.
 End Fixed_GCtx.
 
 #[export]
-Hint Resolve kripke_id kripke_shift kripke_shift_def kripke_shift_mod : mctt.
+Hint Resolve kripke_id kripke_shift kripke_shift_def kripke_shift_mod kripke_shift_dm : mctt.
 #[export]
 Hint Resolve kripke_ctxsub : mctt.
 #[export]

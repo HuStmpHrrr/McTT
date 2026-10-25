@@ -509,3 +509,35 @@ Supersedes the expansion part of 10.7.
   (`cmd_open_error`, `Extraction/Opens.v`), which only chooses the message.
 - `Evaluate` echoes a term as written: local opens print as `open`, no
   longer as the definitions they generate.
+
+### 10.12 Local definitions with a module part (`wip/def-mod`, G2, 2026-10-25)
+Supersedes the local half of 10.11: a local open of an inductive or a
+record type is accepted.
+- Design P (owner): a local entry `ge_def_mod pv A M U` is read in the body
+  context as the slot `ce_dm A M U` (`Γ ▸ₘ A ≔ M ‖ U`), substituted as
+  `se_dm N H` (`σ ,,ᵈ N ‖ H`) and held in environments as `de_dm d h`
+  (`ρ ↦ᵈ d ‖ h`).  Every clause of a dm slot is that of a definition for
+  the term part and that of a module slot for the unit, at one head:
+  typing (`wf_ctx_extend_dm`, `wf_ext_eq_dm`, `here_dm`, `def_here_dm`),
+  the PER (`per_ctx_env_cons_dm` with `per_ctx_env_dm_rel`, `per_body_dm`,
+  `per_env_extend_dm`), gluing (`cons_dm_glu_sub_pred`,
+  `glu_ctx_env_cons_dm`) and the algorithm (`aext_dm`, `abody_dm`).
+- A global selection of a term reads `gc_term` (a transparent definition's
+  body, or a definition with a module part's term); the separate
+  `eval_sel_global_def_mod` is gone.
+- Kinds (Option A): at the chain `[x]` of a member with a term part and a
+  module part the kind is `mk_dm` (`dk_global_here_dm`, `uk_dm_here`,
+  `dm_of`); at the empty chain a module value is `mk_mod`.
+  `dk_global_step` and `dk_global_alias` need `ch <> nil` or `~ dm_path`.
+  `items_gen` lost its flag: global and local opens generate alike
+  (`ign_dm` is the item of such a member).
+- The typed fill reads a dm binder in module position as a module
+  (`term_binder`, `fill_read_slot`), as it reads a global dm member.
+- Local `inductive K ≔ H` and `record K ≔ H` stay rejected (owner): the
+  elaborator's message names the open that does the same, `write `open D
+  use (N as K)` instead` for a path target `D.N`, and the general form
+  `open M use (T as K)` for a target with arguments or an alias with
+  parameters.  Rejected on the way: a pre-fill entry `ge_alias` that the
+  fill turns into `ge_def_mod` (cost of a new gentry constructor), a dummy
+  type the fill replaces (loses the keyword check), and keyword-tagged
+  open items (`alias_kw` on `iitem`, accepted then withdrawn).

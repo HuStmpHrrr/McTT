@@ -199,6 +199,33 @@ Definition elab_blocks_with (f : list ent -> Cst.obj -> eres exp) (S : list ent)
         eok (eb_mk (List.length xs) oZ A Bs :: Bks)
     end.
 
+(** A module path as written, for messages: a name, a unit, or a member of
+    one. *)
+Fixpoint path_text (o : Cst.obj) : option string :=
+  match o with
+  | Cst.var x => Some x
+  | Cst.glob fq => Some (String.concat "›" fq)
+  | Cst.proj o' y => option_map (fun p => p ++ "." ++ y) (path_text o')
+  | _ => None
+  end.
+
+(** The rejection of an alias [x] of a type in a local module, [what]
+    being "an inductive alias" or "a record alias": at no parameter and a
+    member path [P.n], the open that names the type there instead; else
+    the general form of that open. *)
+Definition local_alias_error (what x : string) (ps : list (string * Cst.obj)) (oE : Cst.obj) : string :=
+  let general := what ++ " is not allowed in a local module; open the type by name, `open M use (T as "
+                   ++ x ++ ")`, instead" in
+  match ps, oE with
+  | nil, Cst.proj o n =>
+      match path_text o with
+      | Some p => what ++ " is not allowed in a local module; write `open " ++ p ++ " use (" ++ n ++ " as "
+                    ++ x ++ ")` instead"
+      | None => general
+      end
+  | _, _ => general
+  end.
+
 (** The fields of a record value, each its name and its value. *)
 Definition elab_tfields_with (f : list ent -> Cst.obj -> eres exp) (S : list ent) :=
   fix go (fs : list (string * Cst.obj)) : eres (list (string * exp)) :=
@@ -336,8 +363,8 @@ with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
            | Cst.c_ind _ _ _ _ :: _ => eerr "an inductive type is not allowed in a local module"
            | Cst.c_mdef _ _ _ :: _ => eerr "a mutual definition is not allowed in a local module"
            | Cst.c_builtin _ _ :: _ => eerr "builtin is not allowed in a local module"
-           | Cst.c_ind_alias _ _ _ _ :: _ => eerr "an inductive alias is not allowed in a local module"
-           | Cst.c_record_alias _ _ _ _ :: _ => eerr "a record alias is not allowed in a local module"
+           | Cst.c_ind_alias _ x ps oE :: _ => eerr (local_alias_error "an inductive alias" x ps oE)
+           | Cst.c_record_alias _ x ps oE :: _ => eerr (local_alias_error "a record alias" x ps oE)
            | Cst.c_record _ _ _ _ _ _ :: _ => eerr "a record type is not allowed in a local module"
            end) S gm_nil cs in
       eok (md_body sm_open Φ)

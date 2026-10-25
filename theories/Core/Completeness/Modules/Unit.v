@@ -89,7 +89,7 @@ Proof.
     subst; [ exfalso; match goal with Hq : me_apps _ _ = me_lit _ |- _ => exact (me_apps_qname_lit _ _ _ Hq) end | |];
     intros Γ' R' σ σ' ρ ρσ HΓ' Hσ Hρ Hev.
   - eapply unit_sub_link_body; try eassumption.
-    intros k Ψ H Hk; split; [ exact (Hov _ _ _ Hk) | exact (valid_modexp_kinds _ _ Hgm Hgf _ _ (Hos _ _ _ Hk)) ].
+    intros k Ψ H Hk; split; [ exact (Hov _ _ _ Hk) | exact (valid_modexp_kinds _ _ Hgw Hgm Hgf Hsub _ _ (Hos _ _ _ Hk)) ].
   - eapply unit_sub_link_alias; eassumption.
 Qed.
 
@@ -103,7 +103,7 @@ Proof.
   - rewrite <- app_assoc in Hx, HC, Hov, Hos; cbn [List.app] in Hx, HC, Hov, Hos.
     eapply unit_sub_link_body; try eassumption.
     + exact (proj1 (tele_ass_app_inv _ _ HΔ)).
-    + intros k Ψ H Hk; split; [ exact (Hov _ _ _ Hk) | exact (valid_modexp_kinds _ _ Hgm Hgf _ _ (Hos _ _ _ Hk)) ].
+    + intros k Ψ H Hk; split; [ exact (Hov _ _ _ Hk) | exact (valid_modexp_kinds _ _ Hgw Hgm Hgf Hsub _ _ (Hos _ _ _ Hk)) ].
   - rewrite <- app_assoc in HΔΓ, HE; cbn [List.app] in HΔΓ, HE.
     eapply unit_sub_link_alias; [ exact (proj1 (tele_ass_app_inv _ _ HΔ)) | exact HΔΓ | exact HE | eassumption .. ].
 Qed.
@@ -126,7 +126,7 @@ Lemma valid_unit_body_sub : forall Δ Δu Φ Φx Γ τ,
     Θm ⍮ Ξm ⍮ Δ ⊢ᵘ gu_open Δu Φ ≈ gu_open Δu Φ ->
     body_xp Θm Ξm (Δu ++ Δ) Φ Φx -> tele_ass Δu -> ⊨ body_ctx Φx ++ Δu ++ Δ ->
     body_shape Φ Φ -> body_shape Φx Φx ->
-    (forall y Φ0 pv U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
+    (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
        forall Γ0 τ0, gsub Γ0 τ0 (body_ctx Φ0 ++ Δu ++ Δ) -> Θm ⍮ Ξm ⍮ Γ0 ⊢ˢ τ0 : body_ctx Φ0 ++ Δu ++ Δ ->
        valid_unit Γ0 (me_lit U)[τ0]ᵐ) ->
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Ψ ++ Δu ++ Δ ⊨ᵐ H ≈ H) ->
@@ -160,21 +160,21 @@ Proof.
        destruct (ext_gsub _ _ Γ τ HC HwCx Hg Hτ) as (HCσ & _).
        rewrite body_ctx_sub, app_assoc, <- tele_sub_app; exact HCσ. }
   1: { (* the modules, each in the body before it, then substituted *)
-    intros y Φ0w pv Uw Hp.
-    destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & HE).
-    destruct E as [| pv0 U | | |]; cbn in HE; try discriminate; injection HE as -> ->.
-    destruct (prefix_body_ctx _ _ _ (body_xp_nopens _ _ _ _ _ Hx) Hp0) as (X & HX); cbn [body_ctx] in HX.
-    rewrite HX, <- !app_assoc in HC, HwCx; cbn [List.app] in HC, HwCx.
-    pose proof (rel_ctx_wf_tail (rel_ctx_wf_app_r _ _ HC)) as HC0.
-    pose proof (ctx_app_wf_tail _ _ (_ :: nil) _ (ctx_app_wf_tail _ _ _ _ HwCx)) as HwC0.
-    rewrite app_assoc in HC0, HwC0.
-    destruct (ext_gsub _ _ Γ τ HC0 HwC0 Hg Hτ) as (_ & Hg0 & _ & Hτ0).
-    rewrite <- app_assoc in Hg0, Hτ0.
-    pose proof (IHmods _ _ _ _ Hp0 _ _ Hg0 Hτ0) as HK0.
-    rewrite body_ctx_sub, app_assoc, <- tele_sub_app.
-    cbn [modexp_sub] in HK0.
-    rewrite (gunit_sub_sb_eq U _ _ (sb_qn_add _ _ _)), <- length_body_ctx, <- length_app.
-    exact HK0. }
+    intros y Φ0w Ew Uw Hp HEu.
+    destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & HE); subst Ew.
+    destruct E as [| pv0 U | | pv0 A0 M0 U |]; cbn in HEu; try discriminate; injection HEu as <-.
+    all: destruct (prefix_body_ctx _ _ _ (body_xp_nopens _ _ _ _ _ Hx) Hp0) as (X & HX); cbn [body_ctx] in HX;
+      rewrite HX, <- !app_assoc in HC, HwCx; cbn [List.app] in HC, HwCx;
+      pose proof (rel_ctx_wf_tail (rel_ctx_wf_app_r _ _ HC)) as HC0;
+      pose proof (ctx_app_wf_tail _ _ (_ :: nil) _ (ctx_app_wf_tail _ _ _ _ HwCx)) as HwC0;
+      rewrite app_assoc in HC0, HwC0;
+      destruct (ext_gsub _ _ Γ τ HC0 HwC0 Hg Hτ) as (_ & Hg0 & _ & Hτ0);
+      rewrite <- app_assoc in Hg0, Hτ0;
+      pose proof (IHmods _ _ _ _ Hp0 eq_refl _ _ Hg0 Hτ0) as HK0;
+      rewrite body_ctx_sub, app_assoc, <- tele_sub_app;
+      cbn [modexp_sub] in HK0;
+      rewrite (gunit_sub_sb_eq U _ _ (sb_qn_add _ _ _)), <- length_body_ctx, <- length_app;
+      exact HK0. }
   1, 2: apply body_shape_sub; assumption.
   1: exact HK'.
   all: intros k Ψw Hw0 Hk;
@@ -284,7 +284,7 @@ Proof.
     rewrite <- app_assoc in Hx, HC, Hsl, Hov, Hos; cbn [List.app] in Hx, HC, Hsl, Hov, Hos.
     eapply (valid_unit_body_sub (Γ ▹ X)); [ exact HU1 | exact Hx | exact (proj1 (tele_ass_app_inv _ _ HΔ)) | exact HC | exact Hsh
                                    | exact Hsx | | exact Hov | | exact Hg | exact Hτ | exact HwN | exact HKN ].
-    + intros * Hp * Hg0 Hτ0; exact (valid_unit_gsub _ _ _ _ (Hsl _ _ _ _ Hp) Hg0 Hτ0).
+    + intros * Hp HEu * Hg0 Hτ0; exact (valid_unit_gsub _ _ _ _ (Hsl _ _ _ _ Hp HEu) Hg0 Hτ0).
     + intros * Hk * Hg0 Hτ0; exact (valid_modexp_gsub _ _ _ _ (Hos _ _ _ Hk) Hg0 Hτ0).
   - (* an alias *)
     change (valid_unit Γ (me_lit (gu_mk T1 (md_alias E)))[Id,,N]ᵐ).
@@ -349,7 +349,7 @@ Proof.
       eapply unit_sub_link_body; [ apply List.Forall_app; split; assumption | rewrite <- app_assoc; exact Hx | exact Hsh | exact Hsx
                                  | rewrite <- app_assoc; exact HCx | | eassumption .. ].
       intros k Ψ H Hk; rewrite <- app_assoc.
-      split; [ exact (Hov _ _ _ Hk) | exact (valid_modexp_kinds _ _ Hgm Hgf _ _ (Hos _ _ _ Hk)) ]. }
+      split; [ exact (Hov _ _ _ Hk) | exact (valid_modexp_kinds _ _ Hgw Hgm Hgf Hsub _ _ (Hos _ _ _ Hk)) ]. }
     eapply valid_unit_body; [ exact Hw' | rewrite <- app_assoc; exact Hx | apply List.Forall_app; split; assumption | exact HΓ
                     | rewrite <- app_assoc; exact HCx | rewrite <- app_assoc; exact Hsl | exact Hsh | exact Hsx
                     | exact (rel_modexp_of_links _ _ _ HΓ HL HL Hat)

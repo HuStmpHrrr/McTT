@@ -1490,7 +1490,7 @@ Theorem mdenote_functional_all : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
     (forall Γ o U R, udenote Θ Ξ Γ o U R -> forall R', udenote Θ Ξ Γ o U R' -> R = R') /\
     (forall Γ o E R, edenote Θ Ξ Γ o E R -> forall R', edenote Θ Ξ Γ o E R' -> R = R') /\
     (forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> forall Φx', body_xp Θ Ξ Γ Φ Φx' -> Φx = Φx') /\
-    (forall g Γ H its gs, items_gen Θ Ξ g Γ H its gs -> forall gs', items_gen Θ Ξ g Γ H its gs' -> gs = gs').
+    (forall Γ H its gs, items_gen Θ Ξ Γ H its gs -> forall gs', items_gen Θ Ξ Γ H its gs' -> gs = gs').
 Proof.
   intros Θ Ξ Hg; apply mdenote_all_ind.
   - intros * Hq Hu R' Hm'; symmetry; exact (unit_denote_unique _ _ Hg _ _ _ _ _ _ Hq Hu Hm').
@@ -1532,7 +1532,7 @@ Proof.
   - intros * Hx IH Φx' Hx'; inversion Hx'; subst; f_equal; eauto.
   - intros * Hx IH Hm IHm Hmd Hgn IHg Hok Φx' Hx'; inversion Hx'; subst.
     match goal with H1 : body_xp _ _ _ Φ _ |- _ => pose proof (IH _ H1) as E; subst end.
-    match goal with H1 : items_gen _ _ _ _ _ _ _ |- _ => rewrite (IHg _ H1) end; reflexivity.
+    match goal with H1 : items_gen _ _ _ _ _ _ |- _ => rewrite (IHg _ H1) end; reflexivity.
   - intros * Hg'; inversion Hg'; reflexivity.
   - (* the module itself, by an alias *)
     intros * Hgn IH gs' Hg'; inversion Hg'; subst; f_equal; eauto.
@@ -1551,7 +1551,7 @@ Proof.
         assert_fails (constr_eq H1 Hm); pose proof (IHm _ H1) as E end; subst.
     + cbn in Hmd; discriminate.
     + match goal with Hk : ds_is_mod ?R1 |- _ => destruct R1; cbn in Hk, Hty; first [ contradiction | discriminate ] end.
-    + f_equal; eauto.
+    + f_equal; [ f_equal; congruence | eauto ].
 Qed.
 
 (** ** Bodies Stored at Paths Are What Paths Denote *)
@@ -2511,7 +2511,7 @@ Section Grow.
     (forall Γ o E R1, edenote Θ1 Ξ1 Γ o E R1 -> o = None \/ entry_oa E ->
        exists R2, edenote Θ2 Ξ2 Γ o E R2 /\ (dsg Θ1 Ξ1 Θ2 Ξ2) R1 R2) /\
     (forall Γ Φ Φx, body_xp Θ1 Ξ1 Γ Φ Φx -> body_xp Θ2 Ξ2 Γ Φ Φx) /\
-    (forall g Γ H its gs, items_gen Θ1 Ξ1 g Γ H its gs -> items_gen Θ2 Ξ2 g Γ H its gs).
+    (forall Γ H its gs, items_gen Θ1 Ξ1 Γ H its gs -> items_gen Θ2 Ξ2 Γ H its gs).
   Proof.
     apply mdenote_all_ind.
     - (* a unit or an open frame *)

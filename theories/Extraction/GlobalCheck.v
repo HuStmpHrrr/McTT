@@ -411,8 +411,9 @@ End check_exp.
 
     By structural recursion on [Γ]: the base case appeals to the
     well-formedness of the global context.  An assumption is one call of
-    [check_typ], a definition one call of [check_exp], and a module slot one
-    call of [check_unit]. *)
+    [check_typ], a definition one call of [check_exp], a module slot one
+    call of [check_unit], and a definition with a module part one of each
+    of the last two. *)
 
 Section check_ctx.
   (** The data each check looks names up in, for its global context
@@ -434,6 +435,11 @@ Section check_ctx.
       pureb _
   | Θ, Ξ, HΞ, Γ ▹ₘ U =>
       let*b HΓ := check_ctx Θ Ξ HΞ Γ while _ in
+      let*b _ := check_unit FF Θ Ξ Γ HΓ U while _ in
+      pureb _
+  | Θ, Ξ, HΞ, Γ ▸ₘ A ≔ M ‖ U =>
+      let*b HΓ := check_ctx Θ Ξ HΞ Γ while _ in
+      let*b _ := check_exp FF Θ Ξ Γ HΓ A M while _ in
       let*b _ := check_unit FF Θ Ξ Γ HΓ U while _ in
       pureb _
   .
@@ -469,6 +475,18 @@ Section check_ctx.
   Qed.
   Obligation 10. (* ⊢ Θ ⍮ Ξ ⍮ Γ ▹ₘ U *)
     apply wf_ctx_extend_mod; assumption.
+  Qed.
+  Obligation 11. (* the prefix of a definition with a module part is no context *)
+    eapply H; mauto 2.
+  Qed.
+  Obligation 12. (* its term part is not of the declared type *)
+    inversion H0; subst; eapply H; eassumption.
+  Qed.
+  Obligation 13. (* its unit is not well formed *)
+    inversion H0; subst; contradiction.
+  Qed.
+  Obligation 14. (* ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U *)
+    gen_presups; eapply wf_ctx_extend_dm; eassumption.
   Qed.
 
 End check_ctx.

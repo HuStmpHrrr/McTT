@@ -43,7 +43,15 @@ Inductive initial_env_order (Θ : gdeps) (Ξ : gstack) : ctx -> Prop :=
   `( initial_env_order Θ Ξ Γ ->
      (forall p, initial_env Θ Ξ Γ p ->
            eval_modexp_order Θ Ξ (me_lit U) p) ->
-     initial_env_order Θ Ξ (Γ ▹ₘ U)).
+     initial_env_order Θ Ξ (Γ ▹ₘ U))
+(** A definition with a module part: its term and its unit *)
+| ie_cons_dm :
+  `( initial_env_order Θ Ξ Γ ->
+     (forall p, initial_env Θ Ξ Γ p ->
+           eval_exp_order Θ Ξ M p) ->
+     (forall p, initial_env Θ Ξ Γ p ->
+           eval_modexp_order Θ Ξ (me_lit U) p) ->
+     initial_env_order Θ Ξ (Γ ▸ₘ A ≔ M ‖ U)).
 
 #[local]
 Hint Constructors initial_env_order : mctt.
@@ -184,7 +192,12 @@ Section InitialEnvImpl.
   | cons (ce_mod U) G, H =>
       let (p, Hp) := initial_env_impl G _ in
       let (h, Hh) := Evaluation.feval_modexp_impl Θ Ξ (me_lit U) p _ in
-      exist _ (p ↦ᵐ h) _.
+      exist _ (p ↦ᵐ h) _
+  | cons (ce_dm A M U) G, H =>
+      let (p, Hp) := initial_env_impl G _ in
+      let (m, Hm) := Evaluation.feval_exp_impl Θ Ξ M p _ in
+      let (h, Hh) := Evaluation.feval_modexp_impl Θ Ξ (me_lit U) p _ in
+      exist _ (p ↦ᵈ m ‖ h) _.
   Next Obligation. (* nil *) exists nil; split; [ constructor | apply env_agree_nil ]. Qed.
   Next Obligation. (* initial_env_order G *) progressive_invert H; assumption. Defined.
   Next Obligation. (* the order of the type's fast evaluation *)
@@ -225,6 +238,30 @@ Section InitialEnvImpl.
   Defined.
   Next Obligation. (* the extended environment *)
     fnbe_obl.
+    match goal with Hord : forall p, initial_env _ _ _ p -> eval_modexp_order _ _ (me_lit U) p, Hi : initial_env _ _ _ ?p0 |- _ =>
+      destruct (eval_modexp_of_order _ _ _ _ (Hord _ Hi)) as [h0 Hh0];
+      pose proof (proj2 (feval_modexp_of_ref _ _ _ _ _ _ Hh0 ltac:(apply agree_all; eassumption)) _ Hh) end.
+    eexists; split; [ econstructor; eassumption |].
+    eapply env_agree_cons; [ eassumption | constructor; assumption | intros; exact I ].
+  Qed.
+  Next Obligation. (* initial_env_order G *) progressive_invert H; assumption. Defined.
+  Next Obligation. (* the order of the term's fast evaluation *)
+    fnbe_obl.
+    match goal with Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ M p, Hi : initial_env _ _ _ ?p0 |- _ =>
+      destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [a Ha];
+      eapply (feval_of_ref _ _ _ _ _ _ Ha); apply agree_all; assumption end.
+  Defined.
+  Next Obligation. (* the order of the unit's fast evaluation *)
+    fnbe_obl.
+    match goal with Hord : forall p, initial_env _ _ _ p -> eval_modexp_order _ _ (me_lit U) p, Hi : initial_env _ _ _ ?p0 |- _ =>
+      destruct (eval_modexp_of_order _ _ _ _ (Hord _ Hi)) as [h Hh];
+      eapply (feval_modexp_of_ref _ _ _ _ _ _ Hh); apply agree_all; assumption end.
+  Defined.
+  Next Obligation. (* the extended environment *)
+    fnbe_obl.
+    match goal with Hord : forall p, initial_env _ _ _ p -> eval_exp_order _ _ M p, Hi : initial_env _ _ _ ?p0 |- _ =>
+      destruct (eval_of_order _ _ _ _ (Hord _ Hi)) as [a0 Ha0];
+      pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha0 ltac:(apply agree_all; eassumption)) _ Hm) end.
     match goal with Hord : forall p, initial_env _ _ _ p -> eval_modexp_order _ _ (me_lit U) p, Hi : initial_env _ _ _ ?p0 |- _ =>
       destruct (eval_modexp_of_order _ _ _ _ (Hord _ Hi)) as [h0 Hh0];
       pose proof (proj2 (feval_modexp_of_ref _ _ _ _ _ _ Hh0 ltac:(apply agree_all; eassumption)) _ Hh) end.

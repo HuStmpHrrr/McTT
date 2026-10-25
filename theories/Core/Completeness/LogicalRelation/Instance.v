@@ -263,6 +263,33 @@ Proof.
       solve [ assumption | eexists; split; eassumption ].
 Qed.
 
+(** Extension by a definition with a module part of the codomain, read
+    along [τ]: its term as a definition's, its unit as a slot's. *)
+Lemma sub_link_dm : forall {Γ Δ τ B} {i : nat} {M U},
+    Γ ⊨ˢ τ ≈ τ : Δ -> sub_link Γ Δ τ ->
+    Δ ⊨ B : Typeω@i -> Δ ⊨ M : B -> Δ ⊨ᵐ me_lit U ≈ me_lit U ->
+    sub_link Γ (Δ ▸ₘ B ≔ M ‖ U) (τ ,,ᵈ M[τ] ‖ me_lit U[τ]ᵘ).
+Proof.
+  intros * Hτj Hl HB HM HU Γ' R' HΓ' σ σ' Hσ RΔd HΔd ρ ρσ Hρ Hev.
+  pose proof Hτj as [RΓ HΓ RΔ HΔ _].
+  assert (E : RΔd <~> per_env_extend_dm B M U RΔ)
+    by (eapply per_ctx_env_right_irrel; [ exact HΔd | exact (per_ctx_env_of_dm HΔ HB HM HU) ]).
+  destruct (sub_link_def Hτj Hl HB HM _ _ HΓ' _ _ Hσ _ (per_ctx_env_of_def HΔ HB HM) _ _ Hρ Hev) as [ed [Hed Ld]].
+  destruct (sub_link_mod Hτj Hl HU _ _ HΓ' _ _ Hσ _ (per_ctx_env_of_mod HΔ HU) _ _ Hρ Hev) as [em [Hem Lm]].
+  assert (Q1 : env_eq em↯ ed↯) by (eapply functional_eval_sub; [ intros x; exact (Hem (S x)) | intros x; exact (Hed (S x)) ]).
+  exists (de_dm (ed 0) (env_mod em 0) :: ed↯); split.
+  - eapply eval_sub_dm_combine; [ exact Hed | exact Hem | intros; reflexivity | reflexivity | reflexivity | reflexivity ].
+  - intros e2 He2.
+    destruct (eval_sub_dm_split (τ ,, M[τ]) (τ ,,ₘ me_lit U[τ]ᵘ) _ _ _ _ _ He2
+                (fun _ => eq_refl) (fun _ => eq_refl) eq_refl eq_refl eq_refl) as (Hd2 & Hm2 & Q2).
+    pose proof (Ld _ Hd2) as Dd; pose proof (Lm _ Hm2) as Dm.
+    apply E.
+    assert (Hc : per_env_extend_dm B M U RΔ (de_dm (ed 0) (env_mod em 0) :: ed↯)
+                   (de_dm (e2 0) (env_mod e2 0) :: e2↯))
+      by (exact (per_env_extend_dm_combine HΔ HU Dd Dm Q1 (fun _ => eq_refl))).
+    eapply (per_ctx_env_resp_env_eq (per_ctx_env_of_dm HΔ HB HM HU)); [ reflexivity | symmetry; exact Q2 | exact Hc ].
+Qed.
+
 Lemma sub_link_sb_eq : forall {Γ Δ τ τ'}, sb_eq τ τ' -> sub_link Γ Δ τ -> sub_link Γ Δ τ'.
 Proof.
   intros * Eq Hl Γ' R' HΓ' σ σ' Hσ RΔ HΔ ρ ρσ Hρ Hev.
@@ -505,6 +532,32 @@ Proof.
       cbn [drop_env List.tl]; try rewrite Hme; assumption.
 Qed.
 
+(** A lifted substitution into a definition with a module part: as into a
+    definition entry and as into a slot, the source read as either. *)
+Lemma sub_link_q_dm : forall {Γ Δ τ B} {i : nat} {M U},
+    Γ ⊨ˢ τ ≈ τ : Δ -> sub_link Γ Δ τ ->
+    Δ ⊨ B : Typeω@i -> Δ ⊨ M : B -> Δ ⊨ᵐ me_lit U ≈ me_lit U ->
+    sub_link (Γ ▸ₘ B[τ] ≔ M[τ] ‖ U[τ]ᵘ) (Δ ▸ₘ B ≔ M ‖ U) (q τ).
+Proof.
+  intros * Hτj Hl HB HM HU Γ' R' HΓ' σ σ' Hσ RΔd HΔd ρ ρσ Hρ Hev.
+  pose proof Hτj as [RΓ HΓ RΔ HΔ _].
+  pose proof (per_ctx_env_of_dm_sub HΓ Hτj HB HM HU) as HΓdm.
+  assert (Hσd : Γ' ⊨ˢ σ ≈ σ' : Γ ▸ B[τ] ≔ M[τ])
+    by (eapply (rel_sub_under_ctx_restrict HΓ' HΓ' HΓdm (per_ctx_env_of_def_sub HΓ Hτj HB HM));
+        [ tauto | intros ? ? []; assumption | exact Hσ ]).
+  assert (Hσm : Γ' ⊨ˢ σ ≈ σ' : Γ ▹ₘ U[τ]ᵘ)
+    by (eapply (rel_sub_under_ctx_restrict HΓ' HΓ' HΓdm (per_ctx_env_of_mod_sub HΓ Hτj HU));
+        [ tauto | intros ? ? [[[Ht _] _ _] T1 T2]; constructor; assumption | exact Hσ ]).
+  destruct (sub_link_q_def Hτj Hl HB HM _ _ HΓ' _ _ Hσd _ (per_ctx_env_of_def HΔ HB HM) _ _ Hρ Hev) as [ed [Hed Ld]].
+  destruct (sub_link_q_mod Hτj Hl HU _ _ HΓ' _ _ Hσm _ (per_ctx_env_of_mod HΔ HU) _ _ Hρ Hev) as [em [Hem Lm]].
+  assert (Q : env_eq em ed) by (eapply functional_eval_sub; eassumption).
+  assert (E : RΔd <~> per_env_extend_dm B M U RΔ)
+    by (eapply per_ctx_env_right_irrel; [ exact HΔd | exact (per_ctx_env_of_dm HΔ HB HM HU) ]).
+  exists ed; split; [ exact Hed |].
+  intros e2 He2; apply E.
+  exact (per_env_extend_dm_of_parts HΔ HU (Ld _ He2) (Lm _ He2) Q (fun _ => eq_refl)).
+Qed.
+
 (** ** Substitutions Built from Valid Parts *)
 
 Inductive gsub : ctx -> sub -> ctx -> Prop :=
@@ -515,6 +568,11 @@ Inductive gsub : ctx -> sub -> ctx -> Prop :=
     gsub Γ τ Δ -> Δ ⊨ B : Typeω@i -> Δ ⊨ M : B -> gsub Γ (τ ,, M[τ]) (Δ ▸ B ≔ M)
 | gsub_mod : forall Γ τ Δ U,
     gsub Γ τ Δ -> Δ ⊨ᵘ U ≈ U -> gsub Γ (τ ,,ₘ me_lit U[τ]ᵘ) (Δ ▹ₘ U)
+(** Extension by a definition with a module part: its term, and the
+    literal of its unit *)
+| gsub_dm : forall Γ τ Δ B i M U,
+    gsub Γ τ Δ -> Δ ⊨ B : Typeω@i -> Δ ⊨ M : B -> Δ ⊨ᵘ U ≈ U ->
+    gsub Γ (τ ,,ᵈ M[τ] ‖ me_lit U[τ]ᵘ) (Δ ▸ₘ B ≔ M ‖ U)
 | gsub_eq : forall Γ τ τ' Δ, gsub Γ τ Δ -> sb_eq τ τ' -> gsub Γ τ' Δ
 | gsub_q : forall Γ τ Δ B i,
     gsub Γ τ Δ -> Δ ⊨ B : Typeω@i -> gsub (Γ ▹ B[τ]) (q τ) (Δ ▹ B)
@@ -522,24 +580,34 @@ Inductive gsub : ctx -> sub -> ctx -> Prop :=
     gsub Γ τ Δ -> Δ ⊨ B : Typeω@i -> Δ ⊨ M : B -> gsub (Γ ▸ B[τ] ≔ M[τ]) (q τ) (Δ ▸ B ≔ M)
 | gsub_q_mod : forall Γ τ Δ U,
     gsub Γ τ Δ -> Δ ⊨ᵘ U ≈ U -> Γ ⊨ᵘ U[τ]ᵘ ≈ U[τ]ᵘ -> gsub (Γ ▹ₘ U[τ]ᵘ) (q τ) (Δ ▹ₘ U)
+(** Under a definition with a module part *)
+| gsub_q_dm : forall Γ τ Δ B i M U,
+    gsub Γ τ Δ -> Δ ⊨ B : Typeω@i -> Δ ⊨ M : B -> Δ ⊨ᵘ U ≈ U -> Γ ⊨ᵘ U[τ]ᵘ ≈ U[τ]ᵘ ->
+    gsub (Γ ▸ₘ B[τ] ≔ M[τ] ‖ U[τ]ᵘ) (q τ) (Δ ▸ₘ B ≔ M ‖ U)
 | gsub_comp : forall Γ Γ0 τ σ Δ,
     gsub Γ0 τ Δ -> ⊨ Γ -> Γ ⊨ˢ σ ≈ σ : Γ0 -> sub_link Γ Γ0 σ -> gsub Γ (τ ⨟ σ) Δ.
 
 Lemma gsub_props : forall {Γ τ Δ}, gsub Γ τ Δ -> Γ ⊨ˢ τ ≈ τ : Δ /\ sub_link Γ Δ τ.
 Proof.
   induction 1 as [? HΓ | ? ? ? ? ? ? ? [IH1 IH2] HB HN | ? ? ? ? ? ? ? [IH1 IH2] HB HM
-                 | ? ? ? ? ? [IH1 IH2] HU | ? ? ? ? ? [IH1 IH2] Eq | ? ? ? ? ? ? [IH1 IH2] HB
-                 | ? ? ? ? ? ? ? [IH1 IH2] HB HM | ? ? ? ? ? [IH1 IH2] HU _ | ? ? ? ? ? ? [IH1 IH2] _ Hσ Hl ].
+                 | ? ? ? ? ? [IH1 IH2] HU | ? ? ? ? ? ? ? ? [IH1 IH2] HB HM HU | ? ? ? ? ? [IH1 IH2] Eq
+                 | ? ? ? ? ? ? [IH1 IH2] HB
+                 | ? ? ? ? ? ? ? [IH1 IH2] HB HM | ? ? ? ? ? [IH1 IH2] HU _
+                 | ? ? ? ? ? ? ? ? [IH1 IH2] HB HM HU _ | ? ? ? ? ? ? [IH1 IH2] _ Hσ Hl ].
   - split; [ exact (rel_sub_id (rel_ctx_wf_per_ctx_env HΓ)) | exact sub_link_id ].
   - split; [ eapply rel_sub_under_ctx_extend; eassumption | eapply sub_link_ass; eassumption ].
   - split; [ eapply rel_sub_under_ctx_extend_sub_def; eassumption | eapply sub_link_def; eassumption ].
   - destruct HU as [HU _ _].
     split; [ exact (rel_sub_under_ctx_extend_mod IH1 HU) | eapply sub_link_mod; eassumption ].
+  - destruct HU as [HU _ _].
+    split; [ eapply rel_sub_under_ctx_extend_dm; eassumption | eapply sub_link_dm; eassumption ].
   - split; [ exact (rel_sub_under_ctx_sb_eq IH1 Eq Eq) | exact (sub_link_sb_eq Eq IH2) ].
   - split; [ exact (rel_sub_under_ctx_q IH1 HB) | exact (sub_link_q IH1 IH2 HB) ].
   - split; [ exact (rel_sub_under_ctx_q_def IH1 HB HM) | exact (sub_link_q_def IH1 IH2 HB HM) ].
   - destruct HU as [HU _ _].
     split; [ exact (rel_sub_under_ctx_q_mod IH1 HU) | exact (sub_link_q_mod IH1 IH2 HU) ].
+  - destruct HU as [HU _ _].
+    split; [ exact (rel_sub_under_ctx_q_dm IH1 HB HM HU) | exact (sub_link_q_dm IH1 IH2 HB HM HU) ].
   - split; [ exact (rel_sub_compose_of_link IH1 IH2 _ _ _ Hσ) | exact (sub_link_comp IH1 IH2 Hσ Hl) ].
 Qed.
 

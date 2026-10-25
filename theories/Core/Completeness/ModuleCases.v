@@ -47,18 +47,20 @@ Section Slots.
   #[local] Abbreviation valid_slots := (ValidUnit.valid_slots Θm Ξm).
 
 Lemma valid_slots_nil : valid_slots nil.
-Proof. unfold ValidUnit.valid_slots; intros Γ1 U Γ0 H; destruct Γ1; discriminate. Qed.
+Proof. unfold ValidUnit.valid_slots; intros Γ1 e U Γ0 H; destruct Γ1; discriminate. Qed.
 
 Lemma valid_slots_tail : forall e Γ, valid_slots (e :: Γ) -> valid_slots Γ.
-Proof. unfold ValidUnit.valid_slots; intros * H Γ1 U Γ0 ->; exact (H (e :: Γ1) U Γ0 eq_refl). Qed.
+Proof. unfold ValidUnit.valid_slots; intros * H Γ1 e0 U Γ0 ->; exact (H (e :: Γ1) e0 U Γ0 eq_refl). Qed.
 
 Lemma valid_slots_app_r : forall Ψ Γ, valid_slots (Ψ ++ Γ) -> valid_slots Γ.
-Proof. unfold ValidUnit.valid_slots; intros * H Γ1 U Γ0 ->; apply (H (Ψ ++ Γ1)); rewrite app_assoc; reflexivity. Qed.
+Proof. unfold ValidUnit.valid_slots; intros * H Γ1 e0 U Γ0 ->; apply (H (Ψ ++ Γ1)); rewrite app_assoc; reflexivity. Qed.
 
-Lemma valid_slots_cons : forall e Γ, valid_slots Γ -> (forall U, e = ce_mod U -> valid_unit Γ (me_lit U)) -> valid_slots (e :: Γ).
+Lemma valid_slots_cons : forall e Γ, valid_slots Γ -> (forall U, centry_unit e = Some U -> valid_unit Γ (me_lit U)) ->
+    valid_slots (e :: Γ).
 Proof.
-  unfold ValidUnit.valid_slots; intros * H He [| e1 Γ1] U Γ0 Heq; cbn in Heq; injection Heq as -> Heq; [ subst; exact (He _ eq_refl) |].
-  exact (H _ _ _ Heq).
+  unfold ValidUnit.valid_slots; intros * H He [| e1 Γ1] e0 U Γ0 Heq Hu; cbn in Heq; injection Heq as -> Heq;
+    [ subst; exact (He _ Hu) |].
+  exact (H _ _ _ _ Heq Hu).
 Qed.
 
 Lemma valid_slots_ass : forall Γ A, valid_slots Γ -> valid_slots (Γ ▹ A).
@@ -68,6 +70,9 @@ Lemma valid_slots_def : forall Γ A M, valid_slots Γ -> valid_slots (Γ ▸ A �
 Proof. intros * H; apply valid_slots_cons; [ exact H | discriminate ]. Qed.
 
 Lemma valid_slots_mod : forall Γ U, valid_slots Γ -> valid_unit Γ (me_lit U) -> valid_slots (Γ ▹ₘ U).
+Proof. intros * H HU; apply valid_slots_cons; [ exact H | intros U0 [= <-]; exact HU ]. Qed.
+
+Lemma valid_slots_dm : forall Γ A M U, valid_slots Γ -> valid_unit Γ (me_lit U) -> valid_slots (Γ ▸ₘ A ≔ M ‖ U).
 Proof. intros * H HU; apply valid_slots_cons; [ exact H | intros U0 [= <-]; exact HU ]. Qed.
 
 (** A valid unit stays valid one entry further in. *)
@@ -81,8 +86,10 @@ Qed.
 (** The unit of a slot of a valid context is valid there. *)
 Lemma slot_valid_unit : forall Γ x U, Γ ∋ #x ≔ₘ U -> ⊨ Γ -> ⊢ Θm ⍮ Ξm ⍮ Γ -> valid_slots Γ -> valid_unit Γ (me_lit U).
 Proof.
-  induction 1 as [U0 Γ0 | n U1 Γ0 e Hl IH]; intros HC Hw Hok.
-  - pose proof (valid_unit_shift _ _ _ (Hok nil U0 Γ0 eq_refl : valid_unit Γ0 (me_lit U0)) HC Hw) as H.
+  induction 1 as [U0 Γ0 | U0 A M Γ0 | n U1 Γ0 e Hl IH]; intros HC Hw Hok.
+  - pose proof (valid_unit_shift _ _ _ (Hok nil _ U0 Γ0 eq_refl eq_refl : valid_unit Γ0 (me_lit U0)) HC Hw) as H.
+    cbn [modexp_sub] in H; rewrite gunit_sub_of_wk in H; exact H.
+  - pose proof (valid_unit_shift _ _ _ (Hok nil _ U0 Γ0 eq_refl eq_refl : valid_unit Γ0 (me_lit U0)) HC Hw) as H.
     cbn [modexp_sub] in H; rewrite gunit_sub_of_wk in H; exact H.
   - pose proof (valid_unit_shift _ _ _ (IH (rel_ctx_wf_tail HC) (ctx_decomp_tail Hw) (valid_slots_tail _ _ Hok)) HC Hw) as H.
     cbn [modexp_sub] in H; rewrite gunit_sub_of_wk in H; exact H.
@@ -261,9 +268,9 @@ Lemma rel_unit_under_ctx_flatten : forall Γ Δ Δ' D,
     valid_unit Γ (me_lit (gu_mk Δ (md_alias (me_lit (gu_mk Δ' D))))) /\ valid_unit Γ (me_lit (gu_mk (Δ' ++ Δ) D)).
 Proof.
   intros * Hu Ha HΓ HΔΓ HK.
-  pose proof (rel_lit_flatten _ _ Hgm Hgf _ _ _ _ Ha HK) as HR.
+  pose proof (rel_lit_flatten Hgw _ _ Hgm Hsub Hgf _ _ _ _ Ha HK) as HR.
   pose proof (valid_unit_rel _ _ Hgf _ _ HK) as HV.
-  pose proof (valid_unit_abs _ _ Hgm Hgf _ _ _ HK Ha) as HK'; cbn [gunit_abs] in HK'.
+  pose proof (valid_unit_abs Hgw _ _ Hgm Hsub Hgf _ _ _ HK Ha) as HK'; cbn [gunit_abs] in HK'.
   pose proof (wf_me_lit _ _ _ _ _ (wf_unit_eq_trans _ _ _ _ _ _ Hu (wf_unit_eq_sym _ _ _ _ _ Hu))) as Hw.
   split; [ constructor; [ exact HR | apply rel_unit_wf_alias; assumption | exact (ruu_right _ _ _ (valid_unit_lit_unit Hgw _ _ Hgm Hsub _ _ HK')) ] |].
   split; [| exact HK' ].
@@ -278,14 +285,14 @@ Lemma rel_unit_under_ctx_body : forall Γ Δ Δ' Φ Φ' Φx Φx',
     Γ ⊨ˣ Δ ≈ Δ' -> ⊨ Γ ->
     ⊨ (body_ctx Φx ++ Δ) ++ Γ -> valid_slots ((body_ctx Φx ++ Δ) ++ Γ) ->
     ⊨ (body_ctx Φx' ++ Δ') ++ Γ -> valid_slots ((body_ctx Φx' ++ Δ') ++ Γ) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-      gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+      gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
       (exists i, Δ ++ Γ ⊨ A[σ] ≈ A'[σ'] : Typeω@i) /\ Δ ++ Γ ⊨ M[σ] ≈ M'[σ'] : A[σ]) ->
-    (forall y Φ0 pv U Φ0' pv' U' σ σ',
-      gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+    (forall y Φ0 E U Φ0' E' U' σ σ',
+      gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
       Δ ++ Γ ⊨ᵐ me_lit U[σ]ᵘ ≈ me_lit U'[σ']ᵘ) ->
     (forall k Φ0 H Φ0' H' σ σ',
@@ -306,19 +313,20 @@ Proof.
     by (rewrite (body_xp_names _ _ _ _ _ Hx'), <- (body_shape_names _ _ Hs); exact Hnd).
   assert (Hk : forall k Ψo H, nth_error (body_opens Φ Φx) k = Some (Ψo, H) ->
              Ψo ++ Δ ++ Γ ⊨ᵐ H ≈ H /\ kinds_ok Θm Ξm (Ψo ++ Δ ++ Γ) H)
-    by (intros * Hn; destruct (Ho _ _ _ Hn) as [HV HS]; exact (conj HV (valid_modexp_kinds _ _ Hgm Hgf _ _ HS))).
+    by (intros * Hn; destruct (Ho _ _ _ Hn) as [HV HS]; exact (conj HV (valid_modexp_kinds _ _ Hgw Hgm Hgf Hsub _ _ HS))).
   assert (Hk' : forall k Ψo H, nth_error (body_opens Φ' Φx') k = Some (Ψo, H) ->
              Ψo ++ Δ' ++ Γ ⊨ᵐ H ≈ H /\ kinds_ok Θm Ξm (Ψo ++ Δ' ++ Γ) H)
-    by (intros * Hn; destruct (Ho' _ _ _ Hn) as [HV HS]; exact (conj HV (valid_modexp_kinds _ _ Hgm Hgf _ _ HS))).
+    by (intros * Hn; destruct (Ho' _ _ _ Hn) as [HV HS]; exact (conj HV (valid_modexp_kinds _ _ Hgw Hgm Hgf Hsub _ _ HS))).
   pose proof (rel_lit_body _ _ _ _ _ _ _ _ _ HΔ Ha Ha' Hl Hx Hx' Hs Hsx Hsx' Hsw Hsw' HndX HndX' HC HC' HD HU HO Hk Hk') as HR.
   pose proof (wf_me_lit _ _ _ _ _ (wf_unit_eq_trans _ _ _ _ _ _ Hu (wf_unit_eq_sym _ _ _ _ _ Hu))) as Hw.
   pose proof (wf_me_lit _ _ _ _ _ (wf_unit_eq_trans _ _ _ _ _ _ (wf_unit_eq_sym _ _ _ _ _ Hu) Hu)) as Hw'.
   assert (Hslots : forall Φx0 Δ0, valid_slots (body_ctx Φx0 ++ Δ0 ++ Γ) -> gm_nopens Φx0 = 0 ->
-             forall y Φ0 pv U, gm_prefix_upto Φx0 y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
+             forall y Φ0 E U, gm_prefix_upto Φx0 y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
              valid_unit (body_ctx Φ0 ++ Δ0 ++ Γ) (me_lit U)).
-  { intros * Hok Hn * Hp.
-    destruct (prefix_body_ctx _ _ _ Hn Hp) as [X HX]; cbn [body_ctx] in HX.
-    apply (Hok X U); rewrite HX, <- app_assoc; reflexivity. }
+  { intros * Hok Hn * Hp HEu.
+    destruct (prefix_body_ctx _ _ _ Hn Hp) as [X HX].
+    destruct (body_ctx_unit Φ0 y _ _ HEu) as (e & He & Heu); rewrite He in HX.
+    apply (Hok X e U); [ rewrite HX, <- app_assoc; reflexivity | exact Heu ]. }
   split; [ constructor; [ exact HR | | ] |].
   - eapply rel_unit_wf_body; [ exact Ha | exact (body_xp_target Hgw _ _ Hgm Hsub _ _ _ Hx) | exact Hsw | exact Hsx | exact HC |].
     intros * Hn; exact (proj1 (Ho _ _ _ Hn)).
@@ -397,17 +405,17 @@ Lemma rel_unit_under_ctx_body_of_emb : forall Θ Ξ Θ2 Ξ2 Γ Δ Δ' Φ Φ' Φx
     @valid_slots (gc_mk Θ2 Ξ2) Θ Ξ ((body_ctx Φx ++ Δ) ++ Γ) ->
     @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ (body_ctx Φx' ++ Δ') (body_ctx Φx' ++ Δ') ->
     @valid_slots (gc_mk Θ2 Ξ2) Θ Ξ ((body_ctx Φx' ++ Δ') ++ Γ) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-      gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+      gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ A[σ] ≈ A'[σ'] : Typeω@(lv y)) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-      gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+      gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ M[σ] ≈ M'[σ'] : A[σ]) ->
-    (forall y Φ0 pv U Φ0' pv' U' σ σ',
-      gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+    (forall y Φ0 E U Φ0' E' U' σ σ',
+      gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+      gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
       gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ᵘ U[σ]ᵘ ≈ U'[σ']ᵘ) ->
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ ⊨ᵐ H ≈ H) ->
     (forall k Ψ' H', nth_error (body_opens Φ' Φx') k = Some (Ψ', H') -> Θ ⍮ Ξ ⍮ Ψ' ++ Δ' ++ Γ ⊨ᵐ H' ≈ H') ->
@@ -426,9 +434,9 @@ Proof.
   change (gc_sub Θ Ξ (@gc_deps (gc_mk Θ2 Ξ2)) (@gc_stack (gc_mk Θ2 Ξ2))) in Hsub.
   apply (@rel_unit_under_ctx_body (gc_mk Θ2 Ξ2) Hgw _ _ (vem_wf _ _ _ _ He) Hsub (vem_filed _ _ _ _ He)
            _ _ _ _ _ _ _ Hu Hx Hx' HΔ HΓ (rxu_left _ _ _ HC) HokC (rxu_left _ _ _ HC') HokC'); try assumption.
-  - intros * Hp Hp' Hf Hf'; split; [ eexists; exact (sea_rel (HA _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf Hf' _ _ He)) |].
-    exact (sea_rel (HM _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf Hf' _ _ He)).
-  - intros * Hp Hp' Hf Hf'; exact (ruu_lit _ _ _ (sna_rel (HU _ _ _ _ _ _ _ _ _ Hp Hp' Hf Hf' _ _ He))).
+  - intros * Hp HE Hp' HE' Hf Hf'; split; [ eexists; exact (sea_rel (HA _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf' _ _ He)) |].
+    exact (sea_rel (HM _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf' _ _ He)).
+  - intros * Hp HE Hp' HE' Hf Hf'; exact (ruu_lit _ _ _ (sna_rel (HU _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf Hf' _ _ He))).
   - intros * Hk Hk' Hf Hf'; exact (sma_rel (HO _ _ _ _ _ _ _ Hk Hk' Hf Hf' _ _ He)).
   - intros * Hk; destruct (Ho _ _ _ Hk _ _ He) as [_ HV HS _]; exact (conj HV HS).
   - intros * Hk; destruct (Ho' _ _ _ Hk _ _ He) as [_ HV HS _]; exact (conj HV HS).
@@ -441,19 +449,19 @@ Lemma sem_unit_eq_body :
      Θ ⍮ Ξ ⍮ Γ ⊨ˣ Δ ≈ Δ' ->
      Θ ⍮ Ξ ⍮ Γ ⊨ˣ body_ctx Φx ++ Δ ≈ body_ctx Φx ++ Δ ->
      Θ ⍮ Ξ ⍮ Γ ⊨ˣ body_ctx Φx' ++ Δ' ≈ body_ctx Φx' ++ Δ' ->
-     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ A[σ] ≈ A'[σ'] : Typeω@(lv y)) ->
-     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ M[σ] ≈ M'[σ'] : A[σ]) ->
-     (forall y Φ0 pv U Φ0' pv' U' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+     (forall y Φ0 E U Φ0' E' U' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ ++ Γ ⊨ᵘ U[σ]ᵘ ≈ U'[σ']ᵘ) ->
      (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ ⊨ᵐ H ≈ H) ->
@@ -591,7 +599,7 @@ Lemma sem_me_delta_sel :
 Proof.
   intros * HH Hm Hmd; sem_intro; try assumption;
     assert (Hc : Γ ⊨ᵐ me_mem H y ≈ ds_unit Rm /\ valid_unit Θ Ξ Γ (ds_unit Rm))
-      by (eapply (valid_modexp_canon _ _ Hgm Hgf); eassumption).
+      by (eapply valid_modexp_canon; eassumption).
   - exact (proj1 Hc).
   - exact (valid_modexp_of_valid_unit _ _ Hgf _ _ (proj2 Hc)).
 Qed.
@@ -631,7 +639,7 @@ Lemma sem_mem :
      Θ ⍮ Ξ ⍮ Γ ⊨ a_mem H x : A ).
 Proof.
   intros * HH Hm Ht _ _; sem_intro; [ assumption |].
-  assert (Hsm : valid_mem Γ H x A (ds_red R)) by (eapply (proj2 (valid_unit_mem_all _ _ Hgm Hgf)); eassumption).
+  assert (Hsm : valid_mem Γ H x A (ds_red R)) by (eapply (proj2 (valid_unit_mem_all Hgw _ _ Hgm Hsub Hgf)); eassumption).
   exact (rel_mem_of_valid_mem _ _ _ _ _ _ HH Hsm).
 Qed.
 
@@ -645,7 +653,7 @@ Lemma sem_exp_eq_mem_cong :
      Θ ⍮ Ξ ⍮ Γ ⊨ a_mem H x ≈ a_mem H' x : A ).
 Proof.
   intros * HH Hm Ht Hm' Ht' _; sem_intro; [ assumption |].
-  assert (Hsm : valid_mem Γ H x A (ds_red R)) by (eapply (proj2 (valid_unit_mem_all _ _ Hgm Hgf)); eassumption).
+  assert (Hsm : valid_mem Γ H x A (ds_red R)) by (eapply (proj2 (valid_unit_mem_all Hgw _ _ Hgm Hsub Hgf)); eassumption).
   apply rel_exp_under_ctx_sym.
   exact (rel_mem_of_valid_mem _ _ _ _ _ _ (rel_modexp_under_ctx_sym HH) Hsm).
 Qed.
@@ -658,7 +666,7 @@ Lemma sem_exp_eq_mem_delta :
      Θ ⍮ Ξ ⍮ Γ ⊨ a_mem H x ≈ M : A ).
 Proof.
   intros * HH Hm Ht Hr; sem_intro; [ assumption |].
-  assert (Hsm : valid_mem Γ H x A (ds_red R)) by (eapply (proj2 (valid_unit_mem_all _ _ Hgm Hgf)); eassumption).
+  assert (Hsm : valid_mem Γ H x A (ds_red R)) by (eapply (proj2 (valid_unit_mem_all Hgw _ _ Hgm Hsub Hgf)); eassumption).
   rewrite Hr in Hsm.
   exact (rel_mem_red_of_valid_mem _ _ _ _ _ _ HH Hsm).
 Qed.

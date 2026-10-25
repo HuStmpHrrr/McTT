@@ -48,7 +48,7 @@ Section Cook.
     intros * HT%completeness_fundamental_exp.
     destruct (rel_exp_of_typ_inversion_simple HT) as [env_rel [Hnil H]].
     apply H.
-    inversion Hnil as [? Heq | | |]; subst.
+    inversion Hnil as [? Heq | | | |]; subst.
     apply Heq; exact I.
   Qed.
 

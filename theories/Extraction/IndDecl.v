@@ -116,6 +116,7 @@ with centry_mvcb (n : nat) (e : centry) {struct e} : bool :=
   | ce_ass A => exp_mvcb n A
   | ce_def A M => exp_mvcb n A && exp_mvcb n M
   | ce_mod U => gunit_mvcb n U
+  | ce_dm A M U => exp_mvcb n A && exp_mvcb n M && gunit_mvcb n U
   end.
 
 (** The uniform parameters of an eliminator, decided by the inner
@@ -877,8 +878,8 @@ Section Judgments.
       destruct (check_ctx fctx_none Θ Ξ HΞ Γ) as [HΓ | HnΓ]; [ left; constructor; exact HΓ | right; intros H ].
       apply HnΓ; exact (presup_ext_eq_ctx H).
     - pose proof (List.Forall_inv_tail Hass) as Hass'.
-      destruct e as [A | A M | U]; [| exfalso; destruct (List.Forall_inv Hass) as [? [=]] | exfalso; destruct (List.Forall_inv Hass) as [? [=]] ].
-      destruct Ψ' as [| [A' | A' M' | U'] Ψ0']; try (right; intros H; inversion H; fail).
+      destruct e as [A | A M | U | A M U]; [| exfalso; destruct (List.Forall_inv Hass) as [? [=]] .. ].
+      destruct Ψ' as [| [A' | A' M' | U' | A' M' U'] Ψ0']; try (right; intros H; inversion H; fail).
       destruct (ext_eq_dec Γ Ψ0 Ψ0' Hass') as [Hr | Hr]; [| right; intros H; apply Hr; inversion H; assumption ].
       destruct (typ_least_dec (Ψ0 ++ Γ) A) as [[lA [HA HAm]] | HnA];
         [| right; intros H; destruct (ext_eq_ass_inv _ _ _ _ _ _ _ H) as (i & _ & HA & _); exact (HnA _ HA) ].
@@ -995,7 +996,7 @@ Section NilDecide.
   Proof.
     destruct (members_dec D (fun _ Mk => forall Δ1 e Δ2, im_nparams Mk = Δ1 ++ e :: Δ2 -> forall T, e = ce_ass T ->
                 Θ ⍮ Ξ ⍮ Δ2 ++ ind_uparams D ⊢ T : (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ)) as [H | H].
-    - intros k Mk _; apply forall_split_dec; intros Δ1 [T | T M | U] Δ2 _; [| left; intros ? [=] .. ].
+    - intros k Mk _; apply forall_split_dec; intros Δ1 [T | T M | U | T M U] Δ2 _; [| left; intros ? [=] .. ].
       destruct (check_exp_at Θ Ξ HΞ (Δ2 ++ ind_uparams D) (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ T) as [HT | HT];
         [ left; intros ? [= <-]; exact HT | right; intros H; exact (HT (H T eq_refl)) ].
     - left; intros k Mk Δ1 T Δ2 Hk E; exact (H k Mk Hk Δ1 _ Δ2 E T eq_refl).
@@ -1922,13 +1923,14 @@ Section Classify.
       first. *)
   Fixpoint nbe_tele_dec (Γ : ctx) (Δ : ctx) {struct Δ} : {Δ' | nbe_tele Θ Ξ Γ Δ Δ'} + {forall Δ', ~ nbe_tele Θ Ξ Γ Δ Δ'}.
   Proof.
-    destruct Δ as [| [A | A M | U] Δ0].
+    destruct Δ as [| [A | A M | U | A M U] Δ0].
     - left; exists nil; constructor.
     - destruct (nbe_tele_dec Γ Δ0) as [[Δ0' H0] | H0]; [| right; intros Δ' H; inversion H; subst; eapply H0; eassumption ].
       destruct (typ_least_dec Θ Ξ HΞ (Δ0 ++ Γ) A) as [[i [HA _]] | HnA];
         [| right; intros Δ' H; inversion H as [| ? ? ? ? [i HA] _ _]; subst; exact (HnA _ HA) ].
       destruct (@nbe_ty_impl Θ Ξ (fctx_none Θ Ξ) (Δ0 ++ Γ) A (typ_nbe_ty_order Θ Ξ _ _ _ HA)) as [W HW].
       left; exists (ce_ass (nf_to_exp W) :: Δ0'); constructor; [ exists i; exact HA | exact HW | exact H0 ].
+    - right; intros Δ' H; inversion H.
     - right; intros Δ' H; inversion H.
     - right; intros Δ' H; inversion H.
   Defined.
@@ -2037,7 +2039,7 @@ Lemma gds_equiv_mdenote_all : forall Θ Θ' Ξ, gds_equiv Θ Θ' ->
     (forall Γ o U R, udenote Θ Ξ Γ o U R -> udenote Θ' Ξ Γ o U R) /\
     (forall Γ o E R, edenote Θ Ξ Γ o E R -> edenote Θ' Ξ Γ o E R) /\
     (forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> body_xp Θ' Ξ Γ Φ Φx) /\
-    (forall g Γ H its gs, items_gen Θ Ξ g Γ H its gs -> items_gen Θ' Ξ g Γ H its gs).
+    (forall Γ H its gs, items_gen Θ Ξ Γ H its gs -> items_gen Θ' Ξ Γ H its gs).
 Proof.
   intros * He.
   assert (Hu : forall H, gc_unit Θ Ξ H = gc_unit Θ' Ξ H).

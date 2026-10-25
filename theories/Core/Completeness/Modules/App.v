@@ -70,7 +70,7 @@ Proof.
   destruct (udenote_beta _ _ (wf_gstack_closed _ _ Hgm) _ _ _ _ N _ HΓs HUs Hu) as (R1 & Ha1 & Hu1).
   split; [ eapply lit_params_lacks; exact HX |].
   exists R1; split; [ exact Ha1 |]; split; [| split; [ exact HK' | split; [ apply dn_lit; exact Hu1 | apply ds_is_mod_mod; eapply udenote_is_mod; exact Hu1 ] ] ].
-  exact (rel_modexp_under_ctx_beta _ _ _ _ _ _ HΓ (valid_unit_rel _ _ Hgf _ _ HK) (valid_unit_links_unabs1 _ _ Hgm Hgf _ _ _ _ HK) HX HN).
+  exact (rel_modexp_under_ctx_beta _ _ _ _ _ _ HΓ (valid_unit_rel _ _ Hgf _ _ HK) (valid_unit_links_unabs1 Hgw _ _ Hgm Hsub Hgf _ _ _ _ HK) HX HN).
 Qed.
 
 Lemma app_wf : forall Γ H R T B T1 i N, Θm ⍮ Ξm ⍮ Γ ⊢ᵐ H ≈ H -> mdenote Θm Ξm Γ H R ->

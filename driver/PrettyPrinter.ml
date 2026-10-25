@@ -930,7 +930,7 @@ let exp_to_obj =
       List.fold_left
         (fun (ctx, ps) ce ->
           let ty = match ce with
-            | Coq_ce_ass a | Coq_ce_def (a, _) -> impl ctx a
+            | Coq_ce_ass a | Coq_ce_def (a, _) | Coq_ce_dm (a, _, _) -> impl ctx a
             | Coq_ce_mod _ -> Cst.Coq_var "_" in
           let px = match ce with
             | Coq_ce_ass (Coq_a_typ _ | Coq_a_univ _) | Coq_ce_def ((Coq_a_typ _ | Coq_a_univ _), _) -> new_tyvar ()
@@ -981,7 +981,7 @@ let exp_to_obj =
         let px = match List.nth_opt given (n - 1 - i), ce with
           | Some (Some y), _ -> y
           | _, (Coq_ce_ass (Coq_a_typ _ | Coq_a_univ _) | Coq_ce_def ((Coq_a_typ _ | Coq_a_univ _), _)) -> new_tyvar ()
-          | _, Coq_ce_mod _ -> new_mod ()
+          | _, (Coq_ce_mod _ | Coq_ce_dm _) -> new_mod ()
           | _ -> new_var () in
         (i + 1, px :: names))
       (0, []) (List.rev delta))
@@ -1353,9 +1353,7 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
           | Some (fp, ch) -> fprintf f "@[<hov 2>Error: %a is not a member@]" pp_u (string_of_qpath fp (ch @ [n]))
           | None -> fprintf f "@[<hov 2>Error:@ %a@ is not a member@]" format_exp (Coq_a_mem (h, n)))
       | Coq_xe_both n -> fprintf f "@[<hov 2>Error: %s is used and exported@]" n
-      | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n
-      | Coq_xe_ind n -> fprintf f "@[<hov 2>Error: an inductive type cannot be opened in a local module: %s@]" n
-      | Coq_xe_record n -> fprintf f "@[<hov 2>Error: a record type cannot be opened: %s@]" n)
+      | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n)
   | Coq_re_branch_arity (c, n, k, a, r) ->
      let count n one many = Printf.sprintf "%d %s" n (if n = 1 then one else many) in
      let parts =

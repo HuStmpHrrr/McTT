@@ -21,6 +21,7 @@ Proof.
   intros * HΓ Hx; induction Hx.
   - destruct (ctx_decomp_mod HΓ) as [HΓ' HU].
     eapply wk_preserves_unit; [ exact HU | apply wf_wk_shift; exact HΓ ].
+  - eapply wk_preserves_unit; [ exact (ctx_decomp_dm_unit HΓ) | apply wf_wk_shift; exact HΓ ].
   - match goal with HΓ : ⊢ _ ⍮ _ ⍮ ?e :: ?G |- _ =>
       assert (⊢ Θ ⍮ Ξ ⍮ G) as HΓ' by (eapply (ctx_app_wf_tail _ _ (e :: nil)); exact HΓ) end.
     eapply wk_preserves_unit; [ eauto | apply wf_wk_shift; exact HΓ ].
@@ -30,7 +31,7 @@ Qed.
 
 Lemma ext_of_ctx : forall Θ Ξ X Γ, ⊢ Θ ⍮ Ξ ⍮ X ++ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ X ≈ X.
 Proof.
-  induction X as [| [A | A M | U] X IH]; intros * H; cbn in H.
+  induction X as [| [A | A M | U | A M U] X IH]; intros * H; cbn in H.
   - constructor; exact H.
   - inversion H; subst.
     match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : Typeω@?i |- _ =>
@@ -43,6 +44,12 @@ Proof.
   - inversion H; subst.
     match goal with HU : _ ⍮ _ ⍮ X ++ Γ ⊢ᵘ U ≈ U |- _ =>
       eapply wf_ext_eq_mod; [ apply IH; eauto using presup_unit_eq_ctx | exact HU | exact HU ] end.
+  - inversion H; subst.
+    match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : Typeω@?i, HM : _ ⍮ _ ⍮ X ++ Γ ⊢ M : A,
+                    HU : _ ⍮ _ ⍮ X ++ Γ ⊢ᵘ U ≈ U |- _ =>
+      eapply wf_ext_eq_dm;
+        [ apply IH; eauto using presup_exp_ctx | exact HA | eapply wf_exp_eq_refl; exact HA | exact HM
+        | eapply wf_exp_eq_refl; exact HM | exact HA | exact HM | exact HU | exact HU ] end.
 Qed.
 
 (** ** The Parts of a Well-Formed Unit *)

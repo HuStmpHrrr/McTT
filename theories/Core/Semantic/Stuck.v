@@ -141,7 +141,9 @@ with dstuck_la : list (nat * nat * domain_ne) -> Prop :=
 | dstuck_la_cons : forall k n m xs, dstuck_ne m -> dstuck_la xs -> dstuck_la ((k, n, m) :: xs)
 with destuck : dentry -> Prop :=
 | destuck_term : forall d, dstuck d -> destuck (de_term d)
-| destuck_mod : forall h, dmstuck h -> destuck (de_mod h).
+| destuck_mod : forall h, dmstuck h -> destuck (de_mod h)
+(** A term with a module part: both *)
+| destuck_dm : forall d h, dstuck d -> dmstuck h -> destuck (de_dm d h).
 
 Definition env_stuck (ρ : env) : Prop := forall x, destuck (env_entry ρ x).
 
@@ -171,6 +173,9 @@ Proof. intros * Hρ Hd [| x]; cbn; auto with mctt. Qed.
 
 Lemma env_stuck_extend_mod : forall ρ h, env_stuck ρ -> dmstuck h -> env_stuck (ρ ↦ᵐ h).
 Proof. intros * Hρ Hh [| x]; cbn; auto with mctt. Qed.
+
+Lemma env_stuck_extend_dm : forall ρ d h, env_stuck ρ -> dstuck d -> dmstuck h -> env_stuck (ρ ↦ᵈ d ‖ h).
+Proof. intros * Hρ Hd Hh [| x]; cbn; auto with mctt. Qed.
 
 Lemma env_stuck_var : forall ρ x, env_stuck ρ -> dstuck (ρ x).
 Proof. intros * H; unfold env_var; destruct (H x); auto with mctt. Qed.
@@ -232,7 +237,7 @@ Proof. intros; unfold dlvl_suc; constructor; apply dstuck_la_suc, dstuck_la_view
 Lemma dstuck_lvl_max : forall d e, dstuck d -> dstuck e -> dstuck (dlvl_max d e).
 Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_la_view; assumption. Qed.
 
-#[local] Hint Resolve env_stuck_nil env_stuck_extend env_stuck_extend_mod env_stuck_var env_stuck_mod
+#[local] Hint Resolve env_stuck_nil env_stuck_extend env_stuck_extend_mod env_stuck_extend_dm env_stuck_var env_stuck_mod
   env_stuck_args stuck_app_snoc dmstuck_global_nil env_stuck_entry : mctt.
 
 (** The level lemmas are [Hint Extern], keyed on the operation in the goal: as
@@ -461,6 +466,8 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
     (* the type of a recursive argument: the member at the shape's
        parameters after the uniform ones *)
     all: try solve [ apply dstuck_indty; intros a Ha; apply List.in_app_or in Ha as [Ha | Ha]; auto ].
+    (* a definition with a module part in a body: its term and its unit *)
+    all: try solve [ apply env_stuck_extend_dm; eauto 6 with mctt ].
     (* module arguments, one at a time *)
     all: match goal with IH : dmstuck ?h1 -> _ -> dmstuck ?r, IH1 : dmstuck ?h -> dstuck ?n -> dmstuck ?h1,
                       Ha : forall a, In a (cons ?n _) -> dstuck a |- dmstuck ?r =>

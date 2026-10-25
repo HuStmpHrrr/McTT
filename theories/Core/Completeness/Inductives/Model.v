@@ -198,7 +198,7 @@ Lemma rel_ext_under_ctx_ass_inv : forall Γ Ψ Ψ' A A', Γ ⊨ˣ Ψ ▹ A ≈ �
     exists i : nat, Ψ ++ Γ ⊨ A : Typeω@i /\ Ψ ++ Γ ⊨ A ≈ A' : Typeω@i /\ Ψ' ++ Γ ⊨ A' : Typeω@i.
 Proof.
   intros * [HL HR [R HRR]]; cbn [List.app] in HL, HR, HRR.
-  inversion HRR as [| ? ? i0 ? ? tail_rel head_rel ? HT _ Hhead _ | |]; subst.
+  inversion HRR as [| ? ? i0 ? ? tail_rel head_rel ? HT _ Hhead _ | | |]; subst.
   pose proof (rel_ctx_wf_tail HL) as HL0; pose proof (rel_ctx_wf_tail HR) as HR0.
   destruct (rel_ctx_wf_ass_inv HL) as [i1 HA]; destruct (rel_ctx_wf_ass_inv HR) as [i2 HA'].
   split; [ constructor; [ exact HL0 | exact HR0 | exists tail_rel; exact HT ] |].

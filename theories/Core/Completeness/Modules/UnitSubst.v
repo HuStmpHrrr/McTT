@@ -100,6 +100,26 @@ Proof.
                | eapply gsub_q_mod; [ exact Hg' | constructor; [ exact HU | exact HsU | exact HsU ] | exact HUU ] ].
     + injection Heq as <- ->.
       exact (IHC Ψ2 Ψ Δ eq_refl (ctx_decomp_tail HwC) _ _ Hg Hc).
+  - (* a definition with a module part: as a definition and as a slot *)
+    intros C A M U i R HC IHC HR HA HM HU HsU IHU Ψ2 Ψ Δ Heq HwC Γ τ Hg Hc.
+    destruct Ψ2 as [| e Ψ2]; cbn [List.app] in Heq.
+    + destruct Ψ as [| e Ψ]; cbn [List.app] in Heq |- *.
+      * subst Δ; split; [ exact (proj1 (gsub_sem Hg)) | exact Hg ].
+      * injection Heq as <- ->.
+        destruct (ctx_decomp_dm HwC) as (HwC0 & _ & _ & HwU0).
+        destruct (IHC nil Ψ Δ eq_refl HwC0 _ _ Hg Hc) as [HΓ' Hg'].
+        pose proof (rel_exp_under_ctx_gsub Hg' HA) as HA'; cbn in HA'.
+        pose proof (rel_exp_under_ctx_gsub Hg' HM) as HM'.
+        pose proof (rel_modexp_under_ctx_gsub Hg' HU) as HU'; cbn [modexp_sub] in HU'.
+        pose proof (IHU (wf_ctx_extend_mod _ _ _ _ HwU0) _ _ Hg' (sub_mod_compat_ext Ψ _ _ _ Hc)) as HsU'.
+        assert (HUU : tele_sub Ψ τ ++ Γ ⊨ᵘ U[sb_qn (length Ψ) τ]ᵘ ≈ U[sb_qn (length Ψ) τ]ᵘ)
+          by (constructor; [ exact HU' | exact HsU' | exact HsU' ]).
+        rewrite tele_sub_cons; cbn [centry_sub List.app].
+        split; [ eapply rel_ctx_wf_extend_dm; eassumption
+               | eapply gsub_q_dm; [ exact Hg' | exact HA | exact HM | constructor; [ exact HU | exact HsU | exact HsU ]
+                                   | exact HUU ] ].
+    + injection Heq as <- ->.
+      exact (IHC Ψ2 Ψ Δ eq_refl (ctx_decomp_tail HwC) _ _ Hg Hc).
   - (* a body unit *)
     intros C Δu Φ Φx HΔu Hx Hs Hsx HCx IHCx Ho HwU Γ τ Hg Hc.
     destruct (ctx_decomp_mod HwU) as [HwC HUU].

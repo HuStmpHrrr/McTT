@@ -61,7 +61,7 @@ Proof.
   rewrite !exp_sub_of_wk, !eval_wk_shift in *.
   (** The tail of [ρ1] is the initial environment of [Γ], where [M] has the
       normal form [W]. *)
-  inversion Hρ1 as [| ? ρ ? ? Hρ | |]; subst.
+  inversion Hρ1 as [| ? ρ ? ? Hρ | | |]; subst.
   change (drop_env (ρ ↦ ?x)) with ρ in *.
   inversion_clear Hn as [? ? ? Hρ' Ha' Hm' HW].
   functional_initial_env_rewrite_clear.

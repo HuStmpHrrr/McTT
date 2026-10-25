@@ -57,7 +57,7 @@ Section Members.
   Proof.
     intros * Hf Ha; inversion Hf; subst;
       match goal with Hn : eval_apps _ _ _ nil _ |- _ => inversion Hn; subst end;
-      [ eapply eval_sel_global | eapply eval_sel_global_neut | eapply eval_sel_global_ind | eapply eval_sel_global_def_mod
+      [ eapply eval_sel_global | eapply eval_sel_global_neut | eapply eval_sel_global_ind
       | eapply eval_sel_global_record ]; eassumption.
   Qed.
 
@@ -66,7 +66,7 @@ Section Members.
       exists f, dm_global p nil ·ₜ x Θ ⍮ Ξ ↘ f /\ $*| f & args | Θ ⍮ Ξ ↘ r.
   Proof.
     intros * H; inversion H; subst; eexists; split; try eassumption;
-      [ eapply eval_sel_global | eapply eval_sel_global_neut | eapply eval_sel_global_ind | eapply eval_sel_global_def_mod
+      [ eapply eval_sel_global | eapply eval_sel_global_neut | eapply eval_sel_global_ind
       | eapply eval_sel_global_record ]; eauto; constructor.
   Qed.
 
@@ -283,28 +283,6 @@ Section Members.
       apply (eval_modexp_noargs _ _ Hn _ _ Hs) in Hh as (hr & Hr & Hc).
       exists hr, r, nil; repeat split; [ assumption | | constructor | constructor ].
       apply eval_selc_app; [ discriminate |]; exists h; split; [ assumption | constructor; assumption ].
-  Qed.
-
-  (** ** Generalized Types and Bodies
-
-      A unit's member is generalized over the body before it, which become
-      [ℓ]/[ℓₘ] binders, and over the parameters, which become [Π]/[λ]
-      binders.  The [ℓ]-binders evaluate exactly as the body does. *)
-
-  Lemma eval_ctx_pi_body : forall Φ ρ ρ1 A a,
-      gm_nopens Φ = 0 -> ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ a -> ⟦ ctx_pi (body_ctx Φ) A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a.
-  Proof.
-    intros * Ho Hb; revert A a Ho; induction Hb; intros A0 a0 Ho HA; cbn in Ho |- *; [ assumption | | ].
-    - apply IHHb; [ exact Ho | econstructor; eassumption ].
-    - apply IHHb; [ exact Ho | econstructor; eassumption ].
-  Qed.
-
-  Lemma eval_ctx_fn_body : forall Φ ρ ρ1 M m,
-      gm_nopens Φ = 0 -> ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m -> ⟦ ctx_fn (body_ctx Φ) M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m.
-  Proof.
-    intros * Ho Hb; revert M m Ho; induction Hb; intros M0 m0 Ho HM; cbn in Ho |- *; [ assumption | | ].
-    - apply IHHb; [ exact Ho | econstructor; eassumption ].
-    - apply IHHb; [ exact Ho | econstructor; eassumption ].
   Qed.
 End Members.
 

@@ -251,6 +251,14 @@ with alg_ext : ctx -> ctx -> Prop :=
   `( Γ ⊢aˣ Ψ ->
      Ψ ++ Γ ⊢aᵘ U ->
      Γ ⊢aˣ Ψ ▹ₘ U )
+(** A definition with a module part: as a definition and as a module slot. *)
+| aext_dm :
+  `( Γ ⊢aˣ Ψ ->
+     Ψ ++ Γ ⊢a A ⟹ UA ->
+     is_univ_nf UA u ->
+     Ψ ++ Γ ⊢a M ⟸ A ->
+     Ψ ++ Γ ⊢aᵘ U ->
+     Γ ⊢aˣ Ψ ▸ₘ A ≔ M ‖ U )
 where "Γ '⊢aˣ' Ψ" := (alg_ext Γ Ψ) : type_scope
 with alg_unit : ctx -> gunit -> Prop :=
 (** A body: its parameters, and its entries, each read as it stands in the
@@ -286,12 +294,21 @@ with alg_body : ctx -> gmod -> gmod -> Prop :=
   `( Γ ⊢aᵇ Φ ⇝ Φx ->
      body_ctx Φx ++ Γ ⊢aᵘ U ->
      Γ ⊢aᵇ gm_ext Φ x (ge_mod pm U) ⇝ gm_ext Φx x (ge_mod pm U) )
+(** A definition with a module part: its term part as a definition, its
+    unit as a submodule. *)
+| abody_dm :
+  `( Γ ⊢aᵇ Φ ⇝ Φx ->
+     body_ctx Φx ++ Γ ⊢a A ⟹ UA ->
+     is_univ_nf UA u ->
+     body_ctx Φx ++ Γ ⊢a M ⟸ A ->
+     body_ctx Φx ++ Γ ⊢aᵘ U ->
+     Γ ⊢aᵇ gm_ext Φ x (ge_def_mod pv A M U) ⇝ gm_ext Φx x (ge_def_mod pv A M U) )
 | abody_open :
   `( Γ ⊢aᵇ Φ ⇝ Φx ->
      body_ctx Φx ++ Γ ⊢aᵐ H ->
      mdenote gc_deps gc_stack (body_ctx Φx ++ Γ) H R ->
      ds_mod R = Some Rm ->
-     items_gen gc_deps gc_stack false (body_ctx Φx ++ Γ) H its gs ->
+     items_gen gc_deps gc_stack (body_ctx Φx ++ Γ) H its gs ->
      items_ok its ->
      Γ ⊢aᵇ gm_open Φ H its ⇝ gens_append Φx 0 gs )
 where "Γ '⊢aᵇ' Φ ⇝ Φx" := (alg_body Γ Φ Φx) : type_scope

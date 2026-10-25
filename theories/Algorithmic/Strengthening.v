@@ -223,7 +223,7 @@ Proof.
     assert (⊢ (Δ ++ Γ)%list) by (eapply ctx_decomp_left; eassumption).
     assert (⊢ (tele_wk Δ ↑ ++ Γ ▹ A)%list) by (eapply ctx_decomp_left; eassumption).
     destruct (ctx_decomp HΓs) as [_ [iT HT]].
-    inversion Hρs as [| ? ρ0 ? t Hρs' Ht |  |]; subst.
+    inversion Hρs as [| ? ρ0 ? t Hρs' Ht | | |]; subst.
     destruct (IH _ _ _ _ Hass' ltac:(eassumption) ltac:(eassumption) Hctx Hρs') as [e He].
     exists e.
     assert (Hsucc : forall k (d : dentry) (r : env) m,

@@ -285,10 +285,11 @@ Section Desc.
 
 (** ** What the Submodules of Literals Denote *)
 
-(** A module of a body, filled in, over the parameters. *)
+(** A module part of a body, a module's or a definition with a module
+    part's, filled in, over the parameters. *)
 Lemma body_mod_desc : forall Γ Δ Φ Φx y R Rm, body_xp Θm Ξm (Δ ++ Γ) Φ Φx ->
     mdenote Θm Ξm Γ (me_mem (me_lit (gu_open Δ Φ)) y) R -> ds_mod R = Some Rm ->
-    exists Φ' pv U σ RU, gm_prefix_upto Φx y = Some (gm_ext Φ' y (ge_mod pv U)) /\ gm_fill Φ' = Some σ /\
+    exists Φ' E U σ RU, gm_prefix_upto Φx y = Some (gm_ext Φ' y E) /\ entry_unit E = Some U /\ gm_fill Φ' = Some σ /\
       udenote Θm Ξm (body_ctx Φ' ++ Δ ++ Γ) None U RU /\ Rm = ds_up Δ (ds_sub RU σ).
 Proof.
   intros * Hx Hm Hmd.
@@ -302,14 +303,21 @@ Proof.
   cbn in Hmd0; injection Hmd0 as <-.
   cbn in He; destruct (gm_prefix_upto Φx y) as [[| Φ' z E0 | ] |] eqn:Hp; try discriminate.
   pose proof (gm_prefix_name _ _ _ _ _ Hp) as ->.
-  destruct E0 as [[|] pv A0 [M0 |] | pv U | | |]; try discriminate; injection He as <- <- <-.
+  destruct E0 as [[|] pv A0 [M0 |] | pv U | | pv A0 M0 U |]; try discriminate; injection He as <- <- <-.
   - exfalso; inversion Hed; subst; cbn in Hr.
     destruct (gm_fill Φ'); cbn in Hr; [ injection Hr as <- | discriminate ]; cbn in Hmd; discriminate.
   - inversion Hed; subst.
     cbn in Hr; destruct (gm_fill Φ') as [σ |] eqn:Hf; cbn in Hr; [ injection Hr as <- | discriminate ].
     match goal with Hu : udenote _ _ _ _ _ _ |- _ => pose proof (udenote_is_mod _ _ _ _ _ _ Hu) as HmU end.
     rewrite (ds_is_mod_mod _ (ds_is_mod_up Δ _ (ds_is_mod_sub _ σ HmU))) in Hmd; injection Hmd as <-.
-    do 5 eexists; split; [ reflexivity | split; [ exact Hf | split; [ rewrite app_assoc; eassumption | reflexivity ] ] ].
+    do 5 eexists; split; [ reflexivity | split; [ reflexivity | split; [ exact Hf | split; [ rewrite app_assoc; eassumption | reflexivity ] ] ] ].
+  - (* a definition with a module part: its module part *)
+    inversion Hed; subst.
+    cbn in Hr; destruct (gm_fill Φ') as [σ |] eqn:Hf; cbn in Hr; [ injection Hr as <- | discriminate ].
+    match goal with Hu : udenote _ _ _ _ _ _ |- _ => pose proof (udenote_is_mod _ _ _ _ _ _ Hu) as HmU end.
+    cbn [ds_up ds_sub ds_mod] in Hmd.
+    rewrite (ds_is_mod_mod _ (ds_is_mod_up Δ _ (ds_is_mod_sub _ σ HmU))) in Hmd; injection Hmd as <-.
+    do 5 eexists; split; [ reflexivity | split; [ reflexivity | split; [ exact Hf | split; [ rewrite app_assoc; eassumption | reflexivity ] ] ] ].
 Qed.
 
 (** A submodule of an alias is its target's, over the parameters. *)
@@ -472,21 +480,22 @@ Qed.
 (** ** Modules of a Body *)
 
 (** A module of a valid body, against the module of the same name of any
-    body related to it: a module written in the body by its closure; one
-    a local open generates by its target, or its target's submodule, read
-    again past the entries before it. *)
+    body related to it, and likewise the module part of a definition with
+    one: a module written in the body by its closure; one a local open
+    generates by its target, or its target's submodule or the module part
+    of its target's member, read again past the entries before it. *)
 Lemma body_sel_mod : forall D Φ Φx, body_xp Θm Ξm D Φ Φx -> body_shape Φx Φx -> ⊨ body_ctx Φx ++ D ->
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Ψ ++ D ⊨ᵐ H ≈ H /\
-       forall n Rn, mdenote Θm Ξm (Ψ ++ D) (me_mem H n) Rn -> ds_is_mod Rn -> exists V, valid_sel (Ψ ++ D) H n V) ->
+       forall n Rn Rnm, mdenote Θm Ξm (Ψ ++ D) (me_mem H n) Rn -> ds_mod Rn = Some Rnm -> exists V, valid_sel (Ψ ++ D) H n V) ->
     forall RD ρ, EF D ≈ D ∈ per_ctx_env ↘ RD -> RD ρ ρ -> forall Φk, kbody gc_deps gc_stack ρ Φ Φk -> body_eq_upto_types Φk Φx ->
-    forall y Φx' pv Δy Dy, gm_prefix_upto Φx y = Some (gm_ext Φx' y (ge_mod pv (gu_mk Δy Dy))) ->
+    forall y Φx' E Δy Dy, gm_prefix_upto Φx y = Some (gm_ext Φx' y E) -> entry_unit E = Some (gu_mk Δy Dy) ->
     exists ρ' r, ⟦ Φx' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ' /\ ⟦ Δy ⊢ Dy ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ' ↘ r /\
       forall ρh Φh Φhk, per_body ρh Φh ρ Φ -> kbody gc_deps gc_stack ρh Φh Φhk ->
-        exists Φhk' pvh Δh Dh ρh' rh, gm_prefix_upto Φhk y = Some (gm_ext Φhk' y (ge_mod pvh (gu_mk Δh Dh))) /\
+        exists Φhk' Eh Δh Dh ρh' rh, gm_prefix_upto Φhk y = Some (gm_ext Φhk' y Eh) /\ entry_unit Eh = Some (gu_mk Δh Dh) /\
           ⟦ Φhk' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρh ↘ ρh' /\ ⟦ Δh ⊢ Dh ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρh' ↘ rh /\ per_dmod rh r.
 Proof.
   intros D Φ Φx Hx; induction Hx as [Γ | Γ Φ Φx y0 E Hx IH | Γ Φ Φx H its R Rm gs Hx IH HR HRm Hg Hok];
-    intros Hsx HC Ho RD ρ HRD Hρ Φk Hkb Hkx y Φx' pv Δy Dy Hp.
+    intros Hsx HC Ho RD ρ HRD Hρ Φk Hkb Hkx y Φx' E' Δy Dy Hp HEu.
   - discriminate.
   - inversion Hkb as [| ? ? Φk0 ? ? Hkb0 |]; subst.
     destruct Hkx as (Hkx0 & _ & _).
@@ -494,38 +503,44 @@ Proof.
     cbn [body_opens gm_dropn] in Ho.
     pose proof (body_xp_nopens _ _ _ _ _ Hx) as Hn.
     cbn [gm_prefix_upto] in Hp; destruct (String.eqb y y0) eqn:Exy.
-    + (* the module itself *)
+    + (* the entry itself, a submodule or a definition with a module part *)
       apply String.eqb_eq in Exy; subst y0; injection Hp as <- ->.
-      cbn [body_ctx app] in HC.
+      destruct (body_ctx_unit Φx y _ _ HEu) as (e & He & Heu); rewrite He in HC; cbn [app] in HC.
       pose proof (rel_ctx_wf_tail HC) as HC0.
-      pose proof (rel_ctx_wf_mod_inv HC) as HU.
+      pose proof (rel_ctx_wf_unit_inv HC Heu) as HU.
       destruct (rel_ctx_wf_per_ctx_env HC0) as [R1 HR1].
       destruct (benv_exists _ _ Hn (proj1 (body_shape_fill _ _ Hn Hsx0)) HC0 _ _ HRD HR1 _ Hρ) as (ρ1 & Hb1 & Hρ1).
       destruct (rel_modexp_at _ _ _ _ _ (ruu_lit _ _ _ HU) HR1 _ _ Hρ1) as (r & _ & Hr & _ & _).
       apply eval_me_lit_iff in Hr.
       exists ρ1, r; split; [ exact Hb1 | split; [ exact Hr |] ].
       intros ρh Φh Φhk Hbh Hkh.
-      inversion Hbh as [| | ? Φh0 ? ? Φxh Φx2 ρh1 ρ2 Δh Dh hh Δ2 D2 h2 ? pmh ? Hbh0 Hkh0 Hk0 Hbh1 Hb2 Hch Hc2 Hhh |]; subst.
-      pose proof (kbody_functional _ _ _ _ Hk0 Hkb0) as ->.
-      apply (body_eq_upto_types_benv _ _ Hkx0) in Hb2; pose proof (functional_eval_benv _ _ _ _ Hb2 Hb1) as ->.
-      pose proof (functional_eval_close _ _ _ _ _ Hc2 Hr) as ->.
-      inversion Hkh as [| ? ? Φhk0 ? ? Hkh1 |]; subst.
-      pose proof (kbody_functional _ _ _ _ Hkh1 Hkh0) as ->.
-      exists Φxh, pmh, Δh, Dh, ρh1, hh; split; [ cbn; rewrite String.eqb_refl; reflexivity |].
-      split; [ exact Hbh1 | split; [ exact Hch | exact Hhh ] ].
+      inversion Hbh; subst; try (cbn in HEu; discriminate).
+      all: cbn in HEu; injection HEu as -> ->.
+      all: match goal with
+           | Hk0 : kbody _ _ ?ρr ?Φr ?Φx2, Hb2 : ⟦ ?Φx2 ⟧ᵇ _ ⍮ _ ⍮ ?ρr ↘ ?ρ2, Hc2 : ⟦ ?Δ2 ⊢ ?D2 ⟧ᶜ _ ⍮ _ ⍮ ?ρ2 ↘ ?h2,
+             Hkh0 : kbody _ _ ?ρl ?Φh0 ?Φxh, Hbh1 : ⟦ ?Φxh ⟧ᵇ _ ⍮ _ ⍮ ?ρl ↘ ?ρh1,
+             Hch : ⟦ ?Δh ⊢ ?Dh ⟧ᶜ _ ⍮ _ ⍮ ?ρh1 ↘ ?hh, Hhh : per_dmod ?hh ?h2 |- _ =>
+               pose proof (kbody_functional _ _ _ _ Hk0 Hkb0) as ->;
+               apply (body_eq_upto_types_benv _ _ Hkx0) in Hb2; pose proof (functional_eval_benv _ _ _ _ Hb2 Hb1) as ->;
+               pose proof (functional_eval_close _ _ _ _ _ Hc2 Hr) as ->;
+               inversion Hkh as [| ? ? Φhk0 ? ? Hkh1 |]; subst;
+               pose proof (kbody_functional _ _ _ _ Hkh1 Hkh0) as ->;
+               exists Φxh; eexists; exists Δh, Dh, ρh1, hh; split; [ cbn; rewrite String.eqb_refl; reflexivity |];
+               split; [ reflexivity | split; [ exact Hbh1 | split; [ exact Hch | exact Hhh ] ] ]
+           end.
     + (* an entry before it *)
       assert (HC0 : ⊨ body_ctx Φx ++ Γ) by (destruct E as [? ? ? [] | | | |]; cbn in HsE; try contradiction; exact (rel_ctx_wf_tail HC)).
-      destruct (IH Hsx0 HC0 Ho _ _ HRD Hρ _ Hkb0 Hkx0 _ _ _ _ _ Hp) as (ρ' & r & Hb & Hr & Hh).
+      destruct (IH Hsx0 HC0 Ho _ _ HRD Hρ _ Hkb0 Hkx0 _ _ _ _ _ Hp HEu) as (ρ' & r & Hb & Hr & Hh).
       exists ρ', r; split; [ exact Hb | split; [ exact Hr |] ].
       intros ρh Φh Φhk Hbh Hkh.
       assert (Hrest : exists Φh0 Eh, Φh = gm_ext Φh0 y0 Eh /\ per_body ρh Φh0 ρ Φ)
         by (inversion Hbh; subst; eauto).
       destruct Hrest as (Φh0 & Eh & -> & Hbh0).
       inversion Hkh as [| ? ? Φhk0 ? ? Hkh0 |]; subst.
-      destruct (Hh _ _ _ Hbh0 Hkh0) as (Φhk' & pvh & Δh & Dh & ρh' & rh & Hph & Hbh' & Hrh & Hrr).
-      exists Φhk', pvh, Δh, Dh, ρh', rh; split; [ cbn; rewrite Exy; exact Hph | split; [ exact Hbh' | split; assumption ] ].
+      destruct (Hh _ _ _ Hbh0 Hkh0) as (Φhk' & Eh' & Δh & Dh & ρh' & rh & Hph & HEh & Hbh' & Hrh & Hrr).
+      exists Φhk', Eh', Δh, Dh, ρh', rh; split; [ cbn; rewrite Exy; exact Hph | split; [ exact HEh | split; [ exact Hbh' | split; assumption ] ] ].
   - (* an open *)
-    pose proof (items_gen_length _ _ _ _ _ _ _ Hg) as Hl.
+    pose proof (items_gen_length _ _ _ _ _ _ Hg) as Hl.
     assert (Eo : body_opens (gm_open Φ H its) (gens_append Φx 0 gs) = (body_ctx Φx, H) :: body_opens Φ Φx).
     { cbn [body_opens]; rewrite <- Hl, gm_dropn_gens_append; reflexivity. }
     rewrite Eo in Ho.
@@ -537,14 +552,14 @@ Proof.
     inversion Hkb as [| | ? ? Φk0 σ1 ? ? gsk Hkb0 Hke Hkg]; subst.
     assert (Hlk : List.length gsk = List.length gs).
     { pose proof (f_equal (@List.length _) (kgens_names _ _ _ _ _ _ Hkg)) as E1.
-      pose proof (f_equal (@List.length _) (items_gen_names _ _ _ _ _ _ _ Hg)) as E2.
+      pose proof (f_equal (@List.length _) (items_gen_names _ _ _ _ _ _ Hg)) as E2.
       rewrite !length_map in E1, E2; lia. }
     pose proof (body_eq_upto_types_gens_inv _ _ _ _ _ Hlk Hkx) as Hkx0.
     destruct (items_upto y its) as [[its1 it] |] eqn:Eu.
     + (* generated by this open *)
-      destruct (gens_prefix_some _ _ _ _ _ _ _ Hg _ _ _ Eu) as (its0 & gs0 & g & -> & Hg0 & Hg1 & (Rits & Rg & -> & ->) & Hpx).
+      destruct (gens_prefix_some _ _ _ _ _ _ Hg _ _ _ Eu) as (its0 & gs0 & g & -> & Hg0 & Hg1 & (Rits & Rg & -> & ->) & Hpx).
       rewrite Hpx, gens_append_snoc in Hp; injection Hp as <- Hd HE.
-      pose proof (items_gen_length _ _ _ _ _ _ _ Hg0) as Hl0.
+      pose proof (items_gen_length _ _ _ _ _ _ Hg0) as Hl0.
       (* the target, before the open's entries *)
       destruct (Ho 0 _ _ eq_refl) as [HH HS].
       destruct (rel_ctx_wf_per_ctx_env HC0) as [Ro HRo].
@@ -613,21 +628,22 @@ Proof.
         exists H0, σh1, Φx0, ρ1, h, gsh0, gh, Rgh, ρq, hhj.
         repeat split; try assumption; [ apply Hph | lia ]. }
       clear Hg Hg0.
-      inversion Hg1 as [| ? ? ? d pv0 ? ? Hg2 | ? ? ? n d pv0 A_n om ? ? HmH Hg2 | ? ? ? n d pv0 Rn ? ? HmH HRn Hg2 |]; subst;
-        cbn [ig_entry snd gentry_wk ig_name fst] in HE, Eu, Hpx |- *; try discriminate;
-        injection HE as <- <- <-.
+      inversion Hg1 as [| ? ? d pv0 ? ? Hg2 | ? ? n d pv0 A_n om ? ? HmH Hg2 | ? ? n d pv0 Rn ? ? HmH HRn Hg2
+                        | ? ? n d pv0 Rn A_n Rnm ? ? HmH HRty HRmd Hg2 ]; subst;
+        cbn [ig_entry snd gentry_wk ig_name fst entry_unit] in HEu, Eu, Hpx |- *;
+        try discriminate; injection HEu as <- <-.
       * (* the target itself *)
         exists ρ', hj; split; [ exact Hb' |]; split; [ apply eval_close_alias0; exact Hhj |].
         intros ρh Φh Φhk Hbh Hkh.
         destruct (Hrel _ _ _ Hbh Hkh)
           as (H' & σh1 & Φxh & ρh1 & hh & gsh0 & gh & Rgh & ρq & hhj & -> & Hph & Hlg & Hkg1 & Hbh1 & Hkhe & Hhh & Hht & Hbq & Hhhj & Hhjh).
-        inversion Hkg1 as [| ? ? ? ? ? ? Hk2 | |]; subst.
+        inversion Hkg1 as [| ? ? ? ? ? ? Hk2 | | |]; subst.
         rewrite gens_append_snoc in Hph; cbn [ig_entry ig_name snd gentry_wk] in Hph.
-        exists (gens_append Φxh 0 gsh0), pv0, nil, (md_alias (modexp_wk H' (wk_shiftn (List.length gsh0)))), ρq, hhj.
-        split; [ exact Hph |]; split; [ exact Hbq |]; split; [ apply eval_close_alias0; exact Hhhj |].
+        eexists (gens_append Φxh 0 gsh0), _, nil, (md_alias (modexp_wk H' (wk_shiftn (List.length gsh0)))), ρq, hhj.
+        split; [ exact Hph |]; split; [ reflexivity |]; split; [ exact Hbq |]; split; [ apply eval_close_alias0; exact Hhhj |].
         eapply per_dmod_trans; [ exact Hhjh |]; eapply per_dmod_trans; [ exact Hht | apply per_dmod_sym; exact Hhjt ].
       * (* the target's submodule *)
-        destruct (HS _ _ HmH HRn) as (V & Hsm).
+        destruct (HS _ _ _ HmH (ds_is_mod_mod _ HRn)) as (V & Hsm).
         destruct (Hsm _ HRo _ Hρo) as [k0 v Hk0 Hv Hsel].
         pose proof (functional_eval_modexp _ _ _ _ Hk0 Ht) as ->.
         destruct (Hsel _ Hhjt) as (r2 & Hr2 & Hr2v).
@@ -638,36 +654,69 @@ Proof.
         rewrite Hpk, gens_append_snoc in Hpk'; injection Hpk' as _ _ HEk.
         assert (Hsk : skind gc_deps gc_stack σ1 H (n :: nil) mk_mod).
         { subst Ek.
-          inversion Hkgk as [| | ? ? ? ? ? ? ? Hsk Hk2 | ? ? ? ? ? ? ? Hsk Hk2]; subst; [| exact Hsk ].
-          exfalso; cbn [ig_entry snd gentry_wk] in HEx.
-          destruct HEx as [HEx | (? & ? & ? & ? & ? & _ & HEx)]; discriminate. }
+          inversion Hkgk as [| ? ? ? ? ? ? Hk2 | ? ? ? ? ? ? ? Hsk Hk2 | ? ? ? ? ? ? ? Hsk Hk2 | ? ? ? ? ? ? ? Hsk Hk2]; subst;
+            cbn [ig_entry snd gentry_wk] in HEx;
+            destruct HEx as [HEx | [(? & ? & ? & ? & ? & HEx & HEx') | [? ? ? ? ? HEx HEx']]]; try discriminate; exact Hsk. }
         assert (Hkt : dkind gc_deps gc_stack t (n :: nil) mk_mod)
           by exact (open_kind _ _ _ _ _ _ _ _ (proj2 (body_eq_upto_types_benv _ _ Hkx0 _ _) Hbo) Hke Ht Hsk).
         intros ρh Φh Φhk Hbh Hkh.
         destruct (Hrel _ _ _ Hbh Hkh)
           as (H' & σh1 & Φxh & ρh1 & hh & gsh0 & gh & Rgh & ρq & hhj & -> & Hph & Hlg & Hkg1 & Hbh1 & Hkhe & Hhh & Hht & Hbq & Hhhj & Hhjh).
-        inversion Hkg1 as [| | ? ? ? ? ? ? ? Hsk' Hk2 | ? ? ? ? ? ? ? Hsk' Hk2]; subst.
-        { exfalso.
-          pose proof (open_kind _ _ _ _ _ _ _ _ Hbh1 Hkhe Hhh Hsk') as Hkm.
-          pose proof (per_dmod_kequiv _ _ Hht) as Hkq.
-          assert (Hkm' : dkind gc_deps gc_stack hh (n :: nil) mk_mod) by (apply Hkq; exact Hkt).
-          pose proof (proj1 (@functional_kind gc_deps gc_stack) _ _ _ Hkm _ Hkm') as Hc; discriminate. }
+        inversion Hkg1 as [| | ? ? ? ? ? ? ? Hsk' Hk2 | ? ? ? ? ? ? ? Hsk' Hk2 | ? ? ? ? ? ? ? Hsk' Hk2]; subst.
+        1,3: exfalso;
+          pose proof (open_kind _ _ _ _ _ _ _ _ Hbh1 Hkhe Hhh Hsk') as Hkm;
+          pose proof (per_dmod_kequiv _ _ Hht) as Hkq;
+          assert (Hkm' : dkind gc_deps gc_stack hh (n :: nil) mk_mod) by (apply Hkq; exact Hkt);
+          pose proof (proj1 (@functional_kind gc_deps gc_stack) _ _ _ Hkm _ Hkm') as Hc; discriminate.
         destruct (Hsel _ (per_dmod_trans _ _ _ Hhjh Hht)) as (r1 & Hr1 & Hr1v).
         rewrite gens_append_snoc in Hph; cbn [ig_entry ig_name snd gentry_wk] in Hph.
-        eexists (gens_append Φxh 0 gsh0), pv0, nil, _, ρq, r1.
-        split; [ exact Hph |]; split; [ exact Hbq |]; split; [ apply eval_close_alias0; econstructor; [ exact Hhhj | exact Hr1 ] |].
+        eexists (gens_append Φxh 0 gsh0), _, nil, _, ρq, r1.
+        split; [ exact Hph |]; split; [ reflexivity |]; split; [ exact Hbq |].
+        split; [ apply eval_close_alias0; econstructor; [ exact Hhhj | exact Hr1 ] |].
+        eapply per_dmod_trans; [ exact Hr1v | apply per_dmod_sym; exact Hr2v ].
+      * (* the module part of a member with a term part and a module part *)
+        destruct (HS _ _ _ HmH HRmd) as (V & Hsm).
+        destruct (Hsm _ HRo _ Hρo) as [k0 v Hk0 Hv Hsel].
+        pose proof (functional_eval_modexp _ _ _ _ Hk0 Ht) as ->.
+        destruct (Hsel _ Hhjt) as (r2 & Hr2 & Hr2v).
+        exists ρ', r2; split; [ exact Hb' |]; split; [ apply eval_close_alias0; econstructor; [ exact Hhj | exact Hr2 ] |].
+        (* the member has both parts on our side *)
+        destruct (kgens_prefix_at _ _ _ _ _ _ Hkg _ _ _ Eu) as (gsk0 & gk & Rgk & -> & Hlk0 & Hkgk & Hpk).
+        destruct (body_eq_upto_types_prefix _ _ Hkx d _ _ ltac:(rewrite Hpx, gens_append_snoc; reflexivity)) as (Φk' & Ek & Hpk' & _ & HEx).
+        rewrite Hpk, gens_append_snoc in Hpk'; injection Hpk' as _ _ HEk.
+        assert (Hsk : skind gc_deps gc_stack σ1 H (n :: nil) mk_dm).
+        { subst Ek.
+          inversion Hkgk as [| ? ? ? ? ? ? Hk2 | ? ? ? ? ? ? ? Hsk Hk2 | ? ? ? ? ? ? ? Hsk Hk2 | ? ? ? ? ? ? ? Hsk Hk2]; subst;
+            cbn [ig_entry snd gentry_wk] in HEx;
+            destruct HEx as [HEx | [(? & ? & ? & ? & ? & HEx & HEx') | [? ? ? ? ? HEx HEx']]]; try discriminate; exact Hsk. }
+        assert (Hkt : dkind gc_deps gc_stack t (n :: nil) mk_dm)
+          by exact (open_kind _ _ _ _ _ _ _ _ (proj2 (body_eq_upto_types_benv _ _ Hkx0 _ _) Hbo) Hke Ht Hsk).
+        intros ρh Φh Φhk Hbh Hkh.
+        destruct (Hrel _ _ _ Hbh Hkh)
+          as (H' & σh1 & Φxh & ρh1 & hh & gsh0 & gh & Rgh & ρq & hhj & -> & Hph & Hlg & Hkg1 & Hbh1 & Hkhe & Hhh & Hht & Hbq & Hhhj & Hhjh).
+        inversion Hkg1 as [| | ? ? ? ? ? ? ? Hsk' Hk2 | ? ? ? ? ? ? ? Hsk' Hk2 | ? ? ? ? ? ? ? Hsk' Hk2]; subst.
+        1,2: exfalso;
+          pose proof (open_kind _ _ _ _ _ _ _ _ Hbh1 Hkhe Hhh Hsk') as Hkm;
+          pose proof (per_dmod_kequiv _ _ Hht) as Hkq;
+          assert (Hkm' : dkind gc_deps gc_stack hh (n :: nil) mk_dm) by (apply Hkq; exact Hkt);
+          pose proof (proj1 (@functional_kind gc_deps gc_stack) _ _ _ Hkm _ Hkm') as Hc; discriminate.
+        destruct (Hsel _ (per_dmod_trans _ _ _ Hhjh Hht)) as (r1 & Hr1 & Hr1v).
+        rewrite gens_append_snoc in Hph; cbn [ig_entry ig_name snd gentry_wk] in Hph.
+        eexists (gens_append Φxh 0 gsh0), _, nil, _, ρq, r1.
+        split; [ exact Hph |]; split; [ reflexivity |]; split; [ exact Hbq |].
+        split; [ apply eval_close_alias0; econstructor; [ exact Hhhj | exact Hr1 ] |].
         eapply per_dmod_trans; [ exact Hr1v | apply per_dmod_sym; exact Hr2v ].
     + (* an entry before the open *)
-      rewrite (gens_prefix_none_items _ _ _ _ _ _ _ _ _ _ Hg Eu) in Hp.
-      destruct (IH Hsx0 HC0 (fun k => Ho (S k)) _ _ HRD Hρ _ Hkb0 Hkx0 _ _ _ _ _ Hp) as (ρ' & r & Hb & Hr & Hh).
+      rewrite (gens_prefix_none_items _ _ _ _ _ _ _ _ _ Hg Eu) in Hp.
+      destruct (IH Hsx0 HC0 (fun k => Ho (S k)) _ _ HRD Hρ _ Hkb0 Hkx0 _ _ _ _ _ Hp HEu) as (ρ' & r & Hb & Hr & Hh).
       exists ρ', r; split; [ exact Hb | split; [ exact Hr |] ].
       intros ρh Φh Φhk Hbh Hkh.
       inversion Hbh; subst.
       inversion Hkh as [| | ? ? Φhk0 σh1 ? ? gshk Hkh1 Hkhe Hkhg]; subst.
       match goal with Hb0 : per_body ρh ?Φh0 ρ Φ |- _ =>
-        destruct (Hh _ _ _ Hb0 Hkh1) as (Φhk' & pvh & Δh & Dh & ρh' & rh & Hph & Hbh' & Hrh & Hrr) end.
-      exists Φhk', pvh, Δh, Dh, ρh', rh.
-      split; [ rewrite (kgens_prefix_none_items _ _ _ _ _ _ _ _ _ Hkhg Eu); exact Hph | split; [ exact Hbh' | split; assumption ] ].
+        destruct (Hh _ _ _ Hb0 Hkh1) as (Φhk' & Eh & Δh & Dh & ρh' & rh & Hph & HEh & Hbh' & Hrh & Hrr) end.
+      exists Φhk', Eh, Δh, Dh, ρh', rh.
+      split; [ rewrite (kgens_prefix_none_items _ _ _ _ _ _ _ _ _ Hkhg Eu); exact Hph | split; [ exact HEh | split; [ exact Hbh' | split; assumption ] ] ].
 Qed.
 
 End Desc.
@@ -718,30 +767,31 @@ Proof.
   - rewrite ds_up_nil; cbn [List.app] in *.
     split; [| exact HK ].
     exact (valid_sel_resp_r _ _ _ _ _ HS (rel_modexp_under_ctx_beta_alias0 _ _ (valid_unit_rel _ _ Hgf _ _ HK))).
-  - destruct (rel_alias_unit_up _ _ Hgm Hgf Γ (e :: Δ0) X ltac:(discriminate) HΔ Hm HK) as [Hup HKup].
+  - destruct (rel_alias_unit_up Hgw _ _ Hgm Hsub Hgf Γ (e :: Δ0) X ltac:(discriminate) HΔ Hm HK) as [Hup HKup].
     split; [ exact (valid_sel_resp_r _ _ _ _ _ HS Hup) | exact HKup ].
 Qed.
 
 (** A module of a valid body with no parameters, at an environment, against
     the unit of its module part, filled in, at a related one. *)
-Lemma body_sel_base : forall D Φ Φx y Φ' pv U σ RU, body_xp Θm Ξm D Φ Φx -> body_shape Φx Φx -> ⊨ body_ctx Φx ++ D ->
+Lemma body_sel_base : forall D Φ Φx y Φ' E U σ RU, body_xp Θm Ξm D Φ Φx -> body_shape Φx Φx -> ⊨ body_ctx Φx ++ D ->
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> kinds_ok Θm Ξm (Ψ ++ D) H) ->
     (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Ψ ++ D ⊨ᵐ H ≈ H /\
-       forall n Rn, mdenote Θm Ξm (Ψ ++ D) (me_mem H n) Rn -> ds_is_mod Rn -> exists V, valid_sel (Ψ ++ D) H n V) ->
-    gm_prefix_upto Φx y = Some (gm_ext Φ' y (ge_mod pv U)) -> gm_fill Φ' = Some σ ->
+       forall n Rn Rnm, mdenote Θm Ξm (Ψ ++ D) (me_mem H n) Rn -> ds_mod Rn = Some Rnm -> exists V, valid_sel (Ψ ++ D) H n V) ->
+    gm_prefix_upto Φx y = Some (gm_ext Φ' y E) -> entry_unit E = Some U -> gm_fill Φ' = Some σ ->
     udenote Θm Ξm (body_ctx Φ' ++ D) None U RU -> valid_unit (body_ctx Φ' ++ D) (me_lit U) ->
     valid_unit D (ds_unit (ds_sub RU σ)) /\
     forall R, EF D ≈ D ∈ per_ctx_env ↘ R -> forall ρ ρ', R ρ ρ' ->
       exists k0 v0, ⟦ nil ⊢ md_body sm_open Φ ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ ↘ k0 /\
         ⟦ ds_unit (ds_sub RU σ) ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ' ↘ v0 /\ dmod_has_sel y k0 v0.
 Proof.
-  intros * Hx Hsx HC Hopk Hopm Hp Hf Hu HK.
+  intros * Hx Hsx HC Hopk Hopm Hp HEu Hf Hu HK.
   pose proof (body_xp_nopens _ _ _ _ _ Hx) as Hn.
   pose proof (prefix_nopens _ _ _ Hn Hp) as Hn'; cbn in Hn'.
-  destruct (prefix_body_ctx _ _ _ Hn Hp) as [Ψ HΨ]; cbn [body_ctx] in HΨ.
+  destruct (prefix_body_ctx _ _ _ Hn Hp) as [Ψ HΨ].
+  destruct (body_ctx_unit Φ' y _ _ HEu) as (e & He & _); rewrite He in HΨ.
   pose proof HC as HC1; rewrite HΨ, <- app_assoc in HC1; cbn [List.app] in HC1.
   pose proof (rel_ctx_wf_tail (rel_ctx_wf_app_r _ _ HC1)) as HC0.
-  destruct (proj1 (valid_unit_canon_all _ _ Hgm Hgf) _ _ HK _ _ (dn_lit _ _ _ _ _ Hu) (ds_is_mod_mod _ (udenote_is_mod _ _ _ _ _ _ Hu)))
+  destruct (proj1 (valid_unit_canon_all Hgw _ _ Hgm Hsub Hgf) _ _ HK _ _ (dn_lit _ _ _ _ _ Hu) (ds_is_mod_mod _ (udenote_is_mod _ _ _ _ _ _ Hu)))
     as [HKu HKK].
   pose proof (fill_gsub _ _ _ Hn' Hf HC0) as Hg.
   pose proof (wf_gm_fill _ _ _ _ _ (presup_modexp_eq_ctx (valid_unit_wf _ _ _ _ HK)) Hf) as Hwσ.
@@ -752,7 +802,7 @@ Proof.
   assert (Hρρ : R ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
   destruct (kbody_exists _ _ _ _ _ Hx Hsx HC Hopk _ _ _ HR Hρρ (kshape_refl _ _ ρ)) as (Φk & Hkb & Hkx).
   destruct U as [Δy Dy].
-  destruct (body_sel_mod _ _ _ _ _ Hx Hsx HC Hopm _ _ HR Hρρ _ Hkb Hkx _ _ _ _ _ Hp) as (ρ1 & r & Hb1 & Hr & Hh).
+  destruct (body_sel_mod _ _ _ _ _ Hx Hsx HC Hopm _ _ HR Hρρ _ Hkb Hkx _ _ _ _ _ Hp HEu) as (ρ1 & r & Hb1 & Hr & Hh).
   destruct (rel_ctx_wf_per_ctx_env HC0) as [R0 HR0].
   assert (HP0 : PER R0) by (eapply per_env_PER; exact HR0).
   destruct (fill_rel _ _ _ Hn' Hf HC0 _ _ HR HR0 _ Hρρ) as (ρσ & ρ1' & Hσ & Hb1' & H01).
@@ -768,7 +818,7 @@ Proof.
   inversion Hhk as [| ? ? ? ? ? ? Hbh | ? ? ? ? ? Rf Hpf Hpf' _ _ _ _]; subst;
     [| exfalso; exact (nextparam_body_nil _ _ _ _ Hpf') ].
   destruct (per_body_kbody_l _ _ _ _ Hbh) as (Φhk & Hkh).
-  destruct (Hh _ _ _ Hbh Hkh) as (Φhk' & pvh & Δh & Dh & ρh' & rh & Hph & Hbh' & Hrh & Hrr).
+  destruct (Hh _ _ _ Hbh Hkh) as (Φhk' & Eh & Δh & Dh & ρh' & rh & Hph & HEh & Hbh' & Hrh & Hrr).
   exists rh; split; [ eapply eval_selm_body; eassumption |].
   eapply per_dmod_trans; [ exact Hrr |]; eapply per_dmod_trans; [ exact Hab |].
   eapply per_dmod_trans; [ apply per_dmod_sym; exact H12 | exact Hcv ].
@@ -954,17 +1004,17 @@ Proof.
     destruct (filed_mod_desc _ _ Hgm _ _ _ _ _ _ _ _ Hgl Hm Hmd) as [(Tq & Φq & Hglq & ->) | (Φ0 & E & Ua & RU & Hp & HUa & HmU & HmdU)].
     + cbn [ds_unit] in HwU |- *; exact (filed_body_sel _ _ _ _ _ _ _ _ Hgl Hglq HΓ Hs HwU).
     + destruct (filed_alias_sel _ _ _ _ _ _ _ _ _ Hgl Hp HUa HΓ Hs Hw) as [HS HsV].
-      destruct (valid_modexp_canon _ _ Hgm Hgf _ _ _ _ HsV HmU HmdU) as [HVu HKu].
+      destruct (valid_modexp_canon Hgw _ _ Hgm Hsub Hgf _ _ _ _ HsV HmU HmdU) as [HVu HKu].
       split; [ exact (valid_sel_resp_r _ _ _ _ _ HS HVu) | exact HKu ].
   - (* a body: its module, filled in, over the parameters *)
     intros Γ Δ Φ Φx Hw Hx HΔ HΓ HC Hsl IHsl Hs Hsx HU Hopv Hops IHops y R Rm Hm Hmd.
-    destruct (body_mod_desc _ _ Hgm _ _ _ _ _ _ _ Hx Hm Hmd) as (Φ' & pv & U & σ & RU & Hp & Hf & Hu & ->).
+    destruct (body_mod_desc _ _ Hgm _ _ _ _ _ _ _ Hx Hm Hmd) as (Φ' & E & U & σ & RU & Hp & HEu & Hf & Hu & ->).
     assert (Hopm : forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Ψ ++ Δ ++ Γ ⊨ᵐ H ≈ H /\
-               forall n Rn, mdenote Θm Ξm (Ψ ++ Δ ++ Γ) (me_mem H n) Rn -> ds_is_mod Rn -> exists V, valid_sel (Ψ ++ Δ ++ Γ) H n V).
+               forall n Rn Rnm, mdenote Θm Ξm (Ψ ++ Δ ++ Γ) (me_mem H n) Rn -> ds_mod Rn = Some Rnm -> exists V, valid_sel (Ψ ++ Δ ++ Γ) H n V).
     { intros k Ψ H Hk; split; [ exact (Hopv _ _ _ Hk) |].
-      intros n Rn Hmn HRn; eexists; exact (proj1 (IHops _ _ _ Hk _ _ _ Hmn (ds_is_mod_mod _ HRn))). }
-    destruct (body_sel_base _ _ _ _ _ _ _ _ _ Hx Hsx HC (fun k Ψ H Hk => valid_modexp_kinds _ _ Hgm Hgf _ _ (Hops _ _ _ Hk)) Hopm
-                Hp Hf Hu (Hsl _ _ _ _ Hp)) as [HKX Hbase].
+      intros n Rn Rnm Hmn HRn; eexists; exact (proj1 (IHops _ _ _ Hk _ _ _ Hmn HRn)). }
+    destruct (body_sel_base _ _ _ _ _ _ _ _ _ Hx Hsx HC (fun k Ψ H Hk => valid_modexp_kinds _ _ Hgw Hgm Hgf Hsub _ _ (Hops _ _ _ Hk)) Hopm
+                Hp HEu Hf Hu (Hsl _ _ _ _ Hp HEu)) as [HKX Hbase].
     exact (sel_finish _ _ _ _ _ HΔ (rel_ctx_wf_app_r _ _ HC) HΓ (ds_is_mod_sub _ σ (udenote_is_mod _ _ _ _ _ _ Hu)) HKX Hbase).
   - (* an alias: its target's, over the parameters *)
     intros Γ Δ E Hw HΔ HΓ HΔΓ HU HE Hsmt IHE y R Rm Hm Hmd.

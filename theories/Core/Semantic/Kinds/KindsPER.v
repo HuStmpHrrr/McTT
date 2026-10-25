@@ -77,6 +77,25 @@ Section Fixed_GCtx.
                    | rewrite <- (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hk' _ Hk1) in Hu1 ] end.
       + eapply uk_mod; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk' | apply HUy; assumption ].
       + eapply uk_mod; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk | apply HUy; assumption ].
+    - (* a definition with a module part each: their closures have the same
+         kinds, at the empty chain as at a longer one *)
+      destruct (String.eqb_spec y0 y) as [-> | Hne];
+        [| rewrite (ukind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne), (ukind_body_ext_other _ _ _ _ _ _ _ _ _ _ Hne); apply H ].
+      assert (Ex : String.eqb y y = true) by apply String.eqb_refl.
+      destruct (body_kenv _ _ _ k _ e) as (σ & Hk & Hs).
+      destruct (body_kenv _ _ _ k0 _ e0) as (σ' & Hk' & Hs').
+      assert (HUy : forall ch k, ukind gc_deps gc_stack σ (gu_mk Δy Dy) ch k <-> ukind gc_deps gc_stack σ' (gu_mk Δy' Dy') ch k).
+      { intros chx kx; rewrite <- (ukind_id _ _ _ _ (proj1 Hs)), <- (ukind_id _ _ _ _ (proj1 Hs')),
+          <- (kind_eval_close _ _ _ _ _ _ e1), <- (kind_eval_close _ _ _ _ _ _ e2); apply H0. }
+      split; intros Hu; inversion Hu; subst; cbn [gm_prefix_upto gm_item_upto] in *; rewrite ?Ex in *; try discriminate;
+        match goal with Hp : Some _ = Some _ |- _ => inversion Hp; subst end.
+      all: match goal with Hk1 : kenv _ _ _ _ ?r, Hu1 : ukind _ _ ?r _ _ _ |- _ =>
+             first [ rewrite <- (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hk _ Hk1) in Hu1
+                   | rewrite <- (proj1 (proj2 (proj2 (proj2 (@functional_kind gc_deps gc_stack)))) _ _ _ Hk' _ Hk1) in Hu1 ] end.
+      + eapply uk_dm_here; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk' | apply HUy; assumption ].
+      + eapply uk_dm_step; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | assumption | exact Hk' | apply HUy; assumption ].
+      + eapply uk_dm_here; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | exact Hk | apply HUy; assumption ].
+      + eapply uk_dm_step; [ cbn [gm_prefix_upto]; rewrite Ex; reflexivity | assumption | exact Hk | apply HUy; assumption ].
     - (* an open each: their targets have the same kinds *)
       destruct (items_upto y its) as [[its1 it] |] eqn:Ey;
         [| rewrite (ukind_body_open_other _ _ _ _ _ _ _ _ _ _ Ey), (ukind_body_open_other _ _ _ _ _ _ _ _ _ _ Ey); apply H0 ].
@@ -108,6 +127,16 @@ Section Fixed_GCtx.
     - apply H1 in Hρ as (Ht & P1 & P2 & P3 & P4).
       destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
       split; apply kmatch_drop_mod; try assumption.
+      + destruct P1 as (h & Hh & Hr).
+        eapply kequiv_trans; [ apply per_dmod_kequiv, Hr |].
+        intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), skind_lit_iff, dkind_clo_iff; reflexivity.
+      + destruct P4 as (h & Hh & Hr).
+        eapply kequiv_trans; [ apply per_dmod_kequiv, Hr |].
+        intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), skind_lit_iff, dkind_clo_iff; reflexivity.
+    - (* a definition with a module part: its unit as a slot's *)
+      apply H3 in Hρ as [Ht _ _ _ _ _ P1 _ _ P4].
+      destruct (IHper_ctx_env _ _ Ht) as (K1 & K2).
+      split; apply kmatch_drop_dm; try assumption.
       + destruct P1 as (h & Hh & Hr).
         eapply kequiv_trans; [ apply per_dmod_kequiv, Hr |].
         intros ch k; rewrite (kind_eval_modexp _ _ _ _ _ Hh), skind_lit_iff, dkind_clo_iff; reflexivity.

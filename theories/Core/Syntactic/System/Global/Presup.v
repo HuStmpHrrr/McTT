@@ -813,7 +813,7 @@ Qed.
 Lemma ctxsub_ext : forall Θ Ξ Γ Ψ Ψ',
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> tele_ass Ψ -> Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ˢ Id : Ψ ++ Γ.
 Proof.
-  induction 1 as [| | |]; intros Hass.
+  induction 1 as [| | | |]; intros Hass.
   - cbn; apply wf_sub_id; assumption.
   - inversion_clear Hass as [| ? ? _ Hass'].
     cbn [List.app]; eapply wf_sub_id_extend; [ apply IHwf_ext_eq; exact Hass' | eassumption | eassumption |].
@@ -821,16 +821,18 @@ Proof.
     eapply wf_exp_eq_sym, ctxsub_exp_eq; [ apply IHwf_ext_eq; exact Hass' | eassumption ].
   - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
   - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
+  - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
 Qed.
 
 Lemma ctxsub_ext_rev : forall Θ Ξ Γ Ψ Ψ',
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> tele_ass Ψ -> Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ˢ Id : Ψ' ++ Γ.
 Proof.
-  induction 1 as [| | |]; intros Hass.
+  induction 1 as [| | | |]; intros Hass.
   - cbn; apply wf_sub_id; assumption.
   - inversion_clear Hass as [| ? ? _ Hass'].
     cbn [List.app]; eapply wf_sub_id_extend; [ apply IHwf_ext_eq; exact Hass' | eassumption | eassumption |].
     eapply wf_subtyp_refl; mauto 3.
+  - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
   - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
   - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
 Qed.
@@ -3534,26 +3536,28 @@ Qed.
 
 (** ** Well-formed Module Expressions Denote Typed Descriptions *)
 
-(** The unit of each slot of [Γ] denotes, where it stands, only typed
-    descriptions. *)
+
+(** The unit of each slot of [Γ] (of a module or of a definition with a
+    module part) denotes, where it stands, only typed descriptions. *)
 Definition slots_typed (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : Prop :=
-  forall Γ1 U Γ0, Γ = Γ1 ++ ce_mod U :: Γ0 -> forall R, udenote Θ Ξ Γ0 None U R -> desc_ok Θ Ξ Γ0 R.
+  forall Γ1 e U Γ0, Γ = Γ1 ++ e :: Γ0 -> centry_unit e = Some U ->
+    forall R, udenote Θ Ξ Γ0 None U R -> desc_ok Θ Ξ Γ0 R.
 
 Lemma slots_typed_nil : forall Θ Ξ, slots_typed Θ Ξ nil.
-Proof. intros * Γ1 U Γ0 Heq; destruct Γ1; discriminate. Qed.
+Proof. intros * Γ1 e U Γ0 Heq; destruct Γ1; discriminate. Qed.
 
 Lemma slots_typed_cons : forall Θ Ξ Γ e, slots_typed Θ Ξ Γ ->
-    (forall U, e = ce_mod U -> forall R, udenote Θ Ξ Γ None U R -> desc_ok Θ Ξ Γ R) -> slots_typed Θ Ξ (e :: Γ).
+    (forall U, centry_unit e = Some U -> forall R, udenote Θ Ξ Γ None U R -> desc_ok Θ Ξ Γ R) -> slots_typed Θ Ξ (e :: Γ).
 Proof.
-  intros * HΓ He Γ1 U Γ0 Heq R HR.
+  intros * HΓ He Γ1 e0 U Γ0 Heq Hu R HR.
   destruct Γ1 as [| e' Γ1]; cbn in Heq; injection Heq as Heq1 Heq2; subst.
-  - exact (He _ eq_refl _ HR).
-  - exact (HΓ _ _ _ eq_refl _ HR).
+  - exact (He _ Hu _ HR).
+  - exact (HΓ _ _ _ _ eq_refl Hu _ HR).
 Qed.
 
 Lemma slots_typed_app : forall Θ Ξ Ψ Γ, slots_typed Θ Ξ (Ψ ++ Γ) -> slots_typed Θ Ξ Γ.
 Proof.
-  intros * HΓ Γ1 U Γ0 -> R HR; apply (HΓ (Ψ ++ Γ1) U Γ0); [ rewrite <- List.app_assoc; reflexivity | exact HR ].
+  intros * HΓ Γ1 e U Γ0 -> Hu R HR; apply (HΓ (Ψ ++ Γ1) e U Γ0); [ rewrite <- List.app_assoc; reflexivity | exact Hu | exact HR ].
 Qed.
 
 (** A description of a unit, weakened past one entry. *)
@@ -3569,11 +3573,15 @@ Qed.
 Lemma slots_typed_lookup : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ -> forall Γ x U, Γ ∋ #x ≔ₘ U -> ⊢ Θ ⍮ Ξ ⍮ Γ -> slots_typed Θ Ξ Γ ->
     forall R, udenote Θ Ξ Γ None U R -> desc_ok Θ Ξ Γ R.
 Proof.
-  intros Θ Ξ Hg; induction 1 as [U Γ | Γ n U e Hl IH]; intros HΓ Hs.
+  intros Θ Ξ Hg; induction 1 as [U Γ | U A M Γ | Γ n U e Hl IH]; intros HΓ Hs.
   - destruct (ctx_decomp_mod HΓ) as [HΓ0 HU].
     destruct (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HU) as (_ & [R0 HR0] & _).
     destruct (wf_unit_eq_scoped _ _ _ _ _ HU) as (_ & HUs & _).
-    eapply desc_ok_shift; [ exact Hg | exact HΓ | exact HUs | exact HR0 | exact (Hs nil U Γ eq_refl _ HR0) ].
+    eapply desc_ok_shift; [ exact Hg | exact HΓ | exact HUs | exact HR0 | exact (Hs nil _ U Γ eq_refl eq_refl _ HR0) ].
+  - destruct (ctx_decomp_dm HΓ) as (HΓ0 & _ & _ & HU).
+    destruct (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HU) as (_ & [R0 HR0] & _).
+    destruct (wf_unit_eq_scoped _ _ _ _ _ HU) as (_ & HUs & _).
+    eapply desc_ok_shift; [ exact Hg | exact HΓ | exact HUs | exact HR0 | exact (Hs nil _ U Γ eq_refl eq_refl _ HR0) ].
   - pose proof (ctx_decomp_tail HΓ) as HΓ0.
     destruct (proj1 denote_exists _ _ _ HΓ0 _ _ Hl) as [R0 HR0].
     pose proof (ctx_scoped_lookup_mod _ _ _ 0 (wf_ctx_scoped _ _ _ HΓ0) Hl) as HUs; rewrite Nat.add_0_r in HUs.
@@ -3694,9 +3702,11 @@ Proof.
   constructor.
   - rewrite <- List.app_assoc in HΓ; exact HΓ.
   - eapply body_xp_result_noopen; exact Hx.
-  - intros y Φ0 pm U Hp R0 HR0.
+  - intros y Φ0 E U Hp HE R0 HR0.
     destruct (gm_prefix_body_ctx _ _ _ (body_xp_result_noopen _ _ _ _ _ Hx) Hp) as (Ψ & HΨ).
-    apply (Hs Ψ U (body_ctx Φ0 ++ Δ ++ Γ)); [ rewrite HΨ; cbn [body_ctx]; rewrite <- !List.app_assoc; reflexivity | exact HR0 ].
+    destruct E; cbn in HE; try discriminate; injection HE as ->;
+      [ apply (Hs Ψ (ce_mod U) U (body_ctx Φ0 ++ Δ ++ Γ)) | eapply (Hs Ψ (ce_dm _ _ U) U (body_ctx Φ0 ++ Δ ++ Γ)) ];
+      first [ rewrite HΨ; cbn [body_ctx]; rewrite <- !List.app_assoc; reflexivity | reflexivity | exact HR0 ].
   - exact Ha.
   - exact Hsh.
   - rewrite (body_xp_names _ _ _ _ _ Hx); exact Hnd.
@@ -4104,15 +4114,15 @@ Proof.
   all: inversion Hd as [? Hcb | Θ'' T' Φ1 Φ2 Ns' p' Hl1 Hl2 |]; subst; try (cbn in Hcb; discriminate).
   - constructor; [ destruct HA as [i HA]; exists i; apply Ht, HA | intros M HM0; apply Ht, HM, HM0 ].
   - constructor; [ apply Hc, HΦ | exact Hn | | exact HaΔ | exact Hsh | exact Hnd | apply Hu, HUw ].
-    intros y Φ0 pm U Hp R HR.
+    intros y Φ0 E U Hp HE R HR.
     destruct (gm_prefix_body_ctx _ _ _ Hn Hp) as (Ψ & HΨ).
-    rewrite HΨ in HΦ; cbn [body_ctx] in HΦ.
+    rewrite HΨ in HΦ.
     pose proof (ctx_app_wf_tail _ _ _ _ ltac:(rewrite <- List.app_assoc in HΦ; exact HΦ)) as HΦ0.
-    cbn [List.app] in HΦ0; destruct (ctx_decomp_mod HΦ0) as [_ HU].
+    destruct (body_ext_unit_wf _ _ _ _ _ _ _ HΦ0 HE) as [_ HU].
     destruct (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HU) as (_ & [R1 HR1] & _).
     destruct (proj1 (proj2 (mdenote_grow_all _ _ _ _ Hg1 Hg2 Hs)) _ _ _ _ HR1 (or_introl eq_refl)) as (R1' & HR1' & Hd1).
     rewrite (proj1 (proj2 (mdenote_functional_all _ _ Hg2)) _ _ _ _ HR _ HR1').
-    exact (IH _ _ _ _ Hp _ HR1 _ Hd1).
+    exact (IH _ _ _ _ Hp HE _ HR1 _ Hd1).
   - econstructor; [ exact Hg2 | apply gc_sub_refl | exact Hl2 | exact Ha | exact Hsc
                   | apply Hc, HT | apply Hc, HΘ' | exact (args_ok_emb _ _ _ _ _ _ _ He Hargs) | exact HaΘ ].
 Qed.

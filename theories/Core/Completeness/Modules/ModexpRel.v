@@ -116,11 +116,18 @@ Qed.
 Lemma slot_rel : forall Γ x U, Γ ∋ #x ≔ₘ U ->
     forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ ρ', R ρ ρ' -> per_dmod (env_mod ρ x) (env_mod ρ' x).
 Proof.
-  induction 1 as [U0 Γ0 | n U1 Γ0 e Hl IH]; intros R HR ρ ρ' Hρ.
+  induction 1 as [U0 Γ0 | U0 A M Γ0 | n U1 Γ0 e Hl IH]; intros R HR ρ ρ' Hρ.
   - destruct (per_ctx_env_tail_of _ _ _ HR) as (R0 & HR0 & _).
     destruct (per_ctx_env_cons_mod_inversion HR0 HR) as [HU ER].
     destruct (proj1 (ER ρ ρ') Hρ) as [Ht H1 _ H3 _].
     exact (tie_mod_rel _ _ _ _ _ _ H1 H3 (HU _ _ Ht)).
+  - (* a definition with a module part: its module part, as a slot's *)
+    inversion HR; subst.
+    match goal with
+    | HE : R <~> _, HU : forall ρ ρ', ?T ρ ρ' -> rel_mexp _ _ _ _ |- _ =>
+        apply HE in Hρ as [Ht _ _ _ _ _ H1 _ H3 _];
+        exact (tie_mod_rel _ _ _ _ _ _ H1 H3 (HU _ _ Ht))
+    end.
   - destruct (per_ctx_env_tail_of _ _ _ HR) as (R0 & HR0 & Ht).
     rewrite !env_mod_S; exact (IH _ HR0 _ _ (Ht _ _ Hρ)).
 Qed.
@@ -144,7 +151,7 @@ Lemma slot_decomp : forall Γ x U, Γ ∋ #x ≔ₘ U -> ⊨ Γ ->
     exists Γ0 U0 φ, Γ ⊨ʷ φ : Γ0 /\ U = gunit_wk U0 φ /\ ⊨ Γ0 /\ Γ0 ⊨ᵘ U0 ≈ U0 /\
       forall R ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> R ρ ρ -> tie_mod (env_mod ρ x) (me_lit U0) (⟪φ⟫ ρ).
 Proof.
-  induction 1 as [U0 Γ0 | n U1 Γ0 e Hl IH]; intros HC.
+  induction 1 as [U0 Γ0 | U0 A M Γ0 | n U1 Γ0 e Hl IH]; intros HC.
   - pose proof (rel_ctx_wf_mod_inv HC) as HU.
     exists Γ0, U0, wk_shift; split; [ exact (rel_wk_under_ctx_shift HC) |]; split; [ reflexivity |].
     split; [ exact (rel_ctx_wf_tail HC) |]; split; [ exact HU |].
@@ -153,6 +160,14 @@ Proof.
     destruct (per_ctx_env_cons_mod_inversion HR0 HR) as [_ ER].
     destruct (proj1 (ER ρ ρ) Hρ) as [_ Hd _ _ _].
     rewrite eval_wk_shift; exact Hd.
+  - (* a definition with a module part: its module part, as a slot's *)
+    destruct (rel_ctx_wf_dm_inv HC) as (_ & _ & HU).
+    exists Γ0, U0, wk_shift; split; [ exact (rel_wk_under_ctx_shift HC) |]; split; [ reflexivity |].
+    split; [ exact (rel_ctx_wf_tail HC) |]; split; [ exact HU |].
+    intros R ρ HR Hρ.
+    rewrite eval_wk_shift.
+    inversion HR; subst.
+    match goal with HE : R <~> _ |- _ => apply HE in Hρ as [_ _ _ _ _ _ Hd _ _ _]; exact Hd end.
   - destruct (IH (rel_ctx_wf_tail HC)) as (G0 & U0 & φ & Hφ & -> & HG0 & HsU & Ht).
     exists G0, U0, (φ ⊙ wk_shift); split; [| split; [ apply gunit_wk_wk | split; [ exact HG0 | split; [ exact HsU |] ] ] ].
     + destruct (rel_wk_under_ctx_shift HC) as [R1 HR1 R2 HR2 Hs].

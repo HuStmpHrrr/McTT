@@ -48,7 +48,12 @@ Section InitialEnvImpl.
   | Θ, Ξ, cons (ce_mod U) G, H =>
       let (p, Hp) := initial_env_impl Θ Ξ G _ in
       let (h, Hh) := eval_modexp_impl Θ Ξ (me_lit U) p _ in
-      exist _ (p ↦ᵐ h) _.
+      exist _ (p ↦ᵐ h) _
+  | Θ, Ξ, cons (ce_dm A M U) G, H =>
+      let (p, Hp) := initial_env_impl Θ Ξ G _ in
+      let (m, Hm) := eval_exp_impl Θ Ξ M p _ in
+      let (h, Hh) := eval_modexp_impl Θ Ξ (me_lit U) p _ in
+      exist _ (p ↦ᵈ m ‖ h) _.
 
 End InitialEnvImpl.
 

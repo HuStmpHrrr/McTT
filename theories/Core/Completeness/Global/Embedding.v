@@ -357,19 +357,29 @@ Section FiledOk.
     - exact (proj1 HE Hgm).
   Qed.
 
+  (** An alias entry has its kind at the target: a module, or, for a
+      definition with a module part, a member with both parts. *)
   Lemma fo_alias_kind : forall p T Φ x Φ0 E Ua, gc_loc Θm Ξm p = Some (T, Φ) ->
       gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) -> entry_alias_unit E = Some Ua ->
-      dkind Θ2 Ξ2 (dm_global p nil) (x :: nil) mk_mod.
+      dkind Θ2 Ξ2 (dm_global p nil) (x :: nil) (entry_kind E).
   Proof.
     intros * Hl Hp HUa.
     pose proof (fo_alias_module _ _ _ _ _ _ _ Hl Hp HUa) as Hm; rewrite qname_in_app in Hm.
     pose proof (fo_alias_valid_unit _ _ _ _ _ _ _ Hl Hp HUa) as HK.
+    destruct (fo_entry _ _ _ _ _ _ Hl Hp) as (Φ2 & E2 & _ & _ & HeE2 & Hgr & _).
+    assert (HE : E = E2).
+    { apply entry_grows_eq; [ exact Hgr | | | ]; intros * ->;
+        destruct E as [| ? [? [? ?| ?]] | | | ]; cbn in Hgr, HUa; try discriminate; try contradiction; congruence. }
+    subst E2; rewrite qname_in_app in HeE2.
     assert (HUa' : exists Ta Ea, Ua = gu_mk Ta (md_alias Ea))
       by (destruct E as [| pv [Ta [| Ea]] | | pv Ad Md [Ta [| Ea]] |]; cbn in HUa; try discriminate; injection HUa as <-; eauto).
     destruct HUa' as (Ta & Ea & ->).
     pose proof (valid_nil_kind _ _ _ (valid_unit_alias_rel0 _ _ _ _ HK) per_ctx_env_nil_true nil I) as Hk.
     inversion Hk; subst.
-    eapply dk_global_alias; [ exact Hm | eassumption ].
+    destruct E as [| pv Ue | | pv Ad Md Ud |]; cbn in HUa; try discriminate; cbn [entry_kind].
+    - eapply dk_global_alias; [ exact Hm | right; exact (module_alias_not_dm _ _ _ _ _ _ Hm HeE2) | eassumption ].
+    - change mk_dm with (dm_of mk_mod).
+      eapply dk_global_alias_dm; [ exact Hm | right; right; do 4 eexists; exact HeE2 | eassumption ].
   Qed.
 
   (** Each entry of a stored body has its kind at the target. *)
@@ -380,37 +390,52 @@ Section FiledOk.
     destruct (fo_entry _ _ _ _ _ _ Hl Hp) as (Φ2 & E2 & Hl2 & Hent2 & HeE2 & Hgr & _).
     pose proof (gc_loc_loc _ _ _ _ _ Hl2) as Hlc2.
     rewrite (entry_kind_grows _ _ Hgr).
+    pose proof HeE2 as HeE2'; rewrite qname_in_app in HeE2'.
     destruct E2 as [b pv A B | pv [Δ [sm Φ' | Ea]] | pv pq k D ΦD | pv Ad Md Ud | pv pr Rr ΦR]; cbn [entry_kind].
     - apply gc_entry_def in HeE2; rewrite qname_in_app in HeE2.
-      eapply dk_global_step; [ right; do 4 eexists; exact HeE2 | eapply dk_global_here_def; exact HeE2 ].
-    - destruct (gc_body_loc _ _ _ _ (proj1 (loc_child_mod _ _ fo_wf _ _ _ Hlc2 _ _ _ _ _ Hent2))) as (r & Hr).
-      rewrite qname_in_app in Hr.
-      eapply dk_global_step; [ left; eexists; exact Hr | exact (gc_loc_kind _ _ _ _ _ Hr) ].
+      eapply dk_global_step; [ right; do 4 eexists; exact HeE2 | right; exact (gc_resolve_def_not_dm _ _ _ _ _ _ _ HeE2)
+                             | eapply dk_global_here_def; exact HeE2 ].
+    - (* a body module: a body stored at its path, which names no member with both parts *)
+      destruct (loc_child_mod _ _ fo_wf _ _ _ Hlc2 _ _ _ _ _ Hent2) as [Hb Hm].
+      destruct (gc_body_loc _ _ _ _ Hb) as (r & Hr).
+      rewrite qname_in_app in Hr, Hm.
+      eapply dk_global_step; [ left; eexists; exact Hr | right | exact (gc_loc_kind _ _ _ _ _ Hr) ].
+      exact (module_body_not_dm _ _ _ _ Hm (module_entry_no_record _ _ _ _ _ _ Hm HeE2')).
     - assert (HE : E = ge_mod pv (gu_mk Δ (md_alias Ea)))
         by (apply entry_grows_eq; [ exact Hgr | intros * [=] | intros * [=] | intros * [=] ]).
       subst E; exact (fo_alias_kind _ _ _ _ _ _ _ Hl Hp eq_refl).
-    - destruct (gc_body_loc _ _ _ _ (loc_child_ind _ _ fo_wf _ _ _ _ _ _ _ _ _ Hlc2 Hent2)) as (r & Hr).
+    - (* an inductive type: a member with both parts, its module a body stored at its path *)
+      destruct (gc_body_loc _ _ _ _ (loc_child_ind _ _ fo_wf _ _ _ _ _ _ _ _ _ Hlc2 Hent2)) as (r & Hr).
       rewrite qname_in_app in Hr.
-      eapply dk_global_step; [ left; eexists; exact Hr | exact (gc_loc_kind _ _ _ _ _ Hr) ].
-    - (* a definition with a module part: as a module, its alias *)
+      eapply dk_global_here_dm; [ left | exact Hr ].
+      rewrite ind_mlookup_unfold; destruct (gs_find_ind Ξ2 (qname_app p (x :: nil))); [ eexists; reflexivity |].
+      destruct (gm_entry_head _ _ _ Hent2) as (z & ip & [= <- <-] & Hin).
+      rewrite (proj1 (proj2 (proj2 (loc_read _ _ fo_wf _ _ _ Hlc2 _ Hin nil)))),
+        (proj2 (gm_entry_subbody_ind _ T _ _ _ _ _ _ Hent2)).
+      eexists; reflexivity.
+    - (* a definition with a module part: a member with both parts, by its alias *)
       assert (HE : E = ge_def_mod pv Ad Md Ud)
         by (apply entry_grows_eq; [ exact Hgr | intros * [=] | intros * [=] | intros * [=] ]).
       subst E.
       pose proof (gm_coh_prefix _ _ _ _ _ (loc_coh _ _ Hgm _ _ _ (gc_loc_loc _ _ _ _ _ Hl)) Hp) as (_ & Δ0 & Ea & -> & _).
       exact (fo_alias_kind _ _ _ _ _ _ _ Hl Hp eq_refl).
-    - (* a record type: its module, a body stored at its path *)
+    - (* a record type: a member with both parts, its module a body stored at its path *)
       destruct (gc_body_loc _ _ _ _ (loc_child_record _ _ fo_wf _ _ _ _ _ _ _ _ Hlc2 Hent2)) as (r & Hr).
       rewrite qname_in_app in Hr.
-      eapply dk_global_step; [ left; eexists; exact Hr | exact (gc_loc_kind _ _ _ _ _ Hr) ].
+      eapply dk_global_here_dm; [ right; left | exact Hr ].
+      unfold record_lookup; destruct (gs_find_record Ξ2 (qname_app p (x :: nil))); [ eexists; reflexivity |].
+      rewrite HeE2'; eexists; reflexivity.
   Qed.
 
-  (** Each body stored below a stored body is a module at the target. *)
+  (** Each body stored below a stored body, the module of no member with a
+      term part, is a module at the target. *)
   Lemma fo_sub_kind : forall p x TΦ, gc_loc Θm Ξm (qname_app p (x :: nil)) = Some TΦ ->
+      ~ dm_path Θ2 Ξ2 (qname_app p (x :: nil)) ->
       dkind Θ2 Ξ2 (dm_global p nil) (x :: nil) mk_mod.
   Proof.
-    intros * Hl; destruct TΦ as [T Φ].
+    intros * Hl Hdm; destruct TΦ as [T Φ].
     destruct (gc_loc_grow _ _ _ _ fo_wf fo_sub _ _ _ Hl) as (Φ2 & Hl2 & _).
-    eapply dk_global_step; [ left; eexists; exact Hl2 | exact (gc_loc_kind _ _ _ _ _ Hl2) ].
+    eapply dk_global_step; [ left; eexists; exact Hl2 | right; exact Hdm | exact (gc_loc_kind _ _ _ _ _ Hl2) ].
   Qed.
 
   (** Each alias stored in a stored body is a valid unit in any valid context. *)
@@ -627,7 +652,7 @@ Section FiledOk.
           as (g & _ & _ & _ & _ & Hg & _).
         destruct (fo_term_fn _ _ _ _ _ g HTa HT HA0 (HM0 _ eq_refl) Hg Hats) as [Hred Hper].
         apply mk_valid_filed_term with (vft_typ := A0) (vft_lvl := i) (vft_val := g); [ exact HA0 | exact Hred | | exact Hper ].
-        eapply eval_sel_global; [ exact HeE2 | exact Hg | constructor ]. }
+        eapply eval_sel_global; [ exact (gc_term_of_resolve _ _ _ _ _ _ HeE2) | exact Hg | constructor ]. }
       all: (* an axiom or an abstract definition: its name, a neutral *)
         assert (HT0 : ⊨ T ++ ⋅) by (rewrite app_nil_r; exact HT);
         assert (HA0' : T ++ ⋅ ⊨ A0 : Typeω@i) by (rewrite app_nil_r; exact HA0);
@@ -675,7 +700,7 @@ Section FiledOk.
         as (g & _ & _ & _ & _ & Hg & _).
       destruct (fo_term_fn _ _ _ _ _ g HTa HT HA0 (HM0 _ eq_refl) Hg Hats) as [Hred Hper].
       apply mk_valid_filed_term with (vft_typ := A0) (vft_lvl := i) (vft_val := g); [ exact HA0 | exact Hred | | exact Hper ].
-      eapply eval_sel_global_def_mod; [ exact HeE2 | exact Hg | constructor ].
+      eapply eval_sel_global; [ exact (gc_term_of_def_mod _ _ _ _ _ _ _ HeE2) | exact Hg | constructor ].
     - (* a record type: its type former *)
       pose proof (gc_entry_record _ _ _ _ _ _ _ HeE) as Hrl.
       pose proof (loc_coh _ _ Hgm _ _ _ (gc_loc_loc _ _ _ _ _ Hl)) as Hcoh.

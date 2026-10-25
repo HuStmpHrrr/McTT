@@ -81,6 +81,14 @@ Section Fill.
     | _ => false
     end.
 
+  (** The binder [k] of [Γ] holds a term only, an assumption or a
+      definition, and so reads as a term in module position. *)
+  Definition term_binder (Γ : ctx) (k : nat) : Prop :=
+    match List.nth_error Γ k with
+    | Some (ce_ass _) | Some (ce_def _ _) => True
+    | _ => False
+    end.
+
   (** The members an open's items name. *)
   Definition items_members (its : list iitem) : list string :=
     List.flat_map (fun it => match fst (fst it) with Some n => n :: nil | None => nil end) its.
@@ -204,11 +212,12 @@ Section Fill.
   with fill_read : ctx -> modexp -> module_read -> Prop :=
   (** A unit *)
   | fill_read_unit : forall Γ fp, fill_read Γ (me_unit fp) (read_module (me_unit fp))
-  (** A binder that holds no term: a module slot, or nothing, which typing
-      rejects *)
-  | fill_read_slot : forall Γ k, (forall A, ~ Γ ∋ #k : A) -> fill_read Γ (me_var k) (read_module (me_var k))
+  (** A binder that is no term binder: a module slot, a definition with a
+      module part (read as its module part, as a member with a term part
+      and a module part is), or nothing, which typing rejects *)
+  | fill_read_slot : forall Γ k, ~ term_binder Γ k -> fill_read Γ (me_var k) (read_module (me_var k))
   (** A term binder: the term *)
-  | fill_read_var : forall Γ k A, Γ ∋ #k : A -> fill_read Γ (me_var k) (read_term (a_var k))
+  | fill_read_var : forall Γ k, term_binder Γ k -> fill_read Γ (me_var k) (read_term (a_var k))
   (** A module literal *)
   | fill_read_lit : forall Γ U U', fill_unit Γ U U' -> fill_read Γ (me_lit U) (read_module (me_lit U'))
   (** A member that is no term: a module, or nothing, which typing
@@ -272,6 +281,11 @@ Section Fill.
   (** A module slot *)
   | fill_tele_mod : forall Γ Δ Δ' U U',
       fill_tele Γ Δ Δ' -> fill_unit (Δ' ++ Γ) U U' -> fill_tele Γ (ce_mod U :: Δ) (ce_mod U' :: Δ')
+  (** A definition with a module part: its parts, each over the filled
+      entries after it *)
+  | fill_tele_dm : forall Γ Δ Δ' A A' M M' U U',
+      fill_tele Γ Δ Δ' -> fill_exp (Δ' ++ Γ) A A' -> fill_exp (Δ' ++ Γ) M M' -> fill_unit (Δ' ++ Γ) U U' ->
+      fill_tele Γ (ce_dm A M U :: Δ) (ce_dm A' M' U' :: Δ')
 
   (** A local body, entry by entry, each in the context of the expansion
       of the filled entries before it *)
@@ -287,6 +301,11 @@ Section Fill.
   | fill_body_mod : forall Γ Φ Φ' Φx x pv U U',
       fill_body Γ Φ Φ' -> body_xp Θ Ξ Γ Φ' Φx -> fill_unit (body_ctx Φx ++ Γ) U U' ->
       fill_body Γ (gm_ext Φ x (ge_mod pv U)) (gm_ext Φ' x (ge_mod pv U'))
+  (** A definition with a module part: its type, its term and its unit *)
+  | fill_body_dm : forall Γ Φ Φ' Φx x pv A A' M M' U U',
+      fill_body Γ Φ Φ' -> body_xp Θ Ξ Γ Φ' Φx ->
+      fill_exp (body_ctx Φx ++ Γ) A A' -> fill_exp (body_ctx Φx ++ Γ) M M' -> fill_unit (body_ctx Φx ++ Γ) U U' ->
+      fill_body Γ (gm_ext Φ x (ge_def_mod pv A M U)) (gm_ext Φ' x (ge_def_mod pv A' M' U'))
   (** A local open: its target, which may be a record value, whose
       members its items name accessible *)
   | fill_body_open : forall Γ Φ Φ' Φx H H' op its,

@@ -320,7 +320,7 @@ Proof.
   intros * HT%completeness_fundamental_exp.
   destruct (rel_exp_of_typ_inversion_simple HT) as [env_rel [Hnil H]].
   apply H.
-  inversion Hnil as [? Heq | | |]; subst.
+  inversion Hnil as [? Heq | | | |]; subst.
   apply Heq; exact I.
 Qed.
 
@@ -375,7 +375,7 @@ Proof. intros * Hle HA; exact (glu_rel_exp_lift_uidx (u := ul i) (v := ul j) Hle
 
 Lemma glu_ctx_env_head_valid : forall Γ A Sb, EG Γ ▹ A ∈ glu_ctx_env ↘ Sb -> exists i, Γ ⊩ A : Typeω@i.
 Proof.
-  intros * H; inversion H as [| ? ? i TSb ? HΓ HA HT HSb | |]; subst.
+  intros * H; inversion H as [| ? ? i TSb ? HΓ HA HT HSb | | |]; subst.
   exists i; eapply glu_rel_exp_of_typ; [ exact HΓ |].
   intros Δ σ ρ Hσ; destruct (HT _ _ _ Hσ) as [a P El Ha Hglu HP].
   split; [ mauto 3 |].
@@ -390,7 +390,7 @@ Proof.
   induction C as [| e C IH]; intros * Hass H i0.
   - exists i0; split; [ lia |]; intros [] *; discriminate.
   - apply List.Forall_cons_iff in Hass as [[A ->] Hass].
-    cbn [List.app] in H; pose proof H as H'; inversion H' as [| ? ? ? ? ? HC _ _ _ | |]; subst.
+    cbn [List.app] in H; pose proof H as H'; inversion H' as [| ? ? ? ? ? HC _ _ _ | | |]; subst.
     destruct (glu_ctx_env_head_valid _ _ _ H) as [k Hk].
     destruct (IH _ _ Hass HC (Nat.max i0 k)) as (i1 & Hle & Hi).
     exists i1; split; [ lia |].
@@ -826,7 +826,7 @@ Proof.
   intros * [SbΓ HΓ] [Sb0 H0 i Hi].
   eapply mk_glu_rel_exp with (gre_lvl := i); [ exact HΓ |]; intros Δ σ ρ Hσ.
   apply Hi.
-  inversion H0 as [Sb' Heq Hg | | |]; subst.
+  inversion H0 as [Sb' Heq Hg | | | |]; subst.
   apply (Heq Δ σ ρ); cbn.
   apply wf_sub_nil', (wf_sub_dom _ _ _ _ _ (glu_ctx_env_sub_escape HΓ _ _ _ Hσ)).
 Qed.

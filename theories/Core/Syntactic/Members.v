@@ -594,6 +594,21 @@ Definition gc_entry_u (uf : path -> option gunit) (Ξ : gstack) (p : qname) : op
 
 Definition gc_entry (Θ : gdeps) (Ξ : gstack) (p : qname) : option gentry := gc_entry_u (gds_lookup Θ) Ξ p.
 
+(** The term part a global path is selected as, stored closed: the body of
+    a transparent definition it resolves to, or the term of the definition
+    with a module part stored there.  Resolution reads a definition with a
+    module part as a module only (its alias), so its term is read off the
+    entry. *)
+Definition gc_term (Θ : gdeps) (Ξ : gstack) (p : qname) : option exp :=
+  match gc_resolve Θ Ξ p with
+  | Some (ge_def true _ _ (Some M)) => Some M
+  | _ =>
+      match gc_entry Θ Ξ p with
+      | Some (ge_def_mod _ _ M _) => Some M
+      | _ => None
+      end
+  end.
+
 (** The record type at [p]: while its module's frame is open, the
     declaration the frame carries ([gs_find_record]); after, the
     declaration of the record entry the path names. *)
@@ -606,6 +621,14 @@ Definition record_lookup (Θ : gdeps) (Ξ : gstack) (p : qname) : option record_
       | _ => None
       end
   end.
+
+(** A global path naming a member with a term part and a module part: an
+    inductive type or a record type, stored or with its module's frame
+    open, or a definition with a module part. *)
+Definition dm_path (Θ : gdeps) (Ξ : gstack) (p : qname) : Prop :=
+  (exists r, ind_mlookup Θ Ξ p = Some r) \/
+  (exists R, record_lookup Θ Ξ p = Some R) \/
+  (exists pv A M U, gc_entry Θ Ξ p = Some (ge_def_mod pv A M U)).
 
 (** The type of the type former of the record [R] applied to [Us], its
     outermost parameters: the [Π] over the others of its sort, at [Us]. *)
@@ -851,6 +874,71 @@ Proof.
     rewrite (gc_entry_tele_nil Θ _ _ _ _ HT) in H; discriminate.
 Qed.
 
+(** As a module, a definition with a module part is no body. *)
+Lemma gm_entry_def_mod_not_body : forall Φ T x ip pv A M U T' oD,
+    gm_entry Φ (x :: ip) = Some (ge_def_mod pv A M U) ->
+    gm_submodule T Φ x ip = Some (mr_body T' oD) -> False.
+Proof.
+  fix IH 1; intros [| Φ y E0 | Φ H its] T x ip *; cbn; try discriminate; intros He Hs; try (eapply IH; eassumption).
+  destruct (String.eqb x y); [| eapply IH; eassumption ].
+  destruct ip as [| z ip], E0 as [b' pv' A' B' | pm0 [Δ0 [? Φ1 | E']] | pv' ? ? D' Φ1 | pv' A1 M1 [Δ1 [? Φ1 | E1]] | pv' Rr Φ1];
+    cbn in He, Hs; try discriminate; eapply IH; eassumption.
+Qed.
+
+Lemma gc_entry_def_mod_not_body : forall Θ Ξ p pv A M U T oD,
+    gc_entry Θ Ξ p = Some (ge_def_mod pv A M U) -> gc_module Θ Ξ p = Some (mr_body T oD) -> False.
+Proof.
+  intros * He Hm; unfold gc_entry, gc_entry_u, gc_module, gc_module_u in *.
+  rewrite gs_find_tele_find in *.
+  destruct (gs_find_tele Ξ p) as [[[Uf ip] T0] |]; cbn in He, Hm.
+  - destruct ip as [| x ip]; [ discriminate |].
+    eapply gm_entry_def_mod_not_body; eassumption.
+  - destruct (gds_lookup Θ (q_unit p)) as [Uf |]; [| discriminate ].
+    destruct (q_chain p) as [| x ip]; [ rewrite gm_entry_nil in He; discriminate |].
+    unfold gm_module in Hm; eapply gm_entry_def_mod_not_body; eassumption.
+Qed.
+
+(** A path read as a module is no open frame, so the module of no member
+    of a group and of no record type with its frame open. *)
+Lemma gc_module_not_find_ind : forall Θ Ξ p r, gc_module Θ Ξ p = Some r -> gs_find_ind Ξ p = None.
+Proof.
+  intros * Hm; destruct (gs_find_ind Ξ p) as [r' |] eqn:Hf; [| reflexivity ].
+  destruct (gs_find_ind_tele _ _ _ Hf) as (U & T & HT).
+  unfold gc_module, gc_module_u in Hm; rewrite HT in Hm; discriminate.
+Qed.
+
+(** A body module that is the module of no member names no member with a
+    term part and a module part, when it is no record type. *)
+Lemma module_body_not_dm : forall Θ Ξ p T,
+    gc_module Θ Ξ p = Some (mr_body T None) -> record_lookup Θ Ξ p = None -> ~ dm_path Θ Ξ p.
+Proof.
+  intros * Hm Hr [(r & Hl) | [(R & Hl) | (pv & A & M & U & He)]].
+  - rewrite ind_mlookup_unfold, (gc_module_not_find_ind _ _ _ _ Hm), Hm in Hl; discriminate.
+  - rewrite Hr in Hl; discriminate.
+  - exact (gc_entry_def_mod_not_body _ _ _ _ _ _ _ _ _ He Hm).
+Qed.
+
+(** A module stored as a module entry is no record type. *)
+Lemma module_entry_no_record : forall Θ Ξ p r pv U,
+    gc_module Θ Ξ p = Some r -> gc_entry Θ Ξ p = Some (ge_mod pv U) -> record_lookup Θ Ξ p = None.
+Proof.
+  intros * Hm He; unfold record_lookup; destruct (gs_find_record Ξ p) as [R |] eqn:Hr.
+  - destruct (gs_find_record_tele _ _ _ Hr) as (U0 & T & HT).
+    unfold gc_module, gc_module_u in Hm; rewrite HT in Hm; discriminate.
+  - rewrite He; reflexivity.
+Qed.
+
+(** An alias stored as a module entry names no member with a term part and
+    a module part. *)
+Lemma module_alias_not_dm : forall Θ Ξ p U pv U',
+    gc_module Θ Ξ p = Some (mr_alias U) -> gc_entry Θ Ξ p = Some (ge_mod pv U') -> ~ dm_path Θ Ξ p.
+Proof.
+  intros * Hm He [(r & Hl) | [(R & Hl) | (pv0 & A & M & U0 & He')]].
+  - rewrite ind_mlookup_unfold, (gc_module_not_find_ind _ _ _ _ Hm), Hm in Hl; discriminate.
+  - rewrite (module_entry_no_record _ _ _ _ _ _ Hm He) in Hl; discriminate.
+  - rewrite He in He'; discriminate.
+Qed.
+
 (** [gm_grows Φ Φ']: [Φ'] is [Φ] with more definitions, of fresh names,
     after it, and no more modules: the body of an open frame grows so as
     definitions are added to it. *)
@@ -918,6 +1006,28 @@ Proof. intros * H; apply (gcs_resolve _ _ _ _ H). Qed.
 Lemma gc_sub_module : forall Θ1 Ξ1 Θ2 Ξ2 p r,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_module Θ1 Ξ1 p = Some r -> gc_module Θ2 Ξ2 p = Some r.
 Proof. intros * H; apply (gcs_module _ _ _ _ H). Qed.
+
+(** An open frame that is the module of no member and of no record type
+    names no member with a term part and a module part in any global
+    context it grows into: still an open frame there, or filed as a body
+    module of the same kind. *)
+Lemma frame_not_dm_sub : forall Θ1 Ξ1 Θ2 Ξ2 p T Φ, gc_sub Θ1 Ξ1 Θ2 Ξ2 ->
+    gc_frame Ξ1 p = Some (T, Φ) -> gs_find_ind Ξ1 p = None -> gs_find_record Ξ1 p = None -> ~ dm_path Θ2 Ξ2 p.
+Proof.
+  intros * Hs Hf Hk Hr.
+  destruct (gcs_frame _ _ _ _ Hs _ _ _ Hf) as (Φ' & [(Hf2 & Hk2 & Hr2) | (Hb2 & Hm2 & Hr2)]).
+  - rewrite Hk in Hk2; rewrite Hr in Hr2.
+    assert (HT : exists U0 T0, gs_find_tele Ξ2 p = Some (U0, nil, T0)).
+    { unfold gc_frame in Hf2; destruct (gs_find_tele Ξ2 p) as [[[U0 [| ? ?]] T0] |];
+        [ eauto | destruct U0 as [? [[|] ? | ?]]; discriminate | discriminate ]. }
+    destruct HT as (U0 & T0 & HT).
+    pose proof (gc_entry_tele_nil Θ2 _ _ _ _ HT) as He2.
+    intros [(r & Hl) | [(R & Hl) | (pv & A & M & U & He)]].
+    + rewrite ind_mlookup_unfold, Hk2 in Hl; unfold gc_module, gc_module_u in Hl; rewrite HT in Hl; discriminate.
+    + unfold record_lookup in Hl; rewrite Hr2, He2 in Hl; discriminate.
+    + rewrite He2 in He; discriminate.
+  - rewrite Hk in Hm2; rewrite Hr in Hr2; exact (module_body_not_dm _ _ _ _ Hm2 Hr2).
+Qed.
 
 Lemma gc_sub_body : forall Θ1 Ξ1 Θ2 Ξ2 p T Φ,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_body Θ1 Ξ1 p = Some (T, Φ) ->
@@ -1501,6 +1611,8 @@ Reserved Notation "Γ ∋ '#' x ≔ₘ U" (at level 70, x constr at level 0, U a
 Inductive ctx_lookup_mod : nat -> gunit -> ctx -> Prop :=
 (** The innermost slot *)
 | mod_here : `(Γ ▹ₘ U ∋ #0 ≔ₘ gunit_wk U wk_shift)
+(** The innermost definition with a module part, as its module part *)
+| mod_here_dm : `(Γ ▸ₘ A ≔ M ‖ U ∋ #0 ≔ₘ gunit_wk U wk_shift)
 (** A slot under one more entry *)
 | mod_there : `(Γ ∋ #n ≔ₘ U -> e :: Γ ∋ #(S n) ≔ₘ gunit_wk U wk_shift)
 where "Γ ∋ '#' x ≔ₘ U" := (ctx_lookup_mod x U Γ) : type_scope.
@@ -1513,7 +1625,7 @@ Fixpoint ctx_find_mod (Γ : ctx) (x : nat) : option gunit :=
   | nil => None
   | e :: Γ' =>
       match x with
-      | 0 => match e with ce_mod U => Some (gunit_wk U wk_shift) | _ => None end
+      | 0 => match e with ce_mod U | ce_dm _ _ U => Some (gunit_wk U wk_shift) | _ => None end
       | S y => option_map (fun U => gunit_wk U wk_shift) (ctx_find_mod Γ' y)
       end
   end.
@@ -1527,7 +1639,7 @@ Proof.
 Qed.
 
 Lemma ctx_find_mod_complete : forall Γ x U, Γ ∋ #x ≔ₘ U -> ctx_find_mod Γ x = Some U.
-Proof. induction 1; cbn; [ reflexivity | rewrite IHctx_lookup_mod; reflexivity ]. Qed.
+Proof. induction 1; cbn; [ reflexivity | reflexivity | rewrite IHctx_lookup_mod; reflexivity ]. Qed.
 
 Lemma ctx_find_mod_spec : forall Γ x U, ctx_find_mod Γ x = Some U <-> Γ ∋ #x ≔ₘ U.
 Proof. split; auto using ctx_find_mod_sound, ctx_find_mod_complete. Qed.
@@ -1669,6 +1781,11 @@ Fixpoint tele_open (R : list centry) : option (typ * ctx)%type :=
       | Some (B', T') => Some (B'[Id ,,ₘ me_lit U], tele_sub T' (q (Id ,,ₘ me_lit U)))
       | None => None
       end
+  | ce_dm _ N U :: R' =>
+      match tele_open R' with
+      | Some (B', T') => Some (B'[Id ,,ᵈ N ‖ me_lit U], tele_sub T' (q (Id ,,ᵈ N ‖ me_lit U)))
+      | None => None
+      end
   end.
 
 Definition tele_view (T : ctx) : option (typ * ctx)%type := tele_open (rev T).
@@ -1714,7 +1831,10 @@ Inductive mkind : Set :=
 (** A definition *)
 | mk_term
 (** A module *)
-| mk_mod.
+| mk_mod
+(** A member with a term part and a module part: an inductive type, a
+    record type, or a definition with a module part *)
+| mk_dm.
 
 (** A member description: what a module expression or an entry denotes
     (see the section header above). *)
@@ -1855,6 +1975,12 @@ Fixpoint tele_split (R : list centry) : ((typ * ctx * sub) + sub)%type :=
       | inl (B', T', τ) => inl (B'[Id ,,ₘ me_lit U], tele_sub T' (q (Id ,,ₘ me_lit U)), τ ⨟ sb_qn (S (List.length T')) (Id ,,ₘ me_lit U))
       | inr τ => inr (τ ⨟ (Id ,,ₘ me_lit U))
       end
+  | ce_dm _ N U :: R' =>
+      match tele_split R' with
+      | inl (B', T', τ) => inl (B'[Id ,,ᵈ N ‖ me_lit U], tele_sub T' (q (Id ,,ᵈ N ‖ me_lit U)),
+                                τ ⨟ sb_qn (S (List.length T')) (Id ,,ᵈ N ‖ me_lit U))
+      | inr τ => inr (τ ⨟ (Id ,,ᵈ N ‖ me_lit U))
+      end
   end.
 
 (** Application "R at N": [N] is the next parameter.  A leading definition
@@ -1937,14 +2063,16 @@ Fixpoint ds_sub (R : mdesc) (σ : sub) : mdesc :=
   end.
 
 (** The entries of a local body before a member, filled in: the
-    substitution sending each of them to its value, a definition to its body
-    and a module to its unit, the entries before it filled in.  An entry with
-    no value (a definition without a body) cannot be filled in. *)
+    substitution sending each of them to its value, a definition to its body,
+    a module to its unit and a definition with a module part to both, the
+    entries before it filled in.  An entry with no value (a definition
+    without a body) cannot be filled in. *)
 Fixpoint gm_fill (Φ : gmod) : option sub :=
   match Φ with
   | gm_nil => Some Id
   | gm_ext Φ' _ (ge_def _ _ _ (Some M)) => option_map (fun σ => σ ,, M[σ]) (gm_fill Φ')
   | gm_ext Φ' _ (ge_mod _ U) => option_map (fun σ => σ ,,ₘ me_lit U[σ]ᵘ) (gm_fill Φ')
+  | gm_ext Φ' _ (ge_def_mod _ _ M U) => option_map (fun σ => σ ,,ᵈ M[σ] ‖ me_lit U[σ]ᵘ) (gm_fill Φ')
   | _ => None
   end.
 
@@ -2136,10 +2264,11 @@ Definition ds_entry (R : mdesc) (y : string) : option (ctx * gentry * reader) :=
       | Some (gm_ext Φ' _ E) =>
           match E with
           (** Inductive types are global: an inductive entry of a local body
-              is not read.  A transparent local definition is read; an
-              abstract one, and one without a body, are not: they are used
+              is not read.  A transparent local definition is read, and so
+              is a local definition with a module part; an abstract
+              definition, and one without a body, are not: they are used
               only inside the body, as its definitions there. *)
-          | ge_ind _ _ _ _ _ | ge_def_mod _ _ _ _ | ge_record _ _ _ _ | ge_def _ _ _ None | ge_def false _ _ _ => None
+          | ge_ind _ _ _ _ _ | ge_record _ _ _ _ | ge_def _ _ _ None | ge_def false _ _ _ => None
           | _ => Some (body_ctx Φ' ++ Δ, E, rd_open Δ Φ')
           end
       | _ => None
@@ -2292,20 +2421,17 @@ Inductive igen : Set :=
 | ig_def : string -> bool -> typ -> exp -> igen
 (** [ig_alias d pv E]: the alias [d] of [E] *)
 | ig_alias : string -> bool -> modexp -> igen
-(** [ig_def_mod d pv M E]: the definition [d] equal to [M], with the module
-    part the alias of [E]; its type is inferred where it is filed
-    ([gr_def_mod]) *)
-| ig_def_mod : string -> bool -> exp -> modexp -> igen.
+(** [ig_def_mod d pv A M E]: the definition [d] of type [A] equal to [M],
+    with the module part the alias of [E].  A global open files it at its
+    inferred type ([gr_def_mod]) *)
+| ig_def_mod : string -> bool -> typ -> exp -> modexp -> igen.
 
-
-(** A generated item as a body entry.  A definition with a module part,
-    which only a global open generates and which is filed with its inferred
-    type, is its module view here, the alias of [E]: what the kinds read. *)
+(** A generated item as a body entry. *)
 Definition ig_entry (g : igen) : (string * gentry)%type :=
   match g with
   | ig_def d pv A M => (d, ge_def true pv A (Some M))
   | ig_alias d pv E => (d, ge_mod pv (gu_mk nil (md_alias E)))
-  | ig_def_mod d pv M E => (d, ge_mod pv (gu_mk nil (md_alias E)))
+  | ig_def_mod d pv A M E => (d, ge_def_mod pv A M (gu_mk nil (md_alias E)))
   end.
 
 Definition ig_name (g : igen) : string := fst (ig_entry g).
@@ -2316,7 +2442,7 @@ Definition igen_wk (g : igen) (φ : wk) : igen :=
   match g with
   | ig_def d pv A M => ig_def d pv A[φ]ʷ M[φ]ʷ
   | ig_alias d pv E => ig_alias d pv (modexp_wk E φ)
-  | ig_def_mod d pv M E => ig_def_mod d pv M[φ]ʷ (modexp_wk E φ)
+  | ig_def_mod d pv A M E => ig_def_mod d pv A[φ]ʷ M[φ]ʷ (modexp_wk E φ)
   end.
 
 (** The substitution counterpart of [igen_wk]. *)
@@ -2324,7 +2450,7 @@ Definition igen_sub (g : igen) (σ : sub) : igen :=
   match g with
   | ig_def d pv A M => ig_def d pv A[σ] M[σ]
   | ig_alias d pv E => ig_alias d pv E[σ]ᵐ
-  | ig_def_mod d pv M E => ig_def_mod d pv M[σ] E[σ]ᵐ
+  | ig_def_mod d pv A M E => ig_def_mod d pv A[σ] M[σ] E[σ]ᵐ
   end.
 
 (** The generated entries appended to [Φ], in order.  All are read in the
@@ -2511,46 +2637,44 @@ with body_xp (Θ : gdeps) (Ξ : gstack) : ctx -> gmod -> gmod -> Prop :=
     body_xp Θ Ξ Γ Φ Φx ->
     mdenote Θ Ξ (body_ctx Φx ++ Γ) H R ->
     ds_mod R = Some Rm ->
-    items_gen Θ Ξ false (body_ctx Φx ++ Γ) H its gs ->
+    items_gen Θ Ξ (body_ctx Φx ++ Γ) H its gs ->
     items_ok its ->
     body_xp Θ Ξ Γ (gm_open Φ H its) (gens_append Φx 0 gs)
-(** [items_gen Θ Ξ g Γ H its gs]: what the items [its] of an open of [H]
+(** [items_gen Θ Ξ Γ H its gs]: what the items [its] of an open of [H]
     declare, all read in [Γ], by what the member each names denotes: a term
-    gives a definition of its type, a module an alias, and, at the global
-    level only ([g = true]), a member with both a term part and a module
-    part a definition with a module part; an item naming no member, the
-    alias of [H] itself, whatever [H] is.  A local open ([g = false]) has
-    no case for a member with a term part and a module part: a local open
-    of one is rejected. *)
-with items_gen (Θ : gdeps) (Ξ : gstack) : bool -> ctx -> modexp -> list iitem -> list igen -> Prop :=
+    gives a definition of its type, a module an alias, and a member with
+    both a term part and a module part a definition with a module part; an
+    item naming no member, the alias of [H] itself, whatever [H] is.  A
+    global open and a local one generate alike. *)
+with items_gen (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list iitem -> list igen -> Prop :=
 (** No item generates nothing *)
-| ign_nil : forall g Γ H, items_gen Θ Ξ g Γ H nil nil
+| ign_nil : forall Γ H, items_gen Θ Ξ Γ H nil nil
 (** An item naming no member ([open E as y]): the alias of [H] itself,
     whatever [H] is *)
-| ign_self : forall g Γ H d pv its gs,
-    items_gen Θ Ξ g Γ H its gs ->
-    items_gen Θ Ξ g Γ H ((None, d, pv) :: its) (ig_alias d pv H :: gs)
+| ign_self : forall Γ H d pv its gs,
+    items_gen Θ Ξ Γ H its gs ->
+    items_gen Θ Ξ Γ H ((None, d, pv) :: its) (ig_alias d pv H :: gs)
 (** An item naming a term: a definition of its type, by selection *)
-| ign_def : forall g Γ H n d pv A om its gs,
+| ign_def : forall Γ H n d pv A om its gs,
     mdenote Θ Ξ Γ (me_mem H n) (ds_term A om) ->
-    items_gen Θ Ξ g Γ H its gs ->
-    items_gen Θ Ξ g Γ H ((Some n, d, pv) :: its) (ig_def d pv A (a_mem H n) :: gs)
+    items_gen Θ Ξ Γ H its gs ->
+    items_gen Θ Ξ Γ H ((Some n, d, pv) :: its) (ig_def d pv A (a_mem H n) :: gs)
 (** An item naming a module: an alias of the selection *)
-| ign_mod : forall g Γ H n d pv R its gs,
+| ign_mod : forall Γ H n d pv R its gs,
     mdenote Θ Ξ Γ (me_mem H n) R ->
     ds_is_mod R ->
-    items_gen Θ Ξ g Γ H its gs ->
-    items_gen Θ Ξ g Γ H ((Some n, d, pv) :: its) (ig_alias d pv (me_mem H n) :: gs)
-(** At the global level only, an item naming a member with both a term
-    part and a module part (a type former, or a definition with a module
-    part): a definition with a module part, the selection as its term and
-    the alias of the selection as its module *)
+    items_gen Θ Ξ Γ H its gs ->
+    items_gen Θ Ξ Γ H ((Some n, d, pv) :: its) (ig_alias d pv (me_mem H n) :: gs)
+(** An item naming a member with both a term part and a module part (a
+    type former, or a definition with a module part): a definition with a
+    module part of the term part's type, the selection as its term and the
+    alias of the selection as its module *)
 | ign_dm : forall Γ H n d pv R A Rm its gs,
     mdenote Θ Ξ Γ (me_mem H n) R ->
     ds_ty R = Some A ->
     ds_mod R = Some Rm ->
-    items_gen Θ Ξ true Γ H its gs ->
-    items_gen Θ Ξ true Γ H ((Some n, d, pv) :: its) (ig_def_mod d pv (a_mem H n) (me_mem H n) :: gs).
+    items_gen Θ Ξ Γ H its gs ->
+    items_gen Θ Ξ Γ H ((Some n, d, pv) :: its) (ig_def_mod d pv A (a_mem H n) (me_mem H n) :: gs).
 
 Scheme mdenote_mut_ind := Induction for mdenote Sort Prop
 with udenote_mut_ind := Induction for udenote Sort Prop
@@ -2563,17 +2687,17 @@ Combined Scheme mdenote_all_ind from mdenote_mut_ind, udenote_mut_ind, edenote_m
 Hint Constructors mdenote udenote edenote body_xp items_gen : mctt.
 
 
-(** [open_gens Θ Ξ g Γ H its gs]: an open of [H] with items [its], in [Γ]:
+(** [open_gens Θ Ξ Γ H its gs]: an open of [H] with items [its], in [Γ]:
     [H] is a module, and [gs] is what the items declare.  (Its witnesses
     are informative, so they have no projections.) *)
 #[warnings="-cannot-define-projection"]
-Record open_gens (Θ : gdeps) (Ξ : gstack) (g : bool) (Γ : ctx) (H : modexp) (its : list iitem) (gs : list igen) : Prop :=
+Record open_gens (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (its : list iitem) (gs : list igen) : Prop :=
   mk_open_gens
   { og_desc : mdesc
   ; og_mod : mdesc
   ; og_denote : mdenote Θ Ξ Γ H og_desc
   ; og_is_mod : ds_mod og_desc = Some og_mod
-  ; og_items : items_gen Θ Ξ g Γ H its gs
+  ; og_items : items_gen Θ Ξ Γ H its gs
   ; og_ok : items_ok its }.
 
 (** A unit with its body expanded; an alias is its own. *)
@@ -2637,10 +2761,10 @@ Fixpoint gm_nopens (Φ : gmod) : nat :=
 
 (** *** The Shape of an Expansion *)
 
-Lemma items_gen_length : forall Θ Ξ io Γ H its gs, items_gen Θ Ξ io Γ H its gs -> List.length gs = List.length its.
+Lemma items_gen_length : forall Θ Ξ Γ H its gs, items_gen Θ Ξ Γ H its gs -> List.length gs = List.length its.
 Proof. induction 1; cbn; auto. Qed.
 
-Lemma items_gen_names : forall Θ Ξ io Γ H its gs, items_gen Θ Ξ io Γ H its gs -> List.map ig_name gs = List.map iitem_name its.
+Lemma items_gen_names : forall Θ Ξ Γ H its gs, items_gen Θ Ξ Γ H its gs -> List.map ig_name gs = List.map iitem_name its.
 Proof. induction 1; cbn; f_equal; auto. Qed.
 
 (** The context an open's entries make, over the body before it. *)
@@ -2699,8 +2823,8 @@ Lemma body_opens_open_len : forall Φ Φx H its gs, List.length gs = List.length
     body_opens (gm_open Φ H its) (gens_append Φx 0 gs) = (body_ctx Φx, H) :: body_opens Φ Φx.
 Proof. intros * Hl; cbn; rewrite <- Hl, gm_dropn_gens_append; reflexivity. Qed.
 
-Lemma body_opens_open : forall Θ Ξ io Γ Φ Φx H its gs,
-    items_gen Θ Ξ io Γ H its gs ->
+Lemma body_opens_open : forall Θ Ξ Γ Φ Φx H its gs,
+    items_gen Θ Ξ Γ H its gs ->
     body_opens (gm_open Φ H its) (gens_append Φx 0 gs) = (body_ctx Φx, H) :: body_opens Φ Φx.
 Proof.
   intros * Hg; cbn; erewrite <- items_gen_length by eassumption; rewrite gm_dropn_gens_append; reflexivity.
@@ -2710,8 +2834,8 @@ Lemma body_opens_at_open_len : forall Φ Φx H its gs, List.length gs = List.len
     body_opens_at (gm_open Φ H its) (gens_append Φx 0 gs) = (Φx, H) :: body_opens_at Φ Φx.
 Proof. intros * Hl; cbn; rewrite <- Hl, gm_dropn_gens_append; reflexivity. Qed.
 
-Lemma body_opens_at_open : forall Θ Ξ io Γ Φ Φx H its gs,
-    items_gen Θ Ξ io Γ H its gs ->
+Lemma body_opens_at_open : forall Θ Ξ Γ Φ Φx H its gs,
+    items_gen Θ Ξ Γ H its gs ->
     body_opens_at (gm_open Φ H its) (gens_append Φx 0 gs) = (Φx, H) :: body_opens_at Φ Φx.
 Proof.
   intros * Hg; cbn; erewrite <- items_gen_length by eassumption; rewrite gm_dropn_gens_append; reflexivity.
@@ -2737,7 +2861,7 @@ Proof.
   induction 1 as [Γ | Γ Φ Φx y E Hx IH | Γ Φ Φx H its R T gs Hx IH HR HT Hg Hok]; intros x Φ0 H0 its1 it Hi;
     cbn [gm_item_upto gm_item_xp] in *; try discriminate.
   - destruct (String.eqb x y); [ discriminate | eauto ].
-  - rewrite <- (items_gen_length _ _ _ _ _ _ _ Hg), gm_dropn_gens_append.
+  - rewrite <- (items_gen_length _ _ _ _ _ _ Hg), gm_dropn_gens_append.
     destruct (items_upto x its) as [[its1' it'] |]; [ injection Hi as <- <- <- <-; exact Hx | eauto ].
 Qed.
 
@@ -2841,6 +2965,74 @@ Proof.
   - unfold gc_frame, gc_module, gc_module_u in *.
     destruct (gs_find_tele Ξ p) as [[[[Δ [[|] Φ0 | E]] [| x ip]] T0] |]; discriminate.
   - destruct TΦ as [T Φ]; destruct (gc_body_module _ _ _ _ _ Hl) as (oD & Hm'); rewrite Hm in Hm'; discriminate.
+Qed.
+
+(** An entry a path resolves to is the entry stored there. *)
+Lemma gm_resolve_entry : forall ip Φ E, gm_resolve Φ ip = Some E -> gm_entry Φ ip = Some E.
+Proof.
+  induction ip as [| x ip IH]; intros Φ; induction Φ as [| Φ IHΦ y E0 | Φ IHΦ H its]; intros E Hr; cbn in *;
+    try discriminate; try (apply IHΦ; exact Hr).
+  destruct (String.eqb x y); [| apply IHΦ; exact Hr ].
+  destruct ip as [| x' ip'];
+    destruct E0 as [b pv A B | pv [Δ [sm Φ' | E']] | pv pq k D Φ' | pv A M U | pv pr R Φ'];
+    try discriminate; try exact Hr; apply IH; exact Hr.
+Qed.
+
+Lemma gc_resolve_entry : forall Θ Ξ p E, gc_resolve Θ Ξ p = Some E -> gc_entry Θ Ξ p = Some E.
+Proof.
+  intros * Hr; unfold gc_resolve, gc_resolve_u, gc_entry, gc_entry_u in *.
+  destruct (gs_find Ξ p) as [[U ip] |]; [ exact (gm_resolve_entry _ _ _ Hr) |].
+  destruct (gds_lookup Θ (q_unit p)); [ exact (gm_resolve_entry _ _ _ Hr) | discriminate ].
+Qed.
+
+(** A path resolving to a definition names no member with a term part and
+    a module part. *)
+Lemma gc_resolve_def_not_dm : forall Θ Ξ p b pv A B, gc_resolve Θ Ξ p = Some (ge_def b pv A B) -> ~ dm_path Θ Ξ p.
+Proof.
+  intros * Hr [(r & Hi) | [(R & Hl) | (pv' & A' & M' & U & He)]].
+  - destruct (ind_mlookup_module _ _ _ _ Hi) as [(T & Hm) | Hf].
+    + rewrite (gc_module_resolve _ _ _ _ Hm) in Hr; discriminate.
+    + destruct (gs_find_ind_tele _ _ _ Hf) as (U & T & Ht).
+      unfold gc_resolve, gc_resolve_u in Hr; rewrite gs_find_tele_find, Ht in Hr; cbn in Hr.
+      rewrite gm_resolve_nil in Hr; discriminate.
+  - unfold record_lookup in Hl; destruct (gs_find_record Ξ p) as [R0 |] eqn:Hf.
+    + destruct (gs_find_record_tele _ _ _ Hf) as (U & T & Ht).
+      unfold gc_resolve, gc_resolve_u in Hr; rewrite gs_find_tele_find, Ht in Hr; cbn in Hr.
+      rewrite gm_resolve_nil in Hr; discriminate.
+    + rewrite (gc_resolve_entry _ _ _ _ Hr) in Hl; discriminate.
+  - rewrite (gc_resolve_entry _ _ _ _ Hr) in He; discriminate.
+Qed.
+
+(** The term part a path is selected as: the body of a transparent
+    definition it resolves to, or the term of a definition with a module
+    part stored there, which resolves to nothing. *)
+Lemma gc_term_inv : forall Θ Ξ p M, gc_term Θ Ξ p = Some M ->
+    (exists pv A, gc_resolve Θ Ξ p = Some (ge_def true pv A (Some M))) \/
+    (exists pv A U, gc_entry Θ Ξ p = Some (ge_def_mod pv A M U)).
+Proof.
+  intros * Ht; unfold gc_term in Ht.
+  destruct (gc_resolve Θ Ξ p) as [E |] eqn:Er.
+  - destruct E as [[] pv A [M' |] | | | |];
+      try (injection Ht as <-; left; eauto; fail);
+      rewrite (gc_resolve_entry _ _ _ _ Er) in Ht; cbn in Ht;
+      first [ discriminate | injection Ht as <-; right; do 3 eexists; exact (gc_resolve_entry _ _ _ _ Er) ].
+  - destruct (gc_entry Θ Ξ p) as [[| | | pv A M' U |] |]; try discriminate.
+    injection Ht as <-; right; eauto.
+Qed.
+
+(** A path resolving to a transparent definition is selected as its body. *)
+Lemma gc_term_of_resolve : forall Θ Ξ p pv A M,
+    gc_resolve Θ Ξ p = Some (ge_def true pv A (Some M)) -> gc_term Θ Ξ p = Some M.
+Proof. intros * Hr; unfold gc_term; rewrite Hr; reflexivity. Qed.
+
+(** A path storing a definition with a module part is selected as its term. *)
+Lemma gc_term_of_def_mod : forall Θ Ξ p pv A M U,
+    gc_entry Θ Ξ p = Some (ge_def_mod pv A M U) -> gc_term Θ Ξ p = Some M.
+Proof.
+  intros * He; unfold gc_term.
+  destruct (gc_resolve Θ Ξ p) as [E |] eqn:Hr; [| rewrite He; reflexivity ].
+  destruct E as [[|] pv' A' [M' |] | | | |]; try (rewrite He; reflexivity).
+  exfalso; apply (gc_resolve_def_not_dm _ _ _ _ _ _ _ Hr); right; right; do 4 eexists; exact He.
 Qed.
 
 (** What a term entry stored at [o] describes as a term: a definition; a

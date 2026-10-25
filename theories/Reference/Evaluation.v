@@ -376,8 +376,10 @@ with eval_appms_order (Θ : gdeps) (Ξ : gstack) : dmod -> list domain -> Prop :
      eval_appms_order Θ Ξ h (n :: ns) )
 
 with eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
+(** A term part of a global module ([gc_term]): it, closed, applied to the
+    arguments *)
 | eslo_global :
-  `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = Some (ge_def true pv A (Some M)) ->
+  `( gc_term Θ Ξ (qname_app pq (x :: nil)) = Some M ->
      eval_exp_order Θ Ξ M nil ->
      (forall f, ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ f -> eval_apps_order Θ Ξ f args) ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
@@ -392,18 +394,13 @@ with eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
      ind_mlookup Θ Ξ (qname_app pq (x :: nil)) = Some (pg, k, D) ->
      eval_apps_order Θ Ξ (d_ind pg k nil) args ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
-(** A definition with a module part: its term, closed, applied to the
-    arguments *)
-| eslo_global_def_mod :
-  `( gc_entry Θ Ξ (qname_app pq (x :: nil)) = Some (ge_def_mod pv A M U) ->
-     eval_exp_order Θ Ξ M nil ->
-     (forall f, ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ f -> eval_apps_order Θ Ξ f args) ->
-     eval_sel_order Θ Ξ (dm_global pq args) x )
 | eslo_unsat :
   `( eval_sel_order Θ Ξ (dm_local (e :: Δ) D p) x )
+(** A term part of a saturated body ([entry_tm]) *)
 | eslo_body :
   `( kbody Θ Ξ p Φ Φx ->
-     gm_prefix_upto Φx x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
+     gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
+     entry_tm E = Some (A, M) ->
      eval_benv_order Θ Ξ p Φ' ->
      (forall p', ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' -> eval_exp_order Θ Ξ M p') ->
      eval_sel_order Θ Ξ (dm_local nil (md_body sm Φ) p) x )
@@ -428,9 +425,11 @@ with eval_selm_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
      eval_selm_order Θ Ξ (dm_global pq args) y )
 | esmo_unsat :
   `( eval_selm_order Θ Ξ (dm_local (e :: Δ) D p) y )
+(** A module part of a saturated body ([entry_unit]) *)
 | esmo_body :
   `( kbody Θ Ξ p Φ Φx ->
-     gm_prefix_upto Φx y = Some (gm_ext Φ' y (ge_mod pm (gu_mk Δy Dy))) ->
+     gm_prefix_upto Φx y = Some (gm_ext Φ' y E) ->
+     entry_unit E = Some (gu_mk Δy Dy) ->
      eval_benv_order Θ Ξ p Φ' ->
      (forall p', ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' -> eval_close_order Θ Ξ Δy Dy p') ->
      eval_selm_order Θ Ξ (dm_local nil (md_body sm Φ) p) y )
@@ -464,7 +463,13 @@ with eval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
 | ebo_mod :
   `( eval_benv_order Θ Ξ p Φ ->
      (forall p1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p1 -> eval_close_order Θ Ξ Δy Dy p1) ->
-     eval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm (gu_mk Δy Dy))) ).
+     eval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm (gu_mk Δy Dy))) )
+(** A definition with a module part: its term and its unit's closure *)
+| ebo_dm :
+  `( eval_benv_order Θ Ξ p Φ ->
+     (forall p1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p1 -> eval_exp_order Θ Ξ M p1) ->
+     (forall p1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p1 -> eval_close_order Θ Ξ Δy Dy p1) ->
+     eval_benv_order Θ Ξ p (gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy))) ).
 
 #[local]
 Hint Constructors eval_exp_order eval_elim_order eval_ihs_order eval_ih_order eval_mref_order eval_shty_order eval_ihty_order eval_app_order eval_exps_order eval_apps_order
@@ -687,6 +692,14 @@ Section EvalImpl.
   #[local]
   Ltac impl_obl_glob :=
     repeat match goal with
+      (** A term part an order records is a definition's body or a
+          definition with a module part's term. *)
+      | H : gc_term _ _ _ = Some _ |- _ =>
+          destruct (gc_term_inv _ _ _ _ H) as [(? & ? & ?) | (? & ? & ? & ?)]; clear H
+      | H1 : entry_tm ?E = _, H2 : entry_tm ?E = _ |- _ =>
+          rewrite H1 in H2; first [ discriminate H2 | injection H2; clear H2; intros; subst ]
+      | H1 : entry_unit ?E = _, H2 : entry_unit ?E = _ |- _ =>
+          rewrite H1 in H2; first [ discriminate H2 | injection H2; clear H2; intros; subst ]
       | H1 : gc_entry _ _ ?p = Some _, H2 : gc_entry _ _ ?p = Some _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : gc_entry _ _ ?p = Some _, H2 : gc_entry _ _ ?p = None |- _ =>
@@ -835,6 +848,12 @@ Section EvalImpl.
     try solve [ intuition discriminate ];
     try solve [ exfalso; lia ];
     try solve [ eapply eval_sel_global_neut; eauto ];
+    (** A term part, by the lookups its branch fixed. *)
+    try solve [ eapply eval_sel_global; [| eassumption | eassumption ]; unfold gc_term;
+                repeat match goal with
+                       | H : gc_resolve _ _ _ = _ |- context [gc_resolve _ _ _] => rewrite H
+                       | H : gc_entry _ _ _ = _ |- context [gc_entry _ _ _] => rewrite H
+                       end; reflexivity ];
     try solve [ econstructor; [ intros ? ? Hc; congruence | .. ]; eauto ];
     (** A closure lacking a first parameter lacks one. *)
     try solve [ econstructor; cbn; lia ];
@@ -1189,10 +1208,12 @@ Section EvalImpl.
   | dm_local nil (md_alias E) p, x, H => False_rect _ _
   | dm_local nil (md_body sm Φ) p, x, H with kbody_impl Θ Ξ p Φ _ := {
     | exist _ Φx HΦx with inspect (gm_prefix_upto Φx x) := {
-      | exist _ (Some (gm_ext Φ' _ (ge_def b pv A (Some M)))) P =>
-          let (p', Hp') := eval_benv_impl p Φ' _ in
-          let (r, Hr) := eval_exp_impl M p' _ in
-          exist _ r _
+      | exist _ (Some (gm_ext Φ' _ E)) P with inspect (entry_tm E) := {
+        | exist _ (Some (A, M)) Et =>
+            let (p', Hp') := eval_benv_impl p Φ' _ in
+            let (r, Hr) := eval_exp_impl M p' _ in
+            exist _ r _
+        | exist _ None Et => False_rect _ _ }
       | exist _ _ P => False_rect _ _ } }
   | dm_member h ch, x, H => exist _ (d_member h (ch ++ x :: nil)) _
 
@@ -1207,10 +1228,12 @@ Section EvalImpl.
   | dm_local nil (md_alias E) p, y, H => False_rect _ _
   | dm_local nil (md_body sm Φ) p, y, H with kbody_impl Θ Ξ p Φ _ := {
     | exist _ Φx HΦx with inspect (gm_prefix_upto Φx y) := {
-      | exist _ (Some (gm_ext Φ' _ (ge_mod pm (gu_mk Δy Dy)))) P =>
-          let (p', Hp') := eval_benv_impl p Φ' _ in
-          let (r, Hr) := eval_close_impl Δy Dy p' _ in
-          exist _ r _
+      | exist _ (Some (gm_ext Φ' _ E)) P with inspect (entry_unit E) := {
+        | exist _ (Some (gu_mk Δy Dy)) Eu =>
+            let (p', Hp') := eval_benv_impl p Φ' _ in
+            let (r, Hr) := eval_close_impl Δy Dy p' _ in
+            exist _ r _
+        | exist _ None Eu => False_rect _ _ }
       | exist _ _ P => False_rect _ _ } }
   | dm_member h ch, y, H => exist _ (dm_member h (ch ++ y :: nil)) _
 
@@ -1242,6 +1265,11 @@ Section EvalImpl.
       let (p1, Hp1) := eval_benv_impl p Φ _ in
       let (h, Hh) := eval_close_impl Δy Dy p1 _ in
       exist _ (p1 ↦ᵐ h) _
+  | p, gm_ext Φ y (ge_def_mod _ A M (gu_mk Δy Dy)), H =>
+      let (p1, Hp1) := eval_benv_impl p Φ _ in
+      let (m, Hm) := eval_exp_impl M p1 _ in
+      let (h, Hh) := eval_close_impl Δy Dy p1 _ in
+      exist _ (p1 ↦ᵈ m ‖ h) _
   | p, gm_open Φ E its, H => False_rect _ _.
 
 (** Each hole is an order premise read off the order of the whole by

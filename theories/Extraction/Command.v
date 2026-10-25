@@ -1727,13 +1727,13 @@ Section Impl.
 
   (** A generated definition with a module part, then the rest, run as
       [gr_def_mod] runs them. *)
-  Lemma gdm_ok {ch Θ K D Ξ d pv M E W gs Ξ'} :
+  Lemma gdm_ok {ch Θ K D Ξ d pv A M E W gs Ξ'} :
     gs_fresh d Ξ ->
     @alg_type_infer (gc_mk (gds_restrict D Θ) Ξ) (gs_tele Ξ) W M ->
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : nf_to_exp W ->
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
     post_gens ch Θ K D (gs_add d (dm_entry Ξ pv nil (nf_to_exp W) M E) Ξ) gs Ξ' ->
-    post_gens ch Θ K D Ξ (ig_def_mod d pv M E :: gs) Ξ'.
+    post_gens ch Θ K D Ξ (ig_def_mod d pv A M E :: gs) Ξ'.
   Proof.
     intros Hfr HW HM HE Hp ΘR Hli; destruct (gdm_step (pv := pv) Hli Hfr HW HM HE) as (HW' & HM' & HE' & Hli').
     destruct (Hp _ Hli') as [Hg Hli2]; split; [ econstructor; eassumption | exact Hli2 ].
@@ -1742,18 +1742,18 @@ Section Impl.
   (** An import declares what its items generate, which files nothing. *)
   (** What an open generates is read off descriptions, which read the
       dependencies through their lookups alone. *)
-  Lemma open_gens_equiv : forall Θ1 Θ2 Ξ g Γ H its gs, gds_equiv Θ1 Θ2 ->
-      open_gens Θ1 Ξ g Γ H its gs -> open_gens Θ2 Ξ g Γ H its gs.
+  Lemma open_gens_equiv : forall Θ1 Θ2 Ξ Γ H its gs, gds_equiv Θ1 Θ2 ->
+      open_gens Θ1 Ξ Γ H its gs -> open_gens Θ2 Ξ Γ H its gs.
   Proof.
     intros * He [R Rm HR HRm Hg Hok].
     pose proof (gds_equiv_mdenote_all _ _ Ξ He) as (H1 & _ & _ & _ & H5).
-    apply (mk_open_gens _ _ _ _ _ _ _ R Rm); [ exact (H1 _ _ _ HR) | | exact (H5 _ _ _ _ _ Hg) | exact Hok ].
+    apply (mk_open_gens _ _ _ _ _ _ R Rm); [ exact (H1 _ _ _ HR) | | exact (H5 _ _ _ _ Hg) | exact Hok ].
     exact HRm.
   Qed.
 
   Lemma import_ok {ch Θ K D B Ξ E its gs Ξ'} (Hg : ⊢ᵍ gds_restrict D Θ ⍮ Ξ)
     (HE : gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E) :
-    import_gen _ _ Hg (gs_tele Ξ) E E HE true its = xok gs ->
+    import_gen _ _ Hg (gs_tele Ξ) E E HE its = xok gs ->
     post_gens ch Θ K D Ξ gs Ξ' ->
     post_cmd ch Θ K D B Ξ (cc_open E its) (cst Θ K D B Ξ').
   Proof.
@@ -1763,7 +1763,7 @@ Section Impl.
     apply (mk_cmd_post _ _ _ _ _ ΘR RbR); [| exact Hli' | exact Hrb | apply ext_refl | apply grows_refl ].
     eapply rc_open; [ exact (equiv_modexp _ _ _ _ _ Heq (li_wf _ _ _ _ _ _ Hli) HE) | | exact Hr ].
     apply (import_gen_spec _ _ Hg) in Hgen.
-    exact (open_gens_equiv _ _ _ _ _ _ _ _ Heq Hgen).
+    exact (open_gens_equiv _ _ _ _ _ _ _ Heq Hgen).
   Qed.
 
   (** ** Groups *)
@@ -2318,7 +2318,7 @@ Section Impl.
                 end
             end
         end
-    | ig_def_mod d pv M E :: gs' =>
+    | ig_def_mod d pv A M E :: gs' =>
         match gs_fresh_dec d Ξ with
         | right _ => rerr (re_msg ("duplicate name " ++ d))
         | left Hfr =>
@@ -2333,7 +2333,7 @@ Section Impl.
                     match gens_impl ch Θ K D B (gs_add d (dm_entry Ξ pv nil (nf_to_exp W) M E) Ξ) gs'
                             (gdm_pre H Hfr (proj1 HWs) HM HE) with
                     | rerr e => rerr e
-                    | rok (exist _ Ξ' Hp) => rok (exist _ Ξ' (gdm_ok Hfr (proj1 HWs) HM HE Hp))
+                    | rok (exist _ Ξ' Hp) => rok (exist _ Ξ' (gdm_ok (A := A) Hfr (proj1 HWs) HM HE Hp))
                     end
                 end
             end
@@ -2947,7 +2947,7 @@ Section Impl.
                   | exist _ (Some B') Hm => rok (exist _ _ (load_ok Hn Hnch Hsrc Hprg Hp Hu Hr Hm), log_nil) } } } } } } } }
   | ch, L, Θ, K, D, B, Ξ, cc_open E its, H with check_modexp (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) E => {
     | right _ => rerr (re_import (xe_target E))
-    | left HE with inspect (import_gen _ _ (pre_gctx H) (gs_tele Ξ) E E HE true its) => {
+    | left HE with inspect (import_gen _ _ (pre_gctx H) (gs_tele Ξ) E E HE its) => {
       | exist _ (xfail e) _ => rerr (re_import e)
       | exist _ (xok gs) Eg with gens_impl ch Θ K D B Ξ gs H => {
         | rerr e => rerr e
@@ -3429,7 +3429,7 @@ Section Impl.
       forall ch Θ K D B (Hx : exists ΘR0, linv ch Θ K D ΘR0 Ξ), linv ch Θ K D ΘR Ξ ->
       exists r, gens_impl ch Θ K D B Ξ gs Hx = rok r.
   Proof.
-    induction 1 as [Ξ | Ξ d pv A M gs Ξ' HM Hfr Hg IH | Ξ d pv E gs Ξ' HE Hfr Hg IH | Ξ d pv M E W gs Ξ' HW HM HE Hfr Hg IH];
+    induction 1 as [Ξ | Ξ d pv A M gs Ξ' HM Hfr Hg IH | Ξ d pv E gs Ξ' HE Hfr Hg IH | Ξ d pv A M E W gs Ξ' HW HM HE Hfr Hg IH];
       intros ch Θ K D B Hx Hli; cbn [gens_impl]; [ eexists; reflexivity | | |].
     - destruct (gs_fresh_dec d Ξ) as [Hfr' | Hfr']; [| contradiction ].
       match goal with |- context [check_exp ?z ?a ?b ?c ?d ?e ?f] => destruct (check_exp z a b c d e f) as [HM' | HM'] end;
@@ -3861,7 +3861,7 @@ Section Impl.
       match goal with |- context [check_modexp ?f ?a ?b ?c ?d ?e] => destruct (check_modexp f a b c d e) as [HE' | HE'] end;
         [| exfalso; apply HE'; exact (equiv_modexp _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HE) ].
       simp simple_step.
-      pose proof (open_gens_equiv _ _ _ _ _ _ _ _ (linv_equiv Hli) Hgen) as Hgen'.
+      pose proof (open_gens_equiv _ _ _ _ _ _ _ (linv_equiv Hli) Hgen) as Hgen'.
       apply (import_gen_spec _ _ (pre_gctx H) _ _ _ HE') in Hgen' as Eg.
       destruct (inspect _) as [[gs1 | e] Eg']; [ assert (gs1 = gs) as -> by congruence | exfalso; congruence ].
       simp simple_step.

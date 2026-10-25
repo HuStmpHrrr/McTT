@@ -706,9 +706,8 @@ with centry_mvc (n : nat) (e : centry) : Prop :=
   | ce_ass A => exp_mvc n A
   | ce_def A M => exp_mvc n A /\ exp_mvc n M
   | ce_mod U => gunit_mvc n U
+  | ce_dm A M U => exp_mvc n A /\ exp_mvc n M /\ gunit_mvc n U
   end.
-
-
 
 (** A telescope whose types have no free module variable. *)
 Definition ctx_mvc (Δ : ctx) : Prop := List.Forall (centry_mvc 0) Δ.

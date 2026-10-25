@@ -123,7 +123,7 @@ Lemma rel_wk_shift : forall {Γ e R R'},
 Proof.
   intros * HΓ HΓA; split; [ apply wk_mono_shift |]; intros ρ ρ' H; rewrite !eval_wk_shift.
   inversion HΓA; subst; handle_per_ctx_env_irrel;
-    apply_relation_equivalence; destruct_conjs; eassumption.
+    apply_relation_equivalence; destruct_conjs; destruct_dm_rels; eassumption.
 Qed.
 
 (** The tail of an extended context, with [rel_wk_shift] for it.  Inverting

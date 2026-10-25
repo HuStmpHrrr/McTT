@@ -56,6 +56,7 @@ Proof.
   apply syntactic_wf_mut_ind; intros;
     [ (** contexts *)
       eapply sem_ctx_empty | eapply sem_ctx_extend | eapply sem_ctx_extend_def | eapply sem_ctx_extend_mod
+    | eapply sem_ctx_extend_dm
     | (** terms *)
       eapply sem_typ | eapply sem_univ | eapply sem_level | eapply sem_llit | eapply sem_succl | eapply sem_maxl
     | eapply sem_True | eapply sem_true | eapply sem_False | eapply sem_exfalso | eapply sem_ind | eapply sem_con
@@ -85,6 +86,7 @@ Proof.
       eapply sem_is_univ_large | eapply sem_is_univ_small
     | (** extensions *)
       eapply sem_ext_eq_nil | eapply sem_ext_eq_ass | eapply sem_ext_eq_def | eapply sem_ext_eq_mod
+    | eapply sem_ext_eq_dm
     | (** units: the first premise is the conclusion of the rule *)
       eapply sem_unit_eq_body; [ eapply wf_unit_eq_body; eassumption | .. ]
     | eapply sem_unit_eq_alias; [ eapply wf_unit_eq_alias; eassumption | .. ]

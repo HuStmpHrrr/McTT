@@ -81,8 +81,9 @@ Lemma tele_insts_sub_gen : forall Δ k σ σ' τ Ms,
 Proof.
   induction Δ as [| e Δ IH] using List.rev_ind; intros * HΔ Hσ; [ reflexivity |].
   apply ctx_scoped_app in HΔ as [HΔ [He _]]; cbn in He, HΔ.
-  destruct e as [A | A N | U];
+  destruct e as [A | A N | U | A N U];
     [| unfold tele_insts; rewrite !List.rev_app_distr; destruct Ms; reflexivity
+     | unfold tele_insts; rewrite !List.rev_app_distr; destruct Ms; reflexivity
      | unfold tele_insts; rewrite !List.rev_app_distr; destruct Ms; reflexivity ].
   destruct Ms as [| M Ms]; [ unfold tele_insts; rewrite List.rev_app_distr; reflexivity |].
   cbn [List.map]; rewrite !tele_insts_snoc; cbn [List.map]; f_equal.

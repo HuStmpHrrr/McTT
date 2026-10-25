@@ -70,12 +70,14 @@ Generalizable All Variables.
 Inductive ctx_lookup : nat -> typ -> ctx -> Prop :=
   | here : `(Γ ▹ A ∋ #0 : A[↑]ʷ)
   | here_def : `(Γ ▸ A ≔ M ∋ #0 : A[↑]ʷ)
+  | here_dm : `(Γ ▸ₘ A ≔ M ‖ U ∋ #0 : A[↑]ʷ)
   | there : `(Γ ∋ #n : A -> e :: Γ ∋ #(S n) : A[↑]ʷ)
 where "Γ ∋ '#' x : A" := (ctx_lookup x A Γ) : type_scope.
 
 (** The body of a definition entry, weakened to the use site like its type. *)
 Inductive ctx_lookup_def : nat -> typ -> exp -> ctx -> Prop :=
   | def_here : `(Γ ▸ A ≔ M ∋ #0 ≔ M[↑]ʷ : A[↑]ʷ)
+  | def_here_dm : `(Γ ▸ₘ A ≔ M ‖ U ∋ #0 ≔ M[↑]ʷ : A[↑]ʷ)
   | def_there : `(Γ ∋ #n ≔ M : A -> e :: Γ ∋ #(S n) ≔ M[↑]ʷ : A[↑]ʷ)
 where "Γ ∋ '#' x ≔ M : A" := (ctx_lookup_def x A M Γ) : type_scope.
 
@@ -91,6 +93,7 @@ Definition entry_shape (E E' : gentry) : Prop :=
   match E, E' with
   | ge_def b pv _ (Some _), ge_def b' pv' _ (Some _) => b = true /\ b' = true /\ pv = pv'
   | ge_mod pv _, ge_mod pv' _ => pv = pv'
+  | ge_def_mod pv _ _ _, ge_def_mod pv' _ _ _ => pv = pv'
   | _, _ => False
   end.
 
@@ -173,6 +176,12 @@ Inductive wf_ctx : gdeps -> gstack -> ctx -> Prop :=
 | wf_ctx_extend_mod :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
      ⊢ Θ ⍮ Ξ ⍮ Γ ▹ₘ U )
+(** A definition with a module part: a definition and a module slot. *)
+| wf_ctx_extend_dm :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+     ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U )
 where "⊢ Θ ⍮ Ξ ⍮ Γ" := (wf_ctx Θ Ξ Γ) : type_scope
 
 with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
@@ -926,6 +935,19 @@ with wf_ext_eq : gdeps -> gstack -> ctx -> ctx -> ctx -> Prop :=
      Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ᵘ U ≈ U' ->
      Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ᵘ U' ≈ U' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▹ₘ U ≈ Ψ' ▹ₘ U' )
+(** A definition with a module part: as a definition and as a module
+    slot. *)
+| wf_ext_eq_dm :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ A ≈ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ M : A ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ M ≈ M' : A ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ M' : A' ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊢ᵘ U ≈ U' ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊢ᵘ U' ≈ U' ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ▸ₘ A ≔ M ‖ U ≈ Ψ' ▸ₘ A' ≔ M' ‖ U' )
 where "Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'" := (wf_ext_eq Θ Ξ Γ Ψ Ψ') : type_scope
 
 (** Units.  Each side of a body unit is well formed where it stands: its
@@ -940,7 +962,10 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'" := (wf_ext_eq Θ Ξ Γ Ψ Ψ') : type_
     its unit), in the left parameters' context, and each filled-in entry of
     the right side is typed in the right parameters' context, as the parts of
     an extension are: so the comparison never reads one side's entries in the
-    other side's body.  Every entry can be filled in:
+    other side's body.  An entry is compared through its parts: its term
+    part ([entry_tm]) as a definition is, and its module part
+    ([entry_unit]) as a module is, so a definition with a module part is
+    compared as both.  Every entry can be filled in:
     a local body has no bodiless definition and no inductive type.  The
     level of the type of the definition named [y] is [lv y]. *)
 with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
@@ -950,44 +975,44 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δ ≈ body_ctx Φx ++ Δ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx' ++ Δ' ≈ body_ctx Φx' ++ Δ' ->
-     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] : Typeω@(lv y)) ->
-     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A[σ] ≈ A'[σ'] : Typeω@(lv y)) ->
-     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ M[σ] : A[σ]) ->
-     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ M[σ] ≈ M'[σ'] : A[σ]) ->
-     (forall y Φ0 pv U Φ0' pv' U' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+     (forall y Φ0 E U Φ0' E' U' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ᵘ U[σ]ᵘ ≈ U'[σ']ᵘ) ->
-     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ A'[σ'] : Typeω@(lv y)) ->
-     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ M'[σ'] : A'[σ']) ->
-     (forall y Φ0 pv U Φ0' pv' U' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+     (forall y Φ0 E U Φ0' E' U' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊢ᵘ U'[σ']ᵘ ≈ U'[σ']ᵘ) ->
      (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ ⊢ᵐ H ≈ H) ->
@@ -1663,9 +1688,10 @@ Record wf_sub (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (σ : sub) : Prop := wf_s
 (** A substitution sends a definition to something equal to its body. *)
 ; wf_sub_apply_def : forall x A M, Δ ∋ #x ≔ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ #x[σ] ≈ M[σ] : A[σ]
 (** A substitution sends a module slot to the unit it holds, transported:
-    as a well-formed literal, or as a slot holding that unit. *)
+    as a well-formed literal (the module part of an [se_mod] or an
+    [se_dm]), or as a slot holding that unit. *)
 ; wf_sub_apply_mod : forall x U, Δ ∋ #x ≔ₘ U ->
-    (σ x = se_mod (me_lit U[σ]ᵘ) /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[σ]ᵘ ≈ U[σ]ᵘ) \/ exists y, σ x = se_var y /\ Γ ∋ #y ≔ₘ U[σ]ᵘ
+    (sentry_modexp (σ x) = me_lit U[σ]ᵘ /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[σ]ᵘ ≈ U[σ]ᵘ) \/ exists y, σ x = se_var y /\ Γ ∋ #y ≔ₘ U[σ]ᵘ
 }.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ" := (wf_sub Θ Ξ Γ Δ σ) : type_scope.
 

@@ -92,6 +92,7 @@ with centry_scoped (n : nat) (e : centry) : Prop :=
   | ce_ass A => exp_scoped n A
   | ce_def A M => exp_scoped n A /\ exp_scoped n M
   | ce_mod U => gunit_scoped n U
+  | ce_dm A M U => exp_scoped n A /\ exp_scoped n M /\ gunit_scoped n U
   end.
 
 Abbreviation ce_scoped := centry_scoped.
@@ -127,6 +128,7 @@ Definition sentry_scoped (n : nat) (e : sentry) : Prop :=
   | se_var x => x < n
   | se_exp M => exp_scoped n M
   | se_mod H => modexp_scoped n H
+  | se_dm M H => exp_scoped n M /\ modexp_scoped n H
   end.
 
 (** ** Syntactic Facts *)
@@ -207,10 +209,10 @@ Lemma gunit_scoped_mono : forall U n m, n <= m -> gunit_scoped n U -> gunit_scop
 Proof. exact (proj1 (proj2 (proj2 (proj2 syn_scoped_mono)))). Qed.
 
 Lemma sentry_exp_scoped : forall n e, sentry_scoped n e -> exp_scoped n (sentry_exp e).
-Proof. intros n []; cbn; auto. Qed.
+Proof. intros n [] H; cbn in *; first [ exact (proj1 H) | auto ]. Qed.
 
 Lemma sentry_modexp_scoped : forall n e, sentry_scoped n e -> modexp_scoped n (sentry_modexp e).
-Proof. intros n []; cbn; auto. Qed.
+Proof. intros n [] H; cbn in *; first [ exact (proj2 H) | auto ]. Qed.
 
 #[local] Hint Resolve sentry_exp_scoped sentry_modexp_scoped : mctt.
 
@@ -276,8 +278,8 @@ Proof. intros; eapply exp_scoped_wk; [ eassumption |]; cbn; lia. Qed.
 
 Lemma sentry_scoped_shift : forall e n, sentry_scoped n e -> sentry_scoped (S n) (sentry_wk e ↑).
 Proof.
-  intros [] * H; cbn in *; [ lia | eapply exp_scoped_wk | eapply modexp_scoped_wk ];
-    try eassumption; cbn; lia.
+  intros [] * H; cbn in *; [ lia | eapply exp_scoped_wk | eapply modexp_scoped_wk | destruct H; split;
+    [ eapply exp_scoped_wk | eapply modexp_scoped_wk ] ]; try eassumption; cbn; lia.
 Qed.
 
 Lemma sb_q_bound : forall σ n m,
@@ -756,13 +758,18 @@ Proof.
   induction 1; cbn; lia.
 Qed.
 
+(** A definition with a module part substituted in, as [ctx_pi] does. *)
+Lemma exp_scoped_sub1_dm : forall A N H n,
+    exp_scoped (S n) A -> exp_scoped n N -> modexp_scoped n H -> exp_scoped n A[Id ,,ᵈ N ‖ H].
+Proof. intros; eapply exp_scoped_sub; [ eassumption |]; intros [|x] ?; cbn; [ split; assumption | lia ]. Qed.
+
 Lemma ctx_pi_scoped : forall Δ A n,
     ctx_scoped n Δ ->
     exp_scoped (length Δ + n) A ->
     exp_scoped n (ctx_pi Δ A).
 Proof.
-  induction Δ as [| [] Δ IHΔ]; intros * HΔ HA; cbn in *; destruct_all; [ assumption | | |].
-  all: apply IHΔ; cbn; auto.
+  induction Δ as [| [] Δ IHΔ]; intros * HΔ HA; cbn in *; destruct_all; [ assumption | | | |].
+  all: apply IHΔ; cbn; auto; apply exp_scoped_sub1_dm; cbn; auto.
 Qed.
 
 Lemma ctx_fn_scoped : forall Δ M n,
@@ -770,8 +777,8 @@ Lemma ctx_fn_scoped : forall Δ M n,
     exp_scoped (length Δ + n) M ->
     exp_scoped n (ctx_fn Δ M).
 Proof.
-  induction Δ as [| [] Δ IHΔ]; intros * HΔ HM; cbn in *; destruct_all; [ assumption | | |].
-  all: apply IHΔ; cbn; auto.
+  induction Δ as [| [] Δ IHΔ]; intros * HΔ HM; cbn in *; destruct_all; [ assumption | | | |].
+  all: apply IHΔ; cbn; auto; apply exp_scoped_sub1_dm; cbn; auto.
 Qed.
 
 (** The substitutions the rules instantiate with. *)
@@ -828,7 +835,7 @@ Proof.
   induction 1 as [| Γ Φ Φx x E Hx IH | Γ Φ Φx H its R T gs Hx IH _ _ Hg]; intros HΦ Ho; cbn [gmod_scoped] in HΦ |- *; auto.
   - destruct HΦ as [HΦ HE]; split; [ apply IH; assumption |].
     rewrite <- (body_xp_binders _ _ _ _ _ Hx); assumption.
-  - rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg) in Ho.
+  - rewrite (body_opens_open _ _ _ _ _ _ _ _ Hg) in Ho.
     split.
     + apply IH; [ eapply gens_append_scoped_prefix; eassumption |].
       intros k Ψ H' Hk; exact (Ho (S k) _ _ Hk).
@@ -860,13 +867,13 @@ Proof.
   destruct g; cbn [gens_append ig_entry]; rewrite IH; cbn; rewrite <- List.app_assoc; reflexivity.
 Qed.
 
-Lemma items_gen_names : forall Θ Ξ g Γ H its gs, items_gen Θ Ξ g Γ H its gs -> map ig_name gs = map iitem_name its.
+Lemma items_gen_names : forall Θ Ξ Γ H its gs, items_gen Θ Ξ Γ H its gs -> map ig_name gs = map iitem_name its.
 Proof. induction 1; cbn; f_equal; assumption. Qed.
 
 Lemma body_xp_names : forall Θ Ξ Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> gm_names Φx = gm_names Φ.
 Proof.
   induction 1; cbn [gm_names]; [ reflexivity | f_equal; assumption |].
-  rewrite gens_append_names, (items_gen_names _ _ _ _ _ _ _ H3), IHbody_xp; reflexivity.
+  rewrite gens_append_names, (items_gen_names _ _ _ _ _ _ H3), IHbody_xp; reflexivity.
 Qed.
 
 (** The shape of an expansion is that of the body's own entries. *)

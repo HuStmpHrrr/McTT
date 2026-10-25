@@ -24,6 +24,7 @@ Import Domain_Notations Syntax_Notations Wk_Notations.
 Definition ig_erase (g : igen) : igen :=
   match g with
   | ig_def d pv _ M => ig_def d pv a_True M
+  | ig_def_mod d pv _ M E => ig_def_mod d pv a_True M E
   | _ => g
   end.
 
@@ -59,10 +60,10 @@ Proof.
 Qed.
 
 (** The entry generated for the last item declaring [y]. *)
-Lemma gens_prefix_some : forall Θ Ξ io Γ H its gs, items_gen Θ Ξ io Γ H its gs ->
+Lemma gens_prefix_some : forall Θ Ξ Γ H its gs, items_gen Θ Ξ Γ H its gs ->
     forall y its1 it, items_upto y its = Some (its1, it) ->
-    exists its0 gs0 g, its1 = its0 ++ it :: nil /\ items_gen Θ Ξ io Γ H its0 gs0 /\
-      items_gen Θ Ξ io Γ H (it :: nil) (g :: nil) /\
+    exists its0 gs0 g, its1 = its0 ++ it :: nil /\ items_gen Θ Ξ Γ H its0 gs0 /\
+      items_gen Θ Ξ Γ H (it :: nil) (g :: nil) /\
       (exists R Rg, its = its1 ++ R /\ gs = gs0 ++ g :: Rg) /\
       forall Φ k, gm_prefix_upto (gens_append Φ k gs) y = Some (gens_append Φ k (gs0 ++ g :: nil)).
 Proof.
@@ -74,7 +75,7 @@ Proof.
             split; [ exact Hg1 |]; split; [ exists Rits, Rg; split; reflexivity |];
             intros Φ kk; cbn [gens_append app]; apply Hp).
   all: match type of Hu with context [String.eqb ?a ?b] => destruct (String.eqb a b) eqn:Ey end; [| discriminate ]; injection Hu as <- <-.
-  all: pose proof (items_upto_none_iff _ _ Eu) as Hn; rewrite <- (items_gen_names _ _ _ _ _ _ _ Hg) in Hn.
+  all: pose proof (items_upto_none_iff _ _ Eu) as Hn; rewrite <- (items_gen_names _ _ _ _ _ _ Hg) in Hn.
   all: eexists nil, nil, _; split; [ reflexivity |]; split; [ constructor |].
   all: split; [ solve [ econstructor; eauto using ign_nil ] |].
   all: split; [ eexists _, _; split; reflexivity |].
@@ -91,7 +92,7 @@ Lemma kgens_prefix_some : forall Θ Ξ ρ H its gs, kgens Θ Ξ ρ H its gs ->
     exists gs0 g, kgens Θ Ξ ρ H (it :: nil) (g :: nil) /\
       forall Φ k, gm_prefix_upto (gens_append Φ k gs) y = Some (gens_append Φ k (gs0 ++ g :: nil)).
 Proof.
-  intros * Hg; induction Hg as [| | | ]; intros y its1 it0 Hu; cbn [items_upto] in Hu; try discriminate.
+  intros * Hg; induction Hg as [| | | | ]; intros y its1 it0 Hu; cbn [items_upto] in Hu; try discriminate.
   all: destruct (items_upto y its) as [[its1' it1] |] eqn:Eu.
   all: try (injection Hu as <- <-;
             destruct (IHHg _ _ _ Eu) as (gs0 & g0 & Hg1 & Hp);
@@ -144,11 +145,23 @@ Section Match.
   Lemma kmatch_nil : forall ρ, kmatch nil ρ.
   Proof. intros ρ x U Hl; inversion Hl. Qed.
 
-  Lemma kmatch_cons_term : forall Γ ρ e d, kmatch Γ ρ -> (forall U, e <> ce_mod U) -> kmatch (e :: Γ) (d :: ρ).
+  Lemma kmatch_cons_term : forall Γ ρ e d, kmatch Γ ρ -> (forall U, e <> ce_mod U) ->
+      (forall A M U, e <> ce_dm A M U) -> kmatch (e :: Γ) (d :: ρ).
   Proof.
-    intros * HΓ He x U Hl; inversion Hl; subst; [ exfalso; eapply He; reflexivity |].
+    intros * HΓ He Hd x U Hl; inversion Hl; subst; [ exfalso; eapply He; reflexivity | exfalso; eapply Hd; reflexivity |].
     eapply kequiv_trans; [ apply HΓ; eassumption |].
     intros ch k; rewrite !dkind_clo_iff, ukind_shift; reflexivity.
+  Qed.
+
+  (** A definition with a module part, matched by its module part. *)
+  Lemma kmatch_cons_dm : forall Γ ρ A M U d h, kmatch Γ ρ -> kequiv Θ Ξ h (dm_clo U ρ) ->
+      kmatch (ce_dm A M U :: Γ) (de_dm d h :: ρ).
+  Proof.
+    intros * HΓ Hh x U' Hl; inversion Hl; subst.
+    - eapply kequiv_trans; [ exact Hh |].
+      intros ch k; rewrite !dkind_clo_iff, ukind_shift; reflexivity.
+    - eapply kequiv_trans; [ apply HΓ; eassumption |].
+      intros ch k; rewrite !dkind_clo_iff, ukind_shift; reflexivity.
   Qed.
 
   Lemma kmatch_cons_mod : forall Γ ρ U h, kmatch Γ ρ -> kequiv Θ Ξ h (dm_clo U ρ) ->
@@ -168,9 +181,10 @@ Section Match.
     intros x; cbn [wk_shift]; rewrite env_mod_drop; apply kequiv_refl.
   Qed.
 
-  Lemma kmatch_drop_term : forall Γ ρ e, kmatch Γ ρ↯ -> (forall U, e <> ce_mod U) -> kmatch (e :: Γ) ρ.
+  Lemma kmatch_drop_term : forall Γ ρ e, kmatch Γ ρ↯ -> (forall U, e <> ce_mod U) ->
+      (forall A M U, e <> ce_dm A M U) -> kmatch (e :: Γ) ρ.
   Proof.
-    intros * HΓ He x U Hl; inversion Hl; subst; [ exfalso; eapply He; reflexivity |].
+    intros * HΓ He Hd x U Hl; inversion Hl; subst; [ exfalso; eapply He; reflexivity | exfalso; eapply Hd; reflexivity |].
     rewrite <- env_mod_drop; eapply kequiv_trans; [ apply HΓ; eassumption |].
     intros ch k; rewrite !dkind_clo_iff, ukind_drop; reflexivity.
   Qed.
@@ -185,11 +199,22 @@ Section Match.
       intros ch k; rewrite !dkind_clo_iff, ukind_drop; reflexivity.
   Qed.
 
+  (** The same, for a definition with a module part. *)
+  Lemma kmatch_drop_dm : forall Γ ρ A M U, kmatch Γ ρ↯ -> kequiv Θ Ξ (env_mod ρ 0) (dm_clo U ρ↯) ->
+      kmatch (ce_dm A M U :: Γ) ρ.
+  Proof.
+    intros * HΓ Hh x U' Hl; inversion Hl; subst.
+    - eapply kequiv_trans; [ exact Hh |].
+      intros ch k; rewrite !dkind_clo_iff, ukind_drop; reflexivity.
+    - rewrite <- env_mod_drop; eapply kequiv_trans; [ apply HΓ; eassumption |].
+      intros ch k; rewrite !dkind_clo_iff, ukind_drop; reflexivity.
+  Qed.
+
   Lemma kmatch_kpad : forall Δ Γ ρ, tele_ass Δ -> kmatch Γ ρ -> kmatch (Δ ++ Γ) (kpad (List.length Δ) ρ).
   Proof.
     induction 1 as [| e Δ [A ->] HΔ IH]; intros HΓ; cbn [app List.length]; [ exact HΓ |].
     unfold kpad in *; cbn [List.repeat app].
-    apply kmatch_cons_term; [ auto | discriminate ].
+    apply kmatch_cons_term; [ auto | discriminate | discriminate ].
   Qed.
 
   (** The same, for the arguments of a unit. *)
@@ -202,15 +227,16 @@ Section Match.
       destruct (List.exists_last (l := args) ltac:(destruct args; [ discriminate | discriminate ])) as (args' & c & ->).
       rewrite length_app in Hl; cbn in Hl.
       unfold env_args; rewrite fold_left_app; cbn [fold_left app].
-      apply kmatch_cons_term; [ apply IH; [ exact HΔ' | exact HΓ | lia ] | discriminate ].
+      apply kmatch_cons_term; [ apply IH; [ exact HΔ' | exact HΓ | lia ] | discriminate | discriminate ].
   Qed.
 
   Lemma kmatch_ext : forall Φ y E Γ ρ1, kmatch (body_ctx Φ ++ Γ) ρ1 ->
       kmatch (body_ctx (gm_ext Φ y E) ++ Γ) (kbentry ρ1 E :: ρ1).
   Proof.
-    intros * H; destruct E as [b pv A [M |] | pm U | pv D Φd | pv Δ p Ns | pr Rr Φr]; cbn [body_ctx kbentry app];
+    intros * H; destruct E as [b pv A [M |] | pm U | pv pq k D Φd | pv A M U | pv pr Rr Φr]; cbn [body_ctx kbentry app];
       first [ apply kmatch_cons_mod; [ exact H | apply kequiv_refl ]
-            | apply kmatch_cons_term; [ exact H | discriminate ] ].
+            | apply kmatch_cons_dm; [ exact H | apply kequiv_refl ]
+            | apply kmatch_cons_term; [ exact H | discriminate | discriminate ] ].
   Qed.
 
   Lemma kentry_erase : forall ρ k g,

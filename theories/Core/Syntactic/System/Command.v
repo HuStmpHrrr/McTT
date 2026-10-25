@@ -136,13 +136,15 @@ Inductive gens_run (Θ : gdeps) : gstack -> list igen -> gstack -> Prop :=
     inferred for it, [W], and its module the alias of [E].  The typing of
     [M] at [W] follows from its inference ([alg_type_infer_sound]); it is a
     premise only because the well-formedness of a run is proved before that
-    lemma, in the order of the files. *)
-| gr_def_mod : forall Ξ d pv M E W gs Ξ',
+    lemma, in the order of the files.  The type [A] the item carries, read
+    off the member type, is not used: a global open files at the inferred
+    one, as before local opens generated such items. *)
+| gr_def_mod : forall Ξ d pv A M E W gs Ξ',
     @alg_type_infer (gc_mk Θ Ξ) (gs_tele Ξ) W M ->
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : nf_to_exp W ->
     Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E -> gs_fresh d Ξ ->
     gens_run Θ (gs_add d (dm_entry Ξ pv nil (nf_to_exp W) M E) Ξ) gs Ξ' ->
-    gens_run Θ Ξ (ig_def_mod d pv M E :: gs) Ξ'.
+    gens_run Θ Ξ (ig_def_mod d pv A M E :: gs) Ξ'.
 
 (** ** Groups of Inductive Declarations
 
@@ -556,9 +558,10 @@ Qed.
     ([sibs_from]): a declared one at [Cs], a view of it at its own uniform
     arguments at [Cs], normalized. *)
 
-(** The type of a context entry; a module slot counts as [True]. *)
+(** The type of a context entry; a module slot counts as [True], a
+    definition with a module part as its term part's type. *)
 Definition centry_ty (e : centry) : typ :=
-  match e with ce_ass A => A | ce_def A _ => A | ce_mod _ => a_True end.
+  match e with ce_ass A => A | ce_def A _ => A | ce_mod _ => a_True | ce_dm A _ _ => A end.
 
 (** A telescope, innermost first, as arguments, outermost first. *)
 Definition ctx_args (Δ : ctx) : list (string * exp) := List.rev (List.map (fun e => (""%string, centry_ty e)) Δ).
@@ -1144,7 +1147,7 @@ Section Semantics.
       definitions and aliases its items generate in this frame. *)
   | rc_open : forall ch B Rb Θ Ξ E its gs Ξ',
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
-      open_gens Θ Ξ true (gs_tele Ξ) E its gs ->
+      open_gens Θ Ξ (gs_tele Ξ) E its gs ->
       gens_run Θ Ξ gs Ξ' ->
       Θ ⍮ Ξ ⍮ B ⍮ Rb ⊢[ch] cc_open E its ⇝ Θ ⍮ Ξ' ⍮ B ⍮ Rb
   (** A group as written, its members of one sort: the arguments of the
@@ -1361,16 +1364,16 @@ Qed.
     makes a path filed by two runs the same unit, so the merge loses
     nothing. *)
 
-Lemma open_gens_functional : forall Θ Ξ io Γ H its gs1 gs2, ⊢ᵍ Θ ⍮ Ξ ->
-    open_gens Θ Ξ io Γ H its gs1 -> open_gens Θ Ξ io Γ H its gs2 -> gs1 = gs2.
+Lemma open_gens_functional : forall Θ Ξ Γ H its gs1 gs2, ⊢ᵍ Θ ⍮ Ξ ->
+    open_gens Θ Ξ Γ H its gs1 -> open_gens Θ Ξ Γ H its gs2 -> gs1 = gs2.
 Proof.
   intros * Hg [_ _ _ _ H1 _] [_ _ _ _ H2 _].
-  destruct (mdenote_functional_all _ _ Hg) as (_ & _ & _ & _ & Hf); exact (Hf _ _ _ _ _ H1 _ H2).
+  destruct (mdenote_functional_all _ _ Hg) as (_ & _ & _ & _ & Hf); exact (Hf _ _ _ _ H1 _ H2).
 Qed.
 
 Lemma gens_run_functional : forall Θ Ξ gs Ξ1, gens_run Θ Ξ gs Ξ1 -> forall Ξ2, gens_run Θ Ξ gs Ξ2 -> Ξ1 = Ξ2.
 Proof.
-  induction 1 as [| | | Ξ d pv M E W gs Ξ' HW _ HE _ _ IH]; intros Ξ2 Hr; inversion Hr; subst; auto.
+  induction 1 as [| | | Ξ d pv A M E W gs Ξ' HW _ HE _ _ IH]; intros Ξ2 Hr; inversion Hr; subst; auto.
   (* a definition with a module part: one type inferred *)
   match goal with HW' : alg_type_infer _ ?W' M |- _ =>
     pose proof (functional_alg_type_infer (GC := gc_mk Θ Ξ) (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) HW HW') as <- end.
@@ -1543,10 +1546,10 @@ Section Determinism.
         Hr : run_cmd _ _ _ ?a ?b ?d2 _ _ _ _ |- _ =>
           assert_fails constr_eq d1 d2;
           pose proof (fill_unique_run _ _ _ _ _ _ _ _ _ _ _ _ F1 F2 Hr); subst d2
-      | H1 : open_gens ?a ?b ?o ?G ?E ?is ?g1, H2 : open_gens ?a ?b ?o ?G ?E ?is ?g2,
+      | H1 : open_gens ?a ?b ?G ?E ?is ?g1, H2 : open_gens ?a ?b ?G ?E ?is ?g2,
         HE : _ ⍮ _ ⍮ _ ⊢ᵐ _ ≈ _ |- _ =>
           assert_fails constr_eq g1 g2;
-          pose proof (open_gens_functional _ _ _ _ _ _ _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) H1 H2); subst g2
+          pose proof (open_gens_functional _ _ _ _ _ _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) H1 H2); subst g2
       end.
     (* an inductive or a record alias, and a builtin binding: its target
        read as a term is one term, of one inferred type, of one normal

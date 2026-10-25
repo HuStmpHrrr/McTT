@@ -244,8 +244,8 @@ Fixpoint elab_body (S : list ent) (Φ : gmod) (cs : list Cst.cmd) : eres gmod :=
   | Cst.c_ind _ _ _ _ :: _ => eerr "an inductive type is not allowed in a local module"
   | Cst.c_mdef _ _ _ :: _ => eerr "a mutual definition is not allowed in a local module"
   | Cst.c_builtin _ _ :: _ => eerr "builtin is not allowed in a local module"
-  | Cst.c_ind_alias _ _ _ _ :: _ => eerr "an inductive alias is not allowed in a local module"
-  | Cst.c_record_alias _ _ _ _ :: _ => eerr "a record alias is not allowed in a local module"
+  | Cst.c_ind_alias _ x ps oE :: _ => eerr (local_alias_error "an inductive alias" x ps oE)
+  | Cst.c_record_alias _ x ps oE :: _ => eerr (local_alias_error "a record alias" x ps oE)
   | Cst.c_record _ _ _ _ _ _ :: _ => eerr "a record type is not allowed in a local module"
   end.
 

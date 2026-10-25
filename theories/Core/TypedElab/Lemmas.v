@@ -112,7 +112,7 @@ Section Functional.
       try reflexivity; try (split; reflexivity);
       (** A binder or a member read as a module and as a term *)
       try solve [ exfalso; match goal with
-        | Hn : forall A, ~ ?G ∋ #?k : A, Hl : ?G ∋ #?k : _ |- _ => eapply Hn; exact Hl
+        | Hn : ~ term_binder ?G ?k, Hl : term_binder ?G ?k |- _ => exact (Hn Hl)
         | Hn : forall A oM, ~ mdenote _ _ ?G ?E _, Hm : mdenote _ _ ?G ?E _ |- _ => eapply Hn; exact Hm
         end ].
     (** A block: its motive first, then, at one set of motives, its

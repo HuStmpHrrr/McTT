@@ -2191,29 +2191,58 @@ let%expect_test "a local submodule use" =
              end --> 4 : ℕ
     |}]
 
-let%expect_test "a local open of an inductive type is rejected" =
+let%expect_test "a local open of an inductive type is the type and its module" =
   let _ =
     main_of_multi_string
-      "import Prelude›Builtin›Nat module X where eval let module L where open Prelude›Builtin›Nat use (Nat) end \
-       in 0 end end"
+      "import Prelude›Builtin›Nat module X where eval let module L where open Prelude›Builtin›Nat use (Nat) \
+       def two : Nat := Nat.succ (Nat.succ Nat.zero) end end in L.two end end"
   in
-  [%expect {| Error: an inductive type cannot be opened in a local module: Nat |}]
+  [%expect {|
+    Evaluate let module M1 where
+                   open Prelude›Builtin›Nat use (Nat)
+                   def two : Nat ≔
+                     Nat.succ (Nat.succ Nat.zero)
+                   end
+                 end
+             in M1.two
+             end --> 2 : ℕ
+    |}]
 
-let%expect_test "a local open of an inductive type through a local slot is rejected" =
+let%expect_test "a local open of an inductive type through a local slot" =
   let _ =
     main_of_multi_string
       "import Prelude›Builtin›Nat module X where eval let module W := Prelude›Builtin›Nat in \
-       let module L where open W use (Nat) end in 0 end end end"
+       let module L where open W use (Nat) def one : Nat := Nat.succ Nat.zero end end in L.one end end end"
   in
-  [%expect {| Error: an inductive type cannot be opened in a local module: Nat |}]
+  [%expect {|
+    Evaluate let module M1 ≔ Prelude›Builtin›Nat;
+                 module M2 where
+                   open M1 use (Nat)
+                   def one : Nat ≔
+                     Nat.succ Nat.zero
+                   end
+                 end
+             in M2.one
+             end --> 1 : ℕ
+    |}]
 
-let%expect_test "a local open of an inductive type through a local alias is rejected" =
+let%expect_test "a local open of an inductive type through a local alias" =
   let _ =
     main_of_multi_string
       "import Prelude›Builtin›Nat module X where eval let module L where module W := Prelude›Builtin›Nat \
-       open W use (Nat) end in 0 end end"
+       open W use (Nat) def one : Nat := Nat.succ Nat.zero end end in L.one end end"
   in
-  [%expect {| Error: an inductive type cannot be opened in a local module: Nat |}]
+  [%expect {|
+    Evaluate let module M1 where
+                   module W ≔ Prelude›Builtin›Nat
+                   open W use (Nat)
+                   def one : Nat ≔
+                     Nat.succ Nat.zero
+                   end
+                 end
+             in M1.one
+             end --> 1 : ℕ
+    |}]
 
 let%expect_test "a local open of a constructor and of rec is accepted" =
   let _ =
@@ -5508,6 +5537,130 @@ let%expect_test "an open of a record value given at the parameters" =
      def q : D.Pair Nat Nat := record D.Pair Nat Nat where fst := 1; snd := 2 end end \
      module M where open R Nat Nat q as W eval W.snd end") in
   [%expect {| Evaluate M.W.snd --> 2 : ℕ |}]
+
+(* Local opens of inductive and record types: the items are definitions
+   with a module part, read as the type and as its module, inside the
+   local body and from outside it. *)
+let%expect_test "a local open of an inductive type, its constructors and its eliminator" =
+  let _ = main_of_body (dm_decls ^
+    "eval let module L where open D use (N) def x : N := N.s N.z end \
+       def y : Nat := elim x at (k : N) -> Nat | z => 0 | s m, r => succ r end end end in L.y end") in
+  [%expect {|
+    Evaluate let module M1 where
+                   open D use (N)
+                   def x : N ≔
+                     N.s N.z
+                   end
+                   def y : ℕ ≔
+                     elim x at (x1 : N) → ℕ | z ⇒ 0 | s x2, x3 ⇒ succ x3 end
+                   end
+                 end
+             in M1.y
+             end --> 1 : ℕ
+    |}]
+
+let%expect_test "a local open of a record type, its module and its projections" =
+  let _ = main_of_body (dm_decls ^
+    "eval let module L where open D use (Pair) \
+       def p : Pair Nat Nat := record Pair Nat Nat where fst := 1; snd := 2 end end \
+       def t : Nat := Pair.two Nat Nat p end def q : Nat := p.fst end end in L.t end") in
+  [%expect {|
+    Evaluate let module M1 where
+                   open D use (Pair)
+                   def p : Pair ℕ ℕ ≔
+                     record Pair ℕ ℕ where fst ≔ 1; snd ≔ 2 end
+                   end
+                   def t : ℕ ≔
+                     Pair.two ℕ ℕ p
+                   end
+                   def q : ℕ ≔
+                     p.fst
+                   end
+                 end
+             in M1.t
+             end --> 2 : ℕ
+    |}]
+
+let%expect_test "a local open of a renamed inductive type" =
+  let _ = main_of_body (dm_decls ^ "eval let module L where open D use (N as K) def x : K := K.s K.z end end in L.x end") in
+  [%expect {|
+    Evaluate let module M1 where
+                   open D use (N as K)
+                   def x : K ≔
+                     K.s K.z
+                   end
+                 end
+             in M1.x
+             end --> D.N.s D.N.z : D.N
+    |}]
+
+(* Inductive and record aliases are not allowed in a local module; the
+   message names the open that does the same there. *)
+let%expect_test "a local inductive alias of a path suggests the open" =
+  let _ = main_of_body (dm_decls ^ "eval let module L where inductive K := D.N end in 0 end") in
+  [%expect {| Error: an inductive alias is not allowed in a local module; write `open D use (N as K)` instead |}]
+
+let%expect_test "a local record alias of a path suggests the open" =
+  let _ = main_of_body (dm_decls ^ "eval let module L where record P := D.Pair end in 0 end") in
+  [%expect {| Error: a record alias is not allowed in a local module; write `open D use (Pair as P)` instead |}]
+
+let%expect_test "a local record alias of an application suggests the open" =
+  let _ = main_of_body (dm_decls ^ "eval let module L where record P := D.Pair Nat end in 0 end") in
+  [%expect {| Error: a record alias is not allowed in a local module; open the type by name, `open M use (T as P)`, instead |}]
+
+let%expect_test "a local record alias with parameters suggests the open" =
+  let _ = main_of_body (dm_decls ^ "eval let module L where record S (A : Type@0) := D.Pair A end in 0 end") in
+  [%expect {| Error: a record alias is not allowed in a local module; open the type by name, `open M use (T as S)`, instead |}]
+
+let%expect_test "the suggested open, a local equivalent of an inductive alias" =
+  let _ = main_of_body (dm_decls ^
+    "eval let module L where open D use (N as K) def x : K := K.z end end in L.x end") in
+  [%expect {|
+    Evaluate let module M1 where
+                   open D use (N as K)
+                   def x : K ≔
+                     K.z
+                   end
+                 end
+             in M1.x
+             end --> D.N.z : D.N
+    |}]
+
+let%expect_test "an open by name of an inductive type an open exports, globally and locally" =
+  let _ = main_of_body (dm_decls ^
+    "module Q where open D export (N) end \
+     open Q use (N) \
+     eval elim N.s N.z at (k : N) -> Nat | z => 0 | s m, r => succ r end \
+     eval let module L where module Q2 where open D export (N) end open Q2 use (N) \
+       def x : N := N.s N.z end end in L.x end \
+     eval let module L where module Q2 where open D export (N) end open Q2.N use (s; z) \
+       def x : D.N := s z end end in L.x end") in
+  [%expect {|
+    Evaluate elim N.s N.z at (x1 : N) → ℕ | z ⇒ 0 | s x2, x3 ⇒ succ x3 end --> 1
+      : ℕ
+    Evaluate let module M1 where
+                   module Q2 where
+                     open D export (N)
+                   end
+                   open Q2 use (N)
+                   def x : N ≔
+                     N.s N.z
+                   end
+                 end
+             in M1.x
+             end --> D.N.s D.N.z : D.N
+    Evaluate let module M1 where
+                   module Q2 where
+                     open D export (N)
+                   end
+                   open Q2.N use (s; z)
+                   def x : D.N ≔
+                     s z
+                   end
+                 end
+             in M1.x
+             end --> D.N.s D.N.z : D.N
+    |}]
 
 (** Inductive aliases of a library inductive type at a level, the type
     former given some of its uniform parameters, and an alias of an

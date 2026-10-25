@@ -215,6 +215,8 @@ Proof.
     + rewrite H, H0; reflexivity.
     + destruct H as (m & -> & Hm); destruct H0 as (m' & -> & Hm'); f_equal; eapply functional_eval_exp; eassumption.
     + destruct H as (h & -> & Hh); destruct H0 as (h' & -> & Hh'); f_equal; eapply functional_eval_modexp; eassumption.
+    + destruct H as (n & h & -> & Hn & Hh); destruct H0 as (n' & h' & -> & Hn' & Hh');
+        f_equal; [ eapply functional_eval_exp | eapply functional_eval_modexp ]; eassumption.
   - pose proof (H (List.length Ms + 0)) as Hx; rewrite sb_of_list_ge in Hx; cbn in Hx.
     destruct Hx as (m & Hme & Hm).
     destruct (IH _ _ _ (E0 ↦ m) H (eval_sub_extend _ _ _ _ _ H0 Hm)) as (ms & Hms & HE).

@@ -307,7 +307,12 @@ Fixpoint chain_refs (H : modexp) (ch : list string) : list (ptab * string)%type 
 
 (** The member references a term is written with, each with the table of
     the module it selects from: every [a_mem H x], every submodule
-    [me_mem H y], and the name of an eliminator, as written. *)
+    [me_mem H y], and the name of an eliminator, as written.  A local
+    definition with a module part ([gentry_refs] of [ge_def_mod]) is a
+    local alias, and is checked on what is written, its alias unit, exactly
+    as a global alias command checks its target ([cmd_refs]): local and
+    global aliases are checked alike.  Its type and its term are read off
+    the target, not written, so they are not checked. *)
 Fixpoint exp_refs (S : list ptab) (M : exp) : list (ptab * string)%type :=
   match M with
   | a_typ _ | a_level _ | a_llit _ | a_True | a_true | a_False | a_var _ => nil
@@ -385,13 +390,18 @@ with gentry_refs (S : list ptab) (E : gentry) : list (ptab * string)%type :=
   match E with
   | ge_def _ _ A B => exp_refs S A ++ match B with Some M => exp_refs S M | None => nil end
   | ge_mod _ U => gunit_refs S U
-  | ge_ind _ _ _ _ _ | ge_def_mod _ _ _ _ | ge_record _ _ _ _ => nil
+  (* a local alias of a member with a term part and a module part: as
+     written, its alias unit, as for a global alias command; its type and
+     its term are read off the target *)
+  | ge_def_mod _ _ _ U => gunit_refs S U
+  | ge_ind _ _ _ _ _ | ge_record _ _ _ _ => nil
   end
 with centry_refs (S : list ptab) (e : centry) : list (ptab * string)%type :=
   match e with
   | ce_ass A => exp_refs S A
   | ce_def A M => exp_refs S A ++ exp_refs S M
   | ce_mod U => gunit_refs S U
+  | ce_dm _ _ U => gunit_refs S U
   end.
 
 Fixpoint tele_refs (S : list ptab) (Δ : ctx) : list (ptab * string)%type :=

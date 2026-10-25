@@ -259,7 +259,8 @@ Notation "Γ ⊨ᵐ H ≈ H'" := (rel_modexp_under_ctx Γ H H') (at level 70, H 
 
     An inductive relation whose extension step carries both the context PER
     witness and the semantic well-formedness of the head (and, for a
-    definition, of its body; for a module slot, of its unit), so
+    definition, of its body; for a module slot, of its unit; for a
+    definition with a module part, of both), so
     [rel_ctx_wf_per_ctx_env] reads the PER off any derivation.  The validity of
     a unit's parts ([rel_unit_wf]) is defined with it, since a body unit's
     parts form a context. *)
@@ -283,6 +284,16 @@ Inductive rel_ctx_wf : ctx -> Prop :=
     Γ ⊨ᵐ me_lit U ≈ me_lit U ->
     rel_unit_wf Γ U ->
     ⊨ Γ ▹ₘ U
+(** A definition with a module part: its term part valid as a definition,
+    its unit as a slot *)
+| rel_ctx_wf_cons_dm : forall Γ A M U i env_rel,
+    ⊨ Γ ->
+    EF Γ ▸ₘ A ≔ M ‖ U ≈ Γ ▸ₘ A ≔ M ‖ U ∈ per_ctx_env ↘ env_rel ->
+    Γ ⊨ A ≈ A : Typeω@i ->
+    Γ ⊨ M ≈ M : A ->
+    Γ ⊨ᵐ me_lit U ≈ me_lit U ->
+    rel_unit_wf Γ U ->
+    ⊨ Γ ▸ₘ A ≔ M ‖ U
 with rel_unit_wf : ctx -> gunit -> Prop :=
 | rel_unit_wf_body : forall Γ Δ Φ Φx,
     tele_ass Δ ->
@@ -356,8 +367,9 @@ Record valid_args (Γ : ctx) (T : ctx) (Ns : list exp) : Prop := mk_valid_args
 
 (** A unit is valid when its parts are ([valid_unit]): a filed module at
     arguments valid against its telescope ([valid_args]); a local body whose
-    context, read as its expansion, is valid, whose submodules are valid
-    units in the context the body before each makes, and whose opens'
+    context, read as its expansion, is valid, whose submodules (the module
+    parts of its entries, [entry_unit]) are valid units in the context the
+    body before each makes, and whose opens'
     targets are valid; an alias whose target is.  A module expression is
     valid in what it denotes ([valid_modexp]) when it is equal, in the PER model, to
     a valid unit denoting the same module part: the semantic counterpart of
@@ -370,7 +382,7 @@ Inductive valid_unit : ctx -> modexp -> Prop :=
 | valid_unit_body : forall Γ Δ Φ Φx,
     Θm ⍮ Ξm ⍮ Γ ⊢ᵐ me_lit (gu_open Δ Φ) ≈ me_lit (gu_open Δ Φ) ->
     body_xp Θm Ξm (Δ ++ Γ) Φ Φx -> tele_ass Δ -> ⊨ Γ -> ⊨ body_ctx Φx ++ Δ ++ Γ ->
-    (forall y Φ0 pv U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
+    (forall y Φ0 E U, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
        valid_unit (body_ctx Φ0 ++ Δ ++ Γ) (me_lit U)) ->
     body_shape Φ Φ -> body_shape Φx Φx ->
     Γ ⊨ᵐ me_lit (gu_open Δ Φ) ≈ me_lit (gu_open Δ Φ) ->
@@ -402,7 +414,11 @@ Inductive valid_ctx : ctx -> Prop :=
 | valid_ctx_nil : valid_ctx ⋅
 | valid_ctx_ass : forall Γ A, valid_ctx Γ -> ⊨ Γ ▹ A -> valid_ctx (Γ ▹ A)
 | valid_ctx_def : forall Γ A M, valid_ctx Γ -> ⊨ Γ ▸ A ≔ M -> valid_ctx (Γ ▸ A ≔ M)
-| valid_ctx_mod : forall Γ U, valid_ctx Γ -> ⊨ Γ ▹ₘ U -> valid_unit Γ (me_lit U) -> valid_ctx (Γ ▹ₘ U).
+| valid_ctx_mod : forall Γ U, valid_ctx Γ -> ⊨ Γ ▹ₘ U -> valid_unit Γ (me_lit U) -> valid_ctx (Γ ▹ₘ U)
+(** A definition with a module part: semantically well formed, its unit
+    valid as a slot's is *)
+| valid_ctx_dm : forall Γ A M U, valid_ctx Γ -> ⊨ Γ ▸ₘ A ≔ M ‖ U -> valid_unit Γ (me_lit U) ->
+    valid_ctx (Γ ▸ₘ A ≔ M ‖ U).
 
 End Valid.
 
@@ -423,11 +439,14 @@ Section Filed.
   Context {GC : GCtx}.
   Variables (Θm : gdeps) (Ξm : gstack).
 
-(** The kind of an entry. *)
+(** The kind of an entry: a definition is a term, a module a module, and
+    an entry with a term part and a module part (an inductive type, a
+    definition with a module part, a record type) is both ([mk_dm]). *)
 Definition entry_kind (E : gentry) : mkind :=
   match E with
   | ge_def _ _ _ _ => mk_term
-  | _ => mk_mod
+  | ge_mod _ _ => mk_mod
+  | _ => mk_dm
   end.
 
 (** A value [g] related to itself at the value of the closed type
@@ -470,7 +489,10 @@ Record valid_filed_mod (p : qname) (T : ctx) (Φ : gmod) : Prop := mk_valid_file
   ; vfm_tele_scoped : ctx_scoped 0 T
   ; vfm_kinds : forall x Φ0 E, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
       dkind gc_deps gc_stack (dm_global p nil) (x :: nil) (entry_kind E)
+    (** A body stored below it is a module, unless it is the module of a
+        member with a term part (whose kind is that member's) *)
   ; vfm_sub_kinds : forall x TΦ, gc_loc Θm Ξm (qname_app p (x :: nil)) = Some TΦ ->
+      ~ dm_path gc_deps gc_stack (qname_app p (x :: nil)) ->
       dkind gc_deps gc_stack (dm_global p nil) (x :: nil) mk_mod
   ; vfm_terms : forall x Φ0 E R0, gm_prefix_upto Φ x = Some (gm_ext Φ0 x E) ->
       entry_term (Some (qname_in p x)) E = Some R0 ->

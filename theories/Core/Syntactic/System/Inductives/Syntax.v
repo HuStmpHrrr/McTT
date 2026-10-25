@@ -144,8 +144,9 @@ Lemma tele_insts_tele_sub : forall Δ σ τ Ms,
 Proof.
   induction Δ as [| e Δ IH] using List.rev_ind; intros; [ reflexivity |].
   rewrite tele_sub_app; cbn [tele_sub List.length sb_qn].
-  destruct e as [A | A N | U];
+  destruct e as [A | A N | U | A N U];
     [| unfold tele_insts; rewrite !rev_app_distr; reflexivity
+     | unfold tele_insts; rewrite !rev_app_distr; reflexivity
      | unfold tele_insts; rewrite !rev_app_distr; reflexivity ].
   destruct Ms as [| M Ms]; [ unfold tele_insts; rewrite !rev_app_distr; reflexivity |].
   cbn [centry_sub]; rewrite !tele_insts_snoc, IH, exp_sub_sub; f_equal.
@@ -242,7 +243,7 @@ Lemma tele_insts_aux_nth : forall Δr σ Ms k T,
     List.nth_error (tele_insts_aux Δr σ Ms) k = Some T ->
     exists A, List.nth_error Δr k = Some (ce_ass A) /\ T = A[sb_of_list σ (List.firstn k Ms)].
 Proof.
-  induction Δr as [| [A | A N | U] Δr IH]; intros σ [| M Ms] k T H; cbn in H; try (destruct k; discriminate).
+  induction Δr as [| [A | A N | U | A N U] Δr IH]; intros σ [| M Ms] k T H; cbn in H; try (destruct k; discriminate).
   destruct k as [| k]; cbn in H.
   - injection H as <-; exists A; split; reflexivity.
   - destruct (IH _ _ _ _ H) as (A' & HA' & ->); exists A'; split; [ exact HA' | reflexivity ].

@@ -57,6 +57,19 @@ Inductive ctx_sub (Θ : gdeps) (Ξ : gstack) : ctx -> ctx -> Prop :=
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
     Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U ->
     Θ ⍮ Ξ ⊢ Δ ▹ₘ U ⊆ Γ ▹ₘ U
+(** A definition with a module part refines one of a supertype with an
+    equal body and the same unit. *)
+| ctx_sub_extend_dm : forall Δ Γ A A' M M' U i,
+    Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ M' ≈ M : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U ->
+    Θ ⍮ Ξ ⊢ Δ ▸ₘ A' ≔ M' ‖ U ⊆ Γ ▸ₘ A ≔ M ‖ U
 where "Θ ⍮ Ξ ⊢ Δ ⊆ Γ" := (ctx_sub Θ Ξ Δ Γ) : type_scope.
 
 #[export]
@@ -82,7 +95,8 @@ Proof.
     | eapply wf_sub_id_extend
     | eapply wf_sub_id_extend_def
     | eapply wf_sub_id_forget
-    | eapply wf_sub_id_extend_mod ]; eassumption.
+    | eapply wf_sub_id_extend_mod
+    | eapply wf_sub_id_extend_dm ]; eassumption.
 Qed.
 
 #[export]
@@ -93,11 +107,12 @@ Hint Resolve ctx_sub_escape : mctt.
     [Γ]. *)
 Lemma ctx_sub_refl : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⊢ Γ ⊆ Γ.
 Proof.
-  intros Θ Ξ Γ; induction Γ as [| [A | A M | U] Γ IH]; intros HΓ; inversion_clear HΓ;
+  intros Θ Ξ Γ; induction Γ as [| [A | A M | U | A M U] Γ IH]; intros HΓ; inversion_clear HΓ;
     mauto 3 using presup_exp_ctx.
   - econstructor; mauto 3 using presup_exp_ctx.
   - eapply ctx_sub_extend_def; mauto 3 using presup_exp_ctx.
   - eapply ctx_sub_extend_mod; mauto 3 using presup_unit_eq_ctx.
+  - eapply ctx_sub_extend_dm; mauto 3 using presup_exp_ctx.
 Qed.
 
 #[export]
@@ -109,7 +124,7 @@ Lemma ctx_sub_trans : forall Θ Ξ Γ0 Γ1,
       Θ ⍮ Ξ ⊢ Γ1 ⊆ Γ2 ->
       Θ ⍮ Ξ ⊢ Γ0 ⊆ Γ2.
 Proof.
-  induction 1; intros * HΓ2; dependent destruction HΓ2; [ now constructor | | | | |].
+  induction 1; intros * HΓ2; dependent destruction HΓ2; [ now constructor | | | | | |].
   (** The two steps ascribe unrelated levels to the middle type, so both have to
       be raised before the refinements can be composed. *)
   all: assert (Θ ⍮ Ξ ⍮ Δ ⊢ˢ Id : Γ) by mauto 2.
@@ -133,6 +148,14 @@ Proof.
     eapply ctx_sub_forget with (i := max i i0);
       mauto 3 using lift_exp_max_left, lift_exp_max_right.
   - eapply ctx_sub_extend_mod; eauto.
+  - (** Two definitions with a module part: as two definitions, the units
+        the same. *)
+    rename A into A1. rename A0 into A2. rename A' into A0.
+    assert (Θ ⍮ Ξ ⍮ Δ ⊢ A1 ⊆ A2) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Δ ⊢ A0 ⊆ A2) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Δ ⊢ M ≈ M0 : A2) by mauto 3.
+    eapply ctx_sub_extend_dm with (i := max i i0);
+      mauto 3 using lift_exp_max_left, lift_exp_max_right.
 Qed.
 
 #[export]

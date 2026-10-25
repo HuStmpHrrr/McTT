@@ -3,8 +3,7 @@
     The checker computes the entries an open of a well-formed module
     expression generates ([import_gen]) from what its members denote
     ([mdenote_impl]): it computes exactly the generation relation of the core
-    ([open_gens], [import_gen_spec]), or says why there is none ([xerr]).  A
-    local open ([g = false]) of an inductive type is rejected ([xe_ind]). *)
+    ([open_gens], [import_gen_spec]), or says why there is none ([xerr]). *)
 
 From Stdlib Require Import List String Bool.
 
@@ -28,11 +27,7 @@ Inductive xerr : Set :=
 (** A member both used and exported *)
 | xe_both : string -> xerr
 (** A name the open declares twice *)
-| xe_fresh : string -> xerr
-(** An inductive type, or an inductive alias, opened in a local module *)
-| xe_ind : string -> xerr
-(** A record type, which an open does not use *)
-| xe_record : string -> xerr.
+| xe_fresh : string -> xerr.
 
 Inductive xres (A : Type) : Type :=
 | xok : A -> xres A
@@ -93,34 +88,19 @@ Section Gen.
     Lemma ds_is_modb_spec : forall R, ds_is_modb R = true <-> ds_is_mod R.
     Proof. intros []; cbn; split; first [ tauto | discriminate | intros [] ]. Qed.
 
-    (** The definition with a module part an item names, at the global
-        level: a member with a term part and a module part ([ign_dm]). *)
+    (** The definition with a module part an item names: a member with a
+        term part and a module part ([ign_dm]), of the term part's type. *)
     Definition dm_gen (d : string) (pv : bool) (n : string) (R : mdesc) : xres igen :=
       match ds_ty R, ds_mod R with
-      | Some _, Some _ => xok (ig_def_mod d pv (a_mem H n) (me_mem H n))
+      | Some A, Some _ => xok (ig_def_mod d pv A (a_mem H n) (me_mem H n))
       | _, _ => xfail (xe_member H n)
-      end.
-
-    (** Why a member [n] with a term part and a module part cannot be opened
-        locally: a record type, when the closed module [H] stands for files
-        [n] as one ([record_lookup] at its path), and otherwise an inductive
-        type or an inductive alias. *)
-    Definition local_dm_err (n : string) : xerr :=
-      match option_map ds_mod (denote_of Γ H (dn_order_of_wf _ _ Hg _ _ _ HH)) with
-      | Some (Some (ds_closed _ p _ _ _)) =>
-          match record_lookup Θ Ξ (qname_in p n) with
-          | Some _ => xe_record n
-          | None => xe_ind n
-          end
-      | _ => xe_ind n
       end.
 
     (** The item [it] of an open of [H], by what the member it names
         denotes: a term gives a definition, a module an alias, a member with
-        a term part and a module part at the global level ([g = true]) a
-        definition with a module part; an item naming no member, the alias
-        of [H] itself. *)
-    Definition item_gen (g : bool) (it : iitem) : xres igen :=
+        a term part and a module part a definition with a module part; an
+        item naming no member, the alias of [H] itself. *)
+    Definition item_gen (it : iitem) : xres igen :=
       match it with
       | (None, d, pv) => xok (ig_alias d pv H)
       | (Some n, d, pv) =>
@@ -128,19 +108,18 @@ Section Gen.
           | Some (ds_term A _) => xok (ig_def d pv A (a_mem H n))
           | Some R =>
               if ds_is_modb R then xok (ig_alias d pv (me_mem H n))
-              else if g then dm_gen d pv n R
-              else xfail (local_dm_err n)
+              else dm_gen d pv n R
           | None => xfail (xe_member H n)
           end
       end.
 
-    (** [import_gen g its]: [H] is a module, each item names a member of
-        it, no member is both used and exported, and the names declared are
+    (** [import_gen its]: [H] is a module, each item names a member of it,
+        no member is both used and exported, and the names declared are
         distinct; then each item's declaration, all in [Γ]. *)
-    Definition import_gen (g : bool) (its : list iitem) : xres (list igen) :=
+    Definition import_gen (its : list iitem) : xres (list igen) :=
       match option_map ds_mod (denote_of Γ H (dn_order_of_wf _ _ Hg _ _ _ HH)) with
       | Some (Some _) =>
-          let+ gs := xmap (item_gen g) its in
+          let+ gs := xmap item_gen its in
           match both_dup its with
           | Some n => xfail (xe_both n)
           | None =>
@@ -154,29 +133,28 @@ Section Gen.
 
     (** ** Generation Computes the Relation *)
 
-    Lemma xmap_item_gen_sound : forall g its gs,
-        xmap (item_gen g) its = xok gs -> items_gen Θ Ξ g Γ H its gs.
+    Lemma xmap_item_gen_sound : forall its gs,
+        xmap item_gen its = xok gs -> items_gen Θ Ξ Γ H its gs.
     Proof.
-      intros g; induction its as [| [[[n |] d] pv] its IH]; intros gs Hx; cbn in Hx.
+      induction its as [| [[[n |] d] pv] its IH]; intros gs Hx; cbn in Hx.
       - injection Hx as <-; constructor.
       - destruct (denote_of Γ (me_mem H n) _) as [R |] eqn:E; cbn in Hx; [| discriminate ]; apply denote_of_spec in E.
-        destruct R as [A om | Δ Φ Φx | Θ' ? T Φ Ns | Θd A M Rm]; cbn -[dm_gen local_dm_err] in Hx.
-        1-3: destruct (xmap (item_gen g) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-;
+        destruct R as [A om | Δ Φ Φx | Θ' ? T Φ Ns | Θd A M Rm]; cbn -[dm_gen] in Hx.
+        1-3: destruct (xmap item_gen its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-;
           first [ eapply ign_def; [ exact E | apply IH; reflexivity ]
                 | eapply ign_mod; [ exact E | exact I | apply IH; reflexivity ] ].
-        all: destruct g; cbn -[dm_gen] in Hx; [| discriminate ].
-        all: unfold dm_gen in Hx; destruct (ds_ty _) as [A0 |] eqn:Et; [| discriminate ];
+        unfold dm_gen in Hx; destruct (ds_ty _) as [A0 |] eqn:Et; [| discriminate ];
           destruct (ds_mod _) as [Rm0 |] eqn:Em; [| discriminate ]; cbn in Hx.
-        all: destruct (xmap (item_gen true) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-.
-        all: eapply ign_dm; [ exact E | exact Et | exact Em | apply IH; reflexivity ].
-      - destruct (xmap (item_gen g) its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
+        destruct (xmap item_gen its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ]; injection Hx as <-.
+        eapply ign_dm; [ exact E | exact Et | exact Em | apply IH; reflexivity ].
+      - destruct (xmap item_gen its) as [gs' |] eqn:Er; cbn in Hx; [| discriminate ].
         injection Hx as <-; constructor; apply IH; reflexivity.
     Qed.
 
-    Lemma xmap_item_gen_complete : forall g its gs,
-        items_gen Θ Ξ g Γ H its gs -> xmap (item_gen g) its = xok gs.
+    Lemma xmap_item_gen_complete : forall its gs,
+        items_gen Θ Ξ Γ H its gs -> xmap item_gen its = xok gs.
     Proof.
-      intros g; induction its as [| [[[n |] d] pv] its IH]; intros gs Hi; inversion Hi; subst; cbn.
+      induction its as [| [[[n |] d] pv] its IH]; intros gs Hi; inversion Hi; subst; cbn.
       - reflexivity.
       - rewrite (proj2 (denote_of_spec _ _ _ _) ltac:(eassumption)), (IH _ ltac:(eassumption)); reflexivity.
       - match goal with Hm : mdenote _ _ _ _ ?R, Hk : ds_is_mod ?R |- _ =>
@@ -188,19 +166,19 @@ Section Gen.
       - rewrite (IH _ ltac:(eassumption)); reflexivity.
     Qed.
 
-    Lemma xmap_item_gen_spec : forall g its gs,
-        xmap (item_gen g) its = xok gs <-> items_gen Θ Ξ g Γ H its gs.
+    Lemma xmap_item_gen_spec : forall its gs,
+        xmap item_gen its = xok gs <-> items_gen Θ Ξ Γ H its gs.
     Proof. split; [ apply xmap_item_gen_sound | apply xmap_item_gen_complete ]. Qed.
 
     (** [import_gen] computes [open_gens]. *)
-    Theorem import_gen_spec : forall g its gs,
-        import_gen g its = xok gs <-> open_gens Θ Ξ g Γ H its gs.
+    Theorem import_gen_spec : forall its gs,
+        import_gen its = xok gs <-> open_gens Θ Ξ Γ H its gs.
     Proof.
       intros; unfold import_gen.
       destruct (denote_of Γ H _) as [R |] eqn:E; cbn [option_map].
       - apply denote_of_spec in E.
         destruct (ds_mod R) as [Rm |] eqn:Em.
-        + destruct (xmap (item_gen g) its) as [gs' | e] eqn:Er; cbn.
+        + destruct (xmap item_gen its) as [gs' | e] eqn:Er; cbn.
           * destruct (both_dup its) eqn:Eb; [ split; [ discriminate | intros [_ _ _ _ _ [Hb _]]; congruence ] |].
             destruct (name_dup (map iitem_name its)) eqn:En; [ split; [ discriminate | intros [_ _ _ _ _ [_ Hn]]; congruence ] |].
             split; [ intros [= <-]; eapply mk_open_gens; [ exact E | exact Em | apply xmap_item_gen_spec; exact Er | split; assumption ] |].
@@ -234,13 +212,13 @@ Definition skel_ctx (S : skel) : ctx :=
 
 Definition centry_skel (e : centry) : option gunit :=
   match e with
-  | ce_mod U => Some U
+  | ce_mod U | ce_dm _ _ U => Some U
   | _ => None
   end.
 
 Definition entry_skel (E : gentry) : option gunit :=
   match E with
-  | ge_mod _ U => Some U
+  | ge_mod _ U | ge_def_mod _ _ _ U => Some U
   | _ => None
   end.
 
@@ -395,7 +373,7 @@ Section OpenError.
         let+ H' := oe_modexp (body_skel Φ' ++ S) H in
         match mchk (skel_ctx (body_skel Φ' ++ S)) H' with
         | Some HH =>
-            let+ gs := import_gen Θ Ξ Hg (skel_ctx (body_skel Φ' ++ S)) H' H' HH false its in
+            let+ gs := import_gen Θ Ξ Hg (skel_ctx (body_skel Φ' ++ S)) H' H' HH its in
             xok (gens_append Φ' 0 gs)
         | None => xfail (xe_target H')
         end
@@ -410,7 +388,12 @@ Section OpenError.
                    end in
         xok (ge_def b pv A' B')
     | ge_mod pv U => let+ U' := oe_unit S U in xok (ge_mod pv U')
-    | ge_ind _ _ _ _ _ | ge_def_mod _ _ _ _ | ge_record _ _ _ _ => xok E
+    | ge_def_mod pv A M U =>
+        let+ A' := oe_exp S A in
+        let+ M' := oe_exp S M in
+        let+ U' := oe_unit S U in
+        xok (ge_def_mod pv A' M' U')
+    | ge_ind _ _ _ _ _ | ge_record _ _ _ _ => xok E
     end
   with oe_centry (S : skel) (e : centry) {struct e} : xres centry :=
     match e with
@@ -420,6 +403,11 @@ Section OpenError.
         let+ M' := oe_exp S M in
         xok (ce_def A' M')
     | ce_mod U => let+ U' := oe_unit S U in xok (ce_mod U')
+    | ce_dm A M U =>
+        let+ A' := oe_exp S A in
+        let+ M' := oe_exp S M in
+        let+ U' := oe_unit S U in
+        xok (ce_dm A' M' U')
     end.
 
   (** A telescope, each entry in the skeleton of the entries outside it. *)

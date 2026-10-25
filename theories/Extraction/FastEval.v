@@ -130,6 +130,7 @@ with centry_freshb (k : nat) (e : centry) {struct e} : bool :=
   | ce_ass A => exp_freshb k A
   | ce_def A M => exp_freshb k A && exp_freshb k M
   | ce_mod U => gunit_freshb k U
+  | ce_dm A M U => exp_freshb k A && exp_freshb k M && gunit_freshb k U
   end.
 
 (** The boolean list functions decide their counterparts, element by
@@ -651,9 +652,11 @@ where "'$ᵐ*ᶠ|' h '&' ns '|' Θ '⍮' Ξ '↘' r" := (feval_appms Θ Ξ h ns 
     empty environment, and an opaque one or an axiom is a neutral at its
     (closed) type.  Either is then applied to the module's arguments. *)
 with feval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
-(** A transparent definition of a global module: its body, applied to the module's arguments. *)
+(** A term part of a global module, a transparent definition's body or a
+    definition with a module part's term ([gc_term]): it, applied to the
+    module's arguments. *)
 | feval_sel_global :
-  `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def true pv A (Some M)) ->
+  `( gc_term Θ Ξ (qname_app p (x :: nil)) = Some M ->
      ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ f ->
      $*ᶠ| f & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
@@ -671,24 +674,18 @@ with feval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      ind_mlookup Θ Ξ (qname_app p (x :: nil)) = Some (pq, k, D) ->
      $*ᶠ| d_ind pq k nil & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
-(** A definition with a module part, as a term: its term, closed, applied
-    to the module's arguments.  It is read off the entry, as the kinds read
-    it as a module ([eval_sel_global_def_mod]). *)
-| feval_sel_global_def_mod :
-  `( gc_entry Θ Ξ (qname_app p (x :: nil)) = Some (ge_def_mod pv A M U) ->
-     ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ f ->
-     $*ᶠ| f & args | Θ ⍮ Ξ ↘ r ->
-     dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
 (** A member of a closure lacking a parameter is a member closure. *)
 | feval_sel_unsat :
   `( 0 < List.length Δ ->
      dm_local Δ D ρ ·ₜᶠ x Θ ⍮ Ξ ↘ d_member (dm_local Δ D ρ) (x :: nil) )
-(** A definition of a saturated body, found in the body read through the
-    entries its local opens generate: its body, in the environment of the
+(** A term part of a saturated body ([entry_tm]: a definition's body or a
+    definition with a module part's term), found in the body read through
+    the entries its local opens generate: it, in the environment of the
     body before it. *)
 | feval_sel_body :
   `( kbody Θ Ξ ρ Φ Φx ->
-     gm_prefix_upto Φx x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
+     gm_prefix_upto Φx x = Some (gm_ext Φ' x E) ->
+     entry_tm E = Some (A, M) ->
      ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
      ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
      dm_local nil (md_body sm Φ) ρ ·ₜᶠ x Θ ⍮ Ξ ↘ r )
@@ -722,12 +719,14 @@ with feval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop :=
 | feval_selm_unsat :
   `( 0 < List.length Δ ->
      dm_local Δ D ρ ·ₘᶠ y Θ ⍮ Ξ ↘ dm_member (dm_local Δ D ρ) (y :: nil) )
-(** A submodule of a saturated body, found in the body read through the
-    entries its local opens generate: its unit's closure, in the environment
-    of the body before it. *)
+(** A module part of a saturated body ([entry_unit]: a submodule, or a
+    definition with a module part's), found in the body read through the
+    entries its local opens generate: its unit's closure, in the
+    environment of the body before it. *)
 | feval_selm_body :
   `( kbody Θ Ξ ρ Φ Φx ->
-     gm_prefix_upto Φx y = Some (gm_ext Φ' y (ge_mod pm (gu_mk Δy Dy))) ->
+     gm_prefix_upto Φx y = Some (gm_ext Φ' y E) ->
+     entry_unit E = Some (gu_mk Δy Dy) ->
      ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ' ->
      ⟦ Δy ⊢ Dy ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
      dm_local nil (md_body sm Φ) ρ ·ₘᶠ y Θ ⍮ Ξ ↘ r )
@@ -773,6 +772,13 @@ with feval_benv (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
   `( ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ Δy ⊢ Dy ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ1 ↘ h ->
      ⟦ gm_ext Φ y (ge_mod pm (gu_mk Δy Dy)) ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ h )
+(** A definition with a module part adds its term's value and its unit's
+    closure. *)
+| feval_benv_dm :
+  `( ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
+     ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
+     ⟦ Δy ⊢ Dy ⟧ᶜᶠ Θ ⍮ Ξ ⍮ ρ1 ↘ h ->
+     ⟦ gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy)) ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵈ m ‖ h )
 where "'⟦' Φ '⟧ᵇᶠ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (feval_benv Θ Ξ ρ Φ ρ').
 
 Scheme feval_exp_mut_ind := Induction for feval_exp Sort Prop
@@ -868,6 +874,12 @@ Hint Constructors feval_exp feval_proj feval_nflds feval_elim feval_ihs feval_ih
          hypothesis is never spent on the premise it is about *)
       match goal with |- _ = ?r2 => match goal with H : context [r2] |- _ => inversion H; subst; clear H end end;
       repeat match goal with
+        | H : gc_term Θ Ξ ?p = Some _ |- _ =>
+            destruct (gc_term_inv _ _ _ _ H) as [(? & ? & ?) | (? & ? & ? & ?)]; clear H
+        | H1 : entry_tm ?E = Some _, H2 : entry_tm ?E = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : entry_unit ?E = Some _, H2 : entry_unit ?E = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : Members.gc_resolve Θ Ξ ?p = Some _, H2 : Members.gc_resolve Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
         | H1 : gc_entry Θ Ξ ?p = Some _, H2 : gc_entry Θ Ξ ?p = Some _ |- _ =>

@@ -105,6 +105,7 @@ with centry_fresh (k : nat) (e : centry) {struct e} : Prop :=
   | ce_ass A => exp_fresh k A
   | ce_def A M => exp_fresh k A /\ exp_fresh k M
   | ce_mod U => gunit_fresh k U
+  | ce_dm A M U => exp_fresh k A /\ exp_fresh k M /\ gunit_fresh k U
   end.
 
 (** The telescope clause of [gunit_fresh], as a definition of its own. *)
@@ -251,6 +252,20 @@ Corollary gentry_fresh_shiftn : forall E k n, gentry_fresh k E -> gentry_fresh (
 Proof.
   intros * Hf; eapply (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_fresh_wk))))))); [ exact Hf |].
   intros x Hx; cbn in Hx; lia.
+Qed.
+
+(** The term part of an entry avoids what the entry avoids. *)
+Lemma entry_tm_fresh : forall E A M k, entry_tm E = Some (A, M) -> gentry_fresh k E -> exp_fresh k M.
+Proof.
+  intros [? ? ? [] | | | |] * He Hf; cbn in *; try discriminate;
+    injection He as <- <-; tauto.
+Qed.
+
+(** The module part of an entry avoids what the entry avoids. *)
+Lemma entry_unit_fresh : forall E U k, entry_unit E = Some U -> gentry_fresh k E -> gunit_fresh k U.
+Proof.
+  intros [| | | |] * He Hf; cbn in *; try discriminate;
+    injection He as <-; tauto.
 Qed.
 
 (** ** [unwk k] Inverts [q^k ↑]

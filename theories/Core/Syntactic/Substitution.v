@@ -64,6 +64,10 @@ Section computation.
   Fact sentry_exp_exp : sentry_exp (se_exp M) = M.               Proof. reflexivity. Qed.
   Fact sentry_modexp_var : sentry_modexp (se_var x) = me_var x.  Proof. reflexivity. Qed.
   Fact sentry_modexp_mod : sentry_modexp (se_mod H) = H.         Proof. reflexivity. Qed.
+  Fact sentry_wk_dm : sentry_wk (se_dm M H) φ = se_dm M[φ]ʷ (modexp_wk H φ). Proof. reflexivity. Qed.
+  Fact sentry_sub_dm : sentry_sub (se_dm M H) σ = se_dm M[σ] H[σ]ᵐ.     Proof. reflexivity. Qed.
+  Fact sentry_exp_dm : sentry_exp (se_dm M H) = M.               Proof. reflexivity. Qed.
+  Fact sentry_modexp_dm : sentry_modexp (se_dm M H) = H.         Proof. reflexivity. Qed.
   Fact exp_wk_var : #x[φ]ʷ = #(φ x).                       Proof. reflexivity. Qed.
   Fact exp_sub_var : #x[σ] = sentry_exp (σ x).             Proof. reflexivity. Qed.
   Fact modexp_wk_var : modexp_wk (me_var x) φ = me_var (φ x). Proof. reflexivity. Qed.
@@ -79,6 +83,7 @@ Hint Rewrite -> wk_id_var wk_shift_var wk_q_zero wk_q_succ
                 sentry_wk_var sentry_wk_exp sentry_wk_mod
                 sentry_sub_var sentry_sub_exp sentry_sub_mod
                 sentry_exp_var sentry_exp_exp sentry_modexp_var sentry_modexp_mod
+                sentry_wk_dm sentry_sub_dm sentry_exp_dm sentry_modexp_dm
                 exp_wk_var exp_sub_var modexp_wk_var modexp_sub_var : sb_index.
 
 Ltac reduce_index := autorewrite with sb_index in *.
@@ -1466,6 +1471,49 @@ Proof.
   intros; rewrite exp_sub_sub; apply exp_sub_sb_eq, sb_q_extend_gen.
 Qed.
 
+(** A single substitution by any entry commutes past a lifted one, also
+    under one more binder. *)
+Corollary exp_sub_extend_comm_gen : forall M σ e,
+    M[q σ][sb_extend Id (sentry_sub e σ)] = M[sb_extend Id e][σ].
+Proof.
+  intros; rewrite !exp_sub_sub; apply exp_sub_sb_eq; intros [| x]; reduce_index; try reflexivity.
+  rewrite sentry_sub_wk; transitivity (sentry_sub (σ x) Id); [ apply sentry_sub_sb_eq; intros ?; reflexivity | apply sentry_sub_id ].
+Qed.
+
+Corollary exp_sub_q_extend_comm_gen : forall M σ e,
+    M[q (q σ)][q (sb_extend Id (sentry_sub e σ))] = M[q (sb_extend Id e)][q σ].
+Proof.
+  intros; rewrite !exp_sub_sub; apply exp_sub_sb_eq; intros [| [| x]]; reduce_index; try reflexivity.
+  - rewrite sentry_wk_shift_sub_q; reflexivity.
+  - rewrite sentry_wk_shift_sub_q, sentry_sub_wk; f_equal.
+    transitivity (sentry_sub (σ x) Id); [ apply sentry_sub_sb_eq; intros ?; reflexivity | apply sentry_sub_id ].
+Qed.
+
+(** The same for an extension by a definition with a module part. *)
+Corollary exp_sub_extend_dm_sub : forall M σ N H,
+    M[Id ,,ᵈ N ‖ H][σ] = M[σ ,,ᵈ N[σ] ‖ H[σ]ᵐ].
+Proof.
+  intros; rewrite exp_sub_sub; apply exp_sub_sb_eq; pointwise_solve.
+Qed.
+
+Corollary exp_sub_q_extend_dm : forall M σ N H,
+    M[q σ][Id ,,ᵈ N ‖ H] = M[σ ,,ᵈ N ‖ H].
+Proof.
+  intros; rewrite exp_sub_sub; apply exp_sub_sb_eq, sb_q_extend_gen.
+Qed.
+
+Corollary exp_sub_sub_extend_dm : forall M σ N H,
+    M[Id ,,ᵈ N ‖ H][σ] = M[q σ][Id ,,ᵈ N[σ] ‖ H[σ]ᵐ].
+Proof.
+  intros; rewrite exp_sub_extend_dm_sub, exp_sub_q_extend_dm; reflexivity.
+Qed.
+
+Corollary exp_wk_sub_extend_dm : forall M N H φ,
+    M[Id ,,ᵈ N ‖ H][φ]ʷ = M[wk_q φ]ʷ[Id ,,ᵈ N[φ]ʷ ‖ modexp_wk H φ].
+Proof.
+  intros; rewrite exp_wk_sub, exp_sub_wk; apply exp_sub_sb_eq; intros [| x]; reflexivity.
+Qed.
+
 
 (** ** The Instances the Typing Rules Need
 
@@ -1560,7 +1608,8 @@ Lemma sb_qn_ge : forall n σ x,
 Proof.
   induction n; intros * Hle; simpl.
   - replace (x - 0) with x by lia.
-    symmetry; destruct (σ x); simpl; f_equal; [ | apply exp_wk_id_ext | apply modexp_wk_id_ext ]; apply wk_shiftn_zero.
+    symmetry; destruct (σ x); simpl; f_equal;
+      first [ apply exp_wk_id_ext, wk_shiftn_zero | apply modexp_wk_id_ext, wk_shiftn_zero | apply wk_shiftn_zero ].
   - destruct x; [ exfalso; lia | ].
     reduce_index; rewrite IHn by lia.
     rewrite sentry_wk_wk.

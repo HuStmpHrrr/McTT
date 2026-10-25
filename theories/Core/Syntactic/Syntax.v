@@ -976,7 +976,11 @@ with centry : Set :=
 (** [ce_def A M]: a definition of type [A] *)
 | ce_def : exp -> exp -> centry
 (** A module slot, holding the unit *)
-| ce_mod : gunit -> centry.
+| ce_mod : gunit -> centry
+(** [ce_dm A M U]: a definition with a module part, the local
+    [ge_def_mod]: a definition of type [A] equal to [M] and a module slot
+    holding [U], at one index *)
+| ce_dm : exp -> exp -> gunit -> centry.
 
 Abbreviation typ := exp.
 Abbreviation carg := (carg_g exp).
@@ -1100,7 +1104,8 @@ Section syn_mut_ind.
     (case_ge_record : forall pv p R Φ, Pg Φ -> Pn (ge_record pv p R Φ))
     (case_ce_ass : forall A, Pe A -> Pc (ce_ass A))
     (case_ce_def : forall A M, Pe A -> Pe M -> Pc (ce_def A M))
-    (case_ce_mod : forall U, Pu U -> Pc (ce_mod U)).
+    (case_ce_mod : forall U, Pu U -> Pc (ce_mod U))
+    (case_ce_dm : forall A M U, Pe A -> Pe M -> Pu U -> Pc (ce_dm A M U)).
 
   (** The mutual induction principle on terms, written by hand: the
       branches of an eliminator's blocks are nested through pairs. *)
@@ -1229,6 +1234,7 @@ Section syn_mut_ind.
     | ce_ass A => case_ce_ass A (exp_mut A)
     | ce_def A M => case_ce_def A M (exp_mut A) (exp_mut M)
     | ce_mod U => case_ce_mod U (gunit_mut U)
+    | ce_dm A M U => case_ce_dm A M U (exp_mut A) (exp_mut M) (gunit_mut U)
     end.
 
   Theorem syn_mut_ind :
@@ -1432,41 +1438,35 @@ Fixpoint body_ctx (Φ : gmod) : ctx :=
   | gm_ext Φ' _ (ge_def _ _ A None) => cons (ce_ass A) (body_ctx Φ')
   | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
   | gm_ext Φ' _ (ge_ind _ _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
-  | gm_ext Φ' _ (ge_def_mod _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_def_mod _ A M U) => cons (ce_dm A M U) (body_ctx Φ')
   | gm_ext Φ' _ (ge_record _ _ _ _) => cons (ce_ass a_True) (body_ctx Φ')
   | gm_open Φ' _ its => List.repeat (ce_ass a_True) (List.length its) ++ body_ctx Φ'
   end.
 
-(** ** Telescopes
-
-    A member of a parameterized module is checked in the telescope of
-    parameters it lives under, and stored generalized over it by these two
-    folds.  They are the [exp]-level counterparts of the
-    elaborator's [tele_pi]/[tele_fn], which work on [Cst.obj] and so cannot
-    appear in a judgment.
-
-    A [ctx] is innermost-first, so the head of [Δ] is the parameter bound last
-    and must become the innermost binder: the recursion wraps the head first
-    and works outward.  Folding the other way reverses the telescope, and the
-    result is still a well-formed [exp], so nothing catches it early.
-
-    A local definition in a telescope is generalized as a [let], as a section
-    does with [Let], and a module slot as a local module.  The elaborator only
-    builds parameter telescopes of assumptions. *)
-Fixpoint ctx_pi (Δ : ctx) (A : typ) : typ :=
-  match Δ with
-  | nil => A
-  | cons (ce_ass B) Δ' => ctx_pi Δ' (a_pi B A)
-  | cons (ce_def B N) Δ' => ctx_pi Δ' (a_let (b_def (Some B) N) A)
-  | cons (ce_mod U) Δ' => ctx_pi Δ' (a_let (b_mod U) A)
+(** The term part of a body's entry, its type and its body: a definition
+    with a body, or a definition with a module part. *)
+Definition entry_tm (E : gentry) : option (exp * exp) :=
+  match E with
+  | ge_def _ _ A (Some M) => Some (A, M)
+  | ge_def_mod _ A M _ => Some (A, M)
+  | _ => None
   end.
 
-Fixpoint ctx_fn (Δ : ctx) (M : exp) : exp :=
-  match Δ with
-  | nil => M
-  | cons (ce_ass B) Δ' => ctx_fn Δ' (a_fn B M)
-  | cons (ce_def B N) Δ' => ctx_fn Δ' (a_let (b_def (Some B) N) M)
-  | cons (ce_mod U) Δ' => ctx_fn Δ' (a_let (b_mod U) M)
+(** The module part of a body's entry, its unit: a module, or a definition
+    with a module part. *)
+Definition entry_unit (E : gentry) : option gunit :=
+  match E with
+  | ge_mod _ U => Some U
+  | ge_def_mod _ _ _ U => Some U
+  | _ => None
+  end.
+
+(** The unit a context entry holds: a module slot's, or a definition with
+    a module part's. *)
+Definition centry_unit (e : centry) : option gunit :=
+  match e with
+  | ce_mod U | ce_dm _ _ U => Some U
+  | _ => None
   end.
 
 (** ** Notations *)
@@ -1480,6 +1480,7 @@ Module Ctx_Notations.
   Notation "Γ ▹ A" := (@cons centry (ce_ass A) Γ) (at level 50, left associativity) : mctt_scope.
   Notation "Γ ▸ A ≔ M" := (@cons centry (ce_def A M) Γ) (at level 50, left associativity) : mctt_scope.
   Notation "Γ '▹ₘ' U" := (@cons centry (ce_mod U) Γ) (at level 50, left associativity) : mctt_scope.
+  Notation "Γ '▸ₘ' A ≔ M ‖ U" := (@cons centry (ce_dm A M U) Γ) (at level 50, left associativity) : mctt_scope.
 End Ctx_Notations.
 
 (** * Universe Indices
@@ -2188,6 +2189,7 @@ with centry_wk (e : centry) (φ : wk) : centry :=
   | ce_ass A => ce_ass (exp_wk A φ)
   | ce_def A M => ce_def (exp_wk A φ) (exp_wk M φ)
   | ce_mod U => ce_mod (gunit_wk U φ)
+  | ce_dm A M U => ce_dm (exp_wk A φ) (exp_wk M φ) (gunit_wk U φ)
   end.
 
 (** A telescope under [φ], each entry under the binders of the entries outside
@@ -2216,32 +2218,41 @@ Inductive sentry : Set :=
 (** A term, for a term variable *)
 | se_exp : exp -> sentry
 (** A module expression, for a module slot *)
-| se_mod : modexp -> sentry.
+| se_mod : modexp -> sentry
+(** [se_dm N H]: a term and a module expression, for a definition with a
+    module part ([ce_dm]); each sort reads its own component *)
+| se_dm : exp -> modexp -> sentry.
 
 Definition sub : Set := nat -> sentry.
 
 Definition exp_junk : exp := a_true.
 Definition modexp_junk : modexp := me_unit nil.
 
+(** The term an entry gives a term variable. *)
 Definition sentry_exp (e : sentry) : exp :=
   match e with
   | se_var x => a_var x
   | se_exp M => M
   | se_mod _ => exp_junk
+  | se_dm N _ => N
   end.
 
+(** The module expression an entry gives a module variable. *)
 Definition sentry_modexp (e : sentry) : modexp :=
   match e with
   | se_var x => me_var x
   | se_exp _ => modexp_junk
   | se_mod H => H
+  | se_dm _ H => H
   end.
 
+(** An entry under a weakening, componentwise. *)
 Definition sentry_wk (e : sentry) (φ : wk) : sentry :=
   match e with
   | se_var x => se_var (φ x)
   | se_exp M => se_exp (exp_wk M φ)
   | se_mod H => se_mod (modexp_wk H φ)
+  | se_dm N H => se_dm (exp_wk N φ) (modexp_wk H φ)
   end.
 
 Definition sb_id : sub := fun x => se_var x.
@@ -2369,6 +2380,7 @@ with centry_sub (e : centry) (σ : sub) : centry :=
   | ce_ass A => ce_ass (exp_sub A σ)
   | ce_def A M => ce_def (exp_sub A σ) (exp_sub M σ)
   | ce_mod U => ce_mod (gunit_sub U σ)
+  | ce_dm A M U => ce_dm (exp_sub A σ) (exp_sub M σ) (gunit_sub U σ)
   end.
 
 Fixpoint tele_sub (Δ : ctx) (σ : sub) : ctx :=
@@ -2382,6 +2394,7 @@ Definition sentry_sub (e : sentry) (τ : sub) : sentry :=
   | se_var x => τ x
   | se_exp M => se_exp (exp_sub M τ)
   | se_mod H => se_mod (modexp_sub H τ)
+  | se_dm N H => se_dm (exp_sub N τ) (modexp_sub H τ)
   end.
 
 (** Composition of substitutions, again diagrammatic: [sb_compose σ τ]
@@ -2425,6 +2438,7 @@ Module Sub_Notations.
   Notation "σ ⨟ τ" := (sb_compose σ τ) (at level 45, right associativity, format "σ ⨟ τ") : mctt_scope.
   Notation "σ ,, M" := (sb_extend σ (se_exp M)) (at level 50, left associativity, format "σ ,, M") : mctt_scope.
   Notation "σ ',,ₘ' H" := (sb_extend σ (se_mod H)) (at level 50, left associativity, format "σ  ,,ₘ  H") : mctt_scope.
+  Notation "σ ',,ᵈ' N ‖ H" := (sb_extend σ (se_dm N H)) (at level 50, left associativity, format "σ  ,,ᵈ  N  ‖  H") : mctt_scope.
   Notation "'q' σ" := (sb_q σ) (at level 30, σ at level 2) : mctt_scope.
 End Sub_Notations.
 
@@ -2440,6 +2454,44 @@ Module Wk_Notations.
   Notation "φ ⊙ ψ" := (wk_compose φ ψ) (at level 40, left associativity) : mctt_scope.
   Notation "'ι' φ" := (sb_of_wk φ) (at level 30) : mctt_scope.
 End Wk_Notations.
+
+(** ** Telescopes
+
+    A member of a parameterized module is checked in the telescope of
+    parameters it lives under, and stored generalized over it by these two
+    folds.  They are the [exp]-level counterparts of the
+    elaborator's [tele_pi]/[tele_fn], which work on [Cst.obj] and so cannot
+    appear in a judgment.
+
+    A [ctx] is innermost-first, so the head of [Δ] is the parameter bound last
+    and must become the innermost binder: the recursion wraps the head first
+    and works outward.  Folding the other way reverses the telescope, and the
+    result is still a well-formed [exp], so nothing catches it early.
+
+    A local definition in a telescope is generalized as a [let], as a section
+    does with [Let], and a module slot as a local module.  A definition with
+    a module part is substituted in, its term for its term uses and the
+    literal of its unit for its module uses, as a body's entry is filled in
+    ([gm_fill]).  The elaborator only builds parameter telescopes of
+    assumptions. *)
+Fixpoint ctx_pi (Δ : ctx) (A : typ) : typ :=
+  match Δ with
+  | nil => A
+  | cons (ce_ass B) Δ' => ctx_pi Δ' (a_pi B A)
+  | cons (ce_def B N) Δ' => ctx_pi Δ' (a_let (b_def (Some B) N) A)
+  | cons (ce_mod U) Δ' => ctx_pi Δ' (a_let (b_mod U) A)
+  | cons (ce_dm _ N U) Δ' => ctx_pi Δ' (exp_sub A (sb_extend sb_id (se_dm N (me_lit U))))
+  end.
+
+(** The [λ]-counterpart of [ctx_pi]. *)
+Fixpoint ctx_fn (Δ : ctx) (M : exp) : exp :=
+  match Δ with
+  | nil => M
+  | cons (ce_ass B) Δ' => ctx_fn Δ' (a_fn B M)
+  | cons (ce_def B N) Δ' => ctx_fn Δ' (a_let (b_def (Some B) N) M)
+  | cons (ce_mod U) Δ' => ctx_fn Δ' (a_let (b_mod U) M)
+  | cons (ce_dm _ N U) Δ' => ctx_fn Δ' (exp_sub M (sb_extend sb_id (se_dm N (me_lit U))))
+  end.
 
 (** * The Global Context
 

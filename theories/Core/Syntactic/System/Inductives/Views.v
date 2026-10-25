@@ -454,12 +454,13 @@ Qed.
 (** Equal telescopes of assumptions, the other way round. *)
 Lemma ext_eq_sym_ass : forall Θ Ξ Γ Ψ Ψ', tele_ass Ψ -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ' ≈ Ψ.
 Proof.
-  intros * Hass H; induction H as [| ? ? ? ? ? ? ? ? HΨ IH HA HAA HA' | | ].
+  intros * Hass H; induction H as [| ? ? ? ? ? ? ? ? HΨ IH HA HAA HA' | | | ].
   - constructor; assumption.
   - inversion_clear Hass as [| ? ? _ Hass'].
     pose proof (ctxsub_ext _ _ _ _ _ HΨ Hass') as HId.
     pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ HAA HId) as HAA'; rewrite !exp_sub_id in HAA'.
     eapply wf_ext_eq_ass; [ exact (IH Hass') | exact HA' | apply wf_exp_eq_sym; exact HAA' | exact HA ].
+  - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
   - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
   - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
 Qed.
@@ -469,7 +470,7 @@ Lemma ext_eq_app : forall Θ Ξ Γ N N' A A',
     tele_ass N -> tele_ass A -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ N ≈ N' -> Θ ⍮ Ξ ⍮ N ++ Γ ⊢ˣ A ≈ A' -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ A ++ N ≈ A' ++ N'.
 Proof.
   intros * HaN HaA HN HA; remember (N ++ Γ) as Γ1 eqn:EΓ1.
-  revert HaA; induction HA as [| ? ? ? ? ? ? ? ? HΨ IH HB HBB HB' | | ]; intros HaA; subst.
+  revert HaA; induction HA as [| ? ? ? ? ? ? ? ? HΨ IH HB HBB HB' | | | ]; intros HaA; subst.
   - exact HN.
   - inversion_clear HaA as [| ? ? _ HaA'].
     specialize (IH HN eq_refl HaA').
@@ -480,6 +481,7 @@ Proof.
     pose proof (wf_sub_compose _ _ _ _ _ _ _ Hs2 Hs1) as Hs; rewrite sb_compose_id_left in Hs.
     pose proof (sub_preserves_exp _ _ _ _ _ _ _ HB' Hs) as H; rewrite !exp_sub_id in H; cbn in H.
     rewrite <- List.app_assoc; exact H.
+  - inversion_clear HaA as [| ? ? [? Heq] _]; discriminate.
   - inversion_clear HaA as [| ? ? [? Heq] _]; discriminate.
   - inversion_clear HaA as [| ? ? [? Heq] _]; discriminate.
 Qed.

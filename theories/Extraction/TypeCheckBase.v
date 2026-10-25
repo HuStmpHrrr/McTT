@@ -47,7 +47,8 @@ Section lookup.
     | 0 with e => {
       | ce_ass A => pureo (exist _ A[↑]ʷ _)
       | ce_def A M => pureo (exist _ A[↑]ʷ _)
-      | ce_mod _ => inright _ }
+      | ce_mod _ => inright _
+      | ce_dm A M U => pureo (exist _ A[↑]ʷ _) }
     | S x' =>
         let*o (exist _ B _) := lookup G _ x' while _ in
         pureo (exist _ B[↑]ʷ _)
@@ -90,9 +91,10 @@ Section type_check.
 
   Definition tele_ass_dec : forall Δ, { tele_ass Δ } + { ~ tele_ass Δ }.
   Proof.
-    induction Δ as [| [A | A M | U] Δ IH].
+    induction Δ as [| [A | A M | U | A M U] Δ IH].
     - left; constructor.
     - destruct IH as [H | H]; [ left; constructor; eauto | right; intros Hf; inversion Hf; contradiction ].
+    - right; intros Hf; inversion Hf as [| ? ? He _]; destruct He; discriminate.
     - right; intros Hf; inversion Hf as [| ? ? He _]; destruct He; discriminate.
     - right; intros Hf; inversion Hf as [| ? ? He _]; destruct He; discriminate.
   Defined.
@@ -109,10 +111,11 @@ Section type_check.
 
   Definition entry_shape_dec : forall E E', { entry_shape E E' } + { ~ entry_shape E E' }.
   Proof.
-    intros [b pv A [M |] | pm U | pvi Di Φi | ? ? ? ? | ? ? ?] [b' pv' A' [M' |] | pm' U' | pvi' Di' Φi' | ? ? ? ? | ? ? ?]; cbn;
+    intros [b pv A [M |] | pm U | pvi Di Φi | pd ? ? ? | ? ? ?] [b' pv' A' [M' |] | pm' U' | pvi' Di' Φi' | pd' ? ? ? | ? ? ?]; cbn;
       try (right; intros []; fail); try (left; exact I).
     - destruct b, b', (Bool.bool_dec pv pv'); try (right; intuition congruence; fail); left; auto.
     - exact (Bool.bool_dec pm pm').
+    - exact (Bool.bool_dec pd pd').
   Defined.
 
   Definition iitem_eq_dec : forall it it' : iitem, { it = it' } + { it <> it' }.
@@ -152,8 +155,8 @@ Section type_check.
 
   (** What a local open of a module generates. *)
   Definition items_gen_dec (Hg : ⊢ᵍ gc_deps ⍮ gc_stack) Γ H its (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
-      { gs | items_gen gc_deps gc_stack false Γ H its gs } + { forall gs, ~ items_gen gc_deps gc_stack false Γ H its gs } :=
-    items_gen_impl gc_deps gc_stack Hg false Γ H its (ig_order_of_wf _ _ Hg _ _ _ its HH).
+      { gs | items_gen gc_deps gc_stack Γ H its gs } + { forall gs, ~ items_gen gc_deps gc_stack Γ H its gs } :=
+    items_gen_impl gc_deps gc_stack Hg Γ H its (ig_order_of_wf _ _ Hg _ _ _ its HH).
 
   Equations ds_ty_dec (R : mdesc) : { A | ds_ty R = Some A } + { ds_ty R = None } :=
   ds_ty_dec R with inspect (ds_ty R) := {
@@ -227,14 +230,14 @@ Section type_check.
   (** The reference value of the type or definition an extension adds. *)
   Lemma tenv_ref_ass : forall G A p, ⊢ G ▹ A -> initial_env gc_deps gc_stack G p -> exists a, ⟦ A ⟧ p ↘ a.
   Proof.
-    intros * HGA Hp; inversion HGA as [| ? ? ? i ? HA | |]; subst.
+    intros * HGA Hp; inversion HGA as [| ? ? ? i ? HA | | |]; subst.
     destruct (soundness_ty HA) as [W [HW _]]; inversion HW; subst.
     functional_initial_env_rewrite_clear; eauto.
   Qed.
 
   Lemma tenv_ref_def : forall G A M p, ⊢ G ▸ A ≔ M -> initial_env gc_deps gc_stack G p -> exists m, ⟦ M ⟧ p ↘ m.
   Proof.
-    intros * HGA Hp; inversion HGA as [| | ? ? ? i ? ? HA HM |]; subst.
+    intros * HGA Hp; inversion HGA as [| | ? ? ? i ? ? HA HM | |]; subst.
     destruct (soundness HM) as [W [HW _]]; inversion HW; subst.
     functional_initial_env_rewrite_clear; eauto.
   Qed.
@@ -306,6 +309,46 @@ Section type_check.
     eapply env_agree_cons; [ exact Hag | constructor; assumption | intros; exact I ].
   Qed.
 
+  (** The reference values of the term and the unit a definition with a
+      module part adds. *)
+  Lemma tenv_ref_dm : forall G A M U p, ⊢ G ▸ₘ A ≔ M ‖ U -> initial_env gc_deps gc_stack G p ->
+      exists m h, ⟦ M ⟧ p ↘ m /\ ⟦ me_lit U ⟧ᵐ gc_deps ⍮ gc_stack ⍮ p ↘ h.
+  Proof.
+    intros * HG Hp.
+    assert (G ▸ₘ A ≔ M ‖ U ⊢ ⊤ : Typeω@0) as [W [HW _]]%soundness_ty by mauto 2.
+    inversion HW as [? ? Hi _ _]; subst.
+    inversion Hi; subst; functional_initial_env_rewrite_clear; eauto.
+  Qed.
+
+  Lemma tenv_eval_order_dm_tm : forall G A M U p', ⊢ G ▸ₘ A ≔ M ‖ U ->
+      (exists p, initial_env gc_deps gc_stack G p /\ env_agree (fun _ => True) p p') ->
+      feval_exp_order gc_deps gc_stack M p'.
+  Proof.
+    intros * HG (p & Hp & Hag); destruct (tenv_ref_dm _ _ _ _ _ HG Hp) as (m & h & Hm & _).
+    eapply (feval_of_ref _ _ _ _ _ _ Hm), agree_all, Hag.
+  Qed.
+
+  Lemma tenv_eval_order_dm_unit : forall G A M U p', ⊢ G ▸ₘ A ≔ M ‖ U ->
+      (exists p, initial_env gc_deps gc_stack G p /\ env_agree (fun _ => True) p p') ->
+      feval_modexp_order gc_deps gc_stack (me_lit U) p'.
+  Proof.
+    intros * HG (p & Hp & Hag); destruct (tenv_ref_dm _ _ _ _ _ HG Hp) as (m & h & _ & Hh).
+    eapply (feval_modexp_of_ref _ _ _ _ _ _ Hh), agree_all, Hag.
+  Qed.
+
+  Lemma tenv_dm_sim : forall G A M U p' m' h', ⊢ G ▸ₘ A ≔ M ‖ U ->
+      (exists p, initial_env gc_deps gc_stack G p /\ env_agree (fun _ => True) p p') ->
+      ⟦ M ⟧ᶠ gc_deps ⍮ gc_stack ⍮ p' ↘ m' ->
+      ⟦ me_lit U ⟧ᵐᶠ gc_deps ⍮ gc_stack ⍮ p' ↘ h' ->
+      exists p, initial_env gc_deps gc_stack (G ▸ₘ A ≔ M ‖ U) p /\ env_agree (fun _ => True) p (p' ↦ᵈ m' ‖ h').
+  Proof.
+    intros * HG (p & Hp & Hag) Hm' Hh'; destruct (tenv_ref_dm _ _ _ _ _ HG Hp) as (m & h & Hm & Hh).
+    pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Hm (agree_all _ _ _ Hag)) _ Hm').
+    pose proof (proj2 (feval_modexp_of_ref _ _ _ _ _ _ Hh (agree_all _ _ _ Hag)) _ Hh').
+    eexists; split; [ econstructor; eassumption |].
+    eapply env_agree_cons; [ exact Hag | constructor; assumption | intros; exact I ].
+  Qed.
+
   Lemma tenv_ctx_of_typ : forall G X, (exists j, G ⊢ X : Typeω@j) -> ⊢ G.
   Proof. intros * [? HX]; gen_presups; assumption. Qed.
 
@@ -330,6 +373,12 @@ Section type_check.
     let (h, Hh) := feval_modexp_impl gc_deps gc_stack (me_lit U) p (tenv_eval_order_mod G U p HGU Hp) in
     exist _ (p ↦ᵐ h) (tenv_mod_sim _ _ _ _ HGU Hp Hh).
 
+  Definition tenv_dm G (P : tenv G) A M U (HG : ⊢ G ▸ₘ A ≔ M ‖ U) : tenv (G ▸ₘ A ≔ M ‖ U) :=
+    let (p, Hp) := P in
+    let (m, Hm) := feval_exp_impl gc_deps gc_stack M p (tenv_eval_order_dm_tm G A M U p HG Hp) in
+    let (h, Hh) := feval_modexp_impl gc_deps gc_stack (me_lit U) p (tenv_eval_order_dm_unit G A M U p HG Hp) in
+    exist _ (p ↦ᵈ m ‖ h) (tenv_dm_sim _ _ _ _ _ _ _ HG Hp Hm Hh).
+
   (** The initial environment of an extension [Ψ ++ G], from that of [G]:
       one entry more per entry of [Ψ], rather than all of [G]'s again. *)
   Fixpoint tenv_ext G (P : tenv G) (Ψ : ctx) {struct Ψ} : ⊢ Ψ ++ G -> tenv (Ψ ++ G) :=
@@ -338,6 +387,7 @@ Section type_check.
     | ce_ass A :: Ψ' => fun H => tenv_ass (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) A H
     | ce_def A M :: Ψ' => fun H => tenv_def (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) A M H
     | ce_mod U :: Ψ' => fun H => tenv_mod (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) U H
+    | ce_dm A M U :: Ψ' => fun H => tenv_dm (Ψ' ++ G) (tenv_ext G P Ψ' (ctx_decomp_tail H)) A M U H
     end.
 
   Inductive type_check_order : exp -> Prop :=
@@ -391,6 +441,9 @@ Section type_check.
   | eo_ass : forall {A Ψ}, ext_order Ψ -> type_infer_order A -> ext_order (Ψ ▹ A)
   | eo_def : forall {A M Ψ}, ext_order Ψ -> type_infer_order A -> type_check_order M -> ext_order (Ψ ▸ A ≔ M)
   | eo_mod : forall {U Ψ}, ext_order Ψ -> unit_order U -> ext_order (Ψ ▹ₘ U)
+  (** A definition with a module part: as a definition and as a slot *)
+  | eo_dm : forall {A M U Ψ}, ext_order Ψ -> type_infer_order A -> type_check_order M -> unit_order U ->
+      ext_order (Ψ ▸ₘ A ≔ M ‖ U)
   with unit_order : gunit -> Prop :=
   | uo_body : forall {Δ sm Φ}, ext_order Δ -> body_order Φ -> unit_order (gu_mk Δ (md_body sm Φ))
   | uo_alias : forall {Δ E}, ext_order Δ -> modexp_order E -> unit_order (gu_mk Δ (md_alias E))
@@ -403,8 +456,10 @@ Section type_check.
   | bo_mod : forall {Φ x pm U}, body_order Φ -> unit_order U -> body_order (gm_ext Φ x (ge_mod pm U))
   | bo_axiom : forall {Φ x b pv A}, body_order Φ -> body_order (gm_ext Φ x (ge_def b pv A None))
   | bo_ind : forall {Φ x pv p k D Φi}, body_order Φ -> body_order (gm_ext Φ x (ge_ind pv p k D Φi))
-  (** A definition with a module part: filed only, held by no body *)
-  | bo_def_mod : forall {Φ x pv A M U}, body_order Φ -> body_order (gm_ext Φ x (ge_def_mod pv A M U))
+  (** A definition with a module part: its term part as a definition, its
+      unit as a submodule *)
+  | bo_def_mod : forall {Φ x pv A M U}, body_order Φ -> type_infer_order A -> type_check_order M -> unit_order U ->
+      body_order (gm_ext Φ x (ge_def_mod pv A M U))
   (** A record declaration: as written in no local body, only the entries
       before it *)
   | bo_record : forall {Φ x pv pr R Φr}, body_order Φ -> body_order (gm_ext Φ x (ge_record pv pr R Φr))
@@ -426,11 +481,12 @@ Section type_check.
     | ce_ass A => type_infer_order A
     | ce_def A M => type_infer_order A /\ type_check_order M
     | ce_mod U => unit_order U
+    | ce_dm A M U => type_infer_order A /\ type_check_order M /\ unit_order U
     end.
 
   Lemma ext_order_app : forall X Δ, List.Forall centry_order X -> ext_order Δ -> ext_order (X ++ Δ).
   Proof.
-    induction X as [| [A | A M | U] X IH]; intros * HX HΔ; cbn; [ exact HΔ | | |];
+    induction X as [| [A | A M | U | A M U] X IH]; intros * HX HΔ; cbn; [ exact HΔ | | | |];
       inversion HX as [| ? ? He HX']; subst; cbn in He; destruct_conjs; constructor; auto.
   Qed.
 
@@ -453,7 +509,8 @@ Section type_check.
     (forall E, match E with
            | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
            | ge_mod _ U => unit_order U
-           | ge_ind _ _ _ _ _ | ge_def_mod _ _ _ _ | ge_record _ _ _ _ => True
+           | ge_def_mod _ A M U => type_infer_order A /\ type_infer_order M /\ unit_order U
+           | ge_ind _ _ _ _ _ | ge_record _ _ _ _ => True
            end) /\
     (forall e, centry_order e).
   Proof.
@@ -471,7 +528,8 @@ Section type_check.
       (fun E => match E with
              | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
              | ge_mod _ U => unit_order U
-             | ge_ind _ _ _ _ _ | ge_def_mod _ _ _ _ | ge_record _ _ _ _ => True
+             | ge_def_mod _ A M U => type_infer_order A /\ type_infer_order M /\ unit_order U
+             | ge_ind _ _ _ _ _ | ge_record _ _ _ _ => True
              end)
       centry_order); intros; cbn in *; destruct_conjs; eauto 6 with mctt.
     (* a tuple: its fields are checked *)
@@ -496,7 +554,7 @@ Section type_check.
     - destruct D; destruct_conjs; constructor; auto using ext_order_of_forall.
     - destruct E as [b pv A [M |] | pm U | pvi pk ki Di Φi | ? ? ? ? | ? ? ?]; destruct_conjs;
         first [ apply bo_def; eauto with mctt | apply bo_mod; assumption
-              | apply bo_axiom; assumption | apply bo_ind; assumption | apply bo_def_mod; assumption
+              | apply bo_axiom; assumption | apply bo_ind; assumption | apply bo_def_mod; eauto with mctt
               | apply bo_record; assumption ].
   Qed.
 
@@ -597,6 +655,15 @@ Ltac ctx_wf_tac :=
         assert (G ⊢ M : A) by (eapply alg_type_check_sound; eassumption); mauto 2 end
   | |- ⊢ ?G ▹ₘ ?U =>
       match goal with H : G ⊢aᵘ U |- _ => apply wf_ctx_extend_mod; eapply alg_unit_sound; eassumption end
+  | |- ⊢ ?G ▸ₘ ?A ≔ ?M ‖ ?U =>
+      match goal with Ha : G ⊢a A ⟹ ?UA, Hu : is_univ_nf ?UA ?u, H' : G ⊢a M ⟸ A, HU : G ⊢aᵘ U |- _ =>
+        assert (G ⊢ A : unf_tm u)
+          by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
+              eapply alg_type_infer_sound; eassumption);
+        assert (G ⊢ A : Typeω@(unf_large u))
+          by (apply wf_exp_unf_large; eassumption);
+        assert (G ⊢ M : A) by (eapply alg_type_check_sound; eassumption);
+        eapply wf_ctx_extend_dm; [ eassumption | eassumption | eapply alg_unit_sound; eassumption ] end
   | |- ⊢ ?Ψ ++ ?G =>
       match goal with H : G ⊢aˣ Ψ |- _ => eapply ext_eq_ctx_left, alg_ext_sound; eassumption end
   | |- ⊢ body_ctx ?Φ0 ++ ?Δ ++ ?G =>

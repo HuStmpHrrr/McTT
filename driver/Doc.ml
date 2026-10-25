@@ -861,6 +861,7 @@ and rc_centry th = function
   | S.Coq_ce_ass a -> rc_exp th a
   | S.Coq_ce_def (a, m) -> rc_exp th a @ rc_exp th m
   | S.Coq_ce_mod u -> rc_unit th u
+  | S.Coq_ce_dm (a, m, u) -> rc_exp th a @ rc_exp th m @ rc_unit th u
 
 and rc_unit th (S.Coq_gu_mk (d, md)) =
   rc_ctx th d @ (match md with S.Coq_md_alias h -> rc_mod th h | S.Coq_md_body (_, g) -> rc_gmod th g)

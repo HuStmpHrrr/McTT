@@ -1371,6 +1371,21 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
      ⟦ Δy' ⊢ Dy' ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ1' ↘ h' ->
      per_dmod h h' ->
      per_body ρ (gm_ext Φ y (ge_mod pm (gu_mk Δy Dy))) ρ' (gm_ext Φ' y (ge_mod pm' (gu_mk Δy' Dy'))) }
+(** A definition with a module part each: related types and values, as a
+    definition each, and related closures, as a submodule each. *)
+| per_body_dm :
+  `{ forall R,
+       per_body ρ Φ ρ' Φ' ->
+       kbody gc_deps gc_stack ρ Φ Φx ->
+       kbody gc_deps gc_stack ρ' Φ' Φx' ->
+       ⟦ Φx ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 ->
+       ⟦ Φx' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' ->
+       rel_typ i A ρ1 A' ρ1' R ->
+       rel_elem M ρ1 M' ρ1' R ->
+       ⟦ Δy ⊢ Dy ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ1 ↘ h ->
+       ⟦ Δy' ⊢ Dy' ⟧ᶜ gc_deps ⍮ gc_stack ⍮ ρ1' ↘ h' ->
+       per_dmod h h' ->
+       per_body ρ (gm_ext Φ y (ge_def_mod pv A M (gu_mk Δy Dy))) ρ' (gm_ext Φ' y (ge_def_mod pv' A' M' (gu_mk Δy' Dy'))) }
 (** A local open each, of the same items, with related targets, the
     entries each generates evaluating.  Each side's target, read again after
     the first [k] entries it generates (as the [k+1]-th entry reads it), has
@@ -1425,6 +1440,34 @@ Definition tie_mod (m : dmod) (H : modexp) (ρ : env) : Prop :=
   exists h, ⟦ H ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h /\ per_dmod m h.
 
 (** * Context/Environment PER *)
+
+(** The environments a definition with a module part relates, given the
+    PER of the tails and the head relation at related tails: those of a
+    definition entry for its terms [M], [M'], and those of a module slot
+    for its units [U], [U'], at the same head. *)
+Record per_ctx_env_dm_rel (tail_rel : relation env)
+    (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain)
+    (M M' : exp) (U U' : gunit) (ρ ρ' : env) : Prop := mk_per_ctx_env_dm_rel
+  { (** The tails are related *)
+    per_ctx_env_dm_rel_tail : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel
+    (** The heads are related at the tails' head relation *)
+  ; per_ctx_env_dm_rel_head : Dom (ρ 0) ≈ (ρ' 0) ∈ head_rel per_ctx_env_dm_rel_tail
+    (** The left head is related to the value of [M] over the left tail *)
+  ; per_ctx_env_dm_rel_left_term : exists m, ⟦ M ⟧ ρ↯ ↘ m /\ Dom m ≈ (ρ 0) ∈ head_rel per_ctx_env_dm_rel_tail
+    (** and to that of [M'] *)
+  ; per_ctx_env_dm_rel_left_term' : exists m, ⟦ M' ⟧ ρ↯ ↘ m /\ Dom m ≈ (ρ 0) ∈ head_rel per_ctx_env_dm_rel_tail
+    (** The right head is related to the value of [M] over the right tail *)
+  ; per_ctx_env_dm_rel_right_term : exists m', ⟦ M ⟧ ρ'↯ ↘ m' /\ Dom m' ≈ (ρ' 0) ∈ head_rel per_ctx_env_dm_rel_tail
+    (** and to that of [M'] *)
+  ; per_ctx_env_dm_rel_right_term' : exists m', ⟦ M' ⟧ ρ'↯ ↘ m' /\ Dom m' ≈ (ρ' 0) ∈ head_rel per_ctx_env_dm_rel_tail
+    (** The left head's module is tied to the closure of [U] over the left tail *)
+  ; per_ctx_env_dm_rel_left_unit : tie_mod (env_mod ρ 0) (me_lit U) ρ↯
+    (** and to that of [U'] *)
+  ; per_ctx_env_dm_rel_left_unit' : tie_mod (env_mod ρ 0) (me_lit U') ρ↯
+    (** The right head's module is tied to the closure of [U] over the right tail *)
+  ; per_ctx_env_dm_rel_right_unit : tie_mod (env_mod ρ' 0) (me_lit U) ρ'↯
+    (** and to that of [U'] *)
+  ; per_ctx_env_dm_rel_right_unit' : tie_mod (env_mod ρ' 0) (me_lit U') ρ'↯ }.
 
 Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
 (** The empty context, all environments related. *)
@@ -1483,6 +1526,23 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
              tie_mod (env_mod ρ' 0) (me_lit U) ρ'↯ /\
              tie_mod (env_mod ρ' 0) (me_lit U') ρ'↯) ->
         EF Γ ▹ₘ U ≈ Γ' ▹ₘ U' ∈ per_ctx_env ↘ env_rel }
+(** A definition with a module part: the clauses of a definition entry for
+    its term part and those of a module slot for its unit, at the same
+    head. *)
+| per_ctx_env_cons_dm :
+  `{ forall tail_rel
+        (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain)
+        env_rel
+        (equiv_Γ_Γ' : EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel),
+        PER tail_rel ->
+        (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
+            rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
+        (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
+            rel_elem M ρ M' ρ' (head_rel equiv_ρ_ρ')) ->
+        (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
+            rel_mexp (me_lit U) ρ (me_lit U') ρ') ->
+        (env_rel <~> per_ctx_env_dm_rel tail_rel (@head_rel) M M' U U') ->
+        EF Γ ▸ₘ A ≔ M ‖ U ≈ Γ' ▸ₘ A' ≔ M' ‖ U' ∈ per_ctx_env ↘ env_rel }
 .
 Hint Constructors per_ctx_env : mctt.
 
@@ -1527,6 +1587,15 @@ Inductive per_ctx_subtyp : ctx -> ctx -> Prop :=
         EF Γ' ▹ₘ U' ≈ Γ' ▹ₘ U' ∈ per_ctx_env ↘ env_rel' ->
         (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_rel -> Dom ρ ≈ ρ' ∈ env_rel') ->
         SubE Γ ▹ₘ U <: Γ' ▹ₘ U' }
+(** A definition with a module part refines one when its environments are
+    environments of the other. *)
+| per_ctx_subtyp_dm :
+  `{ forall env_rel env_rel',
+        SubE Γ <: Γ' ->
+        EF Γ ▸ₘ A ≔ M ‖ U ≈ Γ ▸ₘ A ≔ M ‖ U ∈ per_ctx_env ↘ env_rel ->
+        EF Γ' ▸ₘ A' ≔ M' ‖ U' ≈ Γ' ▸ₘ A' ≔ M' ‖ U' ∈ per_ctx_env ↘ env_rel' ->
+        (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_rel -> Dom ρ ≈ ρ' ∈ env_rel') ->
+        SubE Γ ▸ₘ A ≔ M ‖ U <: Γ' ▸ₘ A' ≔ M' ‖ U' }
 where "'SubE' Γ <: Δ" := (per_ctx_subtyp Γ Δ) : type_scope.
 
 Hint Constructors per_ctx_subtyp : mctt.

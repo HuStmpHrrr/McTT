@@ -138,10 +138,34 @@ Qed.
 #[export]
 Hint Resolve ctx_decomp_def_left ctx_decomp_def_typ ctx_decomp_def_body : mctt.
 
+(** A definition with a module part: a definition and a module slot. *)
+Lemma ctx_decomp_dm : forall {Θ Ξ Γ A M U},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ->
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U.
+Proof.
+  inversion 1; repeat split; eauto using presup_exp_ctx.
+Qed.
+
+Corollary ctx_decomp_dm_left : forall {Θ Ξ Γ A M U}, ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U -> ⊢ Θ ⍮ Ξ ⍮ Γ.
+Proof. intros * ?%ctx_decomp_dm; easy. Qed.
+
+Corollary ctx_decomp_dm_typ : forall {Θ Ξ Γ A M U},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
+Proof. intros * ?%ctx_decomp_dm; easy. Qed.
+
+Corollary ctx_decomp_dm_body : forall {Θ Ξ Γ A M U}, ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
+Proof. intros * ?%ctx_decomp_dm; easy. Qed.
+
+Corollary ctx_decomp_dm_unit : forall {Θ Ξ Γ A M U}, ⊢ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U.
+Proof. intros * ?%ctx_decomp_dm; easy. Qed.
+
+#[export]
+Hint Resolve ctx_decomp_dm_left ctx_decomp_dm_typ ctx_decomp_dm_body ctx_decomp_dm_unit : mctt.
+
 (** The tail of a well-formed context, whatever its head. *)
 Corollary ctx_decomp_tail : forall {Θ Ξ Γ e}, ⊢ Θ ⍮ Ξ ⍮ e :: Γ -> ⊢ Θ ⍮ Ξ ⍮ Γ.
 Proof.
-  intros * H; destruct e; eauto using ctx_decomp_left, ctx_decomp_def_left, ctx_decomp_mod_left.
+  intros * H; destruct e; eauto using ctx_decomp_left, ctx_decomp_def_left, ctx_decomp_mod_left, ctx_decomp_dm_left.
 Qed.
 
 #[export]
@@ -188,6 +212,7 @@ Proof.
   intros * Hφ ? ?.
   econstructor; [ assumption | assumption | | |].
   - intros x B Hlk; inversion Hlk; subst; simpl; rewrite exp_wk_shift_wk_q.
+    + econstructor.
     + econstructor.
     + econstructor.
     + econstructor; eapply wf_wk_lookup; eassumption.
@@ -1559,8 +1584,8 @@ Proof.
     inversion Hx'; subst; cbn [body_opens gm_dropn] in Hk, Hk'; eauto.
   - destruct Φ' as [| Φ1 x1 E1 | Φ1 Hm1 its1]; cbn in Hs; try contradiction; destruct Hs as (Hs & <-).
     inversion Hx'; subst.
-    rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg) in Hk.
-    match goal with Hg' : items_gen _ _ _ _ _ its _ |- _ => rewrite (body_opens_open _ _ _ _ _ _ _ _ _ Hg') in Hk' end.
+    rewrite (body_opens_open _ _ _ _ _ _ _ _ Hg) in Hk.
+    match goal with Hg' : items_gen _ _ _ _ its _ |- _ => rewrite (body_opens_open _ _ _ _ _ _ _ _ Hg') in Hk' end.
     destruct k as [| k]; cbn in Hk, Hk'; [| eauto ].
     injection Hk as <- <-; injection Hk' as <- <-.
     rewrite !length_body_ctx, (body_xp_binders _ _ _ _ _ Hx).
@@ -1577,28 +1602,28 @@ Lemma unit_body_moved : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' lv Δ σ σ',
     Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_sub Δu σ ≈ tele_sub Δu' σ' ->
     Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_sub (body_ctx Φx ++ Δu) σ ≈ tele_sub (body_ctx Φx ++ Δu) σ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_sub (body_ctx Φx' ++ Δu') σ' ≈ tele_sub (body_ctx Φx' ++ Δu') σ' ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         Θ ⍮ Ξ ⍮ tele_sub Δu σ ++ Δ ⊢ A[σf][sb_qn (length Δu) σ] : Typeω@(lv y) /\
         Θ ⍮ Ξ ⍮ tele_sub Δu σ ++ Δ ⊢ A[σf][sb_qn (length Δu) σ] ≈ A'[σf'][sb_qn (length Δu) σ'] : Typeω@(lv y) /\
         Θ ⍮ Ξ ⍮ tele_sub Δu σ ++ Δ ⊢ M[σf][sb_qn (length Δu) σ] : A[σf][sb_qn (length Δu) σ] /\
         Θ ⍮ Ξ ⍮ tele_sub Δu σ ++ Δ ⊢ M[σf][sb_qn (length Δu) σ] ≈ M'[σf'][sb_qn (length Δu) σ'] : A[σf][sb_qn (length Δu) σ]) ->
-    (forall y Φ0 pv U Φ0' pv' U' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+    (forall y Φ0 E U Φ0' E' U' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         Θ ⍮ Ξ ⍮ tele_sub Δu σ ++ Δ ⊢ᵘ U[σf]ᵘ[sb_qn (length Δu) σ]ᵘ ≈ U'[σf']ᵘ[sb_qn (length Δu) σ']ᵘ) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         Θ ⍮ Ξ ⍮ tele_sub Δu' σ' ++ Δ ⊢ A'[σf'][sb_qn (length Δu') σ'] : Typeω@(lv y) /\
         Θ ⍮ Ξ ⍮ tele_sub Δu' σ' ++ Δ ⊢ M'[σf'][sb_qn (length Δu') σ'] : A'[σf'][sb_qn (length Δu') σ']) ->
-    (forall y Φ0 pv U Φ0' pv' U' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+    (forall y Φ0 E U Φ0' E' U' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         Θ ⍮ Ξ ⍮ tele_sub Δu' σ' ++ Δ ⊢ᵘ U'[σf']ᵘ[sb_qn (length Δu') σ']ᵘ ≈ U'[σf']ᵘ[sb_qn (length Δu') σ']ᵘ) ->
     (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) ->
@@ -1622,45 +1647,45 @@ Proof.
   rewrite !gunit_sub_mk; cbn [moddef_sub].
   eapply wf_unit_eq_body with (lv := lv); [ exact Hbσ | exact Hbσ' | .. ].
   (* the definitions, each filled in, then substituted *)
-  all: try (intros y Φ0w b pv Aw Mw Φ0w' b' pv' Aw' Mw' σw σw' Hp Hp' Hfw Hfw';
-    destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & HE);
-    destruct E as [b0 pv0 A [M |] | | | | ]; cbn in HE; try discriminate; injection HE as ? ? ? ?; subst;
-    destruct (gm_prefix_sub_inv _ _ _ _ _ Hp') as (Φ0' & E' & Hp0' & -> & HE');
-    destruct E' as [b0' pv0' A' [M' |] | | | | ]; cbn in HE'; try discriminate; injection HE' as ? ? ? ?; subst;
+  all: try (intros y Φ0w Ew Aw Mw Φ0w' Ew' Aw' Mw' σw σw' Hp HEw Hp' HEw' Hfw Hfw';
+    destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & ->);
+    destruct (entry_tm_sub_inv _ _ _ _ HEw) as (A & M & HE & -> & ->);
+    destruct (gm_prefix_sub_inv _ _ _ _ _ Hp') as (Φ0' & E' & Hp0' & -> & ->);
+    destruct (entry_tm_sub_inv _ _ _ _ HEw') as (A' & M' & HE' & -> & ->);
     destruct (gm_fill Φ0) as [σf |] eqn:Hf0; [| apply (proj2 (gm_fill_sub_none Φ0 (sb_qn (length Δu) σ))) in Hf0; congruence ];
     destruct (gm_fill Φ0') as [σf' |] eqn:Hf0'; [| apply (proj2 (gm_fill_sub_none Φ0' (sb_qn (length Δu') σ'))) in Hf0'; congruence ];
     destruct (gm_fill_sub Φ0 (length Δu) σ σf Hf0) as (τ & Hτ & Heq); rewrite Hτ in Hfw; injection Hfw as <-;
     destruct (gm_fill_sub Φ0' (length Δu') σ' σf' Hf0') as (τ' & Hτ' & Heq'); rewrite Hτ' in Hfw'; injection Hfw' as <-;
     repeat (rewrite (fill_sub_exp _ _ _ _ _ _ Heq)); repeat (rewrite (fill_sub_exp _ _ _ _ _ _ Heq'));
-    destruct (HD _ _ _ _ _ _ _ _ _ _ _ _ _ Hp0 Hp0' Hf0 Hf0') as (H1 & H2 & H3 & H4);
-    destruct (HDr _ _ _ _ _ _ _ _ _ _ _ _ _ Hp0 Hp0' Hf0 Hf0') as (H5 & H6);
+    destruct (HD _ _ _ _ _ _ _ _ _ _ _ Hp0 HE Hp0' HE' Hf0 Hf0') as (H1 & H2 & H3 & H4);
+    destruct (HDr _ _ _ _ _ _ _ _ _ _ _ Hp0 HE Hp0' HE' Hf0 Hf0') as (H5 & H6);
     first [ exact H5 | exact H6 | rewrite <- ?Hl; first [ exact H1 | exact H2 | exact H3 | exact H4 ] ]).
   - exact HΔσ.
   - rewrite body_ctx_sub, <- tele_sub_app; exact Hxσ.
   - rewrite body_ctx_sub, <- tele_sub_app; exact Hxσ'.
   - (* the modules, each filled in, then substituted *)
-    intros y Φ0w pv Uw Φ0w' pv' Uw' σw σw' Hp Hp' Hfw Hfw'.
-    destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & HE).
-    destruct E as [| pv0 U | | | ]; cbn in HE; try discriminate; injection HE as ? ?; subst.
-    destruct (gm_prefix_sub_inv _ _ _ _ _ Hp') as (Φ0' & E' & Hp0' & -> & HE').
-    destruct E' as [| pv0' U' | | | ]; cbn in HE'; try discriminate; injection HE' as ? ?; subst.
+    intros y Φ0w Ew Uw Φ0w' Ew' Uw' σw σw' Hp HEw Hp' HEw' Hfw Hfw'.
+    destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & ->).
+    destruct (entry_unit_sub_inv _ _ _ HEw) as (U & HE & ->).
+    destruct (gm_prefix_sub_inv _ _ _ _ _ Hp') as (Φ0' & E' & Hp0' & -> & ->).
+    destruct (entry_unit_sub_inv _ _ _ HEw') as (U' & HE' & ->).
     destruct (gm_fill Φ0) as [σf |] eqn:Hf0; [| apply (proj2 (gm_fill_sub_none Φ0 (sb_qn (length Δu) σ))) in Hf0; congruence ].
     destruct (gm_fill Φ0') as [σf' |] eqn:Hf0'; [| apply (proj2 (gm_fill_sub_none Φ0' (sb_qn (length Δu') σ'))) in Hf0'; congruence ].
     destruct (gm_fill_sub Φ0 (length Δu) σ σf Hf0) as (τ & Hτ & Heq); rewrite Hτ in Hfw; injection Hfw as <-.
     destruct (gm_fill_sub Φ0' (length Δu') σ' σf' Hf0') as (τ' & Hτ' & Heq'); rewrite Hτ' in Hfw'; injection Hfw' as <-.
     rewrite (fill_sub_unit _ _ _ _ _ _ Heq), (fill_sub_unit _ _ _ _ _ _ Heq'), <- Hl.
-    exact (HU _ _ _ _ _ _ _ _ _ Hp0 Hp0' Hf0 Hf0').
+    exact (HU _ _ _ _ _ _ _ _ _ Hp0 HE Hp0' HE' Hf0 Hf0').
   - (* the modules of the right side, each filled in, then substituted *)
-    intros y Φ0w pv Uw Φ0w' pv' Uw' σw σw' Hp Hp' Hfw Hfw'.
-    destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & HE).
-    destruct E as [| pv0 U | | | ]; cbn in HE; try discriminate; injection HE as ? ?; subst.
-    destruct (gm_prefix_sub_inv _ _ _ _ _ Hp') as (Φ0' & E' & Hp0' & -> & HE').
-    destruct E' as [| pv0' U' | | | ]; cbn in HE'; try discriminate; injection HE' as ? ?; subst.
+    intros y Φ0w Ew Uw Φ0w' Ew' Uw' σw σw' Hp HEw Hp' HEw' Hfw Hfw'.
+    destruct (gm_prefix_sub_inv _ _ _ _ _ Hp) as (Φ0 & E & Hp0 & -> & ->).
+    destruct (entry_unit_sub_inv _ _ _ HEw) as (U & HE & ->).
+    destruct (gm_prefix_sub_inv _ _ _ _ _ Hp') as (Φ0' & E' & Hp0' & -> & ->).
+    destruct (entry_unit_sub_inv _ _ _ HEw') as (U' & HE' & ->).
     destruct (gm_fill Φ0) as [σf |] eqn:Hf0; [| apply (proj2 (gm_fill_sub_none Φ0 (sb_qn (length Δu) σ))) in Hf0; congruence ].
     destruct (gm_fill Φ0') as [σf' |] eqn:Hf0'; [| apply (proj2 (gm_fill_sub_none Φ0' (sb_qn (length Δu') σ'))) in Hf0'; congruence ].
     destruct (gm_fill_sub Φ0' (length Δu') σ' σf' Hf0') as (τ' & Hτ' & Heq'); rewrite Hτ' in Hfw'; injection Hfw' as <-.
     rewrite (fill_sub_unit _ _ _ _ _ _ Heq').
-    exact (HUr _ _ _ _ _ _ _ _ _ Hp0 Hp0' Hf0 Hf0').
+    exact (HUr _ _ _ _ _ _ _ _ _ Hp0 HE Hp0' HE' Hf0 Hf0').
   - (* the opens, left *)
     intros k Ψw Hw Hk.
     rewrite (body_opens_sub _ _ _ _ _ Hb), List.nth_error_map in Hk.
@@ -1723,44 +1748,44 @@ Lemma wk_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' lv Δ φ,
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx' ++ Δu' ≈ body_ctx Φx' ++ Δu' ->
     (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Γ ->
        Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_wk (body_ctx Φx' ++ Δu') φ0 ≈ tele_wk (body_ctx Φx' ++ Δu') φ0) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ A[σf][φ0]ʷ : Typeω@(lv y)) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ A[σf][φ0]ʷ ≈ A'[σf'][φ0]ʷ : Typeω@(lv y)) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σf][φ0]ʷ : A[σf][φ0]ʷ) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σf][φ0]ʷ ≈ M'[σf'][φ0]ʷ : A[σf][φ0]ʷ) ->
-    (forall y Φ0 pv U Φ0' pv' U' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+    (forall y Φ0 E U Φ0' E' U' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵘ gunit_wk U[σf]ᵘ φ0 ≈ gunit_wk U'[σf']ᵘ φ0) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Δu' ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ A'[σf'][φ0]ʷ : Typeω@(lv y)) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Δu' ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M'[σf'][φ0]ʷ : A'[σf'][φ0]ʷ) ->
-    (forall y Φ0 pv U Φ0' pv' U' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+    (forall y Φ0 E U Φ0' E' U' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ʷ φ0 : Δu' ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵘ gunit_wk U'[σf']ᵘ φ0 ≈ gunit_wk U'[σf']ᵘ φ0) ->
     (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δu ++ Γ ⊢ᵐ H ≈ H) ->
@@ -1808,18 +1833,18 @@ Proof.
   - exact HΔφ.
   - exact (IHx _ _ Hφ).
   - exact (IHx' _ _ Hφ).
-  - intros * Hp Hp' Hf0 Hf0'; rewrite ?tele_sub_of_wk, !(exp_sub_of_wk_ext _ _ _ (Hqn _)).
+  - intros * Hp HE Hp' HE' Hf0 Hf0'; rewrite ?tele_sub_of_wk, !(exp_sub_of_wk_ext _ _ _ (Hqn _)).
     split; [| split; [| split ] ];
-      [ exact (IHA _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq)
-      | exact (IHAA _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq)
-      | exact (IHM _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq)
-      | exact (IHMM _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq) ].
-  - intros * Hp Hp' Hf0 Hf0'; rewrite ?tele_sub_of_wk, !(gunit_sub_of_wk_ext _ _ _ (Hqn _)).
-    exact (IHU _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq).
-  - intros * Hp Hp' Hf0 Hf0'; rewrite ?tele_sub_of_wk, !(exp_sub_of_wk_ext _ _ _ (Hqn _)).
-    split; [ exact (IHAr _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq') | exact (IHMr _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq') ].
-  - intros * Hp Hp' Hf0 Hf0'; rewrite ?tele_sub_of_wk, !(gunit_sub_of_wk_ext _ _ _ (Hqn _)).
-    exact (IHUr _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq').
+      [ exact (IHA _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq)
+      | exact (IHAA _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq)
+      | exact (IHM _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq)
+      | exact (IHMM _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq) ].
+  - intros * Hp HE Hp' HE' Hf0 Hf0'; rewrite ?tele_sub_of_wk, !(gunit_sub_of_wk_ext _ _ _ (Hqn _)).
+    exact (IHU _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq).
+  - intros * Hp HE Hp' HE' Hf0 Hf0'; rewrite ?tele_sub_of_wk, !(exp_sub_of_wk_ext _ _ _ (Hqn _)).
+    split; [ exact (IHAr _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq') | exact (IHMr _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq') ].
+  - intros * Hp HE Hp' HE' Hf0 Hf0'; rewrite ?tele_sub_of_wk, !(gunit_sub_of_wk_ext _ _ _ (Hqn _)).
+    exact (IHUr _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq').
   - intros k Ψ H Ek; rewrite ?tele_sub_of_wk, (modexp_sub_of_wk_ext _ _ _ (Hqn _)).
     destruct (body_opens_prefix _ _ _ _ _ Hb _ _ _ Ek) as [Ψr HΨr].
     pose proof (IHx _ _ Hφ) as Hxφ.
@@ -2069,7 +2094,7 @@ Proof.
         let Hr := fresh "Hr" in
         destruct (wf_wk_ext_of_ext _ _ _ _ _ _ _ Hφ Hx (IHx _ _ Hφ)) as [Hl Hr];
         pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
-        first [ eapply wf_ext_eq_ass | eapply wf_ext_eq_def | eapply wf_ext_eq_mod ];
+        first [ eapply wf_ext_eq_ass | eapply wf_ext_eq_def | eapply wf_ext_eq_mod | eapply wf_ext_eq_dm ];
         [ exact (IHx _ _ Hφ) | .. ];
         rewrite ?Hlen in *; eauto
     end ].
@@ -2347,7 +2372,7 @@ Lemma wf_sub_extend_gen : forall Θ Ξ Γ Δ σ e en,
     ⊢ Θ ⍮ Ξ ⍮ e :: Δ ->
     (forall A, e :: Δ ∋ #0 : A -> Θ ⍮ Ξ ⍮ Γ ⊢ sentry_exp en : A[sb_extend σ en]) ->
     (forall A M, e :: Δ ∋ #0 ≔ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ sentry_exp en ≈ M[sb_extend σ en] : A[sb_extend σ en]) ->
-    (forall U, e :: Δ ∋ #0 ≔ₘ U -> (en = se_mod (me_lit U[sb_extend σ en]ᵘ) /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[sb_extend σ en]ᵘ ≈ U[sb_extend σ en]ᵘ) \/
+    (forall U, e :: Δ ∋ #0 ≔ₘ U -> (sentry_modexp en = me_lit U[sb_extend σ en]ᵘ /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[sb_extend σ en]ᵘ ≈ U[sb_extend σ en]ᵘ) \/
                                  exists y, en = se_var y /\ Γ ∋ #y ≔ₘ U[sb_extend σ en]ᵘ) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ sb_extend σ en : e :: Δ.
 Proof.
@@ -2403,6 +2428,26 @@ Proof.
   left; rewrite gunit_sub_shift_extend; split; [ reflexivity | assumption ].
 Qed.
 
+(** Extension into a definition with a module part: the term part must
+    equal the substituted body, and the module part is the literal of the
+    substituted unit. *)
+Lemma wf_sub_extend_dm : forall Θ Ξ Γ Δ σ A M U N i,
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ N : A[σ] ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ M[σ] : A[σ] ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[σ]ᵘ ≈ U[σ]ᵘ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ ,,ᵈ N ‖ me_lit U[σ]ᵘ : Δ ▸ₘ A ≔ M ‖ U.
+Proof.
+  intros * Hσ ? ? ? ? ? ?; apply wf_sub_extend_gen; [ assumption | mauto 2 | | |];
+    intros * Hlk; inversion Hlk; subst; cbn.
+  - rewrite exp_sub_shift_extend; assumption.
+  - rewrite !exp_sub_shift_extend; assumption.
+  - left; rewrite gunit_sub_shift_extend; split; [ reflexivity | assumption ].
+Qed.
+
 (** [wf_sub_single] *)
 Corollary wf_sub_single : forall Θ Ξ Γ A M i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
@@ -2430,6 +2475,20 @@ Proof.
   intros; rewrite <- (gunit_sub_id U) at 2; apply wf_sub_extend_mod; rewrite ?gunit_sub_id; mauto 3.
 Qed.
 
+(** The single substitution into a definition with a module part, by its
+    own body and unit. *)
+Corollary wf_sub_single_dm : forall Θ Ξ Γ A M U i,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˢ Id ,,ᵈ M ‖ me_lit U : Γ ▸ₘ A ≔ M ‖ U.
+Proof.
+  intros; rewrite <- (gunit_sub_id U) at 2.
+  eapply wf_sub_extend_dm; [ mauto 3 | eassumption | eassumption | eassumption
+                           | rewrite exp_sub_id; eassumption | | rewrite ?gunit_sub_id; assumption ].
+  rewrite !exp_sub_id; mauto 2.
+Qed.
+
 (** [wf_sub_wk] *)
 Lemma wf_sub_wk : forall Θ Ξ Γ Γ' Δ σ φ,
     Θ ⍮ Ξ ⍮ Γ ⊢ˢ σ : Δ ->
@@ -2443,9 +2502,9 @@ Proof.
   - intros x A M ?; rewrite <- !exp_wk_sub.
     eapply wk_preserves_exp_eq; [ eapply wf_sub_apply_def; eassumption | eassumption ].
   - intros x U HU; reduce_index; rewrite <- gunit_wk_sub.
-    destruct (wf_sub_apply_mod _ _ _ _ _ Hσ _ _ HU) as [[-> HUσ] | (y & -> & Hy)]; cbn.
-    + left; split; [ reflexivity | eapply wk_preserves_unit; eassumption ].
-    + right; eexists; split; [ reflexivity | eapply wf_wk_lookup_mod; eassumption ].
+    destruct (wf_sub_apply_mod _ _ _ _ _ Hσ _ _ HU) as [[Hm HUσ] | (y & Hy0 & Hy)].
+    + left; rewrite <- sentry_modexp_wk, Hm; split; [ reflexivity | eapply wk_preserves_unit; eassumption ].
+    + right; rewrite Hy0; cbn; eexists; split; [ reflexivity | eapply wf_wk_lookup_mod; eassumption ].
 Qed.
 
 (** Lifting a substitution over any entry.  As in [wf_wk_q_gen], the two
@@ -2464,15 +2523,15 @@ Proof.
     eapply wk_preserves_exp; [ eapply wf_sub_apply; eassumption | mauto 2 ].
   - intros x B N Hlk.
     inversion Hlk; subst; reduce_index; rewrite !exp_wk_shift_sub_q.
-    + eapply wf_exp_eq_var_delta; [ eassumption | constructor ].
-    + rewrite <- sentry_exp_wk; fold (exp_sub (a_var n) σ).
-      eapply wk_preserves_exp_eq; [ eapply wf_sub_apply_def; eassumption | mauto 2 ].
+    1,2: eapply wf_exp_eq_var_delta; [ eassumption | constructor ].
+    rewrite <- sentry_exp_wk; fold (exp_sub (a_var n) σ).
+    eapply wk_preserves_exp_eq; [ eapply wf_sub_apply_def; eassumption | mauto 2 ].
   - intros x U Hlk; inversion Hlk; subst; cbn.
-    + right; exists 0; rewrite sb_q_zero, gunit_wk_shift_sub_q; split; [ reflexivity | constructor ].
-    + rewrite sb_q_succ, gunit_wk_shift_sub_q.
-      match goal with Hl : _ ∋ # _ ≔ₘ _ |- _ => destruct (wf_sub_apply_mod _ _ _ _ _ Hσ _ _ Hl) as [[-> HUσ] | (y & -> & Hy)] end.
-      * left; split; [ reflexivity | eapply wk_preserves_unit; [ eassumption | mauto 2 ] ].
-      * right; exists (S y); split; [ reflexivity | constructor; assumption ].
+    1,2: right; exists 0; rewrite sb_q_zero, gunit_wk_shift_sub_q; split; [ reflexivity | constructor ].
+    rewrite sb_q_succ, gunit_wk_shift_sub_q.
+    match goal with Hl : _ ∋ # _ ≔ₘ _ |- _ => destruct (wf_sub_apply_mod _ _ _ _ _ Hσ _ _ Hl) as [[Hm HUσ] | (y & Hy0 & Hy)] end.
+    + left; rewrite <- sentry_modexp_wk, Hm; split; [ reflexivity | eapply wk_preserves_unit; [ eassumption | mauto 2 ] ].
+    + right; exists (S y); rewrite Hy0; split; [ reflexivity | constructor; assumption ].
 Qed.
 
 (** [wf_sub_q].
@@ -2739,44 +2798,44 @@ Lemma sub_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' lv Δ σ,
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx' ++ Δu' ≈ body_ctx Φx' ++ Δu' ->
     (forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Γ ->
        Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_sub (body_ctx Φx' ++ Δu') σ0 ≈ tele_sub (body_ctx Φx' ++ Δu') σ0) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ A[σf][σ0] : Typeω@(lv y)) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ A[σf][σ0] ≈ A'[σf'][σ0] : Typeω@(lv y)) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σf][σ0] : A[σf][σ0]) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[σf][σ0] ≈ M'[σf'][σ0] : A[σf][σ0]) ->
-    (forall y Φ0 pv U Φ0' pv' U' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+    (forall y Φ0 E U Φ0' E' U' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵘ U[σf]ᵘ[σ0]ᵘ ≈ U'[σf']ᵘ[σ0]ᵘ) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δu' ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ A'[σf'][σ0] : Typeω@(lv y)) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δu' ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M'[σf'][σ0] : A'[σf'][σ0]) ->
-    (forall y Φ0 pv U Φ0' pv' U' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+    (forall y Φ0 E U Φ0' E' U' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢ˢ σ0 : Δu' ++ Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ᵘ U'[σf']ᵘ[σ0]ᵘ ≈ U'[σf']ᵘ[σ0]ᵘ) ->
     (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δu ++ Γ ⊢ᵐ H ≈ H) ->
@@ -2819,16 +2878,16 @@ Proof.
   - exact HΔσ.
   - exact (IHx _ _ Hσ).
   - exact (IHx' _ _ Hσ).
-  - intros * Hp Hp' Hf0 Hf0'.
+  - intros * Hp HE Hp' HE' Hf0 Hf0'.
     split; [| split; [| split ] ];
-      [ exact (IHA _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq)
-      | exact (IHAA _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq)
-      | exact (IHM _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq)
-      | exact (IHMM _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq) ].
-  - intros * Hp Hp' Hf0 Hf0'; exact (IHU _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq).
-  - intros * Hp Hp' Hf0 Hf0'.
-    split; [ exact (IHAr _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq') | exact (IHMr _ _ _ _ _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq') ].
-  - intros * Hp Hp' Hf0 Hf0'; exact (IHUr _ _ _ _ _ _ _ _ _ Hp Hp' Hf0 Hf0' _ _ Hq').
+      [ exact (IHA _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq)
+      | exact (IHAA _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq)
+      | exact (IHM _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq)
+      | exact (IHMM _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq) ].
+  - intros * Hp HE Hp' HE' Hf0 Hf0'; exact (IHU _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq).
+  - intros * Hp HE Hp' HE' Hf0 Hf0'.
+    split; [ exact (IHAr _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq') | exact (IHMr _ _ _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq') ].
+  - intros * Hp HE Hp' HE' Hf0 Hf0'; exact (IHUr _ _ _ _ _ _ _ _ _ Hp HE Hp' HE' Hf0 Hf0' _ _ Hq').
   - intros k Ψ H Ek.
     destruct (body_opens_prefix _ _ _ _ _ Hb _ _ _ Ek) as [Ψr HΨr].
     pose proof (IHx _ _ Hσ) as Hxσ.
@@ -3014,7 +3073,7 @@ Proof.
         let Hr := fresh "Hr" in
         destruct (wf_sub_ext_of_ext _ _ _ _ _ _ _ Hσ Hx (IHx _ _ Hσ)) as [Hl Hr];
         pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
-        first [ eapply wf_ext_eq_ass | eapply wf_ext_eq_def | eapply wf_ext_eq_mod ];
+        first [ eapply wf_ext_eq_ass | eapply wf_ext_eq_def | eapply wf_ext_eq_mod | eapply wf_ext_eq_dm ];
         [ exact (IHx _ _ Hσ) | .. ];
         rewrite ?Hlen in *; eauto
     end ].
@@ -3175,9 +3234,9 @@ Proof.
   - intros; rewrite <- !exp_sub_sub; mauto 3.
   - intros; rewrite <- !exp_sub_sub; mauto 3.
   - intros x U HU; reduce_index; rewrite <- gunit_sub_sub.
-    destruct (wf_sub_apply_mod _ _ _ _ _ Hσ _ _ HU) as [[-> HUσ] | (y & -> & Hy)]; cbn.
-    + left; split; [ reflexivity | eapply sub_preserves_unit; eassumption ].
-    + eapply wf_sub_apply_mod; eassumption.
+    destruct (wf_sub_apply_mod _ _ _ _ _ Hσ _ _ HU) as [[Hm HUσ] | (y & Hy0 & Hy)].
+    + left; rewrite <- sentry_modexp_sub, Hm; split; [ reflexivity | eapply sub_preserves_unit; eassumption ].
+    + rewrite Hy0; cbn; eapply wf_sub_apply_mod; eassumption.
 Qed.
 
 #[export]
@@ -3360,6 +3419,34 @@ Proof.
   intros * HId ? ?; saturate_sub.
   eapply wf_sub_id_extend_gen; [ eassumption | mauto 2 | mauto 2 | | |];
     intros * Hlk; inversion Hlk; subst; constructor.
+Qed.
+
+(** A definition with a module part refines one of a supertype with an
+    equal body and the same unit. *)
+Lemma wf_sub_id_extend_dm : forall Θ Ξ Γ Δ A A' M M' U i,
+    Θ ⍮ Ξ ⍮ Δ ⊢ˢ Id : Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ M' ≈ M : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U ->
+    Θ ⍮ Ξ ⍮ Δ ▸ₘ A' ≔ M' ‖ U ⊢ˢ Id : Γ ▸ₘ A ≔ M ‖ U.
+Proof.
+  intros * HId ? ? ? ? ? ? ? ?; saturate_sub.
+  assert (⊢ Θ ⍮ Ξ ⍮ Δ ▸ₘ A' ≔ M' ‖ U) by (econstructor; eassumption).
+  assert (Θ ⍮ Ξ ⍮ Δ ▸ₘ A' ≔ M' ‖ U ⊢ʷ ↑ : Δ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Δ ▸ₘ A' ≔ M' ‖ U ⊢ A'[↑]ʷ ⊆ A[↑]ʷ) by (eapply wk_preserves_subtyp; eassumption).
+  eapply wf_sub_id_extend_gen; [ eassumption | eassumption | econstructor; eassumption | | |];
+    intros * Hlk; inversion Hlk; subst.
+  - eapply wf_exp_subtyp'; [ mauto 2 | eassumption ].
+  - eapply wf_exp_eq_trans; [ eapply wf_exp_eq_subtyp' | ].
+    + eapply wf_exp_eq_var_delta; [ eassumption | constructor ].
+    + eassumption.
+    + eapply wk_preserves_exp_eq; eassumption.
+  - constructor.
 Qed.
 
 (** Equal types give refinements in both directions; this is the instance
@@ -3805,6 +3892,7 @@ Proof.
     assert (Θ ⍮ Ξ ⍮ _ ⊢ʷ ↑ : Γ) by (eapply wf_wk_shift; exact HΓ);
     [ destruct (ctx_decomp_right HΓ) as [k ?]
     | destruct (ctx_decomp_def_typ HΓ) as [k ?]
+    | destruct (ctx_decomp_dm_typ HΓ) as [k ?]
     | destruct IHHlk as [k ?]; [ mauto 2 |] ];
     exists k; change (Typeω@k) with (Typeω@k[↑]ʷ); mauto 2.
 Qed.
@@ -3817,7 +3905,7 @@ Lemma ctx_lookup_def_wf : forall Ξ Θ Γ x A M,
 Proof.
   intros * HΓ Hlk; gen HΓ; induction Hlk; intros HΓ;
     assert (Θ ⍮ Ξ ⍮ _ ⊢ʷ ↑ : Γ) by (eapply wf_wk_shift; exact HΓ);
-    [ pose proof (ctx_decomp_def_body HΓ) | pose proof (IHHlk ltac:(mauto 2)) ];
+    [ pose proof (ctx_decomp_def_body HΓ) | pose proof (ctx_decomp_dm_body HΓ) | pose proof (IHHlk ltac:(mauto 2)) ];
     mauto 2.
 Qed.
 

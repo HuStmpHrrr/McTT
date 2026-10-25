@@ -88,6 +88,7 @@ Section Rename.
     match e with
     | de_term d => de_term (drn d)
     | de_mod h => de_mod (dmrn h)
+    | de_dm d h => de_dm (drn d) (dmrn h)
     end.
 
   Definition ern (ρ : env) : env := List.map dern ρ.
@@ -169,7 +170,7 @@ Section Eval.
   Proof. intros; unfold kpad, ern; rewrite List.map_app; f_equal; induction n; cbn; f_equal; assumption. Qed.
 
   Lemma kbentry_rn : forall ρ E, dern f (kbentry ρ E) = kbentry (ern f ρ) E.
-  Proof. intros ρ [? ? ? ? | ? [] | ? ? ? ? | ? ? ? ? | ? ? ?]; reflexivity. Qed.
+  Proof. intros ρ [? ? ? ? | ? [] | ? ? ? ? ? | ? ? ? [] | ? ? ? ?]; reflexivity. Qed.
 
   Lemma kgens_env_rn : forall gs ρ k, ern f (kgens_env ρ k gs) = kgens_env (ern f ρ) k gs.
   Proof.
@@ -196,6 +197,8 @@ Section Eval.
     all: try solve [ econstructor; rewrite <- kpad_rn; eassumption ].
     all: try solve [ econstructor; rewrite env_mod_rn; eassumption ].
     all: try solve [ eapply uk_item_mod; [ eassumption | rewrite <- kpad_rn; eassumption | eassumption | eassumption ] ].
+    all: try solve [ eapply uk_item_dm; [ eassumption | rewrite <- kpad_rn; eassumption | eassumption | eassumption ] ].
+    all: try solve [ eapply uk_dm_step; [ eassumption | eassumption | rewrite <- kpad_rn; eassumption | eassumption ] ].
   Qed.
 
   Lemma eval_rn :
@@ -258,6 +261,7 @@ Section Eval.
     all: try solve [ econstructor; [ eassumption | rewrite elim_grp_of_rn; eassumption | eassumption ] ].
     all: try solve [ econstructor; [ eassumption | eassumption | rewrite elim_grp_of_rn; eassumption | eassumption ] ].
     all: try solve [ econstructor; [ apply kind_rn; eassumption | eassumption | eauto | eauto ] ].
+    all: try solve [ econstructor; [ apply kind_rn; eassumption | eassumption | eassumption | eauto | eauto ] ].
     (* records: a tuple's fields, a field of a tuple, a neutral projection *)
     all: try solve [ rewrite <- combine_map_r; constructor; assumption ].
     all: try solve [ constructor; rewrite field_lookup_map;
@@ -1141,7 +1145,7 @@ Lemma initial_env_rn : forall Θ Ξ Γ ρ,
     initial_env Θ Ξ Γ ρ ->
     forall f, (forall x, x < List.length Γ -> f x = x) -> ern f ρ = ρ.
 Proof.
-  induction 1; intros f Hf; cbn [List.length] in Hf; [ reflexivity | | |].
+  induction 1; intros f Hf; cbn [List.length] in Hf; [ reflexivity | | | |].
   all: assert (Hρ : ern f ρ = ρ) by (apply IHinitial_env; intros; apply Hf; lia).
   - pose proof (proj1 (eval_rn Θ Ξ f) _ _ _ H0) as Ha; rewrite Hρ in Ha.
     assert (drn f a = a) as Ea by (eapply functional_eval_exp; eassumption).
@@ -1154,6 +1158,11 @@ Proof.
   - pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (eval_rn Θ Ξ f))))) _ _ _ H0) as Hh; rewrite Hρ in Hh.
     assert (dmrn f h = h) as Eh by (eapply functional_eval_modexp; eassumption).
     cbn [extend_env_mod ern List.map dern]; fold (ern f ρ); rewrite Hρ, Eh; reflexivity.
+  - pose proof (proj1 (eval_rn Θ Ξ f) _ _ _ H0) as Hm; rewrite Hρ in Hm.
+    assert (drn f m = m) as Em by (eapply functional_eval_exp; eassumption).
+    pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (eval_rn Θ Ξ f))))) _ _ _ H1) as Hh; rewrite Hρ in Hh.
+    assert (dmrn f h = h) as Eh by (eapply functional_eval_modexp; eassumption).
+    cbn [extend_env_dm ern List.map dern]; fold (ern f ρ); rewrite Hρ, Em, Eh; reflexivity.
 Qed.
 
 Corollary eval_initial_rn : forall Θ Ξ Γ ρ M m,

@@ -35,6 +35,14 @@ Proof.
   econstructor; [ exact HΓ | exact (per_ctx_env_of_mod HR HU) | exact HU | exact HsU ].
 Qed.
 
+Lemma rel_ctx_wf_extend_dm : forall {Γ A M U} {i : nat},
+    ⊨ Γ -> Γ ⊨ A : Typeω@i -> Γ ⊨ M : A -> Γ ⊨ᵘ U ≈ U -> ⊨ Γ ▸ₘ A ≔ M ‖ U.
+Proof.
+  intros * HΓ HA HM [HU HsU _].
+  destruct (rel_ctx_wf_per_ctx_env HΓ) as [R HR].
+  econstructor; [ exact HΓ | exact (per_ctx_env_of_dm HR HA HM HU) | exact HA | exact HM | exact HU | exact HsU ].
+Qed.
+
 End Fixed_GCtx.
 
 Lemma sem_ctx_extend_mod :
@@ -43,6 +51,16 @@ Lemma sem_ctx_extend_mod :
 Proof.
   intros * HU; sem_intro.
   apply valid_ctx_mod; [ assumption | eapply rel_ctx_wf_extend_mod; eassumption | assumption ].
+Qed.
+
+Lemma sem_ctx_extend_dm :
+  `( Θ ⍮ Ξ ⍮ Γ ⊨ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊨ᵘ U ≈ U ->
+     ⊨ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ).
+Proof.
+  intros * HA HM HU; sem_intro.
+  apply valid_ctx_dm; [ assumption | eapply rel_ctx_wf_extend_dm; eassumption | assumption ].
 Qed.
 
 Section Fixed_GCtx.
@@ -58,22 +76,62 @@ Proof. intros * H; inversion H; subst; eauto. Qed.
 Lemma rel_ctx_wf_mod_inv : forall {Γ U}, ⊨ Γ ▹ₘ U -> Γ ⊨ᵘ U ≈ U.
 Proof. intros * H; inversion H; subst; constructor; assumption. Qed.
 
+Lemma rel_ctx_wf_dm_inv : forall {Γ A M U}, ⊨ Γ ▸ₘ A ≔ M ‖ U ->
+    (exists i, Γ ⊨ A : Typeω@i) /\ Γ ⊨ M : A /\ Γ ⊨ᵘ U ≈ U.
+Proof. intros * H; inversion H; subst; repeat split; eauto; constructor; assumption. Qed.
+
+(** A context entry's unit is valid where the entry is. *)
+Lemma rel_ctx_wf_unit_inv : forall {Γ e U}, ⊨ e :: Γ -> centry_unit e = Some U -> Γ ⊨ᵘ U ≈ U.
+Proof.
+  intros * H He; destruct e; cbn in He; try discriminate; injection He as <-.
+  - exact (rel_ctx_wf_mod_inv H).
+  - exact (proj2 (proj2 (rel_ctx_wf_dm_inv H))).
+Qed.
+
+(** The context entry of a body entry with a module part holds its unit. *)
+Lemma body_ctx_unit : forall Φ x E U, entry_unit E = Some U ->
+    exists e, body_ctx (gm_ext Φ x E) = e :: body_ctx Φ /\ centry_unit e = Some U.
+Proof.
+  intros * HE; destruct E as [| pv U' | | pv A M U' |]; cbn in HE; try discriminate;
+    injection HE as <-; eexists; split; reflexivity.
+Qed.
+
+(** The instance of a judgment of a context ending in a definition with a
+    module part at the identity extended by its parts. *)
+Lemma rel_exp_under_ctx_dm_inst : forall {Γ A M U X T},
+    ⊨ Γ ▸ₘ A ≔ M ‖ U -> Γ ▸ₘ A ≔ M ‖ U ⊨ X : T ->
+    Γ ⊨ X[Id ,,ᵈ M ‖ me_lit U] : T[Id ,,ᵈ M ‖ me_lit U].
+Proof.
+  intros * HC HX.
+  destruct (rel_ctx_wf_dm_inv HC) as ([i HA] & HM & HU).
+  assert (Hg : gsub Γ (Id ,,ᵈ M ‖ me_lit U) (Γ ▸ₘ A ≔ M ‖ U)).
+  { eapply gsub_eq; [ eapply gsub_dm; [ apply gsub_id, (rel_ctx_wf_tail HC) | exact HA | exact HM | exact HU ] |].
+    intros [| x]; cbn; [ rewrite exp_sub_id, gunit_sub_id; reflexivity | reflexivity ]. }
+  exact (rel_exp_under_ctx_gsub Hg HX).
+Qed.
+
 Lemma gsub_sem : forall {Γ τ Δ}, gsub Γ τ Δ -> ⊨ Γ /\ ⊨ Δ.
 Proof.
   induction 1 as [? HΓ | ? ? ? ? ? ? ? [IH1 IH2] HB HN | ? ? ? ? ? ? ? [IH1 IH2] HB HM
-                 | ? ? ? ? ? [IH1 IH2] HU | ? ? ? ? ? [IH1 IH2] Eq | ? ? ? ? ? HG [IH1 IH2] HB
+                 | ? ? ? ? ? [IH1 IH2] HU | ? ? ? ? ? ? ? ? [IH1 IH2] HB HM HU
+                 | ? ? ? ? ? [IH1 IH2] Eq | ? ? ? ? ? HG [IH1 IH2] HB
                  | ? ? ? ? ? ? HG [IH1 IH2] HB HM | ? ? ? ? HG [IH1 IH2] HU HU'
+                 | ? ? ? ? ? ? ? HG [IH1 IH2] HB HM HU HU'
                  | ? ? ? ? ? ? [IH1 IH2] HΓ Hσ Hl ];
     try (split; assumption).
   - split; [ assumption | eapply rel_ctx_wf_extend; eassumption ].
   - split; [ assumption | eapply rel_ctx_wf_extend_def; eassumption ].
   - split; [ assumption | eapply rel_ctx_wf_extend_mod; eassumption ].
+  - split; [ assumption | eapply rel_ctx_wf_extend_dm; eassumption ].
   - pose proof (rel_exp_under_ctx_gsub HG HB) as H; cbn in H.
     split; eapply rel_ctx_wf_extend; eassumption.
   - pose proof (rel_exp_under_ctx_gsub HG HB) as H1; cbn in H1.
     pose proof (rel_exp_under_ctx_gsub HG HM) as H2.
     split; eapply rel_ctx_wf_extend_def; eassumption.
   - split; eapply rel_ctx_wf_extend_mod; eassumption.
+  - pose proof (rel_exp_under_ctx_gsub HG HB) as H1; cbn in H1.
+    pose proof (rel_exp_under_ctx_gsub HG HM) as H2.
+    split; eapply rel_ctx_wf_extend_dm; eassumption.
 Qed.
 
 (** ** Generalizing over a Telescope *)
@@ -84,7 +142,7 @@ Lemma valid_exp_under_ctx_ctx_pi : forall Ψ D X i, ⊨ Ψ ++ D -> Ψ ++ D ⊨ X
     exists j, D ⊨ ctx_pi Ψ X : Typeω@j.
 Proof.
   induction Ψ as [| e Ψ IH]; intros * HΨ HX; cbn in *; [ eauto |].
-  destruct e as [B | B M | U].
+  destruct e as [B | B M | U | B M U].
   - destruct (rel_ctx_wf_ass_inv HΨ) as [k HB].
     eapply IH; [ exact (rel_ctx_wf_tail HΨ) |].
     apply (rel_exp_under_ctx_pi_cong (i := max i k)); eapply rel_exp_cumu_ge; [| exact HB | | exact HX ]; lia.
@@ -94,6 +152,8 @@ Proof.
   - pose proof (rel_ctx_wf_mod_inv HΨ) as HU.
     eapply IH; [ exact (rel_ctx_wf_tail HΨ) |].
     pose proof (valid_exp_under_ctx_let_mod HU HX) as H; cbn in H; exact H.
+  - eapply IH; [ exact (rel_ctx_wf_tail HΨ) |].
+    pose proof (rel_exp_under_ctx_dm_inst HΨ HX) as H; cbn in H; exact H.
 Qed.
 
 (** ** Representations *)
@@ -175,7 +235,7 @@ Proof.
   - exists τ, i; split; [ exact Hg |]; split; [ exact (rel_exp_under_ctx_gsub Hg HX) | auto ].
   - inversion HL as [| ? ? He HL']; subst.
     pose proof (rel_ctx_wf_tail HC) as HC'.
-    destruct e as [B0 | B0 M0 | U0]; [ exfalso; exact (He _ eq_refl) | |].
+    destruct e as [B0 | B0 M0 | U0 | B0 M0 U0]; [ exfalso; exact (He _ eq_refl) | | |].
     + destruct (rel_ctx_wf_def_inv HC) as [[k HB0] HM0].
       pose proof (valid_exp_under_ctx_let (oA := Some B0) HB0 HM0 HX) as HX'.
       destruct (IH _ _ _ _ _ HL' HC' HX' Hg) as (τ1 & j1 & Hg1 & HJ1 & Hp1).
@@ -190,6 +250,14 @@ Proof.
       exists (τ1 ,,ₘ me_lit U0[τ1]ᵘ), (max j1 i); split; [ eapply gsub_mod; eassumption |]; split.
       * eapply rel_exp_under_ctx_trans; eapply rel_exp_cumu_ge; [| exact HJ1 | | exact HJ2 ]; lia.
       * intros; apply Hp2, Hp1; assumption.
+    + (** A definition with a module part is instantiated, not a [let]:
+          along [τ1] the instance is the extension of [τ1] by its parts. *)
+      destruct (rel_ctx_wf_dm_inv HC) as ([k HB0] & HM0 & HU0).
+      pose proof (rel_exp_under_ctx_dm_inst HC HX) as HX'; cbn in HX'.
+      destruct (IH _ _ _ _ _ HL' HC' HX' Hg) as (τ1 & j1 & Hg1 & HJ1 & Hp1).
+      exists (τ1 ,,ᵈ M0[τ1] ‖ me_lit U0[τ1]ᵘ), j1; split; [ eapply gsub_dm; eassumption |].
+      rewrite exp_sub_extend_dm_sub in HJ1, Hp1; cbn [modexp_sub] in HJ1, Hp1.
+      split; [ exact HJ1 | exact Hp1 ].
 Qed.
 
 (** ** Instantiating the Next Parameter *)
@@ -251,8 +319,9 @@ Lemma pi_view_lets_none : forall Ψ X, lets_only Ψ -> (forall σ, pi_view X[σ]
 Proof.
   induction Ψ as [| e Ψ IH]; intros X HL HX σ; cbn [ctx_pi]; [ apply HX |].
   inversion HL as [| ? ? He HL']; subst.
-  destruct e as [B0 | B0 M0 | U0]; [ exfalso; exact (He _ eq_refl) | |];
-    (apply IH; [ exact HL' |]; intros σ'; cbn; rewrite HX; reflexivity).
+  destruct e as [B0 | B0 M0 | U0 | B0 M0 U0]; [ exfalso; exact (He _ eq_refl) | | |].
+  1,2: apply IH; [ exact HL' |]; intros σ'; cbn; rewrite HX; reflexivity.
+  apply IH; [ exact HL' |]; intros σ'; rewrite exp_sub_sub; apply HX.
 Qed.
 
 (** An arity with no parameter left is no [Π]. *)

@@ -133,7 +133,10 @@ with dentry : Set :=
 (** A term variable's value *)
 | de_term : domain -> dentry
 (** A module slot's value *)
-| de_mod : dmod -> dentry.
+| de_mod : dmod -> dentry
+(** The value of a definition with a module part: its term part's value
+    and its module part's *)
+| de_dm : domain -> dmod -> dentry.
 
 Abbreviation env := (list dentry).
 
@@ -163,6 +166,7 @@ Definition env_var (ρ : env) (x : nat) : domain :=
   match env_entry ρ x with
   | de_term d => d
   | de_mod _ => d_true
+  | de_dm d _ => d
   end.
 #[warning="-uniform-inheritance"]
 Coercion env_var : list >-> Funclass.
@@ -171,12 +175,14 @@ Definition env_mod (ρ : env) (x : nat) : dmod :=
   match env_entry ρ x with
   | de_mod m => m
   | de_term _ => dm_default
+  | de_dm _ m => m
   end.
 
 Lemma env_entry_nth : forall ρ x, env_entry ρ x = List.nth x ρ (de_term d_true).
 Proof. intros ρ x; revert ρ; induction x; intros [| d ρ]; cbn; auto; rewrite IHx; destruct x; reflexivity. Qed.
 
-Lemma env_var_nth : forall ρ x, env_var ρ x = match List.nth x ρ (de_term d_true) with de_term d => d | de_mod _ => d_true end.
+Lemma env_var_nth : forall ρ x,
+    env_var ρ x = match List.nth x ρ (de_term d_true) with de_term d | de_dm d _ => d | de_mod _ => d_true end.
 Proof. intros; unfold env_var; rewrite env_entry_nth; reflexivity. Qed.
 
 Definition extend_env (ρ : env) (d : domain) : env := de_term d :: ρ.
@@ -184,6 +190,10 @@ Arguments extend_env _ _ /.
 
 Definition extend_env_mod (ρ : env) (m : dmod) : env := de_mod m :: ρ.
 Arguments extend_env_mod _ _ /.
+
+(** The environment extended by a definition with a module part. *)
+Definition extend_env_dm (ρ : env) (d : domain) (m : dmod) : env := de_dm d m :: ρ.
+Arguments extend_env_dm _ _ _ /.
 
 (** The environment extended by arguments, outermost first, as a unit's
     parameters are. *)
@@ -229,6 +239,7 @@ Module Domain_Notations.
 
   Notation "ρ ↦ m" := (extend_env ρ m) (at level 20, left associativity) : mctt_scope.
   Notation "ρ '↦ᵐ' m" := (extend_env_mod ρ m) (at level 20, left associativity) : mctt_scope.
+  Notation "ρ '↦ᵈ' d ‖ m" := (extend_env_dm ρ d m) (at level 20, left associativity, d at next level) : mctt_scope.
 End Domain_Notations.
 
 (** The value of the universe at an index, at either tier. *)

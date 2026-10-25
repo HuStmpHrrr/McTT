@@ -38,6 +38,14 @@ Import Domain_Notations.
         | H1 : Members.gc_resolve Θ Ξ ?p = Some (ge_def _ _ _ _),
           H2 : forall b pv A B, Members.gc_resolve Θ Ξ ?p <> Some (ge_def b pv A B) |- _ =>
             exfalso; exact (H2 _ _ _ _ H1)
+        | H1 : Members.dm_path Θ Ξ ?p, H2 : ~ Members.dm_path Θ Ξ ?p |- _ => exfalso; exact (H2 H1)
+        | H1 : Members.gc_loc Θ Ξ ?p = Some _, H2 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _) |- _ =>
+            exfalso; exact (gc_loc_not_alias _ _ _ _ _ H1 H2)
+        | H1 : Members.gc_resolve Θ Ξ ?p = Some (ge_def _ _ _ _), H2 : Members.dm_path Θ Ξ ?p |- _ =>
+            exfalso; exact (gc_resolve_def_not_dm _ _ _ _ _ _ _ H1 H2)
+        | H : (@nil ?T) <> nil \/ _ |- _ => destruct H as [H | H]; [ exfalso; exact (H eq_refl) |]
+        | H : (@nil ?T) <> nil |- _ => exfalso; exact (H eq_refl)
+        | H : context [?l ++ nil] |- _ => rewrite List.app_nil_r in H
         | H : dkind Θ Ξ (dm_global _ _) nil _ |- _ => inversion H; subst; clear H
         | H1 : Members.gc_resolve Θ Ξ ?p = Some (ge_def _ _ _ _),
           H2 : (exists T oD, Members.gc_module Θ Ξ ?p = Some (Members.mr_body T oD)) \/ (exists TΦ, gc_frame Ξ ?p = Some TΦ) |- _ =>
@@ -102,6 +110,12 @@ Import Domain_Notations.
          hypothesis is never spent on the premise it is about *)
       match goal with |- _ = ?r2 => match goal with H : context [r2] |- _ => inversion H; subst; clear H end end;
       repeat match goal with
+        | H : gc_term Θ Ξ ?p = Some _ |- _ =>
+            destruct (gc_term_inv _ _ _ _ H) as [(? & ? & ?) | (? & ? & ? & ?)]; clear H
+        | H1 : entry_tm ?E = Some _, H2 : entry_tm ?E = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : entry_unit ?E = Some _, H2 : entry_unit ?E = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : Members.gc_resolve Θ Ξ ?p = Some _, H2 : Members.gc_resolve Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
         | H1 : gc_entry Θ Ξ ?p = Some _, H2 : gc_entry Θ Ξ ?p = Some _ |- _ =>
@@ -264,6 +278,8 @@ Import Domain_Notations.
     - congruence.
     - destruct H1 as (m1 & -> & H1), H2 as (m2 & -> & H2); f_equal; eapply functional_eval_exp; eassumption.
     - destruct H1 as (m1 & -> & H1), H2 as (m2 & -> & H2); f_equal; eapply functional_eval_modexp; eassumption.
+    - destruct H1 as (n1 & m1 & -> & Hn1 & H1), H2 as (n2 & m2 & -> & Hn2 & H2); f_equal;
+        [ eapply functional_eval_exp | eapply functional_eval_modexp ]; eassumption.
   Qed.
 
 #[export]

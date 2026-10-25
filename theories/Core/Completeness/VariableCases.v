@@ -106,7 +106,7 @@ Lemma valid_exp_under_ctx_var_here : forall {Γ A},
 Proof.
   intros * HΓ.
   pose proof HΓ as HΓA.
-  inversion HΓ as [| ? ? i ? HΓ0 HΓAper HA | |]; subst.
+  inversion HΓ as [| ? ? i ? HΓ0 HΓAper HA | | |]; subst.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓper HAgen]].
   pose proof (rel_exp_of_typ_inversion (rel_exp_under_ctx_shift HΓAper HA))
     as [env_relΓA [HΓAper' HAwkgen]].
@@ -158,14 +158,21 @@ Lemma valid_exp_under_ctx_vlookup : forall {Γ x A},
     ⊨ Γ ->
     Γ ⊨ #x : A.
 Proof.
-  induction 1 as [A Γ | A M Γ | x A Γ e Hx IH]; intros HΓ.
+  induction 1 as [A Γ | A M Γ | A M U Γ | x A Γ e Hx IH]; intros HΓ.
   - apply valid_exp_under_ctx_var_here; assumption.
   - (** [Γ ▸ A ≔ M ∋ #0 : A[↑]ʷ] is the head of [Γ ▹ A], restricted. *)
-    inversion HΓ as [| | ? ? ? i ? HΓ0 HΓAper HA HM |]; subst.
+    inversion HΓ as [| | ? ? ? i ? HΓ0 HΓAper HA HM | |]; subst.
     pose proof (rel_ctx_wf_extend HΓ0 HA) as HΓA.
     pose proof (rel_ctx_wf_per_ctx_env HΓA) as [env_relΓA HΓAper'].
     eapply rel_exp_under_ctx_restrict; [ exact HΓAper | exact HΓAper' | | ].
     + eapply per_ctx_env_def_forget; eassumption.
+    + apply valid_exp_under_ctx_var_here; assumption.
+  - (** [Γ ▸ₘ A ≔ M ‖ U ∋ #0 : A[↑]ʷ] likewise. *)
+    inversion HΓ as [| | | | ? ? ? ? i ? HΓ0 HΓAper HA HM _ _]; subst.
+    pose proof (rel_ctx_wf_extend HΓ0 HA) as HΓA.
+    pose proof (rel_ctx_wf_per_ctx_env HΓA) as [env_relΓA HΓAper'].
+    eapply rel_exp_under_ctx_restrict; [ exact HΓAper | exact HΓAper' | | ].
+    + eapply per_ctx_env_dm_forget; eassumption.
     + apply valid_exp_under_ctx_var_here; assumption.
   - (** [e :: Γ ∋ #(S x) : A[↑]ʷ] is the weakening of [Γ ∋ #x : A]. *)
     pose proof (rel_ctx_wf_per_ctx_env HΓ) as [env_relΓe HΓeper].
@@ -206,7 +213,7 @@ Lemma rel_exp_under_ctx_var_delta_here : forall {Γ A M},
 Proof.
   intros * HΓ.
   pose proof HΓ as HΓd.
-  inversion HΓd as [| | ? ? ? i ? HΓ0 HΓdper HA HM |]; subst.
+  inversion HΓd as [| | ? ? ? i ? HΓ0 HΓdper HA HM | |]; subst.
   pose proof (rel_ctx_wf_per_ctx_env HΓ0) as [env_relΓ HΓper].
   pose proof (per_ctx_env_of_def HΓper HA HM) as HΓdc.
   eapply rel_exp_under_ctx_of_simple; [ exact HΓdc | | | ].
@@ -236,6 +243,21 @@ Proof.
     solve_per.
 Qed.
 
+(** δ at a definition with a module part: the δ of its term part as a
+    definition, restricted. *)
+Lemma rel_exp_under_ctx_var_delta_here_dm : forall {Γ A M U},
+    ⊨ Γ ▸ₘ A ≔ M ‖ U ->
+    Γ ▸ₘ A ≔ M ‖ U ⊨ #0 ≈ M[↑]ʷ : A[↑]ʷ.
+Proof.
+  intros * HΓ.
+  inversion HΓ as [| | | | ? ? ? ? i ? HΓ0 HΓdper HA HM _ _]; subst.
+  pose proof (rel_ctx_wf_extend_def HΓ0 HA HM) as HΓd.
+  pose proof (rel_ctx_wf_per_ctx_env HΓd) as [env_relΓd HΓdper'].
+  eapply rel_exp_under_ctx_restrict; [ exact HΓdper | exact HΓdper' | | ].
+  - eapply per_ctx_env_dm_forget_def; eassumption.
+  - apply rel_exp_under_ctx_var_delta_here; assumption.
+Qed.
+
 End Fixed_GCtx.
 
 Lemma sem_exp_eq_var_delta :
@@ -245,8 +267,9 @@ Lemma sem_exp_eq_var_delta :
 Proof.
   intros * HΓ Hx; sem_intro; [ assumption |].
   clear - Hx HΓ; revert HΓ.
-  induction Hx as [A M Γ | x A M Γ e Hx IH]; intros HΓ.
+  induction Hx as [A M Γ | A M U Γ | x A M Γ e Hx IH]; intros HΓ.
   - apply rel_exp_under_ctx_var_delta_here; assumption.
+  - apply rel_exp_under_ctx_var_delta_here_dm; assumption.
   - pose proof (rel_ctx_wf_per_ctx_env HΓ) as [env_relΓe HΓeper].
     exact (rel_exp_under_ctx_shift HΓeper (IH (rel_ctx_wf_tail HΓ))).
 Qed.

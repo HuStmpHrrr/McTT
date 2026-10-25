@@ -1156,6 +1156,21 @@ Variant cons_mod_glu_sub_pred Γ U (TSb : glu_sub_pred) : glu_sub_pred :=
      Δ ⊢ˢ Wk ⨟ σ ® ρ↯ ∈ TSb ->
      Δ ⊢ˢ σ ® ρ ∈ cons_mod_glu_sub_pred Γ U TSb }.
 
+(** A definition with a module part glues as its term part does as a
+    definition, and its head's module is tied to the closure of its unit
+    over the tail, as a slot's. *)
+Variant cons_dm_glu_sub_pred (i : nat) Γ A M U (TSb : glu_sub_pred) : glu_sub_pred :=
+| mk_cons_dm_glu_sub_pred :
+  `{ forall P El,
+        Δ ⊢ˢ σ : Γ ▸ₘ A ≔ M ‖ U ->
+        ⟦ A ⟧ ρ↯ ↘ a ->
+        DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+        Δ ⊢ #0[σ] : A[↑]ʷ[σ] ® (ρ 0) ∈ El ->
+        def_tie A M ρ ->
+        tie_mod (env_mod ρ 0) (me_lit U) ρ↯ ->
+        Δ ⊢ˢ Wk ⨟ σ ® ρ↯ ∈ TSb ->
+        Δ ⊢ˢ σ ® ρ ∈ cons_dm_glu_sub_pred i Γ A M U TSb }.
+
 (** As with [wf_ctx_empty], the base case carries what the judgment is relative
     to: without it, [⊢ ⋅] would not follow ([glu_ctx_env_wf_ctx]). *)
 Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
@@ -1191,7 +1206,23 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
         EG Γ ∈ glu_ctx_env ↘ TSb ->
         gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
         Sb <∙> cons_mod_glu_sub_pred Γ U TSb ->
-        EG Γ ▹ₘ U ∈ glu_ctx_env ↘ Sb }.
+        EG Γ ▹ₘ U ∈ glu_ctx_env ↘ Sb }
+(** A definition with a module part: the premises of a definition entry
+    and the well-formedness of the unit *)
+| glu_ctx_env_cons_dm :
+  `{ forall i TSb Sb,
+        EG Γ ∈ glu_ctx_env ↘ TSb ->
+        Γ ⊢ A : Typeω@i ->
+        Γ ⊢ M : A ->
+        gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
+        (forall Δ σ ρ,
+            Δ ⊢ˢ σ ® ρ ∈ TSb ->
+            glu_rel_typ_with_sub i Δ A σ ρ) ->
+        (forall Δ σ ρ,
+            Δ ⊢ˢ σ ® ρ ∈ TSb ->
+            glu_rel_exp_with_sub i Δ M A σ ρ) ->
+        Sb <∙> cons_dm_glu_sub_pred i Γ A M U TSb ->
+        EG Γ ▸ₘ A ≔ M ‖ U ∈ glu_ctx_env ↘ Sb }.
 
 Definition glu_rel_ctx Γ : Prop := exists Sb, EG Γ ∈ glu_ctx_env ↘ Sb.
 #[global] Arguments glu_rel_ctx Γ/.

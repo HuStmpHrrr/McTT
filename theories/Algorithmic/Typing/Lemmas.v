@@ -453,12 +453,30 @@ Proof.
   cbn [body_ctx List.app]; apply wf_ext_eq_mod; [ exact HX | exact HU | exact HU ].
 Qed.
 
+(** A definition with a module part: as a definition and as a submodule. *)
+Lemma abody_dm_sound : forall Γ Φ Φx x pv A M U i,
+    alg_body_sound Γ Φ Φx ->
+    (⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ A : Typeω@i) ->
+    (⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ M : A) ->
+    (⊢ body_ctx Φx ++ Γ -> gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Γ ⊢ᵘ U ≈ U) ->
+    alg_body_sound Γ (gm_ext Φ x (ge_def_mod pv A M U)) (gm_ext Φx x (ge_def_mod pv A M U)).
+Proof.
+  intros * IH HA HM HU Γ0 Ψ -> HΓ0 HΨ.
+  destruct (IH _ _ eq_refl HΓ0 HΨ) as [Hbx HX Ho].
+  pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
+  specialize (HA HC); specialize (HM HC); specialize (HU HC); rewrite List.app_assoc in HA, HM, HU.
+  constructor; [ constructor; exact Hbx | | exact Ho ].
+  cbn [body_ctx List.app].
+  eapply wf_ext_eq_dm; [ exact HX | exact HA | apply wf_exp_eq_refl; exact HA | exact HM | apply wf_exp_eq_refl; exact HM
+                       | exact HA | exact HM | exact HU | exact HU ].
+Qed.
+
 Lemma abody_open_sound : forall Γ Φ Φx H R Rm its gs,
     alg_body_sound Γ Φ Φx ->
     (⊢ body_ctx Φx ++ Γ -> gc_deps ⍮ gc_stack ⍮ body_ctx Φx ++ Γ ⊢ᵐ H ≈ H) ->
     mdenote gc_deps gc_stack (body_ctx Φx ++ Γ) H R ->
     ds_mod R = Some Rm ->
-    items_gen gc_deps gc_stack false (body_ctx Φx ++ Γ) H its gs ->
+    items_gen gc_deps gc_stack (body_ctx Φx ++ Γ) H its gs ->
     items_ok its ->
     alg_body_sound Γ (gm_open Φ H its) (gens_append Φx 0 gs).
 Proof.
@@ -467,7 +485,7 @@ Proof.
   pose proof (ext_eq_ctx_left _ _ _ _ _ HX) as HC; rewrite <- List.app_assoc in HC.
   specialize (HH HC).
   constructor; [ econstructor; eassumption | exact (gens_ext_wf _ _ _ _ _ _ Hg HH HX) |].
-  cbn [body_opens]; rewrite <- (items_gen_length _ _ _ _ _ _ _ Hg), gm_dropn_gens_append.
+  cbn [body_opens]; rewrite <- (items_gen_length _ _ _ _ _ _ Hg), gm_dropn_gens_append.
   intros [| k] * Hk; cbn in Hk; [ injection Hk as <- <-; exact HH | exact (Ho _ _ _ Hk) ].
 Qed.
 
@@ -631,6 +649,15 @@ Proof.
       match goal with HΓ : ⊢ ?G, Hx : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P |- _ =>
         pose proof (ext_eq_ctx_left _ _ _ _ _ (Hx HΓ)) as HΨ; pose proof (Hx HΓ) as HXe end;
       eapply wf_ext_eq_mod; eauto
+  | |- wf_ext_eq _ _ _ (_ ▸ₘ _ ≔ _ ‖ _) _ =>
+      match goal with HΓ : ⊢ ?G, Hx : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P |- _ =>
+        pose proof (ext_eq_ctx_left _ _ _ _ _ (Hx HΓ)) as HΨ; pose proof (Hx HΓ) as HXe end;
+      lift_univ_at (Ψ ++ Γ) A u;
+      assert (Ψ ++ Γ ⊢ M : A) by eauto;
+      assert (gc_deps ⍮ gc_stack ⍮ Ψ ++ Γ ⊢ᵘ U ≈ U) by eauto;
+      eapply wf_ext_eq_dm;
+        [ eauto | eauto | eapply wf_exp_eq_refl; eauto | eauto
+        | eapply wf_exp_eq_refl; eauto | eauto | eauto | eauto | eauto ]
   (** A unit that is an alias. *)
   | |- wf_unit_eq _ _ _ _ _ =>
       match goal with HΓ : ⊢ ?G, Hx : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P |- _ =>
@@ -743,6 +770,20 @@ Proof.
             assert (HA' : ⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ A : Typeω@(unf_large u))
               by (intros HC; apply wf_exp_unf_large; rewrite <- nf_to_exp_univ_nf; exact (HA HC));
             eapply (abody_def_sound _ _ _ _ _ _ _ _ (unf_large u)); [ exact IH | exact HA' | intros HC; exact (HM HC _ (HA' HC)) ]
+        end
+    end.
+  (** A definition with a module part of a body. *)
+  - match goal with
+    | IH : alg_body_sound _ _ _, Hu : is_univ_nf ?UA ?u |- _ =>
+        rewrite (is_univ_nf_eq _ _ Hu) in *;
+        match goal with
+        | HA : ⊢ _ -> _ ⊢ ?A : _, HM : ⊢ _ -> forall i, _ ⊢ ?A : _ -> _ ⊢ ?M : ?A,
+          HU : ⊢ _ -> wf_unit_eq _ _ _ ?U ?U |- _ =>
+            let HA' := fresh "HA'" in
+            assert (HA' : ⊢ body_ctx Φx ++ Γ -> body_ctx Φx ++ Γ ⊢ A : Typeω@(unf_large u))
+              by (intros HC; apply wf_exp_unf_large; rewrite <- nf_to_exp_univ_nf; exact (HA HC));
+            eapply (abody_dm_sound _ _ _ _ _ _ _ _ (unf_large u));
+              [ exact IH | exact HA' | intros HC; exact (HM HC _ (HA' HC)) | exact HU ]
         end
     end.
 Qed.
@@ -1121,7 +1162,7 @@ with gentry_lets (E : gentry) : nat :=
   | ge_def _ _ A B => exp_lets A + match B with Some M => exp_lets M | None => 0 end
   | ge_mod _ U => gunit_lets U
   | ge_ind _ _ _ _ Φ => gmod_lets Φ
-  | ge_def_mod _ _ _ _ => 0
+  | ge_def_mod _ A M U => exp_lets A + exp_lets M + gunit_lets U
   | ge_record _ _ _ Φ => gmod_lets Φ
   end
 with centry_lets (e : centry) : nat :=
@@ -1129,6 +1170,7 @@ with centry_lets (e : centry) : nat :=
   | ce_ass A => exp_lets A
   | ce_def A M => exp_lets A + exp_lets M
   | ce_mod U => gunit_lets U
+  | ce_dm A M U => exp_lets A + exp_lets M + gunit_lets U
   end.
 
 Fixpoint ctx_lets (Γ : ctx) : nat :=
@@ -1678,6 +1720,7 @@ Definition alg_entry (Γ : ctx) (e : centry) : Prop :=
   | ce_ass A => exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u
   | ce_def A M => (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ Γ ⊢a M ⟸ A
   | ce_mod U => Γ ⊢aᵘ U
+  | ce_dm A M U => ((exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ Γ ⊢a M ⟸ A) /\ Γ ⊢aᵘ U
   end.
 
 Definition ext_entries (n : nat) (Γ Ψ : ctx) : Prop :=
@@ -1704,7 +1747,8 @@ Proof.
   intros n Γ; induction Ψ as [| e Ψ IH]; intros Hx Hl; [ constructor |]; cbn [ctx_lets] in Hl.
   pose proof (ext_entries_head _ _ _ _ Hx ltac:(lia)) as He.
   pose proof (IH (ext_entries_app_r _ _ (e :: nil) _ Hx) ltac:(lia)) as Ht.
-  destruct e; cbn [alg_entry] in He; destruct_all; econstructor; eauto.
+  destruct e; cbn [alg_entry] in He; destruct_all;
+    [ eapply aext_ass | eapply aext_def | eapply aext_mod | eapply aext_dm ]; eauto.
 Qed.
 
 (** A body checked from its expansion's entries: its own entries are
@@ -1721,15 +1765,19 @@ Proof.
     assert (HEt : ext_entries n Γ0 (body_ctx Φx ++ Δ)).
     { destruct E as [? ? ? [] | | | | ]; cbn [body_ctx List.app] in HE; exact (ext_entries_app_r _ _ (_ :: nil) _ HE). }
     specialize (IH eq_refl HEt ltac:(lia) Hs Ho).
-    destruct E as [b pv A [M |] | pm U | ? ? ? | ? ? ? ? | ? ? ?]; cbn in HsE; try contradiction.
+    destruct E as [b pv A [M |] | pm U | ? ? ? | pv A M U | ? ? ?]; cbn in HsE; try contradiction.
     + pose proof (ext_entries_head _ _ _ _ HE) as He; cbn [body_ctx List.app gentry_lets centry_lets alg_entry] in He, Hl.
       rewrite <- List.app_assoc in He; destruct (He ltac:(lia)) as ((UA & u & HA & Hu) & HM).
       econstructor; eassumption.
     + pose proof (ext_entries_head _ _ _ _ HE) as He; cbn [body_ctx List.app gentry_lets centry_lets alg_entry] in He, Hl.
       rewrite <- List.app_assoc in He; specialize (He ltac:(lia)).
       econstructor; eassumption.
+    + (* a definition with a module part: both parts *)
+      pose proof (ext_entries_head _ _ _ _ HE) as He; cbn [body_ctx List.app gentry_lets centry_lets alg_entry] in He, Hl.
+      rewrite <- List.app_assoc in He; destruct (He ltac:(lia)) as (((UA & u & HA & Hu) & HM) & HU).
+      econstructor; eassumption.
   - cbn [body_shape] in Hs; destruct Hs as [Hs _].
-    cbn [body_opens] in Ho; rewrite <- (items_gen_length _ _ _ _ _ _ _ Hg), gm_dropn_gens_append in Ho.
+    cbn [body_opens] in Ho; rewrite <- (items_gen_length _ _ _ _ _ _ Hg), gm_dropn_gens_append in Ho.
     rewrite gens_body_ctx_base, <- List.app_assoc in HE.
     specialize (IH eq_refl (ext_entries_app_r _ _ _ _ HE) ltac:(lia) Hs (fun k => Ho (S k))).
     pose proof (Ho 0 _ _ eq_refl ltac:(lia)) as HH.
@@ -2180,6 +2228,19 @@ Proof.
     split; apply ext_entries_cons; try assumption; intros Hle; cbn [centry_lets alg_entry] in *.
     + match goal with IHU : (gunit_lets U <= n -> _ ⊢aᵘ U) /\ _ |- _ => exact (proj1 IHU Hle) end.
     + match goal with IHU : (gunit_lets U' <= n -> ?G ⊢aᵘ U') /\ _, _ : _ ⍮ _ ⍮ ?G ⊢ᵘ U' ≈ U' |- _ => exact (proj1 IHU Hle) end.
+  - (** A definition with a module part: as a definition and as a slot. *)
+    match goal with HX : ext_entries _ _ _ /\ ext_entries _ _ _ |- _ => destruct HX as [HXl HXr] end.
+    split; apply ext_entries_cons; try assumption; intros Hle; cbn [centry_lets alg_entry] in *.
+    + pose proof (ext_eq_ctx_left _ _ _ _ _ H) as HΨ.
+      match goal with IHA : exp_lets A <= n -> _ ⊢a A ⟸ _, IHM : exp_lets M <= n -> _ ⊢a M ⟸ _,
+                      IHU : (gunit_lets U <= n -> _ ⊢aᵘ U) /\ _ |- _ =>
+        destruct (alg_type_check_typ_implies_alg_type_infer_typ HΨ (IHA ltac:(lia))) as [UA [u [Hj [Hu _]]]];
+        split; [ split; [ eauto | exact (IHM ltac:(lia)) ] | exact (proj1 IHU ltac:(lia)) ] end.
+    + pose proof (ext_eq_ctx_right _ _ _ _ _ H) as HΨ'.
+      match goal with IHA : exp_lets A' <= n -> _ ⊢a A' ⟸ _, IHM : exp_lets M' <= n -> _ ⊢a M' ⟸ _,
+                      IHU : (gunit_lets U' <= n -> ?G ⊢aᵘ U') /\ _, _ : _ ⍮ _ ⍮ ?G ⊢ᵘ U' ≈ U' |- _ =>
+        destruct (alg_type_check_typ_implies_alg_type_infer_typ HΨ' (IHA ltac:(lia))) as [UA [u [Hj [Hu _]]]];
+        split; [ split; [ eauto | exact (IHM ltac:(lia)) ] | exact (proj1 IHU ltac:(lia)) ] end.
   (** Units: a body from the entries of its expansion that are its own, and
       the targets of its opens. *)
   - match goal with

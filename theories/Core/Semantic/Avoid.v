@@ -184,7 +184,9 @@ Section Avoid.
   | dav_la_cons : forall k n m xs, dav_ne m -> dav_la xs -> dav_la ((k, n, m) :: xs)
   with deav : dentry -> Prop :=
   | deav_term : forall d, dav d -> deav (de_term d)
-  | deav_mod : forall h, dmav h -> deav (de_mod h).
+  | deav_mod : forall h, dmav h -> deav (de_mod h)
+  (** A term with a module part: both avoid *)
+  | deav_dm : forall d h, dav d -> dmav h -> deav (de_dm d h).
 
   (** An environment that avoids at every position but [K]. *)
   Definition env_av (K : option nat) (ρ : env) : Prop :=
@@ -269,12 +271,12 @@ Section Env.
 
   Lemma env_av_var : forall K ρ x, env_av v b K ρ -> K <> Some x -> dav v b (ρ x).
   Proof.
-    intros * H Hx; unfold env_var; destruct (H x Hx); [ assumption | repeat constructor ].
+    intros * H Hx; unfold env_var; destruct (H x Hx); [ assumption | repeat constructor | assumption ].
   Qed.
 
   Lemma env_av_mod : forall K ρ x, env_av v b K ρ -> K <> Some x -> dmav v b (env_mod ρ x).
   Proof.
-    intros * H Hx; unfold env_mod; destruct (H x Hx); [| assumption ].
+    intros * H Hx; unfold env_mod; destruct (H x Hx); [| assumption | assumption ].
     constructor; intros ? [].
   Qed.
 
@@ -516,6 +518,31 @@ Section OFresh.
   Lemma ogfresh_mod_unit : forall Φ y pm U,
       ogfresh K (gm_ext Φ y (ge_mod pm U)) -> oufresh (oshift (gm_binders Φ) K) U.
   Proof. destruct K; cbn; tauto. Qed.
+  (** The term part of an entry ([entry_tm]) and its module part
+      ([entry_unit]), under the entries before it. *)
+  Lemma ogfresh_ext_prefix : forall Φ y E, ogfresh K (gm_ext Φ y E) -> ogfresh K Φ.
+  Proof. destruct K; cbn; tauto. Qed.
+  Lemma ogfresh_tm_body : forall Φ y E A M, entry_tm E = Some (A, M) ->
+      ogfresh K (gm_ext Φ y E) -> ofresh (oshift (gm_binders Φ) K) M.
+  Proof.
+    destruct K; cbn; [| tauto ].
+    intros Φ y E A M HE Hf; destruct E as [? ? ? [] | | | |]; cbn in HE, Hf; try discriminate; injection HE as <- <-; tauto.
+  Qed.
+  Lemma ogfresh_unit_unit : forall Φ y E U, entry_unit E = Some U ->
+      ogfresh K (gm_ext Φ y E) -> oufresh (oshift (gm_binders Φ) K) U.
+  Proof.
+    destruct K; cbn; [| tauto ].
+    intros Φ y E U HE Hf; destruct E as [| | | |]; cbn in HE, Hf; try discriminate; injection HE as <-; tauto.
+  Qed.
+  Lemma ogfresh_dm_prefix : forall Φ y pv A M U,
+      ogfresh K (gm_ext Φ y (ge_def_mod pv A M U)) -> ogfresh K Φ.
+  Proof. destruct K; cbn; tauto. Qed.
+  Lemma ogfresh_dm_body : forall Φ y pv A M U,
+      ogfresh K (gm_ext Φ y (ge_def_mod pv A M U)) -> ofresh (oshift (gm_binders Φ) K) M.
+  Proof. destruct K; cbn; tauto. Qed.
+  Lemma ogfresh_dm_unit : forall Φ y pv A M U,
+      ogfresh K (gm_ext Φ y (ge_def_mod pv A M U)) -> oufresh (oshift (gm_binders Φ) K) U.
+  Proof. destruct K; cbn; tauto. Qed.
 End OFresh.
 
 #[local] Hint Resolve ofresh_univ ofresh_succl ofresh_maxl_l ofresh_maxl_r
@@ -523,6 +550,7 @@ End OFresh.
   ofresh_pi_A ofresh_pi_B ofresh_fn_M ofresh_app_l ofresh_app_r ofresh_let_M ofresh_let_B
   ofresh_letmod_U ofresh_mem ofresh_var ofresh_tuple_fields ofresh_proj omfresh_var omfresh_lit omfresh_mem omfresh_app_l omfresh_app_r
   oufresh_body oufresh_alias ogfresh_def_prefix ogfresh_def_body ogfresh_mod_prefix ogfresh_mod_unit
+  ogfresh_dm_prefix ogfresh_dm_body ogfresh_dm_unit
   : avoid.
 (** Freshness does not read the group or the member of an eliminator, so
     they are taken from the hypothesis rather than left to unification. *)
@@ -805,24 +833,29 @@ Section Eval.
          type former, applied to the module's arguments *)
       match goal with IH : dav _ _ (d_ind _ _ _) -> _ -> _, Ha : forall a, In a _ -> dav _ _ a |- _ =>
         apply IH; [ constructor; intros ? [] | exact Ha ] end.
-    - (* a definition of a saturated body, in its expansion *)
-      match goal with Hb : kbody _ _ _ ?Φ ?Φx, Hp : gm_prefix_upto ?Φx _ = Some _, Hu : oufresh ?K (gu_mk nil (md_body _ ?Φ)),
+    - (* a term part of a saturated body, in its expansion *)
+      match goal with Hb : kbody _ _ _ ?Φ ?Φx, Hp : gm_prefix_upto ?Φx _ = Some _, HE : entry_tm _ = Some _,
+                      Hu : oufresh ?K (gu_mk nil (md_body _ ?Φ)),
                       IHb : ogfresh ?K _ -> _, IHM : forall K0, _ -> ofresh K0 _ -> _ |- _ =>
         pose proof (oufresh_body _ _ _ _ Hu) as HΦ; cbn [List.length] in HΦ; rewrite oshift_zero in HΦ;
         pose proof (ofresh_prefix_upto _ _ _ _ Hp (kbody_ogfresh _ _ _ _ _ _ Hb HΦ)) as HΦ';
-        exact (IHM _ (IHb (ogfresh_def_prefix _ _ _ _ _ _ _ HΦ')) (ogfresh_def_body _ _ _ _ _ _ _ HΦ')) end.
-    - (* a submodule of a saturated body, in its expansion *)
-      match goal with Hb : kbody _ _ _ ?Φ ?Φx, Hp : gm_prefix_upto ?Φx _ = Some _, Hu : oufresh ?K (gu_mk nil (md_body _ ?Φ)),
+        exact (IHM _ (IHb (ogfresh_ext_prefix _ _ _ _ HΦ')) (ogfresh_tm_body _ _ _ _ _ _ HE HΦ')) end.
+    - (* a module part of a saturated body, in its expansion *)
+      match goal with Hb : kbody _ _ _ ?Φ ?Φx, Hp : gm_prefix_upto ?Φx _ = Some _, HE : entry_unit _ = Some _,
+                      Hu : oufresh ?K (gu_mk nil (md_body _ ?Φ)),
                       IHb : ogfresh ?K _ -> _, IHM : forall K0, _ -> oufresh K0 _ -> _ |- _ =>
         pose proof (oufresh_body _ _ _ _ Hu) as HΦ; cbn [List.length] in HΦ; rewrite oshift_zero in HΦ;
         pose proof (ofresh_prefix_upto _ _ _ _ Hp (kbody_ogfresh _ _ _ _ _ _ Hb HΦ)) as HΦ';
-        exact (IHM _ (IHb (ogfresh_mod_prefix _ _ _ _ _ HΦ')) (ogfresh_mod_unit _ _ _ _ _ HΦ')) end.
+        exact (IHM _ (IHb (ogfresh_ext_prefix _ _ _ _ HΦ')) (ogfresh_unit_unit _ _ _ _ _ HE HΦ')) end.
     - (* the empty body *)
       cbn [gm_binders]; rewrite oshift_zero; assumption.
     - (* a definition entry *)
       cbn [gm_binders]; replace (S (gm_binders Φ)) with (1 + gm_binders Φ) by lia; rewrite <- oshift_oshift.
       apply env_av_cons; [ assumption | constructor; assumption ].
     - (* a submodule entry *)
+      cbn [gm_binders]; replace (S (gm_binders Φ)) with (1 + gm_binders Φ) by lia; rewrite <- oshift_oshift.
+      apply env_av_cons; [ assumption | constructor; assumption ].
+    - (* a definition with a module part entry *)
       cbn [gm_binders]; replace (S (gm_binders Φ)) with (1 + gm_binders Φ) by lia; rewrite <- oshift_oshift.
       apply env_av_cons; [ assumption | constructor; assumption ].
   Qed.
@@ -1468,6 +1501,11 @@ Proof.
   - change None with (oshift 1 None).
     apply env_av_cons; [ apply IHinitial_env; lia |].
     constructor; eapply (proj1 (proj2 (proj2 (proj2 (proj2 (eval_av Θ Ξ v' b')))))); [ eassumption | apply IHinitial_env; lia | exact I ].
+  - change None with (oshift 1 None).
+    apply env_av_cons; [ apply IHinitial_env; lia |].
+    constructor;
+      [ eapply (proj1 (eval_av Θ Ξ v' b')); [ eassumption | apply IHinitial_env; lia | exact I ]
+      | eapply (proj1 (proj2 (proj2 (proj2 (proj2 (eval_av Θ Ξ v' b')))))); [ eassumption | apply IHinitial_env; lia | exact I ] ].
 Qed.
 
 (** The environment of [Γ ▹ A] avoids the new variable everywhere except at

@@ -82,7 +82,7 @@ Proof.
   destruct (rel_ctx_wf_per_ctx_env HΓ) as [RΓ HRΓ].
   apply rel_modexp_of_at.
   - exact (rel_lit_alias _ _ _ _ _ (ext_refl _ _ HC) HΔ HΔ eq_refl HU HU).
-  - exact (valid_unit_rel _ _ Hgf _ _ (valid_unit_abs _ _ Hgm Hgf _ _ _ HK HΔ)).
+  - exact (valid_unit_rel _ _ Hgf _ _ (valid_unit_abs Hgw _ _ Hgm Hsub Hgf _ _ _ HK HΔ)).
   - intros R HR ρ ρ' Hρ.
     assert (E : R <~> RΓ) by (eapply per_ctx_env_right_irrel; eassumption).
     destruct (flat_walk _ _ _ _ _ HΔ HC HRΓ HU _ _ (proj1 (E _ _) Hρ)) as [h h' Hh Hh' Hhh].
@@ -97,7 +97,7 @@ Proof.
   intros * Hne HΔ Hm HK.
   destruct X as [A om | Δe Φ Φx | [| e Θ'] p T Φ Ns | Θd Ad Md Rm]; cbn in Hm; try contradiction; cbn [ds_up ds_unit] in HK |- *.
   - (* a local body *)
-    split; [ exact (rel_lit_flatten _ _ _ _ HΔ HK) | exact (valid_unit_abs _ _ Hgm Hgf _ _ _ HK HΔ) ].
+    split; [ exact (rel_lit_flatten _ _ _ _ HΔ HK) | exact (valid_unit_abs Hgw _ _ Hgm Hsub Hgf _ _ _ HK HΔ) ].
   - (* a filed module at arguments: the alias is the unit *)
     rewrite app_nil_l; destruct Δ as [| e Δ0]; [ contradiction |].
     pose proof (valid_unit_ctx_wf _ _ _ _ HK) as HC.
@@ -112,7 +112,7 @@ Proof.
     destruct (me_denotes _ _ _ _ _ HwE) as (R & Rm & HmR & HmdR).
     exact (valid_modexp_intro _ _ _ _ _ _ _ _ HwE HmR HmdR HE HK HmR HmdR).
   - (* an alias of a filed module at arguments *)
-    split; [ exact (rel_lit_flatten _ _ _ _ HΔ HK) | exact (valid_unit_abs _ _ Hgm Hgf _ _ _ HK HΔ) ].
+    split; [ exact (rel_lit_flatten _ _ _ _ HΔ HK) | exact (valid_unit_abs Hgw _ _ Hgm Hsub Hgf _ _ _ HK HΔ) ].
 Qed.
 
 (** ** Canonical Units *)

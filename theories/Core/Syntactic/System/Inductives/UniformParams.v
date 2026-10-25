@@ -63,7 +63,7 @@ Section Fixed_GCtx.
       destruct Ψ3 as [| e3 Ψ3]; [ apply ext_eq_length in H23; discriminate |].
       inversion Ha1 as [| ? ? [A1 ->] Ha1']; subst; inversion Ha2 as [| ? ? [A2 ->] Ha2']; subst.
       destruct (ext_eq_ass_inv _ _ _ _ _ _ _ H12) as (j1 & H12' & HA1 & HA12 & HA2).
-      inversion H23 as [| ? ? ? ? ? ? ? ? H23' HA2b HA23 HA3 | | ]; subst.
+      inversion H23 as [| ? ? ? ? ? ? ? ? H23' HA2b HA23 HA3 | | | ]; subst.
       pose proof (ctxsub_ext_rev _ _ _ _ _ H12' Ha1') as HId.
       pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ HA23 HId) as HA23'; rewrite !exp_sub_id in HA23'.
       eapply wf_ext_eq_ass with (i := max j1 i);

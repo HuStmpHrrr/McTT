@@ -506,8 +506,8 @@ Lemma nbe_ty_container_at_self : forall Θ Ξ A B Γ pC DC MC iU W,
     W = nf_indty pC 0 (cons (nf_neut (ne_var 1)) (cons (nf_neut (ne_var 0)) nil)).
 Proof.
   intros * Hl Hu Hk Hnp [ρ m Hi He Hr].
-  inversion Hi as [| ? ρ1 ? a1 Hi1 Ha1 | |]; subst.
-  inversion Hi1 as [| ? ρ0 ? a0 Hi0 Ha0 | |]; subst.
+  inversion Hi as [| ? ρ1 ? a1 Hi1 Ha1 | | |]; subst.
+  inversion Hi1 as [| ? ρ0 ? a0 Hi0 Ha0 | | |]; subst.
   inversion He; subst.
   repeat match goal with
   | H : ⟦ a_app _ _ ⟧ _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H; subst; clear H

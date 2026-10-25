@@ -47,7 +47,7 @@ Lemma per_ctx_env_ass_inv : forall Γ Γ' A A' R,
       (forall ρ ρ', RT ρ ρ' -> exists i R0, rel_typ i A ρ A' ρ' R0).
 Proof.
   intros * H.
-  inversion H as [| ? ? ? ? ? tail_rel head_rel ? HT _ Hhead Hiff | |]; subst.
+  inversion H as [| ? ? ? ? ? tail_rel head_rel ? HT _ Hhead Hiff | | |]; subst.
   exists tail_rel; split; [ exact HT | split ].
   - intros ρ ρ' Hρ; apply Hiff in Hρ; destruct Hρ as [Ht _]; exact Ht.
   - intros ρ ρ' Hρ; exists i, (head_rel _ _ Hρ); exact (Hhead _ _ Hρ).

@@ -57,6 +57,7 @@ Proof.
   apply syntactic_wf_mut_ind; intros;
     [ (** contexts *)
       eapply glu_ctx_empty | eapply glu_ctx_extend | eapply glu_ctx_extend_def | eapply glu_ctx_extend_mod
+    | eapply glu_ctx_extend_dm
     | (** terms *)
       eapply glu_typ | eapply glu_univ | eapply glu_level | eapply glu_llit | eapply glu_succl | eapply glu_maxl
     | eapply glu_True | eapply glu_true | eapply glu_False | eapply glu_exfalso | eapply glu_ind | eapply glu_con
@@ -88,6 +89,7 @@ Proof.
     | (** extensions *)
       eapply glu_ext_eq_nil | eapply glu_ext_eq_ass with (Ψ := Ψ) (Ψ' := Ψ')
     | eapply glu_ext_eq_def with (Ψ := Ψ) (Ψ' := Ψ') | eapply glu_ext_eq_mod
+    | eapply glu_ext_eq_dm with (Ψ := Ψ) (Ψ' := Ψ')
     | (** units *)
       eapply glu_unit_eq_body with (Δ := Δ) (Δ' := Δ') (Φ := Φ) (Φ' := Φ') (Φx := Φx) (Φx' := Φx')
     | eapply glu_unit_eq_alias | eapply glu_unit_eq_flatten

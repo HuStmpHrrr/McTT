@@ -281,7 +281,7 @@ Section DenoteImpl.
     | Hm : udenote _ _ _ _ _ _ |- _ => inversion Hm; subst; clear Hm; dn_neg_after
     | Hm : edenote _ _ _ _ _ _ |- _ => inversion Hm; subst; clear Hm; dn_neg_after
     | Hm : body_xp _ _ _ _ _ |- _ => inversion Hm; subst; clear Hm; dn_neg_after
-    | Hm : items_gen _ _ _ _ _ _ _ |- _ => inversion Hm; subst; clear Hm; dn_neg_after
+    | Hm : items_gen _ _ _ _ _ _ |- _ => inversion Hm; subst; clear Hm; dn_neg_after
     end.
 
   #[local]
@@ -410,40 +410,38 @@ Section DenoteImpl.
       | inright HN => inright _
       | inleft (exist _ R HR) with inspect (ds_mod R) := {
         | exist _ None Em => inright _
-        | exist _ (Some Rm) Em with items_gen_impl false (body_ctx Φx ++ Γ) H its _ := {
+        | exist _ (Some Rm) Em with items_gen_impl (body_ctx Φx ++ Γ) H its _ := {
           | inright HN => inright _
           | inleft (exist _ gs Hgs) with items_ok_dec its := {
             | left Hok => inleft (exist _ (gens_append Φx 0 gs) _)
             | right Hn => inright _ } } } } }
 
-  with items_gen_impl g Γ H its (Ho : ig_order Θ Ξ Γ H its) :
-      { gs | items_gen Θ Ξ g Γ H its gs } + { forall gs, ~ items_gen Θ Ξ g Γ H its gs } by struct Ho :=
-  | g, Γ, H, nil, Ho => inleft (exist _ nil _)
-  | g, Γ, H, (None, d, pv) :: its, Ho with items_gen_impl g Γ H its _ := {
+  with items_gen_impl Γ H its (Ho : ig_order Θ Ξ Γ H its) :
+      { gs | items_gen Θ Ξ Γ H its gs } + { forall gs, ~ items_gen Θ Ξ Γ H its gs } by struct Ho :=
+  | Γ, H, nil, Ho => inleft (exist _ nil _)
+  | Γ, H, (None, d, pv) :: its, Ho with items_gen_impl Γ H its _ := {
     | inleft (exist _ gs Hgs) => inleft (exist _ (ig_alias d pv H :: gs) _)
     | inright HN => inright _ }
-  | g, Γ, H, (Some n, d, pv) :: its, Ho with mdenote_impl Γ (me_mem H n) _ := {
+  | Γ, H, (Some n, d, pv) :: its, Ho with mdenote_impl Γ (me_mem H n) _ := {
     | inright HN => inright _
-    | inleft (exist _ (ds_term A om) HR) with items_gen_impl g Γ H its _ := {
+    | inleft (exist _ (ds_term A om) HR) with items_gen_impl Γ H its _ := {
       | inleft (exist _ gs Hgs) => inleft (exist _ (ig_def d pv A (a_mem H n) :: gs) _)
       | inright HN => inright _ }
-    | inleft (exist _ (ds_open Δ Φ Φx) HR) with items_gen_impl g Γ H its _ := {
+    | inleft (exist _ (ds_open Δ Φ Φx) HR) with items_gen_impl Γ H its _ := {
       | inleft (exist _ gs Hgs) => inleft (exist _ (ig_alias d pv (me_mem H n) :: gs) _)
       | inright HN => inright _ }
-    | inleft (exist _ (ds_closed Θ' pc T Φ Ns) HR) with items_gen_impl g Γ H its _ := {
+    | inleft (exist _ (ds_closed Θ' pc T Φ Ns) HR) with items_gen_impl Γ H its _ := {
       | inleft (exist _ gs Hgs) => inleft (exist _ (ig_alias d pv (me_mem H n) :: gs) _)
       | inright HN => inright _ }
-    (** A member with a term part and a module part: at the global level
-        only, a definition with a module part *)
-    | inleft (exist _ R HR) with g := {
-      | false => inright _
-      | true with inspect (ds_ty R) := {
-        | exist _ None Et => inright _
-        | exist _ (Some A) Et with inspect (ds_mod R) := {
-          | exist _ None Em => inright _
-          | exist _ (Some Rm) Em with items_gen_impl true Γ H its _ := {
-            | inleft (exist _ gs Hgs) => inleft (exist _ (ig_def_mod d pv (a_mem H n) (me_mem H n) :: gs) _)
-            | inright HN => inright _ } } } } }.
+    (** A member with a term part and a module part: a definition with a
+        module part, globally and locally alike *)
+    | inleft (exist _ R HR) with inspect (ds_ty R) := {
+      | exist _ None Et => inright _
+      | exist _ (Some A) Et with inspect (ds_mod R) := {
+        | exist _ None Em => inright _
+        | exist _ (Some Rm) Em with items_gen_impl Γ H its _ := {
+          | inleft (exist _ gs Hgs) => inleft (exist _ (ig_def_mod d pv A (a_mem H n) (me_mem H n) :: gs) _)
+          | inright HN => inright _ } } } }.
 End DenoteImpl.
 
 (** ** What Denotes Has an Order *)
@@ -457,7 +455,7 @@ Section Orders.
     (forall Γ o U R, udenote Θ Ξ Γ o U R -> un_order Θ Ξ Γ U) /\
     (forall Γ o E R, edenote Θ Ξ Γ o E R -> en_order Θ Ξ Γ E) /\
     (forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> bx_order Θ Ξ Γ Φ) /\
-    (forall g Γ H its gs, items_gen Θ Ξ g Γ H its gs -> ig_order Θ Ξ Γ H its).
+    (forall Γ H its gs, items_gen Θ Ξ Γ H its gs -> ig_order Θ Ξ Γ H its).
   Proof.
     pose proof (mdenote_functional_all _ _ Hg) as (Fm & Fu & Fe & Fb & Fi).
     apply mdenote_all_ind; intros.
@@ -512,14 +510,20 @@ Section Orders.
     - (* an open module: a slot of its extended context *)
       inversion Hok as [| ? ? ? ? HΓ Hno Hsub | |]; subst.
       destruct (gm_prefix_upto Φ y) as [[| Φ' x E0 | ? ? ?] |] eqn:Hp; try discriminate.
-      destruct E0 as [[|] pv A [M |] | pv U | ? ? ? ? ? | ? ? ? ? | ? ? ?]; try discriminate; injection He as <- <- <-;
-        [ constructor |].
-      constructor.
-      destruct (gm_prefix_body_ctx _ _ _ Hno Hp) as (Ψ & HΨ); rewrite HΨ in HΓ; cbn [body_ctx] in HΓ.
-      rewrite <- !app_assoc in HΓ; apply ctx_app_wf_right in HΓ.
-      destruct (ctx_decomp_mod HΓ) as [_ HU].
-      destruct (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HU) as (_ & (R & HR) & _).
-      rewrite <- app_assoc; exact (proj1 (proj2 order_of_denote) _ _ _ _ HR).
+      destruct E0 as [[|] pv A [M |] | pv U | ? ? ? ? ? | pv A M U | ? ? ?]; try discriminate; injection He as <- <- <-;
+        [ constructor | |].
+      all: destruct (gm_prefix_body_ctx _ _ _ Hno Hp) as (Ψ & HΨ); rewrite HΨ in HΓ; cbn [body_ctx] in HΓ;
+             rewrite <- !app_assoc in HΓ; apply ctx_app_wf_right in HΓ.
+      + constructor.
+        destruct (ctx_decomp_mod HΓ) as [_ HU].
+        destruct (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HU) as (_ & (R & HR) & _).
+        rewrite <- app_assoc; exact (proj1 (proj2 order_of_denote) _ _ _ _ HR).
+      + (* a definition with a module part: its alias's target denotes *)
+        destruct (ctx_decomp_dm HΓ) as (_ & _ & _ & HU).
+        destruct (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 denote_exists)))))) _ _ _ _ _ HU) as (_ & (R & HR) & _).
+        destruct U as [Δ' [sm Φy | E']]; [ constructor |].
+        constructor; inversion HR; subst.
+        rewrite <- !app_assoc; eapply (proj1 order_of_denote); rewrite ?app_assoc in *; eassumption.
     - (* a closed module: a stored entry *)
       inversion Hok as [| | ? ? ? ? ? Θ0 Ξ0 ? Hg0 Hsub Hloc HaT HsT HT HΘ' Hargs |]; subst.
       destruct (gm_prefix_upto Φ y) as [[| Φ' x E0 | ? ? ?] |] eqn:Hp; try discriminate.

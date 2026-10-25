@@ -66,6 +66,24 @@ Proof.
   econstructor; [ exact HΓ | exact HU | reflexivity ].
 Qed.
 
+(** A definition with a module part glues when its term part does as a
+    definition and its unit is well formed. *)
+Lemma glu_rel_ctx_extend_dm : forall {Γ A M U} {i : nat},
+    ⊩ Γ ->
+    Γ ⊩ A : Typeω@i ->
+    Γ ⊩ M : A ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
+    ⊩ Γ ▸ₘ A ≔ M ‖ U.
+Proof.
+  intros * [Sb] HA HM HU.
+  assert (Γ ⊢ A : Typeω@i) by mauto 3.
+  assert (Γ ⊢ M : A) by mauto 3.
+  invert_glu_rel_exp HM.
+  invert_glu_rel_exp HA.
+  eexists.
+  econstructor; mauto 3; reflexivity.
+Qed.
+
 (** δ for a member: it glues as its δ-reduct, which glues by the premise of
     [wf_mem] on it. *)
 Lemma glu_rel_exp_mem : forall {Γ H x R A M},
@@ -93,7 +111,7 @@ Proof.
   pose proof (completeness_fundamental_exp _ _ _ HC) as HCc.
   pose proof HB as [SbU HΓU _ _].
   pose proof (glu_rel_exp_clean_inversion2 HΓU HCg HB) as HBi.
-  inversion HΓU as [| | | ? ? TSb ? HΓ _ HSbU]; subst.
+  inversion HΓU as [| | | ? ? TSb ? HΓ _ HSbU |]; subst.
   destruct (glu_ctx_env_per_ctx_env HΓ) as [R HR].
   eapply mk_glu_rel_exp with (gre_lvl := k); [ exact HΓ |].
   intros Δ σ ρ Hσ.
@@ -145,6 +163,18 @@ Lemma glu_ctx_extend_mod :
      ⊩ Θ ⍮ Ξ ⍮ Γ ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ▹ₘ U ).
 Proof. glu_intro; glu_emb_wf; eapply (@glu_rel_ctx_extend_mod (gc_mk _ _)); [ eassumption | apply Hwu; eassumption ]. Qed.
+
+(** A definition with a module part glues when its term part does and its
+    unit is well formed. *)
+Lemma glu_ctx_extend_dm :
+  `( Θ ⍮ Ξ ⍮ Γ ⊩ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊩ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ▸ₘ A ≔ M ‖ U ).
+Proof.
+  glu_intro; glu_emb_wf.
+  eapply (@glu_rel_ctx_extend_dm (gc_mk _ _)); [ eapply presup_ctx_glu_rel_exp; eassumption | eassumption | eassumption | apply Hwu; eassumption ].
+Qed.
 
 Lemma glu_let_mod :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->

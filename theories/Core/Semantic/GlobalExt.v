@@ -48,6 +48,14 @@ Section GlobalExt.
         end;
     eassumption.
 
+  (** The term part a path names is read off its lookups. *)
+  Lemma gc_term_ext : forall p, gc_term Θ1 Ξ1 p = gc_term Θ2 Ξ2 p.
+  Proof. intros; unfold gc_term; rewrite Hres, Hent; reflexivity. Qed.
+
+  (** A member with a term part and a module part is one by its lookups. *)
+  Lemma dm_path_ext : forall p, dm_path Θ1 Ξ1 p <-> dm_path Θ2 Ξ2 p.
+  Proof. intros; unfold dm_path; rewrite ind_mlookup_ext, Hrec, Hent; reflexivity. Qed.
+
   Lemma kind_ext :
     (forall h ch k, dkind Θ1 Ξ1 h ch k -> dkind Θ2 Ξ2 h ch k) /\
     (forall ρ U ch k, ukind Θ1 Ξ1 ρ U ch k -> ukind Θ2 Ξ2 ρ U ch k) /\
@@ -61,7 +69,7 @@ Section GlobalExt.
              | H : _ \/ _ |- _ => destruct H
              | H : exists _, _ |- _ => destruct H
              end;
-      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext in *;
+      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?dm_path_ext in *;
       solve [ econstructor; eauto 6 ].
   Qed.
 
@@ -116,7 +124,7 @@ Section GlobalExt.
              | H : _ \/ _ |- _ => destruct H
              | H : exists _, _ |- _ => destruct H
              end;
-      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?ind_lookup_ext, ?ind_mlookup_ext, ?Hent, ?Hrec in *.
+      rewrite ?Hres, ?Hmod, ?Hfr, ?gc_loc_ext, ?ind_lookup_ext, ?ind_mlookup_ext, ?Hent, ?Hrec, ?gc_term_ext in *.
     all: try solve [ econstructor; eauto; apply kind_ext; assumption ].
   Qed.
 

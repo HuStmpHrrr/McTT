@@ -8,8 +8,9 @@ Generalizable All Variables.
 
 (** The initial environment of a context: each assumption in scope is a
     neutral at its own de Bruijn level, each definition is the value of its
-    body, and each module slot is the closure of its unit.  The level of a
-    definition or a slot is never given to a neutral. *)
+    body, each module slot is the closure of its unit, and each definition
+    with a module part is both.  The level of a definition or a slot is
+    never given to a neutral. *)
 Inductive initial_env (Θ : gdeps) (Ξ : gstack) : ctx -> env -> Prop :=
 | initial_env_nil : initial_env Θ Ξ nil nil
 | initial_env_cons :
@@ -23,7 +24,14 @@ Inductive initial_env (Θ : gdeps) (Ξ : gstack) : ctx -> env -> Prop :=
 | initial_env_cons_mod :
   `( initial_env Θ Ξ Γ ρ ->
      ⟦ me_lit U ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-     initial_env Θ Ξ (Γ ▹ₘ U) (ρ ↦ᵐ h)).
+     initial_env Θ Ξ (Γ ▹ₘ U) (ρ ↦ᵐ h))
+(** A definition with a module part: the value of its term and the closure
+    of its unit *)
+| initial_env_cons_dm :
+  `( initial_env Θ Ξ Γ ρ ->
+     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+     ⟦ me_lit U ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
+     initial_env Θ Ξ (Γ ▸ₘ A ≔ M ‖ U) (ρ ↦ᵈ m ‖ h)).
 
 #[export]
 Hint Constructors initial_env : mctt.

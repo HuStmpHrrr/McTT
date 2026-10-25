@@ -87,7 +87,9 @@ with dclean_la : list (nat * nat * domain_ne) -> Prop :=
 | dclean_la_cons : forall k n m xs, dclean_ne m -> dclean_la xs -> dclean_la ((k, n, m) :: xs)
 with declean : dentry -> Prop :=
 | declean_term : forall d, dclean d -> declean (de_term d)
-| declean_mod : forall h, dmclean h -> declean (de_mod h).
+| declean_mod : forall h, dmclean h -> declean (de_mod h)
+(** A term with a module part: both clean *)
+| declean_dm : forall d h, dclean d -> dmclean h -> declean (de_dm d h).
 
 Definition env_clean (ρ : env) : Prop := forall x, declean (env_entry ρ x).
 
@@ -117,6 +119,9 @@ Proof. intros * Hρ Hd [| x]; cbn; auto with mctt. Qed.
 
 Lemma env_clean_extend_mod : forall ρ h, env_clean ρ -> dmclean h -> env_clean (ρ ↦ᵐ h).
 Proof. intros * Hρ Hh [| x]; cbn; auto with mctt. Qed.
+
+Lemma env_clean_extend_dm : forall ρ d h, env_clean ρ -> dclean d -> dmclean h -> env_clean (ρ ↦ᵈ d ‖ h).
+Proof. intros * Hρ Hd Hh [| x]; cbn; auto with mctt. Qed.
 
 Lemma env_clean_var : forall ρ x, env_clean ρ -> dclean (ρ x).
 Proof. intros * H; unfold env_var; destruct (H x); auto with mctt. Qed.
@@ -177,7 +182,7 @@ Proof. intros; unfold dlvl_suc; constructor; apply dclean_la_suc, dclean_la_view
 Lemma dclean_lvl_max : forall d e, dclean d -> dclean e -> dclean (dlvl_max d e).
 Proof. intros; unfold dlvl_max; constructor; apply dclean_la_app; apply dclean_la_view; assumption. Qed.
 
-#[local] Hint Resolve env_clean_nil env_clean_extend env_clean_extend_mod env_clean_var env_clean_mod
+#[local] Hint Resolve env_clean_nil env_clean_extend env_clean_extend_mod env_clean_extend_dm env_clean_var env_clean_mod
   env_clean_args clean_app_snoc dmclean_global_nil env_clean_entry : mctt.
 
 (** The level lemmas are [Hint Extern], keyed on the operation in the goal: as
@@ -415,6 +420,8 @@ Section Transparent.
     (* the type of a recursive argument: the member at the shape's
        parameters after the uniform ones *)
     all: try solve [ apply dclean_indty; intros a Ha; apply List.in_app_or in Ha as [Ha | Ha]; auto ].
+    (* a definition with a module part in a body: its term and its unit *)
+    all: try solve [ apply env_clean_extend_dm; eauto 6 with mctt ].
     all: match goal with Hin : In _ nil |- _ => destruct Hin end.
   Qed.
 

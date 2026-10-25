@@ -51,15 +51,15 @@ Proof.
     split; do 2 eexists; (split; [ eassumption |]); (split; [ eassumption |]);
       split; [| repeat split; try eassumption; try (rewrite <- Hnames; eassumption)
              | | repeat split; try eassumption; try (rewrite <- Hnames; eassumption) ].
-    + intros y Φ0 b pv A M σ Hp Hf0.
-      destruct (shape_prefix _ _ _ _ _ Hsx0 Hp) as (Φ0' & E' & Hp' & _ & HE).
+    + intros y Φ0 E A M σ Hp HE Hf0.
+      destruct (shape_prefix _ _ _ _ _ Hsx0 Hp) as (Φ0' & E' & Hp' & _ & HS).
       destruct (fill_prefix _ _ _ _ Hf' Hp') as (σ' & Hf0').
-      destruct E' as [? ? ? [] | | | | ]; cbn in HE; try contradiction.
+      destruct (entry_shape_tm _ _ _ _ HS HE) as (A' & M' & HE').
       split; eauto.
-    + intros y Φ0' b pv A M σ' Hp' Hf0'.
-      destruct (shape_prefix _ _ _ _ _ (body_shape_sym _ _ Hsx0) Hp') as (Φ0 & E & Hp & _ & HE).
+    + intros y Φ0' E' A M σ' Hp' HE' Hf0'.
+      destruct (shape_prefix _ _ _ _ _ (body_shape_sym _ _ Hsx0) Hp') as (Φ0 & E & Hp & _ & HS).
       destruct (fill_prefix _ _ _ _ Hf Hp) as (σ & Hf0).
-      destruct E as [? ? ? [] | | | | ]; cbn in HE; try contradiction.
+      destruct (entry_shape_tm _ _ _ _ HS HE') as (A0 & M0 & HE).
       split; eauto.
   - pose proof (ext_eq_ctx_left _ _ _ _ _ H) as Hl; pose proof (ext_eq_ctx_right _ _ _ _ _ H) as Hr.
     intuition eauto using wf_modexp_eq_refl_left.
@@ -869,7 +869,7 @@ Lemma ctx_fn_eq : forall Θ Ξ Δ Γ A M M' i, tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ 
     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ M ≈ M' : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ctx_fn Δ M ≈ ctx_fn Δ M' : ctx_pi Δ A.
 Proof.
-  induction Δ as [| [B | B N | U] Δ IH]; intros * Ha HΔ HA HM; cbn in *; [ assumption | | |];
+  induction Δ as [| [B | B N | U | B N U] Δ IH]; intros * Ha HΔ HA HM; cbn in *; [ assumption | | | |];
     inversion Ha as [| ? ? [? Heq] Ha']; subst; try discriminate.
   inversion HΔ; subst.
   match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : Typeω@?k |- _ =>
@@ -1133,7 +1133,7 @@ Lemma lookup_sound_all : forall Θ Ξ, ⊢ᵍ Θ ⍮ Ξ ->
        exists K RK, unit_nf Θ Ξ K /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_lit U ≈ K /\ mdenote Θ Ξ Γ K RK /\ ds_mod RK = Some Rm) /\
     (forall Γ o E R, edenote Θ Ξ Γ o E R -> True) /\
     (forall Γ Φ Φx, body_xp Θ Ξ Γ Φ Φx -> True) /\
-    (forall g Γ H its gs, items_gen Θ Ξ g Γ H its gs -> True).
+    (forall Γ H its gs, items_gen Θ Ξ Γ H its gs -> True).
 Proof.
   intros Θ Ξ Hg; apply mdenote_all_ind; try (intros; exact I).
   - (* a loaded unit or an open frame *)

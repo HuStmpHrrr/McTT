@@ -57,7 +57,7 @@ Lemma glu_rel_exp_vlookup : forall {Γ x A},
     Γ ⊩ #x : A.
 Proof.
   intros * [Sb] Hx. gen Sb.
-  induction Hx; intros; [ | | destruct e as [B | B N | U] ];
+  induction Hx; intros; [ | | | destruct e as [B | B N | U | B N U] ];
     match_by_head1 glu_ctx_env ltac:(fun H => invert_glu_ctx_env H).
   - eapply mk_glu_rel_exp with (gre_lvl := i); [econstructor; try reflexivity; mauto |].
     intros Δ σ ρ HSb.
@@ -87,6 +87,23 @@ Proof.
                 ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
       as [a' [a'' [? [? ?]]]].
     destruct_by_head cons_def_glu_sub_pred.
+    functional_eval_rewrite_clear.
+    assert (glu_univ_elem i P El a')
+      by (eapply glu_univ_elem_resp_per_univ; [symmetry |]; eassumption).
+    econstructor; mauto 3.
+  - (** The head of a definition with a module part glues as the head of a
+        definition entry. *)
+    eapply mk_glu_rel_exp with (gre_lvl := i); [econstructor; try reflexivity; mauto |].
+    intros Δ σ ρ HSb.
+    assert (glu_ctx_env (cons_dm_glu_sub_pred i Γ A M U TSb) (Γ ▸ₘ A ≔ M ‖ U))
+      by (econstructor; try reflexivity; eassumption).
+    assert (⊢ Γ ▸ₘ A ≔ M ‖ U) by mauto 3.
+    assert (exists R, EF Γ ▸ₘ A ≔ M ‖ U ≈ Γ ▸ₘ A ≔ M ‖ U ∈ per_ctx_env ↘ R) as [env_relΓA] by mauto 3.
+    assert (Dom ρ ≈ ρ ∈ env_relΓA) by (eapply glu_ctx_env_per_env; eassumption).
+    destruct (completeness_fundamental_typ_shift (A := A)
+                ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
+      as [a' [a'' [? [? ?]]]].
+    destruct_by_head cons_dm_glu_sub_pred.
     functional_eval_rewrite_clear.
     assert (glu_univ_elem i P El a')
       by (eapply glu_univ_elem_resp_per_univ; [symmetry |]; eassumption).
@@ -160,6 +177,33 @@ Proof.
                 ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
       as [a' [a'' [? [? ?]]]].
     destruct_by_head cons_mod_glu_sub_pred.
+    destruct_glu_rel_exp_with_sub.
+    simplify_evals.
+    assert (exists P' El', glu_univ_elem (max j k) P' El' a'') as [P' [El' HP']]
+      by (eapply glu_univ_elem_cumu_max_right; eassumption).
+    assert (glu_univ_elem (max j k) P' El' a')
+      by (eapply glu_univ_elem_resp_per_univ; [symmetry |]; eassumption).
+    econstructor; try eassumption.
+    1: mauto 3.
+    rewrite exp_sub_shift.
+    eapply glu_univ_elem_exp_cumu_max_right; [| exact HP' |]; eassumption.
+  - (** Past a definition with a module part: as past a definition. *)
+    assert (Γ ⊩ #n : A) as Hn by mauto.
+    assert (exists i, Γ ⊢ A : Typeω@i) as [j] by (gen_presups; mauto 3).
+    invert_glu_rel_exp Hn.
+    rename x into k.
+    eapply mk_glu_rel_exp with (gre_lvl := max j k); [econstructor; try reflexivity; mauto |].
+    intros Δ σ ρ HSb.
+    assert (glu_ctx_env (cons_dm_glu_sub_pred i Γ B N U TSb) (Γ ▸ₘ B ≔ N ‖ U))
+      by (econstructor; try reflexivity; eassumption).
+    assert (⊢ Γ ▸ₘ B ≔ N ‖ U) by mauto 3.
+    assert (exists R, EF Γ ▸ₘ B ≔ N ‖ U ≈ Γ ▸ₘ B ≔ N ‖ U ∈ per_ctx_env ↘ R) as [env_relΓB] by mauto 3.
+    assert (Dom ρ ≈ ρ ∈ env_relΓB) by (eapply glu_ctx_env_per_env; eassumption).
+    assert (Γ ⊢ A : Typeω@(max j k)) by mauto 3 using lift_exp_max_left.
+    destruct (completeness_fundamental_typ_shift (A := A) (i := max j k)
+                ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
+      as [a' [a'' [? [? ?]]]].
+    destruct_by_head cons_dm_glu_sub_pred.
     destruct_glu_rel_exp_with_sub.
     simplify_evals.
     assert (exists P' El', glu_univ_elem (max j k) P' El' a'') as [P' [El' HP']]

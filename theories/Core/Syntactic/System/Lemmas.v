@@ -673,11 +673,11 @@ Proof.
     cbn in Hsx; destruct Hsx as (Hsx & _ & _); eauto.
   - destruct Φ' as [| Φ1 x1 E1 | Φ1 Hm1 its1]; cbn in Hs; try contradiction; destruct Hs as (Hs & <-).
     inversion Hx'; subst.
-    rewrite (body_opens_at_open _ _ _ _ _ _ _ _ _ Hg) in Hk.
-    match goal with Hg' : items_gen _ _ _ _ _ its ?gs' |- _ =>
-      rewrite (body_opens_at_open _ _ _ _ _ _ _ _ _ Hg');
+    rewrite (body_opens_at_open _ _ _ _ _ _ _ _ Hg) in Hk.
+    match goal with Hg' : items_gen _ _ _ _ its ?gs' |- _ =>
+      rewrite (body_opens_at_open _ _ _ _ _ _ _ _ Hg');
       assert (Hl : List.length gs = List.length gs')
-        by (rewrite (items_gen_length _ _ _ _ _ _ _ Hg), (items_gen_length _ _ _ _ _ _ _ Hg'); reflexivity);
+        by (rewrite (items_gen_length _ _ _ _ _ _ Hg), (items_gen_length _ _ _ _ _ _ Hg'); reflexivity);
       pose proof (body_shape_dropn (List.length gs) _ _ Hsx) as Hsx0;
       rewrite gm_dropn_gens_append in Hsx0; rewrite Hl, gm_dropn_gens_append in Hsx0 end.
     destruct k as [| k]; cbn in Hk |- *; [| eauto ].
@@ -714,17 +714,17 @@ Lemma sub_eq_unit_self : forall Θ Ξ Γ Δu Φ Φx lv Γ0 σ σ',
     Θ ⍮ Ξ ⍮ tele_sub Δu σ ++ Γ0 ⊢ˢ sb_qn (length Δu) σ ≈ sb_qn (length Δu) σ' : Δu ++ Γ ->
     Θ ⍮ Ξ ⍮ Γ0 ⊢ˣ tele_sub Δu σ ≈ tele_sub Δu σ' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δu ≈ body_ctx Φx ++ Δu ->
-    (forall y Φ0 b pv A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) -> gm_fill Φ0 = Some σf ->
+    (forall y Φ0 E A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> gm_fill Φ0 = Some σf ->
         Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ A[σf] : Typeω@(lv y)) ->
-    (forall y Φ0 b pv A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) -> gm_fill Φ0 = Some σf ->
+    (forall y Φ0 E A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> gm_fill Φ0 = Some σf ->
         forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ A[σf][τ] ≈ A[σf][τ'] : Typeω@(lv y)[τ]) ->
-    (forall y Φ0 b pv A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) -> gm_fill Φ0 = Some σf ->
+    (forall y Φ0 E A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> gm_fill Φ0 = Some σf ->
         Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ M[σf] : A[σf]) ->
-    (forall y Φ0 b pv A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) -> gm_fill Φ0 = Some σf ->
+    (forall y Φ0 E A M σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) -> gm_fill Φ0 = Some σf ->
         forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ M[σf][τ] ≈ M[σf][τ'] : A[σf][τ]) ->
-    (forall y Φ0 pv U σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) -> gm_fill Φ0 = Some σf ->
+    (forall y Φ0 E U σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U -> gm_fill Φ0 = Some σf ->
         Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ᵘ U[σf]ᵘ ≈ U[σf]ᵘ) ->
-    (forall y Φ0 pv U σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) -> gm_fill Φ0 = Some σf ->
+    (forall y Φ0 E U σf, gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U -> gm_fill Φ0 = Some σf ->
         forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ᵘ U[σf]ᵘ[τ]ᵘ ≈ U[σf]ᵘ[τ']ᵘ) ->
     (forall k Ψ H, List.nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> Θ ⍮ Ξ ⍮ Ψ ++ Δu ++ Γ ⊢ᵐ H ≈ H) ->
     (forall k Φ0 H σf, List.nth_error (body_opens_at Φ Φx) k = Some (Φ0, H) -> gm_fill Φ0 = Some σf ->
@@ -753,23 +753,27 @@ Proof.
                         | apply sub_mod_compat_ext; eauto using wf_sub_mod_compat ].
   - eapply body_xp_sub; [ exact Hc | exact Hb | apply ctx_scoped_app_iff; split; assumption | rewrite List.length_app; exact HΦs
                         | apply sub_mod_compat_ext; eauto using wf_sub_mod_compat ].
-  - intros * Hp Hp' Hf0 Hf0'.
-    pose proof (Hsame _ _ _ Hp Hp') as E; injection E as <- -> -> -> ->; rewrite Hf0 in Hf0'; injection Hf0' as <-.
-    pose proof (IHA _ _ _ _ _ _ _ Hp Hf0 _ _ _ L) as HAσ; cbn in HAσ.
-    pose proof (sub_preserves_typ _ _ _ _ _ _ _ (HA _ _ _ _ _ _ _ Hp Hf0) (wf_sub_eq_left _ _ _ _ _ _ L)) as HAl.
+  - intros * Hp HE Hp' HE' Hf0 Hf0'.
+    pose proof (Hsame _ _ _ Hp Hp') as Heq; injection Heq as <- <-; rewrite HE in HE'; injection HE' as <- <-.
+    rewrite Hf0 in Hf0'; injection Hf0' as <-.
+    pose proof (IHA _ _ _ _ _ _ Hp HE Hf0 _ _ _ L) as HAσ; cbn in HAσ.
+    pose proof (sub_preserves_typ _ _ _ _ _ _ _ (HA _ _ _ _ _ _ Hp HE Hf0) (wf_sub_eq_left _ _ _ _ _ _ L)) as HAl.
     split; [ exact HAl | split; [ exact HAσ | split ] ].
-    + exact (sub_preserves_exp _ _ _ _ _ _ _ (HM _ _ _ _ _ _ _ Hp Hf0) (wf_sub_eq_left _ _ _ _ _ _ L)).
-    + exact (IHM _ _ _ _ _ _ _ Hp Hf0 _ _ _ L).
-  - intros * Hp Hp' Hf0 Hf0'.
-    pose proof (Hsame _ _ _ Hp Hp') as E; injection E as <- -> ->; rewrite Hf0 in Hf0'; injection Hf0' as <-.
-    exact (IHU _ _ _ _ _ Hp Hf0 _ _ _ L).
-  - intros * Hp Hp' Hf0 Hf0'.
-    pose proof (Hsame _ _ _ Hp Hp') as E; injection E as <- -> -> -> ->; rewrite Hf0 in Hf0'; injection Hf0' as <-.
-    split; [ exact (sub_preserves_typ _ _ _ _ _ _ _ (HA _ _ _ _ _ _ _ Hp Hf0) R)
-           | exact (sub_preserves_exp _ _ _ _ _ _ _ (HM _ _ _ _ _ _ _ Hp Hf0) R) ].
-  - intros * Hp Hp' Hf0 Hf0'.
-    pose proof (Hsame _ _ _ Hp Hp') as E; injection E as <- -> ->; rewrite Hf0 in Hf0'; injection Hf0' as <-.
-    exact (sub_preserves_unit _ _ _ _ _ _ _ (HU _ _ _ _ _ Hp Hf0) R).
+    + exact (sub_preserves_exp _ _ _ _ _ _ _ (HM _ _ _ _ _ _ Hp HE Hf0) (wf_sub_eq_left _ _ _ _ _ _ L)).
+    + exact (IHM _ _ _ _ _ _ Hp HE Hf0 _ _ _ L).
+  - intros * Hp HE Hp' HE' Hf0 Hf0'.
+    pose proof (Hsame _ _ _ Hp Hp') as Heq; injection Heq as <- <-; rewrite HE in HE'; injection HE' as <-.
+    rewrite Hf0 in Hf0'; injection Hf0' as <-.
+    exact (IHU _ _ _ _ _ Hp HE Hf0 _ _ _ L).
+  - intros * Hp HE Hp' HE' Hf0 Hf0'.
+    pose proof (Hsame _ _ _ Hp Hp') as Heq; injection Heq as <- <-; rewrite HE in HE'; injection HE' as <- <-.
+    rewrite Hf0 in Hf0'; injection Hf0' as <-.
+    split; [ exact (sub_preserves_typ _ _ _ _ _ _ _ (HA _ _ _ _ _ _ Hp HE Hf0) R)
+           | exact (sub_preserves_exp _ _ _ _ _ _ _ (HM _ _ _ _ _ _ Hp HE Hf0) R) ].
+  - intros * Hp HE Hp' HE' Hf0 Hf0'.
+    pose proof (Hsame _ _ _ Hp Hp') as Heq; injection Heq as <- <-; rewrite HE in HE'; injection HE' as <-.
+    rewrite Hf0 in Hf0'; injection Hf0' as <-.
+    exact (sub_preserves_unit _ _ _ _ _ _ _ (HU _ _ _ _ _ Hp HE Hf0) R).
   - intros k Ψ H Ek.
     destruct (body_opens_prefix _ _ _ _ _ Hb _ _ _ Ek) as [Ψr HΨr].
     assert (HΔ0 : ⊢ Θ ⍮ Ξ ⍮ tele_sub (Ψ ++ Δu) σ ++ Γ0).
@@ -841,6 +845,30 @@ Proof.
   eapply wf_unit_eq_trans; [ exact HL | apply Hflat, (wf_sub_eq_right _ _ _ _ _ _ Hσ) ].
 Qed.
 
+(** Entries of the same shape both have a term part, or neither. *)
+Lemma entry_shape_tm : forall E E' A M, entry_shape E E' -> entry_tm E = Some (A, M) ->
+    exists A' M', entry_tm E' = Some (A', M').
+Proof.
+  intros [? ? ? [] | | | | ] [? ? ? [] | | | | ] * HS HE; cbn in *; try contradiction; try discriminate; eauto.
+Qed.
+
+Lemma entry_shape_tm_r : forall E E' A' M', entry_shape E E' -> entry_tm E' = Some (A', M') ->
+    exists A M, entry_tm E = Some (A, M).
+Proof.
+  intros [? ? ? [] | | | | ] [? ? ? [] | | | | ] * HS HE; cbn in *; try contradiction; try discriminate; eauto.
+Qed.
+
+(** Entries of the same shape both have a module part, or neither. *)
+Lemma entry_shape_unit : forall E E' U, entry_shape E E' -> entry_unit E = Some U -> exists U', entry_unit E' = Some U'.
+Proof.
+  intros [? ? ? [] | | | | ] [? ? ? [] | | | | ] * HS HE; cbn in *; try contradiction; try discriminate; eauto.
+Qed.
+
+Lemma entry_shape_unit_r : forall E E' U', entry_shape E E' -> entry_unit E' = Some U' -> exists U, entry_unit E = Some U.
+Proof.
+  intros [? ? ? [] | | | | ] [? ? ? [] | | | | ] * HS HE; cbn in *; try contradiction; try discriminate; eauto.
+Qed.
+
 (** Both sides of a body unit, from the rule's premises. *)
 Lemma sub_eq_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' lv Γ0 σ σ',
     body_xp Θ Ξ (Δu ++ Γ) Φ Φx ->
@@ -853,75 +881,75 @@ Lemma sub_eq_unit_body_case : forall Θ Ξ Γ Δu Δu' Φ Φ' Φx Φx' lv Γ0 σ
                         Θ ⍮ Ξ ⍮ Γ1 ⊢ˣ tele_sub Δu' τ ≈ tele_sub Δu' τ')) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx ++ Δu ≈ body_ctx Φx ++ Δu ->
     Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φx' ++ Δu' ≈ body_ctx Φx' ++ Δu' ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ A[σf] : Typeω@(lv y)) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ A[σf][τ] ≈ A[σf][τ'] : Typeω@(lv y)[τ]) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ A[σf] ≈ A'[σf'] : Typeω@(lv y)) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ M[σf] : A[σf]) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ M[σf][τ] ≈ M[σf][τ'] : A[σf][τ]) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ M[σf] ≈ M'[σf'] : A[σf]) ->
-    (forall y Φ0 pv U Φ0' pv' U' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+    (forall y Φ0 E U Φ0' E' U' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         Θ ⍮ Ξ ⍮ Δu ++ Γ ⊢ᵘ U[σf]ᵘ ≈ U'[σf']ᵘ) ->
-    (forall y Φ0 pv U Φ0' pv' U' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+    (forall y Φ0 E U Φ0' E' U' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu ++ Γ ->
           Θ ⍮ Ξ ⍮ Γ1 ⊢ᵘ U[σf]ᵘ[τ]ᵘ ≈ U[σf]ᵘ[τ']ᵘ /\ Θ ⍮ Ξ ⍮ Γ1 ⊢ᵘ U'[σf']ᵘ[τ]ᵘ ≈ U'[σf']ᵘ[τ']ᵘ) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         Θ ⍮ Ξ ⍮ Δu' ++ Γ ⊢ A'[σf'] : Typeω@(lv y)) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu' ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ A'[σf'][τ] ≈ A'[σf'][τ'] : Typeω@(lv y)[τ]) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         Θ ⍮ Ξ ⍮ Δu' ++ Γ ⊢ M'[σf'] : A'[σf']) ->
-    (forall y Φ0 b pv A M Φ0' b' pv' A' M' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+    (forall y Φ0 E A M Φ0' E' A' M' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu' ++ Γ -> Θ ⍮ Ξ ⍮ Γ1 ⊢ M'[σf'][τ] ≈ M'[σf'][τ'] : A'[σf'][τ]) ->
-    (forall y Φ0 pv U Φ0' pv' U' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+    (forall y Φ0 E U Φ0' E' U' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         Θ ⍮ Ξ ⍮ Δu' ++ Γ ⊢ᵘ U'[σf']ᵘ ≈ U'[σf']ᵘ) ->
-    (forall y Φ0 pv U Φ0' pv' U' σf σf',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+    (forall y Φ0 E U Φ0' E' U' σf σf',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
         gm_fill Φ0 = Some σf -> gm_fill Φ0' = Some σf' ->
         forall Γ1 τ τ', Θ ⍮ Ξ ⍮ Γ1 ⊢ˢ τ ≈ τ' : Δu' ++ Γ ->
           Θ ⍮ Ξ ⍮ Γ1 ⊢ᵘ U'[σf']ᵘ[τ]ᵘ ≈ U'[σf']ᵘ[τ']ᵘ /\ Θ ⍮ Ξ ⍮ Γ1 ⊢ᵘ U'[σf']ᵘ[τ]ᵘ ≈ U'[σf']ᵘ[τ']ᵘ) ->
@@ -992,36 +1020,36 @@ Proof.
                              | exact Ha | exact Hs1 | exact Hsx1 | exact Hn | eapply wf_unit_eq_trans; [ exact HU0 | apply wf_unit_eq_sym; exact HU0 ] ].
     7: intros k Φ0 H σf Ek Hf0; destruct (Hopair _ _ _ _ Ek Hf0) as (Φ0' & H' & σf' & Ek' & Hf0');
          intros; eapply proj1; eapply IHOO; eassumption.
-    + intros y Φ0 b pv A M σf Hp Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HE & Hf0');
-        destruct E' as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply HA; eassumption.
-    + intros y Φ0 b pv A M σf Hp Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HE & Hf0');
-        destruct E' as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply IHA; eassumption.
-    + intros y Φ0 b pv A M σf Hp Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HE & Hf0');
-        destruct E' as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply HM; eassumption.
-    + intros y Φ0 b pv A M σf Hp Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HE & Hf0');
-        destruct E' as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply IHM; eassumption.
-    + intros y Φ0 pv U σf Hp Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HE & Hf0');
-        destruct E' as [? ? ? [] | ? ? | | | ]; cbn in HE; try contradiction;
+    + intros y Φ0 E A M σf Hp HE Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HS & Hf0');
+        destruct (entry_shape_tm _ _ _ _ HS HE) as (A' & M' & HE'); eapply HA; eassumption.
+    + intros y Φ0 E A M σf Hp HE Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HS & Hf0');
+        destruct (entry_shape_tm _ _ _ _ HS HE) as (A' & M' & HE'); eapply IHA; eassumption.
+    + intros y Φ0 E A M σf Hp HE Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HS & Hf0');
+        destruct (entry_shape_tm _ _ _ _ HS HE) as (A' & M' & HE'); eapply HM; eassumption.
+    + intros y Φ0 E A M σf Hp HE Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HS & Hf0');
+        destruct (entry_shape_tm _ _ _ _ HS HE) as (A' & M' & HE'); eapply IHM; eassumption.
+    + intros y Φ0 E U σf Hp HE Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HS & Hf0');
+        destruct (entry_shape_unit _ _ _ HS HE) as (U' & HE');
         eapply wf_unit_eq_trans; [ eapply HU; eassumption | apply wf_unit_eq_sym; eapply HU; eassumption ].
-    + intros y Φ0 pv U σf Hp Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HE & Hf0');
-        destruct E' as [? ? ? [] | ? ? | | | ]; cbn in HE; try contradiction; intros; eapply proj1; eapply IHU; eassumption.
+    + intros y Φ0 E U σf Hp HE Hf0; destruct (Hpair _ _ _ Hp) as (Φ0' & E' & σf' & Hp' & HS & Hf0');
+        destruct (entry_shape_unit _ _ _ HS HE) as (U' & HE'); intros; eapply proj1; eapply IHU; eassumption.
   - eapply sub_eq_unit_self; [ exact Hb' | exact Hσ | exact L' | exact HΔσ' | exact Hx' | | | | | | | exact Ho' |
                              | exact Ha' | exact Hs2 | exact Hsx2 | rewrite <- Hnames; exact Hn
                              | eapply wf_unit_eq_trans; [ apply wf_unit_eq_sym; exact HU0 | exact HU0 ] ].
     7: intros k Φ0' H' σf' Ek' Hf0'; destruct (Hopair' _ _ _ _ Ek' Hf0') as (Φ0 & H & σf & Ek & Hf0);
          intros; eapply proj1; eapply IHOR; [ exact Ek | exact Ek' | exact Hf0 | exact Hf0' | eassumption ].
-    + intros y Φ0' b' pv' A' M' σf' Hp' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HE & Hf0);
-        destruct E as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply HAr; eassumption.
-    + intros y Φ0' b' pv' A' M' σf' Hp' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HE & Hf0);
-        destruct E as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply IHAr; eassumption.
-    + intros y Φ0' b' pv' A' M' σf' Hp' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HE & Hf0);
-        destruct E as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply HMr; eassumption.
-    + intros y Φ0' b' pv' A' M' σf' Hp' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HE & Hf0);
-        destruct E as [? ? ? [] | | | | ]; cbn in HE; try contradiction; eapply IHMr; eassumption.
-    + intros y Φ0' pv' U' σf' Hp' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HE & Hf0);
-        destruct E as [? ? ? [] | ? ? | | | ]; cbn in HE; try contradiction; eapply HUr; eassumption.
-    + intros y Φ0' pv' U' σf' Hp' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HE & Hf0);
-        destruct E as [? ? ? [] | ? ? | | | ]; cbn in HE; try contradiction; intros; eapply proj1; eapply IHUr; eassumption.
+    + intros y Φ0' E' A' M' σf' Hp' HE' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HS & Hf0);
+        destruct (entry_shape_tm_r _ _ _ _ HS HE') as (A & M & HE); eapply HAr; eassumption.
+    + intros y Φ0' E' A' M' σf' Hp' HE' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HS & Hf0);
+        destruct (entry_shape_tm_r _ _ _ _ HS HE') as (A & M & HE); eapply IHAr; eassumption.
+    + intros y Φ0' E' A' M' σf' Hp' HE' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HS & Hf0);
+        destruct (entry_shape_tm_r _ _ _ _ HS HE') as (A & M & HE); eapply HMr; eassumption.
+    + intros y Φ0' E' A' M' σf' Hp' HE' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HS & Hf0);
+        destruct (entry_shape_tm_r _ _ _ _ HS HE') as (A & M & HE); eapply IHMr; eassumption.
+    + intros y Φ0' E' U' σf' Hp' HE' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HS & Hf0);
+        destruct (entry_shape_unit_r _ _ _ HS HE') as (U & HE); eapply HUr; eassumption.
+    + intros y Φ0' E' U' σf' Hp' HE' Hf0'; destruct (Hpair' _ _ _ Hp') as (Φ0 & E & σf & Hp & HS & Hf0);
+        destruct (entry_shape_unit_r _ _ _ HS HE') as (U & HE); intros; eapply proj1; eapply IHUr; eassumption.
 Qed.
 
 (** A literal given its outermost parameter, both sides moved. *)

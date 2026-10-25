@@ -128,6 +128,32 @@ Proof.
   destruct Hρ as [? _]; assumption.
 Qed.
 
+(** A definition with a module part refines an assumption entry of the same
+    type: its environments' heads are related at the type's values. *)
+Lemma per_ctx_env_dm_forget : forall {Γ A} {i : nat} {M U R R'},
+    Γ ⊨ A : Typeω@i ->
+    EF Γ ▸ₘ A ≔ M ‖ U ≈ Γ ▸ₘ A ≔ M ‖ U ∈ per_ctx_env ↘ R ->
+    EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ R' ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> Dom ρ ≈ ρ' ∈ R'.
+Proof.
+  intros * HA HR HR' ρ ρ' Hρ.
+  pose proof (rel_exp_of_typ_inversion_simple HA) as [env_relΓ [HΓ HAs]].
+  pose proof (per_ctx_env_extend HΓ HAs) as Ha.
+  assert (E2 : R' <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+  apply E2.
+  inversion HR; subst.
+  match goal with
+  | HE : R <~> _, Ht : per_ctx_env ?T Γ Γ,
+    HT : forall ρ ρ' (e : ?T ρ ρ'), PER.Definitions.rel_typ _ A ρ A ρ' _ |- _ =>
+      let e := fresh "e" in let Hh := fresh "Hh" in let ET := fresh "ET" in
+      apply HE in Hρ as [e Hh _ _ _ _ _ _ _ _];
+      assert (ET : T <~> env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption);
+      destruct (HT _ _ e) as [a a' Ha0 Ha0' HR0];
+      split; [ apply ET; exact e |];
+      apply (per_head_iff Ha0 Ha0' HR0); exact Hh
+  end.
+Qed.
+
 (** Definition entries with related bodies relate the same environments. *)
 Lemma per_ctx_env_def_conv : forall {Γ A} {i : nat} {M M' R R'},
     Γ ⊨ A : Typeω@i ->
@@ -154,6 +180,43 @@ Proof.
   constructor; [ exact Hρ | |].
   - exact (def_tie_resp _ HAat HMat Hρρ Ht).
   - exact (def_tie_resp _ HAat HMat Hρ'ρ' Ht').
+Qed.
+
+(** A definition with a module part refines the definition entry of its
+    term part: its environments' heads are tied to the term's values. *)
+Lemma per_ctx_env_dm_forget_def : forall {Γ A} {i : nat} {M U R R'},
+    Γ ⊨ A : Typeω@i ->
+    Γ ⊨ M : A ->
+    EF Γ ▸ₘ A ≔ M ‖ U ≈ Γ ▸ₘ A ≔ M ‖ U ∈ per_ctx_env ↘ R ->
+    EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ R' ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> Dom ρ ≈ ρ' ∈ R'.
+Proof.
+  intros * HA HM HR HR' ρ ρ' Hρ.
+  pose proof (rel_exp_of_typ_inversion_simple HA) as [env_relΓ [HΓ HAs]].
+  pose proof (per_ctx_env_of_def HΓ HA HM) as Hd.
+  assert (E1 : R' <~> per_env_extend_def A M env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (HPER : PER env_relΓ) by (eapply per_env_PER; eassumption).
+  pose proof (rel_exp_of_typ_inversion_simple_at HΓ HA) as HAat.
+  apply E1.
+  inversion HR; subst.
+  match goal with
+  | HE : R <~> _, Ht : per_ctx_env ?T Γ Γ,
+    HT : forall ρ ρ' (e : ?T ρ ρ'), PER.Definitions.rel_typ _ A ρ A ρ' _ |- _ =>
+      let e := fresh "e" in let Hh := fresh "Hh" in let ET := fresh "ET" in
+      apply HE in Hρ as [e Hh (m1 & Hm1 & Ht1) _ _ (m2 & Hm2 & Ht2) _ _ _ _];
+      assert (ET : T <~> env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption);
+      destruct (HT _ _ e) as [a a' Ha0 Ha0' HR0];
+      pose proof (per_head_iff Ha0 Ha0' HR0) as Eh;
+      assert (Hρ0 : Dom ρ↯ ≈ ρ'↯ ∈ env_relΓ) by (apply ET; exact e);
+      assert (E3 : per_head A A ρ↯ ρ↯ <~> per_head A A ρ↯ ρ'↯)
+        by (eapply (per_head_resp_simple HPER HAat); apply rel_chain_4; solve_per);
+      assert (E4 : per_head A A ρ'↯ ρ'↯ <~> per_head A A ρ↯ ρ'↯)
+        by (eapply (per_head_resp_simple HPER HAat); apply rel_chain_4; solve_per);
+      constructor;
+      [ split; [ exact Hρ0 | apply Eh; exact Hh ]
+      | exists m1; split; [ exact Hm1 | apply E3, Eh; exact Ht1 ]
+      | exists m2; split; [ exact Hm2 | apply E4, Eh; exact Ht2 ] ]
+  end.
 Qed.
 
 Lemma rel_ctx_sub_empty :

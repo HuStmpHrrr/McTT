@@ -76,6 +76,9 @@ Proof.
       match goal with Hu : udenote _ _ _ _ _ _ |- _ => pose proof (udenote_is_mod _ _ _ _ _ _ Hu) as Hmm end.
       cbn in Hrd; destruct (gm_fill Φ'); cbn in Hrd; [| discriminate ].
       injection Hrd as Heq; destruct Re; cbn in Hmm, Heq; try contradiction; discriminate.
+    + (* a definition with a module part reads as one, with both parts *)
+      inversion Hed; subst; cbn in Hrd.
+      destruct (gm_fill Φ'); cbn in Hrd; discriminate.
   - destruct (gm_prefix_upto Φ x) as [[| Φ0 y E0 | ? ? ?] |] eqn:Hp; try discriminate.
     injection He as <- <- <-.
     pose proof (gm_prefix_entry _ _ _ Hp) as (? & ? & [= <- -> <-] & _).
@@ -202,6 +205,20 @@ Lemma glu_ext_eq_mod :
      ⊩ Θ ⍮ Ξ ⍮ Γ ).
 Proof. glu_ctx_case. Qed.
 
+(** A definition with a module part: as a definition and as a module slot. *)
+Lemma glu_ext_eq_dm :
+  `( ⊩ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊩ A : Typeω@i ->
+     ⊩ Θ ⍮ Ξ ⍮ Ψ ++ Γ ->
+     Θ ⍮ Ξ ⍮ Ψ ++ Γ ⊩ M : A ->
+     ⊩ Θ ⍮ Ξ ⍮ Ψ ++ Γ ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊩ A' : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Ψ' ++ Γ ⊩ M' : A' ->
+     ⊩ Θ ⍮ Ξ ⍮ Ψ ++ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Ψ' ++ Γ ->
+     ⊩ Θ ⍮ Ξ ⍮ Γ ).
+Proof. glu_ctx_case. Qed.
+
 (** *** Units *)
 
 Lemma glu_unit_eq_body :
@@ -210,44 +227,44 @@ Lemma glu_unit_eq_body :
      ⊩ Θ ⍮ Ξ ⍮ Γ ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ->
      ⊩ Θ ⍮ Ξ ⍮ Γ ->
-     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ ++ Γ ⊩ A[σ] : Typeω@(lv y)) ->
-     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         ⊩ Θ ⍮ Ξ ⍮ Δ ++ Γ) ->
-     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ ++ Γ ⊩ M[σ] : A[σ]) ->
-     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         ⊩ Θ ⍮ Ξ ⍮ Δ ++ Γ) ->
-     (forall y Φ0 pv U Φ0' pv' U' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+     (forall y Φ0 E U Φ0' E' U' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         ⊩ Θ ⍮ Ξ ⍮ Δ ++ Γ) ->
-     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊩ A'[σ'] : Typeω@(lv y)) ->
-     (forall y Φ0 b pv A M Φ0' b' pv' A' M' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_def b pv A (Some M))) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_def b' pv' A' (Some M'))) ->
+     (forall y Φ0 E A M Φ0' E' A' M' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_tm E = Some (A, M) ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_tm E' = Some (A', M') ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         Θ ⍮ Ξ ⍮ Δ' ++ Γ ⊩ M'[σ'] : A'[σ']) ->
-     (forall y Φ0 pv U Φ0' pv' U' σ σ',
-        gm_prefix_upto Φx y = Some (gm_ext Φ0 y (ge_mod pv U)) ->
-        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y (ge_mod pv' U')) ->
+     (forall y Φ0 E U Φ0' E' U' σ σ',
+        gm_prefix_upto Φx y = Some (gm_ext Φ0 y E) -> entry_unit E = Some U ->
+        gm_prefix_upto Φx' y = Some (gm_ext Φ0' y E') -> entry_unit E' = Some U' ->
         gm_fill Φ0 = Some σ -> gm_fill Φ0' = Some σ' ->
         ⊩ Θ ⍮ Ξ ⍮ Δ' ++ Γ) ->
      (forall k Ψ H, nth_error (body_opens Φ Φx) k = Some (Ψ, H) -> ⊩ Θ ⍮ Ξ ⍮ Ψ ++ Δ ++ Γ) ->
