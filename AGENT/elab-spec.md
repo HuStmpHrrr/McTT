@@ -173,5 +173,12 @@ Main.M.id $ #3`.  In `j`, `M` is closed, so `M` in module position is
 One `iff` per function: `lookup_iff`, `ihead_iff` (the head of an open
 target), `args_iff`/`target_iff` (open targets, computed without building
 the object, so that the elaborator's local bodies stay structural),
-`objects_iff` (by `Cst.cst_mut_ind`), `commands_iff` (by `Cst.cst_mut_ind`, motive `md = md_where body
--> Pcmds body`), `lead_iff`, `elaborate_core_iff`.
+`objects_iff` (by `Cst.cst_ind`), `commands_iff` (by `Cst.cst_ind`, motive `md = md_where body
+-> Pcmds body`), `lead_iff`, `elaborate_core_iff`.  `Cst.cst_ind` is the
+generated mutual principle (`Scheme … Combined Scheme`): with `All` schemes
+for `list`, `prod` and `option` registered in `Core/Base.v`, a list of
+pairs carries `list_all (prod_all …)` of the motive, which `list_all_snd`,
+`list_all_Forall` and `option_all_match` (`Core/Base.v`) and
+`blocks_all_Forall` (the blocks of an eliminator) turn into the `Forall`
+forms the `*_iff` lemmas take.  Its cases bind each argument followed by
+its hypothesis.

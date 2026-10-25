@@ -37,7 +37,6 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %type <Cst.obj> obj app_obj atomic_obj
 %type <string * Cst.obj> param
 %type <list (string * Cst.obj)> params params_opt
-%type <string -> Cst.obj -> Cst.obj -> Cst.obj> fnbinder
 %type <Cst.decl> let_defn
 %type <list Cst.decl> let_defns
 %type <Cst.mods> mods
@@ -123,9 +122,10 @@ let cmd :=
       { [Cst.mutual_cmd m (snd g) (List.rev ps) ((snd x, t, List.rev cs) :: List.rev ms)] }
   (* [mutual def (Δ) f (ys) (z : Z) : A := | c xs ⇒ B … with g … end]: the
      common parameters, then the functions, with the modifiers of a
-     definition. *)
-  | m = mods; MUTUAL; DEF; ps = params_opt; fs = mfuns; END;
-      { [Cst.c_mdef m (List.rev ps) (List.rev fs)] }
+     definition.  Any definition keyword may follow [mutual], and decides
+     which modifiers it takes, as for a single definition. *)
+  | m = mods; MUTUAL; k = dkw; ps = params_opt; fs = mfuns; END;
+      { [Cst.mdef_cmd k m (List.rev ps) (List.rev fs)] }
   (* [inductive x (ps) := X Ms]: an inductive alias, the inductive type [X]
      at the arguments [Ms], under the parameters. *)
   | INDUCTIVE; x = VAR; ps = params_opt; ":="; e = obj;
@@ -297,12 +297,11 @@ let qpath :=
   | ~ = path; { (@nil string, path_list path) }
   | ~ = upath; ~ = mpath_opt; { (upath, mpath_opt) }
 
-let fnbinder :=
-  | PI; { Cst.pi }
-  | LAMBDA; { Cst.fn }
-
 let obj :=
-  | ~ = fnbinder; ~ = params; "->"; ~ = obj; { fold_params fnbinder params obj }
+  (* The two binders are separate productions, so that an error after
+     either one is reported in a state of its own, naming it. *)
+  | PI; ~ = params; "->"; ~ = obj; { fold_params Cst.pi params obj }
+  | LAMBDA; ~ = params; "->"; ~ = obj; { fold_params Cst.fn params obj }
   | ~ = app_obj; <>
 
   (* The level operations take atomic arguments, so that [maxl u v] is their

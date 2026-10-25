@@ -258,9 +258,9 @@ Line estimates are for the current core; the core is being refactored on
 ## 6. Proof shape
 
 `ElabCorrect.v`: `lookup_iff` (first match ↔ `bound`), `den_to_*_iff`,
-`objects_iff` by `Cst.cst_mut_ind` (one generic tactic `iff_case` closes all
+`objects_iff` by `Cst.cst_ind` (one generic tactic `iff_case` closes all
 homomorphic cases), `itarget_iff`/`ibinds_iff`/`import_iff`, `commands_iff` by
-`Cst.cst_mut_ind` again with the motive `md = md_where body -> Pcmds body`,
+`Cst.cst_ind` again with the motive `md = md_where body -> Pcmds body`,
 `imports_iff`, `elaborate_core_iff`. The relational spec is kept: it is now
 small enough that a declarative reading costs little, and it states the
 scoping rule (`bound`) independently of the search.

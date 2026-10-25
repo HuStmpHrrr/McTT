@@ -29,10 +29,10 @@ From Mctt.Core.Syntactic Require Export Syntax.
     semantic [λ] of a member of a module that is not yet applied to all its
     parameters.
 
-    The uniform parameters of a stuck eliminator are an [option] of values,
-    for which no [All] scheme is registered: [domain_ind] carries no
-    hypothesis about them. *)
-#[warning="-register-all"]
+    The atoms of a flat level and the fields of a record value are lists
+    of tuples; [list], [prod] and [option] have [All] schemes registered
+    ([Core.Base]), so [domain_ind] carries the hypotheses about the values
+    they hold. *)
 Inductive domain : Set :=
 (** [d_pi a ρ B]: a [Π] with domain [a], its codomain [B] a closure in [ρ] *)
 | d_pi : domain -> list dentry -> exp -> domain

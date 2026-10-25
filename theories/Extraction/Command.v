@@ -179,6 +179,14 @@ Inductive run_error : Set :=
 | re_record_field_unknown : qname -> string -> run_error
 (** A record value without a field of its record *)
 | re_record_field_missing : qname -> string -> run_error
+(** A field of a record value whose value is not of the field's type:
+    [re_record_field Ξ ox Γ p f M U], the field [f] of the record [p], its
+    value [M], and the type [U] it is due at, the field's declared type at
+    the record's parameters and the values of the fields before it, in
+    normal form; [M] and [U] in the context [Γ] the stack's telescope is
+    extended by, innermost entry first, in the command declaring [ox]
+    ([field_value_blame]). *)
+| re_record_field : gstack -> option string -> ctx -> qname -> string -> exp -> typ -> run_error
 (** A private entry of a local body, by the chain of submodules from the
     local module, reached from outside it. *)
 | re_private_local : list string -> string -> run_error
@@ -731,6 +739,92 @@ Section ValueBlame.
     | _ => None
     end.
 End ValueBlame.
+
+(** Where a term is rejected, a record value one of whose fields is not of
+    its type: the first such field, in order, each checked against its
+    declared type at the record's parameters and the values of the fields
+    before it, as the tuple case of the checker checks it
+    ([field_checks]).  The record value is reached through the [λ]s and
+    the annotated [let]s around it, in the context they extend; a field
+    whose value is itself a record value is searched first, so the error
+    names the innermost field.  The fields are checked with the checker
+    only once the whole term has been rejected, so this only chooses the
+    message. *)
+(** A context extended by a definition at the type its definiens has. *)
+Lemma wf_ctx_extend_def_typed : forall Θ Ξ Γ A N, Θ ⍮ Ξ ⍮ Γ ⊢ N : A -> ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ N.
+Proof. intros * HN; gen_presups; eapply wf_ctx_extend_def; eassumption. Qed.
+
+Section FieldBlame.
+  (** The lookup data of the checks ([Extraction.Lookup]), the global
+      context, and the command declaring [ox], for the printer. *)
+  Variables (FF : forall Θ Ξ, FCtx Θ Ξ) (Θ : gdeps) (Ξ : gstack) (ox : option string).
+
+  (** The term [M] in the context [Δ] the stack's telescope is extended
+      by, innermost entry first. *)
+  Fixpoint field_value_blame (Δ : ctx) (HΔ : ⊢ Θ ⍮ Ξ ⍮ (Δ ++ gs_tele Ξ)) (M : exp) {struct M} : option run_error :=
+    match M with
+    | a_fn A B =>
+        match check_typ FF Θ Ξ (Δ ++ gs_tele Ξ) HΔ A with
+        | inleft (exist _ i HA) => field_value_blame (ce_ass A :: Δ) (wf_ctx_extend _ _ _ _ _ HA) B
+        | inright _ => None
+        end
+    | a_let (b_def (Some A) N) B =>
+        match check_typ FF Θ Ξ (Δ ++ gs_tele Ξ) HΔ A with
+        | inleft (exist _ i HA) =>
+            match check_exp_typed FF Θ Ξ (Δ ++ gs_tele Ξ) HΔ A (ex_intro _ i HA) N with
+            | left HN => field_value_blame (ce_def A N :: Δ) (wf_ctx_extend_def _ _ _ _ _ _ HA HN) B
+            | right _ => None
+            end
+        | inright _ => None
+        end
+    (** An unannotated [let], at the type its definiens infers, as the
+        typed fill reads it. *)
+    | a_let (b_def None N) B =>
+        match @type_infer_at (gc_mk Θ Ξ) (FF Θ Ξ) (Δ ++ gs_tele Ξ) HΔ N (user_exp_all N) with
+        | inleft (exist _ W HN) => field_value_blame (ce_def (nf_to_exp W) N :: Δ) (wf_ctx_extend_def_typed _ _ _ _ _ HN) B
+        | inright _ => None
+        end
+    | a_tuple T fs =>
+        match record_head Θ Ξ T with
+        | Some (p, R) =>
+            (fix fields (k : nat) (fs0 : list (string * exp)) {struct fs0} : option run_error :=
+               match fs0 with
+               | nil => None
+               | (f, N) :: fs' =>
+                   match List.nth_error (record_fields R) k with
+                   | Some (_, U) =>
+                       let Uk := U[sb_of_list Id (app_args T ++ List.firstn k (List.map snd fs))] in
+                       match check_typ FF Θ Ξ (Δ ++ gs_tele Ξ) HΔ Uk with
+                       | inleft (exist _ i HU) =>
+                           match check_exp_typed FF Θ Ξ (Δ ++ gs_tele Ξ) HΔ Uk (ex_intro _ i HU) N with
+                           | left _ => fields (S k) fs'
+                           | right _ =>
+                               first_some (field_value_blame Δ HΔ N)
+                                 (fun _ =>
+                                    let (W, _) := @nbe_ty_impl Θ Ξ (FF Θ Ξ) (Δ ++ gs_tele Ξ) Uk
+                                                    (typ_nbe_ty_order Θ Ξ _ _ _ HU) in
+                                    Some (re_record_field Ξ ox Δ p f N (nf_to_exp W)))
+                           end
+                       | inright _ => None
+                       end
+                   | None => None
+                   end
+               end) 0 fs
+        | None => None
+        end
+    | _ => None
+    end.
+End FieldBlame.
+
+(** The error for a rejected definition body or [eval] term [M], of the
+    command declaring [ox]: a field of a record value in [M] whose value is
+    not of its type ([field_value_blame]), otherwise the given error. *)
+Definition field_error (FF : forall Θ Ξ, FCtx Θ Ξ) Θ Ξ (ox : option string)
+    (HΞ : ⊢ Θ ⍮ Ξ ⍮ gs_tele Ξ) (M : exp) (e : run_error) : run_error :=
+  match field_value_blame FF Θ Ξ ox nil HΞ M with
+  | Some e' => e'
+  | None => e
+  end.
 
 (** The error for a rejected term of the command declaring [ox]: a module
     where a term stands, if there is one, then a record value's module
@@ -2264,7 +2358,9 @@ Section Impl.
                             (mod_error (pre_gctx H) (Some x) (A :: nil) (re_def_typ x Ξ A)))
       | inleft (exist _ i HA) with check_exp_typed (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A (ex_intro _ i HA) M => {
         | left HM => rok (da_ok (def_ok Hfr HM))
-        | right _ => rerr (mod_error (pre_gctx H) (Some x) (M :: nil) (re_def x Ξ A M)) } } }
+        | right _ =>
+            rerr (mod_error (pre_gctx H) (Some x) (M :: nil)
+                    (field_error (fctx_cmd B) (gds_restrict D Θ) Ξ (Some x) (pre_ctx H) M (re_def x Ξ A M))) } } }
   | ch, Θ, K, D, B, Ξ, cc_def x b pv A None, H with gs_fresh_dec x Ξ => {
     | right _ => rerr (re_msg ("duplicate name " ++ x))
     | left Hfr with check_typ (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
@@ -2959,11 +3055,15 @@ Section Impl.
     | inleft (exist _ i HA)
         with check_exp_typed (fctx_cmd B) (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A (ex_intro _ i HA) M => {
       | left HM => rok (exist _ _ (eval_check_ok HM), eval_log _ _ (fctx_cmd B _ _) (pre_gctx H) M A HM)
-      | right _ => rerr (mod_error (pre_gctx H) None (M :: nil) (re_eval_check Ξ M A)) } }
+      | right _ =>
+          rerr (mod_error (pre_gctx H) None (M :: nil)
+                  (field_error (fctx_cmd B) (gds_restrict D Θ) Ξ None (pre_ctx H) M (re_eval_check Ξ M A))) } }
   | ch, L, Θ, K, D, B, Ξ, cc_eval M None, H
       with @type_infer_at (gc_mk (gds_restrict D Θ) Ξ) (fctx_cmd B (gds_restrict D Θ) Ξ) (gs_tele Ξ) (pre_ctx H) M (user_exp_all M) => {
     | inleft (exist _ A HA) => rok (exist _ _ (eval_infer_ok A HA), eval_log _ _ (fctx_cmd B _ _) (pre_gctx H) M A HA)
-    | inright _ => rerr (mod_error (pre_gctx H) None (M :: nil) (re_eval_infer Ξ M)) }
+    | inright _ =>
+        rerr (mod_error (pre_gctx H) None (M :: nil)
+                (field_error (fctx_cmd B) (gds_restrict D Θ) Ξ None (pre_ctx H) M (re_eval_infer Ξ M))) }
   | ch, L, Θ, K, D, B, Ξ, cc_builtin k p, H with builtin_step ch Θ K D B Ξ k p H => {
     | rerr e => rerr e
     | rok (exist _ B' Hp) => rok (cmd_ok Hp, log_nil) }

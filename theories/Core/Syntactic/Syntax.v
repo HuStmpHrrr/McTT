@@ -76,10 +76,10 @@ Definition dkw_mods (k : dkw) (m : mods) : (mods + string)%type :=
     A module declaration has one shape at the top level and in a [let]: its
     parameters, and its definition [mdef], a body [where cmds end] or an
     alias [:= E].  The body of a local module is the same list of commands as
-    that of a global one.  The branches of an eliminator are nested through
-    pairs, for which no [All] scheme is registered; the mutual principle
-    [cst_mut_ind] below is written by hand. *)
-#[warning="-register-all"]
+    that of a global one.  The branches of an eliminator, the parameters
+    and the fields are nested through lists of pairs, all of which have
+    [All] schemes registered ([Core.Base]): the mutual principle [cst_ind]
+    below is generated. *)
 Inductive obj : Set :=
 (** [Typeω@i], a large universe, the universe [ω²+i], written
     [Type@{ω^2}] for [i = 0] and [Type@{ω^2+i}]; [ω^2] is not a level. *)
@@ -203,271 +203,14 @@ with cmd : Set :=
     (none without [with]). *)
 | c_record : bool -> string -> list (string * obj) -> obj -> list (string * obj) -> list cmd -> cmd.
 
-(** The family is nested through [list], so its induction principle is written
-    by hand: a parameter list and a command list carry [Forall] of their
-    motives. *)
-Section cst_mut_ind.
-  Variables (Po : obj -> Prop) (Pd : decl -> Prop) (Pm : mdef -> Prop) (Pc : cmd -> Prop).
-
-  Hypotheses
-    (case_typ : forall n, Po (typ n))
-    (case_suniv : forall o, Po o -> Po (suniv o))
-    (case_level : forall n, Po (level n))
-    (case_llit : forall n, Po (llit n))
-    (case_succl : forall o, Po o -> Po (succl o))
-    (case_maxl : forall o1 o2, Po o1 -> Po o2 -> Po (maxl o1 o2))
-    (case_nat : Po nat)
-    (case_num : forall n, Po (num n))
-    (case_true_ty : Po true_ty)
-    (case_true_tm : Po true_tm)
-    (case_false_ty : Po false_ty)
-    (case_exfalso : forall o1 x o2, Po o1 -> Po o2 -> Po (exfalso o1 x o2))
-    (case_pi : forall x o1 o2, Po o1 -> Po o2 -> Po (pi x o1 o2))
-    (case_fn : forall x o1 o2, Po o1 -> Po o2 -> Po (fn x o1 o2))
-    (case_app : forall o1 o2, Po o1 -> Po o2 -> Po (app o1 o2))
-    (case_var : forall x, Po (var x))
-    (case_glob : forall fp, Po (glob fp))
-    (case_proj : forall o x, Po o -> Po (proj o x))
-    (case_letb : forall d o, Pd d -> Po o -> Po (letb d o))
-    (case_elim : forall o1 bks, Po o1 ->
-        List.Forall (fun bk => List.Forall (fun x => match snd x with Some A => Po A | None => True end) (snd (fst (fst bk))) /\
-                               Po (snd (fst bk)) /\ List.Forall (fun b => Po (snd b)) (snd bk)) bks ->
-        Po (elim o1 bks))
-    (case_tuple : forall o fs, Po o -> List.Forall (fun f => Po (snd f)) fs -> Po (tuple o fs))
-    (case_d_def : forall x oA o2, match oA with Some A => Po A | None => True end -> Po o2 -> Pd (d_def x oA o2))
-    (case_d_mod : forall x ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pd (d_mod x ps md))
-    (case_md_where : forall cs, List.Forall Pc cs -> Pm (md_where cs))
-    (case_md_alias : forall o, Po o -> Pm (md_alias o))
-    (case_c_mod : forall pv x ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pc (c_mod pv x ps md))
-    (case_c_def : forall m x o1 o2, Po o1 -> Po o2 -> Pc (c_def m x o1 o2))
-    (case_c_axiom : forall x o, Po o -> Pc (c_axiom x o))
-    (case_c_import : forall fq, Pc (c_import fq))
-    (case_c_open : forall fq ip args its, List.Forall Po args -> Pc (c_open fq ip args its))
-    (case_c_error : forall e, Pc (c_error e))
-    (case_c_eval : forall o oA, Po o -> match oA with Some A => Po A | None => True end -> Pc (c_eval o oA))
-    (case_c_ind : forall pv wr ps ms, List.Forall (fun p => Po (snd p)) ps ->
-        List.Forall (fun m => Po (snd (fst m)) /\ List.Forall (fun c => List.Forall (fun p => Po (snd p)) (snd c)) (snd m)) ms ->
-        Pc (c_ind pv wr ps ms))
-    (case_c_mdef : forall m ps fs, List.Forall (fun p => Po (snd p)) ps ->
-        List.Forall (fun f => List.Forall (fun p => Po (snd p)) (snd (fst (fst f))) /\ Po (snd (fst f)) /\
-                              List.Forall (fun b => Po (snd b)) (snd f)) fs ->
-        Pc (c_mdef m ps fs))
-    (case_c_builtin : forall k o, Po o -> Pc (c_builtin k o))
-    (case_c_ind_alias : forall pv x ps o, List.Forall (fun p => Po (snd p)) ps -> Po o -> Pc (c_ind_alias pv x ps o))
-    (case_c_record_alias : forall pv x ps o, List.Forall (fun p => Po (snd p)) ps -> Po o -> Pc (c_record_alias pv x ps o))
-    (case_c_record : forall pv x ps o fs cs, List.Forall (fun p => Po (snd p)) ps -> Po o ->
-        List.Forall (fun f => Po (snd f)) fs -> List.Forall Pc cs -> Pc (c_record pv x ps o fs cs)).
-
-  Fixpoint obj_mut (o : obj) : Po o :=
-    match o with
-    | typ n => case_typ n
-    | suniv o => case_suniv o (obj_mut o)
-    | level n => case_level n
-    | llit n => case_llit n
-    | succl o => case_succl o (obj_mut o)
-    | maxl o1 o2 => case_maxl o1 o2 (obj_mut o1) (obj_mut o2)
-    | nat => case_nat
-    | num n => case_num n
-    | true_ty => case_true_ty
-    | true_tm => case_true_tm
-    | false_ty => case_false_ty
-    | exfalso o1 x o2 => case_exfalso o1 x o2 (obj_mut o1) (obj_mut o2)
-    | pi x o1 o2 => case_pi x o1 o2 (obj_mut o1) (obj_mut o2)
-    | fn x o1 o2 => case_fn x o1 o2 (obj_mut o1) (obj_mut o2)
-    | app o1 o2 => case_app o1 o2 (obj_mut o1) (obj_mut o2)
-    | var x => case_var x
-    | glob fp => case_glob fp
-    | proj o x => case_proj o x (obj_mut o)
-    | letb d o => case_letb d o (decl_mut d) (obj_mut o)
-    | elim o1 bks =>
-        case_elim o1 bks (obj_mut o1)
-          ((fix blocks (bks : list (bool * list (string * option obj) * obj * list (string * list string * obj)))
-              : List.Forall (fun bk => List.Forall (fun x => match snd x with Some A => Po A | None => True end) (snd (fst (fst bk))) /\
-                                       Po (snd (fst bk)) /\ List.Forall (fun b => Po (snd b)) (snd bk)) bks :=
-              match bks with
-              | nil => List.Forall_nil _
-              | bk :: bks' =>
-                  List.Forall_cons bk
-                    (conj ((fix binders (xs : list (string * option obj))
-                              : List.Forall (fun x => match snd x with Some A => Po A | None => True end) xs :=
-                              match xs with
-                              | nil => List.Forall_nil _
-                              | x :: xs' =>
-                                  List.Forall_cons x
-                                    (match snd x as oA return match oA with Some A => Po A | None => True end with
-                                     | Some A => obj_mut A
-                                     | None => I
-                                     end) (binders xs')
-                              end) (snd (fst (fst bk))))
-                       (conj (obj_mut (snd (fst bk)))
-                          ((fix go (bs : list (string * list string * obj)) : List.Forall (fun b => Po (snd b)) bs :=
-                              match bs with
-                              | nil => List.Forall_nil _
-                              | b :: bs' => List.Forall_cons b (obj_mut (snd b)) (go bs')
-                              end) (snd bk))))
-                    (blocks bks')
-              end) bks)
-    | tuple o fs =>
-        case_tuple o fs (obj_mut o)
-          ((fix go (fs : list (string * obj)) : List.Forall (fun f => Po (snd f)) fs :=
-              match fs with
-              | nil => List.Forall_nil _
-              | f :: fs' => List.Forall_cons f (obj_mut (snd f)) (go fs')
-              end) fs)
-    end
-  with decl_mut (d : decl) : Pd d :=
-    match d with
-    | d_def x oA o2 =>
-        case_d_def x oA o2
-          (match oA as oA0 return match oA0 with Some A => Po A | None => True end with
-           | Some A' => obj_mut A'
-           | None => I
-           end)
-          (obj_mut o2)
-    | d_mod x ps md =>
-        case_d_mod x ps md
-          ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
-              match ps with
-              | nil => List.Forall_nil _
-              | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
-              end) ps)
-          (mdef_mut md)
-    end
-  with mdef_mut (md : mdef) : Pm md :=
-    match md with
-    | md_where cs =>
-        case_md_where cs
-          ((fix go (cs : list cmd) : List.Forall Pc cs :=
-              match cs with
-              | nil => List.Forall_nil _
-              | c :: cs' => List.Forall_cons c (cmd_mut c) (go cs')
-              end) cs)
-    | md_alias o => case_md_alias o (obj_mut o)
-    end
-  with cmd_mut (c : cmd) : Pc c :=
-    match c with
-    | c_mod pv x ps md =>
-        case_c_mod pv x ps md
-          ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
-              match ps with
-              | nil => List.Forall_nil _
-              | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
-              end) ps)
-          (mdef_mut md)
-    | c_def m x o1 o2 => case_c_def m x o1 o2 (obj_mut o1) (obj_mut o2)
-    | c_axiom x o => case_c_axiom x o (obj_mut o)
-    | c_import fq => case_c_import fq
-    | c_open fq ip args its =>
-        case_c_open fq ip args its
-          ((fix go (os : list obj) : List.Forall Po os :=
-              match os with
-              | nil => List.Forall_nil _
-              | o :: os' => List.Forall_cons o (obj_mut o) (go os')
-              end) args)
-    | c_error e => case_c_error e
-    | c_eval o oA =>
-        case_c_eval o oA (obj_mut o)
-          (match oA as oA0 return match oA0 with Some A => Po A | None => True end with
-           | Some A' => obj_mut A'
-           | None => I
-           end)
-    | c_ind pv wr ps ms =>
-        case_c_ind pv wr ps ms
-          ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
-              match ps with
-              | nil => List.Forall_nil _
-              | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
-              end) ps)
-          ((fix members (ms : list (string * obj * list (string * list (string * obj))))
-              : List.Forall (fun m => Po (snd (fst m)) /\
-                                      List.Forall (fun c => List.Forall (fun p => Po (snd p)) (snd c)) (snd m)) ms :=
-              match ms with
-              | nil => List.Forall_nil _
-              | m :: ms' =>
-                  List.Forall_cons m
-                    (conj (obj_mut (snd (fst m)))
-                       ((fix gos (cs : list (string * list (string * obj)))
-                           : List.Forall (fun c => List.Forall (fun p => Po (snd p)) (snd c)) cs :=
-                           match cs with
-                           | nil => List.Forall_nil _
-                           | c :: cs' =>
-                               List.Forall_cons c
-                                 ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
-                                     match ps with
-                                     | nil => List.Forall_nil _
-                                     | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
-                                     end) (snd c))
-                                 (gos cs')
-                           end) (snd m)))
-                    (members ms')
-              end) ms)
-    | c_mdef m ps fs =>
-        case_c_mdef m ps fs
-          ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
-              match ps with
-              | nil => List.Forall_nil _
-              | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
-              end) ps)
-          ((fix funs (fs : list (string * list (string * obj) * obj * list (string * list string * obj)))
-              : List.Forall (fun f => List.Forall (fun p => Po (snd p)) (snd (fst (fst f))) /\ Po (snd (fst f)) /\
-                                      List.Forall (fun b => Po (snd b)) (snd f)) fs :=
-              match fs with
-              | nil => List.Forall_nil _
-              | f :: fs' =>
-                  List.Forall_cons f
-                    (conj ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
-                              match ps with
-                              | nil => List.Forall_nil _
-                              | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
-                              end) (snd (fst (fst f))))
-                       (conj (obj_mut (snd (fst f)))
-                          ((fix go (bs : list (string * list string * obj)) : List.Forall (fun b => Po (snd b)) bs :=
-                              match bs with
-                              | nil => List.Forall_nil _
-                              | b :: bs' => List.Forall_cons b (obj_mut (snd b)) (go bs')
-                              end) (snd f))))
-                    (funs fs')
-              end) fs)
-    | c_builtin k o => case_c_builtin k o (obj_mut o)
-    | c_ind_alias pv x ps o =>
-        case_c_ind_alias pv x ps o
-          ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
-              match ps with
-              | nil => List.Forall_nil _
-              | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
-              end) ps)
-          (obj_mut o)
-    | c_record_alias pv x ps o =>
-        case_c_record_alias pv x ps o
-          ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
-              match ps with
-              | nil => List.Forall_nil _
-              | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
-              end) ps)
-          (obj_mut o)
-    | c_record pv x ps o fs cs =>
-        case_c_record pv x ps o fs cs
-          ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
-              match ps with
-              | nil => List.Forall_nil _
-              | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
-              end) ps)
-          (obj_mut o)
-          ((fix go (fs : list (string * obj)) : List.Forall (fun f => Po (snd f)) fs :=
-              match fs with
-              | nil => List.Forall_nil _
-              | f :: fs' => List.Forall_cons f (obj_mut (snd f)) (go fs')
-              end) fs)
-          ((fix go (cs : list cmd) : List.Forall Pc cs :=
-              match cs with
-              | nil => List.Forall_nil _
-              | c :: cs' => List.Forall_cons c (cmd_mut c) (go cs')
-              end) cs)
-    end.
-
-  Theorem cst_mut_ind : (forall o, Po o) /\ (forall d, Pd d) /\ (forall md, Pm md) /\ (forall c, Pc c).
-  Proof. repeat split; [ exact obj_mut | exact decl_mut | exact mdef_mut | exact cmd_mut ]. Qed.
-End cst_mut_ind.
+(** The mutual induction principle of the family, generated: a list, a
+    pair and an option carry [list_all], [prod_all] and [option_all] of the
+    motives ([Core.Base]). *)
+Scheme obj_mut_ind := Induction for obj Sort Prop
+with decl_mut_ind := Induction for decl Sort Prop
+with mdef_mut_ind := Induction for mdef Sort Prop
+with cmd_mut_ind := Induction for cmd Sort Prop.
+Combined Scheme cst_ind from obj_mut_ind, decl_mut_ind, mdef_mut_ind, cmd_mut_ind.
 
 (** [module A₁.….Aₙ.B (ps) md] is [module A₁ where … module Aₙ where module
     B (ps) md end … end]: each [Aᵢ] has no parameters and the one member
@@ -481,6 +224,16 @@ Definition c_mod_dotted (pv : bool) (x : string) (rev_pre : list string) (ps : l
 Definition def_cmd (k : dkw) (m : mods) (x : string) (A M : obj) : cmd :=
   match dkw_mods k m with
   | inl m' => c_def m' x A M
+  | inr e => c_error e
+  end.
+
+(** [mutual k (Δ) f … with g … end] with the modifiers [m], [k] a
+    definition keyword: the mutual definition with the modifiers [k] gives
+    it, as [def_cmd] gives a single definition, or the rejection of [m]. *)
+Definition mdef_cmd (k : dkw) (m : mods) (ps : list (string * obj))
+    (fs : list (string * list (string * obj) * obj * list (string * list string * obj))) : cmd :=
+  match dkw_mods k m with
+  | inl m' => c_mdef m' ps fs
   | inr e => c_error e
   end.
 
@@ -784,6 +537,9 @@ Inductive eblock_g (E : Set) : Set :=
     motive [A] and the branches [Bs]. *)
 | eb_mk : nat -> option E -> E -> list (string * nat * E) -> eblock_g E.
 Arguments eb_mk {E}.
+(** [exp] nests through blocks: with this scheme registered, its generated
+    induction principle carries the hypotheses for a block's parts. *)
+Scheme All for eblock_g.
 
 (** The number of variables a block's motive binds. *)
 Definition eb_nm {E : Set} (b : eblock_g E) : nat := match b with eb_mk nm _ _ _ => nm end.
@@ -826,10 +582,9 @@ Inductive smark : Set := sm_open | sm_closed.
 Definition smark_eq_dec : forall (s s' : smark), {s = s'} + {s <> s'}.
 Proof. decide equality. Defined.
 
-(** The branches of an eliminator are nested through pairs, for which no
-    [All] scheme is registered: [exp_ind] carries no hypothesis about them,
-    and the mutual principle [syn_mut_ind] below is written by hand. *)
-#[warning="-register-all"]
+(** The terms and the module syntax are one mutual family; its mutual
+    principle [syn_mut_ind] below is written by hand, with one motive per
+    sort that the hand-written cases share. *)
 Inductive exp : Set :=
 (** A large universe: [a_typ n] is [Typeω²+n].  It contains every small
     universe, and the large universes below it. *)

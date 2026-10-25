@@ -1192,7 +1192,8 @@ let rec format_run_error (f : Format.formatter) (e : Command1.run_error) : unit 
    | Coq_re_eval_check (xi, _, _) | Coq_re_eval_infer (xi, _) | Coq_re_level (xi, _, _)
    | Coq_re_elim_blocks (xi, _, _, _, _, _) | Coq_re_elim_scrutinee (xi, _, _, _, _)
    | Coq_re_elim_no_group (xi, _, _) | Coq_re_elim_ambiguous (xi, _, _, _)
-   | Coq_re_access_no_type (xi, _, _, _, _) | Coq_re_access_not_record (xi, _, _, _, _, _) ->
+   | Coq_re_access_no_type (xi, _, _, _, _) | Coq_re_access_not_record (xi, _, _, _, _, _)
+   | Coq_re_record_field (xi, _, _, _, _, _, _) ->
       set_ind_decls (fst !current_state) xi;
       current_state := (fst !current_state, xi)
    | _ -> ());
@@ -1260,6 +1261,12 @@ and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
      fprintf f "@[<hov 2>Error: %s is not a field of record %a@]" y pp_u (string_of_qpath q.q_unit q.q_chain)
   | Coq_re_record_field_missing (q, x) ->
      fprintf f "@[<hov 2>Error: field %s of record %a is missing@]" x pp_u (string_of_qpath q.q_unit q.q_chain)
+  (* A field whose value is not of its type, in the binders crossed to
+     reach the record value: the type is the field's at the record's
+     parameters and the fields before it. *)
+  | Coq_re_record_field (_, ox, delta, q, x, m, a) ->
+     fprintf f "@[<hov 2>Error: field %s of record %a:@ %a@ is not of type@ %a@]"
+       x pp_u (string_of_qpath q.q_unit q.q_chain) (format_exp_named ox delta) m (format_exp_named ox delta) a
   | Coq_re_record_member (q, y) ->
      fprintf f "@[<hov 2>Error: %s is not a member of record %a: neither a field nor a member of its with-area@]"
        y pp_u (string_of_qpath q.q_unit q.q_chain)

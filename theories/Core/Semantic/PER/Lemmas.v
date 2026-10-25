@@ -2035,6 +2035,22 @@ Ltac solve_tie :=
               end ]
   end.
 
+(** The heads of a definition entry related across chains of tails: the
+    hypotheses saturated once ([solve_def_heads_pre]), then each part of
+    the goal closed ([solve_def_heads_post]).  A goal of many parts, such
+    as [per_ctx_env_dm_rel]'s, is split between the two, so that the
+    saturation is not run once per part. *)
+Ltac solve_def_heads_pre :=
+  destruct_rel_typ; handle_per_univ_elem_irrel;
+  match goal with H : per_univ_elem _ _ _ _ |- _ => pose proof (per_elem_PER H) end;
+  move_by_relation_equivalence.
+
+Ltac solve_def_heads_post :=
+  repeat split; try (move_goal_by_relation_equivalence; solve_per);
+  try (eexists; split; [ eassumption | move_goal_by_relation_equivalence; solve_per ]).
+
+Ltac solve_def_heads := solve_def_heads_pre; solve_def_heads_post.
+
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
@@ -2059,20 +2075,16 @@ Proof.
         across the two right-hand contexts through the left body. *)
     specialize (IHHorig _ _ equiv_Γ_Γ'0).
     intros ρ ρ'.
-    split; intros [Ht ?];
-      [ assert (Ht0 : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel0) by intuition
-      | assert (Ht0 : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel) by intuition ];
-      exists Ht0; destruct_conjs;
-      (** The bodies are read at each tail against itself, too. *)
-      assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel) by (etransitivity; [| symmetry]; intuition);
-      assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel) by (etransitivity; [symmetry |]; intuition);
-      assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel0) by (etransitivity; [| symmetry]; intuition);
-      assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel0) by (etransitivity; [symmetry |]; intuition);
-      destruct_rel_typ; handle_per_univ_elem_irrel;
-      match goal with H : per_univ_elem _ _ _ _ |- _ => pose proof (per_elem_PER H) end;
-      move_by_relation_equivalence;
-      repeat split; try (move_goal_by_relation_equivalence; solve_per);
-      eexists; split; try eassumption; move_goal_by_relation_equivalence; solve_per.
+    (** The bodies are read at the target's tails: its related pair and
+        each side against itself. *)
+    split; intros [Ht ?]; destruct_conjs;
+      [ assert (Ht0 : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel0) by (apply IHHorig; exact Ht);
+        assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel0) by (etransitivity; [ exact Ht0 | symmetry; exact Ht0 ]);
+        assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel0) by (etransitivity; [ symmetry; exact Ht0 | exact Ht0 ])
+      | assert (Ht0 : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel) by (apply IHHorig; exact Ht);
+        assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel) by (etransitivity; [ exact Ht0 | symmetry; exact Ht0 ]);
+        assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel) by (etransitivity; [ symmetry; exact Ht0 | exact Ht0 ]) ];
+      exists Ht0; solve_def_heads.
   - (** A slot: the heads are tied to the closures of the left unit, which
         are related to the closures of either right unit. *)
     specialize (IHHorig _ _ equiv_Γ_Γ'0).
@@ -2086,23 +2098,27 @@ Proof.
       assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel0) by (etransitivity; [symmetry |]; intuition);
       repeat split; try assumption; solve_tie.
   - (** A definition with a module part: the term part as a definition, the
-        unit as a slot. *)
+        unit as a slot.  In each direction the tails the heads are read at
+        are the target's: its related pair and each side against itself.
+        The hypotheses are saturated once ([solve_def_heads_pre]), before
+        the relation is split into its fields. *)
     specialize (IHHorig _ _ equiv_Γ_Γ'0).
     intros ρ ρ'.
-    split; intros [Ht ?];
-      [ assert (Ht0 : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel0) by intuition
-      | assert (Ht0 : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel) by intuition ];
-      exists Ht0; destruct_conjs;
-      assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel) by (etransitivity; [| symmetry]; intuition);
-      assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel) by (etransitivity; [symmetry |]; intuition);
-      assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel0) by (etransitivity; [| symmetry]; intuition);
-      assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel0) by (etransitivity; [symmetry |]; intuition);
-      destruct_rel_typ; handle_per_univ_elem_irrel;
-      match goal with H : per_univ_elem _ _ _ _ |- _ => pose proof (per_elem_PER H) end;
-      move_by_relation_equivalence;
-      repeat split; try (move_goal_by_relation_equivalence; solve_per);
-      try (eexists; split; try eassumption; move_goal_by_relation_equivalence; solve_per);
-      solve_tie.
+    split; intros [Ht Hh Hl Hl' Hr Hr' Hul Hul' Hur Hur'].
+    + assert (Ht0 : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel0) by (apply IHHorig; exact Ht).
+      assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel0) by (etransitivity; [ exact Ht0 | symmetry; exact Ht0 ]).
+      assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel0) by (etransitivity; [ symmetry; exact Ht0 | exact Ht0 ]).
+      solve_def_heads_pre.
+      apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ Ht0); solve_def_heads_post; solve_tie.
+    + assert (Ht0 : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel) by (apply IHHorig; exact Ht).
+      assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel) by (etransitivity; [ exact Ht0 | symmetry; exact Ht0 ]).
+      assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel) by (etransitivity; [ symmetry; exact Ht0 | exact Ht0 ]).
+      solve_def_heads_pre.
+      (** The units' relations are stated over the other right-hand
+          context's tails, which the ties are read at too. *)
+      assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel0) by (etransitivity; [ exact Ht | symmetry; exact Ht ]).
+      assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel0) by (etransitivity; [ symmetry; exact Ht | exact Ht ]).
+      apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ Ht0); solve_def_heads_post; solve_tie.
 Qed.
 
 Lemma per_ctx_env_sym : forall Γ Δ R,
@@ -2207,14 +2223,15 @@ Proof.
       destruct Hρ as [e ?]; destruct_conjs;
       let Ht := fresh "Ht" in
       assert (Ht : tail_rel ρ'↯ ρ↯) by eauto;
-      exists Ht;
       assert (tail_rel ρ↯ ρ↯) by (etransitivity; eassumption);
       assert (tail_rel ρ'↯ ρ'↯) by (etransitivity; eassumption);
+      (** Saturated once, before the relation is split into its fields. *)
       destruct_rel_mod_eval;
       handle_per_univ_elem_irrel;
       match goal with H : per_univ_elem _ _ _ _ |- _ => pose proof (per_elem_PER H) end;
       move_by_relation_equivalence;
-      repeat split; try assumption; try (move_goal_by_relation_equivalence; solve_per);
+      apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ Ht);
+      try assumption; try (move_goal_by_relation_equivalence; solve_per);
         eexists; split; try eassumption; move_goal_by_relation_equivalence; solve_per ]
     end.
 Qed.
@@ -2264,22 +2281,6 @@ End Fixed_GCtx.
     into their tails, heads and ties. *)
 Ltac destruct_dm_rels :=
   repeat match goal with H : per_ctx_env_dm_rel _ _ _ _ _ _ _ _ |- _ => destruct H end.
-
-(** The heads of a definition entry related across chains of tails: the
-    hypotheses saturated once ([solve_def_heads_pre]), then each part of
-    the goal closed ([solve_def_heads_post]).  A goal of many parts, such
-    as [per_ctx_env_dm_rel]'s, is split between the two, so that the
-    saturation is not run once per part. *)
-Ltac solve_def_heads_pre :=
-  destruct_rel_typ; handle_per_univ_elem_irrel;
-  match goal with H : per_univ_elem _ _ _ _ |- _ => pose proof (per_elem_PER H) end;
-  move_by_relation_equivalence.
-
-Ltac solve_def_heads_post :=
-  repeat split; try (move_goal_by_relation_equivalence; solve_per);
-  try (eexists; split; [ eassumption | move_goal_by_relation_equivalence; solve_per ]).
-
-Ltac solve_def_heads := solve_def_heads_pre; solve_def_heads_post.
 
 Ltac do_per_ctx_env_irrel_assert1 :=
   let tactic_error o1 o2 := fail 3 "per_ctx_env_irrel equality between" o1 "and" o2 "cannot be solved" in
@@ -2376,12 +2377,15 @@ Proof with solve [eauto using per_univ_trans].
       destruct_rel_typ; handle_per_univ_elem_irrel.
       econstructor; try eassumption.
       solve_def_heads.
-    + intros ρ ρ'; split; intros [Ht ?]; destruct_conjs; exists Ht;
-        assert (tail_rel ρ↯ ρ↯) by (etransitivity; [| symmetry]; eassumption);
-        assert (tail_rel ρ'↯ ρ'↯) by (etransitivity; [symmetry |]; eassumption);
-        assert (tail_rel0 ρ↯ ρ↯) by intuition;
-        assert (tail_rel0 ρ'↯ ρ'↯) by intuition;
-        assert (tail_rel0 ρ↯ ρ'↯) by intuition;
+    + (** The right bodies are related at each tail against itself, in
+          the right context's tail relation, which is the left one's. *)
+      intros ρ ρ'; split; intros [Ht ?]; destruct_conjs; exists Ht;
+        assert (tail_rel ρ↯ ρ↯) by (etransitivity; [ exact Ht | symmetry; exact Ht ]);
+        assert (tail_rel ρ'↯ ρ'↯) by (etransitivity; [ symmetry; exact Ht | exact Ht ]);
+        match goal with HE : ?T0 <~> tail_rel |- _ =>
+          assert (T0 ρ↯ ρ↯) by (apply HE; assumption);
+          assert (T0 ρ'↯ ρ'↯) by (apply HE; assumption)
+        end;
         solve_def_heads.
   - cbn beta in *; destruct_conjs.
     assert (Ht : tail_rel ρ1↯ ρ3↯) by eauto.
@@ -2431,12 +2435,14 @@ Proof with solve [eauto using per_univ_trans].
       assert (tail_rel ρ' ρ') by (etransitivity; [ symmetry |]; exact Hρ).
       assert (tail_rel0 ρ' ρ') by intuition.
       eapply rel_mexp_trans; eauto.
-    + intros ρ ρ'; split; intros [Ht ?]; destruct_conjs;
-        assert (tail_rel ρ↯ ρ↯) by (etransitivity; [| symmetry]; eassumption);
-        assert (tail_rel ρ'↯ ρ'↯) by (etransitivity; [symmetry |]; eassumption);
-        assert (tail_rel0 ρ↯ ρ↯) by intuition;
-        assert (tail_rel0 ρ'↯ ρ'↯) by intuition;
-        assert (tail_rel0 ρ↯ ρ'↯) by intuition;
+    + (** As for a definition, and the right unit's ties as a slot's. *)
+      intros ρ ρ'; split; intros [Ht ?]; destruct_conjs;
+        assert (tail_rel ρ↯ ρ↯) by (etransitivity; [ exact Ht | symmetry; exact Ht ]);
+        assert (tail_rel ρ'↯ ρ'↯) by (etransitivity; [ symmetry; exact Ht | exact Ht ]);
+        match goal with HE : ?T0 <~> tail_rel |- _ =>
+          assert (T0 ρ↯ ρ↯) by (apply HE; assumption);
+          assert (T0 ρ'↯ ρ'↯) by (apply HE; assumption)
+        end;
         solve_def_heads_pre; exists Ht; solve_def_heads_post; solve_tie.
   - cbn beta in *; destruct_conjs; destruct_dm_rels.
     assert (Ht : tail_rel ρ1↯ ρ3↯) by eauto.
@@ -3310,7 +3316,11 @@ Proof.
     destruct (rel_mexp_move _ _ _ _ _ _ D12' H2) as (M1' & M2' & M3' & M4').
     assert (Dom ρ2↯ ≈ ρ2↯ ∈ tail_rel) by solve_per.
     assert (Dom ρ2'↯ ≈ ρ2'↯ ∈ tail_rel) by solve_per.
-    assert (Dom ρ1'↯ ≈ ρ2'↯ ∈ tail_rel) by solve_per.
+    (** The heads are read at the old pair, the new one and the mixed one;
+        the bodies at each old side against its new one and at each new
+        side against itself.  The self-relations of the old sides are not
+        needed, and would only enlarge the saturation. *)
+    clear D11 D11'.
     solve_def_heads_pre.
     apply (mk_per_ctx_env_dm_rel _ _ _ _ _ _ _ _ Dtail2);
       try rewrite <- (env_eq_var _ _ Heq 0); try rewrite <- (env_eq_var _ _ Heq' 0);

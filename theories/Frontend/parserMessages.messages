@@ -13,7 +13,7 @@ This token is invalid for the beginning of a program.
 
 prog: MODULE TRUE
 ##
-## Ends in an error in state: 321.
+## Ends in an error in state: 323.
 ##
 ## prog -> leads MODULE . fpath params_opt WHERE cmds END EOF [ # ]
 ##
@@ -25,7 +25,7 @@ Expected the path of the module to declare.
 
 prog: MODULE VAR LPAREN TRUE
 ##
-## Ends in an error in state: 78.
+## Ends in an error in state: 55.
 ##
 ## param -> LPAREN . VAR COLON obj RPAREN [ WITH WHERE VAR LPAREN EQ END COLON BAR ARROW ]
 ##
@@ -37,7 +37,7 @@ A parameter should start with a valid identifier.
 
 prog: MODULE VAR LPAREN VAR TRUE
 ##
-## Ends in an error in state: 79.
+## Ends in an error in state: 56.
 ##
 ## param -> LPAREN VAR . COLON obj RPAREN [ WITH WHERE VAR LPAREN EQ END COLON BAR ARROW ]
 ##
@@ -50,7 +50,7 @@ where "?type" is the type of the parameter.
 
 prog: MODULE VAR LPAREN VAR COLON WHERE
 ##
-## Ends in an error in state: 80.
+## Ends in an error in state: 57.
 ##
 ## param -> LPAREN VAR COLON . obj RPAREN [ WITH WHERE VAR LPAREN EQ END COLON BAR ARROW ]
 ##
@@ -112,7 +112,7 @@ prog: MODULE VAR WHERE EVAL LPAREN WHERE
 
 prog: MODULE VAR WHERE EVAL LET TRUE
 ##
-## Ends in an error in state: 58.
+## Ends in an error in state: 61.
 ##
 ## obj -> LET . let_defns IN obj END [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
 ##
@@ -124,7 +124,7 @@ Expected a binding "x : A ≔ a", "x ≔ a" or "module X ≔ E" after "let".
 
 prog: MODULE VAR WHERE EVAL LET VAR TRUE
 ##
-## Ends in an error in state: 59.
+## Ends in an error in state: 62.
 ##
 ## let_defn -> VAR . COLON obj EQ obj [ SEMI IN ]
 ## let_defn -> VAR . EQ obj [ SEMI IN ]
@@ -137,7 +137,7 @@ Expected ":" followed by the type of the local definition, or "≔" followed by 
 
 prog: MODULE VAR WHERE EVAL LET VAR COLON WHERE
 ##
-## Ends in an error in state: 114.
+## Ends in an error in state: 111.
 ##
 ## let_defn -> VAR COLON . obj EQ obj [ SEMI IN ]
 ##
@@ -149,7 +149,7 @@ Expected the type of the local definition.
 
 prog: MODULE VAR WHERE EVAL EXFALSO WHERE
 ##
-## Ends in an error in state: 62.
+## Ends in an error in state: 67.
 ##
 ## obj -> EXFALSO . obj RETURN VAR DOT obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
 ##
@@ -162,7 +162,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL EXFALSO FALSE_TY WHERE
 ##
-## Ends in an error in state: 108.
+## Ends in an error in state: 102.
 ##
 ## obj -> EXFALSO obj . RETURN VAR DOT obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
 ##
@@ -174,7 +174,7 @@ prog: MODULE VAR WHERE EVAL EXFALSO FALSE_TY WHERE
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 Either an expression or "return" keyword is expected.
@@ -182,7 +182,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL EXFALSO FALSE_TY RETURN TRUE
 ##
-## Ends in an error in state: 109.
+## Ends in an error in state: 103.
 ##
 ## obj -> EXFALSO obj RETURN . VAR DOT obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
 ##
@@ -194,7 +194,7 @@ A motif should start with a valid identifier.
 
 prog: MODULE VAR WHERE EVAL EXFALSO FALSE_TY RETURN VAR TRUE
 ##
-## Ends in an error in state: 110.
+## Ends in an error in state: 104.
 ##
 ## obj -> EXFALSO obj RETURN VAR . DOT obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
 ##
@@ -206,7 +206,7 @@ A motif should have "." after the scrutinee name.
 
 prog: MODULE VAR WHERE EVAL EXFALSO FALSE_TY RETURN VAR DOT WHERE
 ##
-## Ends in an error in state: 111.
+## Ends in an error in state: 105.
 ##
 ## obj -> EXFALSO obj RETURN VAR DOT . obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
 ##
@@ -232,39 +232,39 @@ Expected a name after "›" in the path.
 
 prog: MODULE VAR WHERE EVAL LAMBDA TRUE
 ##
-## Ends in an error in state: 77.
+## Ends in an error in state: 64.
 ##
-## obj -> fnbinder . params ARROW obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
+## obj -> LAMBDA . params ARROW obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
-## fnbinder
+## LAMBDA
 ##
 
-"∀" requires a list of parenthesized parameters.
+"λ" (or "fun") requires a list of parenthesized parameters.
 For example,
-  "(x : ℕ) (y : ℕ)" in "∀ (x : ℕ) (y : ℕ) → ℕ"
+  "(x : ℕ) (y : ℕ)" in "λ (x : ℕ) (y : ℕ) → x"
 
 prog: MODULE VAR WHERE EVAL LAMBDA LPAREN VAR COLON FALSE_TY RPAREN TRUE
 ##
-## Ends in an error in state: 85.
+## Ends in an error in state: 65.
 ##
-## obj -> fnbinder params . ARROW obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
+## obj -> LAMBDA params . ARROW obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
 ## params -> params . param [ LPAREN ARROW ]
 ##
 ## The known suffix of the stack is as follows:
-## fnbinder params
+## LAMBDA params
 ##
 
 "→" or another parameter is expected after a list of parameters for "λ".
 
 prog: MODULE VAR WHERE EVAL LAMBDA LPAREN VAR COLON FALSE_TY RPAREN ARROW WHERE
 ##
-## Ends in an error in state: 86.
+## Ends in an error in state: 66.
 ##
-## obj -> fnbinder params ARROW . obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
+## obj -> LAMBDA params ARROW . obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
-## fnbinder params ARROW
+## LAMBDA params ARROW
 ##
 
 An expression is expected after "→".
@@ -284,7 +284,7 @@ Expected a member name or "rec" after ".".
 
 prog: MODULE VAR WHERE EVAL LET VAR COLON FALSE_TY WHERE
 ##
-## Ends in an error in state: 115.
+## Ends in an error in state: 112.
 ##
 ## let_defn -> VAR COLON obj . EQ obj [ SEMI IN ]
 ##
@@ -296,14 +296,14 @@ prog: MODULE VAR WHERE EVAL LET VAR COLON FALSE_TY WHERE
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 Expected "≔" after the type of the local definition.
 
 prog: MODULE VAR WHERE EVAL LET VAR COLON FALSE_TY EQ WHERE
 ##
-## Ends in an error in state: 116.
+## Ends in an error in state: 113.
 ##
 ## let_defn -> VAR COLON obj EQ . obj [ SEMI IN ]
 ##
@@ -315,7 +315,7 @@ Expected the body of the local definition.
 
 prog: MODULE VAR WHERE EVAL LET MODULE TRUE
 ##
-## Ends in an error in state: 118.
+## Ends in an error in state: 115.
 ##
 ## let_defn -> MODULE . VAR mdecl [ SEMI IN ]
 ##
@@ -327,7 +327,7 @@ Expected a name for the local module.
 
 prog: MODULE VAR WHERE MODULE VAR TRUE
 ##
-## Ends in an error in state: 120.
+## Ends in an error in state: 117.
 ##
 ## mdecl -> params_opt . mdef [ THEOREM SEMI REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -338,7 +338,7 @@ prog: MODULE VAR WHERE MODULE VAR TRUE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 181, spurious reduction of production params_opt ->
+## In state 178, spurious reduction of production params_opt ->
 ##
 
 Expected a parameter "(x : A)", "≔" or keyword "where",
@@ -346,7 +346,7 @@ or a further "." in the path of a module command.
 
 prog: MODULE VAR WHERE MODULE TRUE
 ##
-## Ends in an error in state: 180.
+## Ends in an error in state: 177.
 ##
 ## cmd -> MODULE . path mdecl [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -358,7 +358,7 @@ Expected the path of the module to declare.
 
 prog: IMPORT TRUE
 ##
-## Ends in an error in state: 194.
+## Ends in an error in state: 191.
 ##
 ## import_cmd -> IMPORT . ipath mpath_opt iargs as_opt ilists [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -382,7 +382,7 @@ Expected a name after "." in the path.
 
 prog: MODULE VAR WHERE EVAL WHERE
 ##
-## Ends in an error in state: 222.
+## Ends in an error in state: 219.
 ##
 ## cmd -> EVAL . obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## cmd -> EVAL . obj COLON obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
@@ -395,7 +395,7 @@ This token is invalid for the beginning of a program.
 
 prog: MODULE VAR WHERE EVAL FALSE_TY WHERE
 ##
-## Ends in an error in state: 223.
+## Ends in an error in state: 220.
 ##
 ## cmd -> EVAL obj . [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## cmd -> EVAL obj . COLON obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
@@ -408,14 +408,14 @@ prog: MODULE VAR WHERE EVAL FALSE_TY WHERE
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 Expected ":" followed by the type to check against, or the next command.
 
 prog: MODULE VAR WHERE EVAL FALSE_TY COLON WHERE
 ##
-## Ends in an error in state: 224.
+## Ends in an error in state: 221.
 ##
 ## cmd -> EVAL obj COLON . obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -428,12 +428,12 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE TRUE
 ##
-## Ends in an error in state: 234.
+## Ends in an error in state: 231.
 ##
 ## cmd -> mods . dkw VAR params_opt COLON obj EQ obj END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## cmd -> mods . AXIOM VAR params_opt COLON obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## cmd -> mods . MUTUAL VAR params_opt WHERE INDUCTIVE VAR COLON obj WHERE ctors imembers END END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
-## cmd -> mods . MUTUAL DEF params_opt mfuns END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
+## cmd -> mods . MUTUAL dkw params_opt mfuns END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## mods
@@ -442,14 +442,14 @@ prog: MODULE VAR WHERE TRUE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 325, spurious reduction of production mods ->
+## In state 327, spurious reduction of production mods ->
 ##
 
 Expected a command ("module", "def", "theorem", "let", "import", "open", "eval", ...), or keyword "end" to close the module.
 
 prog: MODULE VAR WHERE AXIOM TRUE
 ##
-## Ends in an error in state: 268.
+## Ends in an error in state: 265.
 ##
 ## cmd -> mods AXIOM . VAR params_opt COLON obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -461,7 +461,7 @@ Expected a name for the axiom.
 
 prog: MODULE VAR WHERE AXIOM VAR TRUE
 ##
-## Ends in an error in state: 270.
+## Ends in an error in state: 267.
 ##
 ## cmd -> mods AXIOM VAR params_opt . COLON obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -472,14 +472,14 @@ prog: MODULE VAR WHERE AXIOM VAR TRUE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 269, spurious reduction of production params_opt ->
+## In state 266, spurious reduction of production params_opt ->
 ##
 
 Expected a parameter "(x : A)", or ":" followed by the type of the axiom.
 
 prog: MODULE VAR WHERE AXIOM VAR COLON WHERE
 ##
-## Ends in an error in state: 271.
+## Ends in an error in state: 268.
 ##
 ## cmd -> mods AXIOM VAR params_opt COLON . obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -491,7 +491,7 @@ Expected the type of the axiom.
 
 prog: MODULE VAR WHERE DEF TRUE
 ##
-## Ends in an error in state: 273.
+## Ends in an error in state: 270.
 ##
 ## cmd -> mods dkw . VAR params_opt COLON obj EQ obj END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -503,7 +503,7 @@ Expected a name for the definition.
 
 prog: MODULE VAR WHERE DEF VAR TRUE
 ##
-## Ends in an error in state: 275.
+## Ends in an error in state: 272.
 ##
 ## cmd -> mods dkw VAR params_opt . COLON obj EQ obj END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -514,14 +514,14 @@ prog: MODULE VAR WHERE DEF VAR TRUE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 274, spurious reduction of production params_opt ->
+## In state 271, spurious reduction of production params_opt ->
 ##
 
 Expected a parameter "(x : A)", or ":" followed by the type of the definition.
 
 prog: MODULE VAR WHERE DEF VAR COLON WHERE
 ##
-## Ends in an error in state: 276.
+## Ends in an error in state: 273.
 ##
 ## cmd -> mods dkw VAR params_opt COLON . obj EQ obj END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -533,7 +533,7 @@ Expected the type of the definition.
 
 prog: MODULE VAR WHERE DEF VAR COLON FALSE_TY WHERE
 ##
-## Ends in an error in state: 277.
+## Ends in an error in state: 274.
 ##
 ## cmd -> mods dkw VAR params_opt COLON obj . EQ obj END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -545,14 +545,14 @@ prog: MODULE VAR WHERE DEF VAR COLON FALSE_TY WHERE
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 Expected "≔" after the type of the definition.
 
 prog: MODULE VAR WHERE DEF VAR COLON FALSE_TY EQ WHERE
 ##
-## Ends in an error in state: 278.
+## Ends in an error in state: 275.
 ##
 ## cmd -> mods dkw VAR params_opt COLON obj EQ . obj END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -564,7 +564,7 @@ Expected the body of the definition.
 
 prog: MODULE VAR WHERE DEF VAR COLON FALSE_TY EQ FALSE_TY WHERE
 ##
-## Ends in an error in state: 279.
+## Ends in an error in state: 276.
 ##
 ## cmd -> mods dkw VAR params_opt COLON obj EQ obj . END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -576,14 +576,14 @@ prog: MODULE VAR WHERE DEF VAR COLON FALSE_TY EQ FALSE_TY WHERE
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 Expected keyword "end" to close the definition.
 
 prog: MODULE VAR WHERE MODULE VAR EQ WHERE
 ##
-## Ends in an error in state: 285.
+## Ends in an error in state: 282.
 ##
 ## mdef -> EQ . obj [ THEOREM SEMI REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -595,7 +595,7 @@ Expected a module expression after "≔".
 
 prog: MODULE VAR WHERE EVAL LET MODULE VAR WHERE END TRUE
 ##
-## Ends in an error in state: 289.
+## Ends in an error in state: 286.
 ##
 ## let_defns -> let_defns . SEMI let_defn [ SEMI IN ]
 ## obj -> LET let_defns . IN obj END [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
@@ -608,7 +608,7 @@ Expected ";" and another binding, or keyword "in".
 
 prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ FALSE_TY SEMI TRUE
 ##
-## Ends in an error in state: 290.
+## Ends in an error in state: 287.
 ##
 ## let_defns -> let_defns SEMI . let_defn [ SEMI IN ]
 ##
@@ -620,7 +620,7 @@ Expected a binding "x : A ≔ a" or "module X ≔ E" after ";".
 
 prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ FALSE_TY IN WHERE
 ##
-## Ends in an error in state: 292.
+## Ends in an error in state: 289.
 ##
 ## obj -> LET let_defns IN . obj END [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
 ##
@@ -632,7 +632,7 @@ Expected an expression after "in".
 
 prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ FALSE_TY IN FALSE_TY WHERE
 ##
-## Ends in an error in state: 293.
+## Ends in an error in state: 290.
 ##
 ## obj -> LET let_defns IN obj . END [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
 ##
@@ -644,14 +644,14 @@ prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ FALSE_TY IN FALSE_TY WHERE
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 Expected keyword "end" to close the "let".
 
 prog: MODULE VAR WHERE EVAL LPAREN FALSE_TY WHERE
 ##
-## Ends in an error in state: 304.
+## Ends in an error in state: 306.
 ##
 ## atomic_obj -> LPAREN obj . RPAREN [ WITH WHERE VAR USE TYPE TRUE_TY TRUE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN OMEGA NAT MUTUAL MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IN IMPORT GIVEN FALSE_TY FACT EXPORT EVAL EQ END DOT DEF COLON BUILTIN BLOCK_AT BAR AXIOM AS ABSTRACT ]
 ##
@@ -663,7 +663,7 @@ prog: MODULE VAR WHERE EVAL LPAREN FALSE_TY WHERE
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 Either an expression or ")" is expected.
@@ -671,7 +671,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR LPAREN VAR COLON FALSE_TY WHERE
 ##
-## Ends in an error in state: 81.
+## Ends in an error in state: 293.
 ##
 ## param -> LPAREN VAR COLON obj . RPAREN [ WITH WHERE VAR LPAREN EQ END COLON BAR ARROW ]
 ##
@@ -683,7 +683,7 @@ prog: MODULE VAR LPAREN VAR COLON FALSE_TY WHERE
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 Either an expression or ")" is expected.
@@ -691,7 +691,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR COLONCOLON TRUE
 ##
-## Ends in an error in state: 220.
+## Ends in an error in state: 217.
 ##
 ## fpath -> fpath COLONCOLON . VAR [ WHERE VAR USE TYPE TRUE_TY TRUE THEOREM REMARK RECORD PRIVATE OPEN OMEGA NAT MUTUAL MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DOT DEF COLONCOLON BUILTIN AXIOM AS ABSTRACT ]
 ##
@@ -703,7 +703,7 @@ Expected a name after "›" in the path.
 
 prog: MODULE VAR TRUE
 ##
-## Ends in an error in state: 323.
+## Ends in an error in state: 325.
 ##
 ## prog -> leads MODULE fpath params_opt . WHERE cmds END EOF [ # ]
 ##
@@ -714,14 +714,14 @@ prog: MODULE VAR TRUE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 322, spurious reduction of production params_opt ->
+## In state 324, spurious reduction of production params_opt ->
 ##
 
 Expected a parameter "(x : A)", or keyword "where".
 
 prog: MODULE VAR WHERE END TRUE
 ##
-## Ends in an error in state: 326.
+## Ends in an error in state: 328.
 ##
 ## prog -> leads MODULE fpath params_opt WHERE cmds END . EOF [ # ]
 ##
@@ -733,7 +733,7 @@ Expected the end of the file after the "end" that closes the module declaration.
 
 prog: MODULE VAR WHERE PRIVATE MODULE TRUE
 ##
-## Ends in an error in state: 155.
+## Ends in an error in state: 152.
 ##
 ## cmd -> PRIVATE MODULE . path mdecl [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -745,7 +745,7 @@ Expected the path of the module to declare.
 
 prog: MODULE VAR WHERE EVAL LET VAR EQ WHERE
 ##
-## Ends in an error in state: 60.
+## Ends in an error in state: 63.
 ##
 ## let_defn -> VAR EQ . obj [ SEMI IN ]
 ##
@@ -757,7 +757,7 @@ Expected the body of the local definition.
 
 prog: IMPORT VAR COLONCOLON VAR WHERE
 ##
-## Ends in an error in state: 219.
+## Ends in an error in state: 216.
 ##
 ## fpath -> fpath . COLONCOLON VAR [ VAR USE TYPE TRUE_TY TRUE THEOREM REMARK RECORD PRIVATE OPEN OMEGA NAT MUTUAL MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DOT DEF COLONCOLON BUILTIN AXIOM AS ABSTRACT ]
 ## ipath -> fpath . [ VAR USE TYPE TRUE_TY TRUE THEOREM REMARK RECORD PRIVATE OPEN OMEGA NAT MUTUAL MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DOT DEF BUILTIN AXIOM AS ABSTRACT ]
@@ -821,7 +821,7 @@ Expected a name after "." in the path.
 
 prog: OPEN VAR AS TRUE
 ##
-## Ends in an error in state: 199.
+## Ends in an error in state: 196.
 ##
 ## as_opt -> AS . VAR [ USE THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EXPORT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -833,7 +833,7 @@ Expected an alias name after "as".
 
 prog: OPEN VAR FALSE_TY WHERE
 ##
-## Ends in an error in state: 201.
+## Ends in an error in state: 198.
 ##
 ## atomic_obj -> atomic_obj . DOT VAR [ VAR USE TYPE TRUE_TY TRUE THEOREM REMARK RECORD PRIVATE OPEN OMEGA NAT MUTUAL MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DOT DEF BUILTIN AXIOM AS ABSTRACT ]
 ## iargs -> iargs atomic_obj . [ VAR USE TYPE TRUE_TY TRUE THEOREM REMARK RECORD PRIVATE OPEN OMEGA NAT MUTUAL MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DEF BUILTIN AXIOM AS ABSTRACT ]
@@ -846,7 +846,7 @@ Expected a further argument, "as", "use", "export", or the next command.
 
 prog: IMPORT VAR COLONCOLON VAR AS VAR TRUE
 ##
-## Ends in an error in state: 203.
+## Ends in an error in state: 200.
 ##
 ## ilists -> ilists . ilist [ USE THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EXPORT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## import_cmd -> IMPORT ipath mpath_opt iargs as_opt ilists . [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
@@ -859,7 +859,7 @@ Expected a further "use" or "export" list, or the next command.
 
 prog: OPEN VAR USE TRUE
 ##
-## Ends in an error in state: 204.
+## Ends in an error in state: 201.
 ##
 ## ilist -> USE . LPAREN items RPAREN [ USE THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EXPORT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -871,7 +871,7 @@ Expected "(" after "use".
 
 prog: OPEN VAR USE LPAREN TRUE
 ##
-## Ends in an error in state: 205.
+## Ends in an error in state: 202.
 ##
 ## ilist -> USE LPAREN . items RPAREN [ USE THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EXPORT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -883,7 +883,7 @@ Expected the name of a member to use.
 
 prog: OPEN VAR EXPORT LPAREN VAR TRUE
 ##
-## Ends in an error in state: 206.
+## Ends in an error in state: 203.
 ##
 ## item -> VAR . [ SEMI RPAREN ]
 ## item -> VAR . AS VAR [ SEMI RPAREN ]
@@ -896,7 +896,7 @@ Expected "as" and a name, ";" followed by another member, or ")".
 
 prog: OPEN VAR EXPORT LPAREN VAR AS TRUE
 ##
-## Ends in an error in state: 207.
+## Ends in an error in state: 204.
 ##
 ## item -> VAR AS . VAR [ SEMI RPAREN ]
 ##
@@ -908,7 +908,7 @@ Expected the name to declare the member as, after "as".
 
 prog: OPEN VAR USE LPAREN VAR AS VAR TRUE
 ##
-## Ends in an error in state: 209.
+## Ends in an error in state: 206.
 ##
 ## ilist -> USE LPAREN items . RPAREN [ USE THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EXPORT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## items -> items . SEMI item [ SEMI RPAREN ]
@@ -921,7 +921,7 @@ Expected ";" followed by another member, or ")".
 
 prog: OPEN VAR USE LPAREN VAR SEMI TRUE
 ##
-## Ends in an error in state: 210.
+## Ends in an error in state: 207.
 ##
 ## items -> items SEMI . item [ SEMI RPAREN ]
 ##
@@ -933,7 +933,7 @@ Expected the name of a member after ";".
 
 prog: OPEN VAR EXPORT TRUE
 ##
-## Ends in an error in state: 214.
+## Ends in an error in state: 211.
 ##
 ## ilist -> EXPORT . LPAREN items RPAREN [ USE THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EXPORT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -945,7 +945,7 @@ Expected "(" after "export".
 
 prog: OPEN VAR EXPORT LPAREN TRUE
 ##
-## Ends in an error in state: 215.
+## Ends in an error in state: 212.
 ##
 ## ilist -> EXPORT LPAREN . items RPAREN [ USE THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EXPORT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -957,7 +957,7 @@ Expected the name of a member to export.
 
 prog: OPEN VAR EXPORT LPAREN VAR AS VAR TRUE
 ##
-## Ends in an error in state: 216.
+## Ends in an error in state: 213.
 ##
 ## ilist -> EXPORT LPAREN items . RPAREN [ USE THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EXPORT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## items -> items . SEMI item [ SEMI RPAREN ]
@@ -970,7 +970,7 @@ Expected ";" followed by another member, or ")".
 
 prog: OPEN VAR AS VAR TRUE
 ##
-## Ends in an error in state: 316.
+## Ends in an error in state: 318.
 ##
 ## ilists -> ilists . ilist [ USE THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EXPORT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## open_cmd -> OPEN qpath iargs as_opt ilists . [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
@@ -983,7 +983,7 @@ Expected a further "use" or "export" list, or the next command.
 
 prog: OPEN VAR DOT VAR WHERE
 ##
-## Ends in an error in state: 317.
+## Ends in an error in state: 319.
 ##
 ## path -> path . DOT VAR [ VAR USE TYPE TRUE_TY TRUE THEOREM REMARK RECORD PRIVATE OPEN OMEGA NAT MUTUAL MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DOT DEF BUILTIN AXIOM AS ABSTRACT ]
 ## qpath -> path . [ VAR USE TYPE TRUE_TY TRUE THEOREM REMARK RECORD PRIVATE OPEN OMEGA NAT MUTUAL MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DEF BUILTIN AXIOM AS ABSTRACT ]
@@ -1008,7 +1008,7 @@ An atomic expression is expected after "succl": the level it is the successor of
 
 prog: OPEN VAR LPAREN MAXL WHERE
 ##
-## Ends in an error in state: 55.
+## Ends in an error in state: 58.
 ##
 ## obj -> MAXL . atomic_obj atomic_obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
 ##
@@ -1020,7 +1020,7 @@ An atomic expression is expected after "maxl": the first of the two levels it jo
 
 prog: OPEN VAR LPAREN MAXL FALSE_TY WHERE
 ##
-## Ends in an error in state: 56.
+## Ends in an error in state: 59.
 ##
 ## atomic_obj -> atomic_obj . DOT VAR [ VAR TYPE TRUE_TY TRUE OMEGA NAT LPAREN LLITL LLIT LEVEL INT FALSE_TY DOT ]
 ## obj -> MAXL atomic_obj . atomic_obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
@@ -1047,7 +1047,7 @@ A level term is expected after "Type@{": the level of a small universe, or "ω^2
 
 prog: OPEN VAR TYPE AT LBRACE FALSE_TY WHERE
 ##
-## Ends in an error in state: 312.
+## Ends in an error in state: 314.
 ##
 ## atomic_obj -> TYPE AT LBRACE obj . RBRACE [ WITH WHERE VAR USE TYPE TRUE_TY TRUE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN OMEGA NAT MUTUAL MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IN IMPORT GIVEN FALSE_TY FACT EXPORT EVAL EQ END DOT DEF COLON BUILTIN BLOCK_AT BAR AXIOM AS ABSTRACT ]
 ##
@@ -1059,7 +1059,7 @@ prog: OPEN VAR TYPE AT LBRACE FALSE_TY WHERE
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 A closing "}" is expected after the level of a small universe "Type@{".
@@ -1116,7 +1116,7 @@ A numeral is expected after "ω+" in a level literal "ω + b".
 
 prog: OPEN VAR TYPE AT LBRACE OMEGA2 TRUE
 ##
-## Ends in an error in state: 307.
+## Ends in an error in state: 309.
 ##
 ## atomic_obj -> TYPE AT LBRACE OMEGA2 . RBRACE [ WITH WHERE VAR USE TYPE TRUE_TY TRUE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN OMEGA NAT MUTUAL MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IN IMPORT GIVEN FALSE_TY FACT EXPORT EVAL EQ END DOT DEF COLON BUILTIN BLOCK_AT BAR AXIOM AS ABSTRACT ]
 ## atomic_obj -> TYPE AT LBRACE OMEGA2 . PLUS INT RBRACE [ WITH WHERE VAR USE TYPE TRUE_TY TRUE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN OMEGA NAT MUTUAL MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IN IMPORT GIVEN FALSE_TY FACT EXPORT EVAL EQ END DOT DEF COLON BUILTIN BLOCK_AT BAR AXIOM AS ABSTRACT ]
@@ -1129,7 +1129,7 @@ A closing "}" or "+i" is expected after "Type@{ω^2": the large universe "Type@{
 
 prog: OPEN VAR TYPE AT LBRACE OMEGA2 PLUS TRUE
 ##
-## Ends in an error in state: 309.
+## Ends in an error in state: 311.
 ##
 ## atomic_obj -> TYPE AT LBRACE OMEGA2 PLUS . INT RBRACE [ WITH WHERE VAR USE TYPE TRUE_TY TRUE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN OMEGA NAT MUTUAL MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IN IMPORT GIVEN FALSE_TY FACT EXPORT EVAL EQ END DOT DEF COLON BUILTIN BLOCK_AT BAR AXIOM AS ABSTRACT ]
 ##
@@ -1141,7 +1141,7 @@ A numeral is expected after "Type@{ω^2+": the large universe "Type@{ω^2+i}".
 
 prog: OPEN VAR TYPE AT LBRACE OMEGA2 PLUS INT TRUE
 ##
-## Ends in an error in state: 310.
+## Ends in an error in state: 312.
 ##
 ## atomic_obj -> TYPE AT LBRACE OMEGA2 PLUS INT . RBRACE [ WITH WHERE VAR USE TYPE TRUE_TY TRUE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN OMEGA NAT MUTUAL MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IN IMPORT GIVEN FALSE_TY FACT EXPORT EVAL EQ END DOT DEF COLON BUILTIN BLOCK_AT BAR AXIOM AS ABSTRACT ]
 ##
@@ -1203,7 +1203,7 @@ This token cannot follow a unit path; expected "›" to continue it, "." to sele
 
 prog: OPEN VAR LPAREN ELIM WHERE
 ##
-## Ends in an error in state: 63.
+## Ends in an error in state: 68.
 ##
 ## obj -> ELIM . obj eblocks END [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
 ##
@@ -1215,7 +1215,7 @@ An eliminator "elim" is expected to be followed by the term it eliminates.
 
 prog: OPEN VAR LPAREN ELIM FALSE_TY STAR
 ##
-## Ends in an error in state: 64.
+## Ends in an error in state: 69.
 ##
 ## obj -> ELIM obj . eblocks END [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
 ##
@@ -1227,7 +1227,7 @@ prog: OPEN VAR LPAREN ELIM FALSE_TY STAR
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 An eliminator "elim M" is expected to be followed by its blocks, one per member of the group in member order, the scrutinee's marked "at", the others "with":
@@ -1245,7 +1245,7 @@ An eliminator "elim M" is expected to be followed by its blocks, one per member 
 
 prog: MODULE VAR WHERE PRIVATE INDUCTIVE TRUE
 ##
-## Ends in an error in state: 158.
+## Ends in an error in state: 155.
 ##
 ## cmd -> PRIVATE INDUCTIVE . VAR params_opt COLON obj WHERE ctors imembers END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## cmd -> PRIVATE INDUCTIVE . VAR params_opt EQ obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
@@ -1258,7 +1258,7 @@ prog: MODULE VAR WHERE PRIVATE INDUCTIVE TRUE
 
 prog: MODULE VAR WHERE PRIVATE INDUCTIVE VAR TRUE
 ##
-## Ends in an error in state: 160.
+## Ends in an error in state: 157.
 ##
 ## cmd -> PRIVATE INDUCTIVE VAR params_opt . COLON obj WHERE ctors imembers END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## cmd -> PRIVATE INDUCTIVE VAR params_opt . EQ obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
@@ -1270,14 +1270,14 @@ prog: MODULE VAR WHERE PRIVATE INDUCTIVE VAR TRUE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 159, spurious reduction of production params_opt ->
+## In state 156, spurious reduction of production params_opt ->
 ##
 
 The uniform parameters of an inductive type are expected to be followed by ":" and its type, or, for an inductive alias, by ":=" and the type it names.
 
 prog: MODULE VAR WHERE PRIVATE INDUCTIVE VAR COLON WHERE
 ##
-## Ends in an error in state: 163.
+## Ends in an error in state: 160.
 ##
 ## cmd -> PRIVATE INDUCTIVE VAR params_opt COLON . obj WHERE ctors imembers END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1289,7 +1289,7 @@ An inductive type's ":" is expected to be followed by its type: "forall (n : A) 
 
 prog: MODULE VAR WHERE PRIVATE INDUCTIVE VAR COLON FALSE_TY STAR
 ##
-## Ends in an error in state: 164.
+## Ends in an error in state: 161.
 ##
 ## cmd -> PRIVATE INDUCTIVE VAR params_opt COLON obj . WHERE ctors imembers END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1301,14 +1301,14 @@ prog: MODULE VAR WHERE PRIVATE INDUCTIVE VAR COLON FALSE_TY STAR
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 The type of an inductive type is expected to be followed by "where" and its constructors.
 
 prog: MODULE VAR WHERE PRIVATE INDUCTIVE VAR COLON FALSE_TY WHERE LPAREN
 ##
-## Ends in an error in state: 166.
+## Ends in an error in state: 163.
 ##
 ## cmd -> PRIVATE INDUCTIVE VAR params_opt COLON obj WHERE ctors . imembers END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## ctors -> ctors . BAR VAR params_opt [ WITH END BAR ]
@@ -1321,7 +1321,7 @@ The constructors of an inductive type are "| c (x : A) …", followed by the nex
 
 prog: MODULE VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE BAR TRUE
 ##
-## Ends in an error in state: 167.
+## Ends in an error in state: 164.
 ##
 ## ctors -> ctors BAR . VAR params_opt [ WITH END BAR ]
 ##
@@ -1333,7 +1333,7 @@ A constructor "|" is expected to be followed by its name.
 
 prog: MODULE VAR WHERE INDUCTIVE TRUE
 ##
-## Ends in an error in state: 183.
+## Ends in an error in state: 180.
 ##
 ## cmd -> INDUCTIVE . VAR params_opt COLON obj WHERE ctors imembers END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## cmd -> INDUCTIVE . VAR params_opt EQ obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
@@ -1346,7 +1346,7 @@ prog: MODULE VAR WHERE INDUCTIVE TRUE
 
 prog: MODULE VAR WHERE INDUCTIVE VAR TRUE
 ##
-## Ends in an error in state: 185.
+## Ends in an error in state: 182.
 ##
 ## cmd -> INDUCTIVE VAR params_opt . COLON obj WHERE ctors imembers END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## cmd -> INDUCTIVE VAR params_opt . EQ obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
@@ -1358,14 +1358,14 @@ prog: MODULE VAR WHERE INDUCTIVE VAR TRUE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 184, spurious reduction of production params_opt ->
+## In state 181, spurious reduction of production params_opt ->
 ##
 
 The uniform parameters of an inductive type are expected to be followed by ":" and its type, or, for an inductive alias, by ":=" and the type it names.
 
 prog: MODULE VAR WHERE INDUCTIVE VAR COLON WHERE
 ##
-## Ends in an error in state: 188.
+## Ends in an error in state: 185.
 ##
 ## cmd -> INDUCTIVE VAR params_opt COLON . obj WHERE ctors imembers END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1377,7 +1377,7 @@ An inductive type's ":" is expected to be followed by its type: "forall (n : A) 
 
 prog: MODULE VAR WHERE INDUCTIVE VAR COLON FALSE_TY STAR
 ##
-## Ends in an error in state: 189.
+## Ends in an error in state: 186.
 ##
 ## cmd -> INDUCTIVE VAR params_opt COLON obj . WHERE ctors imembers END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1389,14 +1389,14 @@ prog: MODULE VAR WHERE INDUCTIVE VAR COLON FALSE_TY STAR
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 The type of an inductive type is expected to be followed by "where" and its constructors.
 
 prog: MODULE VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE LPAREN
 ##
-## Ends in an error in state: 191.
+## Ends in an error in state: 188.
 ##
 ## cmd -> INDUCTIVE VAR params_opt COLON obj WHERE ctors . imembers END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## ctors -> ctors . BAR VAR params_opt [ WITH END BAR ]
@@ -1409,7 +1409,7 @@ The constructors of an inductive type are "| c (x : A) …", followed by the nex
 
 prog: MODULE VAR WHERE BUILTIN TRUE
 ##
-## Ends in an error in state: 227.
+## Ends in an error in state: 224.
 ##
 ## cmd -> BUILTIN . VAR EQ atomic_obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1421,7 +1421,7 @@ prog: MODULE VAR WHERE BUILTIN TRUE
 
 prog: MODULE VAR WHERE BUILTIN VAR TRUE
 ##
-## Ends in an error in state: 228.
+## Ends in an error in state: 225.
 ##
 ## cmd -> BUILTIN VAR . EQ atomic_obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1433,7 +1433,7 @@ The kind of a builtin is expected to be followed by ":=" and the type bound, as 
 
 prog: MODULE VAR WHERE BUILTIN VAR EQ WHERE
 ##
-## Ends in an error in state: 229.
+## Ends in an error in state: 226.
 ##
 ## cmd -> BUILTIN VAR EQ . atomic_obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1445,7 +1445,7 @@ prog: MODULE VAR WHERE BUILTIN VAR EQ WHERE
 
 prog: MODULE VAR WHERE BUILTIN VAR EQ FALSE_TY PLUS
 ##
-## Ends in an error in state: 230.
+## Ends in an error in state: 227.
 ##
 ## atomic_obj -> atomic_obj . DOT VAR [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DOT DEF BUILTIN AXIOM ABSTRACT ]
 ## cmd -> BUILTIN VAR EQ atomic_obj . [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
@@ -1458,7 +1458,7 @@ The type of a builtin binding is expected to be a name, followed by the next com
 
 prog: MODULE VAR WHERE PRIVATE INDUCTIVE VAR EQ WHERE
 ##
-## Ends in an error in state: 161.
+## Ends in an error in state: 158.
 ##
 ## cmd -> PRIVATE INDUCTIVE VAR params_opt EQ . obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1470,7 +1470,7 @@ An inductive alias "inductive x (ps) :=" is expected to be followed by the induc
 
 prog: MODULE VAR WHERE INDUCTIVE VAR EQ WHERE
 ##
-## Ends in an error in state: 186.
+## Ends in an error in state: 183.
 ##
 ## cmd -> INDUCTIVE VAR params_opt EQ . obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1482,7 +1482,7 @@ An inductive alias "inductive x (ps) :=" is expected to be followed by the induc
 
 prog: OPEN VAR COLONCOLON VAR WHERE
 ##
-## Ends in an error in state: 318.
+## Ends in an error in state: 320.
 ##
 ## fpath -> fpath . COLONCOLON VAR [ COLONCOLON ]
 ## upath -> fpath . COLONCOLON VAR [ VAR USE TYPE TRUE_TY TRUE THEOREM REMARK RECORD PRIVATE OPEN OMEGA NAT MUTUAL MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DOT DEF BUILTIN AXIOM AS ABSTRACT ]
@@ -1494,14 +1494,14 @@ prog: OPEN VAR COLONCOLON VAR WHERE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 320, spurious reduction of production fpath -> fpath COLONCOLON VAR
+## In state 322, spurious reduction of production fpath -> fpath COLONCOLON VAR
 ##
 
 Expected a further "›" or "." in the path, the arguments of the module, "as", "use", "export", or the next command.
 
 prog: OPEN VAR COLONCOLON WHERE
 ##
-## Ends in an error in state: 319.
+## Ends in an error in state: 321.
 ##
 ## fpath -> fpath COLONCOLON . VAR [ COLONCOLON ]
 ## upath -> fpath COLONCOLON . VAR [ VAR USE TYPE TRUE_TY TRUE THEOREM REMARK RECORD PRIVATE OPEN OMEGA NAT MUTUAL MODULE LPAREN LLITL LLIT LEVEL LET LEMMA INT INDUCTIVE IMPORT GIVEN FALSE_TY FACT EXPORT EVAL END DOT DEF BUILTIN AXIOM AS ABSTRACT ]
@@ -1514,7 +1514,7 @@ Expected a name after "›" in the path.
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT WITH
 ##
-## Ends in an error in state: 70.
+## Ends in an error in state: 75.
 ##
 ## eblock -> block_kw . ebinders ARROW obj brs [ WITH END BLOCK_AT ]
 ##
@@ -1526,7 +1526,7 @@ A block of an eliminator is expected to bind, after "at" or "with", the non-unif
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT LPAREN WITH
 ##
-## Ends in an error in state: 72.
+## Ends in an error in state: 77.
 ##
 ## ebinder -> LPAREN . VAR COLON obj RPAREN [ VAR LPAREN ARROW ]
 ##
@@ -1538,7 +1538,7 @@ A typed binder of a block should start with a valid identifier.
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT LPAREN VAR WITH
 ##
-## Ends in an error in state: 73.
+## Ends in an error in state: 78.
 ##
 ## ebinder -> LPAREN VAR . COLON obj RPAREN [ VAR LPAREN ARROW ]
 ##
@@ -1550,7 +1550,7 @@ A typed binder of a block should have ": ?type" after its name.
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT LPAREN VAR COLON WITH
 ##
-## Ends in an error in state: 74.
+## Ends in an error in state: 79.
 ##
 ## ebinder -> LPAREN VAR COLON . obj RPAREN [ VAR LPAREN ARROW ]
 ##
@@ -1562,7 +1562,7 @@ A typed binder of a block is expected to have its type after ":".
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT LPAREN VAR COLON FALSE_TY STAR
 ##
-## Ends in an error in state: 75.
+## Ends in an error in state: 80.
 ##
 ## ebinder -> LPAREN VAR COLON obj . RPAREN [ VAR LPAREN ARROW ]
 ##
@@ -1574,14 +1574,14 @@ prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT LPAREN VAR COLON FALSE_TY STAR
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 A typed binder of a block should end with ")" after its type.
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT VAR WITH
 ##
-## Ends in an error in state: 90.
+## Ends in an error in state: 84.
 ##
 ## ebinders -> ebinders . ebinder [ VAR LPAREN ARROW ]
 ## eblock -> block_kw ebinders . ARROW obj brs [ WITH END BLOCK_AT ]
@@ -1594,7 +1594,7 @@ The binders of a block are expected to be followed by "->" and the block's motiv
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT VAR ARROW WITH
 ##
-## Ends in an error in state: 91.
+## Ends in an error in state: 85.
 ##
 ## eblock -> block_kw ebinders ARROW . obj brs [ WITH END BLOCK_AT ]
 ##
@@ -1606,7 +1606,7 @@ A block's motive is expected after "->".
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT VAR ARROW FALSE_TY STAR
 ##
-## Ends in an error in state: 93.
+## Ends in an error in state: 87.
 ##
 ## brs -> brs . BAR VAR vars_opt ihs_opt DARROW obj [ WITH END BLOCK_AT BAR ]
 ## eblock -> block_kw ebinders ARROW obj brs . [ WITH END BLOCK_AT ]
@@ -1619,15 +1619,15 @@ prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT VAR ARROW FALSE_TY STAR
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
-## In state 92, spurious reduction of production brs ->
+## In state 82, spurious reduction of production obj -> app_obj
+## In state 86, spurious reduction of production brs ->
 ##
 
 After a block's motive, expected its branches "| c xs ⇒ ?body", then the next block, marked "at" or "with", or "end".
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT VAR ARROW FALSE_TY BAR WITH
 ##
-## Ends in an error in state: 94.
+## Ends in an error in state: 88.
 ##
 ## brs -> brs BAR . VAR vars_opt ihs_opt DARROW obj [ WITH END BLOCK_AT BAR ]
 ##
@@ -1639,7 +1639,7 @@ A branch should start with the name of a constructor.
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT VAR ARROW FALSE_TY BAR VAR WITH
 ##
-## Ends in an error in state: 95.
+## Ends in an error in state: 89.
 ##
 ## brs -> brs BAR VAR . vars_opt ihs_opt DARROW obj [ WITH END BLOCK_AT BAR ]
 ##
@@ -1651,7 +1651,7 @@ A branch "| c" is expected to be followed by the names it binds, then "⇒" and 
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT VAR ARROW FALSE_TY BAR VAR COMMA WITH
 ##
-## Ends in an error in state: 98.
+## Ends in an error in state: 92.
 ##
 ## ihs_opt -> COMMA . vars [ DARROW ]
 ##
@@ -1663,7 +1663,7 @@ After "," in a branch, expected the names of its induction hypotheses.
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT VAR ARROW FALSE_TY BAR VAR COMMA VAR WITH
 ##
-## Ends in an error in state: 99.
+## Ends in an error in state: 93.
 ##
 ## ihs_opt -> COMMA vars . [ DARROW ]
 ## vars -> vars . VAR [ VAR DARROW ]
@@ -1676,7 +1676,7 @@ The induction hypotheses of a branch are expected to be followed by "⇒" and it
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT VAR ARROW FALSE_TY BAR VAR DARROW WITH
 ##
-## Ends in an error in state: 102.
+## Ends in an error in state: 96.
 ##
 ## brs -> brs BAR VAR vars_opt ihs_opt DARROW . obj [ WITH END BLOCK_AT BAR ]
 ##
@@ -1688,7 +1688,7 @@ A branch is expected to have its body after "⇒".
 
 prog: IMPORT VAR LPAREN ELIM FALSE_TY BLOCK_AT VAR ARROW FALSE_TY BAR VAR VAR WITH
 ##
-## Ends in an error in state: 104.
+## Ends in an error in state: 98.
 ##
 ## vars -> vars . VAR [ VAR DARROW COMMA ]
 ## vars_opt -> vars . [ DARROW COMMA ]
@@ -1701,7 +1701,7 @@ The names a branch binds are expected to be followed by "⇒" and its body, or b
 
 prog: MODULE VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE WITH WITH
 ##
-## Ends in an error in state: 171.
+## Ends in an error in state: 168.
 ##
 ## imember -> WITH . VAR COLON obj WHERE ctors [ WITH END ]
 ##
@@ -1713,7 +1713,7 @@ A member of a group after "with" should start with its name: "with y : ?type whe
 
 prog: MODULE VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE WITH VAR WITH
 ##
-## Ends in an error in state: 172.
+## Ends in an error in state: 169.
 ##
 ## imember -> WITH VAR . COLON obj WHERE ctors [ WITH END ]
 ##
@@ -1725,7 +1725,7 @@ A member of a group should have ": ?type" after its name.
 
 prog: MODULE VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE WITH VAR COLON WITH
 ##
-## Ends in an error in state: 173.
+## Ends in an error in state: 170.
 ##
 ## imember -> WITH VAR COLON . obj WHERE ctors [ WITH END ]
 ##
@@ -1737,7 +1737,7 @@ A member of a group is expected to have its type after ":".
 
 prog: MODULE VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE WITH VAR COLON FALSE_TY STAR
 ##
-## Ends in an error in state: 174.
+## Ends in an error in state: 171.
 ##
 ## imember -> WITH VAR COLON obj . WHERE ctors [ WITH END ]
 ##
@@ -1749,14 +1749,14 @@ prog: MODULE VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE WITH VAR COLON FALSE_T
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 The type of a member of a group is expected to be followed by "where" and its constructors.
 
 prog: MODULE VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE WITH VAR COLON FALSE_TY WHERE LPAREN
 ##
-## Ends in an error in state: 176.
+## Ends in an error in state: 173.
 ##
 ## ctors -> ctors . BAR VAR params_opt [ WITH END BAR ]
 ## imember -> WITH VAR COLON obj WHERE ctors . [ WITH END ]
@@ -1769,20 +1769,20 @@ After the constructors of a member of a group, expected another constructor "| c
 
 prog: MODULE VAR WHERE MUTUAL WITH
 ##
-## Ends in an error in state: 237.
+## Ends in an error in state: 234.
 ##
 ## cmd -> mods MUTUAL . VAR params_opt WHERE INDUCTIVE VAR COLON obj WHERE ctors imembers END END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
-## cmd -> mods MUTUAL . DEF params_opt mfuns END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
+## cmd -> mods MUTUAL . dkw params_opt mfuns END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## mods MUTUAL
 ##
 
-"mutual" is expected to be followed by the name of a group, "mutual T where inductive …", or by "def", "mutual def (Δ) f … with g … end".
+"mutual" is expected to be followed by the name of a group, "mutual T where inductive …", or by a definition keyword ("def", "theorem", "lemma", "fact", "remark", "let" or "given"), "mutual def (Δ) f … with g … end".
 
 prog: MODULE VAR WHERE MUTUAL VAR WITH
 ##
-## Ends in an error in state: 239.
+## Ends in an error in state: 236.
 ##
 ## cmd -> mods MUTUAL VAR params_opt . WHERE INDUCTIVE VAR COLON obj WHERE ctors imembers END END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1793,14 +1793,14 @@ prog: MODULE VAR WHERE MUTUAL VAR WITH
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 238, spurious reduction of production params_opt ->
+## In state 235, spurious reduction of production params_opt ->
 ##
 
 A group "mutual T (ps)" is expected to be followed by "where inductive x : ?type where …".
 
 prog: MODULE VAR WHERE MUTUAL VAR WHERE WITH
 ##
-## Ends in an error in state: 240.
+## Ends in an error in state: 237.
 ##
 ## cmd -> mods MUTUAL VAR params_opt WHERE . INDUCTIVE VAR COLON obj WHERE ctors imembers END END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1812,7 +1812,7 @@ The body of a group "mutual T where" is one declaration, starting with "inductiv
 
 prog: MODULE VAR WHERE MUTUAL VAR WHERE INDUCTIVE WITH
 ##
-## Ends in an error in state: 241.
+## Ends in an error in state: 238.
 ##
 ## cmd -> mods MUTUAL VAR params_opt WHERE INDUCTIVE . VAR COLON obj WHERE ctors imembers END END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1824,7 +1824,7 @@ Expected the name of the first member of the group after "inductive".
 
 prog: MODULE VAR WHERE MUTUAL VAR WHERE INDUCTIVE VAR WITH
 ##
-## Ends in an error in state: 242.
+## Ends in an error in state: 239.
 ##
 ## cmd -> mods MUTUAL VAR params_opt WHERE INDUCTIVE VAR . COLON obj WHERE ctors imembers END END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1836,7 +1836,7 @@ A member of a group should have ": ?type" after its name; the group's parameters
 
 prog: MODULE VAR WHERE MUTUAL VAR WHERE INDUCTIVE VAR COLON WITH
 ##
-## Ends in an error in state: 243.
+## Ends in an error in state: 240.
 ##
 ## cmd -> mods MUTUAL VAR params_opt WHERE INDUCTIVE VAR COLON . obj WHERE ctors imembers END END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1848,7 +1848,7 @@ A member of a group is expected to have its type after ":".
 
 prog: MODULE VAR WHERE MUTUAL VAR WHERE INDUCTIVE VAR COLON FALSE_TY STAR
 ##
-## Ends in an error in state: 244.
+## Ends in an error in state: 241.
 ##
 ## cmd -> mods MUTUAL VAR params_opt WHERE INDUCTIVE VAR COLON obj . WHERE ctors imembers END END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1860,14 +1860,14 @@ prog: MODULE VAR WHERE MUTUAL VAR WHERE INDUCTIVE VAR COLON FALSE_TY STAR
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 The type of a member of a group is expected to be followed by "where" and its constructors.
 
 prog: MODULE VAR WHERE MUTUAL VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE LPAREN
 ##
-## Ends in an error in state: 246.
+## Ends in an error in state: 243.
 ##
 ## cmd -> mods MUTUAL VAR params_opt WHERE INDUCTIVE VAR COLON obj WHERE ctors . imembers END END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## ctors -> ctors . BAR VAR params_opt [ WITH END BAR ]
@@ -1880,7 +1880,7 @@ After the constructors of a member of a group, expected another constructor "| c
 
 prog: MODULE VAR WHERE MUTUAL VAR WHERE INDUCTIVE VAR COLON FALSE_TY WHERE END WITH
 ##
-## Ends in an error in state: 248.
+## Ends in an error in state: 245.
 ##
 ## cmd -> mods MUTUAL VAR params_opt WHERE INDUCTIVE VAR COLON obj WHERE ctors imembers END . END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -1892,25 +1892,25 @@ A group "mutual T where inductive … end" is expected to be closed by a second 
 
 prog: MODULE VAR WHERE MUTUAL DEF WITH
 ##
-## Ends in an error in state: 251.
+## Ends in an error in state: 253.
 ##
-## cmd -> mods MUTUAL DEF params_opt . mfuns END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
+## cmd -> mods MUTUAL dkw params_opt . mfuns END [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
-## mods MUTUAL DEF params_opt
+## mods MUTUAL dkw params_opt
 ##
 ## WARNING: This example involves spurious reductions.
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 250, spurious reduction of production params_opt ->
+## In state 252, spurious reduction of production params_opt ->
 ##
 
-"mutual def" and its common parameters are expected to be followed by the first function: "f (ys) (z : ?type) : ?result := | c xs ⇒ ?body …".
+"mutual def" (or "mutual theorem", …) and its common parameters are expected to be followed by the first function: "f (ys) (z : ?type) : ?result := | c xs ⇒ ?body …".
 
 prog: MODULE VAR WHERE MUTUAL DEF VAR WITH
 ##
-## Ends in an error in state: 252.
+## Ends in an error in state: 254.
 ##
 ## mfun -> VAR . params COLON obj EQ brs [ WITH END ]
 ##
@@ -1922,7 +1922,7 @@ A function of a mutual definition takes its parameters, the last its scrutinee, 
 
 prog: MODULE VAR WHERE MUTUAL DEF VAR LPAREN VAR COLON FALSE_TY RPAREN WITH
 ##
-## Ends in an error in state: 253.
+## Ends in an error in state: 255.
 ##
 ## mfun -> VAR params . COLON obj EQ brs [ WITH END ]
 ## params -> params . param [ LPAREN COLON ]
@@ -1935,7 +1935,7 @@ The parameters of a function of a mutual definition are expected to be followed 
 
 prog: MODULE VAR WHERE MUTUAL DEF VAR LPAREN VAR COLON FALSE_TY RPAREN COLON WITH
 ##
-## Ends in an error in state: 254.
+## Ends in an error in state: 256.
 ##
 ## mfun -> VAR params COLON . obj EQ brs [ WITH END ]
 ##
@@ -1947,7 +1947,7 @@ A function of a mutual definition is expected to have its result type after ":".
 
 prog: MODULE VAR WHERE MUTUAL DEF VAR LPAREN VAR COLON FALSE_TY RPAREN COLON FALSE_TY STAR
 ##
-## Ends in an error in state: 255.
+## Ends in an error in state: 257.
 ##
 ## mfun -> VAR params COLON obj . EQ brs [ WITH END ]
 ##
@@ -1959,14 +1959,14 @@ prog: MODULE VAR WHERE MUTUAL DEF VAR LPAREN VAR COLON FALSE_TY RPAREN COLON FAL
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 The result type of a function of a mutual definition is expected to be followed by ":=" and its clauses.
 
 prog: MODULE VAR WHERE MUTUAL DEF VAR LPAREN VAR COLON FALSE_TY RPAREN COLON FALSE_TY EQ STAR
 ##
-## Ends in an error in state: 257.
+## Ends in an error in state: 259.
 ##
 ## brs -> brs . BAR VAR vars_opt ihs_opt DARROW obj [ WITH END BAR ]
 ## mfun -> VAR params COLON obj EQ brs . [ WITH END ]
@@ -1979,7 +1979,7 @@ After the clauses of a function, expected another clause "| c xs ⇒ ?body", the
 
 prog: MODULE VAR WHERE MUTUAL DEF VAR LPAREN VAR COLON FALSE_TY RPAREN COLON FALSE_TY EQ WITH WITH
 ##
-## Ends in an error in state: 259.
+## Ends in an error in state: 261.
 ##
 ## mfuns -> mfuns WITH . mfun [ WITH END ]
 ##
@@ -2058,7 +2058,7 @@ After ":=" in a field of a record value, expected the field's value.
 
 prog: MODULE VAR WHERE RECORD WITH
 ##
-## Ends in an error in state: 123.
+## Ends in an error in state: 120.
 ##
 ## cmd -> RECORD . VAR params_opt COLON obj WHERE rfields rwith [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## cmd -> RECORD . VAR params_opt EQ obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
@@ -2071,7 +2071,7 @@ After "record", expected the name of the record type.
 
 prog: MODULE VAR WHERE RECORD VAR WITH
 ##
-## Ends in an error in state: 125.
+## Ends in an error in state: 122.
 ##
 ## cmd -> RECORD VAR params_opt . COLON obj WHERE rfields rwith [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## cmd -> RECORD VAR params_opt . EQ obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
@@ -2083,14 +2083,14 @@ prog: MODULE VAR WHERE RECORD VAR WITH
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 124, spurious reduction of production params_opt ->
+## In state 121, spurious reduction of production params_opt ->
 ##
 
 After the name and parameters of a record type, expected ":" and its sort.
 
 prog: MODULE VAR WHERE RECORD VAR COLON WITH
 ##
-## Ends in an error in state: 128.
+## Ends in an error in state: 125.
 ##
 ## cmd -> RECORD VAR params_opt COLON . obj WHERE rfields rwith [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -2102,7 +2102,7 @@ After ":" in a record type declaration, expected its sort, a universe.
 
 prog: MODULE VAR WHERE RECORD VAR COLON FALSE_TY WITH
 ##
-## Ends in an error in state: 129.
+## Ends in an error in state: 126.
 ##
 ## cmd -> RECORD VAR params_opt COLON obj . WHERE rfields rwith [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -2114,14 +2114,14 @@ prog: MODULE VAR WHERE RECORD VAR COLON FALSE_TY WITH
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 After the sort of a record type, expected "where" and its fields.
 
 prog: MODULE VAR WHERE RECORD VAR COLON FALSE_TY WHERE WHERE
 ##
-## Ends in an error in state: 130.
+## Ends in an error in state: 127.
 ##
 ## cmd -> RECORD VAR params_opt COLON obj WHERE . rfields rwith [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -2133,7 +2133,7 @@ In a record type declaration, expected its fields "f : A" separated by ";", then
 
 prog: MODULE VAR WHERE RECORD VAR COLON FALSE_TY WHERE VAR WITH
 ##
-## Ends in an error in state: 131.
+## Ends in an error in state: 128.
 ##
 ## rfields1 -> VAR . COLON obj [ WITH SEMI END ]
 ##
@@ -2145,7 +2145,7 @@ A field of a record type is written "f : A".
 
 prog: MODULE VAR WHERE RECORD VAR COLON FALSE_TY WHERE VAR COLON WITH
 ##
-## Ends in an error in state: 132.
+## Ends in an error in state: 129.
 ##
 ## rfields1 -> VAR COLON . obj [ WITH SEMI END ]
 ##
@@ -2157,7 +2157,7 @@ After ":" in a field of a record type, expected the field's type.
 
 prog: MODULE VAR WHERE RECORD VAR COLON FALSE_TY WHERE VAR COLON FALSE_TY WHERE
 ##
-## Ends in an error in state: 134.
+## Ends in an error in state: 131.
 ##
 ## rfields -> rfields1 . [ WITH END ]
 ## rfields1 -> rfields1 . SEMI VAR COLON obj [ WITH SEMI END ]
@@ -2170,15 +2170,15 @@ prog: MODULE VAR WHERE RECORD VAR COLON FALSE_TY WHERE VAR COLON FALSE_TY WHERE
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
-## In state 133, spurious reduction of production rfields1 -> VAR COLON obj
+## In state 82, spurious reduction of production obj -> app_obj
+## In state 130, spurious reduction of production rfields1 -> VAR COLON obj
 ##
 
 After a field of a record type, expected ";" and the next field, "with" and the with-area, or "end".
 
 prog: MODULE VAR WHERE RECORD VAR COLON FALSE_TY WHERE VAR COLON FALSE_TY SEMI WITH
 ##
-## Ends in an error in state: 135.
+## Ends in an error in state: 132.
 ##
 ## rfields1 -> rfields1 SEMI . VAR COLON obj [ WITH SEMI END ]
 ##
@@ -2190,7 +2190,7 @@ After ";" in a record type declaration, expected the next field "f : A".
 
 prog: MODULE VAR WHERE RECORD VAR COLON FALSE_TY WHERE VAR COLON FALSE_TY SEMI VAR WITH
 ##
-## Ends in an error in state: 136.
+## Ends in an error in state: 133.
 ##
 ## rfields1 -> rfields1 SEMI VAR . COLON obj [ WITH SEMI END ]
 ##
@@ -2202,7 +2202,7 @@ A field of a record type is written "f : A".
 
 prog: MODULE VAR WHERE RECORD VAR COLON FALSE_TY WHERE VAR COLON FALSE_TY SEMI VAR COLON WITH
 ##
-## Ends in an error in state: 137.
+## Ends in an error in state: 134.
 ##
 ## rfields1 -> rfields1 SEMI VAR COLON . obj [ WITH SEMI END ]
 ##
@@ -2214,7 +2214,7 @@ After ":" in a field of a record type, expected the field's type.
 
 prog: MODULE VAR WHERE PRIVATE RECORD WITH
 ##
-## Ends in an error in state: 143.
+## Ends in an error in state: 140.
 ##
 ## cmd -> PRIVATE RECORD . VAR params_opt COLON obj WHERE rfields rwith [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## cmd -> PRIVATE RECORD . VAR params_opt EQ obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
@@ -2227,7 +2227,7 @@ After "record", expected the name of the record type.
 
 prog: MODULE VAR WHERE PRIVATE RECORD VAR WITH
 ##
-## Ends in an error in state: 145.
+## Ends in an error in state: 142.
 ##
 ## cmd -> PRIVATE RECORD VAR params_opt . COLON obj WHERE rfields rwith [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ## cmd -> PRIVATE RECORD VAR params_opt . EQ obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
@@ -2239,14 +2239,14 @@ prog: MODULE VAR WHERE PRIVATE RECORD VAR WITH
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 144, spurious reduction of production params_opt ->
+## In state 141, spurious reduction of production params_opt ->
 ##
 
 After the name and parameters of a record type, expected ":" and its sort.
 
 prog: MODULE VAR WHERE PRIVATE RECORD VAR COLON WITH
 ##
-## Ends in an error in state: 148.
+## Ends in an error in state: 145.
 ##
 ## cmd -> PRIVATE RECORD VAR params_opt COLON . obj WHERE rfields rwith [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -2258,7 +2258,7 @@ After ":" in a record type declaration, expected its sort, a universe.
 
 prog: MODULE VAR WHERE PRIVATE RECORD VAR COLON FALSE_TY WITH
 ##
-## Ends in an error in state: 149.
+## Ends in an error in state: 146.
 ##
 ## cmd -> PRIVATE RECORD VAR params_opt COLON obj . WHERE rfields rwith [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -2270,14 +2270,14 @@ prog: MODULE VAR WHERE PRIVATE RECORD VAR COLON FALSE_TY WITH
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
+## In state 82, spurious reduction of production obj -> app_obj
 ##
 
 After the sort of a record type, expected "where" and its fields.
 
 prog: MODULE VAR WHERE PRIVATE RECORD VAR COLON FALSE_TY WHERE WHERE
 ##
-## Ends in an error in state: 150.
+## Ends in an error in state: 147.
 ##
 ## cmd -> PRIVATE RECORD VAR params_opt COLON obj WHERE . rfields rwith [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -2289,7 +2289,7 @@ In a record type declaration, expected its fields "f : A" separated by ";", then
 
 prog: IMPORT VAR LPAREN RECORD FALSE_TY WHERE VAR EQ FALSE_TY WITH
 ##
-## Ends in an error in state: 297.
+## Ends in an error in state: 299.
 ##
 ## tfields -> tfields1 . [ END ]
 ## tfields1 -> tfields1 . SEMI VAR EQ obj [ SEMI END ]
@@ -2302,15 +2302,15 @@ prog: IMPORT VAR LPAREN RECORD FALSE_TY WHERE VAR EQ FALSE_TY WITH
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
 ## In state 47, spurious reduction of production app_obj -> atomic_obj
-## In state 83, spurious reduction of production obj -> app_obj
-## In state 296, spurious reduction of production tfields1 -> VAR EQ obj
+## In state 82, spurious reduction of production obj -> app_obj
+## In state 298, spurious reduction of production tfields1 -> VAR EQ obj
 ##
 
 After a field of a record value, expected ";" and the next field, or "end".
 
 prog: IMPORT VAR LPAREN RECORD FALSE_TY WHERE VAR EQ FALSE_TY SEMI WITH
 ##
-## Ends in an error in state: 298.
+## Ends in an error in state: 300.
 ##
 ## tfields1 -> tfields1 SEMI . VAR EQ obj [ SEMI END ]
 ##
@@ -2322,7 +2322,7 @@ After ";" in a record value, expected the next field "f := M".
 
 prog: IMPORT VAR LPAREN RECORD FALSE_TY WHERE VAR EQ FALSE_TY SEMI VAR WITH
 ##
-## Ends in an error in state: 299.
+## Ends in an error in state: 301.
 ##
 ## tfields1 -> tfields1 SEMI VAR . EQ obj [ SEMI END ]
 ##
@@ -2334,7 +2334,7 @@ A field of a record value is written "f := M".
 
 prog: IMPORT VAR LPAREN RECORD FALSE_TY WHERE VAR EQ FALSE_TY SEMI VAR EQ WITH
 ##
-## Ends in an error in state: 300.
+## Ends in an error in state: 302.
 ##
 ## tfields1 -> tfields1 SEMI VAR EQ . obj [ SEMI END ]
 ##
@@ -2346,7 +2346,7 @@ After ":=" in a field of a record value, expected the field's value.
 
 prog: MODULE VAR WHERE RECORD VAR EQ WITH
 ##
-## Ends in an error in state: 126.
+## Ends in an error in state: 123.
 ##
 ## cmd -> RECORD VAR params_opt EQ . obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -2358,7 +2358,7 @@ A record alias "record x (ps) :=" is expected to be followed by the record type 
 
 prog: MODULE VAR WHERE PRIVATE RECORD VAR EQ WITH
 ##
-## Ends in an error in state: 146.
+## Ends in an error in state: 143.
 ##
 ## cmd -> PRIVATE RECORD VAR params_opt EQ . obj [ THEOREM REMARK RECORD PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IMPORT GIVEN FACT EVAL END DEF BUILTIN AXIOM ABSTRACT ]
 ##
@@ -2367,3 +2367,43 @@ prog: MODULE VAR WHERE PRIVATE RECORD VAR EQ WITH
 ##
 
 A record alias "record x (ps) :=" is expected to be followed by the record type it names and its arguments.
+
+prog: IMPORT VAR LPAREN PI WITH
+##
+## Ends in an error in state: 54.
+##
+## obj -> PI . params ARROW obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
+##
+## The known suffix of the stack is as follows:
+## PI
+##
+
+"∀" (or "forall", "Π") requires a list of parenthesized parameters.
+For example,
+  "(x : ℕ) (y : ℕ)" in "∀ (x : ℕ) (y : ℕ) → ℕ"
+
+prog: IMPORT VAR LPAREN PI LPAREN VAR COLON FALSE_TY RPAREN WITH
+##
+## Ends in an error in state: 295.
+##
+## obj -> PI params . ARROW obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
+## params -> params . param [ LPAREN ARROW ]
+##
+## The known suffix of the stack is as follows:
+## PI params
+##
+
+"→" or another parameter is expected after a list of parameters for "∀".
+
+prog: IMPORT VAR LPAREN PI LPAREN VAR COLON FALSE_TY RPAREN ARROW WITH
+##
+## Ends in an error in state: 296.
+##
+## obj -> PI params ARROW . obj [ WITH WHERE THEOREM SEMI RPAREN RETURN REMARK RECORD RBRACE PRIVATE OPEN MUTUAL MODULE LET LEMMA INDUCTIVE IN IMPORT GIVEN FACT EVAL EQ END DEF COLON BUILTIN BLOCK_AT BAR AXIOM ABSTRACT ]
+##
+## The known suffix of the stack is as follows:
+## PI params ARROW
+##
+
+An expression is expected after "→".
+This token is invalid for the beginning of an expression.

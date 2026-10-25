@@ -311,7 +311,7 @@ Proof. induction H; intros; cbn in *; auto. Qed.
 Lemma pi_view_wk : forall A φ B C,
     pi_view A = Some (B, C) -> pi_view A[φ]ʷ = Some (B[φ]ʷ, C[wk_q φ]ʷ).
 Proof.
-  induction A; try match goal with H0 : list_all _ _ _ |- _ => clear H0 end; intros * H; try destruct b as [B0 N | U]; cbn in H |- *; try discriminate.
+  induction A; repeat match goal with H0 : list_all _ _ _ |- _ => clear H0 end; intros * H; try destruct b as [B0 N | U]; cbn in H |- *; try discriminate.
   - injection H as <- <-; reflexivity.
   - destruct (pi_view A) as [[B' C'] |] eqn:E; [| discriminate ].
     injection H as <- <-; rewrite (IHA _ _ _ eq_refl).
@@ -332,7 +332,7 @@ Qed.
 Lemma pi_view_sub : forall A σ B C,
     pi_view A = Some (B, C) -> pi_view A[σ] = Some (B[σ], C[q σ]).
 Proof.
-  induction A; try match goal with H0 : list_all _ _ _ |- _ => clear H0 end; intros * H; try destruct b as [B0 N | U]; cbn in H |- *; try discriminate.
+  induction A; repeat match goal with H0 : list_all _ _ _ |- _ => clear H0 end; intros * H; try destruct b as [B0 N | U]; cbn in H |- *; try discriminate.
   - injection H as <- <-; reflexivity.
   - destruct (pi_view A) as [[B' C'] |] eqn:E; [| discriminate ].
     injection H as <- <-; rewrite (IHA _ _ _ eq_refl).
@@ -399,7 +399,7 @@ Qed.
 Lemma pi_view_scoped : forall A B C n,
     pi_view A = Some (B, C) -> exp_scoped n A -> exp_scoped n B /\ exp_scoped (S n) C.
 Proof.
-  induction A; try match goal with H0 : list_all _ _ _ |- _ => clear H0 end; intros * H HA; try destruct b as [B0 N | U]; cbn in H, HA; try discriminate; destruct_all.
+  induction A; repeat match goal with H0 : list_all _ _ _ |- _ => clear H0 end; intros * H HA; try destruct b as [B0 N | U]; cbn in H, HA; try discriminate; destruct_all.
   - injection H as <- <-; auto.
   - destruct (pi_view A) as [[B' C'] |] eqn:E; [| discriminate ]; injection H as <- <-.
     destruct (IHA _ _ _ eq_refl H1) as [HB HC]; split.
@@ -710,7 +710,7 @@ Qed.
 
 Lemma fn_view_scoped : forall M M' n, fn_view M = Some M' -> exp_scoped n M -> exp_scoped (S n) M'.
 Proof.
-  induction M; try match goal with H0 : list_all _ _ _ |- _ => clear H0 end; intros * H HM; try destruct b as [B0 N | U]; cbn in H, HM; try discriminate; destruct_all.
+  induction M; repeat match goal with H0 : list_all _ _ _ |- _ => clear H0 end; intros * H HM; try destruct b as [B0 N | U]; cbn in H, HM; try discriminate; destruct_all.
   - injection H as <-; assumption.
   - destruct (fn_view M) as [M0 |] eqn:E; [| discriminate ]; injection H as <-.
     eapply exp_scoped_sub; [ apply IHM; [ reflexivity | eassumption ] |].
@@ -1823,7 +1823,7 @@ Qed.
 
 Lemma fn_view_sub : forall M σ M', fn_view M = Some M' -> fn_view M[σ] = Some M'[q σ].
 Proof.
-  induction M; try match goal with H0 : list_all _ _ _ |- _ => clear H0 end; intros * H; try destruct b as [B0 N | U]; cbn in H |- *; try discriminate.
+  induction M; repeat match goal with H0 : list_all _ _ _ |- _ => clear H0 end; intros * H; try destruct b as [B0 N | U]; cbn in H |- *; try discriminate.
   - injection H as <-; reflexivity.
   - destruct (fn_view M) as [M0 |] eqn:E; [| discriminate ].
     injection H as <-; rewrite (IHM _ _ eq_refl).

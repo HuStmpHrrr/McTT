@@ -2779,6 +2779,34 @@ let%expect_test "a command let needs a type" =
       parameter "(x : A)", or ":" followed by the type of the definition.
     |}]
 
+let%expect_test "an unparenthesised binder: the message names the binder" =
+  let _ = main_of_body "eval λ q → q" in
+  [%expect {|
+    Error: on "q" (at line 2, column 26 - line 2, column 27): "λ" (or "fun")
+      requires a list of parenthesized parameters.
+      For example,
+        "(x : ℕ) (y : ℕ)" in "λ (x : ℕ) (y : ℕ) → x"
+    |}];
+  let _ = main_of_body "eval fun q -> q" in
+  [%expect {|
+    Error: on "q" (at line 2, column 28 - line 2, column 29): "λ" (or "fun")
+      requires a list of parenthesized parameters.
+      For example,
+        "(x : ℕ) (y : ℕ)" in "λ (x : ℕ) (y : ℕ) → x"
+    |}];
+  let _ = main_of_body "eval ∀ q → q" in
+  [%expect {|
+    Error: on "q" (at line 2, column 26 - line 2, column 27): "∀" (or "forall",
+      "Π") requires a list of parenthesized parameters.
+      For example,
+        "(x : ℕ) (y : ℕ)" in "∀ (x : ℕ) (y : ℕ) → ℕ"
+    |}];
+  let _ = main_of_body "eval forall (q : Nat) q" in
+  [%expect {|
+    Error: on "q" (at line 2, column 41 - line 2, column 42): "→" or another
+      parameter is expected after a list of parameters for "∀".
+    |}]
+
 let%expect_test "a command let and a term let" =
   let _ = main_of_body "let x : Nat := 1 end eval let y := succ x in y end let z : Nat := x end eval z" in
   [%expect {|
@@ -4895,6 +4923,61 @@ let%expect_test "a mutual definition has one function per member, in any order" 
     Evaluate heads (S.Tm.app (S.Tm.var 0) S.Sp.snil) --> 1 : ℕ
     |}]
 
+(* The functions of a mutual definition by the keyword [k], [spine_k] and
+   [heads_k], counting as [mutual def] does. *)
+let mutual_kw k =
+  "mutual " ^ k ^ " spine_" ^ k ^ " (z : S.Sp) : Nat := | snil => 0 | scons t s, ht hs => succ hs \
+   with heads_" ^ k ^ " (z : S.Tm) : Nat := | var n => 0 | app f s, hf hs => succ hf end "
+
+let%expect_test "every definition keyword after mutual means what it means for a definition" =
+  let _ = main_of_body (group_tm_sp ^
+    "module M where " ^ mutual_kw "def" ^ mutual_kw "theorem" ^ mutual_kw "lemma" ^ mutual_kw "fact" ^
+    mutual_kw "remark" ^ mutual_kw "let" ^ mutual_kw "given" ^
+    "def one : S.Sp := S.Sp.scons (S.Tm.var 0) S.Sp.snil end \
+     def inside : Nat := succ (spine_fact one) end \
+     def inside2 : Nat := succ (spine_remark one) end \
+     def inside3 : Nat := succ (spine_let one) end \
+     def inside4 : Nat := succ (heads_given (S.Tm.var 0)) end end \
+     eval M.spine_def M.one eval M.heads_def (S.Tm.var 0) eval M.spine_theorem M.one \
+     eval M.heads_lemma (S.Tm.var 0) eval M.inside eval M.inside2 eval M.inside3 eval M.inside4") in
+  [%expect {|
+    Evaluate M.spine_def M.one --> 1 : ℕ
+    Evaluate M.heads_def (S.Tm.var 0) --> 0 : ℕ
+    Evaluate M.spine_theorem M.one
+      --> M.spine_theorem (S.Sp.scons (S.Tm.var 0) S.Sp.snil) : ℕ
+    Evaluate M.heads_lemma (S.Tm.var 0) --> M.heads_lemma (S.Tm.var 0) : ℕ
+    Evaluate M.inside --> succ (M.spine_fact (S.Sp.scons (S.Tm.var 0) S.Sp.snil))
+      : ℕ
+    Evaluate M.inside2
+      --> succ (M.spine_remark (S.Sp.scons (S.Tm.var 0) S.Sp.snil)) : ℕ
+    Evaluate M.inside3 --> 2 : ℕ
+    Evaluate M.inside4 --> 1 : ℕ
+    |}]
+
+let%expect_test "mutual fact, remark, let and given are private" =
+  let _ = main_of_body (group_tm_sp ^ "module M where " ^ mutual_kw "fact" ^ "end eval M.spine_fact S.Sp.snil") in
+  [%expect {| Error: Test.M.spine_fact is private |}];
+  let _ = main_of_body (group_tm_sp ^ "module M where " ^ mutual_kw "remark" ^ "end eval M.heads_remark (S.Tm.var 0)") in
+  [%expect {| Error: Test.M.heads_remark is private |}];
+  let _ = main_of_body (group_tm_sp ^ "module M where " ^ mutual_kw "let" ^ "end eval M.spine_let S.Sp.snil") in
+  [%expect {| Error: Test.M.spine_let is private |}];
+  let _ = main_of_body (group_tm_sp ^ "module M where " ^ mutual_kw "given" ^ "end eval M.heads_given (S.Tm.var 0)") in
+  [%expect {| Error: Test.M.heads_given is private |}]
+
+let%expect_test "a modifier a keyword after mutual implies is rejected" =
+  let _ = main_of_body (group_tm_sp ^ "abstract " ^ mutual_kw "theorem") in
+  [%expect {| Error: theorem is already abstract |}];
+  let _ = main_of_body (group_tm_sp ^ "private " ^ mutual_kw "fact") in
+  [%expect {| Error: fact takes no modifiers |}];
+  let _ = main_of_body (group_tm_sp ^ "private " ^ mutual_kw "let") in
+  [%expect {| Error: let is already private |}];
+  let _ = main_of_body (group_tm_sp ^ "private abstract " ^ mutual_kw "lemma") in
+  [%expect {| Error: lemma is already abstract |}];
+  (* The modifiers a keyword takes are accepted. *)
+  let _ = main_of_body (group_tm_sp ^ "private " ^ mutual_kw "lemma" ^ "abstract " ^ mutual_kw "given" ^
+                        "def t : Nat := heads_given (S.Tm.var 0) end eval t") in
+  [%expect {| Evaluate t --> heads_given (S.Tm.var 0) : ℕ |}]
+
 let%expect_test "a mutual definition misses a member" =
   let _ = main_of_body (group_tm_sp ^
     "mutual def spine (z : S.Sp) : Nat := | snil => 0 | scons t s, ht hs => succ hs end") in
@@ -5358,6 +5441,43 @@ let%expect_test "a record value with a field its record does not have" =
 let%expect_test "a record value with a field missing" =
   let _ = main_of_body (pair_decl ^ "eval record Pair Nat Nat where fst := 1 end") in
   [%expect {| Error: field snd of record Test.Pair is missing |}]
+
+(* A record whose later fields' types mention the earlier fields. *)
+let magma_decl =
+  "record IsMagma : Type@1 where carrier : Type@0 ; op : forall (x : carrier) (y : carrier) -> carrier ; \
+   opCong : forall (x : carrier) -> carrier end "
+
+let%expect_test "a record value with a field of the wrong type names the field" =
+  let _ = main_of_body (magma_decl ^
+    "def m : IsMagma := record IsMagma where carrier := Nat ; op := fun (x : Nat) (y : Nat) -> x ; \
+     opCong := 0 end end") in
+  [%expect {| Error: field opCong of record Test.IsMagma: 0 is not of type ∀ (x1 : ℕ) → ℕ |}];
+  let _ = main_of_body (magma_decl ^
+    "eval record IsMagma where carrier := Nat ; op := fun (x : Nat) -> x ; opCong := fun (x : Nat) -> x end") in
+  [%expect {|
+    Error: field op of record Test.IsMagma: λ (x1 : ℕ) → x1 is not of type
+      ∀ (x1 : ℕ)
+        (x2 : ℕ)
+        → ℕ
+    |}];
+  let _ = main_of_body (magma_decl ^
+    "eval record IsMagma where carrier := Nat ; op := fun (x : Nat) (y : Nat) -> x ; opCong := 0 end : IsMagma") in
+  [%expect {| Error: field opCong of record Test.IsMagma: 0 is not of type ∀ (x1 : ℕ) → ℕ |}]
+
+let%expect_test "a field of the wrong type under a λ, and in a nested record value" =
+  let _ = main_of_body (magma_decl ^
+    "def m (A : Type@0) (a : A) : IsMagma := record IsMagma where carrier := A ; \
+     op := fun (x : A) (y : A) -> a ; opCong := a end end") in
+  [%expect {| Error: field opCong of record Test.IsMagma: a is not of type ∀ (x1 : A) → A |}];
+  let _ = main_of_body (magma_decl ^
+    "record Wrap : Type@1 where tag : Nat ; inner : IsMagma end \
+     def p : Wrap := record Wrap where tag := 0 ; \
+     inner := record IsMagma where carrier := Nat ; op := fun (x : Nat) (y : Nat) -> x ; opCong := 0 end end end") in
+  [%expect {| Error: field opCong of record Test.IsMagma: 0 is not of type ∀ (x1 : ℕ) → ℕ |}];
+  let _ = main_of_body (magma_decl ^
+    "def m : IsMagma := let c := Nat in record IsMagma where carrier := c ; \
+     op := fun (x : c) (y : c) -> x ; opCong := 0 end end end") in
+  [%expect {| Error: field opCong of record Test.IsMagma: 0 is not of type ∀ (x1 : ℕ) → ℕ |}]
 
 (** The typed fill: an eliminator's group and uniform parameters are read
     off its scrutinee's type, the one reading of it that fits its blocks *)

@@ -363,16 +363,20 @@ Section type_check.
     let (a, Ha) := feval_exp_impl gc_deps gc_stack A p (tenv_eval_order_ass G A p HGA Hp) in
     exist _ (p ↦ ⇑! a (List.length G)) (tenv_ass_sim _ _ _ _ HGA Hp Ha).
 
+  (** The same for a definition entry: its body's value. *)
   Definition tenv_def G (P : tenv G) A M (HGA : ⊢ G ▸ A ≔ M) : tenv (G ▸ A ≔ M) :=
     let (p, Hp) := P in
     let (m, Hm) := feval_exp_impl gc_deps gc_stack M p (tenv_eval_order_def G A M p HGA Hp) in
     exist _ (p ↦ m) (tenv_def_sim _ _ _ _ _ HGA Hp Hm).
 
+  (** The same for a module slot: the closure of its unit. *)
   Definition tenv_mod G (P : tenv G) U (HGU : ⊢ G ▹ₘ U) : tenv (G ▹ₘ U) :=
     let (p, Hp) := P in
     let (h, Hh) := feval_modexp_impl gc_deps gc_stack (me_lit U) p (tenv_eval_order_mod G U p HGU Hp) in
     exist _ (p ↦ᵐ h) (tenv_mod_sim _ _ _ _ HGU Hp Hh).
 
+  (** The same for a definition with a module part: the value of its term
+      part's body and the closure of its unit, side by side. *)
   Definition tenv_dm G (P : tenv G) A M U (HG : ⊢ G ▸ₘ A ≔ M ‖ U) : tenv (G ▸ₘ A ≔ M ‖ U) :=
     let (p, Hp) := P in
     let (m, Hm) := feval_exp_impl gc_deps gc_stack M p (tenv_eval_order_dm_tm G A M U p HG Hp) in

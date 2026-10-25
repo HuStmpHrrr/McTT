@@ -68,16 +68,27 @@ Generalizable All Variables.
     [exp_wk_shift_sub_q], both of which are stated for [↑]. *)
 
 Inductive ctx_lookup : nat -> typ -> ctx -> Prop :=
+  (** The innermost entry, an assumption: its type, weakened past it *)
   | here : `(Γ ▹ A ∋ #0 : A[↑]ʷ)
+  (** The innermost entry, a definition: its type, weakened past it *)
   | here_def : `(Γ ▸ A ≔ M ∋ #0 : A[↑]ʷ)
+  (** The innermost entry, a definition with a module part: the type of its
+      term part, weakened past it *)
   | here_dm : `(Γ ▸ₘ A ≔ M ‖ U ∋ #0 : A[↑]ʷ)
+  (** An entry under one more entry: its type, weakened past that one too *)
   | there : `(Γ ∋ #n : A -> e :: Γ ∋ #(S n) : A[↑]ʷ)
 where "Γ ∋ '#' x : A" := (ctx_lookup x A Γ) : type_scope.
 
 (** The body of a definition entry, weakened to the use site like its type. *)
 Inductive ctx_lookup_def : nat -> typ -> exp -> ctx -> Prop :=
+  (** The innermost entry, a definition: its body and its type, weakened
+      past it *)
   | def_here : `(Γ ▸ A ≔ M ∋ #0 ≔ M[↑]ʷ : A[↑]ʷ)
+  (** The innermost entry, a definition with a module part: the body and
+      the type of its term part, weakened past it *)
   | def_here_dm : `(Γ ▸ₘ A ≔ M ‖ U ∋ #0 ≔ M[↑]ʷ : A[↑]ʷ)
+  (** A definition under one more entry: its body and type, weakened past
+      that one too *)
   | def_there : `(Γ ∋ #n ≔ M : A -> e :: Γ ∋ #(S n) ≔ M[↑]ʷ : A[↑]ʷ)
 where "Γ ∋ '#' x ≔ M : A" := (ctx_lookup_def x A M Γ) : type_scope.
 

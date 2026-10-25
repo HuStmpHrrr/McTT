@@ -294,9 +294,11 @@ constructor = '|' , id , {parameter};
 mutual = ['private'] , 'mutual' , id , {parameter} , 'where' ,
          'inductive' , id , ':' , member type , 'where' , {constructor} ,
          { 'with' , id , ':' , member type , 'where' , {constructor} } , 'end' , 'end';
-(* one function per member of a group, in any order *)
-mutual def = ['private'] , ['abstract'] , 'mutual' , 'def' , {parameter} ,
+(* one function per member of a group, in any order; the keyword after
+   'mutual' means what it means for a single definition *)
+mutual def = ['private'] , ['abstract'] , 'mutual' , definition keyword , {parameter} ,
              function , { 'with' , function } , 'end';
+definition keyword = 'def' | 'theorem' | 'lemma' | 'fact' | 'remark' | 'let' | 'given';
 function = id , parameter , {parameter} , ':' , type , ( '≔' | ':=' ) , {elim branch};
 ```
 
@@ -360,7 +362,9 @@ block's, or else the `at` block's, which must be written when the type has unifo
 parameters: `elim l at (z : List A) -> P | …`.  Only that binder may carry
 a type.  `mutual def (Δ) f (ys) (z : M) : A := | … with g … end` defines
 one function per member, matched to its member by its scrutinee's type,
-each the group's eliminator at its member.  The constructor's type is shown with the normal form of
+each the group's eliminator at its member.  Any definition keyword may
+follow `mutual` (`mutual theorem`, `mutual let`, …), with the modifiers it
+implies for a single definition.  The constructor's type is shown with the normal form of
 such an argument.  The parameters
 of an enclosing module are not written: they are the type's outermost
 uniform parameters, as for every member.

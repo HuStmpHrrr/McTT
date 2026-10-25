@@ -1117,9 +1117,12 @@ Definition nil_glu_sub_pred : glu_sub_pred :=
   fun Δ σ ρ => Δ ⊢ˢ σ : ⋅.
 #[global] Arguments nil_glu_sub_pred Δ σ ρ/.
 
-(** The parameters are ordered differently from the Agda version
-    so that we can return [glu_sub_pred]. *)
+(** An assumption entry glues by its head, at the gluing of its type, and
+    by its tail.  The parameters come before the relation's own arguments,
+    so that the predicate is a [glu_sub_pred]. *)
 Variant cons_glu_sub_pred (i : nat) Γ A (TSb : glu_sub_pred) : glu_sub_pred :=
+(** The substitution is typed, its head glues at the type's predicate and
+    its tail glues by [TSb] *)
 | mk_cons_glu_sub_pred :
   `{ forall P El,
         Δ ⊢ˢ σ : Γ ▹ A ->
@@ -1135,6 +1138,8 @@ Variant cons_glu_sub_pred (i : nat) Γ A (TSb : glu_sub_pred) : glu_sub_pred :=
     to the value of the body in the tail ([def_tie]).  The syntactic half of
     the tie is part of [Δ ⊢ˢ σ : Γ ▸ A ≔ M]. *)
 Variant cons_def_glu_sub_pred (i : nat) Γ A M (TSb : glu_sub_pred) : glu_sub_pred :=
+(** As an assumption's, and the head's value is the body's value in the
+    tail *)
 | mk_cons_def_glu_sub_pred :
   `{ forall P El,
         Δ ⊢ˢ σ : Γ ▸ A ≔ M ->
@@ -1150,6 +1155,8 @@ Variant cons_def_glu_sub_pred (i : nat) Γ A M (TSb : glu_sub_pred) : glu_sub_pr
     environment PER.  Module values themselves are not glued: their members
     are reached through δ, whose reducts are terms. *)
 Variant cons_mod_glu_sub_pred Γ U (TSb : glu_sub_pred) : glu_sub_pred :=
+(** The substitution is typed, the head's module is the closure of the
+    unit over the tail, and the tail glues by [TSb] *)
 | mk_cons_mod_glu_sub_pred :
   `{ Δ ⊢ˢ σ : Γ ▹ₘ U ->
      tie_mod (env_mod ρ 0) (me_lit U) ρ↯ ->
@@ -1160,6 +1167,9 @@ Variant cons_mod_glu_sub_pred Γ U (TSb : glu_sub_pred) : glu_sub_pred :=
     definition, and its head's module is tied to the closure of its unit
     over the tail, as a slot's. *)
 Variant cons_dm_glu_sub_pred (i : nat) Γ A M U (TSb : glu_sub_pred) : glu_sub_pred :=
+(** The substitution is typed, the head's term value glues at the type's
+    predicate and is the body's value in the tail, the head's module is the
+    closure of the unit over the tail, and the tail glues by [TSb] *)
 | mk_cons_dm_glu_sub_pred :
   `{ forall P El,
         Δ ⊢ˢ σ : Γ ▸ₘ A ≔ M ‖ U ->
