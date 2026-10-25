@@ -68,8 +68,8 @@ Section Main.
       (exists ΘR, prog_sem load_path read to_core prg B ΘR U /\ gds_equiv ΘR Θ /\
                   ⊢ᵍ ΘR ⍮ nil /\ ΘR ⍮ nil ⍮ q_abs (prog_path prg) nil ⍮ fk_module ⊢ᵍᵘ U) /\
       (forall e, In e log ->
-         ⊢ᵍ eval_entry_deps e ⍮ ev_stack e /\ eval_entry_deps e ⍮ ev_stack e ⍮ gs_tele (ev_stack e) ⊢ ev_exp e : ev_typ e /\
-         nbe (eval_entry_deps e) (ev_stack e) (gs_tele (ev_stack e)) (ev_exp e) (ev_typ e) (ev_nf e)).
+         ⊢ᵍ eval_entry_deps e ⍮ eval_entry_stack e /\ eval_entry_deps e ⍮ eval_entry_stack e ⍮ gs_tele (eval_entry_stack e) ⊢ eval_entry_exp e : eval_entry_typ e /\
+         nbe (eval_entry_deps e) (eval_entry_stack e) (gs_tele (eval_entry_stack e)) (eval_entry_exp e) (eval_entry_typ e) (eval_entry_nf e)).
   Proof.
     intros * H; unfold main in H.
     destruct (Parser.prog log_fuel buf); try discriminate.

@@ -2610,7 +2610,7 @@ Section WellFormed.
   Record gen_run (Θ : gdeps) (Ξ : gstack) (B : builtins) (Rb : bmap)
       (Θ' : gdeps) (Ξ' : gstack) (B' : builtins) (Rb' : bmap) : Prop := mk_gen_run
     { (** No unit is filed *)
-      gens_run_deps : Θ' = Θ
+      gen_run_deps : Θ' = Θ
       (** No binding is made *)
     ; gen_run_builtins : B' = B
       (** No record is merged *)

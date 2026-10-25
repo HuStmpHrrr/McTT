@@ -846,12 +846,12 @@ and rc_opt th = function Some e -> rc_exp th e | None -> []
 and rc_sel th h y =
   match record_value th h with
   | Some (p, args) -> List.concat_map (rc_exp th) args @ [ (y, p) ]
-  | None -> run_cmd_mod th h
+  | None -> rc_mod th h
 
-and run_cmd_mod th (h : S.modexp) =
+and rc_mod th (h : S.modexp) =
   match h with
   | S.Coq_me_mem (h', y) -> rc_sel th h' y
-  | S.Coq_me_app (h', e) -> run_cmd_mod th h' @ rc_exp th e
+  | S.Coq_me_app (h', e) -> rc_mod th h' @ rc_exp th e
   | S.Coq_me_lit u -> rc_unit th u
   | S.Coq_me_unit _ | S.Coq_me_var _ -> []
 
@@ -864,7 +864,7 @@ and rc_centry th = function
   | S.Coq_ce_dm (a, m, u) -> rc_exp th a @ rc_exp th m @ rc_unit th u
 
 and rc_unit th (S.Coq_gu_mk (d, md)) =
-  rc_ctx th d @ (match md with S.Coq_md_alias h -> run_cmd_mod th h | S.Coq_md_body (_, g) -> rc_gmod th g)
+  rc_ctx th d @ (match md with S.Coq_md_alias h -> rc_mod th h | S.Coq_md_body (_, g) -> rc_gmod th g)
 
 and rc_gmod th = function
   | S.Coq_gm_nil -> []
@@ -872,7 +872,7 @@ and rc_gmod th = function
   (* An open of a local body: the module opened, then, if it is a record
      value's, each member an item names, a selection from it. *)
   | S.Coq_gm_open (g, h, its) ->
-      rc_gmod th g @ run_cmd_mod th h
+      rc_gmod th g @ rc_mod th h
       @ (match record_value th h with
           | Some (p, _) -> List.filter_map (fun ((on, _), _) -> Option.map (fun n -> (n, p)) on) its
           | None -> [])
@@ -881,22 +881,22 @@ and rc_gentry th = function
   | S.Coq_ge_def (_, _, a, om) -> rc_exp th a @ rc_opt th om
   | S.Coq_ge_mod (_, u) -> rc_unit th u
   | S.Coq_ge_def_mod (_, a, m, u) -> rc_exp th a @ rc_exp th m @ rc_unit th u
-  | S.Coq_ge_record (_, _, d, _) -> run_cmd_record th 0 d
-  | S.Coq_ge_ind (_, _, _, d, _) -> run_cmd_ind th 0 d
+  | S.Coq_ge_record (_, _, d, _) -> rc_record th 0 d
+  | S.Coq_ge_ind (_, _, _, d, _) -> rc_ind th 0 d
 
 (* A context without its [k] outermost entries, the last ones. *)
 and outer_drop k (d : S.centry list) = List.filteri (fun i _ -> i < List.length d - k) d
 
 (* A record: its parameters but the [k] outermost, the frames', then its
    sort and its fields. *)
-and run_cmd_record th k (d : (S.exp, S.centry) S.record_decl_g) =
+and rc_record th k (d : (S.exp, S.centry) S.record_decl_g) =
   rc_ctx th (outer_drop k d.S.record_params) @ rc_exp th d.S.record_sort
   @ List.concat_map (fun (_, a) -> rc_exp th a) d.S.record_fields
 
 (* A group: its parameters but the [k] outermost, the frames', then each
    member's own parameters, the sort (which the group has once, after its
    first member's parameters) and its constructors' arguments. *)
-and run_cmd_ind th k (d : (S.exp, S.centry) S.ind_decl_g) =
+and rc_ind th k (d : (S.exp, S.centry) S.ind_decl_g) =
   let rec pt = function
     | S.Coq_pt_pi (a, r) -> rc_exp th a @ pt r
     | S.Coq_pt_self (_, es) -> List.concat_map (rc_exp th) es in
@@ -953,12 +953,12 @@ let record_cands th (gu : S.gunit) (log : McttExtracted.Command1.eval_entry list
   | L_mod (ch, x) ->
       (match entry_at gu ch x with
        | Some (S.Coq_ge_mod (_, S.Coq_gu_mk (d, md))) ->
-           rc_ctx th d @ (match md with S.Coq_md_alias h -> run_cmd_mod th h | S.Coq_md_body _ -> [])
+           rc_ctx th d @ (match md with S.Coq_md_alias h -> rc_mod th h | S.Coq_md_body _ -> [])
        | _ -> [])
   | L_record (ch, x, k) ->
-      (match entry_at gu ch x with Some (S.Coq_ge_record (_, _, d, _)) -> run_cmd_record th k d | _ -> [])
+      (match entry_at gu ch x with Some (S.Coq_ge_record (_, _, d, _)) -> rc_record th k d | _ -> [])
   | L_ind (ch, x, k) ->
-      (match entry_at gu ch x with Some (S.Coq_ge_ind (_, _, _, d, _)) -> run_cmd_ind th k d | _ -> [])
+      (match entry_at gu ch x with Some (S.Coq_ge_ind (_, _, _, d, _)) -> rc_ind th k d | _ -> [])
   | L_alias (ch, x, k, n) ->
       (match entry_at gu ch x with
        | Some (S.Coq_ge_def_mod (_, a, m, _)) -> rc_exp th (skip_pis k a) @ rc_exp th (strip_fns (k + n) m)
@@ -970,7 +970,7 @@ let record_cands th (gu : S.gunit) (log : McttExtracted.Command1.eval_entry list
   | L_open (ch, k, ds) ->
       List.concat_map (fun d ->
           match entry_at gu ch d with
-          | Some (S.Coq_ge_mod (_, S.Coq_gu_mk (_, S.Coq_md_alias h))) -> run_cmd_mod th h
+          | Some (S.Coq_ge_mod (_, S.Coq_gu_mk (_, S.Coq_md_alias h))) -> rc_mod th h
           | Some (S.Coq_ge_def (_, _, _, Some m)) -> rc_exp th (strip_fns k m)
           | _ -> []) ds
   (* Each function is filed as [λ Δ ys z. a_elim … Bks z] at the type
@@ -1002,8 +1002,8 @@ let record_cands th (gu : S.gunit) (log : McttExtracted.Command1.eval_entry list
                  | None -> [])) gs)
   | L_eval (k, annotated) ->
       (match List.nth_opt log k with
-       | Some e -> rc_exp th e.McttExtracted.Command1.ev_exp
-                   @ (if annotated then rc_exp th e.McttExtracted.Command1.ev_typ else [])
+       | Some e -> rc_exp th e.McttExtracted.Command1.eval_entry_exp
+                   @ (if annotated then rc_exp th e.McttExtracted.Command1.eval_entry_typ else [])
        | None -> [])
   | L_params -> let (S.Coq_gu_mk (d, _)) = gu in rc_ctx th d
   | L_none -> []

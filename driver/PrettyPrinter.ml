@@ -1052,11 +1052,11 @@ let format_nf f nf = format_exp f (nf_to_exp nf)
 (************************************************************)
 
 let format_eval (f : Format.formatter) (r : Command1.eval_entry) : unit =
-  set_ind_decls r.eval_entry_deps r.ev_stack;
-  set_nat_bind r.eval_entry_deps r.ev_stack;
-  current_state := (r.eval_entry_deps, r.ev_stack);
-  Format.fprintf f "@[<hov 2>Evaluate %a@ --> %a@ : %a@]" format_exp r.ev_exp
-    format_nf r.ev_nf format_exp r.ev_typ
+  set_ind_decls r.eval_entry_deps r.eval_entry_stack;
+  set_nat_bind r.eval_entry_deps r.eval_entry_stack;
+  current_state := (r.eval_entry_deps, r.eval_entry_stack);
+  Format.fprintf f "@[<hov 2>Evaluate %a@ --> %a@ : %a@]" format_exp r.eval_entry_exp
+    format_nf r.eval_entry_nf format_exp r.eval_entry_typ
 
 
 (* The source of a unit other than the program run, parsed, for the names

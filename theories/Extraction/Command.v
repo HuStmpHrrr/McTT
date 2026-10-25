@@ -856,16 +856,16 @@ Arguments rok {A}.
 Arguments rerr {A}.
 
 (** A checked and normalized [eval]: in the restriction [eval_entry_deps] of the
-    state to the imports so far, on the stack [ev_stack], and in the context
-    of the frames' parameters, the expression [ev_exp] has type [ev_typ]
-    (ascribed or inferred) and normalizes to [ev_nf]. *)
+    state to the imports so far, on the stack [eval_entry_stack], and in the context
+    of the frames' parameters, the expression [eval_entry_exp] has type [eval_entry_typ]
+    (ascribed or inferred) and normalizes to [eval_entry_nf]. *)
 Record eval_entry : Set :=
-  { eval_entry_deps : gdeps; ev_stack : gstack; ev_exp : exp; ev_typ : typ; ev_nf : nf }.
+  { eval_entry_deps : gdeps; eval_entry_stack : gstack; eval_entry_exp : exp; eval_entry_typ : typ; eval_entry_nf : nf }.
 
 Record eval_ok (e : eval_entry) : Prop := mk_eval_ok
-  { eval_ok_wf : ⊢ᵍ eval_entry_deps e ⍮ ev_stack e
-  ; eval_ok_typ : eval_entry_deps e ⍮ ev_stack e ⍮ gs_tele (ev_stack e) ⊢ ev_exp e : ev_typ e
-  ; eval_ok_nbe : nbe (eval_entry_deps e) (ev_stack e) (gs_tele (ev_stack e)) (ev_exp e) (ev_typ e) (ev_nf e) }.
+  { eval_ok_wf : ⊢ᵍ eval_entry_deps e ⍮ eval_entry_stack e
+  ; eval_ok_typ : eval_entry_deps e ⍮ eval_entry_stack e ⍮ gs_tele (eval_entry_stack e) ⊢ eval_entry_exp e : eval_entry_typ e
+  ; eval_ok_nbe : nbe (eval_entry_deps e) (eval_entry_stack e) (gs_tele (eval_entry_stack e)) (eval_entry_exp e) (eval_entry_typ e) (eval_entry_nf e) }.
 
 Definition logs_ok (l : list eval_entry) : Prop := forall e, In e l -> eval_ok e.
 
@@ -915,7 +915,7 @@ Defined.
 
 (** Normalize a checked [eval] into its entry. *)
 Lemma eval_log_ok {Θ Ξ M A W} : ⊢ᵍ Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> nbe Θ Ξ (gs_tele Ξ) M A W ->
-  logs_ok ({| eval_entry_deps := Θ; ev_stack := Ξ; ev_exp := M; ev_typ := A; ev_nf := W |} :: nil).
+  logs_ok ({| eval_entry_deps := Θ; eval_entry_stack := Ξ; eval_entry_exp := M; eval_entry_typ := A; eval_entry_nf := W |} :: nil).
 Proof. intros HΞ HM HW e [<- | []]; constructor; cbn; auto. Qed.
 
 Definition eval_log (Θ : gdeps) (Ξ : gstack) (F : FCtx Θ Ξ) (HΞ : ⊢ᵍ Θ ⍮ Ξ) (M : exp) (A : typ)
@@ -4181,8 +4181,8 @@ Section Impl.
       prog_impl prg Hacc = rok (B, Θ, U, log) ->
       (exists ΘR, prog_sem load_path read to_core prg B ΘR U /\ gds_equiv ΘR Θ) /\
       (forall e, In e log ->
-         ⊢ᵍ eval_entry_deps e ⍮ ev_stack e /\ eval_entry_deps e ⍮ ev_stack e ⍮ gs_tele (ev_stack e) ⊢ ev_exp e : ev_typ e /\
-         nbe (eval_entry_deps e) (ev_stack e) (gs_tele (ev_stack e)) (ev_exp e) (ev_typ e) (ev_nf e)).
+         ⊢ᵍ eval_entry_deps e ⍮ eval_entry_stack e /\ eval_entry_deps e ⍮ eval_entry_stack e ⍮ gs_tele (eval_entry_stack e) ⊢ eval_entry_exp e : eval_entry_typ e /\
+         nbe (eval_entry_deps e) (eval_entry_stack e) (gs_tele (eval_entry_stack e)) (eval_entry_exp e) (eval_entry_typ e) (eval_entry_nf e)).
   Proof.
     unfold prog_impl; intros * E.
     destruct (to_core prg) as [u |] eqn:Ht; [| discriminate ].
